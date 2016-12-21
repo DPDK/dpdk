@@ -63,6 +63,7 @@ enum index {
 	FLOW,
 
 	/* Sub-level commands. */
+	FLUSH,
 	LIST,
 
 	/* List arguments. */
@@ -179,6 +180,9 @@ static const enum index next_list_attr[] = {
 static int parse_init(struct context *, const struct token *,
 		      const char *, unsigned int,
 		      void *, unsigned int);
+static int parse_flush(struct context *, const struct token *,
+		       const char *, unsigned int,
+		       void *, unsigned int);
 static int parse_list(struct context *, const struct token *,
 		      const char *, unsigned int,
 		      void *, unsigned int);
@@ -240,10 +244,19 @@ static const struct token token_list[] = {
 		.name = "flow",
 		.type = "{command} {port_id} [{arg} [...]]",
 		.help = "manage ingress/egress flow rules",
-		.next = NEXT(NEXT_ENTRY(LIST)),
+		.next = NEXT(NEXT_ENTRY
+			     (FLUSH,
+			      LIST)),
 		.call = parse_init,
 	},
 	/* Sub-level commands. */
+	[FLUSH] = {
+		.name = "flush",
+		.help = "destroy all flow rules",
+		.next = NEXT(NEXT_ENTRY(PORT_ID)),
+		.args = ARGS(ARGS_ENTRY(struct buffer, port)),
+		.call = parse_flush,
+	},
 	[LIST] = {
 		.name = "list",
 		.help = "list existing flow rules",
@@ -313,6 +326,31 @@ parse_init(struct context *ctx, const struct token *token,
 	memset(out, 0x00, sizeof(*out));
 	memset((uint8_t *)out + sizeof(*out), 0x22, size - sizeof(*out));
 	ctx->object = out;
+	return len;
+}
+
+/** Parse tokens for flush command. */
+static int
+parse_flush(struct context *ctx, const struct token *token,
+	    const char *str, unsigned int len,
+	    void *buf, unsigned int size)
+{
+	struct buffer *out = buf;
+
+	/* Token name must match. */
+	if (parse_default(ctx, token, str, len, NULL, 0) < 0)
+		return -1;
+	/* Nothing else to do if there is no buffer. */
+	if (!out)
+		return len;
+	if (!out->command) {
+		if (ctx->curr != FLUSH)
+			return -1;
+		if (sizeof(*out) > size)
+			return -1;
+		out->command = ctx->curr;
+		ctx->object = out;
+	}
 	return len;
 }
 
@@ -698,6 +736,9 @@ static void
 cmd_flow_parsed(const struct buffer *in)
 {
 	switch (in->command) {
+	case FLUSH:
+		port_flow_flush(in->port);
+		break;
 	case LIST:
 		port_flow_list(in->port, in->args.list.group_n,
 			       in->args.list.group);

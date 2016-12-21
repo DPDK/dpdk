@@ -811,6 +811,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			" (select|add)\n"
 			"    Set the input set for FDir.\n\n"
 
+			"flow flush {port_id}\n"
+			"    Destroy all flow rules.\n\n"
+
 			"flow list {port_id} [group {group_id}] [...]\n"
 			"    List existing flow rules sorted by priority,"
 			" filtered by group identifiers.\n\n"
