@@ -491,7 +491,6 @@ s32 ixgbe_calc_eeprom_checksum_X540(struct ixgbe_hw *hw)
 	u16 length = 0;
 	u16 pointer = 0;
 	u16 word = 0;
-	u16 checksum_last_word = IXGBE_EEPROM_CHECKSUM;
 	u16 ptr_start = IXGBE_PCIE_ANALOG_PTR;
 
 	/* Do not use hw->eeprom.ops.read because we do not want to take
@@ -501,14 +500,15 @@ s32 ixgbe_calc_eeprom_checksum_X540(struct ixgbe_hw *hw)
 
 	DEBUGFUNC("ixgbe_calc_eeprom_checksum_X540");
 
-	/* Include 0x0-0x3F in the checksum */
-	for (i = 0; i <= checksum_last_word; i++) {
+	/* Include 0x0 up to IXGBE_EEPROM_CHECKSUM; do not include the
+	 * checksum itself
+	 */
+	for (i = 0; i < IXGBE_EEPROM_CHECKSUM; i++) {
 		if (ixgbe_read_eerd_generic(hw, i, &word)) {
 			DEBUGOUT("EEPROM read failed\n");
 			return IXGBE_ERR_EEPROM;
 		}
-		if (i != IXGBE_EEPROM_CHECKSUM)
-			checksum += word;
+		checksum += word;
 	}
 
 	/* Include all data from pointers 0x3, 0x6-0xE.  This excludes the
