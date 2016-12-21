@@ -59,11 +59,14 @@ enum index {
 	RULE_ID,
 	PORT_ID,
 	GROUP_ID,
+	PRIORITY_LEVEL,
 
 	/* Top-level command. */
 	FLOW,
 
 	/* Sub-level commands. */
+	VALIDATE,
+	CREATE,
 	DESTROY,
 	FLUSH,
 	LIST,
@@ -73,6 +76,26 @@ enum index {
 
 	/* List arguments. */
 	LIST_GROUP,
+
+	/* Validate/create arguments. */
+	GROUP,
+	PRIORITY,
+	INGRESS,
+	EGRESS,
+
+	/* Validate/create pattern. */
+	PATTERN,
+	ITEM_NEXT,
+	ITEM_END,
+	ITEM_VOID,
+	ITEM_INVERT,
+
+	/* Validate/create actions. */
+	ACTIONS,
+	ACTION_NEXT,
+	ACTION_END,
+	ACTION_VOID,
+	ACTION_PASSTHRU,
 };
 
 /** Maximum number of subsequent tokens and arguments on the stack. */
@@ -92,6 +115,7 @@ struct context {
 	uint32_t eol:1; /**< EOL has been detected. */
 	uint32_t last:1; /**< No more arguments. */
 	uint16_t port; /**< Current port ID (for completions). */
+	uint32_t objdata; /**< Object-specific data. */
 	void *object; /**< Address of current object for relative offsets. */
 };
 
@@ -109,6 +133,8 @@ struct token {
 	const char *type;
 	/** Help displayed during completion (defaults to token name). */
 	const char *help;
+	/** Private data used by parser functions. */
+	const void *priv;
 	/**
 	 * Lists of subsequent tokens to push on the stack. Each call to the
 	 * parser consumes the last entry of that stack.
@@ -170,6 +196,14 @@ struct buffer {
 	uint16_t port; /**< Affected port ID. */
 	union {
 		struct {
+			struct rte_flow_attr attr;
+			struct rte_flow_item *pattern;
+			struct rte_flow_action *actions;
+			uint32_t pattern_n;
+			uint32_t actions_n;
+			uint8_t *data;
+		} vc; /**< Validate/create arguments. */
+		struct {
 			uint32_t *rule;
 			uint32_t rule_n;
 		} destroy; /**< Destroy arguments. */
@@ -178,6 +212,39 @@ struct buffer {
 			uint32_t group_n;
 		} list; /**< List arguments. */
 	} args; /**< Command arguments. */
+};
+
+/** Private data for pattern items. */
+struct parse_item_priv {
+	enum rte_flow_item_type type; /**< Item type. */
+	uint32_t size; /**< Size of item specification structure. */
+};
+
+#define PRIV_ITEM(t, s) \
+	(&(const struct parse_item_priv){ \
+		.type = RTE_FLOW_ITEM_TYPE_ ## t, \
+		.size = s, \
+	})
+
+/** Private data for actions. */
+struct parse_action_priv {
+	enum rte_flow_action_type type; /**< Action type. */
+	uint32_t size; /**< Size of action configuration structure. */
+};
+
+#define PRIV_ACTION(t, s) \
+	(&(const struct parse_action_priv){ \
+		.type = RTE_FLOW_ACTION_TYPE_ ## t, \
+		.size = s, \
+	})
+
+static const enum index next_vc_attr[] = {
+	GROUP,
+	PRIORITY,
+	INGRESS,
+	EGRESS,
+	PATTERN,
+	ZERO,
 };
 
 static const enum index next_destroy_attr[] = {
@@ -192,9 +259,26 @@ static const enum index next_list_attr[] = {
 	ZERO,
 };
 
+static const enum index next_item[] = {
+	ITEM_END,
+	ITEM_VOID,
+	ITEM_INVERT,
+	ZERO,
+};
+
+static const enum index next_action[] = {
+	ACTION_END,
+	ACTION_VOID,
+	ACTION_PASSTHRU,
+	ZERO,
+};
+
 static int parse_init(struct context *, const struct token *,
 		      const char *, unsigned int,
 		      void *, unsigned int);
+static int parse_vc(struct context *, const struct token *,
+		    const char *, unsigned int,
+		    void *, unsigned int);
 static int parse_destroy(struct context *, const struct token *,
 			 const char *, unsigned int,
 			 void *, unsigned int);
@@ -266,18 +350,41 @@ static const struct token token_list[] = {
 		.call = parse_int,
 		.comp = comp_none,
 	},
+	[PRIORITY_LEVEL] = {
+		.name = "{level}",
+		.type = "PRIORITY",
+		.help = "priority level",
+		.call = parse_int,
+		.comp = comp_none,
+	},
 	/* Top-level command. */
 	[FLOW] = {
 		.name = "flow",
 		.type = "{command} {port_id} [{arg} [...]]",
 		.help = "manage ingress/egress flow rules",
 		.next = NEXT(NEXT_ENTRY
-			     (DESTROY,
+			     (VALIDATE,
+			      CREATE,
+			      DESTROY,
 			      FLUSH,
 			      LIST)),
 		.call = parse_init,
 	},
 	/* Sub-level commands. */
+	[VALIDATE] = {
+		.name = "validate",
+		.help = "check whether a flow rule can be created",
+		.next = NEXT(next_vc_attr, NEXT_ENTRY(PORT_ID)),
+		.args = ARGS(ARGS_ENTRY(struct buffer, port)),
+		.call = parse_vc,
+	},
+	[CREATE] = {
+		.name = "create",
+		.help = "create a flow rule",
+		.next = NEXT(next_vc_attr, NEXT_ENTRY(PORT_ID)),
+		.args = ARGS(ARGS_ENTRY(struct buffer, port)),
+		.call = parse_vc,
+	},
 	[DESTROY] = {
 		.name = "destroy",
 		.help = "destroy specific flow rules",
@@ -314,6 +421,98 @@ static const struct token token_list[] = {
 		.next = NEXT(next_list_attr, NEXT_ENTRY(GROUP_ID)),
 		.args = ARGS(ARGS_ENTRY_PTR(struct buffer, args.list.group)),
 		.call = parse_list,
+	},
+	/* Validate/create attributes. */
+	[GROUP] = {
+		.name = "group",
+		.help = "specify a group",
+		.next = NEXT(next_vc_attr, NEXT_ENTRY(GROUP_ID)),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_attr, group)),
+		.call = parse_vc,
+	},
+	[PRIORITY] = {
+		.name = "priority",
+		.help = "specify a priority level",
+		.next = NEXT(next_vc_attr, NEXT_ENTRY(PRIORITY_LEVEL)),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_attr, priority)),
+		.call = parse_vc,
+	},
+	[INGRESS] = {
+		.name = "ingress",
+		.help = "affect rule to ingress",
+		.next = NEXT(next_vc_attr),
+		.call = parse_vc,
+	},
+	[EGRESS] = {
+		.name = "egress",
+		.help = "affect rule to egress",
+		.next = NEXT(next_vc_attr),
+		.call = parse_vc,
+	},
+	/* Validate/create pattern. */
+	[PATTERN] = {
+		.name = "pattern",
+		.help = "submit a list of pattern items",
+		.next = NEXT(next_item),
+		.call = parse_vc,
+	},
+	[ITEM_NEXT] = {
+		.name = "/",
+		.help = "specify next pattern item",
+		.next = NEXT(next_item),
+	},
+	[ITEM_END] = {
+		.name = "end",
+		.help = "end list of pattern items",
+		.priv = PRIV_ITEM(END, 0),
+		.next = NEXT(NEXT_ENTRY(ACTIONS)),
+		.call = parse_vc,
+	},
+	[ITEM_VOID] = {
+		.name = "void",
+		.help = "no-op pattern item",
+		.priv = PRIV_ITEM(VOID, 0),
+		.next = NEXT(NEXT_ENTRY(ITEM_NEXT)),
+		.call = parse_vc,
+	},
+	[ITEM_INVERT] = {
+		.name = "invert",
+		.help = "perform actions when pattern does not match",
+		.priv = PRIV_ITEM(INVERT, 0),
+		.next = NEXT(NEXT_ENTRY(ITEM_NEXT)),
+		.call = parse_vc,
+	},
+	/* Validate/create actions. */
+	[ACTIONS] = {
+		.name = "actions",
+		.help = "submit a list of associated actions",
+		.next = NEXT(next_action),
+		.call = parse_vc,
+	},
+	[ACTION_NEXT] = {
+		.name = "/",
+		.help = "specify next action",
+		.next = NEXT(next_action),
+	},
+	[ACTION_END] = {
+		.name = "end",
+		.help = "end list of actions",
+		.priv = PRIV_ACTION(END, 0),
+		.call = parse_vc,
+	},
+	[ACTION_VOID] = {
+		.name = "void",
+		.help = "no-op action",
+		.priv = PRIV_ACTION(VOID, 0),
+		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
+		.call = parse_vc,
+	},
+	[ACTION_PASSTHRU] = {
+		.name = "passthru",
+		.help = "let subsequent rule process matched packets",
+		.priv = PRIV_ACTION(PASSTHRU, 0),
+		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
+		.call = parse_vc,
 	},
 };
 
@@ -368,7 +567,105 @@ parse_init(struct context *ctx, const struct token *token,
 	/* Initialize buffer. */
 	memset(out, 0x00, sizeof(*out));
 	memset((uint8_t *)out + sizeof(*out), 0x22, size - sizeof(*out));
+	ctx->objdata = 0;
 	ctx->object = out;
+	return len;
+}
+
+/** Parse tokens for validate/create commands. */
+static int
+parse_vc(struct context *ctx, const struct token *token,
+	 const char *str, unsigned int len,
+	 void *buf, unsigned int size)
+{
+	struct buffer *out = buf;
+	uint8_t *data;
+	uint32_t data_size;
+
+	/* Token name must match. */
+	if (parse_default(ctx, token, str, len, NULL, 0) < 0)
+		return -1;
+	/* Nothing else to do if there is no buffer. */
+	if (!out)
+		return len;
+	if (!out->command) {
+		if (ctx->curr != VALIDATE && ctx->curr != CREATE)
+			return -1;
+		if (sizeof(*out) > size)
+			return -1;
+		out->command = ctx->curr;
+		ctx->objdata = 0;
+		ctx->object = out;
+		out->args.vc.data = (uint8_t *)out + size;
+		return len;
+	}
+	ctx->objdata = 0;
+	ctx->object = &out->args.vc.attr;
+	switch (ctx->curr) {
+	case GROUP:
+	case PRIORITY:
+		return len;
+	case INGRESS:
+		out->args.vc.attr.ingress = 1;
+		return len;
+	case EGRESS:
+		out->args.vc.attr.egress = 1;
+		return len;
+	case PATTERN:
+		out->args.vc.pattern =
+			(void *)RTE_ALIGN_CEIL((uintptr_t)(out + 1),
+					       sizeof(double));
+		ctx->object = out->args.vc.pattern;
+		return len;
+	case ACTIONS:
+		out->args.vc.actions =
+			(void *)RTE_ALIGN_CEIL((uintptr_t)
+					       (out->args.vc.pattern +
+						out->args.vc.pattern_n),
+					       sizeof(double));
+		ctx->object = out->args.vc.actions;
+		return len;
+	default:
+		if (!token->priv)
+			return -1;
+		break;
+	}
+	if (!out->args.vc.actions) {
+		const struct parse_item_priv *priv = token->priv;
+		struct rte_flow_item *item =
+			out->args.vc.pattern + out->args.vc.pattern_n;
+
+		data_size = priv->size * 3; /* spec, last, mask */
+		data = (void *)RTE_ALIGN_FLOOR((uintptr_t)
+					       (out->args.vc.data - data_size),
+					       sizeof(double));
+		if ((uint8_t *)item + sizeof(*item) > data)
+			return -1;
+		*item = (struct rte_flow_item){
+			.type = priv->type,
+		};
+		++out->args.vc.pattern_n;
+		ctx->object = item;
+	} else {
+		const struct parse_action_priv *priv = token->priv;
+		struct rte_flow_action *action =
+			out->args.vc.actions + out->args.vc.actions_n;
+
+		data_size = priv->size; /* configuration */
+		data = (void *)RTE_ALIGN_FLOOR((uintptr_t)
+					       (out->args.vc.data - data_size),
+					       sizeof(double));
+		if ((uint8_t *)action + sizeof(*action) > data)
+			return -1;
+		*action = (struct rte_flow_action){
+			.type = priv->type,
+		};
+		++out->args.vc.actions_n;
+		ctx->object = action;
+	}
+	memset(data, 0, data_size);
+	out->args.vc.data = data;
+	ctx->objdata = data_size;
 	return len;
 }
 
@@ -392,6 +689,7 @@ parse_destroy(struct context *ctx, const struct token *token,
 		if (sizeof(*out) > size)
 			return -1;
 		out->command = ctx->curr;
+		ctx->objdata = 0;
 		ctx->object = out;
 		out->args.destroy.rule =
 			(void *)RTE_ALIGN_CEIL((uintptr_t)(out + 1),
@@ -401,6 +699,7 @@ parse_destroy(struct context *ctx, const struct token *token,
 	if (((uint8_t *)(out->args.destroy.rule + out->args.destroy.rule_n) +
 	     sizeof(*out->args.destroy.rule)) > (uint8_t *)out + size)
 		return -1;
+	ctx->objdata = 0;
 	ctx->object = out->args.destroy.rule + out->args.destroy.rule_n++;
 	return len;
 }
@@ -425,6 +724,7 @@ parse_flush(struct context *ctx, const struct token *token,
 		if (sizeof(*out) > size)
 			return -1;
 		out->command = ctx->curr;
+		ctx->objdata = 0;
 		ctx->object = out;
 	}
 	return len;
@@ -450,6 +750,7 @@ parse_list(struct context *ctx, const struct token *token,
 		if (sizeof(*out) > size)
 			return -1;
 		out->command = ctx->curr;
+		ctx->objdata = 0;
 		ctx->object = out;
 		out->args.list.group =
 			(void *)RTE_ALIGN_CEIL((uintptr_t)(out + 1),
@@ -459,6 +760,7 @@ parse_list(struct context *ctx, const struct token *token,
 	if (((uint8_t *)(out->args.list.group + out->args.list.group_n) +
 	     sizeof(*out->args.list.group)) > (uint8_t *)out + size)
 		return -1;
+	ctx->objdata = 0;
 	ctx->object = out->args.list.group + out->args.list.group_n++;
 	return len;
 }
@@ -526,6 +828,7 @@ parse_port(struct context *ctx, const struct token *token,
 	if (buf)
 		out = buf;
 	else {
+		ctx->objdata = 0;
 		ctx->object = out;
 		size = sizeof(*out);
 	}
@@ -613,6 +916,7 @@ cmd_flow_context_init(struct context *ctx)
 	ctx->eol = 0;
 	ctx->last = 0;
 	ctx->port = 0;
+	ctx->objdata = 0;
 	ctx->object = NULL;
 }
 
@@ -836,6 +1140,14 @@ static void
 cmd_flow_parsed(const struct buffer *in)
 {
 	switch (in->command) {
+	case VALIDATE:
+		port_flow_validate(in->port, &in->args.vc.attr,
+				   in->args.vc.pattern, in->args.vc.actions);
+		break;
+	case CREATE:
+		port_flow_create(in->port, &in->args.vc.attr,
+				 in->args.vc.pattern, in->args.vc.actions);
+		break;
 	case DESTROY:
 		port_flow_destroy(in->port, in->args.destroy.rule_n,
 				  in->args.destroy.rule);

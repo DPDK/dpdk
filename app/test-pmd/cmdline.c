@@ -811,6 +811,20 @@ static void cmd_help_long_parsed(void *parsed_result,
 			" (select|add)\n"
 			"    Set the input set for FDir.\n\n"
 
+			"flow validate {port_id}"
+			" [group {group_id}] [priority {level}]"
+			" [ingress] [egress]"
+			" pattern {item} [/ {item} [...]] / end"
+			" actions {action} [/ {action} [...]] / end\n"
+			"    Check whether a flow rule can be created.\n\n"
+
+			"flow create {port_id}"
+			" [group {group_id}] [priority {level}]"
+			" [ingress] [egress]"
+			" pattern {item} [/ {item} [...]] / end"
+			" actions {action} [/ {action} [...]] / end\n"
+			"    Create a flow rule.\n\n"
+
 			"flow destroy {port_id} rule {rule_id} [...]\n"
 			"    Destroy specific flow rules.\n\n"
 
