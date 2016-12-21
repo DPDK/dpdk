@@ -136,6 +136,7 @@ struct arg {
 	uint32_t sign:1; /**< Value is signed. */
 	uint32_t offset; /**< Relative offset from ctx->object. */
 	uint32_t size; /**< Field size. */
+	const uint8_t *mask; /**< Bit-mask to use instead of offset/size. */
 };
 
 /** Parser token definition. */
@@ -193,6 +194,13 @@ struct token {
 	(&(const struct arg){ \
 		.offset = offsetof(s, f), \
 		.size = sizeof(((s *)0)->f), \
+	})
+
+/** Static initializer for ARGS() to target a bit-field. */
+#define ARGS_ENTRY_BF(s, f, b) \
+	(&(const struct arg){ \
+		.size = sizeof(s), \
+		.mask = (const void *)&(const s){ .f = (1 << (b)) - 1 }, \
 	})
 
 /** Static initializer for ARGS() to target a pointer. */
@@ -623,6 +631,45 @@ push_args(struct context *ctx, const struct arg *arg)
 	return 0;
 }
 
+/** Spread value into buffer according to bit-mask. */
+static size_t
+arg_entry_bf_fill(void *dst, uintmax_t val, const struct arg *arg)
+{
+	uint32_t i = arg->size;
+	uint32_t end = 0;
+	int sub = 1;
+	int add = 0;
+	size_t len = 0;
+
+	if (!arg->mask)
+		return 0;
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+	if (!arg->hton) {
+		i = 0;
+		end = arg->size;
+		sub = 0;
+		add = 1;
+	}
+#endif
+	while (i != end) {
+		unsigned int shift = 0;
+		uint8_t *buf = (uint8_t *)dst + arg->offset + (i -= sub);
+
+		for (shift = 0; arg->mask[i] >> shift; ++shift) {
+			if (!(arg->mask[i] & (1 << shift)))
+				continue;
+			++len;
+			if (!dst)
+				continue;
+			*buf &= ~(1 << shift);
+			*buf |= (val & 1) << shift;
+			val >>= 1;
+		}
+		i += add;
+	}
+	return len;
+}
+
 /**
  * Parse a prefix length and generate a bit-mask.
  *
@@ -649,6 +696,23 @@ parse_prefix(struct context *ctx, const struct token *token,
 	u = strtoumax(str, &end, 0);
 	if (errno || (size_t)(end - str) != len)
 		goto error;
+	if (arg->mask) {
+		uintmax_t v = 0;
+
+		extra = arg_entry_bf_fill(NULL, 0, arg);
+		if (u > extra)
+			goto error;
+		if (!ctx->object)
+			return len;
+		extra -= u;
+		while (u--)
+			(v <<= 1, v |= 1);
+		v <<= extra;
+		if (!arg_entry_bf_fill(ctx->object, v, arg) ||
+		    !arg_entry_bf_fill(ctx->objmask, -1, arg))
+			goto error;
+		return len;
+	}
 	bytes = u / 8;
 	extra = u % 8;
 	size = arg->size;
@@ -1072,6 +1136,12 @@ parse_int(struct context *ctx, const struct token *token,
 		goto error;
 	if (!ctx->object)
 		return len;
+	if (arg->mask) {
+		if (!arg_entry_bf_fill(ctx->object, u, arg) ||
+		    !arg_entry_bf_fill(ctx->objmask, -1, arg))
+			goto error;
+		return len;
+	}
 	buf = (uint8_t *)ctx->object + arg->offset;
 	size = arg->size;
 objmask:
