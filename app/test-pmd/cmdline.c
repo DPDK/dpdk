@@ -810,6 +810,10 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"sctp-src-port|sctp-dst-port|sctp-veri-tag|none)"
 			" (select|add)\n"
 			"    Set the input set for FDir.\n\n"
+
+			"flow list {port_id} [group {group_id}] [...]\n"
+			"    List existing flow rules sorted by priority,"
+			" filtered by group identifiers.\n\n"
 		);
 	}
 }

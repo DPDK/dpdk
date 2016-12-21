@@ -56,9 +56,17 @@ enum index {
 	/* Common tokens. */
 	INTEGER,
 	UNSIGNED,
+	PORT_ID,
+	GROUP_ID,
 
 	/* Top-level command. */
 	FLOW,
+
+	/* Sub-level commands. */
+	LIST,
+
+	/* List arguments. */
+	LIST_GROUP,
 };
 
 /** Maximum number of subsequent tokens and arguments on the stack. */
@@ -77,6 +85,7 @@ struct context {
 	uint32_t reparse:1; /**< Start over from the beginning. */
 	uint32_t eol:1; /**< EOL has been detected. */
 	uint32_t last:1; /**< No more arguments. */
+	uint16_t port; /**< Current port ID (for completions). */
 	void *object; /**< Address of current object for relative offsets. */
 };
 
@@ -153,15 +162,35 @@ struct token {
 struct buffer {
 	enum index command; /**< Flow command. */
 	uint16_t port; /**< Affected port ID. */
+	union {
+		struct {
+			uint32_t *group;
+			uint32_t group_n;
+		} list; /**< List arguments. */
+	} args; /**< Command arguments. */
+};
+
+static const enum index next_list_attr[] = {
+	LIST_GROUP,
+	END,
+	ZERO,
 };
 
 static int parse_init(struct context *, const struct token *,
 		      const char *, unsigned int,
 		      void *, unsigned int);
+static int parse_list(struct context *, const struct token *,
+		      const char *, unsigned int,
+		      void *, unsigned int);
 static int parse_int(struct context *, const struct token *,
 		     const char *, unsigned int,
 		     void *, unsigned int);
+static int parse_port(struct context *, const struct token *,
+		      const char *, unsigned int,
+		      void *, unsigned int);
 static int comp_none(struct context *, const struct token *,
+		     unsigned int, char *, unsigned int);
+static int comp_port(struct context *, const struct token *,
 		     unsigned int, char *, unsigned int);
 
 /** Token definitions. */
@@ -192,12 +221,43 @@ static const struct token token_list[] = {
 		.call = parse_int,
 		.comp = comp_none,
 	},
+	[PORT_ID] = {
+		.name = "{port_id}",
+		.type = "PORT ID",
+		.help = "port identifier",
+		.call = parse_port,
+		.comp = comp_port,
+	},
+	[GROUP_ID] = {
+		.name = "{group_id}",
+		.type = "GROUP ID",
+		.help = "group identifier",
+		.call = parse_int,
+		.comp = comp_none,
+	},
 	/* Top-level command. */
 	[FLOW] = {
 		.name = "flow",
 		.type = "{command} {port_id} [{arg} [...]]",
 		.help = "manage ingress/egress flow rules",
+		.next = NEXT(NEXT_ENTRY(LIST)),
 		.call = parse_init,
+	},
+	/* Sub-level commands. */
+	[LIST] = {
+		.name = "list",
+		.help = "list existing flow rules",
+		.next = NEXT(next_list_attr, NEXT_ENTRY(PORT_ID)),
+		.args = ARGS(ARGS_ENTRY(struct buffer, port)),
+		.call = parse_list,
+	},
+	/* List arguments. */
+	[LIST_GROUP] = {
+		.name = "group",
+		.help = "specify a group",
+		.next = NEXT(next_list_attr, NEXT_ENTRY(GROUP_ID)),
+		.args = ARGS(ARGS_ENTRY_PTR(struct buffer, args.list.group)),
+		.call = parse_list,
 	},
 };
 
@@ -256,6 +316,39 @@ parse_init(struct context *ctx, const struct token *token,
 	return len;
 }
 
+/** Parse tokens for list command. */
+static int
+parse_list(struct context *ctx, const struct token *token,
+	   const char *str, unsigned int len,
+	   void *buf, unsigned int size)
+{
+	struct buffer *out = buf;
+
+	/* Token name must match. */
+	if (parse_default(ctx, token, str, len, NULL, 0) < 0)
+		return -1;
+	/* Nothing else to do if there is no buffer. */
+	if (!out)
+		return len;
+	if (!out->command) {
+		if (ctx->curr != LIST)
+			return -1;
+		if (sizeof(*out) > size)
+			return -1;
+		out->command = ctx->curr;
+		ctx->object = out;
+		out->args.list.group =
+			(void *)RTE_ALIGN_CEIL((uintptr_t)(out + 1),
+					       sizeof(double));
+		return len;
+	}
+	if (((uint8_t *)(out->args.list.group + out->args.list.group_n) +
+	     sizeof(*out->args.list.group)) > (uint8_t *)out + size)
+		return -1;
+	ctx->object = out->args.list.group + out->args.list.group_n++;
+	return len;
+}
+
 /**
  * Parse signed/unsigned integers 8 to 64-bit long.
  *
@@ -307,6 +400,29 @@ error:
 	return -1;
 }
 
+/** Parse port and update context. */
+static int
+parse_port(struct context *ctx, const struct token *token,
+	   const char *str, unsigned int len,
+	   void *buf, unsigned int size)
+{
+	struct buffer *out = &(struct buffer){ .port = 0 };
+	int ret;
+
+	if (buf)
+		out = buf;
+	else {
+		ctx->object = out;
+		size = sizeof(*out);
+	}
+	ret = parse_int(ctx, token, str, len, out, size);
+	if (ret >= 0)
+		ctx->port = out->port;
+	if (!buf)
+		ctx->object = NULL;
+	return ret;
+}
+
 /** No completion. */
 static int
 comp_none(struct context *ctx, const struct token *token,
@@ -318,6 +434,26 @@ comp_none(struct context *ctx, const struct token *token,
 	(void)buf;
 	(void)size;
 	return 0;
+}
+
+/** Complete available ports. */
+static int
+comp_port(struct context *ctx, const struct token *token,
+	  unsigned int ent, char *buf, unsigned int size)
+{
+	unsigned int i = 0;
+	portid_t p;
+
+	(void)ctx;
+	(void)token;
+	FOREACH_PORT(p, ports) {
+		if (buf && i == ent)
+			return snprintf(buf, size, "%u", p);
+		++i;
+	}
+	if (buf)
+		return -1;
+	return i;
 }
 
 /** Internal context. */
@@ -338,6 +474,7 @@ cmd_flow_context_init(struct context *ctx)
 	ctx->reparse = 0;
 	ctx->eol = 0;
 	ctx->last = 0;
+	ctx->port = 0;
 	ctx->object = NULL;
 }
 
@@ -561,6 +698,10 @@ static void
 cmd_flow_parsed(const struct buffer *in)
 {
 	switch (in->command) {
+	case LIST:
+		port_flow_list(in->port, in->args.list.group_n,
+			       in->args.list.group);
+		break;
 	default:
 		break;
 	}
