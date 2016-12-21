@@ -655,7 +655,9 @@ cryptodev_aesni_mb_create(const char *name,
 	}
 
 	/* Check CPU for supported vector instruction set */
-	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2))
+	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F))
+		vector_mode = RTE_AESNI_MB_AVX512;
+	else if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2))
 		vector_mode = RTE_AESNI_MB_AVX2;
 	else if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX))
 		vector_mode = RTE_AESNI_MB_AVX;
@@ -701,6 +703,9 @@ cryptodev_aesni_mb_create(const char *name,
 		break;
 	case RTE_AESNI_MB_AVX2:
 		dev->feature_flags |= RTE_CRYPTODEV_FF_CPU_AVX2;
+		break;
+	case RTE_AESNI_MB_AVX512:
+		dev->feature_flags |= RTE_CRYPTODEV_FF_CPU_AVX512;
 		break;
 	default:
 		break;

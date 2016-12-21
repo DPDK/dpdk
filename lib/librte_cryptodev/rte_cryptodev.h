@@ -225,6 +225,8 @@ struct rte_cryptodev_capabilities {
 /**< Utilises CPU AES-NI instructions */
 #define	RTE_CRYPTODEV_FF_HW_ACCELERATED		(1ULL << 7)
 /**< Operations are off-loaded to an external hardware accelerator */
+#define	RTE_CRYPTODEV_FF_CPU_AVX512		(1ULL << 8)
+/**< Utilises CPU SIMD AVX512 instructions */
 
 
 /**

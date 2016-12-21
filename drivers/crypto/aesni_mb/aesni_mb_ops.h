@@ -44,7 +44,8 @@ enum aesni_mb_vector_mode {
 	RTE_AESNI_MB_NOT_SUPPORTED = 0,
 	RTE_AESNI_MB_SSE,
 	RTE_AESNI_MB_AVX,
-	RTE_AESNI_MB_AVX2
+	RTE_AESNI_MB_AVX2,
+	RTE_AESNI_MB_AVX512
 };
 
 typedef void (*md5_one_block_t)(void *data, void *digest);
@@ -201,6 +202,31 @@ static const struct aesni_mb_ops job_ops[] = {
 					aes_keyexp_192_avx2,
 					aes_keyexp_256_avx2,
 					aes_xcbc_expand_key_avx2
+				}
+			}
+		},
+		[RTE_AESNI_MB_AVX512] = {
+			.job = {
+				init_mb_mgr_avx512,
+				get_next_job_avx512,
+				submit_job_avx512,
+				get_completed_job_avx512,
+				flush_job_avx512
+			},
+			.aux = {
+				.one_block = {
+					md5_one_block_avx512,
+					sha1_one_block_avx512,
+					sha224_one_block_avx512,
+					sha256_one_block_avx512,
+					sha384_one_block_avx512,
+					sha512_one_block_avx512
+				},
+				.keyexp = {
+					aes_keyexp_128_avx512,
+					aes_keyexp_192_avx512,
+					aes_keyexp_256_avx512,
+					aes_xcbc_expand_key_avx512
 				}
 			}
 		}

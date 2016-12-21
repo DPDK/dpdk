@@ -42,6 +42,7 @@ Supported Feature Flags
    "RTE_CRYPTODEV_FF_CPU_SSE",,,x,x,x,x
    "RTE_CRYPTODEV_FF_CPU_AVX",,,x,x,x,x
    "RTE_CRYPTODEV_FF_CPU_AVX2",,,x,x,,
+   "RTE_CRYPTODEV_FF_CPU_AVX512",,,x,,,
    "RTE_CRYPTODEV_FF_CPU_AESNI",,,x,x,,
    "RTE_CRYPTODEV_FF_HW_ACCELERATED",x,,,,,
 
