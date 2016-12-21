@@ -38,6 +38,7 @@
 #include <errno.h>
 #include <ctype.h>
 #include <string.h>
+#include <arpa/inet.h>
 
 #include <rte_common.h>
 #include <rte_ethdev.h>
@@ -61,6 +62,8 @@ enum index {
 	BOOLEAN,
 	STRING,
 	MAC_ADDR,
+	IPV4_ADDR,
+	IPV6_ADDR,
 	RULE_ID,
 	PORT_ID,
 	GROUP_ID,
@@ -123,6 +126,12 @@ enum index {
 	ITEM_VLAN,
 	ITEM_VLAN_TPID,
 	ITEM_VLAN_TCI,
+	ITEM_IPV4,
+	ITEM_IPV4_SRC,
+	ITEM_IPV4_DST,
+	ITEM_IPV6,
+	ITEM_IPV6_SRC,
+	ITEM_IPV6_DST,
 
 	/* Validate/create actions. */
 	ACTIONS,
@@ -348,6 +357,8 @@ static const enum index next_item[] = {
 	ITEM_RAW,
 	ITEM_ETH,
 	ITEM_VLAN,
+	ITEM_IPV4,
+	ITEM_IPV6,
 	ZERO,
 };
 
@@ -390,6 +401,20 @@ static const enum index item_eth[] = {
 static const enum index item_vlan[] = {
 	ITEM_VLAN_TPID,
 	ITEM_VLAN_TCI,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_ipv4[] = {
+	ITEM_IPV4_SRC,
+	ITEM_IPV4_DST,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_ipv6[] = {
+	ITEM_IPV6_SRC,
+	ITEM_IPV6_DST,
 	ITEM_NEXT,
 	ZERO,
 };
@@ -439,6 +464,12 @@ static int parse_string(struct context *, const struct token *,
 static int parse_mac_addr(struct context *, const struct token *,
 			  const char *, unsigned int,
 			  void *, unsigned int);
+static int parse_ipv4_addr(struct context *, const struct token *,
+			   const char *, unsigned int,
+			   void *, unsigned int);
+static int parse_ipv6_addr(struct context *, const struct token *,
+			   const char *, unsigned int,
+			   void *, unsigned int);
 static int parse_port(struct context *, const struct token *,
 		      const char *, unsigned int,
 		      void *, unsigned int);
@@ -507,6 +538,20 @@ static const struct token token_list[] = {
 		.type = "MAC-48",
 		.help = "standard MAC address notation",
 		.call = parse_mac_addr,
+		.comp = comp_none,
+	},
+	[IPV4_ADDR] = {
+		.name = "{IPv4 address}",
+		.type = "IPV4 ADDRESS",
+		.help = "standard IPv4 address notation",
+		.call = parse_ipv4_addr,
+		.comp = comp_none,
+	},
+	[IPV6_ADDR] = {
+		.name = "{IPv6 address}",
+		.type = "IPV6 ADDRESS",
+		.help = "standard IPv6 address notation",
+		.call = parse_ipv6_addr,
 		.comp = comp_none,
 	},
 	[RULE_ID] = {
@@ -842,6 +887,48 @@ static const struct token token_list[] = {
 		.help = "tag control information",
 		.next = NEXT(item_vlan, NEXT_ENTRY(UNSIGNED), item_param),
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_vlan, tci)),
+	},
+	[ITEM_IPV4] = {
+		.name = "ipv4",
+		.help = "match IPv4 header",
+		.priv = PRIV_ITEM(IPV4, sizeof(struct rte_flow_item_ipv4)),
+		.next = NEXT(item_ipv4),
+		.call = parse_vc,
+	},
+	[ITEM_IPV4_SRC] = {
+		.name = "src",
+		.help = "source address",
+		.next = NEXT(item_ipv4, NEXT_ENTRY(IPV4_ADDR), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_ipv4,
+					     hdr.src_addr)),
+	},
+	[ITEM_IPV4_DST] = {
+		.name = "dst",
+		.help = "destination address",
+		.next = NEXT(item_ipv4, NEXT_ENTRY(IPV4_ADDR), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_ipv4,
+					     hdr.dst_addr)),
+	},
+	[ITEM_IPV6] = {
+		.name = "ipv6",
+		.help = "match IPv6 header",
+		.priv = PRIV_ITEM(IPV6, sizeof(struct rte_flow_item_ipv6)),
+		.next = NEXT(item_ipv6),
+		.call = parse_vc,
+	},
+	[ITEM_IPV6_SRC] = {
+		.name = "src",
+		.help = "source address",
+		.next = NEXT(item_ipv6, NEXT_ENTRY(IPV6_ADDR), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_ipv6,
+					     hdr.src_addr)),
+	},
+	[ITEM_IPV6_DST] = {
+		.name = "dst",
+		.help = "destination address",
+		.next = NEXT(item_ipv6, NEXT_ENTRY(IPV6_ADDR), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_ipv6,
+					     hdr.dst_addr)),
 	},
 	/* Validate/create actions. */
 	[ACTIONS] = {
@@ -1512,6 +1599,96 @@ parse_mac_addr(struct context *ctx, const struct token *token,
 		goto error;
 	ret = cmdline_parse_etheraddr(NULL, str, &tmp, size);
 	if (ret < 0 || (unsigned int)ret != len)
+		goto error;
+	if (!ctx->object)
+		return len;
+	buf = (uint8_t *)ctx->object + arg->offset;
+	memcpy(buf, &tmp, size);
+	if (ctx->objmask)
+		memset((uint8_t *)ctx->objmask + arg->offset, 0xff, size);
+	return len;
+error:
+	push_args(ctx, arg);
+	return -1;
+}
+
+/**
+ * Parse an IPv4 address.
+ *
+ * Last argument (ctx->args) is retrieved to determine storage size and
+ * location.
+ */
+static int
+parse_ipv4_addr(struct context *ctx, const struct token *token,
+		const char *str, unsigned int len,
+		void *buf, unsigned int size)
+{
+	const struct arg *arg = pop_args(ctx);
+	char str2[len + 1];
+	struct in_addr tmp;
+	int ret;
+
+	/* Argument is expected. */
+	if (!arg)
+		return -1;
+	size = arg->size;
+	/* Bit-mask fill is not supported. */
+	if (arg->mask || size != sizeof(tmp))
+		goto error;
+	/* Only network endian is supported. */
+	if (!arg->hton)
+		goto error;
+	memcpy(str2, str, len);
+	str2[len] = '\0';
+	ret = inet_pton(AF_INET, str2, &tmp);
+	if (ret != 1) {
+		/* Attempt integer parsing. */
+		push_args(ctx, arg);
+		return parse_int(ctx, token, str, len, buf, size);
+	}
+	if (!ctx->object)
+		return len;
+	buf = (uint8_t *)ctx->object + arg->offset;
+	memcpy(buf, &tmp, size);
+	if (ctx->objmask)
+		memset((uint8_t *)ctx->objmask + arg->offset, 0xff, size);
+	return len;
+error:
+	push_args(ctx, arg);
+	return -1;
+}
+
+/**
+ * Parse an IPv6 address.
+ *
+ * Last argument (ctx->args) is retrieved to determine storage size and
+ * location.
+ */
+static int
+parse_ipv6_addr(struct context *ctx, const struct token *token,
+		const char *str, unsigned int len,
+		void *buf, unsigned int size)
+{
+	const struct arg *arg = pop_args(ctx);
+	char str2[len + 1];
+	struct in6_addr tmp;
+	int ret;
+
+	(void)token;
+	/* Argument is expected. */
+	if (!arg)
+		return -1;
+	size = arg->size;
+	/* Bit-mask fill is not supported. */
+	if (arg->mask || size != sizeof(tmp))
+		goto error;
+	/* Only network endian is supported. */
+	if (!arg->hton)
+		goto error;
+	memcpy(str2, str, len);
+	str2[len] = '\0';
+	ret = inet_pton(AF_INET6, str2, &tmp);
+	if (ret != 1)
 		goto error;
 	if (!ctx->object)
 		return len;
