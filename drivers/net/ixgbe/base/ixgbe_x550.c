@@ -3797,6 +3797,8 @@ u32 ixgbe_get_supported_physical_layer_X550em(struct ixgbe_hw *hw)
 		if (ext_ability & IXGBE_MDIO_PHY_1000BASET_ABILITY)
 			physical_layer |= IXGBE_PHYSICAL_LAYER_1000BASE_T;
 		break;
+	case ixgbe_phy_m88:
+		physical_layer = IXGBE_PHYSICAL_LAYER_1000BASE_T;
 	default:
 		break;
 	}
