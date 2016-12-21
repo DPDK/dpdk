@@ -3784,7 +3784,13 @@ u32 ixgbe_get_supported_physical_layer_X550em(struct ixgbe_hw *hw)
 			physical_layer |= IXGBE_PHYSICAL_LAYER_1000BASE_T;
 		break;
 	case ixgbe_phy_fw:
-		physical_layer = IXGBE_PHYSICAL_LAYER_1000BASE_T;
+		if (hw->phy.speeds_supported & IXGBE_LINK_SPEED_1GB_FULL)
+			physical_layer |= IXGBE_PHYSICAL_LAYER_1000BASE_T;
+		if (hw->phy.speeds_supported & IXGBE_LINK_SPEED_100_FULL)
+			physical_layer |= IXGBE_PHYSICAL_LAYER_100BASE_TX;
+		if (hw->phy.speeds_supported & IXGBE_LINK_SPEED_10_FULL)
+			physical_layer |= IXGBE_PHYSICAL_LAYER_10BASE_T;
+		break;
 	default:
 		break;
 	}
