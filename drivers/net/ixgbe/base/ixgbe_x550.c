@@ -4660,7 +4660,7 @@ s32 ixgbe_check_link_t_X550em(struct ixgbe_hw *hw, ixgbe_link_speed *speed,
 			      bool *link_up, bool link_up_wait_to_complete)
 {
 	u32 status;
-	u16 autoneg_status;
+	u16 i, autoneg_status = 0;
 
 	if (hw->mac.ops.get_media_type(hw) != ixgbe_media_type_copper)
 		return IXGBE_ERR_CONFIG;
@@ -4673,21 +4673,18 @@ s32 ixgbe_check_link_t_X550em(struct ixgbe_hw *hw, ixgbe_link_speed *speed,
 		return status;
 
 	/* MAC link is up, so check external PHY link.
-	 * Read this twice back to back to indicate current status.
+	 * X557 PHY. Link status is latching low, and can only be used to detect
+	 * link drop, and not the current status of the link without performing
+	 * back-to-back reads.
 	 */
-	status = hw->phy.ops.read_reg(hw, IXGBE_MDIO_AUTO_NEG_STATUS,
-				      IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
-				      &autoneg_status);
+	for (i = 0; i < 2; i++) {
+		status = hw->phy.ops.read_reg(hw, IXGBE_MDIO_AUTO_NEG_STATUS,
+					      IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
+					      &autoneg_status);
 
-	if (status != IXGBE_SUCCESS)
-		return status;
-
-	status = hw->phy.ops.read_reg(hw, IXGBE_MDIO_AUTO_NEG_STATUS,
-				      IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
-				      &autoneg_status);
-
-	if (status != IXGBE_SUCCESS)
-		return status;
+		if (status != IXGBE_SUCCESS)
+			return status;
+	}
 
 	/* If external PHY link is not up, then indicate link not up */
 	if (!(autoneg_status & IXGBE_MDIO_AUTO_NEG_LINK_STATUS))
