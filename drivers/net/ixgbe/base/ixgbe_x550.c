@@ -62,7 +62,7 @@ s32 ixgbe_init_ops_X550(struct ixgbe_hw *hw)
 	mac->ops.dmac_config = ixgbe_dmac_config_X550;
 	mac->ops.dmac_config_tcs = ixgbe_dmac_config_tcs_X550;
 	mac->ops.dmac_update_tcs = ixgbe_dmac_update_tcs_X550;
-	mac->ops.setup_eee = ixgbe_setup_eee_X550;
+	mac->ops.setup_eee = NULL;
 	mac->ops.set_source_address_pruning =
 			ixgbe_set_source_address_pruning_X550;
 	mac->ops.set_ethertype_anti_spoofing =
@@ -603,15 +603,6 @@ s32 ixgbe_init_ops_X550EM(struct ixgbe_hw *hw)
 	else
 		mac->ops.setup_fc = ixgbe_setup_fc_X550em;
 
-	switch (hw->device_id) {
-	case IXGBE_DEV_ID_X550EM_X_KR:
-	case IXGBE_DEV_ID_X550EM_A_KR:
-	case IXGBE_DEV_ID_X550EM_A_KR_L:
-		break;
-	default:
-		mac->ops.setup_eee = NULL;
-	}
-
 	/* PHY */
 	phy->ops.init = ixgbe_init_phy_ops_X550em;
 	phy->ops.identify = ixgbe_identify_phy_x550em;
@@ -677,6 +668,15 @@ s32 ixgbe_init_ops_X550EM_a(struct ixgbe_hw *hw)
 		(hw->device_id == IXGBE_DEV_ID_X550EM_A_1G_T_L)) {
 		mac->ops.fc_autoneg = ixgbe_fc_autoneg_sgmii_x550em_a;
 		mac->ops.setup_fc = ixgbe_setup_fc_sgmii_x550em_a;
+	}
+
+	switch (hw->device_id) {
+	case IXGBE_DEV_ID_X550EM_A_KR:
+	case IXGBE_DEV_ID_X550EM_A_KR_L:
+		mac->ops.setup_eee = ixgbe_setup_eee_X550;
+		break;
+	default:
+		mac->ops.setup_eee = NULL;
 	}
 
 	return ret_val;
@@ -883,28 +883,10 @@ s32 ixgbe_init_eeprom_params_X550(struct ixgbe_hw *hw)
  */
 STATIC s32 ixgbe_enable_eee_x550(struct ixgbe_hw *hw)
 {
-	u16 autoneg_eee_reg;
 	u32 link_reg;
 	s32 status;
 
-	if (hw->mac.type == ixgbe_mac_X550) {
-		/* Advertise EEE capability */
-		hw->phy.ops.read_reg(hw, IXGBE_MDIO_AUTO_NEG_EEE_ADVT,
-				     IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
-				     &autoneg_eee_reg);
-
-		autoneg_eee_reg |= (IXGBE_AUTO_NEG_10GBASE_EEE_ADVT |
-				    IXGBE_AUTO_NEG_1000BASE_EEE_ADVT |
-				    IXGBE_AUTO_NEG_100BASE_EEE_ADVT);
-
-		hw->phy.ops.write_reg(hw, IXGBE_MDIO_AUTO_NEG_EEE_ADVT,
-				      IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
-				      autoneg_eee_reg);
-		return IXGBE_SUCCESS;
-	}
-
 	switch (hw->device_id) {
-	case IXGBE_DEV_ID_X550EM_X_KR:
 	case IXGBE_DEV_ID_X550EM_A_KR:
 	case IXGBE_DEV_ID_X550EM_A_KR_L:
 		status = hw->mac.ops.read_iosf_sb_reg(hw,
@@ -938,25 +920,8 @@ STATIC s32 ixgbe_enable_eee_x550(struct ixgbe_hw *hw)
  */
 STATIC s32 ixgbe_disable_eee_x550(struct ixgbe_hw *hw)
 {
-	u16 autoneg_eee_reg;
 	u32 link_reg;
 	s32 status;
-
-	if (hw->mac.type == ixgbe_mac_X550) {
-		/* Disable advertised EEE capability */
-		hw->phy.ops.read_reg(hw, IXGBE_MDIO_AUTO_NEG_EEE_ADVT,
-				     IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
-				     &autoneg_eee_reg);
-
-		autoneg_eee_reg &= ~(IXGBE_AUTO_NEG_10GBASE_EEE_ADVT |
-				     IXGBE_AUTO_NEG_1000BASE_EEE_ADVT |
-				     IXGBE_AUTO_NEG_100BASE_EEE_ADVT);
-
-		hw->phy.ops.write_reg(hw, IXGBE_MDIO_AUTO_NEG_EEE_ADVT,
-				      IXGBE_MDIO_AUTO_NEG_DEV_TYPE,
-				      autoneg_eee_reg);
-		return IXGBE_SUCCESS;
-	}
 
 	switch (hw->device_id) {
 	case IXGBE_DEV_ID_X550EM_X_KR:
@@ -1008,12 +973,6 @@ s32 ixgbe_setup_eee_X550(struct ixgbe_hw *hw, bool enable_eee)
 	/* Enable or disable EEE per flag */
 	if (enable_eee) {
 		eeer |= (IXGBE_EEER_TX_LPI_EN | IXGBE_EEER_RX_LPI_EN);
-
-		/* Not supported on first revision of X550EM_x. */
-		if ((hw->mac.type == ixgbe_mac_X550EM_x) &&
-		    !(IXGBE_FUSES0_REV_MASK &
-		      IXGBE_READ_REG(hw, IXGBE_FUSES0_GROUP(0))))
-			return IXGBE_SUCCESS;
 
 		status = ixgbe_enable_eee_x550(hw);
 		if (status)
