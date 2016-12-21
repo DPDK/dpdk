@@ -528,11 +528,30 @@ s32 ixgbe_reset_phy_generic(struct ixgbe_hw *hw)
 	 */
 	for (i = 0; i < 30; i++) {
 		msec_delay(100);
-		hw->phy.ops.read_reg(hw, IXGBE_MDIO_PHY_XS_CONTROL,
-				     IXGBE_MDIO_PHY_XS_DEV_TYPE, &ctrl);
-		if (!(ctrl & IXGBE_MDIO_PHY_XS_RESET)) {
-			usec_delay(2);
-			break;
+		if (hw->phy.type == ixgbe_phy_x550em_ext_t) {
+			status = hw->phy.ops.read_reg(hw,
+						  IXGBE_MDIO_TX_VENDOR_ALARMS_3,
+						  IXGBE_MDIO_PMA_PMD_DEV_TYPE,
+						  &ctrl);
+			if (status != IXGBE_SUCCESS)
+				return status;
+
+			if (ctrl & IXGBE_MDIO_TX_VENDOR_ALARMS_3_RST_MASK) {
+				usec_delay(2);
+				break;
+			}
+		} else {
+			status = hw->phy.ops.read_reg(hw,
+						     IXGBE_MDIO_PHY_XS_CONTROL,
+						     IXGBE_MDIO_PHY_XS_DEV_TYPE,
+						     &ctrl);
+			if (status != IXGBE_SUCCESS)
+				return status;
+
+			if (!(ctrl & IXGBE_MDIO_PHY_XS_RESET)) {
+				usec_delay(2);
+				break;
+			}
 		}
 	}
 
