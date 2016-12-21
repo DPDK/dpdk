@@ -3063,6 +3063,59 @@ enum ixgbe_fdir_pballoc_type {
 #define FW_INT_PHY_REQ_LEN		10
 #define FW_INT_PHY_REQ_READ		0
 #define FW_INT_PHY_REQ_WRITE		1
+#define FW_PHY_ACT_REQ_CMD		5
+#define FW_PHY_ACT_DATA_COUNT		4
+#define FW_PHY_ACT_REQ_LEN		(4 + 4 * FW_PHY_ACT_DATA_COUNT)
+#define FW_PHY_ACT_INIT_PHY		1
+#define FW_PHY_ACT_SETUP_LINK		2
+#define FW_PHY_ACT_LINK_SPEED_10	(1u << 0)
+#define FW_PHY_ACT_LINK_SPEED_100	(1u << 1)
+#define FW_PHY_ACT_LINK_SPEED_1G	(1u << 2)
+#define FW_PHY_ACT_LINK_SPEED_2_5G	(1u << 3)
+#define FW_PHY_ACT_LINK_SPEED_5G	(1u << 4)
+#define FW_PHY_ACT_LINK_SPEED_10G	(1u << 5)
+#define FW_PHY_ACT_LINK_SPEED_20G	(1u << 6)
+#define FW_PHY_ACT_LINK_SPEED_25G	(1u << 7)
+#define FW_PHY_ACT_LINK_SPEED_40G	(1u << 8)
+#define FW_PHY_ACT_LINK_SPEED_50G	(1u << 9)
+#define FW_PHY_ACT_LINK_SPEED_100G	(1u << 10)
+#define FW_PHY_ACT_SETUP_LINK_PAUSE_SHIFT 16
+#define FW_PHY_ACT_SETUP_LINK_PAUSE_MASK (3u << \
+					  FW_PHY_ACT_SETUP_LINK_PAUSE_SHIFT)
+#define FW_PHY_ACT_SETUP_LINK_PAUSE_NONE 0u
+#define FW_PHY_ACT_SETUP_LINK_PAUSE_TX	1u
+#define FW_PHY_ACT_SETUP_LINK_PAUSE_RX	2u
+#define FW_PHY_ACT_SETUP_LINK_PAUSE_RXTX 3u
+#define FW_PHY_ACT_SETUP_LINK_LP	(1u << 18)
+#define FW_PHY_ACT_SETUP_LINK_HP	(1u << 19)
+#define FW_PHY_ACT_SETUP_LINK_EEE	(1u << 20)
+#define FW_PHY_ACT_SETUP_LINK_AN	(1u << 22)
+#define FW_PHY_ACT_SETUP_LINK_RSP_DOWN	(1u << 0)
+#define FW_PHY_ACT_GET_LINK_INFO	3
+#define FW_PHY_ACT_GET_LINK_INFO_EEE	(1u << 19)
+#define FW_PHY_ACT_GET_LINK_INFO_FC_TX	(1u << 20)
+#define FW_PHY_ACT_GET_LINK_INFO_FC_RX	(1u << 21)
+#define FW_PHY_ACT_GET_LINK_INFO_POWER	(1u << 22)
+#define FW_PHY_ACT_GET_LINK_INFO_AN_COMPLETE	(1u << 24)
+#define FW_PHY_ACT_GET_LINK_INFO_TEMP	(1u << 25)
+#define FW_PHY_ACT_GET_LINK_INFO_LP_FC_TX	(1u << 28)
+#define FW_PHY_ACT_GET_LINK_INFO_LP_FC_RX	(1u << 29)
+#define FW_PHY_ACT_FORCE_LINK_DOWN	4
+#define FW_PHY_ACT_FORCE_LINK_DOWN_OFF	(1u << 0)
+#define FW_PHY_ACT_PHY_SW_RESET		5
+#define FW_PHY_ACT_PHY_HW_RESET		6
+#define FW_PHY_ACT_GET_PHY_INFO		7
+#define FW_PHY_ACT_UD_2			0x1002
+#define FW_PHY_ACT_UD_2_10G_KR_EEE	(1u << 6)
+#define FW_PHY_ACT_UD_2_10G_KX4_EEE	(1u << 5)
+#define FW_PHY_ACT_UD_2_1G_KX_EEE	(1u << 4)
+#define FW_PHY_ACT_UD_2_10G_T_EEE	(1u << 3)
+#define FW_PHY_ACT_UD_2_1G_T_EEE	(1u << 2)
+#define FW_PHY_ACT_UD_2_100M_TX_EEE	(1u << 1)
+#define FW_PHY_ACT_RETRIES		50
+#define FW_PHY_INFO_SPEED_MASK		0xFFFu
+#define FW_PHY_INFO_ID_HI_MASK		0xFFFF0000u
+#define FW_PHY_INFO_ID_LO_MASK		0x0000FFFFu
 
 /* Host Interface Command Structures */
 
@@ -3168,6 +3221,19 @@ struct ixgbe_hic_internal_phy_req {
 struct ixgbe_hic_internal_phy_resp {
 	struct ixgbe_hic_hdr hdr;
 	__be32 read_data;
+};
+
+struct ixgbe_hic_phy_activity_req {
+	struct ixgbe_hic_hdr hdr;
+	u8 port_number;
+	u8 pad;
+	__le16 activity_id;
+	__be32 data[FW_PHY_ACT_DATA_COUNT];
+};
+
+struct ixgbe_hic_phy_activity_resp {
+	struct ixgbe_hic_hdr hdr;
+	__be32 data[FW_PHY_ACT_DATA_COUNT];
 };
 
 #ifdef C99
@@ -4046,8 +4112,8 @@ struct ixgbe_phy_info {
 	bool reset_disable;
 	ixgbe_autoneg_advertised autoneg_advertised;
 	ixgbe_link_speed speeds_supported;
-	enum ixgbe_ms_type ms_type;
-	enum ixgbe_ms_type original_ms_type;
+	ixgbe_link_speed eee_speeds_supported;
+	ixgbe_link_speed eee_speeds_advertised;
 	enum ixgbe_smart_speed smart_speed;
 	bool smart_speed_active;
 	bool multispeed_fiber;
