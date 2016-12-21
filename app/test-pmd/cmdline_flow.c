@@ -43,6 +43,7 @@
 #include <rte_ethdev.h>
 #include <rte_byteorder.h>
 #include <cmdline_parse.h>
+#include <cmdline_parse_etheraddr.h>
 #include <rte_flow.h>
 
 #include "testpmd.h"
@@ -59,6 +60,7 @@ enum index {
 	PREFIX,
 	BOOLEAN,
 	STRING,
+	MAC_ADDR,
 	RULE_ID,
 	PORT_ID,
 	GROUP_ID,
@@ -114,6 +116,13 @@ enum index {
 	ITEM_RAW_OFFSET,
 	ITEM_RAW_LIMIT,
 	ITEM_RAW_PATTERN,
+	ITEM_ETH,
+	ITEM_ETH_DST,
+	ITEM_ETH_SRC,
+	ITEM_ETH_TYPE,
+	ITEM_VLAN,
+	ITEM_VLAN_TPID,
+	ITEM_VLAN_TCI,
 
 	/* Validate/create actions. */
 	ACTIONS,
@@ -238,6 +247,14 @@ struct token {
 		.size = (sz), \
 	})
 
+/** Same as ARGS_ENTRY() using network byte ordering. */
+#define ARGS_ENTRY_HTON(s, f) \
+	(&(const struct arg){ \
+		.hton = 1, \
+		.offset = offsetof(s, f), \
+		.size = sizeof(((s *)0)->f), \
+	})
+
 /** Parser output buffer layout expected by cmd_flow_parsed(). */
 struct buffer {
 	enum index command; /**< Flow command. */
@@ -329,6 +346,8 @@ static const enum index next_item[] = {
 	ITEM_VF,
 	ITEM_PORT,
 	ITEM_RAW,
+	ITEM_ETH,
+	ITEM_VLAN,
 	ZERO,
 };
 
@@ -356,6 +375,21 @@ static const enum index item_raw[] = {
 	ITEM_RAW_OFFSET,
 	ITEM_RAW_LIMIT,
 	ITEM_RAW_PATTERN,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_eth[] = {
+	ITEM_ETH_DST,
+	ITEM_ETH_SRC,
+	ITEM_ETH_TYPE,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_vlan[] = {
+	ITEM_VLAN_TPID,
+	ITEM_VLAN_TCI,
 	ITEM_NEXT,
 	ZERO,
 };
@@ -402,6 +436,9 @@ static int parse_boolean(struct context *, const struct token *,
 static int parse_string(struct context *, const struct token *,
 			const char *, unsigned int,
 			void *, unsigned int);
+static int parse_mac_addr(struct context *, const struct token *,
+			  const char *, unsigned int,
+			  void *, unsigned int);
 static int parse_port(struct context *, const struct token *,
 		      const char *, unsigned int,
 		      void *, unsigned int);
@@ -463,6 +500,13 @@ static const struct token token_list[] = {
 		.type = "STRING",
 		.help = "fixed string",
 		.call = parse_string,
+		.comp = comp_none,
+	},
+	[MAC_ADDR] = {
+		.name = "{MAC address}",
+		.type = "MAC-48",
+		.help = "standard MAC address notation",
+		.call = parse_mac_addr,
 		.comp = comp_none,
 	},
 	[RULE_ID] = {
@@ -754,6 +798,50 @@ static const struct token token_list[] = {
 			     ARGS_ENTRY_USZ(struct rte_flow_item_raw,
 					    pattern,
 					    ITEM_RAW_PATTERN_SIZE)),
+	},
+	[ITEM_ETH] = {
+		.name = "eth",
+		.help = "match Ethernet header",
+		.priv = PRIV_ITEM(ETH, sizeof(struct rte_flow_item_eth)),
+		.next = NEXT(item_eth),
+		.call = parse_vc,
+	},
+	[ITEM_ETH_DST] = {
+		.name = "dst",
+		.help = "destination MAC",
+		.next = NEXT(item_eth, NEXT_ENTRY(MAC_ADDR), item_param),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_eth, dst)),
+	},
+	[ITEM_ETH_SRC] = {
+		.name = "src",
+		.help = "source MAC",
+		.next = NEXT(item_eth, NEXT_ENTRY(MAC_ADDR), item_param),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_eth, src)),
+	},
+	[ITEM_ETH_TYPE] = {
+		.name = "type",
+		.help = "EtherType",
+		.next = NEXT(item_eth, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_eth, type)),
+	},
+	[ITEM_VLAN] = {
+		.name = "vlan",
+		.help = "match 802.1Q/ad VLAN tag",
+		.priv = PRIV_ITEM(VLAN, sizeof(struct rte_flow_item_vlan)),
+		.next = NEXT(item_vlan),
+		.call = parse_vc,
+	},
+	[ITEM_VLAN_TPID] = {
+		.name = "tpid",
+		.help = "tag protocol identifier",
+		.next = NEXT(item_vlan, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_vlan, tpid)),
+	},
+	[ITEM_VLAN_TCI] = {
+		.name = "tci",
+		.help = "tag control information",
+		.next = NEXT(item_vlan, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_vlan, tci)),
 	},
 	/* Validate/create actions. */
 	[ACTIONS] = {
@@ -1396,6 +1484,44 @@ parse_string(struct context *ctx, const struct token *token,
 error:
 	push_args(ctx, arg_len);
 	push_args(ctx, arg_data);
+	return -1;
+}
+
+/**
+ * Parse a MAC address.
+ *
+ * Last argument (ctx->args) is retrieved to determine storage size and
+ * location.
+ */
+static int
+parse_mac_addr(struct context *ctx, const struct token *token,
+	       const char *str, unsigned int len,
+	       void *buf, unsigned int size)
+{
+	const struct arg *arg = pop_args(ctx);
+	struct ether_addr tmp;
+	int ret;
+
+	(void)token;
+	/* Argument is expected. */
+	if (!arg)
+		return -1;
+	size = arg->size;
+	/* Bit-mask fill is not supported. */
+	if (arg->mask || size != sizeof(tmp))
+		goto error;
+	ret = cmdline_parse_etheraddr(NULL, str, &tmp, size);
+	if (ret < 0 || (unsigned int)ret != len)
+		goto error;
+	if (!ctx->object)
+		return len;
+	buf = (uint8_t *)ctx->object + arg->offset;
+	memcpy(buf, &tmp, size);
+	if (ctx->objmask)
+		memset((uint8_t *)ctx->objmask + arg->offset, 0xff, size);
+	return len;
+error:
+	push_args(ctx, arg);
 	return -1;
 }
 
