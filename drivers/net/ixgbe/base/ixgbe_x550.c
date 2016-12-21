@@ -896,19 +896,18 @@ s32 ixgbe_init_ops_X550EM_a(struct ixgbe_hw *hw)
 		break;
 	}
 
-	if ((hw->device_id == IXGBE_DEV_ID_X550EM_A_1G_T) ||
-		(hw->device_id == IXGBE_DEV_ID_X550EM_A_1G_T_L)) {
+	switch (hw->device_id) {
+	case IXGBE_DEV_ID_X550EM_A_1G_T:
+	case IXGBE_DEV_ID_X550EM_A_1G_T_L:
 		mac->ops.fc_autoneg = ixgbe_fc_autoneg_sgmii_x550em_a;
 		mac->ops.setup_fc = ixgbe_fc_autoneg_fw;
-	}
-
-	switch (hw->device_id) {
-	case IXGBE_DEV_ID_X550EM_A_KR:
-	case IXGBE_DEV_ID_X550EM_A_KR_L:
 		mac->ops.setup_eee = ixgbe_setup_eee_fw;
+		hw->phy.eee_speeds_supported = IXGBE_LINK_SPEED_100_FULL |
+					       IXGBE_LINK_SPEED_1GB_FULL;
+		hw->phy.eee_speeds_advertised = hw->phy.eee_speeds_supported;
 		break;
 	default:
-		mac->ops.setup_eee = NULL;
+		break;
 	}
 
 	return ret_val;
