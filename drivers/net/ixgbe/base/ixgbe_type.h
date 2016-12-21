@@ -1045,7 +1045,7 @@ struct ixgbe_dmac_config {
 #define IXGBE_FTFT		0x09400 /* 0x9400-0x97FC */
 #define IXGBE_METF(_i)		(0x05190 + ((_i) * 4)) /* 4 of these (0-3) */
 #define IXGBE_MDEF_EXT(_i)	(0x05160 + ((_i) * 4)) /* 8 of these (0-7) */
-#define IXGBE_LSWFW		0x15014
+#define IXGBE_LSWFW		0x15F14
 #define IXGBE_BMCIP(_i)		(0x05050 + ((_i) * 4)) /* 0x5050-0x505C */
 #define IXGBE_BMCIPVAL		0x05060
 #define IXGBE_BMCIP_IPADDR_TYPE	0x00000001
