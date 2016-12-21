@@ -1631,6 +1631,9 @@ Filter Functions
 
 This section details the available filter functions that are available.
 
+Note these functions interface the deprecated legacy filtering framework,
+superseded by *rte_flow*. See `Flow rules management`_.
+
 ethertype_filter
 ~~~~~~~~~~~~~~~~~~~~
 
@@ -2041,3 +2044,612 @@ Set different GRE key length for input set::
 For example to set GRE key length for input set to 4 bytes on port 0::
 
    testpmd> global_config 0 gre-key-len 4
+
+
+.. _testpmd_rte_flow:
+
+Flow rules management
+---------------------
+
+Control of the generic flow API (*rte_flow*) is fully exposed through the
+``flow`` command (validation, creation, destruction and queries).
+
+Considering *rte_flow* overlaps with all `Filter Functions`_, using both
+features simultaneously may cause undefined side-effects and is therefore
+not recommended.
+
+``flow`` syntax
+~~~~~~~~~~~~~~~
+
+Because the ``flow`` command uses dynamic tokens to handle the large number
+of possible flow rules combinations, its behavior differs slightly from
+other commands, in particular:
+
+- Pressing *?* or the *<tab>* key displays contextual help for the current
+  token, not that of the entire command.
+
+- Optional and repeated parameters are supported (provided they are listed
+  in the contextual help).
+
+The first parameter stands for the operation mode. Possible operations and
+their general syntax are described below. They are covered in detail in the
+following sections.
+
+- Check whether a flow rule can be created::
+
+   flow validate {port_id}
+       [group {group_id}] [priority {level}] [ingress] [egress]
+       pattern {item} [/ {item} [...]] / end
+       actions {action} [/ {action} [...]] / end
+
+- Create a flow rule::
+
+   flow create {port_id}
+       [group {group_id}] [priority {level}] [ingress] [egress]
+       pattern {item} [/ {item} [...]] / end
+       actions {action} [/ {action} [...]] / end
+
+- Destroy specific flow rules::
+
+   flow destroy {port_id} rule {rule_id} [...]
+
+- Destroy all flow rules::
+
+   flow flush {port_id}
+
+- Query an existing flow rule::
+
+   flow query {port_id} {rule_id} {action}
+
+- List existing flow rules sorted by priority, filtered by group
+  identifiers::
+
+   flow list {port_id} [group {group_id}] [...]
+
+Validating flow rules
+~~~~~~~~~~~~~~~~~~~~~
+
+``flow validate`` reports whether a flow rule would be accepted by the
+underlying device in its current state but stops short of creating it. It is
+bound to ``rte_flow_validate()``::
+
+   flow validate {port_id}
+      [group {group_id}] [priority {level}] [ingress] [egress]
+      pattern {item} [/ {item} [...]] / end
+      actions {action} [/ {action} [...]] / end
+
+If successful, it will show::
+
+   Flow rule validated
+
+Otherwise it will show an error message of the form::
+
+   Caught error type [...] ([...]): [...]
+
+This command uses the same parameters as ``flow create``, their format is
+described in `Creating flow rules`_.
+
+Check whether redirecting any Ethernet packet received on port 0 to RX queue
+index 6 is supported::
+
+   testpmd> flow validate 0 ingress pattern eth / end
+      actions queue index 6 / end
+   Flow rule validated
+   testpmd>
+
+Port 0 does not support TCPv6 rules::
+
+   testpmd> flow validate 0 ingress pattern eth / ipv6 / tcp / end
+      actions drop / end
+   Caught error type 9 (specific pattern item): Invalid argument
+   testpmd>
+
+Creating flow rules
+~~~~~~~~~~~~~~~~~~~
+
+``flow create`` validates and creates the specified flow rule. It is bound
+to ``rte_flow_create()``::
+
+   flow create {port_id}
+      [group {group_id}] [priority {level}] [ingress] [egress]
+      pattern {item} [/ {item} [...]] / end
+      actions {action} [/ {action} [...]] / end
+
+If successful, it will return a flow rule ID usable with other commands::
+
+   Flow rule #[...] created
+
+Otherwise it will show an error message of the form::
+
+   Caught error type [...] ([...]): [...]
+
+Parameters describe in the following order:
+
+- Attributes (*group*, *priority*, *ingress*, *egress* tokens).
+- A matching pattern, starting with the *pattern* token and terminated by an
+  *end* pattern item.
+- Actions, starting with the *actions* token and terminated by an *end*
+  action.
+
+These translate directly to *rte_flow* objects provided as-is to the
+underlying functions.
+
+The shortest valid definition only comprises mandatory tokens::
+
+   testpmd> flow create 0 pattern end actions end
+
+Note that PMDs may refuse rules that essentially do nothing such as this
+one.
+
+**All unspecified object values are automatically initialized to 0.**
+
+Attributes
+^^^^^^^^^^
+
+These tokens affect flow rule attributes (``struct rte_flow_attr``) and are
+specified before the ``pattern`` token.
+
+- ``group {group id}``: priority group.
+- ``priority {level}``: priority level within group.
+- ``ingress``: rule applies to ingress traffic.
+- ``egress``: rule applies to egress traffic.
+
+Each instance of an attribute specified several times overrides the previous
+value as shown below (group 4 is used)::
+
+   testpmd> flow create 0 group 42 group 24 group 4 [...]
+
+Note that once enabled, ``ingress`` and ``egress`` cannot be disabled.
+
+While not specifying a direction is an error, some rules may allow both
+simultaneously.
+
+Most rules affect RX therefore contain the ``ingress`` token::
+
+   testpmd> flow create 0 ingress pattern [...]
+
+Matching pattern
+^^^^^^^^^^^^^^^^
+
+A matching pattern starts after the ``pattern`` token. It is made of pattern
+items and is terminated by a mandatory ``end`` item.
+
+Items are named after their type (*RTE_FLOW_ITEM_TYPE_* from ``enum
+rte_flow_item_type``).
+
+The ``/`` token is used as a separator between pattern items as shown
+below::
+
+   testpmd> flow create 0 ingress pattern eth / ipv4 / udp / end [...]
+
+Note that protocol items like these must be stacked from lowest to highest
+layer to make sense. For instance, the following rule is either invalid or
+unlikely to match any packet::
+
+   testpmd> flow create 0 ingress pattern eth / udp / ipv4 / end [...]
+
+More information on these restrictions can be found in the *rte_flow*
+documentation.
+
+Several items support additional specification structures, for example
+``ipv4`` allows specifying source and destination addresses as follows::
+
+   testpmd> flow create 0 ingress pattern eth / ipv4 src is 10.1.1.1
+      dst is 10.2.0.0 / end [...]
+
+This rule matches all IPv4 traffic with the specified properties.
+
+In this example, ``src`` and ``dst`` are field names of the underlying
+``struct rte_flow_item_ipv4`` object. All item properties can be specified
+in a similar fashion.
+
+The ``is`` token means that the subsequent value must be matched exactly,
+and assigns ``spec`` and ``mask`` fields in ``struct rte_flow_item``
+accordingly. Possible assignment tokens are:
+
+- ``is``: match value perfectly (with full bit-mask).
+- ``spec``: match value according to configured bit-mask.
+- ``last``: specify upper bound to establish a range.
+- ``mask``: specify bit-mask with relevant bits set to one.
+- ``prefix``: generate bit-mask from a prefix length.
+
+These yield identical results::
+
+   ipv4 src is 10.1.1.1
+
+::
+
+   ipv4 src spec 10.1.1.1 src mask 255.255.255.255
+
+::
+
+   ipv4 src spec 10.1.1.1 src prefix 32
+
+::
+
+   ipv4 src is 10.1.1.1 src last 10.1.1.1 # range with a single value
+
+::
+
+   ipv4 src is 10.1.1.1 src last 0 # 0 disables range
+
+Inclusive ranges can be defined with ``last``::
+
+   ipv4 src is 10.1.1.1 src last 10.2.3.4 # 10.1.1.1 to 10.2.3.4
+
+Note that ``mask`` affects both ``spec`` and ``last``::
+
+   ipv4 src is 10.1.1.1 src last 10.2.3.4 src mask 255.255.0.0
+      # matches 10.1.0.0 to 10.2.255.255
+
+Properties can be modified multiple times::
+
+   ipv4 src is 10.1.1.1 src is 10.1.2.3 src is 10.2.3.4 # matches 10.2.3.4
+
+::
+
+   ipv4 src is 10.1.1.1 src prefix 24 src prefix 16 # matches 10.1.0.0/16
+
+Pattern items
+^^^^^^^^^^^^^
+
+This section lists supported pattern items and their attributes, if any.
+
+- ``end``: end list of pattern items.
+
+- ``void``: no-op pattern item.
+
+- ``invert``: perform actions when pattern does not match.
+
+- ``any``: match any protocol for the current layer.
+
+  - ``num {unsigned}``: number of layers covered.
+
+- ``pf``: match packets addressed to the physical function.
+
+- ``vf``: match packets addressed to a virtual function ID.
+
+  - ``id {unsigned}``: destination VF ID.
+
+- ``port``: device-specific physical port index to use.
+
+  - ``index {unsigned}``: physical port index.
+
+- ``raw``: match an arbitrary byte string.
+
+  - ``relative {boolean}``: look for pattern after the previous item.
+  - ``search {boolean}``: search pattern from offset (see also limit).
+  - ``offset {integer}``: absolute or relative offset for pattern.
+  - ``limit {unsigned}``: search area limit for start of pattern.
+  - ``pattern {string}``: byte string to look for.
+
+- ``eth``: match Ethernet header.
+
+  - ``dst {MAC-48}``: destination MAC.
+  - ``src {MAC-48}``: source MAC.
+  - ``type {unsigned}``: EtherType.
+
+- ``vlan``: match 802.1Q/ad VLAN tag.
+
+  - ``tpid {unsigned}``: tag protocol identifier.
+  - ``tci {unsigned}``: tag control information.
+
+- ``ipv4``: match IPv4 header.
+
+  - ``src {ipv4 address}``: source address.
+  - ``dst {ipv4 address}``: destination address.
+
+- ``ipv6``: match IPv6 header.
+
+  - ``src {ipv6 address}``: source address.
+  - ``dst {ipv6 address}``: destination address.
+
+- ``icmp``: match ICMP header.
+
+  - ``type {unsigned}``: ICMP packet type.
+  - ``code {unsigned}``: ICMP packet code.
+
+- ``udp``: match UDP header.
+
+  - ``src {unsigned}``: UDP source port.
+  - ``dst {unsigned}``: UDP destination port.
+
+- ``tcp``: match TCP header.
+
+  - ``src {unsigned}``: TCP source port.
+  - ``dst {unsigned}``: TCP destination port.
+
+- ``sctp``: match SCTP header.
+
+  - ``src {unsigned}``: SCTP source port.
+  - ``dst {unsigned}``: SCTP destination port.
+
+- ``vxlan``: match VXLAN header.
+
+  - ``vni {unsigned}``: VXLAN identifier.
+
+Actions list
+^^^^^^^^^^^^
+
+A list of actions starts after the ``actions`` token in the same fashion as
+`Matching pattern`_; actions are separated by ``/`` tokens and the list is
+terminated by a mandatory ``end`` action.
+
+Actions are named after their type (*RTE_FLOW_ACTION_TYPE_* from ``enum
+rte_flow_action_type``).
+
+Dropping all incoming UDPv4 packets can be expressed as follows::
+
+   testpmd> flow create 0 ingress pattern eth / ipv4 / udp / end
+      actions drop / end
+
+Several actions have configurable properties which must be specified when
+there is no valid default value. For example, ``queue`` requires a target
+queue index.
+
+This rule redirects incoming UDPv4 traffic to queue index 6::
+
+   testpmd> flow create 0 ingress pattern eth / ipv4 / udp / end
+      actions queue index 6 / end
+
+While this one could be rejected by PMDs (unspecified queue index)::
+
+   testpmd> flow create 0 ingress pattern eth / ipv4 / udp / end
+      actions queue / end
+
+As defined by *rte_flow*, the list is not ordered, all actions of a given
+rule are performed simultaneously. These are equivalent::
+
+   queue index 6 / void / mark id 42 / end
+
+::
+
+   void / mark id 42 / queue index 6 / end
+
+All actions in a list should have different types, otherwise only the last
+action of a given type is taken into account::
+
+   queue index 4 / queue index 5 / queue index 6 / end # will use queue 6
+
+::
+
+   drop / drop / drop / end # drop is performed only once
+
+::
+
+   mark id 42 / queue index 3 / mark id 24 / end # mark will be 24
+
+Considering they are performed simultaneously, opposite and overlapping
+actions can sometimes be combined when the end result is unambiguous::
+
+   drop / queue index 6 / end # drop has no effect
+
+::
+
+   drop / dup index 6 / end # same as above
+
+::
+
+   queue index 6 / rss queues 6 7 8 / end # queue has no effect
+
+::
+
+   drop / passthru / end # drop has no effect
+
+Note that PMDs may still refuse such combinations.
+
+Actions
+^^^^^^^
+
+This section lists supported actions and their attributes, if any.
+
+- ``end``: end list of actions.
+
+- ``void``: no-op action.
+
+- ``passthru``: let subsequent rule process matched packets.
+
+- ``mark``: attach 32 bit value to packets.
+
+  - ``id {unsigned}``: 32 bit value to return with packets.
+
+- ``flag``: flag packets.
+
+- ``queue``: assign packets to a given queue index.
+
+  - ``index {unsigned}``: queue index to use.
+
+- ``drop``: drop packets (note: passthru has priority).
+
+- ``count``: enable counters for this rule.
+
+- ``dup``: duplicate packets to a given queue index.
+
+  - ``index {unsigned}``: queue index to duplicate packets to.
+
+- ``rss``: spread packets among several queues.
+
+  - ``queues [{unsigned} [...]] end``: queue indices to use.
+
+- ``pf``: redirect packets to physical device function.
+
+- ``vf``: redirect packets to virtual device function.
+
+  - ``original {boolean}``: use original VF ID if possible.
+  - ``id {unsigned}``: VF ID to redirect packets to.
+
+Destroying flow rules
+~~~~~~~~~~~~~~~~~~~~~
+
+``flow destroy`` destroys one or more rules from their rule ID (as returned
+by ``flow create``), this command calls ``rte_flow_destroy()`` as many
+times as necessary::
+
+   flow destroy {port_id} rule {rule_id} [...]
+
+If successful, it will show::
+
+   Flow rule #[...] destroyed
+
+It does not report anything for rule IDs that do not exist. The usual error
+message is shown when a rule cannot be destroyed::
+
+   Caught error type [...] ([...]): [...]
+
+``flow flush`` destroys all rules on a device and does not take extra
+arguments. It is bound to ``rte_flow_flush()``::
+
+   flow flush {port_id}
+
+Any errors are reported as above.
+
+Creating several rules and destroying them::
+
+   testpmd> flow create 0 ingress pattern eth / ipv6 / end
+      actions queue index 2 / end
+   Flow rule #0 created
+   testpmd> flow create 0 ingress pattern eth / ipv4 / end
+      actions queue index 3 / end
+   Flow rule #1 created
+   testpmd> flow destroy 0 rule 0 rule 1
+   Flow rule #1 destroyed
+   Flow rule #0 destroyed
+   testpmd>
+
+The same result can be achieved using ``flow flush``::
+
+   testpmd> flow create 0 ingress pattern eth / ipv6 / end
+      actions queue index 2 / end
+   Flow rule #0 created
+   testpmd> flow create 0 ingress pattern eth / ipv4 / end
+      actions queue index 3 / end
+   Flow rule #1 created
+   testpmd> flow flush 0
+   testpmd>
+
+Non-existent rule IDs are ignored::
+
+   testpmd> flow create 0 ingress pattern eth / ipv6 / end
+      actions queue index 2 / end
+   Flow rule #0 created
+   testpmd> flow create 0 ingress pattern eth / ipv4 / end
+      actions queue index 3 / end
+   Flow rule #1 created
+   testpmd> flow destroy 0 rule 42 rule 10 rule 2
+   testpmd>
+   testpmd> flow destroy 0 rule 0
+   Flow rule #0 destroyed
+   testpmd>
+
+Querying flow rules
+~~~~~~~~~~~~~~~~~~~
+
+``flow query`` queries a specific action of a flow rule having that
+ability. Such actions collect information that can be reported using this
+command. It is bound to ``rte_flow_query()``::
+
+   flow query {port_id} {rule_id} {action}
+
+If successful, it will display either the retrieved data for known actions
+or the following message::
+
+   Cannot display result for action type [...] ([...])
+
+Otherwise, it will complain either that the rule does not exist or that some
+error occurred::
+
+   Flow rule #[...] not found
+
+::
+
+   Caught error type [...] ([...]): [...]
+
+Currently only the ``count`` action is supported. This action reports the
+number of packets that hit the flow rule and the total number of bytes. Its
+output has the following format::
+
+   count:
+    hits_set: [...] # whether "hits" contains a valid value
+    bytes_set: [...] # whether "bytes" contains a valid value
+    hits: [...] # number of packets
+    bytes: [...] # number of bytes
+
+Querying counters for TCPv6 packets redirected to queue 6::
+
+   testpmd> flow create 0 ingress pattern eth / ipv6 / tcp / end
+      actions queue index 6 / count / end
+   Flow rule #4 created
+   testpmd> flow query 0 4 count
+   count:
+    hits_set: 1
+    bytes_set: 0
+    hits: 386446
+    bytes: 0
+   testpmd>
+
+Listing flow rules
+~~~~~~~~~~~~~~~~~~
+
+``flow list`` lists existing flow rules sorted by priority and optionally
+filtered by group identifiers::
+
+   flow list {port_id} [group {group_id}] [...]
+
+This command only fails with the following message if the device does not
+exist::
+
+   Invalid port [...]
+
+Output consists of a header line followed by a short description of each
+flow rule, one per line. There is no output at all when no flow rules are
+configured on the device::
+
+   ID      Group   Prio    Attr    Rule
+   [...]   [...]   [...]   [...]   [...]
+
+``Attr`` column flags:
+
+- ``i`` for ``ingress``.
+- ``e`` for ``egress``.
+
+Creating several flow rules and listing them::
+
+   testpmd> flow create 0 ingress pattern eth / ipv4 / end
+      actions queue index 6 / end
+   Flow rule #0 created
+   testpmd> flow create 0 ingress pattern eth / ipv6 / end
+      actions queue index 2 / end
+   Flow rule #1 created
+   testpmd> flow create 0 priority 5 ingress pattern eth / ipv4 / udp / end
+      actions rss queues 6 7 8 end / end
+   Flow rule #2 created
+   testpmd> flow list 0
+   ID      Group   Prio    Attr    Rule
+   0       0       0       i-      ETH IPV4 => QUEUE
+   1       0       0       i-      ETH IPV6 => QUEUE
+   2       0       5       i-      ETH IPV4 UDP => RSS
+   testpmd>
+
+Rules are sorted by priority (i.e. group ID first, then priority level)::
+
+   testpmd> flow list 1
+   ID      Group   Prio    Attr    Rule
+   0       0       0       i-      ETH => COUNT
+   6       0       500     i-      ETH IPV6 TCP => DROP COUNT
+   5       0       1000    i-      ETH IPV6 ICMP => QUEUE
+   1       24      0       i-      ETH IPV4 UDP => QUEUE
+   4       24      10      i-      ETH IPV4 TCP => DROP
+   3       24      20      i-      ETH IPV4 => DROP
+   2       24      42      i-      ETH IPV4 UDP => QUEUE
+   7       63      0       i-      ETH IPV6 UDP VXLAN => MARK QUEUE
+   testpmd>
+
+Output can be limited to specific groups::
+
+   testpmd> flow list 1 group 0 group 63
+   ID      Group   Prio    Attr    Rule
+   0       0       0       i-      ETH => COUNT
+   6       0       500     i-      ETH IPV6 TCP => DROP COUNT
+   5       0       1000    i-      ETH IPV6 ICMP => QUEUE
+   7       63      0       i-      ETH IPV6 UDP VXLAN => MARK QUEUE
+   testpmd>
