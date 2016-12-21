@@ -1778,7 +1778,7 @@ STATIC s32 ixgbe_setup_sgmii_m88(struct ixgbe_hw *hw, ixgbe_link_speed speed,
 		return rc;
 
 	flx_val &= ~IXGBE_KRM_PMD_FLX_MASK_ST20_SPEED_MASK;
-	flx_val |= IXGBE_KRM_PMD_FLX_MASK_ST20_SPEED_1G;
+	flx_val |= IXGBE_KRM_PMD_FLX_MASK_ST20_SPEED_AN;
 	flx_val &= ~IXGBE_KRM_PMD_FLX_MASK_ST20_AN_EN;
 	flx_val |= IXGBE_KRM_PMD_FLX_MASK_ST20_SGMII_EN;
 	flx_val |= IXGBE_KRM_PMD_FLX_MASK_ST20_AN37_EN;
