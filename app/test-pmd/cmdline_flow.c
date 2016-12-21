@@ -69,10 +69,14 @@ enum index {
 	CREATE,
 	DESTROY,
 	FLUSH,
+	QUERY,
 	LIST,
 
 	/* Destroy arguments. */
 	DESTROY_RULE,
+
+	/* Query arguments. */
+	QUERY_ACTION,
 
 	/* List arguments. */
 	LIST_GROUP,
@@ -208,6 +212,10 @@ struct buffer {
 			uint32_t rule_n;
 		} destroy; /**< Destroy arguments. */
 		struct {
+			uint32_t rule;
+			enum rte_flow_action_type action;
+		} query; /**< Query arguments. */
+		struct {
 			uint32_t *group;
 			uint32_t group_n;
 		} list; /**< List arguments. */
@@ -285,6 +293,12 @@ static int parse_destroy(struct context *, const struct token *,
 static int parse_flush(struct context *, const struct token *,
 		       const char *, unsigned int,
 		       void *, unsigned int);
+static int parse_query(struct context *, const struct token *,
+		       const char *, unsigned int,
+		       void *, unsigned int);
+static int parse_action(struct context *, const struct token *,
+			const char *, unsigned int,
+			void *, unsigned int);
 static int parse_list(struct context *, const struct token *,
 		      const char *, unsigned int,
 		      void *, unsigned int);
@@ -296,6 +310,8 @@ static int parse_port(struct context *, const struct token *,
 		      void *, unsigned int);
 static int comp_none(struct context *, const struct token *,
 		     unsigned int, char *, unsigned int);
+static int comp_action(struct context *, const struct token *,
+		       unsigned int, char *, unsigned int);
 static int comp_port(struct context *, const struct token *,
 		     unsigned int, char *, unsigned int);
 static int comp_rule_id(struct context *, const struct token *,
@@ -367,7 +383,8 @@ static const struct token token_list[] = {
 			      CREATE,
 			      DESTROY,
 			      FLUSH,
-			      LIST)),
+			      LIST,
+			      QUERY)),
 		.call = parse_init,
 	},
 	/* Sub-level commands. */
@@ -399,6 +416,17 @@ static const struct token token_list[] = {
 		.args = ARGS(ARGS_ENTRY(struct buffer, port)),
 		.call = parse_flush,
 	},
+	[QUERY] = {
+		.name = "query",
+		.help = "query an existing flow rule",
+		.next = NEXT(NEXT_ENTRY(QUERY_ACTION),
+			     NEXT_ENTRY(RULE_ID),
+			     NEXT_ENTRY(PORT_ID)),
+		.args = ARGS(ARGS_ENTRY(struct buffer, args.query.action),
+			     ARGS_ENTRY(struct buffer, args.query.rule),
+			     ARGS_ENTRY(struct buffer, port)),
+		.call = parse_query,
+	},
 	[LIST] = {
 		.name = "list",
 		.help = "list existing flow rules",
@@ -413,6 +441,14 @@ static const struct token token_list[] = {
 		.next = NEXT(next_destroy_attr, NEXT_ENTRY(RULE_ID)),
 		.args = ARGS(ARGS_ENTRY_PTR(struct buffer, args.destroy.rule)),
 		.call = parse_destroy,
+	},
+	/* Query arguments. */
+	[QUERY_ACTION] = {
+		.name = "{action}",
+		.type = "ACTION",
+		.help = "action to query, must be part of the rule",
+		.call = parse_action,
+		.comp = comp_action,
 	},
 	/* List arguments. */
 	[LIST_GROUP] = {
@@ -730,6 +766,67 @@ parse_flush(struct context *ctx, const struct token *token,
 	return len;
 }
 
+/** Parse tokens for query command. */
+static int
+parse_query(struct context *ctx, const struct token *token,
+	    const char *str, unsigned int len,
+	    void *buf, unsigned int size)
+{
+	struct buffer *out = buf;
+
+	/* Token name must match. */
+	if (parse_default(ctx, token, str, len, NULL, 0) < 0)
+		return -1;
+	/* Nothing else to do if there is no buffer. */
+	if (!out)
+		return len;
+	if (!out->command) {
+		if (ctx->curr != QUERY)
+			return -1;
+		if (sizeof(*out) > size)
+			return -1;
+		out->command = ctx->curr;
+		ctx->objdata = 0;
+		ctx->object = out;
+	}
+	return len;
+}
+
+/** Parse action names. */
+static int
+parse_action(struct context *ctx, const struct token *token,
+	     const char *str, unsigned int len,
+	     void *buf, unsigned int size)
+{
+	struct buffer *out = buf;
+	const struct arg *arg = pop_args(ctx);
+	unsigned int i;
+
+	(void)size;
+	/* Argument is expected. */
+	if (!arg)
+		return -1;
+	/* Parse action name. */
+	for (i = 0; next_action[i]; ++i) {
+		const struct parse_action_priv *priv;
+
+		token = &token_list[next_action[i]];
+		if (strncmp(token->name, str, len))
+			continue;
+		priv = token->priv;
+		if (!priv)
+			goto error;
+		if (out)
+			memcpy((uint8_t *)ctx->object + arg->offset,
+			       &priv->type,
+			       arg->size);
+		return len;
+	}
+error:
+	push_args(ctx, arg);
+	return -1;
+}
+
 /** Parse tokens for list command. */
 static int
 parse_list(struct context *ctx, const struct token *token,
@@ -851,6 +948,24 @@ comp_none(struct context *ctx, const struct token *token,
 	(void)buf;
 	(void)size;
 	return 0;
+}
+
+/** Complete action names. */
+static int
+comp_action(struct context *ctx, const struct token *token,
+	    unsigned int ent, char *buf, unsigned int size)
+{
+	unsigned int i;
+
+	(void)ctx;
+	(void)token;
+	for (i = 0; next_action[i]; ++i)
+		if (buf && i == ent)
+			return snprintf(buf, size, "%s",
+					token_list[next_action[i]].name);
+	if (buf)
+		return -1;
+	return i;
 }
 
 /** Complete available ports. */
@@ -1154,6 +1269,10 @@ cmd_flow_parsed(const struct buffer *in)
 		break;
 	case FLUSH:
 		port_flow_flush(in->port);
+		break;
+	case QUERY:
+		port_flow_query(in->port, in->args.query.rule,
+				in->args.query.action);
 		break;
 	case LIST:
 		port_flow_list(in->port, in->args.list.group_n,

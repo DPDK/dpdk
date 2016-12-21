@@ -831,6 +831,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"flow flush {port_id}\n"
 			"    Destroy all flow rules.\n\n"
 
+			"flow query {port_id} {rule_id} {action}\n"
+			"    Query an existing flow rule.\n\n"
+
 			"flow list {port_id} [group {group_id}] [...]\n"
 			"    List existing flow rules sorted by priority,"
 			" filtered by group identifiers.\n\n"
