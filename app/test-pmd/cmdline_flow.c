@@ -156,8 +156,15 @@ enum index {
 	ACTION_MARK,
 	ACTION_MARK_ID,
 	ACTION_FLAG,
+	ACTION_QUEUE,
+	ACTION_QUEUE_INDEX,
 	ACTION_DROP,
 	ACTION_COUNT,
+	ACTION_DUP,
+	ACTION_DUP_INDEX,
+	ACTION_RSS,
+	ACTION_RSS_QUEUES,
+	ACTION_RSS_QUEUE,
 	ACTION_PF,
 	ACTION_VF,
 	ACTION_VF_ORIGINAL,
@@ -170,6 +177,14 @@ enum index {
 /** Storage size for struct rte_flow_item_raw including pattern. */
 #define ITEM_RAW_SIZE \
 	(offsetof(struct rte_flow_item_raw, pattern) + ITEM_RAW_PATTERN_SIZE)
+
+/** Number of queue[] entries in struct rte_flow_action_rss. */
+#define ACTION_RSS_NUM 32
+
+/** Storage size for struct rte_flow_action_rss including queues. */
+#define ACTION_RSS_SIZE \
+	(offsetof(struct rte_flow_action_rss, queue) + \
+	 sizeof(*((struct rte_flow_action_rss *)0)->queue) * ACTION_RSS_NUM)
 
 /** Maximum number of subsequent tokens and arguments on the stack. */
 #define CTX_STACK_SIZE 16
@@ -487,8 +502,11 @@ static const enum index next_action[] = {
 	ACTION_PASSTHRU,
 	ACTION_MARK,
 	ACTION_FLAG,
+	ACTION_QUEUE,
 	ACTION_DROP,
 	ACTION_COUNT,
+	ACTION_DUP,
+	ACTION_RSS,
 	ACTION_PF,
 	ACTION_VF,
 	ZERO,
@@ -496,6 +514,24 @@ static const enum index next_action[] = {
 
 static const enum index action_mark[] = {
 	ACTION_MARK_ID,
+	ACTION_NEXT,
+	ZERO,
+};
+
+static const enum index action_queue[] = {
+	ACTION_QUEUE_INDEX,
+	ACTION_NEXT,
+	ZERO,
+};
+
+static const enum index action_dup[] = {
+	ACTION_DUP_INDEX,
+	ACTION_NEXT,
+	ZERO,
+};
+
+static const enum index action_rss[] = {
+	ACTION_RSS_QUEUES,
 	ACTION_NEXT,
 	ZERO,
 };
@@ -517,6 +553,9 @@ static int parse_vc_spec(struct context *, const struct token *,
 			 const char *, unsigned int, void *, unsigned int);
 static int parse_vc_conf(struct context *, const struct token *,
 			 const char *, unsigned int, void *, unsigned int);
+static int parse_vc_action_rss_queue(struct context *, const struct token *,
+				     const char *, unsigned int, void *,
+				     unsigned int);
 static int parse_destroy(struct context *, const struct token *,
 			 const char *, unsigned int,
 			 void *, unsigned int);
@@ -566,6 +605,8 @@ static int comp_port(struct context *, const struct token *,
 		     unsigned int, char *, unsigned int);
 static int comp_rule_id(struct context *, const struct token *,
 			unsigned int, char *, unsigned int);
+static int comp_vc_action_rss_queue(struct context *, const struct token *,
+				    unsigned int, char *, unsigned int);
 
 /** Token definitions. */
 static const struct token token_list[] = {
@@ -1163,6 +1204,21 @@ static const struct token token_list[] = {
 		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
 		.call = parse_vc,
 	},
+	[ACTION_QUEUE] = {
+		.name = "queue",
+		.help = "assign packets to a given queue index",
+		.priv = PRIV_ACTION(QUEUE,
+				    sizeof(struct rte_flow_action_queue)),
+		.next = NEXT(action_queue),
+		.call = parse_vc,
+	},
+	[ACTION_QUEUE_INDEX] = {
+		.name = "index",
+		.help = "queue index to use",
+		.next = NEXT(action_queue, NEXT_ENTRY(UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_action_queue, index)),
+		.call = parse_vc_conf,
+	},
 	[ACTION_DROP] = {
 		.name = "drop",
 		.help = "drop packets (note: passthru has priority)",
@@ -1176,6 +1232,39 @@ static const struct token token_list[] = {
 		.priv = PRIV_ACTION(COUNT, 0),
 		.next = NEXT(NEXT_ENTRY(ACTION_NEXT)),
 		.call = parse_vc,
+	},
+	[ACTION_DUP] = {
+		.name = "dup",
+		.help = "duplicate packets to a given queue index",
+		.priv = PRIV_ACTION(DUP, sizeof(struct rte_flow_action_dup)),
+		.next = NEXT(action_dup),
+		.call = parse_vc,
+	},
+	[ACTION_DUP_INDEX] = {
+		.name = "index",
+		.help = "queue index to duplicate packets to",
+		.next = NEXT(action_dup, NEXT_ENTRY(UNSIGNED)),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_action_dup, index)),
+		.call = parse_vc_conf,
+	},
+	[ACTION_RSS] = {
+		.name = "rss",
+		.help = "spread packets among several queues",
+		.priv = PRIV_ACTION(RSS, ACTION_RSS_SIZE),
+		.next = NEXT(action_rss),
+		.call = parse_vc,
+	},
+	[ACTION_RSS_QUEUES] = {
+		.name = "queues",
+		.help = "queue indices to use",
+		.next = NEXT(action_rss, NEXT_ENTRY(ACTION_RSS_QUEUE)),
+		.call = parse_vc_conf,
+	},
+	[ACTION_RSS_QUEUE] = {
+		.name = "{queue}",
+		.help = "queue index",
+		.call = parse_vc_action_rss_queue,
+		.comp = comp_vc_action_rss_queue,
 	},
 	[ACTION_PF] = {
 		.name = "pf",
@@ -1564,6 +1653,51 @@ parse_vc_conf(struct context *ctx, const struct token *token,
 	ctx->objmask = NULL;
 	/* Update configuration pointer. */
 	action->conf = ctx->object;
+	return len;
+}
+
+/**
+ * Parse queue field for RSS action.
+ *
+ * Valid tokens are queue indices and the "end" token.
+ */
+static int
+parse_vc_action_rss_queue(struct context *ctx, const struct token *token,
+			  const char *str, unsigned int len,
+			  void *buf, unsigned int size)
+{
+	static const enum index next[] = NEXT_ENTRY(ACTION_RSS_QUEUE);
+	int ret;
+	int i;
+
+	(void)token;
+	(void)buf;
+	(void)size;
+	if (ctx->curr != ACTION_RSS_QUEUE)
+		return -1;
+	i = ctx->objdata >> 16;
+	if (!strncmp(str, "end", len)) {
+		ctx->objdata &= 0xffff;
+		return len;
+	}
+	if (i >= ACTION_RSS_NUM)
+		return -1;
+	if (push_args(ctx, ARGS_ENTRY(struct rte_flow_action_rss, queue[i])))
+		return -1;
+	ret = parse_int(ctx, token, str, len, NULL, 0);
+	if (ret < 0) {
+		pop_args(ctx);
+		return -1;
+	}
+	++i;
+	ctx->objdata = i << 16 | (ctx->objdata & 0xffff);
+	/* Repeat token. */
+	if (ctx->next_num == RTE_DIM(ctx->next))
+		return -1;
+	ctx->next[ctx->next_num++] = next;
+	if (!ctx->object)
+		return len;
+	((struct rte_flow_action_rss *)ctx->object)->num = i;
 	return len;
 }
 
@@ -2136,6 +2270,24 @@ comp_rule_id(struct context *ctx, const struct token *token,
 			return snprintf(buf, size, "%u", pf->id);
 		++i;
 	}
+	if (buf)
+		return -1;
+	return i;
+}
+
+/** Complete queue field for RSS action. */
+static int
+comp_vc_action_rss_queue(struct context *ctx, const struct token *token,
+			 unsigned int ent, char *buf, unsigned int size)
+{
+	static const char *const str[] = { "", "end", NULL };
+	unsigned int i;
+
+	(void)ctx;
+	(void)token;
+	for (i = 0; str[i] != NULL; ++i)
+		if (buf && i == ent)
+			return snprintf(buf, size, "%s", str[i]);
 	if (buf)
 		return -1;
 	return i;
