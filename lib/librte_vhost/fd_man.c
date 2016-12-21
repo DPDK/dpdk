@@ -35,19 +35,61 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
-#include <sys/select.h>
 #include <sys/time.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <string.h>
 
 #include <rte_common.h>
 #include <rte_log.h>
 
 #include "fd_man.h"
 
+#define FDPOLLERR (POLLERR | POLLHUP | POLLNVAL)
+
+static int
+get_last_valid_idx(struct fdset *pfdset, int last_valid_idx)
+{
+	int i;
+
+	for (i = last_valid_idx; i >= 0 && pfdset->fd[i].fd == -1; i--)
+		;
+
+	return i;
+}
+
+static void
+fdset_move(struct fdset *pfdset, int dst, int src)
+{
+	pfdset->fd[dst]    = pfdset->fd[src];
+	pfdset->rwfds[dst] = pfdset->rwfds[src];
+}
+
+/*
+ * Find deleted fd entries and remove them
+ */
+static void
+fdset_shrink(struct fdset *pfdset)
+{
+	int i;
+	int last_valid_idx = get_last_valid_idx(pfdset, pfdset->num - 1);
+
+	pthread_mutex_lock(&pfdset->fd_mutex);
+
+	for (i = 0; i < last_valid_idx; i++) {
+		if (pfdset->fd[i].fd != -1)
+			continue;
+
+		fdset_move(pfdset, i, last_valid_idx);
+		last_valid_idx = get_last_valid_idx(pfdset, last_valid_idx - 1);
+	}
+	pfdset->num = last_valid_idx + 1;
+
+	pthread_mutex_unlock(&pfdset->fd_mutex);
+}
+
 /**
  * Returns the index in the fdset for a given fd.
- * If fd is -1, it means to search for a free entry.
  * @return
  *   index for the fd, or -1 if fd isn't in the fdset.
  */
@@ -56,72 +98,28 @@ fdset_find_fd(struct fdset *pfdset, int fd)
 {
 	int i;
 
-	if (pfdset == NULL)
-		return -1;
-
-	for (i = 0; i < MAX_FDS && pfdset->fd[i].fd != fd; i++)
+	for (i = 0; i < pfdset->num && pfdset->fd[i].fd != fd; i++)
 		;
 
-	return i ==  MAX_FDS ? -1 : i;
+	return i == pfdset->num ? -1 : i;
 }
 
-static int
-fdset_find_free_slot(struct fdset *pfdset)
-{
-	return fdset_find_fd(pfdset, -1);
-}
-
-static int
-fdset_add_fd(struct fdset  *pfdset, int idx, int fd,
+static void
+fdset_add_fd(struct fdset *pfdset, int idx, int fd,
 	fd_cb rcb, fd_cb wcb, void *dat)
 {
-	struct fdentry *pfdentry;
+	struct fdentry *pfdentry = &pfdset->fd[idx];
+	struct pollfd *pfd = &pfdset->rwfds[idx];
 
-	if (pfdset == NULL || idx >= MAX_FDS || fd >= FD_SETSIZE)
-		return -1;
-
-	pfdentry = &pfdset->fd[idx];
-	pfdentry->fd = fd;
+	pfdentry->fd  = fd;
 	pfdentry->rcb = rcb;
 	pfdentry->wcb = wcb;
 	pfdentry->dat = dat;
 
-	return 0;
-}
-
-/**
- * Fill the read/write fd_set with the fds in the fdset.
- * @return
- *  the maximum fds filled in the read/write fd_set.
- */
-static int
-fdset_fill(fd_set *rfset, fd_set *wfset, struct fdset *pfdset)
-{
-	struct fdentry *pfdentry;
-	int i, maxfds = -1;
-	int num = MAX_FDS;
-
-	if (pfdset == NULL)
-		return -1;
-
-	for (i = 0; i < num; i++) {
-		pfdentry = &pfdset->fd[i];
-		if (pfdentry->fd != -1) {
-			int added = 0;
-			if (pfdentry->rcb && rfset) {
-				FD_SET(pfdentry->fd, rfset);
-				added = 1;
-			}
-			if (pfdentry->wcb && wfset) {
-				FD_SET(pfdentry->fd, wfset);
-				added = 1;
-			}
-			if (added)
-				maxfds = pfdentry->fd < maxfds ?
-					maxfds : pfdentry->fd;
-		}
-	}
-	return maxfds;
+	pfd->fd = fd;
+	pfd->events  = rcb ? POLLIN : 0;
+	pfd->events |= wcb ? POLLOUT : 0;
+	pfd->revents = 0;
 }
 
 void
@@ -151,16 +149,13 @@ fdset_add(struct fdset *pfdset, int fd, fd_cb rcb, fd_cb wcb, void *dat)
 		return -1;
 
 	pthread_mutex_lock(&pfdset->fd_mutex);
-
-	/* Find a free slot in the list. */
-	i = fdset_find_free_slot(pfdset);
-	if (i == -1 || fdset_add_fd(pfdset, i, fd, rcb, wcb, dat) < 0) {
+	i = pfdset->num < MAX_FDS ? pfdset->num++ : -1;
+	if (i == -1) {
 		pthread_mutex_unlock(&pfdset->fd_mutex);
 		return -2;
 	}
 
-	pfdset->num++;
-
+	fdset_add_fd(pfdset, i, fd, rcb, wcb, dat);
 	pthread_mutex_unlock(&pfdset->fd_mutex);
 
 	return 0;
@@ -189,7 +184,6 @@ fdset_del(struct fdset *pfdset, int fd)
 			pfdset->fd[i].fd = -1;
 			pfdset->fd[i].rcb = pfdset->fd[i].wcb = NULL;
 			pfdset->fd[i].dat = NULL;
-			pfdset->num--;
 			i = -1;
 		}
 		pthread_mutex_unlock(&pfdset->fd_mutex);
@@ -198,24 +192,6 @@ fdset_del(struct fdset *pfdset, int fd)
 	return dat;
 }
 
-/**
- *  Unregister the fd at the specified slot from the fdset.
- */
-static void
-fdset_del_slot(struct fdset *pfdset, int index)
-{
-	if (pfdset == NULL || index < 0 || index >= MAX_FDS)
-		return;
-
-	pthread_mutex_lock(&pfdset->fd_mutex);
-
-	pfdset->fd[index].fd = -1;
-	pfdset->fd[index].rcb = pfdset->fd[index].wcb = NULL;
-	pfdset->fd[index].dat = NULL;
-	pfdset->num--;
-
-	pthread_mutex_unlock(&pfdset->fd_mutex);
-}
 
 /**
  * This functions runs in infinite blocking loop until there is no fd in
@@ -229,55 +205,64 @@ fdset_del_slot(struct fdset *pfdset, int index)
 void
 fdset_event_dispatch(struct fdset *pfdset)
 {
-	fd_set rfds, wfds;
-	int i, maxfds;
+	int i;
+	struct pollfd *pfd;
 	struct fdentry *pfdentry;
-	int num = MAX_FDS;
 	fd_cb rcb, wcb;
 	void *dat;
-	int fd;
+	int fd, numfds;
 	int remove1, remove2;
-	int ret;
+	int need_shrink;
 
 	if (pfdset == NULL)
 		return;
 
 	while (1) {
-		struct timeval tv;
-		tv.tv_sec = 1;
-		tv.tv_usec = 0;
-		FD_ZERO(&rfds);
-		FD_ZERO(&wfds);
-		pthread_mutex_lock(&pfdset->fd_mutex);
-
-		maxfds = fdset_fill(&rfds, &wfds, pfdset);
-
-		pthread_mutex_unlock(&pfdset->fd_mutex);
 
 		/*
-		 * When select is blocked, other threads might unregister
+		 * When poll is blocked, other threads might unregister
 		 * listenfds from and register new listenfds into fdset.
-		 * When select returns, the entries for listenfds in the fdset
+		 * When poll returns, the entries for listenfds in the fdset
 		 * might have been updated. It is ok if there is unwanted call
 		 * for new listenfds.
 		 */
-		ret = select(maxfds + 1, &rfds, &wfds, NULL, &tv);
-		if (ret <= 0)
-			continue;
+		pthread_mutex_lock(&pfdset->fd_mutex);
+		numfds = pfdset->num;
+		pthread_mutex_unlock(&pfdset->fd_mutex);
 
-		for (i = 0; i < num; i++) {
-			remove1 = remove2 = 0;
+		poll(pfdset->rwfds, numfds, 1000 /* millisecs */);
+
+		need_shrink = 0;
+		for (i = 0; i < numfds; i++) {
 			pthread_mutex_lock(&pfdset->fd_mutex);
+
 			pfdentry = &pfdset->fd[i];
 			fd = pfdentry->fd;
+			pfd = &pfdset->rwfds[i];
+
+			if (fd < 0) {
+				need_shrink = 1;
+				pthread_mutex_unlock(&pfdset->fd_mutex);
+				continue;
+			}
+
+			if (!pfd->revents) {
+				pthread_mutex_unlock(&pfdset->fd_mutex);
+				continue;
+			}
+
+			remove1 = remove2 = 0;
+
 			rcb = pfdentry->rcb;
 			wcb = pfdentry->wcb;
 			dat = pfdentry->dat;
 			pfdentry->busy = 1;
+
 			pthread_mutex_unlock(&pfdset->fd_mutex);
-			if (fd >= 0 && FD_ISSET(fd, &rfds) && rcb)
+
+			if (rcb && pfd->revents & (POLLIN | FDPOLLERR))
 				rcb(fd, dat, &remove1);
-			if (fd >= 0 && FD_ISSET(fd, &wfds) && wcb)
+			if (wcb && pfd->revents & (POLLOUT | FDPOLLERR))
 				wcb(fd, dat, &remove2);
 			pfdentry->busy = 0;
 			/*
@@ -292,8 +277,13 @@ fdset_event_dispatch(struct fdset *pfdset)
 			 * listen fd in another thread, we couldn't call
 			 * fd_set_del.
 			 */
-			if (remove1 || remove2)
-				fdset_del_slot(pfdset, i);
+			if (remove1 || remove2) {
+				pfdentry->fd = -1;
+				need_shrink = 1;
+			}
 		}
+
+		if (need_shrink)
+			fdset_shrink(pfdset);
 	}
 }
