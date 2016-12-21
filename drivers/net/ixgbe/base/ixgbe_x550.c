@@ -4199,7 +4199,6 @@ void ixgbe_fc_autoneg_sgmii_x550em_a(struct ixgbe_hw *hw)
 	u32 info[FW_PHY_ACT_DATA_COUNT] = { 0 };
 	ixgbe_link_speed speed;
 	bool link_up;
-	u32 fc;
 
 	/* AN should have completed when the cable was plugged in.
 	 * Look for reasons to bail out.  Bail out if:
@@ -4227,21 +4226,8 @@ void ixgbe_fc_autoneg_sgmii_x550em_a(struct ixgbe_hw *hw)
 		goto out;
 	}
 
-	/* Get the advertized flow control and modify it to indicate
-	 * pause and asymmetric pause instead of rx and tx
-	 */
-	fc = info[0];
-	if (fc & FW_PHY_ACT_GET_LINK_INFO_FC_RX)
-		fc ^= FW_PHY_ACT_GET_LINK_INFO_FC_TX;
-
-	/* Modify link partner's flow control to indicate pause and
-	 * asymmetric pause instead of rx and tx
-	 */
-	if (fc & FW_PHY_ACT_GET_LINK_INFO_LP_FC_RX)
-		fc ^= FW_PHY_ACT_GET_LINK_INFO_LP_FC_TX;
-
 	/* Negotiate the flow control */
-	status = ixgbe_negotiate_fc(hw, fc, fc,
+	status = ixgbe_negotiate_fc(hw, info[0], info[0],
 				    FW_PHY_ACT_GET_LINK_INFO_FC_RX,
 				    FW_PHY_ACT_GET_LINK_INFO_FC_TX,
 				    FW_PHY_ACT_GET_LINK_INFO_LP_FC_RX,
