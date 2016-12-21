@@ -57,6 +57,8 @@ enum index {
 	INTEGER,
 	UNSIGNED,
 	PREFIX,
+	BOOLEAN,
+	STRING,
 	RULE_ID,
 	PORT_ID,
 	GROUP_ID,
@@ -106,6 +108,12 @@ enum index {
 	ITEM_VF_ID,
 	ITEM_PORT,
 	ITEM_PORT_INDEX,
+	ITEM_RAW,
+	ITEM_RAW_RELATIVE,
+	ITEM_RAW_SEARCH,
+	ITEM_RAW_OFFSET,
+	ITEM_RAW_LIMIT,
+	ITEM_RAW_PATTERN,
 
 	/* Validate/create actions. */
 	ACTIONS,
@@ -114,6 +122,13 @@ enum index {
 	ACTION_VOID,
 	ACTION_PASSTHRU,
 };
+
+/** Size of pattern[] field in struct rte_flow_item_raw. */
+#define ITEM_RAW_PATTERN_SIZE 36
+
+/** Storage size for struct rte_flow_item_raw including pattern. */
+#define ITEM_RAW_SIZE \
+	(offsetof(struct rte_flow_item_raw, pattern) + ITEM_RAW_PATTERN_SIZE)
 
 /** Maximum number of subsequent tokens and arguments on the stack. */
 #define CTX_STACK_SIZE 16
@@ -216,6 +231,13 @@ struct token {
 		.size = sizeof(*((s *)0)->f), \
 	})
 
+/** Static initializer for ARGS() with arbitrary size. */
+#define ARGS_ENTRY_USZ(s, f, sz) \
+	(&(const struct arg){ \
+		.offset = offsetof(s, f), \
+		.size = (sz), \
+	})
+
 /** Parser output buffer layout expected by cmd_flow_parsed(). */
 struct buffer {
 	enum index command; /**< Flow command. */
@@ -306,6 +328,7 @@ static const enum index next_item[] = {
 	ITEM_PF,
 	ITEM_VF,
 	ITEM_PORT,
+	ITEM_RAW,
 	ZERO,
 };
 
@@ -323,6 +346,16 @@ static const enum index item_vf[] = {
 
 static const enum index item_port[] = {
 	ITEM_PORT_INDEX,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_raw[] = {
+	ITEM_RAW_RELATIVE,
+	ITEM_RAW_SEARCH,
+	ITEM_RAW_OFFSET,
+	ITEM_RAW_LIMIT,
+	ITEM_RAW_PATTERN,
 	ITEM_NEXT,
 	ZERO,
 };
@@ -363,11 +396,19 @@ static int parse_int(struct context *, const struct token *,
 static int parse_prefix(struct context *, const struct token *,
 			const char *, unsigned int,
 			void *, unsigned int);
+static int parse_boolean(struct context *, const struct token *,
+			 const char *, unsigned int,
+			 void *, unsigned int);
+static int parse_string(struct context *, const struct token *,
+			const char *, unsigned int,
+			void *, unsigned int);
 static int parse_port(struct context *, const struct token *,
 		      const char *, unsigned int,
 		      void *, unsigned int);
 static int comp_none(struct context *, const struct token *,
 		     unsigned int, char *, unsigned int);
+static int comp_boolean(struct context *, const struct token *,
+			unsigned int, char *, unsigned int);
 static int comp_action(struct context *, const struct token *,
 		       unsigned int, char *, unsigned int);
 static int comp_port(struct context *, const struct token *,
@@ -408,6 +449,20 @@ static const struct token token_list[] = {
 		.type = "PREFIX",
 		.help = "prefix length for bit-mask",
 		.call = parse_prefix,
+		.comp = comp_none,
+	},
+	[BOOLEAN] = {
+		.name = "{boolean}",
+		.type = "BOOLEAN",
+		.help = "any boolean value",
+		.call = parse_boolean,
+		.comp = comp_boolean,
+	},
+	[STRING] = {
+		.name = "{string}",
+		.type = "STRING",
+		.help = "fixed string",
+		.call = parse_string,
 		.comp = comp_none,
 	},
 	[RULE_ID] = {
@@ -653,6 +708,52 @@ static const struct token token_list[] = {
 		.help = "physical port index",
 		.next = NEXT(item_port, NEXT_ENTRY(UNSIGNED), item_param),
 		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_port, index)),
+	},
+	[ITEM_RAW] = {
+		.name = "raw",
+		.help = "match an arbitrary byte string",
+		.priv = PRIV_ITEM(RAW, ITEM_RAW_SIZE),
+		.next = NEXT(item_raw),
+		.call = parse_vc,
+	},
+	[ITEM_RAW_RELATIVE] = {
+		.name = "relative",
+		.help = "look for pattern after the previous item",
+		.next = NEXT(item_raw, NEXT_ENTRY(BOOLEAN), item_param),
+		.args = ARGS(ARGS_ENTRY_BF(struct rte_flow_item_raw,
+					   relative, 1)),
+	},
+	[ITEM_RAW_SEARCH] = {
+		.name = "search",
+		.help = "search pattern from offset (see also limit)",
+		.next = NEXT(item_raw, NEXT_ENTRY(BOOLEAN), item_param),
+		.args = ARGS(ARGS_ENTRY_BF(struct rte_flow_item_raw,
+					   search, 1)),
+	},
+	[ITEM_RAW_OFFSET] = {
+		.name = "offset",
+		.help = "absolute or relative offset for pattern",
+		.next = NEXT(item_raw, NEXT_ENTRY(INTEGER), item_param),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_raw, offset)),
+	},
+	[ITEM_RAW_LIMIT] = {
+		.name = "limit",
+		.help = "search area limit for start of pattern",
+		.next = NEXT(item_raw, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_raw, limit)),
+	},
+	[ITEM_RAW_PATTERN] = {
+		.name = "pattern",
+		.help = "byte string to look for",
+		.next = NEXT(item_raw,
+			     NEXT_ENTRY(STRING),
+			     NEXT_ENTRY(ITEM_PARAM_IS,
+					ITEM_PARAM_SPEC,
+					ITEM_PARAM_MASK)),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_raw, length),
+			     ARGS_ENTRY_USZ(struct rte_flow_item_raw,
+					    pattern,
+					    ITEM_RAW_PATTERN_SIZE)),
 	},
 	/* Validate/create actions. */
 	[ACTIONS] = {
@@ -1246,6 +1347,96 @@ error:
 	return -1;
 }
 
+/**
+ * Parse a string.
+ *
+ * Two arguments (ctx->args) are retrieved from the stack to store data and
+ * its length (in that order).
+ */
+static int
+parse_string(struct context *ctx, const struct token *token,
+	     const char *str, unsigned int len,
+	     void *buf, unsigned int size)
+{
+	const struct arg *arg_data = pop_args(ctx);
+	const struct arg *arg_len = pop_args(ctx);
+	char tmp[16]; /* Ought to be enough. */
+	int ret;
+
+	/* Arguments are expected. */
+	if (!arg_data)
+		return -1;
+	if (!arg_len) {
+		push_args(ctx, arg_data);
+		return -1;
+	}
+	size = arg_data->size;
+	/* Bit-mask fill is not supported. */
+	if (arg_data->mask || size < len)
+		goto error;
+	if (!ctx->object)
+		return len;
+	/* Let parse_int() fill length information first. */
+	ret = snprintf(tmp, sizeof(tmp), "%u", len);
+	if (ret < 0)
+		goto error;
+	push_args(ctx, arg_len);
+	ret = parse_int(ctx, token, tmp, ret, NULL, 0);
+	if (ret < 0) {
+		pop_args(ctx);
+		goto error;
+	}
+	buf = (uint8_t *)ctx->object + arg_data->offset;
+	/* Output buffer is not necessarily NUL-terminated. */
+	memcpy(buf, str, len);
+	memset((uint8_t *)buf + len, 0x55, size - len);
+	if (ctx->objmask)
+		memset((uint8_t *)ctx->objmask + arg_data->offset, 0xff, len);
+	return len;
+error:
+	push_args(ctx, arg_len);
+	push_args(ctx, arg_data);
+	return -1;
+}
+
+/** Boolean values (even indices stand for false). */
+static const char *const boolean_name[] = {
+	"0", "1",
+	"false", "true",
+	"no", "yes",
+	"N", "Y",
+	NULL,
+};
+
+/**
+ * Parse a boolean value.
+ *
+ * Last argument (ctx->args) is retrieved to determine storage size and
+ * location.
+ */
+static int
+parse_boolean(struct context *ctx, const struct token *token,
+	      const char *str, unsigned int len,
+	      void *buf, unsigned int size)
+{
+	const struct arg *arg = pop_args(ctx);
+	unsigned int i;
+	int ret;
+
+	/* Argument is expected. */
+	if (!arg)
+		return -1;
+	for (i = 0; boolean_name[i]; ++i)
+		if (!strncmp(str, boolean_name[i], len))
+			break;
+	/* Process token as integer. */
+	if (boolean_name[i])
+		str = i & 1 ? "1" : "0";
+	push_args(ctx, arg);
+	ret = parse_int(ctx, token, str, strlen(str), buf, size);
+	return ret > 0 ? (int)len : ret;
+}
+
 /** Parse port and update context. */
 static int
 parse_port(struct context *ctx, const struct token *token,
@@ -1282,6 +1473,23 @@ comp_none(struct context *ctx, const struct token *token,
 	(void)buf;
 	(void)size;
 	return 0;
+}
+
+/** Complete boolean values. */
+static int
+comp_boolean(struct context *ctx, const struct token *token,
+	     unsigned int ent, char *buf, unsigned int size)
+{
+	unsigned int i;
+
+	(void)ctx;
+	(void)token;
+	for (i = 0; boolean_name[i]; ++i)
+		if (buf && i == ent)
+			return snprintf(buf, size, "%s", boolean_name[i]);
+	if (buf)
+		return -1;
+	return i;
 }
 
 /** Complete action names. */
