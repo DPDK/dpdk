@@ -101,6 +101,11 @@ enum index {
 	ITEM_INVERT,
 	ITEM_ANY,
 	ITEM_ANY_NUM,
+	ITEM_PF,
+	ITEM_VF,
+	ITEM_VF_ID,
+	ITEM_PORT,
+	ITEM_PORT_INDEX,
 
 	/* Validate/create actions. */
 	ACTIONS,
@@ -298,11 +303,26 @@ static const enum index next_item[] = {
 	ITEM_VOID,
 	ITEM_INVERT,
 	ITEM_ANY,
+	ITEM_PF,
+	ITEM_VF,
+	ITEM_PORT,
 	ZERO,
 };
 
 static const enum index item_any[] = {
 	ITEM_ANY_NUM,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_vf[] = {
+	ITEM_VF_ID,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_port[] = {
+	ITEM_PORT_INDEX,
 	ITEM_NEXT,
 	ZERO,
 };
@@ -600,6 +620,39 @@ static const struct token token_list[] = {
 		.help = "number of layers covered",
 		.next = NEXT(item_any, NEXT_ENTRY(UNSIGNED), item_param),
 		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_any, num)),
+	},
+	[ITEM_PF] = {
+		.name = "pf",
+		.help = "match packets addressed to the physical function",
+		.priv = PRIV_ITEM(PF, 0),
+		.next = NEXT(NEXT_ENTRY(ITEM_NEXT)),
+		.call = parse_vc,
+	},
+	[ITEM_VF] = {
+		.name = "vf",
+		.help = "match packets addressed to a virtual function ID",
+		.priv = PRIV_ITEM(VF, sizeof(struct rte_flow_item_vf)),
+		.next = NEXT(item_vf),
+		.call = parse_vc,
+	},
+	[ITEM_VF_ID] = {
+		.name = "id",
+		.help = "destination VF ID",
+		.next = NEXT(item_vf, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_vf, id)),
+	},
+	[ITEM_PORT] = {
+		.name = "port",
+		.help = "device-specific physical port index to use",
+		.priv = PRIV_ITEM(PORT, sizeof(struct rte_flow_item_port)),
+		.next = NEXT(item_port),
+		.call = parse_vc,
+	},
+	[ITEM_PORT_INDEX] = {
+		.name = "index",
+		.help = "physical port index",
+		.next = NEXT(item_port, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_port, index)),
 	},
 	/* Validate/create actions. */
 	[ACTIONS] = {
