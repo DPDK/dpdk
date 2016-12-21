@@ -3720,14 +3720,6 @@ enum ixgbe_fc_mode {
 	ixgbe_fc_default
 };
 
-/* Master/slave control */
-enum ixgbe_ms_type {
-	ixgbe_ms_hw_default = 0,
-	ixgbe_ms_force_master,
-	ixgbe_ms_force_slave,
-	ixgbe_ms_auto
-};
-
 /* Smart Speed Settings */
 #define IXGBE_SMARTSPEED_MAX_RETRIES	3
 enum ixgbe_smart_speed {
