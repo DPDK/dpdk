@@ -83,6 +83,9 @@ extern "C" {
 /* maximum buffer size for parsed result */
 #define CMDLINE_PARSE_RESULT_BUFSIZE 8192
 
+/* maximum number of dynamic tokens */
+#define CMDLINE_PARSE_DYNAMIC_TOKENS 128
+
 /**
  * Stores a pointer to the ops struct, and the offset: the place to
  * write the parsed result in the destination structure.
@@ -130,6 +133,24 @@ struct cmdline;
  * Store a instruction, which is a pointer to a callback function and
  * its parameter that is called when the instruction is parsed, a help
  * string, and a list of token composing this instruction.
+ *
+ * When no tokens are defined (tokens[0] == NULL), they are retrieved
+ * dynamically by calling f() as follows:
+ *
+ *  f((struct cmdline_token_hdr **)&token_hdr,
+ *    NULL,
+ *    (struct cmdline_token_hdr *[])tokens));
+ *
+ * The address of the resulting token is expected at the location pointed by
+ * the first argument. Can be set to NULL to end the list.
+ *
+ * The cmdline argument (struct cmdline *) is always NULL.
+ *
+ * The last argument points to the NULL-terminated list of dynamic tokens
+ * defined so far. Since token_hdr points to an index of that list, the
+ * current index can be derived as follows:
+ *
+ *  int index = token_hdr - &(*tokens)[0];
  */
 struct cmdline_inst {
 	/* f(parsed_struct, data) */
