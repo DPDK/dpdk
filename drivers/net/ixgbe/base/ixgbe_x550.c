@@ -456,11 +456,19 @@ STATIC s32 ixgbe_identify_phy_x550em(struct ixgbe_hw *hw)
 		hw->phy.type = ixgbe_phy_x550em_kr;
 		break;
 	case IXGBE_DEV_ID_X550EM_A_10G_T:
-	case IXGBE_DEV_ID_X550EM_A_1G_T:
-	case IXGBE_DEV_ID_X550EM_A_1G_T_L:
 	case IXGBE_DEV_ID_X550EM_X_1G_T:
 	case IXGBE_DEV_ID_X550EM_X_10G_T:
 		return ixgbe_identify_phy_generic(hw);
+	case IXGBE_DEV_ID_X550EM_A_1G_T:
+	case IXGBE_DEV_ID_X550EM_A_1G_T_L:
+		hw->phy.type = ixgbe_phy_fw;
+		hw->phy.ops.read_reg = NULL;
+		hw->phy.ops.write_reg = NULL;
+		if (hw->bus.lan_id)
+			hw->phy.phy_semaphore_mask |= IXGBE_GSSR_PHY1_SM;
+		else
+			hw->phy.phy_semaphore_mask |= IXGBE_GSSR_PHY0_SM;
+		break;
 	default:
 		break;
 	}
@@ -574,7 +582,7 @@ static s32 ixgbe_identify_phy_fw(struct ixgbe_hw *hw)
 	else
 		hw->phy.phy_semaphore_mask = IXGBE_GSSR_PHY0_SM;
 
-	hw->phy.type = ixgbe_phy_m88;
+	hw->phy.type = ixgbe_phy_fw;
 	hw->phy.ops.read_reg = NULL;
 	hw->phy.ops.write_reg = NULL;
 	return ixgbe_get_phy_id_fw(hw);
@@ -1907,11 +1915,11 @@ STATIC s32 ixgbe_setup_sgmii(struct ixgbe_hw *hw, ixgbe_link_speed speed,
 }
 
 /**
- * ixgbe_setup_sgmii_m88 - Set up link for sgmii with Marvell PHYs
+ * ixgbe_setup_sgmii_fw - Set up link for sgmii with firmware-controlled PHYs
  * @hw: pointer to hardware structure
  */
-STATIC s32 ixgbe_setup_sgmii_m88(struct ixgbe_hw *hw, ixgbe_link_speed speed,
-				 bool autoneg_wait)
+STATIC s32 ixgbe_setup_sgmii_fw(struct ixgbe_hw *hw, ixgbe_link_speed speed,
+				bool autoneg_wait)
 {
 	struct ixgbe_mac_info *mac = &hw->mac;
 	u32 lval, sval, flx_val;
@@ -2011,7 +2019,9 @@ void ixgbe_init_mac_link_ops_X550em(struct ixgbe_hw *hw)
 		if (hw->mac.type == ixgbe_mac_X550EM_a) {
 			if (hw->device_id == IXGBE_DEV_ID_X550EM_A_1G_T ||
 			    hw->device_id == IXGBE_DEV_ID_X550EM_A_1G_T_L) {
-				mac->ops.setup_link = ixgbe_setup_sgmii_m88;
+				mac->ops.setup_link = ixgbe_setup_sgmii_fw;
+				mac->ops.check_link =
+						   ixgbe_check_mac_link_generic;
 			} else {
 				mac->ops.setup_link =
 						  ixgbe_setup_mac_link_t_X550em;
@@ -2044,6 +2054,12 @@ s32 ixgbe_get_link_capabilities_X550em(struct ixgbe_hw *hw,
 	DEBUGFUNC("ixgbe_get_link_capabilities_X550em");
 
 
+	if (hw->phy.type == ixgbe_phy_fw) {
+		*autoneg = true;
+		*speed = hw->phy.speeds_supported;
+		return 0;
+	}
+
 	/* SFP */
 	if (hw->phy.media_type == ixgbe_media_type_fiber) {
 
@@ -2067,11 +2083,6 @@ s32 ixgbe_get_link_capabilities_X550em(struct ixgbe_hw *hw,
 			*speed = IXGBE_LINK_SPEED_10GB_FULL;
 	} else {
 		switch (hw->phy.type) {
-		case ixgbe_phy_m88:
-			*speed = IXGBE_LINK_SPEED_1GB_FULL |
-				 IXGBE_LINK_SPEED_100_FULL |
-				 IXGBE_LINK_SPEED_10_FULL;
-			break;
 		case ixgbe_phy_sgmii:
 			*speed = IXGBE_LINK_SPEED_1GB_FULL;
 			break;
@@ -2348,262 +2359,47 @@ STATIC s32 ixgbe_setup_kr_speed_x550em(struct ixgbe_hw *hw,
 }
 
 /**
- * ixgbe_setup_m88 - setup m88 PHY
+ * ixgbe_reset_phy_fw - Reset firmware-controlled PHYs
  * @hw: pointer to hardware structure
  */
-STATIC s32 ixgbe_setup_m88(struct ixgbe_hw *hw)
+static s32 ixgbe_reset_phy_fw(struct ixgbe_hw *hw)
 {
-	u32 mask = hw->phy.phy_semaphore_mask | IXGBE_GSSR_TOKEN_SM;
-	u16 reg;
+	u32 store[FW_PHY_ACT_DATA_COUNT] = { 0 };
 	s32 rc;
 
 	if (hw->phy.reset_disable || ixgbe_check_reset_blocked(hw))
 		return IXGBE_SUCCESS;
 
-	rc = hw->mac.ops.acquire_swfw_sync(hw, mask);
+	rc = ixgbe_fw_phy_activity(hw, FW_PHY_ACT_PHY_SW_RESET, &store);
+	if (rc)
+		return rc;
+	memset(store, 0, sizeof(store));
+
+	rc = ixgbe_fw_phy_activity(hw, FW_PHY_ACT_INIT_PHY, &store);
 	if (rc)
 		return rc;
 
-	rc = hw->phy.ops.read_reg_mdi(hw, IXGBE_M88E1500_COPPER_CTRL, 0, &reg);
-	if (rc)
-		goto out;
-	if (reg & IXGBE_M88E1500_COPPER_CTRL_POWER_DOWN) {
-		reg &= ~IXGBE_M88E1500_COPPER_CTRL_POWER_DOWN;
-		hw->phy.ops.write_reg_mdi(hw, IXGBE_M88E1500_COPPER_CTRL, 0,
-					  reg);
-	}
-
-	rc = hw->phy.ops.read_reg_mdi(hw, IXGBE_M88E1500_MAC_CTRL_1, 0, &reg);
-	if (rc)
-		goto out;
-	if (reg & IXGBE_M88E1500_MAC_CTRL_1_POWER_DOWN) {
-		reg &= ~IXGBE_M88E1500_MAC_CTRL_1_POWER_DOWN;
-		hw->phy.ops.write_reg_mdi(hw, IXGBE_M88E1500_MAC_CTRL_1, 0,
-					  reg);
-	}
-
-	rc = hw->phy.ops.write_reg_mdi(hw, IXGBE_M88E1500_PAGE_ADDR, 0, 2);
-	if (rc)
-		goto out;
-
-	rc = hw->phy.ops.read_reg_mdi(hw, IXGBE_M88E1500_MAC_SPEC_CTRL, 0,
-				      &reg);
-	if (rc)
-		goto out;
-	if (reg & IXGBE_M88E1500_MAC_SPEC_CTRL_POWER_DOWN) {
-		reg &= ~IXGBE_M88E1500_MAC_SPEC_CTRL_POWER_DOWN;
-		hw->phy.ops.write_reg_mdi(hw, IXGBE_M88E1500_MAC_SPEC_CTRL, 0,
-					  reg);
-		rc = hw->phy.ops.write_reg_mdi(hw, IXGBE_M88E1500_PAGE_ADDR, 0,
-					       0);
-		if (rc)
-			goto out;
-		rc = hw->phy.ops.read_reg_mdi(hw, IXGBE_M88E1500_COPPER_CTRL, 0,
-					      &reg);
-		if (rc)
-			goto out;
-		reg |= IXGBE_M88E1500_COPPER_CTRL_RESET;
-		hw->phy.ops.write_reg_mdi(hw, IXGBE_M88E1500_COPPER_CTRL, 0,
-					  reg);
-		usec_delay(50);
-	} else {
-		rc = hw->phy.ops.write_reg_mdi(hw, IXGBE_M88E1500_PAGE_ADDR, 0,
-					       0);
-		if (rc)
-			goto out;
-	}
-
-	rc = hw->phy.ops.read_reg_mdi(hw, IXGBE_M88E1500_COPPER_CTRL, 0, &reg);
-	if (rc)
-		goto out;
-
-	if (!(reg & IXGBE_M88E1500_COPPER_CTRL_AN_EN)) {
-		reg |= IXGBE_M88E1500_COPPER_CTRL_AN_EN;
-		hw->phy.ops.write_reg_mdi(hw, IXGBE_M88E1500_COPPER_CTRL, 0,
-					  reg);
-	}
-
-	rc = hw->phy.ops.read_reg_mdi(hw, IXGBE_M88E1500_1000T_CTRL, 0, &reg);
-	if (rc)
-		goto out;
-	reg &= ~IXGBE_M88E1500_1000T_CTRL_HALF_DUPLEX;
-	reg &= ~IXGBE_M88E1500_1000T_CTRL_FULL_DUPLEX;
-	if (hw->phy.autoneg_advertised & IXGBE_LINK_SPEED_1GB_FULL)
-		reg |= IXGBE_M88E1500_1000T_CTRL_FULL_DUPLEX;
-	hw->phy.ops.write_reg_mdi(hw, IXGBE_M88E1500_1000T_CTRL, 0, reg);
-
-	rc = hw->phy.ops.read_reg_mdi(hw, IXGBE_M88E1500_COPPER_AN, 0, &reg);
-	if (rc)
-		goto out;
-	reg &= ~IXGBE_M88E1500_COPPER_AN_T4;
-	reg &= ~IXGBE_M88E1500_COPPER_AN_100TX_FD;
-	reg &= ~IXGBE_M88E1500_COPPER_AN_100TX_HD;
-	reg &= ~IXGBE_M88E1500_COPPER_AN_10TX_FD;
-	reg &= ~IXGBE_M88E1500_COPPER_AN_10TX_HD;
-
-	/* Flow control auto negotiation configuration was moved from here to
-	 * the function ixgbe_setup_fc_sgmii_x550em_a()
-	 */
-
-	if (hw->phy.autoneg_advertised & IXGBE_LINK_SPEED_100_FULL)
-		reg |= IXGBE_M88E1500_COPPER_AN_100TX_FD;
-	if (hw->phy.autoneg_advertised & IXGBE_LINK_SPEED_10_FULL)
-		reg |= IXGBE_M88E1500_COPPER_AN_10TX_FD;
-	hw->phy.ops.write_reg_mdi(hw, IXGBE_M88E1500_COPPER_AN, 0, reg);
-
-	rc = hw->phy.ops.read_reg_mdi(hw, IXGBE_M88E1500_COPPER_CTRL, 0, &reg);
-	if (rc)
-		goto out;
-	reg |= IXGBE_M88E1500_COPPER_CTRL_RESTART_AN;
-	hw->phy.ops.write_reg_mdi(hw, IXGBE_M88E1500_COPPER_CTRL, 0, reg);
-
-
-	hw->mac.ops.release_swfw_sync(hw, mask);
-	return rc;
-
-out:
-	hw->phy.ops.write_reg_mdi(hw, IXGBE_M88E1500_PAGE_ADDR, 0, 0);
-	hw->mac.ops.release_swfw_sync(hw, mask);
-	return rc;
+	return ixgbe_setup_fw_link(hw);
 }
 
 /**
- * ixgbe_reset_phy_m88e1500 - Reset m88e1500 PHY
+ * ixgbe_check_overtemp_fw - Check firmware-controlled PHYs for overtemp
  * @hw: pointer to hardware structure
- *
- * The PHY token must be held when calling this function.
  */
-static s32 ixgbe_reset_phy_m88e1500(struct ixgbe_hw *hw)
+static s32 ixgbe_check_overtemp_fw(struct ixgbe_hw *hw)
 {
-	u16 reg;
+	u32 store[FW_PHY_ACT_DATA_COUNT] = { 0 };
 	s32 rc;
 
-	rc = hw->phy.ops.write_reg_mdi(hw, IXGBE_M88E1500_PAGE_ADDR, 0, 0);
+	rc = ixgbe_fw_phy_activity(hw, FW_PHY_ACT_GET_LINK_INFO, &store);
 	if (rc)
 		return rc;
 
-	rc = hw->phy.ops.read_reg_mdi(hw, IXGBE_M88E1500_COPPER_CTRL, 0, &reg);
-	if (rc)
-		return rc;
-
-	reg |= IXGBE_M88E1500_COPPER_CTRL_RESET;
-	rc = hw->phy.ops.write_reg_mdi(hw, IXGBE_M88E1500_COPPER_CTRL, 0, reg);
-
-	usec_delay(10);
-
-	return rc;
-}
-
-/**
- * ixgbe_reset_phy_m88e1543 - Reset m88e1543 PHY
- * @hw: pointer to hardware structure
- *
- * The PHY token must be held when calling this function.
- */
-static s32 ixgbe_reset_phy_m88e1543(struct ixgbe_hw *hw)
-{
-	return hw->phy.ops.write_reg_mdi(hw, IXGBE_M88E1500_PAGE_ADDR, 0, 0);
-}
-
-/**
- * ixgbe_reset_phy_m88 - Reset m88 PHY
- * @hw: pointer to hardware structure
- */
-STATIC s32 ixgbe_reset_phy_m88(struct ixgbe_hw *hw)
-{
-	u32 mask = hw->phy.phy_semaphore_mask | IXGBE_GSSR_TOKEN_SM;
-	u16 reg;
-	s32 rc;
-
-	if (hw->phy.reset_disable || ixgbe_check_reset_blocked(hw))
-		return IXGBE_SUCCESS;
-
-	rc = hw->mac.ops.acquire_swfw_sync(hw, mask);
-	if (rc)
-		return rc;
-
-	switch (hw->phy.id) {
-	case IXGBE_M88E1500_E_PHY_ID:
-		rc = ixgbe_reset_phy_m88e1500(hw);
-		break;
-	case IXGBE_M88E1543_E_PHY_ID:
-		rc = ixgbe_reset_phy_m88e1543(hw);
-		break;
-	default:
-		rc = IXGBE_ERR_PHY;
-		break;
+	if (store[0] & FW_PHY_ACT_GET_LINK_INFO_TEMP) {
+		ixgbe_shutdown_fw_phy(hw);
+		return IXGBE_ERR_OVERTEMP;
 	}
-
-	rc = hw->phy.ops.write_reg_mdi(hw, IXGBE_M88E1500_PAGE_ADDR, 0, 1);
-	if (rc)
-		goto out;
-
-	reg = IXGBE_M88E1500_FIBER_CTRL_RESET |
-	      IXGBE_M88E1500_FIBER_CTRL_DUPLEX_FULL |
-	      IXGBE_M88E1500_FIBER_CTRL_SPEED_MSB;
-	rc = hw->phy.ops.write_reg_mdi(hw, IXGBE_M88E1500_FIBER_CTRL, 0, reg);
-	if (rc)
-		goto out;
-
-	rc = hw->phy.ops.write_reg_mdi(hw, IXGBE_M88E1500_PAGE_ADDR, 0, 18);
-	if (rc)
-		goto out;
-
-	reg = IXGBE_M88E1500_GEN_CTRL_RESET |
-	      IXGBE_M88E1500_GEN_CTRL_MODE_SGMII_COPPER;
-	rc = hw->phy.ops.write_reg_mdi(hw, IXGBE_M88E1500_GEN_CTRL, 0, reg);
-	if (rc)
-		goto out;
-
-	rc = hw->phy.ops.write_reg_mdi(hw, IXGBE_M88E1500_PAGE_ADDR, 0, 1);
-	if (rc)
-		goto out;
-
-	reg = IXGBE_M88E1500_FIBER_CTRL_RESET |
-	      IXGBE_M88E1500_FIBER_CTRL_AN_EN |
-	      IXGBE_M88E1500_FIBER_CTRL_DUPLEX_FULL |
-	      IXGBE_M88E1500_FIBER_CTRL_SPEED_MSB;
-	rc = hw->phy.ops.write_reg_mdi(hw, IXGBE_M88E1500_FIBER_CTRL, 0, reg);
-	if (rc)
-		goto out;
-
-	rc = hw->phy.ops.write_reg_mdi(hw, IXGBE_M88E1500_PAGE_ADDR, 0, 0);
-	if (rc)
-		goto out;
-
-	reg = (IXGBE_M88E1500_MAC_CTRL_1_DWN_4X <<
-	       IXGBE_M88E1500_MAC_CTRL_1_DWN_SHIFT) |
-	      (IXGBE_M88E1500_MAC_CTRL_1_ED_TM <<
-	       IXGBE_M88E1500_MAC_CTRL_1_ED_SHIFT) |
-	      (IXGBE_M88E1500_MAC_CTRL_1_MDIX_AUTO <<
-	       IXGBE_M88E1500_MAC_CTRL_1_MDIX_SHIFT);
-	rc = hw->phy.ops.write_reg_mdi(hw, IXGBE_M88E1500_MAC_CTRL_1, 0, reg);
-	if (rc)
-		goto out;
-
-	reg = IXGBE_M88E1500_COPPER_CTRL_RESET |
-	      IXGBE_M88E1500_COPPER_CTRL_AN_EN |
-	      IXGBE_M88E1500_COPPER_CTRL_RESTART_AN |
-	      IXGBE_M88E1500_COPPER_CTRL_FULL_DUPLEX |
-	      IXGBE_M88E1500_COPPER_CTRL_SPEED_MSB;
-	rc = hw->phy.ops.write_reg_mdi(hw, IXGBE_M88E1500_COPPER_CTRL, 0, reg);
-	if (rc)
-		goto out;
-
-	hw->mac.ops.release_swfw_sync(hw, mask);
-
-	/* In case of first reset set advertised speeds to default value */
-	if (!hw->phy.autoneg_advertised)
-		hw->phy.autoneg_advertised = IXGBE_LINK_SPEED_1GB_FULL |
-					     IXGBE_LINK_SPEED_100_FULL |
-					     IXGBE_LINK_SPEED_10_FULL;
-
-	return ixgbe_setup_m88(hw);
-
-out:
-	hw->phy.ops.write_reg_mdi(hw, IXGBE_M88E1500_PAGE_ADDR, 0, 0);
-	hw->mac.ops.release_swfw_sync(hw, mask);
-	return rc;
+	return IXGBE_SUCCESS;
 }
 
 /**
@@ -2661,6 +2457,7 @@ s32 ixgbe_init_phy_ops_X550em(struct ixgbe_hw *hw)
 		phy->ops.write_reg_mdi = ixgbe_write_phy_reg_mdi_22;
 		hw->phy.ops.read_reg = ixgbe_read_phy_reg_x550a;
 		hw->phy.ops.write_reg = ixgbe_write_phy_reg_x550a;
+		phy->ops.check_overtemp = ixgbe_check_overtemp_fw;
 		if (hw->bus.lan_id)
 			hw->phy.phy_semaphore_mask |= IXGBE_GSSR_PHY1_SM;
 		else
@@ -2725,9 +2522,9 @@ s32 ixgbe_init_phy_ops_X550em(struct ixgbe_hw *hw)
 	case ixgbe_phy_sgmii:
 		phy->ops.setup_link = NULL;
 		break;
-	case ixgbe_phy_m88:
-		phy->ops.setup_link = ixgbe_setup_m88;
-		phy->ops.reset = ixgbe_reset_phy_m88;
+	case ixgbe_phy_fw:
+		phy->ops.setup_link = ixgbe_setup_fw_link;
+		phy->ops.reset = ixgbe_reset_phy_fw;
 		break;
 	default:
 		break;
@@ -2818,8 +2615,10 @@ s32 ixgbe_reset_hw_X550em(struct ixgbe_hw *hw)
 		return status;
 
 	/* Reset PHY */
-	if (!hw->phy.reset_disable && hw->phy.ops.reset)
-		hw->phy.ops.reset(hw);
+	if (!hw->phy.reset_disable && hw->phy.ops.reset) {
+		if (hw->phy.ops.reset(hw) == IXGBE_ERR_OVERTEMP)
+			return IXGBE_ERR_OVERTEMP;
+	}
 
 mac_reset_top:
 	/* Issue global reset to the MAC.  Needs to be SW reset if link is up.
@@ -3980,7 +3779,7 @@ u32 ixgbe_get_supported_physical_layer_X550em(struct ixgbe_hw *hw)
 		if (ext_ability & IXGBE_MDIO_PHY_1000BASET_ABILITY)
 			physical_layer |= IXGBE_PHYSICAL_LAYER_1000BASE_T;
 		break;
-	case ixgbe_phy_m88:
+	case ixgbe_phy_fw:
 		physical_layer = IXGBE_PHYSICAL_LAYER_1000BASE_T;
 	default:
 		break;
@@ -4387,9 +4186,10 @@ void ixgbe_fc_autoneg_fiber_x550em_a(struct ixgbe_hw *hw)
 void ixgbe_fc_autoneg_sgmii_x550em_a(struct ixgbe_hw *hw)
 {
 	s32 status = IXGBE_ERR_FC_NOT_NEGOTIATED;
-	u16 reg, pcs_an_lp, pcs_an;
+	u32 info[FW_PHY_ACT_DATA_COUNT] = { 0 };
 	ixgbe_link_speed speed;
 	bool link_up;
+	u32 fc;
 
 	/* AN should have completed when the cable was plugged in.
 	 * Look for reasons to bail out.  Bail out if:
@@ -4409,34 +4209,33 @@ void ixgbe_fc_autoneg_sgmii_x550em_a(struct ixgbe_hw *hw)
 	}
 
 	/* Check if auto-negotiation has completed */
-	status = hw->phy.ops.read_reg(hw, IXGBE_M88E1500_COPPER_STATUS,
-					IXGBE_MDIO_ZERO_DEV_TYPE, &reg);
+	status = ixgbe_fw_phy_activity(hw, FW_PHY_ACT_GET_LINK_INFO, &info);
 	if (status != IXGBE_SUCCESS ||
-	    (reg & IXGBE_M88E1500_COPPER_STATUS_AN_DONE) == 0) {
+	    !(info[0] & FW_PHY_ACT_GET_LINK_INFO_AN_COMPLETE)) {
 		DEBUGOUT("Auto-Negotiation did not complete\n");
 		status = IXGBE_ERR_FC_NOT_NEGOTIATED;
 		goto out;
 	}
 
-	/* Get the advertized flow control */
-	status = hw->phy.ops.read_reg(hw, IXGBE_M88E1500_COPPER_AN,
-					IXGBE_MDIO_ZERO_DEV_TYPE, &pcs_an);
-	if (status != IXGBE_SUCCESS)
-		goto out;
+	/* Get the advertized flow control and modify it to indicate
+	 * pause and asymmetric pause instead of rx and tx
+	 */
+	fc = info[0];
+	if (fc & FW_PHY_ACT_GET_LINK_INFO_FC_RX)
+		fc ^= FW_PHY_ACT_GET_LINK_INFO_FC_TX;
 
-	/* Get link partner's flow control */
-	status = hw->phy.ops.read_reg(hw,
-			IXGBE_M88E1500_COPPER_AN_LP_ABILITY,
-					IXGBE_MDIO_ZERO_DEV_TYPE, &pcs_an_lp);
-	if (status != IXGBE_SUCCESS)
-		goto out;
+	/* Modify link partner's flow control to indicate pause and
+	 * asymmetric pause instead of rx and tx
+	 */
+	if (fc & FW_PHY_ACT_GET_LINK_INFO_LP_FC_RX)
+		fc ^= FW_PHY_ACT_GET_LINK_INFO_LP_FC_TX;
 
 	/* Negotiate the flow control */
-	status = ixgbe_negotiate_fc(hw, (u32)pcs_an, (u32)pcs_an_lp,
-				    IXGBE_M88E1500_COPPER_AN_PAUSE,
-				    IXGBE_M88E1500_COPPER_AN_AS_PAUSE,
-				    IXGBE_M88E1500_COPPER_AN_LP_PAUSE,
-				    IXGBE_M88E1500_COPPER_AN_LP_AS_PAUSE);
+	status = ixgbe_negotiate_fc(hw, fc, fc,
+				    FW_PHY_ACT_GET_LINK_INFO_FC_RX,
+				    FW_PHY_ACT_GET_LINK_INFO_FC_TX,
+				    FW_PHY_ACT_GET_LINK_INFO_LP_FC_RX,
+				    FW_PHY_ACT_GET_LINK_INFO_LP_FC_TX);
 
 out:
 	if (status == IXGBE_SUCCESS) {
@@ -4445,83 +4244,6 @@ out:
 		hw->fc.fc_was_autonegged = false;
 		hw->fc.current_mode = hw->fc.requested_mode;
 	}
-}
-
-/**
- *  ixgbe_setup_fc_sgmii_x550em_a - Set up flow control
- *  @hw: pointer to hardware structure
- *
- *  Called at init time to set up flow control.
- **/
-s32 ixgbe_setup_fc_sgmii_x550em_a(struct ixgbe_hw *hw)
-{
-	u16 reg;
-	s32 rc;
-
-	/* Validate the requested mode */
-	if (hw->fc.strict_ieee && hw->fc.requested_mode == ixgbe_fc_rx_pause) {
-		ERROR_REPORT1(IXGBE_ERROR_UNSUPPORTED,
-			      "ixgbe_fc_rx_pause not valid in strict IEEE mode\n");
-		return IXGBE_ERR_INVALID_LINK_SETTINGS;
-	}
-
-	if (hw->fc.requested_mode == ixgbe_fc_default)
-		hw->fc.requested_mode = ixgbe_fc_full;
-
-	/* Read contents of the Auto-Negotiation register, page 0 reg 4 */
-	rc = hw->phy.ops.read_reg(hw, IXGBE_M88E1500_COPPER_AN,
-					IXGBE_MDIO_ZERO_DEV_TYPE, &reg);
-	if (rc)
-		goto out;
-
-	/* Disable all the settings related to Flow control Auto-negotiation */
-	reg &= ~IXGBE_M88E1500_COPPER_AN_AS_PAUSE;
-	reg &= ~IXGBE_M88E1500_COPPER_AN_PAUSE;
-
-	/* Configure the Asymmetric and symmetric pause according to the user
-	 * requested mode.
-	 */
-	switch (hw->fc.requested_mode) {
-	case ixgbe_fc_full:
-		reg |= IXGBE_M88E1500_COPPER_AN_PAUSE;
-		reg |= IXGBE_M88E1500_COPPER_AN_AS_PAUSE;
-		break;
-	case ixgbe_fc_rx_pause:
-		reg |= IXGBE_M88E1500_COPPER_AN_PAUSE;
-		reg |= IXGBE_M88E1500_COPPER_AN_AS_PAUSE;
-		break;
-	case ixgbe_fc_tx_pause:
-		reg |= IXGBE_M88E1500_COPPER_AN_AS_PAUSE;
-		break;
-	default:
-		break;
-	}
-
-	/* Write back to the Auto-Negotiation register with newly configured
-	 * fields
-	 */
-	hw->phy.ops.write_reg(hw, IXGBE_M88E1500_COPPER_AN,
-					IXGBE_MDIO_ZERO_DEV_TYPE, reg);
-
-	/* In this section of the code we restart Auto-negotiation */
-
-	/* Read the CONTROL register, Page 0 reg 0 */
-	rc = hw->phy.ops.read_reg(hw, IXGBE_M88E1500_COPPER_CTRL,
-					IXGBE_MDIO_ZERO_DEV_TYPE, &reg);
-	if (rc)
-		goto out;
-
-	/* Set the bit to restart Auto-Neg. The bit to enable Auto-neg is ON
-	 * by default
-	 */
-	reg |= IXGBE_M88E1500_COPPER_CTRL_RESTART_AN;
-
-	/* write the new values to the register to restart Auto-Negotiation */
-	hw->phy.ops.write_reg(hw, IXGBE_M88E1500_COPPER_CTRL,
-					IXGBE_MDIO_ZERO_DEV_TYPE, reg);
-
-out:
-	return rc;
 }
 
 /**

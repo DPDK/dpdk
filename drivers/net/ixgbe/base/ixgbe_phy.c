@@ -475,10 +475,6 @@ enum ixgbe_phy_type ixgbe_get_phy_type_from_id(u32 phy_id)
 	case X557_PHY_ID2:
 		phy_type = ixgbe_phy_x550em_ext_t;
 		break;
-	case IXGBE_M88E1500_E_PHY_ID:
-	case IXGBE_M88E1543_E_PHY_ID:
-		phy_type = ixgbe_phy_m88;
-		break;
 	default:
 		phy_type = ixgbe_phy_unknown;
 		break;

@@ -3663,7 +3663,7 @@ enum ixgbe_phy_type {
 	ixgbe_phy_qsfp_unknown,
 	ixgbe_phy_sfp_unsupported, /*Enforce bit set with unsupported module*/
 	ixgbe_phy_sgmii,
-	ixgbe_phy_m88,
+	ixgbe_phy_fw,
 	ixgbe_phy_generic
 };
 
