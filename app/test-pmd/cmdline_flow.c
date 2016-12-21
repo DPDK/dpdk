@@ -56,6 +56,7 @@ enum index {
 	/* Common tokens. */
 	INTEGER,
 	UNSIGNED,
+	RULE_ID,
 	PORT_ID,
 	GROUP_ID,
 
@@ -63,8 +64,12 @@ enum index {
 	FLOW,
 
 	/* Sub-level commands. */
+	DESTROY,
 	FLUSH,
 	LIST,
+
+	/* Destroy arguments. */
+	DESTROY_RULE,
 
 	/* List arguments. */
 	LIST_GROUP,
@@ -165,10 +170,20 @@ struct buffer {
 	uint16_t port; /**< Affected port ID. */
 	union {
 		struct {
+			uint32_t *rule;
+			uint32_t rule_n;
+		} destroy; /**< Destroy arguments. */
+		struct {
 			uint32_t *group;
 			uint32_t group_n;
 		} list; /**< List arguments. */
 	} args; /**< Command arguments. */
+};
+
+static const enum index next_destroy_attr[] = {
+	DESTROY_RULE,
+	END,
+	ZERO,
 };
 
 static const enum index next_list_attr[] = {
@@ -180,6 +195,9 @@ static const enum index next_list_attr[] = {
 static int parse_init(struct context *, const struct token *,
 		      const char *, unsigned int,
 		      void *, unsigned int);
+static int parse_destroy(struct context *, const struct token *,
+			 const char *, unsigned int,
+			 void *, unsigned int);
 static int parse_flush(struct context *, const struct token *,
 		       const char *, unsigned int,
 		       void *, unsigned int);
@@ -196,6 +214,8 @@ static int comp_none(struct context *, const struct token *,
 		     unsigned int, char *, unsigned int);
 static int comp_port(struct context *, const struct token *,
 		     unsigned int, char *, unsigned int);
+static int comp_rule_id(struct context *, const struct token *,
+			unsigned int, char *, unsigned int);
 
 /** Token definitions. */
 static const struct token token_list[] = {
@@ -225,6 +245,13 @@ static const struct token token_list[] = {
 		.call = parse_int,
 		.comp = comp_none,
 	},
+	[RULE_ID] = {
+		.name = "{rule id}",
+		.type = "RULE ID",
+		.help = "rule identifier",
+		.call = parse_int,
+		.comp = comp_rule_id,
+	},
 	[PORT_ID] = {
 		.name = "{port_id}",
 		.type = "PORT ID",
@@ -245,11 +272,19 @@ static const struct token token_list[] = {
 		.type = "{command} {port_id} [{arg} [...]]",
 		.help = "manage ingress/egress flow rules",
 		.next = NEXT(NEXT_ENTRY
-			     (FLUSH,
+			     (DESTROY,
+			      FLUSH,
 			      LIST)),
 		.call = parse_init,
 	},
 	/* Sub-level commands. */
+	[DESTROY] = {
+		.name = "destroy",
+		.help = "destroy specific flow rules",
+		.next = NEXT(NEXT_ENTRY(DESTROY_RULE), NEXT_ENTRY(PORT_ID)),
+		.args = ARGS(ARGS_ENTRY(struct buffer, port)),
+		.call = parse_destroy,
+	},
 	[FLUSH] = {
 		.name = "flush",
 		.help = "destroy all flow rules",
@@ -263,6 +298,14 @@ static const struct token token_list[] = {
 		.next = NEXT(next_list_attr, NEXT_ENTRY(PORT_ID)),
 		.args = ARGS(ARGS_ENTRY(struct buffer, port)),
 		.call = parse_list,
+	},
+	/* Destroy arguments. */
+	[DESTROY_RULE] = {
+		.name = "rule",
+		.help = "specify a rule identifier",
+		.next = NEXT(next_destroy_attr, NEXT_ENTRY(RULE_ID)),
+		.args = ARGS(ARGS_ENTRY_PTR(struct buffer, args.destroy.rule)),
+		.call = parse_destroy,
 	},
 	/* List arguments. */
 	[LIST_GROUP] = {
@@ -326,6 +369,39 @@ parse_init(struct context *ctx, const struct token *token,
 	memset(out, 0x00, sizeof(*out));
 	memset((uint8_t *)out + sizeof(*out), 0x22, size - sizeof(*out));
 	ctx->object = out;
+	return len;
+}
+
+/** Parse tokens for destroy command. */
+static int
+parse_destroy(struct context *ctx, const struct token *token,
+	      const char *str, unsigned int len,
+	      void *buf, unsigned int size)
+{
+	struct buffer *out = buf;
+
+	/* Token name must match. */
+	if (parse_default(ctx, token, str, len, NULL, 0) < 0)
+		return -1;
+	/* Nothing else to do if there is no buffer. */
+	if (!out)
+		return len;
+	if (!out->command) {
+		if (ctx->curr != DESTROY)
+			return -1;
+		if (sizeof(*out) > size)
+			return -1;
+		out->command = ctx->curr;
+		ctx->object = out;
+		out->args.destroy.rule =
+			(void *)RTE_ALIGN_CEIL((uintptr_t)(out + 1),
+					       sizeof(double));
+		return len;
+	}
+	if (((uint8_t *)(out->args.destroy.rule + out->args.destroy.rule_n) +
+	     sizeof(*out->args.destroy.rule)) > (uint8_t *)out + size)
+		return -1;
+	ctx->object = out->args.destroy.rule + out->args.destroy.rule_n++;
 	return len;
 }
 
@@ -487,6 +563,30 @@ comp_port(struct context *ctx, const struct token *token,
 	FOREACH_PORT(p, ports) {
 		if (buf && i == ent)
 			return snprintf(buf, size, "%u", p);
+		++i;
+	}
+	if (buf)
+		return -1;
+	return i;
+}
+
+/** Complete available rule IDs. */
+static int
+comp_rule_id(struct context *ctx, const struct token *token,
+	     unsigned int ent, char *buf, unsigned int size)
+{
+	unsigned int i = 0;
+	struct rte_port *port;
+	struct port_flow *pf;
+
+	(void)token;
+	if (port_id_is_invalid(ctx->port, DISABLED_WARN) ||
+	    ctx->port == (uint16_t)RTE_PORT_ALL)
+		return -1;
+	port = &ports[ctx->port];
+	for (pf = port->flow_list; pf != NULL; pf = pf->next) {
+		if (buf && i == ent)
+			return snprintf(buf, size, "%u", pf->id);
 		++i;
 	}
 	if (buf)
@@ -736,6 +836,10 @@ static void
 cmd_flow_parsed(const struct buffer *in)
 {
 	switch (in->command) {
+	case DESTROY:
+		port_flow_destroy(in->port, in->args.destroy.rule_n,
+				  in->args.destroy.rule);
+		break;
 	case FLUSH:
 		port_flow_flush(in->port);
 		break;
