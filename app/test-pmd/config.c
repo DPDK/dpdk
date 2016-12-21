@@ -92,6 +92,8 @@
 #include <rte_ethdev.h>
 #include <rte_string_fns.h>
 #include <rte_cycles.h>
+#include <rte_flow.h>
+#include <rte_errno.h>
 
 #include "testpmd.h"
 
@@ -749,6 +751,502 @@ port_mtu_set(portid_t port_id, uint16_t mtu)
 	if (diag == 0)
 		return;
 	printf("Set MTU failed. diag=%d\n", diag);
+}
+
+/* Generic flow management functions. */
+
+/** Generate flow_item[] entry. */
+#define MK_FLOW_ITEM(t, s) \
+	[RTE_FLOW_ITEM_TYPE_ ## t] = { \
+		.name = # t, \
+		.size = s, \
+	}
+
+/** Information about known flow pattern items. */
+static const struct {
+	const char *name;
+	size_t size;
+} flow_item[] = {
+	MK_FLOW_ITEM(END, 0),
+	MK_FLOW_ITEM(VOID, 0),
+	MK_FLOW_ITEM(INVERT, 0),
+	MK_FLOW_ITEM(ANY, sizeof(struct rte_flow_item_any)),
+	MK_FLOW_ITEM(PF, 0),
+	MK_FLOW_ITEM(VF, sizeof(struct rte_flow_item_vf)),
+	MK_FLOW_ITEM(PORT, sizeof(struct rte_flow_item_port)),
+	MK_FLOW_ITEM(RAW, sizeof(struct rte_flow_item_raw)), /* +pattern[] */
+	MK_FLOW_ITEM(ETH, sizeof(struct rte_flow_item_eth)),
+	MK_FLOW_ITEM(VLAN, sizeof(struct rte_flow_item_vlan)),
+	MK_FLOW_ITEM(IPV4, sizeof(struct rte_flow_item_ipv4)),
+	MK_FLOW_ITEM(IPV6, sizeof(struct rte_flow_item_ipv6)),
+	MK_FLOW_ITEM(ICMP, sizeof(struct rte_flow_item_icmp)),
+	MK_FLOW_ITEM(UDP, sizeof(struct rte_flow_item_udp)),
+	MK_FLOW_ITEM(TCP, sizeof(struct rte_flow_item_tcp)),
+	MK_FLOW_ITEM(SCTP, sizeof(struct rte_flow_item_sctp)),
+	MK_FLOW_ITEM(VXLAN, sizeof(struct rte_flow_item_vxlan)),
+};
+
+/** Compute storage space needed by item specification. */
+static void
+flow_item_spec_size(const struct rte_flow_item *item,
+		    size_t *size, size_t *pad)
+{
+	if (!item->spec)
+		goto empty;
+	switch (item->type) {
+		union {
+			const struct rte_flow_item_raw *raw;
+		} spec;
+
+	case RTE_FLOW_ITEM_TYPE_RAW:
+		spec.raw = item->spec;
+		*size = offsetof(struct rte_flow_item_raw, pattern) +
+			spec.raw->length * sizeof(*spec.raw->pattern);
+		break;
+	default:
+empty:
+		*size = 0;
+		break;
+	}
+	*pad = RTE_ALIGN_CEIL(*size, sizeof(double)) - *size;
+}
+
+/** Generate flow_action[] entry. */
+#define MK_FLOW_ACTION(t, s) \
+	[RTE_FLOW_ACTION_TYPE_ ## t] = { \
+		.name = # t, \
+		.size = s, \
+	}
+
+/** Information about known flow actions. */
+static const struct {
+	const char *name;
+	size_t size;
+} flow_action[] = {
+	MK_FLOW_ACTION(END, 0),
+	MK_FLOW_ACTION(VOID, 0),
+	MK_FLOW_ACTION(PASSTHRU, 0),
+	MK_FLOW_ACTION(MARK, sizeof(struct rte_flow_action_mark)),
+	MK_FLOW_ACTION(FLAG, 0),
+	MK_FLOW_ACTION(QUEUE, sizeof(struct rte_flow_action_queue)),
+	MK_FLOW_ACTION(DROP, 0),
+	MK_FLOW_ACTION(COUNT, 0),
+	MK_FLOW_ACTION(DUP, sizeof(struct rte_flow_action_dup)),
+	MK_FLOW_ACTION(RSS, sizeof(struct rte_flow_action_rss)), /* +queue[] */
+	MK_FLOW_ACTION(PF, 0),
+	MK_FLOW_ACTION(VF, sizeof(struct rte_flow_action_vf)),
+};
+
+/** Compute storage space needed by action configuration. */
+static void
+flow_action_conf_size(const struct rte_flow_action *action,
+		      size_t *size, size_t *pad)
+{
+	if (!action->conf)
+		goto empty;
+	switch (action->type) {
+		union {
+			const struct rte_flow_action_rss *rss;
+		} conf;
+
+	case RTE_FLOW_ACTION_TYPE_RSS:
+		conf.rss = action->conf;
+		*size = offsetof(struct rte_flow_action_rss, queue) +
+			conf.rss->num * sizeof(*conf.rss->queue);
+		break;
+	default:
+empty:
+		*size = 0;
+		break;
+	}
+	*pad = RTE_ALIGN_CEIL(*size, sizeof(double)) - *size;
+}
+
+/** Generate a port_flow entry from attributes/pattern/actions. */
+static struct port_flow *
+port_flow_new(const struct rte_flow_attr *attr,
+	      const struct rte_flow_item *pattern,
+	      const struct rte_flow_action *actions)
+{
+	const struct rte_flow_item *item;
+	const struct rte_flow_action *action;
+	struct port_flow *pf = NULL;
+	size_t tmp;
+	size_t pad;
+	size_t off1 = 0;
+	size_t off2 = 0;
+	int err = ENOTSUP;
+
+store:
+	item = pattern;
+	if (pf)
+		pf->pattern = (void *)&pf->data[off1];
+	do {
+		struct rte_flow_item *dst = NULL;
+
+		if ((unsigned int)item->type > RTE_DIM(flow_item) ||
+		    !flow_item[item->type].name)
+			goto notsup;
+		if (pf)
+			dst = memcpy(pf->data + off1, item, sizeof(*item));
+		off1 += sizeof(*item);
+		flow_item_spec_size(item, &tmp, &pad);
+		if (item->spec) {
+			if (pf)
+				dst->spec = memcpy(pf->data + off2,
+						   item->spec, tmp);
+			off2 += tmp + pad;
+		}
+		if (item->last) {
+			if (pf)
+				dst->last = memcpy(pf->data + off2,
+						   item->last, tmp);
+			off2 += tmp + pad;
+		}
+		if (item->mask) {
+			if (pf)
+				dst->mask = memcpy(pf->data + off2,
+						   item->mask, tmp);
+			off2 += tmp + pad;
+		}
+		off2 = RTE_ALIGN_CEIL(off2, sizeof(double));
+	} while ((item++)->type != RTE_FLOW_ITEM_TYPE_END);
+	off1 = RTE_ALIGN_CEIL(off1, sizeof(double));
+	action = actions;
+	if (pf)
+		pf->actions = (void *)&pf->data[off1];
+	do {
+		struct rte_flow_action *dst = NULL;
+
+		if ((unsigned int)action->type > RTE_DIM(flow_action) ||
+		    !flow_action[action->type].name)
+			goto notsup;
+		if (pf)
+			dst = memcpy(pf->data + off1, action, sizeof(*action));
+		off1 += sizeof(*action);
+		flow_action_conf_size(action, &tmp, &pad);
+		if (action->conf) {
+			if (pf)
+				dst->conf = memcpy(pf->data + off2,
+						   action->conf, tmp);
+			off2 += tmp + pad;
+		}
+		off2 = RTE_ALIGN_CEIL(off2, sizeof(double));
+	} while ((action++)->type != RTE_FLOW_ACTION_TYPE_END);
+	if (pf != NULL)
+		return pf;
+	off1 = RTE_ALIGN_CEIL(off1, sizeof(double));
+	tmp = RTE_ALIGN_CEIL(offsetof(struct port_flow, data), sizeof(double));
+	pf = calloc(1, tmp + off1 + off2);
+	if (pf == NULL)
+		err = errno;
+	else {
+		*pf = (const struct port_flow){
+			.size = tmp + off1 + off2,
+			.attr = *attr,
+		};
+		tmp -= offsetof(struct port_flow, data);
+		off2 = tmp + off1;
+		off1 = tmp;
+		goto store;
+	}
+notsup:
+	rte_errno = err;
+	return NULL;
+}
+
+/** Print a message out of a flow error. */
+static int
+port_flow_complain(struct rte_flow_error *error)
+{
+	static const char *const errstrlist[] = {
+		[RTE_FLOW_ERROR_TYPE_NONE] = "no error",
+		[RTE_FLOW_ERROR_TYPE_UNSPECIFIED] = "cause unspecified",
+		[RTE_FLOW_ERROR_TYPE_HANDLE] = "flow rule (handle)",
+		[RTE_FLOW_ERROR_TYPE_ATTR_GROUP] = "group field",
+		[RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY] = "priority field",
+		[RTE_FLOW_ERROR_TYPE_ATTR_INGRESS] = "ingress field",
+		[RTE_FLOW_ERROR_TYPE_ATTR_EGRESS] = "egress field",
+		[RTE_FLOW_ERROR_TYPE_ATTR] = "attributes structure",
+		[RTE_FLOW_ERROR_TYPE_ITEM_NUM] = "pattern length",
+		[RTE_FLOW_ERROR_TYPE_ITEM] = "specific pattern item",
+		[RTE_FLOW_ERROR_TYPE_ACTION_NUM] = "number of actions",
+		[RTE_FLOW_ERROR_TYPE_ACTION] = "specific action",
+	};
+	const char *errstr;
+	char buf[32];
+	int err = rte_errno;
+
+	if ((unsigned int)error->type > RTE_DIM(errstrlist) ||
+	    !errstrlist[error->type])
+		errstr = "unknown type";
+	else
+		errstr = errstrlist[error->type];
+	printf("Caught error type %d (%s): %s%s\n",
+	       error->type, errstr,
+	       error->cause ? (snprintf(buf, sizeof(buf), "cause: %p, ",
+					error->cause), buf) : "",
+	       error->message ? error->message : "(no stated reason)");
+	return -err;
+}
+
+/** Validate flow rule. */
+int
+port_flow_validate(portid_t port_id,
+		   const struct rte_flow_attr *attr,
+		   const struct rte_flow_item *pattern,
+		   const struct rte_flow_action *actions)
+{
+	struct rte_flow_error error;
+
+	/* Poisoning to make sure PMDs update it in case of error. */
+	memset(&error, 0x11, sizeof(error));
+	if (rte_flow_validate(port_id, attr, pattern, actions, &error))
+		return port_flow_complain(&error);
+	printf("Flow rule validated\n");
+	return 0;
+}
+
+/** Create flow rule. */
+int
+port_flow_create(portid_t port_id,
+		 const struct rte_flow_attr *attr,
+		 const struct rte_flow_item *pattern,
+		 const struct rte_flow_action *actions)
+{
+	struct rte_flow *flow;
+	struct rte_port *port;
+	struct port_flow *pf;
+	uint32_t id;
+	struct rte_flow_error error;
+
+	/* Poisoning to make sure PMDs update it in case of error. */
+	memset(&error, 0x22, sizeof(error));
+	flow = rte_flow_create(port_id, attr, pattern, actions, &error);
+	if (!flow)
+		return port_flow_complain(&error);
+	port = &ports[port_id];
+	if (port->flow_list) {
+		if (port->flow_list->id == UINT32_MAX) {
+			printf("Highest rule ID is already assigned, delete"
+			       " it first");
+			rte_flow_destroy(port_id, flow, NULL);
+			return -ENOMEM;
+		}
+		id = port->flow_list->id + 1;
+	} else
+		id = 0;
+	pf = port_flow_new(attr, pattern, actions);
+	if (!pf) {
+		int err = rte_errno;
+
+		printf("Cannot allocate flow: %s\n", rte_strerror(err));
+		rte_flow_destroy(port_id, flow, NULL);
+		return -err;
+	}
+	pf->next = port->flow_list;
+	pf->id = id;
+	pf->flow = flow;
+	port->flow_list = pf;
+	printf("Flow rule #%u created\n", pf->id);
+	return 0;
+}
+
+/** Destroy a number of flow rules. */
+int
+port_flow_destroy(portid_t port_id, uint32_t n, const uint32_t *rule)
+{
+	struct rte_port *port;
+	struct port_flow **tmp;
+	uint32_t c = 0;
+	int ret = 0;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
+	    port_id == (portid_t)RTE_PORT_ALL)
+		return -EINVAL;
+	port = &ports[port_id];
+	tmp = &port->flow_list;
+	while (*tmp) {
+		uint32_t i;
+
+		for (i = 0; i != n; ++i) {
+			struct rte_flow_error error;
+			struct port_flow *pf = *tmp;
+
+			if (rule[i] != pf->id)
+				continue;
+			/*
+			 * Poisoning to make sure PMDs update it in case
+			 * of error.
+			 */
+			memset(&error, 0x33, sizeof(error));
+			if (rte_flow_destroy(port_id, pf->flow, &error)) {
+				ret = port_flow_complain(&error);
+				continue;
+			}
+			printf("Flow rule #%u destroyed\n", pf->id);
+			*tmp = pf->next;
+			free(pf);
+			break;
+		}
+		if (i == n)
+			tmp = &(*tmp)->next;
+		++c;
+	}
+	return ret;
+}
+
+/** Remove all flow rules. */
+int
+port_flow_flush(portid_t port_id)
+{
+	struct rte_flow_error error;
+	struct rte_port *port;
+	int ret = 0;
+
+	/* Poisoning to make sure PMDs update it in case of error. */
+	memset(&error, 0x44, sizeof(error));
+	if (rte_flow_flush(port_id, &error)) {
+		ret = port_flow_complain(&error);
+		if (port_id_is_invalid(port_id, DISABLED_WARN) ||
+		    port_id == (portid_t)RTE_PORT_ALL)
+			return ret;
+	}
+	port = &ports[port_id];
+	while (port->flow_list) {
+		struct port_flow *pf = port->flow_list->next;
+
+		free(port->flow_list);
+		port->flow_list = pf;
+	}
+	return ret;
+}
+
+/** Query a flow rule. */
+int
+port_flow_query(portid_t port_id, uint32_t rule,
+		enum rte_flow_action_type action)
+{
+	struct rte_flow_error error;
+	struct rte_port *port;
+	struct port_flow *pf;
+	const char *name;
+	union {
+		struct rte_flow_query_count count;
+	} query;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
+	    port_id == (portid_t)RTE_PORT_ALL)
+		return -EINVAL;
+	port = &ports[port_id];
+	for (pf = port->flow_list; pf; pf = pf->next)
+		if (pf->id == rule)
+			break;
+	if (!pf) {
+		printf("Flow rule #%u not found\n", rule);
+		return -ENOENT;
+	}
+	if ((unsigned int)action > RTE_DIM(flow_action) ||
+	    !flow_action[action].name)
+		name = "unknown";
+	else
+		name = flow_action[action].name;
+	switch (action) {
+	case RTE_FLOW_ACTION_TYPE_COUNT:
+		break;
+	default:
+		printf("Cannot query action type %d (%s)\n", action, name);
+		return -ENOTSUP;
+	}
+	/* Poisoning to make sure PMDs update it in case of error. */
+	memset(&error, 0x55, sizeof(error));
+	memset(&query, 0, sizeof(query));
+	if (rte_flow_query(port_id, pf->flow, action, &query, &error))
+		return port_flow_complain(&error);
+	switch (action) {
+	case RTE_FLOW_ACTION_TYPE_COUNT:
+		printf("%s:\n"
+		       " hits_set: %u\n"
+		       " bytes_set: %u\n"
+		       " hits: %" PRIu64 "\n"
+		       " bytes: %" PRIu64 "\n",
+		       name,
+		       query.count.hits_set,
+		       query.count.bytes_set,
+		       query.count.hits,
+		       query.count.bytes);
+		break;
+	default:
+		printf("Cannot display result for action type %d (%s)\n",
+		       action, name);
+		break;
+	}
+	return 0;
+}
+
+/** List flow rules. */
+void
+port_flow_list(portid_t port_id, uint32_t n, const uint32_t group[n])
+{
+	struct rte_port *port;
+	struct port_flow *pf;
+	struct port_flow *list = NULL;
+	uint32_t i;
+
+	if (port_id_is_invalid(port_id, ENABLED_WARN) ||
+	    port_id == (portid_t)RTE_PORT_ALL)
+		return;
+	port = &ports[port_id];
+	if (!port->flow_list)
+		return;
+	/* Sort flows by group, priority and ID. */
+	for (pf = port->flow_list; pf != NULL; pf = pf->next) {
+		struct port_flow **tmp;
+
+		if (n) {
+			/* Filter out unwanted groups. */
+			for (i = 0; i != n; ++i)
+				if (pf->attr.group == group[i])
+					break;
+			if (i == n)
+				continue;
+		}
+		tmp = &list;
+		while (*tmp &&
+		       (pf->attr.group > (*tmp)->attr.group ||
+			(pf->attr.group == (*tmp)->attr.group &&
+			 pf->attr.priority > (*tmp)->attr.priority) ||
+			(pf->attr.group == (*tmp)->attr.group &&
+			 pf->attr.priority == (*tmp)->attr.priority &&
+			 pf->id > (*tmp)->id)))
+			tmp = &(*tmp)->tmp;
+		pf->tmp = *tmp;
+		*tmp = pf;
+	}
+	printf("ID\tGroup\tPrio\tAttr\tRule\n");
+	for (pf = list; pf != NULL; pf = pf->tmp) {
+		const struct rte_flow_item *item = pf->pattern;
+		const struct rte_flow_action *action = pf->actions;
+
+		printf("%" PRIu32 "\t%" PRIu32 "\t%" PRIu32 "\t%c%c\t",
+		       pf->id,
+		       pf->attr.group,
+		       pf->attr.priority,
+		       pf->attr.ingress ? 'i' : '-',
+		       pf->attr.egress ? 'e' : '-');
+		while (item->type != RTE_FLOW_ITEM_TYPE_END) {
+			if (item->type != RTE_FLOW_ITEM_TYPE_VOID)
+				printf("%s ", flow_item[item->type].name);
+			++item;
+		}
+		printf("=>");
+		while (action->type != RTE_FLOW_ACTION_TYPE_END) {
+			if (action->type != RTE_FLOW_ACTION_TYPE_VOID)
+				printf(" %s", flow_action[action->type].name);
+			++action;
+		}
+		printf("\n");
+	}
 }
 
 /*

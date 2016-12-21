@@ -70,6 +70,7 @@
 #include <rte_sctp.h>
 #include <rte_prefetch.h>
 #include <rte_string_fns.h>
+#include <rte_flow.h>
 #include "testpmd.h"
 
 #define IP_DEFTTL  64   /* from RFC 1340. */

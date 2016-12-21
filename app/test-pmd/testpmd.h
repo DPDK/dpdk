@@ -144,6 +144,19 @@ struct fwd_stream {
 /** Insert double VLAN header in forward engine */
 #define TESTPMD_TX_OFFLOAD_INSERT_QINQ       0x0080
 
+/** Descriptor for a single flow. */
+struct port_flow {
+	size_t size; /**< Allocated space including data[]. */
+	struct port_flow *next; /**< Next flow in list. */
+	struct port_flow *tmp; /**< Temporary linking. */
+	uint32_t id; /**< Flow rule ID. */
+	struct rte_flow *flow; /**< Opaque flow object returned by PMD. */
+	struct rte_flow_attr attr; /**< Attributes. */
+	struct rte_flow_item *pattern; /**< Pattern. */
+	struct rte_flow_action *actions; /**< Actions. */
+	uint8_t data[]; /**< Storage for pattern/actions. */
+};
+
 /**
  * The data structure associated with each port.
  */
@@ -177,6 +190,7 @@ struct rte_port {
 	struct ether_addr       *mc_addr_pool; /**< pool of multicast addrs */
 	uint32_t                mc_addr_nb; /**< nb. of addr. in mc_addr_pool */
 	uint8_t                 slave_flag; /**< bonding slave port */
+	struct port_flow        *flow_list; /**< Associated flows. */
 };
 
 extern portid_t __rte_unused
@@ -504,6 +518,19 @@ void port_reg_bit_field_set(portid_t port_id, uint32_t reg_off,
 			    uint8_t bit1_pos, uint8_t bit2_pos, uint32_t value);
 void port_reg_display(portid_t port_id, uint32_t reg_off);
 void port_reg_set(portid_t port_id, uint32_t reg_off, uint32_t value);
+int port_flow_validate(portid_t port_id,
+		       const struct rte_flow_attr *attr,
+		       const struct rte_flow_item *pattern,
+		       const struct rte_flow_action *actions);
+int port_flow_create(portid_t port_id,
+		     const struct rte_flow_attr *attr,
+		     const struct rte_flow_item *pattern,
+		     const struct rte_flow_action *actions);
+int port_flow_destroy(portid_t port_id, uint32_t n, const uint32_t *rule);
+int port_flow_flush(portid_t port_id);
+int port_flow_query(portid_t port_id, uint32_t rule,
+		    enum rte_flow_action_type action);
+void port_flow_list(portid_t port_id, uint32_t n, const uint32_t *group);
 
 void rx_ring_desc_display(portid_t port_id, queueid_t rxq_id, uint16_t rxd_id);
 void tx_ring_desc_display(portid_t port_id, queueid_t txq_id, uint16_t txd_id);

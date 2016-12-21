@@ -76,6 +76,7 @@
 #ifdef RTE_LIBRTE_PMD_BOND
 #include <rte_eth_bond.h>
 #endif
+#include <rte_flow.h>
 
 #include "testpmd.h"
 

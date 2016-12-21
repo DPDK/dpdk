@@ -65,6 +65,7 @@
 #include <rte_ethdev.h>
 #include <rte_ip.h>
 #include <rte_string_fns.h>
+#include <rte_flow.h>
 
 #include "testpmd.h"
 

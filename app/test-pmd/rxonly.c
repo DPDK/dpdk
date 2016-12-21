@@ -67,6 +67,7 @@
 #include <rte_ip.h>
 #include <rte_udp.h>
 #include <rte_net.h>
+#include <rte_flow.h>
 
 #include "testpmd.h"
 
