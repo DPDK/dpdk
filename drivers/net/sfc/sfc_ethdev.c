@@ -1349,6 +1349,7 @@ static struct eth_driver sfc_efx_pmd = {
 
 RTE_PMD_REGISTER_PCI(net_sfc_efx, sfc_efx_pmd.pci_drv);
 RTE_PMD_REGISTER_PCI_TABLE(net_sfc_efx, pci_id_sfc_efx_map);
+RTE_PMD_REGISTER_KMOD_DEP(net_sfc_efx, "* igb_uio | uio_pci_generic | vfio");
 RTE_PMD_REGISTER_PARAM_STRING(net_sfc_efx,
 	SFC_KVARG_PERF_PROFILE "=" SFC_KVARG_VALUES_PERF_PROFILE " "
 	SFC_KVARG_MCDI_LOGGING "=" SFC_KVARG_VALUES_BOOL " "
