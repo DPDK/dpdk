@@ -1431,11 +1431,18 @@ struct eth_dev_ops {
 	eth_dev_set_link_up_t      dev_set_link_up;   /**< Device link up. */
 	eth_dev_set_link_down_t    dev_set_link_down; /**< Device link down. */
 	eth_dev_close_t            dev_close;     /**< Close device. */
+	eth_link_update_t          link_update;   /**< Get device link state. */
+
 	eth_promiscuous_enable_t   promiscuous_enable; /**< Promiscuous ON. */
 	eth_promiscuous_disable_t  promiscuous_disable;/**< Promiscuous OFF. */
 	eth_allmulticast_enable_t  allmulticast_enable;/**< RX multicast ON. */
 	eth_allmulticast_disable_t allmulticast_disable;/**< RX multicast OF. */
-	eth_link_update_t          link_update;   /**< Get device link state. */
+	eth_mac_addr_remove_t      mac_addr_remove; /**< Remove MAC address. */
+	eth_mac_addr_add_t         mac_addr_add;  /**< Add a MAC address. */
+	eth_mac_addr_set_t         mac_addr_set;  /**< Set a MAC address. */
+	eth_set_mc_addr_list_t     set_mc_addr_list; /**< set list of mcast addrs. */
+	mtu_set_t                  mtu_set;       /**< Set MTU. */
+
 	eth_stats_get_t            stats_get;     /**< Get generic device statistics. */
 	eth_stats_reset_t          stats_reset;   /**< Reset generic device statistics. */
 	eth_xstats_get_t           xstats_get;    /**< Get extended device statistics. */
@@ -1444,109 +1451,98 @@ struct eth_dev_ops {
 	/**< Get names of extended statistics. */
 	eth_queue_stats_mapping_set_t queue_stats_mapping_set;
 	/**< Configure per queue stat counter mapping. */
+
 	eth_dev_infos_get_t        dev_infos_get; /**< Get device info. */
+	eth_rxq_info_get_t         rxq_info_get; /**< retrieve RX queue information. */
+	eth_txq_info_get_t         txq_info_get; /**< retrieve TX queue information. */
 	eth_dev_supported_ptypes_get_t dev_supported_ptypes_get;
-	/**< Get packet types supported and identified by device*/
-	mtu_set_t                  mtu_set; /**< Set MTU. */
-	vlan_filter_set_t          vlan_filter_set;  /**< Filter VLAN Setup. */
-	vlan_tpid_set_t            vlan_tpid_set;      /**< Outer/Inner VLAN TPID Setup. */
+	/**< Get packet types supported and identified by device. */
+
+	vlan_filter_set_t          vlan_filter_set; /**< Filter VLAN Setup. */
+	vlan_tpid_set_t            vlan_tpid_set; /**< Outer/Inner VLAN TPID Setup. */
 	vlan_strip_queue_set_t     vlan_strip_queue_set; /**< VLAN Stripping on queue. */
 	vlan_offload_set_t         vlan_offload_set; /**< Set VLAN Offload. */
-	vlan_pvid_set_t            vlan_pvid_set; /**< Set port based TX VLAN insertion */
-	eth_queue_start_t          rx_queue_start;/**< Start RX for a queue.*/
-	eth_queue_stop_t           rx_queue_stop;/**< Stop RX for a queue.*/
-	eth_queue_start_t          tx_queue_start;/**< Start TX for a queue.*/
-	eth_queue_stop_t           tx_queue_stop;/**< Stop TX for a queue.*/
-	eth_rx_queue_setup_t       rx_queue_setup;/**< Set up device RX queue.*/
-	eth_queue_release_t        rx_queue_release;/**< Release RX queue.*/
-	eth_rx_queue_count_t       rx_queue_count; /**< Get Rx queue count. */
-	eth_rx_descriptor_done_t   rx_descriptor_done;  /**< Check rxd DD bit */
-	/**< Enable Rx queue interrupt. */
-	eth_rx_enable_intr_t       rx_queue_intr_enable;
-	/**< Disable Rx queue interrupt.*/
-	eth_rx_disable_intr_t      rx_queue_intr_disable;
-	eth_tx_queue_setup_t       tx_queue_setup;/**< Set up device TX queue.*/
-	eth_queue_release_t        tx_queue_release;/**< Release TX queue.*/
+	vlan_pvid_set_t            vlan_pvid_set; /**< Set port based TX VLAN insertion. */
+
+	eth_queue_start_t          rx_queue_start;/**< Start RX for a queue. */
+	eth_queue_stop_t           rx_queue_stop; /**< Stop RX for a queue. */
+	eth_queue_start_t          tx_queue_start;/**< Start TX for a queue. */
+	eth_queue_stop_t           tx_queue_stop; /**< Stop TX for a queue. */
+	eth_rx_queue_setup_t       rx_queue_setup;/**< Set up device RX queue. */
+	eth_queue_release_t        rx_queue_release; /**< Release RX queue. */
+	eth_rx_queue_count_t       rx_queue_count;/**< Get Rx queue count. */
+	eth_rx_descriptor_done_t   rx_descriptor_done; /**< Check rxd DD bit. */
+	eth_rx_enable_intr_t       rx_queue_intr_enable;  /**< Enable Rx queue interrupt. */
+	eth_rx_disable_intr_t      rx_queue_intr_disable; /**< Disable Rx queue interrupt. */
+	eth_tx_queue_setup_t       tx_queue_setup;/**< Set up device TX queue. */
+	eth_queue_release_t        tx_queue_release; /**< Release TX queue. */
+
 	eth_dev_led_on_t           dev_led_on;    /**< Turn on LED. */
 	eth_dev_led_off_t          dev_led_off;   /**< Turn off LED. */
+
 	flow_ctrl_get_t            flow_ctrl_get; /**< Get flow control. */
 	flow_ctrl_set_t            flow_ctrl_set; /**< Setup flow control. */
-	priority_flow_ctrl_set_t   priority_flow_ctrl_set; /**< Setup priority flow control.*/
-	eth_mac_addr_remove_t      mac_addr_remove; /**< Remove MAC address */
-	eth_mac_addr_add_t         mac_addr_add;  /**< Add a MAC address */
-	eth_mac_addr_set_t         mac_addr_set;  /**< Set a MAC address */
-	eth_uc_hash_table_set_t    uc_hash_table_set;  /**< Set Unicast Table Array */
-	eth_uc_all_hash_table_set_t uc_all_hash_table_set;  /**< Set Unicast hash bitmap */
-	eth_mirror_rule_set_t	   mirror_rule_set;  /**< Add a traffic mirror rule.*/
-	eth_mirror_rule_reset_t	   mirror_rule_reset;  /**< reset a traffic mirror rule.*/
-	eth_set_vf_rx_mode_t       set_vf_rx_mode;   /**< Set VF RX mode */
-	eth_set_vf_rx_t            set_vf_rx;  /**< enable/disable a VF receive */
-	eth_set_vf_tx_t            set_vf_tx;  /**< enable/disable a VF transmit */
-	eth_set_vf_vlan_filter_t   set_vf_vlan_filter;  /**< Set VF VLAN filter */
-	/** Add UDP tunnel port. */
-	eth_udp_tunnel_port_add_t udp_tunnel_port_add;
-	/** Del UDP tunnel port. */
-	eth_udp_tunnel_port_del_t udp_tunnel_port_del;
-	eth_set_queue_rate_limit_t set_queue_rate_limit;   /**< Set queue rate limit */
-	eth_set_vf_rate_limit_t    set_vf_rate_limit;   /**< Set VF rate limit */
-	/** Update redirection table. */
-	reta_update_t reta_update;
-	/** Query redirection table. */
-	reta_query_t reta_query;
+	priority_flow_ctrl_set_t   priority_flow_ctrl_set; /**< Setup priority flow control. */
 
-	eth_get_reg_t get_reg;
-	/**< Get registers */
-	eth_get_eeprom_length_t get_eeprom_length;
-	/**< Get eeprom length */
-	eth_get_eeprom_t get_eeprom;
-	/**< Get eeprom data */
-	eth_set_eeprom_t set_eeprom;
-	/**< Set eeprom */
-  /* bypass control */
+	eth_uc_hash_table_set_t    uc_hash_table_set; /**< Set Unicast Table Array. */
+	eth_uc_all_hash_table_set_t uc_all_hash_table_set; /**< Set Unicast hash bitmap. */
+
+	eth_mirror_rule_set_t	   mirror_rule_set; /**< Add a traffic mirror rule. */
+	eth_mirror_rule_reset_t	   mirror_rule_reset; /**< reset a traffic mirror rule. */
+
+	eth_set_vf_rx_mode_t       set_vf_rx_mode;/**< Set VF RX mode. */
+	eth_set_vf_rx_t            set_vf_rx;     /**< enable/disable a VF receive. */
+	eth_set_vf_tx_t            set_vf_tx;     /**< enable/disable a VF transmit. */
+	eth_set_vf_vlan_filter_t   set_vf_vlan_filter; /**< Set VF VLAN filter. */
+	eth_set_vf_rate_limit_t    set_vf_rate_limit; /**< Set VF rate limit. */
+
+	eth_udp_tunnel_port_add_t  udp_tunnel_port_add; /** Add UDP tunnel port. */
+	eth_udp_tunnel_port_del_t  udp_tunnel_port_del; /** Del UDP tunnel port. */
+	eth_l2_tunnel_eth_type_conf_t l2_tunnel_eth_type_conf;
+	/** Config ether type of l2 tunnel. */
+	eth_l2_tunnel_offload_set_t   l2_tunnel_offload_set;
+	/** Enable/disable l2 tunnel offload functions. */
+
+	eth_set_queue_rate_limit_t set_queue_rate_limit; /**< Set queue rate limit. */
+
+	rss_hash_update_t          rss_hash_update; /** Configure RSS hash protocols. */
+	rss_hash_conf_get_t        rss_hash_conf_get; /** Get current RSS hash configuration. */
+	reta_update_t              reta_update;   /** Update redirection table. */
+	reta_query_t               reta_query;    /** Query redirection table. */
+
+	eth_get_reg_t              get_reg;           /**< Get registers. */
+	eth_get_eeprom_length_t    get_eeprom_length; /**< Get eeprom length. */
+	eth_get_eeprom_t           get_eeprom;        /**< Get eeprom data. */
+	eth_set_eeprom_t           set_eeprom;        /**< Set eeprom. */
+
+	/* bypass control */
 #ifdef RTE_NIC_BYPASS
-  bypass_init_t bypass_init;
-  bypass_state_set_t bypass_state_set;
-  bypass_state_show_t bypass_state_show;
-  bypass_event_set_t bypass_event_set;
-  bypass_event_show_t bypass_event_show;
-  bypass_wd_timeout_set_t bypass_wd_timeout_set;
-  bypass_wd_timeout_show_t bypass_wd_timeout_show;
-  bypass_ver_show_t bypass_ver_show;
-  bypass_wd_reset_t bypass_wd_reset;
+	bypass_init_t              bypass_init;
+	bypass_state_set_t         bypass_state_set;
+	bypass_state_show_t        bypass_state_show;
+	bypass_event_set_t         bypass_event_set;
+	bypass_event_show_t        bypass_event_show;
+	bypass_wd_timeout_set_t    bypass_wd_timeout_set;
+	bypass_wd_timeout_show_t   bypass_wd_timeout_show;
+	bypass_ver_show_t          bypass_ver_show;
+	bypass_wd_reset_t          bypass_wd_reset;
 #endif
 
-	/** Configure RSS hash protocols. */
-	rss_hash_update_t rss_hash_update;
-	/** Get current RSS hash configuration. */
-	rss_hash_conf_get_t rss_hash_conf_get;
-	eth_filter_ctrl_t              filter_ctrl;
-	/**< common filter control. */
-	eth_set_mc_addr_list_t set_mc_addr_list; /**< set list of mcast addrs */
-	eth_rxq_info_get_t rxq_info_get;
-	/**< retrieve RX queue information. */
-	eth_txq_info_get_t txq_info_get;
-	/**< retrieve TX queue information. */
-	/** Turn IEEE1588/802.1AS timestamping on. */
-	eth_timesync_enable_t timesync_enable;
-	/** Turn IEEE1588/802.1AS timestamping off. */
-	eth_timesync_disable_t timesync_disable;
-	/** Read the IEEE1588/802.1AS RX timestamp. */
-	eth_timesync_read_rx_timestamp_t timesync_read_rx_timestamp;
-	/** Read the IEEE1588/802.1AS TX timestamp. */
-	eth_timesync_read_tx_timestamp_t timesync_read_tx_timestamp;
+	eth_filter_ctrl_t          filter_ctrl; /**< common filter control. */
 
-	/** Get DCB information */
-	eth_get_dcb_info get_dcb_info;
-	/** Adjust the device clock.*/
-	eth_timesync_adjust_time timesync_adjust_time;
-	/** Get the device clock time. */
-	eth_timesync_read_time timesync_read_time;
-	/** Set the device clock time. */
-	eth_timesync_write_time timesync_write_time;
-	/** Config ether type of l2 tunnel */
-	eth_l2_tunnel_eth_type_conf_t l2_tunnel_eth_type_conf;
-	/** Enable/disable l2 tunnel offload functions */
-	eth_l2_tunnel_offload_set_t l2_tunnel_offload_set;
+	eth_get_dcb_info           get_dcb_info; /** Get DCB information. */
+
+	eth_timesync_enable_t      timesync_enable;
+	/** Turn IEEE1588/802.1AS timestamping on. */
+	eth_timesync_disable_t     timesync_disable;
+	/** Turn IEEE1588/802.1AS timestamping off. */
+	eth_timesync_read_rx_timestamp_t timesync_read_rx_timestamp;
+	/** Read the IEEE1588/802.1AS RX timestamp. */
+	eth_timesync_read_tx_timestamp_t timesync_read_tx_timestamp;
+	/** Read the IEEE1588/802.1AS TX timestamp. */
+	eth_timesync_adjust_time   timesync_adjust_time; /** Adjust the device clock. */
+	eth_timesync_read_time     timesync_read_time; /** Get the device clock time. */
+	eth_timesync_write_time    timesync_write_time; /** Set the device clock time. */
 };
 
 /**
