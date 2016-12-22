@@ -19,7 +19,6 @@ DPDK_2.2 {
 	rte_eth_dev_bypass_ver_show;
 	rte_eth_dev_bypass_wd_reset;
 	rte_eth_dev_bypass_wd_timeout_show;
-	rte_eth_dev_callback_process;
 	rte_eth_dev_callback_register;
 	rte_eth_dev_callback_unregister;
 	rte_eth_dev_close;
