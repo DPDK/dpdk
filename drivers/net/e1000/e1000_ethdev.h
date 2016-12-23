@@ -286,6 +286,8 @@ struct e1000_adapter {
 #define E1000_DEV_PRIVATE_TO_FILTER_INFO(adapter) \
 	(&((struct e1000_adapter *)adapter)->filter)
 
+#define E1000_DEV_TO_PCI(eth_dev) \
+	(eth_dev->pci_dev)
 /*
  * RX/TX IGB function prototypes
  */

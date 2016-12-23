@@ -83,7 +83,8 @@ static int eth_em_flow_ctrl_set(struct rte_eth_dev *dev,
 static int eth_em_interrupt_setup(struct rte_eth_dev *dev);
 static int eth_em_rxq_interrupt_setup(struct rte_eth_dev *dev);
 static int eth_em_interrupt_get_status(struct rte_eth_dev *dev);
-static int eth_em_interrupt_action(struct rte_eth_dev *dev);
+static int eth_em_interrupt_action(struct rte_eth_dev *dev,
+				   struct rte_intr_handle *handle);
 static void eth_em_interrupt_handler(struct rte_intr_handle *handle,
 							void *param);
 
@@ -287,15 +288,14 @@ eth_em_dev_is_ich8(struct e1000_hw *hw)
 static int
 eth_em_dev_init(struct rte_eth_dev *eth_dev)
 {
-	struct rte_pci_device *pci_dev;
+	struct rte_pci_device *pci_dev = E1000_DEV_TO_PCI(eth_dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	struct e1000_adapter *adapter =
 		E1000_DEV_PRIVATE(eth_dev->data->dev_private);
 	struct e1000_hw *hw =
 		E1000_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 	struct e1000_vfta * shadow_vfta =
 		E1000_DEV_PRIVATE_TO_VFTA(eth_dev->data->dev_private);
-
-	pci_dev = eth_dev->pci_dev;
 
 	eth_dev->dev_ops = &eth_em_ops;
 	eth_dev->rx_pkt_burst = (eth_rx_burst_t)&eth_em_recv_pkts;
@@ -351,8 +351,8 @@ eth_em_dev_init(struct rte_eth_dev *eth_dev)
 		     eth_dev->data->port_id, pci_dev->id.vendor_id,
 		     pci_dev->id.device_id);
 
-	rte_intr_callback_register(&(pci_dev->intr_handle),
-		eth_em_interrupt_handler, (void *)eth_dev);
+	rte_intr_callback_register(intr_handle,
+				   eth_em_interrupt_handler, eth_dev);
 
 	return 0;
 }
@@ -360,16 +360,15 @@ eth_em_dev_init(struct rte_eth_dev *eth_dev)
 static int
 eth_em_dev_uninit(struct rte_eth_dev *eth_dev)
 {
-	struct rte_pci_device *pci_dev;
+	struct rte_pci_device *pci_dev = E1000_DEV_TO_PCI(eth_dev);
 	struct e1000_adapter *adapter =
 		E1000_DEV_PRIVATE(eth_dev->data->dev_private);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 
 	PMD_INIT_FUNC_TRACE();
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return -EPERM;
-
-	pci_dev = eth_dev->pci_dev;
 
 	if (adapter->stopped == 0)
 		eth_em_close(eth_dev);
@@ -382,9 +381,9 @@ eth_em_dev_uninit(struct rte_eth_dev *eth_dev)
 	eth_dev->data->mac_addrs = NULL;
 
 	/* disable uio intr before callback unregister */
-	rte_intr_disable(&(pci_dev->intr_handle));
-	rte_intr_callback_unregister(&(pci_dev->intr_handle),
-		eth_em_interrupt_handler, (void *)eth_dev);
+	rte_intr_disable(intr_handle);
+	rte_intr_callback_unregister(intr_handle,
+				     eth_em_interrupt_handler, eth_dev);
 
 	return 0;
 }
@@ -556,7 +555,9 @@ eth_em_start(struct rte_eth_dev *dev)
 		E1000_DEV_PRIVATE(dev->data->dev_private);
 	struct e1000_hw *hw =
 		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
+	struct rte_pci_device *pci_dev =
+		E1000_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	int ret, mask;
 	uint32_t intr_vector = 0;
 	uint32_t *speeds;
@@ -738,7 +739,8 @@ eth_em_stop(struct rte_eth_dev *dev)
 {
 	struct rte_eth_link link;
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
+	struct rte_pci_device *pci_dev = E1000_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 
 	em_rxq_intr_disable(hw);
 	em_lsc_intr_disable(hw);
@@ -999,9 +1001,11 @@ static int
 eth_em_rx_queue_intr_enable(struct rte_eth_dev *dev, __rte_unused uint16_t queue_id)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_pci_device *pci_dev = E1000_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 
 	em_rxq_intr_enable(hw);
-	rte_intr_enable(&dev->pci_dev->intr_handle);
+	rte_intr_enable(intr_handle);
 
 	return 0;
 }
@@ -1536,8 +1540,10 @@ eth_em_interrupt_get_status(struct rte_eth_dev *dev)
  *  - On failure, a negative value.
  */
 static int
-eth_em_interrupt_action(struct rte_eth_dev *dev)
+eth_em_interrupt_action(struct rte_eth_dev *dev,
+			struct rte_intr_handle *intr_handle)
 {
+	struct rte_pci_device *pci_dev = E1000_DEV_TO_PCI(dev);
 	struct e1000_hw *hw =
 		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct e1000_interrupt *intr =
@@ -1550,7 +1556,7 @@ eth_em_interrupt_action(struct rte_eth_dev *dev)
 		return -1;
 
 	intr->flags &= ~E1000_FLAG_NEED_LINK_UPDATE;
-	rte_intr_enable(&(dev->pci_dev->intr_handle));
+	rte_intr_enable(intr_handle);
 
 	/* set get_link_status to check register later */
 	hw->mac.get_link_status = 1;
@@ -1571,8 +1577,8 @@ eth_em_interrupt_action(struct rte_eth_dev *dev)
 		PMD_INIT_LOG(INFO, " Port %d: Link Down", dev->data->port_id);
 	}
 	PMD_INIT_LOG(DEBUG, "PCI Address: %04d:%02d:%02d:%d",
-		     dev->pci_dev->addr.domain, dev->pci_dev->addr.bus,
-		     dev->pci_dev->addr.devid, dev->pci_dev->addr.function);
+		     pci_dev->addr.domain, pci_dev->addr.bus,
+		     pci_dev->addr.devid, pci_dev->addr.function);
 
 	tctl = E1000_READ_REG(hw, E1000_TCTL);
 	rctl = E1000_READ_REG(hw, E1000_RCTL);
@@ -1604,13 +1610,13 @@ eth_em_interrupt_action(struct rte_eth_dev *dev)
  *  void
  */
 static void
-eth_em_interrupt_handler(__rte_unused struct rte_intr_handle *handle,
-							void *param)
+eth_em_interrupt_handler(struct rte_intr_handle *handle,
+			 void *param)
 {
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
 
 	eth_em_interrupt_get_status(dev);
-	eth_em_interrupt_action(dev);
+	eth_em_interrupt_action(dev, handle);
 	_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
 }
 
