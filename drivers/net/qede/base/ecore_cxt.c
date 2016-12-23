@@ -1155,7 +1155,7 @@ void ecore_cxt_mngr_free(struct ecore_hwfn *p_hwfn)
 	ecore_cid_map_free(p_hwfn);
 	ecore_cxt_src_t2_free(p_hwfn);
 	ecore_ilt_shadow_free(p_hwfn);
-	OSAL_MUTEX_DEALLOC(&p_mngr->mutex);
+	OSAL_MUTEX_DEALLOC(&p_hwfn->p_cxt_mngr->mutex);
 	OSAL_FREE(p_hwfn->p_dev, p_hwfn->p_cxt_mngr);
 
 	p_hwfn->p_cxt_mngr = OSAL_NULL;
