@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -300,6 +300,7 @@ eth_em_dev_init(struct rte_eth_dev *eth_dev)
 	eth_dev->dev_ops = &eth_em_ops;
 	eth_dev->rx_pkt_burst = (eth_rx_burst_t)&eth_em_recv_pkts;
 	eth_dev->tx_pkt_burst = (eth_tx_burst_t)&eth_em_xmit_pkts;
+	eth_dev->tx_pkt_prepare = (eth_tx_prep_t)&eth_em_prep_pkts;
 
 	/* for secondary processes, we don't initialise any further as primary
 	 * has already done this work. Only check we don't need a different
@@ -1084,6 +1085,8 @@ eth_em_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		.nb_max = E1000_MAX_RING_DESC,
 		.nb_min = E1000_MIN_RING_DESC,
 		.nb_align = EM_TXD_ALIGN,
+		.nb_seg_max = EM_TX_MAX_SEG,
+		.nb_mtu_seg_max = EM_TX_MAX_MTU_SEG,
 	};
 
 	dev_info->speed_capa = ETH_LINK_SPEED_10M_HD | ETH_LINK_SPEED_10M |

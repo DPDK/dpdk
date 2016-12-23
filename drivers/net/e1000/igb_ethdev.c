@@ -370,6 +370,8 @@ static const struct rte_eth_desc_lim tx_desc_lim = {
 	.nb_max = E1000_MAX_RING_DESC,
 	.nb_min = E1000_MIN_RING_DESC,
 	.nb_align = IGB_RXD_ALIGN,
+	.nb_seg_max = IGB_TX_MAX_SEG,
+	.nb_mtu_seg_max = IGB_TX_MAX_MTU_SEG,
 };
 
 static const struct eth_dev_ops eth_igb_ops = {
@@ -760,6 +762,7 @@ eth_igb_dev_init(struct rte_eth_dev *eth_dev)
 	eth_dev->dev_ops = &eth_igb_ops;
 	eth_dev->rx_pkt_burst = &eth_igb_recv_pkts;
 	eth_dev->tx_pkt_burst = &eth_igb_xmit_pkts;
+	eth_dev->tx_pkt_prepare = &eth_igb_prep_pkts;
 
 	/* for secondary processes, we don't initialise any further as primary
 	 * has already done this work. Only check we don't need a different
@@ -966,6 +969,7 @@ eth_igbvf_dev_init(struct rte_eth_dev *eth_dev)
 	eth_dev->dev_ops = &igbvf_eth_dev_ops;
 	eth_dev->rx_pkt_burst = &eth_igb_recv_pkts;
 	eth_dev->tx_pkt_burst = &eth_igb_xmit_pkts;
+	eth_dev->tx_pkt_prepare = &eth_igb_prep_pkts;
 
 	/* for secondary processes, we don't initialise any further as primary
 	 * has already done this work. Only check we don't need a different
