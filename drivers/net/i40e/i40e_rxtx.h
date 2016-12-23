@@ -63,6 +63,12 @@
 #define	I40E_MIN_RING_DESC	64
 #define	I40E_MAX_RING_DESC	4096
 
+#define I40E_MIN_TSO_MSS          256
+#define I40E_MAX_TSO_MSS          9674
+
+#define I40E_TX_MAX_SEG     UINT8_MAX
+#define I40E_TX_MAX_MTU_SEG 8
+
 #undef container_of
 #define container_of(ptr, type, member) ({ \
 		typeof(((type *)0)->member)(*__mptr) = (ptr); \
@@ -223,6 +229,8 @@ uint16_t i40e_recv_scattered_pkts(void *rx_queue,
 uint16_t i40e_xmit_pkts(void *tx_queue,
 			struct rte_mbuf **tx_pkts,
 			uint16_t nb_pkts);
+uint16_t i40e_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+		uint16_t nb_pkts);
 int i40e_tx_queue_init(struct i40e_tx_queue *txq);
 int i40e_rx_queue_init(struct i40e_rx_queue *rxq);
 void i40e_free_tx_resources(struct i40e_tx_queue *txq);

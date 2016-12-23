@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -50,6 +50,8 @@
 #include <rte_tcp.h>
 #include <rte_sctp.h>
 #include <rte_udp.h>
+#include <rte_ip.h>
+#include <rte_net.h>
 
 #include "i40e_logs.h"
 #include "base/i40e_prototype.h"
@@ -78,6 +80,17 @@
 		PKT_TX_L4_MASK |		 \
 		PKT_TX_TCP_SEG |		 \
 		PKT_TX_OUTER_IP_CKSUM)
+
+#define I40E_TX_OFFLOAD_MASK (  \
+		PKT_TX_IP_CKSUM |       \
+		PKT_TX_L4_MASK |        \
+		PKT_TX_OUTER_IP_CKSUM | \
+		PKT_TX_TCP_SEG |        \
+		PKT_TX_QINQ_PKT |       \
+		PKT_TX_VLAN_PKT)
+
+#define I40E_TX_OFFLOAD_NOTSUP_MASK \
+		(PKT_TX_OFFLOAD_MASK ^ I40E_TX_OFFLOAD_MASK)
 
 static uint16_t i40e_xmit_pkts_simple(void *tx_queue,
 				      struct rte_mbuf **tx_pkts,
@@ -1409,6 +1422,63 @@ i40e_xmit_pkts_simple(void *tx_queue,
 	}
 
 	return nb_tx;
+}
+
+/*********************************************************************
+ *
+ *  TX prep functions
+ *
+ **********************************************************************/
+uint16_t
+i40e_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
+		uint16_t nb_pkts)
+{
+	int i, ret;
+	uint64_t ol_flags;
+	struct rte_mbuf *m;
+
+	for (i = 0; i < nb_pkts; i++) {
+		m = tx_pkts[i];
+		ol_flags = m->ol_flags;
+
+		/**
+		 * m->nb_segs is uint8_t, so nb_segs is always less than
+		 * I40E_TX_MAX_SEG.
+		 * We check only a condition for nb_segs > I40E_TX_MAX_MTU_SEG.
+		 */
+		if (!(ol_flags & PKT_TX_TCP_SEG)) {
+			if (m->nb_segs > I40E_TX_MAX_MTU_SEG) {
+				rte_errno = -EINVAL;
+				return i;
+			}
+		} else if ((m->tso_segsz < I40E_MIN_TSO_MSS) ||
+				(m->tso_segsz > I40E_MAX_TSO_MSS)) {
+			/* MSS outside the range (256B - 9674B) are considered
+			 * malicious
+			 */
+			rte_errno = -EINVAL;
+			return i;
+		}
+
+		if (ol_flags & I40E_TX_OFFLOAD_NOTSUP_MASK) {
+			rte_errno = -ENOTSUP;
+			return i;
+		}
+
+#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+		ret = rte_validate_tx_offload(m);
+		if (ret != 0) {
+			rte_errno = ret;
+			return i;
+		}
+#endif
+		ret = rte_net_intel_cksum_prepare(m);
+		if (ret != 0) {
+			rte_errno = ret;
+			return i;
+		}
+	}
+	return i;
 }
 
 /*
@@ -2763,9 +2833,11 @@ i40e_set_tx_function(struct rte_eth_dev *dev)
 			PMD_INIT_LOG(DEBUG, "Simple tx finally be used.");
 			dev->tx_pkt_burst = i40e_xmit_pkts_simple;
 		}
+		dev->tx_pkt_prepare = NULL;
 	} else {
 		PMD_INIT_LOG(DEBUG, "Xmit tx finally be used.");
 		dev->tx_pkt_burst = i40e_xmit_pkts;
+		dev->tx_pkt_prepare = i40e_prep_pkts;
 	}
 }
 

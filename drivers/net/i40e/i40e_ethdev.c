@@ -945,6 +945,7 @@ eth_i40e_dev_init(struct rte_eth_dev *dev)
 	dev->dev_ops = &i40e_eth_dev_ops;
 	dev->rx_pkt_burst = i40e_recv_pkts;
 	dev->tx_pkt_burst = i40e_xmit_pkts;
+	dev->tx_pkt_prepare = i40e_prep_pkts;
 
 	/* for secondary processes, we don't initialise any further as primary
 	 * has already done this work. Only check we don't need a different
@@ -2664,6 +2665,8 @@ i40e_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		.nb_max = I40E_MAX_RING_DESC,
 		.nb_min = I40E_MIN_RING_DESC,
 		.nb_align = I40E_ALIGN_RING_DESC,
+		.nb_seg_max = I40E_TX_MAX_SEG,
+		.nb_mtu_seg_max = I40E_TX_MAX_MTU_SEG,
 	};
 
 	if (pf->flags & I40E_FLAG_VMDQ) {
