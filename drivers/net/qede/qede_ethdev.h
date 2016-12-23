@@ -31,6 +31,8 @@
 #include "base/ecore_iov_api.h"
 #include "base/ecore_cxt.h"
 #include "base/nvm_cfg.h"
+#include "base/ecore_iov_api.h"
+#include "base/ecore_sp_commands.h"
 
 #include "qede_logs.h"
 #include "qede_if.h"
@@ -108,6 +110,8 @@
 #define PCI_DEVICE_ID_57980S_IOV        CHIP_NUM_57980S_IOV
 #define PCI_DEVICE_ID_57980S_100        CHIP_NUM_57980S_100
 
+#define QEDE_VXLAN_DEF_PORT		8472
+
 extern char fw_file[];
 
 /* Port/function states */
@@ -131,6 +135,7 @@ struct qede_mcast_entry {
 struct qede_ucast_entry {
 	struct ether_addr mac;
 	uint16_t vlan;
+	uint16_t vni;
 	SLIST_ENTRY(qede_ucast_entry) list;
 };
 
@@ -163,6 +168,8 @@ struct qede_dev {
 	SLIST_HEAD(uc_list_head, qede_ucast_entry) uc_list_head;
 	uint16_t num_uc_addr;
 	bool handle_hw_err;
+	uint16_t num_tunn_filters;
+	uint16_t vxlan_filter_type;
 	char drv_ver[QEDE_PMD_DRV_VER_STR_SIZE];
 };
 

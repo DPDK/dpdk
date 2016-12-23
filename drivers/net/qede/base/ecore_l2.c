@@ -1093,6 +1093,9 @@ ecore_filter_ucast_common(struct ecore_hwfn *p_hwfn,
 	case ECORE_FILTER_VNI:
 		p_first_filter->type = ETH_FILTER_TYPE_VNI;
 		break;
+	case ECORE_FILTER_UNUSED: /* @DPDK */
+		p_first_filter->type = MAX_ETH_FILTER_TYPE;
+		break;
 	}
 
 	if ((p_first_filter->type == ETH_FILTER_TYPE_MAC) ||

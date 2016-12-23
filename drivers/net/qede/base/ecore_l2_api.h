@@ -89,6 +89,7 @@ enum ecore_filter_ucast_type {
 	ECORE_FILTER_INNER_MAC_VNI_PAIR,
 	ECORE_FILTER_MAC_VNI_PAIR,
 	ECORE_FILTER_VNI,
+	ECORE_FILTER_UNUSED, /* @DPDK */
 };
 
 struct ecore_filter_ucast {

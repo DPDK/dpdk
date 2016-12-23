@@ -228,9 +228,6 @@ static int qed_slowpath_start(struct ecore_dev *edev,
 	struct ecore_hw_init_params hw_init_params;
 	struct qede_dev *qdev = (struct qede_dev *)edev;
 	int rc;
-#ifdef QED_ENC_SUPPORTED
-	struct ecore_tunn_start_params tunn_info;
-#endif
 
 #ifdef CONFIG_ECORE_BINARY_FW
 	if (IS_PF(edev)) {
@@ -273,17 +270,6 @@ static int qed_slowpath_start(struct ecore_dev *edev,
 
 	/* Start the slowpath */
 	memset(&hw_init_params, 0, sizeof(hw_init_params));
-#ifdef QED_ENC_SUPPORTED
-	memset(&tunn_info, 0, sizeof(tunn_info));
-	tunn_info.tunn_mode |= 1 << QED_MODE_VXLAN_TUNN |
-	    1 << QED_MODE_L2GRE_TUNN |
-	    1 << QED_MODE_IPGRE_TUNN |
-	    1 << QED_MODE_L2GENEVE_TUNN | 1 << QED_MODE_IPGENEVE_TUNN;
-	tunn_info.tunn_clss_vxlan = QED_TUNN_CLSS_MAC_VLAN;
-	tunn_info.tunn_clss_l2gre = QED_TUNN_CLSS_MAC_VLAN;
-	tunn_info.tunn_clss_ipgre = QED_TUNN_CLSS_MAC_VLAN;
-	hw_init_params.p_tunn = &tunn_info;
-#endif
 	hw_init_params.b_hw_start = true;
 	hw_init_params.int_mode = ECORE_INT_MODE_MSIX;
 	hw_init_params.allow_npar_tx_switch = allow_npar_tx_switching;
