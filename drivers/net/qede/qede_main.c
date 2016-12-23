@@ -414,6 +414,8 @@ qed_fill_eth_dev_info(struct ecore_dev *edev, struct qed_dev_eth_info *info)
 
 		ecore_vf_get_port_mac(&edev->hwfns[0],
 				      (uint8_t *)&info->port_mac);
+
+		info->is_legacy = ecore_vf_get_pre_fp_hsi(&edev->hwfns[0]);
 	}
 
 	qed_fill_dev_info(edev, &info->common);

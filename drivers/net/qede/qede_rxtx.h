@@ -74,6 +74,51 @@
 
 #define for_each_queue(i) for (i = 0; i < qdev->num_queues; i++)
 
+
+/* Macros for non-tunnel packet types lkup table */
+#define QEDE_PKT_TYPE_UNKNOWN				0x0
+#define QEDE_PKT_TYPE_MAX				0xf
+#define QEDE_PKT_TYPE_IPV4				0x1
+#define QEDE_PKT_TYPE_IPV6				0x2
+#define QEDE_PKT_TYPE_IPV4_TCP				0x5
+#define QEDE_PKT_TYPE_IPV6_TCP				0x6
+#define QEDE_PKT_TYPE_IPV4_UDP				0x9
+#define QEDE_PKT_TYPE_IPV6_UDP				0xa
+
+/* Macros for tunneled packets with next protocol lkup table */
+#define QEDE_PKT_TYPE_TUNN_GENEVE			0x1
+#define QEDE_PKT_TYPE_TUNN_GRE				0x2
+#define QEDE_PKT_TYPE_TUNN_VXLAN			0x3
+
+/* Bit 2 is don't care bit */
+#define QEDE_PKT_TYPE_TUNN_L2_TENID_NOEXIST_GENEVE	0x9
+#define QEDE_PKT_TYPE_TUNN_L2_TENID_NOEXIST_GRE	0xa
+#define QEDE_PKT_TYPE_TUNN_L2_TENID_NOEXIST_VXLAN	0xb
+
+#define QEDE_PKT_TYPE_TUNN_L2_TENID_EXIST_GENEVE	0xd
+#define QEDE_PKT_TYPE_TUNN_L2_TENID_EXIST_GRE		0xe
+#define QEDE_PKT_TYPE_TUNN_L2_TENID_EXIST_VXLAN	0xf
+
+
+#define QEDE_PKT_TYPE_TUNN_IPV4_TENID_NOEXIST_GENEVE    0x11
+#define QEDE_PKT_TYPE_TUNN_IPV4_TENID_NOEXIST_GRE       0x12
+#define QEDE_PKT_TYPE_TUNN_IPV4_TENID_NOEXIST_VXLAN     0x13
+
+#define QEDE_PKT_TYPE_TUNN_IPV4_TENID_EXIST_GENEVE	0x15
+#define QEDE_PKT_TYPE_TUNN_IPV4_TENID_EXIST_GRE	0x16
+#define QEDE_PKT_TYPE_TUNN_IPV4_TENID_EXIST_VXLAN	0x17
+
+
+#define QEDE_PKT_TYPE_TUNN_IPV6_TENID_NOEXIST_GENEVE    0x19
+#define QEDE_PKT_TYPE_TUNN_IPV6_TENID_NOEXIST_GRE       0x1a
+#define QEDE_PKT_TYPE_TUNN_IPV6_TENID_NOEXIST_VXLAN     0x1b
+
+#define QEDE_PKT_TYPE_TUNN_IPV6_TENID_EXIST_GENEVE      0x1d
+#define QEDE_PKT_TYPE_TUNN_IPV6_TENID_EXIST_GRE		0x1e
+#define QEDE_PKT_TYPE_TUNN_IPV6_TENID_EXIST_VXLAN       0x1f
+
+#define QEDE_PKT_TYPE_TUNN_MAX_TYPE			0x20 /* 2^5 */
+
 /*
  * RX BD descriptor ring
  */
@@ -133,6 +178,7 @@ struct qede_tx_queue {
 	volatile union db_prod tx_db;
 	uint16_t port_id;
 	uint64_t xmit_pkts;
+	bool is_legacy;
 	struct qede_dev *qdev;
 };
 

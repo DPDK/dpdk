@@ -59,12 +59,13 @@ Supported Features
 - MTU change
 - Multiprocess aware
 - Scatter-Gather
+- VXLAN tunneling offload
 
 Non-supported Features
 ----------------------
 
 - SR-IOV PF
-- Tunneling offloads
+- GENEVE and NVGRE Tunneling offloads
 - LRO/TSO
 - NPAR
 

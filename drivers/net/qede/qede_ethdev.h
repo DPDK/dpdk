@@ -15,6 +15,7 @@
 #include <rte_ether.h>
 #include <rte_ethdev.h>
 #include <rte_dev.h>
+#include <rte_ip.h>
 
 /* ecore includes */
 #include "base/bcm_osal.h"
@@ -183,6 +184,8 @@ static int qede_rss_hash_update(struct rte_eth_dev *eth_dev,
 static int qede_rss_reta_update(struct rte_eth_dev *eth_dev,
 				struct rte_eth_rss_reta_entry64 *reta_conf,
 				uint16_t reta_size);
+
+static inline uint32_t qede_rx_cqe_to_pkt_type(uint16_t flags);
 
 /* Non-static functions */
 void qede_init_rss_caps(uint8_t *rss_caps, uint64_t hf);

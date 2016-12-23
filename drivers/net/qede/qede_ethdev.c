@@ -920,14 +920,16 @@ qede_dev_info_get(struct rte_eth_dev *eth_dev,
 		.txq_flags = QEDE_TXQ_FLAGS,
 	};
 
-	dev_info->rx_offload_capa = (DEV_RX_OFFLOAD_VLAN_STRIP |
-				     DEV_RX_OFFLOAD_IPV4_CKSUM |
-				     DEV_RX_OFFLOAD_UDP_CKSUM |
-				     DEV_RX_OFFLOAD_TCP_CKSUM);
-	dev_info->tx_offload_capa = (DEV_TX_OFFLOAD_VLAN_INSERT |
-				     DEV_TX_OFFLOAD_IPV4_CKSUM |
-				     DEV_TX_OFFLOAD_UDP_CKSUM |
-				     DEV_TX_OFFLOAD_TCP_CKSUM);
+	dev_info->rx_offload_capa = (DEV_RX_OFFLOAD_VLAN_STRIP	|
+				     DEV_RX_OFFLOAD_IPV4_CKSUM	|
+				     DEV_RX_OFFLOAD_UDP_CKSUM	|
+				     DEV_RX_OFFLOAD_TCP_CKSUM	|
+				     DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM);
+	dev_info->tx_offload_capa = (DEV_TX_OFFLOAD_VLAN_INSERT	|
+				     DEV_TX_OFFLOAD_IPV4_CKSUM	|
+				     DEV_TX_OFFLOAD_UDP_CKSUM	|
+				     DEV_TX_OFFLOAD_TCP_CKSUM	|
+				     DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM);
 
 	memset(&link, 0, sizeof(struct qed_link_output));
 	qdev->ops->common->get_link(edev, &link);

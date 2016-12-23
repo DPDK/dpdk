@@ -701,79 +701,64 @@ static int qede_start_queues(struct rte_eth_dev *eth_dev, bool clear_stats)
 	return 0;
 }
 
-#ifdef ENC_SUPPORTED
 static bool qede_tunn_exist(uint16_t flag)
 {
 	return !!((PARSING_AND_ERR_FLAGS_TUNNELEXIST_MASK <<
 		    PARSING_AND_ERR_FLAGS_TUNNELEXIST_SHIFT) & flag);
 }
 
-static inline uint8_t qede_check_tunn_csum(uint16_t flag)
+/*
+ * qede_check_tunn_csum_l4:
+ * Returns:
+ * 1 : If L4 csum is enabled AND if the validation has failed.
+ * 0 : Otherwise
+ */
+static inline uint8_t qede_check_tunn_csum_l4(uint16_t flag)
 {
-	uint8_t tcsum = 0;
-	uint16_t csum_flag = 0;
-
 	if ((PARSING_AND_ERR_FLAGS_TUNNELL4CHKSMWASCALCULATED_MASK <<
 	     PARSING_AND_ERR_FLAGS_TUNNELL4CHKSMWASCALCULATED_SHIFT) & flag)
-		csum_flag |= PARSING_AND_ERR_FLAGS_TUNNELL4CHKSMERROR_MASK <<
-		    PARSING_AND_ERR_FLAGS_TUNNELL4CHKSMERROR_SHIFT;
+		return !!((PARSING_AND_ERR_FLAGS_TUNNELL4CHKSMERROR_MASK <<
+			PARSING_AND_ERR_FLAGS_TUNNELL4CHKSMERROR_SHIFT) & flag);
 
-	if ((PARSING_AND_ERR_FLAGS_L4CHKSMWASCALCULATED_MASK <<
-	     PARSING_AND_ERR_FLAGS_L4CHKSMWASCALCULATED_SHIFT) & flag) {
-		csum_flag |= PARSING_AND_ERR_FLAGS_L4CHKSMERROR_MASK <<
-		    PARSING_AND_ERR_FLAGS_L4CHKSMERROR_SHIFT;
-		tcsum = QEDE_TUNN_CSUM_UNNECESSARY;
-	}
-
-	csum_flag |= PARSING_AND_ERR_FLAGS_TUNNELIPHDRERROR_MASK <<
-	    PARSING_AND_ERR_FLAGS_TUNNELIPHDRERROR_SHIFT |
-	    PARSING_AND_ERR_FLAGS_IPHDRERROR_MASK <<
-	    PARSING_AND_ERR_FLAGS_IPHDRERROR_SHIFT;
-
-	if (csum_flag & flag)
-		return QEDE_CSUM_ERROR;
-
-	return QEDE_CSUM_UNNECESSARY | tcsum;
-}
-#else
-static inline uint8_t qede_tunn_exist(uint16_t flag)
-{
 	return 0;
 }
 
-static inline uint8_t qede_check_tunn_csum(uint16_t flag)
+static inline uint8_t qede_check_notunn_csum_l4(uint16_t flag)
 {
+	if ((PARSING_AND_ERR_FLAGS_L4CHKSMWASCALCULATED_MASK <<
+	     PARSING_AND_ERR_FLAGS_L4CHKSMWASCALCULATED_SHIFT) & flag)
+		return !!((PARSING_AND_ERR_FLAGS_L4CHKSMERROR_MASK <<
+			   PARSING_AND_ERR_FLAGS_L4CHKSMERROR_SHIFT) & flag);
+
 	return 0;
 }
-#endif
 
-static inline uint8_t qede_check_notunn_csum(uint16_t flag)
+static inline uint8_t
+qede_check_notunn_csum_l3(struct rte_mbuf *m, uint16_t flag)
 {
-	uint8_t csum = 0;
-	uint16_t csum_flag = 0;
+	struct ipv4_hdr *ip;
+	uint16_t pkt_csum;
+	uint16_t calc_csum;
+	uint16_t val;
 
-	if ((PARSING_AND_ERR_FLAGS_L4CHKSMWASCALCULATED_MASK <<
-	     PARSING_AND_ERR_FLAGS_L4CHKSMWASCALCULATED_SHIFT) & flag) {
-		csum_flag |= PARSING_AND_ERR_FLAGS_L4CHKSMERROR_MASK <<
-		    PARSING_AND_ERR_FLAGS_L4CHKSMERROR_SHIFT;
-		csum = QEDE_CSUM_UNNECESSARY;
+	val = ((PARSING_AND_ERR_FLAGS_IPHDRERROR_MASK <<
+		PARSING_AND_ERR_FLAGS_IPHDRERROR_SHIFT) & flag);
+
+	if (unlikely(val)) {
+		m->packet_type = qede_rx_cqe_to_pkt_type(flag);
+		if (RTE_ETH_IS_IPV4_HDR(m->packet_type)) {
+			ip = rte_pktmbuf_mtod_offset(m, struct ipv4_hdr *,
+					   sizeof(struct ether_hdr));
+			pkt_csum = ip->hdr_checksum;
+			ip->hdr_checksum = 0;
+			calc_csum = rte_ipv4_cksum(ip);
+			ip->hdr_checksum = pkt_csum;
+			return (calc_csum != pkt_csum);
+		} else if (RTE_ETH_IS_IPV6_HDR(m->packet_type)) {
+			return 1;
+		}
 	}
-
-	csum_flag |= PARSING_AND_ERR_FLAGS_IPHDRERROR_MASK <<
-	    PARSING_AND_ERR_FLAGS_IPHDRERROR_SHIFT;
-
-	if (csum_flag & flag)
-		return QEDE_CSUM_ERROR;
-
-	return csum;
-}
-
-static inline uint8_t qede_check_csum(uint16_t flag)
-{
-	if (likely(!qede_tunn_exist(flag)))
-		return qede_check_notunn_csum(flag);
-	else
-		return qede_check_tunn_csum(flag);
+	return 0;
 }
 
 static inline void qede_rx_bd_ring_consume(struct qede_rx_queue *rxq)
@@ -818,21 +803,92 @@ qede_recycle_rx_bd_ring(struct qede_rx_queue *rxq,
 
 static inline uint32_t qede_rx_cqe_to_pkt_type(uint16_t flags)
 {
-	uint32_t p_type;
-	/* TBD - L4 indications needed ? */
-	uint16_t protocol = ((PARSING_AND_ERR_FLAGS_L3TYPE_MASK <<
-			      PARSING_AND_ERR_FLAGS_L3TYPE_SHIFT) & flags);
+	uint16_t val;
 
-	/* protocol = 3 means LLC/SNAP over Ethernet */
-	if (unlikely(protocol == 0 || protocol == 3))
-		p_type = RTE_PTYPE_UNKNOWN;
-	else if (protocol == 1)
-		p_type = RTE_PTYPE_L3_IPV4;
-	else if (protocol == 2)
-		p_type = RTE_PTYPE_L3_IPV6;
+	/* Lookup table */
+	static const uint32_t
+	ptype_lkup_tbl[QEDE_PKT_TYPE_MAX] __rte_cache_aligned = {
+		[QEDE_PKT_TYPE_IPV4] = RTE_PTYPE_L3_IPV4,
+		[QEDE_PKT_TYPE_IPV6] = RTE_PTYPE_L3_IPV6,
+		[QEDE_PKT_TYPE_IPV4_TCP] = RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L4_TCP,
+		[QEDE_PKT_TYPE_IPV6_TCP] = RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L4_TCP,
+		[QEDE_PKT_TYPE_IPV4_UDP] = RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L4_UDP,
+		[QEDE_PKT_TYPE_IPV6_UDP] = RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L4_UDP,
+	};
 
-	return RTE_PTYPE_L2_ETHER | p_type;
+	/* Bits (0..3) provides L3/L4 protocol type */
+	val = ((PARSING_AND_ERR_FLAGS_L3TYPE_MASK <<
+	       PARSING_AND_ERR_FLAGS_L3TYPE_SHIFT) |
+	       (PARSING_AND_ERR_FLAGS_L4PROTOCOL_MASK <<
+		PARSING_AND_ERR_FLAGS_L4PROTOCOL_SHIFT)) & flags;
+
+	if (val < QEDE_PKT_TYPE_MAX)
+		return ptype_lkup_tbl[val] | RTE_PTYPE_L2_ETHER;
+	else
+		return RTE_PTYPE_UNKNOWN;
 }
+
+static inline uint32_t qede_rx_cqe_to_tunn_pkt_type(uint16_t flags)
+{
+	uint32_t val;
+
+	/* Lookup table */
+	static const uint32_t
+	ptype_tunn_lkup_tbl[QEDE_PKT_TYPE_TUNN_MAX_TYPE] __rte_cache_aligned = {
+		[QEDE_PKT_TYPE_UNKNOWN] = RTE_PTYPE_UNKNOWN,
+		[QEDE_PKT_TYPE_TUNN_GENEVE] = RTE_PTYPE_TUNNEL_GENEVE,
+		[QEDE_PKT_TYPE_TUNN_GRE] = RTE_PTYPE_TUNNEL_GRE,
+		[QEDE_PKT_TYPE_TUNN_VXLAN] = RTE_PTYPE_TUNNEL_VXLAN,
+		[QEDE_PKT_TYPE_TUNN_L2_TENID_NOEXIST_GENEVE] =
+				RTE_PTYPE_TUNNEL_GENEVE | RTE_PTYPE_L2_ETHER,
+		[QEDE_PKT_TYPE_TUNN_L2_TENID_NOEXIST_GRE] =
+				RTE_PTYPE_TUNNEL_GRE | RTE_PTYPE_L2_ETHER,
+		[QEDE_PKT_TYPE_TUNN_L2_TENID_NOEXIST_VXLAN] =
+				RTE_PTYPE_TUNNEL_VXLAN | RTE_PTYPE_L2_ETHER,
+		[QEDE_PKT_TYPE_TUNN_L2_TENID_EXIST_GENEVE] =
+				RTE_PTYPE_TUNNEL_GENEVE | RTE_PTYPE_L2_ETHER,
+		[QEDE_PKT_TYPE_TUNN_L2_TENID_EXIST_GRE] =
+				RTE_PTYPE_TUNNEL_GRE | RTE_PTYPE_L2_ETHER,
+		[QEDE_PKT_TYPE_TUNN_L2_TENID_EXIST_VXLAN] =
+				RTE_PTYPE_TUNNEL_VXLAN | RTE_PTYPE_L2_ETHER,
+		[QEDE_PKT_TYPE_TUNN_IPV4_TENID_NOEXIST_GENEVE] =
+				RTE_PTYPE_TUNNEL_GENEVE | RTE_PTYPE_L3_IPV4,
+		[QEDE_PKT_TYPE_TUNN_IPV4_TENID_NOEXIST_GRE] =
+				RTE_PTYPE_TUNNEL_GRE | RTE_PTYPE_L3_IPV4,
+		[QEDE_PKT_TYPE_TUNN_IPV4_TENID_NOEXIST_VXLAN] =
+				RTE_PTYPE_TUNNEL_VXLAN | RTE_PTYPE_L3_IPV4,
+		[QEDE_PKT_TYPE_TUNN_IPV4_TENID_EXIST_GENEVE] =
+				RTE_PTYPE_TUNNEL_GENEVE | RTE_PTYPE_L3_IPV4,
+		[QEDE_PKT_TYPE_TUNN_IPV4_TENID_EXIST_GRE] =
+				RTE_PTYPE_TUNNEL_GRE | RTE_PTYPE_L3_IPV4,
+		[QEDE_PKT_TYPE_TUNN_IPV4_TENID_EXIST_VXLAN] =
+				RTE_PTYPE_TUNNEL_VXLAN | RTE_PTYPE_L3_IPV4,
+		[QEDE_PKT_TYPE_TUNN_IPV6_TENID_NOEXIST_GENEVE] =
+				RTE_PTYPE_TUNNEL_GENEVE | RTE_PTYPE_L3_IPV6,
+		[QEDE_PKT_TYPE_TUNN_IPV6_TENID_NOEXIST_GRE] =
+				RTE_PTYPE_TUNNEL_GRE | RTE_PTYPE_L3_IPV6,
+		[QEDE_PKT_TYPE_TUNN_IPV6_TENID_NOEXIST_VXLAN] =
+				RTE_PTYPE_TUNNEL_VXLAN | RTE_PTYPE_L3_IPV6,
+		[QEDE_PKT_TYPE_TUNN_IPV6_TENID_EXIST_GENEVE] =
+				RTE_PTYPE_TUNNEL_GENEVE | RTE_PTYPE_L3_IPV6,
+		[QEDE_PKT_TYPE_TUNN_IPV6_TENID_EXIST_GRE] =
+				RTE_PTYPE_TUNNEL_GRE | RTE_PTYPE_L3_IPV6,
+		[QEDE_PKT_TYPE_TUNN_IPV6_TENID_EXIST_VXLAN] =
+				RTE_PTYPE_TUNNEL_VXLAN | RTE_PTYPE_L3_IPV6,
+	};
+
+	/* Cover bits[4-0] to include tunn_type and next protocol */
+	val = ((ETH_TUNNEL_PARSING_FLAGS_TYPE_MASK <<
+		ETH_TUNNEL_PARSING_FLAGS_TYPE_SHIFT) |
+		(ETH_TUNNEL_PARSING_FLAGS_NEXT_PROTOCOL_MASK <<
+		ETH_TUNNEL_PARSING_FLAGS_NEXT_PROTOCOL_SHIFT)) & flags;
+
+	if (val < QEDE_PKT_TYPE_TUNN_MAX_TYPE)
+		return ptype_tunn_lkup_tbl[val];
+	else
+		return RTE_PTYPE_UNKNOWN;
+}
+
 
 int qede_process_sg_pkts(void *p_rxq,  struct rte_mbuf *rx_mb,
 			 int num_segs, uint16_t pkt_len)
@@ -904,6 +960,7 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	uint16_t len, pad, preload_idx, pkt_len, parse_flag;
 	uint8_t csum_flag, num_segs;
 	enum rss_hash_type htype;
+	uint8_t tunn_parse_flag;
 	int ret;
 
 	hw_comp_cons = rte_le_to_cpu_16(*rxq->hw_cons_ptr);
@@ -950,16 +1007,46 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		/* If this is an error packet then drop it */
 		parse_flag =
 		    rte_le_to_cpu_16(cqe->fast_path_regular.pars_flags.flags);
-		csum_flag = qede_check_csum(parse_flag);
-		if (unlikely(csum_flag == QEDE_CSUM_ERROR)) {
-			PMD_RX_LOG(ERR, rxq,
-				   "CQE in CONS = %u has error, flags = 0x%x "
-				   "dropping incoming packet\n",
-				   sw_comp_cons, parse_flag);
-			rxq->rx_hw_errors++;
-			qede_recycle_rx_bd_ring(rxq, qdev, fp_cqe->bd_num);
-			goto next_cqe;
+
+		rx_mb->ol_flags = 0;
+
+		if (qede_tunn_exist(parse_flag)) {
+			PMD_RX_LOG(DEBUG, rxq, "Rx tunneled packet\n");
+			if (unlikely(qede_check_tunn_csum_l4(parse_flag))) {
+				PMD_RX_LOG(ERR, rxq,
+					    "L4 csum failed, flags = 0x%x\n",
+					    parse_flag);
+				rxq->rx_hw_errors++;
+				rx_mb->ol_flags |= PKT_RX_L4_CKSUM_BAD;
+			} else {
+				tunn_parse_flag =
+						fp_cqe->tunnel_pars_flags.flags;
+				rx_mb->packet_type =
+					qede_rx_cqe_to_tunn_pkt_type(
+							tunn_parse_flag);
+			}
+		} else {
+			PMD_RX_LOG(DEBUG, rxq, "Rx non-tunneled packet\n");
+			if (unlikely(qede_check_notunn_csum_l4(parse_flag))) {
+				PMD_RX_LOG(ERR, rxq,
+					    "L4 csum failed, flags = 0x%x\n",
+					    parse_flag);
+				rxq->rx_hw_errors++;
+				rx_mb->ol_flags |= PKT_RX_L4_CKSUM_BAD;
+			} else if (unlikely(qede_check_notunn_csum_l3(rx_mb,
+							parse_flag))) {
+				PMD_RX_LOG(ERR, rxq,
+					   "IP csum failed, flags = 0x%x\n",
+					   parse_flag);
+				rxq->rx_hw_errors++;
+				rx_mb->ol_flags |= PKT_RX_IP_CKSUM_BAD;
+			} else {
+				rx_mb->packet_type =
+					qede_rx_cqe_to_pkt_type(parse_flag);
+			}
 		}
+
+		PMD_RX_LOG(INFO, rxq, "packet_type 0x%x\n", rx_mb->packet_type);
 
 		if (unlikely(qede_alloc_rx_buffer(rxq) != 0)) {
 			PMD_RX_LOG(ERR, rxq,
@@ -995,14 +1082,12 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		preload_idx = rxq->sw_rx_cons & NUM_RX_BDS(rxq);
 		rte_prefetch0(rxq->sw_rx_ring[preload_idx].mbuf);
 
-		/* Update MBUF fields */
-		rx_mb->ol_flags = 0;
+		/* Update rest of the MBUF fields */
 		rx_mb->data_off = pad + RTE_PKTMBUF_HEADROOM;
 		rx_mb->nb_segs = fp_cqe->bd_num;
 		rx_mb->data_len = len;
 		rx_mb->pkt_len = fp_cqe->pkt_len;
 		rx_mb->port = rxq->port_id;
-		rx_mb->packet_type = qede_rx_cqe_to_pkt_type(parse_flag);
 
 		htype = (uint8_t)GET_FIELD(fp_cqe->bitfields,
 				ETH_FAST_PATH_RX_REG_CQE_RSS_HASH_TYPE);
@@ -1206,8 +1291,39 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		QEDE_BD_SET_ADDR_LEN(bd1, rte_mbuf_data_dma_addr(mbuf),
 				     mbuf->pkt_len);
 
+		if (RTE_ETH_IS_TUNNEL_PKT(mbuf->packet_type)) {
+			PMD_TX_LOG(INFO, txq, "Tx tunnel packet\n");
+			/* First indicate its a tunnel pkt */
+			bd1->data.bd_flags.bitfields |=
+				ETH_TX_DATA_1ST_BD_TUNN_FLAG_MASK <<
+				ETH_TX_DATA_1ST_BD_TUNN_FLAG_SHIFT;
+
+			/* Legacy FW had flipped behavior in regard to this bit
+			 * i.e. it needed to set to prevent FW from touching
+			 * encapsulated packets when it didn't need to.
+			 */
+			if (unlikely(txq->is_legacy))
+				bd1->data.bitfields ^=
+					1 << ETH_TX_DATA_1ST_BD_TUNN_FLAG_SHIFT;
+
+			/* Outer IP checksum offload */
+			if (mbuf->ol_flags & PKT_TX_OUTER_IP_CKSUM) {
+				PMD_TX_LOG(INFO, txq, "OuterIP csum offload\n");
+				bd1->data.bd_flags.bitfields |=
+					ETH_TX_1ST_BD_FLAGS_TUNN_IP_CSUM_MASK <<
+					ETH_TX_1ST_BD_FLAGS_TUNN_IP_CSUM_SHIFT;
+			}
+
+			/* Outer UDP checksum offload */
+			bd1->data.bd_flags.bitfields |=
+				ETH_TX_1ST_BD_FLAGS_TUNN_L4_CSUM_MASK <<
+				ETH_TX_1ST_BD_FLAGS_TUNN_L4_CSUM_SHIFT;
+		}
+
 		/* Descriptor based VLAN insertion */
 		if (mbuf->ol_flags & (PKT_TX_VLAN_PKT | PKT_TX_QINQ_PKT)) {
+			PMD_TX_LOG(INFO, txq, "Insert VLAN 0x%x\n",
+				   mbuf->vlan_tci);
 			bd1->data.vlan = rte_cpu_to_le_16(mbuf->vlan_tci);
 			bd1->data.bd_flags.bitfields |=
 			    1 << ETH_TX_1ST_BD_FLAGS_VLAN_INSERTION_SHIFT;
@@ -1215,12 +1331,14 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		/* Offload the IP checksum in the hardware */
 		if (mbuf->ol_flags & PKT_TX_IP_CKSUM) {
+			PMD_TX_LOG(INFO, txq, "IP csum offload\n");
 			bd1->data.bd_flags.bitfields |=
 			    1 << ETH_TX_1ST_BD_FLAGS_IP_CSUM_SHIFT;
 		}
 
 		/* L4 checksum offload (tcp or udp) */
 		if (mbuf->ol_flags & (PKT_TX_TCP_CKSUM | PKT_TX_UDP_CKSUM)) {
+			PMD_TX_LOG(INFO, txq, "L4 csum offload\n");
 			bd1->data.bd_flags.bitfields |=
 			    1 << ETH_TX_1ST_BD_FLAGS_L4_CSUM_SHIFT;
 			/* IPv6 + extn. -> later */
@@ -1278,6 +1396,8 @@ static void qede_init_fp_queue(struct rte_eth_dev *eth_dev)
 				fp->txqs[tc] =
 					eth_dev->data->tx_queues[txq_index];
 				fp->txqs[tc]->queue_id = txq_index;
+				if (qdev->dev_info.is_legacy)
+					fp->txqs[tc]->is_legacy = true;
 			}
 			txq++;
 		}

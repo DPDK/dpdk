@@ -42,6 +42,9 @@ struct qed_dev_eth_info {
 	struct ether_addr port_mac;
 	uint16_t num_vlan_filters;
 	uint32_t num_mac_addrs;
+
+	/* Legacy VF - this affects the datapath */
+	bool is_legacy;
 };
 
 struct qed_update_vport_rss_params {
