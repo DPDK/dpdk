@@ -40,6 +40,7 @@
 #include <rte_vdev.h>
 #include <rte_malloc.h>
 #include <rte_cpuflags.h>
+#include <rte_byteorder.h>
 
 #include "aesni_gcm_pmd_private.h"
 
@@ -241,7 +242,8 @@ process_gcm_crypto_op(struct aesni_gcm_qp *qp, struct rte_crypto_sym_op *op,
 	 * to set BE LSB to 1, driver expects that 16B is allocated
 	 */
 	if (op->cipher.iv.length == 12) {
-		op->cipher.iv.data[15] = 1;
+		uint32_t *iv_padd = (uint32_t *)&op->cipher.iv.data[12];
+		*iv_padd = rte_bswap32(1);
 	}
 
 	if (op->auth.aad.length != 12 && op->auth.aad.length != 8 &&
