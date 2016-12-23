@@ -117,94 +117,82 @@ struct szedata {
  * @return Byte from PCI resource at offset "offset".
  */
 static inline uint8_t
-pci_resource_read8(struct rte_eth_dev *dev, uint32_t offset)
+pci_resource_read8(struct rte_mem_resource *rsc, uint32_t offset)
 {
-	return *((uint8_t *)((uint8_t *)
-			dev->pci_dev->mem_resource[PCI_RESOURCE_NUMBER].addr +
-			offset));
+	return *((uint8_t *)((uint8_t *)rsc->addr + offset));
 }
 
 /*
  * @return Two bytes from PCI resource starting at offset "offset".
  */
 static inline uint16_t
-pci_resource_read16(struct rte_eth_dev *dev, uint32_t offset)
+pci_resource_read16(struct rte_mem_resource *rsc, uint32_t offset)
 {
-	return rte_le_to_cpu_16(*((uint16_t *)((uint8_t *)
-			dev->pci_dev->mem_resource[PCI_RESOURCE_NUMBER].addr +
-			offset)));
+	return rte_le_to_cpu_16(*((uint16_t *)((uint8_t *)rsc->addr +
+					       offset)));
 }
 
 /*
  * @return Four bytes from PCI resource starting at offset "offset".
  */
 static inline uint32_t
-pci_resource_read32(struct rte_eth_dev *dev, uint32_t offset)
+pci_resource_read32(struct rte_mem_resource *rsc, uint32_t offset)
 {
-	return rte_le_to_cpu_32(*((uint32_t *)((uint8_t *)
-			dev->pci_dev->mem_resource[PCI_RESOURCE_NUMBER].addr +
-			offset)));
+	return rte_le_to_cpu_32(*((uint32_t *)((uint8_t *)rsc->addr +
+					       offset)));
 }
 
 /*
  * @return Eight bytes from PCI resource starting at offset "offset".
  */
 static inline uint64_t
-pci_resource_read64(struct rte_eth_dev *dev, uint32_t offset)
+pci_resource_read64(struct rte_mem_resource *rsc, uint32_t offset)
 {
-	return rte_le_to_cpu_64(*((uint64_t *)((uint8_t *)
-			dev->pci_dev->mem_resource[PCI_RESOURCE_NUMBER].addr +
-			offset)));
+	return rte_le_to_cpu_64(*((uint64_t *)((uint8_t *)rsc->addr +
+					       offset)));
 }
 
 /*
  * Write one byte to PCI resource address space at offset "offset".
  */
 static inline void
-pci_resource_write8(struct rte_eth_dev *dev, uint32_t offset, uint8_t val)
+pci_resource_write8(struct rte_mem_resource *rsc, uint32_t offset, uint8_t val)
 {
-	*((uint8_t *)((uint8_t *)
-			dev->pci_dev->mem_resource[PCI_RESOURCE_NUMBER].addr +
-			offset)) = val;
+	*((uint8_t *)((uint8_t *)rsc->addr + offset)) = val;
 }
 
 /*
  * Write two bytes to PCI resource address space at offset "offset".
  */
 static inline void
-pci_resource_write16(struct rte_eth_dev *dev, uint32_t offset, uint16_t val)
+pci_resource_write16(struct rte_mem_resource *rsc, uint32_t offset,
+		     uint16_t val)
 {
-	*((uint16_t *)((uint8_t *)
-			dev->pci_dev->mem_resource[PCI_RESOURCE_NUMBER].addr +
-			offset)) = rte_cpu_to_le_16(val);
+	*((uint16_t *)((uint8_t *)rsc->addr + offset)) = rte_cpu_to_le_16(val);
 }
 
 /*
  * Write four bytes to PCI resource address space at offset "offset".
  */
 static inline void
-pci_resource_write32(struct rte_eth_dev *dev, uint32_t offset, uint32_t val)
+pci_resource_write32(struct rte_mem_resource *rsc, uint32_t offset,
+		     uint32_t val)
 {
-	*((uint32_t *)((uint8_t *)
-			dev->pci_dev->mem_resource[PCI_RESOURCE_NUMBER].addr +
-			offset)) = rte_cpu_to_le_32(val);
+	*((uint32_t *)((uint8_t *)rsc->addr + offset)) = rte_cpu_to_le_32(val);
 }
 
 /*
  * Write eight bytes to PCI resource address space at offset "offset".
  */
 static inline void
-pci_resource_write64(struct rte_eth_dev *dev, uint32_t offset, uint64_t val)
+pci_resource_write64(struct rte_mem_resource *rsc, uint32_t offset,
+		     uint64_t val)
 {
-	*((uint64_t *)((uint8_t *)
-			dev->pci_dev->mem_resource[PCI_RESOURCE_NUMBER].addr +
-			offset)) = rte_cpu_to_le_64(val);
+	*((uint64_t *)((uint8_t *)rsc->addr + offset)) = rte_cpu_to_le_64(val);
 }
 
-#define SZEDATA2_PCI_RESOURCE_PTR(dev, offset, type) \
-	((type)((uint8_t *) \
-	((dev)->pci_dev->mem_resource[PCI_RESOURCE_NUMBER].addr) \
-	+ (offset)))
+#define SZEDATA2_PCI_RESOURCE_PTR(rsc, offset, type) \
+	((type)((uint8_t *)(rsc)->addr) + (offset))
 
 enum szedata2_link_speed {
 	SZEDATA2_LINK_SPEED_DEFAULT = 0,
