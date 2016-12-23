@@ -743,6 +743,8 @@ static int bnxt_reta_query_op(struct rte_eth_dev *eth_dev,
 {
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
 	struct bnxt_vnic_info *vnic = &bp->vnic_info[0];
+	struct rte_intr_handle *intr_handle
+		= &bp->pdev->intr_handle;
 
 	/* Retrieve from the default VNIC */
 	if (!vnic)
@@ -759,7 +761,7 @@ static int bnxt_reta_query_op(struct rte_eth_dev *eth_dev,
 	/* EW - need to revisit here copying from u64 to u16 */
 	memcpy(reta_conf, vnic->rss_table, reta_size);
 
-	if (rte_intr_allow_others(&eth_dev->pci_dev->intr_handle)) {
+	if (rte_intr_allow_others(intr_handle)) {
 		if (eth_dev->data->dev_conf.intr_conf.lsc != 0)
 			bnxt_dev_lsc_intr_setup(eth_dev);
 	}
@@ -1009,11 +1011,12 @@ static bool bnxt_vf_pciid(uint16_t id)
 
 static int bnxt_init_board(struct rte_eth_dev *eth_dev)
 {
-	int rc;
 	struct bnxt *bp = eth_dev->data->dev_private;
+	struct rte_pci_device *pci_dev = eth_dev->pci_dev;
+	int rc;
 
 	/* enable device (incl. PCI PM wakeup), and bus-mastering */
-	if (!eth_dev->pci_dev->mem_resource[0].addr) {
+	if (!pci_dev->mem_resource[0].addr) {
 		RTE_LOG(ERR, PMD,
 			"Cannot find PCI device base address, aborting\n");
 		rc = -ENODEV;
@@ -1021,9 +1024,9 @@ static int bnxt_init_board(struct rte_eth_dev *eth_dev)
 	}
 
 	bp->eth_dev = eth_dev;
-	bp->pdev = eth_dev->pci_dev;
+	bp->pdev = pci_dev;
 
-	bp->bar0 = (void *)eth_dev->pci_dev->mem_resource[0].addr;
+	bp->bar0 = (void *)pci_dev->mem_resource[0].addr;
 	if (!bp->bar0) {
 		RTE_LOG(ERR, PMD, "Cannot map device registers, aborting\n");
 		rc = -ENOMEM;
@@ -1043,6 +1046,7 @@ init_err_disable:
 static int
 bnxt_dev_init(struct rte_eth_dev *eth_dev)
 {
+	struct rte_pci_device *pci_dev = eth_dev->pci_dev;
 	static int version_printed;
 	struct bnxt *bp;
 	int rc;
@@ -1050,10 +1054,10 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 	if (version_printed++ == 0)
 		RTE_LOG(INFO, PMD, "%s", bnxt_version);
 
-	rte_eth_copy_pci_info(eth_dev, eth_dev->pci_dev);
+	rte_eth_copy_pci_info(eth_dev, pci_dev);
 	bp = eth_dev->data->dev_private;
 
-	if (bnxt_vf_pciid(eth_dev->pci_dev->id.device_id))
+	if (bnxt_vf_pciid(pci_dev->id.device_id))
 		bp->flags |= BNXT_FLAG_VF;
 
 	rc = bnxt_init_board(eth_dev);
@@ -1121,8 +1125,8 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 
 	RTE_LOG(INFO, PMD,
 		DRV_MODULE_NAME " found at mem %" PRIx64 ", node addr %pM\n",
-		eth_dev->pci_dev->mem_resource[0].phys_addr,
-		eth_dev->pci_dev->mem_resource[0].addr);
+		pci_dev->mem_resource[0].phys_addr,
+		pci_dev->mem_resource[0].addr);
 
 	bp->dev_stopped = 0;
 
