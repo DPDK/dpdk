@@ -68,6 +68,33 @@ static int qed_stop_vport(struct ecore_dev *edev, uint8_t vport_id)
 	return 0;
 }
 
+bool qed_update_rss_parm_cmt(struct ecore_dev *edev, uint16_t *p_tbl)
+{
+	uint16_t max = 0, k;
+	bool rss_mode = 0; /* disable */
+	int divisor;
+
+	/* Find largest entry, since it's possible RSS needs to
+	 * be disabled [in case only 1 queue per-hwfn]
+	 */
+	for (k = 0; k < ECORE_RSS_IND_TABLE_SIZE; k++)
+		max = (max > p_tbl[k]) ?  max : p_tbl[k];
+
+	/* Either fix RSS values or disable RSS */
+	if (edev->num_hwfns < max + 1) {
+		divisor = (max + edev->num_hwfns - 1) / edev->num_hwfns;
+		DP_VERBOSE(edev, ECORE_MSG_SPQ,
+			   "CMT - fixing RSS values (modulo %02x)\n",
+			   divisor);
+		for (k = 0; k < ECORE_RSS_IND_TABLE_SIZE; k++)
+			p_tbl[k] = p_tbl[k] % divisor;
+
+		rss_mode = 1;
+	}
+
+	return rss_mode;
+}
+
 static int
 qed_update_vport(struct ecore_dev *edev, struct qed_update_vport_params *params)
 {
@@ -93,58 +120,6 @@ qed_update_vport(struct ecore_dev *edev, struct qed_update_vport_params *params)
 	sp_params.update_accept_any_vlan_flg =
 	    params->update_accept_any_vlan_flg;
 	sp_params.mtu = params->mtu;
-
-	/* RSS - is a bit tricky, since upper-layer isn't familiar with hwfns.
-	 * We need to re-fix the rss values per engine for CMT.
-	 */
-
-	if (edev->num_hwfns > 1 && params->update_rss_flg) {
-		struct qed_update_vport_rss_params *rss = &params->rss_params;
-		int k, max = 0;
-
-		/* Find largest entry, since it's possible RSS needs to
-		 * be disabled [in case only 1 queue per-hwfn]
-		 */
-		for (k = 0; k < ECORE_RSS_IND_TABLE_SIZE; k++)
-			max = (max > rss->rss_ind_table[k]) ?
-			    max : rss->rss_ind_table[k];
-
-		/* Either fix RSS values or disable RSS */
-		if (edev->num_hwfns < max + 1) {
-			int divisor = (max + edev->num_hwfns - 1) /
-			    edev->num_hwfns;
-
-			DP_VERBOSE(edev, ECORE_MSG_SPQ,
-				   "CMT - fixing RSS values (modulo %02x)\n",
-				   divisor);
-
-			for (k = 0; k < ECORE_RSS_IND_TABLE_SIZE; k++)
-				rss->rss_ind_table[k] =
-				    rss->rss_ind_table[k] % divisor;
-		} else {
-			DP_VERBOSE(edev, ECORE_MSG_SPQ,
-				   "CMT - 1 queue per-hwfn; Disabling RSS\n");
-			params->update_rss_flg = 0;
-		}
-	}
-
-	/* Now, update the RSS configuration for actual configuration */
-	if (params->update_rss_flg) {
-		sp_rss_params.update_rss_config = 1;
-		sp_rss_params.rss_enable = 1;
-		sp_rss_params.update_rss_capabilities = 1;
-		sp_rss_params.update_rss_ind_table = 1;
-		sp_rss_params.update_rss_key = 1;
-		sp_rss_params.rss_caps = ECORE_RSS_IPV4 | ECORE_RSS_IPV6 |
-		    ECORE_RSS_IPV4_TCP | ECORE_RSS_IPV6_TCP;
-		sp_rss_params.rss_table_size_log = 7;	/* 2^7 = 128 */
-		rte_memcpy(sp_rss_params.rss_ind_table,
-		       params->rss_params.rss_ind_table,
-		       ECORE_RSS_IND_TABLE_SIZE * sizeof(uint16_t));
-		rte_memcpy(sp_rss_params.rss_key, params->rss_params.rss_key,
-		       ECORE_RSS_KEY_SIZE * sizeof(uint32_t));
-		sp_params.rss_params = &sp_rss_params;
-	}
 
 	for_each_hwfn(edev, i) {
 		struct ecore_hwfn *p_hwfn = &edev->hwfns[i];

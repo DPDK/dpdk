@@ -152,8 +152,11 @@ struct qede_dev {
 	struct qede_fastpath *fp_array;
 	uint8_t num_tc;
 	uint16_t mtu;
-	bool rss_enabled;
-	struct qed_update_vport_rss_params rss_params;
+	bool rss_enable;
+	struct rte_eth_rss_conf rss_conf;
+	uint16_t rss_ind_table[ECORE_RSS_IND_TABLE_SIZE];
+	uint64_t rss_hf;
+	uint8_t rss_key_len;
 	uint32_t flags;
 	bool gro_disable;
 	uint16_t num_queues;
@@ -184,6 +187,8 @@ static int qede_rss_hash_update(struct rte_eth_dev *eth_dev,
 static int qede_rss_reta_update(struct rte_eth_dev *eth_dev,
 				struct rte_eth_rss_reta_entry64 *reta_conf,
 				uint16_t reta_size);
+
+static void qede_init_rss_caps(uint8_t *rss_caps, uint64_t hf);
 
 static inline uint32_t qede_rx_cqe_to_pkt_type(uint16_t flags);
 

@@ -788,6 +788,54 @@ static int qede_init_vport(struct qede_dev *qdev)
 	return 0;
 }
 
+static void qede_prandom_bytes(uint32_t *buff)
+{
+	uint8_t i;
+
+	srand((unsigned int)time(NULL));
+	for (i = 0; i < ECORE_RSS_KEY_SIZE; i++)
+		buff[i] = rand();
+}
+
+static int qede_config_rss(struct rte_eth_dev *eth_dev)
+{
+	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
+	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
+	uint32_t def_rss_key[ECORE_RSS_KEY_SIZE];
+	struct rte_eth_rss_reta_entry64 reta_conf[2];
+	struct rte_eth_rss_conf rss_conf;
+	uint32_t i, id, pos, q;
+
+	rss_conf = eth_dev->data->dev_conf.rx_adv_conf.rss_conf;
+	if (!rss_conf.rss_key) {
+		DP_INFO(edev, "Applying driver default key\n");
+		rss_conf.rss_key_len = ECORE_RSS_KEY_SIZE * sizeof(uint32_t);
+		qede_prandom_bytes(&def_rss_key[0]);
+		rss_conf.rss_key = (uint8_t *)&def_rss_key[0];
+	}
+
+	/* Configure RSS hash */
+	if (qede_rss_hash_update(eth_dev, &rss_conf))
+		return -EINVAL;
+
+	/* Configure default RETA */
+	memset(reta_conf, 0, sizeof(reta_conf));
+	for (i = 0; i < ECORE_RSS_IND_TABLE_SIZE; i++)
+		reta_conf[i / RTE_RETA_GROUP_SIZE].mask = UINT64_MAX;
+
+	for (i = 0; i < ECORE_RSS_IND_TABLE_SIZE; i++) {
+		id = i / RTE_RETA_GROUP_SIZE;
+		pos = i % RTE_RETA_GROUP_SIZE;
+		q = i % QEDE_RSS_COUNT(qdev);
+		reta_conf[id].reta[pos] = q;
+	}
+	if (qede_rss_reta_update(eth_dev, &reta_conf[0],
+				 ECORE_RSS_IND_TABLE_SIZE))
+		return -EINVAL;
+
+	return 0;
+}
+
 static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 {
 	struct qede_dev *qdev = eth_dev->data->dev_private;
@@ -856,6 +904,26 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 	if (rc != 0)
 		return rc;
 
+	/* Do RSS configuration after vport-start */
+	switch (rxmode->mq_mode) {
+	case ETH_MQ_RX_RSS:
+		rc = qede_config_rss(eth_dev);
+		if (rc != 0) {
+			qdev->ops->vport_stop(edev, 0);
+			qede_dealloc_fp_resc(eth_dev);
+			return -EINVAL;
+		}
+	break;
+	case ETH_MQ_RX_NONE:
+		DP_INFO(edev, "RSS is disabled\n");
+	break;
+	default:
+		DP_ERR(edev, "Unsupported RSS mode\n");
+		qdev->ops->vport_stop(edev, 0);
+		qede_dealloc_fp_resc(eth_dev);
+		return -EINVAL;
+	}
+
 	SLIST_INIT(&qdev->vlan_list_head);
 
 	/* Add primary mac for PF */
@@ -914,6 +982,7 @@ qede_dev_info_get(struct rte_eth_dev *eth_dev,
 	else
 		dev_info->max_vfs = (uint16_t)NUM_OF_VFS(&qdev->edev);
 	dev_info->reta_size = ECORE_RSS_IND_TABLE_SIZE;
+	dev_info->hash_key_size = ECORE_RSS_KEY_SIZE * sizeof(uint32_t);
 	dev_info->flow_type_rss_offloads = (uint64_t)QEDE_RSS_OFFLOAD_ALL;
 
 	dev_info->default_txconf = (struct rte_eth_txconf) {
@@ -1371,7 +1440,7 @@ qede_dev_supported_ptypes_get(struct rte_eth_dev *eth_dev)
 	return NULL;
 }
 
-void qede_init_rss_caps(uint8_t *rss_caps, uint64_t hf)
+static void qede_init_rss_caps(uint8_t *rss_caps, uint64_t hf)
 {
 	*rss_caps = 0;
 	*rss_caps |= (hf & ETH_RSS_IPV4)              ? ECORE_RSS_IPV4 : 0;
@@ -1385,71 +1454,100 @@ void qede_init_rss_caps(uint8_t *rss_caps, uint64_t hf)
 static int qede_rss_hash_update(struct rte_eth_dev *eth_dev,
 				struct rte_eth_rss_conf *rss_conf)
 {
-	struct qed_update_vport_params vport_update_params;
-	struct qede_dev *qdev = eth_dev->data->dev_private;
-	struct ecore_dev *edev = &qdev->edev;
+	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
+	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
+	struct ecore_sp_vport_update_params vport_update_params;
+	struct ecore_rss_params rss_params;
+	struct ecore_rss_params params;
+	struct ecore_hwfn *p_hwfn;
 	uint32_t *key = (uint32_t *)rss_conf->rss_key;
 	uint64_t hf = rss_conf->rss_hf;
-	int i;
+	uint8_t len = rss_conf->rss_key_len;
+	uint8_t i;
+	int rc;
 
 	memset(&vport_update_params, 0, sizeof(vport_update_params));
+	memset(&rss_params, 0, sizeof(rss_params));
+
+	DP_INFO(edev, "RSS hf = 0x%lx len = %u key = %p\n",
+		(unsigned long)hf, len, key);
 
 	if (hf != 0) {
-		/* Enable RSS */
-		qede_init_rss_caps(&qdev->rss_params.rss_caps, hf);
-		memcpy(&vport_update_params.rss_params, &qdev->rss_params,
-		       sizeof(vport_update_params.rss_params));
-		if (key)
-			memcpy(qdev->rss_params.rss_key, rss_conf->rss_key,
-			       rss_conf->rss_key_len);
-		vport_update_params.update_rss_flg = 1;
-		qdev->rss_enabled = 1;
-	} else {
-		/* Disable RSS */
-		qdev->rss_enabled = 0;
+		/* Enabling RSS */
+		DP_INFO(edev, "Enabling rss\n");
+
+		/* RSS caps */
+		qede_init_rss_caps(&rss_params.rss_caps, hf);
+		rss_params.update_rss_capabilities = 1;
+
+		/* RSS hash key */
+		if (key) {
+			if (len > (ECORE_RSS_KEY_SIZE * sizeof(uint32_t))) {
+				DP_ERR(edev, "RSS key length exceeds limit\n");
+				return -EINVAL;
+			}
+			DP_INFO(edev, "Applying user supplied hash key\n");
+			rss_params.update_rss_key = 1;
+			memcpy(&rss_params.rss_key, key, len);
+		}
+		rss_params.rss_enable = 1;
 	}
 
-	/* If the mapping doesn't fit any supported, return */
-	if (qdev->rss_params.rss_caps == 0 && hf != 0)
-		return -EINVAL;
-
-	DP_INFO(edev, "%s\n", (vport_update_params.update_rss_flg) ?
-				"Enabling RSS" : "Disabling RSS");
-
+	rss_params.update_rss_config = 1;
+	/* tbl_size has to be set with capabilities */
+	rss_params.rss_table_size_log = 7;
 	vport_update_params.vport_id = 0;
+	vport_update_params.rss_params = &rss_params;
 
-	return qdev->ops->vport_update(edev, &vport_update_params);
+	for_each_hwfn(edev, i) {
+		p_hwfn = &edev->hwfns[i];
+		vport_update_params.opaque_fid = p_hwfn->hw_info.opaque_fid;
+		rc = ecore_sp_vport_update(p_hwfn, &vport_update_params,
+					   ECORE_SPQ_MODE_EBLOCK, NULL);
+		if (rc) {
+			DP_ERR(edev, "vport-update for RSS failed\n");
+			return rc;
+		}
+	}
+	qdev->rss_enable = rss_params.rss_enable;
+
+	/* Update local structure for hash query */
+	qdev->rss_conf.rss_hf = hf;
+	qdev->rss_conf.rss_key_len = len;
+	if (qdev->rss_enable) {
+		if  (qdev->rss_conf.rss_key == NULL) {
+			qdev->rss_conf.rss_key = (uint8_t *)malloc(len);
+			if (qdev->rss_conf.rss_key == NULL) {
+				DP_ERR(edev, "No memory to store RSS key\n");
+				return -ENOMEM;
+			}
+		}
+		if (key && len) {
+			DP_INFO(edev, "Storing RSS key\n");
+			memcpy(qdev->rss_conf.rss_key, key, len);
+		}
+	} else if (!qdev->rss_enable && len == 0) {
+		if (qdev->rss_conf.rss_key) {
+			free(qdev->rss_conf.rss_key);
+			qdev->rss_conf.rss_key = NULL;
+			DP_INFO(edev, "Free RSS key\n");
+		}
+	}
+
+	return 0;
 }
 
-int qede_rss_hash_conf_get(struct rte_eth_dev *eth_dev,
+static int qede_rss_hash_conf_get(struct rte_eth_dev *eth_dev,
 			   struct rte_eth_rss_conf *rss_conf)
 {
-	struct qede_dev *qdev = eth_dev->data->dev_private;
-	uint64_t hf;
+	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
 
-	if (rss_conf->rss_key_len < sizeof(qdev->rss_params.rss_key))
-		return -EINVAL;
+	rss_conf->rss_hf = qdev->rss_conf.rss_hf;
+	rss_conf->rss_key_len = qdev->rss_conf.rss_key_len;
 
-	if (rss_conf->rss_key)
-		memcpy(rss_conf->rss_key, qdev->rss_params.rss_key,
-		       sizeof(qdev->rss_params.rss_key));
-
-	hf = 0;
-	hf |= (qdev->rss_params.rss_caps & ECORE_RSS_IPV4)     ?
-			ETH_RSS_IPV4 : 0;
-	hf |= (qdev->rss_params.rss_caps & ECORE_RSS_IPV6)     ?
-			ETH_RSS_IPV6 : 0;
-	hf |= (qdev->rss_params.rss_caps & ECORE_RSS_IPV6)     ?
-			ETH_RSS_IPV6_EX : 0;
-	hf |= (qdev->rss_params.rss_caps & ECORE_RSS_IPV4_TCP) ?
-			ETH_RSS_NONFRAG_IPV4_TCP : 0;
-	hf |= (qdev->rss_params.rss_caps & ECORE_RSS_IPV6_TCP) ?
-			ETH_RSS_NONFRAG_IPV6_TCP : 0;
-	hf |= (qdev->rss_params.rss_caps & ECORE_RSS_IPV6_TCP) ?
-			ETH_RSS_IPV6_TCP_EX : 0;
-
-	rss_conf->rss_hf = hf;
-
+	if (rss_conf->rss_key && qdev->rss_conf.rss_key)
+		memcpy(rss_conf->rss_key, qdev->rss_conf.rss_key,
+		       rss_conf->rss_key_len);
 	return 0;
 }
 
@@ -1457,10 +1555,14 @@ static int qede_rss_reta_update(struct rte_eth_dev *eth_dev,
 				struct rte_eth_rss_reta_entry64 *reta_conf,
 				uint16_t reta_size)
 {
-	struct qed_update_vport_params vport_update_params;
-	struct qede_dev *qdev = eth_dev->data->dev_private;
-	struct ecore_dev *edev = &qdev->edev;
+	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
+	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
+	struct ecore_sp_vport_update_params vport_update_params;
+	struct ecore_rss_params params;
+	struct ecore_hwfn *p_hwfn;
 	uint16_t i, idx, shift;
+	uint8_t entry;
+	int rc;
 
 	if (reta_size > ETH_RSS_RETA_SIZE_128) {
 		DP_ERR(edev, "reta_size %d is not supported by hardware\n",
@@ -1469,42 +1571,67 @@ static int qede_rss_reta_update(struct rte_eth_dev *eth_dev,
 	}
 
 	memset(&vport_update_params, 0, sizeof(vport_update_params));
-	memcpy(&vport_update_params.rss_params, &qdev->rss_params,
-	       sizeof(vport_update_params.rss_params));
+	memset(&params, 0, sizeof(params));
 
 	for (i = 0; i < reta_size; i++) {
 		idx = i / RTE_RETA_GROUP_SIZE;
 		shift = i % RTE_RETA_GROUP_SIZE;
 		if (reta_conf[idx].mask & (1ULL << shift)) {
-			uint8_t entry = reta_conf[idx].reta[shift];
-			qdev->rss_params.rss_ind_table[i] = entry;
+			entry = reta_conf[idx].reta[shift];
+			params.rss_ind_table[i] = entry;
 		}
 	}
 
-	vport_update_params.update_rss_flg = 1;
+	/* Fix up RETA for CMT mode device */
+	if (edev->num_hwfns > 1)
+		qdev->rss_enable = qed_update_rss_parm_cmt(edev,
+					&params.rss_ind_table[0]);
+	params.update_rss_ind_table = 1;
+	params.rss_table_size_log = 7;
+	params.update_rss_config = 1;
 	vport_update_params.vport_id = 0;
+	/* Use the current value of rss_enable */
+	params.rss_enable = qdev->rss_enable;
+	vport_update_params.rss_params = &params;
 
-	return qdev->ops->vport_update(edev, &vport_update_params);
+	for_each_hwfn(edev, i) {
+		p_hwfn = &edev->hwfns[i];
+		vport_update_params.opaque_fid = p_hwfn->hw_info.opaque_fid;
+		rc = ecore_sp_vport_update(p_hwfn, &vport_update_params,
+					   ECORE_SPQ_MODE_EBLOCK, NULL);
+		if (rc) {
+			DP_ERR(edev, "vport-update for RSS failed\n");
+			return rc;
+		}
+	}
+
+	/* Update the local copy for RETA query command */
+	memcpy(qdev->rss_ind_table, params.rss_ind_table,
+	       sizeof(params.rss_ind_table));
+
+	return 0;
 }
 
-int qede_rss_reta_query(struct rte_eth_dev *eth_dev,
-			struct rte_eth_rss_reta_entry64 *reta_conf,
-			uint16_t reta_size)
+static int qede_rss_reta_query(struct rte_eth_dev *eth_dev,
+			       struct rte_eth_rss_reta_entry64 *reta_conf,
+			       uint16_t reta_size)
 {
 	struct qede_dev *qdev = eth_dev->data->dev_private;
+	struct ecore_dev *edev = &qdev->edev;
 	uint16_t i, idx, shift;
+	uint8_t entry;
 
 	if (reta_size > ETH_RSS_RETA_SIZE_128) {
-		struct ecore_dev *edev = &qdev->edev;
 		DP_ERR(edev, "reta_size %d is not supported\n",
 		       reta_size);
+		return -EINVAL;
 	}
 
 	for (i = 0; i < reta_size; i++) {
 		idx = i / RTE_RETA_GROUP_SIZE;
 		shift = i % RTE_RETA_GROUP_SIZE;
 		if (reta_conf[idx].mask & (1ULL << shift)) {
-			uint8_t entry = qdev->rss_params.rss_ind_table[i];
+			entry = qdev->rss_ind_table[i];
 			reta_conf[idx].reta[shift] = entry;
 		}
 	}

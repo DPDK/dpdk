@@ -47,12 +47,6 @@ struct qed_dev_eth_info {
 	bool is_legacy;
 };
 
-struct qed_update_vport_rss_params {
-	uint16_t rss_ind_table[128];
-	uint32_t rss_key[10];
-	u8 rss_caps;
-};
-
 struct qed_stop_rxq_params {
 	uint8_t rss_id;
 	uint8_t rx_queue_id;
@@ -71,7 +65,6 @@ struct qed_update_vport_params {
 	uint8_t update_accept_any_vlan_flg;
 	uint8_t accept_any_vlan;
 	uint8_t update_rss_flg;
-	struct qed_update_vport_rss_params rss_params;
 	uint16_t mtu;
 };
 
@@ -144,5 +137,7 @@ const struct qed_eth_ops *qed_get_eth_ops();
 
 int qed_configure_filter_rx_mode(struct rte_eth_dev *eth_dev,
 				 enum qed_filter_rx_mode_type type);
+
+bool qed_update_rss_parm_cmt(struct ecore_dev *edev, uint16_t *p_tbl);
 
 #endif /* _QEDE_ETH_IF_H */

@@ -507,83 +507,11 @@ qede_update_rx_prod(struct qede_dev *edev, struct qede_rx_queue *rxq)
 	PMD_RX_LOG(DEBUG, rxq, "bd_prod %u  cqe_prod %u\n", bd_prod, cqe_prod);
 }
 
-static inline uint32_t
-qede_rxfh_indir_default(uint32_t index, uint32_t n_rx_rings)
-{
-	return index % n_rx_rings;
-}
-
-static void qede_prandom_bytes(uint32_t *buff, size_t bytes)
-{
-	unsigned int i;
-
-	srand((unsigned int)time(NULL));
-
-	for (i = 0; i < ECORE_RSS_KEY_SIZE; i++)
-		buff[i] = rand();
-}
-
-static bool
-qede_check_vport_rss_enable(struct rte_eth_dev *eth_dev,
-			    struct qed_update_vport_rss_params *rss_params)
-{
-	struct rte_eth_rss_conf rss_conf;
-	enum rte_eth_rx_mq_mode mode = eth_dev->data->dev_conf.rxmode.mq_mode;
-	struct qede_dev *qdev = eth_dev->data->dev_private;
-	struct ecore_dev *edev = &qdev->edev;
-	uint8_t rss_caps;
-	unsigned int i;
-	uint64_t hf;
-	uint32_t *key;
-
-	PMD_INIT_FUNC_TRACE(edev);
-
-	rss_conf = eth_dev->data->dev_conf.rx_adv_conf.rss_conf;
-	key = (uint32_t *)rss_conf.rss_key;
-	hf = rss_conf.rss_hf;
-
-	/* Check if RSS conditions are met.
-	 * Note: Even though its meaningless to enable RSS with one queue, it
-	 * could be used to produce RSS Hash, so skipping that check.
-	 */
-	if (!(mode & ETH_MQ_RX_RSS)) {
-		DP_INFO(edev, "RSS flag is not set\n");
-		return false;
-	}
-
-	if (hf == 0) {
-		DP_INFO(edev, "Request to disable RSS\n");
-		return false;
-	}
-
-	memset(rss_params, 0, sizeof(*rss_params));
-
-	for (i = 0; i < ECORE_RSS_IND_TABLE_SIZE; i++)
-		rss_params->rss_ind_table[i] = qede_rxfh_indir_default(i,
-							QEDE_RSS_COUNT(qdev));
-
-	if (!key)
-		qede_prandom_bytes(rss_params->rss_key,
-				   sizeof(rss_params->rss_key));
-	else
-		memcpy(rss_params->rss_key, rss_conf.rss_key,
-		       rss_conf.rss_key_len);
-
-	qede_init_rss_caps(&rss_caps, hf);
-
-	rss_params->rss_caps = rss_caps;
-
-	DP_INFO(edev, "RSS conditions are met\n");
-
-	return true;
-}
-
 static int qede_start_queues(struct rte_eth_dev *eth_dev, bool clear_stats)
 {
 	struct qede_dev *qdev = eth_dev->data->dev_private;
 	struct ecore_dev *edev = &qdev->edev;
 	struct ecore_queue_start_common_params q_params;
-	struct qed_update_vport_rss_params *rss_params = &qdev->rss_params;
 	struct qed_dev_info *qed_info = &qdev->dev_info.common;
 	struct qed_update_vport_params vport_update_params;
 	struct qede_tx_queue *txq;
@@ -681,16 +609,6 @@ static int qede_start_queues(struct rte_eth_dev *eth_dev, bool clear_stats)
 		vport_update_params.update_tx_switching_flg = 1;
 		vport_update_params.tx_switching_flg = 1;
 	}
-
-	if (qede_check_vport_rss_enable(eth_dev, rss_params)) {
-		vport_update_params.update_rss_flg = 1;
-		qdev->rss_enabled = 1;
-	} else {
-		qdev->rss_enabled = 0;
-	}
-
-	rte_memcpy(&vport_update_params.rss_params, rss_params,
-	       sizeof(*rss_params));
 
 	rc = qdev->ops->vport_update(edev, &vport_update_params);
 	if (rc) {
@@ -1091,7 +1009,7 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 		htype = (uint8_t)GET_FIELD(fp_cqe->bitfields,
 				ETH_FAST_PATH_RX_REG_CQE_RSS_HASH_TYPE);
-		if (qdev->rss_enabled && htype) {
+		if (qdev->rss_enable && htype) {
 			rx_mb->ol_flags |= PKT_RX_RSS_HASH;
 			rx_mb->hash.rss = rte_le_to_cpu_32(fp_cqe->rss_hash);
 			PMD_RX_LOG(DEBUG, rxq, "Hash result 0x%x\n",
@@ -1410,7 +1328,7 @@ int qede_dev_start(struct rte_eth_dev *eth_dev)
 	struct ecore_dev *edev = &qdev->edev;
 	struct qed_link_output link_output;
 	struct qede_fastpath *fp;
-	int rc, i;
+	int rc;
 
 	DP_INFO(edev, "Device state is %d\n", qdev->state);
 
@@ -1620,10 +1538,14 @@ void qede_free_mem_load(struct rte_eth_dev *eth_dev)
 	for_each_queue(id) {
 		fp = &qdev->fp_array[id];
 		if (fp->type & QEDE_FASTPATH_RX) {
+			if (!fp->rxq)
+				continue;
 			qede_rx_queue_release(fp->rxq);
 			eth_dev->data->rx_queues[id] = NULL;
 		} else {
 			for (tc = 0; tc < qdev->num_tc; tc++) {
+				if (!fp->txqs[tc])
+					continue;
 				txq_idx = fp->txqs[tc]->queue_id;
 				qede_tx_queue_release(fp->txqs[tc]);
 				eth_dev->data->tx_queues[txq_idx] = NULL;
