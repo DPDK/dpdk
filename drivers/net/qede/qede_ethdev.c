@@ -974,8 +974,15 @@ qede_dev_info_get(struct rte_eth_dev *eth_dev,
 	dev_info->max_rx_pktlen = (uint32_t)ETH_TX_MAX_NON_LSO_PKT_LEN;
 	dev_info->rx_desc_lim = qede_rx_desc_lim;
 	dev_info->tx_desc_lim = qede_tx_desc_lim;
-	dev_info->max_rx_queues = (uint16_t)QEDE_MAX_RSS_CNT(qdev);
+
+	if (IS_PF(edev))
+		dev_info->max_rx_queues = (uint16_t)RTE_MIN(
+			QEDE_MAX_RSS_CNT(qdev), QEDE_PF_NUM_CONNS / 2);
+	else
+		dev_info->max_rx_queues = (uint16_t)RTE_MIN(
+			QEDE_MAX_RSS_CNT(qdev), ECORE_MAX_VF_CHAINS_PER_PF);
 	dev_info->max_tx_queues = dev_info->max_rx_queues;
+
 	dev_info->max_mac_addrs = qdev->dev_info.num_mac_addrs;
 	dev_info->max_vfs = 0;
 	dev_info->reta_size = ECORE_RSS_IND_TABLE_SIZE;
@@ -2020,9 +2027,9 @@ static const struct eth_dev_ops qede_eth_vf_dev_ops = {
 static void qede_update_pf_params(struct ecore_dev *edev)
 {
 	struct ecore_pf_params pf_params;
-	/* 32 rx + 32 tx */
+
 	memset(&pf_params, 0, sizeof(struct ecore_pf_params));
-	pf_params.eth_pf_params.num_cons = 64;
+	pf_params.eth_pf_params.num_cons = QEDE_PF_NUM_CONNS;
 	qed_ops->common->update_pf_params(edev, &pf_params);
 }
 

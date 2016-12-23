@@ -115,6 +115,9 @@
 
 extern char fw_file[];
 
+/* Number of PF connections - 32 RX + 32 TX */
+#define QEDE_PF_NUM_CONNS		(64)
+
 /* Port/function states */
 enum qede_dev_state {
 	QEDE_DEV_INIT, /* Init the chip and Slowpath */

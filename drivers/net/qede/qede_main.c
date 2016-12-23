@@ -402,11 +402,6 @@ qed_fill_eth_dev_info(struct ecore_dev *edev, struct qed_dev_eth_info *info)
 		if (edev->num_hwfns > 1) {
 			ecore_vf_get_num_rxqs(&edev->hwfns[1], &queues);
 			info->num_queues += queues;
-			/* Restrict 100G VF to advertise 16 queues till the
-			 * required support is available to go beyond 16.
-			 */
-			info->num_queues = RTE_MIN(info->num_queues,
-						   ECORE_MAX_VF_CHAINS_PER_PF);
 		}
 
 		ecore_vf_get_num_vlan_filters(&edev->hwfns[0],
