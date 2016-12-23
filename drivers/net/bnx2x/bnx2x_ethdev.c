@@ -119,12 +119,12 @@ bnx2x_interrupt_action(struct rte_eth_dev *dev)
 }
 
 static __rte_unused void
-bnx2x_interrupt_handler(__rte_unused struct rte_intr_handle *handle, void *param)
+bnx2x_interrupt_handler(struct rte_intr_handle *handle, void *param)
 {
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
 
 	bnx2x_interrupt_action(dev);
-	rte_intr_enable(&(dev->pci_dev->intr_handle));
+	rte_intr_enable(handle);
 }
 
 /*
@@ -187,10 +187,10 @@ bnx2x_dev_start(struct rte_eth_dev *dev)
 	}
 
 	if (IS_PF(sc)) {
-		rte_intr_callback_register(&(dev->pci_dev->intr_handle),
+		rte_intr_callback_register(&sc->pci_dev->intr_handle,
 				bnx2x_interrupt_handler, (void *)dev);
 
-		if(rte_intr_enable(&(dev->pci_dev->intr_handle)))
+		if (rte_intr_enable(&sc->pci_dev->intr_handle))
 			PMD_DRV_LOG(ERR, "rte_intr_enable failed");
 	}
 
@@ -215,8 +215,8 @@ bnx2x_dev_stop(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	if (IS_PF(sc)) {
-		rte_intr_disable(&(dev->pci_dev->intr_handle));
-		rte_intr_callback_unregister(&(dev->pci_dev->intr_handle),
+		rte_intr_disable(&sc->pci_dev->intr_handle);
+		rte_intr_callback_unregister(&sc->pci_dev->intr_handle,
 				bnx2x_interrupt_handler, (void *)dev);
 	}
 
