@@ -718,7 +718,8 @@ i40evf_config_irq_map(struct rte_eth_dev *dev)
 	uint8_t cmd_buffer[sizeof(struct i40e_virtchnl_irq_map_info) + \
 		sizeof(struct i40e_virtchnl_vector_map)];
 	struct i40e_virtchnl_irq_map_info *map_info;
-	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
+	struct rte_pci_device *pci_dev = I40E_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	uint32_t vector_id;
 	int i, err;
 
@@ -1401,7 +1402,7 @@ i40evf_handle_aq_msg(struct rte_eth_dev *dev)
  *  void
  */
 static void
-i40evf_dev_interrupt_handler(__rte_unused struct rte_intr_handle *handle,
+i40evf_dev_interrupt_handler(struct rte_intr_handle *intr_handle,
 			     void *param)
 {
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
@@ -1431,15 +1432,15 @@ i40evf_dev_interrupt_handler(__rte_unused struct rte_intr_handle *handle,
 
 done:
 	i40evf_enable_irq0(hw);
-	rte_intr_enable(&dev->pci_dev->intr_handle);
+	rte_intr_enable(intr_handle);
 }
 
 static int
 i40evf_dev_init(struct rte_eth_dev *eth_dev)
 {
-	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(\
-			eth_dev->data->dev_private);
-	struct rte_pci_device *pci_dev = eth_dev->pci_dev;
+	struct i40e_hw *hw
+		= I40E_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	struct rte_pci_device *pci_dev = I40E_DEV_TO_PCI(eth_dev);
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1458,15 +1459,15 @@ i40evf_dev_init(struct rte_eth_dev *eth_dev)
 		return 0;
 	}
 
-	rte_eth_copy_pci_info(eth_dev, eth_dev->pci_dev);
+	rte_eth_copy_pci_info(eth_dev, pci_dev);
 
-	hw->vendor_id = eth_dev->pci_dev->id.vendor_id;
-	hw->device_id = eth_dev->pci_dev->id.device_id;
-	hw->subsystem_vendor_id = eth_dev->pci_dev->id.subsystem_vendor_id;
-	hw->subsystem_device_id = eth_dev->pci_dev->id.subsystem_device_id;
-	hw->bus.device = eth_dev->pci_dev->addr.devid;
-	hw->bus.func = eth_dev->pci_dev->addr.function;
-	hw->hw_addr = (void *)eth_dev->pci_dev->mem_resource[0].addr;
+	hw->vendor_id = pci_dev->id.vendor_id;
+	hw->device_id = pci_dev->id.device_id;
+	hw->subsystem_vendor_id = pci_dev->id.subsystem_vendor_id;
+	hw->subsystem_device_id = pci_dev->id.subsystem_device_id;
+	hw->bus.device = pci_dev->addr.devid;
+	hw->bus.func = pci_dev->addr.function;
+	hw->hw_addr = (void *)pci_dev->mem_resource[0].addr;
 	hw->adapter_stopped = 0;
 
 	if(i40evf_init_vf(eth_dev) != 0) {
@@ -1854,7 +1855,8 @@ i40evf_enable_queues_intr(struct rte_eth_dev *dev)
 {
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
+	struct rte_pci_device *pci_dev = I40E_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 
 	if (!rte_intr_allow_others(intr_handle)) {
 		I40E_WRITE_REG(hw,
@@ -1886,7 +1888,8 @@ i40evf_disable_queues_intr(struct rte_eth_dev *dev)
 {
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
+	struct rte_pci_device *pci_dev = I40E_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 
 	if (!rte_intr_allow_others(intr_handle)) {
 		I40E_WRITE_REG(hw, I40E_VFINT_DYN_CTL01,
@@ -1912,7 +1915,8 @@ i40evf_disable_queues_intr(struct rte_eth_dev *dev)
 static int
 i40evf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 {
-	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
+	struct rte_pci_device *pci_dev = I40E_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint16_t interval =
 		i40e_calc_itr_interval(RTE_LIBRTE_I40E_ITR_INTERVAL);
@@ -1938,7 +1942,7 @@ i40evf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 
 	I40EVF_WRITE_FLUSH(hw);
 
-	rte_intr_enable(&dev->pci_dev->intr_handle);
+	rte_intr_enable(&pci_dev->intr_handle);
 
 	return 0;
 }
@@ -1946,7 +1950,8 @@ i40evf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 static int
 i40evf_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
 {
-	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
+	struct rte_pci_device *pci_dev = I40E_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint16_t msix_intr;
 
@@ -2026,7 +2031,8 @@ i40evf_dev_start(struct rte_eth_dev *dev)
 {
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
+	struct rte_pci_device *pci_dev = I40E_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	uint32_t intr_vector = 0;
 
 	PMD_INIT_FUNC_TRACE();
@@ -2091,7 +2097,8 @@ err_queue:
 static void
 i40evf_dev_stop(struct rte_eth_dev *dev)
 {
-	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
+	struct rte_pci_device *pci_dev = I40E_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -2286,7 +2293,8 @@ static void
 i40evf_dev_close(struct rte_eth_dev *dev)
 {
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct rte_pci_device *pci_dev = dev->pci_dev;
+	struct rte_pci_device *pci_dev = I40E_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 
 	i40evf_dev_stop(dev);
 	hw->adapter_stopped = 1;
@@ -2294,11 +2302,11 @@ i40evf_dev_close(struct rte_eth_dev *dev)
 	i40evf_reset_vf(hw);
 	i40e_shutdown_adminq(hw);
 	/* disable uio intr before callback unregister */
-	rte_intr_disable(&pci_dev->intr_handle);
+	rte_intr_disable(intr_handle);
 
 	/* unregister callback func from eal lib */
-	rte_intr_callback_unregister(&pci_dev->intr_handle,
-		i40evf_dev_interrupt_handler, (void *)dev);
+	rte_intr_callback_unregister(intr_handle,
+				     i40evf_dev_interrupt_handler, dev);
 	i40evf_disable_irq0(hw);
 }
 

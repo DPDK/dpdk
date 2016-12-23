@@ -373,8 +373,8 @@ static void i40e_stat_update_48(struct i40e_hw *hw,
 			       uint64_t *offset,
 			       uint64_t *stat);
 static void i40e_pf_config_irq0(struct i40e_hw *hw, bool no_queue);
-static void i40e_dev_interrupt_handler(
-		__rte_unused struct rte_intr_handle *handle, void *param);
+static void i40e_dev_interrupt_handler(struct rte_intr_handle *handle,
+				       void *param);
 static int i40e_res_pool_init(struct i40e_res_pool_info *pool,
 				uint32_t base, uint32_t num);
 static void i40e_res_pool_destroy(struct i40e_res_pool_info *pool);
@@ -908,7 +908,7 @@ is_floating_veb_supported(struct rte_devargs *devargs)
 static void
 config_floating_veb(struct rte_eth_dev *dev)
 {
-	struct rte_pci_device *pci_dev = dev->pci_dev;
+	struct rte_pci_device *pci_dev = I40E_DEV_TO_PCI(dev);
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
@@ -932,6 +932,7 @@ static int
 eth_i40e_dev_init(struct rte_eth_dev *dev)
 {
 	struct rte_pci_device *pci_dev;
+	struct rte_intr_handle *intr_handle;
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct i40e_vsi *vsi;
@@ -953,7 +954,8 @@ eth_i40e_dev_init(struct rte_eth_dev *dev)
 		i40e_set_tx_function(dev);
 		return 0;
 	}
-	pci_dev = dev->pci_dev;
+	pci_dev = I40E_DEV_TO_PCI(dev);
+	intr_handle = &pci_dev->intr_handle;
 
 	rte_eth_copy_pci_info(dev, pci_dev);
 
@@ -1149,15 +1151,15 @@ eth_i40e_dev_init(struct rte_eth_dev *dev)
 	i40e_pf_host_init(dev);
 
 	/* register callback func to eal lib */
-	rte_intr_callback_register(&(pci_dev->intr_handle),
-		i40e_dev_interrupt_handler, (void *)dev);
+	rte_intr_callback_register(intr_handle,
+				   i40e_dev_interrupt_handler, dev);
 
 	/* configure and enable device interrupt */
 	i40e_pf_config_irq0(hw, TRUE);
 	i40e_pf_enable_irq0(hw);
 
 	/* enable uio intr after callback register */
-	rte_intr_enable(&(pci_dev->intr_handle));
+	rte_intr_enable(intr_handle);
 	/*
 	 * Add an ethertype filter to drop all flow control frames transmitted
 	 * from VSIs. By doing so, we stop VF from sending out PAUSE or PFC
@@ -1205,6 +1207,7 @@ static int
 eth_i40e_dev_uninit(struct rte_eth_dev *dev)
 {
 	struct rte_pci_device *pci_dev;
+	struct rte_intr_handle *intr_handle;
 	struct i40e_hw *hw;
 	struct i40e_filter_control_settings settings;
 	int ret;
@@ -1216,7 +1219,8 @@ eth_i40e_dev_uninit(struct rte_eth_dev *dev)
 		return 0;
 
 	hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	pci_dev = dev->pci_dev;
+	pci_dev = I40E_DEV_TO_PCI(dev);
+	intr_handle = &pci_dev->intr_handle;
 
 	if (hw->adapter_stopped == 0)
 		i40e_dev_close(dev);
@@ -1246,11 +1250,11 @@ eth_i40e_dev_uninit(struct rte_eth_dev *dev)
 	dev->data->mac_addrs = NULL;
 
 	/* disable uio intr before callback unregister */
-	rte_intr_disable(&(pci_dev->intr_handle));
+	rte_intr_disable(intr_handle);
 
 	/* register callback func to eal lib */
-	rte_intr_callback_unregister(&(pci_dev->intr_handle),
-		i40e_dev_interrupt_handler, (void *)dev);
+	rte_intr_callback_unregister(intr_handle,
+				     i40e_dev_interrupt_handler, dev);
 
 	return 0;
 }
@@ -1336,7 +1340,8 @@ void
 i40e_vsi_queues_unbind_intr(struct i40e_vsi *vsi)
 {
 	struct rte_eth_dev *dev = vsi->adapter->eth_dev;
-	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
+	struct rte_pci_device *pci_dev = I40E_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
 	uint16_t msix_vect = vsi->msix_intr;
 	uint16_t i;
@@ -1449,7 +1454,8 @@ void
 i40e_vsi_queues_bind_intr(struct i40e_vsi *vsi)
 {
 	struct rte_eth_dev *dev = vsi->adapter->eth_dev;
-	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
+	struct rte_pci_device *pci_dev = I40E_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
 	uint16_t msix_vect = vsi->msix_intr;
 	uint16_t nb_msix = RTE_MIN(vsi->nb_msix, intr_handle->nb_efd);
@@ -1520,7 +1526,8 @@ static void
 i40e_vsi_enable_queues_intr(struct i40e_vsi *vsi)
 {
 	struct rte_eth_dev *dev = vsi->adapter->eth_dev;
-	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
+	struct rte_pci_device *pci_dev = I40E_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
 	uint16_t interval = i40e_calc_itr_interval(\
 		RTE_LIBRTE_I40E_ITR_INTERVAL);
@@ -1551,7 +1558,8 @@ static void
 i40e_vsi_disable_queues_intr(struct i40e_vsi *vsi)
 {
 	struct rte_eth_dev *dev = vsi->adapter->eth_dev;
-	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
+	struct rte_pci_device *pci_dev = I40E_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	struct i40e_hw *hw = I40E_VSI_TO_HW(vsi);
 	uint16_t msix_intr, i;
 
@@ -1676,7 +1684,8 @@ i40e_dev_start(struct rte_eth_dev *dev)
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct i40e_vsi *main_vsi = pf->main_vsi;
 	int ret, i;
-	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
+	struct rte_pci_device *pci_dev = I40E_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	uint32_t intr_vector = 0;
 
 	hw->adapter_stopped = 0;
@@ -1809,7 +1818,8 @@ i40e_dev_stop(struct rte_eth_dev *dev)
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct i40e_vsi *main_vsi = pf->main_vsi;
 	struct i40e_mirror_rule *p_mirror;
-	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
+	struct rte_pci_device *pci_dev = I40E_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	int i;
 
 	/* Disable all queues */
@@ -1860,6 +1870,8 @@ i40e_dev_close(struct rte_eth_dev *dev)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_pci_device *pci_dev = I40E_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	uint32_t reg;
 	int i;
 
@@ -1871,7 +1883,7 @@ i40e_dev_close(struct rte_eth_dev *dev)
 
 	/* Disable interrupt */
 	i40e_pf_disable_irq0(hw);
-	rte_intr_disable(&(dev->pci_dev->intr_handle));
+	rte_intr_disable(intr_handle);
 
 	/* shutdown and destroy the HMC */
 	i40e_shutdown_lan_hmc(hw);
@@ -2583,13 +2595,14 @@ i40e_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct i40e_vsi *vsi = pf->main_vsi;
+	struct rte_pci_device *pci_dev = I40E_DEV_TO_PCI(dev);
 
 	dev_info->max_rx_queues = vsi->nb_qps;
 	dev_info->max_tx_queues = vsi->nb_qps;
 	dev_info->min_rx_bufsize = I40E_BUF_SIZE_MIN;
 	dev_info->max_rx_pktlen = I40E_FRAME_SIZE_MAX;
 	dev_info->max_mac_addrs = vsi->max_macaddrs;
-	dev_info->max_vfs = dev->pci_dev->max_vfs;
+	dev_info->max_vfs = pci_dev->max_vfs;
 	dev_info->rx_offload_capa =
 		DEV_RX_OFFLOAD_VLAN_STRIP |
 		DEV_RX_OFFLOAD_QINQ_STRIP |
@@ -3491,9 +3504,10 @@ i40e_pf_parameter_init(struct rte_eth_dev *dev)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	struct rte_pci_device *pci_dev = I40E_DEV_TO_PCI(dev);
 	uint16_t qp_count = 0, vsi_count = 0;
 
-	if (dev->pci_dev->max_vfs && !hw->func_caps.sr_iov_1_1) {
+	if (pci_dev->max_vfs && !hw->func_caps.sr_iov_1_1) {
 		PMD_INIT_LOG(ERR, "HW configuration doesn't support SRIOV");
 		return -EINVAL;
 	}
@@ -3534,10 +3548,10 @@ i40e_pf_parameter_init(struct rte_eth_dev *dev)
 
 	/* VF queue/VSI allocation */
 	pf->vf_qp_offset = pf->lan_qp_offset + pf->lan_nb_qps;
-	if (hw->func_caps.sr_iov_1_1 && dev->pci_dev->max_vfs) {
+	if (hw->func_caps.sr_iov_1_1 && pci_dev->max_vfs) {
 		pf->flags |= I40E_FLAG_SRIOV;
 		pf->vf_nb_qps = RTE_LIBRTE_I40E_QUEUE_NUM_PER_VF;
-		pf->vf_num = dev->pci_dev->max_vfs;
+		pf->vf_num = pci_dev->max_vfs;
 		PMD_DRV_LOG(DEBUG, "%u VF VSIs, %u queues per VF VSI, "
 			    "in total %u queues", pf->vf_num, pf->vf_nb_qps,
 			    pf->vf_nb_qps * pf->vf_num);
@@ -5527,7 +5541,7 @@ i40e_dev_handle_aq_msg(struct rte_eth_dev *dev)
  *  void
  */
 static void
-i40e_dev_interrupt_handler(__rte_unused struct rte_intr_handle *handle,
+i40e_dev_interrupt_handler(struct rte_intr_handle *intr_handle,
 			   void *param)
 {
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
@@ -5574,7 +5588,7 @@ i40e_dev_interrupt_handler(__rte_unused struct rte_intr_handle *handle,
 done:
 	/* Enable interrupt */
 	i40e_pf_enable_irq0(hw);
-	rte_intr_enable(&(dev->pci_dev->intr_handle));
+	rte_intr_enable(intr_handle);
 }
 
 static int
@@ -8125,10 +8139,11 @@ i40e_dev_filter_ctrl(struct rte_eth_dev *dev,
 static void
 i40e_enable_extended_tag(struct rte_eth_dev *dev)
 {
+	struct rte_pci_device *pci_dev = I40E_DEV_TO_PCI(dev);
 	uint32_t buf = 0;
 	int ret;
 
-	ret = rte_eal_pci_read_config(dev->pci_dev, &buf, sizeof(buf),
+	ret = rte_eal_pci_read_config(pci_dev, &buf, sizeof(buf),
 				      PCI_DEV_CAP_REG);
 	if (ret < 0) {
 		PMD_DRV_LOG(ERR, "Failed to read PCI offset 0x%x",
@@ -8141,7 +8156,7 @@ i40e_enable_extended_tag(struct rte_eth_dev *dev)
 	}
 
 	buf = 0;
-	ret = rte_eal_pci_read_config(dev->pci_dev, &buf, sizeof(buf),
+	ret = rte_eal_pci_read_config(pci_dev, &buf, sizeof(buf),
 				      PCI_DEV_CTRL_REG);
 	if (ret < 0) {
 		PMD_DRV_LOG(ERR, "Failed to read PCI offset 0x%x",
@@ -8153,7 +8168,7 @@ i40e_enable_extended_tag(struct rte_eth_dev *dev)
 		return;
 	}
 	buf |= PCI_DEV_CTRL_EXT_TAG_MASK;
-	ret = rte_eal_pci_write_config(dev->pci_dev, &buf, sizeof(buf),
+	ret = rte_eal_pci_write_config(pci_dev, &buf, sizeof(buf),
 				       PCI_DEV_CTRL_REG);
 	if (ret < 0) {
 		PMD_DRV_LOG(ERR, "Failed to write PCI offset 0x%x",
@@ -9556,7 +9571,8 @@ i40e_dev_get_dcb_info(struct rte_eth_dev *dev,
 static int
 i40e_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 {
-	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
+	struct rte_pci_device *pci_dev = I40E_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint16_t interval =
 		i40e_calc_itr_interval(RTE_LIBRTE_I40E_ITR_INTERVAL);
@@ -9581,7 +9597,7 @@ i40e_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 				I40E_PFINT_DYN_CTLN_INTERVAL_SHIFT));
 
 	I40E_WRITE_FLUSH(hw);
-	rte_intr_enable(&dev->pci_dev->intr_handle);
+	rte_intr_enable(&pci_dev->intr_handle);
 
 	return 0;
 }
@@ -9589,7 +9605,8 @@ i40e_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 static int
 i40e_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
 {
-	struct rte_intr_handle *intr_handle = &dev->pci_dev->intr_handle;
+	struct rte_pci_device *pci_dev = I40E_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint16_t msix_intr;
 

@@ -617,6 +617,9 @@ void i40e_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 void i40e_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	struct rte_eth_txq_info *qinfo);
 
+#define I40E_DEV_TO_PCI(eth_dev) \
+	(eth_dev->pci_dev)
+
 /* I40E_DEV_PRIVATE_TO */
 #define I40E_DEV_PRIVATE_TO_PF(adapter) \
 	(&((struct i40e_adapter *)adapter)->pf)
