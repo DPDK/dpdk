@@ -138,7 +138,7 @@ gpa_zone_reserve(struct rte_eth_dev *dev, uint32_t size,
 	const struct rte_memzone *mz;
 
 	snprintf(z_name, sizeof(z_name), "%s_%d_%s",
-		 dev->driver->pci_drv.driver.name, dev->data->port_id, post_string);
+		 dev->data->drv_name, dev->data->port_id, post_string);
 
 	mz = rte_memzone_lookup(z_name);
 	if (!reuse) {
