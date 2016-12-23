@@ -39,6 +39,7 @@
 #include <rte_errno.h>
 #include <rte_version.h>
 #include <rte_eal_memconfig.h>
+#include <rte_net.h>
 
 #include "ena_ethdev.h"
 #include "ena_logs.h"
@@ -168,6 +169,14 @@ static const struct ena_stats ena_stats_ena_com_strings[] = {
 #define PCI_DEVICE_ID_ENA_VF	0xEC20
 #define PCI_DEVICE_ID_ENA_LLQ_VF	0xEC21
 
+#define	ENA_TX_OFFLOAD_MASK	(\
+	PKT_TX_L4_MASK |         \
+	PKT_TX_IP_CKSUM |        \
+	PKT_TX_TCP_SEG)
+
+#define	ENA_TX_OFFLOAD_NOTSUP_MASK	\
+	(PKT_TX_OFFLOAD_MASK ^ ENA_TX_OFFLOAD_MASK)
+
 static struct rte_pci_id pci_id_ena_map[] = {
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_AMAZON, PCI_DEVICE_ID_ENA_VF) },
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_AMAZON, PCI_DEVICE_ID_ENA_LLQ_VF) },
@@ -179,6 +188,8 @@ static int ena_device_init(struct ena_com_dev *ena_dev,
 static int ena_dev_configure(struct rte_eth_dev *dev);
 static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 				  uint16_t nb_pkts);
+static uint16_t eth_ena_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+		uint16_t nb_pkts);
 static int ena_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 			      uint16_t nb_desc, unsigned int socket_id,
 			      const struct rte_eth_txconf *tx_conf);
@@ -1272,6 +1283,7 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 	eth_dev->dev_ops = &ena_dev_ops;
 	eth_dev->rx_pkt_burst = &eth_ena_recv_pkts;
 	eth_dev->tx_pkt_burst = &eth_ena_xmit_pkts;
+	eth_dev->tx_pkt_prepare = &eth_ena_prep_pkts;
 	adapter->rte_eth_dev_data = eth_dev->data;
 	adapter->rte_dev = eth_dev;
 
@@ -1570,6 +1582,45 @@ static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	rx_ring->next_to_clean = next_to_clean;
 
 	return recv_idx;
+}
+
+static uint16_t
+eth_ena_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
+		uint16_t nb_pkts)
+{
+	int32_t ret;
+	uint32_t i;
+	struct rte_mbuf *m;
+	uint64_t ol_flags;
+
+	for (i = 0; i != nb_pkts; i++) {
+		m = tx_pkts[i];
+		ol_flags = m->ol_flags;
+
+		if ((ol_flags & ENA_TX_OFFLOAD_NOTSUP_MASK) != 0 ||
+				(ol_flags & PKT_TX_L4_MASK) ==
+				PKT_TX_SCTP_CKSUM) {
+			rte_errno = -ENOTSUP;
+			return i;
+		}
+
+#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+		ret = rte_validate_tx_offload(m);
+		if (ret != 0) {
+			rte_errno = ret;
+			return i;
+		}
+#endif
+		/* ENA doesn't need different phdr cskum for TSO */
+		ret = rte_net_intel_cksum_flags_prepare(m,
+			ol_flags & ~PKT_TX_TCP_SEG);
+		if (ret != 0) {
+			rte_errno = ret;
+			return i;
+		}
+	}
+
+	return i;
 }
 
 static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
