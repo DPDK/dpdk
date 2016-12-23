@@ -667,6 +667,7 @@ enum _ecore_status_t ecore_resc_alloc(struct ecore_dev *p_dev)
 			DP_ERR(p_hwfn, "Cannot allocate 0x%x EQ elements."
 				       "The maximum of a u16 chain is 0x%x\n",
 			       n_eqes, 0xFFFF);
+			rc = ECORE_INVAL;
 			goto alloc_err;
 		}
 
