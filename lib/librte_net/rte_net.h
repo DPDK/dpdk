@@ -38,6 +38,11 @@
 extern "C" {
 #endif
 
+#include <rte_ip.h>
+#include <rte_udp.h>
+#include <rte_tcp.h>
+#include <rte_sctp.h>
+
 /**
  * Structure containing header lengths associated to a packet, filled
  * by rte_net_get_ptype().
@@ -85,6 +90,111 @@ struct rte_net_hdr_lens {
  */
 uint32_t rte_net_get_ptype(const struct rte_mbuf *m,
 	struct rte_net_hdr_lens *hdr_lens, uint32_t layers);
+
+/**
+ * Prepare pseudo header checksum
+ *
+ * This function prepares pseudo header checksum for TSO and non-TSO tcp/udp in
+ * provided mbufs packet data and based on the requested offload flags.
+ *
+ * - for non-TSO tcp/udp packets full pseudo-header checksum is counted and set
+ *   in packet data,
+ * - for TSO the IP payload length is not included in pseudo header.
+ *
+ * This function expects that used headers are in the first data segment of
+ * mbuf, are not fragmented and can be safely modified.
+ *
+ * @param m
+ *   The packet mbuf to be fixed.
+ * @param ol_flags
+ *   TX offloads flags to use with this packet.
+ * @return
+ *   0 if checksum is initialized properly
+ */
+static inline int
+rte_net_intel_cksum_flags_prepare(struct rte_mbuf *m, uint64_t ol_flags)
+{
+	struct ipv4_hdr *ipv4_hdr;
+	struct ipv6_hdr *ipv6_hdr;
+	struct tcp_hdr *tcp_hdr;
+	struct udp_hdr *udp_hdr;
+	uint64_t inner_l3_offset = m->l2_len;
+
+	if (ol_flags & PKT_TX_OUTER_IP_CKSUM)
+		inner_l3_offset += m->outer_l2_len + m->outer_l3_len;
+
+	if ((ol_flags & PKT_TX_UDP_CKSUM) == PKT_TX_UDP_CKSUM) {
+		if (ol_flags & PKT_TX_IPV4) {
+			ipv4_hdr = rte_pktmbuf_mtod_offset(m, struct ipv4_hdr *,
+					inner_l3_offset);
+
+			if (ol_flags & PKT_TX_IP_CKSUM)
+				ipv4_hdr->hdr_checksum = 0;
+
+			udp_hdr = (struct udp_hdr *)((char *)ipv4_hdr +
+					m->l3_len);
+			udp_hdr->dgram_cksum = rte_ipv4_phdr_cksum(ipv4_hdr,
+					ol_flags);
+		} else {
+			ipv6_hdr = rte_pktmbuf_mtod_offset(m, struct ipv6_hdr *,
+					inner_l3_offset);
+			/* non-TSO udp */
+			udp_hdr = rte_pktmbuf_mtod_offset(m, struct udp_hdr *,
+					inner_l3_offset + m->l3_len);
+			udp_hdr->dgram_cksum = rte_ipv6_phdr_cksum(ipv6_hdr,
+					ol_flags);
+		}
+	} else if ((ol_flags & PKT_TX_TCP_CKSUM) ||
+			(ol_flags & PKT_TX_TCP_SEG)) {
+		if (ol_flags & PKT_TX_IPV4) {
+			ipv4_hdr = rte_pktmbuf_mtod_offset(m, struct ipv4_hdr *,
+					inner_l3_offset);
+
+			if (ol_flags & PKT_TX_IP_CKSUM)
+				ipv4_hdr->hdr_checksum = 0;
+
+			/* non-TSO tcp or TSO */
+			tcp_hdr = (struct tcp_hdr *)((char *)ipv4_hdr +
+					m->l3_len);
+			tcp_hdr->cksum = rte_ipv4_phdr_cksum(ipv4_hdr,
+					ol_flags);
+		} else {
+			ipv6_hdr = rte_pktmbuf_mtod_offset(m, struct ipv6_hdr *,
+					inner_l3_offset);
+			/* non-TSO tcp or TSO */
+			tcp_hdr = rte_pktmbuf_mtod_offset(m, struct tcp_hdr *,
+					inner_l3_offset + m->l3_len);
+			tcp_hdr->cksum = rte_ipv6_phdr_cksum(ipv6_hdr,
+					ol_flags);
+		}
+	}
+
+	return 0;
+}
+
+/**
+ * Prepare pseudo header checksum
+ *
+ * This function prepares pseudo header checksum for TSO and non-TSO tcp/udp in
+ * provided mbufs packet data.
+ *
+ * - for non-TSO tcp/udp packets full pseudo-header checksum is counted and set
+ *   in packet data,
+ * - for TSO the IP payload length is not included in pseudo header.
+ *
+ * This function expects that used headers are in the first data segment of
+ * mbuf, are not fragmented and can be safely modified.
+ *
+ * @param m
+ *   The packet mbuf to be fixed.
+ * @return
+ *   0 if checksum is initialized properly
+ */
+static inline int
+rte_net_intel_cksum_prepare(struct rte_mbuf *m)
+{
+	return rte_net_intel_cksum_flags_prepare(m, m->ol_flags);
+}
 
 #ifdef __cplusplus
 }

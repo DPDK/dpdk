@@ -182,6 +182,7 @@ extern "C" {
 #include <rte_pci.h>
 #include <rte_dev.h>
 #include <rte_devargs.h>
+#include <rte_errno.h>
 #include "rte_ether.h"
 #include "rte_eth_ctrl.h"
 #include "rte_dev_info.h"
@@ -702,6 +703,29 @@ struct rte_eth_desc_lim {
 	uint16_t nb_max;   /**< Max allowed number of descriptors. */
 	uint16_t nb_min;   /**< Min allowed number of descriptors. */
 	uint16_t nb_align; /**< Number of descriptors should be aligned to. */
+
+	/**
+	 * Max allowed number of segments per whole packet.
+	 *
+	 * - For TSO packet this is the total number of data descriptors allowed
+	 *   by device.
+	 *
+	 * @see nb_mtu_seg_max
+	 */
+	uint16_t nb_seg_max;
+
+	/**
+	 * Max number of segments per one MTU.
+	 *
+	 * - For non-TSO packet, this is the maximum allowed number of segments
+	 *   in a single transmit packet.
+	 *
+	 * - For TSO packet each segment within the TSO may span up to this
+	 *   value.
+	 *
+	 * @see nb_seg_max
+	 */
+	uint16_t nb_mtu_seg_max;
 };
 
 /**
@@ -1194,6 +1218,11 @@ typedef uint16_t (*eth_tx_burst_t)(void *txq,
 				   uint16_t nb_pkts);
 /**< @internal Send output packets on a transmit queue of an Ethernet device. */
 
+typedef uint16_t (*eth_tx_prep_t)(void *txq,
+				   struct rte_mbuf **tx_pkts,
+				   uint16_t nb_pkts);
+/**< @internal Prepare output packets on a transmit queue of an Ethernet device. */
+
 typedef int (*flow_ctrl_get_t)(struct rte_eth_dev *dev,
 			       struct rte_eth_fc_conf *fc_conf);
 /**< @internal Get current flow control parameter on an Ethernet device */
@@ -1624,6 +1653,7 @@ struct rte_eth_rxtx_callback {
 struct rte_eth_dev {
 	eth_rx_burst_t rx_pkt_burst; /**< Pointer to PMD receive function. */
 	eth_tx_burst_t tx_pkt_burst; /**< Pointer to PMD transmit function. */
+	eth_tx_prep_t tx_pkt_prepare; /**< Pointer to PMD transmit prepare function. */
 	struct rte_eth_dev_data *data;  /**< Pointer to device data */
 	const struct eth_driver *driver;/**< Driver for this device */
 	const struct eth_dev_ops *dev_ops; /**< Functions exported by PMD */
@@ -2833,6 +2863,115 @@ rte_eth_tx_burst(uint8_t port_id, uint16_t queue_id,
 
 	return (*dev->tx_pkt_burst)(dev->data->tx_queues[queue_id], tx_pkts, nb_pkts);
 }
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Process a burst of output packets on a transmit queue of an Ethernet device.
+ *
+ * The rte_eth_tx_prepare() function is invoked to prepare output packets to be
+ * transmitted on the output queue *queue_id* of the Ethernet device designated
+ * by its *port_id*.
+ * The *nb_pkts* parameter is the number of packets to be prepared which are
+ * supplied in the *tx_pkts* array of *rte_mbuf* structures, each of them
+ * allocated from a pool created with rte_pktmbuf_pool_create().
+ * For each packet to send, the rte_eth_tx_prepare() function performs
+ * the following operations:
+ *
+ * - Check if packet meets devices requirements for tx offloads.
+ *
+ * - Check limitations about number of segments.
+ *
+ * - Check additional requirements when debug is enabled.
+ *
+ * - Update and/or reset required checksums when tx offload is set for packet.
+ *
+ * Since this function can modify packet data, provided mbufs must be safely
+ * writable (e.g. modified data cannot be in shared segment).
+ *
+ * The rte_eth_tx_prepare() function returns the number of packets ready to be
+ * sent. A return value equal to *nb_pkts* means that all packets are valid and
+ * ready to be sent, otherwise stops processing on the first invalid packet and
+ * leaves the rest packets untouched.
+ *
+ * When this functionality is not implemented in the driver, all packets are
+ * are returned untouched.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ *   The value must be a valid port id.
+ * @param queue_id
+ *   The index of the transmit queue through which output packets must be
+ *   sent.
+ *   The value must be in the range [0, nb_tx_queue - 1] previously supplied
+ *   to rte_eth_dev_configure().
+ * @param tx_pkts
+ *   The address of an array of *nb_pkts* pointers to *rte_mbuf* structures
+ *   which contain the output packets.
+ * @param nb_pkts
+ *   The maximum number of packets to process.
+ * @return
+ *   The number of packets correct and ready to be sent. The return value can be
+ *   less than the value of the *tx_pkts* parameter when some packet doesn't
+ *   meet devices requirements with rte_errno set appropriately:
+ *   - -EINVAL: offload flags are not correctly set
+ *   - -ENOTSUP: the offload feature is not supported by the hardware
+ *
+ */
+
+#ifndef RTE_ETHDEV_TX_PREPARE_NOOP
+
+static inline uint16_t
+rte_eth_tx_prepare(uint8_t port_id, uint16_t queue_id,
+		struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+{
+	struct rte_eth_dev *dev;
+
+#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+	if (!rte_eth_dev_is_valid_port(port_id)) {
+		RTE_PMD_DEBUG_TRACE("Invalid TX port_id=%d\n", port_id);
+		rte_errno = -EINVAL;
+		return 0;
+	}
+#endif
+
+	dev = &rte_eth_devices[port_id];
+
+#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+	if (queue_id >= dev->data->nb_tx_queues) {
+		RTE_PMD_DEBUG_TRACE("Invalid TX queue_id=%d\n", queue_id);
+		rte_errno = -EINVAL;
+		return 0;
+	}
+#endif
+
+	if (!dev->tx_pkt_prepare)
+		return nb_pkts;
+
+	return (*dev->tx_pkt_prepare)(dev->data->tx_queues[queue_id],
+			tx_pkts, nb_pkts);
+}
+
+#else
+
+/*
+ * Native NOOP operation for compilation targets which doesn't require any
+ * preparations steps, and functional NOOP may introduce unnecessary performance
+ * drop.
+ *
+ * Generally this is not a good idea to turn it on globally and didn't should
+ * be used if behavior of tx_preparation can change.
+ */
+
+static inline uint16_t
+rte_eth_tx_prepare(__rte_unused uint8_t port_id, __rte_unused uint16_t queue_id,
+		__rte_unused struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
+{
+	return nb_pkts;
+}
+
+#endif
 
 typedef void (*buffer_tx_error_fn)(struct rte_mbuf **unsent, uint16_t count,
 		void *userdata);

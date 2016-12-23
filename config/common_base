@@ -123,6 +123,14 @@ CONFIG_RTE_ETHDEV_QUEUE_STAT_CNTRS=16
 CONFIG_RTE_ETHDEV_RXTX_CALLBACKS=y
 
 #
+# Turn off Tx preparation stage
+#
+# Warning: rte_ethdev_tx_prepare() can be safely disabled only if using a
+# driver which do not implement any Tx preparation.
+#
+CONFIG_RTE_ETHDEV_TX_PREPARE_NOOP=n
+
+#
 # Support NIC bypass logic
 #
 CONFIG_RTE_NIC_BYPASS=n
