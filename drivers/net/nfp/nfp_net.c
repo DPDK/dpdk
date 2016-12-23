@@ -718,10 +718,12 @@ static void
 nfp_net_close(struct rte_eth_dev *dev)
 {
 	struct nfp_net_hw *hw;
+	struct rte_pci_device *pci_dev;
 
 	PMD_INIT_LOG(DEBUG, "Close\n");
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	pci_dev = dev->pci_dev;
 
 	/*
 	 * We assume that the DPDK application is stopping all the
@@ -730,11 +732,11 @@ nfp_net_close(struct rte_eth_dev *dev)
 
 	nfp_net_stop(dev);
 
-	rte_intr_disable(&dev->pci_dev->intr_handle);
+	rte_intr_disable(&pci_dev->intr_handle);
 	nn_cfg_writeb(hw, NFP_NET_CFG_LSC, 0xff);
 
 	/* unregister callback func from eal lib */
-	rte_intr_callback_unregister(&dev->pci_dev->intr_handle,
+	rte_intr_callback_unregister(&pci_dev->intr_handle,
 				     nfp_net_dev_interrupt_handler,
 				     (void *)dev);
 
@@ -1122,6 +1124,7 @@ nfp_net_rx_queue_count(struct rte_eth_dev *dev, uint16_t queue_idx)
 static void
 nfp_net_dev_link_status_print(struct rte_eth_dev *dev)
 {
+	struct rte_pci_device *pci_dev = dev->pci_dev;
 	struct rte_eth_link link;
 
 	memset(&link, 0, sizeof(link));
@@ -1136,8 +1139,8 @@ nfp_net_dev_link_status_print(struct rte_eth_dev *dev)
 			(int)(dev->data->port_id));
 
 	RTE_LOG(INFO, PMD, "PCI Address: %04d:%02d:%02d:%d\n",
-		dev->pci_dev->addr.domain, dev->pci_dev->addr.bus,
-		dev->pci_dev->addr.devid, dev->pci_dev->addr.function);
+		pci_dev->addr.domain, pci_dev->addr.bus,
+		pci_dev->addr.devid, pci_dev->addr.function);
 }
 
 /* Interrupt configuration and handling */
@@ -1152,13 +1155,15 @@ static void
 nfp_net_irq_unmask(struct rte_eth_dev *dev)
 {
 	struct nfp_net_hw *hw;
+	struct rte_pci_device *pci_dev;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	pci_dev = dev->pci_dev;
 
 	if (hw->ctrl & NFP_NET_CFG_CTRL_MSIXAUTO) {
 		/* If MSI-X auto-masking is used, clear the entry */
 		rte_wmb();
-		rte_intr_enable(&dev->pci_dev->intr_handle);
+		rte_intr_enable(&pci_dev->intr_handle);
 	} else {
 		/* Make sure all updates are written before un-masking */
 		rte_wmb();
@@ -2400,7 +2405,6 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 		     hw->cap & NFP_NET_CFG_CTRL_LSO     ? "TSO "     : "",
 		     hw->cap & NFP_NET_CFG_CTRL_RSS     ? "RSS "     : "");
 
-	pci_dev = eth_dev->pci_dev;
 	hw->ctrl = 0;
 
 	hw->stride_rx = stride;
