@@ -1968,6 +1968,11 @@ static void ecore_iov_vf_mbx_start_rxq(struct ecore_hwfn *p_hwfn,
 	enum _ecore_status_t rc;
 
 	req = &mbx->req_virt->start_rxq;
+
+	if (!ecore_iov_validate_rxq(p_hwfn, vf, req->rx_qid) ||
+	    !ecore_iov_validate_sb(p_hwfn, vf, req->hw_sb))
+		goto out;
+
 	OSAL_MEMSET(&p_params, 0, sizeof(p_params));
 	p_params.queue_id = (u8)vf->vf_queues[req->rx_qid].fw_rx_qid;
 	p_params.vf_qid = req->rx_qid;
@@ -1975,10 +1980,6 @@ static void ecore_iov_vf_mbx_start_rxq(struct ecore_hwfn *p_hwfn,
 	p_params.stats_id = vf->abs_vf_id + 0x10,
 	p_params.sb = req->hw_sb;
 	p_params.sb_idx = req->sb_index;
-
-	if (!ecore_iov_validate_rxq(p_hwfn, vf, req->rx_qid) ||
-	    !ecore_iov_validate_sb(p_hwfn, vf, req->hw_sb))
-		goto out;
 
 	/* Legacy VFs have their Producers in a different location, which they
 	 * calculate on their own and clean the producer prior to this.
