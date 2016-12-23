@@ -977,10 +977,7 @@ qede_dev_info_get(struct rte_eth_dev *eth_dev,
 	dev_info->max_rx_queues = (uint16_t)QEDE_MAX_RSS_CNT(qdev);
 	dev_info->max_tx_queues = dev_info->max_rx_queues;
 	dev_info->max_mac_addrs = qdev->dev_info.num_mac_addrs;
-	if (IS_VF(edev))
-		dev_info->max_vfs = 0;
-	else
-		dev_info->max_vfs = (uint16_t)NUM_OF_VFS(&qdev->edev);
+	dev_info->max_vfs = 0;
 	dev_info->reta_size = ECORE_RSS_IND_TABLE_SIZE;
 	dev_info->hash_key_size = ECORE_RSS_KEY_SIZE * sizeof(uint32_t);
 	dev_info->flow_type_rss_offloads = (uint64_t)QEDE_RSS_OFFLOAD_ALL;
