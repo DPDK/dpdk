@@ -303,6 +303,8 @@ static void bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
 	uint16_t max_vnics, i, j, vpool, vrxq;
 
+	dev_info->pci_dev = eth_dev->pci_dev;
+
 	/* MAC Specifics */
 	dev_info->max_mac_addrs = MAX_NUM_MAC_ADDR;
 	dev_info->max_hash_mac_addrs = 0;

@@ -1626,6 +1626,7 @@ virtio_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	uint64_t tso_mask;
 	struct virtio_hw *hw = dev->data->dev_private;
 
+	dev_info->pci_dev = hw->dev;
 	dev_info->max_rx_queues =
 		RTE_MIN(hw->max_queue_pairs, VIRTIO_MAX_RX_QUEUES);
 	dev_info->max_tx_queues =

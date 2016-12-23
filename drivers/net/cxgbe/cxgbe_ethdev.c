@@ -147,6 +147,8 @@ static void cxgbe_dev_info_get(struct rte_eth_dev *eth_dev,
 		.nb_align = 1,
 	};
 
+	device_info->pci_dev = eth_dev->pci_dev;
+
 	device_info->min_rx_bufsize = CXGBE_MIN_RX_BUFSIZE;
 	device_info->max_rx_pktlen = CXGBE_MAX_RX_PKTLEN;
 	device_info->max_rx_queues = max_queues;
