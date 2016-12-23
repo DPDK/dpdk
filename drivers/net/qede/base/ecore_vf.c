@@ -294,6 +294,7 @@ static enum _ecore_status_t ecore_vf_pf_acquire(struct ecore_hwfn *p_hwfn)
 						" override\n");
 					req->vfdev_info.capabilities |=
 						VFPF_ACQUIRE_CAP_PRE_FP_HSI;
+					continue;
 				}
 			}
 
