@@ -38,6 +38,20 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **Added generic flow API (rte_flow).**
+
+  This API provides a generic means to configure hardware to match specific
+  ingress or egress traffic, alter its fate and query related counters
+  according to any number of user-defined rules.
+
+  It is slightly higher-level than the legacy filtering framework which it
+  encompasses and supersedes (including all functions and filter types) in
+  order to expose a single interface with an unambiguous behavior that is
+  common to all poll-mode drivers (PMDs).
+
+  See the :ref:`Generic flow API <Generic_flow_API>` documentation for more
+  information.
+
 
 Resolved Issues
 ---------------
