@@ -518,6 +518,8 @@ static const struct rte_eth_desc_lim tx_desc_lim = {
 	.nb_max = IXGBE_MAX_RING_DESC,
 	.nb_min = IXGBE_MIN_RING_DESC,
 	.nb_align = IXGBE_TXD_ALIGN,
+	.nb_seg_max = IXGBE_TX_MAX_SEG,
+	.nb_mtu_seg_max = IXGBE_TX_MAX_SEG,
 };
 
 static const struct eth_dev_ops ixgbe_eth_dev_ops = {
@@ -1105,6 +1107,7 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev)
 	eth_dev->dev_ops = &ixgbe_eth_dev_ops;
 	eth_dev->rx_pkt_burst = &ixgbe_recv_pkts;
 	eth_dev->tx_pkt_burst = &ixgbe_xmit_pkts;
+	eth_dev->tx_pkt_prepare = &ixgbe_prep_pkts;
 
 	/*
 	 * For secondary processes, we don't initialise any further as primary
