@@ -1151,7 +1151,7 @@ virtio_negotiate_features(struct virtio_hw *hw, uint64_t req_features)
  * if link state changed.
  */
 static void
-virtio_interrupt_handler(__rte_unused struct rte_intr_handle *handle,
+virtio_interrupt_handler(struct rte_intr_handle *handle,
 			 void *param)
 {
 	struct rte_eth_dev *dev = param;
@@ -1162,7 +1162,7 @@ virtio_interrupt_handler(__rte_unused struct rte_intr_handle *handle,
 	isr = vtpci_isr(hw);
 	PMD_DRV_LOG(INFO, "interrupt status = %#x", isr);
 
-	if (rte_intr_enable(&dev->pci_dev->intr_handle) < 0)
+	if (rte_intr_enable(handle) < 0)
 		PMD_DRV_LOG(ERR, "interrupt enable failed");
 
 	if (isr & VIRTIO_PCI_ISR_CONFIG) {
@@ -1334,7 +1334,7 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 
 	/* Setup interrupt callback  */
 	if (eth_dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)
-		rte_intr_callback_register(&pci_dev->intr_handle,
+		rte_intr_callback_register(vtpci_intr_handle(hw),
 			virtio_interrupt_handler, eth_dev);
 
 	return 0;
@@ -1344,6 +1344,7 @@ static int
 eth_virtio_dev_uninit(struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pci_dev;
+	struct virtio_hw *hw = eth_dev->data->dev_private;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1363,7 +1364,7 @@ eth_virtio_dev_uninit(struct rte_eth_dev *eth_dev)
 
 	/* reset interrupt callback  */
 	if (eth_dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)
-		rte_intr_callback_unregister(&pci_dev->intr_handle,
+		rte_intr_callback_unregister(vtpci_intr_handle(hw),
 						virtio_interrupt_handler,
 						eth_dev);
 	rte_eal_pci_unmap_device(pci_dev);
@@ -1481,7 +1482,7 @@ virtio_dev_start(struct rte_eth_dev *dev)
 			return -ENOTSUP;
 		}
 
-		if (rte_intr_enable(&dev->pci_dev->intr_handle) < 0) {
+		if (rte_intr_enable(vtpci_intr_handle(hw)) < 0) {
 			PMD_DRV_LOG(ERR, "interrupt enable failed");
 			return -EIO;
 		}
@@ -1573,12 +1574,13 @@ static void virtio_dev_free_mbufs(struct rte_eth_dev *dev)
 static void
 virtio_dev_stop(struct rte_eth_dev *dev)
 {
+	struct virtio_hw *hw = dev->data->dev_private;
 	struct rte_eth_link link;
 
 	PMD_INIT_LOG(DEBUG, "stop");
 
 	if (dev->data->dev_conf.intr_conf.lsc)
-		rte_intr_disable(&dev->pci_dev->intr_handle);
+		rte_intr_disable(vtpci_intr_handle(hw));
 
 	memset(&link, 0, sizeof(link));
 	virtio_dev_atomic_write_link_status(dev, &link);
