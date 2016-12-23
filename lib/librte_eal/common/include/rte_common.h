@@ -331,6 +331,26 @@ rte_bsf32(uint32_t v)
 #define offsetof(TYPE, MEMBER)  __builtin_offsetof (TYPE, MEMBER)
 #endif
 
+/**
+ * Return pointer to the wrapping struct instance.
+ *
+ * Example:
+ *
+ *  struct wrapper {
+ *      ...
+ *      struct child c;
+ *      ...
+ *  };
+ *
+ *  struct child *x = obtain(...);
+ *  struct wrapper *w = container_of(x, struct wrapper, c);
+ */
+#ifndef container_of
+#define container_of(ptr, type, member)	__extension__ ({		\
+			typeof(((type *)0)->member) *_ptr = (ptr);	\
+			(type *)(((char *)_ptr) - offsetof(type, member)); })
+#endif
+
 #define _RTE_STR(x) #x
 /** Take a macro value and get a string version of it */
 #define RTE_STR(x) _RTE_STR(x)
