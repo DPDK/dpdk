@@ -310,86 +310,11 @@ qed_get_vport_stats(struct ecore_dev *edev, struct ecore_eth_stats *stats)
 	ecore_get_vport_stats(edev, stats);
 }
 
-static int
-qed_configure_filter_ucast(struct ecore_dev *edev,
-			   struct qed_filter_ucast_params *params)
-{
-	struct ecore_filter_ucast ucast;
-
-	if (!params->vlan_valid && !params->mac_valid) {
-		DP_NOTICE(edev, true,
-			  "Tried configuring a unicast filter,"
-			  "but both MAC and VLAN are not set\n");
-		return -EINVAL;
-	}
-
-	memset(&ucast, 0, sizeof(ucast));
-	switch (params->type) {
-	case QED_FILTER_XCAST_TYPE_ADD:
-		ucast.opcode = ECORE_FILTER_ADD;
-		break;
-	case QED_FILTER_XCAST_TYPE_DEL:
-		ucast.opcode = ECORE_FILTER_REMOVE;
-		break;
-	case QED_FILTER_XCAST_TYPE_REPLACE:
-		ucast.opcode = ECORE_FILTER_REPLACE;
-		break;
-	default:
-		DP_NOTICE(edev, true, "Unknown unicast filter type %d\n",
-			  params->type);
-	}
-
-	if (params->vlan_valid && params->mac_valid) {
-		ucast.type = ECORE_FILTER_MAC_VLAN;
-		ether_addr_copy((struct ether_addr *)&params->mac,
-				(struct ether_addr *)&ucast.mac);
-		ucast.vlan = params->vlan;
-	} else if (params->mac_valid) {
-		ucast.type = ECORE_FILTER_MAC;
-		ether_addr_copy((struct ether_addr *)&params->mac,
-				(struct ether_addr *)&ucast.mac);
-	} else {
-		ucast.type = ECORE_FILTER_VLAN;
-		ucast.vlan = params->vlan;
-	}
-
-	ucast.is_rx_filter = true;
-	ucast.is_tx_filter = true;
-
-	return ecore_filter_ucast_cmd(edev, &ucast, ECORE_SPQ_MODE_CB, NULL);
-}
-
-static int
-qed_configure_filter_mcast(struct ecore_dev *edev,
-			   struct qed_filter_mcast_params *params)
-{
-	struct ecore_filter_mcast mcast;
-	int i;
-
-	memset(&mcast, 0, sizeof(mcast));
-	switch (params->type) {
-	case QED_FILTER_XCAST_TYPE_ADD:
-		mcast.opcode = ECORE_FILTER_ADD;
-		break;
-	case QED_FILTER_XCAST_TYPE_DEL:
-		mcast.opcode = ECORE_FILTER_REMOVE;
-		break;
-	default:
-		DP_NOTICE(edev, true, "Unknown multicast filter type %d\n",
-			  params->type);
-	}
-
-	mcast.num_mc_addrs = params->num;
-	for (i = 0; i < mcast.num_mc_addrs; i++)
-		ether_addr_copy((struct ether_addr *)&params->mac[i],
-				(struct ether_addr *)&mcast.mac[i]);
-
-	return ecore_filter_mcast_cmd(edev, &mcast, ECORE_SPQ_MODE_CB, NULL);
-}
-
-int qed_configure_filter_rx_mode(struct ecore_dev *edev,
+int qed_configure_filter_rx_mode(struct rte_eth_dev *eth_dev,
 				 enum qed_filter_rx_mode_type type)
 {
+	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
+	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
 	struct ecore_filter_accept_flags flags;
 
 	memset(&flags, 0, sizeof(flags));
@@ -422,25 +347,6 @@ int qed_configure_filter_rx_mode(struct ecore_dev *edev,
 				       ECORE_SPQ_MODE_CB, NULL);
 }
 
-static int
-qed_configure_filter(struct ecore_dev *edev, struct qed_filter_params *params)
-{
-	switch (params->type) {
-	case QED_FILTER_TYPE_UCAST:
-		return qed_configure_filter_ucast(edev, &params->filter.ucast);
-	case QED_FILTER_TYPE_MCAST:
-		return qed_configure_filter_mcast(edev, &params->filter.mcast);
-	case QED_FILTER_TYPE_RX_MODE:
-		return qed_configure_filter_rx_mode(edev,
-						    params->filter.
-						    accept_flags);
-	default:
-		DP_NOTICE(edev, true, "Unknown filter type %d\n",
-			  (int)params->type);
-		return -EINVAL;
-	}
-}
-
 static const struct qed_eth_ops qed_eth_ops_pass = {
 	INIT_STRUCT_FIELD(common, &qed_common_ops_pass),
 	INIT_STRUCT_FIELD(fill_dev_info, &qed_fill_eth_dev_info),
@@ -455,7 +361,6 @@ static const struct qed_eth_ops qed_eth_ops_pass = {
 	INIT_STRUCT_FIELD(fastpath_stop, &qed_fastpath_stop),
 	INIT_STRUCT_FIELD(fastpath_start, &qed_fastpath_start),
 	INIT_STRUCT_FIELD(get_vport_stats, &qed_get_vport_stats),
-	INIT_STRUCT_FIELD(filter_config, &qed_configure_filter),
 };
 
 const struct qed_eth_ops *qed_get_eth_ops(void)

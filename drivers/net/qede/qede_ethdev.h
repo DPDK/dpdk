@@ -123,6 +123,17 @@ struct qede_vlan_entry {
 	uint16_t vid;
 };
 
+struct qede_mcast_entry {
+	struct ether_addr mac;
+	SLIST_ENTRY(qede_mcast_entry) list;
+};
+
+struct qede_ucast_entry {
+	struct ether_addr mac;
+	uint16_t vlan;
+	SLIST_ENTRY(qede_ucast_entry) list;
+};
+
 /*
  *  Structure to store private data for each port.
  */
@@ -147,6 +158,10 @@ struct qede_dev {
 	uint16_t configured_vlans;
 	bool accept_any_vlan;
 	struct ether_addr primary_mac;
+	SLIST_HEAD(mc_list_head, qede_mcast_entry) mc_list_head;
+	uint16_t num_mc_addr;
+	SLIST_HEAD(uc_list_head, qede_ucast_entry) uc_list_head;
+	uint16_t num_uc_addr;
 	bool handle_hw_err;
 	char drv_ver[QEDE_PMD_DRV_VER_STR_SIZE];
 };
