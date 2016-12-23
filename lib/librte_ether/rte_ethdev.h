@@ -938,23 +938,26 @@ struct rte_eth_txq_info {
 /**
  * An Ethernet device extended statistic structure
  *
- * This structure is used by ethdev->eth_xstats_get() to provide
- * statistics that are not provided in the generic rte_eth_stats
+ * This structure is used by rte_eth_xstats_get() to provide
+ * statistics that are not provided in the generic *rte_eth_stats*
  * structure.
+ * It maps a name id, corresponding to an index in the array returned
+ * by rte_eth_xstats_get_names(), to a statistic value.
  */
 struct rte_eth_xstat {
-	uint64_t id;
-	uint64_t value;
+	uint64_t id;        /**< The index in xstats name array. */
+	uint64_t value;     /**< The statistic counter value. */
 };
 
 /**
- * A name-key lookup element for extended statistics.
+ * A name element for extended statistics.
  *
- * This structure is used to map between names and ID numbers
- * for extended ethernet statistics.
+ * An array of this structure is returned by rte_eth_xstats_get_names().
+ * It lists the names of extended statistics for a PMD. The *rte_eth_xstat*
+ * structure references these names by their array index.
  */
 struct rte_eth_xstat_name {
-	char name[RTE_ETH_XSTATS_NAME_SIZE];
+	char name[RTE_ETH_XSTATS_NAME_SIZE]; /**< The statistic name. */
 };
 
 #define ETH_DCB_NUM_TCS    8
@@ -2282,18 +2285,19 @@ void rte_eth_stats_reset(uint8_t port_id);
  * @param port_id
  *   The port identifier of the Ethernet device.
  * @param xstats_names
- *  Block of memory to insert names into. Must be at least size in capacity.
- *  If set to NULL, function returns required capacity.
+ *   An rte_eth_xstat_name array of at least *size* elements to
+ *   be filled. If set to NULL, the function returns the required number
+ *   of elements.
  * @param size
- *  Capacity of xstats_names (number of names).
+ *   The size of the xstats_names array (number of elements).
  * @return
- *   - positive value lower or equal to size: success. The return value
+ *   - A positive value lower or equal to size: success. The return value
  *     is the number of entries filled in the stats table.
- *   - positive value higher than size: error, the given statistics table
+ *   - A positive value higher than size: error, the given statistics table
  *     is too small. The return value corresponds to the size that should
  *     be given to succeed. The entries in the table are not valid and
  *     shall not be used by the caller.
- *   - negative value on error (invalid port id)
+ *   - A negative value on error (invalid port id).
  */
 int rte_eth_xstats_get_names(uint8_t port_id,
 		struct rte_eth_xstat_name *xstats_names,
@@ -2306,19 +2310,20 @@ int rte_eth_xstats_get_names(uint8_t port_id,
  *   The port identifier of the Ethernet device.
  * @param xstats
  *   A pointer to a table of structure of type *rte_eth_xstat*
- *   to be filled with device statistics ids and values.
+ *   to be filled with device statistics ids and values: id is the
+ *   index of the name string in xstats_names (see rte_eth_xstats_get_names()),
+ *   and value is the statistic counter.
  *   This parameter can be set to NULL if n is 0.
  * @param n
- *   The size of the stats table, which should be large enough to store
- *   all the statistics of the device.
+ *   The size of the xstats array (number of elements).
  * @return
- *   - positive value lower or equal to n: success. The return value
+ *   - A positive value lower or equal to n: success. The return value
  *     is the number of entries filled in the stats table.
- *   - positive value higher than n: error, the given statistics table
+ *   - A positive value higher than n: error, the given statistics table
  *     is too small. The return value corresponds to the size that should
  *     be given to succeed. The entries in the table are not valid and
  *     shall not be used by the caller.
- *   - negative value on error (invalid port id)
+ *   - A negative value on error (invalid port id).
  */
 int rte_eth_xstats_get(uint8_t port_id, struct rte_eth_xstat *xstats,
 		unsigned n);
