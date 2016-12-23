@@ -1459,6 +1459,18 @@ static void ecore_iov_vf_mbx_acquire(struct ecore_hwfn       *p_hwfn,
 	pfdev_info->major_fp_hsi = ETH_HSI_VER_MAJOR;
 	pfdev_info->minor_fp_hsi = ETH_HSI_VER_MINOR;
 
+	/* TODO - not doing anything is bad since we'll assert, but this isn't
+	 * necessarily the right behavior - perhaps we should have allowed some
+	 * versatility here.
+	 */
+	if (vf->state != VF_FREE &&
+	    vf->state != VF_STOPPED) {
+		DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
+			   "VF[%d] sent ACQUIRE but is already in state %d - fail request\n",
+			   vf->abs_vf_id, vf->state);
+		goto out;
+	}
+
 	/* Validate FW compatibility */
 	if (req->vfdev_info.eth_fp_hsi_major != ETH_HSI_VER_MAJOR) {
 		if (req->vfdev_info.capabilities &
