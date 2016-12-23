@@ -153,6 +153,7 @@ New Features
   The QAT PMD was updated with additional support for:
 
   * DES algorithm.
+  * Scatter-gather list (SGL) support.
 
 * **Added Elastic Flow Distributor library (rte_efd).**
 

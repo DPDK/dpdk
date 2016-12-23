@@ -523,7 +523,8 @@ static inline uint32_t
 adf_modulo(uint32_t data, uint32_t shift);
 
 static inline int
-qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg);
+qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
+		struct qat_crypto_op_cookie *qat_op_cookie);
 
 void qat_crypto_sym_clear_session(struct rte_cryptodev *dev,
 		void *session)
@@ -900,9 +901,16 @@ qat_pmd_enqueue_op_burst(void *qp, struct rte_crypto_op **ops,
 	}
 
 	while (nb_ops_sent != nb_ops_possible) {
-		ret = qat_write_hw_desc_entry(*cur_op, base_addr + tail);
+		ret = qat_write_hw_desc_entry(*cur_op, base_addr + tail,
+				tmp_qp->op_cookies[tail / queue->msg_size]);
 		if (ret != 0) {
 			tmp_qp->stats.enqueue_err_count++;
+			/*
+			 * This message cannot be enqueued,
+			 * decrease number of ops that wasnt sent
+			 */
+			rte_atomic16_sub(&tmp_qp->inflights16,
+					nb_ops_possible - nb_ops_sent);
 			if (nb_ops_sent == 0)
 				return 0;
 			goto kick_tail;
@@ -941,7 +949,7 @@ qat_pmd_dequeue_op_burst(void *qp, struct rte_crypto_op **ops,
 
 #ifdef RTE_LIBRTE_PMD_QAT_DEBUG_RX
 		rte_hexdump(stdout, "qat_response:", (uint8_t *)resp_msg,
-				sizeof(struct icp_qat_fw_comn_resp));
+			sizeof(struct icp_qat_fw_comn_resp));
 #endif
 		if (ICP_QAT_FW_COMN_STATUS_FLAG_OK !=
 				ICP_QAT_FW_COMN_RESP_CRYPTO_STAT_GET(
@@ -972,8 +980,57 @@ qat_pmd_dequeue_op_burst(void *qp, struct rte_crypto_op **ops,
 }
 
 static inline int
-qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg)
+qat_sgl_fill_array(struct rte_mbuf *buf, uint64_t buff_start,
+		struct qat_alg_buf_list *list, uint32_t data_len)
 {
+	int nr = 1;
+
+	uint32_t buf_len = rte_pktmbuf_mtophys(buf) -
+			buff_start + rte_pktmbuf_data_len(buf);
+
+	list->bufers[0].addr = buff_start;
+	list->bufers[0].resrvd = 0;
+	list->bufers[0].len = buf_len;
+
+	if (data_len <= buf_len) {
+		list->num_bufs = nr;
+		list->bufers[0].len = data_len;
+		return 0;
+	}
+
+	buf = buf->next;
+	while (buf) {
+		if (unlikely(nr == QAT_SGL_MAX_NUMBER)) {
+			PMD_DRV_LOG(ERR, "QAT PMD exceeded size of QAT SGL"
+					" entry(%u)",
+					QAT_SGL_MAX_NUMBER);
+			return -EINVAL;
+		}
+
+		list->bufers[nr].len = rte_pktmbuf_data_len(buf);
+		list->bufers[nr].resrvd = 0;
+		list->bufers[nr].addr = rte_pktmbuf_mtophys(buf);
+
+		buf_len += list->bufers[nr].len;
+		buf = buf->next;
+
+		if (buf_len > data_len) {
+			list->bufers[nr].len -=
+				buf_len - data_len;
+			buf = NULL;
+		}
+		++nr;
+	}
+	list->num_bufs = nr;
+
+	return 0;
+}
+
+static inline int
+qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
+		struct qat_crypto_op_cookie *qat_op_cookie)
+{
+	int ret = 0;
 	struct qat_session *ctx;
 	struct icp_qat_fw_la_cipher_req_params *cipher_param;
 	struct icp_qat_fw_la_auth_req_params *auth_param;
@@ -983,6 +1040,7 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg)
 	uint32_t auth_len = 0, auth_ofs = 0;
 	uint32_t min_ofs = 0;
 	uint64_t src_buf_start = 0, dst_buf_start = 0;
+	uint8_t do_sgl = 0;
 
 
 #ifdef RTE_LIBRTE_PMD_QAT_DEBUG_TX
@@ -1100,9 +1158,15 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg)
 
 	}
 
+	if (op->sym->m_src->next || (op->sym->m_dst && op->sym->m_dst->next))
+		do_sgl = 1;
+
 	/* adjust for chain case */
 	if (do_cipher && do_auth)
 		min_ofs = cipher_ofs < auth_ofs ? cipher_ofs : auth_ofs;
+
+	if (unlikely(min_ofs >= rte_pktmbuf_data_len(op->sym->m_src) && do_sgl))
+		min_ofs = 0;
 
 	if (unlikely(op->sym->m_dst != NULL)) {
 		/* Out-of-place operation (OOP)
@@ -1113,6 +1177,7 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg)
 			rte_pktmbuf_mtophys_offset(op->sym->m_src, min_ofs);
 		dst_buf_start =
 			rte_pktmbuf_mtophys_offset(op->sym->m_dst, min_ofs);
+
 	} else {
 		/* In-place operation
 		 * Start DMA at nearest aligned address below min_ofs
@@ -1158,8 +1223,43 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg)
 		(cipher_param->cipher_offset + cipher_param->cipher_length)
 		: (auth_param->auth_off + auth_param->auth_len);
 
-	qat_req->comn_mid.src_data_addr = src_buf_start;
-	qat_req->comn_mid.dest_data_addr = dst_buf_start;
+	if (do_sgl) {
+
+		ICP_QAT_FW_COMN_PTR_TYPE_SET(qat_req->comn_hdr.comn_req_flags,
+				QAT_COMN_PTR_TYPE_SGL);
+		ret = qat_sgl_fill_array(op->sym->m_src, src_buf_start,
+				&qat_op_cookie->qat_sgl_list_src,
+				qat_req->comn_mid.src_length);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "QAT PMD Cannot fill sgl array");
+			return ret;
+		}
+
+		if (likely(op->sym->m_dst == NULL))
+			qat_req->comn_mid.dest_data_addr =
+				qat_req->comn_mid.src_data_addr =
+				qat_op_cookie->qat_sgl_src_phys_addr;
+		else {
+			ret = qat_sgl_fill_array(op->sym->m_dst,
+					dst_buf_start,
+					&qat_op_cookie->qat_sgl_list_dst,
+						qat_req->comn_mid.dst_length);
+
+			if (ret) {
+				PMD_DRV_LOG(ERR, "QAT PMD Cannot "
+						"fill sgl array");
+				return ret;
+			}
+
+			qat_req->comn_mid.src_data_addr =
+				qat_op_cookie->qat_sgl_src_phys_addr;
+			qat_req->comn_mid.dest_data_addr =
+					qat_op_cookie->qat_sgl_dst_phys_addr;
+		}
+	} else {
+		qat_req->comn_mid.src_data_addr = src_buf_start;
+		qat_req->comn_mid.dest_data_addr = dst_buf_start;
+	}
 
 	if (ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_GALOIS_128 ||
 			ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_GALOIS_64) {
@@ -1190,7 +1290,6 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg)
 			auth_param->u2.aad_sz = 0;
 		}
 	}
-
 
 #ifdef RTE_LIBRTE_PMD_QAT_DEBUG_TX
 	rte_hexdump(stdout, "qat_req:", qat_req,

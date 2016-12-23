@@ -47,6 +47,7 @@
 #ifndef _ICP_QAT_ALGS_H_
 #define _ICP_QAT_ALGS_H_
 #include <rte_memory.h>
+#include <rte_crypto.h>
 #include "icp_qat_hw.h"
 #include "icp_qat_fw.h"
 #include "icp_qat_fw_la.h"
@@ -79,12 +80,24 @@ struct qat_alg_buf {
 	uint64_t addr;
 } __rte_packed;
 
+/*
+ * Maximum number of SGL entries
+ */
+#define QAT_SGL_MAX_NUMBER	16
+
 struct qat_alg_buf_list {
 	uint64_t resrvd;
 	uint32_t num_bufs;
 	uint32_t num_mapped_bufs;
-	struct qat_alg_buf bufers[];
+	struct qat_alg_buf bufers[QAT_SGL_MAX_NUMBER];
 } __rte_packed __rte_cache_aligned;
+
+struct qat_crypto_op_cookie {
+	struct qat_alg_buf_list qat_sgl_list_src;
+	struct qat_alg_buf_list qat_sgl_list_dst;
+	phys_addr_t qat_sgl_src_phys_addr;
+	phys_addr_t qat_sgl_dst_phys_addr;
+};
 
 /* Common content descriptor */
 struct qat_alg_cd {
