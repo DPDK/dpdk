@@ -175,14 +175,14 @@ static void qede_interrupt_action(struct ecore_hwfn *p_hwfn)
 }
 
 static void
-qede_interrupt_handler(__rte_unused struct rte_intr_handle *handle, void *param)
+qede_interrupt_handler(struct rte_intr_handle *handle, void *param)
 {
 	struct rte_eth_dev *eth_dev = (struct rte_eth_dev *)param;
 	struct qede_dev *qdev = eth_dev->data->dev_private;
 	struct ecore_dev *edev = &qdev->edev;
 
 	qede_interrupt_action(ECORE_LEADING_HWFN(edev));
-	if (rte_intr_enable(&eth_dev->pci_dev->intr_handle))
+	if (rte_intr_enable(handle))
 		DP_ERR(edev, "rte_intr_enable failed\n");
 }
 
@@ -809,6 +809,7 @@ static void qede_poll_sp_sb_cb(void *param)
 
 static void qede_dev_close(struct rte_eth_dev *eth_dev)
 {
+	struct rte_pci_device *pci_dev = eth_dev->pci_dev;
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
 	int rc;
@@ -835,9 +836,9 @@ static void qede_dev_close(struct rte_eth_dev *eth_dev)
 
 	qdev->ops->common->remove(edev);
 
-	rte_intr_disable(&eth_dev->pci_dev->intr_handle);
+	rte_intr_disable(&pci_dev->intr_handle);
 
-	rte_intr_callback_unregister(&eth_dev->pci_dev->intr_handle,
+	rte_intr_callback_unregister(&pci_dev->intr_handle,
 				     qede_interrupt_handler, (void *)eth_dev);
 
 	if (edev->num_hwfns > 1)
@@ -1403,7 +1404,8 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 	/* Extract key data structures */
 	adapter = eth_dev->data->dev_private;
 	edev = &adapter->edev;
-	pci_addr = eth_dev->pci_dev->addr;
+	pci_dev = eth_dev->pci_dev;
+	pci_addr = pci_dev->addr;
 
 	PMD_INIT_FUNC_TRACE(edev);
 
@@ -1419,8 +1421,6 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 			  "Skipping device init from secondary process\n");
 		return 0;
 	}
-
-	pci_dev = eth_dev->pci_dev;
 
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
 
@@ -1442,10 +1442,10 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 
 	qede_update_pf_params(edev);
 
-	rte_intr_callback_register(&eth_dev->pci_dev->intr_handle,
+	rte_intr_callback_register(&pci_dev->intr_handle,
 				   qede_interrupt_handler, (void *)eth_dev);
 
-	if (rte_intr_enable(&eth_dev->pci_dev->intr_handle)) {
+	if (rte_intr_enable(&pci_dev->intr_handle)) {
 		DP_ERR(edev, "rte_intr_enable() failed\n");
 		return -ENODEV;
 	}
