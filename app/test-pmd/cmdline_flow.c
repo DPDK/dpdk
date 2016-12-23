@@ -39,6 +39,7 @@
 #include <ctype.h>
 #include <string.h>
 #include <arpa/inet.h>
+#include <sys/socket.h>
 
 #include <rte_common.h>
 #include <rte_ethdev.h>
