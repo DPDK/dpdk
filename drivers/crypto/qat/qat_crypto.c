@@ -303,8 +303,8 @@ static const struct rte_cryptodev_capabilities qat_pmd_capabilities[] = {
 					.increment = 8
 				},
 				.iv_size = {
-					.min = 16,
-					.max = 16,
+					.min = 12,
+					.max = 12,
 					.increment = 0
 				}
 			}, }
