@@ -1454,6 +1454,8 @@ fm10k_dev_infos_get(struct rte_eth_dev *dev,
 		.nb_max = FM10K_MAX_TX_DESC,
 		.nb_min = FM10K_MIN_TX_DESC,
 		.nb_align = FM10K_MULT_TX_DESC,
+		.nb_seg_max = FM10K_TX_MAX_SEG,
+		.nb_mtu_seg_max = FM10K_TX_MAX_MTU_SEG,
 	};
 
 	dev_info->speed_capa = ETH_LINK_SPEED_1G | ETH_LINK_SPEED_2_5G |
@@ -2765,8 +2767,10 @@ fm10k_set_tx_function(struct rte_eth_dev *dev)
 			fm10k_txq_vec_setup(txq);
 		}
 		dev->tx_pkt_burst = fm10k_xmit_pkts_vec;
+		dev->tx_pkt_prepare = NULL;
 	} else {
 		dev->tx_pkt_burst = fm10k_xmit_pkts;
+		dev->tx_pkt_prepare = fm10k_prep_pkts;
 		PMD_INIT_LOG(DEBUG, "Use regular Tx func");
 	}
 }
@@ -2847,6 +2851,7 @@ eth_fm10k_dev_init(struct rte_eth_dev *dev)
 	dev->dev_ops = &fm10k_eth_dev_ops;
 	dev->rx_pkt_burst = &fm10k_recv_pkts;
 	dev->tx_pkt_burst = &fm10k_xmit_pkts;
+	dev->tx_pkt_prepare = &fm10k_prep_pkts;
 
 	/* only initialize in the primary process */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)

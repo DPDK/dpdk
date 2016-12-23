@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2013-2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2013-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -35,6 +35,7 @@
 
 #include <rte_ethdev.h>
 #include <rte_common.h>
+#include <rte_net.h>
 #include "fm10k.h"
 #include "base/fm10k_type.h"
 
@@ -64,6 +65,15 @@ static inline void dump_rxd(union fm10k_rx_desc *rxd)
 	PMD_RX_LOG(DEBUG, "+----------------|----------------+");
 }
 #endif
+
+#define FM10K_TX_OFFLOAD_MASK (  \
+		PKT_TX_VLAN_PKT |        \
+		PKT_TX_IP_CKSUM |        \
+		PKT_TX_L4_MASK |         \
+		PKT_TX_TCP_SEG)
+
+#define FM10K_TX_OFFLOAD_NOTSUP_MASK \
+		(PKT_TX_OFFLOAD_MASK ^ FM10K_TX_OFFLOAD_MASK)
 
 /* @note: When this function is changed, make corresponding change to
  * fm10k_dev_supported_ptypes_get()
@@ -596,4 +606,42 @@ fm10k_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		FM10K_PCI_REG_WRITE(q->tail_ptr, q->next_free);
 
 	return count;
+}
+
+uint16_t
+fm10k_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
+		uint16_t nb_pkts)
+{
+	int i, ret;
+	struct rte_mbuf *m;
+
+	for (i = 0; i < nb_pkts; i++) {
+		m = tx_pkts[i];
+
+		if ((m->ol_flags & PKT_TX_TCP_SEG) &&
+				(m->tso_segsz < FM10K_TSO_MINMSS)) {
+			rte_errno = -EINVAL;
+			return i;
+		}
+
+		if (m->ol_flags & FM10K_TX_OFFLOAD_NOTSUP_MASK) {
+			rte_errno = -ENOTSUP;
+			return i;
+		}
+
+#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+		ret = rte_validate_tx_offload(m);
+		if (ret != 0) {
+			rte_errno = ret;
+			return i;
+		}
+#endif
+		ret = rte_net_intel_cksum_prepare(m);
+		if (ret != 0) {
+			rte_errno = ret;
+			return i;
+		}
+	}
+
+	return i;
 }
