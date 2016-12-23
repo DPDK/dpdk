@@ -2075,6 +2075,10 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
 
+	/* @DPDK */
+	edev->vendor_id = pci_dev->id.vendor_id;
+	edev->device_id = pci_dev->id.device_id;
+
 	qed_ops = qed_get_eth_ops();
 	if (!qed_ops) {
 		DP_ERR(edev, "Failed to get qed_eth_ops_pass\n");
