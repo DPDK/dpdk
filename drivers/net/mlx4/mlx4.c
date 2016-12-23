@@ -4421,7 +4421,7 @@ mlx4_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	unsigned int max;
 	char ifname[IF_NAMESIZE];
 
-	info->pci_dev = dev->pci_dev;
+	info->pci_dev = RTE_DEV_TO_PCI(dev->device);
 
 	if (priv == NULL)
 		return;
@@ -5838,7 +5838,7 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			eth_dev->data->dev_private = priv;
 			eth_dev->data->mac_addrs = priv->mac;
 		}
-		eth_dev->pci_dev = pci_dev;
+		eth_dev->device = &pci_dev->device;
 
 		rte_eth_copy_pci_info(eth_dev, pci_dev);
 

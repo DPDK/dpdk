@@ -303,7 +303,7 @@ static void bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
 	uint16_t max_vnics, i, j, vpool, vrxq;
 
-	dev_info->pci_dev = eth_dev->pci_dev;
+	dev_info->pci_dev = RTE_DEV_TO_PCI(eth_dev->device);
 
 	/* MAC Specifics */
 	dev_info->max_mac_addrs = MAX_NUM_MAC_ADDR;
@@ -1014,7 +1014,7 @@ static bool bnxt_vf_pciid(uint16_t id)
 static int bnxt_init_board(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
-	struct rte_pci_device *pci_dev = eth_dev->pci_dev;
+	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(eth_dev->device);
 	int rc;
 
 	/* enable device (incl. PCI PM wakeup), and bus-mastering */
@@ -1048,7 +1048,7 @@ init_err_disable:
 static int
 bnxt_dev_init(struct rte_eth_dev *eth_dev)
 {
-	struct rte_pci_device *pci_dev = eth_dev->pci_dev;
+	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(eth_dev->device);
 	static int version_printed;
 	struct bnxt *bp;
 	int rc;

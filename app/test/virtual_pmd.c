@@ -622,8 +622,8 @@ virtual_ethdev_create(const char *name, struct ether_addr *mac_addr,
 	dev_private->dev_ops = virtual_ethdev_default_dev_ops;
 	eth_dev->dev_ops = &dev_private->dev_ops;
 
-	eth_dev->pci_dev = pci_dev;
-	eth_dev->pci_dev->device.driver = &eth_drv->pci_drv.driver;
+	pci_dev->device.driver = &eth_drv->pci_drv.driver;
+	eth_dev->device = &pci_dev->device;
 
 	eth_dev->rx_pkt_burst = virtual_ethdev_rx_burst_success;
 	eth_dev->tx_pkt_burst = virtual_ethdev_tx_burst_success;

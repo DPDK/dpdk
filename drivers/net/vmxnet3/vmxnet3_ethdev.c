@@ -237,7 +237,7 @@ eth_vmxnet3_dev_init(struct rte_eth_dev *eth_dev)
 	eth_dev->dev_ops = &vmxnet3_eth_dev_ops;
 	eth_dev->rx_pkt_burst = &vmxnet3_recv_pkts;
 	eth_dev->tx_pkt_burst = &vmxnet3_xmit_pkts;
-	pci_dev = eth_dev->pci_dev;
+	pci_dev = RTE_DEV_TO_PCI(eth_dev->device);
 
 	/*
 	 * for secondary processes, we don't initialize any further as primary
@@ -709,7 +709,7 @@ static void
 vmxnet3_dev_info_get(struct rte_eth_dev *dev,
 		     struct rte_eth_dev_info *dev_info)
 {
-	dev_info->pci_dev = dev->pci_dev;
+	dev_info->pci_dev = RTE_DEV_TO_PCI(dev->device);
 
 	dev_info->max_rx_queues = VMXNET3_MAX_RX_QUEUES;
 	dev_info->max_tx_queues = VMXNET3_MAX_TX_QUEUES;

@@ -655,7 +655,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			eth_dev->data->mac_addrs = priv->mac;
 		}
 
-		eth_dev->pci_dev = pci_dev;
+		eth_dev->device = &pci_dev->device;
 		rte_eth_copy_pci_info(eth_dev, pci_dev);
 		eth_dev->driver = &mlx5_driver;
 		priv->dev = eth_dev;

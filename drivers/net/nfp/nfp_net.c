@@ -723,7 +723,7 @@ nfp_net_close(struct rte_eth_dev *dev)
 	PMD_INIT_LOG(DEBUG, "Close\n");
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	pci_dev = dev->pci_dev;
+	pci_dev = RTE_DEV_TO_PCI(dev->device);
 
 	/*
 	 * We assume that the DPDK application is stopping all the
@@ -1008,7 +1008,7 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	dev_info->pci_dev = dev->pci_dev;
+	dev_info->pci_dev = RTE_DEV_TO_PCI(dev->device);
 	dev_info->driver_name = dev->driver->pci_drv.driver.name;
 	dev_info->max_rx_queues = (uint16_t)hw->max_rx_queues;
 	dev_info->max_tx_queues = (uint16_t)hw->max_tx_queues;
@@ -1125,7 +1125,7 @@ nfp_net_rx_queue_count(struct rte_eth_dev *dev, uint16_t queue_idx)
 static void
 nfp_net_dev_link_status_print(struct rte_eth_dev *dev)
 {
-	struct rte_pci_device *pci_dev = dev->pci_dev;
+	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(dev->device);
 	struct rte_eth_link link;
 
 	memset(&link, 0, sizeof(link));
@@ -1159,7 +1159,7 @@ nfp_net_irq_unmask(struct rte_eth_dev *dev)
 	struct rte_pci_device *pci_dev;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	pci_dev = dev->pci_dev;
+	pci_dev = RTE_DEV_TO_PCI(dev->device);
 
 	if (hw->ctrl & NFP_NET_CFG_CTRL_MSIXAUTO) {
 		/* If MSI-X auto-masking is used, clear the entry */
@@ -2336,7 +2336,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
-	pci_dev = eth_dev->pci_dev;
+	pci_dev = RTE_DEV_TO_PCI(eth_dev->device);
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
 
 	hw->device_id = pci_dev->id.device_id;

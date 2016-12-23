@@ -292,7 +292,7 @@ struct ixgbe_adapter {
 };
 
 #define IXGBE_DEV_TO_PCI(eth_dev) \
-	(eth_dev->pci_dev)
+	RTE_DEV_TO_PCI((eth_dev)->device)
 
 #define IXGBE_DEV_PRIVATE_TO_HW(adapter)\
 	(&((struct ixgbe_adapter *)adapter)->hw)

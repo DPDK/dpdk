@@ -1278,7 +1278,7 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
-	pci_dev = eth_dev->pci_dev;
+	pci_dev = RTE_DEV_TO_PCI(eth_dev->device);
 	adapter->pdev = pci_dev;
 
 	PMD_INIT_LOG(INFO, "Initializing %x:%x:%x.%d\n",
@@ -1436,7 +1436,7 @@ static void ena_infos_get(struct rte_eth_dev *dev,
 	ena_dev = &adapter->ena_dev;
 	ena_assert_msg(ena_dev != NULL, "Uninitialized device");
 
-	dev_info->pci_dev = dev->pci_dev;
+	dev_info->pci_dev = RTE_DEV_TO_PCI(dev->device);
 
 	dev_info->speed_capa =
 			ETH_LINK_SPEED_1G   |

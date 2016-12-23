@@ -310,7 +310,6 @@ virtio_user_eth_dev_alloc(const char *name)
 	data->numa_node = SOCKET_ID_ANY;
 	data->kdrv = RTE_KDRV_NONE;
 	data->dev_flags = RTE_ETH_DEV_DETACHABLE;
-	eth_dev->pci_dev = NULL;
 	eth_dev->driver = NULL;
 	return eth_dev;
 }

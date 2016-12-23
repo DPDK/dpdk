@@ -677,7 +677,7 @@ fm10k_dev_tx_init(struct rte_eth_dev *dev)
 		/* Enable use of FTAG bit in TX descriptor, PFVTCTL
 		 * register is read-only for VF.
 		 */
-		if (fm10k_check_ftag(dev->pci_dev->device.devargs)) {
+		if (fm10k_check_ftag(dev->device->devargs)) {
 			if (hw->mac.type == fm10k_mac_pf) {
 				FM10K_WRITE_REG(hw, FM10K_PFVTCTL(i),
 						FM10K_PFVTCTL_FTAG_DESC_ENABLE);
@@ -711,7 +711,7 @@ fm10k_dev_rx_init(struct rte_eth_dev *dev)
 {
 	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct fm10k_macvlan_filter_info *macvlan;
-	struct rte_pci_device *pdev = dev->pci_dev;
+	struct rte_pci_device *pdev = RTE_DEV_TO_PCI(dev->device);
 	struct rte_intr_handle *intr_handle = &pdev->intr_handle;
 	int i, ret;
 	struct fm10k_rx_queue *rxq;
@@ -1172,7 +1172,7 @@ static void
 fm10k_dev_stop(struct rte_eth_dev *dev)
 {
 	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct rte_pci_device *pdev = dev->pci_dev;
+	struct rte_pci_device *pdev = RTE_DEV_TO_PCI(dev->device);
 	struct rte_intr_handle *intr_handle = &pdev->intr_handle;
 	int i;
 
@@ -1389,7 +1389,7 @@ fm10k_dev_infos_get(struct rte_eth_dev *dev,
 	struct rte_eth_dev_info *dev_info)
 {
 	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct rte_pci_device *pdev = dev->pci_dev;
+	struct rte_pci_device *pdev = RTE_DEV_TO_PCI(dev->device);
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -2337,7 +2337,7 @@ static int
 fm10k_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 {
 	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct rte_pci_device *pdev = dev->pci_dev;
+	struct rte_pci_device *pdev = RTE_DEV_TO_PCI(dev->device);
 
 	/* Enable ITR */
 	if (hw->mac.type == fm10k_mac_pf)
@@ -2354,7 +2354,7 @@ static int
 fm10k_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
 {
 	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct rte_pci_device *pdev = dev->pci_dev;
+	struct rte_pci_device *pdev = RTE_DEV_TO_PCI(dev->device);
 
 	/* Disable ITR */
 	if (hw->mac.type == fm10k_mac_pf)
@@ -2370,7 +2370,7 @@ static int
 fm10k_dev_rxq_interrupt_setup(struct rte_eth_dev *dev)
 {
 	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct rte_pci_device *pdev = dev->pci_dev;
+	struct rte_pci_device *pdev = RTE_DEV_TO_PCI(dev->device);
 	struct rte_intr_handle *intr_handle = &pdev->intr_handle;
 	uint32_t intr_vector, vec;
 	uint16_t queue_id;
@@ -2744,7 +2744,7 @@ fm10k_set_tx_function(struct rte_eth_dev *dev)
 	int use_sse = 1;
 	uint16_t tx_ftag_en = 0;
 
-	if (fm10k_check_ftag(dev->pci_dev->device.devargs))
+	if (fm10k_check_ftag(dev->device->devargs))
 		tx_ftag_en = 1;
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
@@ -2775,7 +2775,7 @@ fm10k_set_rx_function(struct rte_eth_dev *dev)
 	uint16_t i, rx_using_sse;
 	uint16_t rx_ftag_en = 0;
 
-	if (fm10k_check_ftag(dev->pci_dev->device.devargs))
+	if (fm10k_check_ftag(dev->device->devargs))
 		rx_ftag_en = 1;
 
 	/* In order to allow Vector Rx there are a few configuration
@@ -2834,7 +2834,7 @@ static int
 eth_fm10k_dev_init(struct rte_eth_dev *dev)
 {
 	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct rte_pci_device *pdev = dev->pci_dev;
+	struct rte_pci_device *pdev = RTE_DEV_TO_PCI(dev->device);
 	struct rte_intr_handle *intr_handle = &pdev->intr_handle;
 	int diag, i;
 	struct fm10k_macvlan_filter_info *macvlan;
@@ -3013,7 +3013,7 @@ static int
 eth_fm10k_dev_uninit(struct rte_eth_dev *dev)
 {
 	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct rte_pci_device *pdev = dev->pci_dev;
+	struct rte_pci_device *pdev = RTE_DEV_TO_PCI(dev->device);
 	struct rte_intr_handle *intr_handle = &pdev->intr_handle;
 	PMD_INIT_FUNC_TRACE();
 

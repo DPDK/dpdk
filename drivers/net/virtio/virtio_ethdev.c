@@ -1321,7 +1321,8 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 	 * virtio_user_eth_dev_alloc() before eth_virtio_dev_init() is called.
 	 */
 	if (!hw->virtio_user_dev) {
-		ret = vtpci_init(eth_dev->pci_dev, hw, &dev_flags);
+		ret = vtpci_init(RTE_DEV_TO_PCI(eth_dev->device), hw,
+				 &dev_flags);
 		if (ret)
 			return ret;
 	}

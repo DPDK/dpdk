@@ -261,7 +261,7 @@ rte_eth_dev_pci_probe(struct rte_pci_driver *pci_drv,
 		if (eth_dev->data->dev_private == NULL)
 			rte_panic("Cannot allocate memzone for private port data\n");
 	}
-	eth_dev->pci_dev = pci_dev;
+	eth_dev->device = &pci_dev->device;
 	eth_dev->intr_handle = &pci_dev->intr_handle;
 	eth_dev->driver = eth_drv;
 
@@ -313,7 +313,7 @@ rte_eth_dev_pci_remove(struct rte_pci_device *pci_dev)
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 		rte_free(eth_dev->data->dev_private);
 
-	eth_dev->pci_dev = NULL;
+	eth_dev->device = NULL;
 	eth_dev->driver = NULL;
 	eth_dev->data = NULL;
 
@@ -2625,7 +2625,7 @@ rte_eth_dma_zone_reserve(const struct rte_eth_dev *dev, const char *ring_name,
 	const struct rte_memzone *mz;
 
 	snprintf(z_name, sizeof(z_name), "%s_%s_%d_%d",
-		 dev->driver->pci_drv.driver.name, ring_name,
+		 dev->data->drv_name, ring_name,
 		 dev->data->port_id, queue_id);
 
 	mz = rte_memzone_lookup(z_name);

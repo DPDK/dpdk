@@ -431,7 +431,7 @@ static void
 bnx2x_dev_infos_get(struct rte_eth_dev *dev, __rte_unused struct rte_eth_dev_info *dev_info)
 {
 	struct bnx2x_softc *sc = dev->data->dev_private;
-	dev_info->pci_dev = dev->pci_dev;
+	dev_info->pci_dev = RTE_DEV_TO_PCI(dev->device);
 	dev_info->max_rx_queues  = sc->max_rx_queues;
 	dev_info->max_tx_queues  = sc->max_tx_queues;
 	dev_info->min_rx_bufsize = BNX2X_MIN_RX_BUF_SIZE;
@@ -517,7 +517,7 @@ bnx2x_common_dev_init(struct rte_eth_dev *eth_dev, int is_vf)
 	PMD_INIT_FUNC_TRACE();
 
 	eth_dev->dev_ops = is_vf ? &bnx2xvf_eth_dev_ops : &bnx2x_eth_dev_ops;
-	pci_dev = eth_dev->pci_dev;
+	pci_dev = RTE_DEV_TO_PCI(eth_dev->device);
 
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
 

@@ -1031,7 +1031,7 @@ eth_dev_info(struct rte_eth_dev *dev,
 		struct rte_eth_dev_info *dev_info)
 {
 	struct pmd_internals *internals = dev->data->dev_private;
-	dev_info->pci_dev = dev->pci_dev;
+	dev_info->pci_dev = RTE_DEV_TO_PCI(dev->device);
 	dev_info->if_index = 0;
 	dev_info->max_mac_addrs = 1;
 	dev_info->max_rx_pktlen = (uint32_t)-1;
@@ -1430,7 +1430,7 @@ rte_szedata2_eth_dev_init(struct rte_eth_dev *dev)
 	struct szedata *szedata_temp;
 	int ret;
 	uint32_t szedata2_index;
-	struct rte_pci_device *pci_dev = dev->pci_dev;
+	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(dev->device);
 	struct rte_pci_addr *pci_addr = &pci_dev->addr;
 	struct rte_mem_resource *pci_rsc =
 		&pci_dev->mem_resource[PCI_RESOURCE_NUMBER];
@@ -1553,7 +1553,7 @@ rte_szedata2_eth_dev_init(struct rte_eth_dev *dev)
 static int
 rte_szedata2_eth_dev_uninit(struct rte_eth_dev *dev)
 {
-	struct rte_pci_device *pci_dev = dev->pci_dev;
+	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(dev->device);
 	struct rte_pci_addr *pci_addr = &pci_dev->addr;
 
 	rte_free(dev->data->mac_addrs);

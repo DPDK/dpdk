@@ -287,7 +287,7 @@ struct e1000_adapter {
 	(&((struct e1000_adapter *)adapter)->filter)
 
 #define E1000_DEV_TO_PCI(eth_dev) \
-	(eth_dev->pci_dev)
+	RTE_DEV_TO_PCI((eth_dev)->device)
 /*
  * RX/TX IGB function prototypes
  */
