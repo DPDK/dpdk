@@ -291,6 +291,9 @@ struct ixgbe_adapter {
 	struct rte_timecounter      tx_tstamp_tc;
 };
 
+#define IXGBE_DEV_TO_PCI(eth_dev) \
+	(eth_dev->pci_dev)
+
 #define IXGBE_DEV_PRIVATE_TO_HW(adapter)\
 	(&((struct ixgbe_adapter *)adapter)->hw)
 
