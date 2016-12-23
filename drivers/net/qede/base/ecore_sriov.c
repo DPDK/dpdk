@@ -317,10 +317,9 @@ static enum _ecore_status_t ecore_iov_pci_cfg_info(struct ecore_dev *p_dev)
 
 	OSAL_PCI_READ_CONFIG_BYTE(p_dev, pos + PCI_SRIOV_FUNC_LINK, &iov->link);
 
-	DP_VERBOSE(p_dev, ECORE_MSG_IOV, "IOV info[%d]: nres %d, cap 0x%x,"
+	DP_VERBOSE(p_dev, ECORE_MSG_IOV, "IOV info: nres %d, cap 0x%x,"
 		   "ctrl 0x%x, total %d, initial %d, num vfs %d, offset %d,"
-		   " stride %d, page size 0x%x\n", 0,
-		   /* @@@TBD MichalK - function id */
+		   " stride %d, page size 0x%x\n",
 		   iov->nres, iov->cap, iov->ctrl,
 		   iov->total_vfs, iov->initial_vfs, iov->nr_virtfn,
 		   iov->offset, iov->stride, iov->pgsz);
@@ -1575,12 +1574,12 @@ static void ecore_iov_vf_mbx_acquire(struct ecore_hwfn       *p_hwfn,
 		   "VF[%d] ACQUIRE_RESPONSE: pfdev_info- chip_num=0x%x,"
 		   " db_size=%d, idx_per_sb=%d, pf_cap=0x%lx\n"
 		   "resources- n_rxq-%d, n_txq-%d, n_sbs-%d, n_macs-%d,"
-		   " n_vlans-%d, n_mcs-%d\n",
+		   " n_vlans-%d\n",
 		   vf->abs_vf_id, resp->pfdev_info.chip_num,
 		   resp->pfdev_info.db_size, resp->pfdev_info.indices_per_sb,
 		   (unsigned long)resp->pfdev_info.capabilities, resc->num_rxqs,
 		   resc->num_txqs, resc->num_sbs, resc->num_mac_filters,
-		   resc->num_vlan_filters, resc->num_mc_filters);
+		   resc->num_vlan_filters);
 
 	vf->state = VF_ACQUIRED;
 
