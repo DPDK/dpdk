@@ -483,11 +483,11 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t vtpci_queue_idx)
 		hw->cvq = cvq;
 	}
 
-	/* For virtio_user case (that is when dev->pci_dev is NULL), we use
+	/* For virtio_user case (that is when hw->dev is NULL), we use
 	 * virtual address. And we need properly set _offset_, please see
 	 * VIRTIO_MBUF_DATA_DMA_ADDR in virtqueue.h for more information.
 	 */
-	if (dev->pci_dev)
+	if (hw->dev)
 		vq->offset = offsetof(struct rte_mbuf, buf_physaddr);
 	else {
 		vq->vq_ring_mem = (uintptr_t)mz->addr;
@@ -1190,7 +1190,7 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 	struct virtio_hw *hw = eth_dev->data->dev_private;
 	struct virtio_net_config *config;
 	struct virtio_net_config local_config;
-	struct rte_pci_device *pci_dev = eth_dev->pci_dev;
+	struct rte_pci_device *pci_dev = hw->dev;
 	int ret;
 
 	/* Reset the device although not necessary at startup */
@@ -1210,7 +1210,8 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 	else
 		eth_dev->data->dev_flags |= RTE_ETH_DEV_INTR_LSC;
 
-	rte_eth_copy_pci_info(eth_dev, pci_dev);
+	if (pci_dev)
+		rte_eth_copy_pci_info(eth_dev, pci_dev);
 
 	rx_func_get(eth_dev);
 
@@ -1294,7 +1295,6 @@ int
 eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct virtio_hw *hw = eth_dev->data->dev_private;
-	struct rte_pci_device *pci_dev;
 	uint32_t dev_flags = RTE_ETH_DEV_DETACHABLE;
 	int ret;
 
@@ -1317,10 +1317,11 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 		return -ENOMEM;
 	}
 
-	pci_dev = eth_dev->pci_dev;
-
-	if (pci_dev) {
-		ret = vtpci_init(pci_dev, hw, &dev_flags);
+	/* For virtio_user case the hw->virtio_user_dev is populated by
+	 * virtio_user_eth_dev_alloc() before eth_virtio_dev_init() is called.
+	 */
+	if (!hw->virtio_user_dev) {
+		ret = vtpci_init(eth_dev->pci_dev, hw, &dev_flags);
 		if (ret)
 			return ret;
 	}
@@ -1343,7 +1344,6 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 static int
 eth_virtio_dev_uninit(struct rte_eth_dev *eth_dev)
 {
-	struct rte_pci_device *pci_dev;
 	struct virtio_hw *hw = eth_dev->data->dev_private;
 
 	PMD_INIT_FUNC_TRACE();
@@ -1353,7 +1353,6 @@ eth_virtio_dev_uninit(struct rte_eth_dev *eth_dev)
 
 	virtio_dev_stop(eth_dev);
 	virtio_dev_close(eth_dev);
-	pci_dev = eth_dev->pci_dev;
 
 	eth_dev->dev_ops = NULL;
 	eth_dev->tx_pkt_burst = NULL;
@@ -1367,7 +1366,8 @@ eth_virtio_dev_uninit(struct rte_eth_dev *eth_dev)
 		rte_intr_callback_unregister(vtpci_intr_handle(hw),
 						virtio_interrupt_handler,
 						eth_dev);
-	rte_eal_pci_unmap_device(pci_dev);
+	if (hw->dev)
+		rte_eal_pci_unmap_device(hw->dev);
 
 	PMD_INIT_LOG(DEBUG, "dev_uninit completed");
 
