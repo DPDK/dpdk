@@ -69,12 +69,21 @@
 #include <rte_sctp.h>
 #include <rte_string_fns.h>
 #include <rte_errno.h>
+#include <rte_net.h>
 
 #include "base/vmxnet3_defs.h"
 #include "vmxnet3_ring.h"
 
 #include "vmxnet3_logs.h"
 #include "vmxnet3_ethdev.h"
+
+#define	VMXNET3_TX_OFFLOAD_MASK	( \
+		PKT_TX_VLAN_PKT | \
+		PKT_TX_L4_MASK |  \
+		PKT_TX_TCP_SEG)
+
+#define	VMXNET3_TX_OFFLOAD_NOTSUP_MASK	\
+	(PKT_TX_OFFLOAD_MASK ^ VMXNET3_TX_OFFLOAD_MASK)
 
 static const uint32_t rxprod_reg[2] = {VMXNET3_REG_RXPROD, VMXNET3_REG_RXPROD2};
 
@@ -347,6 +356,53 @@ vmxnet3_tq_tx_complete(vmxnet3_tx_queue_t *txq)
 	}
 
 	PMD_TX_LOG(DEBUG, "Processed %d tx comps & command descs.", completed);
+}
+
+uint16_t
+vmxnet3_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
+	uint16_t nb_pkts)
+{
+	int32_t ret;
+	uint32_t i;
+	uint64_t ol_flags;
+	struct rte_mbuf *m;
+
+	for (i = 0; i != nb_pkts; i++) {
+		m = tx_pkts[i];
+		ol_flags = m->ol_flags;
+
+		/* Non-TSO packet cannot occupy more than
+		 * VMXNET3_MAX_TXD_PER_PKT TX descriptors.
+		 */
+		if ((ol_flags & PKT_TX_TCP_SEG) == 0 &&
+				m->nb_segs > VMXNET3_MAX_TXD_PER_PKT) {
+			rte_errno = -EINVAL;
+			return i;
+		}
+
+		/* check that only supported TX offloads are requested. */
+		if ((ol_flags & VMXNET3_TX_OFFLOAD_NOTSUP_MASK) != 0 ||
+				(ol_flags & PKT_TX_L4_MASK) ==
+				PKT_TX_SCTP_CKSUM) {
+			rte_errno = -ENOTSUP;
+			return i;
+		}
+
+#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+		ret = rte_validate_tx_offload(m);
+		if (ret != 0) {
+			rte_errno = ret;
+			return i;
+		}
+#endif
+		ret = rte_net_intel_cksum_prepare(m);
+		if (ret != 0) {
+			rte_errno = ret;
+			return i;
+		}
+	}
+
+	return i;
 }
 
 uint16_t

@@ -171,5 +171,7 @@ uint16_t vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			   uint16_t nb_pkts);
 uint16_t vmxnet3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			   uint16_t nb_pkts);
+uint16_t vmxnet3_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+			uint16_t nb_pkts);
 
 #endif /* _VMXNET3_ETHDEV_H_ */

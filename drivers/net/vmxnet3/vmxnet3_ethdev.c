@@ -69,6 +69,8 @@
 
 #define PROCESS_SYS_EVENTS 0
 
+#define	VMXNET3_TX_MAX_SEG	UINT8_MAX
+
 static int eth_vmxnet3_dev_init(struct rte_eth_dev *eth_dev);
 static int eth_vmxnet3_dev_uninit(struct rte_eth_dev *eth_dev);
 static int vmxnet3_dev_configure(struct rte_eth_dev *dev);
@@ -237,6 +239,7 @@ eth_vmxnet3_dev_init(struct rte_eth_dev *eth_dev)
 	eth_dev->dev_ops = &vmxnet3_eth_dev_ops;
 	eth_dev->rx_pkt_burst = &vmxnet3_recv_pkts;
 	eth_dev->tx_pkt_burst = &vmxnet3_xmit_pkts;
+	eth_dev->tx_pkt_prepare = vmxnet3_prep_pkts;
 	pci_dev = RTE_DEV_TO_PCI(eth_dev->device);
 
 	/*
@@ -326,6 +329,7 @@ eth_vmxnet3_dev_uninit(struct rte_eth_dev *eth_dev)
 	eth_dev->dev_ops = NULL;
 	eth_dev->rx_pkt_burst = NULL;
 	eth_dev->tx_pkt_burst = NULL;
+	eth_dev->tx_pkt_prepare = NULL;
 
 	rte_free(eth_dev->data->mac_addrs);
 	eth_dev->data->mac_addrs = NULL;
@@ -730,6 +734,8 @@ vmxnet3_dev_info_get(struct rte_eth_dev *dev,
 		.nb_max = VMXNET3_TX_RING_MAX_SIZE,
 		.nb_min = VMXNET3_DEF_TX_RING_SIZE,
 		.nb_align = 1,
+		.nb_seg_max = VMXNET3_TX_MAX_SEG,
+		.nb_mtu_seg_max = VMXNET3_MAX_TXD_PER_PKT,
 	};
 
 	dev_info->rx_offload_capa =
