@@ -296,6 +296,14 @@ static enum _ecore_status_t ecore_vf_pf_acquire(struct ecore_hwfn *p_hwfn)
 						VFPF_ACQUIRE_CAP_PRE_FP_HSI;
 				}
 			}
+
+			/* If PF/VF are using same Major, PF must have had
+			 * it's reasons. Simply fail.
+			 */
+			DP_NOTICE(p_hwfn, false,
+				  "PF rejected acquisition by VF\n");
+			rc = ECORE_INVAL;
+			goto exit;
 		} else {
 			DP_ERR(p_hwfn,
 			       "PF returned err %d to VF acquisition request\n",
