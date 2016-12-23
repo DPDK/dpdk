@@ -5940,6 +5940,354 @@ test_authenticated_decryption_fail_when_corruption(
 }
 
 static int
+create_gcm_operation_SGL(enum rte_crypto_cipher_operation op,
+		const struct gcm_test_data *tdata,
+		void *digest_mem, uint64_t digest_phys)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+
+	const unsigned int auth_tag_len = tdata->auth_tag.len;
+	const unsigned int iv_len = tdata->iv.len;
+	const unsigned int aad_len = tdata->aad.len;
+
+	unsigned int iv_pad_len = 0;
+
+	/* Generate Crypto op data structure */
+	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
+			RTE_CRYPTO_OP_TYPE_SYMMETRIC);
+	TEST_ASSERT_NOT_NULL(ut_params->op,
+		"Failed to allocate symmetric crypto operation struct");
+
+	struct rte_crypto_sym_op *sym_op = ut_params->op->sym;
+
+	sym_op->auth.digest.data = digest_mem;
+
+	TEST_ASSERT_NOT_NULL(sym_op->auth.digest.data,
+			"no room to append digest");
+
+	sym_op->auth.digest.phys_addr = digest_phys;
+	sym_op->auth.digest.length = auth_tag_len;
+
+	if (op == RTE_CRYPTO_CIPHER_OP_DECRYPT) {
+		rte_memcpy(sym_op->auth.digest.data, tdata->auth_tag.data,
+				auth_tag_len);
+		TEST_HEXDUMP(stdout, "digest:",
+				sym_op->auth.digest.data,
+				sym_op->auth.digest.length);
+	}
+
+	iv_pad_len = RTE_ALIGN_CEIL(iv_len, 16);
+
+	sym_op->cipher.iv.data = (uint8_t *)rte_pktmbuf_prepend(
+			ut_params->ibuf, iv_pad_len);
+
+	TEST_ASSERT_NOT_NULL(sym_op->cipher.iv.data,
+			"no room to prepend iv");
+
+	memset(sym_op->cipher.iv.data, 0, iv_pad_len);
+	sym_op->cipher.iv.phys_addr = rte_pktmbuf_mtophys(ut_params->ibuf);
+	sym_op->cipher.iv.length = iv_len;
+
+	rte_memcpy(sym_op->cipher.iv.data, tdata->iv.data, iv_pad_len);
+
+	sym_op->auth.aad.data = (uint8_t *)rte_pktmbuf_prepend(
+			ut_params->ibuf, aad_len);
+	TEST_ASSERT_NOT_NULL(sym_op->auth.aad.data,
+			"no room to prepend aad");
+	sym_op->auth.aad.phys_addr = rte_pktmbuf_mtophys(
+			ut_params->ibuf);
+	sym_op->auth.aad.length = aad_len;
+
+	memset(sym_op->auth.aad.data, 0, aad_len);
+	rte_memcpy(sym_op->auth.aad.data, tdata->aad.data, aad_len);
+
+	TEST_HEXDUMP(stdout, "iv:", sym_op->cipher.iv.data, iv_pad_len);
+	TEST_HEXDUMP(stdout, "aad:",
+			sym_op->auth.aad.data, aad_len);
+
+	sym_op->cipher.data.length = tdata->plaintext.len;
+	sym_op->cipher.data.offset = aad_len + iv_pad_len;
+
+	sym_op->auth.data.offset = aad_len + iv_pad_len;
+	sym_op->auth.data.length = tdata->plaintext.len;
+
+	return 0;
+}
+
+#define SGL_MAX_NO	16
+
+static int
+test_AES_GCM_authenticated_encryption_SGL(const struct gcm_test_data *tdata,
+		const int oop, uint32_t fragsz, uint32_t fragsz_oop)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+	struct rte_mbuf *buf, *buf_oop = NULL, *buf_last_oop = NULL;
+	int retval;
+	int to_trn = 0;
+	int to_trn_tbl[SGL_MAX_NO];
+	int segs = 1;
+	unsigned int trn_data = 0;
+	uint8_t *plaintext, *ciphertext, *auth_tag;
+
+	if (fragsz > tdata->plaintext.len)
+		fragsz = tdata->plaintext.len;
+
+	uint16_t plaintext_len = fragsz;
+	uint16_t frag_size_oop = fragsz_oop ? fragsz_oop : fragsz;
+
+	if (fragsz_oop > tdata->plaintext.len)
+		frag_size_oop = tdata->plaintext.len;
+
+	int ecx = 0;
+	void *digest_mem = NULL;
+
+	uint32_t prepend_len = ALIGN_POW2_ROUNDUP(tdata->iv.len, 16)
+			+ tdata->aad.len;
+
+	if (tdata->plaintext.len % fragsz != 0) {
+		if (tdata->plaintext.len / fragsz + 1 > SGL_MAX_NO)
+			return 1;
+	}	else {
+		if (tdata->plaintext.len / fragsz > SGL_MAX_NO)
+			return 1;
+	}
+
+	/*
+	 * For out-op-place we need to alloc another mbuf
+	 */
+	if (oop) {
+		ut_params->obuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
+		rte_pktmbuf_append(ut_params->obuf,
+				frag_size_oop + prepend_len);
+		buf_oop = ut_params->obuf;
+	}
+
+	/* Create GCM session */
+	retval = create_gcm_session(ts_params->valid_devs[0],
+			RTE_CRYPTO_CIPHER_OP_ENCRYPT,
+			tdata->key.data, tdata->key.len,
+			tdata->aad.len, tdata->auth_tag.len,
+			RTE_CRYPTO_AUTH_OP_GENERATE);
+	if (retval < 0)
+		return retval;
+
+	ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
+
+	/* clear mbuf payload */
+	memset(rte_pktmbuf_mtod(ut_params->ibuf, uint8_t *), 0,
+			rte_pktmbuf_tailroom(ut_params->ibuf));
+
+	plaintext = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
+			plaintext_len);
+
+	memcpy(plaintext, tdata->plaintext.data, plaintext_len);
+
+	trn_data += plaintext_len;
+
+	buf = ut_params->ibuf;
+
+	/*
+	 * Loop until no more fragments
+	 */
+
+	while (trn_data < tdata->plaintext.len) {
+		++segs;
+		to_trn = (tdata->plaintext.len - trn_data < fragsz) ?
+				(tdata->plaintext.len - trn_data) : fragsz;
+
+		to_trn_tbl[ecx++] = to_trn;
+
+		buf->next = rte_pktmbuf_alloc(ts_params->mbuf_pool);
+		buf = buf->next;
+
+		memset(rte_pktmbuf_mtod(buf, uint8_t *), 0,
+				rte_pktmbuf_tailroom(buf));
+
+		/* OOP */
+		if (oop && !fragsz_oop) {
+			buf_last_oop = buf_oop->next =
+					rte_pktmbuf_alloc(ts_params->mbuf_pool);
+			buf_oop = buf_oop->next;
+			memset(rte_pktmbuf_mtod(buf_oop, uint8_t *),
+					0, rte_pktmbuf_tailroom(buf_oop));
+			rte_pktmbuf_append(buf_oop, to_trn);
+		}
+
+		plaintext = (uint8_t *)rte_pktmbuf_append(buf,
+				to_trn);
+
+		memcpy(plaintext, tdata->plaintext.data + trn_data,
+				to_trn);
+		trn_data += to_trn;
+		if (trn_data  == tdata->plaintext.len) {
+			if (oop) {
+				if (!fragsz_oop)
+					digest_mem = rte_pktmbuf_append(buf_oop,
+						tdata->auth_tag.len);
+			} else
+				digest_mem = (uint8_t *)rte_pktmbuf_append(buf,
+					tdata->auth_tag.len);
+		}
+	}
+
+	uint64_t digest_phys = 0;
+
+	ut_params->ibuf->nb_segs = segs;
+
+	segs = 1;
+	if (fragsz_oop && oop) {
+		to_trn = 0;
+		ecx = 0;
+
+		if (frag_size_oop == tdata->plaintext.len) {
+			digest_mem = rte_pktmbuf_append(ut_params->obuf,
+				tdata->auth_tag.len);
+
+			digest_phys = rte_pktmbuf_mtophys_offset(
+					ut_params->obuf,
+					tdata->plaintext.len + prepend_len);
+		}
+
+		trn_data = frag_size_oop;
+		while (trn_data < tdata->plaintext.len) {
+			++segs;
+			to_trn =
+				(tdata->plaintext.len - trn_data <
+						frag_size_oop) ?
+				(tdata->plaintext.len - trn_data) :
+						frag_size_oop;
+
+			to_trn_tbl[ecx++] = to_trn;
+
+			buf_last_oop = buf_oop->next =
+					rte_pktmbuf_alloc(ts_params->mbuf_pool);
+			buf_oop = buf_oop->next;
+			memset(rte_pktmbuf_mtod(buf_oop, uint8_t *),
+					0, rte_pktmbuf_tailroom(buf_oop));
+			rte_pktmbuf_append(buf_oop, to_trn);
+
+			trn_data += to_trn;
+
+			if (trn_data  == tdata->plaintext.len) {
+				digest_mem = rte_pktmbuf_append(buf_oop,
+					tdata->auth_tag.len);
+			}
+		}
+
+		ut_params->obuf->nb_segs = segs;
+	}
+
+	/*
+	 * Place digest at the end of the last buffer
+	 */
+	if (!digest_phys)
+		digest_phys = rte_pktmbuf_mtophys(buf) + to_trn;
+	if (oop && buf_last_oop)
+		digest_phys = rte_pktmbuf_mtophys(buf_last_oop) + to_trn;
+
+	if (!digest_mem && !oop) {
+		digest_mem = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
+				+ tdata->auth_tag.len);
+		digest_phys = rte_pktmbuf_mtophys_offset(ut_params->ibuf,
+				tdata->plaintext.len);
+	}
+
+	/* Create GCM opertaion */
+	retval = create_gcm_operation_SGL(RTE_CRYPTO_CIPHER_OP_ENCRYPT,
+			tdata, digest_mem, digest_phys);
+
+	if (retval < 0)
+		return retval;
+
+	rte_crypto_op_attach_sym_session(ut_params->op, ut_params->sess);
+
+	ut_params->op->sym->m_src = ut_params->ibuf;
+	if (oop)
+		ut_params->op->sym->m_dst = ut_params->obuf;
+
+	/* Process crypto operation */
+	TEST_ASSERT_NOT_NULL(process_crypto_request(ts_params->valid_devs[0],
+			ut_params->op), "failed to process sym crypto op");
+
+	TEST_ASSERT_EQUAL(ut_params->op->status, RTE_CRYPTO_OP_STATUS_SUCCESS,
+			"crypto op processing failed");
+
+
+	ciphertext = rte_pktmbuf_mtod_offset(ut_params->op->sym->m_src,
+			uint8_t *, prepend_len);
+	if (oop) {
+		ciphertext = rte_pktmbuf_mtod_offset(ut_params->op->sym->m_dst,
+				uint8_t *, prepend_len);
+	}
+
+	if (fragsz_oop)
+		fragsz = fragsz_oop;
+
+	TEST_ASSERT_BUFFERS_ARE_EQUAL(
+			ciphertext,
+			tdata->ciphertext.data,
+			fragsz,
+			"GCM Ciphertext data not as expected");
+
+	buf = ut_params->op->sym->m_src->next;
+	if (oop)
+		buf = ut_params->op->sym->m_dst->next;
+
+	unsigned int off = fragsz;
+
+	ecx = 0;
+	while (buf) {
+		ciphertext = rte_pktmbuf_mtod(buf,
+				uint8_t *);
+
+		TEST_ASSERT_BUFFERS_ARE_EQUAL(
+				ciphertext,
+				tdata->ciphertext.data + off,
+				to_trn_tbl[ecx],
+				"GCM Ciphertext data not as expected");
+
+		off += to_trn_tbl[ecx++];
+		buf = buf->next;
+	}
+
+	auth_tag = digest_mem;
+	TEST_ASSERT_BUFFERS_ARE_EQUAL(
+			auth_tag,
+			tdata->auth_tag.data,
+			tdata->auth_tag.len,
+			"GCM Generated auth tag not as expected");
+
+	return 0;
+}
+
+#define IN_PLACE	0
+#define OUT_OF_PLACE	1
+
+static int
+test_AES_GCM_auth_encrypt_SGL_out_of_place_400B_400B(void)
+{
+	return test_AES_GCM_authenticated_encryption_SGL(
+			&gcm_test_case_SGL_1, OUT_OF_PLACE, 400, 400);
+}
+
+static int
+test_AES_GCM_auth_encrypt_SGL_out_of_place_1500B_2000B(void)
+{
+	return test_AES_GCM_authenticated_encryption_SGL(
+			&gcm_test_case_SGL_1, OUT_OF_PLACE, 1500, 2000);
+}
+
+static int
+test_AES_GCM_auth_encrypt_SGL_in_place_1500B(void)
+{
+
+	return test_AES_GCM_authenticated_encryption_SGL(
+			&gcm_test_case_SGL_1, IN_PLACE, 1500, 0);
+}
+
+static int
 test_authentication_verify_fail_when_data_corrupted(
 		struct crypto_testsuite_params *ts_params,
 		struct crypto_unittest_params *ut_params,
@@ -6074,6 +6422,12 @@ static struct unit_test_suite cryptodev_qat_testsuite  = {
 		TEST_CASE_ST(ut_setup, ut_teardown, test_stats),
 
 		/** AES GCM Authenticated Encryption */
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GCM_auth_encrypt_SGL_in_place_1500B),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GCM_auth_encrypt_SGL_out_of_place_400B_400B),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GCM_auth_encrypt_SGL_out_of_place_1500B_2000B),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_mb_AES_GCM_authenticated_encryption_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
