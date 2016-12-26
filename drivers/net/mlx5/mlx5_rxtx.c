@@ -484,7 +484,7 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				assert(addr <= addr_end);
 			}
 			/*
-			 * 2 DWORDs consumed by the WQE header + 1 DSEG +
+			 * 2 DWORDs consumed by the WQE header + ETH segment +
 			 * the size of the inline part of the packet.
 			 */
 			ds = 2 + MLX5_WQE_DS(pkt_inline_sz - 2);
@@ -499,6 +499,10 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			} else if (!segs_n) {
 				goto next_pkt;
 			} else {
+				/* dseg will be advance as part of next_seg */
+				dseg = (volatile rte_v128u32_t *)
+					((uintptr_t)wqe +
+					 ((ds - 1) * MLX5_WQE_DWORD_SIZE));
 				goto next_seg;
 			}
 		} else {
