@@ -41,7 +41,7 @@ struct reg_info {
 	uint32_t count;
 	uint32_t stride;
 	const char *name;
-} reg_info;
+};
 
 static const struct reg_info ixgbe_regs_general[] = {
 	{IXGBE_CTRL, 1, 1, "IXGBE_CTRL"},
