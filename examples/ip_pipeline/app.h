@@ -491,6 +491,9 @@ struct app_eal_params {
 #define APP_THREAD_HEADROOM_STATS_COLLECT        1
 #endif
 
+#define APP_CORE_MASK_SIZE					\
+	(RTE_MAX_LCORE / 64 + ((RTE_MAX_LCORE % 64) ? 1 : 0))
+
 struct app_params {
 	/* Config */
 	char app_name[APP_APPNAME_SIZE];
@@ -533,7 +536,7 @@ struct app_params {
 	/* Init */
 	char *eal_argv[1 + APP_EAL_ARGC];
 	struct cpu_core_map *core_map;
-	uint64_t core_mask;
+	uint64_t core_mask[APP_CORE_MASK_SIZE];
 	struct rte_mempool *mempool[APP_MAX_MEMPOOLS];
 	struct app_link_data link_data[APP_MAX_LINKS];
 	struct rte_ring *swq[APP_MAX_PKTQ_SWQ];
@@ -1357,6 +1360,36 @@ app_get_link_for_kni(struct app_params *app, struct app_pktq_kni_params *p_kni)
 			  "Cannot find %s for %s", link_name, p_kni->name);
 
 	return &app->link_params[link_param_idx];
+}
+
+static inline uint32_t
+app_core_is_enabled(struct app_params *app, uint32_t lcore_id)
+{
+	return(app->core_mask[lcore_id / 64] &
+		(1LLU << (lcore_id % 64)));
+}
+
+static inline void
+app_core_enable_in_core_mask(struct app_params *app, int lcore_id)
+{
+	app->core_mask[lcore_id / 64] |= 1LLU << (lcore_id % 64);
+
+}
+
+static inline void
+app_core_build_core_mask_string(struct app_params *app, char *mask_buffer)
+{
+	int i;
+
+	mask_buffer[0] = '\0';
+	for (i = (int)RTE_DIM(app->core_mask); i > 0; i--) {
+		/* For Hex representation of bits in uint64_t */
+		char buffer[(64 / 8) * 2 + 1];
+		memset(buffer, 0, sizeof(buffer));
+		snprintf(buffer, sizeof(buffer), "%016" PRIx64,
+			 app->core_mask[i-1]);
+		strcat(mask_buffer, buffer);
+	}
 }
 
 void app_pipeline_params_get(struct app_params *app,

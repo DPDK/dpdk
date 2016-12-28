@@ -70,8 +70,7 @@ app_pipeline_enable(struct app_params *app,
 			core_id,
 			hyper_th_id);
 
-	if ((thread_id < 0) ||
-		((app->core_mask & (1LLU << thread_id)) == 0))
+	if ((thread_id < 0) || !app_core_is_enabled(app, thread_id))
 		return -1;
 
 	if (app_pipeline_data(app, pipeline_id) == NULL)
@@ -134,8 +133,7 @@ app_pipeline_disable(struct app_params *app,
 			core_id,
 			hyper_th_id);
 
-	if ((thread_id < 0) ||
-		((app->core_mask & (1LLU << thread_id)) == 0))
+	if ((thread_id < 0) || !app_core_is_enabled(app, thread_id))
 		return -1;
 
 	if (app_pipeline_data(app, pipeline_id) == NULL)
@@ -188,8 +186,7 @@ app_thread_headroom(struct app_params *app,
 			core_id,
 			hyper_th_id);
 
-	if ((thread_id < 0) ||
-		((app->core_mask & (1LLU << thread_id)) == 0))
+	if ((thread_id < 0) || !app_core_is_enabled(app, thread_id))
 		return -1;
 
 	req = app_msg_alloc(app);

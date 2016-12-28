@@ -78,11 +78,14 @@ app_init_core_map(struct app_params *app)
 		cpu_core_map_print(app->core_map);
 }
 
+/* Core Mask String in Hex Representation */
+#define APP_CORE_MASK_STRING_SIZE ((64 * APP_CORE_MASK_SIZE) / 8 * 2 + 1)
+
 static void
 app_init_core_mask(struct app_params *app)
 {
-	uint64_t mask = 0;
 	uint32_t i;
+	char core_mask_str[APP_CORE_MASK_STRING_SIZE];
 
 	for (i = 0; i < app->n_pipelines; i++) {
 		struct app_pipeline_params *p = &app->pipeline_params[i];
@@ -96,17 +99,18 @@ app_init_core_mask(struct app_params *app)
 		if (lcore_id < 0)
 			rte_panic("Cannot create CPU core mask\n");
 
-		mask |= 1LLU << lcore_id;
+		app_core_enable_in_core_mask(app, lcore_id);
 	}
 
-	app->core_mask = mask;
-	APP_LOG(app, HIGH, "CPU core mask = 0x%016" PRIx64, app->core_mask);
+	app_core_build_core_mask_string(app, core_mask_str);
+	APP_LOG(app, HIGH, "CPU core mask = 0x%s", core_mask_str);
 }
 
 static void
 app_init_eal(struct app_params *app)
 {
 	char buffer[256];
+	char core_mask_str[APP_CORE_MASK_STRING_SIZE];
 	struct app_eal_params *p = &app->eal_params;
 	uint32_t n_args = 0;
 	uint32_t i;
@@ -114,7 +118,8 @@ app_init_eal(struct app_params *app)
 
 	app->eal_argv[n_args++] = strdup(app->app_name);
 
-	snprintf(buffer, sizeof(buffer), "-c%" PRIx64, app->core_mask);
+	app_core_build_core_mask_string(app, core_mask_str);
+	snprintf(buffer, sizeof(buffer), "-c%s", core_mask_str);
 	app->eal_argv[n_args++] = strdup(buffer);
 
 	if (p->coremap) {
