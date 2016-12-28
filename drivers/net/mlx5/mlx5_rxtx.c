@@ -1338,7 +1338,7 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			/* Update packet information. */
 			pkt->packet_type = 0;
 			pkt->ol_flags = 0;
-			if (rxq->rss_hash) {
+			if (rss_hash_res && rxq->rss_hash) {
 				pkt->hash.rss = rss_hash_res;
 				pkt->ol_flags = PKT_RX_RSS_HASH;
 			}
