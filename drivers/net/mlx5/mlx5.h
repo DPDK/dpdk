@@ -59,6 +59,7 @@
 #include <rte_spinlock.h>
 #include <rte_interrupts.h>
 #include <rte_errno.h>
+#include <rte_flow.h>
 #ifdef PEDANTIC
 #pragma GCC diagnostic error "-Wpedantic"
 #endif
@@ -267,5 +268,20 @@ void priv_fdir_disable(struct priv *);
 void priv_fdir_enable(struct priv *);
 int mlx5_dev_filter_ctrl(struct rte_eth_dev *, enum rte_filter_type,
 			 enum rte_filter_op, void *);
+
+/* mlx5_flow.c */
+
+int mlx5_flow_validate(struct rte_eth_dev *, const struct rte_flow_attr *,
+		       const struct rte_flow_item [],
+		       const struct rte_flow_action [],
+		       struct rte_flow_error *);
+struct rte_flow *mlx5_flow_create(struct rte_eth_dev *,
+				  const struct rte_flow_attr *,
+				  const struct rte_flow_item [],
+				  const struct rte_flow_action [],
+				  struct rte_flow_error *);
+int mlx5_flow_destroy(struct rte_eth_dev *, struct rte_flow *,
+		      struct rte_flow_error *);
+int mlx5_flow_flush(struct rte_eth_dev *, struct rte_flow_error *);
 
 #endif /* RTE_PMD_MLX5_H_ */

@@ -55,6 +55,8 @@
 #include <rte_malloc.h>
 #include <rte_ethdev.h>
 #include <rte_common.h>
+#include <rte_flow.h>
+#include <rte_flow_driver.h>
 #ifdef PEDANTIC
 #pragma GCC diagnostic error "-Wpedantic"
 #endif
@@ -1042,6 +1044,14 @@ priv_fdir_ctrl_func(struct priv *priv, enum rte_filter_op filter_op, void *arg)
 	return ret;
 }
 
+static const struct rte_flow_ops mlx5_flow_ops = {
+	.validate = mlx5_flow_validate,
+	.create = mlx5_flow_create,
+	.destroy = mlx5_flow_destroy,
+	.flush = mlx5_flow_flush,
+	.query = NULL,
+};
+
 /**
  * Manage filter operations.
  *
@@ -1067,6 +1077,11 @@ mlx5_dev_filter_ctrl(struct rte_eth_dev *dev,
 	struct priv *priv = dev->data->dev_private;
 
 	switch (filter_type) {
+	case RTE_ETH_FILTER_GENERIC:
+		if (filter_op != RTE_ETH_FILTER_GET)
+			return -EINVAL;
+		*(const void **)arg = &mlx5_flow_ops;
+		return 0;
 	case RTE_ETH_FILTER_FDIR:
 		priv_lock(priv);
 		ret = priv_fdir_ctrl_func(priv, filter_op, arg);
