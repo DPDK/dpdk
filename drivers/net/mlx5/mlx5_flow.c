@@ -111,6 +111,12 @@ struct mlx5_flow_items {
 	const enum rte_flow_action_type *const actions;
 	/** Bit-masks corresponding to the possibilities for the item. */
 	const void *mask;
+	/**
+	 * Default bit-masks to use when item->mask is not provided. When
+	 * \default_mask is also NULL, the full supported bit-mask (\mask) is
+	 * used instead.
+	 */
+	const void *default_mask;
 	/** Bit-masks size in bytes. */
 	const unsigned int mask_sz;
 	/**
@@ -181,11 +187,19 @@ static const struct mlx5_flow_items mlx5_flow_items[] = {
 			.hdr = {
 				.src_addr = -1,
 				.dst_addr = -1,
+				.type_of_service = -1,
+				.next_proto_id = -1,
+			},
+		},
+		.default_mask = &(const struct rte_flow_item_ipv4){
+			.hdr = {
+				.src_addr = -1,
+				.dst_addr = -1,
 			},
 		},
 		.mask_sz = sizeof(struct rte_flow_item_ipv4),
 		.convert = mlx5_flow_create_ipv4,
-		.dst_sz = sizeof(struct ibv_exp_flow_spec_ipv4),
+		.dst_sz = sizeof(struct ibv_exp_flow_spec_ipv4_ext),
 	},
 	[RTE_FLOW_ITEM_TYPE_IPV6] = {
 		.items = ITEMS(RTE_FLOW_ITEM_TYPE_UDP,
@@ -425,7 +439,11 @@ priv_flow_validate(struct priv *priv,
 		if (err)
 			goto exit_item_not_supported;
 		if (flow->ibv_attr && cur_item->convert) {
-			err = cur_item->convert(items, cur_item->mask, flow);
+			err = cur_item->convert(items,
+						(cur_item->default_mask ?
+						 cur_item->default_mask :
+						 cur_item->mask),
+						flow);
 			if (err)
 				goto exit_item_not_supported;
 		}
@@ -598,31 +616,37 @@ mlx5_flow_create_ipv4(const struct rte_flow_item *item,
 	const struct rte_flow_item_ipv4 *spec = item->spec;
 	const struct rte_flow_item_ipv4 *mask = item->mask;
 	struct mlx5_flow *flow = (struct mlx5_flow *)data;
-	struct ibv_exp_flow_spec_ipv4 *ipv4;
-	unsigned int ipv4_size = sizeof(struct ibv_exp_flow_spec_ipv4);
+	struct ibv_exp_flow_spec_ipv4_ext *ipv4;
+	unsigned int ipv4_size = sizeof(struct ibv_exp_flow_spec_ipv4_ext);
 
 	++flow->ibv_attr->num_of_specs;
 	flow->ibv_attr->priority = 1;
 	ipv4 = (void *)((uintptr_t)flow->ibv_attr + flow->offset);
-	*ipv4 = (struct ibv_exp_flow_spec_ipv4) {
-		.type = flow->inner | IBV_EXP_FLOW_SPEC_IPV4,
+	*ipv4 = (struct ibv_exp_flow_spec_ipv4_ext) {
+		.type = flow->inner | IBV_EXP_FLOW_SPEC_IPV4_EXT,
 		.size = ipv4_size,
 	};
 	if (!spec)
 		return 0;
 	if (!mask)
 		mask = default_mask;
-	ipv4->val = (struct ibv_exp_flow_ipv4_filter){
+	ipv4->val = (struct ibv_exp_flow_ipv4_ext_filter){
 		.src_ip = spec->hdr.src_addr,
 		.dst_ip = spec->hdr.dst_addr,
+		.proto = spec->hdr.next_proto_id,
+		.tos = spec->hdr.type_of_service,
 	};
-	ipv4->mask = (struct ibv_exp_flow_ipv4_filter){
+	ipv4->mask = (struct ibv_exp_flow_ipv4_ext_filter){
 		.src_ip = mask->hdr.src_addr,
 		.dst_ip = mask->hdr.dst_addr,
+		.proto = mask->hdr.next_proto_id,
+		.tos = mask->hdr.type_of_service,
 	};
 	/* Remove unwanted bits from values. */
 	ipv4->val.src_ip &= ipv4->mask.src_ip;
 	ipv4->val.dst_ip &= ipv4->mask.dst_ip;
+	ipv4->val.proto &= ipv4->mask.proto;
+	ipv4->val.tos &= ipv4->mask.tos;
 	return 0;
 }
 
