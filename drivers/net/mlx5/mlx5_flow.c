@@ -50,6 +50,7 @@
 #include <rte_malloc.h>
 
 #include "mlx5.h"
+#include "mlx5_prm.h"
 
 static int
 mlx5_flow_create_eth(const struct rte_flow_item *item,
@@ -95,6 +96,7 @@ struct rte_flow {
 	struct ibv_exp_wq *wq; /**< Verbs work queue. */
 	struct ibv_cq *cq; /**< Verbs completion queue. */
 	struct rxq *rxq; /**< Pointer to the queue, NULL if drop queue. */
+	uint32_t mark:1; /**< Set if the flow is marked. */
 };
 
 /** Static initializer for items. */
@@ -137,6 +139,7 @@ struct mlx5_flow_items {
 static const enum rte_flow_action_type valid_actions[] = {
 	RTE_FLOW_ACTION_TYPE_DROP,
 	RTE_FLOW_ACTION_TYPE_QUEUE,
+	RTE_FLOW_ACTION_TYPE_MARK,
 	RTE_FLOW_ACTION_TYPE_END,
 };
 
@@ -255,7 +258,9 @@ struct mlx5_flow {
 struct mlx5_flow_action {
 	uint32_t queue:1; /**< Target is a receive queue. */
 	uint32_t drop:1; /**< Target is a drop queue. */
+	uint32_t mark:1; /**< Mark is present in the flow. */
 	uint32_t queue_id; /**< Identifier of the queue. */
+	uint32_t mark_id; /**< Mark identifier. */
 };
 
 /**
@@ -352,6 +357,7 @@ priv_flow_validate(struct priv *priv,
 	struct mlx5_flow_action action = {
 		.queue = 0,
 		.drop = 0,
+		.mark = 0,
 	};
 
 	(void)priv;
@@ -438,10 +444,26 @@ priv_flow_validate(struct priv *priv,
 			if (!queue || (queue->index > (priv->rxqs_n - 1)))
 				goto exit_action_not_supported;
 			action.queue = 1;
+		} else if (actions->type == RTE_FLOW_ACTION_TYPE_MARK) {
+			const struct rte_flow_action_mark *mark =
+				(const struct rte_flow_action_mark *)
+				actions->conf;
+
+			if (mark && (mark->id >= MLX5_FLOW_MARK_MAX)) {
+				rte_flow_error_set(error, ENOTSUP,
+						   RTE_FLOW_ERROR_TYPE_ACTION,
+						   actions,
+						   "mark must be between 0"
+						   " and 16777199");
+				return -rte_errno;
+			}
+			action.mark = 1;
 		} else {
 			goto exit_action_not_supported;
 		}
 	}
+	if (action.mark && !flow->ibv_attr)
+		flow->offset += sizeof(struct ibv_exp_flow_spec_action_tag);
 	if (!action.queue && !action.drop) {
 		rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_HANDLE,
 				   NULL, "no valid action");
@@ -785,6 +807,30 @@ mlx5_flow_create_vxlan(const struct rte_flow_item *item,
 }
 
 /**
+ * Convert mark/flag action to Verbs specification.
+ *
+ * @param flow
+ *   Pointer to MLX5 flow structure.
+ * @param mark_id
+ *   Mark identifier.
+ */
+static int
+mlx5_flow_create_flag_mark(struct mlx5_flow *flow, uint32_t mark_id)
+{
+	struct ibv_exp_flow_spec_action_tag *tag;
+	unsigned int size = sizeof(struct ibv_exp_flow_spec_action_tag);
+
+	tag = (void *)((uintptr_t)flow->ibv_attr + flow->offset);
+	*tag = (struct ibv_exp_flow_spec_action_tag){
+		.type = IBV_EXP_FLOW_SPEC_ACTION_TAG,
+		.size = size,
+		.tag_id = mlx5_flow_mark_set(mark_id),
+	};
+	++flow->ibv_attr->num_of_specs;
+	return 0;
+}
+
+/**
  * Complete flow rule creation.
  *
  * @param priv
@@ -840,8 +886,10 @@ priv_flow_create_action_queue(struct priv *priv,
 		rxq = container_of((*priv->rxqs)[action->queue_id],
 				   struct rxq_ctrl, rxq);
 		rte_flow->rxq = &rxq->rxq;
+		rxq->rxq.mark |= action->mark;
 		rte_flow->wq = rxq->wq;
 	}
+	rte_flow->mark = action->mark;
 	rte_flow->ibv_attr = ibv_attr;
 	rte_flow->ind_table = ibv_exp_create_rwq_ind_table(
 		priv->ctx,
@@ -957,6 +1005,8 @@ priv_flow_create(struct priv *priv,
 	action = (struct mlx5_flow_action){
 		.queue = 0,
 		.drop = 0,
+		.mark = 0,
+		.mark_id = MLX5_FLOW_MARK_DEFAULT,
 	};
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; ++actions) {
 		if (actions->type == RTE_FLOW_ACTION_TYPE_VOID) {
@@ -968,12 +1018,24 @@ priv_flow_create(struct priv *priv,
 				 actions->conf)->index;
 		} else if (actions->type == RTE_FLOW_ACTION_TYPE_DROP) {
 			action.drop = 1;
+		} else if (actions->type == RTE_FLOW_ACTION_TYPE_MARK) {
+			const struct rte_flow_action_mark *mark =
+				(const struct rte_flow_action_mark *)
+				actions->conf;
+
+			if (mark)
+				action.mark_id = mark->id;
+			action.mark = 1;
 		} else {
 			rte_flow_error_set(error, ENOTSUP,
 					   RTE_FLOW_ERROR_TYPE_ACTION,
 					   actions, "unsupported action");
 			goto exit;
 		}
+	}
+	if (action.mark) {
+		mlx5_flow_create_flag_mark(&flow, action.mark_id);
+		flow.offset += sizeof(struct ibv_exp_flow_spec_action_tag);
 	}
 	rte_flow = priv_flow_create_action_queue(priv, flow.ibv_attr,
 						 &action, error);
@@ -1033,6 +1095,18 @@ priv_flow_destroy(struct priv *priv,
 		claim_zero(ibv_exp_destroy_wq(flow->wq));
 	if (!flow->rxq && flow->cq)
 		claim_zero(ibv_destroy_cq(flow->cq));
+	if (flow->mark) {
+		struct rte_flow *tmp;
+		uint32_t mark_n = 0;
+
+		for (tmp = LIST_FIRST(&priv->flows);
+		     tmp;
+		     tmp = LIST_NEXT(tmp, next)) {
+			if ((flow->rxq == tmp->rxq) && tmp->mark)
+				++mark_n;
+		}
+		flow->rxq->mark = !!mark_n;
+	}
 	rte_free(flow->ibv_attr);
 	DEBUG("Flow destroyed %p", (void *)flow);
 	rte_free(flow);
@@ -1112,6 +1186,8 @@ priv_flow_stop(struct priv *priv)
 	     flow = LIST_NEXT(flow, next)) {
 		claim_zero(ibv_exp_destroy_flow(flow->ibv_flow));
 		flow->ibv_flow = NULL;
+		if (flow->mark)
+			flow->rxq->mark = 0;
 		DEBUG("Flow %p removed", (void *)flow);
 	}
 }
@@ -1141,6 +1217,8 @@ priv_flow_start(struct priv *priv)
 			return rte_errno;
 		}
 		DEBUG("Flow %p applied", (void *)flow);
+		if (flow->rxq)
+			flow->rxq->mark |= flow->mark;
 	}
 	return 0;
 }

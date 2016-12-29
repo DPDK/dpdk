@@ -34,6 +34,8 @@
 #ifndef RTE_PMD_MLX5_PRM_H_
 #define RTE_PMD_MLX5_PRM_H_
 
+#include <assert.h>
+
 /* Verbs header. */
 /* ISO C doesn't support unnamed structs/unions, disabling -pedantic. */
 #ifdef PEDANTIC
@@ -105,6 +107,15 @@
 /* Outer UDP header and checksum OK. */
 #define MLX5_CQE_RX_OUTER_TCP_UDP_CSUM_OK (1u << 6)
 
+/* INVALID is used by packets matching no flow rules. */
+#define MLX5_FLOW_MARK_INVALID 0
+
+/* Maximum allowed value to mark a packet. */
+#define MLX5_FLOW_MARK_MAX 0xfffff0
+
+/* Default mark value used when none is provided. */
+#define MLX5_FLOW_MARK_DEFAULT 0xffffff
+
 /* Subset of struct mlx5_wqe_eth_seg. */
 struct mlx5_wqe_eth_seg_small {
 	uint32_t rsvd0;
@@ -169,10 +180,67 @@ struct mlx5_cqe {
 	uint8_t rsvd2[12];
 	uint32_t byte_cnt;
 	uint64_t timestamp;
-	uint8_t rsvd3[4];
+	uint32_t sop_drop_qpn;
 	uint16_t wqe_counter;
 	uint8_t rsvd4;
 	uint8_t op_own;
 };
+
+/**
+ * Convert a user mark to flow mark.
+ *
+ * @param val
+ *   Mark value to convert.
+ *
+ * @return
+ *   Converted mark value.
+ */
+static inline uint32_t
+mlx5_flow_mark_set(uint32_t val)
+{
+	uint32_t ret;
+
+	/*
+	 * Add one to the user value to differentiate un-marked flows from
+	 * marked flows.
+	 */
+	++val;
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+	/*
+	 * Mark is 24 bits (minus reserved values) but is stored on a 32 bit
+	 * word, byte-swapped by the kernel on little-endian systems. In this
+	 * case, left-shifting the resulting big-endian value ensures the
+	 * least significant 24 bits are retained when converting it back.
+	 */
+	ret = rte_cpu_to_be_32(val) >> 8;
+#else
+	ret = val;
+#endif
+	assert(ret <= MLX5_FLOW_MARK_MAX);
+	return ret;
+}
+
+/**
+ * Convert a mark to user mark.
+ *
+ * @param val
+ *   Mark value to convert.
+ *
+ * @return
+ *   Converted mark value.
+ */
+static inline uint32_t
+mlx5_flow_mark_get(uint32_t val)
+{
+	/*
+	 * Subtract one from the retrieved value. It was added by
+	 * mlx5_flow_mark_set() to distinguish unmarked flows.
+	 */
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+	return (val >> 8) - 1;
+#else
+	return val - 1;
+#endif
+}
 
 #endif /* RTE_PMD_MLX5_PRM_H_ */

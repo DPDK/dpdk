@@ -84,7 +84,7 @@ static inline int
 check_cqe_seen(volatile struct mlx5_cqe *cqe)
 {
 	static const uint8_t magic[] = "seen";
-	volatile uint8_t (*buf)[sizeof(cqe->rsvd3)] = &cqe->rsvd3;
+	volatile uint8_t (*buf)[sizeof(cqe->rsvd0)] = &cqe->rsvd0;
 	int ret = 1;
 	unsigned int i;
 
@@ -1341,6 +1341,16 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			if (rss_hash_res && rxq->rss_hash) {
 				pkt->hash.rss = rss_hash_res;
 				pkt->ol_flags = PKT_RX_RSS_HASH;
+			}
+			if (rxq->mark &&
+			    ((cqe->sop_drop_qpn !=
+			      htonl(MLX5_FLOW_MARK_INVALID)) ||
+			     (cqe->sop_drop_qpn !=
+			      htonl(MLX5_FLOW_MARK_DEFAULT)))) {
+				pkt->hash.fdir.hi =
+					mlx5_flow_mark_get(cqe->sop_drop_qpn);
+				pkt->ol_flags &= ~PKT_RX_RSS_HASH;
+				pkt->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
 			}
 			if (rxq->csum | rxq->csum_l2tun | rxq->vlan_strip |
 			    rxq->crc_present) {
