@@ -136,6 +136,7 @@ struct priv {
 	unsigned int reta_idx_n; /* RETA index size. */
 	struct fdir_filter_list *fdir_filter_list; /* Flow director rules. */
 	struct fdir_queue *fdir_drop_queue; /* Flow director drop queue. */
+	LIST_HEAD(mlx5_flows, rte_flow) flows; /* RTE Flow rules. */
 	uint32_t link_speed_capa; /* Link speed capabilities. */
 	rte_spinlock_t lock; /* Lock for control functions. */
 };
@@ -283,5 +284,7 @@ struct rte_flow *mlx5_flow_create(struct rte_eth_dev *,
 int mlx5_flow_destroy(struct rte_eth_dev *, struct rte_flow *,
 		      struct rte_flow_error *);
 int mlx5_flow_flush(struct rte_eth_dev *, struct rte_flow_error *);
+int priv_flow_start(struct priv *);
+void priv_flow_stop(struct priv *);
 
 #endif /* RTE_PMD_MLX5_H_ */
