@@ -57,6 +57,11 @@ mlx5_flow_create_eth(const struct rte_flow_item *item,
 		     void *data);
 
 static int
+mlx5_flow_create_vlan(const struct rte_flow_item *item,
+		      const void *default_mask,
+		      void *data);
+
+static int
 mlx5_flow_create_ipv4(const struct rte_flow_item *item,
 		      const void *default_mask,
 		      void *data);
@@ -136,7 +141,8 @@ static const struct mlx5_flow_items mlx5_flow_items[] = {
 		.items = ITEMS(RTE_FLOW_ITEM_TYPE_ETH),
 	},
 	[RTE_FLOW_ITEM_TYPE_ETH] = {
-		.items = ITEMS(RTE_FLOW_ITEM_TYPE_IPV4,
+		.items = ITEMS(RTE_FLOW_ITEM_TYPE_VLAN,
+			       RTE_FLOW_ITEM_TYPE_IPV4,
 			       RTE_FLOW_ITEM_TYPE_IPV6),
 		.actions = valid_actions,
 		.mask = &(const struct rte_flow_item_eth){
@@ -146,6 +152,17 @@ static const struct mlx5_flow_items mlx5_flow_items[] = {
 		.mask_sz = sizeof(struct rte_flow_item_eth),
 		.convert = mlx5_flow_create_eth,
 		.dst_sz = sizeof(struct ibv_exp_flow_spec_eth),
+	},
+	[RTE_FLOW_ITEM_TYPE_VLAN] = {
+		.items = ITEMS(RTE_FLOW_ITEM_TYPE_IPV4,
+			       RTE_FLOW_ITEM_TYPE_IPV6),
+		.actions = valid_actions,
+		.mask = &(const struct rte_flow_item_vlan){
+			.tci = -1,
+		},
+		.mask_sz = sizeof(struct rte_flow_item_vlan),
+		.convert = mlx5_flow_create_vlan,
+		.dst_sz = 0,
 	},
 	[RTE_FLOW_ITEM_TYPE_IPV4] = {
 		.items = ITEMS(RTE_FLOW_ITEM_TYPE_UDP,
@@ -355,6 +372,17 @@ priv_flow_validate(struct priv *priv,
 
 		if (items->type == RTE_FLOW_ITEM_TYPE_VOID)
 			continue;
+		/* Handle special situation for VLAN. */
+		if (items->type == RTE_FLOW_ITEM_TYPE_VLAN) {
+			if (((const struct rte_flow_item_vlan *)items)->tci >
+			    ETHER_MAX_VLAN_ID) {
+				rte_flow_error_set(error, ENOTSUP,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   items,
+						   "wrong VLAN id value");
+				return -rte_errno;
+			}
+		}
 		for (i = 0;
 		     cur_item->items &&
 		     cur_item->items[i] != RTE_FLOW_ITEM_TYPE_END;
@@ -477,6 +505,38 @@ mlx5_flow_create_eth(const struct rte_flow_item *item,
 		eth->val.dst_mac[i] &= eth->mask.dst_mac[i];
 		eth->val.src_mac[i] &= eth->mask.src_mac[i];
 	}
+	return 0;
+}
+
+/**
+ * Convert VLAN item to Verbs specification.
+ *
+ * @param item[in]
+ *   Item specification.
+ * @param default_mask[in]
+ *   Default bit-masks to use when item->mask is not provided.
+ * @param data[in, out]
+ *   User structure.
+ */
+static int
+mlx5_flow_create_vlan(const struct rte_flow_item *item,
+		      const void *default_mask,
+		      void *data)
+{
+	const struct rte_flow_item_vlan *spec = item->spec;
+	const struct rte_flow_item_vlan *mask = item->mask;
+	struct mlx5_flow *flow = (struct mlx5_flow *)data;
+	struct ibv_exp_flow_spec_eth *eth;
+	const unsigned int eth_size = sizeof(struct ibv_exp_flow_spec_eth);
+
+	eth = (void *)((uintptr_t)flow->ibv_attr + flow->offset - eth_size);
+	if (!spec)
+		return 0;
+	if (!mask)
+		mask = default_mask;
+	eth->val.vlan_tag = spec->tci;
+	eth->mask.vlan_tag = mask->tci;
+	eth->val.vlan_tag &= eth->mask.vlan_tag;
 	return 0;
 }
 
