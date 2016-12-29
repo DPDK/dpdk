@@ -81,6 +81,11 @@ mlx5_flow_create_tcp(const struct rte_flow_item *item,
 		     const void *default_mask,
 		     void *data);
 
+static int
+mlx5_flow_create_vxlan(const struct rte_flow_item *item,
+		       const void *default_mask,
+		       void *data);
+
 struct rte_flow {
 	LIST_ENTRY(rte_flow) next; /**< Pointer to the next flow structure. */
 	struct ibv_exp_flow_attr *ibv_attr; /**< Pointer to Verbs attributes. */
@@ -138,7 +143,8 @@ static const enum rte_flow_action_type valid_actions[] = {
 /** Graph of supported items and associated actions. */
 static const struct mlx5_flow_items mlx5_flow_items[] = {
 	[RTE_FLOW_ITEM_TYPE_END] = {
-		.items = ITEMS(RTE_FLOW_ITEM_TYPE_ETH),
+		.items = ITEMS(RTE_FLOW_ITEM_TYPE_ETH,
+			       RTE_FLOW_ITEM_TYPE_VXLAN),
 	},
 	[RTE_FLOW_ITEM_TYPE_ETH] = {
 		.items = ITEMS(RTE_FLOW_ITEM_TYPE_VLAN,
@@ -203,6 +209,7 @@ static const struct mlx5_flow_items mlx5_flow_items[] = {
 		.dst_sz = sizeof(struct ibv_exp_flow_spec_ipv6),
 	},
 	[RTE_FLOW_ITEM_TYPE_UDP] = {
+		.items = ITEMS(RTE_FLOW_ITEM_TYPE_VXLAN),
 		.actions = valid_actions,
 		.mask = &(const struct rte_flow_item_udp){
 			.hdr = {
@@ -226,12 +233,23 @@ static const struct mlx5_flow_items mlx5_flow_items[] = {
 		.convert = mlx5_flow_create_tcp,
 		.dst_sz = sizeof(struct ibv_exp_flow_spec_tcp_udp),
 	},
+	[RTE_FLOW_ITEM_TYPE_VXLAN] = {
+		.items = ITEMS(RTE_FLOW_ITEM_TYPE_ETH),
+		.actions = valid_actions,
+		.mask = &(const struct rte_flow_item_vxlan){
+			.vni = "\xff\xff\xff",
+		},
+		.mask_sz = sizeof(struct rte_flow_item_vxlan),
+		.convert = mlx5_flow_create_vxlan,
+		.dst_sz = sizeof(struct ibv_exp_flow_spec_tunnel),
+	},
 };
 
 /** Structure to pass to the conversion function. */
 struct mlx5_flow {
 	struct ibv_exp_flow_attr *ibv_attr; /**< Verbs attribute. */
 	unsigned int offset; /**< Offset in bytes in the ibv_attr buffer. */
+	uint32_t inner; /**< Set once VXLAN is encountered. */
 };
 
 struct mlx5_flow_action {
@@ -489,7 +507,7 @@ mlx5_flow_create_eth(const struct rte_flow_item *item,
 	flow->ibv_attr->priority = 2;
 	eth = (void *)((uintptr_t)flow->ibv_attr + flow->offset);
 	*eth = (struct ibv_exp_flow_spec_eth) {
-		.type = IBV_EXP_FLOW_SPEC_ETH,
+		.type = flow->inner | IBV_EXP_FLOW_SPEC_ETH,
 		.size = eth_size,
 	};
 	if (!spec)
@@ -565,7 +583,7 @@ mlx5_flow_create_ipv4(const struct rte_flow_item *item,
 	flow->ibv_attr->priority = 1;
 	ipv4 = (void *)((uintptr_t)flow->ibv_attr + flow->offset);
 	*ipv4 = (struct ibv_exp_flow_spec_ipv4) {
-		.type = IBV_EXP_FLOW_SPEC_IPV4,
+		.type = flow->inner | IBV_EXP_FLOW_SPEC_IPV4,
 		.size = ipv4_size,
 	};
 	if (!spec)
@@ -612,7 +630,7 @@ mlx5_flow_create_ipv6(const struct rte_flow_item *item,
 	flow->ibv_attr->priority = 1;
 	ipv6 = (void *)((uintptr_t)flow->ibv_attr + flow->offset);
 	*ipv6 = (struct ibv_exp_flow_spec_ipv6) {
-		.type = IBV_EXP_FLOW_SPEC_IPV6,
+		.type = flow->inner | IBV_EXP_FLOW_SPEC_IPV6,
 		.size = ipv6_size,
 	};
 	if (!spec)
@@ -660,7 +678,7 @@ mlx5_flow_create_udp(const struct rte_flow_item *item,
 	flow->ibv_attr->priority = 0;
 	udp = (void *)((uintptr_t)flow->ibv_attr + flow->offset);
 	*udp = (struct ibv_exp_flow_spec_tcp_udp) {
-		.type = IBV_EXP_FLOW_SPEC_UDP,
+		.type = flow->inner | IBV_EXP_FLOW_SPEC_UDP,
 		.size = udp_size,
 	};
 	if (!spec)
@@ -702,7 +720,7 @@ mlx5_flow_create_tcp(const struct rte_flow_item *item,
 	flow->ibv_attr->priority = 0;
 	tcp = (void *)((uintptr_t)flow->ibv_attr + flow->offset);
 	*tcp = (struct ibv_exp_flow_spec_tcp_udp) {
-		.type = IBV_EXP_FLOW_SPEC_TCP,
+		.type = flow->inner | IBV_EXP_FLOW_SPEC_TCP,
 		.size = tcp_size,
 	};
 	if (!spec)
@@ -716,6 +734,53 @@ mlx5_flow_create_tcp(const struct rte_flow_item *item,
 	/* Remove unwanted bits from values. */
 	tcp->val.src_port &= tcp->mask.src_port;
 	tcp->val.dst_port &= tcp->mask.dst_port;
+	return 0;
+}
+
+/**
+ * Convert VXLAN item to Verbs specification.
+ *
+ * @param item[in]
+ *   Item specification.
+ * @param default_mask[in]
+ *   Default bit-masks to use when item->mask is not provided.
+ * @param data[in, out]
+ *   User structure.
+ */
+static int
+mlx5_flow_create_vxlan(const struct rte_flow_item *item,
+		       const void *default_mask,
+		       void *data)
+{
+	const struct rte_flow_item_vxlan *spec = item->spec;
+	const struct rte_flow_item_vxlan *mask = item->mask;
+	struct mlx5_flow *flow = (struct mlx5_flow *)data;
+	struct ibv_exp_flow_spec_tunnel *vxlan;
+	unsigned int size = sizeof(struct ibv_exp_flow_spec_tunnel);
+	union vni {
+		uint32_t vlan_id;
+		uint8_t vni[4];
+	} id;
+
+	++flow->ibv_attr->num_of_specs;
+	flow->ibv_attr->priority = 0;
+	id.vni[0] = 0;
+	vxlan = (void *)((uintptr_t)flow->ibv_attr + flow->offset);
+	*vxlan = (struct ibv_exp_flow_spec_tunnel) {
+		.type = flow->inner | IBV_EXP_FLOW_SPEC_VXLAN_TUNNEL,
+		.size = size,
+	};
+	flow->inner = IBV_EXP_FLOW_SPEC_INNER;
+	if (!spec)
+		return 0;
+	if (!mask)
+		mask = default_mask;
+	memcpy(&id.vni[1], spec->vni, 3);
+	vxlan->val.tunnel_id = id.vlan_id;
+	memcpy(&id.vni[1], mask->vni, 3);
+	vxlan->mask.tunnel_id = id.vlan_id;
+	/* Remove unwanted bits from values. */
+	vxlan->val.tunnel_id &= vxlan->mask.tunnel_id;
 	return 0;
 }
 
@@ -886,6 +951,7 @@ priv_flow_create(struct priv *priv,
 		.flags = 0,
 		.reserved = 0,
 	};
+	flow.inner = 0;
 	claim_zero(priv_flow_validate(priv, attr, items, actions,
 				      error, &flow));
 	action = (struct mlx5_flow_action){
