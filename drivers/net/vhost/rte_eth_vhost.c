@@ -115,9 +115,6 @@ struct pmd_internal {
 	char *dev_name;
 	char *iface_name;
 	uint16_t max_queues;
-	uint64_t flags;
-
-	volatile uint16_t once;
 };
 
 struct internal_list {
@@ -776,35 +773,14 @@ vhost_driver_session_stop(void)
 }
 
 static int
-eth_dev_start(struct rte_eth_dev *dev)
+eth_dev_start(struct rte_eth_dev *dev __rte_unused)
 {
-	struct pmd_internal *internal = dev->data->dev_private;
-	int ret = 0;
-
-	if (rte_atomic16_cmpset(&internal->once, 0, 1)) {
-		ret = rte_vhost_driver_register(internal->iface_name,
-						internal->flags);
-		if (ret)
-			return ret;
-	}
-
-	/* We need only one message handling thread */
-	if (rte_atomic16_add_return(&nb_started_ports, 1) == 1)
-		ret = vhost_driver_session_start();
-
-	return ret;
+	return 0;
 }
 
 static void
-eth_dev_stop(struct rte_eth_dev *dev)
+eth_dev_stop(struct rte_eth_dev *dev __rte_unused)
 {
-	struct pmd_internal *internal = dev->data->dev_private;
-
-	if (rte_atomic16_cmpset(&internal->once, 1, 0))
-		rte_vhost_driver_unregister(internal->iface_name);
-
-	if (rte_atomic16_sub_return(&nb_started_ports, 1) == 0)
-		vhost_driver_session_stop();
 }
 
 static int
@@ -1046,7 +1022,6 @@ eth_dev_vhost_create(const char *name, char *iface_name, int16_t queues,
 	internal->iface_name = strdup(iface_name);
 	if (internal->iface_name == NULL)
 		goto error;
-	internal->flags = flags;
 
 	list->eth_dev = eth_dev;
 	pthread_mutex_lock(&internal_list_lock);
@@ -1080,6 +1055,15 @@ eth_dev_vhost_create(const char *name, char *iface_name, int16_t queues,
 	/* finally assign rx and tx ops */
 	eth_dev->rx_pkt_burst = eth_vhost_rx;
 	eth_dev->tx_pkt_burst = eth_vhost_tx;
+
+	if (rte_vhost_driver_register(iface_name, flags))
+		goto error;
+
+	/* We need only one message handling thread */
+	if (rte_atomic16_add_return(&nb_started_ports, 1) == 1) {
+		if (vhost_driver_session_start())
+			goto error;
+	}
 
 	return data->port_id;
 
@@ -1217,6 +1201,11 @@ rte_pmd_vhost_remove(const char *name)
 	rte_free(list);
 
 	eth_dev_stop(eth_dev);
+
+	rte_vhost_driver_unregister(internal->iface_name);
+
+	if (rte_atomic16_sub_return(&nb_started_ports, 1) == 0)
+		vhost_driver_session_stop();
 
 	rte_free(vring_states[eth_dev->data->port_id]);
 	vring_states[eth_dev->data->port_id] = NULL;
