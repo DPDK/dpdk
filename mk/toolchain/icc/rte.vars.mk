@@ -71,6 +71,7 @@ TOOLCHAIN_ASFLAGS =
 #                   was declared "deprecated"
 WERROR_FLAGS := -Wall -w2 -diag-disable 271 -diag-warning 1478
 WERROR_FLAGS += -diag-disable 13368 -diag-disable 15527
+WERROR_FLAGS += -diag-disable 188
 
 ifeq ($(RTE_DEVEL_BUILD),y)
 WERROR_FLAGS += -Werror-all
