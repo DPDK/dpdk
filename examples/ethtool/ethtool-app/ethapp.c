@@ -186,6 +186,7 @@ pcmd_drvinfo_callback(__rte_unused void *ptr_params,
 			id_port, info.driver, info.version
 		      );
 		printf("firmware-version: %s\n", info.fw_version);
+		printf("bus-info: %s\n", info.bus_info);
 	}
 }
 
