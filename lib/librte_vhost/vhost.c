@@ -250,6 +250,7 @@ vhost_new_device(void)
 	if (i == MAX_VHOST_DEVICE) {
 		RTE_LOG(ERR, VHOST_CONFIG,
 			"Failed to find a free slot for new device.\n");
+		rte_free(dev);
 		return -1;
 	}
 
