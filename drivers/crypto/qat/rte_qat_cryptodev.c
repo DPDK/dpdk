@@ -100,7 +100,8 @@ crypto_qat_dev_init(__attribute__((unused)) struct rte_cryptodev_driver *crypto_
 
 	cryptodev->feature_flags = RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO |
 			RTE_CRYPTODEV_FF_HW_ACCELERATED |
-			RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING;
+			RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING |
+			RTE_CRYPTODEV_FF_MBUF_SCATTER_GATHER;
 
 	internals = cryptodev->data->dev_private;
 	internals->max_nb_sessions = RTE_QAT_PMD_MAX_NB_SESSIONS;
