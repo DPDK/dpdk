@@ -32,7 +32,7 @@ QEDE Poll Mode Driver
 ======================
 
 The QEDE poll mode driver library (**librte_pmd_qede**) implements support
-for **QLogic FastLinQ QL4xxxx 25G/40G/100G CNA** family of adapters as well
+for **QLogic FastLinQ QL4xxxx 10G/25G/40G/100G CNA** family of adapters as well
 as their virtual functions (VF) in SR-IOV context. It is supported on
 several standard Linux distros like RHEL7.x, SLES12.x and Ubuntu.
 It is compile-tested under FreeBSD OS.

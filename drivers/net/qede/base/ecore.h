@@ -302,6 +302,7 @@ enum ecore_port_mode {
 	ECORE_PORT_MODE_DE_2X25G,
 	ECORE_PORT_MODE_DE_1X25G,
 	ECORE_PORT_MODE_DE_4X25G,
+	ECORE_PORT_MODE_DE_2X10G,
 };
 
 enum ecore_dev_cap {

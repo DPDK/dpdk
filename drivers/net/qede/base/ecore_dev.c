@@ -2474,6 +2474,9 @@ static enum _ecore_status_t ecore_hw_get_nvm_info(struct ecore_hwfn *p_hwfn,
 	case NVM_CFG1_GLOB_NETWORK_PORT_MODE_2X25G:
 		p_hwfn->hw_info.port_mode = ECORE_PORT_MODE_DE_2X25G;
 		break;
+	case NVM_CFG1_GLOB_NETWORK_PORT_MODE_2X10G:
+		p_hwfn->hw_info.port_mode = ECORE_PORT_MODE_DE_2X10G;
+		break;
 	case NVM_CFG1_GLOB_NETWORK_PORT_MODE_1X25G:
 		p_hwfn->hw_info.port_mode = ECORE_PORT_MODE_DE_1X25G;
 		break;
