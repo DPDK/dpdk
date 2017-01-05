@@ -56,7 +56,7 @@ The stats parameter controls the printing of generic port statistics. If no
 port mask is specified stats are printed for all DPDK ports.
 
 **--xstats**
-The stats parameter controls the printing of extended port statistics. If no
+The xstats parameter controls the printing of extended port statistics. If no
 port mask is specified xstats are printed for all DPDK ports.
 
 **--stats-reset**
