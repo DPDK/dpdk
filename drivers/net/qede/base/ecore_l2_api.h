@@ -274,6 +274,15 @@ struct ecore_sp_vport_start_params {
 	bool zero_placement_offset;
 	bool check_mac;
 	bool check_ethtype;
+
+	/* Strict behavior on transmission errors */
+	bool b_err_illegal_vlan_mode;
+	bool b_err_illegal_inband_mode;
+	bool b_err_vlan_insert_with_inband;
+	bool b_err_small_pkt;
+	bool b_err_big_pkt;
+	bool b_err_anti_spoof;
+	bool b_err_ctrl_frame;
 };
 
 /**

@@ -146,7 +146,7 @@ static enum _ecore_status_t ecore_sp_vf_stop(struct ecore_hwfn *p_hwfn,
 }
 
 bool ecore_iov_is_valid_vfid(struct ecore_hwfn *p_hwfn, int rel_vf_id,
-			     bool b_enabled_only)
+			     bool b_enabled_only, bool b_non_malicious)
 {
 	if (!p_hwfn->pf_iov_info) {
 		DP_NOTICE(p_hwfn->p_dev, true, "No iov info\n");
@@ -159,6 +159,10 @@ bool ecore_iov_is_valid_vfid(struct ecore_hwfn *p_hwfn, int rel_vf_id,
 
 	if ((!p_hwfn->pf_iov_info->vfs_array[rel_vf_id].b_init) &&
 	    b_enabled_only)
+		return false;
+
+	if ((p_hwfn->pf_iov_info->vfs_array[rel_vf_id].b_malicious) &&
+	    b_non_malicious)
 		return false;
 
 	return true;
@@ -175,7 +179,8 @@ struct ecore_vf_info *ecore_iov_get_vf_info(struct ecore_hwfn *p_hwfn,
 		return OSAL_NULL;
 	}
 
-	if (ecore_iov_is_valid_vfid(p_hwfn, relative_vf_id, b_enabled_only))
+	if (ecore_iov_is_valid_vfid(p_hwfn, relative_vf_id,
+				    b_enabled_only, false))
 		vf = &p_hwfn->pf_iov_info->vfs_array[relative_vf_id];
 	else
 		DP_ERR(p_hwfn, "ecore_iov_get_vf_info: VF[%d] is not enabled\n",
@@ -612,7 +617,8 @@ enum _ecore_status_t ecore_iov_hw_info(struct ecore_hwfn *p_hwfn)
 	return ECORE_SUCCESS;
 }
 
-bool ecore_iov_pf_sanity_check(struct ecore_hwfn *p_hwfn, int vfid)
+bool _ecore_iov_pf_sanity_check(struct ecore_hwfn *p_hwfn, int vfid,
+				bool b_fail_malicious)
 {
 	/* Check PF supports sriov */
 	if (IS_VF(p_hwfn->p_dev) || !IS_ECORE_SRIOV(p_hwfn->p_dev) ||
@@ -620,10 +626,15 @@ bool ecore_iov_pf_sanity_check(struct ecore_hwfn *p_hwfn, int vfid)
 		return false;
 
 	/* Check VF validity */
-	if (!ecore_iov_is_valid_vfid(p_hwfn, vfid, true))
+	if (!ecore_iov_is_valid_vfid(p_hwfn, vfid, true, b_fail_malicious))
 		return false;
 
 	return true;
+}
+
+bool ecore_iov_pf_sanity_check(struct ecore_hwfn *p_hwfn, int vfid)
+{
+	return _ecore_iov_pf_sanity_check(p_hwfn, vfid, true);
 }
 
 void ecore_iov_set_vf_to_disable(struct ecore_dev *p_dev,
@@ -745,6 +756,9 @@ ecore_iov_enable_vf_access(struct ecore_hwfn *p_hwfn,
 				     ECORE_VF_ABS_ID(p_hwfn, vf));
 
 	ecore_iov_vf_igu_reset(p_hwfn, p_ptt, vf);
+
+	/* It's possible VF was previously considered malicious */
+	vf->b_malicious = false;
 
 	rc = ecore_mcp_config_vf_msix(p_hwfn, p_ptt,
 				      vf->abs_vf_id, vf->num_sbs);
@@ -3227,7 +3241,8 @@ void ecore_iov_process_mbx_req(struct ecore_hwfn *p_hwfn,
 				     p_vf, mbx->first_tlv.tl.type);
 
 	/* check if tlv type is known */
-	if (ecore_iov_tlv_supported(mbx->first_tlv.tl.type)) {
+	if (ecore_iov_tlv_supported(mbx->first_tlv.tl.type) &&
+	    !p_vf->b_malicious) {
 		/* switch on the opcode */
 		switch (mbx->first_tlv.tl.type) {
 		case CHANNEL_TLV_ACQUIRE:
@@ -3270,6 +3285,27 @@ void ecore_iov_process_mbx_req(struct ecore_hwfn *p_hwfn,
 			ecore_iov_vf_mbx_release(p_hwfn, p_ptt, p_vf);
 			break;
 		}
+	} else if (ecore_iov_tlv_supported(mbx->first_tlv.tl.type)) {
+		/* If we've received a message from a VF we consider malicious
+		 * we ignore the messasge unless it's one for RELEASE, in which
+		 * case we'll let it have the benefit of doubt, allowing the
+		 * next loaded driver to start again.
+		 */
+		if (mbx->first_tlv.tl.type == CHANNEL_TLV_RELEASE) {
+			/* TODO - initiate FLR, remove malicious indication */
+			DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
+				   "VF [%02x] - considered malicious, but wanted to RELEASE. TODO\n",
+				   p_vf->abs_vf_id);
+		} else {
+			DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
+				   "VF [%02x] - considered malicious; Ignoring TLV [%04x]\n",
+				   p_vf->abs_vf_id, mbx->first_tlv.tl.type);
+		}
+
+		ecore_iov_prepare_resp(p_hwfn, p_ptt, p_vf,
+				       mbx->first_tlv.tl.type,
+				       sizeof(struct pfvf_def_resp_tlv),
+				       PFVF_STATUS_MALICIOUS);
 	} else {
 		/* unknown TLV - this may belong to a VF driver from the future
 		 * - a version written after this PF driver was written, which
@@ -3334,21 +3370,31 @@ void ecore_iov_pf_get_and_clear_pending_events(struct ecore_hwfn *p_hwfn,
 		    sizeof(u64) * ECORE_VF_ARRAY_LENGTH);
 }
 
+static struct ecore_vf_info *
+ecore_sriov_get_vf_from_absid(struct ecore_hwfn *p_hwfn, u16 abs_vfid)
+{
+	u8 min = (u8)p_hwfn->p_dev->p_iov_info->first_vf_in_pf;
+
+	if (!_ecore_iov_pf_sanity_check(p_hwfn, (int)abs_vfid - min, false)) {
+		DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
+			   "Got indication for VF [abs 0x%08x] that cannot be"
+			   " handled by PF\n",
+			   abs_vfid);
+		return OSAL_NULL;
+	}
+
+	return &p_hwfn->pf_iov_info->vfs_array[(u8)abs_vfid - min];
+}
+
 static enum _ecore_status_t ecore_sriov_vfpf_msg(struct ecore_hwfn *p_hwfn,
 						 u16 abs_vfid,
 						 struct regpair *vf_msg)
 {
-	u8 min = (u8)p_hwfn->p_dev->p_iov_info->first_vf_in_pf;
-	struct ecore_vf_info *p_vf;
+	struct ecore_vf_info *p_vf = ecore_sriov_get_vf_from_absid(p_hwfn,
+								   abs_vfid);
 
-	if (!ecore_iov_pf_sanity_check(p_hwfn, (int)abs_vfid - min)) {
-		DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
-			   "Got a message from VF [abs 0x%08x] that cannot be"
-			   " handled by PF\n",
-			   abs_vfid);
+	if (!p_vf)
 		return ECORE_SUCCESS;
-	}
-	p_vf = &p_hwfn->pf_iov_info->vfs_array[(u8)abs_vfid - min];
 
 	/* List the physical address of the request so that handler
 	 * could later on copy the message from it.
@@ -3356,6 +3402,25 @@ static enum _ecore_status_t ecore_sriov_vfpf_msg(struct ecore_hwfn *p_hwfn,
 	p_vf->vf_mbx.pending_req = (((u64)vf_msg->hi) << 32) | vf_msg->lo;
 
 	return OSAL_PF_VF_MSG(p_hwfn, p_vf->relative_vf_id);
+}
+
+static void ecore_sriov_vfpf_malicious(struct ecore_hwfn *p_hwfn,
+				       struct malicious_vf_eqe_data *p_data)
+{
+	struct ecore_vf_info *p_vf;
+
+	p_vf = ecore_sriov_get_vf_from_absid(p_hwfn, p_data->vfId);
+
+	if (!p_vf)
+		return;
+
+	DP_INFO(p_hwfn,
+		"VF [%d] - Malicious behavior [%02x]\n",
+		p_vf->abs_vf_id, p_data->errId);
+
+	p_vf->b_malicious = true;
+
+	OSAL_PF_VF_MALICIOUS(p_hwfn, p_vf->relative_vf_id);
 }
 
 enum _ecore_status_t ecore_sriov_eqe_event(struct ecore_hwfn *p_hwfn,
@@ -3370,6 +3435,9 @@ enum _ecore_status_t ecore_sriov_eqe_event(struct ecore_hwfn *p_hwfn,
 	case COMMON_EVENT_VF_FLR:
 		DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
 			   "VF-FLR is still not supported\n");
+		return ECORE_SUCCESS;
+	case COMMON_EVENT_MALICIOUS_VF:
+		ecore_sriov_vfpf_malicious(p_hwfn, &data->malicious_vf);
 		return ECORE_SUCCESS;
 	default:
 		DP_INFO(p_hwfn->p_dev, "Unknown sriov eqe event 0x%02x\n",
@@ -3393,7 +3461,7 @@ u16 ecore_iov_get_next_active_vf(struct ecore_hwfn *p_hwfn, u16 rel_vf_id)
 		goto out;
 
 	for (i = rel_vf_id; i < p_iov->total_vfs; i++)
-		if (ecore_iov_is_valid_vfid(p_hwfn, rel_vf_id, true))
+		if (ecore_iov_is_valid_vfid(p_hwfn, rel_vf_id, true, false))
 			return i;
 
 out:
@@ -3439,6 +3507,12 @@ void ecore_iov_bulletin_set_forced_mac(struct ecore_hwfn *p_hwfn,
 			  "Can not set forced MAC, invalid vfid [%d]\n", vfid);
 		return;
 	}
+	if (vf_info->b_malicious) {
+		DP_NOTICE(p_hwfn->p_dev, false,
+			  "Can't set forced MAC to malicious VF [%d]\n",
+			  vfid);
+		return;
+	}
 
 	feature = 1 << MAC_ADDR_FORCED;
 	OSAL_MEMCPY(vf_info->bulletin.p_virt->mac, mac, ETH_ALEN);
@@ -3461,6 +3535,12 @@ enum _ecore_status_t ecore_iov_bulletin_set_mac(struct ecore_hwfn *p_hwfn,
 	if (!vf_info) {
 		DP_NOTICE(p_hwfn->p_dev, true,
 			  "Can not set MAC, invalid vfid [%d]\n", vfid);
+		return ECORE_INVAL;
+	}
+	if (vf_info->b_malicious) {
+		DP_NOTICE(p_hwfn->p_dev, false,
+			  "Can't set MAC to malicious VF [%d]\n",
+			  vfid);
 		return ECORE_INVAL;
 	}
 
@@ -3488,7 +3568,14 @@ ecore_iov_bulletin_set_forced_untagged_default(struct ecore_hwfn *p_hwfn,
 	vf_info = ecore_iov_get_vf_info(p_hwfn, (u16)vfid, true);
 	if (!vf_info) {
 		DP_NOTICE(p_hwfn->p_dev, true,
-			  "Can not set forced MAC, invalid vfid [%d]\n", vfid);
+			  "Can not set untagged default, invalid vfid [%d]\n",
+			  vfid);
+		return ECORE_INVAL;
+	}
+	if (vf_info->b_malicious) {
+		DP_NOTICE(p_hwfn->p_dev, false,
+			  "Can't set untagged default to malicious VF [%d]\n",
+			  vfid);
 		return ECORE_INVAL;
 	}
 
@@ -3550,6 +3637,12 @@ void ecore_iov_bulletin_set_forced_vlan(struct ecore_hwfn *p_hwfn,
 	if (!vf_info) {
 		DP_NOTICE(p_hwfn->p_dev, true,
 			  "Can not set forced MAC, invalid vfid [%d]\n",
+			  vfid);
+		return;
+	}
+	if (vf_info->b_malicious) {
+		DP_NOTICE(p_hwfn->p_dev, false,
+			  "Can't set forced vlan to malicious VF [%d]\n",
 			  vfid);
 		return;
 	}

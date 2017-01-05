@@ -323,6 +323,7 @@ u32 qede_find_first_zero_bit(unsigned long *, u32);
 #define OSAL_VF_SEND_MSG2PF(dev, done, msg, reply_addr, msg_size, reply_size) 0
 #define OSAL_VF_CQE_COMPLETION(_dev_p, _cqe, _protocol)	(0)
 #define OSAL_PF_VF_MSG(hwfn, vfid) 0
+#define OSAL_PF_VF_MALICIOUS(hwfn, vfid) nothing
 #define OSAL_IOV_CHK_UCAST(hwfn, vfid, params) 0
 #define OSAL_IOV_POST_START_VPORT(hwfn, vf, vport_id, opaque_fid) nothing
 #define OSAL_IOV_VF_ACQUIRE(hwfn, vfid) 0
