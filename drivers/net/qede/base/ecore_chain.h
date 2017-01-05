@@ -54,6 +54,11 @@ struct ecore_chain_pbl_u32 {
 	u32 cons_page_idx;
 };
 
+struct ecore_chain_ext_pbl {
+	dma_addr_t p_pbl_phys;
+	void *p_pbl_virt;
+};
+
 struct ecore_chain_pbl {
 	/* Base address of a pre-allocated buffer for pbl */
 	dma_addr_t p_phys_table;
@@ -69,6 +74,8 @@ struct ecore_chain_pbl {
 		struct ecore_chain_pbl_u16 pbl16;
 		struct ecore_chain_pbl_u32 pbl32;
 	} u;
+
+	bool external;
 };
 
 struct ecore_chain_u16 {
@@ -570,7 +577,7 @@ ecore_chain_init_params(struct ecore_chain *p_chain, u32 page_cnt, u8 elem_size,
 	p_chain->page_cnt = page_cnt;
 	p_chain->capacity = p_chain->usable_per_page * page_cnt;
 	p_chain->size = p_chain->elem_per_page * page_cnt;
-
+	p_chain->pbl.external = false;
 	p_chain->pbl.p_phys_table = 0;
 	p_chain->pbl.p_virt_table = OSAL_NULL;
 	p_chain->pbl.pp_virt_addr_tbl = OSAL_NULL;

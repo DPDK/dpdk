@@ -3193,8 +3193,10 @@ static void ecore_chain_free_pbl(struct ecore_dev *p_dev,
 	}
 
 	pbl_size = page_cnt * ECORE_CHAIN_PBL_ENTRY_SIZE;
-	OSAL_DMA_FREE_COHERENT(p_dev, p_chain->pbl.p_virt_table,
-			       p_chain->pbl.p_phys_table, pbl_size);
+
+	if (!p_chain->pbl.external)
+		OSAL_DMA_FREE_COHERENT(p_dev, p_chain->pbl.p_virt_table,
+				       p_chain->pbl.p_phys_table, pbl_size);
  out:
 	OSAL_VFREE(p_dev, p_chain->pbl.pp_virt_addr_tbl);
 }
@@ -3294,8 +3296,10 @@ ecore_chain_alloc_single(struct ecore_dev *p_dev, struct ecore_chain *p_chain)
 	return ECORE_SUCCESS;
 }
 
-static enum _ecore_status_t ecore_chain_alloc_pbl(struct ecore_dev *p_dev,
-						  struct ecore_chain *p_chain)
+static enum _ecore_status_t
+ecore_chain_alloc_pbl(struct ecore_dev *p_dev,
+		      struct ecore_chain *p_chain,
+		      struct ecore_chain_ext_pbl *ext_pbl)
 {
 	void *p_virt = OSAL_NULL;
 	u8 *p_pbl_virt = OSAL_NULL;
@@ -3319,7 +3323,15 @@ static enum _ecore_status_t ecore_chain_alloc_pbl(struct ecore_dev *p_dev,
 	 * should be saved to allow its freeing during the error flow.
 	 */
 	size = page_cnt * ECORE_CHAIN_PBL_ENTRY_SIZE;
-	p_pbl_virt = OSAL_DMA_ALLOC_COHERENT(p_dev, &p_pbl_phys, size);
+
+	if (ext_pbl == OSAL_NULL) {
+		p_pbl_virt = OSAL_DMA_ALLOC_COHERENT(p_dev, &p_pbl_phys, size);
+	} else {
+		p_pbl_virt = ext_pbl->p_pbl_virt;
+		p_pbl_phys = ext_pbl->p_pbl_phys;
+		p_chain->pbl.external = true;
+	}
+
 	ecore_chain_init_pbl_mem(p_chain, p_pbl_virt, p_pbl_phys,
 				 pp_virt_addr_tbl);
 	if (!p_pbl_virt) {
@@ -3357,7 +3369,8 @@ enum _ecore_status_t ecore_chain_alloc(struct ecore_dev *p_dev,
 				       enum ecore_chain_mode mode,
 				       enum ecore_chain_cnt_type cnt_type,
 				       u32 num_elems, osal_size_t elem_size,
-				       struct ecore_chain *p_chain)
+				       struct ecore_chain *p_chain,
+				       struct ecore_chain_ext_pbl *ext_pbl)
 {
 	u32 page_cnt;
 	enum _ecore_status_t rc = ECORE_SUCCESS;
@@ -3388,7 +3401,7 @@ enum _ecore_status_t ecore_chain_alloc(struct ecore_dev *p_dev,
 		rc = ecore_chain_alloc_single(p_dev, p_chain);
 		break;
 	case ECORE_CHAIN_MODE_PBL:
-		rc = ecore_chain_alloc_pbl(p_dev, p_chain);
+		rc = ecore_chain_alloc_pbl(p_dev, p_chain, ext_pbl);
 		break;
 	}
 	if (rc)

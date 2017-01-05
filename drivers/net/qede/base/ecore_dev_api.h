@@ -370,7 +370,8 @@ ecore_chain_alloc(struct ecore_dev *p_dev,
 		  enum ecore_chain_cnt_type cnt_type,
 		  u32 num_elems,
 		  osal_size_t elem_size,
-		  struct ecore_chain *p_chain);
+		  struct ecore_chain *p_chain,
+		  struct ecore_chain_ext_pbl *ext_pbl);
 
 /**
  * @brief ecore_chain_free - Free chain DMA memory

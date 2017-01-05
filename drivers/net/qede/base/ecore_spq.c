@@ -373,7 +373,8 @@ struct ecore_eq *ecore_eq_alloc(struct ecore_hwfn *p_hwfn, u16 num_elem)
 			      ECORE_CHAIN_MODE_PBL,
 			      ECORE_CHAIN_CNT_TYPE_U16,
 			      num_elem,
-			      sizeof(union event_ring_element), &p_eq->chain)) {
+			      sizeof(union event_ring_element),
+			      &p_eq->chain, OSAL_NULL)) {
 		DP_NOTICE(p_hwfn, true, "Failed to allocate eq chain\n");
 		goto eq_allocate_fail;
 	}
@@ -501,10 +502,13 @@ enum _ecore_status_t ecore_spq_alloc(struct ecore_hwfn *p_hwfn)
 	}
 
 	/* SPQ ring  */
-	if (ecore_chain_alloc(p_hwfn->p_dev, ECORE_CHAIN_USE_TO_PRODUCE,
-			ECORE_CHAIN_MODE_SINGLE, ECORE_CHAIN_CNT_TYPE_U16, 0,
-			/* N/A when the mode is SINGLE */
-			sizeof(struct slow_path_element), &p_spq->chain)) {
+	if (ecore_chain_alloc(p_hwfn->p_dev,
+			      ECORE_CHAIN_USE_TO_PRODUCE,
+			      ECORE_CHAIN_MODE_SINGLE,
+			      ECORE_CHAIN_CNT_TYPE_U16,
+			      0, /* N/A when the mode is SINGLE */
+			      sizeof(struct slow_path_element),
+			      &p_spq->chain, OSAL_NULL)) {
 		DP_NOTICE(p_hwfn, true, "Failed to allocate spq chain\n");
 		goto spq_allocate_fail;
 	}
@@ -956,7 +960,8 @@ struct ecore_consq *ecore_consq_alloc(struct ecore_hwfn *p_hwfn)
 			      ECORE_CHAIN_MODE_PBL,
 			      ECORE_CHAIN_CNT_TYPE_U16,
 			      ECORE_CHAIN_PAGE_SIZE / 0x80,
-			      0x80, &p_consq->chain)) {
+			      0x80,
+			      &p_consq->chain, OSAL_NULL)) {
 		DP_NOTICE(p_hwfn, true, "Failed to allocate consq chain");
 		goto consq_allocate_fail;
 	}

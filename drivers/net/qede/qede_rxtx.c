@@ -176,7 +176,8 @@ qede_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 					    ECORE_CHAIN_CNT_TYPE_U16,
 					    rxq->nb_rx_desc,
 					    sizeof(struct eth_rx_bd),
-					    &rxq->rx_bd_ring);
+					    &rxq->rx_bd_ring,
+					    NULL);
 
 	if (rc != ECORE_SUCCESS) {
 		DP_NOTICE(edev, false,
@@ -196,7 +197,8 @@ qede_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 					    ECORE_CHAIN_CNT_TYPE_U16,
 					    rxq->nb_rx_desc,
 					    sizeof(union eth_rx_cqe),
-					    &rxq->rx_comp_ring);
+					    &rxq->rx_comp_ring,
+					    NULL);
 
 	if (rc != ECORE_SUCCESS) {
 		DP_NOTICE(edev, false,
@@ -291,7 +293,8 @@ qede_tx_queue_setup(struct rte_eth_dev *dev,
 					    ECORE_CHAIN_CNT_TYPE_U16,
 					    txq->nb_tx_desc,
 					    sizeof(union eth_tx_bd_types),
-					    &txq->tx_pbl);
+					    &txq->tx_pbl,
+					    NULL);
 	if (rc != ECORE_SUCCESS) {
 		DP_ERR(edev,
 		       "Unable to allocate memory for txbd ring on socket %u",

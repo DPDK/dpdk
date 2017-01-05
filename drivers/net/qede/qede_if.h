@@ -110,14 +110,16 @@ struct qed_common_ops {
 		     uint32_t dp_module, uint8_t dp_level, bool is_vf);
 	void (*set_id)(struct ecore_dev *edev,
 		char name[], const char ver_str[]);
-	enum _ecore_status_t (*chain_alloc)(struct ecore_dev *edev,
-					    enum ecore_chain_use_mode
-					    intended_use,
-					    enum ecore_chain_mode mode,
-					    enum ecore_chain_cnt_type cnt_type,
-					    uint32_t num_elems,
-					    osal_size_t elem_size,
-					    struct ecore_chain *p_chain);
+	enum _ecore_status_t
+		(*chain_alloc)(struct ecore_dev *edev,
+			       enum ecore_chain_use_mode
+			       intended_use,
+			       enum ecore_chain_mode mode,
+			       enum ecore_chain_cnt_type cnt_type,
+			       uint32_t num_elems,
+			       osal_size_t elem_size,
+			       struct ecore_chain *p_chain,
+			       struct ecore_chain_ext_pbl *ext_pbl);
 
 	void (*chain_free)(struct ecore_dev *edev,
 			   struct ecore_chain *p_chain);
