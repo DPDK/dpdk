@@ -4297,3 +4297,16 @@ int ecore_device_num_ports(struct ecore_dev *p_dev)
 
 	return p_dev->num_ports_in_engines * ecore_device_num_engines(p_dev);
 }
+
+void ecore_set_fw_mac_addr(__le16 *fw_msb,
+			  __le16 *fw_mid,
+			  __le16 *fw_lsb,
+			  u8 *mac)
+{
+	((u8 *)fw_msb)[0] = mac[1];
+	((u8 *)fw_msb)[1] = mac[0];
+	((u8 *)fw_mid)[0] = mac[3];
+	((u8 *)fw_mid)[1] = mac[2];
+	((u8 *)fw_lsb)[0] = mac[5];
+	((u8 *)fw_lsb)[1] = mac[4];
+}

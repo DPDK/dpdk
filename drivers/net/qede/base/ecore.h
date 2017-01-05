@@ -811,6 +811,8 @@ int ecore_configure_pf_min_bandwidth(struct ecore_dev *p_dev, u8 min_bw);
 void ecore_clean_wfq_db(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt);
 int ecore_device_num_engines(struct ecore_dev *p_dev);
 int ecore_device_num_ports(struct ecore_dev *p_dev);
+void ecore_set_fw_mac_addr(__le16 *fw_msb, __le16 *fw_mid, __le16 *fw_lsb,
+			   u8 *mac);
 
 #define ECORE_LEADING_HWFN(dev)	(&dev->hwfns[0])
 
