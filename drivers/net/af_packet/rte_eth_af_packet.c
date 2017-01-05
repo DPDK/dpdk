@@ -267,9 +267,16 @@ eth_dev_stop(struct rte_eth_dev *dev)
 		sockfd = internals->rx_queue[i].sockfd;
 		if (sockfd != -1)
 			close(sockfd);
-		sockfd = internals->tx_queue[i].sockfd;
-		if (sockfd != -1)
-			close(sockfd);
+
+		/* Prevent use after free in case tx fd == rx fd */
+		if (sockfd != internals->tx_queue[i].sockfd) {
+			sockfd = internals->tx_queue[i].sockfd;
+			if (sockfd != -1)
+				close(sockfd);
+		}
+
+		internals->rx_queue[i].sockfd = -1;
+		internals->tx_queue[i].sockfd = -1;
 	}
 
 	dev->data->dev_link.link_status = ETH_LINK_DOWN;
