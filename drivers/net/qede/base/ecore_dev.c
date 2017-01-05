@@ -542,11 +542,14 @@ enum _ecore_status_t ecore_resc_alloc(struct ecore_dev *p_dev)
 	/* Allocate Memory for the Queue->CID mapping */
 	for_each_hwfn(p_dev, i) {
 		struct ecore_hwfn *p_hwfn = &p_dev->hwfns[i];
+		u32 num_tx_conns = RESC_NUM(p_hwfn, ECORE_L2_QUEUE);
+		int tx_size, rx_size;
 
 		/* @@@TMP - resc management, change to actual required size */
-		int tx_size = sizeof(struct ecore_hw_cid_data) *
-		    RESC_NUM(p_hwfn, ECORE_L2_QUEUE);
-		int rx_size = sizeof(struct ecore_hw_cid_data) *
+		if (p_hwfn->pf_params.eth_pf_params.num_cons > num_tx_conns)
+			num_tx_conns = p_hwfn->pf_params.eth_pf_params.num_cons;
+		tx_size = sizeof(struct ecore_hw_cid_data) * num_tx_conns;
+		rx_size = sizeof(struct ecore_hw_cid_data) *
 		    RESC_NUM(p_hwfn, ECORE_L2_QUEUE);
 
 		p_hwfn->p_tx_cids = OSAL_ZALLOC(p_hwfn->p_dev, GFP_KERNEL,

@@ -28,9 +28,16 @@ enum ecore_rss_caps {
 #endif
 
 struct ecore_queue_start_common_params {
-	/* Rx/Tx queue id */
-	u8 queue_id;
+	/* Rx/Tx queue relative id to keep obtained cid in corresponding array
+	 * RX - upper-bounded by number of FW-queues
+	 */
+	u16 queue_id;
 	u8 vport_id;
+
+	/* q_zone_id is relative, may be different from queue id
+	 * currently used by Tx-only, upper-bounded by number of FW-queues
+	 */
+	u8 qzone_id;
 
 	/* stats_id is relative or absolute depends on function */
 	u8 stats_id;

@@ -2107,6 +2107,7 @@ static void ecore_iov_vf_mbx_start_txq(struct ecore_hwfn *p_hwfn,
 		goto out;
 
 	p_params.queue_id = (u8)vf->vf_queues[req->tx_qid].fw_tx_qid;
+	p_params.qzone_id = (u8)vf->vf_queues[req->tx_qid].fw_tx_qid;
 	p_params.vport_id = vf->vport_id;
 	p_params.stats_id = vf->abs_vf_id + 0x10,
 	p_params.sb = req->hw_sb;

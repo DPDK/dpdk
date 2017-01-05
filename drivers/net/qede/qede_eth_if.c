@@ -213,6 +213,7 @@ qed_start_txq(struct ecore_dev *edev,
 	p_hwfn = &edev->hwfns[hwfn_index];
 
 	p_params->queue_id = p_params->queue_id / edev->num_hwfns;
+	p_params->qzone_id = p_params->queue_id;
 	p_params->stats_id = p_params->vport_id;
 
 	rc = ecore_sp_eth_tx_queue_start(p_hwfn,

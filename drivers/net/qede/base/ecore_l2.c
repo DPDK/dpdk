@@ -663,7 +663,7 @@ ecore_sp_eth_rx_queue_start(struct ecore_hwfn *p_hwfn,
 
 	if (IS_VF(p_hwfn->p_dev)) {
 		return ecore_vf_pf_rxq_start(p_hwfn,
-					     p_params->queue_id,
+					     (u8)p_params->queue_id,
 					     p_params->sb,
 					     (u8)p_params->sb_idx,
 					     bd_max_bytes,
@@ -840,9 +840,9 @@ ecore_sp_eth_txq_start_ramrod(struct ecore_hwfn *p_hwfn,
 	struct ecore_spq_entry *p_ent = OSAL_NULL;
 	struct ecore_sp_init_data init_data;
 	struct ecore_hw_cid_data *p_tx_cid;
-	u16 pq_id, abs_tx_q_id = 0;
-	u8 abs_vport_id;
+	u16 pq_id, abs_tx_qzone_id = 0;
 	enum _ecore_status_t rc = ECORE_NOTIMPL;
+	u8 abs_vport_id;
 
 	/* Store information for the stop */
 	p_tx_cid = &p_hwfn->p_tx_cids[p_params->queue_id];
@@ -853,7 +853,7 @@ ecore_sp_eth_txq_start_ramrod(struct ecore_hwfn *p_hwfn,
 	if (rc != ECORE_SUCCESS)
 		return rc;
 
-	rc = ecore_fw_l2_queue(p_hwfn, p_params->queue_id, &abs_tx_q_id);
+	rc = ecore_fw_l2_queue(p_hwfn, p_params->qzone_id, &abs_tx_qzone_id);
 	if (rc != ECORE_SUCCESS)
 		return rc;
 
@@ -876,7 +876,7 @@ ecore_sp_eth_txq_start_ramrod(struct ecore_hwfn *p_hwfn,
 	p_ramrod->sb_index = (u8)p_params->sb_idx;
 	p_ramrod->stats_counter_id = p_params->stats_id;
 
-	p_ramrod->queue_zone_id = OSAL_CPU_TO_LE16(abs_tx_q_id);
+	p_ramrod->queue_zone_id = OSAL_CPU_TO_LE16(abs_tx_qzone_id);
 
 	p_ramrod->pbl_size = OSAL_CPU_TO_LE16(pbl_size);
 	DMA_REGPAIR_LE(p_ramrod->pbl_base_addr, pbl_addr);
