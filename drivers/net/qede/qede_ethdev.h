@@ -92,24 +92,35 @@
 	struct ecore_dev *edev = &qdev->edev;			\
 }
 
-/************* QLogic 25G/40G/100G vendor/devices ids *************/
-#define PCI_VENDOR_ID_QLOGIC            0x1077
+/************* QLogic 10G/25G/40G/50G/100G vendor/devices ids *************/
+#define PCI_VENDOR_ID_QLOGIC                   0x1077
 
-#define CHIP_NUM_57980E                 0x1634
-#define CHIP_NUM_57980S                 0x1629
-#define CHIP_NUM_VF                     0x1630
-#define CHIP_NUM_57980S_40              0x1634
-#define CHIP_NUM_57980S_25              0x1656
-#define CHIP_NUM_57980S_IOV             0x1664
-#define CHIP_NUM_57980S_100             0x1644
+#define CHIP_NUM_57980E                        0x1634
+#define CHIP_NUM_57980S                        0x1629
+#define CHIP_NUM_VF                            0x1630
+#define CHIP_NUM_57980S_40                     0x1634
+#define CHIP_NUM_57980S_25                     0x1656
+#define CHIP_NUM_57980S_IOV                    0x1664
+#define CHIP_NUM_57980S_100                    0x1644
+#define CHIP_NUM_AH_50G	                       0x8070
+#define CHIP_NUM_AH_10G                        0x8071
+#define CHIP_NUM_AH_40G			       0x8072
+#define CHIP_NUM_AH_25G			       0x8073
+#define CHIP_NUM_AH_IOV			       0x8090
 
-#define PCI_DEVICE_ID_NX2_57980E        CHIP_NUM_57980E
-#define PCI_DEVICE_ID_NX2_57980S        CHIP_NUM_57980S
-#define PCI_DEVICE_ID_NX2_VF            CHIP_NUM_VF
-#define PCI_DEVICE_ID_57980S_40         CHIP_NUM_57980S_40
-#define PCI_DEVICE_ID_57980S_25         CHIP_NUM_57980S_25
-#define PCI_DEVICE_ID_57980S_IOV        CHIP_NUM_57980S_IOV
-#define PCI_DEVICE_ID_57980S_100        CHIP_NUM_57980S_100
+#define PCI_DEVICE_ID_QLOGIC_NX2_57980E        CHIP_NUM_57980E
+#define PCI_DEVICE_ID_QLOGIC_NX2_57980S        CHIP_NUM_57980S
+#define PCI_DEVICE_ID_QLOGIC_NX2_VF            CHIP_NUM_VF
+#define PCI_DEVICE_ID_QLOGIC_57980S_40         CHIP_NUM_57980S_40
+#define PCI_DEVICE_ID_QLOGIC_57980S_25         CHIP_NUM_57980S_25
+#define PCI_DEVICE_ID_QLOGIC_57980S_IOV        CHIP_NUM_57980S_IOV
+#define PCI_DEVICE_ID_QLOGIC_57980S_100        CHIP_NUM_57980S_100
+#define PCI_DEVICE_ID_QLOGIC_AH_50G            CHIP_NUM_AH_50G
+#define PCI_DEVICE_ID_QLOGIC_AH_10G            CHIP_NUM_AH_10G
+#define PCI_DEVICE_ID_QLOGIC_AH_40G            CHIP_NUM_AH_40G
+#define PCI_DEVICE_ID_QLOGIC_AH_25G            CHIP_NUM_AH_25G
+#define PCI_DEVICE_ID_QLOGIC_AH_IOV            CHIP_NUM_AH_IOV
+
 
 #define QEDE_VXLAN_DEF_PORT		8472
 

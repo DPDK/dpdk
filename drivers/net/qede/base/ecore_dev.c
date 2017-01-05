@@ -2365,7 +2365,12 @@ static enum _ecore_status_t ecore_hw_get_resc(struct ecore_hwfn *p_hwfn,
 #endif
 
 	for (res_id = 0; res_id < ECORE_MAX_RESC; res_id++) {
-		rc = ecore_hw_set_resc_info(p_hwfn, res_id, drv_resc_alloc);
+		/* @@@TMP for AH:
+		 * Force the driver's default resource allocation in case there
+		 * is a diff with the MFW allocation value.
+		 */
+		rc = ecore_hw_set_resc_info(p_hwfn, res_id,
+					    b_ah || drv_resc_alloc);
 		if (rc != ECORE_SUCCESS)
 			return rc;
 	}
