@@ -419,12 +419,41 @@ eth_tx_queue_setup(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static int
+eth_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
+{
+	struct pmd_internals *internals = dev->data->dev_private;
+	struct ifreq ifr = { .ifr_mtu = mtu };
+	int ret;
+	int s;
+	unsigned int data_size = internals->req.tp_frame_size -
+				 TPACKET2_HDRLEN -
+				 sizeof(struct sockaddr_ll);
+
+	if (mtu > data_size)
+		return -EINVAL;
+
+	s = socket(PF_INET, SOCK_DGRAM, 0);
+	if (s < 0)
+		return -EINVAL;
+
+	strncpy(ifr.ifr_name, internals->if_name, IFNAMSIZ);
+	ret = ioctl(s, SIOCSIFMTU, &ifr);
+	close(s);
+
+	if (ret < 0)
+		return -EINVAL;
+
+	return 0;
+}
+
 static const struct eth_dev_ops ops = {
 	.dev_start = eth_dev_start,
 	.dev_stop = eth_dev_stop,
 	.dev_close = eth_dev_close,
 	.dev_configure = eth_dev_configure,
 	.dev_infos_get = eth_dev_info,
+	.mtu_set = eth_dev_mtu_set,
 	.rx_queue_setup = eth_rx_queue_setup,
 	.tx_queue_setup = eth_tx_queue_setup,
 	.rx_queue_release = eth_queue_release,
