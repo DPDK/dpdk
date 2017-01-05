@@ -161,6 +161,12 @@ eth_af_packet_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		pbuf = (uint8_t *) ppd + ppd->tp_mac;
 		memcpy(rte_pktmbuf_mtod(mbuf, void *), pbuf, rte_pktmbuf_data_len(mbuf));
 
+		/* check for vlan info */
+		if (ppd->tp_status & TP_STATUS_VLAN_VALID) {
+			mbuf->vlan_tci = ppd->tp_vlan_tci;
+			mbuf->ol_flags |= (PKT_RX_VLAN_PKT | PKT_RX_VLAN_STRIPPED);
+		}
+
 		/* release incoming frame and advance ring buffer */
 		ppd->tp_status = TP_STATUS_KERNEL;
 		if (++framenum >= framecount)
@@ -212,6 +218,14 @@ eth_af_packet_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		if (rte_pktmbuf_data_len(mbuf) > pkt_q->frame_data_size) {
 			rte_pktmbuf_free(mbuf);
 			continue;
+		}
+
+		/* insert vlan info if necessary */
+		if (mbuf->ol_flags & PKT_TX_VLAN_PKT) {
+			if (rte_vlan_insert(&mbuf)) {
+				rte_pktmbuf_free(mbuf);
+				continue;
+			}
 		}
 
 		/* point at the next incoming frame */
