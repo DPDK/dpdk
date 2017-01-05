@@ -1707,9 +1707,10 @@ ecore_iov_reconfigure_unicast_shadow(struct ecore_hwfn *p_hwfn,
 	return rc;
 }
 
-static int ecore_iov_configure_vport_forced(struct ecore_hwfn *p_hwfn,
-					    struct ecore_vf_info *p_vf,
-					    u64 events)
+static  enum _ecore_status_t
+ecore_iov_configure_vport_forced(struct ecore_hwfn *p_hwfn,
+				 struct ecore_vf_info *p_vf,
+				 u64 events)
 {
 	enum _ecore_status_t rc = ECORE_SUCCESS;
 	struct ecore_filter_ucast filter;
@@ -3141,9 +3142,10 @@ ecore_iov_single_vf_flr_cleanup(struct ecore_hwfn *p_hwfn,
 	return rc;
 }
 
-int ecore_iov_mark_vf_flr(struct ecore_hwfn *p_hwfn, u32 *p_disabled_vfs)
+bool ecore_iov_mark_vf_flr(struct ecore_hwfn *p_hwfn, u32 *p_disabled_vfs)
 {
-	u16 i, found = 0;
+	bool found;
+	u16 i;
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_IOV, "Marking FLR-ed VFs\n");
 	for (i = 0; i < (VF_MAX_STATIC / 32); i++)
@@ -3153,7 +3155,7 @@ int ecore_iov_mark_vf_flr(struct ecore_hwfn *p_hwfn, u32 *p_disabled_vfs)
 
 	if (!p_hwfn->p_dev->p_iov_info) {
 		DP_NOTICE(p_hwfn, true, "VF flr but no IOV\n");
-		return 0;
+		return false;
 	}
 
 	/* Mark VFs */
@@ -3182,7 +3184,7 @@ int ecore_iov_mark_vf_flr(struct ecore_hwfn *p_hwfn, u32 *p_disabled_vfs)
 			 * VF flr until ACKs, we're safe.
 			 */
 			p_flr[rel_vf_id / 64] |= 1ULL << (rel_vf_id % 64);
-			found = 1;
+			found = true;
 		}
 	}
 
@@ -3961,7 +3963,8 @@ bool ecore_iov_is_vf_initialized(struct ecore_hwfn *p_hwfn, u16 rel_vf_id)
 	return (p_vf->state == VF_ENABLED);
 }
 
-int ecore_iov_get_vf_min_rate(struct ecore_hwfn *p_hwfn, int vfid)
+enum _ecore_status_t
+ecore_iov_get_vf_min_rate(struct ecore_hwfn *p_hwfn, int vfid)
 {
 	struct ecore_wfq_data *vf_vp_wfq;
 	struct ecore_vf_info *vf_info;
