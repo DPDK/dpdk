@@ -84,9 +84,32 @@ struct eth_phy_cfg {
 /* Remote Serdes Loopback (RX to TX) */
 #define ETH_LOOPBACK_INT_PHY_FEA_AH_ONLY (9)
 
-	/* features */
-	u32 feature_config_flags;
-#define ETH_EEE_MODE_ADV_LPI	(1 << 0)
+	/* Used to configure the EEE Tx LPI timer, has several modes of
+	 * operation, according to bits 29:28
+	 * 2'b00: Timer will be configured by nvram, output will be the value
+	 *        from nvram.
+	 * 2'b01: Timer will be configured by nvram, output will be in
+	 *        16xmicroseconds.
+	 * 2'b10: bits 1:0 contain an nvram value which will be used instead
+	 *        of the one located in the nvram. Output will be that value.
+	 * 2'b11: bits 19:0 contain the idle timer in microseconds; output
+	 *        will be in 16xmicroseconds.
+	 * Bits 31:30 should be 2'b11 in order for EEE to be enabled.
+	 */
+	u32 eee_mode;
+#define EEE_MODE_TIMER_USEC_MASK	(0x000fffff)
+#define EEE_MODE_TIMER_USEC_OFFSET	(0)
+#define EEE_MODE_TIMER_USEC_BALANCED_TIME	(0xa00)
+#define EEE_MODE_TIMER_USEC_AGGRESSIVE_TIME	(0x100)
+#define EEE_MODE_TIMER_USEC_LATENCY_TIME	(0x6000)
+/* Set by the driver to request status timer will be in microseconds and and not
+ * in EEE policy definition
+ */
+#define EEE_MODE_OUTPUT_TIME		(1 << 28)
+/* Set by the driver to override default nvm timer */
+#define EEE_MODE_OVERRIDE_NVRAM		(1 << 29)
+#define EEE_MODE_ENABLE_LPI		(1 << 30) /* Set when */
+#define EEE_MODE_ADV_LPI		(1 << 31) /* Set when EEE is enabled */
 };
 
 struct port_mf_cfg {
@@ -447,6 +470,14 @@ struct public_global {
 #define MDUMP_REASON_INTERNAL_ERROR	(1 << 0)
 #define MDUMP_REASON_EXTERNAL_TRIGGER	(1 << 1)
 #define MDUMP_REASON_DUMP_AGED		(1 << 2)
+	u32 ext_phy_upgrade_fw;
+#define EXT_PHY_FW_UPGRADE_STATUS_MASK		(0x0000ffff)
+#define EXT_PHY_FW_UPGRADE_STATUS_SHIFT		(0)
+#define EXT_PHY_FW_UPGRADE_STATUS_IN_PROGRESS	(1)
+#define EXT_PHY_FW_UPGRADE_STATUS_FAILED	(2)
+#define EXT_PHY_FW_UPGRADE_STATUS_SUCCESS	(3)
+#define EXT_PHY_FW_UPGRADE_TYPE_MASK		(0xffff0000)
+#define EXT_PHY_FW_UPGRADE_TYPE_SHIFT		(16)
 };
 
 /**************************************/
@@ -597,6 +628,7 @@ struct public_port {
 #define LINK_STATUS_FEC_MODE_NONE				(0 << 27)
 #define LINK_STATUS_FEC_MODE_FIRECODE_CL74			(1 << 27)
 #define LINK_STATUS_FEC_MODE_RS_CL91				(2 << 27)
+#define LINK_STATUS_EXT_PHY_LINK_UP			0x40000000
 
 	u32 link_status1;
 	u32 ext_phy_fw_version;
@@ -718,6 +750,39 @@ struct public_port {
 	u32 wol_pkt_len;
 	u32 wol_pkt_details;
 	struct dcb_dscp_map dcb_dscp_map;
+
+	/* the status of EEE auto-negotiation
+	 * bits 19:0 the configured tx-lpi entry timer value. Depends on bit 31.
+	 * bits 23:20 the speeds advertised for EEE.
+	 * bits 27:24 the speeds the Link partner advertised for EEE.
+	 * The supported/adv. modes in bits 27:19 originate from the
+	 * SHMEM_EEE_XXX_ADV definitions (where XXX is replaced by speed).
+	 * bit 28 when 1'b1 EEE was requested.
+	 * bit 29 when 1'b1 tx lpi was requested.
+	 * bit 30 when 1'b1 EEE was negotiated. Tx lpi will be asserted if 30:29
+	 *        are 2'b11.
+	 * bit 31 - When 1'b0 bits 15:0 contain
+	 *          NVM_CFG1_PORT_EEE_POWER_SAVING_MODE_XXX define as value.
+	 *          When 1'b1 those bits contains a value times 16 microseconds.
+	 */
+	u32 eee_status;
+	#define EEE_TIMER_MASK		0x000fffff
+	#define EEE_ADV_STATUS_MASK	0x00f00000
+		#define EEE_1G_ADV	(1 << 1)
+		#define EEE_10G_ADV	(1 << 2)
+	#define EEE_ADV_STATUS_SHIFT	20
+	#define	EEE_LP_ADV_STATUS_MASK	0x0f000000
+	#define EEE_LP_ADV_STATUS_SHIFT	24
+	#define EEE_REQUESTED_BIT	0x10000000
+	#define EEE_LPI_REQUESTED_BIT	0x20000000
+	#define EEE_ACTIVE_BIT		0x40000000
+	#define EEE_TIME_OUTPUT_BIT	0x80000000
+
+	u32 eee_remote;	/* Used for EEE in LLDP */
+	#define EEE_REMOTE_TW_TX_MASK	0x0000ffff
+	#define EEE_REMOTE_TW_TX_SHIFT	0
+	#define EEE_REMOTE_TW_RX_MASK	0xffff0000
+	#define EEE_REMOTE_TW_RX_SHIFT	16
 };
 
 /**************************************/
@@ -1002,6 +1067,7 @@ union drv_union_data {
 	struct resource_info resource;
 	struct bist_nvm_image_att nvm_image_att;
 	struct mdump_config_stc mdump_config;
+	u32 dword;
 	/* ... */
 };
 
@@ -1210,6 +1276,17 @@ struct public_drv_mb {
 
 
 #define DRV_MSG_CODE_MEM_ECC_EVENTS		0x00260000 /* Param: None */
+/* Value will be placed in union */
+#define DRV_MSG_CODE_EXT_PHY_READ		0x00280000
+/* Value should be placed in union */
+#define DRV_MSG_CODE_EXT_PHY_WRITE		0x00290000
+	#define DRV_MB_PARAM_ADDR_SHIFT			0
+	#define DRV_MB_PARAM_ADDR_MASK			0x0000FFFF
+	#define DRV_MB_PARAM_DEVAD_SHIFT		16
+	#define DRV_MB_PARAM_DEVAD_MASK			0x001F0000
+	#define DRV_MB_PARAM_PORT_SHIFT			21
+	#define DRV_MB_PARAM_PORT_MASK			0x00600000
+#define DRV_MSG_CODE_EXT_PHY_FW_UPGRADE		0x002a0000
 
 #define DRV_MSG_SEQ_NUMBER_MASK                 0x0000ffff
 
@@ -1442,6 +1519,10 @@ struct public_drv_mb {
 #define FW_MSG_CODE_GPIO_INVALID		0x000f0000
 #define FW_MSG_CODE_GPIO_INVALID_VALUE	0x00050000
 #define FW_MSG_CODE_BIST_TEST_INVALID		0x000f0000
+#define FW_MSG_CODE_EXTPHY_INVALID_IMAGE_HEADER	0x00700000
+#define FW_MSG_CODE_EXTPHY_INVALID_PHY_TYPE	0x00710000
+#define FW_MSG_CODE_EXTPHY_OPERATION_FAILED	0x00720000
+#define FW_MSG_CODE_EXTPHY_NO_PHY_DETECTED	0x00730000
 
 /* mdump related response codes */
 #define FW_MSG_CODE_MDUMP_NO_IMAGE_FOUND	0x00010000
@@ -1523,6 +1604,7 @@ enum MFW_DRV_MSG_TYPE {
 	MFW_DRV_MSG_FAILURE_DETECTED,
 	MFW_DRV_MSG_TRANSCEIVER_STATE_CHANGE,
 	MFW_DRV_MSG_CRITICAL_ERROR_OCCURRED,
+	MFW_DRV_MSG_EEE_NEGOTIATION_COMPLETE,
 	MFW_DRV_MSG_MAX
 };
 
