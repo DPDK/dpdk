@@ -1234,7 +1234,7 @@ static enum _ecore_status_t ecore_int_sb_attn_alloc(struct ecore_hwfn *p_hwfn,
 	p_sb = OSAL_ALLOC(p_dev, GFP_KERNEL, sizeof(*p_sb));
 	if (!p_sb) {
 		DP_NOTICE(p_dev, true,
-			  "Failed to allocate `struct ecore_sb_attn_info'");
+			  "Failed to allocate `struct ecore_sb_attn_info'\n");
 		return ECORE_NOMEM;
 	}
 
@@ -1243,7 +1243,7 @@ static enum _ecore_status_t ecore_int_sb_attn_alloc(struct ecore_hwfn *p_hwfn,
 					 SB_ATTN_ALIGNED_SIZE(p_hwfn));
 	if (!p_virt) {
 		DP_NOTICE(p_dev, true,
-			  "Failed to allocate status block (attentions)");
+			  "Failed to allocate status block (attentions)\n");
 		OSAL_FREE(p_dev, p_sb);
 		return ECORE_NOMEM;
 	}
@@ -2127,8 +2127,8 @@ enum _ecore_status_t ecore_int_set_timer_res(struct ecore_hwfn *p_hwfn,
 					     struct ecore_ptt *p_ptt,
 					     u8 timer_res, u16 sb_id, bool tx)
 {
-	enum _ecore_status_t rc;
 	struct cau_sb_entry sb_entry;
+	enum _ecore_status_t rc;
 
 	if (!p_hwfn->hw_init_done) {
 		DP_ERR(p_hwfn, "hardware not initialized yet\n");

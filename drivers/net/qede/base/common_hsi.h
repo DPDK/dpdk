@@ -721,8 +721,7 @@ union event_ring_data {
 	u8 bytes[8] /* Byte Array */;
 	struct vf_pf_channel_eqe_data vf_pf_channel /* VF-PF Channel data */;
 	struct iscsi_eqe_data iscsi_info /* Dedicated fields to iscsi data */;
-	    /* Dedicated field for RoCE affiliated asynchronous error */;
-	struct regpair roceHandle;
+	struct regpair roceHandle /* Dedicated field for RDMA data */;
 	struct malicious_vf_eqe_data malicious_vf /* Malicious VF data */;
 	struct initial_cleanup_eqe_data vf_init_cleanup
 	    /* VF Initial Cleanup data */;
@@ -765,6 +764,8 @@ enum protocol_type {
 	PROTOCOLID_TCP /* TCP */,
 	MAX_PROTOCOL_TYPE
 };
+
+
 
 /*
  * Ustorm Queue Zone

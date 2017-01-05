@@ -945,9 +945,8 @@ static void ecore_mcp_send_protocol_stats(struct ecore_hwfn *p_hwfn,
 	ecore_mcp_cmd_and_union(p_hwfn, p_ptt, &mb_params);
 }
 
-static void
-ecore_read_pf_bandwidth(struct ecore_hwfn *p_hwfn,
-			struct public_func *p_shmem_info)
+static void ecore_read_pf_bandwidth(struct ecore_hwfn *p_hwfn,
+				    struct public_func *p_shmem_info)
 {
 	struct ecore_mcp_function_info *p_info;
 

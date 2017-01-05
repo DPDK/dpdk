@@ -1623,7 +1623,8 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 	u32 load_code, param;
 	int i;
 
-	if (p_params->int_mode == ECORE_INT_MODE_MSI && p_dev->num_hwfns > 1) {
+	if ((p_params->int_mode == ECORE_INT_MODE_MSI) &&
+	    (p_dev->num_hwfns > 1)) {
 		DP_NOTICE(p_dev, false,
 			  "MSI mode is not supported for CMT devices\n");
 		return ECORE_INVAL;
@@ -2937,8 +2938,9 @@ void ecore_prepare_hibernate(struct ecore_dev *p_dev)
 #endif
 
 static enum _ecore_status_t
-ecore_hw_prepare_single(struct ecore_hwfn *p_hwfn, void OSAL_IOMEM *p_regview,
-			void OSAL_IOMEM *p_doorbells,
+ecore_hw_prepare_single(struct ecore_hwfn *p_hwfn,
+			void OSAL_IOMEM * p_regview,
+			void OSAL_IOMEM * p_doorbells,
 			struct ecore_hw_prepare_params *p_params)
 {
 	struct ecore_dev *p_dev = p_hwfn->p_dev;
@@ -3280,8 +3282,8 @@ ecore_chain_alloc_next_ptr(struct ecore_dev *p_dev, struct ecore_chain *p_chain)
 static enum _ecore_status_t
 ecore_chain_alloc_single(struct ecore_dev *p_dev, struct ecore_chain *p_chain)
 {
-	void *p_virt = OSAL_NULL;
 	dma_addr_t p_phys = 0;
+	void *p_virt = OSAL_NULL;
 
 	p_virt = OSAL_DMA_ALLOC_COHERENT(p_dev, &p_phys, ECORE_CHAIN_PAGE_SIZE);
 	if (!p_virt) {
@@ -3809,10 +3811,10 @@ enum _ecore_status_t ecore_set_rxq_coalesce(struct ecore_hwfn *p_hwfn,
 					    u16 coalesce, u8 qid, u16 sb_id)
 {
 	struct ustorm_eth_queue_zone eth_qzone;
+	u8 timeset, timer_res;
 	u16 fw_qid = 0;
 	u32 address;
 	enum _ecore_status_t rc;
-	u8 timeset, timer_res;
 
 	/* Coalesce = (timeset << timer-resolution), timeset is 7bit wide */
 	if (coalesce <= 0x7F) {
@@ -3852,10 +3854,10 @@ enum _ecore_status_t ecore_set_txq_coalesce(struct ecore_hwfn *p_hwfn,
 					    u16 coalesce, u8 qid, u16 sb_id)
 {
 	struct xstorm_eth_queue_zone eth_qzone;
+	u8 timeset, timer_res;
 	u16 fw_qid = 0;
 	u32 address;
 	enum _ecore_status_t rc;
-	u8 timeset, timer_res;
 
 	/* Coalesce = (timeset << timer-resolution), timeset is 7bit wide */
 	if (coalesce <= 0x7F) {

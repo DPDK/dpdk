@@ -496,8 +496,8 @@ static u32 ecore_dmae_idx_to_go_cmd(u8 idx)
 	return DMAE_REG_GO_C0 + (idx << 2);
 }
 
-static enum _ecore_status_t
-ecore_dmae_post_command(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt)
+static enum _ecore_status_t ecore_dmae_post_command(struct ecore_hwfn *p_hwfn,
+						    struct ecore_ptt *p_ptt)
 {
 	struct dmae_cmd *p_command = p_hwfn->dmae_info.p_dmae_cmd;
 	u8 idx_cmd = p_hwfn->dmae_info.channel, i;

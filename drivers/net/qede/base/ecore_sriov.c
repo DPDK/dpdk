@@ -1675,11 +1675,9 @@ ecore_iov_reconfigure_unicast_vlan(struct ecore_hwfn *p_hwfn,
 		DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
 			   "Reconfiguring VLAN [0x%04x] for VF [%04x]\n",
 			   filter.vlan, p_vf->relative_vf_id);
-		rc = ecore_sp_eth_filter_ucast(p_hwfn,
-					       p_vf->opaque_fid,
-					       &filter,
-					       ECORE_SPQ_MODE_CB,
-						       OSAL_NULL);
+		rc = ecore_sp_eth_filter_ucast(p_hwfn, p_vf->opaque_fid,
+					       &filter, ECORE_SPQ_MODE_CB,
+					       OSAL_NULL);
 		if (rc) {
 			DP_NOTICE(p_hwfn, true,
 				  "Failed to configure VLAN [%04x]"

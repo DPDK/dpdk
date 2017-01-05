@@ -380,8 +380,7 @@ struct ecore_eq *ecore_eq_alloc(struct ecore_hwfn *p_hwfn, u16 num_elem)
 	}
 
 	/* register EQ completion on the SP SB */
-	ecore_int_register_cb(p_hwfn,
-			      ecore_eq_completion,
+	ecore_int_register_cb(p_hwfn, ecore_eq_completion,
 			      p_eq, &p_eq->eq_sb_index, &p_eq->p_fw_cons);
 
 	return p_eq;

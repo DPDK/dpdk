@@ -63,8 +63,8 @@ static enum _ecore_status_t ecore_init_rt(struct ecore_hwfn *p_hwfn,
 {
 	u32 *p_init_val = &p_hwfn->rt_data.init_val[rt_offset];
 	bool *p_valid = &p_hwfn->rt_data.b_valid[rt_offset];
-	enum _ecore_status_t rc = ECORE_SUCCESS;
 	u16 i, segment;
+	enum _ecore_status_t rc = ECORE_SUCCESS;
 
 	/* Since not all RT entries are initialized, go over the RT and
 	 * for each segment of initialized values use DMA.
@@ -452,10 +452,10 @@ enum _ecore_status_t ecore_init_run(struct ecore_hwfn *p_hwfn,
 				    int phase, int phase_id, int modes)
 {
 	struct ecore_dev *p_dev = p_hwfn->p_dev;
-	enum _ecore_status_t rc = ECORE_SUCCESS;
 	u32 cmd_num, num_init_ops;
 	union init_op *init_ops;
 	bool b_dmae = false;
+	enum _ecore_status_t rc = ECORE_SUCCESS;
 
 	num_init_ops = p_dev->fw_data->init_ops_size;
 	init_ops = p_dev->fw_data->init_ops;

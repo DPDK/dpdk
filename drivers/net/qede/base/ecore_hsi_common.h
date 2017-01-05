@@ -1320,9 +1320,13 @@ enum personality_type {
  * tunnel configuration
  */
 struct pf_start_tunnel_config {
-/* Set VXLAN tunnel UDP destination port. */
+/* Set VXLAN tunnel UDP destination port to vxlan_udp_port. If not set -
+ * FW will use a default port
+ */
 	u8 set_vxlan_udp_port_flg;
-/* Set GENEVE tunnel UDP destination port. */
+/* Set GENEVE tunnel UDP destination port to geneve_udp_port. If not set -
+ * FW will use a default port
+ */
 	u8 set_geneve_udp_port_flg;
 	u8 tx_enable_vxlan /* If set, enable VXLAN tunnel in TX path. */;
 /* If set, enable l2 GENEVE tunnel in TX path. */
@@ -1338,8 +1342,10 @@ struct pf_start_tunnel_config {
 	u8 tunnel_clss_ipgeneve;
 	u8 tunnel_clss_l2gre /* Classification scheme for l2 GRE tunnel. */;
 	u8 tunnel_clss_ipgre /* Classification scheme for ip GRE tunnel. */;
-	__le16 vxlan_udp_port /* VXLAN tunnel UDP destination port. */;
-	__le16 geneve_udp_port /* GENEVE tunnel UDP destination port. */;
+/* VXLAN tunnel UDP destination port. Valid if set_vxlan_udp_port_flg=1 */
+	__le16 vxlan_udp_port;
+/* GENEVE tunnel UDP destination port. Valid if set_geneve_udp_port_flg=1 */
+	__le16 geneve_udp_port;
 };
 
 /*
