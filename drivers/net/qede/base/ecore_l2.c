@@ -877,6 +877,7 @@ ecore_sp_eth_txq_start_ramrod(struct ecore_hwfn *p_hwfn,
 	p_ramrod->stats_counter_id = p_params->stats_id;
 
 	p_ramrod->queue_zone_id = OSAL_CPU_TO_LE16(abs_tx_qzone_id);
+	p_ramrod->same_as_last_id = OSAL_CPU_TO_LE16(abs_tx_qzone_id);
 
 	p_ramrod->pbl_size = OSAL_CPU_TO_LE16(pbl_size);
 	DMA_REGPAIR_LE(p_ramrod->pbl_base_addr, pbl_addr);
