@@ -99,6 +99,7 @@ struct pmd_internals {
 	unsigned nb_queues;
 
 	int if_index;
+	char *if_name;
 	struct ether_addr eth_addr;
 
 	struct tpacket_req req;
@@ -539,6 +540,7 @@ rte_pmd_init_internals(const char *name,
 		        name);
 		goto error_early;
 	}
+	(*internals)->if_name = strdup(pair->value);
 	(*internals)->if_index = ifr.ifr_ifindex;
 
 	if (ioctl(sockfd, SIOCGIFHWADDR, &ifr) == -1) {
@@ -730,6 +732,7 @@ error:
 			((*internals)->rx_queue[q].sockfd != qsockfd))
 			close((*internals)->rx_queue[q].sockfd);
 	}
+	free((*internals)->if_name);
 	rte_free(*internals);
 error_early:
 	rte_free(data);
@@ -898,6 +901,7 @@ rte_pmd_af_packet_remove(const char *name)
 		rte_free(internals->rx_queue[q].rd);
 		rte_free(internals->tx_queue[q].rd);
 	}
+	free(internals->if_name);
 
 	rte_free(eth_dev->data->dev_private);
 	rte_free(eth_dev->data);
