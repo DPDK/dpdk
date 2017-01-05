@@ -2448,6 +2448,6 @@ enum _ecore_status_t ecore_mcp_initiate_pf_flr(struct ecore_hwfn *p_hwfn,
 {
 	u32 mcp_resp, mcp_param;
 
-	return ecore_mcp_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_INITIATE_PF_FLR,
-			     0, &mcp_resp, &mcp_param);
+	return ecore_mcp_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_INITIATE_PF_FLR, 0,
+			     &mcp_resp, &mcp_param);
 }

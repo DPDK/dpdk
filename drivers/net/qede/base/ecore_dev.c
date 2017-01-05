@@ -2998,18 +2998,22 @@ ecore_hw_prepare_single(struct ecore_hwfn *p_hwfn, void OSAL_IOMEM *p_regview,
 		goto err1;
 	}
 
-	if (p_hwfn == ECORE_LEADING_HWFN(p_dev) && !p_dev->recov_in_prog) {
-		rc = ecore_mcp_initiate_pf_flr(p_hwfn, p_hwfn->p_main_ptt);
-		if (rc != ECORE_SUCCESS)
-			DP_NOTICE(p_hwfn, false, "Failed to initiate PF FLR\n");
-	}
-
 	/* Read the device configuration information from the HW and SHMEM */
 	rc = ecore_get_hw_info(p_hwfn, p_hwfn->p_main_ptt,
 			       p_params->personality, p_params->drv_resc_alloc);
 	if (rc) {
 		DP_NOTICE(p_hwfn, true, "Failed to get HW information\n");
 		goto err2;
+	}
+
+	/* Sending a mailbox to the MFW should be after ecore_get_hw_info() is
+	 * called, since among others it sets the ports number in an engine.
+	 */
+	if (p_params->initiate_pf_flr && p_hwfn == ECORE_LEADING_HWFN(p_dev) &&
+	    !p_dev->recov_in_prog) {
+		rc = ecore_mcp_initiate_pf_flr(p_hwfn, p_hwfn->p_main_ptt);
+		if (rc != ECORE_SUCCESS)
+			DP_NOTICE(p_hwfn, false, "Failed to initiate PF FLR\n");
 	}
 
 	/* Allocate the init RT array and initialize the init-ops engine */

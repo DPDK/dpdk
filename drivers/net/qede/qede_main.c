@@ -62,6 +62,7 @@ qed_probe(struct ecore_dev *edev, struct rte_pci_device *pci_dev,
 	hw_prepare_params.personality = ECORE_PCI_ETH;
 	hw_prepare_params.drv_resc_alloc = false;
 	hw_prepare_params.chk_reg_fifo = false;
+	hw_prepare_params.initiate_pf_flr = true;
 	rc = ecore_hw_prepare(edev, &hw_prepare_params);
 	if (rc) {
 		DP_ERR(edev, "hw prepare failed\n");

@@ -147,6 +147,8 @@ struct ecore_hw_prepare_params {
 	bool drv_resc_alloc;
 	/* check the reg_fifo after any register access */
 	bool chk_reg_fifo;
+	/* request the MFW to initiate PF FLR */
+	bool initiate_pf_flr;
 };
 
 /**

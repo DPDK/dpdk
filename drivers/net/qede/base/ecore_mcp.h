@@ -348,6 +348,17 @@ enum _ecore_status_t ecore_mcp_mdump_clear_logs(struct ecore_hwfn *p_hwfn,
 enum _ecore_status_t ecore_mcp_mdump_get_info(struct ecore_hwfn *p_hwfn,
 					      struct ecore_ptt *p_ptt);
 
+/**
+ * @brief - Gets the MFW allocation info for the given resource
+ *
+ *  @param p_hwfn
+ *  @param p_ptt
+ *  @param p_resc_info
+ *  @param p_mcp_resp
+ *  @param p_mcp_param
+ *
+ * @return enum _ecore_status_t - ECORE_SUCCESS - operation was successful.
+ */
 enum _ecore_status_t ecore_mcp_get_resc_info(struct ecore_hwfn *p_hwfn,
 					     struct ecore_ptt *p_ptt,
 					     struct resource_info *p_resc_info,
