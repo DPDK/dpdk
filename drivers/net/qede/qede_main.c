@@ -51,10 +51,9 @@ qed_probe(struct ecore_dev *edev, struct rte_pci_device *pci_dev,
 
 	ecore_init_struct(edev);
 	qdev->protocol = protocol;
-	if (is_vf) {
+	if (is_vf)
 		edev->b_is_vf = true;
-		edev->b_hw_channel = true; /* @DPDK */
-	}
+
 	ecore_init_dp(edev, dp_module, dp_level, NULL);
 	qed_init_pci(edev, pci_dev);
 

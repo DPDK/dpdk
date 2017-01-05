@@ -711,8 +711,6 @@ struct ecore_dev {
 	/* SRIOV */
 	struct ecore_hw_sriov_info	*p_iov_info;
 #define IS_ECORE_SRIOV(p_dev)		(!!(p_dev)->p_iov_info)
-	bool				b_hw_channel;
-
 	unsigned long			tunn_mode;
 
 	bool				b_is_vf;

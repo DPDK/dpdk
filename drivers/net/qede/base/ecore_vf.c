@@ -83,16 +83,6 @@ ecore_send_msg2pf(struct ecore_hwfn *p_hwfn,
 	/* need to add the END TLV to the message size */
 	resp_size += sizeof(struct channel_list_end_tlv);
 
-	if (!p_hwfn->p_dev->b_hw_channel) {
-		rc = OSAL_VF_SEND_MSG2PF(p_hwfn->p_dev,
-					 done,
-					 p_req,
-					 p_hwfn->vf_iov_info->pf2vf_reply,
-					 sizeof(union vfpf_tlvs), resp_size);
-		/* TODO - no prints about message ? */
-		return rc;
-	}
-
 	/* Send TLVs over HW channel */
 	OSAL_MEMSET(&trigger, 0, sizeof(struct ustorm_trigger_vf_zone));
 	trigger.vf_pf_msg_valid = 1;
