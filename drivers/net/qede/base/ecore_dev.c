@@ -70,28 +70,26 @@ static u32 ecore_hw_bar_size(struct ecore_hwfn *p_hwfn, enum BAR_ID bar_id)
 	}
 
 	val = ecore_rd(p_hwfn, p_hwfn->p_main_ptt, bar_reg);
+	if (val)
+		return 1 << (val + 15);
 
 	/* The above registers were updated in the past only in CMT mode. Since
 	 * they were found to be useful MFW started updating them from 8.7.7.0.
 	 * In older MFW versions they are set to 0 which means disabled.
 	 */
-	if (!val) {
-		if (p_hwfn->p_dev->num_hwfns > 1) {
-			DP_NOTICE(p_hwfn, false,
-				  "BAR size not configured. Assuming BAR size");
-			DP_NOTICE(p_hwfn, false,
-				  "of 256kB for GRC and 512kB for DB\n");
-			return BAR_ID_0 ? 256 * 1024 : 512 * 1024;
-		} else {
-			DP_NOTICE(p_hwfn, false,
-				  "BAR size not configured. Assuming BAR size");
-			DP_NOTICE(p_hwfn, false,
-				  "of 512kB for GRC and 512kB for DB\n");
-			return 512 * 1024;
-		}
+	if (p_hwfn->p_dev->num_hwfns > 1) {
+		DP_NOTICE(p_hwfn, false,
+			  "BAR size not configured. Assuming BAR size of 256kB"
+			  " for GRC and 512kB for DB\n");
+		val = BAR_ID_0 ? 256 * 1024 : 512 * 1024;
+	} else {
+		DP_NOTICE(p_hwfn, false,
+			  "BAR size not configured. Assuming BAR size of 512kB"
+			  " for GRC and 512kB for DB\n");
+		val = 512 * 1024;
 	}
 
-	return 1 << (val + 15);
+	return val;
 }
 
 void ecore_init_dp(struct ecore_dev *p_dev,
@@ -2785,11 +2783,14 @@ ecore_get_hw_info(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 		ecore_mcp_cmd_port_init(p_hwfn, p_ptt);
 	}
 
-	if (personality != ECORE_PCI_DEFAULT)
+	if (personality != ECORE_PCI_DEFAULT) {
 		p_hwfn->hw_info.personality = personality;
-	else if (ecore_mcp_is_init(p_hwfn))
-		p_hwfn->hw_info.personality =
-		    p_hwfn->mcp_info->func_info.protocol;
+	} else if (ecore_mcp_is_init(p_hwfn)) {
+		enum ecore_pci_personality protocol;
+
+		protocol = p_hwfn->mcp_info->func_info.protocol;
+		p_hwfn->hw_info.personality = protocol;
+	}
 
 #ifndef ASIC_ONLY
 	/* To overcome ILT lack for emulation, until at least until we'll have

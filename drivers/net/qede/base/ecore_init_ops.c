@@ -190,19 +190,19 @@ static enum _ecore_status_t ecore_init_cmd_array(struct ecore_hwfn *p_hwfn,
 						 bool b_must_dmae,
 						 bool b_can_dmae)
 {
+	u32 dmae_array_offset = OSAL_LE32_TO_CPU(cmd->args.array_offset);
+	u32 data = OSAL_LE32_TO_CPU(cmd->data);
+	u32 addr = GET_FIELD(data, INIT_WRITE_OP_ADDRESS) << 2;
 #ifdef CONFIG_ECORE_ZIPPED_FW
 	u32 offset, output_len, input_len, max_size;
 #endif
-	u32 dmae_array_offset = OSAL_LE32_TO_CPU(cmd->args.array_offset);
 	struct ecore_dev *p_dev = p_hwfn->p_dev;
-	enum _ecore_status_t rc = ECORE_SUCCESS;
 	union init_array_hdr *hdr;
 	const u32 *array_data;
-	u32 size, addr, data;
+	enum _ecore_status_t rc = ECORE_SUCCESS;
+	u32 size;
 
 	array_data = p_dev->fw_data->arr_data;
-	data = OSAL_LE32_TO_CPU(cmd->data);
-	addr = GET_FIELD(data, INIT_WRITE_OP_ADDRESS) << 2;
 
 	hdr = (union init_array_hdr *)
 		(uintptr_t)(array_data + dmae_array_offset);
@@ -272,13 +272,10 @@ static enum _ecore_status_t ecore_init_cmd_wr(struct ecore_hwfn *p_hwfn,
 					      struct init_write_op *p_cmd,
 					      bool b_can_dmae)
 {
+	u32 data = OSAL_LE32_TO_CPU(p_cmd->data);
+	bool b_must_dmae = GET_FIELD(data, INIT_WRITE_OP_WIDE_BUS);
+	u32 addr = GET_FIELD(data, INIT_WRITE_OP_ADDRESS) << 2;
 	enum _ecore_status_t rc = ECORE_SUCCESS;
-	bool b_must_dmae;
-	u32 addr, data;
-
-	data = OSAL_LE32_TO_CPU(p_cmd->data);
-	b_must_dmae = GET_FIELD(data, INIT_WRITE_OP_WIDE_BUS);
-	addr = GET_FIELD(data, INIT_WRITE_OP_ADDRESS) << 2;
 
 	/* Sanitize */
 	if (b_must_dmae && !b_can_dmae) {
