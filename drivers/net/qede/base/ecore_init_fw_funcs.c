@@ -176,12 +176,6 @@ static void ecore_cmdq_lines_voq_rt_init(struct ecore_hwfn *p_hwfn,
 					 u8 voq, u16 cmdq_lines)
 {
 	u32 qm_line_crd;
-	/* In A0 - Limit the size of pbf queue so that only 511 commands
-	 * with the minimum size of 4 (FCoE minimum size)
-	 */
-	bool is_bb_a0 = ECORE_IS_BB_A0(p_hwfn->p_dev);
-	if (is_bb_a0)
-		cmdq_lines = OSAL_MIN_T(u32, cmdq_lines, 1022);
 	qm_line_crd = QM_VOQ_LINE_CRD(cmdq_lines);
 	OVERWRITE_RT_REG(p_hwfn, PBF_CMDQ_LINES_RT_OFFSET(voq),
 			 (u32)cmdq_lines);
@@ -327,11 +321,9 @@ static void ecore_tx_pq_map_rt_init(struct ecore_hwfn *p_hwfn,
 	u16 num_pqs = num_pf_pqs + num_vf_pqs;
 	u16 first_pq_group = start_pq / QM_PF_QUEUE_GROUP_SIZE;
 	u16 last_pq_group = (start_pq + num_pqs - 1) / QM_PF_QUEUE_GROUP_SIZE;
-	bool is_bb_a0 = ECORE_IS_BB_A0(p_hwfn->p_dev);
 	/* a bit per Tx PQ indicating if the PQ is associated with a VF */
 	u32 tx_pq_vf_mask[MAX_QM_TX_QUEUES / QM_PF_QUEUE_GROUP_SIZE] = { 0 };
-	u32 tx_pq_vf_mask_width = is_bb_a0 ? 32 : QM_PF_QUEUE_GROUP_SIZE;
-	u32 num_tx_pq_vf_masks = MAX_QM_TX_QUEUES / tx_pq_vf_mask_width;
+	u32 num_tx_pq_vf_masks = MAX_QM_TX_QUEUES / QM_PF_QUEUE_GROUP_SIZE;
 	u32 pq_mem_4kb = QM_PQ_MEM_4KB(num_pf_cids);
 	u32 vport_pq_mem_4kb = QM_PQ_MEM_4KB(num_vf_cids);
 	u32 mem_addr_4kb = base_mem_addr_4kb;
@@ -397,8 +389,8 @@ static void ecore_tx_pq_map_rt_init(struct ecore_hwfn *p_hwfn,
 			/* if PQ is associated with a VF, add indication to PQ
 			 * VF mask
 			 */
-			tx_pq_vf_mask[pq_id / tx_pq_vf_mask_width] |=
-			    (1 << (pq_id % tx_pq_vf_mask_width));
+			tx_pq_vf_mask[pq_id / QM_PF_QUEUE_GROUP_SIZE] |=
+				(1 << (pq_id % QM_PF_QUEUE_GROUP_SIZE));
 			mem_addr_4kb += vport_pq_mem_4kb;
 		} else {
 			mem_addr_4kb += pq_mem_4kb;
@@ -406,23 +398,9 @@ static void ecore_tx_pq_map_rt_init(struct ecore_hwfn *p_hwfn,
 	}
 	/* store Tx PQ VF mask to size select register */
 	for (i = 0; i < num_tx_pq_vf_masks; i++) {
-		if (tx_pq_vf_mask[i]) {
-			if (is_bb_a0) {
-				/* A0-only: perform read-modify-write
-				 *(fixed in B0)
-				 */
-				u32 curr_mask =
-				    is_first_pf ? 0 : ecore_rd(p_hwfn, p_ptt,
-						       QM_REG_MAXPQSIZETXSEL_0
-								+ i * 4);
-				STORE_RT_REG(p_hwfn,
-					     QM_REG_MAXPQSIZETXSEL_0_RT_OFFSET +
-					     i, curr_mask | tx_pq_vf_mask[i]);
-			} else
-				STORE_RT_REG(p_hwfn,
-					     QM_REG_MAXPQSIZETXSEL_0_RT_OFFSET +
-					     i, tx_pq_vf_mask[i]);
-		}
+		if (tx_pq_vf_mask[i])
+			STORE_RT_REG(p_hwfn, QM_REG_MAXPQSIZETXSEL_0_RT_OFFSET +
+				     i, tx_pq_vf_mask[i]);
 	}
 }
 
@@ -1246,9 +1224,6 @@ void ecore_set_gre_enable(struct ecore_hwfn *p_hwfn,
 void ecore_set_geneve_dest_port(struct ecore_hwfn *p_hwfn,
 				struct ecore_ptt *p_ptt, u16 dest_port)
 {
-	/* geneve tunnel not supported in BB_A0 */
-	if (ECORE_IS_BB_A0(p_hwfn->p_dev))
-		return;
 	/* update PRS register */
 	ecore_wr(p_hwfn, p_ptt, PRS_REG_NGE_PORT, dest_port);
 	/* update NIG register */
@@ -1262,9 +1237,6 @@ void ecore_set_geneve_enable(struct ecore_hwfn *p_hwfn,
 			     bool eth_geneve_enable, bool ip_geneve_enable)
 {
 	u32 reg_val;
-	/* geneve tunnel not supported in BB_A0 */
-	if (ECORE_IS_BB_A0(p_hwfn->p_dev))
-		return;
 	/* update PRS register */
 	reg_val = ecore_rd(p_hwfn, p_ptt, PRS_REG_ENCAPSULATION_TYPE_EN);
 	SET_TUNNEL_TYPE_ENABLE_BIT(reg_val,
@@ -1283,11 +1255,6 @@ void ecore_set_geneve_enable(struct ecore_hwfn *p_hwfn,
 		 eth_geneve_enable ? 1 : 0);
 	ecore_wr(p_hwfn, p_ptt, NIG_REG_NGE_IP_ENABLE,
 		 ip_geneve_enable ? 1 : 0);
-	/* comp ver */
-	reg_val = (ip_geneve_enable || eth_geneve_enable) ? 1 : 0;
-	ecore_wr(p_hwfn, p_ptt, NIG_REG_NGE_COMP_VER, reg_val);
-	ecore_wr(p_hwfn, p_ptt, PBF_REG_NGE_COMP_VER, reg_val);
-	ecore_wr(p_hwfn, p_ptt, PRS_REG_NGE_COMP_VER, reg_val);
 	/* EDPM with geneve tunnel not supported in BB_B0 */
 	if (ECORE_IS_BB_B0(p_hwfn->p_dev))
 		return;

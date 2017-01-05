@@ -92,6 +92,11 @@ enum block_addr {
 	GRCBASE_MS = 0x6a0000,
 	GRCBASE_PHY_PCIE = 0x620000,
 	GRCBASE_LED = 0x6b8000,
+	GRCBASE_AVS_WRAP = 0x6b0000,
+	GRCBASE_RGFS = 0x19d0000,
+	GRCBASE_TGFS = 0x19e0000,
+	GRCBASE_PTLD = 0x19f0000,
+	GRCBASE_YPLD = 0x1a10000,
 	GRCBASE_MISC_AEU = 0x8000,
 	GRCBASE_BAR0_MAP = 0x1c00000,
 	MAX_BLOCK_ADDR
@@ -177,6 +182,11 @@ enum block_id {
 	BLOCK_MS,
 	BLOCK_PHY_PCIE,
 	BLOCK_LED,
+	BLOCK_AVS_WRAP,
+	BLOCK_RGFS,
+	BLOCK_TGFS,
+	BLOCK_PTLD,
+	BLOCK_YPLD,
 	BLOCK_MISC_AEU,
 	BLOCK_BAR0_MAP,
 	MAX_BLOCK_ID
@@ -708,7 +718,7 @@ struct dbg_bus_data {
 	struct dbg_bus_pci_buf_data pci_buf;
 	__le16 reserved;
 /* Debug Bus data for each block */
-	struct dbg_bus_block_data blocks[80];
+	struct dbg_bus_block_data blocks[88];
 /* Debug Bus data for each block */
 	struct dbg_bus_storm_data storms[6];
 };
@@ -846,12 +856,12 @@ enum dbg_bus_targets {
  * GRC Dump data
  */
 struct dbg_grc_data {
+/* Indicates if the GRC parameters were initialized */
+	u8 params_initialized;
+	u8 reserved1;
+	__le16 reserved2;
 /* Value of each GRC parameter. Array size must match enum dbg_grc_params. */
-	__le32 param_val[40];
-/* Indicates for each GRC parameter if it was set by the user (0/1).
- * Array size must match the enum dbg_grc_params.
- */
-	u8 param_set_by_user[40];
+	__le32 param_val[48];
 };
 
 
@@ -901,6 +911,8 @@ enum dbg_grc_params {
 	DBG_GRC_PARAM_PARITY_SAFE,
 	DBG_GRC_PARAM_DUMP_CM /* dump CM memories (0/1) */,
 	DBG_GRC_PARAM_DUMP_PHY /* dump PHY memories (0/1) */,
+	DBG_GRC_PARAM_NO_MCP /* dont perform MCP commands (0/1) */,
+	DBG_GRC_PARAM_NO_FW_VER /* dont read FW/MFW version (0/1) */,
 	MAX_DBG_GRC_PARAMS
 };
 
@@ -1014,7 +1026,7 @@ struct dbg_tools_data {
 	struct idle_chk_data idle_chk /* Idle Check data */;
 	u8 mode_enable[40] /* Indicates if a mode is enabled (0/1) */;
 /* Indicates if a block is in reset state (0/1) */
-	u8 block_in_reset[80];
+	u8 block_in_reset[88];
 	u8 chip_id /* Chip ID (from enum chip_ids) */;
 	u8 platform_id /* Platform ID (from enum platform_ids) */;
 	u8 initialized /* Indicates if the data was initialized */;

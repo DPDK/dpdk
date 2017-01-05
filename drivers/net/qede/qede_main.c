@@ -21,7 +21,7 @@ static uint8_t npar_tx_switching = 1;
 char fw_file[PATH_MAX];
 
 const char *QEDE_DEFAULT_FIRMWARE =
-	"/lib/firmware/qed/qed_init_values-8.10.9.0.bin";
+	"/lib/firmware/qed/qed_init_values-8.14.6.0.bin";
 
 static void
 qed_update_pf_params(struct ecore_dev *edev, struct ecore_pf_params *params)
@@ -234,8 +234,7 @@ static int qed_slowpath_start(struct ecore_dev *edev,
 	if (IS_PF(edev)) {
 		rc = qed_load_firmware_data(edev);
 		if (rc) {
-			DP_NOTICE(edev, true,
-				  "Failed to find fw file %s\n", fw_file);
+			DP_ERR(edev, "Failed to find fw file %s\n", fw_file);
 			goto err;
 		}
 	}

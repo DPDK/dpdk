@@ -924,6 +924,9 @@ enum _ecore_status_t ecore_spq_completion(struct ecore_hwfn *p_hwfn,
 	if (found->comp_cb.function)
 		found->comp_cb.function(p_hwfn, found->comp_cb.cookie, p_data,
 					fw_return_code);
+	else
+		DP_VERBOSE(p_hwfn, ECORE_MSG_SPQ,
+			   "Got a completion without a callback function\n");
 
 	if ((found->comp_mode != ECORE_SPQ_MODE_EBLOCK) ||
 	    (found->queue == &p_spq->unlimited_pending))

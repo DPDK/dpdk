@@ -3964,6 +3964,18 @@ bool ecore_iov_is_vf_initialized(struct ecore_hwfn *p_hwfn, u16 rel_vf_id)
 	return (p_vf->state == VF_ENABLED);
 }
 
+bool ecore_iov_is_vf_started(struct ecore_hwfn *p_hwfn,
+			     u16 rel_vf_id)
+{
+	struct ecore_vf_info *p_vf;
+
+	p_vf = ecore_iov_get_vf_info(p_hwfn, rel_vf_id, true);
+	if (!p_vf)
+		return false;
+
+	return (p_vf->state != VF_FREE && p_vf->state != VF_STOPPED);
+}
+
 enum _ecore_status_t
 ecore_iov_get_vf_min_rate(struct ecore_hwfn *p_hwfn, int vfid)
 {

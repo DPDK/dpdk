@@ -89,8 +89,8 @@
 
 
 #define FW_MAJOR_VERSION		8
-#define FW_MINOR_VERSION		10
-#define FW_REVISION_VERSION		9
+#define FW_MINOR_VERSION		14
+#define FW_REVISION_VERSION		6
 #define FW_ENGINEERING_VERSION	0
 
 /***********************/
@@ -726,8 +726,6 @@ union event_ring_data {
 	struct malicious_vf_eqe_data malicious_vf /* Malicious VF data */;
 	struct initial_cleanup_eqe_data vf_init_cleanup
 	    /* VF Initial Cleanup data */;
-/* Host handle for the Async Completions */
-	struct regpair iwarp_handle;
 };
 /* Event Ring Entry */
 struct event_ring_entry {

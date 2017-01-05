@@ -13,6 +13,7 @@
 #include "ecore_cxt.h"
 #include "ecore_gtt_reg_addr.h"
 #include "ecore_iro.h"
+#include "ecore_iov_api.h"
 
 #define ECORE_DCBX_MAX_MIB_READ_TRY	(100)
 #define ECORE_ETH_TYPE_DEFAULT		(0)
@@ -77,21 +78,6 @@ static bool ecore_dcbx_local(u32 dcbx_cfg_bitmap)
 {
 	return (ECORE_MFW_GET_FIELD(dcbx_cfg_bitmap, DCBX_CONFIG_VERSION) ==
 		DCBX_CONFIG_VERSION_STATIC) ? true : false;
-}
-
-/* @@@TBD A0 Eagle workaround */
-void ecore_dcbx_eagle_workaround(struct ecore_hwfn *p_hwfn,
-				 struct ecore_ptt *p_ptt, bool set_to_pfc)
-{
-	if (!ENABLE_EAGLE_ENG1_WORKAROUND(p_hwfn))
-		return;
-
-	ecore_wr(p_hwfn, p_ptt,
-		 YSEM_REG_FAST_MEMORY + 0x20000 /* RAM in FASTMEM */  +
-		 YSTORM_FLOW_CONTROL_MODE_OFFSET,
-		 set_to_pfc ? flow_ctrl_pfc : flow_ctrl_pause);
-	ecore_wr(p_hwfn, p_ptt, NIG_REG_FLOWCTRL_MODE,
-		 EAGLE_ENG1_WORKAROUND_NIG_FLOWCTRL_MODE);
 }
 
 static void
@@ -945,7 +931,6 @@ ecore_dcbx_mib_update_event(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 			 * according to negotiation results
 			 */
 			enabled = p_hwfn->p_dcbx_info->results.dcbx_enabled;
-			ecore_dcbx_eagle_workaround(p_hwfn, p_ptt, enabled);
 		}
 	}
 	ecore_dcbx_get_params(p_hwfn, p_ptt, type);

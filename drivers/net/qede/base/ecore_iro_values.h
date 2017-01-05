@@ -91,9 +91,9 @@ static const struct iro iro_arr[47] = {
 /* USTORM_ISCSI_RX_STATS_OFFSET(pf_id) */
 	{  0x11aa0,     0x38,      0x0,      0x0,     0x18},
 /* XSTORM_ISCSI_TX_STATS_OFFSET(pf_id) */
-	{   0xa8c0,     0x30,      0x0,      0x0,     0x10},
+	{   0xa8c0,     0x38,      0x0,      0x0,     0x10},
 /* YSTORM_ISCSI_TX_STATS_OFFSET(pf_id) */
-	{   0x86f8,     0x28,      0x0,      0x0,     0x18},
+	{   0x86f8,     0x30,      0x0,      0x0,     0x18},
 /* PSTORM_ISCSI_TX_STATS_OFFSET(pf_id) */
 	{  0x101f8,     0x10,      0x0,      0x0,     0x10},
 /* TSTORM_FCOE_RX_STATS_OFFSET(pf_id) */

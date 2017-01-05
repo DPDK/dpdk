@@ -573,8 +573,7 @@ enum _ecore_status_t ecore_init_fw_data(struct ecore_dev *p_dev,
 		return ECORE_INVAL;
 	}
 
-	/* First Dword contains metadata and should be skipped */
-	buf_hdr = (struct bin_buffer_hdr *)((uintptr_t)(data + sizeof(u32)));
+	buf_hdr = (struct bin_buffer_hdr *)(uintptr_t)data;
 
 	offset = buf_hdr[BIN_BUF_INIT_FW_VER_INFO].offset;
 	fw->fw_ver_info = (struct fw_ver_info *)((uintptr_t)(data + offset));

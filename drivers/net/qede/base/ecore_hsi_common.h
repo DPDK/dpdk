@@ -660,6 +660,7 @@ enum core_event_opcode {
 	CORE_EVENT_TX_QUEUE_STOP,
 	CORE_EVENT_RX_QUEUE_START,
 	CORE_EVENT_RX_QUEUE_STOP,
+	CORE_EVENT_RX_QUEUE_FLUSH,
 	MAX_CORE_EVENT_OPCODE
 };
 
@@ -743,6 +744,7 @@ enum core_ramrod_cmd_id {
 	CORE_RAMROD_TX_QUEUE_START /* TX Queue Start Ramrod */,
 	CORE_RAMROD_RX_QUEUE_STOP /* RX Queue Stop Ramrod */,
 	CORE_RAMROD_TX_QUEUE_STOP /* TX Queue Stop Ramrod */,
+	CORE_RAMROD_RX_QUEUE_FLUSH /* RX Flush queue Ramrod */,
 	MAX_CORE_RAMROD_CMD_ID
 };
 
@@ -860,7 +862,8 @@ struct core_rx_slow_path_cqe {
 	u8 type /* CQE type */;
 	u8 ramrod_cmd_id;
 	__le16 echo;
-	__le32 reserved1[7];
+	struct core_rx_cqe_opaque_data opaque_data /* Opaque Data */;
+	__le32 reserved1[5];
 };
 
 /*
@@ -926,36 +929,51 @@ struct core_rx_stop_ramrod_data {
 /*
  * Flags for Core TX BD
  */
-struct core_tx_bd_flags {
-	u8 as_bitfield;
+struct core_tx_bd_data {
+	__le16 as_bitfield;
 /* Do not allow additional VLAN manipulations on this packet (DCB) */
-#define CORE_TX_BD_FLAGS_FORCE_VLAN_MODE_MASK      0x1
-#define CORE_TX_BD_FLAGS_FORCE_VLAN_MODE_SHIFT     0
+#define CORE_TX_BD_DATA_FORCE_VLAN_MODE_MASK      0x1
+#define CORE_TX_BD_DATA_FORCE_VLAN_MODE_SHIFT     0
 /* Insert VLAN into packet */
-#define CORE_TX_BD_FLAGS_VLAN_INSERTION_MASK       0x1
-#define CORE_TX_BD_FLAGS_VLAN_INSERTION_SHIFT      1
+#define CORE_TX_BD_DATA_VLAN_INSERTION_MASK       0x1
+#define CORE_TX_BD_DATA_VLAN_INSERTION_SHIFT      1
 /* This is the first BD of the packet (for debug) */
-#define CORE_TX_BD_FLAGS_START_BD_MASK             0x1
-#define CORE_TX_BD_FLAGS_START_BD_SHIFT            2
+#define CORE_TX_BD_DATA_START_BD_MASK             0x1
+#define CORE_TX_BD_DATA_START_BD_SHIFT            2
 /* Calculate the IP checksum for the packet */
-#define CORE_TX_BD_FLAGS_IP_CSUM_MASK              0x1
-#define CORE_TX_BD_FLAGS_IP_CSUM_SHIFT             3
+#define CORE_TX_BD_DATA_IP_CSUM_MASK              0x1
+#define CORE_TX_BD_DATA_IP_CSUM_SHIFT             3
 /* Calculate the L4 checksum for the packet */
-#define CORE_TX_BD_FLAGS_L4_CSUM_MASK              0x1
-#define CORE_TX_BD_FLAGS_L4_CSUM_SHIFT             4
+#define CORE_TX_BD_DATA_L4_CSUM_MASK              0x1
+#define CORE_TX_BD_DATA_L4_CSUM_SHIFT             4
 /* Packet is IPv6 with extensions */
-#define CORE_TX_BD_FLAGS_IPV6_EXT_MASK             0x1
-#define CORE_TX_BD_FLAGS_IPV6_EXT_SHIFT            5
+#define CORE_TX_BD_DATA_IPV6_EXT_MASK             0x1
+#define CORE_TX_BD_DATA_IPV6_EXT_SHIFT            5
 /* If IPv6+ext, and if l4_csum is 1, than this field indicates L4 protocol:
  * 0-TCP, 1-UDP
  */
-#define CORE_TX_BD_FLAGS_L4_PROTOCOL_MASK          0x1
-#define CORE_TX_BD_FLAGS_L4_PROTOCOL_SHIFT         6
+#define CORE_TX_BD_DATA_L4_PROTOCOL_MASK          0x1
+#define CORE_TX_BD_DATA_L4_PROTOCOL_SHIFT         6
 /* The pseudo checksum mode to place in the L4 checksum field. Required only
- *  when IPv6+ext and l4_csum is set. (use enum core_l4_pseudo_checksum_mode)
+ * when IPv6+ext and l4_csum is set. (use enum core_l4_pseudo_checksum_mode)
  */
-#define CORE_TX_BD_FLAGS_L4_PSEUDO_CSUM_MODE_MASK  0x1
-#define CORE_TX_BD_FLAGS_L4_PSEUDO_CSUM_MODE_SHIFT 7
+#define CORE_TX_BD_DATA_L4_PSEUDO_CSUM_MODE_MASK  0x1
+#define CORE_TX_BD_DATA_L4_PSEUDO_CSUM_MODE_SHIFT 7
+/* Number of BDs that make up one packet - width wide enough to present
+ * CORE_LL2_TX_MAX_BDS_PER_PACKET
+ */
+#define CORE_TX_BD_DATA_NBDS_MASK                 0xF
+#define CORE_TX_BD_DATA_NBDS_SHIFT                8
+/* Use roce_flavor enum - Differentiate between Roce flavors is valid when
+ * connType is ROCE (use enum core_roce_flavor_type)
+ */
+#define CORE_TX_BD_DATA_ROCE_FLAV_MASK            0x1
+#define CORE_TX_BD_DATA_ROCE_FLAV_SHIFT           12
+/* Calculate ip length */
+#define CORE_TX_BD_DATA_IP_LEN_MASK               0x1
+#define CORE_TX_BD_DATA_IP_LEN_SHIFT              13
+#define CORE_TX_BD_DATA_RESERVED0_MASK            0x3
+#define CORE_TX_BD_DATA_RESERVED0_SHIFT           14
 };
 
 /*
@@ -968,28 +986,18 @@ struct core_tx_bd {
  * packets: echo data to pass to Rx
  */
 	__le16 nw_vlan_or_lb_echo;
-	u8 bitfield0;
-/* Number of BDs that make up one packet - width wide enough to present
- * X_CORE_LL2_NUM_OF_BDS_ON_ST_CT
- */
-#define CORE_TX_BD_NBDS_MASK             0xF
-#define CORE_TX_BD_NBDS_SHIFT            0
-/* Use roce_flavor enum - Diffrentiate between Roce flavors is valid when
- * connType is ROCE (use enum core_roce_flavor_type)
- */
-#define CORE_TX_BD_ROCE_FLAV_MASK        0x1
-#define CORE_TX_BD_ROCE_FLAV_SHIFT       4
-#define CORE_TX_BD_RESERVED0_MASK        0x7
-#define CORE_TX_BD_RESERVED0_SHIFT       5
-	struct core_tx_bd_flags bd_flags /* BD Flags */;
+	struct core_tx_bd_data bd_data /* BD Flags */;
 	__le16 bitfield1;
+/* L4 Header Offset from start of packet (in Words). This is needed if both
+ * l4_csum and ipv6_ext are set
+ */
 #define CORE_TX_BD_L4_HDR_OFFSET_W_MASK  0x3FFF
 #define CORE_TX_BD_L4_HDR_OFFSET_W_SHIFT 0
 /* Packet destination - Network, LB (use enum core_tx_dest) */
 #define CORE_TX_BD_TX_DST_MASK           0x1
 #define CORE_TX_BD_TX_DST_SHIFT          14
-#define CORE_TX_BD_RESERVED1_MASK        0x1
-#define CORE_TX_BD_RESERVED1_SHIFT       15
+#define CORE_TX_BD_RESERVED_MASK         0x1
+#define CORE_TX_BD_RESERVED_SHIFT        15
 };
 
 
@@ -1265,6 +1273,7 @@ enum malicious_vf_error_id {
 /* Tunneled packet with IPv6+Ext without a proper number of BDs */
 	ETH_TUNN_IPV6_EXT_NBD_ERR,
 	ETH_CONTROL_PACKET_VIOLATION /* VF sent control frame such as PFC */,
+	ETH_ANTI_SPOOFING_ERR /* Anti-Spoofing verification failure */,
 	MAX_MALICIOUS_VF_ERROR_ID
 };
 

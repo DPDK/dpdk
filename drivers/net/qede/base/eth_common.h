@@ -34,6 +34,14 @@
 #define ETH_RX_CQE_PAGE_SIZE_BYTES          4096
 #define ETH_RX_NUM_NEXT_PAGE_BDS            2
 
+/* Limitation for Tunneled LSO Packets on the offset (in bytes) of the inner IP
+ * header (relevant to LSO for tunneled packet):
+ */
+/* Offset is limited to 253 bytes (inclusive). */
+#define ETH_MAX_TUNN_LSO_INNER_IPV4_OFFSET          253
+/* Offset is limited to 251 bytes (inclusive). */
+#define ETH_MAX_TUNN_LSO_INNER_IPV6_OFFSET          251
+
 #define ETH_TX_MIN_BDS_PER_NON_LSO_PKT              1
 #define ETH_TX_MAX_BDS_PER_NON_LSO_PACKET           18
 #define ETH_TX_MAX_BDS_PER_LSO_PACKET               255
@@ -141,16 +149,23 @@ struct eth_tx_1st_bd_flags {
 /* Do not allow additional VLAN manipulations on this packet. */
 #define ETH_TX_1ST_BD_FLAGS_FORCE_VLAN_MODE_MASK  0x1
 #define ETH_TX_1ST_BD_FLAGS_FORCE_VLAN_MODE_SHIFT 1
-/* IP checksum recalculation in needed */
+/* Recalculate IP checksum. For tunneled packet - relevant to inner header. */
 #define ETH_TX_1ST_BD_FLAGS_IP_CSUM_MASK          0x1
 #define ETH_TX_1ST_BD_FLAGS_IP_CSUM_SHIFT         2
-/* TCP/UDP checksum recalculation in needed */
+/* Recalculate TCP/UDP checksum.
+ * For tunneled packet - relevant to inner header.
+ */
 #define ETH_TX_1ST_BD_FLAGS_L4_CSUM_MASK          0x1
 #define ETH_TX_1ST_BD_FLAGS_L4_CSUM_SHIFT         3
-/* If set, need to add the VLAN in vlan field to the packet. */
+/* If set, insert VLAN tag from vlan field to the packet.
+ * For tunneled packet - relevant to outer header.
+ */
 #define ETH_TX_1ST_BD_FLAGS_VLAN_INSERTION_MASK   0x1
 #define ETH_TX_1ST_BD_FLAGS_VLAN_INSERTION_SHIFT  4
-/* If set, this is an LSO packet. */
+/* If set, this is an LSO packet. Note: For Tunneled LSO packets, the offset of
+ * the inner IPV4 (and IPV6) header is limited to 253 (and 251 respectively)
+ * bytes, inclusive.
+ */
 #define ETH_TX_1ST_BD_FLAGS_LSO_MASK              0x1
 #define ETH_TX_1ST_BD_FLAGS_LSO_SHIFT             5
 /* Recalculate Tunnel IP Checksum (if Tunnel IP Header is IPv4) */
@@ -165,7 +180,8 @@ struct eth_tx_1st_bd_flags {
  * The parsing information data for the first tx bd of a given packet.
  */
 struct eth_tx_data_1st_bd {
-	__le16 vlan /* VLAN tag to insert to packet (if needed). */;
+/* VLAN tag to insert to packet (if enabled by vlan_insertion flag). */
+	__le16 vlan;
 /* Number of BDs in packet. Should be at least 2 in non-LSO packet and at least
  * 3 in LSO (or Tunnel with IPv6+ext) packet.
  */
@@ -209,10 +225,14 @@ struct eth_tx_data_2nd_bd {
 /* For LSO / Tunnel header with IPv6+ext - Set if inner header is IPv6 */
 #define ETH_TX_DATA_2ND_BD_TUNN_INNER_IPV6_MASK           0x1
 #define ETH_TX_DATA_2ND_BD_TUNN_INNER_IPV6_SHIFT          11
-/* For LSO / Tunnel header with IPv6+ext - Set if outer header has IPv6+ext */
+/* In tunneling mode - Set to 1 when the Inner header is IPv6 with extension.
+ * Otherwise set to 1 if the header is IPv6 with extension.
+ */
 #define ETH_TX_DATA_2ND_BD_IPV6_EXT_MASK                  0x1
 #define ETH_TX_DATA_2ND_BD_IPV6_EXT_SHIFT                 12
-/* Set if Tunnel header has IPv6 ext. (3rd BD is required) */
+/* Set to 1 if Tunnel (outer = encapsulating) header has IPv6 ext. (Note: 3rd BD
+ * is required, hence EDPM does not support Tunnel [outer] header with Ipv6Ext)
+ */
 #define ETH_TX_DATA_2ND_BD_TUNN_IPV6_EXT_MASK             0x1
 #define ETH_TX_DATA_2ND_BD_TUNN_IPV6_EXT_SHIFT            13
 /* Set if (inner) L4 protocol is UDP. (Required when IPv6+ext (or tunnel with

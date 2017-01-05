@@ -664,6 +664,17 @@ bool ecore_iov_is_vf_initialized(struct ecore_hwfn *p_hwfn,
 				 u16 rel_vf_id);
 
 /**
+ * @brief - Returm true if VF has started in FW
+ *
+ * @param p_hwfn
+ * @param rel_vf_id
+ *
+ * @return
+ */
+bool ecore_iov_is_vf_started(struct ecore_hwfn *p_hwfn,
+			     u16 rel_vf_id);
+
+/**
  * @brief - Get VF's vport min rate configured.
  * @param p_hwfn
  * @param rel_vf_id

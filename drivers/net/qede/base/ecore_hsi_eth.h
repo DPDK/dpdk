@@ -1446,7 +1446,15 @@ struct vport_update_ramrod_data_cmn {
 /* If set, MTU will be updated. Vport must be not active. */
 	u8 update_mtu_flg;
 	__le16 mtu /* New MTU value. Used if update_mtu_flg are set */;
-	u8 reserved[2];
+/* If set, ctl_frame_mac_check_en and ctl_frame_ethtype_check_en will be
+ * updated
+ */
+	u8 update_ctl_frame_checks_en_flg;
+/* If set, Contorl frames will be filtered according to MAC check. */
+	u8 ctl_frame_mac_check_en;
+/* If set, Contorl frames will be filtered according to ethtype check. */
+	u8 ctl_frame_ethtype_check_en;
+	u8 reserved[15];
 };
 
 struct vport_update_ramrod_mcast {

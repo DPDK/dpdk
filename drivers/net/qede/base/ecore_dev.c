@@ -711,7 +711,7 @@ enum _ecore_status_t ecore_resc_alloc(struct ecore_dev *p_dev)
 	}
 
 	p_dev->reset_stats = OSAL_ZALLOC(p_dev, GFP_KERNEL,
-					 sizeof(struct ecore_eth_stats));
+					 sizeof(*p_dev->reset_stats));
 	if (!p_dev->reset_stats) {
 		DP_NOTICE(p_dev, true, "Failed to allocate reset statistics\n");
 		goto alloc_no_mem;
@@ -823,9 +823,7 @@ static enum _ecore_status_t ecore_calc_hw_mode(struct ecore_hwfn *p_hwfn)
 {
 	int hw_mode = 0;
 
-	if (ECORE_IS_BB_A0(p_hwfn->p_dev)) {
-		hw_mode |= 1 << MODE_BB_A0;
-	} else if (ECORE_IS_BB_B0(p_hwfn->p_dev)) {
+	if (ECORE_IS_BB_B0(p_hwfn->p_dev)) {
 		hw_mode |= 1 << MODE_BB_B0;
 	} else if (ECORE_IS_AH(p_hwfn->p_dev)) {
 		hw_mode |= 1 << MODE_K2;
@@ -880,11 +878,6 @@ static enum _ecore_status_t ecore_calc_hw_mode(struct ecore_hwfn *p_hwfn)
 	} else
 #endif
 		hw_mode |= 1 << MODE_ASIC;
-
-#ifndef REAL_ASIC_ONLY
-	if (ENABLE_EAGLE_ENG1_WORKAROUND(p_hwfn))
-		hw_mode |= 1 << MODE_EAGLE_ENG1_WORKAROUND;
-#endif
 
 	if (p_hwfn->p_dev->num_hwfns > 1)
 		hw_mode |= 1 << MODE_100G;
@@ -991,7 +984,7 @@ static enum _ecore_status_t ecore_hw_init_common(struct ecore_hwfn *p_hwfn,
 	ecore_gtt_init(p_hwfn);
 
 #ifndef ASIC_ONLY
-	if (CHIP_REV_IS_EMUL(p_hwfn->p_dev)) {
+	if (CHIP_REV_IS_EMUL(p_dev)) {
 		rc = ecore_hw_init_chip(p_hwfn, p_hwfn->p_main_ptt);
 		if (rc != ECORE_SUCCESS)
 			return rc;
@@ -1006,7 +999,7 @@ static enum _ecore_status_t ecore_hw_init_common(struct ecore_hwfn *p_hwfn,
 	}
 
 	ecore_qm_common_rt_init(p_hwfn,
-				p_hwfn->p_dev->num_ports_in_engines,
+				p_dev->num_ports_in_engines,
 				qm_info->max_phys_tcs_per_port,
 				qm_info->pf_rl_en, qm_info->pf_wfq_en,
 				qm_info->vport_rl_en, qm_info->vport_wfq_en,
@@ -1036,11 +1029,11 @@ static enum _ecore_status_t ecore_hw_init_common(struct ecore_hwfn *p_hwfn,
 	ecore_wr(p_hwfn, p_ptt, PSWRQ2_REG_L2P_VALIDATE_VFID, 0);
 	ecore_wr(p_hwfn, p_ptt, PGLUE_B_REG_USE_CLIENTID_IN_TAG, 1);
 
-	if (ECORE_IS_BB(p_hwfn->p_dev)) {
+	if (ECORE_IS_BB(p_dev)) {
 		/* Workaround clears ROCE search for all functions to prevent
 		 * involving non initialized function in processing ROCE packet.
 		 */
-		num_pfs = NUM_OF_ENG_PFS(p_hwfn->p_dev);
+		num_pfs = NUM_OF_ENG_PFS(p_dev);
 		for (pf_id = 0; pf_id < num_pfs; pf_id++) {
 			ecore_fid_pretend(p_hwfn, p_ptt, pf_id);
 			ecore_wr(p_hwfn, p_ptt, PRS_REG_SEARCH_ROCE, 0x0);
@@ -1056,8 +1049,7 @@ static enum _ecore_status_t ecore_hw_init_common(struct ecore_hwfn *p_hwfn,
 	 * This is not done inside the init tool since it currently can't
 	 * perform a pretending to VFs.
 	 */
-	max_num_vfs = ECORE_IS_AH(p_hwfn->p_dev) ? MAX_NUM_VFS_K2
-	    : MAX_NUM_VFS_BB;
+	max_num_vfs = ECORE_IS_AH(p_dev) ? MAX_NUM_VFS_K2 : MAX_NUM_VFS_BB;
 	for (vf_id = 0; vf_id < max_num_vfs; vf_id++) {
 		concrete_fid = ecore_vfid_to_concrete(p_hwfn, vf_id);
 		ecore_fid_pretend(p_hwfn, p_ptt, (u16)concrete_fid);
@@ -1536,7 +1528,9 @@ ecore_hw_init_pf(struct ecore_hwfn *p_hwfn,
 		return rc;
 	if (b_hw_start) {
 		/* enable interrupts */
-		ecore_int_igu_enable(p_hwfn, p_ptt, int_mode);
+		rc = ecore_int_igu_enable(p_hwfn, p_ptt, int_mode);
+		if (rc != ECORE_SUCCESS)
+			return rc;
 
 		/* send function start command */
 		rc = ecore_sp_pf_start(p_hwfn, p_tunn, p_hwfn->p_dev->mf_mode,
@@ -1627,7 +1621,7 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 {
 	enum _ecore_status_t rc, mfw_rc;
 	u32 load_code, param;
-	int i, j;
+	int i;
 
 	if (p_params->int_mode == ECORE_INT_MODE_MSI && p_dev->num_hwfns > 1) {
 		DP_NOTICE(p_dev, false,
@@ -1711,25 +1705,6 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 						p_hwfn->hw_info.hw_mode);
 			if (rc)
 				break;
-
-#ifndef REAL_ASIC_ONLY
-			if (ENABLE_EAGLE_ENG1_WORKAROUND(p_hwfn)) {
-				struct init_nig_pri_tc_map_req tc_map;
-
-				OSAL_MEM_ZERO(&tc_map, sizeof(tc_map));
-
-				/* remove this once flow control is
-				 * implemented
-				 */
-				for (j = 0; j < NUM_OF_VLAN_PRIORITIES; j++) {
-					tc_map.pri[j].tc_id = 0;
-					tc_map.pri[j].valid = 1;
-				}
-				ecore_init_nig_pri_tc_map(p_hwfn,
-							  p_hwfn->p_main_ptt,
-							  &tc_map);
-			}
-#endif
 			/* Fall into */
 		case FW_MSG_CODE_DRV_LOAD_FUNCTION:
 			rc = ecore_hw_init_pf(p_hwfn, p_hwfn->p_main_ptt,
@@ -1802,13 +1777,14 @@ static void ecore_hw_timers_stop(struct ecore_dev *p_dev,
 		 */
 		OSAL_MSLEEP(1);
 	}
-	if (i == ECORE_HW_STOP_RETRY_LIMIT)
-		DP_NOTICE(p_hwfn, true,
-			  "Timers linear scans are not over [Connection %02x Tasks %02x]\n",
-			  (u8)ecore_rd(p_hwfn, p_ptt,
-					TM_REG_PF_SCAN_ACTIVE_CONN),
-			  (u8)ecore_rd(p_hwfn, p_ptt,
-					TM_REG_PF_SCAN_ACTIVE_TASK));
+
+	if (i < ECORE_HW_STOP_RETRY_LIMIT)
+		return;
+
+	DP_NOTICE(p_hwfn, true, "Timers linear scans are not over"
+		  " [Connection %02x Tasks %02x]\n",
+		  (u8)ecore_rd(p_hwfn, p_ptt, TM_REG_PF_SCAN_ACTIVE_CONN),
+		  (u8)ecore_rd(p_hwfn, p_ptt, TM_REG_PF_SCAN_ACTIVE_TASK));
 }
 
 void ecore_hw_timers_stop_all(struct ecore_dev *p_dev)
@@ -3127,7 +3103,7 @@ enum _ecore_status_t ecore_hw_prepare(struct ecore_dev *p_dev,
 		}
 	}
 
-	return ECORE_SUCCESS;
+	return rc;
 }
 
 void ecore_hw_remove(struct ecore_dev *p_dev)
@@ -3819,8 +3795,8 @@ static enum _ecore_status_t ecore_set_coalesce(struct ecore_hwfn *p_hwfn,
 		return ECORE_INVAL;
 	}
 
-	OSAL_MEMSET(p_eth_qzone, 0, eth_qzone_size);
 	p_coal_timeset = p_eth_qzone;
+	OSAL_MEMSET(p_eth_qzone, 0, eth_qzone_size);
 	SET_FIELD(p_coal_timeset->value, COALESCING_TIMESET_TIMESET, timeset);
 	SET_FIELD(p_coal_timeset->value, COALESCING_TIMESET_VALID, 1);
 	ecore_memcpy_to(p_hwfn, p_ptt, hw_addr, p_eth_qzone, eth_qzone_size);

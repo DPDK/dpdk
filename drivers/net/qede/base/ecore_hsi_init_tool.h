@@ -22,6 +22,43 @@
 /* Max size in dwords of a zipped array */
 #define MAX_ZIPPED_SIZE			8192
 
+enum init_modes {
+	MODE_BB_A0_DEPRECATED,
+	MODE_BB_B0,
+	MODE_K2,
+	MODE_ASIC,
+	MODE_EMUL_REDUCED,
+	MODE_EMUL_FULL,
+	MODE_FPGA,
+	MODE_CHIPSIM,
+	MODE_SF,
+	MODE_MF_SD,
+	MODE_MF_SI,
+	MODE_PORTS_PER_ENG_1,
+	MODE_PORTS_PER_ENG_2,
+	MODE_PORTS_PER_ENG_4,
+	MODE_100G,
+	MODE_E5,
+	MAX_INIT_MODES
+};
+
+enum init_phases {
+	PHASE_ENGINE,
+	PHASE_PORT,
+	PHASE_PF,
+	PHASE_VF,
+	PHASE_QM_PF,
+	MAX_INIT_PHASES
+};
+
+enum init_split_types {
+	SPLIT_TYPE_NONE,
+	SPLIT_TYPE_PORT,
+	SPLIT_TYPE_PF,
+	SPLIT_TYPE_PORT_PF,
+	SPLIT_TYPE_VF,
+	MAX_INIT_SPLIT_TYPES
+};
 
 struct fw_asserts_ram_section {
 /* The offset of the section in the RAM in RAM lines (64-bit units) */
@@ -68,51 +105,6 @@ struct fw_info_location {
 /* Size of the fw_info structure (thats located at the grc_addr). */
 	__le32 size;
 };
-
-
-
-
-enum init_modes {
-	MODE_BB_A0,
-	MODE_BB_B0,
-	MODE_K2,
-	MODE_ASIC,
-	MODE_EMUL_REDUCED,
-	MODE_EMUL_FULL,
-	MODE_FPGA,
-	MODE_CHIPSIM,
-	MODE_SF,
-	MODE_MF_SD,
-	MODE_MF_SI,
-	MODE_PORTS_PER_ENG_1,
-	MODE_PORTS_PER_ENG_2,
-	MODE_PORTS_PER_ENG_4,
-	MODE_100G,
-	MODE_40G,
-	MODE_EAGLE_ENG1_WORKAROUND,
-	MAX_INIT_MODES
-};
-
-
-enum init_phases {
-	PHASE_ENGINE,
-	PHASE_PORT,
-	PHASE_PF,
-	PHASE_VF,
-	PHASE_QM_PF,
-	MAX_INIT_PHASES
-};
-
-
-enum init_split_types {
-	SPLIT_TYPE_NONE,
-	SPLIT_TYPE_PORT,
-	SPLIT_TYPE_PF,
-	SPLIT_TYPE_PORT_PF,
-	SPLIT_TYPE_VF,
-	MAX_INIT_SPLIT_TYPES
-};
-
 
 /*
  * Binary buffer header

@@ -31,7 +31,7 @@ enum _ecore_status_t ecore_sp_init_request(struct ecore_hwfn *p_hwfn,
 {
 	u32 opaque_cid = p_data->opaque_fid << 16 | p_data->cid;
 	struct ecore_spq_entry *p_ent = OSAL_NULL;
-	enum _ecore_status_t rc = ECORE_NOTIMPL;
+	enum _ecore_status_t rc;
 
 	if (!pp_ent)
 		return ECORE_INVAL;
@@ -564,7 +564,7 @@ enum _ecore_status_t ecore_sp_heartbeat_ramrod(struct ecore_hwfn *p_hwfn)
 {
 	struct ecore_spq_entry *p_ent = OSAL_NULL;
 	struct ecore_sp_init_data init_data;
-	enum _ecore_status_t rc = ECORE_NOTIMPL;
+	enum _ecore_status_t rc;
 
 	/* Get SPQ entry */
 	OSAL_MEMSET(&init_data, 0, sizeof(init_data));

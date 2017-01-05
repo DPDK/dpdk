@@ -801,9 +801,6 @@ static void ecore_mcp_handle_link_change(struct ecore_hwfn *p_hwfn,
 
 	p_link->sfp_tx_fault = !!(status & LINK_STATUS_SFP_TX_FAULT);
 
-	if (p_link->link_up)
-		ecore_dcbx_eagle_workaround(p_hwfn, p_ptt, p_link->pfc_enabled);
-
 	OSAL_LINK_UPDATE(p_hwfn);
 }
 
@@ -2267,7 +2264,7 @@ enum _ecore_status_t ecore_mcp_bist_register_test(struct ecore_hwfn *p_hwfn,
 enum _ecore_status_t ecore_mcp_bist_clock_test(struct ecore_hwfn *p_hwfn,
 					       struct ecore_ptt *p_ptt)
 {
-	u32 drv_mb_param = 0, rsp, param;
+	u32 drv_mb_param, rsp, param;
 	enum _ecore_status_t rc = ECORE_SUCCESS;
 
 	drv_mb_param = (DRV_MB_PARAM_BIST_CLOCK_TEST <<

@@ -765,15 +765,6 @@ struct ecore_dev {
 #define NUM_OF_ENG_PFS(dev)	(ECORE_IS_BB(dev) ? MAX_NUM_PFS_BB \
 						  : MAX_NUM_PFS_K2)
 
-#ifndef REAL_ASIC_ONLY
-#define ENABLE_EAGLE_ENG1_WORKAROUND(p_hwfn) ( \
-	(ECORE_IS_BB_A0(p_hwfn->p_dev)) && \
-	(ECORE_PATH_ID(p_hwfn) == 1) && \
-	((p_hwfn->hw_info.port_mode == ECORE_PORT_MODE_DE_2X40G) || \
-	 (p_hwfn->hw_info.port_mode == ECORE_PORT_MODE_DE_2X50G) || \
-	 (p_hwfn->hw_info.port_mode == ECORE_PORT_MODE_DE_2X25G)))
-#endif
-
 /**
  * @brief ecore_concrete_to_sw_fid - get the sw function id from
  *        the concrete value.

@@ -77,10 +77,10 @@ Supported QLogic Adapters
 Prerequisites
 -------------
 
-- Requires firmware version **8.10.x.** and management firmware
-  version **8.10.x or higher**. Firmware may be available
+- Requires firmware version **8.14.x.** and management firmware
+  version **8.14.x or higher**. Firmware may be available
   inbox in certain newer Linux distros under the standard directory
-  ``E.g. /lib/firmware/qed/qed_init_values-8.10.9.0.bin``
+  ``E.g. /lib/firmware/qed/qed_init_values-8.14.6.0.bin``
 
 - If the required firmware files are not available then visit
   `QLogic Driver Download Center <http://driverdownloads.qlogic.com>`_.
@@ -119,7 +119,7 @@ enabling debugging options may affect system performance.
 - ``CONFIG_RTE_LIBRTE_QEDE_FW`` (default **""**)
 
   Gives absolute path of firmware file.
-  ``Eg: "/lib/firmware/qed/qed_init_values_zipped-8.10.9.0.bin"``
+  ``Eg: "/lib/firmware/qed/qed_init_values_zipped-8.14.6.0.bin"``
   Empty string indicates driver will pick up the firmware file
   from the default location.
 
