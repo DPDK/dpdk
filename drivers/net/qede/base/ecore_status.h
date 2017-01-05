@@ -10,6 +10,7 @@
 #define __ECORE_STATUS_H__
 
 enum _ecore_status_t {
+	ECORE_CONN_RESET = -13,
 	ECORE_UNKNOWN_ERROR  = -12,
 	ECORE_NORESOURCES	 = -11,
 	ECORE_NODEV   = -10,
