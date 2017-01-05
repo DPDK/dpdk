@@ -923,7 +923,7 @@ u16 ecore_get_qm_pq(struct ecore_hwfn *p_hwfn,
 	case PROTOCOLID_CORE:
 		if (p_params->core.tc == LB_TC)
 			pq_id = p_hwfn->qm_info.pure_lb_pq;
-		else if (p_params->core.tc == OOO_LB_TC)
+		else if (p_params->core.tc == PKT_LB_TC)
 			pq_id = p_hwfn->qm_info.ooo_pq;
 		else
 			pq_id = p_hwfn->qm_info.offload_pq;

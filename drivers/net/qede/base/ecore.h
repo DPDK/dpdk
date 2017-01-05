@@ -800,7 +800,7 @@ static OSAL_INLINE u8 ecore_concrete_to_sw_fid(struct ecore_dev *p_dev,
 }
 
 #define PURE_LB_TC 8
-#define OOO_LB_TC 9
+#define PKT_LB_TC 9
 
 int ecore_configure_vport_wfq(struct ecore_dev *p_dev, u16 vp_id, u32 rate);
 void ecore_configure_vp_wfq_on_link_change(struct ecore_dev *p_dev,
