@@ -226,13 +226,14 @@ static int parse_elf(struct elf_info *info, const char *filename)
 	}
 	if (!info->symtab_start)
 		fprintf(stderr, "%s has no symtab?\n", filename);
-
-	/* Fix endianness in symbols */
-	for (sym = info->symtab_start; sym < info->symtab_stop; sym++) {
-		sym->st_shndx = TO_NATIVE(endian, 16, sym->st_shndx);
-		sym->st_name  = TO_NATIVE(endian, 32, sym->st_name);
-		sym->st_value = TO_NATIVE(endian, ADDR_SIZE, sym->st_value);
-		sym->st_size  = TO_NATIVE(endian, ADDR_SIZE, sym->st_size);
+	else {
+		/* Fix endianness in symbols */
+		for (sym = info->symtab_start; sym < info->symtab_stop; sym++) {
+			sym->st_shndx = TO_NATIVE(endian, 16, sym->st_shndx);
+			sym->st_name  = TO_NATIVE(endian, 32, sym->st_name);
+			sym->st_value = TO_NATIVE(endian, ADDR_SIZE, sym->st_value);
+			sym->st_size  = TO_NATIVE(endian, ADDR_SIZE, sym->st_size);
+		}
 	}
 
 	if (symtab_shndx_idx != ~0U) {
