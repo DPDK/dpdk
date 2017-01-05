@@ -2222,100 +2222,6 @@ static u32 ecore_hw_get_dflt_resc_num(struct ecore_hwfn *p_hwfn,
 	return dflt_resc_num;
 }
 
-static enum _ecore_status_t ecore_hw_set_resc_info(struct ecore_hwfn *p_hwfn,
-						   enum ecore_resources res_id,
-						   bool drv_resc_alloc)
-{
-	u32 dflt_resc_num = 0, dflt_resc_start = 0, mcp_resp, mcp_param;
-	u32 *p_resc_num, *p_resc_start;
-	struct resource_info resc_info;
-	enum _ecore_status_t rc;
-
-	p_resc_num = &RESC_NUM(p_hwfn, res_id);
-	p_resc_start = &RESC_START(p_hwfn, res_id);
-
-	dflt_resc_num = ecore_hw_get_dflt_resc_num(p_hwfn, res_id);
-	if (!dflt_resc_num) {
-		DP_ERR(p_hwfn, "Failed to get default amount for resource %d\n",
-		       res_id);
-		return ECORE_INVAL;
-	}
-	dflt_resc_start = dflt_resc_num * p_hwfn->enabled_func_idx;
-
-#ifndef ASIC_ONLY
-	if (CHIP_REV_IS_SLOW(p_hwfn->p_dev)) {
-		*p_resc_num = dflt_resc_num;
-		*p_resc_start = dflt_resc_start;
-		goto out;
-	}
-#endif
-
-	OSAL_MEM_ZERO(&resc_info, sizeof(resc_info));
-	resc_info.res_id = ecore_hw_get_mfw_res_id(res_id);
-	if (resc_info.res_id == RESOURCE_NUM_INVALID) {
-		DP_ERR(p_hwfn,
-		       "Failed to match resource %d with MFW resources\n",
-		       res_id);
-		return ECORE_INVAL;
-	}
-
-	rc = ecore_mcp_get_resc_info(p_hwfn, p_hwfn->p_main_ptt, &resc_info,
-				     &mcp_resp, &mcp_param);
-	if (rc != ECORE_SUCCESS) {
-		DP_NOTICE(p_hwfn, true,
-			  "MFW resp failure for a resc alloc req [res_id %d]\n",
-			  res_id);
-		return rc;
-	}
-
-	/* Default driver values are applied in the following cases:
-	 * - The resource allocation MB command is not supported by the MFW
-	 * - There is an internal error in the MFW while processing the request
-	 * - The resource ID is unknown to the MFW
-	 */
-	if (mcp_resp != FW_MSG_CODE_RESOURCE_ALLOC_OK &&
-	    mcp_resp != FW_MSG_CODE_RESOURCE_ALLOC_DEPRECATED) {
-		/* @DPDK */
-		DP_INFO(p_hwfn,
-			  "No allocation info for resc %d [mcp_resp 0x%x].",
-			  res_id, mcp_resp);
-		DP_INFO(p_hwfn,
-			  "Applying default values [num %d, start %d].\n",
-			  dflt_resc_num, dflt_resc_start);
-
-		*p_resc_num = dflt_resc_num;
-		*p_resc_start = dflt_resc_start;
-		goto out;
-	}
-
-	/* TBD - remove this when revising the handling of the SB resource */
-	if (res_id == ECORE_SB) {
-		/* Excluding the slowpath SB */
-		resc_info.size -= 1;
-		resc_info.offset -= p_hwfn->enabled_func_idx;
-	}
-
-	*p_resc_num = resc_info.size;
-	*p_resc_start = resc_info.offset;
-
-	if (*p_resc_num != dflt_resc_num || *p_resc_start != dflt_resc_start) {
-		DP_NOTICE(p_hwfn, false,
-			  "Resource %d: MFW allocation [num %d, start %d]",
-			  res_id, *p_resc_num, *p_resc_start);
-		DP_NOTICE(p_hwfn, false,
-			  "differs from default values [num %d, start %d]%s\n",
-			  dflt_resc_num,
-			  dflt_resc_start,
-			  drv_resc_alloc ? " - applying default values" : "");
-		if (drv_resc_alloc) {
-			*p_resc_num = dflt_resc_num;
-			*p_resc_start = dflt_resc_start;
-		}
-	}
- out:
-	return ECORE_SUCCESS;
-}
-
 static const char *ecore_hw_get_resc_name(enum ecore_resources res_id)
 {
 	switch (res_id) {
@@ -2348,6 +2254,100 @@ static const char *ecore_hw_get_resc_name(enum ecore_resources res_id)
 	default:
 		return "UNKNOWN_RESOURCE";
 	}
+}
+
+static enum _ecore_status_t ecore_hw_set_resc_info(struct ecore_hwfn *p_hwfn,
+						   enum ecore_resources res_id,
+						   bool drv_resc_alloc)
+{
+	u32 dflt_resc_num = 0, dflt_resc_start = 0, mcp_resp, mcp_param;
+	u32 *p_resc_num, *p_resc_start;
+	struct resource_info resc_info;
+	enum _ecore_status_t rc;
+
+	p_resc_num = &RESC_NUM(p_hwfn, res_id);
+	p_resc_start = &RESC_START(p_hwfn, res_id);
+
+	dflt_resc_num = ecore_hw_get_dflt_resc_num(p_hwfn, res_id);
+	if (!dflt_resc_num) {
+		DP_ERR(p_hwfn,
+		       "Failed to get default amount for resource %d [%s]\n",
+			res_id, ecore_hw_get_resc_name(res_id));
+		return ECORE_INVAL;
+	}
+	dflt_resc_start = dflt_resc_num * p_hwfn->enabled_func_idx;
+
+#ifndef ASIC_ONLY
+	if (CHIP_REV_IS_SLOW(p_hwfn->p_dev)) {
+		*p_resc_num = dflt_resc_num;
+		*p_resc_start = dflt_resc_start;
+		goto out;
+	}
+#endif
+
+	OSAL_MEM_ZERO(&resc_info, sizeof(resc_info));
+	resc_info.res_id = ecore_hw_get_mfw_res_id(res_id);
+	if (resc_info.res_id == RESOURCE_NUM_INVALID) {
+		DP_ERR(p_hwfn,
+		       "Failed to match resource %d with MFW resources\n",
+		       res_id);
+		return ECORE_INVAL;
+	}
+
+	rc = ecore_mcp_get_resc_info(p_hwfn, p_hwfn->p_main_ptt, &resc_info,
+				     &mcp_resp, &mcp_param);
+	if (rc != ECORE_SUCCESS) {
+		DP_NOTICE(p_hwfn, true,
+			  "MFW response failure for an allocation request for"
+			  " resource %d [%s]\n",
+			  res_id, ecore_hw_get_resc_name(res_id));
+		return rc;
+	}
+
+	/* Default driver values are applied in the following cases:
+	 * - The resource allocation MB command is not supported by the MFW
+	 * - There is an internal error in the MFW while processing the request
+	 * - The resource ID is unknown to the MFW
+	 */
+	if (mcp_resp != FW_MSG_CODE_RESOURCE_ALLOC_OK &&
+	    mcp_resp != FW_MSG_CODE_RESOURCE_ALLOC_DEPRECATED) {
+		/* @DPDK */
+		DP_INFO(p_hwfn,
+			"Resource %d [%s]: No allocation info was received"
+			" [mcp_resp 0x%x]. Applying default values"
+			" [num %d, start %d].\n",
+			res_id, ecore_hw_get_resc_name(res_id), mcp_resp,
+			dflt_resc_num, dflt_resc_start);
+
+		*p_resc_num = dflt_resc_num;
+		*p_resc_start = dflt_resc_start;
+		goto out;
+	}
+
+	/* TBD - remove this when revising the handling of the SB resource */
+	if (res_id == ECORE_SB) {
+		/* Excluding the slowpath SB */
+		resc_info.size -= 1;
+		resc_info.offset -= p_hwfn->enabled_func_idx;
+	}
+
+	*p_resc_num = resc_info.size;
+	*p_resc_start = resc_info.offset;
+
+	if (*p_resc_num != dflt_resc_num || *p_resc_start != dflt_resc_start) {
+		DP_NOTICE(p_hwfn, false,
+			  "Resource %d [%s]: MFW allocation [num %d, start %d]"
+			  " differs from default values [num %d, start %d]%s\n",
+			  res_id, ecore_hw_get_resc_name(res_id), *p_resc_num,
+			  *p_resc_start, dflt_resc_num, dflt_resc_start,
+			  drv_resc_alloc ? " - Applying default values" : "");
+		if (drv_resc_alloc) {
+			*p_resc_num = dflt_resc_num;
+			*p_resc_start = dflt_resc_start;
+		}
+	}
+ out:
+	return ECORE_SUCCESS;
 }
 
 static enum _ecore_status_t ecore_hw_get_resc(struct ecore_hwfn *p_hwfn,
