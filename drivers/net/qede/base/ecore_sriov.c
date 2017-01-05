@@ -1987,7 +1987,7 @@ static void ecore_iov_vf_mbx_start_rxq(struct ecore_hwfn *p_hwfn,
 				       struct ecore_ptt *p_ptt,
 				       struct ecore_vf_info *vf)
 {
-	struct ecore_queue_start_common_params p_params;
+	struct ecore_queue_start_common_params params;
 	struct ecore_iov_vf_mbx *mbx = &vf->vf_mbx;
 	u8 status = PFVF_STATUS_NO_RESOURCE;
 	struct vfpf_start_rxq_tlv *req;
@@ -2000,13 +2000,13 @@ static void ecore_iov_vf_mbx_start_rxq(struct ecore_hwfn *p_hwfn,
 	    !ecore_iov_validate_sb(p_hwfn, vf, req->hw_sb))
 		goto out;
 
-	OSAL_MEMSET(&p_params, 0, sizeof(p_params));
-	p_params.queue_id = (u8)vf->vf_queues[req->rx_qid].fw_rx_qid;
-	p_params.vf_qid = req->rx_qid;
-	p_params.vport_id = vf->vport_id;
-	p_params.stats_id = vf->abs_vf_id + 0x10,
-	p_params.sb = req->hw_sb;
-	p_params.sb_idx = req->sb_index;
+	OSAL_MEMSET(&params, 0, sizeof(params));
+	params.queue_id = (u8)vf->vf_queues[req->rx_qid].fw_rx_qid;
+	params.vf_qid = req->rx_qid;
+	params.vport_id = vf->vport_id;
+	params.stats_id = vf->abs_vf_id + 0x10,
+	params.sb = req->hw_sb;
+	params.sb_idx = req->sb_index;
 
 	/* Legacy VFs have their Producers in a different location, which they
 	 * calculate on their own and clean the producer prior to this.
@@ -2022,7 +2022,7 @@ static void ecore_iov_vf_mbx_start_rxq(struct ecore_hwfn *p_hwfn,
 
 	rc = ecore_sp_eth_rxq_start_ramrod(p_hwfn, vf->opaque_fid,
 					   vf->vf_queues[req->rx_qid].fw_cid,
-					   &p_params,
+					   &params,
 					   req->bd_max_bytes,
 					   req->rxq_addr,
 					   req->cqe_pbl_addr,
@@ -2087,7 +2087,7 @@ static void ecore_iov_vf_mbx_start_txq(struct ecore_hwfn *p_hwfn,
 				       struct ecore_ptt *p_ptt,
 				       struct ecore_vf_info *vf)
 {
-	struct ecore_queue_start_common_params p_params;
+	struct ecore_queue_start_common_params params;
 	struct ecore_iov_vf_mbx *mbx = &vf->vf_mbx;
 	u8 status = PFVF_STATUS_NO_RESOURCE;
 	union ecore_qm_pq_params pq_params;
@@ -2099,24 +2099,24 @@ static void ecore_iov_vf_mbx_start_txq(struct ecore_hwfn *p_hwfn,
 	pq_params.eth.is_vf = 1;
 	pq_params.eth.vf_id = vf->relative_vf_id;
 
-	OSAL_MEMSET(&p_params, 0, sizeof(p_params));
+	OSAL_MEMSET(&params, 0, sizeof(params));
 	req = &mbx->req_virt->start_txq;
 
 	if (!ecore_iov_validate_txq(p_hwfn, vf, req->tx_qid) ||
 	    !ecore_iov_validate_sb(p_hwfn, vf, req->hw_sb))
 		goto out;
 
-	p_params.queue_id = (u8)vf->vf_queues[req->tx_qid].fw_tx_qid;
-	p_params.qzone_id = (u8)vf->vf_queues[req->tx_qid].fw_tx_qid;
-	p_params.vport_id = vf->vport_id;
-	p_params.stats_id = vf->abs_vf_id + 0x10,
-	p_params.sb = req->hw_sb;
-	p_params.sb_idx = req->sb_index;
+	params.queue_id = (u8)vf->vf_queues[req->tx_qid].fw_tx_qid;
+	params.qzone_id = (u8)vf->vf_queues[req->tx_qid].fw_tx_qid;
+	params.vport_id = vf->vport_id;
+	params.stats_id = vf->abs_vf_id + 0x10,
+	params.sb = req->hw_sb;
+	params.sb_idx = req->sb_index;
 
 	rc = ecore_sp_eth_txq_start_ramrod(p_hwfn,
 					   vf->opaque_fid,
 					   vf->vf_queues[req->tx_qid].fw_cid,
-					   &p_params,
+					   &params,
 					   req->pbl_addr,
 					   req->pbl_size,
 					   &pq_params);
