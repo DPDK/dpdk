@@ -1761,10 +1761,6 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 			return mfw_rc;
 		}
 
-		ecore_mcp_mdump_get_info(p_hwfn, p_hwfn->p_main_ptt);
-		ecore_mcp_mdump_set_values(p_hwfn, p_hwfn->p_main_ptt,
-					   p_params->epoch);
-
 		/* send DCBX attention request command */
 		DP_VERBOSE(p_hwfn, ECORE_MSG_DCB,
 			   "sending phony dcbx set command to trigger DCBx attention handling\n");
@@ -2962,6 +2958,7 @@ ecore_hw_prepare_single(struct ecore_hwfn *p_hwfn, void OSAL_IOMEM *p_regview,
 			struct ecore_hw_prepare_params *p_params)
 {
 	struct ecore_dev *p_dev = p_hwfn->p_dev;
+	struct ecore_mdump_info mdump_info;
 	enum _ecore_status_t rc = ECORE_SUCCESS;
 
 	/* Split PCI bars evenly between hwfns */
@@ -3022,6 +3019,19 @@ ecore_hw_prepare_single(struct ecore_hwfn *p_hwfn, void OSAL_IOMEM *p_regview,
 		rc = ecore_mcp_initiate_pf_flr(p_hwfn, p_hwfn->p_main_ptt);
 		if (rc != ECORE_SUCCESS)
 			DP_NOTICE(p_hwfn, false, "Failed to initiate PF FLR\n");
+	}
+
+	/* Check if mdump logs are present and update the epoch value */
+	if (p_hwfn == ECORE_LEADING_HWFN(p_hwfn->p_dev)) {
+		rc = ecore_mcp_mdump_get_info(p_hwfn, p_hwfn->p_main_ptt,
+					      &mdump_info);
+		if (rc == ECORE_SUCCESS && mdump_info.num_of_logs > 0) {
+			DP_NOTICE(p_hwfn, false,
+				  "* * * IMPORTANT - HW ERROR register dump captured by device * * *\n");
+		}
+
+		ecore_mcp_mdump_set_values(p_hwfn, p_hwfn->p_main_ptt,
+					   p_params->epoch);
 	}
 
 	/* Allocate the init RT array and initialize the init-ops engine */

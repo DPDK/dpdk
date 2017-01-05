@@ -68,8 +68,6 @@ struct ecore_hw_init_params {
 	bool allow_npar_tx_switch;
 	/* binary fw data pointer in binary fw file */
 	const u8 *bin_fw_data;
-	/* the OS Epoch time in seconds */
-	u32 epoch;
 };
 
 /**
@@ -149,6 +147,8 @@ struct ecore_hw_prepare_params {
 	bool chk_reg_fifo;
 	/* request the MFW to initiate PF FLR */
 	bool initiate_pf_flr;
+	/* the OS Epoch time in seconds */
+	u32 epoch;
 };
 
 /**

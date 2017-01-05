@@ -792,14 +792,37 @@ enum _ecore_status_t ecore_mcp_mem_ecc_events(struct ecore_hwfn *p_hwfn,
 					      struct ecore_ptt *p_ptt,
 					      u64 *num_events);
 
+struct ecore_mdump_info {
+	u32 reason;
+	u32 version;
+	u32 config;
+	u32 epoch;
+	u32 num_of_logs;
+	u32 valid_logs;
+};
+
 /**
- * @brief Sets whether a critical error notification from the MFW is acked, or
- *        is it being ignored and thus allowing the MFW crash dump.
+ * @brief - Gets the MFW crash dump configuration and logs info.
  *
- * @param p_dev
- * @param mdump_enable
+ * @param p_hwfn
+ * @param p_ptt
+ * @param p_mdump_info
  *
+ * @param return ECORE_SUCCESS upon success.
  */
-void ecore_mcp_mdump_enable(struct ecore_dev *p_dev, bool mdump_enable);
+enum _ecore_status_t
+ecore_mcp_mdump_get_info(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
+			 struct ecore_mdump_info *p_mdump_info);
+
+/**
+ * @brief - Clears the MFW crash dump logs.
+ *
+ * @param p_hwfn
+ * @param p_ptt
+ *
+ * @param return ECORE_SUCCESS upon success.
+ */
+enum _ecore_status_t ecore_mcp_mdump_clear_logs(struct ecore_hwfn *p_hwfn,
+						struct ecore_ptt *p_ptt);
 
 #endif

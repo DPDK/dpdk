@@ -327,28 +327,6 @@ enum _ecore_status_t ecore_mcp_mdump_trigger(struct ecore_hwfn *p_hwfn,
 					     struct ecore_ptt *p_ptt);
 
 /**
- * @brief - Clears the MFW crash dump logs.
- *
- * @param p_hwfn
- * @param p_ptt
- *
- * @param return ECORE_SUCCESS upon success.
- */
-enum _ecore_status_t ecore_mcp_mdump_clear_logs(struct ecore_hwfn *p_hwfn,
-						struct ecore_ptt *p_ptt);
-
-/**
- * @brief - Gets the MFW crash dump configuration and logs info.
- *
- * @param p_hwfn
- * @param p_ptt
- *
- * @param return ECORE_SUCCESS upon success.
- */
-enum _ecore_status_t ecore_mcp_mdump_get_info(struct ecore_hwfn *p_hwfn,
-					      struct ecore_ptt *p_ptt);
-
-/**
  * @brief - Gets the MFW allocation info for the given resource
  *
  *  @param p_hwfn

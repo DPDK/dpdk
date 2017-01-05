@@ -1098,16 +1098,9 @@ enum _ecore_status_t ecore_mcp_mdump_trigger(struct ecore_hwfn *p_hwfn,
 {
 	u32 mcp_resp;
 
+	p_hwfn->p_dev->mdump_en = true;
+
 	return ecore_mcp_mdump_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_MDUMP_TRIGGER,
-				   OSAL_NULL, OSAL_NULL, &mcp_resp);
-}
-
-enum _ecore_status_t ecore_mcp_mdump_clear_logs(struct ecore_hwfn *p_hwfn,
-						struct ecore_ptt *p_ptt)
-{
-	u32 mcp_resp;
-
-	return ecore_mcp_mdump_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_MDUMP_CLEAR_LOGS,
 				   OSAL_NULL, OSAL_NULL, &mcp_resp);
 }
 
@@ -1141,32 +1134,56 @@ ecore_mcp_mdump_get_config(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 	return rc;
 }
 
-enum _ecore_status_t ecore_mcp_mdump_get_info(struct ecore_hwfn *p_hwfn,
-					      struct ecore_ptt *p_ptt)
+enum _ecore_status_t
+ecore_mcp_mdump_get_info(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
+			 struct ecore_mdump_info *p_mdump_info)
 {
+	u32 addr, global_offsize, global_addr;
 	struct mdump_config_stc mdump_config;
 	enum _ecore_status_t rc;
 
-	rc = ecore_mcp_mdump_get_config(p_hwfn, p_ptt, &mdump_config);
-	if (rc != ECORE_SUCCESS)
-		return rc;
+	OSAL_MEMSET(p_mdump_info, 0, sizeof(*p_mdump_info));
 
-	DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
-		   "MFW mdump_config: version 0x%x, config 0x%x, epoch 0x%x, num_of_logs 0x%x, valid_logs 0x%x\n",
-		   mdump_config.version, mdump_config.config, mdump_config.epoc,
-		   mdump_config.num_of_logs, mdump_config.valid_logs);
+	addr = SECTION_OFFSIZE_ADDR(p_hwfn->mcp_info->public_base,
+				    PUBLIC_GLOBAL);
+	global_offsize = ecore_rd(p_hwfn, p_ptt, addr);
+	global_addr = SECTION_ADDR(global_offsize, 0);
+	p_mdump_info->reason = ecore_rd(p_hwfn, p_ptt,
+					global_addr +
+					OFFSETOF(struct public_global,
+						 mdump_reason));
 
-	if (mdump_config.valid_logs > 0) {
-		DP_NOTICE(p_hwfn, false,
-			  "* * * IMPORTANT - HW ERROR register dump captured by device * * *\n");
+	if (p_mdump_info->reason) {
+		rc = ecore_mcp_mdump_get_config(p_hwfn, p_ptt, &mdump_config);
+		if (rc != ECORE_SUCCESS)
+			return rc;
+
+		p_mdump_info->version = mdump_config.version;
+		p_mdump_info->config = mdump_config.config;
+		p_mdump_info->epoch = mdump_config.epoc;
+		p_mdump_info->num_of_logs = mdump_config.num_of_logs;
+		p_mdump_info->valid_logs = mdump_config.valid_logs;
+
+		DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
+			   "MFW mdump info: reason %d, version 0x%x, config 0x%x, epoch 0x%x, num_of_logs 0x%x, valid_logs 0x%x\n",
+			   p_mdump_info->reason, p_mdump_info->version,
+			   p_mdump_info->config, p_mdump_info->epoch,
+			   p_mdump_info->num_of_logs, p_mdump_info->valid_logs);
+	} else {
+		DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
+			   "MFW mdump info: reason %d\n", p_mdump_info->reason);
 	}
 
-	return rc;
+	return ECORE_SUCCESS;
 }
 
-void ecore_mcp_mdump_enable(struct ecore_dev *p_dev, bool mdump_enable)
+enum _ecore_status_t ecore_mcp_mdump_clear_logs(struct ecore_hwfn *p_hwfn,
+						struct ecore_ptt *p_ptt)
 {
-	p_dev->mdump_en = mdump_enable;
+	u32 mcp_resp;
+
+	return ecore_mcp_mdump_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_MDUMP_CLEAR_LOGS,
+				   OSAL_NULL, OSAL_NULL, &mcp_resp);
 }
 
 static void ecore_mcp_handle_critical_error(struct ecore_hwfn *p_hwfn,
@@ -1184,6 +1201,7 @@ static void ecore_mcp_handle_critical_error(struct ecore_hwfn *p_hwfn,
 	if (p_hwfn->p_dev->mdump_en) {
 		DP_NOTICE(p_hwfn, false,
 			  "Not acknowledging the notification to allow the MFW crash dump\n");
+		p_hwfn->p_dev->mdump_en = false;
 		return;
 	}
 
