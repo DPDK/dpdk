@@ -2405,7 +2405,7 @@ static enum _ecore_status_t ecore_hw_get_resc(struct ecore_hwfn *p_hwfn,
 static enum _ecore_status_t ecore_hw_get_nvm_info(struct ecore_hwfn *p_hwfn,
 						  struct ecore_ptt *p_ptt)
 {
-	u32 nvm_cfg1_offset, mf_mode, addr, generic_cont0, core_cfg;
+	u32 nvm_cfg1_offset, mf_mode, addr, generic_cont0, core_cfg, dcbx_mode;
 	u32 port_cfg_addr, link_temp, nvm_cfg_addr, device_capabilities;
 	struct ecore_mcp_link_params *link;
 
@@ -2467,6 +2467,28 @@ static enum _ecore_status_t ecore_hw_get_nvm_info(struct ecore_hwfn *p_hwfn,
 		DP_NOTICE(p_hwfn, true, "Unknown port mode in 0x%08x\n",
 			  core_cfg);
 		break;
+	}
+
+	/* Read DCBX configuration */
+	port_cfg_addr = MCP_REG_SCRATCH + nvm_cfg1_offset +
+			OFFSETOF(struct nvm_cfg1, port[MFW_PORT(p_hwfn)]);
+	dcbx_mode = ecore_rd(p_hwfn, p_ptt,
+			     port_cfg_addr +
+			     OFFSETOF(struct nvm_cfg1_port, generic_cont0));
+	dcbx_mode = (dcbx_mode & NVM_CFG1_PORT_DCBX_MODE_MASK)
+		>> NVM_CFG1_PORT_DCBX_MODE_OFFSET;
+	switch (dcbx_mode) {
+	case NVM_CFG1_PORT_DCBX_MODE_DYNAMIC:
+		p_hwfn->hw_info.dcbx_mode = ECORE_DCBX_VERSION_DYNAMIC;
+		break;
+	case NVM_CFG1_PORT_DCBX_MODE_CEE:
+		p_hwfn->hw_info.dcbx_mode = ECORE_DCBX_VERSION_CEE;
+		break;
+	case NVM_CFG1_PORT_DCBX_MODE_IEEE:
+		p_hwfn->hw_info.dcbx_mode = ECORE_DCBX_VERSION_IEEE;
+		break;
+	default:
+		p_hwfn->hw_info.dcbx_mode = ECORE_DCBX_VERSION_DISABLED;
 	}
 
 	/* Read default link configuration */

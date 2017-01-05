@@ -373,6 +373,9 @@ struct ecore_hw_info {
 	u32 port_mode;
 	u32	hw_mode;
 	unsigned long device_capabilities;
+
+	/* Default DCBX mode */
+	u8 dcbx_mode;
 };
 
 struct ecore_hw_cid_data {

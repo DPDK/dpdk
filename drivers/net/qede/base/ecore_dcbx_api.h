@@ -147,6 +147,7 @@ struct ecore_dcbx_get {
 #define ECORE_DCBX_VERSION_DISABLED	0
 #define ECORE_DCBX_VERSION_IEEE		1
 #define ECORE_DCBX_VERSION_CEE		2
+#define ECORE_DCBX_VERSION_DYNAMIC	3
 
 struct ecore_dcbx_set {
 #define ECORE_DCBX_OVERRIDE_STATE	(1 << 0)
