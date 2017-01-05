@@ -447,6 +447,43 @@ eth_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	return 0;
 }
 
+static void
+eth_dev_change_flags(char *if_name, uint32_t flags, uint32_t mask)
+{
+	struct ifreq ifr;
+	int s;
+
+	s = socket(PF_INET, SOCK_DGRAM, 0);
+	if (s < 0)
+		return;
+
+	strncpy(ifr.ifr_name, if_name, IFNAMSIZ);
+	if (ioctl(s, SIOCGIFFLAGS, &ifr) < 0)
+		goto out;
+	ifr.ifr_flags &= mask;
+	ifr.ifr_flags |= flags;
+	if (ioctl(s, SIOCSIFFLAGS, &ifr) < 0)
+		goto out;
+out:
+	close(s);
+}
+
+static void
+eth_dev_promiscuous_enable(struct rte_eth_dev *dev)
+{
+	struct pmd_internals *internals = dev->data->dev_private;
+
+	eth_dev_change_flags(internals->if_name, IFF_PROMISC, ~0);
+}
+
+static void
+eth_dev_promiscuous_disable(struct rte_eth_dev *dev)
+{
+	struct pmd_internals *internals = dev->data->dev_private;
+
+	eth_dev_change_flags(internals->if_name, 0, ~IFF_PROMISC);
+}
+
 static const struct eth_dev_ops ops = {
 	.dev_start = eth_dev_start,
 	.dev_stop = eth_dev_stop,
@@ -454,6 +491,8 @@ static const struct eth_dev_ops ops = {
 	.dev_configure = eth_dev_configure,
 	.dev_infos_get = eth_dev_info,
 	.mtu_set = eth_dev_mtu_set,
+	.promiscuous_enable = eth_dev_promiscuous_enable,
+	.promiscuous_disable = eth_dev_promiscuous_disable,
 	.rx_queue_setup = eth_rx_queue_setup,
 	.tx_queue_setup = eth_tx_queue_setup,
 	.rx_queue_release = eth_queue_release,
