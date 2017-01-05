@@ -2755,7 +2755,7 @@ ecore_get_hw_info(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 	/* Since all information is common, only first hwfns should do this */
 	if (IS_LEAD_HWFN(p_hwfn)) {
 		rc = ecore_iov_hw_info(p_hwfn);
-		if (rc)
+		if (rc != ECORE_SUCCESS)
 			return rc;
 	}
 
@@ -2769,12 +2769,17 @@ ecore_get_hw_info(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 	ecore_hw_info_port_num(p_hwfn, p_ptt);
 
 #ifndef ASIC_ONLY
-	if (CHIP_REV_IS_ASIC(p_hwfn->p_dev))
+	if (CHIP_REV_IS_ASIC(p_hwfn->p_dev)) {
 #endif
-		ecore_hw_get_nvm_info(p_hwfn, p_ptt);
+	rc = ecore_hw_get_nvm_info(p_hwfn, p_ptt);
+	if (rc != ECORE_SUCCESS)
+		return rc;
+#ifndef ASIC_ONLY
+	}
+#endif
 
 	rc = ecore_int_igu_read_cam(p_hwfn, p_ptt);
-	if (rc)
+	if (rc != ECORE_SUCCESS)
 		return rc;
 
 #ifndef ASIC_ONLY
