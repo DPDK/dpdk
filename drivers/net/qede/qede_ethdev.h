@@ -102,6 +102,7 @@
 #define CHIP_NUM_57980S_25                     0x1656
 #define CHIP_NUM_57980S_IOV                    0x1664
 #define CHIP_NUM_57980S_100                    0x1644
+#define CHIP_NUM_57980S_50                     0x1654
 #define CHIP_NUM_AH_50G	                       0x8070
 #define CHIP_NUM_AH_10G                        0x8071
 #define CHIP_NUM_AH_40G			       0x8072
@@ -115,6 +116,7 @@
 #define PCI_DEVICE_ID_QLOGIC_57980S_25         CHIP_NUM_57980S_25
 #define PCI_DEVICE_ID_QLOGIC_57980S_IOV        CHIP_NUM_57980S_IOV
 #define PCI_DEVICE_ID_QLOGIC_57980S_100        CHIP_NUM_57980S_100
+#define PCI_DEVICE_ID_QLOGIC_57980S_50         CHIP_NUM_57980S_50
 #define PCI_DEVICE_ID_QLOGIC_AH_50G            CHIP_NUM_AH_50G
 #define PCI_DEVICE_ID_QLOGIC_AH_10G            CHIP_NUM_AH_10G
 #define PCI_DEVICE_ID_QLOGIC_AH_40G            CHIP_NUM_AH_40G
