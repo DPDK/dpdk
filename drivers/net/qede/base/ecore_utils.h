@@ -10,6 +10,12 @@
 #define __ECORE_UTILS_H__
 
 /* dma_addr_t manip */
+/* Suppress "right shift count >= width of type" warning when that quantity is
+ * 32-bits rquires the >> 16) >> 16)
+ */
+#define PTR_LO(x)		((u32)(((osal_uintptr_t)(x)) & 0xffffffff))
+#define PTR_HI(x)		((u32)((((osal_uintptr_t)(x)) >> 16) >> 16))
+
 #define DMA_LO(x)		((u32)(((dma_addr_t)(x)) & 0xffffffff))
 #define DMA_HI(x)		((u32)(((dma_addr_t)(x)) >> 32))
 
