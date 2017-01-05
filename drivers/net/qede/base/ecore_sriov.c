@@ -2099,26 +2099,26 @@ static void ecore_iov_vf_mbx_start_txq(struct ecore_hwfn *p_hwfn,
 	pq_params.eth.is_vf = 1;
 	pq_params.eth.vf_id = vf->relative_vf_id;
 
-	req = &mbx->req_virt->start_txq;
 	OSAL_MEMSET(&p_params, 0, sizeof(p_params));
+	req = &mbx->req_virt->start_txq;
+
+	if (!ecore_iov_validate_txq(p_hwfn, vf, req->tx_qid) ||
+	    !ecore_iov_validate_sb(p_hwfn, vf, req->hw_sb))
+		goto out;
+
 	p_params.queue_id = (u8)vf->vf_queues[req->tx_qid].fw_tx_qid;
 	p_params.vport_id = vf->vport_id;
 	p_params.stats_id = vf->abs_vf_id + 0x10,
 	p_params.sb = req->hw_sb;
 	p_params.sb_idx = req->sb_index;
 
-	if (!ecore_iov_validate_txq(p_hwfn, vf, req->tx_qid) ||
-	    !ecore_iov_validate_sb(p_hwfn, vf, req->hw_sb))
-		goto out;
-
-	rc = ecore_sp_eth_txq_start_ramrod(
-		p_hwfn,
-		vf->opaque_fid,
-		vf->vf_queues[req->tx_qid].fw_cid,
-		&p_params,
-		req->pbl_addr,
-		req->pbl_size,
-		&pq_params);
+	rc = ecore_sp_eth_txq_start_ramrod(p_hwfn,
+					   vf->opaque_fid,
+					   vf->vf_queues[req->tx_qid].fw_cid,
+					   &p_params,
+					   req->pbl_addr,
+					   req->pbl_size,
+					   &pq_params);
 
 	if (rc)
 		status = PFVF_STATUS_FAILURE;
