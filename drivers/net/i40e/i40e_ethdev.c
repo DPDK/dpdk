@@ -477,6 +477,7 @@ static int i40e_sw_tunnel_filter_insert(struct i40e_pf *pf,
 				struct i40e_tunnel_filter *tunnel_filter);
 
 static void i40e_ethertype_filter_restore(struct i40e_pf *pf);
+static void i40e_tunnel_filter_restore(struct i40e_pf *pf);
 static void i40e_filter_restore(struct i40e_pf *pf);
 
 static const struct rte_pci_id pci_id_i40e_map[] = {
@@ -10229,8 +10230,28 @@ i40e_ethertype_filter_restore(struct i40e_pf *pf)
 		    stats.mac_etype_free, stats.etype_free);
 }
 
+/* Restore tunnel filter */
+static void
+i40e_tunnel_filter_restore(struct i40e_pf *pf)
+{
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	struct i40e_vsi *vsi = pf->main_vsi;
+	struct i40e_tunnel_filter_list
+		*tunnel_list = &pf->tunnel.tunnel_list;
+	struct i40e_tunnel_filter *f;
+	struct i40e_aqc_add_remove_cloud_filters_element_data cld_filter;
+
+	TAILQ_FOREACH(f, tunnel_list, rules) {
+		memset(&cld_filter, 0, sizeof(cld_filter));
+		rte_memcpy(&cld_filter, &f->input, sizeof(f->input));
+		cld_filter.queue_number = f->queue;
+		i40e_aq_add_cloud_filters(hw, vsi->seid, &cld_filter, 1);
+	}
+}
+
 static void
 i40e_filter_restore(struct i40e_pf *pf)
 {
 	i40e_ethertype_filter_restore(pf);
+	i40e_tunnel_filter_restore(pf);
 }
