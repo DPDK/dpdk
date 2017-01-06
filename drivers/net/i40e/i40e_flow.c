@@ -68,6 +68,9 @@ static struct rte_flow *i40e_flow_create(struct rte_eth_dev *dev,
 					 const struct rte_flow_item pattern[],
 					 const struct rte_flow_action actions[],
 					 struct rte_flow_error *error);
+static int i40e_flow_destroy(struct rte_eth_dev *dev,
+			     struct rte_flow *flow,
+			     struct rte_flow_error *error);
 static int
 i40e_flow_parse_ethertype_pattern(struct rte_eth_dev *dev,
 				  const struct rte_flow_item *pattern,
@@ -117,6 +120,7 @@ static int i40e_flow_parse_tunnel_filter(struct rte_eth_dev *dev,
 const struct rte_flow_ops i40e_flow_ops = {
 	.validate = i40e_flow_validate,
 	.create = i40e_flow_create,
+	.destroy = i40e_flow_destroy,
 };
 
 union i40e_filter_t cons_filter;
@@ -1601,4 +1605,32 @@ free_flow:
 			   "Failed to create flow.");
 	rte_free(flow);
 	return NULL;
+}
+
+static int
+i40e_flow_destroy(struct rte_eth_dev *dev,
+		  struct rte_flow *flow,
+		  struct rte_flow_error *error)
+{
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	enum rte_filter_type filter_type = flow->filter_type;
+	int ret = 0;
+
+	switch (filter_type) {
+	default:
+		PMD_DRV_LOG(WARNING, "Filter type (%d) not supported",
+			    filter_type);
+		ret = -EINVAL;
+		break;
+	}
+
+	if (!ret) {
+		TAILQ_REMOVE(&pf->flow_list, flow, node);
+		rte_free(flow);
+	} else
+		rte_flow_error_set(error, -ret,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "Failed to destroy flow.");
+
+	return ret;
 }
