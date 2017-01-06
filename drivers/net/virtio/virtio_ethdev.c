@@ -1308,7 +1308,12 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 	eth_dev->tx_pkt_burst = &virtio_xmit_pkts;
 
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
-		rx_func_get(eth_dev);
+		if (hw->use_simple_rxtx) {
+			eth_dev->tx_pkt_burst = virtio_xmit_pkts_simple;
+			eth_dev->rx_pkt_burst = virtio_recv_pkts_vec;
+		} else {
+			rx_func_get(eth_dev);
+		}
 		return 0;
 	}
 
