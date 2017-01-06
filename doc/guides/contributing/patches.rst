@@ -7,7 +7,7 @@ This document outlines the guidelines for submitting code to DPDK.
 
 The DPDK development process is modelled (loosely) on the Linux Kernel development model so it is worth reading the
 Linux kernel guide on submitting patches:
-`How to Get Your Change Into the Linux Kernel <http://www.kernel.org/doc/Documentation/SubmittingPatches>`_.
+`How to Get Your Change Into the Linux Kernel <https://www.kernel.org/doc/html/latest/process/submitting-patches.html>`_.
 The rationale for many of the DPDK guidelines is explained in greater detail in the kernel guidelines.
 
 
@@ -192,7 +192,7 @@ Here are some guidelines for the body of a commit message:
       git commit --signoff # or -s
 
   The purpose of the signoff is explained in the
-  `Developer's Certificate of Origin <http://www.kernel.org/doc/Documentation/SubmittingPatches>`_
+  `Developer's Certificate of Origin <https://www.kernel.org/doc/html/latest/process/submitting-patches.html#developer-s-certificate-of-origin-1-1>`_
   section of the Linux kernel guidelines.
 
   .. Note::
