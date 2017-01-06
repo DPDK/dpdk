@@ -670,6 +670,7 @@ int i40e_fdir_ctrl_func(struct rte_eth_dev *dev,
 int i40e_select_filter_input_set(struct i40e_hw *hw,
 				 struct rte_eth_input_set_conf *conf,
 				 enum rte_filter_type filter);
+void i40e_fdir_filter_restore(struct i40e_pf *pf);
 int i40e_hash_filter_inset_select(struct i40e_hw *hw,
 			     struct rte_eth_input_set_conf *conf);
 int i40e_fdir_filter_inset_select(struct i40e_pf *pf,

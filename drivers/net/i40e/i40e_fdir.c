@@ -1586,3 +1586,34 @@ i40e_fdir_ctrl_func(struct rte_eth_dev *dev,
 	}
 	return ret;
 }
+
+/* Restore flow director filter */
+void
+i40e_fdir_filter_restore(struct i40e_pf *pf)
+{
+	struct rte_eth_dev *dev = I40E_VSI_TO_ETH_DEV(pf->main_vsi);
+	struct i40e_fdir_filter_list *fdir_list = &pf->fdir.fdir_list;
+	struct i40e_fdir_filter *f;
+#ifdef RTE_LIBRTE_I40E_DEBUG_DRIVER
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	uint32_t fdstat;
+	uint32_t guarant_cnt;  /**< Number of filters in guaranteed spaces. */
+	uint32_t best_cnt;     /**< Number of filters in best effort spaces. */
+#endif /* RTE_LIBRTE_I40E_DEBUG_DRIVER */
+
+	TAILQ_FOREACH(f, fdir_list, rules)
+		i40e_add_del_fdir_filter(dev, &f->fdir, TRUE);
+
+#ifdef RTE_LIBRTE_I40E_DEBUG_DRIVER
+	fdstat = I40E_READ_REG(hw, I40E_PFQF_FDSTAT);
+	guarant_cnt =
+		(uint32_t)((fdstat & I40E_PFQF_FDSTAT_GUARANT_CNT_MASK) >>
+			   I40E_PFQF_FDSTAT_GUARANT_CNT_SHIFT);
+	best_cnt =
+		(uint32_t)((fdstat & I40E_PFQF_FDSTAT_BEST_CNT_MASK) >>
+			   I40E_PFQF_FDSTAT_BEST_CNT_SHIFT);
+#endif /* RTE_LIBRTE_I40E_DEBUG_DRIVER */
+
+	PMD_DRV_LOG(INFO, "FDIR: Guarant count: %d,  Best count: %d\n",
+		    guarant_cnt, best_cnt);
+}

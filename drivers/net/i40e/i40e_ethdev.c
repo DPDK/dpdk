@@ -10254,4 +10254,5 @@ i40e_filter_restore(struct i40e_pf *pf)
 {
 	i40e_ethertype_filter_restore(pf);
 	i40e_tunnel_filter_restore(pf);
+	i40e_fdir_filter_restore(pf);
 }
