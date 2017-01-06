@@ -969,8 +969,7 @@ qede_dev_info_get(struct rte_eth_dev *eth_dev,
 	PMD_INIT_FUNC_TRACE(edev);
 
 	dev_info->pci_dev = RTE_DEV_TO_PCI(eth_dev->device);
-	dev_info->min_rx_bufsize = (uint32_t)(ETHER_MIN_MTU +
-					      QEDE_ETH_OVERHEAD);
+	dev_info->min_rx_bufsize = (uint32_t)QEDE_MIN_RX_BUFF_SIZE;
 	dev_info->max_rx_pktlen = (uint32_t)ETH_TX_MAX_NON_LSO_PKT_LEN;
 	dev_info->rx_desc_lim = qede_rx_desc_lim;
 	dev_info->tx_desc_lim = qede_tx_desc_lim;

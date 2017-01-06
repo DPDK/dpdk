@@ -51,14 +51,21 @@
 	((flags) & (PARSING_AND_ERR_FLAGS_TUNNEL8021QTAGEXIST_MASK \
 		<< PARSING_AND_ERR_FLAGS_TUNNEL8021QTAGEXIST_SHIFT))
 
+#define QEDE_MIN_RX_BUFF_SIZE		(1024)
+#define QEDE_VLAN_TAG_SIZE		(4)
+#define QEDE_LLC_SNAP_HDR_LEN		(8)
+
 /* Max supported alignment is 256 (8 shift)
  * minimal alignment shift 6 is optimal for 57xxx HW performance
  */
 #define QEDE_L1_CACHE_SHIFT	6
 #define QEDE_RX_ALIGN_SHIFT	(RTE_MAX(6, RTE_MIN(8, QEDE_L1_CACHE_SHIFT)))
 #define QEDE_FW_RX_ALIGN_END	(1UL << QEDE_RX_ALIGN_SHIFT)
-
-#define QEDE_ETH_OVERHEAD       (ETHER_HDR_LEN + 8 + 8 + QEDE_FW_RX_ALIGN_END)
+#define QEDE_CEIL_TO_CACHE_LINE_SIZE(n) (((n) + (QEDE_FW_RX_ALIGN_END - 1)) & \
+					~(QEDE_FW_RX_ALIGN_END - 1))
+/* Note: QEDE_LLC_SNAP_HDR_LEN is optional */
+#define QEDE_ETH_OVERHEAD	((ETHER_HDR_LEN) + ((2 * QEDE_VLAN_TAG_SIZE)) \
+				+ (QEDE_LLC_SNAP_HDR_LEN))
 
 #define QEDE_RSS_OFFLOAD_ALL    (ETH_RSS_IPV4			|\
 				 ETH_RSS_NONFRAG_IPV4_TCP	|\

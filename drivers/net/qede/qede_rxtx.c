@@ -89,11 +89,11 @@ qede_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 {
 	struct qede_dev *qdev = dev->data->dev_private;
 	struct ecore_dev *edev = &qdev->edev;
-	struct rte_eth_dev_data *eth_data = dev->data;
+	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
 	struct qede_rx_queue *rxq;
-	uint16_t pkt_len = (uint16_t)dev->data->dev_conf.rxmode.max_rx_pkt_len;
+	uint16_t max_rx_pkt_len;
+	uint16_t bufsz;
 	size_t size;
-	uint16_t data_size;
 	int rc;
 	int i;
 
@@ -127,34 +127,27 @@ qede_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	rxq->nb_rx_desc = nb_desc;
 	rxq->queue_id = queue_idx;
 	rxq->port_id = dev->data->port_id;
+	max_rx_pkt_len = (uint16_t)rxmode->max_rx_pkt_len;
+	qdev->mtu = max_rx_pkt_len;
 
-	/* Sanity check */
-	data_size = (uint16_t)rte_pktmbuf_data_room_size(mp) -
-				RTE_PKTMBUF_HEADROOM;
-
-	if (pkt_len > data_size && !dev->data->scattered_rx) {
-		DP_ERR(edev, "MTU %u should not exceed dataroom %u\n",
-		       pkt_len, data_size);
-		rte_free(rxq);
-		return -EINVAL;
+	/* Fix up RX buffer size */
+	bufsz = (uint16_t)rte_pktmbuf_data_room_size(mp) - RTE_PKTMBUF_HEADROOM;
+	if ((rxmode->enable_scatter)			||
+	    (max_rx_pkt_len + QEDE_ETH_OVERHEAD) > bufsz) {
+		if (!dev->data->scattered_rx) {
+			DP_INFO(edev, "Forcing scatter-gather mode\n");
+			dev->data->scattered_rx = 1;
+		}
 	}
-
 	if (dev->data->scattered_rx)
-		rxq->rx_buf_size = data_size;
+		rxq->rx_buf_size = bufsz + QEDE_ETH_OVERHEAD;
 	else
-		rxq->rx_buf_size = pkt_len + QEDE_ETH_OVERHEAD;
+		rxq->rx_buf_size = qdev->mtu + QEDE_ETH_OVERHEAD;
+	/* Align to cache-line size if needed */
+	rxq->rx_buf_size = QEDE_CEIL_TO_CACHE_LINE_SIZE(rxq->rx_buf_size);
 
-	qdev->mtu = pkt_len;
-
-	DP_INFO(edev, "MTU = %u ; RX buffer = %u\n",
-		qdev->mtu, rxq->rx_buf_size);
-
-	if (pkt_len > ETHER_MAX_LEN) {
-		dev->data->dev_conf.rxmode.jumbo_frame = 1;
-		DP_NOTICE(edev, false, "jumbo frame enabled\n");
-	} else {
-		dev->data->dev_conf.rxmode.jumbo_frame = 0;
-	}
+	DP_INFO(edev, "mtu %u mbufsz %u bd_max_bytes %u scatter_mode %d\n",
+		qdev->mtu, bufsz, rxq->rx_buf_size, dev->data->scattered_rx);
 
 	/* Allocate the parallel driver ring for Rx buffers */
 	size = sizeof(*rxq->sw_rx_ring) * rxq->nb_rx_desc;
