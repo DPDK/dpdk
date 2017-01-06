@@ -931,7 +931,7 @@ static void ecore_mcp_send_protocol_stats(struct ecore_hwfn *p_hwfn,
 		hsi_param = DRV_MSG_CODE_STATS_TYPE_LAN;
 		break;
 	default:
-		DP_NOTICE(p_hwfn, false, "Invalid protocol type %d\n", type);
+		DP_INFO(p_hwfn, "Invalid protocol type %d\n", type);
 		return;
 	}
 

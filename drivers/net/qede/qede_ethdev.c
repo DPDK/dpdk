@@ -650,7 +650,7 @@ static void qede_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask)
 			qede_vlan_filter_set(eth_dev, 0, 1);
 		} else {
 			if (qdev->configured_vlans > 1) { /* Excluding VLAN0 */
-				DP_NOTICE(edev, false,
+				DP_ERR(edev,
 				  " Please remove existing VLAN filters"
 				  " before disabling VLAN filtering\n");
 				/* Signal app that VLAN filtering is still
@@ -684,7 +684,7 @@ static int qede_vlan_filter_set(struct rte_eth_dev *eth_dev,
 
 	if (on) {
 		if (qdev->configured_vlans == dev_info->num_vlan_filters) {
-			DP_INFO(edev, "Reached max VLAN filter limit"
+			DP_ERR(edev, "Reached max VLAN filter limit"
 				      " enabling accept_any_vlan\n");
 			qede_config_accept_any_vlan(qdev, true);
 			return 0;
@@ -849,14 +849,13 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 	if (edev->num_hwfns > 1) {
 		if (eth_dev->data->nb_rx_queues < 2 ||
 		    eth_dev->data->nb_tx_queues < 2) {
-			DP_NOTICE(edev, false,
-				  "100G mode needs min. 2 RX/TX queues\n");
+			DP_ERR(edev, "100G mode needs min. 2 RX/TX queues\n");
 			return -EINVAL;
 		}
 
 		if ((eth_dev->data->nb_rx_queues % 2 != 0) ||
 		    (eth_dev->data->nb_tx_queues % 2 != 0)) {
-			DP_NOTICE(edev, false,
+			DP_ERR(edev,
 				  "100G mode needs even no. of RX/TX queues\n");
 			return -EINVAL;
 		}
@@ -867,7 +866,7 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 		eth_dev->data->scattered_rx = 1;
 
 	if (rxmode->enable_lro == 1) {
-		DP_INFO(edev, "LRO is not supported\n");
+		DP_ERR(edev, "LRO is not supported\n");
 		return -EINVAL;
 	}
 
