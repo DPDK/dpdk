@@ -116,6 +116,8 @@ static int i40e_flow_parse_tunnel_filter(struct rte_eth_dev *dev,
 					 const struct rte_flow_action actions[],
 					 struct rte_flow_error *error,
 					 union i40e_filter_t *filter);
+static int i40e_flow_destroy_ethertype_filter(struct i40e_pf *pf,
+				      struct i40e_ethertype_filter *filter);
 
 const struct rte_flow_ops i40e_flow_ops = {
 	.validate = i40e_flow_validate,
@@ -1617,6 +1619,10 @@ i40e_flow_destroy(struct rte_eth_dev *dev,
 	int ret = 0;
 
 	switch (filter_type) {
+	case RTE_ETH_FILTER_ETHERTYPE:
+		ret = i40e_flow_destroy_ethertype_filter(pf,
+			 (struct i40e_ethertype_filter *)flow->rule);
+		break;
 	default:
 		PMD_DRV_LOG(WARNING, "Filter type (%d) not supported",
 			    filter_type);
@@ -1631,6 +1637,41 @@ i40e_flow_destroy(struct rte_eth_dev *dev,
 		rte_flow_error_set(error, -ret,
 				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 				   "Failed to destroy flow.");
+
+	return ret;
+}
+
+static int
+i40e_flow_destroy_ethertype_filter(struct i40e_pf *pf,
+				   struct i40e_ethertype_filter *filter)
+{
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	struct i40e_ethertype_rule *ethertype_rule = &pf->ethertype;
+	struct i40e_ethertype_filter *node;
+	struct i40e_control_filter_stats stats;
+	uint16_t flags = 0;
+	int ret = 0;
+
+	if (!(filter->flags & RTE_ETHTYPE_FLAGS_MAC))
+		flags |= I40E_AQC_ADD_CONTROL_PACKET_FLAGS_IGNORE_MAC;
+	if (filter->flags & RTE_ETHTYPE_FLAGS_DROP)
+		flags |= I40E_AQC_ADD_CONTROL_PACKET_FLAGS_DROP;
+	flags |= I40E_AQC_ADD_CONTROL_PACKET_FLAGS_TO_QUEUE;
+
+	memset(&stats, 0, sizeof(stats));
+	ret = i40e_aq_add_rem_control_packet_filter(hw,
+				    filter->input.mac_addr.addr_bytes,
+				    filter->input.ether_type,
+				    flags, pf->main_vsi->seid,
+				    filter->queue, 0, &stats, NULL);
+	if (ret < 0)
+		return ret;
+
+	node = i40e_sw_ethertype_filter_lookup(ethertype_rule, &filter->input);
+	if (!node)
+		return -EINVAL;
+
+	ret = i40e_sw_ethertype_filter_del(pf, &node->input);
 
 	return ret;
 }
