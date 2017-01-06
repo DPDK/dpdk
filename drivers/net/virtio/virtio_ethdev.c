@@ -1294,6 +1294,49 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 }
 
 /*
+ * Remap the PCI device again (IO port map for legacy device and
+ * memory map for modern device), so that the secondary process
+ * could have the PCI initiated correctly.
+ */
+static int
+virtio_remap_pci(struct rte_pci_device *pci_dev, struct virtio_hw *hw)
+{
+	if (hw->modern) {
+		/*
+		 * We don't have to re-parse the PCI config space, since
+		 * rte_eal_pci_map_device() makes sure the mapped address
+		 * in secondary process would equal to the one mapped in
+		 * the primary process: error will be returned if that
+		 * requirement is not met.
+		 *
+		 * That said, we could simply reuse all cap pointers
+		 * (such as dev_cfg, common_cfg, etc.) parsed from the
+		 * primary process, which is stored in shared memory.
+		 */
+		if (rte_eal_pci_map_device(pci_dev)) {
+			PMD_INIT_LOG(DEBUG, "failed to map pci device!");
+			return -1;
+		}
+	} else {
+		if (rte_eal_pci_ioport_map(pci_dev, 0, VTPCI_IO(hw)) < 0)
+			return -1;
+	}
+
+	return 0;
+}
+
+static void
+virtio_set_vtpci_ops(struct virtio_hw *hw)
+{
+	if (hw->virtio_user_dev)
+		VTPCI_OPS(hw) = &virtio_user_ops;
+	else if (hw->modern)
+		VTPCI_OPS(hw) = &modern_ops;
+	else
+		VTPCI_OPS(hw) = &legacy_ops;
+}
+
+/*
  * This function is based on probe() function in virtio_pci.c
  * It returns 0 on success.
  */
@@ -1310,6 +1353,14 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 	eth_dev->tx_pkt_burst = &virtio_xmit_pkts;
 
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
+		if (!hw->virtio_user_dev) {
+			ret = virtio_remap_pci(RTE_DEV_TO_PCI(eth_dev->device),
+					       hw);
+			if (ret)
+				return ret;
+		}
+
+		virtio_set_vtpci_ops(hw);
 		if (hw->use_simple_rxtx) {
 			eth_dev->tx_pkt_burst = virtio_xmit_pkts_simple;
 			eth_dev->rx_pkt_burst = virtio_recv_pkts_vec;

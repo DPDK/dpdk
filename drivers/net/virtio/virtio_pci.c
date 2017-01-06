@@ -304,7 +304,7 @@ legacy_virtio_resource_init(struct rte_pci_device *pci_dev,
 	return 0;
 }
 
-static const struct virtio_pci_ops legacy_ops = {
+const struct virtio_pci_ops legacy_ops = {
 	.read_dev_cfg	= legacy_read_dev_config,
 	.write_dev_cfg	= legacy_write_dev_config,
 	.reset		= legacy_reset,
@@ -520,7 +520,7 @@ modern_notify_queue(struct virtio_hw *hw __rte_unused, struct virtqueue *vq)
 	io_write16(1, vq->notify_addr);
 }
 
-static const struct virtio_pci_ops modern_ops = {
+const struct virtio_pci_ops modern_ops = {
 	.read_dev_cfg	= modern_read_dev_config,
 	.write_dev_cfg	= modern_write_dev_config,
 	.reset		= modern_reset,

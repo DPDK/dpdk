@@ -339,4 +339,8 @@ vtpci_intr_handle(struct virtio_hw *hw)
 	return hw->dev ? &hw->dev->intr_handle : NULL;
 }
 
+extern const struct virtio_pci_ops legacy_ops;
+extern const struct virtio_pci_ops modern_ops;
+extern const struct virtio_pci_ops virtio_user_ops;
+
 #endif /* _VIRTIO_PCI_H_ */

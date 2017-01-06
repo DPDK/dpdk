@@ -81,6 +81,11 @@ EAL
 Drivers
 ~~~~~~~
 
+* **net/virtio: Fixed multiple process support.**
+
+  Fixed few regressions introduced in recent releases that break the virtio
+  multiple process support.
+
 
 Libraries
 ~~~~~~~~~
