@@ -1629,6 +1629,10 @@ i40e_flow_destroy(struct rte_eth_dev *dev,
 		ret = i40e_flow_destroy_tunnel_filter(pf,
 			      (struct i40e_tunnel_filter *)flow->rule);
 		break;
+	case RTE_ETH_FILTER_FDIR:
+		ret = i40e_add_del_fdir_filter(dev,
+		       &((struct i40e_fdir_filter *)flow->rule)->fdir, 0);
+		break;
 	default:
 		PMD_DRV_LOG(WARNING, "Filter type (%d) not supported",
 			    filter_type);
