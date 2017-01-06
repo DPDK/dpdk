@@ -1030,6 +1030,48 @@ err_tunnel_hash_map_alloc:
 }
 
 static int
+i40e_init_fdir_filter_list(struct rte_eth_dev *dev)
+{
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct i40e_fdir_info *fdir_info = &pf->fdir;
+	char fdir_hash_name[RTE_HASH_NAMESIZE];
+	int ret;
+
+	struct rte_hash_parameters fdir_hash_params = {
+		.name = fdir_hash_name,
+		.entries = I40E_MAX_FDIR_FILTER_NUM,
+		.key_len = sizeof(struct rte_eth_fdir_input),
+		.hash_func = rte_hash_crc,
+	};
+
+	/* Initialize flow director filter rule list and hash */
+	TAILQ_INIT(&fdir_info->fdir_list);
+	snprintf(fdir_hash_name, RTE_HASH_NAMESIZE,
+		 "fdir_%s", dev->data->name);
+	fdir_info->hash_table = rte_hash_create(&fdir_hash_params);
+	if (!fdir_info->hash_table) {
+		PMD_INIT_LOG(ERR, "Failed to create fdir hash table!");
+		return -EINVAL;
+	}
+	fdir_info->hash_map = rte_zmalloc("i40e_fdir_hash_map",
+					  sizeof(struct i40e_fdir_filter *) *
+					  I40E_MAX_FDIR_FILTER_NUM,
+					  0);
+	if (!fdir_info->hash_map) {
+		PMD_INIT_LOG(ERR,
+			     "Failed to allocate memory for fdir hash map!");
+		ret = -ENOMEM;
+		goto err_fdir_hash_map_alloc;
+	}
+	return 0;
+
+err_fdir_hash_map_alloc:
+	rte_hash_free(fdir_info->hash_table);
+
+	return ret;
+}
+
+static int
 eth_i40e_dev_init(struct rte_eth_dev *dev)
 {
 	struct rte_pci_device *pci_dev;
@@ -1291,9 +1333,15 @@ eth_i40e_dev_init(struct rte_eth_dev *dev)
 	ret = i40e_init_tunnel_filter_list(dev);
 	if (ret < 0)
 		goto err_init_tunnel_filter_list;
+	ret = i40e_init_fdir_filter_list(dev);
+	if (ret < 0)
+		goto err_init_fdir_filter_list;
 
 	return 0;
 
+err_init_fdir_filter_list:
+	rte_free(pf->tunnel.hash_table);
+	rte_free(pf->tunnel.hash_map);
 err_init_tunnel_filter_list:
 	rte_free(pf->ethertype.hash_table);
 	rte_free(pf->ethertype.hash_map);
@@ -1357,6 +1405,25 @@ i40e_rm_tunnel_filter_list(struct i40e_pf *pf)
 	}
 }
 
+static void
+i40e_rm_fdir_filter_list(struct i40e_pf *pf)
+{
+	struct i40e_fdir_filter *p_fdir;
+	struct i40e_fdir_info *fdir_info;
+
+	fdir_info = &pf->fdir;
+	/* Remove all flow director rules and hash */
+	if (fdir_info->hash_map)
+		rte_free(fdir_info->hash_map);
+	if (fdir_info->hash_table)
+		rte_hash_free(fdir_info->hash_table);
+
+	while ((p_fdir = TAILQ_FIRST(&fdir_info->fdir_list))) {
+		TAILQ_REMOVE(&fdir_info->fdir_list, p_fdir, rules);
+		rte_free(p_fdir);
+	}
+}
+
 static int
 eth_i40e_dev_uninit(struct rte_eth_dev *dev)
 {
@@ -1414,6 +1481,7 @@ eth_i40e_dev_uninit(struct rte_eth_dev *dev)
 
 	i40e_rm_ethtype_filter_list(pf);
 	i40e_rm_tunnel_filter_list(pf);
+	i40e_rm_fdir_filter_list(pf);
 
 	return 0;
 }

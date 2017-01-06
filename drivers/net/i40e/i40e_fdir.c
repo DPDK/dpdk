@@ -121,6 +121,14 @@ static int i40e_fdir_filter_programming(struct i40e_pf *pf,
 			bool add);
 static int i40e_fdir_flush(struct rte_eth_dev *dev);
 
+static int i40e_fdir_filter_convert(const struct rte_eth_fdir_filter *input,
+			 struct i40e_fdir_filter *filter);
+static struct i40e_fdir_filter *
+i40e_sw_fdir_filter_lookup(struct i40e_fdir_info *fdir_info,
+			const struct rte_eth_fdir_input *input);
+static int i40e_sw_fdir_filter_insert(struct i40e_pf *pf,
+				   struct i40e_fdir_filter *filter);
+
 static int
 i40e_fdir_rx_queue_init(struct i40e_rx_queue *rxq)
 {
@@ -1017,6 +1025,74 @@ i40e_check_fdir_programming_status(struct i40e_rx_queue *rxq)
 	return ret;
 }
 
+static int
+i40e_fdir_filter_convert(const struct rte_eth_fdir_filter *input,
+			 struct i40e_fdir_filter *filter)
+{
+	rte_memcpy(&filter->fdir, input, sizeof(struct rte_eth_fdir_filter));
+	return 0;
+}
+
+/* Check if there exists the flow director filter */
+static struct i40e_fdir_filter *
+i40e_sw_fdir_filter_lookup(struct i40e_fdir_info *fdir_info,
+			const struct rte_eth_fdir_input *input)
+{
+	int ret;
+
+	ret = rte_hash_lookup(fdir_info->hash_table, (const void *)input);
+	if (ret < 0)
+		return NULL;
+
+	return fdir_info->hash_map[ret];
+}
+
+/* Add a flow director filter into the SW list */
+static int
+i40e_sw_fdir_filter_insert(struct i40e_pf *pf, struct i40e_fdir_filter *filter)
+{
+	struct i40e_fdir_info *fdir_info = &pf->fdir;
+	int ret;
+
+	ret = rte_hash_add_key(fdir_info->hash_table,
+			       &filter->fdir.input);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR,
+			    "Failed to insert fdir filter to hash table %d!",
+			    ret);
+		return ret;
+	}
+	fdir_info->hash_map[ret] = filter;
+
+	TAILQ_INSERT_TAIL(&fdir_info->fdir_list, filter, rules);
+
+	return 0;
+}
+
+/* Delete a flow director filter from the SW list */
+int
+i40e_sw_fdir_filter_del(struct i40e_pf *pf, struct rte_eth_fdir_input *input)
+{
+	struct i40e_fdir_info *fdir_info = &pf->fdir;
+	struct i40e_fdir_filter *filter;
+	int ret;
+
+	ret = rte_hash_del_key(fdir_info->hash_table, input);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR,
+			    "Failed to delete fdir filter to hash table %d!",
+			    ret);
+		return ret;
+	}
+	filter = fdir_info->hash_map[ret];
+	fdir_info->hash_map[ret] = NULL;
+
+	TAILQ_REMOVE(&fdir_info->fdir_list, filter, rules);
+	rte_free(filter);
+
+	return 0;
+}
+
 /*
  * i40e_add_del_fdir_filter - add or remove a flow director filter.
  * @pf: board private structure
@@ -1032,6 +1108,9 @@ i40e_add_del_fdir_filter(struct rte_eth_dev *dev,
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	unsigned char *pkt = (unsigned char *)pf->fdir.prg_pkt;
 	enum i40e_filter_pctype pctype;
+	struct i40e_fdir_info *fdir_info = &pf->fdir;
+	struct i40e_fdir_filter *fdir_filter, *node;
+	struct i40e_fdir_filter check_filter; /* Check if the filter exists */
 	int ret = 0;
 
 	if (dev->data->dev_conf.fdir_conf.mode != RTE_FDIR_MODE_PERFECT) {
@@ -1051,6 +1130,22 @@ i40e_add_del_fdir_filter(struct rte_eth_dev *dev,
 	if (filter->input.flow_ext.is_vf &&
 		filter->input.flow_ext.dst_id >= pf->vf_num) {
 		PMD_DRV_LOG(ERR, "Invalid VF ID");
+		return -EINVAL;
+	}
+
+	/* Check if there is the filter in SW list */
+	memset(&check_filter, 0, sizeof(check_filter));
+	i40e_fdir_filter_convert(filter, &check_filter);
+	node = i40e_sw_fdir_filter_lookup(fdir_info, &check_filter.fdir.input);
+	if (add && node) {
+		PMD_DRV_LOG(ERR,
+			    "Conflict with existing flow director rules!");
+		return -EINVAL;
+	}
+
+	if (!add && !node) {
+		PMD_DRV_LOG(ERR,
+			    "There's no corresponding flow firector filter!");
 		return -EINVAL;
 	}
 
@@ -1077,6 +1172,16 @@ i40e_add_del_fdir_filter(struct rte_eth_dev *dev,
 			    pctype);
 		return ret;
 	}
+
+	if (add) {
+		fdir_filter = rte_zmalloc("fdir_filter",
+					  sizeof(*fdir_filter), 0);
+		rte_memcpy(fdir_filter, &check_filter, sizeof(check_filter));
+		ret = i40e_sw_fdir_filter_insert(pf, fdir_filter);
+	} else {
+		ret = i40e_sw_fdir_filter_del(pf, &node->fdir.input);
+	}
+
 	return ret;
 }
 

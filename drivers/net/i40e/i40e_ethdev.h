@@ -377,6 +377,14 @@ struct i40e_fdir_flex_mask {
 };
 
 #define I40E_FILTER_PCTYPE_MAX 64
+#define I40E_MAX_FDIR_FILTER_NUM (1024 * 8)
+
+struct i40e_fdir_filter {
+	TAILQ_ENTRY(i40e_fdir_filter) rules;
+	struct rte_eth_fdir_filter fdir;
+};
+
+TAILQ_HEAD(i40e_fdir_filter_list, i40e_fdir_filter);
 /*
  *  A structure used to define fields of a FDIR related info.
  */
@@ -395,6 +403,10 @@ struct i40e_fdir_info {
 	 */
 	struct i40e_fdir_flex_pit flex_set[I40E_MAX_FLXPLD_LAYER * I40E_MAX_FLXPLD_FIED];
 	struct i40e_fdir_flex_mask flex_mask[I40E_FILTER_PCTYPE_MAX];
+
+	struct i40e_fdir_filter_list fdir_list;
+	struct i40e_fdir_filter **hash_map;
+	struct rte_hash *hash_table;
 };
 
 /* Ethertype filter number HW supports */
@@ -674,6 +686,8 @@ i40e_sw_ethertype_filter_lookup(struct i40e_ethertype_rule *ethertype_rule,
 			const struct i40e_ethertype_filter_input *input);
 int i40e_sw_ethertype_filter_del(struct i40e_pf *pf,
 				 struct i40e_ethertype_filter_input *input);
+int i40e_sw_fdir_filter_del(struct i40e_pf *pf,
+			    struct rte_eth_fdir_input *input);
 struct i40e_tunnel_filter *
 i40e_sw_tunnel_filter_lookup(struct i40e_tunnel_rule *tunnel_rule,
 			     const struct i40e_tunnel_filter_input *input);
