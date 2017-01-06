@@ -118,6 +118,8 @@ static int i40e_flow_parse_tunnel_filter(struct rte_eth_dev *dev,
 					 union i40e_filter_t *filter);
 static int i40e_flow_destroy_ethertype_filter(struct i40e_pf *pf,
 				      struct i40e_ethertype_filter *filter);
+static int i40e_flow_destroy_tunnel_filter(struct i40e_pf *pf,
+					   struct i40e_tunnel_filter *filter);
 
 const struct rte_flow_ops i40e_flow_ops = {
 	.validate = i40e_flow_validate,
@@ -1623,6 +1625,10 @@ i40e_flow_destroy(struct rte_eth_dev *dev,
 		ret = i40e_flow_destroy_ethertype_filter(pf,
 			 (struct i40e_ethertype_filter *)flow->rule);
 		break;
+	case RTE_ETH_FILTER_TUNNEL:
+		ret = i40e_flow_destroy_tunnel_filter(pf,
+			      (struct i40e_tunnel_filter *)flow->rule);
+		break;
 	default:
 		PMD_DRV_LOG(WARNING, "Filter type (%d) not supported",
 			    filter_type);
@@ -1672,6 +1678,41 @@ i40e_flow_destroy_ethertype_filter(struct i40e_pf *pf,
 		return -EINVAL;
 
 	ret = i40e_sw_ethertype_filter_del(pf, &node->input);
+
+	return ret;
+}
+
+static int
+i40e_flow_destroy_tunnel_filter(struct i40e_pf *pf,
+				struct i40e_tunnel_filter *filter)
+{
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	struct i40e_vsi *vsi = pf->main_vsi;
+	struct i40e_aqc_add_remove_cloud_filters_element_data cld_filter;
+	struct i40e_tunnel_rule *tunnel_rule = &pf->tunnel;
+	struct i40e_tunnel_filter *node;
+	int ret = 0;
+
+	memset(&cld_filter, 0, sizeof(cld_filter));
+	ether_addr_copy((struct ether_addr *)&filter->input.outer_mac,
+			(struct ether_addr *)&cld_filter.outer_mac);
+	ether_addr_copy((struct ether_addr *)&filter->input.inner_mac,
+			(struct ether_addr *)&cld_filter.inner_mac);
+	cld_filter.inner_vlan = filter->input.inner_vlan;
+	cld_filter.flags = filter->input.flags;
+	cld_filter.tenant_id = filter->input.tenant_id;
+	cld_filter.queue_number = filter->queue;
+
+	ret = i40e_aq_remove_cloud_filters(hw, vsi->seid,
+					   &cld_filter, 1);
+	if (ret < 0)
+		return ret;
+
+	node = i40e_sw_tunnel_filter_lookup(tunnel_rule, &filter->input);
+	if (!node)
+		return -EINVAL;
+
+	ret = i40e_sw_tunnel_filter_del(pf, &node->input);
 
 	return ret;
 }
