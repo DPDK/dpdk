@@ -37,6 +37,7 @@
 #include <rte_eth_ctrl.h>
 #include <rte_time.h>
 #include <rte_kvargs.h>
+#include <rte_hash.h>
 
 #define I40E_VLAN_TAG_SIZE        4
 
@@ -396,6 +397,30 @@ struct i40e_fdir_info {
 	struct i40e_fdir_flex_mask flex_mask[I40E_FILTER_PCTYPE_MAX];
 };
 
+/* Ethertype filter number HW supports */
+#define I40E_MAX_ETHERTYPE_FILTER_NUM 768
+
+/* Ethertype filter struct */
+struct i40e_ethertype_filter_input {
+	struct ether_addr mac_addr;   /* Mac address to match */
+	uint16_t ether_type;          /* Ether type to match */
+};
+
+struct i40e_ethertype_filter {
+	TAILQ_ENTRY(i40e_ethertype_filter) rules;
+	struct i40e_ethertype_filter_input input;
+	uint16_t flags;              /* Flags from RTE_ETHTYPE_FLAGS_* */
+	uint16_t queue;              /* Queue assigned to when match */
+};
+
+TAILQ_HEAD(i40e_ethertype_filter_list, i40e_ethertype_filter);
+
+struct i40e_ethertype_rule {
+	struct i40e_ethertype_filter_list ethertype_list;
+	struct i40e_ethertype_filter  **hash_map;
+	struct rte_hash *hash_table;
+};
+
 #define I40E_MIRROR_MAX_ENTRIES_PER_RULE   64
 #define I40E_MAX_MIRROR_RULES           64
 /*
@@ -466,6 +491,7 @@ struct i40e_pf {
 	struct i40e_vmdq_info *vmdq;
 
 	struct i40e_fdir_info fdir; /* flow director info */
+	struct i40e_ethertype_rule ethertype; /* Ethertype filter rule */
 	struct i40e_fc_conf fc_conf; /* Flow control conf */
 	struct i40e_mirror_rule_list mirror_list;
 	uint16_t nb_mirror_rule;   /* The number of mirror rules */
@@ -616,6 +642,11 @@ void i40e_rxq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	struct rte_eth_rxq_info *qinfo);
 void i40e_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 	struct rte_eth_txq_info *qinfo);
+struct i40e_ethertype_filter *
+i40e_sw_ethertype_filter_lookup(struct i40e_ethertype_rule *ethertype_rule,
+			const struct i40e_ethertype_filter_input *input);
+int i40e_sw_ethertype_filter_del(struct i40e_pf *pf,
+				 struct i40e_ethertype_filter_input *input);
 
 #define I40E_DEV_TO_PCI(eth_dev) \
 	RTE_DEV_TO_PCI((eth_dev)->device)

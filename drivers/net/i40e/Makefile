@@ -117,5 +117,6 @@ DEPDIRS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += lib/librte_eal lib/librte_ether
 DEPDIRS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += lib/librte_mempool lib/librte_mbuf
 DEPDIRS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += lib/librte_net
 DEPDIRS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += lib/librte_kvargs
+DEPDIRS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += lib/librte_hash
 
 include $(RTE_SDK)/mk/rte.lib.mk
