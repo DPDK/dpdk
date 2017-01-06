@@ -245,7 +245,6 @@ struct virtio_net_config;
 
 struct virtio_hw {
 	struct virtnet_ctl *cvq;
-	struct rte_pci_ioport io;
 	uint64_t    req_guest_features;
 	uint64_t    guest_features;
 	uint32_t    max_queue_pairs;
@@ -275,9 +274,11 @@ struct virtio_hw {
  */
 struct virtio_hw_internal {
 	const struct virtio_pci_ops *vtpci_ops;
+	struct rte_pci_ioport io;
 };
 
 #define VTPCI_OPS(hw)	(virtio_hw_internal[(hw)->port_id].vtpci_ops)
+#define VTPCI_IO(hw)	(&virtio_hw_internal[(hw)->port_id].io)
 
 extern struct virtio_hw_internal virtio_hw_internal[RTE_MAX_ETHPORTS];
 
