@@ -421,6 +421,32 @@ struct i40e_ethertype_rule {
 	struct rte_hash *hash_table;
 };
 
+/* Tunnel filter number HW supports */
+#define I40E_MAX_TUNNEL_FILTER_NUM 400
+
+/* Tunnel filter struct */
+struct i40e_tunnel_filter_input {
+	uint8_t outer_mac[6];    /* Outer mac address to match */
+	uint8_t inner_mac[6];    /* Inner mac address to match */
+	uint16_t inner_vlan;     /* Inner vlan address to match */
+	uint16_t flags;          /* Filter type flag */
+	uint32_t tenant_id;      /* Tenant id to match */
+};
+
+struct i40e_tunnel_filter {
+	TAILQ_ENTRY(i40e_tunnel_filter) rules;
+	struct i40e_tunnel_filter_input input;
+	uint16_t queue; /* Queue assigned to when match */
+};
+
+TAILQ_HEAD(i40e_tunnel_filter_list, i40e_tunnel_filter);
+
+struct i40e_tunnel_rule {
+	struct i40e_tunnel_filter_list tunnel_list;
+	struct i40e_tunnel_filter  **hash_map;
+	struct rte_hash *hash_table;
+};
+
 #define I40E_MIRROR_MAX_ENTRIES_PER_RULE   64
 #define I40E_MAX_MIRROR_RULES           64
 /*
@@ -492,6 +518,7 @@ struct i40e_pf {
 
 	struct i40e_fdir_info fdir; /* flow director info */
 	struct i40e_ethertype_rule ethertype; /* Ethertype filter rule */
+	struct i40e_tunnel_rule tunnel; /* Tunnel filter rule */
 	struct i40e_fc_conf fc_conf; /* Flow control conf */
 	struct i40e_mirror_rule_list mirror_list;
 	uint16_t nb_mirror_rule;   /* The number of mirror rules */
@@ -647,6 +674,11 @@ i40e_sw_ethertype_filter_lookup(struct i40e_ethertype_rule *ethertype_rule,
 			const struct i40e_ethertype_filter_input *input);
 int i40e_sw_ethertype_filter_del(struct i40e_pf *pf,
 				 struct i40e_ethertype_filter_input *input);
+struct i40e_tunnel_filter *
+i40e_sw_tunnel_filter_lookup(struct i40e_tunnel_rule *tunnel_rule,
+			     const struct i40e_tunnel_filter_input *input);
+int i40e_sw_tunnel_filter_del(struct i40e_pf *pf,
+			      struct i40e_tunnel_filter_input *input);
 
 #define I40E_DEV_TO_PCI(eth_dev) \
 	RTE_DEV_TO_PCI((eth_dev)->device)

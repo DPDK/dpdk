@@ -470,6 +470,12 @@ static int i40e_ethertype_filter_convert(
 static int i40e_sw_ethertype_filter_insert(struct i40e_pf *pf,
 				   struct i40e_ethertype_filter *filter);
 
+static int i40e_tunnel_filter_convert(
+	struct i40e_aqc_add_remove_cloud_filters_element_data *cld_filter,
+	struct i40e_tunnel_filter *tunnel_filter);
+static int i40e_sw_tunnel_filter_insert(struct i40e_pf *pf,
+				struct i40e_tunnel_filter *tunnel_filter);
+
 static const struct rte_pci_id pci_id_i40e_map[] = {
 	{ RTE_PCI_DEVICE(I40E_INTEL_VENDOR_ID, I40E_DEV_ID_SFP_XL710) },
 	{ RTE_PCI_DEVICE(I40E_INTEL_VENDOR_ID, I40E_DEV_ID_QEMU) },
@@ -981,6 +987,49 @@ err_ethertype_hash_map_alloc:
 }
 
 static int
+i40e_init_tunnel_filter_list(struct rte_eth_dev *dev)
+{
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct i40e_tunnel_rule *tunnel_rule = &pf->tunnel;
+	char tunnel_hash_name[RTE_HASH_NAMESIZE];
+	int ret;
+
+	struct rte_hash_parameters tunnel_hash_params = {
+		.name = tunnel_hash_name,
+		.entries = I40E_MAX_TUNNEL_FILTER_NUM,
+		.key_len = sizeof(struct i40e_tunnel_filter_input),
+		.hash_func = rte_hash_crc,
+	};
+
+	/* Initialize tunnel filter rule list and hash */
+	TAILQ_INIT(&tunnel_rule->tunnel_list);
+	snprintf(tunnel_hash_name, RTE_HASH_NAMESIZE,
+		 "tunnel_%s", dev->data->name);
+	tunnel_rule->hash_table = rte_hash_create(&tunnel_hash_params);
+	if (!tunnel_rule->hash_table) {
+		PMD_INIT_LOG(ERR, "Failed to create tunnel hash table!");
+		return -EINVAL;
+	}
+	tunnel_rule->hash_map = rte_zmalloc("i40e_tunnel_hash_map",
+				    sizeof(struct i40e_tunnel_filter *) *
+				    I40E_MAX_TUNNEL_FILTER_NUM,
+				    0);
+	if (!tunnel_rule->hash_map) {
+		PMD_INIT_LOG(ERR,
+			     "Failed to allocate memory for tunnel hash map!");
+		ret = -ENOMEM;
+		goto err_tunnel_hash_map_alloc;
+	}
+
+	return 0;
+
+err_tunnel_hash_map_alloc:
+	rte_hash_free(tunnel_rule->hash_table);
+
+	return ret;
+}
+
+static int
 eth_i40e_dev_init(struct rte_eth_dev *dev)
 {
 	struct rte_pci_device *pci_dev;
@@ -1239,9 +1288,15 @@ eth_i40e_dev_init(struct rte_eth_dev *dev)
 	ret = i40e_init_ethtype_filter_list(dev);
 	if (ret < 0)
 		goto err_init_ethtype_filter_list;
+	ret = i40e_init_tunnel_filter_list(dev);
+	if (ret < 0)
+		goto err_init_tunnel_filter_list;
 
 	return 0;
 
+err_init_tunnel_filter_list:
+	rte_free(pf->ethertype.hash_table);
+	rte_free(pf->ethertype.hash_map);
 err_init_ethtype_filter_list:
 	rte_free(dev->data->mac_addrs);
 err_mac_alloc:
@@ -1280,6 +1335,25 @@ i40e_rm_ethtype_filter_list(struct i40e_pf *pf)
 		TAILQ_REMOVE(&ethertype_rule->ethertype_list,
 			     p_ethertype, rules);
 		rte_free(p_ethertype);
+	}
+}
+
+static void
+i40e_rm_tunnel_filter_list(struct i40e_pf *pf)
+{
+	struct i40e_tunnel_filter *p_tunnel;
+	struct i40e_tunnel_rule *tunnel_rule;
+
+	tunnel_rule = &pf->tunnel;
+	/* Remove all tunnel director rules and hash */
+	if (tunnel_rule->hash_map)
+		rte_free(tunnel_rule->hash_map);
+	if (tunnel_rule->hash_table)
+		rte_hash_free(tunnel_rule->hash_table);
+
+	while ((p_tunnel = TAILQ_FIRST(&tunnel_rule->tunnel_list))) {
+		TAILQ_REMOVE(&tunnel_rule->tunnel_list, p_tunnel, rules);
+		rte_free(p_tunnel);
 	}
 }
 
@@ -1339,6 +1413,7 @@ eth_i40e_dev_uninit(struct rte_eth_dev *dev)
 				     i40e_dev_interrupt_handler, dev);
 
 	i40e_rm_ethtype_filter_list(pf);
+	i40e_rm_tunnel_filter_list(pf);
 
 	return 0;
 }
@@ -6553,6 +6628,85 @@ i40e_dev_get_filter_type(uint16_t filter_type, uint16_t *flag)
 	return 0;
 }
 
+/* Convert tunnel filter structure */
+static int
+i40e_tunnel_filter_convert(struct i40e_aqc_add_remove_cloud_filters_element_data
+			   *cld_filter,
+			   struct i40e_tunnel_filter *tunnel_filter)
+{
+	ether_addr_copy((struct ether_addr *)&cld_filter->outer_mac,
+			(struct ether_addr *)&tunnel_filter->input.outer_mac);
+	ether_addr_copy((struct ether_addr *)&cld_filter->inner_mac,
+			(struct ether_addr *)&tunnel_filter->input.inner_mac);
+	tunnel_filter->input.inner_vlan = cld_filter->inner_vlan;
+	tunnel_filter->input.flags = cld_filter->flags;
+	tunnel_filter->input.tenant_id = cld_filter->tenant_id;
+	tunnel_filter->queue = cld_filter->queue_number;
+
+	return 0;
+}
+
+/* Check if there exists the tunnel filter */
+struct i40e_tunnel_filter *
+i40e_sw_tunnel_filter_lookup(struct i40e_tunnel_rule *tunnel_rule,
+			     const struct i40e_tunnel_filter_input *input)
+{
+	int ret;
+
+	ret = rte_hash_lookup(tunnel_rule->hash_table, (const void *)input);
+	if (ret < 0)
+		return NULL;
+
+	return tunnel_rule->hash_map[ret];
+}
+
+/* Add a tunnel filter into the SW list */
+static int
+i40e_sw_tunnel_filter_insert(struct i40e_pf *pf,
+			     struct i40e_tunnel_filter *tunnel_filter)
+{
+	struct i40e_tunnel_rule *rule = &pf->tunnel;
+	int ret;
+
+	ret = rte_hash_add_key(rule->hash_table, &tunnel_filter->input);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR,
+			    "Failed to insert tunnel filter to hash table %d!",
+			    ret);
+		return ret;
+	}
+	rule->hash_map[ret] = tunnel_filter;
+
+	TAILQ_INSERT_TAIL(&rule->tunnel_list, tunnel_filter, rules);
+
+	return 0;
+}
+
+/* Delete a tunnel filter from the SW list */
+int
+i40e_sw_tunnel_filter_del(struct i40e_pf *pf,
+			  struct i40e_tunnel_filter_input *input)
+{
+	struct i40e_tunnel_rule *rule = &pf->tunnel;
+	struct i40e_tunnel_filter *tunnel_filter;
+	int ret;
+
+	ret = rte_hash_del_key(rule->hash_table, input);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR,
+			    "Failed to delete tunnel filter to hash table %d!",
+			    ret);
+		return ret;
+	}
+	tunnel_filter = rule->hash_map[ret];
+	rule->hash_map[ret] = NULL;
+
+	TAILQ_REMOVE(&rule->tunnel_list, tunnel_filter, rules);
+	rte_free(tunnel_filter);
+
+	return 0;
+}
+
 static int
 i40e_dev_tunnel_filter_set(struct i40e_pf *pf,
 			struct rte_eth_tunnel_filter_conf *tunnel_filter,
@@ -6568,6 +6722,9 @@ i40e_dev_tunnel_filter_set(struct i40e_pf *pf,
 	struct i40e_vsi *vsi = pf->main_vsi;
 	struct i40e_aqc_add_remove_cloud_filters_element_data  *cld_filter;
 	struct i40e_aqc_add_remove_cloud_filters_element_data  *pfilter;
+	struct i40e_tunnel_rule *tunnel_rule = &pf->tunnel;
+	struct i40e_tunnel_filter *tunnel, *node;
+	struct i40e_tunnel_filter check_filter; /* Check if filter exists */
 
 	cld_filter = rte_zmalloc("tunnel_filter",
 		sizeof(struct i40e_aqc_add_remove_cloud_filters_element_data),
@@ -6630,11 +6787,38 @@ i40e_dev_tunnel_filter_set(struct i40e_pf *pf,
 	pfilter->tenant_id = rte_cpu_to_le_32(tunnel_filter->tenant_id);
 	pfilter->queue_number = rte_cpu_to_le_16(tunnel_filter->queue_id);
 
-	if (add)
+	/* Check if there is the filter in SW list */
+	memset(&check_filter, 0, sizeof(check_filter));
+	i40e_tunnel_filter_convert(cld_filter, &check_filter);
+	node = i40e_sw_tunnel_filter_lookup(tunnel_rule, &check_filter.input);
+	if (add && node) {
+		PMD_DRV_LOG(ERR, "Conflict with existing tunnel rules!");
+		return -EINVAL;
+	}
+
+	if (!add && !node) {
+		PMD_DRV_LOG(ERR, "There's no corresponding tunnel filter!");
+		return -EINVAL;
+	}
+
+	if (add) {
 		ret = i40e_aq_add_cloud_filters(hw, vsi->seid, cld_filter, 1);
-	else
+		if (ret < 0) {
+			PMD_DRV_LOG(ERR, "Failed to add a tunnel filter.");
+			return ret;
+		}
+		tunnel = rte_zmalloc("tunnel_filter", sizeof(*tunnel), 0);
+		rte_memcpy(tunnel, &check_filter, sizeof(check_filter));
+		ret = i40e_sw_tunnel_filter_insert(pf, tunnel);
+	} else {
 		ret = i40e_aq_remove_cloud_filters(hw, vsi->seid,
-						cld_filter, 1);
+						   cld_filter, 1);
+		if (ret < 0) {
+			PMD_DRV_LOG(ERR, "Failed to delete a tunnel filter.");
+			return ret;
+		}
+		ret = i40e_sw_tunnel_filter_del(pf, &node->input);
+	}
 
 	rte_free(cld_filter);
 	return ret;
