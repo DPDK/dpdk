@@ -212,7 +212,7 @@ CONFIG_RTE_LIBRTE_MLX4_TX_MP_CACHE=8
 CONFIG_RTE_LIBRTE_MLX4_SOFT_COUNTERS=1
 
 #
-# Compile burst-oriented Mellanox ConnectX-4 (MLX5) PMD
+# Compile burst-oriented Mellanox ConnectX-4 & ConnectX-5 (MLX5) PMD
 #
 CONFIG_RTE_LIBRTE_MLX5_PMD=n
 CONFIG_RTE_LIBRTE_MLX5_DEBUG=n

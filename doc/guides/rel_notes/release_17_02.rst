@@ -71,6 +71,11 @@ New Features
   A new network PMD which supports Solarflare SFN7xxx and SFN8xxx family
   of 10/40 Gbps adapters has been added.
 
+* **Added support for Mellanox ConnectX-5 adapters (mlx5).**
+
+  Support for Mellanox ConnectX-5 family of 10/25/40/50/100 Gbps adapters
+  has been added to the existing mlx5 PMD.
+
 * **virtio-user with vhost-kernel as another exceptional path.**
 
   Previously, we upstreamed a virtual device, virtio-user with vhost-user

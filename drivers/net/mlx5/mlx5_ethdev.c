@@ -1517,14 +1517,11 @@ void
 priv_select_tx_function(struct priv *priv)
 {
 	priv->dev->tx_pkt_burst = mlx5_tx_burst;
-	/* Display warning for unsupported configurations. */
-	if (priv->sriov && priv->mps)
-		WARN("multi-packet send WQE cannot be used on a SR-IOV setup");
 	/* Select appropriate TX function. */
-	if ((priv->sriov == 0) && priv->mps && priv->txq_inline) {
+	if (priv->mps && priv->txq_inline) {
 		priv->dev->tx_pkt_burst = mlx5_tx_burst_mpw_inline;
 		DEBUG("selected MPW inline TX function");
-	} else if ((priv->sriov == 0) && priv->mps) {
+	} else if (priv->mps) {
 		priv->dev->tx_pkt_burst = mlx5_tx_burst_mpw;
 		DEBUG("selected MPW TX function");
 	}

@@ -286,7 +286,7 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 	} else if (strcmp(MLX5_TXQS_MIN_INLINE, key) == 0) {
 		priv->txqs_inline = tmp;
 	} else if (strcmp(MLX5_TXQ_MPW_EN, key) == 0) {
-		priv->mps = !!tmp;
+		priv->mps &= !!tmp; /* Enable MPW only if HW supports */
 	} else {
 		WARN("%s: unknown parameter", key);
 		return -EINVAL;
@@ -408,10 +408,26 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		sriov = ((pci_dev->id.device_id ==
 		       PCI_DEVICE_ID_MELLANOX_CONNECTX4VF) ||
 		      (pci_dev->id.device_id ==
-		       PCI_DEVICE_ID_MELLANOX_CONNECTX4LXVF));
-		/* Multi-packet send is only supported by ConnectX-4 Lx PF. */
-		mps = (pci_dev->id.device_id ==
-		       PCI_DEVICE_ID_MELLANOX_CONNECTX4LX);
+		       PCI_DEVICE_ID_MELLANOX_CONNECTX4LXVF) ||
+		      (pci_dev->id.device_id ==
+		       PCI_DEVICE_ID_MELLANOX_CONNECTX5VF) ||
+		      (pci_dev->id.device_id ==
+		       PCI_DEVICE_ID_MELLANOX_CONNECTX5EXVF));
+		/*
+		 * Multi-packet send is supported by ConnectX-4 Lx PF as well
+		 * as all ConnectX-5 devices.
+		 */
+		switch (pci_dev->id.device_id) {
+		case PCI_DEVICE_ID_MELLANOX_CONNECTX4LX:
+		case PCI_DEVICE_ID_MELLANOX_CONNECTX5:
+		case PCI_DEVICE_ID_MELLANOX_CONNECTX5VF:
+		case PCI_DEVICE_ID_MELLANOX_CONNECTX5EX:
+		case PCI_DEVICE_ID_MELLANOX_CONNECTX5EXVF:
+			mps = 1;
+			break;
+		default:
+			mps = 0;
+		}
 		INFO("PCI information matches, using device \"%s\""
 		     " (SR-IOV: %s, MPS: %s)",
 		     list[i]->name,
@@ -717,6 +733,22 @@ static const struct rte_pci_id mlx5_pci_id_map[] = {
 	{
 		RTE_PCI_DEVICE(PCI_VENDOR_ID_MELLANOX,
 			       PCI_DEVICE_ID_MELLANOX_CONNECTX4LXVF)
+	},
+	{
+		RTE_PCI_DEVICE(PCI_VENDOR_ID_MELLANOX,
+			       PCI_DEVICE_ID_MELLANOX_CONNECTX5)
+	},
+	{
+		RTE_PCI_DEVICE(PCI_VENDOR_ID_MELLANOX,
+			       PCI_DEVICE_ID_MELLANOX_CONNECTX5VF)
+	},
+	{
+		RTE_PCI_DEVICE(PCI_VENDOR_ID_MELLANOX,
+			       PCI_DEVICE_ID_MELLANOX_CONNECTX5EX)
+	},
+	{
+		RTE_PCI_DEVICE(PCI_VENDOR_ID_MELLANOX,
+			       PCI_DEVICE_ID_MELLANOX_CONNECTX5EXVF)
 	},
 	{
 		.vendor_id = 0

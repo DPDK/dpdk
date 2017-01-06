@@ -30,10 +30,10 @@
 MLX5 poll mode driver
 =====================
 
-The MLX5 poll mode driver library (**librte_pmd_mlx5**) provides support for
-**Mellanox ConnectX-4** and **Mellanox ConnectX-4 Lx** families of
-10/25/40/50/100 Gb/s adapters as well as their virtual functions (VF) in
-SR-IOV context.
+The MLX5 poll mode driver library (**librte_pmd_mlx5**) provides support
+for **Mellanox ConnectX-4**, **Mellanox ConnectX-4 Lx** and **Mellanox
+ConnectX-5** families of 10/25/40/50/100 Gb/s adapters as well as their
+virtual functions (VF) in SR-IOV context.
 
 Information and documentation about these adapters can be found on the
 `Mellanox website <http://www.mellanox.com>`__. Help is also provided by the
@@ -185,8 +185,8 @@ Run-time configuration
   save PCI bandwidth and improve performance at the cost of a slightly
   higher CPU usage.
 
-  It is currently only supported on the ConnectX-4 Lx family of adapters.
-  Enabled by default.
+  It is currently only supported on the ConnectX-4 Lx and ConnectX-5
+  families of adapters. Enabled by default.
 
 Prerequisites
 -------------
@@ -207,8 +207,8 @@ DPDK and must be installed separately:
 
 - **libmlx5**
 
-  Low-level user space driver library for Mellanox ConnectX-4 devices,
-  it is automatically loaded by libibverbs.
+  Low-level user space driver library for Mellanox ConnectX-4/ConnectX-5
+  devices, it is automatically loaded by libibverbs.
 
   This library basically implements send/receive calls to the hardware
   queues.
@@ -222,14 +222,15 @@ DPDK and must be installed separately:
   Unlike most other PMDs, these modules must remain loaded and bound to
   their devices:
 
-  - mlx5_core: hardware driver managing Mellanox ConnectX-4 devices and
-    related Ethernet kernel network devices.
+  - mlx5_core: hardware driver managing Mellanox ConnectX-4/ConnectX-5
+    devices and related Ethernet kernel network devices.
   - mlx5_ib: InifiniBand device driver.
   - ib_uverbs: user space driver for Verbs (entry point for libibverbs).
 
 - **Firmware update**
 
-  Mellanox OFED releases include firmware updates for ConnectX-4 adapters.
+  Mellanox OFED releases include firmware updates for ConnectX-4/ConnectX-5
+  adapters.
 
   Because each release provides new features, these updates must be applied to
   match the kernel modules and libraries they come with.
@@ -241,12 +242,17 @@ DPDK and must be installed separately:
 
 Currently supported by DPDK:
 
-- Mellanox OFED **3.4-1.0.0.0**.
+- Mellanox OFED version:
+
+  - ConnectX-4: **3.4-1.0.0.0**
+  - ConnectX-4 Lx: **3.4-1.0.0.0**
+  - ConnectX-5: **4.0-0.0.8.1**
 
 - firmware version:
 
   - ConnectX-4: **12.17.1010**
   - ConnectX-4 Lx: **14.17.1010**
+  - ConnectX-5: **16.18.0296**
 
 Getting Mellanox OFED
 ~~~~~~~~~~~~~~~~~~~~~
@@ -288,8 +294,8 @@ behavior as librte_pmd_mlx4:
 Usage example
 -------------
 
-This section demonstrates how to launch **testpmd** with Mellanox ConnectX-4
-devices managed by librte_pmd_mlx5.
+This section demonstrates how to launch **testpmd** with Mellanox
+ConnectX-4/ConnectX-5 devices managed by librte_pmd_mlx5.
 
 #. Load the kernel modules:
 
