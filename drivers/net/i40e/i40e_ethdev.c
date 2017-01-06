@@ -476,6 +476,9 @@ static int i40e_tunnel_filter_convert(
 static int i40e_sw_tunnel_filter_insert(struct i40e_pf *pf,
 				struct i40e_tunnel_filter *tunnel_filter);
 
+static void i40e_ethertype_filter_restore(struct i40e_pf *pf);
+static void i40e_filter_restore(struct i40e_pf *pf);
+
 static const struct rte_pci_id pci_id_i40e_map[] = {
 	{ RTE_PCI_DEVICE(I40E_INTEL_VENDOR_ID, I40E_DEV_ID_SFP_XL710) },
 	{ RTE_PCI_DEVICE(I40E_INTEL_VENDOR_ID, I40E_DEV_ID_QEMU) },
@@ -2030,6 +2033,8 @@ i40e_dev_start(struct rte_eth_dev *dev)
 
 	/* enable uio intr after callback register */
 	rte_intr_enable(intr_handle);
+
+	i40e_filter_restore(pf);
 
 	return I40E_SUCCESS;
 
@@ -10189,4 +10194,43 @@ i40e_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	dev_data->dev_conf.rxmode.max_rx_pkt_len = frame_size;
 
 	return ret;
+}
+
+/* Restore ethertype filter */
+static void
+i40e_ethertype_filter_restore(struct i40e_pf *pf)
+{
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	struct i40e_ethertype_filter_list
+		*ethertype_list = &pf->ethertype.ethertype_list;
+	struct i40e_ethertype_filter *f;
+	struct i40e_control_filter_stats stats;
+	uint16_t flags;
+
+	TAILQ_FOREACH(f, ethertype_list, rules) {
+		flags = 0;
+		if (!(f->flags & RTE_ETHTYPE_FLAGS_MAC))
+			flags |= I40E_AQC_ADD_CONTROL_PACKET_FLAGS_IGNORE_MAC;
+		if (f->flags & RTE_ETHTYPE_FLAGS_DROP)
+			flags |= I40E_AQC_ADD_CONTROL_PACKET_FLAGS_DROP;
+		flags |= I40E_AQC_ADD_CONTROL_PACKET_FLAGS_TO_QUEUE;
+
+		memset(&stats, 0, sizeof(stats));
+		i40e_aq_add_rem_control_packet_filter(hw,
+					    f->input.mac_addr.addr_bytes,
+					    f->input.ether_type,
+					    flags, pf->main_vsi->seid,
+					    f->queue, 1, &stats, NULL);
+	}
+	PMD_DRV_LOG(INFO, "Ethertype filter:"
+		    " mac_etype_used = %u, etype_used = %u,"
+		    " mac_etype_free = %u, etype_free = %u\n",
+		    stats.mac_etype_used, stats.etype_used,
+		    stats.mac_etype_free, stats.etype_free);
+}
+
+static void
+i40e_filter_restore(struct i40e_pf *pf)
+{
+	i40e_ethertype_filter_restore(pf);
 }
