@@ -285,11 +285,6 @@
 #define I40E_INSET_IPV6_HOP_LIMIT_MASK  0x000CFF00UL
 #define I40E_INSET_IPV6_NEXT_HDR_MASK   0x000C00FFUL
 
-#define I40E_GL_SWT_L2TAGCTRL(_i)             (0x001C0A70 + ((_i) * 4))
-#define I40E_GL_SWT_L2TAGCTRL_ETHERTYPE_SHIFT 16
-#define I40E_GL_SWT_L2TAGCTRL_ETHERTYPE_MASK  \
-	I40E_MASK(0xFFFF, I40E_GL_SWT_L2TAGCTRL_ETHERTYPE_SHIFT)
-
 /* PCI offset for querying capability */
 #define PCI_DEV_CAP_REG            0xA4
 /* PCI offset for enabling/disabling Extended Tag */
@@ -8572,6 +8567,11 @@ i40e_dev_filter_ctrl(struct rte_eth_dev *dev,
 		break;
 	case RTE_ETH_FILTER_FDIR:
 		ret = i40e_fdir_ctrl_func(dev, filter_op, arg);
+		break;
+	case RTE_ETH_FILTER_GENERIC:
+		if (filter_op != RTE_ETH_FILTER_GET)
+			return -EINVAL;
+		*(const void **)arg = &i40e_flow_ops;
 		break;
 	default:
 		PMD_DRV_LOG(WARNING, "Filter type (%d) not supported",

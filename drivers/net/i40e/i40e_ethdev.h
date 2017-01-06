@@ -38,6 +38,7 @@
 #include <rte_time.h>
 #include <rte_kvargs.h>
 #include <rte_hash.h>
+#include <rte_flow_driver.h>
 
 #define I40E_VLAN_TAG_SIZE        4
 
@@ -188,6 +189,11 @@ enum i40e_flxpld_layer_idx {
 /* Special FW support this floating VEB feature */
 #define FLOATING_VEB_SUPPORTED_FW_MAJ 5
 #define FLOATING_VEB_SUPPORTED_FW_MIN 0
+
+#define I40E_GL_SWT_L2TAGCTRL(_i)             (0x001C0A70 + ((_i) * 4))
+#define I40E_GL_SWT_L2TAGCTRL_ETHERTYPE_SHIFT 16
+#define I40E_GL_SWT_L2TAGCTRL_ETHERTYPE_MASK  \
+	I40E_MASK(0xFFFF, I40E_GL_SWT_L2TAGCTRL_ETHERTYPE_SHIFT)
 
 struct i40e_adapter;
 
@@ -627,6 +633,25 @@ struct i40e_adapter {
 	struct rte_timecounter systime_tc;
 	struct rte_timecounter rx_tstamp_tc;
 	struct rte_timecounter tx_tstamp_tc;
+};
+
+extern const struct rte_flow_ops i40e_flow_ops;
+
+union i40e_filter_t {
+	struct rte_eth_ethertype_filter ethertype_filter;
+	struct rte_eth_fdir_filter fdir_filter;
+	struct rte_eth_tunnel_filter_conf tunnel_filter;
+};
+
+typedef int (*parse_filter_t)(struct rte_eth_dev *dev,
+			      const struct rte_flow_attr *attr,
+			      const struct rte_flow_item pattern[],
+			      const struct rte_flow_action actions[],
+			      struct rte_flow_error *error,
+			      union i40e_filter_t *filter);
+struct i40e_valid_pattern {
+	enum rte_flow_item_type *items;
+	parse_filter_t parse_filter;
 };
 
 int i40e_dev_switch_queues(struct i40e_pf *pf, bool on);
