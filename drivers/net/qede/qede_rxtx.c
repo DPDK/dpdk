@@ -431,13 +431,15 @@ int qede_alloc_fp_resc(struct qede_dev *qdev)
 	struct ecore_dev *edev = &qdev->edev;
 	struct qede_fastpath *fp;
 	uint32_t num_sbs;
-	int rc, i;
+	uint16_t i;
+	uint16_t sb_idx;
+	int rc;
 
 	if (IS_VF(edev))
 		ecore_vf_get_num_sbs(ECORE_LEADING_HWFN(edev), &num_sbs);
 	else
-		num_sbs = (ecore_cxt_get_proto_cid_count
-			  (ECORE_LEADING_HWFN(edev), PROTOCOLID_ETH, NULL)) / 2;
+		num_sbs = ecore_cxt_get_proto_cid_count
+			  (ECORE_LEADING_HWFN(edev), PROTOCOLID_ETH, NULL);
 
 	if (num_sbs == 0) {
 		DP_ERR(edev, "No status blocks available\n");
@@ -455,7 +457,11 @@ int qede_alloc_fp_resc(struct qede_dev *qdev)
 
 	for (i = 0; i < QEDE_QUEUE_CNT(qdev); i++) {
 		fp = &qdev->fp_array[i];
-		if (qede_alloc_mem_sb(qdev, fp->sb_info, i % num_sbs)) {
+		if (IS_VF(edev))
+			sb_idx = i % num_sbs;
+		else
+			sb_idx = i;
+		if (qede_alloc_mem_sb(qdev, fp->sb_info, sb_idx)) {
 			qede_free_fp_arrays(qdev);
 			return -ENOMEM;
 		}
