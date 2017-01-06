@@ -119,8 +119,6 @@ static int i40e_fdir_filter_programming(struct i40e_pf *pf,
 			enum i40e_filter_pctype pctype,
 			const struct rte_eth_fdir_filter *filter,
 			bool add);
-static int i40e_fdir_flush(struct rte_eth_dev *dev);
-
 static int i40e_fdir_filter_convert(const struct rte_eth_fdir_filter *input,
 			 struct i40e_fdir_filter *filter);
 static struct i40e_fdir_filter *
@@ -1325,7 +1323,7 @@ i40e_fdir_filter_programming(struct i40e_pf *pf,
  * i40e_fdir_flush - clear all filters of Flow Director table
  * @pf: board private structure
  */
-static int
+int
 i40e_fdir_flush(struct rte_eth_dev *dev)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);

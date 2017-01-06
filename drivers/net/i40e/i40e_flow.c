@@ -71,6 +71,8 @@ static struct rte_flow *i40e_flow_create(struct rte_eth_dev *dev,
 static int i40e_flow_destroy(struct rte_eth_dev *dev,
 			     struct rte_flow *flow,
 			     struct rte_flow_error *error);
+static int i40e_flow_flush(struct rte_eth_dev *dev,
+			   struct rte_flow_error *error);
 static int
 i40e_flow_parse_ethertype_pattern(struct rte_eth_dev *dev,
 				  const struct rte_flow_item *pattern,
@@ -120,11 +122,13 @@ static int i40e_flow_destroy_ethertype_filter(struct i40e_pf *pf,
 				      struct i40e_ethertype_filter *filter);
 static int i40e_flow_destroy_tunnel_filter(struct i40e_pf *pf,
 					   struct i40e_tunnel_filter *filter);
+static int i40e_flow_flush_fdir_filter(struct i40e_pf *pf);
 
 const struct rte_flow_ops i40e_flow_ops = {
 	.validate = i40e_flow_validate,
 	.create = i40e_flow_create,
 	.destroy = i40e_flow_destroy,
+	.flush = i40e_flow_flush,
 };
 
 union i40e_filter_t cons_filter;
@@ -1717,6 +1721,53 @@ i40e_flow_destroy_tunnel_filter(struct i40e_pf *pf,
 		return -EINVAL;
 
 	ret = i40e_sw_tunnel_filter_del(pf, &node->input);
+
+	return ret;
+}
+
+static int
+i40e_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *error)
+{
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	int ret;
+
+	ret = i40e_flow_flush_fdir_filter(pf);
+	if (ret)
+		rte_flow_error_set(error, -ret,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "Failed to flush FDIR flows.");
+
+	return ret;
+}
+
+static int
+i40e_flow_flush_fdir_filter(struct i40e_pf *pf)
+{
+	struct rte_eth_dev *dev = pf->adapter->eth_dev;
+	struct i40e_fdir_info *fdir_info = &pf->fdir;
+	struct i40e_fdir_filter *fdir_filter;
+	struct rte_flow *flow;
+	void *temp;
+	int ret;
+
+	ret = i40e_fdir_flush(dev);
+	if (!ret) {
+		/* Delete FDIR filters in FDIR list. */
+		while ((fdir_filter = TAILQ_FIRST(&fdir_info->fdir_list))) {
+			ret = i40e_sw_fdir_filter_del(pf,
+						      &fdir_filter->fdir.input);
+			if (ret < 0)
+				return ret;
+		}
+
+		/* Delete FDIR flows in flow list. */
+		TAILQ_FOREACH_SAFE(flow, &pf->flow_list, node, temp) {
+			if (flow->filter_type == RTE_ETH_FILTER_FDIR) {
+				TAILQ_REMOVE(&pf->flow_list, flow, node);
+				rte_free(flow);
+			}
+		}
+	}
 
 	return ret;
 }

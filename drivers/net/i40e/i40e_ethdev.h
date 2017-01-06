@@ -795,6 +795,7 @@ int i40e_add_del_fdir_filter(struct rte_eth_dev *dev,
 int i40e_dev_tunnel_filter_set(struct i40e_pf *pf,
 			       struct rte_eth_tunnel_filter_conf *tunnel_filter,
 			       uint8_t add);
+int i40e_fdir_flush(struct rte_eth_dev *dev);
 
 #define I40E_DEV_TO_PCI(eth_dev) \
 	RTE_DEV_TO_PCI((eth_dev)->device)
