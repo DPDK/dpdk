@@ -301,7 +301,8 @@ virtio_user_eth_dev_alloc(const char *name)
 		return NULL;
 	}
 
-	hw->vtpci_ops = &virtio_user_ops;
+	hw->port_id = data->port_id;
+	virtio_hw_internal[hw->port_id].vtpci_ops = &virtio_user_ops;
 	hw->use_msix = 0;
 	hw->modern   = 0;
 	hw->use_simple_rxtx = 0;
