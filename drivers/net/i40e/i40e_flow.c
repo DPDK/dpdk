@@ -124,6 +124,7 @@ static int i40e_flow_destroy_tunnel_filter(struct i40e_pf *pf,
 					   struct i40e_tunnel_filter *filter);
 static int i40e_flow_flush_fdir_filter(struct i40e_pf *pf);
 static int i40e_flow_flush_ethertype_filter(struct i40e_pf *pf);
+static int i40e_flow_flush_tunnel_filter(struct i40e_pf *pf);
 
 const struct rte_flow_ops i40e_flow_ops = {
 	.validate = i40e_flow_validate,
@@ -1748,6 +1749,14 @@ i40e_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *error)
 		return -rte_errno;
 	}
 
+	ret = i40e_flow_flush_tunnel_filter(pf);
+	if (ret) {
+		rte_flow_error_set(error, -ret,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "Failed to flush tunnel flows.");
+		return -rte_errno;
+	}
+
 	return ret;
 }
 
@@ -1803,6 +1812,34 @@ i40e_flow_flush_ethertype_filter(struct i40e_pf *pf)
 	/* Delete ethertype flows in flow list. */
 	TAILQ_FOREACH_SAFE(flow, &pf->flow_list, node, temp) {
 		if (flow->filter_type == RTE_ETH_FILTER_ETHERTYPE) {
+			TAILQ_REMOVE(&pf->flow_list, flow, node);
+			rte_free(flow);
+		}
+	}
+
+	return ret;
+}
+
+/* Flush all tunnel filters */
+static int
+i40e_flow_flush_tunnel_filter(struct i40e_pf *pf)
+{
+	struct i40e_tunnel_filter_list
+		*tunnel_list = &pf->tunnel.tunnel_list;
+	struct i40e_tunnel_filter *filter;
+	struct rte_flow *flow;
+	void *temp;
+	int ret = 0;
+
+	while ((filter = TAILQ_FIRST(tunnel_list))) {
+		ret = i40e_flow_destroy_tunnel_filter(pf, filter);
+		if (ret)
+			return ret;
+	}
+
+	/* Delete tunnel flows in flow list. */
+	TAILQ_FOREACH_SAFE(flow, &pf->flow_list, node, temp) {
+		if (flow->filter_type == RTE_ETH_FILTER_TUNNEL) {
 			TAILQ_REMOVE(&pf->flow_list, flow, node);
 			rte_free(flow);
 		}
