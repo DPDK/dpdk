@@ -541,6 +541,17 @@ struct i40e_mirror_rule {
 TAILQ_HEAD(i40e_mirror_rule_list, i40e_mirror_rule);
 
 /*
+ * Struct to store flow created.
+ */
+struct rte_flow {
+	TAILQ_ENTRY(rte_flow) node;
+	enum rte_filter_type filter_type;
+	void *rule;
+};
+
+TAILQ_HEAD(i40e_flow_list, rte_flow);
+
+/*
  * Structure to store private data specific for PF instance.
  */
 struct i40e_pf {
@@ -597,6 +608,7 @@ struct i40e_pf {
 	bool floating_veb; /* The flag to use the floating VEB */
 	/* The floating enable flag for the specific VF */
 	bool floating_veb_list[I40E_MAX_VF];
+	struct i40e_flow_list flow_list;
 };
 
 enum pending_msg {
@@ -774,6 +786,15 @@ i40e_sw_tunnel_filter_lookup(struct i40e_tunnel_rule *tunnel_rule,
 int i40e_sw_tunnel_filter_del(struct i40e_pf *pf,
 			      struct i40e_tunnel_filter_input *input);
 uint64_t i40e_get_default_input_set(uint16_t pctype);
+int i40e_ethertype_filter_set(struct i40e_pf *pf,
+			      struct rte_eth_ethertype_filter *filter,
+			      bool add);
+int i40e_add_del_fdir_filter(struct rte_eth_dev *dev,
+			     const struct rte_eth_fdir_filter *filter,
+			     bool add);
+int i40e_dev_tunnel_filter_set(struct i40e_pf *pf,
+			       struct rte_eth_tunnel_filter_conf *tunnel_filter,
+			       uint8_t add);
 
 #define I40E_DEV_TO_PCI(eth_dev) \
 	RTE_DEV_TO_PCI((eth_dev)->device)

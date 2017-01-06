@@ -350,9 +350,6 @@ static int i40e_dev_udp_tunnel_port_add(struct rte_eth_dev *dev,
 static int i40e_dev_udp_tunnel_port_del(struct rte_eth_dev *dev,
 					struct rte_eth_udp_tunnel *udp_tunnel);
 static void i40e_filter_input_set_init(struct i40e_pf *pf);
-static int i40e_ethertype_filter_set(struct i40e_pf *pf,
-			struct rte_eth_ethertype_filter *filter,
-			bool add);
 static int i40e_ethertype_filter_handle(struct rte_eth_dev *dev,
 				enum rte_filter_op filter_op,
 				void *arg);
@@ -1377,6 +1374,7 @@ eth_i40e_dev_uninit(struct rte_eth_dev *dev)
 	struct rte_intr_handle *intr_handle;
 	struct i40e_hw *hw;
 	struct i40e_filter_control_settings settings;
+	struct rte_flow *p_flow;
 	int ret;
 	uint8_t aq_fail = 0;
 
@@ -1427,6 +1425,12 @@ eth_i40e_dev_uninit(struct rte_eth_dev *dev)
 	i40e_rm_ethtype_filter_list(pf);
 	i40e_rm_tunnel_filter_list(pf);
 	i40e_rm_fdir_filter_list(pf);
+
+	/* Remove all flows */
+	while ((p_flow = TAILQ_FIRST(&pf->flow_list))) {
+		TAILQ_REMOVE(&pf->flow_list, p_flow, node);
+		rte_free(p_flow);
+	}
 
 	return 0;
 }
@@ -1491,6 +1495,8 @@ i40e_dev_configure(struct rte_eth_dev *dev)
 			goto err_dcb;
 		}
 	}
+
+	TAILQ_INIT(&pf->flow_list);
 
 	return 0;
 
@@ -6722,7 +6728,7 @@ i40e_sw_tunnel_filter_del(struct i40e_pf *pf,
 	return 0;
 }
 
-static int
+int
 i40e_dev_tunnel_filter_set(struct i40e_pf *pf,
 			struct rte_eth_tunnel_filter_conf *tunnel_filter,
 			uint8_t add)
@@ -8367,7 +8373,7 @@ i40e_sw_ethertype_filter_del(struct i40e_pf *pf,
  * Configure ethertype filter, which can director packet by filtering
  * with mac address and ether_type or only ether_type
  */
-static int
+int
 i40e_ethertype_filter_set(struct i40e_pf *pf,
 			struct rte_eth_ethertype_filter *filter,
 			bool add)

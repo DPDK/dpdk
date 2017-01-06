@@ -1099,7 +1099,7 @@ i40e_sw_fdir_filter_del(struct i40e_pf *pf, struct rte_eth_fdir_input *input)
  * @filter: fdir filter entry
  * @add: 0 - delete, 1 - add
  */
-static int
+int
 i40e_add_del_fdir_filter(struct rte_eth_dev *dev,
 			    const struct rte_eth_fdir_filter *filter,
 			    bool add)

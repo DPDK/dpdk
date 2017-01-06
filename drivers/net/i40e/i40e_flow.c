@@ -63,6 +63,11 @@ static int i40e_flow_validate(struct rte_eth_dev *dev,
 			      const struct rte_flow_item pattern[],
 			      const struct rte_flow_action actions[],
 			      struct rte_flow_error *error);
+static struct rte_flow *i40e_flow_create(struct rte_eth_dev *dev,
+					 const struct rte_flow_attr *attr,
+					 const struct rte_flow_item pattern[],
+					 const struct rte_flow_action actions[],
+					 struct rte_flow_error *error);
 static int
 i40e_flow_parse_ethertype_pattern(struct rte_eth_dev *dev,
 				  const struct rte_flow_item *pattern,
@@ -111,9 +116,11 @@ static int i40e_flow_parse_tunnel_filter(struct rte_eth_dev *dev,
 
 const struct rte_flow_ops i40e_flow_ops = {
 	.validate = i40e_flow_validate,
+	.create = i40e_flow_create,
 };
 
 union i40e_filter_t cons_filter;
+enum rte_filter_type cons_filter_type = RTE_ETH_FILTER_NONE;
 
 /* Pattern matched ethertype filter */
 static enum rte_flow_item_type pattern_ethertype[] = {
@@ -615,6 +622,8 @@ i40e_flow_parse_ethertype_filter(struct rte_eth_dev *dev,
 	if (ret)
 		return ret;
 
+	cons_filter_type = RTE_ETH_FILTER_ETHERTYPE;
+
 	return ret;
 }
 
@@ -1093,6 +1102,8 @@ i40e_flow_parse_fdir_filter(struct rte_eth_dev *dev,
 	if (ret)
 		return ret;
 
+	cons_filter_type = RTE_ETH_FILTER_FDIR;
+
 	if (dev->data->dev_conf.fdir_conf.mode !=
 	    RTE_FDIR_MODE_PERFECT) {
 		rte_flow_error_set(error, ENOTSUP,
@@ -1454,6 +1465,8 @@ i40e_flow_parse_tunnel_filter(struct rte_eth_dev *dev,
 	if (ret)
 		return ret;
 
+	cons_filter_type = RTE_ETH_FILTER_TUNNEL;
+
 	return ret;
 }
 
@@ -1524,4 +1537,68 @@ i40e_flow_validate(struct rte_eth_dev *dev,
 	rte_free(items);
 
 	return ret;
+}
+
+static struct rte_flow *
+i40e_flow_create(struct rte_eth_dev *dev,
+		 const struct rte_flow_attr *attr,
+		 const struct rte_flow_item pattern[],
+		 const struct rte_flow_action actions[],
+		 struct rte_flow_error *error)
+{
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct rte_flow *flow;
+	int ret;
+
+	flow = rte_zmalloc("i40e_flow", sizeof(struct rte_flow), 0);
+	if (!flow) {
+		rte_flow_error_set(error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "Failed to allocate memory");
+		return flow;
+	}
+
+	ret = i40e_flow_validate(dev, attr, pattern, actions, error);
+	if (ret < 0)
+		return NULL;
+
+	switch (cons_filter_type) {
+	case RTE_ETH_FILTER_ETHERTYPE:
+		ret = i40e_ethertype_filter_set(pf,
+					&cons_filter.ethertype_filter, 1);
+		if (ret)
+			goto free_flow;
+		flow->rule = TAILQ_LAST(&pf->ethertype.ethertype_list,
+					i40e_ethertype_filter_list);
+		break;
+	case RTE_ETH_FILTER_FDIR:
+		ret = i40e_add_del_fdir_filter(dev,
+				       &cons_filter.fdir_filter, 1);
+		if (ret)
+			goto free_flow;
+		flow->rule = TAILQ_LAST(&pf->fdir.fdir_list,
+					i40e_fdir_filter_list);
+		break;
+	case RTE_ETH_FILTER_TUNNEL:
+		ret = i40e_dev_tunnel_filter_set(pf,
+					 &cons_filter.tunnel_filter, 1);
+		if (ret)
+			goto free_flow;
+		flow->rule = TAILQ_LAST(&pf->tunnel.tunnel_list,
+					i40e_tunnel_filter_list);
+		break;
+	default:
+		goto free_flow;
+	}
+
+	flow->filter_type = cons_filter_type;
+	TAILQ_INSERT_TAIL(&pf->flow_list, flow, node);
+	return flow;
+
+free_flow:
+	rte_flow_error_set(error, -ret,
+			   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+			   "Failed to create flow.");
+	rte_free(flow);
+	return NULL;
 }
