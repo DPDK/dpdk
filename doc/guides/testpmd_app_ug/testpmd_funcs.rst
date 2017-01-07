@@ -873,7 +873,7 @@ Where:
 
 * ``mac_ctrl_frame_fwd``: Enable receiving MAC control frames.
 
-* ``autoneg``: Change the auto-negotiation para mete.
+* ``autoneg``: Change the auto-negotiation parameter.
 
 set pfc_ctrl rx
 ~~~~~~~~~~~~~~~
