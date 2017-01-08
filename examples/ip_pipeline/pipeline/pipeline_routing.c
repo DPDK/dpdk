@@ -494,6 +494,26 @@ app_pipeline_routing_add_route(struct app_params *app,
 		/* data */
 		if (data->port_id >= p->n_ports_out)
 			return -1;
+
+		/* Valid range of VLAN tags 12 bits */
+		if (data->flags & PIPELINE_ROUTING_ROUTE_QINQ)
+			if ((data->l2.qinq.svlan & 0xF000) ||
+					(data->l2.qinq.cvlan & 0xF000))
+				return -1;
+
+		/* Max number of MPLS labels supported */
+		if (data->flags & PIPELINE_ROUTING_ROUTE_MPLS) {
+			uint32_t i;
+
+			if (data->l2.mpls.n_labels >
+					PIPELINE_ROUTING_MPLS_LABELS_MAX)
+				return -1;
+
+			/* Max MPLS label value 20 bits */
+			for (i = 0; i < data->l2.mpls.n_labels; i++)
+				if (data->l2.mpls.labels[i] & 0xFFF00000)
+					return -1;
+		}
 	}
 	break;
 
