@@ -37,6 +37,9 @@
 #include "enic_compat.h"
 #include "rq_enet_desc.h"
 #include "enic.h"
+#include <rte_ether.h>
+#include <rte_ip.h>
+#include <rte_tcp.h>
 
 #define RTE_PMD_USE_PREFETCH
 
@@ -127,6 +130,60 @@ enic_cq_rx_desc_n_bytes(struct cq_desc *cqd)
 	struct cq_enet_rq_desc *cqrd = (struct cq_enet_rq_desc *)cqd;
 	return le16_to_cpu(cqrd->bytes_written_flags) &
 		CQ_ENET_RQ_DESC_BYTES_WRITTEN_MASK;
+}
+
+/* Find the offset to L5. This is needed by enic TSO implementation.
+ * Return 0 if not a TCP packet or can't figure out the length.
+ */
+static inline uint8_t tso_header_len(struct rte_mbuf *mbuf)
+{
+	struct ether_hdr *eh;
+	struct vlan_hdr *vh;
+	struct ipv4_hdr *ip4;
+	struct ipv6_hdr *ip6;
+	struct tcp_hdr *th;
+	uint8_t hdr_len;
+	uint16_t ether_type;
+
+	/* offset past Ethernet header */
+	eh = rte_pktmbuf_mtod(mbuf, struct ether_hdr *);
+	ether_type = eh->ether_type;
+	hdr_len = sizeof(struct ether_hdr);
+	if (ether_type == rte_cpu_to_be_16(ETHER_TYPE_VLAN)) {
+		vh = rte_pktmbuf_mtod_offset(mbuf, struct vlan_hdr *, hdr_len);
+		ether_type = vh->eth_proto;
+		hdr_len += sizeof(struct vlan_hdr);
+	}
+
+	/* offset past IP header */
+	switch (rte_be_to_cpu_16(ether_type)) {
+	case ETHER_TYPE_IPv4:
+		ip4 = rte_pktmbuf_mtod_offset(mbuf, struct ipv4_hdr *, hdr_len);
+		if (ip4->next_proto_id != IPPROTO_TCP)
+			return 0;
+		hdr_len += (ip4->version_ihl & 0xf) * 4;
+		break;
+	case ETHER_TYPE_IPv6:
+		ip6 = rte_pktmbuf_mtod_offset(mbuf, struct ipv6_hdr *, hdr_len);
+		if (ip6->proto != IPPROTO_TCP)
+			return 0;
+		hdr_len += sizeof(struct ipv6_hdr);
+		break;
+	default:
+		return 0;
+	}
+
+	if ((hdr_len + sizeof(struct tcp_hdr)) > mbuf->pkt_len)
+		return 0;
+
+	/* offset past TCP header */
+	th = rte_pktmbuf_mtod_offset(mbuf, struct tcp_hdr *, hdr_len);
+	hdr_len += (th->data_off >> 4) * 4;
+
+	if (hdr_len > mbuf->pkt_len)
+		return 0;
+
+	return hdr_len;
 }
 
 static inline uint8_t
@@ -466,6 +523,8 @@ uint16_t enic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	uint8_t vlan_tag_insert;
 	uint8_t eop;
 	uint64_t bus_addr;
+	uint8_t offload_mode;
+	uint16_t header_len;
 
 	enic_cleanup_wq(enic, wq);
 	wq_desc_avail = vnic_wq_desc_avail(wq);
@@ -497,13 +556,17 @@ uint16_t enic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		desc_p = descs + head_idx;
 
 		eop = (data_len == pkt_len);
+		offload_mode = WQ_ENET_OFFLOAD_MODE_CSUM;
+		header_len = 0;
 
-		if (ol_flags & ol_flags_mask) {
-			if (ol_flags & PKT_TX_VLAN_PKT) {
-				vlan_tag_insert = 1;
-				vlan_id = tx_pkt->vlan_tci;
+		if (tx_pkt->tso_segsz) {
+			header_len = tso_header_len(tx_pkt);
+			if (header_len) {
+				offload_mode = WQ_ENET_OFFLOAD_MODE_TSO;
+				mss = tx_pkt->tso_segsz;
 			}
-
+		}
+		if ((ol_flags & ol_flags_mask) && (header_len == 0)) {
 			if (ol_flags & PKT_TX_IP_CKSUM)
 				mss |= ENIC_CALC_IP_CKSUM;
 
@@ -516,8 +579,14 @@ uint16_t enic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			}
 		}
 
-		wq_enet_desc_enc(&desc_tmp, bus_addr, data_len, mss, 0, 0, eop,
-				 eop, 0, vlan_tag_insert, vlan_id, 0);
+		if (ol_flags & PKT_TX_VLAN_PKT) {
+			vlan_tag_insert = 1;
+			vlan_id = tx_pkt->vlan_tci;
+		}
+
+		wq_enet_desc_enc(&desc_tmp, bus_addr, data_len, mss, header_len,
+				 offload_mode, eop, eop, 0, vlan_tag_insert,
+				 vlan_id, 0);
 
 		*desc_p = desc_tmp;
 		buf = &wq->bufs[head_idx];
@@ -537,8 +606,9 @@ uint16_t enic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 					   + tx_pkt->data_off);
 				wq_enet_desc_enc((struct wq_enet_desc *)
 						 &desc_tmp, bus_addr, data_len,
-						 mss, 0, 0, eop, eop, 0,
-						 vlan_tag_insert, vlan_id, 0);
+						 mss, 0, offload_mode, eop, eop,
+						 0, vlan_tag_insert, vlan_id,
+						 0);
 
 				*desc_p = desc_tmp;
 				buf = &wq->bufs[head_idx];
