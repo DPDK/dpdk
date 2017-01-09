@@ -65,9 +65,9 @@ reassemble_packets(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_bufs,
 				start->ol_flags = end->ol_flags;
 				/* we need to strip crc for the whole packet */
 				start->pkt_len -= rxq->crc_len;
-				if (end->data_len > rxq->crc_len) {
+				if (end->data_len > rxq->crc_len)
 					end->data_len -= rxq->crc_len;
-				} else {
+				else {
 					/* free up last mbuf */
 					struct rte_mbuf *secondlast = start;
 
@@ -78,7 +78,6 @@ reassemble_packets(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_bufs,
 							end->data_len);
 					secondlast->next = NULL;
 					rte_pktmbuf_free_seg(end);
-					end = secondlast;
 				}
 				pkts[pkt_idx++] = start;
 				start = end = NULL;
