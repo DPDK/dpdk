@@ -189,6 +189,21 @@ rte_eth_dev_find_free_port(void)
 	return RTE_MAX_ETHPORTS;
 }
 
+static struct rte_eth_dev *
+eth_dev_get(uint8_t port_id)
+{
+	struct rte_eth_dev *eth_dev = &rte_eth_devices[port_id];
+
+	eth_dev->data = &rte_eth_dev_data[port_id];
+	eth_dev->attached = DEV_ATTACHED;
+	TAILQ_INIT(&(eth_dev->link_intr_cbs));
+
+	eth_dev_last_created_port = port_id;
+	nb_ports++;
+
+	return eth_dev;
+}
+
 struct rte_eth_dev *
 rte_eth_dev_allocate(const char *name)
 {
@@ -210,17 +225,43 @@ rte_eth_dev_allocate(const char *name)
 		return NULL;
 	}
 
-	eth_dev = &rte_eth_devices[port_id];
-	eth_dev->data = &rte_eth_dev_data[port_id];
-	memset(eth_dev->data, 0, sizeof(*eth_dev->data));
+	memset(&rte_eth_devices[port_id], 0, sizeof(*eth_dev->data));
+	eth_dev = eth_dev_get(port_id);
 	snprintf(eth_dev->data->name, sizeof(eth_dev->data->name), "%s", name);
 	eth_dev->data->port_id = port_id;
 	eth_dev->data->mtu = ETHER_MTU;
-	TAILQ_INIT(&(eth_dev->link_intr_cbs));
 
-	eth_dev->attached = DEV_ATTACHED;
-	eth_dev_last_created_port = port_id;
-	nb_ports++;
+	return eth_dev;
+}
+
+/*
+ * Attach to a port already registered by the primary process, which
+ * makes sure that the same device would have the same port id both
+ * in the primary and secondary process.
+ */
+static struct rte_eth_dev *
+eth_dev_attach_secondary(const char *name)
+{
+	uint8_t i;
+	struct rte_eth_dev *eth_dev;
+
+	if (rte_eth_dev_data == NULL)
+		rte_eth_dev_data_alloc();
+
+	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
+		if (strcmp(rte_eth_dev_data[i].name, name) == 0)
+			break;
+	}
+	if (i == RTE_MAX_ETHPORTS) {
+		RTE_PMD_DEBUG_TRACE(
+			"device %s is not driven by the primary process\n",
+			name);
+		return NULL;
+	}
+
+	eth_dev = eth_dev_get(i);
+	RTE_ASSERT(eth_dev->data->port_id == i);
+
 	return eth_dev;
 }
 
@@ -250,16 +291,28 @@ rte_eth_dev_pci_probe(struct rte_pci_driver *pci_drv,
 	rte_eal_pci_device_name(&pci_dev->addr, ethdev_name,
 			sizeof(ethdev_name));
 
-	eth_dev = rte_eth_dev_allocate(ethdev_name);
-	if (eth_dev == NULL)
-		return -ENOMEM;
-
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		eth_dev = rte_eth_dev_allocate(ethdev_name);
+		if (eth_dev == NULL)
+			return -ENOMEM;
+
 		eth_dev->data->dev_private = rte_zmalloc("ethdev private structure",
 				  eth_drv->dev_private_size,
 				  RTE_CACHE_LINE_SIZE);
 		if (eth_dev->data->dev_private == NULL)
 			rte_panic("Cannot allocate memzone for private port data\n");
+	} else {
+		eth_dev = eth_dev_attach_secondary(ethdev_name);
+		if (eth_dev == NULL) {
+			/*
+			 * if we failed to attach a device, it means the
+			 * device is skipped in primary process, due to
+			 * some errors. If so, we return a positive value,
+			 * to let EAL skip it for the secondary process
+			 * as well.
+			 */
+			return 1;
+		}
 	}
 	eth_dev->device = &pci_dev->device;
 	eth_dev->intr_handle = &pci_dev->intr_handle;
