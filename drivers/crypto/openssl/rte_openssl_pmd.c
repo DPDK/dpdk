@@ -522,8 +522,7 @@ process_openssl_cipher_decrypt(uint8_t *src, uint8_t *dst,
 	if (EVP_DecryptInit_ex(ctx, algo, NULL, key, iv) <= 0)
 		goto process_cipher_decrypt_err;
 
-	if (EVP_CIPHER_CTX_set_padding(ctx, 0) <= 0)
-		goto process_cipher_decrypt_err;
+	EVP_CIPHER_CTX_set_padding(ctx, 0);
 
 	if (EVP_DecryptUpdate(ctx, dst, &dstlen, src, srclen) <= 0)
 		goto process_cipher_decrypt_err;
