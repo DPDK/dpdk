@@ -884,7 +884,7 @@ store:
 	do {
 		struct rte_flow_item *dst = NULL;
 
-		if ((unsigned int)item->type > RTE_DIM(flow_item) ||
+		if ((unsigned int)item->type >= RTE_DIM(flow_item) ||
 		    !flow_item[item->type].name)
 			goto notsup;
 		if (pf)
@@ -918,7 +918,7 @@ store:
 	do {
 		struct rte_flow_action *dst = NULL;
 
-		if ((unsigned int)action->type > RTE_DIM(flow_action) ||
+		if ((unsigned int)action->type >= RTE_DIM(flow_action) ||
 		    !flow_action[action->type].name)
 			goto notsup;
 		if (pf)
@@ -977,7 +977,7 @@ port_flow_complain(struct rte_flow_error *error)
 	char buf[32];
 	int err = rte_errno;
 
-	if ((unsigned int)error->type > RTE_DIM(errstrlist) ||
+	if ((unsigned int)error->type >= RTE_DIM(errstrlist) ||
 	    !errstrlist[error->type])
 		errstr = "unknown type";
 	else
@@ -1146,7 +1146,7 @@ port_flow_query(portid_t port_id, uint32_t rule,
 		printf("Flow rule #%u not found\n", rule);
 		return -ENOENT;
 	}
-	if ((unsigned int)action > RTE_DIM(flow_action) ||
+	if ((unsigned int)action >= RTE_DIM(flow_action) ||
 	    !flow_action[action].name)
 		name = "unknown";
 	else
