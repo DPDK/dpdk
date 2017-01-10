@@ -1049,30 +1049,30 @@ flow rules:
 Action: ``MARK``
 ^^^^^^^^^^^^^^^^
 
-Attaches a 32 bit value to packets.
+Attaches an integer value to packets and sets ``PKT_RX_FDIR`` and
+``PKT_RX_FDIR_ID`` mbuf flags.
 
-This value is arbitrary and application-defined. For compatibility with FDIR
-it is returned in the ``hash.fdir.hi`` mbuf field. ``PKT_RX_FDIR_ID`` is
-also set in ``ol_flags``.
+This value is arbitrary and application-defined. Maximum allowed value
+depends on the underlying implementation. It is returned in the
+``hash.fdir.hi`` mbuf field.
 
 .. _table_rte_flow_action_mark:
 
 .. table:: MARK
 
-   +--------+-------------------------------------+
-   | Field  | Value                               |
-   +========+=====================================+
-   | ``id`` | 32 bit value to return with packets |
-   +--------+-------------------------------------+
+   +--------+--------------------------------------+
+   | Field  | Value                                |
+   +========+======================================+
+   | ``id`` | integer value to return with packets |
+   +--------+--------------------------------------+
 
 Action: ``FLAG``
 ^^^^^^^^^^^^^^^^
 
-Flag packets. Similar to `Action: MARK`_ but only affects ``ol_flags``.
+Flags packets. Similar to `Action: MARK`_ without a specific value; only
+sets the ``PKT_RX_FDIR`` mbuf flag.
 
 - No configurable properties.
-
-Note: a distinctive flag must be defined for it.
 
 .. _table_rte_flow_action_flag:
 
