@@ -98,15 +98,15 @@ To verify real traffic l2fwd-crypto example can be used with this command:
 
 .. code-block:: console
 
-sudo ./build/l2fwd-crypto -c 0x3 -n 4 --vdev "crypto_openssl"
---vdev "crypto_openssl"-- -p 0x3 --chain CIPHER_HASH
---cipher_op ENCRYPT --cipher_algo AES_CBC
---cipher_key 00:01:02:03:04:05:06:07:08:09:0a:0b:0c:0d:0e:0f
---iv 00:01:02:03:04:05:06:07:08:09:0a:0b:0c:0d:0e:ff
---auth_op GENERATE --auth_algo SHA1_HMAC
---auth_key 11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11
-:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11
-:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11
+	sudo ./build/l2fwd-crypto -c 0x3 -n 4 --vdev "crypto_openssl"
+	--vdev "crypto_openssl"-- -p 0x3 --chain CIPHER_HASH
+	--cipher_op ENCRYPT --cipher_algo AES_CBC
+	--cipher_key 00:01:02:03:04:05:06:07:08:09:0a:0b:0c:0d:0e:0f
+	--iv 00:01:02:03:04:05:06:07:08:09:0a:0b:0c:0d:0e:ff
+	--auth_op GENERATE --auth_algo SHA1_HMAC
+	--auth_key 11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11
+	:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11
+	:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11:11
 
 Limitations
 -----------
