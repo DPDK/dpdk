@@ -217,13 +217,11 @@ Usage restrictions and expected behavior:
   values lower than those in ``spec`` are not supported.
 
 - Setting ``spec`` and optionally ``last`` without ``mask`` causes the PMD
-  to only take the fields it can recognize into account. There is no error
-  checking for unsupported fields.
+  to use the default mask defined for that item (defined as
+  ``rte_flow_item_{name}_mask`` constants).
 
-- Not setting any of them (assuming item type allows it) uses default
-  parameters that depend on the item type. Most of the time, particularly
-  for protocol header items, it is equivalent to providing an empty (zeroed)
-  ``mask``.
+- Not setting any of them (assuming item type allows it) is equivalent to
+  providing an empty (zeroed) ``mask`` for broad (nonspecific) matching.
 
 - ``mask`` is a simple bit-mask applied before interpreting the contents of
   ``spec`` and ``last``, which may yield unexpected results if not used
@@ -550,6 +548,7 @@ duplicated between device instances by default.
 - Can be specified multiple times to match traffic addressed to several VF
   IDs.
 - Can be combined with a PF item to match both PF and VF traffic.
+- Default ``mask`` matches any VF ID.
 
 .. _table_rte_flow_item_vf:
 
@@ -583,6 +582,8 @@ not be contiguous.
 As a device property, the list of allowed values as well as the value
 associated with a port_id should be retrieved by other means.
 
+- Default ``mask`` matches any port index.
+
 .. _table_rte_flow_item_port:
 
 .. table:: PORT
@@ -615,6 +616,8 @@ stand for several protocol layers.
 
 This is usually specified as the first pattern item when looking for a
 protocol anywhere in a packet.
+
+- Default ``mask`` stands for any number of layers.
 
 .. _table_rte_flow_item_any:
 
@@ -673,6 +676,7 @@ Matching a zero-length pattern is allowed, doing so resets the relative
 offset for subsequent items.
 
 - This type does not support ranges (``last`` field).
+- Default ``mask`` matches all fields exactly.
 
 .. _table_rte_flow_item_raw:
 
@@ -785,6 +789,7 @@ Matches an Ethernet header.
 - ``dst``: destination MAC.
 - ``src``: source MAC.
 - ``type``: EtherType.
+- Default ``mask`` matches destination and source addresses only.
 
 Item: ``VLAN``
 ^^^^^^^^^^^^^^
@@ -793,6 +798,7 @@ Matches an 802.1Q/ad VLAN tag.
 
 - ``tpid``: tag protocol identifier.
 - ``tci``: tag control information.
+- Default ``mask`` matches TCI only.
 
 Item: ``IPV4``
 ^^^^^^^^^^^^^^
@@ -802,6 +808,7 @@ Matches an IPv4 header.
 Note: IPv4 options are handled by dedicated pattern items.
 
 - ``hdr``: IPv4 header definition (``rte_ip.h``).
+- Default ``mask`` matches source and destination addresses only.
 
 Item: ``IPV6``
 ^^^^^^^^^^^^^^
@@ -811,6 +818,7 @@ Matches an IPv6 header.
 Note: IPv6 options are handled by dedicated pattern items.
 
 - ``hdr``: IPv6 header definition (``rte_ip.h``).
+- Default ``mask`` matches source and destination addresses only.
 
 Item: ``ICMP``
 ^^^^^^^^^^^^^^
@@ -818,6 +826,7 @@ Item: ``ICMP``
 Matches an ICMP header.
 
 - ``hdr``: ICMP header definition (``rte_icmp.h``).
+- Default ``mask`` matches ICMP type and code only.
 
 Item: ``UDP``
 ^^^^^^^^^^^^^
@@ -825,6 +834,7 @@ Item: ``UDP``
 Matches a UDP header.
 
 - ``hdr``: UDP header definition (``rte_udp.h``).
+- Default ``mask`` matches source and destination ports only.
 
 Item: ``TCP``
 ^^^^^^^^^^^^^
@@ -832,6 +842,7 @@ Item: ``TCP``
 Matches a TCP header.
 
 - ``hdr``: TCP header definition (``rte_tcp.h``).
+- Default ``mask`` matches source and destination ports only.
 
 Item: ``SCTP``
 ^^^^^^^^^^^^^^
@@ -839,6 +850,7 @@ Item: ``SCTP``
 Matches a SCTP header.
 
 - ``hdr``: SCTP header definition (``rte_sctp.h``).
+- Default ``mask`` matches source and destination ports only.
 
 Item: ``VXLAN``
 ^^^^^^^^^^^^^^^
@@ -849,6 +861,7 @@ Matches a VXLAN header (RFC 7348).
 - ``rsvd0``: reserved, normally 0x000000.
 - ``vni``: VXLAN network identifier.
 - ``rsvd1``: reserved, normally 0x00.
+- Default ``mask`` matches VNI only.
 
 Actions
 ~~~~~~~

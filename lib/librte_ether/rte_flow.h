@@ -282,7 +282,12 @@ enum rte_flow_item_type {
  * A zeroed mask stands for any number of layers.
  */
 struct rte_flow_item_any {
-	uint32_t num; /* Number of layers covered. */
+	uint32_t num; /**< Number of layers covered. */
+};
+
+/** Default mask for RTE_FLOW_ITEM_TYPE_ANY. */
+static const struct rte_flow_item_any rte_flow_item_any_mask = {
+	.num = 0x00000000,
 };
 
 /**
@@ -307,6 +312,11 @@ struct rte_flow_item_vf {
 	uint32_t id; /**< Destination VF ID. */
 };
 
+/** Default mask for RTE_FLOW_ITEM_TYPE_VF. */
+static const struct rte_flow_item_vf rte_flow_item_vf_mask = {
+	.id = 0x00000000,
+};
+
 /**
  * RTE_FLOW_ITEM_TYPE_PORT
  *
@@ -329,6 +339,11 @@ struct rte_flow_item_vf {
  */
 struct rte_flow_item_port {
 	uint32_t index; /**< Physical port index. */
+};
+
+/** Default mask for RTE_FLOW_ITEM_TYPE_PORT. */
+static const struct rte_flow_item_port rte_flow_item_port_mask = {
+	.index = 0x00000000,
 };
 
 /**
@@ -359,6 +374,16 @@ struct rte_flow_item_raw {
 	uint8_t pattern[]; /**< Byte string to look for. */
 };
 
+/** Default mask for RTE_FLOW_ITEM_TYPE_RAW. */
+static const struct rte_flow_item_raw rte_flow_item_raw_mask = {
+	.relative = 1,
+	.search = 1,
+	.reserved = 0x3fffffff,
+	.offset = 0xffffffff,
+	.limit = 0xffff,
+	.length = 0xffff,
+};
+
 /**
  * RTE_FLOW_ITEM_TYPE_ETH
  *
@@ -368,6 +393,13 @@ struct rte_flow_item_eth {
 	struct ether_addr dst; /**< Destination MAC. */
 	struct ether_addr src; /**< Source MAC. */
 	uint16_t type; /**< EtherType. */
+};
+
+/** Default mask for RTE_FLOW_ITEM_TYPE_ETH. */
+static const struct rte_flow_item_eth rte_flow_item_eth_mask = {
+	.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+	.src.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+	.type = 0x0000,
 };
 
 /**
@@ -383,6 +415,12 @@ struct rte_flow_item_vlan {
 	uint16_t tci; /**< Tag control information. */
 };
 
+/** Default mask for RTE_FLOW_ITEM_TYPE_VLAN. */
+static const struct rte_flow_item_vlan rte_flow_item_vlan_mask = {
+	.tpid = 0x0000,
+	.tci = 0xffff,
+};
+
 /**
  * RTE_FLOW_ITEM_TYPE_IPV4
  *
@@ -392,6 +430,14 @@ struct rte_flow_item_vlan {
  */
 struct rte_flow_item_ipv4 {
 	struct ipv4_hdr hdr; /**< IPv4 header definition. */
+};
+
+/** Default mask for RTE_FLOW_ITEM_TYPE_IPV4. */
+static const struct rte_flow_item_ipv4 rte_flow_item_ipv4_mask = {
+	.hdr = {
+		.src_addr = 0xffffffff,
+		.dst_addr = 0xffffffff,
+	},
 };
 
 /**
@@ -405,6 +451,18 @@ struct rte_flow_item_ipv6 {
 	struct ipv6_hdr hdr; /**< IPv6 header definition. */
 };
 
+/** Default mask for RTE_FLOW_ITEM_TYPE_IPV6. */
+static const struct rte_flow_item_ipv6 rte_flow_item_ipv6_mask = {
+	.hdr = {
+		.src_addr =
+			"\xff\xff\xff\xff\xff\xff\xff\xff"
+			"\xff\xff\xff\xff\xff\xff\xff\xff",
+		.dst_addr =
+			"\xff\xff\xff\xff\xff\xff\xff\xff"
+			"\xff\xff\xff\xff\xff\xff\xff\xff",
+	},
+};
+
 /**
  * RTE_FLOW_ITEM_TYPE_ICMP.
  *
@@ -412,6 +470,14 @@ struct rte_flow_item_ipv6 {
  */
 struct rte_flow_item_icmp {
 	struct icmp_hdr hdr; /**< ICMP header definition. */
+};
+
+/** Default mask for RTE_FLOW_ITEM_TYPE_ICMP. */
+static const struct rte_flow_item_icmp rte_flow_item_icmp_mask = {
+	.hdr = {
+		.icmp_type = 0xff,
+		.icmp_code = 0xff,
+	},
 };
 
 /**
@@ -423,6 +489,14 @@ struct rte_flow_item_udp {
 	struct udp_hdr hdr; /**< UDP header definition. */
 };
 
+/** Default mask for RTE_FLOW_ITEM_TYPE_UDP. */
+static const struct rte_flow_item_udp rte_flow_item_udp_mask = {
+	.hdr = {
+		.src_port = 0xffff,
+		.dst_port = 0xffff,
+	},
+};
+
 /**
  * RTE_FLOW_ITEM_TYPE_TCP.
  *
@@ -432,6 +506,14 @@ struct rte_flow_item_tcp {
 	struct tcp_hdr hdr; /**< TCP header definition. */
 };
 
+/** Default mask for RTE_FLOW_ITEM_TYPE_TCP. */
+static const struct rte_flow_item_tcp rte_flow_item_tcp_mask = {
+	.hdr = {
+		.src_port = 0xffff,
+		.dst_port = 0xffff,
+	},
+};
+
 /**
  * RTE_FLOW_ITEM_TYPE_SCTP.
  *
@@ -439,6 +521,14 @@ struct rte_flow_item_tcp {
  */
 struct rte_flow_item_sctp {
 	struct sctp_hdr hdr; /**< SCTP header definition. */
+};
+
+/** Default mask for RTE_FLOW_ITEM_TYPE_SCTP. */
+static const struct rte_flow_item_sctp rte_flow_item_sctp_mask = {
+	.hdr = {
+		.src_port = 0xffff,
+		.dst_port = 0xffff,
+	},
 };
 
 /**
@@ -453,6 +543,11 @@ struct rte_flow_item_vxlan {
 	uint8_t rsvd1; /**< Reserved, normally 0x00. */
 };
 
+/** Default mask for RTE_FLOW_ITEM_TYPE_VXLAN. */
+static const struct rte_flow_item_vxlan rte_flow_item_vxlan_mask = {
+	.vni = "\xff\xff\xff",
+};
+
 /**
  * Matching pattern item definition.
  *
@@ -464,15 +559,18 @@ struct rte_flow_item_vxlan {
  * Patterns are terminated by END items.
  *
  * The spec field should be a valid pointer to a structure of the related
- * item type. It may be set to NULL in many cases to use default values.
+ * item type. It may remain unspecified (NULL) in many cases to request
+ * broad (nonspecific) matching. In such cases, last and mask must also be
+ * set to NULL.
  *
  * Optionally, last can point to a structure of the same type to define an
  * inclusive range. This is mostly supported by integer and address fields,
  * may cause errors otherwise. Fields that do not support ranges must be set
  * to 0 or to the same value as the corresponding fields in spec.
  *
- * By default all fields present in spec are considered relevant (see note
- * below). This behavior can be altered by providing a mask structure of the
+ * Only the fields defined to nonzero values in the default masks (see
+ * rte_flow_item_{name}_mask constants) are considered relevant by
+ * default. This can be overridden by providing a mask structure of the
  * same type with applicable bits set to one. It can also be used to
  * partially filter out specific fields (e.g. as an alternate mean to match
  * ranges of IP addresses).
@@ -482,10 +580,6 @@ struct rte_flow_item_vxlan {
  * carefully. For example, if for an IPv4 address field, spec provides
  * 10.1.2.3, last provides 10.3.4.5 and mask provides 255.255.0.0, the
  * effective range becomes 10.1.0.0 to 10.3.255.255.
- *
- * Note: the defaults for data-matching items such as IPv4 when mask is not
- * specified actually depend on the underlying implementation since only
- * recognized fields can be taken into account.
  */
 struct rte_flow_item {
 	enum rte_flow_item_type type; /**< Item type. */
