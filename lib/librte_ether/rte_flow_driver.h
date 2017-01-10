@@ -139,9 +139,9 @@ struct rte_flow_ops {
  *   Human-readable error message.
  *
  * @return
- *   Pointer to flow error structure.
+ *   Error code.
  */
-static inline struct rte_flow_error *
+static inline int
 rte_flow_error_set(struct rte_flow_error *error,
 		   int code,
 		   enum rte_flow_error_type type,
@@ -156,7 +156,7 @@ rte_flow_error_set(struct rte_flow_error *error,
 		};
 	}
 	rte_errno = code;
-	return error;
+	return code;
 }
 
 /**

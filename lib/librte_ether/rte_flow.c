@@ -78,9 +78,9 @@ rte_flow_validate(uint8_t port_id,
 		return -rte_errno;
 	if (likely(!!ops->validate))
 		return ops->validate(dev, attr, pattern, actions, error);
-	rte_flow_error_set(error, ENOSYS, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-			   NULL, rte_strerror(ENOSYS));
-	return -rte_errno;
+	return -rte_flow_error_set(error, ENOSYS,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL, rte_strerror(ENOSYS));
 }
 
 /* Create a flow rule on a given port. */
@@ -116,9 +116,9 @@ rte_flow_destroy(uint8_t port_id,
 		return -rte_errno;
 	if (likely(!!ops->destroy))
 		return ops->destroy(dev, flow, error);
-	rte_flow_error_set(error, ENOSYS, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-			   NULL, rte_strerror(ENOSYS));
-	return -rte_errno;
+	return -rte_flow_error_set(error, ENOSYS,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL, rte_strerror(ENOSYS));
 }
 
 /* Destroy all flow rules associated with a port. */
@@ -133,9 +133,9 @@ rte_flow_flush(uint8_t port_id,
 		return -rte_errno;
 	if (likely(!!ops->flush))
 		return ops->flush(dev, error);
-	rte_flow_error_set(error, ENOSYS, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-			   NULL, rte_strerror(ENOSYS));
-	return -rte_errno;
+	return -rte_flow_error_set(error, ENOSYS,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL, rte_strerror(ENOSYS));
 }
 
 /* Query an existing flow rule. */
@@ -153,7 +153,7 @@ rte_flow_query(uint8_t port_id,
 		return -rte_errno;
 	if (likely(!!ops->query))
 		return ops->query(dev, flow, action, data, error);
-	rte_flow_error_set(error, ENOSYS, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-			   NULL, rte_strerror(ENOSYS));
-	return -rte_errno;
+	return -rte_flow_error_set(error, ENOSYS,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL, rte_strerror(ENOSYS));
 }
