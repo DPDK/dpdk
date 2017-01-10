@@ -4578,14 +4578,14 @@ ixgbevf_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 }
 
 static int
-ixgbe_vmdq_mode_check(struct ixgbe_hw *hw)
+ixgbe_vt_check(struct ixgbe_hw *hw)
 {
 	uint32_t reg_val;
 
-	/* we only need to do this if VMDq is enabled */
+	/* if Virtualization Technology is enabled */
 	reg_val = IXGBE_READ_REG(hw, IXGBE_VT_CTL);
 	if (!(reg_val & IXGBE_VT_CTL_VT_ENABLE)) {
-		PMD_INIT_LOG(ERR, "VMDq must be enabled for this setting");
+		PMD_INIT_LOG(ERR, "VT must be enabled for this setting");
 		return -1;
 	}
 
@@ -4965,7 +4965,7 @@ rte_pmd_ixgbe_set_vf_rxmode(uint8_t port, uint16_t vf, uint16_t rx_mask, uint8_t
 			     " on 82599 hardware and newer");
 		return -ENOTSUP;
 	}
-	if (ixgbe_vmdq_mode_check(hw) < 0)
+	if (ixgbe_vt_check(hw) < 0)
 		return -ENOTSUP;
 
 	val = ixgbe_convert_vm_rx_mask_to_val(rx_mask, val);
@@ -5006,7 +5006,7 @@ rte_pmd_ixgbe_set_vf_rx(uint8_t port, uint16_t vf, uint8_t on)
 
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	if (ixgbe_vmdq_mode_check(hw) < 0)
+	if (ixgbe_vt_check(hw) < 0)
 		return -ENOTSUP;
 
 	/* for vf >= 32, set bit in PFVFRE[1], otherwise PFVFRE[0] */
@@ -5056,7 +5056,7 @@ rte_pmd_ixgbe_set_vf_tx(uint8_t port, uint16_t vf, uint8_t on)
 		return -EINVAL;
 
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	if (ixgbe_vmdq_mode_check(hw) < 0)
+	if (ixgbe_vt_check(hw) < 0)
 		return -ENOTSUP;
 
 	/* for vf >= 32, set bit in PFVFTE[1], otherwise PFVFTE[0] */
@@ -5102,7 +5102,7 @@ rte_pmd_ixgbe_set_vf_vlan_filter(uint8_t port, uint16_t vlan,
 		return -EINVAL;
 
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	if (ixgbe_vmdq_mode_check(hw) < 0)
+	if (ixgbe_vt_check(hw) < 0)
 		return -ENOTSUP;
 
 	for (vf_idx = 0; vf_idx < 64; vf_idx++) {
@@ -5233,7 +5233,7 @@ ixgbe_mirror_rule_set(struct rte_eth_dev *dev,
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint8_t mirror_type = 0;
 
-	if (ixgbe_vmdq_mode_check(hw) < 0)
+	if (ixgbe_vt_check(hw) < 0)
 		return -ENOTSUP;
 
 	if (rule_id >= IXGBE_MAX_MIRROR_RULES)
@@ -5354,7 +5354,7 @@ ixgbe_mirror_rule_reset(struct rte_eth_dev *dev, uint8_t rule_id)
 	struct ixgbe_mirror_info *mr_info =
 		(IXGBE_DEV_PRIVATE_TO_PFDATA(dev->data->dev_private));
 
-	if (ixgbe_vmdq_mode_check(hw) < 0)
+	if (ixgbe_vt_check(hw) < 0)
 		return -ENOTSUP;
 
 	memset(&mr_info->mr_conf[rule_id], 0,
