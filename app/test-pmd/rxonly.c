@@ -148,7 +148,8 @@ pkt_burst_receive(struct fwd_stream *fs)
 		if (ol_flags & PKT_RX_RSS_HASH) {
 			printf(" - RSS hash=0x%x", (unsigned) mb->hash.rss);
 			printf(" - RSS queue=0x%x",(unsigned) fs->rx_queue);
-		} else if (ol_flags & PKT_RX_FDIR) {
+		}
+		if (ol_flags & PKT_RX_FDIR) {
 			printf(" - FDIR matched ");
 			if (ol_flags & PKT_RX_FDIR_ID)
 				printf("ID=0x%x",

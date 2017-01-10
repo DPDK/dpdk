@@ -1187,11 +1187,9 @@ Action: ``RSS``
 Similar to QUEUE, except RSS is additionally performed on packets to spread
 them among several queues according to the provided parameters.
 
-Note: RSS hash result is normally stored in the ``hash.rss`` mbuf field,
-however it conflicts with `Action: MARK`_ as they share the same space. When
-both actions are specified, the RSS hash is discarded and
-``PKT_RX_RSS_HASH`` is not set in ``ol_flags``. MARK has priority. The mbuf
-structure should eventually evolve to store both.
+Note: RSS hash result is stored in the ``hash.rss`` mbuf field which
+overlaps ``hash.fdir.lo``. Since `Action: MARK`_ sets the ``hash.fdir.hi``
+field only, both can be requested simultaneously.
 
 - Terminating by default.
 
