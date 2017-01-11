@@ -4823,7 +4823,7 @@ end:
 }
 
 /**
- * DPDK callback to retrieve physical link information (unlocked version).
+ * DPDK callback to retrieve physical link information.
  *
  * @param dev
  *   Pointer to Ethernet device structure.
@@ -4831,15 +4831,17 @@ end:
  *   Wait for request completion (ignored).
  */
 static int
-mlx4_link_update_unlocked(struct rte_eth_dev *dev, int wait_to_complete)
+mlx4_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 {
-	struct priv *priv = mlx4_get_priv(dev);
+	const struct priv *priv = mlx4_get_priv(dev);
 	struct ethtool_cmd edata = {
 		.cmd = ETHTOOL_GSET
 	};
 	struct ifreq ifr;
 	struct rte_eth_link dev_link;
 	int link_speed = 0;
+
+	/* priv_lock() is not taken to allow concurrent calls. */
 
 	if (priv == NULL)
 		return -EINVAL;
@@ -4873,28 +4875,6 @@ mlx4_link_update_unlocked(struct rte_eth_dev *dev, int wait_to_complete)
 	}
 	/* Link status is still the same. */
 	return -1;
-}
-
-/**
- * DPDK callback to retrieve physical link information.
- *
- * @param dev
- *   Pointer to Ethernet device structure.
- * @param wait_to_complete
- *   Wait for request completion (ignored).
- */
-static int
-mlx4_link_update(struct rte_eth_dev *dev, int wait_to_complete)
-{
-	struct priv *priv = mlx4_get_priv(dev);
-	int ret;
-
-	if (priv == NULL)
-		return -EINVAL;
-	priv_lock(priv);
-	ret = mlx4_link_update_unlocked(dev, wait_to_complete);
-	priv_unlock(priv);
-	return ret;
 }
 
 /**
@@ -5413,7 +5393,7 @@ priv_dev_link_status_handler(struct priv *priv, struct rte_eth_dev *dev)
 		struct rte_eth_link *link = &dev->data->dev_link;
 
 		priv->pending_alarm = 0;
-		mlx4_link_update_unlocked(dev, 0);
+		mlx4_link_update(dev, 0);
 		if (((link->link_speed == 0) && link->link_status) ||
 		    ((link->link_speed != 0) && !link->link_status)) {
 			/* Inconsistent status, check again later. */
