@@ -671,8 +671,7 @@ static const struct rte_i40e_xstats_name_off rte_i40e_txq_prio_strings[] = {
 static struct eth_driver rte_i40e_pmd = {
 	.pci_drv = {
 		.id_table = pci_id_i40e_map,
-		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC |
-			RTE_PCI_DRV_DETACHABLE,
+		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
 		.probe = rte_eth_dev_pci_probe,
 		.remove = rte_eth_dev_pci_remove,
 	},
@@ -959,6 +958,7 @@ eth_i40e_dev_init(struct rte_eth_dev *dev)
 	intr_handle = &pci_dev->intr_handle;
 
 	rte_eth_copy_pci_info(dev, pci_dev);
+	dev->data->dev_flags = RTE_ETH_DEV_DETACHABLE;
 
 	pf->adapter = I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	pf->adapter->eth_dev = dev;

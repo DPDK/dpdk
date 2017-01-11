@@ -774,6 +774,7 @@ eth_igb_dev_init(struct rte_eth_dev *eth_dev)
 	}
 
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
+	eth_dev->data->dev_flags = RTE_ETH_DEV_DETACHABLE;
 
 	hw->hw_addr= (void *)pci_dev->mem_resource[0].addr;
 
@@ -982,6 +983,7 @@ eth_igbvf_dev_init(struct rte_eth_dev *eth_dev)
 
 	pci_dev = E1000_DEV_TO_PCI(eth_dev);
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
+	eth_dev->data->dev_flags = RTE_ETH_DEV_DETACHABLE;
 
 	hw->device_id = pci_dev->id.device_id;
 	hw->vendor_id = pci_dev->id.vendor_id;
@@ -1085,8 +1087,7 @@ eth_igbvf_dev_uninit(struct rte_eth_dev *eth_dev)
 static struct eth_driver rte_igb_pmd = {
 	.pci_drv = {
 		.id_table = pci_id_igb_map,
-		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC |
-			RTE_PCI_DRV_DETACHABLE,
+		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
 		.probe = rte_eth_dev_pci_probe,
 		.remove = rte_eth_dev_pci_remove,
 	},
@@ -1101,7 +1102,7 @@ static struct eth_driver rte_igb_pmd = {
 static struct eth_driver rte_igbvf_pmd = {
 	.pci_drv = {
 		.id_table = pci_id_igbvf_map,
-		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_DETACHABLE,
+		.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
 		.probe = rte_eth_dev_pci_probe,
 		.remove = rte_eth_dev_pci_remove,
 	},

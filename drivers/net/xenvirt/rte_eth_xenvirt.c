@@ -672,7 +672,7 @@ eth_dev_xenvirt_create(const char *name, const char *params,
 	eth_dev->data = data;
 	eth_dev->dev_ops = &ops;
 
-	eth_dev->data->dev_flags = RTE_PCI_DRV_DETACHABLE;
+	eth_dev->data->dev_flags = RTE_ETH_DEV_DETACHABLE;
 	eth_dev->data->kdrv = RTE_KDRV_NONE;
 	eth_dev->data->drv_name = drivername;
 	eth_dev->driver = NULL;

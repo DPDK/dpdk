@@ -1057,6 +1057,7 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 		RTE_LOG(INFO, PMD, "%s", bnxt_version);
 
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
+	eth_dev->data->dev_flags = RTE_ETH_DEV_DETACHABLE;
 	bp = eth_dev->data->dev_private;
 
 	if (bnxt_vf_pciid(pci_dev->id.device_id))
@@ -1168,7 +1169,7 @@ static struct eth_driver bnxt_rte_pmd = {
 	.pci_drv = {
 		    .id_table = bnxt_pci_id_map,
 		    .drv_flags = RTE_PCI_DRV_NEED_MAPPING |
-			    RTE_PCI_DRV_DETACHABLE | RTE_PCI_DRV_INTR_LSC,
+			    RTE_PCI_DRV_INTR_LSC,
 		    .probe = rte_eth_dev_pci_probe,
 		    .remove = rte_eth_dev_pci_remove
 		    },

@@ -2338,6 +2338,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 
 	pci_dev = RTE_DEV_TO_PCI(eth_dev->device);
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
+	eth_dev->data->dev_flags = RTE_ETH_DEV_DETACHABLE;
 
 	hw->device_id = pci_dev->id.device_id;
 	hw->vendor_id = pci_dev->id.vendor_id;
@@ -2475,8 +2476,7 @@ static struct rte_pci_id pci_id_nfp_net_map[] = {
 static struct eth_driver rte_nfp_net_pmd = {
 	.pci_drv = {
 		.id_table = pci_id_nfp_net_map,
-		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC |
-			     RTE_PCI_DRV_DETACHABLE,
+		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
 		.probe = rte_eth_dev_pci_probe,
 		.remove = rte_eth_dev_pci_remove,
 	},
