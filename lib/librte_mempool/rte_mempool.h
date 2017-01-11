@@ -1038,19 +1038,15 @@ rte_mempool_default_cache(struct rte_mempool *mp, unsigned lcore_id)
  */
 static inline void __attribute__((always_inline))
 __mempool_generic_put(struct rte_mempool *mp, void * const *obj_table,
-		      unsigned n, struct rte_mempool_cache *cache, int flags)
+		      unsigned n, struct rte_mempool_cache *cache)
 {
 	void **cache_objs;
 
 	/* increment stat now, adding in mempool always success */
 	__MEMPOOL_STAT_ADD(mp, put, n);
 
-	/* No cache provided or single producer */
-	if (unlikely(cache == NULL || flags & MEMPOOL_F_SP_PUT))
-		goto ring_enqueue;
-
-	/* Go straight to ring if put would overflow mem allocated for cache */
-	if (unlikely(n > RTE_MEMPOOL_CACHE_MAX_SIZE))
+	/* No cache provided or if put would overflow mem allocated for cache */
+	if (unlikely(cache == NULL || n > RTE_MEMPOOL_CACHE_MAX_SIZE))
 		goto ring_enqueue;
 
 	cache_objs = &cache->objs[cache->len];
@@ -1104,10 +1100,11 @@ ring_enqueue:
  */
 static inline void __attribute__((always_inline))
 rte_mempool_generic_put(struct rte_mempool *mp, void * const *obj_table,
-			unsigned n, struct rte_mempool_cache *cache, int flags)
+			unsigned n, struct rte_mempool_cache *cache,
+			__rte_unused int flags)
 {
 	__mempool_check_cookies(mp, obj_table, n, 0);
-	__mempool_generic_put(mp, obj_table, n, cache, flags);
+	__mempool_generic_put(mp, obj_table, n, cache);
 }
 
 /**
@@ -1244,15 +1241,14 @@ rte_mempool_put(struct rte_mempool *mp, void *obj)
  */
 static inline int __attribute__((always_inline))
 __mempool_generic_get(struct rte_mempool *mp, void **obj_table,
-		      unsigned n, struct rte_mempool_cache *cache, int flags)
+		      unsigned n, struct rte_mempool_cache *cache)
 {
 	int ret;
 	uint32_t index, len;
 	void **cache_objs;
 
-	/* No cache provided or single consumer */
-	if (unlikely(cache == NULL || flags & MEMPOOL_F_SC_GET ||
-		     n >= cache->size))
+	/* No cache provided or cannot be satisfied from cache */
+	if (unlikely(cache == NULL || n >= cache->size))
 		goto ring_dequeue;
 
 	cache_objs = cache->objs;
@@ -1326,10 +1322,10 @@ ring_dequeue:
  */
 static inline int __attribute__((always_inline))
 rte_mempool_generic_get(struct rte_mempool *mp, void **obj_table, unsigned n,
-			struct rte_mempool_cache *cache, int flags)
+			struct rte_mempool_cache *cache, __rte_unused int flags)
 {
 	int ret;
-	ret = __mempool_generic_get(mp, obj_table, n, cache, flags);
+	ret = __mempool_generic_get(mp, obj_table, n, cache);
 	if (ret == 0)
 		__mempool_check_cookies(mp, obj_table, n, 1);
 	return ret;
