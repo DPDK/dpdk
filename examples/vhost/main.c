@@ -1436,11 +1436,12 @@ main(int argc, char *argv[])
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Invalid argument\n");
 
-	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id ++)
+	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
 		TAILQ_INIT(&lcore_info[lcore_id].vdev_list);
 
 		if (rte_lcore_is_enabled(lcore_id))
-			lcore_ids[core_id ++] = lcore_id;
+			lcore_ids[core_id++] = lcore_id;
+	}
 
 	if (rte_lcore_count() > RTE_MAX_LCORE)
 		rte_exit(EXIT_FAILURE,"Not enough cores\n");
