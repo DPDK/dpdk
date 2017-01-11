@@ -210,8 +210,11 @@ rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *d
 
 		/* call the driver probe() function */
 		ret = dr->probe(dr, dev);
-		if (ret)
+		if (ret) {
 			dev->driver = NULL;
+			if (dr->drv_flags & RTE_PCI_DRV_NEED_MAPPING)
+				rte_eal_pci_unmap_device(dev);
+		}
 
 		return ret;
 	}
