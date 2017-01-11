@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2017 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -247,6 +247,7 @@ static void ixgbe_remove_rar(struct rte_eth_dev *dev, uint32_t index);
 static void ixgbe_set_default_mac_addr(struct rte_eth_dev *dev,
 					   struct ether_addr *mac_addr);
 static void ixgbe_dcb_init(struct ixgbe_hw *hw, struct ixgbe_dcb_config *dcb_config);
+static int is_ixgbe_pmd(const char *driver_name);
 
 /* For Virtual Function support */
 static int eth_ixgbevf_dev_init(struct rte_eth_dev *eth_dev);
@@ -4223,6 +4224,18 @@ ixgbe_set_default_mac_addr(struct rte_eth_dev *dev, struct ether_addr *addr)
 	ixgbe_add_rar(dev, addr, 0, 0);
 }
 
+static int
+is_ixgbe_pmd(const char *driver_name)
+{
+	if (!strstr(driver_name, "ixgbe"))
+		return -ENOTSUP;
+
+	if (strstr(driver_name, "ixgbe_vf"))
+		return -ENOTSUP;
+
+	return 0;
+}
+
 int
 rte_pmd_ixgbe_set_vf_mac_addr(uint8_t port, uint16_t vf,
 		struct ether_addr *mac_addr)
@@ -4238,6 +4251,9 @@ rte_pmd_ixgbe_set_vf_mac_addr(uint8_t port, uint16_t vf,
 
 	dev = &rte_eth_devices[port];
 	rte_eth_dev_info_get(port, &dev_info);
+
+	if (is_ixgbe_pmd(dev_info.driver_name) != 0)
+		return -ENOTSUP;
 
 	if (vf >= dev_info.max_vfs)
 		return -EINVAL;
@@ -4737,6 +4753,9 @@ rte_pmd_ixgbe_set_vf_vlan_anti_spoof(uint8_t port, uint16_t vf, uint8_t on)
 	dev = &rte_eth_devices[port];
 	rte_eth_dev_info_get(port, &dev_info);
 
+	if (is_ixgbe_pmd(dev_info.driver_name) != 0)
+		return -ENOTSUP;
+
 	if (vf >= dev_info.max_vfs)
 		return -EINVAL;
 
@@ -4764,6 +4783,9 @@ rte_pmd_ixgbe_set_vf_mac_anti_spoof(uint8_t port, uint16_t vf, uint8_t on)
 	dev = &rte_eth_devices[port];
 	rte_eth_dev_info_get(port, &dev_info);
 
+	if (is_ixgbe_pmd(dev_info.driver_name) != 0)
+		return -ENOTSUP;
+
 	if (vf >= dev_info.max_vfs)
 		return -EINVAL;
 
@@ -4790,10 +4812,13 @@ rte_pmd_ixgbe_set_vf_vlan_insert(uint8_t port, uint16_t vf, uint16_t vlan_id)
 	dev = &rte_eth_devices[port];
 	rte_eth_dev_info_get(port, &dev_info);
 
+	if (is_ixgbe_pmd(dev_info.driver_name) != 0)
+		return -ENOTSUP;
+
 	if (vf >= dev_info.max_vfs)
 		return -EINVAL;
 
-	if (vlan_id > 4095)
+	if (vlan_id > ETHER_MAX_VLAN_ID)
 		return -EINVAL;
 
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -4816,10 +4841,15 @@ rte_pmd_ixgbe_set_tx_loopback(uint8_t port, uint8_t on)
 	struct ixgbe_hw *hw;
 	uint32_t ctrl;
 	struct rte_eth_dev *dev;
+	struct rte_eth_dev_info dev_info;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
 
 	dev = &rte_eth_devices[port];
+	rte_eth_dev_info_get(port, &dev_info);
+
+	if (is_ixgbe_pmd(dev_info.driver_name) != 0)
+		return -ENOTSUP;
 
 	if (on > 1)
 		return -EINVAL;
@@ -4845,10 +4875,15 @@ rte_pmd_ixgbe_set_all_queues_drop_en(uint8_t port, uint8_t on)
 	int i;
 	int num_queues = (int)(IXGBE_QDE_IDX_MASK >> IXGBE_QDE_IDX_SHIFT);
 	struct rte_eth_dev *dev;
+	struct rte_eth_dev_info dev_info;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
 
 	dev = &rte_eth_devices[port];
+	rte_eth_dev_info_get(port, &dev_info);
+
+	if (is_ixgbe_pmd(dev_info.driver_name) != 0)
+		return -ENOTSUP;
 
 	if (on > 1)
 		return -EINVAL;
@@ -4876,6 +4911,9 @@ rte_pmd_ixgbe_set_vf_split_drop_en(uint8_t port, uint16_t vf, uint8_t on)
 
 	dev = &rte_eth_devices[port];
 	rte_eth_dev_info_get(port, &dev_info);
+
+	if (is_ixgbe_pmd(dev_info.driver_name) != 0)
+		return -ENOTSUP;
 
 	/* only support VF's 0 to 63 */
 	if ((vf >= dev_info.max_vfs) || (vf > 63))
@@ -4908,6 +4946,9 @@ rte_pmd_ixgbe_set_vf_vlan_stripq(uint8_t port, uint16_t vf, uint8_t on)
 
 	dev = &rte_eth_devices[port];
 	rte_eth_dev_info_get(port, &dev_info);
+
+	if (is_ixgbe_pmd(dev_info.driver_name) != 0)
+		return -ENOTSUP;
 
 	if (vf >= dev_info.max_vfs)
 		return -EINVAL;
@@ -4948,7 +4989,7 @@ rte_pmd_ixgbe_set_vf_rxmode(uint8_t port, uint16_t vf, uint16_t rx_mask, uint8_t
 	dev = &rte_eth_devices[port];
 	rte_eth_dev_info_get(port, &dev_info);
 
-	if (strstr(dev_info.driver_name, "ixgbe_vf"))
+	if (is_ixgbe_pmd(dev_info.driver_name) != 0)
 		return -ENOTSUP;
 
 	if (vf >= dev_info.max_vfs)
@@ -4995,7 +5036,7 @@ rte_pmd_ixgbe_set_vf_rx(uint8_t port, uint16_t vf, uint8_t on)
 	dev = &rte_eth_devices[port];
 	rte_eth_dev_info_get(port, &dev_info);
 
-	if (strstr(dev_info.driver_name, "ixgbe_vf"))
+	if (is_ixgbe_pmd(dev_info.driver_name) != 0)
 		return -ENOTSUP;
 
 	if (vf >= dev_info.max_vfs)
@@ -5046,7 +5087,7 @@ rte_pmd_ixgbe_set_vf_tx(uint8_t port, uint16_t vf, uint8_t on)
 	dev = &rte_eth_devices[port];
 	rte_eth_dev_info_get(port, &dev_info);
 
-	if (strstr(dev_info.driver_name, "ixgbe_vf"))
+	if (is_ixgbe_pmd(dev_info.driver_name) != 0)
 		return -ENOTSUP;
 
 	if (vf >= dev_info.max_vfs)
@@ -5095,7 +5136,7 @@ rte_pmd_ixgbe_set_vf_vlan_filter(uint8_t port, uint16_t vlan,
 	dev = &rte_eth_devices[port];
 	rte_eth_dev_info_get(port, &dev_info);
 
-	if (strstr(dev_info.driver_name, "ixgbe_vf"))
+	if (is_ixgbe_pmd(dev_info.driver_name) != 0)
 		return -ENOTSUP;
 
 	if ((vlan > ETHER_MAX_VLAN_ID) || (vf_mask == 0))
@@ -5138,7 +5179,7 @@ int rte_pmd_ixgbe_set_vf_rate_limit(uint8_t port, uint16_t vf,
 	rte_eth_dev_info_get(port, &dev_info);
 	rte_eth_link_get_nowait(port, &link);
 
-	if (strstr(dev_info.driver_name, "ixgbe_vf"))
+	if (is_ixgbe_pmd(dev_info.driver_name) != 0)
 		return -ENOTSUP;
 
 	if (vf >= dev_info.max_vfs)
