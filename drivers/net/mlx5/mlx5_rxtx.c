@@ -1113,24 +1113,24 @@ rxq_cq_to_pkt_type(volatile struct mlx5_cqe *cqe)
 		pkt_type =
 			TRANSPOSE(flags,
 				  MLX5_CQE_RX_OUTER_IPV4_PACKET,
-				  RTE_PTYPE_L3_IPV4) |
+				  RTE_PTYPE_L3_IPV4_EXT_UNKNOWN) |
 			TRANSPOSE(flags,
 				  MLX5_CQE_RX_OUTER_IPV6_PACKET,
-				  RTE_PTYPE_L3_IPV6) |
+				  RTE_PTYPE_L3_IPV6_EXT_UNKNOWN) |
 			TRANSPOSE(flags,
 				  MLX5_CQE_RX_IPV4_PACKET,
-				  RTE_PTYPE_INNER_L3_IPV4) |
+				  RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN) |
 			TRANSPOSE(flags,
 				  MLX5_CQE_RX_IPV6_PACKET,
-				  RTE_PTYPE_INNER_L3_IPV6);
+				  RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN);
 	else
 		pkt_type =
 			TRANSPOSE(flags,
 				  MLX5_CQE_L3_HDR_TYPE_IPV6,
-				  RTE_PTYPE_L3_IPV6) |
+				  RTE_PTYPE_L3_IPV6_EXT_UNKNOWN) |
 			TRANSPOSE(flags,
 				  MLX5_CQE_L3_HDR_TYPE_IPV4,
-				  RTE_PTYPE_L3_IPV4);
+				  RTE_PTYPE_L3_IPV4_EXT_UNKNOWN);
 	return pkt_type;
 }
 
