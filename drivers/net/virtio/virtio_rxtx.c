@@ -301,8 +301,14 @@ virtqueue_enqueue_xmit(struct virtnet_tx *txvq, struct rte_mbuf *cookie,
 		hdr = (struct virtio_net_hdr *)
 			rte_pktmbuf_prepend(cookie, head_size);
 		/* if offload disabled, it is not zeroed below, do it now */
-		if (offload == 0)
-			memset(hdr, 0, head_size);
+		if (offload == 0) {
+			ASSIGN_UNLESS_EQUAL(hdr->csum_start, 0);
+			ASSIGN_UNLESS_EQUAL(hdr->csum_offset, 0);
+			ASSIGN_UNLESS_EQUAL(hdr->flags, 0);
+			ASSIGN_UNLESS_EQUAL(hdr->gso_type, 0);
+			ASSIGN_UNLESS_EQUAL(hdr->gso_size, 0);
+			ASSIGN_UNLESS_EQUAL(hdr->hdr_len, 0);
+		}
 	} else if (use_indirect) {
 		/* setup tx ring slot to point to indirect
 		 * descriptor list stored in reserved region.
