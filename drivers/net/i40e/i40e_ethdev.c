@@ -721,8 +721,8 @@ i40e_add_tx_flow_control_drop_filter(struct i40e_pf *pf)
 				pf->main_vsi_seid, 0,
 				TRUE, NULL, NULL);
 	if (ret)
-		PMD_INIT_LOG(ERR, "Failed to add filter to drop flow control "
-				  " frames from VSIs.");
+		PMD_INIT_LOG(ERR,
+			"Failed to add filter to drop flow control frames from VSIs.");
 }
 
 static int
@@ -1053,8 +1053,8 @@ eth_i40e_dev_init(struct rte_eth_dev *dev)
 	hw->back = I40E_PF_TO_ADAPTER(pf);
 	hw->hw_addr = (uint8_t *)(pci_dev->mem_resource[0].addr);
 	if (!hw->hw_addr) {
-		PMD_INIT_LOG(ERR, "Hardware is not available, "
-			     "as address is NULL");
+		PMD_INIT_LOG(ERR,
+			"Hardware is not available, as address is NULL");
 		return -ENODEV;
 	}
 
@@ -1190,8 +1190,8 @@ eth_i40e_dev_init(struct rte_eth_dev *dev)
 	/* Set the global registers with default ether type value */
 	ret = i40e_vlan_tpid_set(dev, ETH_VLAN_TYPE_OUTER, ETHER_TYPE_VLAN);
 	if (ret != I40E_SUCCESS) {
-		PMD_INIT_LOG(ERR, "Failed to set the default outer "
-			     "VLAN ether type");
+		PMD_INIT_LOG(ERR,
+			"Failed to set the default outer VLAN ether type");
 		goto err_setup_pf_switch;
 	}
 
@@ -1227,8 +1227,8 @@ eth_i40e_dev_init(struct rte_eth_dev *dev)
 	/* Should be after VSI initialized */
 	dev->data->mac_addrs = rte_zmalloc("i40e", len, 0);
 	if (!dev->data->mac_addrs) {
-		PMD_INIT_LOG(ERR, "Failed to allocated memory "
-					"for storing mac address");
+		PMD_INIT_LOG(ERR,
+			"Failed to allocated memory for storing mac address");
 		goto err_mac_alloc;
 	}
 	ether_addr_copy((struct ether_addr *)hw->mac.perm_addr,
@@ -1892,8 +1892,9 @@ i40e_dev_start(struct rte_eth_dev *dev)
 				    dev->data->nb_rx_queues * sizeof(int),
 				    0);
 		if (!intr_handle->intr_vec) {
-			PMD_INIT_LOG(ERR, "Failed to allocate %d rx_queues"
-				     " intr_vec\n", dev->data->nb_rx_queues);
+			PMD_INIT_LOG(ERR,
+				"Failed to allocate %d rx_queues intr_vec\n",
+				dev->data->nb_rx_queues);
 			return -ENOMEM;
 		}
 	}
@@ -1966,8 +1967,8 @@ i40e_dev_start(struct rte_eth_dev *dev)
 		i40e_pf_enable_irq0(hw);
 
 		if (dev->data->dev_conf.intr_conf.lsc != 0)
-			PMD_INIT_LOG(INFO, "lsc won't enable because of"
-				     " no intr multiplex\n");
+			PMD_INIT_LOG(INFO,
+				"lsc won't enable because of no intr multiplex\n");
 	} else if (dev->data->dev_conf.intr_conf.lsc != 0) {
 		ret = i40e_aq_set_phy_int_mask(hw,
 					       ~(I40E_AQ_EVENT_LINK_UPDOWN |
@@ -2947,13 +2948,15 @@ i40e_vlan_tpid_set(struct rte_eth_dev *dev,
 	ret = i40e_aq_debug_read_register(hw, I40E_GL_SWT_L2TAGCTRL(reg_id),
 					  &reg_r, NULL);
 	if (ret != I40E_SUCCESS) {
-		PMD_DRV_LOG(ERR, "Fail to debug read from "
-			    "I40E_GL_SWT_L2TAGCTRL[%d]", reg_id);
+		PMD_DRV_LOG(ERR,
+			   "Fail to debug read from I40E_GL_SWT_L2TAGCTRL[%d]",
+			   reg_id);
 		ret = -EIO;
 		return ret;
 	}
-	PMD_DRV_LOG(DEBUG, "Debug read from I40E_GL_SWT_L2TAGCTRL[%d]: "
-		    "0x%08"PRIx64"", reg_id, reg_r);
+	PMD_DRV_LOG(DEBUG,
+		"Debug read from I40E_GL_SWT_L2TAGCTRL[%d]: 0x%08"PRIx64,
+		reg_id, reg_r);
 
 	reg_w = reg_r & (~(I40E_GL_SWT_L2TAGCTRL_ETHERTYPE_MASK));
 	reg_w |= ((uint64_t)tpid << I40E_GL_SWT_L2TAGCTRL_ETHERTYPE_SHIFT);
@@ -2967,12 +2970,14 @@ i40e_vlan_tpid_set(struct rte_eth_dev *dev,
 					   reg_w, NULL);
 	if (ret != I40E_SUCCESS) {
 		ret = -EIO;
-		PMD_DRV_LOG(ERR, "Fail to debug write to "
-			    "I40E_GL_SWT_L2TAGCTRL[%d]", reg_id);
+		PMD_DRV_LOG(ERR,
+			"Fail to debug write to I40E_GL_SWT_L2TAGCTRL[%d]",
+			reg_id);
 		return ret;
 	}
-	PMD_DRV_LOG(DEBUG, "Debug write 0x%08"PRIx64" to "
-		    "I40E_GL_SWT_L2TAGCTRL[%d]", reg_w, reg_id);
+	PMD_DRV_LOG(DEBUG,
+		"Debug write 0x%08"PRIx64" to I40E_GL_SWT_L2TAGCTRL[%d]",
+		reg_w, reg_id);
 
 	return ret;
 }
@@ -3116,8 +3121,9 @@ i40e_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	max_high_water = I40E_RXPBSIZE >> I40E_KILOSHIFT;
 	if ((fc_conf->high_water > max_high_water) ||
 			(fc_conf->high_water < fc_conf->low_water)) {
-		PMD_INIT_LOG(ERR, "Invalid high/low water setup value in KB, "
-			"High_water must <= %d.", max_high_water);
+		PMD_INIT_LOG(ERR,
+			"Invalid high/low water setup value in KB, High_water must be <= %d.",
+			max_high_water);
 		return -EINVAL;
 	}
 
@@ -3289,8 +3295,8 @@ i40e_macaddr_remove(struct rte_eth_dev *dev, uint32_t index)
 				/* No VMDQ pool enabled or configured */
 				if (!(pf->flags & I40E_FLAG_VMDQ) ||
 					(i > pf->nb_cfg_vmdq_vsi)) {
-					PMD_DRV_LOG(ERR, "No VMDQ pool enabled"
-							"/configured");
+					PMD_DRV_LOG(ERR,
+						"No VMDQ pool enabled/configured");
 					return;
 				}
 				vsi = pf->vmdq[i - 1].vsi;
@@ -3491,9 +3497,9 @@ i40e_dev_rss_reta_update(struct rte_eth_dev *dev,
 
 	if (reta_size != lut_size ||
 		reta_size > ETH_RSS_RETA_SIZE_512) {
-		PMD_DRV_LOG(ERR, "The size of hash lookup table configured "
-			"(%d) doesn't match the number hardware can supported "
-					"(%d)\n", reta_size, lut_size);
+		PMD_DRV_LOG(ERR,
+			"The size of hash lookup table configured (%d) doesn't match the number hardware can supported (%d)\n",
+			reta_size, lut_size);
 		return -EINVAL;
 	}
 
@@ -3532,9 +3538,9 @@ i40e_dev_rss_reta_query(struct rte_eth_dev *dev,
 
 	if (reta_size != lut_size ||
 		reta_size > ETH_RSS_RETA_SIZE_512) {
-		PMD_DRV_LOG(ERR, "The size of hash lookup table configured "
-			"(%d) doesn't match the number hardware can supported "
-					"(%d)\n", reta_size, lut_size);
+		PMD_DRV_LOG(ERR,
+			"The size of hash lookup table configured (%d) doesn't match the number hardware can supported (%d)\n",
+			reta_size, lut_size);
 		return -EINVAL;
 	}
 
@@ -3589,8 +3595,9 @@ i40e_allocate_dma_mem_d(__attribute__((unused)) struct i40e_hw *hw,
 	mem->va = mz->addr;
 	mem->pa = rte_mem_phy2mch(mz->memseg_id, mz->phys_addr);
 	mem->zone = (const void *)mz;
-	PMD_DRV_LOG(DEBUG, "memzone %s allocated with physical address: "
-		    "%"PRIu64, mz->name, mem->pa);
+	PMD_DRV_LOG(DEBUG,
+		"memzone %s allocated with physical address: %"PRIu64,
+		mz->name, mem->pa);
 
 	return I40E_SUCCESS;
 }
@@ -3607,9 +3614,9 @@ i40e_free_dma_mem_d(__attribute__((unused)) struct i40e_hw *hw,
 	if (!mem)
 		return I40E_ERR_PARAM;
 
-	PMD_DRV_LOG(DEBUG, "memzone %s to be freed with physical address: "
-		    "%"PRIu64, ((const struct rte_memzone *)mem->zone)->name,
-		    mem->pa);
+	PMD_DRV_LOG(DEBUG,
+		"memzone %s to be freed with physical address: %"PRIu64,
+		((const struct rte_memzone *)mem->zone)->name, mem->pa);
 	rte_memzone_free((const struct rte_memzone *)mem->zone);
 	mem->zone = NULL;
 	mem->va = NULL;
@@ -3768,9 +3775,9 @@ i40e_pf_parameter_init(struct rte_eth_dev *dev)
 		pf->flags |= I40E_FLAG_SRIOV;
 		pf->vf_nb_qps = RTE_LIBRTE_I40E_QUEUE_NUM_PER_VF;
 		pf->vf_num = pci_dev->max_vfs;
-		PMD_DRV_LOG(DEBUG, "%u VF VSIs, %u queues per VF VSI, "
-			    "in total %u queues", pf->vf_num, pf->vf_nb_qps,
-			    pf->vf_nb_qps * pf->vf_num);
+		PMD_DRV_LOG(DEBUG,
+			"%u VF VSIs, %u queues per VF VSI, in total %u queues",
+			pf->vf_num, pf->vf_nb_qps, pf->vf_nb_qps * pf->vf_num);
 	} else {
 		pf->vf_nb_qps = 0;
 		pf->vf_num = 0;
@@ -3798,14 +3805,13 @@ i40e_pf_parameter_init(struct rte_eth_dev *dev)
 			if (pf->max_nb_vmdq_vsi) {
 				pf->flags |= I40E_FLAG_VMDQ;
 				pf->vmdq_nb_qps = pf->vmdq_nb_qp_max;
-				PMD_DRV_LOG(DEBUG, "%u VMDQ VSIs, %u queues "
-					    "per VMDQ VSI, in total %u queues",
-					    pf->max_nb_vmdq_vsi,
-					    pf->vmdq_nb_qps, pf->vmdq_nb_qps *
-					    pf->max_nb_vmdq_vsi);
+				PMD_DRV_LOG(DEBUG,
+					"%u VMDQ VSIs, %u queues per VMDQ VSI, in total %u queues",
+					pf->max_nb_vmdq_vsi, pf->vmdq_nb_qps,
+					pf->vmdq_nb_qps * pf->max_nb_vmdq_vsi);
 			} else {
-				PMD_DRV_LOG(INFO, "No enough queues left for "
-					    "VMDq");
+				PMD_DRV_LOG(INFO,
+					"No enough queues left for VMDq");
 			}
 		} else {
 			PMD_DRV_LOG(INFO, "No queue or VSI left for VMDq");
@@ -3818,15 +3824,15 @@ i40e_pf_parameter_init(struct rte_eth_dev *dev)
 		pf->flags |= I40E_FLAG_DCB;
 
 	if (qp_count > hw->func_caps.num_tx_qp) {
-		PMD_DRV_LOG(ERR, "Failed to allocate %u queues, which exceeds "
-			    "the hardware maximum %u", qp_count,
-			    hw->func_caps.num_tx_qp);
+		PMD_DRV_LOG(ERR,
+			"Failed to allocate %u queues, which exceeds the hardware maximum %u",
+			qp_count, hw->func_caps.num_tx_qp);
 		return -EINVAL;
 	}
 	if (vsi_count > hw->func_caps.num_vsis) {
-		PMD_DRV_LOG(ERR, "Failed to allocate %u VSIs, which exceeds "
-			    "the hardware maximum %u", vsi_count,
-			    hw->func_caps.num_vsis);
+		PMD_DRV_LOG(ERR,
+			"Failed to allocate %u VSIs, which exceeds the hardware maximum %u",
+			vsi_count, hw->func_caps.num_vsis);
 		return -EINVAL;
 	}
 
@@ -4072,8 +4078,8 @@ i40e_res_pool_alloc(struct i40e_res_pool_info *pool,
 		 */
 		entry = rte_zmalloc("res_pool", sizeof(*entry), 0);
 		if (entry == NULL) {
-			PMD_DRV_LOG(ERR, "Failed to allocate memory for "
-				    "resource pool");
+			PMD_DRV_LOG(ERR,
+				"Failed to allocate memory for resource pool");
 			return -ENOMEM;
 		}
 		entry->base = valid_entry->base;
@@ -4113,9 +4119,9 @@ validate_tcmap_parameter(struct i40e_vsi *vsi, uint8_t enabled_tcmap)
 	}
 
 	if (!bitmap_is_subset(hw->func_caps.enabled_tcmap, enabled_tcmap)) {
-		PMD_DRV_LOG(ERR, "Enabled TC map 0x%x not applicable to "
-			    "HW support 0x%x", hw->func_caps.enabled_tcmap,
-			    enabled_tcmap);
+		PMD_DRV_LOG(ERR,
+			"Enabled TC map 0x%x not applicable to HW support 0x%x",
+			hw->func_caps.enabled_tcmap, enabled_tcmap);
 		return I40E_NOT_SUPPORTED;
 	}
 	return I40E_SUCCESS;
@@ -4457,8 +4463,8 @@ i40e_update_default_filter_setting(struct i40e_vsi *vsi)
 		struct i40e_mac_filter *f;
 		struct ether_addr *mac;
 
-		PMD_DRV_LOG(WARNING, "Cannot remove the default "
-			    "macvlan filter");
+		PMD_DRV_LOG(WARNING,
+			"Cannot remove the default macvlan filter");
 		/* It needs to add the permanent mac into mac list */
 		f = rte_zmalloc("macv_filter", sizeof(*f), 0);
 		if (f == NULL) {
@@ -4508,8 +4514,9 @@ i40e_vsi_get_bw_config(struct i40e_vsi *vsi)
 	ret = i40e_aq_query_vsi_ets_sla_config(hw, vsi->seid,
 					&ets_sla_config, NULL);
 	if (ret != I40E_SUCCESS) {
-		PMD_DRV_LOG(ERR, "VSI failed to get TC bandwdith "
-			    "configuration %u", hw->aq.asq_last_status);
+		PMD_DRV_LOG(ERR,
+			"VSI failed to get TC bandwdith configuration %u",
+			hw->aq.asq_last_status);
 		return ret;
 	}
 
@@ -4597,14 +4604,14 @@ i40e_vsi_setup(struct i40e_pf *pf,
 
 	if (type != I40E_VSI_MAIN && type != I40E_VSI_SRIOV &&
 	    uplink_vsi == NULL) {
-		PMD_DRV_LOG(ERR, "VSI setup failed, "
-			    "VSI link shouldn't be NULL");
+		PMD_DRV_LOG(ERR,
+			"VSI setup failed, VSI link shouldn't be NULL");
 		return NULL;
 	}
 
 	if (type == I40E_VSI_MAIN && uplink_vsi != NULL) {
-		PMD_DRV_LOG(ERR, "VSI setup failed, MAIN VSI "
-			    "uplink VSI should be NULL");
+		PMD_DRV_LOG(ERR,
+			"VSI setup failed, MAIN VSI uplink VSI should be NULL");
 		return NULL;
 	}
 
@@ -4755,8 +4762,8 @@ i40e_vsi_setup(struct i40e_pf *pf,
 		ret = i40e_vsi_config_tc_queue_mapping(vsi, &ctxt.info,
 						I40E_DEFAULT_TCMAP);
 		if (ret != I40E_SUCCESS) {
-			PMD_DRV_LOG(ERR, "Failed to configure "
-				    "TC queue mapping");
+			PMD_DRV_LOG(ERR,
+				"Failed to configure TC queue mapping");
 			goto fail_msix_alloc;
 		}
 		ctxt.seid = vsi->seid;
@@ -4826,8 +4833,8 @@ i40e_vsi_setup(struct i40e_pf *pf,
 		ret = i40e_vsi_config_tc_queue_mapping(vsi, &ctxt.info,
 						I40E_DEFAULT_TCMAP);
 		if (ret != I40E_SUCCESS) {
-			PMD_DRV_LOG(ERR, "Failed to configure "
-				    "TC queue mapping");
+			PMD_DRV_LOG(ERR,
+				"Failed to configure TC queue mapping");
 			goto fail_msix_alloc;
 		}
 		ctxt.info.up_enable_bits = I40E_DEFAULT_TCMAP;
@@ -4869,8 +4876,8 @@ i40e_vsi_setup(struct i40e_pf *pf,
 		ret = i40e_vsi_config_tc_queue_mapping(vsi, &ctxt.info,
 						I40E_DEFAULT_TCMAP);
 		if (ret != I40E_SUCCESS) {
-			PMD_DRV_LOG(ERR, "Failed to configure "
-					"TC queue mapping");
+			PMD_DRV_LOG(ERR,
+				"Failed to configure TC queue mapping");
 			goto fail_msix_alloc;
 		}
 		ctxt.info.up_enable_bits = I40E_DEFAULT_TCMAP;
@@ -4887,8 +4894,8 @@ i40e_vsi_setup(struct i40e_pf *pf,
 		ret = i40e_vsi_config_tc_queue_mapping(vsi, &ctxt.info,
 						I40E_DEFAULT_TCMAP);
 		if (ret != I40E_SUCCESS) {
-			PMD_DRV_LOG(ERR, "Failed to configure "
-					"TC queue mapping.");
+			PMD_DRV_LOG(ERR,
+				"Failed to configure TC queue mapping.");
 			goto fail_msix_alloc;
 		}
 		ctxt.info.up_enable_bits = I40E_DEFAULT_TCMAP;
@@ -5151,8 +5158,9 @@ i40e_pf_setup(struct i40e_pf *pf)
 		/* make queue allocated first, let FDIR use queue pair 0*/
 		ret = i40e_res_pool_alloc(&pf->qp_pool, I40E_DEFAULT_QP_NUM_FDIR);
 		if (ret != I40E_FDIR_QUEUE_ID) {
-			PMD_DRV_LOG(ERR, "queue allocation fails for FDIR :"
-				    " ret =%d", ret);
+			PMD_DRV_LOG(ERR,
+				"queue allocation fails for FDIR: ret =%d",
+				ret);
 			pf->flags &= ~I40E_FLAG_FDIR;
 		}
 	}
@@ -5175,8 +5183,8 @@ i40e_pf_setup(struct i40e_pf *pf)
 						hw->func_caps.rss_table_size);
 		return I40E_ERR_PARAM;
 	}
-	PMD_DRV_LOG(INFO, "Hardware capability of hash lookup table "
-			"size: %u\n", hw->func_caps.rss_table_size);
+	PMD_DRV_LOG(INFO, "Hardware capability of hash lookup table size: %u\n",
+		hw->func_caps.rss_table_size);
 	pf->hash_lut_size = hw->func_caps.rss_table_size;
 
 	/* Enable ethtype and macvlan filters */
@@ -5426,8 +5434,8 @@ i40e_dev_rx_init(struct i40e_pf *pf)
 
 		ret = i40e_rx_queue_init(rxq);
 		if (ret != I40E_SUCCESS) {
-			PMD_DRV_LOG(ERR, "Failed to do RX queue "
-				    "initialization");
+			PMD_DRV_LOG(ERR,
+				"Failed to do RX queue initialization");
 			break;
 		}
 	}
@@ -5711,8 +5719,9 @@ i40e_dev_handle_aq_msg(struct rte_eth_dev *dev)
 		ret = i40e_clean_arq_element(hw, &info, &pending);
 
 		if (ret != I40E_SUCCESS) {
-			PMD_DRV_LOG(INFO, "Failed to read msg from AdminQ, "
-				    "aq_err: %u", hw->aq.asq_last_status);
+			PMD_DRV_LOG(INFO,
+				"Failed to read msg from AdminQ, aq_err: %u",
+				hw->aq.asq_last_status);
 			break;
 		}
 		opcode = rte_le_to_cpu_16(info.desc.opcode);
@@ -6029,8 +6038,8 @@ i40e_find_all_vlan_for_mac(struct i40e_vsi *vsi,
 			for (k = 0; k < I40E_UINT32_BIT_SIZE; k++) {
 				if (vsi->vfta[j] & (1 << k)) {
 					if (i > num - 1) {
-						PMD_DRV_LOG(ERR, "vlan number "
-							    "not match");
+						PMD_DRV_LOG(ERR,
+							"vlan number doesn't match");
 						return I40E_ERR_PARAM;
 					}
 					(void)rte_memcpy(&mv_f[i].macaddr,
@@ -6503,8 +6512,7 @@ i40e_set_rss_key(struct i40e_vsi *vsi, uint8_t *key, uint8_t key_len)
 
 		ret = i40e_aq_set_rss_key(hw, vsi->vsi_id, key_dw);
 		if (ret)
-			PMD_INIT_LOG(ERR, "Failed to configure RSS key "
-				     "via AQ");
+			PMD_INIT_LOG(ERR, "Failed to configure RSS key via AQ");
 	} else {
 		uint32_t *hash_key = (uint32_t *)key;
 		uint16_t i;
@@ -6877,8 +6885,9 @@ i40e_add_vxlan_port(struct i40e_pf *pf, uint16_t port)
 	/* Now check if there is space to add the new port */
 	idx = i40e_get_vxlan_port_idx(pf, 0);
 	if (idx < 0) {
-		PMD_DRV_LOG(ERR, "Maximum number of UDP ports reached,"
-			"not adding port %d", port);
+		PMD_DRV_LOG(ERR,
+			"Maximum number of UDP ports reached, not adding port %d",
+			port);
 		return -ENOSPC;
 	}
 
@@ -7249,15 +7258,15 @@ i40e_set_symmetric_hash_enable_per_port(struct i40e_hw *hw, uint8_t enable)
 
 	if (enable > 0) {
 		if (reg & I40E_PRTQF_CTL_0_HSYM_ENA_MASK) {
-			PMD_DRV_LOG(INFO, "Symmetric hash has already "
-							"been enabled");
+			PMD_DRV_LOG(INFO,
+				"Symmetric hash has already been enabled");
 			return;
 		}
 		reg |= I40E_PRTQF_CTL_0_HSYM_ENA_MASK;
 	} else {
 		if (!(reg & I40E_PRTQF_CTL_0_HSYM_ENA_MASK)) {
-			PMD_DRV_LOG(INFO, "Symmetric hash has already "
-							"been disabled");
+			PMD_DRV_LOG(INFO,
+				"Symmetric hash has already been disabled");
 			return;
 		}
 		reg &= ~I40E_PRTQF_CTL_0_HSYM_ENA_MASK;
@@ -7381,16 +7390,16 @@ i40e_set_hash_filter_global_config(struct i40e_hw *hw,
 	if (g_cfg->hash_func == RTE_ETH_HASH_FUNCTION_TOEPLITZ) {
 		/* Toeplitz */
 		if (reg & I40E_GLQF_CTL_HTOEP_MASK) {
-			PMD_DRV_LOG(DEBUG, "Hash function already set to "
-								"Toeplitz");
+			PMD_DRV_LOG(DEBUG,
+				"Hash function already set to Toeplitz");
 			goto out;
 		}
 		reg |= I40E_GLQF_CTL_HTOEP_MASK;
 	} else if (g_cfg->hash_func == RTE_ETH_HASH_FUNCTION_SIMPLE_XOR) {
 		/* Simple XOR */
 		if (!(reg & I40E_GLQF_CTL_HTOEP_MASK)) {
-			PMD_DRV_LOG(DEBUG, "Hash function already set to "
-							"Simple XOR");
+			PMD_DRV_LOG(DEBUG,
+				"Hash function already set to Simple XOR");
 			goto out;
 		}
 		reg &= ~I40E_GLQF_CTL_HTOEP_MASK;
@@ -8393,13 +8402,14 @@ i40e_ethertype_filter_set(struct i40e_pf *pf,
 	}
 	if (filter->ether_type == ETHER_TYPE_IPv4 ||
 		filter->ether_type == ETHER_TYPE_IPv6) {
-		PMD_DRV_LOG(ERR, "unsupported ether_type(0x%04x) in"
-			" control packet filter.", filter->ether_type);
+		PMD_DRV_LOG(ERR,
+			"unsupported ether_type(0x%04x) in control packet filter.",
+			filter->ether_type);
 		return -EINVAL;
 	}
 	if (filter->ether_type == ETHER_TYPE_VLAN)
-		PMD_DRV_LOG(WARNING, "filter vlan ether_type in first tag is"
-			" not supported.");
+		PMD_DRV_LOG(WARNING,
+			"filter vlan ether_type in first tag is not supported.");
 
 	/* Check if there is the filter in SW list */
 	memset(&check_filter, 0, sizeof(check_filter));
@@ -8429,11 +8439,10 @@ i40e_ethertype_filter_set(struct i40e_pf *pf,
 			pf->main_vsi->seid,
 			filter->queue, add, &stats, NULL);
 
-	PMD_DRV_LOG(INFO, "add/rem control packet filter, return %d,"
-			 " mac_etype_used = %u, etype_used = %u,"
-			 " mac_etype_free = %u, etype_free = %u\n",
-			 ret, stats.mac_etype_used, stats.etype_used,
-			 stats.mac_etype_free, stats.etype_free);
+	PMD_DRV_LOG(INFO,
+		"add/rem control packet filter, return %d, mac_etype_used = %u, etype_used = %u, mac_etype_free = %u, etype_free = %u\n",
+		ret, stats.mac_etype_used, stats.etype_used,
+		stats.mac_etype_free, stats.etype_free);
 	if (ret < 0)
 		return -ENOSYS;
 
@@ -8751,9 +8760,9 @@ i40e_configure_registers(struct i40e_hw *hw)
 		ret = i40e_aq_debug_write_register(hw, reg_table[i].addr,
 						reg_table[i].val, NULL);
 		if (ret < 0) {
-			PMD_DRV_LOG(ERR, "Failed to write 0x%"PRIx64" to the "
-				"address of 0x%"PRIx32, reg_table[i].val,
-							reg_table[i].addr);
+			PMD_DRV_LOG(ERR,
+				"Failed to write 0x%"PRIx64" to the address of 0x%"PRIx32,
+				reg_table[i].val, reg_table[i].addr);
 			break;
 		}
 		PMD_DRV_LOG(DEBUG, "Write 0x%"PRIx64" to the address of "
@@ -8798,8 +8807,9 @@ i40e_config_qinq(struct i40e_hw *hw, struct i40e_vsi *vsi)
 						   I40E_VSI_L2TAGSTXVALID(
 						   vsi->vsi_id), reg, NULL);
 		if (ret < 0) {
-			PMD_DRV_LOG(ERR, "Failed to update "
-				"VSI_L2TAGSTXVALID[%d]", vsi->vsi_id);
+			PMD_DRV_LOG(ERR,
+				"Failed to update VSI_L2TAGSTXVALID[%d]",
+				vsi->vsi_id);
 			return I40E_ERR_CONFIG;
 		}
 	}
@@ -8850,11 +8860,10 @@ i40e_aq_add_mirror_rule(struct i40e_hw *hw,
 
 	rte_memcpy(&desc.params.raw, &cmd, sizeof(cmd));
 	status = i40e_asq_send_command(hw, &desc, entries, buff_len, NULL);
-	PMD_DRV_LOG(INFO, "i40e_aq_add_mirror_rule, aq_status %d,"
-			 "rule_id = %u"
-			 " mirror_rules_used = %u, mirror_rules_free = %u,",
-			 hw->aq.asq_last_status, resp->rule_id,
-			 resp->mirror_rules_used, resp->mirror_rules_free);
+	PMD_DRV_LOG(INFO,
+		"i40e_aq_add_mirror_rule, aq_status %d, rule_id = %u mirror_rules_used = %u, mirror_rules_free = %u,",
+		hw->aq.asq_last_status, resp->rule_id,
+		resp->mirror_rules_used, resp->mirror_rules_free);
 	*rule_id = rte_le_to_cpu_16(resp->rule_id);
 
 	return status;
@@ -8932,8 +8941,8 @@ i40e_mirror_rule_set(struct rte_eth_dev *dev,
 	PMD_DRV_LOG(DEBUG, "i40e_mirror_rule_set: sw_id = %d.", sw_id);
 
 	if (pf->main_vsi->veb == NULL || pf->vfs == NULL) {
-		PMD_DRV_LOG(ERR, "mirror rule can not be configured"
-			" without veb or vfs.");
+		PMD_DRV_LOG(ERR,
+			"mirror rule can not be configured without veb or vfs.");
 		return -ENOSYS;
 	}
 	if (pf->nb_mirror_rule > I40E_MAX_MIRROR_RULES) {
@@ -8965,9 +8974,9 @@ i40e_mirror_rule_set(struct rte_eth_dev *dev,
 					mirr_rule->entries,
 					mirr_rule->num_entries, mirr_rule->id);
 			if (ret < 0) {
-				PMD_DRV_LOG(ERR, "failed to remove mirror rule:"
-						   " ret = %d, aq_err = %d.",
-						   ret, hw->aq.asq_last_status);
+				PMD_DRV_LOG(ERR,
+					"failed to remove mirror rule: ret = %d, aq_err = %d.",
+					ret, hw->aq.asq_last_status);
 				return -ENOSYS;
 			}
 			TAILQ_REMOVE(&pf->mirror_list, mirr_rule, rules);
@@ -9056,9 +9065,9 @@ i40e_mirror_rule_set(struct rte_eth_dev *dev,
 				      mirr_rule->rule_type, mirr_rule->entries,
 				      j, &rule_id);
 	if (ret < 0) {
-		PMD_DRV_LOG(ERR, "failed to add mirror rule:"
-				   " ret = %d, aq_err = %d.",
-				   ret, hw->aq.asq_last_status);
+		PMD_DRV_LOG(ERR,
+			"failed to add mirror rule: ret = %d, aq_err = %d.",
+			ret, hw->aq.asq_last_status);
 		rte_free(mirr_rule);
 		return -ENOSYS;
 	}
@@ -9110,9 +9119,9 @@ i40e_mirror_rule_reset(struct rte_eth_dev *dev, uint8_t sw_id)
 				mirr_rule->entries,
 				mirr_rule->num_entries, mirr_rule->id);
 		if (ret < 0) {
-			PMD_DRV_LOG(ERR, "failed to remove mirror rule:"
-					   " status = %d, aq_err = %d.",
-					   ret, hw->aq.asq_last_status);
+			PMD_DRV_LOG(ERR,
+				"failed to remove mirror rule: status = %d, aq_err = %d.",
+				ret, hw->aq.asq_last_status);
 			return -ENOSYS;
 		}
 		TAILQ_REMOVE(&pf->mirror_list, mirr_rule, rules);
@@ -9544,9 +9553,9 @@ i40e_config_switch_comp_tc(struct i40e_veb *veb, uint8_t tc_map)
 	ret = i40e_aq_config_switch_comp_bw_config(hw, veb->seid,
 						   &veb_bw, NULL);
 	if (ret) {
-		PMD_INIT_LOG(ERR, "AQ command Config switch_comp BW allocation"
-				  " per TC failed = %d",
-				  hw->aq.asq_last_status);
+		PMD_INIT_LOG(ERR,
+			"AQ command Config switch_comp BW allocation per TC failed = %d",
+			hw->aq.asq_last_status);
 		return ret;
 	}
 
@@ -9554,16 +9563,18 @@ i40e_config_switch_comp_tc(struct i40e_veb *veb, uint8_t tc_map)
 	ret = i40e_aq_query_switch_comp_ets_config(hw, veb->seid,
 						   &ets_query, NULL);
 	if (ret != I40E_SUCCESS) {
-		PMD_DRV_LOG(ERR, "Failed to get switch_comp ETS"
-				 " configuration %u", hw->aq.asq_last_status);
+		PMD_DRV_LOG(ERR,
+			"Failed to get switch_comp ETS configuration %u",
+			hw->aq.asq_last_status);
 		return ret;
 	}
 	memset(&bw_query, 0, sizeof(bw_query));
 	ret = i40e_aq_query_switch_comp_bw_config(hw, veb->seid,
 						  &bw_query, NULL);
 	if (ret != I40E_SUCCESS) {
-		PMD_DRV_LOG(ERR, "Failed to get switch_comp bandwidth"
-				 " configuration %u", hw->aq.asq_last_status);
+		PMD_DRV_LOG(ERR,
+			"Failed to get switch_comp bandwidth configuration %u",
+			hw->aq.asq_last_status);
 		return ret;
 	}
 
@@ -9628,8 +9639,8 @@ i40e_vsi_config_tc(struct i40e_vsi *vsi, uint8_t tc_map)
 	}
 	ret = i40e_aq_config_vsi_tc_bw(hw, vsi->seid, &bw_data, NULL);
 	if (ret) {
-		PMD_INIT_LOG(ERR, "AQ command Config VSI BW allocation"
-			" per TC failed = %d",
+		PMD_INIT_LOG(ERR,
+			"AQ command Config VSI BW allocation per TC failed = %d",
 			hw->aq.asq_last_status);
 		goto out;
 	}
@@ -9650,9 +9661,8 @@ i40e_vsi_config_tc(struct i40e_vsi *vsi, uint8_t tc_map)
 	/* Update the VSI after updating the VSI queue-mapping information */
 	ret = i40e_aq_update_vsi_params(hw, &ctxt, NULL);
 	if (ret) {
-		PMD_INIT_LOG(ERR, "Failed to configure "
-			    "TC queue mapping = %d",
-			    hw->aq.asq_last_status);
+		PMD_INIT_LOG(ERR, "Failed to configure TC queue mapping = %d",
+			hw->aq.asq_last_status);
 		goto out;
 	}
 	/* update the local VSI info with updated queue map */
@@ -9704,8 +9714,8 @@ i40e_dcb_hw_configure(struct i40e_pf *pf,
 	/* Use the FW API if FW > v4.4*/
 	if (!(((hw->aq.fw_maj_ver == 4) && (hw->aq.fw_min_ver >= 4)) ||
 	      (hw->aq.fw_maj_ver >= 5))) {
-		PMD_INIT_LOG(ERR, "FW < v4.4, can not use FW LLDP API"
-				  " to configure DCB");
+		PMD_INIT_LOG(ERR,
+			"FW < v4.4, can not use FW LLDP API to configure DCB");
 		return I40E_ERR_FIRMWARE_API_VERSION;
 	}
 
@@ -9771,8 +9781,8 @@ i40e_dcb_hw_configure(struct i40e_pf *pf,
 							 I40E_DEFAULT_TCMAP);
 			if (ret)
 				PMD_INIT_LOG(WARNING,
-					 "Failed configuring TC for VSI seid=%d\n",
-					 vsi_list->vsi->seid);
+					"Failed configuring TC for VSI seid=%d\n",
+					vsi_list->vsi->seid);
 			/* continue */
 		}
 	}
@@ -9832,15 +9842,15 @@ i40e_dcb_init_configure(struct rte_eth_dev *dev, bool sw_dcb)
 						I40E_APP_PROTOID_FCOE;
 			ret = i40e_set_dcb_config(hw);
 			if (ret) {
-				PMD_INIT_LOG(ERR, "default dcb config fails."
-					" err = %d, aq_err = %d.", ret,
-					  hw->aq.asq_last_status);
+				PMD_INIT_LOG(ERR,
+					"default dcb config fails. err = %d, aq_err = %d.",
+					ret, hw->aq.asq_last_status);
 				return -ENOSYS;
 			}
 		} else {
-			PMD_INIT_LOG(ERR, "DCB initialization in FW fails,"
-					  " err = %d, aq_err = %d.", ret,
-					  hw->aq.asq_last_status);
+			PMD_INIT_LOG(ERR,
+				"DCB initialization in FW fails, err = %d, aq_err = %d.",
+				ret, hw->aq.asq_last_status);
 			return -ENOTSUP;
 		}
 	} else {
@@ -9851,14 +9861,14 @@ i40e_dcb_init_configure(struct rte_eth_dev *dev, bool sw_dcb)
 		ret = i40e_init_dcb(hw);
 		if (!ret) {
 			if (hw->dcbx_status == I40E_DCBX_STATUS_DISABLED) {
-				PMD_INIT_LOG(ERR, "HW doesn't support"
-						  " DCBX offload.");
+				PMD_INIT_LOG(ERR,
+					"HW doesn't support DCBX offload.");
 				return -ENOTSUP;
 			}
 		} else {
-			PMD_INIT_LOG(ERR, "DCBX configuration failed, err = %d,"
-					  " aq_err = %d.", ret,
-					  hw->aq.asq_last_status);
+			PMD_INIT_LOG(ERR,
+				"DCBX configuration failed, err = %d, aq_err = %d.",
+				ret, hw->aq.asq_last_status);
 			return -ENOTSUP;
 		}
 	}
