@@ -301,8 +301,7 @@ int enic_link_update(struct enic *enic);
 void enic_fdir_info(struct enic *enic);
 void enic_fdir_info_get(struct enic *enic, struct rte_eth_fdir_info *stats);
 void copy_fltr_v1(struct filter_v2 *fltr, struct rte_eth_fdir_input *input,
-		  struct rte_eth_fdir_masks *masks);
-void copy_fltr_v2(__rte_unused struct filter_v2 *fltr,
-		  __rte_unused struct rte_eth_fdir_input *input,
 		  __rte_unused struct rte_eth_fdir_masks *masks);
+void copy_fltr_v2(struct filter_v2 *fltr, struct rte_eth_fdir_input *input,
+		  struct rte_eth_fdir_masks *masks);
 #endif /* _ENIC_H_ */
