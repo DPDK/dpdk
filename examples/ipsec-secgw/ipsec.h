@@ -90,7 +90,7 @@ struct ip_addr {
 	} ip;
 };
 
-#define MAX_KEY_SIZE		20
+#define MAX_KEY_SIZE		32
 
 struct ipsec_sa {
 	uint32_t spi;
