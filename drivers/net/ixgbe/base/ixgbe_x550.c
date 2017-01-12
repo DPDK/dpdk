@@ -2373,6 +2373,10 @@ s32 ixgbe_init_phy_ops_X550em(struct ixgbe_hw *hw)
 		/* set up for CS4227 usage */
 		hw->phy.phy_semaphore_mask = IXGBE_GSSR_SHARED_I2C_SM;
 		break;
+	case IXGBE_DEV_ID_X550EM_X_1G_T:
+		phy->ops.read_reg_mdi = ixgbe_read_phy_reg_mdi_22;
+		phy->ops.write_reg_mdi = ixgbe_write_phy_reg_mdi_22;
+		break;
 	default:
 		break;
 	}
