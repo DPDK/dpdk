@@ -2174,9 +2174,9 @@ nfp_net_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	new_ctrl = 0;
 
 	if ((mask & ETH_VLAN_FILTER_OFFLOAD) ||
-	    (mask & ETH_VLAN_FILTER_OFFLOAD))
-		RTE_LOG(INFO, PMD, "Not support for ETH_VLAN_FILTER_OFFLOAD or"
-			" ETH_VLAN_FILTER_EXTEND");
+	    (mask & ETH_VLAN_EXTEND_OFFLOAD))
+		RTE_LOG(INFO, PMD, "No support for ETH_VLAN_FILTER_OFFLOAD or"
+			" ETH_VLAN_EXTEND_OFFLOAD");
 
 	/* Enable vlan strip if it is not configured yet */
 	if ((mask & ETH_VLAN_STRIP_OFFLOAD) &&
