@@ -1975,6 +1975,7 @@ s32 ixgbe_get_link_capabilities_X550em(struct ixgbe_hw *hw,
 			*speed = IXGBE_LINK_SPEED_10GB_FULL;
 	} else {
 		switch (hw->phy.type) {
+		case ixgbe_phy_ext_1g_t:
 		case ixgbe_phy_sgmii:
 			*speed = IXGBE_LINK_SPEED_1GB_FULL;
 			break;
@@ -2398,6 +2399,10 @@ s32 ixgbe_init_phy_ops_X550em(struct ixgbe_hw *hw)
 		phy->ops.setup_link = ixgbe_setup_kr_x550em;
 		phy->ops.read_reg = ixgbe_read_phy_reg_x550em;
 		phy->ops.write_reg = ixgbe_write_phy_reg_x550em;
+		break;
+	case ixgbe_phy_ext_1g_t:
+		/* link is managed by FW */
+		phy->ops.setup_link = NULL;
 		break;
 	case ixgbe_phy_x550em_xfi:
 		/* link is managed by HW */
@@ -3705,6 +3710,9 @@ u32 ixgbe_get_supported_physical_layer_X550em(struct ixgbe_hw *hw)
 		break;
 	case ixgbe_phy_sgmii:
 		physical_layer = IXGBE_PHYSICAL_LAYER_1000BASE_KX;
+		break;
+	case ixgbe_phy_ext_1g_t:
+		physical_layer |= IXGBE_PHYSICAL_LAYER_1000BASE_T;
 		break;
 	default:
 		break;
