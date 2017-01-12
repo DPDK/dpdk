@@ -61,6 +61,27 @@ sfc_port_update_mac_stats(struct sfc_adapter *sa)
 	return 0;
 }
 
+static int
+sfc_port_init_dev_link(struct sfc_adapter *sa)
+{
+	struct rte_eth_link *dev_link = &sa->eth_dev->data->dev_link;
+	int rc;
+	efx_link_mode_t link_mode;
+	struct rte_eth_link current_link;
+
+	rc = efx_port_poll(sa->nic, &link_mode);
+	if (rc != 0)
+		return rc;
+
+	sfc_port_link_mode_to_info(link_mode, &current_link);
+
+	EFX_STATIC_ASSERT(sizeof(*dev_link) == sizeof(rte_atomic64_t));
+	rte_atomic64_set((rte_atomic64_t *)dev_link,
+			 *(uint64_t *)&current_link);
+
+	return 0;
+}
+
 int
 sfc_port_start(struct sfc_adapter *sa)
 {
@@ -129,8 +150,16 @@ sfc_port_start(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_mac_drain;
 
+	/* Synchronize link status knowledge */
+	rc = sfc_port_init_dev_link(sa);
+	if (rc != 0)
+		goto fail_port_init_dev_link;
+
 	sfc_log_init(sa, "done");
 	return 0;
+
+fail_port_init_dev_link:
+	(void)efx_mac_drain(sa->nic, B_TRUE);
 
 fail_mac_drain:
 	(void)efx_mac_stats_periodic(sa->nic, &port->mac_stats_dma_mem,
