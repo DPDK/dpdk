@@ -1393,7 +1393,7 @@ create_mbuf_pool(uint16_t nr_port, uint32_t nr_switch_core, uint32_t mbuf_size,
 		mtu = 64 * 1024;
 
 	nr_mbufs_per_core  = (mtu + mbuf_size) * MAX_PKT_BURST /
-			(mbuf_size - RTE_PKTMBUF_HEADROOM) * MAX_PKT_BURST;
+			(mbuf_size - RTE_PKTMBUF_HEADROOM);
 	nr_mbufs_per_core += nr_rx_desc;
 	nr_mbufs_per_core  = RTE_MAX(nr_mbufs_per_core, nr_mbuf_cache);
 
