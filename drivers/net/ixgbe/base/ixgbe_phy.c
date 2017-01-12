@@ -291,8 +291,11 @@ static bool ixgbe_probe_phy(struct ixgbe_hw *hw, u16 phy_addr)
 {
 	u16 ext_ability = 0;
 
-	if (!ixgbe_validate_phy_addr(hw, phy_addr))
+	if (!ixgbe_validate_phy_addr(hw, phy_addr)) {
+		DEBUGOUT1("Unable to validate PHY address 0x%04X\n",
+			phy_addr);
 		return false;
+	}
 
 	if (ixgbe_get_phy_id(hw))
 		return false;
@@ -411,6 +414,8 @@ bool ixgbe_validate_phy_addr(struct ixgbe_hw *hw, u32 phy_addr)
 	if (phy_id != 0xFFFF && phy_id != 0x0)
 		valid = true;
 
+	DEBUGOUT1("PHY ID HIGH is 0x%04X\n", phy_id);
+
 	return valid;
 }
 
@@ -439,6 +444,9 @@ s32 ixgbe_get_phy_id(struct ixgbe_hw *hw)
 		hw->phy.id |= (u32)(phy_id_low & IXGBE_PHY_REVISION_MASK);
 		hw->phy.revision = (u32)(phy_id_low & ~IXGBE_PHY_REVISION_MASK);
 	}
+	DEBUGOUT2("PHY_ID_HIGH 0x%04X, PHY_ID_LOW 0x%04X\n",
+		  phy_id_high, phy_id_low);
+
 	return status;
 }
 
@@ -570,7 +578,7 @@ out:
  *  @phy_data: Pointer to read data from PHY register
  **/
 s32 ixgbe_read_phy_reg_mdi(struct ixgbe_hw *hw, u32 reg_addr, u32 device_type,
-		       u16 *phy_data)
+			   u16 *phy_data)
 {
 	u32 i, data, command;
 
@@ -592,12 +600,13 @@ s32 ixgbe_read_phy_reg_mdi(struct ixgbe_hw *hw, u32 reg_addr, u32 device_type,
 
 		command = IXGBE_READ_REG(hw, IXGBE_MSCA);
 		if ((command & IXGBE_MSCA_MDI_COMMAND) == 0)
-				break;
+			break;
 	}
 
 
 	if ((command & IXGBE_MSCA_MDI_COMMAND) != 0) {
 		ERROR_REPORT1(IXGBE_ERROR_POLLING, "PHY address command did not complete.\n");
+		DEBUGOUT("PHY address command did not complete, returning IXGBE_ERR_PHY\n");
 		return IXGBE_ERR_PHY;
 	}
 
@@ -627,6 +636,7 @@ s32 ixgbe_read_phy_reg_mdi(struct ixgbe_hw *hw, u32 reg_addr, u32 device_type,
 
 	if ((command & IXGBE_MSCA_MDI_COMMAND) != 0) {
 		ERROR_REPORT1(IXGBE_ERROR_POLLING, "PHY read command didn't complete\n");
+		DEBUGOUT("PHY read command didn't complete, returning IXGBE_ERR_PHY\n");
 		return IXGBE_ERR_PHY;
 	}
 

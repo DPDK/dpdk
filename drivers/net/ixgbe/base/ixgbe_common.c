@@ -410,8 +410,10 @@ s32 ixgbe_start_hw_generic(struct ixgbe_hw *hw)
 
 	/* Setup flow control */
 	ret_val = ixgbe_setup_fc(hw);
-	if (ret_val != IXGBE_SUCCESS && ret_val != IXGBE_NOT_IMPLEMENTED)
+	if (ret_val != IXGBE_SUCCESS && ret_val != IXGBE_NOT_IMPLEMENTED) {
+		DEBUGOUT1("Flow control setup failed, returning %d\n", ret_val);
 		return ret_val;
+	}
 
 	/* Cache bit indicating need for crosstalk fix */
 	switch (hw->mac.type) {
@@ -500,6 +502,9 @@ s32 ixgbe_init_hw_generic(struct ixgbe_hw *hw)
 
 	/* Initialize the LED link active for LED blink support */
 	hw->mac.ops.init_led_link_act(hw);
+
+	if (status != IXGBE_SUCCESS)
+		DEBUGOUT1("Failed to initialize HW, STATUS = %d\n", status);
 
 	return status;
 }

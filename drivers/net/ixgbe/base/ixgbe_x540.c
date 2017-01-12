@@ -775,8 +775,10 @@ s32 ixgbe_acquire_swfw_sync_X540(struct ixgbe_hw *hw, u32 mask)
 		/* SW NVM semaphore bit is used for access to all
 		 * SW_FW_SYNC bits (not just NVM)
 		 */
-		if (ixgbe_get_swfw_sync_semaphore(hw))
+		if (ixgbe_get_swfw_sync_semaphore(hw)) {
+			DEBUGOUT("Failed to get NVM access and register semaphore, returning IXGBE_ERR_SWFW_SYNC\n");
 			return IXGBE_ERR_SWFW_SYNC;
+		}
 
 		swfw_sync = IXGBE_READ_REG(hw, IXGBE_SWFW_SYNC_BY_MAC(hw));
 		if (!(swfw_sync & (fwmask | swmask | hwmask))) {
@@ -798,6 +800,7 @@ s32 ixgbe_acquire_swfw_sync_X540(struct ixgbe_hw *hw, u32 mask)
 	if (swmask == IXGBE_GSSR_SW_MNG_SM) {
 		ERROR_REPORT1(IXGBE_ERROR_POLLING,
 			     "Failed to get SW only semaphore");
+		DEBUGOUT("Failed to get SW only semaphore, returning IXGBE_ERR_SWFW_SYNC\n");
 		return IXGBE_ERR_SWFW_SYNC;
 	}
 
@@ -806,8 +809,10 @@ s32 ixgbe_acquire_swfw_sync_X540(struct ixgbe_hw *hw, u32 mask)
 	 * of the requested resource(s) while ignoring the corresponding FW/HW
 	 * bits in the SW_FW_SYNC register.
 	 */
-	if (ixgbe_get_swfw_sync_semaphore(hw))
+	if (ixgbe_get_swfw_sync_semaphore(hw)) {
+		DEBUGOUT("Failed to get NVM sempahore and register semaphore while forcefully ignoring FW sempahore bit(s) and setting SW semaphore bit(s), returning IXGBE_ERR_SWFW_SYNC\n");
 		return IXGBE_ERR_SWFW_SYNC;
+	}
 	swfw_sync = IXGBE_READ_REG(hw, IXGBE_SWFW_SYNC_BY_MAC(hw));
 	if (swfw_sync & (fwmask | hwmask)) {
 		swfw_sync |= swmask;
@@ -829,9 +834,11 @@ s32 ixgbe_acquire_swfw_sync_X540(struct ixgbe_hw *hw, u32 mask)
 			rmask |= IXGBE_GSSR_I2C_MASK;
 		ixgbe_release_swfw_sync_X540(hw, rmask);
 		ixgbe_release_swfw_sync_semaphore(hw);
+		DEBUGOUT("Resource not released by other SW, returning IXGBE_ERR_SWFW_SYNC\n");
 		return IXGBE_ERR_SWFW_SYNC;
 	}
 	ixgbe_release_swfw_sync_semaphore(hw);
+	DEBUGOUT("Returning error IXGBE_ERR_SWFW_SYNC\n");
 
 	return IXGBE_ERR_SWFW_SYNC;
 }

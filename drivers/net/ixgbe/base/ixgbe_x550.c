@@ -1311,13 +1311,20 @@ s32 ixgbe_get_phy_token(struct ixgbe_hw *hw)
 					      sizeof(token_cmd),
 					      IXGBE_HI_COMMAND_TIMEOUT,
 					      true);
-	if (status)
+	if (status) {
+		DEBUGOUT1("Issuing host interface command failed with Status = %d\n",
+			  status);
 		return status;
+	}
 	if (token_cmd.hdr.cmd_or_resp.ret_status == FW_PHY_TOKEN_OK)
 		return IXGBE_SUCCESS;
-	if (token_cmd.hdr.cmd_or_resp.ret_status != FW_PHY_TOKEN_RETRY)
+	if (token_cmd.hdr.cmd_or_resp.ret_status != FW_PHY_TOKEN_RETRY) {
+		DEBUGOUT1("Host interface command returned 0x%08x , returning IXGBE_ERR_FW_RESP_INVALID\n",
+			  token_cmd.hdr.cmd_or_resp.ret_status);
 		return IXGBE_ERR_FW_RESP_INVALID;
+	}
 
+	DEBUGOUT("Returning  IXGBE_ERR_TOKEN_RETRY\n");
 	return IXGBE_ERR_TOKEN_RETRY;
 }
 
@@ -2495,9 +2502,10 @@ s32 ixgbe_reset_hw_X550em(struct ixgbe_hw *hw)
 
 	/* Call adapter stop to disable Tx/Rx and clear interrupts */
 	status = hw->mac.ops.stop_adapter(hw);
-	if (status != IXGBE_SUCCESS)
+	if (status != IXGBE_SUCCESS) {
+		DEBUGOUT1("Failed to stop adapter, STATUS = %d\n", status);
 		return status;
-
+	}
 	/* flush pending Tx transactions */
 	ixgbe_clear_tx_pending(hw);
 
@@ -2506,14 +2514,23 @@ s32 ixgbe_reset_hw_X550em(struct ixgbe_hw *hw)
 	/* PHY ops must be identified and initialized prior to reset */
 	status = hw->phy.ops.init(hw);
 
-	if (status == IXGBE_ERR_SFP_NOT_SUPPORTED)
+	if (status)
+		DEBUGOUT1("Failed to initialize PHY ops, STATUS = %d\n",
+			  status);
+
+	if (status == IXGBE_ERR_SFP_NOT_SUPPORTED) {
+		DEBUGOUT("Returning from reset HW since PHY ops init returned IXGBE_ERR_SFP_NOT_SUPPORTED\n");
 		return status;
+	}
 
 	/* start the external PHY */
 	if (hw->phy.type == ixgbe_phy_x550em_ext_t) {
 		status = ixgbe_init_ext_t_x550em(hw);
-		if (status)
+		if (status) {
+			DEBUGOUT1("Failed to start the external PHY, STATUS = %d\n",
+				  status);
 			return status;
+		}
 	}
 
 	/* Setup SFP module if there is one present. */
@@ -2586,6 +2603,9 @@ mac_reset_top:
 
 	if (hw->device_id == IXGBE_DEV_ID_X550EM_X_SFP)
 		ixgbe_setup_mux_ctl(hw);
+
+	if (status != IXGBE_SUCCESS)
+		DEBUGOUT1("Reset HW failed, STATUS = %d\n", status);
 
 	return status;
 }
@@ -4336,21 +4356,34 @@ STATIC s32 ixgbe_acquire_swfw_sync_X550a(struct ixgbe_hw *hw, u32 mask)
 		status = IXGBE_SUCCESS;
 		if (hmask)
 			status = ixgbe_acquire_swfw_sync_X540(hw, hmask);
-		if (status)
+		if (status) {
+			DEBUGOUT1("Could not acquire SWFW semaphore, Status = %d\n",
+				  status);
 			return status;
+		}
 		if (!(mask & IXGBE_GSSR_TOKEN_SM))
 			return IXGBE_SUCCESS;
 
 		status = ixgbe_get_phy_token(hw);
+		if (status == IXGBE_ERR_TOKEN_RETRY)
+			DEBUGOUT1("Could not acquire PHY token, Status = %d\n",
+				  status);
+
 		if (status == IXGBE_SUCCESS)
 			return IXGBE_SUCCESS;
 
 		if (hmask)
 			ixgbe_release_swfw_sync_X540(hw, hmask);
-		if (status != IXGBE_ERR_TOKEN_RETRY)
+
+		if (status != IXGBE_ERR_TOKEN_RETRY) {
+			DEBUGOUT1("Unable to retry acquiring the PHY token, Status = %d\n",
+				  status);
 			return status;
+		}
 	}
 
+	DEBUGOUT1("Semaphore acquisition retries failed!: PHY ID = 0x%08X\n",
+		  hw->phy.id);
 	return status;
 }
 
