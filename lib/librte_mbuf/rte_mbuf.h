@@ -1717,6 +1717,57 @@ rte_validate_tx_offload(const struct rte_mbuf *m)
 }
 
 /**
+ * Linearize data in mbuf.
+ *
+ * This function moves the mbuf data in the first segment if there is enough
+ * tailroom. The subsequent segments are unchained and freed.
+ *
+ * @param mbuf
+ *   mbuf to linearize
+ * @return
+ *   - 0, on success
+ *   - -1, on error
+ */
+static inline int
+rte_pktmbuf_linearize(struct rte_mbuf *mbuf)
+{
+	int seg_len, copy_len;
+	struct rte_mbuf *m;
+	struct rte_mbuf *m_next;
+	char *buffer;
+
+	if (rte_pktmbuf_is_contiguous(mbuf))
+		return 0;
+
+	/* Extend first segment to the total packet length */
+	copy_len = rte_pktmbuf_pkt_len(mbuf) - rte_pktmbuf_data_len(mbuf);
+
+	if (unlikely(copy_len > rte_pktmbuf_tailroom(mbuf)))
+		return -1;
+
+	buffer = rte_pktmbuf_mtod_offset(mbuf, char *, mbuf->data_len);
+	mbuf->data_len = (uint16_t)(mbuf->pkt_len);
+
+	/* Append data from next segments to the first one */
+	m = mbuf->next;
+	while (m != NULL) {
+		m_next = m->next;
+
+		seg_len = rte_pktmbuf_data_len(m);
+		rte_memcpy(buffer, rte_pktmbuf_mtod(m, char *), seg_len);
+		buffer += seg_len;
+
+		rte_pktmbuf_free_seg(m);
+		m = m_next;
+	}
+
+	mbuf->next = NULL;
+	mbuf->nb_segs = 1;
+
+	return 0;
+}
+
+/**
  * Dump an mbuf structure to a file.
  *
  * Dump all fields for the given packet mbuf and all its associated

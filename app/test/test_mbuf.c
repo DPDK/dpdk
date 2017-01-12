@@ -930,6 +930,124 @@ test_failing_mbuf_sanity_check(void)
 	return 0;
 }
 
+static int
+test_mbuf_linearize(int pkt_len, int nb_segs) {
+
+	struct rte_mbuf *m = NULL, *mbuf = NULL;
+	uint8_t *data;
+	int data_len = 0;
+	int remain;
+	int seg, seg_len;
+	int i;
+
+	if (pkt_len < 1) {
+		printf("Packet size must be 1 or more (is %d)\n", pkt_len);
+		return -1;
+	}
+
+	if (nb_segs < 1) {
+		printf("Number of segments must be 1 or more (is %d)\n",
+				nb_segs);
+		return -1;
+	}
+
+	seg_len = pkt_len / nb_segs;
+	if (seg_len == 0)
+		seg_len = 1;
+
+	remain = pkt_len;
+
+	/* Create chained mbuf_src and fill it generated data */
+	for (seg = 0; remain > 0; seg++) {
+
+		m = rte_pktmbuf_alloc(pktmbuf_pool);
+		if (m == NULL) {
+			printf("Cannot create segment for source mbuf");
+			goto fail;
+		}
+
+		/* Make sure if tailroom is zeroed */
+		memset(rte_pktmbuf_mtod(m, uint8_t *), 0,
+				rte_pktmbuf_tailroom(m));
+
+		data_len = remain;
+		if (data_len > seg_len)
+			data_len = seg_len;
+
+		data = (uint8_t *)rte_pktmbuf_append(m, data_len);
+		if (data == NULL) {
+			printf("Cannot append %d bytes to the mbuf\n",
+					data_len);
+			goto fail;
+		}
+
+		for (i = 0; i < data_len; i++)
+			data[i] = (seg * seg_len + i) % 0x0ff;
+
+		if (seg == 0)
+			mbuf = m;
+		else
+			rte_pktmbuf_chain(mbuf, m);
+
+		remain -= data_len;
+	}
+
+	/* Create destination buffer to store coalesced data */
+	if (rte_pktmbuf_linearize(mbuf)) {
+		printf("Mbuf linearization failed\n");
+		goto fail;
+	}
+
+	if (!rte_pktmbuf_is_contiguous(mbuf)) {
+		printf("Source buffer should be contiguous after "
+				"linearization\n");
+		goto fail;
+	}
+
+	data = rte_pktmbuf_mtod(mbuf, uint8_t *);
+
+	for (i = 0; i < pkt_len; i++)
+		if (data[i] != (i % 0x0ff)) {
+			printf("Incorrect data in linearized mbuf\n");
+			goto fail;
+		}
+
+	rte_pktmbuf_free(mbuf);
+	return 0;
+
+fail:
+	if (mbuf)
+		rte_pktmbuf_free(mbuf);
+	return -1;
+}
+
+static int
+test_mbuf_linearize_check(void)
+{
+	struct test_mbuf_array {
+		int size;
+		int nb_segs;
+	} mbuf_array[] = {
+			{ 128, 1 },
+			{ 64, 64 },
+			{ 512, 10 },
+			{ 250, 11 },
+			{ 123, 8 },
+	};
+	unsigned int i;
+
+	printf("Test mbuf linearize API\n");
+
+	for (i = 0; i < RTE_DIM(mbuf_array); i++)
+		if (test_mbuf_linearize(mbuf_array[i].size,
+				mbuf_array[i].nb_segs)) {
+			printf("Test failed for %d, %d\n", mbuf_array[i].size,
+					mbuf_array[i].nb_segs);
+			return -1;
+		}
+
+	return 0;
+}
 
 static int
 test_mbuf(void)
@@ -1021,6 +1139,11 @@ test_mbuf(void)
 
 	if (test_failing_mbuf_sanity_check() < 0) {
 		printf("test_failing_mbuf_sanity_check() failed\n");
+		return -1;
+	}
+
+	if (test_mbuf_linearize_check() < 0) {
+		printf("test_mbuf_linearize_check() failed\n");
 		return -1;
 	}
 	return 0;
