@@ -92,9 +92,9 @@ rte_kvargs_tokenize(struct rte_kvargs *kvlist, const char *params)
  * into a list of valid keys.
  */
 static int
-is_valid_key(const char *valid[], const char *key_match)
+is_valid_key(const char * const valid[], const char *key_match)
 {
-	const char **valid_ptr;
+	const char * const *valid_ptr;
 
 	for (valid_ptr = valid; *valid_ptr != NULL; valid_ptr++) {
 		if (strcmp(key_match, *valid_ptr) == 0)
@@ -109,7 +109,7 @@ is_valid_key(const char *valid[], const char *key_match)
  */
 static int
 check_for_valid_keys(struct rte_kvargs *kvlist,
-		const char *valid[])
+		const char * const valid[])
 {
 	unsigned i, ret;
 	struct rte_kvargs_pair *pair;
@@ -187,7 +187,7 @@ rte_kvargs_free(struct rte_kvargs *kvlist)
  * check if only valid keys were used.
  */
 struct rte_kvargs *
-rte_kvargs_parse(const char *args, const char *valid_keys[])
+rte_kvargs_parse(const char *args, const char * const valid_keys[])
 {
 	struct rte_kvargs *kvlist;
 
