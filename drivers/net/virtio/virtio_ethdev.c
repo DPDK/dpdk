@@ -1399,7 +1399,7 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 
 	/* Setup interrupt callback  */
 	if (eth_dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)
-		rte_intr_callback_register(vtpci_intr_handle(hw),
+		rte_intr_callback_register(eth_dev->intr_handle,
 			virtio_interrupt_handler, eth_dev);
 
 	return 0;
@@ -1427,7 +1427,7 @@ eth_virtio_dev_uninit(struct rte_eth_dev *eth_dev)
 
 	/* reset interrupt callback  */
 	if (eth_dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)
-		rte_intr_callback_unregister(vtpci_intr_handle(hw),
+		rte_intr_callback_unregister(eth_dev->intr_handle,
 						virtio_interrupt_handler,
 						eth_dev);
 	if (hw->dev)
@@ -1546,7 +1546,7 @@ virtio_dev_start(struct rte_eth_dev *dev)
 			return -ENOTSUP;
 		}
 
-		if (rte_intr_enable(vtpci_intr_handle(hw)) < 0) {
+		if (rte_intr_enable(dev->intr_handle) < 0) {
 			PMD_DRV_LOG(ERR, "interrupt enable failed");
 			return -EIO;
 		}
@@ -1638,13 +1638,12 @@ static void virtio_dev_free_mbufs(struct rte_eth_dev *dev)
 static void
 virtio_dev_stop(struct rte_eth_dev *dev)
 {
-	struct virtio_hw *hw = dev->data->dev_private;
 	struct rte_eth_link link;
 
 	PMD_INIT_LOG(DEBUG, "stop");
 
 	if (dev->data->dev_conf.intr_conf.lsc)
-		rte_intr_disable(vtpci_intr_handle(hw));
+		rte_intr_disable(dev->intr_handle);
 
 	memset(&link, 0, sizeof(link));
 	virtio_dev_atomic_write_link_status(dev, &link);

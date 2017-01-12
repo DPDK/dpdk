@@ -333,12 +333,6 @@ uint8_t vtpci_isr(struct virtio_hw *);
 
 uint16_t vtpci_irq_config(struct virtio_hw *, uint16_t);
 
-static inline struct rte_intr_handle *
-vtpci_intr_handle(struct virtio_hw *hw)
-{
-	return hw->dev ? &hw->dev->intr_handle : NULL;
-}
-
 extern const struct virtio_pci_ops legacy_ops;
 extern const struct virtio_pci_ops modern_ops;
 extern const struct virtio_pci_ops virtio_user_ops;
