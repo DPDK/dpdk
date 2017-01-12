@@ -489,7 +489,7 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t vtpci_queue_idx)
 	 * virtual address. And we need properly set _offset_, please see
 	 * VIRTIO_MBUF_DATA_DMA_ADDR in virtqueue.h for more information.
 	 */
-	if (hw->dev)
+	if (!hw->virtio_user_dev)
 		vq->offset = offsetof(struct rte_mbuf, buf_physaddr);
 	else {
 		vq->vq_ring_mem = (uintptr_t)mz->addr;
@@ -1194,7 +1194,7 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 	struct virtio_hw *hw = eth_dev->data->dev_private;
 	struct virtio_net_config *config;
 	struct virtio_net_config local_config;
-	struct rte_pci_device *pci_dev = hw->dev;
+	struct rte_pci_device *pci_dev = NULL;
 	int ret;
 
 	/* Reset the device although not necessary at startup */
@@ -1214,7 +1214,8 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 	else
 		eth_dev->data->dev_flags |= RTE_ETH_DEV_INTR_LSC;
 
-	if (pci_dev) {
+	if (eth_dev->device) {
+		pci_dev = RTE_DEV_TO_PCI(eth_dev->device);
 		rte_eth_copy_pci_info(eth_dev, pci_dev);
 		eth_dev->data->dev_flags = RTE_ETH_DEV_DETACHABLE;
 	}
@@ -1408,8 +1409,6 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 static int
 eth_virtio_dev_uninit(struct rte_eth_dev *eth_dev)
 {
-	struct virtio_hw *hw = eth_dev->data->dev_private;
-
 	PMD_INIT_FUNC_TRACE();
 
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
@@ -1430,8 +1429,8 @@ eth_virtio_dev_uninit(struct rte_eth_dev *eth_dev)
 		rte_intr_callback_unregister(eth_dev->intr_handle,
 						virtio_interrupt_handler,
 						eth_dev);
-	if (hw->dev)
-		rte_eal_pci_unmap_device(hw->dev);
+	if (eth_dev->device)
+		rte_eal_pci_unmap_device(RTE_DEV_TO_PCI(eth_dev->device));
 
 	PMD_INIT_LOG(DEBUG, "dev_uninit completed");
 
@@ -1689,7 +1688,7 @@ virtio_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	uint64_t tso_mask;
 	struct virtio_hw *hw = dev->data->dev_private;
 
-	dev_info->pci_dev = hw->dev;
+	dev_info->pci_dev = dev->device ? RTE_DEV_TO_PCI(dev->device) : NULL;
 	dev_info->max_rx_queues =
 		RTE_MIN(hw->max_queue_pairs, VIRTIO_MAX_RX_QUEUES);
 	dev_info->max_tx_queues =

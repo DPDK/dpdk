@@ -731,8 +731,6 @@ int
 vtpci_init(struct rte_pci_device *dev, struct virtio_hw *hw,
 	   uint32_t *dev_flags)
 {
-	hw->dev = dev;
-
 	/*
 	 * Try if we can succeed reading virtio pci caps, which exists
 	 * only on modern pci device. If failed, we fallback to legacy
