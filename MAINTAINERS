@@ -373,7 +373,6 @@ F: doc/guides/nics/sfc_efx.rst
 F: doc/guides/nics/features/sfc_efx.ini
 
 RedHat virtio
-M: Huawei Xie <huawei.xie@intel.com>
 M: Yuanhan Liu <yuanhan.liu@linux.intel.com>
 T: git://dpdk.org/next/dpdk-next-virtio
 F: drivers/net/virtio/
