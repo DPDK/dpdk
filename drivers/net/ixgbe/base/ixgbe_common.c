@@ -1150,7 +1150,7 @@ s32 ixgbe_init_led_link_act_generic(struct ixgbe_hw *hw)
 {
 	struct ixgbe_mac_info *mac = &hw->mac;
 	u32 led_reg, led_mode;
-	u16 i;
+	u8 i;
 
 	led_reg = IXGBE_READ_REG(hw, IXGBE_LEDCTL);
 
