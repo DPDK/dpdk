@@ -1002,7 +1002,7 @@ static int bnxt_flow_ctrl_set_op(struct rte_eth_dev *dev,
  * Initialization
  */
 
-static struct eth_dev_ops bnxt_dev_ops = {
+static const struct eth_dev_ops bnxt_dev_ops = {
 	.dev_infos_get = bnxt_dev_info_get_op,
 	.dev_close = bnxt_dev_close_op,
 	.dev_configure = bnxt_dev_configure_op,
