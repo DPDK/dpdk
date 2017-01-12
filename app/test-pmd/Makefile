@@ -59,7 +59,9 @@ SRCS-y += csumonly.c
 SRCS-y += icmpecho.c
 SRCS-$(CONFIG_RTE_LIBRTE_IEEE1588) += ieee1588fwd.c
 
+ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),y)
 _LDLIBS-$(CONFIG_RTE_LIBRTE_IXGBE_PMD) += -lrte_pmd_ixgbe
+endif
 
 CFLAGS_cmdline.o := -D_GNU_SOURCE
 
