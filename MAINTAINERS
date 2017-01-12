@@ -372,26 +372,30 @@ F: drivers/net/sfc/
 F: doc/guides/nics/sfc_efx.rst
 F: doc/guides/nics/features/sfc_efx.ini
 
-RedHat virtio
-M: Yuanhan Liu <yuanhan.liu@linux.intel.com>
-T: git://dpdk.org/next/dpdk-next-virtio
-F: drivers/net/virtio/
-F: doc/guides/nics/virtio.rst
-F: lib/librte_vhost/
-F: doc/guides/prog_guide/vhost_lib.rst
-F: examples/vhost/
-F: doc/guides/sample_app_ug/vhost.rst
-
 VMware vmxnet3
 M: Yong Wang <yongwang@vmware.com>
 F: drivers/net/vmxnet3/
 F: doc/guides/nics/vmxnet3.rst
+
+Vhost-user
+M: Yuanhan Liu <yuanhan.liu@linux.intel.com>
+T: git://dpdk.org/next/dpdk-next-virtio
+F: lib/librte_vhost/
+F: doc/guides/prog_guide/vhost_lib.rst
+F: examples/vhost/
+F: doc/guides/sample_app_ug/vhost.rst
 
 Vhost PMD
 M: Tetsuya Mukawa <mtetsuyah@gmail.com>
 M: Yuanhan Liu <yuanhan.liu@linux.intel.com>
 T: git://dpdk.org/next/dpdk-next-virtio
 F: drivers/net/vhost/
+
+Virtio PMD
+M: Yuanhan Liu <yuanhan.liu@linux.intel.com>
+T: git://dpdk.org/next/dpdk-next-virtio
+F: drivers/net/virtio/
+F: doc/guides/nics/virtio.rst
 
 PCAP PMD
 M: Ferruh Yigit <ferruh.yigit@intel.com>
