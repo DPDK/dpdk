@@ -227,7 +227,7 @@ static int ena_rss_reta_query(struct rte_eth_dev *dev,
 			      uint16_t reta_size);
 static int ena_get_sset_count(struct rte_eth_dev *dev, int sset);
 
-static struct eth_dev_ops ena_dev_ops = {
+static const struct eth_dev_ops ena_dev_ops = {
 	.dev_configure        = ena_dev_configure,
 	.dev_infos_get        = ena_infos_get,
 	.rx_queue_setup       = ena_rx_queue_setup,
