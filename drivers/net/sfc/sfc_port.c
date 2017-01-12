@@ -87,6 +87,9 @@ sfc_port_start(struct sfc_adapter *sa)
 {
 	struct sfc_port *port = &sa->port;
 	int rc;
+	uint32_t phy_adv_cap;
+	const uint32_t phy_pause_caps =
+		((1u << EFX_PHY_CAP_PAUSE) | (1u << EFX_PHY_CAP_ASYM));
 
 	sfc_log_init(sa, "entry");
 
@@ -107,8 +110,13 @@ sfc_port_start(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_mac_fcntl_set;
 
-	sfc_log_init(sa, "set phy adv caps to %#x", port->phy_adv_cap);
-	rc = efx_phy_adv_cap_set(sa->nic, port->phy_adv_cap);
+	/* Preserve pause capabilities set by above efx_mac_fcntl_set()  */
+	efx_phy_adv_cap_get(sa->nic, EFX_PHY_CAP_CURRENT, &phy_adv_cap);
+	SFC_ASSERT((port->phy_adv_cap & phy_pause_caps) == 0);
+	phy_adv_cap = port->phy_adv_cap | (phy_adv_cap & phy_pause_caps);
+
+	sfc_log_init(sa, "set phy adv caps to %#x", phy_adv_cap);
+	rc = efx_phy_adv_cap_set(sa->nic, phy_adv_cap);
 	if (rc != 0)
 		goto fail_phy_adv_cap_set;
 
