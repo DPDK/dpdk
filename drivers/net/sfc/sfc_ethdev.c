@@ -198,7 +198,8 @@ retry:
 	if (wait_to_complete) {
 		efx_link_mode_t link_mode;
 
-		efx_port_poll(sa->nic, &link_mode);
+		if (efx_port_poll(sa->nic, &link_mode) != 0)
+			link_mode = EFX_LINK_UNKNOWN;
 		sfc_port_link_mode_to_info(link_mode, &current_link);
 
 		if (!rte_atomic64_cmpset((volatile uint64_t *)dev_link,
