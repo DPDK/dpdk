@@ -38,6 +38,7 @@
 #include "base/ixgbe_dcb_82598.h"
 #include "ixgbe_bypass.h"
 #include <rte_time.h>
+#include <rte_hash.h>
 
 /* need update link, bit flag */
 #define IXGBE_FLAG_NEED_LINK_UPDATE (uint32_t)(1 << 0)
@@ -135,10 +136,11 @@
 
 #define IXGBE_MACSEC_PNTHRSH            0xFFFFFE00
 
+#define IXGBE_MAX_FDIR_FILTER_NUM       (1024 * 32)
+
 /*
  * Information about the fdir mode.
  */
-
 struct ixgbe_hw_fdir_mask {
 	uint16_t vlan_tci_mask;
 	uint32_t src_ipv4_mask;
@@ -153,6 +155,17 @@ struct ixgbe_hw_fdir_mask {
 	uint8_t  tunnel_type_mask;
 };
 
+struct ixgbe_fdir_filter {
+	TAILQ_ENTRY(ixgbe_fdir_filter) entries;
+	union ixgbe_atr_input ixgbe_fdir; /* key of fdir filter*/
+	uint32_t fdirflags; /* drop or forward */
+	uint32_t fdirhash; /* hash value for fdir */
+	uint8_t queue; /* assigned rx queue */
+};
+
+/* list of fdir filters */
+TAILQ_HEAD(ixgbe_fdir_filter_list, ixgbe_fdir_filter);
+
 struct ixgbe_hw_fdir_info {
 	struct ixgbe_hw_fdir_mask mask;
 	uint8_t     flex_bytes_offset;
@@ -164,6 +177,10 @@ struct ixgbe_hw_fdir_info {
 	uint64_t    remove;
 	uint64_t    f_add;
 	uint64_t    f_remove;
+	struct ixgbe_fdir_filter_list fdir_list; /* filter list*/
+	/* store the pointers of the filters, index is the hash value. */
+	struct ixgbe_fdir_filter **hash_map;
+	struct rte_hash *hash_handle; /* cuckoo hash handler */
 };
 
 /* structure for interrupt relative data */

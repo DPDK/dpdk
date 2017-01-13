@@ -60,6 +60,7 @@
 #include <rte_malloc.h>
 #include <rte_random.h>
 #include <rte_dev.h>
+#include <rte_hash_crc.h>
 
 #include "ixgbe_logs.h"
 #include "base/ixgbe_api.h"
@@ -165,6 +166,8 @@ enum ixgbevf_xcast_modes {
 
 static int eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev);
 static int eth_ixgbe_dev_uninit(struct rte_eth_dev *eth_dev);
+static int ixgbe_fdir_filter_init(struct rte_eth_dev *eth_dev);
+static int ixgbe_fdir_filter_uninit(struct rte_eth_dev *eth_dev);
 static int  ixgbe_dev_configure(struct rte_eth_dev *dev);
 static int  ixgbe_dev_start(struct rte_eth_dev *dev);
 static void ixgbe_dev_stop(struct rte_eth_dev *dev);
@@ -1330,6 +1333,9 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev)
 	/* initialize 5tuple filter list */
 	TAILQ_INIT(&filter_info->fivetuple_list);
 
+	/* initialize flow director filter list & hash */
+	ixgbe_fdir_filter_init(eth_dev);
+
 	return 0;
 }
 
@@ -1371,9 +1377,67 @@ eth_ixgbe_dev_uninit(struct rte_eth_dev *eth_dev)
 	rte_free(eth_dev->data->hash_mac_addrs);
 	eth_dev->data->hash_mac_addrs = NULL;
 
+	/* remove all the fdir filters & hash */
+	ixgbe_fdir_filter_uninit(eth_dev);
+
 	return 0;
 }
 
+static int ixgbe_fdir_filter_uninit(struct rte_eth_dev *eth_dev)
+{
+	struct ixgbe_hw_fdir_info *fdir_info =
+		IXGBE_DEV_PRIVATE_TO_FDIR_INFO(eth_dev->data->dev_private);
+	struct ixgbe_fdir_filter *fdir_filter;
+
+		if (fdir_info->hash_map)
+		rte_free(fdir_info->hash_map);
+	if (fdir_info->hash_handle)
+		rte_hash_free(fdir_info->hash_handle);
+
+	while ((fdir_filter = TAILQ_FIRST(&fdir_info->fdir_list))) {
+		TAILQ_REMOVE(&fdir_info->fdir_list,
+			     fdir_filter,
+			     entries);
+		rte_free(fdir_filter);
+	}
+
+	return 0;
+}
+
+static int ixgbe_fdir_filter_init(struct rte_eth_dev *eth_dev)
+{
+	struct ixgbe_hw_fdir_info *fdir_info =
+		IXGBE_DEV_PRIVATE_TO_FDIR_INFO(eth_dev->data->dev_private);
+	char fdir_hash_name[RTE_HASH_NAMESIZE];
+	struct rte_hash_parameters fdir_hash_params = {
+		.name = fdir_hash_name,
+		.entries = IXGBE_MAX_FDIR_FILTER_NUM,
+		.key_len = sizeof(union ixgbe_atr_input),
+		.hash_func = rte_hash_crc,
+		.hash_func_init_val = 0,
+		.socket_id = rte_socket_id(),
+	};
+
+	TAILQ_INIT(&fdir_info->fdir_list);
+	snprintf(fdir_hash_name, RTE_HASH_NAMESIZE,
+		 "fdir_%s", eth_dev->data->name);
+	fdir_info->hash_handle = rte_hash_create(&fdir_hash_params);
+	if (!fdir_info->hash_handle) {
+		PMD_INIT_LOG(ERR, "Failed to create fdir hash table!");
+		return -EINVAL;
+	}
+	fdir_info->hash_map = rte_zmalloc("ixgbe",
+					  sizeof(struct ixgbe_fdir_filter *) *
+					  IXGBE_MAX_FDIR_FILTER_NUM,
+					  0);
+	if (!fdir_info->hash_map) {
+		PMD_INIT_LOG(ERR,
+			     "Failed to allocate memory for fdir hash map!");
+		return -ENOMEM;
+	}
+
+	return 0;
+}
 /*
  * Negotiate mailbox API version with the PF.
  * After reset API version is always set to the basic one (ixgbe_mbox_api_10).

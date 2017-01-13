@@ -43,6 +43,7 @@
 #include <rte_pci.h>
 #include <rte_ether.h>
 #include <rte_ethdev.h>
+#include <rte_malloc.h>
 
 #include "ixgbe_logs.h"
 #include "base/ixgbe_api.h"
@@ -1075,6 +1076,65 @@ fdir_erase_filter_82599(struct ixgbe_hw *hw, uint32_t fdirhash)
 
 }
 
+static inline struct ixgbe_fdir_filter *
+ixgbe_fdir_filter_lookup(struct ixgbe_hw_fdir_info *fdir_info,
+			 union ixgbe_atr_input *key)
+{
+	int ret;
+
+	ret = rte_hash_lookup(fdir_info->hash_handle, (const void *)key);
+	if (ret < 0)
+		return NULL;
+
+	return fdir_info->hash_map[ret];
+}
+
+static inline int
+ixgbe_insert_fdir_filter(struct ixgbe_hw_fdir_info *fdir_info,
+			 struct ixgbe_fdir_filter *fdir_filter)
+{
+	int ret;
+
+	ret = rte_hash_add_key(fdir_info->hash_handle,
+			       &fdir_filter->ixgbe_fdir);
+
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR,
+			    "Failed to insert fdir filter to hash table %d!",
+			    ret);
+		return ret;
+	}
+
+	fdir_info->hash_map[ret] = fdir_filter;
+
+	TAILQ_INSERT_TAIL(&fdir_info->fdir_list, fdir_filter, entries);
+
+	return 0;
+}
+
+static inline int
+ixgbe_remove_fdir_filter(struct ixgbe_hw_fdir_info *fdir_info,
+			 union ixgbe_atr_input *key)
+{
+	int ret;
+	struct ixgbe_fdir_filter *fdir_filter;
+
+	ret = rte_hash_del_key(fdir_info->hash_handle, key);
+
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "No such fdir filter to delete %d!", ret);
+		return ret;
+	}
+
+	fdir_filter = fdir_info->hash_map[ret];
+	fdir_info->hash_map[ret] = NULL;
+
+	TAILQ_REMOVE(&fdir_info->fdir_list, fdir_filter, entries);
+	rte_free(fdir_filter);
+
+	return 0;
+}
+
 /*
  * ixgbe_add_del_fdir_filter - add or remove a flow diretor filter.
  * @dev: pointer to the structure rte_eth_dev
@@ -1098,6 +1158,8 @@ ixgbe_add_del_fdir_filter(struct rte_eth_dev *dev,
 	struct ixgbe_hw_fdir_info *info =
 		IXGBE_DEV_PRIVATE_TO_FDIR_INFO(dev->data->dev_private);
 	enum rte_fdir_mode fdir_mode = dev->data->dev_conf.fdir_conf.mode;
+	struct ixgbe_fdir_filter *node;
+	bool add_node = FALSE;
 
 	if (fdir_mode == RTE_FDIR_MODE_NONE)
 		return -ENOTSUP;
@@ -1148,6 +1210,10 @@ ixgbe_add_del_fdir_filter(struct rte_eth_dev *dev,
 						      dev->data->dev_conf.fdir_conf.pballoc);
 
 	if (del) {
+		err = ixgbe_remove_fdir_filter(info, &input);
+		if (err < 0)
+			return err;
+
 		err = fdir_erase_filter_82599(hw, fdirhash);
 		if (err < 0)
 			PMD_DRV_LOG(ERR, "Fail to delete FDIR filter!");
@@ -1172,6 +1238,37 @@ ixgbe_add_del_fdir_filter(struct rte_eth_dev *dev,
 	else
 		return -EINVAL;
 
+	node = ixgbe_fdir_filter_lookup(info, &input);
+	if (node) {
+		if (update) {
+			node->fdirflags = fdircmd_flags;
+			node->fdirhash = fdirhash;
+			node->queue = queue;
+		} else {
+			PMD_DRV_LOG(ERR, "Conflict with existing fdir filter!");
+			return -EINVAL;
+		}
+	} else {
+		add_node = TRUE;
+		node = rte_zmalloc("ixgbe_fdir",
+				   sizeof(struct ixgbe_fdir_filter),
+				   0);
+		if (!node)
+			return -ENOMEM;
+		(void)rte_memcpy(&node->ixgbe_fdir,
+				 &input,
+				 sizeof(union ixgbe_atr_input));
+		node->fdirflags = fdircmd_flags;
+		node->fdirhash = fdirhash;
+		node->queue = queue;
+
+		err = ixgbe_insert_fdir_filter(info, node);
+		if (err < 0) {
+			rte_free(node);
+			return err;
+		}
+	}
+
 	if (is_perfect) {
 		err = fdir_write_perfect_filter_82599(hw, &input, queue,
 						      fdircmd_flags, fdirhash,
@@ -1180,10 +1277,14 @@ ixgbe_add_del_fdir_filter(struct rte_eth_dev *dev,
 		err = fdir_add_signature_filter_82599(hw, &input, queue,
 						      fdircmd_flags, fdirhash);
 	}
-	if (err < 0)
+	if (err < 0) {
 		PMD_DRV_LOG(ERR, "Fail to add FDIR filter!");
-	else
+
+		if (add_node)
+			(void)ixgbe_remove_fdir_filter(info, &input);
+	} else {
 		PMD_DRV_LOG(DEBUG, "Success to add FDIR filter");
+	}
 
 	return err;
 }
