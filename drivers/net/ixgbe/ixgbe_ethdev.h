@@ -279,6 +279,11 @@ struct ixgbe_ethertype_filter {
 	uint16_t ethertype;
 	uint32_t etqf;
 	uint32_t etqs;
+	/**
+	 * If this filter is added by configuration,
+	 * it should not be removed.
+	 */
+	bool     conf;
 };
 
 /*
@@ -542,6 +547,14 @@ uint32_t ixgbe_convert_vm_rx_mask_to_val(uint16_t rx_mask, uint32_t orig_val);
 int ixgbe_fdir_ctrl_func(struct rte_eth_dev *dev,
 			enum rte_filter_op filter_op, void *arg);
 void ixgbe_fdir_filter_restore(struct rte_eth_dev *dev);
+int ixgbe_clear_all_fdir_filter(struct rte_eth_dev *dev);
+
+extern const struct rte_flow_ops ixgbe_flow_ops;
+
+void ixgbe_clear_all_ethertype_filter(struct rte_eth_dev *dev);
+void ixgbe_clear_all_ntuple_filter(struct rte_eth_dev *dev);
+void ixgbe_clear_syn_filter(struct rte_eth_dev *dev);
+int ixgbe_clear_all_l2_tn_filter(struct rte_eth_dev *dev);
 
 int ixgbe_disable_sec_tx_path_generic(struct ixgbe_hw *hw);
 
@@ -576,6 +589,8 @@ ixgbe_ethertype_filter_insert(struct ixgbe_filter_info *filter_info,
 				ethertype_filter->etqf;
 			filter_info->ethertype_filters[i].etqs =
 				ethertype_filter->etqs;
+			filter_info->ethertype_filters[i].conf =
+				ethertype_filter->conf;
 			return i;
 		}
 	}
@@ -592,6 +607,7 @@ ixgbe_ethertype_filter_remove(struct ixgbe_filter_info *filter_info,
 	filter_info->ethertype_filters[idx].ethertype = 0;
 	filter_info->ethertype_filters[idx].etqf = 0;
 	filter_info->ethertype_filters[idx].etqs = 0;
+	filter_info->ethertype_filters[idx].etqs = FALSE;
 	return idx;
 }
 

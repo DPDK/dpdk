@@ -1514,3 +1514,27 @@ ixgbe_fdir_filter_restore(struct rte_eth_dev *dev)
 		}
 	}
 }
+
+/* remove all the flow director filters */
+int
+ixgbe_clear_all_fdir_filter(struct rte_eth_dev *dev)
+{
+	struct ixgbe_hw_fdir_info *fdir_info =
+		IXGBE_DEV_PRIVATE_TO_FDIR_INFO(dev->data->dev_private);
+	struct ixgbe_fdir_filter *fdir_filter;
+	int ret = 0;
+
+	/* flush flow director */
+	rte_hash_reset(fdir_info->hash_handle);
+	memset(fdir_info->hash_map, 0,
+	       sizeof(struct ixgbe_fdir_filter *) * IXGBE_MAX_FDIR_FILTER_NUM);
+	while ((fdir_filter = TAILQ_FIRST(&fdir_info->fdir_list))) {
+		TAILQ_REMOVE(&fdir_info->fdir_list,
+			     fdir_filter,
+			     entries);
+		rte_free(fdir_filter);
+	}
+	ret = ixgbe_fdir_flush(dev);
+
+	return ret;
+}

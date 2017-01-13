@@ -199,6 +199,7 @@ ixgbe_add_tx_flow_control_drop_filter(struct rte_eth_dev *eth_dev)
 				IXGBE_ETQF_TX_ANTISPOOF |
 				IXGBE_ETHERTYPE_FLOW_CTRL;
 	ethertype_filter.etqs = 0;
+	ethertype_filter.conf = TRUE;
 	i = ixgbe_ethertype_filter_insert(filter_info,
 					  &ethertype_filter);
 	if (i < 0) {

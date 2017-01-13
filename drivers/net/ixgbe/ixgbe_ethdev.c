@@ -6533,6 +6533,7 @@ ixgbe_add_del_ethertype_filter(struct rte_eth_dev *dev,
 		ethertype_filter.ethertype = filter->ether_type;
 		ethertype_filter.etqf = etqf;
 		ethertype_filter.etqs = etqs;
+		ethertype_filter.conf = FALSE;
 		ret = ixgbe_ethertype_filter_insert(filter_info,
 						    &ethertype_filter);
 		if (ret < 0) {
@@ -6634,7 +6635,7 @@ ixgbe_dev_filter_ctrl(struct rte_eth_dev *dev,
 		     enum rte_filter_op filter_op,
 		     void *arg)
 {
-	int ret = -EINVAL;
+	int ret = 0;
 
 	switch (filter_type) {
 	case RTE_ETH_FILTER_NTUPLE:
@@ -6652,9 +6653,15 @@ ixgbe_dev_filter_ctrl(struct rte_eth_dev *dev,
 	case RTE_ETH_FILTER_L2_TUNNEL:
 		ret = ixgbe_dev_l2_tunnel_filter_handle(dev, filter_op, arg);
 		break;
+	case RTE_ETH_FILTER_GENERIC:
+		if (filter_op != RTE_ETH_FILTER_GET)
+			return -EINVAL;
+		*(const void **)arg = &ixgbe_flow_ops;
+		break;
 	default:
 		PMD_DRV_LOG(WARNING, "Filter type (%d) not supported",
 							filter_type);
+		ret = -EINVAL;
 		break;
 	}
 
@@ -8568,6 +8575,76 @@ ixgbe_l2_tunnel_conf(struct rte_eth_dev *dev)
 		(void)ixgbe_e_tag_forwarding_en_dis(dev, 1);
 
 	(void)ixgbe_update_e_tag_eth_type(hw, l2_tn_info->e_tag_ether_type);
+}
+
+/* remove all the n-tuple filters */
+void
+ixgbe_clear_all_ntuple_filter(struct rte_eth_dev *dev)
+{
+	struct ixgbe_filter_info *filter_info =
+		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+	struct ixgbe_5tuple_filter *p_5tuple;
+
+	while ((p_5tuple = TAILQ_FIRST(&filter_info->fivetuple_list)))
+		ixgbe_remove_5tuple_filter(dev, p_5tuple);
+}
+
+/* remove all the ether type filters */
+void
+ixgbe_clear_all_ethertype_filter(struct rte_eth_dev *dev)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_filter_info *filter_info =
+		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+	int i;
+
+	for (i = 0; i < IXGBE_MAX_ETQF_FILTERS; i++) {
+		if (filter_info->ethertype_mask & (1 << i) &&
+		    !filter_info->ethertype_filters[i].conf) {
+			(void)ixgbe_ethertype_filter_remove(filter_info,
+							    (uint8_t)i);
+			IXGBE_WRITE_REG(hw, IXGBE_ETQF(i), 0);
+			IXGBE_WRITE_REG(hw, IXGBE_ETQS(i), 0);
+			IXGBE_WRITE_FLUSH(hw);
+		}
+	}
+}
+
+/* remove the SYN filter */
+void
+ixgbe_clear_syn_filter(struct rte_eth_dev *dev)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_filter_info *filter_info =
+		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+
+	if (filter_info->syn_info & IXGBE_SYN_FILTER_ENABLE) {
+		filter_info->syn_info = 0;
+
+		IXGBE_WRITE_REG(hw, IXGBE_SYNQF, 0);
+		IXGBE_WRITE_FLUSH(hw);
+	}
+}
+
+/* remove all the L2 tunnel filters */
+int ixgbe_clear_all_l2_tn_filter(struct rte_eth_dev *dev)
+{
+	struct ixgbe_l2_tn_info *l2_tn_info =
+		IXGBE_DEV_PRIVATE_TO_L2_TN_INFO(dev->data->dev_private);
+	struct ixgbe_l2_tn_filter *l2_tn_filter;
+	struct rte_eth_l2_tunnel_conf l2_tn_conf;
+	int ret = 0;
+
+	while ((l2_tn_filter = TAILQ_FIRST(&l2_tn_info->l2_tn_list))) {
+		l2_tn_conf.l2_tunnel_type = l2_tn_filter->key.l2_tn_type;
+		l2_tn_conf.tunnel_id      = l2_tn_filter->key.tn_id;
+		l2_tn_conf.pool           = l2_tn_filter->pool;
+		ret = ixgbe_dev_l2_tunnel_filter_del(dev, &l2_tn_conf);
+		if (ret < 0)
+			return ret;
+	}
+
+	return 0;
 }
 
 RTE_PMD_REGISTER_PCI(net_ixgbe, rte_ixgbe_pmd.pci_drv);
