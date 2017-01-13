@@ -112,6 +112,7 @@ Limitations
 -----------
 
 * Maximum number of sessions is 2048.
-* Chained mbufs are not supported.
+* Chained mbufs are supported only for source mbuf (destination must be
+  contiguous).
 * Hash only is not supported for GCM and GMAC.
 * Cipher only is not supported for GCM and GMAC.
