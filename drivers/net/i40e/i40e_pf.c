@@ -581,14 +581,117 @@ send_msg:
 	return ret;
 }
 
+static void
+i40e_pf_config_irq_link_list(struct i40e_pf_vf *vf,
+			      struct i40e_virtchnl_vector_map *vvm)
+{
+#define BITS_PER_CHAR 8
+	uint64_t linklistmap = 0, tempmap;
+	struct i40e_hw *hw = I40E_PF_TO_HW(vf->pf);
+	uint16_t qid;
+	bool b_first_q = true;
+	enum i40e_queue_type qtype;
+	uint16_t vector_id;
+	uint32_t reg, reg_idx;
+	uint16_t itr_idx = 0, i;
+
+	vector_id = vvm->vector_id;
+	/* setup the head */
+	if (!vector_id)
+		reg_idx = I40E_VPINT_LNKLST0(vf->vf_idx);
+	else
+		reg_idx = I40E_VPINT_LNKLSTN(
+		((hw->func_caps.num_msix_vectors_vf - 1) * vf->vf_idx)
+		+ (vector_id - 1));
+
+	if (vvm->rxq_map == 0 && vvm->txq_map == 0) {
+		I40E_WRITE_REG(hw, reg_idx,
+			I40E_VPINT_LNKLST0_FIRSTQ_INDX_MASK);
+		goto cfg_irq_done;
+	}
+
+	/* sort all rx and tx queues */
+	tempmap = vvm->rxq_map;
+	for (i = 0; i < sizeof(vvm->rxq_map) * BITS_PER_CHAR; i++) {
+		if (tempmap & 0x1)
+			linklistmap |= (1 << (2 * i));
+		tempmap >>= 1;
+	}
+
+	tempmap = vvm->txq_map;
+	for (i = 0; i < sizeof(vvm->txq_map) * BITS_PER_CHAR; i++) {
+		if (tempmap & 0x1)
+			linklistmap |= (1 << (2 * i + 1));
+		tempmap >>= 1;
+	}
+
+	/* Link all rx and tx queues into a chained list */
+	tempmap = linklistmap;
+	i = 0;
+	b_first_q = true;
+	do {
+		if (tempmap & 0x1) {
+			qtype = (enum i40e_queue_type)(i % 2);
+			qid = vf->vsi->base_queue + i / 2;
+			if (b_first_q) {
+				/* This is header */
+				b_first_q = false;
+				reg = ((qtype <<
+				I40E_VPINT_LNKLSTN_FIRSTQ_TYPE_SHIFT)
+				| qid);
+			} else {
+				/* element in the link list */
+				reg = (vector_id) |
+				(qtype << I40E_QINT_RQCTL_NEXTQ_TYPE_SHIFT) |
+				(qid << I40E_QINT_RQCTL_NEXTQ_INDX_SHIFT) |
+				BIT(I40E_QINT_RQCTL_CAUSE_ENA_SHIFT) |
+				(itr_idx << I40E_QINT_RQCTL_ITR_INDX_SHIFT);
+			}
+			I40E_WRITE_REG(hw, reg_idx, reg);
+			/* find next register to program */
+			switch (qtype) {
+			case I40E_QUEUE_TYPE_RX:
+				reg_idx = I40E_QINT_RQCTL(qid);
+				itr_idx = vvm->rxitr_idx;
+				break;
+			case I40E_QUEUE_TYPE_TX:
+				reg_idx = I40E_QINT_TQCTL(qid);
+				itr_idx = vvm->txitr_idx;
+				break;
+			default:
+				break;
+			}
+		}
+		i++;
+		tempmap >>= 1;
+	} while (tempmap);
+
+	/* Terminate the link list */
+	reg = (vector_id) |
+		(0 << I40E_QINT_RQCTL_NEXTQ_TYPE_SHIFT) |
+		(0x7FF << I40E_QINT_RQCTL_NEXTQ_INDX_SHIFT) |
+		BIT(I40E_QINT_RQCTL_CAUSE_ENA_SHIFT) |
+		(itr_idx << I40E_QINT_RQCTL_ITR_INDX_SHIFT);
+	I40E_WRITE_REG(hw, reg_idx, reg);
+
+cfg_irq_done:
+	I40E_WRITE_FLUSH(hw);
+}
+
 static int
 i40e_pf_host_process_cmd_config_irq_map(struct i40e_pf_vf *vf,
 					uint8_t *msg, uint16_t msglen,
 					bool b_op)
 {
 	int ret = I40E_SUCCESS;
+	struct i40e_pf *pf = vf->pf;
+	struct i40e_hw *hw = I40E_PF_TO_HW(vf->pf);
 	struct i40e_virtchnl_irq_map_info *irqmap =
 	    (struct i40e_virtchnl_irq_map_info *)msg;
+	struct i40e_virtchnl_vector_map *map;
+	int i;
+	uint16_t vector_id;
+	unsigned long qbit_max;
 
 	if (!b_op) {
 		i40e_pf_host_send_msg_to_vf(
@@ -604,23 +707,46 @@ i40e_pf_host_process_cmd_config_irq_map(struct i40e_pf_vf *vf,
 		goto send_msg;
 	}
 
-	/* Assume VF only have 1 vector to bind all queues */
-	if (irqmap->num_vectors != 1) {
-		PMD_DRV_LOG(ERR, "DKDK host only support 1 vector");
-		ret = I40E_ERR_PARAM;
+	/* PF host will support both DPDK VF or Linux VF driver, identify by
+	 * number of vectors requested.
+	 */
+
+	/* DPDK VF only requires single vector */
+	if (irqmap->num_vectors == 1) {
+		/* This MSIX intr store the intr in VF range */
+		vf->vsi->msix_intr = irqmap->vecmap[0].vector_id;
+		vf->vsi->nb_msix = irqmap->num_vectors;
+		vf->vsi->nb_used_qps = vf->vsi->nb_qps;
+
+		/* Don't care how the TX/RX queue mapping with this vector.
+		 * Link all VF RX queues together. Only did mapping work.
+		 * VF can disable/enable the intr by itself.
+		 */
+		i40e_vsi_queues_bind_intr(vf->vsi);
 		goto send_msg;
 	}
 
-	/* This MSIX intr store the intr in VF range */
-	vf->vsi->msix_intr = irqmap->vecmap[0].vector_id;
-	vf->vsi->nb_msix = irqmap->num_vectors;
-	vf->vsi->nb_used_qps = vf->vsi->nb_qps;
+	/* Then, it's Linux VF driver */
+	qbit_max = 1 << pf->vf_nb_qp_max;
+	for (i = 0; i < irqmap->num_vectors; i++) {
+		map = &irqmap->vecmap[i];
 
-	/* Don't care how the TX/RX queue mapping with this vector.
-	 * Link all VF RX queues together. Only did mapping work.
-	 * VF can disable/enable the intr by itself.
-	 */
-	i40e_vsi_queues_bind_intr(vf->vsi);
+		vector_id = map->vector_id;
+		/* validate msg params */
+		if (vector_id >= hw->func_caps.num_msix_vectors_vf) {
+			ret = I40E_ERR_PARAM;
+			goto send_msg;
+		}
+
+		if ((map->rxq_map < qbit_max) && (map->txq_map < qbit_max)) {
+			i40e_pf_config_irq_link_list(vf, map);
+		} else {
+			/* configured queue size excceed limit */
+			ret = I40E_ERR_PARAM;
+			goto send_msg;
+		}
+	}
+
 send_msg:
 	i40e_pf_host_send_msg_to_vf(vf, I40E_VIRTCHNL_OP_CONFIG_IRQ_MAP,
 							ret, NULL, 0);
