@@ -1392,6 +1392,9 @@ eth_ixgbe_dev_uninit(struct rte_eth_dev *eth_dev)
 	/* Remove all ntuple filters of the device */
 	ixgbe_ntuple_filter_uninit(eth_dev);
 
+	/* clear all the filters list */
+	ixgbe_filterlist_flush();
+
 	return 0;
 }
 

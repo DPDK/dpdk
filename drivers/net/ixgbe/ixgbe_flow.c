@@ -2444,6 +2444,60 @@ ixgbe_parse_fdir_filter(const struct rte_flow_attr *attr,
 	return ret;
 }
 
+void
+ixgbe_filterlist_flush(void)
+{
+	struct ixgbe_ntuple_filter_ele *ntuple_filter_ptr;
+	struct ixgbe_ethertype_filter_ele *ethertype_filter_ptr;
+	struct ixgbe_eth_syn_filter_ele *syn_filter_ptr;
+	struct ixgbe_eth_l2_tunnel_conf_ele *l2_tn_filter_ptr;
+	struct ixgbe_fdir_rule_ele *fdir_rule_ptr;
+	struct ixgbe_flow_mem *ixgbe_flow_mem_ptr;
+
+	while ((ntuple_filter_ptr = TAILQ_FIRST(&filter_ntuple_list))) {
+		TAILQ_REMOVE(&filter_ntuple_list,
+				 ntuple_filter_ptr,
+				 entries);
+		rte_free(ntuple_filter_ptr);
+	}
+
+	while ((ethertype_filter_ptr = TAILQ_FIRST(&filter_ethertype_list))) {
+		TAILQ_REMOVE(&filter_ethertype_list,
+				 ethertype_filter_ptr,
+				 entries);
+		rte_free(ethertype_filter_ptr);
+	}
+
+	while ((syn_filter_ptr = TAILQ_FIRST(&filter_syn_list))) {
+		TAILQ_REMOVE(&filter_syn_list,
+				 syn_filter_ptr,
+				 entries);
+		rte_free(syn_filter_ptr);
+	}
+
+	while ((l2_tn_filter_ptr = TAILQ_FIRST(&filter_l2_tunnel_list))) {
+		TAILQ_REMOVE(&filter_l2_tunnel_list,
+				 l2_tn_filter_ptr,
+				 entries);
+		rte_free(l2_tn_filter_ptr);
+	}
+
+	while ((fdir_rule_ptr = TAILQ_FIRST(&filter_fdir_list))) {
+		TAILQ_REMOVE(&filter_fdir_list,
+				 fdir_rule_ptr,
+				 entries);
+		rte_free(fdir_rule_ptr);
+	}
+
+	while ((ixgbe_flow_mem_ptr = TAILQ_FIRST(&ixgbe_flow_list))) {
+		TAILQ_REMOVE(&ixgbe_flow_list,
+				 ixgbe_flow_mem_ptr,
+				 entries);
+		rte_free(ixgbe_flow_mem_ptr->flow);
+		rte_free(ixgbe_flow_mem_ptr);
+	}
+}
+
 /**
  * Create or destroy a flow rule.
  * Theorically one rule can match more than one filters.
@@ -2817,6 +2871,8 @@ ixgbe_flow_flush(struct rte_eth_dev *dev,
 					NULL, "Failed to flush rule");
 		return ret;
 	}
+
+	ixgbe_filterlist_flush();
 
 	return 0;
 }
