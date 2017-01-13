@@ -102,6 +102,18 @@ ixgbe_parse_ethertype_filter(const struct rte_flow_attr *attr,
 				struct rte_eth_ethertype_filter *filter,
 				struct rte_flow_error *error);
 static int
+cons_parse_syn_filter(const struct rte_flow_attr *attr,
+		const struct rte_flow_item pattern[],
+		const struct rte_flow_action actions[],
+		struct rte_eth_syn_filter *filter,
+		struct rte_flow_error *error);
+static int
+ixgbe_parse_syn_filter(const struct rte_flow_attr *attr,
+				const struct rte_flow_item pattern[],
+				const struct rte_flow_action actions[],
+				struct rte_eth_syn_filter *filter,
+				struct rte_flow_error *error);
+static int
 ixgbe_flow_validate(__rte_unused struct rte_eth_dev *dev,
 		const struct rte_flow_attr *attr,
 		const struct rte_flow_item pattern[],
@@ -768,6 +780,259 @@ ixgbe_parse_ethertype_filter(const struct rte_flow_attr *attr,
 }
 
 /**
+ * Parse the rule to see if it is a TCP SYN rule.
+ * And get the TCP SYN filter info BTW.
+ * pattern:
+ * The first not void item must be ETH.
+ * The second not void item must be IPV4 or IPV6.
+ * The third not void item must be TCP.
+ * The next not void item must be END.
+ * action:
+ * The first not void action should be QUEUE.
+ * The next not void action should be END.
+ * pattern example:
+ * ITEM		Spec			Mask
+ * ETH		NULL			NULL
+ * IPV4/IPV6	NULL			NULL
+ * TCP		tcp_flags	0x02	0xFF
+ * END
+ * other members in mask and spec should set to 0x00.
+ * item->last should be NULL.
+ */
+static int
+cons_parse_syn_filter(const struct rte_flow_attr *attr,
+				const struct rte_flow_item pattern[],
+				const struct rte_flow_action actions[],
+				struct rte_eth_syn_filter *filter,
+				struct rte_flow_error *error)
+{
+	const struct rte_flow_item *item;
+	const struct rte_flow_action *act;
+	const struct rte_flow_item_tcp *tcp_spec;
+	const struct rte_flow_item_tcp *tcp_mask;
+	const struct rte_flow_action_queue *act_q;
+	uint32_t index;
+
+	if (!pattern) {
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM_NUM,
+				NULL, "NULL pattern.");
+		return -rte_errno;
+	}
+
+	if (!actions) {
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ACTION_NUM,
+				NULL, "NULL action.");
+		return -rte_errno;
+	}
+
+	if (!attr) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ATTR,
+				   NULL, "NULL attribute.");
+		return -rte_errno;
+	}
+
+	/* parse pattern */
+	index = 0;
+
+	/* the first not void item should be MAC or IPv4 or IPv6 or TCP */
+	NEXT_ITEM_OF_PATTERN(item, pattern, index);
+	if (item->type != RTE_FLOW_ITEM_TYPE_ETH &&
+	    item->type != RTE_FLOW_ITEM_TYPE_IPV4 &&
+	    item->type != RTE_FLOW_ITEM_TYPE_IPV6 &&
+	    item->type != RTE_FLOW_ITEM_TYPE_TCP) {
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item, "Not supported by syn filter");
+		return -rte_errno;
+	}
+		/*Not supported last point for range*/
+	if (item->last) {
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+			item, "Not supported last point for range");
+		return -rte_errno;
+	}
+
+	/* Skip Ethernet */
+	if (item->type == RTE_FLOW_ITEM_TYPE_ETH) {
+		/* if the item is MAC, the content should be NULL */
+		if (item->spec || item->mask) {
+			rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item, "Invalid SYN address mask");
+			return -rte_errno;
+		}
+
+		/* check if the next not void item is IPv4 or IPv6 */
+		index++;
+		NEXT_ITEM_OF_PATTERN(item, pattern, index);
+		if (item->type != RTE_FLOW_ITEM_TYPE_IPV4 &&
+		    item->type != RTE_FLOW_ITEM_TYPE_IPV6) {
+			rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item, "Not supported by syn filter");
+			return -rte_errno;
+		}
+	}
+
+	/* Skip IP */
+	if (item->type == RTE_FLOW_ITEM_TYPE_IPV4 ||
+	    item->type == RTE_FLOW_ITEM_TYPE_IPV6) {
+		/* if the item is IP, the content should be NULL */
+		if (item->spec || item->mask) {
+			rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item, "Invalid SYN mask");
+			return -rte_errno;
+		}
+
+		/* check if the next not void item is TCP */
+		index++;
+		NEXT_ITEM_OF_PATTERN(item, pattern, index);
+		if (item->type != RTE_FLOW_ITEM_TYPE_TCP) {
+			rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item, "Not supported by syn filter");
+			return -rte_errno;
+		}
+	}
+
+	/* Get the TCP info. Only support SYN. */
+	if (!item->spec || !item->mask) {
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item, "Invalid SYN mask");
+		return -rte_errno;
+	}
+	/*Not supported last point for range*/
+	if (item->last) {
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+			item, "Not supported last point for range");
+		return -rte_errno;
+	}
+
+	tcp_spec = (const struct rte_flow_item_tcp *)item->spec;
+	tcp_mask = (const struct rte_flow_item_tcp *)item->mask;
+	if (!(tcp_spec->hdr.tcp_flags & TCP_SYN_FLAG) ||
+	    tcp_mask->hdr.src_port ||
+	    tcp_mask->hdr.dst_port ||
+	    tcp_mask->hdr.sent_seq ||
+	    tcp_mask->hdr.recv_ack ||
+	    tcp_mask->hdr.data_off ||
+	    tcp_mask->hdr.tcp_flags != TCP_SYN_FLAG ||
+	    tcp_mask->hdr.rx_win ||
+	    tcp_mask->hdr.cksum ||
+	    tcp_mask->hdr.tcp_urp) {
+		memset(filter, 0, sizeof(struct rte_eth_syn_filter));
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item, "Not supported by syn filter");
+		return -rte_errno;
+	}
+
+	/* check if the next not void item is END */
+	index++;
+	NEXT_ITEM_OF_PATTERN(item, pattern, index);
+	if (item->type != RTE_FLOW_ITEM_TYPE_END) {
+		memset(filter, 0, sizeof(struct rte_eth_syn_filter));
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item, "Not supported by syn filter");
+		return -rte_errno;
+	}
+
+	/* parse action */
+	index = 0;
+
+	/* check if the first not void action is QUEUE. */
+	NEXT_ITEM_OF_ACTION(act, actions, index);
+	if (act->type != RTE_FLOW_ACTION_TYPE_QUEUE) {
+		memset(filter, 0, sizeof(struct rte_eth_syn_filter));
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ACTION,
+				act, "Not supported action.");
+		return -rte_errno;
+	}
+
+	act_q = (const struct rte_flow_action_queue *)act->conf;
+	filter->queue = act_q->index;
+	if (filter->queue >= IXGBE_MAX_RX_QUEUE_NUM) {
+		memset(filter, 0, sizeof(struct rte_eth_syn_filter));
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ACTION,
+				act, "Not supported action.");
+		return -rte_errno;
+	}
+
+	/* check if the next not void item is END */
+	index++;
+	NEXT_ITEM_OF_ACTION(act, actions, index);
+	if (act->type != RTE_FLOW_ACTION_TYPE_END) {
+		memset(filter, 0, sizeof(struct rte_eth_syn_filter));
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ACTION,
+				act, "Not supported action.");
+		return -rte_errno;
+	}
+
+	/* parse attr */
+	/* must be input direction */
+	if (!attr->ingress) {
+		memset(filter, 0, sizeof(struct rte_eth_syn_filter));
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ATTR_INGRESS,
+			attr, "Only support ingress.");
+		return -rte_errno;
+	}
+
+	/* not supported */
+	if (attr->egress) {
+		memset(filter, 0, sizeof(struct rte_eth_syn_filter));
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ATTR_EGRESS,
+			attr, "Not support egress.");
+		return -rte_errno;
+	}
+
+	/* Support 2 priorities, the lowest or highest. */
+	if (!attr->priority) {
+		filter->hig_pri = 0;
+	} else if (attr->priority == (uint32_t)~0U) {
+		filter->hig_pri = 1;
+	} else {
+		memset(filter, 0, sizeof(struct rte_eth_syn_filter));
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
+			attr, "Not support priority.");
+		return -rte_errno;
+	}
+
+	return 0;
+}
+
+static int
+ixgbe_parse_syn_filter(const struct rte_flow_attr *attr,
+			     const struct rte_flow_item pattern[],
+			     const struct rte_flow_action actions[],
+			     struct rte_eth_syn_filter *filter,
+			     struct rte_flow_error *error)
+{
+	int ret;
+
+	ret = cons_parse_syn_filter(attr, pattern,
+					actions, filter, error);
+
+	if (ret)
+		return ret;
+
+	return 0;
+}
+
+/**
  * Check if the flow rule is supported by ixgbe.
  * It only checkes the format. Don't guarantee the rule can be programmed into
  * the HW. Because there can be no enough room for the rule.
@@ -781,6 +1046,7 @@ ixgbe_flow_validate(__rte_unused struct rte_eth_dev *dev,
 {
 	struct rte_eth_ntuple_filter ntuple_filter;
 	struct rte_eth_ethertype_filter ethertype_filter;
+	struct rte_eth_syn_filter syn_filter;
 	int ret;
 
 	memset(&ntuple_filter, 0, sizeof(struct rte_eth_ntuple_filter));
@@ -792,6 +1058,12 @@ ixgbe_flow_validate(__rte_unused struct rte_eth_dev *dev,
 	memset(&ethertype_filter, 0, sizeof(struct rte_eth_ethertype_filter));
 	ret = ixgbe_parse_ethertype_filter(attr, pattern,
 				actions, &ethertype_filter, error);
+	if (!ret)
+		return 0;
+
+	memset(&syn_filter, 0, sizeof(struct rte_eth_syn_filter));
+	ret = ixgbe_parse_syn_filter(attr, pattern,
+				actions, &syn_filter, error);
 	if (!ret)
 		return 0;
 
