@@ -170,6 +170,7 @@ static int ixgbe_fdir_filter_init(struct rte_eth_dev *eth_dev);
 static int ixgbe_fdir_filter_uninit(struct rte_eth_dev *eth_dev);
 static int ixgbe_l2_tn_filter_init(struct rte_eth_dev *eth_dev);
 static int ixgbe_l2_tn_filter_uninit(struct rte_eth_dev *eth_dev);
+static int ixgbe_ntuple_filter_uninit(struct rte_eth_dev *eth_dev);
 static int  ixgbe_dev_configure(struct rte_eth_dev *dev);
 static int  ixgbe_dev_start(struct rte_eth_dev *dev);
 static void ixgbe_dev_stop(struct rte_eth_dev *dev);
@@ -391,6 +392,7 @@ static int ixgbe_dev_udp_tunnel_port_add(struct rte_eth_dev *dev,
 					 struct rte_eth_udp_tunnel *udp_tunnel);
 static int ixgbe_dev_udp_tunnel_port_del(struct rte_eth_dev *dev,
 					 struct rte_eth_udp_tunnel *udp_tunnel);
+static int ixgbe_filter_restore(struct rte_eth_dev *dev);
 
 /*
  * Define VF Stats MACRO for Non "cleared on read" register
@@ -1386,6 +1388,27 @@ eth_ixgbe_dev_uninit(struct rte_eth_dev *eth_dev)
 
 	/* remove all the L2 tunnel filters & hash */
 	ixgbe_l2_tn_filter_uninit(eth_dev);
+
+	/* Remove all ntuple filters of the device */
+	ixgbe_ntuple_filter_uninit(eth_dev);
+
+	return 0;
+}
+
+static int ixgbe_ntuple_filter_uninit(struct rte_eth_dev *eth_dev)
+{
+	struct ixgbe_filter_info *filter_info =
+		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(eth_dev->data->dev_private);
+	struct ixgbe_5tuple_filter *p_5tuple;
+
+	while ((p_5tuple = TAILQ_FIRST(&filter_info->fivetuple_list))) {
+		TAILQ_REMOVE(&filter_info->fivetuple_list,
+			     p_5tuple,
+			     entries);
+		rte_free(p_5tuple);
+	}
+	memset(filter_info->fivetuple_mask, 0,
+	       sizeof(uint32_t) * IXGBE_5TUPLE_ARRAY_SIZE);
 
 	return 0;
 }
@@ -2556,6 +2579,7 @@ skip_link_setup:
 
 	/* resume enabled intr since hw reset */
 	ixgbe_enable_intr(dev);
+	ixgbe_filter_restore(dev);
 
 	return 0;
 
@@ -2576,9 +2600,6 @@ ixgbe_dev_stop(struct rte_eth_dev *dev)
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ixgbe_vf_info *vfinfo =
 		*IXGBE_DEV_PRIVATE_TO_P_VFDATA(dev->data->dev_private);
-	struct ixgbe_filter_info *filter_info =
-		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
-	struct ixgbe_5tuple_filter *p_5tuple, *p_5tuple_next;
 	struct rte_pci_device *pci_dev = IXGBE_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	int vf;
@@ -2615,17 +2636,6 @@ ixgbe_dev_stop(struct rte_eth_dev *dev)
 	/* Clear recorded link status */
 	memset(&link, 0, sizeof(link));
 	rte_ixgbe_dev_atomic_write_link_status(dev, &link);
-
-	/* Remove all ntuple filters of the device */
-	for (p_5tuple = TAILQ_FIRST(&filter_info->fivetuple_list);
-	     p_5tuple != NULL; p_5tuple = p_5tuple_next) {
-		p_5tuple_next = TAILQ_NEXT(p_5tuple, entries);
-		TAILQ_REMOVE(&filter_info->fivetuple_list,
-			     p_5tuple, entries);
-		rte_free(p_5tuple);
-	}
-	memset(filter_info->fivetuple_mask, 0,
-		sizeof(uint32_t) * IXGBE_5TUPLE_ARRAY_SIZE);
 
 	if (!rte_intr_allow_others(intr_handle))
 		/* resume to the default handler */
@@ -6050,51 +6060,18 @@ convert_protocol_type(uint8_t protocol_value)
 		return IXGBE_FILTER_PROTOCOL_NONE;
 }
 
-/*
- * add a 5tuple filter
- *
- * @param
- * dev: Pointer to struct rte_eth_dev.
- * index: the index the filter allocates.
- * filter: ponter to the filter that will be added.
- * rx_queue: the queue id the filter assigned to.
- *
- * @return
- *    - On success, zero.
- *    - On failure, a negative value.
- */
-static int
-ixgbe_add_5tuple_filter(struct rte_eth_dev *dev,
-			struct ixgbe_5tuple_filter *filter)
+/* inject a 5-tuple filter to HW */
+static inline void
+ixgbe_inject_5tuple_filter(struct rte_eth_dev *dev,
+			   struct ixgbe_5tuple_filter *filter)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct ixgbe_filter_info *filter_info =
-		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
-	int i, idx, shift;
+	int i;
 	uint32_t ftqf, sdpqf;
 	uint32_t l34timir = 0;
 	uint8_t mask = 0xff;
 
-	/*
-	 * look for an unused 5tuple filter index,
-	 * and insert the filter to list.
-	 */
-	for (i = 0; i < IXGBE_MAX_FTQF_FILTERS; i++) {
-		idx = i / (sizeof(uint32_t) * NBBY);
-		shift = i % (sizeof(uint32_t) * NBBY);
-		if (!(filter_info->fivetuple_mask[idx] & (1 << shift))) {
-			filter_info->fivetuple_mask[idx] |= 1 << shift;
-			filter->index = i;
-			TAILQ_INSERT_TAIL(&filter_info->fivetuple_list,
-					  filter,
-					  entries);
-			break;
-		}
-	}
-	if (i >= IXGBE_MAX_FTQF_FILTERS) {
-		PMD_DRV_LOG(ERR, "5tuple filters are full.");
-		return -ENOSYS;
-	}
+	i = filter->index;
 
 	sdpqf = (uint32_t)(filter->filter_info.dst_port <<
 				IXGBE_SDPQF_DSTPORT_SHIFT);
@@ -6127,6 +6104,52 @@ ixgbe_add_5tuple_filter(struct rte_eth_dev *dev,
 	l34timir |= (uint32_t)(filter->queue <<
 				IXGBE_L34T_IMIR_QUEUE_SHIFT);
 	IXGBE_WRITE_REG(hw, IXGBE_L34T_IMIR(i), l34timir);
+}
+
+/*
+ * add a 5tuple filter
+ *
+ * @param
+ * dev: Pointer to struct rte_eth_dev.
+ * index: the index the filter allocates.
+ * filter: ponter to the filter that will be added.
+ * rx_queue: the queue id the filter assigned to.
+ *
+ * @return
+ *    - On success, zero.
+ *    - On failure, a negative value.
+ */
+static int
+ixgbe_add_5tuple_filter(struct rte_eth_dev *dev,
+			struct ixgbe_5tuple_filter *filter)
+{
+	struct ixgbe_filter_info *filter_info =
+		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+	int i, idx, shift;
+
+	/*
+	 * look for an unused 5tuple filter index,
+	 * and insert the filter to list.
+	 */
+	for (i = 0; i < IXGBE_MAX_FTQF_FILTERS; i++) {
+		idx = i / (sizeof(uint32_t) * NBBY);
+		shift = i % (sizeof(uint32_t) * NBBY);
+		if (!(filter_info->fivetuple_mask[idx] & (1 << shift))) {
+			filter_info->fivetuple_mask[idx] |= 1 << shift;
+			filter->index = i;
+			TAILQ_INSERT_TAIL(&filter_info->fivetuple_list,
+					  filter,
+					  entries);
+			break;
+		}
+	}
+	if (i >= IXGBE_MAX_FTQF_FILTERS) {
+		PMD_DRV_LOG(ERR, "5tuple filters are full.");
+		return -ENOSYS;
+	}
+
+	ixgbe_inject_5tuple_filter(dev, filter);
+
 	return 0;
 }
 
@@ -8459,6 +8482,27 @@ rte_pmd_ixgbe_macsec_select_rxsa(uint8_t port, uint8_t idx, uint8_t an,
 	/* Set the AN and validate the SA */
 	ctrl = an | (1 << 2);
 	IXGBE_WRITE_REG(hw, IXGBE_LSECRXSA(idx), ctrl);
+
+	return 0;
+}
+
+/* restore n-tuple filter */
+static inline void
+ixgbe_ntuple_filter_restore(struct rte_eth_dev *dev)
+{
+	struct ixgbe_filter_info *filter_info =
+		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+	struct ixgbe_5tuple_filter *node;
+
+	TAILQ_FOREACH(node, &filter_info->fivetuple_list, entries) {
+		ixgbe_inject_5tuple_filter(dev, node);
+	}
+}
+
+static int
+ixgbe_filter_restore(struct rte_eth_dev *dev)
+{
+	ixgbe_ntuple_filter_restore(dev);
 
 	return 0;
 }
