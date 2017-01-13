@@ -143,6 +143,8 @@ struct fwd_stream {
 #define TESTPMD_TX_OFFLOAD_INSERT_VLAN       0x0040
 /** Insert double VLAN header in forward engine */
 #define TESTPMD_TX_OFFLOAD_INSERT_QINQ       0x0080
+/** Offload MACsec in forward engine */
+#define TESTPMD_TX_OFFLOAD_MACSEC            0x0100
 
 /** Descriptor for a single flow. */
 struct port_flow {

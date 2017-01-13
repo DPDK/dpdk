@@ -507,6 +507,38 @@ Set mac antispoof for a VF from the PF::
 
    testpmd> set vf mac antispoof  (port_id) (vf_id) (on|off)
 
+set macsec offload
+~~~~~~~~~~~~~~~~~~
+
+Enable/disable MACsec offload::
+
+   testpmd> set macsec offload (port_id) on encrypt (on|off) replay-protect (on|off)
+   testpmd> set macsec offload (port_id) off
+
+set macsec sc
+~~~~~~~~~~~~~
+
+Configure MACsec secure connection (SC)::
+
+   testpmd> set macsec sc (tx|rx) (port_id) (mac) (pi)
+
+.. note::
+
+   The pi argument is ignored for tx.
+   Check the NIC Datasheet for hardware limits.
+
+set macsec sa
+~~~~~~~~~~~~~
+
+Configure MACsec secure association (SA)::
+
+   testpmd> set macsec sa (tx|rx) (port_id) (idx) (an) (pn) (key)
+
+.. note::
+
+   The IDX value must be 0 or 1.
+   Check the NIC Datasheet for hardware limits.
+
 vlan set strip
 ~~~~~~~~~~~~~~
 

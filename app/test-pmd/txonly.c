@@ -215,6 +215,8 @@ pkt_burst_transmit(struct fwd_stream *fs)
 		ol_flags = PKT_TX_VLAN_PKT;
 	if (txp->tx_ol_flags & TESTPMD_TX_OFFLOAD_INSERT_QINQ)
 		ol_flags |= PKT_TX_QINQ_PKT;
+	if (txp->tx_ol_flags & TESTPMD_TX_OFFLOAD_MACSEC)
+		ol_flags |= PKT_TX_MACSEC;
 	for (nb_pkt = 0; nb_pkt < nb_pkt_per_burst; nb_pkt++) {
 		pkt = rte_mbuf_raw_alloc(mbp);
 		if (pkt == NULL) {
