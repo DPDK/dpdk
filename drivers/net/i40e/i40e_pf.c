@@ -279,8 +279,15 @@ i40e_pf_host_process_cmd_version(struct i40e_pf_vf *vf, bool b_op)
 {
 	struct i40e_virtchnl_version_info info;
 
-	info.major = I40E_DPDK_VERSION_MAJOR;
-	info.minor = I40E_DPDK_VERSION_MINOR;
+	/* Respond like a Linux PF host in order to support both DPDK VF and
+	 * Linux VF driver. The expense is original DPDK host specific feature
+	 * like CFG_VLAN_PVID and CONFIG_VSI_QUEUES_EXT will not available.
+	 *
+	 * DPDK VF also can't identify host driver by version number returned.
+	 * It always assume talking with Linux PF.
+	 */
+	info.major = I40E_VIRTCHNL_VERSION_MAJOR;
+	info.minor = I40E_VIRTCHNL_VERSION_MINOR_NO_VF_CAPS;
 
 	if (b_op)
 		i40e_pf_host_send_msg_to_vf(vf, I40E_VIRTCHNL_OP_VERSION,
