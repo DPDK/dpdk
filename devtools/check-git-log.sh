@@ -113,10 +113,10 @@ bad=$(echo "$headlines" | grep --color=always \
 
 # check headline uppercase (Rx/Tx, VF, L2, MAC, Linux, ARM...)
 bad=$(echo "$headlines" | grep -E --color=always \
-	-e '\<(rx|tx|RX|TX)\>' \
-	-e '\<[pv]f\>' \
-	-e '\<[hsf]w\>' \
-	-e '\<l[234]\>' \
+	-e ':.*\<(rx|tx|RX|TX)\>' \
+	-e ':.*\<[pv]f\>' \
+	-e ':.*\<[hsf]w\>' \
+	-e ':.*\<l[234]\>' \
 	-e ':.*\<api\>' \
 	-e ':.*\<arm\>' \
 	-e ':.*\<armv7\>' \
