@@ -182,6 +182,12 @@ extern "C" {
 /* add new TX flags here */
 
 /**
+ * Offload the MACsec. This flag must be set by the application to enable
+ * this offload feature for a packet to be transmitted.
+ */
+#define PKT_TX_MACSEC        (1ULL << 44)
+
+/**
  * Bits 45:48 used for the tunnel type.
  * When doing Tx offload like TSO or checksum, the HW needs to configure the
  * tunnel type into the HW descriptors.
