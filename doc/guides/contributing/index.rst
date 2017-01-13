@@ -10,4 +10,5 @@ Contributor's Guidelines
     versioning
     documentation
     patches
+    stable
     cheatsheet
