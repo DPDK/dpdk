@@ -90,6 +90,18 @@ ixgbe_parse_ntuple_filter(const struct rte_flow_attr *attr,
 					struct rte_eth_ntuple_filter *filter,
 					struct rte_flow_error *error);
 static int
+cons_parse_ethertype_filter(const struct rte_flow_attr *attr,
+			    const struct rte_flow_item *pattern,
+			    const struct rte_flow_action *actions,
+			    struct rte_eth_ethertype_filter *filter,
+			    struct rte_flow_error *error);
+static int
+ixgbe_parse_ethertype_filter(const struct rte_flow_attr *attr,
+				const struct rte_flow_item pattern[],
+				const struct rte_flow_action actions[],
+				struct rte_eth_ethertype_filter *filter,
+				struct rte_flow_error *error);
+static int
 ixgbe_flow_validate(__rte_unused struct rte_eth_dev *dev,
 		const struct rte_flow_attr *attr,
 		const struct rte_flow_item pattern[],
@@ -491,6 +503,271 @@ ixgbe_parse_ntuple_filter(const struct rte_flow_attr *attr,
 }
 
 /**
+ * Parse the rule to see if it is a ethertype rule.
+ * And get the ethertype filter info BTW.
+ * pattern:
+ * The first not void item can be ETH.
+ * The next not void item must be END.
+ * action:
+ * The first not void action should be QUEUE.
+ * The next not void action should be END.
+ * pattern example:
+ * ITEM		Spec			Mask
+ * ETH		type	0x0807		0xFFFF
+ * END
+ * other members in mask and spec should set to 0x00.
+ * item->last should be NULL.
+ */
+static int
+cons_parse_ethertype_filter(const struct rte_flow_attr *attr,
+			    const struct rte_flow_item *pattern,
+			    const struct rte_flow_action *actions,
+			    struct rte_eth_ethertype_filter *filter,
+			    struct rte_flow_error *error)
+{
+	const struct rte_flow_item *item;
+	const struct rte_flow_action *act;
+	const struct rte_flow_item_eth *eth_spec;
+	const struct rte_flow_item_eth *eth_mask;
+	const struct rte_flow_action_queue *act_q;
+	uint32_t index;
+
+	if (!pattern) {
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM_NUM,
+				NULL, "NULL pattern.");
+		return -rte_errno;
+	}
+
+	if (!actions) {
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ACTION_NUM,
+				NULL, "NULL action.");
+		return -rte_errno;
+	}
+
+	if (!attr) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ATTR,
+				   NULL, "NULL attribute.");
+		return -rte_errno;
+	}
+
+	/* Parse pattern */
+	index = 0;
+
+	/* The first non-void item should be MAC. */
+	item = pattern + index;
+	while (item->type == RTE_FLOW_ITEM_TYPE_VOID) {
+		index++;
+		item = pattern + index;
+	}
+	if (item->type != RTE_FLOW_ITEM_TYPE_ETH) {
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ITEM,
+			item, "Not supported by ethertype filter");
+		return -rte_errno;
+	}
+
+	/*Not supported last point for range*/
+	if (item->last) {
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+			item, "Not supported last point for range");
+		return -rte_errno;
+	}
+
+	/* Get the MAC info. */
+	if (!item->spec || !item->mask) {
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item, "Not supported by ethertype filter");
+		return -rte_errno;
+	}
+
+	eth_spec = (const struct rte_flow_item_eth *)item->spec;
+	eth_mask = (const struct rte_flow_item_eth *)item->mask;
+
+	/* Mask bits of source MAC address must be full of 0.
+	 * Mask bits of destination MAC address must be full
+	 * of 1 or full of 0.
+	 */
+	if (!is_zero_ether_addr(&eth_mask->src) ||
+	    (!is_zero_ether_addr(&eth_mask->dst) &&
+	     !is_broadcast_ether_addr(&eth_mask->dst))) {
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item, "Invalid ether address mask");
+		return -rte_errno;
+	}
+
+	if ((eth_mask->type & UINT16_MAX) != UINT16_MAX) {
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item, "Invalid ethertype mask");
+		return -rte_errno;
+	}
+
+	/* If mask bits of destination MAC address
+	 * are full of 1, set RTE_ETHTYPE_FLAGS_MAC.
+	 */
+	if (is_broadcast_ether_addr(&eth_mask->dst)) {
+		filter->mac_addr = eth_spec->dst;
+		filter->flags |= RTE_ETHTYPE_FLAGS_MAC;
+	} else {
+		filter->flags &= ~RTE_ETHTYPE_FLAGS_MAC;
+	}
+	filter->ether_type = rte_be_to_cpu_16(eth_spec->type);
+
+	/* Check if the next non-void item is END. */
+	index++;
+	item = pattern + index;
+	while (item->type == RTE_FLOW_ITEM_TYPE_VOID) {
+		index++;
+		item = pattern + index;
+	}
+	if (item->type != RTE_FLOW_ITEM_TYPE_END) {
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item, "Not supported by ethertype filter.");
+		return -rte_errno;
+	}
+
+	/* Parse action */
+
+	index = 0;
+	/* Check if the first non-void action is QUEUE or DROP. */
+	act = actions + index;
+	while (act->type == RTE_FLOW_ACTION_TYPE_VOID) {
+		index++;
+		act = actions + index;
+	}
+	if (act->type != RTE_FLOW_ACTION_TYPE_QUEUE &&
+	    act->type != RTE_FLOW_ACTION_TYPE_DROP) {
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ACTION,
+				act, "Not supported action.");
+		return -rte_errno;
+	}
+
+	if (act->type == RTE_FLOW_ACTION_TYPE_QUEUE) {
+		act_q = (const struct rte_flow_action_queue *)act->conf;
+		filter->queue = act_q->index;
+	} else {
+		filter->flags |= RTE_ETHTYPE_FLAGS_DROP;
+	}
+
+	/* Check if the next non-void item is END */
+	index++;
+	act = actions + index;
+	while (act->type == RTE_FLOW_ACTION_TYPE_VOID) {
+		index++;
+		act = actions + index;
+	}
+	if (act->type != RTE_FLOW_ACTION_TYPE_END) {
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ACTION,
+				act, "Not supported action.");
+		return -rte_errno;
+	}
+
+	/* Parse attr */
+	/* Must be input direction */
+	if (!attr->ingress) {
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ATTR_INGRESS,
+				attr, "Only support ingress.");
+		return -rte_errno;
+	}
+
+	/* Not supported */
+	if (attr->egress) {
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ATTR_EGRESS,
+				attr, "Not support egress.");
+		return -rte_errno;
+	}
+
+	/* Not supported */
+	if (attr->priority) {
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
+				attr, "Not support priority.");
+		return -rte_errno;
+	}
+
+	/* Not supported */
+	if (attr->group) {
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ATTR_GROUP,
+				attr, "Not support group.");
+		return -rte_errno;
+	}
+
+	return 0;
+}
+
+static int
+ixgbe_parse_ethertype_filter(const struct rte_flow_attr *attr,
+			     const struct rte_flow_item pattern[],
+			     const struct rte_flow_action actions[],
+			     struct rte_eth_ethertype_filter *filter,
+			     struct rte_flow_error *error)
+{
+	int ret;
+
+	ret = cons_parse_ethertype_filter(attr, pattern,
+					actions, filter, error);
+
+	if (ret)
+		return ret;
+
+	/* Ixgbe doesn't support MAC address. */
+	if (filter->flags & RTE_ETHTYPE_FLAGS_MAC) {
+		memset(filter, 0, sizeof(struct rte_eth_ethertype_filter));
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ITEM,
+			NULL, "Not supported by ethertype filter");
+		return -rte_errno;
+	}
+
+	if (filter->queue >= IXGBE_MAX_RX_QUEUE_NUM) {
+		memset(filter, 0, sizeof(struct rte_eth_ethertype_filter));
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ITEM,
+			NULL, "queue index much too big");
+		return -rte_errno;
+	}
+
+	if (filter->ether_type == ETHER_TYPE_IPv4 ||
+		filter->ether_type == ETHER_TYPE_IPv6) {
+		memset(filter, 0, sizeof(struct rte_eth_ethertype_filter));
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ITEM,
+			NULL, "IPv4/IPv6 not supported by ethertype filter");
+		return -rte_errno;
+	}
+
+	if (filter->flags & RTE_ETHTYPE_FLAGS_MAC) {
+		memset(filter, 0, sizeof(struct rte_eth_ethertype_filter));
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ITEM,
+			NULL, "mac compare is unsupported");
+		return -rte_errno;
+	}
+
+	if (filter->flags & RTE_ETHTYPE_FLAGS_DROP) {
+		memset(filter, 0, sizeof(struct rte_eth_ethertype_filter));
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ITEM,
+			NULL, "drop option is unsupported");
+		return -rte_errno;
+	}
+
+	return 0;
+}
+
+/**
  * Check if the flow rule is supported by ixgbe.
  * It only checkes the format. Don't guarantee the rule can be programmed into
  * the HW. Because there can be no enough room for the rule.
@@ -503,11 +780,18 @@ ixgbe_flow_validate(__rte_unused struct rte_eth_dev *dev,
 		struct rte_flow_error *error)
 {
 	struct rte_eth_ntuple_filter ntuple_filter;
+	struct rte_eth_ethertype_filter ethertype_filter;
 	int ret;
 
 	memset(&ntuple_filter, 0, sizeof(struct rte_eth_ntuple_filter));
 	ret = ixgbe_parse_ntuple_filter(attr, pattern,
 				actions, &ntuple_filter, error);
+	if (!ret)
+		return 0;
+
+	memset(&ethertype_filter, 0, sizeof(struct rte_eth_ethertype_filter));
+	ret = ixgbe_parse_ethertype_filter(attr, pattern,
+				actions, &ethertype_filter, error);
 	if (!ret)
 		return 0;
 
