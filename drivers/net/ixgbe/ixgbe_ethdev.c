@@ -1487,6 +1487,8 @@ static int ixgbe_fdir_filter_init(struct rte_eth_dev *eth_dev)
 			     "Failed to allocate memory for fdir hash map!");
 		return -ENOMEM;
 	}
+	fdir_info->mask_added = FALSE;
+
 	return 0;
 }
 

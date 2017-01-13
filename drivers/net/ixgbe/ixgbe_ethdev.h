@@ -167,6 +167,17 @@ struct ixgbe_fdir_filter {
 /* list of fdir filters */
 TAILQ_HEAD(ixgbe_fdir_filter_list, ixgbe_fdir_filter);
 
+struct ixgbe_fdir_rule {
+	struct ixgbe_hw_fdir_mask mask;
+	union ixgbe_atr_input ixgbe_fdir; /* key of fdir filter*/
+	bool b_spec; /* If TRUE, ixgbe_fdir, fdirflags, queue have meaning. */
+	bool b_mask; /* If TRUE, mask has meaning. */
+	enum rte_fdir_mode mode; /* IP, MAC VLAN, Tunnel */
+	uint32_t fdirflags; /* drop or forward */
+	uint32_t soft_id; /* an unique value for this rule */
+	uint8_t queue; /* assigned rx queue */
+};
+
 struct ixgbe_hw_fdir_info {
 	struct ixgbe_hw_fdir_mask mask;
 	uint8_t     flex_bytes_offset;
@@ -182,6 +193,7 @@ struct ixgbe_hw_fdir_info {
 	/* store the pointers of the filters, index is the hash value. */
 	struct ixgbe_fdir_filter **hash_map;
 	struct rte_hash *hash_handle; /* cuckoo hash handler */
+	bool mask_added; /* If already got mask from consistent filter */
 };
 
 /* structure for interrupt relative data */
@@ -520,6 +532,10 @@ bool ixgbe_rss_update_sp(enum ixgbe_mac_type mac_type);
  * Flow director function prototypes
  */
 int ixgbe_fdir_configure(struct rte_eth_dev *dev);
+int ixgbe_fdir_set_input_mask(struct rte_eth_dev *dev);
+int ixgbe_fdir_filter_program(struct rte_eth_dev *dev,
+			      struct ixgbe_fdir_rule *rule,
+			      bool del, bool update);
 
 void ixgbe_configure_dcb(struct rte_eth_dev *dev);
 
