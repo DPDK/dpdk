@@ -858,6 +858,16 @@ static const struct blockcipher_test_case aes_chain_test_cases[] = {
 			BLOCKCIPHER_TEST_TARGET_PMD_QAT
 	},
 	{
+		.test_descr = "AES-192-CTR XCBC Decryption Digest Verify "
+				"Scatter Gather",
+		.test_data = &aes_test_data_2,
+		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY_DEC,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG |
+			BLOCKCIPHER_TEST_FEATURE_OOP,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB |
+			BLOCKCIPHER_TEST_TARGET_PMD_QAT
+	},
+	{
 		.test_descr = "AES-256-CTR HMAC-SHA1 Encryption Digest",
 		.test_data = &aes_test_data_3,
 		.op_mask = BLOCKCIPHER_TEST_OP_ENC_AUTH_GEN,
@@ -881,6 +891,18 @@ static const struct blockcipher_test_case aes_chain_test_cases[] = {
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB |
 			BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
 			BLOCKCIPHER_TEST_TARGET_PMD_QAT
+	},
+	{
+		.test_descr = "AES-128-CBC HMAC-SHA1 Encryption Digest "
+				"Scatter Gather",
+		.test_data = &aes_test_data_4,
+		.op_mask = BLOCKCIPHER_TEST_OP_ENC_AUTH_GEN,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG |
+			BLOCKCIPHER_TEST_FEATURE_OOP,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB |
+			BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
+			BLOCKCIPHER_TEST_TARGET_PMD_QAT
+
 	},
 	{
 		.test_descr = "AES-128-CBC HMAC-SHA1 Decryption Digest "
@@ -926,10 +948,32 @@ static const struct blockcipher_test_case aes_chain_test_cases[] = {
 			BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL
 	},
 	{
+		.test_descr = "AES-128-CBC HMAC-SHA512 Encryption Digest "
+				"Scatter Gather Sessionless",
+		.test_data = &aes_test_data_6,
+		.op_mask = BLOCKCIPHER_TEST_OP_ENC_AUTH_GEN,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SESSIONLESS |
+			BLOCKCIPHER_TEST_FEATURE_SG |
+			BLOCKCIPHER_TEST_FEATURE_OOP,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB |
+			BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL
+	},
+	{
 		.test_descr = "AES-128-CBC HMAC-SHA512 Decryption Digest "
 			"Verify",
 		.test_data = &aes_test_data_6,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY_DEC,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB |
+			BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
+			BLOCKCIPHER_TEST_TARGET_PMD_QAT
+	},
+	{
+		.test_descr = "AES-128-CBC HMAC-SHA512 Decryption Digest "
+			"Verify Scatter Gather",
+		.test_data = &aes_test_data_6,
+		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY_DEC,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG |
+			BLOCKCIPHER_TEST_FEATURE_OOP,
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB |
 			BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
 			BLOCKCIPHER_TEST_TARGET_PMD_QAT
@@ -1043,6 +1087,14 @@ static const struct blockcipher_test_case aes_cipheronly_test_cases[] = {
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
 			BLOCKCIPHER_TEST_TARGET_PMD_QAT |
 			BLOCKCIPHER_TEST_TARGET_PMD_MB
+	},
+	{
+		.test_descr = "AES-192-CBC Encryption Scater gather",
+		.test_data = &aes_test_data_10,
+		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
+		.feature_mask = BLOCKCIPHER_TEST_FEATURE_SG |
+			BLOCKCIPHER_TEST_FEATURE_OOP,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL
 	},
 	{
 		.test_descr = "AES-192-CBC Decryption",

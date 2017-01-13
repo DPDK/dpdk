@@ -1736,6 +1736,10 @@ create_wireless_algo_cipher_operation_oop(const uint8_t *iv, const uint8_t iv_le
 
 	TEST_ASSERT_NOT_NULL(sym_op->cipher.iv.data, "no room to prepend iv");
 
+	/* For OOP operation both buffers must have the same size */
+	if (ut_params->obuf)
+		rte_pktmbuf_prepend(ut_params->obuf, iv_pad_len);
+
 	memset(sym_op->cipher.iv.data, 0, iv_pad_len);
 	sym_op->cipher.iv.phys_addr = rte_pktmbuf_mtophys(ut_params->ibuf);
 	sym_op->cipher.iv.length = iv_pad_len;
@@ -2557,6 +2561,83 @@ test_kasumi_encryption(const struct kasumi_test_data *tdata)
 }
 
 static int
+test_kasumi_encryption_sgl(const struct kasumi_test_data *tdata)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+
+	int retval;
+
+	unsigned int plaintext_pad_len;
+	unsigned int plaintext_len;
+
+	uint8_t buffer[10000];
+	const uint8_t *ciphertext;
+
+	struct rte_cryptodev_info dev_info;
+
+	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
+	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_MBUF_SCATTER_GATHER)) {
+		printf("Device doesn't support scatter-gather. "
+				"Test Skipped.\n");
+		return 0;
+	}
+
+	/* Create KASUMI session */
+	retval = create_wireless_algo_cipher_session(ts_params->valid_devs[0],
+					RTE_CRYPTO_CIPHER_OP_ENCRYPT,
+					RTE_CRYPTO_CIPHER_KASUMI_F8,
+					tdata->key.data, tdata->key.len);
+	if (retval < 0)
+		return retval;
+
+	plaintext_len = ceil_byte_length(tdata->plaintext.len);
+
+
+	/* Append data which is padded to a multiple */
+	/* of the algorithms block size */
+	plaintext_pad_len = RTE_ALIGN_CEIL(plaintext_len, 8);
+
+	ut_params->ibuf = create_segmented_mbuf(ts_params->mbuf_pool,
+			plaintext_pad_len, 10, 0);
+
+	pktmbuf_write(ut_params->ibuf, 0, plaintext_len, tdata->plaintext.data);
+
+	/* Create KASUMI operation */
+	retval = create_wireless_algo_cipher_operation(tdata->iv.data,
+					tdata->iv.len,
+					tdata->plaintext.len,
+					tdata->validCipherOffsetLenInBits.len,
+					RTE_CRYPTO_CIPHER_KASUMI_F8);
+	if (retval < 0)
+		return retval;
+
+	ut_params->op = process_crypto_request(ts_params->valid_devs[0],
+						ut_params->op);
+	TEST_ASSERT_NOT_NULL(ut_params->op, "failed to retrieve obuf");
+
+	ut_params->obuf = ut_params->op->sym->m_dst;
+
+	if (ut_params->obuf)
+		ciphertext = rte_pktmbuf_read(ut_params->obuf, tdata->iv.len,
+				plaintext_len, buffer);
+	else
+		ciphertext = rte_pktmbuf_read(ut_params->ibuf, tdata->iv.len,
+				plaintext_len, buffer);
+
+	/* Validate obuf */
+	TEST_HEXDUMP(stdout, "ciphertext:", ciphertext, plaintext_len);
+
+		/* Validate obuf */
+		TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(
+			ciphertext,
+			tdata->ciphertext.data,
+			tdata->validCipherLenInBits.len,
+			"KASUMI Ciphertext data not as expected");
+		return 0;
+}
+
+static int
 test_kasumi_encryption_oop(const struct kasumi_test_data *tdata)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
@@ -2623,6 +2704,81 @@ test_kasumi_encryption_oop(const struct kasumi_test_data *tdata)
 		"KASUMI Ciphertext data not as expected");
 	return 0;
 }
+
+static int
+test_kasumi_encryption_oop_sgl(const struct kasumi_test_data *tdata)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+
+	int retval;
+	unsigned int plaintext_pad_len;
+	unsigned int plaintext_len;
+
+	const uint8_t *ciphertext;
+	uint8_t buffer[2048];
+
+	struct rte_cryptodev_info dev_info;
+
+	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
+	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_MBUF_SCATTER_GATHER)) {
+		printf("Device doesn't support scatter-gather. "
+				"Test Skipped.\n");
+		return 0;
+	}
+
+	/* Create KASUMI session */
+	retval = create_wireless_algo_cipher_session(ts_params->valid_devs[0],
+					RTE_CRYPTO_CIPHER_OP_ENCRYPT,
+					RTE_CRYPTO_CIPHER_KASUMI_F8,
+					tdata->key.data, tdata->key.len);
+	if (retval < 0)
+		return retval;
+
+	plaintext_len = ceil_byte_length(tdata->plaintext.len);
+	/* Append data which is padded to a multiple */
+	/* of the algorithms block size */
+	plaintext_pad_len = RTE_ALIGN_CEIL(plaintext_len, 8);
+
+	ut_params->ibuf = create_segmented_mbuf(ts_params->mbuf_pool,
+			plaintext_pad_len, 10, 0);
+	ut_params->obuf = create_segmented_mbuf(ts_params->mbuf_pool,
+			plaintext_pad_len, 3, 0);
+
+	/* Append data which is padded to a multiple */
+	/* of the algorithms block size */
+	pktmbuf_write(ut_params->ibuf, 0, plaintext_len, tdata->plaintext.data);
+
+	/* Create KASUMI operation */
+	retval = create_wireless_algo_cipher_operation_oop(tdata->iv.data,
+					tdata->iv.len,
+					tdata->plaintext.len,
+					tdata->validCipherOffsetLenInBits.len,
+					RTE_CRYPTO_CIPHER_KASUMI_F8);
+	if (retval < 0)
+		return retval;
+
+	ut_params->op = process_crypto_request(ts_params->valid_devs[0],
+						ut_params->op);
+	TEST_ASSERT_NOT_NULL(ut_params->op, "failed to retrieve obuf");
+
+	ut_params->obuf = ut_params->op->sym->m_dst;
+	if (ut_params->obuf)
+		ciphertext = rte_pktmbuf_read(ut_params->obuf, tdata->iv.len,
+				plaintext_pad_len, buffer);
+	else
+		ciphertext = rte_pktmbuf_read(ut_params->ibuf, tdata->iv.len,
+				plaintext_pad_len, buffer);
+
+	/* Validate obuf */
+	TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(
+		ciphertext,
+		tdata->ciphertext.data,
+		tdata->validCipherLenInBits.len,
+		"KASUMI Ciphertext data not as expected");
+	return 0;
+}
+
 
 static int
 test_kasumi_decryption_oop(const struct kasumi_test_data *tdata)
@@ -2894,6 +3050,85 @@ test_snow3g_encryption_oop(const struct snow3g_test_data *tdata)
 		tdata->ciphertext.data,
 		tdata->validDataLenInBits.len,
 		"SNOW 3G Ciphertext data not as expected");
+	return 0;
+}
+
+static int
+test_snow3g_encryption_oop_sgl(const struct snow3g_test_data *tdata)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+
+	int retval;
+	unsigned int plaintext_pad_len;
+	unsigned int plaintext_len;
+	uint8_t buffer[10000];
+	const uint8_t *ciphertext;
+
+	struct rte_cryptodev_info dev_info;
+
+	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
+	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_MBUF_SCATTER_GATHER)) {
+		printf("Device doesn't support scatter-gather. "
+				"Test Skipped.\n");
+		return 0;
+	}
+
+	/* Create SNOW 3G session */
+	retval = create_wireless_algo_cipher_session(ts_params->valid_devs[0],
+					RTE_CRYPTO_CIPHER_OP_ENCRYPT,
+					RTE_CRYPTO_CIPHER_SNOW3G_UEA2,
+					tdata->key.data, tdata->key.len);
+	if (retval < 0)
+		return retval;
+
+	plaintext_len = ceil_byte_length(tdata->plaintext.len);
+	/* Append data which is padded to a multiple of */
+	/* the algorithms block size */
+	plaintext_pad_len = RTE_ALIGN_CEIL(plaintext_len, 16);
+
+	ut_params->ibuf = create_segmented_mbuf(ts_params->mbuf_pool,
+			plaintext_pad_len, 10, 0);
+	ut_params->obuf = create_segmented_mbuf(ts_params->mbuf_pool,
+			plaintext_pad_len, 3, 0);
+
+	TEST_ASSERT_NOT_NULL(ut_params->ibuf,
+			"Failed to allocate input buffer in mempool");
+	TEST_ASSERT_NOT_NULL(ut_params->obuf,
+			"Failed to allocate output buffer in mempool");
+
+	pktmbuf_write(ut_params->ibuf, 0, plaintext_len, tdata->plaintext.data);
+
+	/* Create SNOW 3G operation */
+	retval = create_wireless_algo_cipher_operation_oop(tdata->iv.data,
+					tdata->iv.len,
+					tdata->validCipherLenInBits.len,
+					tdata->validCipherOffsetLenInBits.len,
+					RTE_CRYPTO_CIPHER_SNOW3G_UEA2);
+	if (retval < 0)
+		return retval;
+
+	ut_params->op = process_crypto_request(ts_params->valid_devs[0],
+						ut_params->op);
+	TEST_ASSERT_NOT_NULL(ut_params->op, "failed to retrieve obuf");
+
+	ut_params->obuf = ut_params->op->sym->m_dst;
+	if (ut_params->obuf)
+		ciphertext = rte_pktmbuf_read(ut_params->obuf, tdata->iv.len,
+				plaintext_len, buffer);
+	else
+		ciphertext = rte_pktmbuf_read(ut_params->ibuf, tdata->iv.len,
+				plaintext_len, buffer);
+
+	TEST_HEXDUMP(stdout, "ciphertext:", ciphertext, plaintext_len);
+
+	/* Validate obuf */
+	TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(
+		ciphertext,
+		tdata->ciphertext.data,
+		tdata->validDataLenInBits.len,
+		"SNOW 3G Ciphertext data not as expected");
+
 	return 0;
 }
 
@@ -3552,6 +3787,84 @@ test_zuc_encryption(const struct zuc_test_data *tdata)
 }
 
 static int
+test_zuc_encryption_sgl(const struct zuc_test_data *tdata)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+
+	int retval;
+
+	unsigned int plaintext_pad_len;
+	unsigned int plaintext_len;
+	const uint8_t *ciphertext;
+	uint8_t ciphertext_buffer[2048];
+	struct rte_cryptodev_info dev_info;
+
+	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
+	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_MBUF_SCATTER_GATHER)) {
+		printf("Device doesn't support scatter-gather. "
+				"Test Skipped.\n");
+		return 0;
+	}
+
+	plaintext_len = ceil_byte_length(tdata->plaintext.len);
+
+	/* Append data which is padded to a multiple */
+	/* of the algorithms block size */
+	plaintext_pad_len = RTE_ALIGN_CEIL(plaintext_len, 8);
+
+	ut_params->ibuf = create_segmented_mbuf(ts_params->mbuf_pool,
+			plaintext_pad_len, 10, 0);
+
+	pktmbuf_write(ut_params->ibuf, 0, plaintext_len,
+			tdata->plaintext.data);
+
+	/* Create ZUC session */
+	retval = create_wireless_algo_cipher_session(ts_params->valid_devs[0],
+			RTE_CRYPTO_CIPHER_OP_ENCRYPT,
+			RTE_CRYPTO_CIPHER_ZUC_EEA3,
+			tdata->key.data, tdata->key.len);
+	if (retval < 0)
+		return retval;
+
+	/* Clear mbuf payload */
+
+	pktmbuf_write(ut_params->ibuf, 0, plaintext_len, tdata->plaintext.data);
+
+	/* Create ZUC operation */
+	retval = create_wireless_algo_cipher_operation(tdata->iv.data,
+			tdata->iv.len, tdata->plaintext.len,
+			tdata->validCipherOffsetLenInBits.len,
+			RTE_CRYPTO_CIPHER_ZUC_EEA3);
+	if (retval < 0)
+		return retval;
+
+	ut_params->op = process_crypto_request(ts_params->valid_devs[0],
+						ut_params->op);
+	TEST_ASSERT_NOT_NULL(ut_params->op, "failed to retrieve obuf");
+
+	ut_params->obuf = ut_params->op->sym->m_dst;
+	if (ut_params->obuf)
+		ciphertext = rte_pktmbuf_read(ut_params->obuf,
+			tdata->iv.len, plaintext_len, ciphertext_buffer);
+	else
+		ciphertext = rte_pktmbuf_read(ut_params->ibuf,
+			tdata->iv.len, plaintext_len, ciphertext_buffer);
+
+	/* Validate obuf */
+	TEST_HEXDUMP(stdout, "ciphertext:", ciphertext, plaintext_len);
+
+	/* Validate obuf */
+	TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(
+		ciphertext,
+		tdata->ciphertext.data,
+		tdata->validCipherLenInBits.len,
+		"ZUC Ciphertext data not as expected");
+
+	return 0;
+}
+
+static int
 test_zuc_authentication(const struct zuc_hash_test_data *tdata)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
@@ -3619,9 +3932,21 @@ test_kasumi_encryption_test_case_1(void)
 }
 
 static int
+test_kasumi_encryption_test_case_1_sgl(void)
+{
+	return test_kasumi_encryption_sgl(&kasumi_test_case_1);
+}
+
+static int
 test_kasumi_encryption_test_case_1_oop(void)
 {
 	return test_kasumi_encryption_oop(&kasumi_test_case_1);
+}
+
+static int
+test_kasumi_encryption_test_case_1_oop_sgl(void)
+{
+	return test_kasumi_encryption_oop_sgl(&kasumi_test_case_1);
 }
 
 static int
@@ -3694,6 +4019,13 @@ test_snow3g_encryption_test_case_1_oop(void)
 {
 	return test_snow3g_encryption_oop(&snow3g_test_case_1);
 }
+
+static int
+test_snow3g_encryption_test_case_1_oop_sgl(void)
+{
+	return test_snow3g_encryption_oop_sgl(&snow3g_test_case_1);
+}
+
 
 static int
 test_snow3g_encryption_test_case_1_offset_oop(void)
@@ -3812,6 +4144,12 @@ static int
 test_zuc_encryption_test_case_5(void)
 {
 	return test_zuc_encryption(&zuc_test_case_5);
+}
+
+static int
+test_zuc_encryption_test_case_6_sgl(void)
+{
+	return test_zuc_encryption_sgl(&zuc_test_case_1);
 }
 
 static int
@@ -3998,12 +4336,21 @@ create_gcm_operation(enum rte_crypto_cipher_operation op,
 
 	struct rte_crypto_sym_op *sym_op = ut_params->op->sym;
 
-	sym_op->auth.digest.data = (uint8_t *)rte_pktmbuf_append(
-			ut_params->ibuf, auth_tag_len);
-	TEST_ASSERT_NOT_NULL(sym_op->auth.digest.data,
-			"no room to append digest");
-	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
-			ut_params->ibuf, data_pad_len);
+	if (ut_params->obuf) {
+		sym_op->auth.digest.data = (uint8_t *)rte_pktmbuf_append(
+				ut_params->obuf, auth_tag_len);
+		TEST_ASSERT_NOT_NULL(sym_op->auth.digest.data,
+				"no room to append digest");
+		sym_op->auth.digest.phys_addr = pktmbuf_mtophys_offset(
+				ut_params->obuf, data_pad_len);
+	} else {
+		sym_op->auth.digest.data = (uint8_t *)rte_pktmbuf_append(
+				ut_params->ibuf, auth_tag_len);
+		TEST_ASSERT_NOT_NULL(sym_op->auth.digest.data,
+				"no room to append digest");
+		sym_op->auth.digest.phys_addr = pktmbuf_mtophys_offset(
+				ut_params->ibuf, data_pad_len);
+	}
 	sym_op->auth.digest.length = auth_tag_len;
 
 	if (op == RTE_CRYPTO_CIPHER_OP_DECRYPT) {
@@ -4049,6 +4396,11 @@ create_gcm_operation(enum rte_crypto_cipher_operation op,
 	TEST_HEXDUMP(stdout, "iv:", sym_op->cipher.iv.data, iv_pad_len);
 	TEST_HEXDUMP(stdout, "aad:",
 			sym_op->auth.aad.data, aad_len);
+
+	if (ut_params->obuf) {
+		rte_pktmbuf_prepend(ut_params->obuf, iv_pad_len);
+		rte_pktmbuf_prepend(ut_params->obuf, aad_buffer_len);
+	}
 
 	sym_op->cipher.data.length = data_len;
 	sym_op->cipher.data.offset = aad_buffer_len + iv_pad_len;
@@ -6312,6 +6664,14 @@ test_AES_GCM_auth_encrypt_SGL_out_of_place_1500B_2000B(void)
 }
 
 static int
+test_AES_GCM_auth_encrypt_SGL_out_of_place_400B_1seg(void)
+{
+	return test_AES_GCM_authenticated_encryption_SGL(
+			&gcm_test_case_8, OUT_OF_PLACE, 400,
+			gcm_test_case_8.plaintext.len);
+}
+
+static int
 test_AES_GCM_auth_encrypt_SGL_in_place_1500B(void)
 {
 
@@ -6683,6 +7043,10 @@ static struct unit_test_suite cryptodev_openssl_testsuite  = {
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_AES_GMAC_authentication_verify_test_case_4),
 
+		/** Scatter-Gather */
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_GCM_auth_encrypt_SGL_out_of_place_400B_1seg),
+
 		/** Negative tests */
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			authentication_verify_HMAC_SHA1_fail_data_corrupt),
@@ -6751,6 +7115,8 @@ static struct unit_test_suite cryptodev_sw_kasumi_testsuite  = {
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_kasumi_encryption_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_kasumi_encryption_test_case_1_sgl),
+		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_kasumi_encryption_test_case_2),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_kasumi_encryption_test_case_3),
@@ -6772,6 +7138,10 @@ static struct unit_test_suite cryptodev_sw_kasumi_testsuite  = {
 
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_kasumi_encryption_test_case_1_oop),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_kasumi_encryption_test_case_1_oop_sgl),
+
+
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_kasumi_decryption_test_case_1_oop),
 
@@ -6824,6 +7194,8 @@ static struct unit_test_suite cryptodev_sw_snow3g_testsuite  = {
 
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_snow3g_encryption_test_case_1_oop),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+				test_snow3g_encryption_test_case_1_oop_sgl),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_snow3g_decryption_test_case_1_oop),
 
@@ -6902,6 +7274,8 @@ static struct unit_test_suite cryptodev_sw_zuc_testsuite  = {
 			test_zuc_hash_generate_test_case_4),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_zuc_hash_generate_test_case_5),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc_encryption_test_case_6_sgl),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
