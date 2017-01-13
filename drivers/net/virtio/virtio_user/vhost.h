@@ -96,6 +96,8 @@ enum vhost_user_request {
 	VHOST_USER_MAX
 };
 
+const char * const vhost_msg_strings[VHOST_USER_MAX];
+
 struct vhost_memory_region {
 	uint64_t guest_phys_addr;
 	uint64_t memory_size; /* bytes */
@@ -103,8 +105,17 @@ struct vhost_memory_region {
 	uint64_t mmap_offset;
 };
 
-int vhost_user_sock(int vhostfd, enum vhost_user_request req, void *arg);
-int vhost_user_setup(const char *path);
-int vhost_user_enable_queue_pair(int vhostfd, uint16_t pair_idx, int enable);
+struct virtio_user_dev;
 
+struct virtio_user_backend_ops {
+	int (*setup)(struct virtio_user_dev *dev);
+	int (*send_request)(struct virtio_user_dev *dev,
+			    enum vhost_user_request req,
+			    void *arg);
+	int (*enable_qp)(struct virtio_user_dev *dev,
+			 uint16_t pair_idx,
+			 int enable);
+};
+
+struct virtio_user_backend_ops ops_user;
 #endif

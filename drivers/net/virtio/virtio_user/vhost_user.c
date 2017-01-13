@@ -41,6 +41,7 @@
 #include <errno.h>
 
 #include "vhost.h"
+#include "virtio_user_dev.h"
 
 /* The version of the protocol we support */
 #define VHOST_USER_VERSION    0x1
@@ -255,24 +256,25 @@ prepare_vhost_memory_user(struct vhost_user_msg *msg, int fds[])
 
 static struct vhost_user_msg m;
 
-static const char * const vhost_msg_strings[] = {
-	[VHOST_USER_SET_OWNER] = "VHOST_USER_SET_OWNER",
-	[VHOST_USER_RESET_OWNER] = "VHOST_USER_RESET_OWNER",
-	[VHOST_USER_SET_FEATURES] = "VHOST_USER_SET_FEATURES",
-	[VHOST_USER_GET_FEATURES] = "VHOST_USER_GET_FEATURES",
-	[VHOST_USER_SET_VRING_CALL] = "VHOST_USER_SET_VRING_CALL",
-	[VHOST_USER_SET_VRING_NUM] = "VHOST_USER_SET_VRING_NUM",
-	[VHOST_USER_SET_VRING_BASE] = "VHOST_USER_SET_VRING_BASE",
-	[VHOST_USER_GET_VRING_BASE] = "VHOST_USER_GET_VRING_BASE",
-	[VHOST_USER_SET_VRING_ADDR] = "VHOST_USER_SET_VRING_ADDR",
-	[VHOST_USER_SET_VRING_KICK] = "VHOST_USER_SET_VRING_KICK",
-	[VHOST_USER_SET_MEM_TABLE] = "VHOST_USER_SET_MEM_TABLE",
-	[VHOST_USER_SET_VRING_ENABLE] = "VHOST_USER_SET_VRING_ENABLE",
-	NULL,
+const char * const vhost_msg_strings[] = {
+	[VHOST_USER_SET_OWNER] = "VHOST_SET_OWNER",
+	[VHOST_USER_RESET_OWNER] = "VHOST_RESET_OWNER",
+	[VHOST_USER_SET_FEATURES] = "VHOST_SET_FEATURES",
+	[VHOST_USER_GET_FEATURES] = "VHOST_GET_FEATURES",
+	[VHOST_USER_SET_VRING_CALL] = "VHOST_SET_VRING_CALL",
+	[VHOST_USER_SET_VRING_NUM] = "VHOST_SET_VRING_NUM",
+	[VHOST_USER_SET_VRING_BASE] = "VHOST_SET_VRING_BASE",
+	[VHOST_USER_GET_VRING_BASE] = "VHOST_GET_VRING_BASE",
+	[VHOST_USER_SET_VRING_ADDR] = "VHOST_SET_VRING_ADDR",
+	[VHOST_USER_SET_VRING_KICK] = "VHOST_SET_VRING_KICK",
+	[VHOST_USER_SET_MEM_TABLE] = "VHOST_SET_MEM_TABLE",
+	[VHOST_USER_SET_VRING_ENABLE] = "VHOST_SET_VRING_ENABLE",
 };
 
-int
-vhost_user_sock(int vhostfd, enum vhost_user_request req, void *arg)
+static int
+vhost_user_sock(struct virtio_user_dev *dev,
+		enum vhost_user_request req,
+		void *arg)
 {
 	struct vhost_user_msg msg;
 	struct vhost_vring_file *file = 0;
@@ -280,9 +282,9 @@ vhost_user_sock(int vhostfd, enum vhost_user_request req, void *arg)
 	int fds[VHOST_MEMORY_MAX_NREGIONS];
 	int fd_num = 0;
 	int i, len;
+	int vhostfd = dev->vhostfd;
 
 	RTE_SET_USED(m);
-	RTE_SET_USED(vhost_msg_strings);
 
 	PMD_DRV_LOG(INFO, "%s", vhost_msg_strings[req]);
 
@@ -403,15 +405,13 @@ vhost_user_sock(int vhostfd, enum vhost_user_request req, void *arg)
 
 /**
  * Set up environment to talk with a vhost user backend.
- * @param path
- *   - The path to vhost user unix socket file.
  *
  * @return
- *   - (-1) if fail to set up;
- *   - (>=0) if successful, and it is the fd to vhostfd.
+ *   - (-1) if fail;
+ *   - (0) if succeed.
  */
-int
-vhost_user_setup(const char *path)
+static int
+vhost_user_setup(struct virtio_user_dev *dev)
 {
 	int fd;
 	int flag;
@@ -429,18 +429,21 @@ vhost_user_setup(const char *path)
 
 	memset(&un, 0, sizeof(un));
 	un.sun_family = AF_UNIX;
-	snprintf(un.sun_path, sizeof(un.sun_path), "%s", path);
+	snprintf(un.sun_path, sizeof(un.sun_path), "%s", dev->path);
 	if (connect(fd, (struct sockaddr *)&un, sizeof(un)) < 0) {
 		PMD_DRV_LOG(ERR, "connect error, %s", strerror(errno));
 		close(fd);
 		return -1;
 	}
 
-	return fd;
+	dev->vhostfd = fd;
+	return 0;
 }
 
-int
-vhost_user_enable_queue_pair(int vhostfd, uint16_t pair_idx, int enable)
+static int
+vhost_user_enable_queue_pair(struct virtio_user_dev *dev,
+			     uint16_t pair_idx,
+			     int enable)
 {
 	int i;
 
@@ -450,10 +453,15 @@ vhost_user_enable_queue_pair(int vhostfd, uint16_t pair_idx, int enable)
 			.num   = enable,
 		};
 
-		if (vhost_user_sock(vhostfd,
-				    VHOST_USER_SET_VRING_ENABLE, &state))
+		if (vhost_user_sock(dev, VHOST_USER_SET_VRING_ENABLE, &state))
 			return -1;
 	}
 
 	return 0;
 }
+
+struct virtio_user_backend_ops ops_user = {
+	.setup = vhost_user_setup,
+	.send_request = vhost_user_sock,
+	.enable_qp = vhost_user_enable_queue_pair
+};
