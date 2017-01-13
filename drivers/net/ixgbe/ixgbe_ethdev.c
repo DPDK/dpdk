@@ -6473,47 +6473,6 @@ ixgbe_ntuple_filter_handle(struct rte_eth_dev *dev,
 	return ret;
 }
 
-static inline int
-ixgbe_ethertype_filter_lookup(struct ixgbe_filter_info *filter_info,
-			uint16_t ethertype)
-{
-	int i;
-
-	for (i = 0; i < IXGBE_MAX_ETQF_FILTERS; i++) {
-		if (filter_info->ethertype_filters[i] == ethertype &&
-		    (filter_info->ethertype_mask & (1 << i)))
-			return i;
-	}
-	return -1;
-}
-
-static inline int
-ixgbe_ethertype_filter_insert(struct ixgbe_filter_info *filter_info,
-			uint16_t ethertype)
-{
-	int i;
-
-	for (i = 0; i < IXGBE_MAX_ETQF_FILTERS; i++) {
-		if (!(filter_info->ethertype_mask & (1 << i))) {
-			filter_info->ethertype_mask |= 1 << i;
-			filter_info->ethertype_filters[i] = ethertype;
-			return i;
-		}
-	}
-	return -1;
-}
-
-static inline int
-ixgbe_ethertype_filter_remove(struct ixgbe_filter_info *filter_info,
-			uint8_t idx)
-{
-	if (idx >= IXGBE_MAX_ETQF_FILTERS)
-		return -1;
-	filter_info->ethertype_mask &= ~(1 << idx);
-	filter_info->ethertype_filters[idx] = 0;
-	return idx;
-}
-
 static int
 ixgbe_add_del_ethertype_filter(struct rte_eth_dev *dev,
 			struct rte_eth_ethertype_filter *filter,
@@ -6525,6 +6484,7 @@ ixgbe_add_del_ethertype_filter(struct rte_eth_dev *dev,
 	uint32_t etqf = 0;
 	uint32_t etqs = 0;
 	int ret;
+	struct ixgbe_ethertype_filter ethertype_filter;
 
 	if (filter->queue >= IXGBE_MAX_RX_QUEUE_NUM)
 		return -EINVAL;
@@ -6558,18 +6518,22 @@ ixgbe_add_del_ethertype_filter(struct rte_eth_dev *dev,
 	}
 
 	if (add) {
-		ret = ixgbe_ethertype_filter_insert(filter_info,
-			filter->ether_type);
-		if (ret < 0) {
-			PMD_DRV_LOG(ERR, "ethertype filters are full.");
-			return -ENOSYS;
-		}
 		etqf = IXGBE_ETQF_FILTER_EN;
 		etqf |= (uint32_t)filter->ether_type;
 		etqs |= (uint32_t)((filter->queue <<
 				    IXGBE_ETQS_RX_QUEUE_SHIFT) &
 				    IXGBE_ETQS_RX_QUEUE);
 		etqs |= IXGBE_ETQS_QUEUE_EN;
+
+		ethertype_filter.ethertype = filter->ether_type;
+		ethertype_filter.etqf = etqf;
+		ethertype_filter.etqs = etqs;
+		ret = ixgbe_ethertype_filter_insert(filter_info,
+						    &ethertype_filter);
+		if (ret < 0) {
+			PMD_DRV_LOG(ERR, "ethertype filters are full.");
+			return -ENOSPC;
+		}
 	} else {
 		ret = ixgbe_ethertype_filter_remove(filter_info, (uint8_t)ret);
 		if (ret < 0)
@@ -8499,10 +8463,31 @@ ixgbe_ntuple_filter_restore(struct rte_eth_dev *dev)
 	}
 }
 
+/* restore ethernet type filter */
+static inline void
+ixgbe_ethertype_filter_restore(struct rte_eth_dev *dev)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_filter_info *filter_info =
+		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+	int i;
+
+	for (i = 0; i < IXGBE_MAX_ETQF_FILTERS; i++) {
+		if (filter_info->ethertype_mask & (1 << i)) {
+			IXGBE_WRITE_REG(hw, IXGBE_ETQF(i),
+					filter_info->ethertype_filters[i].etqf);
+			IXGBE_WRITE_REG(hw, IXGBE_ETQS(i),
+					filter_info->ethertype_filters[i].etqs);
+			IXGBE_WRITE_FLUSH(hw);
+		}
+	}
+}
+
 static int
 ixgbe_filter_restore(struct rte_eth_dev *dev)
 {
 	ixgbe_ntuple_filter_restore(dev);
+	ixgbe_ethertype_filter_restore(dev);
 
 	return 0;
 }

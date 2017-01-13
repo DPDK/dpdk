@@ -275,13 +275,19 @@ struct ixgbe_5tuple_filter {
 	(RTE_ALIGN(IXGBE_MAX_FTQF_FILTERS, (sizeof(uint32_t) * NBBY)) / \
 	 (sizeof(uint32_t) * NBBY))
 
+struct ixgbe_ethertype_filter {
+	uint16_t ethertype;
+	uint32_t etqf;
+	uint32_t etqs;
+};
+
 /*
  * Structure to store filters' info.
  */
 struct ixgbe_filter_info {
 	uint8_t ethertype_mask;  /* Bit mask for every used ethertype filter */
 	/* store used ethertype filters*/
-	uint16_t ethertype_filters[IXGBE_MAX_ETQF_FILTERS];
+	struct ixgbe_ethertype_filter ethertype_filters[IXGBE_MAX_ETQF_FILTERS];
 	/* Bit mask for every used 5tuple filter */
 	uint32_t fivetuple_mask[IXGBE_5TUPLE_ARRAY_SIZE];
 	struct ixgbe_5tuple_filter_list fivetuple_list;
@@ -536,4 +542,53 @@ int ixgbe_fdir_ctrl_func(struct rte_eth_dev *dev,
 int ixgbe_disable_sec_tx_path_generic(struct ixgbe_hw *hw);
 
 int ixgbe_enable_sec_tx_path_generic(struct ixgbe_hw *hw);
+
+static inline int
+ixgbe_ethertype_filter_lookup(struct ixgbe_filter_info *filter_info,
+			      uint16_t ethertype)
+{
+	int i;
+
+	for (i = 0; i < IXGBE_MAX_ETQF_FILTERS; i++) {
+		if (filter_info->ethertype_filters[i].ethertype == ethertype &&
+		    (filter_info->ethertype_mask & (1 << i)))
+			return i;
+	}
+	return -1;
+}
+
+static inline int
+ixgbe_ethertype_filter_insert(struct ixgbe_filter_info *filter_info,
+			      struct ixgbe_ethertype_filter *ethertype_filter)
+{
+	int i;
+
+	for (i = 0; i < IXGBE_MAX_ETQF_FILTERS; i++) {
+		if (!(filter_info->ethertype_mask & (1 << i))) {
+			filter_info->ethertype_mask |= 1 << i;
+			filter_info->ethertype_filters[i].ethertype =
+				ethertype_filter->ethertype;
+			filter_info->ethertype_filters[i].etqf =
+				ethertype_filter->etqf;
+			filter_info->ethertype_filters[i].etqs =
+				ethertype_filter->etqs;
+			return i;
+		}
+	}
+	return -1;
+}
+
+static inline int
+ixgbe_ethertype_filter_remove(struct ixgbe_filter_info *filter_info,
+			      uint8_t idx)
+{
+	if (idx >= IXGBE_MAX_ETQF_FILTERS)
+		return -1;
+	filter_info->ethertype_mask &= ~(1 << idx);
+	filter_info->ethertype_filters[idx].ethertype = 0;
+	filter_info->ethertype_filters[idx].etqf = 0;
+	filter_info->ethertype_filters[idx].etqs = 0;
+	return idx;
+}
+
 #endif /* _IXGBE_ETHDEV_H_ */

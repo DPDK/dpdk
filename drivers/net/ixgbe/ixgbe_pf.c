@@ -178,6 +178,7 @@ ixgbe_add_tx_flow_control_drop_filter(struct rte_eth_dev *eth_dev)
 		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(eth_dev->data->dev_private);
 	uint16_t vf_num;
 	int i;
+	struct ixgbe_ethertype_filter ethertype_filter;
 
 	if (!hw->mac.ops.set_ethertype_anti_spoofing) {
 		RTE_LOG(INFO, PMD, "ether type anti-spoofing is not"
@@ -185,16 +186,22 @@ ixgbe_add_tx_flow_control_drop_filter(struct rte_eth_dev *eth_dev)
 		return;
 	}
 
-	/* occupy an entity of ether type filter */
-	for (i = 0; i < IXGBE_MAX_ETQF_FILTERS; i++) {
-		if (!(filter_info->ethertype_mask & (1 << i))) {
-			filter_info->ethertype_mask |= 1 << i;
-			filter_info->ethertype_filters[i] =
-				IXGBE_ETHERTYPE_FLOW_CTRL;
-			break;
-		}
+	i = ixgbe_ethertype_filter_lookup(filter_info,
+					  IXGBE_ETHERTYPE_FLOW_CTRL);
+	if (i >= 0) {
+		RTE_LOG(ERR, PMD, "A ether type filter"
+			" entity for flow control already exists!\n");
+		return;
 	}
-	if (i == IXGBE_MAX_ETQF_FILTERS) {
+
+	ethertype_filter.ethertype = IXGBE_ETHERTYPE_FLOW_CTRL;
+	ethertype_filter.etqf = IXGBE_ETQF_FILTER_EN |
+				IXGBE_ETQF_TX_ANTISPOOF |
+				IXGBE_ETHERTYPE_FLOW_CTRL;
+	ethertype_filter.etqs = 0;
+	i = ixgbe_ethertype_filter_insert(filter_info,
+					  &ethertype_filter);
+	if (i < 0) {
 		RTE_LOG(ERR, PMD, "Cannot find an unused ether type filter"
 			" entity for flow control.\n");
 		return;
