@@ -330,6 +330,21 @@ process_ops(struct rte_crypto_op **ops, struct snow3g_session *session,
 	unsigned i;
 	unsigned enqueued_ops, processed_ops;
 
+#ifdef RTE_LIBRTE_PMD_SNOW3G_DEBUG
+	for (i = 0; i < num_ops; i++) {
+		if (!rte_pktmbuf_is_contiguous(ops[i]->sym->m_src) ||
+				(ops[i]->sym->m_dst != NULL &&
+				!rte_pktmbuf_is_contiguous(
+						ops[i]->sym->m_dst))) {
+			SNOW3G_LOG_ERR("PMD supports only contiguous mbufs, "
+				"op (%p) provides noncontiguous mbuf as "
+				"source/destination buffer.\n", ops[i]);
+			ops[i]->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+			return 0;
+		}
+	}
+#endif
+
 	switch (session->op) {
 	case SNOW3G_OP_ONLY_CIPHER:
 		processed_ops = process_snow3g_cipher_op(ops,

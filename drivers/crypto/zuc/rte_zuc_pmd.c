@@ -211,6 +211,19 @@ process_zuc_cipher_op(struct rte_crypto_op **ops,
 			break;
 		}
 
+#ifdef RTE_LIBRTE_PMD_ZUC_DEBUG
+		if (!rte_pktmbuf_is_contiguous(ops[i]->sym->m_src) ||
+				(ops[i]->sym->m_dst != NULL &&
+				!rte_pktmbuf_is_contiguous(
+						ops[i]->sym->m_dst))) {
+			ZUC_LOG_ERR("PMD supports only contiguous mbufs, "
+				"op (%p) provides noncontiguous mbuf as "
+				"source/destination buffer.\n", ops[i]);
+			ops[i]->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+			break;
+		}
+#endif
+
 		src[i] = rte_pktmbuf_mtod(ops[i]->sym->m_src, uint8_t *) +
 				(ops[i]->sym->cipher.data.offset >> 3);
 		dst[i] = ops[i]->sym->m_dst ?

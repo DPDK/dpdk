@@ -377,6 +377,20 @@ aesni_gcm_pmd_enqueue_burst(void *queue_pair,
 			break;
 		}
 
+#ifdef RTE_LIBRTE_PMD_AESNI_GCM_DEBUG
+		if (!rte_pktmbuf_is_contiguous(ops[i]->sym->m_src) ||
+				(ops[i]->sym->m_dst != NULL &&
+				!rte_pktmbuf_is_contiguous(
+						ops[i]->sym->m_dst))) {
+			ops[i]->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+			GCM_LOG_ERR("PMD supports only contiguous mbufs, "
+				"op (%p) provides noncontiguous mbuf as "
+				"source/destination buffer.\n", ops[i]);
+			qp->qp_stats.enqueue_err_count++;
+			break;
+		}
+#endif
+
 		retval = process_gcm_crypto_op(qp, ops[i]->sym, sess);
 		if (retval < 0) {
 			ops[i]->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;

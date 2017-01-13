@@ -571,15 +571,28 @@ aesni_mb_pmd_enqueue_burst(void *queue_pair, struct rte_crypto_op **ops,
 	int i, processed_jobs = 0;
 
 	for (i = 0; i < nb_ops; i++) {
-#ifdef RTE_LIBRTE_AESNI_MB_DEBUG
-		if (unlikely(op->type != RTE_CRYPTO_OP_TYPE_SYMMETRIC)) {
+#ifdef RTE_LIBRTE_PMD_AESNI_MB_DEBUG
+		if (unlikely(ops[i]->type != RTE_CRYPTO_OP_TYPE_SYMMETRIC)) {
 			MB_LOG_ERR("PMD only supports symmetric crypto "
 				"operation requests, op (%p) is not a "
-				"symmetric operation.", op);
+				"symmetric operation.", ops[i]);
+			qp->stats.enqueue_err_count++;
+			goto flush_jobs;
+		}
+
+		if (!rte_pktmbuf_is_contiguous(ops[i]->sym->m_src) ||
+				(ops[i]->sym->m_dst != NULL &&
+				!rte_pktmbuf_is_contiguous(
+						ops[i]->sym->m_dst))) {
+			MB_LOG_ERR("PMD supports only contiguous mbufs, "
+				"op (%p) provides noncontiguous mbuf as "
+				"source/destination buffer.\n", ops[i]);
+			ops[i]->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 			qp->stats.enqueue_err_count++;
 			goto flush_jobs;
 		}
 #endif
+
 		sess = get_session(qp, ops[i]);
 		if (unlikely(sess == NULL)) {
 			qp->stats.enqueue_err_count++;

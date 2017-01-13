@@ -455,6 +455,19 @@ kasumi_pmd_enqueue_burst(void *queue_pair, struct rte_crypto_op **ops,
 	for (i = 0; i < nb_ops; i++) {
 		curr_c_op = ops[i];
 
+#ifdef RTE_LIBRTE_PMD_KASUMI_DEBUG
+		if (!rte_pktmbuf_is_contiguous(curr_c_op->sym->m_src) ||
+				(curr_c_op->sym->m_dst != NULL &&
+				!rte_pktmbuf_is_contiguous(
+						curr_c_op->sym->m_dst))) {
+			KASUMI_LOG_ERR("PMD supports only contiguous mbufs, "
+				"op (%p) provides noncontiguous mbuf as "
+				"source/destination buffer.\n", curr_c_op);
+			curr_c_op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+			break;
+		}
+#endif
+
 		/* Set status as enqueued (not processed yet) by default. */
 		curr_c_op->status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
 

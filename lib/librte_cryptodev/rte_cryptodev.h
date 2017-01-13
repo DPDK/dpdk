@@ -227,6 +227,8 @@ struct rte_cryptodev_capabilities {
 /**< Operations are off-loaded to an external hardware accelerator */
 #define	RTE_CRYPTODEV_FF_CPU_AVX512		(1ULL << 8)
 /**< Utilises CPU SIMD AVX512 instructions */
+#define	RTE_CRYPTODEV_FF_MBUF_SCATTER_GATHER	(1ULL << 9)
+/**< Scatter-gather mbufs are supported */
 
 
 /**

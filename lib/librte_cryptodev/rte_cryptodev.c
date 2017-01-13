@@ -211,12 +211,12 @@ rte_cryptodev_get_feature_name(uint64_t flag)
 		return "CPU_AESNI";
 	case RTE_CRYPTODEV_FF_HW_ACCELERATED:
 		return "HW_ACCELERATED";
-
+	case RTE_CRYPTODEV_FF_MBUF_SCATTER_GATHER:
+		return "MBUF_SCATTER_GATHER";
 	default:
 		return NULL;
 	}
 }
-
 
 int
 rte_cryptodev_create_vdev(const char *name, const char *args)
