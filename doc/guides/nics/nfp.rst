@@ -68,10 +68,12 @@ Building the software
 ---------------------
 
 Netronome's PMD code is provided in the **drivers/net/nfp** directory.
-Because Netronome´s BSP dependencies the driver is disabled by default
-in DPDK build using **common_linuxapp configuration** file. Enabling the
-driver or if you use another configuration file and want to have NFP
-support, this variable is needed:
+Although NFP PMD has Netronome´s BSP dependencies, it is possible to
+compile it along with other DPDK PMDs even if no BSP was installed before.
+Of course, a DPDK app will require such a BSP installed for using the
+NFP PMD.
+
+Default PMD configuration is at **common_linuxapp configuration** file:
 
 - **CONFIG_RTE_LIBRTE_NFP_PMD=y**
 
