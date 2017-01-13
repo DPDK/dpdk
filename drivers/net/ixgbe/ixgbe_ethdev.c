@@ -7538,7 +7538,8 @@ ixgbe_remove_l2_tn_filter(struct ixgbe_l2_tn_info *l2_tn_info,
 /* Add l2 tunnel filter */
 static int
 ixgbe_dev_l2_tunnel_filter_add(struct rte_eth_dev *dev,
-			       struct rte_eth_l2_tunnel_conf *l2_tunnel)
+			       struct rte_eth_l2_tunnel_conf *l2_tunnel,
+			       bool restore)
 {
 	int ret;
 	struct ixgbe_l2_tn_info *l2_tn_info =
@@ -7546,30 +7547,33 @@ ixgbe_dev_l2_tunnel_filter_add(struct rte_eth_dev *dev,
 	struct ixgbe_l2_tn_key key;
 	struct ixgbe_l2_tn_filter *node;
 
-	key.l2_tn_type = l2_tunnel->l2_tunnel_type;
-	key.tn_id = l2_tunnel->tunnel_id;
+	if (!restore) {
+		key.l2_tn_type = l2_tunnel->l2_tunnel_type;
+		key.tn_id = l2_tunnel->tunnel_id;
 
-	node = ixgbe_l2_tn_filter_lookup(l2_tn_info, &key);
+		node = ixgbe_l2_tn_filter_lookup(l2_tn_info, &key);
 
-	if (node) {
-		PMD_DRV_LOG(ERR, "The L2 tunnel filter already exists!");
-		return -EINVAL;
-	}
+		if (node) {
+			PMD_DRV_LOG(ERR,
+				    "The L2 tunnel filter already exists!");
+			return -EINVAL;
+		}
 
-	node = rte_zmalloc("ixgbe_l2_tn",
-			   sizeof(struct ixgbe_l2_tn_filter),
-			   0);
-	if (!node)
-		return -ENOMEM;
+		node = rte_zmalloc("ixgbe_l2_tn",
+				   sizeof(struct ixgbe_l2_tn_filter),
+				   0);
+		if (!node)
+			return -ENOMEM;
 
-	(void)rte_memcpy(&node->key,
-			 &key,
-			 sizeof(struct ixgbe_l2_tn_key));
-	node->pool = l2_tunnel->pool;
-	ret = ixgbe_insert_l2_tn_filter(l2_tn_info, node);
-	if (ret < 0) {
-		rte_free(node);
-		return ret;
+		(void)rte_memcpy(&node->key,
+				 &key,
+				 sizeof(struct ixgbe_l2_tn_key));
+		node->pool = l2_tunnel->pool;
+		ret = ixgbe_insert_l2_tn_filter(l2_tn_info, node);
+		if (ret < 0) {
+			rte_free(node);
+			return ret;
+		}
 	}
 
 	switch (l2_tunnel->l2_tunnel_type) {
@@ -7582,7 +7586,7 @@ ixgbe_dev_l2_tunnel_filter_add(struct rte_eth_dev *dev,
 		break;
 	}
 
-	if (ret < 0)
+	if ((!restore) && (ret < 0))
 		(void)ixgbe_remove_l2_tn_filter(l2_tn_info, &key);
 
 	return ret;
@@ -7643,7 +7647,8 @@ ixgbe_dev_l2_tunnel_filter_handle(struct rte_eth_dev *dev,
 	case RTE_ETH_FILTER_ADD:
 		ret = ixgbe_dev_l2_tunnel_filter_add
 			(dev,
-			 (struct rte_eth_l2_tunnel_conf *)arg);
+			 (struct rte_eth_l2_tunnel_conf *)arg,
+			 FALSE);
 		break;
 	case RTE_ETH_FILTER_DELETE:
 		ret = ixgbe_dev_l2_tunnel_filter_del
@@ -8500,6 +8505,23 @@ ixgbe_syn_filter_restore(struct rte_eth_dev *dev)
 	}
 }
 
+/* restore L2 tunnel filter */
+static inline void
+ixgbe_l2_tn_filter_restore(struct rte_eth_dev *dev)
+{
+	struct ixgbe_l2_tn_info *l2_tn_info =
+		IXGBE_DEV_PRIVATE_TO_L2_TN_INFO(dev->data->dev_private);
+	struct ixgbe_l2_tn_filter *node;
+	struct rte_eth_l2_tunnel_conf l2_tn_conf;
+
+	TAILQ_FOREACH(node, &l2_tn_info->l2_tn_list, entries) {
+		l2_tn_conf.l2_tunnel_type = node->key.l2_tn_type;
+		l2_tn_conf.tunnel_id      = node->key.tn_id;
+		l2_tn_conf.pool           = node->pool;
+		(void)ixgbe_dev_l2_tunnel_filter_add(dev, &l2_tn_conf, TRUE);
+	}
+}
+
 static int
 ixgbe_filter_restore(struct rte_eth_dev *dev)
 {
@@ -8507,6 +8529,7 @@ ixgbe_filter_restore(struct rte_eth_dev *dev)
 	ixgbe_ethertype_filter_restore(dev);
 	ixgbe_syn_filter_restore(dev);
 	ixgbe_fdir_filter_restore(dev);
+	ixgbe_l2_tn_filter_restore(dev);
 
 	return 0;
 }
