@@ -182,7 +182,17 @@ error:
 
 int virtio_user_stop_device(struct virtio_user_dev *dev)
 {
-	return vhost_user_sock(dev->vhostfd, VHOST_USER_RESET_OWNER, NULL);
+	uint32_t i;
+
+	for (i = 0; i < dev->max_queue_pairs * 2; ++i) {
+		close(dev->callfds[i]);
+		close(dev->kickfds[i]);
+	}
+
+	for (i = 0; i < dev->max_queue_pairs; ++i)
+		vhost_user_enable_queue_pair(dev->vhostfd, i, 0);
+
+	return 0;
 }
 
 static inline void
@@ -210,6 +220,8 @@ int
 virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 		     int cq, int queue_size, const char *mac)
 {
+	uint32_t i;
+
 	snprintf(dev->path, PATH_MAX, "%s", path);
 	dev->max_queue_pairs = queues;
 	dev->queue_pairs = 1; /* mq disabled by default */
@@ -217,6 +229,11 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 	dev->mac_specified = 0;
 	parse_mac(dev, mac);
 	dev->vhostfd = -1;
+
+	for (i = 0; i < VIRTIO_MAX_VIRTQUEUES * 2 + 1; ++i) {
+		dev->kickfds[i] = -1;
+		dev->callfds[i] = -1;
+	}
 
 	dev->vhostfd = vhost_user_setup(dev->path);
 	if (dev->vhostfd < 0) {
@@ -264,13 +281,6 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 void
 virtio_user_dev_uninit(struct virtio_user_dev *dev)
 {
-	uint32_t i;
-
-	for (i = 0; i < dev->max_queue_pairs * 2; ++i) {
-		close(dev->callfds[i]);
-		close(dev->kickfds[i]);
-	}
-
 	close(dev->vhostfd);
 }
 

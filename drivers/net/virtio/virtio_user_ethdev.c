@@ -87,21 +87,24 @@ virtio_user_write_dev_config(struct virtio_hw *hw, size_t offset,
 }
 
 static void
+virtio_user_reset(struct virtio_hw *hw)
+{
+	struct virtio_user_dev *dev = virtio_user_get_dev(hw);
+
+	if (dev->status & VIRTIO_CONFIG_STATUS_DRIVER_OK)
+		virtio_user_stop_device(dev);
+}
+
+static void
 virtio_user_set_status(struct virtio_hw *hw, uint8_t status)
 {
 	struct virtio_user_dev *dev = virtio_user_get_dev(hw);
 
 	if (status & VIRTIO_CONFIG_STATUS_DRIVER_OK)
 		virtio_user_start_device(dev);
+	else if (status == VIRTIO_CONFIG_STATUS_RESET)
+		virtio_user_reset(hw);
 	dev->status = status;
-}
-
-static void
-virtio_user_reset(struct virtio_hw *hw)
-{
-	struct virtio_user_dev *dev = virtio_user_get_dev(hw);
-
-	virtio_user_stop_device(dev);
 }
 
 static uint8_t
