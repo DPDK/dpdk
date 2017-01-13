@@ -52,6 +52,11 @@ New Features
   See the :ref:`Generic flow API <Generic_flow_API>` documentation for more
   information.
 
+* **Added APIs for MACsec offload support to the ixgbe PMD.**
+
+  Six new APIs have been added to the ixgbe PMD for MACsec offload support.
+  The declarations for the APIs can be found in ``rte_pmd_ixgbe.h``.
+
 
 Resolved Issues
 ---------------

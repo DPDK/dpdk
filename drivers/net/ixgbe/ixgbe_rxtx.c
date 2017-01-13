@@ -86,6 +86,7 @@
 		PKT_TX_IP_CKSUM |		 \
 		PKT_TX_L4_MASK |		 \
 		PKT_TX_TCP_SEG |		 \
+		PKT_TX_MACSEC |			 \
 		PKT_TX_OUTER_IP_CKSUM)
 
 #define IXGBE_TX_OFFLOAD_NOTSUP_MASK \
@@ -523,6 +524,8 @@ tx_desc_ol_flags_to_cmdtype(uint64_t ol_flags)
 		cmdtype |= IXGBE_ADVTXD_DCMD_TSE;
 	if (ol_flags & PKT_TX_OUTER_IP_CKSUM)
 		cmdtype |= (1 << IXGBE_ADVTXD_OUTERIPCS_SHIFT);
+	if (ol_flags & PKT_TX_MACSEC)
+		cmdtype |= IXGBE_ADVTXD_MAC_LINKSEC;
 	return cmdtype;
 }
 

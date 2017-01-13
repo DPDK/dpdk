@@ -43,6 +43,7 @@
 #define IXGBE_FLAG_NEED_LINK_UPDATE (uint32_t)(1 << 0)
 #define IXGBE_FLAG_MAILBOX          (uint32_t)(1 << 1)
 #define IXGBE_FLAG_PHY_INTERRUPT    (uint32_t)(1 << 2)
+#define IXGBE_FLAG_MACSEC           (uint32_t)(1 << 3)
 
 /*
  * Defines that were not part of ixgbe_type.h as they are not used by the
@@ -129,6 +130,10 @@
 
 #define IXGBE_MISC_VEC_ID               RTE_INTR_VEC_ZERO_OFFSET
 #define IXGBE_RX_VEC_START              RTE_INTR_VEC_RXTX_OFFSET
+
+#define IXGBE_SECTX_MINSECIFG_MASK      0x0000000F
+
+#define IXGBE_MACSEC_PNTHRSH            0xFFFFFE00
 
 /*
  * Information about the fdir mode.
@@ -265,11 +270,44 @@ struct ixgbe_filter_info {
 };
 
 /*
+ * Statistics counters collected by the MACsec
+ */
+struct ixgbe_macsec_stats {
+	/* TX port statistics */
+	uint64_t out_pkts_untagged;
+	uint64_t out_pkts_encrypted;
+	uint64_t out_pkts_protected;
+	uint64_t out_octets_encrypted;
+	uint64_t out_octets_protected;
+
+	/* RX port statistics */
+	uint64_t in_pkts_untagged;
+	uint64_t in_pkts_badtag;
+	uint64_t in_pkts_nosci;
+	uint64_t in_pkts_unknownsci;
+	uint64_t in_octets_decrypted;
+	uint64_t in_octets_validated;
+
+	/* RX SC statistics */
+	uint64_t in_pkts_unchecked;
+	uint64_t in_pkts_delayed;
+	uint64_t in_pkts_late;
+
+	/* RX SA statistics */
+	uint64_t in_pkts_ok;
+	uint64_t in_pkts_invalid;
+	uint64_t in_pkts_notvalid;
+	uint64_t in_pkts_unusedsa;
+	uint64_t in_pkts_notusingsa;
+};
+
+/*
  * Structure to store private data for each driver instance (for each port).
  */
 struct ixgbe_adapter {
 	struct ixgbe_hw             hw;
 	struct ixgbe_hw_stats       stats;
+	struct ixgbe_macsec_stats   macsec_stats;
 	struct ixgbe_hw_fdir_info   fdir;
 	struct ixgbe_interrupt      intr;
 	struct ixgbe_stat_mapping_registers stat_mappings;
@@ -299,6 +337,9 @@ struct ixgbe_adapter {
 
 #define IXGBE_DEV_PRIVATE_TO_STATS(adapter) \
 	(&((struct ixgbe_adapter *)adapter)->stats)
+
+#define IXGBE_DEV_PRIVATE_TO_MACSEC_STATS(adapter) \
+	(&((struct ixgbe_adapter *)adapter)->macsec_stats)
 
 #define IXGBE_DEV_PRIVATE_TO_INTR(adapter) \
 	(&((struct ixgbe_adapter *)adapter)->intr)
@@ -448,4 +489,8 @@ uint32_t ixgbe_convert_vm_rx_mask_to_val(uint16_t rx_mask, uint32_t orig_val);
 
 int ixgbe_fdir_ctrl_func(struct rte_eth_dev *dev,
 			enum rte_filter_op filter_op, void *arg);
+
+int ixgbe_disable_sec_tx_path_generic(struct ixgbe_hw *hw);
+
+int ixgbe_enable_sec_tx_path_generic(struct ixgbe_hw *hw);
 #endif /* _IXGBE_ETHDEV_H_ */

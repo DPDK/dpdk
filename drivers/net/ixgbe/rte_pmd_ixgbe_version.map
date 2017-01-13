@@ -15,3 +15,14 @@ DPDK_16.11 {
 	rte_pmd_ixgbe_set_vf_vlan_insert;
 	rte_pmd_ixgbe_set_vf_vlan_stripq;
 } DPDK_2.0;
+
+DPDK_17.02 {
+	global:
+
+	rte_pmd_ixgbe_macsec_enable;
+	rte_pmd_ixgbe_macsec_disable;
+	rte_pmd_ixgbe_macsec_config_txsc;
+	rte_pmd_ixgbe_macsec_config_rxsc;
+	rte_pmd_ixgbe_macsec_select_txsa;
+	rte_pmd_ixgbe_macsec_select_rxsa;
+} DPDK_16.11;

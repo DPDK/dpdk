@@ -231,6 +231,7 @@ static int ixgbe_dev_rss_reta_query(struct rte_eth_dev *dev,
 			uint16_t reta_size);
 static void ixgbe_dev_link_status_print(struct rte_eth_dev *dev);
 static int ixgbe_dev_lsc_interrupt_setup(struct rte_eth_dev *dev);
+static int ixgbe_dev_macsec_interrupt_setup(struct rte_eth_dev *dev);
 static int ixgbe_dev_rxq_interrupt_setup(struct rte_eth_dev *dev);
 static int ixgbe_dev_interrupt_get_status(struct rte_eth_dev *dev);
 static int ixgbe_dev_interrupt_action(struct rte_eth_dev *dev,
@@ -746,6 +747,51 @@ static const struct rte_ixgbe_xstats_name_off rte_ixgbe_stats_strings[] = {
 
 #define IXGBE_NB_HW_STATS (sizeof(rte_ixgbe_stats_strings) / \
 			   sizeof(rte_ixgbe_stats_strings[0]))
+
+/* MACsec statistics */
+static const struct rte_ixgbe_xstats_name_off rte_ixgbe_macsec_strings[] = {
+	{"out_pkts_untagged", offsetof(struct ixgbe_macsec_stats,
+		out_pkts_untagged)},
+	{"out_pkts_encrypted", offsetof(struct ixgbe_macsec_stats,
+		out_pkts_encrypted)},
+	{"out_pkts_protected", offsetof(struct ixgbe_macsec_stats,
+		out_pkts_protected)},
+	{"out_octets_encrypted", offsetof(struct ixgbe_macsec_stats,
+		out_octets_encrypted)},
+	{"out_octets_protected", offsetof(struct ixgbe_macsec_stats,
+		out_octets_protected)},
+	{"in_pkts_untagged", offsetof(struct ixgbe_macsec_stats,
+		in_pkts_untagged)},
+	{"in_pkts_badtag", offsetof(struct ixgbe_macsec_stats,
+		in_pkts_badtag)},
+	{"in_pkts_nosci", offsetof(struct ixgbe_macsec_stats,
+		in_pkts_nosci)},
+	{"in_pkts_unknownsci", offsetof(struct ixgbe_macsec_stats,
+		in_pkts_unknownsci)},
+	{"in_octets_decrypted", offsetof(struct ixgbe_macsec_stats,
+		in_octets_decrypted)},
+	{"in_octets_validated", offsetof(struct ixgbe_macsec_stats,
+		in_octets_validated)},
+	{"in_pkts_unchecked", offsetof(struct ixgbe_macsec_stats,
+		in_pkts_unchecked)},
+	{"in_pkts_delayed", offsetof(struct ixgbe_macsec_stats,
+		in_pkts_delayed)},
+	{"in_pkts_late", offsetof(struct ixgbe_macsec_stats,
+		in_pkts_late)},
+	{"in_pkts_ok", offsetof(struct ixgbe_macsec_stats,
+		in_pkts_ok)},
+	{"in_pkts_invalid", offsetof(struct ixgbe_macsec_stats,
+		in_pkts_invalid)},
+	{"in_pkts_notvalid", offsetof(struct ixgbe_macsec_stats,
+		in_pkts_notvalid)},
+	{"in_pkts_unusedsa", offsetof(struct ixgbe_macsec_stats,
+		in_pkts_unusedsa)},
+	{"in_pkts_notusingsa", offsetof(struct ixgbe_macsec_stats,
+		in_pkts_notusingsa)},
+};
+
+#define IXGBE_NB_MACSEC_STATS (sizeof(rte_ixgbe_macsec_strings) / \
+			   sizeof(rte_ixgbe_macsec_strings[0]))
 
 /* Per-queue statistics */
 static const struct rte_ixgbe_xstats_name_off rte_ixgbe_rxq_strings[] = {
@@ -2371,6 +2417,7 @@ skip_link_setup:
 		/* check if lsc interrupt is enabled */
 		if (dev->data->dev_conf.intr_conf.lsc != 0)
 			ixgbe_dev_lsc_interrupt_setup(dev);
+		ixgbe_dev_macsec_interrupt_setup(dev);
 	} else {
 		rte_intr_callback_unregister(intr_handle,
 					     ixgbe_dev_interrupt_handler, dev);
@@ -2561,6 +2608,7 @@ ixgbe_dev_close(struct rte_eth_dev *dev)
 static void
 ixgbe_read_stats_registers(struct ixgbe_hw *hw,
 			   struct ixgbe_hw_stats *hw_stats,
+			   struct ixgbe_macsec_stats *macsec_stats,
 			   uint64_t *total_missed_rx, uint64_t *total_qbrc,
 			   uint64_t *total_qprc, uint64_t *total_qprdc)
 {
@@ -2730,6 +2778,40 @@ ixgbe_read_stats_registers(struct ixgbe_hw *hw,
 	/* Flow Director Stats registers */
 	hw_stats->fdirmatch += IXGBE_READ_REG(hw, IXGBE_FDIRMATCH);
 	hw_stats->fdirmiss += IXGBE_READ_REG(hw, IXGBE_FDIRMISS);
+
+	/* MACsec Stats registers */
+	macsec_stats->out_pkts_untagged += IXGBE_READ_REG(hw, IXGBE_LSECTXUT);
+	macsec_stats->out_pkts_encrypted +=
+		IXGBE_READ_REG(hw, IXGBE_LSECTXPKTE);
+	macsec_stats->out_pkts_protected +=
+		IXGBE_READ_REG(hw, IXGBE_LSECTXPKTP);
+	macsec_stats->out_octets_encrypted +=
+		IXGBE_READ_REG(hw, IXGBE_LSECTXOCTE);
+	macsec_stats->out_octets_protected +=
+		IXGBE_READ_REG(hw, IXGBE_LSECTXOCTP);
+	macsec_stats->in_pkts_untagged += IXGBE_READ_REG(hw, IXGBE_LSECRXUT);
+	macsec_stats->in_pkts_badtag += IXGBE_READ_REG(hw, IXGBE_LSECRXBAD);
+	macsec_stats->in_pkts_nosci += IXGBE_READ_REG(hw, IXGBE_LSECRXNOSCI);
+	macsec_stats->in_pkts_unknownsci +=
+		IXGBE_READ_REG(hw, IXGBE_LSECRXUNSCI);
+	macsec_stats->in_octets_decrypted +=
+		IXGBE_READ_REG(hw, IXGBE_LSECRXOCTD);
+	macsec_stats->in_octets_validated +=
+		IXGBE_READ_REG(hw, IXGBE_LSECRXOCTV);
+	macsec_stats->in_pkts_unchecked += IXGBE_READ_REG(hw, IXGBE_LSECRXUNCH);
+	macsec_stats->in_pkts_delayed += IXGBE_READ_REG(hw, IXGBE_LSECRXDELAY);
+	macsec_stats->in_pkts_late += IXGBE_READ_REG(hw, IXGBE_LSECRXLATE);
+	for (i = 0; i < 2; i++) {
+		macsec_stats->in_pkts_ok +=
+			IXGBE_READ_REG(hw, IXGBE_LSECRXOK(i));
+		macsec_stats->in_pkts_invalid +=
+			IXGBE_READ_REG(hw, IXGBE_LSECRXINV(i));
+		macsec_stats->in_pkts_notvalid +=
+			IXGBE_READ_REG(hw, IXGBE_LSECRXNV(i));
+	}
+	macsec_stats->in_pkts_unusedsa += IXGBE_READ_REG(hw, IXGBE_LSECRXUNSA);
+	macsec_stats->in_pkts_notusingsa +=
+		IXGBE_READ_REG(hw, IXGBE_LSECRXNUSA);
 }
 
 /*
@@ -2742,6 +2824,9 @@ ixgbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 			IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ixgbe_hw_stats *hw_stats =
 			IXGBE_DEV_PRIVATE_TO_STATS(dev->data->dev_private);
+	struct ixgbe_macsec_stats *macsec_stats =
+			IXGBE_DEV_PRIVATE_TO_MACSEC_STATS(
+				dev->data->dev_private);
 	uint64_t total_missed_rx, total_qbrc, total_qprc, total_qprdc;
 	unsigned i;
 
@@ -2750,8 +2835,8 @@ ixgbe_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	total_qprc = 0;
 	total_qprdc = 0;
 
-	ixgbe_read_stats_registers(hw, hw_stats, &total_missed_rx, &total_qbrc,
-			&total_qprc, &total_qprdc);
+	ixgbe_read_stats_registers(hw, hw_stats, macsec_stats, &total_missed_rx,
+			&total_qbrc, &total_qprc, &total_qprdc);
 
 	if (stats == NULL)
 		return;
@@ -2803,7 +2888,7 @@ ixgbe_dev_stats_reset(struct rte_eth_dev *dev)
 /* This function calculates the number of xstats based on the current config */
 static unsigned
 ixgbe_xstats_calc_num(void) {
-	return IXGBE_NB_HW_STATS +
+	return IXGBE_NB_HW_STATS + IXGBE_NB_MACSEC_STATS +
 		(IXGBE_NB_RXQ_PRIO_STATS * IXGBE_NB_RXQ_PRIO_VALUES) +
 		(IXGBE_NB_TXQ_PRIO_STATS * IXGBE_NB_TXQ_PRIO_VALUES);
 }
@@ -2827,6 +2912,15 @@ static int ixgbe_dev_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
 				sizeof(xstats_names[count].name),
 				"%s",
 				rte_ixgbe_stats_strings[i].name);
+			count++;
+		}
+
+		/* MACsec Stats */
+		for (i = 0; i < IXGBE_NB_MACSEC_STATS; i++) {
+			snprintf(xstats_names[count].name,
+				sizeof(xstats_names[count].name),
+				"%s",
+				rte_ixgbe_macsec_strings[i].name);
 			count++;
 		}
 
@@ -2879,6 +2973,9 @@ ixgbe_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 			IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ixgbe_hw_stats *hw_stats =
 			IXGBE_DEV_PRIVATE_TO_STATS(dev->data->dev_private);
+	struct ixgbe_macsec_stats *macsec_stats =
+			IXGBE_DEV_PRIVATE_TO_MACSEC_STATS(
+				dev->data->dev_private);
 	uint64_t total_missed_rx, total_qbrc, total_qprc, total_qprdc;
 	unsigned i, stat, count = 0;
 
@@ -2892,8 +2989,8 @@ ixgbe_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 	total_qprc = 0;
 	total_qprdc = 0;
 
-	ixgbe_read_stats_registers(hw, hw_stats, &total_missed_rx, &total_qbrc,
-				   &total_qprc, &total_qprdc);
+	ixgbe_read_stats_registers(hw, hw_stats, macsec_stats, &total_missed_rx,
+			&total_qbrc, &total_qprc, &total_qprdc);
 
 	/* If this is a reset xstats is NULL, and we have cleared the
 	 * registers by reading them.
@@ -2906,6 +3003,14 @@ ixgbe_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 	for (i = 0; i < IXGBE_NB_HW_STATS; i++) {
 		xstats[count].value = *(uint64_t *)(((char *)hw_stats) +
 				rte_ixgbe_stats_strings[i].offset);
+		xstats[count].id = count;
+		count++;
+	}
+
+	/* MACsec Stats */
+	for (i = 0; i < IXGBE_NB_MACSEC_STATS; i++) {
+		xstats[count].value = *(uint64_t *)(((char *)macsec_stats) +
+				rte_ixgbe_macsec_strings[i].offset);
 		xstats[count].id = count;
 		count++;
 	}
@@ -2939,6 +3044,9 @@ ixgbe_dev_xstats_reset(struct rte_eth_dev *dev)
 {
 	struct ixgbe_hw_stats *stats =
 			IXGBE_DEV_PRIVATE_TO_STATS(dev->data->dev_private);
+	struct ixgbe_macsec_stats *macsec_stats =
+			IXGBE_DEV_PRIVATE_TO_MACSEC_STATS(
+				dev->data->dev_private);
 
 	unsigned count = ixgbe_xstats_calc_num();
 
@@ -2947,6 +3055,7 @@ ixgbe_dev_xstats_reset(struct rte_eth_dev *dev)
 
 	/* Reset software totals */
 	memset(stats, 0, sizeof(*stats));
+	memset(macsec_stats, 0, sizeof(*macsec_stats));
 }
 
 static void
@@ -3079,6 +3188,10 @@ ixgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	    !RTE_ETH_DEV_SRIOV(dev).active)
 		dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_TCP_LRO;
 
+	if (hw->mac.type == ixgbe_mac_82599EB ||
+	    hw->mac.type == ixgbe_mac_X540)
+		dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_MACSEC_STRIP;
+
 	if (hw->mac.type == ixgbe_mac_X550 ||
 	    hw->mac.type == ixgbe_mac_X550EM_x ||
 	    hw->mac.type == ixgbe_mac_X550EM_a)
@@ -3091,6 +3204,10 @@ ixgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		DEV_TX_OFFLOAD_TCP_CKSUM   |
 		DEV_TX_OFFLOAD_SCTP_CKSUM  |
 		DEV_TX_OFFLOAD_TCP_TSO;
+
+	if (hw->mac.type == ixgbe_mac_82599EB ||
+	    hw->mac.type == ixgbe_mac_X540)
+		dev_info->tx_offload_capa |= DEV_TX_OFFLOAD_MACSEC_INSERT;
 
 	if (hw->mac.type == ixgbe_mac_X550 ||
 	    hw->mac.type == ixgbe_mac_X550EM_x ||
@@ -3389,6 +3506,28 @@ ixgbe_dev_rxq_interrupt_setup(struct rte_eth_dev *dev)
 	return 0;
 }
 
+/**
+ * It clears the interrupt causes and enables the interrupt.
+ * It will be called once only during nic initialized.
+ *
+ * @param dev
+ *  Pointer to struct rte_eth_dev.
+ *
+ * @return
+ *  - On success, zero.
+ *  - On failure, a negative value.
+ */
+static int
+ixgbe_dev_macsec_interrupt_setup(struct rte_eth_dev *dev)
+{
+	struct ixgbe_interrupt *intr =
+		IXGBE_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
+
+	intr->mask |= IXGBE_EICR_LINKSEC;
+
+	return 0;
+}
+
 /*
  * It reads ICR and sets flag (IXGBE_EICR_LSC) for the link_update.
  *
@@ -3422,6 +3561,9 @@ ixgbe_dev_interrupt_get_status(struct rte_eth_dev *dev)
 
 	if (eicr & IXGBE_EICR_MAILBOX)
 		intr->flags |= IXGBE_FLAG_MAILBOX;
+
+	if (eicr & IXGBE_EICR_LINKSEC)
+		intr->flags |= IXGBE_FLAG_MACSEC;
 
 	if (hw->mac.type ==  ixgbe_mac_X550EM_x &&
 	    hw->phy.type == ixgbe_phy_x550em_ext_t &&
@@ -3575,6 +3717,12 @@ ixgbe_dev_interrupt_delayed_handler(void *param)
 		intr->flags &= ~IXGBE_FLAG_NEED_LINK_UPDATE;
 		ixgbe_dev_link_status_print(dev);
 		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
+	}
+
+	if (intr->flags & IXGBE_FLAG_MACSEC) {
+		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_MACSEC,
+					      NULL);
+		intr->flags &= ~IXGBE_FLAG_MACSEC;
 	}
 
 	PMD_DRV_LOG(DEBUG, "enable intr in delayed handler S[%08x]", eicr);
@@ -7615,6 +7763,330 @@ ixgbevf_dev_interrupt_handler(__rte_unused struct rte_intr_handle *handle,
 
 	ixgbevf_dev_interrupt_get_status(dev);
 	ixgbevf_dev_interrupt_action(dev);
+}
+
+/**
+ *  ixgbe_disable_sec_tx_path_generic - Stops the transmit data path
+ *  @hw: pointer to hardware structure
+ *
+ *  Stops the transmit data path and waits for the HW to internally empty
+ *  the Tx security block
+ **/
+int ixgbe_disable_sec_tx_path_generic(struct ixgbe_hw *hw)
+{
+#define IXGBE_MAX_SECTX_POLL 40
+
+	int i;
+	int sectxreg;
+
+	sectxreg = IXGBE_READ_REG(hw, IXGBE_SECTXCTRL);
+	sectxreg |= IXGBE_SECTXCTRL_TX_DIS;
+	IXGBE_WRITE_REG(hw, IXGBE_SECTXCTRL, sectxreg);
+	for (i = 0; i < IXGBE_MAX_SECTX_POLL; i++) {
+		sectxreg = IXGBE_READ_REG(hw, IXGBE_SECTXSTAT);
+		if (sectxreg & IXGBE_SECTXSTAT_SECTX_RDY)
+			break;
+		/* Use interrupt-safe sleep just in case */
+		usec_delay(1000);
+	}
+
+	/* For informational purposes only */
+	if (i >= IXGBE_MAX_SECTX_POLL)
+		PMD_DRV_LOG(DEBUG, "Tx unit being enabled before security "
+			 "path fully disabled.  Continuing with init.\n");
+
+	return IXGBE_SUCCESS;
+}
+
+/**
+ *  ixgbe_enable_sec_tx_path_generic - Enables the transmit data path
+ *  @hw: pointer to hardware structure
+ *
+ *  Enables the transmit data path.
+ **/
+int ixgbe_enable_sec_tx_path_generic(struct ixgbe_hw *hw)
+{
+	uint32_t sectxreg;
+
+	sectxreg = IXGBE_READ_REG(hw, IXGBE_SECTXCTRL);
+	sectxreg &= ~IXGBE_SECTXCTRL_TX_DIS;
+	IXGBE_WRITE_REG(hw, IXGBE_SECTXCTRL, sectxreg);
+	IXGBE_WRITE_FLUSH(hw);
+
+	return IXGBE_SUCCESS;
+}
+
+int
+rte_pmd_ixgbe_macsec_enable(uint8_t port, uint8_t en, uint8_t rp)
+{
+	struct ixgbe_hw *hw;
+	struct rte_eth_dev *dev;
+	uint32_t ctrl;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	/* Stop the data paths */
+	if (ixgbe_disable_sec_rx_path(hw) != IXGBE_SUCCESS)
+		return -ENOTSUP;
+	/*
+	 * Workaround:
+	 * As no ixgbe_disable_sec_rx_path equivalent is
+	 * implemented for tx in the base code, and we are
+	 * not allowed to modify the base code in DPDK, so
+	 * just call the hand-written one directly for now.
+	 * The hardware support has been checked by
+	 * ixgbe_disable_sec_rx_path().
+	 */
+	ixgbe_disable_sec_tx_path_generic(hw);
+
+	/* Enable Ethernet CRC (required by MACsec offload) */
+	ctrl = IXGBE_READ_REG(hw, IXGBE_HLREG0);
+	ctrl |= IXGBE_HLREG0_TXCRCEN | IXGBE_HLREG0_RXCRCSTRP;
+	IXGBE_WRITE_REG(hw, IXGBE_HLREG0, ctrl);
+
+	/* Enable the TX and RX crypto engines */
+	ctrl = IXGBE_READ_REG(hw, IXGBE_SECTXCTRL);
+	ctrl &= ~IXGBE_SECTXCTRL_SECTX_DIS;
+	IXGBE_WRITE_REG(hw, IXGBE_SECTXCTRL, ctrl);
+
+	ctrl = IXGBE_READ_REG(hw, IXGBE_SECRXCTRL);
+	ctrl &= ~IXGBE_SECRXCTRL_SECRX_DIS;
+	IXGBE_WRITE_REG(hw, IXGBE_SECRXCTRL, ctrl);
+
+	ctrl = IXGBE_READ_REG(hw, IXGBE_SECTXMINIFG);
+	ctrl &= ~IXGBE_SECTX_MINSECIFG_MASK;
+	ctrl |= 0x3;
+	IXGBE_WRITE_REG(hw, IXGBE_SECTXMINIFG, ctrl);
+
+	/* Enable SA lookup */
+	ctrl = IXGBE_READ_REG(hw, IXGBE_LSECTXCTRL);
+	ctrl &= ~IXGBE_LSECTXCTRL_EN_MASK;
+	ctrl |= en ? IXGBE_LSECTXCTRL_AUTH_ENCRYPT :
+		     IXGBE_LSECTXCTRL_AUTH;
+	ctrl |= IXGBE_LSECTXCTRL_AISCI;
+	ctrl &= ~IXGBE_LSECTXCTRL_PNTHRSH_MASK;
+	ctrl |= IXGBE_MACSEC_PNTHRSH & IXGBE_LSECTXCTRL_PNTHRSH_MASK;
+	IXGBE_WRITE_REG(hw, IXGBE_LSECTXCTRL, ctrl);
+
+	ctrl = IXGBE_READ_REG(hw, IXGBE_LSECRXCTRL);
+	ctrl &= ~IXGBE_LSECRXCTRL_EN_MASK;
+	ctrl |= IXGBE_LSECRXCTRL_STRICT << IXGBE_LSECRXCTRL_EN_SHIFT;
+	ctrl &= ~IXGBE_LSECRXCTRL_PLSH;
+	if (rp)
+		ctrl |= IXGBE_LSECRXCTRL_RP;
+	else
+		ctrl &= ~IXGBE_LSECRXCTRL_RP;
+	IXGBE_WRITE_REG(hw, IXGBE_LSECRXCTRL, ctrl);
+
+	/* Start the data paths */
+	ixgbe_enable_sec_rx_path(hw);
+	/*
+	 * Workaround:
+	 * As no ixgbe_enable_sec_rx_path equivalent is
+	 * implemented for tx in the base code, and we are
+	 * not allowed to modify the base code in DPDK, so
+	 * just call the hand-written one directly for now.
+	 */
+	ixgbe_enable_sec_tx_path_generic(hw);
+
+	return 0;
+}
+
+int
+rte_pmd_ixgbe_macsec_disable(uint8_t port)
+{
+	struct ixgbe_hw *hw;
+	struct rte_eth_dev *dev;
+	uint32_t ctrl;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	/* Stop the data paths */
+	if (ixgbe_disable_sec_rx_path(hw) != IXGBE_SUCCESS)
+		return -ENOTSUP;
+	/*
+	 * Workaround:
+	 * As no ixgbe_disable_sec_rx_path equivalent is
+	 * implemented for tx in the base code, and we are
+	 * not allowed to modify the base code in DPDK, so
+	 * just call the hand-written one directly for now.
+	 * The hardware support has been checked by
+	 * ixgbe_disable_sec_rx_path().
+	 */
+	ixgbe_disable_sec_tx_path_generic(hw);
+
+	/* Disable the TX and RX crypto engines */
+	ctrl = IXGBE_READ_REG(hw, IXGBE_SECTXCTRL);
+	ctrl |= IXGBE_SECTXCTRL_SECTX_DIS;
+	IXGBE_WRITE_REG(hw, IXGBE_SECTXCTRL, ctrl);
+
+	ctrl = IXGBE_READ_REG(hw, IXGBE_SECRXCTRL);
+	ctrl |= IXGBE_SECRXCTRL_SECRX_DIS;
+	IXGBE_WRITE_REG(hw, IXGBE_SECRXCTRL, ctrl);
+
+	/* Disable SA lookup */
+	ctrl = IXGBE_READ_REG(hw, IXGBE_LSECTXCTRL);
+	ctrl &= ~IXGBE_LSECTXCTRL_EN_MASK;
+	ctrl |= IXGBE_LSECTXCTRL_DISABLE;
+	IXGBE_WRITE_REG(hw, IXGBE_LSECTXCTRL, ctrl);
+
+	ctrl = IXGBE_READ_REG(hw, IXGBE_LSECRXCTRL);
+	ctrl &= ~IXGBE_LSECRXCTRL_EN_MASK;
+	ctrl |= IXGBE_LSECRXCTRL_DISABLE << IXGBE_LSECRXCTRL_EN_SHIFT;
+	IXGBE_WRITE_REG(hw, IXGBE_LSECRXCTRL, ctrl);
+
+	/* Start the data paths */
+	ixgbe_enable_sec_rx_path(hw);
+	/*
+	 * Workaround:
+	 * As no ixgbe_enable_sec_rx_path equivalent is
+	 * implemented for tx in the base code, and we are
+	 * not allowed to modify the base code in DPDK, so
+	 * just call the hand-written one directly for now.
+	 */
+	ixgbe_enable_sec_tx_path_generic(hw);
+
+	return 0;
+}
+
+int
+rte_pmd_ixgbe_macsec_config_txsc(uint8_t port, uint8_t *mac)
+{
+	struct ixgbe_hw *hw;
+	struct rte_eth_dev *dev;
+	uint32_t ctrl;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	ctrl = mac[0] | (mac[1] << 8) | (mac[2] << 16) | (mac[3] << 24);
+	IXGBE_WRITE_REG(hw, IXGBE_LSECTXSCL, ctrl);
+
+	ctrl = mac[4] | (mac[5] << 8);
+	IXGBE_WRITE_REG(hw, IXGBE_LSECTXSCH, ctrl);
+
+	return 0;
+}
+
+int
+rte_pmd_ixgbe_macsec_config_rxsc(uint8_t port, uint8_t *mac, uint16_t pi)
+{
+	struct ixgbe_hw *hw;
+	struct rte_eth_dev *dev;
+	uint32_t ctrl;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	ctrl = mac[0] | (mac[1] << 8) | (mac[2] << 16) | (mac[3] << 24);
+	IXGBE_WRITE_REG(hw, IXGBE_LSECRXSCL, ctrl);
+
+	pi = rte_cpu_to_be_16(pi);
+	ctrl = mac[4] | (mac[5] << 8) | (pi << 16);
+	IXGBE_WRITE_REG(hw, IXGBE_LSECRXSCH, ctrl);
+
+	return 0;
+}
+
+int
+rte_pmd_ixgbe_macsec_select_txsa(uint8_t port, uint8_t idx, uint8_t an,
+				 uint32_t pn, uint8_t *key)
+{
+	struct ixgbe_hw *hw;
+	struct rte_eth_dev *dev;
+	uint32_t ctrl, i;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (idx != 0 && idx != 1)
+		return -EINVAL;
+
+	if (an >= 4)
+		return -EINVAL;
+
+	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	/* Set the PN and key */
+	pn = rte_cpu_to_be_32(pn);
+	if (idx == 0) {
+		IXGBE_WRITE_REG(hw, IXGBE_LSECTXPN0, pn);
+
+		for (i = 0; i < 4; i++) {
+			ctrl = (key[i * 4 + 0] <<  0) |
+			       (key[i * 4 + 1] <<  8) |
+			       (key[i * 4 + 2] << 16) |
+			       (key[i * 4 + 3] << 24);
+			IXGBE_WRITE_REG(hw, IXGBE_LSECTXKEY0(i), ctrl);
+		}
+	} else {
+		IXGBE_WRITE_REG(hw, IXGBE_LSECTXPN1, pn);
+
+		for (i = 0; i < 4; i++) {
+			ctrl = (key[i * 4 + 0] <<  0) |
+			       (key[i * 4 + 1] <<  8) |
+			       (key[i * 4 + 2] << 16) |
+			       (key[i * 4 + 3] << 24);
+			IXGBE_WRITE_REG(hw, IXGBE_LSECTXKEY1(i), ctrl);
+		}
+	}
+
+	/* Set AN and select the SA */
+	ctrl = (an << idx * 2) | (idx << 4);
+	IXGBE_WRITE_REG(hw, IXGBE_LSECTXSA, ctrl);
+
+	return 0;
+}
+
+int
+rte_pmd_ixgbe_macsec_select_rxsa(uint8_t port, uint8_t idx, uint8_t an,
+				 uint32_t pn, uint8_t *key)
+{
+	struct ixgbe_hw *hw;
+	struct rte_eth_dev *dev;
+	uint32_t ctrl, i;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (idx != 0 && idx != 1)
+		return -EINVAL;
+
+	if (an >= 4)
+		return -EINVAL;
+
+	/* Set the PN */
+	pn = rte_cpu_to_be_32(pn);
+	IXGBE_WRITE_REG(hw, IXGBE_LSECRXPN(idx), pn);
+
+	/* Set the key */
+	for (i = 0; i < 4; i++) {
+		ctrl = (key[i * 4 + 0] <<  0) |
+		       (key[i * 4 + 1] <<  8) |
+		       (key[i * 4 + 2] << 16) |
+		       (key[i * 4 + 3] << 24);
+		IXGBE_WRITE_REG(hw, IXGBE_LSECRXKEY(idx, i), ctrl);
+	}
+
+	/* Set the AN and validate the SA */
+	ctrl = an | (1 << 2);
+	IXGBE_WRITE_REG(hw, IXGBE_LSECRXSA(idx), ctrl);
+
+	return 0;
 }
 
 RTE_PMD_REGISTER_PCI(net_ixgbe, rte_ixgbe_pmd.pci_drv);
