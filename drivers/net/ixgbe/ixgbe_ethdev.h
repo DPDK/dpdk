@@ -312,6 +312,9 @@ struct ixgbe_l2_tn_info {
 	struct ixgbe_l2_tn_filter_list      l2_tn_list;
 	struct ixgbe_l2_tn_filter         **hash_map;
 	struct rte_hash                    *hash_handle;
+	bool e_tag_en; /* e-tag enabled */
+	bool e_tag_fwd_en; /* e-tag based forwarding enabled */
+	bool e_tag_ether_type; /* ether type for e-tag */
 };
 
 /*

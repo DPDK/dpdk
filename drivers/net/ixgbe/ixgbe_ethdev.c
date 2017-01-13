@@ -393,6 +393,7 @@ static int ixgbe_dev_udp_tunnel_port_add(struct rte_eth_dev *dev,
 static int ixgbe_dev_udp_tunnel_port_del(struct rte_eth_dev *dev,
 					 struct rte_eth_udp_tunnel *udp_tunnel);
 static int ixgbe_filter_restore(struct rte_eth_dev *dev);
+static void ixgbe_l2_tunnel_conf(struct rte_eth_dev *dev);
 
 /*
  * Define VF Stats MACRO for Non "cleared on read" register
@@ -1520,6 +1521,9 @@ static int ixgbe_l2_tn_filter_init(struct rte_eth_dev *eth_dev)
 			"Failed to allocate memory for L2 TN hash map!");
 		return -ENOMEM;
 	}
+	l2_tn_info->e_tag_en = FALSE;
+	l2_tn_info->e_tag_fwd_en = FALSE;
+	l2_tn_info->e_tag_ether_type = DEFAULT_ETAG_ETYPE;
 
 	return 0;
 }
@@ -2579,6 +2583,7 @@ skip_link_setup:
 
 	/* resume enabled intr since hw reset */
 	ixgbe_enable_intr(dev);
+	ixgbe_l2_tunnel_conf(dev);
 	ixgbe_filter_restore(dev);
 
 	return 0;
@@ -7297,12 +7302,15 @@ ixgbe_dev_l2_tunnel_eth_type_conf(struct rte_eth_dev *dev,
 {
 	int ret = 0;
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_l2_tn_info *l2_tn_info =
+		IXGBE_DEV_PRIVATE_TO_L2_TN_INFO(dev->data->dev_private);
 
 	if (l2_tunnel == NULL)
 		return -EINVAL;
 
 	switch (l2_tunnel->l2_tunnel_type) {
 	case RTE_L2_TUNNEL_TYPE_E_TAG:
+		l2_tn_info->e_tag_ether_type = l2_tunnel->ether_type;
 		ret = ixgbe_update_e_tag_eth_type(hw, l2_tunnel->ether_type);
 		break;
 	default:
@@ -7341,9 +7349,12 @@ ixgbe_dev_l2_tunnel_enable(struct rte_eth_dev *dev,
 {
 	int ret = 0;
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_l2_tn_info *l2_tn_info =
+		IXGBE_DEV_PRIVATE_TO_L2_TN_INFO(dev->data->dev_private);
 
 	switch (l2_tunnel_type) {
 	case RTE_L2_TUNNEL_TYPE_E_TAG:
+		l2_tn_info->e_tag_en = TRUE;
 		ret = ixgbe_e_tag_enable(hw);
 		break;
 	default:
@@ -7382,9 +7393,12 @@ ixgbe_dev_l2_tunnel_disable(struct rte_eth_dev *dev,
 {
 	int ret = 0;
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_l2_tn_info *l2_tn_info =
+		IXGBE_DEV_PRIVATE_TO_L2_TN_INFO(dev->data->dev_private);
 
 	switch (l2_tunnel_type) {
 	case RTE_L2_TUNNEL_TYPE_E_TAG:
+		l2_tn_info->e_tag_en = FALSE;
 		ret = ixgbe_e_tag_disable(hw);
 		break;
 	default:
@@ -7691,10 +7705,13 @@ ixgbe_dev_l2_tunnel_forwarding_enable
 	(struct rte_eth_dev *dev,
 	 enum rte_eth_tunnel_type l2_tunnel_type)
 {
+	struct ixgbe_l2_tn_info *l2_tn_info =
+		IXGBE_DEV_PRIVATE_TO_L2_TN_INFO(dev->data->dev_private);
 	int ret = 0;
 
 	switch (l2_tunnel_type) {
 	case RTE_L2_TUNNEL_TYPE_E_TAG:
+		l2_tn_info->e_tag_fwd_en = TRUE;
 		ret = ixgbe_e_tag_forwarding_en_dis(dev, 1);
 		break;
 	default:
@@ -7712,10 +7729,13 @@ ixgbe_dev_l2_tunnel_forwarding_disable
 	(struct rte_eth_dev *dev,
 	 enum rte_eth_tunnel_type l2_tunnel_type)
 {
+	struct ixgbe_l2_tn_info *l2_tn_info =
+		IXGBE_DEV_PRIVATE_TO_L2_TN_INFO(dev->data->dev_private);
 	int ret = 0;
 
 	switch (l2_tunnel_type) {
 	case RTE_L2_TUNNEL_TYPE_E_TAG:
+		l2_tn_info->e_tag_fwd_en = FALSE;
 		ret = ixgbe_e_tag_forwarding_en_dis(dev, 0);
 		break;
 	default:
@@ -8532,6 +8552,22 @@ ixgbe_filter_restore(struct rte_eth_dev *dev)
 	ixgbe_l2_tn_filter_restore(dev);
 
 	return 0;
+}
+
+static void
+ixgbe_l2_tunnel_conf(struct rte_eth_dev *dev)
+{
+	struct ixgbe_l2_tn_info *l2_tn_info =
+		IXGBE_DEV_PRIVATE_TO_L2_TN_INFO(dev->data->dev_private);
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (l2_tn_info->e_tag_en)
+		(void)ixgbe_e_tag_enable(hw);
+
+	if (l2_tn_info->e_tag_fwd_en)
+		(void)ixgbe_e_tag_forwarding_en_dis(dev, 1);
+
+	(void)ixgbe_update_e_tag_eth_type(hw, l2_tn_info->e_tag_ether_type);
 }
 
 RTE_PMD_REGISTER_PCI(net_ixgbe, rte_ixgbe_pmd.pci_drv);
