@@ -881,6 +881,7 @@ struct rte_eth_conf {
 #define DEV_RX_OFFLOAD_TCP_LRO     0x00000010
 #define DEV_RX_OFFLOAD_QINQ_STRIP  0x00000020
 #define DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM 0x00000040
+#define DEV_RX_OFFLOAD_MACSEC_STRIP     0x00000080
 
 /**
  * TX offload capabilities of a device.
@@ -898,6 +899,7 @@ struct rte_eth_conf {
 #define DEV_TX_OFFLOAD_GRE_TNL_TSO      0x00000400    /**< Used for tunneling packet. */
 #define DEV_TX_OFFLOAD_IPIP_TNL_TSO     0x00000800    /**< Used for tunneling packet. */
 #define DEV_TX_OFFLOAD_GENEVE_TNL_TSO   0x00001000    /**< Used for tunneling packet. */
+#define DEV_TX_OFFLOAD_MACSEC_INSERT    0x00002000
 
 /**
  * Ethernet device information
