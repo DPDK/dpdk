@@ -117,7 +117,8 @@ virtio_user_get_features(struct virtio_hw *hw)
 {
 	struct virtio_user_dev *dev = virtio_user_get_dev(hw);
 
-	return dev->features;
+	/* unmask feature bits defined in vhost user protocol */
+	return dev->device_features & VIRTIO_PMD_SUPPORTED_GUEST_FEATURES;
 }
 
 static void
@@ -125,7 +126,7 @@ virtio_user_set_features(struct virtio_hw *hw, uint64_t features)
 {
 	struct virtio_user_dev *dev = virtio_user_get_dev(hw);
 
-	dev->features = features;
+	dev->features = features & dev->device_features;
 }
 
 static uint8_t

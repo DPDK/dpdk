@@ -148,12 +148,13 @@ virtio_user_start_device(struct virtio_user_dev *dev)
 
 	/* Step 1: set features
 	 * Make sure VHOST_USER_F_PROTOCOL_FEATURES is added if mq is enabled,
-	 * and VIRTIO_NET_F_MAC is stripped.
+	 * VIRTIO_NET_F_MAC and VIRTIO_NET_F_CTRL_VQ is stripped.
 	 */
 	features = dev->features;
 	if (dev->max_queue_pairs > 1)
 		features |= VHOST_USER_MQ;
 	features &= ~(1ull << VIRTIO_NET_F_MAC);
+	features &= ~(1ull << VIRTIO_NET_F_CTRL_VQ);
 	ret = vhost_user_sock(dev->vhostfd, VHOST_USER_SET_FEATURES, &features);
 	if (ret < 0)
 		goto error;
@@ -228,29 +229,26 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 	}
 
 	if (vhost_user_sock(dev->vhostfd, VHOST_USER_GET_FEATURES,
-			    &dev->features) < 0) {
+			    &dev->device_features) < 0) {
 		PMD_INIT_LOG(ERR, "get_features failed: %s", strerror(errno));
 		return -1;
 	}
 	if (dev->mac_specified)
-		dev->features |= (1ull << VIRTIO_NET_F_MAC);
+		dev->device_features |= (1ull << VIRTIO_NET_F_MAC);
 
-	if (!cq) {
-		dev->features &= ~(1ull << VIRTIO_NET_F_CTRL_VQ);
-		/* Also disable features depends on VIRTIO_NET_F_CTRL_VQ */
-		dev->features &= ~(1ull << VIRTIO_NET_F_CTRL_RX);
-		dev->features &= ~(1ull << VIRTIO_NET_F_CTRL_VLAN);
-		dev->features &= ~(1ull << VIRTIO_NET_F_GUEST_ANNOUNCE);
-		dev->features &= ~(1ull << VIRTIO_NET_F_MQ);
-		dev->features &= ~(1ull << VIRTIO_NET_F_CTRL_MAC_ADDR);
-	} else {
-		/* vhost user backend does not need to know ctrl-q, so
-		 * actually we need add this bit into features. However,
-		 * DPDK vhost-user does send features with this bit, so we
-		 * check it instead of OR it for now.
+	if (cq) {
+		/* device does not really need to know anything about CQ,
+		 * so if necessary, we just claim to support CQ
 		 */
-		if (!(dev->features & (1ull << VIRTIO_NET_F_CTRL_VQ)))
-			PMD_INIT_LOG(INFO, "vhost does not support ctrl-q");
+		dev->device_features |= (1ull << VIRTIO_NET_F_CTRL_VQ);
+	} else {
+		dev->device_features &= ~(1ull << VIRTIO_NET_F_CTRL_VQ);
+		/* Also disable features depends on VIRTIO_NET_F_CTRL_VQ */
+		dev->device_features &= ~(1ull << VIRTIO_NET_F_CTRL_RX);
+		dev->device_features &= ~(1ull << VIRTIO_NET_F_CTRL_VLAN);
+		dev->device_features &= ~(1ull << VIRTIO_NET_F_GUEST_ANNOUNCE);
+		dev->device_features &= ~(1ull << VIRTIO_NET_F_MQ);
+		dev->device_features &= ~(1ull << VIRTIO_NET_F_CTRL_MAC_ADDR);
 	}
 
 	if (dev->max_queue_pairs > 1) {

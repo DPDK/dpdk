@@ -46,7 +46,10 @@ struct virtio_user_dev {
 	uint32_t	max_queue_pairs;
 	uint32_t	queue_pairs;
 	uint32_t	queue_size;
-	uint64_t	features;
+	uint64_t	features; /* the negotiated features with driver,
+				   * and will be sync with device
+				   */
+	uint64_t	device_features; /* supported features by device */
 	uint8_t		status;
 	uint8_t		mac_addr[ETHER_ADDR_LEN];
 	char		path[PATH_MAX];
