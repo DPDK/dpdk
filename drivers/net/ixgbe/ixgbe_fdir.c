@@ -1479,3 +1479,38 @@ ixgbe_fdir_ctrl_func(struct rte_eth_dev *dev,
 	}
 	return ret;
 }
+
+/* restore flow director filter */
+void
+ixgbe_fdir_filter_restore(struct rte_eth_dev *dev)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_hw_fdir_info *fdir_info =
+		IXGBE_DEV_PRIVATE_TO_FDIR_INFO(dev->data->dev_private);
+	struct ixgbe_fdir_filter *node;
+	bool is_perfect = FALSE;
+	enum rte_fdir_mode fdir_mode = dev->data->dev_conf.fdir_conf.mode;
+
+	if (fdir_mode >= RTE_FDIR_MODE_PERFECT &&
+	    fdir_mode <= RTE_FDIR_MODE_PERFECT_TUNNEL)
+		is_perfect = TRUE;
+
+	if (is_perfect) {
+		TAILQ_FOREACH(node, &fdir_info->fdir_list, entries) {
+			(void)fdir_write_perfect_filter_82599(hw,
+							      &node->ixgbe_fdir,
+							      node->queue,
+							      node->fdirflags,
+							      node->fdirhash,
+							      fdir_mode);
+		}
+	} else {
+		TAILQ_FOREACH(node, &fdir_info->fdir_list, entries) {
+			(void)fdir_add_signature_filter_82599(hw,
+							      &node->ixgbe_fdir,
+							      node->queue,
+							      node->fdirflags,
+							      node->fdirhash);
+		}
+	}
+}

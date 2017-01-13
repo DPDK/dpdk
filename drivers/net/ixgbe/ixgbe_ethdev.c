@@ -8506,6 +8506,7 @@ ixgbe_filter_restore(struct rte_eth_dev *dev)
 	ixgbe_ntuple_filter_restore(dev);
 	ixgbe_ethertype_filter_restore(dev);
 	ixgbe_syn_filter_restore(dev);
+	ixgbe_fdir_filter_restore(dev);
 
 	return 0;
 }
