@@ -418,10 +418,12 @@ i40e_pf_host_hmc_config_txq(struct i40e_hw *hw,
 
 	/* clear the context structure first */
 	memset(&tx_ctx, 0, sizeof(tx_ctx));
-	tx_ctx.new_context = 1;
 	tx_ctx.base = txq->dma_ring_addr / I40E_QUEUE_BASE_ADDR_UNIT;
 	tx_ctx.qlen = txq->ring_len;
 	tx_ctx.rdylist = rte_le_to_cpu_16(vf->vsi->info.qs_handle[0]);
+	tx_ctx.head_wb_ena = txq->headwb_enabled;
+	tx_ctx.head_wb_addr = txq->dma_headwb_addr;
+
 	err = i40e_clear_lan_tx_queue_context(hw, abs_queue_id);
 	if (err != I40E_SUCCESS)
 		return err;
