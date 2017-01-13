@@ -267,6 +267,8 @@ struct ixgbe_filter_info {
 	/* Bit mask for every used 5tuple filter */
 	uint32_t fivetuple_mask[IXGBE_5TUPLE_ARRAY_SIZE];
 	struct ixgbe_5tuple_filter_list fivetuple_list;
+	/* store the SYN filter info */
+	uint32_t syn_info;
 };
 
 /*

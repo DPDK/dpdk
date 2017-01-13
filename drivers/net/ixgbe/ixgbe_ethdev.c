@@ -1323,10 +1323,12 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev)
 	/* enable support intr */
 	ixgbe_enable_intr(eth_dev);
 
+	/* initialize filter info */
+	memset(filter_info, 0,
+	       sizeof(struct ixgbe_filter_info));
+
 	/* initialize 5tuple filter list */
 	TAILQ_INIT(&filter_info->fivetuple_list);
-	memset(filter_info->fivetuple_mask, 0,
-	       sizeof(uint32_t) * IXGBE_5TUPLE_ARRAY_SIZE);
 
 	return 0;
 }
@@ -5817,15 +5819,18 @@ ixgbe_syn_filter_set(struct rte_eth_dev *dev,
 			bool add)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_filter_info *filter_info =
+		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+	uint32_t syn_info;
 	uint32_t synqf;
 
 	if (filter->queue >= IXGBE_MAX_RX_QUEUE_NUM)
 		return -EINVAL;
 
-	synqf = IXGBE_READ_REG(hw, IXGBE_SYNQF);
+	syn_info = filter_info->syn_info;
 
 	if (add) {
-		if (synqf & IXGBE_SYN_FILTER_ENABLE)
+		if (syn_info & IXGBE_SYN_FILTER_ENABLE)
 			return -EINVAL;
 		synqf = (uint32_t)(((filter->queue << IXGBE_SYN_FILTER_QUEUE_SHIFT) &
 			IXGBE_SYN_FILTER_QUEUE) | IXGBE_SYN_FILTER_ENABLE);
@@ -5835,10 +5840,13 @@ ixgbe_syn_filter_set(struct rte_eth_dev *dev,
 		else
 			synqf &= ~IXGBE_SYN_FILTER_SYNQFP;
 	} else {
-		if (!(synqf & IXGBE_SYN_FILTER_ENABLE))
+		synqf = IXGBE_READ_REG(hw, IXGBE_SYNQF);
+		if (!(syn_info & IXGBE_SYN_FILTER_ENABLE))
 			return -ENOENT;
 		synqf &= ~(IXGBE_SYN_FILTER_QUEUE | IXGBE_SYN_FILTER_ENABLE);
 	}
+
+	filter_info->syn_info = synqf;
 	IXGBE_WRITE_REG(hw, IXGBE_SYNQF, synqf);
 	IXGBE_WRITE_FLUSH(hw);
 	return 0;
