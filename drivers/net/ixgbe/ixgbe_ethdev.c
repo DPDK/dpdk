@@ -8483,11 +8483,29 @@ ixgbe_ethertype_filter_restore(struct rte_eth_dev *dev)
 	}
 }
 
+/* restore SYN filter */
+static inline void
+ixgbe_syn_filter_restore(struct rte_eth_dev *dev)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_filter_info *filter_info =
+		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+	uint32_t synqf;
+
+	synqf = filter_info->syn_info;
+
+	if (synqf & IXGBE_SYN_FILTER_ENABLE) {
+		IXGBE_WRITE_REG(hw, IXGBE_SYNQF, synqf);
+		IXGBE_WRITE_FLUSH(hw);
+	}
+}
+
 static int
 ixgbe_filter_restore(struct rte_eth_dev *dev)
 {
 	ixgbe_ntuple_filter_restore(dev);
 	ixgbe_ethertype_filter_restore(dev);
+	ixgbe_syn_filter_restore(dev);
 
 	return 0;
 }
