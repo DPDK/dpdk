@@ -268,6 +268,20 @@ enum rte_flow_item_type {
 	 * See struct rte_flow_item_vxlan.
 	 */
 	RTE_FLOW_ITEM_TYPE_VXLAN,
+
+	/**
+	 * Matches a E_TAG header.
+	 *
+	 * See struct rte_flow_item_e_tag.
+	 */
+	RTE_FLOW_ITEM_TYPE_E_TAG,
+
+	/**
+	 * Matches a NVGRE header.
+	 *
+	 * See struct rte_flow_item_nvgre.
+	 */
+	RTE_FLOW_ITEM_TYPE_NVGRE,
 };
 
 /**
@@ -546,6 +560,42 @@ struct rte_flow_item_vxlan {
 /** Default mask for RTE_FLOW_ITEM_TYPE_VXLAN. */
 static const struct rte_flow_item_vxlan rte_flow_item_vxlan_mask = {
 	.vni = "\xff\xff\xff",
+};
+
+/**
+ * RTE_FLOW_ITEM_TYPE_E_TAG.
+ *
+ * Matches a E-tag header.
+ */
+struct rte_flow_item_e_tag {
+	uint16_t tpid; /**< Tag protocol identifier (0x893F). */
+	/**
+	 * E-Tag control information (E-TCI).
+	 * E-PCP (3b), E-DEI (1b), ingress E-CID base (12b).
+	 */
+	uint16_t epcp_edei_in_ecid_b;
+	/** Reserved (2b), GRP (2b), E-CID base (12b). */
+	uint16_t rsvd_grp_ecid_b;
+	uint8_t in_ecid_e; /**< Ingress E-CID ext. */
+	uint8_t ecid_e; /**< E-CID ext. */
+};
+
+/**
+ * RTE_FLOW_ITEM_TYPE_NVGRE.
+ *
+ * Matches a NVGRE header.
+ */
+struct rte_flow_item_nvgre {
+	/**
+	 * Checksum (1b), undefined (1b), key bit (1b), sequence number (1b),
+	 * reserved 0 (9b), version (3b).
+	 *
+	 * c_k_s_rsvd0_ver must have value 0x2000 according to RFC 7637.
+	 */
+	uint16_t c_k_s_rsvd0_ver;
+	uint16_t protocol; /**< Protocol type (0x6558). */
+	uint8_t tni[3]; /**< Virtual subnet ID. */
+	uint8_t flow_id; /**< Flow ID. */
 };
 
 /**

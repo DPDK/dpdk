@@ -8627,7 +8627,8 @@ ixgbe_clear_syn_filter(struct rte_eth_dev *dev)
 }
 
 /* remove all the L2 tunnel filters */
-int ixgbe_clear_all_l2_tn_filter(struct rte_eth_dev *dev)
+int
+ixgbe_clear_all_l2_tn_filter(struct rte_eth_dev *dev)
 {
 	struct ixgbe_l2_tn_info *l2_tn_info =
 		IXGBE_DEV_PRIVATE_TO_L2_TN_INFO(dev->data->dev_private);

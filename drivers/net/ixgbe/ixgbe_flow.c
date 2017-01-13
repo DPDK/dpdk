@@ -114,6 +114,19 @@ ixgbe_parse_syn_filter(const struct rte_flow_attr *attr,
 				struct rte_eth_syn_filter *filter,
 				struct rte_flow_error *error);
 static int
+cons_parse_l2_tn_filter(const struct rte_flow_attr *attr,
+		const struct rte_flow_item pattern[],
+		const struct rte_flow_action actions[],
+		struct rte_eth_l2_tunnel_conf *filter,
+		struct rte_flow_error *error);
+static int
+ixgbe_validate_l2_tn_filter(struct rte_eth_dev *dev,
+			const struct rte_flow_attr *attr,
+			const struct rte_flow_item pattern[],
+			const struct rte_flow_action actions[],
+			struct rte_eth_l2_tunnel_conf *rule,
+			struct rte_flow_error *error);
+static int
 ixgbe_flow_validate(__rte_unused struct rte_eth_dev *dev,
 		const struct rte_flow_attr *attr,
 		const struct rte_flow_item pattern[],
@@ -1033,6 +1046,204 @@ ixgbe_parse_syn_filter(const struct rte_flow_attr *attr,
 }
 
 /**
+ * Parse the rule to see if it is a L2 tunnel rule.
+ * And get the L2 tunnel filter info BTW.
+ * Only support E-tag now.
+ * pattern:
+ * The first not void item can be E_TAG.
+ * The next not void item must be END.
+ * action:
+ * The first not void action should be QUEUE.
+ * The next not void action should be END.
+ * pattern example:
+ * ITEM		Spec			Mask
+ * E_TAG	grp		0x1	0x3
+		e_cid_base	0x309	0xFFF
+ * END
+ * other members in mask and spec should set to 0x00.
+ * item->last should be NULL.
+ */
+static int
+cons_parse_l2_tn_filter(const struct rte_flow_attr *attr,
+			const struct rte_flow_item pattern[],
+			const struct rte_flow_action actions[],
+			struct rte_eth_l2_tunnel_conf *filter,
+			struct rte_flow_error *error)
+{
+	const struct rte_flow_item *item;
+	const struct rte_flow_item_e_tag *e_tag_spec;
+	const struct rte_flow_item_e_tag *e_tag_mask;
+	const struct rte_flow_action *act;
+	const struct rte_flow_action_queue *act_q;
+	uint32_t index;
+
+	if (!pattern) {
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ITEM_NUM,
+			NULL, "NULL pattern.");
+		return -rte_errno;
+	}
+
+	if (!actions) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ACTION_NUM,
+				   NULL, "NULL action.");
+		return -rte_errno;
+	}
+
+	if (!attr) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ATTR,
+				   NULL, "NULL attribute.");
+		return -rte_errno;
+	}
+	/* parse pattern */
+	index = 0;
+
+	/* The first not void item should be e-tag. */
+	NEXT_ITEM_OF_PATTERN(item, pattern, index);
+	if (item->type != RTE_FLOW_ITEM_TYPE_E_TAG) {
+		memset(filter, 0, sizeof(struct rte_eth_l2_tunnel_conf));
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ITEM,
+			item, "Not supported by L2 tunnel filter");
+		return -rte_errno;
+	}
+
+	if (!item->spec || !item->mask) {
+		memset(filter, 0, sizeof(struct rte_eth_l2_tunnel_conf));
+		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM,
+			item, "Not supported by L2 tunnel filter");
+		return -rte_errno;
+	}
+
+	/*Not supported last point for range*/
+	if (item->last) {
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+			item, "Not supported last point for range");
+		return -rte_errno;
+	}
+
+	e_tag_spec = (const struct rte_flow_item_e_tag *)item->spec;
+	e_tag_mask = (const struct rte_flow_item_e_tag *)item->mask;
+
+	/* Only care about GRP and E cid base. */
+	if (e_tag_mask->epcp_edei_in_ecid_b ||
+	    e_tag_mask->in_ecid_e ||
+	    e_tag_mask->ecid_e ||
+	    e_tag_mask->rsvd_grp_ecid_b != rte_cpu_to_be_16(0x3FFF)) {
+		memset(filter, 0, sizeof(struct rte_eth_l2_tunnel_conf));
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ITEM,
+			item, "Not supported by L2 tunnel filter");
+		return -rte_errno;
+	}
+
+	filter->l2_tunnel_type = RTE_L2_TUNNEL_TYPE_E_TAG;
+	/**
+	 * grp and e_cid_base are bit fields and only use 14 bits.
+	 * e-tag id is taken as little endian by HW.
+	 */
+	filter->tunnel_id = rte_be_to_cpu_16(e_tag_spec->rsvd_grp_ecid_b);
+
+	/* check if the next not void item is END */
+	index++;
+	NEXT_ITEM_OF_PATTERN(item, pattern, index);
+	if (item->type != RTE_FLOW_ITEM_TYPE_END) {
+		memset(filter, 0, sizeof(struct rte_eth_l2_tunnel_conf));
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ITEM,
+			item, "Not supported by L2 tunnel filter");
+		return -rte_errno;
+	}
+
+	/* parse attr */
+	/* must be input direction */
+	if (!attr->ingress) {
+		memset(filter, 0, sizeof(struct rte_eth_l2_tunnel_conf));
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ATTR_INGRESS,
+			attr, "Only support ingress.");
+		return -rte_errno;
+	}
+
+	/* not supported */
+	if (attr->egress) {
+		memset(filter, 0, sizeof(struct rte_eth_l2_tunnel_conf));
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ATTR_EGRESS,
+			attr, "Not support egress.");
+		return -rte_errno;
+	}
+
+	/* not supported */
+	if (attr->priority) {
+		memset(filter, 0, sizeof(struct rte_eth_l2_tunnel_conf));
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
+			attr, "Not support priority.");
+		return -rte_errno;
+	}
+
+	/* parse action */
+	index = 0;
+
+	/* check if the first not void action is QUEUE. */
+	NEXT_ITEM_OF_ACTION(act, actions, index);
+	if (act->type != RTE_FLOW_ACTION_TYPE_QUEUE) {
+		memset(filter, 0, sizeof(struct rte_eth_l2_tunnel_conf));
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ACTION,
+			act, "Not supported action.");
+		return -rte_errno;
+	}
+
+	act_q = (const struct rte_flow_action_queue *)act->conf;
+	filter->pool = act_q->index;
+
+	/* check if the next not void item is END */
+	index++;
+	NEXT_ITEM_OF_ACTION(act, actions, index);
+	if (act->type != RTE_FLOW_ACTION_TYPE_END) {
+		memset(filter, 0, sizeof(struct rte_eth_l2_tunnel_conf));
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ACTION,
+			act, "Not supported action.");
+		return -rte_errno;
+	}
+
+	return 0;
+}
+
+static int
+ixgbe_validate_l2_tn_filter(struct rte_eth_dev *dev,
+			const struct rte_flow_attr *attr,
+			const struct rte_flow_item pattern[],
+			const struct rte_flow_action actions[],
+			struct rte_eth_l2_tunnel_conf *l2_tn_filter,
+			struct rte_flow_error *error)
+{
+	int ret = 0;
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	ret = cons_parse_l2_tn_filter(attr, pattern,
+				actions, l2_tn_filter, error);
+
+	if (hw->mac.type != ixgbe_mac_X550 &&
+		hw->mac.type != ixgbe_mac_X550EM_x &&
+		hw->mac.type != ixgbe_mac_X550EM_a) {
+		memset(l2_tn_filter, 0, sizeof(struct rte_eth_l2_tunnel_conf));
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ITEM,
+			NULL, "Not supported by L2 tunnel filter");
+		return -rte_errno;
+	}
+
+	return ret;
+}
+
+/**
  * Check if the flow rule is supported by ixgbe.
  * It only checkes the format. Don't guarantee the rule can be programmed into
  * the HW. Because there can be no enough room for the rule.
@@ -1047,6 +1258,7 @@ ixgbe_flow_validate(__rte_unused struct rte_eth_dev *dev,
 	struct rte_eth_ntuple_filter ntuple_filter;
 	struct rte_eth_ethertype_filter ethertype_filter;
 	struct rte_eth_syn_filter syn_filter;
+	struct rte_eth_l2_tunnel_conf l2_tn_filter;
 	int ret;
 
 	memset(&ntuple_filter, 0, sizeof(struct rte_eth_ntuple_filter));
@@ -1066,6 +1278,10 @@ ixgbe_flow_validate(__rte_unused struct rte_eth_dev *dev,
 				actions, &syn_filter, error);
 	if (!ret)
 		return 0;
+
+	memset(&l2_tn_filter, 0, sizeof(struct rte_eth_l2_tunnel_conf));
+	ret = ixgbe_validate_l2_tn_filter(dev, attr, pattern,
+				actions, &l2_tn_filter, error);
 
 	return ret;
 }
