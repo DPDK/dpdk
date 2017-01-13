@@ -347,8 +347,7 @@ i40e_pf_host_process_cmd_get_vf_resource(struct i40e_pf_vf *vf, bool b_op)
 
 	/* Change below setting if PF host can support more VSIs for VF */
 	vf_res->vsi_res[0].vsi_type = I40E_VSI_SRIOV;
-	/* As assume Vf only has single VSI now, always return 0 */
-	vf_res->vsi_res[0].vsi_id = 0;
+	vf_res->vsi_res[0].vsi_id = vf->vsi->vsi_id;
 	vf_res->vsi_res[0].num_queue_pairs = vf->vsi->nb_qps;
 	ether_addr_copy(&vf->mac_addr,
 		(struct ether_addr *)vf_res->vsi_res[0].default_mac_addr);
