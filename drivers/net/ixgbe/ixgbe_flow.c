@@ -157,10 +157,15 @@ ixgbe_flow_validate(__rte_unused struct rte_eth_dev *dev,
 		const struct rte_flow_item pattern[],
 		const struct rte_flow_action actions[],
 		struct rte_flow_error *error);
+static struct rte_flow *ixgbe_flow_create(struct rte_eth_dev *dev,
+		const struct rte_flow_attr *attr,
+		const struct rte_flow_item pattern[],
+		const struct rte_flow_action actions[],
+		struct rte_flow_error *error);
 
 const struct rte_flow_ops ixgbe_flow_ops = {
 	ixgbe_flow_validate,
-	NULL,
+	ixgbe_flow_create,
 	NULL,
 	ixgbe_flow_flush,
 	NULL,
@@ -2434,6 +2439,193 @@ ixgbe_parse_fdir_filter(const struct rte_flow_attr *attr,
 					actions, rule, error);
 
 	return ret;
+}
+
+/**
+ * Create or destroy a flow rule.
+ * Theorically one rule can match more than one filters.
+ * We will let it use the filter which it hitt first.
+ * So, the sequence matters.
+ */
+static struct rte_flow *
+ixgbe_flow_create(struct rte_eth_dev *dev,
+		  const struct rte_flow_attr *attr,
+		  const struct rte_flow_item pattern[],
+		  const struct rte_flow_action actions[],
+		  struct rte_flow_error *error)
+{
+	int ret;
+	struct rte_eth_ntuple_filter ntuple_filter;
+	struct rte_eth_ethertype_filter ethertype_filter;
+	struct rte_eth_syn_filter syn_filter;
+	struct ixgbe_fdir_rule fdir_rule;
+	struct rte_eth_l2_tunnel_conf l2_tn_filter;
+	struct ixgbe_hw_fdir_info *fdir_info =
+		IXGBE_DEV_PRIVATE_TO_FDIR_INFO(dev->data->dev_private);
+	struct rte_flow *flow = NULL;
+	struct ixgbe_ntuple_filter_ele *ntuple_filter_ptr;
+	struct ixgbe_ethertype_filter_ele *ethertype_filter_ptr;
+	struct ixgbe_eth_syn_filter_ele *syn_filter_ptr;
+	struct ixgbe_eth_l2_tunnel_conf_ele *l2_tn_filter_ptr;
+	struct ixgbe_fdir_rule_ele *fdir_rule_ptr;
+	struct ixgbe_flow_mem *ixgbe_flow_mem_ptr;
+
+	flow = rte_zmalloc("ixgbe_rte_flow", sizeof(struct rte_flow), 0);
+	if (!flow) {
+		PMD_DRV_LOG(ERR, "failed to allocate memory");
+		return (struct rte_flow *)flow;
+	}
+	ixgbe_flow_mem_ptr = rte_zmalloc("ixgbe_flow_mem",
+			sizeof(struct ixgbe_flow_mem), 0);
+	if (!ixgbe_flow_mem_ptr) {
+		PMD_DRV_LOG(ERR, "failed to allocate memory");
+		rte_free(flow);
+		return NULL;
+	}
+	ixgbe_flow_mem_ptr->flow = flow;
+	TAILQ_INSERT_TAIL(&ixgbe_flow_list,
+				ixgbe_flow_mem_ptr, entries);
+
+	memset(&ntuple_filter, 0, sizeof(struct rte_eth_ntuple_filter));
+	ret = ixgbe_parse_ntuple_filter(attr, pattern,
+			actions, &ntuple_filter, error);
+	if (!ret) {
+		ret = ixgbe_add_del_ntuple_filter(dev, &ntuple_filter, TRUE);
+		if (!ret) {
+			ntuple_filter_ptr = rte_zmalloc("ixgbe_ntuple_filter",
+				sizeof(struct ixgbe_ntuple_filter_ele), 0);
+			(void)rte_memcpy(&ntuple_filter_ptr->filter_info,
+				&ntuple_filter,
+				sizeof(struct rte_eth_ntuple_filter));
+			TAILQ_INSERT_TAIL(&filter_ntuple_list,
+				ntuple_filter_ptr, entries);
+			flow->rule = ntuple_filter_ptr;
+			flow->filter_type = RTE_ETH_FILTER_NTUPLE;
+			return flow;
+		}
+		goto out;
+	}
+
+	memset(&ethertype_filter, 0, sizeof(struct rte_eth_ethertype_filter));
+	ret = ixgbe_parse_ethertype_filter(attr, pattern,
+				actions, &ethertype_filter, error);
+	if (!ret) {
+		ret = ixgbe_add_del_ethertype_filter(dev,
+				&ethertype_filter, TRUE);
+		if (!ret) {
+			ethertype_filter_ptr = rte_zmalloc(
+				"ixgbe_ethertype_filter",
+				sizeof(struct ixgbe_ethertype_filter_ele), 0);
+			(void)rte_memcpy(&ethertype_filter_ptr->filter_info,
+				&ethertype_filter,
+				sizeof(struct rte_eth_ethertype_filter));
+			TAILQ_INSERT_TAIL(&filter_ethertype_list,
+				ethertype_filter_ptr, entries);
+			flow->rule = ethertype_filter_ptr;
+			flow->filter_type = RTE_ETH_FILTER_ETHERTYPE;
+			return flow;
+		}
+		goto out;
+	}
+
+	memset(&syn_filter, 0, sizeof(struct rte_eth_syn_filter));
+	ret = cons_parse_syn_filter(attr, pattern, actions, &syn_filter, error);
+	if (!ret) {
+		ret = ixgbe_syn_filter_set(dev, &syn_filter, TRUE);
+		if (!ret) {
+			syn_filter_ptr = rte_zmalloc("ixgbe_syn_filter",
+				sizeof(struct ixgbe_eth_syn_filter_ele), 0);
+			(void)rte_memcpy(&syn_filter_ptr->filter_info,
+				&syn_filter,
+				sizeof(struct rte_eth_syn_filter));
+			TAILQ_INSERT_TAIL(&filter_syn_list,
+				syn_filter_ptr,
+				entries);
+			flow->rule = syn_filter_ptr;
+			flow->filter_type = RTE_ETH_FILTER_SYN;
+			return flow;
+		}
+		goto out;
+	}
+
+	memset(&fdir_rule, 0, sizeof(struct ixgbe_fdir_rule));
+	ret = ixgbe_parse_fdir_filter(attr, pattern,
+				actions, &fdir_rule, error);
+	if (!ret) {
+		/* A mask cannot be deleted. */
+		if (fdir_rule.b_mask) {
+			if (!fdir_info->mask_added) {
+				/* It's the first time the mask is set. */
+				rte_memcpy(&fdir_info->mask,
+					&fdir_rule.mask,
+					sizeof(struct ixgbe_hw_fdir_mask));
+				ret = ixgbe_fdir_set_input_mask(dev);
+				if (ret)
+					goto out;
+
+				fdir_info->mask_added = TRUE;
+			} else {
+				/**
+				 * Only support one global mask,
+				 * all the masks should be the same.
+				 */
+				ret = memcmp(&fdir_info->mask,
+					&fdir_rule.mask,
+					sizeof(struct ixgbe_hw_fdir_mask));
+				if (ret)
+					goto out;
+			}
+		}
+
+		if (fdir_rule.b_spec) {
+			ret = ixgbe_fdir_filter_program(dev, &fdir_rule,
+					FALSE, FALSE);
+			if (!ret) {
+				fdir_rule_ptr = rte_zmalloc("ixgbe_fdir_filter",
+					sizeof(struct ixgbe_fdir_rule_ele), 0);
+				(void)rte_memcpy(&fdir_rule_ptr->filter_info,
+					&fdir_rule,
+					sizeof(struct ixgbe_fdir_rule));
+				TAILQ_INSERT_TAIL(&filter_fdir_list,
+					fdir_rule_ptr, entries);
+				flow->rule = fdir_rule_ptr;
+				flow->filter_type = RTE_ETH_FILTER_FDIR;
+
+				return flow;
+			}
+
+			if (ret)
+				goto out;
+		}
+
+		goto out;
+	}
+
+	memset(&l2_tn_filter, 0, sizeof(struct rte_eth_l2_tunnel_conf));
+	ret = cons_parse_l2_tn_filter(attr, pattern,
+					actions, &l2_tn_filter, error);
+	if (!ret) {
+		ret = ixgbe_dev_l2_tunnel_filter_add(dev, &l2_tn_filter, FALSE);
+		if (!ret) {
+			l2_tn_filter_ptr = rte_zmalloc("ixgbe_l2_tn_filter",
+				sizeof(struct ixgbe_eth_l2_tunnel_conf_ele), 0);
+			(void)rte_memcpy(&l2_tn_filter_ptr->filter_info,
+				&l2_tn_filter,
+				sizeof(struct rte_eth_l2_tunnel_conf));
+			TAILQ_INSERT_TAIL(&filter_l2_tunnel_list,
+				l2_tn_filter_ptr, entries);
+			flow->rule = l2_tn_filter_ptr;
+			flow->filter_type = RTE_ETH_FILTER_L2_TUNNEL;
+			return flow;
+		}
+	}
+
+out:
+	TAILQ_REMOVE(&ixgbe_flow_list,
+		ixgbe_flow_mem_ptr, entries);
+	rte_free(ixgbe_flow_mem_ptr);
+	rte_free(flow);
+	return NULL;
 }
 
 /**

@@ -309,9 +309,6 @@ static void ixgbevf_add_mac_addr(struct rte_eth_dev *dev,
 static void ixgbevf_remove_mac_addr(struct rte_eth_dev *dev, uint32_t index);
 static void ixgbevf_set_default_mac_addr(struct rte_eth_dev *dev,
 					     struct ether_addr *mac_addr);
-static int ixgbe_syn_filter_set(struct rte_eth_dev *dev,
-			struct rte_eth_syn_filter *filter,
-			bool add);
 static int ixgbe_syn_filter_get(struct rte_eth_dev *dev,
 			struct rte_eth_syn_filter *filter);
 static int ixgbe_syn_filter_handle(struct rte_eth_dev *dev,
@@ -321,17 +318,11 @@ static int ixgbe_add_5tuple_filter(struct rte_eth_dev *dev,
 			struct ixgbe_5tuple_filter *filter);
 static void ixgbe_remove_5tuple_filter(struct rte_eth_dev *dev,
 			struct ixgbe_5tuple_filter *filter);
-static int ixgbe_add_del_ntuple_filter(struct rte_eth_dev *dev,
-			struct rte_eth_ntuple_filter *filter,
-			bool add);
 static int ixgbe_ntuple_filter_handle(struct rte_eth_dev *dev,
 				enum rte_filter_op filter_op,
 				void *arg);
 static int ixgbe_get_ntuple_filter(struct rte_eth_dev *dev,
 			struct rte_eth_ntuple_filter *filter);
-static int ixgbe_add_del_ethertype_filter(struct rte_eth_dev *dev,
-			struct rte_eth_ethertype_filter *filter,
-			bool add);
 static int ixgbe_ethertype_filter_handle(struct rte_eth_dev *dev,
 				enum rte_filter_op filter_op,
 				void *arg);
@@ -1343,6 +1334,14 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev)
 
 	/* initialize l2 tunnel filter list & hash */
 	ixgbe_l2_tn_filter_init(eth_dev);
+
+	TAILQ_INIT(&filter_ntuple_list);
+	TAILQ_INIT(&filter_ethertype_list);
+	TAILQ_INIT(&filter_syn_list);
+	TAILQ_INIT(&filter_fdir_list);
+	TAILQ_INIT(&filter_l2_tunnel_list);
+	TAILQ_INIT(&ixgbe_flow_list);
+
 	return 0;
 }
 
@@ -5956,7 +5955,7 @@ ixgbevf_set_default_mac_addr(struct rte_eth_dev *dev, struct ether_addr *addr)
 		return -ENOTSUP;\
 } while (0)
 
-static int
+int
 ixgbe_syn_filter_set(struct rte_eth_dev *dev,
 			struct rte_eth_syn_filter *filter,
 			bool add)
@@ -6335,7 +6334,7 @@ ntuple_filter_to_5tuple(struct rte_eth_ntuple_filter *filter,
  *    - On success, zero.
  *    - On failure, a negative value.
  */
-static int
+int
 ixgbe_add_del_ntuple_filter(struct rte_eth_dev *dev,
 			struct rte_eth_ntuple_filter *ntuple_filter,
 			bool add)
@@ -6480,7 +6479,7 @@ ixgbe_ntuple_filter_handle(struct rte_eth_dev *dev,
 	return ret;
 }
 
-static int
+int
 ixgbe_add_del_ethertype_filter(struct rte_eth_dev *dev,
 			struct rte_eth_ethertype_filter *filter,
 			bool add)
@@ -7559,7 +7558,7 @@ ixgbe_remove_l2_tn_filter(struct ixgbe_l2_tn_info *l2_tn_info,
 }
 
 /* Add l2 tunnel filter */
-static int
+int
 ixgbe_dev_l2_tunnel_filter_add(struct rte_eth_dev *dev,
 			       struct rte_eth_l2_tunnel_conf *l2_tunnel,
 			       bool restore)
