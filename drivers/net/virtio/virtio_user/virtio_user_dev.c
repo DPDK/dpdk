@@ -93,6 +93,7 @@ virtio_user_kick_queue(struct virtio_user_dev *dev, uint32_t queue_sel)
 	state.num = vring->num;
 	dev->ops->send_request(dev, VHOST_USER_SET_VRING_NUM, &state);
 
+	state.index = queue_sel;
 	state.num = 0; /* no reservation */
 	dev->ops->send_request(dev, VHOST_USER_SET_VRING_BASE, &state);
 

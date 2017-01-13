@@ -188,6 +188,29 @@ prepare_vhost_memory_kernel(void)
 	 (1ULL << VIRTIO_NET_F_CSUM))
 
 static int
+tap_supporte_mq(void)
+{
+	int tapfd;
+	unsigned int tap_features;
+
+	tapfd = open(PATH_NET_TUN, O_RDWR);
+	if (tapfd < 0) {
+		PMD_DRV_LOG(ERR, "fail to open %s: %s",
+			    PATH_NET_TUN, strerror(errno));
+		return -1;
+	}
+
+	if (ioctl(tapfd, TUNGETFEATURES, &tap_features) == -1) {
+		PMD_DRV_LOG(ERR, "TUNGETFEATURES failed: %s", strerror(errno));
+		close(tapfd);
+		return -1;
+	}
+
+	close(tapfd);
+	return tap_features & IFF_MULTI_QUEUE;
+}
+
+static int
 vhost_kernel_ioctl(struct virtio_user_dev *dev,
 		   enum vhost_user_request req,
 		   void *arg)
@@ -196,6 +219,8 @@ vhost_kernel_ioctl(struct virtio_user_dev *dev,
 	unsigned int i;
 	uint64_t req_kernel;
 	struct vhost_memory_kernel *vm = NULL;
+	int vhostfd;
+	unsigned int queue_sel;
 
 	PMD_DRV_LOG(INFO, "%s", vhost_msg_strings[req]);
 
@@ -215,15 +240,37 @@ vhost_kernel_ioctl(struct virtio_user_dev *dev,
 		/* VHOST kernel does not know about below flags */
 		*(uint64_t *)arg &= ~VHOST_KERNEL_GUEST_OFFLOADS_MASK;
 		*(uint64_t *)arg &= ~VHOST_KERNEL_HOST_OFFLOADS_MASK;
+
+		*(uint64_t *)arg &= ~(1ULL << VIRTIO_NET_F_MQ);
 	}
 
-	for (i = 0; i < dev->max_queue_pairs; ++i) {
-		if (dev->vhostfds[i] < 0)
-			continue;
+	switch (req_kernel) {
+	case VHOST_SET_VRING_NUM:
+	case VHOST_SET_VRING_ADDR:
+	case VHOST_SET_VRING_BASE:
+	case VHOST_GET_VRING_BASE:
+	case VHOST_SET_VRING_KICK:
+	case VHOST_SET_VRING_CALL:
+		queue_sel = *(unsigned int *)arg;
+		vhostfd = dev->vhostfds[queue_sel / 2];
+		*(unsigned int *)arg = queue_sel % 2;
+		PMD_DRV_LOG(DEBUG, "vhostfd=%d, index=%u",
+			    vhostfd, *(unsigned int *)arg);
+		break;
+	default:
+		vhostfd = -1;
+	}
+	if (vhostfd == -1) {
+		for (i = 0; i < dev->max_queue_pairs; ++i) {
+			if (dev->vhostfds[i] < 0)
+				continue;
 
-		ret = ioctl(dev->vhostfds[i], req_kernel, arg);
-		if (ret < 0)
-			break;
+			ret = ioctl(dev->vhostfds[i], req_kernel, arg);
+			if (ret < 0)
+				break;
+		}
+	} else {
+		ret = ioctl(vhostfd, req_kernel, arg);
 	}
 
 	if (!ret && req_kernel == VHOST_GET_FEATURES) {
@@ -233,6 +280,12 @@ vhost_kernel_ioctl(struct virtio_user_dev *dev,
 		 */
 		*((uint64_t *)arg) |= VHOST_KERNEL_GUEST_OFFLOADS_MASK;
 		*((uint64_t *)arg) |= VHOST_KERNEL_HOST_OFFLOADS_MASK;
+
+		/* vhost_kernel will not declare this feature, but it does
+		 * support multi-queue.
+		 */
+		if (tap_supporte_mq())
+			*(uint64_t *)arg |= (1ull << VIRTIO_NET_F_MQ);
 	}
 
 	if (vm)
@@ -305,6 +358,7 @@ vhost_kernel_enable_queue_pair(struct virtio_user_dev *dev,
 	int hdr_size;
 	int vhostfd;
 	int tapfd;
+	int req_mq = (dev->max_queue_pairs > 1);
 
 	vhostfd = dev->vhostfds[pair_idx];
 
@@ -324,7 +378,7 @@ vhost_kernel_enable_queue_pair(struct virtio_user_dev *dev,
 	else
 		hdr_size = sizeof(struct virtio_net_hdr);
 
-	tapfd = vhost_kernel_open_tap(&dev->ifname, hdr_size);
+	tapfd = vhost_kernel_open_tap(&dev->ifname, hdr_size, req_mq);
 	if (tapfd < 0) {
 		PMD_DRV_LOG(ERR, "fail to open tap for vhost kernel");
 		return -1;

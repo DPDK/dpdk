@@ -44,7 +44,7 @@
 #include "../virtio_logs.h"
 
 int
-vhost_kernel_open_tap(char **p_ifname, int hdr_size)
+vhost_kernel_open_tap(char **p_ifname, int hdr_size, int req_mq)
 {
 	unsigned int tap_features;
 	int sndbuf = INT_MAX;
@@ -90,6 +90,9 @@ vhost_kernel_open_tap(char **p_ifname, int hdr_size)
 		PMD_DRV_LOG(ERR, "TAP does not support IFF_VNET_HDR");
 		goto error;
 	}
+
+	if (req_mq)
+		ifr.ifr_flags |= IFF_MULTI_QUEUE;
 
 	if (*p_ifname)
 		strncpy(ifr.ifr_name, *p_ifname, IFNAMSIZ);
