@@ -137,6 +137,7 @@
 #define IXGBE_MACSEC_PNTHRSH            0xFFFFFE00
 
 #define IXGBE_MAX_FDIR_FILTER_NUM       (1024 * 32)
+#define IXGBE_MAX_L2_TN_FILTER_NUM      128
 
 /*
  * Information about the fdir mode.
@@ -288,6 +289,25 @@ struct ixgbe_filter_info {
 	uint32_t syn_info;
 };
 
+struct ixgbe_l2_tn_key {
+	enum rte_eth_tunnel_type          l2_tn_type;
+	uint32_t                          tn_id;
+};
+
+struct ixgbe_l2_tn_filter {
+	TAILQ_ENTRY(ixgbe_l2_tn_filter)    entries;
+	struct ixgbe_l2_tn_key             key;
+	uint32_t                           pool;
+};
+
+TAILQ_HEAD(ixgbe_l2_tn_filter_list, ixgbe_l2_tn_filter);
+
+struct ixgbe_l2_tn_info {
+	struct ixgbe_l2_tn_filter_list      l2_tn_list;
+	struct ixgbe_l2_tn_filter         **hash_map;
+	struct rte_hash                    *hash_handle;
+};
+
 /*
  * Statistics counters collected by the MACsec
  */
@@ -340,6 +360,7 @@ struct ixgbe_adapter {
 	struct ixgbe_bypass_info    bps;
 #endif /* RTE_NIC_BYPASS */
 	struct ixgbe_filter_info    filter;
+	struct ixgbe_l2_tn_info     l2_tn;
 
 	bool rx_bulk_alloc_allowed;
 	bool rx_vec_allowed;
@@ -389,6 +410,9 @@ struct ixgbe_adapter {
 
 #define IXGBE_DEV_PRIVATE_TO_FILTER_INFO(adapter) \
 	(&((struct ixgbe_adapter *)adapter)->filter)
+
+#define IXGBE_DEV_PRIVATE_TO_L2_TN_INFO(adapter) \
+	(&((struct ixgbe_adapter *)adapter)->l2_tn)
 
 /*
  * RX/TX function prototypes

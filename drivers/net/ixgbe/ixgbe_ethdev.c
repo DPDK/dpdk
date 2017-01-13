@@ -168,6 +168,8 @@ static int eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev);
 static int eth_ixgbe_dev_uninit(struct rte_eth_dev *eth_dev);
 static int ixgbe_fdir_filter_init(struct rte_eth_dev *eth_dev);
 static int ixgbe_fdir_filter_uninit(struct rte_eth_dev *eth_dev);
+static int ixgbe_l2_tn_filter_init(struct rte_eth_dev *eth_dev);
+static int ixgbe_l2_tn_filter_uninit(struct rte_eth_dev *eth_dev);
 static int  ixgbe_dev_configure(struct rte_eth_dev *dev);
 static int  ixgbe_dev_start(struct rte_eth_dev *dev);
 static void ixgbe_dev_stop(struct rte_eth_dev *dev);
@@ -1336,6 +1338,8 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev)
 	/* initialize flow director filter list & hash */
 	ixgbe_fdir_filter_init(eth_dev);
 
+	/* initialize l2 tunnel filter list & hash */
+	ixgbe_l2_tn_filter_init(eth_dev);
 	return 0;
 }
 
@@ -1380,6 +1384,9 @@ eth_ixgbe_dev_uninit(struct rte_eth_dev *eth_dev)
 	/* remove all the fdir filters & hash */
 	ixgbe_fdir_filter_uninit(eth_dev);
 
+	/* remove all the L2 tunnel filters & hash */
+	ixgbe_l2_tn_filter_uninit(eth_dev);
+
 	return 0;
 }
 
@@ -1399,6 +1406,27 @@ static int ixgbe_fdir_filter_uninit(struct rte_eth_dev *eth_dev)
 			     fdir_filter,
 			     entries);
 		rte_free(fdir_filter);
+	}
+
+	return 0;
+}
+
+static int ixgbe_l2_tn_filter_uninit(struct rte_eth_dev *eth_dev)
+{
+	struct ixgbe_l2_tn_info *l2_tn_info =
+		IXGBE_DEV_PRIVATE_TO_L2_TN_INFO(eth_dev->data->dev_private);
+	struct ixgbe_l2_tn_filter *l2_tn_filter;
+
+	if (l2_tn_info->hash_map)
+		rte_free(l2_tn_info->hash_map);
+	if (l2_tn_info->hash_handle)
+		rte_hash_free(l2_tn_info->hash_handle);
+
+	while ((l2_tn_filter = TAILQ_FIRST(&l2_tn_info->l2_tn_list))) {
+		TAILQ_REMOVE(&l2_tn_info->l2_tn_list,
+			     l2_tn_filter,
+			     entries);
+		rte_free(l2_tn_filter);
 	}
 
 	return 0;
@@ -1433,6 +1461,40 @@ static int ixgbe_fdir_filter_init(struct rte_eth_dev *eth_dev)
 	if (!fdir_info->hash_map) {
 		PMD_INIT_LOG(ERR,
 			     "Failed to allocate memory for fdir hash map!");
+		return -ENOMEM;
+	}
+	return 0;
+}
+
+static int ixgbe_l2_tn_filter_init(struct rte_eth_dev *eth_dev)
+{
+	struct ixgbe_l2_tn_info *l2_tn_info =
+		IXGBE_DEV_PRIVATE_TO_L2_TN_INFO(eth_dev->data->dev_private);
+	char l2_tn_hash_name[RTE_HASH_NAMESIZE];
+	struct rte_hash_parameters l2_tn_hash_params = {
+		.name = l2_tn_hash_name,
+		.entries = IXGBE_MAX_L2_TN_FILTER_NUM,
+		.key_len = sizeof(struct ixgbe_l2_tn_key),
+		.hash_func = rte_hash_crc,
+		.hash_func_init_val = 0,
+		.socket_id = rte_socket_id(),
+	};
+
+	TAILQ_INIT(&l2_tn_info->l2_tn_list);
+	snprintf(l2_tn_hash_name, RTE_HASH_NAMESIZE,
+		 "l2_tn_%s", eth_dev->data->name);
+	l2_tn_info->hash_handle = rte_hash_create(&l2_tn_hash_params);
+	if (!l2_tn_info->hash_handle) {
+		PMD_INIT_LOG(ERR, "Failed to create L2 TN hash table!");
+		return -EINVAL;
+	}
+	l2_tn_info->hash_map = rte_zmalloc("ixgbe",
+				   sizeof(struct ixgbe_l2_tn_filter *) *
+				   IXGBE_MAX_L2_TN_FILTER_NUM,
+				   0);
+	if (!l2_tn_info->hash_map) {
+		PMD_INIT_LOG(ERR,
+			"Failed to allocate memory for L2 TN hash map!");
 		return -ENOMEM;
 	}
 
@@ -7424,12 +7486,104 @@ ixgbe_e_tag_filter_add(struct rte_eth_dev *dev,
 	return -EINVAL;
 }
 
+static inline struct ixgbe_l2_tn_filter *
+ixgbe_l2_tn_filter_lookup(struct ixgbe_l2_tn_info *l2_tn_info,
+			  struct ixgbe_l2_tn_key *key)
+{
+	int ret;
+
+	ret = rte_hash_lookup(l2_tn_info->hash_handle, (const void *)key);
+	if (ret < 0)
+		return NULL;
+
+	return l2_tn_info->hash_map[ret];
+}
+
+static inline int
+ixgbe_insert_l2_tn_filter(struct ixgbe_l2_tn_info *l2_tn_info,
+			  struct ixgbe_l2_tn_filter *l2_tn_filter)
+{
+	int ret;
+
+	ret = rte_hash_add_key(l2_tn_info->hash_handle,
+			       &l2_tn_filter->key);
+
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR,
+			    "Failed to insert L2 tunnel filter"
+			    " to hash table %d!",
+			    ret);
+		return ret;
+	}
+
+	l2_tn_info->hash_map[ret] = l2_tn_filter;
+
+	TAILQ_INSERT_TAIL(&l2_tn_info->l2_tn_list, l2_tn_filter, entries);
+
+	return 0;
+}
+
+static inline int
+ixgbe_remove_l2_tn_filter(struct ixgbe_l2_tn_info *l2_tn_info,
+			  struct ixgbe_l2_tn_key *key)
+{
+	int ret;
+	struct ixgbe_l2_tn_filter *l2_tn_filter;
+
+	ret = rte_hash_del_key(l2_tn_info->hash_handle, key);
+
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR,
+			    "No such L2 tunnel filter to delete %d!",
+			    ret);
+		return ret;
+	}
+
+	l2_tn_filter = l2_tn_info->hash_map[ret];
+	l2_tn_info->hash_map[ret] = NULL;
+
+	TAILQ_REMOVE(&l2_tn_info->l2_tn_list, l2_tn_filter, entries);
+	rte_free(l2_tn_filter);
+
+	return 0;
+}
+
 /* Add l2 tunnel filter */
 static int
 ixgbe_dev_l2_tunnel_filter_add(struct rte_eth_dev *dev,
 			       struct rte_eth_l2_tunnel_conf *l2_tunnel)
 {
-	int ret = 0;
+	int ret;
+	struct ixgbe_l2_tn_info *l2_tn_info =
+		IXGBE_DEV_PRIVATE_TO_L2_TN_INFO(dev->data->dev_private);
+	struct ixgbe_l2_tn_key key;
+	struct ixgbe_l2_tn_filter *node;
+
+	key.l2_tn_type = l2_tunnel->l2_tunnel_type;
+	key.tn_id = l2_tunnel->tunnel_id;
+
+	node = ixgbe_l2_tn_filter_lookup(l2_tn_info, &key);
+
+	if (node) {
+		PMD_DRV_LOG(ERR, "The L2 tunnel filter already exists!");
+		return -EINVAL;
+	}
+
+	node = rte_zmalloc("ixgbe_l2_tn",
+			   sizeof(struct ixgbe_l2_tn_filter),
+			   0);
+	if (!node)
+		return -ENOMEM;
+
+	(void)rte_memcpy(&node->key,
+			 &key,
+			 sizeof(struct ixgbe_l2_tn_key));
+	node->pool = l2_tunnel->pool;
+	ret = ixgbe_insert_l2_tn_filter(l2_tn_info, node);
+	if (ret < 0) {
+		rte_free(node);
+		return ret;
+	}
 
 	switch (l2_tunnel->l2_tunnel_type) {
 	case RTE_L2_TUNNEL_TYPE_E_TAG:
@@ -7441,6 +7595,9 @@ ixgbe_dev_l2_tunnel_filter_add(struct rte_eth_dev *dev,
 		break;
 	}
 
+	if (ret < 0)
+		(void)ixgbe_remove_l2_tn_filter(l2_tn_info, &key);
+
 	return ret;
 }
 
@@ -7449,7 +7606,16 @@ static int
 ixgbe_dev_l2_tunnel_filter_del(struct rte_eth_dev *dev,
 			       struct rte_eth_l2_tunnel_conf *l2_tunnel)
 {
-	int ret = 0;
+	int ret;
+	struct ixgbe_l2_tn_info *l2_tn_info =
+		IXGBE_DEV_PRIVATE_TO_L2_TN_INFO(dev->data->dev_private);
+	struct ixgbe_l2_tn_key key;
+
+	key.l2_tn_type = l2_tunnel->l2_tunnel_type;
+	key.tn_id = l2_tunnel->tunnel_id;
+	ret = ixgbe_remove_l2_tn_filter(l2_tn_info, &key);
+	if (ret < 0)
+		return ret;
 
 	switch (l2_tunnel->l2_tunnel_type) {
 	case RTE_L2_TUNNEL_TYPE_E_TAG:
@@ -7475,7 +7641,7 @@ ixgbe_dev_l2_tunnel_filter_handle(struct rte_eth_dev *dev,
 				  enum rte_filter_op filter_op,
 				  void *arg)
 {
-	int ret = 0;
+	int ret;
 
 	if (filter_op == RTE_ETH_FILTER_NOP)
 		return 0;
