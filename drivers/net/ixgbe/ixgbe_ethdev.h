@@ -589,6 +589,9 @@ int
 ixgbe_dev_l2_tunnel_filter_add(struct rte_eth_dev *dev,
 			       struct rte_eth_l2_tunnel_conf *l2_tunnel,
 			       bool restore);
+int
+ixgbe_dev_l2_tunnel_filter_del(struct rte_eth_dev *dev,
+			       struct rte_eth_l2_tunnel_conf *l2_tunnel);
 /*
  * Flow director function prototypes
  */
