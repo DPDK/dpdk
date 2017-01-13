@@ -118,4 +118,6 @@ struct virtio_user_backend_ops {
 };
 
 struct virtio_user_backend_ops ops_user;
+struct virtio_user_backend_ops ops_kernel;
+
 #endif

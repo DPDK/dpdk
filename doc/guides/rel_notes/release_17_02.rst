@@ -57,6 +57,27 @@ New Features
   Six new APIs have been added to the ixgbe PMD for MACsec offload support.
   The declarations for the APIs can be found in ``rte_pmd_ixgbe.h``.
 
+* **virtio-user with vhost-kernel as another exceptional path.**
+
+  Previously, we upstreamed a virtual device, virtio-user with vhost-user
+  as the backend, as a way for IPC (Inter-Process Communication) and user
+  space container networking.
+
+  Virtio-user with vhost-kernel as the backend is a solution for exceptional
+  path, such as KNI, which exchanges packets with kernel networking stack.
+  This solution is very promising in:
+
+  * maintenance: vhost and vhost-net (kernel) is upstreamed and extensively
+    used kernel module.
+  * features: vhost-net is born to be a networking solution, which has
+    lots of networking related features, like multi-queue, TSO, multi-seg
+    mbuf, etc.
+  * performance: similar to KNI, this solution would use one or more
+    kthreads to send/receive packets from user space DPDK applications,
+    which has little impact on user space polling thread (except that
+    it might enter into kernel space to wake up those kthreads if
+    necessary).
+
 
 Resolved Issues
 ---------------

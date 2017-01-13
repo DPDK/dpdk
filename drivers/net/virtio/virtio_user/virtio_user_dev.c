@@ -192,6 +192,9 @@ int virtio_user_stop_device(struct virtio_user_dev *dev)
 	for (i = 0; i < dev->max_queue_pairs; ++i)
 		dev->ops->enable_qp(dev, i, 0);
 
+	free(dev->ifname);
+	dev->ifname = NULL;
+
 	return 0;
 }
 
@@ -230,7 +233,7 @@ is_vhost_user_by_type(const char *path)
 static int
 virtio_user_dev_setup(struct virtio_user_dev *dev)
 {
-	uint32_t i;
+	uint32_t i, q;
 
 	dev->vhostfd = -1;
 	for (i = 0; i < VIRTIO_MAX_VIRTQUEUES * 2 + 1; ++i) {
@@ -238,12 +241,28 @@ virtio_user_dev_setup(struct virtio_user_dev *dev)
 		dev->callfds[i] = -1;
 	}
 
+	dev->vhostfds = NULL;
+	dev->tapfds = NULL;
+
 	if (is_vhost_user_by_type(dev->path)) {
 		dev->ops = &ops_user;
-		return dev->ops->setup(dev);
+	} else {
+		dev->ops = &ops_kernel;
+
+		dev->vhostfds = malloc(dev->max_queue_pairs * sizeof(int));
+		dev->tapfds = malloc(dev->max_queue_pairs * sizeof(int));
+		if (!dev->vhostfds || !dev->tapfds) {
+			PMD_INIT_LOG(ERR, "Failed to malloc");
+			return -1;
+		}
+
+		for (q = 0; q < dev->max_queue_pairs; ++q) {
+			dev->vhostfds[q] = -1;
+			dev->tapfds[q] = -1;
+		}
 	}
 
-	return -1;
+	return dev->ops->setup(dev);
 }
 
 int
@@ -295,7 +314,18 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 void
 virtio_user_dev_uninit(struct virtio_user_dev *dev)
 {
+	uint32_t i;
+
+	virtio_user_stop_device(dev);
+
 	close(dev->vhostfd);
+
+	if (dev->vhostfds) {
+		for (i = 0; i < dev->max_queue_pairs; ++i)
+			close(dev->vhostfds[i]);
+		free(dev->vhostfds);
+		free(dev->tapfds);
+	}
 }
 
 static uint8_t

@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -31,45 +31,30 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _VIRTIO_USER_DEV_H
-#define _VIRTIO_USER_DEV_H
+#include <sys/ioctl.h>
 
-#include <limits.h>
-#include "../virtio_pci.h"
-#include "../virtio_ring.h"
-#include "vhost.h"
+/* TUN ioctls */
+#define TUNSETIFF     _IOW('T', 202, int)
+#define TUNGETFEATURES _IOR('T', 207, unsigned int)
+#define TUNSETOFFLOAD  _IOW('T', 208, unsigned int)
+#define TUNGETIFF      _IOR('T', 210, unsigned int)
+#define TUNSETSNDBUF   _IOW('T', 212, int)
+#define TUNGETVNETHDRSZ _IOR('T', 215, int)
+#define TUNSETVNETHDRSZ _IOW('T', 216, int)
+#define TUNSETQUEUE  _IOW('T', 217, int)
+#define TUNSETVNETLE _IOW('T', 220, int)
+#define TUNSETVNETBE _IOW('T', 222, int)
 
-struct virtio_user_dev {
-	/* for vhost_user backend */
-	int		vhostfd;
+/* TUNSETIFF ifr flags */
+#define IFF_TAP          0x0002
+#define IFF_NO_PI        0x1000
+#define IFF_ONE_QUEUE    0x2000
+#define IFF_VNET_HDR     0x4000
+#define IFF_MULTI_QUEUE  0x0100
+#define IFF_ATTACH_QUEUE 0x0200
+#define IFF_DETACH_QUEUE 0x0400
 
-	/* for vhost_kernel backend */
-	char		*ifname;
-	int		*vhostfds;
-	int		*tapfds;
+/* Constants */
+#define PATH_NET_TUN	"/dev/net/tun"
 
-	/* for both vhost_user and vhost_kernel */
-	int		callfds[VIRTIO_MAX_VIRTQUEUES * 2 + 1];
-	int		kickfds[VIRTIO_MAX_VIRTQUEUES * 2 + 1];
-	int		mac_specified;
-	uint32_t	max_queue_pairs;
-	uint32_t	queue_pairs;
-	uint32_t	queue_size;
-	uint64_t	features; /* the negotiated features with driver,
-				   * and will be sync with device
-				   */
-	uint64_t	device_features; /* supported features by device */
-	uint8_t		status;
-	uint8_t		mac_addr[ETHER_ADDR_LEN];
-	char		path[PATH_MAX];
-	struct vring	vrings[VIRTIO_MAX_VIRTQUEUES * 2 + 1];
-	struct virtio_user_backend_ops *ops;
-};
-
-int virtio_user_start_device(struct virtio_user_dev *dev);
-int virtio_user_stop_device(struct virtio_user_dev *dev);
-int virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
-			 int cq, int queue_size, const char *mac);
-void virtio_user_dev_uninit(struct virtio_user_dev *dev);
-void virtio_user_handle_cq(struct virtio_user_dev *dev, uint16_t queue_idx);
-#endif
+int vhost_kernel_open_tap(char **p_ifname, int hdr_size);
