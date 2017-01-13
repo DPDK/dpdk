@@ -151,8 +151,6 @@ virtio_user_start_device(struct virtio_user_dev *dev)
 	 * VIRTIO_NET_F_MAC and VIRTIO_NET_F_CTRL_VQ is stripped.
 	 */
 	features = dev->features;
-	if (dev->max_queue_pairs > 1)
-		features |= VHOST_USER_MQ;
 	features &= ~(1ull << VIRTIO_NET_F_MAC);
 	features &= ~(1ull << VIRTIO_NET_F_CTRL_VQ);
 	ret = vhost_user_sock(dev->vhostfd, VHOST_USER_SET_FEATURES, &features);
@@ -266,13 +264,6 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 		dev->device_features &= ~(1ull << VIRTIO_NET_F_GUEST_ANNOUNCE);
 		dev->device_features &= ~(1ull << VIRTIO_NET_F_MQ);
 		dev->device_features &= ~(1ull << VIRTIO_NET_F_CTRL_MAC_ADDR);
-	}
-
-	if (dev->max_queue_pairs > 1) {
-		if (!(dev->features & VHOST_USER_MQ)) {
-			PMD_INIT_LOG(ERR, "MQ not supported by the backend");
-			return -1;
-		}
 	}
 
 	return 0;

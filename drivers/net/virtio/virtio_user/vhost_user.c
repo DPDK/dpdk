@@ -42,6 +42,38 @@
 
 #include "vhost.h"
 
+/* The version of the protocol we support */
+#define VHOST_USER_VERSION    0x1
+
+#define VHOST_MEMORY_MAX_NREGIONS 8
+struct vhost_memory {
+	uint32_t nregions;
+	uint32_t padding;
+	struct vhost_memory_region regions[VHOST_MEMORY_MAX_NREGIONS];
+};
+
+struct vhost_user_msg {
+	enum vhost_user_request request;
+
+#define VHOST_USER_VERSION_MASK     0x3
+#define VHOST_USER_REPLY_MASK       (0x1 << 2)
+	uint32_t flags;
+	uint32_t size; /* the following payload size */
+	union {
+#define VHOST_USER_VRING_IDX_MASK   0xff
+#define VHOST_USER_VRING_NOFD_MASK  (0x1 << 8)
+		uint64_t u64;
+		struct vhost_vring_state state;
+		struct vhost_vring_addr addr;
+		struct vhost_memory memory;
+	} payload;
+	int fds[VHOST_MEMORY_MAX_NREGIONS];
+} __attribute((packed));
+
+#define VHOST_USER_HDR_SIZE offsetof(struct vhost_user_msg, payload.u64)
+#define VHOST_USER_PAYLOAD_SIZE \
+	(sizeof(struct vhost_user_msg) - VHOST_USER_HDR_SIZE)
+
 static int
 vhost_user_write(int fd, void *buf, int len, int *fds, int fd_num)
 {
