@@ -165,6 +165,28 @@ prepare_vhost_memory_kernel(void)
 	return vm;
 }
 
+/* with below features, vhost kernel does not need to do the checksum and TSO,
+ * these info will be passed to virtio_user through virtio net header.
+ */
+#define VHOST_KERNEL_GUEST_OFFLOADS_MASK	\
+	((1ULL << VIRTIO_NET_F_GUEST_CSUM) |	\
+	 (1ULL << VIRTIO_NET_F_GUEST_TSO4) |	\
+	 (1ULL << VIRTIO_NET_F_GUEST_TSO6) |	\
+	 (1ULL << VIRTIO_NET_F_GUEST_ECN)  |	\
+	 (1ULL << VIRTIO_NET_F_GUEST_UFO))
+
+/* with below features, when flows from virtio_user to vhost kernel
+ * (1) if flows goes up through the kernel networking stack, it does not need
+ * to verify checksum, which can save CPU cycles;
+ * (2) if flows goes through a Linux bridge and outside from an interface
+ * (kernel driver), checksum and TSO will be done by GSO in kernel or even
+ * offloaded into real physical device.
+ */
+#define VHOST_KERNEL_HOST_OFFLOADS_MASK		\
+	((1ULL << VIRTIO_NET_F_HOST_TSO4) |	\
+	 (1ULL << VIRTIO_NET_F_HOST_TSO6) |	\
+	 (1ULL << VIRTIO_NET_F_CSUM))
+
 static int
 vhost_kernel_ioctl(struct virtio_user_dev *dev,
 		   enum vhost_user_request req,
@@ -186,9 +208,14 @@ vhost_kernel_ioctl(struct virtio_user_dev *dev,
 		arg = (void *)vm;
 	}
 
-	/* We don't need memory protection here */
-	if (req_kernel == VHOST_SET_FEATURES)
+	if (req_kernel == VHOST_SET_FEATURES) {
+		/* We don't need memory protection here */
 		*(uint64_t *)arg &= ~(1ULL << VIRTIO_F_IOMMU_PLATFORM);
+
+		/* VHOST kernel does not know about below flags */
+		*(uint64_t *)arg &= ~VHOST_KERNEL_GUEST_OFFLOADS_MASK;
+		*(uint64_t *)arg &= ~VHOST_KERNEL_HOST_OFFLOADS_MASK;
+	}
 
 	for (i = 0; i < dev->max_queue_pairs; ++i) {
 		if (dev->vhostfds[i] < 0)
@@ -197,6 +224,15 @@ vhost_kernel_ioctl(struct virtio_user_dev *dev,
 		ret = ioctl(dev->vhostfds[i], req_kernel, arg);
 		if (ret < 0)
 			break;
+	}
+
+	if (!ret && req_kernel == VHOST_GET_FEATURES) {
+		/* with tap as the backend, all these features are supported
+		 * but not claimed by vhost-net, so we add them back when
+		 * reporting to upper layer.
+		 */
+		*((uint64_t *)arg) |= VHOST_KERNEL_GUEST_OFFLOADS_MASK;
+		*((uint64_t *)arg) |= VHOST_KERNEL_HOST_OFFLOADS_MASK;
 	}
 
 	if (vm)

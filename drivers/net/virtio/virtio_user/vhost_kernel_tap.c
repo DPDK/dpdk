@@ -50,6 +50,12 @@ vhost_kernel_open_tap(char **p_ifname, int hdr_size)
 	int sndbuf = INT_MAX;
 	struct ifreq ifr;
 	int tapfd;
+	unsigned int offload =
+			TUN_F_CSUM |
+			TUN_F_TSO4 |
+			TUN_F_TSO6 |
+			TUN_F_TSO_ECN |
+			TUN_F_UFO;
 
 	/* TODO:
 	 * 1. verify we can get/set vnet_hdr_len, tap_probe_vnet_hdr_len
@@ -105,6 +111,14 @@ vhost_kernel_open_tap(char **p_ifname, int hdr_size)
 		PMD_DRV_LOG(ERR, "TUNSETSNDBUF failed: %s", strerror(errno));
 		goto error;
 	}
+
+	/* TODO: before set the offload capabilities, we'd better (1) check
+	 * negotiated features to see if necessary to offload; (2) query tap
+	 * to see if it supports the offload capabilities.
+	 */
+	if (ioctl(tapfd, TUNSETOFFLOAD, offload) != 0)
+		PMD_DRV_LOG(ERR, "TUNSETOFFLOAD ioctl() failed: %s",
+			   strerror(errno));
 
 	if (!(*p_ifname))
 		*p_ifname = strdup(ifr.ifr_name);
