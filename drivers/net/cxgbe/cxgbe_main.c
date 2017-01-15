@@ -959,7 +959,7 @@ int setup_rss(struct port_info *pi)
 	dev_debug(adapter, "%s:  pi->rss_size = %u; pi->n_rx_qsets = %u\n",
 		  __func__, pi->rss_size, pi->n_rx_qsets);
 
-	if (!pi->flags & PORT_RSS_DONE) {
+	if (!(pi->flags & PORT_RSS_DONE)) {
 		if (adapter->flags & FULL_INIT_DONE) {
 			/* Fill default values with equal distribution */
 			for (j = 0; j < pi->rss_size; j++)
