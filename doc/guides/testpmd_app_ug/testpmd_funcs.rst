@@ -51,10 +51,10 @@ If you type a partial command and hit ``<TAB>`` you get a list of the available 
 
    testpmd> show port <TAB>
 
-       info [Mul-choice STRING]: show|clear port info|stats|xstats|fdir|stat_qmap|dcb_tc X
-       info [Mul-choice STRING]: show|clear port info|stats|xstats|fdir|stat_qmap|dcb_tc all
-       stats [Mul-choice STRING]: show|clear port info|stats|xstats|fdir|stat_qmap|dcb_tc X
-       stats [Mul-choice STRING]: show|clear port info|stats|xstats|fdir|stat_qmap|dcb_tc all
+       info [Mul-choice STRING]: show|clear port info|stats|xstats|fdir|stat_qmap|dcb_tc|cap X
+       info [Mul-choice STRING]: show|clear port info|stats|xstats|fdir|stat_qmap|dcb_tc|cap all
+       stats [Mul-choice STRING]: show|clear port info|stats|xstats|fdir|stat_qmap|dcb_tc|cap X
+       stats [Mul-choice STRING]: show|clear port info|stats|xstats|fdir|stat_qmap|dcb_tc|cap all
        ...
 
 
@@ -131,7 +131,7 @@ show port
 
 Display information for a given port or all ports::
 
-   testpmd> show port (info|stats|xstats|fdir|stat_qmap|dcb_tc) (port_id|all)
+   testpmd> show port (info|stats|xstats|fdir|stat_qmap|dcb_tc|cap) (port_id|all)
 
 The available information categories are:
 
@@ -146,6 +146,8 @@ The available information categories are:
 * ``stat_qmap``: Queue statistics mapping.
 
 * ``dcb_tc``: DCB information such as TC mapping.
+
+* ``cap``: Supported offload capabilities.
 
 For example:
 
