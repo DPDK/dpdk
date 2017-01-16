@@ -38,27 +38,6 @@
 
 #include "null_crypto_pmd_private.h"
 
-/**
- * Global static parameter used to create a unique name for each crypto device.
- */
-static unsigned unique_name_id;
-
-static inline int
-create_unique_device_name(char *name, size_t size)
-{
-	int ret;
-
-	if (name == NULL)
-		return -EINVAL;
-
-	ret = snprintf(name, size, "%s_%u", RTE_STR(CRYPTODEV_NAME_NULL_PMD),
-			unique_name_id++);
-	if (ret < 0)
-		return ret;
-	return 0;
-}
-
-
 /** verify and set session parameters */
 int
 null_crypto_set_session_parameters(
@@ -186,21 +165,24 @@ static int cryptodev_null_remove(const char *name);
 
 /** Create crypto device */
 static int
-cryptodev_null_create(const char *name,
-		struct rte_crypto_vdev_init_params *init_params)
+cryptodev_null_create(struct rte_crypto_vdev_init_params *init_params)
 {
 	struct rte_cryptodev *dev;
-	char crypto_dev_name[RTE_CRYPTODEV_NAME_MAX_LEN];
 	struct null_crypto_private *internals;
 
-	/* create a unique device name */
-	if (create_unique_device_name(crypto_dev_name,
-			RTE_CRYPTODEV_NAME_MAX_LEN) != 0) {
-		NULL_CRYPTO_LOG_ERR("failed to create unique cryptodev name");
-		return -EINVAL;
+	if (init_params->name[0] == '\0') {
+		int ret = rte_cryptodev_pmd_create_dev_name(
+				init_params->name,
+				RTE_STR(CRYPTODEV_NAME_NULL_PMD));
+
+		if (ret < 0) {
+			NULL_CRYPTO_LOG_ERR("failed to create unique "
+					"name");
+			return ret;
+		}
 	}
 
-	dev = rte_cryptodev_pmd_virtual_dev_init(crypto_dev_name,
+	dev = rte_cryptodev_pmd_virtual_dev_init(init_params->name,
 			sizeof(struct null_crypto_private),
 			init_params->socket_id);
 	if (dev == NULL) {
@@ -227,8 +209,9 @@ cryptodev_null_create(const char *name,
 	return 0;
 
 init_error:
-	NULL_CRYPTO_LOG_ERR("driver %s: cryptodev_null_create failed", name);
-	cryptodev_null_remove(crypto_dev_name);
+	NULL_CRYPTO_LOG_ERR("driver %s: cryptodev_null_create failed",
+			init_params->name);
+	cryptodev_null_remove(init_params->name);
 
 	return -EFAULT;
 }
@@ -241,19 +224,23 @@ cryptodev_null_probe(const char *name,
 	struct rte_crypto_vdev_init_params init_params = {
 		RTE_CRYPTODEV_VDEV_DEFAULT_MAX_NB_QUEUE_PAIRS,
 		RTE_CRYPTODEV_VDEV_DEFAULT_MAX_NB_SESSIONS,
-		rte_socket_id()
+		rte_socket_id(),
+		{0}
 	};
 
 	rte_cryptodev_parse_vdev_init_params(&init_params, input_args);
 
 	RTE_LOG(INFO, PMD, "Initialising %s on NUMA node %d\n", name,
 			init_params.socket_id);
+	if (init_params.name[0] != '\0')
+		RTE_LOG(INFO, PMD, "  User defined name = %s\n",
+			init_params.name);
 	RTE_LOG(INFO, PMD, "  Max number of queue pairs = %d\n",
 			init_params.max_nb_queue_pairs);
 	RTE_LOG(INFO, PMD, "  Max number of sessions = %d\n",
 			init_params.max_nb_sessions);
 
-	return cryptodev_null_create(name, &init_params);
+	return cryptodev_null_create(&init_params);
 }
 
 /** Uninitialise null crypto device */

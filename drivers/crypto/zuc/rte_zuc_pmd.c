@@ -45,27 +45,6 @@
 #define ZUC_MAX_BURST 8
 #define BYTE_LEN 8
 
-/**
- * Global static parameter used to create a unique name for each ZUC
- * crypto device.
- */
-static unsigned unique_name_id;
-
-static inline int
-create_unique_device_name(char *name, size_t size)
-{
-	int ret;
-
-	if (name == NULL)
-		return -EINVAL;
-
-	ret = snprintf(name, size, "%s_%u", RTE_STR(CRYPTODEV_NAME_ZUC_PMD),
-			unique_name_id++);
-	if (ret < 0)
-		return ret;
-	return 0;
-}
-
 /** Get xform chain order. */
 static enum zuc_operation
 zuc_get_mode(const struct rte_crypto_sym_xform *xform)
@@ -461,13 +440,22 @@ zuc_pmd_dequeue_burst(void *queue_pair,
 static int cryptodev_zuc_remove(const char *name);
 
 static int
-cryptodev_zuc_create(const char *name,
-		struct rte_crypto_vdev_init_params *init_params)
+cryptodev_zuc_create(struct rte_crypto_vdev_init_params *init_params)
 {
 	struct rte_cryptodev *dev;
-	char crypto_dev_name[RTE_CRYPTODEV_NAME_MAX_LEN];
 	struct zuc_private *internals;
 	uint64_t cpu_flags = 0;
+
+	if (init_params->name[0] == '\0') {
+		int ret = rte_cryptodev_pmd_create_dev_name(
+				init_params->name,
+				RTE_STR(CRYPTODEV_NAME_ZUC_PMD));
+
+		if (ret < 0) {
+			ZUC_LOG_ERR("failed to create unique name");
+			return ret;
+		}
+	}
 
 	/* Check CPU for supported vector instruction set */
 	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_SSE4_1))
@@ -477,15 +465,7 @@ cryptodev_zuc_create(const char *name,
 		return -EFAULT;
 	}
 
-
-	/* Create a unique device name. */
-	if (create_unique_device_name(crypto_dev_name,
-			RTE_CRYPTODEV_NAME_MAX_LEN) != 0) {
-		ZUC_LOG_ERR("failed to create unique cryptodev name");
-		return -EINVAL;
-	}
-
-	dev = rte_cryptodev_pmd_virtual_dev_init(crypto_dev_name,
+	dev = rte_cryptodev_pmd_virtual_dev_init(init_params->name,
 			sizeof(struct zuc_private), init_params->socket_id);
 	if (dev == NULL) {
 		ZUC_LOG_ERR("failed to create cryptodev vdev");
@@ -510,9 +490,10 @@ cryptodev_zuc_create(const char *name,
 
 	return 0;
 init_error:
-	ZUC_LOG_ERR("driver %s: cryptodev_zuc_create failed", name);
+	ZUC_LOG_ERR("driver %s: cryptodev_zuc_create failed",
+			init_params->name);
 
-	cryptodev_zuc_remove(crypto_dev_name);
+	cryptodev_zuc_remove(init_params->name);
 	return -EFAULT;
 }
 
@@ -523,19 +504,23 @@ cryptodev_zuc_probe(const char *name,
 	struct rte_crypto_vdev_init_params init_params = {
 		RTE_CRYPTODEV_VDEV_DEFAULT_MAX_NB_QUEUE_PAIRS,
 		RTE_CRYPTODEV_VDEV_DEFAULT_MAX_NB_SESSIONS,
-		rte_socket_id()
+		rte_socket_id(),
+		{0}
 	};
 
 	rte_cryptodev_parse_vdev_init_params(&init_params, input_args);
 
 	RTE_LOG(INFO, PMD, "Initialising %s on NUMA node %d\n", name,
 			init_params.socket_id);
+	if (init_params.name[0] != '\0')
+		RTE_LOG(INFO, PMD, "  User defined name = %s\n",
+			init_params.name);
 	RTE_LOG(INFO, PMD, "  Max number of queue pairs = %d\n",
 			init_params.max_nb_queue_pairs);
 	RTE_LOG(INFO, PMD, "  Max number of sessions = %d\n",
 			init_params.max_nb_sessions);
 
-	return cryptodev_zuc_create(name, &init_params);
+	return cryptodev_zuc_create(&init_params);
 }
 
 static int

@@ -47,28 +47,6 @@ static int cryptodev_openssl_remove(const char *name);
 /*----------------------------------------------------------------------------*/
 
 /**
- * Global static parameter used to create a unique name for each
- * OPENSSL crypto device.
- */
-static unsigned int unique_name_id;
-
-static inline int
-create_unique_device_name(char *name, size_t size)
-{
-	int ret;
-
-	if (name == NULL)
-		return -EINVAL;
-
-	ret = snprintf(name, size, "%s_%u",
-			RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD),
-			unique_name_id++);
-	if (ret < 0)
-		return ret;
-	return 0;
-}
-
-/**
  * Increment counter by 1
  * Counter is 64 bit array, big-endian
  */
@@ -1149,21 +1127,23 @@ openssl_pmd_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
 
 /** Create OPENSSL crypto device */
 static int
-cryptodev_openssl_create(const char *name,
-		struct rte_crypto_vdev_init_params *init_params)
+cryptodev_openssl_create(struct rte_crypto_vdev_init_params *init_params)
 {
 	struct rte_cryptodev *dev;
-	char crypto_dev_name[RTE_CRYPTODEV_NAME_MAX_LEN];
 	struct openssl_private *internals;
 
-	/* create a unique device name */
-	if (create_unique_device_name(crypto_dev_name,
-			RTE_CRYPTODEV_NAME_MAX_LEN) != 0) {
-		OPENSSL_LOG_ERR("failed to create unique cryptodev name");
-		return -EINVAL;
+	if (init_params->name[0] == '\0') {
+		int ret = rte_cryptodev_pmd_create_dev_name(
+				init_params->name,
+				RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD));
+
+		if (ret < 0) {
+			OPENSSL_LOG_ERR("failed to create unique name");
+			return ret;
+		}
 	}
 
-	dev = rte_cryptodev_pmd_virtual_dev_init(crypto_dev_name,
+	dev = rte_cryptodev_pmd_virtual_dev_init(init_params->name,
 			sizeof(struct openssl_private),
 			init_params->socket_id);
 	if (dev == NULL) {
@@ -1192,9 +1172,10 @@ cryptodev_openssl_create(const char *name,
 	return 0;
 
 init_error:
-	OPENSSL_LOG_ERR("driver %s: cryptodev_openssl_create failed", name);
+	OPENSSL_LOG_ERR("driver %s: cryptodev_openssl_create failed",
+			init_params->name);
 
-	cryptodev_openssl_remove(crypto_dev_name);
+	cryptodev_openssl_remove(init_params->name);
 	return -EFAULT;
 }
 
@@ -1206,19 +1187,23 @@ cryptodev_openssl_probe(const char *name,
 	struct rte_crypto_vdev_init_params init_params = {
 		RTE_CRYPTODEV_VDEV_DEFAULT_MAX_NB_QUEUE_PAIRS,
 		RTE_CRYPTODEV_VDEV_DEFAULT_MAX_NB_SESSIONS,
-		rte_socket_id()
+		rte_socket_id(),
+		{0}
 	};
 
 	rte_cryptodev_parse_vdev_init_params(&init_params, input_args);
 
 	RTE_LOG(INFO, PMD, "Initialising %s on NUMA node %d\n", name,
 			init_params.socket_id);
+	if (init_params.name[0] != '\0')
+		RTE_LOG(INFO, PMD, "  User defined name = %s\n",
+			init_params.name);
 	RTE_LOG(INFO, PMD, "  Max number of queue pairs = %d\n",
 			init_params.max_nb_queue_pairs);
 	RTE_LOG(INFO, PMD, "  Max number of sessions = %d\n",
 			init_params.max_nb_sessions);
 
-	return cryptodev_openssl_create(name, &init_params);
+	return cryptodev_openssl_create(&init_params);
 }
 
 /** Uninitialise OPENSSL crypto device */

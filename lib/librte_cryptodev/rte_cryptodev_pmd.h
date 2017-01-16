@@ -520,6 +520,13 @@ int rte_cryptodev_pci_probe(struct rte_pci_driver *pci_drv,
  */
 int rte_cryptodev_pci_remove(struct rte_pci_device *pci_dev);
 
+/**
+ * @internal
+ * Create unique device name
+ */
+int
+rte_cryptodev_pmd_create_dev_name(char *name, const char *dev_name_prefix);
+
 #ifdef __cplusplus
 }
 #endif

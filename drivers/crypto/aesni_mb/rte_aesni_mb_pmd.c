@@ -40,27 +40,6 @@
 
 #include "rte_aesni_mb_pmd_private.h"
 
-/**
- * Global static parameter used to create a unique name for each AES-NI multi
- * buffer crypto device.
- */
-static unsigned unique_name_id;
-
-static inline int
-create_unique_device_name(char *name, size_t size)
-{
-	int ret;
-
-	if (name == NULL)
-		return -EINVAL;
-
-	ret = snprintf(name, size, "%s_%u", RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD),
-			unique_name_id++);
-	if (ret < 0)
-		return ret;
-	return 0;
-}
-
 typedef void (*hash_one_block_t)(void *data, void *digest);
 typedef void (*aes_keyexp_t)(void *key, void *enc_exp_keys, void *dec_exp_keys);
 
@@ -653,18 +632,21 @@ aesni_mb_pmd_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
 static int cryptodev_aesni_mb_remove(const char *name);
 
 static int
-cryptodev_aesni_mb_create(const char *name,
-		struct rte_crypto_vdev_init_params *init_params)
+cryptodev_aesni_mb_create(struct rte_crypto_vdev_init_params *init_params)
 {
 	struct rte_cryptodev *dev;
-	char crypto_dev_name[RTE_CRYPTODEV_NAME_MAX_LEN];
 	struct aesni_mb_private *internals;
 	enum aesni_mb_vector_mode vector_mode;
 
-	/* Check CPU for support for AES instruction set */
-	if (!rte_cpu_get_flag_enabled(RTE_CPUFLAG_AES)) {
-		MB_LOG_ERR("AES instructions not supported by CPU");
-		return -EFAULT;
+	if (init_params->name[0] == '\0') {
+		int ret = rte_cryptodev_pmd_create_dev_name(
+				init_params->name,
+				RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD));
+
+		if (ret < 0) {
+			MB_LOG_ERR("failed to create unique name");
+			return ret;
+		}
 	}
 
 	/* Check CPU for supported vector instruction set */
@@ -681,15 +663,7 @@ cryptodev_aesni_mb_create(const char *name,
 		return -EFAULT;
 	}
 
-	/* create a unique device name */
-	if (create_unique_device_name(crypto_dev_name,
-			RTE_CRYPTODEV_NAME_MAX_LEN) != 0) {
-		MB_LOG_ERR("failed to create unique cryptodev name");
-		return -EINVAL;
-	}
-
-
-	dev = rte_cryptodev_pmd_virtual_dev_init(crypto_dev_name,
+	dev = rte_cryptodev_pmd_virtual_dev_init(init_params->name,
 			sizeof(struct aesni_mb_private), init_params->socket_id);
 	if (dev == NULL) {
 		MB_LOG_ERR("failed to create cryptodev vdev");
@@ -733,9 +707,10 @@ cryptodev_aesni_mb_create(const char *name,
 
 	return 0;
 init_error:
-	MB_LOG_ERR("driver %s: cryptodev_aesni_create failed", name);
+	MB_LOG_ERR("driver %s: cryptodev_aesni_create failed",
+			init_params->name);
 
-	cryptodev_aesni_mb_remove(crypto_dev_name);
+	cryptodev_aesni_mb_remove(init_params->name);
 	return -EFAULT;
 }
 
@@ -747,19 +722,23 @@ cryptodev_aesni_mb_probe(const char *name,
 	struct rte_crypto_vdev_init_params init_params = {
 		RTE_CRYPTODEV_VDEV_DEFAULT_MAX_NB_QUEUE_PAIRS,
 		RTE_CRYPTODEV_VDEV_DEFAULT_MAX_NB_SESSIONS,
-		rte_socket_id()
+		rte_socket_id(),
+		""
 	};
 
 	rte_cryptodev_parse_vdev_init_params(&init_params, input_args);
 
 	RTE_LOG(INFO, PMD, "Initialising %s on NUMA node %d\n", name,
 			init_params.socket_id);
+	if (init_params.name[0] != '\0')
+		RTE_LOG(INFO, PMD, "  User defined name = %s\n",
+			init_params.name);
 	RTE_LOG(INFO, PMD, "  Max number of queue pairs = %d\n",
 			init_params.max_nb_queue_pairs);
 	RTE_LOG(INFO, PMD, "  Max number of sessions = %d\n",
 			init_params.max_nb_sessions);
 
-	return cryptodev_aesni_mb_create(name, &init_params);
+	return cryptodev_aesni_mb_create(&init_params);
 }
 
 static int

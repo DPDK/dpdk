@@ -44,27 +44,6 @@
 
 #include "aesni_gcm_pmd_private.h"
 
-/**
- * Global static parameter used to create a unique name for each AES-NI multi
- * buffer crypto device.
- */
-static unsigned unique_name_id;
-
-static inline int
-create_unique_device_name(char *name, size_t size)
-{
-	int ret;
-
-	if (name == NULL)
-		return -EINVAL;
-
-	ret = snprintf(name, size, "%s_%u", RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD),
-			unique_name_id++);
-	if (ret < 0)
-		return ret;
-	return 0;
-}
-
 static int
 aesni_gcm_calculate_hash_sub_key(uint8_t *hsubkey, unsigned hsubkey_length,
 		uint8_t *aeskey, unsigned aeskey_length)
@@ -423,13 +402,22 @@ aesni_gcm_pmd_dequeue_burst(void *queue_pair,
 static int aesni_gcm_remove(const char *name);
 
 static int
-aesni_gcm_create(const char *name,
-		struct rte_crypto_vdev_init_params *init_params)
+aesni_gcm_create(struct rte_crypto_vdev_init_params *init_params)
 {
 	struct rte_cryptodev *dev;
-	char crypto_dev_name[RTE_CRYPTODEV_NAME_MAX_LEN];
 	struct aesni_gcm_private *internals;
 	enum aesni_gcm_vector_mode vector_mode;
+
+	if (init_params->name[0] == '\0') {
+		int ret = rte_cryptodev_pmd_create_dev_name(
+				init_params->name,
+				RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD));
+
+		if (ret < 0) {
+			GCM_LOG_ERR("failed to create unique name");
+			return ret;
+		}
+	}
 
 	/* Check CPU for support for AES instruction set */
 	if (!rte_cpu_get_flag_enabled(RTE_CPUFLAG_AES)) {
@@ -449,15 +437,7 @@ aesni_gcm_create(const char *name,
 		return -EFAULT;
 	}
 
-	/* create a unique device name */
-	if (create_unique_device_name(crypto_dev_name,
-			RTE_CRYPTODEV_NAME_MAX_LEN) != 0) {
-		GCM_LOG_ERR("failed to create unique cryptodev name");
-		return -EINVAL;
-	}
-
-
-	dev = rte_cryptodev_pmd_virtual_dev_init(crypto_dev_name,
+	dev = rte_cryptodev_pmd_virtual_dev_init(init_params->name,
 			sizeof(struct aesni_gcm_private), init_params->socket_id);
 	if (dev == NULL) {
 		GCM_LOG_ERR("failed to create cryptodev vdev");
@@ -500,9 +480,9 @@ aesni_gcm_create(const char *name,
 	return 0;
 
 init_error:
-	GCM_LOG_ERR("driver %s: create failed", name);
+	GCM_LOG_ERR("driver %s: create failed", init_params->name);
 
-	aesni_gcm_remove(crypto_dev_name);
+	aesni_gcm_remove(init_params->name);
 	return -EFAULT;
 }
 
@@ -512,19 +492,23 @@ aesni_gcm_probe(const char *name, const char *input_args)
 	struct rte_crypto_vdev_init_params init_params = {
 		RTE_CRYPTODEV_VDEV_DEFAULT_MAX_NB_QUEUE_PAIRS,
 		RTE_CRYPTODEV_VDEV_DEFAULT_MAX_NB_SESSIONS,
-		rte_socket_id()
+		rte_socket_id(),
+		{0}
 	};
 
 	rte_cryptodev_parse_vdev_init_params(&init_params, input_args);
 
 	RTE_LOG(INFO, PMD, "Initialising %s on NUMA node %d\n", name,
 			init_params.socket_id);
+	if (init_params.name[0] != '\0')
+		RTE_LOG(INFO, PMD, "  User defined name = %s\n",
+			init_params.name);
 	RTE_LOG(INFO, PMD, "  Max number of queue pairs = %d\n",
 			init_params.max_nb_queue_pairs);
 	RTE_LOG(INFO, PMD, "  Max number of sessions = %d\n",
 			init_params.max_nb_sessions);
 
-	return aesni_gcm_create(name, &init_params);
+	return aesni_gcm_create(&init_params);
 }
 
 static int

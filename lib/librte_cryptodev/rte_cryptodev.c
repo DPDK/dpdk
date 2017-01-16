@@ -101,11 +101,13 @@ struct rte_cryptodev_callback {
 	uint32_t active;			/**< Callback is executing */
 };
 
+#define RTE_CRYPTODEV_VDEV_NAME				("name")
 #define RTE_CRYPTODEV_VDEV_MAX_NB_QP_ARG		("max_nb_queue_pairs")
 #define RTE_CRYPTODEV_VDEV_MAX_NB_SESS_ARG		("max_nb_sessions")
 #define RTE_CRYPTODEV_VDEV_SOCKET_ID			("socket_id")
 
 static const char *cryptodev_vdev_valid_params[] = {
+	RTE_CRYPTODEV_VDEV_NAME,
 	RTE_CRYPTODEV_VDEV_MAX_NB_QP_ARG,
 	RTE_CRYPTODEV_VDEV_MAX_NB_SESS_ARG,
 	RTE_CRYPTODEV_VDEV_SOCKET_ID
@@ -143,6 +145,25 @@ parse_integer_arg(const char *key __rte_unused,
 	return 0;
 }
 
+/** Parse name */
+static int
+parse_name_arg(const char *key __rte_unused,
+		const char *value, void *extra_args)
+{
+	struct rte_crypto_vdev_init_params *params = extra_args;
+
+	if (strlen(value) >= RTE_CRYPTODEV_NAME_MAX_LEN - 1) {
+		CDEV_LOG_ERR("Invalid name %s, should be less than "
+				"%u bytes", value,
+				RTE_CRYPTODEV_NAME_MAX_LEN - 1);
+		return -1;
+	}
+
+	strncpy(params->name, value, RTE_CRYPTODEV_NAME_MAX_LEN);
+
+	return 0;
+}
+
 int
 rte_cryptodev_parse_vdev_init_params(struct rte_crypto_vdev_init_params *params,
 		const char *input_args)
@@ -176,6 +197,12 @@ rte_cryptodev_parse_vdev_init_params(struct rte_crypto_vdev_init_params *params,
 		ret = rte_kvargs_process(kvlist, RTE_CRYPTODEV_VDEV_SOCKET_ID,
 					&parse_integer_arg,
 					&params->socket_id);
+		if (ret < 0)
+			goto free_kvlist;
+
+		ret = rte_kvargs_process(kvlist, RTE_CRYPTODEV_VDEV_NAME,
+					&parse_name_arg,
+					params);
 		if (ret < 0)
 			goto free_kvlist;
 
@@ -1205,4 +1232,28 @@ rte_crypto_op_pool_create(const char *name, enum rte_crypto_op_type type,
 	priv->type = type;
 
 	return mp;
+}
+
+int
+rte_cryptodev_pmd_create_dev_name(char *name, const char *dev_name_prefix)
+{
+	struct rte_cryptodev *dev = NULL;
+	uint32_t i = 0;
+
+	if (name == NULL)
+		return -EINVAL;
+
+	for (i = 0; i < RTE_CRYPTO_MAX_DEVS; i++) {
+		int ret = snprintf(name, RTE_CRYPTODEV_NAME_MAX_LEN,
+				"%s_%u", dev_name_prefix, i);
+
+		if (ret < 0)
+			return ret;
+
+		dev = rte_cryptodev_pmd_get_named_dev(name);
+		if (!dev)
+			return 0;
+	}
+
+	return -1;
 }

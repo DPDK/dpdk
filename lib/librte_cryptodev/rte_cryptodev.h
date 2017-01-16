@@ -304,6 +304,8 @@ struct rte_cryptodev_stats {
 	/**< Total error count on operations dequeued */
 };
 
+#define RTE_CRYPTODEV_NAME_MAX_LEN	(64)
+/**< Max length of name of crypto PMD */
 #define RTE_CRYPTODEV_VDEV_DEFAULT_MAX_NB_QUEUE_PAIRS	8
 #define RTE_CRYPTODEV_VDEV_DEFAULT_MAX_NB_SESSIONS	2048
 
@@ -315,6 +317,7 @@ struct rte_crypto_vdev_init_params {
 	unsigned max_nb_queue_pairs;
 	unsigned max_nb_sessions;
 	uint8_t socket_id;
+	char name[RTE_CRYPTODEV_NAME_MAX_LEN];
 };
 
 /**
@@ -638,10 +641,6 @@ struct rte_cryptodev {
 	uint8_t attached : 1;
 	/**< Flag indicating the device is attached */
 } __rte_cache_aligned;
-
-
-#define RTE_CRYPTODEV_NAME_MAX_LEN	(64)
-/**< Max length of name of crypto PMD */
 
 /**
  *

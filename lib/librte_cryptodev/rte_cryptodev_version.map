@@ -46,3 +46,10 @@ DPDK_16.11 {
 	rte_cryptodev_pci_remove;
 
 } DPDK_16.07;
+
+DPDK_17.02 {
+	global:
+
+	rte_cryptodev_pmd_create_dev_name;
+
+} DPDK_16.11;
