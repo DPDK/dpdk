@@ -193,6 +193,8 @@ static int ixgbe_dev_queue_stats_mapping_set(struct rte_eth_dev *eth_dev,
 					     uint16_t queue_id,
 					     uint8_t stat_idx,
 					     uint8_t is_rx);
+static int ixgbe_fw_version_get(struct rte_eth_dev *dev, char *fw_version,
+				 size_t fw_size);
 static void ixgbe_dev_info_get(struct rte_eth_dev *dev,
 			       struct rte_eth_dev_info *dev_info);
 static const uint32_t *ixgbe_dev_supported_ptypes_get(struct rte_eth_dev *dev);
@@ -541,6 +543,7 @@ static const struct eth_dev_ops ixgbe_eth_dev_ops = {
 	.xstats_reset         = ixgbe_dev_xstats_reset,
 	.xstats_get_names     = ixgbe_dev_xstats_get_names,
 	.queue_stats_mapping_set = ixgbe_dev_queue_stats_mapping_set,
+	.fw_version_get       = ixgbe_fw_version_get,
 	.dev_infos_get        = ixgbe_dev_info_get,
 	.dev_supported_ptypes_get = ixgbe_dev_supported_ptypes_get,
 	.mtu_set              = ixgbe_dev_mtu_set,
@@ -3142,6 +3145,27 @@ ixgbevf_dev_stats_reset(struct rte_eth_dev *dev)
 	hw_stats->vfgorc = 0;
 	hw_stats->vfgptc = 0;
 	hw_stats->vfgotc = 0;
+}
+
+static int
+ixgbe_fw_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	u16 eeprom_verh, eeprom_verl;
+	u32 etrack_id;
+	int ret;
+
+	ixgbe_read_eeprom(hw, 0x2e, &eeprom_verh);
+	ixgbe_read_eeprom(hw, 0x2d, &eeprom_verl);
+
+	etrack_id = (eeprom_verh << 16) | eeprom_verl;
+	ret = snprintf(fw_version, fw_size, "0x%08x", etrack_id);
+
+	ret += 1; /* add the size of '\0' */
+	if (fw_size < (u32)ret)
+		return ret;
+	else
+		return 0;
 }
 
 static void
