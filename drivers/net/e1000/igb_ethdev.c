@@ -120,6 +120,8 @@ static int eth_igb_xstats_get_names(struct rte_eth_dev *dev,
 				    unsigned limit);
 static void eth_igb_stats_reset(struct rte_eth_dev *dev);
 static void eth_igb_xstats_reset(struct rte_eth_dev *dev);
+static int eth_igb_fw_version_get(struct rte_eth_dev *dev,
+				   char *fw_version, size_t fw_size);
 static void eth_igb_infos_get(struct rte_eth_dev *dev,
 			      struct rte_eth_dev_info *dev_info);
 static const uint32_t *eth_igb_supported_ptypes_get(struct rte_eth_dev *dev);
@@ -391,6 +393,7 @@ static const struct eth_dev_ops eth_igb_ops = {
 	.xstats_get_names     = eth_igb_xstats_get_names,
 	.stats_reset          = eth_igb_stats_reset,
 	.xstats_reset         = eth_igb_xstats_reset,
+	.fw_version_get       = eth_igb_fw_version_get,
 	.dev_infos_get        = eth_igb_infos_get,
 	.dev_supported_ptypes_get = eth_igb_supported_ptypes_get,
 	.mtu_set              = eth_igb_mtu_set,
@@ -1983,6 +1986,58 @@ eth_igbvf_stats_reset(struct rte_eth_dev *dev)
 	/* reset HW current stats*/
 	memset(&hw_stats->gprc, 0, sizeof(*hw_stats) -
 	       offsetof(struct e1000_vf_stats, gprc));
+}
+
+static int
+eth_igb_fw_version_get(struct rte_eth_dev *dev, char *fw_version,
+		       size_t fw_size)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct e1000_fw_version fw;
+	int ret;
+
+	e1000_get_fw_version(hw, &fw);
+
+	switch (hw->mac.type) {
+	case e1000_i210:
+	case e1000_i211:
+		if (!(e1000_get_flash_presence_i210(hw))) {
+			ret = snprintf(fw_version, fw_size,
+				 "%2d.%2d-%d",
+				 fw.invm_major, fw.invm_minor,
+				 fw.invm_img_type);
+			break;
+		}
+		/* fall through */
+	default:
+		/* if option rom is valid, display its version too */
+		if (fw.or_valid) {
+			ret = snprintf(fw_version, fw_size,
+				 "%d.%d, 0x%08x, %d.%d.%d",
+				 fw.eep_major, fw.eep_minor, fw.etrack_id,
+				 fw.or_major, fw.or_build, fw.or_patch);
+		/* no option rom */
+		} else {
+			if (fw.etrack_id != 0X0000) {
+				ret = snprintf(fw_version, fw_size,
+					 "%d.%d, 0x%08x",
+					 fw.eep_major, fw.eep_minor,
+					 fw.etrack_id);
+			} else {
+				ret = snprintf(fw_version, fw_size,
+					 "%d.%d.%d",
+					 fw.eep_major, fw.eep_minor,
+					 fw.eep_build);
+			}
+		}
+		break;
+	}
+
+	ret += 1; /* add the size of '\0' */
+	if (fw_size < (u32)ret)
+		return ret;
+	else
+		return 0;
 }
 
 static void
