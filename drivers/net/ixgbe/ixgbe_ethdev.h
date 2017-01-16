@@ -200,6 +200,8 @@ struct ixgbe_hw_fdir_info {
 struct ixgbe_interrupt {
 	uint32_t flags;
 	uint32_t mask;
+	/*to save original mask during delayed handler */
+	uint32_t mask_original;
 };
 
 struct ixgbe_stat_mapping_registers {

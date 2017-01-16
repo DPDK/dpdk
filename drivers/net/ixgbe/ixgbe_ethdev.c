@@ -3786,7 +3786,6 @@ ixgbe_dev_interrupt_action(struct rte_eth_dev *dev,
 		IXGBE_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
 	int64_t timeout;
 	struct rte_eth_link link;
-	int intr_enable_delay = false;
 	struct ixgbe_hw *hw =
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
@@ -3819,20 +3818,19 @@ ixgbe_dev_interrupt_action(struct rte_eth_dev *dev,
 			timeout = IXGBE_LINK_DOWN_CHECK_TIMEOUT;
 
 		ixgbe_dev_link_status_print(dev);
-
-		intr_enable_delay = true;
-	}
-
-	if (intr_enable_delay) {
+		intr->mask_original = intr->mask;
+		/* only disable lsc interrupt */
+		intr->mask &= ~IXGBE_EIMS_LSC;
 		if (rte_eal_alarm_set(timeout * 1000,
 				      ixgbe_dev_interrupt_delayed_handler, (void *)dev) < 0)
 			PMD_DRV_LOG(ERR, "Error setting alarm");
-	} else {
-		PMD_DRV_LOG(DEBUG, "enable intr immediately");
-		ixgbe_enable_intr(dev);
-		rte_intr_enable(intr_handle);
+		else
+			intr->mask = intr->mask_original;
 	}
 
+	PMD_DRV_LOG(DEBUG, "enable intr immediately");
+	ixgbe_enable_intr(dev);
+	rte_intr_enable(intr_handle);
 
 	return 0;
 }
@@ -3863,6 +3861,8 @@ ixgbe_dev_interrupt_delayed_handler(void *param)
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint32_t eicr;
 
+	ixgbe_disable_intr(hw);
+
 	eicr = IXGBE_READ_REG(hw, IXGBE_EICR);
 	if (eicr & IXGBE_EICR_MAILBOX)
 		ixgbe_pf_mbx_process(dev);
@@ -3884,6 +3884,10 @@ ixgbe_dev_interrupt_delayed_handler(void *param)
 					      NULL);
 		intr->flags &= ~IXGBE_FLAG_MACSEC;
 	}
+
+	/* restore original mask */
+	intr->mask = intr->mask_original;
+	intr->mask_original = 0;
 
 	PMD_DRV_LOG(DEBUG, "enable intr in delayed handler S[%08x]", eicr);
 	ixgbe_enable_intr(dev);
