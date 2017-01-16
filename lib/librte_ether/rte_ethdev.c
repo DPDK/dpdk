@@ -1641,6 +1641,18 @@ rte_eth_dev_set_rx_queue_stats_mapping(uint8_t port_id, uint16_t rx_queue_id,
 			STAT_QMAP_RX);
 }
 
+int
+rte_eth_dev_fw_version_get(uint8_t port_id, char *fw_version, size_t fw_size)
+{
+	struct rte_eth_dev *dev;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	dev = &rte_eth_devices[port_id];
+
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->fw_version_get, -ENOTSUP);
+	return (*dev->dev_ops->fw_version_get)(dev, fw_version, fw_size);
+}
+
 void
 rte_eth_dev_info_get(uint8_t port_id, struct rte_eth_dev_info *dev_info)
 {

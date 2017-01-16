@@ -1179,6 +1179,10 @@ typedef uint32_t (*eth_rx_queue_count_t)(struct rte_eth_dev *dev,
 typedef int (*eth_rx_descriptor_done_t)(void *rxq, uint16_t offset);
 /**< @internal Check DD bit of specific RX descriptor */
 
+typedef int (*eth_fw_version_get_t)(struct rte_eth_dev *dev,
+				     char *fw_version, size_t fw_size);
+/**< @internal Get firmware information of an Ethernet device. */
+
 typedef void (*eth_rxq_info_get_t)(struct rte_eth_dev *dev,
 	uint16_t rx_queue_id, struct rte_eth_rxq_info *qinfo);
 
@@ -1489,6 +1493,7 @@ struct eth_dev_ops {
 	eth_dev_infos_get_t        dev_infos_get; /**< Get device info. */
 	eth_rxq_info_get_t         rxq_info_get; /**< retrieve RX queue information. */
 	eth_txq_info_get_t         txq_info_get; /**< retrieve TX queue information. */
+	eth_fw_version_get_t       fw_version_get; /**< Get firmware version. */
 	eth_dev_supported_ptypes_get_t dev_supported_ptypes_get;
 	/**< Get packet types supported and identified by device. */
 
@@ -2430,6 +2435,27 @@ void rte_eth_macaddr_get(uint8_t port_id, struct ether_addr *mac_addr);
  *   the contextual information of the Ethernet device.
  */
 void rte_eth_dev_info_get(uint8_t port_id, struct rte_eth_dev_info *dev_info);
+
+/**
+ * Retrieve the firmware version of a device.
+ *
+ * @param port_id
+ *   The port identifier of the device.
+ * @param fw_version
+ *   A pointer to a string array storing the firmware version of a device,
+ *   the string includes terminating null. This pointer is allocated by caller.
+ * @param fw_size
+ *   The size of the string array pointed by fw_version, which should be
+ *   large enough to store firmware version of the device.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if operation is not supported.
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - (>0) if *fw_size* is not enough to store firmware version, return
+ *          the size of the non truncated string.
+ */
+int rte_eth_dev_fw_version_get(uint8_t port_id,
+			       char *fw_version, size_t fw_size);
 
 /**
  * Retrieve the supported packet types of an Ethernet device.

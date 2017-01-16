@@ -52,6 +52,11 @@ New Features
   See the :ref:`Generic flow API <Generic_flow_API>` documentation for more
   information.
 
+* **Added firmware version get API.**
+
+  Added a new function ``rte_eth_dev_fw_version_get()`` to fetch firmware
+  version by a given device.
+
 * **Added APIs for MACsec offload support to the ixgbe PMD.**
 
   Six new APIs have been added to the ixgbe PMD for MACsec offload support.
