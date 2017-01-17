@@ -66,6 +66,34 @@ New Features
 
   Added support for I219 Intel 1GbE NICs.
 
+* **Added VF Daemon (VFD) on i40e. - EXPERIMENTAL**
+
+  This's an EXPERIMENTAL feature to enhance the capability of DPDK PF as many
+  VF management features are not supported by kernel PF driver.
+  Some new private APIs are implemented in PMD without abstrction layer.
+  They can be used directly by some users who have the need.
+
+  The new APIs to control VFs directly from PF include,
+  1) set VF MAC anti-spoofing
+  2) set VF VLAN anti-spoofing
+  3) set TX loopback
+  4) set VF unicast promiscuous mode
+  5) set VF multicast promiscuous mode
+  6) set VF MTU
+  7) get/reset VF stats
+  8) set VF MAC address
+  9) set VF VLAN stripping
+  10) VF VLAN insertion
+  12) set VF broadcast mode
+  13) set VF VLAN tag
+  14) set VF VLAN filter
+  VFD also includes VF to PF mailbox message management by APP.
+  When PF receives mailbox messages from VF, PF should call the callback
+  provided by APP to know if they're permitted to be processed.
+
+  As an EXPERIMENTAL feature, please aware it can be changed or even
+  removed without prior notice.
+
 * **Added Solarflare libefx-based network PMD.**
 
   A new network PMD which supports Solarflare SFN7xxx and SFN8xxx family

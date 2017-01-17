@@ -158,3 +158,17 @@ cache bandwidth, memory bandwidth, etc) that depends on:
   branches are usually required. When processing a burst of packets that have been
   validated for header integrity, counting the number of bits set in a bitmask
   might be needed.
+
+PF and VF Considerations
+------------------------
+
+The primary goal of DPDK is to provide a userspace dataplane. Managing VFs from
+a PF driver is a control plane feature and developers should generally rely on
+the Linux Kernel for that.
+
+Developers should work with the Linux Kernel community to get the required
+functionality upstream. PF functionality should only be added to DPDK for
+testing and prototyping purposes while the kernel work is ongoing. It should
+also be marked with an "EXPERIMENTAL" tag. If the functionality isn't
+upstreamable then a case can be made to maintain the PF functionality in DPDK
+without the EXPERIMENTAL tag.
