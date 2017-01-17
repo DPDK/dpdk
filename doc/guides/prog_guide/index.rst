@@ -47,6 +47,7 @@ Programmer's Guide
     link_bonding_poll_mode_drv_lib
     timer_lib
     hash_lib
+    efd_lib
     lpm_lib
     lpm6_lib
     packet_distrib_lib
@@ -166,6 +167,28 @@ Programmer's Guide
 :numref:`figure_figure38` :ref:`figure_figure38`
 
 :numref:`figure_figure39` :ref:`figure_figure39`
+
+:numref:`figure_efd1` :ref:`figure_efd1`
+
+:numref:`figure_efd2` :ref:`figure_efd2`
+
+:numref:`figure_efd3` :ref:`figure_efd3`
+
+:numref:`figure_efd4` :ref:`figure_efd4`
+
+:numref:`figure_efd5` :ref:`figure_efd5`
+
+:numref:`figure_efd6` :ref:`figure_efd6`
+
+:numref:`figure_efd7` :ref:`figure_efd7`
+
+:numref:`figure_efd8` :ref:`figure_efd8`
+
+:numref:`figure_efd9` :ref:`figure_efd9`
+
+:numref:`figure_efd10` :ref:`figure_efd10`
+
+:numref:`figure_efd11` :ref:`figure_efd11`
 
 
 **Tables**

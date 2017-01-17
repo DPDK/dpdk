@@ -159,6 +159,9 @@ New Features
   is much smaller than a hash-based flow table and therefore, it can better fit for
   CPU cache, being able to scale to millions of flow keys.
 
+  See the :ref:`Elastic Flow Distributor Library <Efd_Library>` documentation in
+  the Programmers Guide document, for more information.
+
 
 Resolved Issues
 ---------------
