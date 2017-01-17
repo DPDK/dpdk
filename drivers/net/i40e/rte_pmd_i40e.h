@@ -251,4 +251,22 @@ int rte_pmd_i40e_set_vf_vlan_insert(uint8_t port, uint16_t vf_id,
 int rte_pmd_i40e_set_vf_broadcast(uint8_t port, uint16_t vf_id,
 				  uint8_t on);
 
+/**
+ * Enable/Disable vf vlan tag
+ *
+ * @param port
+ *    The port identifier of the Ethernet device.
+ * @param vf
+ *    ID specifying VF.
+ * @param vlan_id
+ *    0 - Disable VF's vlan tag.
+ *    n - Enable VF's vlan tag.
+ *
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port* invalid.
+ *   - (-EINVAL) if bad parameter.
+ */
+int rte_pmd_i40e_set_vf_vlan_tag(uint8_t port, uint16_t vf_id, uint8_t on);
+
 #endif /* _PMD_I40E_H_ */
