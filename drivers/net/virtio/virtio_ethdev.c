@@ -1829,7 +1829,7 @@ virtio_dev_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complet
 static void
 virtio_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
-	uint64_t tso_mask;
+	uint64_t tso_mask, host_features;
 	struct virtio_hw *hw = dev->data->dev_private;
 
 	dev_info->pci_dev = dev->device ? RTE_DEV_TO_PCI(dev->device) : NULL;
@@ -1843,18 +1843,25 @@ virtio_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->default_txconf = (struct rte_eth_txconf) {
 		.txq_flags = ETH_TXQ_FLAGS_NOOFFLOADS
 	};
-	dev_info->rx_offload_capa =
-		DEV_RX_OFFLOAD_TCP_CKSUM |
-		DEV_RX_OFFLOAD_UDP_CKSUM |
-		DEV_RX_OFFLOAD_TCP_LRO;
-	dev_info->tx_offload_capa = 0;
 
+	host_features = VTPCI_OPS(hw)->get_features(hw);
+	dev_info->rx_offload_capa = 0;
+	if (host_features & (1ULL << VIRTIO_NET_F_GUEST_CSUM)) {
+		dev_info->rx_offload_capa |=
+			DEV_RX_OFFLOAD_TCP_CKSUM |
+			DEV_RX_OFFLOAD_UDP_CKSUM;
+	}
+	tso_mask = (1ULL << VIRTIO_NET_F_GUEST_TSO4) |
+		(1ULL << VIRTIO_NET_F_GUEST_TSO6);
+	if ((host_features & tso_mask) == tso_mask)
+		dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_TCP_LRO;
+
+	dev_info->tx_offload_capa = 0;
 	if (hw->guest_features & (1ULL << VIRTIO_NET_F_CSUM)) {
 		dev_info->tx_offload_capa |=
 			DEV_TX_OFFLOAD_UDP_CKSUM |
 			DEV_TX_OFFLOAD_TCP_CKSUM;
 	}
-
 	tso_mask = (1ULL << VIRTIO_NET_F_HOST_TSO4) |
 		(1ULL << VIRTIO_NET_F_HOST_TSO6);
 	if ((hw->guest_features & tso_mask) == tso_mask)
