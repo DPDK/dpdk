@@ -205,12 +205,14 @@ kni_dev_remove(struct kni_dev *dev)
 	if (!dev)
 		return -ENODEV;
 
+#ifdef CONFIG_RTE_KNI_KMOD_ETHTOOL
 	if (dev->pci_dev) {
 		if (pci_match_id(ixgbe_pci_tbl, dev->pci_dev))
 			ixgbe_kni_remove(dev->pci_dev);
 		else if (pci_match_id(igb_pci_tbl, dev->pci_dev))
 			igb_kni_remove(dev->pci_dev);
 	}
+#endif
 
 	if (dev->net_dev) {
 		unregister_netdev(dev->net_dev);
@@ -326,10 +328,7 @@ kni_ioctl_create(struct net *net, uint32_t ioctl_num,
 	struct kni_net *knet = net_generic(net, kni_net_id);
 	int ret;
 	struct rte_kni_device_info dev_info;
-	struct pci_dev *pci = NULL;
-	struct pci_dev *found_pci = NULL;
 	struct net_device *net_dev = NULL;
-	struct net_device *lad_dev = NULL;
 	struct kni_dev *kni, *dev, *n;
 
 	pr_info("Creating kni...\n");
@@ -419,6 +418,11 @@ kni_ioctl_create(struct net *net, uint32_t ioctl_num,
 					dev_info.vendor_id,
 					dev_info.device_id);
 
+#ifdef CONFIG_RTE_KNI_KMOD_ETHTOOL
+	struct pci_dev *found_pci = NULL;
+	struct net_device *lad_dev = NULL;
+	struct pci_dev *pci = NULL;
+
 	pci = pci_get_device(dev_info.vendor_id, dev_info.device_id, NULL);
 
 	/* Support Ethtool */
@@ -459,6 +463,7 @@ kni_ioctl_create(struct net *net, uint32_t ioctl_num,
 	}
 	if (pci)
 		pci_dev_put(pci);
+#endif
 
 	if (kni->lad_dev)
 		ether_addr_copy(net_dev->dev_addr, kni->lad_dev->dev_addr);
