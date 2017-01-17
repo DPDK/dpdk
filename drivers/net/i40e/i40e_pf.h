@@ -48,11 +48,6 @@
 
 #define I40E_DPDK_OFFSET  0x100
 
-enum i40e_pf_vfr_state {
-	I40E_PF_VFR_INPROGRESS = 0,
-	I40E_PF_VFR_COMPLETED = 1,
-};
-
 /* DPDK pf driver specific command to VF */
 enum i40e_virtchnl_ops_dpdk {
 	/*
