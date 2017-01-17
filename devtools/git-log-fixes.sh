@@ -90,7 +90,7 @@ origin_version () # <origin_hash> ...
 		git rev-parse -q --verify $1 >&- || continue
 		# get version of this bug origin
 		local origver=$(commit_version $origin)
-		local roothashes=$(origin_filter $origin)
+		local roothashes="$(origin_filter $origin)"
 		if [ -n "$roothashes" ] ; then
 			# look chained fix of fix recursively
 			local rootver="$(origin_version $roothashes)"
