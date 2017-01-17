@@ -45,6 +45,27 @@
 #include <rte_ethdev.h>
 
 /**
+ * Response sent back to i40e driver from user app after callback
+ */
+enum rte_pmd_i40e_mb_event_rsp {
+	RTE_PMD_I40E_MB_EVENT_NOOP_ACK,  /**< skip mbox request and ACK */
+	RTE_PMD_I40E_MB_EVENT_NOOP_NACK, /**< skip mbox request and NACK */
+	RTE_PMD_I40E_MB_EVENT_PROCEED,  /**< proceed with mbox request  */
+	RTE_PMD_I40E_MB_EVENT_MAX       /**< max value of this enum */
+};
+
+/**
+ * Data sent to the user application when the callback is executed.
+ */
+struct rte_pmd_i40e_mb_event_param {
+	uint16_t vfid;     /**< Virtual Function number */
+	uint16_t msg_type; /**< VF to PF message type, see i40e_virtchnl_ops */
+	uint16_t retval;   /**< return value */
+	void *msg;         /**< pointer to message */
+	uint16_t msglen;   /**< length of the message */
+};
+
+/**
  * Notify VF when PF link status changes.
  *
  * @param port
