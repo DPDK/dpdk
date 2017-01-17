@@ -91,6 +91,9 @@
 #ifdef RTE_LIBRTE_IXGBE_PMD
 #include <rte_pmd_ixgbe.h>
 #endif
+#ifdef RTE_LIBRTE_I40E_PMD
+#include <rte_pmd_i40e.h>
+#endif
 #include "testpmd.h"
 
 static struct cmdline *testpmd_cl;
@@ -263,19 +266,21 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"set portlist (x[,y]*)\n"
 			"    Set the list of forwarding ports.\n\n"
 
-#ifdef RTE_LIBRTE_IXGBE_PMD
 			"set tx loopback (port_id) (on|off)\n"
 			"    Enable or disable tx loopback.\n\n"
 
+#ifdef RTE_LIBRTE_IXGBE_PMD
 			"set all queues drop (port_id) (on|off)\n"
 			"    Set drop enable bit for all queues.\n\n"
 
 			"set vf split drop (port_id) (vf_id) (on|off)\n"
 			"    Set split drop enable bit for a VF from the PF.\n\n"
+#endif
 
 			"set vf mac antispoof (port_id) (vf_id) (on|off).\n"
 			"    Set MAC antispoof for a VF from the PF.\n\n"
 
+#ifdef RTE_LIBRTE_IXGBE_PMD
 			"set macsec offload (port_id) on encrypt (on|off) replay-protect (on|off)\n"
 			"    Enable MACsec offload.\n\n"
 
@@ -295,7 +300,6 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"vlan set stripq (on|off) (port_id,queue_id)\n"
 			"    Set the VLAN strip for a queue on a port.\n\n"
 
-#ifdef RTE_LIBRTE_IXGBE_PMD
 			"set vf vlan stripq (port_id) (vf_id) (on|off)\n"
 			"    Set the VLAN strip for all queues in a pool for a VF from the PF.\n\n"
 
@@ -304,7 +308,6 @@ static void cmd_help_long_parsed(void *parsed_result,
 
 			"set vf vlan antispoof (port_id) (vf_id) (on|off)\n"
 			"    Set VLAN antispoof for a VF from the PF.\n\n"
-#endif
 
 			"vlan set filter (on|off) (port_id)\n"
 			"    Set the VLAN filter on a port.\n\n"
@@ -399,10 +402,8 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"mac_addr add port (port_id) vf (vf_id) (mac_address)\n"
 			"    Add a MAC address for a VF on the port.\n\n"
 
-#ifdef RTE_LIBRTE_IXGBE_PMD
 			"set vf mac addr (port_id) (vf_id) (XX:XX:XX:XX:XX:XX)\n"
 			"    Set the MAC address for a VF from the PF.\n\n"
-#endif
 
 			"set port (port_id) uta (mac_address|all) (on|off)\n"
 			"    Add/Remove a or all unicast hash filter(s)"
@@ -6715,9 +6716,7 @@ cmdline_parse_inst_t cmd_set_vf_traffic = {
 		NULL,
 	},
 };
-#endif
 
-#ifdef RTE_LIBRTE_IXGBE_PMD
 /* *** CONFIGURE VF RECEIVE MODE *** */
 struct cmd_set_vf_rxmode {
 	cmdline_fixed_string_t set;
@@ -10851,7 +10850,6 @@ cmdline_parse_inst_t cmd_config_e_tag_filter_del = {
 		NULL,
 	},
 };
-#ifdef RTE_LIBRTE_IXGBE_PMD
 
 /* vf vlan anti spoof configuration */
 
@@ -10903,14 +10901,24 @@ cmd_set_vf_vlan_anti_spoof_parsed(
 	__attribute__((unused)) void *data)
 {
 	struct cmd_vf_vlan_anti_spoof_result *res = parsed_result;
-	int ret = 0;
-	int is_on = (strcmp(res->on_off, "on") == 0) ? 1 : 0;
+	int ret = -ENOTSUP;
+
+	__rte_unused int is_on = (strcmp(res->on_off, "on") == 0) ? 1 : 0;
 
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
 
-	ret = rte_pmd_ixgbe_set_vf_vlan_anti_spoof(res->port_id, res->vf_id,
-			is_on);
+#ifdef RTE_LIBRTE_IXGBE_PMD
+	if (ret == -ENOTSUP)
+		ret = rte_pmd_ixgbe_set_vf_vlan_anti_spoof(res->port_id,
+				res->vf_id, is_on);
+#endif
+#ifdef RTE_LIBRTE_I40E_PMD
+	if (ret == -ENOTSUP)
+		ret = rte_pmd_i40e_set_vf_vlan_anti_spoof(res->port_id,
+				res->vf_id, is_on);
+#endif
+
 	switch (ret) {
 	case 0:
 		break;
@@ -10919,6 +10927,9 @@ cmd_set_vf_vlan_anti_spoof_parsed(
 		break;
 	case -ENODEV:
 		printf("invalid port_id %d\n", res->port_id);
+		break;
+	case -ENOTSUP:
+		printf("function not implemented\n");
 		break;
 	default:
 		printf("programming error: (%s)\n", strerror(-ret));
@@ -10991,14 +11002,24 @@ cmd_set_vf_mac_anti_spoof_parsed(
 	__attribute__((unused)) void *data)
 {
 	struct cmd_vf_mac_anti_spoof_result *res = parsed_result;
-	int ret;
-	int is_on = (strcmp(res->on_off, "on") == 0) ? 1 : 0;
+	int ret = -ENOTSUP;
+
+	__rte_unused int is_on = (strcmp(res->on_off, "on") == 0) ? 1 : 0;
 
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
 
-	ret = rte_pmd_ixgbe_set_vf_mac_anti_spoof(res->port_id, res->vf_id,
-			is_on);
+#ifdef RTE_LIBRTE_IXGBE_PMD
+	if (ret == -ENOTSUP)
+		ret = rte_pmd_ixgbe_set_vf_mac_anti_spoof(res->port_id,
+			res->vf_id, is_on);
+#endif
+#ifdef RTE_LIBRTE_I40E_PMD
+	if (ret == -ENOTSUP)
+		ret = rte_pmd_i40e_set_vf_mac_anti_spoof(res->port_id,
+			res->vf_id, is_on);
+#endif
+
 	switch (ret) {
 	case 0:
 		break;
@@ -11007,6 +11028,9 @@ cmd_set_vf_mac_anti_spoof_parsed(
 		break;
 	case -ENODEV:
 		printf("invalid port_id %d\n", res->port_id);
+		break;
+	case -ENOTSUP:
+		printf("function not implemented\n");
 		break;
 	default:
 		printf("programming error: (%s)\n", strerror(-ret));
@@ -11079,13 +11103,24 @@ cmd_set_vf_vlan_stripq_parsed(
 	__attribute__((unused)) void *data)
 {
 	struct cmd_vf_vlan_stripq_result *res = parsed_result;
-	int ret = 0;
-	int is_on = (strcmp(res->on_off, "on") == 0) ? 1 : 0;
+	int ret = -ENOTSUP;
+
+	__rte_unused int is_on = (strcmp(res->on_off, "on") == 0) ? 1 : 0;
 
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
 
-	ret = rte_pmd_ixgbe_set_vf_vlan_stripq(res->port_id, res->vf_id, is_on);
+#ifdef RTE_LIBRTE_IXGBE_PMD
+	if (ret == -ENOTSUP)
+		ret = rte_pmd_ixgbe_set_vf_vlan_stripq(res->port_id,
+			res->vf_id, is_on);
+#endif
+#ifdef RTE_LIBRTE_I40E_PMD
+	if (ret == -ENOTSUP)
+		ret = rte_pmd_i40e_set_vf_vlan_stripq(res->port_id,
+			res->vf_id, is_on);
+#endif
+
 	switch (ret) {
 	case 0:
 		break;
@@ -11094,6 +11129,9 @@ cmd_set_vf_vlan_stripq_parsed(
 		break;
 	case -ENODEV:
 		printf("invalid port_id %d\n", res->port_id);
+		break;
+	case -ENOTSUP:
+		printf("function not implemented\n");
 		break;
 	default:
 		printf("programming error: (%s)\n", strerror(-ret));
@@ -11166,12 +11204,22 @@ cmd_set_vf_vlan_insert_parsed(
 	__attribute__((unused)) void *data)
 {
 	struct cmd_vf_vlan_insert_result *res = parsed_result;
-	int ret;
+	int ret = -ENOTSUP;
 
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
 
-	ret = rte_pmd_ixgbe_set_vf_vlan_insert(res->port_id, res->vf_id, res->vlan_id);
+#ifdef RTE_LIBRTE_IXGBE_PMD
+	if (ret == -ENOTSUP)
+		ret = rte_pmd_ixgbe_set_vf_vlan_insert(res->port_id, res->vf_id,
+			res->vlan_id);
+#endif
+#ifdef RTE_LIBRTE_I40E_PMD
+	if (ret == -ENOTSUP)
+		ret = rte_pmd_i40e_set_vf_vlan_insert(res->port_id, res->vf_id,
+			res->vlan_id);
+#endif
+
 	switch (ret) {
 	case 0:
 		break;
@@ -11180,6 +11228,9 @@ cmd_set_vf_vlan_insert_parsed(
 		break;
 	case -ENODEV:
 		printf("invalid port_id %d\n", res->port_id);
+		break;
+	case -ENOTSUP:
+		printf("function not implemented\n");
 		break;
 	default:
 		printf("programming error: (%s)\n", strerror(-ret));
@@ -11242,13 +11293,22 @@ cmd_set_tx_loopback_parsed(
 	__attribute__((unused)) void *data)
 {
 	struct cmd_tx_loopback_result *res = parsed_result;
-	int ret;
-	int is_on = (strcmp(res->on_off, "on") == 0) ? 1 : 0;
+	int ret = -ENOTSUP;
+
+	__rte_unused int is_on = (strcmp(res->on_off, "on") == 0) ? 1 : 0;
 
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
 
-	ret = rte_pmd_ixgbe_set_tx_loopback(res->port_id, is_on);
+#ifdef RTE_LIBRTE_IXGBE_PMD
+	if (ret == -ENOTSUP)
+		ret = rte_pmd_ixgbe_set_tx_loopback(res->port_id, is_on);
+#endif
+#ifdef RTE_LIBRTE_I40E_PMD
+	if (ret == -ENOTSUP)
+		ret = rte_pmd_i40e_set_tx_loopback(res->port_id, is_on);
+#endif
+
 	switch (ret) {
 	case 0:
 		break;
@@ -11257,6 +11317,9 @@ cmd_set_tx_loopback_parsed(
 		break;
 	case -ENODEV:
 		printf("invalid port_id %d\n", res->port_id);
+		break;
+	case -ENOTSUP:
+		printf("function not implemented\n");
 		break;
 	default:
 		printf("programming error: (%s)\n", strerror(-ret));
@@ -11277,6 +11340,7 @@ cmdline_parse_inst_t cmd_set_tx_loopback = {
 	},
 };
 
+#ifdef RTE_LIBRTE_IXGBE_PMD
 /* all queues drop enable configuration */
 
 /* Common result structure for all queues drop enable */
@@ -11337,6 +11401,9 @@ cmd_set_all_queues_drop_en_parsed(
 		break;
 	case -ENODEV:
 		printf("invalid port_id %d\n", res->port_id);
+		break;
+	case -ENOTSUP:
+		printf("function not implemented\n");
 		break;
 	default:
 		printf("programming error: (%s)\n", strerror(-ret));
@@ -11445,6 +11512,7 @@ cmdline_parse_inst_t cmd_set_vf_split_drop_en = {
 		NULL,
 	},
 };
+#endif
 
 /* vf mac address configuration */
 
@@ -11496,13 +11564,22 @@ cmd_set_vf_mac_addr_parsed(
 	__attribute__((unused)) void *data)
 {
 	struct cmd_set_vf_mac_addr_result *res = parsed_result;
-	int ret;
+	int ret = -ENOTSUP;
 
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
 
-	ret = rte_pmd_ixgbe_set_vf_mac_addr(res->port_id, res->vf_id,
-			&res->mac_addr);
+#ifdef RTE_LIBRTE_IXGBE_PMD
+	if (ret == -ENOTSUP)
+		ret = rte_pmd_ixgbe_set_vf_mac_addr(res->port_id, res->vf_id,
+				&res->mac_addr);
+#endif
+#ifdef RTE_LIBRTE_I40E_PMD
+	if (ret == -ENOTSUP)
+		ret = rte_pmd_i40e_set_vf_mac_addr(res->port_id, res->vf_id,
+				&res->mac_addr);
+#endif
+
 	switch (ret) {
 	case 0:
 		break;
@@ -11511,6 +11588,9 @@ cmd_set_vf_mac_addr_parsed(
 		break;
 	case -ENODEV:
 		printf("invalid port_id %d\n", res->port_id);
+		break;
+	case -ENOTSUP:
+		printf("function not implemented\n");
 		break;
 	default:
 		printf("programming error: (%s)\n", strerror(-ret));
@@ -11533,6 +11613,7 @@ cmdline_parse_inst_t cmd_set_vf_mac_addr = {
 	},
 };
 
+#ifdef RTE_LIBRTE_IXGBE_PMD
 /* MACsec configuration */
 
 /* Common result structure for MACsec offload enable */
@@ -12060,15 +12141,14 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_config_e_tag_forwarding_en_dis,
 	(cmdline_parse_inst_t *)&cmd_config_e_tag_filter_add,
 	(cmdline_parse_inst_t *)&cmd_config_e_tag_filter_del,
-#ifdef RTE_LIBRTE_IXGBE_PMD
 	(cmdline_parse_inst_t *)&cmd_set_vf_vlan_anti_spoof,
 	(cmdline_parse_inst_t *)&cmd_set_vf_mac_anti_spoof,
 	(cmdline_parse_inst_t *)&cmd_set_vf_vlan_stripq,
 	(cmdline_parse_inst_t *)&cmd_set_vf_vlan_insert,
 	(cmdline_parse_inst_t *)&cmd_set_tx_loopback,
+#ifdef RTE_LIBRTE_IXGBE_PMD
 	(cmdline_parse_inst_t *)&cmd_set_all_queues_drop_en,
 	(cmdline_parse_inst_t *)&cmd_set_vf_split_drop_en,
-	(cmdline_parse_inst_t *)&cmd_set_vf_mac_addr,
 	(cmdline_parse_inst_t *)&cmd_set_macsec_offload_on,
 	(cmdline_parse_inst_t *)&cmd_set_macsec_offload_off,
 	(cmdline_parse_inst_t *)&cmd_set_macsec_sc,
@@ -12078,6 +12158,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_vf_rxvlan_filter,
 	(cmdline_parse_inst_t *)&cmd_vf_rate_limit,
 #endif
+	(cmdline_parse_inst_t *)&cmd_set_vf_mac_addr,
 	NULL,
 };
 
