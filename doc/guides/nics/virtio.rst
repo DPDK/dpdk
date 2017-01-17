@@ -87,6 +87,8 @@ In this release, the virtio PMD driver provides the basic functionality of packe
 
 *   Virtio supports Link State interrupt.
 
+*   Virtio supports Rx interrupt (so far, only support 1:1 mapping for queue/interrupt).
+
 *   Virtio supports software vlan stripping and inserting.
 
 *   Virtio supports using port IO to get PCI resource when uio/igb_uio module is not available.
@@ -274,3 +276,61 @@ Example of using the vector version of the virtio poll mode driver in
 ``testpmd``::
 
    testpmd -c 0x7 -n 4 -- -i --txqflags=0xF01 --rxq=1 --txq=1 --nb-cores=1
+
+
+Interrupt mode
+--------------
+
+.. _virtio_interrupt_mode:
+
+There are three kinds of interrupts from a virtio device over PCI bus: config
+interrupt, Rx interrupts, and Tx interrupts. Config interrupt is used for
+notification of device configuration changes, especially link status (lsc).
+Interrupt mode is translated into Rx interrupts in the context of DPDK.
+
+Prerequisites for Rx interrupts
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To support Rx interrupts,
+#. Check if guest kernel supports VFIO-NOIOMMU:
+
+    Linux started to support VFIO-NOIOMMU since 4.8.0. Make sure the guest
+    kernel is compiled with:
+
+    .. code-block:: console
+
+        CONFIG_VFIO_NOIOMMU=y
+
+#. Properly set msix vectors when starting VM:
+
+    Enable multi-queue when starting VM, and specify msix vectors in qemu
+    cmdline. (N+1) is the minimum, and (2N+2) is mostly recommended.
+
+    .. code-block:: console
+
+        $(QEMU) ... -device virtio-net-pci,mq=on,vectors=2N+2 ...
+
+#. In VM, insert vfio module in NOIOMMU mode:
+
+    .. code-block:: console
+
+        modprobe vfio enable_unsafe_noiommu_mode=1
+        modprobe vfio-pci
+
+#. In VM, bind the virtio device with vfio-pci:
+
+    .. code-block:: console
+
+        python tools/dpdk-devbind.py -b vfio-pci 00:03.0
+
+Example
+~~~~~~~
+
+Here we use l3fwd-power as an example to show how to get started.
+
+    Example:
+
+    .. code-block:: console
+
+        $ l3fwd-power -c 0x3 -- -p 1 -P --config="(0,0,1)" \
+                                               --no-numa --parse-ptype

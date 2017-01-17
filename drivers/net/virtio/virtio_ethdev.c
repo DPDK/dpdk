@@ -1210,6 +1210,82 @@ rx_func_get(struct rte_eth_dev *eth_dev)
 		eth_dev->rx_pkt_burst = &virtio_recv_pkts;
 }
 
+/* Only support 1:1 queue/interrupt mapping so far.
+ * TODO: support n:1 queue/interrupt mapping when there are limited number of
+ * interrupt vectors (<N+1).
+ */
+static int
+virtio_queues_bind_intr(struct rte_eth_dev *dev)
+{
+	uint32_t i;
+	struct virtio_hw *hw = dev->data->dev_private;
+
+	PMD_INIT_LOG(INFO, "queue/interrupt binding\n");
+	for (i = 0; i < dev->data->nb_rx_queues; ++i) {
+		dev->intr_handle->intr_vec[i] = i + 1;
+		if (VTPCI_OPS(hw)->set_queue_irq(hw, hw->vqs[i * 2], i + 1) ==
+						 VIRTIO_MSI_NO_VECTOR) {
+			PMD_DRV_LOG(ERR, "failed to set queue vector");
+			return -EBUSY;
+		}
+	}
+
+	return 0;
+}
+
+static int
+virtio_configure_intr(struct rte_eth_dev *dev)
+{
+	struct virtio_hw *hw = dev->data->dev_private;
+
+	if (!rte_intr_cap_multiple(dev->intr_handle)) {
+		PMD_INIT_LOG(ERR, "Multiple intr vector not supported");
+		return -ENOTSUP;
+	}
+
+	if (rte_intr_efd_enable(dev->intr_handle, dev->data->nb_rx_queues)) {
+		PMD_INIT_LOG(ERR, "Fail to create eventfd");
+		return -1;
+	}
+
+	if (!dev->intr_handle->intr_vec) {
+		dev->intr_handle->intr_vec =
+			rte_zmalloc("intr_vec",
+				    hw->max_queue_pairs * sizeof(int), 0);
+		if (!dev->intr_handle->intr_vec) {
+			PMD_INIT_LOG(ERR, "Failed to allocate %u rxq vectors",
+				     hw->max_queue_pairs);
+			return -ENOMEM;
+		}
+	}
+
+	/* Re-register callback to update max_intr */
+	rte_intr_callback_unregister(dev->intr_handle,
+				     virtio_interrupt_handler,
+				     dev);
+	rte_intr_callback_register(dev->intr_handle,
+				   virtio_interrupt_handler,
+				   dev);
+
+	/* DO NOT try to remove this! This function will enable msix, or QEMU
+	 * will encounter SIGSEGV when DRIVER_OK is sent.
+	 * And for legacy devices, this should be done before queue/vec binding
+	 * to change the config size from 20 to 24, or VIRTIO_MSI_QUEUE_VECTOR
+	 * (22) will be ignored.
+	 */
+	if (rte_intr_enable(dev->intr_handle) < 0) {
+		PMD_DRV_LOG(ERR, "interrupt enable failed");
+		return -1;
+	}
+
+	if (virtio_queues_bind_intr(dev) < 0) {
+		PMD_INIT_LOG(ERR, "Failed to bind queue/interrupt");
+		return -1;
+	}
+
+	return 0;
+}
+
 /* reset device and renegotiate features if needed */
 static int
 virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
@@ -1306,6 +1382,14 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 	ret = virtio_alloc_queues(eth_dev);
 	if (ret < 0)
 		return ret;
+
+	if (eth_dev->data->dev_conf.intr_conf.rxq) {
+		if (virtio_configure_intr(eth_dev) < 0) {
+			PMD_INIT_LOG(ERR, "failed to configure interrupt");
+			return -1;
+		}
+	}
+
 	vtpci_reinit_complete(hw);
 
 	if (pci_dev)

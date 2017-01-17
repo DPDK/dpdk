@@ -78,6 +78,19 @@ New Features
     it might enter into kernel space to wake up those kthreads if
     necessary).
 
+* **Added virtio Rx interrupt suppprt.**
+
+  This feature enables Rx interrupt mode for virtio pci net devices as
+  binded to VFIO (noiommu mode) and drived by virtio PMD.
+
+  With this feature, virtio PMD can switch between polling mode and
+  interrupt mode, to achieve best performance, and at the same time save
+  power. It can work on both legacy and modern virtio devices. At this mode,
+  each rxq is mapped with an exluded MSIx interrupt.
+
+  See the :ref:`Virtio Interrupt Mode <virtio_interrupt_mode>` documentation
+  for more information.
+
 
 Resolved Issues
 ---------------
