@@ -291,4 +291,45 @@ int rte_pmd_i40e_set_vf_vlan_tag(uint8_t port, uint16_t vf_id, uint8_t on);
 int rte_pmd_i40e_set_vf_vlan_filter(uint8_t port, uint16_t vlan_id,
 				    uint64_t vf_mask, uint8_t on);
 
+/**
+ * Get VF's statistics
+ *
+ * @param port
+ *    The port identifier of the Ethernet device.
+ * @param vf_id
+ *    VF on which to get.
+ * @param stats
+ *    A pointer to a structure of type *rte_eth_stats* to be filled with
+ *    the values of device counters for the following set of statistics:
+ *   - *ipackets* with the total of successfully received packets.
+ *   - *opackets* with the total of successfully transmitted packets.
+ *   - *ibytes*   with the total of successfully received bytes.
+ *   - *obytes*   with the total of successfully transmitted bytes.
+ *   - *ierrors*  with the total of erroneous received packets.
+ *   - *oerrors*  with the total of failed transmitted packets.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port* invalid.
+ *   - (-EINVAL) if bad parameter.
+ */
+
+int rte_pmd_i40e_get_vf_stats(uint8_t port,
+			      uint16_t vf_id,
+			      struct rte_eth_stats *stats);
+
+/**
+ * Clear VF's statistics
+ *
+ * @param port
+ *    The port identifier of the Ethernet device.
+ * @param vf_id
+ *    VF on which to get.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port* invalid.
+ *   - (-EINVAL) if bad parameter.
+ */
+int rte_pmd_i40e_reset_vf_stats(uint8_t port,
+				uint16_t vf_id);
+
 #endif /* _PMD_I40E_H_ */

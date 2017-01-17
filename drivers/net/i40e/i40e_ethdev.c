@@ -11106,3 +11106,82 @@ int rte_pmd_i40e_set_vf_vlan_filter(uint8_t port, uint16_t vlan_id,
 
 	return ret;
 }
+
+int
+rte_pmd_i40e_get_vf_stats(uint8_t port,
+			  uint16_t vf_id,
+			  struct rte_eth_stats *stats)
+{
+	struct rte_eth_dev *dev;
+	struct i40e_pf *pf;
+	struct i40e_vsi *vsi;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+
+	if (is_i40e_pmd(dev->data->drv_name))
+		return -ENOTSUP;
+
+	pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+
+	if (vf_id >= pf->vf_num || !pf->vfs) {
+		PMD_DRV_LOG(ERR, "Invalid VF ID.");
+		return -EINVAL;
+	}
+
+	vsi = pf->vfs[vf_id].vsi;
+	if (!vsi) {
+		PMD_DRV_LOG(ERR, "Invalid VSI.");
+		return -EINVAL;
+	}
+
+	i40e_update_vsi_stats(vsi);
+
+	stats->ipackets = vsi->eth_stats.rx_unicast +
+			vsi->eth_stats.rx_multicast +
+			vsi->eth_stats.rx_broadcast;
+	stats->opackets = vsi->eth_stats.tx_unicast +
+			vsi->eth_stats.tx_multicast +
+			vsi->eth_stats.tx_broadcast;
+	stats->ibytes   = vsi->eth_stats.rx_bytes;
+	stats->obytes   = vsi->eth_stats.tx_bytes;
+	stats->ierrors  = vsi->eth_stats.rx_discards;
+	stats->oerrors  = vsi->eth_stats.tx_errors + vsi->eth_stats.tx_discards;
+
+	return 0;
+}
+
+int
+rte_pmd_i40e_reset_vf_stats(uint8_t port,
+			    uint16_t vf_id)
+{
+	struct rte_eth_dev *dev;
+	struct i40e_pf *pf;
+	struct i40e_vsi *vsi;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+
+	if (is_i40e_pmd(dev->data->drv_name))
+		return -ENOTSUP;
+
+	pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+
+	if (vf_id >= pf->vf_num || !pf->vfs) {
+		PMD_DRV_LOG(ERR, "Invalid VF ID.");
+		return -EINVAL;
+	}
+
+	vsi = pf->vfs[vf_id].vsi;
+	if (!vsi) {
+		PMD_DRV_LOG(ERR, "Invalid VSI.");
+		return -EINVAL;
+	}
+
+	vsi->offset_loaded = false;
+	i40e_update_vsi_stats(vsi);
+
+	return 0;
+}
