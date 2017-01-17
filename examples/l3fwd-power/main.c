@@ -379,6 +379,7 @@ static void
 signal_exit_now(int sigtype)
 {
 	unsigned lcore_id;
+	unsigned int portid, nb_ports;
 	int ret;
 
 	if (sigtype == SIGINT) {
@@ -392,6 +393,15 @@ signal_exit_now(int sigtype)
 				rte_exit(EXIT_FAILURE, "Power management "
 					"library de-initialization failed on "
 							"core%u\n", lcore_id);
+		}
+
+		nb_ports = rte_eth_dev_count();
+		for (portid = 0; portid < nb_ports; portid++) {
+			if ((enabled_port_mask & (1 << portid)) == 0)
+				continue;
+
+			rte_eth_dev_stop(portid);
+			rte_eth_dev_close(portid);
 		}
 	}
 
