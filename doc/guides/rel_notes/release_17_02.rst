@@ -161,6 +161,18 @@ New Features
     AESNI MB PMD has been moved to a new repository, in GitHub.
   * Support for single operations (cipher only and authentication only).
 
+* **Updated the AES-NI GCM PMD.**
+
+  The AES-NI GCM PMD was migrated from MB library to ISA-L library.
+  The migration entailed the following additional support for:
+
+  * GMAC algorithm.
+  * 256-bit cipher key.
+  * Session-less mode.
+  * Out-of place processing
+  * Scatter-gatter support for chained mbufs (only out-of place and destination
+    mbuf must be contiguous)
+
 * **Added Elastic Flow Distributor library (rte_efd).**
 
   This new library uses perfect hashing to determine a target/value for a

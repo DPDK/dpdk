@@ -32,10 +32,8 @@ AES-NI GCM Crypto Poll Mode Driver
 
 
 The AES-NI GCM PMD (**librte_pmd_aesni_gcm**) provides poll mode crypto driver
-support for utilizing Intel multi buffer library (see AES-NI Multi-buffer PMD documentation
-to learn more about it, including installation).
-
-The AES-NI GCM PMD has current only been tested on Fedora 21 64-bit with gcc.
+support for utilizing Intel ISA-L crypto library, which provides operation acceleration
+through the AES-NI instruction sets for AES-GCM authenticated cipher algorithm.
 
 Features
 --------
@@ -49,16 +47,21 @@ Cipher algorithms:
 Authentication algorithms:
 
 * RTE_CRYPTO_AUTH_AES_GCM
+* RTE_CRYPTO_AUTH_AES_GMAC
+
+Installation
+------------
+
+To build DPDK with the AESNI_GCM_PMD the user is required to install
+the ``libisal_crypto`` library in the build environment.
+For download and more details please visit `<https://github.com/01org/isa-l_crypto>`_.
 
 Initialization
 --------------
 
 In order to enable this virtual crypto PMD, user must:
 
-* Export the environmental variable AESNI_MULTI_BUFFER_LIB_PATH with the path where
-  the library was extracted.
-
-* Build the multi buffer library (go to Installation section in AES-NI MB PMD documentation).
+* Install the ISA-L crypto library (explained in Installation section).
 
 * Set CONFIG_RTE_LIBRTE_PMD_AESNI_GCM=y in config/common_base.
 
@@ -86,9 +89,6 @@ Example:
 Limitations
 -----------
 
-* Chained mbufs are not supported.
+* Chained mbufs are supported but only out-of-place (destination mbuf must be contiguous).
 * Hash only is not supported.
 * Cipher only is not supported.
-* Only in-place is currently supported (destination address is the same as source address).
-* Only supports session-oriented API implementation (session-less APIs are not supported).
-*  Not performance tuned.

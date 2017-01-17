@@ -58,8 +58,6 @@
 
 /** private data structure for each virtual AESNI GCM device */
 struct aesni_gcm_private {
-	enum aesni_gcm_vector_mode vector_mode;
-	/**< Vector mode */
 	unsigned max_nb_queue_pairs;
 	/**< Max number of queue pairs supported by device */
 	unsigned max_nb_sessions;
@@ -71,8 +69,6 @@ struct aesni_gcm_qp {
 	/**< Queue Pair Identifier */
 	char name[RTE_CRYPTODEV_NAME_LEN];
 	/**< Unique Queue Pair Name */
-	const struct aesni_gcm_ops *ops;
-	/**< Architecture dependent function pointer table of the gcm APIs */
 	struct rte_ring *processed_pkts;
 	/**< Ring for placing process packets */
 	struct rte_mempool *sess_mp;
@@ -87,10 +83,17 @@ enum aesni_gcm_operation {
 	AESNI_GCM_OP_AUTHENTICATED_DECRYPTION
 };
 
+enum aesni_gcm_key {
+	AESNI_GCM_KEY_128,
+	AESNI_GCM_KEY_256
+};
+
 /** AESNI GCM private session structure */
 struct aesni_gcm_session {
 	enum aesni_gcm_operation op;
 	/**< GCM operation type */
+	enum aesni_gcm_key key;
+	/**< GCM key type */
 	struct gcm_data gdata __rte_cache_aligned;
 	/**< GCM parameters */
 };
@@ -98,7 +101,6 @@ struct aesni_gcm_session {
 
 /**
  * Setup GCM session parameters
- * @param	ops	gcm ops function pointer table
  * @param	sess	aesni gcm session structure
  * @param	xform	crypto transform chain
  *
@@ -107,8 +109,7 @@ struct aesni_gcm_session {
  * - On failure returns error code < 0
  */
 extern int
-aesni_gcm_set_session_parameters(const struct aesni_gcm_ops *ops,
-		struct aesni_gcm_session *sess,
+aesni_gcm_set_session_parameters(struct aesni_gcm_session *sess,
 		const struct rte_crypto_sym_xform *xform);
 
 

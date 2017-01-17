@@ -37,6 +37,7 @@ default_path=$PATH
 # - DPDK_BUILD_TEST_CONFIGS (defconfig1+option1+option2 defconfig2)
 # - DPDK_DEP_ARCHIVE
 # - DPDK_DEP_CFLAGS
+# - DPDK_DEP_ISAL_CRYPTO (y/[n])
 # - DPDK_DEP_LDFLAGS
 # - DPDK_DEP_MOFED (y/[n])
 # - DPDK_DEP_NUMA (y/[n])
@@ -119,6 +120,7 @@ reset_env ()
 	unset CROSS
 	unset DPDK_DEP_ARCHIVE
 	unset DPDK_DEP_CFLAGS
+	unset DPDK_DEP_ISAL_CRYPTO
 	unset DPDK_DEP_LDFLAGS
 	unset DPDK_DEP_MOFED
 	unset DPDK_DEP_NUMA
@@ -176,7 +178,7 @@ config () # <directory> <target> <options>
 		sed -ri               's,(PCAP=)n,\1y,' $1/.config
 		test -z "$AESNI_MULTI_BUFFER_LIB_PATH" || \
 		sed -ri       's,(PMD_AESNI_MB=)n,\1y,' $1/.config
-		test -z "$AESNI_MULTI_BUFFER_LIB_PATH" || \
+		test "$DPDK_DEP_ISAL_CRYPTO" != y || \
 		sed -ri      's,(PMD_AESNI_GCM=)n,\1y,' $1/.config
 		test -z "$LIBSSO_SNOW3G_PATH" || \
 		sed -ri         's,(PMD_SNOW3G=)n,\1y,' $1/.config

@@ -37,91 +37,26 @@
 #define LINUX
 #endif
 
-#include <gcm_defines.h>
-#include <aux_funcs.h>
+#include <isa-l_crypto/aes_gcm.h>
 
-/** Supported vector modes */
-enum aesni_gcm_vector_mode {
-	RTE_AESNI_GCM_NOT_SUPPORTED = 0,
-	RTE_AESNI_GCM_SSE,
-	RTE_AESNI_GCM_AVX,
-	RTE_AESNI_GCM_AVX2
-};
+typedef void (*aesni_gcm_init_t)(struct gcm_data *my_ctx_data,
+		uint8_t *iv,
+		uint8_t const *aad,
+		uint64_t aad_len);
 
-typedef void (*aes_keyexp_128_enc_t)(void *key, void *enc_exp_keys);
+typedef void (*aesni_gcm_update_t)(struct gcm_data *my_ctx_data,
+		uint8_t *out,
+		const uint8_t *in,
+		uint64_t plaintext_len);
 
-typedef void (*aesni_gcm_t)(gcm_data *my_ctx_data, u8 *out, const u8 *in,
-		u64 plaintext_len, u8 *iv, const u8 *aad, u64 aad_len,
-		u8 *auth_tag, u64 auth_tag_len);
+typedef void (*aesni_gcm_finalize_t)(struct gcm_data *my_ctx_data,
+		uint8_t *auth_tag,
+		uint64_t auth_tag_len);
 
-typedef void (*aesni_gcm_precomp_t)(gcm_data *my_ctx_data, u8 *hash_subkey);
-
-/** GCM library function pointer table */
 struct aesni_gcm_ops {
-	struct {
-		struct {
-			aes_keyexp_128_enc_t aes128_enc;
-			/**< AES128 enc key expansion */
-		} keyexp;
-		/**< Key expansion functions */
-	} aux; /**< Auxiliary functions */
-
-	struct {
-		aesni_gcm_t enc;	/**< GCM encode function pointer */
-		aesni_gcm_t dec;	/**< GCM decode function pointer */
-		aesni_gcm_precomp_t precomp;	/**< GCM pre-compute */
-	} gcm; /**< GCM functions */
+	aesni_gcm_init_t init;
+	aesni_gcm_update_t update;
+	aesni_gcm_finalize_t finalize;
 };
-
-
-static const struct aesni_gcm_ops gcm_ops[] = {
-	[RTE_AESNI_GCM_NOT_SUPPORTED] = {
-		.aux = {
-			.keyexp = {
-				NULL
-			}
-		},
-		.gcm = {
-			NULL
-		}
-	},
-	[RTE_AESNI_GCM_SSE] = {
-		.aux = {
-			.keyexp = {
-				aes_keyexp_128_enc_sse
-			}
-		},
-		.gcm = {
-			aesni_gcm_enc_sse,
-			aesni_gcm_dec_sse,
-			aesni_gcm_precomp_sse
-		}
-	},
-	[RTE_AESNI_GCM_AVX] = {
-		.aux = {
-			.keyexp = {
-				aes_keyexp_128_enc_avx,
-			}
-		},
-		.gcm = {
-			aesni_gcm_enc_avx_gen2,
-			aesni_gcm_dec_avx_gen2,
-			aesni_gcm_precomp_avx_gen2
-		}
-	},
-	[RTE_AESNI_GCM_AVX2] = {
-		.aux = {
-			.keyexp = {
-				aes_keyexp_128_enc_avx2,
-			}
-		},
-		.gcm = {
-			aesni_gcm_enc_avx_gen4,
-			aesni_gcm_dec_avx_gen4,
-			aesni_gcm_precomp_avx_gen4
-		}
-	}
-};
-
 
 #endif /* _AESNI_GCM_OPS_H_ */

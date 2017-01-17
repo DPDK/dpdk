@@ -39,9 +39,9 @@ Supported Feature Flags
    "RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO",x,x,x,x,x,x
    "RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO",,,,,,
    "RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING",x,x,x,x,x,x
-   "RTE_CRYPTODEV_FF_CPU_SSE",,,x,x,x,x
-   "RTE_CRYPTODEV_FF_CPU_AVX",,,x,x,x,x
-   "RTE_CRYPTODEV_FF_CPU_AVX2",,,x,x,,
+   "RTE_CRYPTODEV_FF_CPU_SSE",,,x,,x,x
+   "RTE_CRYPTODEV_FF_CPU_AVX",,,x,,x,x
+   "RTE_CRYPTODEV_FF_CPU_AVX2",,,x,,,
    "RTE_CRYPTODEV_FF_CPU_AVX512",,,x,,,
    "RTE_CRYPTODEV_FF_CPU_AESNI",,,x,x,,
    "RTE_CRYPTODEV_FF_HW_ACCELERATED",x,,,,,
@@ -83,6 +83,7 @@ Supported Authentication Algorithms
    "SHA512",,,,,,
    "SHA512_HMAC",x,,x,,,
    "AES_XCBC",x,,x,,,
+   "AES_GMAC",,,,x,,
    "SNOW3G_UIA2",x,,,,x,
    "KASUMI_F9",,,,,,x
 
@@ -92,6 +93,6 @@ Supported AEAD Algorithms
    :header: "AEAD Algorithms", "qat", "null", "aesni_mb", "aesni_gcm", "snow3g", "kasumi"
    :stub-columns: 1
 
-   "AES_GCM_128",x,,x,,,
+   "AES_GCM_128",x,,,x,,
    "AES_GCM_192",x,,,,,
-   "AES_GCM_256",x,,,,,
+   "AES_GCM_256",x,,,x,,
