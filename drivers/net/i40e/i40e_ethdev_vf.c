@@ -1195,7 +1195,6 @@ i40evf_init_vf(struct rte_eth_dev *dev)
 	int i, err, bufsz;
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
-	struct ether_addr *p_mac_addr;
 	uint16_t interval =
 		i40e_calc_itr_interval(I40E_QUEUE_ITR_INTERVAL_MAX);
 
@@ -1272,13 +1271,10 @@ i40evf_init_vf(struct rte_eth_dev *dev)
 	vf->vsi.adapter = I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 
 	/* Store the MAC address configured by host, or generate random one */
-	p_mac_addr = (struct ether_addr *)(vf->vsi_res->default_mac_addr);
-	if (is_valid_assigned_ether_addr(p_mac_addr)) { /* Configured by host */
-		ether_addr_copy(p_mac_addr, (struct ether_addr *)hw->mac.addr);
+	if (is_valid_assigned_ether_addr((struct ether_addr *)hw->mac.addr))
 		vf->flags |= I40E_FLAG_VF_MAC_BY_PF;
-	} else {
+	else
 		eth_random_addr(hw->mac.addr); /* Generate a random one */
-	}
 
 	/* If the PF host is not DPDK, set the interval of ITR0 to max*/
 	if (vf->version_major != I40E_DPDK_VERSION_MAJOR) {
