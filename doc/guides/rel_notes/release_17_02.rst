@@ -94,6 +94,16 @@ New Features
   As an EXPERIMENTAL feature, please aware it can be changed or even
   removed without prior notice.
 
+* **Updated the i40e base driver.**
+
+  updated the i40e base driver, including the following changes:
+
+  * replace existing legacy memcpy() calls with i40e_memcpy() calls.
+  * use BIT() macro instead of bit fields
+  * add clear all WoL filters implementation
+  * add broadcast promiscuous control per VLAN
+  * remove unused X722_SUPPORT and I40E_NDIS_SUPPORT MARCOs
+
 * **Added Solarflare libefx-based network PMD.**
 
   A new network PMD which supports Solarflare SFN7xxx and SFN8xxx family
