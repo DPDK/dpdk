@@ -574,6 +574,13 @@ Set VLAN insert for a VF from the PF::
 
    testpmd> set vf vlan insert (port_id) (vf_id) (vlan_id)
 
+vlan set tag (for VF)
+~~~~~~~~~~~~~~~~~~~~~
+
+Set VLAN tag for a VF from the PF::
+
+   testpmd> set vf vlan tag (port_id) (vf_id) (on|off)
+
 vlan set antispoof (for VF)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
