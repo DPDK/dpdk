@@ -6877,7 +6877,6 @@ cmdline_parse_inst_t cmd_vf_mac_addr_filter = {
 	},
 };
 
-#ifdef RTE_LIBRTE_IXGBE_PMD
 /* *** ADD/REMOVE A VLAN IDENTIFIER TO/FROM A PORT VLAN RX FILTER *** */
 struct cmd_vf_rx_vlan_filter {
 	cmdline_fixed_string_t rx_vlan;
@@ -6895,11 +6894,37 @@ cmd_vf_rx_vlan_filter_parsed(void *parsed_result,
 			  __attribute__((unused)) void *data)
 {
 	struct cmd_vf_rx_vlan_filter *res = parsed_result;
+	int ret = -ENOTSUP;
 
-	if (!strcmp(res->what, "add"))
-		set_vf_rx_vlan(res->port_id, res->vlan_id,res->vf_mask, 1);
-	else
-		set_vf_rx_vlan(res->port_id, res->vlan_id,res->vf_mask, 0);
+	__rte_unused int is_add = (strcmp(res->what, "add") == 0) ? 1 : 0;
+
+#ifdef RTE_LIBRTE_IXGBE_PMD
+	if (ret == -ENOTSUP)
+		ret = rte_pmd_ixgbe_set_vf_vlan_filter(res->port_id,
+				res->vlan_id, res->vf_mask, is_add);
+#endif
+#ifdef RTE_LIBRTE_I40E_PMD
+	if (ret == -ENOTSUP)
+		ret = rte_pmd_i40e_set_vf_vlan_filter(res->port_id,
+				res->vlan_id, res->vf_mask, is_add);
+#endif
+
+	switch (ret) {
+	case 0:
+		break;
+	case -EINVAL:
+		printf("invalid vlan_id %d or vf_mask %"PRIu64"\n",
+				res->vlan_id, res->vf_mask);
+		break;
+	case -ENODEV:
+		printf("invalid port_id %d\n", res->port_id);
+		break;
+	case -ENOTSUP:
+		printf("function not implemented or supported\n");
+		break;
+	default:
+		printf("programming error: (%s)\n", strerror(-ret));
+	}
 }
 
 cmdline_parse_token_string_t cmd_vf_rx_vlan_filter_rx_vlan =
@@ -6940,7 +6965,6 @@ cmdline_parse_inst_t cmd_vf_rxvlan_filter = {
 		NULL,
 	},
 };
-#endif
 
 /* *** SET RATE LIMIT FOR A QUEUE OF A PORT *** */
 struct cmd_queue_rate_limit_result {
@@ -12531,9 +12555,9 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_set_macsec_sa,
 	(cmdline_parse_inst_t *)&cmd_set_vf_rxmode,
 	(cmdline_parse_inst_t *)&cmd_set_vf_traffic,
-	(cmdline_parse_inst_t *)&cmd_vf_rxvlan_filter,
 	(cmdline_parse_inst_t *)&cmd_vf_rate_limit,
 #endif
+	(cmdline_parse_inst_t *)&cmd_vf_rxvlan_filter,
 	(cmdline_parse_inst_t *)&cmd_set_vf_mac_addr,
 	(cmdline_parse_inst_t *)&cmd_set_vf_promisc,
 	(cmdline_parse_inst_t *)&cmd_set_vf_allmulti,

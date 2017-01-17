@@ -2846,19 +2846,6 @@ set_vf_traffic(portid_t port_id, uint8_t is_rx, uint16_t vf, uint8_t on)
 	       		"diag=%d\n", port_id, diag);
 
 }
-
-void
-set_vf_rx_vlan(portid_t port_id, uint16_t vlan_id, uint64_t vf_mask, uint8_t on)
-{
-	int diag;
-
-	diag = rte_pmd_ixgbe_set_vf_vlan_filter(port_id, vlan_id, vf_mask, on);
-
-	if (diag == 0)
-		return;
-	printf("rte_pmd_ixgbe_set_vf_vlan_filter for port_id=%d failed "
-	       "diag=%d\n", port_id, diag);
-}
 #endif
 
 int
