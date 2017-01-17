@@ -861,6 +861,15 @@ In promiscuous mode packets are not dropped if they aren't for the specified MAC
 
    testpmd> set vf promisc (port_id) (vf_id) (on|off)
 
+set allmulticast (for VF)
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Set the multicast promiscuous mode for a VF from PF.
+It's supported by Intel i40e NICs now.
+In promiscuous mode packets are not dropped if they aren't for the specified MAC address::
+
+   testpmd> set vf allmulti (port_id) (vf_id) (on|off)
+
 set flow_ctrl rx
 ~~~~~~~~~~~~~~~~
 

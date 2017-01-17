@@ -418,6 +418,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"set vf promisc (port_id) (vf_id) (on|off)\n"
 			"    Set unicast promiscuous mode for a VF from the PF.\n\n"
 
+			"set vf allmulti (port_id) (vf_id) (on|off)\n"
+			"    Set multicast promiscuous mode for a VF from the PF.\n\n"
+
 			"set flow_ctrl rx (on|off) tx (on|off) (high_water)"
 			" (low_water) (pause_time) (send_xon) mac_ctrl_frame_fwd"
 			" (on|off) autoneg (on|off) (port_id)\n"
@@ -12081,6 +12084,96 @@ cmdline_parse_inst_t cmd_set_vf_promisc = {
 	},
 };
 
+/* VF multicast promiscuous mode configuration */
+
+/* Common result structure for VF multicast promiscuous mode */
+struct cmd_vf_allmulti_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t vf;
+	cmdline_fixed_string_t allmulti;
+	uint8_t port_id;
+	uint32_t vf_id;
+	cmdline_fixed_string_t on_off;
+};
+
+/* Common CLI fields for VF multicast promiscuous mode enable disable */
+cmdline_parse_token_string_t cmd_vf_allmulti_set =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_vf_allmulti_result,
+		 set, "set");
+cmdline_parse_token_string_t cmd_vf_allmulti_vf =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_vf_allmulti_result,
+		 vf, "vf");
+cmdline_parse_token_string_t cmd_vf_allmulti_allmulti =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_vf_allmulti_result,
+		 allmulti, "allmulti");
+cmdline_parse_token_num_t cmd_vf_allmulti_port_id =
+	TOKEN_NUM_INITIALIZER
+		(struct cmd_vf_allmulti_result,
+		 port_id, UINT8);
+cmdline_parse_token_num_t cmd_vf_allmulti_vf_id =
+	TOKEN_NUM_INITIALIZER
+		(struct cmd_vf_allmulti_result,
+		 vf_id, UINT32);
+cmdline_parse_token_string_t cmd_vf_allmulti_on_off =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_vf_allmulti_result,
+		 on_off, "on#off");
+
+static void
+cmd_set_vf_allmulti_parsed(
+	void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	__attribute__((unused)) void *data)
+{
+	struct cmd_vf_allmulti_result *res = parsed_result;
+	int ret = -ENOTSUP;
+
+	__rte_unused int is_on = (strcmp(res->on_off, "on") == 0) ? 1 : 0;
+
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
+		return;
+
+#ifdef RTE_LIBRTE_I40E_PMD
+	ret = rte_pmd_i40e_set_vf_multicast_promisc(res->port_id,
+						    res->vf_id, is_on);
+#endif
+
+	switch (ret) {
+	case 0:
+		break;
+	case -EINVAL:
+		printf("invalid vf_id %d\n", res->vf_id);
+		break;
+	case -ENODEV:
+		printf("invalid port_id %d\n", res->port_id);
+		break;
+	case -ENOTSUP:
+		printf("function not implemented\n");
+		break;
+	default:
+		printf("programming error: (%s)\n", strerror(-ret));
+	}
+}
+
+cmdline_parse_inst_t cmd_set_vf_allmulti = {
+	.f = cmd_set_vf_allmulti_parsed,
+	.data = NULL,
+	.help_str = "set vf allmulti <port_id> <vf_id> on|off: "
+		"Set multicast promiscuous mode for a VF from the PF",
+	.tokens = {
+		(void *)&cmd_vf_allmulti_set,
+		(void *)&cmd_vf_allmulti_vf,
+		(void *)&cmd_vf_allmulti_allmulti,
+		(void *)&cmd_vf_allmulti_port_id,
+		(void *)&cmd_vf_allmulti_vf_id,
+		(void *)&cmd_vf_allmulti_on_off,
+		NULL,
+	},
+};
+
 /* ******************************************************************************** */
 
 /* list of instructions */
@@ -12253,6 +12346,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 #endif
 	(cmdline_parse_inst_t *)&cmd_set_vf_mac_addr,
 	(cmdline_parse_inst_t *)&cmd_set_vf_promisc,
+	(cmdline_parse_inst_t *)&cmd_set_vf_allmulti,
 	NULL,
 };
 
