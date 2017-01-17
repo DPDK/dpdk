@@ -171,4 +171,27 @@ int rte_pmd_i40e_set_vf_multicast_promisc(uint8_t port,
 					  uint16_t vf_id,
 					  uint8_t on);
 
+/**
+ * Set the VF MAC address.
+ *
+ * PF should set MAC address before VF initialized, if PF sets the MAC
+ * address after VF initialized, new MAC address won't be effective until
+ * VF reinitialize.
+ *
+ * This will remove all existing MAC filters.
+ *
+ * @param port
+ *   The port identifier of the Ethernet device.
+ * @param vf_id
+ *   VF id.
+ * @param mac_addr
+ *   VF MAC address.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port* invalid.
+ *   - (-EINVAL) if *vf* or *mac_addr* is invalid.
+ */
+int rte_pmd_i40e_set_vf_mac_addr(uint8_t port, uint16_t vf_id,
+				 struct ether_addr *mac_addr);
+
 #endif /* _PMD_I40E_H_ */
