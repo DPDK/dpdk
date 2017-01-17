@@ -83,6 +83,9 @@ void virtio_dev_cq_start(struct rte_eth_dev *dev);
 /*
  * RX/TX function prototypes
  */
+
+int virtio_dev_rx_queue_done(void *rxq, uint16_t offset);
+
 int  virtio_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 		uint16_t nb_rx_desc, unsigned int socket_id,
 		const struct rte_eth_rxconf *rx_conf,

@@ -72,6 +72,15 @@
 #define VIRTIO_SIMPLE_FLAGS ((uint32_t)ETH_TXQ_FLAGS_NOMULTSEGS | \
 	ETH_TXQ_FLAGS_NOOFFLOADS)
 
+int
+virtio_dev_rx_queue_done(void *rxq, uint16_t offset)
+{
+	struct virtnet_rx *rxvq = rxq;
+	struct virtqueue *vq = rxvq->vq;
+
+	return VIRTQUEUE_NUSED(vq) >= offset;
+}
+
 static void
 vq_ring_free_chain(struct virtqueue *vq, uint16_t desc_idx)
 {

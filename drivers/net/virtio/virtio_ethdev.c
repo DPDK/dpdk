@@ -739,6 +739,7 @@ static const struct eth_dev_ops virtio_eth_dev_ops = {
 	.link_update             = virtio_dev_link_update,
 	.rx_queue_setup          = virtio_dev_rx_queue_setup,
 	.rx_queue_release        = virtio_dev_queue_release,
+	.rx_descriptor_done      = virtio_dev_rx_queue_done,
 	.tx_queue_setup          = virtio_dev_tx_queue_setup,
 	.tx_queue_release        = virtio_dev_queue_release,
 	/* collect stats per queue */
