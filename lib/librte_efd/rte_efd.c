@@ -52,6 +52,9 @@
 #include <rte_hash_crc.h>
 
 #include "rte_efd.h"
+#if defined(RTE_ARCH_X86)
+#include "rte_efd_x86.h"
+#endif
 
 #define EFD_KEY(key_idx, table) (table->keys + ((key_idx) * table->key_len))
 /** Hash function used to determine chunk_id and bin_id for a group */
@@ -100,6 +103,7 @@ allocated memory
 /* All different internal lookup functions */
 enum efd_lookup_internal_function {
 	EFD_LOOKUP_SCALAR = 0,
+	EFD_LOOKUP_AVX2,
 	EFD_LOOKUP_NUM
 };
 
@@ -662,7 +666,16 @@ rte_efd_create(const char *name, uint32_t max_num_rules, uint32_t key_len,
 		}
 	}
 
-	table->lookup_fn = EFD_LOOKUP_SCALAR;
+#if defined(RTE_ARCH_X86)
+	/*
+	 * For less than 4 bits, scalar function performs better
+	 * than vectorised version
+	 */
+	if (RTE_EFD_VALUE_NUM_BITS > 3 && rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2))
+		table->lookup_fn = EFD_LOOKUP_AVX2;
+	else
+#endif
+		table->lookup_fn = EFD_LOOKUP_SCALAR;
 
 	/*
 	 * Allocate the EFD table offline portion (with the actual rules
@@ -1253,6 +1266,13 @@ efd_lookup_internal(const struct efd_online_group_entry * const group,
 
 	switch (lookup_fn) {
 
+#if defined(RTE_ARCH_X86)
+	case EFD_LOOKUP_AVX2:
+		return efd_lookup_internal_avx2(group->hash_idx,
+					group->lookup_table,
+					hash_val_a,
+					hash_val_b);
+#endif
 	case EFD_LOOKUP_SCALAR:
 	/* Fall-through */
 	default:
