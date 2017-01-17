@@ -10854,3 +10854,68 @@ rte_pmd_i40e_set_vf_vlan_stripq(uint8_t port, uint16_t vf_id, uint8_t on)
 
 	return ret;
 }
+
+int rte_pmd_i40e_set_vf_vlan_insert(uint8_t port, uint16_t vf_id,
+				    uint16_t vlan_id)
+{
+	struct rte_eth_dev *dev;
+	struct i40e_pf *pf;
+	struct i40e_hw *hw;
+	struct i40e_vsi *vsi;
+	struct i40e_vsi_context ctxt;
+	int ret;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	if (vlan_id > ETHER_MAX_VLAN_ID) {
+		PMD_DRV_LOG(ERR, "Invalid VLAN ID.");
+		return -EINVAL;
+	}
+
+	dev = &rte_eth_devices[port];
+
+	if (is_i40e_pmd(dev->data->drv_name))
+		return -ENOTSUP;
+
+	pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	hw = I40E_PF_TO_HW(pf);
+
+	/**
+	 * return -ENODEV if SRIOV not enabled, VF number not configured
+	 * or no queue assigned.
+	 */
+	if (!hw->func_caps.sr_iov_1_1 || pf->vf_num == 0 ||
+	    pf->vf_nb_qps == 0)
+		return -ENODEV;
+
+	if (vf_id >= pf->vf_num || !pf->vfs) {
+		PMD_DRV_LOG(ERR, "Invalid VF ID.");
+		return -EINVAL;
+	}
+
+	vsi = pf->vfs[vf_id].vsi;
+	if (!vsi) {
+		PMD_DRV_LOG(ERR, "Invalid VSI.");
+		return -EINVAL;
+	}
+
+	vsi->info.valid_sections = cpu_to_le16(I40E_AQ_VSI_PROP_VLAN_VALID);
+	vsi->info.pvid = vlan_id;
+	if (vlan_id > 0)
+		vsi->info.port_vlan_flags |= I40E_AQ_VSI_PVLAN_INSERT_PVID;
+	else
+		vsi->info.port_vlan_flags &= ~I40E_AQ_VSI_PVLAN_INSERT_PVID;
+
+	memset(&ctxt, 0, sizeof(ctxt));
+	(void)rte_memcpy(&ctxt.info, &vsi->info, sizeof(vsi->info));
+	ctxt.seid = vsi->seid;
+
+	hw = I40E_VSI_TO_HW(vsi);
+	ret = i40e_aq_update_vsi_params(hw, &ctxt, NULL);
+	if (ret != I40E_SUCCESS) {
+		ret = -ENOTSUP;
+		PMD_DRV_LOG(ERR, "Failed to update VSI params");
+	}
+
+	return ret;
+}

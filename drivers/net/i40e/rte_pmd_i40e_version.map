@@ -13,6 +13,7 @@ DPDK_17.02 {
 	rte_pmd_i40e_set_vf_multicast_promisc;
 	rte_pmd_i40e_set_vf_unicast_promisc;
 	rte_pmd_i40e_set_vf_vlan_anti_spoof;
+	rte_pmd_i40e_set_vf_vlan_insert;
 	rte_pmd_i40e_set_vf_vlan_stripq;
 
 } DPDK_2.0;
