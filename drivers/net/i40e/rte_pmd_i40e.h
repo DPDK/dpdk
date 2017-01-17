@@ -117,4 +117,20 @@ int rte_pmd_i40e_set_vf_vlan_anti_spoof(uint8_t port,
 					uint16_t vf_id,
 					uint8_t on);
 
+/**
+ * Enable/Disable TX loopback on all the PF and VFs.
+ *
+ * @param port
+ *    The port identifier of the Ethernet device.
+ * @param on
+ *    1 - Enable TX loopback.
+ *    0 - Disable TX loopback.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port* invalid.
+ *   - (-EINVAL) if bad parameter.
+ */
+int rte_pmd_i40e_set_tx_loopback(uint8_t port,
+				 uint8_t on);
+
 #endif /* _PMD_I40E_H_ */

@@ -7,6 +7,7 @@ DPDK_17.02 {
 	global:
 
 	rte_pmd_i40e_ping_vfs;
+	rte_pmd_i40e_set_tx_loopback;
 	rte_pmd_i40e_set_vf_mac_anti_spoof;
 	rte_pmd_i40e_set_vf_vlan_anti_spoof;
 

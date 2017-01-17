@@ -10452,3 +10452,244 @@ rte_pmd_i40e_set_vf_vlan_anti_spoof(uint8_t port, uint16_t vf_id, uint8_t on)
 
 	return ret;
 }
+
+static int
+i40e_vsi_rm_mac_filter(struct i40e_vsi *vsi)
+{
+	struct i40e_mac_filter *f;
+	struct i40e_macvlan_filter *mv_f;
+	int i, vlan_num;
+	enum rte_mac_filter_type filter_type;
+	int ret = I40E_SUCCESS;
+	void *temp;
+
+	/* remove all the MACs */
+	TAILQ_FOREACH_SAFE(f, &vsi->mac_list, next, temp) {
+		vlan_num = vsi->vlan_num;
+		filter_type = f->mac_info.filter_type;
+		if (filter_type == RTE_MACVLAN_PERFECT_MATCH ||
+		    filter_type == RTE_MACVLAN_HASH_MATCH) {
+			if (vlan_num == 0) {
+				PMD_DRV_LOG(ERR,
+					    "VLAN number shouldn't be 0\n");
+				return I40E_ERR_PARAM;
+			}
+		} else if (filter_type == RTE_MAC_PERFECT_MATCH ||
+			   filter_type == RTE_MAC_HASH_MATCH)
+			vlan_num = 1;
+
+		mv_f = rte_zmalloc("macvlan_data", vlan_num * sizeof(*mv_f), 0);
+		if (!mv_f) {
+			PMD_DRV_LOG(ERR, "failed to allocate memory");
+			return I40E_ERR_NO_MEMORY;
+		}
+
+		for (i = 0; i < vlan_num; i++) {
+			mv_f[i].filter_type = filter_type;
+			(void)rte_memcpy(&mv_f[i].macaddr,
+					 &f->mac_info.mac_addr,
+					 ETH_ADDR_LEN);
+		}
+		if (filter_type == RTE_MACVLAN_PERFECT_MATCH ||
+		    filter_type == RTE_MACVLAN_HASH_MATCH) {
+			ret = i40e_find_all_vlan_for_mac(vsi, mv_f, vlan_num,
+							 &f->mac_info.mac_addr);
+			if (ret != I40E_SUCCESS) {
+				rte_free(mv_f);
+				return ret;
+			}
+		}
+
+		ret = i40e_remove_macvlan_filters(vsi, mv_f, vlan_num);
+		if (ret != I40E_SUCCESS) {
+			rte_free(mv_f);
+			return ret;
+		}
+
+		rte_free(mv_f);
+		ret = I40E_SUCCESS;
+	}
+
+	return ret;
+}
+
+static int
+i40e_vsi_restore_mac_filter(struct i40e_vsi *vsi)
+{
+	struct i40e_mac_filter *f;
+	struct i40e_macvlan_filter *mv_f;
+	int i, vlan_num = 0;
+	int ret = I40E_SUCCESS;
+	void *temp;
+
+	/* restore all the MACs */
+	TAILQ_FOREACH_SAFE(f, &vsi->mac_list, next, temp) {
+		if ((f->mac_info.filter_type == RTE_MACVLAN_PERFECT_MATCH) ||
+		    (f->mac_info.filter_type == RTE_MACVLAN_HASH_MATCH)) {
+			/**
+			 * If vlan_num is 0, that's the first time to add mac,
+			 * set mask for vlan_id 0.
+			 */
+			if (vsi->vlan_num == 0) {
+				i40e_set_vlan_filter(vsi, 0, 1);
+				vsi->vlan_num = 1;
+			}
+			vlan_num = vsi->vlan_num;
+		} else if ((f->mac_info.filter_type == RTE_MAC_PERFECT_MATCH) ||
+			   (f->mac_info.filter_type == RTE_MAC_HASH_MATCH))
+			vlan_num = 1;
+
+		mv_f = rte_zmalloc("macvlan_data", vlan_num * sizeof(*mv_f), 0);
+		if (!mv_f) {
+			PMD_DRV_LOG(ERR, "failed to allocate memory");
+			return I40E_ERR_NO_MEMORY;
+		}
+
+		for (i = 0; i < vlan_num; i++) {
+			mv_f[i].filter_type = f->mac_info.filter_type;
+			(void)rte_memcpy(&mv_f[i].macaddr,
+					 &f->mac_info.mac_addr,
+					 ETH_ADDR_LEN);
+		}
+
+		if (f->mac_info.filter_type == RTE_MACVLAN_PERFECT_MATCH ||
+		    f->mac_info.filter_type == RTE_MACVLAN_HASH_MATCH) {
+			ret = i40e_find_all_vlan_for_mac(vsi, mv_f, vlan_num,
+							 &f->mac_info.mac_addr);
+			if (ret != I40E_SUCCESS) {
+				rte_free(mv_f);
+				return ret;
+			}
+		}
+
+		ret = i40e_add_macvlan_filters(vsi, mv_f, vlan_num);
+		if (ret != I40E_SUCCESS) {
+			rte_free(mv_f);
+			return ret;
+		}
+
+		rte_free(mv_f);
+		ret = I40E_SUCCESS;
+	}
+
+	return ret;
+}
+
+static int
+i40e_vsi_set_tx_loopback(struct i40e_vsi *vsi, uint8_t on)
+{
+	struct i40e_vsi_context ctxt;
+	struct i40e_hw *hw;
+	int ret;
+
+	if (!vsi)
+		return -EINVAL;
+
+	hw = I40E_VSI_TO_HW(vsi);
+
+	/* Use the FW API if FW >= v5.0 */
+	if (hw->aq.fw_maj_ver < 5) {
+		PMD_INIT_LOG(ERR, "FW < v5.0, cannot enable loopback");
+		return -ENOTSUP;
+	}
+
+	/* Check if it has been already on or off */
+	if (vsi->info.valid_sections &
+		rte_cpu_to_le_16(I40E_AQ_VSI_PROP_SWITCH_VALID)) {
+		if (on) {
+			if ((vsi->info.switch_id &
+			     I40E_AQ_VSI_SW_ID_FLAG_ALLOW_LB) ==
+			    I40E_AQ_VSI_SW_ID_FLAG_ALLOW_LB)
+				return 0; /* already on */
+		} else {
+			if ((vsi->info.switch_id &
+			     I40E_AQ_VSI_SW_ID_FLAG_ALLOW_LB) == 0)
+				return 0; /* already off */
+		}
+	}
+
+	/* remove all the MAC and VLAN first */
+	ret = i40e_vsi_rm_mac_filter(vsi);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failed to remove MAC filters.");
+		return ret;
+	}
+	if (vsi->vlan_anti_spoof_on) {
+		ret = i40e_add_rm_all_vlan_filter(vsi, 0);
+		if (ret) {
+			PMD_INIT_LOG(ERR, "Failed to remove VLAN filters.");
+			return ret;
+		}
+	}
+
+	vsi->info.valid_sections = cpu_to_le16(I40E_AQ_VSI_PROP_SWITCH_VALID);
+	if (on)
+		vsi->info.switch_id |= I40E_AQ_VSI_SW_ID_FLAG_ALLOW_LB;
+	else
+		vsi->info.switch_id &= ~I40E_AQ_VSI_SW_ID_FLAG_ALLOW_LB;
+
+	memset(&ctxt, 0, sizeof(ctxt));
+	(void)rte_memcpy(&ctxt.info, &vsi->info, sizeof(vsi->info));
+	ctxt.seid = vsi->seid;
+
+	ret = i40e_aq_update_vsi_params(hw, &ctxt, NULL);
+	if (ret != I40E_SUCCESS) {
+		PMD_DRV_LOG(ERR, "Failed to update VSI params");
+		return ret;
+	}
+
+	/* add all the MAC and VLAN back */
+	ret = i40e_vsi_restore_mac_filter(vsi);
+	if (ret)
+		return ret;
+	if (vsi->vlan_anti_spoof_on) {
+		ret = i40e_add_rm_all_vlan_filter(vsi, 1);
+		if (ret)
+			return ret;
+	}
+
+	return ret;
+}
+
+int
+rte_pmd_i40e_set_tx_loopback(uint8_t port, uint8_t on)
+{
+	struct rte_eth_dev *dev;
+	struct i40e_pf *pf;
+	struct i40e_pf_vf *vf;
+	struct i40e_vsi *vsi;
+	uint16_t vf_id;
+	int ret;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+
+	if (is_i40e_pmd(dev->data->drv_name))
+		return -ENOTSUP;
+
+	pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+
+	/* setup PF TX loopback */
+	vsi = pf->main_vsi;
+	ret = i40e_vsi_set_tx_loopback(vsi, on);
+	if (ret)
+		return -ENOTSUP;
+
+	/* setup TX loopback for all the VFs */
+	if (!pf->vfs) {
+		/* if no VF, do nothing. */
+		return 0;
+	}
+
+	for (vf_id = 0; vf_id < pf->vf_num; vf_id++) {
+		vf = &pf->vfs[vf_id];
+		vsi = vf->vsi;
+
+		ret = i40e_vsi_set_tx_loopback(vsi, on);
+		if (ret)
+			return -ENOTSUP;
+	}
+
+	return ret;
+}
