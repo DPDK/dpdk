@@ -194,4 +194,23 @@ int rte_pmd_i40e_set_vf_multicast_promisc(uint8_t port,
 int rte_pmd_i40e_set_vf_mac_addr(uint8_t port, uint16_t vf_id,
 				 struct ether_addr *mac_addr);
 
+/**
+ * Enable/Disable vf vlan strip for all queues in a pool
+ *
+ * @param port
+ *    The port identifier of the Ethernet device.
+ * @param vf
+ *    ID specifying VF.
+ * @param on
+ *    1 - Enable VF's vlan strip on RX queues.
+ *    0 - Disable VF's vlan strip on RX queues.
+ *
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port* invalid.
+ *   - (-EINVAL) if bad parameter.
+ */
+int
+rte_pmd_i40e_set_vf_vlan_stripq(uint8_t port, uint16_t vf, uint8_t on);
+
 #endif /* _PMD_I40E_H_ */

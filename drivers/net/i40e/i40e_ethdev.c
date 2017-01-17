@@ -10817,3 +10817,40 @@ rte_pmd_i40e_set_vf_mac_addr(uint8_t port, uint16_t vf_id,
 
 	return 0;
 }
+
+/* Set vlan strip on/off for specific VF from host */
+int
+rte_pmd_i40e_set_vf_vlan_stripq(uint8_t port, uint16_t vf_id, uint8_t on)
+{
+	struct rte_eth_dev *dev;
+	struct i40e_pf *pf;
+	struct i40e_vsi *vsi;
+	int ret;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+
+	if (is_i40e_pmd(dev->data->drv_name))
+		return -ENOTSUP;
+
+	pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+
+	if (vf_id >= pf->vf_num || !pf->vfs) {
+		PMD_DRV_LOG(ERR, "Invalid argument.");
+		return -EINVAL;
+	}
+
+	vsi = pf->vfs[vf_id].vsi;
+
+	if (!vsi)
+		return -EINVAL;
+
+	ret = i40e_vsi_config_vlan_stripping(vsi, !!on);
+	if (ret != I40E_SUCCESS) {
+		ret = -ENOTSUP;
+		PMD_DRV_LOG(ERR, "Failed to set VLAN stripping!");
+	}
+
+	return ret;
+}
