@@ -1157,6 +1157,7 @@ mlx5_rx_poll_len(struct rxq *rxq, volatile struct mlx5_cqe *cqe,
 	struct rxq_zip *zip = &rxq->zip;
 	uint16_t cqe_n = cqe_cnt + 1;
 	int len = 0;
+	uint16_t idx, end;
 
 	/* Process compressed data in the CQE and mini arrays. */
 	if (zip->ai) {
@@ -1167,6 +1168,14 @@ mlx5_rx_poll_len(struct rxq *rxq, volatile struct mlx5_cqe *cqe,
 		len = ntohl((*mc)[zip->ai & 7].byte_cnt);
 		*rss_hash = ntohl((*mc)[zip->ai & 7].rx_hash_result);
 		if ((++zip->ai & 7) == 0) {
+			/* Invalidate consumed CQEs */
+			idx = zip->ca;
+			end = zip->na;
+			while (idx != end) {
+				(*rxq->cqes)[idx & cqe_cnt].op_own =
+					MLX5_CQE_INVALIDATE;
+				++idx;
+			}
 			/*
 			 * Increment consumer index to skip the number of
 			 * CQEs consumed. Hardware leaves holes in the CQ
@@ -1176,8 +1185,9 @@ mlx5_rx_poll_len(struct rxq *rxq, volatile struct mlx5_cqe *cqe,
 			zip->na += 8;
 		}
 		if (unlikely(rxq->zip.ai == rxq->zip.cqe_cnt)) {
-			uint16_t idx = rxq->cq_ci + 1;
-			uint16_t end = zip->cq_ci;
+			/* Invalidate the rest */
+			idx = zip->ca;
+			end = zip->cq_ci;
 
 			while (idx != end) {
 				(*rxq->cqes)[idx & cqe_cnt].op_own =
@@ -1213,7 +1223,7 @@ mlx5_rx_poll_len(struct rxq *rxq, volatile struct mlx5_cqe *cqe,
 			 * special case the second one is located 7 CQEs after
 			 * the initial CQE instead of 8 for subsequent ones.
 			 */
-			zip->ca = rxq->cq_ci & cqe_cnt;
+			zip->ca = rxq->cq_ci;
 			zip->na = zip->ca + 7;
 			/* Compute the next non compressed CQE. */
 			--rxq->cq_ci;
@@ -1222,6 +1232,13 @@ mlx5_rx_poll_len(struct rxq *rxq, volatile struct mlx5_cqe *cqe,
 			len = ntohl((*mc)[0].byte_cnt);
 			*rss_hash = ntohl((*mc)[0].rx_hash_result);
 			zip->ai = 1;
+			/* Prefetch all the entries to be invalidated */
+			idx = zip->ca;
+			end = zip->cq_ci;
+			while (idx != end) {
+				rte_prefetch0(&(*rxq->cqes)[(idx) & cqe_cnt]);
+				++idx;
+			}
 		} else {
 			len = ntohl(cqe->byte_cnt);
 			*rss_hash = ntohl(cqe->rx_hash_res);
