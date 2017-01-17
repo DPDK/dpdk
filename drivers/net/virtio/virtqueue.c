@@ -38,17 +38,6 @@
 #include "virtio_logs.h"
 #include "virtio_pci.h"
 
-void
-virtqueue_disable_intr(struct virtqueue *vq)
-{
-	/*
-	 * Set VRING_AVAIL_F_NO_INTERRUPT to hint host
-	 * not to interrupt when it consumes packets
-	 * Note: this is only considered a hint to the host
-	 */
-	vq->vq_ring.avail->flags |= VRING_AVAIL_F_NO_INTERRUPT;
-}
-
 /*
  * Two types of mbuf to be cleaned:
  * 1) mbuf that has been consumed by backend but not used by virtio.

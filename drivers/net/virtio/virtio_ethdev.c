@@ -717,6 +717,26 @@ virtio_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	return 0;
 }
 
+static int
+virtio_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
+{
+	struct virtnet_rx *rxvq = dev->data->rx_queues[queue_id];
+	struct virtqueue *vq = rxvq->vq;
+
+	virtqueue_enable_intr(vq);
+	return 0;
+}
+
+static int
+virtio_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
+{
+	struct virtnet_rx *rxvq = dev->data->rx_queues[queue_id];
+	struct virtqueue *vq = rxvq->vq;
+
+	virtqueue_disable_intr(vq);
+	return 0;
+}
+
 /*
  * dev_ops for virtio, bare necessities for basic operation
  */
@@ -738,6 +758,8 @@ static const struct eth_dev_ops virtio_eth_dev_ops = {
 	.xstats_reset            = virtio_dev_stats_reset,
 	.link_update             = virtio_dev_link_update,
 	.rx_queue_setup          = virtio_dev_rx_queue_setup,
+	.rx_queue_intr_enable    = virtio_dev_rx_queue_intr_enable,
+	.rx_queue_intr_disable   = virtio_dev_rx_queue_intr_disable,
 	.rx_queue_release        = virtio_dev_queue_release,
 	.rx_descriptor_done      = virtio_dev_rx_queue_done,
 	.tx_queue_setup          = virtio_dev_tx_queue_setup,
