@@ -753,8 +753,8 @@ i40e_pf_host_process_cmd_add_ether_address(struct i40e_pf_vf *vf,
 		mac = (struct ether_addr *)(addr_list->list[i].addr);
 		(void)rte_memcpy(&filter.mac_addr, mac, ETHER_ADDR_LEN);
 		filter.filter_type = RTE_MACVLAN_PERFECT_MATCH;
-		if(!is_valid_assigned_ether_addr(mac) ||
-			i40e_vsi_add_mac(vf->vsi, &filter)) {
+		if (is_zero_ether_addr(mac) ||
+		    i40e_vsi_add_mac(vf->vsi, &filter)) {
 			ret = I40E_ERR_INVALID_MAC_ADDR;
 			goto send_msg;
 		}
