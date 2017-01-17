@@ -52,6 +52,10 @@
 @example load_balancer/init.c
 @example load_balancer/main.c
 @example load_balancer/runtime.c
+@example flow_distributor/distributor/args.c
+@example flow_distributor/distributor/init.c
+@example flow_distributor/distributor/main.c
+@example flow_distributor/node/node.c
 @example multi_process/client_server_mp/mp_client/client.c
 @example multi_process/client_server_mp/mp_server/args.c
 @example multi_process/client_server_mp/mp_server/init.c

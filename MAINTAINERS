@@ -544,6 +544,7 @@ M: Byron Marohn <byron.marohn@intel.com>
 M: Pablo de Lara Guarch <pablo.de.lara.guarch@intel.com>
 F: lib/librte_efd/
 F: app/test/test_efd*
+F: examples/flow_distributor/
 
 Hashes
 M: Bruce Richardson <bruce.richardson@intel.com>
