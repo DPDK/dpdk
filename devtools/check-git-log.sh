@@ -170,12 +170,6 @@ bad=$(echo "$tags" |
 	sed 's,^.,\t&,')
 [ -z "$bad" ] || printf "Wrong tag:\n$bad\n"
 
-# check blank line after last Fixes: tag
-bad=$(echo "$bodylines" |
-	sed -n 'N;/\nFixes:/D;/\n$/D;/^Fixes:/P' |
-	sed 's,^.,\t&,')
-[ -z "$bad" ] || printf "Missing blank line after 'Fixes' tag:\n$bad\n"
-
 # check missing Fixes: tag
 bad=$(for fix in $fixes ; do
 	git log --format='%b' -1 $fix | grep -q '^Fixes: ' ||
@@ -198,9 +192,9 @@ bad=$(for fixtag in $fixtags ; do
 done | sed 's,^,\t,')
 [ -z "$bad" ] || printf "Wrong 'Fixes' reference:\n$bad\n"
 
-# check CC:stable for fixes
+# check Cc: stable@dpdk.org for fixes
 bad=$(for fix in $stablefixes ; do
-	git log --format='%b' -1 $fix | grep -qi '^CC: *stable@dpdk.org' ||
+	git log --format='%b' -1 $fix | grep -qi '^Cc: *stable@dpdk.org' ||
 		git log --format='\t%s' -1 $fix
 done)
-[ -z "$bad" ] || printf "Should CC: stable@dpdk.org\n$bad\n"
+[ -z "$bad" ] || printf "Is it candidate for Cc: stable@dpdk.org backport?\n$bad\n"
