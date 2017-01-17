@@ -91,6 +91,7 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 		priv_fdir_enable(priv);
 	priv_dev_interrupt_handler_install(priv, dev);
 	err = priv_flow_start(priv);
+	priv_xstats_init(priv);
 	priv_unlock(priv);
 	return -err;
 }

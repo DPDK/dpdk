@@ -89,6 +89,14 @@ enum {
 	PCI_DEVICE_ID_MELLANOX_CONNECTX5EXVF = 0x101a,
 };
 
+struct mlx5_xstats_ctrl {
+	/* Number of device stats. */
+	uint16_t stats_n;
+	/* Index in the device counters table. */
+	uint16_t dev_table_idx[MLX5_MAX_XSTATS];
+	uint64_t base[MLX5_MAX_XSTATS];
+};
+
 struct priv {
 	struct rte_eth_dev *dev; /* Ethernet device. */
 	struct ibv_context *ctx; /* Verbs context. */
@@ -142,6 +150,7 @@ struct priv {
 	struct fdir_queue *fdir_drop_queue; /* Flow director drop queue. */
 	LIST_HEAD(mlx5_flows, rte_flow) flows; /* RTE Flow rules. */
 	uint32_t link_speed_capa; /* Link speed capabilities. */
+	struct mlx5_xstats_ctrl xstats_ctrl; /* Extended stats control. */
 	rte_spinlock_t lock; /* Lock for control functions. */
 };
 
@@ -249,8 +258,14 @@ void mlx5_allmulticast_disable(struct rte_eth_dev *);
 
 /* mlx5_stats.c */
 
+void priv_xstats_init(struct priv *);
 void mlx5_stats_get(struct rte_eth_dev *, struct rte_eth_stats *);
 void mlx5_stats_reset(struct rte_eth_dev *);
+int mlx5_xstats_get(struct rte_eth_dev *,
+		    struct rte_eth_xstat *, unsigned int);
+void mlx5_xstats_reset(struct rte_eth_dev *);
+int mlx5_xstats_get_names(struct rte_eth_dev *,
+			  struct rte_eth_xstat_name *, unsigned int);
 
 /* mlx5_vlan.c */
 

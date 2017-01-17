@@ -79,4 +79,7 @@
 /* Alarm timeout. */
 #define MLX5_ALARM_TIMEOUT_US 100000
 
+/* Maximum number of extended statistics counters. */
+#define MLX5_MAX_XSTATS 32
+
 #endif /* RTE_PMD_MLX5_DEFS_H_ */
