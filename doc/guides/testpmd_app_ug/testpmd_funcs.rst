@@ -852,6 +852,15 @@ Set the allmulti mode for a port or for all ports::
 
 Same as the ifconfig (8) option. Controls how multicast packets are handled.
 
+set promisc (for VF)
+~~~~~~~~~~~~~~~~~~~~
+
+Set the unicast promiscuous mode for a VF from PF.
+It's supported by Intel i40e NICs now.
+In promiscuous mode packets are not dropped if they aren't for the specified MAC address::
+
+   testpmd> set vf promisc (port_id) (vf_id) (on|off)
+
 set flow_ctrl rx
 ~~~~~~~~~~~~~~~~
 
