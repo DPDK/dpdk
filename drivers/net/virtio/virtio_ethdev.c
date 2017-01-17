@@ -593,16 +593,29 @@ virtio_alloc_queues(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static void virtio_queues_unbind_intr(struct rte_eth_dev *dev);
+
 static void
 virtio_dev_close(struct rte_eth_dev *dev)
 {
 	struct virtio_hw *hw = dev->data->dev_private;
+	struct rte_intr_conf *intr_conf = &dev->data->dev_conf.intr_conf;
 
 	PMD_INIT_LOG(DEBUG, "virtio_dev_close");
 
 	/* reset the NIC */
 	if (dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)
 		VTPCI_OPS(hw)->set_config_irq(hw, VIRTIO_MSI_NO_VECTOR);
+	if (intr_conf->rxq)
+		virtio_queues_unbind_intr(dev);
+
+	if (intr_conf->lsc || intr_conf->rxq) {
+		rte_intr_disable(dev->intr_handle);
+		rte_intr_efd_disable(dev->intr_handle);
+		rte_free(dev->intr_handle->intr_vec);
+		dev->intr_handle->intr_vec = NULL;
+	}
+
 	vtpci_reset(hw);
 	virtio_dev_free_mbufs(dev);
 	virtio_free_queues(hw);
@@ -1231,6 +1244,19 @@ virtio_queues_bind_intr(struct rte_eth_dev *dev)
 	}
 
 	return 0;
+}
+
+static void
+virtio_queues_unbind_intr(struct rte_eth_dev *dev)
+{
+	uint32_t i;
+	struct virtio_hw *hw = dev->data->dev_private;
+
+	PMD_INIT_LOG(INFO, "queue/interrupt unbinding\n");
+	for (i = 0; i < dev->data->nb_rx_queues; ++i)
+		VTPCI_OPS(hw)->set_queue_irq(hw,
+					     hw->vqs[i * VTNET_CQ],
+					     VIRTIO_MSI_NO_VECTOR);
 }
 
 static int
