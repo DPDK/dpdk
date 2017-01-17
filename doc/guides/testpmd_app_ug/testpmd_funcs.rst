@@ -539,6 +539,13 @@ Configure MACsec secure association (SA)::
    The IDX value must be 0 or 1.
    Check the NIC Datasheet for hardware limits.
 
+set broadcast mode (for VF)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Set broadcast mode for a VF from the PF::
+
+   testpmd> set vf broadcast (port_id) (vf_id) (on|off)
+
 vlan set strip
 ~~~~~~~~~~~~~~
 

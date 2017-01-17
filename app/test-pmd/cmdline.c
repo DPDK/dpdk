@@ -294,6 +294,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"    Configure MACsec secure association (SA).\n\n"
 #endif
 
+			"set vf broadcast (port_id) (vf_id) (on|off)\n"
+			"    Set VF broadcast for a VF from the PF.\n\n"
+
 			"vlan set strip (on|off) (port_id)\n"
 			"    Set the VLAN strip on a port.\n\n"
 
@@ -12174,6 +12177,95 @@ cmdline_parse_inst_t cmd_set_vf_allmulti = {
 	},
 };
 
+/* vf broadcast mode configuration */
+
+/* Common result structure for vf broadcast */
+struct cmd_set_vf_broadcast_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t vf;
+	cmdline_fixed_string_t broadcast;
+	uint8_t port_id;
+	uint16_t vf_id;
+	cmdline_fixed_string_t on_off;
+};
+
+/* Common CLI fields for vf broadcast enable disable */
+cmdline_parse_token_string_t cmd_set_vf_broadcast_set =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_set_vf_broadcast_result,
+		 set, "set");
+cmdline_parse_token_string_t cmd_set_vf_broadcast_vf =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_set_vf_broadcast_result,
+		 vf, "vf");
+cmdline_parse_token_string_t cmd_set_vf_broadcast_broadcast =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_set_vf_broadcast_result,
+		 broadcast, "broadcast");
+cmdline_parse_token_num_t cmd_set_vf_broadcast_port_id =
+	TOKEN_NUM_INITIALIZER
+		(struct cmd_set_vf_broadcast_result,
+		 port_id, UINT8);
+cmdline_parse_token_num_t cmd_set_vf_broadcast_vf_id =
+	TOKEN_NUM_INITIALIZER
+		(struct cmd_set_vf_broadcast_result,
+		 vf_id, UINT16);
+cmdline_parse_token_string_t cmd_set_vf_broadcast_on_off =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_set_vf_broadcast_result,
+		 on_off, "on#off");
+
+static void
+cmd_set_vf_broadcast_parsed(
+	void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	__attribute__((unused)) void *data)
+{
+	struct cmd_set_vf_broadcast_result *res = parsed_result;
+	int ret = -ENOTSUP;
+
+	__rte_unused int is_on = (strcmp(res->on_off, "on") == 0) ? 1 : 0;
+
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
+		return;
+
+#ifdef RTE_LIBRTE_I40E_PMD
+	ret = rte_pmd_i40e_set_vf_broadcast(res->port_id,
+					    res->vf_id, is_on);
+#endif
+
+	switch (ret) {
+	case 0:
+		break;
+	case -EINVAL:
+		printf("invalid vf_id %d or is_on %d\n", res->vf_id, is_on);
+		break;
+	case -ENODEV:
+		printf("invalid port_id %d\n", res->port_id);
+		break;
+	case -ENOTSUP:
+		printf("function not implemented\n");
+		break;
+	default:
+		printf("programming error: (%s)\n", strerror(-ret));
+	}
+}
+
+cmdline_parse_inst_t cmd_set_vf_broadcast = {
+	.f = cmd_set_vf_broadcast_parsed,
+	.data = NULL,
+	.help_str = "set vf broadcast <port_id> <vf_id> on|off",
+	.tokens = {
+		(void *)&cmd_set_vf_broadcast_set,
+		(void *)&cmd_set_vf_broadcast_vf,
+		(void *)&cmd_set_vf_broadcast_broadcast,
+		(void *)&cmd_set_vf_broadcast_port_id,
+		(void *)&cmd_set_vf_broadcast_vf_id,
+		(void *)&cmd_set_vf_broadcast_on_off,
+		NULL,
+	},
+};
+
 /* ******************************************************************************** */
 
 /* list of instructions */
@@ -12347,6 +12439,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_set_vf_mac_addr,
 	(cmdline_parse_inst_t *)&cmd_set_vf_promisc,
 	(cmdline_parse_inst_t *)&cmd_set_vf_allmulti,
+	(cmdline_parse_inst_t *)&cmd_set_vf_broadcast,
 	NULL,
 };
 
