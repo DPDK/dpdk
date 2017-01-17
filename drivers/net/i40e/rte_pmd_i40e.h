@@ -79,4 +79,23 @@ struct rte_pmd_i40e_mb_event_param {
  */
 int rte_pmd_i40e_ping_vfs(uint8_t port, uint16_t vf);
 
+/**
+ * Enable/Disable VF MAC anti spoofing.
+ *
+ * @param port
+ *    The port identifier of the Ethernet device.
+ * @param vf
+ *    VF on which to set MAC anti spoofing.
+ * @param on
+ *    1 - Enable VFs MAC anti spoofing.
+ *    0 - Disable VFs MAC anti spoofing.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port* invalid.
+ *   - (-EINVAL) if bad parameter.
+ */
+int rte_pmd_i40e_set_vf_mac_anti_spoof(uint8_t port,
+				       uint16_t vf_id,
+				       uint8_t on);
+
 #endif /* _PMD_I40E_H_ */

@@ -7,5 +7,6 @@ DPDK_17.02 {
 	global:
 
 	rte_pmd_i40e_ping_vfs;
+	rte_pmd_i40e_set_vf_mac_anti_spoof;
 
 } DPDK_2.0;

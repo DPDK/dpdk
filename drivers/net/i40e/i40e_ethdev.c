@@ -10257,3 +10257,68 @@ rte_pmd_i40e_ping_vfs(uint8_t port, uint16_t vf)
 
 	return 0;
 }
+
+int
+rte_pmd_i40e_set_vf_mac_anti_spoof(uint8_t port, uint16_t vf_id, uint8_t on)
+{
+	struct rte_eth_dev *dev;
+	struct i40e_pf *pf;
+	struct i40e_vsi *vsi;
+	struct i40e_hw *hw;
+	struct i40e_vsi_context ctxt;
+	int ret;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+
+	if (is_i40e_pmd(dev->data->drv_name))
+		return -ENOTSUP;
+
+	pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+
+	if (vf_id >= pf->vf_num || !pf->vfs) {
+		PMD_DRV_LOG(ERR, "Invalid argument.");
+		return -EINVAL;
+	}
+
+	vsi = pf->vfs[vf_id].vsi;
+	if (!vsi) {
+		PMD_DRV_LOG(ERR, "Invalid VSI.");
+		return -EINVAL;
+	}
+
+	/* Check if it has been already on or off */
+	if (vsi->info.valid_sections &
+		rte_cpu_to_le_16(I40E_AQ_VSI_PROP_SECURITY_VALID)) {
+		if (on) {
+			if ((vsi->info.sec_flags &
+			     I40E_AQ_VSI_SEC_FLAG_ENABLE_MAC_CHK) ==
+			    I40E_AQ_VSI_SEC_FLAG_ENABLE_MAC_CHK)
+				return 0; /* already on */
+		} else {
+			if ((vsi->info.sec_flags &
+			     I40E_AQ_VSI_SEC_FLAG_ENABLE_MAC_CHK) == 0)
+				return 0; /* already off */
+		}
+	}
+
+	vsi->info.valid_sections = cpu_to_le16(I40E_AQ_VSI_PROP_SECURITY_VALID);
+	if (on)
+		vsi->info.sec_flags |= I40E_AQ_VSI_SEC_FLAG_ENABLE_MAC_CHK;
+	else
+		vsi->info.sec_flags &= ~I40E_AQ_VSI_SEC_FLAG_ENABLE_MAC_CHK;
+
+	memset(&ctxt, 0, sizeof(ctxt));
+	(void)rte_memcpy(&ctxt.info, &vsi->info, sizeof(vsi->info));
+	ctxt.seid = vsi->seid;
+
+	hw = I40E_VSI_TO_HW(vsi);
+	ret = i40e_aq_update_vsi_params(hw, &ctxt, NULL);
+	if (ret != I40E_SUCCESS) {
+		ret = -ENOTSUP;
+		PMD_DRV_LOG(ERR, "Failed to update VSI params");
+	}
+
+	return ret;
+}
