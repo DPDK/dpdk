@@ -546,6 +546,7 @@ F: lib/librte_efd/
 F: doc/guides/prog_guide/efd_lib.rst
 F: app/test/test_efd*
 F: examples/flow_distributor/
+F: doc/guides/sample_app_ug/flow_distributor.rst
 
 Hashes
 M: Bruce Richardson <bruce.richardson@intel.com>

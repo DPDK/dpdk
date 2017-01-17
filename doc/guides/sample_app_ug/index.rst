@@ -57,6 +57,7 @@ Sample Applications User Guides
     l3_forward_virtual
     link_status_intr
     load_balancer
+    flow_distributor
     multi_process
     qos_metering
     qos_scheduler
