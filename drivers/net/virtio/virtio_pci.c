@@ -220,6 +220,19 @@ legacy_set_config_irq(struct virtio_hw *hw, uint16_t vec)
 }
 
 static uint16_t
+legacy_set_queue_irq(struct virtio_hw *hw, struct virtqueue *vq, uint16_t vec)
+{
+	uint16_t dst;
+
+	rte_eal_pci_ioport_write(VTPCI_IO(hw), &vq->vq_queue_index, 2,
+				 VIRTIO_PCI_QUEUE_SEL);
+	rte_eal_pci_ioport_write(VTPCI_IO(hw), &vec, 2,
+				 VIRTIO_MSI_QUEUE_VECTOR);
+	rte_eal_pci_ioport_read(VTPCI_IO(hw), &dst, 2, VIRTIO_MSI_QUEUE_VECTOR);
+	return dst;
+}
+
+static uint16_t
 legacy_get_queue_num(struct virtio_hw *hw, uint16_t queue_id)
 {
 	uint16_t dst;
@@ -314,6 +327,7 @@ const struct virtio_pci_ops legacy_ops = {
 	.set_features	= legacy_set_features,
 	.get_isr	= legacy_get_isr,
 	.set_config_irq	= legacy_set_config_irq,
+	.set_queue_irq  = legacy_set_queue_irq,
 	.get_queue_num	= legacy_get_queue_num,
 	.setup_queue	= legacy_setup_queue,
 	.del_queue	= legacy_del_queue,
@@ -453,6 +467,14 @@ modern_set_config_irq(struct virtio_hw *hw, uint16_t vec)
 }
 
 static uint16_t
+modern_set_queue_irq(struct virtio_hw *hw, struct virtqueue *vq, uint16_t vec)
+{
+	io_write16(vq->vq_queue_index, &hw->common_cfg->queue_select);
+	io_write16(vec, &hw->common_cfg->queue_msix_vector);
+	return io_read16(&hw->common_cfg->queue_msix_vector);
+}
+
+static uint16_t
 modern_get_queue_num(struct virtio_hw *hw, uint16_t queue_id)
 {
 	io_write16(queue_id, &hw->common_cfg->queue_select);
@@ -530,6 +552,7 @@ const struct virtio_pci_ops modern_ops = {
 	.set_features	= modern_set_features,
 	.get_isr	= modern_get_isr,
 	.set_config_irq	= modern_set_config_irq,
+	.set_queue_irq  = modern_set_queue_irq,
 	.get_queue_num	= modern_get_queue_num,
 	.setup_queue	= modern_setup_queue,
 	.del_queue	= modern_del_queue,

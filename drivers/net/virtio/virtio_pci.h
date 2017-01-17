@@ -235,6 +235,9 @@ struct virtio_pci_ops {
 
 	uint16_t (*set_config_irq)(struct virtio_hw *hw, uint16_t vec);
 
+	uint16_t (*set_queue_irq)(struct virtio_hw *hw, struct virtqueue *vq,
+			uint16_t vec);
+
 	uint16_t (*get_queue_num)(struct virtio_hw *hw, uint16_t queue_id);
 	int (*setup_queue)(struct virtio_hw *hw, struct virtqueue *vq);
 	void (*del_queue)(struct virtio_hw *hw, struct virtqueue *vq);
