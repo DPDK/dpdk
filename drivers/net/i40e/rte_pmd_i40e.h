@@ -152,4 +152,23 @@ int rte_pmd_i40e_set_vf_unicast_promisc(uint8_t port,
 					uint16_t vf_id,
 					uint8_t on);
 
+/**
+ * Enable/Disable VF multicast promiscuous mode.
+ *
+ * @param port
+ *    The port identifier of the Ethernet device.
+ * @param vf
+ *    VF on which to set.
+ * @param on
+ *    1 - Enable.
+ *    0 - Disable.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port* invalid.
+ *   - (-EINVAL) if bad parameter.
+ */
+int rte_pmd_i40e_set_vf_multicast_promisc(uint8_t port,
+					  uint16_t vf_id,
+					  uint8_t on);
+
 #endif /* _PMD_I40E_H_ */
