@@ -63,6 +63,7 @@
 #include "i40e_rxtx.h"
 #include "i40e_pf.h"
 #include "i40e_regs.h"
+#include "rte_pmd_i40e.h"
 
 #define ETH_I40E_FLOATING_VEB_ARG	"enable_floating_veb"
 #define ETH_I40E_FLOATING_VEB_LIST_ARG	"floating_veb_list"
@@ -10218,4 +10219,41 @@ i40e_filter_restore(struct i40e_pf *pf)
 	i40e_ethertype_filter_restore(pf);
 	i40e_tunnel_filter_restore(pf);
 	i40e_fdir_filter_restore(pf);
+}
+
+static int
+is_i40e_pmd(const char *driver_name)
+{
+	if (!strstr(driver_name, "i40e"))
+		return -ENOTSUP;
+
+	if (strstr(driver_name, "i40e_vf"))
+		return -ENOTSUP;
+
+	return 0;
+}
+
+int
+rte_pmd_i40e_ping_vfs(uint8_t port, uint16_t vf)
+{
+	struct rte_eth_dev *dev;
+	struct i40e_pf *pf;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+
+	if (is_i40e_pmd(dev->data->drv_name))
+		return -ENOTSUP;
+
+	pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+
+	if (vf >= pf->vf_num || !pf->vfs) {
+		PMD_DRV_LOG(ERR, "Invalid argument.");
+		return -EINVAL;
+	}
+
+	i40e_notify_vf_link_status(dev, &pf->vfs[vf]);
+
+	return 0;
 }

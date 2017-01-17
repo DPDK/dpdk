@@ -2,3 +2,10 @@ DPDK_2.0 {
 
 	local: *;
 };
+
+DPDK_17.02 {
+	global:
+
+	rte_pmd_i40e_ping_vfs;
+
+} DPDK_2.0;

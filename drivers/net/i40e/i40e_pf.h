@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2017 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -123,5 +123,7 @@ void i40e_pf_host_handle_vf_msg(struct rte_eth_dev *dev,
 				uint8_t *msg, uint16_t msglen);
 int i40e_pf_host_init(struct rte_eth_dev *dev);
 int i40e_pf_host_uninit(struct rte_eth_dev *dev);
+void i40e_notify_vf_link_status(struct rte_eth_dev *dev,
+				struct i40e_pf_vf *vf);
 
 #endif /* _I40E_PF_H_ */

@@ -1,6 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+#   Copyright(c) 2010-2017 Intel Corporation. All rights reserved.
 #   All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
@@ -112,6 +112,8 @@ ifeq ($(findstring RTE_MACHINE_CPUFLAG_SSE4_1,$(CFLAGS)),)
 CFLAGS_i40e_rxtx_vec_sse.o += -msse4.1
 endif
 
+# install this header file
+SYMLINK-$(CONFIG_RTE_LIBRTE_I40E_PMD)-include := rte_pmd_i40e.h
 
 # this lib depends upon:
 DEPDIRS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += lib/librte_eal lib/librte_ether
