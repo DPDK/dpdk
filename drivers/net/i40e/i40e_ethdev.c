@@ -10919,3 +10919,59 @@ int rte_pmd_i40e_set_vf_vlan_insert(uint8_t port, uint16_t vf_id,
 
 	return ret;
 }
+
+int rte_pmd_i40e_set_vf_broadcast(uint8_t port, uint16_t vf_id,
+				  uint8_t on)
+{
+	struct rte_eth_dev *dev;
+	struct i40e_pf *pf;
+	struct i40e_vsi *vsi;
+	struct i40e_hw *hw;
+	int ret;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	if (on > 1) {
+		PMD_DRV_LOG(ERR, "on should be 0 or 1.");
+		return -EINVAL;
+	}
+
+	dev = &rte_eth_devices[port];
+
+	if (is_i40e_pmd(dev->data->drv_name))
+		return -ENOTSUP;
+
+	pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	hw = I40E_PF_TO_HW(pf);
+
+	if (vf_id >= pf->vf_num || !pf->vfs) {
+		PMD_DRV_LOG(ERR, "Invalid VF ID.");
+		return -EINVAL;
+	}
+
+	/**
+	 * return -ENODEV if SRIOV not enabled, VF number not configured
+	 * or no queue assigned.
+	 */
+	if (!hw->func_caps.sr_iov_1_1 || pf->vf_num == 0 ||
+	    pf->vf_nb_qps == 0) {
+		PMD_DRV_LOG(ERR, "SRIOV is not enabled or no queue.");
+		return -ENODEV;
+	}
+
+	vsi = pf->vfs[vf_id].vsi;
+	if (!vsi) {
+		PMD_DRV_LOG(ERR, "Invalid VSI.");
+		return -EINVAL;
+	}
+
+	hw = I40E_VSI_TO_HW(vsi);
+
+	ret = i40e_aq_set_vsi_broadcast(hw, vsi->seid, on, NULL);
+	if (ret != I40E_SUCCESS) {
+		ret = -ENOTSUP;
+		PMD_DRV_LOG(ERR, "Failed to set VSI broadcast");
+	}
+
+	return ret;
+}

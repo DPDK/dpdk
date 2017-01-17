@@ -232,4 +232,23 @@ rte_pmd_i40e_set_vf_vlan_stripq(uint8_t port, uint16_t vf, uint8_t on);
 int rte_pmd_i40e_set_vf_vlan_insert(uint8_t port, uint16_t vf_id,
 				    uint16_t vlan_id);
 
+/**
+ * Enable/Disable vf broadcast mode
+ *
+ * @param port
+ *    The port identifier of the Ethernet device.
+ * @param vf
+ *    ID specifying VF.
+ * @param on
+ *    0 - Disable broadcast.
+ *    1 - Enable broadcast.
+ *
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port* invalid.
+ *   - (-EINVAL) if bad parameter.
+ */
+int rte_pmd_i40e_set_vf_broadcast(uint8_t port, uint16_t vf_id,
+				  uint8_t on);
+
 #endif /* _PMD_I40E_H_ */
