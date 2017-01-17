@@ -11043,3 +11043,66 @@ int rte_pmd_i40e_set_vf_vlan_tag(uint8_t port, uint16_t vf_id, uint8_t on)
 
 	return ret;
 }
+
+int rte_pmd_i40e_set_vf_vlan_filter(uint8_t port, uint16_t vlan_id,
+				    uint64_t vf_mask, uint8_t on)
+{
+	struct rte_eth_dev *dev;
+	struct i40e_pf *pf;
+	struct i40e_hw *hw;
+	uint16_t vf_idx;
+	int ret = I40E_SUCCESS;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+
+	if (is_i40e_pmd(dev->data->drv_name))
+		return -ENOTSUP;
+
+	if (vlan_id > ETHER_MAX_VLAN_ID) {
+		PMD_DRV_LOG(ERR, "Invalid VLAN ID.");
+		return -EINVAL;
+	}
+
+	if (vf_mask == 0) {
+		PMD_DRV_LOG(ERR, "No VF.");
+		return -EINVAL;
+	}
+
+	if (on > 1) {
+		PMD_DRV_LOG(ERR, "on is should be 0 or 1.");
+		return -EINVAL;
+	}
+
+	pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	hw = I40E_PF_TO_HW(pf);
+
+	/**
+	 * return -ENODEV if SRIOV not enabled, VF number not configured
+	 * or no queue assigned.
+	 */
+	if (!hw->func_caps.sr_iov_1_1 || pf->vf_num == 0 ||
+	    pf->vf_nb_qps == 0) {
+		PMD_DRV_LOG(ERR, "SRIOV is not enabled or no queue.");
+		return -ENODEV;
+	}
+
+	for (vf_idx = 0; vf_idx < 64 && ret == I40E_SUCCESS; vf_idx++) {
+		if (vf_mask & ((uint64_t)(1ULL << vf_idx))) {
+			if (on)
+				ret = i40e_vsi_add_vlan(pf->vfs[vf_idx].vsi,
+							vlan_id);
+			else
+				ret = i40e_vsi_delete_vlan(pf->vfs[vf_idx].vsi,
+							   vlan_id);
+		}
+	}
+
+	if (ret != I40E_SUCCESS) {
+		ret = -ENOTSUP;
+		PMD_DRV_LOG(ERR, "Failed to set VF VLAN filter, on = %d", on);
+	}
+
+	return ret;
+}

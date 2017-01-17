@@ -269,4 +269,26 @@ int rte_pmd_i40e_set_vf_broadcast(uint8_t port, uint16_t vf_id,
  */
 int rte_pmd_i40e_set_vf_vlan_tag(uint8_t port, uint16_t vf_id, uint8_t on);
 
+/**
+ * Enable/Disable VF VLAN filter
+ *
+ * @param port
+ *    The port identifier of the Ethernet device.
+ * @param vlan_id
+ *    ID specifying VLAN
+ * @param vf_mask
+ *    Mask to filter VF's
+ * @param on
+ *    0 - Disable VF's VLAN filter.
+ *    1 - Enable VF's VLAN filter.
+ *
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port* invalid.
+ *   - (-EINVAL) if bad parameter.
+ *   - (-ENOTSUP) not supported by firmware.
+ */
+int rte_pmd_i40e_set_vf_vlan_filter(uint8_t port, uint16_t vlan_id,
+				    uint64_t vf_mask, uint8_t on);
+
 #endif /* _PMD_I40E_H_ */
