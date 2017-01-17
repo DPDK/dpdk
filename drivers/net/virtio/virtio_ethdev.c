@@ -1461,9 +1461,12 @@ virtio_remap_pci(struct rte_pci_device *pci_dev, struct virtio_hw *hw)
 static void
 virtio_set_vtpci_ops(struct virtio_hw *hw)
 {
+#ifdef RTE_VIRTIO_USER
 	if (hw->virtio_user_dev)
 		VTPCI_OPS(hw) = &virtio_user_ops;
-	else if (hw->modern)
+	else
+#endif
+	if (hw->modern)
 		VTPCI_OPS(hw) = &modern_ops;
 	else
 		VTPCI_OPS(hw) = &legacy_ops;
