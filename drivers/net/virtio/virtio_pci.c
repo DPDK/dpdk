@@ -601,14 +601,6 @@ vtpci_isr(struct virtio_hw *hw)
 	return VTPCI_OPS(hw)->get_isr(hw);
 }
 
-
-/* Enable one vector (0) for Link State Intrerrupt */
-uint16_t
-vtpci_irq_config(struct virtio_hw *hw, uint16_t vec)
-{
-	return VTPCI_OPS(hw)->set_config_irq(hw, vec);
-}
-
 static void *
 get_cfg_addr(struct rte_pci_device *dev, struct virtio_pci_cap *cap)
 {

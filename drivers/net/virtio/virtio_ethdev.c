@@ -602,7 +602,7 @@ virtio_dev_close(struct rte_eth_dev *dev)
 
 	/* reset the NIC */
 	if (dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)
-		vtpci_irq_config(hw, VIRTIO_MSI_NO_VECTOR);
+		VTPCI_OPS(hw)->set_config_irq(hw, VIRTIO_MSI_NO_VECTOR);
 	vtpci_reset(hw);
 	virtio_dev_free_mbufs(dev);
 	virtio_free_queues(hw);
@@ -1520,7 +1520,9 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 	}
 
 	if (dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)
-		if (vtpci_irq_config(hw, 0) == VIRTIO_MSI_NO_VECTOR) {
+		/* Enable vector (0) for Link State Intrerrupt */
+		if (VTPCI_OPS(hw)->set_config_irq(hw, 0) ==
+				VIRTIO_MSI_NO_VECTOR) {
 			PMD_DRV_LOG(ERR, "failed to set config vector");
 			return -EBUSY;
 		}
