@@ -152,6 +152,8 @@ static int i40evf_dev_rss_hash_update(struct rte_eth_dev *dev,
 static int i40evf_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 					struct rte_eth_rss_conf *rss_conf);
 static int i40evf_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
+static void i40evf_set_default_mac_addr(struct rte_eth_dev *dev,
+					struct ether_addr *mac_addr);
 static int
 i40evf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id);
 static int
@@ -227,6 +229,7 @@ static const struct eth_dev_ops i40evf_eth_dev_ops = {
 	.rss_hash_update      = i40evf_dev_rss_hash_update,
 	.rss_hash_conf_get    = i40evf_dev_rss_hash_conf_get,
 	.mtu_set              = i40evf_dev_mtu_set,
+	.mac_addr_set         = i40evf_set_default_mac_addr,
 };
 
 /*
@@ -890,18 +893,15 @@ i40evf_add_mac_addr(struct rte_eth_dev *dev,
 }
 
 static void
-i40evf_del_mac_addr(struct rte_eth_dev *dev, uint32_t index)
+i40evf_del_mac_addr_by_addr(struct rte_eth_dev *dev,
+			    struct ether_addr *addr)
 {
 	struct i40e_virtchnl_ether_addr_list *list;
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
-	struct rte_eth_dev_data *data = dev->data;
-	struct ether_addr *addr;
 	uint8_t cmd_buffer[sizeof(struct i40e_virtchnl_ether_addr_list) + \
 			sizeof(struct i40e_virtchnl_ether_addr)];
 	int err;
 	struct vf_cmd_info args;
-
-	addr = &(data->mac_addrs[index]);
 
 	if (i40e_validate_mac_addr(addr->addr_bytes) != I40E_SUCCESS) {
 		PMD_DRV_LOG(ERR, "Invalid mac:%x-%x-%x-%x-%x-%x",
@@ -927,6 +927,17 @@ i40evf_del_mac_addr(struct rte_eth_dev *dev, uint32_t index)
 		PMD_DRV_LOG(ERR, "fail to execute command "
 			    "OP_DEL_ETHER_ADDRESS");
 	return;
+}
+
+static void
+i40evf_del_mac_addr(struct rte_eth_dev *dev, uint32_t index)
+{
+	struct rte_eth_dev_data *data = dev->data;
+	struct ether_addr *addr;
+
+	addr = &data->mac_addrs[index];
+
+	i40evf_del_mac_addr_by_addr(dev, addr);
 }
 
 static int
@@ -1262,10 +1273,12 @@ i40evf_init_vf(struct rte_eth_dev *dev)
 
 	/* Store the MAC address configured by host, or generate random one */
 	p_mac_addr = (struct ether_addr *)(vf->vsi_res->default_mac_addr);
-	if (is_valid_assigned_ether_addr(p_mac_addr)) /* Configured by host */
+	if (is_valid_assigned_ether_addr(p_mac_addr)) { /* Configured by host */
 		ether_addr_copy(p_mac_addr, (struct ether_addr *)hw->mac.addr);
-	else
+		vf->flags |= I40E_FLAG_VF_MAC_BY_PF;
+	} else {
 		eth_random_addr(hw->mac.addr); /* Generate a random one */
+	}
 
 	/* If the PF host is not DPDK, set the interval of ITR0 to max*/
 	if (vf->version_major != I40E_DPDK_VERSION_MAJOR) {
@@ -2685,4 +2698,26 @@ i40evf_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	dev_data->dev_conf.rxmode.max_rx_pkt_len = frame_size;
 
 	return ret;
+}
+
+static void
+i40evf_set_default_mac_addr(struct rte_eth_dev *dev,
+			    struct ether_addr *mac_addr)
+{
+	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+
+	if (!is_valid_assigned_ether_addr(mac_addr)) {
+		PMD_DRV_LOG(ERR, "Tried to set invalid MAC address.");
+		return;
+	}
+
+	if (is_same_ether_addr(mac_addr, dev->data->mac_addrs))
+		return;
+
+	if (vf->flags & I40E_FLAG_VF_MAC_BY_PF)
+		return;
+
+	i40evf_del_mac_addr_by_addr(dev, dev->data->mac_addrs);
+
+	i40evf_add_mac_addr(dev, mac_addr, 0, 0);
 }
