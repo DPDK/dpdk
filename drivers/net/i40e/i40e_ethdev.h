@@ -361,6 +361,7 @@ struct i40e_vsi {
 	uint16_t msix_intr; /* The MSIX interrupt binds to VSI */
 	uint16_t nb_msix;   /* The max number of msix vector */
 	uint8_t enabled_tc; /* The traffic class enabled */
+	uint8_t vlan_anti_spoof_on; /* The VLAN anti-spoofing enabled */
 	struct i40e_bw_info bw_info; /* VSI bandwidth information */
 };
 

@@ -98,4 +98,23 @@ int rte_pmd_i40e_set_vf_mac_anti_spoof(uint8_t port,
 				       uint16_t vf_id,
 				       uint8_t on);
 
+/**
+ * Enable/Disable VF VLAN anti spoofing.
+ *
+ * @param port
+ *    The port identifier of the Ethernet device.
+ * @param vf
+ *    VF on which to set VLAN anti spoofing.
+ * @param on
+ *    1 - Enable VFs VLAN anti spoofing.
+ *    0 - Disable VFs VLAN anti spoofing.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port* invalid.
+ *   - (-EINVAL) if bad parameter.
+ */
+int rte_pmd_i40e_set_vf_vlan_anti_spoof(uint8_t port,
+					uint16_t vf_id,
+					uint8_t on);
+
 #endif /* _PMD_I40E_H_ */
