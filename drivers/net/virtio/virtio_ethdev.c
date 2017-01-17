@@ -1652,6 +1652,15 @@ virtio_dev_start(struct rte_eth_dev *dev)
 			PMD_DRV_LOG(ERR, "link status not supported by host");
 			return -ENOTSUP;
 		}
+	}
+
+	/* Enable uio/vfio intr/eventfd mapping: althrough we already did that
+	 * in device configure, but it could be unmapped  when device is
+	 * stopped.
+	 */
+	if (dev->data->dev_conf.intr_conf.lsc ||
+	    dev->data->dev_conf.intr_conf.rxq) {
+		rte_intr_disable(dev->intr_handle);
 
 		if (rte_intr_enable(dev->intr_handle) < 0) {
 			PMD_DRV_LOG(ERR, "interrupt enable failed");
@@ -1746,10 +1755,11 @@ static void
 virtio_dev_stop(struct rte_eth_dev *dev)
 {
 	struct rte_eth_link link;
+	struct rte_intr_conf *intr_conf = &dev->data->dev_conf.intr_conf;
 
 	PMD_INIT_LOG(DEBUG, "stop");
 
-	if (dev->data->dev_conf.intr_conf.lsc)
+	if (intr_conf->lsc || intr_conf->rxq)
 		rte_intr_disable(dev->intr_handle);
 
 	memset(&link, 0, sizeof(link));
