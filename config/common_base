@@ -480,6 +480,11 @@ CONFIG_RTE_LIBRTE_HASH=y
 CONFIG_RTE_LIBRTE_HASH_DEBUG=n
 
 #
+# Compile librte_efd
+#
+CONFIG_RTE_LIBRTE_EFD=y
+
+#
 # Compile librte_jobstats
 #
 CONFIG_RTE_LIBRTE_JOBSTATS=y

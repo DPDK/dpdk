@@ -91,7 +91,8 @@ There are many libraries, so their headers may be grouped by topics:
   [frag/reass]         (@ref rte_ip_frag.h),
   [LPM IPv4 route]     (@ref rte_lpm.h),
   [LPM IPv6 route]     (@ref rte_lpm6.h),
-  [ACL]                (@ref rte_acl.h)
+  [ACL]                (@ref rte_acl.h),
+  [EFD]                (@ref rte_efd.h)
 
 - **QoS**:
   [metering]           (@ref rte_meter.h),

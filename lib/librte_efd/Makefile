@@ -1,6 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2010-2017 Intel Corporation. All rights reserved.
+#   Copyright(c) 2016-2017 Intel Corporation. All rights reserved.
 #   All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
@@ -31,37 +31,27 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-DIRS-y += librte_compat
-DIRS-$(CONFIG_RTE_LIBRTE_EAL) += librte_eal
-DIRS-$(CONFIG_RTE_LIBRTE_RING) += librte_ring
-DIRS-$(CONFIG_RTE_LIBRTE_MEMPOOL) += librte_mempool
-DIRS-$(CONFIG_RTE_LIBRTE_MBUF) += librte_mbuf
-DIRS-$(CONFIG_RTE_LIBRTE_TIMER) += librte_timer
-DIRS-$(CONFIG_RTE_LIBRTE_CFGFILE) += librte_cfgfile
-DIRS-$(CONFIG_RTE_LIBRTE_CMDLINE) += librte_cmdline
-DIRS-$(CONFIG_RTE_LIBRTE_ETHER) += librte_ether
-DIRS-$(CONFIG_RTE_LIBRTE_CRYPTODEV) += librte_cryptodev
-DIRS-$(CONFIG_RTE_LIBRTE_VHOST) += librte_vhost
-DIRS-$(CONFIG_RTE_LIBRTE_HASH) += librte_hash
-DIRS-$(CONFIG_RTE_LIBRTE_EFD) += librte_efd
-DIRS-$(CONFIG_RTE_LIBRTE_LPM) += librte_lpm
-DIRS-$(CONFIG_RTE_LIBRTE_ACL) += librte_acl
-DIRS-$(CONFIG_RTE_LIBRTE_NET) += librte_net
-DIRS-$(CONFIG_RTE_LIBRTE_IP_FRAG) += librte_ip_frag
-DIRS-$(CONFIG_RTE_LIBRTE_JOBSTATS) += librte_jobstats
-DIRS-$(CONFIG_RTE_LIBRTE_POWER) += librte_power
-DIRS-$(CONFIG_RTE_LIBRTE_METER) += librte_meter
-DIRS-$(CONFIG_RTE_LIBRTE_SCHED) += librte_sched
-DIRS-$(CONFIG_RTE_LIBRTE_KVARGS) += librte_kvargs
-DIRS-$(CONFIG_RTE_LIBRTE_DISTRIBUTOR) += librte_distributor
-DIRS-$(CONFIG_RTE_LIBRTE_PORT) += librte_port
-DIRS-$(CONFIG_RTE_LIBRTE_TABLE) += librte_table
-DIRS-$(CONFIG_RTE_LIBRTE_PIPELINE) += librte_pipeline
-DIRS-$(CONFIG_RTE_LIBRTE_REORDER) += librte_reorder
-DIRS-$(CONFIG_RTE_LIBRTE_PDUMP) += librte_pdump
+# library name
+LIB = librte_efd.a
 
-ifeq ($(CONFIG_RTE_EXEC_ENV_LINUXAPP),y)
-DIRS-$(CONFIG_RTE_LIBRTE_KNI) += librte_kni
-endif
+LDLIBS += -lm
 
-include $(RTE_SDK)/mk/rte.subdir.mk
+CFLAGS += -O3
+CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR)
+
+EXPORT_MAP := rte_efd_version.map
+
+LIBABIVER := 1
+
+# all source are stored in SRCS-y
+SRCS-$(CONFIG_RTE_LIBRTE_EFD) := rte_efd.c
+
+# install this header file
+SYMLINK-$(CONFIG_RTE_LIBRTE_EFD)-include := rte_efd.h
+
+# this lib depends upon:
+DEPDIRS-$(CONFIG_RTE_LIBRTE_EFD) += lib/librte_eal
+DEPDIRS-$(CONFIG_RTE_LIBRTE_EFD) += lib/librte_ring
+DEPDIRS-$(CONFIG_RTE_LIBRTE_EFD) += lib/librte_hash
+
+include $(RTE_SDK)/mk/rte.lib.mk

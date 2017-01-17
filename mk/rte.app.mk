@@ -1,6 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
+#   Copyright(c) 2010-2017 Intel Corporation. All rights reserved.
 #   Copyright(c) 2014-2015 6WIND S.A.
 #   All rights reserved.
 #
@@ -86,6 +86,7 @@ _LDLIBS-y += --whole-archive
 
 _LDLIBS-$(CONFIG_RTE_LIBRTE_TIMER)          += -lrte_timer
 _LDLIBS-$(CONFIG_RTE_LIBRTE_HASH)           += -lrte_hash
+_LDLIBS-$(CONFIG_RTE_LIBRTE_EFD)            += -lrte_efd
 _LDLIBS-$(CONFIG_RTE_LIBRTE_VHOST)          += -lrte_vhost
 
 _LDLIBS-$(CONFIG_RTE_LIBRTE_KVARGS)         += -lrte_kvargs

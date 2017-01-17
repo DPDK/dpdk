@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2017 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -79,6 +79,7 @@ extern struct rte_logs rte_logs;
 #define RTE_LOGTYPE_PIPELINE 0x00008000 /**< Log related to pipeline. */
 #define RTE_LOGTYPE_MBUF    0x00010000 /**< Log related to mbuf. */
 #define RTE_LOGTYPE_CRYPTODEV 0x00020000 /**< Log related to cryptodev. */
+#define RTE_LOGTYPE_EFD     0x00040000 /**< Log related to EFD. */
 
 /* these log types can be used in an application */
 #define RTE_LOGTYPE_USER1   0x01000000 /**< User-defined log type 1. */

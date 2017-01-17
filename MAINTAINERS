@@ -539,6 +539,11 @@ F: app/test/test_acl.*
 F: examples/l3fwd-acl/
 F: doc/guides/sample_app_ug/l3_forward_access_ctrl.rst
 
+EFD
+M: Byron Marohn <byron.marohn@intel.com>
+M: Pablo de Lara Guarch <pablo.de.lara.guarch@intel.com>
+F: lib/librte_efd/
+
 Hashes
 M: Bruce Richardson <bruce.richardson@intel.com>
 M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
