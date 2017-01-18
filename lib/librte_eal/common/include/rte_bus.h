@@ -70,12 +70,25 @@ TAILQ_HEAD(rte_bus_list, rte_bus);
 typedef int (*rte_bus_scan_t)(void);
 
 /**
+ * Implementation specific probe function which is responsible for linking
+ * devices on that bus with applicable drivers.
+ *
+ * This is called while iterating over each registered bus.
+ *
+ * @return
+ *	0 for successful probe
+ *	!0 for any error while probing
+ */
+typedef int (*rte_bus_probe_t)(void);
+
+/**
  * A structure describing a generic bus.
  */
 struct rte_bus {
 	TAILQ_ENTRY(rte_bus) next;   /**< Next bus object in linked list */
 	const char *name;            /**< Name of the bus */
 	rte_bus_scan_t scan;         /**< Scan for devices attached to bus */
+	rte_bus_probe_t probe;       /**< Probe devices on bus */
 };
 
 /**
@@ -104,6 +117,16 @@ void rte_bus_unregister(struct rte_bus *bus);
  *  !0 in case of failure to scan
  */
 int rte_bus_scan(void);
+
+/**
+ * For each device on the buses, perform a driver 'match' and call the
+ * driver-specific probe for device initialization.
+ *
+ * @return
+ *	 0 for successful match/probe
+ *	!0 otherwise
+ */
+int rte_bus_probe(void);
 
 /**
  * Dump information of all the buses registered with EAL.

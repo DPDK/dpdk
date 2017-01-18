@@ -183,6 +183,7 @@ DPDK_17.02 {
 	global:
 
 	rte_bus_dump;
+	rte_bus_probe;
 	rte_bus_register;
 	rte_bus_scan;
 	rte_bus_unregister;

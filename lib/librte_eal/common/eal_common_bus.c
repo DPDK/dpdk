@@ -49,6 +49,7 @@ rte_bus_register(struct rte_bus *bus)
 	RTE_VERIFY(bus->name && strlen(bus->name));
 	/* A bus should mandatorily have the scan implemented */
 	RTE_VERIFY(bus->scan);
+	RTE_VERIFY(bus->probe);
 
 	TAILQ_INSERT_TAIL(&rte_bus_list, bus, next);
 	RTE_LOG(DEBUG, EAL, "Registered [%s] bus.\n", bus->name);
@@ -72,6 +73,25 @@ rte_bus_scan(void)
 		ret = bus->scan();
 		if (ret) {
 			RTE_LOG(ERR, EAL, "Scan for (%s) bus failed.\n",
+				bus->name);
+			return ret;
+		}
+	}
+
+	return 0;
+}
+
+/* Probe all devices of all buses */
+int
+rte_bus_probe(void)
+{
+	int ret;
+	struct rte_bus *bus;
+
+	TAILQ_FOREACH(bus, &rte_bus_list, next) {
+		ret = bus->probe();
+		if (ret) {
+			RTE_LOG(ERR, EAL, "Bus (%s) probe failed.\n",
 				bus->name);
 			return ret;
 		}
