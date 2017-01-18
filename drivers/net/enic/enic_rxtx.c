@@ -446,10 +446,11 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 		rte_mb();
 		if (data_rq->in_use)
-			iowrite32(data_rq->posted_index,
-				  &data_rq->ctrl->posted_index);
+			iowrite32_relaxed(data_rq->posted_index,
+					  &data_rq->ctrl->posted_index);
 		rte_compiler_barrier();
-		iowrite32(sop_rq->posted_index, &sop_rq->ctrl->posted_index);
+		iowrite32_relaxed(sop_rq->posted_index,
+				  &sop_rq->ctrl->posted_index);
 	}
 
 
@@ -629,7 +630,7 @@ uint16_t enic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	}
  post:
 	rte_wmb();
-	iowrite32(head_idx, &wq->ctrl->posted_index);
+	iowrite32_relaxed(head_idx, &wq->ctrl->posted_index);
  done:
 	wq->ring.desc_avail = wq_desc_avail;
 	wq->head_idx = head_idx;

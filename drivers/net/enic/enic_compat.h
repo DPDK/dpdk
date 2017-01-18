@@ -41,6 +41,7 @@
 #include <rte_atomic.h>
 #include <rte_malloc.h>
 #include <rte_log.h>
+#include <rte_io.h>
 
 #define ENIC_PAGE_ALIGN 4096UL
 #define ENIC_ALIGN      ENIC_PAGE_ALIGN
@@ -95,42 +96,52 @@ typedef         unsigned long long  dma_addr_t;
 
 static inline uint32_t ioread32(volatile void *addr)
 {
-	return *(volatile uint32_t *)addr;
+	return rte_read32(addr);
 }
 
 static inline uint16_t ioread16(volatile void *addr)
 {
-	return *(volatile uint16_t *)addr;
+	return rte_read16(addr);
 }
 
 static inline uint8_t ioread8(volatile void *addr)
 {
-	return *(volatile uint8_t *)addr;
+	return rte_read8(addr);
 }
 
 static inline void iowrite32(uint32_t val, volatile void *addr)
 {
-	*(volatile uint32_t *)addr = val;
+	rte_write32(val, addr);
+}
+
+static inline void iowrite32_relaxed(uint32_t val, volatile void *addr)
+{
+	rte_write32_relaxed(val, addr);
 }
 
 static inline void iowrite16(uint16_t val, volatile void *addr)
 {
-	*(volatile uint16_t *)addr = val;
+	rte_write16(val, addr);
 }
 
 static inline void iowrite8(uint8_t val, volatile void *addr)
 {
-	*(volatile uint8_t *)addr = val;
+	rte_write8(val, addr);
 }
 
 static inline unsigned int readl(volatile void __iomem *addr)
 {
-	return *(volatile unsigned int *)addr;
+	return rte_read32(addr);
+}
+
+static inline unsigned int readl_relaxed(volatile void __iomem *addr)
+{
+	return rte_read32_relaxed(addr);
 }
 
 static inline void writel(unsigned int val, volatile void __iomem *addr)
 {
-	*(volatile unsigned int *)addr = val;
+	rte_write32(val, addr);
 }
 
 #define min_t(type, x, y) ({                    \
