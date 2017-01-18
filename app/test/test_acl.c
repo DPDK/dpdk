@@ -1515,26 +1515,6 @@ test_invalid_parameters(void)
 	/* free ACL context */
 	rte_acl_free(acx);
 
-	/* set wrong rule_size so that adding any rules would fail */
-	param.rule_size = RTE_ACL_IPV4VLAN_RULE_SZ + 4;
-	acx = rte_acl_create(&param);
-	if (acx == NULL) {
-		printf("Line %i: ACL context creation failed!\n", __LINE__);
-		return -1;
-	}
-
-	/* try adding a rule with size different from context rule_size */
-	result = rte_acl_ipv4vlan_add_rules(acx, &rule, 1);
-	if (result == 0) {
-		printf("Line %i: Adding an invalid sized rule "
-				"should have failed!\n", __LINE__);
-		rte_acl_free(acx);
-		return -1;
-	}
-
-	/* free ACL context */
-	rte_acl_free(acx);
-
 
 	/**
 	 * rte_acl_ipv4vlan_build
