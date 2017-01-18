@@ -39,10 +39,4 @@
 #include <rte_atomic_32.h>
 #endif
 
-#define rte_smp_mb() rte_mb()
-
-#define rte_smp_wmb() rte_wmb()
-
-#define rte_smp_rmb() rte_rmb()
-
 #endif /* _RTE_ATOMIC_ARM_H_ */
