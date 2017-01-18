@@ -337,7 +337,7 @@ pdump_regitser_tx_callbacks(uint16_t end_q, uint8_t port, uint16_t queue,
 static int
 set_pdump_rxtx_cbs(struct pdump_request *p)
 {
-	uint16_t nb_rx_q, nb_tx_q = 0, end_q, queue;
+	uint16_t nb_rx_q = 0, nb_tx_q = 0, end_q, queue;
 	uint8_t port;
 	int ret = 0;
 	uint32_t flags;
