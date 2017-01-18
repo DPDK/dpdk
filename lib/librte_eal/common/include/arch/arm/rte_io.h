@@ -38,7 +38,11 @@
 extern "C" {
 #endif
 
+#ifdef RTE_ARCH_64
+#include "rte_io_64.h"
+#else
 #include "generic/rte_io.h"
+#endif
 
 #ifdef __cplusplus
 }
