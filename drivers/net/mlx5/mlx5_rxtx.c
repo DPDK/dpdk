@@ -1038,11 +1038,13 @@ mlx5_tx_burst_mpw_inline(void *dpdk_txq, struct rte_mbuf **pkts,
 				rte_memcpy((void *)(uintptr_t)mpw.data.raw,
 					   (void *)addr,
 					   length);
-				mpw.data.raw += length;
+
+				if (length == max)
+					mpw.data.raw =
+						(volatile void *)txq->wqes;
+				else
+					mpw.data.raw += length;
 			}
-			if ((uintptr_t)mpw.data.raw ==
-			    (uintptr_t)tx_mlx5_wqe(txq, 1 << txq->wqe_n))
-				mpw.data.raw = (volatile void *)txq->wqes;
 			++mpw.pkts_n;
 			++j;
 			if (mpw.pkts_n == MLX5_MPW_DSEG_MAX) {
