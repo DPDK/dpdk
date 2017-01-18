@@ -121,25 +121,26 @@ struct nfp_net_adapter;
 #define NFD_CFG_MINOR_VERSION_of(x) (((x) >> 0) & 0xff)
 
 #include <linux/types.h>
+#include <rte_io.h>
 
 static inline uint8_t nn_readb(volatile const void *addr)
 {
-	return *((volatile const uint8_t *)(addr));
+	return rte_read8(addr);
 }
 
 static inline void nn_writeb(uint8_t val, volatile void *addr)
 {
-	*((volatile uint8_t *)(addr)) = val;
+	rte_write8(val, addr);
 }
 
 static inline uint32_t nn_readl(volatile const void *addr)
 {
-	return *((volatile const uint32_t *)(addr));
+	return rte_read32(addr);
 }
 
 static inline void nn_writel(uint32_t val, volatile void *addr)
 {
-	*((volatile uint32_t *)(addr)) = val;
+	rte_write32(val, addr);
 }
 
 static inline uint64_t nn_readq(volatile void *addr)
