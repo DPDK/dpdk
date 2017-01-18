@@ -45,6 +45,8 @@ Supported Feature Flags
    "RTE_CRYPTODEV_FF_CPU_AVX512",,,x,,,,
    "RTE_CRYPTODEV_FF_CPU_AESNI",,,x,x,,,
    "RTE_CRYPTODEV_FF_HW_ACCELERATED",x,,,,,,
+   "RTE_CRYPTODEV_FF_CPU_NEON",,,,,,,
+   "RTE_CRYPTODEV_FF_CPU_ARM_CE",,,,,,,
 
 Supported Cipher Algorithms
 

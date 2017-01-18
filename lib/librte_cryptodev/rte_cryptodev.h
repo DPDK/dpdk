@@ -232,6 +232,11 @@ struct rte_cryptodev_capabilities {
 /**< Utilises CPU SIMD AVX512 instructions */
 #define	RTE_CRYPTODEV_FF_MBUF_SCATTER_GATHER	(1ULL << 9)
 /**< Scatter-gather mbufs are supported */
+#define	RTE_CRYPTODEV_FF_CPU_NEON		(1ULL << 10)
+/**< Utilises CPU NEON instructions */
+#define	RTE_CRYPTODEV_FF_CPU_ARM_CE		(1ULL << 11)
+/**< Utilises ARM CPU Cryptographic Extensions */
+
 
 
 /**

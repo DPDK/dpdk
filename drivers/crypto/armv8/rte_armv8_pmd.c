@@ -826,7 +826,9 @@ cryptodev_armv8_crypto_create(struct rte_crypto_vdev_init_params *init_params)
 	dev->enqueue_burst = armv8_crypto_pmd_enqueue_burst;
 
 	dev->feature_flags = RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO |
-			RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING;
+			RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING |
+			RTE_CRYPTODEV_FF_CPU_NEON |
+			RTE_CRYPTODEV_FF_CPU_ARM_CE;
 
 	/* Set vector instructions mode supported */
 	internals = dev->data->dev_private;
