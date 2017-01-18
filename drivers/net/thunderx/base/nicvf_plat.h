@@ -69,31 +69,15 @@
 #include <rte_ether.h>
 #define NICVF_MAC_ADDR_SIZE ETHER_ADDR_LEN
 
+#include <rte_io.h>
+#define nicvf_addr_write(addr, val) rte_write64_relaxed((val), (void *)(addr))
+#define nicvf_addr_read(addr) rte_read64_relaxed((void *)(addr))
+
 /* ARM64 specific functions */
 #if defined(RTE_ARCH_ARM64)
 #define nicvf_prefetch_store_keep(_ptr) ({\
 	asm volatile("prfm pstl1keep, %a0\n" : : "p" (_ptr)); })
 
-static inline void __attribute__((always_inline))
-nicvf_addr_write(uintptr_t addr, uint64_t val)
-{
-	asm volatile(
-		    "str %x[val], [%x[addr]]"
-		    :
-		    : [val] "r" (val), [addr] "r" (addr));
-}
-
-static inline uint64_t __attribute__((always_inline))
-nicvf_addr_read(uintptr_t addr)
-{
-	uint64_t val;
-
-	asm volatile(
-		    "ldr %x[val], [%x[addr]]"
-		    : [val] "=r" (val)
-		    : [addr] "r" (addr));
-	return val;
-}
 
 #define NICVF_LOAD_PAIR(reg1, reg2, addr) ({		\
 			asm volatile(			\
@@ -105,18 +89,6 @@ nicvf_addr_read(uintptr_t addr)
 #else /* non optimized functions for building on non arm64 arch */
 
 #define nicvf_prefetch_store_keep(_ptr) do {} while (0)
-
-static inline void __attribute__((always_inline))
-nicvf_addr_write(uintptr_t addr, uint64_t val)
-{
-	*(volatile uint64_t *)addr = val;
-}
-
-static inline uint64_t __attribute__((always_inline))
-nicvf_addr_read(uintptr_t addr)
-{
-	return	*(volatile uint64_t *)addr;
-}
 
 #define NICVF_LOAD_PAIR(reg1, reg2, addr)		\
 do {							\
