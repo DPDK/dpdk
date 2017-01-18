@@ -43,7 +43,8 @@ extern "C" {
 
 #include "generic/rte_atomic.h"
 
-#define dmb(opt)  do { asm volatile("dmb " #opt : : : "memory"); } while (0)
+#define dsb(opt)  { asm volatile("dsb " #opt : : : "memory"); }
+#define dmb(opt)  { asm volatile("dmb " #opt : : : "memory"); }
 
 /**
  * General memory barrier.
@@ -54,7 +55,7 @@ extern "C" {
  */
 static inline void rte_mb(void)
 {
-	dmb(ish);
+	dsb(sy);
 }
 
 /**
@@ -66,7 +67,7 @@ static inline void rte_mb(void)
  */
 static inline void rte_wmb(void)
 {
-	dmb(ishst);
+	dsb(st);
 }
 
 /**
@@ -78,7 +79,7 @@ static inline void rte_wmb(void)
  */
 static inline void rte_rmb(void)
 {
-	dmb(ishld);
+	dsb(ld);
 }
 
 #define rte_smp_mb() rte_mb()
