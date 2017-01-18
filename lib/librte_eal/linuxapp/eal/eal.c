@@ -69,6 +69,7 @@
 #include <rte_string_fns.h>
 #include <rte_cpuflags.h>
 #include <rte_interrupts.h>
+#include <rte_bus.h>
 #include <rte_pci.h>
 #include <rte_dev.h>
 #include <rte_devargs.h>
@@ -843,6 +844,9 @@ rte_eal_init(int argc, char **argv)
 
 	if (rte_eal_intr_init() < 0)
 		rte_panic("Cannot init interrupt-handling thread\n");
+
+	if (rte_bus_scan())
+		rte_panic("Cannot scan the buses for devices\n");
 
 	RTE_LCORE_FOREACH_SLAVE(i) {
 

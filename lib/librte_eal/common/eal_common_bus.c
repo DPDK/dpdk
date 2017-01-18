@@ -47,6 +47,8 @@ rte_bus_register(struct rte_bus *bus)
 {
 	RTE_VERIFY(bus);
 	RTE_VERIFY(bus->name && strlen(bus->name));
+	/* A bus should mandatorily have the scan implemented */
+	RTE_VERIFY(bus->scan);
 
 	TAILQ_INSERT_TAIL(&rte_bus_list, bus, next);
 	RTE_LOG(DEBUG, EAL, "Registered [%s] bus.\n", bus->name);
@@ -57,6 +59,25 @@ rte_bus_unregister(struct rte_bus *bus)
 {
 	TAILQ_REMOVE(&rte_bus_list, bus, next);
 	RTE_LOG(DEBUG, EAL, "Unregistered [%s] bus.\n", bus->name);
+}
+
+/* Scan all the buses for registered devices */
+int
+rte_bus_scan(void)
+{
+	int ret;
+	struct rte_bus *bus = NULL;
+
+	TAILQ_FOREACH(bus, &rte_bus_list, next) {
+		ret = bus->scan();
+		if (ret) {
+			RTE_LOG(ERR, EAL, "Scan for (%s) bus failed.\n",
+				bus->name);
+			return ret;
+		}
+	}
+
+	return 0;
 }
 
 /* Dump information of a single bus */

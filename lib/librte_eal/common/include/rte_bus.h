@@ -57,11 +57,25 @@ extern "C" {
 TAILQ_HEAD(rte_bus_list, rte_bus);
 
 /**
+ * Bus specific scan for devices attached on the bus.
+ * For each bus object, the scan would be reponsible for finding devices and
+ * adding them to its private device list.
+ *
+ * A bus should mandatorily implement this method.
+ *
+ * @return
+ *	0 for successful scan
+ *	<0 for unsuccessful scan with error value
+ */
+typedef int (*rte_bus_scan_t)(void);
+
+/**
  * A structure describing a generic bus.
  */
 struct rte_bus {
 	TAILQ_ENTRY(rte_bus) next;   /**< Next bus object in linked list */
 	const char *name;            /**< Name of the bus */
+	rte_bus_scan_t scan;         /**< Scan for devices attached to bus */
 };
 
 /**
@@ -81,6 +95,15 @@ void rte_bus_register(struct rte_bus *bus);
  *   to be unregistered.
  */
 void rte_bus_unregister(struct rte_bus *bus);
+
+/**
+ * Scan all the buses.
+ *
+ * @return
+ *   0 in case of success in scanning all buses
+ *  !0 in case of failure to scan
+ */
+int rte_bus_scan(void);
 
 /**
  * Dump information of all the buses registered with EAL.

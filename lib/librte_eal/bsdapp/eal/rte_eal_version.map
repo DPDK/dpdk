@@ -180,6 +180,7 @@ DPDK_17.02 {
 
 	rte_bus_dump;
 	rte_bus_register;
+	rte_bus_scan;
 	rte_bus_unregister;
 
 } DPDK_16.11;

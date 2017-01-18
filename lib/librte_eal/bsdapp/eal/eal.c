@@ -577,6 +577,9 @@ rte_eal_init(int argc, char **argv)
 		rte_config.master_lcore, thread_id, cpuset,
 		ret == 0 ? "" : "...");
 
+	if (rte_bus_scan())
+		rte_panic("Cannot scan the buses for devices\n");
+
 	RTE_LCORE_FOREACH_SLAVE(i) {
 
 		/*
