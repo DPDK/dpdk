@@ -61,6 +61,12 @@ extern "C" {
 
 #define rte_smp_rmb() rte_compiler_barrier()
 
+#define rte_io_mb() rte_mb()
+
+#define rte_io_wmb() rte_compiler_barrier()
+
+#define rte_io_rmb() rte_compiler_barrier()
+
 /*------------------------- 16 bit atomic operations -------------------------*/
 
 #ifndef RTE_FORCE_INTRINSICS
