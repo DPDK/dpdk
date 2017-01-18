@@ -40,10 +40,16 @@ Summary: Data Plane Development Kit core
 Group: System Environment/Libraries
 License: BSD and LGPLv2 and GPLv2
 
-ExclusiveArch: i686, x86_64
+ExclusiveArch: i686 x86_64 aarch64
+%ifarch aarch64
+%global machine armv8a
+%global target arm64-%{machine}-linuxapp-gcc
+%global config arm64-%{machine}-linuxapp-gcc
+%else
 %global machine default
 %global target %{_arch}-%{machine}-linuxapp-gcc
 %global config %{_arch}-native-linuxapp-gcc
+%endif
 
 BuildRequires: kernel-devel, kernel-headers, libpcap-devel, xen-devel
 BuildRequires: doxygen, python-sphinx, inkscape
