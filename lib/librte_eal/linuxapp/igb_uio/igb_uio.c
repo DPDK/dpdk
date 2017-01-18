@@ -326,6 +326,8 @@ igbuio_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 {
 	struct rte_uio_pci_dev *udev;
 	struct msix_entry msix_entry;
+	dma_addr_t map_dma_addr;
+	void *map_addr;
 	int err;
 
 	udev = kzalloc(sizeof(struct rte_uio_pci_dev), GFP_KERNEL);
@@ -422,6 +424,25 @@ igbuio_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 
 	dev_info(&dev->dev, "uio device registered with irq %lx\n",
 		 udev->info.irq);
+
+	/*
+	 * Doing a harmless dma mapping for attaching the device to
+	 * the iommu identity mapping if kernel boots with iommu=pt.
+	 * Note this is not a problem if no IOMMU at all.
+	 */
+	map_addr = dma_zalloc_coherent(&dev->dev, 1024,
+				       &map_dma_addr, GFP_KERNEL);
+
+	if (!map_addr)
+		dev_info(&dev->dev, "dma mapping failed\n");
+	else {
+		dev_info(&dev->dev, "mapping 1K dma=%#llx host=%p\n",
+			 (unsigned long long)map_dma_addr, map_addr);
+
+		dma_free_coherent(&dev->dev, 1024, map_addr, map_dma_addr);
+		dev_info(&dev->dev, "unmapping 1K dma=%#llx host=%p\n",
+			 (unsigned long long)map_dma_addr, map_addr);
+	}
 
 	return 0;
 
