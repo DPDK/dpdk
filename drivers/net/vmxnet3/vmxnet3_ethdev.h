@@ -34,6 +34,8 @@
 #ifndef _VMXNET3_ETHDEV_H_
 #define _VMXNET3_ETHDEV_H_
 
+#include <rte_io.h>
+
 #define VMXNET3_MAX_MAC_ADDRS 1
 
 /* UPT feature to negotiate */
@@ -120,7 +122,7 @@ struct vmxnet3_hw {
 
 /* Config space read/writes */
 
-#define VMXNET3_PCI_REG(reg) (*((volatile uint32_t *)(reg)))
+#define VMXNET3_PCI_REG(reg) rte_read32(reg)
 
 static inline uint32_t
 vmxnet3_read_addr(volatile void *addr)
@@ -128,9 +130,7 @@ vmxnet3_read_addr(volatile void *addr)
 	return VMXNET3_PCI_REG(addr);
 }
 
-#define VMXNET3_PCI_REG_WRITE(reg, value) do { \
-	VMXNET3_PCI_REG((reg)) = (value); \
-} while(0)
+#define VMXNET3_PCI_REG_WRITE(reg, value) rte_write32((value), (reg))
 
 #define VMXNET3_PCI_BAR0_REG_ADDR(hw, reg) \
 	((volatile uint32_t *)((char *)(hw)->hw_addr0 + (reg)))
