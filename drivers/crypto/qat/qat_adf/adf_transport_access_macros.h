@@ -47,14 +47,15 @@
 #ifndef ADF_TRANSPORT_ACCESS_MACROS_H
 #define ADF_TRANSPORT_ACCESS_MACROS_H
 
+#include <rte_io.h>
+
 /* CSR write macro */
-#define ADF_CSR_WR(csrAddr, csrOffset, val) \
-	(void)((*((volatile uint32_t *)(((uint8_t *)csrAddr) + csrOffset)) \
-			= (val)))
+#define ADF_CSR_WR(csrAddr, csrOffset, val)		\
+	rte_write32(val, (((uint8_t *)csrAddr) + csrOffset))
 
 /* CSR read macro */
-#define ADF_CSR_RD(csrAddr, csrOffset) \
-	(*((volatile uint32_t *)(((uint8_t *)csrAddr) + csrOffset)))
+#define ADF_CSR_RD(csrAddr, csrOffset)			\
+	rte_read32((((uint8_t *)csrAddr) + csrOffset))
 
 #define ADF_BANK_INT_SRC_SEL_MASK_0 0x4444444CUL
 #define ADF_BANK_INT_SRC_SEL_MASK_X 0x44444444UL
