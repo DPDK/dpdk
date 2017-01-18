@@ -88,6 +88,12 @@ static inline void rte_rmb(void)
 
 #define rte_smp_rmb() dmb(ishld)
 
+#define rte_io_mb() rte_mb()
+
+#define rte_io_wmb() rte_wmb()
+
+#define rte_io_rmb() rte_rmb()
+
 #ifdef __cplusplus
 }
 #endif
