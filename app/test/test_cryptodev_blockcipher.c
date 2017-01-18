@@ -102,6 +102,7 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 	switch (cryptodev_type) {
 	case RTE_CRYPTODEV_QAT_SYM_PMD:
 	case RTE_CRYPTODEV_OPENSSL_PMD:
+	case RTE_CRYPTODEV_ARMV8_PMD: /* Fall through */
 		digest_len = tdata->digest.len;
 		break;
 	case RTE_CRYPTODEV_AESNI_MB_PMD:
@@ -644,6 +645,9 @@ test_blockcipher_all_tests(struct rte_mempool *mbuf_pool,
 		break;
 	case RTE_CRYPTODEV_OPENSSL_PMD:
 		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL;
+		break;
+	case RTE_CRYPTODEV_ARMV8_PMD:
+		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_ARMV8;
 		break;
 	default:
 		TEST_ASSERT(0, "Unrecognized cryptodev type");
