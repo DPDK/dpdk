@@ -557,8 +557,9 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		priv->ind_table_max_size = exp_device_attr.rx_hash_caps.max_rwq_indirection_table_size;
 		/* Remove this check once DPDK supports larger/variable
 		 * indirection tables. */
-		if (priv->ind_table_max_size > (unsigned int)RSS_INDIRECTION_TABLE_SIZE)
-			priv->ind_table_max_size = RSS_INDIRECTION_TABLE_SIZE;
+		if (priv->ind_table_max_size >
+				(unsigned int)ETH_RSS_RETA_SIZE_512)
+			priv->ind_table_max_size = ETH_RSS_RETA_SIZE_512;
 		DEBUG("maximum RX indirection table size is %u",
 		      priv->ind_table_max_size);
 		priv->hw_vlan_strip = !!(exp_device_attr.wq_vlan_offloads_cap &
