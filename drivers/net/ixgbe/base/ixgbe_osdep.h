@@ -44,6 +44,7 @@
 #include <rte_cycles.h>
 #include <rte_log.h>
 #include <rte_byteorder.h>
+#include <rte_io.h>
 
 #include "../ixgbe_logs.h"
 #include "../ixgbe_bypass_defines.h"
@@ -123,16 +124,18 @@ typedef int		bool;
 
 #define prefetch(x) rte_prefetch0(x)
 
-#define IXGBE_PCI_REG(reg) (*((volatile uint32_t *)(reg)))
+#define IXGBE_PCI_REG(reg) rte_read32(reg)
 
 static inline uint32_t ixgbe_read_addr(volatile void* addr)
 {
 	return rte_le_to_cpu_32(IXGBE_PCI_REG(addr));
 }
 
-#define IXGBE_PCI_REG_WRITE(reg, value) do { \
-	IXGBE_PCI_REG((reg)) = (rte_cpu_to_le_32(value)); \
-} while(0)
+#define IXGBE_PCI_REG_WRITE(reg, value)			\
+	rte_write32((rte_cpu_to_le_32(value)), reg)
+
+#define IXGBE_PCI_REG_WRITE_RELAXED(reg, value)		\
+	rte_write32_relaxed((rte_cpu_to_le_32(value)), reg)
 
 #define IXGBE_PCI_REG_ADDR(hw, reg) \
 	((volatile uint32_t *)((char *)(hw)->hw_addr + (reg)))
