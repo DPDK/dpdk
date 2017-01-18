@@ -1,7 +1,7 @@
+#
 #   BSD LICENSE
 #
-#   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
-#   All rights reserved.
+#   Copyright (C) Cavium networks Ltd. 2017.
 #
 #   Redistribution and use in source and binary forms, with or without
 #   modification, are permitted provided that the following conditions
@@ -13,7 +13,7 @@
 #       notice, this list of conditions and the following disclaimer in
 #       the documentation and/or other materials provided with the
 #       distribution.
-#     * Neither the name of Intel Corporation nor the names of its
+#     * Neither the name of Cavium networks nor the names of its
 #       contributors may be used to endorse or promote products derived
 #       from this software without specific prior written permission.
 #
@@ -28,17 +28,45 @@
 #   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 #   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_GCM) += aesni_gcm
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_MB) += aesni_mb
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_ARMV8_CRYPTO) += armv8
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_OPENSSL) += openssl
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_SNOW3G) += snow3g
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_KASUMI) += kasumi
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_ZUC) += zuc
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_NULL_CRYPTO) += null
+ifneq ($(MAKECMDGOALS),clean)
+ifneq ($(MAKECMDGOALS),config)
+ifeq ($(ARMV8_CRYPTO_LIB_PATH),)
+$(error "Please define ARMV8_CRYPTO_LIB_PATH environment variable")
+endif
+endif
+endif
 
-include $(RTE_SDK)/mk/rte.subdir.mk
+# library name
+LIB = librte_pmd_armv8.a
+
+# build flags
+CFLAGS += -O3
+CFLAGS += $(WERROR_FLAGS)
+
+# library version
+LIBABIVER := 1
+
+# versioning export map
+EXPORT_MAP := rte_armv8_pmd_version.map
+
+# external library dependencies
+CFLAGS += -I$(ARMV8_CRYPTO_LIB_PATH)
+CFLAGS += -I$(ARMV8_CRYPTO_LIB_PATH)/asm/include
+LDLIBS += -L$(ARMV8_CRYPTO_LIB_PATH) -larmv8_crypto
+
+# library source files
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_ARMV8_CRYPTO) += rte_armv8_pmd.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_ARMV8_CRYPTO) += rte_armv8_pmd_ops.c
+
+# library dependencies
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_ARMV8_CRYPTO) += lib/librte_eal
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_ARMV8_CRYPTO) += lib/librte_mbuf
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_ARMV8_CRYPTO) += lib/librte_mempool
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_ARMV8_CRYPTO) += lib/librte_ring
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_ARMV8_CRYPTO) += lib/librte_cryptodev
+
+include $(RTE_SDK)/mk/rte.lib.mk

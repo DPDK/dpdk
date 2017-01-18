@@ -421,6 +421,11 @@ Crypto Drivers
 M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 T: git://dpdk.org/next/dpdk-next-crypto
 
+ARMv8 Crypto PMD
+M: Zbigniew Bodek <zbigniew.bodek@caviumnetworks.com>
+M: Jerin Jacob <jerin.jacob@caviumnetworks.com>
+F: drivers/crypto/armv8/
+
 Intel AES-NI GCM PMD
 M: Declan Doherty <declan.doherty@intel.com>
 F: drivers/crypto/aesni_gcm/

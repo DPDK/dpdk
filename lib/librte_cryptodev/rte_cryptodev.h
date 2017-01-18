@@ -66,6 +66,8 @@ extern "C" {
 /**< KASUMI PMD device name */
 #define CRYPTODEV_NAME_ZUC_PMD		crypto_zuc
 /**< KASUMI PMD device name */
+#define CRYPTODEV_NAME_ARMV8_PMD	crypto_armv8
+/**< ARMv8 Crypto PMD device name */
 
 /** Crypto device type */
 enum rte_cryptodev_type {
@@ -77,6 +79,7 @@ enum rte_cryptodev_type {
 	RTE_CRYPTODEV_KASUMI_PMD,	/**< KASUMI PMD */
 	RTE_CRYPTODEV_ZUC_PMD,		/**< ZUC PMD */
 	RTE_CRYPTODEV_OPENSSL_PMD,    /**<  OpenSSL PMD */
+	RTE_CRYPTODEV_ARMV8_PMD,	/**< ARMv8 crypto PMD */
 };
 
 extern const char **rte_cyptodev_names;
