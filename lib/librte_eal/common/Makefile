@@ -44,7 +44,8 @@ INC += rte_malloc.h rte_keepalive.h rte_time.h
 
 GENERIC_INC := rte_atomic.h rte_byteorder.h rte_cycles.h rte_prefetch.h
 GENERIC_INC += rte_spinlock.h rte_memcpy.h rte_cpuflags.h rte_rwlock.h
-GENERIC_INC += rte_vect.h
+GENERIC_INC += rte_vect.h rte_io.h
+
 # defined in mk/arch/$(RTE_ARCH)/rte.vars.mk
 ARCH_DIR ?= $(RTE_ARCH)
 ARCH_INC := $(notdir $(wildcard $(RTE_SDK)/lib/librte_eal/common/include/arch/$(ARCH_DIR)/*.h))
