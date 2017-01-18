@@ -18,6 +18,7 @@
 
 #include <rte_byteorder.h>
 #include <rte_spinlock.h>
+#include <rte_io.h>
 
 #if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
 #ifndef __LITTLE_ENDIAN
@@ -1419,8 +1420,7 @@ bnx2x_reg_write8(struct bnx2x_softc *sc, size_t offset, uint8_t val)
 {
 	PMD_DEBUG_PERIODIC_LOG(DEBUG, "offset=0x%08lx val=0x%02x",
 			       (unsigned long)offset, val);
-	*((volatile uint8_t*)
-	  ((uintptr_t)sc->bar[BAR0].base_addr + offset)) = val;
+	rte_write8(val, ((uint8_t *)sc->bar[BAR0].base_addr + offset));
 }
 
 static inline void
@@ -1433,8 +1433,8 @@ bnx2x_reg_write16(struct bnx2x_softc *sc, size_t offset, uint16_t val)
 #endif
 	PMD_DEBUG_PERIODIC_LOG(DEBUG, "offset=0x%08lx val=0x%04x",
 			       (unsigned long)offset, val);
-	*((volatile uint16_t*)
-	  ((uintptr_t)sc->bar[BAR0].base_addr + offset)) = val;
+	rte_write16(val, ((uint8_t *)sc->bar[BAR0].base_addr + offset));
+
 }
 
 static inline void
@@ -1448,8 +1448,7 @@ bnx2x_reg_write32(struct bnx2x_softc *sc, size_t offset, uint32_t val)
 
 	PMD_DEBUG_PERIODIC_LOG(DEBUG, "offset=0x%08lx val=0x%08x",
 			       (unsigned long)offset, val);
-	*((volatile uint32_t*)
-	  ((uintptr_t)sc->bar[BAR0].base_addr + offset)) = val;
+	rte_write32(val, ((uint8_t *)sc->bar[BAR0].base_addr + offset));
 }
 
 static inline uint8_t
@@ -1457,8 +1456,7 @@ bnx2x_reg_read8(struct bnx2x_softc *sc, size_t offset)
 {
 	uint8_t val;
 
-	val = (uint8_t)(*((volatile uint8_t*)
-			  ((uintptr_t)sc->bar[BAR0].base_addr + offset)));
+	val = rte_read8((uint8_t *)sc->bar[BAR0].base_addr + offset);
 	PMD_DEBUG_PERIODIC_LOG(DEBUG, "offset=0x%08lx val=0x%02x",
 			       (unsigned long)offset, val);
 
@@ -1476,8 +1474,7 @@ bnx2x_reg_read16(struct bnx2x_softc *sc, size_t offset)
 			    (unsigned long)offset);
 #endif
 
-	val = (uint16_t)(*((volatile uint16_t*)
-			   ((uintptr_t)sc->bar[BAR0].base_addr + offset)));
+	val = rte_read16(((uint8_t *)sc->bar[BAR0].base_addr + offset));
 	PMD_DEBUG_PERIODIC_LOG(DEBUG, "offset=0x%08lx val=0x%08x",
 			       (unsigned long)offset, val);
 
@@ -1495,8 +1492,7 @@ bnx2x_reg_read32(struct bnx2x_softc *sc, size_t offset)
 			    (unsigned long)offset);
 #endif
 
-	val = (uint32_t)(*((volatile uint32_t*)
-			   ((uintptr_t)sc->bar[BAR0].base_addr + offset)));
+	val = rte_read32(((uint8_t *)sc->bar[BAR0].base_addr + offset));
 	PMD_DEBUG_PERIODIC_LOG(DEBUG, "offset=0x%08lx val=0x%08x",
 			       (unsigned long)offset, val);
 
@@ -1560,11 +1556,9 @@ bnx2x_reg_read32(struct bnx2x_softc *sc, size_t offset)
 #define DPM_TRIGGER_TYPE 0x40
 
 /* Doorbell macro */
-#define BNX2X_DB_WRITE(db_bar, val) \
-	*((volatile uint32_t *)(db_bar)) = (val)
+#define BNX2X_DB_WRITE(db_bar, val) rte_write32_relaxed((val), (db_bar))
 
-#define BNX2X_DB_READ(db_bar) \
-	*((volatile uint32_t *)(db_bar))
+#define BNX2X_DB_READ(db_bar) rte_read32_relaxed(db_bar)
 
 #define DOORBELL_ADDR(sc, offset) \
 	(volatile uint32_t *)(((char *)(sc)->bar[BAR1].base_addr + (offset)))
