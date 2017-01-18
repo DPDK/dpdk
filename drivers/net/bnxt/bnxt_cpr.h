@@ -34,6 +34,8 @@
 #ifndef _BNXT_CPR_H_
 #define _BNXT_CPR_H_
 
+#include <rte_io.h>
+
 #define CMP_VALID(cmp, raw_cons, ring)					\
 	(!!(((struct cmpl_base *)(cmp))->info3_v & CMPL_BASE_V) ==	\
 	 !((raw_cons) & ((ring)->ring_size)))
@@ -50,13 +52,14 @@
 #define DB_CP_FLAGS		(DB_KEY_CP | DB_IDX_VALID | DB_IRQ_DIS)
 
 #define B_CP_DB_REARM(cpr, raw_cons)					\
-		(*(uint32_t *)((cpr)->cp_doorbell) = (DB_CP_REARM_FLAGS | \
-				RING_CMP(cpr->cp_ring_struct, raw_cons)))
+	rte_write32((DB_CP_REARM_FLAGS |				\
+		    RING_CMP(((cpr)->cp_ring_struct), raw_cons)),	\
+		    ((cpr)->cp_doorbell))
 
 #define B_CP_DIS_DB(cpr, raw_cons)					\
-		rte_smp_wmb();						\
-		(*(uint32_t *)((cpr)->cp_doorbell) = (DB_CP_FLAGS |	\
-				RING_CMP(cpr->cp_ring_struct, raw_cons)))
+	rte_write32((DB_CP_FLAGS |					\
+		    RING_CMP(((cpr)->cp_ring_struct), raw_cons)),	\
+		    ((cpr)->cp_doorbell))
 
 struct bnxt_ring;
 struct bnxt_cp_ring_info {

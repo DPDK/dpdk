@@ -50,6 +50,8 @@
 #include "bnxt_vnic.h"
 #include "hsi_struct_def_dpdk.h"
 
+#include <rte_io.h>
+
 #define HWRM_CMD_TIMEOUT		2000
 
 /*
@@ -72,19 +74,19 @@ static int bnxt_hwrm_send_message_locked(struct bnxt *bp, void *msg,
 	/* Write request msg to hwrm channel */
 	for (i = 0; i < msg_len; i += 4) {
 		bar = (uint8_t *)bp->bar0 + i;
-		*(volatile uint32_t *)bar = *data;
+		rte_write32(*data, bar);
 		data++;
 	}
 
 	/* Zero the rest of the request space */
 	for (; i < bp->max_req_len; i += 4) {
 		bar = (uint8_t *)bp->bar0 + i;
-		*(volatile uint32_t *)bar = 0;
+		rte_write32(0, bar);
 	}
 
 	/* Ring channel doorbell */
 	bar = (uint8_t *)bp->bar0 + 0x100;
-	*(volatile uint32_t *)bar = 1;
+	rte_write32(1, bar);
 
 	/* Poll for the valid bit */
 	for (i = 0; i < HWRM_CMD_TIMEOUT; i++) {
