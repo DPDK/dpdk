@@ -37,6 +37,8 @@
  #include <fcntl.h>
 #endif
 
+#include <rte_io.h>
+
 #include "virtio_pci.h"
 #include "virtio_logs.h"
 #include "virtqueue.h"
@@ -334,48 +336,11 @@ const struct virtio_pci_ops legacy_ops = {
 	.notify_queue	= legacy_notify_queue,
 };
 
-
-static inline uint8_t
-io_read8(uint8_t *addr)
-{
-	return *(volatile uint8_t *)addr;
-}
-
-static inline void
-io_write8(uint8_t val, uint8_t *addr)
-{
-	*(volatile uint8_t *)addr = val;
-}
-
-static inline uint16_t
-io_read16(uint16_t *addr)
-{
-	return *(volatile uint16_t *)addr;
-}
-
-static inline void
-io_write16(uint16_t val, uint16_t *addr)
-{
-	*(volatile uint16_t *)addr = val;
-}
-
-static inline uint32_t
-io_read32(uint32_t *addr)
-{
-	return *(volatile uint32_t *)addr;
-}
-
-static inline void
-io_write32(uint32_t val, uint32_t *addr)
-{
-	*(volatile uint32_t *)addr = val;
-}
-
 static inline void
 io_write64_twopart(uint64_t val, uint32_t *lo, uint32_t *hi)
 {
-	io_write32(val & ((1ULL << 32) - 1), lo);
-	io_write32(val >> 32,		     hi);
+	rte_write32(val & ((1ULL << 32) - 1), lo);
+	rte_write32(val >> 32,		     hi);
 }
 
 static void
@@ -387,13 +352,13 @@ modern_read_dev_config(struct virtio_hw *hw, size_t offset,
 	uint8_t old_gen, new_gen;
 
 	do {
-		old_gen = io_read8(&hw->common_cfg->config_generation);
+		old_gen = rte_read8(&hw->common_cfg->config_generation);
 
 		p = dst;
 		for (i = 0;  i < length; i++)
-			*p++ = io_read8((uint8_t *)hw->dev_cfg + offset + i);
+			*p++ = rte_read8((uint8_t *)hw->dev_cfg + offset + i);
 
-		new_gen = io_read8(&hw->common_cfg->config_generation);
+		new_gen = rte_read8(&hw->common_cfg->config_generation);
 	} while (old_gen != new_gen);
 }
 
@@ -405,7 +370,7 @@ modern_write_dev_config(struct virtio_hw *hw, size_t offset,
 	const uint8_t *p = src;
 
 	for (i = 0;  i < length; i++)
-		io_write8(*p++, (uint8_t *)hw->dev_cfg + offset + i);
+		rte_write8((*p++), (((uint8_t *)hw->dev_cfg) + offset + i));
 }
 
 static uint64_t
@@ -413,11 +378,11 @@ modern_get_features(struct virtio_hw *hw)
 {
 	uint32_t features_lo, features_hi;
 
-	io_write32(0, &hw->common_cfg->device_feature_select);
-	features_lo = io_read32(&hw->common_cfg->device_feature);
+	rte_write32(0, &hw->common_cfg->device_feature_select);
+	features_lo = rte_read32(&hw->common_cfg->device_feature);
 
-	io_write32(1, &hw->common_cfg->device_feature_select);
-	features_hi = io_read32(&hw->common_cfg->device_feature);
+	rte_write32(1, &hw->common_cfg->device_feature_select);
+	features_hi = rte_read32(&hw->common_cfg->device_feature);
 
 	return ((uint64_t)features_hi << 32) | features_lo;
 }
@@ -425,25 +390,25 @@ modern_get_features(struct virtio_hw *hw)
 static void
 modern_set_features(struct virtio_hw *hw, uint64_t features)
 {
-	io_write32(0, &hw->common_cfg->guest_feature_select);
-	io_write32(features & ((1ULL << 32) - 1),
-		&hw->common_cfg->guest_feature);
+	rte_write32(0, &hw->common_cfg->guest_feature_select);
+	rte_write32(features & ((1ULL << 32) - 1),
+		    &hw->common_cfg->guest_feature);
 
-	io_write32(1, &hw->common_cfg->guest_feature_select);
-	io_write32(features >> 32,
-		&hw->common_cfg->guest_feature);
+	rte_write32(1, &hw->common_cfg->guest_feature_select);
+	rte_write32(features >> 32,
+		    &hw->common_cfg->guest_feature);
 }
 
 static uint8_t
 modern_get_status(struct virtio_hw *hw)
 {
-	return io_read8(&hw->common_cfg->device_status);
+	return rte_read8(&hw->common_cfg->device_status);
 }
 
 static void
 modern_set_status(struct virtio_hw *hw, uint8_t status)
 {
-	io_write8(status, &hw->common_cfg->device_status);
+	rte_write8(status, &hw->common_cfg->device_status);
 }
 
 static void
@@ -456,29 +421,29 @@ modern_reset(struct virtio_hw *hw)
 static uint8_t
 modern_get_isr(struct virtio_hw *hw)
 {
-	return io_read8(hw->isr);
+	return rte_read8(hw->isr);
 }
 
 static uint16_t
 modern_set_config_irq(struct virtio_hw *hw, uint16_t vec)
 {
-	io_write16(vec, &hw->common_cfg->msix_config);
-	return io_read16(&hw->common_cfg->msix_config);
+	rte_write16(vec, &hw->common_cfg->msix_config);
+	return rte_read16(&hw->common_cfg->msix_config);
 }
 
 static uint16_t
 modern_set_queue_irq(struct virtio_hw *hw, struct virtqueue *vq, uint16_t vec)
 {
-	io_write16(vq->vq_queue_index, &hw->common_cfg->queue_select);
-	io_write16(vec, &hw->common_cfg->queue_msix_vector);
-	return io_read16(&hw->common_cfg->queue_msix_vector);
+	rte_write16(vq->vq_queue_index, &hw->common_cfg->queue_select);
+	rte_write16(vec, &hw->common_cfg->queue_msix_vector);
+	return rte_read16(&hw->common_cfg->queue_msix_vector);
 }
 
 static uint16_t
 modern_get_queue_num(struct virtio_hw *hw, uint16_t queue_id)
 {
-	io_write16(queue_id, &hw->common_cfg->queue_select);
-	return io_read16(&hw->common_cfg->queue_size);
+	rte_write16(queue_id, &hw->common_cfg->queue_select);
+	return rte_read16(&hw->common_cfg->queue_size);
 }
 
 static int
@@ -496,7 +461,7 @@ modern_setup_queue(struct virtio_hw *hw, struct virtqueue *vq)
 							 ring[vq->vq_nentries]),
 				   VIRTIO_PCI_VRING_ALIGN);
 
-	io_write16(vq->vq_queue_index, &hw->common_cfg->queue_select);
+	rte_write16(vq->vq_queue_index, &hw->common_cfg->queue_select);
 
 	io_write64_twopart(desc_addr, &hw->common_cfg->queue_desc_lo,
 				      &hw->common_cfg->queue_desc_hi);
@@ -505,11 +470,11 @@ modern_setup_queue(struct virtio_hw *hw, struct virtqueue *vq)
 	io_write64_twopart(used_addr, &hw->common_cfg->queue_used_lo,
 				      &hw->common_cfg->queue_used_hi);
 
-	notify_off = io_read16(&hw->common_cfg->queue_notify_off);
+	notify_off = rte_read16(&hw->common_cfg->queue_notify_off);
 	vq->notify_addr = (void *)((uint8_t *)hw->notify_base +
 				notify_off * hw->notify_off_multiplier);
 
-	io_write16(1, &hw->common_cfg->queue_enable);
+	rte_write16(1, &hw->common_cfg->queue_enable);
 
 	PMD_INIT_LOG(DEBUG, "queue %u addresses:", vq->vq_queue_index);
 	PMD_INIT_LOG(DEBUG, "\t desc_addr: %" PRIx64, desc_addr);
@@ -524,7 +489,7 @@ modern_setup_queue(struct virtio_hw *hw, struct virtqueue *vq)
 static void
 modern_del_queue(struct virtio_hw *hw, struct virtqueue *vq)
 {
-	io_write16(vq->vq_queue_index, &hw->common_cfg->queue_select);
+	rte_write16(vq->vq_queue_index, &hw->common_cfg->queue_select);
 
 	io_write64_twopart(0, &hw->common_cfg->queue_desc_lo,
 				  &hw->common_cfg->queue_desc_hi);
@@ -533,13 +498,13 @@ modern_del_queue(struct virtio_hw *hw, struct virtqueue *vq)
 	io_write64_twopart(0, &hw->common_cfg->queue_used_lo,
 				  &hw->common_cfg->queue_used_hi);
 
-	io_write16(0, &hw->common_cfg->queue_enable);
+	rte_write16(0, &hw->common_cfg->queue_enable);
 }
 
 static void
 modern_notify_queue(struct virtio_hw *hw __rte_unused, struct virtqueue *vq)
 {
-	io_write16(1, vq->notify_addr);
+	rte_write16(1, vq->notify_addr);
 }
 
 const struct virtio_pci_ops modern_ops = {
