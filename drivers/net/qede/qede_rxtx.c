@@ -1275,7 +1275,7 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	txq->tx_db.data.bd_prod = bd_prod;
 	rte_wmb();
 	rte_compiler_barrier();
-	DIRECT_REG_WR(edev, txq->doorbell_addr, txq->tx_db.raw);
+	DIRECT_REG_WR_RELAXED(edev, txq->doorbell_addr, txq->tx_db.raw);
 	rte_wmb();
 
 	/* Check again for Tx completions */

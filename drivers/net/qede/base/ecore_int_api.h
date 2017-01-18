@@ -120,19 +120,37 @@ static OSAL_INLINE void __internal_ram_wr(void *p_hwfn,
 }
 
 #ifdef ECORE_CONFIG_DIRECT_HWFN
-static OSAL_INLINE void internal_ram_wr(struct ecore_hwfn *p_hwfn,
-					void OSAL_IOMEM *addr,
-					int size, u32 *data)
+static OSAL_INLINE void __internal_ram_wr_relaxed(struct ecore_hwfn *p_hwfn,
+						  void OSAL_IOMEM * addr,
+						  int size, u32 *data)
+#else
+static OSAL_INLINE void __internal_ram_wr_relaxed(void *p_hwfn,
+						  void OSAL_IOMEM * addr,
+						  int size, u32 *data)
+#endif
 {
-	__internal_ram_wr(p_hwfn, addr, size, data);
+	unsigned int i;
+
+	for (i = 0; i < size / sizeof(*data); i++)
+		DIRECT_REG_WR_RELAXED(p_hwfn, &((u32 OSAL_IOMEM *)addr)[i],
+				      data[i]);
+}
+
+#ifdef ECORE_CONFIG_DIRECT_HWFN
+static OSAL_INLINE void internal_ram_wr(struct ecore_hwfn *p_hwfn,
+						void OSAL_IOMEM * addr,
+						int size, u32 *data)
+{
+	__internal_ram_wr_relaxed(p_hwfn, addr, size, data);
 }
 #else
 static OSAL_INLINE void internal_ram_wr(void OSAL_IOMEM *addr,
-					int size, u32 *data)
+						int size, u32 *data)
 {
-	__internal_ram_wr(OSAL_NULL, addr, size, data);
+	__internal_ram_wr_relaxed(OSAL_NULL, addr, size, data);
 }
 #endif
+
 #endif
 
 struct ecore_hwfn;

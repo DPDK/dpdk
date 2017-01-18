@@ -18,6 +18,7 @@
 #include <rte_cycles.h>
 #include <rte_debug.h>
 #include <rte_ether.h>
+#include <rte_io.h>
 
 /* Forward declaration */
 struct ecore_dev;
@@ -113,18 +114,18 @@ void *osal_dma_alloc_coherent_aligned(struct ecore_dev *, dma_addr_t *,
 
 /* HW reads/writes */
 
-#define DIRECT_REG_RD(_dev, _reg_addr) \
-	(*((volatile u32 *) (_reg_addr)))
+#define DIRECT_REG_RD(_dev, _reg_addr) rte_read32(_reg_addr)
 
 #define REG_RD(_p_hwfn, _reg_offset) \
 	DIRECT_REG_RD(_p_hwfn,		\
 			((u8 *)(uintptr_t)(_p_hwfn->regview) + (_reg_offset)))
 
-#define DIRECT_REG_WR16(_reg_addr, _val) \
-	(*((volatile u16 *)(_reg_addr)) = _val)
+#define DIRECT_REG_WR16(_reg_addr, _val) rte_write16((_val), (_reg_addr))
 
-#define DIRECT_REG_WR(_dev, _reg_addr, _val) \
-	(*((volatile u32 *)(_reg_addr)) = _val)
+#define DIRECT_REG_WR(_dev, _reg_addr, _val) rte_write32((_val), (_reg_addr))
+
+#define DIRECT_REG_WR_RELAXED(_dev, _reg_addr, _val) \
+	rte_write32_relaxed((_val), (_reg_addr))
 
 #define REG_WR(_p_hwfn, _reg_offset, _val) \
 	DIRECT_REG_WR(NULL,  \
@@ -134,9 +135,10 @@ void *osal_dma_alloc_coherent_aligned(struct ecore_dev *, dma_addr_t *,
 	DIRECT_REG_WR16(((u8 *)(uintptr_t)(_p_hwfn->regview) + \
 			(_reg_offset)), (u16)_val)
 
-#define DOORBELL(_p_hwfn, _db_addr, _val) \
-	DIRECT_REG_WR(_p_hwfn, \
-	     ((u8 *)(uintptr_t)(_p_hwfn->doorbells) + (_db_addr)), (u32)_val)
+#define DOORBELL(_p_hwfn, _db_addr, _val)				\
+	DIRECT_REG_WR_RELAXED((_p_hwfn),				\
+			      ((u8 *)(uintptr_t)(_p_hwfn->doorbells) +	\
+			      (_db_addr)), (u32)_val)
 
 /* Mutexes */
 

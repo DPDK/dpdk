@@ -248,7 +248,8 @@ static enum _ecore_status_t ecore_spq_hw_post(struct ecore_hwfn *p_hwfn,
 	/* make sure the SPQE is updated before the doorbell */
 	OSAL_WMB(p_hwfn->p_dev);
 
-	DOORBELL(p_hwfn, DB_ADDR(p_spq->cid, DQ_DEMS_LEGACY), *(u32 *)&db);
+	DOORBELL(p_hwfn, DB_ADDR(p_spq->cid, DQ_DEMS_LEGACY),
+		 *(u32 *)&db);
 
 	/* make sure doorbell is rang */
 	OSAL_WMB(p_hwfn->p_dev);
