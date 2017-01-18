@@ -1357,19 +1357,6 @@ test_invalid_rules(void)
 		goto err;
 	}
 
-	rule.dst_mask_len = 0;
-	rule.src_mask_len = 0;
-	rule.data.userdata = 0;
-
-	/* try adding this rule (it should fail because userdata is invalid) */
-	ret = rte_acl_ipv4vlan_add_rules(acx, &rule, 1);
-	if (ret == 0) {
-		printf("Line %i: Adding a rule with invalid user data "
-				"should have failed!\n", __LINE__);
-		rte_acl_free(acx);
-		return -1;
-	}
-
 	rte_acl_free(acx);
 
 	return 0;

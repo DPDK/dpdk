@@ -313,8 +313,7 @@ acl_check_rule(const struct rte_acl_rule_data *rd)
 	if ((RTE_LEN2MASK(RTE_ACL_MAX_CATEGORIES, typeof(rd->category_mask)) &
 			rd->category_mask) == 0 ||
 			rd->priority > RTE_ACL_MAX_PRIORITY ||
-			rd->priority < RTE_ACL_MIN_PRIORITY ||
-			rd->userdata == RTE_ACL_INVALID_USERDATA)
+			rd->priority < RTE_ACL_MIN_PRIORITY)
 		return -EINVAL;
 	return 0;
 }

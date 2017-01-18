@@ -792,7 +792,7 @@ rte_table_acl_lookup(
 
 		pkts_mask &= ~pkt_mask;
 
-		if (action_table_pos != RTE_ACL_INVALID_USERDATA) {
+		if (action_table_pos != 0) {
 			pkts_out_mask |= pkt_mask;
 			entries[pkt_pos] = (void *)
 				&acl->memory[action_table_pos *
