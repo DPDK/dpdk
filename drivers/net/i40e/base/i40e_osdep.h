@@ -44,6 +44,7 @@
 #include <rte_cycles.h>
 #include <rte_spinlock.h>
 #include <rte_log.h>
+#include <rte_io.h>
 
 #include "../i40e_logs.h"
 
@@ -153,15 +154,18 @@ do {                                                            \
  * I40E_PRTQF_FD_MSK
  */
 
-#define I40E_PCI_REG(reg)         (*((volatile uint32_t *)(reg)))
+#define I40E_PCI_REG(reg)		rte_read32(reg)
 #define I40E_PCI_REG_ADDR(a, reg) \
 	((volatile uint32_t *)((char *)(a)->hw_addr + (reg)))
 static inline uint32_t i40e_read_addr(volatile void *addr)
 {
 	return rte_le_to_cpu_32(I40E_PCI_REG(addr));
 }
-#define I40E_PCI_REG_WRITE(reg, value) \
-	do { I40E_PCI_REG((reg)) = rte_cpu_to_le_32(value); } while (0)
+
+#define I40E_PCI_REG_WRITE(reg, value)		\
+	rte_write32((rte_cpu_to_le_32(value)), reg)
+#define I40E_PCI_REG_WRITE_RELAXED(reg, value)	\
+	rte_write32_relaxed((rte_cpu_to_le_32(value)), reg)
 
 #define I40E_WRITE_FLUSH(a) I40E_READ_REG(a, I40E_GLGEN_STAT)
 #define I40EVF_WRITE_FLUSH(a) I40E_READ_REG(a, I40E_VFGEN_RSTAT)
