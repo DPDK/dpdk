@@ -37,6 +37,7 @@
 #define __T4_ADAPTER_H__
 
 #include <rte_mbuf.h>
+#include <rte_io.h>
 
 #include "cxgbe_compat.h"
 #include "t4_regs_values.h"
@@ -324,7 +325,7 @@ struct adapter {
 	int use_unpacked_mode; /* unpacked rx mode state */
 };
 
-#define CXGBE_PCI_REG(reg) (*((volatile uint32_t *)(reg)))
+#define CXGBE_PCI_REG(reg) rte_read32(reg)
 
 static inline uint64_t cxgbe_read_addr64(volatile void *addr)
 {
@@ -350,16 +351,21 @@ static inline uint32_t cxgbe_read_addr(volatile void *addr)
 #define CXGBE_READ_REG64(adap, reg) \
 	cxgbe_read_addr64(CXGBE_PCI_REG_ADDR((adap), (reg)))
 
-#define CXGBE_PCI_REG_WRITE(reg, value) ({ \
-	CXGBE_PCI_REG((reg)) = (value); })
+#define CXGBE_PCI_REG_WRITE(reg, value) rte_write32((value), (reg))
+
+#define CXGBE_PCI_REG_WRITE_RELAXED(reg, value) \
+	rte_write32_relaxed((value), (reg))
 
 #define CXGBE_WRITE_REG(adap, reg, value) \
 	CXGBE_PCI_REG_WRITE(CXGBE_PCI_REG_ADDR((adap), (reg)), (value))
 
+#define CXGBE_WRITE_REG_RELAXED(adap, reg, value) \
+	CXGBE_PCI_REG_WRITE_RELAXED(CXGBE_PCI_REG_ADDR((adap), (reg)), (value))
+
 static inline uint64_t cxgbe_write_addr64(volatile void *addr, uint64_t val)
 {
-	CXGBE_PCI_REG(addr) = val;
-	CXGBE_PCI_REG(((volatile uint8_t *)(addr) + 4)) = (val >> 32);
+	CXGBE_PCI_REG_WRITE(addr, val);
+	CXGBE_PCI_REG_WRITE(((volatile uint8_t *)(addr) + 4), (val >> 32));
 	return val;
 }
 
@@ -383,7 +389,7 @@ static inline u32 t4_read_reg(struct adapter *adapter, u32 reg_addr)
 }
 
 /**
- * t4_write_reg - write a HW register
+ * t4_write_reg - write a HW register with barrier
  * @adapter: the adapter
  * @reg_addr: the register address
  * @val: the value to write
@@ -395,6 +401,22 @@ static inline void t4_write_reg(struct adapter *adapter, u32 reg_addr, u32 val)
 	CXGBE_DEBUG_REG(adapter, "setting register 0x%x to 0x%x\n", reg_addr,
 			val);
 	CXGBE_WRITE_REG(adapter, reg_addr, val);
+}
+
+/**
+ * t4_write_reg_relaxed - write a HW register with no barrier
+ * @adapter: the adapter
+ * @reg_addr: the register address
+ * @val: the value to write
+ *
+ * Write a 32-bit value into the given HW register.
+ */
+static inline void t4_write_reg_relaxed(struct adapter *adapter, u32 reg_addr,
+					u32 val)
+{
+	CXGBE_DEBUG_REG(adapter, "setting register 0x%x to 0x%x\n", reg_addr,
+			val);
+	CXGBE_WRITE_REG_RELAXED(adapter, reg_addr, val);
 }
 
 /**

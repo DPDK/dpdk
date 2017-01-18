@@ -338,12 +338,12 @@ static inline void ring_fl_db(struct adapter *adap, struct sge_fl *q)
 		 * mechanism.
 		 */
 		if (unlikely(!q->bar2_addr)) {
-			t4_write_reg(adap, MYPF_REG(A_SGE_PF_KDOORBELL),
-				     val | V_QID(q->cntxt_id));
+			t4_write_reg_relaxed(adap, MYPF_REG(A_SGE_PF_KDOORBELL),
+					     val | V_QID(q->cntxt_id));
 		} else {
-			writel(val | V_QID(q->bar2_qid),
-			       (void *)((uintptr_t)q->bar2_addr +
-			       SGE_UDB_KDOORBELL));
+			writel_relaxed(val | V_QID(q->bar2_qid),
+				       (void *)((uintptr_t)q->bar2_addr +
+				       SGE_UDB_KDOORBELL));
 
 			/*
 			 * This Write memory Barrier will force the write to
