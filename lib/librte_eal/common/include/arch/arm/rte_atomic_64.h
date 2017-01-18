@@ -82,11 +82,11 @@ static inline void rte_rmb(void)
 	dsb(ld);
 }
 
-#define rte_smp_mb() rte_mb()
+#define rte_smp_mb() dmb(ish)
 
-#define rte_smp_wmb() rte_wmb()
+#define rte_smp_wmb() dmb(ishst)
 
-#define rte_smp_rmb() rte_rmb()
+#define rte_smp_rmb() dmb(ishld)
 
 #ifdef __cplusplus
 }
