@@ -34,6 +34,8 @@
 #ifndef _RTE_IO_H_
 #define _RTE_IO_H_
 
+#include <rte_atomic.h>
+
 /**
  * @file
  * I/O device memory operations
@@ -259,5 +261,121 @@ static inline void
 rte_write64(uint64_t value, volatile void *addr);
 
 #endif /* __DOXYGEN__ */
+
+#ifndef RTE_OVERRIDE_IO_H
+
+static inline uint8_t __attribute__((always_inline))
+rte_read8_relaxed(const volatile void *addr)
+{
+	return *(const volatile uint8_t *)addr;
+}
+
+static inline uint16_t __attribute__((always_inline))
+rte_read16_relaxed(const volatile void *addr)
+{
+	return *(const volatile uint16_t *)addr;
+}
+
+static inline uint32_t __attribute__((always_inline))
+rte_read32_relaxed(const volatile void *addr)
+{
+	return *(const volatile uint32_t *)addr;
+}
+
+static inline uint64_t __attribute__((always_inline))
+rte_read64_relaxed(const volatile void *addr)
+{
+	return *(const volatile uint64_t *)addr;
+}
+
+static inline void __attribute__((always_inline))
+rte_write8_relaxed(uint8_t value, volatile void *addr)
+{
+	*(volatile uint8_t *)addr = value;
+}
+
+static inline void __attribute__((always_inline))
+rte_write16_relaxed(uint16_t value, volatile void *addr)
+{
+	*(volatile uint16_t *)addr = value;
+}
+
+static inline void __attribute__((always_inline))
+rte_write32_relaxed(uint32_t value, volatile void *addr)
+{
+	*(volatile uint32_t *)addr = value;
+}
+
+static inline void __attribute__((always_inline))
+rte_write64_relaxed(uint64_t value, volatile void *addr)
+{
+	*(volatile uint64_t *)addr = value;
+}
+
+static inline uint8_t __attribute__((always_inline))
+rte_read8(const volatile void *addr)
+{
+	uint8_t val;
+	val = rte_read8_relaxed(addr);
+	rte_io_rmb();
+	return val;
+}
+
+static inline uint16_t __attribute__((always_inline))
+rte_read16(const volatile void *addr)
+{
+	uint16_t val;
+	val = rte_read16_relaxed(addr);
+	rte_io_rmb();
+	return val;
+}
+
+static inline uint32_t  __attribute__((always_inline))
+rte_read32(const volatile void *addr)
+{
+	uint32_t val;
+	val = rte_read32_relaxed(addr);
+	rte_io_rmb();
+	return val;
+}
+
+static inline uint64_t __attribute__((always_inline))
+rte_read64(const volatile void *addr)
+{
+	uint64_t val;
+	val = rte_read64_relaxed(addr);
+	rte_io_rmb();
+	return val;
+}
+
+static inline void __attribute__((always_inline))
+rte_write8(uint8_t value, volatile void *addr)
+{
+	rte_io_wmb();
+	rte_write8_relaxed(value, addr);
+}
+
+static inline void __attribute__((always_inline))
+rte_write16(uint16_t value, volatile void *addr)
+{
+	rte_io_wmb();
+	rte_write16_relaxed(value, addr);
+}
+
+static inline void __attribute__((always_inline))
+rte_write32(uint32_t value, volatile void *addr)
+{
+	rte_io_wmb();
+	rte_write32_relaxed(value, addr);
+}
+
+static inline void __attribute__((always_inline))
+rte_write64(uint64_t value, volatile void *addr)
+{
+	rte_io_wmb();
+	rte_write64_relaxed(value, addr);
+}
+
+#endif /* RTE_OVERRIDE_IO_H */
 
 #endif /* _RTE_IO_H_ */
