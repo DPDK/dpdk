@@ -100,6 +100,33 @@ static inline void rte_smp_wmb(void);
  */
 static inline void rte_smp_rmb(void);
 
+/**
+ * General memory barrier for I/O device
+ *
+ * Guarantees that the LOAD and STORE operations that precede the
+ * rte_io_mb() call are visible to I/O device or CPU before the
+ * LOAD and STORE operations that follow it.
+ */
+static inline void rte_io_mb(void);
+
+/**
+ * Write memory barrier for I/O device
+ *
+ * Guarantees that the STORE operations that precede the
+ * rte_io_wmb() call are visible to I/O device before the STORE
+ * operations that follow it.
+ */
+static inline void rte_io_wmb(void);
+
+/**
+ * Read memory barrier for IO device
+ *
+ * Guarantees that the LOAD operations on I/O device that precede the
+ * rte_io_rmb() call are visible to CPU before the LOAD
+ * operations that follow it.
+ */
+static inline void rte_io_rmb(void);
+
 #endif /* __DOXYGEN__ */
 
 /**
