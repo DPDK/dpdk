@@ -39,6 +39,8 @@ POSSIBILITY OF SUCH DAMAGE.
 #include <rte_atomic.h>
 #include <rte_byteorder.h>
 #include <rte_cycles.h>
+#include <rte_io.h>
+
 #include "../fm10k_logs.h"
 
 /* TODO: this does not look like it should be used... */
@@ -88,17 +90,16 @@ typedef int        bool;
 #endif
 
 /* offsets are WORD offsets, not BYTE offsets */
-#define FM10K_WRITE_REG(hw, reg, val)    \
-	((((volatile uint32_t *)(hw)->hw_addr)[(reg)]) = ((uint32_t)(val)))
-#define FM10K_READ_REG(hw, reg)          \
-	(((volatile uint32_t *)(hw)->hw_addr)[(reg)])
+#define FM10K_WRITE_REG(hw, reg, val)		\
+	rte_write32((val), ((hw)->hw_addr + (reg)))
+
+#define FM10K_READ_REG(hw, reg) rte_read32(((hw)->hw_addr + (reg)))
+
 #define FM10K_WRITE_FLUSH(a) FM10K_READ_REG(a, FM10K_CTRL)
 
-#define FM10K_PCI_REG(reg) (*((volatile uint32_t *)(reg)))
+#define FM10K_PCI_REG(reg) rte_read32(reg)
 
-#define FM10K_PCI_REG_WRITE(reg, value) do { \
-	FM10K_PCI_REG((reg)) = (value); \
-} while (0)
+#define FM10K_PCI_REG_WRITE(reg, value) rte_write32((value), (reg))
 
 /* not implemented */
 #define FM10K_READ_PCI_WORD(hw, reg)     0
