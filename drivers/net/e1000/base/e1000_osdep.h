@@ -44,6 +44,7 @@
 #include <rte_log.h>
 #include <rte_debug.h>
 #include <rte_byteorder.h>
+#include <rte_io.h>
 
 #include "../e1000_logs.h"
 
@@ -94,17 +95,18 @@ typedef int		bool;
 
 #define E1000_WRITE_FLUSH(a) E1000_READ_REG(a, E1000_STATUS)
 
-#define E1000_PCI_REG(reg) (*((volatile uint32_t *)(reg)))
+#define E1000_PCI_REG(reg)	rte_read32(reg)
 
-#define E1000_PCI_REG16(reg) (*((volatile uint16_t *)(reg)))
+#define E1000_PCI_REG16(reg)	rte_read16(reg)
 
-#define E1000_PCI_REG_WRITE(reg, value) do { \
-	E1000_PCI_REG((reg)) = (rte_cpu_to_le_32(value)); \
-} while (0)
+#define E1000_PCI_REG_WRITE(reg, value)			\
+	rte_write32((rte_cpu_to_le_32(value)), reg)
 
-#define E1000_PCI_REG_WRITE16(reg, value) do { \
-	E1000_PCI_REG16((reg)) = (rte_cpu_to_le_16(value)); \
-} while (0)
+#define E1000_PCI_REG_WRITE_RELAXED(reg, value)		\
+	rte_write32_relaxed((rte_cpu_to_le_32(value)), reg)
+
+#define E1000_PCI_REG_WRITE16(reg, value)		\
+	rte_write16((rte_cpu_to_le_16(value)), reg)
 
 #define E1000_PCI_REG_ADDR(hw, reg) \
 	((volatile uint32_t *)((char *)(hw)->hw_addr + (reg)))
