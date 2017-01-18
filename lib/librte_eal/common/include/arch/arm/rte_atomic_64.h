@@ -46,41 +46,11 @@ extern "C" {
 #define dsb(opt)  { asm volatile("dsb " #opt : : : "memory"); }
 #define dmb(opt)  { asm volatile("dmb " #opt : : : "memory"); }
 
-/**
- * General memory barrier.
- *
- * Guarantees that the LOAD and STORE operations generated before the
- * barrier occur before the LOAD and STORE operations generated after.
- * This function is architecture dependent.
- */
-static inline void rte_mb(void)
-{
-	dsb(sy);
-}
+#define rte_mb() dsb(sy)
 
-/**
- * Write memory barrier.
- *
- * Guarantees that the STORE operations generated before the barrier
- * occur before the STORE operations generated after.
- * This function is architecture dependent.
- */
-static inline void rte_wmb(void)
-{
-	dsb(st);
-}
+#define rte_wmb() dsb(st)
 
-/**
- * Read memory barrier.
- *
- * Guarantees that the LOAD operations generated before the barrier
- * occur before the LOAD operations generated after.
- * This function is architecture dependent.
- */
-static inline void rte_rmb(void)
-{
-	dsb(ld);
-}
+#define rte_rmb() dsb(ld)
 
 #define rte_smp_mb() dmb(ish)
 
