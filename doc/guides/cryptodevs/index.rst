@@ -38,6 +38,7 @@ Crypto Device Drivers
     overview
     aesni_mb
     aesni_gcm
+    armv8
     kasumi
     openssl
     null

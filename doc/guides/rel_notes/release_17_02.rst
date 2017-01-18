@@ -148,6 +148,12 @@ New Features
   See the :ref:`Virtio Interrupt Mode <virtio_interrupt_mode>` documentation
   for more information.
 
+* **Added ARMv8 crypto PMD.**
+
+  A new crypto PMD has been added, which provides combined mode cryptografic
+  operations optimized for ARMv8 processors. The driver can be used to enhance
+  performance in processing chained operations such as cipher + HMAC.
+
 * **Updated the QAT PMD.**
 
   The QAT PMD was updated with additional support for:
