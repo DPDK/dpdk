@@ -73,6 +73,12 @@ extern "C" {
 
 #define rte_smp_rmb() rte_rmb()
 
+#define rte_io_mb() rte_mb()
+
+#define rte_io_wmb() rte_wmb()
+
+#define rte_io_rmb() rte_rmb()
+
 #ifdef __cplusplus
 }
 #endif
