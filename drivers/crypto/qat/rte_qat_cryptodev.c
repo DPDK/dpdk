@@ -88,9 +88,9 @@ crypto_qat_dev_init(__attribute__((unused)) struct rte_cryptodev_driver *crypto_
 
 	PMD_INIT_FUNC_TRACE();
 	PMD_DRV_LOG(DEBUG, "Found crypto device at %02x:%02x.%x",
-		cryptodev->pci_dev->addr.bus,
-		cryptodev->pci_dev->addr.devid,
-		cryptodev->pci_dev->addr.function);
+		RTE_DEV_TO_PCI(cryptodev->device)->addr.bus,
+		RTE_DEV_TO_PCI(cryptodev->device)->addr.devid,
+		RTE_DEV_TO_PCI(cryptodev->device)->addr.function);
 
 	cryptodev->dev_type = RTE_CRYPTODEV_QAT_SYM_PMD;
 	cryptodev->dev_ops = &crypto_qat_ops;

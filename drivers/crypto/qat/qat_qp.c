@@ -136,6 +136,7 @@ int qat_crypto_sym_qp_setup(struct rte_cryptodev *dev, uint16_t queue_pair_id,
 	int socket_id)
 {
 	struct qat_qp *qp;
+	struct rte_pci_device *pci_dev;
 	int ret;
 	char op_cookie_pool_name[RTE_RING_NAMESIZE];
 	uint32_t i;
@@ -156,7 +157,9 @@ int qat_crypto_sym_qp_setup(struct rte_cryptodev *dev, uint16_t queue_pair_id,
 		return -EINVAL;
 	}
 
-	if (dev->pci_dev->mem_resource[0].addr == NULL) {
+	pci_dev = RTE_DEV_TO_PCI(dev->device);
+
+	if (pci_dev->mem_resource[0].addr == NULL) {
 		PMD_DRV_LOG(ERR, "Could not find VF config space "
 				"(UIO driver attached?).");
 		return -EINVAL;
@@ -181,7 +184,7 @@ int qat_crypto_sym_qp_setup(struct rte_cryptodev *dev, uint16_t queue_pair_id,
 			qp_conf->nb_descriptors * sizeof(*qp->op_cookies),
 			RTE_CACHE_LINE_SIZE);
 
-	qp->mmap_bar_addr = dev->pci_dev->mem_resource[0].addr;
+	qp->mmap_bar_addr = pci_dev->mem_resource[0].addr;
 	rte_atomic16_init(&qp->inflights16);
 
 	if (qat_tx_queue_create(dev, &(qp->tx_q),
@@ -344,6 +347,7 @@ qat_queue_create(struct rte_cryptodev *dev, struct qat_queue *queue,
 	void *io_addr;
 	const struct rte_memzone *qp_mz;
 	uint32_t queue_size_bytes = nb_desc*desc_size;
+	struct rte_pci_device *pci_dev;
 
 	PMD_INIT_FUNC_TRACE();
 	if (desc_size > ADF_MSG_SIZE_TO_BYTES(ADF_MAX_MSG_SIZE)) {
@@ -404,7 +408,9 @@ qat_queue_create(struct rte_cryptodev *dev, struct qat_queue *queue,
 
 	queue_base = BUILD_RING_BASE_ADDR(queue->base_phys_addr,
 					queue->queue_size);
-	io_addr = dev->pci_dev->mem_resource[0].addr;
+	pci_dev = RTE_DEV_TO_PCI(dev->device);
+
+	io_addr = pci_dev->mem_resource[0].addr;
 
 	WRITE_CSR_RING_BASE(io_addr, queue->hw_bundle_number,
 			queue->hw_queue_number, queue_base);

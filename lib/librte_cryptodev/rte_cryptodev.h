@@ -636,8 +636,8 @@ struct rte_cryptodev {
 	/**< Functions exported by PMD */
 	uint64_t feature_flags;
 	/**< Supported features */
-	struct rte_pci_device *pci_dev;
-	/**< PCI info. supplied by probing */
+	struct rte_device *device;
+	/**< Backing device */
 
 	enum rte_cryptodev_type dev_type;
 	/**< Crypto device type */

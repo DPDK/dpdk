@@ -520,7 +520,7 @@ rte_cryptodev_pci_probe(struct rte_pci_driver *pci_drv,
 					"device data");
 	}
 
-	cryptodev->pci_dev = pci_dev;
+	cryptodev->device = &pci_dev->device;
 	cryptodev->driver = cryptodrv;
 
 	/* init user callbacks */
@@ -580,7 +580,7 @@ rte_cryptodev_pci_remove(struct rte_pci_device *pci_dev)
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 		rte_free(cryptodev->data->dev_private);
 
-	cryptodev->pci_dev = NULL;
+	cryptodev->device = NULL;
 	cryptodev->driver = NULL;
 	cryptodev->data = NULL;
 
@@ -941,7 +941,7 @@ rte_cryptodev_info_get(uint8_t dev_id, struct rte_cryptodev_info *dev_info)
 	RTE_FUNC_PTR_OR_RET(*dev->dev_ops->dev_infos_get);
 	(*dev->dev_ops->dev_infos_get)(dev, dev_info);
 
-	dev_info->pci_dev = dev->pci_dev;
+	dev_info->pci_dev = RTE_DEV_TO_PCI(dev->device);
 	if (dev->driver)
 		dev_info->driver_name = dev->driver->pci_drv.driver.name;
 }
