@@ -151,8 +151,11 @@ i40e_rxd_error_to_pkt_flags(uint64_t qword)
 	uint64_t error_bits = (qword >> I40E_RXD_QW1_ERROR_SHIFT);
 
 #define I40E_RX_ERR_BITS 0x3f
-	if (likely((error_bits & I40E_RX_ERR_BITS) == 0))
+	if (likely((error_bits & I40E_RX_ERR_BITS) == 0)) {
+		flags |= (PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD);
 		return flags;
+	}
+
 	if (unlikely(error_bits & (1 << I40E_RX_DESC_ERROR_IPE_SHIFT)))
 		flags |= PKT_RX_IP_CKSUM_BAD;
 	else
