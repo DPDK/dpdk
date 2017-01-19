@@ -38,6 +38,19 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **Added generic EAL API for I/O device memory read/write operations.**
+
+  This API introduces 8-bit, 16-bit, 32bit, 64bit I/O device
+  memory read/write operations along with the relaxed versions.
+
+  The weakly-ordered machine like ARM needs additional I/O barrier for
+  device memory read/write access over PCI bus.
+  By introducing the EAL abstraction for I/O device memory read/write access,
+  The drivers can access I/O device memory in architecture-agnostic manner.
+  The relaxed version does not have additional I/O memory barrier, useful in
+  accessing the device registers of integrated controllers which
+  implicitly strongly ordered with respect to memory access.
+
 * **Added generic flow API (rte_flow).**
 
   This API provides a generic means to configure hardware to match specific
