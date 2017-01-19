@@ -499,10 +499,14 @@ sfc_ev_mgmt_periodic_qpoll(void *arg)
 
 	rc = rte_eal_alarm_set(SFC_MGMT_EV_QPOLL_PERIOD_US,
 			       sfc_ev_mgmt_periodic_qpoll, sa);
-	if (rc != 0)
-		sfc_panic(sa,
-			  "cannot rearm management EVQ polling alarm (rc=%d)",
-			  rc);
+	if (rc == -ENOTSUP) {
+		sfc_warn(sa, "alarms are not supported");
+		sfc_warn(sa, "management EVQ must be polled indirectly using no-wait link status update");
+	} else if (rc != 0) {
+		sfc_err(sa,
+			"cannot rearm management EVQ polling alarm (rc=%d)",
+			rc);
+	}
 }
 
 static void
