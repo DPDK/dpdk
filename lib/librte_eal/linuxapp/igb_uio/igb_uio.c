@@ -384,6 +384,7 @@ igbuio_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 		msix_entry.entry = 0;
 		if (pci_enable_msix(dev, &msix_entry, 1) == 0) {
 			dev_dbg(&dev->dev, "using MSI-X");
+			udev->info.irq_flags = IRQF_NO_THREAD;
 			udev->info.irq = msix_entry.vector;
 			udev->mode = RTE_INTR_MODE_MSIX;
 			break;
@@ -392,7 +393,7 @@ igbuio_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 	case RTE_INTR_MODE_LEGACY:
 		if (pci_intx_mask_supported(dev)) {
 			dev_dbg(&dev->dev, "using INTX");
-			udev->info.irq_flags = IRQF_SHARED;
+			udev->info.irq_flags = IRQF_SHARED | IRQF_NO_THREAD;
 			udev->info.irq = dev->irq;
 			udev->mode = RTE_INTR_MODE_LEGACY;
 			break;
