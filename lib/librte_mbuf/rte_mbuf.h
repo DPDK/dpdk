@@ -1158,7 +1158,6 @@ static inline void rte_pktmbuf_attach(struct rte_mbuf *mi, struct rte_mbuf *m)
 	mi->buf_addr = m->buf_addr;
 	mi->buf_len = m->buf_len;
 
-	mi->next = m->next;
 	mi->data_off = m->data_off;
 	mi->data_len = m->data_len;
 	mi->port = m->port;
