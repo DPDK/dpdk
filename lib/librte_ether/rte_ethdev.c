@@ -225,7 +225,7 @@ rte_eth_dev_allocate(const char *name)
 		return NULL;
 	}
 
-	memset(&rte_eth_devices[port_id], 0, sizeof(*eth_dev->data));
+	memset(&rte_eth_dev_data[port_id], 0, sizeof(struct rte_eth_dev_data));
 	eth_dev = eth_dev_get(port_id);
 	snprintf(eth_dev->data->name, sizeof(eth_dev->data->name), "%s", name);
 	eth_dev->data->port_id = port_id;
