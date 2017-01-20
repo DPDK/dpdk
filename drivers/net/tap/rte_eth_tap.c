@@ -140,6 +140,7 @@ tun_alloc(char *name)
 	}
 	RTE_LOG(DEBUG, PMD, "TUN/TAP Features %08x\n", features);
 
+#ifdef IFF_MULTI_QUEUE
 	if (!(features & IFF_MULTI_QUEUE) && (RTE_PMD_TAP_MAX_QUEUES > 1)) {
 		RTE_LOG(DEBUG, PMD, "TUN/TAP device only one queue\n");
 		goto error;
@@ -152,6 +153,15 @@ tun_alloc(char *name)
 		RTE_LOG(DEBUG, PMD, "Multi-queue support for %d queues\n",
 			RTE_PMD_TAP_MAX_QUEUES);
 	}
+#else
+	if (RTE_PMD_TAP_MAX_QUEUES > 1) {
+		RTE_LOG(DEBUG, PMD, "TUN/TAP device only one queue\n");
+		goto error;
+	} else {
+		ifr.ifr_flags |= IFF_ONE_QUEUE;
+		RTE_LOG(DEBUG, PMD, "Single queue only support\n");
+	}
+#endif
 
 	/* Set the TUN/TAP configuration and get the name if needed */
 	if (ioctl(fd, TUNSETIFF, (void *)&ifr) < 0) {
