@@ -612,7 +612,7 @@ typedef struct efsys_bar_s {
 /* BARRIERS */
 
 #define EFSYS_MEM_READ_BARRIER()	rte_rmb()
-#define EFSYS_PIO_WRITE_BARRIER()	rte_wmb()
+#define EFSYS_PIO_WRITE_BARRIER()	rte_io_wmb()
 
 /* DMA SYNC */
 
@@ -623,7 +623,9 @@ typedef struct efsys_bar_s {
  */
 
 #define EFSYS_DMA_SYNC_FOR_KERNEL(_esmp, _offset, _size)	((void)0)
-#define EFSYS_DMA_SYNC_FOR_DEVICE(_esmp, _offset, _size)	((void)0)
+
+/* Just avoid store and compiler (impliciltly) reordering */
+#define EFSYS_DMA_SYNC_FOR_DEVICE(_esmp, _offset, _size)	rte_wmb()
 
 /* TIMESTAMP */
 
