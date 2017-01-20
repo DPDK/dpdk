@@ -50,9 +50,7 @@ struct sfc_evq;
 
 struct sfc_tx_sw_desc {
 	struct rte_mbuf		*mbuf;
-#ifdef RTE_LIBRTE_SFC_EFX_TSO
 	uint8_t			*tsoh;	/* Buffer to store TSO header */
-#endif /* RTE_LIBRTE_SFC_EFX_TSO */
 };
 
 enum sfc_txq_state_bit {
@@ -116,7 +114,6 @@ void sfc_tx_stop(struct sfc_adapter *sa);
 uint16_t sfc_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		       uint16_t nb_pkts);
 
-#ifdef RTE_LIBRTE_SFC_EFX_TSO
 /* From 'sfc_tso.c' */
 int sfc_tso_alloc_tsoh_objs(struct sfc_tx_sw_desc *sw_ring,
 			    unsigned int txq_entries, unsigned int socket_id);
@@ -125,21 +122,6 @@ void sfc_tso_free_tsoh_objs(struct sfc_tx_sw_desc *sw_ring,
 int sfc_tso_do(struct sfc_txq *txq, unsigned int idx, struct rte_mbuf **in_seg,
 	       size_t *in_off, efx_desc_t **pend, unsigned int *pkt_descs,
 	       size_t *pkt_len);
-#else /* !RTE_LIBRTE_SFC_EFX_TSO */
-static inline int
-sfc_tso_alloc_tsoh_objs(__rte_unused struct sfc_tx_sw_desc *sw_ring,
-			__rte_unused unsigned int txq_entries,
-			__rte_unused unsigned int socket_id)
-{
-	return 0;
-}
-
-static inline void
-sfc_tso_free_tsoh_objs(__rte_unused struct sfc_tx_sw_desc *sw_ring,
-		       __rte_unused unsigned int txq_entries)
-{
-}
-#endif /* RTE_LIBRTE_SFC_EFX_TSO */
 
 #ifdef __cplusplus
 }

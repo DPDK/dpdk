@@ -621,13 +621,9 @@ sfc_attach(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_set_rss_defaults;
 
-#ifdef RTE_LIBRTE_SFC_EFX_TSO
 	sa->tso = efx_nic_cfg_get(sa->nic)->enc_fw_assisted_tso_v2_enabled;
 	if (!sa->tso)
 		sfc_warn(sa, "TSO support isn't available on this adapter");
-#else /* !RTE_LIBRTE_SFC_EFX_TSO */
-	sa->tso = B_FALSE;
-#endif /* RTE_LIBRTE_SFC_EFX_TSO */
 
 	sfc_log_init(sa, "fini nic");
 	efx_nic_fini(enp);

@@ -650,7 +650,6 @@ sfc_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		 */
 		pkt_descs += sfc_tx_maybe_insert_tag(txq, m_seg, &pend);
 
-#ifdef RTE_LIBRTE_SFC_EFX_TSO
 		if (m_seg->ol_flags & PKT_TX_TCP_SEG) {
 			/*
 			 * We expect correct 'pkt->l[2, 3, 4]_len' values
@@ -688,7 +687,6 @@ sfc_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			 * as for the usual non-TSO path
 			 */
 		}
-#endif /* RTE_LIBRTE_SFC_EFX_TSO */
 
 		for (; m_seg != NULL; m_seg = m_seg->next) {
 			efsys_dma_addr_t	next_frag;
