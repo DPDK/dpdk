@@ -64,9 +64,6 @@
 /* Invalidate a CQE. */
 #define MLX5_CQE_INVALIDATE (MLX5_CQE_INVALID << 4)
 
-/* CQE value to inform that VLAN is stripped. */
-#define MLX5_CQE_VLAN_STRIPPED 0x1
-
 /* Maximum number of packets a multi-packet WQE can handle. */
 #define MLX5_MPW_DSEG_MAX 5
 
@@ -87,26 +84,41 @@
 #define MLX5_OPCODE_TSO MLX5_OPCODE_LSO_MPW /* Compat with OFED 3.3. */
 #endif
 
-/* IPv4 packet. */
-#define MLX5_CQE_RX_IPV4_PACKET (1u << 2)
+/* CQE value to inform that VLAN is stripped. */
+#define MLX5_CQE_VLAN_STRIPPED (1u << 0)
+
+/* IPv4 options. */
+#define MLX5_CQE_RX_IP_EXT_OPTS_PACKET (1u << 1)
 
 /* IPv6 packet. */
-#define MLX5_CQE_RX_IPV6_PACKET (1u << 3)
+#define MLX5_CQE_RX_IPV6_PACKET (1u << 2)
 
-/* Outer IPv4 packet. */
-#define MLX5_CQE_RX_OUTER_IPV4_PACKET (1u << 7)
+/* IPv4 packet. */
+#define MLX5_CQE_RX_IPV4_PACKET (1u << 3)
 
-/* Outer IPv6 packet. */
-#define MLX5_CQE_RX_OUTER_IPV6_PACKET (1u << 8)
+/* TCP packet. */
+#define MLX5_CQE_RX_TCP_PACKET (1u << 4)
+
+/* UDP packet. */
+#define MLX5_CQE_RX_UDP_PACKET (1u << 5)
+
+/* IP is fragmented. */
+#define MLX5_CQE_RX_IP_FRAG_PACKET (1u << 7)
+
+/* L2 header is valid. */
+#define MLX5_CQE_RX_L2_HDR_VALID (1u << 8)
+
+/* L3 header is valid. */
+#define MLX5_CQE_RX_L3_HDR_VALID (1u << 9)
+
+/* L4 header is valid. */
+#define MLX5_CQE_RX_L4_HDR_VALID (1u << 10)
+
+/* Outer packet, 0 IPv4, 1 IPv6. */
+#define MLX5_CQE_RX_OUTER_PACKET (1u << 1)
 
 /* Tunnel packet bit in the CQE. */
-#define MLX5_CQE_RX_TUNNEL_PACKET (1u << 4)
-
-/* Outer IP checksum OK. */
-#define MLX5_CQE_RX_OUTER_IP_CSUM_OK (1u << 5)
-
-/* Outer UDP header and checksum OK. */
-#define MLX5_CQE_RX_OUTER_TCP_UDP_CSUM_OK (1u << 6)
+#define MLX5_CQE_RX_TUNNEL_PACKET (1u << 0)
 
 /* INVALID is used by packets matching no flow rules. */
 #define MLX5_FLOW_MARK_INVALID 0
@@ -188,8 +200,7 @@ struct mlx5_cqe {
 	uint32_t rx_hash_res;
 	uint8_t rx_hash_type;
 	uint8_t rsvd1[11];
-	uint8_t hds_ip_ext;
-	uint8_t l4_hdr_type_etc;
+	uint16_t hdr_type_etc;
 	uint16_t vlan_info;
 	uint8_t rsvd2[12];
 	uint32_t byte_cnt;

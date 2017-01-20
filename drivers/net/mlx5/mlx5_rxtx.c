@@ -1109,23 +1109,20 @@ static inline uint32_t
 rxq_cq_to_pkt_type(volatile struct mlx5_cqe *cqe)
 {
 	uint32_t pkt_type;
-	uint8_t flags = cqe->l4_hdr_type_etc;
+	uint16_t flags = ntohs(cqe->hdr_type_etc);
 
-	if (cqe->pkt_info & MLX5_CQE_RX_TUNNEL_PACKET)
+	if (cqe->pkt_info & MLX5_CQE_RX_TUNNEL_PACKET) {
 		pkt_type =
-			TRANSPOSE(flags,
-				  MLX5_CQE_RX_OUTER_IPV4_PACKET,
-				  RTE_PTYPE_L3_IPV4_EXT_UNKNOWN) |
-			TRANSPOSE(flags,
-				  MLX5_CQE_RX_OUTER_IPV6_PACKET,
-				  RTE_PTYPE_L3_IPV6_EXT_UNKNOWN) |
 			TRANSPOSE(flags,
 				  MLX5_CQE_RX_IPV4_PACKET,
 				  RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN) |
 			TRANSPOSE(flags,
 				  MLX5_CQE_RX_IPV6_PACKET,
 				  RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN);
-	else
+		pkt_type |= ((cqe->pkt_info & MLX5_CQE_RX_OUTER_PACKET) ?
+			     RTE_PTYPE_L3_IPV6_EXT_UNKNOWN :
+			     RTE_PTYPE_L3_IPV4_EXT_UNKNOWN);
+	} else {
 		pkt_type =
 			TRANSPOSE(flags,
 				  MLX5_CQE_L3_HDR_TYPE_IPV6,
@@ -1133,6 +1130,7 @@ rxq_cq_to_pkt_type(volatile struct mlx5_cqe *cqe)
 			TRANSPOSE(flags,
 				  MLX5_CQE_L3_HDR_TYPE_IPV4,
 				  RTE_PTYPE_L3_IPV4_EXT_UNKNOWN);
+	}
 	return pkt_type;
 }
 
@@ -1267,28 +1265,22 @@ static inline uint32_t
 rxq_cq_to_ol_flags(struct rxq *rxq, volatile struct mlx5_cqe *cqe)
 {
 	uint32_t ol_flags = 0;
-	uint8_t l3_hdr = (cqe->l4_hdr_type_etc) & MLX5_CQE_L3_HDR_TYPE_MASK;
-	uint8_t l4_hdr = (cqe->l4_hdr_type_etc) & MLX5_CQE_L4_HDR_TYPE_MASK;
+	uint16_t flags = ntohs(cqe->hdr_type_etc);
 
-	if ((l3_hdr == MLX5_CQE_L3_HDR_TYPE_IPV4) ||
-	    (l3_hdr == MLX5_CQE_L3_HDR_TYPE_IPV6))
-		ol_flags |= TRANSPOSE(cqe->hds_ip_ext,
-				      MLX5_CQE_L3_OK,
-				      PKT_RX_IP_CKSUM_GOOD);
-	if ((l4_hdr == MLX5_CQE_L4_HDR_TYPE_TCP) ||
-	    (l4_hdr == MLX5_CQE_L4_HDR_TYPE_TCP_EMP_ACK) ||
-	    (l4_hdr == MLX5_CQE_L4_HDR_TYPE_TCP_ACK) ||
-	    (l4_hdr == MLX5_CQE_L4_HDR_TYPE_UDP))
-		ol_flags |= TRANSPOSE(cqe->hds_ip_ext,
-				      MLX5_CQE_L4_OK,
-				      PKT_RX_L4_CKSUM_GOOD);
+	ol_flags =
+		TRANSPOSE(flags,
+			  MLX5_CQE_RX_L3_HDR_VALID,
+			  PKT_RX_IP_CKSUM_GOOD) |
+		TRANSPOSE(flags,
+			  MLX5_CQE_RX_L4_HDR_VALID,
+			  PKT_RX_L4_CKSUM_GOOD);
 	if ((cqe->pkt_info & MLX5_CQE_RX_TUNNEL_PACKET) && (rxq->csum_l2tun))
 		ol_flags |=
-			TRANSPOSE(cqe->l4_hdr_type_etc,
-				  MLX5_CQE_RX_OUTER_IP_CSUM_OK,
+			TRANSPOSE(flags,
+				  MLX5_CQE_RX_L3_HDR_VALID,
 				  PKT_RX_IP_CKSUM_GOOD) |
-			TRANSPOSE(cqe->l4_hdr_type_etc,
-				  MLX5_CQE_RX_OUTER_TCP_UDP_CSUM_OK,
+			TRANSPOSE(flags,
+				  MLX5_CQE_RX_L4_HDR_VALID,
 				  PKT_RX_L4_CKSUM_GOOD);
 	return ol_flags;
 }
@@ -1395,7 +1387,7 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 					pkt->ol_flags |=
 						rxq_cq_to_ol_flags(rxq, cqe);
 				}
-				if (cqe->l4_hdr_type_etc &
+				if (cqe->hdr_type_etc &
 				    MLX5_CQE_VLAN_STRIPPED) {
 					pkt->ol_flags |= PKT_RX_VLAN_PKT |
 						PKT_RX_VLAN_STRIPPED;
