@@ -567,7 +567,8 @@ vhost_user_set_mem_table(struct virtio_net *dev, struct VhostUserMsg *pmsg)
 		reg->host_user_addr = (uint64_t)(uintptr_t)mmap_addr +
 				      mmap_offset;
 
-		add_guest_pages(dev, reg, alignment);
+		if (dev->dequeue_zero_copy)
+			add_guest_pages(dev, reg, alignment);
 
 		RTE_LOG(INFO, VHOST_CONFIG,
 			"guest memory region %u, size: 0x%" PRIx64 "\n"
