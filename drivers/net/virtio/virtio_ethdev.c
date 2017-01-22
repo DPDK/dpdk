@@ -1515,6 +1515,7 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 		return -ENOMEM;
 	}
 
+	hw->port_id = eth_dev->data->port_id;
 	/* For virtio_user case the hw->virtio_user_dev is populated by
 	 * virtio_user_eth_dev_alloc() before eth_virtio_dev_init() is called.
 	 */
@@ -1525,7 +1526,6 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 			return ret;
 	}
 
-	hw->port_id = eth_dev->data->port_id;
 	eth_dev->data->dev_flags = dev_flags;
 
 	/* reset device and negotiate default features */
