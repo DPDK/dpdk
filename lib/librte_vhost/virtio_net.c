@@ -195,6 +195,8 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vring_desc *descs,
 	struct vring_desc *desc;
 	uint64_t desc_addr;
 	struct virtio_net_hdr_mrg_rxbuf virtio_hdr = {{0, 0, 0, 0, 0, 0}, 0};
+	/* A counter to avoid desc dead loop chain */
+	uint16_t nr_desc = 1;
 
 	desc = &descs[desc_idx];
 	desc_addr = gpa_to_vva(dev, desc->addr);
@@ -233,7 +235,7 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vring_desc *descs,
 				/* Room in vring buffer is not enough */
 				return -1;
 			}
-			if (unlikely(desc->next >= size))
+			if (unlikely(desc->next >= size || ++nr_desc > size))
 				return -1;
 
 			desc = &descs[desc->next];
