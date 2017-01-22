@@ -333,8 +333,10 @@ mlx5_args(struct priv *priv, struct rte_devargs *devargs)
 		if (rte_kvargs_count(kvlist, params[i])) {
 			ret = rte_kvargs_process(kvlist, params[i],
 						 mlx5_args_check, priv);
-			if (ret != 0)
+			if (ret != 0) {
+				rte_kvargs_free(kvlist);
 				return ret;
+			}
 		}
 	}
 	rte_kvargs_free(kvlist);
