@@ -44,7 +44,7 @@ if [ $# -ne 2 ]; then
 fi
 
 # get the real absolute path, derefencing symlinks
-ABS1=$(readlink -f $1)
+ABS1="$(dirname $(readlink -f $1))/$(basename $1)"
 ABS2=$(readlink -f $2)
 
 # remove leading slash
