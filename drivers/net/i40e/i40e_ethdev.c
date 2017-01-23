@@ -6115,7 +6115,7 @@ i40e_find_all_mac_for_vlan(struct i40e_vsi *vsi,
 static int
 i40e_vsi_remove_all_macvlan_filter(struct i40e_vsi *vsi)
 {
-	int i, num;
+	int i, j, num;
 	struct i40e_mac_filter *f;
 	struct i40e_macvlan_filter *mv_f;
 	int ret = I40E_SUCCESS;
@@ -6140,6 +6140,7 @@ i40e_vsi_remove_all_macvlan_filter(struct i40e_vsi *vsi)
 		TAILQ_FOREACH(f, &vsi->mac_list, next) {
 			(void)rte_memcpy(&mv_f[i].macaddr,
 				&f->mac_info.mac_addr, ETH_ADDR_LEN);
+			mv_f[i].filter_type = f->mac_info.filter_type;
 			mv_f[i].vlan_id = 0;
 			i++;
 		}
@@ -6149,6 +6150,8 @@ i40e_vsi_remove_all_macvlan_filter(struct i40e_vsi *vsi)
 					vsi->vlan_num, &f->mac_info.mac_addr);
 			if (ret != I40E_SUCCESS)
 				goto DONE;
+			for (j = i; j < i + vsi->vlan_num; j++)
+				mv_f[j].filter_type = f->mac_info.filter_type;
 			i += vsi->vlan_num;
 		}
 	}
