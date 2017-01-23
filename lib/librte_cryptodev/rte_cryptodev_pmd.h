@@ -160,11 +160,8 @@ extern struct rte_cryptodev_global *rte_cryptodev_globals;
  * @return
  *   - The rte_cryptodev structure pointer for the given device ID.
  */
-static inline struct rte_cryptodev *
-rte_cryptodev_pmd_get_dev(uint8_t dev_id)
-{
-	return &rte_cryptodev_globals->devs[dev_id];
-}
+struct rte_cryptodev *
+rte_cryptodev_pmd_get_dev(uint8_t dev_id);
 
 /**
  * Get the rte_cryptodev structure device pointer for the named device.
@@ -174,25 +171,8 @@ rte_cryptodev_pmd_get_dev(uint8_t dev_id)
  * @return
  *   - The rte_cryptodev structure pointer for the given device ID.
  */
-static inline struct rte_cryptodev *
-rte_cryptodev_pmd_get_named_dev(const char *name)
-{
-	struct rte_cryptodev *dev;
-	unsigned i;
-
-	if (name == NULL)
-		return NULL;
-
-	for (i = 0; i < rte_cryptodev_globals->max_devs; i++) {
-		dev = &rte_cryptodev_globals->devs[i];
-
-		if ((dev->attached == RTE_CRYPTODEV_ATTACHED) &&
-				(strcmp(dev->data->name, name) == 0))
-			return dev;
-	}
-
-	return NULL;
-}
+struct rte_cryptodev *
+rte_cryptodev_pmd_get_named_dev(const char *name);
 
 /**
  * Validate if the crypto device index is valid attached crypto device.
@@ -202,20 +182,8 @@ rte_cryptodev_pmd_get_named_dev(const char *name)
  * @return
  *   - If the device index is valid (1) or not (0).
  */
-static inline unsigned
-rte_cryptodev_pmd_is_valid_dev(uint8_t dev_id)
-{
-	struct rte_cryptodev *dev = NULL;
-
-	if (dev_id >= rte_cryptodev_globals->nb_devs)
-		return 0;
-
-	dev = rte_cryptodev_pmd_get_dev(dev_id);
-	if (dev->attached != RTE_CRYPTODEV_ATTACHED)
-		return 0;
-	else
-		return 1;
-}
+unsigned int
+rte_cryptodev_pmd_is_valid_dev(uint8_t dev_id);
 
 /**
  * The pool of rte_cryptodev structures.

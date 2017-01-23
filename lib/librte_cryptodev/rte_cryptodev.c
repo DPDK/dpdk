@@ -255,6 +255,48 @@ rte_cryptodev_create_vdev(const char *name, const char *args)
 	return rte_eal_vdev_init(name, args);
 }
 
+struct rte_cryptodev *
+rte_cryptodev_pmd_get_dev(uint8_t dev_id)
+{
+	return &rte_cryptodev_globals->devs[dev_id];
+}
+
+struct rte_cryptodev *
+rte_cryptodev_pmd_get_named_dev(const char *name)
+{
+	struct rte_cryptodev *dev;
+	unsigned int i;
+
+	if (name == NULL)
+		return NULL;
+
+	for (i = 0; i < rte_cryptodev_globals->max_devs; i++) {
+		dev = &rte_cryptodev_globals->devs[i];
+
+		if ((dev->attached == RTE_CRYPTODEV_ATTACHED) &&
+				(strcmp(dev->data->name, name) == 0))
+			return dev;
+	}
+
+	return NULL;
+}
+
+unsigned int
+rte_cryptodev_pmd_is_valid_dev(uint8_t dev_id)
+{
+	struct rte_cryptodev *dev = NULL;
+
+	if (dev_id >= rte_cryptodev_globals->nb_devs)
+		return 0;
+
+	dev = rte_cryptodev_pmd_get_dev(dev_id);
+	if (dev->attached != RTE_CRYPTODEV_ATTACHED)
+		return 0;
+	else
+		return 1;
+}
+
+
 int
 rte_cryptodev_get_dev_id(const char *name)
 {
