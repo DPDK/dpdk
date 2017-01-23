@@ -341,11 +341,13 @@ F: drivers/net/fm10k/
 
 Mellanox mlx4
 M: Adrien Mazarguil <adrien.mazarguil@6wind.com>
+M: Nelio Laranjeiro <nelio.laranjeiro@6wind.com>
 F: drivers/net/mlx4/
 F: doc/guides/nics/mlx4.rst
 
 Mellanox mlx5
 M: Adrien Mazarguil <adrien.mazarguil@6wind.com>
+M: Nelio Laranjeiro <nelio.laranjeiro@6wind.com>
 F: drivers/net/mlx5/
 F: doc/guides/nics/mlx5.rst
 
