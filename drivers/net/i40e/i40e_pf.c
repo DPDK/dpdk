@@ -929,7 +929,7 @@ i40e_pf_host_process_cmd_del_ether_address(struct i40e_pf_vf *vf,
 
 	for (i = 0; i < addr_list->num_elements; i++) {
 		mac = (struct ether_addr *)(addr_list->list[i].addr);
-		if(!is_valid_assigned_ether_addr(mac) ||
+		if(is_zero_ether_addr(mac) ||
 			i40e_vsi_delete_mac(vf->vsi, mac)) {
 			ret = I40E_ERR_INVALID_MAC_ADDR;
 			goto send_msg;
