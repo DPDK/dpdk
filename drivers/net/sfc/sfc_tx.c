@@ -312,11 +312,6 @@ sfc_tx_init(struct sfc_adapter *sa)
 
 	sa->txq_count = sa->eth_dev->data->nb_tx_queues;
 
-	if (sa->tso)
-		sa->txq_count = MIN(sa->txq_count,
-		   efx_nic_cfg_get(sa->nic)->enc_fw_assisted_tso_v2_n_contexts /
-		   efx_nic_cfg_get(sa->nic)->enc_hw_pf_count);
-
 	sa->txq_info = rte_calloc_socket("sfc-txqs", sa->txq_count,
 					 sizeof(sa->txq_info[0]), 0,
 					 sa->socket_id);

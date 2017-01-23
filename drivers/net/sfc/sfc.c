@@ -203,6 +203,13 @@ sfc_estimate_resource_limits(struct sfc_adapter *sa)
 	limits.edl_max_txq_count =
 		MIN(encp->enc_txq_limit,
 		    limits.edl_max_evq_count - 1 - limits.edl_max_rxq_count);
+
+	if (sa->tso)
+		limits.edl_max_txq_count =
+			MIN(limits.edl_max_txq_count,
+			    encp->enc_fw_assisted_tso_v2_n_contexts /
+			    encp->enc_hw_pf_count);
+
 	SFC_ASSERT(limits.edl_max_txq_count >= limits.edl_min_rxq_count);
 
 	/* Configure the minimum required resources needed for the
@@ -601,12 +608,17 @@ sfc_attach(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_nic_reset;
 
+	encp = efx_nic_cfg_get(sa->nic);
+
+	sa->tso = encp->enc_fw_assisted_tso_v2_enabled;
+	if (!sa->tso)
+		sfc_warn(sa, "TSO support isn't available on this adapter");
+
 	sfc_log_init(sa, "estimate resource limits");
 	rc = sfc_estimate_resource_limits(sa);
 	if (rc != 0)
 		goto fail_estimate_rsrc_limits;
 
-	encp = efx_nic_cfg_get(sa->nic);
 	sa->txq_max_entries = encp->enc_txq_max_ndescs;
 	SFC_ASSERT(rte_is_power_of_2(sa->txq_max_entries));
 
@@ -620,10 +632,6 @@ sfc_attach(struct sfc_adapter *sa)
 	rc = sfc_set_rss_defaults(sa);
 	if (rc != 0)
 		goto fail_set_rss_defaults;
-
-	sa->tso = efx_nic_cfg_get(sa->nic)->enc_fw_assisted_tso_v2_enabled;
-	if (!sa->tso)
-		sfc_warn(sa, "TSO support isn't available on this adapter");
 
 	sfc_log_init(sa, "fini nic");
 	efx_nic_fini(enp);
