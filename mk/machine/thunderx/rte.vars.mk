@@ -47,7 +47,7 @@
 #
 
 # ARCH =
-CROSS ?= aarch64-thunderx-linux-gnu-
+# CROSS =
 # MACHINE_CFLAGS =
 # MACHINE_LDFLAGS =
 # MACHINE_ASFLAGS =
