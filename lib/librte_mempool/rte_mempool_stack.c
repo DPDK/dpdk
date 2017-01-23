@@ -118,7 +118,7 @@ stack_dequeue(struct rte_mempool *mp, void **obj_table,
 
 	s->len -= n;
 	rte_spinlock_unlock(&s->sl);
-	return n;
+	return 0;
 }
 
 static unsigned
