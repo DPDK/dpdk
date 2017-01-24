@@ -900,7 +900,6 @@ bond_ethdev_tx_burst_alb(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		}
 
 		num_tx_total += num_send;
-		num_not_send += slave_bufs_pkts[RTE_MAX_ETHPORTS] - num_send;
 	}
 
 	return num_tx_total;
