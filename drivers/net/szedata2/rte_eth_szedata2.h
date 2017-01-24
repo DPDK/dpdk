@@ -192,7 +192,7 @@ pci_resource_write64(struct rte_mem_resource *rsc, uint32_t offset,
 }
 
 #define SZEDATA2_PCI_RESOURCE_PTR(rsc, offset, type) \
-	((type)((uint8_t *)(rsc)->addr) + (offset))
+	((type)(((uint8_t *)(rsc)->addr) + (offset)))
 
 enum szedata2_link_speed {
 	SZEDATA2_LINK_SPEED_DEFAULT = 0,
