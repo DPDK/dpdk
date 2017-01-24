@@ -472,6 +472,7 @@ F: doc/guides/cryptodevs/null.rst
 Crypto Scheduler PMD
 M: Fan Zhang <roy.fan.zhang@intel.com>
 F: drivers/crypto/scheduler/
+F: doc/guides/cryptodevs/scheduler.rst
 
 
 Packet processing
