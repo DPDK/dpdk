@@ -222,6 +222,7 @@ int rte_pmd_ixgbe_macsec_disable(uint8_t port);
  * @return
  *   - (0) if successful.
  *   - (-ENODEV) if *port* invalid.
+ *   - (-ENOTSUP) if hardware doesn't support this feature.
  */
 int rte_pmd_ixgbe_macsec_config_txsc(uint8_t port, uint8_t *mac);
 
@@ -237,6 +238,7 @@ int rte_pmd_ixgbe_macsec_config_txsc(uint8_t port, uint8_t *mac);
  * @return
  *   - (0) if successful.
  *   - (-ENODEV) if *port* invalid.
+ *   - (-ENOTSUP) if hardware doesn't support this feature.
  */
 int rte_pmd_ixgbe_macsec_config_rxsc(uint8_t port, uint8_t *mac, uint16_t pi);
 
@@ -256,6 +258,7 @@ int rte_pmd_ixgbe_macsec_config_rxsc(uint8_t port, uint8_t *mac, uint16_t pi);
  * @return
  *   - (0) if successful.
  *   - (-ENODEV) if *port* invalid.
+ *   - (-ENOTSUP) if hardware doesn't support this feature.
  *   - (-EINVAL) if bad parameter.
  */
 int rte_pmd_ixgbe_macsec_select_txsa(uint8_t port, uint8_t idx, uint8_t an,
@@ -277,6 +280,7 @@ int rte_pmd_ixgbe_macsec_select_txsa(uint8_t port, uint8_t idx, uint8_t an,
  * @return
  *   - (0) if successful.
  *   - (-ENODEV) if *port* invalid.
+ *   - (-ENOTSUP) if hardware doesn't support this feature.
  *   - (-EINVAL) if bad parameter.
  */
 int rte_pmd_ixgbe_macsec_select_rxsa(uint8_t port, uint8_t idx, uint8_t an,

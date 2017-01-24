@@ -8227,9 +8227,14 @@ rte_pmd_ixgbe_macsec_enable(uint8_t port, uint8_t en, uint8_t rp)
 {
 	struct ixgbe_hw *hw;
 	struct rte_eth_dev *dev;
+	struct rte_eth_dev_info dev_info;
 	uint32_t ctrl;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	rte_eth_dev_info_get(port, &dev_info);
+	if (is_ixgbe_pmd(dev_info.driver_name) != 0)
+		return -ENOTSUP;
 
 	dev = &rte_eth_devices[port];
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -8306,9 +8311,14 @@ rte_pmd_ixgbe_macsec_disable(uint8_t port)
 {
 	struct ixgbe_hw *hw;
 	struct rte_eth_dev *dev;
+	struct rte_eth_dev_info dev_info;
 	uint32_t ctrl;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	rte_eth_dev_info_get(port, &dev_info);
+	if (is_ixgbe_pmd(dev_info.driver_name) != 0)
+		return -ENOTSUP;
 
 	dev = &rte_eth_devices[port];
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -8366,9 +8376,14 @@ rte_pmd_ixgbe_macsec_config_txsc(uint8_t port, uint8_t *mac)
 {
 	struct ixgbe_hw *hw;
 	struct rte_eth_dev *dev;
+	struct rte_eth_dev_info dev_info;
 	uint32_t ctrl;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	rte_eth_dev_info_get(port, &dev_info);
+	if (is_ixgbe_pmd(dev_info.driver_name) != 0)
+		return -ENOTSUP;
 
 	dev = &rte_eth_devices[port];
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -8387,9 +8402,14 @@ rte_pmd_ixgbe_macsec_config_rxsc(uint8_t port, uint8_t *mac, uint16_t pi)
 {
 	struct ixgbe_hw *hw;
 	struct rte_eth_dev *dev;
+	struct rte_eth_dev_info dev_info;
 	uint32_t ctrl;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	rte_eth_dev_info_get(port, &dev_info);
+	if (is_ixgbe_pmd(dev_info.driver_name) != 0)
+		return -ENOTSUP;
 
 	dev = &rte_eth_devices[port];
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -8410,9 +8430,14 @@ rte_pmd_ixgbe_macsec_select_txsa(uint8_t port, uint8_t idx, uint8_t an,
 {
 	struct ixgbe_hw *hw;
 	struct rte_eth_dev *dev;
+	struct rte_eth_dev_info dev_info;
 	uint32_t ctrl, i;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	rte_eth_dev_info_get(port, &dev_info);
+	if (is_ixgbe_pmd(dev_info.driver_name) != 0)
+		return -ENOTSUP;
 
 	dev = &rte_eth_devices[port];
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -8462,9 +8487,14 @@ rte_pmd_ixgbe_macsec_select_rxsa(uint8_t port, uint8_t idx, uint8_t an,
 {
 	struct ixgbe_hw *hw;
 	struct rte_eth_dev *dev;
+	struct rte_eth_dev_info dev_info;
 	uint32_t ctrl, i;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	rte_eth_dev_info_get(port, &dev_info);
+	if (is_ixgbe_pmd(dev_info.driver_name) != 0)
+		return -ENOTSUP;
 
 	dev = &rte_eth_devices[port];
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
