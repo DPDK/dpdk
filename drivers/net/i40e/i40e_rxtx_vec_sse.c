@@ -148,6 +148,20 @@ desc_to_olflags_v(__m128i descs[4], struct rte_mbuf **rx_pkts)
 	const __m128i rss_vlan_msk = _mm_set_epi32(
 			0x1c03804, 0x1c03804, 0x1c03804, 0x1c03804);
 
+	const __m128i cksum_mask = _mm_set_epi32(
+			PKT_RX_IP_CKSUM_GOOD | PKT_RX_IP_CKSUM_BAD |
+			PKT_RX_L4_CKSUM_GOOD | PKT_RX_L4_CKSUM_BAD |
+			PKT_RX_EIP_CKSUM_BAD,
+			PKT_RX_IP_CKSUM_GOOD | PKT_RX_IP_CKSUM_BAD |
+			PKT_RX_L4_CKSUM_GOOD | PKT_RX_L4_CKSUM_BAD |
+			PKT_RX_EIP_CKSUM_BAD,
+			PKT_RX_IP_CKSUM_GOOD | PKT_RX_IP_CKSUM_BAD |
+			PKT_RX_L4_CKSUM_GOOD | PKT_RX_L4_CKSUM_BAD |
+			PKT_RX_EIP_CKSUM_BAD,
+			PKT_RX_IP_CKSUM_GOOD | PKT_RX_IP_CKSUM_BAD |
+			PKT_RX_L4_CKSUM_GOOD | PKT_RX_L4_CKSUM_BAD |
+			PKT_RX_EIP_CKSUM_BAD);
+
 	/* map rss and vlan type to rss hash and vlan flag */
 	const __m128i vlan_flags = _mm_set_epi8(0, 0, 0, 0,
 			0, 0, 0, 0,
@@ -160,14 +174,17 @@ desc_to_olflags_v(__m128i descs[4], struct rte_mbuf **rx_pkts)
 			0, 0, PKT_RX_FDIR, 0);
 
 	const __m128i l3_l4e_flags = _mm_set_epi8(0, 0, 0, 0, 0, 0, 0, 0,
-			PKT_RX_EIP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD | PKT_RX_IP_CKSUM_BAD,
-			PKT_RX_EIP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD,
-			PKT_RX_EIP_CKSUM_BAD | PKT_RX_IP_CKSUM_BAD,
-			PKT_RX_EIP_CKSUM_BAD,
-			PKT_RX_L4_CKSUM_BAD | PKT_RX_IP_CKSUM_BAD,
-			PKT_RX_L4_CKSUM_BAD,
-			PKT_RX_IP_CKSUM_BAD,
-			0);
+			/* shift right 1 bit to make sure it not exceed 255 */
+			(PKT_RX_EIP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD |
+			 PKT_RX_IP_CKSUM_BAD) >> 1,
+			(PKT_RX_IP_CKSUM_GOOD | PKT_RX_EIP_CKSUM_BAD |
+			 PKT_RX_L4_CKSUM_BAD) >> 1,
+			(PKT_RX_EIP_CKSUM_BAD | PKT_RX_IP_CKSUM_BAD) >> 1,
+			(PKT_RX_IP_CKSUM_GOOD | PKT_RX_EIP_CKSUM_BAD) >> 1,
+			(PKT_RX_L4_CKSUM_BAD | PKT_RX_IP_CKSUM_BAD) >> 1,
+			(PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_BAD) >> 1,
+			PKT_RX_IP_CKSUM_BAD >> 1,
+			(PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD) >> 1);
 
 	vlan0 = _mm_unpackhi_epi32(descs[0], descs[1]);
 	vlan1 = _mm_unpackhi_epi32(descs[2], descs[3]);
@@ -181,6 +198,10 @@ desc_to_olflags_v(__m128i descs[4], struct rte_mbuf **rx_pkts)
 
 	l3_l4e = _mm_srli_epi32(vlan1, 22);
 	l3_l4e = _mm_shuffle_epi8(l3_l4e_flags, l3_l4e);
+	/* then we shift left 1 bit */
+	l3_l4e = _mm_slli_epi32(l3_l4e, 1);
+	/* we need to mask out the reduntant bits */
+	l3_l4e = _mm_and_si128(l3_l4e, cksum_mask);
 
 	vlan0 = _mm_or_si128(vlan0, rss);
 	vlan0 = _mm_or_si128(vlan0, l3_l4e);
