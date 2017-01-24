@@ -311,7 +311,7 @@ F: drivers/net/enic/
 F: doc/guides/nics/enic.rst
 
 Combo szedata2
-M: Matej Vido <matejvido@gmail.com>
+M: Matej Vido <vido@cesnet.cz>
 F: drivers/net/szedata2/
 F: doc/guides/nics/szedata2.rst
 
