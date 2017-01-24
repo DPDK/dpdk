@@ -898,6 +898,8 @@ ixgbe_pf_reset_hw(struct ixgbe_hw *hw)
 	IXGBE_WRITE_REG(hw, IXGBE_CTRL_EXT, ctrl_ext);
 	IXGBE_WRITE_FLUSH(hw);
 
+	if (status == IXGBE_ERR_SFP_NOT_PRESENT)
+		status = IXGBE_SUCCESS;
 	return status;
 }
 
@@ -1236,6 +1238,9 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev)
 		rte_delay_ms(200);
 		diag = ixgbe_init_hw(hw);
 	}
+
+	if (diag == IXGBE_ERR_SFP_NOT_PRESENT)
+		diag = IXGBE_SUCCESS;
 
 	if (diag == IXGBE_ERR_EEPROM_VERSION) {
 		PMD_INIT_LOG(ERR, "This device is a pre-production adapter/"
