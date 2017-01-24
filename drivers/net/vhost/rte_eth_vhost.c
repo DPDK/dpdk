@@ -801,6 +801,32 @@ eth_dev_stop(struct rte_eth_dev *dev)
 	update_queuing_status(dev);
 }
 
+static void
+eth_dev_close(struct rte_eth_dev *dev)
+{
+	struct pmd_internal *internal;
+	struct internal_list *list;
+
+	internal = dev->data->dev_private;
+	if (!internal)
+		return;
+
+	rte_vhost_driver_unregister(internal->iface_name);
+
+	list = find_internal_resource(internal->iface_name);
+	if (!list)
+		return;
+
+	pthread_mutex_lock(&internal_list_lock);
+	TAILQ_REMOVE(&internal_list, list, next);
+	pthread_mutex_unlock(&internal_list_lock);
+	rte_free(list);
+
+	free(internal->dev_name);
+	free(internal->iface_name);
+	rte_free(internal);
+}
+
 static int
 eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 		   uint16_t nb_rx_desc __rte_unused,
@@ -968,6 +994,7 @@ rte_eth_vhost_feature_get(void)
 static const struct eth_dev_ops ops = {
 	.dev_start = eth_dev_start,
 	.dev_stop = eth_dev_stop,
+	.dev_close = eth_dev_close,
 	.dev_configure = eth_dev_configure,
 	.dev_infos_get = eth_dev_info,
 	.rx_queue_setup = eth_rx_queue_setup,
@@ -1195,8 +1222,6 @@ static int
 rte_pmd_vhost_remove(const char *name)
 {
 	struct rte_eth_dev *eth_dev = NULL;
-	struct pmd_internal *internal;
-	struct internal_list *list;
 	unsigned int i;
 
 	RTE_LOG(INFO, PMD, "Un-Initializing pmd_vhost for %s\n", name);
@@ -1206,31 +1231,15 @@ rte_pmd_vhost_remove(const char *name)
 	if (eth_dev == NULL)
 		return -ENODEV;
 
-	internal = eth_dev->data->dev_private;
-	if (internal == NULL)
-		return -ENODEV;
-
-	list = find_internal_resource(internal->iface_name);
-	if (list == NULL)
-		return -ENODEV;
-
-	pthread_mutex_lock(&internal_list_lock);
-	TAILQ_REMOVE(&internal_list, list, next);
-	pthread_mutex_unlock(&internal_list_lock);
-	rte_free(list);
-
 	eth_dev_stop(eth_dev);
 
-	rte_vhost_driver_unregister(internal->iface_name);
+	eth_dev_close(eth_dev);
 
 	if (rte_atomic16_sub_return(&nb_started_ports, 1) == 0)
 		vhost_driver_session_stop();
 
 	rte_free(vring_states[eth_dev->data->port_id]);
 	vring_states[eth_dev->data->port_id] = NULL;
-
-	free(internal->dev_name);
-	free(internal->iface_name);
 
 	for (i = 0; i < eth_dev->data->nb_rx_queues; i++)
 		rte_free(eth_dev->data->rx_queues[i]);
@@ -1239,7 +1248,6 @@ rte_pmd_vhost_remove(const char *name)
 
 	rte_free(eth_dev->data->mac_addrs);
 	rte_free(eth_dev->data);
-	rte_free(internal);
 
 	rte_eth_dev_release_port(eth_dev);
 
