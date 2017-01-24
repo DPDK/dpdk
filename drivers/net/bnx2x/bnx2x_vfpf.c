@@ -648,6 +648,7 @@ bnx2x_vf_set_rx_mode(struct bnx2x_softc *sc)
 		query->rx_mask |= VFPF_RX_MASK_ACCEPT_MATCHED_UNICAST;
 		query->rx_mask |= VFPF_RX_MASK_ACCEPT_BROADCAST;
 		break;
+	case BNX2X_RX_MODE_ALLMULTI_PROMISC:
 	case BNX2X_RX_MODE_PROMISC:
 		query->rx_mask = VFPF_RX_MASK_ACCEPT_ALL_UNICAST;
 		query->rx_mask |= VFPF_RX_MASK_ACCEPT_ALL_MULTICAST;

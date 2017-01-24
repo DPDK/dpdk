@@ -1147,11 +1147,12 @@ struct bnx2x_softc {
 #define BNX2X_RECOVERY_NIC_LOADING 5
 
 	uint32_t rx_mode;
-#define BNX2X_RX_MODE_NONE     0
-#define BNX2X_RX_MODE_NORMAL   1
-#define BNX2X_RX_MODE_ALLMULTI 2
-#define BNX2X_RX_MODE_PROMISC  3
-#define BNX2X_MAX_MULTICAST    64
+#define BNX2X_RX_MODE_NONE             0
+#define BNX2X_RX_MODE_NORMAL           1
+#define BNX2X_RX_MODE_ALLMULTI         2
+#define BNX2X_RX_MODE_ALLMULTI_PROMISC 3
+#define BNX2X_RX_MODE_PROMISC          4
+#define BNX2X_MAX_MULTICAST            64
 
 	struct bnx2x_port port;
 
