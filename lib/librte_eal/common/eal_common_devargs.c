@@ -72,6 +72,7 @@ rte_eal_parse_devargs_str(const char *devargs_str,
 
 	if (*drvargs == NULL) {
 		free(*drvname);
+		*drvname = NULL;
 		return -1;
 	}
 	return 0;
