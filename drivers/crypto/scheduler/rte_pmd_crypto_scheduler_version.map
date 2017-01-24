@@ -1,0 +1,12 @@
+DPDK_17.02 {
+	global:
+
+	rte_cryptodev_scheduler_load_user_scheduler;
+	rte_cryptodev_scheduler_slave_attach;
+	rte_cryptodev_scheduler_slave_detach;
+	rte_crpytodev_scheduler_mode_set;
+	rte_crpytodev_scheduler_mode_get;
+	rte_cryptodev_scheduler_ordering_set;
+	rte_cryptodev_scheduler_ordering_get;
+
+};
