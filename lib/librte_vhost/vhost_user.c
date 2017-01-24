@@ -996,7 +996,7 @@ vhost_user_msg_handler(int vid, int fd)
 		break;
 
 	case VHOST_USER_GET_VRING_BASE:
-		ret = vhost_user_get_vring_base(dev, &msg.payload.state);
+		vhost_user_get_vring_base(dev, &msg.payload.state);
 		msg.size = sizeof(msg.payload.state);
 		send_vhost_message(fd, &msg);
 		break;
