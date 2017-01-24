@@ -1532,7 +1532,7 @@ int t4_seeprom_write(struct adapter *adapter, u32 addr, u32 data)
 {
 	unsigned int base = adapter->params.pci.vpd_cap_addr;
 	int ret;
-	u32 stats_reg;
+	u32 stats_reg = 0;
 	int max_poll;
 
 	/* VPD Accesses must alway be 4-byte aligned!
