@@ -61,7 +61,7 @@ extern struct rte_efd_table *efd_table;
 extern struct node *nodes;
 
 /*
- * shared information between distributor and nodes: number of clients,
+ * shared information between server and nodes: number of nodes,
  * port numbers, rx and tx stats etc.
  */
 extern struct shared_info *info;

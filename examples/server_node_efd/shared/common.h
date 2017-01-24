@@ -39,12 +39,12 @@
 
 #define MAX_NODES             16
 /*
- * Shared port info, including statistics information for display by distributor.
+ * Shared port info, including statistics information for display by server.
  * Structure will be put in a memzone.
  * - All port id values share one cache line as this data will be read-only
  * during operation.
  * - All rx statistic values share cache lines, as this data is written only
- * by the distributor process. (rare reads by stats display)
+ * by the server process. (rare reads by stats display)
  * - The tx statistics have values for all ports per cache line, but the stats
  * themselves are written by the nodes, so we have a distinct set, on different
  * cache lines for each node to use.
@@ -73,7 +73,7 @@ struct shared_info {
 	struct filter_stats filter_stats[MAX_NODES];
 };
 
-/* define common names for structures shared between distributor and node */
+/* define common names for structures shared between server and node */
 #define MP_NODE_RXQ_NAME "MProc_Node_%u_RX"
 #define PKTMBUF_POOL_NAME "MProc_pktmbuf_pool"
 #define MZ_SHARED_INFO "MProc_shared_info"

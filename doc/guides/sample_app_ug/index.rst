@@ -57,7 +57,7 @@ Sample Applications User Guides
     l3_forward_virtual
     link_status_intr
     load_balancer
-    flow_distributor
+    server_node_efd
     multi_process
     qos_metering
     qos_scheduler
@@ -132,6 +132,8 @@ Sample Applications User Guides
 :numref:`figure_tep_termination_arch` :ref:`figure_tep_termination_arch`
 
 :numref:`figure_ptpclient_highlevel` :ref:`figure_ptpclient_highlevel`
+
+:numref:`figure_efd_sample_app_overview` :ref:`figure_efd_sample_app_overview`
 
 **Tables**
 

@@ -85,10 +85,10 @@ struct rte_mempool *pktmbuf_pool;
 /* array of info/queues for nodes */
 struct node *nodes;
 
-/* Flow distributor table */
+/* EFD table */
 struct rte_efd_table *efd_table;
 
-/* Shared info between distributor and nodes */
+/* Shared info between server and nodes */
 struct shared_info *info;
 
 /**
@@ -176,7 +176,7 @@ init_port(uint8_t port_num)
 
 /**
  * Set up the DPDK rings which will be used to pass packets, via
- * pointers, between the multi-process distributor and node processes.
+ * pointers, between the multi-process server and node processes.
  * Each node needs one RX queue.
  */
 static int
@@ -208,11 +208,11 @@ init_shm_rings(void)
 }
 
 /*
- * Create flow distributor table which will contain all the flows
+ * Create EFD table which will contain all the flows
  * that will be distributed among the nodes
  */
 static void
-create_flow_distributor_table(void)
+create_efd_table(void)
 {
 	uint8_t socket_id = rte_socket_id();
 
@@ -225,7 +225,7 @@ create_flow_distributor_table(void)
 }
 
 static void
-populate_flow_distributor_table(void)
+populate_efd_table(void)
 {
 	unsigned int i;
 	int32_t ret;
@@ -242,7 +242,7 @@ populate_flow_distributor_table(void)
 				(void *)&ip_dst, (efd_value_t)node_id);
 		if (ret < 0)
 			rte_exit(EXIT_FAILURE, "Unable to add entry %u in "
-					"flow distributor table\n", i);
+					"EFD table\n", i);
 	}
 
 	printf("EFD table: Adding 0x%x keys\n", num_flows);
@@ -304,7 +304,7 @@ check_all_ports_link_status(uint8_t port_num, uint32_t port_mask)
 }
 
 /**
- * Main init function for the multi-process distributor app,
+ * Main init function for the multi-process server app,
  * calls subfunctions to do each stage of the initialisation.
  */
 int
@@ -356,11 +356,11 @@ init(int argc, char *argv[])
 	/* initialise the node queues/rings for inter-eu comms */
 	init_shm_rings();
 
-	/* Create the flow distributor table */
-	create_flow_distributor_table();
+	/* Create the EFD table */
+	create_efd_table();
 
-	/* Populate the flow distributor table */
-	populate_flow_distributor_table();
+	/* Populate the EFD table */
+	populate_efd_table();
 
 	/* Share the total number of nodes */
 	info->num_nodes = num_nodes;

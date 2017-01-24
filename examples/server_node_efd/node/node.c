@@ -84,7 +84,7 @@ static uint8_t output_ports[RTE_MAX_ETHPORTS];
 /* buffers up a set of packet that are ready to send */
 struct rte_eth_dev_tx_buffer *tx_buffer[RTE_MAX_ETHPORTS];
 
-/* shared data from distributor. We update statistics here */
+/* shared data from server. We update statistics here */
 static struct tx_stats *tx_stats;
 
 static struct filter_stats *filter_stats;
@@ -357,7 +357,7 @@ main(int argc, char *argv[])
 	rx_ring = rte_ring_lookup(get_rx_queue_name(node_id));
 	if (rx_ring == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot get RX ring - "
-				"is distributor process running?\n");
+				"is server process running?\n");
 
 	mp = rte_mempool_lookup(PKTMBUF_POOL_NAME);
 	if (mp == NULL)

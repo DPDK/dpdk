@@ -45,7 +45,7 @@ DIRS-y += dpdk_qat
 endif
 DIRS-y += ethtool
 DIRS-y += exception_path
-DIRS-$(CONFIG_RTE_LIBRTE_EFD) += flow_distributor
+DIRS-$(CONFIG_RTE_LIBRTE_EFD) += server_node_efd
 DIRS-y += helloworld
 DIRS-$(CONFIG_RTE_LIBRTE_PIPELINE) += ip_pipeline
 ifeq ($(CONFIG_RTE_LIBRTE_LPM),y)

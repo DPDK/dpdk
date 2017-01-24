@@ -88,7 +88,7 @@ struct node_rx_buf {
 	uint16_t count;
 };
 
-struct flow_distributor_stats {
+struct efd_stats {
 	uint64_t distributed;
 	uint64_t drop;
 } flow_dist_stats;
@@ -120,7 +120,7 @@ get_printable_mac_addr(uint8_t port)
  * This function displays the recorded statistics for each port
  * and for each node. It uses ANSI terminal codes to clear
  * screen when called. It is called from a single non-master
- * thread in the distributor process, when the process is run with more
+ * thread in the server process, when the process is run with more
  * than one lcore enabled.
  */
 static void
@@ -168,7 +168,7 @@ do_stats_display(void)
 				port_tx[i]);
 	}
 
-	printf("\nFLOW DISTRIBUTOR\n");
+	printf("\nSERVER\n");
 	printf("-----\n");
 	printf("distributed: %9"PRIu64", drop: %9"PRIu64"\n",
 			flow_dist_stats.distributed, flow_dist_stats.drop);

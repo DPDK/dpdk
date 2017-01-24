@@ -28,8 +28,8 @@
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-Flow Distributor Sample Application
-===================================
+Server-Node EFD Sample Application
+==================================
 
 This sample application demonstrates the use of EFD library as a flow-level
 load balancer, for more information about the EFD Library please refer to the
@@ -48,12 +48,12 @@ presented in the following figure.
 
 .. _figure_efd_sample_app_overview:
 
-.. figure:: img/flow_distributor.*
+.. figure:: img/server_node_efd.*
 
    Using EFD as a Flow-Level Load Balancer
 
 As shown in :numref:`figure_efd_sample_app_overview`,
-the sample application consists of a front-end node (distributor)
+the sample application consists of a front-end node (server)
 using the EFD library to create a load-balancing table for flows,
 for each flow a target backend worker node is specified. The EFD table does not
 store the flow key (unlike a regular hash table), and hence, it can
@@ -61,12 +61,12 @@ individually load-balance millions of flows (number of targets * maximum number
 of flows fit in a flow table per target) while still fitting in CPU cache.
 
 It should be noted that although they are referred to as nodes, the frontend
-distributor and worker nodes are processes running on the same platform.
+server and worker nodes are processes running on the same platform.
 
-Front-end Distributor
-~~~~~~~~~~~~~~~~~~~~~
+Front-end Server
+~~~~~~~~~~~~~~~~
 
-Upon initializing, the frontend distributor node (process) creates a flow
+Upon initializing, the frontend server node (process) creates a flow
 distributor table (based on the EFD library) which is populated with flow
 information and its intended target node.
 
@@ -81,7 +81,7 @@ the IP destination addresses as follows:
 
 then the pair of <key,target> is inserted into the flow distribution table.
 
-The main loop of the the distributor node receives a burst of packets, then for
+The main loop of the server process receives a burst of packets, then for
 each packet, a flow key (IP destination address) is extracted. The flow
 distributor table is looked up and the target node id is returned.  Packets are
 then enqueued to the specified target node id.
@@ -121,7 +121,7 @@ The sequence of steps used to build the application is:
 
     .. code-block:: console
 
-        cd ${RTE_SDK}/examples/flow_distributor/
+        cd ${RTE_SDK}/examples/server_node_efd/
         make
 
     For more details on how to build the DPDK libraries and sample
@@ -132,12 +132,12 @@ The sequence of steps used to build the application is:
 Running the Application
 -----------------------
 
-The application has two binaries to be run: the front-end distributor
+The application has two binaries to be run: the front-end server
 and the back-end node.
 
-The frontend distributor (distributor) has the following command line options::
+The frontend server (server) has the following command line options::
 
-    ./distributor [EAL options] -- -p PORTMASK -n NUM_NODES -f NUM_FLOWS
+    ./server [EAL options] -- -p PORTMASK -n NUM_NODES -f NUM_FLOWS
 
 Where,
 
@@ -154,7 +154,7 @@ Where,
 * ``-n NODE_ID:`` Node ID, which cannot be equal or higher than NUM_MODES
 
 
-First, the distributor app must be launched, with the number of nodes that will be run.
+First, the server app must be launched, with the number of nodes that will be run.
 Once it has been started, the node instances can be run, with different NODE_ID.
 These instances have to be run as secondary processes, with ``--proc-type=secondary``
 in the EAL options, which will attach to the primary process memory, and therefore,
@@ -176,7 +176,7 @@ Explanation
 
 As described in previous sections, there are two processes in this example.
 
-The first process, the front-end distributor, creates and populates the EFD table,
+The first process, the front-end server, creates and populates the EFD table,
 which is used to distribute packets to nodes, which the number of flows
 specified in the command line (1 million, by default).
 
@@ -184,7 +184,7 @@ specified in the command line (1 million, by default).
 .. code-block:: c
 
     static void
-    create_flow_distributor_table(void)
+    create_efd_table(void)
     {
         uint8_t socket_id = rte_socket_id();
 
@@ -197,7 +197,7 @@ specified in the command line (1 million, by default).
     }
 
     static void
-    populate_flow_distributor_table(void)
+    populate_efd_table(void)
     {
         unsigned int i;
         int32_t ret;
@@ -214,7 +214,7 @@ specified in the command line (1 million, by default).
                             (void *)&ip_dst, (efd_value_t)node_id);
             if (ret < 0)
                 rte_exit(EXIT_FAILURE, "Unable to add entry %u in "
-                                    "flow distributor table\n", i);
+                                    "EFD table\n", i);
         }
 
         printf("EFD table: Adding 0x%x keys\n", num_flows);
@@ -269,7 +269,7 @@ which tells the node where the packet has to be distributed.
     }
 
 The burst of packets received is enqueued in temporary buffers (per node),
-and enqueued in the shared ring between the distributor and the node.
+and enqueued in the shared ring between the server and the node.
 After this, a new burst of packets is received and this process is
 repeated infinitely.
 
@@ -297,9 +297,9 @@ repeated infinitely.
     }
 
 The second process, the back-end node, receives the packets from the shared
-ring with the distributor and send them out, if they belong to the node.
+ring with the server and send them out, if they belong to the node.
 
-At initialization, it attaches to the distributor process memory, to have
+At initialization, it attaches to the server process memory, to have
 access to the shared ring, parameters and statistics.
 
 .. code-block:: c
@@ -307,7 +307,7 @@ access to the shared ring, parameters and statistics.
     rx_ring = rte_ring_lookup(get_rx_queue_name(node_id));
     if (rx_ring == NULL)
         rte_exit(EXIT_FAILURE, "Cannot get RX ring - "
-                "is distributor process running?\n");
+                "is server process running?\n");
 
     mp = rte_mempool_lookup(PKTMBUF_POOL_NAME);
     if (mp == NULL)
@@ -381,7 +381,7 @@ by the node is created and populated.
     }
 
 After initialization, packets are dequeued from the shared ring
-(from the distributor) and, like in the distributor process,
+(from the server) and, like in the server process,
 the IPv4 address from the packets is used as a key to look up in the hash table.
 If there is a hit, packet is stored in a buffer, to be eventually transmitted
 in one of the enabled ports. If key is not there, packet is dropped, since the
@@ -421,7 +421,7 @@ flow is not handled by the node.
     }
 
 Finally, note that both processes updates statistics, such as transmitted, received
-and dropped packets, which are shown and refreshed by the distributor app.
+and dropped packets, which are shown and refreshed by the server app.
 
 .. code-block:: c
 
@@ -470,7 +470,7 @@ and dropped packets, which are shown and refreshed by the distributor app.
                     port_tx[i]);
         }
 
-        printf("\nFLOW DISTRIBUTOR\n");
+        printf("\nSERVER\n");
         printf("-----\n");
         printf("distributed: %9"PRIu64", drop: %9"PRIu64"\n",
                 flow_dist_stats.distributed, flow_dist_stats.drop);
