@@ -1360,6 +1360,10 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 	/* Set max MTU for this device */
 	adapter->max_mtu = get_feat_ctx.dev_attr.max_mtu;
 
+	/* set device support for TSO */
+	adapter->tso4_supported = get_feat_ctx.offload.tx &
+				  ENA_ADMIN_FEATURE_OFFLOAD_DESC_TSO_IPV4_MASK;
+
 	/* Copy MAC address and point DPDK to it */
 	eth_dev->data->mac_addrs = (struct ether_addr *)adapter->mac_addr;
 	ether_addr_copy((struct ether_addr *)get_feat_ctx.dev_attr.mac_addr,
@@ -1585,13 +1589,20 @@ static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 }
 
 static uint16_t
-eth_ena_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
+eth_ena_prep_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		uint16_t nb_pkts)
 {
 	int32_t ret;
 	uint32_t i;
 	struct rte_mbuf *m;
+	struct ena_ring *tx_ring = (struct ena_ring *)(tx_queue);
+	struct ipv4_hdr *ip_hdr;
 	uint64_t ol_flags;
+	uint16_t frag_field;
+
+	/* ENA needs partial checksum for TSO packets only, skip early */
+	if (!tx_ring->adapter->tso4_supported)
+		return nb_pkts;
 
 	for (i = 0; i != nb_pkts; i++) {
 		m = tx_pkts[i];
@@ -1611,7 +1622,21 @@ eth_ena_prep_pkts(__rte_unused void *tx_queue, struct rte_mbuf **tx_pkts,
 			return i;
 		}
 #endif
-		/* ENA doesn't need different phdr cskum for TSO */
+
+		if (!(m->ol_flags & PKT_TX_IPV4))
+			continue;
+
+		ip_hdr = rte_pktmbuf_mtod_offset(m, struct ipv4_hdr *,
+						 m->l2_len);
+		frag_field = rte_be_to_cpu_16(ip_hdr->fragment_offset);
+		if (frag_field & IPV4_HDR_DF_FLAG)
+			continue;
+
+		/* In case we are supposed to TSO and have DF not set (DF=0)
+		 * hardware must be provided with partial checksum, otherwise
+		 * it will take care of necessary calculations.
+		 */
+
 		ret = rte_net_intel_cksum_flags_prepare(m,
 			ol_flags & ~PKT_TX_TCP_SEG);
 		if (ret != 0) {

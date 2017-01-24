@@ -162,6 +162,7 @@ struct ena_adapter {
 
 	u16 num_queues;
 	u16 max_mtu;
+	u8 tso4_supported;
 
 	int id_number;
 	char name[ENA_NAME_MAX_LEN];
