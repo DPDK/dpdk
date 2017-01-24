@@ -176,7 +176,8 @@ eal_log_set_default(FILE *default_log)
 {
 	default_log_stream = default_log;
 
-#if RTE_LOG_LEVEL >= RTE_LOG_DEBUG
-	RTE_LOG(NOTICE, EAL, "Debug logs available - lower performance\n");
+#if RTE_LOG_DP_LEVEL >= RTE_LOG_DEBUG
+	RTE_LOG(NOTICE, EAL,
+		"Debug dataplane logs available - lower performance\n");
 #endif
 }
