@@ -46,6 +46,7 @@ extern "C" {
 enum rte_cryptodev_scheduler_mode {
 	CDEV_SCHED_MODE_NOT_SET = 0,
 	CDEV_SCHED_MODE_USERDEFINED,
+	CDEV_SCHED_MODE_ROUNDROBIN,
 
 	CDEV_SCHED_MODE_COUNT /* number of modes */
 };
@@ -155,6 +156,8 @@ struct rte_cryptodev_scheduler {
 
 	struct rte_cryptodev_scheduler_ops *ops;
 };
+
+extern struct rte_cryptodev_scheduler *roundrobin_scheduler;
 
 #ifdef __cplusplus
 }

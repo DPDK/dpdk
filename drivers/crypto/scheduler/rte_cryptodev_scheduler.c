@@ -329,6 +329,13 @@ rte_crpytodev_scheduler_mode_set(uint8_t scheduler_id,
 		return 0;
 
 	switch (mode) {
+	case CDEV_SCHED_MODE_ROUNDROBIN:
+		if (rte_cryptodev_scheduler_load_user_scheduler(scheduler_id,
+				roundrobin_scheduler) < 0) {
+			CS_LOG_ERR("Failed to load scheduler");
+			return -1;
+		}
+		break;
 	default:
 		CS_LOG_ERR("Not yet supported");
 		return -ENOTSUP;
