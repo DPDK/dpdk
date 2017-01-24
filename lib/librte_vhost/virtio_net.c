@@ -679,6 +679,7 @@ parse_ethernet(struct rte_mbuf *m, uint16_t *l4_proto, void **l4_hdr)
 	default:
 		m->l3_len = 0;
 		*l4_proto = 0;
+		*l4_hdr = NULL;
 		break;
 	}
 }
@@ -715,7 +716,7 @@ vhost_dequeue_offload(struct virtio_net_hdr *hdr, struct rte_mbuf *m)
 		}
 	}
 
-	if (hdr->gso_type != VIRTIO_NET_HDR_GSO_NONE) {
+	if (l4_hdr && hdr->gso_type != VIRTIO_NET_HDR_GSO_NONE) {
 		switch (hdr->gso_type & ~VIRTIO_NET_HDR_GSO_ECN) {
 		case VIRTIO_NET_HDR_GSO_TCPV4:
 		case VIRTIO_NET_HDR_GSO_TCPV6:
