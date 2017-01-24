@@ -1,7 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2010-2017 Intel Corporation. All rights reserved.
-#   All rights reserved.
+#   Copyright(c) 2017 Intel Corporation. All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
 #   modification, are permitted provided that the following conditions
@@ -31,15 +30,37 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_GCM) += aesni_gcm
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_MB) += aesni_mb
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_ARMV8_CRYPTO) += armv8
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_OPENSSL) += openssl
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_QAT) += qat
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_CRYPTO_SCHEDULER) += scheduler
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_SNOW3G) += snow3g
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_KASUMI) += kasumi
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_ZUC) += zuc
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_NULL_CRYPTO) += null
+# library name
+LIB = librte_pmd_crypto_scheduler.a
 
-include $(RTE_SDK)/mk/rte.subdir.mk
+# build flags
+CFLAGS += -O3
+CFLAGS += $(WERROR_FLAGS)
+
+# library version
+LIBABIVER := 1
+
+# versioning export map
+EXPORT_MAP := rte_pmd_crypto_scheduler_version.map
+
+#
+# Export include files
+#
+SYMLINK-y-include += rte_cryptodev_scheduler_operations.h
+SYMLINK-y-include += rte_cryptodev_scheduler.h
+
+# library source files
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_CRYPTO_SCHEDULER) += scheduler_pmd.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_CRYPTO_SCHEDULER) += scheduler_pmd_ops.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_CRYPTO_SCHEDULER) += rte_cryptodev_scheduler.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_CRYPTO_SCHEDULER) += scheduler_roundrobin.c
+
+# library dependencies
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_CRYPTO_SCHEDULER) += lib/librte_cryptodev
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_CRYPTO_SCHEDULER) += lib/librte_eal
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_CRYPTO_SCHEDULER) += lib/librte_kvargs
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_CRYPTO_SCHEDULER) += lib/librte_mbuf
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_CRYPTO_SCHEDULER) += lib/librte_mempool
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_CRYPTO_SCHEDULER) += lib/librte_reorder
+
+include $(RTE_SDK)/mk/rte.lib.mk

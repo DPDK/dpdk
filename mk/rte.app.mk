@@ -70,7 +70,6 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_PORT)           += -lrte_port
 
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PDUMP)          += -lrte_pdump
 _LDLIBS-$(CONFIG_RTE_LIBRTE_DISTRIBUTOR)    += -lrte_distributor
-_LDLIBS-$(CONFIG_RTE_LIBRTE_REORDER)        += -lrte_reorder
 _LDLIBS-$(CONFIG_RTE_LIBRTE_IP_FRAG)        += -lrte_ip_frag
 _LDLIBS-$(CONFIG_RTE_LIBRTE_METER)          += -lrte_meter
 _LDLIBS-$(CONFIG_RTE_LIBRTE_SCHED)          += -lrte_sched
@@ -99,9 +98,14 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_RING)           += -lrte_ring
 _LDLIBS-$(CONFIG_RTE_LIBRTE_EAL)            += -lrte_eal
 _LDLIBS-$(CONFIG_RTE_LIBRTE_CMDLINE)        += -lrte_cmdline
 _LDLIBS-$(CONFIG_RTE_LIBRTE_CFGFILE)        += -lrte_cfgfile
+_LDLIBS-$(CONFIG_RTE_LIBRTE_REORDER)        += -lrte_reorder
 
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_BOND)       += -lrte_pmd_bond
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_XENVIRT)    += -lrte_pmd_xenvirt -lxenstore
+
+ifeq ($(CONFIG_RTE_LIBRTE_CRYPTODEV),y)
+_LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_CRYPTO_SCHEDULER) += -lrte_pmd_crypto_scheduler
+endif
 
 ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),n)
 # plugins (link only if static libraries)
