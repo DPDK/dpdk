@@ -1,7 +1,7 @@
 /*
  *   BSD LICENSE
  *
- *   Copyright(c) 2016 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2016-2017 Intel Corporation. All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -365,14 +365,16 @@ static const struct blockcipher_test_case hash_test_cases[] = {
 		.test_data = &hmac_md5_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_GEN,
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
-			BLOCKCIPHER_TEST_TARGET_PMD_MB
+			BLOCKCIPHER_TEST_TARGET_PMD_MB |
+			BLOCKCIPHER_TEST_TARGET_PMD_SCHEDULER
 	},
 	{
 		.test_descr = "HMAC-MD5 Digest Verify",
 		.test_data = &hmac_md5_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY,
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
-			BLOCKCIPHER_TEST_TARGET_PMD_MB
+			BLOCKCIPHER_TEST_TARGET_PMD_MB |
+			BLOCKCIPHER_TEST_TARGET_PMD_SCHEDULER
 	},
 	{
 		.test_descr = "SHA1 Digest",
@@ -391,14 +393,16 @@ static const struct blockcipher_test_case hash_test_cases[] = {
 		.test_data = &hmac_sha1_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_GEN,
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
-			BLOCKCIPHER_TEST_TARGET_PMD_MB
+			BLOCKCIPHER_TEST_TARGET_PMD_MB |
+			BLOCKCIPHER_TEST_TARGET_PMD_SCHEDULER
 	},
 	{
 		.test_descr = "HMAC-SHA1 Digest Verify",
 		.test_data = &hmac_sha1_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY,
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
-			BLOCKCIPHER_TEST_TARGET_PMD_MB
+			BLOCKCIPHER_TEST_TARGET_PMD_MB |
+			BLOCKCIPHER_TEST_TARGET_PMD_SCHEDULER
 	},
 	{
 		.test_descr = "SHA224 Digest",
@@ -417,14 +421,16 @@ static const struct blockcipher_test_case hash_test_cases[] = {
 		.test_data = &hmac_sha224_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_GEN,
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
-			BLOCKCIPHER_TEST_TARGET_PMD_MB
+			BLOCKCIPHER_TEST_TARGET_PMD_MB |
+			BLOCKCIPHER_TEST_TARGET_PMD_SCHEDULER
 	},
 	{
 		.test_descr = "HMAC-SHA224 Digest Verify",
 		.test_data = &hmac_sha224_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY,
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
-			BLOCKCIPHER_TEST_TARGET_PMD_MB
+			BLOCKCIPHER_TEST_TARGET_PMD_MB |
+			BLOCKCIPHER_TEST_TARGET_PMD_SCHEDULER
 	},
 	{
 		.test_descr = "SHA256 Digest",
@@ -443,14 +449,16 @@ static const struct blockcipher_test_case hash_test_cases[] = {
 		.test_data = &hmac_sha256_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_GEN,
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
-			BLOCKCIPHER_TEST_TARGET_PMD_MB
+			BLOCKCIPHER_TEST_TARGET_PMD_MB |
+			BLOCKCIPHER_TEST_TARGET_PMD_SCHEDULER
 	},
 	{
 		.test_descr = "HMAC-SHA256 Digest Verify",
 		.test_data = &hmac_sha256_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY,
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
-			BLOCKCIPHER_TEST_TARGET_PMD_MB
+			BLOCKCIPHER_TEST_TARGET_PMD_MB |
+			BLOCKCIPHER_TEST_TARGET_PMD_SCHEDULER
 	},
 	{
 		.test_descr = "SHA384 Digest",
@@ -469,14 +477,16 @@ static const struct blockcipher_test_case hash_test_cases[] = {
 		.test_data = &hmac_sha384_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_GEN,
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
-			BLOCKCIPHER_TEST_TARGET_PMD_MB
+			BLOCKCIPHER_TEST_TARGET_PMD_MB |
+			BLOCKCIPHER_TEST_TARGET_PMD_SCHEDULER
 	},
 	{
 		.test_descr = "HMAC-SHA384 Digest Verify",
 		.test_data = &hmac_sha384_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY,
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
-			BLOCKCIPHER_TEST_TARGET_PMD_MB
+			BLOCKCIPHER_TEST_TARGET_PMD_MB |
+			BLOCKCIPHER_TEST_TARGET_PMD_SCHEDULER
 	},
 	{
 		.test_descr = "SHA512 Digest",
@@ -495,14 +505,16 @@ static const struct blockcipher_test_case hash_test_cases[] = {
 		.test_data = &hmac_sha512_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_GEN,
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
-			BLOCKCIPHER_TEST_TARGET_PMD_MB
+			BLOCKCIPHER_TEST_TARGET_PMD_MB |
+			BLOCKCIPHER_TEST_TARGET_PMD_SCHEDULER
 	},
 	{
 		.test_descr = "HMAC-SHA512 Digest Verify",
 		.test_data = &hmac_sha512_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_AUTH_VERIFY,
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
-			BLOCKCIPHER_TEST_TARGET_PMD_MB
+			BLOCKCIPHER_TEST_TARGET_PMD_MB |
+			BLOCKCIPHER_TEST_TARGET_PMD_SCHEDULER
 	},
 };
 

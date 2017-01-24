@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2016 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2016-2017 Intel Corporation. All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -51,6 +51,7 @@
 #define BLOCKCIPHER_TEST_TARGET_PMD_QAT			0x0002 /* QAT flag */
 #define BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL	0x0004 /* SW OPENSSL flag */
 #define BLOCKCIPHER_TEST_TARGET_PMD_ARMV8	0x0008 /* ARMv8 flag */
+#define BLOCKCIPHER_TEST_TARGET_PMD_SCHEDULER	0x0010 /* Scheduler */
 
 #define BLOCKCIPHER_TEST_OP_CIPHER	(BLOCKCIPHER_TEST_OP_ENCRYPT | \
 					BLOCKCIPHER_TEST_OP_DECRYPT)

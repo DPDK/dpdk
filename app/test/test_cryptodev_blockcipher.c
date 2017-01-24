@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2015-2016 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2015-2017 Intel Corporation. All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -106,6 +106,7 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 		digest_len = tdata->digest.len;
 		break;
 	case RTE_CRYPTODEV_AESNI_MB_PMD:
+	case RTE_CRYPTODEV_SCHEDULER_PMD:
 		digest_len = tdata->digest.truncated_len;
 		break;
 	default:
@@ -648,6 +649,9 @@ test_blockcipher_all_tests(struct rte_mempool *mbuf_pool,
 		break;
 	case RTE_CRYPTODEV_ARMV8_PMD:
 		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_ARMV8;
+		break;
+	case RTE_CRYPTODEV_SCHEDULER_PMD:
+		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_SCHEDULER;
 		break;
 	default:
 		TEST_ASSERT(0, "Unrecognized cryptodev type");

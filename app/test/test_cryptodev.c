@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2015-2016 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2015-2017 Intel Corporation. All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -39,6 +39,11 @@
 #include <rte_crypto.h>
 #include <rte_cryptodev.h>
 #include <rte_cryptodev_pmd.h>
+
+#ifdef RTE_LIBRTE_PMD_CRYPTO_SCHEDULER
+#include <rte_cryptodev_scheduler.h>
+#include <rte_cryptodev_scheduler_operations.h>
+#endif
 
 #include "test.h"
 #include "test_cryptodev.h"
@@ -159,7 +164,7 @@ testsuite_setup(void)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct rte_cryptodev_info info;
-	unsigned i, nb_devs, dev_id;
+	uint32_t i = 0, nb_devs, dev_id;
 	int ret;
 	uint16_t qp_id;
 
@@ -369,6 +374,29 @@ testsuite_setup(void)
 			}
 		}
 	}
+
+#ifdef RTE_LIBRTE_PMD_CRYPTO_SCHEDULER
+	if (gbl_cryptodev_type == RTE_CRYPTODEV_SCHEDULER_PMD) {
+
+#ifndef RTE_LIBRTE_PMD_AESNI_MB
+		RTE_LOG(ERR, USER1, "CONFIG_RTE_LIBRTE_PMD_AESNI_MB must be"
+			" enabled in config file to run this testsuite.\n");
+		return TEST_FAILED;
+#endif
+		nb_devs = rte_cryptodev_count_devtype(
+				RTE_CRYPTODEV_SCHEDULER_PMD);
+		if (nb_devs < 1) {
+			ret = rte_eal_vdev_init(
+				RTE_STR(CRYPTODEV_NAME_SCHEDULER_PMD),
+				NULL);
+
+			TEST_ASSERT(ret == 0,
+				"Failed to create instance %u of"
+				" pmd : %s",
+				i, RTE_STR(CRYPTODEV_NAME_SCHEDULER_PMD));
+		}
+	}
+#endif /* RTE_LIBRTE_PMD_CRYPTO_SCHEDULER */
 
 #ifndef RTE_LIBRTE_PMD_QAT
 	if (gbl_cryptodev_type == RTE_CRYPTODEV_QAT_SYM_PMD) {
@@ -1534,6 +1562,58 @@ test_AES_chain_mb_all(void)
 
 	return TEST_SUCCESS;
 }
+
+#ifdef RTE_LIBRTE_PMD_CRYPTO_SCHEDULER
+
+static int
+test_AES_cipheronly_scheduler_all(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	int status;
+
+	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
+		ts_params->op_mpool, ts_params->valid_devs[0],
+		RTE_CRYPTODEV_SCHEDULER_PMD,
+		BLKCIPHER_AES_CIPHERONLY_TYPE);
+
+	TEST_ASSERT_EQUAL(status, 0, "Test failed");
+
+	return TEST_SUCCESS;
+}
+
+static int
+test_AES_chain_scheduler_all(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	int status;
+
+	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
+		ts_params->op_mpool, ts_params->valid_devs[0],
+		RTE_CRYPTODEV_SCHEDULER_PMD,
+		BLKCIPHER_AES_CHAIN_TYPE);
+
+	TEST_ASSERT_EQUAL(status, 0, "Test failed");
+
+	return TEST_SUCCESS;
+}
+
+static int
+test_authonly_scheduler_all(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	int status;
+
+	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
+		ts_params->op_mpool, ts_params->valid_devs[0],
+		RTE_CRYPTODEV_SCHEDULER_PMD,
+		BLKCIPHER_AUTHONLY_TYPE);
+
+	TEST_ASSERT_EQUAL(status, 0, "Test failed");
+
+	return TEST_SUCCESS;
+}
+
+#endif /* RTE_LIBRTE_PMD_CRYPTO_SCHEDULER */
 
 static int
 test_AES_chain_openssl_all(void)
@@ -7292,6 +7372,150 @@ auth_decryption_AES128CBC_HMAC_SHA1_fail_tag_corrupt(void)
 			&aes128cbc_hmac_sha1_test_vector);
 }
 
+#ifdef RTE_LIBRTE_PMD_CRYPTO_SCHEDULER
+
+/* global AESNI slave IDs for the scheduler test */
+uint8_t aesni_ids[2];
+
+static int
+test_scheduler_attach_slave_op(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	uint8_t sched_id = ts_params->valid_devs[0];
+	uint32_t nb_devs, qp_id, i, nb_devs_attached = 0;
+	int ret;
+	struct rte_cryptodev_config config = {
+			.nb_queue_pairs = 8,
+			.socket_id = SOCKET_ID_ANY,
+			.session_mp = {
+				.nb_objs = 2048,
+				.cache_size = 256
+			}
+	};
+	struct rte_cryptodev_qp_conf qp_conf = {2048};
+
+	/* create 2 AESNI_MB if necessary */
+	nb_devs = rte_cryptodev_count_devtype(
+			RTE_CRYPTODEV_AESNI_MB_PMD);
+	if (nb_devs < 2) {
+		for (i = nb_devs; i < 2; i++) {
+			ret = rte_eal_vdev_init(
+				RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD), NULL);
+
+			TEST_ASSERT(ret == 0,
+				"Failed to create instance %u of"
+				" pmd : %s",
+				i, RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD));
+		}
+	}
+
+	/* attach 2 AESNI_MB cdevs */
+	for (i = 0; i < rte_cryptodev_count() && nb_devs_attached < 2;
+			i++) {
+		struct rte_cryptodev_info info;
+
+		rte_cryptodev_info_get(i, &info);
+		if (info.dev_type != RTE_CRYPTODEV_AESNI_MB_PMD)
+			continue;
+
+		ret = rte_cryptodev_configure(i, &config);
+		TEST_ASSERT(ret == 0,
+			"Failed to configure device %u of pmd : %s", i,
+			RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD));
+
+		for (qp_id = 0; qp_id < info.max_nb_queue_pairs; qp_id++) {
+			TEST_ASSERT_SUCCESS(rte_cryptodev_queue_pair_setup(
+				i, qp_id, &qp_conf,
+				rte_cryptodev_socket_id(i)),
+				"Failed to setup queue pair %u on "
+				"cryptodev %u", qp_id, i);
+		}
+
+		ret = rte_cryptodev_scheduler_slave_attach(sched_id,
+				(uint8_t)i);
+
+		TEST_ASSERT(ret == 0,
+			"Failed to attach device %u of pmd : %s", i,
+			RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD));
+
+		aesni_ids[nb_devs_attached] = (uint8_t)i;
+
+		nb_devs_attached++;
+	}
+
+	return 0;
+}
+
+static int
+test_scheduler_detach_slave_op(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	uint8_t sched_id = ts_params->valid_devs[0];
+	uint32_t i;
+	int ret;
+
+	for (i = 0; i < 2; i++) {
+		ret = rte_cryptodev_scheduler_slave_detach(sched_id,
+				aesni_ids[i]);
+		TEST_ASSERT(ret == 0,
+			"Failed to detach device %u", aesni_ids[i]);
+	}
+
+	return 0;
+}
+
+static int
+test_scheduler_mode_op(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	uint8_t sched_id = ts_params->valid_devs[0];
+	struct rte_cryptodev_scheduler_ops op = {0};
+	struct rte_cryptodev_scheduler dummy_scheduler = {
+		.description = "dummy scheduler to test mode",
+		.name = "dummy scheduler",
+		.mode = CDEV_SCHED_MODE_USERDEFINED,
+		.ops = &op
+	};
+	int ret;
+
+	/* set user defined mode */
+	ret = rte_cryptodev_scheduler_load_user_scheduler(sched_id,
+			&dummy_scheduler);
+	TEST_ASSERT(ret == 0,
+		"Failed to set cdev %u to user defined mode", sched_id);
+
+	/* set round robin mode */
+	ret = rte_crpytodev_scheduler_mode_set(sched_id,
+			CDEV_SCHED_MODE_ROUNDROBIN);
+	TEST_ASSERT(ret == 0,
+		"Failed to set cdev %u to round-robin mode", sched_id);
+	TEST_ASSERT(rte_crpytodev_scheduler_mode_get(sched_id) ==
+			CDEV_SCHED_MODE_ROUNDROBIN, "Scheduling Mode "
+					"not match");
+
+	return 0;
+}
+
+static struct unit_test_suite cryptodev_scheduler_testsuite  = {
+	.suite_name = "Crypto Device Scheduler Unit Test Suite",
+	.setup = testsuite_setup,
+	.teardown = testsuite_teardown,
+	.unit_test_cases = {
+		TEST_CASE_ST(NULL, NULL, test_scheduler_attach_slave_op),
+		TEST_CASE_ST(NULL, NULL, test_scheduler_mode_op),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+				test_AES_chain_scheduler_all),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+				test_AES_cipheronly_scheduler_all),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+				test_authonly_scheduler_all),
+		TEST_CASE_ST(NULL, NULL, test_scheduler_detach_slave_op),
+		TEST_CASES_END() /**< NULL terminate unit test array */
+	}
+};
+
+#endif /* RTE_LIBRTE_PMD_CRYPTO_SCHEDULER */
+
 static struct unit_test_suite cryptodev_qat_testsuite  = {
 	.suite_name = "Crypto QAT Unit Test Suite",
 	.setup = testsuite_setup,
@@ -7972,6 +8196,19 @@ test_cryptodev_armv8(void)
 
 	return unit_test_suite_runner(&cryptodev_armv8_testsuite);
 }
+
+#ifdef RTE_LIBRTE_PMD_CRYPTO_SCHEDULER
+
+static int
+test_cryptodev_scheduler(void /*argv __rte_unused, int argc __rte_unused*/)
+{
+	gbl_cryptodev_type = RTE_CRYPTODEV_SCHEDULER_PMD;
+	return unit_test_suite_runner(&cryptodev_scheduler_testsuite);
+}
+
+REGISTER_TEST_COMMAND(cryptodev_scheduler_autotest, test_cryptodev_scheduler);
+
+#endif
 
 REGISTER_TEST_COMMAND(cryptodev_qat_autotest, test_cryptodev_qat);
 REGISTER_TEST_COMMAND(cryptodev_aesni_mb_autotest, test_cryptodev_aesni_mb);
