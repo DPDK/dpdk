@@ -2370,7 +2370,7 @@ rte_eth_mirror_rule_set(uint8_t port_id,
 			struct rte_eth_mirror_conf *mirror_conf,
 			uint8_t rule_id, uint8_t on)
 {
-	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	struct rte_eth_dev *dev;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	if (mirror_conf->rule_type == 0) {
@@ -2406,7 +2406,7 @@ rte_eth_mirror_rule_set(uint8_t port_id,
 int
 rte_eth_mirror_rule_reset(uint8_t port_id, uint8_t rule_id)
 {
-	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	struct rte_eth_dev *dev;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 
