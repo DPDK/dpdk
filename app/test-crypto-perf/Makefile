@@ -1,7 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
-#   All rights reserved.
+#   Copyright(c) 2016-2017 Intel Corporation. All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
 #   modification, are permitted provided that the following conditions
@@ -31,13 +30,21 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-DIRS-$(CONFIG_RTE_APP_TEST) += test
-DIRS-$(CONFIG_RTE_LIBRTE_ACL) += test-acl
-DIRS-$(CONFIG_RTE_LIBRTE_PIPELINE) += test-pipeline
-DIRS-$(CONFIG_RTE_TEST_PMD) += test-pmd
-DIRS-$(CONFIG_RTE_APP_CRYPTO_PERF) += test-crypto-perf
-DIRS-$(CONFIG_RTE_LIBRTE_CMDLINE) += cmdline_test
-DIRS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += proc_info
-DIRS-$(CONFIG_RTE_LIBRTE_PDUMP) += pdump
 
-include $(RTE_SDK)/mk/rte.subdir.mk
+APP = dpdk-test-crypto-perf
+
+CFLAGS += $(WERROR_FLAGS)
+
+# all source are stored in SRCS-y
+SRCS-y := main.c
+SRCS-y += cperf_ops.c
+SRCS-y += cperf_options_parsing.c
+SRCS-y += cperf_test_vectors.c
+SRCS-y += cperf_test_throughput.c
+SRCS-y += cperf_test_latency.c
+SRCS-y += cperf_test_vector_parsing.c
+
+# this application needs libraries first
+DEPDIRS-y += lib
+
+include $(RTE_SDK)/mk/rte.app.mk

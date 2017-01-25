@@ -650,6 +650,10 @@ M: Jingjing Wu <jingjing.wu@intel.com>
 F: app/test-pmd/
 F: doc/guides/testpmd_app_ug/
 
+Crypto performance test application
+M: Declan Doherty <declan.doherty@intel.com>
+F: app/test-crypto-perf/
+
 Procinfo tool
 M: Maryam Tahhan <maryam.tahhan@intel.com>
 M: Reshma Pattan <reshma.pattan@intel.com>
