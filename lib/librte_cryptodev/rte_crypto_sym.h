@@ -112,6 +112,10 @@ enum rte_crypto_cipher_algorithm {
 
 };
 
+/** Cipher algorithm name strings */
+extern const char *
+rte_crypto_cipher_algorithm_strings[];
+
 /** Symmetric Cipher Direction */
 enum rte_crypto_cipher_operation {
 	RTE_CRYPTO_CIPHER_OP_ENCRYPT,
@@ -119,6 +123,10 @@ enum rte_crypto_cipher_operation {
 	RTE_CRYPTO_CIPHER_OP_DECRYPT
 	/**< Decrypt cipher operation */
 };
+
+/** Cipher operation name strings */
+extern const char *
+rte_crypto_cipher_operation_strings[];
 
 /**
  * Symmetric Cipher Setup Data.
@@ -245,11 +253,19 @@ enum rte_crypto_auth_algorithm {
 	RTE_CRYPTO_AUTH_LIST_END
 };
 
+/** Authentication algorithm name strings */
+extern const char *
+rte_crypto_auth_algorithm_strings[];
+
 /** Symmetric Authentication / Hash Operations */
 enum rte_crypto_auth_operation {
 	RTE_CRYPTO_AUTH_OP_VERIFY,	/**< Verify authentication digest */
 	RTE_CRYPTO_AUTH_OP_GENERATE	/**< Generate authentication digest */
 };
+
+/** Authentication operation name strings */
+extern const char *
+rte_crypto_auth_operation_strings[];
 
 /**
  * Authentication / Hash transform data.

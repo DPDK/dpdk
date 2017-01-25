@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2015-2016 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2015-2017 Intel Corporation. All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -113,6 +113,86 @@ static const char *cryptodev_vdev_valid_params[] = {
 	RTE_CRYPTODEV_VDEV_SOCKET_ID
 };
 
+/**
+ * The crypto cipher algorithm strings identifiers.
+ * It could be used in application command line.
+ */
+const char *
+rte_crypto_cipher_algorithm_strings[] = {
+	[RTE_CRYPTO_CIPHER_3DES_CBC]	= "3des-cbc",
+	[RTE_CRYPTO_CIPHER_3DES_ECB]	= "3des-ecb",
+	[RTE_CRYPTO_CIPHER_3DES_CTR]	= "3des-ctr",
+
+	[RTE_CRYPTO_CIPHER_AES_CBC]	= "aes-cbc",
+	[RTE_CRYPTO_CIPHER_AES_CCM]	= "aes-ccm",
+	[RTE_CRYPTO_CIPHER_AES_CTR]	= "aes-ctr",
+	[RTE_CRYPTO_CIPHER_AES_ECB]	= "aes-ecb",
+	[RTE_CRYPTO_CIPHER_AES_GCM]	= "aes-gcm",
+	[RTE_CRYPTO_CIPHER_AES_F8]	= "aes-f8",
+	[RTE_CRYPTO_CIPHER_AES_XTS]	= "aes-xts",
+
+	[RTE_CRYPTO_CIPHER_ARC4]	= "arc4",
+
+	[RTE_CRYPTO_CIPHER_NULL]	= "null",
+
+	[RTE_CRYPTO_CIPHER_KASUMI_F8]	= "kasumi-f8",
+	[RTE_CRYPTO_CIPHER_SNOW3G_UEA2]	= "snow3g-uea2",
+	[RTE_CRYPTO_CIPHER_ZUC_EEA3]	= "zuc-eea3"
+};
+
+/**
+ * The crypto cipher operation strings identifiers.
+ * It could be used in application command line.
+ */
+const char *
+rte_crypto_cipher_operation_strings[] = {
+		[RTE_CRYPTO_CIPHER_OP_ENCRYPT]	= "encrypt",
+		[RTE_CRYPTO_CIPHER_OP_DECRYPT]	= "decrypt"
+};
+
+/**
+ * The crypto auth algorithm strings identifiers.
+ * It could be used in application command line.
+ */
+const char *
+rte_crypto_auth_algorithm_strings[] = {
+	[RTE_CRYPTO_AUTH_AES_CBC_MAC]	= "aes-cbc-mac",
+	[RTE_CRYPTO_AUTH_AES_CCM]	= "aes-ccm",
+	[RTE_CRYPTO_AUTH_AES_CMAC]	= "aes-cmac",
+	[RTE_CRYPTO_AUTH_AES_GCM]	= "aes-gcm",
+	[RTE_CRYPTO_AUTH_AES_GMAC]	= "aes-gmac",
+	[RTE_CRYPTO_AUTH_AES_XCBC_MAC]	= "aes-xcbc-mac",
+
+	[RTE_CRYPTO_AUTH_MD5]		= "md5",
+	[RTE_CRYPTO_AUTH_MD5_HMAC]	= "md5-hmac",
+
+	[RTE_CRYPTO_AUTH_SHA1]		= "sha1",
+	[RTE_CRYPTO_AUTH_SHA1_HMAC]	= "sha1-hmac",
+
+	[RTE_CRYPTO_AUTH_SHA224]	= "sha2-224",
+	[RTE_CRYPTO_AUTH_SHA224_HMAC]	= "sha2-224-hmac",
+	[RTE_CRYPTO_AUTH_SHA256]	= "sha2-256",
+	[RTE_CRYPTO_AUTH_SHA256_HMAC]	= "sha2-256-hmac",
+	[RTE_CRYPTO_AUTH_SHA384]	= "sha2-384",
+	[RTE_CRYPTO_AUTH_SHA384_HMAC]	= "sha2-384-hmac",
+	[RTE_CRYPTO_AUTH_SHA512]	= "sha2-512",
+	[RTE_CRYPTO_AUTH_SHA512_HMAC]	= "sha2-512-hmac",
+
+	[RTE_CRYPTO_AUTH_KASUMI_F9]	= "kasumi-f9",
+	[RTE_CRYPTO_AUTH_SNOW3G_UIA2]	= "snow3g-uia2",
+	[RTE_CRYPTO_AUTH_ZUC_EIA3]	= "zuc-eia3"
+};
+
+/**
+ * The crypto auth operation strings identifiers.
+ * It could be used in application command line.
+ */
+const char *
+rte_crypto_auth_operation_strings[] = {
+		[RTE_CRYPTO_AUTH_OP_VERIFY]	= "verify",
+		[RTE_CRYPTO_AUTH_OP_GENERATE]	= "generate"
+};
+
 static uint8_t
 number_of_sockets(void)
 {
@@ -217,6 +297,73 @@ free_kvlist:
 	rte_kvargs_free(kvlist);
 	return ret;
 }
+
+const struct rte_cryptodev_symmetric_capability *
+rte_cryptodev_sym_capability_get(uint8_t dev_id,
+		const struct rte_cryptodev_sym_capability_idx *idx)
+{
+	const struct rte_cryptodev_capabilities *capability;
+	struct rte_cryptodev_info dev_info;
+	int i = 0;
+
+	rte_cryptodev_info_get(dev_id, &dev_info);
+
+	while ((capability = &dev_info.capabilities[i++])->op !=
+			RTE_CRYPTO_OP_TYPE_UNDEFINED) {
+		if (capability->op != RTE_CRYPTO_OP_TYPE_SYMMETRIC)
+			continue;
+
+		if (capability->sym.xform_type != idx->type)
+			continue;
+
+		if (idx->type == RTE_CRYPTO_SYM_XFORM_AUTH &&
+			capability->sym.auth.algo == idx->algo.auth)
+			return &capability->sym;
+
+		if (idx->type == RTE_CRYPTO_SYM_XFORM_CIPHER &&
+			capability->sym.cipher.algo == idx->algo.cipher)
+			return &capability->sym;
+	}
+
+	return NULL;
+
+}
+
+#define param_range_check(x, y) \
+	(((x < y.min) || (x > y.max)) || \
+	(y.increment != 0 && (x % y.increment) != 0))
+
+int
+rte_cryptodev_sym_capability_check_cipher(
+		const struct rte_cryptodev_symmetric_capability *capability,
+		uint16_t key_size, uint16_t iv_size)
+{
+	if (param_range_check(key_size, capability->cipher.key_size))
+		return -1;
+
+	if (param_range_check(iv_size, capability->cipher.iv_size))
+		return -1;
+
+	return 0;
+}
+
+int
+rte_cryptodev_sym_capability_check_auth(
+		const struct rte_cryptodev_symmetric_capability *capability,
+		uint16_t key_size, uint16_t digest_size, uint16_t aad_size)
+{
+	if (param_range_check(key_size, capability->auth.key_size))
+		return -1;
+
+	if (param_range_check(digest_size, capability->auth.digest_size))
+		return -1;
+
+	if (param_range_check(aad_size, capability->auth.aad_size))
+		return -1;
+
+	return 0;
+}
+
 
 const char *
 rte_cryptodev_get_feature_name(uint64_t flag)
@@ -333,6 +480,40 @@ rte_cryptodev_count_devtype(enum rte_cryptodev_type type)
 			dev_count++;
 
 	return dev_count;
+}
+
+int
+rte_cryptodev_devices_get(const char *dev_name, uint8_t *devices,
+	uint8_t nb_devices)
+{
+	uint8_t i, cmp, count = 0;
+	struct rte_cryptodev **devs = &rte_cryptodev_globals->devs;
+	struct rte_device *dev;
+
+	for (i = 0; i < rte_cryptodev_globals->max_devs && count < nb_devices;
+			i++) {
+
+		if ((*devs + i)
+				&& (*devs + i)->attached ==
+						RTE_CRYPTODEV_ATTACHED) {
+
+			dev = (*devs + i)->device;
+
+			if (dev)
+				cmp = strncmp(dev->driver->name,
+						dev_name,
+						strlen(dev_name));
+			else
+				cmp = strncmp((*devs + i)->data->name,
+						dev_name,
+						strlen(dev_name));
+
+			if (cmp == 0)
+				devices[count++] = (*devs + i)->data->dev_id;
+		}
+	}
+
+	return count;
 }
 
 int

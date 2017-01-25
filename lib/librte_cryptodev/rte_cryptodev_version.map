@@ -50,9 +50,17 @@ DPDK_16.11 {
 DPDK_17.02 {
 	global:
 
+	rte_cryptodev_devices_get;
 	rte_cryptodev_pmd_create_dev_name;
 	rte_cryptodev_pmd_get_dev;
 	rte_cryptodev_pmd_get_named_dev;
 	rte_cryptodev_pmd_is_valid_dev;
+	rte_cryptodev_sym_capability_check_auth;
+	rte_cryptodev_sym_capability_check_cipher;
+	rte_cryptodev_sym_capability_get;
+	rte_crypto_auth_algorithm_strings;
+	rte_crypto_auth_operation_strings;
+	rte_crypto_cipher_algorithm_strings;
+	rte_crypto_cipher_operation_strings;
 
 } DPDK_16.11;
