@@ -44,6 +44,12 @@
 #define EFD_TEST_KEY_LEN 8
 #define TABLE_SIZE (1 << 21)
 #define ITERATIONS 3
+
+#if RTE_EFD_VALUE_NUM_BITS == 32
+#define VALUE_BITMASK 0xffffffff
+#else
+#define VALUE_BITMASK ((1 << RTE_EFD_VALUE_NUM_BITS) - 1)
+#endif
 static unsigned int test_socket_id;
 
 /* 5-tuple key type */
@@ -154,7 +160,7 @@ static int test_add_delete(void)
 			efd_get_all_sockets_bitmask(), test_socket_id);
 	TEST_ASSERT_NOT_NULL(handle, "Error creating the EFD table\n");
 
-	data[0] = mrand48() & ((1 << RTE_EFD_VALUE_NUM_BITS) - 1);
+	data[0] = mrand48() & VALUE_BITMASK;
 	TEST_ASSERT_SUCCESS(rte_efd_update(handle, test_socket_id, &keys[0],
 			data[0]),
 			"Error inserting the key");
@@ -191,7 +197,7 @@ static int test_add_update_delete(void)
 	printf("Entering %s\n", __func__);
 	/* test with standard add/lookup/delete functions */
 	efd_value_t prev_value;
-	data[1] = mrand48() & ((1 << RTE_EFD_VALUE_NUM_BITS) - 1);
+	data[1] = mrand48() & VALUE_BITMASK;
 
 	handle = rte_efd_create("test_add_update_delete", TABLE_SIZE,
 			sizeof(struct flow_key),
@@ -285,7 +291,7 @@ static int test_five_keys(void)
 
 	/* Setup data */
 	for (i = 0; i < 5; i++)
-		data[i] = mrand48() & ((1 << RTE_EFD_VALUE_NUM_BITS) - 1);
+		data[i] = mrand48() & VALUE_BITMASK;
 
 	/* Add */
 	for (i = 0; i < 5; i++) {

@@ -43,12 +43,19 @@
 #include <rte_thash.h>
 
 #include "test.h"
+
 #define NUM_KEYSIZES 10
 #define NUM_SHUFFLES 10
 #define MAX_KEYSIZE 64
 #define MAX_ENTRIES (1 << 19)
 #define KEYS_TO_ADD (MAX_ENTRIES * 3 / 4) /* 75% table utilization */
 #define NUM_LOOKUPS (KEYS_TO_ADD * 5) /* Loop among keys added, several times */
+
+#if RTE_EFD_VALUE_NUM_BITS == 32
+#define VALUE_BITMASK 0xffffffff
+#else
+#define VALUE_BITMASK ((1 << RTE_EFD_VALUE_NUM_BITS) - 1)
+#endif
 static unsigned int test_socket_id;
 
 static inline uint8_t efd_get_all_sockets_bitmask(void)
@@ -154,7 +161,7 @@ setup_keys_and_data(struct efd_perf_params *params, unsigned int cycle)
 		for (j = 0; j < params->key_size; j++)
 			keys[i][j] = rte_rand() & 0xFF;
 
-		data[i] = rte_rand() & ((1 << RTE_EFD_VALUE_NUM_BITS) - 1);
+		data[i] = rte_rand() & VALUE_BITMASK;
 	}
 
 	/* Remove duplicates from the keys array */
