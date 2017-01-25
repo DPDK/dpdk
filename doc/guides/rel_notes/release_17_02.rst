@@ -192,6 +192,11 @@ New Features
   * Scatter-gatter support for chained mbufs (only out-of place and destination
     mbuf must be contiguous)
 
+* **Added crypto performance test application.**
+
+  A new performance test application allows measuring performance parameters
+  of PMDs available in crypto tree.
+
 * **Added Elastic Flow Distributor library (rte_efd).**
 
   This new library uses perfect hashing to determine a target/value for a

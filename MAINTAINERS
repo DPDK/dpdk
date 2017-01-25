@@ -653,6 +653,7 @@ F: doc/guides/testpmd_app_ug/
 Crypto performance test application
 M: Declan Doherty <declan.doherty@intel.com>
 F: app/test-crypto-perf/
+F: doc/guides/tools/cryptoperf.rst
 
 Procinfo tool
 M: Maryam Tahhan <maryam.tahhan@intel.com>
