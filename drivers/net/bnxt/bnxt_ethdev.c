@@ -92,7 +92,7 @@ static const char bnxt_version[] =
 #define BROADCOM_DEV_ID_57414_MF 0x16ec
 #define BROADCOM_DEV_ID_57416_MF 0x16ee
 
-static struct rte_pci_id bnxt_pci_id_map[] = {
+static const struct rte_pci_id bnxt_pci_id_map[] = {
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_BROADCOM, BROADCOM_DEV_ID_57301) },
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_BROADCOM, BROADCOM_DEV_ID_57302) },
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_BROADCOM, BROADCOM_DEV_ID_57304_PF) },

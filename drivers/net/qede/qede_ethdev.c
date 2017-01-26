@@ -2288,7 +2288,7 @@ static int qedevf_eth_dev_uninit(struct rte_eth_dev *eth_dev)
 	return qede_dev_common_uninit(eth_dev);
 }
 
-static struct rte_pci_id pci_id_qedevf_map[] = {
+static const struct rte_pci_id pci_id_qedevf_map[] = {
 #define QEDEVF_RTE_PCI_DEVICE(dev) RTE_PCI_DEVICE(PCI_VENDOR_ID_QLOGIC, dev)
 	{
 		QEDEVF_RTE_PCI_DEVICE(PCI_DEVICE_ID_QLOGIC_NX2_VF)
@@ -2302,7 +2302,7 @@ static struct rte_pci_id pci_id_qedevf_map[] = {
 	{.vendor_id = 0,}
 };
 
-static struct rte_pci_id pci_id_qede_map[] = {
+static const struct rte_pci_id pci_id_qede_map[] = {
 #define QEDE_RTE_PCI_DEVICE(dev) RTE_PCI_DEVICE(PCI_VENDOR_ID_QLOGIC, dev)
 	{
 		QEDE_RTE_PCI_DEVICE(PCI_DEVICE_ID_QLOGIC_NX2_57980E)

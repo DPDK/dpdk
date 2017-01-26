@@ -2583,7 +2583,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
-static struct rte_pci_id pci_id_nfp_net_map[] = {
+static const struct rte_pci_id pci_id_nfp_net_map[] = {
 	{
 		RTE_PCI_DEVICE(PCI_VENDOR_ID_NETRONOME,
 			       PCI_DEVICE_ID_NFP6000_PF_NIC)

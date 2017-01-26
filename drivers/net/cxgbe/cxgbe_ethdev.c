@@ -68,7 +68,7 @@
  * Macros needed to support the PCI Device ID Table ...
  */
 #define CH_PCI_DEVICE_ID_TABLE_DEFINE_BEGIN \
-	static struct rte_pci_id cxgb4_pci_tbl[] = {
+	static const struct rte_pci_id cxgb4_pci_tbl[] = {
 #define CH_PCI_DEVICE_ID_FUNCTION 0x4
 
 #define PCI_VENDOR_ID_CHELSIO 0x1425
