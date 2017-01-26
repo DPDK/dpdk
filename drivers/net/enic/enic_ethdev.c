@@ -465,7 +465,7 @@ static void enicpmd_dev_info_get(struct rte_eth_dev *eth_dev,
 	device_info->max_tx_queues = enic->conf_wq_count;
 	device_info->min_rx_bufsize = ENIC_MIN_MTU;
 	device_info->max_rx_pktlen = enic->max_mtu + ETHER_HDR_LEN + 4;
-	device_info->max_mac_addrs = 1;
+	device_info->max_mac_addrs = ENIC_MAX_MAC_ADDR;
 	device_info->rx_offload_capa =
 		DEV_RX_OFFLOAD_VLAN_STRIP |
 		DEV_RX_OFFLOAD_IPV4_CKSUM |
@@ -547,12 +547,12 @@ static void enicpmd_add_mac_addr(struct rte_eth_dev *eth_dev,
 	enic_set_mac_address(enic, mac_addr->addr_bytes);
 }
 
-static void enicpmd_remove_mac_addr(struct rte_eth_dev *eth_dev, __rte_unused uint32_t index)
+static void enicpmd_remove_mac_addr(struct rte_eth_dev *eth_dev, uint32_t index)
 {
 	struct enic *enic = pmd_priv(eth_dev);
 
 	ENICPMD_FUNC_TRACE();
-	enic_del_mac_address(enic);
+	enic_del_mac_address(enic, index);
 }
 
 static int enicpmd_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
