@@ -87,7 +87,7 @@ bad=$(for commit in $commits ; do
 	if [ $(echo "$drvgrp" | wc -l) -gt 1 ] ; then
 		echo "$headline" | grep -v '^drivers:'
 	elif [ $(echo "$drv" | wc -l) -gt 1 ] ; then
-		echo "$headline" | grep -v "^$drvgrp"
+		echo "$headline" | grep -v "^drivers/$drvgrp"
 	else
 		echo "$headline" | grep -v "^$drv"
 	fi
