@@ -114,6 +114,8 @@ prepare_vhost_memory_kernel(void)
 	vm = malloc(sizeof(struct vhost_memory_kernel) +
 		    max_regions *
 		    sizeof(struct vhost_memory_region));
+	if (!vm)
+		return NULL;
 
 	for (i = 0; i < RTE_MAX_MEMSEG; ++i) {
 		seg = &rte_eal_get_configuration()->mem_config->memseg[i];
