@@ -67,7 +67,7 @@ static struct rte_cryptodev_ops crypto_qat_ops = {
  * The set of PCI devices this driver supports
  */
 
-static struct rte_pci_id pci_id_qat_map[] = {
+static const struct rte_pci_id pci_id_qat_map[] = {
 		{
 			RTE_PCI_DEVICE(0x8086, 0x0443),
 		},
