@@ -424,7 +424,7 @@ priv_flow_validate(struct priv *priv,
 		cur_item = token;
 		err = mlx5_flow_item_validate(items,
 					      (const uint8_t *)cur_item->mask,
-					      sizeof(cur_item->mask_sz));
+					      cur_item->mask_sz);
 		if (err)
 			goto exit_item_not_supported;
 		if (flow->ibv_attr && cur_item->convert) {
