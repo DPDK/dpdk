@@ -84,7 +84,7 @@ int rte_pmd_i40e_ping_vfs(uint8_t port, uint16_t vf);
  *
  * @param port
  *    The port identifier of the Ethernet device.
- * @param vf
+ * @param vf_id
  *    VF on which to set MAC anti spoofing.
  * @param on
  *    1 - Enable VFs MAC anti spoofing.
@@ -103,7 +103,7 @@ int rte_pmd_i40e_set_vf_mac_anti_spoof(uint8_t port,
  *
  * @param port
  *    The port identifier of the Ethernet device.
- * @param vf
+ * @param vf_id
  *    VF on which to set VLAN anti spoofing.
  * @param on
  *    1 - Enable VFs VLAN anti spoofing.
@@ -138,7 +138,7 @@ int rte_pmd_i40e_set_tx_loopback(uint8_t port,
  *
  * @param port
  *    The port identifier of the Ethernet device.
- * @param vf
+ * @param vf_id
  *    VF on which to set.
  * @param on
  *    1 - Enable.
@@ -157,7 +157,7 @@ int rte_pmd_i40e_set_vf_unicast_promisc(uint8_t port,
  *
  * @param port
  *    The port identifier of the Ethernet device.
- * @param vf
+ * @param vf_id
  *    VF on which to set.
  * @param on
  *    1 - Enable.
@@ -218,7 +218,7 @@ rte_pmd_i40e_set_vf_vlan_stripq(uint8_t port, uint16_t vf, uint8_t on);
  *
  * @param port
  *    The port identifier of the Ethernet device.
- * @param vf
+ * @param vf_id
  *    ID specifying VF.
  * @param vlan_id
  *    0 - Disable VF's vlan insert.
@@ -237,7 +237,7 @@ int rte_pmd_i40e_set_vf_vlan_insert(uint8_t port, uint16_t vf_id,
  *
  * @param port
  *    The port identifier of the Ethernet device.
- * @param vf
+ * @param vf_id
  *    ID specifying VF.
  * @param on
  *    0 - Disable broadcast.
@@ -256,9 +256,9 @@ int rte_pmd_i40e_set_vf_broadcast(uint8_t port, uint16_t vf_id,
  *
  * @param port
  *    The port identifier of the Ethernet device.
- * @param vf
+ * @param vf_id
  *    ID specifying VF.
- * @param vlan_id
+ * @param on
  *    0 - Disable VF's vlan tag.
  *    n - Enable VF's vlan tag.
  *
