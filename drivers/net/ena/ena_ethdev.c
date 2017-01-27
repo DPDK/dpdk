@@ -746,7 +746,7 @@ static int ena_queue_restart_all(struct rte_eth_dev *dev,
 
 			if (rc) {
 				PMD_INIT_LOG(ERR,
-					     "failed to restart queue %d type(%d)\n",
+					     "failed to restart queue %d type(%d)",
 					     i, ring_type);
 				return -1;
 			}
@@ -772,7 +772,7 @@ static int ena_check_valid_conf(struct ena_adapter *adapter)
 	uint32_t max_frame_len = ena_get_mtu_conf(adapter);
 
 	if (max_frame_len > adapter->max_mtu) {
-		PMD_INIT_LOG(ERR, "Unsupported MTU of %d\n", max_frame_len);
+		PMD_INIT_LOG(ERR, "Unsupported MTU of %d", max_frame_len);
 		return -1;
 	}
 
@@ -799,7 +799,7 @@ ena_calc_queue_size(struct ena_com_dev *ena_dev,
 		queue_size = rte_align32pow2(queue_size >> 1);
 
 	if (queue_size == 0) {
-		PMD_INIT_LOG(ERR, "Invalid queue size\n");
+		PMD_INIT_LOG(ERR, "Invalid queue size");
 		return -EFAULT;
 	}
 
@@ -937,7 +937,7 @@ static int ena_queue_restart(struct ena_ring *ring)
 
 	rc = ena_populate_rx_queue(ring, ring->ring_size);
 	if ((unsigned int)rc != ring->ring_size) {
-		PMD_INIT_LOG(ERR, "Failed to populate rx ring !\n");
+		PMD_INIT_LOG(ERR, "Failed to populate rx ring !");
 		return (-1);
 	}
 
@@ -1293,7 +1293,7 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 	pci_dev = RTE_DEV_TO_PCI(eth_dev->device);
 	adapter->pdev = pci_dev;
 
-	PMD_INIT_LOG(INFO, "Initializing %x:%x:%x.%d\n",
+	PMD_INIT_LOG(INFO, "Initializing %x:%x:%x.%d",
 		     pci_dev->addr.domain,
 		     pci_dev->addr.bus,
 		     pci_dev->addr.devid,
@@ -1310,7 +1310,7 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 	else if (adapter->regs)
 		ena_dev->tx_mem_queue_type = ENA_ADMIN_PLACEMENT_POLICY_HOST;
 	else
-		PMD_INIT_LOG(CRIT, "Failed to access registers BAR(%d)\n",
+		PMD_INIT_LOG(CRIT, "Failed to access registers BAR(%d)",
 			     ENA_REGS_BAR);
 
 	ena_dev->reg_bar = adapter->regs;
@@ -1324,7 +1324,7 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 	/* device specific initialization routine */
 	rc = ena_device_init(ena_dev, &get_feat_ctx);
 	if (rc) {
-		PMD_INIT_LOG(CRIT, "Failed to init ENA device\n");
+		PMD_INIT_LOG(CRIT, "Failed to init ENA device");
 		return -1;
 	}
 
@@ -1332,7 +1332,7 @@ static int eth_ena_dev_init(struct rte_eth_dev *eth_dev)
 		if (get_feat_ctx.max_queues.max_llq_num == 0) {
 			PMD_INIT_LOG(ERR,
 				     "Trying to use LLQ but llq_num is 0.\n"
-				     "Fall back into regular queues.\n");
+				     "Fall back into regular queues.");
 			ena_dev->tx_mem_queue_type =
 				ENA_ADMIN_PLACEMENT_POLICY_HOST;
 			adapter->num_queues =
@@ -1390,7 +1390,7 @@ static int ena_dev_configure(struct rte_eth_dev *dev)
 
 	if (!(adapter->state == ENA_ADAPTER_STATE_INIT ||
 	      adapter->state == ENA_ADAPTER_STATE_STOPPED)) {
-		PMD_INIT_LOG(ERR, "Illegal adapter state: %d\n",
+		PMD_INIT_LOG(ERR, "Illegal adapter state: %d",
 			     adapter->state);
 		return -1;
 	}

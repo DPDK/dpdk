@@ -269,7 +269,7 @@ i40e_parse_tunneling_params(uint64_t ol_flags,
 		*cd_tunneling |= I40E_TXD_CTX_GRE_TUNNELING;
 		break;
 	default:
-		PMD_TX_LOG(ERR, "Tunnel type not supported\n");
+		PMD_TX_LOG(ERR, "Tunnel type not supported");
 		return;
 	}
 

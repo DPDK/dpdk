@@ -133,7 +133,7 @@ virtqueue_dequeue_burst_rx(struct virtqueue *vq, struct rte_mbuf **rx_pkts,
 		cookie = (struct rte_mbuf *)vq->vq_descx[desc_idx].cookie;
 
 		if (unlikely(cookie == NULL)) {
-			PMD_DRV_LOG(ERR, "vring descriptor with no mbuf cookie at %u\n",
+			PMD_DRV_LOG(ERR, "vring descriptor with no mbuf cookie at %u",
 				vq->vq_used_cons_idx);
 			break;
 		}

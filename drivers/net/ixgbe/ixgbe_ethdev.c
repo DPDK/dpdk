@@ -2459,7 +2459,7 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 				    dev->data->nb_rx_queues * sizeof(int), 0);
 		if (intr_handle->intr_vec == NULL) {
 			PMD_INIT_LOG(ERR, "Failed to allocate %d rx_queues"
-				     " intr_vec\n", dev->data->nb_rx_queues);
+				     " intr_vec", dev->data->nb_rx_queues);
 			return -ENOMEM;
 		}
 	}
@@ -2579,7 +2579,7 @@ skip_link_setup:
 					     ixgbe_dev_interrupt_handler, dev);
 		if (dev->data->dev_conf.intr_conf.lsc != 0)
 			PMD_INIT_LOG(INFO, "lsc won't enable because of"
-				     " no intr multiplex\n");
+				     " no intr multiplex");
 	}
 
 	/* check if rxq interrupt is enabled */
@@ -4282,7 +4282,7 @@ ixgbe_dev_rss_reta_update(struct rte_eth_dev *dev,
 	if (reta_size != sp_reta_size) {
 		PMD_DRV_LOG(ERR, "The size of hash lookup table configured "
 			"(%d) doesn't match the number hardware can supported "
-			"(%d)\n", reta_size, sp_reta_size);
+			"(%d)", reta_size, sp_reta_size);
 		return -EINVAL;
 	}
 
@@ -4329,7 +4329,7 @@ ixgbe_dev_rss_reta_query(struct rte_eth_dev *dev,
 	if (reta_size != sp_reta_size) {
 		PMD_DRV_LOG(ERR, "The size of hash lookup table configured "
 			"(%d) doesn't match the number hardware can supported "
-			"(%d)\n", reta_size, sp_reta_size);
+			"(%d)", reta_size, sp_reta_size);
 		return -EINVAL;
 	}
 
@@ -4589,7 +4589,7 @@ ixgbevf_dev_start(struct rte_eth_dev *dev)
 				    dev->data->nb_rx_queues * sizeof(int), 0);
 		if (intr_handle->intr_vec == NULL) {
 			PMD_INIT_LOG(ERR, "Failed to allocate %d rx_queues"
-				     " intr_vec\n", dev->data->nb_rx_queues);
+				     " intr_vec", dev->data->nb_rx_queues);
 			return -ENOMEM;
 		}
 	}
@@ -6056,7 +6056,7 @@ ixgbe_syn_filter_handle(struct rte_eth_dev *dev,
 				(struct rte_eth_syn_filter *)arg);
 		break;
 	default:
-		PMD_DRV_LOG(ERR, "unsupported operation %u\n", filter_op);
+		PMD_DRV_LOG(ERR, "unsupported operation %u", filter_op);
 		ret = -EINVAL;
 		break;
 	}
@@ -8199,7 +8199,7 @@ int ixgbe_disable_sec_tx_path_generic(struct ixgbe_hw *hw)
 	/* For informational purposes only */
 	if (i >= IXGBE_MAX_SECTX_POLL)
 		PMD_DRV_LOG(DEBUG, "Tx unit being enabled before security "
-			 "path fully disabled.  Continuing with init.\n");
+			 "path fully disabled.  Continuing with init.");
 
 	return IXGBE_SUCCESS;
 }

@@ -645,7 +645,7 @@ i40evf_configure_vsi_queues(struct rte_eth_dev *dev)
 	ret = i40evf_execute_vf_cmd(dev, &args);
 	if (ret)
 		PMD_DRV_LOG(ERR, "Failed to execute command of "
-			"I40E_VIRTCHNL_OP_CONFIG_VSI_QUEUES\n");
+			"I40E_VIRTCHNL_OP_CONFIG_VSI_QUEUES");
 
 	return ret;
 }
@@ -698,7 +698,7 @@ i40evf_configure_vsi_queues_ext(struct rte_eth_dev *dev)
 	ret = i40evf_execute_vf_cmd(dev, &args);
 	if (ret)
 		PMD_DRV_LOG(ERR, "Failed to execute command of "
-			"I40E_VIRTCHNL_OP_CONFIG_VSI_QUEUES_EXT\n");
+			"I40E_VIRTCHNL_OP_CONFIG_VSI_QUEUES_EXT");
 
 	return ret;
 }
@@ -1325,16 +1325,16 @@ i40evf_handle_pf_event(__rte_unused struct rte_eth_dev *dev,
 
 	switch (pf_msg->event) {
 	case I40E_VIRTCHNL_EVENT_RESET_IMPENDING:
-		PMD_DRV_LOG(DEBUG, "VIRTCHNL_EVENT_RESET_IMPENDING event\n");
+		PMD_DRV_LOG(DEBUG, "VIRTCHNL_EVENT_RESET_IMPENDING event");
 		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_RESET, NULL);
 		break;
 	case I40E_VIRTCHNL_EVENT_LINK_CHANGE:
-		PMD_DRV_LOG(DEBUG, "VIRTCHNL_EVENT_LINK_CHANGE event\n");
+		PMD_DRV_LOG(DEBUG, "VIRTCHNL_EVENT_LINK_CHANGE event");
 		vf->link_up = pf_msg->event_data.link_event.link_status;
 		vf->link_speed = pf_msg->event_data.link_event.link_speed;
 		break;
 	case I40E_VIRTCHNL_EVENT_PF_DRIVER_CLOSE:
-		PMD_DRV_LOG(DEBUG, "VIRTCHNL_EVENT_PF_DRIVER_CLOSE event\n");
+		PMD_DRV_LOG(DEBUG, "VIRTCHNL_EVENT_PF_DRIVER_CLOSE event");
 		break;
 	default:
 		PMD_DRV_LOG(ERR, " unknown event received %u", pf_msg->event);
@@ -1396,7 +1396,7 @@ i40evf_handle_aq_msg(struct rte_eth_dev *dev)
 						"expect %u, get %u",
 						vf->pend_cmd, msg_opc);
 				PMD_DRV_LOG(DEBUG, "adminq response is received,"
-					     " opcode = %d\n", msg_opc);
+					     " opcode = %d", msg_opc);
 			}
 			break;
 		default:
@@ -1434,19 +1434,19 @@ i40evf_dev_interrupt_handler(struct rte_intr_handle *intr_handle,
 
 	/* No interrupt event indicated */
 	if (!(icr0 & I40E_VFINT_ICR01_INTEVENT_MASK)) {
-		PMD_DRV_LOG(DEBUG, "No interrupt event, nothing to do\n");
+		PMD_DRV_LOG(DEBUG, "No interrupt event, nothing to do");
 		goto done;
 	}
 
 	if (icr0 & I40E_VFINT_ICR01_ADMINQ_MASK) {
-		PMD_DRV_LOG(DEBUG, "ICR01_ADMINQ is reported\n");
+		PMD_DRV_LOG(DEBUG, "ICR01_ADMINQ is reported");
 		i40evf_handle_aq_msg(dev);
 	}
 
 	/* Link Status Change interrupt */
 	if (icr0 & I40E_VFINT_ICR01_LINK_STAT_CHANGE_MASK)
 		PMD_DRV_LOG(DEBUG, "LINK_STAT_CHANGE is reported,"
-				   " do nothing\n");
+				   " do nothing");
 
 done:
 	i40evf_enable_irq0(hw);
@@ -2075,7 +2075,7 @@ i40evf_dev_start(struct rte_eth_dev *dev)
 				    dev->data->nb_rx_queues * sizeof(int), 0);
 		if (!intr_handle->intr_vec) {
 			PMD_INIT_LOG(ERR, "Failed to allocate %d rx_queues"
-				     " intr_vec\n", dev->data->nb_rx_queues);
+				     " intr_vec", dev->data->nb_rx_queues);
 			return -ENOMEM;
 		}
 	}
@@ -2403,7 +2403,7 @@ i40evf_dev_rss_reta_update(struct rte_eth_dev *dev,
 	if (reta_size != ETH_RSS_RETA_SIZE_64) {
 		PMD_DRV_LOG(ERR, "The size of hash lookup table configured "
 			"(%d) doesn't match the number of hardware can "
-			"support (%d)\n", reta_size, ETH_RSS_RETA_SIZE_64);
+			"support (%d)", reta_size, ETH_RSS_RETA_SIZE_64);
 		return -EINVAL;
 	}
 
@@ -2442,7 +2442,7 @@ i40evf_dev_rss_reta_query(struct rte_eth_dev *dev,
 	if (reta_size != ETH_RSS_RETA_SIZE_64) {
 		PMD_DRV_LOG(ERR, "The size of hash lookup table configured "
 			"(%d) doesn't match the number of hardware can "
-			"support (%d)\n", reta_size, ETH_RSS_RETA_SIZE_64);
+			"support (%d)", reta_size, ETH_RSS_RETA_SIZE_64);
 		return -EINVAL;
 	}
 
@@ -2587,7 +2587,7 @@ i40evf_config_rss(struct i40e_vf *vf)
 
 	if (vf->dev_data->dev_conf.rxmode.mq_mode != ETH_MQ_RX_RSS) {
 		i40evf_disable_rss(vf);
-		PMD_DRV_LOG(DEBUG, "RSS not configured\n");
+		PMD_DRV_LOG(DEBUG, "RSS not configured");
 		return 0;
 	}
 
@@ -2604,7 +2604,7 @@ i40evf_config_rss(struct i40e_vf *vf)
 	rss_conf = vf->dev_data->dev_conf.rx_adv_conf.rss_conf;
 	if ((rss_conf.rss_hf & I40E_RSS_OFFLOAD_ALL) == 0) {
 		i40evf_disable_rss(vf);
-		PMD_DRV_LOG(DEBUG, "No hash flag is set\n");
+		PMD_DRV_LOG(DEBUG, "No hash flag is set");
 		return 0;
 	}
 
@@ -2680,8 +2680,7 @@ i40evf_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 
 	/* mtu setting is forbidden if port is start */
 	if (dev_data->dev_started) {
-		PMD_DRV_LOG(ERR,
-			    "port %d must be stopped before configuration\n",
+		PMD_DRV_LOG(ERR, "port %d must be stopped before configuration",
 			    dev_data->port_id);
 		return -EBUSY;
 	}

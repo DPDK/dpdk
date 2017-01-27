@@ -639,7 +639,7 @@ eth_em_start(struct rte_eth_dev *dev)
 					dev->data->nb_rx_queues * sizeof(int), 0);
 		if (intr_handle->intr_vec == NULL) {
 			PMD_INIT_LOG(ERR, "Failed to allocate %d rx_queues"
-						" intr_vec\n", dev->data->nb_rx_queues);
+						" intr_vec", dev->data->nb_rx_queues);
 			return -ENOMEM;
 		}
 
@@ -736,7 +736,7 @@ eth_em_start(struct rte_eth_dev *dev)
 						(void *)dev);
 		if (dev->data->dev_conf.intr_conf.lsc != 0)
 			PMD_INIT_LOG(INFO, "lsc won't enable because of"
-				     " no intr multiplex\n");
+				     " no intr multiplexn");
 	}
 	/* check if rxq interrupt is enabled */
 	if (dev->data->dev_conf.intr_conf.rxq != 0)

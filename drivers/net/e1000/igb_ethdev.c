@@ -1292,7 +1292,7 @@ eth_igb_start(struct rte_eth_dev *dev)
 				    dev->data->nb_rx_queues * sizeof(int), 0);
 		if (intr_handle->intr_vec == NULL) {
 			PMD_INIT_LOG(ERR, "Failed to allocate %d rx_queues"
-				     " intr_vec\n", dev->data->nb_rx_queues);
+				     " intr_vec", dev->data->nb_rx_queues);
 			return -ENOMEM;
 		}
 	}
@@ -1399,7 +1399,7 @@ eth_igb_start(struct rte_eth_dev *dev)
 					     (void *)dev);
 		if (dev->data->dev_conf.intr_conf.lsc != 0)
 			PMD_INIT_LOG(INFO, "lsc won't enable because of"
-				     " no intr multiplex\n");
+				     " no intr multiplex");
 	}
 
 	/* check if rxq interrupt is enabled */
@@ -3159,7 +3159,7 @@ igbvf_dev_start(struct rte_eth_dev *dev)
 				    dev->data->nb_rx_queues * sizeof(int), 0);
 		if (!intr_handle->intr_vec) {
 			PMD_INIT_LOG(ERR, "Failed to allocate %d rx_queues"
-				     " intr_vec\n", dev->data->nb_rx_queues);
+				     " intr_vec", dev->data->nb_rx_queues);
 			return -ENOMEM;
 		}
 	}
@@ -3378,7 +3378,7 @@ eth_igb_rss_reta_update(struct rte_eth_dev *dev,
 	if (reta_size != ETH_RSS_RETA_SIZE_128) {
 		PMD_DRV_LOG(ERR, "The size of hash lookup table configured "
 			"(%d) doesn't match the number hardware can supported "
-			"(%d)\n", reta_size, ETH_RSS_RETA_SIZE_128);
+			"(%d)", reta_size, ETH_RSS_RETA_SIZE_128);
 		return -EINVAL;
 	}
 
@@ -3419,7 +3419,7 @@ eth_igb_rss_reta_query(struct rte_eth_dev *dev,
 	if (reta_size != ETH_RSS_RETA_SIZE_128) {
 		PMD_DRV_LOG(ERR, "The size of hash lookup table configured "
 			"(%d) doesn't match the number hardware can supported "
-			"(%d)\n", reta_size, ETH_RSS_RETA_SIZE_128);
+			"(%d)", reta_size, ETH_RSS_RETA_SIZE_128);
 		return -EINVAL;
 	}
 
@@ -3540,7 +3540,7 @@ eth_igb_syn_filter_handle(struct rte_eth_dev *dev,
 				(struct rte_eth_syn_filter *)arg);
 		break;
 	default:
-		PMD_DRV_LOG(ERR, "unsupported operation %u\n", filter_op);
+		PMD_DRV_LOG(ERR, "unsupported operation %u", filter_op);
 		ret = -EINVAL;
 		break;
 	}

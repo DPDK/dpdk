@@ -1894,7 +1894,7 @@ i40e_dev_start(struct rte_eth_dev *dev)
 				    0);
 		if (!intr_handle->intr_vec) {
 			PMD_INIT_LOG(ERR,
-				"Failed to allocate %d rx_queues intr_vec\n",
+				"Failed to allocate %d rx_queues intr_vec",
 				dev->data->nb_rx_queues);
 			return -ENOMEM;
 		}
@@ -1969,7 +1969,7 @@ i40e_dev_start(struct rte_eth_dev *dev)
 
 		if (dev->data->dev_conf.intr_conf.lsc != 0)
 			PMD_INIT_LOG(INFO,
-				"lsc won't enable because of no intr multiplex\n");
+				"lsc won't enable because of no intr multiplex");
 	} else if (dev->data->dev_conf.intr_conf.lsc != 0) {
 		ret = i40e_aq_set_phy_int_mask(hw,
 					       ~(I40E_AQ_EVENT_LINK_UPDOWN |
@@ -2936,7 +2936,7 @@ i40e_vlan_tpid_set(struct rte_eth_dev *dev,
 		else {
 			ret = -EINVAL;
 			PMD_DRV_LOG(ERR,
-				"Unsupported vlan type in single vlan.\n");
+				"Unsupported vlan type in single vlan.");
 			return ret;
 		}
 		break;
@@ -3498,7 +3498,7 @@ i40e_dev_rss_reta_update(struct rte_eth_dev *dev,
 	if (reta_size != lut_size ||
 		reta_size > ETH_RSS_RETA_SIZE_512) {
 		PMD_DRV_LOG(ERR,
-			"The size of hash lookup table configured (%d) doesn't match the number hardware can supported (%d)\n",
+			"The size of hash lookup table configured (%d) doesn't match the number hardware can supported (%d)",
 			reta_size, lut_size);
 		return -EINVAL;
 	}
@@ -3539,7 +3539,7 @@ i40e_dev_rss_reta_query(struct rte_eth_dev *dev,
 	if (reta_size != lut_size ||
 		reta_size > ETH_RSS_RETA_SIZE_512) {
 		PMD_DRV_LOG(ERR,
-			"The size of hash lookup table configured (%d) doesn't match the number hardware can supported (%d)\n",
+			"The size of hash lookup table configured (%d) doesn't match the number hardware can supported (%d)",
 			reta_size, lut_size);
 		return -EINVAL;
 	}
@@ -4586,7 +4586,7 @@ i40e_enable_pf_lb(struct i40e_pf *pf)
 
 	ret = i40e_aq_update_vsi_params(hw, &ctxt, NULL);
 	if (ret)
-		PMD_DRV_LOG(ERR, "update vsi switch failed, aq_err=%d\n",
+		PMD_DRV_LOG(ERR, "update vsi switch failed, aq_err=%d",
 			    hw->aq.asq_last_status);
 }
 
@@ -5183,11 +5183,11 @@ i40e_pf_setup(struct i40e_pf *pf)
 	else if (hw->func_caps.rss_table_size == ETH_RSS_RETA_SIZE_512)
 		settings.hash_lut_size = I40E_HASH_LUT_SIZE_512;
 	else {
-		PMD_DRV_LOG(ERR, "Hash lookup table size (%u) not supported\n",
-						hw->func_caps.rss_table_size);
+		PMD_DRV_LOG(ERR, "Hash lookup table size (%u) not supported",
+			hw->func_caps.rss_table_size);
 		return I40E_ERR_PARAM;
 	}
-	PMD_DRV_LOG(INFO, "Hardware capability of hash lookup table size: %u\n",
+	PMD_DRV_LOG(INFO, "Hardware capability of hash lookup table size: %u",
 		hw->func_caps.rss_table_size);
 	pf->hash_lut_size = hw->func_caps.rss_table_size;
 
@@ -5870,7 +5870,7 @@ i40e_add_macvlan_filters(struct i40e_vsi *vsi,
 				flags = I40E_AQC_MACVLAN_ADD_HASH_MATCH;
 				break;
 			default:
-				PMD_DRV_LOG(ERR, "Invalid MAC match type\n");
+				PMD_DRV_LOG(ERR, "Invalid MAC match type");
 				ret = I40E_ERR_PARAM;
 				goto DONE;
 			}
@@ -5945,7 +5945,7 @@ i40e_remove_macvlan_filters(struct i40e_vsi *vsi,
 				flags = I40E_AQC_MACVLAN_DEL_HASH_MATCH;
 				break;
 			default:
-				PMD_DRV_LOG(ERR, "Invalid MAC filter type\n");
+				PMD_DRV_LOG(ERR, "Invalid MAC filter type");
 				ret = I40E_ERR_PARAM;
 				goto DONE;
 			}
@@ -6365,7 +6365,7 @@ i40e_vsi_delete_mac(struct i40e_vsi *vsi, struct ether_addr *addr)
 	if (filter_type == RTE_MACVLAN_PERFECT_MATCH ||
 		filter_type == RTE_MACVLAN_HASH_MATCH) {
 		if (vlan_num == 0) {
-			PMD_DRV_LOG(ERR, "VLAN number shouldn't be 0\n");
+			PMD_DRV_LOG(ERR, "VLAN number shouldn't be 0");
 			return I40E_ERR_PARAM;
 		}
 	} else if (filter_type == RTE_MAC_PERFECT_MATCH ||
@@ -7162,7 +7162,7 @@ i40e_dev_set_gre_key_len(struct i40e_hw *hw, uint8_t len)
 	int ret = -EINVAL;
 
 	val = I40E_READ_REG(hw, I40E_GL_PRS_FVBM(2));
-	PMD_DRV_LOG(DEBUG, "Read original GL_PRS_FVBM with 0x%08x\n", val);
+	PMD_DRV_LOG(DEBUG, "Read original GL_PRS_FVBM with 0x%08x", val);
 
 	if (len == 3) {
 		reg = val | I40E_GL_PRS_FVBM_MSK_ENA;
@@ -7181,7 +7181,7 @@ i40e_dev_set_gre_key_len(struct i40e_hw *hw, uint8_t len)
 	} else {
 		ret = 0;
 	}
-	PMD_DRV_LOG(DEBUG, "Read modified GL_PRS_FVBM with 0x%08x\n",
+	PMD_DRV_LOG(DEBUG, "Read modified GL_PRS_FVBM with 0x%08x",
 		    I40E_READ_REG(hw, I40E_GL_PRS_FVBM(2)));
 
 	return ret;
@@ -8025,10 +8025,10 @@ i40e_check_write_reg(struct i40e_hw *hw, uint32_t addr, uint32_t val)
 {
 	uint32_t reg = i40e_read_rx_ctl(hw, addr);
 
-	PMD_DRV_LOG(DEBUG, "[0x%08x] original: 0x%08x\n", addr, reg);
+	PMD_DRV_LOG(DEBUG, "[0x%08x] original: 0x%08x", addr, reg);
 	if (reg != val)
 		i40e_write_rx_ctl(hw, addr, val);
-	PMD_DRV_LOG(DEBUG, "[0x%08x] after: 0x%08x\n", addr,
+	PMD_DRV_LOG(DEBUG, "[0x%08x] after: 0x%08x", addr,
 		    (uint32_t)i40e_read_rx_ctl(hw, addr));
 }
 
@@ -8476,7 +8476,7 @@ i40e_ethertype_filter_set(struct i40e_pf *pf,
 			filter->queue, add, &stats, NULL);
 
 	PMD_DRV_LOG(INFO,
-		"add/rem control packet filter, return %d, mac_etype_used = %u, etype_used = %u, mac_etype_free = %u, etype_free = %u\n",
+		"add/rem control packet filter, return %d, mac_etype_used = %u, etype_used = %u, mac_etype_free = %u, etype_free = %u",
 		ret, stats.mac_etype_used, stats.etype_used,
 		stats.mac_etype_free, stats.etype_free);
 	if (ret < 0)
@@ -8528,7 +8528,7 @@ i40e_ethertype_filter_handle(struct rte_eth_dev *dev,
 			FALSE);
 		break;
 	default:
-		PMD_DRV_LOG(ERR, "unsupported operation %u\n", filter_op);
+		PMD_DRV_LOG(ERR, "unsupported operation %u", filter_op);
 		ret = -ENOSYS;
 		break;
 	}
@@ -9766,8 +9766,7 @@ i40e_dcb_hw_configure(struct i40e_pf *pf,
 	old_cfg->etsrec = old_cfg->etscfg;
 	ret = i40e_set_dcb_config(hw);
 	if (ret) {
-		PMD_INIT_LOG(ERR,
-			 "Set DCB Config failed, err %s aq_err %s\n",
+		PMD_INIT_LOG(ERR, "Set DCB Config failed, err %s aq_err %s",
 			 i40e_stat_str(hw, ret),
 			 i40e_aq_str(hw, hw->aq.asq_last_status));
 		return ret;
@@ -9799,7 +9798,7 @@ i40e_dcb_hw_configure(struct i40e_pf *pf,
 		ret = i40e_config_switch_comp_tc(main_vsi->veb, tc_map);
 		if (ret)
 			PMD_INIT_LOG(WARNING,
-				 "Failed configuring TC for VEB seid=%d\n",
+				 "Failed configuring TC for VEB seid=%d",
 				 main_vsi->veb->seid);
 	}
 	/* Update each VSI */
@@ -9817,7 +9816,7 @@ i40e_dcb_hw_configure(struct i40e_pf *pf,
 							 I40E_DEFAULT_TCMAP);
 			if (ret)
 				PMD_INIT_LOG(WARNING,
-					"Failed configuring TC for VSI seid=%d\n",
+					"Failed configuring TC for VSI seid=%d",
 					vsi_list->vsi->seid);
 			/* continue */
 		}
@@ -10180,8 +10179,7 @@ i40e_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 
 	/* mtu setting is forbidden if port is start */
 	if (dev_data->dev_started) {
-		PMD_DRV_LOG(ERR,
-			    "port %d must be stopped before configuration\n",
+		PMD_DRV_LOG(ERR, "port %d must be stopped before configuration",
 			    dev_data->port_id);
 		return -EBUSY;
 	}
@@ -10224,7 +10222,7 @@ i40e_ethertype_filter_restore(struct i40e_pf *pf)
 	}
 	PMD_DRV_LOG(INFO, "Ethertype filter:"
 		    " mac_etype_used = %u, etype_used = %u,"
-		    " mac_etype_free = %u, etype_free = %u\n",
+		    " mac_etype_free = %u, etype_free = %u",
 		    stats.mac_etype_used, stats.etype_used,
 		    stats.mac_etype_free, stats.etype_free);
 }
@@ -10475,8 +10473,7 @@ i40e_vsi_rm_mac_filter(struct i40e_vsi *vsi)
 		if (filter_type == RTE_MACVLAN_PERFECT_MATCH ||
 		    filter_type == RTE_MACVLAN_HASH_MATCH) {
 			if (vlan_num == 0) {
-				PMD_DRV_LOG(ERR,
-					    "VLAN number shouldn't be 0\n");
+				PMD_DRV_LOG(ERR, "VLAN number shouldn't be 0");
 				return I40E_ERR_PARAM;
 			}
 		} else if (filter_type == RTE_MAC_PERFECT_MATCH ||

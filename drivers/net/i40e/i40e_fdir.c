@@ -1612,6 +1612,6 @@ i40e_fdir_filter_restore(struct i40e_pf *pf)
 			   I40E_PFQF_FDSTAT_BEST_CNT_SHIFT);
 #endif /* RTE_LIBRTE_I40E_DEBUG_DRIVER */
 
-	PMD_DRV_LOG(INFO, "FDIR: Guarant count: %d,  Best count: %d\n",
+	PMD_DRV_LOG(INFO, "FDIR: Guarant count: %d,  Best count: %d",
 		    guarant_cnt, best_cnt);
 }

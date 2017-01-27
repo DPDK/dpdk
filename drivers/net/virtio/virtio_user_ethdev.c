@@ -82,7 +82,7 @@ virtio_user_write_dev_config(struct virtio_hw *hw, size_t offset,
 		for (i = 0; i < ETHER_ADDR_LEN; ++i)
 			dev->mac_addr[i] = ((const uint8_t *)src)[i];
 	else
-		PMD_DRV_LOG(ERR, "not supported offset=%zu, len=%d\n",
+		PMD_DRV_LOG(ERR, "not supported offset=%zu, len=%d",
 			    offset, length);
 }
 
@@ -212,7 +212,7 @@ virtio_user_notify_queue(struct virtio_hw *hw, struct virtqueue *vq)
 	}
 
 	if (write(dev->kickfds[vq->vq_queue_index], &buf, sizeof(buf)) < 0)
-		PMD_DRV_LOG(ERR, "failed to kick backend: %s\n",
+		PMD_DRV_LOG(ERR, "failed to kick backend: %s",
 			    strerror(errno));
 }
 
@@ -370,7 +370,7 @@ virtio_user_pmd_probe(const char *name, const char *params)
 			goto end;
 		}
 	} else {
-		PMD_INIT_LOG(ERR, "arg %s is mandatory for virtio_user\n",
+		PMD_INIT_LOG(ERR, "arg %s is mandatory for virtio_user",
 			  VIRTIO_USER_ARG_QUEUE_SIZE);
 		goto end;
 	}
@@ -461,7 +461,7 @@ virtio_user_pmd_remove(const char *name)
 	if (!name)
 		return -EINVAL;
 
-	PMD_DRV_LOG(INFO, "Un-Initializing %s\n", name);
+	PMD_DRV_LOG(INFO, "Un-Initializing %s", name);
 	eth_dev = rte_eth_dev_allocated(name);
 	if (!eth_dev)
 		return -ENODEV;

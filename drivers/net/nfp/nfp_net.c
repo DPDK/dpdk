@@ -374,12 +374,12 @@ __nfp_net_reconfig(struct nfp_net_hw *hw, uint32_t update)
 		if (new == 0)
 			break;
 		if (new & NFP_NET_CFG_UPDATE_ERR) {
-			PMD_INIT_LOG(ERR, "Reconfig error: 0x%08x\n", new);
+			PMD_INIT_LOG(ERR, "Reconfig error: 0x%08x", new);
 			return -1;
 		}
 		if (cnt >= NFP_NET_POLL_TIMEOUT) {
 			PMD_INIT_LOG(ERR, "Reconfig timeout for 0x%08x after"
-					  " %dms\n", update, cnt);
+					  " %dms", update, cnt);
 			rte_panic("Exiting\n");
 		}
 		nanosleep(&wait, 0); /* waiting for a 1ms */
@@ -423,7 +423,7 @@ nfp_net_reconfig(struct nfp_net_hw *hw, uint32_t ctrl, uint32_t update)
 	 * Reconfig errors imply situations where they can be handled.
 	 * Otherwise, rte_panic is called inside __nfp_net_reconfig
 	 */
-	PMD_INIT_LOG(ERR, "Error nfp_net reconfig for ctrl: %x update: %x\n",
+	PMD_INIT_LOG(ERR, "Error nfp_net reconfig for ctrl: %x update: %x",
 		     ctrl, update);
 	return -EIO;
 }
@@ -453,7 +453,7 @@ nfp_net_configure(struct rte_eth_dev *dev)
 	 * called after that internal process
 	 */
 
-	PMD_INIT_LOG(DEBUG, "Configure\n");
+	PMD_INIT_LOG(DEBUG, "Configure");
 
 	dev_conf = &dev->data->dev_conf;
 	rxmode = &dev_conf->rxmode;
@@ -461,7 +461,7 @@ nfp_net_configure(struct rte_eth_dev *dev)
 
 	/* Checking TX mode */
 	if (txmode->mq_mode) {
-		PMD_INIT_LOG(INFO, "TX mq_mode DCB and VMDq not supported\n");
+		PMD_INIT_LOG(INFO, "TX mq_mode DCB and VMDq not supported");
 		return -EINVAL;
 	}
 
@@ -471,13 +471,13 @@ nfp_net_configure(struct rte_eth_dev *dev)
 			update = NFP_NET_CFG_UPDATE_RSS;
 			new_ctrl = NFP_NET_CFG_CTRL_RSS;
 		} else {
-			PMD_INIT_LOG(INFO, "RSS not supported\n");
+			PMD_INIT_LOG(INFO, "RSS not supported");
 			return -EINVAL;
 		}
 	}
 
 	if (rxmode->split_hdr_size) {
-		PMD_INIT_LOG(INFO, "rxmode does not support split header\n");
+		PMD_INIT_LOG(INFO, "rxmode does not support split header");
 		return -EINVAL;
 	}
 
@@ -485,13 +485,13 @@ nfp_net_configure(struct rte_eth_dev *dev)
 		if (hw->cap & NFP_NET_CFG_CTRL_RXCSUM) {
 			new_ctrl |= NFP_NET_CFG_CTRL_RXCSUM;
 		} else {
-			PMD_INIT_LOG(INFO, "RXCSUM not supported\n");
+			PMD_INIT_LOG(INFO, "RXCSUM not supported");
 			return -EINVAL;
 		}
 	}
 
 	if (rxmode->hw_vlan_filter) {
-		PMD_INIT_LOG(INFO, "VLAN filter not supported\n");
+		PMD_INIT_LOG(INFO, "VLAN filter not supported");
 		return -EINVAL;
 	}
 
@@ -499,13 +499,13 @@ nfp_net_configure(struct rte_eth_dev *dev)
 		if (hw->cap & NFP_NET_CFG_CTRL_RXVLAN) {
 			new_ctrl |= NFP_NET_CFG_CTRL_RXVLAN;
 		} else {
-			PMD_INIT_LOG(INFO, "hw vlan strip not supported\n");
+			PMD_INIT_LOG(INFO, "hw vlan strip not supported");
 			return -EINVAL;
 		}
 	}
 
 	if (rxmode->hw_vlan_extend) {
-		PMD_INIT_LOG(INFO, "VLAN extended not supported\n");
+		PMD_INIT_LOG(INFO, "VLAN extended not supported");
 		return -EINVAL;
 	}
 
@@ -517,12 +517,12 @@ nfp_net_configure(struct rte_eth_dev *dev)
 		/* this is handled in rte_eth_dev_configure */
 
 	if (rxmode->hw_strip_crc) {
-		PMD_INIT_LOG(INFO, "strip CRC not supported\n");
+		PMD_INIT_LOG(INFO, "strip CRC not supported");
 		return -EINVAL;
 	}
 
 	if (rxmode->enable_scatter) {
-		PMD_INIT_LOG(INFO, "Scatter not supported\n");
+		PMD_INIT_LOG(INFO, "Scatter not supported");
 		return -EINVAL;
 	}
 
@@ -638,7 +638,7 @@ nfp_configure_rx_interrupt(struct rte_eth_dev *dev,
 				    dev->data->nb_rx_queues * sizeof(int), 0);
 		if (!intr_handle->intr_vec) {
 			PMD_INIT_LOG(ERR, "Failed to allocate %d rx_queues"
-				     " intr_vec\n", dev->data->nb_rx_queues);
+				     " intr_vec", dev->data->nb_rx_queues);
 			return -ENOMEM;
 		}
 	}
@@ -646,11 +646,11 @@ nfp_configure_rx_interrupt(struct rte_eth_dev *dev,
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	if (intr_handle->type == RTE_INTR_HANDLE_UIO) {
-		PMD_INIT_LOG(INFO, "VF: enabling RX interrupt with UIO\n");
+		PMD_INIT_LOG(INFO, "VF: enabling RX interrupt with UIO");
 		/* UIO just supports one queue and no LSC*/
 		nn_cfg_writeb(hw, NFP_NET_CFG_RXR_VEC(0), 0);
 	} else {
-		PMD_INIT_LOG(INFO, "VF: enabling RX interrupt with VFIO\n");
+		PMD_INIT_LOG(INFO, "VF: enabling RX interrupt with VFIO");
 		for (i = 0; i < dev->data->nb_rx_queues; i++)
 			/*
 			 * The first msix vector is reserved for non
@@ -676,7 +676,7 @@ nfp_net_start(struct rte_eth_dev *dev)
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	PMD_INIT_LOG(DEBUG, "Start\n");
+	PMD_INIT_LOG(DEBUG, "Start");
 
 	/* Disabling queues just in case... */
 	nfp_net_disable_queues(dev);
@@ -765,7 +765,7 @@ nfp_net_stop(struct rte_eth_dev *dev)
 {
 	int i;
 
-	PMD_INIT_LOG(DEBUG, "Stop\n");
+	PMD_INIT_LOG(DEBUG, "Stop");
 
 	nfp_net_disable_queues(dev);
 
@@ -788,7 +788,7 @@ nfp_net_close(struct rte_eth_dev *dev)
 	struct nfp_net_hw *hw;
 	struct rte_pci_device *pci_dev;
 
-	PMD_INIT_LOG(DEBUG, "Close\n");
+	PMD_INIT_LOG(DEBUG, "Close");
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	pci_dev = RTE_DEV_TO_PCI(dev->device);
@@ -825,7 +825,7 @@ nfp_net_promisc_enable(struct rte_eth_dev *dev)
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	if (!(hw->cap & NFP_NET_CFG_CTRL_PROMISC)) {
-		PMD_INIT_LOG(INFO, "Promiscuous mode not supported\n");
+		PMD_INIT_LOG(INFO, "Promiscuous mode not supported");
 		return;
 	}
 
@@ -1185,7 +1185,7 @@ nfp_net_rx_queue_count(struct rte_eth_dev *dev, uint16_t queue_idx)
 	rxq = (struct nfp_net_rxq *)dev->data->rx_queues[queue_idx];
 
 	if (rxq == NULL) {
-		PMD_INIT_LOG(ERR, "Bad queue: %u\n", queue_idx);
+		PMD_INIT_LOG(ERR, "Bad queue: %u", queue_idx);
 		return 0;
 	}
 
@@ -2084,7 +2084,7 @@ nfp_net_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		if (unlikely((pkt->nb_segs > 1) &&
 			     !(hw->cap & NFP_NET_CFG_CTRL_GATHER))) {
-			PMD_INIT_LOG(INFO, "NFP_NET_CFG_CTRL_GATHER not set\n");
+			PMD_INIT_LOG(INFO, "NFP_NET_CFG_CTRL_GATHER not set");
 			rte_panic("Multisegment packet unsupported\n");
 		}
 
@@ -2472,7 +2472,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	hw->subsystem_device_id = pci_dev->id.subsystem_device_id;
 	hw->subsystem_vendor_id = pci_dev->id.subsystem_vendor_id;
 
-	PMD_INIT_LOG(DEBUG, "nfp_net: device (%u:%u) %u:%u:%u:%u\n",
+	PMD_INIT_LOG(DEBUG, "nfp_net: device (%u:%u) %u:%u:%u:%u",
 		     pci_dev->id.vendor_id, pci_dev->id.device_id,
 		     pci_dev->addr.domain, pci_dev->addr.bus,
 		     pci_dev->addr.devid, pci_dev->addr.function);
@@ -2499,13 +2499,13 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 		return -ENODEV;
 	}
 
-	PMD_INIT_LOG(DEBUG, "tx_bar_off: 0x%08x\n", tx_bar_off);
-	PMD_INIT_LOG(DEBUG, "rx_bar_off: 0x%08x\n", rx_bar_off);
+	PMD_INIT_LOG(DEBUG, "tx_bar_off: 0x%08x", tx_bar_off);
+	PMD_INIT_LOG(DEBUG, "rx_bar_off: 0x%08x", rx_bar_off);
 
 	hw->tx_bar = (uint8_t *)pci_dev->mem_resource[2].addr + tx_bar_off;
 	hw->rx_bar = (uint8_t *)pci_dev->mem_resource[2].addr + rx_bar_off;
 
-	PMD_INIT_LOG(DEBUG, "ctrl_bar: %p, tx_bar: %p, rx_bar: %p\n",
+	PMD_INIT_LOG(DEBUG, "ctrl_bar: %p, tx_bar: %p, rx_bar: %p",
 		     hw->ctrl_bar, hw->tx_bar, hw->rx_bar);
 
 	nfp_net_cfg_queue_setup(hw);
@@ -2521,9 +2521,9 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	else
 		hw->rx_offset = nn_cfg_readl(hw, NFP_NET_CFG_RX_OFFSET_ADDR);
 
-	PMD_INIT_LOG(INFO, "VER: %#x, Maximum supported MTU: %d\n",
+	PMD_INIT_LOG(INFO, "VER: %#x, Maximum supported MTU: %d",
 		     hw->ver, hw->max_mtu);
-	PMD_INIT_LOG(INFO, "CAP: %#x, %s%s%s%s%s%s%s%s%s\n", hw->cap,
+	PMD_INIT_LOG(INFO, "CAP: %#x, %s%s%s%s%s%s%s%s%s", hw->cap,
 		     hw->cap & NFP_NET_CFG_CTRL_PROMISC ? "PROMISC " : "",
 		     hw->cap & NFP_NET_CFG_CTRL_RXCSUM  ? "RXCSUM "  : "",
 		     hw->cap & NFP_NET_CFG_CTRL_TXCSUM  ? "TXCSUM "  : "",
@@ -2539,7 +2539,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	hw->stride_rx = stride;
 	hw->stride_tx = stride;
 
-	PMD_INIT_LOG(INFO, "max_rx_queues: %u, max_tx_queues: %u\n",
+	PMD_INIT_LOG(INFO, "max_rx_queues: %u, max_tx_queues: %u",
 		     hw->max_rx_queues, hw->max_tx_queues);
 
 	/* Initializing spinlock for reconfigs */

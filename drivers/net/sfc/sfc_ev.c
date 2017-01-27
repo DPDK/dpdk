@@ -104,7 +104,7 @@ sfc_ev_rx(void *arg, __rte_unused uint32_t label, uint32_t id,
 			evq->exception = B_TRUE;
 			sfc_err(evq->sa,
 				"EVQ %u RxQ %u invalid RX abort "
-				"(id=%#x size=%u flags=%#x); needs restart\n",
+				"(id=%#x size=%u flags=%#x); needs restart",
 				evq->evq_index, sfc_rxq_sw_index(rxq),
 				id, size, flags);
 			goto done;
@@ -119,7 +119,7 @@ sfc_ev_rx(void *arg, __rte_unused uint32_t label, uint32_t id,
 
 		sfc_err(evq->sa,
 			"EVQ %u RxQ %u completion out of order "
-			"(id=%#x delta=%u flags=%#x); needs restart\n",
+			"(id=%#x delta=%u flags=%#x); needs restart",
 			evq->evq_index, sfc_rxq_sw_index(rxq), id, delta,
 			flags);
 

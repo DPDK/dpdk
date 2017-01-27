@@ -471,7 +471,7 @@ i40e_pf_host_process_cmd_config_vsi_queues(struct i40e_pf_vf *vf,
 		vc_vqci->num_queue_pairs > I40E_MAX_VSI_QP ||
 		msglen < I40E_VIRTCHNL_CONFIG_VSI_QUEUES_SIZE(vc_vqci,
 					vc_vqci->num_queue_pairs)) {
-		PMD_DRV_LOG(ERR, "vsi_queue_config_info argument wrong\n");
+		PMD_DRV_LOG(ERR, "vsi_queue_config_info argument wrong");
 		ret = I40E_ERR_PARAM;
 		goto send_msg;
 	}
@@ -539,7 +539,7 @@ i40e_pf_host_process_cmd_config_vsi_queues_ext(struct i40e_pf_vf *vf,
 		vc_vqcei->num_queue_pairs > I40E_MAX_VSI_QP ||
 		msglen < I40E_VIRTCHNL_CONFIG_VSI_QUEUES_SIZE(vc_vqcei,
 					vc_vqcei->num_queue_pairs)) {
-		PMD_DRV_LOG(ERR, "vsi_queue_config_ext_info argument wrong\n");
+		PMD_DRV_LOG(ERR, "vsi_queue_config_ext_info argument wrong");
 		ret = I40E_ERR_PARAM;
 		goto send_msg;
 	}

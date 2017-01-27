@@ -2220,7 +2220,7 @@ int bnx2x_tx_encap(struct bnx2x_tx_queue *txq, struct rte_mbuf *m0)
 	}
 
 	PMD_TX_LOG(DEBUG,
-		   "start bd: nbytes %d flags %x vlan %x\n",
+		   "start bd: nbytes %d flags %x vlan %x",
 		   tx_start_bd->nbytes,
 		   tx_start_bd->bd_flags.as_bitfield,
 		   tx_start_bd->vlan_or_ethertype);

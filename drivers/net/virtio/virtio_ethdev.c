@@ -630,7 +630,7 @@ virtio_dev_promiscuous_enable(struct rte_eth_dev *dev)
 	int ret;
 
 	if (!vtpci_with_feature(hw, VIRTIO_NET_F_CTRL_RX)) {
-		PMD_INIT_LOG(INFO, "host does not support rx control\n");
+		PMD_INIT_LOG(INFO, "host does not support rx control");
 		return;
 	}
 
@@ -653,7 +653,7 @@ virtio_dev_promiscuous_disable(struct rte_eth_dev *dev)
 	int ret;
 
 	if (!vtpci_with_feature(hw, VIRTIO_NET_F_CTRL_RX)) {
-		PMD_INIT_LOG(INFO, "host does not support rx control\n");
+		PMD_INIT_LOG(INFO, "host does not support rx control");
 		return;
 	}
 
@@ -676,7 +676,7 @@ virtio_dev_allmulticast_enable(struct rte_eth_dev *dev)
 	int ret;
 
 	if (!vtpci_with_feature(hw, VIRTIO_NET_F_CTRL_RX)) {
-		PMD_INIT_LOG(INFO, "host does not support rx control\n");
+		PMD_INIT_LOG(INFO, "host does not support rx control");
 		return;
 	}
 
@@ -699,7 +699,7 @@ virtio_dev_allmulticast_disable(struct rte_eth_dev *dev)
 	int ret;
 
 	if (!vtpci_with_feature(hw, VIRTIO_NET_F_CTRL_RX)) {
-		PMD_INIT_LOG(INFO, "host does not support rx control\n");
+		PMD_INIT_LOG(INFO, "host does not support rx control");
 		return;
 	}
 
@@ -723,7 +723,7 @@ virtio_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	uint32_t frame_size = mtu + ether_hdr_len;
 
 	if (mtu < ETHER_MIN_MTU || frame_size > VIRTIO_MAX_RX_PKTLEN) {
-		PMD_INIT_LOG(ERR, "MTU should be between %d and %d\n",
+		PMD_INIT_LOG(ERR, "MTU should be between %d and %d",
 			ETHER_MIN_MTU, VIRTIO_MAX_RX_PKTLEN - ether_hdr_len);
 		return -EINVAL;
 	}
@@ -1233,7 +1233,7 @@ virtio_queues_bind_intr(struct rte_eth_dev *dev)
 	uint32_t i;
 	struct virtio_hw *hw = dev->data->dev_private;
 
-	PMD_INIT_LOG(INFO, "queue/interrupt binding\n");
+	PMD_INIT_LOG(INFO, "queue/interrupt binding");
 	for (i = 0; i < dev->data->nb_rx_queues; ++i) {
 		dev->intr_handle->intr_vec[i] = i + 1;
 		if (VTPCI_OPS(hw)->set_queue_irq(hw, hw->vqs[i * 2], i + 1) ==
@@ -1252,7 +1252,7 @@ virtio_queues_unbind_intr(struct rte_eth_dev *dev)
 	uint32_t i;
 	struct virtio_hw *hw = dev->data->dev_private;
 
-	PMD_INIT_LOG(INFO, "queue/interrupt unbinding\n");
+	PMD_INIT_LOG(INFO, "queue/interrupt unbinding");
 	for (i = 0; i < dev->data->nb_rx_queues; ++i)
 		VTPCI_OPS(hw)->set_queue_irq(hw,
 					     hw->vqs[i * VTNET_CQ],

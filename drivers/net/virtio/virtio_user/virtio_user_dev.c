@@ -62,7 +62,7 @@ virtio_user_create_queue(struct virtio_user_dev *dev, uint32_t queue_sel)
 	 */
 	callfd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
 	if (callfd < 0) {
-		PMD_DRV_LOG(ERR, "callfd error, %s\n", strerror(errno));
+		PMD_DRV_LOG(ERR, "callfd error, %s", strerror(errno));
 		return -1;
 	}
 	file.index = queue_sel;
@@ -105,7 +105,7 @@ virtio_user_kick_queue(struct virtio_user_dev *dev, uint32_t queue_sel)
 	 */
 	kickfd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
 	if (kickfd < 0) {
-		PMD_DRV_LOG(ERR, "kickfd error, %s\n", strerror(errno));
+		PMD_DRV_LOG(ERR, "kickfd error, %s", strerror(errno));
 		return -1;
 	}
 	file.index = queue_sel;
