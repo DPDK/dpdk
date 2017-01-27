@@ -66,12 +66,12 @@ static int my_driver_init(struct rte_pci_driver *dr,
 			  struct rte_pci_device *dev);
 
 /* IXGBE NICS */
-struct rte_pci_id my_driver_id[] = {
+const struct rte_pci_id my_driver_id[] = {
 	{RTE_PCI_DEVICE(0x0001, 0x1234)},
 	{ .vendor_id = 0, /* sentinel */ },
 };
 
-struct rte_pci_id my_driver_id2[] = {
+const struct rte_pci_id my_driver_id2[] = {
 	{RTE_PCI_DEVICE(0x0001, 0x4444)},
 	{RTE_PCI_DEVICE(0x0002, 0xabcd)},
 	{ .vendor_id = 0, /* sentinel */ },
