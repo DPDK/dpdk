@@ -88,6 +88,7 @@ static const unsigned auth_truncated_digest_byte_lengths[] = {
 		[SHA_384]	= 24,
 		[SHA_512]	= 32,
 		[AES_XCBC]	= 12,
+		[NULL_HASH]     = 0
 };
 
 /**
@@ -111,6 +112,7 @@ static const unsigned auth_digest_byte_lengths[] = {
 		[SHA_384]	= 48,
 		[SHA_512]	= 64,
 		[AES_XCBC]	= 16,
+		[NULL_HASH]     = 0
 };
 
 /**
