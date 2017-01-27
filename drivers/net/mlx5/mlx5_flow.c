@@ -410,17 +410,6 @@ priv_flow_validate(struct priv *priv,
 
 		if (items->type == RTE_FLOW_ITEM_TYPE_VOID)
 			continue;
-		/* Handle special situation for VLAN. */
-		if (items->type == RTE_FLOW_ITEM_TYPE_VLAN) {
-			if (((const struct rte_flow_item_vlan *)items)->tci >
-			    ETHER_MAX_VLAN_ID) {
-				rte_flow_error_set(error, ENOTSUP,
-						   RTE_FLOW_ERROR_TYPE_ITEM,
-						   items,
-						   "wrong VLAN id value");
-				return -rte_errno;
-			}
-		}
 		for (i = 0;
 		     cur_item->items &&
 		     cur_item->items[i] != RTE_FLOW_ITEM_TYPE_END;
