@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2017 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -2072,17 +2072,16 @@ i40e_dev_close(struct rte_eth_dev *dev)
 	/* shutdown and destroy the HMC */
 	i40e_shutdown_lan_hmc(hw);
 
-	/* release all the existing VSIs and VEBs */
-	i40e_fdir_teardown(pf);
-	i40e_vsi_release(pf->main_vsi);
-
 	for (i = 0; i < pf->nb_cfg_vmdq_vsi; i++) {
 		i40e_vsi_release(pf->vmdq[i].vsi);
 		pf->vmdq[i].vsi = NULL;
 	}
-
 	rte_free(pf->vmdq);
 	pf->vmdq = NULL;
+
+	/* release all the existing VSIs and VEBs */
+	i40e_fdir_teardown(pf);
+	i40e_vsi_release(pf->main_vsi);
 
 	/* shutdown the adminq */
 	i40e_aq_queue_shutdown(hw, true);
@@ -4373,6 +4372,9 @@ i40e_vsi_release(struct i40e_vsi *vsi)
 
 	if (!vsi)
 		return I40E_SUCCESS;
+
+	if (!vsi->adapter)
+		return -EFAULT;
 
 	user_param = vsi->user_param;
 
