@@ -931,34 +931,40 @@ rte_eth_dev_config_restore(uint8_t port_id)
 {
 	struct rte_eth_dev *dev;
 	struct rte_eth_dev_info dev_info;
-	struct ether_addr addr;
+	struct ether_addr *addr;
 	uint16_t i;
 	uint32_t pool = 0;
+	uint64_t pool_mask;
 
 	dev = &rte_eth_devices[port_id];
 
 	rte_eth_dev_info_get(port_id, &dev_info);
 
-	if (RTE_ETH_DEV_SRIOV(dev).active)
-		pool = RTE_ETH_DEV_SRIOV(dev).def_vmdq_idx;
+	/* replay MAC address configuration including default MAC */
+	addr = &dev->data->mac_addrs[0];
+	if (*dev->dev_ops->mac_addr_set != NULL)
+		(*dev->dev_ops->mac_addr_set)(dev, addr);
+	else if (*dev->dev_ops->mac_addr_add != NULL)
+		(*dev->dev_ops->mac_addr_add)(dev, addr, 0, pool);
 
-	/* replay MAC address configuration */
-	for (i = 0; i < dev_info.max_mac_addrs; i++) {
-		addr = dev->data->mac_addrs[i];
+	if (*dev->dev_ops->mac_addr_add != NULL) {
+		for (i = 1; i < dev_info.max_mac_addrs; i++) {
+			addr = &dev->data->mac_addrs[i];
 
-		/* skip zero address */
-		if (is_zero_ether_addr(&addr))
-			continue;
+			/* skip zero address */
+			if (is_zero_ether_addr(addr))
+				continue;
 
-		/* add address to the hardware */
-		if  (*dev->dev_ops->mac_addr_add &&
-			(dev->data->mac_pool_sel[i] & (1ULL << pool)))
-			(*dev->dev_ops->mac_addr_add)(dev, &addr, i, pool);
-		else {
-			RTE_PMD_DEBUG_TRACE("port %d: MAC address array not supported\n",
-					port_id);
-			/* exit the loop but not return an error */
-			break;
+			pool = 0;
+			pool_mask = dev->data->mac_pool_sel[i];
+
+			do {
+				if (pool_mask & 1ULL)
+					(*dev->dev_ops->mac_addr_add)(dev,
+						addr, i, pool);
+				pool_mask >>= 1;
+				pool++;
+			} while (pool_mask);
 		}
 	}
 
