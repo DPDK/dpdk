@@ -34,8 +34,6 @@ include $(RTE_SDK)/mk/rte.vars.mk
 # library name
 LIB = librte_efd.a
 
-LDLIBS += -lm
-
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR)
 

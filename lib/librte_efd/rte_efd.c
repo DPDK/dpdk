@@ -36,7 +36,6 @@
 #include <inttypes.h>
 #include <errno.h>
 #include <stdarg.h>
-#include <math.h>
 #include <sys/queue.h>
 
 #include <rte_log.h>
@@ -557,7 +556,7 @@ rte_efd_create(const char *name, uint32_t max_num_rules, uint32_t key_len,
 		num_chunks = rte_align32pow2((max_num_rules /
 			EFD_TARGET_CHUNK_NUM_RULES) + 1);
 
-	num_chunks_shift = log2(num_chunks);
+	num_chunks_shift = rte_bsf32(num_chunks);
 
 	rte_rwlock_write_lock(RTE_EAL_TAILQ_RWLOCK);
 
