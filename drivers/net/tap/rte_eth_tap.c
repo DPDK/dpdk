@@ -428,13 +428,31 @@ tap_setup_queue(struct rte_eth_dev *dev,
 			}
 		}
 	}
-	dev->data->rx_queues[qid] = rx;
-	dev->data->tx_queues[qid] = tx;
 
 	rx->fd = fd;
 	tx->fd = fd;
 
 	return fd;
+}
+
+static int
+rx_setup_queue(struct rte_eth_dev *dev,
+		struct pmd_internals *internals,
+		uint16_t qid)
+{
+	dev->data->rx_queues[qid] = &internals->rxq[qid];
+
+	return tap_setup_queue(dev, internals, qid);
+}
+
+static int
+tx_setup_queue(struct rte_eth_dev *dev,
+		struct pmd_internals *internals,
+		uint16_t qid)
+{
+	dev->data->tx_queues[qid] = &internals->txq[qid];
+
+	return tap_setup_queue(dev, internals, qid);
 }
 
 static int
@@ -469,7 +487,7 @@ tap_rx_queue_setup(struct rte_eth_dev *dev,
 		return -ENOMEM;
 	}
 
-	fd = tap_setup_queue(dev, internals, rx_queue_id);
+	fd = rx_setup_queue(dev, internals, rx_queue_id);
 	if (fd == -1)
 		return -1;
 
@@ -493,7 +511,7 @@ tap_tx_queue_setup(struct rte_eth_dev *dev,
 	if (tx_queue_id >= internals->nb_queues)
 		return -1;
 
-	ret = tap_setup_queue(dev, internals, tx_queue_id);
+	ret = tx_setup_queue(dev, internals, tx_queue_id);
 	if (ret == -1)
 		return -1;
 
