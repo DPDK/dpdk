@@ -43,10 +43,14 @@ There are many libraries, so their headers may be grouped by topics:
   [rte_flow_driver]    (@ref rte_flow_driver.h),
   [cryptodev]          (@ref rte_cryptodev.h),
   [devargs]            (@ref rte_devargs.h),
+  [PCI]                (@ref rte_pci.h)
+
+- **device specific**:
   [bond]               (@ref rte_eth_bond.h),
   [vhost]              (@ref rte_virtio_net.h),
   [KNI]                (@ref rte_kni.h),
-  [PCI]                (@ref rte_pci.h),
+  [ixgbe]              (@ref rte_pmd_ixgbe.h),
+  [i40e]               (@ref rte_pmd_i40e.h)
 
 - **memory**:
   [memseg]             (@ref rte_memory.h),
