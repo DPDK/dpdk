@@ -29,11 +29,12 @@
 #   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-.PHONY: depdirs
-depdirs:
-	@for d in $(DEPDIRS-y); do \
-		$(RTE_SDK)/buildtools/depdirs-rule.sh $(S) $$d ; \
-	done
+.PHONY: depdirs $(DEPDIRS-y)
+depdirs: $(DEPDIRS-y)
+	@echo ""
+
+$(DEPDIRS-y):
+	@$(RTE_SDK)/buildtools/depdirs-rule.sh $(S) $@
 
 .PHONY: depgraph
 depgraph:

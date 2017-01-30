@@ -76,7 +76,7 @@ clean: _postclean
 # include .depdirs and define rules to order priorities between build
 # of directories.
 #
-include $(RTE_OUTPUT)/.depdirs
+-include $(RTE_OUTPUT)/.depdirs
 
 define depdirs_rule
 $(1): $(sort $(patsubst $(S)/%,%,$(LOCAL_DEPDIRS-$(S)/$(1))))
@@ -84,16 +84,13 @@ endef
 
 $(foreach d,$(DIRS-y),$(eval $(call depdirs_rule,$(d))))
 
+DEPDIRS = $(wildcard $(addprefix $(S)/,$(DIRS-y)))
 
-# use a "for" in a shell to process dependencies: we don't want this
-# task to be run in parallel.
-.PHONY: depdirs
-depdirs:
-	@for d in $(DIRS-y); do \
-		if [ -f $(SRCDIR)/$$d/Makefile ]; then \
-			$(MAKE) S=$S/$$d -f $(SRCDIR)/$$d/Makefile depdirs ; \
-		fi ; \
-	done
+.PHONY: depdirs $(DEPDIRS)
+depdirs: $(DEPDIRS)
+
+$(DEPDIRS):
+	@$(MAKE) S=$@ -f $(RTE_SRCDIR)/$@/Makefile depdirs
 
 .PHONY: depgraph
 depgraph:
