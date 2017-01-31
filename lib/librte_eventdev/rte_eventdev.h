@@ -244,8 +244,9 @@ extern "C" {
 #endif
 
 #include <rte_common.h>
-#include <rte_pci.h>
-#include <rte_mbuf.h>
+#include <rte_memory.h>
+
+struct rte_mbuf; /* we just use mbuf pointers; no need to include rte_mbuf.h */
 
 /* Event device capability bitmap flags */
 #define RTE_EVENT_DEV_CAP_QUEUE_QOS           (1ULL << 0)
