@@ -188,9 +188,6 @@ endif
 
 ifeq ($(CONFIG_RTE_LIBRTE_PMD_NULL),y)
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += test_link_bonding_rssconf.c
-ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),y)
-LDLIBS += -lrte_pmd_null
-endif
 endif
 
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_RING) += test_pmd_ring.c
@@ -224,11 +221,27 @@ DEPDIRS-y += lib drivers
 ifeq ($(CONFIG_RTE_LIBRTE_PMD_BOND),y)
 ifneq ($(CONFIG_RTE_LIBRTE_PMD_RING),y)
 $(error Link bonding tests require CONFIG_RTE_LIBRTE_PMD_RING=y)
-else
+endif
+endif
+
 ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),y)
+
+ifeq ($(CONFIG_RTE_LIBRTE_PMD_BOND),y)
+LDLIBS += -lrte_pmd_bond
+endif
+
+ifeq ($(CONFIG_RTE_LIBRTE_PMD_NULL),y)
+LDLIBS += -lrte_pmd_null
+endif
+
+ifeq ($(CONFIG_RTE_LIBRTE_PMD_RING),y)
 LDLIBS += -lrte_pmd_ring
 endif
+
+ifeq ($(CONFIG_RTE_LIBRTE_PMD_CRYPTO_SCHEDULER),y)
+LDLIBS += -lrte_pmd_crypto_scheduler
 endif
+
 endif
 
 ifeq ($(CONFIG_RTE_APP_TEST_RESOURCE_TAR),y)

@@ -54,4 +54,8 @@ endif
 
 CFLAGS += -O3
 
+ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),y)
+LDLIBS += -lrte_pmd_bond
+endif
+
 include $(RTE_SDK)/mk/rte.extapp.mk
