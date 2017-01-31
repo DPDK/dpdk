@@ -1125,7 +1125,7 @@ static int
 priv_dev_link_status_handler(struct priv *priv, struct rte_eth_dev *dev)
 {
 	struct ibv_async_event event;
-	int port_change = 0;
+	struct rte_eth_link *link = &dev->data->dev_link;
 	int ret = 0;
 
 	/* Read all message and acknowledge them. */
@@ -1133,29 +1133,24 @@ priv_dev_link_status_handler(struct priv *priv, struct rte_eth_dev *dev)
 		if (ibv_get_async_event(priv->ctx, &event))
 			break;
 
-		if (event.event_type == IBV_EVENT_PORT_ACTIVE ||
-		    event.event_type == IBV_EVENT_PORT_ERR)
-			port_change = 1;
-		else
+		if (event.event_type != IBV_EVENT_PORT_ACTIVE &&
+		    event.event_type != IBV_EVENT_PORT_ERR)
 			DEBUG("event type %d on port %d not handled",
 			      event.event_type, event.element.port_num);
 		ibv_ack_async_event(&event);
 	}
-
-	if (port_change ^ priv->pending_alarm) {
-		struct rte_eth_link *link = &dev->data->dev_link;
-
-		priv->pending_alarm = 0;
-		mlx5_link_update(dev, 0);
-		if (((link->link_speed == 0) && link->link_status) ||
-		    ((link->link_speed != 0) && !link->link_status)) {
+	mlx5_link_update(dev, 0);
+	if (((link->link_speed == 0) && link->link_status) ||
+	    ((link->link_speed != 0) && !link->link_status)) {
+		if (!priv->pending_alarm) {
 			/* Inconsistent status, check again later. */
 			priv->pending_alarm = 1;
 			rte_eal_alarm_set(MLX5_ALARM_TIMEOUT_US,
 					  mlx5_dev_link_status_handler,
 					  dev);
-		} else
-			ret = 1;
+		}
+	} else {
+		ret = 1;
 	}
 	return ret;
 }
@@ -1175,6 +1170,7 @@ mlx5_dev_link_status_handler(void *arg)
 
 	priv_lock(priv);
 	assert(priv->pending_alarm == 1);
+	priv->pending_alarm = 0;
 	ret = priv_dev_link_status_handler(priv, dev);
 	priv_unlock(priv);
 	if (ret)
