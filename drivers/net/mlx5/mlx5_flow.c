@@ -457,7 +457,13 @@ priv_flow_validate(struct priv *priv,
 				(const struct rte_flow_action_mark *)
 				actions->conf;
 
-			if (mark && (mark->id >= MLX5_FLOW_MARK_MAX)) {
+			if (!mark) {
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ACTION,
+						   actions,
+						   "mark must be defined");
+				return -rte_errno;
+			} else if (mark->id >= MLX5_FLOW_MARK_MAX) {
 				rte_flow_error_set(error, ENOTSUP,
 						   RTE_FLOW_ERROR_TYPE_ACTION,
 						   actions,
