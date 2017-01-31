@@ -948,6 +948,8 @@ priv_flow_create_action_queue(struct priv *priv,
 				   NULL, "cannot allocate QP");
 		goto error;
 	}
+	if (!priv->started)
+		return rte_flow;
 	rte_flow->ibv_flow = ibv_exp_create_flow(rte_flow->qp,
 						 rte_flow->ibv_attr);
 	if (!rte_flow->ibv_flow) {
