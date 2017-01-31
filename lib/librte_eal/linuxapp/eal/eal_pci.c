@@ -99,8 +99,10 @@ rte_eal_pci_map_device(struct rte_pci_device *dev)
 		break;
 	case RTE_KDRV_IGB_UIO:
 	case RTE_KDRV_UIO_GENERIC:
-		/* map resources for devices that use uio */
-		ret = pci_uio_map_resource(dev);
+		if (rte_eal_using_phys_addrs()) {
+			/* map resources for devices that use uio */
+			ret = pci_uio_map_resource(dev);
+		}
 		break;
 	default:
 		RTE_LOG(DEBUG, EAL,

@@ -64,6 +64,7 @@
 #define _FILE_OFFSET_BITS 64
 #include <errno.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -122,26 +123,24 @@ int rte_xen_dom0_supported(void)
 
 static uint64_t baseaddr_offset;
 
-static unsigned proc_pagemap_readable;
+static bool phys_addrs_available = true;
 
 #define RANDOMIZE_VA_SPACE_FILE "/proc/sys/kernel/randomize_va_space"
 
 static void
-test_proc_pagemap_readable(void)
+test_phys_addrs_available(void)
 {
-	int fd = open("/proc/self/pagemap", O_RDONLY);
+	uint64_t tmp;
+	phys_addr_t physaddr;
 
-	if (fd < 0) {
+	physaddr = rte_mem_virt2phy(&tmp);
+	if (physaddr == RTE_BAD_PHYS_ADDR) {
 		RTE_LOG(ERR, EAL,
-			"Cannot open /proc/self/pagemap: %s. "
-			"virt2phys address translation will not work\n",
+			"Cannot obtain physical addresses: %s. "
+			"Only vfio will function.\n",
 			strerror(errno));
-		return;
+		phys_addrs_available = false;
 	}
-
-	/* Is readable */
-	close(fd);
-	proc_pagemap_readable = 1;
 }
 
 /* Lock page in physical memory and prevent from swapping. */
@@ -190,7 +189,7 @@ rte_mem_virt2phy(const void *virtaddr)
 	}
 
 	/* Cannot parse /proc/self/pagemap, no need to log errors everywhere */
-	if (!proc_pagemap_readable)
+	if (!phys_addrs_available)
 		return RTE_BAD_PHYS_ADDR;
 
 	/* standard page size */
@@ -229,6 +228,9 @@ rte_mem_virt2phy(const void *virtaddr)
 	 * the pfn (page frame number) are bits 0-54 (see
 	 * pagemap.txt in linux Documentation)
 	 */
+	if ((page & 0x7fffffffffffffULL) == 0)
+		return RTE_BAD_PHYS_ADDR;
+
 	physaddr = ((page & 0x7fffffffffffffULL) * page_size)
 		+ ((unsigned long)virtaddr % page_size);
 
@@ -242,7 +244,7 @@ rte_mem_virt2phy(const void *virtaddr)
 static int
 find_physaddrs(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi)
 {
-	unsigned i;
+	unsigned int i;
 	phys_addr_t addr;
 
 	for (i = 0; i < hpi->num_pages[0]; i++) {
@@ -250,6 +252,22 @@ find_physaddrs(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi)
 		if (addr == RTE_BAD_PHYS_ADDR)
 			return -1;
 		hugepg_tbl[i].physaddr = addr;
+	}
+	return 0;
+}
+
+/*
+ * For each hugepage in hugepg_tbl, fill the physaddr value sequentially.
+ */
+static int
+set_physaddrs(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi)
+{
+	unsigned int i;
+	static phys_addr_t addr;
+
+	for (i = 0; i < hpi->num_pages[0]; i++) {
+		hugepg_tbl[i].physaddr = addr;
+		addr += hugepg_tbl[i].size;
 	}
 	return 0;
 }
@@ -951,7 +969,7 @@ rte_eal_hugepage_init(void)
 	int nr_hugefiles, nr_hugepages = 0;
 	void *addr;
 
-	test_proc_pagemap_readable();
+	test_phys_addrs_available();
 
 	memset(used_hp, 0, sizeof(used_hp));
 
@@ -1043,11 +1061,22 @@ rte_eal_hugepage_init(void)
 				continue;
 		}
 
-		/* find physical addresses and sockets for each hugepage */
-		if (find_physaddrs(&tmp_hp[hp_offset], hpi) < 0){
-			RTE_LOG(DEBUG, EAL, "Failed to find phys addr for %u MB pages\n",
-					(unsigned)(hpi->hugepage_sz / 0x100000));
-			goto fail;
+		if (phys_addrs_available) {
+			/* find physical addresses for each hugepage */
+			if (find_physaddrs(&tmp_hp[hp_offset], hpi) < 0) {
+				RTE_LOG(DEBUG, EAL, "Failed to find phys addr "
+					"for %u MB pages\n",
+					(unsigned int)(hpi->hugepage_sz / 0x100000));
+				goto fail;
+			}
+		} else {
+			/* set physical addresses for each hugepage */
+			if (set_physaddrs(&tmp_hp[hp_offset], hpi) < 0) {
+				RTE_LOG(DEBUG, EAL, "Failed to set phys addr "
+					"for %u MB pages\n",
+					(unsigned int)(hpi->hugepage_sz / 0x100000));
+				goto fail;
+			}
 		}
 
 		if (find_numasocket(&tmp_hp[hp_offset], hpi) < 0){
@@ -1289,7 +1318,7 @@ rte_eal_hugepage_attach(void)
 				"into secondary processes\n");
 	}
 
-	test_proc_pagemap_readable();
+	test_phys_addrs_available();
 
 	if (internal_config.xen_dom0_support) {
 #ifdef RTE_LIBRTE_XEN_DOM0
@@ -1425,4 +1454,10 @@ error:
 	if (fd_hugepage >= 0)
 		close(fd_hugepage);
 	return -1;
+}
+
+bool
+rte_eal_using_phys_addrs(void)
+{
+	return phys_addrs_available;
 }

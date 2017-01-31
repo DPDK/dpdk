@@ -34,6 +34,7 @@
 #ifndef _EAL_PRIVATE_H_
 #define _EAL_PRIVATE_H_
 
+#include <stdbool.h>
 #include <stdio.h>
 #include <rte_pci.h>
 
@@ -300,5 +301,16 @@ int rte_eal_hugepage_init(void);
  * This function is private to the EAL.
  */
 int rte_eal_hugepage_attach(void);
+
+/**
+ * Returns true if the system is able to obtain
+ * physical addresses. Return false if using DMA
+ * addresses through an IOMMU.
+ *
+ * Drivers based on uio will not load unless physical
+ * addresses are obtainable. It is only possible to get
+ * physical addresses when running as a privileged user.
+ */
+bool rte_eal_using_phys_addrs(void);
 
 #endif /* _EAL_PRIVATE_H_ */
