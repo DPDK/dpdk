@@ -117,6 +117,12 @@ New Features
   * add broadcast promiscuous control per VLAN
   * remove unused X722_SUPPORT and I40E_NDIS_SUPPORT MARCOs
 
+* **Updated the enic driver.**
+
+  * Set new Rx checksum flags in mbufs to indicate unknown, good or bad.
+  * Fix set/remove of MAC addresses. Allow up to 64 addresses per device.
+  * Enable TSO on outer headers.
+
 * **Added Solarflare libefx-based network PMD.**
 
   A new network PMD which supports Solarflare SFN7xxx and SFN8xxx family
