@@ -805,8 +805,7 @@ sfc_set_mc_addr_list(struct rte_eth_dev *dev, struct ether_addr *mc_addr_set,
 		     uint32_t nb_mc_addr)
 {
 	struct sfc_adapter *sa = dev->data->dev_private;
-	uint8_t *mc_addrs_p;
-	uint8_t *mc_addrs;
+	uint8_t *mc_addrs_p = NULL;
 	int rc;
 	unsigned int i;
 
@@ -816,16 +815,20 @@ sfc_set_mc_addr_list(struct rte_eth_dev *dev, struct ether_addr *mc_addr_set,
 		return -EINVAL;
 	}
 
-	mc_addrs_p = rte_calloc("mc-addrs", nb_mc_addr, EFX_MAC_ADDR_LEN, 0);
-	if (mc_addrs_p == NULL)
-		return -ENOMEM;
+	if (nb_mc_addr != 0) {
+		uint8_t *mc_addrs;
 
-	mc_addrs = mc_addrs_p;
+		mc_addrs_p = rte_calloc("mc-addrs", nb_mc_addr,
+					EFX_MAC_ADDR_LEN, 0);
+		if (mc_addrs_p == NULL)
+			return -ENOMEM;
 
-	for (i = 0; i < nb_mc_addr; ++i) {
-		(void)rte_memcpy(mc_addrs, mc_addr_set[i].addr_bytes,
-				 EFX_MAC_ADDR_LEN);
-		mc_addrs += EFX_MAC_ADDR_LEN;
+		mc_addrs = mc_addrs_p;
+		for (i = 0; i < nb_mc_addr; ++i) {
+			(void)rte_memcpy(mc_addrs, mc_addr_set[i].addr_bytes,
+					 EFX_MAC_ADDR_LEN);
+			mc_addrs += EFX_MAC_ADDR_LEN;
+		}
 	}
 
 	rc = efx_mac_multicast_list_set(sa->nic, mc_addrs_p, nb_mc_addr);
