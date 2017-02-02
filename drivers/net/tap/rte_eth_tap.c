@@ -460,6 +460,42 @@ tap_link_update(struct rte_eth_dev *dev __rte_unused,
 	return 0;
 }
 
+static void
+tap_promisc_enable(struct rte_eth_dev *dev)
+{
+	struct pmd_internals *pmd = dev->data->dev_private;
+
+	dev->data->promiscuous = 1;
+	tap_link_set_flags(pmd, IFF_PROMISC, 1);
+}
+
+static void
+tap_promisc_disable(struct rte_eth_dev *dev)
+{
+	struct pmd_internals *pmd = dev->data->dev_private;
+
+	dev->data->promiscuous = 0;
+	tap_link_set_flags(pmd, IFF_PROMISC, 0);
+}
+
+static void
+tap_allmulti_enable(struct rte_eth_dev *dev)
+{
+	struct pmd_internals *pmd = dev->data->dev_private;
+
+	dev->data->all_multicast = 1;
+	tap_link_set_flags(pmd, IFF_ALLMULTI, 1);
+}
+
+static void
+tap_allmulti_disable(struct rte_eth_dev *dev)
+{
+	struct pmd_internals *pmd = dev->data->dev_private;
+
+	dev->data->all_multicast = 0;
+	tap_link_set_flags(pmd, IFF_ALLMULTI, 0);
+}
+
 static int
 tap_setup_queue(struct rte_eth_dev *dev,
 		struct pmd_internals *internals,
@@ -590,6 +626,10 @@ static const struct eth_dev_ops ops = {
 	.link_update            = tap_link_update,
 	.dev_set_link_up        = tap_link_set_up,
 	.dev_set_link_down      = tap_link_set_down,
+	.promiscuous_enable     = tap_promisc_enable,
+	.promiscuous_disable    = tap_promisc_disable,
+	.allmulticast_enable    = tap_allmulti_enable,
+	.allmulticast_disable   = tap_allmulti_disable,
 	.stats_get              = tap_stats_get,
 	.stats_reset            = tap_stats_reset,
 };
