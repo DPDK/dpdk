@@ -595,20 +595,20 @@ eth_dev_tap_create(const char *name, char *tap_name)
 
 	data = rte_zmalloc_socket(tap_name, sizeof(*data), 0, numa_node);
 	if (!data) {
-		RTE_LOG(INFO, PMD, "Failed to allocate data\n");
+		RTE_LOG(ERR, PMD, "Failed to allocate data\n");
 		goto error_exit;
 	}
 
 	pmd = rte_zmalloc_socket(tap_name, sizeof(*pmd), 0, numa_node);
 	if (!pmd) {
-		RTE_LOG(INFO, PMD, "Unable to allocate internal struct\n");
+		RTE_LOG(ERR, PMD, "Unable to allocate internal struct\n");
 		goto error_exit;
 	}
 
 	/* Use the name and not the tap_name */
 	dev = rte_eth_dev_allocate(tap_name);
 	if (!dev) {
-		RTE_LOG(INFO, PMD, "Unable to allocate device struct\n");
+		RTE_LOG(ERR, PMD, "Unable to allocate device struct\n");
 		goto error_exit;
 	}
 
@@ -639,7 +639,7 @@ eth_dev_tap_create(const char *name, char *tap_name)
 	/* Create the first Tap device */
 	fd = tun_alloc(tap_name);
 	if (fd < 0) {
-		RTE_LOG(INFO, PMD, "tun_alloc() failed\n");
+		RTE_LOG(ERR, PMD, "tun_alloc() failed\n");
 		goto error_exit;
 	}
 
@@ -656,7 +656,7 @@ eth_dev_tap_create(const char *name, char *tap_name)
 	pmd->fds[0] = fd;
 
 	if (pmd_mac_address(fd, dev, &pmd->eth_addr) < 0) {
-		RTE_LOG(INFO, PMD, "Unable to get MAC address\n");
+		RTE_LOG(ERR, PMD, "Unable to get MAC address\n");
 		goto error_exit;
 	}
 
