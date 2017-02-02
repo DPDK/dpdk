@@ -410,6 +410,7 @@ tap_setup_queue(struct rte_eth_dev *dev,
 		struct pmd_internals *internals,
 		uint16_t qid)
 {
+	struct pmd_internals *pmd = dev->data->dev_private;
 	struct rx_queue *rx = &internals->rxq[qid];
 	struct tx_queue *tx = &internals->txq[qid];
 	int fd;
@@ -419,11 +420,11 @@ tap_setup_queue(struct rte_eth_dev *dev,
 		fd = tx->fd;
 		if (fd < 0) {
 			RTE_LOG(INFO, PMD, "Add queue to TAP %s for qid %d\n",
-				dev->data->name, qid);
-			fd = tun_alloc(dev->data->name);
+				pmd->name, qid);
+			fd = tun_alloc(pmd->name);
 			if (fd < 0) {
 				RTE_LOG(ERR, PMD, "tun_alloc(%s) failed\n",
-					dev->data->name);
+					pmd->name);
 				return -1;
 			}
 		}
@@ -493,7 +494,7 @@ tap_rx_queue_setup(struct rte_eth_dev *dev,
 
 	internals->fds[rx_queue_id] = fd;
 	RTE_LOG(INFO, PMD, "RX TAP device name %s, qid %d on fd %d\n",
-		dev->data->name, rx_queue_id, internals->rxq[rx_queue_id].fd);
+		internals->name, rx_queue_id, internals->rxq[rx_queue_id].fd);
 
 	return 0;
 }
@@ -516,7 +517,7 @@ tap_tx_queue_setup(struct rte_eth_dev *dev,
 		return -1;
 
 	RTE_LOG(INFO, PMD, "TX TAP device name %s, qid %d on fd %d\n",
-		dev->data->name, tx_queue_id, internals->txq[tx_queue_id].fd);
+		internals->name, tx_queue_id, internals->txq[tx_queue_id].fd);
 
 	return 0;
 }
