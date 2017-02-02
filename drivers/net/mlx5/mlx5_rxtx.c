@@ -386,7 +386,7 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		unsigned int ds = 0;
 		uintptr_t addr;
 		uint64_t naddr;
-		uint16_t pkt_inline_sz = MLX5_WQE_DWORD_SIZE;
+		uint16_t pkt_inline_sz = MLX5_WQE_DWORD_SIZE + 2;
 		uint16_t ehdr;
 		uint8_t cs_flags = 0;
 #ifdef MLX5_PMD_SOFT_COUNTERS
@@ -436,23 +436,27 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			cs_flags = MLX5_ETH_WQE_L3_CSUM | MLX5_ETH_WQE_L4_CSUM;
 		}
 		raw = ((uint8_t *)(uintptr_t)wqe) + 2 * MLX5_WQE_DWORD_SIZE;
-		/*
-		 * Start by copying the Ethernet header minus the first two
-		 * bytes which will be appended at the end of the Ethernet
-		 * segment.
-		 */
-		memcpy((uint8_t *)raw, ((uint8_t *)addr) + 2, 16);
-		length -= MLX5_WQE_DWORD_SIZE;
-		addr += MLX5_WQE_DWORD_SIZE;
 		/* Replace the Ethernet type by the VLAN if necessary. */
 		if (buf->ol_flags & PKT_TX_VLAN_PKT) {
 			uint32_t vlan = htonl(0x81000000 | buf->vlan_tci);
+			unsigned int len = 2 * ETHER_ADDR_LEN - 2;
 
-			memcpy((uint8_t *)(raw + MLX5_WQE_DWORD_SIZE - 2 -
-					   sizeof(vlan)),
-			       &vlan, sizeof(vlan));
-			addr -= sizeof(vlan);
-			length += sizeof(vlan);
+			addr += 2;
+			length -= 2;
+			/* Copy Destination and source mac address. */
+			memcpy((uint8_t *)raw, ((uint8_t *)addr), len);
+			/* Copy VLAN. */
+			memcpy((uint8_t *)raw + len, &vlan, sizeof(vlan));
+			/* Copy missing two bytes to end the DSeg. */
+			memcpy((uint8_t *)raw + len + sizeof(vlan),
+			       ((uint8_t *)addr) + len, 2);
+			addr += len + 2;
+			length -= (len + 2);
+		} else {
+			memcpy((uint8_t *)raw, ((uint8_t *)addr) + 2,
+			       MLX5_WQE_DWORD_SIZE);
+			length -= pkt_inline_sz;
+			addr += pkt_inline_sz;
 		}
 		/* Inline if enough room. */
 		if (txq->max_inline != 0) {
@@ -467,7 +471,7 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			 * raw starts two bytes before the boundary to
 			 * continue the above copy of packet data.
 			 */
-			raw += MLX5_WQE_DWORD_SIZE - 2;
+			raw += MLX5_WQE_DWORD_SIZE;
 			room = end - (uintptr_t)raw;
 			if (room > max_inline) {
 				uintptr_t addr_end = (addr + max_inline) &
