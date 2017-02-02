@@ -553,28 +553,6 @@ pmd_mac_address(int fd, struct rte_eth_dev *dev, struct ether_addr *addr)
 		return -1;
 	}
 
-	/* Set the host based MAC address to this special MAC format */
-	ifr.ifr_hwaddr.sa_data[0] = 'T';
-	ifr.ifr_hwaddr.sa_data[1] = 'a';
-	ifr.ifr_hwaddr.sa_data[2] = 'p';
-	ifr.ifr_hwaddr.sa_data[3] = '-';
-	ifr.ifr_hwaddr.sa_data[4] = dev->data->port_id;
-	ifr.ifr_hwaddr.sa_data[5] = dev->data->numa_node;
-	if (ioctl(fd, SIOCSIFHWADDR, &ifr) == -1) {
-		RTE_LOG(ERR, PMD, "%s: ioctl failed (SIOCSIFHWADDR) (%s)\n",
-			dev->data->name, ifr.ifr_name);
-		return -1;
-	}
-
-	/* Set the local application MAC address, needs to be different then
-	 * the host based MAC address.
-	 */
-	ifr.ifr_hwaddr.sa_data[0] = 'd';
-	ifr.ifr_hwaddr.sa_data[1] = 'n';
-	ifr.ifr_hwaddr.sa_data[2] = 'e';
-	ifr.ifr_hwaddr.sa_data[3] = 't';
-	ifr.ifr_hwaddr.sa_data[4] = dev->data->port_id;
-	ifr.ifr_hwaddr.sa_data[5] = dev->data->numa_node;
 	rte_memcpy(addr, ifr.ifr_hwaddr.sa_data, ETH_ALEN);
 
 	return 0;
