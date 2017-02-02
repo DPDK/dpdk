@@ -644,7 +644,7 @@ eth_dev_tap_create(const char *name, char *tap_name)
 	}
 
 	/* Presetup the fds to -1 as being not working */
-	for (i = 0; i < RTE_PMD_TAP_MAX_QUEUES; i++) {
+	for (i = 1; i < RTE_PMD_TAP_MAX_QUEUES; i++) {
 		pmd->fds[i] = -1;
 		pmd->rxq[i].fd = -1;
 		pmd->txq[i].fd = -1;
