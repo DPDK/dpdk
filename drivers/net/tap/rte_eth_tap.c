@@ -691,9 +691,6 @@ rte_pmd_tap_probe(const char *name, const char *params)
 	snprintf(tap_name, sizeof(tap_name), "%s%d",
 		 DEFAULT_TAP_NAME, tap_unit++);
 
-	RTE_LOG(INFO, PMD, "Initializing pmd_tap for %s as %s\n",
-		name, tap_name);
-
 	if (params && (params[0] != '\0')) {
 		RTE_LOG(INFO, PMD, "paramaters (%s)\n", params);
 
@@ -719,6 +716,9 @@ rte_pmd_tap_probe(const char *name, const char *params)
 		}
 	}
 	pmd_link.link_speed = speed;
+
+	RTE_LOG(INFO, PMD, "Initializing pmd_tap for %s as %s\n",
+		name, tap_name);
 
 	ret = eth_dev_tap_create(name, tap_name);
 
