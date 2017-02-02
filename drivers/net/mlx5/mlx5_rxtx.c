@@ -466,33 +466,28 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			addr += pkt_inline_sz;
 		}
 		/* Inline if enough room. */
-		if (txq->max_inline != 0) {
+		if (txq->max_inline) {
 			uintptr_t end = (uintptr_t)
 				(((uintptr_t)txq->wqes) +
 				 (1 << txq->wqe_n) * MLX5_WQE_SIZE);
-			uint16_t max_inline =
-				txq->max_inline * RTE_CACHE_LINE_SIZE;
-			uint16_t room;
+			unsigned int max_inline = txq->max_inline *
+						  RTE_CACHE_LINE_SIZE -
+						  MLX5_WQE_DWORD_SIZE;
+			uintptr_t addr_end = (addr + max_inline) &
+					     ~(RTE_CACHE_LINE_SIZE - 1);
+			unsigned int copy_b = (addr_end > addr) ?
+				RTE_MIN((addr_end - addr), length) :
+				0;
 
-			/*
-			 * raw starts two bytes before the boundary to
-			 * continue the above copy of packet data.
-			 */
 			raw += MLX5_WQE_DWORD_SIZE;
-			room = end - (uintptr_t)raw;
-			if (room > max_inline) {
-				uintptr_t addr_end = (addr + max_inline) &
-					~(RTE_CACHE_LINE_SIZE - 1);
-				unsigned int copy_b =
-					RTE_MIN((addr_end - addr), length);
-				uint16_t n;
-
+			if (copy_b && ((end - (uintptr_t)raw) > copy_b)) {
 				/*
 				 * One Dseg remains in the current WQE.  To
 				 * keep the computation positive, it is
 				 * removed after the bytes to Dseg conversion.
 				 */
-				n = (MLX5_WQE_DS(copy_b) - 1 + 3) / 4;
+				uint16_t n = (MLX5_WQE_DS(copy_b) - 1 + 3) / 4;
+
 				if (unlikely(max_wqe < n))
 					break;
 				max_wqe -= n;
@@ -500,8 +495,6 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				addr += copy_b;
 				length -= copy_b;
 				pkt_inline_sz += copy_b;
-				/* Sanity check. */
-				assert(addr <= addr_end);
 			}
 			/*
 			 * 2 DWORDs consumed by the WQE header + ETH segment +
