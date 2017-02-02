@@ -1835,6 +1835,8 @@ virtio_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	uint64_t tso_mask, host_features;
 	struct virtio_hw *hw = dev->data->dev_private;
 
+	dev_info->speed_capa = ETH_LINK_SPEED_10G; /* fake value */
+
 	dev_info->pci_dev = dev->device ? RTE_DEV_TO_PCI(dev->device) : NULL;
 	dev_info->max_rx_queues =
 		RTE_MIN(hw->max_queue_pairs, VIRTIO_MAX_RX_QUEUES);
