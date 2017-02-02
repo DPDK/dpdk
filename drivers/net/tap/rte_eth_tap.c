@@ -275,13 +275,69 @@ pmd_tx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	return num_tx;
 }
 
+static int tap_link_set_flags(struct pmd_internals *pmd, short flags, int add)
+{
+	struct ifreq ifr;
+	int err, s;
+
+	/*
+	 * An AF_INET/DGRAM socket is needed for
+	 * SIOCGIFFLAGS/SIOCSIFFLAGS, using fd won't work.
+	 */
+	s = socket(AF_INET, SOCK_DGRAM, 0);
+	if (s < 0) {
+		RTE_LOG(ERR, PMD,
+			"Unable to get a socket to set flags: %s\n",
+			strerror(errno));
+		return -1;
+	}
+	memset(&ifr, 0, sizeof(ifr));
+	strncpy(ifr.ifr_name, pmd->name, IFNAMSIZ);
+	err = ioctl(s, SIOCGIFFLAGS, &ifr);
+	if (err < 0) {
+		RTE_LOG(ERR, PMD, "Unable to get tap netdevice flags: %s\n",
+			strerror(errno));
+		close(s);
+		return -1;
+	}
+	if (add)
+		ifr.ifr_flags |= flags;
+	else
+		ifr.ifr_flags &= ~flags;
+	err = ioctl(s, SIOCSIFFLAGS, &ifr);
+	if (err < 0) {
+		RTE_LOG(ERR, PMD, "Unable to %s flags 0x%x: %s\n",
+			add ? "set" : "unset", flags, strerror(errno));
+		close(s);
+		return -1;
+	}
+	close(s);
+
+	return 0;
+}
+
+static int
+tap_link_set_down(struct rte_eth_dev *dev)
+{
+	struct pmd_internals *pmd = dev->data->dev_private;
+
+	dev->data->dev_link.link_status = ETH_LINK_DOWN;
+	return tap_link_set_flags(pmd, IFF_UP | IFF_NOARP, 0);
+}
+
+static int
+tap_link_set_up(struct rte_eth_dev *dev)
+{
+	struct pmd_internals *pmd = dev->data->dev_private;
+
+	dev->data->dev_link.link_status = ETH_LINK_UP;
+	return tap_link_set_flags(pmd, IFF_UP | IFF_NOARP, 1);
+}
+
 static int
 tap_dev_start(struct rte_eth_dev *dev)
 {
-	/* Force the Link up */
-	dev->data->dev_link.link_status = ETH_LINK_UP;
-
-	return 0;
+	return tap_link_set_up(dev);
 }
 
 /* This function gets called when the current port gets stopped.
@@ -295,8 +351,7 @@ tap_dev_stop(struct rte_eth_dev *dev)
 	for (i = 0; i < internals->nb_queues; i++)
 		if (internals->fds[i] != -1)
 			close(internals->fds[i]);
-
-	dev->data->dev_link.link_status = ETH_LINK_DOWN;
+	tap_link_set_down(dev);
 }
 
 static int
@@ -533,6 +588,8 @@ static const struct eth_dev_ops ops = {
 	.rx_queue_release       = tap_rx_queue_release,
 	.tx_queue_release       = tap_tx_queue_release,
 	.link_update            = tap_link_update,
+	.dev_set_link_up        = tap_link_set_up,
+	.dev_set_link_down      = tap_link_set_down,
 	.stats_get              = tap_stats_get,
 	.stats_reset            = tap_stats_reset,
 };
