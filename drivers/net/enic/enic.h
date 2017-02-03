@@ -103,6 +103,7 @@ struct enic_fdir {
 struct enic_soft_stats {
 	rte_atomic64_t rx_nombuf;
 	rte_atomic64_t rx_packet_errors;
+	rte_atomic64_t tx_oversized;
 };
 
 struct enic_memzone_entry {

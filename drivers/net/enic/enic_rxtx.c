@@ -546,16 +546,23 @@ uint16_t enic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	for (index = 0; index < nb_pkts; index++) {
 		tx_pkt = *tx_pkts++;
+		pkt_len = tx_pkt->pkt_len;
+		data_len = tx_pkt->data_len;
+		ol_flags = tx_pkt->ol_flags;
 		nb_segs = tx_pkt->nb_segs;
+
+		if (pkt_len > ENIC_TX_MAX_PKT_SIZE) {
+			rte_pktmbuf_free(tx_pkt);
+			rte_atomic64_inc(&enic->soft_stats.tx_oversized);
+			continue;
+		}
+
 		if (nb_segs > wq_desc_avail) {
 			if (index > 0)
 				goto post;
 			goto done;
 		}
 
-		pkt_len = tx_pkt->pkt_len;
-		data_len = tx_pkt->data_len;
-		ol_flags = tx_pkt->ol_flags;
 		mss = 0;
 		vlan_id = 0;
 		vlan_tag_insert = 0;
