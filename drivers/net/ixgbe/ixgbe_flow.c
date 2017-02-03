@@ -1400,7 +1400,7 @@ ixgbe_parse_fdir_act_attr(const struct rte_flow_attr *attr,
  * ETH		dst_addr
 		{0xAC, 0x7B, 0xA1,	{0xFF, 0xFF, 0xFF,
 		0x2C, 0x6D, 0x36}	0xFF, 0xFF, 0xFF}
- * MAC VLAN	tci	0x2016		0xFFFF
+ * MAC VLAN	tci	0x2016		0xEFFF
  *		tpid	0x8100		0xFFFF
  * END
  * Other members in mask and spec should set to 0x00.
@@ -1617,6 +1617,7 @@ ixgbe_parse_fdir_filter_normal(const struct rte_flow_attr *attr,
 			return -rte_errno;
 		}
 		rule->mask.vlan_tci_mask = vlan_mask->tci;
+		rule->mask.vlan_tci_mask &= 0xEFFF;
 		/* More than one tags are not supported. */
 
 		/**
@@ -2360,6 +2361,7 @@ ixgbe_parse_fdir_filter_tunnel(const struct rte_flow_attr *attr,
 			return -rte_errno;
 		}
 		rule->mask.vlan_tci_mask = vlan_mask->tci;
+		rule->mask.vlan_tci_mask &= 0xEFFF;
 		/* More than one tags are not supported. */
 
 		/**
