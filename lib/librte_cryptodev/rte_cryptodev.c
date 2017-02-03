@@ -482,34 +482,29 @@ rte_cryptodev_count_devtype(enum rte_cryptodev_type type)
 	return dev_count;
 }
 
-int
+uint8_t
 rte_cryptodev_devices_get(const char *dev_name, uint8_t *devices,
 	uint8_t nb_devices)
 {
-	uint8_t i, cmp, count = 0;
-	struct rte_cryptodev **devs = &rte_cryptodev_globals->devs;
-	struct rte_device *dev;
+	uint8_t i, count = 0;
+	struct rte_cryptodev *devs = rte_cryptodev_globals->devs;
+	uint8_t max_devs = rte_cryptodev_globals->max_devs;
 
-	for (i = 0; i < rte_cryptodev_globals->max_devs && count < nb_devices;
-			i++) {
+	for (i = 0; i < max_devs && count < nb_devices;	i++) {
 
-		if ((*devs + i)
-				&& (*devs + i)->attached ==
-						RTE_CRYPTODEV_ATTACHED) {
+		if (devs[i].attached == RTE_CRYPTODEV_ATTACHED) {
+			const struct rte_cryptodev_driver *drv = devs[i].driver;
+			int cmp;
 
-			dev = (*devs + i)->device;
-
-			if (dev)
-				cmp = strncmp(dev->driver->name,
-						dev_name,
-						strlen(dev_name));
+			if (drv)
+				cmp = strncmp(drv->pci_drv.driver.name,
+						dev_name, strlen(dev_name));
 			else
-				cmp = strncmp((*devs + i)->data->name,
-						dev_name,
-						strlen(dev_name));
+				cmp = strncmp(devs[i].data->name,
+						dev_name, strlen(dev_name));
 
 			if (cmp == 0)
-				devices[count++] = (*devs + i)->data->dev_id;
+				devices[count++] = devs[i].data->dev_id;
 		}
 	}
 
