@@ -2133,15 +2133,16 @@ ixgbe_parse_fdir_filter_tunnel(const struct rte_flow_attr *attr,
 
 		rte_memcpy(&rule->mask.tunnel_id_mask, vxlan_mask->vni,
 			RTE_DIM(vxlan_mask->vni));
-		rule->mask.tunnel_id_mask <<= 8;
 
 		if (item->spec) {
 			rule->b_spec = TRUE;
 			vxlan_spec = (const struct rte_flow_item_vxlan *)
 					item->spec;
-			rte_memcpy(&rule->ixgbe_fdir.formatted.tni_vni,
+			rte_memcpy(((uint8_t *)
+				&rule->ixgbe_fdir.formatted.tni_vni + 1),
 				vxlan_spec->vni, RTE_DIM(vxlan_spec->vni));
-			rule->ixgbe_fdir.formatted.tni_vni <<= 8;
+			rule->ixgbe_fdir.formatted.tni_vni = rte_be_to_cpu_32(
+				rule->ixgbe_fdir.formatted.tni_vni);
 		}
 	}
 
