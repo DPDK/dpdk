@@ -798,7 +798,7 @@ rte_event_port_link(uint8_t dev_id, uint8_t port_id,
 	}
 
 	for (i = 0; i < nb_links; i++)
-		if (queues[i] >= RTE_EVENT_MAX_QUEUES_PER_DEV)
+		if (queues[i] >= dev->data->nb_queues)
 			return -EINVAL;
 
 	diag = (*dev->dev_ops->port_link)(dev, dev->data->ports[port_id],
@@ -843,7 +843,7 @@ rte_event_port_unlink(uint8_t dev_id, uint8_t port_id,
 	}
 
 	for (i = 0; i < nb_unlinks; i++)
-		if (queues[i] >= RTE_EVENT_MAX_QUEUES_PER_DEV)
+		if (queues[i] >= dev->data->nb_queues)
 			return -EINVAL;
 
 	diag = (*dev->dev_ops->port_unlink)(dev, dev->data->ports[port_id],
@@ -879,7 +879,7 @@ rte_event_port_links_get(uint8_t dev_id, uint8_t port_id,
 	links_map = dev->data->links_map;
 	/* Point links_map to this port specific area */
 	links_map += (port_id * RTE_EVENT_MAX_QUEUES_PER_DEV);
-	for (i = 0; i < RTE_EVENT_MAX_QUEUES_PER_DEV; i++) {
+	for (i = 0; i < dev->data->nb_queues; i++) {
 		if (links_map[i] != EVENT_QUEUE_SERVICE_PRIORITY_INVALID) {
 			queues[count] = i;
 			priorities[count] = (uint8_t)links_map[i];
