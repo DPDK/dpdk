@@ -389,9 +389,7 @@ tap_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *tap_stats)
 		tap_stats->q_ibytes[i] = pmd->rxq[i].stats.ibytes;
 		rx_total += tap_stats->q_ipackets[i];
 		rx_bytes_total += tap_stats->q_ibytes[i];
-	}
 
-	for (i = 0; i < imax; i++) {
 		tap_stats->q_opackets[i] = pmd->txq[i].stats.opackets;
 		tap_stats->q_errors[i] = pmd->txq[i].stats.errs;
 		tap_stats->q_obytes[i] = pmd->txq[i].stats.obytes;
@@ -416,9 +414,7 @@ tap_stats_reset(struct rte_eth_dev *dev)
 	for (i = 0; i < pmd->nb_queues; i++) {
 		pmd->rxq[i].stats.ipackets = 0;
 		pmd->rxq[i].stats.ibytes = 0;
-	}
 
-	for (i = 0; i < pmd->nb_queues; i++) {
 		pmd->txq[i].stats.opackets = 0;
 		pmd->txq[i].stats.errs = 0;
 		pmd->txq[i].stats.obytes = 0;
@@ -633,11 +629,11 @@ static const struct eth_dev_ops ops = {
 };
 
 static int
-pmd_mac_address(int fd, struct rte_eth_dev *dev, struct ether_addr *addr)
+pmd_mac_address(int fd, struct ether_addr *addr)
 {
 	struct ifreq ifr;
 
-	if ((fd <= 0) || !dev || !addr)
+	if ((fd <= 0) || !addr)
 		return -1;
 
 	memset(&ifr, 0, sizeof(ifr));
@@ -726,7 +722,7 @@ eth_dev_tap_create(const char *name, char *tap_name)
 	pmd->rxq[0].fd = fd;
 	pmd->txq[0].fd = fd;
 
-	if (pmd_mac_address(fd, dev, &pmd->eth_addr) < 0) {
+	if (pmd_mac_address(fd, &pmd->eth_addr) < 0) {
 		RTE_LOG(ERR, PMD, "Unable to get MAC address\n");
 		goto error_exit;
 	}
