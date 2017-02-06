@@ -50,3 +50,9 @@ Deprecation Notices
   PMDs that implement the latter.
   Target release for removal of the legacy API will be defined once most
   PMDs have switched to rte_flow.
+
+* distributor: library API will be changed to incorporate a burst-oriented
+  API. This will include a change to ``rte_distributor_create``
+  to specify which type of instance to create (single or burst), and
+  additional calls for ``rte_distributor_poll_pkt_burst`` and
+  ``rte_distributor_return_pkt_burst``, among others.
