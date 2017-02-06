@@ -6705,6 +6705,12 @@ i40e_tunnel_filter_convert(struct i40e_aqc_add_remove_cloud_filters_element_data
 	ether_addr_copy((struct ether_addr *)&cld_filter->inner_mac,
 			(struct ether_addr *)&tunnel_filter->input.inner_mac);
 	tunnel_filter->input.inner_vlan = cld_filter->inner_vlan;
+	if ((rte_le_to_cpu_16(cld_filter->flags) &
+	     I40E_AQC_ADD_CLOUD_FLAGS_IPV6) ==
+	    I40E_AQC_ADD_CLOUD_FLAGS_IPV6)
+		tunnel_filter->input.ip_type = I40E_TUNNEL_IPTYPE_IPV6;
+	else
+		tunnel_filter->input.ip_type = I40E_TUNNEL_IPTYPE_IPV4;
 	tunnel_filter->input.flags = cld_filter->flags;
 	tunnel_filter->input.tenant_id = cld_filter->tenant_id;
 	tunnel_filter->queue = cld_filter->queue_number;

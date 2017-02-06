@@ -499,11 +499,17 @@ struct i40e_ethertype_rule {
 /* Tunnel filter number HW supports */
 #define I40E_MAX_TUNNEL_FILTER_NUM 400
 
+enum i40e_tunnel_iptype {
+	I40E_TUNNEL_IPTYPE_IPV4,
+	I40E_TUNNEL_IPTYPE_IPV6,
+};
+
 /* Tunnel filter struct */
 struct i40e_tunnel_filter_input {
 	uint8_t outer_mac[6];    /* Outer mac address to match */
 	uint8_t inner_mac[6];    /* Inner mac address to match */
 	uint16_t inner_vlan;     /* Inner vlan address to match */
+	enum i40e_tunnel_iptype ip_type;
 	uint16_t flags;          /* Filter type flag */
 	uint32_t tenant_id;      /* Tenant id to match */
 };

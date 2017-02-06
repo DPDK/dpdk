@@ -1307,16 +1307,40 @@ i40e_flow_parse_vxlan_pattern(const struct rte_flow_item *pattern,
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
+			filter->ip_type = RTE_TUNNEL_IPTYPE_IPV4;
+			/* IPv4 is used to describe protocol,
+			 * spec amd mask should be NULL.
+			 */
+			if (item->spec || item->mask) {
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "Invalid IPv4 item");
+				return -rte_errno;
+			}
+			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
+			filter->ip_type = RTE_TUNNEL_IPTYPE_IPV6;
+			/* IPv6 is used to describe protocol,
+			 * spec amd mask should be NULL.
+			 */
+			if (item->spec || item->mask) {
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "Invalid IPv6 item");
+				return -rte_errno;
+			}
+			break;
 		case RTE_FLOW_ITEM_TYPE_UDP:
-			/* IPv4/IPv6/UDP are used to describe protocol,
+			/* UDP is used to describe protocol,
 			 * spec amd mask should be NULL.
 			 */
 			if (item->spec || item->mask) {
 				rte_flow_error_set(error, EINVAL,
 					   RTE_FLOW_ERROR_TYPE_ITEM,
 					   item,
-					   "Invalid IPv4 item");
+					   "Invalid UDP item");
 				return -rte_errno;
 			}
 			break;
