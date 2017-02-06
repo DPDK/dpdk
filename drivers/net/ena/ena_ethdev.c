@@ -368,12 +368,9 @@ static void ena_config_host_info(struct ena_com_dev *ena_dev)
 
 	rc = ena_com_set_host_attributes(ena_dev);
 	if (rc) {
-		if (rc == -EPERM)
-			RTE_LOG(ERR, PMD, "Cannot set host attributes\n");
-		else
-			RTE_LOG(ERR, PMD, "Cannot set host attributes\n");
-
-		goto err;
+		RTE_LOG(ERR, PMD, "Cannot set host attributes\n");
+		if (rc != -EPERM)
+			goto err;
 	}
 
 	return;
@@ -424,11 +421,9 @@ static void ena_config_debug_area(struct ena_adapter *adapter)
 
 	rc = ena_com_set_host_attributes(&adapter->ena_dev);
 	if (rc) {
-		if (rc == -EPERM)
-			RTE_LOG(WARNING, PMD, "Cannot set host attributes\n");
-		else
-			RTE_LOG(ERR, PMD, "Cannot set host attributes\n");
-		goto err;
+		RTE_LOG(WARNING, PMD, "Cannot set host attributes\n");
+		if (rc != -EPERM)
+			goto err;
 	}
 
 	return;
@@ -1239,13 +1234,13 @@ static int ena_device_init(struct ena_com_dev *ena_dev,
 		goto err_mmio_read_less;
 	}
 
-	ena_config_host_info(ena_dev);
-
 	/* To enable the msix interrupts the driver needs to know the number
 	 * of queues. So the driver uses polling mode to retrieve this
 	 * information.
 	 */
 	ena_com_set_admin_polling_mode(ena_dev, true);
+
+	ena_config_host_info(ena_dev);
 
 	/* Get Device Attributes and features */
 	rc = ena_com_get_dev_attr_feat(ena_dev, get_feat_ctx);
