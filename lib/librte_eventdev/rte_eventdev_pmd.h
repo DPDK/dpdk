@@ -198,7 +198,7 @@ rte_event_pmd_is_valid_dev(uint8_t dev_id)
 {
 	struct rte_eventdev *dev;
 
-	if (dev_id >= rte_eventdev_globals->nb_devs)
+	if (dev_id >= RTE_EVENT_MAX_DEVS)
 		return 0;
 
 	dev = &rte_eventdevs[dev_id];
@@ -496,6 +496,16 @@ struct rte_eventdev *
 rte_event_pmd_vdev_init(const char *name, size_t dev_private_size,
 		int socket_id);
 
+/**
+ * Destroy the given virtual event device
+ *
+ * @param name
+ *   PMD type name
+ * @return
+ *   - 0 on success, negative on error
+ */
+int
+rte_event_pmd_vdev_uninit(const char *name);
 
 /**
  * Wrapper for use by pci drivers as a .probe function to attach to a event

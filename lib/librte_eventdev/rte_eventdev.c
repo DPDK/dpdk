@@ -1080,6 +1080,8 @@ int
 rte_event_pmd_release(struct rte_eventdev *eventdev)
 {
 	int ret;
+	char mz_name[RTE_EVENTDEV_NAME_MAX_LEN];
+	const struct rte_memzone *mz;
 
 	if (eventdev == NULL)
 		return -EINVAL;
@@ -1090,8 +1092,26 @@ rte_event_pmd_release(struct rte_eventdev *eventdev)
 
 	eventdev->attached = RTE_EVENTDEV_DETACHED;
 	eventdev_globals.nb_devs--;
-	eventdev->data = NULL;
 
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		rte_free(eventdev->data->dev_private);
+
+		/* Generate memzone name */
+		ret = snprintf(mz_name, sizeof(mz_name), "rte_eventdev_data_%u",
+				eventdev->data->dev_id);
+		if (ret >= (int)sizeof(mz_name))
+			return -EINVAL;
+
+		mz = rte_memzone_lookup(mz_name);
+		if (mz == NULL)
+			return -ENOMEM;
+
+		ret = rte_memzone_free(mz);
+		if (ret)
+			return ret;
+	}
+
+	eventdev->data = NULL;
 	return 0;
 }
 
@@ -1120,6 +1140,24 @@ rte_event_pmd_vdev_init(const char *name, size_t dev_private_size,
 	}
 
 	return eventdev;
+}
+
+int
+rte_event_pmd_vdev_uninit(const char *name)
+{
+	struct rte_eventdev *eventdev;
+
+	if (name == NULL)
+		return -EINVAL;
+
+	eventdev = rte_event_pmd_get_named_dev(name);
+	if (eventdev == NULL)
+		return -ENODEV;
+
+	/* Free the event device */
+	rte_event_pmd_release(eventdev);
+
+	return 0;
 }
 
 int
@@ -1211,9 +1249,6 @@ rte_event_pmd_pci_remove(struct rte_pci_device *pci_dev)
 
 	/* Free event device */
 	rte_event_pmd_release(eventdev);
-
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		rte_free(eventdev->data->dev_private);
 
 	eventdev->pci_dev = NULL;
 	eventdev->driver = NULL;

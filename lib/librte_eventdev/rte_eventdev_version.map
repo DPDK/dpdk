@@ -32,6 +32,7 @@ DPDK_17.05 {
 	rte_event_pmd_allocate;
 	rte_event_pmd_release;
 	rte_event_pmd_vdev_init;
+	rte_event_pmd_vdev_uninit;
 	rte_event_pmd_pci_probe;
 	rte_event_pmd_pci_remove;
 
