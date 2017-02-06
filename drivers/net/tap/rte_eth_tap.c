@@ -103,7 +103,6 @@ struct pmd_internals {
 	struct ether_addr eth_addr;	/* Mac address of the device port */
 
 	int if_index;			/* IF_INDEX for the port */
-	int fds[RTE_PMD_TAP_MAX_QUEUES]; /* List of all file descriptors */
 
 	struct rx_queue rxq[RTE_PMD_TAP_MAX_QUEUES];	/* List of RX queues */
 	struct tx_queue txq[RTE_PMD_TAP_MAX_QUEUES];	/* List of TX queues */
@@ -349,8 +348,8 @@ tap_dev_stop(struct rte_eth_dev *dev)
 	struct pmd_internals *internals = dev->data->dev_private;
 
 	for (i = 0; i < internals->nb_queues; i++)
-		if (internals->fds[i] != -1)
-			close(internals->fds[i]);
+		if (internals->rxq[i].fd != -1)
+			close(internals->rxq[i].fd);
 	tap_link_set_down(dev);
 }
 
@@ -583,7 +582,6 @@ tap_rx_queue_setup(struct rte_eth_dev *dev,
 	if (fd == -1)
 		return -1;
 
-	internals->fds[rx_queue_id] = fd;
 	RTE_LOG(INFO, PMD, "RX TAP device name %s, qid %d on fd %d\n",
 		internals->name, rx_queue_id, internals->rxq[rx_queue_id].fd);
 
@@ -720,7 +718,6 @@ eth_dev_tap_create(const char *name, char *tap_name)
 
 	/* Presetup the fds to -1 as being not working */
 	for (i = 1; i < RTE_PMD_TAP_MAX_QUEUES; i++) {
-		pmd->fds[i] = -1;
 		pmd->rxq[i].fd = -1;
 		pmd->txq[i].fd = -1;
 	}
@@ -728,7 +725,6 @@ eth_dev_tap_create(const char *name, char *tap_name)
 	/* Take the TUN/TAP fd and place in the first location */
 	pmd->rxq[0].fd = fd;
 	pmd->txq[0].fd = fd;
-	pmd->fds[0] = fd;
 
 	if (pmd_mac_address(fd, dev, &pmd->eth_addr) < 0) {
 		RTE_LOG(ERR, PMD, "Unable to get MAC address\n");
@@ -849,8 +845,8 @@ rte_pmd_tap_remove(const char *name)
 
 	internals = eth_dev->data->dev_private;
 	for (i = 0; i < internals->nb_queues; i++)
-		if (internals->fds[i] != -1)
-			close(internals->fds[i]);
+		if (internals->rxq[i].fd != -1)
+			close(internals->rxq[i].fd);
 
 	rte_free(eth_dev->data->dev_private);
 	rte_free(eth_dev->data);
