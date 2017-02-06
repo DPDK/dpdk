@@ -353,10 +353,11 @@ tap_dev_stop(struct rte_eth_dev *dev)
 	int i;
 	struct pmd_internals *internals = dev->data->dev_private;
 
+	tap_link_set_down(dev);
+
 	for (i = 0; i < internals->nb_queues; i++)
 		if (internals->rxq[i].fd != -1)
 			close(internals->rxq[i].fd);
-	tap_link_set_down(dev);
 }
 
 static int
