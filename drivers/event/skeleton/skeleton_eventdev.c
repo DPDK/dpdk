@@ -441,44 +441,15 @@ RTE_PMD_REGISTER_PCI_TABLE(event_skeleton_pci, pci_id_skeleton_map);
 
 /* VDEV based event device */
 
-/**
- * Global static parameter used to create a unique name for each skeleton
- * event device.
- */
-static unsigned int skeleton_unique_id;
-
-static inline int
-skeleton_create_unique_device_name(char *name, size_t size)
-{
-	int ret;
-
-	if (name == NULL)
-		return -EINVAL;
-
-	ret = snprintf(name, size, "%s_%u", RTE_STR(EVENTDEV_NAME_SKELETON_PMD),
-			skeleton_unique_id++);
-	if (ret < 0)
-		return ret;
-	return 0;
-}
-
 static int
-skeleton_eventdev_create(int socket_id)
+skeleton_eventdev_create(const char *name, int socket_id)
 {
 	struct rte_eventdev *eventdev;
-	char eventdev_name[RTE_EVENTDEV_NAME_MAX_LEN];
 
-	/* Create a unique device name */
-	if (skeleton_create_unique_device_name(eventdev_name,
-			RTE_EVENTDEV_NAME_MAX_LEN) != 0) {
-		PMD_DRV_ERR("Failed to create unique eventdev name");
-		return -EINVAL;
-	}
-
-	eventdev = rte_event_pmd_vdev_init(eventdev_name,
+	eventdev = rte_event_pmd_vdev_init(name,
 			sizeof(struct skeleton_eventdev), socket_id);
 	if (eventdev == NULL) {
-		PMD_DRV_ERR("Failed to create eventdev vdev");
+		PMD_DRV_ERR("Failed to create eventdev vdev %s", name);
 		goto fail;
 	}
 
@@ -499,18 +470,15 @@ skeleton_eventdev_probe(const char *name, __rte_unused const char *input_args)
 {
 	RTE_LOG(INFO, PMD, "Initializing %s on NUMA node %d\n", name,
 			rte_socket_id());
-	return skeleton_eventdev_create(rte_socket_id());
+	return skeleton_eventdev_create(name, rte_socket_id());
 }
 
 static int
 skeleton_eventdev_remove(const char *name)
 {
-	if (name == NULL)
-		return -EINVAL;
-
 	PMD_DRV_LOG(INFO, "Closing %s on NUMA node %d", name, rte_socket_id());
 
-	return 0;
+	return rte_event_pmd_vdev_uninit(name);
 }
 
 static struct rte_vdev_driver vdev_eventdev_skeleton_pmd = {
