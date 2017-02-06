@@ -666,3 +666,34 @@ uio pci generic module bind failed in X710/XL710/XXV710
 
 **Driver/Module**:
    Poll Mode Driver (PMD).
+
+
+virtio tx_burst() function cannot do TSO on shared packets
+----------------------------------------------------------
+
+**Description**:
+   The standard TX function of virtio driver does not manage shared
+   packets properly when doing TSO. These packets should be read-only
+   but the driver modifies them.
+
+   When doing TSO, the virtio standard expects that the L4 checksum is
+   set to the pseudo header checksum in the packet data, which is
+   different than the DPDK API. The driver patches the L4 checksum to
+   conform to the virtio standard, but this solution is invalid when
+   dealing with shared packets (clones), because the packet data should
+   not be modified.
+
+**Implication**:
+   In this situation, the shared data will be modified by the driver,
+   potentially causing race conditions with the other users of the mbuf
+   data.
+
+**Resolution/Workaround**:
+   The workaround in the application is to ensure that the network
+   headers in the packet data are not shared.
+
+**Affected Environment/Platform**:
+   Virtual machines running a virtio driver.
+
+**Driver/Module**:
+   Poll Mode Driver (PMD).
