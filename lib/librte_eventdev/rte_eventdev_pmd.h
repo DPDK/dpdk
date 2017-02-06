@@ -149,7 +149,6 @@ struct rte_eventdev_driver {
 /** Global structure used for maintaining state of allocated event devices */
 struct rte_eventdev_global {
 	uint8_t nb_devs;	/**< Number of devices found */
-	uint8_t max_devs;	/**< Max number of devices */
 };
 
 extern struct rte_eventdev_global *rte_eventdev_globals;
@@ -175,8 +174,8 @@ rte_event_pmd_get_named_dev(const char *name)
 	if (name == NULL)
 		return NULL;
 
-	for (i = 0, dev = &rte_eventdevs[i];
-			i < rte_eventdev_globals->max_devs; i++) {
+	for (i = 0; i < RTE_EVENT_MAX_DEVS; i++) {
+		dev = &rte_eventdevs[i];
 		if ((dev->attached == RTE_EVENTDEV_ATTACHED) &&
 				(strcmp(dev->data->name, name) == 0))
 			return dev;
