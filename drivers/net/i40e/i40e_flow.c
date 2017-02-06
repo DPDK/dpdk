@@ -1223,6 +1223,7 @@ i40e_flow_parse_vxlan_pattern(const struct rte_flow_item *pattern,
 	bool is_vni_masked = 0;
 	enum rte_flow_item_type item_type;
 	bool vxlan_flag = 0;
+	uint32_t tenant_id_be = 0;
 
 	for (; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
 		if (item->last) {
@@ -1364,8 +1365,9 @@ i40e_flow_parse_vxlan_pattern(const struct rte_flow_item *pattern,
 			& I40E_TCI_MASK;
 		if (vxlan_spec && vxlan_mask && !is_vni_masked) {
 			/* If there's vxlan */
-			rte_memcpy(&filter->tenant_id, vxlan_spec->vni,
-				   RTE_DIM(vxlan_spec->vni));
+			rte_memcpy(((uint8_t *)&tenant_id_be + 1),
+				   vxlan_spec->vni, 3);
+			filter->tenant_id = rte_be_to_cpu_32(tenant_id_be);
 			if (!o_eth_spec && !o_eth_mask &&
 				i_eth_spec && i_eth_mask)
 				filter->filter_type =
@@ -1402,8 +1404,9 @@ i40e_flow_parse_vxlan_pattern(const struct rte_flow_item *pattern,
 		/* If there's no inner vlan */
 		if (vxlan_spec && vxlan_mask && !is_vni_masked) {
 			/* If there's vxlan */
-			rte_memcpy(&filter->tenant_id, vxlan_spec->vni,
-				   RTE_DIM(vxlan_spec->vni));
+			rte_memcpy(((uint8_t *)&tenant_id_be + 1),
+				   vxlan_spec->vni, 3);
+			filter->tenant_id = rte_be_to_cpu_32(tenant_id_be);
 			if (!o_eth_spec && !o_eth_mask &&
 				i_eth_spec && i_eth_mask)
 				filter->filter_type =
