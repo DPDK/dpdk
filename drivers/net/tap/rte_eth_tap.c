@@ -155,12 +155,13 @@ tun_alloc(struct pmd_internals *pmd, uint16_t qid)
 #endif
 	{
 		ifr.ifr_flags |= IFF_ONE_QUEUE;
-		RTE_LOG(DEBUG, PMD, "Single queue only support\n");
+		RTE_LOG(DEBUG, PMD, "  Single queue only support\n");
 	}
 
 	/* Set the TUN/TAP configuration and set the name if needed */
 	if (ioctl(fd, TUNSETIFF, (void *)&ifr) < 0) {
-		RTE_LOG(ERR, PMD, "Unable to set TUNSETIFF for %s\n",
+		RTE_LOG(WARNING, PMD,
+			"Unable to set TUNSETIFF for %s\n",
 			ifr.ifr_name);
 		perror("TUNSETIFF");
 		goto error;
@@ -168,7 +169,9 @@ tun_alloc(struct pmd_internals *pmd, uint16_t qid)
 
 	/* Always set the file descriptor to non-blocking */
 	if (fcntl(fd, F_SETFL, O_NONBLOCK) < 0) {
-		RTE_LOG(ERR, PMD, "Unable to set to nonblocking\n");
+		RTE_LOG(WARNING, PMD,
+			"Unable to set %s to nonblocking\n",
+			ifr.ifr_name);
 		perror("F_SETFL, NONBLOCK");
 		goto error;
 	}
@@ -207,7 +210,7 @@ pmd_rx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		/* allocate the next mbuf */
 		mbuf = rte_pktmbuf_alloc(rxq->mp);
 		if (unlikely(!mbuf)) {
-			RTE_LOG(WARNING, PMD, "Unable to allocate mbuf\n");
+			RTE_LOG(WARNING, PMD, "TAP unable to allocate mbuf\n");
 			break;
 		}
 
@@ -276,7 +279,8 @@ pmd_tx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	return num_tx;
 }
 
-static int tap_link_set_flags(struct pmd_internals *pmd, short flags, int add)
+static int
+tap_link_set_flags(struct pmd_internals *pmd, short flags, int add)
 {
 	struct ifreq ifr;
 	int err, s;
@@ -296,8 +300,8 @@ static int tap_link_set_flags(struct pmd_internals *pmd, short flags, int add)
 	strncpy(ifr.ifr_name, pmd->name, IFNAMSIZ);
 	err = ioctl(s, SIOCGIFFLAGS, &ifr);
 	if (err < 0) {
-		RTE_LOG(ERR, PMD, "Unable to get tap netdevice flags: %s\n",
-			strerror(errno));
+		RTE_LOG(WARNING, PMD, "Unable to get %s device flags: %s\n",
+			pmd->name, strerror(errno));
 		close(s);
 		return -1;
 	}
@@ -307,7 +311,7 @@ static int tap_link_set_flags(struct pmd_internals *pmd, short flags, int add)
 		ifr.ifr_flags &= ~flags;
 	err = ioctl(s, SIOCSIFFLAGS, &ifr);
 	if (err < 0) {
-		RTE_LOG(ERR, PMD, "Unable to %s flags 0x%x: %s\n",
+		RTE_LOG(WARNING, PMD, "Unable to %s flags 0x%x: %s\n",
 			add ? "set" : "unset", flags, strerror(errno));
 		close(s);
 		return -1;
@@ -511,8 +515,8 @@ tap_setup_queue(struct rte_eth_dev *dev,
 				pmd->name, qid);
 			fd = tun_alloc(pmd, qid);
 			if (fd < 0) {
-				RTE_LOG(ERR, PMD, "tun_alloc(%s) failed\n",
-					pmd->name);
+				RTE_LOG(ERR, PMD, "tun_alloc(%s, %d) failed\n",
+					pmd->name, qid);
 				return -1;
 			}
 		}
@@ -557,8 +561,9 @@ tap_rx_queue_setup(struct rte_eth_dev *dev,
 	int fd;
 
 	if ((rx_queue_id >= internals->nb_queues) || !mp) {
-		RTE_LOG(ERR, PMD, "nb_queues %d mp %p\n",
-			internals->nb_queues, mp);
+		RTE_LOG(WARNING, PMD,
+			"nb_queues %d too small or mempool NULL\n",
+			internals->nb_queues);
 		return -1;
 	}
 
@@ -570,7 +575,7 @@ tap_rx_queue_setup(struct rte_eth_dev *dev,
 				RTE_PKTMBUF_HEADROOM);
 
 	if (buf_size < ETH_FRAME_LEN) {
-		RTE_LOG(ERR, PMD,
+		RTE_LOG(WARNING, PMD,
 			"%s: %d bytes will not fit in mbuf (%d bytes)\n",
 			dev->data->name, ETH_FRAME_LEN, buf_size);
 		return -ENOMEM;
@@ -580,7 +585,7 @@ tap_rx_queue_setup(struct rte_eth_dev *dev,
 	if (fd == -1)
 		return -1;
 
-	RTE_LOG(INFO, PMD, "RX TAP device name %s, qid %d on fd %d\n",
+	RTE_LOG(DEBUG, PMD, "  RX TAP device name %s, qid %d on fd %d\n",
 		internals->name, rx_queue_id, internals->rxq[rx_queue_id].fd);
 
 	return 0;
@@ -603,7 +608,7 @@ tap_tx_queue_setup(struct rte_eth_dev *dev,
 	if (ret == -1)
 		return -1;
 
-	RTE_LOG(INFO, PMD, "TX TAP device name %s, qid %d on fd %d\n",
+	RTE_LOG(DEBUG, PMD, "  TX TAP device name %s, qid %d on fd %d\n",
 		internals->name, tx_queue_id, internals->txq[tx_queue_id].fd);
 
 	return 0;
@@ -639,25 +644,23 @@ eth_dev_tap_create(const char *name, char *tap_name)
 	struct rte_eth_dev_data *data = NULL;
 	int i;
 
-	RTE_LOG(INFO, PMD,
-		"%s: Create TAP Ethernet device with %d queues on numa %u\n",
-		 name, RTE_PMD_TAP_MAX_QUEUES, rte_socket_id());
+	RTE_LOG(DEBUG, PMD, "  TAP device on numa %u\n", rte_socket_id());
 
 	data = rte_zmalloc_socket(tap_name, sizeof(*data), 0, numa_node);
 	if (!data) {
-		RTE_LOG(ERR, PMD, "Failed to allocate data\n");
+		RTE_LOG(ERR, PMD, "TAP Failed to allocate data\n");
 		goto error_exit;
 	}
 
 	pmd = rte_zmalloc_socket(tap_name, sizeof(*pmd), 0, numa_node);
 	if (!pmd) {
-		RTE_LOG(ERR, PMD, "Unable to allocate internal struct\n");
+		RTE_LOG(ERR, PMD, "TAP Unable to allocate internal struct\n");
 		goto error_exit;
 	}
 
 	dev = rte_eth_dev_allocate(tap_name);
 	if (!dev) {
-		RTE_LOG(ERR, PMD, "Unable to allocate device struct\n");
+		RTE_LOG(ERR, PMD, "TAP Unable to allocate device struct\n");
 		goto error_exit;
 	}
 
@@ -694,7 +697,7 @@ eth_dev_tap_create(const char *name, char *tap_name)
 	return 0;
 
 error_exit:
-	RTE_PMD_DEBUG_TRACE("Unable to initialize %s\n", name);
+	RTE_LOG(DEBUG, PMD, "TAP Unable to initialize %s\n", name);
 
 	rte_free(data);
 	rte_free(pmd);
@@ -745,7 +748,7 @@ rte_pmd_tap_probe(const char *name, const char *params)
 		 DEFAULT_TAP_NAME, tap_unit++);
 
 	if (params && (params[0] != '\0')) {
-		RTE_LOG(INFO, PMD, "paramaters (%s)\n", params);
+		RTE_LOG(DEBUG, PMD, "paramaters (%s)\n", params);
 
 		kvlist = rte_kvargs_parse(params, valid_arguments);
 		if (kvlist) {
@@ -770,14 +773,14 @@ rte_pmd_tap_probe(const char *name, const char *params)
 	}
 	pmd_link.link_speed = speed;
 
-	RTE_LOG(INFO, PMD, "Initializing pmd_tap for %s as %s\n",
+	RTE_LOG(NOTICE, PMD, "Initializing pmd_tap for %s as %s\n",
 		name, tap_name);
 
 	ret = eth_dev_tap_create(name, tap_name);
 
 leave:
 	if (ret == -1) {
-		RTE_LOG(INFO, PMD, "Failed to create pmd for %s as %s\n",
+		RTE_LOG(ERR, PMD, "Failed to create pmd for %s as %s\n",
 			name, tap_name);
 		tap_unit--;		/* Restore the unit number */
 	}
@@ -795,7 +798,7 @@ rte_pmd_tap_remove(const char *name)
 	struct pmd_internals *internals;
 	int i;
 
-	RTE_LOG(INFO, PMD, "Closing TUN/TAP Ethernet device on numa %u\n",
+	RTE_LOG(DEBUG, PMD, "Closing TUN/TAP Ethernet device on numa %u\n",
 		rte_socket_id());
 
 	/* find the ethdev entry */
