@@ -350,14 +350,7 @@ tap_dev_start(struct rte_eth_dev *dev)
 static void
 tap_dev_stop(struct rte_eth_dev *dev)
 {
-	int i;
-	struct pmd_internals *internals = dev->data->dev_private;
-
 	tap_link_set_down(dev);
-
-	for (i = 0; i < internals->nb_queues; i++)
-		if (internals->rxq[i].fd != -1)
-			close(internals->rxq[i].fd);
 }
 
 static int
@@ -431,6 +424,17 @@ tap_stats_reset(struct rte_eth_dev *dev)
 static void
 tap_dev_close(struct rte_eth_dev *dev __rte_unused)
 {
+	int i;
+	struct pmd_internals *internals = dev->data->dev_private;
+
+	tap_link_set_down(dev);
+
+	for (i = 0; i < internals->nb_queues; i++) {
+		if (internals->rxq[i].fd != -1)
+			close(internals->rxq[i].fd);
+		internals->rxq[i].fd = -1;
+		internals->txq[i].fd = -1;
+	}
 }
 
 static void
