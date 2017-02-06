@@ -57,7 +57,11 @@
 #define ETH_TAP_IFACE_ARG       "iface"
 #define ETH_TAP_SPEED_ARG       "speed"
 
+#ifdef IFF_MULTI_QUEUE
 #define RTE_PMD_TAP_MAX_QUEUES	16
+#else
+#define RTE_PMD_TAP_MAX_QUEUES	1
+#endif
 
 static struct rte_vdev_driver pmd_tap_drv;
 
@@ -114,17 +118,20 @@ struct pmd_internals {
  * supplied name.
  */
 static int
-tun_alloc(char *name)
+tun_alloc(struct pmd_internals *pmd, uint16_t qid)
 {
 	struct ifreq ifr;
+#ifdef IFF_MULTI_QUEUE
 	unsigned int features;
+#endif
 	int fd;
 
 	memset(&ifr, 0, sizeof(struct ifreq));
 
 	ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
-	if (name && name[0])
-		strncpy(ifr.ifr_name, name, IFNAMSIZ);
+	strncpy(ifr.ifr_name, pmd->name, IFNAMSIZ);
+
+	RTE_LOG(DEBUG, PMD, "ifr_name '%s'\n", ifr.ifr_name);
 
 	fd = open(TUN_TAP_DEV_PATH, O_RDWR);
 	if (fd < 0) {
@@ -132,37 +139,26 @@ tun_alloc(char *name)
 		goto error;
 	}
 
-	/* Grab the TUN features to verify we can work */
-	if (ioctl(fd, TUNGETFEATURES, &features) < 0) {
-		RTE_LOG(ERR, PMD, "Unable to get TUN/TAP features\n");
-		goto error;
-	}
-	RTE_LOG(DEBUG, PMD, "TUN/TAP Features %08x\n", features);
-
 #ifdef IFF_MULTI_QUEUE
-	if (!(features & IFF_MULTI_QUEUE) && (RTE_PMD_TAP_MAX_QUEUES > 1)) {
-		RTE_LOG(DEBUG, PMD, "TUN/TAP device only one queue\n");
+	/* Grab the TUN features to verify we can work multi-queue */
+	if (ioctl(fd, TUNGETFEATURES, &features) < 0) {
+		RTE_LOG(ERR, PMD, "TAP unable to get TUN/TAP features\n");
 		goto error;
-	} else if ((features & IFF_ONE_QUEUE) &&
-			(RTE_PMD_TAP_MAX_QUEUES == 1)) {
-		ifr.ifr_flags |= IFF_ONE_QUEUE;
-		RTE_LOG(DEBUG, PMD, "Single queue only support\n");
-	} else {
-		ifr.ifr_flags |= IFF_MULTI_QUEUE;
-		RTE_LOG(DEBUG, PMD, "Multi-queue support for %d queues\n",
-			RTE_PMD_TAP_MAX_QUEUES);
 	}
-#else
-	if (RTE_PMD_TAP_MAX_QUEUES > 1) {
-		RTE_LOG(DEBUG, PMD, "TUN/TAP device only one queue\n");
-		goto error;
-	} else {
-		ifr.ifr_flags |= IFF_ONE_QUEUE;
-		RTE_LOG(DEBUG, PMD, "Single queue only support\n");
-	}
-#endif
+	RTE_LOG(DEBUG, PMD, "  TAP Features %08x\n", features);
 
-	/* Set the TUN/TAP configuration and get the name if needed */
+	if (features & IFF_MULTI_QUEUE) {
+		RTE_LOG(DEBUG, PMD, "  Multi-queue support for %d queues\n",
+			RTE_PMD_TAP_MAX_QUEUES);
+		ifr.ifr_flags |= IFF_MULTI_QUEUE;
+	} else
+#endif
+	{
+		ifr.ifr_flags |= IFF_ONE_QUEUE;
+		RTE_LOG(DEBUG, PMD, "Single queue only support\n");
+	}
+
+	/* Set the TUN/TAP configuration and set the name if needed */
 	if (ioctl(fd, TUNSETIFF, (void *)&ifr) < 0) {
 		RTE_LOG(ERR, PMD, "Unable to set TUNSETIFF for %s\n",
 			ifr.ifr_name);
@@ -177,9 +173,15 @@ tun_alloc(char *name)
 		goto error;
 	}
 
-	/* If the name is different that new name as default */
-	if (name && strcmp(name, ifr.ifr_name))
-		snprintf(name, RTE_ETH_NAME_MAX_LEN - 1, "%s", ifr.ifr_name);
+	if (qid == 0) {
+		if (ioctl(fd, SIOCGIFHWADDR, &ifr) == -1) {
+			RTE_LOG(ERR, PMD, "ioctl failed (SIOCGIFHWADDR) (%s)\n",
+				ifr.ifr_name);
+			goto error;
+		}
+
+		rte_memcpy(&pmd->eth_addr, ifr.ifr_hwaddr.sa_data, ETH_ALEN);
+	}
 
 	return fd;
 
@@ -507,7 +509,7 @@ tap_setup_queue(struct rte_eth_dev *dev,
 		if (fd < 0) {
 			RTE_LOG(INFO, PMD, "Add queue to TAP %s for qid %d\n",
 				pmd->name, qid);
-			fd = tun_alloc(pmd->name);
+			fd = tun_alloc(pmd, qid);
 			if (fd < 0) {
 				RTE_LOG(ERR, PMD, "tun_alloc(%s) failed\n",
 					pmd->name);
@@ -629,34 +631,13 @@ static const struct eth_dev_ops ops = {
 };
 
 static int
-pmd_mac_address(int fd, struct ether_addr *addr)
-{
-	struct ifreq ifr;
-
-	if ((fd <= 0) || !addr)
-		return -1;
-
-	memset(&ifr, 0, sizeof(ifr));
-
-	if (ioctl(fd, SIOCGIFHWADDR, &ifr) == -1) {
-		RTE_LOG(ERR, PMD, "ioctl failed (SIOCGIFHWADDR) (%s)\n",
-			ifr.ifr_name);
-		return -1;
-	}
-
-	rte_memcpy(addr, ifr.ifr_hwaddr.sa_data, ETH_ALEN);
-
-	return 0;
-}
-
-static int
 eth_dev_tap_create(const char *name, char *tap_name)
 {
 	int numa_node = rte_socket_id();
 	struct rte_eth_dev *dev = NULL;
 	struct pmd_internals *pmd = NULL;
 	struct rte_eth_dev_data *data = NULL;
-	int i, fd = -1;
+	int i;
 
 	RTE_LOG(INFO, PMD,
 		"%s: Create TAP Ethernet device with %d queues on numa %u\n",
@@ -674,7 +655,6 @@ eth_dev_tap_create(const char *name, char *tap_name)
 		goto error_exit;
 	}
 
-	/* Use the name and not the tap_name */
 	dev = rte_eth_dev_allocate(tap_name);
 	if (!dev) {
 		RTE_LOG(ERR, PMD, "Unable to allocate device struct\n");
@@ -705,26 +685,10 @@ eth_dev_tap_create(const char *name, char *tap_name)
 	dev->tx_pkt_burst = pmd_tx_burst;
 	snprintf(dev->data->name, sizeof(dev->data->name), "%s", name);
 
-	/* Create the first Tap device */
-	fd = tun_alloc(tap_name);
-	if (fd < 0) {
-		RTE_LOG(ERR, PMD, "tun_alloc() failed\n");
-		goto error_exit;
-	}
-
-	/* Presetup the fds to -1 as being not working */
-	for (i = 1; i < RTE_PMD_TAP_MAX_QUEUES; i++) {
+	/* Presetup the fds to -1 as being not valid */
+	for (i = 0; i < RTE_PMD_TAP_MAX_QUEUES; i++) {
 		pmd->rxq[i].fd = -1;
 		pmd->txq[i].fd = -1;
-	}
-
-	/* Take the TUN/TAP fd and place in the first location */
-	pmd->rxq[0].fd = fd;
-	pmd->txq[0].fd = fd;
-
-	if (pmd_mac_address(fd, &pmd->eth_addr) < 0) {
-		RTE_LOG(ERR, PMD, "Unable to get MAC address\n");
-		goto error_exit;
 	}
 
 	return 0;
