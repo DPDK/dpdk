@@ -45,18 +45,18 @@ device.
 These TAP interfaces can be used with Wireshark or tcpdump or Pktgen-DPDK
 along with being able to be used as a network connection to the DPDK
 application. The method enable one or more interfaces is to use the
-``--vdev=net_tap`` option on the DPDK application command line. Each
-``--vdev=net_tap`` option give will create an interface named dtap0, dtap1,
+``--vdev=net_tap0`` option on the DPDK application command line. Each
+``--vdev=net_tap1`` option give will create an interface named dtap0, dtap1,
 and so on.
 
-The interfaced name can be changed by adding the ``iface=foo0``, for example::
+The interface name can be changed by adding the ``iface=foo0``, for example::
 
-   --vdev=net_tap,iface=foo0 --vdev=net_tap,iface=foo1, ...
+   --vdev=net_tap0,iface=foo0 --vdev=net_tap1,iface=foo1, ...
 
 Also the speed of the interface can be changed from 10G to whatever number
 needed, but the interface does not enforce that speed, for example::
 
-   --vdev=net_tap,iface=foo0,speed=25000
+   --vdev=net_tap0,iface=foo0,speed=25000
 
 After the DPDK application is started you can send and receive packets on the
 interface using the standard rx_burst/tx_burst APIs in DPDK. From the host
@@ -97,7 +97,7 @@ following::
 
     sudo ./app/app/x86_64-native-linuxapp-gcc/app/pktgen -l 1-5 -n 4        \
      --proc-type auto --log-level 8 --socket-mem 512,512 --file-prefix pg   \
-     --vdev=net_tap --vdev=net_tap -b 05:00.0 -b 05:00.1                    \
+     --vdev=net_tap0 --vdev=net_tap1 -b 05:00.0 -b 05:00.1                  \
      -b 04:00.0 -b 04:00.1 -b 04:00.2 -b 04:00.3                            \
      -b 81:00.0 -b 81:00.1 -b 81:00.2 -b 81:00.3                            \
      -b 82:00.0 -b 83:00.0 -- -T -P -m [2:3].0 -m [4:5].1                   \
@@ -131,6 +131,6 @@ time with ``start all``. The command ``str`` is an alias for ``start all`` and
 
 While running you should see the 64 byte counters increasing to verify the
 traffic is being looped back. You can use ``set all size XXX`` to change the
-size of the packets after you stop the traffic. Use the pktgen ``help``
+size of the packets after you stop the traffic. Use pktgen ``help``
 command to see a list of all commands. You can also use the ``-f`` option to
-load commands at startup.
+load commands at startup in command line or Lua script in pktgen.
