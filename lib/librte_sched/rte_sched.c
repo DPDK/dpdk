@@ -735,11 +735,13 @@ void
 rte_sched_port_free(struct rte_sched_port *port)
 {
 	uint32_t qindex;
-	uint32_t n_queues_per_port = rte_sched_port_queues_per_port(port);
+	uint32_t n_queues_per_port;
 
 	/* Check user parameters */
 	if (port == NULL)
 		return;
+
+	n_queues_per_port = rte_sched_port_queues_per_port(port);
 
 	/* Free enqueued mbufs */
 	for (qindex = 0; qindex < n_queues_per_port; qindex++) {
