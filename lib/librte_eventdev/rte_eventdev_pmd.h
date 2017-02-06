@@ -357,6 +357,8 @@ typedef void (*eventdev_port_release_t)(void *port);
 /**
  * Link multiple source event queues to destination event port.
  *
+ * @param dev
+ *   Event device pointer
  * @param port
  *   Event port pointer
  * @param link
@@ -372,13 +374,15 @@ typedef void (*eventdev_port_release_t)(void *port);
  *   Returns 0 on success.
  *
  */
-typedef int (*eventdev_port_link_t)(void *port,
+typedef int (*eventdev_port_link_t)(struct rte_eventdev *dev, void *port,
 		const uint8_t queues[], const uint8_t priorities[],
 		uint16_t nb_links);
 
 /**
  * Unlink multiple source event queues from destination event port.
  *
+ * @param dev
+ *   Event device pointer
  * @param port
  *   Event port pointer
  * @param queues
@@ -390,7 +394,7 @@ typedef int (*eventdev_port_link_t)(void *port,
  *   Returns 0 on success.
  *
  */
-typedef int (*eventdev_port_unlink_t)(void *port,
+typedef int (*eventdev_port_unlink_t)(struct rte_eventdev *dev, void *port,
 		uint8_t queues[], uint16_t nb_unlinks);
 
 /**

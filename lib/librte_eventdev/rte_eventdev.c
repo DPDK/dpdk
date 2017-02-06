@@ -801,8 +801,8 @@ rte_event_port_link(uint8_t dev_id, uint8_t port_id,
 		if (queues[i] >= RTE_EVENT_MAX_QUEUES_PER_DEV)
 			return -EINVAL;
 
-	diag = (*dev->dev_ops->port_link)(dev->data->ports[port_id], queues,
-						priorities, nb_links);
+	diag = (*dev->dev_ops->port_link)(dev, dev->data->ports[port_id],
+						queues, priorities, nb_links);
 	if (diag < 0)
 		return diag;
 
@@ -846,8 +846,8 @@ rte_event_port_unlink(uint8_t dev_id, uint8_t port_id,
 		if (queues[i] >= RTE_EVENT_MAX_QUEUES_PER_DEV)
 			return -EINVAL;
 
-	diag = (*dev->dev_ops->port_unlink)(dev->data->ports[port_id], queues,
-					nb_unlinks);
+	diag = (*dev->dev_ops->port_unlink)(dev, dev->data->ports[port_id],
+					queues, nb_unlinks);
 
 	if (diag < 0)
 		return diag;

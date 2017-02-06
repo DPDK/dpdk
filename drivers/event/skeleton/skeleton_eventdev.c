@@ -287,13 +287,14 @@ skeleton_eventdev_port_setup(struct rte_eventdev *dev, uint8_t port_id,
 }
 
 static int
-skeleton_eventdev_port_link(void *port,
+skeleton_eventdev_port_link(struct rte_eventdev *dev, void *port,
 			const uint8_t queues[], const uint8_t priorities[],
 			uint16_t nb_links)
 {
 	struct skeleton_port *sp = port;
 	PMD_DRV_FUNC_TRACE();
 
+	RTE_SET_USED(dev);
 	RTE_SET_USED(sp);
 	RTE_SET_USED(queues);
 	RTE_SET_USED(priorities);
@@ -303,12 +304,13 @@ skeleton_eventdev_port_link(void *port,
 }
 
 static int
-skeleton_eventdev_port_unlink(void *port, uint8_t queues[],
-				 uint16_t nb_unlinks)
+skeleton_eventdev_port_unlink(struct rte_eventdev *dev, void *port,
+				 uint8_t queues[], uint16_t nb_unlinks)
 {
 	struct skeleton_port *sp = port;
 	PMD_DRV_FUNC_TRACE();
 
+	RTE_SET_USED(dev);
 	RTE_SET_USED(sp);
 	RTE_SET_USED(queues);
 
