@@ -128,7 +128,13 @@ parse_total_ops(struct cperf_options *opts, const char *arg)
 	int ret = parse_uint32_t(&opts->total_ops, arg);
 
 	if (ret)
-		RTE_LOG(ERR, USER1, "failed to parse total operations count");
+		RTE_LOG(ERR, USER1, "failed to parse total operations count\n");
+
+	if (opts->total_ops == 0) {
+		RTE_LOG(ERR, USER1,
+				"invalid total operations count number specified\n");
+		return -1;
+	}
 
 	return ret;
 }
