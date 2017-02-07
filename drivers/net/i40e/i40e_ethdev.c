@@ -8738,6 +8738,10 @@ i40e_pctype_to_flowtype(enum i40e_filter_pctype pctype)
 #define I40E_GL_SWR_PRI_JOIN_MAP_2_VALUE 0x011f0200
 #define I40E_GL_SWR_PRI_JOIN_MAP_2       0x26CE08
 
+/* For X722 */
+#define I40E_X722_GL_SWR_PRI_JOIN_MAP_0_VALUE 0x20000200
+#define I40E_X722_GL_SWR_PRI_JOIN_MAP_2_VALUE 0x013F0200
+
 /* For X710 */
 #define I40E_GL_SWR_PM_UP_THR_EF_VALUE   0x03030303
 /* For XL710 */
@@ -8760,7 +8764,6 @@ i40e_dev_sync_phy_type(struct i40e_hw *hw)
 	return 0;
 }
 
-
 static void
 i40e_configure_registers(struct i40e_hw *hw)
 {
@@ -8768,8 +8771,8 @@ i40e_configure_registers(struct i40e_hw *hw)
 		uint32_t addr;
 		uint64_t val;
 	} reg_table[] = {
-		{I40E_GL_SWR_PRI_JOIN_MAP_0, I40E_GL_SWR_PRI_JOIN_MAP_0_VALUE},
-		{I40E_GL_SWR_PRI_JOIN_MAP_2, I40E_GL_SWR_PRI_JOIN_MAP_2_VALUE},
+		{I40E_GL_SWR_PRI_JOIN_MAP_0, 0},
+		{I40E_GL_SWR_PRI_JOIN_MAP_2, 0},
 		{I40E_GL_SWR_PM_UP_THR, 0}, /* Compute value dynamically */
 	};
 	uint64_t reg;
@@ -8777,6 +8780,24 @@ i40e_configure_registers(struct i40e_hw *hw)
 	int ret;
 
 	for (i = 0; i < RTE_DIM(reg_table); i++) {
+		if (reg_table[i].addr == I40E_GL_SWR_PRI_JOIN_MAP_0) {
+			if (hw->mac.type == I40E_MAC_X722) /* For X722 */
+				reg_table[i].val =
+					I40E_X722_GL_SWR_PRI_JOIN_MAP_0_VALUE;
+			else /* For X710/XL710/XXV710 */
+				reg_table[i].val =
+					I40E_GL_SWR_PRI_JOIN_MAP_0_VALUE;
+		}
+
+		if (reg_table[i].addr == I40E_GL_SWR_PRI_JOIN_MAP_2) {
+			if (hw->mac.type == I40E_MAC_X722) /* For X722 */
+				reg_table[i].val =
+					I40E_X722_GL_SWR_PRI_JOIN_MAP_2_VALUE;
+			else /* For X710/XL710/XXV710 */
+				reg_table[i].val =
+					I40E_GL_SWR_PRI_JOIN_MAP_2_VALUE;
+		}
+
 		if (reg_table[i].addr == I40E_GL_SWR_PM_UP_THR) {
 			if (I40E_PHY_TYPE_SUPPORT_40G(hw->phy.phy_types) || /* For XL710 */
 			    I40E_PHY_TYPE_SUPPORT_25G(hw->phy.phy_types)) /* For XXV710 */
