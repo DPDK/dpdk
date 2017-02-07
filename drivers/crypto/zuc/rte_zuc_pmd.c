@@ -115,7 +115,8 @@ zuc_set_session_parameters(struct zuc_session *sess,
 		if (cipher_xform->cipher.algo != RTE_CRYPTO_CIPHER_ZUC_EEA3)
 			return -EINVAL;
 		/* Copy the key */
-		memcpy(sess->pKey_cipher, xform->cipher.key.data, ZUC_IV_KEY_LENGTH);
+		memcpy(sess->pKey_cipher, cipher_xform->cipher.key.data,
+				ZUC_IV_KEY_LENGTH);
 	}
 
 	if (auth_xform) {
@@ -124,7 +125,8 @@ zuc_set_session_parameters(struct zuc_session *sess,
 			return -EINVAL;
 		sess->auth_op = auth_xform->auth.op;
 		/* Copy the key */
-		memcpy(sess->pKey_hash, xform->auth.key.data, ZUC_IV_KEY_LENGTH);
+		memcpy(sess->pKey_hash, auth_xform->auth.key.data,
+				ZUC_IV_KEY_LENGTH);
 	}
 
 

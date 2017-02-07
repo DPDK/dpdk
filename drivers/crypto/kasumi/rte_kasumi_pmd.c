@@ -116,7 +116,7 @@ kasumi_set_session_parameters(struct kasumi_session *sess,
 		if (cipher_xform->cipher.algo != RTE_CRYPTO_CIPHER_KASUMI_F8)
 			return -EINVAL;
 		/* Initialize key */
-		sso_kasumi_init_f8_key_sched(xform->cipher.key.data,
+		sso_kasumi_init_f8_key_sched(cipher_xform->cipher.key.data,
 				&sess->pKeySched_cipher);
 	}
 
@@ -126,7 +126,7 @@ kasumi_set_session_parameters(struct kasumi_session *sess,
 			return -EINVAL;
 		sess->auth_op = auth_xform->auth.op;
 		/* Initialize key */
-		sso_kasumi_init_f9_key_sched(xform->auth.key.data,
+		sso_kasumi_init_f9_key_sched(auth_xform->auth.key.data,
 				&sess->pKeySched_hash);
 	}
 

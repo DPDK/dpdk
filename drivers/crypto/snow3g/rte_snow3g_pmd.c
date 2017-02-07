@@ -116,7 +116,7 @@ snow3g_set_session_parameters(struct snow3g_session *sess,
 		if (cipher_xform->cipher.algo != RTE_CRYPTO_CIPHER_SNOW3G_UEA2)
 			return -EINVAL;
 		/* Initialize key */
-		sso_snow3g_init_key_sched(xform->cipher.key.data,
+		sso_snow3g_init_key_sched(cipher_xform->cipher.key.data,
 				&sess->pKeySched_cipher);
 	}
 
@@ -126,7 +126,7 @@ snow3g_set_session_parameters(struct snow3g_session *sess,
 			return -EINVAL;
 		sess->auth_op = auth_xform->auth.op;
 		/* Initialize key */
-		sso_snow3g_init_key_sched(xform->auth.key.data,
+		sso_snow3g_init_key_sched(auth_xform->auth.key.data,
 				&sess->pKeySched_hash);
 	}
 
