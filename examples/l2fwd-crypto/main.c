@@ -200,7 +200,7 @@ struct lcore_queue_conf {
 	unsigned nb_crypto_devs;
 	unsigned cryptodev_list[MAX_RX_QUEUE_PER_LCORE];
 
-	struct op_buffer op_buf[RTE_MAX_ETHPORTS];
+	struct op_buffer op_buf[RTE_CRYPTO_MAX_DEVS];
 	struct pkt_buffer pkt_buf[RTE_MAX_ETHPORTS];
 } __rte_cache_aligned;
 
@@ -299,7 +299,7 @@ print_stats(void)
 
 	for (cdevid = 0; cdevid < RTE_CRYPTO_MAX_DEVS; cdevid++) {
 		/* skip disabled ports */
-		if ((l2fwd_enabled_crypto_mask & (1lu << cdevid)) == 0)
+		if ((l2fwd_enabled_crypto_mask & (((uint64_t)1) << cdevid)) == 0)
 			continue;
 		printf("\nStatistics for cryptodev %"PRIu64
 				" -------------------------"
@@ -1808,7 +1808,7 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 			return -1;
 		}
 
-		l2fwd_enabled_crypto_mask |= (1 << cdev_id);
+		l2fwd_enabled_crypto_mask |= (((uint64_t)1) << cdev_id);
 
 		enabled_cdevs[cdev_id] = 1;
 		enabled_cdev_count++;
