@@ -253,7 +253,8 @@ static void ixgbe_remove_rar(struct rte_eth_dev *dev, uint32_t index);
 static void ixgbe_set_default_mac_addr(struct rte_eth_dev *dev,
 					   struct ether_addr *mac_addr);
 static void ixgbe_dcb_init(struct ixgbe_hw *hw, struct ixgbe_dcb_config *dcb_config);
-static int is_ixgbe_pmd(const char *driver_name);
+static bool is_device_supported(struct rte_eth_dev *dev,
+				struct eth_driver *drv);
 
 /* For Virtual Function support */
 static int eth_ixgbevf_dev_init(struct rte_eth_dev *eth_dev);
@@ -4380,16 +4381,14 @@ ixgbe_set_default_mac_addr(struct rte_eth_dev *dev, struct ether_addr *addr)
 	ixgbe_add_rar(dev, addr, 0, 0);
 }
 
-static int
-is_ixgbe_pmd(const char *driver_name)
+static bool
+is_device_supported(struct rte_eth_dev *dev, struct eth_driver *drv)
 {
-	if (!strstr(driver_name, "ixgbe"))
-		return -ENOTSUP;
+	if (strcmp(dev->driver->pci_drv.driver.name,
+		   drv->pci_drv.driver.name))
+		return false;
 
-	if (strstr(driver_name, "ixgbe_vf"))
-		return -ENOTSUP;
-
-	return 0;
+	return true;
 }
 
 int
@@ -4401,17 +4400,17 @@ rte_pmd_ixgbe_set_vf_mac_addr(uint8_t port, uint16_t vf,
 	int rar_entry;
 	uint8_t *new_mac = (uint8_t *)(mac_addr);
 	struct rte_eth_dev *dev;
-	struct rte_eth_dev_info dev_info;
+	struct rte_pci_device *pci_dev;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
 
 	dev = &rte_eth_devices[port];
-	rte_eth_dev_info_get(port, &dev_info);
+	pci_dev = IXGBE_DEV_TO_PCI(dev);
 
-	if (is_ixgbe_pmd(dev_info.driver_name) != 0)
+	if (!is_device_supported(dev, &rte_ixgbe_pmd))
 		return -ENOTSUP;
 
-	if (vf >= dev_info.max_vfs)
+	if (vf >= pci_dev->max_vfs)
 		return -EINVAL;
 
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -4902,17 +4901,17 @@ rte_pmd_ixgbe_set_vf_vlan_anti_spoof(uint8_t port, uint16_t vf, uint8_t on)
 	struct ixgbe_hw *hw;
 	struct ixgbe_mac_info *mac;
 	struct rte_eth_dev *dev;
-	struct rte_eth_dev_info dev_info;
+	struct rte_pci_device *pci_dev;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
 
 	dev = &rte_eth_devices[port];
-	rte_eth_dev_info_get(port, &dev_info);
+	pci_dev = IXGBE_DEV_TO_PCI(dev);
 
-	if (is_ixgbe_pmd(dev_info.driver_name) != 0)
+	if (!is_device_supported(dev, &rte_ixgbe_pmd))
 		return -ENOTSUP;
 
-	if (vf >= dev_info.max_vfs)
+	if (vf >= pci_dev->max_vfs)
 		return -EINVAL;
 
 	if (on > 1)
@@ -4932,17 +4931,17 @@ rte_pmd_ixgbe_set_vf_mac_anti_spoof(uint8_t port, uint16_t vf, uint8_t on)
 	struct ixgbe_hw *hw;
 	struct ixgbe_mac_info *mac;
 	struct rte_eth_dev *dev;
-	struct rte_eth_dev_info dev_info;
+	struct rte_pci_device *pci_dev;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
 
 	dev = &rte_eth_devices[port];
-	rte_eth_dev_info_get(port, &dev_info);
+	pci_dev = IXGBE_DEV_TO_PCI(dev);
 
-	if (is_ixgbe_pmd(dev_info.driver_name) != 0)
+	if (!is_device_supported(dev, &rte_ixgbe_pmd))
 		return -ENOTSUP;
 
-	if (vf >= dev_info.max_vfs)
+	if (vf >= pci_dev->max_vfs)
 		return -EINVAL;
 
 	if (on > 1)
@@ -4961,17 +4960,17 @@ rte_pmd_ixgbe_set_vf_vlan_insert(uint8_t port, uint16_t vf, uint16_t vlan_id)
 	struct ixgbe_hw *hw;
 	uint32_t ctrl;
 	struct rte_eth_dev *dev;
-	struct rte_eth_dev_info dev_info;
+	struct rte_pci_device *pci_dev;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
 
 	dev = &rte_eth_devices[port];
-	rte_eth_dev_info_get(port, &dev_info);
+	pci_dev = IXGBE_DEV_TO_PCI(dev);
 
-	if (is_ixgbe_pmd(dev_info.driver_name) != 0)
+	if (!is_device_supported(dev, &rte_ixgbe_pmd))
 		return -ENOTSUP;
 
-	if (vf >= dev_info.max_vfs)
+	if (vf >= pci_dev->max_vfs)
 		return -EINVAL;
 
 	if (vlan_id > ETHER_MAX_VLAN_ID)
@@ -4997,14 +4996,12 @@ rte_pmd_ixgbe_set_tx_loopback(uint8_t port, uint8_t on)
 	struct ixgbe_hw *hw;
 	uint32_t ctrl;
 	struct rte_eth_dev *dev;
-	struct rte_eth_dev_info dev_info;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
 
 	dev = &rte_eth_devices[port];
-	rte_eth_dev_info_get(port, &dev_info);
 
-	if (is_ixgbe_pmd(dev_info.driver_name) != 0)
+	if (!is_device_supported(dev, &rte_ixgbe_pmd))
 		return -ENOTSUP;
 
 	if (on > 1)
@@ -5031,14 +5028,12 @@ rte_pmd_ixgbe_set_all_queues_drop_en(uint8_t port, uint8_t on)
 	int i;
 	int num_queues = (int)(IXGBE_QDE_IDX_MASK >> IXGBE_QDE_IDX_SHIFT);
 	struct rte_eth_dev *dev;
-	struct rte_eth_dev_info dev_info;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
 
 	dev = &rte_eth_devices[port];
-	rte_eth_dev_info_get(port, &dev_info);
 
-	if (is_ixgbe_pmd(dev_info.driver_name) != 0)
+	if (!is_device_supported(dev, &rte_ixgbe_pmd))
 		return -ENOTSUP;
 
 	if (on > 1)
@@ -5061,18 +5056,18 @@ rte_pmd_ixgbe_set_vf_split_drop_en(uint8_t port, uint16_t vf, uint8_t on)
 	struct ixgbe_hw *hw;
 	uint32_t reg_value;
 	struct rte_eth_dev *dev;
-	struct rte_eth_dev_info dev_info;
+	struct rte_pci_device *pci_dev;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
 
 	dev = &rte_eth_devices[port];
-	rte_eth_dev_info_get(port, &dev_info);
+	pci_dev = IXGBE_DEV_TO_PCI(dev);
 
-	if (is_ixgbe_pmd(dev_info.driver_name) != 0)
+	if (!is_device_supported(dev, &rte_ixgbe_pmd))
 		return -ENOTSUP;
 
 	/* only support VF's 0 to 63 */
-	if ((vf >= dev_info.max_vfs) || (vf > 63))
+	if ((vf >= pci_dev->max_vfs) || (vf > 63))
 		return -EINVAL;
 
 	if (on > 1)
@@ -5094,19 +5089,21 @@ int
 rte_pmd_ixgbe_set_vf_vlan_stripq(uint8_t port, uint16_t vf, uint8_t on)
 {
 	struct rte_eth_dev *dev;
-	struct rte_eth_dev_info dev_info;
+	struct rte_pci_device *pci_dev;
+	struct ixgbe_hw *hw;
 	uint16_t queues_per_pool;
 	uint32_t q;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
 
 	dev = &rte_eth_devices[port];
-	rte_eth_dev_info_get(port, &dev_info);
+	pci_dev = IXGBE_DEV_TO_PCI(dev);
+	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	if (is_ixgbe_pmd(dev_info.driver_name) != 0)
+	if (!is_device_supported(dev, &rte_ixgbe_pmd))
 		return -ENOTSUP;
 
-	if (vf >= dev_info.max_vfs)
+	if (vf >= pci_dev->max_vfs)
 		return -EINVAL;
 
 	if (on > 1)
@@ -5122,8 +5119,12 @@ rte_pmd_ixgbe_set_vf_vlan_stripq(uint8_t port, uint16_t vf, uint8_t on)
 	 * first 124 queues 0-123 will be allocated to VF's and only
 	 * the last 4 queues 123-127 will be assigned to the PF.
 	 */
-
-	queues_per_pool = dev_info.vmdq_queue_num / dev_info.max_vmdq_pools;
+	if (hw->mac.type == ixgbe_mac_82598EB)
+		queues_per_pool = (uint16_t)hw->mac.max_rx_queues /
+				  ETH_16_POOLS;
+	else
+		queues_per_pool = (uint16_t)hw->mac.max_rx_queues /
+				  ETH_64_POOLS;
 
 	for (q = 0; q < queues_per_pool; q++)
 		(*dev->dev_ops->vlan_strip_queue_set)(dev,
@@ -5136,19 +5137,19 @@ rte_pmd_ixgbe_set_vf_rxmode(uint8_t port, uint16_t vf, uint16_t rx_mask, uint8_t
 {
 	int val = 0;
 	struct rte_eth_dev *dev;
-	struct rte_eth_dev_info dev_info;
+	struct rte_pci_device *pci_dev;
 	struct ixgbe_hw *hw;
 	uint32_t vmolr;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
 
 	dev = &rte_eth_devices[port];
-	rte_eth_dev_info_get(port, &dev_info);
+	pci_dev = IXGBE_DEV_TO_PCI(dev);
 
-	if (is_ixgbe_pmd(dev_info.driver_name) != 0)
+	if (!is_device_supported(dev, &rte_ixgbe_pmd))
 		return -ENOTSUP;
 
-	if (vf >= dev_info.max_vfs)
+	if (vf >= pci_dev->max_vfs)
 		return -EINVAL;
 
 	if (on > 1)
@@ -5181,7 +5182,7 @@ int
 rte_pmd_ixgbe_set_vf_rx(uint8_t port, uint16_t vf, uint8_t on)
 {
 	struct rte_eth_dev *dev;
-	struct rte_eth_dev_info dev_info;
+	struct rte_pci_device *pci_dev;
 	uint32_t reg, addr;
 	uint32_t val;
 	const uint8_t bit1 = 0x1;
@@ -5190,12 +5191,12 @@ rte_pmd_ixgbe_set_vf_rx(uint8_t port, uint16_t vf, uint8_t on)
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
 
 	dev = &rte_eth_devices[port];
-	rte_eth_dev_info_get(port, &dev_info);
+	pci_dev = IXGBE_DEV_TO_PCI(dev);
 
-	if (is_ixgbe_pmd(dev_info.driver_name) != 0)
+	if (!is_device_supported(dev, &rte_ixgbe_pmd))
 		return -ENOTSUP;
 
-	if (vf >= dev_info.max_vfs)
+	if (vf >= pci_dev->max_vfs)
 		return -EINVAL;
 
 	if (on > 1)
@@ -5231,7 +5232,7 @@ int
 rte_pmd_ixgbe_set_vf_tx(uint8_t port, uint16_t vf, uint8_t on)
 {
 	struct rte_eth_dev *dev;
-	struct rte_eth_dev_info dev_info;
+	struct rte_pci_device *pci_dev;
 	uint32_t reg, addr;
 	uint32_t val;
 	const uint8_t bit1 = 0x1;
@@ -5241,12 +5242,12 @@ rte_pmd_ixgbe_set_vf_tx(uint8_t port, uint16_t vf, uint8_t on)
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
 
 	dev = &rte_eth_devices[port];
-	rte_eth_dev_info_get(port, &dev_info);
+	pci_dev = IXGBE_DEV_TO_PCI(dev);
 
-	if (is_ixgbe_pmd(dev_info.driver_name) != 0)
+	if (!is_device_supported(dev, &rte_ixgbe_pmd))
 		return -ENOTSUP;
 
-	if (vf >= dev_info.max_vfs)
+	if (vf >= pci_dev->max_vfs)
 		return -EINVAL;
 
 	if (on > 1)
@@ -5282,7 +5283,6 @@ rte_pmd_ixgbe_set_vf_vlan_filter(uint8_t port, uint16_t vlan,
 			uint64_t vf_mask, uint8_t vlan_on)
 {
 	struct rte_eth_dev *dev;
-	struct rte_eth_dev_info dev_info;
 	int ret = 0;
 	uint16_t vf_idx;
 	struct ixgbe_hw *hw;
@@ -5290,9 +5290,8 @@ rte_pmd_ixgbe_set_vf_vlan_filter(uint8_t port, uint16_t vlan,
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
 
 	dev = &rte_eth_devices[port];
-	rte_eth_dev_info_get(port, &dev_info);
 
-	if (is_ixgbe_pmd(dev_info.driver_name) != 0)
+	if (!is_device_supported(dev, &rte_ixgbe_pmd))
 		return -ENOTSUP;
 
 	if ((vlan > ETHER_MAX_VLAN_ID) || (vf_mask == 0))
@@ -5318,7 +5317,6 @@ int rte_pmd_ixgbe_set_vf_rate_limit(uint8_t port, uint16_t vf,
 	uint16_t tx_rate, uint64_t q_msk)
 {
 	struct rte_eth_dev *dev;
-	struct rte_eth_dev_info dev_info;
 	struct ixgbe_hw *hw;
 	struct ixgbe_vf_info *vfinfo;
 	struct rte_eth_link link;
@@ -5332,13 +5330,13 @@ int rte_pmd_ixgbe_set_vf_rate_limit(uint8_t port, uint16_t vf,
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
 
 	dev = &rte_eth_devices[port];
-	rte_eth_dev_info_get(port, &dev_info);
+	pci_dev = IXGBE_DEV_TO_PCI(dev);
 	rte_eth_link_get_nowait(port, &link);
 
-	if (is_ixgbe_pmd(dev_info.driver_name) != 0)
+	if (!is_device_supported(dev, &rte_ixgbe_pmd))
 		return -ENOTSUP;
 
-	if (vf >= dev_info.max_vfs)
+	if (vf >= pci_dev->max_vfs)
 		return -EINVAL;
 
 	if (tx_rate > link.link_speed)
@@ -5347,7 +5345,6 @@ int rte_pmd_ixgbe_set_vf_rate_limit(uint8_t port, uint16_t vf,
 	if (q_msk == 0)
 		return 0;
 
-	pci_dev = IXGBE_DEV_TO_PCI(dev);
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	vfinfo = *(IXGBE_DEV_PRIVATE_TO_P_VFDATA(dev->data->dev_private));
 	nb_q_per_pool = RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool;
@@ -8227,16 +8224,15 @@ rte_pmd_ixgbe_macsec_enable(uint8_t port, uint8_t en, uint8_t rp)
 {
 	struct ixgbe_hw *hw;
 	struct rte_eth_dev *dev;
-	struct rte_eth_dev_info dev_info;
 	uint32_t ctrl;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
 
-	rte_eth_dev_info_get(port, &dev_info);
-	if (is_ixgbe_pmd(dev_info.driver_name) != 0)
+	dev = &rte_eth_devices[port];
+
+	if (!is_device_supported(dev, &rte_ixgbe_pmd))
 		return -ENOTSUP;
 
-	dev = &rte_eth_devices[port];
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	/* Stop the data paths */
@@ -8311,16 +8307,15 @@ rte_pmd_ixgbe_macsec_disable(uint8_t port)
 {
 	struct ixgbe_hw *hw;
 	struct rte_eth_dev *dev;
-	struct rte_eth_dev_info dev_info;
 	uint32_t ctrl;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
 
-	rte_eth_dev_info_get(port, &dev_info);
-	if (is_ixgbe_pmd(dev_info.driver_name) != 0)
+	dev = &rte_eth_devices[port];
+
+	if (!is_device_supported(dev, &rte_ixgbe_pmd))
 		return -ENOTSUP;
 
-	dev = &rte_eth_devices[port];
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	/* Stop the data paths */
@@ -8376,16 +8371,15 @@ rte_pmd_ixgbe_macsec_config_txsc(uint8_t port, uint8_t *mac)
 {
 	struct ixgbe_hw *hw;
 	struct rte_eth_dev *dev;
-	struct rte_eth_dev_info dev_info;
 	uint32_t ctrl;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
 
-	rte_eth_dev_info_get(port, &dev_info);
-	if (is_ixgbe_pmd(dev_info.driver_name) != 0)
+	dev = &rte_eth_devices[port];
+
+	if (!is_device_supported(dev, &rte_ixgbe_pmd))
 		return -ENOTSUP;
 
-	dev = &rte_eth_devices[port];
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	ctrl = mac[0] | (mac[1] << 8) | (mac[2] << 16) | (mac[3] << 24);
@@ -8402,16 +8396,15 @@ rte_pmd_ixgbe_macsec_config_rxsc(uint8_t port, uint8_t *mac, uint16_t pi)
 {
 	struct ixgbe_hw *hw;
 	struct rte_eth_dev *dev;
-	struct rte_eth_dev_info dev_info;
 	uint32_t ctrl;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
 
-	rte_eth_dev_info_get(port, &dev_info);
-	if (is_ixgbe_pmd(dev_info.driver_name) != 0)
+	dev = &rte_eth_devices[port];
+
+	if (!is_device_supported(dev, &rte_ixgbe_pmd))
 		return -ENOTSUP;
 
-	dev = &rte_eth_devices[port];
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	ctrl = mac[0] | (mac[1] << 8) | (mac[2] << 16) | (mac[3] << 24);
@@ -8430,16 +8423,15 @@ rte_pmd_ixgbe_macsec_select_txsa(uint8_t port, uint8_t idx, uint8_t an,
 {
 	struct ixgbe_hw *hw;
 	struct rte_eth_dev *dev;
-	struct rte_eth_dev_info dev_info;
 	uint32_t ctrl, i;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
 
-	rte_eth_dev_info_get(port, &dev_info);
-	if (is_ixgbe_pmd(dev_info.driver_name) != 0)
+	dev = &rte_eth_devices[port];
+
+	if (!is_device_supported(dev, &rte_ixgbe_pmd))
 		return -ENOTSUP;
 
-	dev = &rte_eth_devices[port];
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	if (idx != 0 && idx != 1)
@@ -8487,16 +8479,15 @@ rte_pmd_ixgbe_macsec_select_rxsa(uint8_t port, uint8_t idx, uint8_t an,
 {
 	struct ixgbe_hw *hw;
 	struct rte_eth_dev *dev;
-	struct rte_eth_dev_info dev_info;
 	uint32_t ctrl, i;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
 
-	rte_eth_dev_info_get(port, &dev_info);
-	if (is_ixgbe_pmd(dev_info.driver_name) != 0)
+	dev = &rte_eth_devices[port];
+
+	if (!is_device_supported(dev, &rte_ixgbe_pmd))
 		return -ENOTSUP;
 
-	dev = &rte_eth_devices[port];
 	hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	if (idx != 0 && idx != 1)
