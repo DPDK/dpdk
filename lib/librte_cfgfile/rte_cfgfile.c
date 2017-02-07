@@ -151,6 +151,7 @@ rte_cfgfile_load(const char *filename, int flags)
 					sizeof(*cfg) + sizeof(cfg->sections[0])
 					* allocated_sections);
 				if (n_cfg == NULL) {
+					curr_section--;
 					printf("Error - no more memory\n");
 					goto error1;
 				}
@@ -198,6 +199,7 @@ rte_cfgfile_load(const char *filename, int flags)
 					sizeof(sect->entries[0]) *
 					allocated_entries);
 				if (n_sect == NULL) {
+					curr_entry--;
 					printf("Error - no more memory\n");
 					goto error1;
 				}
@@ -233,6 +235,8 @@ rte_cfgfile_load(const char *filename, int flags)
 
 error1:
 	cfg->num_sections = curr_section + 1;
+	if (curr_section >= 0)
+		cfg->sections[curr_section]->num_entries = curr_entry + 1;
 	rte_cfgfile_close(cfg);
 error2:
 	fclose(f);
