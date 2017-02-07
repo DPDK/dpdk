@@ -41,6 +41,21 @@ chain mode have to be specified in the command line as application
 parameters. These parameters are checked using device capabilities
 structure.
 
+Limitations
+-----------
+On hardware devices the cycle-count doesn't always represent the actual offload
+cost. The cycle-count only represents the offload cost when the hardware
+accelerator is not fully loaded, when loaded the cpu cycles freed up by the
+offload are still consumed by the test tool and included in the cycle-count.
+These cycles are consumed by retries and inefficient API calls enqueuing and
+dequeuing smaller bursts than specified by the cmdline parameter. This results
+in a larger cycle-count measurement and should not be interpreted as an offload
+cost measurement.
+
+On hardware devices the throughput measurement is not necessarily the maximum
+possible for the device, e.g. it may be necessary to use multiple cores to keep
+the hardware accelerator fully loaded and so measure maximum throughput.
+
 Compiling the Application
 -------------------------
 
