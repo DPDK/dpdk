@@ -1,3 +1,6 @@
+#ifdef RTE_EXEC_ENV_BSDAPP
+	#define _WITH_GETLINE
+#endif
 #include <stdio.h>
 
 #include <rte_malloc.h>
