@@ -54,6 +54,8 @@ RTE_PDF_DPI ?= 300
 
 RTE_GUIDES := $(filter %/, $(wildcard $(RTE_SDK)/doc/guides/*/))
 
+API_EXAMPLES := $(RTE_OUTPUT)/doc/html/examples.dox
+
 .PHONY: help
 help:
 	@cat $(RTE_SDK)/doc/build-sdk-quick.txt
@@ -66,12 +68,13 @@ all: api-html guides-html guides-pdf
 clean: api-html-clean guides-html-clean guides-pdf-clean guides-man-clean
 
 .PHONY: api-html
-api-html: api-html-clean
+api-html: api-html-clean $(API_EXAMPLES)
 	@echo 'doxygen for API...'
 	$(Q)mkdir -p $(RTE_OUTPUT)/doc/html
 	$(Q)(cat $(RTE_SDK)/doc/api/doxy-api.conf     && \
 	    printf 'PROJECT_NUMBER = '                && \
 	                      $(MAKE) -rR showversion && \
+	    echo INPUT           += $(API_EXAMPLES)   && \
 	    echo OUTPUT_DIRECTORY = $(RTE_OUTPUT)/doc && \
 	    echo HTML_OUTPUT      = html/api          && \
 	    echo GENERATE_HTML    = YES               && \
@@ -84,6 +87,13 @@ api-html: api-html-clean
 api-html-clean:
 	$(Q)rm -f $(RTE_OUTPUT)/doc/html/api/*
 	$(Q)rmdir -p --ignore-fail-on-non-empty $(RTE_OUTPUT)/doc/html/api 2>&- || true
+
+$(API_EXAMPLES):
+	$(Q)mkdir -p $(RTE_OUTPUT)/doc/html
+	@printf '/**\n' > $(API_EXAMPLES)
+	@printf '@page examples DPDK Example Programs\n\n' >> $(API_EXAMPLES)
+	@find examples -type f -name '*.c' -printf '@example %p\n' >> $(API_EXAMPLES)
+	@printf '*/\n' >> $(API_EXAMPLES)
 
 guides-pdf-clean: guides-pdf-img-clean
 guides-pdf-img-clean:
