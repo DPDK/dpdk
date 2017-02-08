@@ -10281,16 +10281,14 @@ i40e_filter_restore(struct i40e_pf *pf)
 	i40e_fdir_filter_restore(pf);
 }
 
-static int
-is_i40e_pmd(const char *driver_name)
+static bool
+is_device_supported(struct rte_eth_dev *dev, struct eth_driver *drv)
 {
-	if (!strstr(driver_name, "i40e"))
-		return -ENOTSUP;
+	if (strcmp(dev->driver->pci_drv.driver.name,
+		   drv->pci_drv.driver.name))
+		return false;
 
-	if (strstr(driver_name, "i40e_vf"))
-		return -ENOTSUP;
-
-	return 0;
+	return true;
 }
 
 int
@@ -10303,7 +10301,7 @@ rte_pmd_i40e_ping_vfs(uint8_t port, uint16_t vf)
 
 	dev = &rte_eth_devices[port];
 
-	if (is_i40e_pmd(dev->data->drv_name))
+	if (!is_device_supported(dev, &rte_i40e_pmd))
 		return -ENOTSUP;
 
 	pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -10332,7 +10330,7 @@ rte_pmd_i40e_set_vf_mac_anti_spoof(uint8_t port, uint16_t vf_id, uint8_t on)
 
 	dev = &rte_eth_devices[port];
 
-	if (is_i40e_pmd(dev->data->drv_name))
+	if (!is_device_supported(dev, &rte_i40e_pmd))
 		return -ENOTSUP;
 
 	pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -10436,7 +10434,7 @@ rte_pmd_i40e_set_vf_vlan_anti_spoof(uint8_t port, uint16_t vf_id, uint8_t on)
 
 	dev = &rte_eth_devices[port];
 
-	if (is_i40e_pmd(dev->data->drv_name))
+	if (!is_device_supported(dev, &rte_i40e_pmd))
 		return -ENOTSUP;
 
 	pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -10694,7 +10692,7 @@ rte_pmd_i40e_set_tx_loopback(uint8_t port, uint8_t on)
 
 	dev = &rte_eth_devices[port];
 
-	if (is_i40e_pmd(dev->data->drv_name))
+	if (!is_device_supported(dev, &rte_i40e_pmd))
 		return -ENOTSUP;
 
 	pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -10736,7 +10734,7 @@ rte_pmd_i40e_set_vf_unicast_promisc(uint8_t port, uint16_t vf_id, uint8_t on)
 
 	dev = &rte_eth_devices[port];
 
-	if (is_i40e_pmd(dev->data->drv_name))
+	if (!is_device_supported(dev, &rte_i40e_pmd))
 		return -ENOTSUP;
 
 	pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -10777,7 +10775,7 @@ rte_pmd_i40e_set_vf_multicast_promisc(uint8_t port, uint16_t vf_id, uint8_t on)
 
 	dev = &rte_eth_devices[port];
 
-	if (is_i40e_pmd(dev->data->drv_name))
+	if (!is_device_supported(dev, &rte_i40e_pmd))
 		return -ENOTSUP;
 
 	pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -10823,7 +10821,7 @@ rte_pmd_i40e_set_vf_mac_addr(uint8_t port, uint16_t vf_id,
 
 	dev = &rte_eth_devices[port];
 
-	if (is_i40e_pmd(dev->data->drv_name))
+	if (!is_device_supported(dev, &rte_i40e_pmd))
 		return -ENOTSUP;
 
 	pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -10860,7 +10858,7 @@ rte_pmd_i40e_set_vf_vlan_stripq(uint8_t port, uint16_t vf_id, uint8_t on)
 
 	dev = &rte_eth_devices[port];
 
-	if (is_i40e_pmd(dev->data->drv_name))
+	if (!is_device_supported(dev, &rte_i40e_pmd))
 		return -ENOTSUP;
 
 	pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -10903,7 +10901,7 @@ int rte_pmd_i40e_set_vf_vlan_insert(uint8_t port, uint16_t vf_id,
 
 	dev = &rte_eth_devices[port];
 
-	if (is_i40e_pmd(dev->data->drv_name))
+	if (!is_device_supported(dev, &rte_i40e_pmd))
 		return -ENOTSUP;
 
 	pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -10967,7 +10965,7 @@ int rte_pmd_i40e_set_vf_broadcast(uint8_t port, uint16_t vf_id,
 
 	dev = &rte_eth_devices[port];
 
-	if (is_i40e_pmd(dev->data->drv_name))
+	if (!is_device_supported(dev, &rte_i40e_pmd))
 		return -ENOTSUP;
 
 	pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -11023,7 +11021,7 @@ int rte_pmd_i40e_set_vf_vlan_tag(uint8_t port, uint16_t vf_id, uint8_t on)
 
 	dev = &rte_eth_devices[port];
 
-	if (is_i40e_pmd(dev->data->drv_name))
+	if (!is_device_supported(dev, &rte_i40e_pmd))
 		return -ENOTSUP;
 
 	pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -11086,7 +11084,7 @@ int rte_pmd_i40e_set_vf_vlan_filter(uint8_t port, uint16_t vlan_id,
 
 	dev = &rte_eth_devices[port];
 
-	if (is_i40e_pmd(dev->data->drv_name))
+	if (!is_device_supported(dev, &rte_i40e_pmd))
 		return -ENOTSUP;
 
 	if (vlan_id > ETHER_MAX_VLAN_ID) {
@@ -11149,7 +11147,7 @@ rte_pmd_i40e_get_vf_stats(uint8_t port,
 
 	dev = &rte_eth_devices[port];
 
-	if (is_i40e_pmd(dev->data->drv_name))
+	if (!is_device_supported(dev, &rte_i40e_pmd))
 		return -ENOTSUP;
 
 	pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -11193,7 +11191,7 @@ rte_pmd_i40e_reset_vf_stats(uint8_t port,
 
 	dev = &rte_eth_devices[port];
 
-	if (is_i40e_pmd(dev->data->drv_name))
+	if (!is_device_supported(dev, &rte_i40e_pmd))
 		return -ENOTSUP;
 
 	pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
