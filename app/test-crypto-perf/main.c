@@ -162,94 +162,94 @@ cperf_verify_devices_capabilities(struct cperf_options *opts,
 }
 
 static int
-cperf_check_test_vector(struct cperf_options opts,
-		struct cperf_test_vector test_vec)
+cperf_check_test_vector(struct cperf_options *opts,
+		struct cperf_test_vector *test_vec)
 {
-	if (opts.op_type == CPERF_CIPHER_ONLY) {
-		if (opts.cipher_algo == RTE_CRYPTO_CIPHER_NULL) {
-			if (test_vec.plaintext.data == NULL)
+	if (opts->op_type == CPERF_CIPHER_ONLY) {
+		if (opts->cipher_algo == RTE_CRYPTO_CIPHER_NULL) {
+			if (test_vec->plaintext.data == NULL)
 				return -1;
-		} else if (opts.cipher_algo != RTE_CRYPTO_CIPHER_NULL) {
-			if (test_vec.plaintext.data == NULL)
+		} else if (opts->cipher_algo != RTE_CRYPTO_CIPHER_NULL) {
+			if (test_vec->plaintext.data == NULL)
 				return -1;
-			if (test_vec.plaintext.length != opts.buffer_sz)
+			if (test_vec->plaintext.length != opts->buffer_sz)
 				return -1;
-			if (test_vec.ciphertext.data == NULL)
+			if (test_vec->ciphertext.data == NULL)
 				return -1;
-			if (test_vec.ciphertext.length != opts.buffer_sz)
+			if (test_vec->ciphertext.length != opts->buffer_sz)
 				return -1;
-			if (test_vec.iv.data == NULL)
+			if (test_vec->iv.data == NULL)
 				return -1;
-			if (test_vec.iv.length != opts.cipher_iv_sz)
+			if (test_vec->iv.length != opts->cipher_iv_sz)
 				return -1;
-			if (test_vec.cipher_key.data == NULL)
+			if (test_vec->cipher_key.data == NULL)
 				return -1;
-			if (test_vec.cipher_key.length != opts.cipher_key_sz)
+			if (test_vec->cipher_key.length != opts->cipher_key_sz)
 				return -1;
 		}
-	} else if (opts.op_type == CPERF_AUTH_ONLY) {
-		if (opts.auth_algo != RTE_CRYPTO_AUTH_NULL) {
-			if (test_vec.plaintext.data == NULL)
+	} else if (opts->op_type == CPERF_AUTH_ONLY) {
+		if (opts->auth_algo != RTE_CRYPTO_AUTH_NULL) {
+			if (test_vec->plaintext.data == NULL)
 				return -1;
-			if (test_vec.plaintext.length != opts.buffer_sz)
+			if (test_vec->plaintext.length != opts->buffer_sz)
 				return -1;
-			if (test_vec.auth_key.data == NULL)
+			if (test_vec->auth_key.data == NULL)
 				return -1;
-			if (test_vec.auth_key.length != opts.auth_key_sz)
+			if (test_vec->auth_key.length != opts->auth_key_sz)
 				return -1;
-			if (test_vec.digest.data == NULL)
+			if (test_vec->digest.data == NULL)
 				return -1;
-			if (test_vec.digest.length != opts.auth_digest_sz)
+			if (test_vec->digest.length != opts->auth_digest_sz)
 				return -1;
 		}
 
-	} else if (opts.op_type == CPERF_CIPHER_THEN_AUTH ||
-			opts.op_type == CPERF_AUTH_THEN_CIPHER) {
-		if (opts.cipher_algo == RTE_CRYPTO_CIPHER_NULL) {
-			if (test_vec.plaintext.data == NULL)
+	} else if (opts->op_type == CPERF_CIPHER_THEN_AUTH ||
+			opts->op_type == CPERF_AUTH_THEN_CIPHER) {
+		if (opts->cipher_algo == RTE_CRYPTO_CIPHER_NULL) {
+			if (test_vec->plaintext.data == NULL)
 				return -1;
-			if (test_vec.plaintext.length != opts.buffer_sz)
+			if (test_vec->plaintext.length != opts->buffer_sz)
 				return -1;
-		} else if (opts.cipher_algo != RTE_CRYPTO_CIPHER_NULL) {
-			if (test_vec.plaintext.data == NULL)
+		} else if (opts->cipher_algo != RTE_CRYPTO_CIPHER_NULL) {
+			if (test_vec->plaintext.data == NULL)
 				return -1;
-			if (test_vec.plaintext.length != opts.buffer_sz)
+			if (test_vec->plaintext.length != opts->buffer_sz)
 				return -1;
-			if (test_vec.ciphertext.data == NULL)
+			if (test_vec->ciphertext.data == NULL)
 				return -1;
-			if (test_vec.ciphertext.length != opts.buffer_sz)
+			if (test_vec->ciphertext.length != opts->buffer_sz)
 				return -1;
-			if (test_vec.iv.data == NULL)
+			if (test_vec->iv.data == NULL)
 				return -1;
-			if (test_vec.iv.length != opts.cipher_iv_sz)
+			if (test_vec->iv.length != opts->cipher_iv_sz)
 				return -1;
-			if (test_vec.cipher_key.data == NULL)
+			if (test_vec->cipher_key.data == NULL)
 				return -1;
-			if (test_vec.cipher_key.length != opts.cipher_key_sz)
-				return -1;
-		}
-		if (opts.auth_algo != RTE_CRYPTO_AUTH_NULL) {
-			if (test_vec.auth_key.data == NULL)
-				return -1;
-			if (test_vec.auth_key.length != opts.auth_key_sz)
-				return -1;
-			if (test_vec.digest.data == NULL)
-				return -1;
-			if (test_vec.digest.length != opts.auth_digest_sz)
+			if (test_vec->cipher_key.length != opts->cipher_key_sz)
 				return -1;
 		}
-	} else if (opts.op_type == CPERF_AEAD) {
-		if (test_vec.plaintext.data == NULL)
+		if (opts->auth_algo != RTE_CRYPTO_AUTH_NULL) {
+			if (test_vec->auth_key.data == NULL)
+				return -1;
+			if (test_vec->auth_key.length != opts->auth_key_sz)
+				return -1;
+			if (test_vec->digest.data == NULL)
+				return -1;
+			if (test_vec->digest.length != opts->auth_digest_sz)
+				return -1;
+		}
+	} else if (opts->op_type == CPERF_AEAD) {
+		if (test_vec->plaintext.data == NULL)
 			return -1;
-		if (test_vec.plaintext.length != opts.buffer_sz)
+		if (test_vec->plaintext.length != opts->buffer_sz)
 			return -1;
-		if (test_vec.aad.data == NULL)
+		if (test_vec->aad.data == NULL)
 			return -1;
-		if (test_vec.aad.length != opts.auth_aad_sz)
+		if (test_vec->aad.length != opts->auth_aad_sz)
 			return -1;
-		if (test_vec.digest.data == NULL)
+		if (test_vec->digest.data == NULL)
 			return -1;
-		if (test_vec.digest.length != opts.auth_digest_sz)
+		if (test_vec->digest.length != opts->auth_digest_sz)
 			return -1;
 	}
 	return 0;
@@ -320,7 +320,7 @@ main(int argc, char **argv)
 			goto err;
 		}
 
-		if (cperf_check_test_vector(opts, *t_vec)) {
+		if (cperf_check_test_vector(&opts, t_vec)) {
 			RTE_LOG(ERR, USER1, "Incomplete necessary test vectors"
 					"\n");
 			goto err;
