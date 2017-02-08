@@ -1087,7 +1087,8 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 		RTE_LOG(INFO, PMD, "%s", bnxt_version);
 
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
-	eth_dev->data->dev_flags = RTE_ETH_DEV_DETACHABLE;
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_DETACHABLE;
+
 	bp = eth_dev->data->dev_private;
 
 	if (bnxt_vf_pciid(pci_dev->id.device_id))

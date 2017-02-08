@@ -2465,7 +2465,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 
 	pci_dev = RTE_DEV_TO_PCI(eth_dev->device);
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
-	eth_dev->data->dev_flags = RTE_ETH_DEV_DETACHABLE;
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_DETACHABLE;
 
 	hw->device_id = pci_dev->id.device_id;
 	hw->vendor_id = pci_dev->id.vendor_id;

@@ -1173,7 +1173,7 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev)
 	}
 
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
-	eth_dev->data->dev_flags = RTE_ETH_DEV_DETACHABLE;
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_DETACHABLE;
 
 	/* Vendor and Device ID need to be set before init of shared code */
 	hw->device_id = pci_dev->id.device_id;
@@ -1627,7 +1627,7 @@ eth_ixgbevf_dev_init(struct rte_eth_dev *eth_dev)
 	}
 
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
-	eth_dev->data->dev_flags = RTE_ETH_DEV_DETACHABLE;
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_DETACHABLE;
 
 	hw->device_id = pci_dev->id.device_id;
 	hw->vendor_id = pci_dev->id.vendor_id;
