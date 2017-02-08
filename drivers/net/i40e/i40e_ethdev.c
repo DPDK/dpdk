@@ -2220,11 +2220,11 @@ i40e_dev_link_update(struct rte_eth_dev *dev,
 		}
 
 		link.link_status = link_status.link_info & I40E_AQ_LINK_UP;
-		if (!wait_to_complete)
+		if (!wait_to_complete || link.link_status)
 			break;
 
 		rte_delay_ms(CHECK_INTERVAL);
-	} while (!link.link_status && rep_cnt--);
+	} while (--rep_cnt);
 
 	if (!link.link_status)
 		goto out;
