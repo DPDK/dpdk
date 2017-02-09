@@ -39,3 +39,4 @@ HowTo Guides
     lm_virtio_vhost_user
     flow_bifurcation
     pvp_reference_benchmark
+    virtio_user_for_container_networking
