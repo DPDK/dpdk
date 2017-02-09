@@ -43,9 +43,11 @@
 #include <net/if.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
+#include <sys/utsname.h>
 #include <netinet/in.h>
 #include <linux/ethtool.h>
 #include <linux/sockios.h>
+#include <linux/version.h>
 #include <fcntl.h>
 
 /* DPDK headers don't like -pedantic. */
@@ -66,6 +68,57 @@
 #include "mlx5.h"
 #include "mlx5_rxtx.h"
 #include "mlx5_utils.h"
+
+/* Add defines in case the running kernel is not the same as user headers. */
+#ifndef ETHTOOL_GLINKSETTINGS
+struct ethtool_link_settings {
+	uint32_t cmd;
+	uint32_t speed;
+	uint8_t duplex;
+	uint8_t port;
+	uint8_t phy_address;
+	uint8_t autoneg;
+	uint8_t mdio_support;
+	uint8_t eth_to_mdix;
+	uint8_t eth_tp_mdix_ctrl;
+	int8_t link_mode_masks_nwords;
+	uint32_t reserved[8];
+	uint32_t link_mode_masks[];
+};
+
+#define ETHTOOL_GLINKSETTINGS 0x0000004c
+#define ETHTOOL_LINK_MODE_1000baseT_Full_BIT 5
+#define ETHTOOL_LINK_MODE_Autoneg_BIT 6
+#define ETHTOOL_LINK_MODE_1000baseKX_Full_BIT 17
+#define ETHTOOL_LINK_MODE_10000baseKX4_Full_BIT 18
+#define ETHTOOL_LINK_MODE_10000baseKR_Full_BIT 19
+#define ETHTOOL_LINK_MODE_10000baseR_FEC_BIT 20
+#define ETHTOOL_LINK_MODE_20000baseMLD2_Full_BIT 21
+#define ETHTOOL_LINK_MODE_20000baseKR2_Full_BIT 22
+#define ETHTOOL_LINK_MODE_40000baseKR4_Full_BIT 23
+#define ETHTOOL_LINK_MODE_40000baseCR4_Full_BIT 24
+#define ETHTOOL_LINK_MODE_40000baseSR4_Full_BIT 25
+#define ETHTOOL_LINK_MODE_40000baseLR4_Full_BIT 26
+#define ETHTOOL_LINK_MODE_56000baseKR4_Full_BIT 27
+#define ETHTOOL_LINK_MODE_56000baseCR4_Full_BIT 28
+#define ETHTOOL_LINK_MODE_56000baseSR4_Full_BIT 29
+#define ETHTOOL_LINK_MODE_56000baseLR4_Full_BIT 30
+#endif
+#ifndef HAVE_ETHTOOL_LINK_MODE_25G
+#define ETHTOOL_LINK_MODE_25000baseCR_Full_BIT 31
+#define ETHTOOL_LINK_MODE_25000baseKR_Full_BIT 32
+#define ETHTOOL_LINK_MODE_25000baseSR_Full_BIT 33
+#endif
+#ifndef HAVE_ETHTOOL_LINK_MODE_50G
+#define ETHTOOL_LINK_MODE_50000baseCR2_Full_BIT 34
+#define ETHTOOL_LINK_MODE_50000baseKR2_Full_BIT 35
+#endif
+#ifndef HAVE_ETHTOOL_LINK_MODE_100G
+#define ETHTOOL_LINK_MODE_100000baseKR4_Full_BIT 36
+#define ETHTOOL_LINK_MODE_100000baseSR4_Full_BIT 37
+#define ETHTOOL_LINK_MODE_100000baseCR4_Full_BIT 38
+#define ETHTOOL_LINK_MODE_100000baseLR4_ER4_Full_BIT 39
+#endif
 
 /**
  * Return private structure associated with an Ethernet device.
@@ -694,8 +747,7 @@ mlx5_link_update_unlocked_gset(struct rte_eth_dev *dev, int wait_to_complete)
 }
 
 /**
- * Retrieve physical link information (unlocked version using new ioctl from
- * Linux 4.5).
+ * Retrieve physical link information (unlocked version using new ioctl).
  *
  * @param dev
  *   Pointer to Ethernet device structure.
@@ -705,7 +757,6 @@ mlx5_link_update_unlocked_gset(struct rte_eth_dev *dev, int wait_to_complete)
 static int
 mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev, int wait_to_complete)
 {
-#ifdef ETHTOOL_GLINKSETTINGS
 	struct priv *priv = mlx5_get_priv(dev);
 	struct ethtool_link_settings edata = {
 		.cmd = ETHTOOL_GLINKSETTINGS,
@@ -732,7 +783,6 @@ mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev, int wait_to_complete)
 	sc = edata.link_mode_masks[0] |
 		((uint64_t)edata.link_mode_masks[1] << 32);
 	priv->link_speed_capa = 0;
-	/* Link speeds available in kernel v4.5. */
 	if (sc & ETHTOOL_LINK_MODE_Autoneg_BIT)
 		priv->link_speed_capa |= ETH_LINK_SPEED_AUTONEG;
 	if (sc & (ETHTOOL_LINK_MODE_1000baseT_Full_BIT |
@@ -755,25 +805,18 @@ mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev, int wait_to_complete)
 		  ETHTOOL_LINK_MODE_56000baseSR4_Full_BIT |
 		  ETHTOOL_LINK_MODE_56000baseLR4_Full_BIT))
 		priv->link_speed_capa |= ETH_LINK_SPEED_56G;
-	/* Link speeds available in kernel v4.6. */
-#ifdef HAVE_ETHTOOL_LINK_MODE_25G
 	if (sc & (ETHTOOL_LINK_MODE_25000baseCR_Full_BIT |
 		  ETHTOOL_LINK_MODE_25000baseKR_Full_BIT |
 		  ETHTOOL_LINK_MODE_25000baseSR_Full_BIT))
 		priv->link_speed_capa |= ETH_LINK_SPEED_25G;
-#endif
-#ifdef HAVE_ETHTOOL_LINK_MODE_50G
 	if (sc & (ETHTOOL_LINK_MODE_50000baseCR2_Full_BIT |
 		  ETHTOOL_LINK_MODE_50000baseKR2_Full_BIT))
 		priv->link_speed_capa |= ETH_LINK_SPEED_50G;
-#endif
-#ifdef HAVE_ETHTOOL_LINK_MODE_100G
 	if (sc & (ETHTOOL_LINK_MODE_100000baseKR4_Full_BIT |
 		  ETHTOOL_LINK_MODE_100000baseSR4_Full_BIT |
 		  ETHTOOL_LINK_MODE_100000baseCR4_Full_BIT |
 		  ETHTOOL_LINK_MODE_100000baseLR4_ER4_Full_BIT))
 		priv->link_speed_capa |= ETH_LINK_SPEED_100G;
-#endif
 	dev_link.link_duplex = ((edata.duplex == DUPLEX_HALF) ?
 				ETH_LINK_HALF_DUPLEX : ETH_LINK_FULL_DUPLEX);
 	dev_link.link_autoneg = !(dev->data->dev_conf.link_speeds &
@@ -783,10 +826,6 @@ mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev, int wait_to_complete)
 		dev->data->dev_link = dev_link;
 		return 0;
 	}
-#else
-	(void)dev;
-	(void)wait_to_complete;
-#endif
 	/* Link status is still the same. */
 	return -1;
 }
@@ -802,12 +841,15 @@ mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev, int wait_to_complete)
 int
 mlx5_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 {
-	int ret;
+	struct utsname utsname;
+	int ver[3];
 
-	ret = mlx5_link_update_unlocked_gs(dev, wait_to_complete);
-	if (ret < 0)
-		ret = mlx5_link_update_unlocked_gset(dev, wait_to_complete);
-	return ret;
+	if (uname(&utsname) == -1 ||
+	    sscanf(utsname.release, "%d.%d.%d",
+		   &ver[0], &ver[1], &ver[2]) != 3 ||
+	    KERNEL_VERSION(ver[0], ver[1], ver[2]) < KERNEL_VERSION(4, 9, 0))
+		return mlx5_link_update_unlocked_gset(dev, wait_to_complete);
+	return mlx5_link_update_unlocked_gs(dev, wait_to_complete);
 }
 
 /**
