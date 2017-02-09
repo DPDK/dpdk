@@ -86,6 +86,7 @@ Features
 - Hardware checksum offloads.
 - Flow director (RTE_FDIR_MODE_PERFECT, RTE_FDIR_MODE_PERFECT_MAC_VLAN and
   RTE_ETH_FDIR_REJECT).
+- Flow API.
 - Secondary process TX is supported.
 - KVM and VMware ESX SR-IOV modes are supported.
 - RSS hash result is supported.
