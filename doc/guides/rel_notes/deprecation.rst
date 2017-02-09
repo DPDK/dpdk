@@ -11,7 +11,7 @@ Deprecation Notices
 * igb_uio: iomem mapping and sysfs files created for iomem and ioport in
   igb_uio will be removed, because we are able to detect these from what Linux
   has exposed, like the way we have done with uio-pci-generic. This change
-  targets release 17.02.
+  targets release 17.05.
 
 * ABI/API changes are planned for 17.02: ``rte_device``, ``rte_driver`` will be
   impacted because of introduction of a new ``rte_bus`` hierarchy. This would
