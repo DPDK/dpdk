@@ -137,6 +137,17 @@ New Features
   Support for Mellanox ConnectX-5 family of 10/25/40/50/100 Gbps adapters
   has been added to the existing mlx5 PMD.
 
+* **Updated the mlx5 driver.**
+
+  * Improve Tx performance by using vector logic.
+  * Improve RSS balancing when number of queues is not a power of two.
+  * Generic flow API support for Ethernet, IPv4, IPv4, UDP, TCP, VLAN and
+    VXLAN pattern items with DROP and QUEUE actions.
+  * Support for extended statistics.
+  * Addressed several data path bugs.
+  * As of MLNX_OFED 4.0-1.0.1.0, the Toeplitz RSS hash function is not
+    symmetric anymore for consistency with other PMDs.
+
 * **virtio-user with vhost-kernel as another exceptional path.**
 
   Previously, we upstreamed a virtual device, virtio-user with vhost-user
@@ -464,3 +475,194 @@ Tested Platforms
        * Host interface: PCI Express 3.0 x8
        * Device ID: 15b3:1007
        * Firmware version: 2.40.5030
+
+     * Mellanox(R) ConnectX(R)-4 10G MCX4111A-XCAT (1x10G)
+
+       * Host interface: PCI Express 3.0 x8
+       * Device ID: 15b3:1013
+       * Firmware version: 12.18.1000
+
+     * Mellanox(R) ConnectX(R)-4 10G MCX4121A-XCAT (2x10G)
+
+       * Host interface: PCI Express 3.0 x8
+       * Device ID: 15b3:1013
+       * Firmware version: 12.18.1000
+
+     * Mellanox(R) ConnectX(R)-4 25G MCX4111A-ACAT (1x25G)
+
+       * Host interface: PCI Express 3.0 x8
+       * Device ID: 15b3:1013
+       * Firmware version: 12.18.1000
+
+     * Mellanox(R) ConnectX(R)-4 25G MCX4121A-ACAT (2x25G)
+
+       * Host interface: PCI Express 3.0 x8
+       * Device ID: 15b3:1013
+       * Firmware version: 12.18.1000
+
+     * Mellanox(R) ConnectX(R)-4 40G MCX4131A-BCAT/MCX413A-BCAT (1x40G)
+
+       * Host interface: PCI Express 3.0 x8
+       * Device ID: 15b3:1013
+       * Firmware version: 12.18.1000
+
+     * Mellanox(R) ConnectX(R)-4 40G MCX415A-BCAT (1x40G)
+
+       * Host interface: PCI Express 3.0 x16
+       * Device ID: 15b3:1013
+       * Firmware version: 12.18.1000
+
+     * Mellanox(R) ConnectX(R)-4 50G MCX4131A-GCAT/MCX413A-GCAT (1x50G)
+
+       * Host interface: PCI Express 3.0 x8
+       * Device ID: 15b3:1013
+       * Firmware version: 12.18.1000
+
+     * Mellanox(R) ConnectX(R)-4 50G MCX414A-BCAT (2x50G)
+
+       * Host interface: PCI Express 3.0 x8
+       * Device ID: 15b3:1013
+       * Firmware version: 12.18.1000
+
+     * Mellanox(R) ConnectX(R)-4 50G MCX415A-GCAT/MCX416A-BCAT/MCX416A-GCAT (2x50G)
+
+       * Host interface: PCI Express 3.0 x16
+       * Device ID: 15b3:1013
+       * Firmware version: 12.18.1000
+
+     * Mellanox(R) ConnectX(R)-4 50G MCX415A-CCAT (1x100G)
+
+       * Host interface: PCI Express 3.0 x16
+       * Device ID: 15b3:1013
+       * Firmware version: 12.18.1000
+
+     * Mellanox(R) ConnectX(R)-4 100G MCX416A-CCAT (2x100G)
+
+       * Host interface: PCI Express 3.0 x16
+       * Device ID: 15b3:1013
+       * Firmware version: 12.18.1000
+
+     * Mellanox(R) ConnectX(R)-4 Lx 10G MCX4121A-XCAT (2x10G)
+
+       * Host interface: PCI Express 3.0 x8
+       * Device ID: 15b3:1015
+       * Firmware version: 14.18.1000
+
+     * Mellanox(R) ConnectX(R)-4 Lx 25G MCX4121A-ACAT (2x25G)
+
+       * Host interface: PCI Express 3.0 x8
+       * Device ID: 15b3:1015
+       * Firmware version: 14.18.1000
+
+     * Mellanox(R) ConnectX(R)-5 100G MCX556A-ECAT (2x100G)
+
+       * Host interface: PCI Express 3.0 x16
+       * Device ID: 15b3:1017
+       * Firmware version: 16.18.1000
+
+     * Mellanox(R) ConnectX-5 Ex EN 100G MCX516A-CDAT (2x100G)
+
+       * Host interface: PCI Express 4.0 x16
+       * Device ID: 15b3:1019
+       * Firmware version: 16.18.1000
+
+#. IBM(R) Power8(R) with Mellanox(R) NICs.
+
+   * Machine:
+
+     * Processor: POWER8E (raw), AltiVec supported
+
+       * type-model: 8247-22L
+       * Firmware FW810.21 (SV810_108)
+
+     * OS:
+
+       * Ubuntu 16.04 LTS PPC le
+
+   * MLNX_OFED: 4.0-1.0.1.0
+
+   * NICs:
+
+     * Mellanox(R) ConnectX(R)-4 10G MCX4111A-XCAT (1x10G)
+
+       * Host interface: PCI Express 3.0 x8
+       * Device ID: 15b3:1013
+       * Firmware version: 12.18.1000
+
+     * Mellanox(R) ConnectX(R)-4 10G MCX4121A-XCAT (2x10G)
+
+       * Host interface: PCI Express 3.0 x8
+       * Device ID: 15b3:1013
+       * Firmware version: 12.18.1000
+
+     * Mellanox(R) ConnectX(R)-4 25G MCX4111A-ACAT (1x25G)
+
+       * Host interface: PCI Express 3.0 x8
+       * Device ID: 15b3:1013
+       * Firmware version: 12.18.1000
+
+     * Mellanox(R) ConnectX(R)-4 25G MCX4121A-ACAT (2x25G)
+
+       * Host interface: PCI Express 3.0 x8
+       * Device ID: 15b3:1013
+       * Firmware version: 12.18.1000
+
+     * Mellanox(R) ConnectX(R)-4 40G MCX4131A-BCAT/MCX413A-BCAT (1x40G)
+
+       * Host interface: PCI Express 3.0 x8
+       * Device ID: 15b3:1013
+       * Firmware version: 12.18.1000
+
+     * Mellanox(R) ConnectX(R)-4 40G MCX415A-BCAT (1x40G)
+
+       * Host interface: PCI Express 3.0 x16
+       * Device ID: 15b3:1013
+       * Firmware version: 12.18.1000
+
+     * Mellanox(R) ConnectX(R)-4 50G MCX4131A-GCAT/MCX413A-GCAT (1x50G)
+
+       * Host interface: PCI Express 3.0 x8
+       * Device ID: 15b3:1013
+       * Firmware version: 12.18.1000
+
+     * Mellanox(R) ConnectX(R)-4 50G MCX414A-BCAT (2x50G)
+
+       * Host interface: PCI Express 3.0 x8
+       * Device ID: 15b3:1013
+       * Firmware version: 12.18.1000
+
+     * Mellanox(R) ConnectX(R)-4 50G MCX415A-GCAT/MCX416A-BCAT/MCX416A-GCAT (2x50G)
+
+       * Host interface: PCI Express 3.0 x16
+       * Device ID: 15b3:1013
+       * Firmware version: 12.18.1000
+
+     * Mellanox(R) ConnectX(R)-4 50G MCX415A-CCAT (1x100G)
+
+       * Host interface: PCI Express 3.0 x16
+       * Device ID: 15b3:1013
+       * Firmware version: 12.18.1000
+
+     * Mellanox(R) ConnectX(R)-4 100G MCX416A-CCAT (2x100G)
+
+       * Host interface: PCI Express 3.0 x16
+       * Device ID: 15b3:1013
+       * Firmware version: 12.18.1000
+
+     * Mellanox(R) ConnectX(R)-4 Lx 10G MCX4121A-XCAT (2x10G)
+
+       * Host interface: PCI Express 3.0 x8
+       * Device ID: 15b3:1015
+       * Firmware version: 14.18.1000
+
+     * Mellanox(R) ConnectX(R)-4 Lx 25G MCX4121A-ACAT (2x25G)
+
+       * Host interface: PCI Express 3.0 x8
+       * Device ID: 15b3:1015
+       * Firmware version: 14.18.1000
+
+     * Mellanox(R) ConnectX(R)-5 100G MCX556A-ECAT (2x100G)
+
+       * Host interface: PCI Express 3.0 x16
+       * Device ID: 15b3:1017
+       * Firmware version: 16.18.1000

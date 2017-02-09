@@ -243,17 +243,13 @@ DPDK and must be installed separately:
 
 Currently supported by DPDK:
 
-- Mellanox OFED version:
-
-  - ConnectX-4: **3.4-1.0.0.0**
-  - ConnectX-4 Lx: **3.4-1.0.0.0**
-  - ConnectX-5: **4.0-0.0.8.1**
-
+- Mellanox OFED version: **4.0-1.0.1.0**
 - firmware version:
 
-  - ConnectX-4: **12.17.1010**
-  - ConnectX-4 Lx: **14.17.1010**
-  - ConnectX-5: **16.18.0296**
+  - ConnectX-4: **12.18.1000**
+  - ConnectX-4 Lx: **14.18.1000**
+  - ConnectX-5: **16.18.1000**
+  - ConnectX-5 Ex: **16.18.1000**
 
 Getting Mellanox OFED
 ~~~~~~~~~~~~~~~~~~~~~
@@ -274,6 +270,29 @@ required from that distribution.
    Several versions of Mellanox OFED are available. Installing the version
    this DPDK release was developed and tested against is strongly
    recommended. Please check the `prerequisites`_.
+
+Supported NICs
+--------------
+
+* Mellanox(R) ConnectX(R)-4 10G MCX4111A-XCAT (1x10G)
+* Mellanox(R) ConnectX(R)-4 10G MCX4121A-XCAT (2x10G)
+* Mellanox(R) ConnectX(R)-4 25G MCX4111A-ACAT (1x25G)
+* Mellanox(R) ConnectX(R)-4 25G MCX4121A-ACAT (2x25G)
+* Mellanox(R) ConnectX(R)-4 40G MCX4131A-BCAT (1x40G)
+* Mellanox(R) ConnectX(R)-4 40G MCX413A-BCAT (1x40G)
+* Mellanox(R) ConnectX(R)-4 40G MCX415A-BCAT (1x40G)
+* Mellanox(R) ConnectX(R)-4 50G MCX4131A-GCAT (1x50G)
+* Mellanox(R) ConnectX(R)-4 50G MCX413A-GCAT (1x50G)
+* Mellanox(R) ConnectX(R)-4 50G MCX414A-BCAT (2x50G)
+* Mellanox(R) ConnectX(R)-4 50G MCX415A-GCAT (2x50G)
+* Mellanox(R) ConnectX(R)-4 50G MCX416A-BCAT (2x50G)
+* Mellanox(R) ConnectX(R)-4 50G MCX416A-GCAT (2x50G)
+* Mellanox(R) ConnectX(R)-4 50G MCX415A-CCAT (1x100G)
+* Mellanox(R) ConnectX(R)-4 100G MCX416A-CCAT (2x100G)
+* Mellanox(R) ConnectX(R)-4 Lx 10G MCX4121A-XCAT (2x10G)
+* Mellanox(R) ConnectX(R)-4 Lx 25G MCX4121A-ACAT (2x25G)
+* Mellanox(R) ConnectX(R)-5 100G MCX556A-ECAT (2x100G)
+* Mellanox(R) ConnectX(R)-5 Ex EN 100G MCX516A-CDAT (2x100G)
 
 Notes for testpmd
 -----------------
