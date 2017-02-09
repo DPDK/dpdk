@@ -433,22 +433,39 @@ cperf_test_vector_get_dummy(struct cperf_options *options)
 			options->op_type == CPERF_CIPHER_THEN_AUTH ||
 			options->op_type == CPERF_AUTH_THEN_CIPHER ||
 			options->op_type == CPERF_AEAD) {
+		uint8_t aad_alloc = 0;
+
 		t_vec->auth_key.length = options->auth_key_sz;
-		if (options->auth_algo == RTE_CRYPTO_AUTH_NULL) {
+
+		switch (options->auth_algo) {
+		case RTE_CRYPTO_AUTH_NULL:
 			t_vec->auth_key.data = NULL;
-			t_vec->aad.data = NULL;
-		} else if (options->auth_algo == RTE_CRYPTO_AUTH_AES_GCM ||
-				options->auth_algo ==
-						RTE_CRYPTO_AUTH_AES_GMAC ||
-				options->auth_algo ==
-						RTE_CRYPTO_AUTH_SNOW3G_UIA2 ||
-				options->auth_algo ==
-						RTE_CRYPTO_AUTH_KASUMI_F9 ||
-				options->auth_algo ==
-						RTE_CRYPTO_AUTH_ZUC_EIA3) {
+			aad_alloc = 0;
+			break;
+		case RTE_CRYPTO_AUTH_AES_GCM:
 			t_vec->auth_key.data = NULL;
-			t_vec->aad.data = rte_malloc(NULL, options->auth_aad_sz,
-					16);
+			aad_alloc = 1;
+			break;
+		case RTE_CRYPTO_AUTH_SNOW3G_UIA2:
+		case RTE_CRYPTO_AUTH_KASUMI_F9:
+		case RTE_CRYPTO_AUTH_ZUC_EIA3:
+			t_vec->auth_key.data = auth_key;
+			aad_alloc = 1;
+			break;
+		case RTE_CRYPTO_AUTH_AES_GMAC:
+			/* auth key should be the same as cipher key */
+			t_vec->auth_key.data = cipher_key;
+			aad_alloc = 1;
+			break;
+		default:
+			t_vec->auth_key.data = auth_key;
+			aad_alloc = 0;
+			break;
+		}
+
+		if (aad_alloc) {
+			t_vec->aad.data = rte_malloc(NULL,
+					options->auth_aad_sz, 16);
 			if (t_vec->aad.data == NULL) {
 				if (options->op_type !=	CPERF_AUTH_ONLY)
 					rte_free(t_vec->iv.data);
@@ -457,7 +474,6 @@ cperf_test_vector_get_dummy(struct cperf_options *options)
 			}
 			memcpy(t_vec->aad.data, aad, options->auth_aad_sz);
 		} else {
-			t_vec->auth_key.data = auth_key;
 			t_vec->aad.data = NULL;
 		}
 
