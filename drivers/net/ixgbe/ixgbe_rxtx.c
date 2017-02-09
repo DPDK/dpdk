@@ -1466,17 +1466,19 @@ ixgbe_rx_scan_hw_ring(struct ixgbe_rx_queue *rxq)
 	for (i = 0; i < RTE_PMD_IXGBE_RX_MAX_BURST;
 	     i += LOOK_AHEAD, rxdp += LOOK_AHEAD, rxep += LOOK_AHEAD) {
 		/* Read desc statuses backwards to avoid race condition */
-		for (j = LOOK_AHEAD-1; j >= 0; --j)
+		for (j = 0; j < LOOK_AHEAD; j++)
 			s[j] = rte_le_to_cpu_32(rxdp[j].wb.upper.status_error);
 
-		for (j = LOOK_AHEAD - 1; j >= 0; --j)
-			pkt_info[j] = rte_le_to_cpu_32(rxdp[j].wb.lower.
-						       lo_dword.data);
+		rte_smp_rmb();
 
 		/* Compute how many status bits were set */
-		nb_dd = 0;
-		for (j = 0; j < LOOK_AHEAD; ++j)
-			nb_dd += s[j] & IXGBE_RXDADV_STAT_DD;
+		for (nb_dd = 0; nb_dd < LOOK_AHEAD &&
+				(s[nb_dd] & IXGBE_RXDADV_STAT_DD); nb_dd++)
+			;
+
+		for (j = 0; j < nb_dd; j++)
+			pkt_info[j] = rte_le_to_cpu_32(rxdp[j].wb.lower.
+						       lo_dword.data);
 
 		nb_rx += nb_dd;
 
