@@ -460,3 +460,10 @@ Receive packets with Ethertype 0x88A8
 
 Due to the FW limitation, PF can receive packets with Ethertype 0x88A8
 only when floating VEB is disabled.
+
+Incorrect Rx statistics when packet is oversize
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When a packet is over maximum frame size, the packet is dropped.
+However the Rx statistics, when calling `rte_eth_stats_get` incorrectly
+shows it as received.
