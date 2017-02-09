@@ -90,6 +90,7 @@ schedule_enqueue(void *qp_ctx, struct rte_crypto_op **ops, uint16_t nb_ops)
 	for (; i < nb_ops; i++) {
 		sess0 = (struct scheduler_session *)
 				ops[i]->sym->session->_private;
+		sessions[i] = ops[i]->sym->session;
 		ops[i]->sym->session = sess0->sessions[slave_idx];
 	}
 
@@ -168,6 +169,7 @@ schedule_enqueue_ordering(void *qp_ctx, struct rte_crypto_op **ops,
 	for (; i < nb_ops; i++) {
 		sess0 = (struct scheduler_session *)
 				ops[i]->sym->session->_private;
+		sessions[i] = ops[i]->sym->session;
 		ops[i]->sym->session = sess0->sessions[slave_idx];
 		ops[i]->sym->m_src->seqn = gen_qp_ctx->seqn++;
 	}
