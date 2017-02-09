@@ -129,7 +129,7 @@ The tx_rs_thresh value must be greater than or equal to RTE_PMD_IXGBE_TX_MAX_BUR
 but less or equal to RTE_IXGBE_TX_MAX_FREE_BUF_SZ.
 Consequently, by default the tx_rs_thresh value is in the range 32 to 64.
 
-Feature not Supported by RX Vector PMD
+Feature not Supported by TX Vector PMD
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 TX vPMD only works when txq_flags is set to IXGBE_SIMPLE_FLAGS.
@@ -148,16 +148,16 @@ The following MACROs are used for these three features:
 *   ETH_TXQ_FLAGS_NOXSUMTCP
 
 Application Programming Interface
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+---------------------------------
 
 In DPDK release v16.11 an API for ixgbe specific functions has been added to the ixgbe PMD.
 The declarations for the API functions are in the header ``rte_pmd_ixgbe.h``.
 
 Sample Application Notes
-~~~~~~~~~~~~~~~~~~~~~~~~
+------------------------
 
 testpmd
-^^^^^^^
+~~~~~~~
 
 By default, using CONFIG_RTE_IXGBE_RX_OLFLAGS_ENABLE=y:
 
@@ -172,21 +172,24 @@ When CONFIG_RTE_IXGBE_RX_OLFLAGS_ENABLE=n, better performance can be achieved:
     ./x86_64-native-linuxapp-gcc/app/testpmd -c 300 -n 4 -- -i --burst=32 --rxfreet=32 --mbcache=250 --txpt=32 --rxht=8 --rxwt=0 --txfreet=32 --txrst=32 --txqflags=0xf01 --disable-hw-vlan
 
 l3fwd
-^^^^^
+~~~~~
 
 When running l3fwd with vPMD, there is one thing to note.
 In the configuration, ensure that port_conf.rxmode.hw_ip_checksum=0.
 Otherwise, by default, RX vPMD is disabled.
 
 load_balancer
-^^^^^^^^^^^^^
+~~~~~~~~~~~~~
 
 As in the case of l3fwd, set configure port_conf.rxmode.hw_ip_checksum=0 to enable vPMD.
 In addition, for improved performance, use -bsz "(32,32),(64,64),(32,32)" in load_balancer to avoid using the default burst size of 144.
 
 
+Limitations or Known issues
+---------------------------
+
 Malicious Driver Detection not Supported
-----------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The Intel x550 series NICs support a feature called MDD (Malicious
 Driver Detection) which checks the behavior of the VF driver.
@@ -207,7 +210,7 @@ it by default.)
 
 
 Statistics
-----------
+~~~~~~~~~~
 
 The statistics of ixgbe hardware must be polled regularly in order for it to
 remain consistent. Running a DPDK application without polling the statistics will
