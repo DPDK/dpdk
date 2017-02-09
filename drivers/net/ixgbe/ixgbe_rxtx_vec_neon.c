@@ -196,7 +196,6 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 	struct ixgbe_rx_entry *sw_ring;
 	uint16_t nb_pkts_recd;
 	int pos;
-	uint64_t var;
 	uint8x16_t shuf_msk = {
 		0xFF, 0xFF,
 		0xFF, 0xFF,  /* skip 32 bits pkt_type */
@@ -255,15 +254,11 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		uint64x2_t mbp1, mbp2;
 		uint8x16_t staterr;
 		uint16x8_t tmp;
+		uint32_t var = 0;
 		uint32_t stat;
 
 		/* B.1 load 1 mbuf point */
 		mbp1 = vld1q_u64((uint64_t *)&sw_ring[pos]);
-
-		/* Read desc statuses backwards to avoid race condition */
-		/* A.1 load 4 pkts desc */
-		descs[3] =  vld1q_u64((uint64_t *)(rxdp + 3));
-		rte_rmb();
 
 		/* B.2 copy 2 mbuf point into rx_pkts  */
 		vst1q_u64((uint64_t *)&rx_pkts[pos], mbp1);
@@ -271,10 +266,12 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		/* B.1 load 1 mbuf point */
 		mbp2 = vld1q_u64((uint64_t *)&sw_ring[pos + 2]);
 
-		descs[2] =  vld1q_u64((uint64_t *)(rxdp + 2));
-		/* B.1 load 2 mbuf point */
-		descs[1] =  vld1q_u64((uint64_t *)(rxdp + 1));
+		/* A. load 4 pkts descs */
 		descs[0] =  vld1q_u64((uint64_t *)(rxdp));
+		descs[1] =  vld1q_u64((uint64_t *)(rxdp + 1));
+		descs[2] =  vld1q_u64((uint64_t *)(rxdp + 2));
+		descs[3] =  vld1q_u64((uint64_t *)(rxdp + 3));
+		rte_smp_rmb();
 
 		/* B.2 copy 2 mbuf point into rx_pkts  */
 		vst1q_u64((uint64_t *)&rx_pkts[pos + 2], mbp2);
@@ -349,11 +346,19 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		vst1q_u8((uint8_t *)&rx_pkts[pos]->rx_descriptor_fields1,
 			 pkt_mb1);
 
+		stat &= IXGBE_VPMD_DESC_DD_MASK;
+
 		/* C.4 calc avaialbe number of desc */
-		var =  __builtin_popcount(stat & IXGBE_VPMD_DESC_DD_MASK);
-		nb_pkts_recd += var;
-		if (likely(var != RTE_IXGBE_DESCS_PER_LOOP))
+		if (likely(stat != IXGBE_VPMD_DESC_DD_MASK)) {
+			while (stat & 0x01) {
+				++var;
+				stat = stat >> 8;
+			}
+			nb_pkts_recd += var;
 			break;
+		} else {
+			nb_pkts_recd += RTE_IXGBE_DESCS_PER_LOOP;
+		}
 	}
 
 	/* Update our internal tail pointer */
