@@ -233,6 +233,15 @@ be calculated as follows:
 
 In order to ensure valid results, it is recommended to poll every 4 minutes.
 
+MTU setting
+~~~~~~~~~~~
+
+Although the user can set the MTU separately on PF and VF ports, the ixgbe NIC
+only supports one global MTU per physical port.
+So when the user sets different MTUs on PF and VF ports in one physical port,
+the real MTU for all these PF and VF ports is the largest value set.
+This behavior is based on the kernel driver behavior.
+
 
 Supported Chipsets and NICs
 ---------------------------
