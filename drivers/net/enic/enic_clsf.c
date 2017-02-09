@@ -211,15 +211,15 @@ copy_fltr_v2(struct filter_v2 *fltr, struct rte_eth_fdir_input *input,
 		memset(&ip4_val, 0, sizeof(struct ipv4_hdr));
 
 		if (input->flow.ip4_flow.tos) {
-			ip4_mask.type_of_service = 0xff;
+			ip4_mask.type_of_service = masks->ipv4_mask.tos;
 			ip4_val.type_of_service = input->flow.ip4_flow.tos;
 		}
 		if (input->flow.ip4_flow.ttl) {
-			ip4_mask.time_to_live = 0xff;
+			ip4_mask.time_to_live = masks->ipv4_mask.ttl;
 			ip4_val.time_to_live = input->flow.ip4_flow.ttl;
 		}
 		if (input->flow.ip4_flow.proto) {
-			ip4_mask.next_proto_id = 0xff;
+			ip4_mask.next_proto_id = masks->ipv4_mask.proto;
 			ip4_val.next_proto_id = input->flow.ip4_flow.proto;
 		}
 		if (input->flow.ip4_flow.src_ip) {
@@ -299,7 +299,7 @@ copy_fltr_v2(struct filter_v2 *fltr, struct rte_eth_fdir_input *input,
 		memset(&ipv6_val, 0, sizeof(struct ipv6_hdr));
 
 		if (input->flow.ipv6_flow.proto) {
-			ipv6_mask.proto = 0xff;
+			ipv6_mask.proto = masks->ipv6_mask.proto;
 			ipv6_val.proto = input->flow.ipv6_flow.proto;
 		}
 		for (i = 0; i < 4; i++) {
@@ -315,11 +315,11 @@ copy_fltr_v2(struct filter_v2 *fltr, struct rte_eth_fdir_input *input,
 					input->flow.ipv6_flow.dst_ip[i];
 		}
 		if (input->flow.ipv6_flow.tc) {
-			ipv6_mask.vtc_flow = 0x00ff0000;
-			ipv6_val.vtc_flow = input->flow.ipv6_flow.tc << 16;
+			ipv6_mask.vtc_flow = masks->ipv6_mask.tc << 12;
+			ipv6_val.vtc_flow = input->flow.ipv6_flow.tc << 12;
 		}
 		if (input->flow.ipv6_flow.hop_limits) {
-			ipv6_mask.hop_limits = 0xff;
+			ipv6_mask.hop_limits = masks->ipv6_mask.hop_limits;
 			ipv6_val.hop_limits = input->flow.ipv6_flow.hop_limits;
 		}
 
