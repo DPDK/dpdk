@@ -379,52 +379,52 @@ The libraries prepended with a plus sign were incremented in this version.
 Tested Platforms
 ----------------
 
-.. This section should contain a list of platforms that were tested with this release.
+.. This section should contain a list of systems (properties, NIC, OS) that were tested with this release.
 
    The format is:
 
-   #. Platform name.
+   #. (Intel, IBM, ARM,...) platform with <company> NICs.
 
       * Platform details.
-      * Platform details.
 
-   This section is a comment. do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =========================================================
+        * Intel(R) Xeon(R) CPU E5-2697 v2 @ 2.70GHz
+        * Intel(R) Xeon(R) CPU E5-2697 v3 @ 2.70GHz
+        * Intel(R) Xeon(R) CPU E5-2699 v3 @ 2.30GHz
 
+          * Intel(R) Server board S2600WTT
+          * BIOS: SE5C610.86B.01.01.0005.101720141054
 
-Tested NICs
------------
+        * ...
 
-.. This section should contain a list of NICs that were tested with this release.
+        * OS
 
-   The format is:
+          * CentOS 7.0
+          * Fedora 23
+          * Fedora 24
+          * FreeBSD 10.3
+          * Red Hat Enterprise Linux 7.2
+          * SUSE Enterprise Linux 12
+          * Ubuntu 15.10
+          * Ubuntu 16.04 LTS
+          * Wind River Linux 8
+          * ...
 
-   #. NIC name.
+      * List of NICs
 
-      * NIC details.
-      * NIC details.
+        * Intel(R) Ethernet Controller X540-AT2
 
-   This section is a comment. do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =========================================================
+          * Firmware version: 0x80000389
+          * Device id (pf): 8086:1528
+          * Driver version: 3.23.2 (ixgbe)
+          * ...
 
+        * Intel(R) 82599ES 10 Gigabit Ethernet Controller
 
-Tested OSes
------------
+          * Firmware version: 0x61bf0001
+          * Device id (pf/vf): 8086:10fb / 8086:10ed
+          * Driver version: 4.0.1-k (ixgbe)
 
-.. This section should contain a list of OSes that were tested with this release.
-   The format is as follows, in alphabetical order:
-
-   * CentOS 7.0
-   * Fedora 23
-   * Fedora 24
-   * FreeBSD 10.3
-   * Red Hat Enterprise Linux 7.2
-   * SUSE Enterprise Linux 12
-   * Ubuntu 15.10
-   * Ubuntu 16.04 LTS
-   * Wind River Linux 8
+        * ...
 
    This section is a comment. do not overwrite or remove it.
    Also, make sure to start the actual text at the margin.
