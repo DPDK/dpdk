@@ -287,6 +287,8 @@ get_max_intr(const struct rte_intr_handle *intr_handle)
 		if (src->intr_handle.fd != intr_handle->fd)
 			continue;
 
+		if (src->intr_handle.max_intr < intr_handle->max_intr)
+			src->intr_handle.max_intr = intr_handle->max_intr;
 		if (!src->intr_handle.max_intr)
 			src->intr_handle.max_intr = 1;
 		else if (src->intr_handle.max_intr > RTE_MAX_RXTX_INTR_VEC_ID)
