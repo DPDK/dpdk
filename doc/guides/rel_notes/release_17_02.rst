@@ -128,6 +128,10 @@ New Features
   A new network PMD which supports Solarflare SFN7xxx and SFN8xxx family
   of 10/40 Gbps adapters has been added.
 
+* **Updated the mlx4 driver.**
+
+  * Addressed a few bugs.
+
 * **Added support for Mellanox ConnectX-5 adapters (mlx5).**
 
   Support for Mellanox ConnectX-5 family of 10/25/40/50/100 Gbps adapters
@@ -429,3 +433,34 @@ Tested Platforms
    This section is a comment. do not overwrite or remove it.
    Also, make sure to start the actual text at the margin.
    =========================================================
+
+#. Intel(R) platforms with Mellanox(R) NICs.
+
+   * Platform details.
+
+     * Intel(R) Xeon(R) CPU E5-2697 v2 @ 2.70GHz
+     * Intel(R) Xeon(R) CPU E5-2680 v2 @ 2.80GHz
+     * Intel(R) Xeon(R) CPU E5-2697 v3 @ 2.60GHz
+
+     * OS:
+
+       * CentOS 7.0
+       * Fedora 23
+       * Fedora 24
+       * FreeBSD 10.3
+       * Red Hat Enterprise Linux 7.2
+       * SUSE Enterprise Linux 12
+       * Ubuntu 14.04 LTS
+       * Ubuntu 15.10
+       * Ubuntu 16.04 LTS
+       * Wind River Linux 8
+
+   * MLNX_OFED: 4.0-1.0.1.0
+
+   * NICs:
+
+     * Mellanox(R) ConnectX(R)-3 Pro 40G MCX354A-FCC_Ax (2x40G)
+
+       * Host interface: PCI Express 3.0 x8
+       * Device ID: 15b3:1007
+       * Firmware version: 2.40.5030
