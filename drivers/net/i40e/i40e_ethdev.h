@@ -290,7 +290,7 @@ struct i40e_bw_info {
 	/* Relative credits within same TC with respect to other VSIs or Comps */
 	uint8_t  bw_ets_share_credits[I40E_MAX_TRAFFIC_CLASS];
 	/* Bandwidth limit per TC */
-	uint8_t  bw_ets_credits[I40E_MAX_TRAFFIC_CLASS];
+	uint16_t bw_ets_credits[I40E_MAX_TRAFFIC_CLASS];
 	/* Max bandwidth limit per TC */
 	uint8_t  bw_ets_max[I40E_MAX_TRAFFIC_CLASS];
 };
