@@ -1617,7 +1617,7 @@ ixgbe_parse_fdir_filter_normal(const struct rte_flow_attr *attr,
 			return -rte_errno;
 		}
 		rule->mask.vlan_tci_mask = vlan_mask->tci;
-		rule->mask.vlan_tci_mask &= 0xEFFF;
+		rule->mask.vlan_tci_mask &= rte_cpu_to_be_16(0xEFFF);
 		/* More than one tags are not supported. */
 
 		/**
@@ -2362,7 +2362,7 @@ ixgbe_parse_fdir_filter_tunnel(const struct rte_flow_attr *attr,
 			return -rte_errno;
 		}
 		rule->mask.vlan_tci_mask = vlan_mask->tci;
-		rule->mask.vlan_tci_mask &= 0xEFFF;
+		rule->mask.vlan_tci_mask &= rte_cpu_to_be_16(0xEFFF);
 		/* More than one tags are not supported. */
 
 		/**
