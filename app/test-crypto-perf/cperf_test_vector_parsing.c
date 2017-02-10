@@ -237,15 +237,19 @@ parse_entry(char *entry, struct cperf_test_vector *vector,
 	uint8_t *data = NULL;
 	char *token, *key_token;
 
+	if (entry == NULL) {
+		printf("Expected entry value\n");
+		return -1;
+	}
+
 	/* get key */
 	token = strtok(entry, CPERF_ENTRY_DELIMITER);
 	key_token = token;
-
 	/* get values for key */
 	token = strtok(NULL, CPERF_ENTRY_DELIMITER);
-	if (token == NULL) {
-		printf("Expected 'key = values' but was '%.40s'..\n",
-			key_token);
+
+	if (key_token == NULL || token == NULL) {
+		printf("Expected 'key = values' but was '%.40s'..\n", entry);
 		return -1;
 	}
 
