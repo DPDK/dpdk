@@ -45,7 +45,7 @@ cperf_initialize_cryptodev(struct cperf_options *opts, uint8_t *enabled_cdevs)
 	int ret;
 
 	enabled_cdev_count = rte_cryptodev_devices_get(opts->device_type,
-			enabled_cdevs, RTE_DIM(enabled_cdevs));
+			enabled_cdevs, RTE_CRYPTO_MAX_DEVS);
 	if (enabled_cdev_count == 0) {
 		printf("No crypto devices type %s available\n",
 				opts->device_type);
