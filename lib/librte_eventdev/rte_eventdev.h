@@ -1218,7 +1218,7 @@ rte_event_dequeue_timeout_ticks(uint8_t dev_id, uint64_t ns,
  *   - 0 no-wait, returns immediately if there is no event.
  *   - >0 wait for the event, if the device is configured with
  *   RTE_EVENT_DEV_CFG_PER_DEQUEUE_TIMEOUT then this function will wait until
- *   the event available or *timeout_ticks* time.
+ *   at least one event is available or *timeout_ticks* time.
  *   if the device is not configured with RTE_EVENT_DEV_CFG_PER_DEQUEUE_TIMEOUT
  *   then this function will wait until the event available or
  *   *dequeue_timeout_ns* ns which was previously supplied to
