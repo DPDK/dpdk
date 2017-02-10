@@ -264,7 +264,7 @@ main(int argc, char **argv)
 
 	void *ctx[RTE_MAX_LCORE] = { };
 
-	int nb_cryptodevs;
+	int nb_cryptodevs = 0;
 	uint8_t cdev_id, i;
 	uint8_t enabled_cdevs[RTE_CRYPTO_MAX_DEVS] = { 0 };
 
@@ -300,6 +300,7 @@ main(int argc, char **argv)
 	if (nb_cryptodevs < 1) {
 		RTE_LOG(ERR, USER1, "Failed to initialise requested crypto "
 				"device type\n");
+		nb_cryptodevs = 0;
 		goto err;
 	}
 
@@ -397,7 +398,6 @@ main(int argc, char **argv)
 err:
 	i = 0;
 	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
-
 		if (i == nb_cryptodevs)
 			break;
 
