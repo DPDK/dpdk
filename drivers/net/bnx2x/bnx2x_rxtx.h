@@ -11,7 +11,7 @@
 #ifndef _BNX2X_RXTX_H_
 #define _BNX2X_RXTX_H_
 
-#define DEFAULT_TX_FREE_THRESH   512
+#define DEFAULT_TX_FREE_THRESH   64
 #define RTE_PMD_BNX2X_TX_MAX_BURST 1
 
 /**
