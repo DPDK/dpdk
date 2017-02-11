@@ -155,13 +155,6 @@ F: drivers/net/ixgbe/ixgbe_rxtx_vec_neon.c
 F: drivers/net/i40e/i40e_rxtx_vec_neon.c
 F: drivers/net/virtio/virtio_rxtx_simple_neon.c
 
-EZchip TILE-Gx
-M: Zhigang Lu <zlu@ezchip.com>
-M: Liming Sun <lsun@ezchip.com>
-F: lib/librte_eal/common/arch/tile/
-F: lib/librte_eal/common/include/arch/tile/
-F: drivers/net/mpipe/
-
 IBM POWER
 M: Chao Zhu <chaozhu@linux.vnet.ibm.com>
 F: lib/librte_eal/common/arch/ppc_64/

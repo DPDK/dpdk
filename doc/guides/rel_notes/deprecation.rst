@@ -118,6 +118,3 @@ Deprecation Notices
   to specify which type of instance to create (single or burst), and
   additional calls for ``rte_distributor_poll_pkt_burst`` and
   ``rte_distributor_return_pkt_burst``, among others.
-
-* The architecture TILE-Gx and the associated mpipe driver are not
-  maintained and will be removed in 17.05.
