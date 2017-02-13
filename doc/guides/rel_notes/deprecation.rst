@@ -33,6 +33,12 @@ Deprecation Notices
   has exposed, like the way we have done with uio-pci-generic. This change
   targets release 17.05.
 
+* vfio: Some functions are planned to be exported outside librte_eal in 17.05.
+  VFIO APIs like ``vfio_setup_device``, ``vfio_get_group_fd`` can be used by
+  subsystem other than EAL/PCI. For that, these need to be exported symbols.
+  Such APIs are planned to be renamed according to ``rte_*`` naming convention
+  and exported from librte_eal.
+
 * The PCI and VDEV subsystems will be converted as drivers of the new bus model.
   It will imply some EAL API changes in 17.05.
 
