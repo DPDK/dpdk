@@ -23,13 +23,6 @@ Deprecation Notices
   provide a way to handle device initialization currently being done in
   ``eth_driver``.
 
-* In 17.02 ABI changes are planned: the ``rte_eth_dev`` structure will be
-  extended with new function pointer ``tx_pkt_prepare`` allowing verification
-  and processing of packet burst to meet HW specific requirements before
-  transmit. Also new fields will be added to the ``rte_eth_desc_lim`` structure:
-  ``nb_seg_max`` and ``nb_mtu_seg_max`` providing information about number of
-  segments limit to be transmitted by device for TSO/non-TSO packets.
-
 * ethdev: an API change is planned for 17.02 for the function
   ``_rte_eth_dev_callback_process``. In 17.02 the function will return an ``int``
   instead of ``void`` and a fourth parameter ``void *ret_param`` will be added.
