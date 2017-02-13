@@ -3815,7 +3815,7 @@ rte_eth_dev_rss_hash_conf_get(uint8_t port_id,
  * The packets with this UDP port will be identified as this type of tunnel.
  * Before enabling any offloading function for a tunnel, users can call this API
  * to change or add more UDP port for the tunnel. So the offloading function
- * can take effect on the packets with the sepcific UDP port.
+ * can take effect on the packets with the specific UDP port.
  *
  * @param port_id
  *   The port identifier of the Ethernet device.
@@ -3837,7 +3837,7 @@ rte_eth_dev_udp_tunnel_port_add(uint8_t port_id,
  * any more.
  * Before enabling any offloading function for a tunnel, users can call this API
  * to delete a UDP port for the tunnel. So the offloading function will not take
- * effect on the packets with the sepcific UDP port.
+ * effect on the packets with the specific UDP port.
  *
  * @param port_id
  *   The port identifier of the Ethernet device.
