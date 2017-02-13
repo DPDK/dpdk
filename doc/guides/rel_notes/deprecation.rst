@@ -33,10 +33,14 @@ Deprecation Notices
   has exposed, like the way we have done with uio-pci-generic. This change
   targets release 17.05.
 
-* ``eth_driver`` is planned to be removed in 17.02. This currently serves as
+* The PCI and VDEV subsystems will be converted as drivers of the new bus model.
+  It will imply some EAL API changes in 17.05.
+
+* ``eth_driver`` is planned to be removed in 17.05. This currently serves as
   a placeholder for PMDs to register themselves. Changes for ``rte_bus`` will
   provide a way to handle device initialization currently being done in
-  ``eth_driver``.
+  ``eth_driver``. Similarly, ``rte_pci_driver`` is planned to be removed from
+  ``rte_cryptodev_driver`` in 17.05.
 
 * ethdev: an API change is planned for 17.02 for the function
   ``_rte_eth_dev_callback_process``. In 17.02 the function will return an ``int``
