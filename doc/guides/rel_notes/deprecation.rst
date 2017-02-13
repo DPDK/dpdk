@@ -27,7 +27,7 @@ Deprecation Notices
   ``_rte_eth_dev_callback_process``. In 17.02 the function will return an ``int``
   instead of ``void`` and a fourth parameter ``void *ret_param`` will be added.
 
-* ABI changes are planned for 17.02 in the ``rte_mbuf`` structure: some fields
+* ABI changes are planned for 17.05 in the ``rte_mbuf`` structure: some fields
   may be reordered to facilitate the writing of ``data_off``, ``refcnt``, and
   ``nb_segs`` in one operation, because some platforms have an overhead if the
   store address is not naturally aligned. Other mbuf fields, such as the
@@ -37,15 +37,15 @@ Deprecation Notices
 * The mbuf flags PKT_RX_VLAN_PKT and PKT_RX_QINQ_PKT are deprecated and
   are respectively replaced by PKT_RX_VLAN_STRIPPED and
   PKT_RX_QINQ_STRIPPED, that are better described. The old flags and
-  their behavior will be kept until 16.11 and will be removed in 17.02.
+  their behavior will be kept until 17.02 and will be removed in 17.05.
 
 * mempool: The functions ``rte_mempool_count`` and ``rte_mempool_free_count``
-  will be removed in 17.02.
+  will be removed in 17.05.
   They are replaced by ``rte_mempool_avail_count`` and
   ``rte_mempool_in_use_count`` respectively.
 
 * mempool: The functions for single/multi producer/consumer are deprecated
-  and will be removed in 17.02.
+  and will be removed in 17.05.
   It is replaced by ``rte_mempool_generic_get/put`` functions.
 
 * ethdev: the legacy filter API, including
