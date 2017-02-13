@@ -13,11 +13,6 @@ Deprecation Notices
   has exposed, like the way we have done with uio-pci-generic. This change
   targets release 17.05.
 
-* ABI/API changes are planned for 17.02: ``rte_device``, ``rte_driver`` will be
-  impacted because of introduction of a new ``rte_bus`` hierarchy. This would
-  also impact the way devices are identified by EAL. A bus-device-driver model
-  will be introduced providing a hierarchical view of devices.
-
 * ``eth_driver`` is planned to be removed in 17.02. This currently serves as
   a placeholder for PMDs to register themselves. Changes for ``rte_bus`` will
   provide a way to handle device initialization currently being done in
