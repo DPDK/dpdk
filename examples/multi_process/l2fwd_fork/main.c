@@ -865,7 +865,7 @@ l2fwd_parse_args(int argc, char **argv)
 		return -1;
 	}
 	ret = optind-1;
-	optind = 0; /* reset getopt lib */
+	optind = 1; /* reset getopt lib */
 	return ret;
 }
 

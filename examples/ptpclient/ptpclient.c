@@ -708,7 +708,7 @@ ptp_parse_args(int argc, char **argv)
 
 	argv[optind-1] = prgname;
 
-	optind = 0; /* Reset getopt lib. */
+	optind = 1; /* Reset getopt lib. */
 
 	return 0;
 }

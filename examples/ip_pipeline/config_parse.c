@@ -1,4 +1,4 @@
-﻿/*-
+/*-
  *   BSD LICENSE
  *
  *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
@@ -3407,7 +3407,7 @@ app_config_args(struct app_params *app, int argc, char **argv)
 			app_print_usage(argv[0]);
 		}
 
-	optind = 0; /* reset getopt lib */
+	optind = 1; /* reset getopt lib */
 
 	/* Check dependencies between args */
 	if (preproc_params_present && (preproc_present == 0))

@@ -1450,7 +1450,7 @@ l2fwd_crypto_parse_args(struct l2fwd_crypto_options *options,
 		argv[optind-1] = prgname;
 
 	retval = optind-1;
-	optind = 0; /* reset getopt lib */
+	optind = 1; /* reset getopt lib */
 
 	return retval;
 }

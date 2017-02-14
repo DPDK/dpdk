@@ -300,7 +300,7 @@ parse_args(int argc, char **argv)
 
 	argv[optind-1] = prgname;
 
-	optind = 0; /* reset getopt lib */
+	optind = 1; /* reset getopt lib */
 	return 0;
 }
 
