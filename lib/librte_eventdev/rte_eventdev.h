@@ -404,11 +404,12 @@ struct rte_event_dev_config {
 	 * @see RTE_EVENT_DEV_CFG_PER_DEQUEUE_TIMEOUT
 	 */
 	int32_t nb_events_limit;
-	/**< Applies to *closed system* event dev only. This field indicates a
-	 * limit to ethdev-like devices to limit the number of events injected
-	 * into the system to not overwhelm core-to-core events.
-	 * This value cannot exceed the *max_num_events* which previously
-	 * provided in rte_event_dev_info_get()
+	/**< In a *closed system* this field is the limit on maximum number of
+	 * events that can be inflight in the eventdev at a given time. The
+	 * limit is required to ensure that the finite space in a closed system
+	 * is not overwhelmed. The value cannot exceed the *max_num_events*
+	 * as provided by rte_event_dev_info_get().
+	 * This value should be set to -1 for *open system*.
 	 */
 	uint8_t nb_event_queues;
 	/**< Number of event queues to configure on this device.
@@ -633,7 +634,8 @@ struct rte_event_port_conf {
 	 * can have a lower threshold so as not to overwhelm the device,
 	 * while ports used for worker pools can have a higher threshold.
 	 * This value cannot exceed the *nb_events_limit*
-	 * which previously supplied to rte_event_dev_configure()
+	 * which was previously supplied to rte_event_dev_configure().
+	 * This should be set to '-1' for *open system*.
 	 */
 	uint8_t dequeue_depth;
 	/**< Configure number of bulk dequeues for this event port.
