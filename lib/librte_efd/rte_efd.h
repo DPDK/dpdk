@@ -198,6 +198,8 @@ rte_efd_find_existing(const char *name);
  * Computes an updated table entry for the supplied key/value pair.
  * The update is then immediately applied to the provided table and
  * all socket-local copies of the chunks are updated.
+ * This operation is not multi-thread safe
+ * and should only be called one from thread.
  *
  * @param table
  *   EFD table to reference
@@ -227,6 +229,8 @@ rte_efd_update(struct rte_efd_table *table, unsigned int socket_id,
 
 /**
  * Removes any value currently associated with the specified key from the table
+ * This operation is not multi-thread safe
+ * and should only be called from one thread.
  *
  * @param table
  *   EFD table to reference
@@ -247,6 +251,7 @@ rte_efd_delete(struct rte_efd_table *table, unsigned int socket_id,
 
 /**
  * Looks up the value associated with a key
+ * This operation is multi-thread safe.
  *
  * NOTE: Lookups will *always* succeed - this is a property of
  * using a perfect hash table.
@@ -270,6 +275,7 @@ rte_efd_lookup(const struct rte_efd_table *table, unsigned int socket_id,
 
 /**
  * Looks up the value associated with several keys.
+ * This operation is multi-thread safe.
  *
  * NOTE: Lookups will *always* succeed - this is a property of
  * using a perfect hash table.

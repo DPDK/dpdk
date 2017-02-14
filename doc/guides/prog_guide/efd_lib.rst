@@ -270,6 +270,11 @@ failed to find a suitable perfect hash or the group was full). The function
 will return ``EFD_UPDATE_NO_CHANGE (3)`` if there is no change to the EFD
 table (i.e, same value already exists).
 
+.. Note::
+
+   This function is not multi-thread safe and should only be called
+   from one thread.
+
 EFD Lookup
 ~~~~~~~~~~
 
@@ -285,6 +290,11 @@ lookup function. ``rte_efd_lookup_bulk()`` is the bulk lookup function,
 that looks up num_keys simultaneously stored in the key_list and the
 corresponding return values will be returned in the value_list.
 
+.. Note::
+
+   This function is multi-thread safe, but there should not be other threads
+   writing in the EFD table, unless locks are used.
+
 EFD Delete
 ~~~~~~~~~~
 
@@ -294,6 +304,11 @@ when the key has been found and deleted. Socket_id is the parameter to
 use to lookup the existing value, which is ideally the caller's socket id.
 The previous value associated with this key will be returned
 in the prev_value argument.
+
+.. Note::
+
+   This function is not multi-thread safe and should only be called
+   from one thread.
 
 .. _Efd_internals:
 
