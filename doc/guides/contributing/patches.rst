@@ -225,13 +225,9 @@ Here are some guidelines for the body of a commit message:
 
 * Use correct capitalization, punctuation and spelling.
 
-In addition to the ``Signed-off-by:`` name the commit messages can also have one or more of the following:
-
-* ``Reported-by:`` The reporter of the issue.
-* ``Tested-by:`` The tester of the change.
-* ``Reviewed-by:`` The reviewer of the change.
-* ``Suggested-by:`` The person who suggested the change.
-* ``Acked-by:`` When a previous version of the patch was acked and the ack is still relevant.
+In addition to the ``Signed-off-by:`` name the commit messages can also have
+tags for who reported, suggested, tested and reviewed the patch being
+posted. Please refer to the `Tested, Acked and Reviewed by`_ section.
 
 
 Creating Patches
@@ -427,9 +423,57 @@ The options ``--annotate`` and ``confirm = always`` are recommended for checking
 The Review Process
 ------------------
 
-The more work you put into the previous steps the easier it will be to get a patch accepted.
+Patches are reviewed by the community, relying on the experience and
+collaboration of the members to double-check each other's work. There are a
+number of ways to indicate that you have checked a patch on the mailing list.
 
-The general cycle for patch review and acceptance is:
+
+Tested, Acked and Reviewed by
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To indicate that you have interacted with a patch on the mailing list you
+should respond to the patch in an email with one of the following tags:
+
+ * Reviewed-by:
+ * Acked-by:
+ * Tested-by:
+ * Reported-by:
+ * Suggested-by:
+
+The tag should be on a separate line as follows::
+
+   tag-here: Name Surname <email@address.com>
+
+Each of these tags has a specific meaning. In general, the DPDK community
+follows the kernel usage of the tags. A short summary of the meanings of each
+tag is given here for reference:
+
+.. _statement: https://www.kernel.org/doc/html/latest/process/submitting-patches.html#reviewer-s-statement-of-oversight
+
+``Reviewed-by:`` is a strong statement_ that the patch is an appropriate state
+for merging without any remaining serious technical issues. Reviews from
+community members who are known to understand the subject area and to perform
+thorough reviews will increase the likelihood of the patch getting merged.
+
+``Acked-by:`` is a record that the person named was not directly involved in
+the preparation of the patch but wishes to signify and record their acceptance
+and approval of it.
+
+``Tested-by:`` indicates that the patch has been successfully tested (in some
+environment) by the person named.
+
+``Reported-by:`` is used to acknowledge person who found or reported the bug.
+
+``Suggested-by:`` indicates that the patch idea was suggested by the named
+person.
+
+
+
+Steps to getting your patch merged
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The more work you put into the previous steps the easier it will be to get a
+patch accepted. The general cycle for patch review and acceptance is:
 
 #. Submit the patch.
 
