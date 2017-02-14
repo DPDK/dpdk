@@ -666,3 +666,70 @@ Tested Platforms
        * Host interface: PCI Express 3.0 x16
        * Device ID: 15b3:1017
        * Firmware version: 16.18.1000
+
+#. Intel(R) platforms with Intel(R) NICs.
+
+   * Platform details.
+
+     * Intel(R) Atom(TM) CPU C2758 @ 2.40GHz
+     * Intel(R) Xeon(R) CPU D-1540 @ 2.00GHz
+     * Intel(R) Xeon(R) CPU E5-4667 v3 @ 2.00GHz
+     * Intel(R) Xeon(R) CPU E5-2680 v2 @ 2.80GHz
+     * Intel(R) Xeon(R) CPU E5-2699 v3 @ 2.30GHz
+     * Intel(R) Xeon(R) CPU E5-2695 v4 @ 2.10GHz
+     * Intel(R) Xeon(R) CPU E5-2658 v2 @ 2.40GHz
+
+     * OS:
+
+       * CentOS 7.2
+       * Fedora 25
+       * FreeBSD 11
+       * Red Hat Enterprise Linux Server release 7.3
+       * SUSE Enterprise Linux 12
+       * Wind River Linux 8
+       * Ubuntu 16.04
+       * Ubuntu 16.10
+
+   * NICs:
+
+     * Intel(R) 82599ES 10 Gigabit Ethernet Controller
+
+       * Firmware version: 0x61bf0001
+       * Device id (pf/vf): 8086:10fb / 8086:10ed
+       * Driver version: 4.0.1-k (ixgbe)
+
+     * Intel(R) Corporation Ethernet Connection X552/X557-AT 10GBASE-T
+
+       * Firmware version: 0x800001cf
+       * Device id (pf/vf): 8086:15ad / 8086:15a8
+       * Driver version: 4.2.5 (ixgbe)
+
+     * Intel(R) Ethernet Converged Network Adapter X710-DA4 (4x10G)
+
+       * Firmware version: 5.05
+       * Device id (pf/vf): 8086:1572 / 8086:154c
+       * Driver version: 1.5.23 (i40e)
+
+     * Intel(R) Ethernet Converged Network Adapter X710-DA2 (2x10G)
+
+       * Firmware version: 5.05
+       * Device id (pf/vf): 8086:1572 / 8086:154c
+       * Driver version: 1.5.23 (i40e)
+
+     * Intel(R) Ethernet Converged Network Adapter XL710-QDA1 (1x40G)
+
+       * Firmware version: 5.05
+       * Device id (pf/vf): 8086:1584 / 8086:154c
+       * Driver version: 1.5.23 (i40e)
+
+     * Intel(R) Ethernet Converged Network Adapter XL710-QDA2 (2X40G)
+
+       * Firmware version: 5.05
+       * Device id (pf/vf): 8086:1583 / 8086:154c
+       * Driver version: 1.5.23 (i40e)
+
+     * Intel(R) Corporation I350 Gigabit Network Connection
+
+       * Firmware version: 1.48, 0x800006e7
+       * Device id (pf/vf): 8086:1521 / 8086:1520
+       * Driver version: 5.2.13-k (igb)
