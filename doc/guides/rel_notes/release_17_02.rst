@@ -405,77 +405,44 @@ The libraries prepended with a plus sign were incremented in this version.
 Tested Platforms
 ----------------
 
-.. This section should contain a list of systems (properties, NIC, OS) that were tested with this release.
+.. This section should contain a list of platforms that were tested with this release.
 
    The format is:
 
-   #. (Intel, IBM, ARM,...) platform with <company> NICs.
+   * <vendor> platform with <vendor> <type of devices> combinations
 
-      * Platform details.
-
-        * Intel(R) Xeon(R) CPU E5-2697 v2 @ 2.70GHz
-        * Intel(R) Xeon(R) CPU E5-2697 v3 @ 2.70GHz
-        * Intel(R) Xeon(R) CPU E5-2699 v3 @ 2.30GHz
-
-          * Intel(R) Server board S2600WTT
-          * BIOS: SE5C610.86B.01.01.0005.101720141054
-
-        * ...
-
-        * OS
-
-          * CentOS 7.0
-          * Fedora 23
-          * Fedora 24
-          * FreeBSD 10.3
-          * Red Hat Enterprise Linux 7.2
-          * SUSE Enterprise Linux 12
-          * Ubuntu 15.10
-          * Ubuntu 16.04 LTS
-          * Wind River Linux 8
-          * ...
-
-      * List of NICs
-
-        * Intel(R) Ethernet Controller X540-AT2
-
-          * Firmware version: 0x80000389
-          * Device id (pf): 8086:1528
-          * Driver version: 3.23.2 (ixgbe)
-          * ...
-
-        * Intel(R) 82599ES 10 Gigabit Ethernet Controller
-
-          * Firmware version: 0x61bf0001
-          * Device id (pf/vf): 8086:10fb / 8086:10ed
-          * Driver version: 4.0.1-k (ixgbe)
-
-        * ...
+     * List of CPU
+     * List of OS
+     * List of devices
+     * Other relevant details...
 
    This section is a comment. do not overwrite or remove it.
    Also, make sure to start the actual text at the margin.
    =========================================================
 
-#. Intel(R) platforms with Mellanox(R) NICs.
+This release has been tested with the below list of CPU/device/firmware/OS.
+Each section describes a different set of combinations.
 
-   * Platform details.
+* Intel(R) platforms with Mellanox(R) NICs combinations
+
+   * Platform details
 
      * Intel(R) Xeon(R) CPU E5-2697 v2 @ 2.70GHz
      * Intel(R) Xeon(R) CPU E5-2680 v2 @ 2.80GHz
      * Intel(R) Xeon(R) CPU E5-2697 v3 @ 2.60GHz
 
-     * OS:
+   * OS:
 
-       * CentOS 7.0
-       * Fedora 23
-       * Fedora 24
-       * FreeBSD 10.3
-       * Red Hat Enterprise Linux 7.2
-       * SUSE Enterprise Linux 12
-       * Ubuntu 14.04 LTS
-       * Ubuntu 15.10
-       * Ubuntu 16.04 LTS
-       * Wind River Linux 8
+     * CentOS 7.0
+     * Fedora 23
+     * Fedora 24
+     * FreeBSD 10.3
+     * Red Hat Enterprise Linux 7.2
+     * SUSE Enterprise Linux 12
+     * Ubuntu 14.04 LTS
+     * Ubuntu 15.10
+     * Ubuntu 16.04 LTS
+     * Wind River Linux 8
 
    * MLNX_OFED: 4.0-1.0.1.0
 
@@ -577,7 +544,7 @@ Tested Platforms
        * Device ID: 15b3:1019
        * Firmware version: 16.18.1000
 
-#. IBM(R) Power8(R) with Mellanox(R) NICs.
+* IBM(R) Power8(R) with Mellanox(R) NICs combinations
 
    * Machine:
 
@@ -586,9 +553,7 @@ Tested Platforms
        * type-model: 8247-22L
        * Firmware FW810.21 (SV810_108)
 
-     * OS:
-
-       * Ubuntu 16.04 LTS PPC le
+   * OS: Ubuntu 16.04 LTS PPC le
 
    * MLNX_OFED: 4.0-1.0.1.0
 
@@ -678,9 +643,9 @@ Tested Platforms
        * Device ID: 15b3:1017
        * Firmware version: 16.18.1000
 
-#. Intel(R) platforms with Intel(R) NICs.
+* Intel(R) platforms with Intel(R) NICs combinations
 
-   * Platform details.
+   * Platform details
 
      * Intel(R) Atom(TM) CPU C2758 @ 2.40GHz
      * Intel(R) Xeon(R) CPU D-1540 @ 2.00GHz
@@ -690,16 +655,16 @@ Tested Platforms
      * Intel(R) Xeon(R) CPU E5-2695 v4 @ 2.10GHz
      * Intel(R) Xeon(R) CPU E5-2658 v2 @ 2.40GHz
 
-     * OS:
+   * OS:
 
-       * CentOS 7.2
-       * Fedora 25
-       * FreeBSD 11
-       * Red Hat Enterprise Linux Server release 7.3
-       * SUSE Enterprise Linux 12
-       * Wind River Linux 8
-       * Ubuntu 16.04
-       * Ubuntu 16.10
+     * CentOS 7.2
+     * Fedora 25
+     * FreeBSD 11
+     * Red Hat Enterprise Linux Server release 7.3
+     * SUSE Enterprise Linux 12
+     * Wind River Linux 8
+     * Ubuntu 16.04
+     * Ubuntu 16.10
 
    * NICs:
 
