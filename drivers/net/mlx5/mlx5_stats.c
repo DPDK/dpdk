@@ -125,6 +125,10 @@ static const struct mlx5_counter_ctrl mlx5_counters_init[] = {
 		.dpdk_name = "tx_errors_phy",
 		.ctr_name = "tx_errors_phy",
 	},
+	{
+		.dpdk_name = "rx_out_of_buffer",
+		.ctr_name = "out_of_buffer",
+	},
 };
 
 static const unsigned int xstats_n = RTE_DIM(mlx5_counters_init);
@@ -159,9 +163,15 @@ priv_read_dev_counters(struct priv *priv, uint64_t *stats)
 		WARN("unable to read statistic values from device");
 		return -1;
 	}
-	for (i = 0; i != xstats_n; ++i)
-		stats[i] = (uint64_t)
-			   et_stats->data[xstats_ctrl->dev_table_idx[i]];
+	for (i = 0; i != xstats_n; ++i) {
+		if (priv_is_ib_cntr(mlx5_counters_init[i].ctr_name))
+			priv_get_cntr_sysfs(priv,
+					    mlx5_counters_init[i].ctr_name,
+					    &stats[i]);
+		else
+			stats[i] = (uint64_t)
+				et_stats->data[xstats_ctrl->dev_table_idx[i]];
+	}
 	return 0;
 }
 
@@ -233,6 +243,8 @@ priv_xstats_init(struct priv *priv)
 		}
 	}
 	for (j = 0; j != xstats_n; ++j) {
+		if (priv_is_ib_cntr(mlx5_counters_init[i].ctr_name))
+			continue;
 		if (xstats_ctrl->dev_table_idx[j] >= dev_stats_n) {
 			WARN("counter \"%s\" is not recognized",
 			     mlx5_counters_init[j].dpdk_name);

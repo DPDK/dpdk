@@ -234,6 +234,23 @@ try_dev_id:
 }
 
 /**
+ * Check if the counter is located on ib counters file.
+ *
+ * @param[in] cntr
+ *   Counter name.
+ *
+ * @return
+ *   1 if counter is located on ib counters file , 0 otherwise.
+ */
+int
+priv_is_ib_cntr(const char *cntr)
+{
+	if (!strcmp(cntr, "out_of_buffer"))
+		return 1;
+	return 0;
+}
+
+/**
  * Read from sysfs entry.
  *
  * @param[in] priv
@@ -260,10 +277,15 @@ priv_sysfs_read(const struct priv *priv, const char *entry,
 	if (priv_get_ifname(priv, &ifname))
 		return -1;
 
-	MKSTR(path, "%s/device/net/%s/%s", priv->ctx->device->ibdev_path,
-	      ifname, entry);
-
-	file = fopen(path, "rb");
+	if (priv_is_ib_cntr(entry)) {
+		MKSTR(path, "%s/ports/1/hw_counters/%s",
+		      priv->ctx->device->ibdev_path, entry);
+		file = fopen(path, "rb");
+	} else {
+		MKSTR(path, "%s/device/net/%s/%s",
+		      priv->ctx->device->ibdev_path, ifname, entry);
+		file = fopen(path, "rb");
+	}
 	if (file == NULL)
 		return -1;
 	ret = fread(buf, 1, size, file);
@@ -465,6 +487,30 @@ priv_get_mtu(struct priv *priv, uint16_t *mtu)
 	if (priv_get_sysfs_ulong(priv, "mtu", &ulong_mtu) == -1)
 		return -1;
 	*mtu = ulong_mtu;
+	return 0;
+}
+
+/**
+ * Read device counter from sysfs.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param name
+ *   Counter name.
+ * @param[out] cntr
+ *   Counter output buffer.
+ *
+ * @return
+ *   0 on success, -1 on failure and errno is set.
+ */
+int
+priv_get_cntr_sysfs(struct priv *priv, const char *name, uint64_t *cntr)
+{
+	unsigned long ulong_ctr;
+
+	if (priv_get_sysfs_ulong(priv, name, &ulong_ctr) == -1)
+		return -1;
+	*cntr = ulong_ctr;
 	return 0;
 }
 
