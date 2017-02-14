@@ -119,6 +119,10 @@ Deprecation Notices
   or VHOST feature, but KNI_VHOST which is a KNI feature enabled via a compile
   time option, and disabled by default.
 
+* ABI changes are planned for 17.05 in the ``rte_cryptodev_ops`` structure.
+  A pointer to a rte_cryptodev_config structure will be added to the
+  function prototype ``cryptodev_configure_t``, as a new parameter.
+
 * distributor: library API will be changed to incorporate a burst-oriented
   API. This will include a change to ``rte_distributor_create``
   to specify which type of instance to create (single or burst), and
