@@ -123,6 +123,11 @@ Deprecation Notices
   A pointer to a rte_cryptodev_config structure will be added to the
   function prototype ``cryptodev_configure_t``, as a new parameter.
 
+* cryptodev: A new parameter ``max_nb_sessions_per_qp`` will be added to
+  ``rte_cryptodev_info.sym``. Some drivers may support limited number of
+  sessions per queue_pair. With this new parameter application will know
+  how many sessions can be mapped to each queue_pair of a device.
+
 * distributor: library API will be changed to incorporate a burst-oriented
   API. This will include a change to ``rte_distributor_create``
   to specify which type of instance to create (single or burst), and
