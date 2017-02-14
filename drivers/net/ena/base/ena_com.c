@@ -2278,7 +2278,7 @@ int ena_com_set_hash_ctrl(struct ena_com_dev *ena_dev)
 					    sizeof(resp));
 	if (unlikely(ret)) {
 		ena_trc_err("Failed to set hash input. error: %d\n", ret);
-		ret = ENA_COM_INVAL;
+		return ENA_COM_INVAL;
 	}
 
 	return 0;
