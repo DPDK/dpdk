@@ -424,7 +424,6 @@ cperf_latency_test_runner(void *arg)
 	struct rte_crypto_op *ops[ctx->options->burst_sz];
 	struct rte_crypto_op *ops_processed[ctx->options->burst_sz];
 	uint64_t ops_enqd = 0, ops_deqd = 0;
-	uint16_t ops_unused = 0;
 	uint64_t m_idx = 0, b_idx = 0, i;
 
 	uint64_t tsc_val, tsc_end, tsc_start;
@@ -460,19 +459,18 @@ cperf_latency_test_runner(void *arg)
 						ctx->options->burst_sz :
 						ctx->options->total_ops -
 						enqd_tot;
-		uint16_t ops_needed = burst_size - ops_unused;
 
 		/* Allocate crypto ops from pool */
-		if (ops_needed != rte_crypto_op_bulk_alloc(
+		if (burst_size != rte_crypto_op_bulk_alloc(
 				ctx->crypto_op_pool,
 				RTE_CRYPTO_OP_TYPE_SYMMETRIC,
-				ops, ops_needed))
+				ops, burst_size))
 			return -1;
 
 		/* Setup crypto op, attach mbuf etc */
 		(ctx->populate_ops)(ops, &ctx->mbufs_in[m_idx],
 				&ctx->mbufs_out[m_idx],
-				ops_needed, ctx->sess, ctx->options,
+				burst_size, ctx->sess, ctx->options,
 				ctx->test_vector);
 
 		tsc_start = rte_rdtsc_precise();
@@ -498,17 +496,15 @@ cperf_latency_test_runner(void *arg)
 
 		tsc_end = rte_rdtsc_precise();
 
-		for (i = 0; i < ops_needed; i++) {
+		for (i = 0; i < ops_enqd; i++) {
 			ctx->res[tsc_idx].tsc_start = tsc_start;
 			ops[i]->opaque_data = (void *)&ctx->res[tsc_idx];
 			tsc_idx++;
 		}
 
-		/*
-		 * Calculate number of ops not enqueued (mainly for hw
-		 * accelerators whose ingress queue can fill up).
-		 */
-		ops_unused = burst_size - ops_enqd;
+		/* Free memory for not enqueued operations */
+		for (i = ops_enqd; i < burst_size; i++)
+			rte_crypto_op_free(ops[i]);
 
 		if (likely(ops_deqd))  {
 			/*
@@ -535,7 +531,7 @@ cperf_latency_test_runner(void *arg)
 		enqd_max = max(ops_enqd, enqd_max);
 		enqd_min = min(ops_enqd, enqd_min);
 
-		m_idx += ops_needed;
+		m_idx += ops_enqd;
 		m_idx = m_idx + ctx->options->burst_sz > ctx->options->pool_sz ?
 				0 : m_idx;
 		b_idx++;
