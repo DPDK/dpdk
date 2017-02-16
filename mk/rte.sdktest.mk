@@ -46,14 +46,14 @@ DIR := $(shell basename $(RTE_OUTPUT))
 #
 # test: launch auto-tests, very simple for now.
 #
-.PHONY: test fast_test perf_test coverage
+.PHONY: test test-basic fast_test perf_test coverage
 
 PERFLIST=ring_perf,mempool_perf,memcpy_perf,hash_perf,timer_perf
 coverage: BLACKLIST=-$(PERFLIST)
 fast_test: BLACKLIST=-$(PERFLIST)
 perf_test: WHITELIST=$(PERFLIST)
 
-test fast_test perf_test:
+test test-basic fast_test perf_test:
 	@mkdir -p $(AUTOTEST_DIR) ; \
 	cd $(AUTOTEST_DIR) ; \
 	if [ -f $(RTE_OUTPUT)/app/test ]; then \
