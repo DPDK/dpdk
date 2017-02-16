@@ -4341,6 +4341,7 @@ i40e_veb_setup(struct i40e_pf *pf, struct i40e_vsi *vsi)
 			    hw->aq.asq_last_status);
 		goto fail;
 	}
+	veb->enabled_tc = I40E_DEFAULT_TCMAP;
 
 	/* get statistics index */
 	ret = i40e_aq_get_veb_parameters(hw, veb->seid, NULL, NULL,
