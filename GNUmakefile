@@ -40,6 +40,7 @@ export RTE_SDK
 # directory list
 #
 
-ROOTDIRS-y := buildtools lib drivers app test
+ROOTDIRS-y := buildtools lib drivers app
+ROOTDIRS-  := test
 
 include $(RTE_SDK)/mk/rte.sdkroot.mk

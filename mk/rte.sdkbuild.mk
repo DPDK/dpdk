@@ -48,7 +48,7 @@ define depdirs_rule
 $(1): $(sort $(LOCAL_DEPDIRS-$(1)))
 endef
 
-$(foreach d,$(ROOTDIRS-y),$(eval $(call depdirs_rule,$(d))))
+$(foreach d,$(ROOTDIRS-y) $(ROOTDIRS-),$(eval $(call depdirs_rule,$(d))))
 drivers: | buildtools
 
 #
@@ -72,9 +72,12 @@ clean: $(CLEANDIRS)
 	$(Q)$(MAKE) -f $(RTE_SDK)/GNUmakefile gcovclean
 	@echo Clean complete
 
+.PHONY: test-build
+test-build: test
+
 .SECONDEXPANSION:
-.PHONY: $(ROOTDIRS-y)
-$(ROOTDIRS-y):
+.PHONY: $(ROOTDIRS-y) $(ROOTDIRS-)
+$(ROOTDIRS-y) $(ROOTDIRS-):
 	@[ -d $(BUILDDIR)/$@ ] || mkdir -p $(BUILDDIR)/$@
 	@echo "== Build $@"
 	$(Q)$(MAKE) S=$@ -f $(RTE_SRCDIR)/$@/Makefile -C $(BUILDDIR)/$@ all

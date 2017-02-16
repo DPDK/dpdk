@@ -36,7 +36,7 @@ ifeq (,$(wildcard $(RTE_OUTPUT)/Makefile))
   $(error "need a make config first")
 endif
 
-DEPDIR_FILES = $(addsuffix /.depdirs, $(addprefix $(BUILDDIR)/,$(ROOTDIRS-y)))
+DEPDIR_FILES = $(addsuffix /.depdirs, $(addprefix $(BUILDDIR)/,$(ROOTDIRS-y) $(ROOTDIRS-)))
 
 .PHONY: depdirs
 depdirs: $(RTE_OUTPUT)/.depdirs
