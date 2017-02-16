@@ -66,11 +66,8 @@ DPDK_2.0 {
 	rte_intr_disable;
 	rte_intr_enable;
 	rte_log;
-	rte_log_add_in_history;
 	rte_log_cur_msg_loglevel;
 	rte_log_cur_msg_logtype;
-	rte_log_dump_history;
-	rte_log_set_history;
 	rte_logs;
 	rte_malloc;
 	rte_malloc_dump_stats;
