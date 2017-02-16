@@ -87,28 +87,28 @@ F: lib/librte_eal/common/*
 F: lib/librte_eal/common/include/*
 F: lib/librte_eal/common/include/generic/
 F: doc/guides/prog_guide/env_abstraction_layer.rst
-F: app/test/test_alarm.c
-F: app/test/test_atomic.c
-F: app/test/test_byteorder.c
-F: app/test/test_common.c
-F: app/test/test_cpuflags.c
-F: app/test/test_cycles.c
-F: app/test/test_debug.c
-F: app/test/test_devargs.c
-F: app/test/test_eal*
-F: app/test/test_errno.c
-F: app/test/test_interrupts.c
-F: app/test/test_logs.c
-F: app/test/test_memcpy*
-F: app/test/test_pci.c
-F: app/test/test_pci_sysfs/
-F: app/test/test_per_lcore.c
-F: app/test/test_prefetch.c
-F: app/test/test_rwlock.c
-F: app/test/test_spinlock.c
-F: app/test/test_string_fns.c
-F: app/test/test_tailq.c
-F: app/test/test_version.c
+F: test/test/test_alarm.c
+F: test/test/test_atomic.c
+F: test/test/test_byteorder.c
+F: test/test/test_common.c
+F: test/test/test_cpuflags.c
+F: test/test/test_cycles.c
+F: test/test/test_debug.c
+F: test/test/test_devargs.c
+F: test/test/test_eal*
+F: test/test/test_errno.c
+F: test/test/test_interrupts.c
+F: test/test/test_logs.c
+F: test/test/test_memcpy*
+F: test/test/test_pci.c
+F: test/test/test_pci_sysfs/
+F: test/test/test_per_lcore.c
+F: test/test/test_prefetch.c
+F: test/test/test_rwlock.c
+F: test/test/test_spinlock.c
+F: test/test/test_string_fns.c
+F: test/test/test_tailq.c
+F: test/test/test_version.c
 
 Memory Allocation
 M: Sergio Gonzalez Monroy <sergio.gonzalez.monroy@intel.com>
@@ -118,10 +118,10 @@ F: lib/librte_eal/common/*malloc*
 F: lib/librte_eal/common/eal_common_mem*
 F: lib/librte_eal/common/eal_hugepages.h
 F: doc/guides/prog_guide/env_abstraction_layer.rst
-F: app/test/test_func_reentrancy.c
-F: app/test/test_malloc.c
-F: app/test/test_memory.c
-F: app/test/test_memzone.c
+F: test/test/test_func_reentrancy.c
+F: test/test/test_malloc.c
+F: test/test/test_memory.c
+F: test/test/test_memzone.c
 
 Keep alive
 M: Remy Horton <remy.horton@intel.com>
@@ -134,7 +134,7 @@ Secondary process
 M: Sergio Gonzalez Monroy <sergio.gonzalez.monroy@intel.com>
 K: RTE_PROC_
 F: doc/guides/prog_guide/multi_proc_support.rst
-F: app/test/test_mp_secondary.c
+F: test/test/test_mp_secondary.c
 F: examples/multi_process/
 F: doc/guides/sample_app_ug/multi_process.rst
 
@@ -222,21 +222,21 @@ Memory pool
 M: Olivier Matz <olivier.matz@6wind.com>
 F: lib/librte_mempool/
 F: doc/guides/prog_guide/mempool_lib.rst
-F: app/test/test_mempool*
-F: app/test/test_func_reentrancy.c
+F: test/test/test_mempool*
+F: test/test/test_func_reentrancy.c
 
 Ring queue
 M: Olivier Matz <olivier.matz@6wind.com>
 F: lib/librte_ring/
 F: doc/guides/prog_guide/ring_lib.rst
-F: app/test/test_ring*
-F: app/test/test_func_reentrancy.c
+F: test/test/test_ring*
+F: test/test/test_func_reentrancy.c
 
 Packet buffer
 M: Olivier Matz <olivier.matz@6wind.com>
 F: lib/librte_mbuf/
 F: doc/guides/prog_guide/mbuf_lib.rst
-F: app/test/test_mbuf.c
+F: test/test/test_mbuf.c
 
 Ethernet API
 M: Thomas Monjalon <thomas.monjalon@6wind.com>
@@ -250,7 +250,7 @@ F: lib/librte_ether/rte_flow*
 Crypto API
 M: Declan Doherty <declan.doherty@intel.com>
 F: lib/librte_cryptodev/
-F: app/test/test_cryptodev*
+F: test/test/test_cryptodev*
 F: examples/l2fwd-crypto/
 
 
@@ -263,7 +263,7 @@ Link bonding
 M: Declan Doherty <declan.doherty@intel.com>
 F: drivers/net/bonding/
 F: doc/guides/prog_guide/link_bonding_poll_mode_drv_lib.rst
-F: app/test/test_link_bonding*
+F: test/test/test_link_bonding*
 F: examples/bond/
 
 Linux KNI
@@ -271,7 +271,7 @@ M: Ferruh Yigit <ferruh.yigit@intel.com>
 F: lib/librte_eal/linuxapp/kni/
 F: lib/librte_kni/
 F: doc/guides/prog_guide/kernel_nic_interface.rst
-F: app/test/test_kni.c
+F: test/test/test_kni.c
 F: examples/kni/
 F: doc/guides/sample_app_ug/kernel_nic_interface.rst
 
@@ -416,8 +416,8 @@ Ring PMD
 M: Bruce Richardson <bruce.richardson@intel.com>
 F: drivers/net/ring/
 F: doc/guides/nics/pcap_ring.rst
-F: app/test/test_pmd_ring.c
-F: app/test/test_pmd_ring_perf.c
+F: test/test/test_pmd_ring.c
+F: test/test/test_pmd_ring_perf.c
 
 Null Networking PMD
 M: Tetsuya Mukawa <mtetsuyah@gmail.com>
@@ -503,7 +503,7 @@ Distributor
 M: Bruce Richardson <bruce.richardson@intel.com>
 F: lib/librte_distributor/
 F: doc/guides/prog_guide/packet_distrib_lib.rst
-F: app/test/test_distributor*
+F: test/test/test_distributor*
 F: examples/distributor/
 F: doc/guides/sample_app_ug/dist_app.rst
 
@@ -511,7 +511,7 @@ Reorder
 M: Reshma Pattan <reshma.pattan@intel.com>
 F: lib/librte_reorder/
 F: doc/guides/prog_guide/reorder_lib.rst
-F: app/test/test_reorder*
+F: test/test/test_reorder*
 F: examples/packet_ordering/
 F: doc/guides/sample_app_ug/packet_ordering.rst
 
@@ -519,8 +519,8 @@ Hierarchical scheduler
 M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
 F: lib/librte_sched/
 F: doc/guides/prog_guide/qos_framework.rst
-F: app/test/test_red.c
-F: app/test/test_sched.c
+F: test/test/test_red.c
+F: test/test/test_sched.c
 F: examples/qos_sched/
 F: doc/guides/sample_app_ug/qos_scheduler.rst
 
@@ -539,8 +539,8 @@ F: lib/librte_pipeline/
 F: lib/librte_port/
 F: lib/librte_table/
 F: doc/guides/prog_guide/packet_framework.rst
-F: app/test/test_table*
-F: app/test-pipeline/
+F: test/test/test_table*
+F: test/test-pipeline/
 F: doc/guides/sample_app_ug/test_pipeline.rst
 F: examples/ip_pipeline/
 F: doc/guides/sample_app_ug/ip_pipeline.rst
@@ -553,8 +553,8 @@ ACL
 M: Konstantin Ananyev <konstantin.ananyev@intel.com>
 F: lib/librte_acl/
 F: doc/guides/prog_guide/packet_classif_access_ctrl.rst
-F: app/test-acl/
-F: app/test/test_acl.*
+F: test/test-acl/
+F: test/test/test_acl.*
 F: examples/l3fwd-acl/
 F: doc/guides/sample_app_ug/l3_forward_access_ctrl.rst
 
@@ -563,7 +563,7 @@ M: Byron Marohn <byron.marohn@intel.com>
 M: Pablo de Lara Guarch <pablo.de.lara.guarch@intel.com>
 F: lib/librte_efd/
 F: doc/guides/prog_guide/efd_lib.rst
-F: app/test/test_efd*
+F: test/test/test_efd*
 F: examples/server_node_efd/
 F: doc/guides/sample_app_ug/server_node_efd.rst
 
@@ -572,22 +572,22 @@ M: Bruce Richardson <bruce.richardson@intel.com>
 M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 F: lib/librte_hash/
 F: doc/guides/prog_guide/hash_lib.rst
-F: app/test/test_*hash*
-F: app/test/test_func_reentrancy.c
+F: test/test/test_*hash*
+F: test/test/test_func_reentrancy.c
 
 LPM
 M: Bruce Richardson <bruce.richardson@intel.com>
 F: lib/librte_lpm/
 F: doc/guides/prog_guide/lpm*
-F: app/test/test_lpm*
-F: app/test/test_func_reentrancy.c
-F: app/test/test_xmmt_ops.h
+F: test/test/test_lpm*
+F: test/test/test_func_reentrancy.c
+F: test/test/test_xmmt_ops.h
 
 Traffic metering
 M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
 F: lib/librte_meter/
 F: doc/guides/sample_app_ug/qos_scheduler.rst
-F: app/test/test_meter.c
+F: test/test/test_meter.c
 F: examples/qos_meter/
 F: doc/guides/sample_app_ug/qos_metering.rst
 
@@ -602,20 +602,20 @@ F: lib/librte_cfgfile/
 Interactive command line
 M: Olivier Matz <olivier.matz@6wind.com>
 F: lib/librte_cmdline/
-F: app/cmdline_test/
-F: app/test/test_cmdline*
+F: test/cmdline_test/
+F: test/test/test_cmdline*
 F: examples/cmdline/
 F: doc/guides/sample_app_ug/cmd_line.rst
 
 Key/Value parsing
 M: Olivier Matz <olivier.matz@6wind.com>
 F: lib/librte_kvargs/
-F: app/test/test_kvargs.c
+F: test/test/test_kvargs.c
 
 Power management
 F: lib/librte_power/
 F: doc/guides/prog_guide/power_man.rst
-F: app/test/test_power*
+F: test/test/test_power*
 F: examples/l3fwd-power/
 F: doc/guides/sample_app_ug/l3_forward_power_man.rst
 F: examples/vm_power_manager/
@@ -625,7 +625,7 @@ Timers
 M: Robert Sanford <rsanford@akamai.com>
 F: lib/librte_timer/
 F: doc/guides/prog_guide/timer_lib.rst
-F: app/test/test_timer*
+F: test/test/test_timer*
 F: examples/timer/
 F: doc/guides/sample_app_ug/timer.rst
 
@@ -640,18 +640,20 @@ Test Applications
 -----------------
 
 Unit tests framework
-F: app/test/autotest*
-F: app/test/commands.c
-F: app/test/packet_burst_generator.c
-F: app/test/packet_burst_generator.h
-F: app/test/process.h
-F: app/test/resource.*
-F: app/test/test.c
-F: app/test/test.h
-F: app/test/test_pmd_perf.c
-F: app/test/test_resource.c
-F: app/test/virtual_pmd.c
-F: app/test/virtual_pmd.h
+F: test/Makefile
+F: test/test/Makefile
+F: test/test/autotest*
+F: test/test/commands.c
+F: test/test/packet_burst_generator.c
+F: test/test/packet_burst_generator.h
+F: test/test/process.h
+F: test/test/resource.*
+F: test/test/test.c
+F: test/test/test.h
+F: test/test/test_pmd_perf.c
+F: test/test/test_resource.c
+F: test/test/virtual_pmd.c
+F: test/test/virtual_pmd.h
 
 Driver testing tool
 M: Jingjing Wu <jingjing.wu@intel.com>
