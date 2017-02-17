@@ -272,11 +272,6 @@ static uint32_t enicpmd_dev_rx_queue_count(struct rte_eth_dev *dev,
 	uint16_t cq_idx;
 	int rq_num;
 
-	if (rx_queue_id >= dev->data->nb_rx_queues) {
-		dev_err(enic, "Invalid RX queue id=%d", rx_queue_id);
-		return 0;
-	}
-
 	rq_num = enic_rte_rq_idx_to_sop_idx(rx_queue_id);
 	cq = &enic->cq[enic_cq_rq(enic, rq_num)];
 	cq_idx = cq->to_clean;

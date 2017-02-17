@@ -1876,11 +1876,6 @@ i40e_dev_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	struct i40e_rx_queue *rxq;
 	uint16_t desc = 0;
 
-	if (unlikely(rx_queue_id >= dev->data->nb_rx_queues)) {
-		PMD_DRV_LOG(ERR, "Invalid RX queue id %u", rx_queue_id);
-		return 0;
-	}
-
 	rxq = dev->data->rx_queues[rx_queue_id];
 	rxdp = &(rxq->rx_ring[rxq->rx_tail]);
 	while ((desc < rxq->nb_rx_desc) &&

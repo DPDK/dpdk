@@ -2732,16 +2732,19 @@ rte_eth_rx_burst(uint8_t port_id, uint16_t queue_id,
  *  The queue id on the specific port.
  * @return
  *  The number of used descriptors in the specific queue, or:
- *     (-EINVAL) if *port_id* is invalid
+ *     (-EINVAL) if *port_id* or *queue_id* is invalid
  *     (-ENOTSUP) if the device does not support this function
  */
 static inline int
 rte_eth_rx_queue_count(uint8_t port_id, uint16_t queue_id)
 {
-	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	struct rte_eth_dev *dev;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
+	dev = &rte_eth_devices[port_id];
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_queue_count, -ENOTSUP);
+	if (queue_id >= dev->data->nb_rx_queues)
+		return -EINVAL;
 
 	return (*dev->dev_ops->rx_queue_count)(dev, queue_id);
 }
