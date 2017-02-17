@@ -7382,17 +7382,8 @@ test_scheduler_attach_slave_op(void)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	uint8_t sched_id = ts_params->valid_devs[0];
-	uint32_t nb_devs, qp_id, i, nb_devs_attached = 0;
+	uint32_t nb_devs, i, nb_devs_attached = 0;
 	int ret;
-	struct rte_cryptodev_config config = {
-			.nb_queue_pairs = 8,
-			.socket_id = SOCKET_ID_ANY,
-			.session_mp = {
-				.nb_objs = 2048,
-				.cache_size = 256
-			}
-	};
-	struct rte_cryptodev_qp_conf qp_conf = {2048};
 
 	/* create 2 AESNI_MB if necessary */
 	nb_devs = rte_cryptodev_count_devtype(
@@ -7417,19 +7408,6 @@ test_scheduler_attach_slave_op(void)
 		rte_cryptodev_info_get(i, &info);
 		if (info.dev_type != RTE_CRYPTODEV_AESNI_MB_PMD)
 			continue;
-
-		ret = rte_cryptodev_configure(i, &config);
-		TEST_ASSERT(ret == 0,
-			"Failed to configure device %u of pmd : %s", i,
-			RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD));
-
-		for (qp_id = 0; qp_id < info.max_nb_queue_pairs; qp_id++) {
-			TEST_ASSERT_SUCCESS(rte_cryptodev_queue_pair_setup(
-				i, qp_id, &qp_conf,
-				rte_cryptodev_socket_id(i)),
-				"Failed to setup queue pair %u on "
-				"cryptodev %u", qp_id, i);
-		}
 
 		ret = rte_cryptodev_scheduler_slave_attach(sched_id,
 				(uint8_t)i);

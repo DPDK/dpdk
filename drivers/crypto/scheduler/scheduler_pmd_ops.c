@@ -52,11 +52,8 @@ scheduler_pmd_config(struct rte_cryptodev *dev,
 
 	for (i = 0; i < sched_ctx->nb_slaves; i++) {
 		uint8_t slave_dev_id = sched_ctx->slaves[i].dev_id;
-		struct rte_cryptodev *slave_dev =
-				rte_cryptodev_pmd_get_dev(slave_dev_id);
 
-		ret = (*slave_dev->dev_ops->dev_configure)(slave_dev,
-				config);
+		ret = rte_cryptodev_configure(slave_dev_id, config);
 		if (ret < 0)
 			break;
 	}
@@ -342,11 +339,13 @@ scheduler_pmd_qp_release(struct rte_cryptodev *dev, uint16_t qp_id)
 /** Setup a queue pair */
 static int
 scheduler_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
-	__rte_unused const struct rte_cryptodev_qp_conf *qp_conf, int socket_id)
+	const struct rte_cryptodev_qp_conf *qp_conf, int socket_id)
 {
 	struct scheduler_ctx *sched_ctx = dev->data->dev_private;
 	struct scheduler_qp_ctx *qp_ctx;
 	char name[RTE_CRYPTODEV_NAME_MAX_LEN];
+	uint32_t i;
+	int ret;
 
 	if (snprintf(name, RTE_CRYPTODEV_NAME_MAX_LEN,
 			"CRYTO_SCHE PMD %u QP %u",
@@ -358,6 +357,15 @@ scheduler_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	/* Free memory prior to re-allocation if needed. */
 	if (dev->data->queue_pairs[qp_id] != NULL)
 		scheduler_pmd_qp_release(dev, qp_id);
+
+	for (i = 0; i < sched_ctx->nb_slaves; i++) {
+		uint8_t slave_id = sched_ctx->slaves[i].dev_id;
+
+		ret = rte_cryptodev_queue_pair_setup(slave_id, qp_id,
+				qp_conf, socket_id);
+		if (ret < 0)
+			return ret;
+	}
 
 	/* Allocate the queue pair data structure. */
 	qp_ctx = rte_zmalloc_socket(name, sizeof(*qp_ctx), RTE_CACHE_LINE_SIZE,
