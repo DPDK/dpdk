@@ -1,7 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
-#   All rights reserved.
+#   Copyright(c) 2017 Intel Corporation. All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
 #   modification, are permitted provided that the following conditions
@@ -28,22 +27,38 @@
 #   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 #   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+include $(RTE_SDK)/mk/rte.vars.mk
+
 #
+# library name
+#
+LIB = librte_pmd_kni.a
 
-#include "common_base"
+CFLAGS += -O3
+CFLAGS += $(WERROR_FLAGS)
+LDLIBS += -lpthread
 
-CONFIG_RTE_EXEC_ENV="linuxapp"
-CONFIG_RTE_EXEC_ENV_LINUXAPP=y
+EXPORT_MAP := rte_pmd_kni_version.map
 
-CONFIG_RTE_EAL_IGB_UIO=y
-CONFIG_RTE_EAL_VFIO=y
-CONFIG_RTE_KNI_KMOD=y
-CONFIG_RTE_LIBRTE_KNI=y
-CONFIG_RTE_LIBRTE_PMD_KNI=y
-CONFIG_RTE_LIBRTE_VHOST=y
-CONFIG_RTE_LIBRTE_PMD_VHOST=y
-CONFIG_RTE_LIBRTE_PMD_AF_PACKET=y
-CONFIG_RTE_LIBRTE_PMD_TAP=y
-CONFIG_RTE_LIBRTE_NFP_PMD=y
-CONFIG_RTE_LIBRTE_POWER=y
-CONFIG_RTE_VIRTIO_USER=y
+LIBABIVER := 1
+
+#
+# all source are stored in SRCS-y
+#
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_KNI) += rte_eth_kni.c
+
+#
+# Export include files
+#
+SYMLINK-y-include +=
+
+# this lib depends upon:
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_KNI) += lib/librte_eal
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_KNI) += lib/librte_ether
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_KNI) += lib/librte_kni
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_KNI) += lib/librte_kvargs
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_KNI) += lib/librte_mbuf
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_KNI) += lib/librte_mempool
+
+include $(RTE_SDK)/mk/rte.lib.mk

@@ -85,6 +85,11 @@ DEPDIRS-vmxnet3 = $(core-libs)
 DIRS-$(CONFIG_RTE_LIBRTE_PMD_XENVIRT) += xenvirt
 DEPDIRS-xenvirt = $(core-libs) librte_cmdline
 
+ifeq ($(CONFIG_RTE_LIBRTE_KNI),y)
+DIRS-$(CONFIG_RTE_LIBRTE_PMD_KNI) += kni
+endif
+DEPDIRS-kni = $(core-libs) librte_kni
+
 ifeq ($(CONFIG_RTE_LIBRTE_VHOST),y)
 DIRS-$(CONFIG_RTE_LIBRTE_PMD_VHOST) += vhost
 endif # $(CONFIG_RTE_LIBRTE_VHOST)

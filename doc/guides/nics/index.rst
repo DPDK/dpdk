@@ -46,6 +46,7 @@ Network Interface Controller Drivers
     i40e
     ixgbe
     intel_vf
+    kni
     mlx4
     mlx5
     nfp
