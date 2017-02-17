@@ -20,8 +20,8 @@ Build variables
 	V         verbose
 	D         debug dependencies
 	O         build directory (default: build/ - install T= default: ./)
-	DESTDIR   staging install directory
-	prefix    root install directory
+	DESTDIR   staging install directory (default: empty)
+	prefix    root install directory (default: /usr/local)
 	T         target template - used with config or install
 			format: <arch-machine-execenv-toolchain>
 			templates in config/defconfig_*
