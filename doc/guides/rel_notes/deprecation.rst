@@ -87,10 +87,6 @@ Deprecation Notices
   PKT_RX_QINQ_STRIPPED, that are better described. The old flags and
   their behavior will be kept until 17.02 and will be removed in 17.05.
 
-* mempool: The functions for single/multi producer/consumer are deprecated
-  and will be removed in 17.05.
-  It is replaced by ``rte_mempool_generic_get/put`` functions.
-
 * ethdev: the legacy filter API, including
   ``rte_eth_dev_filter_supported()``, ``rte_eth_dev_filter_ctrl()`` as well
   as filter types MACVLAN, ETHERTYPE, FLEXIBLE, SYN, NTUPLE, TUNNEL, FDIR,

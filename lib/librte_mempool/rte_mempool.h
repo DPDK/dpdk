@@ -1108,46 +1108,6 @@ rte_mempool_generic_put(struct rte_mempool *mp, void * const *obj_table,
 }
 
 /**
- * @deprecated
- * Put several objects back in the mempool (multi-producers safe).
- *
- * @param mp
- *   A pointer to the mempool structure.
- * @param obj_table
- *   A pointer to a table of void * pointers (objects).
- * @param n
- *   The number of objects to add in the mempool from the obj_table.
- */
-__rte_deprecated
-static inline void __attribute__((always_inline))
-rte_mempool_mp_put_bulk(struct rte_mempool *mp, void * const *obj_table,
-			unsigned n)
-{
-	struct rte_mempool_cache *cache;
-	cache = rte_mempool_default_cache(mp, rte_lcore_id());
-	rte_mempool_generic_put(mp, obj_table, n, cache, 0);
-}
-
-/**
- * @deprecated
- * Put several objects back in the mempool (NOT multi-producers safe).
- *
- * @param mp
- *   A pointer to the mempool structure.
- * @param obj_table
- *   A pointer to a table of void * pointers (objects).
- * @param n
- *   The number of objects to add in the mempool from obj_table.
- */
-__rte_deprecated
-static inline void __attribute__((always_inline))
-rte_mempool_sp_put_bulk(struct rte_mempool *mp, void * const *obj_table,
-			unsigned n)
-{
-	rte_mempool_generic_put(mp, obj_table, n, NULL, MEMPOOL_F_SP_PUT);
-}
-
-/**
  * Put several objects back in the mempool.
  *
  * This function calls the multi-producer or the single-producer
@@ -1168,40 +1128,6 @@ rte_mempool_put_bulk(struct rte_mempool *mp, void * const *obj_table,
 	struct rte_mempool_cache *cache;
 	cache = rte_mempool_default_cache(mp, rte_lcore_id());
 	rte_mempool_generic_put(mp, obj_table, n, cache, mp->flags);
-}
-
-/**
- * @deprecated
- * Put one object in the mempool (multi-producers safe).
- *
- * @param mp
- *   A pointer to the mempool structure.
- * @param obj
- *   A pointer to the object to be added.
- */
-__rte_deprecated
-static inline void __attribute__((always_inline))
-rte_mempool_mp_put(struct rte_mempool *mp, void *obj)
-{
-	struct rte_mempool_cache *cache;
-	cache = rte_mempool_default_cache(mp, rte_lcore_id());
-	rte_mempool_generic_put(mp, &obj, 1, cache, 0);
-}
-
-/**
- * @deprecated
- * Put one object back in the mempool (NOT multi-producers safe).
- *
- * @param mp
- *   A pointer to the mempool structure.
- * @param obj
- *   A pointer to the object to be added.
- */
-__rte_deprecated
-static inline void __attribute__((always_inline))
-rte_mempool_sp_put(struct rte_mempool *mp, void *obj)
-{
-	rte_mempool_generic_put(mp, &obj, 1, NULL, MEMPOOL_F_SP_PUT);
 }
 
 /**
@@ -1332,62 +1258,6 @@ rte_mempool_generic_get(struct rte_mempool *mp, void **obj_table, unsigned n,
 }
 
 /**
- * @deprecated
- * Get several objects from the mempool (multi-consumers safe).
- *
- * If cache is enabled, objects will be retrieved first from cache,
- * subsequently from the common pool. Note that it can return -ENOENT when
- * the local cache and common pool are empty, even if cache from other
- * lcores are full.
- *
- * @param mp
- *   A pointer to the mempool structure.
- * @param obj_table
- *   A pointer to a table of void * pointers (objects) that will be filled.
- * @param n
- *   The number of objects to get from mempool to obj_table.
- * @return
- *   - 0: Success; objects taken.
- *   - -ENOENT: Not enough entries in the mempool; no object is retrieved.
- */
-__rte_deprecated
-static inline int __attribute__((always_inline))
-rte_mempool_mc_get_bulk(struct rte_mempool *mp, void **obj_table, unsigned n)
-{
-	struct rte_mempool_cache *cache;
-	cache = rte_mempool_default_cache(mp, rte_lcore_id());
-	return rte_mempool_generic_get(mp, obj_table, n, cache, 0);
-}
-
-/**
- * @deprecated
- * Get several objects from the mempool (NOT multi-consumers safe).
- *
- * If cache is enabled, objects will be retrieved first from cache,
- * subsequently from the common pool. Note that it can return -ENOENT when
- * the local cache and common pool are empty, even if cache from other
- * lcores are full.
- *
- * @param mp
- *   A pointer to the mempool structure.
- * @param obj_table
- *   A pointer to a table of void * pointers (objects) that will be filled.
- * @param n
- *   The number of objects to get from the mempool to obj_table.
- * @return
- *   - 0: Success; objects taken.
- *   - -ENOENT: Not enough entries in the mempool; no object is
- *     retrieved.
- */
-__rte_deprecated
-static inline int __attribute__((always_inline))
-rte_mempool_sc_get_bulk(struct rte_mempool *mp, void **obj_table, unsigned n)
-{
-	return rte_mempool_generic_get(mp, obj_table, n, NULL,
-				       MEMPOOL_F_SC_GET);
-}
-
-/**
  * Get several objects from the mempool.
  *
  * This function calls the multi-consumers or the single-consumer
@@ -1415,56 +1285,6 @@ rte_mempool_get_bulk(struct rte_mempool *mp, void **obj_table, unsigned n)
 	struct rte_mempool_cache *cache;
 	cache = rte_mempool_default_cache(mp, rte_lcore_id());
 	return rte_mempool_generic_get(mp, obj_table, n, cache, mp->flags);
-}
-
-/**
- * @deprecated
- * Get one object from the mempool (multi-consumers safe).
- *
- * If cache is enabled, objects will be retrieved first from cache,
- * subsequently from the common pool. Note that it can return -ENOENT when
- * the local cache and common pool are empty, even if cache from other
- * lcores are full.
- *
- * @param mp
- *   A pointer to the mempool structure.
- * @param obj_p
- *   A pointer to a void * pointer (object) that will be filled.
- * @return
- *   - 0: Success; objects taken.
- *   - -ENOENT: Not enough entries in the mempool; no object is retrieved.
- */
-__rte_deprecated
-static inline int __attribute__((always_inline))
-rte_mempool_mc_get(struct rte_mempool *mp, void **obj_p)
-{
-	struct rte_mempool_cache *cache;
-	cache = rte_mempool_default_cache(mp, rte_lcore_id());
-	return rte_mempool_generic_get(mp, obj_p, 1, cache, 0);
-}
-
-/**
- * @deprecated
- * Get one object from the mempool (NOT multi-consumers safe).
- *
- * If cache is enabled, objects will be retrieved first from cache,
- * subsequently from the common pool. Note that it can return -ENOENT when
- * the local cache and common pool are empty, even if cache from other
- * lcores are full.
- *
- * @param mp
- *   A pointer to the mempool structure.
- * @param obj_p
- *   A pointer to a void * pointer (object) that will be filled.
- * @return
- *   - 0: Success; objects taken.
- *   - -ENOENT: Not enough entries in the mempool; no object is retrieved.
- */
-__rte_deprecated
-static inline int __attribute__((always_inline))
-rte_mempool_sc_get(struct rte_mempool *mp, void **obj_p)
-{
-	return rte_mempool_generic_get(mp, obj_p, 1, NULL, MEMPOOL_F_SC_GET);
 }
 
 /**
