@@ -957,6 +957,8 @@ rte_cryptodev_configure(uint8_t dev_id, struct rte_cryptodev_config *config)
 		return -EBUSY;
 	}
 
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_configure, -ENOTSUP);
+
 	/* Setup new number of queue pairs and reconfigure device. */
 	diag = rte_cryptodev_queue_pairs_config(dev, config->nb_queue_pairs,
 			config->socket_id);
@@ -967,10 +969,14 @@ rte_cryptodev_configure(uint8_t dev_id, struct rte_cryptodev_config *config)
 	}
 
 	/* Setup Session mempool for device */
-	return rte_cryptodev_sym_session_pool_create(dev,
+	diag = rte_cryptodev_sym_session_pool_create(dev,
 			config->session_mp.nb_objs,
 			config->session_mp.cache_size,
 			config->socket_id);
+	if (diag != 0)
+		return diag;
+
+	return (*dev->dev_ops->dev_configure)(dev, config);
 }
 
 

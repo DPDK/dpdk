@@ -1326,10 +1326,11 @@ void qat_crypto_sym_session_init(struct rte_mempool *mp, void *sym_sess)
 		offsetof(struct rte_cryptodev_sym_session, _private);
 }
 
-int qat_dev_config(__rte_unused struct rte_cryptodev *dev)
+int qat_dev_config(__rte_unused struct rte_cryptodev *dev,
+		__rte_unused struct rte_cryptodev_config *config)
 {
 	PMD_INIT_FUNC_TRACE();
-	return -ENOTSUP;
+	return 0;
 }
 
 int qat_dev_start(__rte_unused struct rte_cryptodev *dev)

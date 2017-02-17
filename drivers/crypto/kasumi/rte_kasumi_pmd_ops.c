@@ -89,7 +89,8 @@ static const struct rte_cryptodev_capabilities kasumi_pmd_capabilities[] = {
 
 /** Configure device */
 static int
-kasumi_pmd_config(__rte_unused struct rte_cryptodev *dev)
+kasumi_pmd_config(__rte_unused struct rte_cryptodev *dev,
+		__rte_unused struct rte_cryptodev_config *config)
 {
 	return 0;
 }

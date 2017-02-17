@@ -201,10 +201,12 @@ extern struct rte_cryptodev *rte_cryptodevs;
  *	Function used to configure device.
  *
  * @param	dev	Crypto device pointer
+ *		config	Crypto device configurations
  *
  * @return	Returns 0 on success
  */
-typedef int (*cryptodev_configure_t)(struct rte_cryptodev *dev);
+typedef int (*cryptodev_configure_t)(struct rte_cryptodev *dev,
+		struct rte_cryptodev_config *config);
 
 /**
  * Function used to start a configured device.

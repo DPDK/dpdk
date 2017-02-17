@@ -89,7 +89,8 @@ static const struct rte_cryptodev_capabilities zuc_pmd_capabilities[] = {
 
 /** Configure device */
 static int
-zuc_pmd_config(__rte_unused struct rte_cryptodev *dev)
+zuc_pmd_config(__rte_unused struct rte_cryptodev *dev,
+		__rte_unused struct rte_cryptodev_config *config)
 {
 	return 0;
 }

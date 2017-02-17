@@ -85,7 +85,8 @@ struct qat_pmd_private {
 	/**< Max number of sessions supported by device */
 };
 
-int qat_dev_config(struct rte_cryptodev *dev);
+int qat_dev_config(struct rte_cryptodev *dev,
+		struct rte_cryptodev_config *config);
 int qat_dev_start(struct rte_cryptodev *dev);
 void qat_dev_stop(struct rte_cryptodev *dev);
 int qat_dev_close(struct rte_cryptodev *dev);

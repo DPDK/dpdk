@@ -43,7 +43,8 @@
 
 /** Configure device */
 static int
-scheduler_pmd_config(struct rte_cryptodev *dev)
+scheduler_pmd_config(struct rte_cryptodev *dev,
+		struct rte_cryptodev_config *config)
 {
 	struct scheduler_ctx *sched_ctx = dev->data->dev_private;
 	uint32_t i;
@@ -54,7 +55,8 @@ scheduler_pmd_config(struct rte_cryptodev *dev)
 		struct rte_cryptodev *slave_dev =
 				rte_cryptodev_pmd_get_dev(slave_dev_id);
 
-		ret = (*slave_dev->dev_ops->dev_configure)(slave_dev);
+		ret = (*slave_dev->dev_ops->dev_configure)(slave_dev,
+				config);
 		if (ret < 0)
 			break;
 	}

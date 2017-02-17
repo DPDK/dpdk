@@ -111,7 +111,8 @@ static const struct rte_cryptodev_capabilities
 
 /** Configure device */
 static int
-armv8_crypto_pmd_config(__rte_unused struct rte_cryptodev *dev)
+armv8_crypto_pmd_config(__rte_unused struct rte_cryptodev *dev,
+		__rte_unused struct rte_cryptodev_config *config)
 {
 	return 0;
 }

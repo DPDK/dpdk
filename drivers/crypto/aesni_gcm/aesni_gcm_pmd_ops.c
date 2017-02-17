@@ -114,7 +114,8 @@ static const struct rte_cryptodev_capabilities aesni_gcm_pmd_capabilities[] = {
 
 /** Configure device */
 static int
-aesni_gcm_pmd_config(__rte_unused struct rte_cryptodev *dev)
+aesni_gcm_pmd_config(__rte_unused struct rte_cryptodev *dev,
+		__rte_unused struct rte_cryptodev_config *config)
 {
 	return 0;
 }

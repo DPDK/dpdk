@@ -89,7 +89,8 @@ static const struct rte_cryptodev_capabilities snow3g_pmd_capabilities[] = {
 
 /** Configure device */
 static int
-snow3g_pmd_config(__rte_unused struct rte_cryptodev *dev)
+snow3g_pmd_config(__rte_unused struct rte_cryptodev *dev,
+		__rte_unused struct rte_cryptodev_config *config)
 {
 	return 0;
 }
