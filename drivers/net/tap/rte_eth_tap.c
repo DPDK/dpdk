@@ -129,7 +129,7 @@ tun_alloc(struct pmd_internals *pmd, uint16_t qid)
 	memset(&ifr, 0, sizeof(struct ifreq));
 
 	ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
-	strncpy(ifr.ifr_name, pmd->name, IFNAMSIZ);
+	snprintf(ifr.ifr_name, IFNAMSIZ, "%s", pmd->name);
 
 	RTE_LOG(DEBUG, PMD, "ifr_name '%s'\n", ifr.ifr_name);
 
@@ -297,7 +297,7 @@ tap_link_set_flags(struct pmd_internals *pmd, short flags, int add)
 		return -1;
 	}
 	memset(&ifr, 0, sizeof(ifr));
-	strncpy(ifr.ifr_name, pmd->name, IFNAMSIZ);
+	snprintf(ifr.ifr_name, IFNAMSIZ, "%s", pmd->name);
 	err = ioctl(s, SIOCGIFFLAGS, &ifr);
 	if (err < 0) {
 		RTE_LOG(WARNING, PMD, "Unable to get %s device flags: %s\n",
