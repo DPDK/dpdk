@@ -901,6 +901,8 @@ i40e_init_ethtype_filter_list(struct rte_eth_dev *dev)
 		.entries = I40E_MAX_ETHERTYPE_FILTER_NUM,
 		.key_len = sizeof(struct i40e_ethertype_filter_input),
 		.hash_func = rte_hash_crc,
+		.hash_func_init_val = 0,
+		.socket_id = rte_socket_id(),
 	};
 
 	/* Initialize ethertype filter rule list and hash */
@@ -944,6 +946,8 @@ i40e_init_tunnel_filter_list(struct rte_eth_dev *dev)
 		.entries = I40E_MAX_TUNNEL_FILTER_NUM,
 		.key_len = sizeof(struct i40e_tunnel_filter_input),
 		.hash_func = rte_hash_crc,
+		.hash_func_init_val = 0,
+		.socket_id = rte_socket_id(),
 	};
 
 	/* Initialize tunnel filter rule list and hash */
@@ -987,6 +991,8 @@ i40e_init_fdir_filter_list(struct rte_eth_dev *dev)
 		.entries = I40E_MAX_FDIR_FILTER_NUM,
 		.key_len = sizeof(struct rte_eth_fdir_input),
 		.hash_func = rte_hash_crc,
+		.hash_func_init_val = 0,
+		.socket_id = rte_socket_id(),
 	};
 
 	/* Initialize flow director filter rule list and hash */
