@@ -1508,22 +1508,6 @@ rte_mempool_get(struct rte_mempool *mp, void **obj_p)
 unsigned int rte_mempool_avail_count(const struct rte_mempool *mp);
 
 /**
- * @deprecated
- * Return the number of entries in the mempool.
- *
- * When cache is enabled, this function has to browse the length of
- * all lcores, so it should not be used in a data path, but only for
- * debug purposes.
- *
- * @param mp
- *   A pointer to the mempool structure.
- * @return
- *   The number of entries in the mempool.
- */
-__rte_deprecated
-unsigned rte_mempool_count(const struct rte_mempool *mp);
-
-/**
  * Return the number of elements which have been allocated from the mempool
  *
  * When cache is enabled, this function has to browse the length of
@@ -1537,31 +1521,6 @@ unsigned rte_mempool_count(const struct rte_mempool *mp);
  */
 unsigned int
 rte_mempool_in_use_count(const struct rte_mempool *mp);
-
-/**
- * @deprecated
- * Return the number of free entries in the mempool ring.
- * i.e. how many entries can be freed back to the mempool.
- *
- * NOTE: This corresponds to the number of elements *allocated* from the
- * memory pool, not the number of elements in the pool itself. To count
- * the number elements currently available in the pool, use "rte_mempool_count"
- *
- * When cache is enabled, this function has to browse the length of
- * all lcores, so it should not be used in a data path, but only for
- * debug purposes. User-owned mempool caches are not accounted for.
- *
- * @param mp
- *   A pointer to the mempool structure.
- * @return
- *   The number of free entries in the mempool.
- */
-__rte_deprecated
-static inline unsigned
-rte_mempool_free_count(const struct rte_mempool *mp)
-{
-	return rte_mempool_in_use_count(mp);
-}
 
 /**
  * Test if the mempool is full.

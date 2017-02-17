@@ -997,12 +997,6 @@ rte_mempool_in_use_count(const struct rte_mempool *mp)
 	return mp->size - rte_mempool_avail_count(mp);
 }
 
-unsigned int
-rte_mempool_count(const struct rte_mempool *mp)
-{
-	return rte_mempool_avail_count(mp);
-}
-
 /* dump the cache status */
 static unsigned
 rte_mempool_dump_cache(FILE *f, const struct rte_mempool *mp)

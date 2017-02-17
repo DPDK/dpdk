@@ -3,7 +3,6 @@ DPDK_2.0 {
 
 	rte_mempool_audit;
 	rte_mempool_calc_obj_size;
-	rte_mempool_count;
 	rte_mempool_create;
 	rte_mempool_dump;
 	rte_mempool_list_dump;
