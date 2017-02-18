@@ -81,9 +81,9 @@ ifeq ($(RTE_DEVEL_BUILD),y)
 WERROR_FLAGS += -Werror
 endif
 
-# There are many issues reported for ARMv7 architecture
+# There are many issues reported for strict alignment architectures
 # which are not necessarily fatal. Report as warnings.
-ifeq ($(CONFIG_RTE_ARCH_ARMv7),y)
+ifeq ($(CONFIG_RTE_ARCH_STRICT_ALIGN),y)
 WERROR_FLAGS += -Wno-error=cast-align
 endif
 
