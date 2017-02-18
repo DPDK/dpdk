@@ -567,7 +567,7 @@ mpipe_register_segment(struct mpipe_dev_priv *priv, const struct rte_memseg *ms)
 {
 	size_t size = ms->hugepage_sz;
 	uint8_t *addr, *end;
-	int rc;
+	int rc = -EINVAL;
 
 	for (addr = ms->addr, end = addr + ms->len; addr < end; addr += size) {
 		rc = gxio_mpipe_register_page(priv->context, priv->stack, addr,
@@ -1630,6 +1630,17 @@ rte_pmd_mpipe_probe_common(struct rte_vdev_driver *drv, const char *ifname,
 	return 0;
 }
 
+static int rte_pmd_mpipe_xgbe_probe(const char *ifname, const char *params);
+static int rte_pmd_mpipe_gbe_probe(const char *ifname, const char *params);
+
+static struct rte_vdev_driver pmd_mpipe_xgbe_drv = {
+	.probe = rte_pmd_mpipe_xgbe_probe,
+};
+
+static struct rte_vdev_driver pmd_mpipe_gbe_drv = {
+	.probe = rte_pmd_mpipe_gbe_probe,
+};
+
 static int
 rte_pmd_mpipe_xgbe_probe(const char *ifname, const char *params __rte_unused)
 {
@@ -1641,14 +1652,6 @@ rte_pmd_mpipe_gbe_probe(const char *ifname, const char *params __rte_unused)
 {
 	return rte_pmd_mpipe_probe_common(&pmd_mpipe_gbe_drv, ifname, params);
 }
-
-static struct rte_vdev_driver pmd_mpipe_xgbe_drv = {
-	.probe = rte_pmd_mpipe_xgbe_probe,
-};
-
-static struct rte_vdev_driver pmd_mpipe_gbe_drv = {
-	.probe = rte_pmd_mpipe_gbe_probe,
-};
 
 RTE_PMD_REGISTER_VDEV(net_mpipe_xgbe, pmd_mpipe_xgbe_drv);
 RTE_PMD_REGISTER_ALIAS(net_mpipe_xgbe, xgbe);

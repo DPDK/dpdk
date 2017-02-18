@@ -34,9 +34,6 @@
 
 #include <errno.h>
 
-const struct feature_entry rte_cpu_feature_table[] = {
-};
-
 /*
  * Checks if a particular flag is available on current machine.
  */
