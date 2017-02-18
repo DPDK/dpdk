@@ -37,7 +37,7 @@
 extern "C" {
 #endif
 
-#include <arch/cycle.h>
+#include <arch/spr_def.h>
 
 #include "generic/rte_cycles.h"
 
@@ -50,7 +50,7 @@ extern "C" {
 static inline uint64_t
 rte_rdtsc(void)
 {
-	return get_cycle_count();
+	return __insn_mfspr(SPR_CYCLE);
 }
 
 static inline uint64_t
