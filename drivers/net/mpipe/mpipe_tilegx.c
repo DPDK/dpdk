@@ -39,10 +39,19 @@
 #include <rte_malloc.h>
 #include <rte_cycles.h>
 
-#include <arch/mpipe_xaui_def.h>
-#include <arch/mpipe_gbe_def.h>
-
 #include <gxio/mpipe.h>
+
+/* mPIPE GBE hardware register definitions. */
+#define MPIPE_GBE_NETWORK_CONFIGURATION 0x8008
+#define MPIPE_GBE_NETWORK_CONFIGURATION__COPY_ALL_SHIFT 4
+#define MPIPE_GBE_NETWORK_CONFIGURATION__MULTI_HASH_ENA_SHIFT 6
+#define MPIPE_GBE_NETWORK_CONFIGURATION__UNI_HASH_ENA_SHIFT 7
+
+/* mPIPE XAUI hardware register definitions. */
+#define MPIPE_XAUI_RECEIVE_CONFIGURATION 0x8020
+#define MPIPE_XAUI_RECEIVE_CONFIGURATION__COPY_ALL_SHIFT 0
+#define MPIPE_XAUI_RECEIVE_CONFIGURATION__ENA_HASH_MULTI_SHIFT 2
+#define MPIPE_XAUI_RECEIVE_CONFIGURATION__ENA_HASH_UNI_SHIFT 3
 
 #ifdef RTE_LIBRTE_MPIPE_PMD_DEBUG
 #define PMD_DEBUG_RX(...)	RTE_LOG(DEBUG, PMD, __VA_ARGS__)
