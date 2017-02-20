@@ -91,18 +91,4 @@ kni_fifo_free_count(struct rte_kni_fifo *fifo)
 	return (fifo->read - fifo->write - 1) & (fifo->len - 1);
 }
 
-#ifdef RTE_KNI_VHOST
-/**
- * Initializes the kni fifo structure
- */
-static inline void
-kni_fifo_init(struct rte_kni_fifo *fifo, uint32_t size)
-{
-	fifo->write = 0;
-	fifo->read = 0;
-	fifo->len = size;
-	fifo->elem_size = sizeof(void *);
-}
-#endif
-
 #endif /* _KNI_FIFO_H_ */

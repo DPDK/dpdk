@@ -113,12 +113,6 @@ Deprecation Notices
   has different feature set, meaning functions like ``rte_vhost_feature_disable``
   need be changed. Last, file rte_virtio_net.h will be renamed to rte_vhost.h.
 
-* kni: Remove :ref:`kni_vhost_backend-label` feature (KNI_VHOST) in 17.05 release.
-  :doc:`Vhost Library </prog_guide/vhost_lib>` is currently preferred method for
-  guest - host communication. Just for clarification, this is not to remove KNI
-  or VHOST feature, but KNI_VHOST which is a KNI feature enabled via a compile
-  time option, and disabled by default.
-
 * ABI changes are planned for 17.05 in the ``rte_cryptodev_ops`` structure.
   A pointer to a rte_cryptodev_config structure will be added to the
   function prototype ``cryptodev_configure_t``, as a new parameter.

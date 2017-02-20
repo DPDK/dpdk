@@ -140,11 +140,7 @@ kni_thread_single(void *data)
 		down_read(&knet->kni_list_lock);
 		for (j = 0; j < KNI_RX_LOOP_NUM; j++) {
 			list_for_each_entry(dev, &knet->kni_list_head, list) {
-#ifdef RTE_KNI_VHOST
-				kni_chk_vhost_rx(dev);
-#else
 				kni_net_rx(dev);
-#endif
 				kni_net_poll_resp(dev);
 			}
 		}
@@ -167,11 +163,7 @@ kni_thread_multiple(void *param)
 
 	while (!kthread_should_stop()) {
 		for (j = 0; j < KNI_RX_LOOP_NUM; j++) {
-#ifdef RTE_KNI_VHOST
-			kni_chk_vhost_rx(dev);
-#else
 			kni_net_rx(dev);
-#endif
 			kni_net_poll_resp(dev);
 		}
 #ifdef RTE_KNI_PREEMPT_DEFAULT
@@ -248,9 +240,6 @@ kni_release(struct inode *inode, struct file *file)
 			dev->pthread = NULL;
 		}
 
-#ifdef RTE_KNI_VHOST
-		kni_vhost_backend_release(dev);
-#endif
 		kni_dev_remove(dev);
 		list_del(&dev->list);
 	}
@@ -397,10 +386,6 @@ kni_ioctl_create(struct net *net, uint32_t ioctl_num,
 	kni->sync_va = dev_info.sync_va;
 	kni->sync_kva = phys_to_virt(dev_info.sync_phys);
 
-#ifdef RTE_KNI_VHOST
-	kni->vhost_queue = NULL;
-	kni->vq_status = BE_STOP;
-#endif
 	kni->mbuf_size = dev_info.mbuf_size;
 
 	pr_debug("tx_phys:      0x%016llx, tx_q addr:      0x%p\n",
@@ -490,10 +475,6 @@ kni_ioctl_create(struct net *net, uint32_t ioctl_num,
 		return -ENODEV;
 	}
 
-#ifdef RTE_KNI_VHOST
-	kni_vhost_init(kni);
-#endif
-
 	ret = kni_run_thread(knet, kni, dev_info.force_bind);
 	if (ret != 0)
 		return ret;
@@ -537,9 +518,6 @@ kni_ioctl_release(struct net *net, uint32_t ioctl_num,
 			dev->pthread = NULL;
 		}
 
-#ifdef RTE_KNI_VHOST
-		kni_vhost_backend_release(dev);
-#endif
 		kni_dev_remove(dev);
 		list_del(&dev->list);
 		ret = 0;

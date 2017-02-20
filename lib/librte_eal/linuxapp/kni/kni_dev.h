@@ -37,10 +37,6 @@
 #include <linux/spinlock.h>
 #include <linux/list.h>
 
-#ifdef RTE_KNI_VHOST
-#include <net/sock.h>
-#endif
-
 #include <exec-env/rte_kni_common.h>
 #define KNI_KTHREAD_RESCHEDULE_INTERVAL 5 /* us */
 
@@ -102,41 +98,12 @@ struct kni_dev {
 	/* synchro for request processing */
 	unsigned long synchro;
 
-#ifdef RTE_KNI_VHOST
-	struct kni_vhost_queue *vhost_queue;
-
-	volatile enum {
-		BE_STOP = 0x1,
-		BE_START = 0x2,
-		BE_FINISH = 0x4,
-	} vq_status;
-#endif
 	/* buffers */
 	void *pa[MBUF_BURST_SZ];
 	void *va[MBUF_BURST_SZ];
 	void *alloc_pa[MBUF_BURST_SZ];
 	void *alloc_va[MBUF_BURST_SZ];
 };
-
-#ifdef RTE_KNI_VHOST
-uint32_t
-kni_poll(struct file *file, struct socket *sock, poll_table * wait);
-int kni_chk_vhost_rx(struct kni_dev *kni);
-int kni_vhost_init(struct kni_dev *kni);
-int kni_vhost_backend_release(struct kni_dev *kni);
-
-struct kni_vhost_queue {
-	struct sock sk;
-	struct socket *sock;
-	int vnet_hdr_sz;
-	struct kni_dev *kni;
-	int sockfd;
-	uint32_t flags;
-	struct sk_buff *cache;
-	struct rte_kni_fifo *fifo;
-};
-
-#endif
 
 void kni_net_rx(struct kni_dev *kni);
 void kni_net_init(struct net_device *dev);

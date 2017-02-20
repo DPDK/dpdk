@@ -137,6 +137,8 @@ Removed Items
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* KNI vhost support removed.
+
 
 Shared Library Versions
 -----------------------

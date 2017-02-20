@@ -61,7 +61,6 @@ DEPDIRS-y += lib/librte_eal/linuxapp/eal
 #
 SRCS-y := kni_misc.c
 SRCS-y += kni_net.c
-SRCS-$(CONFIG_RTE_KNI_VHOST) += kni_vhost.c
 SRCS-$(CONFIG_RTE_KNI_KMOD_ETHTOOL) += kni_ethtool.c
 
 SRCS-$(CONFIG_RTE_KNI_KMOD_ETHTOOL) += ethtool/ixgbe/ixgbe_main.c

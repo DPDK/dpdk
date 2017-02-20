@@ -127,10 +127,6 @@ Programmer's Guide
 
 :numref:`figure_pkt_flow_kni` :ref:`figure_pkt_flow_kni`
 
-:numref:`figure_vhost_net_arch2` :ref:`figure_vhost_net_arch2`
-
-:numref:`figure_kni_traffic_flow` :ref:`figure_kni_traffic_flow`
-
 
 :numref:`figure_pkt_proc_pipeline_qos` :ref:`figure_pkt_proc_pipeline_qos`
 
