@@ -1034,7 +1034,6 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	uint16_t nb_tx;
 	uint32_t td_cmd;
 	uint32_t td_offset;
-	uint32_t tx_flags;
 	uint32_t td_tag;
 	uint64_t ol_flags;
 	uint16_t nb_used;
@@ -1058,7 +1057,6 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		td_cmd = 0;
 		td_tag = 0;
 		td_offset = 0;
-		tx_flags = 0;
 
 		tx_pkt = *tx_pkts++;
 		RTE_MBUF_PREFETCH_TO_FREE(txe->mbuf);
@@ -1105,12 +1103,8 @@ i40e_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		/* Descriptor based VLAN insertion */
 		if (ol_flags & (PKT_TX_VLAN_PKT | PKT_TX_QINQ_PKT)) {
-			tx_flags |= tx_pkt->vlan_tci <<
-				I40E_TX_FLAG_L2TAG1_SHIFT;
-			tx_flags |= I40E_TX_FLAG_INSERT_VLAN;
 			td_cmd |= I40E_TX_DESC_CMD_IL2TAG1;
-			td_tag = (tx_flags & I40E_TX_FLAG_L2TAG1_MASK) >>
-						I40E_TX_FLAG_L2TAG1_SHIFT;
+			td_tag = tx_pkt->vlan_tci;
 		}
 
 		/* Always enable CRC offload insertion */
