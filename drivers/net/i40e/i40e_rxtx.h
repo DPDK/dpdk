@@ -34,9 +34,6 @@
 #ifndef _I40E_RXTX_H_
 #define _I40E_RXTX_H_
 
-#define I40E_TX_FLAG_CSUM         ((uint32_t)(1 << 0))
-#define I40E_TX_FLAG_TSYN         ((uint32_t)(1 << 2))
-
 #define RTE_PMD_I40E_RX_MAX_BURST 32
 #define RTE_PMD_I40E_TX_MAX_BURST 32
 
