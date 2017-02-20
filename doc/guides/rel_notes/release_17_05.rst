@@ -125,6 +125,18 @@ ABI Changes
    =========================================================
 
 
+Removed Items
+-------------
+
+.. This section should contain removed items in this release. Sample format:
+
+   * Add a short 1-2 sentence description of the removed item in the past
+     tense.
+
+   This section is a comment. do not overwrite or remove it.
+   Also, make sure to start the actual text at the margin.
+   =========================================================
+
 
 Shared Library Versions
 -----------------------
