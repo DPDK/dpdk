@@ -89,7 +89,7 @@ check () { # <patch> <commit> <title>
 	if [ -n "$1" ] ; then
 		report=$($DPDK_CHECKPATCH_PATH $options "$1" 2>/dev/null)
 	elif [ -n "$2" ] ; then
-		report=$(git format-patch --no-stat --stdout -1 $commit |
+		report=$(git format-patch --find-renames --no-stat --stdout -1 $commit |
 			$DPDK_CHECKPATCH_PATH $options - 2>/dev/null)
 	else
 		report=$($DPDK_CHECKPATCH_PATH $options - 2>/dev/null)
