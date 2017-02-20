@@ -76,6 +76,9 @@ Most of these differences are summarized below.
          padding-left: 1em;
          text-align: left;
       }
+      table#id1 tr:hover td {
+         background-color: #ffb;
+      }
    </style>
 
 .. include:: overview_table.txt
