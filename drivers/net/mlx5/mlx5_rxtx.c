@@ -1523,7 +1523,7 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 					pkt->ol_flags |=
 						rxq_cq_to_ol_flags(rxq, cqe);
 				}
-				if (cqe->hdr_type_etc &
+				if (ntohs(cqe->hdr_type_etc) &
 				    MLX5_CQE_VLAN_STRIPPED) {
 					pkt->ol_flags |= PKT_RX_VLAN_PKT |
 						PKT_RX_VLAN_STRIPPED;
