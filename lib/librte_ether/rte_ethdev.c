@@ -986,8 +986,10 @@ rte_eth_dev_close(uint8_t port_id)
 	dev->data->dev_started = 0;
 	(*dev->dev_ops->dev_close)(dev);
 
+	dev->data->nb_rx_queues = 0;
 	rte_free(dev->data->rx_queues);
 	dev->data->rx_queues = NULL;
+	dev->data->nb_tx_queues = 0;
 	rte_free(dev->data->tx_queues);
 	dev->data->tx_queues = NULL;
 }

@@ -546,6 +546,9 @@ virtio_free_queues(struct virtio_hw *hw)
 	int queue_type;
 	uint16_t i;
 
+	if (hw->vqs == NULL)
+		return;
+
 	for (i = 0; i < nr_vq; i++) {
 		vq = hw->vqs[i];
 		if (!vq)
@@ -564,9 +567,11 @@ virtio_free_queues(struct virtio_hw *hw)
 		}
 
 		rte_free(vq);
+		hw->vqs[i] = NULL;
 	}
 
 	rte_free(hw->vqs);
+	hw->vqs = NULL;
 }
 
 static int
