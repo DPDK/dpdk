@@ -109,11 +109,11 @@ struct i40e_rx_queue {
 	uint16_t nb_rx_hold; /**< number of held free RX desc */
 	struct rte_mbuf *pkt_first_seg; /**< first segment of current packet */
 	struct rte_mbuf *pkt_last_seg; /**< last segment of current packet */
+	struct rte_mbuf fake_mbuf; /**< dummy mbuf */
 #ifdef RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC
 	uint16_t rx_nb_avail; /**< number of staged packets ready */
 	uint16_t rx_next_avail; /**< index of next staged packets */
 	uint16_t rx_free_trigger; /**< triggers rx buffer allocation */
-	struct rte_mbuf fake_mbuf; /**< dummy mbuf */
 	struct rte_mbuf *rx_stage[RTE_PMD_I40E_RX_MAX_BURST * 2];
 #endif
 

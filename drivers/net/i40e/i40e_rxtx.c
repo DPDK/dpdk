@@ -2256,11 +2256,11 @@ i40e_reset_rx_queue(struct i40e_rx_queue *rxq)
 	for (i = 0; i < len * sizeof(union i40e_rx_desc); i++)
 		((volatile char *)rxq->rx_ring)[i] = 0;
 
-#ifdef RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC
 	memset(&rxq->fake_mbuf, 0x0, sizeof(rxq->fake_mbuf));
 	for (i = 0; i < RTE_PMD_I40E_RX_MAX_BURST; ++i)
 		rxq->sw_ring[rxq->nb_rx_desc + i].mbuf = &rxq->fake_mbuf;
 
+#ifdef RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC
 	rxq->rx_nb_avail = 0;
 	rxq->rx_next_avail = 0;
 	rxq->rx_free_trigger = (uint16_t)(rxq->rx_free_thresh - 1);
