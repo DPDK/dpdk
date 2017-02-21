@@ -65,16 +65,11 @@ fdset_move(struct fdset *pfdset, int dst, int src)
 	pfdset->rwfds[dst] = pfdset->rwfds[src];
 }
 
-/*
- * Find deleted fd entries and remove them
- */
 static void
-fdset_shrink(struct fdset *pfdset)
+fdset_shrink_nolock(struct fdset *pfdset)
 {
 	int i;
 	int last_valid_idx = get_last_valid_idx(pfdset, pfdset->num - 1);
-
-	pthread_mutex_lock(&pfdset->fd_mutex);
 
 	for (i = 0; i < last_valid_idx; i++) {
 		if (pfdset->fd[i].fd != -1)
@@ -84,7 +79,16 @@ fdset_shrink(struct fdset *pfdset)
 		last_valid_idx = get_last_valid_idx(pfdset, last_valid_idx - 1);
 	}
 	pfdset->num = last_valid_idx + 1;
+}
 
+/*
+ * Find deleted fd entries and remove them
+ */
+static void
+fdset_shrink(struct fdset *pfdset)
+{
+	pthread_mutex_lock(&pfdset->fd_mutex);
+	fdset_shrink_nolock(pfdset);
 	pthread_mutex_unlock(&pfdset->fd_mutex);
 }
 
@@ -151,8 +155,12 @@ fdset_add(struct fdset *pfdset, int fd, fd_cb rcb, fd_cb wcb, void *dat)
 	pthread_mutex_lock(&pfdset->fd_mutex);
 	i = pfdset->num < MAX_FDS ? pfdset->num++ : -1;
 	if (i == -1) {
-		pthread_mutex_unlock(&pfdset->fd_mutex);
-		return -2;
+		fdset_shrink_nolock(pfdset);
+		i = pfdset->num < MAX_FDS ? pfdset->num++ : -1;
+		if (i == -1) {
+			pthread_mutex_unlock(&pfdset->fd_mutex);
+			return -2;
+		}
 	}
 
 	fdset_add_fd(pfdset, i, fd, rcb, wcb, dat);
