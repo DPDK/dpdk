@@ -1349,7 +1349,6 @@ i40e_pf_host_init(struct rte_eth_dev *dev)
 		ret = i40e_pf_host_vf_reset(&pf->vfs[i], 0);
 		if (ret != I40E_SUCCESS)
 			goto fail;
-		eth_random_addr(pf->vfs[i].mac_addr.addr_bytes);
 	}
 
 	/* restore irq0 */
