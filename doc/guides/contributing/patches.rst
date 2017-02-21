@@ -504,4 +504,20 @@ patch accepted. The general cycle for patch review and acceptance is:
 #. In addition a patch will not be accepted if it doesn't address comments from a previous version with fixes or
    valid arguments.
 
-#. Acked patches will be merged in the current or next merge window.
+#. It is the responsibility of a maintainer to ensure that patches are reviewed and to provide an ``ack`` or
+   ``nack`` of those patches as appropriate.
+
+#. Once a patch has been acked by the relevant maintainer, reviewers may still comment on it for a further
+   two weeks. After that time, the patch should be merged into the relevant git tree for the next release.
+   Additional notes and restrictions:
+
+   * Patches should be acked by a maintainer at least two days before the release merge
+     deadline, in order to make that release.
+   * For patches acked with less than two weeks to go to the merge deadline, all additional
+     comments should be made no later than two days before the merge deadline.
+   * After the appropriate time for additional feedback has passed, if the patch has not yet
+     been merged to the relevant tree by the committer, it should be treated as though it had,
+     in that any additional changes needed to it must be addressed by a follow-on patch, rather
+     than rework of the original.
+   * Trivial patches may be merged sooner than described above at the tree committer's
+     discretion.
