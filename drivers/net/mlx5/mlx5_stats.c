@@ -187,17 +187,12 @@ priv_xstats_init(struct priv *priv)
 	struct mlx5_xstats_ctrl *xstats_ctrl = &priv->xstats_ctrl;
 	unsigned int i;
 	unsigned int j;
-	char ifname[IF_NAMESIZE];
 	struct ifreq ifr;
 	struct ethtool_drvinfo drvinfo;
 	struct ethtool_gstrings *strings = NULL;
 	unsigned int dev_stats_n;
 	unsigned int str_sz;
 
-	if (priv_get_ifname(priv, &ifname)) {
-		WARN("unable to get interface name");
-		return;
-	}
 	/* How many statistics are available. */
 	drvinfo.cmd = ETHTOOL_GDRVINFO;
 	ifr.ifr_data = (caddr_t)&drvinfo;
