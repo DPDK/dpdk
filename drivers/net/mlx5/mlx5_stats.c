@@ -176,6 +176,29 @@ priv_read_dev_counters(struct priv *priv, uint64_t *stats)
 }
 
 /**
+ * Query the number of statistics provided by ETHTOOL.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ *
+ * @return
+ *   Number of statistics on success, -1 on error.
+ */
+static int
+priv_ethtool_get_stats_n(struct priv *priv) {
+	struct ethtool_drvinfo drvinfo;
+	struct ifreq ifr;
+
+	drvinfo.cmd = ETHTOOL_GDRVINFO;
+	ifr.ifr_data = (caddr_t)&drvinfo;
+	if (priv_ifreq(priv, SIOCETHTOOL, &ifr) != 0) {
+		WARN("unable to query number of statistics");
+		return -1;
+	}
+	return drvinfo.n_stats;
+}
+
+/**
  * Init the structures to read device counters.
  *
  * @param priv
@@ -188,19 +211,11 @@ priv_xstats_init(struct priv *priv)
 	unsigned int i;
 	unsigned int j;
 	struct ifreq ifr;
-	struct ethtool_drvinfo drvinfo;
 	struct ethtool_gstrings *strings = NULL;
 	unsigned int dev_stats_n;
 	unsigned int str_sz;
 
-	/* How many statistics are available. */
-	drvinfo.cmd = ETHTOOL_GDRVINFO;
-	ifr.ifr_data = (caddr_t)&drvinfo;
-	if (priv_ifreq(priv, SIOCETHTOOL, &ifr) != 0) {
-		WARN("unable to get driver info");
-		return;
-	}
-	dev_stats_n = drvinfo.n_stats;
+	dev_stats_n = priv_ethtool_get_stats_n(priv);
 	if (dev_stats_n < 1) {
 		WARN("no extended statistics available");
 		return;
@@ -422,7 +437,15 @@ mlx5_xstats_get(struct rte_eth_dev *dev,
 	int ret = xstats_n;
 
 	if (n >= xstats_n && stats) {
+		struct mlx5_xstats_ctrl *xstats_ctrl = &priv->xstats_ctrl;
+		int stats_n;
+
 		priv_lock(priv);
+		stats_n = priv_ethtool_get_stats_n(priv);
+		if (stats_n < 0)
+			return -1;
+		if (xstats_ctrl->stats_n != stats_n)
+			priv_xstats_init(priv);
 		ret = priv_xstats_get(priv, stats);
 		priv_unlock(priv);
 	}
@@ -439,8 +462,15 @@ void
 mlx5_xstats_reset(struct rte_eth_dev *dev)
 {
 	struct priv *priv = mlx5_get_priv(dev);
+	struct mlx5_xstats_ctrl *xstats_ctrl = &priv->xstats_ctrl;
+	int stats_n;
 
 	priv_lock(priv);
+	stats_n = priv_ethtool_get_stats_n(priv);
+	if (stats_n < 0)
+		return;
+	if (xstats_ctrl->stats_n != stats_n)
+		priv_xstats_init(priv);
 	priv_xstats_reset(priv);
 	priv_unlock(priv);
 }
