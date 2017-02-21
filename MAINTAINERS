@@ -70,7 +70,7 @@ ABI versioning
 M: Neil Horman <nhorman@tuxdriver.com>
 F: lib/librte_compat/
 F: doc/guides/rel_notes/deprecation.rst
-F: scripts/validate-abi.sh
+F: devtools/validate-abi.sh
 
 Driver information
 F: buildtools/pmdinfogen/
@@ -241,7 +241,7 @@ F: app/test/test_mbuf.c
 Ethernet API
 M: Thomas Monjalon <thomas.monjalon@6wind.com>
 F: lib/librte_ether/
-F: scripts/test-null.sh
+F: devtools/test-null.sh
 
 Flow API
 M: Adrien Mazarguil <adrien.mazarguil@6wind.com>
