@@ -397,15 +397,27 @@ ixgbe_vf_reset_msg(struct rte_eth_dev *dev, uint16_t vf)
 	uint32_t reg_offset, vf_shift;
 	const uint8_t VFRE_SHIFT = 5;  /* VFRE 32 bits per slot */
 	const uint8_t VFRE_MASK = (uint8_t)((1U << VFRE_SHIFT) - 1);
+	uint8_t  nb_q_per_pool;
+	int i;
 
 	vf_shift = vf & VFRE_MASK;
 	reg_offset = (vf >> VFRE_SHIFT) > 0 ? 1 : 0;
 
-	/* enable transmit and receive for vf */
+	/* enable transmit for vf */
 	reg = IXGBE_READ_REG(hw, IXGBE_VFTE(reg_offset));
 	reg |= (reg | (1 << vf_shift));
 	IXGBE_WRITE_REG(hw, IXGBE_VFTE(reg_offset), reg);
 
+	/* enable all queue drop for IOV */
+	nb_q_per_pool = RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool;
+	for (i = vf * nb_q_per_pool; i < (vf + 1) * nb_q_per_pool; i++) {
+		IXGBE_WRITE_FLUSH(hw);
+		reg = IXGBE_QDE_ENABLE | IXGBE_QDE_WRITE;
+		reg |= i << IXGBE_QDE_IDX_SHIFT;
+		IXGBE_WRITE_REG(hw, IXGBE_QDE, reg);
+	}
+
+	/* enable receive for vf */
 	reg = IXGBE_READ_REG(hw, IXGBE_VFRE(reg_offset));
 	reg |= (reg | (1 << vf_shift));
 	IXGBE_WRITE_REG(hw, IXGBE_VFRE(reg_offset), reg);
