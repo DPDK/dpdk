@@ -82,17 +82,28 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 		ERROR("%p: an error occurred while configuring hash RX queues:"
 		      " %s",
 		      (void *)priv, strerror(err));
-		/* Rollback. */
-		priv_special_flow_disable_all(priv);
-		priv_mac_addrs_disable(priv);
-		priv_destroy_hash_rxqs(priv);
+		goto error;
 	}
 	if (dev->data->dev_conf.fdir_conf.mode != RTE_FDIR_MODE_NONE)
 		priv_fdir_enable(priv);
-	priv_dev_interrupt_handler_install(priv, dev);
 	err = priv_flow_start(priv);
+	if (err) {
+		priv->started = 0;
+		ERROR("%p: an error occurred while configuring flows:"
+		      " %s",
+		      (void *)priv, strerror(err));
+		goto error;
+	}
+	priv_dev_interrupt_handler_install(priv, dev);
 	priv_xstats_init(priv);
 	priv_unlock(priv);
+	return 0;
+error:
+	/* Rollback. */
+	priv_special_flow_disable_all(priv);
+	priv_mac_addrs_disable(priv);
+	priv_destroy_hash_rxqs(priv);
+	priv_flow_stop(priv);
 	return -err;
 }
 
