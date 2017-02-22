@@ -172,7 +172,7 @@ clean: _postclean
 .PHONY: doclean
 doclean:
 	$(Q)rm -rf $(LIB) $(OBJS-all) $(DEPS-all) $(DEPSTMP-all) \
-	  $(CMDS-all) $(INSTALL-FILES-all)
+	  $(CMDS-all) .$(LIB).cmd $(INSTALL-FILES-all) *.pmd.c *.pmd.o
 	$(Q)rm -f $(_BUILD_TARGETS) $(_INSTALL_TARGETS) $(_CLEAN_TARGETS)
 
 include $(RTE_SDK)/mk/internal/rte.compile-post.mk

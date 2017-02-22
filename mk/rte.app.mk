@@ -272,7 +272,7 @@ clean: _postclean
 .PHONY: doclean
 doclean:
 	$(Q)rm -rf $(APP) $(OBJS-all) $(DEPS-all) $(DEPSTMP-all) \
-	  $(CMDS-all) $(INSTALL-FILES-all) .$(APP).cmd
+	  $(CMDS-all) $(INSTALL-FILES-all) .$(APP).cmd $(APP).map
 
 
 include $(RTE_SDK)/mk/internal/rte.compile-post.mk
