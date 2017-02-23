@@ -1108,6 +1108,20 @@ rte_ring_free_count(const struct rte_ring *r)
 }
 
 /**
+ * Return the size of the ring.
+ *
+ * @param r
+ *   A pointer to the ring structure.
+ * @return
+ *   The number of elements which can be stored in the ring.
+ */
+static inline unsigned int
+rte_ring_get_size(const struct rte_ring *r)
+{
+	return r->prod.size;
+}
+
+/**
  * Dump the status of all rings on the console
  *
  * @param f
