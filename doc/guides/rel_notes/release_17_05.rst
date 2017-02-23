@@ -67,6 +67,10 @@ New Features
 
   sPAPR IOMMU based pci probing enabled for vfio-pci devices.
 
+* **Added powerpc support for i40e and its vector PMD .**
+
+  i40e PMD and its vector PMD enabled by default in powerpc.
+
 
 Resolved Issues
 ---------------
