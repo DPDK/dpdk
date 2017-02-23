@@ -68,6 +68,7 @@
 enum blockcipher_test_type {
 	BLKCIPHER_AES_CHAIN_TYPE,	/* use aes_chain_test_cases[] */
 	BLKCIPHER_AES_CIPHERONLY_TYPE,	/* use aes_cipheronly_test_cases[] */
+	BLKCIPHER_AES_DOCSIS_TYPE,	/* use aes_docsis_test_cases[] */
 	BLKCIPHER_3DES_CHAIN_TYPE,	/* use triple_des_chain_test_cases[] */
 	BLKCIPHER_3DES_CIPHERONLY_TYPE,	/* triple_des_cipheronly_test_cases[] */
 	BLKCIPHER_AUTHONLY_TYPE,	/* use hash_test_cases[] */

@@ -613,6 +613,11 @@ test_blockcipher_all_tests(struct rte_mempool *mbuf_pool,
 		sizeof(aes_cipheronly_test_cases[0]);
 		tcs = aes_cipheronly_test_cases;
 		break;
+	case BLKCIPHER_AES_DOCSIS_TYPE:
+		n_test_cases = sizeof(aes_docsis_test_cases) /
+		sizeof(aes_docsis_test_cases[0]);
+		tcs = aes_docsis_test_cases;
+		break;
 	case BLKCIPHER_3DES_CHAIN_TYPE:
 		n_test_cases = sizeof(triple_des_chain_test_cases) /
 		sizeof(triple_des_chain_test_cases[0]);

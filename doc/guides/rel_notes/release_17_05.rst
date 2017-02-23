@@ -245,6 +245,12 @@ New Features
     primary slave first. Then, any operation that cannot be enqueued is
     enqueued to a secondary slave.
 
+* **Updated the AESNI MB PMD.**
+
+  The AESNI MB PMD has been updated with additional support for:
+
+  * AES DOCSIS BPI algorithm.
+
 Resolved Issues
 ---------------
 

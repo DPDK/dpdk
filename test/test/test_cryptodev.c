@@ -1532,6 +1532,22 @@ test_AES_cipheronly_mb_all(void)
 }
 
 static int
+test_AES_docsis_mb_all(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	int status;
+
+	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
+		ts_params->op_mpool, ts_params->valid_devs[0],
+		RTE_CRYPTODEV_AESNI_MB_PMD,
+		BLKCIPHER_AES_DOCSIS_TYPE);
+
+	TEST_ASSERT_EQUAL(status, 0, "Test failed");
+
+	return TEST_SUCCESS;
+}
+
+static int
 test_authonly_mb_all(void)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
@@ -7673,6 +7689,7 @@ static struct unit_test_suite cryptodev_aesni_mb_testsuite  = {
 	.unit_test_cases = {
 		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_chain_mb_all),
 		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_cipheronly_mb_all),
+		TEST_CASE_ST(ut_setup, ut_teardown, test_AES_docsis_mb_all),
 		TEST_CASE_ST(ut_setup, ut_teardown, test_authonly_mb_all),
 
 		TEST_CASES_END() /**< NULL terminate unit test array */
