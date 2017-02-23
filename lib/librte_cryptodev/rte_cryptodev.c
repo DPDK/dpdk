@@ -126,6 +126,7 @@ rte_crypto_cipher_algorithm_strings[] = {
 	[RTE_CRYPTO_CIPHER_AES_CBC]	= "aes-cbc",
 	[RTE_CRYPTO_CIPHER_AES_CCM]	= "aes-ccm",
 	[RTE_CRYPTO_CIPHER_AES_CTR]	= "aes-ctr",
+	[RTE_CRYPTO_CIPHER_AES_DOCSISBPI]	= "aes-docsisbpi",
 	[RTE_CRYPTO_CIPHER_AES_ECB]	= "aes-ecb",
 	[RTE_CRYPTO_CIPHER_AES_GCM]	= "aes-gcm",
 	[RTE_CRYPTO_CIPHER_AES_F8]	= "aes-f8",
@@ -134,6 +135,7 @@ rte_crypto_cipher_algorithm_strings[] = {
 	[RTE_CRYPTO_CIPHER_ARC4]	= "arc4",
 
 	[RTE_CRYPTO_CIPHER_DES_CBC]     = "des-cbc",
+	[RTE_CRYPTO_CIPHER_DES_DOCSISBPI]	= "des-docsisbpi",
 
 	[RTE_CRYPTO_CIPHER_NULL]	= "null",
 

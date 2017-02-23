@@ -108,6 +108,16 @@ enum rte_crypto_cipher_algorithm {
 	RTE_CRYPTO_CIPHER_DES_CBC,
 	/**< DES algorithm in CBC mode */
 
+	RTE_CRYPTO_CIPHER_AES_DOCSISBPI,
+	/**< AES algorithm using modes required by
+	 * DOCSIS Baseline Privacy Plus Spec.
+	 */
+
+	RTE_CRYPTO_CIPHER_DES_DOCSISBPI,
+	/**< DES algorithm using modes required by
+	 * DOCSIS Baseline Privacy Plus Spec.
+	 */
+
 	RTE_CRYPTO_CIPHER_LIST_END
 
 };
