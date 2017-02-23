@@ -671,6 +671,8 @@ l2fwd_main_loop(void)
 					port_statistics[portid].tx += sent;
 
 			}
+
+			prev_tsc = cur_tsc;
 		}
 
 		/*
