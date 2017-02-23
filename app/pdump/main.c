@@ -92,7 +92,6 @@
 #define BURST_SIZE 32
 #define NUM_VDEVS 2
 
-#define RTE_RING_SZ_MASK  (unsigned)(0x0fffffff) /**< Ring size mask */
 /* true if x is a power of 2 */
 #define POWEROF2(x) ((((x)-1) & (x)) == 0)
 
