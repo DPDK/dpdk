@@ -251,6 +251,12 @@ New Features
 
   * AES DOCSIS BPI algorithm.
 
+* **Updated the OpenSSL PMD.**
+
+  The OpenSSL PMD has been updated with additional support for:
+
+  * DES DOCSIS BPI algorithm.
+
 Resolved Issues
 ---------------
 

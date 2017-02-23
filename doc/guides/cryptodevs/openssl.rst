@@ -49,6 +49,7 @@ Supported cipher algorithms:
 * ``RTE_CRYPTO_CIPHER_AES_CTR``
 * ``RTE_CRYPTO_CIPHER_3DES_CTR``
 * ``RTE_CRYPTO_CIPHER_AES_GCM``
+* ``RTE_CRYPTO_CIPHER_DES_DOCSISBPI``
 
 Supported authentication algorithms:
 * ``RTE_CRYPTO_AUTH_AES_GMAC``

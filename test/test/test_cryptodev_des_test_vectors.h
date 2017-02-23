@@ -862,6 +862,143 @@ static const struct blockcipher_test_case des_cipheronly_test_cases[] = {
 
 };
 
+/* DES-DOCSIS-BPI test vectors */
+
+static const uint8_t plaintext_des_docsis_bpi_cfb[] = {
+	0x00, 0x01, 0x02, 0x88, 0xEE, 0x59, 0x7E
+};
+
+static const uint8_t ciphertext_des_docsis_bpi_cfb[] = {
+	0x17, 0x86, 0xA8, 0x03, 0xA0, 0x85, 0x75
+};
+
+static const uint8_t plaintext_des_docsis_bpi_cbc_cfb[] = {
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+	0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x91,
+	0xD2, 0xD1, 0x9F
+};
+
+static const uint8_t ciphertext_des_docsis_bpi_cbc_cfb[] = {
+	0x0D, 0xDA, 0x5A, 0xCB, 0xD0, 0x5E, 0x55, 0x67,
+	0x51, 0x47, 0x46, 0x86, 0x8A, 0x71, 0xE5, 0x77,
+	0xEF, 0xAC, 0x88
+};
+
+/* Multiple of DES block size */
+static const struct blockcipher_test_data des_test_data_1 = {
+	.crypto_algo = RTE_CRYPTO_CIPHER_DES_DOCSISBPI,
+	.cipher_key = {
+		.data = {
+			0xE4, 0x23, 0x33, 0x8A, 0x35, 0x64, 0x61, 0xE2
+		},
+		.len = 8
+	},
+	.iv = {
+		.data = {
+			0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07
+		},
+		.len = 8
+	},
+	.plaintext = {
+		.data = plaintext_des,
+		.len = 512
+	},
+	.ciphertext = {
+		.data = ciphertext512_des,
+		.len = 512
+	},
+};
+
+/* Less than DES block size */
+static const struct blockcipher_test_data des_test_data_2 = {
+	.crypto_algo = RTE_CRYPTO_CIPHER_DES_DOCSISBPI,
+	.cipher_key = {
+		.data = {
+
+			0xE6, 0x60, 0x0F, 0xD8, 0x85, 0x2E, 0xF5, 0xAB
+		},
+		.len = 8
+	},
+	.iv = {
+		.data = {
+			0x81, 0x0E, 0x52, 0x8E, 0x1C, 0x5F, 0xDA, 0x1A
+		},
+		.len = 8
+	},
+	.plaintext = {
+		.data = plaintext_des_docsis_bpi_cfb,
+		.len = 7
+	},
+	.ciphertext = {
+		.data = ciphertext_des_docsis_bpi_cfb,
+		.len = 7
+	}
+};
+
+/* Not multiple of DES block size */
+static const struct blockcipher_test_data des_test_data_3 = {
+	.crypto_algo = RTE_CRYPTO_CIPHER_DES_DOCSISBPI,
+	.cipher_key = {
+		.data = {
+			0xE6, 0x60, 0x0F, 0xD8, 0x85, 0x2E, 0xF5, 0xAB
+		},
+		.len = 8
+	},
+	.iv = {
+		.data = {
+			0x81, 0x0E, 0x52, 0x8E, 0x1C, 0x5F, 0xDA, 0x1A
+		},
+		.len = 8
+	},
+	.plaintext = {
+		.data = plaintext_des_docsis_bpi_cbc_cfb,
+		.len = 19
+	},
+	.ciphertext = {
+		.data = ciphertext_des_docsis_bpi_cbc_cfb,
+		.len = 19
+	}
+};
+static const struct blockcipher_test_case des_docsis_test_cases[] = {
+	{
+		.test_descr = "DES-DOCSIS-BPI Full Block Encryption",
+		.test_data = &des_test_data_1,
+		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL
+	},
+	{
+		.test_descr = "DES-DOCSIS-BPI Runt Block Encryption",
+		.test_data = &des_test_data_2,
+		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL
+	},
+	{
+		.test_descr = "DES-DOCSIS-BPI Uneven Encryption",
+		.test_data = &des_test_data_3,
+		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL
+	},
+	{
+		.test_descr = "DES-DOCSIS-BPI Full Block Decryption",
+		.test_data = &des_test_data_1,
+		.op_mask = BLOCKCIPHER_TEST_OP_DECRYPT,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL
+	},
+	{
+		.test_descr = "DES-DOCSIS-BPI Runt Block Decryption",
+		.test_data = &des_test_data_2,
+		.op_mask = BLOCKCIPHER_TEST_OP_DECRYPT,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL
+	},
+	{
+		.test_descr = "DES-DOCSIS-BPI Uneven Decryption",
+		.test_data = &des_test_data_3,
+		.op_mask = BLOCKCIPHER_TEST_OP_DECRYPT,
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL
+	}
+
+};
+
 static const struct blockcipher_test_case triple_des_chain_test_cases[] = {
 	{
 		.test_descr = "3DES-128-CBC HMAC-SHA1 Encryption Digest",

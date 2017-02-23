@@ -72,7 +72,8 @@ enum blockcipher_test_type {
 	BLKCIPHER_3DES_CHAIN_TYPE,	/* use triple_des_chain_test_cases[] */
 	BLKCIPHER_3DES_CIPHERONLY_TYPE,	/* triple_des_cipheronly_test_cases[] */
 	BLKCIPHER_AUTHONLY_TYPE,	/* use hash_test_cases[] */
-	BLKCIPHER_DES_CIPHERONLY_TYPE	/* use des_cipheronly_test_cases[] */
+	BLKCIPHER_DES_CIPHERONLY_TYPE,	/* use des_cipheronly_test_cases[] */
+	BLKCIPHER_DES_DOCSIS_TYPE	/* use des_docsis_test_cases[] */
 };
 
 struct blockcipher_test_case {

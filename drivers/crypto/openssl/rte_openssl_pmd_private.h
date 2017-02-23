@@ -62,6 +62,7 @@
 enum openssl_chain_order {
 	OPENSSL_CHAIN_ONLY_CIPHER,
 	OPENSSL_CHAIN_ONLY_AUTH,
+	OPENSSL_CHAIN_CIPHER_BPI,
 	OPENSSL_CHAIN_CIPHER_AUTH,
 	OPENSSL_CHAIN_AUTH_CIPHER,
 	OPENSSL_CHAIN_COMBINED,
@@ -127,6 +128,7 @@ struct openssl_session {
 		/**< pointer to EVP algorithm function */
 		EVP_CIPHER_CTX *ctx;
 		/**< pointer to EVP context structure */
+		EVP_CIPHER_CTX *bpi_ctx;
 	} cipher;
 
 	/** Authentication Parameters */

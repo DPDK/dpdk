@@ -633,6 +633,11 @@ test_blockcipher_all_tests(struct rte_mempool *mbuf_pool,
 		sizeof(des_cipheronly_test_cases[0]);
 		tcs = des_cipheronly_test_cases;
 		break;
+	case BLKCIPHER_DES_DOCSIS_TYPE:
+		n_test_cases = sizeof(des_docsis_test_cases) /
+		sizeof(des_docsis_test_cases[0]);
+		tcs = des_docsis_test_cases;
+		break;
 	case BLKCIPHER_AUTHONLY_TYPE:
 		n_test_cases = sizeof(hash_test_cases) /
 		sizeof(hash_test_cases[0]);
