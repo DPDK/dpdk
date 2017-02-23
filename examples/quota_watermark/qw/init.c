@@ -168,7 +168,7 @@ setup_shared_variables(void)
 	const struct rte_memzone *qw_memzone;
 
 	qw_memzone = rte_memzone_reserve(QUOTA_WATERMARK_MEMZONE_NAME,
-			2 * sizeof(int), rte_socket_id(), RTE_MEMZONE_2MB);
+			2 * sizeof(int), rte_socket_id(), 0);
 	if (qw_memzone == NULL)
 		rte_exit(EXIT_FAILURE, "%s\n", rte_strerror(rte_errno));
 
