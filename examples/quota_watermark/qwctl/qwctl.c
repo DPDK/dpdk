@@ -60,35 +60,35 @@ unsigned int *low_watermark;
 static void
 setup_shared_variables(void)
 {
-    const struct rte_memzone *qw_memzone;
+	const struct rte_memzone *qw_memzone;
 
-    qw_memzone = rte_memzone_lookup(QUOTA_WATERMARK_MEMZONE_NAME);
-    if (qw_memzone == NULL)
-        rte_exit(EXIT_FAILURE, "Couldn't find memzone\n");
+	qw_memzone = rte_memzone_lookup(QUOTA_WATERMARK_MEMZONE_NAME);
+	if (qw_memzone == NULL)
+		rte_exit(EXIT_FAILURE, "Couldn't find memzone\n");
 
-    quota = qw_memzone->addr;
-    low_watermark = (unsigned int *) qw_memzone->addr + 1;
+	quota = qw_memzone->addr;
+	low_watermark = (unsigned int *) qw_memzone->addr + 1;
 }
 
 int main(int argc, char **argv)
 {
-    int ret;
-    struct cmdline *cl;
+	int ret;
+	struct cmdline *cl;
 
-    rte_set_log_level(RTE_LOG_INFO);
+	rte_set_log_level(RTE_LOG_INFO);
 
-    ret = rte_eal_init(argc, argv);
-    if (ret < 0)
-        rte_exit(EXIT_FAILURE, "Cannot initialize EAL\n");
+	ret = rte_eal_init(argc, argv);
+	if (ret < 0)
+		rte_exit(EXIT_FAILURE, "Cannot initialize EAL\n");
 
-    setup_shared_variables();
+	setup_shared_variables();
 
-    cl = cmdline_stdin_new(qwctl_ctx, "qwctl> ");
-    if (cl == NULL)
-        rte_exit(EXIT_FAILURE, "Cannot create cmdline instance\n");
+	cl = cmdline_stdin_new(qwctl_ctx, "qwctl> ");
+	if (cl == NULL)
+		rte_exit(EXIT_FAILURE, "Cannot create cmdline instance\n");
 
-    cmdline_interact(cl);
-    cmdline_stdin_exit(cl);
+	cmdline_interact(cl);
+	cmdline_stdin_exit(cl);
 
-    return 0;
+	return 0;
 }

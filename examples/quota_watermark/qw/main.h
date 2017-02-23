@@ -37,8 +37,8 @@
 #include "../include/conf.h"
 
 enum ring_state {
-    RING_READY,
-    RING_OVERLOADED,
+	RING_READY,
+	RING_OVERLOADED,
 };
 
 extern int *quota;
@@ -53,7 +53,7 @@ extern struct rte_mempool *mbuf_pool;
 static inline int
 is_bit_set(int i, unsigned int mask)
 {
-    return (1 << i) & mask;
+	return (1 << i) & mask;
 }
 
 #endif /* _MAIN_H_ */
