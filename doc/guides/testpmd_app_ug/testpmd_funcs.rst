@@ -900,6 +900,13 @@ Set TX max absolute bandwidth (Mbps) for a VF from PF::
 
    testpmd> set vf tx max-bandwidth (port_id) (vf_id) (max_bandwidth)
 
+set tc tx min bandwidth (for VF)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Set all TCs' TX min relative bandwidth (%) for a VF from PF::
+
+   testpmd> set vf tc tx min-bandwidth (port_id) (vf_id) (bw1, bw2, ...)
+
 set flow_ctrl rx
 ~~~~~~~~~~~~~~~~
 

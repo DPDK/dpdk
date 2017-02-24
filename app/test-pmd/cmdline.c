@@ -318,6 +318,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"set vf tx max-bandwidth (port_id) (vf_id) (bandwidth)\n"
 			"    Set a VF's max bandwidth(Mbps).\n\n"
 
+			"set vf tc tx min-bandwidth (port_id) (vf_id) (bw1, bw2, ...)\n"
+			"    Set all TCs' min bandwidth(%%) on a VF.\n\n"
+
 			"vlan set filter (on|off) (port_id)\n"
 			"    Set the VLAN filter on a port.\n\n"
 
@@ -12408,11 +12411,14 @@ cmdline_parse_inst_t cmd_set_vf_vlan_tag = {
 struct cmd_vf_tc_bw_result {
 	cmdline_fixed_string_t set;
 	cmdline_fixed_string_t vf;
+	cmdline_fixed_string_t tc;
 	cmdline_fixed_string_t tx;
+	cmdline_fixed_string_t min_bw;
 	cmdline_fixed_string_t max_bw;
 	uint8_t port_id;
 	uint16_t vf_id;
 	uint32_t bw;
+	cmdline_fixed_string_t bw_list;
 };
 
 cmdline_parse_token_string_t cmd_vf_tc_bw_set =
@@ -12423,10 +12429,18 @@ cmdline_parse_token_string_t cmd_vf_tc_bw_vf =
 	TOKEN_STRING_INITIALIZER
 		(struct cmd_vf_tc_bw_result,
 		 vf, "vf");
+cmdline_parse_token_string_t cmd_vf_tc_bw_tc =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_vf_tc_bw_result,
+		 tc, "tc");
 cmdline_parse_token_string_t cmd_vf_tc_bw_tx =
 	TOKEN_STRING_INITIALIZER
 		(struct cmd_vf_tc_bw_result,
 		 tx, "tx");
+cmdline_parse_token_string_t cmd_vf_tc_bw_min_bw =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_vf_tc_bw_result,
+		 min_bw, "min-bandwidth");
 cmdline_parse_token_string_t cmd_vf_tc_bw_max_bw =
 	TOKEN_STRING_INITIALIZER
 		(struct cmd_vf_tc_bw_result,
@@ -12443,6 +12457,10 @@ cmdline_parse_token_num_t cmd_vf_tc_bw_bw =
 	TOKEN_NUM_INITIALIZER
 		(struct cmd_vf_tc_bw_result,
 		 bw, UINT32);
+cmdline_parse_token_string_t cmd_vf_tc_bw_bw_list =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_vf_tc_bw_result,
+		 bw_list, NULL);
 
 /* VF max bandwidth setting */
 static void
@@ -12495,6 +12513,108 @@ cmdline_parse_inst_t cmd_vf_max_bw = {
 		NULL,
 	},
 };
+
+static int
+vf_tc_min_bw_parse_bw_list(uint8_t *bw_list,
+			   uint8_t *tc_num,
+			   char *str)
+{
+	uint32_t size;
+	const char *p, *p0 = str;
+	char s[256];
+	char *end;
+	char *str_fld[16];
+	uint16_t i;
+	int ret;
+
+	p = strchr(p0, '(');
+	if (p == NULL) {
+		printf("The bandwidth-list should be '(bw1, bw2, ...)'\n");
+		return -1;
+	}
+	p++;
+	p0 = strchr(p, ')');
+	if (p0 == NULL) {
+		printf("The bandwidth-list should be '(bw1, bw2, ...)'\n");
+		return -1;
+	}
+	size = p0 - p;
+	if (size >= sizeof(s)) {
+		printf("The string size exceeds the internal buffer size\n");
+		return -1;
+	}
+	snprintf(s, sizeof(s), "%.*s", size, p);
+	ret = rte_strsplit(s, sizeof(s), str_fld, 16, ',');
+	if (ret <= 0) {
+		printf("Failed to get the bandwidth list. ");
+		return -1;
+	}
+	*tc_num = ret;
+	for (i = 0; i < ret; i++)
+		bw_list[i] = (uint8_t)strtoul(str_fld[i], &end, 0);
+
+	return 0;
+}
+
+/* TC min bandwidth setting */
+static void
+cmd_vf_tc_min_bw_parsed(
+	void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	__attribute__((unused)) void *data)
+{
+	struct cmd_vf_tc_bw_result *res = parsed_result;
+	uint8_t tc_num;
+	uint8_t bw[16];
+	int ret = -ENOTSUP;
+
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
+		return;
+
+	ret = vf_tc_min_bw_parse_bw_list(bw, &tc_num, res->bw_list);
+	if (ret)
+		return;
+
+#ifdef RTE_LIBRTE_I40E_PMD
+	ret = rte_pmd_i40e_set_vf_tc_bw_alloc(res->port_id, res->vf_id,
+					      tc_num, bw);
+#endif
+
+	switch (ret) {
+	case 0:
+		break;
+	case -EINVAL:
+		printf("invalid vf_id %d or bandwidth\n", res->vf_id);
+		break;
+	case -ENODEV:
+		printf("invalid port_id %d\n", res->port_id);
+		break;
+	case -ENOTSUP:
+		printf("function not implemented\n");
+		break;
+	default:
+		printf("programming error: (%s)\n", strerror(-ret));
+	}
+}
+
+cmdline_parse_inst_t cmd_vf_tc_min_bw = {
+	.f = cmd_vf_tc_min_bw_parsed,
+	.data = NULL,
+	.help_str = "set vf tc tx min-bandwidth <port_id> <vf_id>"
+		    " <bw1, bw2, ...>",
+	.tokens = {
+		(void *)&cmd_vf_tc_bw_set,
+		(void *)&cmd_vf_tc_bw_vf,
+		(void *)&cmd_vf_tc_bw_tc,
+		(void *)&cmd_vf_tc_bw_tx,
+		(void *)&cmd_vf_tc_bw_min_bw,
+		(void *)&cmd_vf_tc_bw_port_id,
+		(void *)&cmd_vf_tc_bw_vf_id,
+		(void *)&cmd_vf_tc_bw_bw_list,
+		NULL,
+	},
+};
+
 
 /* ******************************************************************************** */
 
@@ -12672,6 +12792,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_set_vf_broadcast,
 	(cmdline_parse_inst_t *)&cmd_set_vf_vlan_tag,
 	(cmdline_parse_inst_t *)&cmd_vf_max_bw,
+	(cmdline_parse_inst_t *)&cmd_vf_tc_min_bw,
 	NULL,
 };
 
