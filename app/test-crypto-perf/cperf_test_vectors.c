@@ -406,7 +406,7 @@ cperf_test_vector_get_dummy(struct cperf_options *options)
 			options->op_type == CPERF_AUTH_THEN_CIPHER ||
 			options->op_type == CPERF_AEAD) {
 		if (options->cipher_algo == RTE_CRYPTO_CIPHER_NULL) {
-			t_vec->cipher_key.length = -1;
+			t_vec->cipher_key.length = 0;
 			t_vec->ciphertext.data = plaintext;
 			t_vec->cipher_key.data = NULL;
 			t_vec->iv.data = NULL;

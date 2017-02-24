@@ -333,6 +333,9 @@ cperf_create_session(uint8_t dev_id,
 					test_vector->cipher_key.data;
 			cipher_xform.cipher.key.length =
 					test_vector->cipher_key.length;
+		} else {
+			cipher_xform.cipher.key.data = NULL;
+			cipher_xform.cipher.key.length = 0;
 		}
 		/* create crypto session */
 		sess = rte_cryptodev_sym_session_create(dev_id,	&cipher_xform);
@@ -354,6 +357,11 @@ cperf_create_session(uint8_t dev_id,
 			auth_xform.auth.key.length =
 					test_vector->auth_key.length;
 			auth_xform.auth.key.data = test_vector->auth_key.data;
+		} else {
+			auth_xform.auth.digest_length = 0;
+			auth_xform.auth.add_auth_data_length = 0;
+			auth_xform.auth.key.length = 0;
+			auth_xform.auth.key.data = NULL;
 		}
 		/* create crypto session */
 		sess =  rte_cryptodev_sym_session_create(dev_id, &auth_xform);
@@ -378,6 +386,9 @@ cperf_create_session(uint8_t dev_id,
 					test_vector->cipher_key.data;
 			cipher_xform.cipher.key.length =
 					test_vector->cipher_key.length;
+		} else {
+			cipher_xform.cipher.key.data = NULL;
+			cipher_xform.cipher.key.length = 0;
 		}
 
 		/*
@@ -404,6 +415,11 @@ cperf_create_session(uint8_t dev_id,
 				auth_xform.auth.key.data =
 						test_vector->auth_key.data;
 			}
+		} else {
+			auth_xform.auth.digest_length = 0;
+			auth_xform.auth.add_auth_data_length = 0;
+			auth_xform.auth.key.length = 0;
+			auth_xform.auth.key.data = NULL;
 		}
 
 		/* create crypto session for aes gcm */
