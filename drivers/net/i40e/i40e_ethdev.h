@@ -305,6 +305,7 @@ struct i40e_veb {
 	uint16_t stats_idx;
 	struct i40e_eth_stats stats;
 	uint8_t enabled_tc;   /* The traffic class enabled */
+	uint8_t strict_prio_tc; /* bit map of TCs set to strict priority mode */
 	struct i40e_bw_info bw_info; /* VEB bandwidth information */
 };
 

@@ -93,6 +93,13 @@ New Features
   i40e HW supports to set the max bandwidth for a TC on a VF. Enable this
   capability.
 
+* **Added TC strict priority mode setting on i40e.**
+
+  There're 2 TX scheduling modes supported for TCs by i40e HW, round ribon mode
+  and strict priority mode. By default it's round robin mode. Enable the
+  capability to change the TX scheduling mode for a TC. It's a global setting
+  on a physical port.
+
 * **Added TSO support for tunneled and non-tunneled packets on mlx5 driver.**
 
   Added support for Hardware TSO for tunneled and non-tunneled packets.

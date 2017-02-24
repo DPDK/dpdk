@@ -403,4 +403,19 @@ int rte_pmd_i40e_set_vf_tc_max_bw(uint8_t port,
 				  uint8_t tc_no,
 				  uint32_t bw);
 
+/**
+ * Set some TCs to strict priority mode on a physical port.
+ *
+ * @param port
+ *    The port identifier of the Ethernet device.
+ * @param tc_map
+ *    A bit map for the TCs.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port* invalid.
+ *   - (-EINVAL) if bad parameter.
+ *   - (-ENOTSUP) not supported by firmware.
+ */
+int rte_pmd_i40e_set_tc_strict_prio(uint8_t port, uint8_t tc_map);
+
 #endif /* _PMD_I40E_H_ */

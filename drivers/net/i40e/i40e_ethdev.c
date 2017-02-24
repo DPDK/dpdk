@@ -11591,3 +11591,122 @@ rte_pmd_i40e_set_vf_tc_max_bw(uint8_t port, uint16_t vf_id,
 
 	return 0;
 }
+
+int
+rte_pmd_i40e_set_tc_strict_prio(uint8_t port, uint8_t tc_map)
+{
+	struct rte_eth_dev *dev;
+	struct i40e_pf *pf;
+	struct i40e_vsi *vsi;
+	struct i40e_veb *veb;
+	struct i40e_hw *hw;
+	struct i40e_aqc_configure_switching_comp_ets_data ets_data;
+	int i;
+	int ret;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+
+	if (!is_device_supported(dev, &rte_i40e_pmd))
+		return -ENOTSUP;
+
+	pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+
+	vsi = pf->main_vsi;
+	if (!vsi) {
+		PMD_DRV_LOG(ERR, "Invalid VSI.");
+		return -EINVAL;
+	}
+
+	veb = vsi->veb;
+	if (!veb) {
+		PMD_DRV_LOG(ERR, "Invalid VEB.");
+		return -EINVAL;
+	}
+
+	if ((tc_map & veb->enabled_tc) != tc_map) {
+		PMD_DRV_LOG(ERR,
+			    "TC bitmap isn't the subset of enabled TCs 0x%x.",
+			    veb->enabled_tc);
+		return -EINVAL;
+	}
+
+	if (tc_map == veb->strict_prio_tc) {
+		PMD_DRV_LOG(INFO, "No change for TC bitmap. Nothing to do.");
+		return 0;
+	}
+
+	hw = I40E_VSI_TO_HW(vsi);
+
+	/* Disable DCBx if it's the first time to set strict priority. */
+	if (!veb->strict_prio_tc) {
+		ret = i40e_aq_stop_lldp(hw, true, NULL);
+		if (ret)
+			PMD_DRV_LOG(INFO,
+				    "Failed to disable DCBx as it's already"
+				    " disabled.");
+		else
+			PMD_DRV_LOG(INFO,
+				    "DCBx is disabled according to strict"
+				    " priority setting.");
+	}
+
+	memset(&ets_data, 0, sizeof(ets_data));
+	ets_data.tc_valid_bits = veb->enabled_tc;
+	ets_data.seepage = I40E_AQ_ETS_SEEPAGE_EN_MASK;
+	ets_data.tc_strict_priority_flags = tc_map;
+	/* Get all TCs' bandwidth. */
+	for (i = 0; i < I40E_MAX_TRAFFIC_CLASS; i++) {
+		if (veb->enabled_tc & BIT_ULL(i)) {
+			/* For rubust, if bandwidth is 0, use 1 instead. */
+			if (veb->bw_info.bw_ets_share_credits[i])
+				ets_data.tc_bw_share_credits[i] =
+					veb->bw_info.bw_ets_share_credits[i];
+			else
+				ets_data.tc_bw_share_credits[i] =
+					I40E_QOS_BW_WEIGHT_MIN;
+		}
+	}
+
+	if (!veb->strict_prio_tc)
+		ret = i40e_aq_config_switch_comp_ets(
+			hw, veb->uplink_seid,
+			&ets_data, i40e_aqc_opc_enable_switching_comp_ets,
+			NULL);
+	else if (tc_map)
+		ret = i40e_aq_config_switch_comp_ets(
+			hw, veb->uplink_seid,
+			&ets_data, i40e_aqc_opc_modify_switching_comp_ets,
+			NULL);
+	else
+		ret = i40e_aq_config_switch_comp_ets(
+			hw, veb->uplink_seid,
+			&ets_data, i40e_aqc_opc_disable_switching_comp_ets,
+			NULL);
+
+	if (ret) {
+		PMD_DRV_LOG(ERR,
+			    "Failed to set TCs' strict priority mode."
+			    " err (%d)", ret);
+		return -EINVAL;
+	}
+
+	veb->strict_prio_tc = tc_map;
+
+	/* Enable DCBx again, if all the TCs' strict priority disabled. */
+	if (!tc_map) {
+		ret = i40e_aq_start_lldp(hw, NULL);
+		if (ret) {
+			PMD_DRV_LOG(ERR,
+				    "Failed to enable DCBx, err(%d).", ret);
+			return -EINVAL;
+		}
+
+		PMD_DRV_LOG(INFO,
+			    "DCBx is enabled again according to strict"
+			    " priority setting.");
+	}
+
+	return ret;
+}

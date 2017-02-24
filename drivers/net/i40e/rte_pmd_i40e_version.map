@@ -26,6 +26,7 @@ DPDK_17.02 {
 DPDK_17.05 {
 	global:
 
+	rte_pmd_i40e_set_tc_strict_prio;
 	rte_pmd_i40e_set_vf_max_bw;
 	rte_pmd_i40e_set_vf_tc_bw_alloc;
 	rte_pmd_i40e_set_vf_tc_max_bw;

@@ -478,3 +478,13 @@ enabled. If so, return failure.
 When enabling per TC max bandwidth, SW will check if per VF max bandwidth
 is enabled. If so, disable per VF max bandwidth and continue with per TC max
 bandwidth setting.
+
+TC TX scheduling mode setting
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+There're 2 TX scheduling modes for TCs, round robin and strict priority mode.
+If a TC is set to strict priority mode, it can consume unlimited bandwidth.
+It means if APP has set the max bandwidth for that TC, it comes to no
+effect.
+It's suggested to set the strict priority mode for a TC that is latency
+sensitive but no consuming much bandwidth.
