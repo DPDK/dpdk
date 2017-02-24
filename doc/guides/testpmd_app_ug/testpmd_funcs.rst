@@ -914,6 +914,13 @@ Set a TC's TX max absolute bandwidth (Mbps) for a VF from PF::
 
    testpmd> set vf tc tx max-bandwidth (port_id) (vf_id) (tc_no) (max_bandwidth)
 
+set tc strict link priority mode
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Set some TCs' strict link priority mode on a physical port::
+
+   testpmd> set tx strict-link-priority (port_id) (tc_bitmap)
+
 set flow_ctrl rx
 ~~~~~~~~~~~~~~~~
 

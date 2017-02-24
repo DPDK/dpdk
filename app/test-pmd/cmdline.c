@@ -324,6 +324,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"set vf tc tx max-bandwidth (port_id) (vf_id) (tc_no) (bandwidth)\n"
 			"    Set a TC's max bandwidth(Mbps) on a VF.\n\n"
 
+			"set tx strict-link-priority (port_id) (tc_bitmap)\n"
+			"    Set some TCs' strict link priority mode on a physical port.\n\n"
+
 			"vlan set filter (on|off) (port_id)\n"
 			"    Set the VLAN filter on a port.\n\n"
 
@@ -12418,11 +12421,13 @@ struct cmd_vf_tc_bw_result {
 	cmdline_fixed_string_t tx;
 	cmdline_fixed_string_t min_bw;
 	cmdline_fixed_string_t max_bw;
+	cmdline_fixed_string_t strict_link_prio;
 	uint8_t port_id;
 	uint16_t vf_id;
 	uint8_t tc_no;
 	uint32_t bw;
 	cmdline_fixed_string_t bw_list;
+	uint8_t tc_map;
 };
 
 cmdline_parse_token_string_t cmd_vf_tc_bw_set =
@@ -12441,6 +12446,10 @@ cmdline_parse_token_string_t cmd_vf_tc_bw_tx =
 	TOKEN_STRING_INITIALIZER
 		(struct cmd_vf_tc_bw_result,
 		 tx, "tx");
+cmdline_parse_token_string_t cmd_vf_tc_bw_strict_link_prio =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_vf_tc_bw_result,
+		 strict_link_prio, "strict-link-priority");
 cmdline_parse_token_string_t cmd_vf_tc_bw_min_bw =
 	TOKEN_STRING_INITIALIZER
 		(struct cmd_vf_tc_bw_result,
@@ -12469,6 +12478,10 @@ cmdline_parse_token_string_t cmd_vf_tc_bw_bw_list =
 	TOKEN_STRING_INITIALIZER
 		(struct cmd_vf_tc_bw_result,
 		 bw_list, NULL);
+cmdline_parse_token_num_t cmd_vf_tc_bw_tc_map =
+	TOKEN_NUM_INITIALIZER
+		(struct cmd_vf_tc_bw_result,
+		 tc_map, UINT8);
 
 /* VF max bandwidth setting */
 static void
@@ -12678,6 +12691,54 @@ cmdline_parse_inst_t cmd_vf_tc_max_bw = {
 	},
 };
 
+/* Strict link priority scheduling mode setting */
+static void
+cmd_strict_link_prio_parsed(
+	void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	__attribute__((unused)) void *data)
+{
+	struct cmd_vf_tc_bw_result *res = parsed_result;
+	int ret = -ENOTSUP;
+
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
+		return;
+
+#ifdef RTE_LIBRTE_I40E_PMD
+	ret = rte_pmd_i40e_set_tc_strict_prio(res->port_id, res->tc_map);
+#endif
+
+	switch (ret) {
+	case 0:
+		break;
+	case -EINVAL:
+		printf("invalid tc_bitmap 0x%x\n", res->tc_map);
+		break;
+	case -ENODEV:
+		printf("invalid port_id %d\n", res->port_id);
+		break;
+	case -ENOTSUP:
+		printf("function not implemented\n");
+		break;
+	default:
+		printf("programming error: (%s)\n", strerror(-ret));
+	}
+}
+
+cmdline_parse_inst_t cmd_strict_link_prio = {
+	.f = cmd_strict_link_prio_parsed,
+	.data = NULL,
+	.help_str = "set tx strict-link-priority <port_id> <tc_bitmap>",
+	.tokens = {
+		(void *)&cmd_vf_tc_bw_set,
+		(void *)&cmd_vf_tc_bw_tx,
+		(void *)&cmd_vf_tc_bw_strict_link_prio,
+		(void *)&cmd_vf_tc_bw_port_id,
+		(void *)&cmd_vf_tc_bw_tc_map,
+		NULL,
+	},
+};
+
 
 /* ******************************************************************************** */
 
@@ -12857,6 +12918,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_vf_max_bw,
 	(cmdline_parse_inst_t *)&cmd_vf_tc_min_bw,
 	(cmdline_parse_inst_t *)&cmd_vf_tc_max_bw,
+	(cmdline_parse_inst_t *)&cmd_strict_link_prio,
 	NULL,
 };
 
