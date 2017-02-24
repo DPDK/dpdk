@@ -467,3 +467,14 @@ Incorrect Rx statistics when packet is oversize
 When a packet is over maximum frame size, the packet is dropped.
 However the Rx statistics, when calling `rte_eth_stats_get` incorrectly
 shows it as received.
+
+VF & TC max bandwidth setting
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The per VF max bandwidth and per TC max bandwidth cannot be enabled in parallel.
+The dehavior is different when handling per VF and per TC max bandwidth setting.
+When enabling per VF max bandwidth, SW will check if per TC max bandwidth is
+enabled. If so, return failure.
+When enabling per TC max bandwidth, SW will check if per VF max bandwidth
+is enabled. If so, disable per VF max bandwidth and continue with per TC max
+bandwidth setting.

@@ -381,4 +381,26 @@ int rte_pmd_i40e_set_vf_tc_bw_alloc(uint8_t port,
 				    uint8_t tc_num,
 				    uint8_t *bw_weight);
 
+/**
+ * Set a specific TC's max bandwidth on a specific VF.
+ *
+ * @param port
+ *    The port identifier of the Ethernet device.
+ * @param vf_id
+ *    ID specifying VF.
+ * @param tc_no
+ *    Number specifying TC.
+ * @param bw
+ *    Max bandwidth for this TC.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port* invalid.
+ *   - (-EINVAL) if bad parameter.
+ *   - (-ENOTSUP) not supported by firmware.
+ */
+int rte_pmd_i40e_set_vf_tc_max_bw(uint8_t port,
+				  uint16_t vf_id,
+				  uint8_t tc_no,
+				  uint32_t bw);
+
 #endif /* _PMD_I40E_H_ */

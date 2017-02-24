@@ -28,5 +28,6 @@ DPDK_17.05 {
 
 	rte_pmd_i40e_set_vf_max_bw;
 	rte_pmd_i40e_set_vf_tc_bw_alloc;
+	rte_pmd_i40e_set_vf_tc_max_bw;
 
 } DPDK_17.02;
