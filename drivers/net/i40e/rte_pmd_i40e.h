@@ -332,4 +332,27 @@ int rte_pmd_i40e_get_vf_stats(uint8_t port,
 int rte_pmd_i40e_reset_vf_stats(uint8_t port,
 				uint16_t vf_id);
 
+/**
+ * Set VF's max bandwidth.
+ *
+ * Per VF bandwidth limitation and per TC bandwidth limitation cannot
+ * be enabled in parallel. If per TC bandwidth is enabled, this function
+ * will disable it.
+ *
+ * @param port
+ *    The port identifier of the Ethernet device.
+ * @param vf_id
+ *    ID specifying VF.
+ * @param bw
+ *    Bandwidth for this VF.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port* invalid.
+ *   - (-EINVAL) if bad parameter.
+ *   - (-ENOTSUP) not supported by firmware.
+ */
+int rte_pmd_i40e_set_vf_max_bw(uint8_t port,
+			       uint16_t vf_id,
+			       uint32_t bw);
+
 #endif /* _PMD_I40E_H_ */

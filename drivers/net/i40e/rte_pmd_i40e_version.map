@@ -22,3 +22,10 @@ DPDK_17.02 {
 	rte_pmd_i40e_set_vf_vlan_tag;
 
 } DPDK_2.0;
+
+DPDK_17.05 {
+	global:
+
+	rte_pmd_i40e_set_vf_max_bw;
+
+} DPDK_17.02;

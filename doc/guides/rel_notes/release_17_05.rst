@@ -79,6 +79,10 @@ New Features
 
   i40e PMD and its vector PMD enabled by default in powerpc.
 
+* **Added VF max bandwidth setting on i40e.**
+
+  i40e HW supports to set the max bandwidth for a VF. Enable this capability.
+
 * **Added TSO support for tunneled and non-tunneled packets on mlx5 driver.**
 
   Added support for Hardware TSO for tunneled and non-tunneled packets.

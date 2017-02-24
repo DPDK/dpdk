@@ -243,6 +243,11 @@
 /* Bit mask of Extended Tag enable/disable */
 #define PCI_DEV_CTRL_EXT_TAG_MASK  (1 << PCI_DEV_CTRL_EXT_TAG_SHIFT)
 
+/* The max bandwidth of i40e is 40Gbps. */
+#define I40E_QOS_BW_MAX 40000
+/* The bandwidth should be the multiple of 50Mbps. */
+#define I40E_QOS_BW_GRANULARITY 50
+
 static int eth_i40e_dev_init(struct rte_eth_dev *eth_dev);
 static int eth_i40e_dev_uninit(struct rte_eth_dev *eth_dev);
 static int i40e_dev_configure(struct rte_eth_dev *dev);
@@ -11258,6 +11263,95 @@ rte_pmd_i40e_reset_vf_stats(uint8_t port,
 
 	vsi->offset_loaded = false;
 	i40e_update_vsi_stats(vsi);
+
+	return 0;
+}
+
+int
+rte_pmd_i40e_set_vf_max_bw(uint8_t port, uint16_t vf_id, uint32_t bw)
+{
+	struct rte_eth_dev *dev;
+	struct i40e_pf *pf;
+	struct i40e_vsi *vsi;
+	struct i40e_hw *hw;
+	int ret = 0;
+	int i;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+
+	if (!is_device_supported(dev, &rte_i40e_pmd))
+		return -ENOTSUP;
+
+	pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+
+	if (vf_id >= pf->vf_num || !pf->vfs) {
+		PMD_DRV_LOG(ERR, "Invalid VF ID.");
+		return -EINVAL;
+	}
+
+	vsi = pf->vfs[vf_id].vsi;
+	if (!vsi) {
+		PMD_DRV_LOG(ERR, "Invalid VSI.");
+		return -EINVAL;
+	}
+
+	if (bw > I40E_QOS_BW_MAX) {
+		PMD_DRV_LOG(ERR, "Bandwidth should not be larger than %dMbps.",
+			    I40E_QOS_BW_MAX);
+		return -EINVAL;
+	}
+
+	if (bw % I40E_QOS_BW_GRANULARITY) {
+		PMD_DRV_LOG(ERR, "Bandwidth should be the multiple of %dMbps.",
+			    I40E_QOS_BW_GRANULARITY);
+		return -EINVAL;
+	}
+
+	bw /= I40E_QOS_BW_GRANULARITY;
+
+	hw = I40E_VSI_TO_HW(vsi);
+
+	/* No change. */
+	if (bw == vsi->bw_info.bw_limit) {
+		PMD_DRV_LOG(INFO,
+			    "No change for VF max bandwidth. Nothing to do.");
+		return 0;
+	}
+
+	/**
+	 * VF bandwidth limitation and TC bandwidth limitation cannot be
+	 * enabled in parallel, quit if TC bandwidth limitation is enabled.
+	 *
+	 * If bw is 0, means disable bandwidth limitation. Then no need to
+	 * check TC bandwidth limitation.
+	 */
+	if (bw) {
+		for (i = 0; i < I40E_MAX_TRAFFIC_CLASS; i++) {
+			if ((vsi->enabled_tc & BIT_ULL(i)) &&
+			    vsi->bw_info.bw_ets_credits[i])
+				break;
+		}
+		if (i != I40E_MAX_TRAFFIC_CLASS) {
+			PMD_DRV_LOG(ERR,
+				    "TC max bandwidth has been set on this VF,"
+				    " please disable it first.");
+			return -EINVAL;
+		}
+	}
+
+	ret = i40e_aq_config_vsi_bw_limit(hw, vsi->seid, (uint16_t)bw, 0, NULL);
+	if (ret) {
+		PMD_DRV_LOG(ERR,
+			    "Failed to set VF %d bandwidth, err(%d).",
+			    vf_id, ret);
+		return -EINVAL;
+	}
+
+	/* Store the configuration. */
+	vsi->bw_info.bw_limit = (uint16_t)bw;
+	vsi->bw_info.bw_max = 0;
 
 	return 0;
 }
