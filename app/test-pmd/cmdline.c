@@ -315,6 +315,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"set vf vlan tag (port_id) (vf_id) (on|off)\n"
 			"    Set VLAN tag for a VF from the PF.\n\n"
 
+			"set vf tx max-bandwidth (port_id) (vf_id) (bandwidth)\n"
+			"    Set a VF's max bandwidth(Mbps).\n\n"
+
 			"vlan set filter (on|off) (port_id)\n"
 			"    Set the VLAN filter on a port.\n\n"
 
@@ -12401,6 +12404,98 @@ cmdline_parse_inst_t cmd_set_vf_vlan_tag = {
 	},
 };
 
+/* Common definition of VF and TC TX bandwidth configuration */
+struct cmd_vf_tc_bw_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t vf;
+	cmdline_fixed_string_t tx;
+	cmdline_fixed_string_t max_bw;
+	uint8_t port_id;
+	uint16_t vf_id;
+	uint32_t bw;
+};
+
+cmdline_parse_token_string_t cmd_vf_tc_bw_set =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_vf_tc_bw_result,
+		 set, "set");
+cmdline_parse_token_string_t cmd_vf_tc_bw_vf =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_vf_tc_bw_result,
+		 vf, "vf");
+cmdline_parse_token_string_t cmd_vf_tc_bw_tx =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_vf_tc_bw_result,
+		 tx, "tx");
+cmdline_parse_token_string_t cmd_vf_tc_bw_max_bw =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_vf_tc_bw_result,
+		 max_bw, "max-bandwidth");
+cmdline_parse_token_num_t cmd_vf_tc_bw_port_id =
+	TOKEN_NUM_INITIALIZER
+		(struct cmd_vf_tc_bw_result,
+		 port_id, UINT8);
+cmdline_parse_token_num_t cmd_vf_tc_bw_vf_id =
+	TOKEN_NUM_INITIALIZER
+		(struct cmd_vf_tc_bw_result,
+		 vf_id, UINT16);
+cmdline_parse_token_num_t cmd_vf_tc_bw_bw =
+	TOKEN_NUM_INITIALIZER
+		(struct cmd_vf_tc_bw_result,
+		 bw, UINT32);
+
+/* VF max bandwidth setting */
+static void
+cmd_vf_max_bw_parsed(
+	void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	__attribute__((unused)) void *data)
+{
+	struct cmd_vf_tc_bw_result *res = parsed_result;
+	int ret = -ENOTSUP;
+
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
+		return;
+
+#ifdef RTE_LIBRTE_I40E_PMD
+	ret = rte_pmd_i40e_set_vf_max_bw(res->port_id,
+					 res->vf_id, res->bw);
+#endif
+
+	switch (ret) {
+	case 0:
+		break;
+	case -EINVAL:
+		printf("invalid vf_id %d or bandwidth %d\n",
+		       res->vf_id, res->bw);
+		break;
+	case -ENODEV:
+		printf("invalid port_id %d\n", res->port_id);
+		break;
+	case -ENOTSUP:
+		printf("function not implemented\n");
+		break;
+	default:
+		printf("programming error: (%s)\n", strerror(-ret));
+	}
+}
+
+cmdline_parse_inst_t cmd_vf_max_bw = {
+	.f = cmd_vf_max_bw_parsed,
+	.data = NULL,
+	.help_str = "set vf tx max-bandwidth <port_id> <vf_id> <bandwidth>",
+	.tokens = {
+		(void *)&cmd_vf_tc_bw_set,
+		(void *)&cmd_vf_tc_bw_vf,
+		(void *)&cmd_vf_tc_bw_tx,
+		(void *)&cmd_vf_tc_bw_max_bw,
+		(void *)&cmd_vf_tc_bw_port_id,
+		(void *)&cmd_vf_tc_bw_vf_id,
+		(void *)&cmd_vf_tc_bw_bw,
+		NULL,
+	},
+};
+
 /* ******************************************************************************** */
 
 /* list of instructions */
@@ -12576,6 +12671,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_set_vf_allmulti,
 	(cmdline_parse_inst_t *)&cmd_set_vf_broadcast,
 	(cmdline_parse_inst_t *)&cmd_set_vf_vlan_tag,
+	(cmdline_parse_inst_t *)&cmd_vf_max_bw,
 	NULL,
 };
 

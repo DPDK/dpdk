@@ -893,6 +893,13 @@ In promiscuous mode packets are not dropped if they aren't for the specified MAC
 
    testpmd> set vf allmulti (port_id) (vf_id) (on|off)
 
+set tx max bandwidth (for VF)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Set TX max absolute bandwidth (Mbps) for a VF from PF::
+
+   testpmd> set vf tx max-bandwidth (port_id) (vf_id) (max_bandwidth)
+
 set flow_ctrl rx
 ~~~~~~~~~~~~~~~~
 
