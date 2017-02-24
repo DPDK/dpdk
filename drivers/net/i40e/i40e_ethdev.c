@@ -247,6 +247,10 @@
 #define I40E_QOS_BW_MAX 40000
 /* The bandwidth should be the multiple of 50Mbps. */
 #define I40E_QOS_BW_GRANULARITY 50
+/* The min bandwidth weight is 1. */
+#define I40E_QOS_BW_WEIGHT_MIN 1
+/* The max bandwidth weight is 127. */
+#define I40E_QOS_BW_WEIGHT_MAX 127
 
 static int eth_i40e_dev_init(struct rte_eth_dev *eth_dev);
 static int eth_i40e_dev_uninit(struct rte_eth_dev *eth_dev);
@@ -11352,6 +11356,120 @@ rte_pmd_i40e_set_vf_max_bw(uint8_t port, uint16_t vf_id, uint32_t bw)
 	/* Store the configuration. */
 	vsi->bw_info.bw_limit = (uint16_t)bw;
 	vsi->bw_info.bw_max = 0;
+
+	return 0;
+}
+
+int
+rte_pmd_i40e_set_vf_tc_bw_alloc(uint8_t port, uint16_t vf_id,
+				uint8_t tc_num, uint8_t *bw_weight)
+{
+	struct rte_eth_dev *dev;
+	struct i40e_pf *pf;
+	struct i40e_vsi *vsi;
+	struct i40e_hw *hw;
+	struct i40e_aqc_configure_vsi_tc_bw_data tc_bw;
+	int ret = 0;
+	int i, j;
+	uint16_t sum;
+	bool b_change = false;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+
+	if (!is_device_supported(dev, &rte_i40e_pmd))
+		return -ENOTSUP;
+
+	pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+
+	if (vf_id >= pf->vf_num || !pf->vfs) {
+		PMD_DRV_LOG(ERR, "Invalid VF ID.");
+		return -EINVAL;
+	}
+
+	vsi = pf->vfs[vf_id].vsi;
+	if (!vsi) {
+		PMD_DRV_LOG(ERR, "Invalid VSI.");
+		return -EINVAL;
+	}
+
+	if (tc_num > I40E_MAX_TRAFFIC_CLASS) {
+		PMD_DRV_LOG(ERR, "TCs should be no more than %d.",
+			    I40E_MAX_TRAFFIC_CLASS);
+		return -EINVAL;
+	}
+
+	sum = 0;
+	for (i = 0; i < I40E_MAX_TRAFFIC_CLASS; i++) {
+		if (vsi->enabled_tc & BIT_ULL(i))
+			sum++;
+	}
+	if (sum != tc_num) {
+		PMD_DRV_LOG(ERR,
+			    "Weight should be set for all %d enabled TCs.",
+			    sum);
+		return -EINVAL;
+	}
+
+	sum = 0;
+	for (i = 0; i < tc_num; i++) {
+		if (!bw_weight[i]) {
+			PMD_DRV_LOG(ERR,
+				    "The weight should be 1 at least.");
+			return -EINVAL;
+		}
+		sum += bw_weight[i];
+	}
+	if (sum != 100) {
+		PMD_DRV_LOG(ERR,
+			    "The summary of the TC weight should be 100.");
+		return -EINVAL;
+	}
+
+	/**
+	 * Create the configuration for all the TCs.
+	 */
+	memset(&tc_bw, 0, sizeof(tc_bw));
+	tc_bw.tc_valid_bits = vsi->enabled_tc;
+	j = 0;
+	for (i = 0; i < I40E_MAX_TRAFFIC_CLASS; i++) {
+		if (vsi->enabled_tc & BIT_ULL(i)) {
+			if (bw_weight[j] !=
+				vsi->bw_info.bw_ets_share_credits[i])
+				b_change = true;
+
+			tc_bw.tc_bw_credits[i] = bw_weight[j];
+			j++;
+		}
+	}
+
+	/* No change. */
+	if (!b_change) {
+		PMD_DRV_LOG(INFO,
+			    "No change for TC allocated bandwidth."
+			    " Nothing to do.");
+		return 0;
+	}
+
+	hw = I40E_VSI_TO_HW(vsi);
+
+	ret = i40e_aq_config_vsi_tc_bw(hw, vsi->seid, &tc_bw, NULL);
+	if (ret) {
+		PMD_DRV_LOG(ERR,
+			    "Failed to set VF %d TC bandwidth weight, err(%d).",
+			    vf_id, ret);
+		return -EINVAL;
+	}
+
+	/* Store the configuration. */
+	j = 0;
+	for (i = 0; i < I40E_MAX_TRAFFIC_CLASS; i++) {
+		if (vsi->enabled_tc & BIT_ULL(i)) {
+			vsi->bw_info.bw_ets_share_credits[i] = bw_weight[j];
+			j++;
+		}
+	}
 
 	return 0;
 }

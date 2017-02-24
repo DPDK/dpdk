@@ -355,4 +355,30 @@ int rte_pmd_i40e_set_vf_max_bw(uint8_t port,
 			       uint16_t vf_id,
 			       uint32_t bw);
 
+/**
+ * Set all the TCs' bandwidth weight on a specific VF.
+ *
+ * The bw_weight means the percentage occupied by the TC.
+ * It can be taken as the relative min bandwidth setting.
+ *
+ * @param port
+ *    The port identifier of the Ethernet device.
+ * @param vf_id
+ *    ID specifying VF.
+ * @param tc_num
+ *    Number of TCs.
+ * @param bw_weight
+ *    An array of relative bandwidth weight for all the TCs.
+ *    The summary of the bw_weight should be 100.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port* invalid.
+ *   - (-EINVAL) if bad parameter.
+ *   - (-ENOTSUP) not supported by firmware.
+ */
+int rte_pmd_i40e_set_vf_tc_bw_alloc(uint8_t port,
+				    uint16_t vf_id,
+				    uint8_t tc_num,
+				    uint8_t *bw_weight);
+
 #endif /* _PMD_I40E_H_ */
