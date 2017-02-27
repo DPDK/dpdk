@@ -33,9 +33,6 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <stdbool.h>
-#ifdef RTE_LIBRTE_VHOST_NUMA
-#include <numaif.h>
-#endif
 
 #include <rte_mbuf.h>
 #include <rte_ethdev.h>
