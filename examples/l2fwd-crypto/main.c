@@ -135,9 +135,6 @@ struct l2fwd_key {
 	phys_addr_t phys_addr;
 };
 
-char supported_auth_algo[RTE_CRYPTO_AUTH_LIST_END][MAX_STR_LEN];
-char supported_cipher_algo[RTE_CRYPTO_CIPHER_LIST_END][MAX_STR_LEN];
-
 /** l2fwd crypto application command line options */
 struct l2fwd_crypto_options {
 	unsigned portmask;
@@ -330,50 +327,6 @@ print_stats(void)
 		   total_packets_errors);
 	printf("\n====================================================\n");
 }
-
-static void
-fill_supported_algorithm_tables(void)
-{
-	unsigned i;
-
-	for (i = 0; i < RTE_CRYPTO_AUTH_LIST_END; i++)
-		strcpy(supported_auth_algo[i], "NOT_SUPPORTED");
-
-	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_AES_GCM], "AES_GCM");
-	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_AES_GMAC], "AES_GMAC");
-	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_MD5_HMAC], "MD5_HMAC");
-	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_MD5], "MD5");
-	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_NULL], "NULL");
-	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_AES_XCBC_MAC],
-		"AES_XCBC_MAC");
-	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_SHA1_HMAC], "SHA1_HMAC");
-	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_SHA1], "SHA1");
-	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_SHA224_HMAC], "SHA224_HMAC");
-	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_SHA224], "SHA224");
-	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_SHA256_HMAC], "SHA256_HMAC");
-	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_SHA256], "SHA256");
-	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_SHA384_HMAC], "SHA384_HMAC");
-	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_SHA384], "SHA384");
-	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_SHA512_HMAC], "SHA512_HMAC");
-	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_SHA512], "SHA512");
-	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_SNOW3G_UIA2], "SNOW3G_UIA2");
-	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_ZUC_EIA3], "ZUC_EIA3");
-	strcpy(supported_auth_algo[RTE_CRYPTO_AUTH_KASUMI_F9], "KASUMI_F9");
-
-	for (i = 0; i < RTE_CRYPTO_CIPHER_LIST_END; i++)
-		strcpy(supported_cipher_algo[i], "NOT_SUPPORTED");
-
-	strcpy(supported_cipher_algo[RTE_CRYPTO_CIPHER_AES_CBC], "AES_CBC");
-	strcpy(supported_cipher_algo[RTE_CRYPTO_CIPHER_AES_CTR], "AES_CTR");
-	strcpy(supported_cipher_algo[RTE_CRYPTO_CIPHER_AES_GCM], "AES_GCM");
-	strcpy(supported_cipher_algo[RTE_CRYPTO_CIPHER_NULL], "NULL");
-	strcpy(supported_cipher_algo[RTE_CRYPTO_CIPHER_SNOW3G_UEA2], "SNOW3G_UEA2");
-	strcpy(supported_cipher_algo[RTE_CRYPTO_CIPHER_ZUC_EEA3], "ZUC_EEA3");
-	strcpy(supported_cipher_algo[RTE_CRYPTO_CIPHER_KASUMI_F8], "KASUMI_F8");
-	strcpy(supported_cipher_algo[RTE_CRYPTO_CIPHER_3DES_CTR], "3DES_CTR");
-	strcpy(supported_cipher_algo[RTE_CRYPTO_CIPHER_3DES_CBC], "3DES_CBC");
-}
-
 
 static int
 l2fwd_crypto_send_burst(struct lcore_queue_conf *qconf, unsigned n,
@@ -946,17 +899,14 @@ parse_crypto_opt_chain(struct l2fwd_crypto_options *options, char *optarg)
 static int
 parse_cipher_algo(enum rte_crypto_cipher_algorithm *algo, char *optarg)
 {
-	unsigned i;
 
-	for (i = 0; i < RTE_CRYPTO_CIPHER_LIST_END; i++) {
-		if (!strcmp(supported_cipher_algo[i], optarg)) {
-			*algo = (enum rte_crypto_cipher_algorithm)i;
-			return 0;
-		}
+	if (rte_cryptodev_get_cipher_algo_enum(algo, optarg) < 0) {
+		RTE_LOG(ERR, USER1, "Cipher algorithm specified "
+				"not supported!\n");
+		return -1;
 	}
 
-	printf("Cipher algorithm  not supported!\n");
-	return -1;
+	return 0;
 }
 
 /** Parse crypto cipher operation command line argument */
@@ -1022,17 +972,13 @@ parse_size(int *size, const char *q_arg)
 static int
 parse_auth_algo(enum rte_crypto_auth_algorithm *algo, char *optarg)
 {
-	unsigned i;
-
-	for (i = 0; i < RTE_CRYPTO_AUTH_LIST_END; i++) {
-		if (!strcmp(supported_auth_algo[i], optarg)) {
-			*algo = (enum rte_crypto_auth_algorithm)i;
-			return 0;
-		}
+	if (rte_cryptodev_get_auth_algo_enum(algo, optarg) < 0) {
+		RTE_LOG(ERR, USER1, "Authentication algorithm specified "
+				"not supported!\n");
+		return -1;
 	}
 
-	printf("Authentication algorithm specified not supported!\n");
-	return -1;
+	return 0;
 }
 
 static int
@@ -1271,7 +1217,7 @@ display_cipher_info(struct l2fwd_crypto_options *options)
 {
 	printf("\n---- Cipher information ---\n");
 	printf("Algorithm: %s\n",
-		supported_cipher_algo[options->cipher_xform.cipher.algo]);
+		rte_crypto_cipher_algorithm_strings[options->cipher_xform.cipher.algo]);
 	rte_hexdump(stdout, "Cipher key:",
 			options->cipher_xform.cipher.key.data,
 			options->cipher_xform.cipher.key.length);
@@ -1283,7 +1229,7 @@ display_auth_info(struct l2fwd_crypto_options *options)
 {
 	printf("\n---- Authentication information ---\n");
 	printf("Algorithm: %s\n",
-		supported_auth_algo[options->auth_xform.auth.algo]);
+		rte_crypto_auth_algorithm_strings[options->auth_xform.cipher.algo]);
 	rte_hexdump(stdout, "Auth key:",
 			options->auth_xform.auth.key.data,
 			options->auth_xform.auth.key.length);
@@ -1605,7 +1551,7 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 			if (cap->op == RTE_CRYPTO_OP_TYPE_UNDEFINED) {
 				printf("Algorithm %s not supported by cryptodev %u"
 					" or device not of preferred type (%s)\n",
-					supported_cipher_algo[opt_cipher_algo],
+					rte_crypto_cipher_algorithm_strings[opt_cipher_algo],
 					cdev_id,
 					options->string_type);
 				continue;
@@ -1705,7 +1651,7 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 			if (cap->op == RTE_CRYPTO_OP_TYPE_UNDEFINED) {
 				printf("Algorithm %s not supported by cryptodev %u"
 					" or device not of preferred type (%s)\n",
-					supported_auth_algo[opt_auth_algo],
+					rte_crypto_auth_algorithm_strings[opt_auth_algo],
 					cdev_id,
 					options->string_type);
 				continue;
@@ -1984,9 +1930,6 @@ main(int argc, char **argv)
 
 	/* reserve memory for Cipher/Auth key and IV */
 	reserve_key_memory(&options);
-
-	/* fill out the supported algorithm tables */
-	fill_supported_algorithm_tables();
 
 	/* parse application arguments (after the EAL ones) */
 	ret = l2fwd_crypto_parse_args(&options, argc, argv);

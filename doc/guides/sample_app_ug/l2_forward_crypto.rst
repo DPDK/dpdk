@@ -1,5 +1,5 @@
 ..  BSD LICENSE
-    Copyright(c) 2016 Intel Corporation. All rights reserved.
+    Copyright(c) 2016-2017 Intel Corporation. All rights reserved.
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -113,7 +113,7 @@ where,
 
     (default is Cipher->Hash)
 
-*   cipher_algo: select the ciphering algorithm (default is AES CBC)
+*   cipher_algo: select the ciphering algorithm (default is aes-cbc)
 
 *   cipher_op: select the ciphering operation to perform: ENCRYPT or DECRYPT
 
@@ -133,7 +133,7 @@ where,
 
     Note that if --iv is used, this will be ignored.
 
-*   auth_algo: select the authentication algorithm (default is SHA1-HMAC)
+*   auth_algo: select the authentication algorithm (default is sha1-hmac)
 
 *   cipher_op: select the authentication operation to perform: GENERATE or VERIFY
 
@@ -169,9 +169,9 @@ To run the application in linuxapp environment with 2 lcores, 2 ports and 2 cryp
 
     $ ./build/l2fwd-crypto -l 0-1 -n 4 --vdev "cryptodev_aesni_mb_pmd" \
     --vdev "cryptodev_aesni_mb_pmd" -- -p 0x3 --chain CIPHER_HASH \
-    --cipher_op ENCRYPT --cipher_algo AES_CBC \
+    --cipher_op ENCRYPT --cipher_algo aes-cbc \
     --cipher_key 00:01:02:03:04:05:06:07:08:09:0a:0b:0c:0d:0e:0f \
-    --auth_op GENERATE --auth_algo AES_XCBC_MAC \
+    --auth_op GENERATE --auth_algo aes-xcbc-mac \
     --auth_key 10:11:12:13:14:15:16:17:18:19:1a:1b:1c:1d:1e:1f
 
 Refer to the *DPDK Getting Started Guide* for general information on running applications
