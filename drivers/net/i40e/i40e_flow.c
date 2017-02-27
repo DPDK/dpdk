@@ -1309,7 +1309,7 @@ i40e_flow_parse_vxlan_pattern(const struct rte_flow_item *pattern,
 		case RTE_FLOW_ITEM_TYPE_IPV4:
 			filter->ip_type = RTE_TUNNEL_IPTYPE_IPV4;
 			/* IPv4 is used to describe protocol,
-			 * spec amd mask should be NULL.
+			 * spec and mask should be NULL.
 			 */
 			if (item->spec || item->mask) {
 				rte_flow_error_set(error, EINVAL,
@@ -1322,7 +1322,7 @@ i40e_flow_parse_vxlan_pattern(const struct rte_flow_item *pattern,
 		case RTE_FLOW_ITEM_TYPE_IPV6:
 			filter->ip_type = RTE_TUNNEL_IPTYPE_IPV6;
 			/* IPv6 is used to describe protocol,
-			 * spec amd mask should be NULL.
+			 * spec and mask should be NULL.
 			 */
 			if (item->spec || item->mask) {
 				rte_flow_error_set(error, EINVAL,
@@ -1334,7 +1334,7 @@ i40e_flow_parse_vxlan_pattern(const struct rte_flow_item *pattern,
 			break;
 		case RTE_FLOW_ITEM_TYPE_UDP:
 			/* UDP is used to describe protocol,
-			 * spec amd mask should be NULL.
+			 * spec and mask should be NULL.
 			 */
 			if (item->spec || item->mask) {
 				rte_flow_error_set(error, EINVAL,
