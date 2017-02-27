@@ -75,7 +75,7 @@ Start the vswitch example
 
 .. code-block:: console
 
-        ./vhost-switch -c f -n 4 --socket-mem 1024  \
+        ./vhost-switch -l 0-3 -n 4 --socket-mem 1024  \
              -- --socket-file /tmp/sock0 --client \
              ...
 
@@ -121,7 +121,7 @@ Then start testpmd for packet forwarding testing.
 
 .. code-block:: console
 
-    ./x86_64-native-gcc/app/testpmd -c 0x3 -- -i
+    ./x86_64-native-gcc/app/testpmd -l 0-1 -- -i
     > start tx_first
 
 Inject packets

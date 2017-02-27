@@ -641,7 +641,7 @@ Run testpmd in the Virtual Machine.
    # use for bonding of virtio and vf tests in VM
 
    /root/dpdk/x86_64-default-linuxapp-gcc/app/testpmd \
-   -c f -n 4 --socket-mem 350 --  --i --port-topology=chained
+   -l 0-3 -n 4 --socket-mem 350 --  --i --port-topology=chained
 
 .. _lm_bond_virtio_sriov_switch_conf:
 

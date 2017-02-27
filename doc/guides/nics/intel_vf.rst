@@ -187,7 +187,10 @@ For example,
 
     .. code-block:: console
 
-        testpmd -c 0xffff -n 4 -- --coremask=<core-mask> --rxq=4 --txq=4 -i
+        testpmd -l 0-15 -n 4 -- --coremask=<core-mask> --rxq=4 --txq=4 -i
+
+.. Note: The preferred option is -c XX or -l n-n,n instead of a coremask value. The --coremask option
+         is a feature of the application and not DPDK EAL options.
 
     The limitation for VF RSS on Intel® 82599 10 Gigabit Ethernet Controller is:
     The hash and key are shared among PF and all VF, the RETA table with 128 entries is also shared
@@ -513,7 +516,7 @@ The setup procedure is as follows:
     .. code-block:: console
 
         make install T=x86_64-native-linuxapp-gcc
-        ./x86_64-native-linuxapp-gcc/app/testpmd -c f -n 4 -- -i
+        ./x86_64-native-linuxapp-gcc/app/testpmd -l 0-3 -n 4 -- -i
 
 #.  Finally, access the Guest OS using vncviewer with the localhost:5900 port and check the lspci command output in the Guest OS.
     The virtual functions will be listed as available for use.

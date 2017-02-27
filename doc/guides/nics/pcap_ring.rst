@@ -69,7 +69,7 @@ Device name and stream options must be separated by commas as shown below:
 
 .. code-block:: console
 
-   $RTE_TARGET/app/testpmd -c f -n 4 \
+   $RTE_TARGET/app/testpmd -l 0-3 -n 4 \
        --vdev 'net_pcap0,stream_opt0=..,stream_opt1=..' \
        --vdev='net_pcap1,stream_opt0=..'
 
@@ -122,7 +122,7 @@ Read packets from one pcap file and write them to another:
 
 .. code-block:: console
 
-    $RTE_TARGET/app/testpmd -c '0xf' -n 4 \
+    $RTE_TARGET/app/testpmd -l 0-3 -n 4 \
         --vdev 'net_pcap0,rx_pcap=file_rx.pcap,tx_pcap=file_tx.pcap' \
         -- --port-topology=chained
 
@@ -130,7 +130,7 @@ Read packets from a network interface and write them to a pcap file:
 
 .. code-block:: console
 
-    $RTE_TARGET/app/testpmd -c '0xf' -n 4 \
+    $RTE_TARGET/app/testpmd -l 0-3 -n 4 \
         --vdev 'net_pcap0,rx_iface=eth0,tx_pcap=file_tx.pcap' \
         -- --port-topology=chained
 
@@ -138,7 +138,7 @@ Read packets from a pcap file and write them to a network interface:
 
 .. code-block:: console
 
-    $RTE_TARGET/app/testpmd -c '0xf' -n 4 \
+    $RTE_TARGET/app/testpmd -l 0-3 -n 4 \
         --vdev 'net_pcap0,rx_pcap=file_rx.pcap,tx_iface=eth1' \
         -- --port-topology=chained
 
@@ -146,7 +146,7 @@ Forward packets through two network interfaces:
 
 .. code-block:: console
 
-    $RTE_TARGET/app/testpmd -c '0xf' -n 4 \
+    $RTE_TARGET/app/testpmd -l 0-3 -n 4 \
         --vdev 'net_pcap0,iface=eth0' --vdev='net_pcap1;iface=eth1'
 
 Using libpcap-based PMD with the testpmd Application
@@ -171,7 +171,7 @@ Otherwise, the first 512 packets from the input pcap file will be discarded by t
 
 .. code-block:: console
 
-    $RTE_TARGET/app/testpmd -c '0xf' -n 4 \
+    $RTE_TARGET/app/testpmd -l 0-3 -n 4 \
         --vdev 'net_pcap0,rx_pcap=file_rx.pcap,tx_pcap=file_tx.pcap' \
         -- --port-topology=chained --no-flush-rx
 
@@ -185,7 +185,7 @@ Multiple devices may be specified, separated by commas.
 
 .. code-block:: console
 
-    ./testpmd -c E -n 4 --vdev=net_ring0 --vdev=net_ring1 -- -i
+    ./testpmd -l 1-3 -n 4 --vdev=net_ring0 --vdev=net_ring1 -- -i
     EAL: Detected lcore 1 as core 1 on socket 0
     ...
 

@@ -96,7 +96,7 @@ Running the Application
 
    ..  code-block:: console
 
-       $ ./build/distributor_app -c 0x4003fe -n 4 -- -p f
+       $ ./build/distributor_app -l 1-9,22 -n 4 -- -p f
 
 #. Refer to the DPDK Getting Started Guide for general information on running
    applications and the Environment Abstraction Layer (EAL) options.

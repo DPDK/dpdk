@@ -82,11 +82,11 @@ Running the Application
 ^^^^^^^^^^^^^^^^^^^^^^^
 
 To run the application, start one copy of the simple_mp binary in one terminal,
-passing at least two cores in the coremask, as follows:
+passing at least two cores in the coremask/corelist, as follows:
 
 .. code-block:: console
 
-    ./build/simple_mp -c 3 -n 4 --proc-type=primary
+    ./build/simple_mp -l 0-1 -n 4 --proc-type=primary
 
 For the first DPDK process run, the proc-type flag can be omitted or set to auto,
 since all DPDK processes will default to being a primary instance,
@@ -95,7 +95,7 @@ The process should start successfully and display a command prompt as follows:
 
 .. code-block:: console
 
-    $ ./build/simple_mp -c 3 -n 4 --proc-type=primary
+    $ ./build/simple_mp -l 0-1 -n 4 --proc-type=primary
     EAL: coremask set to 3
     EAL: Detected lcore 0 on socket 0
     EAL: Detected lcore 1 on socket 0
@@ -119,11 +119,11 @@ The process should start successfully and display a command prompt as follows:
     simple_mp >
 
 To run the secondary process to communicate with the primary process,
-again run the same binary setting at least two cores in the coremask:
+again run the same binary setting at least two cores in the coremask/corelist:
 
 .. code-block:: console
 
-    ./build/simple_mp -c C -n 4 --proc-type=secondary
+    ./build/simple_mp -l 2-3 -n 4 --proc-type=secondary
 
 When running a secondary process such as that shown above, the proc-type parameter can again be specified as auto.
 However, omitting the parameter altogether will cause the process to try and start as a primary rather than secondary process.
@@ -229,10 +229,10 @@ the following commands can be used (assuming run as root):
 
 .. code-block:: console
 
-    # ./build/symmetric_mp -c 2 -n 4 --proc-type=auto -- -p 3 --num-procs=4 --proc-id=0
-    # ./build/symmetric_mp -c 4 -n 4 --proc-type=auto -- -p 3 --num-procs=4 --proc-id=1
-    # ./build/symmetric_mp -c 8 -n 4 --proc-type=auto -- -p 3 --num-procs=4 --proc-id=2
-    # ./build/symmetric_mp -c 10 -n 4 --proc-type=auto -- -p 3 --num-procs=4 --proc-id=3
+    # ./build/symmetric_mp -l 1 -n 4 --proc-type=auto -- -p 3 --num-procs=4 --proc-id=0
+    # ./build/symmetric_mp -l 2 -n 4 --proc-type=auto -- -p 3 --num-procs=4 --proc-id=1
+    # ./build/symmetric_mp -l 3 -n 4 --proc-type=auto -- -p 3 --num-procs=4 --proc-id=2
+    # ./build/symmetric_mp -l 4 -n 4 --proc-type=auto -- -p 3 --num-procs=4 --proc-id=3
 
 .. note::
 
@@ -318,8 +318,8 @@ In addition to the EAL parameters, the application- specific parameters are:
 
 .. note::
 
-    In the server process, a single thread, the master thread, that is, the lowest numbered lcore in the coremask, performs all packet I/O.
-    If a coremask is specified with more than a single lcore bit set in it,
+    In the server process, a single thread, the master thread, that is, the lowest numbered lcore in the coremask/corelist, performs all packet I/O.
+    If a coremask/corelist is specified with more than a single lcore bit set in it,
     an additional lcore will be used for a thread to periodically print packet count statistics.
 
 Since the server application stores configuration data in shared memory, including the network ports to be used,
@@ -329,9 +329,9 @@ the following commands could be used:
 
 .. code-block:: console
 
-    # ./mp_server/build/mp_server -c 6 -n 4 -- -p 3 -n 2
-    # ./mp_client/build/mp_client -c 8 -n 4 --proc-type=auto -- -n 0
-    # ./mp_client/build/mp_client -c 10 -n 4 --proc-type=auto -- -n 1
+    # ./mp_server/build/mp_server -l 1-2 -n 4 -- -p 3 -n 2
+    # ./mp_client/build/mp_client -l 3 -n 4 --proc-type=auto -- -n 0
+    # ./mp_client/build/mp_client -l 4 -n 4 --proc-type=auto -- -n 1
 
 .. note::
 
@@ -524,7 +524,7 @@ The command is as follows:
 
 .. code-block:: console
 
-    #./build/l2fwd_fork -c 1c -n 4 -- -p 3 -f
+    #./build/l2fwd_fork -l 2-4 -n 4 -- -p 3 -f
 
 This example provides another -f option to specify the use of floating process.
 If not specified, the example will use a pinned process to perform the L2 forwarding task.

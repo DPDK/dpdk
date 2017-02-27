@@ -318,7 +318,7 @@ To enable L3 forwarding between two ports, assuming that both ports are in the s
 
 In this command:
 
-*   The -c option enables cores 1, 2
+*   The -l option enables cores 1, 2
 
 *   The -p option enables ports 0 and 1
 

@@ -165,7 +165,7 @@ They must be separated from the EAL options, shown in the previous section, with
 
 .. code-block:: console
 
-    sudo ./testpmd -c 0xF -n 4 -- -i --portmask=0x1 --nb-cores=2
+    sudo ./testpmd -l 0-3 -n 4 -- -i --portmask=0x1 --nb-cores=2
 
 The commandline options are:
 

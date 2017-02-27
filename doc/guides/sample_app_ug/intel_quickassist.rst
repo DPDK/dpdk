@@ -215,7 +215,7 @@ performing AES-CBC-128 encryption with AES-XCBC-MAC-96 hash, the following setti
 
     .. code-block:: console
 
-        ./build/dpdk_qat -c 0xff -n 2 -- -p 0x3 --config '(0,0,1),(1,0,2)'
+        ./build/dpdk_qat -l 0-7 -n 2 -- -p 0x3 --config '(0,0,1),(1,0,2)'
 
 Refer to the *DPDK Test Report* for more examples of traffic generator setup and the application startup command lines.
 If no errors are generated in response to the startup commands, the application is running correctly.

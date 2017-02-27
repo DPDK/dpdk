@@ -130,7 +130,7 @@ Host2VM communication example
 
     .. code-block:: console
 
-        examples/kni/build/app/kni -c 0xf -n 4 -- -p 0x1 -P --config="(0,1,3)"
+        examples/kni/build/app/kni -l 0-3 -n 4 -- -p 0x1 -P --config="(0,1,3)"
 
     This command generates one network device vEth0 for physical port.
     If specify more physical ports, the generated network device will be vEth1, vEth2, and so on.
@@ -275,7 +275,7 @@ The corresponding callbacks are:
 Example of using the vector version of the virtio poll mode driver in
 ``testpmd``::
 
-   testpmd -c 0x7 -n 4 -- -i --txqflags=0xF01 --rxq=1 --txq=1 --nb-cores=1
+   testpmd -l 0-2 -n 4 -- -i --txqflags=0xF01 --rxq=1 --txq=1 --nb-cores=1
 
 
 Interrupt mode
@@ -332,5 +332,5 @@ Here we use l3fwd-power as an example to show how to get started.
 
     .. code-block:: console
 
-        $ l3fwd-power -c 0x3 -- -p 1 -P --config="(0,0,1)" \
+        $ l3fwd-power -l 0-1 -- -p 1 -P --config="(0,0,1)" \
                                                --no-numa --parse-ptype

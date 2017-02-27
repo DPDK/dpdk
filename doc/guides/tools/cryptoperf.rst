@@ -109,9 +109,10 @@ The following are the EAL command-line options that can be used in conjunction
 with the ``dpdk-test-crypto-perf`` applcation.
 See the DPDK Getting Started Guides for more information on these options.
 
-*   ``-c <COREMASK>``
+*   ``-c <COREMASK>`` or ``-l <CORELIST>``
 
-        Set the hexadecimal bitmask of the cores to run on.
+        Set the hexadecimal bitmask of the cores to run on. The corelist is a
+        list cores to use.
 
 *   ``-w <PCI>``
 
@@ -350,7 +351,7 @@ Call application for performance throughput test of single Aesni MB PMD
 for cipher encryption aes-cbc and auth generation sha1-hmac,
 one milion operations, burst size 32, packet size 64::
 
-   dpdk-test-crypto-perf -c 0xc0 --vdev crypto_aesni_mb_pmd -w 0000:00:00.0 --
+   dpdk-test-crypto-perf -l 6-7 --vdev crypto_aesni_mb_pmd -w 0000:00:00.0 --
    --ptest throughput --devtype crypto_aesni_mb --optype cipher-then-auth
    --cipher-algo aes-cbc --cipher-op encrypt --cipher-key-sz 16 --auth-algo
    sha1-hmac --auth-op generate --auth-key-sz 64 --auth-digest-sz 12
@@ -359,7 +360,7 @@ one milion operations, burst size 32, packet size 64::
 Call application for performance latency test of two Aesni MB PMD executed
 on two cores for cipher encryption aes-cbc, ten operations in silent mode::
 
-   dpdk-test-crypto-perf -c 0xf0 --vdev crypto_aesni_mb_pmd1
+   dpdk-test-crypto-perf -l 4-7 --vdev crypto_aesni_mb_pmd1
    --vdev crypto_aesni_mb_pmd2 -w 0000:00:00.0 -- --devtype crypto_aesni_mb
    --cipher-algo aes-cbc --cipher-key-sz 16 --cipher-iv-sz 16
    --cipher-op encrypt --optype cipher-only --silent
@@ -370,7 +371,7 @@ for cipher encryption aes-gcm and auth generation aes-gcm,ten operations
 in silent mode, test vector provide in file "test_aes_gcm.data"
 with packet verification::
 
-   dpdk-test-crypto-perf -c 0xf0 --vdev crypto_openssl -w 0000:00:00.0 --
+   dpdk-test-crypto-perf -l 4-7 --vdev crypto_openssl -w 0000:00:00.0 --
    --devtype crypto_openssl --cipher-algo aes-gcm --cipher-key-sz 16
    --cipher-iv-sz 16 --cipher-op encrypt --auth-algo aes-gcm --auth-key-sz 16
    --auth-digest-sz 16 --auth-aad-sz 16 --auth-op generate --optype aead

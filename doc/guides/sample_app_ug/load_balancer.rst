@@ -178,7 +178,7 @@ Example:
 
 .. code-block:: console
 
-    ./load_balancer -c 0xf8 -n 4 -- --rx "(0,0,3),(1,0,3)" --tx "(0,3),(1,3)" --w "4,5,6,7" --lpm "1.0.0.0/24=>0; 1.0.1.0/24=>1;" --pos-lb 29
+    ./load_balancer -l 3-7 -n 4 -- --rx "(0,0,3),(1,0,3)" --tx "(0,3),(1,3)" --w "4,5,6,7" --lpm "1.0.0.0/24=>0; 1.0.1.0/24=>1;" --pos-lb 29
 
 There is a single I/O lcore (lcore 3) that handles RX and TX for two NIC ports (ports 0 and 1) that
 handles packets to/from four worker lcores (lcores 4, 5, 6 and 7) that

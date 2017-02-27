@@ -155,7 +155,7 @@ managed by ``librte_pmd_thunderx_nicvf`` in the Linux operating system.
 
    .. code-block:: console
 
-      ./arm64-thunderx-linuxapp-gcc/app/testpmd -c 0xf -n 4 -w 0002:01:00.2 \
+      ./arm64-thunderx-linuxapp-gcc/app/testpmd -l 0-3 -n 4 -w 0002:01:00.2 \
         -- -i --disable-hw-vlan-filter --crc-strip --no-flush-rx \
         --port-topology=loop
 

@@ -102,7 +102,7 @@ Refer to the *DPDK Getting Started Guide* for general information on running app
 and the Environment Abstraction Layer (EAL) options.
 
 The number of bits set in each bitmask must be the same.
-The coremask -c parameter of the EAL options should include IN_CORES and OUT_CORES.
+The coremask -c or the corelist -l parameter of the EAL options should include IN_CORES and OUT_CORES.
 The same bit must not be set in IN_CORES and OUT_CORES.
 The affinities between ports and cores are set beginning with the least significant bit of each mask, that is,
 the port represented by the lowest bit in PORTMASK is read from by the core represented by the lowest bit in IN_CORES,
@@ -112,7 +112,7 @@ For example to run the application with two ports and four cores:
 
 .. code-block:: console
 
-    ./build/exception_path -c f -n 4 -- -p 3 -i 3 -o c
+    ./build/exception_path -l 0-3 -n 4 -- -p 3 -i 3 -o c
 
 Getting Statistics
 ~~~~~~~~~~~~~~~~~~

@@ -119,7 +119,7 @@ To run the example in a ``linuxapp`` environment:
 
 .. code-block:: console
 
-    ./build/ptpclient -c 2 -n 4 -- -p 0x1 -T 0
+    ./build/ptpclient -l 1 -n 4 -- -p 0x1 -T 0
 
 Refer to *DPDK Getting Started Guide* for general information on running
 applications and the Environment Abstraction Layer (EAL) options.

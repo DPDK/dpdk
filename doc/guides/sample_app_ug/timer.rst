@@ -65,7 +65,7 @@ To run the example in linuxapp environment:
 
 .. code-block:: console
 
-    $ ./build/timer -c f -n 4
+    $ ./build/timer -l 0-3 -n 4
 
 Refer to the *DPDK Getting Started Guide* for general information on running applications and
 the Environment Abstraction Layer (EAL) options.

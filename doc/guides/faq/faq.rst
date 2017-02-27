@@ -54,8 +54,8 @@ If you need to change the number of pages, it is easier to first remove the page
 See the "Quick Start Setup Script" section in the :ref:`DPDK Getting Started Guide <linux_gsg>` for more information.
 
 
-If I execute "l2fwd -c f -m 64 -n 3 -- -p 3", I get the following output, indicating that there are no socket 0 hugepages to allocate the mbuf and ring structures to?
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+If I execute "l2fwd -l 0-3 -m 64 -n 3 -- -p 3", I get the following output, indicating that there are no socket 0 hugepages to allocate the mbuf and ring structures to?
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 I have set up a total of 1024 Hugepages (that is, allocated 512 2M pages to each NUMA node).
 
@@ -78,7 +78,9 @@ affinitizing the application to a would-be master core.
 
 For example, if your EAL coremask is 0xff0, the master core will usually be the first core in the coremask (0x10); this is what you have to supply to taskset::
 
-   taskset 0x10 ./l2fwd -c 0xff0 -n 2
+   taskset 0x10 ./l2fwd -l 4-11 -n 2
+
+.. Note: Instead of '-c 0xff0' use the '-l 4-11' as a cleaner way to define lcores.
 
 In this way, the hugepages have a greater chance of being allocated to the correct socket.
 Additionally, a ``--socket-mem`` option could be used to ensure the availability of memory for each socket, so that if hugepages were allocated on

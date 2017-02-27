@@ -307,7 +307,7 @@ devices managed by librte_pmd_cxgbe in Linux operating system.
 
    .. code-block:: console
 
-      ./x86_64-native-linuxapp-gcc/app/testpmd -c 0xf -n 4 -w 0000:02:00.4 -- -i
+      ./x86_64-native-linuxapp-gcc/app/testpmd -l 0-3 -n 4 -w 0000:02:00.4 -- -i
 
    Example output:
 
@@ -509,7 +509,7 @@ devices managed by librte_pmd_cxgbe in FreeBSD operating system.
 
    .. code-block:: console
 
-      ./x86_64-native-bsdapp-clang/app/testpmd -c 0xf -n 4 -w 0000:02:00.4 -- -i
+      ./x86_64-native-bsdapp-clang/app/testpmd -l 0-3 -n 4 -w 0000:02:00.4 -- -i
 
    Example output:
 

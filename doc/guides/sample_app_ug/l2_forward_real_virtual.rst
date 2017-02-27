@@ -150,7 +150,7 @@ updating enabled, issue the command:
 
 .. code-block:: console
 
-    $ ./build/l2fwd -c f -n 4 -- -q 8 -p ffff
+    $ ./build/l2fwd -l 0-3 -n 4 -- -q 8 -p ffff
 
 Refer to the *DPDK Getting Started Guide* for general information on running applications
 and the Environment Abstraction Layer (EAL) options.

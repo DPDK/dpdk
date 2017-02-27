@@ -282,7 +282,7 @@ the logical core layout of the platform should be determined when selecting a co
       INSTALL-APP helloworld
       INSTALL-MAP helloworld.map
 
-    sudo ./build/app/helloworld -c 0xf -n 3
+    sudo ./build/app/helloworld -l 0-3 -n 3
     [sudo] password for rte:
 
     EAL: coremask set to f

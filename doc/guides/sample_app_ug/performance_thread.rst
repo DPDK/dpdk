@@ -187,14 +187,14 @@ in ``--rx/--tx`` are used to affinitize threads to the selected scheduler.
 
 For example, the following places every l-thread on different lcores::
 
-   l3fwd-thread -c ff -n 2 -- -P -p 3 \
+   l3fwd-thread -l 0-7 -n 2 -- -P -p 3 \
                 --rx="(0,0,0,0)(1,0,1,1)" \
                 --tx="(2,0)(3,1)"
 
 The following places RX l-threads on lcore 0 and TX l-threads on lcore 1 and 2
 and so on::
 
-   l3fwd-thread -c ff -n 2 -- -P -p 3 \
+   l3fwd-thread -l 0-7 -n 2 -- -P -p 3 \
                 --rx="(0,0,0,0)(1,0,0,1)" \
                 --tx="(1,0)(2,1)"
 
@@ -210,7 +210,7 @@ place every RX and TX thread on different lcores.
 
 For example, the following places every EAL thread on different lcores::
 
-   l3fwd-thread -c ff -n 2 -- -P -p 3 \
+   l3fwd-thread -l 0-7 -n 2 -- -P -p 3 \
                 --rx="(0,0,0,0)(1,0,1,1)" \
                 --tx="(2,0)(3,1)" \
                 --no-lthreads
@@ -222,7 +222,7 @@ parameter is used.
 The following places RX EAL threads on lcore 0 and TX EAL threads on lcore 1
 and 2 and so on::
 
-   l3fwd-thread -c ff -n 2 --lcores="(0,1)@0,(2,3)@1" -- -P -p 3 \
+   l3fwd-thread -l 0-7 -n 2 --lcores="(0,1)@0,(2,3)@1" -- -P -p 3 \
                 --rx="(0,0,0,0)(1,0,1,1)" \
                 --tx="(2,0)(3,1)" \
                 --no-lthreads
@@ -236,13 +236,13 @@ and its corresponding EAL threads command line can be realized as follows:
 
 a) Start every thread on different scheduler (1:1)::
 
-      l3fwd-thread -c ff -n 2 -- -P -p 3 \
+      l3fwd-thread -l 0-7 -n 2 -- -P -p 3 \
                    --rx="(0,0,0,0)(1,0,1,1)" \
                    --tx="(2,0)(3,1)"
 
    EAL thread equivalent::
 
-      l3fwd-thread -c ff -n 2 -- -P -p 3 \
+      l3fwd-thread -l 0-7 -n 2 -- -P -p 3 \
                    --rx="(0,0,0,0)(1,0,1,1)" \
                    --tx="(2,0)(3,1)" \
                    --no-lthreads
@@ -251,13 +251,13 @@ b) Start all threads on one core (N:1).
 
    Start 4 L-threads on lcore 0::
 
-      l3fwd-thread -c ff -n 2 -- -P -p 3 \
+      l3fwd-thread -l 0-7 -n 2 -- -P -p 3 \
                    --rx="(0,0,0,0)(1,0,0,1)" \
                    --tx="(0,0)(0,1)"
 
    Start 4 EAL threads on cpu-set 0::
 
-      l3fwd-thread -c ff -n 2 --lcores="(0-3)@0" -- -P -p 3 \
+      l3fwd-thread -l 0-7 -n 2 --lcores="(0-3)@0" -- -P -p 3 \
                    --rx="(0,0,0,0)(1,0,0,1)" \
                    --tx="(2,0)(3,1)" \
                    --no-lthreads
@@ -266,14 +266,14 @@ c) Start threads on different cores (N:M).
 
    Start 2 L-threads for RX on lcore 0, and 2 L-threads for TX on lcore 1::
 
-      l3fwd-thread -c ff -n 2 -- -P -p 3 \
+      l3fwd-thread -l 0-7 -n 2 -- -P -p 3 \
                    --rx="(0,0,0,0)(1,0,0,1)" \
                    --tx="(1,0)(1,1)"
 
    Start 2 EAL threads for RX on cpu-set 0, and 2 EAL threads for TX on
    cpu-set 1::
 
-      l3fwd-thread -c ff -n 2 --lcores="(0-1)@0,(2-3)@1" -- -P -p 3 \
+      l3fwd-thread -l 0-7 -n 2 --lcores="(0-1)@0,(2-3)@1" -- -P -p 3 \
                    --rx="(0,0,0,0)(1,0,1,1)" \
                    --tx="(2,0)(3,1)" \
                    --no-lthreads

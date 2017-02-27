@@ -108,13 +108,13 @@ To run the example in a ``linuxapp`` environment and enable CAT on cpus 0-2:
 
 .. code-block:: console
 
-    ./build/l2fwd-cat -c 2 -n 4 -- --l3ca="0x3@(0-2)"
+    ./build/l2fwd-cat -l 1 -n 4 -- --l3ca="0x3@(0-2)"
 
 or to enable CAT and CDP on cpus 1,3:
 
 .. code-block:: console
 
-    ./build/l2fwd-cat -c 2 -n 4 -- --l3ca="(0x00C00,0x00300)@(1,3)"
+    ./build/l2fwd-cat -l 1 -n 4 -- --l3ca="(0x00C00,0x00300)@(1,3)"
 
 If CDP is not supported it will fail with following error message:
 

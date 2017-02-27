@@ -180,7 +180,7 @@ Where:
 
 Refer to *DPDK Getting Started Guide* for general information on running applications and the Environment Abstraction Layer (EAL) options.
 
-The -c coremask parameter of the EAL options should include the lcores indicated by the lcore_rx and lcore_tx,
+The -c coremask or -l corelist parameter of the EAL options should include the lcores indicated by the lcore_rx and lcore_tx,
 but does not need to include lcores indicated by lcore_kthread as they are used to pin the kernel thread on.
 The -p PORTMASK parameter should include the ports indicated by the port in --config, neither more nor less.
 
@@ -199,7 +199,7 @@ and one lcore of kernel thread for each port:
 
 .. code-block:: console
 
-    ./build/kni -c 0xf0 -n 4 -- -P -p 0x3 -config="(0,4,6,8),(1,5,7,9)"
+    ./build/kni -l 4-7 -n 4 -- -P -p 0x3 -config="(0,4,6,8),(1,5,7,9)"
 
 KNI Operations
 --------------

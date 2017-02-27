@@ -82,7 +82,7 @@ compiling the kernel and those kernel modules should be inserted.
 
     .. code-block:: console
 
-        $(testpmd) -c 0xc -n 4 \
+        $(testpmd) -l 2-3 -n 4 \
 		--vdev=virtio_user0,path=/dev/vhost-net,queue_size=1024 \
 		-- -i --txqflags=0x0 --disable-hw-vlan --enable-lro --crc-strip
 		--enable-rx-cksum --rxd=1024 --txd=1024
@@ -111,7 +111,7 @@ compiling the kernel and those kernel modules should be inserted.
 
     .. code-block:: console
 
-        $(testpmd) -c 0xc -n 4 \
+        $(testpmd) -l 2-3 -n 4 \
 		--vdev=virtio_user0,path=/dev/vhost-net,queues=2,queue_size=1024 \
 		-- -i --txqflags=0x0 --disable-hw-vlan --enable-lro \
 		--crc-strip --enable-rx-cksum --txq=2 --rxq=2 --rxd=1024 \

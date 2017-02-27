@@ -184,7 +184,7 @@ devices managed by ``librte_pmd_qede`` in Linux operating system.
 
    .. code-block:: console
 
-      testpmd -c 0xff1 -n 4 -- -i --nb-cores=8 --portmask=0xf --rxd=4096 \
+      testpmd -l 0,4-11 -n 4 -- -i --nb-cores=8 --portmask=0xf --rxd=4096 \
       --txd=4096 --txfreet=4068 --enable-rx-cksum --rxq=4 --txq=4 \
       --rss-ip --rss-udp
 

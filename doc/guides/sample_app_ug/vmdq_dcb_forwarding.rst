@@ -114,7 +114,7 @@ To run the example in a linuxapp environment:
 
 .. code-block:: console
 
-    user@target:~$ ./build/vmdq_dcb -c f -n 4 -- -p 0x3 --nb-pools 32 --nb-tcs 4
+    user@target:~$ ./build/vmdq_dcb -l 0-3 -n 4 -- -p 0x3 --nb-pools 32 --nb-tcs 4
 
 Refer to the *DPDK Getting Started Guide* for general information on running applications and
 the Environment Abstraction Layer (EAL) options.

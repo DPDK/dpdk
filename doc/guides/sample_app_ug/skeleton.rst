@@ -74,7 +74,7 @@ To run the example in a ``linuxapp`` environment:
 
 .. code-block:: console
 
-    ./build/basicfwd -c 2 -n 4
+    ./build/basicfwd -l 1 -n 4
 
 Refer to *DPDK Getting Started Guide* for general information on running
 applications and the Environment Abstraction Layer (EAL) options.

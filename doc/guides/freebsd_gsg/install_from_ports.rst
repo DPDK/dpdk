@@ -111,7 +111,7 @@ compiled and run as below:
       INSTALL-APP helloworld
       INSTALL-MAP helloworld.map
 
-    sudo ./build/helloworld -c F -n 2
+    sudo ./build/helloworld -l 0-3 -n 2
 
     EAL: Contigmem driver has 2 buffers, each of size 1GB
     EAL: Sysctl reports 8 cpus

@@ -114,7 +114,7 @@ To run the application in linuxapp environment with 4 lcores, 16 ports
 
 .. code-block:: console
 
-    ./build/l2fwd-keepalive -c f -n 4 -- -q 8 -p ffff -K 10
+    ./build/l2fwd-keepalive -l 0-3 -n 4 -- -q 8 -p ffff -K 10
 
 Refer to the *DPDK Getting Started Guide* for general information on
 running applications and the Environment Abstraction Layer (EAL)

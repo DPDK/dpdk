@@ -231,7 +231,7 @@ devices managed by librte_pmd_ena.
 
    .. code-block:: console
 
-      ./x86_64-native-linuxapp-gcc/app/testpmd -c 0xf -n 4 -- -i
+      ./x86_64-native-linuxapp-gcc/app/testpmd -l 0-3 -n 4 -- -i
 
    Example output:
 

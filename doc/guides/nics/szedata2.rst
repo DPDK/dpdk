@@ -117,7 +117,7 @@ transmit channel:
 
 .. code-block:: console
 
-   $RTE_TARGET/app/testpmd -c 0xf -n 2 \
+   $RTE_TARGET/app/testpmd -l 0-3 -n 2 \
    -- --port-topology=chained --rxq=2 --txq=2 --nb-cores=2 -i -a
 
 Example output:

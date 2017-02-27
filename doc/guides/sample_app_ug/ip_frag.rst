@@ -111,7 +111,7 @@ To run the example in linuxapp environment with 2 lcores (2,4) over 2 ports(0,2)
 
 .. code-block:: console
 
-    ./build/ip_fragmentation -c 0x14 -n 3 -- -p 5
+    ./build/ip_fragmentation -l 2,4 -n 3 -- -p 5
     EAL: coremask set to 14
     EAL: Detected lcore 0 on socket 0
     EAL: Detected lcore 1 on socket 1
@@ -140,7 +140,7 @@ To run the example in linuxapp environment with 1 lcore (4) over 2 ports(0,2) wi
 
 .. code-block:: console
 
-    ./build/ip_fragmentation -c 0x10 -n 3 -- -p 5 -q 2
+    ./build/ip_fragmentation -l 4 -n 3 -- -p 5 -q 2
 
 To test the application, flows should be set up in the flow generator that match the values in the
 l3fwd_ipv4_route_array and/or l3fwd_ipv6_route_array table.

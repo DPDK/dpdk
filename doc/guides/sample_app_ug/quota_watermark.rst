@@ -136,7 +136,7 @@ issue the following command:
 
 .. code-block:: console
 
-    ./qw/build/qw -c f -n 4 -- -p 5
+    ./qw/build/qw -l 0-3 -n 4 -- -p 5
 
 Refer to the *DPDK Getting Started Guide* for general information on running applications and
 the Environment Abstraction Layer (EAL) options.
@@ -157,7 +157,7 @@ To run the application in a linuxapp environment on logical core 0, issue the fo
 
 .. code-block:: console
 
-    ./qwctl/build/qwctl -c 1 -n 4 --proc-type=secondary
+    ./qwctl/build/qwctl -l 0 -n 4 --proc-type=secondary
 
 Refer to the *DPDK Getting Started* Guide for general information on running applications and
 the Environment Abstraction Layer (EAL) options.

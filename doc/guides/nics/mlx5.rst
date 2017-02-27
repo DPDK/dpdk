@@ -382,7 +382,7 @@ ConnectX-4/ConnectX-5 devices managed by librte_pmd_mlx5.
 
    .. code-block:: console
 
-      testpmd -c 0xff00 -n 4 -w 05:00.0 -w 05:00.1 -w 06:00.0 -w 06:00.1 -- --rxq=2 --txq=2 -i
+      testpmd -l 8-15 -n 4 -w 05:00.0 -w 05:00.1 -w 06:00.0 -w 06:00.1 -- --rxq=2 --txq=2 -i
 
    Example output:
 
