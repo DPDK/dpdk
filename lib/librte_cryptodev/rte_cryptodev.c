@@ -133,6 +133,8 @@ rte_crypto_cipher_algorithm_strings[] = {
 
 	[RTE_CRYPTO_CIPHER_ARC4]	= "arc4",
 
+	[RTE_CRYPTO_CIPHER_DES_CBC]     = "des-cbc",
+
 	[RTE_CRYPTO_CIPHER_NULL]	= "null",
 
 	[RTE_CRYPTO_CIPHER_KASUMI_F8]	= "kasumi-f8",
@@ -165,6 +167,8 @@ rte_crypto_auth_algorithm_strings[] = {
 
 	[RTE_CRYPTO_AUTH_MD5]		= "md5",
 	[RTE_CRYPTO_AUTH_MD5_HMAC]	= "md5-hmac",
+
+	[RTE_CRYPTO_AUTH_NULL]		= "null",
 
 	[RTE_CRYPTO_AUTH_SHA1]		= "sha1",
 	[RTE_CRYPTO_AUTH_SHA1_HMAC]	= "sha1-hmac",
