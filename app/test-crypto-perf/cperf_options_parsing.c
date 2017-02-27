@@ -33,6 +33,7 @@
 #include <getopt.h>
 #include <unistd.h>
 
+#include <rte_cryptodev.h>
 #include <rte_malloc.h>
 
 #include "cperf_options.h"
@@ -309,93 +310,15 @@ parse_silent(struct cperf_options *opts,
 static int
 parse_cipher_algo(struct cperf_options *opts, const char *arg)
 {
-	struct name_id_map cipher_algo_namemap[] = {
-		{
-			rte_crypto_cipher_algorithm_strings
-			[RTE_CRYPTO_CIPHER_3DES_CBC],
-			RTE_CRYPTO_CIPHER_3DES_CBC
-		},
-		{
-			rte_crypto_cipher_algorithm_strings
-			[RTE_CRYPTO_CIPHER_3DES_ECB],
-			RTE_CRYPTO_CIPHER_3DES_ECB
-		},
-		{
-			rte_crypto_cipher_algorithm_strings
-			[RTE_CRYPTO_CIPHER_3DES_CTR],
-			RTE_CRYPTO_CIPHER_3DES_CTR
-		},
-		{
-			rte_crypto_cipher_algorithm_strings
-			[RTE_CRYPTO_CIPHER_AES_CBC],
-			RTE_CRYPTO_CIPHER_AES_CBC
-		},
-		{
-			rte_crypto_cipher_algorithm_strings
-			[RTE_CRYPTO_CIPHER_AES_CCM],
-			RTE_CRYPTO_CIPHER_AES_CCM
-		},
-		{
-			rte_crypto_cipher_algorithm_strings
-			[RTE_CRYPTO_CIPHER_AES_CTR],
-			RTE_CRYPTO_CIPHER_AES_CTR
-		},
-		{
-			rte_crypto_cipher_algorithm_strings
-			[RTE_CRYPTO_CIPHER_AES_ECB],
-			RTE_CRYPTO_CIPHER_AES_ECB
-		},
-		{
-			rte_crypto_cipher_algorithm_strings
-			[RTE_CRYPTO_CIPHER_AES_GCM],
-			RTE_CRYPTO_CIPHER_AES_GCM
-		},
-		{
-			rte_crypto_cipher_algorithm_strings
-			[RTE_CRYPTO_CIPHER_AES_F8],
-			RTE_CRYPTO_CIPHER_AES_F8
-		},
-		{
-			rte_crypto_cipher_algorithm_strings
-			[RTE_CRYPTO_CIPHER_AES_XTS],
-			RTE_CRYPTO_CIPHER_AES_XTS
-		},
-		{
-			rte_crypto_cipher_algorithm_strings
-			[RTE_CRYPTO_CIPHER_ARC4],
-			RTE_CRYPTO_CIPHER_ARC4
-		},
-		{
-			rte_crypto_cipher_algorithm_strings
-			[RTE_CRYPTO_CIPHER_NULL],
-			RTE_CRYPTO_CIPHER_NULL
-		},
-		{
-			rte_crypto_cipher_algorithm_strings
-			[RTE_CRYPTO_CIPHER_KASUMI_F8],
-			RTE_CRYPTO_CIPHER_KASUMI_F8
-		},
-		{
-			rte_crypto_cipher_algorithm_strings
-			[RTE_CRYPTO_CIPHER_SNOW3G_UEA2],
-			RTE_CRYPTO_CIPHER_SNOW3G_UEA2
-		},
-		{
-			rte_crypto_cipher_algorithm_strings
-			[RTE_CRYPTO_CIPHER_ZUC_EEA3],
-			RTE_CRYPTO_CIPHER_ZUC_EEA3
-		},
-	};
 
+	enum rte_crypto_cipher_algorithm cipher_algo;
 
-	int id = get_str_key_id_mapping(cipher_algo_namemap,
-			RTE_DIM(cipher_algo_namemap), arg);
-	if (id < 0) {
+	if (rte_cryptodev_get_cipher_algo_enum(&cipher_algo, arg) < 0) {
 		RTE_LOG(ERR, USER1, "Invalid cipher algorithm specified\n");
 		return -1;
 	}
 
-	opts->cipher_algo = (enum rte_crypto_cipher_algorithm)id;
+	opts->cipher_algo = cipher_algo;
 
 	return 0;
 }
@@ -440,125 +363,16 @@ parse_cipher_iv_sz(struct cperf_options *opts, const char *arg)
 }
 
 static int
-parse_auth_algo(struct cperf_options *opts, const char *arg) {
-	struct name_id_map cipher_auth_namemap[] = {
-		{
-			rte_crypto_auth_algorithm_strings
-			[RTE_CRYPTO_AUTH_AES_CBC_MAC],
-			RTE_CRYPTO_AUTH_AES_CBC_MAC
-		},
-		{
-			rte_crypto_auth_algorithm_strings
-			[RTE_CRYPTO_AUTH_AES_CCM],
-			RTE_CRYPTO_AUTH_AES_CCM
-		},
-		{
-			rte_crypto_auth_algorithm_strings
-			[RTE_CRYPTO_AUTH_AES_CMAC],
-			RTE_CRYPTO_AUTH_AES_CMAC
-		},
-		{
-			rte_crypto_auth_algorithm_strings
-			[RTE_CRYPTO_AUTH_AES_GCM],
-			RTE_CRYPTO_AUTH_AES_GCM
-		},
-		{
-			rte_crypto_auth_algorithm_strings
-			[RTE_CRYPTO_AUTH_AES_GMAC],
-			RTE_CRYPTO_AUTH_AES_GMAC
-		},
-		{
-			rte_crypto_auth_algorithm_strings
-			[RTE_CRYPTO_AUTH_AES_XCBC_MAC],
-			RTE_CRYPTO_AUTH_AES_XCBC_MAC
-		},
-		{
-			rte_crypto_auth_algorithm_strings
-			[RTE_CRYPTO_AUTH_MD5],
-			RTE_CRYPTO_AUTH_MD5
-		},
-		{
-			rte_crypto_auth_algorithm_strings
-			[RTE_CRYPTO_AUTH_MD5_HMAC],
-			RTE_CRYPTO_AUTH_MD5_HMAC
-		},
-		{
-			rte_crypto_auth_algorithm_strings
-			[RTE_CRYPTO_AUTH_SHA1],
-			RTE_CRYPTO_AUTH_SHA1
-		},
-		{
-			rte_crypto_auth_algorithm_strings
-			[RTE_CRYPTO_AUTH_SHA1_HMAC],
-			RTE_CRYPTO_AUTH_SHA1_HMAC
-		},
-		{
-			rte_crypto_auth_algorithm_strings
-			[RTE_CRYPTO_AUTH_SHA224],
-			RTE_CRYPTO_AUTH_SHA224
-		},
-		{
-			rte_crypto_auth_algorithm_strings
-			[RTE_CRYPTO_AUTH_SHA224_HMAC],
-			RTE_CRYPTO_AUTH_SHA224_HMAC
-		},
-		{
-			rte_crypto_auth_algorithm_strings
-			[RTE_CRYPTO_AUTH_SHA256],
-			RTE_CRYPTO_AUTH_SHA256
-		},
-		{
-			rte_crypto_auth_algorithm_strings
-			[RTE_CRYPTO_AUTH_SHA256_HMAC],
-			RTE_CRYPTO_AUTH_SHA256_HMAC
-		},
-		{
-			rte_crypto_auth_algorithm_strings
-			[RTE_CRYPTO_AUTH_SHA384],
-			RTE_CRYPTO_AUTH_SHA384
-		},
-		{
-			rte_crypto_auth_algorithm_strings
-			[RTE_CRYPTO_AUTH_SHA384_HMAC],
-			RTE_CRYPTO_AUTH_SHA384_HMAC
-		},
-		{
-			rte_crypto_auth_algorithm_strings
-			[RTE_CRYPTO_AUTH_SHA512],
-			RTE_CRYPTO_AUTH_SHA512
-		},
-		{
-			rte_crypto_auth_algorithm_strings
-			[RTE_CRYPTO_AUTH_SHA512_HMAC],
-			RTE_CRYPTO_AUTH_SHA512_HMAC
-		},
-		{
-			rte_crypto_auth_algorithm_strings
-			[RTE_CRYPTO_AUTH_KASUMI_F9],
-			RTE_CRYPTO_AUTH_KASUMI_F9
-		},
-		{
-			rte_crypto_auth_algorithm_strings
-			[RTE_CRYPTO_AUTH_SNOW3G_UIA2],
-			RTE_CRYPTO_AUTH_SNOW3G_UIA2
-		},
-		{
-			rte_crypto_auth_algorithm_strings
-			[RTE_CRYPTO_AUTH_ZUC_EIA3],
-			RTE_CRYPTO_AUTH_ZUC_EIA3
-		},
-	};
+parse_auth_algo(struct cperf_options *opts, const char *arg)
+{
+	enum rte_crypto_auth_algorithm auth_algo;
 
-
-	int id = get_str_key_id_mapping(cipher_auth_namemap,
-			RTE_DIM(cipher_auth_namemap), arg);
-	if (id < 0) {
-		RTE_LOG(ERR, USER1, "invalid authentication algorithm specified"
-				"\n");
+	if (rte_cryptodev_get_auth_algo_enum(&auth_algo, arg) < 0) {
+		RTE_LOG(ERR, USER1, "Invalid authentication algorithm specified\n");
 		return -1;
 	}
 
-	opts->auth_algo = (enum rte_crypto_auth_algorithm)id;
+	opts->auth_algo = auth_algo;
 
 	return 0;
 }
