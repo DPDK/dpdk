@@ -234,6 +234,36 @@ rte_cryptodev_sym_capability_check_auth(
 		const struct rte_cryptodev_symmetric_capability *capability,
 		uint16_t key_size, uint16_t digest_size, uint16_t aad_size);
 
+/**
+ * Provide the cipher algorithm enum, given an algorithm string
+ *
+ * @param	algo_enum	A pointer to the cipher algorithm
+ *				enum to be filled
+ * @param	algo_string	Authentication algo string
+ *
+ * @return
+ * - Return -1 if string is not valid
+ * - Return 0 is the string is valid
+ */
+int
+rte_cryptodev_get_cipher_algo_enum(enum rte_crypto_cipher_algorithm *algo_enum,
+		const char *algo_string);
+
+/**
+ * Provide the authentication algorithm enum, given an algorithm string
+ *
+ * @param	algo_enum	A pointer to the authentication algorithm
+ *				enum to be filled
+ * @param	algo_string	Authentication algo string
+ *
+ * @return
+ * - Return -1 if string is not valid
+ * - Return 0 is the string is valid
+ */
+int
+rte_cryptodev_get_auth_algo_enum(enum rte_crypto_auth_algorithm *algo_enum,
+		const char *algo_string);
+
 /** Macro used at end of crypto PMD list */
 #define RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST() \
 	{ RTE_CRYPTO_OP_TYPE_UNDEFINED }

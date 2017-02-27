@@ -187,6 +187,40 @@ rte_crypto_auth_algorithm_strings[] = {
 	[RTE_CRYPTO_AUTH_ZUC_EIA3]	= "zuc-eia3"
 };
 
+int
+rte_cryptodev_get_cipher_algo_enum(enum rte_crypto_cipher_algorithm *algo_enum,
+		const char *algo_string)
+{
+	unsigned int i;
+
+	for (i = 1; i < RTE_DIM(rte_crypto_cipher_algorithm_strings); i++) {
+		if (strcmp(algo_string, rte_crypto_cipher_algorithm_strings[i]) == 0) {
+			*algo_enum = (enum rte_crypto_cipher_algorithm) i;
+			return 0;
+		}
+	}
+
+	/* Invalid string */
+	return -1;
+}
+
+int
+rte_cryptodev_get_auth_algo_enum(enum rte_crypto_auth_algorithm *algo_enum,
+		const char *algo_string)
+{
+	unsigned int i;
+
+	for (i = 1; i < RTE_DIM(rte_crypto_auth_algorithm_strings); i++) {
+		if (strcmp(algo_string, rte_crypto_auth_algorithm_strings[i]) == 0) {
+			*algo_enum = (enum rte_crypto_auth_algorithm) i;
+			return 0;
+		}
+	}
+
+	/* Invalid string */
+	return -1;
+}
+
 /**
  * The crypto auth operation strings identifiers.
  * It could be used in application command line.

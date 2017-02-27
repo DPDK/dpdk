@@ -64,3 +64,11 @@ DPDK_17.02 {
 	rte_crypto_cipher_operation_strings;
 
 } DPDK_16.11;
+
+DPDK_17.05 {
+	global:
+
+	rte_cryptodev_get_auth_algo_enum;
+	rte_cryptodev_get_cipher_algo_enum;
+
+} DPDK_17.02;
