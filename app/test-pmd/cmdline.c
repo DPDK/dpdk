@@ -5443,7 +5443,7 @@ cmd_link_flow_ctrl_set_parsed(void *parsed_result,
 		printf("bad flow contrl parameter, return code = %d \n", ret);
 }
 
-/* *** SETUP ETHERNET PIRORITY FLOW CONTROL *** */
+/* *** SETUP ETHERNET PRIORITY FLOW CONTROL *** */
 struct cmd_priority_flow_ctrl_set_result {
 	cmdline_fixed_string_t set;
 	cmdline_fixed_string_t pfc_ctrl;
@@ -7497,7 +7497,7 @@ cmdline_parse_inst_t cmd_set_mirror_mask = {
 		},
 };
 
-/* *** CONFIGURE VM MIRROR UDLINK/DOWNLINK RULE *** */
+/* *** CONFIGURE VM MIRROR UPLINK/DOWNLINK RULE *** */
 struct cmd_set_mirror_link_result {
 	cmdline_fixed_string_t set;
 	cmdline_fixed_string_t port;

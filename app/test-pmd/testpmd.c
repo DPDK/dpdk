@@ -111,7 +111,7 @@ uint8_t mp_anon = 0;
 /*
  * Record the Ethernet address of peer target ports to which packets are
  * forwarded.
- * Must be instanciated with the ethernet addresses of peer traffic generator
+ * Must be instantiated with the ethernet addresses of peer traffic generator
  * ports.
  */
 struct ether_addr peer_eth_addrs[RTE_MAX_ETHPORTS];
@@ -1913,7 +1913,7 @@ get_eth_dcb_conf(struct rte_eth_conf *eth_conf,
 		struct rte_eth_vmdq_dcb_tx_conf *vmdq_tx_conf =
 				&eth_conf->tx_adv_conf.vmdq_dcb_tx_conf;
 
-		/* VMDQ+DCB RX and TX configrations */
+		/* VMDQ+DCB RX and TX configurations */
 		vmdq_rx_conf->enable_default_pool = 0;
 		vmdq_rx_conf->default_pool = 0;
 		vmdq_rx_conf->nb_queue_pools =

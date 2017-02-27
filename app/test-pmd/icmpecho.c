@@ -200,7 +200,7 @@ ip_proto_name(uint16_t ip_proto)
 		"OSPFIGP",    /**< OSPFIGP */
 
 		"SRPC",       /**< Strite RPC protocol */
-		"LARP",       /**< Locus Address Resoloution */
+		"LARP",       /**< Locus Address Resolution */
 		"MTP",        /**< Multicast Transport */
 		"AX25",       /**< AX.25 Frames */
 		"4IN4",       /**< IP encapsulated in IP */
@@ -297,7 +297,7 @@ ipv4_hdr_cksum(struct ipv4_hdr *ip_h)
 	(((rte_be_to_cpu_32((ipv4_addr)) >> 24) & 0x000000FF) == 0xE0)
 
 /*
- * Receive a burst of packets, lookup for ICMP echo requets, and, if any,
+ * Receive a burst of packets, lookup for ICMP echo requests, and, if any,
  * send back ICMP echo replies.
  */
 static void
