@@ -4191,9 +4191,8 @@ ixgbe_dev_mq_rx_configure(struct rte_eth_dev *dev)
 			break;
 		}
 	} else {
-		/*
-		 * SRIOV active scheme
-		 * Support RSS together with VMDq & SRIOV
+		/* SRIOV active scheme
+		 * Support RSS together with SRIOV.
 		 */
 		switch (dev->data->dev_conf.rxmode.mq_mode) {
 		case ETH_MQ_RX_RSS:
@@ -4201,10 +4200,13 @@ ixgbe_dev_mq_rx_configure(struct rte_eth_dev *dev)
 			ixgbe_config_vf_rss(dev);
 			break;
 		case ETH_MQ_RX_VMDQ_DCB:
+		case ETH_MQ_RX_DCB:
+		/* In SRIOV, the configuration is the same as VMDq case */
 			ixgbe_vmdq_dcb_configure(dev);
 			break;
-		/* FIXME if support DCB/RSS together with VMDq & SRIOV */
+		/* DCB/RSS together with SRIOV is not supported */
 		case ETH_MQ_RX_VMDQ_DCB_RSS:
+		case ETH_MQ_RX_DCB_RSS:
 			PMD_INIT_LOG(ERR,
 				"Could not support DCB/RSS with VMDq & SRIOV");
 			return -1;
