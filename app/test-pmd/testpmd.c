@@ -1933,9 +1933,9 @@ get_eth_dcb_conf(struct rte_eth_conf *eth_conf,
 		rx_conf->nb_tcs = num_tcs;
 		tx_conf->nb_tcs = num_tcs;
 
-		for (i = 0; i < num_tcs; i++) {
-			rx_conf->dcb_tc[i] = i;
-			tx_conf->dcb_tc[i] = i;
+		for (i = 0; i < ETH_DCB_NUM_USER_PRIORITIES; i++) {
+			rx_conf->dcb_tc[i] = i % num_tcs;
+			tx_conf->dcb_tc[i] = i % num_tcs;
 		}
 		eth_conf->rxmode.mq_mode = ETH_MQ_RX_DCB_RSS;
 		eth_conf->rx_adv_conf.rss_conf.rss_hf = rss_hf;
