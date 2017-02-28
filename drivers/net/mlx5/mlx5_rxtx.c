@@ -1507,7 +1507,7 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			}
 			if (rxq->mark &&
 			    ((cqe->sop_drop_qpn !=
-			      htonl(MLX5_FLOW_MARK_INVALID)) ||
+			      htonl(MLX5_FLOW_MARK_INVALID)) &&
 			     (cqe->sop_drop_qpn !=
 			      htonl(MLX5_FLOW_MARK_DEFAULT)))) {
 				pkt->hash.fdir.hi =
