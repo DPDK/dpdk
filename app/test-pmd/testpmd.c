@@ -1835,22 +1835,11 @@ init_port_config(void)
 			port->dev_conf.rx_adv_conf.rss_conf.rss_hf = 0;
 		}
 
-		if (port->dcb_flag == 0 && port->dev_info.max_vfs == 0) {
+		if (port->dcb_flag == 0) {
 			if( port->dev_conf.rx_adv_conf.rss_conf.rss_hf != 0)
 				port->dev_conf.rxmode.mq_mode = ETH_MQ_RX_RSS;
 			else
 				port->dev_conf.rxmode.mq_mode = ETH_MQ_RX_NONE;
-		}
-
-		if (port->dev_info.max_vfs != 0) {
-			if (port->dev_conf.rx_adv_conf.rss_conf.rss_hf != 0)
-				port->dev_conf.rxmode.mq_mode =
-					ETH_MQ_RX_VMDQ_RSS;
-			else
-				port->dev_conf.rxmode.mq_mode =
-					ETH_MQ_RX_NONE;
-
-			port->dev_conf.txmode.mq_mode = ETH_MQ_TX_NONE;
 		}
 
 		rxtx_port_config(port);
