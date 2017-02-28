@@ -405,6 +405,29 @@ i40e_pf_host_hmc_config_rxq(struct i40e_hw *hw,
 	return err;
 }
 
+static inline uint8_t
+i40e_vsi_get_tc_of_queue(struct i40e_vsi *vsi,
+		uint16_t queue_id)
+{
+	struct i40e_aqc_vsi_properties_data *info = &vsi->info;
+	uint16_t bsf, qp_idx;
+	uint8_t i;
+
+	for (i = 0; i < I40E_MAX_TRAFFIC_CLASS; i++) {
+		if (vsi->enabled_tc & (1 << i)) {
+			qp_idx = rte_le_to_cpu_16((info->tc_mapping[i] &
+				I40E_AQ_VSI_TC_QUE_OFFSET_MASK) >>
+				I40E_AQ_VSI_TC_QUE_OFFSET_SHIFT);
+			bsf = rte_le_to_cpu_16((info->tc_mapping[i] &
+				I40E_AQ_VSI_TC_QUE_NUMBER_MASK) >>
+				I40E_AQ_VSI_TC_QUE_NUMBER_SHIFT);
+			if (queue_id >= qp_idx && queue_id < qp_idx + (1 << bsf))
+				return i;
+		}
+	}
+	return 0;
+}
+
 static int
 i40e_pf_host_hmc_config_txq(struct i40e_hw *hw,
 			    struct i40e_pf_vf *vf,
@@ -412,15 +435,17 @@ i40e_pf_host_hmc_config_txq(struct i40e_hw *hw,
 {
 	int err = I40E_SUCCESS;
 	struct i40e_hmc_obj_txq tx_ctx;
+	struct i40e_vsi *vsi = vf->vsi;
 	uint32_t qtx_ctl;
-	uint16_t abs_queue_id = vf->vsi->base_queue + txq->queue_id;
-
+	uint16_t abs_queue_id = vsi->base_queue + txq->queue_id;
+	uint8_t dcb_tc;
 
 	/* clear the context structure first */
 	memset(&tx_ctx, 0, sizeof(tx_ctx));
 	tx_ctx.base = txq->dma_ring_addr / I40E_QUEUE_BASE_ADDR_UNIT;
 	tx_ctx.qlen = txq->ring_len;
-	tx_ctx.rdylist = rte_le_to_cpu_16(vf->vsi->info.qs_handle[0]);
+	dcb_tc = i40e_vsi_get_tc_of_queue(vsi, txq->queue_id);
+	tx_ctx.rdylist = rte_le_to_cpu_16(vsi->info.qs_handle[dcb_tc]);
 	tx_ctx.head_wb_ena = txq->headwb_enabled;
 	tx_ctx.head_wb_addr = txq->dma_headwb_addr;
 
@@ -1351,6 +1376,7 @@ i40e_pf_host_init(struct rte_eth_dev *dev)
 			goto fail;
 	}
 
+	RTE_ETH_DEV_SRIOV(dev).active = pf->vf_num;
 	/* restore irq0 */
 	i40e_pf_enable_irq0(hw);
 

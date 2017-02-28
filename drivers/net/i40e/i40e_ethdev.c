@@ -1243,6 +1243,15 @@ eth_i40e_dev_init(struct rte_eth_dev *dev)
 	ether_addr_copy((struct ether_addr *)hw->mac.perm_addr,
 					&dev->data->mac_addrs[0]);
 
+	/* Init dcb to sw mode by default */
+	ret = i40e_dcb_init_configure(dev, TRUE);
+	if (ret != I40E_SUCCESS) {
+		PMD_INIT_LOG(INFO, "Failed to init dcb.");
+		pf->flags &= ~I40E_FLAG_DCB;
+	}
+	/* Update HW struct after DCB configuration */
+	i40e_get_cap(hw);
+
 	/* initialize pf host driver to setup SRIOV resource if applicable */
 	i40e_pf_host_init(dev);
 
@@ -1270,13 +1279,6 @@ eth_i40e_dev_init(struct rte_eth_dev *dev)
 
 	/* initialize mirror rule list */
 	TAILQ_INIT(&pf->mirror_list);
-
-	/* Init dcb to sw mode by default */
-	ret = i40e_dcb_init_configure(dev, TRUE);
-	if (ret != I40E_SUCCESS) {
-		PMD_INIT_LOG(INFO, "Failed to init dcb.");
-		pf->flags &= ~I40E_FLAG_DCB;
-	}
 
 	ret = i40e_init_ethtype_filter_list(dev);
 	if (ret < 0)
@@ -4844,13 +4846,14 @@ i40e_vsi_setup(struct i40e_pf *pf,
 			rte_cpu_to_le_16(I40E_AQ_VSI_PROP_VLAN_VALID);
 		ctxt.info.port_vlan_flags |= I40E_AQ_VSI_PVLAN_MODE_ALL;
 		ret = i40e_vsi_config_tc_queue_mapping(vsi, &ctxt.info,
-						I40E_DEFAULT_TCMAP);
+						hw->func_caps.enabled_tcmap);
 		if (ret != I40E_SUCCESS) {
 			PMD_DRV_LOG(ERR,
 				"Failed to configure TC queue mapping");
 			goto fail_msix_alloc;
 		}
-		ctxt.info.up_enable_bits = I40E_DEFAULT_TCMAP;
+
+		ctxt.info.up_enable_bits = hw->func_caps.enabled_tcmap;
 		ctxt.info.valid_sections |=
 			rte_cpu_to_le_16(I40E_AQ_VSI_PROP_SCHED_VALID);
 		/**
@@ -9872,7 +9875,7 @@ i40e_dcb_init_configure(struct rte_eth_dev *dev, bool sw_dcb)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	int ret = 0;
+	int i, ret = 0;
 
 	if ((pf->flags & I40E_FLAG_DCB) == 0) {
 		PMD_INIT_LOG(ERR, "HW doesn't support DCB");
@@ -9899,11 +9902,16 @@ i40e_dcb_init_configure(struct rte_eth_dev *dev, bool sw_dcb)
 			hw->local_dcbx_config.etscfg.tcbwtable[0] = 100;
 			hw->local_dcbx_config.etscfg.tsatable[0] =
 						I40E_IEEE_TSA_ETS;
+			/* all UPs mapping to TC0 */
+			for (i = 0; i < I40E_MAX_USER_PRIORITY; i++)
+				hw->local_dcbx_config.etscfg.prioritytable[i] = 0;
 			hw->local_dcbx_config.etsrec =
 				hw->local_dcbx_config.etscfg;
 			hw->local_dcbx_config.pfc.willing = 0;
 			hw->local_dcbx_config.pfc.pfccap =
 						I40E_MAX_TRAFFIC_CLASS;
+			hw->local_dcbx_config.pfc.pfcenable =
+						I40E_DEFAULT_TCMAP;
 			/* FW needs one App to configure HW */
 			hw->local_dcbx_config.numapps = 1;
 			hw->local_dcbx_config.app[0].selector =
