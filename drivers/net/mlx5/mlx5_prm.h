@@ -227,9 +227,11 @@ mlx5_flow_mark_set(uint32_t val)
 
 	/*
 	 * Add one to the user value to differentiate un-marked flows from
-	 * marked flows.
+	 * marked flows, if the ID is equal to MLX5_FLOW_MARK_DEFAULT it
+	 * remains untouched.
 	 */
-	++val;
+	if (val != MLX5_FLOW_MARK_DEFAULT)
+		++val;
 #if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
 	/*
 	 * Mark is 24 bits (minus reserved values) but is stored on a 32 bit
@@ -241,7 +243,6 @@ mlx5_flow_mark_set(uint32_t val)
 #else
 	ret = val;
 #endif
-	assert(ret <= MLX5_FLOW_MARK_MAX);
 	return ret;
 }
 

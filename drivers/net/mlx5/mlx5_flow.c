@@ -146,6 +146,7 @@ static const enum rte_flow_action_type valid_actions[] = {
 	RTE_FLOW_ACTION_TYPE_DROP,
 	RTE_FLOW_ACTION_TYPE_QUEUE,
 	RTE_FLOW_ACTION_TYPE_MARK,
+	RTE_FLOW_ACTION_TYPE_FLAG,
 	RTE_FLOW_ACTION_TYPE_END,
 };
 
@@ -475,6 +476,8 @@ priv_flow_validate(struct priv *priv,
 						   " and 16777199");
 				return -rte_errno;
 			}
+			action.mark = 1;
+		} else if (actions->type == RTE_FLOW_ACTION_TYPE_FLAG) {
 			action.mark = 1;
 		} else {
 			goto exit_action_not_supported;
@@ -1061,6 +1064,8 @@ priv_flow_create(struct priv *priv,
 			if (mark)
 				action.mark_id = mark->id;
 			action.mark = !action.drop;
+		} else if (actions->type == RTE_FLOW_ACTION_TYPE_FLAG) {
+			action.mark = 1;
 		} else {
 			rte_flow_error_set(error, ENOTSUP,
 					   RTE_FLOW_ERROR_TYPE_ACTION,
