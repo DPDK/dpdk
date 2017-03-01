@@ -52,6 +52,9 @@
 #include "mlx5.h"
 #include "mlx5_prm.h"
 
+/* Number of Work Queue necessary for the DROP queue. */
+#define MLX5_DROP_WQ_N 4
+
 static int
 mlx5_flow_create_eth(const struct rte_flow_item *item,
 		     const void *default_mask,
@@ -277,6 +280,14 @@ struct mlx5_flow {
 	unsigned int offset; /**< Offset in bytes in the ibv_attr buffer. */
 	uint32_t inner; /**< Set once VXLAN is encountered. */
 	uint64_t hash_fields; /**< Fields that participate in the hash. */
+};
+
+/** Structure for Drop queue. */
+struct rte_flow_drop {
+	struct ibv_exp_rwq_ind_table *ind_table; /**< Indirection table. */
+	struct ibv_qp *qp; /**< Verbs queue pair. */
+	struct ibv_exp_wq *wqs[MLX5_DROP_WQ_N]; /**< Verbs work queue. */
+	struct ibv_cq *cq; /**< Verbs completion queue. */
 };
 
 struct mlx5_flow_action {
@@ -948,70 +959,9 @@ priv_flow_create_action_queue_drop(struct priv *priv,
 				   NULL, "cannot allocate flow memory");
 		return NULL;
 	}
-	rte_flow->cq =
-		ibv_exp_create_cq(priv->ctx, 1, NULL, NULL, 0,
-				  &(struct ibv_exp_cq_init_attr){
-					  .comp_mask = 0,
-				  });
-	if (!rte_flow->cq) {
-		rte_flow_error_set(error, ENOMEM,
-				   RTE_FLOW_ERROR_TYPE_HANDLE,
-				   NULL, "cannot allocate CQ");
-		goto error;
-	}
-	rte_flow->wq = ibv_exp_create_wq(priv->ctx,
-					 &(struct ibv_exp_wq_init_attr){
-					 .wq_type = IBV_EXP_WQT_RQ,
-					 .max_recv_wr = 1,
-					 .max_recv_sge = 1,
-					 .pd = priv->pd,
-					 .cq = rte_flow->cq,
-					 });
-	if (!rte_flow->wq) {
-		rte_flow_error_set(error, ENOMEM,
-				   RTE_FLOW_ERROR_TYPE_HANDLE,
-				   NULL, "cannot allocate WQ");
-		goto error;
-	}
 	rte_flow->drop = 1;
 	rte_flow->ibv_attr = flow->ibv_attr;
-	rte_flow->ind_table = ibv_exp_create_rwq_ind_table(
-		priv->ctx,
-		&(struct ibv_exp_rwq_ind_table_init_attr){
-			.pd = priv->pd,
-			.log_ind_tbl_size = 0,
-			.ind_tbl = &rte_flow->wq,
-			.comp_mask = 0,
-		});
-	if (!rte_flow->ind_table) {
-		rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
-				   NULL, "cannot allocate indirection table");
-		goto error;
-	}
-	rte_flow->qp = ibv_exp_create_qp(
-		priv->ctx,
-		&(struct ibv_exp_qp_init_attr){
-			.qp_type = IBV_QPT_RAW_PACKET,
-			.comp_mask =
-				IBV_EXP_QP_INIT_ATTR_PD |
-				IBV_EXP_QP_INIT_ATTR_PORT |
-				IBV_EXP_QP_INIT_ATTR_RX_HASH,
-			.pd = priv->pd,
-			.rx_hash_conf = &(struct ibv_exp_rx_hash_conf){
-				.rx_hash_function =
-					IBV_EXP_RX_HASH_FUNC_TOEPLITZ,
-				.rx_hash_key_len = rss_hash_default_key_len,
-				.rx_hash_key = rss_hash_default_key,
-				.rx_hash_fields_mask = 0,
-				.rwq_ind_tbl = rte_flow->ind_table,
-			},
-			.port_num = priv->port,
-		});
-	if (!rte_flow->qp) {
-		rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
-				   NULL, "cannot allocate QP");
-		goto error;
-	}
+	rte_flow->qp = priv->flow_drop_queue->qp;
 	if (!priv->started)
 		return rte_flow;
 	rte_flow->ibv_flow = ibv_exp_create_flow(rte_flow->qp,
@@ -1024,14 +974,6 @@ priv_flow_create_action_queue_drop(struct priv *priv,
 	return rte_flow;
 error:
 	assert(rte_flow);
-	if (rte_flow->qp)
-		ibv_destroy_qp(rte_flow->qp);
-	if (rte_flow->ind_table)
-		ibv_exp_destroy_rwq_ind_table(rte_flow->ind_table);
-	if (rte_flow->wq)
-		ibv_exp_destroy_wq(rte_flow->wq);
-	if (rte_flow->cq)
-		ibv_destroy_cq(rte_flow->cq);
 	rte_free(rte_flow);
 	return NULL;
 }
@@ -1309,6 +1251,8 @@ priv_flow_destroy(struct priv *priv,
 	LIST_REMOVE(flow, next);
 	if (flow->ibv_flow)
 		claim_zero(ibv_exp_destroy_flow(flow->ibv_flow));
+	if (flow->drop)
+		goto free;
 	if (flow->qp)
 		claim_zero(ibv_destroy_qp(flow->qp));
 	if (flow->ind_table)
@@ -1349,6 +1293,7 @@ priv_flow_destroy(struct priv *priv,
 			rxq->mark = !!mark_n;
 		}
 	}
+free:
 	rte_free(flow->ibv_attr);
 	DEBUG("Flow destroyed %p", (void *)flow);
 	rte_free(flow);
@@ -1411,6 +1356,125 @@ mlx5_flow_flush(struct rte_eth_dev *dev,
 }
 
 /**
+ * Create drop queue.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ *
+ * @return
+ *   0 on success.
+ */
+static int
+priv_flow_create_drop_queue(struct priv *priv)
+{
+	struct rte_flow_drop *fdq = NULL;
+	unsigned int i;
+
+	assert(priv->pd);
+	assert(priv->ctx);
+	fdq = rte_calloc(__func__, 1, sizeof(*fdq), 0);
+	if (!fdq) {
+		WARN("cannot allocate memory for drop queue");
+		goto error;
+	}
+	fdq->cq = ibv_exp_create_cq(priv->ctx, 1, NULL, NULL, 0,
+			&(struct ibv_exp_cq_init_attr){
+			.comp_mask = 0,
+			});
+	if (!fdq->cq) {
+		WARN("cannot allocate CQ for drop queue");
+		goto error;
+	}
+	for (i = 0; i != MLX5_DROP_WQ_N; ++i) {
+		fdq->wqs[i] = ibv_exp_create_wq(priv->ctx,
+				&(struct ibv_exp_wq_init_attr){
+				.wq_type = IBV_EXP_WQT_RQ,
+				.max_recv_wr = 1,
+				.max_recv_sge = 1,
+				.pd = priv->pd,
+				.cq = fdq->cq,
+				});
+		if (!fdq->wqs[i]) {
+			WARN("cannot allocate WQ for drop queue");
+			goto error;
+		}
+	}
+	fdq->ind_table = ibv_exp_create_rwq_ind_table(priv->ctx,
+			&(struct ibv_exp_rwq_ind_table_init_attr){
+			.pd = priv->pd,
+			.log_ind_tbl_size = 0,
+			.ind_tbl = fdq->wqs,
+			.comp_mask = 0,
+			});
+	if (!fdq->ind_table) {
+		WARN("cannot allocate indirection table for drop queue");
+		goto error;
+	}
+	fdq->qp = ibv_exp_create_qp(priv->ctx,
+		&(struct ibv_exp_qp_init_attr){
+			.qp_type = IBV_QPT_RAW_PACKET,
+			.comp_mask =
+				IBV_EXP_QP_INIT_ATTR_PD |
+				IBV_EXP_QP_INIT_ATTR_PORT |
+				IBV_EXP_QP_INIT_ATTR_RX_HASH,
+			.pd = priv->pd,
+			.rx_hash_conf = &(struct ibv_exp_rx_hash_conf){
+				.rx_hash_function =
+					IBV_EXP_RX_HASH_FUNC_TOEPLITZ,
+				.rx_hash_key_len = rss_hash_default_key_len,
+				.rx_hash_key = rss_hash_default_key,
+				.rx_hash_fields_mask = 0,
+				.rwq_ind_tbl = fdq->ind_table,
+				},
+			.port_num = priv->port,
+			});
+	if (!fdq->qp) {
+		WARN("cannot allocate QP for drop queue");
+		goto error;
+	}
+	priv->flow_drop_queue = fdq;
+	return 0;
+error:
+	if (fdq->qp)
+		claim_zero(ibv_destroy_qp(fdq->qp));
+	if (fdq->ind_table)
+		claim_zero(ibv_exp_destroy_rwq_ind_table(fdq->ind_table));
+	for (i = 0; i != MLX5_DROP_WQ_N; ++i) {
+		if (fdq->wqs[i])
+			claim_zero(ibv_exp_destroy_wq(fdq->wqs[i]));
+	}
+	if (fdq->cq)
+		claim_zero(ibv_destroy_cq(fdq->cq));
+	if (fdq)
+		rte_free(fdq);
+	priv->flow_drop_queue = NULL;
+	return -1;
+}
+
+/**
+ * Delete drop queue.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ */
+static void
+priv_flow_delete_drop_queue(struct priv *priv)
+{
+	struct rte_flow_drop *fdq = priv->flow_drop_queue;
+	unsigned int i;
+
+	claim_zero(ibv_destroy_qp(fdq->qp));
+	claim_zero(ibv_exp_destroy_rwq_ind_table(fdq->ind_table));
+	for (i = 0; i != MLX5_DROP_WQ_N; ++i) {
+		assert(fdq->wqs[i]);
+		claim_zero(ibv_exp_destroy_wq(fdq->wqs[i]));
+	}
+	claim_zero(ibv_destroy_cq(fdq->cq));
+	rte_free(fdq);
+	priv->flow_drop_queue = NULL;
+}
+
+/**
  * Remove all flows.
  *
  * Called by dev_stop() to remove all flows.
@@ -1436,6 +1500,7 @@ priv_flow_stop(struct priv *priv)
 		}
 		DEBUG("Flow %p removed", (void *)flow);
 	}
+	priv_flow_delete_drop_queue(priv);
 }
 
 /**
@@ -1450,13 +1515,22 @@ priv_flow_stop(struct priv *priv)
 int
 priv_flow_start(struct priv *priv)
 {
+	int ret;
 	struct rte_flow *flow;
 
+	ret = priv_flow_create_drop_queue(priv);
+	if (ret)
+		return -1;
 	for (flow = LIST_FIRST(&priv->flows);
 	     flow;
 	     flow = LIST_NEXT(flow, next)) {
-		flow->ibv_flow = ibv_exp_create_flow(flow->qp,
-						     flow->ibv_attr);
+		struct ibv_qp *qp;
+
+		if (flow->drop)
+			qp = priv->flow_drop_queue->qp;
+		else
+			qp = flow->qp;
+		flow->ibv_flow = ibv_exp_create_flow(qp, flow->ibv_attr);
 		if (!flow->ibv_flow) {
 			DEBUG("Flow %p cannot be applied", (void *)flow);
 			rte_errno = EINVAL;

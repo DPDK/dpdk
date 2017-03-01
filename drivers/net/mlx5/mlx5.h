@@ -148,6 +148,7 @@ struct priv {
 	unsigned int reta_idx_n; /* RETA index size. */
 	struct fdir_filter_list *fdir_filter_list; /* Flow director rules. */
 	struct fdir_queue *fdir_drop_queue; /* Flow director drop queue. */
+	struct rte_flow_drop *flow_drop_queue; /* Flow drop queue. */
 	LIST_HEAD(mlx5_flows, rte_flow) flows; /* RTE Flow rules. */
 	uint32_t link_speed_capa; /* Link speed capabilities. */
 	struct mlx5_xstats_ctrl xstats_ctrl; /* Extended stats control. */
