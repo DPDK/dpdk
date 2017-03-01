@@ -974,7 +974,6 @@ error:
 		ibv_exp_destroy_wq(rte_flow->wq);
 	if (!rte_flow->rxq && rte_flow->cq)
 		ibv_destroy_cq(rte_flow->cq);
-	rte_free(rte_flow->ibv_attr);
 	rte_free(rte_flow);
 	return NULL;
 }
@@ -1068,6 +1067,8 @@ priv_flow_create(struct priv *priv,
 	}
 	rte_flow = priv_flow_create_action_queue(priv, flow.ibv_attr,
 						 &action, error);
+	if (!rte_flow)
+		goto exit;
 	return rte_flow;
 exit:
 	rte_free(flow.ibv_attr);
