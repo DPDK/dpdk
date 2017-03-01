@@ -217,12 +217,15 @@ static const struct mlx5_flow_items mlx5_flow_items[] = {
 					0xff, 0xff, 0xff, 0xff,
 					0xff, 0xff, 0xff, 0xff,
 				},
+				.vtc_flow = -1,
+				.proto = -1,
+				.hop_limits = -1,
 			},
 		},
 		.default_mask = &rte_flow_item_ipv6_mask,
 		.mask_sz = sizeof(struct rte_flow_item_ipv6),
 		.convert = mlx5_flow_create_ipv6,
-		.dst_sz = sizeof(struct ibv_exp_flow_spec_ipv6),
+		.dst_sz = sizeof(struct ibv_exp_flow_spec_ipv6_ext),
 	},
 	[RTE_FLOW_ITEM_TYPE_UDP] = {
 		.items = ITEMS(RTE_FLOW_ITEM_TYPE_VXLAN),
@@ -668,15 +671,14 @@ mlx5_flow_create_ipv6(const struct rte_flow_item *item,
 	const struct rte_flow_item_ipv6 *spec = item->spec;
 	const struct rte_flow_item_ipv6 *mask = item->mask;
 	struct mlx5_flow *flow = (struct mlx5_flow *)data;
-	struct ibv_exp_flow_spec_ipv6 *ipv6;
-	unsigned int ipv6_size = sizeof(struct ibv_exp_flow_spec_ipv6);
-	unsigned int i;
+	struct ibv_exp_flow_spec_ipv6_ext *ipv6;
+	unsigned int ipv6_size = sizeof(struct ibv_exp_flow_spec_ipv6_ext);
 
 	++flow->ibv_attr->num_of_specs;
 	flow->ibv_attr->priority = 1;
 	ipv6 = (void *)((uintptr_t)flow->ibv_attr + flow->offset);
-	*ipv6 = (struct ibv_exp_flow_spec_ipv6) {
-		.type = flow->inner | IBV_EXP_FLOW_SPEC_IPV6,
+	*ipv6 = (struct ibv_exp_flow_spec_ipv6_ext) {
+		.type = flow->inner | IBV_EXP_FLOW_SPEC_IPV6_EXT,
 		.size = ipv6_size,
 	};
 	if (!spec)
@@ -691,11 +693,12 @@ mlx5_flow_create_ipv6(const struct rte_flow_item *item,
 	       RTE_DIM(ipv6->mask.src_ip));
 	memcpy(ipv6->mask.dst_ip, mask->hdr.dst_addr,
 	       RTE_DIM(ipv6->mask.dst_ip));
-	/* Remove unwanted bits from values. */
-	for (i = 0; i < RTE_DIM(ipv6->val.src_ip); ++i) {
-		ipv6->val.src_ip[i] &= ipv6->mask.src_ip[i];
-		ipv6->val.dst_ip[i] &= ipv6->mask.dst_ip[i];
-	}
+	ipv6->mask.flow_label = mask->hdr.vtc_flow;
+	ipv6->mask.next_hdr = mask->hdr.proto;
+	ipv6->mask.hop_limit = mask->hdr.hop_limits;
+	ipv6->val.flow_label &= ipv6->mask.flow_label;
+	ipv6->val.next_hdr &= ipv6->mask.next_hdr;
+	ipv6->val.hop_limit &= ipv6->mask.hop_limit;
 	return 0;
 }
 
