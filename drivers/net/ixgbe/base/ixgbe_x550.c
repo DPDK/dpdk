@@ -4005,6 +4005,9 @@ s32 ixgbe_setup_fc_X550em(struct ixgbe_hw *hw)
 		/* This device does not fully support AN. */
 		hw->fc.disable_fc_autoneg = true;
 		break;
+	case IXGBE_DEV_ID_X550EM_X_XFI:
+		hw->fc.disable_fc_autoneg = true;
+		break;
 	default:
 		break;
 	}
