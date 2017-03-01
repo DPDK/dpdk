@@ -495,7 +495,7 @@ s32 ixgbe_init_hw_generic(struct ixgbe_hw *hw)
 	/* Reset the hardware */
 	status = hw->mac.ops.reset_hw(hw);
 
-	if (status == IXGBE_SUCCESS) {
+	if (status == IXGBE_SUCCESS || status == IXGBE_ERR_SFP_NOT_PRESENT) {
 		/* Start the HW */
 		status = hw->mac.ops.start_hw(hw);
 	}
