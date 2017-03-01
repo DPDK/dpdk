@@ -902,6 +902,12 @@ priv_flow_create_action_queue(struct priv *priv,
 						 .pd = priv->pd,
 						 .cq = rte_flow->cq,
 						 });
+		if (!rte_flow->wq) {
+			rte_flow_error_set(error, ENOMEM,
+					   RTE_FLOW_ERROR_TYPE_HANDLE,
+					   NULL, "cannot allocate WQ");
+			goto error;
+		}
 	} else {
 		rxq = container_of((*priv->rxqs)[action->queue_id],
 				   struct rxq_ctrl, rxq);
