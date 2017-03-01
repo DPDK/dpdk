@@ -2519,7 +2519,7 @@ s32 ixgbe_reset_hw_X550em(struct ixgbe_hw *hw)
 			  status);
 
 	if (status == IXGBE_ERR_SFP_NOT_SUPPORTED) {
-		DEBUGOUT("Returning from reset HW since PHY ops init returned IXGBE_ERR_SFP_NOT_SUPPORTED\n");
+		DEBUGOUT("Returning from reset HW due to PHY init failure\n");
 		return status;
 	}
 
