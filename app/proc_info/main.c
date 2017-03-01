@@ -40,6 +40,7 @@
 #include <sys/queue.h>
 #include <stdlib.h>
 #include <getopt.h>
+#include <unistd.h>
 
 #include <rte_eal.h>
 #include <rte_common.h>
@@ -62,12 +63,20 @@
 #define MAX_LONG_OPT_SZ 64
 #define RTE_LOGTYPE_APP RTE_LOGTYPE_USER1
 
+#define MAX_STRING_LEN 256
+
 /**< mask of enabled ports */
 static uint32_t enabled_port_mask;
 /**< Enable stats. */
 static uint32_t enable_stats;
 /**< Enable xstats. */
 static uint32_t enable_xstats;
+/**< Enable collectd format*/
+static uint32_t enable_collectd_format;
+/**< FD to send collectd format messages to STDOUT*/
+static int stdout_fd;
+/**< Host id process is running on */
+static char host_id[MAX_LONG_OPT_SZ];
 /**< Enable stats reset. */
 static uint32_t reset_stats;
 /**< Enable xstats reset. */
@@ -86,7 +95,9 @@ proc_info_usage(const char *prgname)
 		"  --xstats: to display extended port statistics, disabled by "
 			"default\n"
 		"  --stats-reset: to reset port statistics\n"
-		"  --xstats-reset: to reset port extended statistics\n",
+		"  --xstats-reset: to reset port extended statistics\n"
+		"  --collectd-format: to print statistics to STDOUT in expected by collectd format\n"
+		"  --host-id STRING: host id used to identify the system process is running on\n",
 		prgname);
 }
 
@@ -116,6 +127,39 @@ parse_portmask(const char *portmask)
 
 }
 
+static int
+proc_info_preparse_args(int argc, char **argv)
+{
+	char *prgname = argv[0];
+	int i;
+
+	for (i = 0; i < argc; i++) {
+		/* Print stats or xstats to STDOUT in collectd format */
+		if (!strncmp(argv[i], "--collectd-format", MAX_LONG_OPT_SZ)) {
+			enable_collectd_format = 1;
+			stdout_fd = dup(STDOUT_FILENO);
+			close(STDOUT_FILENO);
+		}
+		if (!strncmp(argv[i], "--host-id", MAX_LONG_OPT_SZ)) {
+			if ((i + 1) == argc) {
+				printf("Invalid host id or not specified\n");
+				proc_info_usage(prgname);
+				return -1;
+			}
+			strncpy(host_id, argv[i+1], sizeof(host_id));
+		}
+	}
+
+	if (!strlen(host_id)) {
+		int err = gethostname(host_id, MAX_LONG_OPT_SZ-1);
+
+		if (err)
+			strcpy(host_id, "unknown");
+	}
+
+	return 0;
+}
+
 /* Parse the argument given in the command line of the application */
 static int
 proc_info_parse_args(int argc, char **argv)
@@ -128,6 +172,8 @@ proc_info_parse_args(int argc, char **argv)
 		{"stats-reset", 0, NULL, 0},
 		{"xstats", 0, NULL, 0},
 		{"xstats-reset", 0, NULL, 0},
+		{"collectd-format", 0, NULL, 0},
+		{"host-id", 0, NULL, 0},
 		{NULL, 0, 0, 0}
 	};
 
@@ -240,6 +286,60 @@ nic_stats_clear(uint8_t port_id)
 	printf("\n  NIC statistics for port %d cleared\n", port_id);
 }
 
+static void collectd_resolve_cnt_type(char *cnt_type, size_t cnt_type_len,
+				      const char *cnt_name) {
+	char *type_end = strrchr(cnt_name, '_');
+
+	if ((type_end != NULL) &&
+	    (strncmp(cnt_name, "rx_", strlen("rx_")) == 0)) {
+		if (strncmp(type_end, "_errors", strlen("_errors")) == 0)
+			strncpy(cnt_type, "if_rx_errors", cnt_type_len);
+		else if (strncmp(type_end, "_dropped", strlen("_dropped")) == 0)
+			strncpy(cnt_type, "if_rx_dropped", cnt_type_len);
+		else if (strncmp(type_end, "_bytes", strlen("_bytes")) == 0)
+			strncpy(cnt_type, "if_rx_octets", cnt_type_len);
+		else if (strncmp(type_end, "_packets", strlen("_packets")) == 0)
+			strncpy(cnt_type, "if_rx_packets", cnt_type_len);
+		else if (strncmp(type_end, "_placement",
+				 strlen("_placement")) == 0)
+			strncpy(cnt_type, "if_rx_errors", cnt_type_len);
+		else if (strncmp(type_end, "_buff", strlen("_buff")) == 0)
+			strncpy(cnt_type, "if_rx_errors", cnt_type_len);
+		else
+			/* Does not fit obvious type: use a more generic one */
+			strncpy(cnt_type, "derive", cnt_type_len);
+	} else if ((type_end != NULL) &&
+		(strncmp(cnt_name, "tx_", strlen("tx_"))) == 0) {
+		if (strncmp(type_end, "_errors", strlen("_errors")) == 0)
+			strncpy(cnt_type, "if_tx_errors", cnt_type_len);
+		else if (strncmp(type_end, "_dropped", strlen("_dropped")) == 0)
+			strncpy(cnt_type, "if_tx_dropped", cnt_type_len);
+		else if (strncmp(type_end, "_bytes", strlen("_bytes")) == 0)
+			strncpy(cnt_type, "if_tx_octets", cnt_type_len);
+		else if (strncmp(type_end, "_packets", strlen("_packets")) == 0)
+			strncpy(cnt_type, "if_tx_packets", cnt_type_len);
+		else
+			/* Does not fit obvious type: use a more generic one */
+			strncpy(cnt_type, "derive", cnt_type_len);
+	} else if ((type_end != NULL) &&
+		   (strncmp(cnt_name, "flow_", strlen("flow_"))) == 0) {
+		if (strncmp(type_end, "_filters", strlen("_filters")) == 0)
+			strncpy(cnt_type, "operations", cnt_type_len);
+		else if (strncmp(type_end, "_errors", strlen("_errors")) == 0)
+			strncpy(cnt_type, "errors", cnt_type_len);
+		else if (strncmp(type_end, "_filters", strlen("_filters")) == 0)
+			strncpy(cnt_type, "filter_result", cnt_type_len);
+	} else if ((type_end != NULL) &&
+		   (strncmp(cnt_name, "mac_", strlen("mac_"))) == 0) {
+		if (strncmp(type_end, "_errors", strlen("_errors")) == 0)
+			strncpy(cnt_type, "errors", cnt_type_len);
+	} else {
+		/* Does not fit obvious type, or strrchr error: */
+		/* use a more generic type */
+		strncpy(cnt_type, "derive", cnt_type_len);
+	}
+}
+
 static void
 nic_xstats_display(uint8_t port_id)
 {
@@ -281,10 +381,23 @@ nic_xstats_display(uint8_t port_id)
 		goto err;
 	}
 
-	for (i = 0; i < len; i++)
-		printf("%s: %"PRIu64"\n",
-			xstats_names[i].name,
-			xstats[i].value);
+	for (i = 0; i < len; i++) {
+		if (enable_collectd_format) {
+			char counter_type[MAX_STRING_LEN];
+			char buf[MAX_STRING_LEN];
+
+			collectd_resolve_cnt_type(counter_type,
+						  sizeof(counter_type),
+						  xstats_names[i].name);
+			sprintf(buf, "PUTVAL %s/dpdkstat-port.%u/%s-%s N:%"
+				PRIu64"\n", host_id, port_id, counter_type,
+				xstats_names[i].name, xstats[i].value);
+			write(stdout_fd, buf, strlen(buf));
+		} else {
+			printf("%s: %"PRIu64"\n", xstats_names[i].name,
+			       xstats[i].value);
+		}
+	}
 
 	printf("%s############################\n",
 			   nic_stats_border);
@@ -311,6 +424,13 @@ main(int argc, char **argv)
 	char mp_flag[] = "--proc-type=secondary";
 	char *argp[argc + 3];
 	uint8_t nb_ports;
+
+	/* preparse app arguments */
+	ret = proc_info_preparse_args(argc, argv);
+	if (ret < 0) {
+		printf("Failed to parse arguments\n");
+		return -1;
+	}
 
 	argp[0] = argv[0];
 	argp[1] = c_flag;
