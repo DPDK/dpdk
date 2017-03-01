@@ -133,6 +133,31 @@ The macros exported are:
   fully qualified function ``p``, so that if a symbol becomes versioned, it
   can still be mapped back to the public symbol name.
 
+Setting a Major ABI version
+---------------------------
+
+Downstreams might want to provide different DPDK releases at the same time to
+support multiple consumers of DPDK linked against older and newer sonames.
+
+Also due to the interdependencies that DPDK libraries can have applications
+might end up with an executable space in which multiple versions of a library
+are mapped by ld.so.
+
+Think of LibA that got an ABI bump and LibB that did not get an ABI bump but is
+depending on LibA.
+
+.. note::
+
+    Application
+    \-> LibA.old
+    \-> LibB.new -> LibA.new
+
+That is a conflict which can be avoided by setting ``CONFIG_RTE_MAJOR_ABI``.
+If set, the value of ``CONFIG_RTE_MAJOR_ABI`` overwrites all - otherwise per
+library - versions defined in the libraries ``LIBABIVER``.
+An example might be ``CONFIG_RTE_MAJOR_ABI=16.11`` which will make all libraries
+``librte<?>.so.16.11`` instead of ``librte<?>.so.<LIBABIVER>``.
+
 Examples of ABI Macro use
 -------------------------
 
