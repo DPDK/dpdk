@@ -163,6 +163,7 @@ static const struct mlx5_flow_items mlx5_flow_items[] = {
 		.mask = &(const struct rte_flow_item_eth){
 			.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
 			.src.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+			.type = -1,
 		},
 		.default_mask = &rte_flow_item_eth_mask,
 		.mask_sz = sizeof(struct rte_flow_item_eth),
@@ -552,13 +553,16 @@ mlx5_flow_create_eth(const struct rte_flow_item *item,
 		mask = default_mask;
 	memcpy(eth->val.dst_mac, spec->dst.addr_bytes, ETHER_ADDR_LEN);
 	memcpy(eth->val.src_mac, spec->src.addr_bytes, ETHER_ADDR_LEN);
+	eth->val.ether_type = spec->type;
 	memcpy(eth->mask.dst_mac, mask->dst.addr_bytes, ETHER_ADDR_LEN);
 	memcpy(eth->mask.src_mac, mask->src.addr_bytes, ETHER_ADDR_LEN);
+	eth->mask.ether_type = mask->type;
 	/* Remove unwanted bits from values. */
 	for (i = 0; i < ETHER_ADDR_LEN; ++i) {
 		eth->val.dst_mac[i] &= eth->mask.dst_mac[i];
 		eth->val.src_mac[i] &= eth->mask.src_mac[i];
 	}
+	eth->val.ether_type &= eth->mask.ether_type;
 	return 0;
 }
 
