@@ -123,11 +123,10 @@ struct vhost_virtqueue {
  * code buildable for older kernel.
  */
 #ifdef VIRTIO_NET_F_MQ
- #define VHOST_MAX_QUEUE_PAIRS	VIRTIO_NET_CTRL_MQ_VQ_PAIRS_MAX
- #define VHOST_SUPPORTS_MQ	(1ULL << VIRTIO_NET_F_MQ)
+ #define VHOST_MAX_QUEUE_PAIRS		VIRTIO_NET_CTRL_MQ_VQ_PAIRS_MAX
 #else
- #define VHOST_MAX_QUEUE_PAIRS	1
- #define VHOST_SUPPORTS_MQ	0
+ #define VIRTIO_NET_F_MQ		22
+ #define VHOST_MAX_QUEUE_PAIRS		0x8000
 #endif
 
 /*
