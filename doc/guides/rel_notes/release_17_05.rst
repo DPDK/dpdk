@@ -67,6 +67,14 @@ New Features
 
   sPAPR IOMMU based pci probing enabled for vfio-pci devices.
 
+* **Updated the ixgbe base driver.**
+
+  Updated the ixgbe base driver, including the following changes:
+
+  * Add link block check for KR.
+  * Complete HW initialization even if SFP is not present.
+  * Add VF xcast promiscuous mode.
+
 * **Added powerpc support for i40e and its vector PMD .**
 
   i40e PMD and its vector PMD enabled by default in powerpc.
