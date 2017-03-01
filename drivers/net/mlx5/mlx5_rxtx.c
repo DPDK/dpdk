@@ -1512,7 +1512,6 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			      htonl(MLX5_FLOW_MARK_DEFAULT)))) {
 				pkt->hash.fdir.hi =
 					mlx5_flow_mark_get(cqe->sop_drop_qpn);
-				pkt->ol_flags &= ~PKT_RX_RSS_HASH;
 				pkt->ol_flags |= PKT_RX_FDIR | PKT_RX_FDIR_ID;
 			}
 			if (rxq->csum | rxq->csum_l2tun | rxq->vlan_strip |
