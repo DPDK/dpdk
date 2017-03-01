@@ -1900,7 +1900,7 @@ i40e_dev_rx_descriptor_done(void *rx_queue, uint16_t offset)
 	int ret;
 
 	if (unlikely(offset >= rxq->nb_rx_desc)) {
-		PMD_DRV_LOG(ERR, "Invalid RX queue id %u", offset);
+		PMD_DRV_LOG(ERR, "Invalid RX descriptor id %u", offset);
 		return 0;
 	}
 
