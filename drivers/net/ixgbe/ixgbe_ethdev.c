@@ -155,12 +155,6 @@
 #define IXGBE_QDE_STRIP_TAG                    0x00000004
 #define IXGBE_VTEICR_MASK                      0x07
 
-enum ixgbevf_xcast_modes {
-	IXGBEVF_XCAST_MODE_NONE = 0,
-	IXGBEVF_XCAST_MODE_MULTI,
-	IXGBEVF_XCAST_MODE_ALLMULTI,
-};
-
 #define IXGBE_EXVET_VET_EXT_SHIFT              16
 #define IXGBE_DMATXCTL_VT_MASK                 0xFFFF0000
 
