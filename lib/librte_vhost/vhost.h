@@ -110,24 +110,15 @@ struct vhost_virtqueue {
 	uint16_t                shadow_used_idx;
 } __rte_cache_aligned;
 
-/* Old kernels have no such macro defined */
+/* Old kernels have no such macros defined */
 #ifndef VIRTIO_NET_F_GUEST_ANNOUNCE
  #define VIRTIO_NET_F_GUEST_ANNOUNCE 21
 #endif
 
-
-/*
- * Make an extra wrapper for VIRTIO_NET_F_MQ and
- * VIRTIO_NET_CTRL_MQ_VQ_PAIRS_MAX as they are
- * introduced since kernel v3.8. This makes our
- * code buildable for older kernel.
- */
-#ifdef VIRTIO_NET_F_MQ
- #define VHOST_MAX_QUEUE_PAIRS		VIRTIO_NET_CTRL_MQ_VQ_PAIRS_MAX
-#else
+#ifndef VIRTIO_NET_F_MQ
  #define VIRTIO_NET_F_MQ		22
- #define VHOST_MAX_QUEUE_PAIRS		0x8000
 #endif
+#define VHOST_MAX_QUEUE_PAIRS		0x80
 
 /*
  * Define virtio 1.0 for older kernels
