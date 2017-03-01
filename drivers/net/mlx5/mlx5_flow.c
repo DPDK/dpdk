@@ -99,6 +99,7 @@ struct rte_flow {
 	uint16_t rxqs_n; /**< Number of queues in this flow, 0 if drop queue. */
 	uint32_t mark:1; /**< Set if the flow is marked. */
 	uint32_t drop:1; /**< Drop queue. */
+	uint64_t hash_fields; /**< Fields that participate in the hash. */
 };
 
 /** Static initializer for items. */
@@ -275,6 +276,7 @@ struct mlx5_flow {
 	struct ibv_exp_flow_attr *ibv_attr; /**< Verbs attribute. */
 	unsigned int offset; /**< Offset in bytes in the ibv_attr buffer. */
 	uint32_t inner; /**< Set once VXLAN is encountered. */
+	uint64_t hash_fields; /**< Fields that participate in the hash. */
 };
 
 struct mlx5_flow_action {
@@ -456,10 +458,56 @@ priv_flow_validate(struct priv *priv,
 			const struct rte_flow_action_queue *queue =
 				(const struct rte_flow_action_queue *)
 				actions->conf;
+			uint16_t n;
+			uint16_t found = 0;
 
 			if (!queue || (queue->index > (priv->rxqs_n - 1)))
 				goto exit_action_not_supported;
+			for (n = 0; n < action.queues_n; ++n) {
+				if (action.queues[n] == queue->index) {
+					found = 1;
+					break;
+				}
+			}
+			if (action.queues_n && !found) {
+				rte_flow_error_set(error, ENOTSUP,
+					   RTE_FLOW_ERROR_TYPE_ACTION,
+					   actions,
+					   "queue action not in RSS queues");
+				return -rte_errno;
+			}
 			action.queue = 1;
+			action.queues_n = 1;
+			action.queues[0] = queue->index;
+		} else if (actions->type == RTE_FLOW_ACTION_TYPE_RSS) {
+			const struct rte_flow_action_rss *rss =
+				(const struct rte_flow_action_rss *)
+				actions->conf;
+			uint16_t n;
+
+			if (action.queues_n == 1) {
+				uint16_t found = 0;
+
+				assert(action.queues_n);
+				for (n = 0; n < rss->num; ++n) {
+					if (action.queues[0] == rss->queue[n]) {
+						found = 1;
+						break;
+					}
+				}
+				if (!found) {
+					rte_flow_error_set(error, ENOTSUP,
+						   RTE_FLOW_ERROR_TYPE_ACTION,
+						   actions,
+						   "queue action not in RSS"
+						   " queues");
+					return -rte_errno;
+				}
+			}
+			action.queue = 1;
+			for (n = 0; n < rss->num; ++n)
+				action.queues[n] = rss->queue[n];
+			action.queues_n = rss->num;
 		} else if (actions->type == RTE_FLOW_ACTION_TYPE_MARK) {
 			const struct rte_flow_action_mark *mark =
 				(const struct rte_flow_action_mark *)
@@ -551,6 +599,7 @@ mlx5_flow_create_eth(const struct rte_flow_item *item,
 
 	++flow->ibv_attr->num_of_specs;
 	flow->ibv_attr->priority = 2;
+	flow->hash_fields = 0;
 	eth = (void *)((uintptr_t)flow->ibv_attr + flow->offset);
 	*eth = (struct ibv_exp_flow_spec_eth) {
 		.type = flow->inner | IBV_EXP_FLOW_SPEC_ETH,
@@ -630,6 +679,8 @@ mlx5_flow_create_ipv4(const struct rte_flow_item *item,
 
 	++flow->ibv_attr->num_of_specs;
 	flow->ibv_attr->priority = 1;
+	flow->hash_fields = (IBV_EXP_RX_HASH_SRC_IPV4 |
+			     IBV_EXP_RX_HASH_DST_IPV4);
 	ipv4 = (void *)((uintptr_t)flow->ibv_attr + flow->offset);
 	*ipv4 = (struct ibv_exp_flow_spec_ipv4_ext) {
 		.type = flow->inner | IBV_EXP_FLOW_SPEC_IPV4_EXT,
@@ -682,6 +733,8 @@ mlx5_flow_create_ipv6(const struct rte_flow_item *item,
 
 	++flow->ibv_attr->num_of_specs;
 	flow->ibv_attr->priority = 1;
+	flow->hash_fields = (IBV_EXP_RX_HASH_SRC_IPV6 |
+			     IBV_EXP_RX_HASH_DST_IPV6);
 	ipv6 = (void *)((uintptr_t)flow->ibv_attr + flow->offset);
 	*ipv6 = (struct ibv_exp_flow_spec_ipv6_ext) {
 		.type = flow->inner | IBV_EXP_FLOW_SPEC_IPV6_EXT,
@@ -731,6 +784,8 @@ mlx5_flow_create_udp(const struct rte_flow_item *item,
 
 	++flow->ibv_attr->num_of_specs;
 	flow->ibv_attr->priority = 0;
+	flow->hash_fields |= (IBV_EXP_RX_HASH_SRC_PORT_UDP |
+			      IBV_EXP_RX_HASH_DST_PORT_UDP);
 	udp = (void *)((uintptr_t)flow->ibv_attr + flow->offset);
 	*udp = (struct ibv_exp_flow_spec_tcp_udp) {
 		.type = flow->inner | IBV_EXP_FLOW_SPEC_UDP,
@@ -773,6 +828,8 @@ mlx5_flow_create_tcp(const struct rte_flow_item *item,
 
 	++flow->ibv_attr->num_of_specs;
 	flow->ibv_attr->priority = 0;
+	flow->hash_fields |= (IBV_EXP_RX_HASH_SRC_PORT_TCP |
+			      IBV_EXP_RX_HASH_DST_PORT_TCP);
 	tcp = (void *)((uintptr_t)flow->ibv_attr + flow->offset);
 	*tcp = (struct ibv_exp_flow_spec_tcp_udp) {
 		.type = flow->inner | IBV_EXP_FLOW_SPEC_TCP,
@@ -1002,7 +1059,9 @@ priv_flow_create_action_queue(struct priv *priv,
 {
 	struct rte_flow *rte_flow;
 	unsigned int i;
-	struct ibv_exp_wq *wq[action->queues_n];
+	unsigned int j;
+	const unsigned int wqs_n = 1 << log2above(action->queues_n);
+	struct ibv_exp_wq *wqs[wqs_n];
 
 	assert(priv->pd);
 	assert(priv->ctx);
@@ -1023,19 +1082,26 @@ priv_flow_create_action_queue(struct priv *priv,
 
 		rxq = container_of((*priv->rxqs)[action->queues[i]],
 				   struct rxq_ctrl, rxq);
-		wq[i] = rxq->wq;
+		wqs[i] = rxq->wq;
 		(*rte_flow->rxqs)[i] = &rxq->rxq;
 		++rte_flow->rxqs_n;
 		rxq->rxq.mark |= action->mark;
 	}
+	/* finalise indirection table. */
+	for (j = 0; i < wqs_n; ++i, ++j) {
+		wqs[i] = wqs[j];
+		if (j == action->queues_n)
+			j = 0;
+	}
 	rte_flow->mark = action->mark;
 	rte_flow->ibv_attr = flow->ibv_attr;
+	rte_flow->hash_fields = flow->hash_fields;
 	rte_flow->ind_table = ibv_exp_create_rwq_ind_table(
 		priv->ctx,
 		&(struct ibv_exp_rwq_ind_table_init_attr){
 			.pd = priv->pd,
-			.log_ind_tbl_size = 0,
-			.ind_tbl = wq,
+			.log_ind_tbl_size = log2above(action->queues_n),
+			.ind_tbl = wqs,
 			.comp_mask = 0,
 		});
 	if (!rte_flow->ind_table) {
@@ -1057,7 +1123,7 @@ priv_flow_create_action_queue(struct priv *priv,
 					IBV_EXP_RX_HASH_FUNC_TOEPLITZ,
 				.rx_hash_key_len = rss_hash_default_key_len,
 				.rx_hash_key = rss_hash_default_key,
-				.rx_hash_fields_mask = 0,
+				.rx_hash_fields_mask = rte_flow->hash_fields,
 				.rwq_ind_tbl = rte_flow->ind_table,
 			},
 			.port_num = priv->port,
@@ -1136,6 +1202,7 @@ priv_flow_create(struct priv *priv,
 		.reserved = 0,
 	};
 	flow.inner = 0;
+	flow.hash_fields = 0;
 	claim_zero(priv_flow_validate(priv, attr, items, actions,
 				      error, &flow));
 	action = (struct mlx5_flow_action){
@@ -1152,6 +1219,16 @@ priv_flow_create(struct priv *priv,
 			action.queues[action.queues_n++] =
 				((const struct rte_flow_action_queue *)
 				 actions->conf)->index;
+		} else if (actions->type == RTE_FLOW_ACTION_TYPE_RSS) {
+			const struct rte_flow_action_rss *rss =
+				(const struct rte_flow_action_rss *)
+				 actions->conf;
+			uint16_t n;
+
+			action.queue = 1;
+			action.queues_n = rss->num;
+			for (n = 0; n < rss->num; ++n)
+				action.queues[n] = rss->queue[n];
 		} else if (actions->type == RTE_FLOW_ACTION_TYPE_DROP) {
 			action.drop = 1;
 			action.mark = 0;
