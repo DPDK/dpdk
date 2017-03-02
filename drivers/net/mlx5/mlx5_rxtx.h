@@ -256,6 +256,8 @@ struct txq {
 	uint16_t max_inline; /* Multiple of RTE_CACHE_LINE_SIZE to inline. */
 	uint16_t inline_en:1; /* When set inline is enabled. */
 	uint16_t tso_en:1; /* When set hardware TSO is enabled. */
+	uint16_t tunnel_en:1;
+	/* When set TX offload for tunneled packets are supported. */
 	uint32_t qp_num_8s; /* QP number shifted by 8. */
 	volatile struct mlx5_cqe (*cqes)[]; /* Completion queue. */
 	volatile void *wqes; /* Work queue (use volatile to write into). */

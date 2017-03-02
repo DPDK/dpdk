@@ -120,6 +120,12 @@
 /* Tunnel packet bit in the CQE. */
 #define MLX5_CQE_RX_TUNNEL_PACKET (1u << 0)
 
+/* Inner L3 checksum offload (Tunneled packets only). */
+#define MLX5_ETH_WQE_L3_INNER_CSUM (1u << 4)
+
+/* Inner L4 checksum offload (Tunneled packets only). */
+#define MLX5_ETH_WQE_L4_INNER_CSUM (1u << 5)
+
 /* INVALID is used by packets matching no flow rules. */
 #define MLX5_FLOW_MARK_INVALID 0
 

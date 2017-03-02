@@ -519,7 +519,19 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		/* Should we enable HW CKSUM offload */
 		if (buf->ol_flags &
 		    (PKT_TX_IP_CKSUM | PKT_TX_TCP_CKSUM | PKT_TX_UDP_CKSUM)) {
-			cs_flags = MLX5_ETH_WQE_L3_CSUM | MLX5_ETH_WQE_L4_CSUM;
+			const uint64_t is_tunneled = buf->ol_flags &
+						     (PKT_TX_TUNNEL_GRE |
+						      PKT_TX_TUNNEL_VXLAN);
+
+			if (is_tunneled && txq->tunnel_en) {
+				cs_flags = MLX5_ETH_WQE_L3_INNER_CSUM |
+					   MLX5_ETH_WQE_L4_INNER_CSUM;
+				if (buf->ol_flags & PKT_TX_OUTER_IP_CKSUM)
+					cs_flags |= MLX5_ETH_WQE_L3_CSUM;
+			} else {
+				cs_flags = MLX5_ETH_WQE_L3_CSUM |
+					   MLX5_ETH_WQE_L4_CSUM;
+			}
 		}
 		raw = ((uint8_t *)(uintptr_t)wqe) + 2 * MLX5_WQE_DWORD_SIZE;
 		/* Replace the Ethernet type by the VLAN if necessary. */

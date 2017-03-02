@@ -91,13 +91,14 @@ Features
 - KVM and VMware ESX SR-IOV modes are supported.
 - RSS hash result is supported.
 - Hardware TSO.
+- Hardware checksum TX offload for VXLAN and GRE.
 
 Limitations
 -----------
 
 - Inner RSS for VXLAN frames is not supported yet.
 - Port statistics through software counters only.
-- Hardware checksum offloads for VXLAN inner header are not supported yet.
+- Hardware checksum RX offloads for VXLAN inner header are not supported yet.
 - Secondary process RX is not supported.
 
 Configuration

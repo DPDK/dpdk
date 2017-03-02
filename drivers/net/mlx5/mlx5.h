@@ -127,6 +127,8 @@ struct priv {
 	unsigned int cqe_comp:1; /* Whether CQE compression is enabled. */
 	unsigned int pending_alarm:1; /* An alarm is pending. */
 	unsigned int tso:1; /* Whether TSO is supported. */
+	unsigned int tunnel_en:1;
+	/* Whether Tx offloads for tunneled packets are supported. */
 	unsigned int max_tso_payload_sz; /* Maximum TCP payload for TSO. */
 	unsigned int txq_inline; /* Maximum packet size for inlining. */
 	unsigned int txqs_inline; /* Queue number threshold for inlining. */

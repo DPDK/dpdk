@@ -377,6 +377,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	struct ibv_device_attr device_attr;
 	unsigned int sriov;
 	unsigned int mps;
+	unsigned int tunnel_en;
 	int idx;
 	int i;
 
@@ -431,12 +432,17 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		 * as all ConnectX-5 devices.
 		 */
 		switch (pci_dev->id.device_id) {
+		case PCI_DEVICE_ID_MELLANOX_CONNECTX4:
+			tunnel_en = 1;
+			mps = 0;
+			break;
 		case PCI_DEVICE_ID_MELLANOX_CONNECTX4LX:
 		case PCI_DEVICE_ID_MELLANOX_CONNECTX5:
 		case PCI_DEVICE_ID_MELLANOX_CONNECTX5VF:
 		case PCI_DEVICE_ID_MELLANOX_CONNECTX5EX:
 		case PCI_DEVICE_ID_MELLANOX_CONNECTX5EXVF:
 			mps = 1;
+			tunnel_en = 1;
 			break;
 		default:
 			mps = 0;
@@ -541,6 +547,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		priv->mtu = ETHER_MTU;
 		priv->mps = mps; /* Enable MPW by default if supported. */
 		priv->cqe_comp = 1; /* Enable compression by default. */
+		priv->tunnel_en = tunnel_en;
 		err = mlx5_args(priv, pci_dev->device.devargs);
 		if (err) {
 			ERROR("failed to process device arguments: %s",
