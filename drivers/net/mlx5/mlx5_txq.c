@@ -342,6 +342,19 @@ txq_ctrl_setup(struct rte_eth_dev *dev, struct txq_ctrl *txq_ctrl,
 			 RTE_CACHE_LINE_SIZE);
 		attr.init.cap.max_inline_data =
 			tmpl.txq.max_inline * RTE_CACHE_LINE_SIZE;
+		tmpl.txq.inline_en = 1;
+	}
+	if (priv->tso) {
+		uint16_t max_tso_inline = ((MLX5_MAX_TSO_HEADER +
+					   (RTE_CACHE_LINE_SIZE - 1)) /
+					    RTE_CACHE_LINE_SIZE);
+
+		attr.init.max_tso_header =
+			max_tso_inline * RTE_CACHE_LINE_SIZE;
+		attr.init.comp_mask |= IBV_EXP_QP_INIT_ATTR_MAX_TSO_HEADER;
+		tmpl.txq.max_inline = RTE_MAX(tmpl.txq.max_inline,
+					      max_tso_inline);
+		tmpl.txq.tso_en = 1;
 	}
 	tmpl.qp = ibv_exp_create_qp(priv->ctx, &attr.init);
 	if (tmpl.qp == NULL) {

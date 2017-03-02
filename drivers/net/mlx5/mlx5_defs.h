@@ -79,4 +79,7 @@
 /* Maximum number of extended statistics counters. */
 #define MLX5_MAX_XSTATS 32
 
+/* Maximum Packet headers size (L2+L3+L4) for TSO. */
+#define MLX5_MAX_TSO_HEADER 128
+
 #endif /* RTE_PMD_MLX5_DEFS_H_ */

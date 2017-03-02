@@ -84,6 +84,9 @@
 /* Device parameter to enable multi-packet send WQEs. */
 #define MLX5_TXQ_MPW_EN "txq_mpw_en"
 
+/* Device parameter to enable hardware TSO offload. */
+#define MLX5_TSO "tso"
+
 /**
  * Retrieve integer value from environment variable.
  *
@@ -292,6 +295,8 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 		priv->txqs_inline = tmp;
 	} else if (strcmp(MLX5_TXQ_MPW_EN, key) == 0) {
 		priv->mps &= !!tmp; /* Enable MPW only if HW supports */
+	} else if (strcmp(MLX5_TSO, key) == 0) {
+		priv->tso = !!tmp;
 	} else {
 		WARN("%s: unknown parameter", key);
 		return -EINVAL;
@@ -318,6 +323,7 @@ mlx5_args(struct priv *priv, struct rte_devargs *devargs)
 		MLX5_TXQ_INLINE,
 		MLX5_TXQS_MIN_INLINE,
 		MLX5_TXQ_MPW_EN,
+		MLX5_TSO,
 		NULL,
 	};
 	struct rte_kvargs *kvlist;
@@ -481,6 +487,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			IBV_EXP_DEVICE_ATTR_RX_HASH |
 			IBV_EXP_DEVICE_ATTR_VLAN_OFFLOADS |
 			IBV_EXP_DEVICE_ATTR_RX_PAD_END_ALIGN |
+			IBV_EXP_DEVICE_ATTR_TSO_CAPS |
 			0;
 
 		DEBUG("using port %u (%08" PRIx32 ")", port, test);
@@ -582,11 +589,22 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 
 		priv_get_num_vfs(priv, &num_vfs);
 		priv->sriov = (num_vfs || sriov);
+		priv->tso = ((priv->tso) &&
+			    (exp_device_attr.tso_caps.max_tso > 0) &&
+			    (exp_device_attr.tso_caps.supported_qpts &
+			    (1 << IBV_QPT_RAW_ETH)));
+		if (priv->tso)
+			priv->max_tso_payload_sz =
+				exp_device_attr.tso_caps.max_tso;
 		if (priv->mps && !mps) {
 			ERROR("multi-packet send not supported on this device"
 			      " (" MLX5_TXQ_MPW_EN ")");
 			err = ENOTSUP;
 			goto port_error;
+		} else if (priv->mps && priv->tso) {
+			WARN("multi-packet send not supported in conjunction "
+			      "with TSO. MPS disabled");
+			priv->mps = 0;
 		}
 		/* Allocate and register default RSS hash keys. */
 		priv->rss_conf = rte_calloc(__func__, hash_rxq_init_n,

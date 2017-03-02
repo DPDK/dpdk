@@ -90,6 +90,7 @@ Features
 - Secondary process TX is supported.
 - KVM and VMware ESX SR-IOV modes are supported.
 - RSS hash result is supported.
+- Hardware TSO.
 
 Limitations
 -----------
@@ -186,8 +187,19 @@ Run-time configuration
   save PCI bandwidth and improve performance at the cost of a slightly
   higher CPU usage.
 
+  This option cannot be used in conjunction with ``tso`` below. When ``tso``
+  is set, ``txq_mpw_en`` is disabled.
+
   It is currently only supported on the ConnectX-4 Lx and ConnectX-5
   families of adapters. Enabled by default.
+
+- ``tso`` parameter [int]
+
+  A nonzero value enables hardware TSO.
+  When hardware TSO is enabled, packets marked with TCP segmentation
+  offload will be divided into segments by the hardware.
+
+  Disabled by default.
 
 Prerequisites
 -------------
