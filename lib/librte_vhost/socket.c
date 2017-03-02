@@ -448,7 +448,7 @@ vhost_user_create_client(struct vhost_user_socket *vsocket)
 		return 0;
 	}
 
-	RTE_LOG(ERR, VHOST_CONFIG,
+	RTE_LOG(WARNING, VHOST_CONFIG,
 		"failed to connect to %s: %s\n",
 		path, strerror(errno));
 
@@ -457,7 +457,7 @@ vhost_user_create_client(struct vhost_user_socket *vsocket)
 		return -1;
 	}
 
-	RTE_LOG(ERR, VHOST_CONFIG, "%s: reconnecting...\n", path);
+	RTE_LOG(INFO, VHOST_CONFIG, "%s: reconnecting...\n", path);
 	reconn = malloc(sizeof(*reconn));
 	if (reconn == NULL) {
 		RTE_LOG(ERR, VHOST_CONFIG,
