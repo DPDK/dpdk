@@ -506,18 +506,24 @@ virtio_user_pmd_probe(const char *name, const char *params)
 		goto end;
 	}
 
-	eth_dev = virtio_user_eth_dev_alloc(name);
-	if (!eth_dev) {
-		PMD_INIT_LOG(ERR, "virtio_user fails to alloc device");
-		goto end;
-	}
+	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		eth_dev = virtio_user_eth_dev_alloc(name);
+		if (!eth_dev) {
+			PMD_INIT_LOG(ERR, "virtio_user fails to alloc device");
+			goto end;
+		}
 
-	hw = eth_dev->data->dev_private;
-	if (virtio_user_dev_init(hw->virtio_user_dev, path, queues, cq,
+		hw = eth_dev->data->dev_private;
+		if (virtio_user_dev_init(hw->virtio_user_dev, path, queues, cq,
 				 queue_size, mac_addr, &ifname) < 0) {
-		PMD_INIT_LOG(ERR, "virtio_user_dev_init fails");
-		virtio_user_eth_dev_free(eth_dev);
-		goto end;
+			PMD_INIT_LOG(ERR, "virtio_user_dev_init fails");
+			virtio_user_eth_dev_free(eth_dev);
+			goto end;
+		}
+	} else {
+		eth_dev = rte_eth_dev_attach_secondary(name);
+		if (!eth_dev)
+			goto end;
 	}
 
 	/* previously called by rte_eal_pci_probe() for physical dev */
