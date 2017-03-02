@@ -245,6 +245,13 @@ New Features
     primary slave first. Then, any operation that cannot be enqueued is
     enqueued to a secondary slave.
 
+* **Updated the QAT PMD.**
+
+  The QAT PMD has been updated with additional support for:
+
+  * AES DOCSIS BPI algorithm.
+  * DES DOCSIS BPI algorithm.
+
 * **Updated the AESNI MB PMD.**
 
   The AESNI MB PMD has been updated with additional support for:

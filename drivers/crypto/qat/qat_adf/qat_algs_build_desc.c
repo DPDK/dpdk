@@ -54,12 +54,31 @@
 #include <rte_crypto_sym.h>
 
 #include "../qat_logs.h"
-#include "qat_algs.h"
 
 #include <openssl/sha.h>	/* Needed to calculate pre-compute values */
 #include <openssl/aes.h>	/* Needed to calculate pre-compute values */
 #include <openssl/md5.h>	/* Needed to calculate pre-compute values */
 
+#include "qat_algs.h"
+
+/* returns block size in bytes per cipher algo */
+int qat_cipher_get_block_size(enum icp_qat_hw_cipher_algo qat_cipher_alg)
+{
+	switch (qat_cipher_alg) {
+	case ICP_QAT_HW_CIPHER_ALGO_DES:
+		return ICP_QAT_HW_DES_BLK_SZ;
+	case ICP_QAT_HW_CIPHER_ALGO_3DES:
+		return ICP_QAT_HW_3DES_BLK_SZ;
+	case ICP_QAT_HW_CIPHER_ALGO_AES128:
+	case ICP_QAT_HW_CIPHER_ALGO_AES192:
+	case ICP_QAT_HW_CIPHER_ALGO_AES256:
+		return ICP_QAT_HW_AES_BLK_SZ;
+	default:
+		PMD_DRV_LOG(ERR, "invalid block cipher alg %u", qat_cipher_alg);
+		return -EFAULT;
+	};
+	return -EFAULT;
+}
 
 /*
  * Returns size in bytes per hash algo for state1 size field in cd_ctrl
@@ -831,6 +850,19 @@ int qat_alg_validate_aes_key(int key_len, enum icp_qat_hw_cipher_algo *alg)
 		break;
 	case ICP_QAT_HW_AES_256_KEY_SZ:
 		*alg = ICP_QAT_HW_CIPHER_ALGO_AES256;
+		break;
+	default:
+		return -EINVAL;
+	}
+	return 0;
+}
+
+int qat_alg_validate_aes_docsisbpi_key(int key_len,
+		enum icp_qat_hw_cipher_algo *alg)
+{
+	switch (key_len) {
+	case ICP_QAT_HW_AES_128_KEY_SZ:
+		*alg = ICP_QAT_HW_CIPHER_ALGO_AES128;
 		break;
 	default:
 		return -EINVAL;

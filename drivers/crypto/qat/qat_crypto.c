@@ -59,6 +59,8 @@
 #include <rte_string_fns.h>
 #include <rte_spinlock.h>
 #include <rte_hexdump.h>
+#include <rte_crypto_sym.h>
+#include <openssl/evp.h>
 
 #include "qat_logs.h"
 #include "qat_algs.h"
@@ -330,6 +332,26 @@ static const struct rte_cryptodev_capabilities qat_pmd_capabilities[] = {
 			}, }
 		}, }
 	},
+	{	/* AES DOCSISBPI */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_CIPHER,
+			{.cipher = {
+				.algo = RTE_CRYPTO_CIPHER_AES_DOCSISBPI,
+				.block_size = 16,
+				.key_size = {
+					.min = 16,
+					.max = 16,
+					.increment = 0
+				},
+				.iv_size = {
+					.min = 16,
+					.max = 16,
+					.increment = 0
+				}
+			}, }
+		}, }
+	},
 	{	/* SNOW 3G (UEA2) */
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
 		{.sym = {
@@ -516,8 +538,127 @@ static const struct rte_cryptodev_capabilities qat_pmd_capabilities[] = {
 			}, }
 		}, }
 	},
+	{	/* DES DOCSISBPI */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_CIPHER,
+			{.cipher = {
+				.algo = RTE_CRYPTO_CIPHER_DES_DOCSISBPI,
+				.block_size = 8,
+				.key_size = {
+					.min = 8,
+					.max = 8,
+					.increment = 0
+				},
+				.iv_size = {
+					.min = 8,
+					.max = 8,
+					.increment = 0
+				}
+			}, }
+		}, }
+	},
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
+
+/** Encrypt a single partial block
+ *  Depends on openssl libcrypto
+ *  Uses ECB+XOR to do CFB encryption, same result, more performant
+ */
+static inline int
+bpi_cipher_encrypt(uint8_t *src, uint8_t *dst,
+		uint8_t *iv, int ivlen, int srclen,
+		void *bpi_ctx)
+{
+	EVP_CIPHER_CTX *ctx = (EVP_CIPHER_CTX *)bpi_ctx;
+	int encrypted_ivlen;
+	uint8_t encrypted_iv[16];
+	int i;
+
+	/* ECB method: encrypt the IV, then XOR this with plaintext */
+	if (EVP_EncryptUpdate(ctx, encrypted_iv, &encrypted_ivlen, iv, ivlen)
+								<= 0)
+		goto cipher_encrypt_err;
+
+	for (i = 0; i < srclen; i++)
+		*(dst+i) = *(src+i)^(encrypted_iv[i]);
+
+	return 0;
+
+cipher_encrypt_err:
+	PMD_DRV_LOG(ERR, "libcrypto ECB cipher encrypt failed");
+	return -EINVAL;
+}
+
+/** Decrypt a single partial block
+ *  Depends on openssl libcrypto
+ *  Uses ECB+XOR to do CFB encryption, same result, more performant
+ */
+static inline int
+bpi_cipher_decrypt(uint8_t *src, uint8_t *dst,
+		uint8_t *iv, int ivlen, int srclen,
+		void *bpi_ctx)
+{
+	EVP_CIPHER_CTX *ctx = (EVP_CIPHER_CTX *)bpi_ctx;
+	int encrypted_ivlen;
+	uint8_t encrypted_iv[16];
+	int i;
+
+	/* ECB method: encrypt (not decrypt!) the IV, then XOR with plaintext */
+	if (EVP_EncryptUpdate(ctx, encrypted_iv, &encrypted_ivlen, iv, ivlen)
+								<= 0)
+		goto cipher_decrypt_err;
+
+	for (i = 0; i < srclen; i++)
+		*(dst+i) = *(src+i)^(encrypted_iv[i]);
+
+	return 0;
+
+cipher_decrypt_err:
+	PMD_DRV_LOG(ERR, "libcrypto ECB cipher encrypt for BPI IV failed");
+	return -EINVAL;
+}
+
+/** Creates a context in either AES or DES in ECB mode
+ *  Depends on openssl libcrypto
+ */
+static void *
+bpi_cipher_ctx_init(enum rte_crypto_cipher_algorithm cryptodev_algo,
+		enum rte_crypto_cipher_operation direction __rte_unused,
+					uint8_t *key)
+{
+	const EVP_CIPHER *algo = NULL;
+	EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
+
+	if (ctx == NULL)
+		goto ctx_init_err;
+
+	if (cryptodev_algo == RTE_CRYPTO_CIPHER_DES_DOCSISBPI)
+		algo = EVP_des_ecb();
+	else
+		algo = EVP_aes_128_ecb();
+
+	/* IV will be ECB encrypted whether direction is encrypt or decrypt*/
+	if (EVP_EncryptInit_ex(ctx, algo, NULL, key, 0) != 1)
+		goto ctx_init_err;
+
+	return ctx;
+
+ctx_init_err:
+	if (ctx != NULL)
+		EVP_CIPHER_CTX_free(ctx);
+	return NULL;
+}
+
+/** Frees a context previously created
+ *  Depends on openssl libcrypto
+ */
+static void
+bpi_cipher_ctx_free(void *bpi_ctx)
+{
+	if (bpi_ctx != NULL)
+		EVP_CIPHER_CTX_free((EVP_CIPHER_CTX *)bpi_ctx);
+}
 
 static inline uint32_t
 adf_modulo(uint32_t data, uint32_t shift);
@@ -533,7 +674,11 @@ void qat_crypto_sym_clear_session(struct rte_cryptodev *dev,
 	phys_addr_t cd_paddr;
 
 	PMD_INIT_FUNC_TRACE();
-	if (session) {
+	if (sess) {
+		if (sess->bpi_ctx) {
+			bpi_cipher_ctx_free(sess->bpi_ctx);
+			sess->bpi_ctx = NULL;
+		}
 		cd_paddr = sess->cd_paddr;
 		memset(sess, 0, qat_crypto_sym_get_session_private_size(dev));
 		sess->cd_paddr = cd_paddr;
@@ -674,6 +819,38 @@ qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
 		}
 		session->qat_mode = ICP_QAT_HW_CIPHER_CTR_MODE;
 		break;
+	case RTE_CRYPTO_CIPHER_DES_DOCSISBPI:
+		session->bpi_ctx = bpi_cipher_ctx_init(
+					cipher_xform->algo,
+					cipher_xform->op,
+					cipher_xform->key.data);
+		if (session->bpi_ctx == NULL) {
+			PMD_DRV_LOG(ERR, "failed to create DES BPI ctx");
+			goto error_out;
+		}
+		if (qat_alg_validate_des_key(cipher_xform->key.length,
+				&session->qat_cipher_alg) != 0) {
+			PMD_DRV_LOG(ERR, "Invalid DES cipher key size");
+			goto error_out;
+		}
+		session->qat_mode = ICP_QAT_HW_CIPHER_CBC_MODE;
+		break;
+	case RTE_CRYPTO_CIPHER_AES_DOCSISBPI:
+		session->bpi_ctx = bpi_cipher_ctx_init(
+					cipher_xform->algo,
+					cipher_xform->op,
+					cipher_xform->key.data);
+		if (session->bpi_ctx == NULL) {
+			PMD_DRV_LOG(ERR, "failed to create AES BPI ctx");
+			goto error_out;
+		}
+		if (qat_alg_validate_aes_docsisbpi_key(cipher_xform->key.length,
+				&session->qat_cipher_alg) != 0) {
+			PMD_DRV_LOG(ERR, "Invalid AES DOCSISBPI key size");
+			goto error_out;
+		}
+		session->qat_mode = ICP_QAT_HW_CIPHER_CBC_MODE;
+		break;
 	case RTE_CRYPTO_CIPHER_3DES_ECB:
 	case RTE_CRYPTO_CIPHER_AES_ECB:
 	case RTE_CRYPTO_CIPHER_AES_CCM:
@@ -703,6 +880,10 @@ qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
 	return session;
 
 error_out:
+	if (session->bpi_ctx) {
+		bpi_cipher_ctx_free(session->bpi_ctx);
+		session->bpi_ctx = NULL;
+	}
 	rte_mempool_put(internals->sess_mp, session);
 	return NULL;
 }
@@ -717,7 +898,6 @@ qat_crypto_sym_configure_session(struct rte_cryptodev *dev,
 	struct qat_session *session = session_private;
 
 	int qat_cmd_id;
-
 	PMD_INIT_FUNC_TRACE();
 
 	/* Get requested QAT command id */
@@ -759,6 +939,7 @@ qat_crypto_sym_configure_session(struct rte_cryptodev *dev,
 		session->qat_cmd);
 		goto error_out;
 	}
+
 	return session;
 
 error_out:
@@ -868,6 +1049,113 @@ unsigned qat_crypto_sym_get_session_private_size(
 	return RTE_ALIGN_CEIL(sizeof(struct qat_session), 8);
 }
 
+static inline uint32_t
+qat_bpicipher_preprocess(struct qat_session *ctx,
+				struct rte_crypto_op *op)
+{
+	uint8_t block_len = qat_cipher_get_block_size(ctx->qat_cipher_alg);
+	struct rte_crypto_sym_op *sym_op = op->sym;
+	uint8_t last_block_len = sym_op->cipher.data.length % block_len;
+
+	if (last_block_len &&
+			ctx->qat_dir == ICP_QAT_HW_CIPHER_DECRYPT) {
+
+		/* Decrypt last block */
+		uint8_t *last_block, *dst, *iv;
+		uint32_t last_block_offset = sym_op->cipher.data.offset +
+				sym_op->cipher.data.length - last_block_len;
+		last_block = (uint8_t *) rte_pktmbuf_mtod_offset(sym_op->m_src,
+				uint8_t *, last_block_offset);
+
+		if (unlikely(sym_op->m_dst != NULL))
+			/* out-of-place operation (OOP) */
+			dst = (uint8_t *) rte_pktmbuf_mtod_offset(sym_op->m_dst,
+						uint8_t *, last_block_offset);
+		else
+			dst = last_block;
+
+		if (last_block_len < sym_op->cipher.data.length)
+			/* use previous block ciphertext as IV */
+			iv = last_block - block_len;
+		else
+			/* runt block, i.e. less than one full block */
+			iv = sym_op->cipher.iv.data;
+
+#ifdef RTE_LIBRTE_PMD_QAT_DEBUG_TX
+		rte_hexdump(stdout, "BPI: src before pre-process:", last_block,
+			last_block_len);
+		if (sym_op->m_dst != NULL)
+			rte_hexdump(stdout, "BPI: dst before pre-process:", dst,
+				last_block_len);
+#endif
+		bpi_cipher_decrypt(last_block, dst, iv, block_len,
+				last_block_len, ctx->bpi_ctx);
+#ifdef RTE_LIBRTE_PMD_QAT_DEBUG_TX
+		rte_hexdump(stdout, "BPI: src after pre-process:", last_block,
+			last_block_len);
+		if (sym_op->m_dst != NULL)
+			rte_hexdump(stdout, "BPI: dst after pre-process:", dst,
+				last_block_len);
+#endif
+	}
+
+	return sym_op->cipher.data.length - last_block_len;
+}
+
+static inline uint32_t
+qat_bpicipher_postprocess(struct qat_session *ctx,
+				struct rte_crypto_op *op)
+{
+	uint8_t block_len = qat_cipher_get_block_size(ctx->qat_cipher_alg);
+	struct rte_crypto_sym_op *sym_op = op->sym;
+	uint8_t last_block_len = sym_op->cipher.data.length % block_len;
+
+	if (last_block_len > 0 &&
+			ctx->qat_dir == ICP_QAT_HW_CIPHER_ENCRYPT) {
+
+		/* Encrypt last block */
+		uint8_t *last_block, *dst, *iv;
+		uint32_t last_block_offset;
+
+		last_block_offset = sym_op->cipher.data.offset +
+				sym_op->cipher.data.length - last_block_len;
+		last_block = (uint8_t *) rte_pktmbuf_mtod_offset(sym_op->m_src,
+				uint8_t *, last_block_offset);
+
+		if (unlikely(sym_op->m_dst != NULL))
+			/* out-of-place operation (OOP) */
+			dst = (uint8_t *) rte_pktmbuf_mtod_offset(sym_op->m_dst,
+						uint8_t *, last_block_offset);
+		else
+			dst = last_block;
+
+		if (last_block_len < sym_op->cipher.data.length)
+			/* use previous block ciphertext as IV */
+			iv = dst - block_len;
+		else
+			/* runt block, i.e. less than one full block */
+			iv = sym_op->cipher.iv.data;
+
+#ifdef RTE_LIBRTE_PMD_QAT_DEBUG_RX
+		rte_hexdump(stdout, "BPI: src before post-process:", last_block,
+			last_block_len);
+		if (sym_op->m_dst != NULL)
+			rte_hexdump(stdout, "BPI: dst before post-process:",
+					dst, last_block_len);
+#endif
+		bpi_cipher_encrypt(last_block, dst, iv, block_len,
+				last_block_len, ctx->bpi_ctx);
+#ifdef RTE_LIBRTE_PMD_QAT_DEBUG_RX
+		rte_hexdump(stdout, "BPI: src after post-process:", last_block,
+			last_block_len);
+		if (sym_op->m_dst != NULL)
+			rte_hexdump(stdout, "BPI: dst after post-process:", dst,
+				last_block_len);
+#endif
+	}
+	return sym_op->cipher.data.length - last_block_len;
+}
+
 uint16_t
 qat_pmd_enqueue_op_burst(void *qp, struct rte_crypto_op **ops,
 		uint16_t nb_ops)
@@ -956,8 +1244,13 @@ qat_pmd_dequeue_op_burst(void *qp, struct rte_crypto_op **ops,
 					resp_msg->comn_hdr.comn_status)) {
 			rx_op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
 		} else {
+			struct qat_session *sess = (struct qat_session *)
+						(rx_op->sym->session->_private);
+			if (sess->bpi_ctx)
+				qat_bpicipher_postprocess(sess, rx_op);
 			rx_op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
 		}
+
 		*(uint32_t *)resp_msg = ADF_RING_EMPTY_SIG;
 		queue->head = adf_modulo(queue->head +
 				queue->msg_size,
@@ -1099,6 +1392,14 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
 			cipher_len = op->sym->cipher.data.length >> 3;
 			cipher_ofs = op->sym->cipher.data.offset >> 3;
 
+		} else if (ctx->bpi_ctx) {
+			/* DOCSIS - only send complete blocks to device
+			 * Process any partial block using CFB mode.
+			 * Even if 0 complete blocks, still send this to device
+			 * to get into rx queue for post-process and dequeuing
+			 */
+			cipher_len = qat_bpicipher_preprocess(ctx, op);
+			cipher_ofs = op->sym->cipher.data.offset;
 		} else {
 			cipher_len = op->sym->cipher.data.length;
 			cipher_ofs = op->sym->cipher.data.offset;

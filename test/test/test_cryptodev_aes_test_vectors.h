@@ -1439,37 +1439,43 @@ static const struct blockcipher_test_case aes_docsis_test_cases[] = {
 		.test_descr = "AES-DOCSIS-BPI Full Block Encryption",
 		.test_data = &aes_test_data_docsis_1,
 		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB |
+			BLOCKCIPHER_TEST_TARGET_PMD_QAT
 	},
 	{
 		.test_descr = "AES-DOCSIS-BPI Runt Block Encryption",
 		.test_data = &aes_test_data_docsis_2,
 		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB |
+			BLOCKCIPHER_TEST_TARGET_PMD_QAT
 	},
 	{
 		.test_descr = "AES-DOCSIS-BPI Uneven Encryption",
 		.test_data = &aes_test_data_docsis_3,
 		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB |
+			BLOCKCIPHER_TEST_TARGET_PMD_QAT
 	},
 	{
 		.test_descr = "AES-DOCSIS-BPI Full Block Decryption",
 		.test_data = &aes_test_data_docsis_1,
 		.op_mask = BLOCKCIPHER_TEST_OP_DECRYPT,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB |
+			BLOCKCIPHER_TEST_TARGET_PMD_QAT
 	},
 	{
 		.test_descr = "AES-DOCSIS-BPI Runt Block Decryption",
 		.test_data = &aes_test_data_docsis_2,
 		.op_mask = BLOCKCIPHER_TEST_OP_DECRYPT,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB |
+			BLOCKCIPHER_TEST_TARGET_PMD_QAT
 	},
 	{
 		.test_descr = "AES-DOCSIS-BPI Uneven Decryption",
 		.test_data = &aes_test_data_docsis_3,
 		.op_mask = BLOCKCIPHER_TEST_OP_DECRYPT,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB |
+			BLOCKCIPHER_TEST_TARGET_PMD_QAT
 	}
 };
 #endif /* TEST_CRYPTODEV_AES_TEST_VECTORS_H_ */

@@ -964,37 +964,43 @@ static const struct blockcipher_test_case des_docsis_test_cases[] = {
 		.test_descr = "DES-DOCSIS-BPI Full Block Encryption",
 		.test_data = &des_test_data_1,
 		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
+			BLOCKCIPHER_TEST_TARGET_PMD_QAT
 	},
 	{
 		.test_descr = "DES-DOCSIS-BPI Runt Block Encryption",
 		.test_data = &des_test_data_2,
 		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
+			BLOCKCIPHER_TEST_TARGET_PMD_QAT
 	},
 	{
 		.test_descr = "DES-DOCSIS-BPI Uneven Encryption",
 		.test_data = &des_test_data_3,
 		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
+			BLOCKCIPHER_TEST_TARGET_PMD_QAT
 	},
 	{
 		.test_descr = "DES-DOCSIS-BPI Full Block Decryption",
 		.test_data = &des_test_data_1,
 		.op_mask = BLOCKCIPHER_TEST_OP_DECRYPT,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
+			BLOCKCIPHER_TEST_TARGET_PMD_QAT
 	},
 	{
 		.test_descr = "DES-DOCSIS-BPI Runt Block Decryption",
 		.test_data = &des_test_data_2,
 		.op_mask = BLOCKCIPHER_TEST_OP_DECRYPT,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
+			BLOCKCIPHER_TEST_TARGET_PMD_QAT
 	},
 	{
 		.test_descr = "DES-DOCSIS-BPI Uneven Decryption",
 		.test_data = &des_test_data_3,
 		.op_mask = BLOCKCIPHER_TEST_OP_DECRYPT,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
+			BLOCKCIPHER_TEST_TARGET_PMD_QAT
 	}
 
 };

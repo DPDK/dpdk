@@ -112,6 +112,7 @@ struct qat_session {
 	enum icp_qat_hw_cipher_mode qat_mode;
 	enum icp_qat_hw_auth_algo qat_hash_alg;
 	enum icp_qat_hw_auth_op auth_op;
+	void *bpi_ctx;
 	struct qat_alg_cd cd;
 	uint8_t *cd_cur_ptr;
 	phys_addr_t cd_paddr;
@@ -154,8 +155,11 @@ void qat_alg_ablkcipher_init_dec(struct qat_alg_ablkcipher_cd *cd,
 					unsigned int keylen);
 
 int qat_alg_validate_aes_key(int key_len, enum icp_qat_hw_cipher_algo *alg);
+int qat_alg_validate_aes_docsisbpi_key(int key_len,
+					enum icp_qat_hw_cipher_algo *alg);
 int qat_alg_validate_snow3g_key(int key_len, enum icp_qat_hw_cipher_algo *alg);
 int qat_alg_validate_kasumi_key(int key_len, enum icp_qat_hw_cipher_algo *alg);
 int qat_alg_validate_3des_key(int key_len, enum icp_qat_hw_cipher_algo *alg);
 int qat_alg_validate_des_key(int key_len, enum icp_qat_hw_cipher_algo *alg);
+int qat_cipher_get_block_size(enum icp_qat_hw_cipher_algo qat_cipher_alg);
 #endif
