@@ -63,24 +63,25 @@ scheduler_pmd_config(struct rte_cryptodev *dev)
 }
 
 static int
-update_reorder_buff(struct rte_cryptodev *dev, uint16_t qp_id)
+update_order_ring(struct rte_cryptodev *dev, uint16_t qp_id)
 {
 	struct scheduler_ctx *sched_ctx = dev->data->dev_private;
 	struct scheduler_qp_ctx *qp_ctx = dev->data->queue_pairs[qp_id];
 
 	if (sched_ctx->reordering_enabled) {
-		char reorder_buff_name[RTE_CRYPTODEV_NAME_MAX_LEN];
-		uint32_t buff_size = sched_ctx->nb_slaves * PER_SLAVE_BUFF_SIZE;
+		char order_ring_name[RTE_CRYPTODEV_NAME_MAX_LEN];
+		uint32_t buff_size = rte_align32pow2(
+			sched_ctx->nb_slaves * PER_SLAVE_BUFF_SIZE);
 
-		if (qp_ctx->reorder_buf) {
-			rte_reorder_free(qp_ctx->reorder_buf);
-			qp_ctx->reorder_buf = NULL;
+		if (qp_ctx->order_ring) {
+			rte_ring_free(qp_ctx->order_ring);
+			qp_ctx->order_ring = NULL;
 		}
 
 		if (!buff_size)
 			return 0;
 
-		if (snprintf(reorder_buff_name, RTE_CRYPTODEV_NAME_MAX_LEN,
+		if (snprintf(order_ring_name, RTE_CRYPTODEV_NAME_MAX_LEN,
 			"%s_rb_%u_%u", RTE_STR(CRYPTODEV_NAME_SCHEDULER_PMD),
 			dev->data->dev_id, qp_id) < 0) {
 			CS_LOG_ERR("failed to create unique reorder buffer "
@@ -88,16 +89,17 @@ update_reorder_buff(struct rte_cryptodev *dev, uint16_t qp_id)
 			return -ENOMEM;
 		}
 
-		qp_ctx->reorder_buf = rte_reorder_create(reorder_buff_name,
-				rte_socket_id(), buff_size);
-		if (!qp_ctx->reorder_buf) {
-			CS_LOG_ERR("failed to create reorder buffer");
+		qp_ctx->order_ring = rte_ring_create(order_ring_name,
+				buff_size, rte_socket_id(),
+				RING_F_SP_ENQ | RING_F_SC_DEQ);
+		if (!qp_ctx->order_ring) {
+			CS_LOG_ERR("failed to create order ring");
 			return -ENOMEM;
 		}
 	} else {
-		if (qp_ctx->reorder_buf) {
-			rte_reorder_free(qp_ctx->reorder_buf);
-			qp_ctx->reorder_buf = NULL;
+		if (qp_ctx->order_ring) {
+			rte_ring_free(qp_ctx->order_ring);
+			qp_ctx->order_ring = NULL;
 		}
 	}
 
@@ -116,7 +118,7 @@ scheduler_pmd_start(struct rte_cryptodev *dev)
 		return 0;
 
 	for (i = 0; i < dev->data->nb_queue_pairs; i++) {
-		ret = update_reorder_buff(dev, i);
+		ret = update_order_ring(dev, i);
 		if (ret < 0) {
 			CS_LOG_ERR("Failed to update reorder buffer");
 			return ret;
@@ -224,9 +226,9 @@ scheduler_pmd_close(struct rte_cryptodev *dev)
 	for (i = 0; i < dev->data->nb_queue_pairs; i++) {
 		struct scheduler_qp_ctx *qp_ctx = dev->data->queue_pairs[i];
 
-		if (qp_ctx->reorder_buf) {
-			rte_reorder_free(qp_ctx->reorder_buf);
-			qp_ctx->reorder_buf = NULL;
+		if (qp_ctx->order_ring) {
+			rte_ring_free(qp_ctx->order_ring);
+			qp_ctx->order_ring = NULL;
 		}
 
 		if (qp_ctx->private_qp_ctx) {
@@ -324,8 +326,8 @@ scheduler_pmd_qp_release(struct rte_cryptodev *dev, uint16_t qp_id)
 	if (!qp_ctx)
 		return 0;
 
-	if (qp_ctx->reorder_buf)
-		rte_reorder_free(qp_ctx->reorder_buf);
+	if (qp_ctx->order_ring)
+		rte_ring_free(qp_ctx->order_ring);
 	if (qp_ctx->private_qp_ctx)
 		rte_free(qp_ctx->private_qp_ctx);
 

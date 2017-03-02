@@ -115,79 +115,16 @@ static uint16_t
 schedule_enqueue_ordering(void *qp, struct rte_crypto_op **ops,
 		uint16_t nb_ops)
 {
-	struct scheduler_qp_ctx *qp_ctx = qp;
-	struct rr_scheduler_qp_ctx *rr_qp_ctx = qp_ctx->private_qp_ctx;
-	uint32_t slave_idx = rr_qp_ctx->last_enq_slave_idx;
-	struct scheduler_slave *slave = &rr_qp_ctx->slaves[slave_idx];
-	uint16_t i, processed_ops;
-	struct rte_cryptodev_sym_session *sessions[nb_ops];
-	struct scheduler_session *sess0, *sess1, *sess2, *sess3;
+	struct rte_ring *order_ring =
+			((struct scheduler_qp_ctx *)qp)->order_ring;
+	uint16_t nb_ops_to_enq = get_max_enqueue_order_count(order_ring,
+			nb_ops);
+	uint16_t nb_ops_enqd = schedule_enqueue(qp, ops,
+			nb_ops_to_enq);
 
-	if (unlikely(nb_ops == 0))
-		return 0;
+	scheduler_order_insert(order_ring, ops, nb_ops_enqd);
 
-	for (i = 0; i < nb_ops && i < 4; i++) {
-		rte_prefetch0(ops[i]->sym->session);
-		rte_prefetch0(ops[i]->sym->m_src);
-	}
-
-	for (i = 0; (i < (nb_ops - 8)) && (nb_ops > 8); i += 4) {
-		sess0 = (struct scheduler_session *)
-				ops[i]->sym->session->_private;
-		sess1 = (struct scheduler_session *)
-				ops[i+1]->sym->session->_private;
-		sess2 = (struct scheduler_session *)
-				ops[i+2]->sym->session->_private;
-		sess3 = (struct scheduler_session *)
-				ops[i+3]->sym->session->_private;
-
-		sessions[i] = ops[i]->sym->session;
-		sessions[i + 1] = ops[i + 1]->sym->session;
-		sessions[i + 2] = ops[i + 2]->sym->session;
-		sessions[i + 3] = ops[i + 3]->sym->session;
-
-		ops[i]->sym->session = sess0->sessions[slave_idx];
-		ops[i]->sym->m_src->seqn = qp_ctx->seqn++;
-		ops[i + 1]->sym->session = sess1->sessions[slave_idx];
-		ops[i + 1]->sym->m_src->seqn = qp_ctx->seqn++;
-		ops[i + 2]->sym->session = sess2->sessions[slave_idx];
-		ops[i + 2]->sym->m_src->seqn = qp_ctx->seqn++;
-		ops[i + 3]->sym->session = sess3->sessions[slave_idx];
-		ops[i + 3]->sym->m_src->seqn = qp_ctx->seqn++;
-
-		rte_prefetch0(ops[i + 4]->sym->session);
-		rte_prefetch0(ops[i + 4]->sym->m_src);
-		rte_prefetch0(ops[i + 5]->sym->session);
-		rte_prefetch0(ops[i + 5]->sym->m_src);
-		rte_prefetch0(ops[i + 6]->sym->session);
-		rte_prefetch0(ops[i + 6]->sym->m_src);
-		rte_prefetch0(ops[i + 7]->sym->session);
-		rte_prefetch0(ops[i + 7]->sym->m_src);
-	}
-
-	for (; i < nb_ops; i++) {
-		sess0 = (struct scheduler_session *)
-				ops[i]->sym->session->_private;
-		sessions[i] = ops[i]->sym->session;
-		ops[i]->sym->session = sess0->sessions[slave_idx];
-		ops[i]->sym->m_src->seqn = qp_ctx->seqn++;
-	}
-
-	processed_ops = rte_cryptodev_enqueue_burst(slave->dev_id,
-			slave->qp_id, ops, nb_ops);
-
-	slave->nb_inflight_cops += processed_ops;
-
-	rr_qp_ctx->last_enq_slave_idx += 1;
-	rr_qp_ctx->last_enq_slave_idx %= rr_qp_ctx->nb_slaves;
-
-	/* recover session if enqueue is failed */
-	if (unlikely(processed_ops < nb_ops)) {
-		for (i = processed_ops; i < nb_ops; i++)
-			ops[i]->sym->session = sessions[i];
-	}
-
-	return processed_ops;
+	return nb_ops_enqd;
 }
 
 
@@ -232,105 +169,12 @@ static uint16_t
 schedule_dequeue_ordering(void *qp, struct rte_crypto_op **ops,
 		uint16_t nb_ops)
 {
-	struct scheduler_qp_ctx *qp_ctx = (struct scheduler_qp_ctx *)qp;
-	struct rr_scheduler_qp_ctx *rr_qp_ctx = (qp_ctx->private_qp_ctx);
-	struct scheduler_slave *slave;
-	struct rte_reorder_buffer *reorder_buff = qp_ctx->reorder_buf;
-	struct rte_mbuf *mbuf0, *mbuf1, *mbuf2, *mbuf3;
-	uint16_t nb_deq_ops, nb_drained_mbufs;
-	const uint16_t nb_op_ops = nb_ops;
-	struct rte_crypto_op *op_ops[nb_op_ops];
-	struct rte_mbuf *reorder_mbufs[nb_op_ops];
-	uint32_t last_slave_idx = rr_qp_ctx->last_deq_slave_idx;
-	uint16_t i;
+	struct rte_ring *order_ring =
+			((struct scheduler_qp_ctx *)qp)->order_ring;
 
-	if (unlikely(rr_qp_ctx->slaves[last_slave_idx].nb_inflight_cops == 0)) {
-		do {
-			last_slave_idx += 1;
+	schedule_dequeue(qp, ops, nb_ops);
 
-			if (unlikely(last_slave_idx >= rr_qp_ctx->nb_slaves))
-				last_slave_idx = 0;
-			/* looped back, means no inflight cops in the queue */
-			if (last_slave_idx == rr_qp_ctx->last_deq_slave_idx)
-				return 0;
-		} while (rr_qp_ctx->slaves[last_slave_idx].nb_inflight_cops
-				== 0);
-	}
-
-	slave = &rr_qp_ctx->slaves[last_slave_idx];
-
-	nb_deq_ops = rte_cryptodev_dequeue_burst(slave->dev_id,
-			slave->qp_id, op_ops, nb_ops);
-
-	rr_qp_ctx->last_deq_slave_idx += 1;
-	rr_qp_ctx->last_deq_slave_idx %= rr_qp_ctx->nb_slaves;
-
-	slave->nb_inflight_cops -= nb_deq_ops;
-
-	for (i = 0; i < nb_deq_ops && i < 4; i++)
-		rte_prefetch0(op_ops[i]->sym->m_src);
-
-	for (i = 0; (i < (nb_deq_ops - 8)) && (nb_deq_ops > 8); i += 4) {
-		mbuf0 = op_ops[i]->sym->m_src;
-		mbuf1 = op_ops[i + 1]->sym->m_src;
-		mbuf2 = op_ops[i + 2]->sym->m_src;
-		mbuf3 = op_ops[i + 3]->sym->m_src;
-
-		mbuf0->userdata = op_ops[i];
-		mbuf1->userdata = op_ops[i + 1];
-		mbuf2->userdata = op_ops[i + 2];
-		mbuf3->userdata = op_ops[i + 3];
-
-		rte_reorder_insert(reorder_buff, mbuf0);
-		rte_reorder_insert(reorder_buff, mbuf1);
-		rte_reorder_insert(reorder_buff, mbuf2);
-		rte_reorder_insert(reorder_buff, mbuf3);
-
-		rte_prefetch0(op_ops[i + 4]->sym->m_src);
-		rte_prefetch0(op_ops[i + 5]->sym->m_src);
-		rte_prefetch0(op_ops[i + 6]->sym->m_src);
-		rte_prefetch0(op_ops[i + 7]->sym->m_src);
-	}
-
-	for (; i < nb_deq_ops; i++) {
-		mbuf0 = op_ops[i]->sym->m_src;
-		mbuf0->userdata = op_ops[i];
-		rte_reorder_insert(reorder_buff, mbuf0);
-	}
-
-	nb_drained_mbufs = rte_reorder_drain(reorder_buff, reorder_mbufs,
-			nb_ops);
-	for (i = 0; i < nb_drained_mbufs && i < 4; i++)
-		rte_prefetch0(reorder_mbufs[i]);
-
-	for (i = 0; (i < (nb_drained_mbufs - 8)) && (nb_drained_mbufs > 8);
-			i += 4) {
-		ops[i] = *(struct rte_crypto_op **)reorder_mbufs[i]->userdata;
-		ops[i + 1] = *(struct rte_crypto_op **)
-			reorder_mbufs[i + 1]->userdata;
-		ops[i + 2] = *(struct rte_crypto_op **)
-			reorder_mbufs[i + 2]->userdata;
-		ops[i + 3] = *(struct rte_crypto_op **)
-			reorder_mbufs[i + 3]->userdata;
-
-		reorder_mbufs[i]->userdata = NULL;
-		reorder_mbufs[i + 1]->userdata = NULL;
-		reorder_mbufs[i + 2]->userdata = NULL;
-		reorder_mbufs[i + 3]->userdata = NULL;
-
-		rte_prefetch0(reorder_mbufs[i + 4]);
-		rte_prefetch0(reorder_mbufs[i + 5]);
-		rte_prefetch0(reorder_mbufs[i + 6]);
-		rte_prefetch0(reorder_mbufs[i + 7]);
-	}
-
-	for (; i < nb_drained_mbufs; i++) {
-		ops[i] = *(struct rte_crypto_op **)
-			reorder_mbufs[i]->userdata;
-		reorder_mbufs[i]->userdata = NULL;
-	}
-
-	return nb_drained_mbufs;
+	return scheduler_order_drain(order_ring, ops, nb_ops);
 }
 
 static int
