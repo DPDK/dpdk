@@ -1804,6 +1804,19 @@ struct rte_eth_dev *rte_eth_dev_allocate(const char *name);
 
 /**
  * @internal
+ * Attach to the ethdev already initialized by the primary
+ * process.
+ *
+ * @param       name    Ethernet device's name.
+ * @return
+ *   - Success: Slot in the rte_dev_devices array for attached
+ *        device.
+ *   - Error: Null pointer.
+ */
+struct rte_eth_dev *rte_eth_dev_attach_secondary(const char *name);
+
+/**
+ * @internal
  * Release the specified ethdev port.
  *
  * @param eth_dev

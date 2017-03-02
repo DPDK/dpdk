@@ -247,8 +247,8 @@ rte_eth_dev_allocate(const char *name)
  * makes sure that the same device would have the same port id both
  * in the primary and secondary process.
  */
-static struct rte_eth_dev *
-eth_dev_attach_secondary(const char *name)
+struct rte_eth_dev *
+rte_eth_dev_attach_secondary(const char *name)
 {
 	uint8_t i;
 	struct rte_eth_dev *eth_dev;
@@ -310,7 +310,7 @@ rte_eth_dev_pci_probe(struct rte_pci_driver *pci_drv,
 		if (eth_dev->data->dev_private == NULL)
 			rte_panic("Cannot allocate memzone for private port data\n");
 	} else {
-		eth_dev = eth_dev_attach_secondary(ethdev_name);
+		eth_dev = rte_eth_dev_attach_secondary(ethdev_name);
 		if (eth_dev == NULL) {
 			/*
 			 * if we failed to attach a device, it means the
