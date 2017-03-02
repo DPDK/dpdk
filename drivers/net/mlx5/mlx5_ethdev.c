@@ -696,7 +696,9 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	if (priv->tso)
 		info->tx_offload_capa |= DEV_TX_OFFLOAD_TCP_TSO;
 	if (priv->tunnel_en)
-		info->tx_offload_capa |= DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
+		info->tx_offload_capa |= (DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
+					  DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
+					  DEV_TX_OFFLOAD_GRE_TNL_TSO);
 	if (priv_get_ifname(priv, &ifname) == 0)
 		info->if_index = if_nametoindex(ifname);
 	/* FIXME: RETA update/query API expects the callee to know the size of

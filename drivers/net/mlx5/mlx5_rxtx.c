@@ -566,10 +566,18 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				unsigned int copy_b;
 				uint8_t vlan_sz = (buf->ol_flags &
 						  PKT_TX_VLAN_PKT) ? 4 : 0;
+				const uint64_t is_tunneled =
+							buf->ol_flags &
+							(PKT_TX_TUNNEL_GRE |
+							 PKT_TX_TUNNEL_VXLAN);
 
 				tso_header_sz = buf->l2_len + vlan_sz +
 						buf->l3_len + buf->l4_len;
 
+				if (is_tunneled	&& txq->tunnel_en) {
+					tso_header_sz += buf->outer_l2_len +
+							 buf->outer_l3_len;
+				}
 				if (unlikely(tso_header_sz >
 					     MLX5_MAX_TSO_HEADER))
 					break;
