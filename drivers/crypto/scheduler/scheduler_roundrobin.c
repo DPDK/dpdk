@@ -45,10 +45,10 @@ struct rr_scheduler_qp_ctx {
 };
 
 static uint16_t
-schedule_enqueue(void *qp_ctx, struct rte_crypto_op **ops, uint16_t nb_ops)
+schedule_enqueue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 {
 	struct rr_scheduler_qp_ctx *rr_qp_ctx =
-			((struct scheduler_qp_ctx *)qp_ctx)->private_qp_ctx;
+			((struct scheduler_qp_ctx *)qp)->private_qp_ctx;
 	uint32_t slave_idx = rr_qp_ctx->last_enq_slave_idx;
 	struct scheduler_slave *slave = &rr_qp_ctx->slaves[slave_idx];
 	uint16_t i, processed_ops;
@@ -112,12 +112,11 @@ schedule_enqueue(void *qp_ctx, struct rte_crypto_op **ops, uint16_t nb_ops)
 }
 
 static uint16_t
-schedule_enqueue_ordering(void *qp_ctx, struct rte_crypto_op **ops,
+schedule_enqueue_ordering(void *qp, struct rte_crypto_op **ops,
 		uint16_t nb_ops)
 {
-	struct scheduler_qp_ctx *gen_qp_ctx = qp_ctx;
-	struct rr_scheduler_qp_ctx *rr_qp_ctx =
-			gen_qp_ctx->private_qp_ctx;
+	struct scheduler_qp_ctx *qp_ctx = qp;
+	struct rr_scheduler_qp_ctx *rr_qp_ctx = qp_ctx->private_qp_ctx;
 	uint32_t slave_idx = rr_qp_ctx->last_enq_slave_idx;
 	struct scheduler_slave *slave = &rr_qp_ctx->slaves[slave_idx];
 	uint16_t i, processed_ops;
@@ -148,13 +147,13 @@ schedule_enqueue_ordering(void *qp_ctx, struct rte_crypto_op **ops,
 		sessions[i + 3] = ops[i + 3]->sym->session;
 
 		ops[i]->sym->session = sess0->sessions[slave_idx];
-		ops[i]->sym->m_src->seqn = gen_qp_ctx->seqn++;
+		ops[i]->sym->m_src->seqn = qp_ctx->seqn++;
 		ops[i + 1]->sym->session = sess1->sessions[slave_idx];
-		ops[i + 1]->sym->m_src->seqn = gen_qp_ctx->seqn++;
+		ops[i + 1]->sym->m_src->seqn = qp_ctx->seqn++;
 		ops[i + 2]->sym->session = sess2->sessions[slave_idx];
-		ops[i + 2]->sym->m_src->seqn = gen_qp_ctx->seqn++;
+		ops[i + 2]->sym->m_src->seqn = qp_ctx->seqn++;
 		ops[i + 3]->sym->session = sess3->sessions[slave_idx];
-		ops[i + 3]->sym->m_src->seqn = gen_qp_ctx->seqn++;
+		ops[i + 3]->sym->m_src->seqn = qp_ctx->seqn++;
 
 		rte_prefetch0(ops[i + 4]->sym->session);
 		rte_prefetch0(ops[i + 4]->sym->m_src);
@@ -171,7 +170,7 @@ schedule_enqueue_ordering(void *qp_ctx, struct rte_crypto_op **ops,
 				ops[i]->sym->session->_private;
 		sessions[i] = ops[i]->sym->session;
 		ops[i]->sym->session = sess0->sessions[slave_idx];
-		ops[i]->sym->m_src->seqn = gen_qp_ctx->seqn++;
+		ops[i]->sym->m_src->seqn = qp_ctx->seqn++;
 	}
 
 	processed_ops = rte_cryptodev_enqueue_burst(slave->dev_id,
@@ -193,10 +192,10 @@ schedule_enqueue_ordering(void *qp_ctx, struct rte_crypto_op **ops,
 
 
 static uint16_t
-schedule_dequeue(void *qp_ctx, struct rte_crypto_op **ops, uint16_t nb_ops)
+schedule_dequeue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 {
 	struct rr_scheduler_qp_ctx *rr_qp_ctx =
-			((struct scheduler_qp_ctx *)qp_ctx)->private_qp_ctx;
+			((struct scheduler_qp_ctx *)qp)->private_qp_ctx;
 	struct scheduler_slave *slave;
 	uint32_t last_slave_idx = rr_qp_ctx->last_deq_slave_idx;
 	uint16_t nb_deq_ops;
@@ -230,13 +229,13 @@ schedule_dequeue(void *qp_ctx, struct rte_crypto_op **ops, uint16_t nb_ops)
 }
 
 static uint16_t
-schedule_dequeue_ordering(void *qp_ctx, struct rte_crypto_op **ops,
+schedule_dequeue_ordering(void *qp, struct rte_crypto_op **ops,
 		uint16_t nb_ops)
 {
-	struct scheduler_qp_ctx *gen_qp_ctx = (struct scheduler_qp_ctx *)qp_ctx;
-	struct rr_scheduler_qp_ctx *rr_qp_ctx = (gen_qp_ctx->private_qp_ctx);
+	struct scheduler_qp_ctx *qp_ctx = (struct scheduler_qp_ctx *)qp;
+	struct rr_scheduler_qp_ctx *rr_qp_ctx = (qp_ctx->private_qp_ctx);
 	struct scheduler_slave *slave;
-	struct rte_reorder_buffer *reorder_buff = gen_qp_ctx->reorder_buf;
+	struct rte_reorder_buffer *reorder_buff = qp_ctx->reorder_buf;
 	struct rte_mbuf *mbuf0, *mbuf1, *mbuf2, *mbuf3;
 	uint16_t nb_deq_ops, nb_drained_mbufs;
 	const uint16_t nb_op_ops = nb_ops;
@@ -354,6 +353,14 @@ scheduler_start(struct rte_cryptodev *dev)
 	struct scheduler_ctx *sched_ctx = dev->data->dev_private;
 	uint16_t i;
 
+	if (sched_ctx->reordering_enabled) {
+		dev->enqueue_burst = &schedule_enqueue_ordering;
+		dev->dequeue_burst = &schedule_dequeue_ordering;
+	} else {
+		dev->enqueue_burst = &schedule_enqueue;
+		dev->dequeue_burst = &schedule_dequeue;
+	}
+
 	for (i = 0; i < dev->data->nb_queue_pairs; i++) {
 		struct scheduler_qp_ctx *qp_ctx = dev->data->queue_pairs[i];
 		struct rr_scheduler_qp_ctx *rr_qp_ctx =
@@ -372,14 +379,6 @@ scheduler_start(struct rte_cryptodev *dev)
 
 		rr_qp_ctx->last_enq_slave_idx = 0;
 		rr_qp_ctx->last_deq_slave_idx = 0;
-
-		if (sched_ctx->reordering_enabled) {
-			qp_ctx->schedule_enqueue = &schedule_enqueue_ordering;
-			qp_ctx->schedule_dequeue = &schedule_dequeue_ordering;
-		} else {
-			qp_ctx->schedule_enqueue = &schedule_enqueue;
-			qp_ctx->schedule_dequeue = &schedule_dequeue;
-		}
 	}
 
 	return 0;

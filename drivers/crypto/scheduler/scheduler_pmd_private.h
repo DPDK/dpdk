@@ -98,9 +98,6 @@ struct scheduler_ctx {
 struct scheduler_qp_ctx {
 	void *private_qp_ctx;
 
-	rte_cryptodev_scheduler_burst_enqueue_t schedule_enqueue;
-	rte_cryptodev_scheduler_burst_dequeue_t schedule_dequeue;
-
 	struct rte_reorder_buffer *reorder_buf;
 	uint32_t seqn;
 } __rte_cache_aligned;

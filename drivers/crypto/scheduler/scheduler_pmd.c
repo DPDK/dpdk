@@ -61,32 +61,6 @@ const char *scheduler_valid_params[] = {
 	RTE_CRYPTODEV_VDEV_SOCKET_ID
 };
 
-static uint16_t
-scheduler_enqueue_burst(void *queue_pair, struct rte_crypto_op **ops,
-		uint16_t nb_ops)
-{
-	struct scheduler_qp_ctx *qp_ctx = queue_pair;
-	uint16_t processed_ops;
-
-	processed_ops = (*qp_ctx->schedule_enqueue)(qp_ctx, ops,
-			nb_ops);
-
-	return processed_ops;
-}
-
-static uint16_t
-scheduler_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
-		uint16_t nb_ops)
-{
-	struct scheduler_qp_ctx *qp_ctx = queue_pair;
-	uint16_t processed_ops;
-
-	processed_ops = (*qp_ctx->schedule_dequeue)(qp_ctx, ops,
-			nb_ops);
-
-	return processed_ops;
-}
-
 static int
 attach_init_slaves(uint8_t scheduler_id,
 		const uint8_t *slaves, const uint8_t nb_slaves)
@@ -145,9 +119,6 @@ cryptodev_scheduler_create(const char *name,
 
 	dev->dev_type = RTE_CRYPTODEV_SCHEDULER_PMD;
 	dev->dev_ops = rte_crypto_scheduler_pmd_ops;
-
-	dev->enqueue_burst = scheduler_enqueue_burst;
-	dev->dequeue_burst = scheduler_dequeue_burst;
 
 	sched_ctx = dev->data->dev_private;
 	sched_ctx->max_nb_queue_pairs =
