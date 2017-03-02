@@ -635,7 +635,6 @@ vhost_user_set_vring_call(struct virtio_net *dev, struct VhostUserMsg *pmsg)
 {
 	struct vhost_vring_file file;
 	struct vhost_virtqueue *vq;
-	uint32_t cur_qp_idx;
 
 	file.index = pmsg->payload.u64 & VHOST_USER_VRING_IDX_MASK;
 	if (pmsg->payload.u64 & VHOST_USER_VRING_NOFD_MASK)
@@ -645,19 +644,7 @@ vhost_user_set_vring_call(struct virtio_net *dev, struct VhostUserMsg *pmsg)
 	RTE_LOG(INFO, VHOST_CONFIG,
 		"vring call idx:%d file:%d\n", file.index, file.fd);
 
-	/*
-	 * FIXME: VHOST_SET_VRING_CALL is the first per-vring message
-	 * we get, so we do vring queue pair allocation here.
-	 */
-	cur_qp_idx = file.index / VIRTIO_QNUM;
-	if (cur_qp_idx + 1 > dev->virt_qp_nb) {
-		if (alloc_vring_queue_pair(dev, cur_qp_idx) < 0)
-			return;
-	}
-
 	vq = dev->virtqueue[file.index];
-	assert(vq != NULL);
-
 	if (vq->callfd >= 0)
 		close(vq->callfd);
 
@@ -914,6 +901,46 @@ send_vhost_message(int sockfd, struct VhostUserMsg *msg)
 	return ret;
 }
 
+/*
+ * Allocate a queue pair if it hasn't been allocated yet
+ */
+static int
+vhost_user_check_and_alloc_queue_pair(struct virtio_net *dev, VhostUserMsg *msg)
+{
+	uint16_t vring_idx;
+	uint16_t qp_idx;
+
+	switch (msg->request) {
+	case VHOST_USER_SET_VRING_KICK:
+	case VHOST_USER_SET_VRING_CALL:
+	case VHOST_USER_SET_VRING_ERR:
+		vring_idx = msg->payload.u64 & VHOST_USER_VRING_IDX_MASK;
+		break;
+	case VHOST_USER_SET_VRING_NUM:
+	case VHOST_USER_SET_VRING_BASE:
+	case VHOST_USER_SET_VRING_ENABLE:
+		vring_idx = msg->payload.state.index;
+		break;
+	case VHOST_USER_SET_VRING_ADDR:
+		vring_idx = msg->payload.addr.index;
+		break;
+	default:
+		return 0;
+	}
+
+	qp_idx = vring_idx / VIRTIO_QNUM;
+	if (qp_idx >= VHOST_MAX_QUEUE_PAIRS) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"invalid vring index: %u\n", vring_idx);
+		return -1;
+	}
+
+	if (dev->virtqueue[qp_idx * VIRTIO_QNUM])
+		return 0;
+
+	return alloc_vring_queue_pair(dev, qp_idx);
+}
+
 int
 vhost_user_msg_handler(int vid, int fd)
 {
@@ -943,6 +970,14 @@ vhost_user_msg_handler(int vid, int fd)
 	ret = 0;
 	RTE_LOG(INFO, VHOST_CONFIG, "read message %s\n",
 		vhost_message_str[msg.request]);
+
+	ret = vhost_user_check_and_alloc_queue_pair(dev, &msg);
+	if (ret < 0) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"failed to alloc queue\n");
+		return -1;
+	}
+
 	switch (msg.request) {
 	case VHOST_USER_GET_FEATURES:
 		msg.payload.u64 = vhost_user_get_features();
