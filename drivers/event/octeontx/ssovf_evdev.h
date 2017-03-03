@@ -120,6 +120,14 @@
 #define SSO_GRP_GET_PRIORITY              0x7
 #define SSO_GRP_SET_PRIORITY              0x8
 
+/*
+ * In Cavium OcteonTX SoC, all accesses to the device registers are
+ * implictly strongly ordered. So, The relaxed version of IO operation is
+ * safe to use with out any IO memory barriers.
+ */
+#define ssovf_read64 rte_read64_relaxed
+#define ssovf_write64 rte_write64_relaxed
+
 struct ssovf_evdev {
 	uint8_t max_event_queues;
 	uint8_t max_event_ports;

@@ -260,6 +260,46 @@ ssovf_port_setup(struct rte_eventdev *dev, uint8_t port_id,
 	ssovf_log_dbg("port=%d ws=%p", port_id, ws);
 	return 0;
 }
+
+static int
+ssovf_port_link(struct rte_eventdev *dev, void *port, const uint8_t queues[],
+		const uint8_t priorities[], uint16_t nb_links)
+{
+	uint16_t link;
+	uint64_t val;
+	struct ssows *ws = port;
+
+	ssovf_func_trace("port=%d nb_links=%d", ws->port, nb_links);
+	RTE_SET_USED(dev);
+	RTE_SET_USED(priorities);
+
+	for (link = 0; link < nb_links; link++) {
+		val = queues[link];
+		val |= (1ULL << 24); /* Set membership */
+		ssovf_write64(val, ws->base + SSOW_VHWS_GRPMSK_CHGX(0));
+	}
+	return (int)nb_links;
+}
+
+static int
+ssovf_port_unlink(struct rte_eventdev *dev, void *port, uint8_t queues[],
+			uint16_t nb_unlinks)
+{
+	uint16_t unlink;
+	uint64_t val;
+	struct ssows *ws = port;
+
+	ssovf_func_trace("port=%d nb_links=%d", ws->port, nb_unlinks);
+	RTE_SET_USED(dev);
+
+	for (unlink = 0; unlink < nb_unlinks; unlink++) {
+		val = queues[unlink];
+		val &= ~(1ULL << 24); /* Clear membership */
+		ssovf_write64(val, ws->base + SSOW_VHWS_GRPMSK_CHGX(0));
+	}
+	return (int)nb_unlinks;
+}
+
 /* Initialize and register event driver with DPDK Application */
 static const struct rte_eventdev_ops ssovf_ops = {
 	.dev_infos_get    = ssovf_info_get,
@@ -270,6 +310,8 @@ static const struct rte_eventdev_ops ssovf_ops = {
 	.port_def_conf    = ssovf_port_def_conf,
 	.port_setup       = ssovf_port_setup,
 	.port_release     = ssovf_port_release,
+	.port_link        = ssovf_port_link,
+	.port_unlink      = ssovf_port_unlink,
 };
 
 static int
