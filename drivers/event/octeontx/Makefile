@@ -48,4 +48,7 @@ LIBABIVER := 1
 #
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX_SSOVF) += ssovf_probe.c
 
+# install this header file
+SYMLINK-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX_SSOVF)-include := rte_pmd_octeontx_ssovf.h
+
 include $(RTE_SDK)/mk/rte.lib.mk

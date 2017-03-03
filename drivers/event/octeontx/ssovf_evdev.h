@@ -36,6 +36,8 @@
 #include <rte_config.h>
 #include <rte_io.h>
 
+#include "rte_pmd_octeontx_ssovf.h"
+
 #define EVENTDEV_NAME_OCTEONTX_PMD event_octeontx
 
 #ifdef RTE_LIBRTE_PMD_OCTEONTX_SSOVF_DEBUG

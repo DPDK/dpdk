@@ -67,6 +67,90 @@ struct ssodev {
 
 static struct ssodev sdev;
 
+/* Interface functions */
+int
+octeontx_ssovf_info(struct octeontx_ssovf_info *info)
+{
+	uint8_t i;
+	uint16_t domain;
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY || info == NULL)
+		return -EINVAL;
+
+	if (sdev.total_ssovfs == 0 || sdev.total_ssowvfs == 0)
+		return -ENODEV;
+
+	domain = sdev.grp[0].domain;
+	for (i = 0; i < sdev.total_ssovfs; i++) {
+		/* Check vfid's are contiguous and belong to same domain */
+		if (sdev.grp[i].vfid != i ||
+			sdev.grp[i].bar0 == NULL ||
+			sdev.grp[i].domain != domain) {
+			ssovf_log_err("GRP error, vfid=%d/%d domain=%d/%d %p",
+				i, sdev.grp[i].vfid,
+				domain, sdev.grp[i].domain,
+				sdev.grp[i].bar0);
+			return -EINVAL;
+		}
+	}
+
+	for (i = 0; i < sdev.total_ssowvfs; i++) {
+		/* Check vfid's are contiguous and belong to same domain */
+		if (sdev.hws[i].vfid != i ||
+			sdev.hws[i].bar0 == NULL ||
+			sdev.hws[i].domain != domain) {
+			ssovf_log_err("HWS error, vfid=%d/%d domain=%d/%d %p",
+				i, sdev.hws[i].vfid,
+				domain, sdev.hws[i].domain,
+				sdev.hws[i].bar0);
+			return -EINVAL;
+		}
+	}
+
+	info->domain = domain;
+	info->total_ssovfs = sdev.total_ssovfs;
+	info->total_ssowvfs = sdev.total_ssowvfs;
+	return 0;
+}
+
+void*
+octeontx_ssovf_bar(enum octeontx_ssovf_type type, uint8_t id, uint8_t bar)
+{
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY ||
+			type > OCTEONTX_SSO_HWS)
+		return NULL;
+
+	if (type == OCTEONTX_SSO_GROUP) {
+		if (id >= sdev.total_ssovfs)
+			return NULL;
+	} else {
+		if (id >= sdev.total_ssowvfs)
+			return NULL;
+	}
+
+	if (type == OCTEONTX_SSO_GROUP) {
+		switch (bar) {
+		case 0:
+			return sdev.grp[id].bar0;
+		case 2:
+			return sdev.grp[id].bar2;
+		default:
+			return NULL;
+		}
+	} else {
+		switch (bar) {
+		case 0:
+			return sdev.hws[id].bar0;
+		case 2:
+			return sdev.hws[id].bar2;
+		case 4:
+			return sdev.hws[id].bar4;
+		default:
+			return NULL;
+		}
+	}
+}
+
 /* SSOWVF pcie device aka event port probe */
 
 static int
