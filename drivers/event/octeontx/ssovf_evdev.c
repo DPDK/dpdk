@@ -89,6 +89,36 @@ ssovf_mbox_getwork_tmo_set(uint32_t timeout_ns)
 	return ret;
 }
 
+struct ssovf_mbox_grp_pri {
+	uint8_t wgt_left; /* Read only */
+	uint8_t weight;
+	uint8_t affinity;
+	uint8_t priority;
+};
+
+static int
+ssovf_mbox_priority_set(uint8_t queue, uint8_t prio)
+{
+	struct octeontx_mbox_hdr hdr = {0};
+	struct ssovf_mbox_grp_pri grp;
+	uint16_t len = sizeof(struct ssovf_mbox_grp_pri);
+	int ret;
+
+	hdr.coproc = SSO_COPROC;
+	hdr.msg = SSO_GRP_SET_PRIORITY;
+	hdr.vfid = queue;
+
+	grp.weight = 0xff;
+	grp.affinity = 0xff;
+	grp.priority = prio / 32; /* Normalize to 0 to 7 */
+
+	ret = octeontx_ssovf_mbox_send(&hdr, &grp, len, NULL, 0);
+	if (ret)
+		ssovf_log_err("Failed to set grp=%d prio=%d", queue, prio);
+
+	return ret;
+}
+
 static void
 ssovf_info_get(struct rte_eventdev *dev, struct rte_event_dev_info *dev_info)
 {
@@ -129,10 +159,43 @@ ssovf_configure(const struct rte_eventdev *dev)
 	return ssovf_mbox_getwork_tmo_set(deq_tmo_ns);
 }
 
+static void
+ssovf_queue_def_conf(struct rte_eventdev *dev, uint8_t queue_id,
+				 struct rte_event_queue_conf *queue_conf)
+{
+	RTE_SET_USED(dev);
+	RTE_SET_USED(queue_id);
+
+	queue_conf->nb_atomic_flows = (1ULL << 20);
+	queue_conf->nb_atomic_order_sequences = (1ULL << 20);
+	queue_conf->event_queue_cfg = RTE_EVENT_QUEUE_CFG_ALL_TYPES;
+	queue_conf->priority = RTE_EVENT_DEV_PRIORITY_NORMAL;
+}
+
+static void
+ssovf_queue_release(struct rte_eventdev *dev, uint8_t queue_id)
+{
+	RTE_SET_USED(dev);
+	RTE_SET_USED(queue_id);
+}
+
+static int
+ssovf_queue_setup(struct rte_eventdev *dev, uint8_t queue_id,
+			      const struct rte_event_queue_conf *queue_conf)
+{
+	RTE_SET_USED(dev);
+	ssovf_func_trace("queue=%d prio=%d", queue_id, queue_conf->priority);
+
+	return ssovf_mbox_priority_set(queue_id, queue_conf->priority);
+}
+
 /* Initialize and register event driver with DPDK Application */
 static const struct rte_eventdev_ops ssovf_ops = {
 	.dev_infos_get    = ssovf_info_get,
 	.dev_configure    = ssovf_configure,
+	.queue_def_conf   = ssovf_queue_def_conf,
+	.queue_setup      = ssovf_queue_setup,
+	.queue_release    = ssovf_queue_release,
 };
 
 static int

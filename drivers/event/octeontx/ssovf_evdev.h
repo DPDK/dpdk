@@ -117,6 +117,8 @@
 #define SSO_GET_DEV_INFO                  0x3
 #define SSO_GET_GETWORK_WAIT              0x4
 #define SSO_SET_GETWORK_WAIT              0x5
+#define SSO_GRP_GET_PRIORITY              0x7
+#define SSO_GRP_SET_PRIORITY              0x8
 
 struct ssovf_evdev {
 	uint8_t max_event_queues;
