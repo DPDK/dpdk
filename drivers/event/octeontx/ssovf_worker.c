@@ -120,6 +120,58 @@ ssows_release_event(struct ssows *ws)
 }
 
 force_inline uint16_t __hot
+ssows_deq(void *port, struct rte_event *ev, uint64_t timeout_ticks)
+{
+	struct ssows *ws = port;
+
+	RTE_SET_USED(timeout_ticks);
+
+	ssows_swtag_wait(ws);
+	if (ws->swtag_req) {
+		ws->swtag_req = 0;
+		return 1;
+	} else {
+		return ssows_get_work(ws, ev);
+	}
+}
+
+force_inline uint16_t __hot
+ssows_deq_timeout(void *port, struct rte_event *ev, uint64_t timeout_ticks)
+{
+	struct ssows *ws = port;
+	uint64_t iter;
+	uint16_t ret = 1;
+
+	ssows_swtag_wait(ws);
+	if (ws->swtag_req) {
+		ws->swtag_req = 0;
+	} else {
+		ret = ssows_get_work(ws, ev);
+		for (iter = 1; iter < timeout_ticks && (ret == 0); iter++)
+			ret = ssows_get_work(ws, ev);
+	}
+	return ret;
+}
+
+uint16_t __hot
+ssows_deq_burst(void *port, struct rte_event ev[], uint16_t nb_events,
+		uint64_t timeout_ticks)
+{
+	RTE_SET_USED(nb_events);
+
+	return ssows_deq(port, ev, timeout_ticks);
+}
+
+uint16_t __hot
+ssows_deq_timeout_burst(void *port, struct rte_event ev[], uint16_t nb_events,
+			uint64_t timeout_ticks)
+{
+	RTE_SET_USED(nb_events);
+
+	return ssows_deq_timeout(port, ev, timeout_ticks);
+}
+
+force_inline uint16_t __hot
 ssows_enq(void *port, const struct rte_event *ev)
 {
 	struct ssows *ws = port;

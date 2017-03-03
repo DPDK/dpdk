@@ -190,5 +190,12 @@ ssovf_pmd_priv(const struct rte_eventdev *eventdev)
 uint16_t ssows_enq(void *port, const struct rte_event *ev);
 uint16_t ssows_enq_burst(void *port,
 		const struct rte_event ev[], uint16_t nb_events);
+uint16_t ssows_deq(void *port, struct rte_event *ev, uint64_t timeout_ticks);
+uint16_t ssows_deq_burst(void *port, struct rte_event ev[],
+		uint16_t nb_events, uint64_t timeout_ticks);
+uint16_t ssows_deq_timeout(void *port, struct rte_event *ev,
+		uint64_t timeout_ticks);
+uint16_t ssows_deq_timeout_burst(void *port, struct rte_event ev[],
+		uint16_t nb_events, uint64_t timeout_ticks);
 
 #endif /* __SSOVF_EVDEV_H__ */
