@@ -330,7 +330,7 @@ rte_event_dev_socket_id(uint8_t dev_id);
  */
 struct rte_event_dev_info {
 	const char *driver_name;	/**< Event driver name */
-	struct rte_pci_device *pci_dev;	/**< PCI information */
+	struct rte_device *dev;	/**< Device information */
 	uint32_t min_dequeue_timeout_ns;
 	/**< Minimum supported global dequeue timeout(ns) by this device */
 	uint32_t max_dequeue_timeout_ns;
@@ -1059,8 +1059,8 @@ struct rte_eventdev {
 	/**< Pointer to device data */
 	const struct rte_eventdev_ops *dev_ops;
 	/**< Functions exported by PMD */
-	struct rte_pci_device *pci_dev;
-	/**< PCI info. supplied by probing */
+	struct rte_device *dev;
+	/**< Device info. supplied by probing */
 	const struct rte_eventdev_driver *driver;
 	/**< Driver for this device */
 

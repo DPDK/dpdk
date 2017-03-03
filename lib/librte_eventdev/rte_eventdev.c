@@ -125,7 +125,7 @@ rte_event_dev_info_get(uint8_t dev_id, struct rte_event_dev_info *dev_info)
 
 	dev_info->dequeue_timeout_ns = dev->data->dev_conf.dequeue_timeout_ns;
 
-	dev_info->pci_dev = dev->pci_dev;
+	dev_info->dev = dev->dev;
 	if (dev->driver)
 		dev_info->driver_name = dev->driver->pci_drv.driver.name;
 	return 0;
@@ -1196,7 +1196,7 @@ rte_event_pmd_pci_probe(struct rte_pci_driver *pci_drv,
 					"device data");
 	}
 
-	eventdev->pci_dev = pci_dev;
+	eventdev->dev = &pci_dev->device;
 	eventdev->driver = eventdrv;
 
 	/* Invoke PMD device initialization function */
@@ -1250,7 +1250,7 @@ rte_event_pmd_pci_remove(struct rte_pci_device *pci_dev)
 	/* Free event device */
 	rte_event_pmd_release(eventdev);
 
-	eventdev->pci_dev = NULL;
+	eventdev->dev = NULL;
 	eventdev->driver = NULL;
 
 	return 0;

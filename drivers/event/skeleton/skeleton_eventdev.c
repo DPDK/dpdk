@@ -383,7 +383,7 @@ skeleton_eventdev_init(struct rte_eventdev *eventdev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
-	pci_dev = eventdev->pci_dev;
+	pci_dev = RTE_DEV_TO_PCI(eventdev->dev);
 
 	skel->reg_base = (uintptr_t)pci_dev->mem_resource[0].addr;
 	if (!skel->reg_base) {
