@@ -1242,6 +1242,64 @@ test_multi_port_mixed_max_stages_random_sched_type(void)
 	return launch_multi_port_max_stages_random_sched_type(
 		worker_mixed_pipeline_max_stages_rand_sched_type);
 }
+
+static int
+worker_ordered_flow_producer(void *arg)
+{
+	struct test_core_param *param = arg;
+	uint8_t port = param->port;
+	struct rte_mbuf *m;
+	int counter = 0;
+
+	while (counter < NUM_PACKETS) {
+		m = rte_pktmbuf_alloc(eventdev_test_mempool);
+		if (m == NULL)
+			continue;
+
+		m->seqn = counter++;
+
+		struct rte_event ev = {.event = 0, .u64 = 0};
+
+		ev.flow_id = 0x1; /* Generate a fat flow */
+		ev.sub_event_type = 0;
+		/* Inject the new event */
+		ev.op = RTE_EVENT_OP_NEW;
+		ev.event_type = RTE_EVENT_TYPE_CPU;
+		ev.sched_type = RTE_SCHED_TYPE_ORDERED;
+		ev.queue_id = 0;
+		ev.mbuf = m;
+		rte_event_enqueue_burst(evdev, port, &ev, 1);
+	}
+
+	return 0;
+}
+
+static inline int
+test_producer_consumer_ingress_order_test(int (*fn)(void *))
+{
+	uint8_t nr_ports;
+
+	nr_ports = RTE_MIN(rte_event_port_count(evdev), rte_lcore_count() - 1);
+
+	if (rte_lcore_count() < 3 || nr_ports < 2) {
+		printf("### Not enough cores for %s test.\n", __func__);
+		return TEST_SUCCESS;
+	}
+
+	launch_workers_and_wait(worker_ordered_flow_producer, fn,
+				NUM_PACKETS, nr_ports, RTE_SCHED_TYPE_ATOMIC);
+	/* Check the events order maintained or not */
+	return seqn_list_check(NUM_PACKETS);
+}
+
+/* Flow based producer consumer ingress order test */
+static int
+test_flow_producer_consumer_ingress_order_test(void)
+{
+	return test_producer_consumer_ingress_order_test(
+				worker_flow_based_pipeline);
+}
+
 static struct unit_test_suite eventdev_octeontx_testsuite  = {
 	.suite_name = "eventdev octeontx unit test suite",
 	.setup = testsuite_setup,
@@ -1305,6 +1363,8 @@ static struct unit_test_suite eventdev_octeontx_testsuite  = {
 			test_multi_port_queue_max_stages_random_sched_type),
 		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
 			test_multi_port_mixed_max_stages_random_sched_type),
+		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
+			test_flow_producer_consumer_ingress_order_test),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
