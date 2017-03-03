@@ -45,11 +45,97 @@ struct ssovf_res {
 	void *bar2;
 };
 
+struct ssowvf_res {
+	uint16_t domain;
+	uint16_t vfid;
+	void *bar0;
+	void *bar2;
+	void *bar4;
+};
+
+struct ssowvf_identify {
+	uint16_t domain;
+	uint16_t vfid;
+};
+
 struct ssodev {
 	uint8_t total_ssovfs;
+	uint8_t total_ssowvfs;
 	struct ssovf_res grp[SSO_MAX_VHGRP];
+	struct ssowvf_res hws[SSO_MAX_VHWS];
 };
+
 static struct ssodev sdev;
+
+/* SSOWVF pcie device aka event port probe */
+
+static int
+ssowvf_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
+{
+	uint16_t vfid;
+	struct ssowvf_res *res;
+	struct ssowvf_identify *id;
+
+	RTE_SET_USED(pci_drv);
+
+	/* For secondary processes, the primary has done all the work */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
+
+	if (pci_dev->mem_resource[0].addr == NULL ||
+			pci_dev->mem_resource[2].addr == NULL ||
+			pci_dev->mem_resource[4].addr == NULL) {
+		ssovf_log_err("Empty bars %p %p %p",
+				pci_dev->mem_resource[0].addr,
+				pci_dev->mem_resource[2].addr,
+				pci_dev->mem_resource[4].addr);
+		return -ENODEV;
+	}
+
+	if (pci_dev->mem_resource[4].len != SSOW_BAR4_LEN) {
+		ssovf_log_err("Bar4 len mismatch %d != %d",
+			SSOW_BAR4_LEN, (int)pci_dev->mem_resource[4].len);
+		return -EINVAL;
+	}
+
+	id = pci_dev->mem_resource[4].addr;
+	vfid = id->vfid;
+	if (vfid >= SSO_MAX_VHWS) {
+		ssovf_log_err("Invalid vfid(%d/%d)", vfid, SSO_MAX_VHWS);
+		return -EINVAL;
+	}
+
+	res = &sdev.hws[vfid];
+	res->vfid = vfid;
+	res->bar0 = pci_dev->mem_resource[0].addr;
+	res->bar2 = pci_dev->mem_resource[2].addr;
+	res->bar4 = pci_dev->mem_resource[4].addr;
+	res->domain = id->domain;
+
+	sdev.total_ssowvfs++;
+	rte_wmb();
+	ssovf_log_dbg("Domain=%d hws=%d total_ssowvfs=%d", res->domain,
+			res->vfid, sdev.total_ssowvfs);
+	return 0;
+}
+
+static const struct rte_pci_id pci_ssowvf_map[] = {
+	{
+		RTE_PCI_DEVICE(PCI_VENDOR_ID_CAVIUM,
+				PCI_DEVICE_ID_OCTEONTX_SSOWS_VF)
+	},
+	{
+		.vendor_id = 0,
+	},
+};
+
+static struct rte_pci_driver pci_ssowvf = {
+	.id_table = pci_ssowvf_map,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
+	.probe = ssowvf_probe,
+};
+
+RTE_PMD_REGISTER_PCI(octeontx_ssowvf, pci_ssowvf);
 
 /* SSOVF pcie device aka event queue probe */
 

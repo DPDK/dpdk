@@ -57,8 +57,10 @@
 
 #define PCI_VENDOR_ID_CAVIUM              0x177D
 #define PCI_DEVICE_ID_OCTEONTX_SSOGRP_VF  0xA04B
+#define PCI_DEVICE_ID_OCTEONTX_SSOWS_VF   0xA04D
 
 #define SSO_MAX_VHGRP                     (64)
+#define SSO_MAX_VHWS                      (32)
 
 /* SSO VF register offsets */
 #define SSO_VHGRP_QCTL                    (0x010ULL)
@@ -77,5 +79,31 @@
 #define SSO_VHGRP_OP_ADD_WORK0            (0x00ULL)
 #define SSO_VHGRP_OP_ADD_WORK1            (0x08ULL)
 
+/* SSOW VF register offsets (BAR0) */
+#define SSOW_VHWS_GRPMSK_CHGX(x)          (0x080ULL | ((x) << 3))
+#define SSOW_VHWS_TAG                     (0x300ULL)
+#define SSOW_VHWS_WQP                     (0x308ULL)
+#define SSOW_VHWS_LINKS                   (0x310ULL)
+#define SSOW_VHWS_PENDTAG                 (0x340ULL)
+#define SSOW_VHWS_PENDWQP                 (0x348ULL)
+#define SSOW_VHWS_SWTP                    (0x400ULL)
+#define SSOW_VHWS_OP_ALLOC_WE             (0x410ULL)
+#define SSOW_VHWS_OP_UPD_WQP_GRP0         (0x440ULL)
+#define SSOW_VHWS_OP_UPD_WQP_GRP1         (0x448ULL)
+#define SSOW_VHWS_OP_SWTAG_UNTAG          (0x490ULL)
+#define SSOW_VHWS_OP_SWTAG_CLR            (0x820ULL)
+#define SSOW_VHWS_OP_DESCHED              (0x860ULL)
+#define SSOW_VHWS_OP_DESCHED_NOSCH        (0x870ULL)
+#define SSOW_VHWS_OP_SWTAG_DESCHED        (0x8C0ULL)
+#define SSOW_VHWS_OP_SWTAG_NOSCHED        (0x8D0ULL)
+#define SSOW_VHWS_OP_SWTP_SET             (0xC20ULL)
+#define SSOW_VHWS_OP_SWTAG_NORM           (0xC80ULL)
+#define SSOW_VHWS_OP_SWTAG_FULL0          (0xCA0UL)
+#define SSOW_VHWS_OP_SWTAG_FULL1          (0xCA8ULL)
+#define SSOW_VHWS_OP_CLR_NSCHED           (0x10000ULL)
+#define SSOW_VHWS_OP_GET_WORK0            (0x80000ULL)
+#define SSOW_VHWS_OP_GET_WORK1            (0x80008ULL)
+
+#define SSOW_BAR4_LEN                     (64 * 1024)
 
 #endif /* __SSOVF_EVDEV_H__ */
