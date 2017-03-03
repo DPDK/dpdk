@@ -187,4 +187,8 @@ ssovf_pmd_priv(const struct rte_eventdev *eventdev)
 	return eventdev->data->dev_private;
 }
 
+uint16_t ssows_enq(void *port, const struct rte_event *ev);
+uint16_t ssows_enq_burst(void *port,
+		const struct rte_event ev[], uint16_t nb_events);
+
 #endif /* __SSOVF_EVDEV_H__ */
