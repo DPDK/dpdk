@@ -46,9 +46,14 @@ LIBABIVER := 1
 #
 # all source are stored in SRCS-y
 #
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX_SSOVF) += ssovf_worker.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX_SSOVF) += ssovf_evdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX_SSOVF) += ssovf_probe.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX_SSOVF) += ssovf_mbox.c
+ifeq ($(CONFIG_RTE_TOOLCHAIN_GCC),y)
+CFLAGS_ssovf_worker.o += -fno-prefetch-loop-arrays
+endif
+CFLAGS_ssovf_worker.o += -Ofast
 
 # install this header file
 SYMLINK-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX_SSOVF)-include := rte_pmd_octeontx_ssovf.h

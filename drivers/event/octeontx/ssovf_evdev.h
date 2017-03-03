@@ -129,6 +129,36 @@
 #define ssovf_read64 rte_read64_relaxed
 #define ssovf_write64 rte_write64_relaxed
 
+/* ARM64 specific functions */
+#if defined(RTE_ARCH_ARM64)
+#define ssovf_load_pair(val0, val1, addr) ({		\
+			asm volatile(			\
+			"ldp %x[x0], %x[x1], [%x[p1]]"	\
+			:[x0]"=r"(val0), [x1]"=r"(val1) \
+			:[p1]"r"(addr)			\
+			); })
+
+#define ssovf_store_pair(val0, val1, addr) ({		\
+			asm volatile(			\
+			"stp %x[x0], %x[x1], [%x[p1]]"	\
+			::[x0]"r"(val0), [x1]"r"(val1), [p1]"r"(addr) \
+			); })
+#else /* Un optimized functions for building on non arm64 arch */
+
+#define ssovf_load_pair(val0, val1, addr)		\
+do {							\
+	val0 = rte_read64(addr);			\
+	val1 = rte_read64(((uint8_t *)addr) + 8);	\
+} while (0)
+
+#define ssovf_store_pair(val0, val1, addr)		\
+do {							\
+	rte_write64(val0, addr);			\
+	rte_write64(val1, (((uint8_t *)addr) + 8));	\
+} while (0)
+#endif
+
+
 struct ssovf_evdev {
 	uint8_t max_event_queues;
 	uint8_t max_event_ports;
