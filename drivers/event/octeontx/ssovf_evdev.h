@@ -197,5 +197,7 @@ uint16_t ssows_deq_timeout(void *port, struct rte_event *ev,
 		uint64_t timeout_ticks);
 uint16_t ssows_deq_timeout_burst(void *port, struct rte_event ev[],
 		uint16_t nb_events, uint64_t timeout_ticks);
+void ssows_flush_events(struct ssows *ws, uint8_t queue_id);
+void ssows_reset(struct ssows *ws);
 
 #endif /* __SSOVF_EVDEV_H__ */

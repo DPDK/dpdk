@@ -199,3 +199,54 @@ ssows_enq_burst(void *port, const struct rte_event ev[], uint16_t nb_events)
 	RTE_SET_USED(nb_events);
 	return ssows_enq(port, ev);
 }
+
+void
+ssows_flush_events(struct ssows *ws, uint8_t queue_id)
+{
+	uint32_t reg_off;
+	uint64_t aq_cnt = 1;
+	uint64_t cq_ds_cnt = 1;
+	uint64_t enable, get_work0, get_work1;
+	uint8_t *base = octeontx_ssovf_bar(OCTEONTX_SSO_GROUP, queue_id, 0);
+
+	RTE_SET_USED(get_work0);
+	RTE_SET_USED(get_work1);
+
+	enable = ssovf_read64(base + SSO_VHGRP_QCTL);
+	if (!enable)
+		return;
+
+	reg_off = SSOW_VHWS_OP_GET_WORK0;
+	reg_off |= 1 << 17; /* Grouped */
+	reg_off |= 1 << 16; /* WAIT */
+	reg_off |= queue_id << 4; /* INDEX_GGRP_MASK(group number) */
+	while (aq_cnt || cq_ds_cnt) {
+		aq_cnt = ssovf_read64(base + SSO_VHGRP_AQ_CNT);
+		cq_ds_cnt = ssovf_read64(base + SSO_VHGRP_INT_CNT);
+		/* Extract cq and ds count */
+		cq_ds_cnt &= 0x1FFF1FFF0000;
+		ssovf_load_pair(get_work0, get_work1, ws->base + reg_off);
+	}
+}
+
+void
+ssows_reset(struct ssows *ws)
+{
+	uint64_t tag;
+	uint64_t pend_tag;
+	uint8_t pend_tt;
+	uint8_t tt;
+
+	tag = ssovf_read64(ws->base + SSOW_VHWS_TAG);
+	pend_tag = ssovf_read64(ws->base + SSOW_VHWS_PENDTAG);
+
+	if (pend_tag & (1ULL << 63)) { /* Tagswitch pending */
+		pend_tt = (pend_tag >> 32) & 0x3;
+		if (pend_tt == SSO_SYNC_ORDERED || pend_tt == SSO_SYNC_ATOMIC)
+			ssows_desched(ws);
+	} else {
+		tt = (tag >> 32) & 0x3;
+		if (tt == SSO_SYNC_ORDERED || tt == SSO_SYNC_ATOMIC)
+			ssows_swtag_untag(ws);
+	}
+}

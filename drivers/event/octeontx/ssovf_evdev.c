@@ -149,6 +149,23 @@ ssovf_mbox_timeout_ticks(uint64_t ns, uint64_t *tmo_ticks)
 }
 
 static void
+ssovf_fastpath_fns_set(struct rte_eventdev *dev)
+{
+	struct ssovf_evdev *edev = ssovf_pmd_priv(dev);
+
+	dev->schedule      = NULL;
+	dev->enqueue       = ssows_enq;
+	dev->enqueue_burst = ssows_enq_burst;
+	dev->dequeue       = ssows_deq;
+	dev->dequeue_burst = ssows_deq_burst;
+
+	if (edev->is_timeout_deq) {
+		dev->dequeue       = ssows_deq_timeout;
+		dev->dequeue_burst = ssows_deq_timeout_burst;
+	}
+}
+
+static void
 ssovf_info_get(struct rte_eventdev *dev, struct rte_event_dev_info *dev_info)
 {
 	struct ssovf_evdev *edev = ssovf_pmd_priv(dev);
@@ -382,6 +399,33 @@ ssovf_dump(struct rte_eventdev *dev, FILE *f)
 		ssows_dump(dev->data->ports[port], f);
 }
 
+static int
+ssovf_start(struct rte_eventdev *dev)
+{
+	struct ssovf_evdev *edev = ssovf_pmd_priv(dev);
+	struct ssows *ws;
+	uint8_t *base;
+	uint8_t i;
+
+	ssovf_func_trace();
+	for (i = 0; i < edev->nb_event_ports; i++) {
+		ws = dev->data->ports[i];
+		ssows_reset(ws);
+		ws->swtag_req = 0;
+	}
+
+	for (i = 0; i < edev->nb_event_queues; i++) {
+		/* Consume all the events through HWS0 */
+		ssows_flush_events(dev->data->ports[0], i);
+
+		base = octeontx_ssovf_bar(OCTEONTX_SSO_GROUP, i, 0);
+		base += SSO_VHGRP_QCTL;
+		ssovf_write64(1, base); /* Enable SSO group */
+	}
+
+	ssovf_fastpath_fns_set(dev);
+	return 0;
+}
 /* Initialize and register event driver with DPDK Application */
 static const struct rte_eventdev_ops ssovf_ops = {
 	.dev_infos_get    = ssovf_info_get,
@@ -396,6 +440,7 @@ static const struct rte_eventdev_ops ssovf_ops = {
 	.port_unlink      = ssovf_port_unlink,
 	.timeout_ticks    = ssovf_timeout_ticks,
 	.dump             = ssovf_dump,
+	.dev_start        = ssovf_start,
 };
 
 static int
@@ -425,8 +470,10 @@ ssovf_vdev_probe(const char *name, const char *params)
 	eventdev->dev_ops = &ssovf_ops;
 
 	/* For secondary processes, the primary has done all the work */
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		ssovf_fastpath_fns_set(eventdev);
 		return 0;
+	}
 
 	ret = octeontx_ssovf_info(&oinfo);
 	if (ret) {
