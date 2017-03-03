@@ -34,6 +34,7 @@
 #define __SSOVF_EVDEV_H__
 
 #include <rte_config.h>
+#include <rte_eventdev_pmd.h>
 #include <rte_io.h>
 
 #include "rte_pmd_octeontx_ssovf.h"
@@ -107,5 +108,27 @@
 #define SSOW_VHWS_OP_GET_WORK1            (0x80008ULL)
 
 #define SSOW_BAR4_LEN                     (64 * 1024)
+
+/* Mailbox message constants */
+#define SSO_COPROC                        0x2
+
+#define SSO_GETDOMAINCFG                  0x1
+#define SSO_IDENTIFY                      0x2
+#define SSO_GET_DEV_INFO                  0x3
+
+struct ssovf_evdev {
+	uint8_t max_event_queues;
+	uint8_t max_event_ports;
+	uint8_t is_timeout_deq;
+	uint32_t min_deq_timeout_ns;
+	uint32_t max_deq_timeout_ns;
+	int32_t max_num_events;
+} __rte_cache_aligned;
+
+static inline struct ssovf_evdev *
+ssovf_pmd_priv(const struct rte_eventdev *eventdev)
+{
+	return eventdev->data->dev_private;
+}
 
 #endif /* __SSOVF_EVDEV_H__ */
