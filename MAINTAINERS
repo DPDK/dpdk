@@ -506,6 +506,13 @@ Eventdev Drivers
 M: Jerin Jacob <jerin.jacob@caviumnetworks.com>
 T: git://dpdk.org/next/dpdk-next-eventdev
 
+Cavium OCTEONTX ssovf
+M: Jerin Jacob <jerin.jacob@caviumnetworks.com>
+M: Santosh Shukla <santosh.shukla@caviumnetworks.com>
+F: drivers/event/octeontx/
+F: test/test/test_eventdev_octeontx.c
+F: doc/guides/eventdevs/octeontx.rst
+
 Software Eventdev PMD
 M: Harry van Haaren <harry.van.haaren@intel.com>
 F: drivers/event/sw/

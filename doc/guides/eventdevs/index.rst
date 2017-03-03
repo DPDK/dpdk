@@ -38,3 +38,4 @@ application trough the eventdev API.
     :numbered:
 
     sw
+    octeontx
