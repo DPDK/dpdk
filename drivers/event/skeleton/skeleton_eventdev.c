@@ -319,7 +319,7 @@ skeleton_eventdev_port_unlink(struct rte_eventdev *dev, void *port,
 
 }
 
-static void
+static int
 skeleton_eventdev_timeout_ticks(struct rte_eventdev *dev, uint64_t ns,
 				 uint64_t *timeout_ticks)
 {
@@ -330,6 +330,8 @@ skeleton_eventdev_timeout_ticks(struct rte_eventdev *dev, uint64_t ns,
 
 	RTE_SET_USED(skel);
 	*timeout_ticks = ns * scale;
+
+	return 0;
 }
 
 static void

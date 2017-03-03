@@ -909,8 +909,7 @@ rte_event_dequeue_timeout_ticks(uint8_t dev_id, uint64_t ns,
 	if (timeout_ticks == NULL)
 		return -EINVAL;
 
-	(*dev->dev_ops->timeout_ticks)(dev, ns, timeout_ticks);
-	return 0;
+	return (*dev->dev_ops->timeout_ticks)(dev, ns, timeout_ticks);
 }
 
 int

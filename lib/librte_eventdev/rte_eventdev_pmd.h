@@ -406,8 +406,11 @@ typedef int (*eventdev_port_unlink_t)(struct rte_eventdev *dev, void *port,
  * @param[out] timeout_ticks
  *   Value for the *timeout_ticks* parameter in rte_event_dequeue() function
  *
+ * @return
+ *   Returns 0 on success.
+ *
  */
-typedef void (*eventdev_dequeue_timeout_ticks_t)(struct rte_eventdev *dev,
+typedef int (*eventdev_dequeue_timeout_ticks_t)(struct rte_eventdev *dev,
 		uint64_t ns, uint64_t *timeout_ticks);
 
 /**
