@@ -5836,6 +5836,9 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		/* Bring Ethernet device up. */
 		DEBUG("forcing Ethernet interface up");
 		priv_set_flags(priv, ~IFF_UP, IFF_UP);
+		/* Update link status once if waiting for LSC. */
+		if (eth_dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)
+			mlx4_link_update(eth_dev, 0);
 		continue;
 
 port_error:
