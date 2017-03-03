@@ -189,6 +189,77 @@ ssovf_queue_setup(struct rte_eventdev *dev, uint8_t queue_id,
 	return ssovf_mbox_priority_set(queue_id, queue_conf->priority);
 }
 
+static void
+ssovf_port_def_conf(struct rte_eventdev *dev, uint8_t port_id,
+				 struct rte_event_port_conf *port_conf)
+{
+	struct ssovf_evdev *edev = ssovf_pmd_priv(dev);
+
+	RTE_SET_USED(port_id);
+	port_conf->new_event_threshold = edev->max_num_events;
+	port_conf->dequeue_depth = 1;
+	port_conf->enqueue_depth = 1;
+}
+
+static void
+ssovf_port_release(void *port)
+{
+	rte_free(port);
+}
+
+static int
+ssovf_port_setup(struct rte_eventdev *dev, uint8_t port_id,
+				const struct rte_event_port_conf *port_conf)
+{
+	struct ssows *ws;
+	uint32_t reg_off;
+	uint8_t q;
+	struct ssovf_evdev *edev = ssovf_pmd_priv(dev);
+
+	ssovf_func_trace("port=%d", port_id);
+	RTE_SET_USED(port_conf);
+
+	/* Free memory prior to re-allocation if needed */
+	if (dev->data->ports[port_id] != NULL) {
+		ssovf_port_release(dev->data->ports[port_id]);
+		dev->data->ports[port_id] = NULL;
+	}
+
+	/* Allocate event port memory */
+	ws = rte_zmalloc_socket("eventdev ssows",
+			sizeof(struct ssows), RTE_CACHE_LINE_SIZE,
+			dev->data->socket_id);
+	if (ws == NULL) {
+		ssovf_log_err("Failed to alloc memory for port=%d", port_id);
+		return -ENOMEM;
+	}
+
+	ws->base = octeontx_ssovf_bar(OCTEONTX_SSO_HWS, port_id, 0);
+	if (ws->base == NULL) {
+		rte_free(ws);
+		ssovf_log_err("Failed to get hws base addr port=%d", port_id);
+		return -EINVAL;
+	}
+
+	reg_off = SSOW_VHWS_OP_GET_WORK0;
+	reg_off |= 1 << 4; /* Index_ggrp_mask (Use maskset zero) */
+	reg_off |= 1 << 16; /* Wait */
+	ws->getwork = ws->base + reg_off;
+	ws->port = port_id;
+
+	for (q = 0; q < edev->nb_event_queues; q++) {
+		ws->grps[q] = octeontx_ssovf_bar(OCTEONTX_SSO_GROUP, q, 2);
+		if (ws->grps[q] == NULL) {
+			rte_free(ws);
+			ssovf_log_err("Failed to get grp%d base addr", q);
+			return -EINVAL;
+		}
+	}
+
+	dev->data->ports[port_id] = ws;
+	ssovf_log_dbg("port=%d ws=%p", port_id, ws);
+	return 0;
+}
 /* Initialize and register event driver with DPDK Application */
 static const struct rte_eventdev_ops ssovf_ops = {
 	.dev_infos_get    = ssovf_info_get,
@@ -196,6 +267,9 @@ static const struct rte_eventdev_ops ssovf_ops = {
 	.queue_def_conf   = ssovf_queue_def_conf,
 	.queue_setup      = ssovf_queue_setup,
 	.queue_release    = ssovf_queue_release,
+	.port_def_conf    = ssovf_port_def_conf,
+	.port_setup       = ssovf_port_setup,
+	.port_release     = ssovf_port_release,
 };
 
 static int

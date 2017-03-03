@@ -131,6 +131,17 @@ struct ssovf_evdev {
 	int32_t max_num_events;
 } __rte_cache_aligned;
 
+/* Event port aka HWS */
+struct ssows {
+	uint8_t cur_tt;
+	uint8_t cur_grp;
+	uint8_t swtag_req;
+	uint8_t *base;
+	uint8_t *getwork;
+	uint8_t *grps[SSO_MAX_VHGRP];
+	uint8_t port;
+} __rte_cache_aligned;
+
 static inline struct ssovf_evdev *
 ssovf_pmd_priv(const struct rte_eventdev *eventdev)
 {
