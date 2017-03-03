@@ -947,6 +947,157 @@ test_multi_port_flow_parallel_to_parallel(void)
 				RTE_SCHED_TYPE_PARALLEL);
 }
 
+static int
+worker_group_based_pipeline(void *arg)
+{
+	struct test_core_param *param = arg;
+	struct rte_event ev;
+	uint16_t valid_event;
+	uint8_t port = param->port;
+	uint8_t new_sched_type = param->sched_type;
+	rte_atomic32_t *total_events = param->total_events;
+	uint64_t dequeue_tmo_ticks = param->dequeue_tmo_ticks;
+
+	while (rte_atomic32_read(total_events) > 0) {
+		valid_event = rte_event_dequeue_burst(evdev, port, &ev, 1,
+					dequeue_tmo_ticks);
+		if (!valid_event)
+			continue;
+
+		/* Events from stage 0(group 0) */
+		if (ev.queue_id == 0) {
+			/* Move to atomic flow to maintain the ordering */
+			ev.flow_id = 0x2;
+			ev.event_type = RTE_EVENT_TYPE_CPU;
+			ev.sched_type = new_sched_type;
+			ev.queue_id = 1; /* Stage 1*/
+			ev.op = RTE_EVENT_OP_FORWARD;
+			rte_event_enqueue_burst(evdev, port, &ev, 1);
+		} else if (ev.queue_id == 1) { /* Events from stage 1(group 1)*/
+			if (seqn_list_update(ev.mbuf->seqn) == TEST_SUCCESS) {
+				rte_pktmbuf_free(ev.mbuf);
+				rte_atomic32_sub(total_events, 1);
+			} else {
+				printf("Failed to update seqn_list\n");
+				return TEST_FAILED;
+			}
+		} else {
+			printf("Invalid ev.queue_id = %d\n", ev.queue_id);
+			return TEST_FAILED;
+		}
+	}
+
+
+	return 0;
+}
+
+static int
+test_multiport_queue_sched_type_test(uint8_t in_sched_type,
+			uint8_t out_sched_type)
+{
+	const unsigned int total_events = MAX_EVENTS;
+	uint8_t nr_ports;
+	int ret;
+
+	nr_ports = RTE_MIN(rte_event_port_count(evdev), rte_lcore_count() - 1);
+
+	if (rte_event_queue_count(evdev) < 2 ||  !nr_ports) {
+		printf("%s: Not enough queues=%d ports=%d or workers=%d\n",
+			 __func__, rte_event_queue_count(evdev),
+			rte_event_port_count(evdev), rte_lcore_count() - 1);
+		return TEST_SUCCESS;
+	}
+
+	/* Injects events with m->seqn=0 to total_events */
+	ret = inject_events(
+		0x1 /*flow_id */,
+		RTE_EVENT_TYPE_CPU /* event_type */,
+		0 /* sub_event_type (stage 0) */,
+		in_sched_type,
+		0 /* queue */,
+		0 /* port */,
+		total_events /* events */);
+	if (ret)
+		return TEST_FAILED;
+
+	ret = launch_workers_and_wait(worker_group_based_pipeline,
+					worker_group_based_pipeline,
+					total_events, nr_ports, out_sched_type);
+	if (ret)
+		return TEST_FAILED;
+
+	if (in_sched_type != RTE_SCHED_TYPE_PARALLEL &&
+			out_sched_type == RTE_SCHED_TYPE_ATOMIC) {
+		/* Check the events order maintained or not */
+		return seqn_list_check(total_events);
+	}
+	return TEST_SUCCESS;
+}
+
+static int
+test_multi_port_queue_ordered_to_atomic(void)
+{
+	/* Ingress event order test */
+	return test_multiport_queue_sched_type_test(RTE_SCHED_TYPE_ORDERED,
+				RTE_SCHED_TYPE_ATOMIC);
+}
+
+static int
+test_multi_port_queue_ordered_to_ordered(void)
+{
+	return test_multiport_queue_sched_type_test(RTE_SCHED_TYPE_ORDERED,
+				RTE_SCHED_TYPE_ORDERED);
+}
+
+static int
+test_multi_port_queue_ordered_to_parallel(void)
+{
+	return test_multiport_queue_sched_type_test(RTE_SCHED_TYPE_ORDERED,
+				RTE_SCHED_TYPE_PARALLEL);
+}
+
+static int
+test_multi_port_queue_atomic_to_atomic(void)
+{
+	/* Ingress event order test */
+	return test_multiport_queue_sched_type_test(RTE_SCHED_TYPE_ATOMIC,
+				RTE_SCHED_TYPE_ATOMIC);
+}
+
+static int
+test_multi_port_queue_atomic_to_ordered(void)
+{
+	return test_multiport_queue_sched_type_test(RTE_SCHED_TYPE_ATOMIC,
+				RTE_SCHED_TYPE_ORDERED);
+}
+
+static int
+test_multi_port_queue_atomic_to_parallel(void)
+{
+	return test_multiport_queue_sched_type_test(RTE_SCHED_TYPE_ATOMIC,
+				RTE_SCHED_TYPE_PARALLEL);
+}
+
+static int
+test_multi_port_queue_parallel_to_atomic(void)
+{
+	return test_multiport_queue_sched_type_test(RTE_SCHED_TYPE_PARALLEL,
+				RTE_SCHED_TYPE_ATOMIC);
+}
+
+static int
+test_multi_port_queue_parallel_to_ordered(void)
+{
+	return test_multiport_queue_sched_type_test(RTE_SCHED_TYPE_PARALLEL,
+				RTE_SCHED_TYPE_ORDERED);
+}
+
+static int
+test_multi_port_queue_parallel_to_parallel(void)
+{
+	return test_multiport_queue_sched_type_test(RTE_SCHED_TYPE_PARALLEL,
+				RTE_SCHED_TYPE_PARALLEL);
+}
 static struct unit_test_suite eventdev_octeontx_testsuite  = {
 	.suite_name = "eventdev octeontx unit test suite",
 	.setup = testsuite_setup,
@@ -986,6 +1137,24 @@ static struct unit_test_suite eventdev_octeontx_testsuite  = {
 			test_multi_port_flow_parallel_to_ordered),
 		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
 			test_multi_port_flow_parallel_to_parallel),
+		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
+			test_multi_port_queue_ordered_to_atomic),
+		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
+			test_multi_port_queue_ordered_to_ordered),
+		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
+			test_multi_port_queue_ordered_to_parallel),
+		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
+			test_multi_port_queue_atomic_to_atomic),
+		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
+			test_multi_port_queue_atomic_to_ordered),
+		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
+			test_multi_port_queue_atomic_to_parallel),
+		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
+			test_multi_port_queue_parallel_to_atomic),
+		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
+			test_multi_port_queue_parallel_to_ordered),
+		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
+			test_multi_port_queue_parallel_to_parallel),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
