@@ -244,6 +244,12 @@ eventdev_setup_priority(void)
 	return _eventdev_setup(TEST_EVENTDEV_SETUP_PRIORITY);
 }
 
+static inline int
+eventdev_setup_dequeue_timeout(void)
+{
+	return _eventdev_setup(TEST_EVENTDEV_SETUP_DEQUEUE_TIMEOUT);
+}
+
 static inline void
 eventdev_teardown(void)
 {
@@ -1300,6 +1306,14 @@ test_flow_producer_consumer_ingress_order_test(void)
 				worker_flow_based_pipeline);
 }
 
+/* Queue based producer consumer ingress order test */
+static int
+test_queue_producer_consumer_ingress_order_test(void)
+{
+	return test_producer_consumer_ingress_order_test(
+				worker_group_based_pipeline);
+}
+
 static struct unit_test_suite eventdev_octeontx_testsuite  = {
 	.suite_name = "eventdev octeontx unit test suite",
 	.setup = testsuite_setup,
@@ -1365,6 +1379,13 @@ static struct unit_test_suite eventdev_octeontx_testsuite  = {
 			test_multi_port_mixed_max_stages_random_sched_type),
 		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
 			test_flow_producer_consumer_ingress_order_test),
+		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
+			test_queue_producer_consumer_ingress_order_test),
+		/* Tests with dequeue timeout */
+		TEST_CASE_ST(eventdev_setup_dequeue_timeout, eventdev_teardown,
+			test_multi_port_flow_ordered_to_atomic),
+		TEST_CASE_ST(eventdev_setup_dequeue_timeout, eventdev_teardown,
+			test_multi_port_queue_ordered_to_atomic),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
