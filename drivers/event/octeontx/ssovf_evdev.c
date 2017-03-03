@@ -119,6 +119,35 @@ ssovf_mbox_priority_set(uint8_t queue, uint8_t prio)
 	return ret;
 }
 
+struct ssovf_mbox_convert_ns_getworks_iter {
+	uint64_t wait_ns;
+	uint32_t getwork_iter;/* Get_work iterations for the given wait_ns */
+};
+
+static int
+ssovf_mbox_timeout_ticks(uint64_t ns, uint64_t *tmo_ticks)
+{
+	struct octeontx_mbox_hdr hdr = {0};
+	struct ssovf_mbox_convert_ns_getworks_iter ns2iter;
+	uint16_t len = sizeof(ns2iter);
+	int ret;
+
+	hdr.coproc = SSO_COPROC;
+	hdr.msg = SSO_CONVERT_NS_GETWORK_ITER;
+	hdr.vfid = 0;
+
+	memset(&ns2iter, 0, len);
+	ns2iter.wait_ns = ns;
+	ret = octeontx_ssovf_mbox_send(&hdr, &ns2iter, len, &ns2iter, len);
+	if (ret < 0 || (ret != len)) {
+		ssovf_log_err("Failed to get tmo ticks ns=%"PRId64"", ns);
+		return -EIO;
+	}
+
+	*tmo_ticks = ns2iter.getwork_iter;
+	return 0;
+}
+
 static void
 ssovf_info_get(struct rte_eventdev *dev, struct rte_event_dev_info *dev_info)
 {
@@ -300,6 +329,14 @@ ssovf_port_unlink(struct rte_eventdev *dev, void *port, uint8_t queues[],
 	return (int)nb_unlinks;
 }
 
+static int
+ssovf_timeout_ticks(struct rte_eventdev *dev, uint64_t ns, uint64_t *tmo_ticks)
+{
+	RTE_SET_USED(dev);
+
+	return ssovf_mbox_timeout_ticks(ns, tmo_ticks);
+}
+
 /* Initialize and register event driver with DPDK Application */
 static const struct rte_eventdev_ops ssovf_ops = {
 	.dev_infos_get    = ssovf_info_get,
@@ -312,6 +349,7 @@ static const struct rte_eventdev_ops ssovf_ops = {
 	.port_release     = ssovf_port_release,
 	.port_link        = ssovf_port_link,
 	.port_unlink      = ssovf_port_unlink,
+	.timeout_ticks    = ssovf_timeout_ticks,
 };
 
 static int
