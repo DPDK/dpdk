@@ -696,6 +696,81 @@ test_queue_to_port_single_link(void)
 	return TEST_SUCCESS;
 }
 
+static int
+validate_queue_to_port_multi_link(uint32_t index, uint8_t port,
+			struct rte_event *ev)
+{
+	RTE_SET_USED(index);
+	TEST_ASSERT_EQUAL(port, (ev->queue_id & 0x1),
+				"queue mismatch enq=%d deq =%d",
+				port, ev->queue_id);
+	return 0;
+}
+
+/*
+ * Link all even number of queues to port 0 and all odd number of queues to
+ * port 1 and verify the link connection on dequeue
+ */
+static int
+test_queue_to_port_multi_link(void)
+{
+	int ret, port0_events = 0, port1_events = 0;
+	uint8_t nr_queues, nr_ports, queue, port;
+
+	nr_queues = rte_event_queue_count(evdev);
+	nr_ports = rte_event_port_count(evdev);
+
+	if (nr_ports < 2) {
+		printf("%s: Not enough ports to test ports=%d\n",
+				__func__, nr_ports);
+		return TEST_SUCCESS;
+	}
+
+	/* Unlink all connections that created in eventdev_setup */
+	for (port = 0; port < nr_ports; port++) {
+		ret = rte_event_port_unlink(evdev, port, NULL, 0);
+		TEST_ASSERT(ret >= 0, "Failed to unlink all queues port=%d",
+					port);
+	}
+
+	const unsigned int total_events = MAX_EVENTS / nr_queues;
+
+	/* Link all even number of queues to port0 and odd numbers to port 1*/
+	for (queue = 0; queue < nr_queues; queue++) {
+		port = queue & 0x1;
+		ret = rte_event_port_link(evdev, port, &queue, NULL, 1);
+		TEST_ASSERT(ret == 1, "Failed to link queue=%d to port=%d",
+					queue, port);
+
+		ret = inject_events(
+			0x100 /*flow_id */,
+			rte_rand() % (RTE_EVENT_TYPE_CPU + 1) /* event_type */,
+			rte_rand() % 256 /* sub_event_type */,
+			rte_rand() % (RTE_SCHED_TYPE_PARALLEL + 1),
+			queue /* queue */,
+			port /* port */,
+			total_events /* events */);
+		if (ret)
+			return TEST_FAILED;
+
+		if (port == 0)
+			port0_events += total_events;
+		else
+			port1_events += total_events;
+	}
+
+	ret = consume_events(0 /* port */, port0_events,
+				validate_queue_to_port_multi_link);
+	if (ret)
+		return TEST_FAILED;
+	ret = consume_events(1 /* port */, port1_events,
+				validate_queue_to_port_multi_link);
+	if (ret)
+		return TEST_FAILED;
+
+	return TEST_SUCCESS;
+}
+
 static struct unit_test_suite eventdev_octeontx_testsuite  = {
 	.suite_name = "eventdev octeontx unit test suite",
 	.setup = testsuite_setup,
@@ -715,6 +790,8 @@ static struct unit_test_suite eventdev_octeontx_testsuite  = {
 			test_multi_queue_enq_multi_port_deq),
 		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
 			test_queue_to_port_single_link),
+		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
+			test_queue_to_port_multi_link),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
