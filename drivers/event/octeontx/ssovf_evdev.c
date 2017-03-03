@@ -65,6 +65,30 @@ ssovf_mbox_dev_info(struct ssovf_mbox_dev_info *info)
 	return octeontx_ssovf_mbox_send(&hdr, NULL, 0, info, len);
 }
 
+struct ssovf_mbox_getwork_wait {
+	uint64_t wait_ns;
+};
+
+static int
+ssovf_mbox_getwork_tmo_set(uint32_t timeout_ns)
+{
+	struct octeontx_mbox_hdr hdr = {0};
+	struct ssovf_mbox_getwork_wait tmo_set;
+	uint16_t len = sizeof(struct ssovf_mbox_getwork_wait);
+	int ret;
+
+	hdr.coproc = SSO_COPROC;
+	hdr.msg = SSO_SET_GETWORK_WAIT;
+	hdr.vfid = 0;
+
+	tmo_set.wait_ns = timeout_ns;
+	ret = octeontx_ssovf_mbox_send(&hdr, &tmo_set, len, NULL, 0);
+	if (ret)
+		ssovf_log_err("Failed to set getwork timeout(%d)", ret);
+
+	return ret;
+}
+
 static void
 ssovf_info_get(struct rte_eventdev *dev, struct rte_event_dev_info *dev_info)
 {
@@ -85,10 +109,30 @@ ssovf_info_get(struct rte_eventdev *dev, struct rte_event_dev_info *dev_info)
 					RTE_EVENT_DEV_CAP_QUEUE_ALL_TYPES;
 }
 
+static int
+ssovf_configure(const struct rte_eventdev *dev)
+{
+	struct rte_event_dev_config *conf = &dev->data->dev_conf;
+	struct ssovf_evdev *edev = ssovf_pmd_priv(dev);
+	uint64_t deq_tmo_ns;
+
+	ssovf_func_trace();
+	deq_tmo_ns = conf->dequeue_timeout_ns;
+
+	if (conf->event_dev_cfg & RTE_EVENT_DEV_CFG_PER_DEQUEUE_TIMEOUT) {
+		edev->is_timeout_deq = 1;
+		deq_tmo_ns = edev->min_deq_timeout_ns;
+	}
+	edev->nb_event_queues = conf->nb_event_queues;
+	edev->nb_event_ports = conf->nb_event_ports;
+
+	return ssovf_mbox_getwork_tmo_set(deq_tmo_ns);
+}
 
 /* Initialize and register event driver with DPDK Application */
 static const struct rte_eventdev_ops ssovf_ops = {
 	.dev_infos_get    = ssovf_info_get,
+	.dev_configure    = ssovf_configure,
 };
 
 static int

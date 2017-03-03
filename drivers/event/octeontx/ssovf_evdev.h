@@ -115,11 +115,15 @@
 #define SSO_GETDOMAINCFG                  0x1
 #define SSO_IDENTIFY                      0x2
 #define SSO_GET_DEV_INFO                  0x3
+#define SSO_GET_GETWORK_WAIT              0x4
+#define SSO_SET_GETWORK_WAIT              0x5
 
 struct ssovf_evdev {
 	uint8_t max_event_queues;
 	uint8_t max_event_ports;
 	uint8_t is_timeout_deq;
+	uint8_t nb_event_queues;
+	uint8_t nb_event_ports;
 	uint32_t min_deq_timeout_ns;
 	uint32_t max_deq_timeout_ns;
 	int32_t max_num_events;
