@@ -269,6 +269,31 @@ check_excess_events(uint8_t port)
 }
 
 static inline int
+generate_random_events(const unsigned int total_events)
+{
+	struct rte_event_dev_info info;
+	unsigned int i;
+	int ret;
+
+	ret = rte_event_dev_info_get(evdev, &info);
+	TEST_ASSERT_SUCCESS(ret, "Failed to get event dev info");
+	for (i = 0; i < total_events; i++) {
+		ret = inject_events(
+			rte_rand() % info.max_event_queue_flows /*flow_id */,
+			rte_rand() % (RTE_EVENT_TYPE_CPU + 1) /* event_type */,
+			rte_rand() % 256 /* sub_event_type */,
+			rte_rand() % (RTE_SCHED_TYPE_PARALLEL + 1),
+			rte_rand() % rte_event_queue_count(evdev) /* queue */,
+			0 /* port */,
+			1 /* events */);
+		if (ret)
+			return TEST_FAILED;
+	}
+	return ret;
+}
+
+
+static inline int
 validate_event(struct rte_event *ev)
 {
 	struct event_attr *attr;
@@ -379,6 +404,23 @@ test_simple_enqdeq_parallel(void)
 	return test_simple_enqdeq(RTE_SCHED_TYPE_PARALLEL);
 }
 
+/*
+ * Generate a prescribed number of events and spread them across available
+ * queues. On dequeue, using single event port(port 0) verify the enqueued
+ * event attributes
+ */
+static int
+test_multi_queue_enq_single_port_deq(void)
+{
+	int ret;
+
+	ret = generate_random_events(MAX_EVENTS);
+	if (ret)
+		return TEST_FAILED;
+
+	return consume_events(0 /* port */, MAX_EVENTS, NULL);
+}
+
 static struct unit_test_suite eventdev_octeontx_testsuite  = {
 	.suite_name = "eventdev octeontx unit test suite",
 	.setup = testsuite_setup,
@@ -390,6 +432,8 @@ static struct unit_test_suite eventdev_octeontx_testsuite  = {
 			test_simple_enqdeq_atomic),
 		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
 			test_simple_enqdeq_parallel),
+		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
+			test_multi_queue_enq_single_port_deq),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
