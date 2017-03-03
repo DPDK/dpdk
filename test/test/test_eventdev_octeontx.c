@@ -63,6 +63,13 @@ struct event_attr {
 	uint8_t port;
 };
 
+struct test_core_param {
+	rte_atomic32_t *total_events;
+	uint64_t dequeue_tmo_ticks;
+	uint8_t port;
+	uint8_t sched_type;
+};
+
 static int
 testsuite_setup(void)
 {
@@ -193,6 +200,12 @@ static inline int
 eventdev_setup(void)
 {
 	return _eventdev_setup(TEST_EVENTDEV_SETUP_DEFAULT);
+}
+
+static inline int
+eventdev_setup_priority(void)
+{
+	return _eventdev_setup(TEST_EVENTDEV_SETUP_PRIORITY);
 }
 
 static inline void
@@ -421,6 +434,62 @@ test_multi_queue_enq_single_port_deq(void)
 	return consume_events(0 /* port */, MAX_EVENTS, NULL);
 }
 
+/*
+ * Inject 0..MAX_EVENTS events over 0..rte_event_queue_count() with modulus
+ * operation
+ *
+ * For example, Inject 32 events over 0..7 queues
+ * enqueue events 0, 8, 16, 24 in queue 0
+ * enqueue events 1, 9, 17, 25 in queue 1
+ * ..
+ * ..
+ * enqueue events 7, 15, 23, 31 in queue 7
+ *
+ * On dequeue, Validate the events comes in 0,8,16,24,1,9,17,25..,7,15,23,31
+ * order from queue0(highest priority) to queue7(lowest_priority)
+ */
+static int
+validate_queue_priority(uint32_t index, uint8_t port, struct rte_event *ev)
+{
+	uint32_t range = MAX_EVENTS / rte_event_queue_count(evdev);
+	uint32_t expected_val = (index % range) * rte_event_queue_count(evdev);
+
+	expected_val += ev->queue_id;
+	RTE_SET_USED(port);
+	TEST_ASSERT_EQUAL(ev->mbuf->seqn, expected_val,
+	"seqn=%d index=%d expected=%d range=%d nb_queues=%d max_event=%d",
+			ev->mbuf->seqn, index, expected_val, range,
+			rte_event_queue_count(evdev), MAX_EVENTS);
+	return 0;
+}
+
+static int
+test_multi_queue_priority(void)
+{
+	uint8_t queue;
+	struct rte_mbuf *m;
+	int i, max_evts_roundoff;
+
+	/* See validate_queue_priority() comments for priority validate logic */
+	max_evts_roundoff  = MAX_EVENTS / rte_event_queue_count(evdev);
+	max_evts_roundoff *= rte_event_queue_count(evdev);
+
+	for (i = 0; i < max_evts_roundoff; i++) {
+		struct rte_event ev = {.event = 0, .u64 = 0};
+
+		m = rte_pktmbuf_alloc(eventdev_test_mempool);
+		TEST_ASSERT_NOT_NULL(m, "mempool alloc failed");
+
+		m->seqn = i;
+		queue = i % rte_event_queue_count(evdev);
+		update_event_and_validation_attr(m, &ev, 0, RTE_EVENT_TYPE_CPU,
+			0, RTE_SCHED_TYPE_PARALLEL, queue, 0);
+		rte_event_enqueue_burst(evdev, 0, &ev, 1);
+	}
+
+	return consume_events(0, max_evts_roundoff, validate_queue_priority);
+}
+
 static struct unit_test_suite eventdev_octeontx_testsuite  = {
 	.suite_name = "eventdev octeontx unit test suite",
 	.setup = testsuite_setup,
@@ -434,6 +503,8 @@ static struct unit_test_suite eventdev_octeontx_testsuite  = {
 			test_simple_enqdeq_parallel),
 		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
 			test_multi_queue_enq_single_port_deq),
+		TEST_CASE_ST(eventdev_setup_priority, eventdev_teardown,
+			test_multi_queue_priority),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
