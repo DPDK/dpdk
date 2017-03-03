@@ -636,6 +636,66 @@ test_multi_queue_enq_multi_port_deq(void)
 					nr_ports, 0xff /* invalid */);
 }
 
+static int
+validate_queue_to_port_single_link(uint32_t index, uint8_t port,
+			struct rte_event *ev)
+{
+	RTE_SET_USED(index);
+	TEST_ASSERT_EQUAL(port, ev->queue_id,
+				"queue mismatch enq=%d deq =%d",
+				port, ev->queue_id);
+	return 0;
+}
+
+/*
+ * Link queue x to port x and check correctness of link by checking
+ * queue_id == x on dequeue on the specific port x
+ */
+static int
+test_queue_to_port_single_link(void)
+{
+	int i, nr_links, ret;
+
+	/* Unlink all connections that created in eventdev_setup */
+	for (i = 0; i < rte_event_port_count(evdev); i++) {
+		ret = rte_event_port_unlink(evdev, i, NULL, 0);
+		TEST_ASSERT(ret >= 0, "Failed to unlink all queues port=%d", i);
+	}
+
+	nr_links = RTE_MIN(rte_event_port_count(evdev),
+				rte_event_queue_count(evdev));
+	const unsigned int total_events = MAX_EVENTS / nr_links;
+
+	/* Link queue x to port x and inject events to queue x through port x */
+	for (i = 0; i < nr_links; i++) {
+		uint8_t queue = (uint8_t)i;
+
+		ret = rte_event_port_link(evdev, i, &queue, NULL, 1);
+		TEST_ASSERT(ret == 1, "Failed to link queue to port %d", i);
+
+		ret = inject_events(
+			0x100 /*flow_id */,
+			rte_rand() % (RTE_EVENT_TYPE_CPU + 1) /* event_type */,
+			rte_rand() % 256 /* sub_event_type */,
+			rte_rand() % (RTE_SCHED_TYPE_PARALLEL + 1),
+			queue /* queue */,
+			i /* port */,
+			total_events /* events */);
+		if (ret)
+			return TEST_FAILED;
+	}
+
+	/* Verify the events generated from correct queue */
+	for (i = 0; i < nr_links; i++) {
+		ret = consume_events(i /* port */, total_events,
+				validate_queue_to_port_single_link);
+		if (ret)
+			return TEST_FAILED;
+	}
+
+	return TEST_SUCCESS;
+}
+
 static struct unit_test_suite eventdev_octeontx_testsuite  = {
 	.suite_name = "eventdev octeontx unit test suite",
 	.setup = testsuite_setup,
@@ -653,6 +713,8 @@ static struct unit_test_suite eventdev_octeontx_testsuite  = {
 			test_multi_queue_priority),
 		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
 			test_multi_queue_enq_multi_port_deq),
+		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
+			test_queue_to_port_single_link),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
