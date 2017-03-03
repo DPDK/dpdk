@@ -47,6 +47,7 @@ LIBABIVER := 1
 # all source are stored in SRCS-y
 #
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX_SSOVF) += ssovf_probe.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX_SSOVF) += ssovf_mbox.c
 
 # install this header file
 SYMLINK-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX_SSOVF)-include := rte_pmd_octeontx_ssovf.h

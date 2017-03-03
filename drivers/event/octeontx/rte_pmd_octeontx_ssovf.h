@@ -46,8 +46,16 @@ enum octeontx_ssovf_type {
 	OCTEONTX_SSO_HWS,  /* SSO hardware workslot vf */
 };
 
+struct octeontx_mbox_hdr {
+	uint16_t vfid;  /* VF index or pf resource index local to the domain */
+	uint8_t coproc; /* Coprocessor id */
+	uint8_t msg;    /* Message id */
+	uint8_t res_code; /* Functional layer response code */
+};
 
 int octeontx_ssovf_info(struct octeontx_ssovf_info *info);
 void *octeontx_ssovf_bar(enum octeontx_ssovf_type, uint8_t id, uint8_t bar);
+int octeontx_ssovf_mbox_send(struct octeontx_mbox_hdr *hdr,
+		void *txdata, uint16_t txlen, void *rxdata, uint16_t rxlen);
 
 #endif /* __RTE_PMD_OCTEONTX_SSOVF_H__ */
