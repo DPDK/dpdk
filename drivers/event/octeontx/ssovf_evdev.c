@@ -337,6 +337,51 @@ ssovf_timeout_ticks(struct rte_eventdev *dev, uint64_t ns, uint64_t *tmo_ticks)
 	return ssovf_mbox_timeout_ticks(ns, tmo_ticks);
 }
 
+static void
+ssows_dump(struct ssows *ws, FILE *f)
+{
+	uint8_t *base = ws->base;
+	uint64_t val;
+
+	fprintf(f, "\t---------------port%d---------------\n", ws->port);
+	val = ssovf_read64(base + SSOW_VHWS_TAG);
+	fprintf(f, "\ttag=0x%x tt=%d head=%d tail=%d grp=%d index=%d tail=%d\n",
+		(uint32_t)(val & 0xffffffff), (int)(val >> 32) & 0x3,
+		(int)(val >> 34) & 0x1, (int)(val >> 35) & 0x1,
+		(int)(val >> 36) & 0x3ff, (int)(val >> 48) & 0x3ff,
+		(int)(val >> 63) & 0x1);
+
+	val = ssovf_read64(base + SSOW_VHWS_WQP);
+	fprintf(f, "\twqp=0x%"PRIx64"\n", val);
+
+	val = ssovf_read64(base + SSOW_VHWS_LINKS);
+	fprintf(f, "\tindex=%d valid=%d revlink=%d tail=%d head=%d grp=%d\n",
+		(int)(val & 0x3ff), (int)(val >> 10) & 0x1,
+		(int)(val >> 11) & 0x3ff, (int)(val >> 26) & 0x1,
+		(int)(val >> 27) & 0x1, (int)(val >> 28) & 0x3ff);
+
+	val = ssovf_read64(base + SSOW_VHWS_PENDTAG);
+	fprintf(f, "\tptag=0x%x ptt=%d pgwi=%d pdesc=%d pgw=%d pgww=%d ps=%d\n",
+		(uint32_t)(val & 0xffffffff), (int)(val >> 32) & 0x3,
+		(int)(val >> 56) & 0x1, (int)(val >> 58) & 0x1,
+		(int)(val >> 61) & 0x1, (int)(val >> 62) & 0x1,
+		(int)(val >> 63) & 0x1);
+
+	val = ssovf_read64(base + SSOW_VHWS_PENDWQP);
+	fprintf(f, "\tpwqp=0x%"PRIx64"\n", val);
+}
+
+static void
+ssovf_dump(struct rte_eventdev *dev, FILE *f)
+{
+	struct ssovf_evdev *edev = ssovf_pmd_priv(dev);
+	uint8_t port;
+
+	/* Dump SSOWVF debug registers */
+	for (port = 0; port < edev->nb_event_ports; port++)
+		ssows_dump(dev->data->ports[port], f);
+}
+
 /* Initialize and register event driver with DPDK Application */
 static const struct rte_eventdev_ops ssovf_ops = {
 	.dev_infos_get    = ssovf_info_get,
@@ -350,6 +395,7 @@ static const struct rte_eventdev_ops ssovf_ops = {
 	.port_link        = ssovf_port_link,
 	.port_unlink      = ssovf_port_unlink,
 	.timeout_ticks    = ssovf_timeout_ticks,
+	.dump             = ssovf_dump,
 };
 
 static int
