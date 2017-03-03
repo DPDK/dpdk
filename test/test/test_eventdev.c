@@ -244,8 +244,8 @@ test_eventdev_configure(void)
 
 	/* re-configure */
 	devconf_set_default_sane_values(&dev_conf, &info);
-	dev_conf.nb_event_ports = info.max_event_ports/2;
-	dev_conf.nb_event_queues = info.max_event_queues/2;
+	dev_conf.nb_event_ports = RTE_MAX(info.max_event_ports/2, 1);
+	dev_conf.nb_event_queues = RTE_MAX(info.max_event_queues/2, 1);
 	ret = rte_event_dev_configure(TEST_DEV_ID, &dev_conf);
 	TEST_ASSERT_SUCCESS(ret, "Failed to re configure eventdev");
 
