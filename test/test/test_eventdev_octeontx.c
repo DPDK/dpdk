@@ -1166,6 +1166,43 @@ test_multi_port_flow_max_stages_random_sched_type(void)
 		worker_flow_based_pipeline_max_stages_rand_sched_type);
 }
 
+static int
+worker_queue_based_pipeline_max_stages_rand_sched_type(void *arg)
+{
+	struct test_core_param *param = arg;
+	struct rte_event ev;
+	uint16_t valid_event;
+	uint8_t port = param->port;
+	uint8_t nr_queues = rte_event_queue_count(evdev);
+	rte_atomic32_t *total_events = param->total_events;
+
+	while (rte_atomic32_read(total_events) > 0) {
+		valid_event = rte_event_dequeue_burst(evdev, port, &ev, 1, 0);
+		if (!valid_event)
+			continue;
+
+		if (ev.queue_id == nr_queues - 1) { /* last stage */
+			rte_pktmbuf_free(ev.mbuf);
+			rte_atomic32_sub(total_events, 1);
+		} else {
+			ev.event_type = RTE_EVENT_TYPE_CPU;
+			ev.queue_id++;
+			ev.sched_type =
+				rte_rand() % (RTE_SCHED_TYPE_PARALLEL + 1);
+			ev.op = RTE_EVENT_OP_FORWARD;
+			rte_event_enqueue_burst(evdev, port, &ev, 1);
+		}
+	}
+	return 0;
+}
+
+/* Queue based pipeline with maximum stages with random sched type */
+static int
+test_multi_port_queue_max_stages_random_sched_type(void)
+{
+	return launch_multi_port_max_stages_random_sched_type(
+		worker_queue_based_pipeline_max_stages_rand_sched_type);
+}
 static struct unit_test_suite eventdev_octeontx_testsuite  = {
 	.suite_name = "eventdev octeontx unit test suite",
 	.setup = testsuite_setup,
@@ -1225,6 +1262,8 @@ static struct unit_test_suite eventdev_octeontx_testsuite  = {
 			test_multi_port_queue_parallel_to_parallel),
 		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
 			test_multi_port_flow_max_stages_random_sched_type),
+		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
+			test_multi_port_queue_max_stages_random_sched_type),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
