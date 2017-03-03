@@ -63,6 +63,18 @@ struct event_attr {
 	uint8_t port;
 };
 
+static uint32_t seqn_list_index;
+static int seqn_list[NUM_PACKETS];
+
+static inline void
+seqn_list_init(void)
+{
+	RTE_BUILD_BUG_ON(NUM_PACKETS < MAX_EVENTS);
+	memset(seqn_list, 0, sizeof(seqn_list));
+	seqn_list_index = 0;
+}
+
+
 struct test_core_param {
 	rte_atomic32_t *total_events;
 	uint64_t dequeue_tmo_ticks;
@@ -490,6 +502,140 @@ test_multi_queue_priority(void)
 	return consume_events(0, max_evts_roundoff, validate_queue_priority);
 }
 
+static int
+worker_multi_port_fn(void *arg)
+{
+	struct test_core_param *param = arg;
+	struct rte_event ev;
+	uint16_t valid_event;
+	uint8_t port = param->port;
+	rte_atomic32_t *total_events = param->total_events;
+	int ret;
+
+	while (rte_atomic32_read(total_events) > 0) {
+		valid_event = rte_event_dequeue_burst(evdev, port, &ev, 1, 0);
+		if (!valid_event)
+			continue;
+
+		ret = validate_event(&ev);
+		TEST_ASSERT_SUCCESS(ret, "Failed to validate event");
+		rte_pktmbuf_free(ev.mbuf);
+		rte_atomic32_sub(total_events, 1);
+	}
+	return 0;
+}
+
+static inline int
+wait_workers_to_join(int lcore, const rte_atomic32_t *count)
+{
+	uint64_t cycles, print_cycles;
+
+	print_cycles = cycles = rte_get_timer_cycles();
+	while (rte_eal_get_lcore_state(lcore) != FINISHED) {
+		uint64_t new_cycles = rte_get_timer_cycles();
+
+		if (new_cycles - print_cycles > rte_get_timer_hz()) {
+			printf("\r%s: events %d\n", __func__,
+				rte_atomic32_read(count));
+			print_cycles = new_cycles;
+		}
+		if (new_cycles - cycles > rte_get_timer_hz() * 10) {
+			printf("%s: No schedules for seconds, deadlock (%d)\n",
+				__func__,
+				rte_atomic32_read(count));
+			rte_event_dev_dump(evdev, stdout);
+			cycles = new_cycles;
+			return TEST_FAILED;
+		}
+	}
+	rte_eal_mp_wait_lcore();
+	return TEST_SUCCESS;
+}
+
+
+static inline int
+launch_workers_and_wait(int (*master_worker)(void *),
+			int (*slave_workers)(void *), uint32_t total_events,
+			uint8_t nb_workers, uint8_t sched_type)
+{
+	uint8_t port = 0;
+	int w_lcore;
+	int ret;
+	struct test_core_param *param;
+	rte_atomic32_t atomic_total_events;
+	uint64_t dequeue_tmo_ticks;
+
+	if (!nb_workers)
+		return 0;
+
+	rte_atomic32_set(&atomic_total_events, total_events);
+	seqn_list_init();
+
+	param = malloc(sizeof(struct test_core_param) * nb_workers);
+	if (!param)
+		return TEST_FAILED;
+
+	ret = rte_event_dequeue_timeout_ticks(evdev,
+		rte_rand() % 10000000/* 10ms */, &dequeue_tmo_ticks);
+	if (ret)
+		return TEST_FAILED;
+
+	param[0].total_events = &atomic_total_events;
+	param[0].sched_type = sched_type;
+	param[0].port = 0;
+	param[0].dequeue_tmo_ticks = dequeue_tmo_ticks;
+	rte_smp_wmb();
+
+	w_lcore = rte_get_next_lcore(
+			/* start core */ -1,
+			/* skip master */ 1,
+			/* wrap */ 0);
+	rte_eal_remote_launch(master_worker, &param[0], w_lcore);
+
+	for (port = 1; port < nb_workers; port++) {
+		param[port].total_events = &atomic_total_events;
+		param[port].sched_type = sched_type;
+		param[port].port = port;
+		param[port].dequeue_tmo_ticks = dequeue_tmo_ticks;
+		rte_smp_wmb();
+		w_lcore = rte_get_next_lcore(w_lcore, 1, 0);
+		rte_eal_remote_launch(slave_workers, &param[port], w_lcore);
+	}
+
+	ret = wait_workers_to_join(w_lcore, &atomic_total_events);
+	free(param);
+	return ret;
+}
+
+/*
+ * Generate a prescribed number of events and spread them across available
+ * queues. Dequeue the events through multiple ports and verify the enqueued
+ * event attributes
+ */
+static int
+test_multi_queue_enq_multi_port_deq(void)
+{
+	const unsigned int total_events = MAX_EVENTS;
+	uint8_t nr_ports;
+	int ret;
+
+	ret = generate_random_events(total_events);
+	if (ret)
+		return TEST_FAILED;
+
+	nr_ports = RTE_MIN(rte_event_port_count(evdev), rte_lcore_count() - 1);
+
+	if (!nr_ports) {
+		printf("%s: Not enough ports=%d or workers=%d\n", __func__,
+			rte_event_port_count(evdev), rte_lcore_count() - 1);
+		return TEST_SUCCESS;
+	}
+
+	return launch_workers_and_wait(worker_multi_port_fn,
+					worker_multi_port_fn, total_events,
+					nr_ports, 0xff /* invalid */);
+}
+
 static struct unit_test_suite eventdev_octeontx_testsuite  = {
 	.suite_name = "eventdev octeontx unit test suite",
 	.setup = testsuite_setup,
@@ -505,6 +651,8 @@ static struct unit_test_suite eventdev_octeontx_testsuite  = {
 			test_multi_queue_enq_single_port_deq),
 		TEST_CASE_ST(eventdev_setup_priority, eventdev_teardown,
 			test_multi_queue_priority),
+		TEST_CASE_ST(eventdev_setup, eventdev_teardown,
+			test_multi_queue_enq_multi_port_deq),
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
 };
