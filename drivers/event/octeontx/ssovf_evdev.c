@@ -426,6 +426,48 @@ ssovf_start(struct rte_eventdev *dev)
 	ssovf_fastpath_fns_set(dev);
 	return 0;
 }
+
+static void
+ssovf_stop(struct rte_eventdev *dev)
+{
+	struct ssovf_evdev *edev = ssovf_pmd_priv(dev);
+	struct ssows *ws;
+	uint8_t *base;
+	uint8_t i;
+
+	ssovf_func_trace();
+	for (i = 0; i < edev->nb_event_ports; i++) {
+		ws = dev->data->ports[i];
+		ssows_reset(ws);
+		ws->swtag_req = 0;
+	}
+
+	for (i = 0; i < edev->nb_event_queues; i++) {
+		/* Consume all the events through HWS0 */
+		ssows_flush_events(dev->data->ports[0], i);
+
+		base = octeontx_ssovf_bar(OCTEONTX_SSO_GROUP, i, 0);
+		base += SSO_VHGRP_QCTL;
+		ssovf_write64(0, base); /* Disable SSO group */
+	}
+}
+
+static int
+ssovf_close(struct rte_eventdev *dev)
+{
+	struct ssovf_evdev *edev = ssovf_pmd_priv(dev);
+	uint8_t all_queues[RTE_EVENT_MAX_QUEUES_PER_DEV];
+	uint8_t i;
+
+	for (i = 0; i < edev->nb_event_queues; i++)
+		all_queues[i] = i;
+
+	for (i = 0; i < edev->nb_event_ports; i++)
+		ssovf_port_unlink(dev, dev->data->ports[i], all_queues,
+			edev->nb_event_queues);
+	return 0;
+}
+
 /* Initialize and register event driver with DPDK Application */
 static const struct rte_eventdev_ops ssovf_ops = {
 	.dev_infos_get    = ssovf_info_get,
@@ -441,6 +483,8 @@ static const struct rte_eventdev_ops ssovf_ops = {
 	.timeout_ticks    = ssovf_timeout_ticks,
 	.dump             = ssovf_dump,
 	.dev_start        = ssovf_start,
+	.dev_stop         = ssovf_stop,
+	.dev_close        = ssovf_close
 };
 
 static int
