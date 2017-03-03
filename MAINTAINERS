@@ -733,11 +733,6 @@ F: doc/guides/tools/proc_info.rst
 Other Example Applications
 --------------------------
 
-M: Bruce Richardson <bruce.richardson@intel.com>
-M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
-F: examples/dpdk_qat/
-F: doc/guides/sample_app_ug/intel_quickassist.rst
-
 M: Remy Horton <remy.horton@intel.com>
 F: examples/ethtool/
 F: doc/guides/sample_app_ug/ethtool.rst

@@ -61,7 +61,6 @@ Sample Applications User Guides
     multi_process
     qos_metering
     qos_scheduler
-    intel_quickassist
     quota_watermark
     timer
     packet_ordering
@@ -108,8 +107,6 @@ Sample Applications User Guides
 :numref:`figure_slave_proc_recov` :ref:`figure_slave_proc_recov`
 
 :numref:`figure_qos_sched_app_arch` :ref:`figure_qos_sched_app_arch`
-
-:numref:`figure_quickassist_block_diagram` :ref:`figure_quickassist_block_diagram`
 
 :numref:`figure_pipeline_overview` :ref:`figure_pipeline_overview`
 

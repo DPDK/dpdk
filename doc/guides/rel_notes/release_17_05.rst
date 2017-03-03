@@ -423,6 +423,7 @@ Removed Items
 
 * KNI vhost support removed.
 
+* dpdk_qat sample application removed.
 
 Shared Library Versions
 -----------------------

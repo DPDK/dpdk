@@ -140,7 +140,6 @@ The examples directory contains sample applications that show how libraries can 
 
     examples
     +-- cmdline            # Example of using the cmdline library
-    +-- dpdk_qat           # Sample integration with Intel QuickAssist
     +-- exception_path     # Sending packets to and from Linux TAP device
     +-- helloworld         # Basic Hello World example
     +-- ip_reassembly      # Example showing IP reassembly
