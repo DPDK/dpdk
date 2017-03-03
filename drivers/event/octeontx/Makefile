@@ -1,6 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2016 Cavium networks. All rights reserved.
+#   Copyright(c) 2017 Cavium Networks. All rights reserved.
 #   All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
@@ -13,7 +13,7 @@
 #       notice, this list of conditions and the following disclaimer in
 #       the documentation and/or other materials provided with the
 #       distribution.
-#     * Neither the name of Cavium networks nor the names of its
+#     * Neither the name of Cavium Networks nor the names of its
 #       contributors may be used to endorse or promote products derived
 #       from this software without specific prior written permission.
 #
@@ -28,16 +28,24 @@
 #   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 #   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-core-libs := librte_eal librte_eventdev
+#
+# library name
+#
+LIB = librte_pmd_octeontx_ssovf.a
 
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_SKELETON_EVENTDEV) += skeleton
-DEPDIRS-skeleton = $(core-libs)
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_SW_EVENTDEV) += sw
-DEPDIRS-sw = $(core-libs) librte_kvargs librte_ring
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX_SSOVF) += octeontx
-DEPDIRS-octeontx = $(core-libs)
+CFLAGS += $(WERROR_FLAGS)
 
-include $(RTE_SDK)/mk/rte.subdir.mk
+EXPORT_MAP := rte_pmd_octeontx_ssovf_version.map
+
+LIBABIVER := 1
+
+#
+# all source are stored in SRCS-y
+#
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX_SSOVF) += ssovf_probe.c
+
+include $(RTE_SDK)/mk/rte.lib.mk
