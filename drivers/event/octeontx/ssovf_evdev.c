@@ -65,6 +65,32 @@ ssovf_mbox_dev_info(struct ssovf_mbox_dev_info *info)
 	return octeontx_ssovf_mbox_send(&hdr, NULL, 0, info, len);
 }
 
+static void
+ssovf_info_get(struct rte_eventdev *dev, struct rte_event_dev_info *dev_info)
+{
+	struct ssovf_evdev *edev = ssovf_pmd_priv(dev);
+
+	dev_info->min_dequeue_timeout_ns = edev->min_deq_timeout_ns;
+	dev_info->max_dequeue_timeout_ns = edev->max_deq_timeout_ns;
+	dev_info->max_event_queues = edev->max_event_queues;
+	dev_info->max_event_queue_flows = (1ULL << 20);
+	dev_info->max_event_queue_priority_levels = 8;
+	dev_info->max_event_priority_levels = 1;
+	dev_info->max_event_ports = edev->max_event_ports;
+	dev_info->max_event_port_dequeue_depth = 1;
+	dev_info->max_event_port_enqueue_depth = 1;
+	dev_info->max_num_events =  edev->max_num_events;
+	dev_info->event_dev_cap = RTE_EVENT_DEV_CAP_QUEUE_QOS |
+					RTE_EVENT_DEV_CAP_DISTRIBUTED_SCHED |
+					RTE_EVENT_DEV_CAP_QUEUE_ALL_TYPES;
+}
+
+
+/* Initialize and register event driver with DPDK Application */
+static const struct rte_eventdev_ops ssovf_ops = {
+	.dev_infos_get    = ssovf_info_get,
+};
+
 static int
 ssovf_vdev_probe(const char *name, const char *params)
 {
@@ -89,7 +115,7 @@ ssovf_vdev_probe(const char *name, const char *params)
 		ssovf_log_err("Failed to create eventdev vdev %s", name);
 		return -ENOMEM;
 	}
-	eventdev->dev_ops = NULL;
+	eventdev->dev_ops = &ssovf_ops;
 
 	/* For secondary processes, the primary has done all the work */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
