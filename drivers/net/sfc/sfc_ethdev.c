@@ -525,6 +525,27 @@ unlock:
 	rte_spinlock_unlock(&port->mac_stats_lock);
 }
 
+static void
+sfc_stats_reset(struct rte_eth_dev *dev)
+{
+	struct sfc_adapter *sa = dev->data->dev_private;
+	struct sfc_port *port = &sa->port;
+	int rc;
+
+	if (sa->state != SFC_ADAPTER_STARTED) {
+		/*
+		 * The operation cannot be done if port is not started; it
+		 * will be scheduled to be done during the next port start
+		 */
+		port->mac_stats_reset_pending = B_TRUE;
+		return;
+	}
+
+	rc = sfc_port_reset_mac_stats(sa);
+	if (rc != 0)
+		sfc_err(sa, "failed to reset statistics (rc = %d)", rc);
+}
+
 static int
 sfc_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 	       unsigned int xstats_count)
@@ -1200,7 +1221,9 @@ static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.allmulticast_disable		= sfc_dev_allmulti_disable,
 	.link_update			= sfc_dev_link_update,
 	.stats_get			= sfc_stats_get,
+	.stats_reset			= sfc_stats_reset,
 	.xstats_get			= sfc_xstats_get,
+	.xstats_reset			= sfc_stats_reset,
 	.xstats_get_names		= sfc_xstats_get_names,
 	.dev_infos_get			= sfc_dev_infos_get,
 	.dev_supported_ptypes_get	= sfc_dev_supported_ptypes_get,

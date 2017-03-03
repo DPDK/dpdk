@@ -153,6 +153,7 @@ struct sfc_port {
 	rte_spinlock_t			mac_stats_lock;
 	uint64_t			*mac_stats_buf;
 	efsys_mem_t			mac_stats_dma_mem;
+	boolean_t			mac_stats_reset_pending;
 
 	uint32_t		mac_stats_mask[EFX_MAC_STATS_MASK_NPAGES];
 };
@@ -281,6 +282,7 @@ void sfc_port_stop(struct sfc_adapter *sa);
 void sfc_port_link_mode_to_info(efx_link_mode_t link_mode,
 				struct rte_eth_link *link_info);
 int sfc_port_update_mac_stats(struct sfc_adapter *sa);
+int sfc_port_reset_mac_stats(struct sfc_adapter *sa);
 int sfc_set_rx_mode(struct sfc_adapter *sa);
 
 

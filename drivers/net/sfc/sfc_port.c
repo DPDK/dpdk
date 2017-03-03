@@ -61,6 +61,19 @@ sfc_port_update_mac_stats(struct sfc_adapter *sa)
 	return 0;
 }
 
+int
+sfc_port_reset_mac_stats(struct sfc_adapter *sa)
+{
+	struct sfc_port *port = &sa->port;
+	int rc;
+
+	rte_spinlock_lock(&port->mac_stats_lock);
+	rc = efx_mac_stats_clear(sa->nic);
+	rte_spinlock_unlock(&port->mac_stats_lock);
+
+	return rc;
+}
+
 static int
 sfc_port_init_dev_link(struct sfc_adapter *sa)
 {
@@ -139,6 +152,15 @@ sfc_port_start(struct sfc_adapter *sa)
 	rc = sfc_set_rx_mode(sa);
 	if (rc != 0)
 		goto fail_mac_filter_set;
+
+	if (port->mac_stats_reset_pending) {
+		rc = sfc_port_reset_mac_stats(sa);
+		if (rc != 0)
+			sfc_err(sa, "statistics reset failed (requested "
+				    "before the port was started)");
+
+		port->mac_stats_reset_pending = B_FALSE;
+	}
 
 	efx_mac_stats_get_mask(sa->nic, port->mac_stats_mask,
 			       sizeof(port->mac_stats_mask));
@@ -236,6 +258,8 @@ sfc_port_init(struct sfc_adapter *sa)
 			   sa->socket_id, &port->mac_stats_dma_mem);
 	if (rc != 0)
 		goto fail_mac_stats_dma_alloc;
+
+	port->mac_stats_reset_pending = B_FALSE;
 
 	sfc_log_init(sa, "done");
 	return 0;
