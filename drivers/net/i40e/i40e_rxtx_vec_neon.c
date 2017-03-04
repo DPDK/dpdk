@@ -205,7 +205,7 @@ desc_to_ptype_v(uint64x2_t descs[4], struct rte_mbuf **rx_pkts)
 	for (i = 0; i < 4; i++) {
 		tmp = vreinterpretq_u8_u64(vshrq_n_u64(descs[i], 30));
 		ptype = vgetq_lane_u8(tmp, 8);
-		rx_pkts[0]->packet_type = i40e_rxd_pkt_type_mapping(ptype);
+		rx_pkts[i]->packet_type = i40e_rxd_pkt_type_mapping(ptype);
 	}
 
 }
