@@ -253,7 +253,7 @@ priv_xstats_init(struct priv *priv)
 		}
 	}
 	for (j = 0; j != xstats_n; ++j) {
-		if (priv_is_ib_cntr(mlx5_counters_init[i].ctr_name))
+		if (priv_is_ib_cntr(mlx5_counters_init[j].ctr_name))
 			continue;
 		if (xstats_ctrl->dev_table_idx[j] >= dev_stats_n) {
 			WARN("counter \"%s\" is not recognized",
