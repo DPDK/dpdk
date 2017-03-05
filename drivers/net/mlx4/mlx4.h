@@ -295,6 +295,8 @@ struct txq {
 	struct ibv_exp_res_domain *rd; /* Resource Domain. */
 };
 
+struct rte_flow;
+
 struct priv {
 	struct rte_eth_dev *dev; /* Ethernet device. */
 	struct ibv_context *ctx; /* Verbs context. */
@@ -337,6 +339,7 @@ struct priv {
 	struct rxq *(*rxqs)[]; /* RX queues. */
 	struct txq *(*txqs)[]; /* TX queues. */
 	struct rte_intr_handle intr_handle; /* Interrupt handler. */
+	LIST_HEAD(mlx4_flows, rte_flow) flows;
 	rte_spinlock_t lock; /* Lock for control functions. */
 };
 
