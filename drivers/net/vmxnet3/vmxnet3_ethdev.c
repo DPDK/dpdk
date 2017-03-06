@@ -225,6 +225,24 @@ vmxnet3_disable_intr(struct vmxnet3_hw *hw)
 }
 
 /*
+ * Gets tx data ring descriptor size.
+ */
+static uint16_t
+eth_vmxnet3_txdata_get(struct vmxnet3_hw *hw)
+{
+	uint16 txdata_desc_size;
+
+	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_CMD,
+			       VMXNET3_CMD_GET_TXDATA_DESC_SIZE);
+	txdata_desc_size = VMXNET3_READ_BAR1_REG(hw, VMXNET3_REG_CMD);
+
+	return (txdata_desc_size < VMXNET3_TXDATA_DESC_MIN_SIZE ||
+		txdata_desc_size > VMXNET3_TXDATA_DESC_MAX_SIZE ||
+		txdata_desc_size & VMXNET3_TXDATA_DESC_SIZE_MASK) ?
+		sizeof(struct Vmxnet3_TxDataDesc) : txdata_desc_size;
+}
+
+/*
  * It returns 0 on success.
  */
 static int
@@ -319,6 +337,9 @@ eth_vmxnet3_dev_init(struct rte_eth_dev *eth_dev)
 
 	/* allow untagged pkts */
 	VMXNET3_SET_VFTABLE_ENTRY(hw->shadow_vfta, 0);
+
+	hw->txdata_desc_size = VMXNET3_VERSION_GE_3(hw) ?
+		eth_vmxnet3_txdata_get(hw) : sizeof(struct Vmxnet3_TxDataDesc);
 
 	return 0;
 }
@@ -511,6 +532,7 @@ vmxnet3_setup_driver_shared(struct rte_eth_dev *dev)
 		tqd->conf.txRingSize   = txq->cmd_ring.size;
 		tqd->conf.compRingSize = txq->comp_ring.size;
 		tqd->conf.dataRingSize = txq->data_ring.size;
+		tqd->conf.txDataRingDescSize = txq->txdata_desc_size;
 		tqd->conf.intrIdx      = txq->comp_ring.intr_idx;
 		tqd->status.stopped    = TRUE;
 		tqd->status.error      = 0;

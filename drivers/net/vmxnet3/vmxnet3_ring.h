@@ -141,6 +141,7 @@ typedef struct vmxnet3_tx_queue {
 	bool                         stopped;
 	uint16_t                     queue_id;      /**< Device TX queue index. */
 	uint8_t                      port_id;       /**< Device port identifier. */
+	uint16_t		     txdata_desc_size;
 } vmxnet3_tx_queue_t;
 
 struct vmxnet3_rxq_stats {

@@ -244,7 +244,7 @@ vmxnet3_dev_tx_queue_reset(void *txq)
 
 	size = sizeof(struct Vmxnet3_TxDesc) * ring->size;
 	size += sizeof(struct Vmxnet3_TxCompDesc) * comp_ring->size;
-	size += sizeof(struct Vmxnet3_TxDataDesc) * data_ring->size;
+	size += tq->txdata_desc_size * data_ring->size;
 
 	memset(ring->base, 0, size);
 }
@@ -471,10 +471,13 @@ vmxnet3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		}
 
 		if (txm->nb_segs == 1 &&
-		    rte_pktmbuf_pkt_len(txm) <= VMXNET3_HDR_COPY_SIZE) {
+		    rte_pktmbuf_pkt_len(txm) <= txq->txdata_desc_size) {
 			struct Vmxnet3_TxDataDesc *tdd;
 
-			tdd = txq->data_ring.base + txq->cmd_ring.next2fill;
+			tdd = (struct Vmxnet3_TxDataDesc *)
+				((uint8 *)txq->data_ring.base +
+				 txq->cmd_ring.next2fill *
+				 txq->txdata_desc_size);
 			copy_size = rte_pktmbuf_pkt_len(txm);
 			rte_memcpy(tdd->data, rte_pktmbuf_mtod(txm, char *), copy_size);
 		}
@@ -491,12 +494,15 @@ vmxnet3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			 * maximum size of mbuf segment size.
 			 */
 			gdesc = txq->cmd_ring.base + txq->cmd_ring.next2fill;
-			if (copy_size)
-				gdesc->txd.addr = rte_cpu_to_le_64(txq->data_ring.basePA +
-								   txq->cmd_ring.next2fill *
-								   sizeof(struct Vmxnet3_TxDataDesc));
-			else
+			if (copy_size) {
+				uint64 offset = txq->cmd_ring.next2fill *
+						txq->txdata_desc_size;
+				gdesc->txd.addr =
+					rte_cpu_to_le_64(txq->data_ring.basePA +
+							 offset);
+			} else {
 				gdesc->txd.addr = rte_mbuf_data_dma_addr(m_seg);
+			}
 
 			gdesc->dword[2] = dw2 | m_seg->data_len;
 			gdesc->dword[3] = 0;
@@ -932,6 +938,7 @@ vmxnet3_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->hw = hw;
 	txq->qid = queue_idx;
 	txq->stopped = TRUE;
+	txq->txdata_desc_size = hw->txdata_desc_size;
 
 	ring = &txq->cmd_ring;
 	comp_ring = &txq->comp_ring;
@@ -961,7 +968,7 @@ vmxnet3_dev_tx_queue_setup(struct rte_eth_dev *dev,
 
 	size = sizeof(struct Vmxnet3_TxDesc) * ring->size;
 	size += sizeof(struct Vmxnet3_TxCompDesc) * comp_ring->size;
-	size += sizeof(struct Vmxnet3_TxDataDesc) * data_ring->size;
+	size += txq->txdata_desc_size * data_ring->size;
 
 	mz = ring_dma_zone_reserve(dev, "txdesc", queue_idx, size, socket_id);
 	if (mz == NULL) {
