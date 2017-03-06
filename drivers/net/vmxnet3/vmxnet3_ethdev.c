@@ -489,6 +489,92 @@ vmxnet3_write_mac(struct vmxnet3_hw *hw, const uint8_t *addr)
 }
 
 static int
+vmxnet3_dev_setup_memreg(struct rte_eth_dev *dev)
+{
+	struct vmxnet3_hw *hw = dev->data->dev_private;
+	Vmxnet3_DriverShared *shared = hw->shared;
+	Vmxnet3_CmdInfo *cmdInfo;
+	struct rte_mempool *mp[VMXNET3_MAX_RX_QUEUES];
+	uint8_t index[VMXNET3_MAX_RX_QUEUES + VMXNET3_MAX_TX_QUEUES];
+	uint32_t num, i, j, size;
+
+	if (hw->memRegsPA == 0) {
+		const struct rte_memzone *mz;
+
+		size = sizeof(Vmxnet3_MemRegs) +
+			(VMXNET3_MAX_RX_QUEUES + VMXNET3_MAX_TX_QUEUES) *
+			sizeof(Vmxnet3_MemoryRegion);
+
+		mz = gpa_zone_reserve(dev, size, "memRegs", rte_socket_id(), 8,
+				      1);
+		if (mz == NULL) {
+			PMD_INIT_LOG(ERR, "ERROR: Creating memRegs zone");
+			return -ENOMEM;
+		}
+		memset(mz->addr, 0, mz->len);
+		hw->memRegs = mz->addr;
+		hw->memRegsPA = mz->phys_addr;
+	}
+
+	num = hw->num_rx_queues;
+
+	for (i = 0; i < num; i++) {
+		vmxnet3_rx_queue_t *rxq = dev->data->rx_queues[i];
+
+		mp[i] = rxq->mp;
+		index[i] = 1 << i;
+	}
+
+	/*
+	 * The same mempool could be used by multiple queues. In such a case,
+	 * remove duplicate mempool entries. Only one entry is kept with
+	 * bitmask indicating queues that are using this mempool.
+	 */
+	for (i = 1; i < num; i++) {
+		for (j = 0; j < i; j++) {
+			if (mp[i] == mp[j]) {
+				mp[i] = NULL;
+				index[j] |= 1 << i;
+				break;
+			}
+		}
+	}
+
+	j = 0;
+	for (i = 0; i < num; i++) {
+		if (mp[i] == NULL)
+			continue;
+
+		Vmxnet3_MemoryRegion *mr = &hw->memRegs->memRegs[j];
+
+		mr->startPA =
+			(uintptr_t)STAILQ_FIRST(&mp[i]->mem_list)->phys_addr;
+		mr->length = STAILQ_FIRST(&mp[i]->mem_list)->len <= INT32_MAX ?
+			STAILQ_FIRST(&mp[i]->mem_list)->len : INT32_MAX;
+		mr->txQueueBits = index[i];
+		mr->rxQueueBits = index[i];
+
+		PMD_INIT_LOG(INFO,
+			     "index: %u startPA: %" PRIu64 " length: %u, "
+			     "rxBits: %x",
+			     j, mr->startPA, mr->length, mr->rxQueueBits);
+		j++;
+	}
+	hw->memRegs->numRegs = j;
+	PMD_INIT_LOG(INFO, "numRegs: %u", j);
+
+	size = sizeof(Vmxnet3_MemRegs) +
+		(j - 1) * sizeof(Vmxnet3_MemoryRegion);
+
+	cmdInfo = &shared->cu.cmdInfo;
+	cmdInfo->varConf.confVer = 1;
+	cmdInfo->varConf.confLen = size;
+	cmdInfo->varConf.confPA = hw->memRegsPA;
+
+	return 0;
+}
+
+static int
 vmxnet3_setup_driver_shared(struct rte_eth_dev *dev)
 {
 	struct rte_eth_conf port_conf = dev->data->dev_conf;
@@ -628,6 +714,20 @@ vmxnet3_dev_start(struct rte_eth_dev *dev)
 		return -EINVAL;
 	}
 
+	/* Setup memory region for rx buffers */
+	ret = vmxnet3_dev_setup_memreg(dev);
+	if (ret == 0) {
+		VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_CMD,
+				       VMXNET3_CMD_REGISTER_MEMREGS);
+		ret = VMXNET3_READ_BAR1_REG(hw, VMXNET3_REG_CMD);
+		if (ret != 0)
+			PMD_INIT_LOG(DEBUG,
+				     "Failed in setup memory region cmd\n");
+		ret = 0;
+	} else {
+		PMD_INIT_LOG(DEBUG, "Failed to setup memory region\n");
+	}
+
 	/* Disable interrupts */
 	vmxnet3_disable_intr(hw);
 
@@ -640,6 +740,8 @@ vmxnet3_dev_start(struct rte_eth_dev *dev)
 		PMD_INIT_LOG(ERR, "Device queue init: UNSUCCESSFUL");
 		return ret;
 	}
+
+	hw->adapter_stopped = FALSE;
 
 	/* Setting proper Rx Mode and issue Rx Mode Update command */
 	vmxnet3_dev_set_rxmode(hw, VMXNET3_RXM_UCAST | VMXNET3_RXM_BCAST, 1);

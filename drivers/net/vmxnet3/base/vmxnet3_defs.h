@@ -111,6 +111,7 @@ typedef enum {
    VMXNET3_CMD_ACTIVATE_VF,
    VMXNET3_CMD_RESERVED3,
    VMXNET3_CMD_RESERVED4,
+   VMXNET3_CMD_REGISTER_MEMREGS,
 
    VMXNET3_CMD_FIRST_GET = 0xF00D0000,
    VMXNET3_CMD_GET_QUEUE_STATUS = VMXNET3_CMD_FIRST_GET,
@@ -721,6 +722,30 @@ struct Vmxnet3_SetPolling {
 }
 #include "vmware_pack_end.h"
 Vmxnet3_SetPolling;
+
+typedef
+#include "vmware_pack_begin.h"
+struct Vmxnet3_MemoryRegion {
+	__le64            startPA;
+	__le32            length;
+	__le16            txQueueBits; /* bit n corresponding to tx queue n */
+	__le16            rxQueueBits; /* bit n corresponding to rx queue n */
+}
+#include "vmware_pack_end.h"
+Vmxnet3_MemoryRegion;
+
+#define MAX_MEMORY_REGION_PER_QUEUE 16
+#define MAX_MEMORY_REGION_PER_DEVICE 256
+
+typedef
+#include "vmware_pack_begin.h"
+struct Vmxnet3_MemRegs {
+	__le16           numRegs;
+	__le16           pad[3];
+	Vmxnet3_MemoryRegion memRegs[1];
+}
+#include "vmware_pack_end.h"
+Vmxnet3_MemRegs;
 
 /*
  * If the command data <= 16 bytes, use the shared memory direcly.

@@ -119,6 +119,8 @@ struct vmxnet3_hw {
 	uint64_t              rss_confPA;
 	vmxnet3_mf_table_t    *mf_table;
 	uint32_t              shadow_vfta[VMXNET3_VFT_SIZE];
+	Vmxnet3_MemRegs	      *memRegs;
+	uint64_t	      memRegsPA;
 #define VMXNET3_VFT_TABLE_SIZE     (VMXNET3_VFT_SIZE * sizeof(uint32_t))
 };
 
