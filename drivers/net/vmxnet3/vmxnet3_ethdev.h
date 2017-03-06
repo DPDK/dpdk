@@ -101,6 +101,8 @@ struct vmxnet3_hw {
 	uint8_t num_rx_queues;
 	uint8_t bufs_per_pkt;
 
+	uint8_t	version;
+
 	Vmxnet3_TxQueueDesc   *tqd_start;	/* start address of all tx queue desc */
 	Vmxnet3_RxQueueDesc   *rqd_start;	/* start address of all rx queue desc */
 
@@ -116,6 +118,13 @@ struct vmxnet3_hw {
 	uint32_t              shadow_vfta[VMXNET3_VFT_SIZE];
 #define VMXNET3_VFT_TABLE_SIZE     (VMXNET3_VFT_SIZE * sizeof(uint32_t))
 };
+
+#define VMXNET3_REV_3		2		/* Vmxnet3 Rev. 3 */
+#define VMXNET3_REV_2		1		/* Vmxnet3 Rev. 2 */
+#define VMXNET3_REV_1		0		/* Vmxnet3 Rev. 1 */
+
+#define VMXNET3_VERSION_GE_3(hw) ((hw)->version >= VMXNET3_REV_3 + 1)
+#define VMXNET3_VERSION_GE_2(hw) ((hw)->version >= VMXNET3_REV_2 + 1)
 
 #define VMXNET3_GET_ADDR_LO(reg)   ((uint32_t)(reg))
 #define VMXNET3_GET_ADDR_HI(reg)   ((uint32_t)(((uint64_t)(reg)) >> 32))
