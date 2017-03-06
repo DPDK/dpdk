@@ -137,6 +137,7 @@ sfc_tx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	     uint16_t nb_tx_desc, unsigned int socket_id,
 	     const struct rte_eth_txconf *tx_conf)
 {
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
 	struct sfc_txq_info *txq_info;
 	struct sfc_evq *evq;
 	struct sfc_txq *txq;
@@ -195,6 +196,7 @@ sfc_tx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	txq->ptr_mask = txq_info->entries - 1;
 	txq->free_thresh = (tx_conf->tx_free_thresh) ? tx_conf->tx_free_thresh :
 						     SFC_TX_DEFAULT_FREE_THRESH;
+	txq->dma_desc_size_max = encp->enc_tx_dma_desc_size_max;
 	txq->hw_index = sw_index;
 	txq->flags = tx_conf->txq_flags;
 	txq->evq = evq;
@@ -302,9 +304,20 @@ sfc_tx_check_mode(struct sfc_adapter *sa, const struct rte_eth_txmode *txmode)
 int
 sfc_tx_init(struct sfc_adapter *sa)
 {
+	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
 	const struct rte_eth_conf *dev_conf = &sa->eth_dev->data->dev_conf;
 	unsigned int sw_index;
 	int rc = 0;
+
+	/*
+	 * The datapath implementation assumes absence of boundary
+	 * limits on Tx DMA descriptors. Addition of these checks on
+	 * datapath would simply make the datapath slower.
+	 */
+	if (encp->enc_tx_dma_desc_boundary != 0) {
+		rc = ENOTSUP;
+		goto fail_tx_dma_desc_boundary;
+	}
 
 	rc = sfc_tx_check_mode(sa, &dev_conf->txmode);
 	if (rc != 0)
@@ -334,6 +347,7 @@ fail_txqs_alloc:
 	sa->txq_count = 0;
 
 fail_check_mode:
+fail_tx_dma_desc_boundary:
 	sfc_log_init(sa, "failed (rc = %d)", rc);
 	return rc;
 }
@@ -704,9 +718,13 @@ sfc_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				efsys_dma_addr_t	frag_addr = next_frag;
 				size_t			frag_len;
 
-				next_frag = RTE_ALIGN(frag_addr + 1,
-						      SFC_TX_SEG_BOUNDARY);
-				frag_len = MIN(next_frag - frag_addr, seg_len);
+				/*
+				 * It is assumed here that there is no
+				 * limitation on address boundary
+				 * crossing by DMA descriptor.
+				 */
+				frag_len = MIN(seg_len, txq->dma_desc_size_max);
+				next_frag += frag_len;
 				seg_len -= frag_len;
 				pkt_len -= frag_len;
 

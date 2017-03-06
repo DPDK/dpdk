@@ -39,12 +39,6 @@
 extern "C" {
 #endif
 
-/**
- * A segment must not cross 4K boundary
- * (this is a requirement of NIC TX descriptors)
- */
-#define SFC_TX_SEG_BOUNDARY	4096
-
 struct sfc_adapter;
 struct sfc_evq;
 
@@ -79,6 +73,7 @@ struct sfc_txq {
 	unsigned int		completed;
 	unsigned int		free_thresh;
 	uint16_t		hw_vlan_tci;
+	uint16_t		dma_desc_size_max;
 
 	unsigned int		hw_index;
 	unsigned int		flags;
