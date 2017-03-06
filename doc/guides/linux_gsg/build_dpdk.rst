@@ -208,7 +208,7 @@ Any network ports under Linux* control will be ignored by the DPDK poll-mode dri
 
 To bind ports to the ``uio_pci_generic``, ``igb_uio`` or ``vfio-pci`` module for DPDK use,
 and then subsequently return ports to Linux* control,
-a utility script called dpdk_nic _bind.py is provided in the usertools subdirectory.
+a utility script called dpdk-devbind.py is provided in the usertools subdirectory.
 This utility can be used to provide a view of the current state of the network ports on the system,
 and to bind and unbind those ports from the different kernel modules, including the uio and vfio modules.
 The following are some examples of how the script can be used.
