@@ -54,6 +54,31 @@
 
 #define RTE_VFIO_TYPE1 VFIO_TYPE1_IOMMU
 
+#ifndef VFIO_SPAPR_TCE_v2_IOMMU
+#define RTE_VFIO_SPAPR 7
+#define VFIO_IOMMU_SPAPR_REGISTER_MEMORY _IO(VFIO_TYPE, VFIO_BASE + 17)
+#define VFIO_IOMMU_SPAPR_TCE_CREATE _IO(VFIO_TYPE, VFIO_BASE + 19)
+#define VFIO_IOMMU_SPAPR_TCE_REMOVE _IO(VFIO_TYPE, VFIO_BASE + 20)
+struct vfio_iommu_spapr_register_memory {
+	uint32_t argsz;
+	uint32_t flags;
+	uint64_t vaddr;
+	uint64_t size;
+};
+struct vfio_iommu_spapr_tce_create {
+	uint32_t argsz;
+	uint32_t page_shift;
+	uint64_t window_size;
+	uint32_t levels;
+};
+struct vfio_iommu_spapr_tce_remove {
+	uint32_t argsz;
+	uint64_t start_addr;
+};
+#else
+#define RTE_VFIO_SPAPR VFIO_SPAPR_TCE_v2_IOMMU
+#endif
+
 #if LINUX_VERSION_CODE < KERNEL_VERSION(4, 5, 0)
 #define RTE_VFIO_NOIOMMU 8
 #else

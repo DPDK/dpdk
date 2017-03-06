@@ -42,6 +42,10 @@ New Features
      =========================================================
 
 
+* **Added powerpc support in pci probing for vfio-pci devices.**
+
+  sPAPR IOMMU based pci probing enabled for vfio-pci devices.
+
 Resolved Issues
 ---------------
 
