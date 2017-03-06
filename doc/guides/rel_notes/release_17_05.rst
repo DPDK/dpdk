@@ -79,6 +79,11 @@ New Features
 
   i40e PMD and its vector PMD enabled by default in powerpc.
 
+* **Added TSO support for tunneled and non-tunneled packets on mlx5 driver.**
+
+  Added support for Hardware TSO for tunneled and non-tunneled packets.
+  Tunneling protocols supported are GRE and VXLAN.
+
 * **Added vmxnet3 version 3 support.**
 
   Added support for vmxnet3 version 3 which includes several
