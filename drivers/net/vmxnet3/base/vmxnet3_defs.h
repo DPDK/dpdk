@@ -408,6 +408,10 @@ typedef union Vmxnet3_GenericDesc {
 #define VMXNET3_TXDATA_DESC_SIZE_ALIGN 64
 #define VMXNET3_TXDATA_DESC_SIZE_MASK  (VMXNET3_TXDATA_DESC_SIZE_ALIGN - 1)
 
+/* Rx Data Ring buffer size must be a multiple of 64 */
+#define VMXNET3_RXDATA_DESC_SIZE_ALIGN 64
+#define VMXNET3_RXDATA_DESC_SIZE_MASK  (VMXNET3_RXDATA_DESC_SIZE_ALIGN - 1)
+
 /* Max ring size */
 #define VMXNET3_TX_RING_MAX_SIZE   4096
 #define VMXNET3_TC_RING_MAX_SIZE   4096
@@ -416,6 +420,8 @@ typedef union Vmxnet3_GenericDesc {
 
 #define VMXNET3_TXDATA_DESC_MIN_SIZE 128
 #define VMXNET3_TXDATA_DESC_MAX_SIZE 2048
+
+#define VMXNET3_RXDATA_DESC_MAX_SIZE 2048
 
 /* a list of reasons for queue stop */
 
@@ -529,12 +535,14 @@ struct Vmxnet3_RxQueueConf {
    __le64    rxRingBasePA[2];
    __le64    compRingBasePA;
    __le64    ddPA;            /* driver data */
-   __le64    reserved;
+   __le64    rxDataRingBasePA;
    __le32    rxRingSize[2];   /* # of rx desc */
    __le32    compRingSize;    /* # of rx comp desc */
    __le32    ddLen;           /* size of driver data */
    uint8     intrIdx;
-   uint8     _pad[7];
+   uint8     _pad1[1];
+   __le16    rxDataRingDescSize;  /* size of rx data ring buffer */
+   uint8     _pad2[4];
 }
 #include "vmware_pack_end.h"
 Vmxnet3_RxQueueConf;

@@ -104,6 +104,7 @@ struct vmxnet3_hw {
 	uint8_t	version;
 
 	uint16_t txdata_desc_size; /* tx data ring buffer size */
+	uint16_t rxdata_desc_size; /* rx data ring buffer size */
 
 	Vmxnet3_TxQueueDesc   *tqd_start;	/* start address of all tx queue desc */
 	Vmxnet3_RxQueueDesc   *rqd_start;	/* start address of all rx queue desc */
@@ -156,6 +157,20 @@ vmxnet3_read_addr(volatile void *addr)
 	vmxnet3_read_addr(VMXNET3_PCI_BAR1_REG_ADDR((hw), (reg)))
 #define VMXNET3_WRITE_BAR1_REG(hw, reg, value) \
 	VMXNET3_PCI_REG_WRITE(VMXNET3_PCI_BAR1_REG_ADDR((hw), (reg)), (value))
+
+static inline uint8_t
+vmxnet3_get_ring_idx(struct vmxnet3_hw *hw, uint32 rqID)
+{
+	return (rqID >= hw->num_rx_queues &&
+		rqID < 2 * hw->num_rx_queues) ? 1 : 0;
+}
+
+static inline bool
+vmxnet3_rx_data_ring(struct vmxnet3_hw *hw, uint32 rqID)
+{
+	return (rqID >= 2 * hw->num_rx_queues &&
+		rqID < 3 * hw->num_rx_queues);
+}
 
 /*
  * RX/TX function prototypes

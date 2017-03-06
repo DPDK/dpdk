@@ -341,6 +341,11 @@ eth_vmxnet3_dev_init(struct rte_eth_dev *eth_dev)
 	hw->txdata_desc_size = VMXNET3_VERSION_GE_3(hw) ?
 		eth_vmxnet3_txdata_get(hw) : sizeof(struct Vmxnet3_TxDataDesc);
 
+	hw->rxdata_desc_size = VMXNET3_VERSION_GE_3(hw) ?
+		VMXNET3_DEF_RXDATA_DESC_SIZE : 0;
+	RTE_ASSERT((hw->rxdata_desc_size & ~VMXNET3_RXDATA_DESC_SIZE_MASK) ==
+		   hw->rxdata_desc_size);
+
 	return 0;
 }
 
@@ -551,6 +556,10 @@ vmxnet3_setup_driver_shared(struct rte_eth_dev *dev)
 		rqd->conf.rxRingSize[1]   = rxq->cmd_ring[1].size;
 		rqd->conf.compRingSize    = rxq->comp_ring.size;
 		rqd->conf.intrIdx         = rxq->comp_ring.intr_idx;
+		if (VMXNET3_VERSION_GE_3(hw)) {
+			rqd->conf.rxDataRingBasePA = rxq->data_ring.basePA;
+			rqd->conf.rxDataRingDescSize = rxq->data_desc_size;
+		}
 		rqd->status.stopped       = TRUE;
 		rqd->status.error         = 0;
 		memset(&rqd->stats, 0, sizeof(rqd->stats));

@@ -42,6 +42,9 @@
 #define VMXNET3_DEF_TX_RING_SIZE 512
 #define VMXNET3_DEF_RX_RING_SIZE 128
 
+/* Default rx data ring desc size */
+#define VMXNET3_DEF_RXDATA_DESC_SIZE 128
+
 #define VMXNET3_SUCCESS 0
 #define VMXNET3_FAIL   -1
 
@@ -151,13 +154,23 @@ struct vmxnet3_rxq_stats {
 	uint64_t                     rx_buf_alloc_failure;
 };
 
+struct vmxnet3_rx_data_ring {
+	uint8_t  *base;
+	uint64_t basePA;
+	uint32_t size;
+};
+
 typedef struct vmxnet3_rx_queue {
 	struct rte_mempool          *mp;
 	struct vmxnet3_hw           *hw;
 	struct vmxnet3_cmd_ring     cmd_ring[VMXNET3_RX_CMDRING_SIZE];
 	struct vmxnet3_comp_ring    comp_ring;
+	struct vmxnet3_rx_data_ring data_ring;
+	uint16_t                    data_desc_size;
 	uint32_t                    qid1;
 	uint32_t                    qid2;
+	/* rqID in RCD for buffer from data ring */
+	uint32_t                    data_ring_qid;
 	Vmxnet3_RxQueueDesc         *shared;
 	struct rte_mbuf             *start_seg;
 	struct rte_mbuf             *last_seg;
