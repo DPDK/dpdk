@@ -577,6 +577,9 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				if (is_tunneled	&& txq->tunnel_en) {
 					tso_header_sz += buf->outer_l2_len +
 							 buf->outer_l3_len;
+					cs_flags |= MLX5_ETH_WQE_L4_INNER_CSUM;
+				} else {
+					cs_flags |= MLX5_ETH_WQE_L4_CSUM;
 				}
 				if (unlikely(tso_header_sz >
 					     MLX5_MAX_TSO_HEADER))
