@@ -118,7 +118,8 @@ cperf_verify_devices_capabilities(struct cperf_options *opts,
 
 		if (opts->op_type == CPERF_AUTH_ONLY ||
 				opts->op_type == CPERF_CIPHER_THEN_AUTH ||
-				opts->op_type == CPERF_AUTH_THEN_CIPHER)  {
+				opts->op_type == CPERF_AUTH_THEN_CIPHER ||
+				opts->op_type == CPERF_AEAD)  {
 
 			cap_idx.type = RTE_CRYPTO_SYM_XFORM_AUTH;
 			cap_idx.algo.auth = opts->auth_algo;
@@ -139,7 +140,8 @@ cperf_verify_devices_capabilities(struct cperf_options *opts,
 
 		if (opts->op_type == CPERF_CIPHER_ONLY ||
 				opts->op_type == CPERF_CIPHER_THEN_AUTH ||
-				opts->op_type == CPERF_AUTH_THEN_CIPHER) {
+				opts->op_type == CPERF_AUTH_THEN_CIPHER ||
+				opts->op_type == CPERF_AEAD) {
 
 			cap_idx.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 			cap_idx.algo.cipher = opts->cipher_algo;

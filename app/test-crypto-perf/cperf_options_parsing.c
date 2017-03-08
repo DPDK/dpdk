@@ -643,6 +643,17 @@ cperf_options_check(struct cperf_options *options)
 		}
 	}
 
+	if (options->cipher_algo == RTE_CRYPTO_CIPHER_AES_GCM ||
+			options->cipher_algo == RTE_CRYPTO_CIPHER_AES_CCM ||
+			options->auth_algo == RTE_CRYPTO_AUTH_AES_GCM ||
+			options->auth_algo == RTE_CRYPTO_AUTH_AES_CCM ||
+			options->auth_algo == RTE_CRYPTO_AUTH_AES_GMAC) {
+		if (options->op_type != CPERF_AEAD) {
+			RTE_LOG(ERR, USER1, "Use --optype aead\n");
+			return -EINVAL;
+		}
+	}
+
 	return 0;
 }
 

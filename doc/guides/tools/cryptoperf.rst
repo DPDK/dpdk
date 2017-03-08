@@ -181,6 +181,8 @@ The following are the appication command-line options:
            auth-then-cipher
            aead
 
+        For GCM/CCM algorithms you should use aead flag.
+
 * ``--sessionless``
 
         Enable session-less crypto operations mode.
