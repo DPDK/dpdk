@@ -411,7 +411,7 @@ STATIC s32 fm10k_update_uc_addr_pf(struct fm10k_hw *hw, u16 glort,
 	DEBUGFUNC("fm10k_update_uc_addr_pf");
 
 	/* verify MAC address is valid */
-	if (!FM10K_IS_VALID_ETHER_ADDR(mac))
+	if (!IS_VALID_ETHER_ADDR(mac))
 		return FM10K_ERR_PARAM;
 
 	return fm10k_update_xc_addr_pf(hw, glort, mac, vid, add, flags);
@@ -434,7 +434,7 @@ STATIC s32 fm10k_update_mc_addr_pf(struct fm10k_hw *hw, u16 glort,
 	DEBUGFUNC("fm10k_update_mc_addr_pf");
 
 	/* verify multicast address is valid */
-	if (!FM10K_IS_MULTICAST_ETHER_ADDR(mac))
+	if (!IS_MULTICAST_ETHER_ADDR(mac))
 		return FM10K_ERR_PARAM;
 
 	return fm10k_update_xc_addr_pf(hw, glort, mac, vid, add, 0);
@@ -970,7 +970,7 @@ STATIC s32 fm10k_iov_assign_default_mac_vlan_pf(struct fm10k_hw *hw,
 	}
 
 	/* Update base address registers to contain MAC address */
-	if (FM10K_IS_VALID_ETHER_ADDR(vf_info->mac)) {
+	if (IS_VALID_ETHER_ADDR(vf_info->mac)) {
 		tdbal = (((u32)vf_info->mac[3]) << 24) |
 			(((u32)vf_info->mac[4]) << 16) |
 			(((u32)vf_info->mac[5]) << 8);
@@ -1100,7 +1100,7 @@ STATIC s32 fm10k_iov_reset_resources_pf(struct fm10k_hw *hw,
 	FM10K_WRITE_REG(hw, FM10K_MRQC(vf_info->vsi), 0);
 
 	/* Update base address registers to contain MAC address */
-	if (FM10K_IS_VALID_ETHER_ADDR(vf_info->mac)) {
+	if (IS_VALID_ETHER_ADDR(vf_info->mac)) {
 		tdbal = (((u32)vf_info->mac[3]) << 24) |
 			(((u32)vf_info->mac[4]) << 16) |
 			(((u32)vf_info->mac[5]) << 8);
@@ -1326,7 +1326,7 @@ s32 fm10k_iov_msg_mac_vlan_pf(struct fm10k_hw *hw, u32 **results,
 			return err;
 
 		/* block attempts to set MAC for a locked device */
-		if (FM10K_IS_VALID_ETHER_ADDR(vf_info->mac) &&
+		if (IS_VALID_ETHER_ADDR(vf_info->mac) &&
 		    memcmp(mac, vf_info->mac, ETH_ALEN))
 			return FM10K_ERR_PARAM;
 

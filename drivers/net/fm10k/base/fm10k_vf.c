@@ -53,7 +53,7 @@ STATIC s32 fm10k_stop_hw_vf(struct fm10k_hw *hw)
 		return err;
 
 	/* If permanent address is set then we need to restore it */
-	if (FM10K_IS_VALID_ETHER_ADDR(perm_addr)) {
+	if (IS_VALID_ETHER_ADDR(perm_addr)) {
 		bal = (((u32)perm_addr[3]) << 24) |
 		      (((u32)perm_addr[4]) << 16) |
 		      (((u32)perm_addr[5]) << 8);
@@ -341,11 +341,11 @@ STATIC s32 fm10k_update_uc_addr_vf(struct fm10k_hw *hw, u16 glort,
 		return FM10K_ERR_PARAM;
 
 	/* verify MAC address is valid */
-	if (!FM10K_IS_VALID_ETHER_ADDR(mac))
+	if (!IS_VALID_ETHER_ADDR(mac))
 		return FM10K_ERR_PARAM;
 
 	/* verify we are not locked down on the MAC address */
-	if (FM10K_IS_VALID_ETHER_ADDR(hw->mac.perm_addr) &&
+	if (IS_VALID_ETHER_ADDR(hw->mac.perm_addr) &&
 	    memcmp(hw->mac.perm_addr, mac, ETH_ALEN))
 		return FM10K_ERR_PARAM;
 
@@ -387,7 +387,7 @@ STATIC s32 fm10k_update_mc_addr_vf(struct fm10k_hw *hw, u16 glort,
 		return FM10K_ERR_PARAM;
 
 	/* verify multicast address is valid */
-	if (!FM10K_IS_MULTICAST_ETHER_ADDR(mac))
+	if (!IS_MULTICAST_ETHER_ADDR(mac))
 		return FM10K_ERR_PARAM;
 
 	/* add bit to notify us if this is a set or clear operation */
