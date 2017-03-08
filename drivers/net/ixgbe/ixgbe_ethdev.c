@@ -5955,13 +5955,6 @@ ixgbevf_set_default_mac_addr(struct rte_eth_dev *dev, struct ether_addr *addr)
 	hw->mac.ops.set_rar(hw, 0, (void *)addr, 0, 0);
 }
 
-#define MAC_TYPE_FILTER_SUP(type)    do {\
-	if ((type) != ixgbe_mac_82599EB && (type) != ixgbe_mac_X540 &&\
-		(type) != ixgbe_mac_X550 && (type) != ixgbe_mac_X550EM_x &&\
-		(type) != ixgbe_mac_X550EM_a)\
-		return -ENOTSUP;\
-} while (0)
-
 int
 ixgbe_syn_filter_set(struct rte_eth_dev *dev,
 			struct rte_eth_syn_filter *filter,
@@ -6228,11 +6221,6 @@ ixgbevf_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	dev->data->dev_conf.rxmode.max_rx_pkt_len = max_frame;
 	return 0;
 }
-
-#define MAC_TYPE_FILTER_SUP_EXT(type)    do {\
-	if ((type) != ixgbe_mac_82599EB && (type) != ixgbe_mac_X540)\
-		return -ENOTSUP;\
-} while (0)
 
 static inline struct ixgbe_5tuple_filter *
 ixgbe_5tuple_filter_lookup(struct ixgbe_5tuple_filter_list *filter_list,
