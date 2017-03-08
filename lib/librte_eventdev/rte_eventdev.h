@@ -1158,7 +1158,9 @@ rte_event_enqueue_burst(uint8_t dev_id, uint8_t port_id,
  *
  * @return
  *  - 0 on success.
- *  - <0 on failure.
+ *  - -ENOTSUP if the device doesn't support timeouts
+ *  - -EINVAL if *dev_id* is invalid or *timeout_ticks* is NULL
+ *  - other values < 0 on failure.
  *
  * @see rte_event_dequeue_burst(), RTE_EVENT_DEV_CFG_PER_DEQUEUE_TIMEOUT
  * @see rte_event_dev_configure()
