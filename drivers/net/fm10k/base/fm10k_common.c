@@ -230,6 +230,9 @@ s32 fm10k_disable_queues_generic(struct fm10k_hw *hw, u16 q_cnt)
 	/* clear tx_ready to prevent any false hits for reset */
 	hw->mac.tx_ready = false;
 
+	if (FM10K_REMOVED(hw->hw_addr))
+		return FM10K_SUCCESS;
+
 	/* clear the enable bit for all rings */
 	for (i = 0; i < q_cnt; i++) {
 		reg = FM10K_READ_REG(hw, FM10K_TXDCTL(i));
