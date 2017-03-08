@@ -75,104 +75,6 @@
 #include "base/ixgbe_phy.h"
 #include "rte_pmd_ixgbe.h"
 
-static int ixgbe_flow_flush(struct rte_eth_dev *dev,
-		struct rte_flow_error *error);
-static int
-cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
-					const struct rte_flow_item pattern[],
-					const struct rte_flow_action actions[],
-					struct rte_eth_ntuple_filter *filter,
-					struct rte_flow_error *error);
-static int
-ixgbe_parse_ntuple_filter(const struct rte_flow_attr *attr,
-					const struct rte_flow_item pattern[],
-					const struct rte_flow_action actions[],
-					struct rte_eth_ntuple_filter *filter,
-					struct rte_flow_error *error);
-static int
-cons_parse_ethertype_filter(const struct rte_flow_attr *attr,
-			    const struct rte_flow_item *pattern,
-			    const struct rte_flow_action *actions,
-			    struct rte_eth_ethertype_filter *filter,
-			    struct rte_flow_error *error);
-static int
-ixgbe_parse_ethertype_filter(const struct rte_flow_attr *attr,
-				const struct rte_flow_item pattern[],
-				const struct rte_flow_action actions[],
-				struct rte_eth_ethertype_filter *filter,
-				struct rte_flow_error *error);
-static int
-cons_parse_syn_filter(const struct rte_flow_attr *attr,
-		const struct rte_flow_item pattern[],
-		const struct rte_flow_action actions[],
-		struct rte_eth_syn_filter *filter,
-		struct rte_flow_error *error);
-static int
-ixgbe_parse_syn_filter(const struct rte_flow_attr *attr,
-				const struct rte_flow_item pattern[],
-				const struct rte_flow_action actions[],
-				struct rte_eth_syn_filter *filter,
-				struct rte_flow_error *error);
-static int
-cons_parse_l2_tn_filter(const struct rte_flow_attr *attr,
-		const struct rte_flow_item pattern[],
-		const struct rte_flow_action actions[],
-		struct rte_eth_l2_tunnel_conf *filter,
-		struct rte_flow_error *error);
-static int
-ixgbe_validate_l2_tn_filter(struct rte_eth_dev *dev,
-			const struct rte_flow_attr *attr,
-			const struct rte_flow_item pattern[],
-			const struct rte_flow_action actions[],
-			struct rte_eth_l2_tunnel_conf *rule,
-			struct rte_flow_error *error);
-static int
-ixgbe_validate_fdir_filter(struct rte_eth_dev *dev,
-			const struct rte_flow_attr *attr,
-			const struct rte_flow_item pattern[],
-			const struct rte_flow_action actions[],
-			struct ixgbe_fdir_rule *rule,
-			struct rte_flow_error *error);
-static int
-ixgbe_parse_fdir_filter_normal(const struct rte_flow_attr *attr,
-		const struct rte_flow_item pattern[],
-		const struct rte_flow_action actions[],
-		struct ixgbe_fdir_rule *rule,
-		struct rte_flow_error *error);
-static int
-ixgbe_parse_fdir_filter_tunnel(const struct rte_flow_attr *attr,
-		const struct rte_flow_item pattern[],
-		const struct rte_flow_action actions[],
-		struct ixgbe_fdir_rule *rule,
-		struct rte_flow_error *error);
-static int
-ixgbe_parse_fdir_filter(const struct rte_flow_attr *attr,
-		const struct rte_flow_item pattern[],
-		const struct rte_flow_action actions[],
-		struct ixgbe_fdir_rule *rule,
-		struct rte_flow_error *error);
-static int
-ixgbe_flow_validate(__rte_unused struct rte_eth_dev *dev,
-		const struct rte_flow_attr *attr,
-		const struct rte_flow_item pattern[],
-		const struct rte_flow_action actions[],
-		struct rte_flow_error *error);
-static struct rte_flow *ixgbe_flow_create(struct rte_eth_dev *dev,
-		const struct rte_flow_attr *attr,
-		const struct rte_flow_item pattern[],
-		const struct rte_flow_action actions[],
-		struct rte_flow_error *error);
-static int ixgbe_flow_destroy(struct rte_eth_dev *dev,
-		struct rte_flow *flow,
-		struct rte_flow_error *error);
-
-const struct rte_flow_ops ixgbe_flow_ops = {
-	ixgbe_flow_validate,
-	ixgbe_flow_create,
-	ixgbe_flow_destroy,
-	ixgbe_flow_flush,
-	NULL,
-};
 
 #define IXGBE_MIN_N_TUPLE_PRIO 1
 #define IXGBE_MAX_N_TUPLE_PRIO 7
@@ -2404,6 +2306,27 @@ ixgbe_parse_fdir_filter_tunnel(const struct rte_flow_attr *attr,
 }
 
 static int
+ixgbe_parse_fdir_filter(const struct rte_flow_attr *attr,
+			const struct rte_flow_item pattern[],
+			const struct rte_flow_action actions[],
+			struct ixgbe_fdir_rule *rule,
+			struct rte_flow_error *error)
+{
+	int ret;
+
+	ret = ixgbe_parse_fdir_filter_normal(attr, pattern,
+					actions, rule, error);
+
+	if (!ret)
+		return 0;
+
+	ret = ixgbe_parse_fdir_filter_tunnel(attr, pattern,
+					actions, rule, error);
+
+	return ret;
+}
+
+static int
 ixgbe_validate_fdir_filter(struct rte_eth_dev *dev,
 			const struct rte_flow_attr *attr,
 			const struct rte_flow_item pattern[],
@@ -2422,27 +2345,6 @@ ixgbe_validate_fdir_filter(struct rte_eth_dev *dev,
 	if (fdir_mode == RTE_FDIR_MODE_NONE ||
 	    fdir_mode != rule->mode)
 		return -ENOTSUP;
-
-	return ret;
-}
-
-static int
-ixgbe_parse_fdir_filter(const struct rte_flow_attr *attr,
-			const struct rte_flow_item pattern[],
-			const struct rte_flow_action actions[],
-			struct ixgbe_fdir_rule *rule,
-			struct rte_flow_error *error)
-{
-	int ret;
-
-	ret = ixgbe_parse_fdir_filter_normal(attr, pattern,
-					actions, rule, error);
-
-	if (!ret)
-		return 0;
-
-	ret = ixgbe_parse_fdir_filter_tunnel(attr, pattern,
-					actions, rule, error);
 
 	return ret;
 }
@@ -2879,3 +2781,11 @@ ixgbe_flow_flush(struct rte_eth_dev *dev,
 
 	return 0;
 }
+
+const struct rte_flow_ops ixgbe_flow_ops = {
+	ixgbe_flow_validate,
+	ixgbe_flow_create,
+	ixgbe_flow_destroy,
+	ixgbe_flow_flush,
+	NULL,
+};
