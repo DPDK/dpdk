@@ -520,7 +520,8 @@ STATIC s32 fm10k_tlv_attr_validate(u32 *attr,
  *  up into an array of pointers stored in results.  The function will
  *  return FM10K_ERR_PARAM on any input or message error,
  *  FM10K_NOT_IMPLEMENTED for any attribute that is outside of the array
- *  and 0 on success.
+ *  and 0 on success. Any attributes not found in tlv_attr will be silently
+ *  ignored.
  **/
 static s32 fm10k_tlv_attr_parse(u32 *attr, u32 **results,
 				const struct fm10k_tlv_attr *tlv_attr)
@@ -559,14 +560,15 @@ static s32 fm10k_tlv_attr_parse(u32 *attr, u32 **results,
 	while (offset < len) {
 		attr_id = *attr & FM10K_TLV_ID_MASK;
 
-		if (attr_id < FM10K_TLV_RESULTS_MAX)
-			err = fm10k_tlv_attr_validate(attr, tlv_attr);
-		else
-			err = FM10K_NOT_IMPLEMENTED;
+		if (attr_id >= FM10K_TLV_RESULTS_MAX)
+			return FM10K_NOT_IMPLEMENTED;
 
-		if (err < 0)
+		err = fm10k_tlv_attr_validate(attr, tlv_attr);
+		if (err == FM10K_NOT_IMPLEMENTED)
+			; /* silently ignore non-implemented attributes */
+		else if (err)
 			return err;
-		if (!err)
+		else
 			results[attr_id] = attr;
 
 		/* update offset */
