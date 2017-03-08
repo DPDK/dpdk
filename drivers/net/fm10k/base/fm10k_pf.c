@@ -912,13 +912,13 @@ STATIC s32 fm10k_iov_assign_default_mac_vlan_pf(struct fm10k_hw *hw,
 	vf_q_idx = fm10k_vf_queue_index(hw, vf_idx);
 	qmap_idx = qmap_stride * vf_idx;
 
-	/* MAP Tx queue back to 0 temporarily, and disable it */
-	FM10K_WRITE_REG(hw, FM10K_TQMAP(qmap_idx), 0);
-	FM10K_WRITE_REG(hw, FM10K_TXDCTL(vf_q_idx), 0);
-
-	/* determine correct default VLAN ID */
+	/* Determine correct default VLAN ID. The FM10K_VLAN_OVERRIDE bit is
+	 * used here to indicate to the VF that it will not have privilege to
+	 * write VLAN_TABLE. All policy is enforced on the PF but this allows
+	 * the VF to correctly report errors to userspace rqeuests.
+	 */
 	if (vf_info->pf_vid)
-		vf_vid = vf_info->pf_vid | FM10K_VLAN_CLEAR;
+		vf_vid = vf_info->pf_vid | FM10K_VLAN_OVERRIDE;
 	else
 		vf_vid = vf_info->sw_vid;
 
