@@ -1688,13 +1688,12 @@ STATIC s32 fm10k_request_lport_map_pf(struct fm10k_hw *hw)
  *  @hw: pointer to hardware structure
  *  @switch_ready: pointer to boolean value that will record switch state
  *
- *  This funciton will check the DMA_CTRL2 register and mailbox in order
+ *  This function will check the DMA_CTRL2 register and mailbox in order
  *  to determine if the switch is ready for the PF to begin requesting
  *  addresses and mapping traffic to the local interface.
  **/
 STATIC s32 fm10k_get_host_state_pf(struct fm10k_hw *hw, bool *switch_ready)
 {
-	s32 ret_val = FM10K_SUCCESS;
 	u32 dma_ctrl2;
 
 	DEBUGFUNC("fm10k_get_host_state_pf");
@@ -1702,19 +1701,10 @@ STATIC s32 fm10k_get_host_state_pf(struct fm10k_hw *hw, bool *switch_ready)
 	/* verify the switch is ready for interaction */
 	dma_ctrl2 = FM10K_READ_REG(hw, FM10K_DMA_CTRL2);
 	if (!(dma_ctrl2 & FM10K_DMA_CTRL2_SWITCH_READY))
-		goto out;
+		return FM10K_SUCCESS;
 
 	/* retrieve generic host state info */
-	ret_val = fm10k_get_host_state_generic(hw, switch_ready);
-	if (ret_val)
-		goto out;
-
-	/* interface cannot receive traffic without logical ports */
-	if (hw->mac.dglort_map == FM10K_DGLORTMAP_NONE)
-		ret_val = fm10k_request_lport_map_pf(hw);
-
-out:
-	return ret_val;
+	return fm10k_get_host_state_generic(hw, switch_ready);
 }
 
 /* This structure defines the attibutes to be parsed below */
@@ -2102,6 +2092,7 @@ s32 fm10k_init_ops_pf(struct fm10k_hw *hw)
 	mac->ops.set_dma_mask = &fm10k_set_dma_mask_pf;
 	mac->ops.get_fault = &fm10k_get_fault_pf;
 	mac->ops.get_host_state = &fm10k_get_host_state_pf;
+	mac->ops.request_lport_map = &fm10k_request_lport_map_pf;
 	mac->ops.adjust_systime = &fm10k_adjust_systime_pf;
 	mac->ops.notify_offset = &fm10k_notify_offset_pf;
 	mac->ops.read_systime = &fm10k_read_systime_pf;
