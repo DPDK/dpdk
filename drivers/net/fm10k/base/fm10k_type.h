@@ -676,6 +676,9 @@ struct fm10k_vf_info {
 	u8			vf_flags;	/* flags indicating what modes
 						 * are supported for the port
 						 */
+#ifndef NO_FM10K_VF_TRUSTED_MODE
+	bool			trusted;	/* VF trust mode */
+#endif
 };
 
 #define FM10K_VF_FLAG_ALLMULTI_CAPABLE	(u8)(BIT(FM10K_XCAST_MODE_ALLMULTI))
