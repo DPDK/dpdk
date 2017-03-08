@@ -66,21 +66,21 @@ STATIC s32 fm10k_reset_hw_pf(struct fm10k_hw *hw)
 
 	/* shut down all rings */
 	err = fm10k_disable_queues_generic(hw, FM10K_MAX_QUEUES);
-	if (err)
+	if (err == FM10K_ERR_REQUESTS_PENDING) {
+		hw->mac.reset_while_pending++;
+		goto force_reset;
+	} else if (err) {
 		return err;
+	}
 
 	/* Verify that DMA is no longer active */
 	reg = FM10K_READ_REG(hw, FM10K_DMA_CTRL);
 	if (reg & (FM10K_DMA_CTRL_TX_ACTIVE | FM10K_DMA_CTRL_RX_ACTIVE))
 		return FM10K_ERR_DMA_PENDING;
 
-	/* verify the switch is ready for reset */
-	reg = FM10K_READ_REG(hw, FM10K_DMA_CTRL2);
-	if (!(reg & FM10K_DMA_CTRL2_SWITCH_READY))
-		goto out;
-
+force_reset:
 	/* Inititate data path reset */
-	reg |= FM10K_DMA_CTRL_DATAPATH_RESET;
+	reg = FM10K_DMA_CTRL_DATAPATH_RESET;
 	FM10K_WRITE_REG(hw, FM10K_DMA_CTRL, reg);
 
 	/* Flush write and allow 100us for reset to complete */
@@ -90,10 +90,9 @@ STATIC s32 fm10k_reset_hw_pf(struct fm10k_hw *hw)
 	/* Verify we made it out of reset */
 	reg = FM10K_READ_REG(hw, FM10K_IP);
 	if (!(reg & FM10K_IP_NOTINRESET))
-		err = FM10K_ERR_RESET_FAILED;
+		return FM10K_ERR_RESET_FAILED;
 
-out:
-	return err;
+	return FM10K_SUCCESS;
 }
 
 /**

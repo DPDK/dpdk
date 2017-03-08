@@ -49,7 +49,7 @@ STATIC s32 fm10k_stop_hw_vf(struct fm10k_hw *hw)
 
 	/* we need to disable the queues before taking further steps */
 	err = fm10k_stop_hw_generic(hw);
-	if (err)
+	if (err && err != FM10K_ERR_REQUESTS_PENDING)
 		return err;
 
 	/* If permanent address is set then we need to restore it */
@@ -82,7 +82,7 @@ STATIC s32 fm10k_stop_hw_vf(struct fm10k_hw *hw)
 		FM10K_WRITE_REG(hw, FM10K_TDLEN(i), tdlen);
 	}
 
-	return FM10K_SUCCESS;
+	return err;
 }
 
 /**
@@ -100,7 +100,9 @@ STATIC s32 fm10k_reset_hw_vf(struct fm10k_hw *hw)
 
 	/* shut down queues we own and reset DMA configuration */
 	err = fm10k_stop_hw_vf(hw);
-	if (err)
+	if (err == FM10K_ERR_REQUESTS_PENDING)
+		hw->mac.reset_while_pending++;
+	else if (err)
 		return err;
 
 	/* Inititate VF reset */
@@ -113,9 +115,9 @@ STATIC s32 fm10k_reset_hw_vf(struct fm10k_hw *hw)
 	/* Clear reset bit and verify it was cleared */
 	FM10K_WRITE_REG(hw, FM10K_VFCTRL, 0);
 	if (FM10K_READ_REG(hw, FM10K_VFCTRL) & FM10K_VFCTRL_RST)
-		err = FM10K_ERR_RESET_FAILED;
+		return FM10K_ERR_RESET_FAILED;
 
-	return err;
+	return FM10K_SUCCESS;
 }
 
 /**
