@@ -40,6 +40,7 @@ struct fm10k_hw;
 #include "fm10k_osdep.h"
 #include "fm10k_mbx.h"
 
+#define FM10K_INTEL_VENDOR_ID		0x8086
 #define FM10K_DEV_ID_PF			0x15A4
 #define FM10K_DEV_ID_VF			0x15A5
 #ifdef BOULDER_RAPIDS_HW
@@ -125,11 +126,15 @@ struct fm10k_hw;
 
 /* Interrupt control registers */
 #define FM10K_EICR		0x0006
+#define FM10K_EICR_PCA_FAULT			0x00000001
+#define FM10K_EICR_THI_FAULT			0x00000004
+#define FM10K_EICR_FUM_FAULT			0x00000020
 #define FM10K_EICR_FAULT_MASK			0x0000003F
 #define FM10K_EICR_MAILBOX			0x00000040
 #define FM10K_EICR_SWITCHREADY			0x00000080
 #define FM10K_EICR_SWITCHNOTREADY		0x00000100
 #define FM10K_EICR_SWITCHINTERRUPT		0x00000200
+#define FM10K_EICR_SRAMERROR			0x00000400
 #define FM10K_EICR_VFLR				0x00000800
 #define FM10K_EICR_MAXHOLDTIME			0x00001000
 #define FM10K_EIMR		0x0007
@@ -211,6 +216,7 @@ struct fm10k_hw;
 #define FM10K_DMA_CTRL_RX_ENABLE		0x00000010
 #define FM10K_DMA_CTRL_RX_ACTIVE		0x00000080
 #define FM10K_DMA_CTRL_RX_DESC_SIZE		0x00000100
+#define FM10K_DMA_CTRL_MINMSS_SHIFT		9
 #define FM10K_DMA_CTRL_MINMSS_64		0x00008000
 #define FM10K_DMA_CTRL_MAX_HOLD_1US_GEN3	0x04800000
 #define FM10K_DMA_CTRL_MAX_HOLD_1US_GEN2	0x04000000
@@ -283,6 +289,7 @@ struct fm10k_hw;
 #define FM10K_RXDCTL_WRITE_BACK_MIN_DELAY	0x00000001
 #define FM10K_RXDCTL_DROP_ON_EMPTY		0x00000200
 #define FM10K_RXINT(_n)		((0x40 * (_n)) + 0x4008)
+#define FM10K_RXINT_TIMER_SHIFT			8
 #define FM10K_SRRCTL(_n)	((0x40 * (_n)) + 0x4009)
 #define FM10K_SRRCTL_BSIZEPKT_SHIFT		8 /* shift _right_ */
 #define FM10K_SRRCTL_LOOPBACK_SUPPRESS		0x40000000
@@ -336,6 +343,7 @@ struct fm10k_hw;
 #define FM10K_TXQCTL_VID_MASK			0x0FFF0000
 #define FM10K_TXQCTL_UNLIMITED_BW		0x10000000
 #define FM10K_TXINT(_n)		((0x40 * (_n)) + 0x8008)
+#define FM10K_TXINT_TIMER_SHIFT			8
 
 /* Tx Statistics */
 #define FM10K_QPTC(_n)		((0x40 * (_n)) + 0x8009)
@@ -374,6 +382,7 @@ struct fm10k_hw;
 /* Switch manager interrupt registers */
 #define FM10K_IP		0x13000
 #define FM10K_IP_NOTINRESET			0x00000100
+#define FM10K_SRAM_IP		0x13003
 
 /* VLAN registers */
 #define FM10K_VLAN_TABLE(_n, _m)	((0x80 * (_n)) + (_m) + 0x14000)
@@ -815,6 +824,24 @@ enum fm10k_rdesc_rss_type {
 	/* Reserved 0x9 - 0xF */
 };
 
+#define FM10K_RXD_PKTTYPE_MASK		0x03F0
+#define FM10K_RXD_PKTTYPE_SHIFT		4
+enum fm10k_rdesc_pkt_type {
+	/* L3 type */
+	FM10K_PKTTYPE_OTHER	= 0x00,
+	FM10K_PKTTYPE_IPV4	= 0x01,
+	FM10K_PKTTYPE_IPV4_EX	= 0x02,
+	FM10K_PKTTYPE_IPV6	= 0x03,
+	FM10K_PKTTYPE_IPV6_EX	= 0x04,
+
+	/* L4 type */
+	FM10K_PKTTYPE_TCP	= 0x08,
+	FM10K_PKTTYPE_UDP	= 0x10,
+	FM10K_PKTTYPE_GRE	= 0x18,
+	FM10K_PKTTYPE_VXLAN	= 0x20,
+	FM10K_PKTTYPE_NVGRE	= 0x28,
+	FM10K_PKTTYPE_GENEVE	= 0x30
+};
 
 #define FM10K_RXD_HDR_INFO_XC_MASK	0x0006
 enum fm10k_rxdesc_xc {
@@ -826,6 +853,7 @@ enum fm10k_rxdesc_xc {
 
 #define FM10K_RXD_STATUS_DD		0x0001 /* Descriptor done */
 #define FM10K_RXD_STATUS_EOP		0x0002 /* End of packet */
+#define FM10K_RXD_STATUS_IPCS		0x0008 /* Indicates IPv4 csum */
 #define FM10K_RXD_STATUS_L4CS		0x0010 /* Indicates an L4 csum */
 #define FM10K_RXD_STATUS_L4CS2		0x0040 /* Inner header L4 csum */
 #define FM10K_RXD_STATUS_L4E2		0x0800 /* Inner header L4 csum err */

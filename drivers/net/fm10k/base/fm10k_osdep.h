@@ -163,23 +163,6 @@ typedef int        bool;
 #define FM10K_RXD_PKTTYPE_MASK		0x03F0
 #define FM10K_RXD_PKTTYPE_SHIFT		4
 
-enum fm10k_rdesc_pkt_type {
-	/* L3 type */
-	FM10K_PKTTYPE_OTHER	= 0x00,
-	FM10K_PKTTYPE_IPV4	= 0x01,
-	FM10K_PKTTYPE_IPV4_EX	= 0x02,
-	FM10K_PKTTYPE_IPV6	= 0x03,
-	FM10K_PKTTYPE_IPV6_EX	= 0x04,
-
-	/* L4 type */
-	FM10K_PKTTYPE_TCP	= 0x08,
-	FM10K_PKTTYPE_UDP	= 0x10,
-	FM10K_PKTTYPE_GRE	= 0x18,
-	FM10K_PKTTYPE_VXLAN	= 0x20,
-	FM10K_PKTTYPE_NVGRE	= 0x28,
-	FM10K_PKTTYPE_GENEVE	= 0x30
-};
-
 #define FM10K_RXD_STATUS_IPCS		0x0008 /* Indicates IPv4 csum */
 #define FM10K_RXD_STATUS_HBO		0x0400 /* header buffer overrun */
 
