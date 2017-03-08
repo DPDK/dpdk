@@ -111,7 +111,8 @@ some minor changes.
     .. code-block:: console
 
         $(testpmd) -l 0-1 -n 4 --socket-mem 1024,1024 \
-            --vdev 'eth_vhost0,iface=/tmp/sock0' --no-pci -- -i
+            --vdev 'eth_vhost0,iface=/tmp/sock0' \
+            --file-prefix=host --no-pci -- -i
 
 #. Start a container instance with a virtio-user port.
 
@@ -121,7 +122,8 @@ some minor changes.
             -v /dev/hugepages:/dev/hugepages \
             dpdk-app-testpmd testpmd -l 6-7 -n 4 -m 1024 --no-pci \
             --vdev=virtio_user0,path=/var/run/usvhost \
-	    -- -i --txqflags=0xf00 --disable-hw-vlan
+            --file-prefix=container \
+            -- -i --txqflags=0xf00 --disable-hw-vlan
 
 Note: If we run all above setup on the host, it's a shm-based IPC.
 
