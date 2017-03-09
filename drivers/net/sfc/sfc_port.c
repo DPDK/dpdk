@@ -31,6 +31,16 @@
 
 #include "sfc.h"
 #include "sfc_log.h"
+#include "sfc_kvargs.h"
+
+/** Default MAC statistics update period is 1 second */
+#define SFC_MAC_STATS_UPDATE_PERIOD_MS_DEF	MS_PER_S
+
+/** The number of microseconds to sleep on attempt to get statistics update */
+#define SFC_MAC_STATS_UPDATE_RETRY_INTERVAL_US	10
+
+/** The number of attempts to await arrival of freshly generated statistics */
+#define SFC_MAC_STATS_UPDATE_NB_ATTEMPTS	50
 
 /**
  * Update MAC statistics in the buffer.
@@ -46,6 +56,10 @@ int
 sfc_port_update_mac_stats(struct sfc_adapter *sa)
 {
 	struct sfc_port *port = &sa->port;
+	efsys_mem_t *esmp = &port->mac_stats_dma_mem;
+	uint32_t *genp = NULL;
+	uint32_t gen_old;
+	unsigned int nb_attempts = 0;
 	int rc;
 
 	SFC_ASSERT(rte_spinlock_is_locked(&port->mac_stats_lock));
@@ -53,10 +67,27 @@ sfc_port_update_mac_stats(struct sfc_adapter *sa)
 	if (sa->state != SFC_ADAPTER_STARTED)
 		return EINVAL;
 
-	rc = efx_mac_stats_update(sa->nic, &port->mac_stats_dma_mem,
-				  port->mac_stats_buf, NULL);
-	if (rc != 0)
-		return rc;
+	/* If periodic statistics DMA'ing is off, request explicitly */
+	if (port->mac_stats_update_period_ms == 0) {
+		rc = efx_mac_stats_upload(sa->nic, esmp);
+		if (rc != 0)
+			return rc;
+
+		genp = &port->mac_stats_update_generation;
+		gen_old = *genp;
+	}
+
+	do {
+		if (nb_attempts > 0)
+			rte_delay_us(SFC_MAC_STATS_UPDATE_RETRY_INTERVAL_US);
+
+		rc = efx_mac_stats_update(sa->nic, esmp,
+					  port->mac_stats_buf, genp);
+		if (rc != 0)
+			return rc;
+
+	} while ((genp != NULL) && (*genp == gen_old) &&
+		 (++nb_attempts < SFC_MAC_STATS_UPDATE_NB_ATTEMPTS));
 
 	return 0;
 }
@@ -171,15 +202,22 @@ sfc_port_start(struct sfc_adapter *sa)
 	efx_mac_stats_get_mask(sa->nic, port->mac_stats_mask,
 			       sizeof(port->mac_stats_mask));
 
-	/* Update MAC stats using periodic DMA.
-	 * Common code always uses 1000ms update period, so period_ms
-	 * parameter only needs to be non-zero to start updates.
-	 */
-	sfc_log_init(sa, "request MAC stats DMA'ing");
-	rc = efx_mac_stats_periodic(sa->nic, &port->mac_stats_dma_mem,
-				    1000, B_FALSE);
-	if (rc != 0)
-		goto fail_mac_stats_periodic;
+	port->mac_stats_update_generation = 0;
+
+	if (port->mac_stats_update_period_ms != 0) {
+		/*
+		 * Update MAC stats using periodic DMA;
+		 * any positive update interval different from
+		 * 1000 ms can be set only on SFN8xxx provided
+		 * that FW version is 6.2.1.1033 or higher
+		 */
+		sfc_log_init(sa, "request MAC stats DMA'ing");
+		rc = efx_mac_stats_periodic(sa->nic, &port->mac_stats_dma_mem,
+					    port->mac_stats_update_period_ms,
+					    B_FALSE);
+		if (rc != 0)
+			goto fail_mac_stats_periodic;
+	}
 
 	sfc_log_init(sa, "disable MAC drain");
 	rc = efx_mac_drain(sa->nic, B_FALSE);
@@ -239,6 +277,7 @@ sfc_port_init(struct sfc_adapter *sa)
 {
 	const struct rte_eth_dev_data *dev_data = sa->eth_dev->data;
 	struct sfc_port *port = &sa->port;
+	long kvarg_stats_update_period_ms;
 	int rc;
 
 	sfc_log_init(sa, "entry");
@@ -279,9 +318,30 @@ sfc_port_init(struct sfc_adapter *sa)
 
 	port->mac_stats_reset_pending = B_FALSE;
 
+	kvarg_stats_update_period_ms = SFC_MAC_STATS_UPDATE_PERIOD_MS_DEF;
+
+	rc = sfc_kvargs_process(sa, SFC_KVARG_STATS_UPDATE_PERIOD_MS,
+				sfc_kvarg_long_handler,
+				&kvarg_stats_update_period_ms);
+	if ((rc == 0) &&
+	    ((kvarg_stats_update_period_ms < 0) ||
+	     (kvarg_stats_update_period_ms > UINT16_MAX))) {
+		sfc_err(sa, "wrong '" SFC_KVARG_STATS_UPDATE_PERIOD_MS "' "
+			    "was set (%ld);", kvarg_stats_update_period_ms);
+		sfc_err(sa, "it must not be less than 0 "
+			    "or greater than %" PRIu16, UINT16_MAX);
+		rc = EINVAL;
+		goto fail_kvarg_stats_update_period_ms;
+	} else if (rc != 0) {
+		goto fail_kvarg_stats_update_period_ms;
+	}
+
+	port->mac_stats_update_period_ms = kvarg_stats_update_period_ms;
+
 	sfc_log_init(sa, "done");
 	return 0;
 
+fail_kvarg_stats_update_period_ms:
 fail_mac_stats_dma_alloc:
 	rte_free(port->mac_stats_buf);
 fail_mac_stats_buf_alloc:

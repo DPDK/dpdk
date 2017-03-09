@@ -242,3 +242,12 @@ boolean parameters value.
   Enable extra logging of the communication with the NIC's management CPU.
   The logging is done using RTE_LOG() with INFO level and PMD type.
   The format is consumed by the Solarflare netlogdecode cross-platform tool.
+
+- ``stats_update_period_ms`` [long] (default **1000**)
+
+  Adjust period in milliseconds to update port hardware statistics.
+  The accepted range is 0 to 65535. The value of **0** may be used
+  to disable periodic statistics update. One should note that it's
+  only possible to set an arbitrary value on SFN8xxx provided that
+  firmware version is 6.2.1.1033 or higher, otherwise any positive
+  value will select a fixed update period of **1000** milliseconds

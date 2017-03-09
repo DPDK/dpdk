@@ -52,6 +52,8 @@ extern "C" {
 	    SFC_KVARG_PERF_PROFILE_THROUGHPUT "|" \
 	    SFC_KVARG_PERF_PROFILE_LOW_LATENCY "]"
 
+#define SFC_KVARG_STATS_UPDATE_PERIOD_MS	"stats_update_period_ms"
+
 struct sfc_adapter;
 
 int sfc_kvargs_parse(struct sfc_adapter *sa);
@@ -61,6 +63,9 @@ int sfc_kvargs_process(struct sfc_adapter *sa, const char *key_match,
 		       arg_handler_t handler, void *opaque_arg);
 
 int sfc_kvarg_bool_handler(const char *key, const char *value_str,
+			   void *opaque);
+
+int sfc_kvarg_long_handler(const char *key, const char *value_str,
 			   void *opaque);
 
 #ifdef __cplusplus
