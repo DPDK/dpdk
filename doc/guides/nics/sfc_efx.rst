@@ -137,6 +137,8 @@ Supported pattern items:
 - IPV6 (exact match of source/destination addresses,
   IP transport protocol)
 
+- TCP (exact match of source/destination ports)
+
 Supported actions:
 
 - VOID
