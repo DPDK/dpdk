@@ -153,6 +153,12 @@ sfc_port_start(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_mac_filter_set;
 
+	sfc_log_init(sa, "set multicast address list");
+	rc = efx_mac_multicast_list_set(sa->nic, port->mcast_addrs,
+					port->nb_mcast_addrs);
+	if (rc != 0)
+		goto fail_mcast_address_list_set;
+
 	if (port->mac_stats_reset_pending) {
 		rc = sfc_port_reset_mac_stats(sa);
 		if (rc != 0)
@@ -196,6 +202,7 @@ fail_mac_drain:
 				     0, B_FALSE);
 
 fail_mac_stats_periodic:
+fail_mcast_address_list_set:
 fail_mac_filter_set:
 fail_mac_addr_set:
 fail_mac_pdu_set:
@@ -245,6 +252,17 @@ sfc_port_init(struct sfc_adapter *sa)
 	else
 		port->pdu = EFX_MAC_PDU(dev_data->mtu);
 
+	port->max_mcast_addrs = EFX_MAC_MULTICAST_LIST_MAX;
+	port->nb_mcast_addrs = 0;
+	port->mcast_addrs = rte_calloc_socket("mcast_addr_list_buf",
+					      port->max_mcast_addrs,
+					      EFX_MAC_ADDR_LEN, 0,
+					      sa->socket_id);
+	if (port->mcast_addrs == NULL) {
+		rc = ENOMEM;
+		goto fail_mcast_addr_list_buf_alloc;
+	}
+
 	rte_spinlock_init(&port->mac_stats_lock);
 
 	rc = ENOMEM;
@@ -267,6 +285,7 @@ sfc_port_init(struct sfc_adapter *sa)
 fail_mac_stats_dma_alloc:
 	rte_free(port->mac_stats_buf);
 fail_mac_stats_buf_alloc:
+fail_mcast_addr_list_buf_alloc:
 	sfc_log_init(sa, "failed %d", rc);
 	return rc;
 }

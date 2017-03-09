@@ -152,6 +152,10 @@ struct sfc_port {
 	boolean_t			promisc;
 	boolean_t			allmulti;
 
+	unsigned int			max_mcast_addrs;
+	unsigned int			nb_mcast_addrs;
+	uint8_t				*mcast_addrs;
+
 	rte_spinlock_t			mac_stats_lock;
 	uint64_t			*mac_stats_buf;
 	efsys_mem_t			mac_stats_dma_mem;

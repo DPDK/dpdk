@@ -826,36 +826,33 @@ sfc_set_mc_addr_list(struct rte_eth_dev *dev, struct ether_addr *mc_addr_set,
 		     uint32_t nb_mc_addr)
 {
 	struct sfc_adapter *sa = dev->data->dev_private;
-	uint8_t *mc_addrs_p = NULL;
+	struct sfc_port *port = &sa->port;
+	uint8_t *mc_addrs = port->mcast_addrs;
 	int rc;
 	unsigned int i;
 
-	if (nb_mc_addr > EFX_MAC_MULTICAST_LIST_MAX) {
+	if (mc_addrs == NULL)
+		return -ENOBUFS;
+
+	if (nb_mc_addr > port->max_mcast_addrs) {
 		sfc_err(sa, "too many multicast addresses: %u > %u",
-			 nb_mc_addr, EFX_MAC_MULTICAST_LIST_MAX);
+			 nb_mc_addr, port->max_mcast_addrs);
 		return -EINVAL;
 	}
 
-	if (nb_mc_addr != 0) {
-		uint8_t *mc_addrs;
-
-		mc_addrs_p = rte_calloc("mc-addrs", nb_mc_addr,
-					EFX_MAC_ADDR_LEN, 0);
-		if (mc_addrs_p == NULL)
-			return -ENOMEM;
-
-		mc_addrs = mc_addrs_p;
-		for (i = 0; i < nb_mc_addr; ++i) {
-			(void)rte_memcpy(mc_addrs, mc_addr_set[i].addr_bytes,
-					 EFX_MAC_ADDR_LEN);
-			mc_addrs += EFX_MAC_ADDR_LEN;
-		}
+	for (i = 0; i < nb_mc_addr; ++i) {
+		(void)rte_memcpy(mc_addrs, mc_addr_set[i].addr_bytes,
+				 EFX_MAC_ADDR_LEN);
+		mc_addrs += EFX_MAC_ADDR_LEN;
 	}
 
-	rc = efx_mac_multicast_list_set(sa->nic, mc_addrs_p, nb_mc_addr);
+	port->nb_mcast_addrs = nb_mc_addr;
 
-	rte_free(mc_addrs_p);
+	if (sa->state != SFC_ADAPTER_STARTED)
+		return 0;
 
+	rc = efx_mac_multicast_list_set(sa->nic, port->mcast_addrs,
+					port->nb_mcast_addrs);
 	if (rc != 0)
 		sfc_err(sa, "cannot set multicast address list (rc = %u)", rc);
 
