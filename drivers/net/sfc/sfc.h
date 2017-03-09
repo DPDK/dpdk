@@ -38,6 +38,8 @@
 
 #include "efx.h"
 
+#include "sfc_filter.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -180,6 +182,7 @@ struct sfc_adapter {
 	struct sfc_mcdi			mcdi;
 	struct sfc_intr			intr;
 	struct sfc_port			port;
+	struct sfc_filter		filter;
 
 	unsigned int			rxq_max;
 	unsigned int			txq_max;

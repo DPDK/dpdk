@@ -633,6 +633,10 @@ sfc_attach(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_set_rss_defaults;
 
+	rc = sfc_filter_attach(sa);
+	if (rc != 0)
+		goto fail_filter_attach;
+
 	sfc_log_init(sa, "fini nic");
 	efx_nic_fini(enp);
 
@@ -641,6 +645,7 @@ sfc_attach(struct sfc_adapter *sa)
 	sfc_log_init(sa, "done");
 	return 0;
 
+fail_filter_attach:
 fail_set_rss_defaults:
 	sfc_intr_detach(sa);
 
@@ -677,6 +682,8 @@ sfc_detach(struct sfc_adapter *sa)
 	sfc_log_init(sa, "entry");
 
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
+
+	sfc_filter_detach(sa);
 
 	sfc_intr_detach(sa);
 
