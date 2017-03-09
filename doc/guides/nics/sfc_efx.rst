@@ -131,6 +131,9 @@ Supported pattern items:
 
 - VLAN (exact match of VID, double-tagging is supported)
 
+- IPV4 (exact match of source/destination addresses,
+  IP transport protocol)
+
 Supported actions:
 
 - VOID

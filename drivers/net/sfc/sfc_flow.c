@@ -55,6 +55,7 @@ enum sfc_flow_item_layers {
 	SFC_FLOW_ITEM_ANY_LAYER,
 	SFC_FLOW_ITEM_START_LAYER,
 	SFC_FLOW_ITEM_L2,
+	SFC_FLOW_ITEM_L3,
 };
 
 typedef int (sfc_flow_item_parse)(const struct rte_flow_item *item,
@@ -71,6 +72,7 @@ struct sfc_flow_item {
 static sfc_flow_item_parse sfc_flow_parse_void;
 static sfc_flow_item_parse sfc_flow_parse_eth;
 static sfc_flow_item_parse sfc_flow_parse_vlan;
+static sfc_flow_item_parse sfc_flow_parse_ipv4;
 
 static boolean_t
 sfc_flow_is_zero(const uint8_t *buf, unsigned int size)
@@ -337,6 +339,96 @@ sfc_flow_parse_vlan(const struct rte_flow_item *item,
 	return 0;
 }
 
+/**
+ * Convert IPv4 item to EFX filter specification.
+ *
+ * @param item[in]
+ *   Item specification. Only source and destination addresses and
+ *   protocol fields are supported. If the mask is NULL, default
+ *   mask will be used. Ranging is not supported.
+ * @param efx_spec[in, out]
+ *   EFX filter specification to update.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ */
+static int
+sfc_flow_parse_ipv4(const struct rte_flow_item *item,
+		    efx_filter_spec_t *efx_spec,
+		    struct rte_flow_error *error)
+{
+	int rc;
+	const struct rte_flow_item_ipv4 *spec = NULL;
+	const struct rte_flow_item_ipv4 *mask = NULL;
+	const uint16_t ether_type_ipv4 = rte_cpu_to_le_16(EFX_ETHER_TYPE_IPV4);
+	const struct rte_flow_item_ipv4 supp_mask = {
+		.hdr = {
+			.src_addr = 0xffffffff,
+			.dst_addr = 0xffffffff,
+			.next_proto_id = 0xff,
+		}
+	};
+
+	rc = sfc_flow_parse_init(item,
+				 (const void **)&spec,
+				 (const void **)&mask,
+				 &supp_mask,
+				 &rte_flow_item_ipv4_mask,
+				 sizeof(struct rte_flow_item_ipv4),
+				 error);
+	if (rc != 0)
+		return rc;
+
+	/*
+	 * Filtering by IPv4 source and destination addresses requires
+	 * the appropriate ETHER_TYPE in hardware filters
+	 */
+	if (!(efx_spec->efs_match_flags & EFX_FILTER_MATCH_ETHER_TYPE)) {
+		efx_spec->efs_match_flags |= EFX_FILTER_MATCH_ETHER_TYPE;
+		efx_spec->efs_ether_type = ether_type_ipv4;
+	} else if (efx_spec->efs_ether_type != ether_type_ipv4) {
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ITEM, item,
+			"Ethertype in pattern with IPV4 item should be appropriate");
+		return -rte_errno;
+	}
+
+	if (spec == NULL)
+		return 0;
+
+	/*
+	 * IPv4 addresses are in big-endian byte order in item and in
+	 * efx_spec
+	 */
+	if (mask->hdr.src_addr == supp_mask.hdr.src_addr) {
+		efx_spec->efs_match_flags |= EFX_FILTER_MATCH_REM_HOST;
+		efx_spec->efs_rem_host.eo_u32[0] = spec->hdr.src_addr;
+	} else if (mask->hdr.src_addr != 0) {
+		goto fail_bad_mask;
+	}
+
+	if (mask->hdr.dst_addr == supp_mask.hdr.dst_addr) {
+		efx_spec->efs_match_flags |= EFX_FILTER_MATCH_LOC_HOST;
+		efx_spec->efs_loc_host.eo_u32[0] = spec->hdr.dst_addr;
+	} else if (mask->hdr.dst_addr != 0) {
+		goto fail_bad_mask;
+	}
+
+	if (mask->hdr.next_proto_id == supp_mask.hdr.next_proto_id) {
+		efx_spec->efs_match_flags |= EFX_FILTER_MATCH_IP_PROTO;
+		efx_spec->efs_ip_proto = spec->hdr.next_proto_id;
+	} else if (mask->hdr.next_proto_id != 0) {
+		goto fail_bad_mask;
+	}
+
+	return 0;
+
+fail_bad_mask:
+	rte_flow_error_set(error, EINVAL,
+			   RTE_FLOW_ERROR_TYPE_ITEM, item,
+			   "Bad mask in the IPV4 pattern item");
+	return -rte_errno;
+}
+
 static const struct sfc_flow_item sfc_flow_items[] = {
 	{
 		.type = RTE_FLOW_ITEM_TYPE_VOID,
@@ -355,6 +447,12 @@ static const struct sfc_flow_item sfc_flow_items[] = {
 		.prev_layer = SFC_FLOW_ITEM_L2,
 		.layer = SFC_FLOW_ITEM_L2,
 		.parse = sfc_flow_parse_vlan,
+	},
+	{
+		.type = RTE_FLOW_ITEM_TYPE_IPV4,
+		.prev_layer = SFC_FLOW_ITEM_L2,
+		.layer = SFC_FLOW_ITEM_L3,
+		.parse = sfc_flow_parse_ipv4,
 	},
 };
 
