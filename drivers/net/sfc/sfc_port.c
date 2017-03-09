@@ -67,8 +67,23 @@ sfc_port_update_mac_stats(struct sfc_adapter *sa)
 	if (sa->state != SFC_ADAPTER_STARTED)
 		return EINVAL;
 
-	/* If periodic statistics DMA'ing is off, request explicitly */
-	if (port->mac_stats_update_period_ms == 0) {
+	/*
+	 * If periodic statistics DMA'ing is off or if not supported,
+	 * make a manual request and keep an eye on timer if need be
+	 */
+	if (!port->mac_stats_periodic_dma_supported ||
+	    (port->mac_stats_update_period_ms == 0)) {
+		if (port->mac_stats_update_period_ms != 0) {
+			uint64_t timestamp = sfc_get_system_msecs();
+
+			if ((timestamp -
+			     port->mac_stats_last_request_timestamp) <
+			    port->mac_stats_update_period_ms)
+				return 0;
+
+			port->mac_stats_last_request_timestamp = timestamp;
+		}
+
 		rc = efx_mac_stats_upload(sa->nic, esmp);
 		if (rc != 0)
 			return rc;
@@ -215,8 +230,14 @@ sfc_port_start(struct sfc_adapter *sa)
 		rc = efx_mac_stats_periodic(sa->nic, &port->mac_stats_dma_mem,
 					    port->mac_stats_update_period_ms,
 					    B_FALSE);
-		if (rc != 0)
+		if (rc == 0) {
+			port->mac_stats_periodic_dma_supported = B_TRUE;
+		} else if (rc == EOPNOTSUPP) {
+			port->mac_stats_periodic_dma_supported = B_FALSE;
+			port->mac_stats_last_request_timestamp = 0;
+		} else {
 			goto fail_mac_stats_periodic;
+		}
 	}
 
 	sfc_log_init(sa, "disable MAC drain");

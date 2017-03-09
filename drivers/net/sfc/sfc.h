@@ -162,6 +162,8 @@ struct sfc_port {
 	boolean_t			mac_stats_reset_pending;
 	uint16_t			mac_stats_update_period_ms;
 	uint32_t			mac_stats_update_generation;
+	boolean_t			mac_stats_periodic_dma_supported;
+	uint64_t			mac_stats_last_request_timestamp;
 
 	uint32_t		mac_stats_mask[EFX_MAC_STATS_MASK_NPAGES];
 };
@@ -260,6 +262,13 @@ static inline void
 sfc_adapter_lock_fini(__rte_unused struct sfc_adapter *sa)
 {
 	/* Just for symmetry of the API */
+}
+
+/** Get the number of milliseconds since boot from the default timer */
+static inline uint64_t
+sfc_get_system_msecs(void)
+{
+	return rte_get_timer_cycles() * MS_PER_S / rte_get_timer_hz();
 }
 
 int sfc_dma_alloc(const struct sfc_adapter *sa, const char *name, uint16_t id,
