@@ -139,6 +139,8 @@ Supported pattern items:
 
 - TCP (exact match of source/destination ports)
 
+- UDP (exact match of source/destination ports)
+
 Supported actions:
 
 - VOID

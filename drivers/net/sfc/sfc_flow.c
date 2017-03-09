@@ -76,6 +76,7 @@ static sfc_flow_item_parse sfc_flow_parse_vlan;
 static sfc_flow_item_parse sfc_flow_parse_ipv4;
 static sfc_flow_item_parse sfc_flow_parse_ipv6;
 static sfc_flow_item_parse sfc_flow_parse_tcp;
+static sfc_flow_item_parse sfc_flow_parse_udp;
 
 static boolean_t
 sfc_flow_is_zero(const uint8_t *buf, unsigned int size)
@@ -621,6 +622,87 @@ fail_bad_mask:
 	return -rte_errno;
 }
 
+/**
+ * Convert UDP item to EFX filter specification.
+ *
+ * @param item[in]
+ *   Item specification. Only source and destination ports fields
+ *   are supported. If the mask is NULL, default mask will be used.
+ *   Ranging is not supported.
+ * @param efx_spec[in, out]
+ *   EFX filter specification to update.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ */
+static int
+sfc_flow_parse_udp(const struct rte_flow_item *item,
+		   efx_filter_spec_t *efx_spec,
+		   struct rte_flow_error *error)
+{
+	int rc;
+	const struct rte_flow_item_udp *spec = NULL;
+	const struct rte_flow_item_udp *mask = NULL;
+	const struct rte_flow_item_udp supp_mask = {
+		.hdr = {
+			.src_port = 0xffff,
+			.dst_port = 0xffff,
+		}
+	};
+
+	rc = sfc_flow_parse_init(item,
+				 (const void **)&spec,
+				 (const void **)&mask,
+				 &supp_mask,
+				 &rte_flow_item_udp_mask,
+				 sizeof(struct rte_flow_item_udp),
+				 error);
+	if (rc != 0)
+		return rc;
+
+	/*
+	 * Filtering by UDP source and destination ports requires
+	 * the appropriate IP_PROTO in hardware filters
+	 */
+	if (!(efx_spec->efs_match_flags & EFX_FILTER_MATCH_IP_PROTO)) {
+		efx_spec->efs_match_flags |= EFX_FILTER_MATCH_IP_PROTO;
+		efx_spec->efs_ip_proto = EFX_IPPROTO_UDP;
+	} else if (efx_spec->efs_ip_proto != EFX_IPPROTO_UDP) {
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ITEM, item,
+			"IP proto in pattern with UDP item should be appropriate");
+		return -rte_errno;
+	}
+
+	if (spec == NULL)
+		return 0;
+
+	/*
+	 * Source and destination ports are in big-endian byte order in item and
+	 * in little-endian in efx_spec, so byte swap is used
+	 */
+	if (mask->hdr.src_port == supp_mask.hdr.src_port) {
+		efx_spec->efs_match_flags |= EFX_FILTER_MATCH_REM_PORT;
+		efx_spec->efs_rem_port = rte_bswap16(spec->hdr.src_port);
+	} else if (mask->hdr.src_port != 0) {
+		goto fail_bad_mask;
+	}
+
+	if (mask->hdr.dst_port == supp_mask.hdr.dst_port) {
+		efx_spec->efs_match_flags |= EFX_FILTER_MATCH_LOC_PORT;
+		efx_spec->efs_loc_port = rte_bswap16(spec->hdr.dst_port);
+	} else if (mask->hdr.dst_port != 0) {
+		goto fail_bad_mask;
+	}
+
+	return 0;
+
+fail_bad_mask:
+	rte_flow_error_set(error, EINVAL,
+			   RTE_FLOW_ERROR_TYPE_ITEM, item,
+			   "Bad mask in the UDP pattern item");
+	return -rte_errno;
+}
+
 static const struct sfc_flow_item sfc_flow_items[] = {
 	{
 		.type = RTE_FLOW_ITEM_TYPE_VOID,
@@ -657,6 +739,12 @@ static const struct sfc_flow_item sfc_flow_items[] = {
 		.prev_layer = SFC_FLOW_ITEM_L3,
 		.layer = SFC_FLOW_ITEM_L4,
 		.parse = sfc_flow_parse_tcp,
+	},
+	{
+		.type = RTE_FLOW_ITEM_TYPE_UDP,
+		.prev_layer = SFC_FLOW_ITEM_L3,
+		.layer = SFC_FLOW_ITEM_L4,
+		.parse = sfc_flow_parse_udp,
 	},
 };
 
