@@ -320,9 +320,16 @@ sfc_start(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_tx_start;
 
+	rc = sfc_flow_start(sa);
+	if (rc != 0)
+		goto fail_flows_insert;
+
 	sa->state = SFC_ADAPTER_STARTED;
 	sfc_log_init(sa, "done");
 	return 0;
+
+fail_flows_insert:
+	sfc_tx_stop(sa);
 
 fail_tx_start:
 	sfc_rx_stop(sa);
@@ -368,6 +375,7 @@ sfc_stop(struct sfc_adapter *sa)
 
 	sa->state = SFC_ADAPTER_STOPPING;
 
+	sfc_flow_stop(sa);
 	sfc_tx_stop(sa);
 	sfc_rx_stop(sa);
 	sfc_port_stop(sa);
@@ -640,6 +648,8 @@ sfc_attach(struct sfc_adapter *sa)
 	sfc_log_init(sa, "fini nic");
 	efx_nic_fini(enp);
 
+	sfc_flow_init(sa);
+
 	sa->state = SFC_ADAPTER_INITIALIZED;
 
 	sfc_log_init(sa, "done");
@@ -698,5 +708,6 @@ sfc_detach(struct sfc_adapter *sa)
 
 	sfc_mem_bar_fini(sa);
 
+	sfc_flow_fini(sa);
 	sa->state = SFC_ADAPTER_UNINITIALIZED;
 }

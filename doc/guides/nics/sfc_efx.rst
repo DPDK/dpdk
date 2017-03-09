@@ -81,6 +81,8 @@ SFC EFX PMD has support for:
 
 - Transmit VLAN insertion (if running firmware variant supports it)
 
+- Flow API
+
 
 Non-supported Features
 ----------------------
@@ -112,6 +114,28 @@ buffer for the auxiliary packet information provided by the NIC up to
 extra 269 (14 bytes prefix plus up to 255 bytes for end padding) bytes may be
 required in the receive buffer.
 It should be taken into account when mbuf pool for receive is created.
+
+
+Flow API support
+----------------
+
+Supported attributes:
+
+- Ingress
+
+Supported pattern items:
+
+- VOID
+
+- ETH (exact match of source/destination addresses, EtherType)
+
+Supported actions:
+
+- VOID
+
+- QUEUE
+
+Validating flow rules depends on the firmware variant.
 
 
 Supported NICs

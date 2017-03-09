@@ -40,7 +40,7 @@
 #include "sfc_ev.h"
 #include "sfc_rx.h"
 #include "sfc_tx.h"
-
+#include "sfc_flow.h"
 
 static void
 sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
@@ -1210,8 +1210,8 @@ bad_reta_entry:
 
 static int
 sfc_dev_filter_ctrl(struct rte_eth_dev *dev, enum rte_filter_type filter_type,
-		    __rte_unused enum rte_filter_op filter_op,
-		    __rte_unused void *arg)
+		    enum rte_filter_op filter_op,
+		    void *arg)
 {
 	struct sfc_adapter *sa = dev->data->dev_private;
 	int rc = ENOTSUP;
@@ -1245,6 +1245,14 @@ sfc_dev_filter_ctrl(struct rte_eth_dev *dev, enum rte_filter_type filter_type,
 		break;
 	case RTE_ETH_FILTER_HASH:
 		sfc_err(sa, "Hash filters not supported");
+		break;
+	case RTE_ETH_FILTER_GENERIC:
+		if (filter_op != RTE_ETH_FILTER_GET) {
+			rc = EINVAL;
+		} else {
+			*(const void **)arg = &sfc_flow_ops;
+			rc = 0;
+		}
 		break;
 	default:
 		sfc_err(sa, "Unknown filter type %u", filter_type);

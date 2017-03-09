@@ -27,34 +27,36 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _SFC_FILTER_H
-#define _SFC_FILTER_H
+#ifndef _SFC_FLOW_H
+#define _SFC_FLOW_H
+
+#include <rte_tailq.h>
+#include <rte_flow_driver.h>
 
 #include "efx.h"
-
-#include "sfc_flow.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-struct sfc_filter {
-	/** Number of elements in match_supported array */
-	size_t				supported_match_num;
-	/** Driver cache of supported filter match masks */
-	uint32_t			*supported_match;
-	/** List of flow rules */
-	struct sfc_flow_list		flow_list;
+/* PMD-specific definition of the opaque type from rte_flow.h */
+struct rte_flow {
+	efx_filter_spec_t spec;		/* filter specification */
+	TAILQ_ENTRY(rte_flow) entries;	/* flow list entries */
 };
+
+TAILQ_HEAD(sfc_flow_list, rte_flow);
+
+extern const struct rte_flow_ops sfc_flow_ops;
 
 struct sfc_adapter;
 
-int sfc_filter_attach(struct sfc_adapter *sa);
-void sfc_filter_detach(struct sfc_adapter *sa);
-
-boolean_t sfc_filter_is_match_supported(struct sfc_adapter *sa, uint32_t match);
+void sfc_flow_init(struct sfc_adapter *sa);
+void sfc_flow_fini(struct sfc_adapter *sa);
+int sfc_flow_start(struct sfc_adapter *sa);
+void sfc_flow_stop(struct sfc_adapter *sa);
 
 #ifdef __cplusplus
 }
 #endif
-#endif /* _SFC_FILTER_H */
+#endif /* _SFC_FLOW_H */

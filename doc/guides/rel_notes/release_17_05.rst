@@ -84,6 +84,11 @@ New Features
   Added support for Hardware TSO for tunneled and non-tunneled packets.
   Tunneling protocols supported are GRE and VXLAN.
 
+* **Updated the sfc_efx driver.**
+
+  * Generic flow API support for Ethernet, VLAN, IPv4, IPv6, UDP and TCP
+    pattern items with QUEUE action for ingress traffic.
+
 * **Added vmxnet3 version 3 support.**
 
   Added support for vmxnet3 version 3 which includes several
