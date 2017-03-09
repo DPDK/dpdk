@@ -127,7 +127,8 @@ Supported pattern items:
 
 - VOID
 
-- ETH (exact match of source/destination addresses, EtherType)
+- ETH (exact match of source/destination addresses, individual/group match
+  of destination address, EtherType)
 
 - VLAN (exact match of VID, double-tagging is supported)
 
@@ -148,6 +149,14 @@ Supported actions:
 - QUEUE
 
 Validating flow rules depends on the firmware variant.
+
+Ethernet destinaton individual/group match
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Ethernet item supports I/G matching, if only the corresponding bit is set
+in the mask of destination address. If destinaton address in the spec is
+multicast, it matches all multicast (and broadcast) packets, oherwise it
+matches unicast packets that are not filtered by other flow rules.
 
 
 Supported NICs
