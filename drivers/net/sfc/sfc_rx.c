@@ -401,6 +401,56 @@ sfc_rx_qflush(struct sfc_adapter *sa, unsigned int sw_index)
 	sfc_rx_qpurge(rxq);
 }
 
+static int
+sfc_rx_default_rxq_set_filter(struct sfc_adapter *sa, struct sfc_rxq *rxq)
+{
+	boolean_t rss = (sa->rss_channels > 1) ? B_TRUE : B_FALSE;
+	struct sfc_port *port = &sa->port;
+	int rc;
+
+	/*
+	 * If promiscuous or all-multicast mode has been requested, setting
+	 * filter for the default Rx queue might fail, in particular, while
+	 * running over PCI function which is not a member of corresponding
+	 * privilege groups; if this occurs, few iterations will be made to
+	 * repeat this step without promiscuous and all-multicast flags set
+	 */
+retry:
+	rc = efx_mac_filter_default_rxq_set(sa->nic, rxq->common, rss);
+	if (rc == 0)
+		return 0;
+	else if (rc != EOPNOTSUPP)
+		return rc;
+
+	if (port->promisc) {
+		sfc_warn(sa, "promiscuous mode has been requested, "
+			     "but the HW rejects it");
+		sfc_warn(sa, "promiscuous mode will be disabled");
+
+		port->promisc = B_FALSE;
+		rc = sfc_set_rx_mode(sa);
+		if (rc != 0)
+			return rc;
+
+		goto retry;
+	}
+
+	if (port->allmulti) {
+		sfc_warn(sa, "all-multicast mode has been requested, "
+			     "but the HW rejects it");
+		sfc_warn(sa, "all-multicast mode will be disabled");
+
+		port->allmulti = B_FALSE;
+		rc = sfc_set_rx_mode(sa);
+		if (rc != 0)
+			return rc;
+
+		goto retry;
+	}
+
+	return rc;
+}
+
 int
 sfc_rx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 {
@@ -439,9 +489,7 @@ sfc_rx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 	sfc_rx_qrefill(rxq);
 
 	if (sw_index == 0) {
-		rc = efx_mac_filter_default_rxq_set(sa->nic, rxq->common,
-						    (sa->rss_channels > 1) ?
-						    B_TRUE : B_FALSE);
+		rc = sfc_rx_default_rxq_set_filter(sa, rxq);
 		if (rc != 0)
 			goto fail_mac_filter_default_rxq_set;
 	}
