@@ -36,6 +36,7 @@
 #include "sfc.h"
 #include "sfc_log.h"
 #include "sfc_kvargs.h"
+#include "sfc_ev.h"
 
 #define SFC_MCDI_POLL_INTERVAL_MIN_US	10		/* 10us in 1us units */
 #define SFC_MCDI_POLL_INTERVAL_MAX_US	(US_PER_S / 10)	/* 100ms in 1us units */
@@ -49,8 +50,22 @@ sfc_mcdi_timeout(struct sfc_adapter *sa)
 	sfc_panic(sa, "MCDI timeout handling is not implemented\n");
 }
 
+static inline boolean_t
+sfc_mcdi_proxy_event_available(struct sfc_adapter *sa)
+{
+	struct sfc_mcdi *mcdi = &sa->mcdi;
+
+	mcdi->proxy_handle = 0;
+	mcdi->proxy_result = ETIMEDOUT;
+	sfc_ev_mgmt_qpoll(sa);
+	if (mcdi->proxy_result != ETIMEDOUT)
+		return B_TRUE;
+
+	return B_FALSE;
+}
+
 static void
-sfc_mcdi_poll(struct sfc_adapter *sa)
+sfc_mcdi_poll(struct sfc_adapter *sa, boolean_t proxy)
 {
 	efx_nic_t *enp;
 	unsigned int delay_total;
@@ -62,13 +77,20 @@ sfc_mcdi_poll(struct sfc_adapter *sa)
 	enp = sa->nic;
 
 	do {
-		if (efx_mcdi_request_poll(enp))
+		boolean_t poll_completed;
+
+		poll_completed = (proxy) ? sfc_mcdi_proxy_event_available(sa) :
+					   efx_mcdi_request_poll(enp);
+		if (poll_completed)
 			return;
 
 		if (delay_total > SFC_MCDI_WATCHDOG_INTERVAL_US) {
-			aborted = efx_mcdi_request_abort(enp);
-			SFC_ASSERT(aborted);
-			sfc_mcdi_timeout(sa);
+			if (!proxy) {
+				aborted = efx_mcdi_request_abort(enp);
+				SFC_ASSERT(aborted);
+				sfc_mcdi_timeout(sa);
+			}
+
 			return;
 		}
 
@@ -90,13 +112,42 @@ sfc_mcdi_execute(void *arg, efx_mcdi_req_t *emrp)
 {
 	struct sfc_adapter *sa = (struct sfc_adapter *)arg;
 	struct sfc_mcdi *mcdi = &sa->mcdi;
+	uint32_t proxy_handle;
 
 	rte_spinlock_lock(&mcdi->lock);
 
 	SFC_ASSERT(mcdi->state == SFC_MCDI_INITIALIZED);
 
 	efx_mcdi_request_start(sa->nic, emrp, B_FALSE);
-	sfc_mcdi_poll(sa);
+	sfc_mcdi_poll(sa, B_FALSE);
+
+	if (efx_mcdi_get_proxy_handle(sa->nic, emrp, &proxy_handle) == 0) {
+		/*
+		 * Authorization is required for the MCDI request;
+		 * wait for an MCDI proxy response event to bring
+		 * a non-zero proxy handle (should be the same as
+		 * the value obtained above) and operation status
+		 */
+		sfc_mcdi_poll(sa, B_TRUE);
+
+		if ((mcdi->proxy_handle != 0) &&
+		    (mcdi->proxy_handle != proxy_handle)) {
+			sfc_err(sa, "Unexpected MCDI proxy event");
+			emrp->emr_rc = EFAULT;
+		} else if (mcdi->proxy_result == 0) {
+			/*
+			 * Authorization succeeded; re-issue the original
+			 * request and poll for an ordinary MCDI response
+			 */
+			efx_mcdi_request_start(sa->nic, emrp, B_FALSE);
+			sfc_mcdi_poll(sa, B_FALSE);
+		} else {
+			emrp->emr_rc = mcdi->proxy_result;
+			sfc_err(sa, "MCDI proxy authorization failed "
+				    "(handle=%08x, result=%d)",
+				    proxy_handle, mcdi->proxy_result);
+		}
+	}
 
 	rte_spinlock_unlock(&mcdi->lock);
 }
@@ -185,6 +236,16 @@ sfc_mcdi_logger(void *arg, efx_log_msg_t type,
 	}
 }
 
+static void
+sfc_mcdi_ev_proxy_response(void *arg, uint32_t handle, efx_rc_t result)
+{
+	struct sfc_adapter *sa = (struct sfc_adapter *)arg;
+	struct sfc_mcdi *mcdi = &sa->mcdi;
+
+	mcdi->proxy_handle = handle;
+	mcdi->proxy_result = result;
+}
+
 int
 sfc_mcdi_init(struct sfc_adapter *sa)
 {
@@ -222,6 +283,7 @@ sfc_mcdi_init(struct sfc_adapter *sa)
 	emtp->emt_ev_cpl = sfc_mcdi_ev_cpl;
 	emtp->emt_exception = sfc_mcdi_exception;
 	emtp->emt_logger = sfc_mcdi_logger;
+	emtp->emt_ev_proxy_response = sfc_mcdi_ev_proxy_response;
 
 	sfc_log_init(sa, "init MCDI");
 	rc = efx_mcdi_init(sa->nic, emtp);
