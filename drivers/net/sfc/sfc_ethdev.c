@@ -1208,6 +1208,54 @@ bad_reta_entry:
 }
 #endif
 
+static int
+sfc_dev_filter_ctrl(struct rte_eth_dev *dev, enum rte_filter_type filter_type,
+		    __rte_unused enum rte_filter_op filter_op,
+		    __rte_unused void *arg)
+{
+	struct sfc_adapter *sa = dev->data->dev_private;
+	int rc = ENOTSUP;
+
+	sfc_log_init(sa, "entry");
+
+	switch (filter_type) {
+	case RTE_ETH_FILTER_NONE:
+		sfc_err(sa, "Global filters configuration not supported");
+		break;
+	case RTE_ETH_FILTER_MACVLAN:
+		sfc_err(sa, "MACVLAN filters not supported");
+		break;
+	case RTE_ETH_FILTER_ETHERTYPE:
+		sfc_err(sa, "EtherType filters not supported");
+		break;
+	case RTE_ETH_FILTER_FLEXIBLE:
+		sfc_err(sa, "Flexible filters not supported");
+		break;
+	case RTE_ETH_FILTER_SYN:
+		sfc_err(sa, "SYN filters not supported");
+		break;
+	case RTE_ETH_FILTER_NTUPLE:
+		sfc_err(sa, "NTUPLE filters not supported");
+		break;
+	case RTE_ETH_FILTER_TUNNEL:
+		sfc_err(sa, "Tunnel filters not supported");
+		break;
+	case RTE_ETH_FILTER_FDIR:
+		sfc_err(sa, "Flow Director filters not supported");
+		break;
+	case RTE_ETH_FILTER_HASH:
+		sfc_err(sa, "Hash filters not supported");
+		break;
+	default:
+		sfc_err(sa, "Unknown filter type %u", filter_type);
+		break;
+	}
+
+	sfc_log_init(sa, "exit: %d", -rc);
+	SFC_ASSERT(rc >= 0);
+	return -rc;
+}
+
 static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.dev_configure			= sfc_dev_configure,
 	.dev_start			= sfc_dev_start,
@@ -1247,6 +1295,7 @@ static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.rss_hash_update		= sfc_dev_rss_hash_update,
 	.rss_hash_conf_get		= sfc_dev_rss_hash_conf_get,
 #endif
+	.filter_ctrl			= sfc_dev_filter_ctrl,
 	.set_mc_addr_list		= sfc_set_mc_addr_list,
 	.rxq_info_get			= sfc_rx_queue_info_get,
 	.txq_info_get			= sfc_tx_queue_info_get,
