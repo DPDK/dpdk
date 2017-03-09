@@ -134,6 +134,9 @@ Supported pattern items:
 - IPV4 (exact match of source/destination addresses,
   IP transport protocol)
 
+- IPV6 (exact match of source/destination addresses,
+  IP transport protocol)
+
 Supported actions:
 
 - VOID

@@ -73,6 +73,7 @@ static sfc_flow_item_parse sfc_flow_parse_void;
 static sfc_flow_item_parse sfc_flow_parse_eth;
 static sfc_flow_item_parse sfc_flow_parse_vlan;
 static sfc_flow_item_parse sfc_flow_parse_ipv4;
+static sfc_flow_item_parse sfc_flow_parse_ipv6;
 
 static boolean_t
 sfc_flow_is_zero(const uint8_t *buf, unsigned int size)
@@ -429,6 +430,114 @@ fail_bad_mask:
 	return -rte_errno;
 }
 
+/**
+ * Convert IPv6 item to EFX filter specification.
+ *
+ * @param item[in]
+ *   Item specification. Only source and destination addresses and
+ *   next header fields are supported. If the mask is NULL, default
+ *   mask will be used. Ranging is not supported.
+ * @param efx_spec[in, out]
+ *   EFX filter specification to update.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ */
+static int
+sfc_flow_parse_ipv6(const struct rte_flow_item *item,
+		    efx_filter_spec_t *efx_spec,
+		    struct rte_flow_error *error)
+{
+	int rc;
+	const struct rte_flow_item_ipv6 *spec = NULL;
+	const struct rte_flow_item_ipv6 *mask = NULL;
+	const uint16_t ether_type_ipv6 = rte_cpu_to_le_16(EFX_ETHER_TYPE_IPV6);
+	const struct rte_flow_item_ipv6 supp_mask = {
+		.hdr = {
+			.src_addr = { 0xff, 0xff, 0xff, 0xff,
+				      0xff, 0xff, 0xff, 0xff,
+				      0xff, 0xff, 0xff, 0xff,
+				      0xff, 0xff, 0xff, 0xff },
+			.dst_addr = { 0xff, 0xff, 0xff, 0xff,
+				      0xff, 0xff, 0xff, 0xff,
+				      0xff, 0xff, 0xff, 0xff,
+				      0xff, 0xff, 0xff, 0xff },
+			.proto = 0xff,
+		}
+	};
+
+	rc = sfc_flow_parse_init(item,
+				 (const void **)&spec,
+				 (const void **)&mask,
+				 &supp_mask,
+				 &rte_flow_item_ipv6_mask,
+				 sizeof(struct rte_flow_item_ipv6),
+				 error);
+	if (rc != 0)
+		return rc;
+
+	/*
+	 * Filtering by IPv6 source and destination addresses requires
+	 * the appropriate ETHER_TYPE in hardware filters
+	 */
+	if (!(efx_spec->efs_match_flags & EFX_FILTER_MATCH_ETHER_TYPE)) {
+		efx_spec->efs_match_flags |= EFX_FILTER_MATCH_ETHER_TYPE;
+		efx_spec->efs_ether_type = ether_type_ipv6;
+	} else if (efx_spec->efs_ether_type != ether_type_ipv6) {
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ITEM, item,
+			"Ethertype in pattern with IPV6 item should be appropriate");
+		return -rte_errno;
+	}
+
+	if (spec == NULL)
+		return 0;
+
+	/*
+	 * IPv6 addresses are in big-endian byte order in item and in
+	 * efx_spec
+	 */
+	if (memcmp(mask->hdr.src_addr, supp_mask.hdr.src_addr,
+		   sizeof(mask->hdr.src_addr)) == 0) {
+		efx_spec->efs_match_flags |= EFX_FILTER_MATCH_REM_HOST;
+
+		RTE_BUILD_BUG_ON(sizeof(efx_spec->efs_rem_host) !=
+				 sizeof(spec->hdr.src_addr));
+		rte_memcpy(&efx_spec->efs_rem_host, spec->hdr.src_addr,
+			   sizeof(efx_spec->efs_rem_host));
+	} else if (!sfc_flow_is_zero(mask->hdr.src_addr,
+				     sizeof(mask->hdr.src_addr))) {
+		goto fail_bad_mask;
+	}
+
+	if (memcmp(mask->hdr.dst_addr, supp_mask.hdr.dst_addr,
+		   sizeof(mask->hdr.dst_addr)) == 0) {
+		efx_spec->efs_match_flags |= EFX_FILTER_MATCH_LOC_HOST;
+
+		RTE_BUILD_BUG_ON(sizeof(efx_spec->efs_loc_host) !=
+				 sizeof(spec->hdr.dst_addr));
+		rte_memcpy(&efx_spec->efs_loc_host, spec->hdr.dst_addr,
+			   sizeof(efx_spec->efs_loc_host));
+	} else if (!sfc_flow_is_zero(mask->hdr.dst_addr,
+				     sizeof(mask->hdr.dst_addr))) {
+		goto fail_bad_mask;
+	}
+
+	if (mask->hdr.proto == supp_mask.hdr.proto) {
+		efx_spec->efs_match_flags |= EFX_FILTER_MATCH_IP_PROTO;
+		efx_spec->efs_ip_proto = spec->hdr.proto;
+	} else if (mask->hdr.proto != 0) {
+		goto fail_bad_mask;
+	}
+
+	return 0;
+
+fail_bad_mask:
+	rte_flow_error_set(error, EINVAL,
+			   RTE_FLOW_ERROR_TYPE_ITEM, item,
+			   "Bad mask in the IPV6 pattern item");
+	return -rte_errno;
+}
+
 static const struct sfc_flow_item sfc_flow_items[] = {
 	{
 		.type = RTE_FLOW_ITEM_TYPE_VOID,
@@ -453,6 +562,12 @@ static const struct sfc_flow_item sfc_flow_items[] = {
 		.prev_layer = SFC_FLOW_ITEM_L2,
 		.layer = SFC_FLOW_ITEM_L3,
 		.parse = sfc_flow_parse_ipv4,
+	},
+	{
+		.type = RTE_FLOW_ITEM_TYPE_IPV6,
+		.prev_layer = SFC_FLOW_ITEM_L2,
+		.layer = SFC_FLOW_ITEM_L3,
+		.parse = sfc_flow_parse_ipv6,
 	},
 };
 
