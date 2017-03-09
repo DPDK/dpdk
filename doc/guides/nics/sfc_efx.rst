@@ -129,6 +129,8 @@ Supported pattern items:
 
 - ETH (exact match of source/destination addresses, EtherType)
 
+- VLAN (exact match of VID, double-tagging is supported)
+
 Supported actions:
 
 - VOID

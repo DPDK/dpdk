@@ -70,6 +70,7 @@ struct sfc_flow_item {
 
 static sfc_flow_item_parse sfc_flow_parse_void;
 static sfc_flow_item_parse sfc_flow_parse_eth;
+static sfc_flow_item_parse sfc_flow_parse_vlan;
 
 static boolean_t
 sfc_flow_is_zero(const uint8_t *buf, unsigned int size)
@@ -269,6 +270,73 @@ fail_bad_mask:
 	return -rte_errno;
 }
 
+/**
+ * Convert VLAN item to EFX filter specification.
+ *
+ * @param item[in]
+ *   Item specification. Only VID field is supported.
+ *   The mask can not be NULL. Ranging is not supported.
+ * @param efx_spec[in, out]
+ *   EFX filter specification to update.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL.
+ */
+static int
+sfc_flow_parse_vlan(const struct rte_flow_item *item,
+		    efx_filter_spec_t *efx_spec,
+		    struct rte_flow_error *error)
+{
+	int rc;
+	uint16_t vid;
+	const struct rte_flow_item_vlan *spec = NULL;
+	const struct rte_flow_item_vlan *mask = NULL;
+	const struct rte_flow_item_vlan supp_mask = {
+		.tci = rte_cpu_to_be_16(ETH_VLAN_ID_MAX),
+	};
+
+	rc = sfc_flow_parse_init(item,
+				 (const void **)&spec,
+				 (const void **)&mask,
+				 &supp_mask,
+				 NULL,
+				 sizeof(struct rte_flow_item_vlan),
+				 error);
+	if (rc != 0)
+		return rc;
+
+	/*
+	 * VID is in big-endian byte order in item and
+	 * in little-endian in efx_spec, so byte swap is used.
+	 * If two VLAN items are included, the first matches
+	 * the outer tag and the next matches the inner tag.
+	 */
+	if (mask->tci == supp_mask.tci) {
+		vid = rte_bswap16(spec->tci);
+
+		if (!(efx_spec->efs_match_flags &
+		      EFX_FILTER_MATCH_OUTER_VID)) {
+			efx_spec->efs_match_flags |= EFX_FILTER_MATCH_OUTER_VID;
+			efx_spec->efs_outer_vid = vid;
+		} else if (!(efx_spec->efs_match_flags &
+			     EFX_FILTER_MATCH_INNER_VID)) {
+			efx_spec->efs_match_flags |= EFX_FILTER_MATCH_INNER_VID;
+			efx_spec->efs_inner_vid = vid;
+		} else {
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM, item,
+					   "More than two VLAN items");
+			return -rte_errno;
+		}
+	} else {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ITEM, item,
+				   "VLAN ID in TCI match is required");
+		return -rte_errno;
+	}
+
+	return 0;
+}
+
 static const struct sfc_flow_item sfc_flow_items[] = {
 	{
 		.type = RTE_FLOW_ITEM_TYPE_VOID,
@@ -281,6 +349,12 @@ static const struct sfc_flow_item sfc_flow_items[] = {
 		.prev_layer = SFC_FLOW_ITEM_START_LAYER,
 		.layer = SFC_FLOW_ITEM_L2,
 		.parse = sfc_flow_parse_eth,
+	},
+	{
+		.type = RTE_FLOW_ITEM_TYPE_VLAN,
+		.prev_layer = SFC_FLOW_ITEM_L2,
+		.layer = SFC_FLOW_ITEM_L2,
+		.parse = sfc_flow_parse_vlan,
 	},
 };
 
