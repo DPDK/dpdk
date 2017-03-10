@@ -543,6 +543,10 @@ test_eventdev_start_stop(void)
 		TEST_ASSERT_SUCCESS(ret, "Failed to setup port%d", i);
 	}
 
+	ret = rte_event_port_link(TEST_DEV_ID, 0, NULL, NULL, 0);
+	TEST_ASSERT(ret == rte_event_queue_count(TEST_DEV_ID),
+			"Failed to link port, device %d", TEST_DEV_ID);
+
 	ret = rte_event_dev_start(TEST_DEV_ID);
 	TEST_ASSERT_SUCCESS(ret, "Failed to start device%d", TEST_DEV_ID);
 
@@ -568,6 +572,10 @@ eventdev_setup_device(void)
 		ret = rte_event_port_setup(TEST_DEV_ID, i, NULL);
 		TEST_ASSERT_SUCCESS(ret, "Failed to setup port%d", i);
 	}
+
+	ret = rte_event_port_link(TEST_DEV_ID, 0, NULL, NULL, 0);
+	TEST_ASSERT(ret == rte_event_queue_count(TEST_DEV_ID),
+			"Failed to link port, device %d", TEST_DEV_ID);
 
 	ret = rte_event_dev_start(TEST_DEV_ID);
 	TEST_ASSERT_SUCCESS(ret, "Failed to start device%d", TEST_DEV_ID);
