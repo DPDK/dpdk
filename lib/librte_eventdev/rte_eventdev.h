@@ -271,6 +271,13 @@ struct rte_mbuf; /* we just use mbuf pointers; no need to include rte_mbuf.h */
  *
  * @see rte_event_schedule(), rte_event_dequeue_burst()
  */
+#define RTE_EVENT_DEV_CAP_QUEUE_ALL_TYPES     (1ULL << 3)
+/**< Event device is capable of enqueuing events of any type to any queue.
+ * If this capability is not set, the queue only supports events of the
+ *  *RTE_EVENT_QUEUE_CFG_* type that it was created with.
+ *
+ * @see RTE_EVENT_QUEUE_CFG_* values
+ */
 
 /* Event device priority levels */
 #define RTE_EVENT_DEV_PRIORITY_HIGHEST   0
@@ -471,12 +478,6 @@ rte_event_dev_configure(uint8_t dev_id,
 /* Event queue specific APIs */
 
 /* Event queue configuration bitmap flags */
-#define RTE_EVENT_QUEUE_CFG_DEFAULT            (0)
-/**< Default value of *event_queue_cfg* when rte_event_queue_setup() invoked
- * with queue_conf == NULL
- *
- * @see rte_event_queue_setup()
- */
 #define RTE_EVENT_QUEUE_CFG_TYPE_MASK          (3ULL << 0)
 /**< Mask for event queue schedule type configuration request */
 #define RTE_EVENT_QUEUE_CFG_ALL_TYPES          (0ULL << 0)

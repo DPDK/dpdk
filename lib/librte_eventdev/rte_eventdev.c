@@ -602,7 +602,6 @@ rte_event_queue_setup(uint8_t dev_id, uint8_t queue_id,
 		RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->queue_def_conf,
 					-ENOTSUP);
 		(*dev->dev_ops->queue_def_conf)(dev, queue_id, &def_conf);
-		def_conf.event_queue_cfg = RTE_EVENT_QUEUE_CFG_DEFAULT;
 		queue_conf = &def_conf;
 	}
 

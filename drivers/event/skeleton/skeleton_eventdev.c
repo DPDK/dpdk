@@ -196,7 +196,7 @@ skeleton_eventdev_queue_def_conf(struct rte_eventdev *dev, uint8_t queue_id,
 
 	queue_conf->nb_atomic_flows = (1ULL << 20);
 	queue_conf->nb_atomic_order_sequences = (1ULL << 20);
-	queue_conf->event_queue_cfg = RTE_EVENT_QUEUE_CFG_DEFAULT;
+	queue_conf->event_queue_cfg = RTE_EVENT_QUEUE_CFG_ALL_TYPES;
 	queue_conf->priority = RTE_EVENT_DEV_PRIORITY_NORMAL;
 }
 
