@@ -426,7 +426,7 @@ struct rte_event_dev_config {
 	 * This value cannot exceed the *max_event_queue_flows* which previously
 	 * provided in rte_event_dev_info_get()
 	 */
-	uint8_t nb_event_port_dequeue_depth;
+	uint32_t nb_event_port_dequeue_depth;
 	/**< Maximum number of events can be dequeued at a time from an
 	 * event port by this device.
 	 * This value cannot exceed the *max_event_port_dequeue_depth*
@@ -637,12 +637,12 @@ struct rte_event_port_conf {
 	 * which was previously supplied to rte_event_dev_configure().
 	 * This should be set to '-1' for *open system*.
 	 */
-	uint8_t dequeue_depth;
+	uint16_t dequeue_depth;
 	/**< Configure number of bulk dequeues for this event port.
 	 * This value cannot exceed the *nb_event_port_dequeue_depth*
 	 * which previously supplied to rte_event_dev_configure()
 	 */
-	uint8_t enqueue_depth;
+	uint16_t enqueue_depth;
 	/**< Configure number of bulk enqueues for this event port.
 	 * This value cannot exceed the *nb_event_port_enqueue_depth*
 	 * which previously supplied to rte_event_dev_configure()
