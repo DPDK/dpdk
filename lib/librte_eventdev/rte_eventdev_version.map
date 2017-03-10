@@ -12,6 +12,10 @@ DPDK_17.05 {
 	rte_event_dev_stop;
 	rte_event_dev_close;
 	rte_event_dev_dump;
+	rte_event_dev_xstats_by_name_get;
+	rte_event_dev_xstats_get;
+	rte_event_dev_xstats_names_get;
+	rte_event_dev_xstats_reset;
 
 	rte_event_port_default_conf_get;
 	rte_event_port_setup;

@@ -925,6 +925,89 @@ rte_event_dev_dump(uint8_t dev_id, FILE *f)
 
 }
 
+static int
+xstats_get_count(uint8_t dev_id, enum rte_event_dev_xstats_mode mode,
+		uint8_t queue_port_id)
+{
+	struct rte_eventdev *dev = &rte_eventdevs[dev_id];
+	if (dev->dev_ops->xstats_get_names != NULL)
+		return (*dev->dev_ops->xstats_get_names)(dev, mode,
+							queue_port_id,
+							NULL, NULL, 0);
+	return 0;
+}
+
+int
+rte_event_dev_xstats_names_get(uint8_t dev_id,
+		enum rte_event_dev_xstats_mode mode, uint8_t queue_port_id,
+		struct rte_event_dev_xstats_name *xstats_names,
+		unsigned int *ids, unsigned int size)
+{
+	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -ENODEV);
+	const int cnt_expected_entries = xstats_get_count(dev_id, mode,
+							  queue_port_id);
+	if (xstats_names == NULL || cnt_expected_entries < 0 ||
+			(int)size < cnt_expected_entries)
+		return cnt_expected_entries;
+
+	/* dev_id checked above */
+	const struct rte_eventdev *dev = &rte_eventdevs[dev_id];
+
+	if (dev->dev_ops->xstats_get_names != NULL)
+		return (*dev->dev_ops->xstats_get_names)(dev, mode,
+				queue_port_id, xstats_names, ids, size);
+
+	return -ENOTSUP;
+}
+
+/* retrieve eventdev extended statistics */
+int
+rte_event_dev_xstats_get(uint8_t dev_id, enum rte_event_dev_xstats_mode mode,
+		uint8_t queue_port_id, const unsigned int ids[],
+		uint64_t values[], unsigned int n)
+{
+	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -ENODEV);
+	const struct rte_eventdev *dev = &rte_eventdevs[dev_id];
+
+	/* implemented by the driver */
+	if (dev->dev_ops->xstats_get != NULL)
+		return (*dev->dev_ops->xstats_get)(dev, mode, queue_port_id,
+				ids, values, n);
+	return -ENOTSUP;
+}
+
+uint64_t
+rte_event_dev_xstats_by_name_get(uint8_t dev_id, const char *name,
+		unsigned int *id)
+{
+	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, 0);
+	const struct rte_eventdev *dev = &rte_eventdevs[dev_id];
+	unsigned int temp = -1;
+
+	if (id != NULL)
+		*id = (unsigned int)-1;
+	else
+		id = &temp; /* ensure driver never gets a NULL value */
+
+	/* implemented by driver */
+	if (dev->dev_ops->xstats_get_by_name != NULL)
+		return (*dev->dev_ops->xstats_get_by_name)(dev, name, id);
+	return -ENOTSUP;
+}
+
+int rte_event_dev_xstats_reset(uint8_t dev_id,
+		enum rte_event_dev_xstats_mode mode, int16_t queue_port_id,
+		const uint32_t ids[], uint32_t nb_ids)
+{
+	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
+	struct rte_eventdev *dev = &rte_eventdevs[dev_id];
+
+	if (dev->dev_ops->xstats_reset != NULL)
+		return (*dev->dev_ops->xstats_reset)(dev, mode, queue_port_id,
+							ids, nb_ids);
+	return -ENOTSUP;
+}
+
 int
 rte_event_dev_start(uint8_t dev_id)
 {

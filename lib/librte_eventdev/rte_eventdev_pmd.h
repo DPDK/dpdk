@@ -424,6 +424,71 @@ typedef int (*eventdev_dequeue_timeout_ticks_t)(struct rte_eventdev *dev,
  */
 typedef void (*eventdev_dump_t)(struct rte_eventdev *dev, FILE *f);
 
+/**
+ * Retrieve a set of statistics from device
+ *
+ * @param dev
+ *   Event device pointer
+ * @param ids
+ *   The stat ids to retrieve
+ * @param values
+ *   The returned stat values
+ * @param n
+ *   The number of id values and entries in the values array
+ * @return
+ *   The number of stat values successfully filled into the values array
+ */
+typedef int (*eventdev_xstats_get_t)(const struct rte_eventdev *dev,
+		enum rte_event_dev_xstats_mode mode, uint8_t queue_port_id,
+		const unsigned int ids[], uint64_t values[], unsigned int n);
+
+/**
+ * Resets the statistic values in xstats for the device, based on mode.
+ */
+typedef int (*eventdev_xstats_reset_t)(struct rte_eventdev *dev,
+		enum rte_event_dev_xstats_mode mode,
+		int16_t queue_port_id,
+		const uint32_t ids[],
+		uint32_t nb_ids);
+
+/**
+ * Get names of extended stats of an event device
+ *
+ * @param dev
+ *   Event device pointer
+ * @param xstats_names
+ *   Array of name values to be filled in
+ * @param size
+ *   Number of values in the xstats_names array
+ * @return
+ *   When size >= the number of stats, return the number of stat values filled
+ *   into the array.
+ *   When size < the number of available stats, return the number of stats
+ *   values, and do not fill in any data into xstats_names.
+ */
+typedef int (*eventdev_xstats_get_names_t)(const struct rte_eventdev *dev,
+		enum rte_event_dev_xstats_mode mode, uint8_t queue_port_id,
+		struct rte_event_dev_xstats_name *xstats_names,
+		unsigned int *ids, unsigned int size);
+
+/**
+ * Get value of one stats and optionally return its id
+ *
+ * @param dev
+ *   Event device pointer
+ * @param name
+ *   The name of the stat to retrieve
+ * @param id
+ *   Pointer to an unsigned int where we store the stat-id for future reference.
+ *   This pointer may be null if the id is not required.
+ * @return
+ *   The value of the stat, or (uint64_t)-1 if the stat is not found.
+ *   If the stat is not found, the id value will be returned as (unsigned)-1,
+ *   if id pointer is non-NULL
+ */
+typedef uint64_t (*eventdev_xstats_get_by_name)(const struct rte_eventdev *dev,
+		const char *name, unsigned int *id);
+
 /** Event device operations function pointer table */
 struct rte_eventdev_ops {
 	eventdev_info_get_t dev_infos_get;	/**< Get device info. */
@@ -454,6 +519,15 @@ struct rte_eventdev_ops {
 	/**< Converts ns to *timeout_ticks* value for rte_event_dequeue() */
 	eventdev_dump_t dump;
 	/* Dump internal information */
+
+	eventdev_xstats_get_t xstats_get;
+	/**< Get extended device statistics. */
+	eventdev_xstats_get_names_t xstats_get_names;
+	/**< Get names of extended stats. */
+	eventdev_xstats_get_by_name xstats_get_by_name;
+	/**< Get one value by name. */
+	eventdev_xstats_reset_t xstats_reset;
+	/**< Reset the statistics values in xstats. */
 };
 
 /**

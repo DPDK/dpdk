@@ -1408,6 +1408,148 @@ rte_event_port_links_get(uint8_t dev_id, uint8_t port_id,
 int
 rte_event_dev_dump(uint8_t dev_id, FILE *f);
 
+/** Maximum name length for extended statistics counters */
+#define RTE_EVENT_DEV_XSTATS_NAME_SIZE 64
+
+/**
+ * Selects the component of the eventdev to retrieve statistics from.
+ */
+enum rte_event_dev_xstats_mode {
+	RTE_EVENT_DEV_XSTATS_DEVICE,
+	RTE_EVENT_DEV_XSTATS_PORT,
+	RTE_EVENT_DEV_XSTATS_QUEUE,
+};
+
+/**
+ * A name-key lookup element for extended statistics.
+ *
+ * This structure is used to map between names and ID numbers
+ * for extended ethdev statistics.
+ */
+struct rte_event_dev_xstats_name {
+	char name[RTE_EVENT_DEV_XSTATS_NAME_SIZE];
+};
+
+/**
+ * Retrieve names of extended statistics of an event device.
+ *
+ * @param dev_id
+ *   The identifier of the event device.
+ * @param mode
+ *   The mode of statistics to retrieve. Choices include the device statistics,
+ *   port statistics or queue statistics.
+ * @param queue_port_id
+ *   Used to specify the port or queue number in queue or port mode, and is
+ *   ignored in device mode.
+ * @param[out] xstats_names
+ *   Block of memory to insert names into. Must be at least size in capacity.
+ *   If set to NULL, function returns required capacity.
+ * @param[out] ids
+ *   Block of memory to insert ids into. Must be at least size in capacity.
+ *   If set to NULL, function returns required capacity. The id values returned
+ *   can be passed to *rte_event_dev_xstats_get* to select statistics.
+ * @param size
+ *   Capacity of xstats_names (number of names).
+ * @return
+ *   - positive value lower or equal to size: success. The return value
+ *     is the number of entries filled in the stats table.
+ *   - positive value higher than size: error, the given statistics table
+ *     is too small. The return value corresponds to the size that should
+ *     be given to succeed. The entries in the table are not valid and
+ *     shall not be used by the caller.
+ *   - negative value on error:
+ *        -ENODEV for invalid *dev_id*
+ *        -EINVAL for invalid mode, queue port or id parameters
+ *        -ENOTSUP if the device doesn't support this function.
+ */
+int
+rte_event_dev_xstats_names_get(uint8_t dev_id,
+			       enum rte_event_dev_xstats_mode mode,
+			       uint8_t queue_port_id,
+			       struct rte_event_dev_xstats_name *xstats_names,
+			       unsigned int *ids,
+			       unsigned int size);
+
+/**
+ * Retrieve extended statistics of an event device.
+ *
+ * @param dev_id
+ *   The identifier of the device.
+ * @param mode
+ *  The mode of statistics to retrieve. Choices include the device statistics,
+ *  port statistics or queue statistics.
+ * @param queue_port_id
+ *   Used to specify the port or queue number in queue or port mode, and is
+ *   ignored in device mode.
+ * @param ids
+ *   The id numbers of the stats to get. The ids can be got from the stat
+ *   position in the stat list from rte_event_dev_get_xstats_names(), or
+ *   by using rte_eventdev_get_xstats_by_name()
+ * @param[out] values
+ *   The values for each stats request by ID.
+ * @param n
+ *   The number of stats requested
+ * @return
+ *   - positive value: number of stat entries filled into the values array
+ *   - negative value on error:
+ *        -ENODEV for invalid *dev_id*
+ *        -EINVAL for invalid mode, queue port or id parameters
+ *        -ENOTSUP if the device doesn't support this function.
+ */
+int
+rte_event_dev_xstats_get(uint8_t dev_id,
+			 enum rte_event_dev_xstats_mode mode,
+			 uint8_t queue_port_id,
+			 const unsigned int ids[],
+			 uint64_t values[], unsigned int n);
+
+/**
+ * Retrieve the value of a single stat by requesting it by name.
+ *
+ * @param dev_id
+ *   The identifier of the device
+ * @param name
+ *   The stat name to retrieve
+ * @param[out] id
+ *   If non-NULL, the numerical id of the stat will be returned, so that further
+ *   requests for the stat can be got using rte_eventdev_xstats_get, which will
+ *   be faster as it doesn't need to scan a list of names for the stat.
+ *   If the stat cannot be found, the id returned will be (unsigned)-1.
+ * @return
+ *   - positive value or zero: the stat value
+ *   - negative value: -EINVAL if stat not found, -ENOTSUP if not supported.
+ */
+uint64_t
+rte_event_dev_xstats_by_name_get(uint8_t dev_id, const char *name,
+				 unsigned int *id);
+
+/**
+ * Reset the values of the xstats of the selected component in the device.
+ *
+ * @param dev_id
+ *   The identifier of the device
+ * @param mode
+ *   The mode of the statistics to reset. Choose from device, queue or port.
+ * @param queue_port_id
+ *   The queue or port to reset. 0 and positive values select ports and queues,
+ *   while -1 indicates all ports or queues.
+ * @param ids
+ *   Selects specific statistics to be reset. When NULL, all statistics selected
+ *   by *mode* will be reset. If non-NULL, must point to array of at least
+ *   *nb_ids* size.
+ * @param nb_ids
+ *   The number of ids available from the *ids* array. Ignored when ids is NULL.
+ * @return
+ *   - zero: successfully reset the statistics to zero
+ *   - negative value: -EINVAL invalid parameters, -ENOTSUP if not supported.
+ */
+int
+rte_event_dev_xstats_reset(uint8_t dev_id,
+			   enum rte_event_dev_xstats_mode mode,
+			   int16_t queue_port_id,
+			   const uint32_t ids[],
+			   uint32_t nb_ids);
+
 #ifdef __cplusplus
 }
 #endif
