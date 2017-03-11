@@ -444,7 +444,6 @@ static int rte_table_hash_ext_lookup_unoptimized(
 	uint64_t pkts_mask_out = 0;
 
 	__rte_unused uint32_t n_pkts_in = __builtin_popcountll(pkts_mask);
-	RTE_TABLE_HASH_EXT_STATS_PKTS_IN_ADD(t, n_pkts_in);
 
 	for ( ; pkts_mask; ) {
 		struct bucket *bkt0, *bkt;
@@ -490,7 +489,6 @@ static int rte_table_hash_ext_lookup_unoptimized(
 	}
 
 	*lookup_hit_mask = pkts_mask_out;
-	RTE_TABLE_HASH_EXT_STATS_PKTS_LOOKUP_MISS(t, n_pkts_in - __builtin_popcountll(pkts_mask_out));
 	return 0;
 }
 
@@ -874,9 +872,13 @@ static int rte_table_hash_ext_lookup(
 	RTE_TABLE_HASH_EXT_STATS_PKTS_IN_ADD(t, n_pkts_in);
 
 	/* Cannot run the pipeline with less than 7 packets */
-	if (__builtin_popcountll(pkts_mask) < 7)
-		return rte_table_hash_ext_lookup_unoptimized(table, pkts,
+	if (__builtin_popcountll(pkts_mask) < 7) {
+		status = rte_table_hash_ext_lookup_unoptimized(table, pkts,
 			pkts_mask, lookup_hit_mask, entries, 0);
+		RTE_TABLE_HASH_EXT_STATS_PKTS_LOOKUP_MISS(t, n_pkts_in -
+				__builtin_popcountll(*lookup_hit_mask));
+		return status;
+	}
 
 	/* Pipeline stage 0 */
 	lookup2_stage0(t, g, pkts, pkts_mask, pkt00_index, pkt01_index);
@@ -1007,9 +1009,13 @@ static int rte_table_hash_ext_lookup_dosig(
 	RTE_TABLE_HASH_EXT_STATS_PKTS_IN_ADD(t, n_pkts_in);
 
 	/* Cannot run the pipeline with less than 7 packets */
-	if (__builtin_popcountll(pkts_mask) < 7)
-		return rte_table_hash_ext_lookup_unoptimized(table, pkts,
+	if (__builtin_popcountll(pkts_mask) < 7) {
+		status = rte_table_hash_ext_lookup_unoptimized(table, pkts,
 			pkts_mask, lookup_hit_mask, entries, 1);
+		RTE_TABLE_HASH_EXT_STATS_PKTS_LOOKUP_MISS(t, n_pkts_in -
+				__builtin_popcountll(*lookup_hit_mask));
+		return status;
+	}
 
 	/* Pipeline stage 0 */
 	lookup2_stage0(t, g, pkts, pkts_mask, pkt00_index, pkt01_index);
