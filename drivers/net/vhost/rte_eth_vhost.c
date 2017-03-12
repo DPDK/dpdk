@@ -598,6 +598,8 @@ new_device(int vid)
 	for (i = 0; i < rte_vhost_get_queue_num(vid) * VIRTIO_QNUM; i++)
 		rte_vhost_enable_guest_notification(vid, i, 0);
 
+	rte_vhost_get_mtu(vid, &eth_dev->data->mtu);
+
 	eth_dev->data->dev_link.link_status = ETH_LINK_UP;
 
 	rte_atomic32_set(&internal->dev_attached, 1);
