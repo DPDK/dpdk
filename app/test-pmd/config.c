@@ -449,6 +449,7 @@ port_infos_display(portid_t port_id)
 	struct rte_mempool * mp;
 	static const char *info_border = "*********************";
 	portid_t pid;
+	uint16_t mtu;
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN)) {
 		printf("Valid port range is [0");
@@ -480,6 +481,10 @@ port_infos_display(portid_t port_id)
 	printf("Link speed: %u Mbps\n", (unsigned) link.link_speed);
 	printf("Link duplex: %s\n", (link.link_duplex == ETH_LINK_FULL_DUPLEX) ?
 	       ("full-duplex") : ("half-duplex"));
+
+	if (!rte_eth_dev_get_mtu(port_id, &mtu))
+		printf("MTU: %u\n", mtu);
+
 	printf("Promiscuous mode: %s\n",
 	       rte_eth_promiscuous_get(port_id) ? "enabled" : "disabled");
 	printf("Allmulticast mode: %s\n",
