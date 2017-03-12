@@ -153,6 +153,14 @@ New Features
   * Generic flow API support for Ethernet, VLAN, IPv4, IPv6, UDP and TCP pattern
     items with DROP, QUEUE and PASSTHRU actions for ingress traffic.
 
+* **Added MTU feature support to Virtio and Vhost.**
+
+  Implemented new Virtio MTU feature into Vhost and Virtio:
+
+  * Add ``rte_vhost_mtu_get()`` API to Vhost library.
+  * Enable Vhost PMD's MTU get feature.
+  * Get max MTU value from host in Virtio PMD
+
 
 Resolved Issues
 ---------------

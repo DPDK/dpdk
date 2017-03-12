@@ -721,10 +721,13 @@ virtio_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	uint32_t ether_hdr_len = ETHER_HDR_LEN + VLAN_TAG_LEN +
 				 hw->vtnet_hdr_size;
 	uint32_t frame_size = mtu + ether_hdr_len;
+	uint32_t max_frame_size = hw->max_mtu + ether_hdr_len;
 
-	if (mtu < ETHER_MIN_MTU || frame_size > VIRTIO_MAX_RX_PKTLEN) {
+	max_frame_size = RTE_MIN(max_frame_size, VIRTIO_MAX_RX_PKTLEN);
+
+	if (mtu < ETHER_MIN_MTU || frame_size > max_frame_size) {
 		PMD_INIT_LOG(ERR, "MTU should be between %d and %d",
-			ETHER_MIN_MTU, VIRTIO_MAX_RX_PKTLEN - ether_hdr_len);
+			ETHER_MIN_MTU, max_frame_size - ether_hdr_len);
 		return -EINVAL;
 	}
 	return 0;
@@ -1158,6 +1161,18 @@ virtio_negotiate_features(struct virtio_hw *hw, uint64_t req_features)
 	PMD_INIT_LOG(DEBUG, "host_features before negotiate = %" PRIx64,
 		host_features);
 
+	/* If supported, ensure MTU value is valid before acknowledging it. */
+	if (host_features & req_features & (1ULL << VIRTIO_NET_F_MTU)) {
+		struct virtio_net_config config;
+
+		vtpci_read_dev_config(hw,
+			offsetof(struct virtio_net_config, mtu),
+			&config.mtu, sizeof(config.mtu));
+
+		if (config.mtu < ETHER_MIN_MTU)
+			req_features &= ~(1ULL << VIRTIO_NET_F_MTU);
+	}
+
 	/*
 	 * Negotiate features: Subset of device feature bits are written back
 	 * guest feature bits.
@@ -1391,6 +1406,32 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 		}
 
 		hw->max_queue_pairs = config->max_virtqueue_pairs;
+
+		if (vtpci_with_feature(hw, VIRTIO_NET_F_MTU)) {
+			vtpci_read_dev_config(hw,
+				offsetof(struct virtio_net_config, mtu),
+				&config->mtu,
+				sizeof(config->mtu));
+
+			/*
+			 * MTU value has already been checked at negotiation
+			 * time, but check again in case it has changed since
+			 * then, which should not happen.
+			 */
+			if (config->mtu < ETHER_MIN_MTU) {
+				PMD_INIT_LOG(ERR, "invalid max MTU value (%u)",
+						config->mtu);
+				return -1;
+			}
+
+			hw->max_mtu = config->mtu;
+			/* Set initial MTU to maximum one supported by vhost */
+			eth_dev->data->mtu = config->mtu;
+
+		} else {
+			hw->max_mtu = VIRTIO_MAX_RX_PKTLEN - ETHER_HDR_LEN -
+				VLAN_TAG_LEN - hw->vtnet_hdr_size;
+		}
 
 		PMD_INIT_LOG(DEBUG, "config->max_virtqueue_pairs=%d",
 				config->max_virtqueue_pairs);
