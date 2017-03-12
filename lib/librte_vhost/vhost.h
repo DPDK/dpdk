@@ -120,6 +120,10 @@ struct vhost_virtqueue {
 #endif
 #define VHOST_MAX_QUEUE_PAIRS		0x80
 
+#ifndef VIRTIO_NET_F_MTU
+ #define VIRTIO_NET_F_MTU 3
+#endif
+
 /*
  * Define virtio 1.0 for older kernels
  */
