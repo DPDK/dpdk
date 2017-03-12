@@ -51,6 +51,9 @@
 #include "vhost.h"
 #include "vhost_user.h"
 
+#define VIRTIO_MIN_MTU 68
+#define VIRTIO_MAX_MTU 65535
+
 static const char *vhost_message_str[VHOST_USER_MAX] = {
 	[VHOST_USER_NONE] = "VHOST_USER_NONE",
 	[VHOST_USER_GET_FEATURES] = "VHOST_USER_GET_FEATURES",
@@ -72,6 +75,7 @@ static const char *vhost_message_str[VHOST_USER_MAX] = {
 	[VHOST_USER_GET_QUEUE_NUM]  = "VHOST_USER_GET_QUEUE_NUM",
 	[VHOST_USER_SET_VRING_ENABLE]  = "VHOST_USER_SET_VRING_ENABLE",
 	[VHOST_USER_SEND_RARP]  = "VHOST_USER_SEND_RARP",
+	[VHOST_USER_NET_SET_MTU]  = "VHOST_USER_NET_SET_MTU",
 };
 
 static uint64_t
@@ -852,6 +856,22 @@ vhost_user_send_rarp(struct virtio_net *dev, struct VhostUserMsg *msg)
 	return 0;
 }
 
+static int
+vhost_user_net_set_mtu(struct virtio_net *dev, struct VhostUserMsg *msg)
+{
+	if (msg->payload.u64 < VIRTIO_MIN_MTU ||
+			msg->payload.u64 > VIRTIO_MAX_MTU) {
+		RTE_LOG(ERR, VHOST_CONFIG, "Invalid MTU size (%"PRIu64")\n",
+				msg->payload.u64);
+
+		return -1;
+	}
+
+	dev->mtu = msg->payload.u64;
+
+	return 0;
+}
+
 /* return bytes# of read on success or negative val on failure. */
 static int
 read_vhost_message(int sockfd, struct VhostUserMsg *msg)
@@ -1060,6 +1080,10 @@ vhost_user_msg_handler(int vid, int fd)
 		break;
 	case VHOST_USER_SEND_RARP:
 		vhost_user_send_rarp(dev, &msg);
+		break;
+
+	case VHOST_USER_NET_SET_MTU:
+		ret = vhost_user_net_set_mtu(dev, &msg);
 		break;
 
 	default:

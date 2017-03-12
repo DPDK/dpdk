@@ -160,6 +160,7 @@ struct virtio_net {
 	uint64_t		log_base;
 	uint64_t		log_addr;
 	struct ether_addr	mac;
+	uint16_t		mtu;
 
 	uint32_t		nr_guest_pages;
 	uint32_t		max_guest_pages;
