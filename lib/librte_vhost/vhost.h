@@ -46,6 +46,8 @@
 
 /* Used to indicate that the device is running on a data core */
 #define VIRTIO_DEV_RUNNING 1
+/* Used to indicate that the device is ready to operate */
+#define VIRTIO_DEV_READY 2
 
 /* Backend value set by guest. */
 #define VIRTIO_DEV_STOPPED -1
