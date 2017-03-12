@@ -313,6 +313,25 @@ vhost_enable_dequeue_zero_copy(int vid)
 }
 
 int
+rte_vhost_get_mtu(int vid, uint16_t *mtu)
+{
+	struct virtio_net *dev = get_device(vid);
+
+	if (!dev)
+		return -ENODEV;
+
+	if (!(dev->flags & VIRTIO_DEV_READY))
+		return -EAGAIN;
+
+	if (!(dev->features & VIRTIO_NET_F_MTU))
+		return -ENOTSUP;
+
+	*mtu = dev->mtu;
+
+	return 0;
+}
+
+int
 rte_vhost_get_numa_node(int vid)
 {
 #ifdef RTE_LIBRTE_VHOST_NUMA

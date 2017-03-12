@@ -100,6 +100,21 @@ int rte_vhost_driver_callback_register(struct virtio_net_device_ops const * cons
 int rte_vhost_driver_session_start(void);
 
 /**
+ * Get the MTU value of the device if set in QEMU.
+ *
+ * @param vid
+ *  virtio-net device ID
+ * @param mtu
+ *  The variable to store the MTU value
+ *
+ * @return
+ *  0: success
+ *  -EAGAIN: device not yet started
+ *  -ENOTSUP: device does not support MTU feature
+ */
+int rte_vhost_get_mtu(int vid, uint16_t *mtu);
+
+/**
  * Get the numa node from which the virtio net device's memory
  * is allocated.
  *

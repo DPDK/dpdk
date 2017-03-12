@@ -30,3 +30,10 @@ DPDK_16.07 {
 	rte_vhost_get_queue_num;
 
 } DPDK_2.1;
+
+DPDK_17.05 {
+	global:
+
+	rte_vhost_get_mtu;
+
+} DPDK_16.07;
