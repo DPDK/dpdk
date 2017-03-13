@@ -42,7 +42,6 @@
 #include <fcntl.h>
 #include <sys/time.h>
 #include <sys/mman.h>
-#include <execinfo.h>
 #include <sched.h>
 
 #include <rte_malloc.h>
