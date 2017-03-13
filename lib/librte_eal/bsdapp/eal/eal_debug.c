@@ -31,7 +31,9 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef RTE_BACKTRACE
 #include <execinfo.h>
+#endif
 #include <stdarg.h>
 #include <signal.h>
 #include <stdlib.h>
@@ -47,6 +49,7 @@
 /* dump the stack of the calling core */
 void rte_dump_stack(void)
 {
+#ifdef RTE_BACKTRACE
 	void *func[BACKTRACE_SIZE];
 	char **symb = NULL;
 	int size;
@@ -64,6 +67,7 @@ void rte_dump_stack(void)
 	}
 
 	free(symb);
+#endif /* RTE_BACKTRACE */
 }
 
 /* not implemented in this environment */
