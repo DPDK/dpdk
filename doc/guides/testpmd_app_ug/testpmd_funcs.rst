@@ -837,6 +837,13 @@ Add an alternative MAC address for a VF to a port::
 
    testpmd> mac_add add port (port_id) vf (vf_id) (XX:XX:XX:XX:XX:XX)
 
+mac_addr set
+~~~~~~~~~~~~
+
+Set the default MAC address for a port::
+
+   testpmd> mac_addr set (port_id) (XX:XX:XX:XX:XX:XX)
+
 mac_addr set (for VF)
 ~~~~~~~~~~~~~~~~~~~~~
 

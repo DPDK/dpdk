@@ -405,6 +405,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"mac_addr remove (port_id) (XX:XX:XX:XX:XX:XX)\n"
 			"    Remove a MAC address from port_id.\n\n"
 
+			"mac_addr set (port_id) (XX:XX:XX:XX:XX:XX)\n"
+			"    Set the default MAC address for port_id.\n\n"
+
 			"mac_addr add port (port_id) vf (vf_id) (mac_address)\n"
 			"    Add a MAC address for a VF on the port.\n\n"
 
@@ -6356,6 +6359,9 @@ static void cmd_mac_addr_parsed(void *parsed_result,
 
 	if (strcmp(res->what, "add") == 0)
 		ret = rte_eth_dev_mac_addr_add(res->port_num, &res->address, 0);
+	else if (strcmp(res->what, "set") == 0)
+		ret = rte_eth_dev_default_mac_addr_set(res->port_num,
+						       &res->address);
 	else
 		ret = rte_eth_dev_mac_addr_remove(res->port_num, &res->address);
 
@@ -6370,7 +6376,7 @@ cmdline_parse_token_string_t cmd_mac_addr_cmd =
 				"mac_addr");
 cmdline_parse_token_string_t cmd_mac_addr_what =
 	TOKEN_STRING_INITIALIZER(struct cmd_mac_addr_result, what,
-				"add#remove");
+				"add#remove#set");
 cmdline_parse_token_num_t cmd_mac_addr_portnum =
 		TOKEN_NUM_INITIALIZER(struct cmd_mac_addr_result, port_num, UINT8);
 cmdline_parse_token_etheraddr_t cmd_mac_addr_addr =
@@ -6379,8 +6385,8 @@ cmdline_parse_token_etheraddr_t cmd_mac_addr_addr =
 cmdline_parse_inst_t cmd_mac_addr = {
 	.f = cmd_mac_addr_parsed,
 	.data = (void *)0,
-	.help_str = "mac_addr add|remove <port_id> <mac_addr>: "
-			"Add/Remove MAC address on port_id",
+	.help_str = "mac_addr add|remove|set <port_id> <mac_addr>: "
+			"Add/Remove/Set MAC address on port_id",
 	.tokens = {
 		(void *)&cmd_mac_addr_cmd,
 		(void *)&cmd_mac_addr_what,
