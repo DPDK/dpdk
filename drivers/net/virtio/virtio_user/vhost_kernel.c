@@ -365,7 +365,7 @@ vhost_kernel_enable_queue_pair(struct virtio_user_dev *dev,
 	vhostfd = dev->vhostfds[pair_idx];
 
 	if (!enable) {
-		if (dev->tapfds[pair_idx]) {
+		if (dev->tapfds[pair_idx] >= 0) {
 			close(dev->tapfds[pair_idx]);
 			dev->tapfds[pair_idx] = -1;
 		}
