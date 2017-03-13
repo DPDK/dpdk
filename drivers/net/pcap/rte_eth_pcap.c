@@ -293,9 +293,9 @@ eth_pcap_tx_dumper(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			}
 		}
 
-		rte_pktmbuf_free(mbuf);
 		num_tx++;
 		tx_bytes += mbuf->pkt_len;
+		rte_pktmbuf_free(mbuf);
 	}
 
 	/*
