@@ -1410,7 +1410,7 @@ static int
 nicvf_vf_start(struct rte_eth_dev *dev, struct nicvf *nic, uint32_t rbdrsz)
 {
 	int ret;
-	uint16_t qidx;
+	uint16_t qidx, data_off;
 	uint32_t total_rxq_desc, nb_rbdr_desc, exp_buffs;
 	uint64_t mbuf_phys_off = 0;
 	struct nicvf_rxq *rxq;
@@ -1451,9 +1451,17 @@ nicvf_vf_start(struct rte_eth_dev *dev, struct nicvf *nic, uint32_t rbdrsz)
 				     nic->vf_id, qidx, rxq->pool->name);
 			return -ENOMEM;
 		}
-		rxq->mbuf_phys_off -= nicvf_mbuff_meta_length(mbuf);
-		rxq->mbuf_phys_off -= RTE_PKTMBUF_HEADROOM;
+		data_off = nicvf_mbuff_meta_length(mbuf);
+		data_off += RTE_PKTMBUF_HEADROOM;
 		rte_pktmbuf_free(mbuf);
+
+		if (data_off % RTE_CACHE_LINE_SIZE) {
+			PMD_INIT_LOG(ERR, "%s: unaligned data_off=%d delta=%d",
+				rxq->pool->name, data_off,
+				data_off % RTE_CACHE_LINE_SIZE);
+			return -EINVAL;
+		}
+		rxq->mbuf_phys_off -= data_off;
 
 		if (mbuf_phys_off == 0)
 			mbuf_phys_off = rxq->mbuf_phys_off;
