@@ -314,7 +314,7 @@ igbuio_setup_bars(struct pci_dev *dev, struct uio_info *info)
 		}
 	}
 
-	return (iom != 0) ? ret : -ENOENT;
+	return (iom != 0 || iop != 0) ? ret : -ENOENT;
 }
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 8, 0)
