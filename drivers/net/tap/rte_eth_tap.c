@@ -31,6 +31,8 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <rte_atomic.h>
+#include <rte_common.h>
 #include <rte_mbuf.h>
 #include <rte_ethdev.h>
 #include <rte_malloc.h>
@@ -42,6 +44,9 @@
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
+#include <errno.h>
+#include <signal.h>
+#include <stdint.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <linux/if.h>
@@ -72,6 +77,8 @@ static const char *valid_arguments[] = {
 
 static int tap_unit;
 
+static volatile uint32_t tap_trigger;	/* Rx trigger */
+
 static struct rte_eth_link pmd_link = {
 	.link_speed = ETH_SPEED_NUM_10G,
 	.link_duplex = ETH_LINK_FULL_DUPLEX,
@@ -89,6 +96,7 @@ struct pkt_stats {
 
 struct rx_queue {
 	struct rte_mempool *mp;		/* Mempool for RX packets */
+	uint32_t trigger_seen;		/* Last seen Rx trigger value */
 	uint16_t in_port;		/* Port ID */
 	int fd;
 
@@ -110,6 +118,13 @@ struct pmd_internals {
 	struct rx_queue rxq[RTE_PMD_TAP_MAX_QUEUES];	/* List of RX queues */
 	struct tx_queue txq[RTE_PMD_TAP_MAX_QUEUES];	/* List of TX queues */
 };
+
+static void
+tap_trigger_cb(int sig __rte_unused)
+{
+	/* Valid trigger values are nonzero */
+	tap_trigger = (tap_trigger + 1) | 0x80000000;
+}
 
 /* Tun/Tap allocation routine
  *
@@ -175,6 +190,43 @@ tun_alloc(struct pmd_internals *pmd, uint16_t qid)
 		goto error;
 	}
 
+	/* Set up trigger to optimize empty Rx bursts */
+	errno = 0;
+	do {
+		struct sigaction sa;
+		int flags = fcntl(fd, F_GETFL);
+
+		if (flags == -1 || sigaction(SIGIO, NULL, &sa) == -1)
+			break;
+		if (sa.sa_handler != tap_trigger_cb) {
+			/*
+			 * Make sure SIGIO is not already taken. This is done
+			 * as late as possible to leave the application a
+			 * chance to set up its own signal handler first.
+			 */
+			if (sa.sa_handler != SIG_IGN &&
+			    sa.sa_handler != SIG_DFL) {
+				errno = EBUSY;
+				break;
+			}
+			sa = (struct sigaction){
+				.sa_flags = SA_RESTART,
+				.sa_handler = tap_trigger_cb,
+			};
+			if (sigaction(SIGIO, &sa, NULL) == -1)
+				break;
+		}
+		/* Enable SIGIO on file descriptor */
+		fcntl(fd, F_SETFL, flags | O_ASYNC);
+		fcntl(fd, F_SETOWN, getpid());
+	} while (0);
+	if (errno) {
+		/* Disable trigger globally in case of error */
+		tap_trigger = 0;
+		RTE_LOG(WARNING, PMD, "Rx trigger disabled: %s\n",
+			strerror(errno));
+	}
+
 	if (qid == 0) {
 		if (ioctl(fd, SIOCGIFHWADDR, &ifr) == -1) {
 			RTE_LOG(ERR, PMD, "ioctl failed (SIOCGIFHWADDR) (%s)\n",
@@ -204,7 +256,13 @@ pmd_rx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	struct rx_queue *rxq = queue;
 	uint16_t num_rx;
 	unsigned long num_rx_bytes = 0;
+	uint32_t trigger = tap_trigger;
 
+	if (trigger == rxq->trigger_seen)
+		return 0;
+	if (trigger)
+		rxq->trigger_seen = trigger;
+	rte_compiler_barrier();
 	for (num_rx = 0; num_rx < nb_pkts; ) {
 		/* allocate the next mbuf */
 		mbuf = rte_pktmbuf_alloc(rxq->mp);
@@ -563,6 +621,7 @@ tap_rx_queue_setup(struct rte_eth_dev *dev,
 	}
 
 	internals->rxq[rx_queue_id].mp = mp;
+	internals->rxq[rx_queue_id].trigger_seen = 1; /* force initial burst */
 	internals->rxq[rx_queue_id].in_port = dev->data->port_id;
 
 	/* Now get the space available for data in the mbuf */
