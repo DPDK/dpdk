@@ -67,6 +67,7 @@ The role of the component maintainers is to:
 * Review patches for the component or delegate the review.
   The review should be done, ideally, within 1 week of submission to the mailing list.
 * Add an ``acked-by`` to patches, or patchsets, that are ready for committing to a tree.
+* Reply to questions asked about the component.
 
 Component maintainers can be added or removed by submitting a patch to the ``MAINTAINERS`` file.
 Maintainers should have demonstrated a reasonable level of contributions or reviews to the component area.
