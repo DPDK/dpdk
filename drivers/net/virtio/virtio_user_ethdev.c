@@ -418,6 +418,13 @@ virtio_user_pmd_probe(const char *name, const char *params)
 		goto end;
 	}
 
+	if (queues > VIRTIO_MAX_VIRTQUEUE_PAIRS) {
+		PMD_INIT_LOG(ERR, "arg %s %" PRIu64 " exceeds the limit %u",
+			VIRTIO_USER_ARG_QUEUES_NUM, queues,
+			VIRTIO_MAX_VIRTQUEUE_PAIRS);
+		goto end;
+	}
+
 	eth_dev = virtio_user_eth_dev_alloc(name);
 	if (!eth_dev) {
 		PMD_INIT_LOG(ERR, "virtio_user fails to alloc device");

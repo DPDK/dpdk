@@ -49,8 +49,8 @@ struct virtio_user_dev {
 	int		*tapfds;
 
 	/* for both vhost_user and vhost_kernel */
-	int		callfds[VIRTIO_MAX_VIRTQUEUES * 2 + 1];
-	int		kickfds[VIRTIO_MAX_VIRTQUEUES * 2 + 1];
+	int		callfds[VIRTIO_MAX_VIRTQUEUES];
+	int		kickfds[VIRTIO_MAX_VIRTQUEUES];
 	int		mac_specified;
 	uint32_t	max_queue_pairs;
 	uint32_t	queue_pairs;
@@ -62,7 +62,7 @@ struct virtio_user_dev {
 	uint8_t		status;
 	uint8_t		mac_addr[ETHER_ADDR_LEN];
 	char		path[PATH_MAX];
-	struct vring	vrings[VIRTIO_MAX_VIRTQUEUES * 2 + 1];
+	struct vring	vrings[VIRTIO_MAX_VIRTQUEUES];
 	struct virtio_user_backend_ops *ops;
 };
 

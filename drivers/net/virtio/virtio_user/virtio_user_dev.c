@@ -237,7 +237,7 @@ virtio_user_dev_setup(struct virtio_user_dev *dev)
 	uint32_t i, q;
 
 	dev->vhostfd = -1;
-	for (i = 0; i < VIRTIO_MAX_VIRTQUEUES * 2 + 1; ++i) {
+	for (i = 0; i < VIRTIO_MAX_VIRTQUEUES; ++i) {
 		dev->kickfds[i] = -1;
 		dev->callfds[i] = -1;
 	}
