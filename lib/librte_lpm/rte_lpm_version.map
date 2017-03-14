@@ -34,3 +34,13 @@ DPDK_16.04 {
 	rte_lpm_delete_all;
 
 } DPDK_2.0;
+
+DPDK_17.05 {
+	global:
+
+	rte_lpm6_add;
+	rte_lpm6_is_rule_present;
+	rte_lpm6_lookup;
+	rte_lpm6_lookup_bulk_func;
+
+} DPDK_16.04;

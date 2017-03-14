@@ -86,7 +86,7 @@ test_lpm6_perf(void)
 	struct rte_lpm6_config config;
 	uint64_t begin, total_time;
 	unsigned i, j;
-	uint8_t next_hop_add = 0xAA, next_hop_return = 0;
+	uint32_t next_hop_add = 0xAA, next_hop_return = 0;
 	int status = 0;
 	int64_t count = 0;
 
@@ -148,7 +148,7 @@ test_lpm6_perf(void)
 	count = 0;
 
 	uint8_t ip_batch[NUM_IPS_ENTRIES][16];
-	int16_t next_hops[NUM_IPS_ENTRIES];
+	int32_t next_hops[NUM_IPS_ENTRIES];
 
 	for (i = 0; i < NUM_IPS_ENTRIES; i++)
 		memcpy(ip_batch[i], large_ips_table[i].ip, 16);

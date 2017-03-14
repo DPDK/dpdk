@@ -41,6 +41,9 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **Increased number of next hops for LPM IPv6 to 2^21.**
+
+  The next_hop field is extended from 8 bits to 21 bits for IPv6.
 
 * **Added powerpc support in pci probing for vfio-pci devices.**
 
@@ -114,6 +117,8 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* The LPM ``next_hop`` field is extended from 8 bits to 21 bits for IPv6
+  while keeping ABI compatibility.
 
 ABI Changes
 -----------

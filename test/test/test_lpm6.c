@@ -79,6 +79,7 @@ static int32_t test24(void);
 static int32_t test25(void);
 static int32_t test26(void);
 static int32_t test27(void);
+static int32_t test28(void);
 
 rte_lpm6_test tests6[] = {
 /* Test Cases */
@@ -110,6 +111,7 @@ rte_lpm6_test tests6[] = {
 	test25,
 	test26,
 	test27,
+	test28,
 };
 
 #define NUM_LPM6_TESTS                (sizeof(tests6)/sizeof(tests6[0]))
@@ -354,7 +356,7 @@ test6(void)
 	struct rte_lpm6 *lpm = NULL;
 	struct rte_lpm6_config config;
 	uint8_t ip[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-	uint8_t next_hop_return = 0;
+	uint32_t next_hop_return = 0;
 	int32_t status = 0;
 
 	config.max_rules = MAX_RULES;
@@ -392,7 +394,7 @@ test7(void)
 	struct rte_lpm6 *lpm = NULL;
 	struct rte_lpm6_config config;
 	uint8_t ip[10][16];
-	int16_t next_hop_return[10];
+	int32_t next_hop_return[10];
 	int32_t status = 0;
 
 	config.max_rules = MAX_RULES;
@@ -469,7 +471,8 @@ test9(void)
 	struct rte_lpm6 *lpm = NULL;
 	struct rte_lpm6_config config;
 	uint8_t ip[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-	uint8_t depth = 16, next_hop_add = 100, next_hop_return = 0;
+	uint8_t depth = 16;
+	uint32_t next_hop_add = 100, next_hop_return = 0;
 	int32_t status = 0;
 	uint8_t i;
 
@@ -513,7 +516,8 @@ test10(void)
 	struct rte_lpm6 *lpm = NULL;
 	struct rte_lpm6_config config;
 	uint8_t ip[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-	uint8_t depth, next_hop_add = 100;
+	uint8_t depth;
+	uint32_t next_hop_add = 100;
 	int32_t status = 0;
 	int i;
 
@@ -557,7 +561,8 @@ test11(void)
 	struct rte_lpm6 *lpm = NULL;
 	struct rte_lpm6_config config;
 	uint8_t ip[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-	uint8_t depth, next_hop_add = 100;
+	uint8_t depth;
+	uint32_t next_hop_add = 100;
 	int32_t status = 0;
 
 	config.max_rules = MAX_RULES;
@@ -617,7 +622,8 @@ test12(void)
 	struct rte_lpm6 *lpm = NULL;
 	struct rte_lpm6_config config;
 	uint8_t ip[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-	uint8_t depth, next_hop_add = 100;
+	uint8_t depth;
+	uint32_t next_hop_add = 100;
 	int32_t status = 0;
 
 	config.max_rules = MAX_RULES;
@@ -655,7 +661,8 @@ test13(void)
 	struct rte_lpm6 *lpm = NULL;
 	struct rte_lpm6_config config;
 	uint8_t ip[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-	uint8_t depth, next_hop_add = 100;
+	uint8_t depth;
+	uint32_t next_hop_add = 100;
 	int32_t status = 0;
 
 	config.max_rules = 2;
@@ -702,7 +709,8 @@ test14(void)
 	struct rte_lpm6 *lpm = NULL;
 	struct rte_lpm6_config config;
 	uint8_t ip[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-	uint8_t depth = 25, next_hop_add = 100;
+	uint8_t depth = 25;
+	uint32_t next_hop_add = 100;
 	int32_t status = 0;
 	int i;
 
@@ -748,7 +756,8 @@ test15(void)
 	struct rte_lpm6 *lpm = NULL;
 	struct rte_lpm6_config config;
 	uint8_t ip[] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-	uint8_t depth = 24, next_hop_add = 100, next_hop_return = 0;
+	uint8_t depth = 24;
+	uint32_t next_hop_add = 100, next_hop_return = 0;
 	int32_t status = 0;
 
 	config.max_rules = MAX_RULES;
@@ -784,7 +793,8 @@ test16(void)
 	struct rte_lpm6 *lpm = NULL;
 	struct rte_lpm6_config config;
 	uint8_t ip[] = {12,12,1,0,0,0,0,0,0,0,0,0,0,0,0,0};
-	uint8_t depth = 128, next_hop_add = 100, next_hop_return = 0;
+	uint8_t depth = 128;
+	uint32_t next_hop_add = 100, next_hop_return = 0;
 	int32_t status = 0;
 
 	config.max_rules = MAX_RULES;
@@ -828,7 +838,8 @@ test17(void)
 	uint8_t ip1[] = {127,255,255,255,255,255,255,255,255,
 			255,255,255,255,255,255,255};
 	uint8_t ip2[] = {128,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-	uint8_t depth, next_hop_add, next_hop_return;
+	uint8_t depth;
+	uint32_t next_hop_add, next_hop_return;
 	int32_t status = 0;
 
 	config.max_rules = MAX_RULES;
@@ -857,7 +868,7 @@ test17(void)
 
 	/* Loop with rte_lpm6_delete. */
 	for (depth = 16; depth >= 1; depth--) {
-		next_hop_add = (uint8_t) (depth - 1);
+		next_hop_add = (depth - 1);
 
 		status = rte_lpm6_delete(lpm, ip2, depth);
 		TEST_LPM_ASSERT(status == 0);
@@ -893,8 +904,9 @@ test18(void)
 	struct rte_lpm6 *lpm = NULL;
 	struct rte_lpm6_config config;
 	uint8_t ip[16], ip_1[16], ip_2[16];
-	uint8_t depth, depth_1, depth_2, next_hop_add, next_hop_add_1,
-		next_hop_add_2, next_hop_return;
+	uint8_t depth, depth_1, depth_2;
+	uint32_t next_hop_add, next_hop_add_1,
+			next_hop_add_2, next_hop_return;
 	int32_t status = 0;
 
 	config.max_rules = MAX_RULES;
@@ -1055,7 +1067,8 @@ test19(void)
 	struct rte_lpm6 *lpm = NULL;
 	struct rte_lpm6_config config;
 	uint8_t ip[16];
-	uint8_t depth, next_hop_add, next_hop_return;
+	uint8_t depth;
+	uint32_t next_hop_add, next_hop_return;
 	int32_t status = 0;
 
 	config.max_rules = MAX_RULES;
@@ -1253,7 +1266,8 @@ test20(void)
 	struct rte_lpm6 *lpm = NULL;
 	struct rte_lpm6_config config;
 	uint8_t ip[16];
-	uint8_t depth, next_hop_add, next_hop_return;
+	uint8_t depth;
+	uint32_t next_hop_add, next_hop_return;
 	int32_t status = 0;
 
 	config.max_rules = MAX_RULES;
@@ -1320,8 +1334,9 @@ test21(void)
 	struct rte_lpm6 *lpm = NULL;
 	struct rte_lpm6_config config;
 	uint8_t ip_batch[4][16];
-	uint8_t depth, next_hop_add;
-	int16_t next_hop_return[4];
+	uint8_t depth;
+	uint32_t next_hop_add;
+	int32_t next_hop_return[4];
 	int32_t status = 0;
 
 	config.max_rules = MAX_RULES;
@@ -1378,8 +1393,9 @@ test22(void)
 	struct rte_lpm6 *lpm = NULL;
 	struct rte_lpm6_config config;
 	uint8_t ip_batch[5][16];
-	uint8_t depth[5], next_hop_add;
-	int16_t next_hop_return[5];
+	uint8_t depth[5];
+	uint32_t next_hop_add;
+	int32_t next_hop_return[5];
 	int32_t status = 0;
 
 	config.max_rules = MAX_RULES;
@@ -1495,7 +1511,8 @@ test23(void)
 	struct rte_lpm6_config config;
 	uint32_t i;
 	uint8_t ip[16];
-	uint8_t depth, next_hop_add, next_hop_return;
+	uint8_t depth;
+	uint32_t next_hop_add, next_hop_return;
 	int32_t status = 0;
 
 	config.max_rules = MAX_RULES;
@@ -1579,7 +1596,8 @@ test25(void)
 	struct rte_lpm6_config config;
 	uint8_t ip[16];
 	uint32_t i;
-	uint8_t depth, next_hop_add, next_hop_return, next_hop_expected;
+	uint8_t depth;
+	uint32_t next_hop_add, next_hop_return, next_hop_expected;
 	int32_t status = 0;
 
 	config.max_rules = MAX_RULES;
@@ -1632,10 +1650,10 @@ test26(void)
 	uint8_t d_ip_10_32 = 32;
 	uint8_t	d_ip_10_24 = 24;
 	uint8_t	d_ip_20_25 = 25;
-	uint8_t next_hop_ip_10_32 = 100;
-	uint8_t	next_hop_ip_10_24 = 105;
-	uint8_t	next_hop_ip_20_25 = 111;
-	uint8_t next_hop_return = 0;
+	uint32_t next_hop_ip_10_32 = 100;
+	uint32_t next_hop_ip_10_24 = 105;
+	uint32_t next_hop_ip_20_25 = 111;
+	uint32_t next_hop_return = 0;
 	int32_t status = 0;
 
 	config.max_rules = MAX_RULES;
@@ -1650,7 +1668,7 @@ test26(void)
 		return -1;
 
 	status = rte_lpm6_lookup(lpm, ip_10_32, &next_hop_return);
-	uint8_t test_hop_10_32 = next_hop_return;
+	uint32_t test_hop_10_32 = next_hop_return;
 	TEST_LPM_ASSERT(status == 0);
 	TEST_LPM_ASSERT(next_hop_return == next_hop_ip_10_32);
 
@@ -1659,7 +1677,7 @@ test26(void)
 			return -1;
 
 	status = rte_lpm6_lookup(lpm, ip_10_24, &next_hop_return);
-	uint8_t test_hop_10_24 = next_hop_return;
+	uint32_t test_hop_10_24 = next_hop_return;
 	TEST_LPM_ASSERT(status == 0);
 	TEST_LPM_ASSERT(next_hop_return == next_hop_ip_10_24);
 
@@ -1668,7 +1686,7 @@ test26(void)
 		return -1;
 
 	status = rte_lpm6_lookup(lpm, ip_20_25, &next_hop_return);
-	uint8_t test_hop_20_25 = next_hop_return;
+	uint32_t test_hop_20_25 = next_hop_return;
 	TEST_LPM_ASSERT(status == 0);
 	TEST_LPM_ASSERT(next_hop_return == next_hop_ip_20_25);
 
@@ -1707,7 +1725,8 @@ test27(void)
 		struct rte_lpm6 *lpm = NULL;
 		struct rte_lpm6_config config;
 		uint8_t ip[] = {128,128,128,128,128,128,128,128,128,128,128,128,128,128,0,0};
-		uint8_t depth = 128, next_hop_add = 100, next_hop_return;
+		uint8_t depth = 128;
+		uint32_t next_hop_add = 100, next_hop_return;
 		int32_t status = 0;
 		int i, j;
 
@@ -1743,6 +1762,42 @@ test27(void)
 		rte_lpm6_free(lpm);
 
 		return PASS;
+}
+
+/*
+ * Call add, lookup and delete for a single rule with maximum 21bit next_hop
+ * size.
+ * Check that next_hop returned from lookup is equal to provisioned value.
+ * Delete the rule and check that the same test returs a miss.
+ */
+int32_t
+test28(void)
+{
+	struct rte_lpm6 *lpm = NULL;
+	struct rte_lpm6_config config;
+	uint8_t ip[] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+	uint8_t depth = 16;
+	uint32_t next_hop_add = 0x001FFFFF, next_hop_return = 0;
+	int32_t status = 0;
+
+	config.max_rules = MAX_RULES;
+	config.number_tbl8s = NUMBER_TBL8S;
+	config.flags = 0;
+
+	lpm = rte_lpm6_create(__func__, SOCKET_ID_ANY, &config);
+	TEST_LPM_ASSERT(lpm != NULL);
+
+	status = rte_lpm6_add(lpm, ip, depth, next_hop_add);
+	TEST_LPM_ASSERT(status == 0);
+
+	status = rte_lpm6_lookup(lpm, ip, &next_hop_return);
+	TEST_LPM_ASSERT((status == 0) && (next_hop_return == next_hop_add));
+
+	status = rte_lpm6_delete(lpm, ip, depth);
+	TEST_LPM_ASSERT(status == 0);
+	rte_lpm6_free(lpm);
+
+	return PASS;
 }
 
 /*

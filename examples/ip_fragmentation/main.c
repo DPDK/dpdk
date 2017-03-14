@@ -265,8 +265,8 @@ l3fwd_simple_forward(struct rte_mbuf *m, struct lcore_queue_conf *qconf,
 		uint8_t queueid, uint8_t port_in)
 {
 	struct rx_queue *rxq;
-	uint32_t i, len, next_hop_ipv4;
-	uint8_t next_hop_ipv6, port_out, ipv6;
+	uint32_t i, len, next_hop;
+	uint8_t port_out, ipv6;
 	int32_t len2;
 
 	ipv6 = 0;
@@ -290,9 +290,9 @@ l3fwd_simple_forward(struct rte_mbuf *m, struct lcore_queue_conf *qconf,
 		ip_dst = rte_be_to_cpu_32(ip_hdr->dst_addr);
 
 		/* Find destination port */
-		if (rte_lpm_lookup(rxq->lpm, ip_dst, &next_hop_ipv4) == 0 &&
-				(enabled_port_mask & 1 << next_hop_ipv4) != 0) {
-			port_out = next_hop_ipv4;
+		if (rte_lpm_lookup(rxq->lpm, ip_dst, &next_hop) == 0 &&
+				(enabled_port_mask & 1 << next_hop) != 0) {
+			port_out = next_hop;
 
 			/* Build transmission burst for new port */
 			len = qconf->tx_mbufs[port_out].len;
@@ -326,9 +326,10 @@ l3fwd_simple_forward(struct rte_mbuf *m, struct lcore_queue_conf *qconf,
 		ip_hdr = rte_pktmbuf_mtod(m, struct ipv6_hdr *);
 
 		/* Find destination port */
-		if (rte_lpm6_lookup(rxq->lpm6, ip_hdr->dst_addr, &next_hop_ipv6) == 0 &&
-				(enabled_port_mask & 1 << next_hop_ipv6) != 0) {
-			port_out = next_hop_ipv6;
+		if (rte_lpm6_lookup(rxq->lpm6, ip_hdr->dst_addr,
+						&next_hop) == 0 &&
+				(enabled_port_mask & 1 << next_hop) != 0) {
+			port_out = next_hop;
 
 			/* Build transmission burst for new port */
 			len = qconf->tx_mbufs[port_out].len;

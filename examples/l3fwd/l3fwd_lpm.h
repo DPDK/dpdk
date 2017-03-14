@@ -49,7 +49,7 @@ lpm_get_ipv4_dst_port(void *ipv4_hdr,  uint8_t portid, void *lookup_struct)
 static inline uint8_t
 lpm_get_ipv6_dst_port(void *ipv6_hdr,  uint8_t portid, void *lookup_struct)
 {
-	uint8_t next_hop;
+	uint32_t next_hop;
 	struct rte_lpm6 *ipv6_l3fwd_lookup_struct =
 		(struct rte_lpm6 *)lookup_struct;
 

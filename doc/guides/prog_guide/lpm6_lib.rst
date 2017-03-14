@@ -53,7 +53,7 @@ several thousand IPv6 rules, but the number can vary depending on the case.
 An LPM prefix is represented by a pair of parameters (128-bit key, depth), with depth in the range of 1 to 128.
 An LPM rule is represented by an LPM prefix and some user data associated with the prefix.
 The prefix serves as the unique identifier for the LPM rule.
-In this implementation, the user data is 1-byte long and is called "next hop",
+In this implementation, the user data is 21-bits long and is called "next hop",
 which corresponds to its main use of storing the ID of the next hop in a routing table entry.
 
 The main methods exported for the LPM component are:
