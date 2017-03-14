@@ -171,6 +171,15 @@ rte_intr_rx_ctl(struct rte_intr_handle *intr_handle,
 		int epfd, int op, unsigned int vec, void *data);
 
 /**
+ * It deletes registered eventfds.
+ *
+ * @param intr_handle
+ *   Pointer to the interrupt handle.
+ */
+void
+rte_intr_free_epoll_fd(struct rte_intr_handle *intr_handle);
+
+/**
  * It enables the packet I/O interrupt event if it's necessary.
  * It creates event fd for each interrupt vector when MSIX is used,
  * otherwise it multiplexes a single event fd.

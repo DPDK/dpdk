@@ -942,6 +942,8 @@ eal_intr_proc_rxtx_intr(int fd, const struct rte_intr_handle *intr_handle)
 		bytes_read = sizeof(buf.vfio_intr_count);
 		break;
 #endif
+	case RTE_INTR_HANDLE_EXT:
+		return;
 	default:
 		bytes_read = 1;
 		RTE_LOG(INFO, EAL, "unexpected intr type\n");
@@ -1170,6 +1172,24 @@ rte_intr_rx_ctl(struct rte_intr_handle *intr_handle, int epfd,
 	return rc;
 }
 
+void
+rte_intr_free_epoll_fd(struct rte_intr_handle *intr_handle)
+{
+	uint32_t i;
+	struct rte_epoll_event *rev;
+
+	for (i = 0; i < intr_handle->nb_efd; i++) {
+		rev = &intr_handle->elist[i];
+		if (rev->status == RTE_EPOLL_INVALID)
+			continue;
+		if (rte_epoll_ctl(rev->epfd, EPOLL_CTL_DEL, rev->fd, rev)) {
+			/* force free if the entry valid */
+			eal_epoll_data_safe_free(rev);
+			rev->status = RTE_EPOLL_INVALID;
+		}
+	}
+}
+
 int
 rte_intr_efd_enable(struct rte_intr_handle *intr_handle, uint32_t nb_efd)
 {
@@ -1205,19 +1225,8 @@ void
 rte_intr_efd_disable(struct rte_intr_handle *intr_handle)
 {
 	uint32_t i;
-	struct rte_epoll_event *rev;
 
-	for (i = 0; i < intr_handle->nb_efd; i++) {
-		rev = &intr_handle->elist[i];
-		if (rev->status == RTE_EPOLL_INVALID)
-			continue;
-		if (rte_epoll_ctl(rev->epfd, EPOLL_CTL_DEL, rev->fd, rev)) {
-			/* force free if the entry valid */
-			eal_epoll_data_safe_free(rev);
-			rev->status = RTE_EPOLL_INVALID;
-		}
-	}
-
+	rte_intr_free_epoll_fd(intr_handle);
 	if (intr_handle->max_intr > intr_handle->nb_efd) {
 		for (i = 0; i < intr_handle->nb_efd; i++)
 			close(intr_handle->efds[i]);

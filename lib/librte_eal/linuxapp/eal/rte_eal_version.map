@@ -186,3 +186,10 @@ DPDK_17.02 {
 	rte_bus_unregister;
 
 } DPDK_16.11;
+
+DPDK_17.05 {
+	global:
+
+	rte_intr_free_epoll_fd;
+
+} DPDK_17.02;
