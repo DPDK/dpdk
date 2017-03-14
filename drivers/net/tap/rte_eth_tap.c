@@ -43,7 +43,6 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <unistd.h>
-#include <poll.h>
 #include <arpa/inet.h>
 #include <linux/if.h>
 #include <linux/if_tun.h>
@@ -242,7 +241,6 @@ pmd_tx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 {
 	struct rte_mbuf *mbuf;
 	struct tx_queue *txq = queue;
-	struct pollfd pfd;
 	uint16_t num_tx = 0;
 	unsigned long num_tx_bytes = 0;
 	int i, n;
@@ -250,26 +248,18 @@ pmd_tx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	if (unlikely(nb_pkts == 0))
 		return 0;
 
-	pfd.events = POLLOUT;
-	pfd.fd = txq->fd;
 	for (i = 0; i < nb_pkts; i++) {
-		n = poll(&pfd, 1, 0);
-
+		/* copy the tx frame data */
+		mbuf = bufs[num_tx];
+		n = write(txq->fd,
+			  rte_pktmbuf_mtod(mbuf, void *),
+			  rte_pktmbuf_pkt_len(mbuf));
 		if (n <= 0)
 			break;
 
-		if (pfd.revents & POLLOUT) {
-			/* copy the tx frame data */
-			mbuf = bufs[num_tx];
-			n = write(pfd.fd, rte_pktmbuf_mtod(mbuf, void*),
-				  rte_pktmbuf_pkt_len(mbuf));
-			if (n <= 0)
-				break;
-
-			num_tx++;
-			num_tx_bytes += mbuf->pkt_len;
-			rte_pktmbuf_free(mbuf);
-		}
+		num_tx++;
+		num_tx_bytes += mbuf->pkt_len;
+		rte_pktmbuf_free(mbuf);
 	}
 
 	txq->stats.opackets += num_tx;
