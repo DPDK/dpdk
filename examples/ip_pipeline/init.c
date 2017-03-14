@@ -329,16 +329,14 @@ app_init_mempool(struct app_params *app)
 		struct app_mempool_params *p = &app->mempool_params[i];
 
 		APP_LOG(app, HIGH, "Initializing %s ...", p->name);
-		app->mempool[i] = rte_mempool_create(
-				p->name,
-				p->pool_size,
-				p->buffer_size,
-				p->cache_size,
-				sizeof(struct rte_pktmbuf_pool_private),
-				rte_pktmbuf_pool_init, NULL,
-				rte_pktmbuf_init, NULL,
-				p->cpu_socket_id,
-				0);
+		app->mempool[i] = rte_pktmbuf_pool_create(
+			p->name,
+			p->pool_size,
+			p->cache_size,
+			0, /* priv_size */
+			p->buffer_size -
+				sizeof(struct rte_mbuf), /* mbuf data size */
+			p->cpu_socket_id);
 
 		if (app->mempool[i] == NULL)
 			rte_panic("%s init error\n", p->name);

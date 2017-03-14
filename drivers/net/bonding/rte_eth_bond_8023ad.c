@@ -888,8 +888,8 @@ bond_mode_8023ad_activate_slave(struct rte_eth_dev *bond_dev, uint8_t slave_id)
 	RTE_ASSERT(port->tx_ring == NULL);
 	socket_id = rte_eth_devices[slave_id].data->numa_node;
 
-	element_size = sizeof(struct slow_protocol_frame) + sizeof(struct rte_mbuf)
-				+ RTE_PKTMBUF_HEADROOM;
+	element_size = sizeof(struct slow_protocol_frame) +
+				RTE_PKTMBUF_HEADROOM;
 
 	/* The size of the mempool should be at least:
 	 * the sum of the TX descriptors + BOND_MODE_8023AX_SLAVE_TX_PKTS */
@@ -900,11 +900,10 @@ bond_mode_8023ad_activate_slave(struct rte_eth_dev *bond_dev, uint8_t slave_id)
 	}
 
 	snprintf(mem_name, RTE_DIM(mem_name), "slave_port%u_pool", slave_id);
-	port->mbuf_pool = rte_mempool_create(mem_name,
-		total_tx_desc, element_size,
-		RTE_MEMPOOL_CACHE_MAX_SIZE >= 32 ? 32 : RTE_MEMPOOL_CACHE_MAX_SIZE,
-		sizeof(struct rte_pktmbuf_pool_private), rte_pktmbuf_pool_init,
-		NULL, rte_pktmbuf_init, NULL, socket_id, MEMPOOL_F_NO_SPREAD);
+	port->mbuf_pool = rte_pktmbuf_pool_create(mem_name, total_tx_desc,
+		RTE_MEMPOOL_CACHE_MAX_SIZE >= 32 ?
+			32 : RTE_MEMPOOL_CACHE_MAX_SIZE,
+		0, element_size, socket_id);
 
 	/* Any memory allocation failure in initalization is critical because
 	 * resources can't be free, so reinitialization is impossible. */

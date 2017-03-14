@@ -62,7 +62,7 @@
 
 /*
  * ctrlmbuf constructor, given as a callback function to
- * rte_mempool_create()
+ * rte_mempool_obj_iter() or rte_mempool_create()
  */
 void
 rte_ctrlmbuf_init(struct rte_mempool *mp,
@@ -77,7 +77,8 @@ rte_ctrlmbuf_init(struct rte_mempool *mp,
 
 /*
  * pktmbuf pool constructor, given as a callback function to
- * rte_mempool_create()
+ * rte_mempool_create(), or called directly if using
+ * rte_mempool_create_empty()/rte_mempool_populate()
  */
 void
 rte_pktmbuf_pool_init(struct rte_mempool *mp, void *opaque_arg)
@@ -110,7 +111,7 @@ rte_pktmbuf_pool_init(struct rte_mempool *mp, void *opaque_arg)
 
 /*
  * pktmbuf constructor, given as a callback function to
- * rte_mempool_create().
+ * rte_mempool_obj_iter() or rte_mempool_create().
  * Set the fields of a packet mbuf to their default values.
  */
 void

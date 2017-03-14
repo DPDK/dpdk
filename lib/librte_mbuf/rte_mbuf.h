@@ -44,6 +44,13 @@
  * buffers. The message buffers are stored in a mempool, using the
  * RTE mempool library.
  *
+ * The preferred way to create a mbuf pool is to use
+ * rte_pktmbuf_pool_create(). However, in some situations, an
+ * application may want to have more control (ex: populate the pool with
+ * specific memory), in this case it is possible to use functions from
+ * rte_mempool. See how rte_pktmbuf_pool_create() is implemented for
+ * details.
+ *
  * This library provides an API to allocate/free packet mbufs, which are
  * used to carry network packets.
  *
@@ -812,14 +819,14 @@ __rte_mbuf_raw_free(struct rte_mbuf *m)
  * This function initializes some fields in an mbuf structure that are
  * not modified by the user once created (mbuf type, origin pool, buffer
  * start address, and so on). This function is given as a callback function
- * to rte_mempool_create() at pool creation time.
+ * to rte_mempool_obj_iter() or rte_mempool_create() at pool creation time.
  *
  * @param mp
  *   The mempool from which the mbuf is allocated.
  * @param opaque_arg
  *   A pointer that can be used by the user to retrieve useful information
- *   for mbuf initialization. This pointer comes from the ``init_arg``
- *   parameter of rte_mempool_create().
+ *   for mbuf initialization. This pointer is the opaque argument passed to
+ *   rte_mempool_obj_iter() or rte_mempool_create().
  * @param m
  *   The mbuf to initialize.
  * @param i
@@ -893,14 +900,14 @@ rte_is_ctrlmbuf(struct rte_mbuf *m)
  * This function initializes some fields in the mbuf structure that are
  * not modified by the user once created (origin pool, buffer start
  * address, and so on). This function is given as a callback function to
- * rte_mempool_create() at pool creation time.
+ * rte_mempool_obj_iter() or rte_mempool_create() at pool creation time.
  *
  * @param mp
  *   The mempool from which mbufs originate.
  * @param opaque_arg
  *   A pointer that can be used by the user to retrieve useful information
- *   for mbuf initialization. This pointer comes from the ``init_arg``
- *   parameter of rte_mempool_create().
+ *   for mbuf initialization. This pointer is the opaque argument passed to
+ *   rte_mempool_obj_iter() or rte_mempool_create().
  * @param m
  *   The mbuf to initialize.
  * @param i
@@ -915,7 +922,8 @@ void rte_pktmbuf_init(struct rte_mempool *mp, void *opaque_arg,
  *
  * This function initializes the mempool private data in the case of a
  * pktmbuf pool. This private data is needed by the driver. The
- * function is given as a callback function to rte_mempool_create() at
+ * function must be called on the mempool before it is used, or it
+ * can be given as a callback function to rte_mempool_create() at
  * pool creation. It can be extended by the user, for example, to
  * provide another packet size.
  *
@@ -923,8 +931,8 @@ void rte_pktmbuf_init(struct rte_mempool *mp, void *opaque_arg,
  *   The mempool from which mbufs originate.
  * @param opaque_arg
  *   A pointer that can be used by the user to retrieve useful information
- *   for mbuf initialization. This pointer comes from the ``init_arg``
- *   parameter of rte_mempool_create().
+ *   for mbuf initialization. This pointer is the opaque argument passed to
+ *   rte_mempool_create().
  */
 void rte_pktmbuf_pool_init(struct rte_mempool *mp, void *opaque_arg);
 
@@ -932,8 +940,7 @@ void rte_pktmbuf_pool_init(struct rte_mempool *mp, void *opaque_arg);
  * Create a mbuf pool.
  *
  * This function creates and initializes a packet mbuf pool. It is
- * a wrapper to rte_mempool_create() with the proper packet constructor
- * and mempool constructor.
+ * a wrapper to rte_mempool functions.
  *
  * @param name
  *   The name of the mbuf pool.

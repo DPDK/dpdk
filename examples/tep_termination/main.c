@@ -68,7 +68,7 @@
 				(nb_switching_cores * MBUF_CACHE_SIZE))
 
 #define MBUF_CACHE_SIZE 128
-#define MBUF_SIZE (2048 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
+#define MBUF_DATA_SIZE RTE_MBUF_DEFAULT_BUF_SIZE
 
 #define MAX_PKT_BURST 32	/* Max burst size for RX/TX */
 #define BURST_TX_DRAIN_US 100	/* TX drain every ~100us */
@@ -1199,15 +1199,13 @@ main(int argc, char *argv[])
 			MAX_SUP_PORTS);
 	}
 	/* Create the mbuf pool. */
-	mbuf_pool = rte_mempool_create(
+	mbuf_pool = rte_pktmbuf_pool_create(
 			"MBUF_POOL",
-			NUM_MBUFS_PER_PORT
-			* valid_nb_ports,
-			MBUF_SIZE, MBUF_CACHE_SIZE,
-			sizeof(struct rte_pktmbuf_pool_private),
-			rte_pktmbuf_pool_init, NULL,
-			rte_pktmbuf_init, NULL,
-			rte_socket_id(), 0);
+			NUM_MBUFS_PER_PORT * valid_nb_ports,
+			MBUF_CACHE_SIZE,
+			0,
+			MBUF_DATA_SIZE,
+			rte_socket_id());
 	if (mbuf_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot create mbuf pool\n");
 

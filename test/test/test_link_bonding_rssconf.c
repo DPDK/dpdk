@@ -67,7 +67,7 @@
 #define SLAVE_RXTX_QUEUE_FMT      ("rssconf_slave%d_q%d")
 
 #define NUM_MBUFS 8191
-#define MBUF_SIZE (1600 + sizeof(struct rte_mbuf) + RTE_PKTMBUF_HEADROOM)
+#define MBUF_SIZE (1600 + RTE_PKTMBUF_HEADROOM)
 #define MBUF_CACHE_SIZE 250
 #define BURST_SIZE 32
 
@@ -536,13 +536,12 @@ test_setup(void)
 
 	if (test_params.mbuf_pool == NULL) {
 
-		test_params.mbuf_pool = rte_mempool_create("RSS_MBUF_POOL", NUM_MBUFS *
-				SLAVE_COUNT, MBUF_SIZE, MBUF_CACHE_SIZE,
-				sizeof(struct rte_pktmbuf_pool_private), rte_pktmbuf_pool_init,
-				NULL, rte_pktmbuf_init, NULL, rte_socket_id(), 0);
+		test_params.mbuf_pool = rte_pktmbuf_pool_create(
+			"RSS_MBUF_POOL", NUM_MBUFS * SLAVE_COUNT,
+			MBUF_CACHE_SIZE, 0, MBUF_SIZE, rte_socket_id());
 
 		TEST_ASSERT(test_params.mbuf_pool != NULL,
-				"rte_mempool_create failed\n");
+				"rte_pktmbuf_pool_create failed\n");
 	}
 
 	/* Create / initialize ring eth devs. */

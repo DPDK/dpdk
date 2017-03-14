@@ -193,36 +193,25 @@ and the application to store network packet data:
 .. code-block:: c
 
     /* create the mbuf pool */
-    l2fwd_pktmbuf_pool =
-        rte_mempool_create("mbuf_pool", NB_MBUF,
-                   MBUF_SIZE, 32,
-                   sizeof(struct rte_pktmbuf_pool_private),
-                   rte_pktmbuf_pool_init, NULL,
-                   rte_pktmbuf_init, NULL,
-                   rte_socket_id(), 0);
+    l2fwd_pktmbuf_pool = rte_pktmbuf_pool_create("mbuf_pool", NB_MBUF,
+		MEMPOOL_CACHE_SIZE, 0, RTE_MBUF_DEFAULT_BUF_SIZE,
+		rte_socket_id());
 
     if (l2fwd_pktmbuf_pool == NULL)
         rte_exit(EXIT_FAILURE, "Cannot init mbuf pool\n");
 
 The rte_mempool is a generic structure used to handle pools of objects.
-In this case, it is necessary to create a pool that will be used by the driver,
-which expects to have some reserved space in the mempool structure,
-sizeof(struct rte_pktmbuf_pool_private) bytes.
-The number of allocated pkt mbufs is NB_MBUF, with a size of MBUF_SIZE each.
-A per-lcore cache of 32 mbufs is kept.
+In this case, it is necessary to create a pool that will be used by the driver.
+The number of allocated pkt mbufs is NB_MBUF, with a data room size of
+RTE_MBUF_DEFAULT_BUF_SIZE each.
+A per-lcore cache of MEMPOOL_CACHE_SIZE mbufs is kept.
 The memory is allocated in rte_socket_id() socket,
 but it is possible to extend this code to allocate one mbuf pool per socket.
 
-Two callback pointers are also given to the rte_mempool_create() function:
-
-*   The first callback pointer is to rte_pktmbuf_pool_init() and is used
-    to initialize the private data of the mempool, which is needed by the driver.
-    This function is provided by the mbuf API, but can be copied and extended by the developer.
-
-*   The second callback pointer given to rte_mempool_create() is the mbuf initializer.
-    The default is used, that is, rte_pktmbuf_init(), which is provided in the rte_mbuf library.
-    If a more complex application wants to extend the rte_pktmbuf structure for its own needs,
-    a new function derived from rte_pktmbuf_init( ) can be created.
+The rte_pktmbuf_pool_create() function uses the default mbuf pool and mbuf
+initializers, respectively rte_pktmbuf_pool_init() and rte_pktmbuf_init().
+An advanced application may want to use the mempool API to create the
+mbuf pool with more control.
 
 Driver Initialization
 ~~~~~~~~~~~~~~~~~~~~~

@@ -171,15 +171,8 @@ used by the application:
 
 .. code-block:: c
 
-    mbuf_pool = rte_mempool_create("MBUF_POOL",
-                                   NUM_MBUFS * nb_ports,
-                                   MBUF_SIZE,
-                                   MBUF_CACHE_SIZE,
-                                   sizeof(struct rte_pktmbuf_pool_private),
-                                   rte_pktmbuf_pool_init, NULL,
-                                   rte_pktmbuf_init,      NULL,
-                                   rte_socket_id(),
-                                   0);
+    mbuf_pool = rte_pktmbuf_pool_create("MBUF_POOL", NUM_MBUFS * nb_ports,
+           MBUF_CACHE_SIZE, 0, RTE_MBUF_DEFAULT_BUF_SIZE, rte_socket_id());
 
 Mbufs are the packet buffer structure used by DPDK. They are explained in
 detail in the "Mbuf Library" section of the *DPDK Programmer's Guide*.
