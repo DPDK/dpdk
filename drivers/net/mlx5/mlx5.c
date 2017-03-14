@@ -227,6 +227,8 @@ static const struct eth_dev_ops mlx5_dev_ops = {
 	.filter_ctrl = mlx5_dev_filter_ctrl,
 	.rx_descriptor_status = mlx5_rx_descriptor_status,
 	.tx_descriptor_status = mlx5_tx_descriptor_status,
+	.rx_queue_intr_enable = mlx5_rx_intr_enable,
+	.rx_queue_intr_disable = mlx5_rx_intr_disable,
 };
 
 static struct {

@@ -130,6 +130,11 @@ mlx5_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 		/usr/include/linux/ethtool.h \
 		enum ETHTOOL_LINK_MODE_100000baseKR4_Full_BIT \
 		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_UPDATE_CQ_CI \
+		infiniband/mlx5_hw.h \
+		func ibv_mlx5_exp_update_cq_ci \
+		$(AUTOCONF_OUTPUT)
 
 # Create mlx5_autoconf.h or update it in case it differs from the new one.
 

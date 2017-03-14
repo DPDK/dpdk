@@ -138,6 +138,7 @@ struct rxq_ctrl {
 	struct ibv_mr *mr; /* Memory Region (for mp). */
 	struct ibv_exp_wq_family *if_wq; /* WQ burst interface. */
 	struct ibv_exp_cq_family_v1 *if_cq; /* CQ interface. */
+	struct ibv_comp_channel *channel;
 	unsigned int socket; /* CPU socket ID for allocations. */
 	struct rxq rxq; /* Data path structure. */
 };
@@ -299,6 +300,10 @@ int priv_create_hash_rxqs(struct priv *);
 void priv_destroy_hash_rxqs(struct priv *);
 int priv_allow_flow_type(struct priv *, enum hash_rxq_flow_type);
 int priv_rehash_flows(struct priv *);
+int priv_intr_efd_enable(struct priv *priv);
+void priv_intr_efd_disable(struct priv *priv);
+int priv_create_intr_vec(struct priv *priv);
+void priv_destroy_intr_vec(struct priv *priv);
 void rxq_cleanup(struct rxq_ctrl *);
 int rxq_rehash(struct rte_eth_dev *, struct rxq_ctrl *);
 int rxq_ctrl_setup(struct rte_eth_dev *, struct rxq_ctrl *, uint16_t,
@@ -329,6 +334,8 @@ uint16_t removed_tx_burst(void *, struct rte_mbuf **, uint16_t);
 uint16_t removed_rx_burst(void *, struct rte_mbuf **, uint16_t);
 int mlx5_rx_descriptor_status(void *, uint16_t);
 int mlx5_tx_descriptor_status(void *, uint16_t);
+int mlx5_rx_intr_enable(struct rte_eth_dev *dev, uint16_t rx_queue_id);
+int mlx5_rx_intr_disable(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 
 /* mlx5_mr.c */
 

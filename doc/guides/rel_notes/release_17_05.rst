@@ -84,6 +84,11 @@ New Features
   Added support for Hardware TSO for tunneled and non-tunneled packets.
   Tunneling protocols supported are GRE and VXLAN.
 
+* **Added support for Rx interrupts on mlx5 driver.**
+
+  Rx queues can be armed with an interrupt which will trigger on the
+  next packet arrival.
+
 * **Updated the sfc_efx driver.**
 
   * Generic flow API support for Ethernet, VLAN, IPv4, IPv6, UDP and TCP

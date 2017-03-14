@@ -36,6 +36,7 @@
 #include <errno.h>
 #include <string.h>
 #include <stdint.h>
+#include <fcntl.h>
 
 /* Verbs header. */
 /* ISO C doesn't support unnamed structs/unions, disabling -pedantic. */
@@ -57,6 +58,7 @@
 #include <rte_malloc.h>
 #include <rte_ethdev.h>
 #include <rte_common.h>
+#include <rte_interrupts.h>
 #ifdef PEDANTIC
 #pragma GCC diagnostic error "-Wpedantic"
 #endif
@@ -773,6 +775,8 @@ rxq_cleanup(struct rxq_ctrl *rxq_ctrl)
 		claim_zero(ibv_exp_destroy_wq(rxq_ctrl->wq));
 	if (rxq_ctrl->cq != NULL)
 		claim_zero(ibv_destroy_cq(rxq_ctrl->cq));
+	if (rxq_ctrl->channel != NULL)
+		claim_zero(ibv_destroy_comp_channel(rxq_ctrl->channel));
 	if (rxq_ctrl->rd != NULL) {
 		struct ibv_exp_destroy_res_domain_attr attr = {
 			.comp_mask = 0,
@@ -1014,6 +1018,16 @@ rxq_ctrl_setup(struct rte_eth_dev *dev, struct rxq_ctrl *rxq_ctrl,
 		      (void *)dev, strerror(ret));
 		goto error;
 	}
+	if (dev->data->dev_conf.intr_conf.rxq) {
+		tmpl.channel = ibv_create_comp_channel(priv->ctx);
+		if (tmpl.channel == NULL) {
+			dev->data->dev_conf.intr_conf.rxq = 0;
+			ret = ENOMEM;
+			ERROR("%p: Comp Channel creation failure: %s",
+			(void *)dev, strerror(ret));
+			goto error;
+		}
+	}
 	attr.cq = (struct ibv_exp_cq_init_attr){
 		.comp_mask = IBV_EXP_CQ_INIT_ATTR_RES_DOMAIN,
 		.res_domain = tmpl.rd,
@@ -1023,7 +1037,7 @@ rxq_ctrl_setup(struct rte_eth_dev *dev, struct rxq_ctrl *rxq_ctrl,
 		attr.cq.flags |= IBV_EXP_CQ_COMPRESSED_CQE;
 		cqe_n = (desc * 2) - 1; /* Double the number of CQEs. */
 	}
-	tmpl.cq = ibv_exp_create_cq(priv->ctx, cqe_n, NULL, NULL, 0,
+	tmpl.cq = ibv_exp_create_cq(priv->ctx, cqe_n, NULL, tmpl.channel, 0,
 				    &attr.cq);
 	if (tmpl.cq == NULL) {
 		ret = ENOMEM;
@@ -1346,4 +1360,114 @@ mlx5_rx_burst_secondary_setup(void *dpdk_rxq, struct rte_mbuf **pkts,
 		return 0;
 	rxq = (*priv->rxqs)[index];
 	return priv->dev->rx_pkt_burst(rxq, pkts, pkts_n);
+}
+
+/**
+ * Fill epoll fd list for rxq interrupts.
+ *
+ * @param priv
+ *   Private structure.
+ *
+ * @return
+ *   0 on success, negative on failure.
+ */
+int
+priv_intr_efd_enable(struct priv *priv)
+{
+	unsigned int i;
+	unsigned int rxqs_n = priv->rxqs_n;
+	unsigned int n = RTE_MIN(rxqs_n, (uint32_t)RTE_MAX_RXTX_INTR_VEC_ID);
+	struct rte_intr_handle *intr_handle = priv->dev->intr_handle;
+
+	if (n == 0)
+		return 0;
+	if (n < rxqs_n) {
+		WARN("rxqs num is larger than EAL max interrupt vector "
+		     "%u > %u unable to supprt rxq interrupts",
+		     rxqs_n, (uint32_t)RTE_MAX_RXTX_INTR_VEC_ID);
+		return -EINVAL;
+	}
+	intr_handle->type = RTE_INTR_HANDLE_EXT;
+	for (i = 0; i != n; ++i) {
+		struct rxq *rxq = (*priv->rxqs)[i];
+		struct rxq_ctrl *rxq_ctrl =
+			container_of(rxq, struct rxq_ctrl, rxq);
+		int fd = rxq_ctrl->channel->fd;
+		int flags;
+		int rc;
+
+		flags = fcntl(fd, F_GETFL);
+		rc = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+		if (rc < 0) {
+			WARN("failed to change rxq interrupt file "
+			     "descriptor %d for queue index %d", fd, i);
+			return -1;
+		}
+		intr_handle->efds[i] = fd;
+	}
+	intr_handle->nb_efd = n;
+	return 0;
+}
+
+/**
+ * Clean epoll fd list for rxq interrupts.
+ *
+ * @param priv
+ *   Private structure.
+ */
+void
+priv_intr_efd_disable(struct priv *priv)
+{
+	struct rte_intr_handle *intr_handle = priv->dev->intr_handle;
+
+	rte_intr_free_epoll_fd(intr_handle);
+}
+
+/**
+ * Create and init interrupt vector array.
+ *
+ * @param priv
+ *   Private structure.
+ *
+ * @return
+ *   0 on success, negative on failure.
+ */
+int
+priv_create_intr_vec(struct priv *priv)
+{
+	unsigned int rxqs_n = priv->rxqs_n;
+	unsigned int i;
+	struct rte_intr_handle *intr_handle = priv->dev->intr_handle;
+
+	if (rxqs_n == 0)
+		return 0;
+	intr_handle->intr_vec = (int *)
+		rte_malloc("intr_vec", rxqs_n * sizeof(int), 0);
+	if (intr_handle->intr_vec == NULL) {
+		WARN("Failed to allocate memory for intr_vec "
+		     "rxq interrupt will not be supported");
+		return -ENOMEM;
+	}
+	for (i = 0; i != rxqs_n; ++i) {
+		/* 1:1 mapping between rxq and interrupt. */
+		intr_handle->intr_vec[i] = RTE_INTR_VEC_RXTX_OFFSET + i;
+	}
+	return 0;
+}
+
+/**
+ * Destroy init interrupt vector array.
+ *
+ * @param priv
+ *   Private structure.
+ *
+ * @return
+ *   0 on success, negative on failure.
+ */
+void
+priv_destroy_intr_vec(struct priv *priv)
+{
+	struct rte_intr_handle *intr_handle = priv->dev->intr_handle;
+
+	rte_free(intr_handle->intr_vec);
 }
