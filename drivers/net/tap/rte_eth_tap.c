@@ -750,6 +750,18 @@ tap_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	return err;
 }
 
+static int
+tap_set_mc_addr_list(struct rte_eth_dev *dev __rte_unused,
+		     struct ether_addr *mc_addr_set __rte_unused,
+		     uint32_t nb_mc_addr __rte_unused)
+{
+	/*
+	 * Nothing to do actually: the tap has no filtering whatsoever, every
+	 * packet is received.
+	 */
+	return 0;
+}
+
 static const struct eth_dev_ops ops = {
 	.dev_start              = tap_dev_start,
 	.dev_stop               = tap_dev_stop,
@@ -769,6 +781,7 @@ static const struct eth_dev_ops ops = {
 	.allmulticast_disable   = tap_allmulti_disable,
 	.mac_addr_set           = tap_mac_set,
 	.mtu_set                = tap_mtu_set,
+	.set_mc_addr_list       = tap_set_mc_addr_list,
 	.stats_get              = tap_stats_get,
 	.stats_reset            = tap_stats_reset,
 };
