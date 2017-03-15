@@ -38,6 +38,7 @@
 #include <rte_malloc.h>
 #include <rte_vdev.h>
 #include <rte_kvargs.h>
+#include <rte_net.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -285,6 +286,8 @@ pmd_rx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		mbuf->data_len = len;
 		mbuf->pkt_len = len;
 		mbuf->port = rxq->in_port;
+		mbuf->packet_type = rte_net_get_ptype(mbuf, NULL,
+						      RTE_PTYPE_ALL_MASK);
 
 		/* account for the receive frame */
 		bufs[num_rx++] = mbuf;
@@ -762,6 +765,37 @@ tap_set_mc_addr_list(struct rte_eth_dev *dev __rte_unused,
 	return 0;
 }
 
+static const uint32_t*
+tap_dev_supported_ptypes_get(struct rte_eth_dev *dev __rte_unused)
+{
+	static const uint32_t ptypes[] = {
+		RTE_PTYPE_INNER_L2_ETHER,
+		RTE_PTYPE_INNER_L2_ETHER_VLAN,
+		RTE_PTYPE_INNER_L2_ETHER_QINQ,
+		RTE_PTYPE_INNER_L3_IPV4,
+		RTE_PTYPE_INNER_L3_IPV4_EXT,
+		RTE_PTYPE_INNER_L3_IPV6,
+		RTE_PTYPE_INNER_L3_IPV6_EXT,
+		RTE_PTYPE_INNER_L4_FRAG,
+		RTE_PTYPE_INNER_L4_UDP,
+		RTE_PTYPE_INNER_L4_TCP,
+		RTE_PTYPE_INNER_L4_SCTP,
+		RTE_PTYPE_L2_ETHER,
+		RTE_PTYPE_L2_ETHER_VLAN,
+		RTE_PTYPE_L2_ETHER_QINQ,
+		RTE_PTYPE_L3_IPV4,
+		RTE_PTYPE_L3_IPV4_EXT,
+		RTE_PTYPE_L3_IPV6_EXT,
+		RTE_PTYPE_L3_IPV6,
+		RTE_PTYPE_L4_FRAG,
+		RTE_PTYPE_L4_UDP,
+		RTE_PTYPE_L4_TCP,
+		RTE_PTYPE_L4_SCTP,
+	};
+
+	return ptypes;
+}
+
 static const struct eth_dev_ops ops = {
 	.dev_start              = tap_dev_start,
 	.dev_stop               = tap_dev_stop,
@@ -784,6 +818,7 @@ static const struct eth_dev_ops ops = {
 	.set_mc_addr_list       = tap_set_mc_addr_list,
 	.stats_get              = tap_stats_get,
 	.stats_reset            = tap_stats_reset,
+	.dev_supported_ptypes_get = tap_dev_supported_ptypes_get,
 };
 
 static int
