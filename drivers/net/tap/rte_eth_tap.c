@@ -127,6 +127,10 @@ tap_trigger_cb(int sig __rte_unused)
 	tap_trigger = (tap_trigger + 1) | 0x80000000;
 }
 
+static int
+tap_ioctl(struct pmd_internals *pmd, unsigned long request,
+	  struct ifreq *ifr, int set);
+
 /* Tun/Tap allocation routine
  *
  * name is the number of the interface to use, unless NULL to take the host
@@ -229,13 +233,12 @@ tun_alloc(struct pmd_internals *pmd, uint16_t qid)
 	}
 
 	if (qid == 0) {
-		if (ioctl(fd, SIOCGIFHWADDR, &ifr) == -1) {
-			RTE_LOG(ERR, PMD, "ioctl failed (SIOCGIFHWADDR) (%s)\n",
-				ifr.ifr_name);
-			goto error;
-		}
+		struct ifreq ifr;
 
-		rte_memcpy(&pmd->eth_addr, ifr.ifr_hwaddr.sa_data, ETH_ALEN);
+		if (tap_ioctl(pmd, SIOCGIFHWADDR, &ifr, 0) < 0)
+			goto error;
+		rte_memcpy(&pmd->eth_addr, ifr.ifr_hwaddr.sa_data,
+			   ETHER_ADDR_LEN);
 	}
 
 	return fd;
@@ -344,6 +347,9 @@ tap_ioctl(struct pmd_internals *pmd, unsigned long request,
 			ifr->ifr_flags |= req_flags;
 		else
 			ifr->ifr_flags &= ~req_flags;
+		break;
+	case SIOCGIFHWADDR:
+	case SIOCSIFHWADDR:
 		break;
 	default:
 		RTE_LOG(WARNING, PMD, "%s: ioctl() called with wrong arg\n",
@@ -547,6 +553,26 @@ tap_allmulti_disable(struct rte_eth_dev *dev)
 	tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 0);
 }
 
+
+static void
+tap_mac_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
+{
+	struct pmd_internals *pmd = dev->data->dev_private;
+	struct ifreq ifr;
+
+	if (is_zero_ether_addr(mac_addr)) {
+		RTE_LOG(ERR, PMD, "%s: can't set an empty MAC address\n",
+			dev->data->name);
+		return;
+	}
+
+	ifr.ifr_hwaddr.sa_family = AF_LOCAL;
+	rte_memcpy(ifr.ifr_hwaddr.sa_data, mac_addr, ETHER_ADDR_LEN);
+	if (tap_ioctl(pmd, SIOCSIFHWADDR, &ifr, 1) < 0)
+		return;
+	rte_memcpy(&pmd->eth_addr, mac_addr, ETHER_ADDR_LEN);
+}
+
 static int
 tap_setup_queue(struct rte_eth_dev *dev,
 		struct pmd_internals *internals,
@@ -682,6 +708,7 @@ static const struct eth_dev_ops ops = {
 	.promiscuous_disable    = tap_promisc_disable,
 	.allmulticast_enable    = tap_allmulti_enable,
 	.allmulticast_disable   = tap_allmulti_disable,
+	.mac_addr_set           = tap_mac_set,
 	.stats_get              = tap_stats_get,
 	.stats_reset            = tap_stats_reset,
 };
