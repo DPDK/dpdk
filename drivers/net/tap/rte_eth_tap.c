@@ -407,6 +407,40 @@ tap_dev_configure(struct rte_eth_dev *dev __rte_unused)
 	return 0;
 }
 
+static uint32_t
+tap_dev_speed_capa(void)
+{
+	uint32_t speed = pmd_link.link_speed;
+	uint32_t capa = 0;
+
+	if (speed >= ETH_SPEED_NUM_10M)
+		capa |= ETH_LINK_SPEED_10M;
+	if (speed >= ETH_SPEED_NUM_100M)
+		capa |= ETH_LINK_SPEED_100M;
+	if (speed >= ETH_SPEED_NUM_1G)
+		capa |= ETH_LINK_SPEED_1G;
+	if (speed >= ETH_SPEED_NUM_5G)
+		capa |= ETH_LINK_SPEED_2_5G;
+	if (speed >= ETH_SPEED_NUM_5G)
+		capa |= ETH_LINK_SPEED_5G;
+	if (speed >= ETH_SPEED_NUM_10G)
+		capa |= ETH_LINK_SPEED_10G;
+	if (speed >= ETH_SPEED_NUM_20G)
+		capa |= ETH_LINK_SPEED_20G;
+	if (speed >= ETH_SPEED_NUM_25G)
+		capa |= ETH_LINK_SPEED_25G;
+	if (speed >= ETH_SPEED_NUM_40G)
+		capa |= ETH_LINK_SPEED_40G;
+	if (speed >= ETH_SPEED_NUM_50G)
+		capa |= ETH_LINK_SPEED_50G;
+	if (speed >= ETH_SPEED_NUM_56G)
+		capa |= ETH_LINK_SPEED_56G;
+	if (speed >= ETH_SPEED_NUM_100G)
+		capa |= ETH_LINK_SPEED_100G;
+
+	return capa;
+}
+
 static void
 tap_dev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
@@ -419,6 +453,7 @@ tap_dev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->max_tx_queues = internals->nb_queues;
 	dev_info->min_rx_bufsize = 0;
 	dev_info->pci_dev = NULL;
+	dev_info->speed_capa = tap_dev_speed_capa();
 }
 
 static void
