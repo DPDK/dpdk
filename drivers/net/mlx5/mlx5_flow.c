@@ -457,6 +457,16 @@ priv_flow_validate(struct priv *priv,
 						flow);
 			if (err)
 				goto exit_item_not_supported;
+		} else if (items->type == RTE_FLOW_ITEM_TYPE_VXLAN) {
+			if (flow->inner) {
+				rte_flow_error_set(error, ENOTSUP,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   items,
+						   "cannot recognize multiple"
+						   " VXLAN encapsulations");
+				return -rte_errno;
+			}
+			flow->inner = 1;
 		}
 		flow->offset += cur_item->dst_sz;
 	}
