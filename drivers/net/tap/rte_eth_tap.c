@@ -375,7 +375,7 @@ tap_link_set_down(struct rte_eth_dev *dev)
 	struct pmd_internals *pmd = dev->data->dev_private;
 
 	dev->data->dev_link.link_status = ETH_LINK_DOWN;
-	return tap_link_set_flags(pmd, IFF_UP | IFF_NOARP, 0);
+	return tap_link_set_flags(pmd, IFF_UP, 0);
 }
 
 static int
@@ -384,7 +384,7 @@ tap_link_set_up(struct rte_eth_dev *dev)
 	struct pmd_internals *pmd = dev->data->dev_private;
 
 	dev->data->dev_link.link_status = ETH_LINK_UP;
-	return tap_link_set_flags(pmd, IFF_UP | IFF_NOARP, 1);
+	return tap_link_set_flags(pmd, IFF_UP, 1);
 }
 
 static int
