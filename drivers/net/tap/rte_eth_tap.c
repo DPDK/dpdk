@@ -350,6 +350,7 @@ tap_ioctl(struct pmd_internals *pmd, unsigned long request,
 		break;
 	case SIOCGIFHWADDR:
 	case SIOCSIFHWADDR:
+	case SIOCSIFMTU:
 		break;
 	default:
 		RTE_LOG(WARNING, PMD, "%s: ioctl() called with wrong arg\n",
@@ -595,6 +596,15 @@ tap_setup_queue(struct rte_eth_dev *dev,
 					pmd->name, qid);
 				return -1;
 			}
+			if (qid == 0) {
+				struct ifreq ifr;
+
+				ifr.ifr_mtu = dev->data->mtu;
+				if (tap_ioctl(pmd, SIOCSIFMTU, &ifr, 1) < 0) {
+					close(fd);
+					return -1;
+				}
+			}
 		}
 	}
 
@@ -691,6 +701,20 @@ tap_tx_queue_setup(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static int
+tap_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
+{
+	struct pmd_internals *pmd = dev->data->dev_private;
+	struct ifreq ifr = { .ifr_mtu = mtu };
+	int err = 0;
+
+	err = tap_ioctl(pmd, SIOCSIFMTU, &ifr, 1);
+	if (!err)
+		dev->data->mtu = mtu;
+
+	return err;
+}
+
 static const struct eth_dev_ops ops = {
 	.dev_start              = tap_dev_start,
 	.dev_stop               = tap_dev_stop,
@@ -709,6 +733,7 @@ static const struct eth_dev_ops ops = {
 	.allmulticast_enable    = tap_allmulti_enable,
 	.allmulticast_disable   = tap_allmulti_disable,
 	.mac_addr_set           = tap_mac_set,
+	.mtu_set                = tap_mtu_set,
 	.stats_get              = tap_stats_get,
 	.stats_reset            = tap_stats_reset,
 };
@@ -759,6 +784,7 @@ eth_dev_tap_create(const char *name, char *tap_name)
 	/* Setup some default values */
 	data->dev_private = pmd;
 	data->port_id = dev->data->port_id;
+	data->mtu = dev->data->mtu;
 	data->dev_flags = RTE_ETH_DEV_DETACHABLE;
 	data->kdrv = RTE_KDRV_NONE;
 	data->drv_name = pmd_tap_drv.driver.name;
