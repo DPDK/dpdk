@@ -201,6 +201,8 @@ vmxnet3_dev_tx_queue_release(void *txq)
 		vmxnet3_tx_cmd_ring_release_mbufs(&tq->cmd_ring);
 		/* Release the cmd_ring */
 		vmxnet3_cmd_ring_release(&tq->cmd_ring);
+		/* Release the memzone */
+		rte_memzone_free(tq->mz);
 	}
 }
 
@@ -218,6 +220,9 @@ vmxnet3_dev_rx_queue_release(void *rxq)
 		/* Release both the cmd_rings */
 		for (i = 0; i < VMXNET3_RX_CMDRING_SIZE; i++)
 			vmxnet3_cmd_ring_release(&rq->cmd_ring[i]);
+
+		/* Release the memzone */
+		rte_memzone_free(rq->mz);
 	}
 }
 
@@ -891,30 +896,6 @@ rcd_done:
 	return nb_rx;
 }
 
-/*
- * Create memzone for device rings. malloc can't be used as the physical address is
- * needed. If the memzone is already created, then this function returns a ptr
- * to the old one.
- */
-static const struct rte_memzone *
-ring_dma_zone_reserve(struct rte_eth_dev *dev, const char *ring_name,
-		      uint16_t queue_id, uint32_t ring_size, int socket_id)
-{
-	char z_name[RTE_MEMZONE_NAMESIZE];
-	const struct rte_memzone *mz;
-
-	snprintf(z_name, sizeof(z_name), "%s_%s_%d_%d",
-		 dev->driver->pci_drv.driver.name, ring_name,
-		 dev->data->port_id, queue_id);
-
-	mz = rte_memzone_lookup(z_name);
-	if (mz)
-		return mz;
-
-	return rte_memzone_reserve_aligned(z_name, ring_size,
-					   socket_id, 0, VMXNET3_RING_BA_ALIGN);
-}
-
 int
 vmxnet3_dev_tx_queue_setup(struct rte_eth_dev *dev,
 			   uint16_t queue_idx,
@@ -983,11 +964,13 @@ vmxnet3_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	size += sizeof(struct Vmxnet3_TxCompDesc) * comp_ring->size;
 	size += txq->txdata_desc_size * data_ring->size;
 
-	mz = ring_dma_zone_reserve(dev, "txdesc", queue_idx, size, socket_id);
+	mz = rte_eth_dma_zone_reserve(dev, "txdesc", queue_idx, size,
+				      VMXNET3_RING_BA_ALIGN, socket_id);
 	if (mz == NULL) {
 		PMD_INIT_LOG(ERR, "ERROR: Creating queue descriptors zone");
 		return -ENOMEM;
 	}
+	txq->mz = mz;
 	memset(mz->addr, 0, mz->len);
 
 	/* cmd_ring initialization */
@@ -1092,11 +1075,13 @@ vmxnet3_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	if (VMXNET3_VERSION_GE_3(hw) && rxq->data_desc_size)
 		size += rxq->data_desc_size * data_ring->size;
 
-	mz = ring_dma_zone_reserve(dev, "rxdesc", queue_idx, size, socket_id);
+	mz = rte_eth_dma_zone_reserve(dev, "rxdesc", queue_idx, size,
+				      VMXNET3_RING_BA_ALIGN, socket_id);
 	if (mz == NULL) {
 		PMD_INIT_LOG(ERR, "ERROR: Creating queue descriptors zone");
 		return -ENOMEM;
 	}
+	rxq->mz = mz;
 	memset(mz->addr, 0, mz->len);
 
 	/* cmd_ring0 initialization */
