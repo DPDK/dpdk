@@ -796,6 +796,23 @@ tap_dev_supported_ptypes_get(struct rte_eth_dev *dev __rte_unused)
 	return ptypes;
 }
 
+static int
+tap_flow_ctrl_get(struct rte_eth_dev *dev __rte_unused,
+		  struct rte_eth_fc_conf *fc_conf)
+{
+	fc_conf->mode = RTE_FC_NONE;
+	return 0;
+}
+
+static int
+tap_flow_ctrl_set(struct rte_eth_dev *dev __rte_unused,
+		  struct rte_eth_fc_conf *fc_conf)
+{
+	if (fc_conf->mode != RTE_FC_NONE)
+		return -ENOTSUP;
+	return 0;
+}
+
 static const struct eth_dev_ops ops = {
 	.dev_start              = tap_dev_start,
 	.dev_stop               = tap_dev_stop,
@@ -806,6 +823,8 @@ static const struct eth_dev_ops ops = {
 	.tx_queue_setup         = tap_tx_queue_setup,
 	.rx_queue_release       = tap_rx_queue_release,
 	.tx_queue_release       = tap_tx_queue_release,
+	.flow_ctrl_get          = tap_flow_ctrl_get,
+	.flow_ctrl_set          = tap_flow_ctrl_set,
 	.link_update            = tap_link_update,
 	.dev_set_link_up        = tap_link_set_up,
 	.dev_set_link_down      = tap_link_set_down,
