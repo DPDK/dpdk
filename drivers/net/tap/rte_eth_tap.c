@@ -114,6 +114,7 @@ struct pmd_internals {
 	struct ether_addr eth_addr;	/* Mac address of the device port */
 
 	int if_index;			/* IF_INDEX for the port */
+	int ioctl_sock;			/* socket for ioctl calls */
 
 	struct rx_queue rxq[RTE_PMD_TAP_MAX_QUEUES];	/* List of RX queues */
 	struct tx_queue txq[RTE_PMD_TAP_MAX_QUEUES];	/* List of TX queues */
@@ -328,63 +329,55 @@ pmd_tx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 }
 
 static int
-tap_link_set_flags(struct pmd_internals *pmd, short flags, int add)
+tap_ioctl(struct pmd_internals *pmd, unsigned long request,
+	  struct ifreq *ifr, int set)
 {
-	struct ifreq ifr;
-	int err, s;
+	short req_flags = ifr->ifr_flags;
 
-	/*
-	 * An AF_INET/DGRAM socket is needed for
-	 * SIOCGIFFLAGS/SIOCSIFFLAGS, using fd won't work.
-	 */
-	s = socket(AF_INET, SOCK_DGRAM, 0);
-	if (s < 0) {
-		RTE_LOG(ERR, PMD,
-			"Unable to get a socket to set flags: %s\n",
-			strerror(errno));
-		return -1;
+	snprintf(ifr->ifr_name, IFNAMSIZ, "%s", pmd->name);
+	switch (request) {
+	case SIOCSIFFLAGS:
+		/* fetch current flags to leave other flags untouched */
+		if (ioctl(pmd->ioctl_sock, SIOCGIFFLAGS, ifr) < 0)
+			goto error;
+		if (set)
+			ifr->ifr_flags |= req_flags;
+		else
+			ifr->ifr_flags &= ~req_flags;
+		break;
+	default:
+		RTE_LOG(WARNING, PMD, "%s: ioctl() called with wrong arg\n",
+			pmd->name);
+		return -EINVAL;
 	}
-	memset(&ifr, 0, sizeof(ifr));
-	snprintf(ifr.ifr_name, IFNAMSIZ, "%s", pmd->name);
-	err = ioctl(s, SIOCGIFFLAGS, &ifr);
-	if (err < 0) {
-		RTE_LOG(WARNING, PMD, "Unable to get %s device flags: %s\n",
-			pmd->name, strerror(errno));
-		close(s);
-		return -1;
-	}
-	if (add)
-		ifr.ifr_flags |= flags;
-	else
-		ifr.ifr_flags &= ~flags;
-	err = ioctl(s, SIOCSIFFLAGS, &ifr);
-	if (err < 0) {
-		RTE_LOG(WARNING, PMD, "Unable to %s flags 0x%x: %s\n",
-			add ? "set" : "unset", flags, strerror(errno));
-		close(s);
-		return -1;
-	}
-	close(s);
-
+	if (ioctl(pmd->ioctl_sock, request, ifr) < 0)
+		goto error;
 	return 0;
+
+error:
+	RTE_LOG(ERR, PMD, "%s: ioctl(%lu) failed with error: %s\n",
+		ifr->ifr_name, request, strerror(errno));
+	return -errno;
 }
 
 static int
 tap_link_set_down(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
+	struct ifreq ifr = { .ifr_flags = IFF_UP };
 
 	dev->data->dev_link.link_status = ETH_LINK_DOWN;
-	return tap_link_set_flags(pmd, IFF_UP, 0);
+	return tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 0);
 }
 
 static int
 tap_link_set_up(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
+	struct ifreq ifr = { .ifr_flags = IFF_UP };
 
 	dev->data->dev_link.link_status = ETH_LINK_UP;
-	return tap_link_set_flags(pmd, IFF_UP, 1);
+	return tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 1);
 }
 
 static int
@@ -518,36 +511,40 @@ static void
 tap_promisc_enable(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
+	struct ifreq ifr = { .ifr_flags = IFF_PROMISC };
 
 	dev->data->promiscuous = 1;
-	tap_link_set_flags(pmd, IFF_PROMISC, 1);
+	tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 1);
 }
 
 static void
 tap_promisc_disable(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
+	struct ifreq ifr = { .ifr_flags = IFF_PROMISC };
 
 	dev->data->promiscuous = 0;
-	tap_link_set_flags(pmd, IFF_PROMISC, 0);
+	tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 0);
 }
 
 static void
 tap_allmulti_enable(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
+	struct ifreq ifr = { .ifr_flags = IFF_ALLMULTI };
 
 	dev->data->all_multicast = 1;
-	tap_link_set_flags(pmd, IFF_ALLMULTI, 1);
+	tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 1);
 }
 
 static void
 tap_allmulti_disable(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
+	struct ifreq ifr = { .ifr_flags = IFF_ALLMULTI };
 
 	dev->data->all_multicast = 0;
-	tap_link_set_flags(pmd, IFF_ALLMULTI, 0);
+	tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 0);
 }
 
 static int
@@ -724,6 +721,14 @@ eth_dev_tap_create(const char *name, char *tap_name)
 
 	pmd->nb_queues = RTE_PMD_TAP_MAX_QUEUES;
 
+	pmd->ioctl_sock = socket(AF_INET, SOCK_DGRAM, 0);
+	if (pmd->ioctl_sock == -1) {
+		RTE_LOG(ERR, PMD,
+			"TAP Unable to get a socket for management: %s\n",
+			strerror(errno));
+		goto error_exit;
+	}
+
 	/* Setup some default values */
 	data->dev_private = pmd;
 	data->port_id = dev->data->port_id;
@@ -866,6 +871,7 @@ rte_pmd_tap_remove(const char *name)
 		if (internals->rxq[i].fd != -1)
 			close(internals->rxq[i].fd);
 
+	close(internals->ioctl_sock);
 	rte_free(eth_dev->data->dev_private);
 	rte_free(eth_dev->data);
 
