@@ -1590,7 +1590,11 @@ priv_select_tx_function(struct priv *priv)
 {
 	priv->dev->tx_pkt_burst = mlx5_tx_burst;
 	/* Select appropriate TX function. */
-	if (priv->mps && priv->txq_inline) {
+	if (priv->mps == MLX5_MPW_ENHANCED) {
+		priv->dev->tx_pkt_burst =
+			mlx5_tx_burst_empw;
+		DEBUG("selected Enhanced MPW TX function");
+	} else if (priv->mps && priv->txq_inline) {
 		priv->dev->tx_pkt_burst = mlx5_tx_burst_mpw_inline;
 		DEBUG("selected MPW inline TX function");
 	} else if (priv->mps) {

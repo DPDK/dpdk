@@ -266,6 +266,7 @@ txq_ctrl_setup(struct rte_eth_dev *dev, struct txq_ctrl *txq_ctrl,
 		struct ibv_exp_cq_attr cq_attr;
 	} attr;
 	enum ibv_exp_query_intf_status status;
+	unsigned int cqe_n;
 	int ret = 0;
 
 	if (mlx5_getenv_int("MLX5_ENABLE_CQE_COMPRESSION")) {
@@ -276,6 +277,8 @@ txq_ctrl_setup(struct rte_eth_dev *dev, struct txq_ctrl *txq_ctrl,
 	(void)conf; /* Thresholds configuration (ignored). */
 	assert(desc > MLX5_TX_COMP_THRESH);
 	tmpl.txq.elts_n = log2above(desc);
+	if (priv->mps == MLX5_MPW_ENHANCED)
+		tmpl.txq.mpw_hdr_dseg = priv->mpw_hdr_dseg;
 	/* MRs will be registered in mp2mr[] later. */
 	attr.rd = (struct ibv_exp_res_domain_init_attr){
 		.comp_mask = (IBV_EXP_RES_DOMAIN_THREAD_MODEL |
@@ -294,9 +297,12 @@ txq_ctrl_setup(struct rte_eth_dev *dev, struct txq_ctrl *txq_ctrl,
 		.comp_mask = IBV_EXP_CQ_INIT_ATTR_RES_DOMAIN,
 		.res_domain = tmpl.rd,
 	};
+	cqe_n = ((desc / MLX5_TX_COMP_THRESH) - 1) ?
+		((desc / MLX5_TX_COMP_THRESH) - 1) : 1;
+	if (priv->mps == MLX5_MPW_ENHANCED)
+		cqe_n += MLX5_TX_COMP_THRESH_INLINE_DIV;
 	tmpl.cq = ibv_exp_create_cq(priv->ctx,
-				    (((desc / MLX5_TX_COMP_THRESH) - 1) ?
-				     ((desc / MLX5_TX_COMP_THRESH) - 1) : 1),
+				    cqe_n,
 				    NULL, NULL, 0, &attr.cq);
 	if (tmpl.cq == NULL) {
 		ret = ENOMEM;
@@ -340,9 +346,24 @@ txq_ctrl_setup(struct rte_eth_dev *dev, struct txq_ctrl *txq_ctrl,
 		tmpl.txq.max_inline =
 			((priv->txq_inline + (RTE_CACHE_LINE_SIZE - 1)) /
 			 RTE_CACHE_LINE_SIZE);
-		attr.init.cap.max_inline_data =
-			tmpl.txq.max_inline * RTE_CACHE_LINE_SIZE;
 		tmpl.txq.inline_en = 1;
+		/* TSO and MPS can't be enabled concurrently. */
+		assert(!priv->tso || !priv->mps);
+		if (priv->mps == MLX5_MPW_ENHANCED) {
+			tmpl.txq.inline_max_packet_sz =
+				priv->inline_max_packet_sz;
+			/* To minimize the size of data set, avoid requesting
+			 * too large WQ.
+			 */
+			attr.init.cap.max_inline_data =
+				((RTE_MIN(priv->txq_inline,
+					  priv->inline_max_packet_sz) +
+				  (RTE_CACHE_LINE_SIZE - 1)) /
+				 RTE_CACHE_LINE_SIZE) * RTE_CACHE_LINE_SIZE;
+		} else {
+			attr.init.cap.max_inline_data =
+				tmpl.txq.max_inline * RTE_CACHE_LINE_SIZE;
+		}
 	}
 	if (priv->tso) {
 		uint16_t max_tso_inline = ((MLX5_MAX_TSO_HEADER +

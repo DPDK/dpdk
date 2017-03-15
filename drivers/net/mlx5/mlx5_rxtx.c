@@ -195,6 +195,62 @@ tx_mlx5_wqe(struct txq *txq, uint16_t ci)
 }
 
 /**
+ * Return the size of tailroom of WQ.
+ *
+ * @param txq
+ *   Pointer to TX queue structure.
+ * @param addr
+ *   Pointer to tail of WQ.
+ *
+ * @return
+ *   Size of tailroom.
+ */
+static inline size_t
+tx_mlx5_wq_tailroom(struct txq *txq, void *addr)
+{
+	size_t tailroom;
+	tailroom = (uintptr_t)(txq->wqes) +
+		   (1 << txq->wqe_n) * MLX5_WQE_SIZE -
+		   (uintptr_t)addr;
+	return tailroom;
+}
+
+/**
+ * Copy data to tailroom of circular queue.
+ *
+ * @param dst
+ *   Pointer to destination.
+ * @param src
+ *   Pointer to source.
+ * @param n
+ *   Number of bytes to copy.
+ * @param base
+ *   Pointer to head of queue.
+ * @param tailroom
+ *   Size of tailroom from dst.
+ *
+ * @return
+ *   Pointer after copied data.
+ */
+static inline void *
+mlx5_copy_to_wq(void *dst, const void *src, size_t n,
+		void *base, size_t tailroom)
+{
+	void *ret;
+
+	if (n > tailroom) {
+		rte_memcpy(dst, src, tailroom);
+		rte_memcpy(base, (void *)((uintptr_t)src + tailroom),
+			   n - tailroom);
+		ret = (uint8_t *)base + n - tailroom;
+	} else {
+		rte_memcpy(dst, src, n);
+		ret = (n == tailroom) ? base : (uint8_t *)dst + n;
+	}
+	return ret;
+}
+
+/**
  * Manage TX completions.
  *
  * When sending a burst, mlx5_tx_burst() posts several WRs.
@@ -1339,6 +1395,360 @@ mlx5_tx_burst_mpw_inline(void *dpdk_txq, struct rte_mbuf **pkts,
 		mlx5_mpw_inline_close(txq, &mpw);
 	else if (mpw.state == MLX5_MPW_STATE_OPENED)
 		mlx5_mpw_close(txq, &mpw);
+	mlx5_tx_dbrec(txq, mpw.wqe);
+	txq->elts_head = elts_head;
+	return i;
+}
+
+/**
+ * Open an Enhanced MPW session.
+ *
+ * @param txq
+ *   Pointer to TX queue structure.
+ * @param mpw
+ *   Pointer to MPW session structure.
+ * @param length
+ *   Packet length.
+ */
+static inline void
+mlx5_empw_new(struct txq *txq, struct mlx5_mpw *mpw, int padding)
+{
+	uint16_t idx = txq->wqe_ci & ((1 << txq->wqe_n) - 1);
+
+	mpw->state = MLX5_MPW_ENHANCED_STATE_OPENED;
+	mpw->pkts_n = 0;
+	mpw->total_len = sizeof(struct mlx5_wqe);
+	mpw->wqe = (volatile struct mlx5_wqe *)tx_mlx5_wqe(txq, idx);
+	mpw->wqe->ctrl[0] = htonl((MLX5_OPC_MOD_ENHANCED_MPSW << 24) |
+				  (txq->wqe_ci << 8) |
+				  MLX5_OPCODE_ENHANCED_MPSW);
+	mpw->wqe->ctrl[2] = 0;
+	mpw->wqe->ctrl[3] = 0;
+	memset((void *)(uintptr_t)&mpw->wqe->eseg, 0, MLX5_WQE_DWORD_SIZE);
+	if (unlikely(padding)) {
+		uintptr_t addr = (uintptr_t)(mpw->wqe + 1);
+
+		/* Pad the first 2 DWORDs with zero-length inline header. */
+		*(volatile uint32_t *)addr = htonl(MLX5_INLINE_SEG);
+		*(volatile uint32_t *)(addr + MLX5_WQE_DWORD_SIZE) =
+			htonl(MLX5_INLINE_SEG);
+		mpw->total_len += 2 * MLX5_WQE_DWORD_SIZE;
+		/* Start from the next WQEBB. */
+		mpw->data.raw = (volatile void *)(tx_mlx5_wqe(txq, idx + 1));
+	} else {
+		mpw->data.raw = (volatile void *)(mpw->wqe + 1);
+	}
+}
+
+/**
+ * Close an Enhanced MPW session.
+ *
+ * @param txq
+ *   Pointer to TX queue structure.
+ * @param mpw
+ *   Pointer to MPW session structure.
+ *
+ * @return
+ *   Number of consumed WQEs.
+ */
+static inline uint16_t
+mlx5_empw_close(struct txq *txq, struct mlx5_mpw *mpw)
+{
+	uint16_t ret;
+
+	/* Store size in multiple of 16 bytes. Control and Ethernet segments
+	 * count as 2.
+	 */
+	mpw->wqe->ctrl[1] = htonl(txq->qp_num_8s | MLX5_WQE_DS(mpw->total_len));
+	mpw->state = MLX5_MPW_STATE_CLOSED;
+	ret = (mpw->total_len + (MLX5_WQE_SIZE - 1)) / MLX5_WQE_SIZE;
+	txq->wqe_ci += ret;
+	return ret;
+}
+
+/**
+ * DPDK callback for TX with Enhanced MPW support.
+ *
+ * @param dpdk_txq
+ *   Generic pointer to TX queue structure.
+ * @param[in] pkts
+ *   Packets to transmit.
+ * @param pkts_n
+ *   Number of packets in array.
+ *
+ * @return
+ *   Number of packets successfully transmitted (<= pkts_n).
+ */
+uint16_t
+mlx5_tx_burst_empw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
+{
+	struct txq *txq = (struct txq *)dpdk_txq;
+	uint16_t elts_head = txq->elts_head;
+	const unsigned int elts_n = 1 << txq->elts_n;
+	unsigned int i = 0;
+	unsigned int j = 0;
+	unsigned int max_elts;
+	uint16_t max_wqe;
+	unsigned int max_inline = txq->max_inline * RTE_CACHE_LINE_SIZE;
+	unsigned int mpw_room = 0;
+	unsigned int inl_pad = 0;
+	uint32_t inl_hdr;
+	struct mlx5_mpw mpw = {
+		.state = MLX5_MPW_STATE_CLOSED,
+	};
+
+	if (unlikely(!pkts_n))
+		return 0;
+	/* Start processing. */
+	txq_complete(txq);
+	max_elts = (elts_n - (elts_head - txq->elts_tail));
+	if (max_elts > elts_n)
+		max_elts -= elts_n;
+	/* A CQE slot must always be available. */
+	assert((1u << txq->cqe_n) - (txq->cq_pi - txq->cq_ci));
+	max_wqe = (1u << txq->wqe_n) - (txq->wqe_ci - txq->wqe_pi);
+	if (unlikely(!max_wqe))
+		return 0;
+	do {
+		struct rte_mbuf *buf = *(pkts++);
+		unsigned int elts_head_next;
+		uintptr_t addr;
+		uint64_t naddr;
+		unsigned int n;
+		unsigned int do_inline = 0; /* Whether inline is possible. */
+		uint32_t length;
+		unsigned int segs_n = buf->nb_segs;
+		uint32_t cs_flags = 0;
+
+		/*
+		 * Make sure there is enough room to store this packet and
+		 * that one ring entry remains unused.
+		 */
+		assert(segs_n);
+		if (max_elts - j < segs_n + 1)
+			break;
+		/* Do not bother with large packets MPW cannot handle. */
+		if (segs_n > MLX5_MPW_DSEG_MAX)
+			break;
+		/* Should we enable HW CKSUM offload. */
+		if (buf->ol_flags &
+		    (PKT_TX_IP_CKSUM | PKT_TX_TCP_CKSUM | PKT_TX_UDP_CKSUM))
+			cs_flags = MLX5_ETH_WQE_L3_CSUM | MLX5_ETH_WQE_L4_CSUM;
+		/* Retrieve packet information. */
+		length = PKT_LEN(buf);
+		/* Start new session if:
+		 * - multi-segment packet
+		 * - no space left even for a dseg
+		 * - next packet can be inlined with a new WQE
+		 * - cs_flag differs
+		 * It can't be MLX5_MPW_STATE_OPENED as always have a single
+		 * segmented packet.
+		 */
+		if (mpw.state == MLX5_MPW_ENHANCED_STATE_OPENED) {
+			if ((segs_n != 1) ||
+			    (inl_pad + sizeof(struct mlx5_wqe_data_seg) >
+			      mpw_room) ||
+			    (length <= txq->inline_max_packet_sz &&
+			     inl_pad + sizeof(inl_hdr) + length >
+			      mpw_room) ||
+			    (mpw.wqe->eseg.cs_flags != cs_flags))
+				max_wqe -= mlx5_empw_close(txq, &mpw);
+		}
+		if (unlikely(mpw.state == MLX5_MPW_STATE_CLOSED)) {
+			if (unlikely(segs_n != 1)) {
+				/* Fall back to legacy MPW.
+				 * A MPW session consumes 2 WQEs at most to
+				 * include MLX5_MPW_DSEG_MAX pointers.
+				 */
+				if (unlikely(max_wqe < 2))
+					break;
+				mlx5_mpw_new(txq, &mpw, length);
+			} else {
+				/* In Enhanced MPW, inline as much as the budget
+				 * is allowed. The remaining space is to be
+				 * filled with dsegs. If the title WQEBB isn't
+				 * padded, it will have 2 dsegs there.
+				 */
+				mpw_room = RTE_MIN(MLX5_WQE_SIZE_MAX,
+					    (max_inline ? max_inline :
+					     pkts_n * MLX5_WQE_DWORD_SIZE) +
+					    MLX5_WQE_SIZE);
+				if (unlikely(max_wqe * MLX5_WQE_SIZE <
+					      mpw_room))
+					break;
+				/* Don't pad the title WQEBB to not waste WQ. */
+				mlx5_empw_new(txq, &mpw, 0);
+				mpw_room -= mpw.total_len;
+				inl_pad = 0;
+				do_inline =
+					length <= txq->inline_max_packet_sz &&
+					sizeof(inl_hdr) + length <= mpw_room &&
+					!txq->mpw_hdr_dseg;
+			}
+			mpw.wqe->eseg.cs_flags = cs_flags;
+		} else {
+			/* Evaluate whether the next packet can be inlined.
+			 * Inlininig is possible when:
+			 * - length is less than configured value
+			 * - length fits for remaining space
+			 * - not required to fill the title WQEBB with dsegs
+			 */
+			do_inline =
+				length <= txq->inline_max_packet_sz &&
+				inl_pad + sizeof(inl_hdr) + length <=
+				 mpw_room &&
+				(!txq->mpw_hdr_dseg ||
+				 mpw.total_len >= MLX5_WQE_SIZE);
+		}
+		/* Multi-segment packets must be alone in their MPW. */
+		assert((segs_n == 1) || (mpw.pkts_n == 0));
+		if (unlikely(mpw.state == MLX5_MPW_STATE_OPENED)) {
+#if defined(MLX5_PMD_SOFT_COUNTERS) || !defined(NDEBUG)
+			length = 0;
+#endif
+			do {
+				volatile struct mlx5_wqe_data_seg *dseg;
+
+				elts_head_next =
+					(elts_head + 1) & (elts_n - 1);
+				assert(buf);
+				(*txq->elts)[elts_head] = buf;
+				dseg = mpw.data.dseg[mpw.pkts_n];
+				addr = rte_pktmbuf_mtod(buf, uintptr_t);
+				*dseg = (struct mlx5_wqe_data_seg){
+					.byte_count = htonl(DATA_LEN(buf)),
+					.lkey = txq_mp2mr(txq, txq_mb2mp(buf)),
+					.addr = htonll(addr),
+				};
+				elts_head = elts_head_next;
+#if defined(MLX5_PMD_SOFT_COUNTERS) || !defined(NDEBUG)
+				length += DATA_LEN(buf);
+#endif
+				buf = buf->next;
+				++j;
+				++mpw.pkts_n;
+			} while (--segs_n);
+			/* A multi-segmented packet takes one MPW session.
+			 * TODO: Pack more multi-segmented packets if possible.
+			 */
+			mlx5_mpw_close(txq, &mpw);
+			if (mpw.pkts_n < 3)
+				max_wqe--;
+			else
+				max_wqe -= 2;
+		} else if (do_inline) {
+			/* Inline packet into WQE. */
+			unsigned int max;
+
+			assert(mpw.state == MLX5_MPW_ENHANCED_STATE_OPENED);
+			assert(length == DATA_LEN(buf));
+			inl_hdr = htonl(length | MLX5_INLINE_SEG);
+			addr = rte_pktmbuf_mtod(buf, uintptr_t);
+			mpw.data.raw = (volatile void *)
+				((uintptr_t)mpw.data.raw + inl_pad);
+			max = tx_mlx5_wq_tailroom(txq,
+					(void *)(uintptr_t)mpw.data.raw);
+			/* Copy inline header. */
+			mpw.data.raw = (volatile void *)
+				mlx5_copy_to_wq(
+					  (void *)(uintptr_t)mpw.data.raw,
+					  &inl_hdr,
+					  sizeof(inl_hdr),
+					  (void *)(uintptr_t)txq->wqes,
+					  max);
+			max = tx_mlx5_wq_tailroom(txq,
+					(void *)(uintptr_t)mpw.data.raw);
+			/* Copy packet data. */
+			mpw.data.raw = (volatile void *)
+				mlx5_copy_to_wq(
+					  (void *)(uintptr_t)mpw.data.raw,
+					  (void *)addr,
+					  length,
+					  (void *)(uintptr_t)txq->wqes,
+					  max);
+			++mpw.pkts_n;
+			mpw.total_len += (inl_pad + sizeof(inl_hdr) + length);
+			/* No need to get completion as the entire packet is
+			 * copied to WQ. Free the buf right away.
+			 */
+			elts_head_next = elts_head;
+			rte_pktmbuf_free_seg(buf);
+			mpw_room -= (inl_pad + sizeof(inl_hdr) + length);
+			/* Add pad in the next packet if any. */
+			inl_pad = (((uintptr_t)mpw.data.raw +
+					(MLX5_WQE_DWORD_SIZE - 1)) &
+					~(MLX5_WQE_DWORD_SIZE - 1)) -
+				  (uintptr_t)mpw.data.raw;
+		} else {
+			/* No inline. Load a dseg of packet pointer. */
+			volatile rte_v128u32_t *dseg;
+
+			assert(mpw.state == MLX5_MPW_ENHANCED_STATE_OPENED);
+			assert((inl_pad + sizeof(*dseg)) <= mpw_room);
+			assert(length == DATA_LEN(buf));
+			if (!tx_mlx5_wq_tailroom(txq,
+					(void *)((uintptr_t)mpw.data.raw
+						+ inl_pad)))
+				dseg = (volatile void *)txq->wqes;
+			else
+				dseg = (volatile void *)
+					((uintptr_t)mpw.data.raw +
+					 inl_pad);
+			elts_head_next = (elts_head + 1) & (elts_n - 1);
+			(*txq->elts)[elts_head] = buf;
+			addr = rte_pktmbuf_mtod(buf, uintptr_t);
+			for (n = 0; n * RTE_CACHE_LINE_SIZE < length; n++)
+				rte_prefetch2((void *)(addr +
+						n * RTE_CACHE_LINE_SIZE));
+			naddr = htonll(addr);
+			*dseg = (rte_v128u32_t) {
+				htonl(length),
+				txq_mp2mr(txq, txq_mb2mp(buf)),
+				naddr,
+				naddr >> 32,
+			};
+			mpw.data.raw = (volatile void *)(dseg + 1);
+			mpw.total_len += (inl_pad + sizeof(*dseg));
+			++j;
+			++mpw.pkts_n;
+			mpw_room -= (inl_pad + sizeof(*dseg));
+			inl_pad = 0;
+		}
+		elts_head = elts_head_next;
+#ifdef MLX5_PMD_SOFT_COUNTERS
+		/* Increment sent bytes counter. */
+		txq->stats.obytes += length;
+#endif
+		++i;
+	} while (i < pkts_n);
+	/* Take a shortcut if nothing must be sent. */
+	if (unlikely(i == 0))
+		return 0;
+	/* Check whether completion threshold has been reached. */
+	if (txq->elts_comp + j >= MLX5_TX_COMP_THRESH ||
+			(uint16_t)(txq->wqe_ci - txq->mpw_comp) >=
+			 (1 << txq->wqe_n) / MLX5_TX_COMP_THRESH_INLINE_DIV) {
+		volatile struct mlx5_wqe *wqe = mpw.wqe;
+
+		/* Request completion on last WQE. */
+		wqe->ctrl[2] = htonl(8);
+		/* Save elts_head in unused "immediate" field of WQE. */
+		wqe->ctrl[3] = elts_head;
+		txq->elts_comp = 0;
+		txq->mpw_comp = txq->wqe_ci;
+		txq->cq_pi++;
+	} else {
+		txq->elts_comp += j;
+	}
+#ifdef MLX5_PMD_SOFT_COUNTERS
+	/* Increment sent packets counter. */
+	txq->stats.opackets += i;
+#endif
+	if (mpw.state == MLX5_MPW_ENHANCED_STATE_OPENED)
+		mlx5_empw_close(txq, &mpw);
+	else if (mpw.state == MLX5_MPW_STATE_OPENED)
+		mlx5_mpw_close(txq, &mpw);
+	/* Ring QP doorbell. */
 	mlx5_tx_dbrec(txq, mpw.wqe);
 	txq->elts_head = elts_head;
 	return i;

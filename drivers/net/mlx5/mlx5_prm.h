@@ -73,6 +73,9 @@
 /* WQE size */
 #define MLX5_WQE_SIZE (4 * MLX5_WQE_DWORD_SIZE)
 
+/* Max size of a WQE session. */
+#define MLX5_WQE_SIZE_MAX 960U
+
 /* Compute the number of DS. */
 #define MLX5_WQE_DS(n) \
 	(((n) + MLX5_WQE_DWORD_SIZE - 1) / MLX5_WQE_DWORD_SIZE)
@@ -80,9 +83,18 @@
 /* Room for inline data in multi-packet WQE. */
 #define MLX5_MWQE64_INL_DATA 28
 
+/* Default minimum number of Tx queues for inlining packets. */
+#define MLX5_EMPW_MIN_TXQS 8
+
+/* Default max packet length to be inlined. */
+#define MLX5_EMPW_MAX_INLINE_LEN (4U * MLX5_WQE_SIZE)
+
 #ifndef HAVE_VERBS_MLX5_OPCODE_TSO
 #define MLX5_OPCODE_TSO MLX5_OPCODE_LSO_MPW /* Compat with OFED 3.3. */
 #endif
+
+#define MLX5_OPC_MOD_ENHANCED_MPSW 0
+#define MLX5_OPCODE_ENHANCED_MPSW 0x29
 
 /* CQE value to inform that VLAN is stripped. */
 #define MLX5_CQE_VLAN_STRIPPED (1u << 0)
@@ -176,10 +188,18 @@ struct mlx5_wqe64 {
 	uint8_t raw[32];
 } __rte_aligned(MLX5_WQE_SIZE);
 
+/* MPW mode. */
+enum mlx5_mpw_mode {
+	MLX5_MPW_DISABLED,
+	MLX5_MPW,
+	MLX5_MPW_ENHANCED, /* Enhanced Multi-Packet Send WQE, a.k.a MPWv2. */
+};
+
 /* MPW session status. */
 enum mlx5_mpw_state {
 	MLX5_MPW_STATE_OPENED,
 	MLX5_MPW_INL_STATE_OPENED,
+	MLX5_MPW_ENHANCED_STATE_OPENED,
 	MLX5_MPW_STATE_CLOSED,
 };
 

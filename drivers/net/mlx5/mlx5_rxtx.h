@@ -248,17 +248,21 @@ struct txq {
 	uint16_t elts_head; /* Current index in (*elts)[]. */
 	uint16_t elts_tail; /* First element awaiting completion. */
 	uint16_t elts_comp; /* Counter since last completion request. */
+	uint16_t mpw_comp; /* WQ index since last completion request. */
 	uint16_t cq_ci; /* Consumer index for completion queue. */
+	uint16_t cq_pi; /* Producer index for completion queue. */
 	uint16_t wqe_ci; /* Consumer index for work queue. */
 	uint16_t wqe_pi; /* Producer index for work queue. */
 	uint16_t elts_n:4; /* (*elts)[] length (in log2). */
 	uint16_t cqe_n:4; /* Number of CQ elements (in log2). */
 	uint16_t wqe_n:4; /* Number of of WQ elements (in log2). */
-	uint16_t max_inline; /* Multiple of RTE_CACHE_LINE_SIZE to inline. */
 	uint16_t inline_en:1; /* When set inline is enabled. */
 	uint16_t tso_en:1; /* When set hardware TSO is enabled. */
 	uint16_t tunnel_en:1;
 	/* When set TX offload for tunneled packets are supported. */
+	uint16_t mpw_hdr_dseg:1; /* Enable DSEGs in the title WQEBB. */
+	uint16_t max_inline; /* Multiple of RTE_CACHE_LINE_SIZE to inline. */
+	uint16_t inline_max_packet_sz; /* Max packet size for inlining. */
 	uint32_t qp_num_8s; /* QP number shifted by 8. */
 	volatile struct mlx5_cqe (*cqes)[]; /* Completion queue. */
 	volatile void *wqes; /* Work queue (use volatile to write into). */
@@ -329,6 +333,7 @@ uint16_t mlx5_tx_burst_secondary_setup(void *, struct rte_mbuf **, uint16_t);
 uint16_t mlx5_tx_burst(void *, struct rte_mbuf **, uint16_t);
 uint16_t mlx5_tx_burst_mpw(void *, struct rte_mbuf **, uint16_t);
 uint16_t mlx5_tx_burst_mpw_inline(void *, struct rte_mbuf **, uint16_t);
+uint16_t mlx5_tx_burst_empw(void *, struct rte_mbuf **, uint16_t);
 uint16_t mlx5_rx_burst(void *, struct rte_mbuf **, uint16_t);
 uint16_t removed_tx_burst(void *, struct rte_mbuf **, uint16_t);
 uint16_t removed_rx_burst(void *, struct rte_mbuf **, uint16_t);
