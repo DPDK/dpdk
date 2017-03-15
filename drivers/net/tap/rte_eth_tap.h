@@ -60,6 +60,7 @@ struct rx_queue {
 
 struct tx_queue {
 	int fd;
+	uint16_t *mtu;                  /* Pointer to MTU from dev_data */
 	struct pkt_stats stats;         /* Stats for this TX queue */
 };
 

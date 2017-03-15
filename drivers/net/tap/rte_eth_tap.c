@@ -305,14 +305,19 @@ pmd_tx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	struct tx_queue *txq = queue;
 	uint16_t num_tx = 0;
 	unsigned long num_tx_bytes = 0;
+	uint32_t max_size;
 	int i, n;
 
 	if (unlikely(nb_pkts == 0))
 		return 0;
 
+	max_size = *txq->mtu + (ETHER_HDR_LEN + ETHER_CRC_LEN + 4);
 	for (i = 0; i < nb_pkts; i++) {
 		/* copy the tx frame data */
 		mbuf = bufs[num_tx];
+		/* stats.errs will be incremented */
+		if (rte_pktmbuf_pkt_len(mbuf) > max_size)
+			break;
 		n = write(txq->fd,
 			  rte_pktmbuf_mtod(mbuf, void *),
 			  rte_pktmbuf_pkt_len(mbuf));
@@ -646,6 +651,7 @@ tap_setup_queue(struct rte_eth_dev *dev,
 
 	rx->fd = fd;
 	tx->fd = fd;
+	tx->mtu = &dev->data->mtu;
 
 	return fd;
 }
