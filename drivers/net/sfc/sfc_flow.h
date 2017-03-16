@@ -1,4 +1,6 @@
 /*-
+ *   BSD LICENSE
+ *
  * Copyright (c) 2017 Solarflare Communications Inc.
  * All rights reserved.
  *

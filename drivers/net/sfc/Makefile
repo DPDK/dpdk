@@ -1,5 +1,7 @@
 #
-# Copyright (c) 2016 Solarflare Communications Inc.
+#   BSD LICENSE
+#
+# Copyright (c) 2016-2017 Solarflare Communications Inc.
 # All rights reserved.
 #
 # This software was jointly developed between OKTET Labs (under contract
