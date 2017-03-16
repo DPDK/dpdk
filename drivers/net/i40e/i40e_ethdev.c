@@ -10971,6 +10971,9 @@ int rte_pmd_i40e_set_vf_broadcast(uint8_t port, uint16_t vf_id,
 	struct i40e_pf *pf;
 	struct i40e_vsi *vsi;
 	struct i40e_hw *hw;
+	struct i40e_mac_filter_info filter;
+	struct ether_addr broadcast = {
+		.addr_bytes = {0xff, 0xff, 0xff, 0xff, 0xff, 0xff} };
 	int ret;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
@@ -11009,12 +11012,19 @@ int rte_pmd_i40e_set_vf_broadcast(uint8_t port, uint16_t vf_id,
 		return -EINVAL;
 	}
 
-	hw = I40E_VSI_TO_HW(vsi);
+	if (on) {
+		(void)rte_memcpy(&filter.mac_addr, &broadcast, ETHER_ADDR_LEN);
+		filter.filter_type = RTE_MACVLAN_PERFECT_MATCH;
+		ret = i40e_vsi_add_mac(vsi, &filter);
+	} else {
+		ret = i40e_vsi_delete_mac(vsi, &broadcast);
+	}
 
-	ret = i40e_aq_set_vsi_broadcast(hw, vsi->seid, on, NULL);
-	if (ret != I40E_SUCCESS) {
+	if (ret != I40E_SUCCESS && ret != I40E_ERR_PARAM) {
 		ret = -ENOTSUP;
 		PMD_DRV_LOG(ERR, "Failed to set VSI broadcast");
+	} else {
+		ret = 0;
 	}
 
 	return ret;
