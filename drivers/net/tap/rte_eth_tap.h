@@ -35,7 +35,10 @@
 #define _RTE_ETH_TAP_H_
 
 #include <sys/queue.h>
+#include <sys/uio.h>
 #include <inttypes.h>
+
+#include <linux/if_tun.h>
 
 #include <rte_ethdev.h>
 #include <rte_ether.h>
@@ -48,6 +51,8 @@ struct pkt_stats {
 	uint64_t obytes;                /* Number of bytes on output */
 	uint64_t ibytes;                /* Number of bytes on input */
 	uint64_t errs;                  /* Number of TX error packets */
+	uint64_t ierrors;               /* Number of RX error packets */
+	uint64_t rx_nombuf;             /* Nb of RX mbuf alloc failures */
 };
 
 struct rx_queue {
@@ -56,6 +61,11 @@ struct rx_queue {
 	uint16_t in_port;               /* Port ID */
 	int fd;
 	struct pkt_stats stats;         /* Stats for this RX queue */
+	uint16_t nb_rx_desc;            /* max number of mbufs available */
+	struct rte_eth_rxmode *rxmode;  /* RX features */
+	struct rte_mbuf *pool;          /* mbufs pool for this queue */
+	struct iovec (*iovecs)[];       /* descriptors for this queue */
+	struct tun_pi pi;               /* packet info for iovecs */
 };
 
 struct tx_queue {

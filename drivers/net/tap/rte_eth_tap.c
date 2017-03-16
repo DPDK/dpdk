@@ -32,6 +32,7 @@
  */
 
 #include <rte_atomic.h>
+#include <rte_branch_prediction.h>
 #include <rte_common.h>
 #include <rte_mbuf.h>
 #include <rte_ethdev.h>
@@ -49,6 +50,7 @@
 #include <errno.h>
 #include <signal.h>
 #include <stdint.h>
+#include <sys/uio.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <net/if.h>
@@ -123,7 +125,11 @@ tun_alloc(struct pmd_internals *pmd, uint16_t qid)
 
 	memset(&ifr, 0, sizeof(struct ifreq));
 
-	ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
+	/*
+	 * Do not set IFF_NO_PI as packet information header will be needed
+	 * to check if a received packet has been truncated.
+	 */
+	ifr.ifr_flags = IFF_TAP;
 	snprintf(ifr.ifr_name, IFNAMSIZ, "%s", pmd->name);
 
 	RTE_LOG(DEBUG, PMD, "ifr_name '%s'\n", ifr.ifr_name);
@@ -253,8 +259,6 @@ error:
 static uint16_t
 pmd_rx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 {
-	int len;
-	struct rte_mbuf *mbuf;
 	struct rx_queue *rxq = queue;
 	uint16_t num_rx;
 	unsigned long num_rx_bytes = 0;
@@ -266,23 +270,67 @@ pmd_rx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		rxq->trigger_seen = trigger;
 	rte_compiler_barrier();
 	for (num_rx = 0; num_rx < nb_pkts; ) {
-		/* allocate the next mbuf */
-		mbuf = rte_pktmbuf_alloc(rxq->mp);
-		if (unlikely(!mbuf)) {
-			RTE_LOG(WARNING, PMD, "TAP unable to allocate mbuf\n");
+		struct rte_mbuf *mbuf = rxq->pool;
+		struct rte_mbuf *seg = NULL;
+		struct rte_mbuf *new_tail = NULL;
+		uint16_t data_off = rte_pktmbuf_headroom(mbuf);
+		int len;
+
+		len = readv(rxq->fd, *rxq->iovecs,
+			    1 + (rxq->rxmode->enable_scatter ?
+				 rxq->nb_rx_desc : 1));
+		if (len < (int)sizeof(struct tun_pi))
 			break;
+
+		/* Packet couldn't fit in the provided mbuf */
+		if (unlikely(rxq->pi.flags & TUN_PKT_STRIP)) {
+			rxq->stats.ierrors++;
+			continue;
 		}
 
-		len = read(rxq->fd, rte_pktmbuf_mtod(mbuf, char *),
-			   rte_pktmbuf_tailroom(mbuf));
-		if (len <= 0) {
-			rte_pktmbuf_free(mbuf);
-			break;
-		}
+		len -= sizeof(struct tun_pi);
 
-		mbuf->data_len = len;
 		mbuf->pkt_len = len;
 		mbuf->port = rxq->in_port;
+		while (1) {
+			struct rte_mbuf *buf = rte_pktmbuf_alloc(rxq->mp);
+
+			if (unlikely(!buf)) {
+				rxq->stats.rx_nombuf++;
+				/* No new buf has been allocated: do nothing */
+				if (!new_tail || !seg)
+					goto end;
+
+				seg->next = NULL;
+				rte_pktmbuf_free(mbuf);
+
+				goto end;
+			}
+			seg = seg ? seg->next : mbuf;
+			if (rxq->pool == mbuf)
+				rxq->pool = buf;
+			if (new_tail)
+				new_tail->next = buf;
+			new_tail = buf;
+			new_tail->next = seg->next;
+
+			/* iovecs[0] is reserved for packet info (pi) */
+			(*rxq->iovecs)[mbuf->nb_segs].iov_len =
+				buf->buf_len - data_off;
+			(*rxq->iovecs)[mbuf->nb_segs].iov_base =
+				(char *)buf->buf_addr + data_off;
+
+			seg->data_len = RTE_MIN(seg->buf_len - data_off, len);
+			seg->data_off = data_off;
+
+			len -= seg->data_len;
+			if (len <= 0)
+				break;
+			mbuf->nb_segs++;
+			/* First segment has headroom, not the others */
+			data_off = 0;
+		}
+		seg->next = NULL;
 		mbuf->packet_type = rte_net_get_ptype(mbuf, NULL,
 						      RTE_PTYPE_ALL_MASK);
 
@@ -290,6 +338,7 @@ pmd_rx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		bufs[num_rx++] = mbuf;
 		num_rx_bytes += mbuf->pkt_len;
 	}
+end:
 	rxq->stats.ipackets += num_rx;
 	rxq->stats.ibytes += num_rx_bytes;
 
@@ -301,26 +350,38 @@ pmd_rx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 static uint16_t
 pmd_tx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 {
-	struct rte_mbuf *mbuf;
 	struct tx_queue *txq = queue;
 	uint16_t num_tx = 0;
 	unsigned long num_tx_bytes = 0;
 	uint32_t max_size;
-	int i, n;
+	int i;
 
 	if (unlikely(nb_pkts == 0))
 		return 0;
 
 	max_size = *txq->mtu + (ETHER_HDR_LEN + ETHER_CRC_LEN + 4);
 	for (i = 0; i < nb_pkts; i++) {
-		/* copy the tx frame data */
-		mbuf = bufs[num_tx];
+		struct rte_mbuf *mbuf = bufs[num_tx];
+		struct iovec iovecs[mbuf->nb_segs + 1];
+		struct tun_pi pi = { .flags = 0 };
+		struct rte_mbuf *seg = mbuf;
+		int n;
+		int j;
+
 		/* stats.errs will be incremented */
 		if (rte_pktmbuf_pkt_len(mbuf) > max_size)
 			break;
-		n = write(txq->fd,
-			  rte_pktmbuf_mtod(mbuf, void *),
-			  rte_pktmbuf_pkt_len(mbuf));
+
+		iovecs[0].iov_base = &pi;
+		iovecs[0].iov_len = sizeof(pi);
+		for (j = 1; j <= mbuf->nb_segs; j++) {
+			iovecs[j].iov_len = rte_pktmbuf_data_len(seg);
+			iovecs[j].iov_base =
+				rte_pktmbuf_mtod(seg, void *);
+			seg = seg->next;
+		}
+		/* copy the tx frame data */
+		n = writev(txq->fd, iovecs, mbuf->nb_segs + 1);
 		if (n <= 0)
 			break;
 
@@ -467,6 +528,7 @@ tap_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *tap_stats)
 	unsigned int i, imax;
 	unsigned long rx_total = 0, tx_total = 0, tx_err_total = 0;
 	unsigned long rx_bytes_total = 0, tx_bytes_total = 0;
+	unsigned long rx_nombuf = 0, ierrors = 0;
 	const struct pmd_internals *pmd = dev->data->dev_private;
 
 	imax = (pmd->nb_queues < RTE_ETHDEV_QUEUE_STAT_CNTRS) ?
@@ -477,6 +539,8 @@ tap_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *tap_stats)
 		tap_stats->q_ibytes[i] = pmd->rxq[i].stats.ibytes;
 		rx_total += tap_stats->q_ipackets[i];
 		rx_bytes_total += tap_stats->q_ibytes[i];
+		rx_nombuf += pmd->rxq[i].stats.rx_nombuf;
+		ierrors += pmd->rxq[i].stats.ierrors;
 
 		tap_stats->q_opackets[i] = pmd->txq[i].stats.opackets;
 		tap_stats->q_errors[i] = pmd->txq[i].stats.errs;
@@ -488,6 +552,8 @@ tap_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *tap_stats)
 
 	tap_stats->ipackets = rx_total;
 	tap_stats->ibytes = rx_bytes_total;
+	tap_stats->ierrors = ierrors;
+	tap_stats->rx_nombuf = rx_nombuf;
 	tap_stats->opackets = tx_total;
 	tap_stats->oerrors = tx_err_total;
 	tap_stats->obytes = tx_bytes_total;
@@ -502,6 +568,8 @@ tap_stats_reset(struct rte_eth_dev *dev)
 	for (i = 0; i < pmd->nb_queues; i++) {
 		pmd->rxq[i].stats.ipackets = 0;
 		pmd->rxq[i].stats.ibytes = 0;
+		pmd->rxq[i].stats.ierrors = 0;
+		pmd->rxq[i].stats.rx_nombuf = 0;
 
 		pmd->txq[i].stats.opackets = 0;
 		pmd->txq[i].stats.errs = 0;
@@ -534,6 +602,10 @@ tap_rx_queue_release(void *queue)
 	if (rxq && (rxq->fd > 0)) {
 		close(rxq->fd);
 		rxq->fd = -1;
+		rte_pktmbuf_free(rxq->pool);
+		rte_free(rxq->iovecs);
+		rxq->pool = NULL;
+		rxq->iovecs = NULL;
 	}
 }
 
@@ -652,6 +724,7 @@ tap_setup_queue(struct rte_eth_dev *dev,
 	rx->fd = fd;
 	tx->fd = fd;
 	tx->mtu = &dev->data->mtu;
+	rx->rxmode = &dev->data->dev_conf.rxmode;
 
 	return fd;
 }
@@ -679,14 +752,20 @@ tx_setup_queue(struct rte_eth_dev *dev,
 static int
 tap_rx_queue_setup(struct rte_eth_dev *dev,
 		   uint16_t rx_queue_id,
-		   uint16_t nb_rx_desc __rte_unused,
-		   unsigned int socket_id __rte_unused,
+		   uint16_t nb_rx_desc,
+		   unsigned int socket_id,
 		   const struct rte_eth_rxconf *rx_conf __rte_unused,
 		   struct rte_mempool *mp)
 {
 	struct pmd_internals *internals = dev->data->dev_private;
+	struct rx_queue *rxq = &internals->rxq[rx_queue_id];
+	struct rte_mbuf **tmp = &rxq->pool;
+	struct iovec (*iovecs)[nb_rx_desc + 1];
+	int data_off = RTE_PKTMBUF_HEADROOM;
 	uint16_t buf_size;
+	int ret = 0;
 	int fd;
+	int i;
 
 	if ((rx_queue_id >= internals->nb_queues) || !mp) {
 		RTE_LOG(WARNING, PMD,
@@ -695,9 +774,19 @@ tap_rx_queue_setup(struct rte_eth_dev *dev,
 		return -1;
 	}
 
-	internals->rxq[rx_queue_id].mp = mp;
-	internals->rxq[rx_queue_id].trigger_seen = 1; /* force initial burst */
-	internals->rxq[rx_queue_id].in_port = dev->data->port_id;
+	rxq->mp = mp;
+	rxq->trigger_seen = 1; /* force initial burst */
+	rxq->in_port = dev->data->port_id;
+	rxq->nb_rx_desc = nb_rx_desc;
+	iovecs = rte_zmalloc_socket(dev->data->name, sizeof(*iovecs), 0,
+				    socket_id);
+	if (!iovecs) {
+		RTE_LOG(WARNING, PMD,
+			"%s: Couldn't allocate %d RX descriptors\n",
+			dev->data->name, nb_rx_desc);
+		return -ENOMEM;
+	}
+	rxq->iovecs = iovecs;
 
 	/* Now get the space available for data in the mbuf */
 	buf_size = (uint16_t)(rte_pktmbuf_data_room_size(mp) -
@@ -707,17 +796,46 @@ tap_rx_queue_setup(struct rte_eth_dev *dev,
 		RTE_LOG(WARNING, PMD,
 			"%s: %d bytes will not fit in mbuf (%d bytes)\n",
 			dev->data->name, ETH_FRAME_LEN, buf_size);
-		return -ENOMEM;
+		ret = -ENOMEM;
+		goto error;
 	}
 
 	fd = rx_setup_queue(dev, internals, rx_queue_id);
-	if (fd == -1)
-		return -1;
+	if (fd == -1) {
+		ret = fd;
+		goto error;
+	}
+
+	(*rxq->iovecs)[0].iov_len = sizeof(struct tun_pi);
+	(*rxq->iovecs)[0].iov_base = &rxq->pi;
+
+	for (i = 1; i <= nb_rx_desc; i++) {
+		*tmp = rte_pktmbuf_alloc(rxq->mp);
+		if (!*tmp) {
+			RTE_LOG(WARNING, PMD,
+				"%s: couldn't allocate memory for queue %d\n",
+				dev->data->name, rx_queue_id);
+			ret = -ENOMEM;
+			goto error;
+		}
+		(*rxq->iovecs)[i].iov_len = (*tmp)->buf_len - data_off;
+		(*rxq->iovecs)[i].iov_base =
+			(char *)(*tmp)->buf_addr + data_off;
+		data_off = 0;
+		tmp = &(*tmp)->next;
+	}
 
 	RTE_LOG(DEBUG, PMD, "  RX TAP device name %s, qid %d on fd %d\n",
 		internals->name, rx_queue_id, internals->rxq[rx_queue_id].fd);
 
 	return 0;
+
+error:
+	rte_pktmbuf_free(rxq->pool);
+	rxq->pool = NULL;
+	rte_free(rxq->iovecs);
+	rxq->iovecs = NULL;
+	return ret;
 }
 
 static int
