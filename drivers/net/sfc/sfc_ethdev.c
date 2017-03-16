@@ -42,6 +42,54 @@
 #include "sfc_tx.h"
 #include "sfc_flow.h"
 
+static int
+sfc_fw_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size)
+{
+	struct sfc_adapter *sa = dev->data->dev_private;
+	efx_nic_fw_info_t enfi;
+	int ret;
+	int rc;
+
+	/*
+	 * Return value of the callback is likely supposed to be
+	 * equal to or greater than 0, nevertheless, if an error
+	 * occurs, it will be desirable to pass it to the caller
+	 */
+	if ((fw_version == NULL) || (fw_size == 0))
+		return -EINVAL;
+
+	rc = efx_nic_get_fw_version(sa->nic, &enfi);
+	if (rc != 0)
+		return -rc;
+
+	ret = snprintf(fw_version, fw_size,
+		       "%" PRIu16 ".%" PRIu16 ".%" PRIu16 ".%" PRIu16,
+		       enfi.enfi_mc_fw_version[0], enfi.enfi_mc_fw_version[1],
+		       enfi.enfi_mc_fw_version[2], enfi.enfi_mc_fw_version[3]);
+	if (ret < 0)
+		return ret;
+
+	if (enfi.enfi_dpcpu_fw_ids_valid) {
+		size_t dpcpu_fw_ids_offset = MIN(fw_size - 1, (size_t)ret);
+		int ret_extra;
+
+		ret_extra = snprintf(fw_version + dpcpu_fw_ids_offset,
+				     fw_size - dpcpu_fw_ids_offset,
+				     " rx%" PRIx16 " tx%" PRIx16,
+				     enfi.enfi_rx_dpcpu_fw_id,
+				     enfi.enfi_tx_dpcpu_fw_id);
+		if (ret_extra < 0)
+			return ret_extra;
+
+		ret += ret_extra;
+	}
+
+	if (fw_size < (size_t)(++ret))
+		return ret;
+	else
+		return 0;
+}
+
 static void
 sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
@@ -1304,6 +1352,7 @@ static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.set_mc_addr_list		= sfc_set_mc_addr_list,
 	.rxq_info_get			= sfc_rx_queue_info_get,
 	.txq_info_get			= sfc_tx_queue_info_get,
+	.fw_version_get			= sfc_fw_version_get,
 };
 
 static int
