@@ -62,7 +62,7 @@ test test-basic test-fast test-perf:
 			$(RTE_TARGET) \
 			$(BLACKLIST) $(WHITELIST); \
 	else \
-		echo "No test found, please do a 'make build' first, or specify O=" ; \
+		echo "No test found, please do a 'make test-build' first, or specify O=" ; \
 	fi
 
 # this is a special target to ease the pain of running coverage tests
@@ -80,5 +80,5 @@ coverage:
 			$(BLACKLIST) $(WHITELIST) ; \
 		$(RTE_OUTPUT)/app/dpdk-procinfo --file-prefix=ring_perf -- -m; \
 	else \
-		echo "No test found, please do a 'make build' first, or specify O=" ;\
+		echo "No test found, please do a 'make test-build' first, or specify O=" ;\
 	fi
