@@ -96,7 +96,6 @@ config showconfigs showversion showversionum:
 test test-basic test-fast test-ring test-mempool test-perf coverage:
 	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdktest.mk $@
 
-.PHONY: test-buid
 test: test-build
 
 .PHONY: install
