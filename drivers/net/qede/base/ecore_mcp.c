@@ -1267,9 +1267,7 @@ enum _ecore_status_t ecore_mcp_handle_events(struct ecore_hwfn *p_hwfn,
 			ecore_mcp_handle_critical_error(p_hwfn, p_ptt);
 			break;
 		default:
-			/* @DPDK */
-			DP_NOTICE(p_hwfn, false,
-				  "Unimplemented MFW message %d\n", i);
+			DP_INFO(p_hwfn, "Unimplemented MFW message %d\n", i);
 			rc = ECORE_INVAL;
 		}
 	}
