@@ -387,8 +387,6 @@ enum _ecore_status_t ecore_vf_hw_prepare(struct ecore_hwfn *p_hwfn)
 		return ECORE_NOMEM;
 	}
 
-	OSAL_MEMSET(p_iov, 0, sizeof(*p_iov));
-
 	/* Allocate vf2pf msg */
 	p_iov->vf2pf_request = OSAL_DMA_ALLOC_COHERENT(p_hwfn->p_dev,
 							 &p_iov->
