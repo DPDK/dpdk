@@ -788,10 +788,9 @@ enum _ecore_status_t ecore_final_cleanup(struct ecore_hwfn *p_hwfn,
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
 		   "Sending final cleanup for PFVF[%d] [Command %08x\n]",
-		   id, OSAL_CPU_TO_LE32(command));
+		   id, command);
 
-	ecore_wr(p_hwfn, p_ptt, XSDM_REG_OPERATION_GEN,
-		 OSAL_CPU_TO_LE32(command));
+	ecore_wr(p_hwfn, p_ptt, XSDM_REG_OPERATION_GEN, command);
 
 	/* Poll until completion */
 	while (!REG_RD(p_hwfn, addr) && count--)
