@@ -641,19 +641,20 @@ enum _ecore_status_t ecore_resc_alloc(struct ecore_dev *p_dev)
 				    ecore_cxt_get_proto_cid_count(
 						p_hwfn,
 						PROTOCOLID_ROCE,
-						0);
+						OSAL_NULL);
 				num_cons *= 2;
 			} else {
 				num_cons = ecore_cxt_get_proto_cid_count(
 						p_hwfn,
 						PROTOCOLID_IWARP,
-						0);
+						OSAL_NULL);
 			}
 			n_eqes += num_cons + 2 * MAX_NUM_VFS_BB;
 		} else if (p_hwfn->hw_info.personality == ECORE_PCI_ISCSI) {
 			num_cons =
 			    ecore_cxt_get_proto_cid_count(p_hwfn,
-							  PROTOCOLID_ISCSI, 0);
+							  PROTOCOLID_ISCSI,
+							  OSAL_NULL);
 			n_eqes += 2 * num_cons;
 		}
 
