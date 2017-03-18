@@ -2016,7 +2016,7 @@ static void ecore_iov_vf_mbx_start_rxq(struct ecore_hwfn *p_hwfn,
 	params.queue_id = (u8)vf->vf_queues[req->rx_qid].fw_rx_qid;
 	params.vf_qid = req->rx_qid;
 	params.vport_id = vf->vport_id;
-	params.stats_id = vf->abs_vf_id + 0x10,
+	params.stats_id = vf->abs_vf_id + 0x10;
 	params.sb = req->hw_sb;
 	params.sb_idx = req->sb_index;
 
@@ -2121,7 +2121,7 @@ static void ecore_iov_vf_mbx_start_txq(struct ecore_hwfn *p_hwfn,
 	params.queue_id = (u8)vf->vf_queues[req->tx_qid].fw_tx_qid;
 	params.qzone_id = (u8)vf->vf_queues[req->tx_qid].fw_tx_qid;
 	params.vport_id = vf->vport_id;
-	params.stats_id = vf->abs_vf_id + 0x10,
+	params.stats_id = vf->abs_vf_id + 0x10;
 	params.sb = req->hw_sb;
 	params.sb_idx = req->sb_index;
 
