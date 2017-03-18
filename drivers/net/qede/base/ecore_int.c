@@ -913,18 +913,24 @@ static enum _ecore_status_t ecore_int_deassertion(struct ecore_hwfn *p_hwfn,
 
 				bit = bit_idx;
 				bit_len = ATTENTION_LENGTH(p_aeu->flags);
-				if (p_aeu->flags & ATTENTION_PAR_INT) {
+				if (p_aeu->flags & ATTENTION_PAR) {
 					/* Skip Parity */
 					bit++;
 					bit_len--;
 				}
 
+				/* Find the bits relating to HW-block, then
+				 * shift so they'll become LSB.
+				 */
 				bitmask = bits & (((1 << bit_len) - 1) << bit);
+				bitmask >>= bit;
+
 				if (bitmask) {
 					u32 flags = p_aeu->flags;
 					char bit_name[30];
+					u8 num;
 
-					bit = (u8)OSAL_FIND_FIRST_BIT(&bitmask,
+					num = (u8)OSAL_FIND_FIRST_BIT(&bitmask,
 								bit_len);
 
 					/* Some bits represent more than a
@@ -936,11 +942,17 @@ static enum _ecore_status_t ecore_int_deassertion(struct ecore_hwfn *p_hwfn,
 					    ATTENTION_LENGTH(flags) > 1))
 						OSAL_SNPRINTF(bit_name, 30,
 							      p_aeu->bit_name,
-							      bit);
+							      num);
 					else
 						OSAL_STRNCPY(bit_name,
 							     p_aeu->bit_name,
 							     30);
+
+					/* We now need to pass bitmask in its
+					 * correct position.
+					 */
+					bitmask <<= bit;
+
 					/* Handle source of the attention */
 					ecore_int_deassertion_aeu_bit(p_hwfn,
 								      p_aeu,
