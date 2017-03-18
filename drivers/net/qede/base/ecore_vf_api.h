@@ -78,17 +78,17 @@ void ecore_vf_get_port_mac(struct ecore_hwfn *p_hwfn,
 void ecore_vf_get_num_vlan_filters(struct ecore_hwfn *p_hwfn,
 				   u8 *num_vlan_filters);
 
+void ecore_vf_get_num_sbs(struct ecore_hwfn *p_hwfn,
+			  u32 *num_sbs);
+
 /**
  * @brief Get number of MAC filters allocated for VF by ecore
  *
- * @param p_hwfn
- * @param num_mac_filters - allocated MAC filters
+ *  @param p_hwfn
+ *  @param num_rxqs - allocated MAC filters
  */
 void ecore_vf_get_num_mac_filters(struct ecore_hwfn *p_hwfn,
 				  u32 *num_mac_filters);
-
-void ecore_vf_get_num_sbs(struct ecore_hwfn *p_hwfn,
-			  u32 *num_sbs);
 
 /**
  * @brief Check if VF can set a MAC address

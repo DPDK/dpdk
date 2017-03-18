@@ -1373,16 +1373,6 @@ void ecore_vf_get_num_vlan_filters(struct ecore_hwfn *p_hwfn,
 	*num_vlan_filters = p_vf->acquire_resp.resc.num_vlan_filters;
 }
 
-/* @DPDK */
-void ecore_vf_get_num_mac_filters(struct ecore_hwfn *p_hwfn,
-				  u32 *num_mac)
-{
-	struct ecore_vf_iov *p_vf;
-
-	p_vf = p_hwfn->vf_iov_info;
-	*num_mac = p_vf->acquire_resp.resc.num_mac_filters;
-}
-
 void ecore_vf_get_num_sbs(struct ecore_hwfn *p_hwfn,
 			  u32 *num_sbs)
 {
@@ -1390,6 +1380,14 @@ void ecore_vf_get_num_sbs(struct ecore_hwfn *p_hwfn,
 
 	p_vf = p_hwfn->vf_iov_info;
 	*num_sbs = (u32)p_vf->acquire_resp.resc.num_sbs;
+}
+
+void ecore_vf_get_num_mac_filters(struct ecore_hwfn *p_hwfn,
+				  u32 *num_mac_filters)
+{
+	struct ecore_vf_iov *p_vf = p_hwfn->vf_iov_info;
+
+	*num_mac_filters = p_vf->acquire_resp.resc.num_mac_filters;
 }
 
 bool ecore_vf_check_mac(struct ecore_hwfn *p_hwfn, u8 *mac)

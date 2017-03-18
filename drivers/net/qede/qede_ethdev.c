@@ -485,7 +485,8 @@ qede_mac_int_ops(struct rte_eth_dev *eth_dev, struct ecore_filter_ucast *ucast,
 		}
 	} else { /* Unicast */
 		if (add) {
-			if (qdev->num_uc_addr >= qdev->dev_info.num_mac_addrs) {
+			if (qdev->num_uc_addr >=
+			    qdev->dev_info.num_mac_filters) {
 				DP_ERR(edev,
 				       "Ucast filter table limit exceeded,"
 				       " Please enable promisc mode\n");
@@ -528,9 +529,9 @@ qede_mac_addr_remove(struct rte_eth_dev *eth_dev, uint32_t index)
 
 	PMD_INIT_FUNC_TRACE(edev);
 
-	if (index >= qdev->dev_info.num_mac_addrs) {
+	if (index >= qdev->dev_info.num_mac_filters) {
 		DP_ERR(edev, "Index %u is above MAC filter limit %u\n",
-		       index, qdev->dev_info.num_mac_addrs);
+		       index, qdev->dev_info.num_mac_filters);
 		return;
 	}
 
@@ -981,7 +982,7 @@ qede_dev_info_get(struct rte_eth_dev *eth_dev,
 			QEDE_MAX_RSS_CNT(qdev), ECORE_MAX_VF_CHAINS_PER_PF);
 	dev_info->max_tx_queues = dev_info->max_rx_queues;
 
-	dev_info->max_mac_addrs = qdev->dev_info.num_mac_addrs;
+	dev_info->max_mac_addrs = qdev->dev_info.num_mac_filters;
 	dev_info->max_vfs = 0;
 	dev_info->reta_size = ECORE_RSS_IND_TABLE_SIZE;
 	dev_info->hash_key_size = ECORE_RSS_KEY_SIZE * sizeof(uint32_t);
@@ -2177,17 +2178,17 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 	adapter->ops->common->set_id(edev, edev->name, QEDE_PMD_VERSION);
 
 	if (!is_vf)
-		adapter->dev_info.num_mac_addrs =
+		adapter->dev_info.num_mac_filters =
 			(uint32_t)RESC_NUM(ECORE_LEADING_HWFN(edev),
 					    ECORE_MAC);
 	else
 		ecore_vf_get_num_mac_filters(ECORE_LEADING_HWFN(edev),
-					     &adapter->dev_info.num_mac_addrs);
+				(uint32_t *)&adapter->dev_info.num_mac_filters);
 
 	/* Allocate memory for storing MAC addr */
 	eth_dev->data->mac_addrs = rte_zmalloc(edev->name,
 					(ETHER_ADDR_LEN *
-					adapter->dev_info.num_mac_addrs),
+					adapter->dev_info.num_mac_filters),
 					RTE_CACHE_LINE_SIZE);
 
 	if (eth_dev->data->mac_addrs == NULL) {
