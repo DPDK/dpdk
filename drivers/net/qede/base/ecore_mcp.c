@@ -104,7 +104,6 @@ enum _ecore_status_t ecore_mcp_free(struct ecore_hwfn *p_hwfn)
 		OSAL_SPIN_LOCK_DEALLOC(&p_hwfn->mcp_info->lock);
 	}
 	OSAL_FREE(p_hwfn->p_dev, p_hwfn->mcp_info);
-	p_hwfn->mcp_info = OSAL_NULL;
 
 	return ECORE_SUCCESS;
 }

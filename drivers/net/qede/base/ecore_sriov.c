@@ -554,7 +554,6 @@ void ecore_iov_free(struct ecore_hwfn *p_hwfn)
 void ecore_iov_free_hw_info(struct ecore_dev *p_dev)
 {
 	OSAL_FREE(p_dev, p_dev->p_iov_info);
-	p_dev->p_iov_info = OSAL_NULL;
 }
 
 enum _ecore_status_t ecore_iov_hw_info(struct ecore_hwfn *p_hwfn)
@@ -597,7 +596,6 @@ enum _ecore_status_t ecore_iov_hw_info(struct ecore_hwfn *p_hwfn)
 		DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
 			   "IOV capabilities, but no VFs are published\n");
 		OSAL_FREE(p_dev, p_dev->p_iov_info);
-		p_dev->p_iov_info = OSAL_NULL;
 		return ECORE_SUCCESS;
 	}
 

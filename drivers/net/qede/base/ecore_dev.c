@@ -136,13 +136,9 @@ static void ecore_qm_info_free(struct ecore_hwfn *p_hwfn)
 	struct ecore_qm_info *qm_info = &p_hwfn->qm_info;
 
 	OSAL_FREE(p_hwfn->p_dev, qm_info->qm_pq_params);
-	qm_info->qm_pq_params = OSAL_NULL;
 	OSAL_FREE(p_hwfn->p_dev, qm_info->qm_vport_params);
-	qm_info->qm_vport_params = OSAL_NULL;
 	OSAL_FREE(p_hwfn->p_dev, qm_info->qm_port_params);
-	qm_info->qm_port_params = OSAL_NULL;
 	OSAL_FREE(p_hwfn->p_dev, qm_info->wfq_data);
-	qm_info->wfq_data = OSAL_NULL;
 }
 
 void ecore_resc_free(struct ecore_dev *p_dev)
@@ -153,7 +149,6 @@ void ecore_resc_free(struct ecore_dev *p_dev)
 		return;
 
 	OSAL_FREE(p_dev, p_dev->fw_data);
-	p_dev->fw_data = OSAL_NULL;
 
 	OSAL_FREE(p_dev, p_dev->reset_stats);
 
@@ -161,9 +156,7 @@ void ecore_resc_free(struct ecore_dev *p_dev)
 		struct ecore_hwfn *p_hwfn = &p_dev->hwfns[i];
 
 		OSAL_FREE(p_dev, p_hwfn->p_tx_cids);
-		p_hwfn->p_tx_cids = OSAL_NULL;
 		OSAL_FREE(p_dev, p_hwfn->p_rx_cids);
-		p_hwfn->p_rx_cids = OSAL_NULL;
 	}
 
 	for_each_hwfn(p_dev, i) {
@@ -668,8 +661,7 @@ enum _ecore_status_t ecore_resc_alloc(struct ecore_dev *p_dev)
 			DP_ERR(p_hwfn, "Cannot allocate 0x%x EQ elements."
 				       "The maximum of a u16 chain is 0x%x\n",
 			       n_eqes, 0xFFFF);
-			rc = ECORE_INVAL;
-			goto alloc_err;
+			goto alloc_no_mem;
 		}
 
 		p_eq = ecore_eq_alloc(p_hwfn, (u16)n_eqes);

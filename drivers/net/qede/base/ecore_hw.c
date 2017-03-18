@@ -86,7 +86,6 @@ void ecore_ptt_pool_free(struct ecore_hwfn *p_hwfn)
 	if (p_hwfn->p_ptt_pool)
 		OSAL_SPIN_LOCK_DEALLOC(&p_hwfn->p_ptt_pool->lock);
 	OSAL_FREE(p_hwfn->p_dev, p_hwfn->p_ptt_pool);
-	p_hwfn->p_ptt_pool = OSAL_NULL;
 }
 
 struct ecore_ptt *ecore_ptt_acquire(struct ecore_hwfn *p_hwfn)

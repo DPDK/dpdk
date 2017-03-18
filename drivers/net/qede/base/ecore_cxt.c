@@ -766,7 +766,6 @@ static void ecore_cxt_src_t2_free(struct ecore_hwfn *p_hwfn)
 					       p_mngr->t2[i].size);
 
 	OSAL_FREE(p_hwfn->p_dev, p_mngr->t2);
-	p_mngr->t2 = OSAL_NULL;
 }
 
 static enum _ecore_status_t ecore_cxt_src_t2_alloc(struct ecore_hwfn *p_hwfn)
@@ -1157,8 +1156,6 @@ void ecore_cxt_mngr_free(struct ecore_hwfn *p_hwfn)
 	ecore_ilt_shadow_free(p_hwfn);
 	OSAL_MUTEX_DEALLOC(&p_hwfn->p_cxt_mngr->mutex);
 	OSAL_FREE(p_hwfn->p_dev, p_hwfn->p_cxt_mngr);
-
-	p_hwfn->p_cxt_mngr = OSAL_NULL;
 }
 
 void ecore_cxt_mngr_setup(struct ecore_hwfn *p_hwfn)

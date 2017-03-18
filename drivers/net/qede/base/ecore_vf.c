@@ -1142,7 +1142,6 @@ enum _ecore_status_t ecore_vf_pf_release(struct ecore_hwfn *p_hwfn)
 	}
 
 	OSAL_FREE(p_hwfn->p_dev, p_hwfn->vf_iov_info);
-	p_hwfn->vf_iov_info = OSAL_NULL;
 
 	return rc;
 }
