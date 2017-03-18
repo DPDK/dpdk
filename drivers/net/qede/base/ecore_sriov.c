@@ -599,14 +599,30 @@ enum _ecore_status_t ecore_iov_hw_info(struct ecore_hwfn *p_hwfn)
 		return ECORE_SUCCESS;
 	}
 
-	/* Calculate the first VF index - this is a bit tricky; Basically,
-	 * VFs start at offset 16 relative to PF0, and 2nd engine VFs begin
-	 * after the first engine's VFs.
+	/* First VF index based on offset is tricky:
+	 *  - If ARI is supported [likely], offset - (16 - pf_id) would
+	 *    provide the number for eng0. 2nd engine Vfs would begin
+	 *    after the first engine's VFs.
+	 *  - If !ARI, VFs would start on next device.
+	 *    so offset - (256 - pf_id) would provide the number.
+	 * Utilize the fact that (256 - pf_id) is achieved only be later
+	 * to diffrentiate between the two.
 	 */
-	p_dev->p_iov_info->first_vf_in_pf = p_hwfn->p_dev->p_iov_info->offset +
-					    p_hwfn->abs_pf_id - 16;
-	if (ECORE_PATH_ID(p_hwfn))
-		p_dev->p_iov_info->first_vf_in_pf -= MAX_NUM_VFS_BB;
+
+	if (p_hwfn->p_dev->p_iov_info->offset < (256 - p_hwfn->abs_pf_id)) {
+		u32 first = p_hwfn->p_dev->p_iov_info->offset +
+			    p_hwfn->abs_pf_id - 16;
+
+		p_dev->p_iov_info->first_vf_in_pf = first;
+
+		if (ECORE_PATH_ID(p_hwfn))
+			p_dev->p_iov_info->first_vf_in_pf -= MAX_NUM_VFS_BB;
+	} else {
+		u32 first = p_hwfn->p_dev->p_iov_info->offset +
+			    p_hwfn->abs_pf_id - 256;
+
+		p_dev->p_iov_info->first_vf_in_pf = first;
+	}
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
 		   "First VF in hwfn 0x%08x\n",
