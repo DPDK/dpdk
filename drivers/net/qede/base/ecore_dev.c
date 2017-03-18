@@ -2298,12 +2298,11 @@ static enum _ecore_status_t ecore_hw_set_resc_info(struct ecore_hwfn *p_hwfn,
 	*p_resc_start = resc_info.offset;
 
 	if (*p_resc_num != dflt_resc_num || *p_resc_start != dflt_resc_start) {
-		DP_NOTICE(p_hwfn, false,
-			  "Resource %d [%s]: MFW allocation [num %d, start %d]"
-			  " differs from default values [num %d, start %d]%s\n",
-			  res_id, ecore_hw_get_resc_name(res_id), *p_resc_num,
-			  *p_resc_start, dflt_resc_num, dflt_resc_start,
-			  drv_resc_alloc ? " - Applying default values" : "");
+		DP_INFO(p_hwfn,
+			"Resource %d [%s]: MFW allocation [num %d, start %d] differs from default values [num %d, start %d]%s\n",
+			res_id, ecore_hw_get_resc_name(res_id), *p_resc_num,
+			*p_resc_start, dflt_resc_num, dflt_resc_start,
+			drv_resc_alloc ? " - Applying default values" : "");
 		if (drv_resc_alloc) {
 			*p_resc_num = dflt_resc_num;
 			*p_resc_start = dflt_resc_start;
@@ -2332,12 +2331,7 @@ static enum _ecore_status_t ecore_hw_get_resc(struct ecore_hwfn *p_hwfn,
 #endif
 
 	for (res_id = 0; res_id < ECORE_MAX_RESC; res_id++) {
-		/* @@@TMP for AH:
-		 * Force the driver's default resource allocation in case there
-		 * is a diff with the MFW allocation value.
-		 */
-		rc = ecore_hw_set_resc_info(p_hwfn, res_id,
-					    b_ah || drv_resc_alloc);
+		rc = ecore_hw_set_resc_info(p_hwfn, res_id, drv_resc_alloc);
 		if (rc != ECORE_SUCCESS)
 			return rc;
 	}
