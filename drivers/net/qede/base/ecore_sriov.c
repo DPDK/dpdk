@@ -3073,6 +3073,13 @@ ecore_iov_execute_vf_flr_cleanup(struct ecore_hwfn *p_hwfn,
 			return rc;
 		}
 
+		/* Workaround to make VF-PF channel ready, as FW
+		 * doesn't do that as a part of FLR.
+		 */
+		REG_WR(p_hwfn,
+		       GTT_BAR0_MAP_REG_USDM_RAM +
+		       USTORM_VF_PF_CHANNEL_READY_OFFSET(vfid), 1);
+
 		/* VF_STOPPED has to be set only after final cleanup
 		 * but prior to re-enabling the VF.
 		 */
