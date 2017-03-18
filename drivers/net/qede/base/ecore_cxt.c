@@ -276,14 +276,24 @@ struct ecore_tm_iids {
 static OSAL_INLINE void ecore_cxt_tm_iids(struct ecore_cxt_mngr *p_mngr,
 					  struct ecore_tm_iids *iids)
 {
+	bool tm_vf_required = false;
+	bool tm_required = false;
 	u32 i, j;
 
 	for (i = 0; i < MAX_CONN_TYPES; i++) {
 		struct ecore_conn_type_cfg *p_cfg = &p_mngr->conn_cfg[i];
 
-		if (tm_cid_proto(i)) {
+		if (tm_cid_proto(i) || tm_required) {
+			if (p_cfg->cid_count)
+				tm_required = true;
+
 			iids->pf_cids += p_cfg->cid_count;
-			iids->per_vf_cids += p_cfg->cids_per_vf;
+		}
+
+		if (tm_cid_proto(i) || tm_vf_required) {
+			if (p_cfg->cids_per_vf)
+				tm_vf_required = true;
+
 		}
 
 		if (tm_tid_proto(i)) {
@@ -718,12 +728,11 @@ enum _ecore_status_t ecore_cxt_cfg_ilt_compute(struct ecore_hwfn *p_hwfn)
 		ecore_ilt_cli_adv_line(p_hwfn, p_cli, p_blk, &curr_line,
 				       ILT_CLI_TM);
 
+		p_cli->vf_total_lines = curr_line - p_blk->start_line;
 		for (i = 1; i < p_mngr->vf_count; i++) {
 			ecore_ilt_cli_adv_line(p_hwfn, p_cli, p_blk, &curr_line,
 					       ILT_CLI_TM);
 		}
-
-		p_cli->vf_total_lines = curr_line - p_blk->start_line;
 	}
 
 	/* TSDM (SRQ CONTEXT) */
