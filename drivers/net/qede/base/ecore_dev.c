@@ -2891,9 +2891,9 @@ static enum _ecore_status_t ecore_get_dev_info(struct ecore_dev *p_dev)
 					   MISCS_REG_CHIP_METAL);
 	MASK_FIELD(CHIP_METAL, p_dev->chip_metal);
 	DP_INFO(p_dev->hwfns,
-		"Chip details - %s%d, Num: %04x Rev: %04x Bond id: %04x Metal: %04x\n",
+		"Chip details - %s %c%d, Num: %04x Rev: %04x Bond id: %04x Metal: %04x\n",
 		ECORE_IS_BB(p_dev) ? "BB" : "AH",
-		CHIP_REV_IS_A0(p_dev) ? 0 : 1,
+		'A' + p_dev->chip_rev, (int)p_dev->chip_metal,
 		p_dev->chip_num, p_dev->chip_rev, p_dev->chip_bond_id,
 		p_dev->chip_metal);
 
