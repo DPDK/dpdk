@@ -419,7 +419,7 @@ ecore_general_attention_35(struct ecore_hwfn *p_hwfn)
 
 #define ECORE_DORQ_ATTENTION_REASON_MASK (0xfffff)
 #define ECORE_DORQ_ATTENTION_OPAQUE_MASK (0xffff)
-#define ECORE_DORQ_ATTENTION_SIZE_MASK	 (0x7f)
+#define ECORE_DORQ_ATTENTION_SIZE_MASK	 (0x7f0000)
 #define ECORE_DORQ_ATTENTION_SIZE_SHIFT	 (16)
 
 static enum _ecore_status_t ecore_dorq_attn_cb(struct ecore_hwfn *p_hwfn)
