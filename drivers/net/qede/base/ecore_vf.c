@@ -126,7 +126,6 @@ ecore_send_msg2pf(struct ecore_hwfn *p_hwfn,
 			   "VF <-- PF Timeout [Type %d]\n",
 			   p_req->first_tlv.tl.type);
 		rc = ECORE_TIMEOUT;
-		return rc;
 	} else {
 		DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
 			   "PF response: %d [Type %d]\n",
