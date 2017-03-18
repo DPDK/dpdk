@@ -1964,6 +1964,31 @@ enum _ecore_status_t ecore_int_igu_read_cam(struct ecore_hwfn *p_hwfn,
 			}
 		}
 	}
+
+	/* There's a possibility the igu_sb_cnt_iov doesn't properly reflect
+	 * the number of VF SBs [especially for first VF on engine, as we can't
+	 * diffrentiate between empty entries and its entries].
+	 * Since we don't really support more SBs than VFs today, prevent any
+	 * such configuration by sanitizing the number of SBs to equal the
+	 * number of VFs.
+	 */
+	if (IS_PF_SRIOV(p_hwfn)) {
+		u16 total_vfs = p_hwfn->p_dev->p_iov_info->total_vfs;
+
+		if (total_vfs < p_igu_info->free_blks) {
+			DP_VERBOSE(p_hwfn, (ECORE_MSG_INTR | ECORE_MSG_IOV),
+				   "Limiting number of SBs for IOV - %04x --> %04x\n",
+				   p_igu_info->free_blks,
+				   p_hwfn->p_dev->p_iov_info->total_vfs);
+			p_igu_info->free_blks = total_vfs;
+		} else if (total_vfs > p_igu_info->free_blks) {
+			DP_NOTICE(p_hwfn, true,
+				  "IGU has only %04x SBs for VFs while the device has %04x VFs\n",
+				  p_igu_info->free_blks, total_vfs);
+			return ECORE_INVAL;
+		}
+	}
+
 	p_igu_info->igu_sb_cnt_iov = p_igu_info->free_blks;
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_INTR,
@@ -2101,8 +2126,14 @@ u16 ecore_int_queue_id_from_sb_id(struct ecore_hwfn *p_hwfn, u16 sb_id)
 	    (sb_id < p_info->igu_base_sb + p_info->igu_sb_cnt)) {
 		return sb_id - p_info->igu_base_sb;
 	} else if ((sb_id >= p_info->igu_base_sb_iov) &&
-		   (sb_id < p_info->igu_base_sb_iov + p_info->igu_sb_cnt_iov)) {
-		return sb_id - p_info->igu_base_sb_iov + p_info->igu_sb_cnt;
+		   (sb_id < p_info->igu_base_sb_iov +
+			    p_info->igu_sb_cnt_iov)) {
+		/* We want the first VF queue to be adjacent to the
+		 * last PF queue. Since L2 queues can be partial to
+		 * SBs, we'll use the feature instead.
+		 */
+		return sb_id - p_info->igu_base_sb_iov +
+		       FEAT_NUM(p_hwfn, ECORE_PF_L2_QUE);
 	} else {
 		DP_NOTICE(p_hwfn, true, "SB %d not in range for function\n",
 			  sb_id);

@@ -2057,6 +2057,7 @@ static void get_function_id(struct ecore_hwfn *p_hwfn)
 static void ecore_hw_set_feat(struct ecore_hwfn *p_hwfn)
 {
 	u32 *feat_num = p_hwfn->hw_info.feat_num;
+	struct ecore_sb_cnt_info sb_cnt_info;
 	int num_features = 1;
 
 	/* L2 Queues require each: 1 status block. 1 L2 queue */
@@ -2065,11 +2066,21 @@ static void ecore_hw_set_feat(struct ecore_hwfn *p_hwfn)
 		       RESC_NUM(p_hwfn, ECORE_SB) / num_features,
 		       RESC_NUM(p_hwfn, ECORE_L2_QUEUE));
 
+	OSAL_MEM_ZERO(&sb_cnt_info, sizeof(sb_cnt_info));
+	ecore_int_get_num_sbs(p_hwfn, &sb_cnt_info);
+	feat_num[ECORE_VF_L2_QUE] =
+		OSAL_MIN_T(u32,
+			   RESC_NUM(p_hwfn, ECORE_L2_QUEUE) -
+			   FEAT_NUM(p_hwfn, ECORE_PF_L2_QUE),
+			   sb_cnt_info.sb_iov_cnt);
+
 	DP_VERBOSE(p_hwfn, ECORE_MSG_PROBE,
-		   "#PF_L2_QUEUES=%d #ROCE_CNQ=%d #SBS=%d num_features=%d\n",
-		   feat_num[ECORE_PF_L2_QUE],
-		   feat_num[ECORE_RDMA_CNQ],
-		   RESC_NUM(p_hwfn, ECORE_SB), num_features);
+		   "#PF_L2_QUEUES=%d VF_L2_QUEUES=%d #ROCE_CNQ=%d #SBS=%d num_features=%d\n",
+		   (int)FEAT_NUM(p_hwfn, ECORE_PF_L2_QUE),
+		   (int)FEAT_NUM(p_hwfn, ECORE_VF_L2_QUE),
+		   (int)FEAT_NUM(p_hwfn, ECORE_RDMA_CNQ),
+		   RESC_NUM(p_hwfn, ECORE_SB),
+		   num_features);
 }
 
 static enum resource_id_enum
