@@ -1056,7 +1056,7 @@ union drv_union_data {
 
 	struct lan_stats_stc lan_stats;
 	struct fcoe_stats_stc fcoe_stats;
-	struct iscsi_stats_stc icsci_stats;
+	struct iscsi_stats_stc iscsi_stats;
 	struct rdma_stats_stc rdma_stats;
 	struct ocbb_data_stc ocbb_info;
 	struct temperature_status_stc temp_info;
