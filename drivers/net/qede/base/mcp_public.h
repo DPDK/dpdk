@@ -1238,7 +1238,7 @@ struct public_drv_mb {
 	#define RESOURCE_OPCODE_WRONG_OWNER		5
 	#define RESOURCE_OPCODE_UNKNOWN_CMD		255
 	/* dedicate resource 0 for dump */
-	#define RESOURCE_DUMP				(1 << 0)
+	#define RESOURCE_DUMP				0
 #define DRV_MSG_CODE_GET_MBA_VERSION		0x00240000 /* Get MBA version */
 /* Send crash dump commands with param[3:0] - opcode */
 #define DRV_MSG_CODE_MDUMP_CMD			0x00250000
