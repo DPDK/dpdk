@@ -2426,21 +2426,23 @@ enum _ecore_status_t ecore_mcp_get_resc_info(struct ecore_hwfn *p_hwfn,
 					     u32 *p_mcp_resp, u32 *p_mcp_param)
 {
 	struct ecore_mcp_mb_params mb_params;
-	union drv_union_data *p_union_data;
+	union drv_union_data union_data;
 	enum _ecore_status_t rc;
 
 	OSAL_MEM_ZERO(&mb_params, sizeof(mb_params));
 	mb_params.cmd = DRV_MSG_GET_RESOURCE_ALLOC_MSG;
 	mb_params.param = ECORE_RESC_ALLOC_VERSION;
-	p_union_data = (union drv_union_data *)p_resc_info;
-	mb_params.p_data_src = p_union_data;
-	mb_params.p_data_dst = p_union_data;
+	OSAL_MEMCPY(&union_data.resource, p_resc_info, sizeof(*p_resc_info));
+	mb_params.p_data_src = &union_data;
+	mb_params.p_data_dst = &union_data;
 	rc = ecore_mcp_cmd_and_union(p_hwfn, p_ptt, &mb_params);
 	if (rc != ECORE_SUCCESS)
 		return rc;
 
 	*p_mcp_resp = mb_params.mcp_resp;
 	*p_mcp_param = mb_params.mcp_param;
+
+	OSAL_MEMCPY(p_resc_info, &union_data.resource, sizeof(*p_resc_info));
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
 		   "MFW resource_info: version 0x%x, res_id 0x%x, size 0x%x,"
