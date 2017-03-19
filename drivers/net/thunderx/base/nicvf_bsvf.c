@@ -37,7 +37,7 @@
 #include "nicvf_bsvf.h"
 #include "nicvf_plat.h"
 
-static SIMPLEQ_HEAD(, svf_entry) head = SIMPLEQ_HEAD_INITIALIZER(head);
+static STAILQ_HEAD(, svf_entry) head = STAILQ_HEAD_INITIALIZER(head);
 
 void
 nicvf_bsvf_push(struct svf_entry *entry)
@@ -45,7 +45,7 @@ nicvf_bsvf_push(struct svf_entry *entry)
 	assert(entry != NULL);
 	assert(entry->vf != NULL);
 
-	SIMPLEQ_INSERT_TAIL(&head, entry, next);
+	STAILQ_INSERT_TAIL(&head, entry, next);
 }
 
 struct svf_entry *
@@ -53,14 +53,14 @@ nicvf_bsvf_pop(void)
 {
 	struct svf_entry *entry;
 
-	assert(!SIMPLEQ_EMPTY(&head));
+	assert(!STAILQ_EMPTY(&head));
 
-	entry = SIMPLEQ_FIRST(&head);
+	entry = STAILQ_FIRST(&head);
 
 	assert(entry != NULL);
 	assert(entry->vf != NULL);
 
-	SIMPLEQ_REMOVE_HEAD(&head, next);
+	STAILQ_REMOVE_HEAD(&head, next);
 
 	return entry;
 }
@@ -68,5 +68,5 @@ nicvf_bsvf_pop(void)
 int
 nicvf_bsvf_empty(void)
 {
-	return SIMPLEQ_EMPTY(&head);
+	return STAILQ_EMPTY(&head);
 }

@@ -41,7 +41,6 @@
 #include <inttypes.h>
 #include <netinet/in.h>
 #include <sys/queue.h>
-#include <sys/timerfd.h>
 
 #include <rte_alarm.h>
 #include <rte_atomic.h>
