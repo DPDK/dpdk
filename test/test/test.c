@@ -157,7 +157,8 @@ int
 unit_test_suite_runner(struct unit_test_suite *suite)
 {
 	int test_success;
-	unsigned total = 0, executed = 0, skipped = 0, succeeded = 0, failed = 0;
+	unsigned int total = 0, executed = 0, skipped = 0;
+	unsigned int succeeded = 0, failed = 0, unsupported = 0;
 	const char *status;
 
 	if (suite->suite_name) {
@@ -191,8 +192,12 @@ unit_test_suite_runner(struct unit_test_suite *suite)
 			test_success = suite->unit_test_cases[total].testcase();
 			if (test_success == TEST_SUCCESS)
 				succeeded++;
+			else if (test_success == -ENOTSUP)
+				unsupported++;
 			else
 				failed++;
+		} else if (test_success == -ENOTSUP) {
+			unsupported++;
 		} else {
 			failed++;
 		}
@@ -203,6 +208,8 @@ unit_test_suite_runner(struct unit_test_suite *suite)
 
 		if (test_success == TEST_SUCCESS)
 			status = "succeeded";
+		else if (test_success == -ENOTSUP)
+			status = "unsupported";
 		else
 			status = "failed";
 
@@ -224,6 +231,7 @@ suite_summary:
 	printf(" + Tests Total :       %2d\n", total);
 	printf(" + Tests Skipped :     %2d\n", skipped);
 	printf(" + Tests Executed :    %2d\n", executed);
+	printf(" + Tests Unsupported:  %2d\n", unsupported);
 	printf(" + Tests Passed :      %2d\n", succeeded);
 	printf(" + Tests Failed :      %2d\n", failed);
 	printf(" + ------------------------------------------------------- +\n");
