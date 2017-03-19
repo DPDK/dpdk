@@ -158,6 +158,7 @@ unit_test_suite_runner(struct unit_test_suite *suite)
 {
 	int test_success;
 	unsigned total = 0, executed = 0, skipped = 0, succeeded = 0, failed = 0;
+	const char *status;
 
 	if (suite->suite_name) {
 		printf(" + ------------------------------------------------------- +\n");
@@ -201,15 +202,12 @@ unit_test_suite_runner(struct unit_test_suite *suite)
 			suite->unit_test_cases[total].teardown();
 
 		if (test_success == TEST_SUCCESS)
-			printf(" + TestCase [%2d] : %s\n", total,
-					suite->unit_test_cases[total].success_msg ?
-					suite->unit_test_cases[total].success_msg :
-					"passed");
+			status = "succeeded";
 		else
-			printf(" + TestCase [%2d] : %s\n", total,
-					suite->unit_test_cases[total].fail_msg ?
-					suite->unit_test_cases[total].fail_msg :
-					"failed");
+			status = "failed";
+
+		printf(" + TestCase [%2d] : %s %s\n", total,
+				suite->unit_test_cases[total].name, status);
 
 		total++;
 	}

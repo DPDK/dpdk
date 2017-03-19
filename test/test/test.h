@@ -185,29 +185,24 @@ struct unit_test_case {
 	int (*setup)(void);
 	void (*teardown)(void);
 	int (*testcase)(void);
-	const char *success_msg;
-	const char *fail_msg;
+	const char *name;
 	unsigned enabled;
 };
 
-#define TEST_CASE(fn) { NULL, NULL, fn, #fn " succeeded", #fn " failed", 1 }
+#define TEST_CASE(fn) { NULL, NULL, fn, #fn, 1 }
 
-#define TEST_CASE_NAMED(name, fn) { NULL, NULL, fn, name " succeeded", \
-		name " failed", 1 }
+#define TEST_CASE_NAMED(name, fn) { NULL, NULL, fn, name, 1 }
 
-#define TEST_CASE_ST(setup, teardown, testcase)         \
-		{ setup, teardown, testcase, #testcase " succeeded",    \
-		#testcase " failed ", 1 }
+#define TEST_CASE_ST(setup, teardown, testcase) \
+		{ setup, teardown, testcase, #testcase, 1 }
 
 
-#define TEST_CASE_DISABLED(fn) { NULL, NULL, fn, #fn " succeeded", \
-	#fn " failed", 0 }
+#define TEST_CASE_DISABLED(fn) { NULL, NULL, fn, #fn, 0 }
 
-#define TEST_CASE_ST_DISABLED(setup, teardown, testcase)         \
-		{ setup, teardown, testcase, #testcase " succeeded",    \
-		#testcase " failed ", 0 }
+#define TEST_CASE_ST_DISABLED(setup, teardown, testcase) \
+		{ setup, teardown, testcase, #testcase, 0 }
 
-#define TEST_CASES_END() { NULL, NULL, NULL, NULL, NULL, 0 }
+#define TEST_CASES_END() { NULL, NULL, NULL, NULL, 0 }
 
 #if RTE_LOG_LEVEL >= RTE_LOG_DEBUG
 #define TEST_HEXDUMP(file, title, buf, len) rte_hexdump(file, title, buf, len)
