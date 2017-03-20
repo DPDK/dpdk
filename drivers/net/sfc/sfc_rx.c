@@ -219,7 +219,7 @@ sfc_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	boolean_t discard_next = B_FALSE;
 	struct rte_mbuf *scatter_pkt = NULL;
 
-	if (unlikely((rxq->state & SFC_RXQ_RUNNING) == 0))
+	if (unlikely((rxq->flags & SFC_RXQ_FLAG_RUNNING) == 0))
 		return 0;
 
 	sfc_ev_qpoll(rxq->evq);
@@ -320,7 +320,7 @@ sfc_rx_qdesc_npending(struct sfc_adapter *sa, unsigned int sw_index)
 	SFC_ASSERT(sw_index < sa->rxq_count);
 	rxq = sa->rxq_info[sw_index].rxq;
 
-	if (rxq == NULL || (rxq->state & SFC_RXQ_RUNNING) == 0)
+	if (rxq == NULL || (rxq->flags & SFC_RXQ_FLAG_RUNNING) == 0)
 		return 0;
 
 	sfc_ev_qpoll(rxq->evq);
@@ -331,7 +331,7 @@ sfc_rx_qdesc_npending(struct sfc_adapter *sa, unsigned int sw_index)
 int
 sfc_rx_qdesc_done(struct sfc_rxq *rxq, unsigned int offset)
 {
-	if ((rxq->state & SFC_RXQ_RUNNING) == 0)
+	if ((rxq->flags & SFC_RXQ_FLAG_RUNNING) == 0)
 		return 0;
 
 	sfc_ev_qpoll(rxq->evq);
@@ -486,7 +486,8 @@ sfc_rx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 
 	rxq->pending = rxq->completed = rxq->added = rxq->pushed = 0;
 
-	rxq->state |= (SFC_RXQ_STARTED | SFC_RXQ_RUNNING);
+	rxq->state |= SFC_RXQ_STARTED;
+	rxq->flags |= SFC_RXQ_FLAG_STARTED | SFC_RXQ_FLAG_RUNNING;
 
 	sfc_rx_qrefill(rxq);
 
@@ -533,13 +534,14 @@ sfc_rx_qstop(struct sfc_adapter *sa, unsigned int sw_index)
 	sa->eth_dev->data->rx_queue_state[sw_index] =
 		RTE_ETH_QUEUE_STATE_STOPPED;
 
-	rxq->state &= ~SFC_RXQ_RUNNING;
+	rxq->flags &= ~SFC_RXQ_FLAG_RUNNING;
 
 	if (sw_index == 0)
 		efx_mac_filter_default_rxq_clear(sa->nic);
 
 	sfc_rx_qflush(sa, sw_index);
 
+	rxq->flags &= ~SFC_RXQ_FLAG_STARTED;
 	rxq->state = SFC_RXQ_INITIALIZED;
 
 	efx_rx_qdestroy(rxq->common);

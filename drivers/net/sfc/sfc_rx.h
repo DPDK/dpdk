@@ -61,8 +61,6 @@ enum sfc_rxq_state_bit {
 #define SFC_RXQ_INITIALIZED	(1 << SFC_RXQ_INITIALIZED_BIT)
 	SFC_RXQ_STARTED_BIT,
 #define SFC_RXQ_STARTED		(1 << SFC_RXQ_STARTED_BIT)
-	SFC_RXQ_RUNNING_BIT,
-#define SFC_RXQ_RUNNING		(1 << SFC_RXQ_RUNNING_BIT)
 	SFC_RXQ_FLUSHING_BIT,
 #define SFC_RXQ_FLUSHING	(1 << SFC_RXQ_FLUSHING_BIT)
 	SFC_RXQ_FLUSHED_BIT,
@@ -79,16 +77,15 @@ struct sfc_rxq {
 	/* Used on data path */
 	struct sfc_evq		*evq;
 	struct sfc_rx_sw_desc	*sw_desc;
-	unsigned int		state;
+	unsigned int		flags;
+#define SFC_RXQ_FLAG_STARTED	0x1
+#define SFC_RXQ_FLAG_RUNNING	0x2
+#define SFC_RXQ_FLAG_RSS_HASH	0x4
 	unsigned int		ptr_mask;
 	unsigned int		pending;
 	unsigned int		completed;
 	uint16_t		batch_max;
 	uint16_t		prefix_size;
-#if EFSYS_OPT_RX_SCALE
-	unsigned int		flags;
-#define SFC_RXQ_FLAG_RSS_HASH	0x1
-#endif
 
 	/* Used on refill */
 	unsigned int		added;
@@ -102,6 +99,7 @@ struct sfc_rxq {
 
 	/* Not used on data path */
 	unsigned int		hw_index;
+	unsigned int		state;
 };
 
 static inline unsigned int

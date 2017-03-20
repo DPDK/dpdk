@@ -101,7 +101,7 @@ sfc_ev_rx(void *arg, __rte_unused uint32_t label, uint32_t id,
 
 	SFC_ASSERT(rxq != NULL);
 	SFC_ASSERT(rxq->evq == evq);
-	SFC_ASSERT(rxq->state & SFC_RXQ_STARTED);
+	SFC_ASSERT(rxq->flags & SFC_RXQ_FLAG_STARTED);
 
 	stop = (id + 1) & rxq->ptr_mask;
 	pending_id = rxq->pending & rxq->ptr_mask;
@@ -434,7 +434,8 @@ sfc_ev_qpoll(struct sfc_evq *evq)
 		struct sfc_adapter *sa = evq->sa;
 		int rc;
 
-		if ((evq->rxq != NULL) && (evq->rxq->state & SFC_RXQ_RUNNING)) {
+		if ((evq->rxq != NULL) &&
+		    (evq->rxq->flags & SFC_RXQ_FLAG_RUNNING)) {
 			unsigned int rxq_sw_index = sfc_rxq_sw_index(evq->rxq);
 
 			sfc_warn(sa,
