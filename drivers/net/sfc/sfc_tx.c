@@ -293,6 +293,9 @@ sfc_tx_init(struct sfc_adapter *sa)
 		goto fail_tx_dma_desc_boundary;
 	}
 
+	if (~sa->dp_tx->features & SFC_DP_TX_FEAT_TSO)
+		sa->tso = B_FALSE;
+
 	rc = sfc_tx_check_mode(sa, &dev_conf->txmode);
 	if (rc != 0)
 		goto fail_check_mode;
@@ -929,7 +932,8 @@ struct sfc_dp_tx sfc_efx_tx = {
 		.type		= SFC_DP_TX,
 		.hw_fw_caps	= 0,
 	},
-	.features		= SFC_DP_TX_FEAT_VLAN_INSERT,
+	.features		= SFC_DP_TX_FEAT_VLAN_INSERT |
+				  SFC_DP_TX_FEAT_TSO,
 	.qcreate		= sfc_efx_tx_qcreate,
 	.qdestroy		= sfc_efx_tx_qdestroy,
 	.qstart			= sfc_efx_tx_qstart,
