@@ -45,6 +45,13 @@
 #define BURST 32
 #define BIG_BATCH 1024
 
+struct worker_params {
+	char name[64];
+	struct rte_distributor *dist;
+};
+
+struct worker_params worker_params;
+
 /* statics - all zero-initialized by default */
 static volatile int quit;      /**< general quit variable for all threads */
 static volatile int zero_quit; /**< var for when we just want thr0 to quit*/
@@ -81,7 +88,9 @@ static int
 handle_work(void *arg)
 {
 	struct rte_mbuf *pkt = NULL;
-	struct rte_distributor *d = arg;
+	struct worker_params *wp = arg;
+	struct rte_distributor *d = wp->dist;
+
 	unsigned count = 0;
 	unsigned id = __sync_fetch_and_add(&worker_idx, 1);
 
@@ -107,8 +116,9 @@ handle_work(void *arg)
  *   not necessarily in the same order (as different flows).
  */
 static int
-sanity_test(struct rte_distributor *d, struct rte_mempool *p)
+sanity_test(struct worker_params *wp, struct rte_mempool *p)
 {
+	struct rte_distributor *d = wp->dist;
 	struct rte_mbuf *bufs[BURST];
 	unsigned i;
 
@@ -249,7 +259,8 @@ static int
 handle_work_with_free_mbufs(void *arg)
 {
 	struct rte_mbuf *pkt = NULL;
-	struct rte_distributor *d = arg;
+	struct worker_params *wp = arg;
+	struct rte_distributor *d = wp->dist;
 	unsigned count = 0;
 	unsigned id = __sync_fetch_and_add(&worker_idx, 1);
 
@@ -270,8 +281,9 @@ handle_work_with_free_mbufs(void *arg)
  * library.
  */
 static int
-sanity_test_with_mbuf_alloc(struct rte_distributor *d, struct rte_mempool *p)
+sanity_test_with_mbuf_alloc(struct worker_params *wp, struct rte_mempool *p)
 {
+	struct rte_distributor *d = wp->dist;
 	unsigned i;
 	struct rte_mbuf *bufs[BURST];
 
@@ -305,7 +317,8 @@ static int
 handle_work_for_shutdown_test(void *arg)
 {
 	struct rte_mbuf *pkt = NULL;
-	struct rte_distributor *d = arg;
+	struct worker_params *wp = arg;
+	struct rte_distributor *d = wp->dist;
 	unsigned count = 0;
 	const unsigned id = __sync_fetch_and_add(&worker_idx, 1);
 
@@ -344,9 +357,10 @@ handle_work_for_shutdown_test(void *arg)
  * library.
  */
 static int
-sanity_test_with_worker_shutdown(struct rte_distributor *d,
+sanity_test_with_worker_shutdown(struct worker_params *wp,
 		struct rte_mempool *p)
 {
+	struct rte_distributor *d = wp->dist;
 	struct rte_mbuf *bufs[BURST];
 	unsigned i;
 
@@ -401,9 +415,10 @@ sanity_test_with_worker_shutdown(struct rte_distributor *d,
  * one worker shuts down..
  */
 static int
-test_flush_with_worker_shutdown(struct rte_distributor *d,
+test_flush_with_worker_shutdown(struct worker_params *wp,
 		struct rte_mempool *p)
 {
+	struct rte_distributor *d = wp->dist;
 	struct rte_mbuf *bufs[BURST];
 	unsigned i;
 
@@ -480,8 +495,9 @@ int test_error_distributor_create_numworkers(void)
 
 /* Useful function which ensures that all worker functions terminate */
 static void
-quit_workers(struct rte_distributor *d, struct rte_mempool *p)
+quit_workers(struct worker_params *wp, struct rte_mempool *p)
 {
+	struct rte_distributor *d = wp->dist;
 	const unsigned num_workers = rte_lcore_count() - 1;
 	unsigned i;
 	struct rte_mbuf *bufs[RTE_MAX_LCORE];
@@ -536,28 +552,34 @@ test_distributor(void)
 		}
 	}
 
-	rte_eal_mp_remote_launch(handle_work, d, SKIP_MASTER);
-	if (sanity_test(d, p) < 0)
-		goto err;
-	quit_workers(d, p);
+	worker_params.dist = d;
+	sprintf(worker_params.name, "single");
 
-	rte_eal_mp_remote_launch(handle_work_with_free_mbufs, d, SKIP_MASTER);
-	if (sanity_test_with_mbuf_alloc(d, p) < 0)
+	rte_eal_mp_remote_launch(handle_work, &worker_params, SKIP_MASTER);
+	if (sanity_test(&worker_params, p) < 0)
 		goto err;
-	quit_workers(d, p);
+	quit_workers(&worker_params, p);
+
+	rte_eal_mp_remote_launch(handle_work_with_free_mbufs, &worker_params,
+				SKIP_MASTER);
+	if (sanity_test_with_mbuf_alloc(&worker_params, p) < 0)
+		goto err;
+	quit_workers(&worker_params, p);
 
 	if (rte_lcore_count() > 2) {
-		rte_eal_mp_remote_launch(handle_work_for_shutdown_test, d,
+		rte_eal_mp_remote_launch(handle_work_for_shutdown_test,
+				&worker_params,
 				SKIP_MASTER);
-		if (sanity_test_with_worker_shutdown(d, p) < 0)
+		if (sanity_test_with_worker_shutdown(&worker_params, p) < 0)
 			goto err;
-		quit_workers(d, p);
+		quit_workers(&worker_params, p);
 
-		rte_eal_mp_remote_launch(handle_work_for_shutdown_test, d,
+		rte_eal_mp_remote_launch(handle_work_for_shutdown_test,
+				&worker_params,
 				SKIP_MASTER);
-		if (test_flush_with_worker_shutdown(d, p) < 0)
+		if (test_flush_with_worker_shutdown(&worker_params, p) < 0)
 			goto err;
-		quit_workers(d, p);
+		quit_workers(&worker_params, p);
 
 	} else {
 		printf("Not enough cores to run tests for worker shutdown\n");
@@ -572,7 +594,7 @@ test_distributor(void)
 	return 0;
 
 err:
-	quit_workers(d, p);
+	quit_workers(&worker_params, p);
 	return -1;
 }
 
