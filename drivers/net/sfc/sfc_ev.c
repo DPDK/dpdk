@@ -71,6 +71,18 @@ sfc_ev_initialized(void *arg)
 }
 
 static boolean_t
+sfc_ev_nop_rx(void *arg, uint32_t label, uint32_t id,
+	      uint32_t size, uint16_t flags)
+{
+	struct sfc_evq *evq = arg;
+
+	sfc_err(evq->sa,
+		"EVQ %u unexpected Rx event label=%u id=%#x size=%u flags=%#x",
+		evq->evq_index, label, id, size, flags);
+	return B_TRUE;
+}
+
+static boolean_t
 sfc_ev_rx(void *arg, __rte_unused uint32_t label, uint32_t id,
 	  uint32_t size, uint16_t flags)
 {
@@ -144,6 +156,16 @@ done:
 }
 
 static boolean_t
+sfc_ev_nop_tx(void *arg, uint32_t label, uint32_t id)
+{
+	struct sfc_evq *evq = arg;
+
+	sfc_err(evq->sa, "EVQ %u unexpected Tx event label=%u id=%#x",
+		evq->evq_index, label, id);
+	return B_TRUE;
+}
+
+static boolean_t
 sfc_ev_tx(void *arg, __rte_unused uint32_t label, uint32_t id)
 {
 	struct sfc_evq *evq = arg;
@@ -198,6 +220,16 @@ sfc_ev_exception(void *arg, __rte_unused uint32_t code,
 }
 
 static boolean_t
+sfc_ev_nop_rxq_flush_done(void *arg, uint32_t rxq_hw_index)
+{
+	struct sfc_evq *evq = arg;
+
+	sfc_err(evq->sa, "EVQ %u unexpected RxQ %u flush done",
+		evq->evq_index, rxq_hw_index);
+	return B_TRUE;
+}
+
+static boolean_t
 sfc_ev_rxq_flush_done(void *arg, __rte_unused uint32_t rxq_hw_index)
 {
 	struct sfc_evq *evq = arg;
@@ -213,6 +245,16 @@ sfc_ev_rxq_flush_done(void *arg, __rte_unused uint32_t rxq_hw_index)
 }
 
 static boolean_t
+sfc_ev_nop_rxq_flush_failed(void *arg, uint32_t rxq_hw_index)
+{
+	struct sfc_evq *evq = arg;
+
+	sfc_err(evq->sa, "EVQ %u unexpected RxQ %u flush failed",
+		evq->evq_index, rxq_hw_index);
+	return B_TRUE;
+}
+
+static boolean_t
 sfc_ev_rxq_flush_failed(void *arg, __rte_unused uint32_t rxq_hw_index)
 {
 	struct sfc_evq *evq = arg;
@@ -225,6 +267,16 @@ sfc_ev_rxq_flush_failed(void *arg, __rte_unused uint32_t rxq_hw_index)
 	sfc_rx_qflush_failed(rxq);
 
 	return B_FALSE;
+}
+
+static boolean_t
+sfc_ev_nop_txq_flush_done(void *arg, uint32_t txq_hw_index)
+{
+	struct sfc_evq *evq = arg;
+
+	sfc_err(evq->sa, "EVQ %u unexpected TxQ %u flush done",
+		evq->evq_index, txq_hw_index);
+	return B_TRUE;
 }
 
 static boolean_t
@@ -283,6 +335,16 @@ sfc_ev_timer(void *arg, uint32_t index)
 }
 
 static boolean_t
+sfc_ev_nop_link_change(void *arg, __rte_unused efx_link_mode_t link_mode)
+{
+	struct sfc_evq *evq = arg;
+
+	sfc_err(evq->sa, "EVQ %u unexpected link change event",
+		evq->evq_index);
+	return B_TRUE;
+}
+
+static boolean_t
 sfc_ev_link_change(void *arg, efx_link_mode_t link_mode)
 {
 	struct sfc_evq *evq = arg;
@@ -314,17 +376,47 @@ sfc_ev_link_change(void *arg, efx_link_mode_t link_mode)
 
 static const efx_ev_callbacks_t sfc_ev_callbacks = {
 	.eec_initialized	= sfc_ev_initialized,
-	.eec_rx			= sfc_ev_rx,
-	.eec_tx			= sfc_ev_tx,
+	.eec_rx			= sfc_ev_nop_rx,
+	.eec_tx			= sfc_ev_nop_tx,
 	.eec_exception		= sfc_ev_exception,
-	.eec_rxq_flush_done	= sfc_ev_rxq_flush_done,
-	.eec_rxq_flush_failed	= sfc_ev_rxq_flush_failed,
-	.eec_txq_flush_done	= sfc_ev_txq_flush_done,
+	.eec_rxq_flush_done	= sfc_ev_nop_rxq_flush_done,
+	.eec_rxq_flush_failed	= sfc_ev_nop_rxq_flush_failed,
+	.eec_txq_flush_done	= sfc_ev_nop_txq_flush_done,
 	.eec_software		= sfc_ev_software,
 	.eec_sram		= sfc_ev_sram,
 	.eec_wake_up		= sfc_ev_wake_up,
 	.eec_timer		= sfc_ev_timer,
 	.eec_link_change	= sfc_ev_link_change,
+};
+
+static const efx_ev_callbacks_t sfc_ev_callbacks_rx = {
+	.eec_initialized	= sfc_ev_initialized,
+	.eec_rx			= sfc_ev_rx,
+	.eec_tx			= sfc_ev_nop_tx,
+	.eec_exception		= sfc_ev_exception,
+	.eec_rxq_flush_done	= sfc_ev_rxq_flush_done,
+	.eec_rxq_flush_failed	= sfc_ev_rxq_flush_failed,
+	.eec_txq_flush_done	= sfc_ev_nop_txq_flush_done,
+	.eec_software		= sfc_ev_software,
+	.eec_sram		= sfc_ev_sram,
+	.eec_wake_up		= sfc_ev_wake_up,
+	.eec_timer		= sfc_ev_timer,
+	.eec_link_change	= sfc_ev_nop_link_change,
+};
+
+static const efx_ev_callbacks_t sfc_ev_callbacks_tx = {
+	.eec_initialized	= sfc_ev_initialized,
+	.eec_rx			= sfc_ev_nop_rx,
+	.eec_tx			= sfc_ev_tx,
+	.eec_exception		= sfc_ev_exception,
+	.eec_rxq_flush_done	= sfc_ev_nop_rxq_flush_done,
+	.eec_rxq_flush_failed	= sfc_ev_nop_rxq_flush_failed,
+	.eec_txq_flush_done	= sfc_ev_txq_flush_done,
+	.eec_software		= sfc_ev_software,
+	.eec_sram		= sfc_ev_sram,
+	.eec_wake_up		= sfc_ev_wake_up,
+	.eec_timer		= sfc_ev_timer,
+	.eec_link_change	= sfc_ev_nop_link_change,
 };
 
 
@@ -336,7 +428,7 @@ sfc_ev_qpoll(struct sfc_evq *evq)
 
 	/* Synchronize the DMA memory for reading not required */
 
-	efx_ev_qpoll(evq->common, &evq->read_ptr, &sfc_ev_callbacks, evq);
+	efx_ev_qpoll(evq->common, &evq->read_ptr, evq->callbacks, evq);
 
 	if (unlikely(evq->exception) && sfc_adapter_trylock(evq->sa)) {
 		struct sfc_adapter *sa = evq->sa;
@@ -427,6 +519,14 @@ sfc_ev_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 	if (rc != 0)
 		goto fail_ev_qcreate;
 
+	SFC_ASSERT(evq->rxq == NULL || evq->txq == NULL);
+	if (evq->rxq != 0)
+		evq->callbacks = &sfc_ev_callbacks_rx;
+	else if (evq->txq != 0)
+		evq->callbacks = &sfc_ev_callbacks_tx;
+	else
+		evq->callbacks = &sfc_ev_callbacks;
+
 	evq->init_state = SFC_EVQ_STARTING;
 
 	/* Wait for the initialization event */
@@ -485,6 +585,7 @@ sfc_ev_qstop(struct sfc_adapter *sa, unsigned int sw_index)
 		return;
 
 	evq->init_state = SFC_EVQ_INITIALIZED;
+	evq->callbacks = NULL;
 	evq->read_ptr = 0;
 	evq->exception = B_FALSE;
 

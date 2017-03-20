@@ -56,17 +56,18 @@ enum sfc_evq_state {
 
 struct sfc_evq {
 	/* Used on datapath */
-	efx_evq_t		*common;
-	unsigned int		read_ptr;
-	boolean_t		exception;
-	efsys_mem_t		mem;
-	struct sfc_rxq		*rxq;
-	struct sfc_txq		*txq;
+	efx_evq_t			*common;
+	const efx_ev_callbacks_t	*callbacks;
+	unsigned int			read_ptr;
+	boolean_t			exception;
+	efsys_mem_t			mem;
+	struct sfc_rxq			*rxq;
+	struct sfc_txq			*txq;
 
 	/* Not used on datapath */
-	struct sfc_adapter	*sa;
-	unsigned int		evq_index;
-	enum sfc_evq_state	init_state;
+	struct sfc_adapter		*sa;
+	unsigned int			evq_index;
+	enum sfc_evq_state		init_state;
 };
 
 struct sfc_evq_info {
