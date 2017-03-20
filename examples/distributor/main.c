@@ -1,8 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
- *   All rights reserved.
+ *   Copyright(c) 2010-2017 Intel Corporation. All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -62,6 +61,7 @@ static uint32_t enabled_port_mask;
 volatile uint8_t quit_signal;
 volatile uint8_t quit_signal_rx;
 volatile uint8_t quit_signal_dist;
+volatile uint8_t quit_signal_work;
 
 static volatile struct app_stats {
 	struct {
@@ -165,7 +165,8 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 
 	struct rte_eth_link link;
 	rte_eth_link_get_nowait(port, &link);
-	if (!link.link_status) {
+	while (!link.link_status) {
+		printf("Waiting for Link up on port %"PRIu8"\n", port);
 		sleep(1);
 		rte_eth_link_get_nowait(port, &link);
 	}
