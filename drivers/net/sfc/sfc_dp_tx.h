@@ -134,6 +134,7 @@ struct sfc_dp_tx {
 	unsigned int			features;
 #define SFC_DP_TX_FEAT_VLAN_INSERT	0x1
 #define SFC_DP_TX_FEAT_TSO		0x2
+#define SFC_DP_TX_FEAT_MULTI_SEG	0x4
 	sfc_dp_tx_qcreate_t		*qcreate;
 	sfc_dp_tx_qdestroy_t		*qdestroy;
 	sfc_dp_tx_qstart_t		*qstart;

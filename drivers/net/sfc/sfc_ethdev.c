@@ -141,6 +141,9 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	else
 		dev_info->tx_offload_capa |= DEV_TX_OFFLOAD_VLAN_INSERT;
 
+	if (~sa->dp_tx->features & SFC_DP_TX_FEAT_MULTI_SEG)
+		dev_info->default_txconf.txq_flags |= ETH_TXQ_FLAGS_NOMULTSEGS;
+
 #if EFSYS_OPT_RX_SCALE
 	if (sa->rss_support != EFX_RX_SCALE_UNAVAILABLE) {
 		dev_info->reta_size = EFX_RSS_TBL_SIZE;
