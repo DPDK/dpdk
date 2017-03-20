@@ -38,6 +38,8 @@
 
 #include "efx.h"
 
+#include "sfc_dp_rx.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -49,7 +51,7 @@ struct sfc_evq;
  * Software Rx descriptor information associated with hardware Rx
  * descriptor.
  */
-struct sfc_rx_sw_desc {
+struct sfc_efx_rx_sw_desc {
 	struct rte_mbuf		*mbuf;
 	unsigned int		flags;
 	unsigned int		size;
@@ -70,35 +72,17 @@ enum sfc_rxq_state_bit {
 };
 
 /**
- * Receive queue information used on data path.
+ * Receive queue control information.
  * Allocated on the socket specified on the queue setup.
  */
 struct sfc_rxq {
-	/* Used on data path */
 	struct sfc_evq		*evq;
-	struct sfc_rx_sw_desc	*sw_desc;
-	unsigned int		flags;
-#define SFC_RXQ_FLAG_STARTED	0x1
-#define SFC_RXQ_FLAG_RUNNING	0x2
-#define SFC_RXQ_FLAG_RSS_HASH	0x4
-	unsigned int		ptr_mask;
-	unsigned int		pending;
-	unsigned int		completed;
-	uint16_t		batch_max;
-	uint16_t		prefix_size;
-
-	/* Used on refill */
-	unsigned int		added;
-	unsigned int		pushed;
-	unsigned int		refill_threshold;
-	uint8_t			port_id;
-	uint16_t		buf_size;
-	struct rte_mempool	*refill_mb_pool;
 	efx_rxq_t		*common;
 	efsys_mem_t		mem;
-
-	/* Not used on data path */
 	unsigned int		hw_index;
+	unsigned int		refill_threshold;
+	struct rte_mempool	*refill_mb_pool;
+	struct sfc_dp_rxq	*dp;
 	unsigned int		state;
 };
 
@@ -112,6 +96,44 @@ static inline unsigned int
 sfc_rxq_sw_index(const struct sfc_rxq *rxq)
 {
 	return sfc_rxq_sw_index_by_hw_index(rxq->hw_index);
+}
+
+struct sfc_rxq *sfc_rxq_by_dp_rxq(const struct sfc_dp_rxq *dp_rxq);
+
+/**
+ * Receive queue information used on libefx-based data path.
+ * Allocated on the socket specified on the queue setup.
+ */
+struct sfc_efx_rxq {
+	/* Used on data path */
+	struct sfc_evq			*evq;
+	unsigned int			flags;
+#define SFC_EFX_RXQ_FLAG_STARTED	0x1
+#define SFC_EFX_RXQ_FLAG_RUNNING	0x2
+#define SFC_EFX_RXQ_FLAG_RSS_HASH	0x4
+	unsigned int			ptr_mask;
+	unsigned int			pending;
+	unsigned int			completed;
+	uint16_t			batch_max;
+	uint16_t			prefix_size;
+	struct sfc_efx_rx_sw_desc	*sw_desc;
+
+	/* Used on refill */
+	unsigned int			added;
+	unsigned int			pushed;
+	unsigned int			refill_threshold;
+	uint16_t			buf_size;
+	struct rte_mempool		*refill_mb_pool;
+	efx_rxq_t			*common;
+
+	/* Datapath receive queue anchor */
+	struct sfc_dp_rxq		dp;
+};
+
+static inline struct sfc_efx_rxq *
+sfc_efx_rxq_by_dp_rxq(struct sfc_dp_rxq *dp_rxq)
+{
+	return container_of(dp_rxq, struct sfc_efx_rxq, dp);
 }
 
 /**
@@ -143,12 +165,9 @@ void sfc_rx_qstop(struct sfc_adapter *sa, unsigned int sw_index);
 void sfc_rx_qflush_done(struct sfc_rxq *rxq);
 void sfc_rx_qflush_failed(struct sfc_rxq *rxq);
 
-uint16_t sfc_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
-		       uint16_t nb_pkts);
-
 unsigned int sfc_rx_qdesc_npending(struct sfc_adapter *sa,
 				   unsigned int sw_index);
-int sfc_rx_qdesc_done(struct sfc_rxq *rxq, unsigned int offset);
+int sfc_rx_qdesc_done(struct sfc_dp_rxq *dp_rxq, unsigned int offset);
 
 #if EFSYS_OPT_RX_SCALE
 efx_rx_hash_type_t sfc_rte_to_efx_hash_type(uint64_t rss_hf);

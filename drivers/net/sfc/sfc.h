@@ -142,6 +142,7 @@ struct sfc_intr {
 struct sfc_evq_info;
 struct sfc_rxq_info;
 struct sfc_txq_info;
+struct sfc_dp_rx;
 
 struct sfc_port {
 	unsigned int			lsc_seq;
@@ -225,6 +226,8 @@ struct sfc_adapter {
 	unsigned int			rss_tbl[EFX_RSS_TBL_SIZE];
 	uint8_t				rss_key[SFC_RSS_KEY_SIZE];
 #endif
+
+	const struct sfc_dp_rx		*dp_rx;
 };
 
 /*

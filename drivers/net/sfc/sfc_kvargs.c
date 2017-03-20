@@ -48,6 +48,7 @@ sfc_kvargs_parse(struct sfc_adapter *sa)
 		SFC_KVARG_DEBUG_INIT,
 		SFC_KVARG_MCDI_LOGGING,
 		SFC_KVARG_PERF_PROFILE,
+		SFC_KVARG_RX_DATAPATH,
 		NULL,
 	};
 
@@ -129,6 +130,15 @@ sfc_kvarg_long_handler(__rte_unused const char *key,
 		return -EINVAL;
 
 	*(long *)opaque = value;
+
+	return 0;
+}
+
+int
+sfc_kvarg_string_handler(__rte_unused const char *key,
+			 const char *value_str, void *opaque)
+{
+	*(const char **)opaque = value_str;
 
 	return 0;
 }

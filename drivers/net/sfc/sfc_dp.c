@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- * Copyright (c) 2016-2017 Solarflare Communications Inc.
+ * Copyright (c) 2017 Solarflare Communications Inc.
  * All rights reserved.
  *
  * This software was jointly developed between OKTET Labs (under contract
@@ -29,56 +29,70 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _SFC_KVARGS_H
-#define _SFC_KVARGS_H
+#include <sys/queue.h>
+#include <string.h>
+#include <errno.h>
 
-#include <rte_kvargs.h>
+#include <rte_log.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "sfc_dp.h"
 
-#define SFC_KVARG_VALUES_BOOL		"[1|y|yes|on|0|n|no|off]"
-
-#define SFC_KVARG_DEBUG_INIT		"debug_init"
-
-#define SFC_KVARG_MCDI_LOGGING		"mcdi_logging"
-
-#define SFC_KVARG_PERF_PROFILE		"perf_profile"
-
-#define SFC_KVARG_PERF_PROFILE_AUTO		"auto"
-#define SFC_KVARG_PERF_PROFILE_THROUGHPUT	"throughput"
-#define SFC_KVARG_PERF_PROFILE_LOW_LATENCY	"low-latency"
-#define SFC_KVARG_VALUES_PERF_PROFILE \
-	"[" SFC_KVARG_PERF_PROFILE_AUTO "|" \
-	    SFC_KVARG_PERF_PROFILE_THROUGHPUT "|" \
-	    SFC_KVARG_PERF_PROFILE_LOW_LATENCY "]"
-
-#define SFC_KVARG_STATS_UPDATE_PERIOD_MS	"stats_update_period_ms"
-
-#define SFC_KVARG_DATAPATH_EFX		"efx"
-
-#define SFC_KVARG_RX_DATAPATH		"rx_datapath"
-#define SFC_KVARG_VALUES_RX_DATAPATH \
-	"[" SFC_KVARG_DATAPATH_EFX "]"
-
-struct sfc_adapter;
-
-int sfc_kvargs_parse(struct sfc_adapter *sa);
-void sfc_kvargs_cleanup(struct sfc_adapter *sa);
-
-int sfc_kvargs_process(struct sfc_adapter *sa, const char *key_match,
-		       arg_handler_t handler, void *opaque_arg);
-
-int sfc_kvarg_bool_handler(const char *key, const char *value_str,
-			   void *opaque);
-int sfc_kvarg_long_handler(const char *key, const char *value_str,
-			   void *opaque);
-int sfc_kvarg_string_handler(const char *key, const char *value_str,
-			     void *opaque);
-
-#ifdef __cplusplus
+void
+sfc_dp_queue_init(struct sfc_dp_queue *dpq, uint16_t port_id, uint16_t queue_id,
+		  const struct rte_pci_addr *pci_addr)
+{
+	dpq->port_id = port_id;
+	dpq->queue_id = queue_id;
+	dpq->pci_addr = *pci_addr;
 }
-#endif
 
-#endif  /* _SFC_KVARGS_H */
+struct sfc_dp *
+sfc_dp_find_by_name(struct sfc_dp_list *head, enum sfc_dp_type type,
+		    const char *name)
+{
+	struct sfc_dp *entry;
+
+	TAILQ_FOREACH(entry, head, links) {
+		if (entry->type != type)
+			continue;
+
+		if (strcmp(entry->name, name) == 0)
+			return entry;
+	}
+
+	return NULL;
+}
+
+struct sfc_dp *
+sfc_dp_find_by_caps(struct sfc_dp_list *head, enum sfc_dp_type type,
+		    unsigned int avail_caps)
+{
+	struct sfc_dp *entry;
+
+	TAILQ_FOREACH(entry, head, links) {
+		if (entry->type != type)
+			continue;
+
+		/* Take the first matching */
+		if (sfc_dp_match_hw_fw_caps(entry, avail_caps))
+			return entry;
+	}
+
+	return NULL;
+}
+
+int
+sfc_dp_register(struct sfc_dp_list *head, struct sfc_dp *entry)
+{
+	if (sfc_dp_find_by_name(head, entry->type, entry->name) != NULL) {
+		rte_log(RTE_LOG_ERR, RTE_LOGTYPE_PMD,
+			"sfc %s dapapath '%s' already registered\n",
+			entry->type == SFC_DP_RX ? "Rx" : "unknown",
+			entry->name);
+		return EEXIST;
+	}
+
+	TAILQ_INSERT_TAIL(head, entry, links);
+
+	return 0;
+}

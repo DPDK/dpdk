@@ -83,25 +83,25 @@ sfc_ev_nop_rx(void *arg, uint32_t label, uint32_t id,
 }
 
 static boolean_t
-sfc_ev_rx(void *arg, __rte_unused uint32_t label, uint32_t id,
-	  uint32_t size, uint16_t flags)
+sfc_ev_efx_rx(void *arg, __rte_unused uint32_t label, uint32_t id,
+	      uint32_t size, uint16_t flags)
 {
 	struct sfc_evq *evq = arg;
-	struct sfc_rxq *rxq;
+	struct sfc_efx_rxq *rxq;
 	unsigned int stop;
 	unsigned int pending_id;
 	unsigned int delta;
 	unsigned int i;
-	struct sfc_rx_sw_desc *rxd;
+	struct sfc_efx_rx_sw_desc *rxd;
 
 	if (unlikely(evq->exception))
 		goto done;
 
-	rxq = evq->rxq;
+	rxq = sfc_efx_rxq_by_dp_rxq(evq->dp_rxq);
 
 	SFC_ASSERT(rxq != NULL);
 	SFC_ASSERT(rxq->evq == evq);
-	SFC_ASSERT(rxq->flags & SFC_RXQ_FLAG_STARTED);
+	SFC_ASSERT(rxq->flags & SFC_EFX_RXQ_FLAG_STARTED);
 
 	stop = (id + 1) & rxq->ptr_mask;
 	pending_id = rxq->pending & rxq->ptr_mask;
@@ -119,7 +119,7 @@ sfc_ev_rx(void *arg, __rte_unused uint32_t label, uint32_t id,
 			sfc_err(evq->sa,
 				"EVQ %u RxQ %u invalid RX abort "
 				"(id=%#x size=%u flags=%#x); needs restart",
-				evq->evq_index, sfc_rxq_sw_index(rxq),
+				evq->evq_index, rxq->dp.dpq.queue_id,
 				id, size, flags);
 			goto done;
 		}
@@ -134,8 +134,8 @@ sfc_ev_rx(void *arg, __rte_unused uint32_t label, uint32_t id,
 		sfc_err(evq->sa,
 			"EVQ %u RxQ %u completion out of order "
 			"(id=%#x delta=%u flags=%#x); needs restart",
-			evq->evq_index, sfc_rxq_sw_index(rxq), id, delta,
-			flags);
+			evq->evq_index, rxq->dp.dpq.queue_id,
+			id, delta, flags);
 
 		goto done;
 	}
@@ -233,9 +233,13 @@ static boolean_t
 sfc_ev_rxq_flush_done(void *arg, __rte_unused uint32_t rxq_hw_index)
 {
 	struct sfc_evq *evq = arg;
+	struct sfc_dp_rxq *dp_rxq;
 	struct sfc_rxq *rxq;
 
-	rxq = evq->rxq;
+	dp_rxq = evq->dp_rxq;
+	SFC_ASSERT(dp_rxq != NULL);
+
+	rxq = sfc_rxq_by_dp_rxq(dp_rxq);
 	SFC_ASSERT(rxq != NULL);
 	SFC_ASSERT(rxq->hw_index == rxq_hw_index);
 	SFC_ASSERT(rxq->evq == evq);
@@ -258,9 +262,13 @@ static boolean_t
 sfc_ev_rxq_flush_failed(void *arg, __rte_unused uint32_t rxq_hw_index)
 {
 	struct sfc_evq *evq = arg;
+	struct sfc_dp_rxq *dp_rxq;
 	struct sfc_rxq *rxq;
 
-	rxq = evq->rxq;
+	dp_rxq = evq->dp_rxq;
+	SFC_ASSERT(dp_rxq != NULL);
+
+	rxq = sfc_rxq_by_dp_rxq(dp_rxq);
 	SFC_ASSERT(rxq != NULL);
 	SFC_ASSERT(rxq->hw_index == rxq_hw_index);
 	SFC_ASSERT(rxq->evq == evq);
@@ -389,9 +397,24 @@ static const efx_ev_callbacks_t sfc_ev_callbacks = {
 	.eec_link_change	= sfc_ev_link_change,
 };
 
-static const efx_ev_callbacks_t sfc_ev_callbacks_rx = {
+static const efx_ev_callbacks_t sfc_ev_callbacks_efx_rx = {
 	.eec_initialized	= sfc_ev_initialized,
-	.eec_rx			= sfc_ev_rx,
+	.eec_rx			= sfc_ev_efx_rx,
+	.eec_tx			= sfc_ev_nop_tx,
+	.eec_exception		= sfc_ev_exception,
+	.eec_rxq_flush_done	= sfc_ev_rxq_flush_done,
+	.eec_rxq_flush_failed	= sfc_ev_rxq_flush_failed,
+	.eec_txq_flush_done	= sfc_ev_nop_txq_flush_done,
+	.eec_software		= sfc_ev_software,
+	.eec_sram		= sfc_ev_sram,
+	.eec_wake_up		= sfc_ev_wake_up,
+	.eec_timer		= sfc_ev_timer,
+	.eec_link_change	= sfc_ev_nop_link_change,
+};
+
+static const efx_ev_callbacks_t sfc_ev_callbacks_dp_rx = {
+	.eec_initialized	= sfc_ev_initialized,
+	.eec_rx			= sfc_ev_nop_rx,
 	.eec_tx			= sfc_ev_nop_tx,
 	.eec_exception		= sfc_ev_exception,
 	.eec_rxq_flush_done	= sfc_ev_rxq_flush_done,
@@ -434,9 +457,10 @@ sfc_ev_qpoll(struct sfc_evq *evq)
 		struct sfc_adapter *sa = evq->sa;
 		int rc;
 
-		if ((evq->rxq != NULL) &&
-		    (evq->rxq->flags & SFC_RXQ_FLAG_RUNNING)) {
-			unsigned int rxq_sw_index = sfc_rxq_sw_index(evq->rxq);
+		if (evq->dp_rxq != NULL) {
+			unsigned int rxq_sw_index;
+
+			rxq_sw_index = evq->dp_rxq->dpq.queue_id;
 
 			sfc_warn(sa,
 				 "restart RxQ %u because of exception on its EvQ %u",
@@ -520,13 +544,17 @@ sfc_ev_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 	if (rc != 0)
 		goto fail_ev_qcreate;
 
-	SFC_ASSERT(evq->rxq == NULL || evq->txq == NULL);
-	if (evq->rxq != 0)
-		evq->callbacks = &sfc_ev_callbacks_rx;
-	else if (evq->txq != 0)
+	SFC_ASSERT(evq->dp_rxq == NULL || evq->txq == NULL);
+	if (evq->dp_rxq != 0) {
+		if (strcmp(sa->dp_rx->dp.name, SFC_KVARG_DATAPATH_EFX) == 0)
+			evq->callbacks = &sfc_ev_callbacks_efx_rx;
+		else
+			evq->callbacks = &sfc_ev_callbacks_dp_rx;
+	} else if (evq->txq != 0) {
 		evq->callbacks = &sfc_ev_callbacks_tx;
-	else
+	} else {
 		evq->callbacks = &sfc_ev_callbacks;
+	}
 
 	evq->init_state = SFC_EVQ_STARTING;
 

@@ -32,6 +32,7 @@
 #include <rte_dev.h>
 #include <rte_ethdev.h>
 #include <rte_pci.h>
+#include <rte_errno.h>
 
 #include "efx.h"
 
@@ -43,6 +44,11 @@
 #include "sfc_rx.h"
 #include "sfc_tx.h"
 #include "sfc_flow.h"
+#include "sfc_dp.h"
+#include "sfc_dp_rx.h"
+
+static struct sfc_dp_list sfc_dp_head =
+	TAILQ_HEAD_INITIALIZER(sfc_dp_head);
 
 static int
 sfc_fw_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size)
@@ -164,19 +170,9 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 static const uint32_t *
 sfc_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 {
-	static const uint32_t ptypes[] = {
-		RTE_PTYPE_L2_ETHER,
-		RTE_PTYPE_L3_IPV4_EXT_UNKNOWN,
-		RTE_PTYPE_L3_IPV6_EXT_UNKNOWN,
-		RTE_PTYPE_L4_TCP,
-		RTE_PTYPE_L4_UDP,
-		RTE_PTYPE_UNKNOWN
-	};
+	struct sfc_adapter *sa = dev->data->dev_private;
 
-	if (dev->rx_pkt_burst == sfc_recv_pkts)
-		return ptypes;
-
-	return NULL;
+	return sa->dp_rx->supported_ptypes_get();
 }
 
 static int
@@ -416,7 +412,7 @@ sfc_rx_queue_setup(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 	if (rc != 0)
 		goto fail_rx_qinit;
 
-	dev->data->rx_queues[rx_queue_id] = sa->rxq_info[rx_queue_id].rxq;
+	dev->data->rx_queues[rx_queue_id] = sa->rxq_info[rx_queue_id].rxq->dp;
 
 	sfc_adapter_unlock(sa);
 
@@ -431,13 +427,15 @@ fail_rx_qinit:
 static void
 sfc_rx_queue_release(void *queue)
 {
-	struct sfc_rxq *rxq = queue;
+	struct sfc_dp_rxq *dp_rxq = queue;
+	struct sfc_rxq *rxq;
 	struct sfc_adapter *sa;
 	unsigned int sw_index;
 
-	if (rxq == NULL)
+	if (dp_rxq == NULL)
 		return;
 
+	rxq = sfc_rxq_by_dp_rxq(dp_rxq);
 	sa = rxq->evq->sa;
 	sfc_adapter_lock(sa);
 
@@ -973,9 +971,9 @@ sfc_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 static int
 sfc_rx_descriptor_done(void *queue, uint16_t offset)
 {
-	struct sfc_rxq *rxq = queue;
+	struct sfc_dp_rxq *dp_rxq = queue;
 
-	return sfc_rx_qdesc_done(rxq, offset);
+	return sfc_rx_qdesc_done(dp_rxq, offset);
 }
 
 static int
@@ -1358,6 +1356,69 @@ static const struct eth_dev_ops sfc_eth_dev_ops = {
 };
 
 static int
+sfc_eth_dev_set_ops(struct rte_eth_dev *dev)
+{
+	struct sfc_adapter *sa = dev->data->dev_private;
+	unsigned int avail_caps = 0;
+	const char *rx_name = NULL;
+	int rc;
+
+	if (sa == NULL || sa->state == SFC_ADAPTER_UNINITIALIZED)
+		return -E_RTE_SECONDARY;
+
+	rc = sfc_kvargs_process(sa, SFC_KVARG_RX_DATAPATH,
+				sfc_kvarg_string_handler, &rx_name);
+	if (rc != 0)
+		goto fail_kvarg_rx_datapath;
+
+	if (rx_name != NULL) {
+		sa->dp_rx = sfc_dp_find_rx_by_name(&sfc_dp_head, rx_name);
+		if (sa->dp_rx == NULL) {
+			sfc_err(sa, "Rx datapath %s not found", rx_name);
+			rc = ENOENT;
+			goto fail_dp_rx;
+		}
+		if (!sfc_dp_match_hw_fw_caps(&sa->dp_rx->dp, avail_caps)) {
+			sfc_err(sa,
+				"Insufficient Hw/FW capabilities to use Rx datapath %s",
+				rx_name);
+			rc = EINVAL;
+			goto fail_dp_rx;
+		}
+	} else {
+		sa->dp_rx = sfc_dp_find_rx_by_caps(&sfc_dp_head, avail_caps);
+		if (sa->dp_rx == NULL) {
+			sfc_err(sa, "Rx datapath by caps %#x not found",
+				avail_caps);
+			rc = ENOENT;
+			goto fail_dp_rx;
+		}
+	}
+
+	sfc_info(sa, "use %s Rx datapath", sa->dp_rx->dp.name);
+
+	dev->rx_pkt_burst = sa->dp_rx->pkt_burst;
+
+	dev->tx_pkt_burst = sfc_xmit_pkts;
+
+	dev->dev_ops = &sfc_eth_dev_ops;
+
+	return 0;
+
+fail_dp_rx:
+fail_kvarg_rx_datapath:
+	return rc;
+}
+
+static void
+sfc_register_dp(void)
+{
+	/* Register once */
+	if (TAILQ_EMPTY(&sfc_dp_head))
+		sfc_dp_register(&sfc_dp_head, &sfc_efx_rx.dp);
+}
+
+static int
 sfc_eth_dev_init(struct rte_eth_dev *dev)
 {
 	struct sfc_adapter *sa = dev->data->dev_private;
@@ -1365,6 +1426,8 @@ sfc_eth_dev_init(struct rte_eth_dev *dev)
 	int rc;
 	const efx_nic_cfg_t *encp;
 	const struct ether_addr *from;
+
+	sfc_register_dp();
 
 	/* Required for logging */
 	sa->eth_dev = dev;
@@ -1406,11 +1469,9 @@ sfc_eth_dev_init(struct rte_eth_dev *dev)
 	from = (const struct ether_addr *)(encp->enc_mac_addr);
 	ether_addr_copy(from, &dev->data->mac_addrs[0]);
 
-	dev->dev_ops = &sfc_eth_dev_ops;
-	dev->rx_pkt_burst = &sfc_recv_pkts;
-	dev->tx_pkt_burst = &sfc_xmit_pkts;
-
 	sfc_adapter_unlock(sa);
+
+	sfc_eth_dev_set_ops(dev);
 
 	sfc_log_init(sa, "done");
 	return 0;
@@ -1489,6 +1550,7 @@ RTE_PMD_REGISTER_PCI(net_sfc_efx, sfc_efx_pmd.pci_drv);
 RTE_PMD_REGISTER_PCI_TABLE(net_sfc_efx, pci_id_sfc_efx_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_sfc_efx, "* igb_uio | uio_pci_generic | vfio");
 RTE_PMD_REGISTER_PARAM_STRING(net_sfc_efx,
+	SFC_KVARG_RX_DATAPATH "=" SFC_KVARG_VALUES_RX_DATAPATH " "
 	SFC_KVARG_PERF_PROFILE "=" SFC_KVARG_VALUES_PERF_PROFILE " "
 	SFC_KVARG_STATS_UPDATE_PERIOD_MS "=<long> "
 	SFC_KVARG_MCDI_LOGGING "=" SFC_KVARG_VALUES_BOOL " "
