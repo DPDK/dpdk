@@ -313,6 +313,64 @@ sfc_ef10_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	return pktp - &tx_pkts[0];
 }
 
+static uint16_t
+sfc_ef10_simple_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
+			  uint16_t nb_pkts)
+{
+	struct sfc_ef10_txq * const txq = sfc_ef10_txq_by_dp_txq(tx_queue);
+	unsigned int ptr_mask;
+	unsigned int added;
+	unsigned int dma_desc_space;
+	bool reap_done;
+	struct rte_mbuf **pktp;
+	struct rte_mbuf **pktp_end;
+
+	if (unlikely(txq->flags &
+		     (SFC_EF10_TXQ_NOT_RUNNING | SFC_EF10_TXQ_EXCEPTION)))
+		return 0;
+
+	ptr_mask = txq->ptr_mask;
+	added = txq->added;
+	dma_desc_space = SFC_EF10_TXQ_LIMIT(ptr_mask + 1) -
+			 (added - txq->completed);
+
+	reap_done = (dma_desc_space < RTE_MAX(txq->free_thresh, nb_pkts));
+	if (reap_done) {
+		sfc_ef10_tx_reap(txq);
+		dma_desc_space = SFC_EF10_TXQ_LIMIT(ptr_mask + 1) -
+				 (added - txq->completed);
+	}
+
+	pktp_end = &tx_pkts[MIN(nb_pkts, dma_desc_space)];
+	for (pktp = &tx_pkts[0]; pktp != pktp_end; ++pktp) {
+		struct rte_mbuf *pkt = *pktp;
+		unsigned int id = added & ptr_mask;
+
+		SFC_ASSERT(rte_pktmbuf_data_len(pkt) <=
+			   SFC_EF10_TX_DMA_DESC_LEN_MAX);
+
+		sfc_ef10_tx_qdesc_dma_create(rte_mbuf_data_dma_addr(pkt),
+					     rte_pktmbuf_data_len(pkt),
+					     true, &txq->txq_hw_ring[id]);
+
+		txq->sw_ring[id].mbuf = pkt;
+
+		++added;
+	}
+
+	if (likely(added != txq->added)) {
+		sfc_ef10_tx_qpush(txq, added, txq->added);
+		txq->added = added;
+	}
+
+#if SFC_TX_XMIT_PKTS_REAP_AT_LEAST_ONCE
+	if (!reap_done)
+		sfc_ef10_tx_reap(txq);
+#endif
+
+	return pktp - &tx_pkts[0];
+}
+
 
 static sfc_dp_tx_qcreate_t sfc_ef10_tx_qcreate;
 static int
@@ -448,4 +506,19 @@ struct sfc_dp_tx sfc_ef10_tx = {
 	.qstop			= sfc_ef10_tx_qstop,
 	.qreap			= sfc_ef10_tx_qreap,
 	.pkt_burst		= sfc_ef10_xmit_pkts,
+};
+
+struct sfc_dp_tx sfc_ef10_simple_tx = {
+	.dp = {
+		.name		= SFC_KVARG_DATAPATH_EF10_SIMPLE,
+		.type		= SFC_DP_TX,
+	},
+	.features		= 0,
+	.qcreate		= sfc_ef10_tx_qcreate,
+	.qdestroy		= sfc_ef10_tx_qdestroy,
+	.qstart			= sfc_ef10_tx_qstart,
+	.qtx_ev			= sfc_ef10_tx_qtx_ev,
+	.qstop			= sfc_ef10_tx_qstop,
+	.qreap			= sfc_ef10_tx_qreap,
+	.pkt_burst		= sfc_ef10_simple_xmit_pkts,
 };

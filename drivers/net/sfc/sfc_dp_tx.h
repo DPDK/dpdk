@@ -162,6 +162,7 @@ sfc_dp_find_tx_by_caps(struct sfc_dp_list *head, unsigned int avail_caps)
 
 extern struct sfc_dp_tx sfc_efx_tx;
 extern struct sfc_dp_tx sfc_ef10_tx;
+extern struct sfc_dp_tx sfc_ef10_simple_tx;
 
 #ifdef __cplusplus
 }

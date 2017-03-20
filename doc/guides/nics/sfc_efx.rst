@@ -236,7 +236,7 @@ boolean parameters value.
   more efficient than libefx-based and provides richer packet type
   classification, but lacks Rx scatter support.
 
-- ``tx_datapath`` [auto|efx|ef10] (default **auto**)
+- ``tx_datapath`` [auto|efx|ef10|ef10_simple] (default **auto**)
 
   Choose transmit datapath implementation.
   **auto** allows the driver itself to make a choice based on firmware
@@ -246,6 +246,9 @@ boolean parameters value.
   **ef10** chooses EF10 (SFN7xxx, SFN8xxx) native datapath which is
   more efficient than libefx-based but has no VLAN insertion and TSO
   support yet.
+  **ef10_simple** chooses EF10 (SFN7xxx, SFN8xxx) native datapath which
+  is even more faster then **ef10** but does not support multi-segment
+  mbufs.
 
 - ``perf_profile`` [auto|throughput|low-latency] (default **throughput**)
 
