@@ -538,14 +538,22 @@ static
 int test_error_distributor_create_name(void)
 {
 	struct rte_distributor *d = NULL;
+	struct rte_distributor *db = NULL;
 	char *name = NULL;
 
 	d = rte_distributor_create(name, rte_socket_id(),
 			rte_lcore_count() - 1,
-			RTE_DIST_ALG_BURST);
-
+			RTE_DIST_ALG_SINGLE);
 	if (d != NULL || rte_errno != EINVAL) {
 		printf("ERROR: No error on create() with NULL name param\n");
+		return -1;
+	}
+
+	db = rte_distributor_create(name, rte_socket_id(),
+			rte_lcore_count() - 1,
+			RTE_DIST_ALG_BURST);
+	if (db != NULL || rte_errno != EINVAL) {
+		printf("ERROR: No error on create() with NULL param\n");
 		return -1;
 	}
 
@@ -556,15 +564,25 @@ int test_error_distributor_create_name(void)
 static
 int test_error_distributor_create_numworkers(void)
 {
-	struct rte_distributor *d = NULL;
+	struct rte_distributor *ds = NULL;
+	struct rte_distributor *db = NULL;
 
-	d = rte_distributor_create("test_numworkers", rte_socket_id(),
+	ds = rte_distributor_create("test_numworkers", rte_socket_id(),
 			RTE_MAX_LCORE + 10,
-			RTE_DIST_ALG_BURST);
-	if (d != NULL || rte_errno != EINVAL) {
+			RTE_DIST_ALG_SINGLE);
+	if (ds != NULL || rte_errno != EINVAL) {
 		printf("ERROR: No error on create() with num_workers > MAX\n");
 		return -1;
 	}
+
+	db = rte_distributor_create("test_numworkers", rte_socket_id(),
+			RTE_MAX_LCORE + 10,
+			RTE_DIST_ALG_BURST);
+	if (db != NULL || rte_errno != EINVAL) {
+		printf("ERROR: No error on create() num_workers > MAX\n");
+		return -1;
+	}
+
 	return 0;
 }
 
@@ -597,25 +615,42 @@ quit_workers(struct worker_params *wp, struct rte_mempool *p)
 static int
 test_distributor(void)
 {
-	static struct rte_distributor *d;
+	static struct rte_distributor *ds;
+	static struct rte_distributor *db;
+	static struct rte_distributor *dist[2];
 	static struct rte_mempool *p;
+	int i;
 
 	if (rte_lcore_count() < 2) {
 		printf("ERROR: not enough cores to test distributor\n");
 		return -1;
 	}
 
-	if (d == NULL) {
-		d = rte_distributor_create("Test_dist_burst", rte_socket_id(),
+	if (db == NULL) {
+		db = rte_distributor_create("Test_dist_burst", rte_socket_id(),
 				rte_lcore_count() - 1,
 				RTE_DIST_ALG_BURST);
-		if (d == NULL) {
+		if (db == NULL) {
 			printf("Error creating burst distributor\n");
 			return -1;
 		}
 	} else {
-		rte_distributor_flush(d);
-		rte_distributor_clear_returns(d);
+		rte_distributor_flush(db);
+		rte_distributor_clear_returns(db);
+	}
+
+	if (ds == NULL) {
+		ds = rte_distributor_create("Test_dist_single",
+				rte_socket_id(),
+				rte_lcore_count() - 1,
+			RTE_DIST_ALG_SINGLE);
+		if (ds == NULL) {
+			printf("Error creating single distributor\n");
+			return -1;
+		}
+	} else {
+		rte_distributor_flush(ds);
+		rte_distributor_clear_returns(ds);
 	}
 
 	const unsigned nb_bufs = (511 * rte_lcore_count()) < BIG_BATCH ?
@@ -629,37 +664,50 @@ test_distributor(void)
 		}
 	}
 
-	worker_params.dist = d;
-	sprintf(worker_params.name, "burst");
+	dist[0] = ds;
+	dist[1] = db;
 
-	rte_eal_mp_remote_launch(handle_work, &worker_params, SKIP_MASTER);
-	if (sanity_test(&worker_params, p) < 0)
-		goto err;
-	quit_workers(&worker_params, p);
+	for (i = 0; i < 2; i++) {
 
-	rte_eal_mp_remote_launch(handle_work_with_free_mbufs, &worker_params,
-				SKIP_MASTER);
-	if (sanity_test_with_mbuf_alloc(&worker_params, p) < 0)
-		goto err;
-	quit_workers(&worker_params, p);
+		worker_params.dist = dist[i];
+		if (i)
+			sprintf(worker_params.name, "burst");
+		else
+			sprintf(worker_params.name, "single");
 
-	if (rte_lcore_count() > 2) {
-		rte_eal_mp_remote_launch(handle_work_for_shutdown_test,
-				&worker_params,
-				SKIP_MASTER);
-		if (sanity_test_with_worker_shutdown(&worker_params, p) < 0)
+		rte_eal_mp_remote_launch(handle_work,
+				&worker_params, SKIP_MASTER);
+		if (sanity_test(&worker_params, p) < 0)
 			goto err;
 		quit_workers(&worker_params, p);
 
-		rte_eal_mp_remote_launch(handle_work_for_shutdown_test,
-				&worker_params,
-				SKIP_MASTER);
-		if (test_flush_with_worker_shutdown(&worker_params, p) < 0)
+		rte_eal_mp_remote_launch(handle_work_with_free_mbufs,
+				&worker_params, SKIP_MASTER);
+		if (sanity_test_with_mbuf_alloc(&worker_params, p) < 0)
 			goto err;
 		quit_workers(&worker_params, p);
 
-	} else {
-		printf("Not enough cores to run tests for worker shutdown\n");
+		if (rte_lcore_count() > 2) {
+			rte_eal_mp_remote_launch(handle_work_for_shutdown_test,
+					&worker_params,
+					SKIP_MASTER);
+			if (sanity_test_with_worker_shutdown(&worker_params,
+					p) < 0)
+				goto err;
+			quit_workers(&worker_params, p);
+
+			rte_eal_mp_remote_launch(handle_work_for_shutdown_test,
+					&worker_params,
+					SKIP_MASTER);
+			if (test_flush_with_worker_shutdown(&worker_params,
+					p) < 0)
+				goto err;
+			quit_workers(&worker_params, p);
+
+		} else {
+			printf("Too few cores to run worker shutdown test\n");
+		}
+
 	}
 
 	if (test_error_distributor_create_numworkers() == -1 ||
