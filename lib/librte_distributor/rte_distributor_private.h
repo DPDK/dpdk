@@ -83,7 +83,7 @@ extern "C" {
  * the next cache line to worker 0, we pad this out to three cache lines.
  * Only 64-bits of the memory is actually used though.
  */
-union rte_distributor_buffer {
+union rte_distributor_buffer_v20 {
 	volatile int64_t bufptr64;
 	char pad[RTE_CACHE_LINE_SIZE*3];
 } __rte_cache_aligned;
@@ -108,8 +108,8 @@ struct rte_distributor_returned_pkts {
 	struct rte_mbuf *mbufs[RTE_DISTRIB_MAX_RETURNS];
 };
 
-struct rte_distributor {
-	TAILQ_ENTRY(rte_distributor) next;    /**< Next in list. */
+struct rte_distributor_v20 {
+	TAILQ_ENTRY(rte_distributor_v20) next;    /**< Next in list. */
 
 	char name[RTE_DISTRIBUTOR_NAMESIZE];  /**< Name of the ring. */
 	unsigned int num_workers;             /**< Number of workers polling */
@@ -124,7 +124,7 @@ struct rte_distributor {
 
 	struct rte_distributor_backlog backlog[RTE_DISTRIB_MAX_WORKERS];
 
-	union rte_distributor_buffer bufs[RTE_DISTRIB_MAX_WORKERS];
+	union rte_distributor_buffer_v20 bufs[RTE_DISTRIB_MAX_WORKERS];
 
 	struct rte_distributor_returned_pkts returns;
 };
@@ -144,7 +144,7 @@ enum rte_distributor_match_function {
  * We can pass up to 8 mbufs at a time in one cacheline.
  * There is a separate cacheline for returns in the burst API.
  */
-struct rte_distributor_buffer_v1705 {
+struct rte_distributor_buffer {
 	volatile int64_t bufptr64[RTE_DIST_BURST_SIZE]
 		__rte_cache_aligned; /* <= outgoing to worker */
 
@@ -158,8 +158,8 @@ struct rte_distributor_buffer_v1705 {
 	int count __rte_cache_aligned;       /* <= number of current mbufs */
 };
 
-struct rte_distributor_v1705 {
-	TAILQ_ENTRY(rte_distributor_v1705) next;    /**< Next in list. */
+struct rte_distributor {
+	TAILQ_ENTRY(rte_distributor) next;    /**< Next in list. */
 
 	char name[RTE_DISTRIBUTOR_NAMESIZE];  /**< Name of the ring. */
 	unsigned int num_workers;             /**< Number of workers polling */
@@ -176,22 +176,22 @@ struct rte_distributor_v1705 {
 	struct rte_distributor_backlog backlog[RTE_DISTRIB_MAX_WORKERS]
 			__rte_cache_aligned;
 
-	struct rte_distributor_buffer_v1705 bufs[RTE_DISTRIB_MAX_WORKERS];
+	struct rte_distributor_buffer bufs[RTE_DISTRIB_MAX_WORKERS];
 
 	struct rte_distributor_returned_pkts returns;
 
 	enum rte_distributor_match_function dist_match_fn;
 
-	struct rte_distributor *d_v20;
+	struct rte_distributor_v20 *d_v20;
 };
 
 void
-find_match_scalar(struct rte_distributor_v1705 *d,
+find_match_scalar(struct rte_distributor *d,
 			uint16_t *data_ptr,
 			uint16_t *output_ptr);
 
 void
-find_match_vec(struct rte_distributor_v1705 *d,
+find_match_vec(struct rte_distributor *d,
 			uint16_t *data_ptr,
 			uint16_t *output_ptr);
 

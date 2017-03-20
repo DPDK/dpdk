@@ -129,18 +129,25 @@ clear_packet_count(void)
 static int
 handle_work(void *arg)
 {
-	struct rte_mbuf *pkt = NULL;
 	struct rte_distributor *d = arg;
-	unsigned count = 0;
-	unsigned id = __sync_fetch_and_add(&worker_idx, 1);
+	unsigned int count = 0;
+	unsigned int num = 0;
+	int i;
+	unsigned int id = __sync_fetch_and_add(&worker_idx, 1);
+	struct rte_mbuf *buf[8] __rte_cache_aligned;
 
-	pkt = rte_distributor_get_pkt(d, id, NULL);
+	for (i = 0; i < 8; i++)
+		buf[i] = NULL;
+
+	num = rte_distributor_get_pkt(d, id, buf, buf, num);
 	while (!quit) {
-		worker_stats[id].handled_packets++, count++;
-		pkt = rte_distributor_get_pkt(d, id, pkt);
+		worker_stats[id].handled_packets += num;
+		count += num;
+		num = rte_distributor_get_pkt(d, id, buf, buf, num);
 	}
-	worker_stats[id].handled_packets++, count++;
-	rte_distributor_return_pkt(d, id, pkt);
+	worker_stats[id].handled_packets += num;
+	count += num;
+	rte_distributor_return_pkt(d, id, buf, num);
 	return 0;
 }
 
@@ -228,7 +235,8 @@ test_distributor_perf(void)
 
 	if (d == NULL) {
 		d = rte_distributor_create("Test_perf", rte_socket_id(),
-				rte_lcore_count() - 1);
+				rte_lcore_count() - 1,
+				RTE_DIST_ALG_SINGLE);
 		if (d == NULL) {
 			printf("Error creating distributor\n");
 			return -1;

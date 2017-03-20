@@ -38,7 +38,7 @@
 
 
 void
-find_match_vec(struct rte_distributor_v1705 *d,
+find_match_vec(struct rte_distributor *d,
 			uint16_t *data_ptr,
 			uint16_t *output_ptr)
 {

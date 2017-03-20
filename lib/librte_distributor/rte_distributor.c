@@ -42,10 +42,10 @@
 #include <rte_eal_memconfig.h>
 #include <rte_compat.h>
 #include "rte_distributor_private.h"
-#include "rte_distributor_next.h"
+#include "rte_distributor.h"
 #include "rte_distributor_v20.h"
 
-TAILQ_HEAD(rte_dist_burst_list, rte_distributor_v1705);
+TAILQ_HEAD(rte_dist_burst_list, rte_distributor);
 
 static struct rte_tailq_elem rte_dist_burst_tailq = {
 	.name = "RTE_DIST_BURST",
@@ -57,17 +57,17 @@ EAL_REGISTER_TAILQ(rte_dist_burst_tailq)
 /**** Burst Packet APIs called by workers ****/
 
 void
-rte_distributor_request_pkt_v1705(struct rte_distributor_v1705 *d,
+rte_distributor_request_pkt(struct rte_distributor *d,
 		unsigned int worker_id, struct rte_mbuf **oldpkt,
 		unsigned int count)
 {
-	struct rte_distributor_buffer_v1705 *buf = &(d->bufs[worker_id]);
+	struct rte_distributor_buffer *buf = &(d->bufs[worker_id]);
 	unsigned int i;
 
 	volatile int64_t *retptr64;
 
 	if (unlikely(d->alg_type == RTE_DIST_ALG_SINGLE)) {
-		rte_distributor_request_pkt(d->d_v20,
+		rte_distributor_request_pkt_v20(d->d_v20,
 			worker_id, oldpkt[0]);
 		return;
 	}
@@ -104,16 +104,16 @@ rte_distributor_request_pkt_v1705(struct rte_distributor_v1705 *d,
 }
 
 int
-rte_distributor_poll_pkt_v1705(struct rte_distributor_v1705 *d,
+rte_distributor_poll_pkt(struct rte_distributor *d,
 		unsigned int worker_id, struct rte_mbuf **pkts)
 {
-	struct rte_distributor_buffer_v1705 *buf = &d->bufs[worker_id];
+	struct rte_distributor_buffer *buf = &d->bufs[worker_id];
 	uint64_t ret;
 	int count = 0;
 	unsigned int i;
 
 	if (unlikely(d->alg_type == RTE_DIST_ALG_SINGLE)) {
-		pkts[0] = rte_distributor_poll_pkt(d->d_v20, worker_id);
+		pkts[0] = rte_distributor_poll_pkt_v20(d->d_v20, worker_id);
 		return (pkts[0]) ? 1 : 0;
 	}
 
@@ -140,7 +140,7 @@ rte_distributor_poll_pkt_v1705(struct rte_distributor_v1705 *d,
 }
 
 int
-rte_distributor_get_pkt_v1705(struct rte_distributor_v1705 *d,
+rte_distributor_get_pkt(struct rte_distributor *d,
 		unsigned int worker_id, struct rte_mbuf **pkts,
 		struct rte_mbuf **oldpkt, unsigned int return_count)
 {
@@ -148,37 +148,37 @@ rte_distributor_get_pkt_v1705(struct rte_distributor_v1705 *d,
 
 	if (unlikely(d->alg_type == RTE_DIST_ALG_SINGLE)) {
 		if (return_count <= 1) {
-			pkts[0] = rte_distributor_get_pkt(d->d_v20,
+			pkts[0] = rte_distributor_get_pkt_v20(d->d_v20,
 				worker_id, oldpkt[0]);
 			return (pkts[0]) ? 1 : 0;
 		} else
 			return -EINVAL;
 	}
 
-	rte_distributor_request_pkt_v1705(d, worker_id, oldpkt, return_count);
+	rte_distributor_request_pkt(d, worker_id, oldpkt, return_count);
 
-	count = rte_distributor_poll_pkt_v1705(d, worker_id, pkts);
+	count = rte_distributor_poll_pkt(d, worker_id, pkts);
 	while (count == -1) {
 		uint64_t t = rte_rdtsc() + 100;
 
 		while (rte_rdtsc() < t)
 			rte_pause();
 
-		count = rte_distributor_poll_pkt_v1705(d, worker_id, pkts);
+		count = rte_distributor_poll_pkt(d, worker_id, pkts);
 	}
 	return count;
 }
 
 int
-rte_distributor_return_pkt_v1705(struct rte_distributor_v1705 *d,
+rte_distributor_return_pkt(struct rte_distributor *d,
 		unsigned int worker_id, struct rte_mbuf **oldpkt, int num)
 {
-	struct rte_distributor_buffer_v1705 *buf = &d->bufs[worker_id];
+	struct rte_distributor_buffer *buf = &d->bufs[worker_id];
 	unsigned int i;
 
 	if (unlikely(d->alg_type == RTE_DIST_ALG_SINGLE)) {
 		if (num == 1)
-			return rte_distributor_return_pkt(d->d_v20,
+			return rte_distributor_return_pkt_v20(d->d_v20,
 				worker_id, oldpkt[0]);
 		else
 			return -EINVAL;
@@ -202,7 +202,7 @@ rte_distributor_return_pkt_v1705(struct rte_distributor_v1705 *d,
 
 /* stores a packet returned from a worker inside the returns array */
 static inline void
-store_return(uintptr_t oldbuf, struct rte_distributor_v1705 *d,
+store_return(uintptr_t oldbuf, struct rte_distributor *d,
 		unsigned int *ret_start, unsigned int *ret_count)
 {
 	if (!oldbuf)
@@ -221,7 +221,7 @@ store_return(uintptr_t oldbuf, struct rte_distributor_v1705 *d,
  * workers to give us our atomic flow pinning.
  */
 void
-find_match_scalar(struct rte_distributor_v1705 *d,
+find_match_scalar(struct rte_distributor *d,
 			uint16_t *data_ptr,
 			uint16_t *output_ptr)
 {
@@ -270,9 +270,9 @@ find_match_scalar(struct rte_distributor_v1705 *d,
  * the valid returned pointers (store_return).
  */
 static unsigned int
-handle_returns(struct rte_distributor_v1705 *d, unsigned int wkr)
+handle_returns(struct rte_distributor *d, unsigned int wkr)
 {
-	struct rte_distributor_buffer_v1705 *buf = &(d->bufs[wkr]);
+	struct rte_distributor_buffer *buf = &(d->bufs[wkr]);
 	uintptr_t oldbuf;
 	unsigned int ret_start = d->returns.start,
 			ret_count = d->returns.count;
@@ -308,9 +308,9 @@ handle_returns(struct rte_distributor_v1705 *d, unsigned int wkr)
  * before sending out new packets.
  */
 static unsigned int
-release(struct rte_distributor_v1705 *d, unsigned int wkr)
+release(struct rte_distributor *d, unsigned int wkr)
 {
-	struct rte_distributor_buffer_v1705 *buf = &(d->bufs[wkr]);
+	struct rte_distributor_buffer *buf = &(d->bufs[wkr]);
 	unsigned int i;
 
 	while (!(d->bufs[wkr].bufptr64[0] & RTE_DISTRIB_GET_BUF))
@@ -342,7 +342,7 @@ release(struct rte_distributor_v1705 *d, unsigned int wkr)
 
 /* process a set of packets to distribute them to workers */
 int
-rte_distributor_process_v1705(struct rte_distributor_v1705 *d,
+rte_distributor_process(struct rte_distributor *d,
 		struct rte_mbuf **mbufs, unsigned int num_mbufs)
 {
 	unsigned int next_idx = 0;
@@ -355,7 +355,7 @@ rte_distributor_process_v1705(struct rte_distributor_v1705 *d,
 
 	if (d->alg_type == RTE_DIST_ALG_SINGLE) {
 		/* Call the old API */
-		return rte_distributor_process(d->d_v20, mbufs, num_mbufs);
+		return rte_distributor_process_v20(d->d_v20, mbufs, num_mbufs);
 	}
 
 	if (unlikely(num_mbufs == 0)) {
@@ -479,7 +479,7 @@ rte_distributor_process_v1705(struct rte_distributor_v1705 *d,
 
 /* return to the caller, packets returned from workers */
 int
-rte_distributor_returned_pkts_v1705(struct rte_distributor_v1705 *d,
+rte_distributor_returned_pkts(struct rte_distributor *d,
 		struct rte_mbuf **mbufs, unsigned int max_mbufs)
 {
 	struct rte_distributor_returned_pkts *returns = &d->returns;
@@ -489,7 +489,7 @@ rte_distributor_returned_pkts_v1705(struct rte_distributor_v1705 *d,
 
 	if (d->alg_type == RTE_DIST_ALG_SINGLE) {
 		/* Call the old API */
-		return rte_distributor_returned_pkts(d->d_v20,
+		return rte_distributor_returned_pkts_v20(d->d_v20,
 				mbufs, max_mbufs);
 	}
 
@@ -510,7 +510,7 @@ rte_distributor_returned_pkts_v1705(struct rte_distributor_v1705 *d,
  * being workered on or queued up in a backlog.
  */
 static inline unsigned int
-total_outstanding(const struct rte_distributor_v1705 *d)
+total_outstanding(const struct rte_distributor *d)
 {
 	unsigned int wkr, total_outstanding = 0;
 
@@ -525,24 +525,24 @@ total_outstanding(const struct rte_distributor_v1705 *d)
  * queued up.
  */
 int
-rte_distributor_flush_v1705(struct rte_distributor_v1705 *d)
+rte_distributor_flush(struct rte_distributor *d)
 {
 	const unsigned int flushed = total_outstanding(d);
 	unsigned int wkr;
 
 	if (d->alg_type == RTE_DIST_ALG_SINGLE) {
 		/* Call the old API */
-		return rte_distributor_flush(d->d_v20);
+		return rte_distributor_flush_v20(d->d_v20);
 	}
 
 	while (total_outstanding(d) > 0)
-		rte_distributor_process_v1705(d, NULL, 0);
+		rte_distributor_process(d, NULL, 0);
 
 	/*
 	 * Send empty burst to all workers to allow them to exit
 	 * gracefully, should they need to.
 	 */
-	rte_distributor_process_v1705(d, NULL, 0);
+	rte_distributor_process(d, NULL, 0);
 
 	for (wkr = 0; wkr < d->num_workers; wkr++)
 		handle_returns(d, wkr);
@@ -552,13 +552,13 @@ rte_distributor_flush_v1705(struct rte_distributor_v1705 *d)
 
 /* clears the internal returns array in the distributor */
 void
-rte_distributor_clear_returns_v1705(struct rte_distributor_v1705 *d)
+rte_distributor_clear_returns(struct rte_distributor *d)
 {
 	unsigned int wkr;
 
 	if (d->alg_type == RTE_DIST_ALG_SINGLE) {
 		/* Call the old API */
-		rte_distributor_clear_returns(d->d_v20);
+		rte_distributor_clear_returns_v20(d->d_v20);
 	}
 
 	/* throw away returns, so workers can exit */
@@ -567,13 +567,13 @@ rte_distributor_clear_returns_v1705(struct rte_distributor_v1705 *d)
 }
 
 /* creates a distributor instance */
-struct rte_distributor_v1705 *
-rte_distributor_create_v1705(const char *name,
+struct rte_distributor *
+rte_distributor_create(const char *name,
 		unsigned int socket_id,
 		unsigned int num_workers,
 		unsigned int alg_type)
 {
-	struct rte_distributor_v1705 *d;
+	struct rte_distributor *d;
 	struct rte_dist_burst_list *dist_burst_list;
 	char mz_name[RTE_MEMZONE_NAMESIZE];
 	const struct rte_memzone *mz;
@@ -586,8 +586,8 @@ rte_distributor_create_v1705(const char *name,
 	RTE_BUILD_BUG_ON((RTE_DISTRIB_MAX_WORKERS & 7) != 0);
 
 	if (alg_type == RTE_DIST_ALG_SINGLE) {
-		d = malloc(sizeof(struct rte_distributor_v1705));
-		d->d_v20 = rte_distributor_create(name,
+		d = malloc(sizeof(struct rte_distributor));
+		d->d_v20 = rte_distributor_create_v20(name,
 				socket_id, num_workers);
 		if (d->d_v20 == NULL) {
 			/* rte_errno will have been set */

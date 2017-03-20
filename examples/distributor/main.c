@@ -405,17 +405,30 @@ lcore_worker(struct lcore_params *p)
 {
 	struct rte_distributor *d = p->d;
 	const unsigned id = p->worker_id;
+	unsigned int num = 0;
+	unsigned int i;
+
 	/*
 	 * for single port, xor_val will be zero so we won't modify the output
 	 * port, otherwise we send traffic from 0 to 1, 2 to 3, and vice versa
 	 */
 	const unsigned xor_val = (rte_eth_dev_count() > 1);
-	struct rte_mbuf *buf = NULL;
+	struct rte_mbuf *buf[8] __rte_cache_aligned;
+
+	for (i = 0; i < 8; i++)
+		buf[i] = NULL;
 
 	printf("\nCore %u acting as worker core.\n", rte_lcore_id());
 	while (!quit_signal) {
-		buf = rte_distributor_get_pkt(d, id, buf);
-		buf->port ^= xor_val;
+		num = rte_distributor_get_pkt(d, id, buf, buf, num);
+		/* Do a little bit of work for each packet */
+		for (i = 0; i < num; i++) {
+			uint64_t t = rte_rdtsc()+100;
+
+			while (rte_rdtsc() < t)
+				rte_pause();
+			buf[i]->port ^= xor_val;
+		}
 	}
 	return 0;
 }
@@ -561,7 +574,8 @@ main(int argc, char *argv[])
 	}
 
 	d = rte_distributor_create("PKT_DIST", rte_socket_id(),
-			rte_lcore_count() - 2);
+			rte_lcore_count() - 2,
+			RTE_DIST_ALG_BURST);
 	if (d == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot create distributor\n");
 
