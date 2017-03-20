@@ -135,7 +135,8 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 		DEV_TX_OFFLOAD_TCP_CKSUM;
 
 	dev_info->default_txconf.txq_flags = ETH_TXQ_FLAGS_NOXSUMSCTP;
-	if (!encp->enc_hw_tx_insert_vlan_enabled)
+	if ((~sa->dp_tx->features & SFC_DP_TX_FEAT_VLAN_INSERT) ||
+	    !encp->enc_hw_tx_insert_vlan_enabled)
 		dev_info->default_txconf.txq_flags |= ETH_TXQ_FLAGS_NOVLANOFFL;
 	else
 		dev_info->tx_offload_capa |= DEV_TX_OFFLOAD_VLAN_INSERT;

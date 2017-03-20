@@ -84,10 +84,16 @@ sfc_tx_qcheck_conf(struct sfc_adapter *sa, uint16_t nb_tx_desc,
 		rc = EINVAL;
 	}
 
-	if (!encp->enc_hw_tx_insert_vlan_enabled &&
-	    (flags & ETH_TXQ_FLAGS_NOVLANOFFL) == 0) {
-		sfc_err(sa, "VLAN offload is not supported");
-		rc = EINVAL;
+	if ((flags & ETH_TXQ_FLAGS_NOVLANOFFL) == 0) {
+		if (!encp->enc_hw_tx_insert_vlan_enabled) {
+			sfc_err(sa, "VLAN offload is not supported");
+			rc = EINVAL;
+		} else if (~sa->dp_tx->features & SFC_DP_TX_FEAT_VLAN_INSERT) {
+			sfc_err(sa,
+				"VLAN offload is not supported by %s datapath",
+				sa->dp_tx->dp.name);
+			rc = EINVAL;
+		}
 	}
 
 	if ((flags & ETH_TXQ_FLAGS_NOXSUMSCTP) == 0) {
@@ -923,6 +929,7 @@ struct sfc_dp_tx sfc_efx_tx = {
 		.type		= SFC_DP_TX,
 		.hw_fw_caps	= 0,
 	},
+	.features		= SFC_DP_TX_FEAT_VLAN_INSERT,
 	.qcreate		= sfc_efx_tx_qcreate,
 	.qdestroy		= sfc_efx_tx_qdestroy,
 	.qstart			= sfc_efx_tx_qstart,

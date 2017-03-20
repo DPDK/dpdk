@@ -116,6 +116,8 @@ typedef void (sfc_dp_tx_qreap_t)(struct sfc_dp_txq *dp_txq);
 struct sfc_dp_tx {
 	struct sfc_dp			dp;
 
+	unsigned int			features;
+#define SFC_DP_TX_FEAT_VLAN_INSERT	0x1
 	sfc_dp_tx_qcreate_t		*qcreate;
 	sfc_dp_tx_qdestroy_t		*qdestroy;
 	sfc_dp_tx_qstart_t		*qstart;
