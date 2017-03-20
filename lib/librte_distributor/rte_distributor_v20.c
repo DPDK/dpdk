@@ -40,7 +40,7 @@
 #include <rte_errno.h>
 #include <rte_string_fns.h>
 #include <rte_eal_memconfig.h>
-#include "rte_distributor.h"
+#include "rte_distributor_v20.h"
 
 #define NO_FLAGS 0
 #define RTE_DISTRIB_PREFIX "DT_"
