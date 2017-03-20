@@ -95,17 +95,23 @@ sfc_efx_rx_qrefill(struct sfc_efx_rxq *rxq)
 		return;
 
 	bulks = free_space / RTE_DIM(objs);
+	/* refill_threshold guarantees that bulks is positive */
+	SFC_ASSERT(bulks > 0);
 
 	id = added & rxq->ptr_mask;
-	while (bulks-- > 0) {
-		if (rte_mempool_get_bulk(rxq->refill_mb_pool, objs,
-					 RTE_DIM(objs)) < 0) {
+	do {
+		if (unlikely(rte_mempool_get_bulk(rxq->refill_mb_pool, objs,
+						  RTE_DIM(objs)) < 0)) {
 			/*
 			 * It is hardly a safe way to increment counter
 			 * from different contexts, but all PMDs do it.
 			 */
 			rxq->evq->sa->eth_dev->data->rx_mbuf_alloc_failed +=
 				RTE_DIM(objs);
+			/* Return if we have posted nothing yet */
+			if (added == rxq->added)
+				return;
+			/* Push posted */
 			break;
 		}
 
@@ -128,13 +134,11 @@ sfc_efx_rx_qrefill(struct sfc_efx_rxq *rxq)
 		efx_rx_qpost(rxq->common, addr, rxq->buf_size,
 			     RTE_DIM(objs), rxq->completed, added);
 		added += RTE_DIM(objs);
-	}
+	} while (--bulks > 0);
 
-	/* Push doorbell if something is posted */
-	if (rxq->added != added) {
-		rxq->added = added;
-		efx_rx_qpush(rxq->common, added, &rxq->pushed);
-	}
+	SFC_ASSERT(added != rxq->added);
+	rxq->added = added;
+	efx_rx_qpush(rxq->common, added, &rxq->pushed);
 }
 
 static uint64_t
@@ -914,7 +918,8 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 
 	rxq->evq = evq;
 	rxq->hw_index = sw_index;
-	rxq->refill_threshold = rx_conf->rx_free_thresh;
+	rxq->refill_threshold =
+		RTE_MAX(rx_conf->rx_free_thresh, SFC_RX_REFILL_BULK);
 	rxq->refill_mb_pool = mb_pool;
 
 	rc = sfc_dma_alloc(sa, "rxq", sw_index, EFX_RXQ_SIZE(rxq_info->entries),
