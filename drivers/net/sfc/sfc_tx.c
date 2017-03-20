@@ -173,6 +173,11 @@ sfc_tx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	info.flags = tx_conf->txq_flags;
 	info.txq_entries = txq_info->entries;
 	info.dma_desc_size_max = encp->enc_tx_dma_desc_size_max;
+	info.txq_hw_ring = txq->mem.esm_base;
+	info.evq_entries = txq_info->entries;
+	info.evq_hw_ring = evq->mem.esm_base;
+	info.hw_index = txq->hw_index;
+	info.mem_bar = sa->mem_bar.esb_base;
 
 	rc = sa->dp_tx->qcreate(sa->eth_dev->data->port_id, sw_index,
 				&SFC_DEV_TO_PCI(sa->eth_dev)->addr,

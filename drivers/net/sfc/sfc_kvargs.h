@@ -66,7 +66,8 @@ extern "C" {
 
 #define SFC_KVARG_TX_DATAPATH		"tx_datapath"
 #define SFC_KVARG_VALUES_TX_DATAPATH \
-	"[" SFC_KVARG_DATAPATH_EFX "]"
+	"[" SFC_KVARG_DATAPATH_EFX "|" \
+	    SFC_KVARG_DATAPATH_EF10 "]"
 
 struct sfc_adapter;
 

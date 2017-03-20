@@ -65,6 +65,16 @@ struct sfc_dp_tx_qcreate_info {
 	unsigned int		txq_entries;
 	/** Maximum size of data in the DMA descriptor */
 	uint16_t		dma_desc_size_max;
+	/** DMA-mapped Tx descriptors ring */
+	void			*txq_hw_ring;
+	/** Associated event queue size */
+	unsigned int		evq_entries;
+	/** Hardware event ring */
+	void			*evq_hw_ring;
+	/** The queue index in hardware (required to push right doorbell) */
+	unsigned int		hw_index;
+	/** Virtual address of the memory-mapped BAR to push Tx doorbell */
+	volatile void		*mem_bar;
 };
 
 /**
@@ -108,6 +118,11 @@ typedef void (sfc_dp_tx_qstop_t)(struct sfc_dp_txq *dp_txq,
 				 unsigned int *evq_read_ptr);
 
 /**
+ * Transmit event handler used during queue flush only.
+ */
+typedef bool (sfc_dp_tx_qtx_ev_t)(struct sfc_dp_txq *dp_txq, unsigned int id);
+
+/**
  * Transmit queue function called after the queue flush.
  */
 typedef void (sfc_dp_tx_qreap_t)(struct sfc_dp_txq *dp_txq);
@@ -123,6 +138,7 @@ struct sfc_dp_tx {
 	sfc_dp_tx_qdestroy_t		*qdestroy;
 	sfc_dp_tx_qstart_t		*qstart;
 	sfc_dp_tx_qstop_t		*qstop;
+	sfc_dp_tx_qtx_ev_t		*qtx_ev;
 	sfc_dp_tx_qreap_t		*qreap;
 	eth_tx_burst_t			pkt_burst;
 };
@@ -144,6 +160,7 @@ sfc_dp_find_tx_by_caps(struct sfc_dp_list *head, unsigned int avail_caps)
 }
 
 extern struct sfc_dp_tx sfc_efx_tx;
+extern struct sfc_dp_tx sfc_ef10_tx;
 
 #ifdef __cplusplus
 }
