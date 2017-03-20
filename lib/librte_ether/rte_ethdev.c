@@ -1949,13 +1949,7 @@ rte_eth_check_reta_mask(struct rte_eth_rss_reta_entry64 *reta_conf,
 	if (!reta_conf)
 		return -EINVAL;
 
-	if (reta_size != RTE_ALIGN(reta_size, RTE_RETA_GROUP_SIZE)) {
-		RTE_PMD_DEBUG_TRACE("Invalid reta size, should be %u aligned\n",
-							RTE_RETA_GROUP_SIZE);
-		return -EINVAL;
-	}
-
-	num = reta_size / RTE_RETA_GROUP_SIZE;
+	num = (reta_size + RTE_RETA_GROUP_SIZE - 1) / RTE_RETA_GROUP_SIZE;
 	for (i = 0; i < num; i++) {
 		if (reta_conf[i].mask)
 			return 0;

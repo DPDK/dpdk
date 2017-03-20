@@ -2081,7 +2081,9 @@ showport_parse_reta_config(struct rte_eth_rss_reta_entry64 *conf,
 	char s[256];
 	char *end;
 	char *str_fld[8];
-	uint16_t i, num = nb_entries / RTE_RETA_GROUP_SIZE;
+	uint16_t i;
+	uint16_t num = (nb_entries + RTE_RETA_GROUP_SIZE - 1) /
+			RTE_RETA_GROUP_SIZE;
 	int ret;
 
 	p = strchr(p0, '(');
