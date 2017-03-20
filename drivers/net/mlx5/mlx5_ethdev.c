@@ -701,12 +701,8 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 					  DEV_TX_OFFLOAD_GRE_TNL_TSO);
 	if (priv_get_ifname(priv, &ifname) == 0)
 		info->if_index = if_nametoindex(ifname);
-	/* FIXME: RETA update/query API expects the callee to know the size of
-	 * the indirection table, for this PMD the size varies depending on
-	 * the number of RX queues, it becomes impossible to find the correct
-	 * size if it is not fixed.
-	 * The API should be updated to solve this problem. */
-	info->reta_size = priv->ind_table_max_size;
+	info->reta_size = priv->reta_idx_n ?
+		priv->reta_idx_n : priv->ind_table_max_size;
 	info->hash_key_size = ((*priv->rss_conf) ?
 			       (*priv->rss_conf)[0]->rss_key_len :
 			       0);
