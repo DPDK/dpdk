@@ -226,12 +226,15 @@ whitelist option like "-w 02:00.0,arg1=value1,...".
 Case-insensitive 1/y/yes/on or 0/n/no/off may be used to specify
 boolean parameters value.
 
-- ``rx_datapath`` [auto|efx] (default **auto**)
+- ``rx_datapath`` [auto|efx|ef10] (default **auto**)
 
   Choose receive datapath implementation.
   **auto** allows the driver itself to make a choice based on firmware
   features available and required by the datapath implementation.
   **efx** chooses libefx-based datapath which supports Rx scatter.
+  **ef10** chooses EF10 (SFN7xxx, SFN8xxx) native datapath which is
+  more efficient than libefx-based and provides richer packet type
+  classification, but lacks Rx scatter support.
 
 - ``perf_profile`` [auto|throughput|low-latency] (default **throughput**)
 

@@ -57,10 +57,12 @@ extern "C" {
 #define SFC_KVARG_STATS_UPDATE_PERIOD_MS	"stats_update_period_ms"
 
 #define SFC_KVARG_DATAPATH_EFX		"efx"
+#define SFC_KVARG_DATAPATH_EF10		"ef10"
 
 #define SFC_KVARG_RX_DATAPATH		"rx_datapath"
 #define SFC_KVARG_VALUES_RX_DATAPATH \
-	"[" SFC_KVARG_DATAPATH_EFX "]"
+	"[" SFC_KVARG_DATAPATH_EFX "|" \
+	    SFC_KVARG_DATAPATH_EF10 "]"
 
 struct sfc_adapter;
 

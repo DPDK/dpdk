@@ -1366,6 +1366,15 @@ sfc_eth_dev_set_ops(struct rte_eth_dev *dev)
 	if (sa == NULL || sa->state == SFC_ADAPTER_UNINITIALIZED)
 		return -E_RTE_SECONDARY;
 
+	switch (sa->family) {
+	case EFX_FAMILY_HUNTINGTON:
+	case EFX_FAMILY_MEDFORD:
+		avail_caps |= SFC_DP_HW_FW_CAP_EF10;
+		break;
+	default:
+		break;
+	}
+
 	rc = sfc_kvargs_process(sa, SFC_KVARG_RX_DATAPATH,
 				sfc_kvarg_string_handler, &rx_name);
 	if (rc != 0)
@@ -1414,8 +1423,11 @@ static void
 sfc_register_dp(void)
 {
 	/* Register once */
-	if (TAILQ_EMPTY(&sfc_dp_head))
+	if (TAILQ_EMPTY(&sfc_dp_head)) {
+		/* Prefer EF10 datapath */
+		sfc_dp_register(&sfc_dp_head, &sfc_ef10_rx.dp);
 		sfc_dp_register(&sfc_dp_head, &sfc_efx_rx.dp);
+	}
 }
 
 static int

@@ -940,6 +940,11 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 #endif
 
 	info.rxq_entries = rxq_info->entries;
+	info.rxq_hw_ring = rxq->mem.esm_base;
+	info.evq_entries = rxq_info->entries;
+	info.evq_hw_ring = evq->mem.esm_base;
+	info.hw_index = rxq->hw_index;
+	info.mem_bar = sa->mem_bar.esb_base;
 
 	rc = sa->dp_rx->qcreate(sa->eth_dev->data->port_id, sw_index,
 				&SFC_DEV_TO_PCI(sa->eth_dev)->addr,

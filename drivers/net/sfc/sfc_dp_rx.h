@@ -83,6 +83,21 @@ struct sfc_dp_rx_qcreate_info {
 
 	/** Rx queue size */
 	unsigned int		rxq_entries;
+	/** DMA-mapped Rx descriptors ring */
+	void			*rxq_hw_ring;
+
+	/** Associated event queue size */
+	unsigned int		evq_entries;
+	/** Hardware event ring */
+	void			*evq_hw_ring;
+
+	/** The queue index in hardware (required to push right doorbell) */
+	unsigned int		hw_index;
+	/**
+	 * Virtual address of the memory-mapped BAR to push Rx refill
+	 * doorbell
+	 */
+	volatile void		*mem_bar;
 };
 
 /**
@@ -123,6 +138,11 @@ typedef void (sfc_dp_rx_qstop_t)(struct sfc_dp_rxq *dp_rxq,
 				 unsigned int *evq_read_ptr);
 
 /**
+ * Receive event handler used during queue flush only.
+ */
+typedef bool (sfc_dp_rx_qrx_ev_t)(struct sfc_dp_rxq *dp_rxq, unsigned int id);
+
+/**
  * Receive queue purge function called after queue flush.
  *
  * Should be used to free unused recevie buffers.
@@ -145,6 +165,7 @@ struct sfc_dp_rx {
 	sfc_dp_rx_qdestroy_t			*qdestroy;
 	sfc_dp_rx_qstart_t			*qstart;
 	sfc_dp_rx_qstop_t			*qstop;
+	sfc_dp_rx_qrx_ev_t			*qrx_ev;
 	sfc_dp_rx_qpurge_t			*qpurge;
 	sfc_dp_rx_supported_ptypes_get_t	*supported_ptypes_get;
 	sfc_dp_rx_qdesc_npending_t		*qdesc_npending;
@@ -168,6 +189,7 @@ sfc_dp_find_rx_by_caps(struct sfc_dp_list *head, unsigned int avail_caps)
 }
 
 extern struct sfc_dp_rx sfc_efx_rx;
+extern struct sfc_dp_rx sfc_ef10_rx;
 
 #ifdef __cplusplus
 }

@@ -156,6 +156,20 @@ done:
 }
 
 static boolean_t
+sfc_ev_dp_rx(void *arg, __rte_unused uint32_t label, uint32_t id,
+	     __rte_unused uint32_t size, __rte_unused uint16_t flags)
+{
+	struct sfc_evq *evq = arg;
+	struct sfc_dp_rxq *dp_rxq;
+
+	dp_rxq = evq->dp_rxq;
+	SFC_ASSERT(dp_rxq != NULL);
+
+	SFC_ASSERT(evq->sa->dp_rx->qrx_ev != NULL);
+	return evq->sa->dp_rx->qrx_ev(dp_rxq, id);
+}
+
+static boolean_t
 sfc_ev_nop_tx(void *arg, uint32_t label, uint32_t id)
 {
 	struct sfc_evq *evq = arg;
@@ -414,7 +428,7 @@ static const efx_ev_callbacks_t sfc_ev_callbacks_efx_rx = {
 
 static const efx_ev_callbacks_t sfc_ev_callbacks_dp_rx = {
 	.eec_initialized	= sfc_ev_initialized,
-	.eec_rx			= sfc_ev_nop_rx,
+	.eec_rx			= sfc_ev_dp_rx,
 	.eec_tx			= sfc_ev_nop_tx,
 	.eec_exception		= sfc_ev_exception,
 	.eec_rxq_flush_done	= sfc_ev_rxq_flush_done,
