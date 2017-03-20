@@ -104,33 +104,35 @@ Running the Application
 Explanation
 -----------
 
-The distributor application consists of three types of threads: a receive
-thread (lcore_rx()), a set of worker threads(lcore_worker())
-and a transmit thread(lcore_tx()). How these threads work together is shown
-in :numref:`figure_dist_app` below. The main() function launches  threads of these three types.
-Each thread has a while loop which will be doing processing and which is
-terminated only upon SIGINT or ctrl+C. The receive and transmit threads
-communicate using a software ring (rte_ring structure).
+The distributor application consists of four types of threads: a receive
+thread (``lcore_rx()``), a distributor thread (``lcore_dist()``), a set of
+worker threads (``lcore_worker()``), and a transmit thread(``lcore_tx()``).
+How these threads work together is shown in :numref:`figure_dist_app` below.
+The ``main()`` function launches  threads of these four types.  Each thread
+has a while loop which will be doing processing and which is terminated
+only upon SIGINT or ctrl+C.
 
-The receive thread receives the packets using rte_eth_rx_burst() and gives
-them to  the distributor (using rte_distributor_process() API) which will
-be called in context of the receive thread itself. The distributor distributes
-the packets to workers threads based on the tagging of the packet -
-indicated by the hash field in the mbuf. For IP traffic, this field is
-automatically filled by the NIC with the "usr" hash value for the packet,
-which works as a per-flow tag.
+The receive thread receives the packets using ``rte_eth_rx_burst()`` and will
+enqueue them to an rte_ring. The distributor thread will dequeue the packets
+from the ring and assign them to workers (using ``rte_distributor_process()`` API).
+This assignment is based on the tag (or flow ID) of the packet - indicated by
+the hash field in the mbuf. For IP traffic, this field is automatically filled
+by the NIC with the "usr" hash value for the packet, which works as a per-flow
+tag.  The distributor thread communicates with the worker threads using a
+cache-line swapping mechanism, passing up to 8 mbuf pointers at a time
+(one cache line) to each worker.
 
 More than one worker thread can exist as part of the application, and these
 worker threads do simple packet processing by requesting packets from
 the distributor, doing a simple XOR operation on the input port mbuf field
 (to indicate the output port which will be used later for packet transmission)
-and then finally returning the packets back to the distributor in the RX thread.
+and then finally returning the packets back to the distributor thread.
 
-Meanwhile, the receive thread will call the distributor api
-rte_distributor_returned_pkts() to get the packets processed, and will enqueue
-them to a ring for transfer to the TX thread for transmission on the output port.
-The transmit thread will dequeue the packets from the ring and transmit them on
-the output port specified in packet mbuf.
+The distributor thread will then call the distributor api
+``rte_distributor_returned_pkts()`` to get the processed packets, and will enqueue
+them to another rte_ring for transfer to the TX thread for transmission on the
+output port. The transmit thread will dequeue the packets from the ring and
+transmit them on the output port specified in packet mbuf.
 
 Users who wish to terminate the running of the application have to press ctrl+C
 (or send SIGINT to the app). Upon this signal, a signal handler provided
@@ -153,8 +155,10 @@ the line "#define DEBUG" defined in start of the application in main.c to enable
 Statistics
 ----------
 
-Upon SIGINT (or) ctrl+C, the print_stats() function displays the count of packets
-processed at the different stages in the application.
+The main function will print statistics on the console every second. These
+statistics include the number of packets enqueued and dequeued at each stage
+in the application, and also key statistics per worker, including how many
+packets of each burst size (1-8) were sent to each worker thread.
 
 Application Initialization
 --------------------------
