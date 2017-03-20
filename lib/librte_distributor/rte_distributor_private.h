@@ -129,6 +129,67 @@ struct rte_distributor {
 	struct rte_distributor_returned_pkts returns;
 };
 
+/* All different signature compare functions */
+enum rte_distributor_match_function {
+	RTE_DIST_MATCH_SCALAR = 0,
+	RTE_DIST_MATCH_VECTOR,
+	RTE_DIST_NUM_MATCH_FNS
+};
+
+/**
+ * Buffer structure used to pass the pointer data between cores. This is cache
+ * line aligned, but to improve performance and prevent adjacent cache-line
+ * prefetches of buffers for other workers, e.g. when worker 1's buffer is on
+ * the next cache line to worker 0, we pad this out to two cache lines.
+ * We can pass up to 8 mbufs at a time in one cacheline.
+ * There is a separate cacheline for returns in the burst API.
+ */
+struct rte_distributor_buffer_v1705 {
+	volatile int64_t bufptr64[RTE_DIST_BURST_SIZE]
+		__rte_cache_aligned; /* <= outgoing to worker */
+
+	int64_t pad1 __rte_cache_aligned;    /* <= one cache line  */
+
+	volatile int64_t retptr64[RTE_DIST_BURST_SIZE]
+		__rte_cache_aligned; /* <= incoming from worker */
+
+	int64_t pad2 __rte_cache_aligned;    /* <= one cache line  */
+
+	int count __rte_cache_aligned;       /* <= number of current mbufs */
+};
+
+struct rte_distributor_v1705 {
+	TAILQ_ENTRY(rte_distributor_v1705) next;    /**< Next in list. */
+
+	char name[RTE_DISTRIBUTOR_NAMESIZE];  /**< Name of the ring. */
+	unsigned int num_workers;             /**< Number of workers polling */
+	unsigned int alg_type;                /**< Number of alg types */
+
+	/**>
+	 * First cache line in the this array are the tags inflight
+	 * on the worker core. Second cache line are the backlog
+	 * that are going to go to the worker core.
+	 */
+	uint16_t in_flight_tags[RTE_DISTRIB_MAX_WORKERS][RTE_DIST_BURST_SIZE*2]
+			__rte_cache_aligned;
+
+	struct rte_distributor_backlog backlog[RTE_DISTRIB_MAX_WORKERS]
+			__rte_cache_aligned;
+
+	struct rte_distributor_buffer_v1705 bufs[RTE_DISTRIB_MAX_WORKERS];
+
+	struct rte_distributor_returned_pkts returns;
+
+	enum rte_distributor_match_function dist_match_fn;
+
+	struct rte_distributor *d_v20;
+};
+
+void
+find_match_scalar(struct rte_distributor_v1705 *d,
+			uint16_t *data_ptr,
+			uint16_t *output_ptr);
+
 #ifdef __cplusplus
 }
 #endif
