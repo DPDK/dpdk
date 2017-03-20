@@ -680,9 +680,10 @@ main(int argc, char *argv[])
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Invalid distributor parameters\n");
 
-	if (rte_lcore_count() < 4)
+	if (rte_lcore_count() < 5)
 		rte_exit(EXIT_FAILURE, "Error, This application needs at "
-				"least 4 logical cores to run:\n"
+				"least 5 logical cores to run:\n"
+				"1 lcore for stats (can be core 0)\n"
 				"1 lcore for packet RX\n"
 				"1 lcore for distribution\n"
 				"1 lcore for packet TX\n"
@@ -724,7 +725,7 @@ main(int argc, char *argv[])
 	}
 
 	d = rte_distributor_create("PKT_DIST", rte_socket_id(),
-			rte_lcore_count() - 3,
+			rte_lcore_count() - 4,
 			RTE_DIST_ALG_BURST);
 	if (d == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot create distributor\n");
@@ -763,6 +764,18 @@ main(int argc, char *argv[])
 			/* tx core */
 			rte_eal_remote_launch((lcore_function_t *)lcore_tx,
 					dist_tx_ring, lcore_id);
+		} else if (worker_id == rte_lcore_count() - 2) {
+			printf("Starting rx on worker_id %d, lcore_id %d\n",
+					worker_id, lcore_id);
+			/* rx core */
+			struct lcore_params *p =
+					rte_malloc(NULL, sizeof(*p), 0);
+			if (!p)
+				rte_panic("malloc failure\n");
+			*p = (struct lcore_params){worker_id, d, rx_dist_ring,
+					dist_tx_ring, mbuf_pool};
+			rte_eal_remote_launch((lcore_function_t *)lcore_rx,
+					p, lcore_id);
 		} else {
 			printf("Starting worker on worker_id %d, lcore_id %d\n",
 					worker_id, lcore_id);
@@ -778,11 +791,6 @@ main(int argc, char *argv[])
 		}
 		worker_id++;
 	}
-	/* call lcore_main on master core only */
-	struct lcore_params p = { 0, d, rx_dist_ring, dist_tx_ring, mbuf_pool};
-
-	if (lcore_rx(&p) != 0)
-		return -1;
 
 	freq = rte_get_timer_hz();
 	t = rte_rdtsc() + freq;
