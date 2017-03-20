@@ -42,6 +42,10 @@ The model of operation is shown in the diagram below.
 
    Packet Distributor mode of operation
 
+There are two modes of operation of the API in the distributor library,
+one which sends one packet at a time to workers using 32-bits for flow_id,
+and an optimized mode which sends bursts of up to 8 packets at a time to workers, using 15 bits of flow_id.
+The mode is selected by the type field in the ``rte_distributor_create()`` function.
 
 Distributor Core Operation
 --------------------------
