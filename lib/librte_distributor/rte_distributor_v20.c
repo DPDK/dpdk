@@ -38,6 +38,7 @@
 #include <rte_memory.h>
 #include <rte_memzone.h>
 #include <rte_errno.h>
+#include <rte_compat.h>
 #include <rte_string_fns.h>
 #include <rte_eal_memconfig.h>
 #include "rte_distributor_v20.h"
@@ -63,6 +64,7 @@ rte_distributor_request_pkt_v20(struct rte_distributor_v20 *d,
 		rte_pause();
 	buf->bufptr64 = req;
 }
+VERSION_SYMBOL(rte_distributor_request_pkt, _v20, 2.0);
 
 struct rte_mbuf *
 rte_distributor_poll_pkt_v20(struct rte_distributor_v20 *d,
@@ -76,6 +78,7 @@ rte_distributor_poll_pkt_v20(struct rte_distributor_v20 *d,
 	int64_t ret = buf->bufptr64 >> RTE_DISTRIB_FLAG_BITS;
 	return (struct rte_mbuf *)((uintptr_t)ret);
 }
+VERSION_SYMBOL(rte_distributor_poll_pkt, _v20, 2.0);
 
 struct rte_mbuf *
 rte_distributor_get_pkt_v20(struct rte_distributor_v20 *d,
@@ -87,6 +90,7 @@ rte_distributor_get_pkt_v20(struct rte_distributor_v20 *d,
 		rte_pause();
 	return ret;
 }
+VERSION_SYMBOL(rte_distributor_get_pkt, _v20, 2.0);
 
 int
 rte_distributor_return_pkt_v20(struct rte_distributor_v20 *d,
@@ -98,6 +102,7 @@ rte_distributor_return_pkt_v20(struct rte_distributor_v20 *d,
 	buf->bufptr64 = req;
 	return 0;
 }
+VERSION_SYMBOL(rte_distributor_return_pkt, _v20, 2.0);
 
 /**** APIs called on distributor core ***/
 
@@ -314,6 +319,7 @@ rte_distributor_process_v20(struct rte_distributor_v20 *d,
 	d->returns.count = ret_count;
 	return num_mbufs;
 }
+VERSION_SYMBOL(rte_distributor_process, _v20, 2.0);
 
 /* return to the caller, packets returned from workers */
 int
@@ -334,6 +340,7 @@ rte_distributor_returned_pkts_v20(struct rte_distributor_v20 *d,
 
 	return retval;
 }
+VERSION_SYMBOL(rte_distributor_returned_pkts, _v20, 2.0);
 
 /* return the number of packets in-flight in a distributor, i.e. packets
  * being workered on or queued up in a backlog. */
@@ -362,6 +369,7 @@ rte_distributor_flush_v20(struct rte_distributor_v20 *d)
 
 	return flushed;
 }
+VERSION_SYMBOL(rte_distributor_flush, _v20, 2.0);
 
 /* clears the internal returns array in the distributor */
 void
@@ -372,6 +380,7 @@ rte_distributor_clear_returns_v20(struct rte_distributor_v20 *d)
 	memset(d->returns.mbufs, 0, sizeof(d->returns.mbufs));
 #endif
 }
+VERSION_SYMBOL(rte_distributor_clear_returns, _v20, 2.0);
 
 /* creates a distributor instance */
 struct rte_distributor_v20 *
@@ -415,3 +424,4 @@ rte_distributor_create_v20(const char *name,
 
 	return d;
 }
+VERSION_SYMBOL(rte_distributor_create, _v20, 2.0);
