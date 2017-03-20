@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2017 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -41,8 +41,9 @@
 #include <rte_mbuf.h>
 #include <rte_distributor.h>
 
-#define ITER_POWER 20 /* log 2 of how many iterations we do when timing. */
-#define BURST 32
+#define ITER_POWER_CL 25 /* log 2 of how many iterations  for Cache Line test */
+#define ITER_POWER 21 /* log 2 of how many iterations we do when timing. */
+#define BURST 64
 #define BIG_BATCH 1024
 
 /* static vars - zero initialized by default */
@@ -54,7 +55,8 @@ struct worker_stats {
 } __rte_cache_aligned;
 struct worker_stats worker_stats[RTE_MAX_LCORE];
 
-/* worker thread used for testing the time to do a round-trip of a cache
+/*
+ * worker thread used for testing the time to do a round-trip of a cache
  * line between two cores and back again
  */
 static void
@@ -69,7 +71,8 @@ flip_bit(volatile uint64_t *arg)
 	}
 }
 
-/* test case to time the number of cycles to round-trip a cache line between
+/*
+ * test case to time the number of cycles to round-trip a cache line between
  * two cores and back again.
  */
 static void
@@ -86,7 +89,7 @@ time_cache_line_switch(void)
 		rte_pause();
 
 	const uint64_t start_time = rte_rdtsc();
-	for (i = 0; i < (1 << ITER_POWER); i++) {
+	for (i = 0; i < (1 << ITER_POWER_CL); i++) {
 		while (*pdata)
 			rte_pause();
 		*pdata = 1;
@@ -98,13 +101,14 @@ time_cache_line_switch(void)
 	*pdata = 2;
 	rte_eal_wait_lcore(slaveid);
 	printf("==== Cache line switch test ===\n");
-	printf("Time for %u iterations = %"PRIu64" ticks\n", (1<<ITER_POWER),
+	printf("Time for %u iterations = %"PRIu64" ticks\n", (1<<ITER_POWER_CL),
 			end_time-start_time);
 	printf("Ticks per iteration = %"PRIu64"\n\n",
-			(end_time-start_time) >> ITER_POWER);
+			(end_time-start_time) >> ITER_POWER_CL);
 }
 
-/* returns the total count of the number of packets handled by the worker
+/*
+ * returns the total count of the number of packets handled by the worker
  * functions given below.
  */
 static unsigned
@@ -123,7 +127,8 @@ clear_packet_count(void)
 	memset(&worker_stats, 0, sizeof(worker_stats));
 }
 
-/* this is the basic worker function for performance tests.
+/*
+ * This is the basic worker function for performance tests.
  * it does nothing but return packets and count them.
  */
 static int
@@ -151,14 +156,15 @@ handle_work(void *arg)
 	return 0;
 }
 
-/* this basic performance test just repeatedly sends in 32 packets at a time
+/*
+ * This basic performance test just repeatedly sends in 32 packets at a time
  * to the distributor and verifies at the end that we got them all in the worker
  * threads and finally how long per packet the processing took.
  */
 static inline int
 perf_test(struct rte_distributor *d, struct rte_mempool *p)
 {
-	unsigned i;
+	unsigned int i;
 	uint64_t start, end;
 	struct rte_mbuf *bufs[BURST];
 
@@ -181,7 +187,8 @@ perf_test(struct rte_distributor *d, struct rte_mempool *p)
 		rte_distributor_process(d, NULL, 0);
 	} while (total_packet_count() < (BURST << ITER_POWER));
 
-	printf("=== Performance test of distributor ===\n");
+	rte_distributor_clear_returns(d);
+
 	printf("Time per burst:  %"PRIu64"\n", (end - start) >> ITER_POWER);
 	printf("Time per packet: %"PRIu64"\n\n",
 			((end - start) >> ITER_POWER)/BURST);
@@ -201,9 +208,10 @@ perf_test(struct rte_distributor *d, struct rte_mempool *p)
 static void
 quit_workers(struct rte_distributor *d, struct rte_mempool *p)
 {
-	const unsigned num_workers = rte_lcore_count() - 1;
-	unsigned i;
+	const unsigned int num_workers = rte_lcore_count() - 1;
+	unsigned int i;
 	struct rte_mbuf *bufs[RTE_MAX_LCORE];
+
 	rte_mempool_get_bulk(p, (void *)bufs, num_workers);
 
 	quit = 1;
@@ -222,7 +230,8 @@ quit_workers(struct rte_distributor *d, struct rte_mempool *p)
 static int
 test_distributor_perf(void)
 {
-	static struct rte_distributor *d;
+	static struct rte_distributor *ds;
+	static struct rte_distributor *db;
 	static struct rte_mempool *p;
 
 	if (rte_lcore_count() < 2) {
@@ -233,17 +242,28 @@ test_distributor_perf(void)
 	/* first time how long it takes to round-trip a cache line */
 	time_cache_line_switch();
 
-	if (d == NULL) {
-		d = rte_distributor_create("Test_perf", rte_socket_id(),
+	if (ds == NULL) {
+		ds = rte_distributor_create("Test_perf", rte_socket_id(),
 				rte_lcore_count() - 1,
 				RTE_DIST_ALG_SINGLE);
-		if (d == NULL) {
+		if (ds == NULL) {
 			printf("Error creating distributor\n");
 			return -1;
 		}
 	} else {
-		rte_distributor_flush(d);
-		rte_distributor_clear_returns(d);
+		rte_distributor_clear_returns(ds);
+	}
+
+	if (db == NULL) {
+		db = rte_distributor_create("Test_burst", rte_socket_id(),
+				rte_lcore_count() - 1,
+				RTE_DIST_ALG_BURST);
+		if (db == NULL) {
+			printf("Error creating burst distributor\n");
+			return -1;
+		}
+	} else {
+		rte_distributor_clear_returns(db);
 	}
 
 	const unsigned nb_bufs = (511 * rte_lcore_count()) < BIG_BATCH ?
@@ -257,10 +277,17 @@ test_distributor_perf(void)
 		}
 	}
 
-	rte_eal_mp_remote_launch(handle_work, d, SKIP_MASTER);
-	if (perf_test(d, p) < 0)
+	printf("=== Performance test of distributor (single mode) ===\n");
+	rte_eal_mp_remote_launch(handle_work, ds, SKIP_MASTER);
+	if (perf_test(ds, p) < 0)
 		return -1;
-	quit_workers(d, p);
+	quit_workers(ds, p);
+
+	printf("=== Performance test of distributor (burst mode) ===\n");
+	rte_eal_mp_remote_launch(handle_work, db, SKIP_MASTER);
+	if (perf_test(db, p) < 0)
+		return -1;
+	quit_workers(db, p);
 
 	return 0;
 }
