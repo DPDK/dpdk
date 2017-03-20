@@ -44,14 +44,14 @@
 #include <rte_prefetch.h>
 #include <rte_distributor.h>
 
-#define RX_RING_SIZE 256
+#define RX_RING_SIZE 512
 #define TX_RING_SIZE 512
 #define NUM_MBUFS ((64*1024)-1)
-#define MBUF_CACHE_SIZE 250
-#define BURST_SIZE 32
+#define MBUF_CACHE_SIZE 128
+#define BURST_SIZE 64
 #define SCHED_RX_RING_SZ 8192
 #define SCHED_TX_RING_SZ 65536
-#define RTE_RING_SZ 1024
+#define BURST_SIZE_TX 32
 
 #define RTE_LOGTYPE_DISTRAPP RTE_LOGTYPE_USER1
 
@@ -206,6 +206,7 @@ lcore_rx(struct lcore_params *p)
 	const uint8_t nb_ports = rte_eth_dev_count();
 	const int socket_id = rte_socket_id();
 	uint8_t port;
+	struct rte_mbuf *bufs[BURST_SIZE*2];
 
 	for (port = 0; port < nb_ports; port++) {
 		/* skip ports that are not enabled */
@@ -229,7 +230,6 @@ lcore_rx(struct lcore_params *p)
 				port = 0;
 			continue;
 		}
-		struct rte_mbuf *bufs[BURST_SIZE*2];
 		const uint16_t nb_rx = rte_eth_rx_burst(port, 0, bufs,
 				BURST_SIZE);
 		if (unlikely(nb_rx == 0)) {
@@ -273,6 +273,7 @@ lcore_rx(struct lcore_params *p)
 
 		app_stats.rx.enqueued_pkts += sent;
 		if (unlikely(sent < nb_ret)) {
+			app_stats.rx.enqdrop_pkts +=  nb_ret - sent;
 			RTE_LOG_DP(DEBUG, DISTRAPP,
 				"%s:Packet loss due to full ring\n", __func__);
 			while (sent < nb_ret)
@@ -290,13 +291,12 @@ lcore_rx(struct lcore_params *p)
 static inline void
 flush_one_port(struct output_buffer *outbuf, uint8_t outp)
 {
-	unsigned nb_tx = rte_eth_tx_burst(outp, 0, outbuf->mbufs,
-			outbuf->count);
-	app_stats.tx.tx_pkts += nb_tx;
+	unsigned int nb_tx = rte_eth_tx_burst(outp, 0,
+			outbuf->mbufs, outbuf->count);
+	app_stats.tx.tx_pkts += outbuf->count;
 
 	if (unlikely(nb_tx < outbuf->count)) {
-		RTE_LOG_DP(DEBUG, DISTRAPP,
-			"%s:Packet loss with tx_burst\n", __func__);
+		app_stats.tx.enqdrop_pkts +=  outbuf->count - nb_tx;
 		do {
 			rte_pktmbuf_free(outbuf->mbufs[nb_tx]);
 		} while (++nb_tx < outbuf->count);
@@ -308,6 +308,7 @@ static inline void
 flush_all_ports(struct output_buffer *tx_buffers, uint8_t nb_ports)
 {
 	uint8_t outp;
+
 	for (outp = 0; outp < nb_ports; outp++) {
 		/* skip ports that are not enabled */
 		if ((enabled_port_mask & (1 << outp)) == 0)
@@ -400,9 +401,9 @@ lcore_tx(struct rte_ring *in_r)
 			if ((enabled_port_mask & (1 << port)) == 0)
 				continue;
 
-			struct rte_mbuf *bufs[BURST_SIZE];
+			struct rte_mbuf *bufs[BURST_SIZE_TX];
 			const uint16_t nb_rx = rte_ring_dequeue_burst(in_r,
-					(void *)bufs, BURST_SIZE);
+					(void *)bufs, BURST_SIZE_TX);
 			app_stats.tx.dequeue_pkts += nb_rx;
 
 			/* if we get no traffic, flush anything we have */
@@ -431,11 +432,12 @@ lcore_tx(struct rte_ring *in_r)
 
 				outbuf = &tx_buffers[outp];
 				outbuf->mbufs[outbuf->count++] = bufs[i];
-				if (outbuf->count == BURST_SIZE)
+				if (outbuf->count == BURST_SIZE_TX)
 					flush_one_port(outbuf, outp);
 			}
 		}
 	}
+	printf("\nCore %u exiting tx task.\n", rte_lcore_id());
 	return 0;
 }
 
@@ -557,6 +559,8 @@ lcore_worker(struct lcore_params *p)
 	for (i = 0; i < 8; i++)
 		buf[i] = NULL;
 
+	app_stats.worker_pkts[p->worker_id] = 1;
+
 	printf("\nCore %u acting as worker core.\n", rte_lcore_id());
 	while (!quit_signal_work) {
 		num = rte_distributor_get_pkt(d, id, buf, buf, num);
@@ -568,6 +572,10 @@ lcore_worker(struct lcore_params *p)
 				rte_pause();
 			buf[i]->port ^= xor_val;
 		}
+
+		app_stats.worker_pkts[p->worker_id] += num;
+		if (num > 0)
+			app_stats.worker_bursts[p->worker_id][num-1]++;
 	}
 	return 0;
 }
@@ -756,6 +764,8 @@ main(int argc, char *argv[])
 			rte_eal_remote_launch((lcore_function_t *)lcore_tx,
 					dist_tx_ring, lcore_id);
 		} else {
+			printf("Starting worker on worker_id %d, lcore_id %d\n",
+					worker_id, lcore_id);
 			struct lcore_params *p =
 					rte_malloc(NULL, sizeof(*p), 0);
 			if (!p)
