@@ -62,9 +62,6 @@ static const char *mbox_message[NIC_MBOX_MSG_MAX] =  {
 	[NIC_MBOX_MSG_RESET_STAT_COUNTER] = "NIC_MBOX_MSG_RESET_STAT_COUNTER",
 	[NIC_MBOX_MSG_CFG_DONE]           = "NIC_MBOX_MSG_CFG_DONE",
 	[NIC_MBOX_MSG_SHUTDOWN]           = "NIC_MBOX_MSG_SHUTDOWN",
-	[NIC_MBOX_MSG_RES_BIT]            = "NIC_MBOX_MSG_RES_BIT",
-	[NIC_MBOX_MSG_RSS_SIZE_RES_BIT]   = "NIC_MBOX_MSG_RSS_SIZE",
-	[NIC_MBOX_MSG_ALLOC_SQS_RES_BIT]  = "NIC_MBOX_MSG_ALLOC_SQS",
 };
 
 static inline const char * __attribute__((unused))
@@ -176,7 +173,7 @@ nicvf_handle_mbx_intr(struct nicvf *nic)
 	case NIC_MBOX_MSG_NACK:
 		nic->pf_nacked = true;
 		break;
-	case NIC_MBOX_MSG_RSS_SIZE_RES_BIT:
+	case NIC_MBOX_MSG_RSS_SIZE:
 		nic->rss_info.rss_size = mbx.rss_size.ind_tbl_size;
 		nic->pf_acked = true;
 		break;
@@ -186,7 +183,7 @@ nicvf_handle_mbx_intr(struct nicvf *nic)
 		nic->speed = mbx.link_status.speed;
 		nic->pf_acked = true;
 		break;
-	case NIC_MBOX_MSG_ALLOC_SQS_RES_BIT:
+	case NIC_MBOX_MSG_ALLOC_SQS:
 		assert_primary(nic);
 		if (mbx.sqs_alloc.qs_count != nic->sqs_count) {
 			nicvf_log_error("Received %" PRIu8 "/%" PRIu8

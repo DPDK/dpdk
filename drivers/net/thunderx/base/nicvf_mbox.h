@@ -68,15 +68,9 @@
 #define	NIC_MBOX_MSG_ALLOC_SQS		0x12	/* Allocate secondary Qset */
 #define	NIC_MBOX_MSG_LOOPBACK		0x16	/* Set interface in loopback */
 #define	NIC_MBOX_MSG_RESET_STAT_COUNTER 0x17	/* Reset statistics counters */
-#define	NIC_MBOX_MSG_CFG_DONE		0x7E	/* VF configuration done */
-#define	NIC_MBOX_MSG_SHUTDOWN		0x7F	/* VF is being shutdown */
-#define	NIC_MBOX_MSG_RES_BIT		0x80	/* Reset bit from PF */
+#define	NIC_MBOX_MSG_CFG_DONE		0xF0	/* VF configuration done */
+#define	NIC_MBOX_MSG_SHUTDOWN		0xF1	/* VF is being shutdown */
 #define	NIC_MBOX_MSG_MAX		0x100	/* Maximum number of messages */
-
-#define NIC_MBOX_MSG_RSS_SIZE_RES_BIT \
-	(NIC_MBOX_MSG_RSS_SIZE | NIC_MBOX_MSG_RES_BIT)
-#define NIC_MBOX_MSG_ALLOC_SQS_RES_BIT \
-	(NIC_MBOX_MSG_ALLOC_SQS | NIC_MBOX_MSG_RES_BIT)
 
 /* Get vNIC VF configuration */
 struct nic_cfg_msg {
@@ -157,6 +151,7 @@ struct rss_cfg_msg {
 /* Physical interface link status */
 struct bgx_link_status {
 	uint8_t    msg;
+	uint8_t    mac_type;
 	uint8_t    link_up;
 	uint8_t    duplex;
 	uint32_t   speed;
