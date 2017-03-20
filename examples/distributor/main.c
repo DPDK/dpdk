@@ -54,23 +54,52 @@
 
 #define RTE_LOGTYPE_DISTRAPP RTE_LOGTYPE_USER1
 
+#define ANSI_COLOR_RED     "\x1b[31m"
+#define ANSI_COLOR_RESET   "\x1b[0m"
+
 /* mask of enabled ports */
 static uint32_t enabled_port_mask;
 volatile uint8_t quit_signal;
 volatile uint8_t quit_signal_rx;
+volatile uint8_t quit_signal_dist;
 
 static volatile struct app_stats {
 	struct {
 		uint64_t rx_pkts;
 		uint64_t returned_pkts;
 		uint64_t enqueued_pkts;
+		uint64_t enqdrop_pkts;
 	} rx __rte_cache_aligned;
+	int pad1 __rte_cache_aligned;
+
+	struct {
+		uint64_t in_pkts;
+		uint64_t ret_pkts;
+		uint64_t sent_pkts;
+		uint64_t enqdrop_pkts;
+	} dist __rte_cache_aligned;
+	int pad2 __rte_cache_aligned;
 
 	struct {
 		uint64_t dequeue_pkts;
 		uint64_t tx_pkts;
+		uint64_t enqdrop_pkts;
 	} tx __rte_cache_aligned;
+	int pad3 __rte_cache_aligned;
+
+	uint64_t worker_pkts[64] __rte_cache_aligned;
+
+	int pad4 __rte_cache_aligned;
+
+	uint64_t worker_bursts[64][8] __rte_cache_aligned;
+
+	int pad5 __rte_cache_aligned;
+
+	uint64_t port_rx_pkts[64] __rte_cache_aligned;
+	uint64_t port_tx_pkts[64] __rte_cache_aligned;
 } app_stats;
+
+struct app_stats prev_app_stats;
 
 static const struct rte_eth_conf port_conf_default = {
 	.rxmode = {
@@ -92,6 +121,8 @@ struct output_buffer {
 	unsigned count;
 	struct rte_mbuf *mbufs[BURST_SIZE];
 };
+
+static void print_stats(void);
 
 /*
  * Initialises a given port using global settings and with the rx buffers
@@ -378,25 +409,91 @@ static void
 print_stats(void)
 {
 	struct rte_eth_stats eth_stats;
-	unsigned i;
-
-	printf("\nRX thread stats:\n");
-	printf(" - Received:    %"PRIu64"\n", app_stats.rx.rx_pkts);
-	printf(" - Processed:   %"PRIu64"\n", app_stats.rx.returned_pkts);
-	printf(" - Enqueued:    %"PRIu64"\n", app_stats.rx.enqueued_pkts);
-
-	printf("\nTX thread stats:\n");
-	printf(" - Dequeued:    %"PRIu64"\n", app_stats.tx.dequeue_pkts);
-	printf(" - Transmitted: %"PRIu64"\n", app_stats.tx.tx_pkts);
+	unsigned int i, j;
+	const unsigned int num_workers = rte_lcore_count() - 4;
 
 	for (i = 0; i < rte_eth_dev_count(); i++) {
 		rte_eth_stats_get(i, &eth_stats);
-		printf("\nPort %u stats:\n", i);
-		printf(" - Pkts in:   %"PRIu64"\n", eth_stats.ipackets);
-		printf(" - Pkts out:  %"PRIu64"\n", eth_stats.opackets);
-		printf(" - In Errs:   %"PRIu64"\n", eth_stats.ierrors);
-		printf(" - Out Errs:  %"PRIu64"\n", eth_stats.oerrors);
-		printf(" - Mbuf Errs: %"PRIu64"\n", eth_stats.rx_nombuf);
+		app_stats.port_rx_pkts[i] = eth_stats.ipackets;
+		app_stats.port_tx_pkts[i] = eth_stats.opackets;
+	}
+
+	printf("\n\nRX Thread:\n");
+	for (i = 0; i < rte_eth_dev_count(); i++) {
+		printf("Port %u Pktsin : %5.2f\n", i,
+				(app_stats.port_rx_pkts[i] -
+				prev_app_stats.port_rx_pkts[i])/1000000.0);
+		prev_app_stats.port_rx_pkts[i] = app_stats.port_rx_pkts[i];
+	}
+	printf(" - Received:    %5.2f\n",
+			(app_stats.rx.rx_pkts -
+			prev_app_stats.rx.rx_pkts)/1000000.0);
+	printf(" - Returned:    %5.2f\n",
+			(app_stats.rx.returned_pkts -
+			prev_app_stats.rx.returned_pkts)/1000000.0);
+	printf(" - Enqueued:    %5.2f\n",
+			(app_stats.rx.enqueued_pkts -
+			prev_app_stats.rx.enqueued_pkts)/1000000.0);
+	printf(" - Dropped:     %s%5.2f%s\n", ANSI_COLOR_RED,
+			(app_stats.rx.enqdrop_pkts -
+			prev_app_stats.rx.enqdrop_pkts)/1000000.0,
+			ANSI_COLOR_RESET);
+
+	printf("Distributor thread:\n");
+	printf(" - In:          %5.2f\n",
+			(app_stats.dist.in_pkts -
+			prev_app_stats.dist.in_pkts)/1000000.0);
+	printf(" - Returned:    %5.2f\n",
+			(app_stats.dist.ret_pkts -
+			prev_app_stats.dist.ret_pkts)/1000000.0);
+	printf(" - Sent:        %5.2f\n",
+			(app_stats.dist.sent_pkts -
+			prev_app_stats.dist.sent_pkts)/1000000.0);
+	printf(" - Dropped      %s%5.2f%s\n", ANSI_COLOR_RED,
+			(app_stats.dist.enqdrop_pkts -
+			prev_app_stats.dist.enqdrop_pkts)/1000000.0,
+			ANSI_COLOR_RESET);
+
+	printf("TX thread:\n");
+	printf(" - Dequeued:    %5.2f\n",
+			(app_stats.tx.dequeue_pkts -
+			prev_app_stats.tx.dequeue_pkts)/1000000.0);
+	for (i = 0; i < rte_eth_dev_count(); i++) {
+		printf("Port %u Pktsout: %5.2f\n",
+				i, (app_stats.port_tx_pkts[i] -
+				prev_app_stats.port_tx_pkts[i])/1000000.0);
+		prev_app_stats.port_tx_pkts[i] = app_stats.port_tx_pkts[i];
+	}
+	printf(" - Transmitted: %5.2f\n",
+			(app_stats.tx.tx_pkts -
+			prev_app_stats.tx.tx_pkts)/1000000.0);
+	printf(" - Dropped:     %s%5.2f%s\n", ANSI_COLOR_RED,
+			(app_stats.tx.enqdrop_pkts -
+			prev_app_stats.tx.enqdrop_pkts)/1000000.0,
+			ANSI_COLOR_RESET);
+
+	prev_app_stats.rx.rx_pkts = app_stats.rx.rx_pkts;
+	prev_app_stats.rx.returned_pkts = app_stats.rx.returned_pkts;
+	prev_app_stats.rx.enqueued_pkts = app_stats.rx.enqueued_pkts;
+	prev_app_stats.rx.enqdrop_pkts = app_stats.rx.enqdrop_pkts;
+	prev_app_stats.dist.in_pkts = app_stats.dist.in_pkts;
+	prev_app_stats.dist.ret_pkts = app_stats.dist.ret_pkts;
+	prev_app_stats.dist.sent_pkts = app_stats.dist.sent_pkts;
+	prev_app_stats.dist.enqdrop_pkts = app_stats.dist.enqdrop_pkts;
+	prev_app_stats.tx.dequeue_pkts = app_stats.tx.dequeue_pkts;
+	prev_app_stats.tx.tx_pkts = app_stats.tx.tx_pkts;
+	prev_app_stats.tx.enqdrop_pkts = app_stats.tx.enqdrop_pkts;
+
+	for (i = 0; i < num_workers; i++) {
+		printf("Worker %02u Pkts: %5.2f. Bursts(1-8): ", i,
+				(app_stats.worker_pkts[i] -
+				prev_app_stats.worker_pkts[i])/1000000.0);
+		for (j = 0; j < 8; j++) {
+			printf("%"PRIu64" ", app_stats.worker_bursts[i][j]);
+			app_stats.worker_bursts[i][j] = 0;
+		}
+		printf("\n");
+		prev_app_stats.worker_pkts[i] = app_stats.worker_pkts[i];
 	}
 }
 
@@ -515,6 +612,7 @@ main(int argc, char *argv[])
 	unsigned nb_ports;
 	uint8_t portid;
 	uint8_t nb_ports_available;
+	uint64_t t, freq;
 
 	/* catch ctrl-c so we can print on exit */
 	signal(SIGINT, int_handler);
@@ -609,6 +707,16 @@ main(int argc, char *argv[])
 
 	if (lcore_rx(&p) != 0)
 		return -1;
+
+	freq = rte_get_timer_hz();
+	t = rte_rdtsc() + freq;
+	while (!quit_signal_dist) {
+		if (t < rte_rdtsc()) {
+			print_stats();
+			t = rte_rdtsc() + freq;
+		}
+		usleep(1000);
+	}
 
 	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
 		if (rte_eal_wait_lcore(lcore_id) < 0)
