@@ -194,7 +194,7 @@ sfc_rx_set_rss_hash(struct sfc_rxq *rxq, unsigned int flags, struct rte_mbuf *m)
 	uint8_t *mbuf_data;
 
 
-	if ((rxq->flags & SFC_RXQ_RSS_HASH) == 0)
+	if ((rxq->flags & SFC_RXQ_FLAG_RSS_HASH) == 0)
 		return;
 
 	mbuf_data = rte_pktmbuf_mtod(m, uint8_t *);
@@ -765,7 +765,7 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 
 #if EFSYS_OPT_RX_SCALE
 	if (sa->hash_support == EFX_RX_HASH_AVAILABLE)
-		rxq->flags |= SFC_RXQ_RSS_HASH;
+		rxq->flags |= SFC_RXQ_FLAG_RSS_HASH;
 #endif
 
 	rxq->state = SFC_RXQ_INITIALIZED;

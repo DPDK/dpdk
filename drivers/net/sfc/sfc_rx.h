@@ -87,7 +87,7 @@ struct sfc_rxq {
 	uint16_t		prefix_size;
 #if EFSYS_OPT_RX_SCALE
 	unsigned int		flags;
-#define SFC_RXQ_RSS_HASH	0x1
+#define SFC_RXQ_FLAG_RSS_HASH	0x1
 #endif
 
 	/* Used on refill */
