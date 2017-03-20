@@ -44,13 +44,13 @@
 #define SFC_TSO_OPDESCS_IDX_SHIFT	2
 
 int
-sfc_tso_alloc_tsoh_objs(struct sfc_tx_sw_desc *sw_ring,
-			unsigned int txq_entries, unsigned int socket_id)
+sfc_efx_tso_alloc_tsoh_objs(struct sfc_efx_tx_sw_desc *sw_ring,
+			    unsigned int txq_entries, unsigned int socket_id)
 {
 	unsigned int i;
 
 	for (i = 0; i < txq_entries; ++i) {
-		sw_ring[i].tsoh = rte_malloc_socket("sfc-txq-tsoh-obj",
+		sw_ring[i].tsoh = rte_malloc_socket("sfc-efx-txq-tsoh-obj",
 						    SFC_TSOH_STD_LEN,
 						    RTE_CACHE_LINE_SIZE,
 						    socket_id);
@@ -68,7 +68,8 @@ fail_alloc_tsoh_objs:
 }
 
 void
-sfc_tso_free_tsoh_objs(struct sfc_tx_sw_desc *sw_ring, unsigned int txq_entries)
+sfc_efx_tso_free_tsoh_objs(struct sfc_efx_tx_sw_desc *sw_ring,
+			   unsigned int txq_entries)
 {
 	unsigned int i;
 
@@ -79,8 +80,8 @@ sfc_tso_free_tsoh_objs(struct sfc_tx_sw_desc *sw_ring, unsigned int txq_entries)
 }
 
 static void
-sfc_tso_prepare_header(struct sfc_txq *txq, struct rte_mbuf **in_seg,
-		       size_t *in_off, unsigned int idx, size_t bytes_left)
+sfc_efx_tso_prepare_header(struct sfc_efx_txq *txq, struct rte_mbuf **in_seg,
+			   size_t *in_off, unsigned int idx, size_t bytes_left)
 {
 	struct rte_mbuf *m = *in_seg;
 	size_t bytes_to_copy = 0;
@@ -111,9 +112,9 @@ sfc_tso_prepare_header(struct sfc_txq *txq, struct rte_mbuf **in_seg,
 }
 
 int
-sfc_tso_do(struct sfc_txq *txq, unsigned int idx, struct rte_mbuf **in_seg,
-	   size_t *in_off, efx_desc_t **pend, unsigned int *pkt_descs,
-	   size_t *pkt_len)
+sfc_efx_tso_do(struct sfc_efx_txq *txq, unsigned int idx,
+	       struct rte_mbuf **in_seg, size_t *in_off, efx_desc_t **pend,
+	       unsigned int *pkt_descs, size_t *pkt_len)
 {
 	uint8_t *tsoh;
 	const struct tcp_hdr *th;
@@ -150,7 +151,8 @@ sfc_tso_do(struct sfc_txq *txq, unsigned int idx, struct rte_mbuf **in_seg,
 	 * limitations on address boundaries crossing by DMA descriptor data.
 	 */
 	if (m->data_len < header_len) {
-		sfc_tso_prepare_header(txq, in_seg, in_off, idx, header_len);
+		sfc_efx_tso_prepare_header(txq, in_seg, in_off, idx,
+					   header_len);
 		tsoh = txq->sw_ring[idx & txq->ptr_mask].tsoh;
 
 		header_paddr = rte_malloc_virt2phy((void *)tsoh);

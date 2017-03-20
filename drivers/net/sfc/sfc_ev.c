@@ -183,16 +183,18 @@ static boolean_t
 sfc_ev_tx(void *arg, __rte_unused uint32_t label, uint32_t id)
 {
 	struct sfc_evq *evq = arg;
-	struct sfc_txq *txq;
+	struct sfc_dp_txq *dp_txq;
+	struct sfc_efx_txq *txq;
 	unsigned int stop;
 	unsigned int delta;
 
-	txq = evq->txq;
+	dp_txq = evq->dp_txq;
+	SFC_ASSERT(dp_txq != NULL);
 
-	SFC_ASSERT(txq != NULL);
+	txq = sfc_efx_txq_by_dp_txq(dp_txq);
 	SFC_ASSERT(txq->evq == evq);
 
-	if (unlikely((txq->state & SFC_TXQ_STARTED) == 0))
+	if (unlikely((txq->flags & SFC_EFX_TXQ_FLAG_STARTED) == 0))
 		goto done;
 
 	stop = (id + 1) & txq->ptr_mask;
@@ -305,9 +307,13 @@ static boolean_t
 sfc_ev_txq_flush_done(void *arg, __rte_unused uint32_t txq_hw_index)
 {
 	struct sfc_evq *evq = arg;
+	struct sfc_dp_txq *dp_txq;
 	struct sfc_txq *txq;
 
-	txq = evq->txq;
+	dp_txq = evq->dp_txq;
+	SFC_ASSERT(dp_txq != NULL);
+
+	txq = sfc_txq_by_dp_txq(dp_txq);
 	SFC_ASSERT(txq != NULL);
 	SFC_ASSERT(txq->hw_index == txq_hw_index);
 	SFC_ASSERT(txq->evq == evq);
@@ -441,10 +447,25 @@ static const efx_ev_callbacks_t sfc_ev_callbacks_dp_rx = {
 	.eec_link_change	= sfc_ev_nop_link_change,
 };
 
-static const efx_ev_callbacks_t sfc_ev_callbacks_tx = {
+static const efx_ev_callbacks_t sfc_ev_callbacks_efx_tx = {
 	.eec_initialized	= sfc_ev_initialized,
 	.eec_rx			= sfc_ev_nop_rx,
 	.eec_tx			= sfc_ev_tx,
+	.eec_exception		= sfc_ev_exception,
+	.eec_rxq_flush_done	= sfc_ev_nop_rxq_flush_done,
+	.eec_rxq_flush_failed	= sfc_ev_nop_rxq_flush_failed,
+	.eec_txq_flush_done	= sfc_ev_txq_flush_done,
+	.eec_software		= sfc_ev_software,
+	.eec_sram		= sfc_ev_sram,
+	.eec_wake_up		= sfc_ev_wake_up,
+	.eec_timer		= sfc_ev_timer,
+	.eec_link_change	= sfc_ev_nop_link_change,
+};
+
+static const efx_ev_callbacks_t sfc_ev_callbacks_dp_tx = {
+	.eec_initialized	= sfc_ev_initialized,
+	.eec_rx			= sfc_ev_nop_rx,
+	.eec_tx			= sfc_ev_nop_tx,
 	.eec_exception		= sfc_ev_exception,
 	.eec_rxq_flush_done	= sfc_ev_nop_rxq_flush_done,
 	.eec_rxq_flush_failed	= sfc_ev_nop_rxq_flush_failed,
@@ -487,8 +508,10 @@ sfc_ev_qpoll(struct sfc_evq *evq)
 					rxq_sw_index);
 		}
 
-		if (evq->txq != NULL) {
-			unsigned int txq_sw_index = sfc_txq_sw_index(evq->txq);
+		if (evq->dp_txq != NULL) {
+			unsigned int txq_sw_index;
+
+			txq_sw_index = evq->dp_txq->dpq.queue_id;
 
 			sfc_warn(sa,
 				 "restart TxQ %u because of exception on its EvQ %u",
@@ -558,14 +581,17 @@ sfc_ev_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 	if (rc != 0)
 		goto fail_ev_qcreate;
 
-	SFC_ASSERT(evq->dp_rxq == NULL || evq->txq == NULL);
+	SFC_ASSERT(evq->dp_rxq == NULL || evq->dp_txq == NULL);
 	if (evq->dp_rxq != 0) {
 		if (strcmp(sa->dp_rx->dp.name, SFC_KVARG_DATAPATH_EFX) == 0)
 			evq->callbacks = &sfc_ev_callbacks_efx_rx;
 		else
 			evq->callbacks = &sfc_ev_callbacks_dp_rx;
-	} else if (evq->txq != 0) {
-		evq->callbacks = &sfc_ev_callbacks_tx;
+	} else if (evq->dp_txq != 0) {
+		if (strcmp(sa->dp_tx->dp.name, SFC_KVARG_DATAPATH_EFX) == 0)
+			evq->callbacks = &sfc_ev_callbacks_efx_tx;
+		else
+			evq->callbacks = &sfc_ev_callbacks_dp_tx;
 	} else {
 		evq->callbacks = &sfc_ev_callbacks;
 	}

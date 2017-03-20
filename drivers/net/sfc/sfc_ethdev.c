@@ -467,7 +467,7 @@ sfc_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 	if (rc != 0)
 		goto fail_tx_qinit;
 
-	dev->data->tx_queues[tx_queue_id] = sa->txq_info[tx_queue_id].txq;
+	dev->data->tx_queues[tx_queue_id] = sa->txq_info[tx_queue_id].txq->dp;
 
 	sfc_adapter_unlock(sa);
 	return 0;
@@ -481,13 +481,15 @@ fail_tx_qinit:
 static void
 sfc_tx_queue_release(void *queue)
 {
-	struct sfc_txq *txq = queue;
+	struct sfc_dp_txq *dp_txq = queue;
+	struct sfc_txq *txq;
 	unsigned int sw_index;
 	struct sfc_adapter *sa;
 
-	if (txq == NULL)
+	if (dp_txq == NULL)
 		return;
 
+	txq = sfc_txq_by_dp_txq(dp_txq);
 	sw_index = sfc_txq_sw_index(txq);
 
 	SFC_ASSERT(txq->evq != NULL);
@@ -1361,6 +1363,7 @@ sfc_eth_dev_set_ops(struct rte_eth_dev *dev)
 	struct sfc_adapter *sa = dev->data->dev_private;
 	unsigned int avail_caps = 0;
 	const char *rx_name = NULL;
+	const char *tx_name = NULL;
 	int rc;
 
 	if (sa == NULL || sa->state == SFC_ADAPTER_UNINITIALIZED)
@@ -1408,12 +1411,45 @@ sfc_eth_dev_set_ops(struct rte_eth_dev *dev)
 
 	dev->rx_pkt_burst = sa->dp_rx->pkt_burst;
 
-	dev->tx_pkt_burst = sfc_xmit_pkts;
+	rc = sfc_kvargs_process(sa, SFC_KVARG_TX_DATAPATH,
+				sfc_kvarg_string_handler, &tx_name);
+	if (rc != 0)
+		goto fail_kvarg_tx_datapath;
+
+	if (tx_name != NULL) {
+		sa->dp_tx = sfc_dp_find_tx_by_name(&sfc_dp_head, tx_name);
+		if (sa->dp_tx == NULL) {
+			sfc_err(sa, "Tx datapath %s not found", tx_name);
+			rc = ENOENT;
+			goto fail_dp_tx;
+		}
+		if (!sfc_dp_match_hw_fw_caps(&sa->dp_tx->dp, avail_caps)) {
+			sfc_err(sa,
+				"Insufficient Hw/FW capabilities to use Tx datapath %s",
+				tx_name);
+			rc = EINVAL;
+			goto fail_dp_tx;
+		}
+	} else {
+		sa->dp_tx = sfc_dp_find_tx_by_caps(&sfc_dp_head, avail_caps);
+		if (sa->dp_tx == NULL) {
+			sfc_err(sa, "Tx datapath by caps %#x not found",
+				avail_caps);
+			rc = ENOENT;
+			goto fail_dp_tx;
+		}
+	}
+
+	sfc_info(sa, "use %s Tx datapath", sa->dp_tx->dp.name);
+
+	dev->tx_pkt_burst = sa->dp_tx->pkt_burst;
 
 	dev->dev_ops = &sfc_eth_dev_ops;
 
 	return 0;
 
+fail_dp_tx:
+fail_kvarg_tx_datapath:
 fail_dp_rx:
 fail_kvarg_rx_datapath:
 	return rc;
@@ -1427,6 +1463,8 @@ sfc_register_dp(void)
 		/* Prefer EF10 datapath */
 		sfc_dp_register(&sfc_dp_head, &sfc_ef10_rx.dp);
 		sfc_dp_register(&sfc_dp_head, &sfc_efx_rx.dp);
+
+		sfc_dp_register(&sfc_dp_head, &sfc_efx_tx.dp);
 	}
 }
 
@@ -1563,6 +1601,7 @@ RTE_PMD_REGISTER_PCI_TABLE(net_sfc_efx, pci_id_sfc_efx_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_sfc_efx, "* igb_uio | uio_pci_generic | vfio");
 RTE_PMD_REGISTER_PARAM_STRING(net_sfc_efx,
 	SFC_KVARG_RX_DATAPATH "=" SFC_KVARG_VALUES_RX_DATAPATH " "
+	SFC_KVARG_TX_DATAPATH "=" SFC_KVARG_VALUES_TX_DATAPATH " "
 	SFC_KVARG_PERF_PROFILE "=" SFC_KVARG_VALUES_PERF_PROFILE " "
 	SFC_KVARG_STATS_UPDATE_PERIOD_MS "=<long> "
 	SFC_KVARG_MCDI_LOGGING "=" SFC_KVARG_VALUES_BOOL " "

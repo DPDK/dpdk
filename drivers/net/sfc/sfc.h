@@ -228,6 +228,7 @@ struct sfc_adapter {
 #endif
 
 	const struct sfc_dp_rx		*dp_rx;
+	const struct sfc_dp_tx		*dp_tx;
 };
 
 /*

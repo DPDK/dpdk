@@ -56,6 +56,7 @@ typedef void (sfc_dp_exception_t)(void *ctrl);
 
 enum sfc_dp_type {
 	SFC_DP_RX = 0,	/**< Receive datapath */
+	SFC_DP_TX,	/**< Transmit datapath */
 };
 
 

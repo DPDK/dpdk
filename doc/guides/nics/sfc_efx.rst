@@ -236,6 +236,14 @@ boolean parameters value.
   more efficient than libefx-based and provides richer packet type
   classification, but lacks Rx scatter support.
 
+- ``tx_datapath`` [auto|efx] (default **auto**)
+
+  Choose transmit datapath implementation.
+  **auto** allows the driver itself to make a choice based on firmware
+  features available and required by the datapath implementation.
+  **efx** chooses libefx-based datapath which supports VLAN insertion
+  (full-feature firmware variant only), TSO and multi-segment mbufs.
+
 - ``perf_profile`` [auto|throughput|low-latency] (default **throughput**)
 
   Choose hardware tunning to be optimized for either throughput or

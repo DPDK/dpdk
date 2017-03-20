@@ -49,6 +49,7 @@ sfc_kvargs_parse(struct sfc_adapter *sa)
 		SFC_KVARG_MCDI_LOGGING,
 		SFC_KVARG_PERF_PROFILE,
 		SFC_KVARG_RX_DATAPATH,
+		SFC_KVARG_TX_DATAPATH,
 		NULL,
 	};
 

@@ -32,7 +32,11 @@
 #ifndef _SFC_EV_H_
 #define _SFC_EV_H_
 
+#include <rte_ethdev.h>
+
 #include "efx.h"
+
+#include "sfc.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -43,7 +47,7 @@ extern "C" {
 
 struct sfc_adapter;
 struct sfc_dp_rxq;
-struct sfc_txq;
+struct sfc_dp_txq;
 
 enum sfc_evq_state {
 	SFC_EVQ_UNINITIALIZED = 0,
@@ -62,7 +66,7 @@ struct sfc_evq {
 	boolean_t			exception;
 	efsys_mem_t			mem;
 	struct sfc_dp_rxq		*dp_rxq;
-	struct sfc_txq			*txq;
+	struct sfc_dp_txq		*dp_txq;
 
 	/* Not used on datapath */
 	struct sfc_adapter		*sa;
