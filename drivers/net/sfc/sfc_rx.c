@@ -487,6 +487,7 @@ struct sfc_dp_rx sfc_efx_rx = {
 		.type		= SFC_DP_RX,
 		.hw_fw_caps	= 0,
 	},
+	.features		= SFC_DP_RX_FEAT_SCATTER,
 	.qcreate		= sfc_efx_rx_qcreate,
 	.qdestroy		= sfc_efx_rx_qdestroy,
 	.qstart			= sfc_efx_rx_qstart,
@@ -1179,6 +1180,13 @@ sfc_rx_check_mode(struct sfc_adapter *sa, struct rte_eth_rxmode *rxmode)
 		sfc_warn(sa,
 			 "FCS stripping control not supported - always stripped");
 		rxmode->hw_strip_crc = 1;
+	}
+
+	if (rxmode->enable_scatter &&
+	    (~sa->dp_rx->features & SFC_DP_RX_FEAT_SCATTER)) {
+		sfc_err(sa, "Rx scatter not supported by %s datapath",
+			sa->dp_rx->dp.name);
+		rc = EINVAL;
 	}
 
 	if (rxmode->enable_lro) {

@@ -139,6 +139,8 @@ typedef unsigned int (sfc_dp_rx_qdesc_npending_t)(struct sfc_dp_rxq *dp_rxq);
 struct sfc_dp_rx {
 	struct sfc_dp				dp;
 
+	unsigned int				features;
+#define SFC_DP_RX_FEAT_SCATTER			0x1
 	sfc_dp_rx_qcreate_t			*qcreate;
 	sfc_dp_rx_qdestroy_t			*qdestroy;
 	sfc_dp_rx_qstart_t			*qstart;
