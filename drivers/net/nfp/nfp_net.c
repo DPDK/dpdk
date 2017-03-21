@@ -2097,6 +2097,7 @@ nfp_net_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		 * Checksum and VLAN flags just in the first descriptor for a
 		 * multisegment packet, but TSO info needs to be in all of them.
 		 */
+		txd.data_len = pkt->pkt_len;
 		nfp_net_tx_tso(txq, &txd, pkt);
 		nfp_net_tx_cksum(txq, &txd, pkt);
 
@@ -2132,7 +2133,7 @@ nfp_net_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 			/* Filling descriptors fields */
 			txds->dma_len = dma_size;
-			txds->data_len = pkt->pkt_len;
+			txds->data_len = txd.data_len;
 			txds->dma_addr_hi = (dma_addr >> 32) & 0xff;
 			txds->dma_addr_lo = (dma_addr & 0xffffffff);
 			ASSERT(free_descs > 0);
