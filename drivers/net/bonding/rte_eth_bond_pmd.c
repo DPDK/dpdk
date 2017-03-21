@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2017 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -145,7 +145,7 @@ bond_ethdev_rx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 	const uint16_t ether_type_slow_be = rte_be_to_cpu_16(ETHER_TYPE_SLOW);
 	uint16_t num_rx_total = 0;	/* Total number of received packets */
 	uint8_t slaves[RTE_MAX_ETHPORTS];
-	uint8_t slave_count;
+	uint8_t slave_count, idx;
 
 	uint8_t collecting;  /* current slave collecting status */
 	const uint8_t promisc = internals->promiscuous_en;
@@ -159,12 +159,18 @@ bond_ethdev_rx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 	memcpy(slaves, internals->active_slaves,
 			sizeof(internals->active_slaves[0]) * slave_count);
 
+	idx = internals->active_slave;
+	if (idx >= slave_count) {
+		internals->active_slave = 0;
+		idx = 0;
+	}
 	for (i = 0; i < slave_count && num_rx_total < nb_pkts; i++) {
 		j = num_rx_total;
-		collecting = ACTOR_STATE(&mode_8023ad_ports[slaves[i]], COLLECTING);
+		collecting = ACTOR_STATE(&mode_8023ad_ports[slaves[idx]],
+					 COLLECTING);
 
 		/* Read packets from this slave */
-		num_rx_total += rte_eth_rx_burst(slaves[i], bd_rx_q->queue_id,
+		num_rx_total += rte_eth_rx_burst(slaves[idx], bd_rx_q->queue_id,
 				&bufs[num_rx_total], nb_pkts - num_rx_total);
 
 		for (k = j; k < 2 && k < num_rx_total; k++)
@@ -187,8 +193,8 @@ bond_ethdev_rx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 					!is_same_ether_addr(&bond_mac, &hdr->d_addr)))) {
 
 				if (hdr->ether_type == ether_type_slow_be) {
-					bond_mode_8023ad_handle_slow_pkt(internals, slaves[i],
-						bufs[j]);
+					bond_mode_8023ad_handle_slow_pkt(
+					    internals, slaves[idx], bufs[j]);
 				} else
 					rte_pktmbuf_free(bufs[j]);
 
@@ -201,8 +207,11 @@ bond_ethdev_rx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 			} else
 				j++;
 		}
+		if (unlikely(++idx == slave_count))
+			idx = 0;
 	}
 
+	internals->active_slave = idx;
 	return num_rx_total;
 }
 
