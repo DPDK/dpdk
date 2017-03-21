@@ -1261,6 +1261,19 @@ mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		}
 		(*priv->rxqs)[idx] = NULL;
 		rxq_cleanup(rxq_ctrl);
+		/* Resize if rxq size is changed. */
+		if (rxq_ctrl->rxq.elts_n != log2above(desc)) {
+			rxq_ctrl = rte_realloc(rxq_ctrl,
+					       sizeof(*rxq_ctrl) +
+					       desc * sizeof(struct rte_mbuf *),
+					       RTE_CACHE_LINE_SIZE);
+			if (!rxq_ctrl) {
+				ERROR("%p: unable to reallocate queue index %u",
+					(void *)dev, idx);
+				priv_unlock(priv);
+				return -ENOMEM;
+			}
+		}
 	} else {
 		rxq_ctrl = rte_calloc_socket("RXQ", 1, sizeof(*rxq_ctrl) +
 					     desc * sizeof(struct rte_mbuf *),
