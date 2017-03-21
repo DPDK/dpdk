@@ -30,9 +30,15 @@
 #endif
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
+#include "compat.h"
+
 #include <linux/if.h>
 #include <linux/wait.h>
+#ifdef HAVE_SIGNAL_FUNCTIONS_OWN_HEADER
+#include <linux/sched/signal.h>
+#else
 #include <linux/sched.h>
+#endif
 #include <linux/netdevice.h>
 #include <linux/spinlock.h>
 #include <linux/list.h>
