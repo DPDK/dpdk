@@ -1660,16 +1660,22 @@ nfp_net_tx_tso(struct nfp_net_txq *txq, struct nfp_net_tx_desc *txd,
 	struct nfp_net_hw *hw = txq->hw;
 
 	if (!(hw->cap & NFP_NET_CFG_CTRL_LSO))
-		return;
+		goto clean_txd;
 
 	ol_flags = mb->ol_flags;
 
 	if (!(ol_flags & PKT_TX_TCP_SEG))
-		return;
+		goto clean_txd;
 
 	txd->l4_offset = mb->l2_len + mb->l3_len + mb->l4_len;
 	txd->lso = rte_cpu_to_le_16(mb->tso_segsz);
-	txd->flags |= PCIE_DESC_TX_LSO;
+	txd->flags = PCIE_DESC_TX_LSO;
+	return;
+
+clean_txd:
+	txd->flags = 0;
+	txd->l4_offset = 0;
+	txd->lso = 0;
 }
 
 /* nfp_net_tx_cksum - Set TX CSUM offload flags in TX descriptor */
