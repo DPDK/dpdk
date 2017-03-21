@@ -708,7 +708,8 @@ nfp_net_start(struct rte_eth_dev *dev)
 			return -1;
 	}
 
-	nfp_configure_rx_interrupt(dev, intr_handle);
+	if (rte_intr_dp_is_en(intr_handle))
+		nfp_configure_rx_interrupt(dev, intr_handle);
 
 	rte_intr_enable(intr_handle);
 
