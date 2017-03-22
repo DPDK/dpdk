@@ -505,7 +505,11 @@ rte_eal_init(int argc, char **argv)
 	char thread_name[RTE_MAX_THREAD_NAME_LEN];
 
 	/* checks if the machine is adequate */
-	rte_cpu_check_supported();
+	if (!rte_cpu_is_supported()) {
+		rte_eal_init_alert("unsupported cpu type.");
+		rte_errno = ENOTSUP;
+		return -1;
+	}
 
 	if (!rte_atomic32_test_and_set(&run_once))
 		return -1;
