@@ -890,8 +890,10 @@ rte_eal_init(int argc, char **argv)
 		rte_config.master_lcore, (int)thread_id, cpuset,
 		ret == 0 ? "" : "...");
 
-	if (rte_eal_intr_init() < 0)
-		rte_panic("Cannot init interrupt-handling thread\n");
+	if (rte_eal_intr_init() < 0) {
+		rte_eal_init_alert("Cannot init interrupt-handling thread\n");
+		return -1;
+	}
 
 	if (rte_bus_scan())
 		rte_panic("Cannot scan the buses for devices\n");

@@ -898,13 +898,16 @@ rte_eal_intr_init(void)
 	 * create a pipe which will be waited by epoll and notified to
 	 * rebuild the wait list of epoll.
 	 */
-	if (pipe(intr_pipe.pipefd) < 0)
+	if (pipe(intr_pipe.pipefd) < 0) {
+		rte_errno = errno;
 		return -1;
+	}
 
 	/* create the host thread to wait/handle the interrupt */
 	ret = pthread_create(&intr_thread, NULL,
 			eal_intr_thread_main, NULL);
 	if (ret != 0) {
+		rte_errno = ret;
 		RTE_LOG(ERR, EAL,
 			"Failed to create thread for interrupt handling\n");
 	} else {
