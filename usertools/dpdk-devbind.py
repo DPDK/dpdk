@@ -479,11 +479,7 @@ def display_devices(title, dev_list, extra_params=None):
     strings.sort()
     print("\n".join(strings))  # print one per line
 
-
-def show_status():
-    '''Function called when the script is passed the "--status" option.
-    Displays to the user what devices are bound to the igb_uio driver, the
-    kernel driver or to no driver'''
+def show_device_status(devices_type, device_name):
     global dpdk_drivers
     kernel_drv = []
     dpdk_drv = []
@@ -491,7 +487,7 @@ def show_status():
 
     # split our list of network devices into the three categories above
     for d in devices.keys():
-        if NETWORK_BASE_CLASS in devices[d]["Class"]:
+        if devices_type in devices[d]["Class"]:
             if not has_driver(d):
                 no_drv.append(devices[d])
                 continue
@@ -501,35 +497,20 @@ def show_status():
                 kernel_drv.append(devices[d])
 
     # print each category separately, so we can clearly see what's used by DPDK
-    display_devices("Network devices using DPDK-compatible driver", dpdk_drv,
+    display_devices("%s devices using DPDK-compatible driver" % device_name, dpdk_drv,
                     "drv=%(Driver_str)s unused=%(Module_str)s")
-    display_devices("Network devices using kernel driver", kernel_drv,
+    display_devices("%s devices using kernel driver" % device_name, kernel_drv,
                     "if=%(Interface)s drv=%(Driver_str)s "
                     "unused=%(Module_str)s %(Active)s")
-    display_devices("Other network devices", no_drv, "unused=%(Module_str)s")
+    display_devices("Other %s devices" % device_name, no_drv, "unused=%(Module_str)s")
 
-    # split our list of crypto devices into the three categories above
-    kernel_drv = []
-    dpdk_drv = []
-    no_drv = []
+def show_status():
+    '''Function called when the script is passed the "--status" option.
+    Displays to the user what devices are bound to the igb_uio driver, the
+    kernel driver or to no driver'''
 
-    for d in devices.keys():
-        if CRYPTO_BASE_CLASS in devices[d]["Class"]:
-            if not has_driver(d):
-                no_drv.append(devices[d])
-                continue
-            if devices[d]["Driver_str"] in dpdk_drivers:
-                dpdk_drv.append(devices[d])
-            else:
-                kernel_drv.append(devices[d])
-
-    display_devices("Crypto devices using DPDK-compatible driver", dpdk_drv,
-                    "drv=%(Driver_str)s unused=%(Module_str)s")
-    display_devices("Crypto devices using kernel driver", kernel_drv,
-                    "drv=%(Driver_str)s "
-                    "unused=%(Module_str)s")
-    display_devices("Other crypto devices", no_drv, "unused=%(Module_str)s")
-
+    show_device_status(network_devices, "Network")
+    show_device_status(crypto_devices, "Crypto")
 
 def parse_args():
     '''Parses the command-line arguments given by the user and takes the
