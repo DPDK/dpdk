@@ -533,8 +533,12 @@ rte_eal_init(int argc, char **argv)
 
 	if (internal_config.no_hugetlbfs == 0 &&
 			internal_config.process_type != RTE_PROC_SECONDARY &&
-			eal_hugepage_info_init() < 0)
-		rte_panic("Cannot get hugepage information\n");
+			eal_hugepage_info_init() < 0) {
+		rte_eal_init_alert("Cannot get hugepage information.");
+		rte_errno = EACCES;
+		rte_atomic32_clear(&run_once);
+		return -1;
+	}
 
 	if (internal_config.memory == 0 && internal_config.force_sockets == 0) {
 		if (internal_config.no_hugetlbfs)
