@@ -596,8 +596,11 @@ rte_eal_init(int argc, char **argv)
 	if (rte_eal_intr_init() < 0)
 		rte_panic("Cannot init interrupt-handling thread\n");
 
-	if (rte_eal_timer_init() < 0)
-		rte_panic("Cannot init HPET or TSC timers\n");
+	if (rte_eal_timer_init() < 0) {
+		rte_eal_init_alert("Cannot init HPET or TSC timers\n");
+		rte_errno = ENOTSUP;
+		return -1;
+	}
 
 	if (rte_eal_pci_init() < 0)
 		rte_panic("Cannot init PCI\n");
