@@ -569,8 +569,11 @@ rte_eal_init(int argc, char **argv)
 
 	rte_config_init();
 
-	if (rte_eal_memory_init() < 0)
-		rte_panic("Cannot init memory\n");
+	if (rte_eal_memory_init() < 0) {
+		rte_eal_init_alert("Cannot init memory\n");
+		rte_errno = ENOMEM;
+		return -1;
+	}
 
 	if (rte_eal_memzone_init() < 0) {
 		rte_eal_init_alert("Cannot init memzone\n");
@@ -578,11 +581,17 @@ rte_eal_init(int argc, char **argv)
 		return -1;
 	}
 
-	if (rte_eal_tailqs_init() < 0)
-		rte_panic("Cannot init tail queues for objects\n");
+	if (rte_eal_tailqs_init() < 0) {
+		rte_eal_init_alert("Cannot init tail queues for objects\n");
+		rte_errno = EFAULT;
+		return -1;
+	}
 
-	if (rte_eal_alarm_init() < 0)
-		rte_panic("Cannot init interrupt-handling thread\n");
+	if (rte_eal_alarm_init() < 0) {
+		rte_eal_init_alert("Cannot init interrupt-handling thread\n");
+		/* rte_eal_alarm_init sets rte_errno on failure. */
+		return -1;
+	}
 
 	if (rte_eal_intr_init() < 0)
 		rte_panic("Cannot init interrupt-handling thread\n");

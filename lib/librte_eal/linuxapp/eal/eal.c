@@ -825,19 +825,30 @@ rte_eal_init(int argc, char **argv)
 
 	rte_config_init();
 
-	if (rte_eal_log_init(logid, internal_config.syslog_facility) < 0)
-		rte_panic("Cannot init logs\n");
+	if (rte_eal_log_init(logid, internal_config.syslog_facility) < 0) {
+		rte_eal_init_alert("Cannot init logging.");
+		rte_errno = ENOMEM;
+		rte_atomic32_clear(&run_once);
+		return -1;
+	}
 
 	if (rte_eal_pci_init() < 0)
 		rte_panic("Cannot init PCI\n");
 
 #ifdef VFIO_PRESENT
-	if (rte_eal_vfio_setup() < 0)
-		rte_panic("Cannot init VFIO\n");
+	if (rte_eal_vfio_setup() < 0) {
+		rte_eal_init_alert("Cannot init VFIO\n");
+		rte_errno = EAGAIN;
+		rte_atomic32_clear(&run_once);
+		return -1;
+	}
 #endif
 
-	if (rte_eal_memory_init() < 0)
-		rte_panic("Cannot init memory\n");
+	if (rte_eal_memory_init() < 0) {
+		rte_eal_init_alert("Cannot init memory\n");
+		rte_errno = ENOMEM;
+		return -1;
+	}
 
 	/* the directories are locked during eal_hugepage_info_init */
 	eal_hugedirs_unlock();
@@ -848,11 +859,17 @@ rte_eal_init(int argc, char **argv)
 		return -1;
 	}
 
-	if (rte_eal_tailqs_init() < 0)
-		rte_panic("Cannot init tail queues for objects\n");
+	if (rte_eal_tailqs_init() < 0) {
+		rte_eal_init_alert("Cannot init tail queues for objects\n");
+		rte_errno = EFAULT;
+		return -1;
+	}
 
-	if (rte_eal_alarm_init() < 0)
-		rte_panic("Cannot init interrupt-handling thread\n");
+	if (rte_eal_alarm_init() < 0) {
+		rte_eal_init_alert("Cannot init interrupt-handling thread\n");
+		/* rte_eal_alarm_init sets rte_errno on failure. */
+		return -1;
+	}
 
 	if (rte_eal_timer_init() < 0)
 		rte_panic("Cannot init HPET or TSC timers\n");

@@ -188,8 +188,7 @@ rte_eal_tailqs_init(void)
 		if (t->head == NULL) {
 			RTE_LOG(ERR, EAL,
 				"Cannot initialize tailq: %s\n", t->name);
-			/* no need to TAILQ_REMOVE, we are going to panic in
-			 * rte_eal_init() */
+			/* TAILQ_REMOVE not needed, error is already fatal */
 			goto fail;
 		}
 	}
