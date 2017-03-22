@@ -569,8 +569,11 @@ rte_eal_init(int argc, char **argv)
 	if (rte_eal_memory_init() < 0)
 		rte_panic("Cannot init memory\n");
 
-	if (rte_eal_memzone_init() < 0)
-		rte_panic("Cannot init memzone\n");
+	if (rte_eal_memzone_init() < 0) {
+		rte_eal_init_alert("Cannot init memzone\n");
+		rte_errno = ENODEV;
+		return -1;
+	}
 
 	if (rte_eal_tailqs_init() < 0)
 		rte_panic("Cannot init tail queues for objects\n");
