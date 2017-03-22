@@ -528,8 +528,12 @@ rte_eal_init(int argc, char **argv)
 	}
 
 	fctret = eal_parse_args(argc, argv);
-	if (fctret < 0)
-		exit(1);
+	if (fctret < 0) {
+		rte_eal_init_alert("Invalid 'command line' arguments.");
+		rte_errno = EINVAL;
+		rte_atomic32_clear(&run_once);
+		return -1;
+	}
 
 	if (internal_config.no_hugetlbfs == 0 &&
 			internal_config.process_type != RTE_PROC_SECONDARY &&
