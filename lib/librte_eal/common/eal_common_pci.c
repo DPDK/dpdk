@@ -69,6 +69,7 @@
 #include <sys/queue.h>
 #include <sys/mman.h>
 
+#include <rte_errno.h>
 #include <rte_interrupts.h>
 #include <rte_log.h>
 #include <rte_pci.h>
@@ -414,6 +415,7 @@ int
 rte_eal_pci_probe(void)
 {
 	struct rte_pci_device *dev = NULL;
+	size_t probed = 0, failed = 0;
 	struct rte_devargs *devargs;
 	int probe_all = 0;
 	int ret = 0;
@@ -422,6 +424,7 @@ rte_eal_pci_probe(void)
 		probe_all = 1;
 
 	TAILQ_FOREACH(dev, &pci_device_list, next) {
+		probed++;
 
 		/* set devargs in PCI structure */
 		devargs = pci_devargs_lookup(dev);
@@ -434,13 +437,16 @@ rte_eal_pci_probe(void)
 		else if (devargs != NULL &&
 			devargs->type == RTE_DEVTYPE_WHITELISTED_PCI)
 			ret = pci_probe_all_drivers(dev);
-		if (ret < 0)
-			rte_exit(EXIT_FAILURE, "Requested device " PCI_PRI_FMT
+		if (ret < 0) {
+			RTE_LOG(ERR, EAL, "Requested device " PCI_PRI_FMT
 				 " cannot be used\n", dev->addr.domain, dev->addr.bus,
 				 dev->addr.devid, dev->addr.function);
+			rte_errno = errno;
+			failed++;
+		}
 	}
 
-	return 0;
+	return (probed && probed == failed) ? -1 : 0;
 }
 
 /* dump one device */
