@@ -47,10 +47,13 @@ intel_processor_class = {'Class': '0b', 'Vendor': '8086', 'Device': None,
                    'SVendor': None, 'SDevice': None}
 cavium_sso = {'Class': '08', 'Vendor': '177d', 'Device': 'a04b,a04d',
               'SVendor': None, 'SDevice': None}
+cavium_fpa = {'Class': '08', 'Vendor': '177d', 'Device': 'a053',
+              'SVendor': None, 'SDevice': None}
 
 network_devices = [network_class]
 crypto_devices = [encryption_class, intel_processor_class]
 eventdev_devices = [cavium_sso]
+mempool_devices = [cavium_fpa]
 
 # global dict ethernet devices present. Dictionary indexed by PCI address.
 # Each device within this is itself a dictionary of device properties
@@ -598,6 +601,7 @@ def show_status():
     show_device_status(network_devices, "Network")
     show_device_status(crypto_devices, "Crypto")
     show_device_status(eventdev_devices, "Eventdev")
+    show_device_status(mempool_devices, "Mempool")
 
 def parse_args():
     '''Parses the command-line arguments given by the user and takes the
@@ -666,6 +670,7 @@ def do_arg_actions():
             get_device_details(network_devices)
             get_device_details(crypto_devices)
             get_device_details(eventdev_devices)
+            get_device_details(mempool_devices)
         show_status()
 
 
@@ -677,6 +682,7 @@ def main():
     get_device_details(network_devices)
     get_device_details(crypto_devices)
     get_device_details(eventdev_devices)
+    get_device_details(mempool_devices)
     do_arg_actions()
 
 if __name__ == "__main__":
