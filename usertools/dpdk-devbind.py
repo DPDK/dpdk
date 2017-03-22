@@ -38,9 +38,16 @@ import getopt
 import subprocess
 from os.path import exists, abspath, dirname, basename
 
-# The PCI base class for NETWORK devices
-NETWORK_BASE_CLASS = "02"
-CRYPTO_BASE_CLASS = "0b"
+# The PCI base class for all devices
+network_class = {'Class': '02', 'Vendor': None, 'Device': None,
+                    'SVendor': None, 'SDevice': None}
+encryption_class = {'Class': '10', 'Vendor': None, 'Device': None,
+                   'SVendor': None, 'SDevice': None}
+intel_processor_class = {'Class': '0b', 'Vendor': '8086', 'Device': None,
+                   'SVendor': None, 'SDevice': None}
+
+network_devices = [network_class]
+crypto_devices = [encryption_class, intel_processor_class]
 
 # global dict ethernet devices present. Dictionary indexed by PCI address.
 # Each device within this is itself a dictionary of device properties
@@ -252,10 +259,9 @@ def get_device_details(devices_type):
     dev_lines = check_output(["lspci", "-Dvmmnnk"]).splitlines()
     for dev_line in dev_lines:
         if len(dev_line) == 0:
-            if dev["Class"][0:2] == devices_type:
-                # convert device and vendor ids to numbers, then add to global
-                dev["Vendor"] = int(dev["Vendor"], 16)
-                dev["Device"] = int(dev["Device"], 16)
+            if device_type_match(dev, devices_type):
+                # Replace "Driver" with "Driver_str" to have consistency of
+                # of dictionary key names
                 if "Driver" in dev.keys():
                     dev["Driver_str"] = dev.pop("Driver")
                 # use dict to make copy of dev
@@ -272,7 +278,7 @@ def get_device_details(devices_type):
             dev[name.rstrip(":")] = value_list[len(value_list) - 1] \
                 .rstrip("]").lstrip("[")
 
-    if devices_type == NETWORK_BASE_CLASS:
+    if devices_type == network_devices:
         # check what is the interface if any for an ssh connection if
         # any to this host, so we can mark it later.
         ssh_if = []
@@ -287,7 +293,7 @@ def get_device_details(devices_type):
 
     # based on the basic info, get extended text details
     for d in devices.keys():
-        if devices[d]["Class"][0:2] != devices_type:
+        if not device_type_match(devices[d], devices_type):
             continue
 
         # get additional info and add it to existing data
@@ -295,7 +301,7 @@ def get_device_details(devices_type):
         # No need to probe lspci
         devices[d].update(get_pci_device_details(d, False).items())
 
-        if devices_type == NETWORK_BASE_CLASS:
+        if devices_type == network_devices:
             for _if in ssh_if:
                 if _if in devices[d]["Interface"].split(","):
                     devices[d]["Ssh_if"] = True
@@ -318,6 +324,25 @@ def get_device_details(devices_type):
                 modules.remove(devices[d]["Driver_str"])
                 devices[d]["Module_str"] = ",".join(modules)
 
+
+def device_type_match(dev, devices_type):
+    for i in range(len(devices_type)):
+        param_count = len(
+            [x for x in devices_type[i].values() if x is not None])
+        match_count = 0
+        if dev["Class"][0:2] == devices_type[i]["Class"]:
+            match_count = match_count + 1
+            for key in devices_type[i].keys():
+                if key != 'Class' and devices_type[i][key]:
+                    value_list = devices_type[i][key].split(',')
+                    for value in value_list:
+                        if value.strip(' ') == dev[key]:
+                            match_count = match_count + 1
+            # count must be the number of non None parameters to match
+            if match_count == param_count:
+                return True
+            else:
+                return False
 
 def dev_id_from_dev_name(dev_name):
     '''Take a device "name" - a string passed in by user to identify a NIC
@@ -441,7 +466,9 @@ def bind_one(dev_id, driver, force):
                       % (dev_id, filename))
                 return
             try:
-                f.write("%04x %04x" % (dev["Vendor"], dev["Device"]))
+                # Convert Device and Vendor Id to int to write to new_id
+                f.write("%04x %04x" % (int(dev["Vendor"],16),
+                        int(dev["Device"], 16)))
                 f.close()
             except:
                 print("Error: bind failed for %s - Cannot write new PCI ID to "
@@ -542,7 +569,7 @@ def show_device_status(devices_type, device_name):
 
     # split our list of network devices into the three categories above
     for d in devices.keys():
-        if devices_type in devices[d]["Class"]:
+        if device_type_match(devices[d], devices_type):
             if not has_driver(d):
                 no_drv.append(devices[d])
                 continue
@@ -552,12 +579,13 @@ def show_device_status(devices_type, device_name):
                 kernel_drv.append(devices[d])
 
     # print each category separately, so we can clearly see what's used by DPDK
-    display_devices("%s devices using DPDK-compatible driver" % device_name, dpdk_drv,
-                    "drv=%(Driver_str)s unused=%(Module_str)s")
+    display_devices("%s devices using DPDK-compatible driver" % device_name,
+                    dpdk_drv, "drv=%(Driver_str)s unused=%(Module_str)s")
     display_devices("%s devices using kernel driver" % device_name, kernel_drv,
                     "if=%(Interface)s drv=%(Driver_str)s "
                     "unused=%(Module_str)s %(Active)s")
-    display_devices("Other %s devices" % device_name, no_drv, "unused=%(Module_str)s")
+    display_devices("Other %s devices" % device_name, no_drv,
+                    "unused=%(Module_str)s")
 
 def show_status():
     '''Function called when the script is passed the "--status" option.
@@ -630,8 +658,9 @@ def do_arg_actions():
     if status_flag:
         if b_flag is not None:
             clear_data()
-            get_device_details(NETWORK_BASE_CLASS)  # refresh if we have changed anything
-            get_device_details(CRYPTO_BASE_CLASS)  # refresh if we have changed anything
+            # refresh if we have changed anything
+            get_device_details(network_devices)
+            get_device_details(crypto_devices)
         show_status()
 
 
@@ -640,8 +669,8 @@ def main():
     parse_args()
     check_modules()
     clear_data()
-    get_device_details(NETWORK_BASE_CLASS)
-    get_device_details(CRYPTO_BASE_CLASS)
+    get_device_details(network_devices)
+    get_device_details(crypto_devices)
     do_arg_actions()
 
 if __name__ == "__main__":
