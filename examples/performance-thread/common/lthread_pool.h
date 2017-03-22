@@ -69,6 +69,10 @@
 #ifndef LTHREAD_POOL_H_
 #define LTHREAD_POOL_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <rte_malloc.h>
 #include <rte_per_lcore.h>
 #include <rte_log.h>
@@ -328,5 +332,8 @@ _qnode_pool_destroy(struct qnode_pool *p)
 	return 0;
 }
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif				/* LTHREAD_POOL_H_ */

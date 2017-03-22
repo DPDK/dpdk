@@ -33,6 +33,10 @@
 #ifndef LTHREAD_OBJCACHE_H_
 #define LTHREAD_OBJCACHE_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <string.h>
 
 #include <rte_per_lcore.h>
@@ -154,5 +158,8 @@ _lthread_objcache_free(struct lthread_objcache *c, void *obj)
 }
 
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif				/* LTHREAD_OBJCACHE_H_ */

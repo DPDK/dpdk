@@ -33,6 +33,10 @@
 #ifndef LTHREAD_DIAG_API_H_
 #define LTHREAD_DIAG_API_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 #include <inttypes.h>
 
@@ -321,5 +325,9 @@ lthread_cond_diag_ref(struct lthread_cond *c);
  */
 uint64_t
 lthread_mutex_diag_ref(struct lthread_mutex *m);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif				/* LTHREAD_DIAG_API_H_ */

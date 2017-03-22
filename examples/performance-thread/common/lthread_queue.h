@@ -69,6 +69,10 @@
 #ifndef LTHREAD_QUEUE_H_
 #define LTHREAD_QUEUE_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <string.h>
 
 #include <rte_prefetch.h>
@@ -298,5 +302,8 @@ _lthread_queue_remove(struct lthread_queue *q)
 	return NULL;
 }
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif				/* LTHREAD_QUEUE_H_ */

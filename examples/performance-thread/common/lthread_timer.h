@@ -35,6 +35,10 @@
 #ifndef LTHREAD_TIMER_H_
 #define LTHREAD_TIMER_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "lthread_int.h"
 #include "lthread_sched.h"
 
@@ -75,5 +79,8 @@ _timer_stop(struct lthread *lt)
 	}
 }
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LTHREAD_TIMER_H_ */

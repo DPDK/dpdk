@@ -34,6 +34,10 @@
 #ifndef LTHREAD_DIAG_H_
 #define LTHREAD_DIAG_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stdint.h>
 #include <inttypes.h>
 
@@ -129,4 +133,9 @@ extern uint64_t diag_mask;
 #define DIAG_USED __rte_unused
 
 #endif				/* LTHREAD_DIAG */
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif				/* LTHREAD_DIAG_H_ */

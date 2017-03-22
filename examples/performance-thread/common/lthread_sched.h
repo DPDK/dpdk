@@ -62,6 +62,10 @@
 #ifndef LTHREAD_SCHED_H_
 #define LTHREAD_SCHED_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "lthread_int.h"
 #include "lthread_queue.h"
 #include "lthread_objcache.h"
@@ -148,5 +152,8 @@ extern struct lthread_sched *schedcore[];
 void _sched_timer_cb(struct rte_timer *tim, void *arg);
 void _sched_shutdown(__rte_unused void *arg);
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif				/* LTHREAD_SCHED_H_ */

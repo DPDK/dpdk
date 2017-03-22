@@ -35,6 +35,10 @@
 #ifndef LTHREAD_MUTEX_H_
 #define LTHREAD_MUTEX_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "lthread_queue.h"
 
 
@@ -48,5 +52,9 @@ struct lthread_mutex {
 	char			name[MAX_MUTEX_NAME_SIZE];
 	uint64_t		diag_ref; /* optional ref to user diag data */
 } __rte_cache_aligned;
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LTHREAD_MUTEX_H_ */
