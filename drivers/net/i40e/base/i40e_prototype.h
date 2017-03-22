@@ -404,11 +404,21 @@ enum i40e_status_code i40e_aq_add_cloud_filters(struct i40e_hw *hw,
 		u16 vsi,
 		struct i40e_aqc_add_remove_cloud_filters_element_data *filters,
 		u8 filter_count);
-
+enum i40e_status_code i40e_aq_add_cloud_filters_big_buffer(struct i40e_hw *hw,
+	u16 seid,
+	struct i40e_aqc_add_rm_cloud_filt_elem_ext *filters,
+	u8 filter_count);
 enum i40e_status_code i40e_aq_remove_cloud_filters(struct i40e_hw *hw,
 		u16 vsi,
 		struct i40e_aqc_add_remove_cloud_filters_element_data *filters,
 		u8 filter_count);
+enum i40e_status_code i40e_aq_remove_cloud_filters_big_buffer(
+	struct i40e_hw *hw, u16 seid,
+	struct i40e_aqc_add_rm_cloud_filt_elem_ext *filters,
+	u8 filter_count);
+enum i40e_status_code i40e_aq_replace_cloud_filters(struct i40e_hw *hw,
+		struct i40e_aqc_replace_cloud_filters_cmd *filters,
+		struct i40e_aqc_replace_cloud_filters_cmd_buf *cmd_buf);
 enum i40e_status_code i40e_aq_alternate_read(struct i40e_hw *hw,
 				u32 reg_addr0, u32 *reg_val0,
 				u32 reg_addr1, u32 *reg_val1);
