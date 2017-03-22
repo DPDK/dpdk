@@ -396,6 +396,8 @@ static void i40e_parse_cee_app_tlv(struct i40e_cee_feat_tlv *tlv,
 	dcbcfg->numapps = length / sizeof(*app);
 	if (!dcbcfg->numapps)
 		return;
+	if (dcbcfg->numapps > I40E_DCBX_MAX_APPS)
+		dcbcfg->numapps = I40E_DCBX_MAX_APPS;
 
 	for (i = 0; i < dcbcfg->numapps; i++) {
 		u8 up, selector;
