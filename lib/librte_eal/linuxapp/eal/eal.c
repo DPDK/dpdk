@@ -899,8 +899,11 @@ rte_eal_init(int argc, char **argv)
 		return -1;
 	}
 
-	if (rte_bus_scan())
-		rte_panic("Cannot scan the buses for devices\n");
+	if (rte_bus_scan()) {
+		rte_eal_init_alert("Cannot scan the buses for devices\n");
+		rte_errno = ENODEV;
+		return -1;
+	}
 
 	RTE_LCORE_FOREACH_SLAVE(i) {
 
@@ -939,8 +942,11 @@ rte_eal_init(int argc, char **argv)
 	rte_eal_mp_wait_lcore();
 
 	/* Probe all the buses and devices/drivers on them */
-	if (rte_bus_probe())
-		rte_panic("Cannot probe devices\n");
+	if (rte_bus_probe()) {
+		rte_eal_init_alert("Cannot probe devices\n");
+		rte_errno = ENOTSUP;
+		return -1;
+	}
 
 	/* Probe & Initialize PCI devices */
 	if (rte_eal_pci_probe()) {
