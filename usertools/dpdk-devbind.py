@@ -45,9 +45,12 @@ encryption_class = {'Class': '10', 'Vendor': None, 'Device': None,
                    'SVendor': None, 'SDevice': None}
 intel_processor_class = {'Class': '0b', 'Vendor': '8086', 'Device': None,
                    'SVendor': None, 'SDevice': None}
+cavium_sso = {'Class': '08', 'Vendor': '177d', 'Device': 'a04b,a04d',
+              'SVendor': None, 'SDevice': None}
 
 network_devices = [network_class]
 crypto_devices = [encryption_class, intel_processor_class]
+eventdev_devices = [cavium_sso]
 
 # global dict ethernet devices present. Dictionary indexed by PCI address.
 # Each device within this is itself a dictionary of device properties
@@ -594,6 +597,7 @@ def show_status():
 
     show_device_status(network_devices, "Network")
     show_device_status(crypto_devices, "Crypto")
+    show_device_status(eventdev_devices, "Eventdev")
 
 def parse_args():
     '''Parses the command-line arguments given by the user and takes the
@@ -661,6 +665,7 @@ def do_arg_actions():
             # refresh if we have changed anything
             get_device_details(network_devices)
             get_device_details(crypto_devices)
+            get_device_details(eventdev_devices)
         show_status()
 
 
@@ -671,6 +676,7 @@ def main():
     clear_data()
     get_device_details(network_devices)
     get_device_details(crypto_devices)
+    get_device_details(eventdev_devices)
     do_arg_actions()
 
 if __name__ == "__main__":
