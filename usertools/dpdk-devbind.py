@@ -234,89 +234,24 @@ def get_pci_device_details(dev_id):
 
     return device
 
-
-def get_nic_details():
-    '''This function populates the "devices" dictionary. The keys used are
-    the pci addresses (domain:bus:slot.func). The values are themselves
-    dictionaries - one for each NIC.'''
-    global devices
-    global dpdk_drivers
-
-    # clear any old data
+def clear_data():
+    '''This function clears any old data'''
     devices = {}
-    # first loop through and read details for all devices
-    # request machine readable format, with numeric IDs
-    dev = {}
-    dev_lines = check_output(["lspci", "-Dvmmn"]).splitlines()
-    for dev_line in dev_lines:
-        if len(dev_line) == 0:
-            if dev["Class"][0:2] == NETWORK_BASE_CLASS:
-                # convert device and vendor ids to numbers, then add to global
-                dev["Vendor"] = int(dev["Vendor"], 16)
-                dev["Device"] = int(dev["Device"], 16)
-                # use dict to make copy of dev
-                devices[dev["Slot"]] = dict(dev)
-        else:
-            name, value = dev_line.decode().split("\t", 1)
-            dev[name.rstrip(":")] = value
 
-    # check what is the interface if any for an ssh connection if
-    # any to this host, so we can mark it later.
-    ssh_if = []
-    route = check_output(["ip", "-o", "route"])
-    # filter out all lines for 169.254 routes
-    route = "\n".join(filter(lambda ln: not ln.startswith("169.254"),
-                             route.decode().splitlines()))
-    rt_info = route.split()
-    for i in range(len(rt_info) - 1):
-        if rt_info[i] == "dev":
-            ssh_if.append(rt_info[i+1])
-
-    # based on the basic info, get extended text details
-    for d in devices.keys():
-        # get additional info and add it to existing data
-        devices[d] = devices[d].copy()
-        devices[d].update(get_pci_device_details(d).items())
-
-        for _if in ssh_if:
-            if _if in devices[d]["Interface"].split(","):
-                devices[d]["Ssh_if"] = True
-                devices[d]["Active"] = "*Active*"
-                break
-
-        # add igb_uio to list of supporting modules if needed
-        if "Module_str" in devices[d]:
-            for driver in dpdk_drivers:
-                if driver not in devices[d]["Module_str"]:
-                    devices[d]["Module_str"] = \
-                        devices[d]["Module_str"] + ",%s" % driver
-        else:
-            devices[d]["Module_str"] = ",".join(dpdk_drivers)
-
-        # make sure the driver and module strings do not have any duplicates
-        if has_driver(d):
-            modules = devices[d]["Module_str"].split(",")
-            if devices[d]["Driver_str"] in modules:
-                modules.remove(devices[d]["Driver_str"])
-                devices[d]["Module_str"] = ",".join(modules)
-
-
-def get_crypto_details():
+def get_device_details(devices_type):
     '''This function populates the "devices" dictionary. The keys used are
     the pci addresses (domain:bus:slot.func). The values are themselves
     dictionaries - one for each NIC.'''
     global devices
     global dpdk_drivers
 
-    # clear any old data
-    # devices = {}
     # first loop through and read details for all devices
     # request machine readable format, with numeric IDs
     dev = {}
     dev_lines = check_output(["lspci", "-Dvmmn"]).splitlines()
     for dev_line in dev_lines:
         if len(dev_line) == 0:
-            if dev["Class"][0:2] == CRYPTO_BASE_CLASS:
+            if dev["Class"][0:2] == devices_type:
                 # convert device and vendor ids to numbers, then add to global
                 dev["Vendor"] = int(dev["Vendor"], 16)
                 dev["Device"] = int(dev["Device"], 16)
@@ -326,14 +261,34 @@ def get_crypto_details():
             name, value = dev_line.decode().split("\t", 1)
             dev[name.rstrip(":")] = value
 
+    if devices_type == NETWORK_BASE_CLASS:
+        # check what is the interface if any for an ssh connection if
+        # any to this host, so we can mark it later.
+        ssh_if = []
+        route = check_output(["ip", "-o", "route"])
+        # filter out all lines for 169.254 routes
+        route = "\n".join(filter(lambda ln: not ln.startswith("169.254"),
+                             route.decode().splitlines()))
+        rt_info = route.split()
+        for i in range(len(rt_info) - 1):
+            if rt_info[i] == "dev":
+                ssh_if.append(rt_info[i+1])
+
     # based on the basic info, get extended text details
     for d in devices.keys():
-        if devices[d]["Class"][0:2] != CRYPTO_BASE_CLASS:
+        if devices[d]["Class"][0:2] != devices_type:
             continue
 
         # get additional info and add it to existing data
         devices[d] = devices[d].copy()
         devices[d].update(get_pci_device_details(d).items())
+
+        if devices_type == NETWORK_BASE_CLASS:
+            for _if in ssh_if:
+                if _if in devices[d]["Interface"].split(","):
+                    devices[d]["Ssh_if"] = True
+                    devices[d]["Active"] = "*Active*"
+                    break
 
         # add igb_uio to list of supporting modules if needed
         if "Module_str" in devices[d]:
@@ -638,8 +593,9 @@ def do_arg_actions():
         bind_all(args, b_flag, force_flag)
     if status_flag:
         if b_flag is not None:
-            get_nic_details()  # refresh if we have changed anything
-            get_crypto_details()  # refresh if we have changed anything
+            clear_data()
+            get_device_details(NETWORK_BASE_CLASS)  # refresh if we have changed anything
+            get_device_details(CRYPTO_BASE_CLASS)  # refresh if we have changed anything
         show_status()
 
 
@@ -647,8 +603,9 @@ def main():
     '''program main function'''
     parse_args()
     check_modules()
-    get_nic_details()
-    get_crypto_details()
+    clear_data()
+    get_device_details(NETWORK_BASE_CLASS)
+    get_device_details(CRYPTO_BASE_CLASS)
     do_arg_actions()
 
 if __name__ == "__main__":
