@@ -107,7 +107,7 @@ qdisc_del(int nlsk_fd, uint16_t ifindex, struct qdisc *qinfo)
 	msg.t.tcm_parent = qinfo->parent;
 	/* if no netlink socket is provided, create one */
 	if (!nlsk_fd) {
-		fd = nl_init();
+		fd = nl_init(0);
 		if (fd < 0) {
 			RTE_LOG(ERR, PMD,
 				"Could not delete QDISC: null netlink socket\n");

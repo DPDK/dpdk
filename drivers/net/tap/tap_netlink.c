@@ -55,14 +55,21 @@ struct nested_tail {
 /**
  * Initialize a netlink socket for communicating with the kernel.
  *
+ * @param nl_groups
+ *   Set it to a netlink group value (e.g. RTMGRP_LINK) to receive messages for
+ *   specific netlink multicast groups. Otherwise, no subscription will be made.
+ *
  * @return
  *   netlink socket file descriptor on success, -1 otherwise.
  */
 int
-nl_init(void)
+nl_init(uint32_t nl_groups)
 {
 	int fd, sndbuf_size = SNDBUF_SIZE, rcvbuf_size = RCVBUF_SIZE;
-	struct sockaddr_nl local = { .nl_family = AF_NETLINK };
+	struct sockaddr_nl local = {
+		.nl_family = AF_NETLINK,
+		.nl_groups = nl_groups,
+	};
 
 	fd = socket(AF_NETLINK, SOCK_RAW | SOCK_CLOEXEC, NETLINK_ROUTE);
 	if (fd < 0) {

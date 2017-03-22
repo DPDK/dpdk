@@ -90,6 +90,7 @@ struct pmd_internals {
 	LIST_HEAD(tap_implicit_flows, rte_flow) implicit_flows;
 	struct rx_queue rxq[RTE_PMD_TAP_MAX_QUEUES]; /* List of RX queues */
 	struct tx_queue txq[RTE_PMD_TAP_MAX_QUEUES]; /* List of TX queues */
+	struct rte_intr_handle intr_handle;          /* LSC interrupt handle. */
 };
 
 #endif /* _RTE_ETH_TAP_H_ */

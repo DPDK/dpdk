@@ -61,6 +61,7 @@
 
 #include <rte_eth_tap.h>
 #include <tap_flow.h>
+#include <tap_netlink.h>
 #include <tap_tcmsgs.h>
 
 /* Linux based path to the TUN device */
@@ -110,6 +111,8 @@ tap_trigger_cb(int sig __rte_unused)
 static int
 tap_ioctl(struct pmd_internals *pmd, unsigned long request,
 	  struct ifreq *ifr, int set);
+
+static int tap_intr_handle_set(struct rte_eth_dev *dev, int set);
 
 /* Tun/Tap allocation routine
  *
@@ -520,6 +523,11 @@ tap_link_set_up(struct rte_eth_dev *dev)
 static int
 tap_dev_start(struct rte_eth_dev *dev)
 {
+	int err;
+
+	err = tap_intr_handle_set(dev, 1);
+	if (err)
+		return err;
 	return tap_link_set_up(dev);
 }
 
@@ -528,6 +536,7 @@ tap_dev_start(struct rte_eth_dev *dev)
 static void
 tap_dev_stop(struct rte_eth_dev *dev)
 {
+	tap_intr_handle_set(dev, 0);
 	tap_link_set_down(dev);
 }
 
@@ -976,6 +985,55 @@ tap_set_mc_addr_list(struct rte_eth_dev *dev __rte_unused,
 	return 0;
 }
 
+static int
+tap_nl_msg_handler(struct nlmsghdr *nh, void *arg)
+{
+	struct rte_eth_dev *dev = arg;
+	struct pmd_internals *pmd = dev->data->dev_private;
+	struct ifinfomsg *info = NLMSG_DATA(nh);
+
+	if (nh->nlmsg_type != RTM_NEWLINK ||
+	    (info->ifi_index != pmd->if_index &&
+	     info->ifi_index != pmd->remote_if_index))
+		return 0;
+	return tap_link_update(dev, 0);
+}
+
+static void
+tap_dev_intr_handler(struct rte_intr_handle *intr_handle __rte_unused,
+		     void *cb_arg)
+{
+	struct rte_eth_dev *dev = cb_arg;
+	struct pmd_internals *pmd = dev->data->dev_private;
+
+	nl_recv(pmd->intr_handle.fd, tap_nl_msg_handler, dev);
+}
+
+static int
+tap_intr_handle_set(struct rte_eth_dev *dev, int set)
+{
+	struct pmd_internals *pmd = dev->data->dev_private;
+
+	/* In any case, disable interrupt if the conf is no longer there. */
+	if (!dev->data->dev_conf.intr_conf.lsc) {
+		if (pmd->intr_handle.fd != -1)
+			nl_final(pmd->intr_handle.fd);
+		rte_intr_callback_unregister(
+			&pmd->intr_handle, tap_dev_intr_handler, dev);
+		return 0;
+	}
+	if (set) {
+		pmd->intr_handle.fd = nl_init(RTMGRP_LINK);
+		if (unlikely(pmd->intr_handle.fd == -1))
+			return -EBADF;
+		return rte_intr_callback_register(
+			&pmd->intr_handle, tap_dev_intr_handler, dev);
+	}
+	nl_final(pmd->intr_handle.fd);
+	return rte_intr_callback_unregister(&pmd->intr_handle,
+					    tap_dev_intr_handler, dev);
+}
+
 static const uint32_t*
 tap_dev_supported_ptypes_get(struct rte_eth_dev *dev __rte_unused)
 {
@@ -1117,7 +1175,7 @@ eth_dev_tap_create(const char *name, char *tap_name, char *remote_iface)
 	data->dev_private = pmd;
 	data->port_id = dev->data->port_id;
 	data->mtu = dev->data->mtu;
-	data->dev_flags = RTE_ETH_DEV_DETACHABLE;
+	data->dev_flags = RTE_ETH_DEV_DETACHABLE | RTE_ETH_DEV_INTR_LSC;
 	data->kdrv = RTE_KDRV_NONE;
 	data->drv_name = pmd_tap_drv.driver.name;
 	data->numa_node = numa_node;
@@ -1133,6 +1191,9 @@ eth_dev_tap_create(const char *name, char *tap_name, char *remote_iface)
 	dev->rx_pkt_burst = pmd_rx_burst;
 	dev->tx_pkt_burst = pmd_tx_burst;
 
+	pmd->intr_handle.type = RTE_INTR_HANDLE_EXT;
+	pmd->intr_handle.fd = -1;
+
 	/* Presetup the fds to -1 as being not valid */
 	for (i = 0; i < RTE_PMD_TAP_MAX_QUEUES; i++) {
 		pmd->rxq[i].fd = -1;
@@ -1147,7 +1208,7 @@ eth_dev_tap_create(const char *name, char *tap_name, char *remote_iface)
 	 * If no netlink socket can be created, then it will fail when
 	 * creating/destroying flow rules.
 	 */
-	pmd->nlsk_fd = nl_init();
+	pmd->nlsk_fd = nl_init(0);
 	if (strlen(remote_iface)) {
 		pmd->remote_if_index = if_nametoindex(remote_iface);
 		snprintf(pmd->remote_iface, RTE_ETH_NAME_MAX_LEN,

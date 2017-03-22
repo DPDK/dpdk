@@ -53,7 +53,7 @@ struct nlmsg {
 
 #define NLMSG_TAIL(nlh) (void *)((char *)(nlh) + NLMSG_ALIGN((nlh)->nlmsg_len))
 
-int nl_init(void);
+int nl_init(uint32_t nl_groups);
 int nl_final(int nlsk_fd);
 int nl_send(int nlsk_fd, struct nlmsghdr *nh);
 int nl_recv(int nlsk_fd, int (*callback)(struct nlmsghdr *, void *), void *arg);
