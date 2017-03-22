@@ -610,7 +610,7 @@ rte_eal_init(int argc, char **argv)
 	eal_check_mem_on_local_socket();
 
 	if (eal_plugins_init() < 0)
-		rte_panic("Cannot init plugins\n");
+		rte_eal_init_alert("Cannot init plugins\n");
 
 	eal_thread_init_master(rte_config.master_lcore);
 
