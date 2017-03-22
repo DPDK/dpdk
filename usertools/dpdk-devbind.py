@@ -355,6 +355,25 @@ def unbind_one(dev_id, force):
               "Skipping unbind" % (dev_id))
         return
 
+    # For kernels > 3.15 driver_override is used to bind a device to a driver.
+    # Before unbinding it, overwrite driver_override with empty string so that
+    # the device can be bound to any other driver
+    filename = "/sys/bus/pci/devices/%s/driver_override" % dev_id
+    if os.path.exists(filename):
+        try:
+            f = open(filename, "w")
+        except:
+            print("Error: unbind failed for %s - Cannot open %s"
+                  % (dev_id, filename))
+            sys.exit(1)
+        try:
+            f.write("\00")
+            f.close()
+        except:
+            print("Error: unbind failed for %s - Cannot open %s"
+                  % (dev_id, filename))
+            sys.exit(1)
+
     # write to /sys to unbind
     filename = "/sys/bus/pci/drivers/%s/unbind" % dev["Driver_str"]
     try:
@@ -390,22 +409,44 @@ def bind_one(dev_id, driver, force):
             unbind_one(dev_id, force)
             dev["Driver_str"] = ""  # clear driver string
 
-    # if we are binding to one of DPDK drivers, add PCI id's to that driver
+    # For kernels >= 3.15 driver_override can be used to specify the driver
+    # for a device rather than relying on the driver to provide a positive
+    # match of the device.  The existing process of looking up
+    # the vendor and device ID, adding them to the driver new_id,
+    # will erroneously bind other devices too which has the additional burden
+    # of unbinding those devices
     if driver in dpdk_drivers:
-        filename = "/sys/bus/pci/drivers/%s/new_id" % driver
-        try:
-            f = open(filename, "w")
-        except:
-            print("Error: bind failed for %s - Cannot open %s"
-                  % (dev_id, filename))
-            return
-        try:
-            f.write("%04x %04x" % (dev["Vendor"], dev["Device"]))
-            f.close()
-        except:
-            print("Error: bind failed for %s - Cannot write new PCI ID to "
-                  "driver %s" % (dev_id, driver))
-            return
+        filename = "/sys/bus/pci/devices/%s/driver_override" % dev_id
+        if os.path.exists(filename):
+            try:
+                f = open(filename, "w")
+            except:
+                print("Error: bind failed for %s - Cannot open %s"
+                      % (dev_id, filename))
+                return
+            try:
+                f.write("%s" % driver)
+                f.close()
+            except:
+                print("Error: bind failed for %s - Cannot write driver %s to "
+                      "PCI ID " % (dev_id, driver))
+                return
+        # For kernels < 3.15 use new_id to add PCI id's to the driver
+        else:
+            filename = "/sys/bus/pci/drivers/%s/new_id" % driver
+            try:
+                f = open(filename, "w")
+            except:
+                print("Error: bind failed for %s - Cannot open %s"
+                      % (dev_id, filename))
+                return
+            try:
+                f.write("%04x %04x" % (dev["Vendor"], dev["Device"]))
+                f.close()
+            except:
+                print("Error: bind failed for %s - Cannot write new PCI ID to "
+                      "driver %s" % (dev_id, driver))
+                return
 
     # do the bind by writing to /sys
     filename = "/sys/bus/pci/drivers/%s/bind" % driver
@@ -450,23 +491,24 @@ def bind_all(dev_list, driver, force=False):
     for d in dev_list:
         bind_one(d, driver, force)
 
-    # when binding devices to a generic driver (i.e. one that doesn't have a
-    # PCI ID table), some devices that are not bound to any other driver could
-    # be bound even if no one has asked them to. hence, we check the list of
-    # drivers again, and see if some of the previously-unbound devices were
-    # erroneously bound.
-    for d in devices.keys():
-        # skip devices that were already bound or that we know should be bound
-        if "Driver_str" in devices[d] or d in dev_list:
-            continue
+    # For kenels < 3.15 when binding devices to a generic driver
+    # (i.e. one that doesn't have a PCI ID table) using new_id, some devices
+    # that are not bound to any other driver could be bound even if no one has
+    # asked them to. hence, we check the list of drivers again, and see if
+    # some of the previously-unbound devices were erroneously bound.
+    if not os.path.exists("/sys/bus/pci/devices/%s/driver_override" % d):
+        for d in devices.keys():
+            # skip devices that were already bound or that we know should be bound
+            if "Driver_str" in devices[d] or d in dev_list:
+                continue
 
-        # update information about this device
-        devices[d] = dict(devices[d].items() +
-                          get_pci_device_details(d, True).items())
+            # update information about this device
+            devices[d] = dict(devices[d].items() +
+                              get_pci_device_details(d, True).items())
 
-        # check if updated information indicates that the device was bound
-        if "Driver_str" in devices[d]:
-            unbind_one(d, force)
+            # check if updated information indicates that the device was bound
+            if "Driver_str" in devices[d]:
+                unbind_one(d, force)
 
 
 def display_devices(title, dev_list, extra_params=None):
@@ -510,13 +552,12 @@ def show_device_status(devices_type, device_name):
                 kernel_drv.append(devices[d])
 
     # print each category separately, so we can clearly see what's used by DPDK
-    display_devices("%s devices using DPDK-compatible driver" % device_name,
-                    dpdk_drv, "drv=%(Driver_str)s unused=%(Module_str)s")
+    display_devices("%s devices using DPDK-compatible driver" % device_name, dpdk_drv,
+                    "drv=%(Driver_str)s unused=%(Module_str)s")
     display_devices("%s devices using kernel driver" % device_name, kernel_drv,
                     "if=%(Interface)s drv=%(Driver_str)s "
                     "unused=%(Module_str)s %(Active)s")
-    display_devices("Other %s devices" % device_name, no_drv,
-                    "unused=%(Module_str)s")
+    display_devices("Other %s devices" % device_name, no_drv, "unused=%(Module_str)s")
 
 def show_status():
     '''Function called when the script is passed the "--status" option.
