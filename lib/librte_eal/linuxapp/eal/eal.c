@@ -765,8 +765,11 @@ rte_eal_init(int argc, char **argv)
 		return -1;
 	}
 
-	if (!rte_atomic32_test_and_set(&run_once))
+	if (!rte_atomic32_test_and_set(&run_once)) {
+		rte_eal_init_alert("already called initialization.");
+		rte_errno = EALREADY;
 		return -1;
+	}
 
 	logid = strrchr(argv[0], '/');
 	logid = strdup(logid ? logid + 1: argv[0]);
