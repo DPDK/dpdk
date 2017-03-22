@@ -443,6 +443,14 @@ tap_ioctl(struct pmd_internals *pmd, unsigned long request,
 	 * If there is a remote netdevice, apply ioctl on it, then apply it on
 	 * the tap netdevice.
 	 */
+	if (request == SIOCGIFFLAGS && !set) {
+		/*
+		 * Special case for getting flags. If set is given,
+		 * then return the flags from the remote netdevice only.
+		 * Otherwise return the flags from the tap netdevice.
+		 */
+		remote = 0;
+	}
 apply:
 	if (remote)
 		snprintf(ifr->ifr_name, IFNAMSIZ, "%s", pmd->remote_iface);
@@ -457,6 +465,10 @@ apply:
 			ifr->ifr_flags |= req_flags;
 		else
 			ifr->ifr_flags &= ~req_flags;
+		break;
+	case SIOCGIFFLAGS:
+		if (remote && set)
+			remote = 0; /* don't loop */
 		break;
 	case SIOCGIFHWADDR:
 		/* Set remote MAC on the tap netdevice */
@@ -674,9 +686,25 @@ tap_tx_queue_release(void *queue)
 }
 
 static int
-tap_link_update(struct rte_eth_dev *dev __rte_unused,
-		int wait_to_complete __rte_unused)
+tap_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused)
 {
+	struct rte_eth_link *dev_link = &dev->data->dev_link;
+	struct pmd_internals *pmd = dev->data->dev_private;
+	struct ifreq ifr = { .ifr_flags = 0 };
+
+	if (pmd->remote_if_index) {
+		tap_ioctl(pmd, SIOCGIFFLAGS, &ifr, 1);
+		if (!(ifr.ifr_flags & IFF_UP) ||
+		    !(ifr.ifr_flags & IFF_RUNNING)) {
+			dev_link->link_status = ETH_LINK_DOWN;
+			return 0;
+		}
+	}
+	tap_ioctl(pmd, SIOCGIFFLAGS, &ifr, 0);
+	dev_link->link_status =
+		((ifr.ifr_flags & IFF_UP) && (ifr.ifr_flags & IFF_RUNNING) ?
+		 ETH_LINK_UP :
+		 ETH_LINK_DOWN);
 	return 0;
 }
 
