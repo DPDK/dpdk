@@ -208,19 +208,20 @@ def has_driver(dev_id):
     return "Driver_str" in devices[dev_id]
 
 
-def get_pci_device_details(dev_id):
+def get_pci_device_details(dev_id, probe_lspci):
     '''This function gets additional details for a PCI device'''
     device = {}
 
-    extra_info = check_output(["lspci", "-vmmks", dev_id]).splitlines()
+    if probe_lspci:
+        extra_info = check_output(["lspci", "-vmmks", dev_id]).splitlines()
 
-    # parse lspci details
-    for line in extra_info:
-        if len(line) == 0:
-            continue
-        name, value = line.decode().split("\t", 1)
-        name = name.strip(":") + "_str"
-        device[name] = value
+        # parse lspci details
+        for line in extra_info:
+            if len(line) == 0:
+                continue
+            name, value = line.decode().split("\t", 1)
+            name = name.strip(":") + "_str"
+            device[name] = value
     # check for a unix interface name
     device["Interface"] = ""
     for base, dirs, _ in os.walk("/sys/bus/pci/devices/%s/" % dev_id):
@@ -246,20 +247,30 @@ def get_device_details(devices_type):
     global dpdk_drivers
 
     # first loop through and read details for all devices
-    # request machine readable format, with numeric IDs
+    # request machine readable format, with numeric IDs and String
     dev = {}
-    dev_lines = check_output(["lspci", "-Dvmmn"]).splitlines()
+    dev_lines = check_output(["lspci", "-Dvmmnnk"]).splitlines()
     for dev_line in dev_lines:
         if len(dev_line) == 0:
             if dev["Class"][0:2] == devices_type:
                 # convert device and vendor ids to numbers, then add to global
                 dev["Vendor"] = int(dev["Vendor"], 16)
                 dev["Device"] = int(dev["Device"], 16)
+                if "Driver" in dev.keys():
+                    dev["Driver_str"] = dev.pop("Driver")
                 # use dict to make copy of dev
                 devices[dev["Slot"]] = dict(dev)
+            # Clear previous device's data
+            dev = {}
         else:
             name, value = dev_line.decode().split("\t", 1)
-            dev[name.rstrip(":")] = value
+            value_list = value.rsplit(' ', 1)
+            if len(value_list) > 1:
+                # String stored in <name>_str
+                dev[name.rstrip(":") + '_str'] = value_list[0]
+            # Numeric IDs
+            dev[name.rstrip(":")] = value_list[len(value_list) - 1] \
+                .rstrip("]").lstrip("[")
 
     if devices_type == NETWORK_BASE_CLASS:
         # check what is the interface if any for an ssh connection if
@@ -281,7 +292,8 @@ def get_device_details(devices_type):
 
         # get additional info and add it to existing data
         devices[d] = devices[d].copy()
-        devices[d].update(get_pci_device_details(d).items())
+        # No need to probe lspci
+        devices[d].update(get_pci_device_details(d, False).items())
 
         if devices_type == NETWORK_BASE_CLASS:
             for _if in ssh_if:
@@ -412,7 +424,7 @@ def bind_one(dev_id, driver, force):
         # for some reason, closing dev_id after adding a new PCI ID to new_id
         # results in IOError. however, if the device was successfully bound,
         # we don't care for any errors and can safely ignore IOError
-        tmp = get_pci_device_details(dev_id)
+        tmp = get_pci_device_details(dev_id, True)
         if "Driver_str" in tmp and tmp["Driver_str"] == driver:
             return
         print("Error: bind failed for %s - Cannot bind to driver %s"
@@ -450,7 +462,7 @@ def bind_all(dev_list, driver, force=False):
 
         # update information about this device
         devices[d] = dict(devices[d].items() +
-                          get_pci_device_details(d).items())
+                          get_pci_device_details(d, True).items())
 
         # check if updated information indicates that the device was bound
         if "Driver_str" in devices[d]:
@@ -470,8 +482,9 @@ def display_devices(title, dev_list, extra_params=None):
     else:
         for dev in dev_list:
             if extra_params is not None:
-                strings.append("%s '%s' %s" % (dev["Slot"],
+                strings.append("%s '%s %s' %s" % (dev["Slot"],
                                                dev["Device_str"],
+                                               dev["Device"],
                                                extra_params % dev))
             else:
                 strings.append("%s '%s'" % (dev["Slot"], dev["Device_str"]))
@@ -497,12 +510,13 @@ def show_device_status(devices_type, device_name):
                 kernel_drv.append(devices[d])
 
     # print each category separately, so we can clearly see what's used by DPDK
-    display_devices("%s devices using DPDK-compatible driver" % device_name, dpdk_drv,
-                    "drv=%(Driver_str)s unused=%(Module_str)s")
+    display_devices("%s devices using DPDK-compatible driver" % device_name,
+                    dpdk_drv, "drv=%(Driver_str)s unused=%(Module_str)s")
     display_devices("%s devices using kernel driver" % device_name, kernel_drv,
                     "if=%(Interface)s drv=%(Driver_str)s "
                     "unused=%(Module_str)s %(Active)s")
-    display_devices("Other %s devices" % device_name, no_drv, "unused=%(Module_str)s")
+    display_devices("Other %s devices" % device_name, no_drv,
+                    "unused=%(Module_str)s")
 
 def show_status():
     '''Function called when the script is passed the "--status" option.
