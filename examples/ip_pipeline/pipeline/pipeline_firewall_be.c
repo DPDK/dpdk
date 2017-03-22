@@ -161,7 +161,7 @@ static struct rte_acl_field_def field_format_ipv4[] = {
 		.type = RTE_ACL_FIELD_TYPE_RANGE,
 		.size = sizeof(uint16_t),
 		.field_index = 4,
-		.input_index = 4,
+		.input_index = 3,
 		.offset = sizeof(struct ether_hdr) +
 			sizeof(struct ipv4_hdr) +
 			offsetof(struct tcp_hdr, dst_port),
@@ -221,7 +221,7 @@ static struct rte_acl_field_def field_format_vlan_ipv4[] = {
 		.type = RTE_ACL_FIELD_TYPE_RANGE,
 		.size = sizeof(uint16_t),
 		.field_index = 4,
-		.input_index = 4,
+		.input_index = 3,
 		.offset = sizeof(struct ether_hdr) +
 			SIZEOF_VLAN_HDR +
 			sizeof(struct ipv4_hdr) +
@@ -282,7 +282,7 @@ static struct rte_acl_field_def field_format_qinq_ipv4[] = {
 		.type = RTE_ACL_FIELD_TYPE_RANGE,
 		.size = sizeof(uint16_t),
 		.field_index = 4,
-		.input_index = 4,
+		.input_index = 3,
 		.offset = sizeof(struct ether_hdr) +
 			SIZEOF_QINQ_HEADER +
 			sizeof(struct ipv4_hdr) +
