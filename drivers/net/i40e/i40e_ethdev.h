@@ -364,6 +364,7 @@ struct i40e_vsi {
 	uint16_t nb_msix;   /* The max number of msix vector */
 	uint8_t enabled_tc; /* The traffic class enabled */
 	uint8_t vlan_anti_spoof_on; /* The VLAN anti-spoofing enabled */
+	uint8_t vlan_filter_on; /* The VLAN filter enabled */
 	struct i40e_bw_info bw_info; /* VSI bandwidth information */
 };
 
