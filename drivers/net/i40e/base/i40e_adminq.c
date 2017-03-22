@@ -944,8 +944,8 @@ enum i40e_status_code i40e_asq_send_command(struct i40e_hw *hw,
 			 */
 			if (i40e_asq_done(hw))
 				break;
-			i40e_msec_delay(1);
-			total_delay++;
+			i40e_usec_delay(50);
+			total_delay += 50;
 		} while (total_delay < hw->aq.asq_cmd_timeout);
 	}
 
