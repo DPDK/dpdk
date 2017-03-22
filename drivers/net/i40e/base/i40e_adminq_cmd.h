@@ -770,6 +770,7 @@ struct i40e_aqc_set_switch_config {
 /* flags used for both fields below */
 #define I40E_AQ_SET_SWITCH_CFG_PROMISC		0x0001
 #define I40E_AQ_SET_SWITCH_CFG_L2_FILTER	0x0002
+#define I40E_AQ_SET_SWITCH_CFG_HW_ATR_EVICT	0x0004
 	__le16	valid_flags;
 	u8	reserved[12];
 };
