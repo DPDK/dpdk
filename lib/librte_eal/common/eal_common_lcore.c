@@ -83,16 +83,17 @@ rte_eal_cpu_init(void)
 		config->lcore_role[lcore_id] = ROLE_RTE;
 		lcore_config[lcore_id].core_id = eal_cpu_core_id(lcore_id);
 		lcore_config[lcore_id].socket_id = eal_cpu_socket_id(lcore_id);
-		if (lcore_config[lcore_id].socket_id >= RTE_MAX_NUMA_NODES)
+		if (lcore_config[lcore_id].socket_id >= RTE_MAX_NUMA_NODES) {
 #ifdef RTE_EAL_ALLOW_INV_SOCKET_ID
 			lcore_config[lcore_id].socket_id = 0;
 #else
-			rte_panic("Socket ID (%u) is greater than "
+			RTE_LOG(ERR, EAL, "Socket ID (%u) is greater than "
 				"RTE_MAX_NUMA_NODES (%d)\n",
 				lcore_config[lcore_id].socket_id,
 				RTE_MAX_NUMA_NODES);
+			return -1;
 #endif
-
+		}
 		RTE_LOG(DEBUG, EAL, "Detected lcore %u as "
 				"core %u on socket %u\n",
 				lcore_id, lcore_config[lcore_id].core_id,

@@ -56,6 +56,7 @@
 #include <rte_launch.h>
 #include <rte_eal.h>
 #include <rte_eal_memconfig.h>
+#include <rte_errno.h>
 #include <rte_per_lcore.h>
 #include <rte_lcore.h>
 #include <rte_log.h>
@@ -487,6 +488,12 @@ rte_eal_iopl_init(void)
 	return 0;
 }
 
+static void rte_eal_init_alert(const char *msg)
+{
+	fprintf(stderr, "EAL: FATAL: %s\n", msg);
+	RTE_LOG(ERR, EAL, "%s\n", msg);
+}
+
 /* Launch threads, called at application init(). */
 int
 rte_eal_init(int argc, char **argv)
@@ -510,8 +517,11 @@ rte_eal_init(int argc, char **argv)
 	/* set log level as early as possible */
 	rte_set_log_level(internal_config.log_level);
 
-	if (rte_eal_cpu_init() < 0)
-		rte_panic("Cannot detect lcores\n");
+	if (rte_eal_cpu_init() < 0) {
+		rte_eal_init_alert("Cannot detect lcores.");
+		rte_errno = ENOTSUP;
+		return -1;
+	}
 
 	fctret = eal_parse_args(argc, argv);
 	if (fctret < 0)
