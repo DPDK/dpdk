@@ -80,6 +80,7 @@ int
 rte_eal_dev_init(void)
 {
 	struct rte_devargs *devargs;
+	int ret = 0;
 
 	/*
 	 * Note that the dev_driver_list is populated here
@@ -97,11 +98,11 @@ rte_eal_dev_init(void)
 					devargs->args)) {
 			RTE_LOG(ERR, EAL, "failed to initialize %s device\n",
 					devargs->virt.drv_name);
-			return -1;
+			ret = -1;
 		}
 	}
 
-	return 0;
+	return ret;
 }
 
 int rte_eal_dev_attach(const char *name, const char *devargs)
