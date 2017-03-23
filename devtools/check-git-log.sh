@@ -47,7 +47,7 @@ if [ "$1" = '-h' -o "$1" = '--help' ] ; then
 	exit
 fi
 
-selfdir=$(dirname $(readlink -e $0))
+selfdir=$(dirname $(readlink -f $0))
 range=${1:-origin/master..}
 # convert -N to HEAD~N.. in order to comply with git-log-fixes.sh getopts
 if printf -- $range | grep -q '^-[0-9]\+' ; then
