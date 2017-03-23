@@ -48,6 +48,8 @@ CFLAGS += $(WERROR_FLAGS)
 #
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_TAP) += rte_eth_tap.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_TAP) += tap_flow.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_TAP) += tap_netlink.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_TAP) += tap_tcmsgs.c
 
 # this lib depends upon:
 DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_TAP) += lib/librte_eal
