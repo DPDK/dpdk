@@ -69,6 +69,9 @@ struct pmd_internals {
 	struct ether_addr eth_addr;       /* Mac address of the device port */
 	int if_index;                     /* IF_INDEX for the port */
 	int ioctl_sock;                   /* socket for ioctl calls */
+	int nlsk_fd;                      /* Netlink socket fd */
+	int flower_support;               /* 1 if kernel supports, else 0 */
+	int flower_vlan_support;          /* 1 if kernel supports, else 0 */
 	LIST_HEAD(tap_flows, rte_flow) flows;        /* rte_flow rules */
 	struct rx_queue rxq[RTE_PMD_TAP_MAX_QUEUES]; /* List of RX queues */
 	struct tx_queue txq[RTE_PMD_TAP_MAX_QUEUES]; /* List of TX queues */

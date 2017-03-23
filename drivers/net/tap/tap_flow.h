@@ -37,6 +37,18 @@
 #include <rte_flow.h>
 #include <rte_flow_driver.h>
 
+/**
+ * In TC, priority 0 means we require the kernel to allocate one for us.
+ * In rte_flow, however, we want the priority 0 to be the most important one.
+ * Use an offset to have the most important priority being 1 in TC.
+ */
+#define PRIORITY_OFFSET 1
+#define PRIORITY_MASK (0xfff)
+#define MAX_PRIORITY (PRIORITY_MASK - PRIORITY_OFFSET)
+#define GROUP_MASK (0xf)
+#define GROUP_SHIFT 12
+#define MAX_GROUP GROUP_MASK
+
 int tap_dev_filter_ctrl(struct rte_eth_dev *dev,
 			enum rte_filter_type filter_type,
 			enum rte_filter_op filter_op,

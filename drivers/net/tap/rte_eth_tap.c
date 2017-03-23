@@ -44,19 +44,22 @@
 #include <sys/stat.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
+#include <sys/utsname.h>
 #include <sys/mman.h>
 #include <errno.h>
 #include <signal.h>
 #include <stdint.h>
 #include <unistd.h>
 #include <arpa/inet.h>
-#include <linux/if.h>
+#include <net/if.h>
 #include <linux/if_tun.h>
 #include <linux/if_ether.h>
+#include <linux/version.h>
 #include <fcntl.h>
 
 #include <rte_eth_tap.h>
 #include <tap_flow.h>
+#include <tap_tcmsgs.h>
 
 /* Linux based path to the TUN device */
 #define TUN_TAP_DEV_PATH        "/dev/net/tun"
@@ -70,6 +73,9 @@
 #else
 #define RTE_PMD_TAP_MAX_QUEUES	1
 #endif
+
+#define FLOWER_KERNEL_VERSION KERNEL_VERSION(4, 2, 0)
+#define FLOWER_VLAN_KERNEL_VERSION KERNEL_VERSION(4, 9, 0)
 
 static struct rte_vdev_driver pmd_tap_drv;
 
@@ -209,6 +215,28 @@ tun_alloc(struct pmd_internals *pmd, uint16_t qid)
 			goto error;
 		rte_memcpy(&pmd->eth_addr, ifr.ifr_hwaddr.sa_data,
 			   ETHER_ADDR_LEN);
+
+		pmd->if_index = if_nametoindex(pmd->name);
+		if (!pmd->if_index) {
+			RTE_LOG(ERR, PMD,
+				"Could not find ifindex for %s: rte_flow won't be usable.\n",
+				pmd->name);
+			return fd;
+		}
+		if (!pmd->flower_support)
+			return fd;
+		if (qdisc_create_multiq(pmd->nlsk_fd, pmd->if_index) < 0) {
+			RTE_LOG(ERR, PMD,
+				"Could not create multiq qdisc for %s: rte_flow won't be usable.\n",
+				pmd->name);
+			return fd;
+		}
+		if (qdisc_create_ingress(pmd->nlsk_fd, pmd->if_index) < 0) {
+			RTE_LOG(ERR, PMD,
+				"Could not create multiq qdisc for %s: rte_flow won't be usable.\n",
+				pmd->name);
+			return fd;
+		}
 	}
 
 	return fd;
@@ -812,6 +840,24 @@ static const struct eth_dev_ops ops = {
 };
 
 static int
+tap_kernel_support(struct pmd_internals *pmd)
+{
+	struct utsname utsname;
+	int ver[3];
+
+	if (uname(&utsname) == -1 ||
+	    sscanf(utsname.release, "%d.%d.%d",
+		   &ver[0], &ver[1], &ver[2]) != 3)
+		return 0;
+	if (KERNEL_VERSION(ver[0], ver[1], ver[2]) >= FLOWER_KERNEL_VERSION)
+		pmd->flower_support = 1;
+	if (KERNEL_VERSION(ver[0], ver[1], ver[2]) >=
+	    FLOWER_VLAN_KERNEL_VERSION)
+		pmd->flower_vlan_support = 1;
+	return 1;
+}
+
+static int
 eth_dev_tap_create(const char *name, char *tap_name)
 {
 	int numa_node = rte_socket_id();
@@ -880,7 +926,15 @@ eth_dev_tap_create(const char *name, char *tap_name)
 		pmd->txq[i].fd = -1;
 	}
 
+	tap_kernel_support(pmd);
+	if (!pmd->flower_support)
+		return 0;
 	LIST_INIT(&pmd->flows);
+	/*
+	 * If no netlink socket can be created, then it will fail when
+	 * creating/destroying flow rules.
+	 */
+	pmd->nlsk_fd = nl_init();
 
 	return 0;
 
@@ -995,7 +1049,10 @@ rte_pmd_tap_remove(const char *name)
 		return 0;
 
 	internals = eth_dev->data->dev_private;
-	tap_flow_flush(eth_dev, NULL);
+	if (internals->flower_support && internals->nlsk_fd) {
+		tap_flow_flush(eth_dev, NULL);
+		nl_final(internals->nlsk_fd);
+	}
 	for (i = 0; i < internals->nb_queues; i++)
 		if (internals->rxq[i].fd != -1)
 			close(internals->rxq[i].fd);

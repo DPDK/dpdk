@@ -82,6 +82,51 @@ can utilize that stack to handle the network protocols. Plus you would be able
 to address the interface using an IP address assigned to the internal
 interface.
 
+Flow API support
+----------------
+
+The tap PMD supports major flow API pattern items and actions, when running on
+linux kernels above 4.2 ("Flower" classifier required). Supported items:
+
+- eth: src and dst (with variable masks), and eth_type (0xffff mask).
+- vlan: vid, pcp, tpid, but not eid. (requires kernel 4.9)
+- ipv4/6: src and dst (with variable masks), and ip_proto (0xffff mask).
+- udp/tcp: src and dst port (0xffff) mask.
+
+Supported actions:
+
+- DROP
+- QUEUE
+- PASSTHRU
+
+It is generally not possible to provide a "last" item. However, if the "last"
+item, once masked, is identical to the masked spec, then it is supported.
+
+Only IPv4/6 and MAC addresses can use a variable mask. All other items need a
+full mask (exact match).
+
+As rules are translated to TC, it is possible to show them with something like::
+
+   tc -s filter show dev tap1 parent 1:
+
+Examples of testpmd flow rules
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Drop packets for destination IP 192.168.0.1::
+
+   testpmd> flow create 0 priority 1 ingress pattern eth / ipv4 dst is 1.1.1.1 \
+            / end actions drop / end
+
+Ensure packets from a given MAC address are received on a queue 2::
+
+   testpmd> flow create 0 priority 2 ingress pattern eth src is 06:05:04:03:02:01 \
+            / end actions queue index 2 / end
+
+Drop UDP packets in vlan 3::
+
+   testpmd> flow create 0 priority 3 ingress pattern eth / vlan vid is 3 / \
+            ipv4 proto is 17 / end actions drop / end
+
 Example
 -------
 

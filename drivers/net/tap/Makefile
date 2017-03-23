@@ -41,6 +41,7 @@ LIBABIVER := 1
 
 CFLAGS += -O3
 CFLAGS += -I$(SRCDIR)
+CFLAGS += -I.
 CFLAGS += $(WERROR_FLAGS)
 
 #
@@ -58,5 +59,44 @@ DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_TAP) += lib/librte_mempool
 DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_TAP) += lib/librte_ether
 DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_TAP) += lib/librte_kvargs
 DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_TAP) += lib/librte_net
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_TAP) += lib/librte_hash
 
 include $(RTE_SDK)/mk/rte.lib.mk
+
+# Generate and clean-up tap_autoconf.h.
+
+export CC CFLAGS CPPFLAGS EXTRA_CFLAGS EXTRA_CPPFLAGS
+export AUTO_CONFIG_CFLAGS = -Wno-error
+
+ifndef V
+AUTOCONF_OUTPUT := >/dev/null
+endif
+
+tap_autoconf.h.new: FORCE
+
+tap_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
+	$Q $(RM) -f -- '$@'
+	$Q sh -- '$<' '$@' \
+		HAVE_TC_FLOWER \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_UNSPEC \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
+		HAVE_TC_VLAN_ID \
+		linux/pkt_cls.h \
+		enum TCA_FLOWER_KEY_VLAN_PRIO \
+		$(AUTOCONF_OUTPUT)
+
+# Create tap_autoconf.h or update it in case it differs from the new one.
+
+tap_autoconf.h: tap_autoconf.h.new
+	$Q [ -f '$@' ] && \
+		cmp '$<' '$@' $(AUTOCONF_OUTPUT) || \
+		mv '$<' '$@'
+
+$(SRCS-$(CONFIG_RTE_LIBRTE_PMD_TAP):.c=.o): tap_autoconf.h
+
+clean_tap: FORCE
+	$Q rm -f -- tap_autoconf.h tap_autoconf.h.new
+
+clean: clean_tap
