@@ -53,12 +53,14 @@ eal_cpu_core_id(__rte_unused unsigned lcore_id)
 static int
 eal_get_ncpus(void)
 {
+	static int ncpu = -1;
 	int mib[2] = {CTL_HW, HW_NCPU};
-	int ncpu;
 	size_t len = sizeof(ncpu);
 
-	sysctl(mib, 2, &ncpu, &len, NULL, 0);
-	RTE_LOG(INFO, EAL, "Sysctl reports %d cpus\n", ncpu);
+	if (ncpu < 0) {
+		sysctl(mib, 2, &ncpu, &len, NULL, 0);
+		RTE_LOG(INFO, EAL, "Sysctl reports %d cpus\n", ncpu);
+	}
 	return ncpu;
 }
 
