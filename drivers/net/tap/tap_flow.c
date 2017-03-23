@@ -82,6 +82,7 @@ enum {
 
 struct rte_flow {
 	LIST_ENTRY(rte_flow) next; /* Pointer to the next rte_flow structure */
+	struct rte_flow *remote_flow; /* associated remote flow */
 	struct nlmsg msg;
 };
 
@@ -90,6 +91,12 @@ struct convert_data {
 	uint16_t ip_proto;
 	uint8_t vlan;
 	struct rte_flow *flow;
+};
+
+struct remote_rule {
+	struct rte_flow_attr attr;
+	struct rte_flow_item items[2];
+	int mirred;
 };
 
 static int tap_flow_create_eth(const struct rte_flow_item *item, void *data);
@@ -246,6 +253,114 @@ static const struct tap_flow_items tap_flow_items[] = {
 		.mask_sz = sizeof(struct rte_flow_item_tcp),
 		.default_mask = &rte_flow_item_tcp_mask,
 		.convert = tap_flow_create_tcp,
+	},
+};
+
+static struct remote_rule implicit_rte_flows[TAP_REMOTE_MAX_IDX] = {
+	[TAP_REMOTE_LOCAL_MAC] = {
+		.attr = {
+			.group = MAX_GROUP,
+			.priority = PRIORITY_MASK - TAP_REMOTE_LOCAL_MAC,
+			.ingress = 1,
+		},
+		.items[0] = {
+			.type = RTE_FLOW_ITEM_TYPE_ETH,
+			.mask =  &(const struct rte_flow_item_eth){
+				.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+			},
+		},
+		.items[1] = {
+			.type = RTE_FLOW_ITEM_TYPE_END,
+		},
+		.mirred = TCA_EGRESS_REDIR,
+	},
+	[TAP_REMOTE_BROADCAST] = {
+		.attr = {
+			.group = MAX_GROUP,
+			.priority = PRIORITY_MASK - TAP_REMOTE_BROADCAST,
+			.ingress = 1,
+		},
+		.items[0] = {
+			.type = RTE_FLOW_ITEM_TYPE_ETH,
+			.mask =  &(const struct rte_flow_item_eth){
+				.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+			},
+			.spec = &(const struct rte_flow_item_eth){
+				.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
+			},
+		},
+		.items[1] = {
+			.type = RTE_FLOW_ITEM_TYPE_END,
+		},
+		.mirred = TCA_EGRESS_MIRROR,
+	},
+	[TAP_REMOTE_BROADCASTV6] = {
+		.attr = {
+			.group = MAX_GROUP,
+			.priority = PRIORITY_MASK - TAP_REMOTE_BROADCASTV6,
+			.ingress = 1,
+		},
+		.items[0] = {
+			.type = RTE_FLOW_ITEM_TYPE_ETH,
+			.mask =  &(const struct rte_flow_item_eth){
+				.dst.addr_bytes = "\x33\x33\x00\x00\x00\x00",
+			},
+			.spec = &(const struct rte_flow_item_eth){
+				.dst.addr_bytes = "\x33\x33\x00\x00\x00\x00",
+			},
+		},
+		.items[1] = {
+			.type = RTE_FLOW_ITEM_TYPE_END,
+		},
+		.mirred = TCA_EGRESS_MIRROR,
+	},
+	[TAP_REMOTE_PROMISC] = {
+		.attr = {
+			.group = MAX_GROUP,
+			.priority = PRIORITY_MASK - TAP_REMOTE_PROMISC,
+			.ingress = 1,
+		},
+		.items[0] = {
+			.type = RTE_FLOW_ITEM_TYPE_VOID,
+		},
+		.items[1] = {
+			.type = RTE_FLOW_ITEM_TYPE_END,
+		},
+		.mirred = TCA_EGRESS_MIRROR,
+	},
+	[TAP_REMOTE_ALLMULTI] = {
+		.attr = {
+			.group = MAX_GROUP,
+			.priority = PRIORITY_MASK - TAP_REMOTE_ALLMULTI,
+			.ingress = 1,
+		},
+		.items[0] = {
+			.type = RTE_FLOW_ITEM_TYPE_ETH,
+			.mask =  &(const struct rte_flow_item_eth){
+				.dst.addr_bytes = "\x01\x00\x00\x00\x00\x00",
+			},
+			.spec = &(const struct rte_flow_item_eth){
+				.dst.addr_bytes = "\x01\x00\x00\x00\x00\x00",
+			},
+		},
+		.items[1] = {
+			.type = RTE_FLOW_ITEM_TYPE_END,
+		},
+		.mirred = TCA_EGRESS_MIRROR,
+	},
+	[TAP_REMOTE_TX] = {
+		.attr = {
+			.group = 0,
+			.priority = TAP_REMOTE_TX,
+			.egress = 1,
+		},
+		.items[0] = {
+			.type = RTE_FLOW_ITEM_TYPE_VOID,
+		},
+		.items[1] = {
+			.type = RTE_FLOW_ITEM_TYPE_END,
+		},
+		.mirred = TCA_EGRESS_MIRROR,
 	},
 };
 
@@ -673,6 +788,47 @@ add_action_gact(struct rte_flow *flow, int action)
 }
 
 /**
+ * Transform a MIRRED action item in the provided flow for TC.
+ *
+ * @param[in, out] flow
+ *   Flow to be filled.
+ * @param[in] ifindex
+ *   Netdevice ifindex, where to mirror/redirect packet to.
+ * @param[in] action_type
+ *   Either TCA_EGRESS_REDIR for redirection or TCA_EGRESS_MIRROR for mirroring.
+ *
+ * @return
+ *   0 if checks are alright, -1 otherwise.
+ */
+static int
+add_action_mirred(struct rte_flow *flow, uint16_t ifindex, uint16_t action_type)
+{
+	struct nlmsg *msg = &flow->msg;
+	size_t act_index = 1;
+	struct tc_mirred p = {
+		.eaction = action_type,
+		.ifindex = ifindex,
+	};
+
+	if (nlattr_nested_start(msg, TCA_FLOWER_ACT) < 0)
+		return -1;
+	if (nlattr_nested_start(msg, act_index++) < 0)
+		return -1;
+	nlattr_add(&msg->nh, TCA_ACT_KIND, sizeof("mirred"), "mirred");
+	if (nlattr_nested_start(msg, TCA_ACT_OPTIONS) < 0)
+		return -1;
+	if (action_type == TCA_EGRESS_MIRROR)
+		p.action = TC_ACT_PIPE;
+	else /* REDIRECT */
+		p.action = TC_ACT_STOLEN;
+	nlattr_add(&msg->nh, TCA_MIRRED_PARMS, sizeof(p), &p);
+	nlattr_nested_finish(msg); /* nested TCA_ACT_OPTIONS */
+	nlattr_nested_finish(msg); /* nested act_index */
+	nlattr_nested_finish(msg); /* nested TCA_FLOWER_ACT */
+	return 0;
+}
+
+/**
  * Transform a QUEUE action item in the provided flow for TC.
  *
  * @param[in, out] flow
@@ -723,6 +879,15 @@ add_action_skbedit(struct rte_flow *flow, uint16_t queue)
  *   Perform verbose error reporting if not NULL.
  * @param[in, out] flow
  *   Flow structure to update.
+ * @param[in] mirred
+ *   If set to TCA_EGRESS_REDIR, provided actions will be replaced with a
+ *   redirection to the tap netdevice, and the TC rule will be configured
+ *   on the remote netdevice in pmd.
+ *   If set to TCA_EGRESS_MIRROR, provided actions will be replaced with a
+ *   mirroring to the tap netdevice, and the TC rule will be configured
+ *   on the remote netdevice in pmd. Matching packets will thus be duplicated.
+ *   If set to 0, the standard behavior is to be used: set correct actions for
+ *   the TC rule, and apply it on the tap netdevice.
  *
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
@@ -733,7 +898,8 @@ priv_flow_process(struct pmd_internals *pmd,
 		  const struct rte_flow_item items[],
 		  const struct rte_flow_action actions[],
 		  struct rte_flow_error *error,
-		  struct rte_flow *flow)
+		  struct rte_flow *flow,
+		  int mirred)
 {
 	const struct tap_flow_items *cur_item = tap_flow_items;
 	struct convert_data data = {
@@ -760,15 +926,21 @@ priv_flow_process(struct pmd_internals *pmd,
 		flow->msg.t.tcm_info = TC_H_MAKE(prio << 16,
 						 flow->msg.t.tcm_info);
 	}
-	if (!attr->ingress) {
-		rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ATTR,
-				   NULL, "direction should be ingress");
-		return -rte_errno;
-	}
-	/* rte_flow ingress is actually egress as seen in the kernel */
-	if (attr->ingress && flow)
-		flow->msg.t.tcm_parent = TC_H_MAKE(MULTIQ_MAJOR_HANDLE, 0);
 	if (flow) {
+		if (mirred) {
+			/*
+			 * If attr->ingress, the rule applies on remote ingress
+			 * to match incoming packets
+			 * If attr->egress, the rule applies on tap ingress (as
+			 * seen from the kernel) to deal with packets going out
+			 * from the DPDK app.
+			 */
+			flow->msg.t.tcm_parent = TC_H_MAKE(TC_H_INGRESS, 0);
+		} else {
+			/* Standard rule on tap egress (kernel standpoint). */
+			flow->msg.t.tcm_parent =
+				TC_H_MAKE(MULTIQ_MAJOR_HANDLE, 0);
+		}
 		/* use flower filter type */
 		nlattr_add(&flow->msg.nh, TCA_KIND, sizeof("flower"), "flower");
 		if (nlattr_nested_start(&flow->msg, TCA_OPTIONS) < 0)
@@ -821,6 +993,22 @@ priv_flow_process(struct pmd_internals *pmd,
 				     data.eth_type);
 		}
 	}
+	if (mirred && flow) {
+		uint16_t if_index = pmd->if_index;
+
+		/*
+		 * If attr->egress && mirred, then this is a special
+		 * case where the rule must be applied on the tap, to
+		 * redirect packets coming from the DPDK App, out
+		 * through the remote netdevice.
+		 */
+		if (attr->egress)
+			if_index = pmd->remote_if_index;
+		if (add_action_mirred(flow, if_index, mirred) < 0)
+			goto exit_action_not_supported;
+		else
+			goto end;
+	}
 	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; ++actions) {
 		int err = 0;
 
@@ -855,6 +1043,7 @@ priv_flow_process(struct pmd_internals *pmd,
 		if (err)
 			goto exit_action_not_supported;
 	}
+end:
 	if (flow)
 		nlattr_nested_finish(&flow->msg); /* nested TCA_OPTIONS */
 	return 0;
@@ -885,7 +1074,7 @@ tap_flow_validate(struct rte_eth_dev *dev,
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
 
-	return priv_flow_process(pmd, attr, items, actions, error, NULL);
+	return priv_flow_process(pmd, attr, items, actions, error, NULL, 0);
 }
 
 /**
@@ -933,6 +1122,7 @@ tap_flow_create(struct rte_eth_dev *dev,
 		struct rte_flow_error *error)
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
+	struct rte_flow *remote_flow = NULL;
 	struct rte_flow *flow = NULL;
 	struct nlmsg *msg = NULL;
 	int err;
@@ -941,6 +1131,17 @@ tap_flow_create(struct rte_eth_dev *dev,
 		rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_HANDLE,
 				   NULL,
 				   "can't create rule, ifindex not found");
+		goto fail;
+	}
+	/*
+	 * No rules configured through standard rte_flow should be set on the
+	 * priorities used by implicit rules.
+	 */
+	if ((attr->group == MAX_GROUP) &&
+	    attr->priority > (MAX_PRIORITY - TAP_REMOTE_MAX_IDX)) {
+		rte_flow_error_set(
+			error, ENOTSUP, RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
+			NULL, "priority value too big");
 		goto fail;
 	}
 	flow = rte_malloc(__func__, sizeof(struct rte_flow), 0);
@@ -954,7 +1155,7 @@ tap_flow_create(struct rte_eth_dev *dev,
 		    NLM_F_REQUEST | NLM_F_ACK | NLM_F_EXCL | NLM_F_CREATE);
 	msg->t.tcm_info = TC_H_MAKE(0, htons(ETH_P_ALL));
 	tap_flow_set_handle(flow);
-	if (priv_flow_process(pmd, attr, items, actions, error, flow))
+	if (priv_flow_process(pmd, attr, items, actions, error, flow, 0))
 		goto fail;
 	err = nl_send(pmd->nlsk_fd, &msg->nh);
 	if (err < 0) {
@@ -969,11 +1170,119 @@ tap_flow_create(struct rte_eth_dev *dev,
 		goto fail;
 	}
 	LIST_INSERT_HEAD(&pmd->flows, flow, next);
+	/**
+	 * If a remote device is configured, a TC rule with identical items for
+	 * matching must be set on that device, with a single action: redirect
+	 * to the local pmd->if_index.
+	 */
+	if (pmd->remote_if_index) {
+		remote_flow = rte_malloc(__func__, sizeof(struct rte_flow), 0);
+		if (!remote_flow) {
+			rte_flow_error_set(
+				error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				"cannot allocate memory for rte_flow");
+			goto fail;
+		}
+		msg = &remote_flow->msg;
+		/* set the rule if_index for the remote netdevice */
+		tc_init_msg(
+			msg, pmd->remote_if_index, RTM_NEWTFILTER,
+			NLM_F_REQUEST | NLM_F_ACK | NLM_F_EXCL | NLM_F_CREATE);
+		msg->t.tcm_info = TC_H_MAKE(0, htons(ETH_P_ALL));
+		tap_flow_set_handle(remote_flow);
+		if (priv_flow_process(pmd, attr, items, NULL,
+				      error, remote_flow, TCA_EGRESS_REDIR)) {
+			rte_flow_error_set(
+				error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
+				NULL, "rte flow rule validation failed");
+			goto fail;
+		}
+		err = nl_send(pmd->nlsk_fd, &msg->nh);
+		if (err < 0) {
+			rte_flow_error_set(
+				error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
+				NULL, "Failure sending nl request");
+			goto fail;
+		}
+		err = nl_recv_ack(pmd->nlsk_fd);
+		if (err < 0) {
+			rte_flow_error_set(
+				error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
+				NULL, "overlapping rules");
+			goto fail;
+		}
+		flow->remote_flow = remote_flow;
+	}
 	return flow;
 fail:
+	if (remote_flow)
+		rte_free(remote_flow);
 	if (flow)
 		rte_free(flow);
 	return NULL;
+}
+
+/**
+ * Destroy a flow using pointer to pmd_internal.
+ *
+ * @param[in, out] pmd
+ *   Pointer to private structure.
+ * @param[in] flow
+ *   Pointer to the flow to destroy.
+ * @param[in, out] error
+ *   Pointer to the flow error handler
+ *
+ * @return 0 if the flow could be destroyed, -1 otherwise.
+ */
+static int
+tap_flow_destroy_pmd(struct pmd_internals *pmd,
+		     struct rte_flow *flow,
+		     struct rte_flow_error *error)
+{
+	struct rte_flow *remote_flow = flow->remote_flow;
+	int ret = 0;
+
+	LIST_REMOVE(flow, next);
+	flow->msg.nh.nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
+	flow->msg.nh.nlmsg_type = RTM_DELTFILTER;
+
+	ret = nl_send(pmd->nlsk_fd, &flow->msg.nh);
+	if (ret < 0) {
+		rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_HANDLE,
+				   NULL, "couldn't send request to kernel");
+		goto end;
+	}
+	ret = nl_recv_ack(pmd->nlsk_fd);
+	if (ret < 0) {
+		rte_flow_error_set(
+			error, ENOTSUP, RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+			"couldn't receive kernel ack to our request");
+		goto end;
+	}
+	if (remote_flow) {
+		remote_flow->msg.nh.nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
+		remote_flow->msg.nh.nlmsg_type = RTM_DELTFILTER;
+
+		ret = nl_send(pmd->nlsk_fd, &remote_flow->msg.nh);
+		if (ret < 0) {
+			rte_flow_error_set(
+				error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
+				NULL, "Failure sending nl request");
+			goto end;
+		}
+		ret = nl_recv_ack(pmd->nlsk_fd);
+		if (ret < 0) {
+			rte_flow_error_set(
+				error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
+				NULL, "Failure trying to receive nl ack");
+			goto end;
+		}
+	}
+end:
+	if (remote_flow)
+		rte_free(remote_flow);
+	rte_free(flow);
+	return ret;
 }
 
 /**
@@ -988,26 +1297,8 @@ tap_flow_destroy(struct rte_eth_dev *dev,
 		 struct rte_flow_error *error)
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
-	int ret = 0;
 
-	LIST_REMOVE(flow, next);
-	flow->msg.nh.nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK;
-	flow->msg.nh.nlmsg_type = RTM_DELTFILTER;
-
-	ret = nl_send(pmd->nlsk_fd, &flow->msg.nh);
-	if (ret < 0) {
-		rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_HANDLE,
-				   NULL, "couldn't send request to kernel");
-		goto end;
-	}
-	ret = nl_recv_ack(pmd->nlsk_fd);
-	if (ret < 0)
-		rte_flow_error_set(
-			error, ENOTSUP, RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
-			"couldn't receive kernel ack to our request");
-end:
-	rte_free(flow);
-	return ret;
+	return tap_flow_destroy_pmd(pmd, flow, error);
 }
 
 /**
@@ -1025,6 +1316,128 @@ tap_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *error)
 	while (!LIST_EMPTY(&pmd->flows)) {
 		flow = LIST_FIRST(&pmd->flows);
 		if (tap_flow_destroy(dev, flow, error) < 0)
+			return -1;
+	}
+	return 0;
+}
+
+/**
+ * Add an implicit flow rule on the remote device to make sure traffic gets to
+ * the tap netdevice from there.
+ *
+ * @param pmd
+ *   Pointer to private structure.
+ * @param[in] idx
+ *   The idx in the implicit_rte_flows array specifying which rule to apply.
+ *
+ * @return -1 if the rule couldn't be applied, 0 otherwise.
+ */
+int tap_flow_implicit_create(struct pmd_internals *pmd,
+			     enum implicit_rule_index idx)
+{
+	struct rte_flow_item *items = implicit_rte_flows[idx].items;
+	struct rte_flow_attr *attr = &implicit_rte_flows[idx].attr;
+	struct rte_flow_item_eth eth_local = { .type = 0 };
+	uint16_t if_index = pmd->remote_if_index;
+	struct rte_flow *remote_flow = NULL;
+	struct nlmsg *msg = NULL;
+	int err = 0;
+	struct rte_flow_item items_local[2] = {
+		[0] = {
+			.type = items[0].type,
+			.spec = &eth_local,
+			.mask = items[0].mask,
+		},
+		[1] = {
+			.type = items[1].type,
+		}
+	};
+
+	remote_flow = rte_malloc(__func__, sizeof(struct rte_flow), 0);
+	if (!remote_flow) {
+		RTE_LOG(ERR, PMD, "Cannot allocate memory for rte_flow");
+		goto fail;
+	}
+	msg = &remote_flow->msg;
+	if (idx == TAP_REMOTE_TX) {
+		if_index = pmd->if_index;
+	} else if (idx == TAP_REMOTE_LOCAL_MAC) {
+		/*
+		 * eth addr couldn't be set in implicit_rte_flows[] as it is not
+		 * known at compile time.
+		 */
+		memcpy(&eth_local.dst, &pmd->eth_addr, sizeof(pmd->eth_addr));
+		items = items_local;
+	}
+	tc_init_msg(msg, if_index, RTM_NEWTFILTER,
+		    NLM_F_REQUEST | NLM_F_ACK | NLM_F_EXCL | NLM_F_CREATE);
+	msg->t.tcm_info = TC_H_MAKE(0, htons(ETH_P_ALL));
+	tap_flow_set_handle(remote_flow);
+	if (priv_flow_process(pmd, attr, items, NULL, NULL,
+			      remote_flow, implicit_rte_flows[idx].mirred)) {
+		RTE_LOG(ERR, PMD, "rte flow rule validation failed\n");
+		goto fail;
+	}
+	err = nl_send(pmd->nlsk_fd, &msg->nh);
+	if (err < 0) {
+		RTE_LOG(ERR, PMD, "Failure sending nl request");
+		goto fail;
+	}
+	err = nl_recv_ack(pmd->nlsk_fd);
+	if (err < 0) {
+		RTE_LOG(ERR, PMD,
+			"Kernel refused TC filter rule creation");
+		goto fail;
+	}
+	LIST_INSERT_HEAD(&pmd->implicit_flows, remote_flow, next);
+	return 0;
+fail:
+	if (remote_flow)
+		rte_free(remote_flow);
+	return -1;
+}
+
+/**
+ * Remove specific implicit flow rule on the remote device.
+ *
+ * @param[in, out] pmd
+ *   Pointer to private structure.
+ * @param[in] idx
+ *   The idx in the implicit_rte_flows array specifying which rule to remove.
+ *
+ * @return -1 if one of the implicit rules couldn't be created, 0 otherwise.
+ */
+int tap_flow_implicit_destroy(struct pmd_internals *pmd,
+			      enum implicit_rule_index idx)
+{
+	struct rte_flow *remote_flow;
+	int cur_prio = -1;
+	int idx_prio = implicit_rte_flows[idx].attr.priority + PRIORITY_OFFSET;
+
+	for (remote_flow = LIST_FIRST(&pmd->implicit_flows);
+	     remote_flow;
+	     remote_flow = LIST_NEXT(remote_flow, next)) {
+		cur_prio = (remote_flow->msg.t.tcm_info >> 16) & PRIORITY_MASK;
+		if (cur_prio != idx_prio)
+			continue;
+		return tap_flow_destroy_pmd(pmd, remote_flow, NULL);
+	}
+	return 0;
+}
+
+/**
+ * Destroy all implicit flows.
+ *
+ * @see rte_flow_flush()
+ */
+int
+tap_flow_implicit_flush(struct pmd_internals *pmd, struct rte_flow_error *error)
+{
+	struct rte_flow *remote_flow;
+
+	while (!LIST_EMPTY(&pmd->implicit_flows)) {
+		remote_flow = LIST_FIRST(&pmd->implicit_flows);
+		if (tap_flow_destroy_pmd(pmd, remote_flow, error) < 0)
 			return -1;
 	}
 	return 0;

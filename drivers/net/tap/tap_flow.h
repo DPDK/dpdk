@@ -36,6 +36,7 @@
 
 #include <rte_flow.h>
 #include <rte_flow_driver.h>
+#include <rte_eth_tap.h>
 
 /**
  * In TC, priority 0 means we require the kernel to allocate one for us.
@@ -49,10 +50,33 @@
 #define GROUP_SHIFT 12
 #define MAX_GROUP GROUP_MASK
 
+/**
+ * These index are actually in reversed order: their priority is processed
+ * by subtracting their value to the lowest priority (PRIORITY_MASK).
+ * Thus the first one will have the lowest priority in the end
+ * (but biggest value).
+ */
+enum implicit_rule_index {
+	TAP_REMOTE_TX,
+	TAP_REMOTE_BROADCASTV6,
+	TAP_REMOTE_BROADCAST,
+	TAP_REMOTE_ALLMULTI,
+	TAP_REMOTE_PROMISC,
+	TAP_REMOTE_LOCAL_MAC,
+	TAP_REMOTE_MAX_IDX,
+};
+
 int tap_dev_filter_ctrl(struct rte_eth_dev *dev,
 			enum rte_filter_type filter_type,
 			enum rte_filter_op filter_op,
 			void *arg);
 int tap_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *error);
+
+int tap_flow_implicit_create(struct pmd_internals *pmd,
+			     enum implicit_rule_index idx);
+int tap_flow_implicit_destroy(struct pmd_internals *pmd,
+			      enum implicit_rule_index idx);
+int tap_flow_implicit_flush(struct pmd_internals *pmd,
+			    struct rte_flow_error *error);
 
 #endif /* _TAP_FLOW_H_ */

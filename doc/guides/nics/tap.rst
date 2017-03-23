@@ -58,6 +58,22 @@ needed, but the interface does not enforce that speed, for example::
 
    --vdev=net_tap0,iface=foo0,speed=25000
 
+It is possible to specify a remote netdevice to capture packets from by adding
+``remote=foo1``, for example::
+
+   --vdev=net_tap,iface=tap0,remote=foo1
+
+If a ``remote`` is set, the tap MAC address will be set to match the remote one
+just after netdevice creation. Using TC rules, traffic from the remote netdevice
+will be redirected to the tap. If the tap is in promiscuous mode, then all
+packets will be redirected. In allmulti mode, all multicast packets will be
+redirected.
+
+Using the remote feature is especially useful for capturing traffic from a
+netdevice that has no support in the DPDK. It is possible to add explicit
+rte_flow rules on the tap PMD to capture specific traffic (see next section for
+examples).
+
 After the DPDK application is started you can send and receive packets on the
 interface using the standard rx_burst/tx_burst APIs in DPDK. From the host
 point of view you can use any host tool like tcpdump, Wireshark, ping, Pktgen

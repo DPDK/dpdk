@@ -69,6 +69,7 @@
 
 #define ETH_TAP_IFACE_ARG       "iface"
 #define ETH_TAP_SPEED_ARG       "speed"
+#define ETH_TAP_REMOTE_ARG      "remote"
 
 #ifdef IFF_MULTI_QUEUE
 #define RTE_PMD_TAP_MAX_QUEUES	16
@@ -84,6 +85,7 @@ static struct rte_vdev_driver pmd_tap_drv;
 static const char *valid_arguments[] = {
 	ETH_TAP_IFACE_ARG,
 	ETH_TAP_SPEED_ARG,
+	ETH_TAP_REMOTE_ARG,
 	NULL
 };
 
@@ -243,8 +245,41 @@ tun_alloc(struct pmd_internals *pmd, uint16_t qid)
 				pmd->name);
 			return fd;
 		}
+		if (pmd->remote_if_index) {
+			/*
+			 * Flush usually returns negative value because it tries
+			 * to delete every QDISC (and on a running device, one
+			 * QDISC at least is needed). Ignore negative return
+			 * value.
+			 */
+			qdisc_flush(pmd->nlsk_fd, pmd->remote_if_index);
+			if (qdisc_create_ingress(pmd->nlsk_fd,
+						 pmd->remote_if_index) < 0)
+				goto remote_fail;
+			LIST_INIT(&pmd->implicit_flows);
+			if (tap_flow_implicit_create(
+				    pmd, TAP_REMOTE_LOCAL_MAC) < 0)
+				goto remote_fail;
+			if (tap_flow_implicit_create(
+				    pmd, TAP_REMOTE_BROADCAST) < 0)
+				goto remote_fail;
+			if (tap_flow_implicit_create(
+				    pmd, TAP_REMOTE_BROADCASTV6) < 0)
+				goto remote_fail;
+			if (tap_flow_implicit_create(
+				    pmd, TAP_REMOTE_TX) < 0)
+				goto remote_fail;
+		}
 	}
 
+	return fd;
+
+remote_fail:
+	RTE_LOG(ERR, PMD,
+		"Could not set up remote flow rules for %s: remote disabled.\n",
+		pmd->name);
+	pmd->remote_if_index = 0;
+	tap_flow_implicit_flush(pmd, NULL);
 	return fd;
 
 error:
@@ -402,8 +437,17 @@ tap_ioctl(struct pmd_internals *pmd, unsigned long request,
 	  struct ifreq *ifr, int set)
 {
 	short req_flags = ifr->ifr_flags;
+	int remote = !!pmd->remote_if_index;
 
-	snprintf(ifr->ifr_name, IFNAMSIZ, "%s", pmd->name);
+	/*
+	 * If there is a remote netdevice, apply ioctl on it, then apply it on
+	 * the tap netdevice.
+	 */
+apply:
+	if (remote)
+		snprintf(ifr->ifr_name, IFNAMSIZ, "%s", pmd->remote_iface);
+	else
+		snprintf(ifr->ifr_name, IFNAMSIZ, "%s", pmd->name);
 	switch (request) {
 	case SIOCSIFFLAGS:
 		/* fetch current flags to leave other flags untouched */
@@ -415,6 +459,12 @@ tap_ioctl(struct pmd_internals *pmd, unsigned long request,
 			ifr->ifr_flags &= ~req_flags;
 		break;
 	case SIOCGIFHWADDR:
+		/* Set remote MAC on the tap netdevice */
+		if (!remote && pmd->remote_if_index) {
+			request = SIOCSIFHWADDR;
+			goto apply;
+		}
+		break;
 	case SIOCSIFHWADDR:
 	case SIOCSIFMTU:
 		break;
@@ -425,6 +475,8 @@ tap_ioctl(struct pmd_internals *pmd, unsigned long request,
 	}
 	if (ioctl(pmd->ioctl_sock, request, ifr) < 0)
 		goto error;
+	if (remote--)
+		goto apply;
 	return 0;
 
 error:
@@ -585,6 +637,7 @@ tap_dev_close(struct rte_eth_dev *dev __rte_unused)
 
 	tap_link_set_down(dev);
 	tap_flow_flush(dev, NULL);
+	tap_flow_implicit_flush(internals, NULL);
 
 	for (i = 0; i < internals->nb_queues; i++) {
 		if (internals->rxq[i].fd != -1)
@@ -635,6 +688,8 @@ tap_promisc_enable(struct rte_eth_dev *dev)
 
 	dev->data->promiscuous = 1;
 	tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 1);
+	if (pmd->remote_if_index)
+		tap_flow_implicit_create(pmd, TAP_REMOTE_PROMISC);
 }
 
 static void
@@ -645,6 +700,8 @@ tap_promisc_disable(struct rte_eth_dev *dev)
 
 	dev->data->promiscuous = 0;
 	tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 0);
+	if (pmd->remote_if_index)
+		tap_flow_implicit_destroy(pmd, TAP_REMOTE_PROMISC);
 }
 
 static void
@@ -655,6 +712,8 @@ tap_allmulti_enable(struct rte_eth_dev *dev)
 
 	dev->data->all_multicast = 1;
 	tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 1);
+	if (pmd->remote_if_index)
+		tap_flow_implicit_create(pmd, TAP_REMOTE_ALLMULTI);
 }
 
 static void
@@ -665,6 +724,8 @@ tap_allmulti_disable(struct rte_eth_dev *dev)
 
 	dev->data->all_multicast = 0;
 	tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 0);
+	if (pmd->remote_if_index)
+		tap_flow_implicit_destroy(pmd, TAP_REMOTE_ALLMULTI);
 }
 
 
@@ -982,7 +1043,7 @@ tap_kernel_support(struct pmd_internals *pmd)
 }
 
 static int
-eth_dev_tap_create(const char *name, char *tap_name)
+eth_dev_tap_create(const char *name, char *tap_name, char *remote_iface)
 {
 	int numa_node = rte_socket_id();
 	struct rte_eth_dev *dev = NULL;
@@ -1059,6 +1120,15 @@ eth_dev_tap_create(const char *name, char *tap_name)
 	 * creating/destroying flow rules.
 	 */
 	pmd->nlsk_fd = nl_init();
+	if (strlen(remote_iface)) {
+		pmd->remote_if_index = if_nametoindex(remote_iface);
+		snprintf(pmd->remote_iface, RTE_ETH_NAME_MAX_LEN,
+			 "%s", remote_iface);
+		if (!pmd->remote_if_index)
+			RTE_LOG(ERR, PMD, "Could not find %s ifindex: "
+				"remote interface will remain unconfigured\n",
+				remote_iface);
+	}
 
 	return 0;
 
@@ -1099,6 +1169,19 @@ set_interface_speed(const char *key __rte_unused,
 	return 0;
 }
 
+static int
+set_remote_iface(const char *key __rte_unused,
+		 const char *value,
+		 void *extra_args)
+{
+	char *name = (char *)extra_args;
+
+	if (value)
+		snprintf(name, RTE_ETH_NAME_MAX_LEN, "%s", value);
+
+	return 0;
+}
+
 /* Open a TAP interface device.
  */
 static int
@@ -1108,10 +1191,12 @@ rte_pmd_tap_probe(const char *name, const char *params)
 	struct rte_kvargs *kvlist = NULL;
 	int speed;
 	char tap_name[RTE_ETH_NAME_MAX_LEN];
+	char remote_iface[RTE_ETH_NAME_MAX_LEN];
 
 	speed = ETH_SPEED_NUM_10G;
 	snprintf(tap_name, sizeof(tap_name), "%s%d",
 		 DEFAULT_TAP_NAME, tap_unit++);
+	memset(remote_iface, 0, RTE_ETH_NAME_MAX_LEN);
 
 	if (params && (params[0] != '\0')) {
 		RTE_LOG(DEBUG, PMD, "paramaters (%s)\n", params);
@@ -1135,6 +1220,15 @@ rte_pmd_tap_probe(const char *name, const char *params)
 				if (ret == -1)
 					goto leave;
 			}
+
+			if (rte_kvargs_count(kvlist, ETH_TAP_REMOTE_ARG) == 1) {
+				ret = rte_kvargs_process(kvlist,
+							 ETH_TAP_REMOTE_ARG,
+							 &set_remote_iface,
+							 remote_iface);
+				if (ret == -1)
+					goto leave;
+			}
 		}
 	}
 	pmd_link.link_speed = speed;
@@ -1142,7 +1236,7 @@ rte_pmd_tap_probe(const char *name, const char *params)
 	RTE_LOG(NOTICE, PMD, "Initializing pmd_tap for %s as %s\n",
 		name, tap_name);
 
-	ret = eth_dev_tap_create(name, tap_name);
+	ret = eth_dev_tap_create(name, tap_name, remote_iface);
 
 leave:
 	if (ret == -1) {
@@ -1175,6 +1269,7 @@ rte_pmd_tap_remove(const char *name)
 	internals = eth_dev->data->dev_private;
 	if (internals->flower_support && internals->nlsk_fd) {
 		tap_flow_flush(eth_dev, NULL);
+		tap_flow_implicit_flush(internals, NULL);
 		nl_final(internals->nlsk_fd);
 	}
 	for (i = 0; i < internals->nb_queues; i++)

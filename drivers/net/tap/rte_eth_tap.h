@@ -75,15 +75,19 @@ struct tx_queue {
 };
 
 struct pmd_internals {
+	char remote_iface[RTE_ETH_NAME_MAX_LEN]; /* Remote netdevice name */
 	char name[RTE_ETH_NAME_MAX_LEN];  /* Internal Tap device name */
 	uint16_t nb_queues;               /* Number of queues supported */
 	struct ether_addr eth_addr;       /* Mac address of the device port */
+	int remote_if_index;              /* remote netdevice IF_INDEX */
 	int if_index;                     /* IF_INDEX for the port */
 	int ioctl_sock;                   /* socket for ioctl calls */
 	int nlsk_fd;                      /* Netlink socket fd */
 	int flower_support;               /* 1 if kernel supports, else 0 */
 	int flower_vlan_support;          /* 1 if kernel supports, else 0 */
 	LIST_HEAD(tap_flows, rte_flow) flows;        /* rte_flow rules */
+	/* implicit rte_flow rules set when a remote device is active */
+	LIST_HEAD(tap_implicit_flows, rte_flow) implicit_flows;
 	struct rx_queue rxq[RTE_PMD_TAP_MAX_QUEUES]; /* List of RX queues */
 	struct tx_queue txq[RTE_PMD_TAP_MAX_QUEUES]; /* List of TX queues */
 };
