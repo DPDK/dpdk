@@ -56,6 +56,7 @@
 #include <fcntl.h>
 
 #include <rte_eth_tap.h>
+#include <tap_flow.h>
 
 /* Linux based path to the TUN device */
 #define TUN_TAP_DEV_PATH        "/dev/net/tun"
@@ -482,6 +483,7 @@ tap_dev_close(struct rte_eth_dev *dev __rte_unused)
 	struct pmd_internals *internals = dev->data->dev_private;
 
 	tap_link_set_down(dev);
+	tap_flow_flush(dev, NULL);
 
 	for (i = 0; i < internals->nb_queues; i++) {
 		if (internals->rxq[i].fd != -1)
@@ -806,6 +808,7 @@ static const struct eth_dev_ops ops = {
 	.stats_get              = tap_stats_get,
 	.stats_reset            = tap_stats_reset,
 	.dev_supported_ptypes_get = tap_dev_supported_ptypes_get,
+	.filter_ctrl            = tap_dev_filter_ctrl,
 };
 
 static int
@@ -876,6 +879,8 @@ eth_dev_tap_create(const char *name, char *tap_name)
 		pmd->rxq[i].fd = -1;
 		pmd->txq[i].fd = -1;
 	}
+
+	LIST_INIT(&pmd->flows);
 
 	return 0;
 
@@ -990,6 +995,7 @@ rte_pmd_tap_remove(const char *name)
 		return 0;
 
 	internals = eth_dev->data->dev_private;
+	tap_flow_flush(eth_dev, NULL);
 	for (i = 0; i < internals->nb_queues; i++)
 		if (internals->rxq[i].fd != -1)
 			close(internals->rxq[i].fd);

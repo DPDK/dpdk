@@ -31,47 +31,16 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _RTE_ETH_TAP_H_
-#define _RTE_ETH_TAP_H_
+#ifndef _TAP_FLOW_H_
+#define _TAP_FLOW_H_
 
-#include <sys/queue.h>
-#include <inttypes.h>
+#include <rte_flow.h>
+#include <rte_flow_driver.h>
 
-#include <rte_ethdev.h>
-#include <rte_ether.h>
+int tap_dev_filter_ctrl(struct rte_eth_dev *dev,
+			enum rte_filter_type filter_type,
+			enum rte_filter_op filter_op,
+			void *arg);
+int tap_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *error);
 
-#define RTE_PMD_TAP_MAX_QUEUES 16
-
-struct pkt_stats {
-	uint64_t opackets;              /* Number of output packets */
-	uint64_t ipackets;              /* Number of input packets */
-	uint64_t obytes;                /* Number of bytes on output */
-	uint64_t ibytes;                /* Number of bytes on input */
-	uint64_t errs;                  /* Number of TX error packets */
-};
-
-struct rx_queue {
-	struct rte_mempool *mp;         /* Mempool for RX packets */
-	uint32_t trigger_seen;          /* Last seen Rx trigger value */
-	uint16_t in_port;               /* Port ID */
-	int fd;
-	struct pkt_stats stats;         /* Stats for this RX queue */
-};
-
-struct tx_queue {
-	int fd;
-	struct pkt_stats stats;         /* Stats for this TX queue */
-};
-
-struct pmd_internals {
-	char name[RTE_ETH_NAME_MAX_LEN];  /* Internal Tap device name */
-	uint16_t nb_queues;               /* Number of queues supported */
-	struct ether_addr eth_addr;       /* Mac address of the device port */
-	int if_index;                     /* IF_INDEX for the port */
-	int ioctl_sock;                   /* socket for ioctl calls */
-	LIST_HEAD(tap_flows, rte_flow) flows;        /* rte_flow rules */
-	struct rx_queue rxq[RTE_PMD_TAP_MAX_QUEUES]; /* List of RX queues */
-	struct tx_queue txq[RTE_PMD_TAP_MAX_QUEUES]; /* List of TX queues */
-};
-
-#endif /* _RTE_ETH_TAP_H_ */
+#endif /* _TAP_FLOW_H_ */
