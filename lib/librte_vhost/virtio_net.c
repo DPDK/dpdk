@@ -1056,9 +1056,21 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 	 * array, to looks like that guest actually send such packet.
 	 *
 	 * Check user_send_rarp() for more information.
+	 *
+	 * broadcast_rarp shares a cacheline in the virtio_net structure
+	 * with some fields that are accessed during enqueue and
+	 * rte_atomic16_cmpset() causes a write if using cmpxchg. This could
+	 * result in false sharing between enqueue and dequeue.
+	 *
+	 * Prevent unnecessary false sharing by reading broadcast_rarp first
+	 * and only performing cmpset if the read indicates it is likely to
+	 * be set.
 	 */
-	if (unlikely(rte_atomic16_cmpset((volatile uint16_t *)
-					 &dev->broadcast_rarp.cnt, 1, 0))) {
+
+	if (unlikely(rte_atomic16_read(&dev->broadcast_rarp) &&
+			rte_atomic16_cmpset((volatile uint16_t *)
+				&dev->broadcast_rarp.cnt, 1, 0))) {
+
 		rarp_mbuf = rte_pktmbuf_alloc(mbuf_pool);
 		if (rarp_mbuf == NULL) {
 			RTE_LOG(ERR, VHOST_DATA,
