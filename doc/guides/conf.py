@@ -178,25 +178,24 @@ def process_numref(app, doctree, from_docname):
             node.replace_self(newnode)
 
 
-def generate_nic_overview_table(output_filename):
+def generate_overview_table(output_filename, section, table_name, title):
     """
-    Function to generate the NIC Overview Table from the ini files that define
-    the features for each NIC.
+    Function to generate the Overview Table from the ini files that define
+    the features for each driver.
 
     The default features for the table and their order is defined by the
     'default.ini' file.
 
     """
-    # Default worning string.
-    warning = 'Warning generate_nic_overview_table()'
+    # Default warning string.
+    warning = 'Warning generate_overview_table()'
 
     # Get the default features and order from the 'default.ini' file.
     ini_path = path_join(dirname(output_filename), 'features')
     config = configparser.ConfigParser()
     config.optionxform = str
     config.read(path_join(ini_path, 'default.ini'))
-    default_section = 'Features'
-    default_features = config.items(default_section)
+    default_features = config.items(section)
 
     # Create a dict of the valid features to validate the other ini files.
     valid_features = {}
@@ -206,7 +205,7 @@ def generate_nic_overview_table(output_filename):
         valid_features[key] = ' '
         max_feature_length = max(max_feature_length, len(key))
 
-    # Get a list of NIC ini files, excluding 'default.ini'.
+    # Get a list of driver ini files, excluding 'default.ini'.
     ini_files = [basename(file) for file in listdir(ini_path)
                  if file.endswith('.ini') and file != 'default.ini']
     ini_files.sort()
@@ -226,7 +225,7 @@ def generate_nic_overview_table(output_filename):
 
         header_names.append(name)
 
-    # Create a dict of the defined features for each NIC from the ini files.
+    # Create a dict of the defined features for each driver from the ini files.
     ini_data = {}
     for ini_filename in ini_files:
         config = configparser.ConfigParser()
@@ -237,14 +236,14 @@ def generate_nic_overview_table(output_filename):
         ini_data[ini_filename] = valid_features.copy()
 
         # Check for a valid ini section.
-        if not config.has_section(default_section):
+        if not config.has_section(section):
             print("{}: File '{}' has no [{}] secton".format(warning,
                                                             ini_filename,
-                                                            default_section))
+                                                            section))
             continue
 
         # Check for valid features names.
-        for name, value in config.items(default_section):
+        for name, value in config.items(section):
             if name not in valid_features:
                 print("{}: Unknown feature '{}' in '{}'".format(warning,
                                                                 name,
@@ -255,18 +254,18 @@ def generate_nic_overview_table(output_filename):
                 # Get the first letter only.
                 ini_data[ini_filename][name] = value[0]
 
-    # Print out the RST NIC Overview table from the ini file data.
+    # Print out the RST Driver Overview table from the ini file data.
     outfile = open(output_filename, 'w')
     num_cols = len(header_names)
 
-    print('.. table:: Features availability in networking drivers\n',
+    print('.. table:: ' + table_name + '\n',
           file=outfile)
 
-    print_table_header(outfile, num_cols, header_names)
+    print_table_header(outfile, num_cols, header_names, title)
     print_table_body(outfile, num_cols, ini_files, ini_data, default_features)
 
 
-def print_table_header(outfile, num_cols, header_names):
+def print_table_header(outfile, num_cols, header_names, title):
     """ Print the RST table header. The header names are vertical. """
     print_table_divider(outfile, num_cols)
 
@@ -274,7 +273,7 @@ def print_table_header(outfile, num_cols, header_names):
     for name in header_names:
         line += ' ' + name[0]
 
-    print_table_row(outfile, 'Feature', line)
+    print_table_row(outfile, title, line)
 
     for i in range(1, 10):
         line = ''
@@ -319,7 +318,30 @@ def print_table_divider(outfile, num_cols):
 
 def setup(app):
     table_file = dirname(__file__) + '/nics/overview_table.txt'
-    generate_nic_overview_table(table_file)
+    generate_overview_table(table_file,
+                            'Features',
+                            'Features availability in networking drivers',
+                            'Feature')
+    table_file = dirname(__file__) + '/cryptodevs/overview_feature_table.txt'
+    generate_overview_table(table_file,
+                            'Features',
+                            'Features availability in crypto drivers',
+                            'Feature')
+    table_file = dirname(__file__) + '/cryptodevs/overview_cipher_table.txt'
+    generate_overview_table(table_file,
+                            'Cipher',
+                            'Cipher algorithms in crypto drivers',
+                            'Cipher algorithm')
+    table_file = dirname(__file__) + '/cryptodevs/overview_auth_table.txt'
+    generate_overview_table(table_file,
+                            'Auth',
+                            'Authentication algorithms in crypto drivers',
+                            'Authentication algorithm')
+    table_file = dirname(__file__) + '/cryptodevs/overview_aead_table.txt'
+    generate_overview_table(table_file,
+                            'AEAD',
+                            'AEAD algorithms in crypto drivers',
+                            'AEAD algorithm')
 
     if LooseVersion(sphinx_version) < LooseVersion('1.3.1'):
         print('Upgrade sphinx to version >= 1.3.1 for '

@@ -1,1 +1,5 @@
 doc/guides/nics/overview_table.txt
+doc/guides/cryptodevs/overview_feature_table.txt
+doc/guides/cryptodevs/overview_cipher_table.txt
+doc/guides/cryptodevs/overview_auth_table.txt
+doc/guides/cryptodevs/overview_aead_table.txt

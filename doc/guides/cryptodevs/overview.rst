@@ -1,5 +1,5 @@
 ..  BSD LICENSE
-    Copyright(c) 2016 Intel Corporation. All rights reserved.
+    Copyright(c) 2016-2017 Intel Corporation. All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following conditions
@@ -11,7 +11,7 @@
     notice, this list of conditions and the following disclaimer in
     the documentation and/or other materials provided with the
     distribution.
-    * Neither the name of Intel Corporation nor the names of its
+    * Neither the name of 6WIND S.A. nor the names of its
     contributors may be used to endorse or promote products derived
     from this software without specific prior written permission.
 
@@ -28,75 +28,244 @@
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 Crypto Device Supported Functionality Matrices
-----------------------------------------------
+==============================================
 
 Supported Feature Flags
+-----------------------
 
-.. csv-table::
-   :header: "Feature Flags", "qat", "null", "aesni_mb", "aesni_gcm", "snow3g", "kasumi", "zuc", "armv8"
-   :stub-columns: 1
+.. _table_crypto_pmd_features:
 
-   "RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO",x,x,x,x,x,x,x,x
-   "RTE_CRYPTODEV_FF_ASYMMETRIC_CRYPTO",,,,,,,,
-   "RTE_CRYPTODEV_FF_SYM_OPERATION_CHAINING",x,x,x,x,x,x,x,x
-   "RTE_CRYPTODEV_FF_CPU_SSE",,,x,,x,x,,
-   "RTE_CRYPTODEV_FF_CPU_AVX",,,x,,x,x,,
-   "RTE_CRYPTODEV_FF_CPU_AVX2",,,x,,,,,
-   "RTE_CRYPTODEV_FF_CPU_AVX512",,,x,,,,,
-   "RTE_CRYPTODEV_FF_CPU_AESNI",,,x,x,,,,
-   "RTE_CRYPTODEV_FF_HW_ACCELERATED",x,,,,,,,
-   "RTE_CRYPTODEV_FF_CPU_NEON",,,,,,,,x
-   "RTE_CRYPTODEV_FF_CPU_ARM_CE",,,,,,,,x
+.. raw:: html
+
+   <style>
+      .wy-nav-content {
+         opacity: .99;
+      }
+      table#id1 {
+         cursor: default;
+         overflow: hidden;
+      }
+      table#id1 th, table#id1 td {
+         text-align: center;
+      }
+      table#id1 th {
+         font-size: 80%;
+         white-space: pre-wrap;
+         vertical-align: top;
+         padding: 2px;
+      }
+      table#id1 th:first-child {
+         vertical-align: bottom;
+      }
+      table#id1 td {
+         font-size: 70%;
+         padding: 1px;
+      }
+      table#id1 td:first-child {
+         padding-left: 1em;
+         text-align: left;
+      }
+      table#id1 tr:nth-child(2n-1) td {
+         background-color: rgba(210, 210, 210, 0.2);
+      }
+      table#id1 th:not(:first-child):hover,
+      table#id1 td:not(:first-child):hover {
+         position: relative;
+      }
+      table#id1 th:not(:first-child):hover::after,
+      table#id1 td:not(:first-child):hover::after {
+         content: '';
+         height: 6000px;
+         top: -3000px;
+         width: 100%;
+         left: 0;
+         position: absolute;
+         z-index: -1;
+         background-color: #ffb;
+      }
+      table#id1 tr:hover td {
+         background-color: #ffb;
+      }
+   </style>
+
+.. include:: overview_feature_table.txt
 
 Supported Cipher Algorithms
+---------------------------
 
-.. csv-table::
-   :header: "Cipher Algorithms", "qat", "null", "aesni_mb", "aesni_gcm", "snow3g", "kasumi", "zuc", "armv8"
-   :stub-columns: 1
+.. _table_crypto_pmd_cipher_algos:
 
-   "NULL",,x,,,,,,
-   "AES_CBC_128",x,,x,,,,,x
-   "AES_CBC_192",x,,x,,,,,
-   "AES_CBC_256",x,,x,,,,,
-   "AES_CTR_128",x,,x,,,,,
-   "AES_CTR_192",x,,x,,,,,
-   "AES_CTR_256",x,,x,,,,,
-   "DES_CBC",x,,,,,,,
-   "SNOW3G_UEA2",x,,,,x,,,
-   "KASUMI_F8",,,,,,x,,
-   "ZUC_EEA3",,,,,,,x,
+.. raw:: html
+
+   <style>
+      .wy-nav-content {
+         opacity: .99;
+      }
+      table#id2 {
+         cursor: default;
+         overflow: hidden;
+      }
+      table#id2 th, table#id2 td {
+         text-align: center;
+      }
+      table#id2 th {
+         font-size: 80%;
+         white-space: pre-wrap;
+         vertical-align: top;
+         padding: 2px;
+      }
+      table#id2 th:first-child {
+         vertical-align: bottom;
+      }
+      table#id2 td {
+         font-size: 70%;
+         padding: 1px;
+      }
+      table#id2 td:first-child {
+         padding-left: 1em;
+         text-align: left;
+      }
+      table#id2 tr:nth-child(2n-1) td {
+         background-color: rgba(210, 210, 210, 0.2);
+      }
+      table#id2 th:not(:first-child):hover,
+      table#id2 td:not(:first-child):hover {
+         position: relative;
+      }
+      table#id2 th:not(:first-child):hover::after,
+      table#id2 td:not(:first-child):hover::after {
+         content: '';
+         height: 6000px;
+         top: -3000px;
+         width: 100%;
+         left: 0;
+         position: absolute;
+         z-index: -1;
+         background-color: #ffb;
+      }
+      table#id2 tr:hover td {
+         background-color: #ffb;
+      }
+   </style>
+
+.. include:: overview_cipher_table.txt
 
 Supported Authentication Algorithms
+-----------------------------------
 
-.. csv-table::
-   :header: "Cipher Algorithms", "qat", "null", "aesni_mb", "aesni_gcm", "snow3g", "kasumi", "zuc", "armv8"
-   :stub-columns: 1
+.. _table_crypto_pmd_auth_algos:
 
-   "NONE",,x,,,,,,
-   "MD5",,,,,,,,
-   "MD5_HMAC",,,x,,,,,
-   "SHA1",,,,,,,,
-   "SHA1_HMAC",x,,x,,,,,x
-   "SHA224",,,,,,,,
-   "SHA224_HMAC",,,x,,,,,
-   "SHA256",,,,,,,,
-   "SHA256_HMAC",x,,x,,,,,x
-   "SHA384",,,,,,,,
-   "SHA384_HMAC",,,x,,,,,
-   "SHA512",,,,,,,,
-   "SHA512_HMAC",x,,x,,,,,
-   "AES_XCBC",x,,x,,,,,
-   "AES_GMAC",,,,x,,,,
-   "SNOW3G_UIA2",x,,,,x,,,
-   "KASUMI_F9",,,,,,x,,
-   "ZUC_EIA3",,,,,,,x,
+.. raw:: html
+
+   <style>
+      .wy-nav-content {
+         opacity: .99;
+      }
+      table#id3 {
+         cursor: default;
+         overflow: hidden;
+      }
+      table#id3 th, table#id3 td {
+         text-align: center;
+      }
+      table#id3 th {
+         font-size: 80%;
+         white-space: pre-wrap;
+         vertical-align: top;
+         padding: 2px;
+      }
+      table#id3 th:first-child {
+         vertical-align: bottom;
+      }
+      table#id3 td {
+         font-size: 70%;
+         padding: 1px;
+      }
+      table#id3 td:first-child {
+         padding-left: 1em;
+         text-align: left;
+      }
+      table#id3 tr:nth-child(2n-1) td {
+         background-color: rgba(210, 210, 210, 0.2);
+      }
+      table#id3 th:not(:first-child):hover,
+      table#id3 td:not(:first-child):hover {
+         position: relative;
+      }
+      table#id3 th:not(:first-child):hover::after,
+      table#id3 td:not(:first-child):hover::after {
+         content: '';
+         height: 6000px;
+         top: -3000px;
+         width: 100%;
+         left: 0;
+         position: absolute;
+         z-index: -1;
+         background-color: #ffb;
+      }
+      table#id3 tr:hover td {
+         background-color: #ffb;
+      }
+   </style>
+
+.. include:: overview_auth_table.txt
 
 Supported AEAD Algorithms
+-------------------------
 
-.. csv-table::
-   :header: "AEAD Algorithms", "qat", "null", "aesni_mb", "aesni_gcm", "snow3g", "kasumi", "zuc", "armv8"
-   :stub-columns: 1
+.. _table_crypto_pmd_aead_algos:
 
-   "AES_GCM_128",x,,,x,,,,
-   "AES_GCM_192",x,,,,,,,
-   "AES_GCM_256",x,,,x,,,,
+.. raw:: html
+
+   <style>
+      .wy-nav-content {
+         opacity: .99;
+      }
+      table#id4 {
+         cursor: default;
+         overflow: hidden;
+      }
+      table#id4 th, table#id4 td {
+         text-align: center;
+      }
+      table#id4 th {
+         font-size: 80%;
+         white-space: pre-wrap;
+         vertical-align: top;
+         padding: 2px;
+      }
+      table#id4 th:first-child {
+         vertical-align: bottom;
+      }
+      table#id4 td {
+         font-size: 70%;
+         padding: 1px;
+      }
+      table#id4 td:first-child {
+         padding-left: 1em;
+         text-align: left;
+      }
+      table#id4 tr:nth-child(2n-1) td {
+         background-color: rgba(210, 210, 210, 0.2);
+      }
+      table#id4 th:not(:first-child):hover,
+      table#id4 td:not(:first-child):hover {
+         position: relative;
+      }
+      table#id4 th:not(:first-child):hover::after,
+      table#id4 td:not(:first-child):hover::after {
+         content: '';
+         height: 6000px;
+         top: -3000px;
+         width: 100%;
+         left: 0;
+         position: absolute;
+         z-index: -1;
+         background-color: #ffb;
+      }
+      table#id4 tr:hover td {
+         background-color: #ffb;
+      }
+   </style>
+
+.. include:: overview_aead_table.txt
