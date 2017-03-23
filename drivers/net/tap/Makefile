@@ -40,6 +40,7 @@ EXPORT_MAP := rte_pmd_tap_version.map
 LIBABIVER := 1
 
 CFLAGS += -O3
+CFLAGS += -I$(SRCDIR)
 CFLAGS += $(WERROR_FLAGS)
 
 #

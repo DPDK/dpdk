@@ -55,6 +55,8 @@
 #include <linux/if_ether.h>
 #include <fcntl.h>
 
+#include <rte_eth_tap.h>
+
 /* Linux based path to the TUN device */
 #define TUN_TAP_DEV_PATH        "/dev/net/tun"
 #define DEFAULT_TAP_NAME        "dtap"
@@ -85,40 +87,6 @@ static struct rte_eth_link pmd_link = {
 	.link_duplex = ETH_LINK_FULL_DUPLEX,
 	.link_status = ETH_LINK_DOWN,
 	.link_autoneg = ETH_LINK_SPEED_AUTONEG
-};
-
-struct pkt_stats {
-	uint64_t opackets;		/* Number of output packets */
-	uint64_t ipackets;		/* Number of input packets */
-	uint64_t obytes;		/* Number of bytes on output */
-	uint64_t ibytes;		/* Number of bytes on input */
-	uint64_t errs;			/* Number of error packets */
-};
-
-struct rx_queue {
-	struct rte_mempool *mp;		/* Mempool for RX packets */
-	uint32_t trigger_seen;		/* Last seen Rx trigger value */
-	uint16_t in_port;		/* Port ID */
-	int fd;
-
-	struct pkt_stats stats;		/* Stats for this RX queue */
-};
-
-struct tx_queue {
-	int fd;
-	struct pkt_stats stats;		/* Stats for this TX queue */
-};
-
-struct pmd_internals {
-	char name[RTE_ETH_NAME_MAX_LEN];	/* Internal Tap device name */
-	uint16_t nb_queues;		/* Number of queues supported */
-	struct ether_addr eth_addr;	/* Mac address of the device port */
-
-	int if_index;			/* IF_INDEX for the port */
-	int ioctl_sock;			/* socket for ioctl calls */
-
-	struct rx_queue rxq[RTE_PMD_TAP_MAX_QUEUES];	/* List of RX queues */
-	struct tx_queue txq[RTE_PMD_TAP_MAX_QUEUES];	/* List of TX queues */
 };
 
 static void
