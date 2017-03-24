@@ -103,7 +103,7 @@ uint8_t auto_start = 0;
  * probed ports among the CPU sockets 0 and 1.
  * Otherwise, all memory is allocated from CPU socket 0.
  */
-uint8_t numa_support = 0; /**< No numa support by default */
+uint8_t numa_support = 1; /**< numa enabled by default */
 
 /*
  * In UMA mode,all memory is allocated from socket 0 if --socket-num is

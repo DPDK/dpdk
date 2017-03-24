@@ -211,7 +211,12 @@ The commandline options are:
 
 *   ``--numa``
 
-    Enable NUMA-aware allocation of RX/TX rings and of RX memory buffers (mbufs).
+    Enable NUMA-aware allocation of RX/TX rings and of RX memory buffers
+    (mbufs). [Default setting]
+
+*   ``--no-numa``
+
+    Disable NUMA-aware allocation of RX/TX rings and of RX memory buffers (mbufs).
 
 *   ``--port-numa-config=(port,socket)[,(port,socket)]``
 
