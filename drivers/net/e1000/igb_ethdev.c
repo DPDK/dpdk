@@ -408,6 +408,7 @@ static const struct eth_dev_ops eth_igb_ops = {
 	.rx_descriptor_done   = eth_igb_rx_descriptor_done,
 	.tx_queue_setup       = eth_igb_tx_queue_setup,
 	.tx_queue_release     = eth_igb_tx_queue_release,
+	.tx_done_cleanup      = eth_igb_tx_done_cleanup,
 	.dev_led_on           = eth_igb_led_on,
 	.dev_led_off          = eth_igb_led_off,
 	.flow_ctrl_get        = eth_igb_flow_ctrl_get,

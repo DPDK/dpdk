@@ -1283,6 +1283,132 @@ eth_igb_tx_queue_release(void *txq)
 	igb_tx_queue_release(txq);
 }
 
+static int
+igb_tx_done_cleanup(struct igb_tx_queue *txq, uint32_t free_cnt)
+{
+	struct igb_tx_entry *sw_ring;
+	volatile union e1000_adv_tx_desc *txr;
+	uint16_t tx_first; /* First segment analyzed. */
+	uint16_t tx_id;    /* Current segment being processed. */
+	uint16_t tx_last;  /* Last segment in the current packet. */
+	uint16_t tx_next;  /* First segment of the next packet. */
+	int count;
+
+	if (txq != NULL) {
+		count = 0;
+		sw_ring = txq->sw_ring;
+		txr = txq->tx_ring;
+
+		/*
+		 * tx_tail is the last sent packet on the sw_ring. Goto the end
+		 * of that packet (the last segment in the packet chain) and
+		 * then the next segment will be the start of the oldest segment
+		 * in the sw_ring. This is the first packet that will be
+		 * attempted to be freed.
+		 */
+
+		/* Get last segment in most recently added packet. */
+		tx_first = sw_ring[txq->tx_tail].last_id;
+
+		/* Get the next segment, which is the oldest segment in ring. */
+		tx_first = sw_ring[tx_first].next_id;
+
+		/* Set the current index to the first. */
+		tx_id = tx_first;
+
+		/*
+		 * Loop through each packet. For each packet, verify that an
+		 * mbuf exists and that the last segment is free. If so, free
+		 * it and move on.
+		 */
+		while (1) {
+			tx_last = sw_ring[tx_id].last_id;
+
+			if (sw_ring[tx_last].mbuf) {
+				if (txr[tx_last].wb.status &
+						E1000_TXD_STAT_DD) {
+					/*
+					 * Increment the number of packets
+					 * freed.
+					 */
+					count++;
+
+					/* Get the start of the next packet. */
+					tx_next = sw_ring[tx_last].next_id;
+
+					/*
+					 * Loop through all segments in a
+					 * packet.
+					 */
+					do {
+						rte_pktmbuf_free_seg(sw_ring[tx_id].mbuf);
+						sw_ring[tx_id].mbuf = NULL;
+						sw_ring[tx_id].last_id = tx_id;
+
+						/* Move to next segemnt. */
+						tx_id = sw_ring[tx_id].next_id;
+
+					} while (tx_id != tx_next);
+
+					if (unlikely(count == (int)free_cnt))
+						break;
+				} else
+					/*
+					 * mbuf still in use, nothing left to
+					 * free.
+					 */
+					break;
+			} else {
+				/*
+				 * There are multiple reasons to be here:
+				 * 1) All the packets on the ring have been
+				 *    freed - tx_id is equal to tx_first
+				 *    and some packets have been freed.
+				 *    - Done, exit
+				 * 2) Interfaces has not sent a rings worth of
+				 *    packets yet, so the segment after tail is
+				 *    still empty. Or a previous call to this
+				 *    function freed some of the segments but
+				 *    not all so there is a hole in the list.
+				 *    Hopefully this is a rare case.
+				 *    - Walk the list and find the next mbuf. If
+				 *      there isn't one, then done.
+				 */
+				if (likely((tx_id == tx_first) && (count != 0)))
+					break;
+
+				/*
+				 * Walk the list and find the next mbuf, if any.
+				 */
+				do {
+					/* Move to next segemnt. */
+					tx_id = sw_ring[tx_id].next_id;
+
+					if (sw_ring[tx_id].mbuf)
+						break;
+
+				} while (tx_id != tx_first);
+
+				/*
+				 * Determine why previous loop bailed. If there
+				 * is not an mbuf, done.
+				 */
+				if (sw_ring[tx_id].mbuf == NULL)
+					break;
+			}
+		}
+	} else
+		count = -ENODEV;
+
+	return count;
+}
+
+int
+eth_igb_tx_done_cleanup(void *txq, uint32_t free_cnt)
+{
+	return igb_tx_done_cleanup(txq, free_cnt);
+}
+
 static void
 igb_reset_tx_queue_stat(struct igb_tx_queue *txq)
 {

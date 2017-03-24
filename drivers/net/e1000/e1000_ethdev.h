@@ -315,6 +315,8 @@ int eth_igb_tx_queue_setup(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 		uint16_t nb_tx_desc, unsigned int socket_id,
 		const struct rte_eth_txconf *tx_conf);
 
+int eth_igb_tx_done_cleanup(void *txq, uint32_t free_cnt);
+
 int eth_igb_rx_init(struct rte_eth_dev *dev);
 
 void eth_igb_tx_init(struct rte_eth_dev *dev);
