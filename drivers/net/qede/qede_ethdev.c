@@ -1684,32 +1684,61 @@ static int qede_rss_reta_query(struct rte_eth_dev *eth_dev,
 
 int qede_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 {
-	uint32_t frame_size;
-	struct qede_dev *qdev = dev->data->dev_private;
+	struct qede_dev *qdev = QEDE_INIT_QDEV(dev);
+	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
 	struct rte_eth_dev_info dev_info = {0};
+	struct qede_fastpath *fp;
+	uint32_t frame_size;
+	uint16_t rx_buf_size;
+	uint16_t bufsz;
+	int i;
 
+	PMD_INIT_FUNC_TRACE(edev);
 	qede_dev_info_get(dev, &dev_info);
-
-	/* VLAN_TAG = 4 */
-	frame_size = mtu + ETHER_HDR_LEN + ETHER_CRC_LEN + 4;
-
-	if ((mtu < ETHER_MIN_MTU) || (frame_size > dev_info.max_rx_pktlen))
+	frame_size = mtu + QEDE_ETH_OVERHEAD;
+	if ((mtu < ETHER_MIN_MTU) || (frame_size > dev_info.max_rx_pktlen)) {
+		DP_ERR(edev, "MTU %u out of range\n", mtu);
 		return -EINVAL;
-
+	}
 	if (!dev->data->scattered_rx &&
-	    frame_size > dev->data->min_rx_buf_size - RTE_PKTMBUF_HEADROOM)
+	    frame_size > dev->data->min_rx_buf_size - RTE_PKTMBUF_HEADROOM) {
+		DP_INFO(edev, "MTU greater than minimum RX buffer size of %u\n",
+			dev->data->min_rx_buf_size);
 		return -EINVAL;
-
+	}
+	/* Temporarily replace I/O functions with dummy ones. It cannot
+	 * be set to NULL because rte_eth_rx_burst() doesn't check for NULL.
+	 */
+	dev->rx_pkt_burst = qede_rxtx_pkts_dummy;
+	dev->tx_pkt_burst = qede_rxtx_pkts_dummy;
+	qede_dev_stop(dev);
+	rte_delay_ms(1000);
+	qdev->mtu = mtu;
+	/* Fix up RX buf size for all queues of the port */
+	for_each_queue(i) {
+		fp = &qdev->fp_array[i];
+		if (fp->type & QEDE_FASTPATH_RX) {
+			bufsz = (uint16_t)rte_pktmbuf_data_room_size(
+				fp->rxq->mb_pool) - RTE_PKTMBUF_HEADROOM;
+			if (dev->data->scattered_rx)
+				rx_buf_size = bufsz + QEDE_ETH_OVERHEAD;
+			else
+				rx_buf_size = mtu + QEDE_ETH_OVERHEAD;
+			rx_buf_size = QEDE_CEIL_TO_CACHE_LINE_SIZE(rx_buf_size);
+			fp->rxq->rx_buf_size = rx_buf_size;
+			DP_INFO(edev, "buf_size adjusted to %u\n", rx_buf_size);
+		}
+	}
+	qede_dev_start(dev);
 	if (frame_size > ETHER_MAX_LEN)
 		dev->data->dev_conf.rxmode.jumbo_frame = 1;
 	else
 		dev->data->dev_conf.rxmode.jumbo_frame = 0;
-
 	/* update max frame size */
 	dev->data->dev_conf.rxmode.max_rx_pkt_len = frame_size;
-	qdev->mtu = mtu;
-	qede_dev_stop(dev);
-	qede_dev_start(dev);
+	/* Reassign back */
+	dev->rx_pkt_burst = qede_recv_pkts;
+	dev->tx_pkt_burst = qede_xmit_pkts;
 
 	return 0;
 }

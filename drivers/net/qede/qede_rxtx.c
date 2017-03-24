@@ -1935,3 +1935,11 @@ void qede_dev_stop(struct rte_eth_dev *eth_dev)
 
 	DP_INFO(edev, "dev_state is QEDE_DEV_STOP\n");
 }
+
+uint16_t
+qede_rxtx_pkts_dummy(__rte_unused void *p_rxq,
+		     __rte_unused struct rte_mbuf **pkts,
+		     __rte_unused uint16_t nb_pkts)
+{
+	return 0;
+}
