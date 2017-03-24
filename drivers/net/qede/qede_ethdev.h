@@ -234,7 +234,7 @@ static uint16_t qede_fdir_construct_pkt(struct rte_eth_dev *eth_dev,
 					struct ecore_arfs_config_params *param);
 
 /* Non-static functions */
-void qede_init_rss_caps(uint8_t *rss_caps, uint64_t hf);
+int qede_config_rss(struct rte_eth_dev *eth_dev);
 
 int qed_fill_eth_dev_info(struct ecore_dev *edev,
 				 struct qed_dev_eth_info *info);

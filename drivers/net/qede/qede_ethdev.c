@@ -798,7 +798,7 @@ static void qede_prandom_bytes(uint32_t *buff)
 		buff[i] = rand();
 }
 
-static int qede_config_rss(struct rte_eth_dev *eth_dev)
+int qede_config_rss(struct rte_eth_dev *eth_dev)
 {
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
@@ -906,20 +906,8 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 	if (rc != 0)
 		return rc;
 
-	/* Do RSS configuration after vport-start */
-	switch (rxmode->mq_mode) {
-	case ETH_MQ_RX_RSS:
-		rc = qede_config_rss(eth_dev);
-		if (rc != 0) {
-			qdev->ops->vport_stop(edev, 0);
-			qede_dealloc_fp_resc(eth_dev);
-			return -EINVAL;
-		}
-	break;
-	case ETH_MQ_RX_NONE:
-		DP_INFO(edev, "RSS is disabled\n");
-	break;
-	default:
+	if (!(rxmode->mq_mode == ETH_MQ_RX_RSS ||
+	    rxmode->mq_mode == ETH_MQ_RX_NONE)) {
 		DP_ERR(edev, "Unsupported RSS mode\n");
 		qdev->ops->vport_stop(edev, 0);
 		qede_dealloc_fp_resc(eth_dev);
