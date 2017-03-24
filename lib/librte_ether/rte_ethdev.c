@@ -1275,6 +1275,20 @@ rte_eth_tx_buffer_init(struct rte_eth_dev_tx_buffer *buffer, uint16_t size)
 	return ret;
 }
 
+int
+rte_eth_tx_done_cleanup(uint8_t port_id, uint16_t queue_id, uint32_t free_cnt)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+
+	/* Validate Input Data. Bail if not valid or not supported. */
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->tx_done_cleanup, -ENOTSUP);
+
+	/* Call driver to free pending mbufs. */
+	return (*dev->dev_ops->tx_done_cleanup)(dev->data->tx_queues[queue_id],
+			free_cnt);
+}
+
 void
 rte_eth_promiscuous_enable(uint8_t port_id)
 {

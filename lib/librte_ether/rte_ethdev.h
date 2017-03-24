@@ -1183,6 +1183,9 @@ typedef int (*eth_fw_version_get_t)(struct rte_eth_dev *dev,
 				     char *fw_version, size_t fw_size);
 /**< @internal Get firmware information of an Ethernet device. */
 
+typedef int (*eth_tx_done_cleanup_t)(void *txq, uint32_t free_cnt);
+/**< @internal Force mbufs to be from TX ring. */
+
 typedef void (*eth_rxq_info_get_t)(struct rte_eth_dev *dev,
 	uint16_t rx_queue_id, struct rte_eth_rxq_info *qinfo);
 
@@ -1488,6 +1491,7 @@ struct eth_dev_ops {
 	eth_rx_disable_intr_t      rx_queue_intr_disable; /**< Disable Rx queue interrupt. */
 	eth_tx_queue_setup_t       tx_queue_setup;/**< Set up device TX queue. */
 	eth_queue_release_t        tx_queue_release; /**< Release TX queue. */
+	eth_tx_done_cleanup_t      tx_done_cleanup;/**< Free tx ring mbufs */
 
 	eth_dev_led_on_t           dev_led_on;    /**< Turn on LED. */
 	eth_dev_led_off_t          dev_led_off;   /**< Turn off LED. */
@@ -3176,6 +3180,33 @@ rte_eth_tx_buffer_drop_callback(struct rte_mbuf **pkts, uint16_t unsent,
 void
 rte_eth_tx_buffer_count_callback(struct rte_mbuf **pkts, uint16_t unsent,
 		void *userdata);
+
+/**
+ * Request the driver to free mbufs currently cached by the driver. The
+ * driver will only free the mbuf if it is no longer in use. It is the
+ * application's responsibity to ensure rte_eth_tx_buffer_flush(..) is
+ * called if needed.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param queue_id
+ *   The index of the transmit queue through which output packets must be
+ *   sent.
+ *   The value must be in the range [0, nb_tx_queue - 1] previously supplied
+ *   to rte_eth_dev_configure().
+ * @param free_cnt
+ *   Maximum number of packets to free. Use 0 to indicate all possible packets
+ *   should be freed. Note that a packet may be using multiple mbufs.
+ * @return
+ *   Failure: < 0
+ *     -ENODEV: Invalid interface
+ *     -ENOTSUP: Driver does not support function
+ *   Success: >= 0
+ *     0-n: Number of packets freed. More packets may still remain in ring that
+ *     are in use.
+ */
+int
+rte_eth_tx_done_cleanup(uint8_t port_id, uint16_t queue_id, uint32_t free_cnt);
 
 /**
  * The eth device event type for interrupt, and maybe others in the future.

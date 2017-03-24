@@ -249,6 +249,42 @@ One descriptor in the TX ring is used as a sentinel to avoid a hardware race con
 
     When configuring for DCB operation, at port initialization, both the number of transmit queues and the number of receive queues must be set to 128.
 
+Free Tx mbuf on Demand
+~~~~~~~~~~~~~~~~~~~~~~
+
+Many of the drivers do not release the mbuf back to the mempool, or local cache,
+immediately after the packet has been transmitted.
+Instead, they leave the mbuf in their Tx ring and
+either perform a bulk release when the ``tx_rs_thresh`` has been crossed
+or free the mbuf when a slot in the Tx ring is needed.
+
+An application can request the driver to release used mbufs with the ``rte_eth_tx_done_cleanup()`` API.
+This API requests the driver to release mbufs that are no longer in use,
+independent of whether or not the ``tx_rs_thresh`` has been crossed.
+There are two scenarios when an application may want the mbuf released immediately:
+
+* When a given packet needs to be sent to multiple destination interfaces
+  (either for Layer 2 flooding or Layer 3 multi-cast).
+  One option is to make a copy of the packet or a copy of the header portion that needs to be manipulated.
+  A second option is to transmit the packet and then poll the ``rte_eth_tx_done_cleanup()`` API
+  until the reference count on the packet is decremented.
+  Then the same packet can be transmitted to the next destination interface.
+  The application is still responsible for managing any packet manipulations needed
+  between the different destination interfaces, but a packet copy can be avoided.
+  This API is independent of whether the packet was transmitted or dropped,
+  only that the mbuf is no longer in use by the interface.
+
+* Some applications are designed to make multiple runs, like a packet generator.
+  For performance reasons and consistency between runs,
+  the application may want to reset back to an initial state
+  between each run, where all mbufs are returned to the mempool.
+  In this case, it can call the ``rte_eth_tx_done_cleanup()`` API
+  for each destination interface it has been using
+  to request it to release of all its used mbufs.
+
+To determine if a driver supports this API, check for the *Free Tx mbuf on demand* feature
+in the *Network Interface Controller Drivers* document.
+
 Hardware Offload
 ~~~~~~~~~~~~~~~~
 

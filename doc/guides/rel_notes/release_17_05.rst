@@ -41,6 +41,12 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **Added free Tx mbuf on demand API.**
+
+  Added a new function ``rte_eth_tx_done_cleanup()`` which allows an application
+  to request the driver to release mbufs from their Tx ring that are no longer
+  in use, independent of whether or not the ``tx_rs_thresh`` has been crossed.
+
 * **Increased number of next hops for LPM IPv6 to 2^21.**
 
   The next_hop field is extended from 8 bits to 21 bits for IPv6.
@@ -48,6 +54,7 @@ New Features
 * **Added powerpc support in pci probing for vfio-pci devices.**
 
   sPAPR IOMMU based pci probing enabled for vfio-pci devices.
+
 
 Resolved Issues
 ---------------

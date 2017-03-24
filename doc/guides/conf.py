@@ -64,6 +64,9 @@ release = version
 
 master_doc = 'index'
 
+# Maximum feature description string length
+feature_str_len = 25
+
 # Figures, tables and code-blocks automatically numbered if they have caption
 numfig = True
 
@@ -300,7 +303,7 @@ def print_table_body(outfile, num_cols, ini_files, ini_data, default_features):
 def print_table_row(outfile, feature, line):
     """ Print a single row of the table with fixed formatting. """
     line = line.rstrip()
-    print('   {:<20}{}'.format(feature, line), file=outfile)
+    print('   {:<{}}{}'.format(feature, feature_str_len, line), file=outfile)
 
 
 def print_table_divider(outfile, num_cols):
@@ -309,7 +312,7 @@ def print_table_divider(outfile, num_cols):
     column_dividers = ['='] * num_cols
     line += ' '.join(column_dividers)
 
-    feature = '=' * 20
+    feature = '=' * feature_str_len
 
     print_table_row(outfile, feature, line)
 
