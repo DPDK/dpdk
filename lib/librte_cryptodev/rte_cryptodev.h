@@ -332,6 +332,10 @@ struct rte_cryptodev_info {
 	struct {
 		unsigned max_nb_sessions;
 		/**< Maximum number of sessions supported by device. */
+		unsigned int max_nb_sessions_per_qp;
+		/**< Maximum number of sessions per queue pair.
+		 * Default 0 for infinite sessions
+		 */
 	} sym;
 };
 
@@ -913,6 +917,36 @@ rte_cryptodev_sym_session_create(uint8_t dev_id,
  */
 extern struct rte_cryptodev_sym_session *
 rte_cryptodev_sym_session_free(uint8_t dev_id,
+		struct rte_cryptodev_sym_session *session);
+
+/**
+ * Attach queue pair with sym session.
+ *
+ * @param	qp_id		Queue pair to which session will be attached.
+ * @param	session		Session pointer previously allocated by
+ *				*rte_cryptodev_sym_session_create*.
+ *
+ * @return
+ *  - On success, zero.
+ *  - On failure, a negative value.
+ */
+int
+rte_cryptodev_queue_pair_attach_sym_session(uint16_t qp_id,
+		struct rte_cryptodev_sym_session *session);
+
+/**
+ * Detach queue pair with sym session.
+ *
+ * @param	qp_id		Queue pair to which session is attached.
+ * @param	session		Session pointer previously allocated by
+ *				*rte_cryptodev_sym_session_create*.
+ *
+ * @return
+ *  - On success, zero.
+ *  - On failure, a negative value.
+ */
+int
+rte_cryptodev_queue_pair_detach_sym_session(uint16_t qp_id,
 		struct rte_cryptodev_sym_session *session);
 
 

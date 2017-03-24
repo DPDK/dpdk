@@ -75,8 +75,3 @@ Deprecation Notices
   PMDs that implement the latter.
   Target release for removal of the legacy API will be defined once most
   PMDs have switched to rte_flow.
-
-* cryptodev: A new parameter ``max_nb_sessions_per_qp`` will be added to
-  ``rte_cryptodev_info.sym``. Some drivers may support limited number of
-  sessions per queue_pair. With this new parameter application will know
-  how many sessions can be mapped to each queue_pair of a device.

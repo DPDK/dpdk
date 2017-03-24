@@ -408,6 +408,9 @@ ABI Changes
   The order and size of the fields in the ``mbuf`` structure changed,
   as described in the `New Features`_ section.
 
+* The ``rte_cryptodev_info.sym`` structure has new field ``max_nb_sessions_per_qp``
+  to support drivers which may support limited number of sessions per queue_pair.
+
 
 Removed Items
 -------------
