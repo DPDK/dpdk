@@ -180,6 +180,10 @@ nic_uio_probe (device_t dev)
 	unsigned int device = pci_get_slot(dev);
 	unsigned int function = pci_get_function(dev);
 
+	char bdf_str[256];
+	char *token, *remaining;
+
+	/* First check if we found this on load */
 	for (i = 0; i < num_detached; i++)
 		if (bus == pci_get_bus(detached_devices[i]) &&
 		    device == pci_get_slot(detached_devices[i]) &&
@@ -187,6 +191,45 @@ nic_uio_probe (device_t dev)
 			device_set_desc(dev, "DPDK PCI Device");
 			return BUS_PROBE_SPECIFIC;
 		}
+
+	/* otherwise check if it's a new device and if it matches the BDF */
+	memset(bdf_str, 0, sizeof(bdf_str));
+	TUNABLE_STR_FETCH("hw.nic_uio.bdfs", bdf_str, sizeof(bdf_str));
+	remaining = bdf_str;
+	while (1) {
+		if (remaining == NULL || remaining[0] == '\0')
+			break;
+		token = strsep(&remaining, ",:");
+		if (token == NULL)
+			break;
+		bus = strtol(token, NULL, 10);
+		token = strsep(&remaining, ",:");
+		if (token == NULL)
+			break;
+		device = strtol(token, NULL, 10);
+		token = strsep(&remaining, ",:");
+		if (token == NULL)
+			break;
+		function = strtol(token, NULL, 10);
+
+		if (bus == pci_get_bus(dev) &&
+				device == pci_get_slot(dev) &&
+				function == pci_get_function(dev)) {
+
+			if (num_detached < MAX_DETACHED_DEVICES) {
+				printf("%s: probed dev=%p\n",
+					       __func__, dev);
+				detached_devices[num_detached++] = dev;
+				device_set_desc(dev, "DPDK PCI Device");
+				return BUS_PROBE_SPECIFIC;
+			} else {
+				printf("%s: reached MAX_DETACHED_DEVICES=%d. dev=%p won't be reattached\n",
+						__func__, MAX_DETACHED_DEVICES,
+						dev);
+				break;
+			}
+		}
+	}
 
 	return ENXIO;
 }
@@ -248,6 +291,7 @@ nic_uio_load(void)
 	memset(bdf_str, 0, sizeof(bdf_str));
 	TUNABLE_STR_FETCH("hw.nic_uio.bdfs", bdf_str, sizeof(bdf_str));
 	remaining = bdf_str;
+	printf("nic_uio: hw.nic_uio.bdfs = '%s'\n", bdf_str);
 	/*
 	 * Users should specify PCI BDFs in the format "b:d:f,b:d:f,b:d:f".
 	 *  But the code below does not try differentiate between : and ,
