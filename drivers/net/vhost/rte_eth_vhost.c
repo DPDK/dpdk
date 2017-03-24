@@ -960,6 +960,16 @@ eth_queue_release(void *q)
 }
 
 static int
+eth_tx_done_cleanup(void *txq __rte_unused, uint32_t free_cnt __rte_unused)
+{
+	/*
+	 * vHost does not hang onto mbuf. eth_vhost_tx() copies packet data
+	 * and releases mbuf, so nothing to cleanup.
+	 */
+	return 0;
+}
+
+static int
 eth_link_update(struct rte_eth_dev *dev __rte_unused,
 		int wait_to_complete __rte_unused)
 {
@@ -1001,6 +1011,7 @@ static const struct eth_dev_ops ops = {
 	.tx_queue_setup = eth_tx_queue_setup,
 	.rx_queue_release = eth_queue_release,
 	.tx_queue_release = eth_queue_release,
+	.tx_done_cleanup = eth_tx_done_cleanup,
 	.link_update = eth_link_update,
 	.stats_get = eth_stats_get,
 	.stats_reset = eth_stats_reset,
