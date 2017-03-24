@@ -3814,6 +3814,15 @@ ixgbe_dcb_hw_configure(struct rte_eth_dev *dev,
 			tc->path[IXGBE_DCB_TX_CONFIG].bwg_percent = 0;
 			tc->path[IXGBE_DCB_RX_CONFIG].bwg_percent = 0;
 		}
+	} else {
+		/* Re-configure 8 TCs BW */
+		for (i = 0; i < nb_tcs; i++) {
+			tc = &dcb_config->tc_config[i];
+			tc->path[IXGBE_DCB_TX_CONFIG].bwg_percent =
+				(uint8_t)(100 / nb_tcs + (i & 1));
+			tc->path[IXGBE_DCB_RX_CONFIG].bwg_percent =
+				(uint8_t)(100 / nb_tcs + (i & 1));
+		}
 	}
 
 	switch (hw->mac.type) {
