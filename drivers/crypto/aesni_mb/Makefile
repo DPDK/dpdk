@@ -58,11 +58,4 @@ LDLIBS += -L$(AESNI_MULTI_BUFFER_LIB_PATH) -lIPSec_MB
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_MB) += rte_aesni_mb_pmd.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_MB) += rte_aesni_mb_pmd_ops.c
 
-# library dependencies
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_MB) += lib/librte_eal
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_MB) += lib/librte_mbuf
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_MB) += lib/librte_mempool
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_MB) += lib/librte_ring
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_MB) += lib/librte_cryptodev
-
 include $(RTE_SDK)/mk/rte.lib.mk

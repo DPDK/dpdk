@@ -46,9 +46,4 @@ SRCS-$(CONFIG_RTE_LIBRTE_KNI) := rte_kni.c
 # install includes
 SYMLINK-$(CONFIG_RTE_LIBRTE_KNI)-include := rte_kni.h
 
-DEPDIRS-$(CONFIG_RTE_LIBRTE_KNI) += lib/librte_eal
-DEPDIRS-$(CONFIG_RTE_LIBRTE_KNI) += lib/librte_mbuf
-DEPDIRS-$(CONFIG_RTE_LIBRTE_KNI) += lib/librte_mempool
-DEPDIRS-$(CONFIG_RTE_LIBRTE_KNI) += lib/librte_ether
-
 include $(RTE_SDK)/mk/rte.lib.mk

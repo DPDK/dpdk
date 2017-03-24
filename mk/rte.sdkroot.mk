@@ -111,10 +111,6 @@ help: doc-help
 doc-%:
 	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkdoc.mk $*
 
-.PHONY: depdirs depgraph
-depdirs depgraph:
-	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkdepdirs.mk $@
-
 .PHONY: gcov gcovclean
 gcov gcovclean:
 	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkgcov.mk $@

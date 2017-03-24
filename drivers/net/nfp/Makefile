@@ -50,9 +50,4 @@ LIBABIVER := 1
 #
 SRCS-$(CONFIG_RTE_LIBRTE_NFP_PMD) += nfp_net.c
 
-# this lib depends upon:
-DEPDIRS-$(CONFIG_RTE_LIBRTE_NFP_PMD) += lib/librte_eal lib/librte_ether
-DEPDIRS-$(CONFIG_RTE_LIBRTE_NFP_PMD) += lib/librte_mempool lib/librte_mbuf
-DEPDIRS-$(CONFIG_RTE_LIBRTE_NFP_PMD) += lib/librte_net
-
 include $(RTE_SDK)/mk/rte.lib.mk

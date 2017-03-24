@@ -59,11 +59,4 @@ LDLIBS += -L$(LIBSSO_KASUMI_PATH)/build -lsso_kasumi
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_KASUMI) += rte_kasumi_pmd.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_KASUMI) += rte_kasumi_pmd_ops.c
 
-# library dependencies
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_KASUMI) += lib/librte_eal
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_KASUMI) += lib/librte_mbuf
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_KASUMI) += lib/librte_mempool
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_KASUMI) += lib/librte_ring
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_KASUMI) += lib/librte_cryptodev
-
 include $(RTE_SDK)/mk/rte.lib.mk

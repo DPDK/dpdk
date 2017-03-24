@@ -46,6 +46,4 @@ SRCS-$(CONFIG_RTE_LIBRTE_RING) := rte_ring.c
 # install includes
 SYMLINK-$(CONFIG_RTE_LIBRTE_RING)-include := rte_ring.h
 
-DEPDIRS-$(CONFIG_RTE_LIBRTE_RING) += lib/librte_eal
-
 include $(RTE_SDK)/mk/rte.lib.mk

@@ -46,7 +46,4 @@ SRCS-$(CONFIG_RTE_LIBRTE_TIMER) := rte_timer.c
 # install this header file
 SYMLINK-$(CONFIG_RTE_LIBRTE_TIMER)-include := rte_timer.h
 
-# this lib needs eal
-DEPDIRS-$(CONFIG_RTE_LIBRTE_TIMER) += lib/librte_eal
-
 include $(RTE_SDK)/mk/rte.lib.mk

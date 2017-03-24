@@ -69,7 +69,6 @@ ifeq ($(RTE_CONFIG_TEMPLATE),)
 config: notemplate
 else
 config: $(RTE_OUTPUT)/include/rte_config.h $(RTE_OUTPUT)/Makefile
-	$(Q)$(MAKE) depdirs
 	@echo "Configuration done"
 endif
 
@@ -140,7 +139,6 @@ checkconfig:
 	fi
 	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkconfig.mk \
 		headerconfig NODOTCONF=1
-	$(Q)$(MAKE) -s depdirs
 
 .PHONY: FORCE
 FORCE:

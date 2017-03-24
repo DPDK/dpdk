@@ -111,7 +111,4 @@ INC := rte_interrupts.h
 SYMLINK-$(CONFIG_RTE_EXEC_ENV_BSDAPP)-include/exec-env := \
 	$(addprefix include/exec-env/,$(INC))
 
-DEPDIRS-$(CONFIG_RTE_EXEC_ENV_BSDAPP) += lib/librte_eal/common
-DEPDIRS-$(CONFIG_RTE_EXEC_ENV_BSDAPP) += lib/librte_eal/common/arch/$(ARCH_DIR)
-
 include $(RTE_SDK)/mk/rte.lib.mk

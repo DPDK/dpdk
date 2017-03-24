@@ -367,7 +367,7 @@ Variables that Can be Set/Overridden in a Makefile Only
 
 *   POSTCLEAN: A list of actions to be taken after cleaning. The user should use += to append data in this variable.
 
-*   DEPDIR-y: Only used in the development kit framework to specify if the build of the current directory depends on build of another one.
+*   DEPDIRS-$(DIR): Only used in the development kit framework to specify if the build of the current directory depends on build of another one.
     This is needed to support parallel builds correctly.
 
 Variables that can be Set/Overridden by the User on the Command Line Only

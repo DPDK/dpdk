@@ -47,9 +47,6 @@ SRCS-y += commands.c
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 
-# this application needs libraries first
-DEPDIRS-y += lib drivers
-
 include $(RTE_SDK)/mk/rte.app.mk
 
 endif

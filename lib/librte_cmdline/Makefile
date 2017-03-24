@@ -61,7 +61,4 @@ INCS += cmdline_parse_etheraddr.h cmdline_parse_string.h cmdline_rdline.h
 INCS += cmdline_vt100.h cmdline_socket.h cmdline_cirbuf.h cmdline_parse_portlist.h
 SYMLINK-$(CONFIG_RTE_LIBRTE_CMDLINE)-include := $(INCS)
 
-# this lib needs eal
-DEPDIRS-$(CONFIG_RTE_LIBRTE_CMDLINE) += lib/librte_eal
-
 include $(RTE_SDK)/mk/rte.lib.mk

@@ -55,7 +55,4 @@ SYMLINK-$(CONFIG_RTE_LIBRTE_HASH)-include += rte_jhash.h
 SYMLINK-$(CONFIG_RTE_LIBRTE_HASH)-include += rte_thash.h
 SYMLINK-$(CONFIG_RTE_LIBRTE_HASH)-include += rte_fbk_hash.h
 
-# this lib needs eal and ring
-DEPDIRS-$(CONFIG_RTE_LIBRTE_HASH) += lib/librte_eal lib/librte_ring
-
 include $(RTE_SDK)/mk/rte.lib.mk

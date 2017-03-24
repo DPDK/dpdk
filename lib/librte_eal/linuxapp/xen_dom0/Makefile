@@ -44,9 +44,6 @@ MODULE_CFLAGS += -I$(RTE_OUTPUT)/include
 MODULE_CFLAGS += -include $(RTE_OUTPUT)/include/rte_config.h
 MODULE_CFLAGS += -Wall -Werror
 
-# this lib needs main eal
-DEPDIRS-y += lib/librte_eal/linuxapp/eal
-
 #
 # all source are stored in SRCS-y
 #

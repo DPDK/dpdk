@@ -152,34 +152,6 @@ Documentation Targets
 
     Generate the guides documentation in pdf.
 
-
-Deps Targets
-------------
-
-*   depdirs
-
-    This target is implicitly called by make config.
-    Typically, there is no need for a user to call it,
-    except if DEPDIRS-y variables have been updated in Makefiles.
-    It will generate the file  $(RTE_OUTPUT)/.depdirs.
-
-    Example:
-
-    .. code-block:: console
-
-        make depdirs O=mybuild
-
-*   depgraph
-
-    This command generates a dot graph of dependencies.
-    It can be displayed to debug circular dependency issues, or just to understand the dependencies.
-
-    Example:
-
-    .. code-block:: console
-
-        make depgraph O=mybuild > /tmp/graph.dot && dotty /tmp/ graph.dot
-
 Misc Targets
 ------------
 

@@ -81,9 +81,6 @@ endif
 
 CFLAGS_cmdline.o := -D_GNU_SOURCE
 
-# this application needs libraries first
-DEPDIRS-y += lib drivers
-
 include $(RTE_SDK)/mk/rte.app.mk
 
 endif

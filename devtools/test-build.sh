@@ -146,7 +146,7 @@ config () # <directory> <target> <options>
 	fi
 	if [ ! -e $1/.config ] || $reconfig ; then
 		echo "================== Configure $1"
-		make -j$J T=$2 O=$1 config
+		make T=$2 O=$1 config
 
 		echo 'Customize configuration'
 		# Built-in options (lowercase)

@@ -45,6 +45,4 @@ SYMLINK-$(CONFIG_RTE_LIBRTE_NET)-include := rte_ip.h rte_tcp.h rte_udp.h
 SYMLINK-$(CONFIG_RTE_LIBRTE_NET)-include += rte_sctp.h rte_icmp.h rte_arp.h
 SYMLINK-$(CONFIG_RTE_LIBRTE_NET)-include += rte_ether.h rte_gre.h rte_net.h
 
-DEPDIRS-$(CONFIG_RTE_LIBRTE_NET) += lib/librte_eal lib/librte_mbuf
-
 include $(RTE_SDK)/mk/rte.lib.mk

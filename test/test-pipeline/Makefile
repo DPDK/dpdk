@@ -56,9 +56,6 @@ SRCS-y += pipeline_lpm_ipv6.c
 # include ACL lib if available
 SRCS-$(CONFIG_RTE_LIBRTE_ACL) += pipeline_acl.c
 
-# this application needs libraries first
-DEPDIRS-y += lib drivers
-
 include $(RTE_SDK)/mk/rte.app.mk
 
 endif

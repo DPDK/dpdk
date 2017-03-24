@@ -43,7 +43,6 @@ else
 include $(RTE_SDK)/mk/internal/rte.install-pre.mk
 include $(RTE_SDK)/mk/internal/rte.clean-pre.mk
 include $(RTE_SDK)/mk/internal/rte.build-pre.mk
-include $(RTE_SDK)/mk/internal/rte.depdirs-pre.mk
 
 # DPDK uses a more up-to-date gcc, so clear the override here.
 unexport CC
@@ -111,7 +110,6 @@ doclean:
 include $(RTE_SDK)/mk/internal/rte.install-post.mk
 include $(RTE_SDK)/mk/internal/rte.clean-post.mk
 include $(RTE_SDK)/mk/internal/rte.build-post.mk
-include $(RTE_SDK)/mk/internal/rte.depdirs-post.mk
 
 .PHONY: FORCE
 FORCE:

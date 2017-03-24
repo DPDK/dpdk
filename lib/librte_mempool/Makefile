@@ -48,6 +48,4 @@ SRCS-$(CONFIG_RTE_LIBRTE_MEMPOOL) +=  rte_mempool_stack.c
 # install includes
 SYMLINK-$(CONFIG_RTE_LIBRTE_MEMPOOL)-include := rte_mempool.h
 
-DEPDIRS-$(CONFIG_RTE_LIBRTE_MEMPOOL) += lib/librte_eal lib/librte_ring
-
 include $(RTE_SDK)/mk/rte.lib.mk

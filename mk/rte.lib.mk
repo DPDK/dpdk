@@ -33,7 +33,6 @@ include $(RTE_SDK)/mk/internal/rte.compile-pre.mk
 include $(RTE_SDK)/mk/internal/rte.install-pre.mk
 include $(RTE_SDK)/mk/internal/rte.clean-pre.mk
 include $(RTE_SDK)/mk/internal/rte.build-pre.mk
-include $(RTE_SDK)/mk/internal/rte.depdirs-pre.mk
 
 EXTLIB_BUILD ?= n
 
@@ -85,12 +84,12 @@ else
 _CPU_LDFLAGS := $(CPU_LDFLAGS)
 endif
 
-# Translate DEPDIRS-y into LDLIBS
+# Translate DEPDIRS into LDLIBS
 # Ignore (sub)directory dependencies which do not provide an actual library
-_IGNORE_DIRS = lib/librte_eal/% lib/librte_compat
-_DEPDIRS = $(filter-out $(_IGNORE_DIRS),$(DEPDIRS-y))
+_IGNORE_DIRS = librte_eal/% librte_compat
+_DEPDIRS = $(filter-out $(_IGNORE_DIRS),$(DEPDIRS))
 _LDDIRS = $(subst librte_ether,librte_ethdev,$(_DEPDIRS))
-LDLIBS += $(subst lib/lib,-l,$(_LDDIRS))
+LDLIBS += $(subst lib,-l,$(_LDDIRS))
 
 O_TO_A = $(AR) crDs $(LIB) $(OBJS-y)
 O_TO_A_STR = $(subst ','\'',$(O_TO_A)) #'# fix syntax highlight
@@ -183,7 +182,6 @@ include $(RTE_SDK)/mk/internal/rte.compile-post.mk
 include $(RTE_SDK)/mk/internal/rte.install-post.mk
 include $(RTE_SDK)/mk/internal/rte.clean-post.mk
 include $(RTE_SDK)/mk/internal/rte.build-post.mk
-include $(RTE_SDK)/mk/internal/rte.depdirs-post.mk
 
 .PHONY: FORCE
 FORCE:

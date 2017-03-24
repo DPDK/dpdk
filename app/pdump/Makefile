@@ -41,9 +41,6 @@ CFLAGS += $(WERROR_FLAGS)
 
 SRCS-y := main.c
 
-# this application needs libraries first
-DEPDIRS-y += lib
-
 include $(RTE_SDK)/mk/rte.app.mk
 
 endif

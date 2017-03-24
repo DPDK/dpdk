@@ -53,11 +53,4 @@ SRCS-$(CONFIG_RTE_LIBRTE_VHOST) := fd_man.c socket.c vhost.c vhost_user.c \
 # install includes
 SYMLINK-$(CONFIG_RTE_LIBRTE_VHOST)-include += rte_virtio_net.h
 
-# dependencies
-DEPDIRS-$(CONFIG_RTE_LIBRTE_VHOST) += lib/librte_eal
-DEPDIRS-$(CONFIG_RTE_LIBRTE_VHOST) += lib/librte_ether
-DEPDIRS-$(CONFIG_RTE_LIBRTE_VHOST) += lib/librte_mbuf
-DEPDIRS-$(CONFIG_RTE_LIBRTE_VHOST) += lib/librte_mempool
-DEPDIRS-$(CONFIG_RTE_LIBRTE_VHOST) += lib/librte_net
-
 include $(RTE_SDK)/mk/rte.lib.mk

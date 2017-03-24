@@ -44,7 +44,4 @@ SRCS-y += cperf_test_throughput.c
 SRCS-y += cperf_test_latency.c
 SRCS-y += cperf_test_vector_parsing.c
 
-# this application needs libraries first
-DEPDIRS-y += lib
-
 include $(RTE_SDK)/mk/rte.app.mk

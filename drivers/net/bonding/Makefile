@@ -58,13 +58,4 @@ SRCS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += rte_eth_bond_alb.c
 SYMLINK-y-include += rte_eth_bond.h
 SYMLINK-y-include += rte_eth_bond_8023ad.h
 
-# this lib depends upon:
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += lib/librte_mbuf
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += lib/librte_ether
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += lib/librte_eal
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += lib/librte_kvargs
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += lib/librte_cmdline
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += lib/librte_mempool
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += lib/librte_ring
-
 include $(RTE_SDK)/mk/rte.lib.mk

@@ -56,11 +56,4 @@ SRCS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_GCM) += aesni_gcm_pmd_ops.c
 # export include files
 SYMLINK-y-include +=
 
-# library dependencies
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_GCM) += lib/librte_eal
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_GCM) += lib/librte_mbuf
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_GCM) += lib/librte_mempool
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_GCM) += lib/librte_ring
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_GCM) += lib/librte_cryptodev
-
 include $(RTE_SDK)/mk/rte.lib.mk

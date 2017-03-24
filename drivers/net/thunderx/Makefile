@@ -65,8 +65,4 @@ CFLAGS_nicvf_rxtx.o += -fno-prefetch-loop-arrays
 endif
 CFLAGS_nicvf_rxtx.o += -Ofast
 
-# this lib depends upon:
-DEPDIRS-$(CONFIG_RTE_LIBRTE_THUNDERX_NICVF_PMD) += lib/librte_eal lib/librte_ether
-DEPDIRS-$(CONFIG_RTE_LIBRTE_THUNDERX_NICVF_PMD) += lib/librte_mempool lib/librte_mbuf
-
 include $(RTE_SDK)/mk/rte.lib.mk

@@ -49,7 +49,4 @@ SRCS-$(CONFIG_RTE_LIBRTE_KVARGS) := rte_kvargs.c
 INCS := rte_kvargs.h
 SYMLINK-$(CONFIG_RTE_LIBRTE_KVARGS)-include := $(INCS)
 
-# this lib needs eal
-DEPDIRS-$(CONFIG_RTE_LIBRTE_KVARGS) += lib/librte_eal
-
 include $(RTE_SDK)/mk/rte.lib.mk

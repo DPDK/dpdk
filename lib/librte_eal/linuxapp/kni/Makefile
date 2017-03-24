@@ -53,9 +53,6 @@ UBUNTU_KERNEL_CODE := $(shell echo `grep UTS_RELEASE $(RTE_KERNELDIR)/include/ge
 MODULE_CFLAGS += -D"UBUNTU_KERNEL_CODE=UBUNTU_KERNEL_VERSION($(UBUNTU_KERNEL_CODE))"
 endif
 
-# this lib needs main eal
-DEPDIRS-y += lib/librte_eal/linuxapp/eal
-
 #
 # all source are stored in SRCS-y
 #

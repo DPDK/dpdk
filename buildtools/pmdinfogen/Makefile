@@ -44,6 +44,4 @@ SRCS-y += pmdinfogen.c
 HOST_CFLAGS += $(WERROR_FLAGS) -g
 HOST_CFLAGS += -I$(RTE_OUTPUT)/include
 
-DEPDIRS-y += lib/librte_eal
-
 include $(RTE_SDK)/mk/rte.hostapp.mk

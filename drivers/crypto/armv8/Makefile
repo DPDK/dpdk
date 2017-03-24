@@ -62,11 +62,4 @@ LDLIBS += -L$(ARMV8_CRYPTO_LIB_PATH) -larmv8_crypto
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_ARMV8_CRYPTO) += rte_armv8_pmd.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_ARMV8_CRYPTO) += rte_armv8_pmd_ops.c
 
-# library dependencies
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_ARMV8_CRYPTO) += lib/librte_eal
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_ARMV8_CRYPTO) += lib/librte_mbuf
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_ARMV8_CRYPTO) += lib/librte_mempool
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_ARMV8_CRYPTO) += lib/librte_ring
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_ARMV8_CRYPTO) += lib/librte_cryptodev
-
 include $(RTE_SDK)/mk/rte.lib.mk

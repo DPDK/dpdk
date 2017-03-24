@@ -100,9 +100,4 @@ SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += qede_eth_if.c
 SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += qede_main.c
 SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += qede_rxtx.c
 
-# dependent libs:
-DEPDIRS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += lib/librte_eal lib/librte_ether
-DEPDIRS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += lib/librte_mempool lib/librte_mbuf
-DEPDIRS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += lib/librte_net
-
 include $(RTE_SDK)/mk/rte.lib.mk

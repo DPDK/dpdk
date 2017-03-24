@@ -35,29 +35,3 @@ endif
 ifeq (,$(wildcard $(RTE_OUTPUT)/Makefile))
   $(error "need a make config first")
 endif
-
-DEPDIR_FILES = $(addsuffix /.depdirs, $(addprefix $(BUILDDIR)/,$(ROOTDIRS-y) $(ROOTDIRS-)))
-
-.PHONY: depdirs
-depdirs: $(RTE_OUTPUT)/.depdirs
-$(RTE_OUTPUT)/.depdirs: $(DEPDIR_FILES)
-	@rm -f $@
-	@sort -u -o $@ $(DEPDIR_FILES)
-
-$(DEPDIR_FILES): $(RTE_OUTPUT)/.config
-	@dir=$(notdir $(@D)); \
-	[ -d $(BUILDDIR)/$$dir ] || mkdir -p $(BUILDDIR)/$$dir; \
-	$(MAKE) S=$$dir -f $(RTE_SRCDIR)/$$dir/Makefile depdirs > $@
-
-.PHONY: depgraph
-depgraph:
-	@echo "digraph unix {" ; \
-	echo "    size=\"6,6\";" ; \
-	echo "    node [color=lightblue2, style=filled];" ; \
-	for d in $(ROOTDIRS-y); do \
-		echo "    \"root\" -> \"$$d\"" ; \
-		if [ -f $(RTE_SRCDIR)/$$d/Makefile ]; then \
-			$(MAKE) S=$$d -f $(RTE_SRCDIR)/$$d/Makefile depgraph ; \
-		fi ; \
-	done ; \
-	echo "}"

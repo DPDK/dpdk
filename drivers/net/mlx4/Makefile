@@ -37,12 +37,6 @@ LIB = librte_pmd_mlx4.a
 # Sources.
 SRCS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += mlx4.c
 
-# Dependencies.
-DEPDIRS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += lib/librte_ether
-DEPDIRS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += lib/librte_mbuf
-DEPDIRS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += lib/librte_eal
-DEPDIRS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += lib/librte_mempool
-
 # Basic CFLAGS.
 CFLAGS += -O3
 CFLAGS += -std=gnu99 -Wall -Wextra

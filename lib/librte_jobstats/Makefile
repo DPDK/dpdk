@@ -47,7 +47,4 @@ SRCS-$(CONFIG_RTE_LIBRTE_JOBSTATS) := rte_jobstats.c
 # install this header file
 SYMLINK-$(CONFIG_RTE_LIBRTE_JOBSTATS)-include := rte_jobstats.h
 
-# this lib needs eal
-DEPDIRS-$(CONFIG_RTE_LIBRTE_JOBSTATS) += lib/librte_eal
-
 include $(RTE_SDK)/mk/rte.lib.mk

@@ -214,9 +214,6 @@ CFLAGS_test_memcpy_perf.o += -fno-var-tracking-assignments
 endif
 endif
 
-# this application needs libraries first
-DEPDIRS-y += lib drivers
-
 # Link against shared libraries when needed
 ifeq ($(CONFIG_RTE_LIBRTE_PMD_BOND),y)
 ifneq ($(CONFIG_RTE_LIBRTE_PMD_RING),y)

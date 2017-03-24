@@ -133,12 +133,4 @@ SRCS-$(CONFIG_RTE_LIBRTE_SFC_EFX_PMD) += ef10_vpd.c
 SRCS-$(CONFIG_RTE_LIBRTE_SFC_EFX_PMD) += hunt_nic.c
 SRCS-$(CONFIG_RTE_LIBRTE_SFC_EFX_PMD) += medford_nic.c
 
-# this lib depends upon:
-DEPDIRS-$(CONFIG_RTE_LIBRTE_SFC_EFX_PMD) += lib/librte_eal
-DEPDIRS-$(CONFIG_RTE_LIBRTE_SFC_EFX_PMD) += lib/librte_kvargs
-DEPDIRS-$(CONFIG_RTE_LIBRTE_SFC_EFX_PMD) += lib/librte_ether
-DEPDIRS-$(CONFIG_RTE_LIBRTE_SFC_EFX_PMD) += lib/librte_mempool
-DEPDIRS-$(CONFIG_RTE_LIBRTE_SFC_EFX_PMD) += lib/librte_mbuf
-DEPDIRS-$(CONFIG_RTE_LIBRTE_SFC_EFX_PMD) += lib/librte_net
-
 include $(RTE_SDK)/mk/rte.lib.mk

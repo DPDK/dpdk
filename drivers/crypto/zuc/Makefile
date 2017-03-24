@@ -59,11 +59,4 @@ LDLIBS += -L$(LIBSSO_ZUC_PATH)/build -lsso_zuc
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_ZUC) += rte_zuc_pmd.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_ZUC) += rte_zuc_pmd_ops.c
 
-# library dependencies
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_ZUC) += lib/librte_eal
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_ZUC) += lib/librte_mbuf
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_ZUC) += lib/librte_mempool
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_ZUC) += lib/librte_ring
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_ZUC) += lib/librte_cryptodev
-
 include $(RTE_SDK)/mk/rte.lib.mk

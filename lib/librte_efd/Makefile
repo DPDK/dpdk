@@ -47,9 +47,4 @@ SRCS-$(CONFIG_RTE_LIBRTE_EFD) := rte_efd.c
 # install this header file
 SYMLINK-$(CONFIG_RTE_LIBRTE_EFD)-include := rte_efd.h
 
-# this lib depends upon:
-DEPDIRS-$(CONFIG_RTE_LIBRTE_EFD) += lib/librte_eal
-DEPDIRS-$(CONFIG_RTE_LIBRTE_EFD) += lib/librte_ring
-DEPDIRS-$(CONFIG_RTE_LIBRTE_EFD) += lib/librte_hash
-
 include $(RTE_SDK)/mk/rte.lib.mk

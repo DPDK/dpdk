@@ -51,11 +51,6 @@ SRCS-$(CONFIG_RTE_LIBRTE_ENA_PMD) += ena_ethdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_ENA_PMD) += ena_com.c
 SRCS-$(CONFIG_RTE_LIBRTE_ENA_PMD) += ena_eth_com.c
 
-# this lib depends upon:
-DEPDIRS-$(CONFIG_RTE_LIBRTE_ENA_PMD) += lib/librte_eal lib/librte_ether
-DEPDIRS-$(CONFIG_RTE_LIBRTE_ENA_PMD) += lib/librte_mempool lib/librte_mbuf
-DEPDIRS-$(CONFIG_RTE_LIBRTE_ENA_PMD) += lib/librte_net
-
 CFLAGS += $(INCLUDES)
 
 include $(RTE_SDK)/mk/rte.lib.mk
