@@ -55,6 +55,72 @@ lio_hweight64(uint64_t w)
 	return (res + (res >> 32)) & 0x00000000000000FFul;
 }
 
+/**
+ * Setup our receive queue/ringbuffer. This is the
+ * queue the Octeon uses to send us packets and
+ * responses. We are given a memory pool for our
+ * packet buffers that are used to populate the receive
+ * queue.
+ *
+ * @param eth_dev
+ *    Pointer to the structure rte_eth_dev
+ * @param q_no
+ *    Queue number
+ * @param num_rx_descs
+ *    Number of entries in the queue
+ * @param socket_id
+ *    Where to allocate memory
+ * @param rx_conf
+ *    Pointer to the struction rte_eth_rxconf
+ * @param mp
+ *    Pointer to the packet pool
+ *
+ * @return
+ *    - On success, return 0
+ *    - On failure, return -1
+ */
+static int
+lio_dev_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t q_no,
+		       uint16_t num_rx_descs, unsigned int socket_id,
+		       const struct rte_eth_rxconf *rx_conf __rte_unused,
+		       struct rte_mempool *mp)
+{
+	struct lio_device *lio_dev = LIO_DEV(eth_dev);
+	struct rte_pktmbuf_pool_private *mbp_priv;
+	uint32_t fw_mapped_oq;
+	uint16_t buf_size;
+
+	if (q_no >= lio_dev->nb_rx_queues) {
+		lio_dev_err(lio_dev, "Invalid rx queue number %u\n", q_no);
+		return -EINVAL;
+	}
+
+	lio_dev_dbg(lio_dev, "setting up rx queue %u\n", q_no);
+
+	fw_mapped_oq = lio_dev->linfo.rxpciq[q_no].s.q_no;
+
+	if ((lio_dev->droq[fw_mapped_oq]) &&
+	    (num_rx_descs != lio_dev->droq[fw_mapped_oq]->max_count)) {
+		lio_dev_err(lio_dev,
+			    "Reconfiguring Rx descs not supported. Configure descs to same value %u or restart application\n",
+			    lio_dev->droq[fw_mapped_oq]->max_count);
+		return -ENOTSUP;
+	}
+
+	mbp_priv = rte_mempool_get_priv(mp);
+	buf_size = mbp_priv->mbuf_data_room_size - RTE_PKTMBUF_HEADROOM;
+
+	if (lio_setup_droq(lio_dev, fw_mapped_oq, num_rx_descs, buf_size, mp,
+			   socket_id)) {
+		lio_dev_err(lio_dev, "droq allocation failed\n");
+		return -1;
+	}
+
+	eth_dev->data->rx_queues[q_no] = lio_dev->droq[fw_mapped_oq];
+
+	return 0;
+}
+
 static int lio_dev_configure(struct rte_eth_dev *eth_dev)
 {
 	struct lio_device *lio_dev = LIO_DEV(eth_dev);
@@ -199,6 +265,7 @@ nic_config_fail:
 /* Define our ethernet definitions */
 static const struct eth_dev_ops liovf_eth_dev_ops = {
 	.dev_configure		= lio_dev_configure,
+	.rx_queue_setup		= lio_dev_rx_queue_setup,
 };
 
 static void

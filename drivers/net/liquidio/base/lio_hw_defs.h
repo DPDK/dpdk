@@ -78,6 +78,8 @@ enum lio_card_type {
 
 #define LIO_DEV_RUNNING		0xc
 
+#define LIO_OQ_REFILL_THRESHOLD_CFG(cfg)				\
+		((cfg)->default_config->oq.refill_threshold)
 #define LIO_NUM_DEF_TX_DESCS_CFG(cfg)					\
 		((cfg)->default_config->num_def_tx_descs)
 
@@ -89,6 +91,7 @@ enum lio_card_type {
 #define LIO_MAX_INSTR_QUEUES(lio_dev)		CN23XX_MAX_RINGS_PER_VF
 
 #define LIO_MAX_POSSIBLE_INSTR_QUEUES		CN23XX_MAX_INPUT_QUEUES
+#define LIO_MAX_POSSIBLE_OUTPUT_QUEUES		CN23XX_MAX_OUTPUT_QUEUES
 
 #define LIO_DEVICE_NAME_LEN		32
 #define LIO_BASE_MAJOR_VERSION		1

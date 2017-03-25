@@ -56,6 +56,150 @@ struct lio_version {
 	uint16_t reserved;
 };
 
+/** The Descriptor Ring Output Queue structure.
+ *  This structure has all the information required to implement a
+ *  DROQ.
+ */
+struct lio_droq {
+	/** A spinlock to protect access to this ring. */
+	rte_spinlock_t lock;
+
+	uint32_t q_no;
+
+	uint32_t pkt_count;
+
+	struct lio_device *lio_dev;
+
+	/** The 8B aligned descriptor ring starts at this address. */
+	struct lio_droq_desc *desc_ring;
+
+	/** Index in the ring where the driver should read the next packet */
+	uint32_t read_idx;
+
+	/** Index in the ring where Octeon will write the next packet */
+	uint32_t write_idx;
+
+	/** Index in the ring where the driver will refill the descriptor's
+	 * buffer
+	 */
+	uint32_t refill_idx;
+
+	/** Packets pending to be processed */
+	rte_atomic64_t pkts_pending;
+
+	/** Number of  descriptors in this ring. */
+	uint32_t max_count;
+
+	/** The number of descriptors pending refill. */
+	uint32_t refill_count;
+
+	uint32_t refill_threshold;
+
+	/** The 8B aligned info ptrs begin from this address. */
+	struct lio_droq_info *info_list;
+
+	/** The receive buffer list. This list has the virtual addresses of the
+	 *  buffers.
+	 */
+	struct lio_recv_buffer *recv_buf_list;
+
+	/** The size of each buffer pointed by the buffer pointer. */
+	uint32_t buffer_size;
+
+	/** Pointer to the mapped packet credit register.
+	 *  Host writes number of info/buffer ptrs available to this register
+	 */
+	void *pkts_credit_reg;
+
+	/** Pointer to the mapped packet sent register.
+	 *  Octeon writes the number of packets DMA'ed to host memory
+	 *  in this register.
+	 */
+	void *pkts_sent_reg;
+
+	/** DMA mapped address of the DROQ descriptor ring. */
+	size_t desc_ring_dma;
+
+	/** Info ptr list are allocated at this virtual address. */
+	size_t info_base_addr;
+
+	/** DMA mapped address of the info list */
+	size_t info_list_dma;
+
+	/** Allocated size of info list. */
+	uint32_t info_alloc_size;
+
+	/** Memory zone **/
+	const struct rte_memzone *desc_ring_mz;
+	const struct rte_memzone *info_mz;
+	struct rte_mempool *mpool;
+};
+
+/** Receive Header */
+union octeon_rh {
+#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
+	uint64_t rh64;
+	struct	{
+		uint64_t opcode : 4;
+		uint64_t subcode : 8;
+		uint64_t len : 3; /** additional 64-bit words */
+		uint64_t reserved : 17;
+		uint64_t ossp : 32; /** opcode/subcode specific parameters */
+	} r;
+	struct	{
+		uint64_t opcode : 4;
+		uint64_t subcode : 8;
+		uint64_t len : 3; /** additional 64-bit words */
+		uint64_t extra : 28;
+		uint64_t vlan : 12;
+		uint64_t priority : 3;
+		uint64_t csum_verified : 3; /** checksum verified. */
+		uint64_t has_hwtstamp : 1; /** Has hardware timestamp.1 = yes.*/
+		uint64_t encap_on : 1;
+		uint64_t has_hash : 1; /** Has hash (rth or rss). 1 = yes. */
+	} r_dh;
+	struct {
+		uint64_t opcode : 4;
+		uint64_t subcode : 8;
+		uint64_t len : 3; /** additional 64-bit words */
+		uint64_t reserved : 8;
+		uint64_t extra : 25;
+		uint64_t gmxport : 16;
+	} r_nic_info;
+#else
+	uint64_t rh64;
+	struct {
+		uint64_t ossp : 32; /** opcode/subcode specific parameters */
+		uint64_t reserved : 17;
+		uint64_t len : 3; /** additional 64-bit words */
+		uint64_t subcode : 8;
+		uint64_t opcode : 4;
+	} r;
+	struct {
+		uint64_t has_hash : 1; /** Has hash (rth or rss). 1 = yes. */
+		uint64_t encap_on : 1;
+		uint64_t has_hwtstamp : 1;  /** 1 = has hwtstamp */
+		uint64_t csum_verified : 3; /** checksum verified. */
+		uint64_t priority : 3;
+		uint64_t vlan : 12;
+		uint64_t extra : 28;
+		uint64_t len : 3; /** additional 64-bit words */
+		uint64_t subcode : 8;
+		uint64_t opcode : 4;
+	} r_dh;
+	struct {
+		uint64_t gmxport : 16;
+		uint64_t extra : 25;
+		uint64_t reserved : 8;
+		uint64_t len : 3; /** additional 64-bit words */
+		uint64_t subcode : 8;
+		uint64_t opcode : 4;
+	} r_nic_info;
+#endif
+};
+
+#define OCTEON_RH_SIZE (sizeof(union octeon_rh))
+
 /** The txpciq info passed to host from the firmware */
 union octeon_txpciq {
 	uint64_t txpciq64;
@@ -379,6 +523,11 @@ struct lio_device {
 
 	/** The singly-linked tail queues of instruction response */
 	struct lio_response_list response_list;
+
+	uint32_t num_oqs;
+
+	/** The DROQ output queues  */
+	struct lio_droq *droq[LIO_MAX_POSSIBLE_OUTPUT_QUEUES];
 
 	struct lio_io_enable io_qmask;
 

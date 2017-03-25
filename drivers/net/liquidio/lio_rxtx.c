@@ -63,6 +63,174 @@ lio_dma_zone_free(struct lio_device *lio_dev, const struct rte_memzone *mz)
 }
 
 /**
+ *  Frees the space for descriptor ring for the droq.
+ *
+ *  @param lio_dev	- pointer to the lio device structure
+ *  @param q_no		- droq no.
+ */
+static void
+lio_delete_droq(struct lio_device *lio_dev, uint32_t q_no)
+{
+	struct lio_droq *droq = lio_dev->droq[q_no];
+
+	lio_dev_dbg(lio_dev, "OQ[%d]\n", q_no);
+
+	rte_free(droq->recv_buf_list);
+	droq->recv_buf_list = NULL;
+	lio_dma_zone_free(lio_dev, droq->info_mz);
+	lio_dma_zone_free(lio_dev, droq->desc_ring_mz);
+
+	memset(droq, 0, LIO_DROQ_SIZE);
+}
+
+static void *
+lio_alloc_info_buffer(struct lio_device *lio_dev,
+		      struct lio_droq *droq, unsigned int socket_id)
+{
+	droq->info_mz = rte_eth_dma_zone_reserve(lio_dev->eth_dev,
+						 "info_list", droq->q_no,
+						 (droq->max_count *
+							LIO_DROQ_INFO_SIZE),
+						 RTE_CACHE_LINE_SIZE,
+						 socket_id);
+
+	if (droq->info_mz == NULL)
+		return NULL;
+
+	droq->info_list_dma = droq->info_mz->phys_addr;
+	droq->info_alloc_size = droq->info_mz->len;
+	droq->info_base_addr = (size_t)droq->info_mz->addr;
+
+	return droq->info_mz->addr;
+}
+
+/**
+ *  Allocates space for the descriptor ring for the droq and
+ *  sets the base addr, num desc etc in Octeon registers.
+ *
+ * @param lio_dev	- pointer to the lio device structure
+ * @param q_no		- droq no.
+ * @param app_ctx	- pointer to application context
+ * @return Success: 0	Failure: -1
+ */
+static int
+lio_init_droq(struct lio_device *lio_dev, uint32_t q_no,
+	      uint32_t num_descs, uint32_t desc_size,
+	      struct rte_mempool *mpool, unsigned int socket_id)
+{
+	uint32_t c_refill_threshold;
+	uint32_t desc_ring_size;
+	struct lio_droq *droq;
+
+	lio_dev_dbg(lio_dev, "OQ[%d]\n", q_no);
+
+	droq = lio_dev->droq[q_no];
+	droq->lio_dev = lio_dev;
+	droq->q_no = q_no;
+	droq->mpool = mpool;
+
+	c_refill_threshold = LIO_OQ_REFILL_THRESHOLD_CFG(lio_dev);
+
+	droq->max_count = num_descs;
+	droq->buffer_size = desc_size;
+
+	desc_ring_size = droq->max_count * LIO_DROQ_DESC_SIZE;
+	droq->desc_ring_mz = rte_eth_dma_zone_reserve(lio_dev->eth_dev,
+						      "droq", q_no,
+						      desc_ring_size,
+						      RTE_CACHE_LINE_SIZE,
+						      socket_id);
+
+	if (droq->desc_ring_mz == NULL) {
+		lio_dev_err(lio_dev,
+			    "Output queue %d ring alloc failed\n", q_no);
+		return -1;
+	}
+
+	droq->desc_ring_dma = droq->desc_ring_mz->phys_addr;
+	droq->desc_ring = (struct lio_droq_desc *)droq->desc_ring_mz->addr;
+
+	lio_dev_dbg(lio_dev, "droq[%d]: desc_ring: virt: 0x%p, dma: %lx\n",
+		    q_no, droq->desc_ring, (unsigned long)droq->desc_ring_dma);
+	lio_dev_dbg(lio_dev, "droq[%d]: num_desc: %d\n", q_no,
+		    droq->max_count);
+
+	droq->info_list = lio_alloc_info_buffer(lio_dev, droq, socket_id);
+	if (droq->info_list == NULL) {
+		lio_dev_err(lio_dev, "Cannot allocate memory for info list.\n");
+		goto init_droq_fail;
+	}
+
+	droq->recv_buf_list = rte_zmalloc_socket("recv_buf_list",
+						 (droq->max_count *
+							LIO_DROQ_RECVBUF_SIZE),
+						 RTE_CACHE_LINE_SIZE,
+						 socket_id);
+	if (droq->recv_buf_list == NULL) {
+		lio_dev_err(lio_dev,
+			    "Output queue recv buf list alloc failed\n");
+		goto init_droq_fail;
+	}
+
+	droq->refill_threshold = c_refill_threshold;
+
+	rte_spinlock_init(&droq->lock);
+
+	lio_dev->io_qmask.oq |= (1ULL << q_no);
+
+	return 0;
+
+init_droq_fail:
+	lio_delete_droq(lio_dev, q_no);
+
+	return -1;
+}
+
+int
+lio_setup_droq(struct lio_device *lio_dev, int oq_no, int num_descs,
+	       int desc_size, struct rte_mempool *mpool, unsigned int socket_id)
+{
+	struct lio_droq *droq;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (lio_dev->droq[oq_no]) {
+		lio_dev_dbg(lio_dev, "Droq %d in use\n", oq_no);
+		return 0;
+	}
+
+	/* Allocate the DS for the new droq. */
+	droq = rte_zmalloc_socket("ethdev RX queue", sizeof(*droq),
+				  RTE_CACHE_LINE_SIZE, socket_id);
+	if (droq == NULL)
+		return -ENOMEM;
+
+	lio_dev->droq[oq_no] = droq;
+
+	/* Initialize the Droq */
+	if (lio_init_droq(lio_dev, oq_no, num_descs, desc_size, mpool,
+			  socket_id)) {
+		lio_dev_err(lio_dev, "Droq[%u] Initialization Failed\n", oq_no);
+		rte_free(lio_dev->droq[oq_no]);
+		lio_dev->droq[oq_no] = NULL;
+		return -ENOMEM;
+	}
+
+	lio_dev->num_oqs++;
+
+	lio_dev_dbg(lio_dev, "Total number of OQ: %d\n", lio_dev->num_oqs);
+
+	/* Send credit for octeon output queues. credits are always
+	 * sent after the output queue is enabled.
+	 */
+	rte_write32(lio_dev->droq[oq_no]->max_count,
+		    lio_dev->droq[oq_no]->pkts_credit_reg);
+	rte_wmb();
+
+	return 0;
+}
+
+/**
  *  lio_init_instr_queue()
  *  @param lio_dev	- pointer to the lio device structure.
  *  @param txpciq	- queue to be initialized.

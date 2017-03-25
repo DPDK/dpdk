@@ -50,6 +50,58 @@
 #define lio_uptime		\
 	(size_t)(rte_get_timer_cycles() / rte_get_timer_hz())
 
+/** Descriptor format.
+ *  The descriptor ring is made of descriptors which have 2 64-bit values:
+ *  -# Physical (bus) address of the data buffer.
+ *  -# Physical (bus) address of a lio_droq_info structure.
+ *  The device DMA's incoming packets and its information at the address
+ *  given by these descriptor fields.
+ */
+struct lio_droq_desc {
+	/** The buffer pointer */
+	uint64_t buffer_ptr;
+
+	/** The Info pointer */
+	uint64_t info_ptr;
+};
+
+#define LIO_DROQ_DESC_SIZE	(sizeof(struct lio_droq_desc))
+
+/** Information about packet DMA'ed by Octeon.
+ *  The format of the information available at Info Pointer after Octeon
+ *  has posted a packet. Not all descriptors have valid information. Only
+ *  the Info field of the first descriptor for a packet has information
+ *  about the packet.
+ */
+struct lio_droq_info {
+	/** The Output Receive Header. */
+	union octeon_rh rh;
+
+	/** The Length of the packet. */
+	uint64_t length;
+};
+
+#define LIO_DROQ_INFO_SIZE	(sizeof(struct lio_droq_info))
+
+/** Pointer to data buffer.
+ *  Driver keeps a pointer to the data buffer that it made available to
+ *  the Octeon device. Since the descriptor ring keeps physical (bus)
+ *  addresses, this field is required for the driver to keep track of
+ *  the virtual address pointers.
+ */
+struct lio_recv_buffer {
+	/** Packet buffer, including meta data. */
+	void *buffer;
+
+	/** Data in the packet buffer. */
+	uint8_t *data;
+
+};
+
+#define LIO_DROQ_RECVBUF_SIZE	(sizeof(struct lio_recv_buffer))
+
+#define LIO_DROQ_SIZE		(sizeof(struct lio_droq))
+
 #define LIO_IQ_SEND_OK		0
 #define LIO_IQ_SEND_STOP	1
 #define LIO_IQ_SEND_FAILED	-1
@@ -457,6 +509,10 @@ lio_incr_index(uint32_t index, uint32_t count, uint32_t max)
 
 	return index;
 }
+
+int lio_setup_droq(struct lio_device *lio_dev, int q_no, int num_descs,
+		   int desc_size, struct rte_mempool *mpool,
+		   unsigned int socket_id);
 
 /** Setup instruction queue zero for the device
  *  @param lio_dev which lio device to setup
