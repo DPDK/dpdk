@@ -96,6 +96,10 @@ New Features
 
   * Support virtual functions (VFs)
 
+* **Added LiquidIO network PMD.**
+
+  Added poll mode driver support for Cavium LiquidIO II server adapter VFs.
+
 * **Added vmxnet3 version 3 support.**
 
   Added support for vmxnet3 version 3 which includes several

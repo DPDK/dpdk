@@ -47,6 +47,7 @@ Network Interface Controller Drivers
     ixgbe
     intel_vf
     kni
+    liquidio
     mlx4
     mlx5
     nfp
