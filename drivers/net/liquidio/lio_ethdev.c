@@ -973,6 +973,60 @@ dev_lsc_handle_error:
 	return ret;
 }
 
+static int
+lio_dev_set_link_up(struct rte_eth_dev *eth_dev)
+{
+	struct lio_device *lio_dev = LIO_DEV(eth_dev);
+
+	if (!lio_dev->intf_open) {
+		lio_dev_info(lio_dev, "Port is stopped, Start the port first\n");
+		return 0;
+	}
+
+	if (lio_dev->linfo.link.s.link_up) {
+		lio_dev_info(lio_dev, "Link is already UP\n");
+		return 0;
+	}
+
+	if (lio_send_rx_ctrl_cmd(eth_dev, 1)) {
+		lio_dev_err(lio_dev, "Unable to set Link UP\n");
+		return -1;
+	}
+
+	lio_dev->linfo.link.s.link_up = 1;
+	eth_dev->data->dev_link.link_status = ETH_LINK_UP;
+
+	return 0;
+}
+
+static int
+lio_dev_set_link_down(struct rte_eth_dev *eth_dev)
+{
+	struct lio_device *lio_dev = LIO_DEV(eth_dev);
+
+	if (!lio_dev->intf_open) {
+		lio_dev_info(lio_dev, "Port is stopped, Start the port first\n");
+		return 0;
+	}
+
+	if (!lio_dev->linfo.link.s.link_up) {
+		lio_dev_info(lio_dev, "Link is already DOWN\n");
+		return 0;
+	}
+
+	lio_dev->linfo.link.s.link_up = 0;
+	eth_dev->data->dev_link.link_status = ETH_LINK_DOWN;
+
+	if (lio_send_rx_ctrl_cmd(eth_dev, 0)) {
+		lio_dev->linfo.link.s.link_up = 1;
+		eth_dev->data->dev_link.link_status = ETH_LINK_UP;
+		lio_dev_err(lio_dev, "Unable to set Link Down\n");
+		return -1;
+	}
+
+	return 0;
+}
+
 static int lio_dev_configure(struct rte_eth_dev *eth_dev)
 {
 	struct lio_device *lio_dev = LIO_DEV(eth_dev);
@@ -1144,6 +1198,8 @@ nic_config_fail:
 static const struct eth_dev_ops liovf_eth_dev_ops = {
 	.dev_configure		= lio_dev_configure,
 	.dev_start		= lio_dev_start,
+	.dev_set_link_up	= lio_dev_set_link_up,
+	.dev_set_link_down	= lio_dev_set_link_down,
 	.allmulticast_enable	= lio_dev_allmulticast_enable,
 	.allmulticast_disable	= lio_dev_allmulticast_disable,
 	.link_update		= lio_dev_link_update,
