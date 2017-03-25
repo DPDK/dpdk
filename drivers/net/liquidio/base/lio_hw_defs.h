@@ -76,6 +76,18 @@ enum lio_card_type {
 
 #define LIO_23XX_NAME "23xx"
 
+#define LIO_NUM_DEF_TX_DESCS_CFG(cfg)					\
+		((cfg)->default_config->num_def_tx_descs)
+
+#define LIO_IQ_INSTR_TYPE(cfg)		((cfg)->default_config->iq.instr_type)
+
+/* The following config values are fixed and should not be modified. */
+
+/* Maximum number of Instruction queues */
+#define LIO_MAX_INSTR_QUEUES(lio_dev)		CN23XX_MAX_RINGS_PER_VF
+
+#define LIO_MAX_POSSIBLE_INSTR_QUEUES		CN23XX_MAX_INPUT_QUEUES
+
 #define LIO_DEVICE_NAME_LEN		32
 #define LIO_BASE_MAJOR_VERSION		1
 #define LIO_BASE_MINOR_VERSION		5

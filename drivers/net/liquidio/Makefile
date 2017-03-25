@@ -51,6 +51,7 @@ VPATH += $(RTE_SDK)/drivers/net/liquidio/base
 # all source are stored in SRCS-y
 #
 SRCS-$(CONFIG_RTE_LIBRTE_LIO_PMD) += lio_ethdev.c
+SRCS-$(CONFIG_RTE_LIBRTE_LIO_PMD) += lio_rxtx.c
 SRCS-$(CONFIG_RTE_LIBRTE_LIO_PMD) += lio_23xx_vf.c
 SRCS-$(CONFIG_RTE_LIBRTE_LIO_PMD) += lio_mbox.c
 

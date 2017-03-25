@@ -39,6 +39,7 @@
 #include "lio_logs.h"
 #include "lio_23xx_vf.h"
 #include "lio_ethdev.h"
+#include "lio_rxtx.h"
 
 static void
 lio_check_pf_hs_response(void *lio_dev)
@@ -127,6 +128,11 @@ lio_first_time_init(struct lio_device *lio_dev,
 		goto error;
 	}
 
+	if (lio_setup_instr_queue0(lio_dev)) {
+		lio_dev_err(lio_dev, "Failed to setup instruction queue 0\n");
+		goto error;
+	}
+
 	dpdk_queues = (int)lio_dev->sriov_info.rings_per_vf;
 
 	lio_dev->max_tx_queues = dpdk_queues;
@@ -137,6 +143,8 @@ lio_first_time_init(struct lio_device *lio_dev,
 error:
 	if (lio_dev->mbox[0])
 		lio_dev->fn_list.free_mbox(lio_dev);
+	if (lio_dev->instr_queue[0])
+		lio_free_instr_queue0(lio_dev);
 
 	return -1;
 }

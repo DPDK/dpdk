@@ -50,7 +50,110 @@ struct lio_version {
 	uint16_t reserved;
 };
 
-struct lio_device;
+/** The txpciq info passed to host from the firmware */
+union octeon_txpciq {
+	uint64_t txpciq64;
+
+	struct {
+#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
+		uint64_t q_no : 8;
+		uint64_t port : 8;
+		uint64_t pkind : 6;
+		uint64_t use_qpg : 1;
+		uint64_t qpg : 11;
+		uint64_t aura_num : 10;
+		uint64_t reserved : 20;
+#else
+		uint64_t reserved : 20;
+		uint64_t aura_num : 10;
+		uint64_t qpg : 11;
+		uint64_t use_qpg : 1;
+		uint64_t pkind : 6;
+		uint64_t port : 8;
+		uint64_t q_no : 8;
+#endif
+	} s;
+};
+
+/** The instruction (input) queue.
+ *  The input queue is used to post raw (instruction) mode data or packet
+ *  data to Octeon device from the host. Each input queue for
+ *  a LIO device has one such structure to represent it.
+ */
+struct lio_instr_queue {
+	/** A spinlock to protect access to the input ring.  */
+	rte_spinlock_t lock;
+
+	rte_spinlock_t post_lock;
+
+	struct lio_device *lio_dev;
+
+	uint32_t pkt_in_done;
+
+	rte_atomic64_t iq_flush_running;
+
+	/** Flag that indicates if the queue uses 64 byte commands. */
+	uint32_t iqcmd_64B:1;
+
+	/** Queue info. */
+	union octeon_txpciq txpciq;
+
+	uint32_t rsvd:17;
+
+	uint32_t status:8;
+
+	/** Maximum no. of instructions in this queue. */
+	uint32_t max_count;
+
+	/** Index in input ring where the driver should write the next packet */
+	uint32_t host_write_index;
+
+	/** Index in input ring where Octeon is expected to read the next
+	 *  packet.
+	 */
+	uint32_t lio_read_index;
+
+	/** This index aids in finding the window in the queue where Octeon
+	 *  has read the commands.
+	 */
+	uint32_t flush_index;
+
+	/** This field keeps track of the instructions pending in this queue. */
+	rte_atomic64_t instr_pending;
+
+	/** Pointer to the Virtual Base addr of the input ring. */
+	uint8_t *base_addr;
+
+	struct lio_request_list *request_list;
+
+	/** Octeon doorbell register for the ring. */
+	void *doorbell_reg;
+
+	/** Octeon instruction count register for this ring. */
+	void *inst_cnt_reg;
+
+	/** Number of instructions pending to be posted to Octeon. */
+	uint32_t fill_cnt;
+
+	/** DMA mapped base address of the input descriptor ring. */
+	uint64_t base_addr_dma;
+
+	/** Application context */
+	void *app_ctx;
+
+	/* network stack queue index */
+	int q_index;
+
+	/* Memory zone */
+	const struct rte_memzone *iq_mz;
+};
+
+struct lio_io_enable {
+	uint64_t iq;
+	uint64_t oq;
+	uint64_t iq64B;
+};
+
 struct lio_fn_list {
 	int (*setup_mbox)(struct lio_device *);
 	void (*free_mbox)(struct lio_device *);
@@ -169,6 +272,13 @@ struct lio_device {
 	uint8_t *hw_addr;
 
 	struct lio_fn_list fn_list;
+
+	uint32_t num_iqs;
+
+	/** The input instruction queues */
+	struct lio_instr_queue *instr_queue[LIO_MAX_POSSIBLE_INSTR_QUEUES];
+
+	struct lio_io_enable io_qmask;
 
 	struct lio_sriov_info sriov_info;
 
