@@ -281,6 +281,7 @@ static int lio_dev_configure(struct rte_eth_dev *eth_dev)
 	 * response arrived or timed-out.
 	 */
 	while ((*sc->status_word == LIO_COMPLETION_WORD_INIT) && --timeout) {
+		lio_flush_iq(lio_dev, lio_dev->instr_queue[sc->iq_no]);
 		lio_process_ordered_list(lio_dev);
 		rte_delay_ms(1);
 	}

@@ -706,6 +706,7 @@ uint16_t lio_dev_xmit_pkts(void *tx_queue, struct rte_mbuf **pkts,
 int lio_setup_iq(struct lio_device *lio_dev, int q_index,
 		 union octeon_txpciq iq_no, uint32_t num_descs, void *app_ctx,
 		 unsigned int socket_id);
+int lio_flush_iq(struct lio_device *lio_dev, struct lio_instr_queue *iq);
 void lio_delete_instruction_queue(struct lio_device *lio_dev, int iq_no);
 /** Setup instruction queue zero for the device
  *  @param lio_dev which lio device to setup
