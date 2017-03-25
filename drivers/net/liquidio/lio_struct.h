@@ -357,6 +357,21 @@ struct lio_gather {
 	struct lio_sg_entry *sg;
 };
 
+struct lio_rss_ctx {
+	uint16_t hash_key_size;
+	uint8_t  hash_key[LIO_RSS_MAX_KEY_SZ];
+	/* Ideally a factor of number of queues */
+	uint8_t  itable[LIO_RSS_MAX_TABLE_SZ];
+	uint8_t  itable_size;
+	uint8_t  ip;
+	uint8_t  tcp_hash;
+	uint8_t  ipv6;
+	uint8_t  ipv6_tcp_hash;
+	uint8_t  ipv6_ex;
+	uint8_t  ipv6_tcp_ex_hash;
+	uint8_t  hash_disable;
+};
+
 struct lio_io_enable {
 	uint64_t iq;
 	uint64_t oq;
@@ -619,6 +634,7 @@ struct lio_device {
 	uint8_t nb_rx_queues;
 	uint8_t nb_tx_queues;
 	uint8_t port_configured;
+	struct lio_rss_ctx rss_state;
 	uint8_t port_id;
 };
 #endif /* _LIO_STRUCT_H_ */

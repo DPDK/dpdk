@@ -41,6 +41,15 @@
 #include "lio_ethdev.h"
 #include "lio_rxtx.h"
 
+/* Default RSS key in use */
+static uint8_t lio_rss_key[40] = {
+	0x6D, 0x5A, 0x56, 0xDA, 0x25, 0x5B, 0x0E, 0xC2,
+	0x41, 0x67, 0x25, 0x3D, 0x43, 0xA3, 0x8F, 0xB0,
+	0xD0, 0xCA, 0x2B, 0xCB, 0xAE, 0x7B, 0x30, 0xB4,
+	0x77, 0xCB, 0x2D, 0xA3, 0x80, 0x30, 0xF2, 0x0C,
+	0x6A, 0x42, 0xB7, 0x3B, 0xBE, 0xAC, 0x01, 0xFA,
+};
+
 /* Wait for control command to reach nic. */
 static uint16_t
 lio_wait_for_ctrl_cmd(struct lio_device *lio_dev,
@@ -90,6 +99,267 @@ lio_send_rx_ctrl_cmd(struct rte_eth_dev *eth_dev, int start_stop)
 
 	if (lio_wait_for_ctrl_cmd(lio_dev, &ctrl_cmd)) {
 		lio_dev_err(lio_dev, "RX Control command timed out\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+static int
+lio_dev_rss_reta_update(struct rte_eth_dev *eth_dev,
+			struct rte_eth_rss_reta_entry64 *reta_conf,
+			uint16_t reta_size)
+{
+	struct lio_device *lio_dev = LIO_DEV(eth_dev);
+	struct lio_rss_ctx *rss_state = &lio_dev->rss_state;
+	struct lio_rss_set *rss_param;
+	struct lio_dev_ctrl_cmd ctrl_cmd;
+	struct lio_ctrl_pkt ctrl_pkt;
+	int i, j, index;
+
+	if (!lio_dev->intf_open) {
+		lio_dev_err(lio_dev, "Port %d down, can't update reta\n",
+			    lio_dev->port_id);
+		return -EINVAL;
+	}
+
+	if (reta_size != LIO_RSS_MAX_TABLE_SZ) {
+		lio_dev_err(lio_dev,
+			    "The size of hash lookup table configured (%d) doesn't match the number hardware can supported (%d)\n",
+			    reta_size, LIO_RSS_MAX_TABLE_SZ);
+		return -EINVAL;
+	}
+
+	/* flush added to prevent cmd failure
+	 * incase the queue is full
+	 */
+	lio_flush_iq(lio_dev, lio_dev->instr_queue[0]);
+
+	memset(&ctrl_pkt, 0, sizeof(struct lio_ctrl_pkt));
+	memset(&ctrl_cmd, 0, sizeof(struct lio_dev_ctrl_cmd));
+
+	rss_param = (struct lio_rss_set *)&ctrl_pkt.udd[0];
+
+	ctrl_cmd.eth_dev = eth_dev;
+	ctrl_cmd.cond = 0;
+
+	ctrl_pkt.ncmd.s.cmd = LIO_CMD_SET_RSS;
+	ctrl_pkt.ncmd.s.more = sizeof(struct lio_rss_set) >> 3;
+	ctrl_pkt.ctrl_cmd = &ctrl_cmd;
+
+	rss_param->param.flags = 0xF;
+	rss_param->param.flags &= ~LIO_RSS_PARAM_ITABLE_UNCHANGED;
+	rss_param->param.itablesize = LIO_RSS_MAX_TABLE_SZ;
+
+	for (i = 0; i < (reta_size / RTE_RETA_GROUP_SIZE); i++) {
+		for (j = 0; j < RTE_RETA_GROUP_SIZE; j++) {
+			if ((reta_conf[i].mask) & ((uint64_t)1 << j)) {
+				index = (i * RTE_RETA_GROUP_SIZE) + j;
+				rss_state->itable[index] = reta_conf[i].reta[j];
+			}
+		}
+	}
+
+	rss_state->itable_size = LIO_RSS_MAX_TABLE_SZ;
+	memcpy(rss_param->itable, rss_state->itable, rss_state->itable_size);
+
+	lio_swap_8B_data((uint64_t *)rss_param, LIO_RSS_PARAM_SIZE >> 3);
+
+	if (lio_send_ctrl_pkt(lio_dev, &ctrl_pkt)) {
+		lio_dev_err(lio_dev, "Failed to set rss hash\n");
+		return -1;
+	}
+
+	if (lio_wait_for_ctrl_cmd(lio_dev, &ctrl_cmd)) {
+		lio_dev_err(lio_dev, "Set rss hash timed out\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+static int
+lio_dev_rss_reta_query(struct rte_eth_dev *eth_dev,
+		       struct rte_eth_rss_reta_entry64 *reta_conf,
+		       uint16_t reta_size)
+{
+	struct lio_device *lio_dev = LIO_DEV(eth_dev);
+	struct lio_rss_ctx *rss_state = &lio_dev->rss_state;
+	int i, num;
+
+	if (reta_size != LIO_RSS_MAX_TABLE_SZ) {
+		lio_dev_err(lio_dev,
+			    "The size of hash lookup table configured (%d) doesn't match the number hardware can supported (%d)\n",
+			    reta_size, LIO_RSS_MAX_TABLE_SZ);
+		return -EINVAL;
+	}
+
+	num = reta_size / RTE_RETA_GROUP_SIZE;
+
+	for (i = 0; i < num; i++) {
+		memcpy(reta_conf->reta,
+		       &rss_state->itable[i * RTE_RETA_GROUP_SIZE],
+		       RTE_RETA_GROUP_SIZE);
+		reta_conf++;
+	}
+
+	return 0;
+}
+
+static int
+lio_dev_rss_hash_conf_get(struct rte_eth_dev *eth_dev,
+			  struct rte_eth_rss_conf *rss_conf)
+{
+	struct lio_device *lio_dev = LIO_DEV(eth_dev);
+	struct lio_rss_ctx *rss_state = &lio_dev->rss_state;
+	uint8_t *hash_key = NULL;
+	uint64_t rss_hf = 0;
+
+	if (rss_state->hash_disable) {
+		lio_dev_info(lio_dev, "RSS disabled in nic\n");
+		rss_conf->rss_hf = 0;
+		return 0;
+	}
+
+	/* Get key value */
+	hash_key = rss_conf->rss_key;
+	if (hash_key != NULL)
+		memcpy(hash_key, rss_state->hash_key, rss_state->hash_key_size);
+
+	if (rss_state->ip)
+		rss_hf |= ETH_RSS_IPV4;
+	if (rss_state->tcp_hash)
+		rss_hf |= ETH_RSS_NONFRAG_IPV4_TCP;
+	if (rss_state->ipv6)
+		rss_hf |= ETH_RSS_IPV6;
+	if (rss_state->ipv6_tcp_hash)
+		rss_hf |= ETH_RSS_NONFRAG_IPV6_TCP;
+	if (rss_state->ipv6_ex)
+		rss_hf |= ETH_RSS_IPV6_EX;
+	if (rss_state->ipv6_tcp_ex_hash)
+		rss_hf |= ETH_RSS_IPV6_TCP_EX;
+
+	rss_conf->rss_hf = rss_hf;
+
+	return 0;
+}
+
+static int
+lio_dev_rss_hash_update(struct rte_eth_dev *eth_dev,
+			struct rte_eth_rss_conf *rss_conf)
+{
+	struct lio_device *lio_dev = LIO_DEV(eth_dev);
+	struct lio_rss_ctx *rss_state = &lio_dev->rss_state;
+	struct lio_rss_set *rss_param;
+	struct lio_dev_ctrl_cmd ctrl_cmd;
+	struct lio_ctrl_pkt ctrl_pkt;
+
+	if (!lio_dev->intf_open) {
+		lio_dev_err(lio_dev, "Port %d down, can't update hash\n",
+			    lio_dev->port_id);
+		return -EINVAL;
+	}
+
+	/* flush added to prevent cmd failure
+	 * incase the queue is full
+	 */
+	lio_flush_iq(lio_dev, lio_dev->instr_queue[0]);
+
+	memset(&ctrl_pkt, 0, sizeof(struct lio_ctrl_pkt));
+	memset(&ctrl_cmd, 0, sizeof(struct lio_dev_ctrl_cmd));
+
+	rss_param = (struct lio_rss_set *)&ctrl_pkt.udd[0];
+
+	ctrl_cmd.eth_dev = eth_dev;
+	ctrl_cmd.cond = 0;
+
+	ctrl_pkt.ncmd.s.cmd = LIO_CMD_SET_RSS;
+	ctrl_pkt.ncmd.s.more = sizeof(struct lio_rss_set) >> 3;
+	ctrl_pkt.ctrl_cmd = &ctrl_cmd;
+
+	rss_param->param.flags = 0xF;
+
+	if (rss_conf->rss_key) {
+		rss_param->param.flags &= ~LIO_RSS_PARAM_HASH_KEY_UNCHANGED;
+		rss_state->hash_key_size = LIO_RSS_MAX_KEY_SZ;
+		rss_param->param.hashkeysize = LIO_RSS_MAX_KEY_SZ;
+		memcpy(rss_state->hash_key, rss_conf->rss_key,
+		       rss_state->hash_key_size);
+		memcpy(rss_param->key, rss_state->hash_key,
+		       rss_state->hash_key_size);
+	}
+
+	if ((rss_conf->rss_hf & LIO_RSS_OFFLOAD_ALL) == 0) {
+		/* Can't disable rss through hash flags,
+		 * if it is enabled by default during init
+		 */
+		if (!rss_state->hash_disable)
+			return -EINVAL;
+
+		/* This is for --disable-rss during testpmd launch */
+		rss_param->param.flags |= LIO_RSS_PARAM_DISABLE_RSS;
+	} else {
+		uint32_t hashinfo = 0;
+
+		/* Can't enable rss if disabled by default during init */
+		if (rss_state->hash_disable)
+			return -EINVAL;
+
+		if (rss_conf->rss_hf & ETH_RSS_IPV4) {
+			hashinfo |= LIO_RSS_HASH_IPV4;
+			rss_state->ip = 1;
+		} else {
+			rss_state->ip = 0;
+		}
+
+		if (rss_conf->rss_hf & ETH_RSS_NONFRAG_IPV4_TCP) {
+			hashinfo |= LIO_RSS_HASH_TCP_IPV4;
+			rss_state->tcp_hash = 1;
+		} else {
+			rss_state->tcp_hash = 0;
+		}
+
+		if (rss_conf->rss_hf & ETH_RSS_IPV6) {
+			hashinfo |= LIO_RSS_HASH_IPV6;
+			rss_state->ipv6 = 1;
+		} else {
+			rss_state->ipv6 = 0;
+		}
+
+		if (rss_conf->rss_hf & ETH_RSS_NONFRAG_IPV6_TCP) {
+			hashinfo |= LIO_RSS_HASH_TCP_IPV6;
+			rss_state->ipv6_tcp_hash = 1;
+		} else {
+			rss_state->ipv6_tcp_hash = 0;
+		}
+
+		if (rss_conf->rss_hf & ETH_RSS_IPV6_EX) {
+			hashinfo |= LIO_RSS_HASH_IPV6_EX;
+			rss_state->ipv6_ex = 1;
+		} else {
+			rss_state->ipv6_ex = 0;
+		}
+
+		if (rss_conf->rss_hf & ETH_RSS_IPV6_TCP_EX) {
+			hashinfo |= LIO_RSS_HASH_TCP_IPV6_EX;
+			rss_state->ipv6_tcp_ex_hash = 1;
+		} else {
+			rss_state->ipv6_tcp_ex_hash = 0;
+		}
+
+		rss_param->param.flags &= ~LIO_RSS_PARAM_HASH_INFO_UNCHANGED;
+		rss_param->param.hashinfo = hashinfo;
+	}
+
+	lio_swap_8B_data((uint64_t *)rss_param, LIO_RSS_PARAM_SIZE >> 3);
+
+	if (lio_send_ctrl_pkt(lio_dev, &ctrl_pkt)) {
+		lio_dev_err(lio_dev, "Failed to set rss hash\n");
+		return -1;
+	}
+
+	if (lio_wait_for_ctrl_cmd(lio_dev, &ctrl_cmd)) {
+		lio_dev_err(lio_dev, "Set rss hash timed out\n");
 		return -1;
 	}
 
@@ -177,6 +447,65 @@ lio_dev_link_update(struct rte_eth_dev *eth_dev,
 		return -1;
 
 	return 0;
+}
+
+static void
+lio_dev_rss_configure(struct rte_eth_dev *eth_dev)
+{
+	struct lio_device *lio_dev = LIO_DEV(eth_dev);
+	struct lio_rss_ctx *rss_state = &lio_dev->rss_state;
+	struct rte_eth_rss_reta_entry64 reta_conf[8];
+	struct rte_eth_rss_conf rss_conf;
+	uint16_t i;
+
+	/* Configure the RSS key and the RSS protocols used to compute
+	 * the RSS hash of input packets.
+	 */
+	rss_conf = eth_dev->data->dev_conf.rx_adv_conf.rss_conf;
+	if ((rss_conf.rss_hf & LIO_RSS_OFFLOAD_ALL) == 0) {
+		rss_state->hash_disable = 1;
+		lio_dev_rss_hash_update(eth_dev, &rss_conf);
+		return;
+	}
+
+	if (rss_conf.rss_key == NULL)
+		rss_conf.rss_key = lio_rss_key; /* Default hash key */
+
+	lio_dev_rss_hash_update(eth_dev, &rss_conf);
+
+	memset(reta_conf, 0, sizeof(reta_conf));
+	for (i = 0; i < LIO_RSS_MAX_TABLE_SZ; i++) {
+		uint8_t q_idx, conf_idx, reta_idx;
+
+		q_idx = (uint8_t)((eth_dev->data->nb_rx_queues > 1) ?
+				  i % eth_dev->data->nb_rx_queues : 0);
+		conf_idx = i / RTE_RETA_GROUP_SIZE;
+		reta_idx = i % RTE_RETA_GROUP_SIZE;
+		reta_conf[conf_idx].reta[reta_idx] = q_idx;
+		reta_conf[conf_idx].mask |= ((uint64_t)1 << reta_idx);
+	}
+
+	lio_dev_rss_reta_update(eth_dev, reta_conf, LIO_RSS_MAX_TABLE_SZ);
+}
+
+static void
+lio_dev_mq_rx_configure(struct rte_eth_dev *eth_dev)
+{
+	struct lio_device *lio_dev = LIO_DEV(eth_dev);
+	struct lio_rss_ctx *rss_state = &lio_dev->rss_state;
+	struct rte_eth_rss_conf rss_conf;
+
+	switch (eth_dev->data->dev_conf.rxmode.mq_mode) {
+	case ETH_MQ_RX_RSS:
+		lio_dev_rss_configure(eth_dev);
+		break;
+	case ETH_MQ_RX_NONE:
+	/* if mq_mode is none, disable rss mode. */
+	default:
+		memset(&rss_conf, 0, sizeof(rss_conf));
+		rss_state->hash_disable = 1;
+		lio_dev_rss_hash_update(eth_dev, &rss_conf);
+	}
 }
 
 /**
@@ -464,6 +793,9 @@ lio_dev_start(struct rte_eth_dev *eth_dev)
 	lio_dev->intf_open = 1;
 	rte_mb();
 
+	/* Configure RSS if device configured with multiple RX queues. */
+	lio_dev_mq_rx_configure(eth_dev);
+
 	/* start polling for lsc */
 	ret = rte_eal_alarm_set(LIO_LSC_TIMEOUT,
 				lio_sync_link_state_check,
@@ -659,6 +991,10 @@ static const struct eth_dev_ops liovf_eth_dev_ops = {
 	.rx_queue_release	= lio_dev_rx_queue_release,
 	.tx_queue_setup		= lio_dev_tx_queue_setup,
 	.tx_queue_release	= lio_dev_tx_queue_release,
+	.reta_update		= lio_dev_rss_reta_update,
+	.reta_query		= lio_dev_rss_reta_query,
+	.rss_hash_conf_get	= lio_dev_rss_hash_conf_get,
+	.rss_hash_update	= lio_dev_rss_hash_update,
 };
 
 static void

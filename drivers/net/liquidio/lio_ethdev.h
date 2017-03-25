@@ -92,4 +92,25 @@ struct lio_link_status_resp {
 	struct octeon_link_info link_info;
 	uint64_t status;
 };
+
+struct lio_rss_set {
+	struct param {
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+		uint64_t flags : 16;
+		uint64_t hashinfo : 32;
+		uint64_t itablesize : 16;
+		uint64_t hashkeysize : 16;
+		uint64_t reserved : 48;
+#elif RTE_BYTE_ORDER == RTE_BIG_ENDIAN
+		uint64_t itablesize : 16;
+		uint64_t hashinfo : 32;
+		uint64_t flags : 16;
+		uint64_t reserved : 48;
+		uint64_t hashkeysize : 16;
+#endif
+	} param;
+
+	uint8_t itable[LIO_RSS_MAX_TABLE_SZ];
+	uint8_t key[LIO_RSS_MAX_KEY_SZ];
+};
 #endif	/* _LIO_ETHDEV_H_ */

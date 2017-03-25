@@ -130,11 +130,37 @@ enum octeon_tag_type {
 
 /* NIC Command types */
 #define LIO_CMD_RX_CTL			0x4
+#define LIO_CMD_SET_RSS			0xD
 
 /* RX(packets coming from wire) Checksum verification flags */
 /* TCP/UDP csum */
 #define LIO_L4_CSUM_VERIFIED		0x1
 #define LIO_IP_CSUM_VERIFIED		0x2
+
+/* RSS */
+#define LIO_RSS_PARAM_DISABLE_RSS		0x10
+#define LIO_RSS_PARAM_HASH_KEY_UNCHANGED	0x08
+#define LIO_RSS_PARAM_ITABLE_UNCHANGED		0x04
+#define LIO_RSS_PARAM_HASH_INFO_UNCHANGED	0x02
+
+#define LIO_RSS_HASH_IPV4			0x100
+#define LIO_RSS_HASH_TCP_IPV4			0x200
+#define LIO_RSS_HASH_IPV6			0x400
+#define LIO_RSS_HASH_TCP_IPV6			0x1000
+#define LIO_RSS_HASH_IPV6_EX			0x800
+#define LIO_RSS_HASH_TCP_IPV6_EX		0x2000
+
+#define LIO_RSS_OFFLOAD_ALL (		\
+		LIO_RSS_HASH_IPV4 |	\
+		LIO_RSS_HASH_TCP_IPV4 |	\
+		LIO_RSS_HASH_IPV6 |	\
+		LIO_RSS_HASH_TCP_IPV6 |	\
+		LIO_RSS_HASH_IPV6_EX |	\
+		LIO_RSS_HASH_TCP_IPV6_EX)
+
+#define LIO_RSS_MAX_TABLE_SZ		128
+#define LIO_RSS_MAX_KEY_SZ		40
+#define LIO_RSS_PARAM_SIZE		16
 
 /* Interface flags communicated between host driver and core app. */
 enum lio_ifflags {
