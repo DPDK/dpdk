@@ -130,6 +130,7 @@ enum octeon_tag_type {
 #define LIO_MAX_RX_PKTLEN		(64 * 1024)
 
 /* NIC Command types */
+#define LIO_CMD_CHANGE_DEVFLAGS		0x3
 #define LIO_CMD_RX_CTL			0x4
 #define LIO_CMD_SET_RSS			0xD
 
@@ -165,6 +166,7 @@ enum octeon_tag_type {
 
 /* Interface flags communicated between host driver and core app. */
 enum lio_ifflags {
+	LIO_IFFLAG_ALLMULTI	= 0x02,
 	LIO_IFFLAG_UNICAST	= 0x10
 };
 

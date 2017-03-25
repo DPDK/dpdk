@@ -522,6 +522,72 @@ lio_dev_link_update(struct rte_eth_dev *eth_dev,
 	return 0;
 }
 
+/**
+ * \brief Net device enable, disable allmulticast
+ * @param eth_dev Pointer to the structure rte_eth_dev
+ */
+static void
+lio_change_dev_flag(struct rte_eth_dev *eth_dev)
+{
+	struct lio_device *lio_dev = LIO_DEV(eth_dev);
+	struct lio_dev_ctrl_cmd ctrl_cmd;
+	struct lio_ctrl_pkt ctrl_pkt;
+
+	/* flush added to prevent cmd failure
+	 * incase the queue is full
+	 */
+	lio_flush_iq(lio_dev, lio_dev->instr_queue[0]);
+
+	memset(&ctrl_pkt, 0, sizeof(struct lio_ctrl_pkt));
+	memset(&ctrl_cmd, 0, sizeof(struct lio_dev_ctrl_cmd));
+
+	ctrl_cmd.eth_dev = eth_dev;
+	ctrl_cmd.cond = 0;
+
+	/* Create a ctrl pkt command to be sent to core app. */
+	ctrl_pkt.ncmd.s.cmd = LIO_CMD_CHANGE_DEVFLAGS;
+	ctrl_pkt.ncmd.s.param1 = lio_dev->ifflags;
+	ctrl_pkt.ctrl_cmd = &ctrl_cmd;
+
+	if (lio_send_ctrl_pkt(lio_dev, &ctrl_pkt)) {
+		lio_dev_err(lio_dev, "Failed to send change flag message\n");
+		return;
+	}
+
+	if (lio_wait_for_ctrl_cmd(lio_dev, &ctrl_cmd))
+		lio_dev_err(lio_dev, "Change dev flag command timed out\n");
+}
+
+static void
+lio_dev_allmulticast_enable(struct rte_eth_dev *eth_dev)
+{
+	struct lio_device *lio_dev = LIO_DEV(eth_dev);
+
+	if (!lio_dev->intf_open) {
+		lio_dev_err(lio_dev, "Port %d down, can't enable multicast\n",
+			    lio_dev->port_id);
+		return;
+	}
+
+	lio_dev->ifflags |= LIO_IFFLAG_ALLMULTI;
+	lio_change_dev_flag(eth_dev);
+}
+
+static void
+lio_dev_allmulticast_disable(struct rte_eth_dev *eth_dev)
+{
+	struct lio_device *lio_dev = LIO_DEV(eth_dev);
+
+	if (!lio_dev->intf_open) {
+		lio_dev_err(lio_dev, "Port %d down, can't disable multicast\n",
+			    lio_dev->port_id);
+		return;
+	}
+
+	lio_dev->ifflags &= ~LIO_IFFLAG_ALLMULTI;
+	lio_change_dev_flag(eth_dev);
+}
+
 static void
 lio_dev_rss_configure(struct rte_eth_dev *eth_dev)
 {
@@ -1078,6 +1144,8 @@ nic_config_fail:
 static const struct eth_dev_ops liovf_eth_dev_ops = {
 	.dev_configure		= lio_dev_configure,
 	.dev_start		= lio_dev_start,
+	.allmulticast_enable	= lio_dev_allmulticast_enable,
+	.allmulticast_disable	= lio_dev_allmulticast_disable,
 	.link_update		= lio_dev_link_update,
 	.dev_infos_get		= lio_dev_info_get,
 	.rx_queue_setup		= lio_dev_rx_queue_setup,
