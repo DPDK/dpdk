@@ -117,6 +117,197 @@ lio_send_rx_ctrl_cmd(struct rte_eth_dev *eth_dev, int start_stop)
 	return 0;
 }
 
+/* store statistics names and its offset in stats structure */
+struct rte_lio_xstats_name_off {
+	char name[RTE_ETH_XSTATS_NAME_SIZE];
+	unsigned int offset;
+};
+
+static const struct rte_lio_xstats_name_off rte_lio_stats_strings[] = {
+	{"rx_pkts", offsetof(struct octeon_rx_stats, total_rcvd)},
+	{"rx_bytes", offsetof(struct octeon_rx_stats, bytes_rcvd)},
+	{"rx_broadcast_pkts", offsetof(struct octeon_rx_stats, total_bcst)},
+	{"rx_multicast_pkts", offsetof(struct octeon_rx_stats, total_mcst)},
+	{"rx_flow_ctrl_pkts", offsetof(struct octeon_rx_stats, ctl_rcvd)},
+	{"rx_fifo_err", offsetof(struct octeon_rx_stats, fifo_err)},
+	{"rx_dmac_drop", offsetof(struct octeon_rx_stats, dmac_drop)},
+	{"rx_fcs_err", offsetof(struct octeon_rx_stats, fcs_err)},
+	{"rx_jabber_err", offsetof(struct octeon_rx_stats, jabber_err)},
+	{"rx_l2_err", offsetof(struct octeon_rx_stats, l2_err)},
+	{"rx_vxlan_pkts", offsetof(struct octeon_rx_stats, fw_rx_vxlan)},
+	{"rx_vxlan_err", offsetof(struct octeon_rx_stats, fw_rx_vxlan_err)},
+	{"rx_lro_pkts", offsetof(struct octeon_rx_stats, fw_lro_pkts)},
+	{"tx_pkts", (offsetof(struct octeon_tx_stats, total_pkts_sent)) +
+						sizeof(struct octeon_rx_stats)},
+	{"tx_bytes", (offsetof(struct octeon_tx_stats, total_bytes_sent)) +
+						sizeof(struct octeon_rx_stats)},
+	{"tx_broadcast_pkts",
+		(offsetof(struct octeon_tx_stats, bcast_pkts_sent)) +
+			sizeof(struct octeon_rx_stats)},
+	{"tx_multicast_pkts",
+		(offsetof(struct octeon_tx_stats, mcast_pkts_sent)) +
+			sizeof(struct octeon_rx_stats)},
+	{"tx_flow_ctrl_pkts", (offsetof(struct octeon_tx_stats, ctl_sent)) +
+						sizeof(struct octeon_rx_stats)},
+	{"tx_fifo_err", (offsetof(struct octeon_tx_stats, fifo_err)) +
+						sizeof(struct octeon_rx_stats)},
+	{"tx_total_collisions", (offsetof(struct octeon_tx_stats,
+					  total_collisions)) +
+						sizeof(struct octeon_rx_stats)},
+	{"tx_tso", (offsetof(struct octeon_tx_stats, fw_tso)) +
+						sizeof(struct octeon_rx_stats)},
+	{"tx_vxlan_pkts", (offsetof(struct octeon_tx_stats, fw_tx_vxlan)) +
+						sizeof(struct octeon_rx_stats)},
+};
+
+#define LIO_NB_XSTATS	RTE_DIM(rte_lio_stats_strings)
+
+/* Get hw stats of the port */
+static int
+lio_dev_xstats_get(struct rte_eth_dev *eth_dev, struct rte_eth_xstat *xstats,
+		   unsigned int n)
+{
+	struct lio_device *lio_dev = LIO_DEV(eth_dev);
+	uint16_t timeout = LIO_MAX_CMD_TIMEOUT;
+	struct octeon_link_stats *hw_stats;
+	struct lio_link_stats_resp *resp;
+	struct lio_soft_command *sc;
+	uint32_t resp_size;
+	unsigned int i;
+	int retval;
+
+	if (!lio_dev->intf_open) {
+		lio_dev_err(lio_dev, "Port %d down\n",
+			    lio_dev->port_id);
+		return -EINVAL;
+	}
+
+	if (n < LIO_NB_XSTATS)
+		return LIO_NB_XSTATS;
+
+	resp_size = sizeof(struct lio_link_stats_resp);
+	sc = lio_alloc_soft_command(lio_dev, 0, resp_size, 0);
+	if (sc == NULL)
+		return -ENOMEM;
+
+	resp = (struct lio_link_stats_resp *)sc->virtrptr;
+	lio_prepare_soft_command(lio_dev, sc, LIO_OPCODE,
+				 LIO_OPCODE_PORT_STATS, 0, 0, 0);
+
+	/* Setting wait time in seconds */
+	sc->wait_time = LIO_MAX_CMD_TIMEOUT / 1000;
+
+	retval = lio_send_soft_command(lio_dev, sc);
+	if (retval == LIO_IQ_SEND_FAILED) {
+		lio_dev_err(lio_dev, "failed to get port stats from firmware. status: %x\n",
+			    retval);
+		goto get_stats_fail;
+	}
+
+	while ((*sc->status_word == LIO_COMPLETION_WORD_INIT) && --timeout) {
+		lio_flush_iq(lio_dev, lio_dev->instr_queue[sc->iq_no]);
+		lio_process_ordered_list(lio_dev);
+		rte_delay_ms(1);
+	}
+
+	retval = resp->status;
+	if (retval) {
+		lio_dev_err(lio_dev, "failed to get port stats from firmware\n");
+		goto get_stats_fail;
+	}
+
+	lio_swap_8B_data((uint64_t *)(&resp->link_stats),
+			 sizeof(struct octeon_link_stats) >> 3);
+
+	hw_stats = &resp->link_stats;
+
+	for (i = 0; i < LIO_NB_XSTATS; i++) {
+		xstats[i].id = i;
+		xstats[i].value =
+		    *(uint64_t *)(((char *)hw_stats) +
+					rte_lio_stats_strings[i].offset);
+	}
+
+	lio_free_soft_command(sc);
+
+	return LIO_NB_XSTATS;
+
+get_stats_fail:
+	lio_free_soft_command(sc);
+
+	return -1;
+}
+
+static int
+lio_dev_xstats_get_names(struct rte_eth_dev *eth_dev,
+			 struct rte_eth_xstat_name *xstats_names,
+			 unsigned limit __rte_unused)
+{
+	struct lio_device *lio_dev = LIO_DEV(eth_dev);
+	unsigned int i;
+
+	if (!lio_dev->intf_open) {
+		lio_dev_err(lio_dev, "Port %d down\n",
+			    lio_dev->port_id);
+		return -EINVAL;
+	}
+
+	if (xstats_names == NULL)
+		return LIO_NB_XSTATS;
+
+	/* Note: limit checked in rte_eth_xstats_names() */
+
+	for (i = 0; i < LIO_NB_XSTATS; i++) {
+		snprintf(xstats_names[i].name, sizeof(xstats_names[i].name),
+			 "%s", rte_lio_stats_strings[i].name);
+	}
+
+	return LIO_NB_XSTATS;
+}
+
+/* Reset hw stats for the port */
+static void
+lio_dev_xstats_reset(struct rte_eth_dev *eth_dev)
+{
+	struct lio_device *lio_dev = LIO_DEV(eth_dev);
+	struct lio_dev_ctrl_cmd ctrl_cmd;
+	struct lio_ctrl_pkt ctrl_pkt;
+
+	if (!lio_dev->intf_open) {
+		lio_dev_err(lio_dev, "Port %d down\n",
+			    lio_dev->port_id);
+		return;
+	}
+
+	/* flush added to prevent cmd failure
+	 * incase the queue is full
+	 */
+	lio_flush_iq(lio_dev, lio_dev->instr_queue[0]);
+
+	memset(&ctrl_pkt, 0, sizeof(struct lio_ctrl_pkt));
+	memset(&ctrl_cmd, 0, sizeof(struct lio_dev_ctrl_cmd));
+
+	ctrl_cmd.eth_dev = eth_dev;
+	ctrl_cmd.cond = 0;
+
+	ctrl_pkt.ncmd.s.cmd = LIO_CMD_CLEAR_STATS;
+	ctrl_pkt.ctrl_cmd = &ctrl_cmd;
+
+	if (lio_send_ctrl_pkt(lio_dev, &ctrl_pkt)) {
+		lio_dev_err(lio_dev, "Failed to send clear stats command\n");
+		return;
+	}
+
+	if (lio_wait_for_ctrl_cmd(lio_dev, &ctrl_cmd)) {
+		lio_dev_err(lio_dev, "Clear stats command timed out\n");
+		return;
+	}
+
+	/* clear stored per queue stats */
+	RTE_FUNC_PTR_OR_RET(*eth_dev->dev_ops->stats_reset);
+	(*eth_dev->dev_ops->stats_reset)(eth_dev);
+}
+
 /* Retrieve the device statistics (# packets in/out, # bytes in/out, etc */
 static void
 lio_dev_stats_get(struct rte_eth_dev *eth_dev,
@@ -1471,7 +1662,10 @@ static const struct eth_dev_ops liovf_eth_dev_ops = {
 	.allmulticast_disable	= lio_dev_allmulticast_disable,
 	.link_update		= lio_dev_link_update,
 	.stats_get		= lio_dev_stats_get,
+	.xstats_get		= lio_dev_xstats_get,
+	.xstats_get_names	= lio_dev_xstats_get_names,
 	.stats_reset		= lio_dev_stats_reset,
+	.xstats_reset		= lio_dev_xstats_reset,
 	.dev_infos_get		= lio_dev_info_get,
 	.rx_queue_setup		= lio_dev_rx_queue_setup,
 	.rx_queue_release	= lio_dev_rx_queue_release,

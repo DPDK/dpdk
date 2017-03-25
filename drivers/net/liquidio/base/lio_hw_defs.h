@@ -124,6 +124,7 @@ enum octeon_tag_type {
 #define LIO_OPCODE_NW_DATA		0x02 /* network packet data */
 #define LIO_OPCODE_CMD			0x03
 #define LIO_OPCODE_INFO			0x04
+#define LIO_OPCODE_PORT_STATS		0x05
 #define LIO_OPCODE_IF_CFG		0x09
 
 #define LIO_MIN_RX_BUF_SIZE		64
@@ -132,6 +133,7 @@ enum octeon_tag_type {
 /* NIC Command types */
 #define LIO_CMD_CHANGE_DEVFLAGS		0x3
 #define LIO_CMD_RX_CTL			0x4
+#define LIO_CMD_CLEAR_STATS		0x6
 #define LIO_CMD_SET_RSS			0xD
 #define LIO_CMD_TNL_RX_CSUM_CTL		0x10
 #define LIO_CMD_TNL_TX_CSUM_CTL		0x11
