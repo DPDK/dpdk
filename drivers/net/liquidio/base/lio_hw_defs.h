@@ -108,6 +108,7 @@ enum octeon_tag_type {
 
 /* pre-defined host->NIC tag values */
 #define LIO_CONTROL	(0x11111110)
+#define LIO_DATA(i)	(0x11111111 + (i))
 
 /* used for NIC operations */
 #define LIO_OPCODE	1

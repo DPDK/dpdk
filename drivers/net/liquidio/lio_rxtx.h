@@ -249,6 +249,50 @@ union octeon_cmd {
 
 #define OCTEON_CMD_SIZE (sizeof(union octeon_cmd))
 
+/** Structure of data information passed by driver to the BASE
+ *  layer when forwarding data to Octeon device software.
+ */
+struct lio_data_pkt {
+	/** Pointer to information maintained by NIC module for this packet. The
+	 *  BASE layer passes this as-is to the driver.
+	 */
+	void *buf;
+
+	/** Type of buffer passed in "buf" above. */
+	uint32_t reqtype;
+
+	/** Total data bytes to be transferred in this command. */
+	uint32_t datasize;
+
+	/** Command to be passed to the Octeon device software. */
+	union lio_instr_64B cmd;
+
+	/** Input queue to use to send this command. */
+	uint32_t q_no;
+};
+
+/** Structure passed by driver to BASE layer to prepare a command to send
+ *  network data to Octeon.
+ */
+union lio_cmd_setup {
+	struct {
+		uint32_t iq_no : 8;
+		uint32_t gather : 1;
+		uint32_t timestamp : 1;
+		uint32_t ip_csum : 1;
+		uint32_t transport_csum : 1;
+		uint32_t tnl_csum : 1;
+		uint32_t rsvd : 19;
+
+		union {
+			uint32_t datasize;
+			uint32_t gatherptrs;
+		} u;
+	} s;
+
+	uint64_t cmd_setup64;
+};
+
 /* Instruction Header */
 struct octeon_instr_ih3 {
 #if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
@@ -418,6 +462,98 @@ struct octeon_instr_rdp {
 #endif
 };
 
+union octeon_packet_params {
+	uint32_t pkt_params32;
+	struct {
+#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
+		uint32_t reserved : 24;
+		uint32_t ip_csum : 1; /* Perform IP header checksum(s) */
+		/* Perform Outer transport header checksum */
+		uint32_t transport_csum : 1;
+		/* Find tunnel, and perform transport csum. */
+		uint32_t tnl_csum : 1;
+		uint32_t tsflag : 1;   /* Timestamp this packet */
+		uint32_t ipsec_ops : 4; /* IPsec operation */
+#else
+		uint32_t ipsec_ops : 4;
+		uint32_t tsflag : 1;
+		uint32_t tnl_csum : 1;
+		uint32_t transport_csum : 1;
+		uint32_t ip_csum : 1;
+		uint32_t reserved : 7;
+#endif
+	} s;
+};
+
+/** Utility function to prepare a 64B NIC instruction based on a setup command
+ * @param cmd - pointer to instruction to be filled in.
+ * @param setup - pointer to the setup structure
+ * @param q_no - which queue for back pressure
+ *
+ * Assumes the cmd instruction is pre-allocated, but no fields are filled in.
+ */
+static inline void
+lio_prepare_pci_cmd(struct lio_device *lio_dev,
+		    union lio_instr_64B *cmd,
+		    union lio_cmd_setup *setup,
+		    uint32_t tag)
+{
+	union octeon_packet_params packet_params;
+	struct octeon_instr_pki_ih3 *pki_ih3;
+	struct octeon_instr_irh *irh;
+	struct octeon_instr_ih3 *ih3;
+	int port;
+
+	memset(cmd, 0, sizeof(union lio_instr_64B));
+
+	ih3 = (struct octeon_instr_ih3 *)&cmd->cmd3.ih3;
+	pki_ih3 = (struct octeon_instr_pki_ih3 *)&cmd->cmd3.pki_ih3;
+
+	/* assume that rflag is cleared so therefore front data will only have
+	 * irh and ossp[1] and ossp[2] for a total of 24 bytes
+	 */
+	ih3->pkind = lio_dev->instr_queue[setup->s.iq_no]->txpciq.s.pkind;
+	/* PKI IH */
+	ih3->fsz = OCTEON_PCI_CMD_O3;
+
+	if (!setup->s.gather) {
+		ih3->dlengsz = setup->s.u.datasize;
+	} else {
+		ih3->gather = 1;
+		ih3->dlengsz = setup->s.u.gatherptrs;
+	}
+
+	pki_ih3->w = 1;
+	pki_ih3->raw = 0;
+	pki_ih3->utag = 0;
+	pki_ih3->utt = 1;
+	pki_ih3->uqpg = lio_dev->instr_queue[setup->s.iq_no]->txpciq.s.use_qpg;
+
+	port = (int)lio_dev->instr_queue[setup->s.iq_no]->txpciq.s.port;
+
+	if (tag)
+		pki_ih3->tag = tag;
+	else
+		pki_ih3->tag = LIO_DATA(port);
+
+	pki_ih3->tagtype = OCTEON_ORDERED_TAG;
+	pki_ih3->qpg = lio_dev->instr_queue[setup->s.iq_no]->txpciq.s.qpg;
+	pki_ih3->pm = 0x0; /* parse from L2 */
+	pki_ih3->sl = 32;  /* sl will be sizeof(pki_ih3) + irh + ossp0 + ossp1*/
+
+	irh = (struct octeon_instr_irh *)&cmd->cmd3.irh;
+
+	irh->opcode = LIO_OPCODE;
+	irh->subcode = LIO_OPCODE_NW_DATA;
+
+	packet_params.pkt_params32 = 0;
+	packet_params.s.ip_csum = setup->s.ip_csum;
+	packet_params.s.transport_csum = setup->s.transport_csum;
+	packet_params.s.tsflag = setup->s.timestamp;
+
+	irh->ossp = packet_params.pkt_params32;
+}
+
 int lio_setup_sc_buffer_pool(struct lio_device *lio_dev);
 void lio_free_sc_buffer_pool(struct lio_device *lio_dev);
 
@@ -554,6 +690,8 @@ void lio_delete_droq_queue(struct lio_device *lio_dev, int oq_no);
 
 int lio_setup_sglists(struct lio_device *lio_dev, int iq_no,
 		      int fw_mapped_iq, int num_descs, unsigned int socket_id);
+uint16_t lio_dev_xmit_pkts(void *tx_queue, struct rte_mbuf **pkts,
+			   uint16_t nb_pkts);
 int lio_setup_iq(struct lio_device *lio_dev, int q_index,
 		 union octeon_txpciq iq_no, uint32_t num_descs, void *app_ctx,
 		 unsigned int socket_id);

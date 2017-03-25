@@ -1384,3 +1384,92 @@ lio_delete_instruction_queue(struct lio_device *lio_dev, int iq_no)
 	lio_dev->instr_queue[iq_no] = NULL;
 	lio_dev->num_iqs--;
 }
+
+/** Send data packet to the device
+ *  @param lio_dev - lio device pointer
+ *  @param ndata   - control structure with queueing, and buffer information
+ *
+ *  @returns IQ_FAILED if it failed to add to the input queue. IQ_STOP if it the
+ *  queue should be stopped, and LIO_IQ_SEND_OK if it sent okay.
+ */
+static inline int
+lio_send_data_pkt(struct lio_device *lio_dev, struct lio_data_pkt *ndata)
+{
+	return lio_send_command(lio_dev, ndata->q_no, &ndata->cmd,
+				ndata->buf, ndata->datasize, ndata->reqtype);
+}
+
+uint16_t
+lio_dev_xmit_pkts(void *tx_queue, struct rte_mbuf **pkts, uint16_t nb_pkts)
+{
+	struct lio_instr_queue *txq = tx_queue;
+	union lio_cmd_setup cmdsetup;
+	struct lio_device *lio_dev;
+	struct lio_data_pkt ndata;
+	int i, processed = 0;
+	struct rte_mbuf *m;
+	uint32_t tag = 0;
+	int status = 0;
+	int iq_no;
+
+	lio_dev = txq->lio_dev;
+	iq_no = txq->txpciq.s.q_no;
+
+	if (!lio_dev->linfo.link.s.link_up) {
+		PMD_TX_LOG(lio_dev, ERR, "Transmit failed link_status : %d\n",
+			   lio_dev->linfo.link.s.link_up);
+		goto xmit_failed;
+	}
+
+	for (i = 0; i < nb_pkts; i++) {
+		uint32_t pkt_len = 0;
+
+		m = pkts[i];
+
+		/* Prepare the attributes for the data to be passed to BASE. */
+		memset(&ndata, 0, sizeof(struct lio_data_pkt));
+
+		ndata.buf = m;
+
+		ndata.q_no = iq_no;
+
+		cmdsetup.cmd_setup64 = 0;
+		cmdsetup.s.iq_no = iq_no;
+
+		/* check checksum offload flags to form cmd */
+		if (m->ol_flags & PKT_TX_IP_CKSUM)
+			cmdsetup.s.ip_csum = 1;
+
+		if ((m->ol_flags & PKT_TX_TCP_CKSUM) ||
+				(m->ol_flags & PKT_TX_UDP_CKSUM))
+			cmdsetup.s.transport_csum = 1;
+
+		if (m->nb_segs == 1) {
+			pkt_len = rte_pktmbuf_data_len(m);
+			cmdsetup.s.u.datasize = pkt_len;
+			lio_prepare_pci_cmd(lio_dev, &ndata.cmd,
+					    &cmdsetup, tag);
+			ndata.cmd.cmd3.dptr = rte_mbuf_data_dma_addr(m);
+			ndata.reqtype = LIO_REQTYPE_NORESP_NET;
+		}
+
+		ndata.datasize = pkt_len;
+
+		status = lio_send_data_pkt(lio_dev, &ndata);
+
+		if (unlikely(status == LIO_IQ_SEND_FAILED)) {
+			PMD_TX_LOG(lio_dev, ERR, "send failed\n");
+			break;
+		}
+
+		if (unlikely(status == LIO_IQ_SEND_STOP))
+			PMD_TX_LOG(lio_dev, DEBUG, "iq full\n");
+
+		processed++;
+	}
+
+xmit_failed:
+
+	return processed;
+}
+

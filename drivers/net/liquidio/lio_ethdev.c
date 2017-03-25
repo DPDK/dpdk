@@ -529,6 +529,7 @@ lio_eth_dev_uninit(struct rte_eth_dev *eth_dev)
 	eth_dev->data->mac_addrs = NULL;
 
 	eth_dev->rx_pkt_burst = NULL;
+	eth_dev->tx_pkt_burst = NULL;
 
 	return 0;
 }
@@ -542,6 +543,7 @@ lio_eth_dev_init(struct rte_eth_dev *eth_dev)
 	PMD_INIT_FUNC_TRACE();
 
 	eth_dev->rx_pkt_burst = &lio_dev_recv_pkts;
+	eth_dev->tx_pkt_burst = &lio_dev_xmit_pkts;
 
 	/* Primary does the initialization. */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
@@ -577,6 +579,7 @@ lio_eth_dev_init(struct rte_eth_dev *eth_dev)
 			    "MAC addresses memory allocation failed\n");
 		eth_dev->dev_ops = NULL;
 		eth_dev->rx_pkt_burst = NULL;
+		eth_dev->tx_pkt_burst = NULL;
 		return -ENOMEM;
 	}
 
