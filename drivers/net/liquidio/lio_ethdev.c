@@ -202,6 +202,15 @@ lio_dev_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t q_no,
 		return retval;
 	}
 
+	retval = lio_setup_sglists(lio_dev, q_no, fw_mapped_iq,
+				lio_dev->instr_queue[fw_mapped_iq]->max_count,
+				socket_id);
+
+	if (retval) {
+		lio_delete_instruction_queue(lio_dev, fw_mapped_iq);
+		return retval;
+	}
+
 	eth_dev->data->tx_queues[q_no] = lio_dev->instr_queue[fw_mapped_iq];
 
 	return 0;
@@ -333,6 +342,20 @@ static int lio_dev_configure(struct rte_eth_dev *eth_dev)
 
 	/* Copy the permanent MAC address */
 	ether_addr_copy((struct ether_addr *)mac, &eth_dev->data->mac_addrs[0]);
+
+	lio_dev->glist_lock =
+	    rte_zmalloc(NULL, sizeof(*lio_dev->glist_lock) * num_iqueues, 0);
+	if (lio_dev->glist_lock == NULL)
+		return -ENOMEM;
+
+	lio_dev->glist_head =
+		rte_zmalloc(NULL, sizeof(*lio_dev->glist_head) * num_iqueues,
+			    0);
+	if (lio_dev->glist_head == NULL) {
+		rte_free(lio_dev->glist_lock);
+		lio_dev->glist_lock = NULL;
+		return -ENOMEM;
+	}
 
 	lio_dev->port_configured = 1;
 

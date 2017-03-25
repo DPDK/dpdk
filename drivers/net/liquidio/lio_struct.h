@@ -298,6 +298,41 @@ struct lio_instr_queue {
 	const struct rte_memzone *iq_mz;
 };
 
+/* The Scatter-Gather List Entry. The scatter or gather component used with
+ * input instruction has this format.
+ */
+struct lio_sg_entry {
+	/** The first 64 bit gives the size of data in each dptr. */
+	union {
+		uint16_t size[4];
+		uint64_t size64;
+	} u;
+
+	/** The 4 dptr pointers for this entry. */
+	uint64_t ptr[4];
+};
+
+#define LIO_SG_ENTRY_SIZE	(sizeof(struct lio_sg_entry))
+
+/** Structure of a node in list of gather components maintained by
+ *  driver for each network device.
+ */
+struct lio_gather {
+	/** List manipulation. Next and prev pointers. */
+	struct lio_stailq_node list;
+
+	/** Size of the gather component at sg in bytes. */
+	int sg_size;
+
+	/** Number of bytes that sg was adjusted to make it 8B-aligned. */
+	int adjust;
+
+	/** Gather component that can accommodate max sized fragment list
+	 *  received from the IP layer.
+	 */
+	struct lio_sg_entry *sg;
+};
+
 struct lio_io_enable {
 	uint64_t iq;
 	uint64_t oq;
@@ -515,6 +550,11 @@ struct lio_device {
 	struct lio_fn_list fn_list;
 
 	uint32_t num_iqs;
+
+	/** Guards each glist */
+	rte_spinlock_t *glist_lock;
+	/** Array of gather component linked lists */
+	struct lio_stailq_head *glist_head;
 
 	/* The pool containing pre allocated buffers used for soft commands */
 	struct rte_mempool *sc_buf_pool;

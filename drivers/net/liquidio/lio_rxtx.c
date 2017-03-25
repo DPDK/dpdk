@@ -40,6 +40,8 @@
 #include "lio_ethdev.h"
 #include "lio_rxtx.h"
 
+#define LIO_MAX_SG 12
+
 static void
 lio_droq_compute_max_packet_bufs(struct lio_droq *droq)
 {
@@ -1271,4 +1273,109 @@ lio_process_ordered_list(struct lio_device *lio_dev)
 	} while (request_complete);
 
 	return 0;
+}
+
+static inline struct lio_stailq_node *
+list_delete_first_node(struct lio_stailq_head *head)
+{
+	struct lio_stailq_node *node;
+
+	if (STAILQ_EMPTY(head))
+		node = NULL;
+	else
+		node = STAILQ_FIRST(head);
+
+	if (node)
+		STAILQ_REMOVE(head, node, lio_stailq_node, entries);
+
+	return node;
+}
+
+static void
+lio_delete_sglist(struct lio_instr_queue *txq)
+{
+	struct lio_device *lio_dev = txq->lio_dev;
+	int iq_no = txq->q_index;
+	struct lio_gather *g;
+
+	if (lio_dev->glist_head == NULL)
+		return;
+
+	do {
+		g = (struct lio_gather *)list_delete_first_node(
+						&lio_dev->glist_head[iq_no]);
+		if (g) {
+			if (g->sg)
+				rte_free(
+				    (void *)((unsigned long)g->sg - g->adjust));
+			rte_free(g);
+		}
+	} while (g);
+}
+
+/**
+ * \brief Setup gather lists
+ * @param lio per-network private data
+ */
+int
+lio_setup_sglists(struct lio_device *lio_dev, int iq_no,
+		  int fw_mapped_iq, int num_descs, unsigned int socket_id)
+{
+	struct lio_gather *g;
+	int i;
+
+	rte_spinlock_init(&lio_dev->glist_lock[iq_no]);
+
+	STAILQ_INIT(&lio_dev->glist_head[iq_no]);
+
+	for (i = 0; i < num_descs; i++) {
+		g = rte_zmalloc_socket(NULL, sizeof(*g), RTE_CACHE_LINE_SIZE,
+				       socket_id);
+		if (g == NULL) {
+			lio_dev_err(lio_dev,
+				    "lio_gather memory allocation failed for qno %d\n",
+				    iq_no);
+			break;
+		}
+
+		g->sg_size =
+		    ((ROUNDUP4(LIO_MAX_SG) >> 2) * LIO_SG_ENTRY_SIZE);
+
+		g->sg = rte_zmalloc_socket(NULL, g->sg_size + 8,
+					   RTE_CACHE_LINE_SIZE, socket_id);
+		if (g->sg == NULL) {
+			lio_dev_err(lio_dev,
+				    "sg list memory allocation failed for qno %d\n",
+				    iq_no);
+			rte_free(g);
+			break;
+		}
+
+		/* The gather component should be aligned on 64-bit boundary */
+		if (((unsigned long)g->sg) & 7) {
+			g->adjust = 8 - (((unsigned long)g->sg) & 7);
+			g->sg =
+			    (struct lio_sg_entry *)((unsigned long)g->sg +
+						       g->adjust);
+		}
+
+		STAILQ_INSERT_TAIL(&lio_dev->glist_head[iq_no], &g->list,
+				   entries);
+	}
+
+	if (i != num_descs) {
+		lio_delete_sglist(lio_dev->instr_queue[fw_mapped_iq]);
+		return -ENOMEM;
+	}
+
+	return 0;
+}
+
+void
+lio_delete_instruction_queue(struct lio_device *lio_dev, int iq_no)
+{
+	lio_delete_instr_queue(lio_dev, iq_no);
+	rte_free(lio_dev->instr_queue[iq_no]);
+	lio_dev->instr_queue[iq_no] = NULL;
+	lio_dev->num_iqs--;
 }
