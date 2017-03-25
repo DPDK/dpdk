@@ -87,5 +87,9 @@ int cn23xx_vf_set_io_queues_off(struct lio_device *lio_dev);
 
 #define CN23XX_VF_BUSY_READING_REG_LOOP_COUNT	100000
 
+int cn23xx_pfvf_handshake(struct lio_device *lio_dev);
+
 int cn23xx_vf_setup_device(struct lio_device  *lio_dev);
+
+void cn23xx_vf_handle_mbox(struct lio_device *lio_dev);
 #endif /* _LIO_23XX_VF_H_  */

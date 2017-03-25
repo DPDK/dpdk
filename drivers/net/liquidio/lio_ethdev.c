@@ -40,6 +40,20 @@
 #include "lio_23xx_vf.h"
 #include "lio_ethdev.h"
 
+static void
+lio_check_pf_hs_response(void *lio_dev)
+{
+	struct lio_device *dev = lio_dev;
+
+	/* check till response arrives */
+	if (dev->pfvf_hsword.coproc_tics_per_us)
+		return;
+
+	cn23xx_vf_handle_mbox(dev);
+
+	rte_eal_alarm_set(1, lio_check_pf_hs_response, lio_dev);
+}
+
 /**
  * \brief Identify the LIO device and to map the BAR address space
  * @param lio_dev lio device
@@ -90,6 +104,13 @@ lio_first_time_init(struct lio_device *lio_dev,
 		lio_dev_err(lio_dev, "Mailbox setup failed\n");
 		goto error;
 	}
+
+	/* Check PF response */
+	lio_check_pf_hs_response((void *)lio_dev);
+
+	/* Do handshake and exit if incompatible PF driver */
+	if (cn23xx_pfvf_handshake(lio_dev))
+		goto error;
 
 	if (cn23xx_vf_set_io_queues_off(lio_dev)) {
 		lio_dev_err(lio_dev, "Setting io queues off failed\n");

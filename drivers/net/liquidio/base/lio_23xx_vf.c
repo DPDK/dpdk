@@ -255,6 +255,102 @@ cn23xx_vf_setup_mbox(struct lio_device *lio_dev)
 	return 0;
 }
 
+static void
+cn23xx_pfvf_hs_callback(struct lio_device *lio_dev,
+			struct lio_mbox_cmd *cmd, void *arg)
+{
+	uint32_t major = 0;
+
+	PMD_INIT_FUNC_TRACE();
+
+	rte_memcpy((uint8_t *)&lio_dev->pfvf_hsword, cmd->msg.s.params, 6);
+	if (cmd->recv_len > 1) {
+		struct lio_version *lio_ver = (struct lio_version *)cmd->data;
+
+		major = lio_ver->major;
+		major = major << 16;
+	}
+
+	rte_atomic64_set((rte_atomic64_t *)arg, major | 1);
+}
+
+int
+cn23xx_pfvf_handshake(struct lio_device *lio_dev)
+{
+	struct lio_mbox_cmd mbox_cmd;
+	struct lio_version *lio_ver = (struct lio_version *)&mbox_cmd.data[0];
+	rte_atomic64_t status;
+	uint32_t count = 0;
+	uint32_t pfmajor;
+	uint32_t vfmajor;
+	uint32_t ret;
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* Sending VF_ACTIVE indication to the PF driver */
+	lio_dev_dbg(lio_dev, "requesting info from PF\n");
+
+	mbox_cmd.msg.mbox_msg64 = 0;
+	mbox_cmd.msg.s.type = LIO_MBOX_REQUEST;
+	mbox_cmd.msg.s.resp_needed = 1;
+	mbox_cmd.msg.s.cmd = LIO_VF_ACTIVE;
+	mbox_cmd.msg.s.len = 2;
+	mbox_cmd.data[0] = 0;
+	lio_ver->major = LIO_BASE_MAJOR_VERSION;
+	lio_ver->minor = LIO_BASE_MINOR_VERSION;
+	lio_ver->micro = LIO_BASE_MICRO_VERSION;
+	mbox_cmd.q_no = 0;
+	mbox_cmd.recv_len = 0;
+	mbox_cmd.recv_status = 0;
+	mbox_cmd.fn = (lio_mbox_callback)cn23xx_pfvf_hs_callback;
+	mbox_cmd.fn_arg = (void *)&status;
+
+	if (lio_mbox_write(lio_dev, &mbox_cmd)) {
+		lio_dev_err(lio_dev, "Write to mailbox failed\n");
+		return -1;
+	}
+
+	rte_atomic64_set(&status, 0);
+
+	do {
+		rte_delay_ms(1);
+	} while ((rte_atomic64_read(&status) == 0) && (count++ < 10000));
+
+	ret = rte_atomic64_read(&status);
+	if (ret == 0) {
+		lio_dev_err(lio_dev, "cn23xx_pfvf_handshake timeout\n");
+		return -1;
+	}
+
+	vfmajor = LIO_BASE_MAJOR_VERSION;
+	pfmajor = ret >> 16;
+	if (pfmajor != vfmajor) {
+		lio_dev_err(lio_dev,
+			    "VF LiquidIO driver (major version %d) is not compatible with LiquidIO PF driver (major version %d)\n",
+			    vfmajor, pfmajor);
+		ret = -EPERM;
+	} else {
+		lio_dev_dbg(lio_dev,
+			    "VF LiquidIO driver (major version %d), LiquidIO PF driver (major version %d)\n",
+			    vfmajor, pfmajor);
+		ret = 0;
+	}
+
+	return ret;
+}
+
+void
+cn23xx_vf_handle_mbox(struct lio_device *lio_dev)
+{
+	uint64_t mbox_int_val;
+
+	/* read and clear by writing 1 */
+	mbox_int_val = rte_read64(lio_dev->mbox[0]->mbox_int_reg);
+	rte_write64(mbox_int_val, lio_dev->mbox[0]->mbox_int_reg);
+	if (lio_mbox_read(lio_dev->mbox[0]))
+		lio_mbox_process_message(lio_dev->mbox[0]);
+}
+
 int
 cn23xx_vf_setup_device(struct lio_device *lio_dev)
 {

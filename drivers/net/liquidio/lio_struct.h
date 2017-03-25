@@ -43,12 +43,55 @@
 
 #include "lio_hw_defs.h"
 
+struct lio_version {
+	uint16_t major;
+	uint16_t minor;
+	uint16_t micro;
+	uint16_t reserved;
+};
+
 struct lio_device;
 struct lio_fn_list {
 	int (*setup_mbox)(struct lio_device *);
 	void (*free_mbox)(struct lio_device *);
 
 	int (*setup_device_regs)(struct lio_device *);
+};
+
+struct lio_pf_vf_hs_word {
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+	/** PKIND value assigned for the DPI interface */
+	uint64_t pkind : 8;
+
+	/** OCTEON core clock multiplier */
+	uint64_t core_tics_per_us : 16;
+
+	/** OCTEON coprocessor clock multiplier */
+	uint64_t coproc_tics_per_us : 16;
+
+	/** app that currently running on OCTEON */
+	uint64_t app_mode : 8;
+
+	/** RESERVED */
+	uint64_t reserved : 16;
+
+#elif RTE_BYTE_ORDER == RTE_BIG_ENDIAN
+
+	/** RESERVED */
+	uint64_t reserved : 16;
+
+	/** app that currently running on OCTEON */
+	uint64_t app_mode : 8;
+
+	/** OCTEON coprocessor clock multiplier */
+	uint64_t coproc_tics_per_us : 16;
+
+	/** OCTEON core clock multiplier */
+	uint64_t core_tics_per_us : 16;
+
+	/** PKIND value assigned for the DPI interface */
+	uint64_t pkind : 8;
+#endif
 };
 
 struct lio_sriov_info {
@@ -128,6 +171,8 @@ struct lio_device {
 	struct lio_fn_list fn_list;
 
 	struct lio_sriov_info sriov_info;
+
+	struct lio_pf_vf_hs_word pfvf_hsword;
 
 	/** Mail Box details of each lio queue. */
 	struct lio_mbox **mbox;

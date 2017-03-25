@@ -77,6 +77,9 @@ enum lio_card_type {
 #define LIO_23XX_NAME "23xx"
 
 #define LIO_DEVICE_NAME_LEN		32
+#define LIO_BASE_MAJOR_VERSION		1
+#define LIO_BASE_MINOR_VERSION		5
+#define LIO_BASE_MICRO_VERSION		1
 
 /* Routines for reading and writing CSRs */
 #ifdef RTE_LIBRTE_LIO_DEBUG_REGS
