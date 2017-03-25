@@ -43,6 +43,7 @@
 #define LIO_MBOX_DATA_MAX			32
 
 #define LIO_VF_ACTIVE				0x1
+#define LIO_VF_FLR_REQUEST			0x2
 #define LIO_CORES_CRASHED			0x3
 
 /* Macro for Read acknowledgment */

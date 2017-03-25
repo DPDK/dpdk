@@ -255,6 +255,25 @@ cn23xx_vf_setup_mbox(struct lio_device *lio_dev)
 	return 0;
 }
 
+void
+cn23xx_vf_ask_pf_to_do_flr(struct lio_device *lio_dev)
+{
+	struct lio_mbox_cmd mbox_cmd;
+
+	mbox_cmd.msg.mbox_msg64 = 0;
+	mbox_cmd.msg.s.type = LIO_MBOX_REQUEST;
+	mbox_cmd.msg.s.resp_needed = 0;
+	mbox_cmd.msg.s.cmd = LIO_VF_FLR_REQUEST;
+	mbox_cmd.msg.s.len = 1;
+	mbox_cmd.q_no = 0;
+	mbox_cmd.recv_len = 0;
+	mbox_cmd.recv_status = 0;
+	mbox_cmd.fn = NULL;
+	mbox_cmd.fn_arg = 0;
+
+	lio_mbox_write(lio_dev, &mbox_cmd);
+}
+
 static void
 cn23xx_pfvf_hs_callback(struct lio_device *lio_dev,
 			struct lio_mbox_cmd *cmd, void *arg)
