@@ -670,6 +670,9 @@ void lio_setup_response_list(struct lio_device *lio_dev);
  */
 int lio_process_ordered_list(struct lio_device *lio_dev);
 
+#define LIO_INCR_INSTRQUEUE_PKT_COUNT(lio_dev, iq_no, field, count)	\
+	(((lio_dev)->instr_queue[iq_no]->stats.field) += count)
+
 static inline void
 lio_swap_8B_data(uint64_t *data, uint32_t blocks)
 {

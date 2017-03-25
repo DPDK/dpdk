@@ -124,11 +124,32 @@ lio_dev_stats_get(struct rte_eth_dev *eth_dev,
 {
 	struct lio_device *lio_dev = LIO_DEV(eth_dev);
 	struct lio_droq_stats *oq_stats;
+	struct lio_iq_stats *iq_stats;
+	struct lio_instr_queue *txq;
 	struct lio_droq *droq;
+	int i, iq_no, oq_no;
 	uint64_t bytes = 0;
 	uint64_t pkts = 0;
 	uint64_t drop = 0;
-	int i, oq_no;
+
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {
+		iq_no = lio_dev->linfo.txpciq[i].s.q_no;
+		txq = lio_dev->instr_queue[iq_no];
+		if (txq != NULL) {
+			iq_stats = &txq->stats;
+			pkts += iq_stats->tx_done;
+			drop += iq_stats->tx_dropped;
+			bytes += iq_stats->tx_tot_bytes;
+		}
+	}
+
+	stats->opackets = pkts;
+	stats->obytes = bytes;
+	stats->oerrors = drop;
+
+	pkts = 0;
+	drop = 0;
+	bytes = 0;
 
 	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
 		oq_no = lio_dev->linfo.rxpciq[i].s.q_no;
@@ -152,8 +173,19 @@ lio_dev_stats_reset(struct rte_eth_dev *eth_dev)
 {
 	struct lio_device *lio_dev = LIO_DEV(eth_dev);
 	struct lio_droq_stats *oq_stats;
+	struct lio_iq_stats *iq_stats;
+	struct lio_instr_queue *txq;
 	struct lio_droq *droq;
-	int i, oq_no;
+	int i, iq_no, oq_no;
+
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {
+		iq_no = lio_dev->linfo.txpciq[i].s.q_no;
+		txq = lio_dev->instr_queue[iq_no];
+		if (txq != NULL) {
+			iq_stats = &txq->stats;
+			memset(iq_stats, 0, sizeof(struct lio_iq_stats));
+		}
+	}
 
 	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
 		oq_no = lio_dev->linfo.rxpciq[i].s.q_no;

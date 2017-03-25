@@ -1113,8 +1113,10 @@ lio_flush_iq(struct lio_device *lio_dev, struct lio_instr_queue *iq)
 
 		inst_processed = lio_process_iq_request_list(lio_dev, iq);
 
-		if (inst_processed)
+		if (inst_processed) {
 			rte_atomic64_sub(&iq->instr_pending, inst_processed);
+			iq->stats.instr_processed += inst_processed;
+		}
 
 		tot_inst_processed += inst_processed;
 		inst_processed = 0;
@@ -1130,7 +1132,7 @@ lio_flush_iq(struct lio_device *lio_dev, struct lio_instr_queue *iq)
 
 static int
 lio_send_command(struct lio_device *lio_dev, uint32_t iq_no, void *cmd,
-		 void *buf, uint32_t datasize __rte_unused, uint32_t reqtype)
+		 void *buf, uint32_t datasize, uint32_t reqtype)
 {
 	struct lio_instr_queue *iq = lio_dev->instr_queue[iq_no];
 	struct lio_iq_post_status st;
@@ -1141,7 +1143,13 @@ lio_send_command(struct lio_device *lio_dev, uint32_t iq_no, void *cmd,
 
 	if (st.status != LIO_IQ_SEND_FAILED) {
 		lio_add_to_request_list(iq, st.index, buf, reqtype);
+		LIO_INCR_INSTRQUEUE_PKT_COUNT(lio_dev, iq_no, bytes_sent,
+					      datasize);
+		LIO_INCR_INSTRQUEUE_PKT_COUNT(lio_dev, iq_no, instr_posted, 1);
+
 		lio_ring_doorbell(lio_dev, iq);
+	} else {
+		LIO_INCR_INSTRQUEUE_PKT_COUNT(lio_dev, iq_no, instr_dropped, 1);
 	}
 
 	rte_spinlock_unlock(&iq->post_lock);
@@ -1667,6 +1675,7 @@ lio_dev_xmit_pkts(void *tx_queue, struct rte_mbuf **pkts, uint16_t nb_pkts)
 	struct lio_instr_queue *txq = tx_queue;
 	union lio_cmd_setup cmdsetup;
 	struct lio_device *lio_dev;
+	struct lio_iq_stats *stats;
 	struct lio_data_pkt ndata;
 	int i, processed = 0;
 	struct rte_mbuf *m;
@@ -1676,6 +1685,7 @@ lio_dev_xmit_pkts(void *tx_queue, struct rte_mbuf **pkts, uint16_t nb_pkts)
 
 	lio_dev = txq->lio_dev;
 	iq_no = txq->txpciq.s.q_no;
+	stats = &lio_dev->instr_queue[iq_no]->stats;
 
 	if (!lio_dev->intf_open || !lio_dev->linfo.link.s.link_up) {
 		PMD_TX_LOG(lio_dev, ERR, "Transmit failed link_status : %d\n",
@@ -1697,6 +1707,7 @@ lio_dev_xmit_pkts(void *tx_queue, struct rte_mbuf **pkts, uint16_t nb_pkts)
 
 		ndata.q_no = iq_no;
 		if (lio_iq_is_full(lio_dev, ndata.q_no)) {
+			stats->tx_iq_busy++;
 			if (lio_dev_cleanup_iq(lio_dev, iq_no)) {
 				PMD_TX_LOG(lio_dev, ERR,
 					   "Transmit failed iq:%d full\n",
@@ -1804,10 +1815,13 @@ lio_dev_xmit_pkts(void *tx_queue, struct rte_mbuf **pkts, uint16_t nb_pkts)
 			lio_dev_cleanup_iq(lio_dev, iq_no);
 		}
 
+		stats->tx_done++;
+		stats->tx_tot_bytes += pkt_len;
 		processed++;
 	}
 
 xmit_failed:
+	stats->tx_dropped += (nb_pkts - processed);
 
 	return processed;
 }

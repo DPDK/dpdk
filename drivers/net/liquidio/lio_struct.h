@@ -56,6 +56,18 @@ struct lio_version {
 	uint16_t reserved;
 };
 
+/** Input Queue statistics. Each input queue has four stats fields. */
+struct lio_iq_stats {
+	uint64_t instr_posted; /**< Instructions posted to this queue. */
+	uint64_t instr_processed; /**< Instructions processed in this queue. */
+	uint64_t instr_dropped; /**< Instructions that could not be processed */
+	uint64_t bytes_sent; /**< Bytes sent through this queue. */
+	uint64_t tx_done; /**< Num of packets sent to network. */
+	uint64_t tx_iq_busy; /**< Num of times this iq was found to be full. */
+	uint64_t tx_dropped; /**< Num of pkts dropped due to xmitpath errors. */
+	uint64_t tx_tot_bytes; /**< Total count of bytes sent to network. */
+};
+
 /** Output Queue statistics. Each output queue has four stats fields. */
 struct lio_droq_stats {
 	/** Number of packets received in this queue. */
@@ -318,6 +330,9 @@ struct lio_instr_queue {
 
 	/** Number of instructions pending to be posted to Octeon. */
 	uint32_t fill_cnt;
+
+	/** Statistics for this input queue. */
+	struct lio_iq_stats stats;
 
 	/** DMA mapped base address of the input descriptor ring. */
 	uint64_t base_addr_dma;
