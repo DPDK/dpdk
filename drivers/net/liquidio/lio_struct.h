@@ -45,6 +45,9 @@
 
 struct lio_device;
 struct lio_fn_list {
+	int (*setup_mbox)(struct lio_device *);
+	void (*free_mbox)(struct lio_device *);
+
 	int (*setup_device_regs)(struct lio_device *);
 };
 

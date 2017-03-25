@@ -38,6 +38,7 @@
 #include "lio_logs.h"
 #include "lio_23xx_vf.h"
 #include "lio_23xx_reg.h"
+#include "lio_mbox.h"
 
 static int
 cn23xx_vf_reset_io_queues(struct lio_device *lio_dev, uint32_t num_queues)
@@ -197,6 +198,63 @@ cn23xx_vf_setup_device_regs(struct lio_device *lio_dev)
 	return 0;
 }
 
+static void
+cn23xx_vf_free_mbox(struct lio_device *lio_dev)
+{
+	PMD_INIT_FUNC_TRACE();
+
+	rte_free(lio_dev->mbox[0]);
+	lio_dev->mbox[0] = NULL;
+
+	rte_free(lio_dev->mbox);
+	lio_dev->mbox = NULL;
+}
+
+static int
+cn23xx_vf_setup_mbox(struct lio_device *lio_dev)
+{
+	struct lio_mbox *mbox;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (lio_dev->mbox == NULL) {
+		lio_dev->mbox = rte_zmalloc(NULL, sizeof(void *), 0);
+		if (lio_dev->mbox == NULL)
+			return -ENOMEM;
+	}
+
+	mbox = rte_zmalloc(NULL, sizeof(struct lio_mbox), 0);
+	if (mbox == NULL) {
+		rte_free(lio_dev->mbox);
+		lio_dev->mbox = NULL;
+		return -ENOMEM;
+	}
+
+	rte_spinlock_init(&mbox->lock);
+
+	mbox->lio_dev = lio_dev;
+
+	mbox->q_no = 0;
+
+	mbox->state = LIO_MBOX_STATE_IDLE;
+
+	/* VF mbox interrupt reg */
+	mbox->mbox_int_reg = (uint8_t *)lio_dev->hw_addr +
+				CN23XX_VF_SLI_PKT_MBOX_INT(0);
+	/* VF reads from SIG0 reg */
+	mbox->mbox_read_reg = (uint8_t *)lio_dev->hw_addr +
+				CN23XX_SLI_PKT_PF_VF_MBOX_SIG(0, 0);
+	/* VF writes into SIG1 reg */
+	mbox->mbox_write_reg = (uint8_t *)lio_dev->hw_addr +
+				CN23XX_SLI_PKT_PF_VF_MBOX_SIG(0, 1);
+
+	lio_dev->mbox[0] = mbox;
+
+	rte_write64(LIO_PFVFSIG, mbox->mbox_read_reg);
+
+	return 0;
+}
+
 int
 cn23xx_vf_setup_device(struct lio_device *lio_dev)
 {
@@ -220,6 +278,9 @@ cn23xx_vf_setup_device(struct lio_device *lio_dev)
 	lio_dev->default_config = lio_get_conf(lio_dev);
 	if (lio_dev->default_config == NULL)
 		return -1;
+
+	lio_dev->fn_list.setup_mbox		= cn23xx_vf_setup_mbox;
+	lio_dev->fn_list.free_mbox		= cn23xx_vf_free_mbox;
 
 	lio_dev->fn_list.setup_device_regs	= cn23xx_vf_setup_device_regs;
 

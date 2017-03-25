@@ -86,14 +86,19 @@ lio_first_time_init(struct lio_device *lio_dev,
 		return -1;
 	}
 
+	if (lio_dev->fn_list.setup_mbox(lio_dev)) {
+		lio_dev_err(lio_dev, "Mailbox setup failed\n");
+		goto error;
+	}
+
 	if (cn23xx_vf_set_io_queues_off(lio_dev)) {
 		lio_dev_err(lio_dev, "Setting io queues off failed\n");
-		return -1;
+		goto error;
 	}
 
 	if (lio_dev->fn_list.setup_device_regs(lio_dev)) {
 		lio_dev_err(lio_dev, "Failed to configure device registers\n");
-		return -1;
+		goto error;
 	}
 
 	dpdk_queues = (int)lio_dev->sriov_info.rings_per_vf;
@@ -102,6 +107,12 @@ lio_first_time_init(struct lio_device *lio_dev,
 	lio_dev->max_rx_queues = dpdk_queues;
 
 	return 0;
+
+error:
+	if (lio_dev->mbox[0])
+		lio_dev->fn_list.free_mbox(lio_dev);
+
+	return -1;
 }
 
 static int
