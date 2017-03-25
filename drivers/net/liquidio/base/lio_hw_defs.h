@@ -116,6 +116,8 @@ enum octeon_tag_type {
 /* This subcode is sent by core PCI driver to indicate cores are ready. */
 #define LIO_OPCODE_IF_CFG		0x09
 
+#define LIO_MAX_RX_PKTLEN		(64 * 1024)
+
 /* Interface flags communicated between host driver and core app. */
 enum lio_ifflags {
 	LIO_IFFLAG_UNICAST	= 0x10

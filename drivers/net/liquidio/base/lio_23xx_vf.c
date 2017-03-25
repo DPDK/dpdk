@@ -233,6 +233,27 @@ cn23xx_vf_setup_iq_regs(struct lio_device *lio_dev, uint32_t iq_no)
 }
 
 static void
+cn23xx_vf_setup_oq_regs(struct lio_device *lio_dev, uint32_t oq_no)
+{
+	struct lio_droq *droq = lio_dev->droq[oq_no];
+
+	PMD_INIT_FUNC_TRACE();
+
+	lio_write_csr64(lio_dev, CN23XX_SLI_OQ_BASE_ADDR64(oq_no),
+			droq->desc_ring_dma);
+	lio_write_csr(lio_dev, CN23XX_SLI_OQ_SIZE(oq_no), droq->max_count);
+
+	lio_write_csr(lio_dev, CN23XX_SLI_OQ_BUFF_INFO_SIZE(oq_no),
+		      (droq->buffer_size | (OCTEON_RH_SIZE << 16)));
+
+	/* Get the mapped address of the pkt_sent and pkts_credit regs */
+	droq->pkts_sent_reg = (uint8_t *)lio_dev->hw_addr +
+					CN23XX_SLI_OQ_PKTS_SENT(oq_no);
+	droq->pkts_credit_reg = (uint8_t *)lio_dev->hw_addr +
+					CN23XX_SLI_OQ_PKTS_CREDIT(oq_no);
+}
+
+static void
 cn23xx_vf_free_mbox(struct lio_device *lio_dev)
 {
 	PMD_INIT_FUNC_TRACE();
@@ -436,6 +457,7 @@ cn23xx_vf_setup_device(struct lio_device *lio_dev)
 		return -1;
 
 	lio_dev->fn_list.setup_iq_regs		= cn23xx_vf_setup_iq_regs;
+	lio_dev->fn_list.setup_oq_regs		= cn23xx_vf_setup_oq_regs;
 	lio_dev->fn_list.setup_mbox		= cn23xx_vf_setup_mbox;
 	lio_dev->fn_list.free_mbox		= cn23xx_vf_free_mbox;
 

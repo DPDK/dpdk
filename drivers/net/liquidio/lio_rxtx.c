@@ -41,6 +41,96 @@
 #include "lio_rxtx.h"
 
 static void
+lio_droq_compute_max_packet_bufs(struct lio_droq *droq)
+{
+	uint32_t count = 0;
+
+	do {
+		count += droq->buffer_size;
+	} while (count < LIO_MAX_RX_PKTLEN);
+}
+
+static void
+lio_droq_reset_indices(struct lio_droq *droq)
+{
+	droq->read_idx	= 0;
+	droq->write_idx	= 0;
+	droq->refill_idx = 0;
+	droq->refill_count = 0;
+	rte_atomic64_set(&droq->pkts_pending, 0);
+}
+
+static void
+lio_droq_destroy_ring_buffers(struct lio_droq *droq)
+{
+	uint32_t i;
+
+	for (i = 0; i < droq->max_count; i++) {
+		if (droq->recv_buf_list[i].buffer) {
+			rte_pktmbuf_free((struct rte_mbuf *)
+					 droq->recv_buf_list[i].buffer);
+			droq->recv_buf_list[i].buffer = NULL;
+		}
+	}
+
+	lio_droq_reset_indices(droq);
+}
+
+static void *
+lio_recv_buffer_alloc(struct lio_device *lio_dev, int q_no)
+{
+	struct lio_droq *droq = lio_dev->droq[q_no];
+	struct rte_mempool *mpool = droq->mpool;
+	struct rte_mbuf *m;
+
+	m = rte_pktmbuf_alloc(mpool);
+	if (m == NULL) {
+		lio_dev_err(lio_dev, "Cannot allocate\n");
+		return NULL;
+	}
+
+	rte_mbuf_refcnt_set(m, 1);
+	m->next = NULL;
+	m->data_off = RTE_PKTMBUF_HEADROOM;
+	m->nb_segs = 1;
+	m->pool = mpool;
+
+	return m;
+}
+
+static int
+lio_droq_setup_ring_buffers(struct lio_device *lio_dev,
+			    struct lio_droq *droq)
+{
+	struct lio_droq_desc *desc_ring = droq->desc_ring;
+	uint32_t i;
+	void *buf;
+
+	for (i = 0; i < droq->max_count; i++) {
+		buf = lio_recv_buffer_alloc(lio_dev, droq->q_no);
+		if (buf == NULL) {
+			lio_dev_err(lio_dev, "buffer alloc failed\n");
+			lio_droq_destroy_ring_buffers(droq);
+			return -ENOMEM;
+		}
+
+		droq->recv_buf_list[i].buffer = buf;
+		droq->info_list[i].length = 0;
+
+		/* map ring buffers into memory */
+		desc_ring[i].info_ptr = lio_map_ring_info(droq, i);
+		desc_ring[i].buffer_ptr =
+			lio_map_ring(droq->recv_buf_list[i].buffer);
+	}
+
+	lio_droq_reset_indices(droq);
+
+	lio_droq_compute_max_packet_bufs(droq);
+
+	return 0;
+}
+
+static void
 lio_dma_zone_free(struct lio_device *lio_dev, const struct rte_memzone *mz)
 {
 	const struct rte_memzone *mz_tmp;
@@ -75,6 +165,7 @@ lio_delete_droq(struct lio_device *lio_dev, uint32_t q_no)
 
 	lio_dev_dbg(lio_dev, "OQ[%d]\n", q_no);
 
+	lio_droq_destroy_ring_buffers(droq);
 	rte_free(droq->recv_buf_list);
 	droq->recv_buf_list = NULL;
 	lio_dma_zone_free(lio_dev, droq->info_mz);
@@ -172,9 +263,14 @@ lio_init_droq(struct lio_device *lio_dev, uint32_t q_no,
 		goto init_droq_fail;
 	}
 
+	if (lio_droq_setup_ring_buffers(lio_dev, droq))
+		goto init_droq_fail;
+
 	droq->refill_threshold = c_refill_threshold;
 
 	rte_spinlock_init(&droq->lock);
+
+	lio_dev->fn_list.setup_oq_regs(lio_dev, q_no);
 
 	lio_dev->io_qmask.oq |= (1ULL << q_no);
 
