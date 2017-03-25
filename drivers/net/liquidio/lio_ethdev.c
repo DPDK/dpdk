@@ -101,6 +101,12 @@ lio_first_time_init(struct lio_device *lio_dev,
 		return -1;
 	}
 
+	/* Initialize soft command buffer pool */
+	if (lio_setup_sc_buffer_pool(lio_dev)) {
+		lio_dev_err(lio_dev, "sc buffer pool allocation failed\n");
+		return -1;
+	}
+
 	if (lio_dev->fn_list.setup_mbox(lio_dev)) {
 		lio_dev_err(lio_dev, "Mailbox setup failed\n");
 		goto error;
@@ -141,6 +147,7 @@ lio_first_time_init(struct lio_device *lio_dev,
 	return 0;
 
 error:
+	lio_free_sc_buffer_pool(lio_dev);
 	if (lio_dev->mbox[0])
 		lio_dev->fn_list.free_mbox(lio_dev);
 	if (lio_dev->instr_queue[0])
@@ -152,10 +159,15 @@ error:
 static int
 lio_eth_dev_uninit(struct rte_eth_dev *eth_dev)
 {
+	struct lio_device *lio_dev = LIO_DEV(eth_dev);
+
 	PMD_INIT_FUNC_TRACE();
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return -EPERM;
+
+	/* lio_free_sc_buffer_pool */
+	lio_free_sc_buffer_pool(lio_dev);
 
 	rte_free(eth_dev->data->mac_addrs);
 	eth_dev->data->mac_addrs = NULL;

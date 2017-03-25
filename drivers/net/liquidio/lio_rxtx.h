@@ -47,6 +47,15 @@ struct lio_request_list {
 	void *buf;
 };
 
+/** The size of each buffer in soft command buffer pool */
+#define LIO_SOFT_COMMAND_BUFFER_SIZE	1536
+
+/** Maximum number of buffers to allocate into soft command buffer pool */
+#define LIO_MAX_SOFT_COMMAND_BUFFERS	255
+
+int lio_setup_sc_buffer_pool(struct lio_device *lio_dev);
+void lio_free_sc_buffer_pool(struct lio_device *lio_dev);
+
 /** Setup instruction queue zero for the device
  *  @param lio_dev which lio device to setup
  *

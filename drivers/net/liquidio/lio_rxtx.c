@@ -206,3 +206,24 @@ lio_free_instr_queue0(struct lio_device *lio_dev)
 	lio_dev->instr_queue[0] = NULL;
 	lio_dev->num_iqs--;
 }
+
+int
+lio_setup_sc_buffer_pool(struct lio_device *lio_dev)
+{
+	char sc_pool_name[RTE_MEMPOOL_NAMESIZE];
+	uint16_t buf_size;
+
+	buf_size = LIO_SOFT_COMMAND_BUFFER_SIZE + RTE_PKTMBUF_HEADROOM;
+	snprintf(sc_pool_name, sizeof(sc_pool_name),
+		 "lio_sc_pool_%u", lio_dev->port_id);
+	lio_dev->sc_buf_pool = rte_pktmbuf_pool_create(sc_pool_name,
+						LIO_MAX_SOFT_COMMAND_BUFFERS,
+						0, 0, buf_size, SOCKET_ID_ANY);
+	return 0;
+}
+
+void
+lio_free_sc_buffer_pool(struct lio_device *lio_dev)
+{
+	rte_mempool_free(lio_dev->sc_buf_pool);
+}

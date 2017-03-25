@@ -277,6 +277,9 @@ struct lio_device {
 
 	uint32_t num_iqs;
 
+	/* The pool containing pre allocated buffers used for soft commands */
+	struct rte_mempool *sc_buf_pool;
+
 	/** The input instruction queues */
 	struct lio_instr_queue *instr_queue[LIO_MAX_POSSIBLE_INSTR_QUEUES];
 
