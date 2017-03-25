@@ -152,6 +152,33 @@ lio_dev_info_get(struct rte_eth_dev *eth_dev,
 }
 
 static int
+lio_dev_validate_vf_mtu(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
+{
+	struct lio_device *lio_dev = LIO_DEV(eth_dev);
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (!lio_dev->intf_open) {
+		lio_dev_err(lio_dev, "Port %d down, can't check MTU\n",
+			    lio_dev->port_id);
+		return -EINVAL;
+	}
+
+	/* Limit the MTU to make sure the ethernet packets are between
+	 * ETHER_MIN_MTU bytes and PF's MTU
+	 */
+	if ((new_mtu < ETHER_MIN_MTU) ||
+			(new_mtu > lio_dev->linfo.link.s.mtu)) {
+		lio_dev_err(lio_dev, "Invalid MTU: %d\n", new_mtu);
+		lio_dev_err(lio_dev, "Valid range %d and %d\n",
+			    ETHER_MIN_MTU, lio_dev->linfo.link.s.mtu);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int
 lio_dev_rss_reta_update(struct rte_eth_dev *eth_dev,
 			struct rte_eth_rss_reta_entry64 *reta_conf,
 			uint16_t reta_size)
@@ -824,7 +851,9 @@ lio_sync_link_state_check(void *eth_dev)
 static int
 lio_dev_start(struct rte_eth_dev *eth_dev)
 {
+	uint16_t mtu = eth_dev->data->dev_conf.rxmode.max_rx_pkt_len;
 	struct lio_device *lio_dev = LIO_DEV(eth_dev);
+	uint16_t timeout = LIO_MAX_CMD_TIMEOUT;
 	int ret = 0;
 
 	lio_dev_info(lio_dev, "Starting port %d\n", eth_dev->data->port_id);
@@ -852,7 +881,24 @@ lio_dev_start(struct rte_eth_dev *eth_dev)
 		goto dev_lsc_handle_error;
 	}
 
+	while ((lio_dev->linfo.link.link_status64 == 0) && (--timeout))
+		rte_delay_ms(1);
+
+	if (lio_dev->linfo.link.link_status64 == 0) {
+		ret = -1;
+		goto dev_mtu_check_error;
+	}
+
+	if (lio_dev->linfo.link.s.mtu != mtu) {
+		ret = lio_dev_validate_vf_mtu(eth_dev, mtu);
+		if (ret)
+			goto dev_mtu_check_error;
+	}
+
 	return 0;
+
+dev_mtu_check_error:
+	rte_eal_alarm_cancel(lio_sync_link_state_check, eth_dev);
 
 dev_lsc_handle_error:
 	lio_dev->intf_open = 0;
