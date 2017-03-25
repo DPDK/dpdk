@@ -50,6 +50,18 @@ static uint8_t lio_rss_key[40] = {
 	0x6A, 0x42, 0xB7, 0x3B, 0xBE, 0xAC, 0x01, 0xFA,
 };
 
+static const struct rte_eth_desc_lim lio_rx_desc_lim = {
+	.nb_max		= CN23XX_MAX_OQ_DESCRIPTORS,
+	.nb_min		= CN23XX_MIN_OQ_DESCRIPTORS,
+	.nb_align	= 1,
+};
+
+static const struct rte_eth_desc_lim lio_tx_desc_lim = {
+	.nb_max		= CN23XX_MAX_IQ_DESCRIPTORS,
+	.nb_min		= CN23XX_MIN_IQ_DESCRIPTORS,
+	.nb_align	= 1,
+};
+
 /* Wait for control command to reach nic. */
 static uint16_t
 lio_wait_for_ctrl_cmd(struct lio_device *lio_dev,
@@ -103,6 +115,40 @@ lio_send_rx_ctrl_cmd(struct rte_eth_dev *eth_dev, int start_stop)
 	}
 
 	return 0;
+}
+
+static void
+lio_dev_info_get(struct rte_eth_dev *eth_dev,
+		 struct rte_eth_dev_info *devinfo)
+{
+	struct lio_device *lio_dev = LIO_DEV(eth_dev);
+
+	devinfo->max_rx_queues = lio_dev->max_rx_queues;
+	devinfo->max_tx_queues = lio_dev->max_tx_queues;
+
+	devinfo->min_rx_bufsize = LIO_MIN_RX_BUF_SIZE;
+	devinfo->max_rx_pktlen = LIO_MAX_RX_PKTLEN;
+
+	devinfo->max_mac_addrs = 1;
+
+	devinfo->rx_offload_capa = (DEV_RX_OFFLOAD_IPV4_CKSUM		|
+				    DEV_RX_OFFLOAD_UDP_CKSUM		|
+				    DEV_RX_OFFLOAD_TCP_CKSUM);
+	devinfo->tx_offload_capa = (DEV_TX_OFFLOAD_IPV4_CKSUM		|
+				    DEV_TX_OFFLOAD_UDP_CKSUM		|
+				    DEV_TX_OFFLOAD_TCP_CKSUM);
+
+	devinfo->rx_desc_lim = lio_rx_desc_lim;
+	devinfo->tx_desc_lim = lio_tx_desc_lim;
+
+	devinfo->reta_size = LIO_RSS_MAX_TABLE_SZ;
+	devinfo->hash_key_size = LIO_RSS_MAX_KEY_SZ;
+	devinfo->flow_type_rss_offloads = (ETH_RSS_IPV4			|
+					   ETH_RSS_NONFRAG_IPV4_TCP	|
+					   ETH_RSS_IPV6			|
+					   ETH_RSS_NONFRAG_IPV6_TCP	|
+					   ETH_RSS_IPV6_EX		|
+					   ETH_RSS_IPV6_TCP_EX);
 }
 
 static int
@@ -987,6 +1033,7 @@ static const struct eth_dev_ops liovf_eth_dev_ops = {
 	.dev_configure		= lio_dev_configure,
 	.dev_start		= lio_dev_start,
 	.link_update		= lio_dev_link_update,
+	.dev_infos_get		= lio_dev_info_get,
 	.rx_queue_setup		= lio_dev_rx_queue_setup,
 	.rx_queue_release	= lio_dev_rx_queue_release,
 	.tx_queue_setup		= lio_dev_tx_queue_setup,

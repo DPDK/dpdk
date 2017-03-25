@@ -126,6 +126,7 @@ enum octeon_tag_type {
 #define LIO_OPCODE_INFO			0x04
 #define LIO_OPCODE_IF_CFG		0x09
 
+#define LIO_MIN_RX_BUF_SIZE		64
 #define LIO_MAX_RX_PKTLEN		(64 * 1024)
 
 /* NIC Command types */
