@@ -42,6 +42,40 @@
 
 #define LIO_CN23XX_VF_VID	0x9712
 
+/* --------------------------CONFIG VALUES------------------------ */
+
+/* CN23xx IQ configuration macros */
+#define CN23XX_MAX_RINGS_PER_PF			64
+#define CN23XX_MAX_RINGS_PER_VF			8
+
+#define CN23XX_MAX_INPUT_QUEUES			CN23XX_MAX_RINGS_PER_PF
+#define CN23XX_MAX_IQ_DESCRIPTORS		512
+#define CN23XX_MIN_IQ_DESCRIPTORS		128
+
+#define CN23XX_MAX_OUTPUT_QUEUES		CN23XX_MAX_RINGS_PER_PF
+#define CN23XX_MAX_OQ_DESCRIPTORS		512
+#define CN23XX_MIN_OQ_DESCRIPTORS		128
+#define CN23XX_OQ_BUF_SIZE			1536
+
+#define CN23XX_OQ_REFIL_THRESHOLD		16
+
+#define CN23XX_DEFAULT_NUM_PORTS		1
+
+#define CN23XX_CFG_IO_QUEUES			CN23XX_MAX_RINGS_PER_PF
+
+/* common OCTEON configuration macros */
+#define OCTEON_64BYTE_INSTR			64
+#define OCTEON_OQ_INFOPTR_MODE			1
+
+/* Max IOQs per LIO Link */
+#define LIO_MAX_IOQS_PER_IF			64
+
+enum lio_card_type {
+	LIO_23XX /* 23xx */
+};
+
+#define LIO_23XX_NAME "23xx"
+
 #define LIO_DEVICE_NAME_LEN		32
 
 /* Routines for reading and writing CSRs */

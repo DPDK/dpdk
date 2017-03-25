@@ -43,15 +43,85 @@
 
 #include "lio_hw_defs.h"
 
+struct lio_sriov_info {
+	/** Number of rings assigned to VF */
+	uint32_t rings_per_vf;
+
+	/** Number of VF devices enabled */
+	uint32_t num_vfs;
+};
+
+/* Structure to define the configuration attributes for each Input queue. */
+struct lio_iq_config {
+	/* Max number of IQs available */
+	uint8_t max_iqs;
+
+	/** Pending list size (usually set to the sum of the size of all Input
+	 *  queues)
+	 */
+	uint32_t pending_list_size;
+
+	/** Command size - 32 or 64 bytes */
+	uint32_t instr_type;
+};
+
+/* Structure to define the configuration attributes for each Output queue. */
+struct lio_oq_config {
+	/* Max number of OQs available */
+	uint8_t max_oqs;
+
+	/** If set, the Output queue uses info-pointer mode. (Default: 1 ) */
+	uint32_t info_ptr;
+
+	/** The number of buffers that were consumed during packet processing by
+	 *  the driver on this Output queue before the driver attempts to
+	 *  replenish the descriptor ring with new buffers.
+	 */
+	uint32_t refill_threshold;
+};
+
+/* Structure to define the configuration. */
+struct lio_config {
+	uint16_t card_type;
+	const char *card_name;
+
+	/** Input Queue attributes. */
+	struct lio_iq_config iq;
+
+	/** Output Queue attributes. */
+	struct lio_oq_config oq;
+
+	int num_nic_ports;
+
+	int num_def_tx_descs;
+
+	/* Num of desc for rx rings */
+	int num_def_rx_descs;
+
+	int def_rx_buf_size;
+};
+
 /* -----------------------  THE LIO DEVICE  --------------------------- */
 /** The lio device.
  *  Each lio device has this structure to represent all its
  *  components.
  */
 struct lio_device {
+	/** PCI device pointer */
+	struct rte_pci_device *pci_dev;
+
+	/** Octeon Chip type */
+	uint16_t chip_id;
+	uint16_t pf_num;
+	uint16_t vf_num;
+
 	uint8_t *hw_addr;
 
+	struct lio_sriov_info sriov_info;
+
 	char dev_string[LIO_DEVICE_NAME_LEN]; /* Device print string */
+
+	const struct lio_config *default_config;
 
 	struct rte_eth_dev      *eth_dev;
 

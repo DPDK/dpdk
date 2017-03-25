@@ -37,8 +37,62 @@
 #include <rte_alarm.h>
 
 #include "lio_logs.h"
-#include "lio_struct.h"
+#include "lio_23xx_vf.h"
 #include "lio_ethdev.h"
+
+/**
+ * \brief Identify the LIO device and to map the BAR address space
+ * @param lio_dev lio device
+ */
+static int
+lio_chip_specific_setup(struct lio_device *lio_dev)
+{
+	struct rte_pci_device *pdev = lio_dev->pci_dev;
+	uint32_t dev_id = pdev->id.device_id;
+	const char *s;
+	int ret = 1;
+
+	switch (dev_id) {
+	case LIO_CN23XX_VF_VID:
+		lio_dev->chip_id = LIO_CN23XX_VF_VID;
+		ret = cn23xx_vf_setup_device(lio_dev);
+		s = "CN23XX VF";
+		break;
+	default:
+		s = "?";
+		lio_dev_err(lio_dev, "Unsupported Chip\n");
+	}
+
+	if (!ret)
+		lio_dev_info(lio_dev, "DEVICE : %s\n", s);
+
+	return ret;
+}
+
+static int
+lio_first_time_init(struct lio_device *lio_dev,
+		    struct rte_pci_device *pdev)
+{
+	int dpdk_queues;
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* set dpdk specific pci device pointer */
+	lio_dev->pci_dev = pdev;
+
+	/* Identify the LIO type and set device ops */
+	if (lio_chip_specific_setup(lio_dev)) {
+		lio_dev_err(lio_dev, "Chip specific setup failed\n");
+		return -1;
+	}
+
+	dpdk_queues = (int)lio_dev->sriov_info.rings_per_vf;
+
+	lio_dev->max_tx_queues = dpdk_queues;
+	lio_dev->max_rx_queues = dpdk_queues;
+
+	return 0;
+}
 
 static int
 lio_eth_dev_uninit(struct rte_eth_dev *eth_dev)
@@ -83,6 +137,11 @@ lio_eth_dev_init(struct rte_eth_dev *eth_dev)
 		 pdev->addr.bus, pdev->addr.devid, pdev->addr.function);
 
 	lio_dev->port_id = eth_dev->data->port_id;
+
+	if (lio_first_time_init(lio_dev, pdev)) {
+		lio_dev_err(lio_dev, "Device init failed\n");
+		return -EINVAL;
+	}
 
 	eth_dev->data->mac_addrs = rte_zmalloc("lio", ETHER_ADDR_LEN, 0);
 	if (eth_dev->data->mac_addrs == NULL) {
