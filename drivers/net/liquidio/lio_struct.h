@@ -43,6 +43,11 @@
 
 #include "lio_hw_defs.h"
 
+struct lio_device;
+struct lio_fn_list {
+	int (*setup_device_regs)(struct lio_device *);
+};
+
 struct lio_sriov_info {
 	/** Number of rings assigned to VF */
 	uint32_t rings_per_vf;
@@ -116,6 +121,8 @@ struct lio_device {
 	uint16_t vf_num;
 
 	uint8_t *hw_addr;
+
+	struct lio_fn_list fn_list;
 
 	struct lio_sriov_info sriov_info;
 

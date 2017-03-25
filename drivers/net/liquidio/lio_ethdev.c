@@ -91,6 +91,11 @@ lio_first_time_init(struct lio_device *lio_dev,
 		return -1;
 	}
 
+	if (lio_dev->fn_list.setup_device_regs(lio_dev)) {
+		lio_dev_err(lio_dev, "Failed to configure device registers\n");
+		return -1;
+	}
+
 	dpdk_queues = (int)lio_dev->sriov_info.rings_per_vf;
 
 	lio_dev->max_tx_queues = dpdk_queues;
