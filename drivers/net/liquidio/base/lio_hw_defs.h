@@ -133,6 +133,14 @@ enum octeon_tag_type {
 #define LIO_CMD_CHANGE_DEVFLAGS		0x3
 #define LIO_CMD_RX_CTL			0x4
 #define LIO_CMD_SET_RSS			0xD
+#define LIO_CMD_TNL_RX_CSUM_CTL		0x10
+#define LIO_CMD_TNL_TX_CSUM_CTL		0x11
+#define LIO_CMD_VXLAN_PORT_CONFIG	0x19
+
+#define LIO_CMD_VXLAN_PORT_ADD		0x0
+#define LIO_CMD_VXLAN_PORT_DEL		0x1
+#define LIO_CMD_RXCSUM_ENABLE		0x0
+#define LIO_CMD_TXCSUM_ENABLE		0x0
 
 /* RX(packets coming from wire) Checksum verification flags */
 /* TCP/UDP csum */

@@ -136,7 +136,8 @@ lio_dev_info_get(struct rte_eth_dev *eth_dev,
 				    DEV_RX_OFFLOAD_TCP_CKSUM);
 	devinfo->tx_offload_capa = (DEV_TX_OFFLOAD_IPV4_CKSUM		|
 				    DEV_TX_OFFLOAD_UDP_CKSUM		|
-				    DEV_TX_OFFLOAD_TCP_CKSUM);
+				    DEV_TX_OFFLOAD_TCP_CKSUM		|
+				    DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM);
 
 	devinfo->rx_desc_lim = lio_rx_desc_lim;
 	devinfo->tx_desc_lim = lio_tx_desc_lim;
@@ -433,6 +434,120 @@ lio_dev_rss_hash_update(struct rte_eth_dev *eth_dev,
 
 	if (lio_wait_for_ctrl_cmd(lio_dev, &ctrl_cmd)) {
 		lio_dev_err(lio_dev, "Set rss hash timed out\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+/**
+ * Add vxlan dest udp port for an interface.
+ *
+ * @param eth_dev
+ *  Pointer to the structure rte_eth_dev
+ * @param udp_tnl
+ *  udp tunnel conf
+ *
+ * @return
+ *  On success return 0
+ *  On failure return -1
+ */
+static int
+lio_dev_udp_tunnel_add(struct rte_eth_dev *eth_dev,
+		       struct rte_eth_udp_tunnel *udp_tnl)
+{
+	struct lio_device *lio_dev = LIO_DEV(eth_dev);
+	struct lio_dev_ctrl_cmd ctrl_cmd;
+	struct lio_ctrl_pkt ctrl_pkt;
+
+	if (udp_tnl == NULL)
+		return -EINVAL;
+
+	if (udp_tnl->prot_type != RTE_TUNNEL_TYPE_VXLAN) {
+		lio_dev_err(lio_dev, "Unsupported tunnel type\n");
+		return -1;
+	}
+
+	/* flush added to prevent cmd failure
+	 * incase the queue is full
+	 */
+	lio_flush_iq(lio_dev, lio_dev->instr_queue[0]);
+
+	memset(&ctrl_pkt, 0, sizeof(struct lio_ctrl_pkt));
+	memset(&ctrl_cmd, 0, sizeof(struct lio_dev_ctrl_cmd));
+
+	ctrl_cmd.eth_dev = eth_dev;
+	ctrl_cmd.cond = 0;
+
+	ctrl_pkt.ncmd.s.cmd = LIO_CMD_VXLAN_PORT_CONFIG;
+	ctrl_pkt.ncmd.s.param1 = udp_tnl->udp_port;
+	ctrl_pkt.ncmd.s.more = LIO_CMD_VXLAN_PORT_ADD;
+	ctrl_pkt.ctrl_cmd = &ctrl_cmd;
+
+	if (lio_send_ctrl_pkt(lio_dev, &ctrl_pkt)) {
+		lio_dev_err(lio_dev, "Failed to send VXLAN_PORT_ADD command\n");
+		return -1;
+	}
+
+	if (lio_wait_for_ctrl_cmd(lio_dev, &ctrl_cmd)) {
+		lio_dev_err(lio_dev, "VXLAN_PORT_ADD command timed out\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+/**
+ * Remove vxlan dest udp port for an interface.
+ *
+ * @param eth_dev
+ *  Pointer to the structure rte_eth_dev
+ * @param udp_tnl
+ *  udp tunnel conf
+ *
+ * @return
+ *  On success return 0
+ *  On failure return -1
+ */
+static int
+lio_dev_udp_tunnel_del(struct rte_eth_dev *eth_dev,
+		       struct rte_eth_udp_tunnel *udp_tnl)
+{
+	struct lio_device *lio_dev = LIO_DEV(eth_dev);
+	struct lio_dev_ctrl_cmd ctrl_cmd;
+	struct lio_ctrl_pkt ctrl_pkt;
+
+	if (udp_tnl == NULL)
+		return -EINVAL;
+
+	if (udp_tnl->prot_type != RTE_TUNNEL_TYPE_VXLAN) {
+		lio_dev_err(lio_dev, "Unsupported tunnel type\n");
+		return -1;
+	}
+
+	/* flush added to prevent cmd failure
+	 * incase the queue is full
+	 */
+	lio_flush_iq(lio_dev, lio_dev->instr_queue[0]);
+
+	memset(&ctrl_pkt, 0, sizeof(struct lio_ctrl_pkt));
+	memset(&ctrl_cmd, 0, sizeof(struct lio_dev_ctrl_cmd));
+
+	ctrl_cmd.eth_dev = eth_dev;
+	ctrl_cmd.cond = 0;
+
+	ctrl_pkt.ncmd.s.cmd = LIO_CMD_VXLAN_PORT_CONFIG;
+	ctrl_pkt.ncmd.s.param1 = udp_tnl->udp_port;
+	ctrl_pkt.ncmd.s.more = LIO_CMD_VXLAN_PORT_DEL;
+	ctrl_pkt.ctrl_cmd = &ctrl_cmd;
+
+	if (lio_send_ctrl_pkt(lio_dev, &ctrl_pkt)) {
+		lio_dev_err(lio_dev, "Failed to send VXLAN_PORT_DEL command\n");
+		return -1;
+	}
+
+	if (lio_wait_for_ctrl_cmd(lio_dev, &ctrl_cmd)) {
+		lio_dev_err(lio_dev, "VXLAN_PORT_DEL command timed out\n");
 		return -1;
 	}
 
@@ -1027,6 +1142,74 @@ lio_dev_set_link_down(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
+/**
+ * Enable tunnel rx checksum verification from firmware.
+ */
+static void
+lio_enable_hw_tunnel_rx_checksum(struct rte_eth_dev *eth_dev)
+{
+	struct lio_device *lio_dev = LIO_DEV(eth_dev);
+	struct lio_dev_ctrl_cmd ctrl_cmd;
+	struct lio_ctrl_pkt ctrl_pkt;
+
+	/* flush added to prevent cmd failure
+	 * incase the queue is full
+	 */
+	lio_flush_iq(lio_dev, lio_dev->instr_queue[0]);
+
+	memset(&ctrl_pkt, 0, sizeof(struct lio_ctrl_pkt));
+	memset(&ctrl_cmd, 0, sizeof(struct lio_dev_ctrl_cmd));
+
+	ctrl_cmd.eth_dev = eth_dev;
+	ctrl_cmd.cond = 0;
+
+	ctrl_pkt.ncmd.s.cmd = LIO_CMD_TNL_RX_CSUM_CTL;
+	ctrl_pkt.ncmd.s.param1 = LIO_CMD_RXCSUM_ENABLE;
+	ctrl_pkt.ctrl_cmd = &ctrl_cmd;
+
+	if (lio_send_ctrl_pkt(lio_dev, &ctrl_pkt)) {
+		lio_dev_err(lio_dev, "Failed to send TNL_RX_CSUM command\n");
+		return;
+	}
+
+	if (lio_wait_for_ctrl_cmd(lio_dev, &ctrl_cmd))
+		lio_dev_err(lio_dev, "TNL_RX_CSUM command timed out\n");
+}
+
+/**
+ * Enable checksum calculation for inner packet in a tunnel.
+ */
+static void
+lio_enable_hw_tunnel_tx_checksum(struct rte_eth_dev *eth_dev)
+{
+	struct lio_device *lio_dev = LIO_DEV(eth_dev);
+	struct lio_dev_ctrl_cmd ctrl_cmd;
+	struct lio_ctrl_pkt ctrl_pkt;
+
+	/* flush added to prevent cmd failure
+	 * incase the queue is full
+	 */
+	lio_flush_iq(lio_dev, lio_dev->instr_queue[0]);
+
+	memset(&ctrl_pkt, 0, sizeof(struct lio_ctrl_pkt));
+	memset(&ctrl_cmd, 0, sizeof(struct lio_dev_ctrl_cmd));
+
+	ctrl_cmd.eth_dev = eth_dev;
+	ctrl_cmd.cond = 0;
+
+	ctrl_pkt.ncmd.s.cmd = LIO_CMD_TNL_TX_CSUM_CTL;
+	ctrl_pkt.ncmd.s.param1 = LIO_CMD_TXCSUM_ENABLE;
+	ctrl_pkt.ctrl_cmd = &ctrl_cmd;
+
+	if (lio_send_ctrl_pkt(lio_dev, &ctrl_pkt)) {
+		lio_dev_err(lio_dev, "Failed to send TNL_TX_CSUM command\n");
+		return;
+	}
+
+	if (lio_wait_for_ctrl_cmd(lio_dev, &ctrl_cmd))
+		lio_dev_err(lio_dev, "TNL_TX_CSUM command timed out\n");
+}
+
 static int lio_dev_configure(struct rte_eth_dev *eth_dev)
 {
 	struct lio_device *lio_dev = LIO_DEV(eth_dev);
@@ -1155,6 +1338,10 @@ static int lio_dev_configure(struct rte_eth_dev *eth_dev)
 	/* Copy the permanent MAC address */
 	ether_addr_copy((struct ether_addr *)mac, &eth_dev->data->mac_addrs[0]);
 
+	/* enable firmware checksum support for tunnel packets */
+	lio_enable_hw_tunnel_rx_checksum(eth_dev);
+	lio_enable_hw_tunnel_tx_checksum(eth_dev);
+
 	lio_dev->glist_lock =
 	    rte_zmalloc(NULL, sizeof(*lio_dev->glist_lock) * num_iqueues, 0);
 	if (lio_dev->glist_lock == NULL)
@@ -1212,6 +1399,8 @@ static const struct eth_dev_ops liovf_eth_dev_ops = {
 	.reta_query		= lio_dev_rss_reta_query,
 	.rss_hash_conf_get	= lio_dev_rss_hash_conf_get,
 	.rss_hash_update	= lio_dev_rss_hash_update,
+	.udp_tunnel_port_add	= lio_dev_udp_tunnel_add,
+	.udp_tunnel_port_del	= lio_dev_udp_tunnel_del,
 };
 
 static void

@@ -1704,7 +1704,9 @@ lio_dev_xmit_pkts(void *tx_queue, struct rte_mbuf **pkts, uint16_t nb_pkts)
 		if (m->ol_flags & PKT_TX_IP_CKSUM)
 			cmdsetup.s.ip_csum = 1;
 
-		if ((m->ol_flags & PKT_TX_TCP_CKSUM) ||
+		if (m->ol_flags & PKT_TX_OUTER_IP_CKSUM)
+			cmdsetup.s.tnl_csum = 1;
+		else if ((m->ol_flags & PKT_TX_TCP_CKSUM) ||
 				(m->ol_flags & PKT_TX_UDP_CKSUM))
 			cmdsetup.s.transport_csum = 1;
 

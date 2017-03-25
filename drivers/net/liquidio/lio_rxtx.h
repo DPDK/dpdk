@@ -583,6 +583,7 @@ lio_prepare_pci_cmd(struct lio_device *lio_dev,
 	packet_params.pkt_params32 = 0;
 	packet_params.s.ip_csum = setup->s.ip_csum;
 	packet_params.s.transport_csum = setup->s.transport_csum;
+	packet_params.s.tnl_csum = setup->s.tnl_csum;
 	packet_params.s.tsflag = setup->s.timestamp;
 
 	irh->ossp = packet_params.pkt_params32;
