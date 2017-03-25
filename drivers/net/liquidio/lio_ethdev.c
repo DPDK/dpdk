@@ -216,6 +216,36 @@ lio_dev_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t q_no,
 	return 0;
 }
 
+/**
+ * Release the transmit queue/ringbuffer. Called by
+ * the upper layers.
+ *
+ * @param txq
+ *    Opaque pointer to the transmit queue to release
+ *
+ * @return
+ *    - nothing
+ */
+static void
+lio_dev_tx_queue_release(void *txq)
+{
+	struct lio_instr_queue *tq = txq;
+	struct lio_device *lio_dev = tq->lio_dev;
+	uint32_t fw_mapped_iq_no;
+
+	/* Run time queue deletion not supported */
+	if (lio_dev->port_configured)
+		return;
+
+	if (tq != NULL) {
+		/* Free sg_list */
+		lio_delete_sglist(tq);
+
+		fw_mapped_iq_no = tq->txpciq.s.q_no;
+		lio_delete_instruction_queue(tq->lio_dev, fw_mapped_iq_no);
+	}
+}
+
 static int lio_dev_configure(struct rte_eth_dev *eth_dev)
 {
 	struct lio_device *lio_dev = LIO_DEV(eth_dev);
@@ -387,6 +417,7 @@ static const struct eth_dev_ops liovf_eth_dev_ops = {
 	.rx_queue_setup		= lio_dev_rx_queue_setup,
 	.rx_queue_release	= lio_dev_rx_queue_release,
 	.tx_queue_setup		= lio_dev_tx_queue_setup,
+	.tx_queue_release	= lio_dev_tx_queue_release,
 };
 
 static void

@@ -699,6 +699,7 @@ uint16_t lio_dev_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			   uint16_t budget);
 void lio_delete_droq_queue(struct lio_device *lio_dev, int oq_no);
 
+void lio_delete_sglist(struct lio_instr_queue *txq);
 int lio_setup_sglists(struct lio_device *lio_dev, int iq_no,
 		      int fw_mapped_iq, int num_descs, unsigned int socket_id);
 uint16_t lio_dev_xmit_pkts(void *tx_queue, struct rte_mbuf **pkts,

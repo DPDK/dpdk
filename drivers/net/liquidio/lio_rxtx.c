@@ -1439,7 +1439,7 @@ list_delete_first_node(struct lio_stailq_head *head)
 	return node;
 }
 
-static void
+void
 lio_delete_sglist(struct lio_instr_queue *txq)
 {
 	struct lio_device *lio_dev = txq->lio_dev;
