@@ -44,6 +44,12 @@
 
 #define LIO_DEV(_eth_dev)		((_eth_dev)->data->dev_private)
 
+/* LIO Response condition variable */
+struct lio_dev_ctrl_cmd {
+	struct rte_eth_dev *eth_dev;
+	uint64_t cond;
+};
+
 enum lio_bus_speed {
 	LIO_LINK_SPEED_UNKNOWN  = 0,
 	LIO_LINK_SPEED_10000    = 10000

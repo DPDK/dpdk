@@ -1557,6 +1557,88 @@ lio_dev_cleanup_iq(struct lio_device *lio_dev, int iq_no)
 	return count ? 0 : 1;
 }
 
+static void
+lio_ctrl_cmd_callback(uint32_t status __rte_unused, void *sc_ptr)
+{
+	struct lio_soft_command *sc = sc_ptr;
+	struct lio_dev_ctrl_cmd *ctrl_cmd;
+	struct lio_ctrl_pkt *ctrl_pkt;
+
+	ctrl_pkt = (struct lio_ctrl_pkt *)sc->ctxptr;
+	ctrl_cmd = ctrl_pkt->ctrl_cmd;
+	ctrl_cmd->cond = 1;
+
+	lio_free_soft_command(sc);
+}
+
+static inline struct lio_soft_command *
+lio_alloc_ctrl_pkt_sc(struct lio_device *lio_dev,
+		      struct lio_ctrl_pkt *ctrl_pkt)
+{
+	struct lio_soft_command *sc = NULL;
+	uint32_t uddsize, datasize;
+	uint32_t rdatasize;
+	uint8_t *data;
+
+	uddsize = (uint32_t)(ctrl_pkt->ncmd.s.more * 8);
+
+	datasize = OCTEON_CMD_SIZE + uddsize;
+	rdatasize = (ctrl_pkt->wait_time) ? 16 : 0;
+
+	sc = lio_alloc_soft_command(lio_dev, datasize,
+				    rdatasize, sizeof(struct lio_ctrl_pkt));
+	if (sc == NULL)
+		return NULL;
+
+	rte_memcpy(sc->ctxptr, ctrl_pkt, sizeof(struct lio_ctrl_pkt));
+
+	data = (uint8_t *)sc->virtdptr;
+
+	rte_memcpy(data, &ctrl_pkt->ncmd, OCTEON_CMD_SIZE);
+
+	lio_swap_8B_data((uint64_t *)data, OCTEON_CMD_SIZE >> 3);
+
+	if (uddsize) {
+		/* Endian-Swap for UDD should have been done by caller. */
+		rte_memcpy(data + OCTEON_CMD_SIZE, ctrl_pkt->udd, uddsize);
+	}
+
+	sc->iq_no = (uint32_t)ctrl_pkt->iq_no;
+
+	lio_prepare_soft_command(lio_dev, sc,
+				 LIO_OPCODE, LIO_OPCODE_CMD,
+				 0, 0, 0);
+
+	sc->callback = lio_ctrl_cmd_callback;
+	sc->callback_arg = sc;
+	sc->wait_time = ctrl_pkt->wait_time;
+
+	return sc;
+}
+
+int
+lio_send_ctrl_pkt(struct lio_device *lio_dev, struct lio_ctrl_pkt *ctrl_pkt)
+{
+	struct lio_soft_command *sc = NULL;
+	int retval;
+
+	sc = lio_alloc_ctrl_pkt_sc(lio_dev, ctrl_pkt);
+	if (sc == NULL) {
+		lio_dev_err(lio_dev, "soft command allocation failed\n");
+		return -1;
+	}
+
+	retval = lio_send_soft_command(lio_dev, sc);
+	if (retval == LIO_IQ_SEND_FAILED) {
+		lio_free_soft_command(sc);
+		lio_dev_err(lio_dev, "Port: %d soft command: %d send failed status: %x\n",
+			    lio_dev->port_id, ctrl_pkt->ncmd.s.cmd, retval);
+		return -1;
+	}
+
+	return retval;
+}
+
 /** Send data packet to the device
  *  @param lio_dev - lio device pointer
  *  @param ndata   - control structure with queueing, and buffer information

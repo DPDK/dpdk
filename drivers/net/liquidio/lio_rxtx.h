@@ -249,6 +249,40 @@ union octeon_cmd {
 
 #define OCTEON_CMD_SIZE (sizeof(union octeon_cmd))
 
+/* Maximum number of 8-byte words can be
+ * sent in a NIC control message.
+ */
+#define LIO_MAX_NCTRL_UDD	32
+
+/* Structure of control information passed by driver to the BASE
+ * layer when sending control commands to Octeon device software.
+ */
+struct lio_ctrl_pkt {
+	/** Command to be passed to the Octeon device software. */
+	union octeon_cmd ncmd;
+
+	/** Send buffer */
+	void *data;
+	uint64_t dmadata;
+
+	/** Response buffer */
+	void *rdata;
+	uint64_t dmardata;
+
+	/** Additional data that may be needed by some commands. */
+	uint64_t udd[LIO_MAX_NCTRL_UDD];
+
+	/** Input queue to use to send this command. */
+	uint64_t iq_no;
+
+	/** Time to wait for Octeon software to respond to this control command.
+	 *  If wait_time is 0, BASE assumes no response is expected.
+	 */
+	size_t wait_time;
+
+	struct lio_dev_ctrl_cmd *ctrl_cmd;
+};
+
 /** Structure of data information passed by driver to the BASE
  *  layer when forwarding data to Octeon device software.
  */
@@ -569,6 +603,16 @@ void lio_prepare_soft_command(struct lio_device *lio_dev,
 int lio_send_soft_command(struct lio_device *lio_dev,
 			  struct lio_soft_command *sc);
 void lio_free_soft_command(struct lio_soft_command *sc);
+
+/** Send control packet to the device
+ *  @param lio_dev - lio device pointer
+ *  @param nctrl   - control structure with command, timeout, and callback info
+ *
+ *  @returns IQ_FAILED if it failed to add to the input queue. IQ_STOP if it the
+ *  queue should be stopped, and LIO_IQ_SEND_OK if it sent okay.
+ */
+int lio_send_ctrl_pkt(struct lio_device *lio_dev,
+		      struct lio_ctrl_pkt *ctrl_pkt);
 
 /** Maximum ordered requests to process in every invocation of
  *  lio_process_ordered_list(). The function will continue to process requests
