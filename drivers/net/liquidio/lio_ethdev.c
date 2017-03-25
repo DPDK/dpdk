@@ -86,6 +86,11 @@ lio_first_time_init(struct lio_device *lio_dev,
 		return -1;
 	}
 
+	if (cn23xx_vf_set_io_queues_off(lio_dev)) {
+		lio_dev_err(lio_dev, "Setting io queues off failed\n");
+		return -1;
+	}
+
 	dpdk_queues = (int)lio_dev->sriov_info.rings_per_vf;
 
 	lio_dev->max_tx_queues = dpdk_queues;

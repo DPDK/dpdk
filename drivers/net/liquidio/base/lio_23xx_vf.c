@@ -65,3 +65,52 @@ cn23xx_vf_setup_device(struct lio_device *lio_dev)
 
 	return 0;
 }
+
+int
+cn23xx_vf_set_io_queues_off(struct lio_device *lio_dev)
+{
+	uint32_t loop = CN23XX_VF_BUSY_READING_REG_LOOP_COUNT;
+	uint64_t q_no;
+
+	/* Disable the i/p and o/p queues for this Octeon.
+	 * IOQs will already be in reset.
+	 * If RST bit is set, wait for Quiet bit to be set
+	 * Once Quiet bit is set, clear the RST bit
+	 */
+	PMD_INIT_FUNC_TRACE();
+
+	for (q_no = 0; q_no < lio_dev->sriov_info.rings_per_vf; q_no++) {
+		volatile uint64_t reg_val;
+
+		reg_val = lio_read_csr64(lio_dev,
+					 CN23XX_SLI_IQ_PKT_CONTROL64(q_no));
+		while ((reg_val & CN23XX_PKT_INPUT_CTL_RST) && !(reg_val &
+					 CN23XX_PKT_INPUT_CTL_QUIET) && loop) {
+			reg_val = lio_read_csr64(
+					lio_dev,
+					CN23XX_SLI_IQ_PKT_CONTROL64(q_no));
+			loop = loop - 1;
+		}
+
+		if (loop == 0) {
+			lio_dev_err(lio_dev,
+				    "clearing the reset reg failed or setting the quiet reg failed for qno %lu\n",
+				    (unsigned long)q_no);
+			return -1;
+		}
+
+		reg_val = reg_val & ~CN23XX_PKT_INPUT_CTL_RST;
+		lio_write_csr64(lio_dev, CN23XX_SLI_IQ_PKT_CONTROL64(q_no),
+				reg_val);
+
+		reg_val = lio_read_csr64(lio_dev,
+					 CN23XX_SLI_IQ_PKT_CONTROL64(q_no));
+		if (reg_val & CN23XX_PKT_INPUT_CTL_RST) {
+			lio_dev_err(lio_dev, "unable to reset qno %lu\n",
+				    (unsigned long)q_no);
+			return -1;
+		}
+	}
+
+	return 0;
+}
