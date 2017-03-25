@@ -126,6 +126,9 @@ struct lio_device {
 
 	struct lio_sriov_info sriov_info;
 
+	/** Mail Box details of each lio queue. */
+	struct lio_mbox **mbox;
+
 	char dev_string[LIO_DEVICE_NAME_LEN]; /* Device print string */
 
 	const struct lio_config *default_config;

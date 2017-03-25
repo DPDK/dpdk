@@ -52,6 +52,7 @@ VPATH += $(RTE_SDK)/drivers/net/liquidio/base
 #
 SRCS-$(CONFIG_RTE_LIBRTE_LIO_PMD) += lio_ethdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_LIO_PMD) += lio_23xx_vf.c
+SRCS-$(CONFIG_RTE_LIBRTE_LIO_PMD) += lio_mbox.c
 
 # this lib depends upon:
 DEPDIRS-$(CONFIG_RTE_LIBRTE_LIO_PMD) += lib/librte_eal lib/librte_ether
