@@ -347,6 +347,8 @@ struct lio_fn_list {
 	void (*free_mbox)(struct lio_device *);
 
 	int (*setup_device_regs)(struct lio_device *);
+	int (*enable_io_queues)(struct lio_device *);
+	void (*disable_io_queues)(struct lio_device *);
 };
 
 struct lio_pf_vf_hs_word {

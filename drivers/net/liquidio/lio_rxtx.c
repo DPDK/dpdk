@@ -892,9 +892,14 @@ lio_setup_iq(struct lio_device *lio_dev, int q_index,
 		goto release_lio_iq;
 
 	lio_dev->num_iqs++;
+	if (lio_dev->fn_list.enable_io_queues(lio_dev))
+		goto delete_lio_iq;
 
 	return 0;
 
+delete_lio_iq:
+	lio_delete_instr_queue(lio_dev, iq_no);
+	lio_dev->num_iqs--;
 release_lio_iq:
 	rte_free(lio_dev->instr_queue[iq_no]);
 	lio_dev->instr_queue[iq_no] = NULL;

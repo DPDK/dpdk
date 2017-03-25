@@ -361,6 +361,15 @@ static int lio_dev_configure(struct rte_eth_dev *eth_dev)
 
 	lio_free_soft_command(sc);
 
+	/* Disable iq_0 for reconf */
+	lio_dev->fn_list.disable_io_queues(lio_dev);
+
+	/* Reset ioq regs */
+	lio_dev->fn_list.setup_device_regs(lio_dev);
+
+	/* Free iq_0 used during init */
+	lio_free_instr_queue0(lio_dev);
+
 	return 0;
 
 nic_config_fail:
@@ -486,6 +495,10 @@ lio_first_time_init(struct lio_device *lio_dev,
 
 	lio_dev->max_tx_queues = dpdk_queues;
 	lio_dev->max_rx_queues = dpdk_queues;
+
+	/* Enable input and output queues for this device */
+	if (lio_dev->fn_list.enable_io_queues(lio_dev))
+		goto error;
 
 	return 0;
 

@@ -310,6 +310,73 @@ cn23xx_vf_setup_mbox(struct lio_device *lio_dev)
 	return 0;
 }
 
+static int
+cn23xx_vf_enable_io_queues(struct lio_device *lio_dev)
+{
+	uint32_t q_no;
+
+	PMD_INIT_FUNC_TRACE();
+
+	for (q_no = 0; q_no < lio_dev->num_iqs; q_no++) {
+		uint64_t reg_val;
+
+		/* set the corresponding IQ IS_64B bit */
+		if (lio_dev->io_qmask.iq64B & (1ULL << q_no)) {
+			reg_val = lio_read_csr64(
+					lio_dev,
+					CN23XX_SLI_IQ_PKT_CONTROL64(q_no));
+			reg_val = reg_val | CN23XX_PKT_INPUT_CTL_IS_64B;
+			lio_write_csr64(lio_dev,
+					CN23XX_SLI_IQ_PKT_CONTROL64(q_no),
+					reg_val);
+		}
+
+		/* set the corresponding IQ ENB bit */
+		if (lio_dev->io_qmask.iq & (1ULL << q_no)) {
+			reg_val = lio_read_csr64(
+					lio_dev,
+					CN23XX_SLI_IQ_PKT_CONTROL64(q_no));
+			reg_val = reg_val | CN23XX_PKT_INPUT_CTL_RING_ENB;
+			lio_write_csr64(lio_dev,
+					CN23XX_SLI_IQ_PKT_CONTROL64(q_no),
+					reg_val);
+		}
+	}
+	for (q_no = 0; q_no < lio_dev->num_oqs; q_no++) {
+		uint32_t reg_val;
+
+		/* set the corresponding OQ ENB bit */
+		if (lio_dev->io_qmask.oq & (1ULL << q_no)) {
+			reg_val = lio_read_csr(
+					lio_dev,
+					CN23XX_SLI_OQ_PKT_CONTROL(q_no));
+			reg_val = reg_val | CN23XX_PKT_OUTPUT_CTL_RING_ENB;
+			lio_write_csr(lio_dev,
+				      CN23XX_SLI_OQ_PKT_CONTROL(q_no),
+				      reg_val);
+		}
+	}
+
+	return 0;
+}
+
+static void
+cn23xx_vf_disable_io_queues(struct lio_device *lio_dev)
+{
+	uint32_t num_queues;
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* per HRM, rings can only be disabled via reset operation,
+	 * NOT via SLI_PKT()_INPUT/OUTPUT_CONTROL[ENB]
+	 */
+	num_queues = lio_dev->num_iqs;
+	if (num_queues < lio_dev->num_oqs)
+		num_queues = lio_dev->num_oqs;
+
+	cn23xx_vf_reset_io_queues(lio_dev, num_queues);
+}
+
 void
 cn23xx_vf_ask_pf_to_do_flr(struct lio_device *lio_dev)
 {
@@ -462,6 +529,9 @@ cn23xx_vf_setup_device(struct lio_device *lio_dev)
 	lio_dev->fn_list.free_mbox		= cn23xx_vf_free_mbox;
 
 	lio_dev->fn_list.setup_device_regs	= cn23xx_vf_setup_device_regs;
+
+	lio_dev->fn_list.enable_io_queues	= cn23xx_vf_enable_io_queues;
+	lio_dev->fn_list.disable_io_queues	= cn23xx_vf_disable_io_queues;
 
 	return 0;
 }
