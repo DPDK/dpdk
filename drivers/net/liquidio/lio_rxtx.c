@@ -1451,6 +1451,68 @@ lio_dev_xmit_pkts(void *tx_queue, struct rte_mbuf **pkts, uint16_t nb_pkts)
 					    &cmdsetup, tag);
 			ndata.cmd.cmd3.dptr = rte_mbuf_data_dma_addr(m);
 			ndata.reqtype = LIO_REQTYPE_NORESP_NET;
+		} else {
+			struct lio_buf_free_info *finfo;
+			struct lio_gather *g;
+			phys_addr_t phyaddr;
+			int i, frags;
+
+			finfo = (struct lio_buf_free_info *)rte_malloc(NULL,
+							sizeof(*finfo), 0);
+			if (finfo == NULL) {
+				PMD_TX_LOG(lio_dev, ERR,
+					   "free buffer alloc failed\n");
+				goto xmit_failed;
+			}
+
+			rte_spinlock_lock(&lio_dev->glist_lock[iq_no]);
+			g = (struct lio_gather *)list_delete_first_node(
+						&lio_dev->glist_head[iq_no]);
+			rte_spinlock_unlock(&lio_dev->glist_lock[iq_no]);
+			if (g == NULL) {
+				PMD_TX_LOG(lio_dev, ERR,
+					   "Transmit scatter gather: glist null!\n");
+				goto xmit_failed;
+			}
+
+			cmdsetup.s.gather = 1;
+			cmdsetup.s.u.gatherptrs = m->nb_segs;
+			lio_prepare_pci_cmd(lio_dev, &ndata.cmd,
+					    &cmdsetup, tag);
+
+			memset(g->sg, 0, g->sg_size);
+			g->sg[0].ptr[0] = rte_mbuf_data_dma_addr(m);
+			lio_add_sg_size(&g->sg[0], m->data_len, 0);
+			pkt_len = m->data_len;
+			finfo->mbuf = m;
+
+			/* First seg taken care above */
+			frags = m->nb_segs - 1;
+			i = 1;
+			m = m->next;
+			while (frags--) {
+				g->sg[(i >> 2)].ptr[(i & 3)] =
+						rte_mbuf_data_dma_addr(m);
+				lio_add_sg_size(&g->sg[(i >> 2)],
+						m->data_len, (i & 3));
+				pkt_len += m->data_len;
+				i++;
+				m = m->next;
+			}
+
+			phyaddr = rte_mem_virt2phy(g->sg);
+			if (phyaddr == RTE_BAD_PHYS_ADDR) {
+				PMD_TX_LOG(lio_dev, ERR, "bad phys addr\n");
+				goto xmit_failed;
+			}
+
+			ndata.cmd.cmd3.dptr = phyaddr;
+			ndata.reqtype = LIO_REQTYPE_NORESP_NET_SG;
+
+			finfo->g = g;
+			finfo->lio_dev = lio_dev;
+			finfo->iq_no = (uint64_t)iq_no;
+			ndata.buf = finfo;
 		}
 
 		ndata.datasize = pkt_len;

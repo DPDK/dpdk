@@ -298,6 +298,30 @@ struct lio_instr_queue {
 	const struct rte_memzone *iq_mz;
 };
 
+/** This structure is used by driver to store information required
+ *  to free the mbuff when the packet has been fetched by Octeon.
+ *  Bytes offset below assume worst-case of a 64-bit system.
+ */
+struct lio_buf_free_info {
+	/** Bytes 1-8. Pointer to network device private structure. */
+	struct lio_device *lio_dev;
+
+	/** Bytes 9-16. Pointer to mbuff. */
+	struct rte_mbuf *mbuf;
+
+	/** Bytes 17-24. Pointer to gather list. */
+	struct lio_gather *g;
+
+	/** Bytes 25-32. Physical address of mbuf->data or gather list. */
+	uint64_t dptr;
+
+	/** Bytes 33-47. Piggybacked soft command, if any */
+	struct lio_soft_command *sc;
+
+	/** Bytes 48-63. iq no */
+	uint64_t iq_no;
+};
+
 /* The Scatter-Gather List Entry. The scatter or gather component used with
  * input instruction has this format.
  */

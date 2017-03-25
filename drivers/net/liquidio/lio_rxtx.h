@@ -666,6 +666,17 @@ lio_opcode_slow_path(union octeon_rh *rh)
 	return subcode2 != subcode1;
 }
 
+static inline void
+lio_add_sg_size(struct lio_sg_entry *sg_entry,
+		uint16_t size, uint32_t pos)
+{
+#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
+	sg_entry->u.size[pos] = size;
+#elif RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+	sg_entry->u.size[3 - pos] = size;
+#endif
+}
+
 /* Macro to increment index.
  * Index is incremented by count; if the sum exceeds
  * max, index is wrapped-around to the start.
