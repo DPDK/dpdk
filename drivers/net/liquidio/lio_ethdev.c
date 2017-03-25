@@ -41,6 +41,166 @@
 #include "lio_ethdev.h"
 #include "lio_rxtx.h"
 
+static uint64_t
+lio_hweight64(uint64_t w)
+{
+	uint64_t res = w - ((w >> 1) & 0x5555555555555555ul);
+
+	res =
+	    (res & 0x3333333333333333ul) + ((res >> 2) & 0x3333333333333333ul);
+	res = (res + (res >> 4)) & 0x0F0F0F0F0F0F0F0Ful;
+	res = res + (res >> 8);
+	res = res + (res >> 16);
+
+	return (res + (res >> 32)) & 0x00000000000000FFul;
+}
+
+static int lio_dev_configure(struct rte_eth_dev *eth_dev)
+{
+	struct lio_device *lio_dev = LIO_DEV(eth_dev);
+	uint16_t timeout = LIO_MAX_CMD_TIMEOUT;
+	int retval, num_iqueues, num_oqueues;
+	uint8_t mac[ETHER_ADDR_LEN], i;
+	struct lio_if_cfg_resp *resp;
+	struct lio_soft_command *sc;
+	union lio_if_cfg if_cfg;
+	uint32_t resp_size;
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* Re-configuring firmware not supported.
+	 * Can't change tx/rx queues per port from initial value.
+	 */
+	if (lio_dev->port_configured) {
+		if ((lio_dev->nb_rx_queues != eth_dev->data->nb_rx_queues) ||
+		    (lio_dev->nb_tx_queues != eth_dev->data->nb_tx_queues)) {
+			lio_dev_err(lio_dev,
+				    "rxq/txq re-conf not supported. Restart application with new value.\n");
+			return -ENOTSUP;
+		}
+		return 0;
+	}
+
+	lio_dev->nb_rx_queues = eth_dev->data->nb_rx_queues;
+	lio_dev->nb_tx_queues = eth_dev->data->nb_tx_queues;
+
+	resp_size = sizeof(struct lio_if_cfg_resp);
+	sc = lio_alloc_soft_command(lio_dev, 0, resp_size, 0);
+	if (sc == NULL)
+		return -ENOMEM;
+
+	resp = (struct lio_if_cfg_resp *)sc->virtrptr;
+
+	/* Firmware doesn't have capability to reconfigure the queues,
+	 * Claim all queues, and use as many required
+	 */
+	if_cfg.if_cfg64 = 0;
+	if_cfg.s.num_iqueues = lio_dev->nb_tx_queues;
+	if_cfg.s.num_oqueues = lio_dev->nb_rx_queues;
+	if_cfg.s.base_queue = 0;
+
+	if_cfg.s.gmx_port_id = lio_dev->pf_num;
+
+	lio_prepare_soft_command(lio_dev, sc, LIO_OPCODE,
+				 LIO_OPCODE_IF_CFG, 0,
+				 if_cfg.if_cfg64, 0);
+
+	/* Setting wait time in seconds */
+	sc->wait_time = LIO_MAX_CMD_TIMEOUT / 1000;
+
+	retval = lio_send_soft_command(lio_dev, sc);
+	if (retval == LIO_IQ_SEND_FAILED) {
+		lio_dev_err(lio_dev, "iq/oq config failed status: %x\n",
+			    retval);
+		/* Soft instr is freed by driver in case of failure. */
+		goto nic_config_fail;
+	}
+
+	/* Sleep on a wait queue till the cond flag indicates that the
+	 * response arrived or timed-out.
+	 */
+	while ((*sc->status_word == LIO_COMPLETION_WORD_INIT) && --timeout) {
+		lio_process_ordered_list(lio_dev);
+		rte_delay_ms(1);
+	}
+
+	retval = resp->status;
+	if (retval) {
+		lio_dev_err(lio_dev, "iq/oq config failed\n");
+		goto nic_config_fail;
+	}
+
+	lio_swap_8B_data((uint64_t *)(&resp->cfg_info),
+			 sizeof(struct octeon_if_cfg_info) >> 3);
+
+	num_iqueues = lio_hweight64(resp->cfg_info.iqmask);
+	num_oqueues = lio_hweight64(resp->cfg_info.oqmask);
+
+	if (!(num_iqueues) || !(num_oqueues)) {
+		lio_dev_err(lio_dev,
+			    "Got bad iqueues (%016lx) or oqueues (%016lx) from firmware.\n",
+			    (unsigned long)resp->cfg_info.iqmask,
+			    (unsigned long)resp->cfg_info.oqmask);
+		goto nic_config_fail;
+	}
+
+	lio_dev_dbg(lio_dev,
+		    "interface %d, iqmask %016lx, oqmask %016lx, numiqueues %d, numoqueues %d\n",
+		    eth_dev->data->port_id,
+		    (unsigned long)resp->cfg_info.iqmask,
+		    (unsigned long)resp->cfg_info.oqmask,
+		    num_iqueues, num_oqueues);
+
+	lio_dev->linfo.num_rxpciq = num_oqueues;
+	lio_dev->linfo.num_txpciq = num_iqueues;
+
+	for (i = 0; i < num_oqueues; i++) {
+		lio_dev->linfo.rxpciq[i].rxpciq64 =
+		    resp->cfg_info.linfo.rxpciq[i].rxpciq64;
+		lio_dev_dbg(lio_dev, "index %d OQ %d\n",
+			    i, lio_dev->linfo.rxpciq[i].s.q_no);
+	}
+
+	for (i = 0; i < num_iqueues; i++) {
+		lio_dev->linfo.txpciq[i].txpciq64 =
+		    resp->cfg_info.linfo.txpciq[i].txpciq64;
+		lio_dev_dbg(lio_dev, "index %d IQ %d\n",
+			    i, lio_dev->linfo.txpciq[i].s.q_no);
+	}
+
+	lio_dev->linfo.hw_addr = resp->cfg_info.linfo.hw_addr;
+	lio_dev->linfo.gmxport = resp->cfg_info.linfo.gmxport;
+	lio_dev->linfo.link.link_status64 =
+			resp->cfg_info.linfo.link.link_status64;
+
+	/* 64-bit swap required on LE machines */
+	lio_swap_8B_data(&lio_dev->linfo.hw_addr, 1);
+	for (i = 0; i < ETHER_ADDR_LEN; i++)
+		mac[i] = *((uint8_t *)(((uint8_t *)&lio_dev->linfo.hw_addr) +
+				       2 + i));
+
+	/* Copy the permanent MAC address */
+	ether_addr_copy((struct ether_addr *)mac, &eth_dev->data->mac_addrs[0]);
+
+	lio_dev->port_configured = 1;
+
+	lio_free_soft_command(sc);
+
+	return 0;
+
+nic_config_fail:
+	lio_dev_err(lio_dev, "Failed retval %d\n", retval);
+	lio_free_soft_command(sc);
+	lio_free_instr_queue0(lio_dev);
+
+	return -ENODEV;
+}
+
+/* Define our ethernet definitions */
+static const struct eth_dev_ops liovf_eth_dev_ops = {
+	.dev_configure		= lio_dev_configure,
+};
+
 static void
 lio_check_pf_hs_response(void *lio_dev)
 {
@@ -215,12 +375,21 @@ lio_eth_dev_init(struct rte_eth_dev *eth_dev)
 		return -EINVAL;
 	}
 
+	eth_dev->dev_ops = &liovf_eth_dev_ops;
 	eth_dev->data->mac_addrs = rte_zmalloc("lio", ETHER_ADDR_LEN, 0);
 	if (eth_dev->data->mac_addrs == NULL) {
 		lio_dev_err(lio_dev,
 			    "MAC addresses memory allocation failed\n");
+		eth_dev->dev_ops = NULL;
 		return -ENOMEM;
 	}
+
+	rte_atomic64_set(&lio_dev->status, LIO_DEV_RUNNING);
+	rte_wmb();
+
+	lio_dev->port_configured = 0;
+	/* Always allow unicast packets */
+	lio_dev->ifflags |= LIO_IFFLAG_UNICAST;
 
 	return 0;
 }

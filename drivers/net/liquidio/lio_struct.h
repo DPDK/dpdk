@@ -274,6 +274,75 @@ struct lio_config {
 	int def_rx_buf_size;
 };
 
+/** Status of a RGMII Link on Octeon as seen by core driver. */
+union octeon_link_status {
+	uint64_t link_status64;
+
+	struct {
+#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
+		uint64_t duplex : 8;
+		uint64_t mtu : 16;
+		uint64_t speed : 16;
+		uint64_t link_up : 1;
+		uint64_t autoneg : 1;
+		uint64_t if_mode : 5;
+		uint64_t pause : 1;
+		uint64_t flashing : 1;
+		uint64_t reserved : 15;
+#else
+		uint64_t reserved : 15;
+		uint64_t flashing : 1;
+		uint64_t pause : 1;
+		uint64_t if_mode : 5;
+		uint64_t autoneg : 1;
+		uint64_t link_up : 1;
+		uint64_t speed : 16;
+		uint64_t mtu : 16;
+		uint64_t duplex : 8;
+#endif
+	} s;
+};
+
+/** The rxpciq info passed to host from the firmware */
+union octeon_rxpciq {
+	uint64_t rxpciq64;
+
+	struct {
+#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
+		uint64_t q_no : 8;
+		uint64_t reserved : 56;
+#else
+		uint64_t reserved : 56;
+		uint64_t q_no : 8;
+#endif
+	} s;
+};
+
+/** Information for a OCTEON ethernet interface shared between core & host. */
+struct octeon_link_info {
+	union octeon_link_status link;
+	uint64_t hw_addr;
+
+#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
+	uint64_t gmxport : 16;
+	uint64_t macaddr_is_admin_assigned : 1;
+	uint64_t vlan_is_admin_assigned : 1;
+	uint64_t rsvd : 30;
+	uint64_t num_txpciq : 8;
+	uint64_t num_rxpciq : 8;
+#else
+	uint64_t num_rxpciq : 8;
+	uint64_t num_txpciq : 8;
+	uint64_t rsvd : 30;
+	uint64_t vlan_is_admin_assigned : 1;
+	uint64_t macaddr_is_admin_assigned : 1;
+	uint64_t gmxport : 16;
+#endif
+
+	union octeon_txpciq txpciq[LIO_MAX_IOQS_PER_IF];
+	union octeon_rxpciq rxpciq[LIO_MAX_IOQS_PER_IF];
+};
+
 /* -----------------------  THE LIO DEVICE  --------------------------- */
 /** The lio device.
  *  Each lio device has this structure to represent all its
@@ -293,6 +362,8 @@ struct lio_device {
 
 	/** The state of this device */
 	rte_atomic64_t status;
+
+	struct octeon_link_info linfo;
 
 	uint8_t *hw_addr;
 
@@ -324,6 +395,7 @@ struct lio_device {
 
 	struct rte_eth_dev      *eth_dev;
 
+	uint64_t ifflags;
 	uint8_t max_rx_queues;
 	uint8_t max_tx_queues;
 	uint8_t nb_rx_queues;

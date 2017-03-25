@@ -36,5 +36,41 @@
 
 #include <stdint.h>
 
+#include "lio_struct.h"
+
+#define LIO_MAX_CMD_TIMEOUT     10000 /* 10000ms (10s) */
+
 #define LIO_DEV(_eth_dev)		((_eth_dev)->data->dev_private)
+
+struct octeon_if_cfg_info {
+	uint64_t iqmask;	/** mask for IQs enabled for the port */
+	uint64_t oqmask;	/** mask for OQs enabled for the port */
+	struct octeon_link_info linfo; /** initial link information */
+	char lio_firmware_version[LIO_FW_VERSION_LENGTH];
+};
+
+union lio_if_cfg {
+	uint64_t if_cfg64;
+	struct {
+#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
+		uint64_t base_queue : 16;
+		uint64_t num_iqueues : 16;
+		uint64_t num_oqueues : 16;
+		uint64_t gmx_port_id : 8;
+		uint64_t vf_id : 8;
+#else
+		uint64_t vf_id : 8;
+		uint64_t gmx_port_id : 8;
+		uint64_t num_oqueues : 16;
+		uint64_t num_iqueues : 16;
+		uint64_t base_queue : 16;
+#endif
+	} s;
+};
+
+struct lio_if_cfg_resp {
+	uint64_t rh;
+	struct octeon_if_cfg_info cfg_info;
+	uint64_t status;
+};
 #endif	/* _LIO_ETHDEV_H_ */

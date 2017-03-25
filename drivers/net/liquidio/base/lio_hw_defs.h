@@ -95,6 +95,8 @@ enum lio_card_type {
 #define LIO_BASE_MINOR_VERSION		5
 #define LIO_BASE_MICRO_VERSION		1
 
+#define LIO_FW_VERSION_LENGTH		32
+
 /** Tag types used by Octeon cores in its work. */
 enum octeon_tag_type {
 	OCTEON_ORDERED_TAG	= 0,
@@ -103,6 +105,18 @@ enum octeon_tag_type {
 
 /* pre-defined host->NIC tag values */
 #define LIO_CONTROL	(0x11111110)
+
+/* used for NIC operations */
+#define LIO_OPCODE	1
+
+/** LIO_OPCODE subcodes */
+/* This subcode is sent by core PCI driver to indicate cores are ready. */
+#define LIO_OPCODE_IF_CFG		0x09
+
+/* Interface flags communicated between host driver and core app. */
+enum lio_ifflags {
+	LIO_IFFLAG_UNICAST	= 0x10
+};
 
 /* Routines for reading and writing CSRs */
 #ifdef RTE_LIBRTE_LIO_DEBUG_REGS
