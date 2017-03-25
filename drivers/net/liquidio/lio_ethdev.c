@@ -1359,6 +1359,25 @@ dev_lsc_handle_error:
 	return ret;
 }
 
+/* Stop device and disable input/output functions */
+static void
+lio_dev_stop(struct rte_eth_dev *eth_dev)
+{
+	struct lio_device *lio_dev = LIO_DEV(eth_dev);
+
+	lio_dev_info(lio_dev, "Stopping port %d\n", eth_dev->data->port_id);
+	lio_dev->intf_open = 0;
+	rte_mb();
+
+	/* Cancel callback if still running. */
+	rte_eal_alarm_cancel(lio_sync_link_state_check, eth_dev);
+
+	lio_send_rx_ctrl_cmd(eth_dev, 0);
+
+	/* Clear recorded link status */
+	lio_dev->linfo.link.link_status64 = 0;
+}
+
 static int
 lio_dev_set_link_up(struct rte_eth_dev *eth_dev)
 {
@@ -1656,6 +1675,7 @@ nic_config_fail:
 static const struct eth_dev_ops liovf_eth_dev_ops = {
 	.dev_configure		= lio_dev_configure,
 	.dev_start		= lio_dev_start,
+	.dev_stop		= lio_dev_stop,
 	.dev_set_link_up	= lio_dev_set_link_up,
 	.dev_set_link_down	= lio_dev_set_link_down,
 	.allmulticast_enable	= lio_dev_allmulticast_enable,
