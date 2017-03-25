@@ -293,6 +293,12 @@ M: Maciej Czekaj <maciej.czekaj@caviumnetworks.com>
 F: drivers/net/thunderx/
 F: doc/guides/nics/thunderx.rst
 
+Cavium LiquidIO
+M: Shijith Thotton <shijith.thotton@cavium.com>
+M: Srisivasubramanian Srinivasan <ssrinivasan@cavium.com>
+F: drivers/net/liquidio/
+F: doc/guides/nics/features/liquidio.ini
+
 Chelsio cxgbe
 M: Rahul Lakkireddy <rahul.lakkireddy@chelsio.com>
 F: drivers/net/cxgbe/
