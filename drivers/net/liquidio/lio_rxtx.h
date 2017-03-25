@@ -546,6 +546,7 @@ int lio_setup_droq(struct lio_device *lio_dev, int q_no, int num_descs,
 		   unsigned int socket_id);
 uint16_t lio_dev_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			   uint16_t budget);
+void lio_delete_droq_queue(struct lio_device *lio_dev, int oq_no);
 
 /** Setup instruction queue zero for the device
  *  @param lio_dev which lio device to setup

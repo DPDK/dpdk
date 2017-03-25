@@ -706,6 +706,16 @@ lio_dev_recv_pkts(void *rx_queue,
 	return pkts_processed;
 }
 
+void
+lio_delete_droq_queue(struct lio_device *lio_dev,
+		      int oq_no)
+{
+	lio_delete_droq(lio_dev, oq_no);
+	lio_dev->num_oqs--;
+	rte_free(lio_dev->droq[oq_no]);
+	lio_dev->droq[oq_no] = NULL;
+}
+
 /**
  *  lio_init_instr_queue()
  *  @param lio_dev	- pointer to the lio device structure.

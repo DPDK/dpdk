@@ -121,6 +121,33 @@ lio_dev_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t q_no,
 	return 0;
 }
 
+/**
+ * Release the receive queue/ringbuffer. Called by
+ * the upper layers.
+ *
+ * @param rxq
+ *    Opaque pointer to the receive queue to release
+ *
+ * @return
+ *    - nothing
+ */
+static void
+lio_dev_rx_queue_release(void *rxq)
+{
+	struct lio_droq *droq = rxq;
+	struct lio_device *lio_dev = droq->lio_dev;
+	int oq_no;
+
+	/* Run time queue deletion not supported */
+	if (lio_dev->port_configured)
+		return;
+
+	if (droq != NULL) {
+		oq_no = droq->q_no;
+		lio_delete_droq_queue(droq->lio_dev, oq_no);
+	}
+}
+
 static int lio_dev_configure(struct rte_eth_dev *eth_dev)
 {
 	struct lio_device *lio_dev = LIO_DEV(eth_dev);
@@ -266,6 +293,7 @@ nic_config_fail:
 static const struct eth_dev_ops liovf_eth_dev_ops = {
 	.dev_configure		= lio_dev_configure,
 	.rx_queue_setup		= lio_dev_rx_queue_setup,
+	.rx_queue_release	= lio_dev_rx_queue_release,
 };
 
 static void
