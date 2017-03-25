@@ -1109,7 +1109,7 @@ lio_dev_rx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t q_no,
  * @return
  *    - nothing
  */
-static void
+void
 lio_dev_rx_queue_release(void *rxq)
 {
 	struct lio_droq *droq = rxq;
@@ -1204,7 +1204,7 @@ lio_dev_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t q_no,
  * @return
  *    - nothing
  */
-static void
+void
 lio_dev_tx_queue_release(void *txq)
 {
 	struct lio_instr_queue *tq = txq;
@@ -1430,6 +1430,68 @@ lio_dev_set_link_down(struct rte_eth_dev *eth_dev)
 	}
 
 	return 0;
+}
+
+/**
+ * Reset and stop the device. This occurs on the first
+ * call to this routine. Subsequent calls will simply
+ * return. NB: This will require the NIC to be rebooted.
+ *
+ * @param eth_dev
+ *    Pointer to the structure rte_eth_dev
+ *
+ * @return
+ *    - nothing
+ */
+static void
+lio_dev_close(struct rte_eth_dev *eth_dev)
+{
+	struct lio_device *lio_dev = LIO_DEV(eth_dev);
+	uint32_t i;
+
+	lio_dev_info(lio_dev, "closing port %d\n", eth_dev->data->port_id);
+
+	if (lio_dev->intf_open)
+		lio_dev_stop(eth_dev);
+
+	lio_wait_for_instr_fetch(lio_dev);
+
+	lio_dev->fn_list.disable_io_queues(lio_dev);
+
+	cn23xx_vf_set_io_queues_off(lio_dev);
+
+	/* Reset iq regs (IQ_DBELL).
+	 * Clear sli_pktx_cnts (OQ_PKTS_SENT).
+	 */
+	for (i = 0; i < lio_dev->nb_rx_queues; i++) {
+		struct lio_droq *droq = lio_dev->droq[i];
+
+		if (droq == NULL)
+			break;
+
+		uint32_t pkt_count = rte_read32(droq->pkts_sent_reg);
+
+		lio_dev_dbg(lio_dev,
+			    "pending oq count %u\n", pkt_count);
+		rte_write32(pkt_count, droq->pkts_sent_reg);
+	}
+
+	/* Do FLR for the VF */
+	cn23xx_vf_ask_pf_to_do_flr(lio_dev);
+
+	/* lio_free_mbox */
+	lio_dev->fn_list.free_mbox(lio_dev);
+
+	/* Free glist resources */
+	rte_free(lio_dev->glist_head);
+	rte_free(lio_dev->glist_lock);
+	lio_dev->glist_head = NULL;
+	lio_dev->glist_lock = NULL;
+
+	lio_dev->port_configured = 0;
+
+	 /* Delete all queues */
+	lio_dev_clear_queues(eth_dev);
 }
 
 /**
@@ -1678,6 +1740,7 @@ static const struct eth_dev_ops liovf_eth_dev_ops = {
 	.dev_stop		= lio_dev_stop,
 	.dev_set_link_up	= lio_dev_set_link_up,
 	.dev_set_link_down	= lio_dev_set_link_down,
+	.dev_close		= lio_dev_close,
 	.allmulticast_enable	= lio_dev_allmulticast_enable,
 	.allmulticast_disable	= lio_dev_allmulticast_disable,
 	.link_update		= lio_dev_link_update,
@@ -1839,6 +1902,7 @@ lio_eth_dev_uninit(struct rte_eth_dev *eth_dev)
 	rte_free(eth_dev->data->mac_addrs);
 	eth_dev->data->mac_addrs = NULL;
 
+	eth_dev->dev_ops = NULL;
 	eth_dev->rx_pkt_burst = NULL;
 	eth_dev->tx_pkt_burst = NULL;
 

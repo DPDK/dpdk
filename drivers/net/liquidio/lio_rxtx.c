@@ -918,6 +918,40 @@ release_lio_iq:
 	return -1;
 }
 
+int
+lio_wait_for_instr_fetch(struct lio_device *lio_dev)
+{
+	int pending, instr_cnt;
+	int i, retry = 1000;
+
+	do {
+		instr_cnt = 0;
+
+		for (i = 0; i < LIO_MAX_INSTR_QUEUES(lio_dev); i++) {
+			if (!(lio_dev->io_qmask.iq & (1ULL << i)))
+				continue;
+
+			if (lio_dev->instr_queue[i] == NULL)
+				break;
+
+			pending = rte_atomic64_read(
+			    &lio_dev->instr_queue[i]->instr_pending);
+			if (pending)
+				lio_flush_iq(lio_dev, lio_dev->instr_queue[i]);
+
+			instr_cnt += pending;
+		}
+
+		if (instr_cnt == 0)
+			break;
+
+		rte_delay_ms(1);
+
+	} while (retry-- && instr_cnt);
+
+	return instr_cnt;
+}
+
 static inline void
 lio_ring_doorbell(struct lio_device *lio_dev,
 		  struct lio_instr_queue *iq)
@@ -1826,3 +1860,26 @@ xmit_failed:
 	return processed;
 }
 
+void
+lio_dev_clear_queues(struct rte_eth_dev *eth_dev)
+{
+	struct lio_instr_queue *txq;
+	struct lio_droq *rxq;
+	uint16_t i;
+
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {
+		txq = eth_dev->data->tx_queues[i];
+		if (txq != NULL) {
+			lio_dev_tx_queue_release(txq);
+			eth_dev->data->tx_queues[i] = NULL;
+		}
+	}
+
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
+		rxq = eth_dev->data->rx_queues[i];
+		if (rxq != NULL) {
+			lio_dev_rx_queue_release(rxq);
+			eth_dev->data->rx_queues[i] = NULL;
+		}
+	}
+}

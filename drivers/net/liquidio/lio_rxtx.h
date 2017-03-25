@@ -752,6 +752,7 @@ int lio_setup_sglists(struct lio_device *lio_dev, int iq_no,
 		      int fw_mapped_iq, int num_descs, unsigned int socket_id);
 uint16_t lio_dev_xmit_pkts(void *tx_queue, struct rte_mbuf **pkts,
 			   uint16_t nb_pkts);
+int lio_wait_for_instr_fetch(struct lio_device *lio_dev);
 int lio_setup_iq(struct lio_device *lio_dev, int q_index,
 		 union octeon_txpciq iq_no, uint32_t num_descs, void *app_ctx,
 		 unsigned int socket_id);
@@ -764,4 +765,5 @@ void lio_delete_instruction_queue(struct lio_device *lio_dev, int iq_no);
  */
 int lio_setup_instr_queue0(struct lio_device *lio_dev);
 void lio_free_instr_queue0(struct lio_device *lio_dev);
+void lio_dev_clear_queues(struct rte_eth_dev *eth_dev);
 #endif	/* _LIO_RXTX_H_ */

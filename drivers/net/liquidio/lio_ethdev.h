@@ -196,4 +196,9 @@ struct lio_rss_set {
 	uint8_t itable[LIO_RSS_MAX_TABLE_SZ];
 	uint8_t key[LIO_RSS_MAX_KEY_SZ];
 };
+
+void lio_dev_rx_queue_release(void *rxq);
+
+void lio_dev_tx_queue_release(void *txq);
+
 #endif	/* _LIO_ETHDEV_H_ */
