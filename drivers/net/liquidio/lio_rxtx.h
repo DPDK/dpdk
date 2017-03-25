@@ -515,6 +515,17 @@ lio_map_ring_info(struct lio_droq *droq, uint32_t i)
 	return (uint64_t)dma_addr;
 }
 
+static inline int
+lio_opcode_slow_path(union octeon_rh *rh)
+{
+	uint16_t subcode1, subcode2;
+
+	subcode1 = LIO_OPCODE_SUBCODE(rh->r.opcode, rh->r.subcode);
+	subcode2 = LIO_OPCODE_SUBCODE(LIO_OPCODE, LIO_OPCODE_NW_DATA);
+
+	return subcode2 != subcode1;
+}
+
 /* Macro to increment index.
  * Index is incremented by count; if the sum exceeds
  * max, index is wrapped-around to the start.
@@ -533,6 +544,8 @@ lio_incr_index(uint32_t index, uint32_t count, uint32_t max)
 int lio_setup_droq(struct lio_device *lio_dev, int q_no, int num_descs,
 		   int desc_size, struct rte_mempool *mpool,
 		   unsigned int socket_id);
+uint16_t lio_dev_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
+			   uint16_t budget);
 
 /** Setup instruction queue zero for the device
  *  @param lio_dev which lio device to setup

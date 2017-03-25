@@ -112,11 +112,23 @@ enum octeon_tag_type {
 /* used for NIC operations */
 #define LIO_OPCODE	1
 
+/* Subcodes are used by host driver/apps to identify the sub-operation
+ * for the core. They only need to by unique for a given subsystem.
+ */
+#define LIO_OPCODE_SUBCODE(op, sub)		\
+		((((op) & 0x0f) << 8) | ((sub) & 0x7f))
+
 /** LIO_OPCODE subcodes */
 /* This subcode is sent by core PCI driver to indicate cores are ready. */
+#define LIO_OPCODE_NW_DATA		0x02 /* network packet data */
 #define LIO_OPCODE_IF_CFG		0x09
 
 #define LIO_MAX_RX_PKTLEN		(64 * 1024)
+
+/* RX(packets coming from wire) Checksum verification flags */
+/* TCP/UDP csum */
+#define LIO_L4_CSUM_VERIFIED		0x1
+#define LIO_IP_CSUM_VERIFIED		0x2
 
 /* Interface flags communicated between host driver and core app. */
 enum lio_ifflags {
