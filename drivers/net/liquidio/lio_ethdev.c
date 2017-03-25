@@ -148,6 +148,65 @@ lio_dev_rx_queue_release(void *rxq)
 	}
 }
 
+/**
+ * Allocate and initialize SW ring. Initialize associated HW registers.
+ *
+ * @param eth_dev
+ *   Pointer to structure rte_eth_dev
+ *
+ * @param q_no
+ *   Queue number
+ *
+ * @param num_tx_descs
+ *   Number of ringbuffer descriptors
+ *
+ * @param socket_id
+ *   NUMA socket id, used for memory allocations
+ *
+ * @param tx_conf
+ *   Pointer to the structure rte_eth_txconf
+ *
+ * @return
+ *   - On success, return 0
+ *   - On failure, return -errno value
+ */
+static int
+lio_dev_tx_queue_setup(struct rte_eth_dev *eth_dev, uint16_t q_no,
+		       uint16_t num_tx_descs, unsigned int socket_id,
+		       const struct rte_eth_txconf *tx_conf __rte_unused)
+{
+	struct lio_device *lio_dev = LIO_DEV(eth_dev);
+	int fw_mapped_iq = lio_dev->linfo.txpciq[q_no].s.q_no;
+	int retval;
+
+	if (q_no >= lio_dev->nb_tx_queues) {
+		lio_dev_err(lio_dev, "Invalid tx queue number %u\n", q_no);
+		return -EINVAL;
+	}
+
+	lio_dev_dbg(lio_dev, "setting up tx queue %u\n", q_no);
+
+	if ((lio_dev->instr_queue[fw_mapped_iq] != NULL) &&
+	    (num_tx_descs != lio_dev->instr_queue[fw_mapped_iq]->max_count)) {
+		lio_dev_err(lio_dev,
+			    "Reconfiguring Tx descs not supported. Configure descs to same value %u or restart application\n",
+			    lio_dev->instr_queue[fw_mapped_iq]->max_count);
+		return -ENOTSUP;
+	}
+
+	retval = lio_setup_iq(lio_dev, q_no, lio_dev->linfo.txpciq[q_no],
+			      num_tx_descs, lio_dev, socket_id);
+
+	if (retval) {
+		lio_dev_err(lio_dev, "Runtime IQ(TxQ) creation failed.\n");
+		return retval;
+	}
+
+	eth_dev->data->tx_queues[q_no] = lio_dev->instr_queue[fw_mapped_iq];
+
+	return 0;
+}
+
 static int lio_dev_configure(struct rte_eth_dev *eth_dev)
 {
 	struct lio_device *lio_dev = LIO_DEV(eth_dev);
@@ -294,6 +353,7 @@ static const struct eth_dev_ops liovf_eth_dev_ops = {
 	.dev_configure		= lio_dev_configure,
 	.rx_queue_setup		= lio_dev_rx_queue_setup,
 	.rx_queue_release	= lio_dev_rx_queue_release,
+	.tx_queue_setup		= lio_dev_tx_queue_setup,
 };
 
 static void

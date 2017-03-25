@@ -861,6 +861,45 @@ lio_free_instr_queue0(struct lio_device *lio_dev)
 	lio_dev->num_iqs--;
 }
 
+/* Return 0 on success, -1 on failure */
+int
+lio_setup_iq(struct lio_device *lio_dev, int q_index,
+	     union octeon_txpciq txpciq, uint32_t num_descs, void *app_ctx,
+	     unsigned int socket_id)
+{
+	uint32_t iq_no = (uint32_t)txpciq.s.q_no;
+
+	if (lio_dev->instr_queue[iq_no]) {
+		lio_dev_dbg(lio_dev, "IQ is in use. Cannot create the IQ: %d again\n",
+			    iq_no);
+		lio_dev->instr_queue[iq_no]->txpciq.txpciq64 = txpciq.txpciq64;
+		lio_dev->instr_queue[iq_no]->app_ctx = app_ctx;
+		return 0;
+	}
+
+	lio_dev->instr_queue[iq_no] = rte_zmalloc_socket("ethdev TX queue",
+						sizeof(struct lio_instr_queue),
+						RTE_CACHE_LINE_SIZE, socket_id);
+	if (lio_dev->instr_queue[iq_no] == NULL)
+		return -1;
+
+	lio_dev->instr_queue[iq_no]->q_index = q_index;
+	lio_dev->instr_queue[iq_no]->app_ctx = app_ctx;
+
+	if (lio_init_instr_queue(lio_dev, txpciq, num_descs, socket_id))
+		goto release_lio_iq;
+
+	lio_dev->num_iqs++;
+
+	return 0;
+
+release_lio_iq:
+	rte_free(lio_dev->instr_queue[iq_no]);
+	lio_dev->instr_queue[iq_no] = NULL;
+
+	return -1;
+}
+
 static inline void
 lio_ring_doorbell(struct lio_device *lio_dev,
 		  struct lio_instr_queue *iq)
