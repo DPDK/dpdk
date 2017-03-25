@@ -288,6 +288,12 @@ struct lio_device {
 	uint16_t pf_num;
 	uint16_t vf_num;
 
+	/** This device's PCIe port used for traffic. */
+	uint16_t pcie_port;
+
+	/** The state of this device */
+	rte_atomic64_t status;
+
 	uint8_t *hw_addr;
 
 	struct lio_fn_list fn_list;

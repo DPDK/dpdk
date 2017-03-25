@@ -207,6 +207,186 @@ lio_free_instr_queue0(struct lio_device *lio_dev)
 	lio_dev->num_iqs--;
 }
 
+static inline void
+lio_ring_doorbell(struct lio_device *lio_dev,
+		  struct lio_instr_queue *iq)
+{
+	if (rte_atomic64_read(&lio_dev->status) == LIO_DEV_RUNNING) {
+		rte_write32(iq->fill_cnt, iq->doorbell_reg);
+		/* make sure doorbell write goes through */
+		rte_wmb();
+		iq->fill_cnt = 0;
+	}
+}
+
+static inline void
+copy_cmd_into_iq(struct lio_instr_queue *iq, uint8_t *cmd)
+{
+	uint8_t *iqptr, cmdsize;
+
+	cmdsize = ((iq->iqcmd_64B) ? 64 : 32);
+	iqptr = iq->base_addr + (cmdsize * iq->host_write_index);
+
+	rte_memcpy(iqptr, cmd, cmdsize);
+}
+
+static inline struct lio_iq_post_status
+post_command2(struct lio_instr_queue *iq, uint8_t *cmd)
+{
+	struct lio_iq_post_status st;
+
+	st.status = LIO_IQ_SEND_OK;
+
+	/* This ensures that the read index does not wrap around to the same
+	 * position if queue gets full before Octeon could fetch any instr.
+	 */
+	if (rte_atomic64_read(&iq->instr_pending) >=
+			(int32_t)(iq->max_count - 1)) {
+		st.status = LIO_IQ_SEND_FAILED;
+		st.index = -1;
+		return st;
+	}
+
+	if (rte_atomic64_read(&iq->instr_pending) >=
+			(int32_t)(iq->max_count - 2))
+		st.status = LIO_IQ_SEND_STOP;
+
+	copy_cmd_into_iq(iq, cmd);
+
+	/* "index" is returned, host_write_index is modified. */
+	st.index = iq->host_write_index;
+	iq->host_write_index = lio_incr_index(iq->host_write_index, 1,
+					      iq->max_count);
+	iq->fill_cnt++;
+
+	/* Flush the command into memory. We need to be sure the data is in
+	 * memory before indicating that the instruction is pending.
+	 */
+	rte_wmb();
+
+	rte_atomic64_inc(&iq->instr_pending);
+
+	return st;
+}
+
+static inline void
+lio_add_to_request_list(struct lio_instr_queue *iq,
+			int idx, void *buf, int reqtype)
+{
+	iq->request_list[idx].buf = buf;
+	iq->request_list[idx].reqtype = reqtype;
+}
+
+static int
+lio_send_command(struct lio_device *lio_dev, uint32_t iq_no, void *cmd,
+		 void *buf, uint32_t datasize __rte_unused, uint32_t reqtype)
+{
+	struct lio_instr_queue *iq = lio_dev->instr_queue[iq_no];
+	struct lio_iq_post_status st;
+
+	rte_spinlock_lock(&iq->post_lock);
+
+	st = post_command2(iq, cmd);
+
+	if (st.status != LIO_IQ_SEND_FAILED) {
+		lio_add_to_request_list(iq, st.index, buf, reqtype);
+		lio_ring_doorbell(lio_dev, iq);
+	}
+
+	rte_spinlock_unlock(&iq->post_lock);
+
+	return st.status;
+}
+
+void
+lio_prepare_soft_command(struct lio_device *lio_dev,
+			 struct lio_soft_command *sc, uint8_t opcode,
+			 uint8_t subcode, uint32_t irh_ossp, uint64_t ossp0,
+			 uint64_t ossp1)
+{
+	struct octeon_instr_pki_ih3 *pki_ih3;
+	struct octeon_instr_ih3 *ih3;
+	struct octeon_instr_irh *irh;
+	struct octeon_instr_rdp *rdp;
+
+	RTE_ASSERT(opcode <= 15);
+	RTE_ASSERT(subcode <= 127);
+
+	ih3	  = (struct octeon_instr_ih3 *)&sc->cmd.cmd3.ih3;
+
+	ih3->pkind = lio_dev->instr_queue[sc->iq_no]->txpciq.s.pkind;
+
+	pki_ih3 = (struct octeon_instr_pki_ih3 *)&sc->cmd.cmd3.pki_ih3;
+
+	pki_ih3->w	= 1;
+	pki_ih3->raw	= 1;
+	pki_ih3->utag	= 1;
+	pki_ih3->uqpg	= lio_dev->instr_queue[sc->iq_no]->txpciq.s.use_qpg;
+	pki_ih3->utt	= 1;
+
+	pki_ih3->tag	= LIO_CONTROL;
+	pki_ih3->tagtype = OCTEON_ATOMIC_TAG;
+	pki_ih3->qpg	= lio_dev->instr_queue[sc->iq_no]->txpciq.s.qpg;
+	pki_ih3->pm	= 0x7;
+	pki_ih3->sl	= 8;
+
+	if (sc->datasize)
+		ih3->dlengsz = sc->datasize;
+
+	irh		= (struct octeon_instr_irh *)&sc->cmd.cmd3.irh;
+	irh->opcode	= opcode;
+	irh->subcode	= subcode;
+
+	/* opcode/subcode specific parameters (ossp) */
+	irh->ossp = irh_ossp;
+	sc->cmd.cmd3.ossp[0] = ossp0;
+	sc->cmd.cmd3.ossp[1] = ossp1;
+
+	if (sc->rdatasize) {
+		rdp = (struct octeon_instr_rdp *)&sc->cmd.cmd3.rdp;
+		rdp->pcie_port = lio_dev->pcie_port;
+		rdp->rlen      = sc->rdatasize;
+		irh->rflag = 1;
+		/* PKI IH3 */
+		ih3->fsz    = OCTEON_SOFT_CMD_RESP_IH3;
+	} else {
+		irh->rflag = 0;
+		/* PKI IH3 */
+		ih3->fsz    = OCTEON_PCI_CMD_O3;
+	}
+}
+
+int
+lio_send_soft_command(struct lio_device *lio_dev,
+		      struct lio_soft_command *sc)
+{
+	struct octeon_instr_ih3 *ih3;
+	struct octeon_instr_irh *irh;
+	uint32_t len = 0;
+
+	ih3 = (struct octeon_instr_ih3 *)&sc->cmd.cmd3.ih3;
+	if (ih3->dlengsz) {
+		RTE_ASSERT(sc->dmadptr);
+		sc->cmd.cmd3.dptr = sc->dmadptr;
+	}
+
+	irh = (struct octeon_instr_irh *)&sc->cmd.cmd3.irh;
+	if (irh->rflag) {
+		RTE_ASSERT(sc->dmarptr);
+		RTE_ASSERT(sc->status_word != NULL);
+		*sc->status_word = LIO_COMPLETION_WORD_INIT;
+		sc->cmd.cmd3.rptr = sc->dmarptr;
+	}
+
+	len = (uint32_t)ih3->dlengsz;
+
+	if (sc->wait_time)
+		sc->timeout = lio_uptime + sc->wait_time;
+
+	return lio_send_command(lio_dev, sc->iq_no, &sc->cmd, sc, len,
+				LIO_REQTYPE_SOFT_COMMAND);
+}
+
 int
 lio_setup_sc_buffer_pool(struct lio_device *lio_dev)
 {

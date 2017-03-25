@@ -76,6 +76,8 @@ enum lio_card_type {
 
 #define LIO_23XX_NAME "23xx"
 
+#define LIO_DEV_RUNNING		0xc
+
 #define LIO_NUM_DEF_TX_DESCS_CFG(cfg)					\
 		((cfg)->default_config->num_def_tx_descs)
 
@@ -92,6 +94,15 @@ enum lio_card_type {
 #define LIO_BASE_MAJOR_VERSION		1
 #define LIO_BASE_MINOR_VERSION		5
 #define LIO_BASE_MICRO_VERSION		1
+
+/** Tag types used by Octeon cores in its work. */
+enum octeon_tag_type {
+	OCTEON_ORDERED_TAG	= 0,
+	OCTEON_ATOMIC_TAG	= 1,
+};
+
+/* pre-defined host->NIC tag values */
+#define LIO_CONTROL	(0x11111110)
 
 /* Routines for reading and writing CSRs */
 #ifdef RTE_LIBRTE_LIO_DEBUG_REGS

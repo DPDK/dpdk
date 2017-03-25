@@ -50,9 +50,51 @@
 #define lio_uptime		\
 	(size_t)(rte_get_timer_cycles() / rte_get_timer_hz())
 
+#define LIO_IQ_SEND_OK		0
+#define LIO_IQ_SEND_STOP	1
+#define LIO_IQ_SEND_FAILED	-1
+
+/* conditions */
+#define LIO_REQTYPE_NONE		0
+#define LIO_REQTYPE_NORESP_NET		1
+#define LIO_REQTYPE_NORESP_NET_SG	2
+#define LIO_REQTYPE_SOFT_COMMAND	3
+
 struct lio_request_list {
 	uint32_t reqtype;
 	void *buf;
+};
+
+/*----------------------  INSTRUCTION FORMAT ----------------------------*/
+
+struct lio_instr3_64B {
+	/** Pointer where the input data is available. */
+	uint64_t dptr;
+
+	/** Instruction Header. */
+	uint64_t ih3;
+
+	/** Instruction Header. */
+	uint64_t pki_ih3;
+
+	/** Input Request Header. */
+	uint64_t irh;
+
+	/** opcode/subcode specific parameters */
+	uint64_t ossp[2];
+
+	/** Return Data Parameters */
+	uint64_t rdp;
+
+	/** Pointer where the response for a RAW mode packet will be written
+	 *  by Octeon.
+	 */
+	uint64_t rptr;
+
+};
+
+union lio_instr_64B {
+	struct lio_instr3_64B cmd3;
 };
 
 /** The size of each buffer in soft command buffer pool */
@@ -66,6 +108,9 @@ struct lio_soft_command {
 	struct lio_stailq_node node;
 	uint64_t dma_addr;
 	uint32_t size;
+
+	/** Command and return status */
+	union lio_instr_64B cmd;
 
 #define LIO_COMPLETION_WORD_INIT	0xffffffffffffffffULL
 	uint64_t *status_word;
@@ -93,6 +138,230 @@ struct lio_soft_command {
 	struct rte_mbuf *mbuf;
 };
 
+struct lio_iq_post_status {
+	int status;
+	int index;
+};
+
+/*   wqe
+ *  ---------------  0
+ * |  wqe  word0-3 |
+ *  ---------------  32
+ * |    PCI IH     |
+ *  ---------------  40
+ * |     RPTR      |
+ *  ---------------  48
+ * |    PCI IRH    |
+ *  ---------------  56
+ * |    OCTEON_CMD |
+ *  ---------------  64
+ * | Addtl 8-BData |
+ * |               |
+ *  ---------------
+ */
+
+union octeon_cmd {
+	uint64_t cmd64;
+
+	struct	{
+#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
+		uint64_t cmd : 5;
+
+		uint64_t more : 6; /* How many udd words follow the command */
+
+		uint64_t reserved : 29;
+
+		uint64_t param1 : 16;
+
+		uint64_t param2 : 8;
+
+#elif RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+
+		uint64_t param2 : 8;
+
+		uint64_t param1 : 16;
+
+		uint64_t reserved : 29;
+
+		uint64_t more : 6;
+
+		uint64_t cmd : 5;
+
+#endif
+	} s;
+};
+
+#define OCTEON_CMD_SIZE (sizeof(union octeon_cmd))
+
+/* Instruction Header */
+struct octeon_instr_ih3 {
+#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
+
+	/** Reserved3 */
+	uint64_t reserved3 : 1;
+
+	/** Gather indicator 1=gather*/
+	uint64_t gather : 1;
+
+	/** Data length OR no. of entries in gather list */
+	uint64_t dlengsz : 14;
+
+	/** Front Data size */
+	uint64_t fsz : 6;
+
+	/** Reserved2 */
+	uint64_t reserved2 : 4;
+
+	/** PKI port kind - PKIND */
+	uint64_t pkind : 6;
+
+	/** Reserved1 */
+	uint64_t reserved1 : 32;
+
+#elif RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+	/** Reserved1 */
+	uint64_t reserved1 : 32;
+
+	/** PKI port kind - PKIND */
+	uint64_t pkind : 6;
+
+	/** Reserved2 */
+	uint64_t reserved2 : 4;
+
+	/** Front Data size */
+	uint64_t fsz : 6;
+
+	/** Data length OR no. of entries in gather list */
+	uint64_t dlengsz : 14;
+
+	/** Gather indicator 1=gather*/
+	uint64_t gather : 1;
+
+	/** Reserved3 */
+	uint64_t reserved3 : 1;
+
+#endif
+};
+
+/* PKI Instruction Header(PKI IH) */
+struct octeon_instr_pki_ih3 {
+#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
+
+	/** Wider bit */
+	uint64_t w : 1;
+
+	/** Raw mode indicator 1 = RAW */
+	uint64_t raw : 1;
+
+	/** Use Tag */
+	uint64_t utag : 1;
+
+	/** Use QPG */
+	uint64_t uqpg : 1;
+
+	/** Reserved2 */
+	uint64_t reserved2 : 1;
+
+	/** Parse Mode */
+	uint64_t pm : 3;
+
+	/** Skip Length */
+	uint64_t sl : 8;
+
+	/** Use Tag Type */
+	uint64_t utt : 1;
+
+	/** Tag type */
+	uint64_t tagtype : 2;
+
+	/** Reserved1 */
+	uint64_t reserved1 : 2;
+
+	/** QPG Value */
+	uint64_t qpg : 11;
+
+	/** Tag Value */
+	uint64_t tag : 32;
+
+#elif RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+
+	/** Tag Value */
+	uint64_t tag : 32;
+
+	/** QPG Value */
+	uint64_t qpg : 11;
+
+	/** Reserved1 */
+	uint64_t reserved1 : 2;
+
+	/** Tag type */
+	uint64_t tagtype : 2;
+
+	/** Use Tag Type */
+	uint64_t utt : 1;
+
+	/** Skip Length */
+	uint64_t sl : 8;
+
+	/** Parse Mode */
+	uint64_t pm : 3;
+
+	/** Reserved2 */
+	uint64_t reserved2 : 1;
+
+	/** Use QPG */
+	uint64_t uqpg : 1;
+
+	/** Use Tag */
+	uint64_t utag : 1;
+
+	/** Raw mode indicator 1 = RAW */
+	uint64_t raw : 1;
+
+	/** Wider bit */
+	uint64_t w : 1;
+#endif
+};
+
+/** Input Request Header */
+struct octeon_instr_irh {
+#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
+	uint64_t opcode : 4;
+	uint64_t rflag : 1;
+	uint64_t subcode : 7;
+	uint64_t vlan : 12;
+	uint64_t priority : 3;
+	uint64_t reserved : 5;
+	uint64_t ossp : 32; /* opcode/subcode specific parameters */
+#elif RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+	uint64_t ossp : 32; /* opcode/subcode specific parameters */
+	uint64_t reserved : 5;
+	uint64_t priority : 3;
+	uint64_t vlan : 12;
+	uint64_t subcode : 7;
+	uint64_t rflag : 1;
+	uint64_t opcode : 4;
+#endif
+};
+
+/* pkiih3 + irh + ossp[0] + ossp[1] + rdp + rptr = 40 bytes */
+#define OCTEON_SOFT_CMD_RESP_IH3	(40 + 8)
+/* pki_h3 + irh + ossp[0] + ossp[1] = 32 bytes */
+#define OCTEON_PCI_CMD_O3		(24 + 8)
+
+/** Return Data Parameters */
+struct octeon_instr_rdp {
+#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
+	uint64_t reserved : 49;
+	uint64_t pcie_port : 3;
+	uint64_t rlen : 12;
+#elif RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+	uint64_t rlen : 12;
+	uint64_t pcie_port : 3;
+	uint64_t reserved : 49;
+#endif
+};
+
 int lio_setup_sc_buffer_pool(struct lio_device *lio_dev);
 void lio_free_sc_buffer_pool(struct lio_device *lio_dev);
 
@@ -100,6 +369,13 @@ struct lio_soft_command *
 lio_alloc_soft_command(struct lio_device *lio_dev,
 		       uint32_t datasize, uint32_t rdatasize,
 		       uint32_t ctxsize);
+void lio_prepare_soft_command(struct lio_device *lio_dev,
+			      struct lio_soft_command *sc,
+			      uint8_t opcode, uint8_t subcode,
+			      uint32_t irh_ossp, uint64_t ossp0,
+			      uint64_t ossp1);
+int lio_send_soft_command(struct lio_device *lio_dev,
+			  struct lio_soft_command *sc);
 void lio_free_soft_command(struct lio_soft_command *sc);
 
 /** Maximum ordered requests to process in every invocation of
@@ -165,6 +441,21 @@ lio_swap_8B_data(uint64_t *data, uint32_t blocks)
 		blocks--;
 		data++;
 	}
+}
+
+/* Macro to increment index.
+ * Index is incremented by count; if the sum exceeds
+ * max, index is wrapped-around to the start.
+ */
+static inline uint32_t
+lio_incr_index(uint32_t index, uint32_t count, uint32_t max)
+{
+	if ((index + count) >= max)
+		index = index + count - max;
+	else
+		index += count;
+
+	return index;
 }
 
 /** Setup instruction queue zero for the device
