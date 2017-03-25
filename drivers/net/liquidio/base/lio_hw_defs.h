@@ -128,6 +128,9 @@ enum octeon_tag_type {
 
 #define LIO_MAX_RX_PKTLEN		(64 * 1024)
 
+/* NIC Command types */
+#define LIO_CMD_RX_CTL			0x4
+
 /* RX(packets coming from wire) Checksum verification flags */
 /* TCP/UDP csum */
 #define LIO_L4_CSUM_VERIFIED		0x1

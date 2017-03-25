@@ -41,6 +41,61 @@
 #include "lio_ethdev.h"
 #include "lio_rxtx.h"
 
+/* Wait for control command to reach nic. */
+static uint16_t
+lio_wait_for_ctrl_cmd(struct lio_device *lio_dev,
+		      struct lio_dev_ctrl_cmd *ctrl_cmd)
+{
+	uint16_t timeout = LIO_MAX_CMD_TIMEOUT;
+
+	while ((ctrl_cmd->cond == 0) && --timeout) {
+		lio_flush_iq(lio_dev, lio_dev->instr_queue[0]);
+		rte_delay_ms(1);
+	}
+
+	return !timeout;
+}
+
+/**
+ * \brief Send Rx control command
+ * @param eth_dev Pointer to the structure rte_eth_dev
+ * @param start_stop whether to start or stop
+ */
+static int
+lio_send_rx_ctrl_cmd(struct rte_eth_dev *eth_dev, int start_stop)
+{
+	struct lio_device *lio_dev = LIO_DEV(eth_dev);
+	struct lio_dev_ctrl_cmd ctrl_cmd;
+	struct lio_ctrl_pkt ctrl_pkt;
+
+	/* flush added to prevent cmd failure
+	 * incase the queue is full
+	 */
+	lio_flush_iq(lio_dev, lio_dev->instr_queue[0]);
+
+	memset(&ctrl_pkt, 0, sizeof(struct lio_ctrl_pkt));
+	memset(&ctrl_cmd, 0, sizeof(struct lio_dev_ctrl_cmd));
+
+	ctrl_cmd.eth_dev = eth_dev;
+	ctrl_cmd.cond = 0;
+
+	ctrl_pkt.ncmd.s.cmd = LIO_CMD_RX_CTL;
+	ctrl_pkt.ncmd.s.param1 = start_stop;
+	ctrl_pkt.ctrl_cmd = &ctrl_cmd;
+
+	if (lio_send_ctrl_pkt(lio_dev, &ctrl_pkt)) {
+		lio_dev_err(lio_dev, "Failed to send RX Control message\n");
+		return -1;
+	}
+
+	if (lio_wait_for_ctrl_cmd(lio_dev, &ctrl_cmd)) {
+		lio_dev_err(lio_dev, "RX Control command timed out\n");
+		return -1;
+	}
+
+	return 0;
+}
+
 /**
  * Atomically writes the link status information into global
  * structure rte_eth_dev.
@@ -402,6 +457,9 @@ lio_dev_start(struct rte_eth_dev *eth_dev)
 	if (lio_dev->fn_list.enable_io_queues(lio_dev))
 		return -1;
 
+	if (lio_send_rx_ctrl_cmd(eth_dev, 1))
+		return -1;
+
 	/* Ready for link status updates */
 	lio_dev->intf_open = 1;
 	rte_mb();
@@ -420,6 +478,7 @@ lio_dev_start(struct rte_eth_dev *eth_dev)
 
 dev_lsc_handle_error:
 	lio_dev->intf_open = 0;
+	lio_send_rx_ctrl_cmd(eth_dev, 0);
 
 	return ret;
 }
