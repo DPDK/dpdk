@@ -50,7 +50,7 @@ VPATH += $(RTE_SDK)/drivers/net/liquidio/base
 #
 # all source are stored in SRCS-y
 #
-SRCS-$(CONFIG_RTE_LIBRTE_LIO_PMD) +=
+SRCS-$(CONFIG_RTE_LIBRTE_LIO_PMD) += lio_ethdev.c
 
 # this lib depends upon:
 DEPDIRS-$(CONFIG_RTE_LIBRTE_LIO_PMD) += lib/librte_eal lib/librte_ether
