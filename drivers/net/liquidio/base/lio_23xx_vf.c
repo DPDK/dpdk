@@ -199,6 +199,40 @@ cn23xx_vf_setup_device_regs(struct lio_device *lio_dev)
 }
 
 static void
+cn23xx_vf_setup_iq_regs(struct lio_device *lio_dev, uint32_t iq_no)
+{
+	struct lio_instr_queue *iq = lio_dev->instr_queue[iq_no];
+	uint64_t pkt_in_done = 0;
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* Write the start of the input queue's ring and its size */
+	lio_write_csr64(lio_dev, CN23XX_SLI_IQ_BASE_ADDR64(iq_no),
+			iq->base_addr_dma);
+	lio_write_csr(lio_dev, CN23XX_SLI_IQ_SIZE(iq_no), iq->max_count);
+
+	/* Remember the doorbell & instruction count register addr
+	 * for this queue
+	 */
+	iq->doorbell_reg = (uint8_t *)lio_dev->hw_addr +
+				CN23XX_SLI_IQ_DOORBELL(iq_no);
+	iq->inst_cnt_reg = (uint8_t *)lio_dev->hw_addr +
+				CN23XX_SLI_IQ_INSTR_COUNT64(iq_no);
+	lio_dev_dbg(lio_dev, "InstQ[%d]:dbell reg @ 0x%p instcnt_reg @ 0x%p\n",
+		    iq_no, iq->doorbell_reg, iq->inst_cnt_reg);
+
+	/* Store the current instruction counter (used in flush_iq
+	 * calculation)
+	 */
+	pkt_in_done = rte_read64(iq->inst_cnt_reg);
+
+	/* Clear the count by writing back what we read, but don't
+	 * enable data traffic here
+	 */
+	rte_write64(pkt_in_done, iq->inst_cnt_reg);
+}
+
+static void
 cn23xx_vf_free_mbox(struct lio_device *lio_dev)
 {
 	PMD_INIT_FUNC_TRACE();
@@ -298,8 +332,8 @@ cn23xx_pfvf_handshake(struct lio_device *lio_dev)
 {
 	struct lio_mbox_cmd mbox_cmd;
 	struct lio_version *lio_ver = (struct lio_version *)&mbox_cmd.data[0];
+	uint32_t q_no, count = 0;
 	rte_atomic64_t status;
-	uint32_t count = 0;
 	uint32_t pfmajor;
 	uint32_t vfmajor;
 	uint32_t ret;
@@ -341,6 +375,10 @@ cn23xx_pfvf_handshake(struct lio_device *lio_dev)
 		return -1;
 	}
 
+	for (q_no = 0; q_no < lio_dev->num_iqs; q_no++)
+		lio_dev->instr_queue[q_no]->txpciq.s.pkind =
+						lio_dev->pfvf_hsword.pkind;
+
 	vfmajor = LIO_BASE_MAJOR_VERSION;
 	pfmajor = ret >> 16;
 	if (pfmajor != vfmajor) {
@@ -354,6 +392,9 @@ cn23xx_pfvf_handshake(struct lio_device *lio_dev)
 			    vfmajor, pfmajor);
 		ret = 0;
 	}
+
+	lio_dev_dbg(lio_dev, "got data from PF pkind is %d\n",
+		    lio_dev->pfvf_hsword.pkind);
 
 	return ret;
 }
@@ -394,6 +435,7 @@ cn23xx_vf_setup_device(struct lio_device *lio_dev)
 	if (lio_dev->default_config == NULL)
 		return -1;
 
+	lio_dev->fn_list.setup_iq_regs		= cn23xx_vf_setup_iq_regs;
 	lio_dev->fn_list.setup_mbox		= cn23xx_vf_setup_mbox;
 	lio_dev->fn_list.free_mbox		= cn23xx_vf_free_mbox;
 

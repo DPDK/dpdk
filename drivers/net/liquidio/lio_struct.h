@@ -155,6 +155,8 @@ struct lio_io_enable {
 };
 
 struct lio_fn_list {
+	void (*setup_iq_regs)(struct lio_device *, uint32_t);
+
 	int (*setup_mbox)(struct lio_device *);
 	void (*free_mbox)(struct lio_device *);
 

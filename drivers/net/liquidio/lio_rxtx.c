@@ -141,6 +141,8 @@ lio_init_instr_queue(struct lio_device *lio_dev,
 	lio_dev->io_qmask.iq64B |= ((instr_type == 64) << iq_no);
 	iq->iqcmd_64B = (instr_type == 64);
 
+	lio_dev->fn_list.setup_iq_regs(lio_dev, iq_no);
+
 	return 0;
 }
 
