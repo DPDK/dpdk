@@ -404,7 +404,8 @@ lio_dev_info_get(struct rte_eth_dev *eth_dev,
 
 	devinfo->rx_offload_capa = (DEV_RX_OFFLOAD_IPV4_CKSUM		|
 				    DEV_RX_OFFLOAD_UDP_CKSUM		|
-				    DEV_RX_OFFLOAD_TCP_CKSUM);
+				    DEV_RX_OFFLOAD_TCP_CKSUM		|
+				    DEV_RX_OFFLOAD_VLAN_STRIP);
 	devinfo->tx_offload_capa = (DEV_TX_OFFLOAD_IPV4_CKSUM		|
 				    DEV_TX_OFFLOAD_UDP_CKSUM		|
 				    DEV_TX_OFFLOAD_TCP_CKSUM		|
@@ -819,6 +820,47 @@ lio_dev_udp_tunnel_del(struct rte_eth_dev *eth_dev,
 
 	if (lio_wait_for_ctrl_cmd(lio_dev, &ctrl_cmd)) {
 		lio_dev_err(lio_dev, "VXLAN_PORT_DEL command timed out\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+static int
+lio_dev_vlan_filter_set(struct rte_eth_dev *eth_dev, uint16_t vlan_id, int on)
+{
+	struct lio_device *lio_dev = LIO_DEV(eth_dev);
+	struct lio_dev_ctrl_cmd ctrl_cmd;
+	struct lio_ctrl_pkt ctrl_pkt;
+
+	if (lio_dev->linfo.vlan_is_admin_assigned)
+		return -EPERM;
+
+	/* flush added to prevent cmd failure
+	 * incase the queue is full
+	 */
+	lio_flush_iq(lio_dev, lio_dev->instr_queue[0]);
+
+	memset(&ctrl_pkt, 0, sizeof(struct lio_ctrl_pkt));
+	memset(&ctrl_cmd, 0, sizeof(struct lio_dev_ctrl_cmd));
+
+	ctrl_cmd.eth_dev = eth_dev;
+	ctrl_cmd.cond = 0;
+
+	ctrl_pkt.ncmd.s.cmd = on ?
+			LIO_CMD_ADD_VLAN_FILTER : LIO_CMD_DEL_VLAN_FILTER;
+	ctrl_pkt.ncmd.s.param1 = vlan_id;
+	ctrl_pkt.ctrl_cmd = &ctrl_cmd;
+
+	if (lio_send_ctrl_pkt(lio_dev, &ctrl_pkt)) {
+		lio_dev_err(lio_dev, "Failed to %s VLAN port\n",
+			    on ? "add" : "remove");
+		return -1;
+	}
+
+	if (lio_wait_for_ctrl_cmd(lio_dev, &ctrl_cmd)) {
+		lio_dev_err(lio_dev, "Command to %s VLAN port timed out\n",
+			    on ? "add" : "remove");
 		return -1;
 	}
 
@@ -1750,6 +1792,7 @@ static const struct eth_dev_ops liovf_eth_dev_ops = {
 	.stats_reset		= lio_dev_stats_reset,
 	.xstats_reset		= lio_dev_xstats_reset,
 	.dev_infos_get		= lio_dev_info_get,
+	.vlan_filter_set	= lio_dev_vlan_filter_set,
 	.rx_queue_setup		= lio_dev_rx_queue_setup,
 	.rx_queue_release	= lio_dev_rx_queue_release,
 	.tx_queue_setup		= lio_dev_tx_queue_setup,

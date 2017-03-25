@@ -137,6 +137,8 @@ enum octeon_tag_type {
 #define LIO_CMD_SET_RSS			0xD
 #define LIO_CMD_TNL_RX_CSUM_CTL		0x10
 #define LIO_CMD_TNL_TX_CSUM_CTL		0x11
+#define LIO_CMD_ADD_VLAN_FILTER		0x17
+#define LIO_CMD_DEL_VLAN_FILTER		0x18
 #define LIO_CMD_VXLAN_PORT_CONFIG	0x19
 
 #define LIO_CMD_VXLAN_PORT_ADD		0x0
