@@ -56,6 +56,37 @@ struct lio_version {
 	uint16_t reserved;
 };
 
+/** Output Queue statistics. Each output queue has four stats fields. */
+struct lio_droq_stats {
+	/** Number of packets received in this queue. */
+	uint64_t pkts_received;
+
+	/** Bytes received by this queue. */
+	uint64_t bytes_received;
+
+	/** Packets dropped due to no memory available. */
+	uint64_t dropped_nomem;
+
+	/** Packets dropped due to large number of pkts to process. */
+	uint64_t dropped_toomany;
+
+	/** Number of packets  sent to stack from this queue. */
+	uint64_t rx_pkts_received;
+
+	/** Number of Bytes sent to stack from this queue. */
+	uint64_t rx_bytes_received;
+
+	/** Num of Packets dropped due to receive path failures. */
+	uint64_t rx_dropped;
+
+	/** Num of vxlan packets received; */
+	uint64_t rx_vxlan;
+
+	/** Num of failures of lio_recv_buffer_alloc() */
+	uint64_t rx_alloc_failure;
+
+};
+
 /** The Descriptor Ring Output Queue structure.
  *  This structure has all the information required to implement a
  *  DROQ.
@@ -116,6 +147,9 @@ struct lio_droq {
 	 *  in this register.
 	 */
 	void *pkts_sent_reg;
+
+	/** Statistics for this DROQ. */
+	struct lio_droq_stats stats;
 
 	/** DMA mapped address of the DROQ descriptor ring. */
 	size_t desc_ring_dma;

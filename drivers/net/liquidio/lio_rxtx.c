@@ -115,6 +115,7 @@ lio_droq_setup_ring_buffers(struct lio_device *lio_dev,
 		buf = lio_recv_buffer_alloc(lio_dev, droq->q_no);
 		if (buf == NULL) {
 			lio_dev_err(lio_dev, "buffer alloc failed\n");
+			droq->stats.rx_alloc_failure++;
 			lio_droq_destroy_ring_buffers(droq);
 			return -ENOMEM;
 		}
@@ -410,8 +411,10 @@ lio_droq_refill(struct lio_device *lio_dev, struct lio_droq *droq)
 			/* If a buffer could not be allocated, no point in
 			 * continuing
 			 */
-			if (buf == NULL)
+			if (buf == NULL) {
+				droq->stats.rx_alloc_failure++;
 				break;
+			}
 
 			droq->recv_buf_list[droq->refill_idx].buffer = buf;
 		}
@@ -628,6 +631,11 @@ lio_droq_fast_process_packet(struct lio_device *lio_dev,
 
 	info->length = 0;
 	info->rh.rh64 = 0;
+
+	droq->stats.pkts_received++;
+	droq->stats.rx_pkts_received += data_pkts;
+	droq->stats.rx_bytes_received += data_total_len;
+	droq->stats.bytes_received += total_len;
 
 	return data_pkts;
 }

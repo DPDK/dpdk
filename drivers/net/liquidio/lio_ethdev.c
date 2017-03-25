@@ -117,6 +117,54 @@ lio_send_rx_ctrl_cmd(struct rte_eth_dev *eth_dev, int start_stop)
 	return 0;
 }
 
+/* Retrieve the device statistics (# packets in/out, # bytes in/out, etc */
+static void
+lio_dev_stats_get(struct rte_eth_dev *eth_dev,
+		  struct rte_eth_stats *stats)
+{
+	struct lio_device *lio_dev = LIO_DEV(eth_dev);
+	struct lio_droq_stats *oq_stats;
+	struct lio_droq *droq;
+	uint64_t bytes = 0;
+	uint64_t pkts = 0;
+	uint64_t drop = 0;
+	int i, oq_no;
+
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
+		oq_no = lio_dev->linfo.rxpciq[i].s.q_no;
+		droq = lio_dev->droq[oq_no];
+		if (droq != NULL) {
+			oq_stats = &droq->stats;
+			pkts += oq_stats->rx_pkts_received;
+			drop += (oq_stats->rx_dropped +
+					oq_stats->dropped_toomany +
+					oq_stats->dropped_nomem);
+			bytes += oq_stats->rx_bytes_received;
+		}
+	}
+	stats->ibytes = bytes;
+	stats->ipackets = pkts;
+	stats->ierrors = drop;
+}
+
+static void
+lio_dev_stats_reset(struct rte_eth_dev *eth_dev)
+{
+	struct lio_device *lio_dev = LIO_DEV(eth_dev);
+	struct lio_droq_stats *oq_stats;
+	struct lio_droq *droq;
+	int i, oq_no;
+
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
+		oq_no = lio_dev->linfo.rxpciq[i].s.q_no;
+		droq = lio_dev->droq[oq_no];
+		if (droq != NULL) {
+			oq_stats = &droq->stats;
+			memset(oq_stats, 0, sizeof(struct lio_droq_stats));
+		}
+	}
+}
+
 static void
 lio_dev_info_get(struct rte_eth_dev *eth_dev,
 		 struct rte_eth_dev_info *devinfo)
@@ -1390,6 +1438,8 @@ static const struct eth_dev_ops liovf_eth_dev_ops = {
 	.allmulticast_enable	= lio_dev_allmulticast_enable,
 	.allmulticast_disable	= lio_dev_allmulticast_disable,
 	.link_update		= lio_dev_link_update,
+	.stats_get		= lio_dev_stats_get,
+	.stats_reset		= lio_dev_stats_reset,
 	.dev_infos_get		= lio_dev_info_get,
 	.rx_queue_setup		= lio_dev_rx_queue_setup,
 	.rx_queue_release	= lio_dev_rx_queue_release,
