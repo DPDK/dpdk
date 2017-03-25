@@ -227,3 +227,69 @@ lio_free_sc_buffer_pool(struct lio_device *lio_dev)
 {
 	rte_mempool_free(lio_dev->sc_buf_pool);
 }
+
+struct lio_soft_command *
+lio_alloc_soft_command(struct lio_device *lio_dev, uint32_t datasize,
+		       uint32_t rdatasize, uint32_t ctxsize)
+{
+	uint32_t offset = sizeof(struct lio_soft_command);
+	struct lio_soft_command *sc;
+	struct rte_mbuf *m;
+	uint64_t dma_addr;
+
+	RTE_ASSERT((offset + datasize + rdatasize + ctxsize) <=
+		   LIO_SOFT_COMMAND_BUFFER_SIZE);
+
+	m = rte_pktmbuf_alloc(lio_dev->sc_buf_pool);
+	if (m == NULL) {
+		lio_dev_err(lio_dev, "Cannot allocate mbuf for sc\n");
+		return NULL;
+	}
+
+	/* set rte_mbuf data size and there is only 1 segment */
+	m->pkt_len = LIO_SOFT_COMMAND_BUFFER_SIZE;
+	m->data_len = LIO_SOFT_COMMAND_BUFFER_SIZE;
+
+	/* use rte_mbuf buffer for soft command */
+	sc = rte_pktmbuf_mtod(m, struct lio_soft_command *);
+	memset(sc, 0, LIO_SOFT_COMMAND_BUFFER_SIZE);
+	sc->size = LIO_SOFT_COMMAND_BUFFER_SIZE;
+	sc->dma_addr = rte_mbuf_data_dma_addr(m);
+	sc->mbuf = m;
+
+	dma_addr = sc->dma_addr;
+
+	if (ctxsize) {
+		sc->ctxptr = (uint8_t *)sc + offset;
+		sc->ctxsize = ctxsize;
+	}
+
+	/* Start data at 128 byte boundary */
+	offset = (offset + ctxsize + 127) & 0xffffff80;
+
+	if (datasize) {
+		sc->virtdptr = (uint8_t *)sc + offset;
+		sc->dmadptr = dma_addr + offset;
+		sc->datasize = datasize;
+	}
+
+	/* Start rdata at 128 byte boundary */
+	offset = (offset + datasize + 127) & 0xffffff80;
+
+	if (rdatasize) {
+		RTE_ASSERT(rdatasize >= 16);
+		sc->virtrptr = (uint8_t *)sc + offset;
+		sc->dmarptr = dma_addr + offset;
+		sc->rdatasize = rdatasize;
+		sc->status_word = (uint64_t *)((uint8_t *)(sc->virtrptr) +
+					       rdatasize - 8);
+	}
+
+	return sc;
+}
+
+void
+lio_free_soft_command(struct lio_soft_command *sc)
+{
+	rte_pktmbuf_free(sc->mbuf);
+}

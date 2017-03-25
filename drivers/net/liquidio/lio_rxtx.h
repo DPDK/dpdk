@@ -53,8 +53,46 @@ struct lio_request_list {
 /** Maximum number of buffers to allocate into soft command buffer pool */
 #define LIO_MAX_SOFT_COMMAND_BUFFERS	255
 
+struct lio_soft_command {
+	/** Soft command buffer info. */
+	struct lio_stailq_node node;
+	uint64_t dma_addr;
+	uint32_t size;
+
+#define LIO_COMPLETION_WORD_INIT	0xffffffffffffffffULL
+	uint64_t *status_word;
+
+	/** Data buffer info */
+	void *virtdptr;
+	uint64_t dmadptr;
+	uint32_t datasize;
+
+	/** Return buffer info */
+	void *virtrptr;
+	uint64_t dmarptr;
+	uint32_t rdatasize;
+
+	/** Context buffer info */
+	void *ctxptr;
+	uint32_t ctxsize;
+
+	/** Time out and callback */
+	size_t wait_time;
+	size_t timeout;
+	uint32_t iq_no;
+	void (*callback)(uint32_t, void *);
+	void *callback_arg;
+	struct rte_mbuf *mbuf;
+};
+
 int lio_setup_sc_buffer_pool(struct lio_device *lio_dev);
 void lio_free_sc_buffer_pool(struct lio_device *lio_dev);
+
+struct lio_soft_command *
+lio_alloc_soft_command(struct lio_device *lio_dev,
+		       uint32_t datasize, uint32_t rdatasize,
+		       uint32_t ctxsize);
+void lio_free_soft_command(struct lio_soft_command *sc);
 
 /** Setup instruction queue zero for the device
  *  @param lio_dev which lio device to setup

@@ -43,6 +43,12 @@
 
 #include "lio_hw_defs.h"
 
+struct lio_stailq_node {
+	STAILQ_ENTRY(lio_stailq_node) entries;
+};
+
+STAILQ_HEAD(lio_stailq_head, lio_stailq_node);
+
 struct lio_version {
 	uint16_t major;
 	uint16_t minor;
