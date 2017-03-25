@@ -122,6 +122,7 @@ enum octeon_tag_type {
 /** LIO_OPCODE subcodes */
 /* This subcode is sent by core PCI driver to indicate cores are ready. */
 #define LIO_OPCODE_NW_DATA		0x02 /* network packet data */
+#define LIO_OPCODE_INFO			0x04
 #define LIO_OPCODE_IF_CFG		0x09
 
 #define LIO_MAX_RX_PKTLEN		(64 * 1024)

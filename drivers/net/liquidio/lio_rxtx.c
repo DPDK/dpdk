@@ -1587,7 +1587,7 @@ lio_dev_xmit_pkts(void *tx_queue, struct rte_mbuf **pkts, uint16_t nb_pkts)
 	lio_dev = txq->lio_dev;
 	iq_no = txq->txpciq.s.q_no;
 
-	if (!lio_dev->linfo.link.s.link_up) {
+	if (!lio_dev->intf_open || !lio_dev->linfo.link.s.link_up) {
 		PMD_TX_LOG(lio_dev, ERR, "Transmit failed link_status : %d\n",
 			   lio_dev->linfo.link.s.link_up);
 		goto xmit_failed;

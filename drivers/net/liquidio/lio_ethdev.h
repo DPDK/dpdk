@@ -38,9 +38,16 @@
 
 #include "lio_struct.h"
 
+/* timeout to check link state updates from firmware in us */
+#define LIO_LSC_TIMEOUT		100000 /* 100000us (100ms) */
 #define LIO_MAX_CMD_TIMEOUT     10000 /* 10000ms (10s) */
 
 #define LIO_DEV(_eth_dev)		((_eth_dev)->data->dev_private)
+
+enum lio_bus_speed {
+	LIO_LINK_SPEED_UNKNOWN  = 0,
+	LIO_LINK_SPEED_10000    = 10000
+};
 
 struct octeon_if_cfg_info {
 	uint64_t iqmask;	/** mask for IQs enabled for the port */
@@ -71,6 +78,12 @@ union lio_if_cfg {
 struct lio_if_cfg_resp {
 	uint64_t rh;
 	struct octeon_if_cfg_info cfg_info;
+	uint64_t status;
+};
+
+struct lio_link_status_resp {
+	uint64_t rh;
+	struct octeon_link_info link_info;
 	uint64_t status;
 };
 #endif	/* _LIO_ETHDEV_H_ */

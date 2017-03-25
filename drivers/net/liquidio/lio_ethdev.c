@@ -41,6 +41,32 @@
 #include "lio_ethdev.h"
 #include "lio_rxtx.h"
 
+/**
+ * Atomically writes the link status information into global
+ * structure rte_eth_dev.
+ *
+ * @param eth_dev
+ *   - Pointer to the structure rte_eth_dev to read from.
+ *   - Pointer to the buffer to be saved with the link status.
+ *
+ * @return
+ *   - On success, zero.
+ *   - On failure, negative value.
+ */
+static inline int
+lio_dev_atomic_write_link_status(struct rte_eth_dev *eth_dev,
+				 struct rte_eth_link *link)
+{
+	struct rte_eth_link *dst = &eth_dev->data->dev_link;
+	struct rte_eth_link *src = link;
+
+	if (rte_atomic64_cmpset((uint64_t *)dst, *(uint64_t *)dst,
+				*(uint64_t *)src) == 0)
+		return -1;
+
+	return 0;
+}
+
 static uint64_t
 lio_hweight64(uint64_t w)
 {
@@ -53,6 +79,49 @@ lio_hweight64(uint64_t w)
 	res = res + (res >> 16);
 
 	return (res + (res >> 32)) & 0x00000000000000FFul;
+}
+
+static int
+lio_dev_link_update(struct rte_eth_dev *eth_dev,
+		    int wait_to_complete __rte_unused)
+{
+	struct lio_device *lio_dev = LIO_DEV(eth_dev);
+	struct rte_eth_link link, old;
+
+	/* Initialize */
+	link.link_status = ETH_LINK_DOWN;
+	link.link_speed = ETH_SPEED_NUM_NONE;
+	link.link_duplex = ETH_LINK_HALF_DUPLEX;
+	memset(&old, 0, sizeof(old));
+
+	/* Return what we found */
+	if (lio_dev->linfo.link.s.link_up == 0) {
+		/* Interface is down */
+		if (lio_dev_atomic_write_link_status(eth_dev, &link))
+			return -1;
+		if (link.link_status == old.link_status)
+			return -1;
+		return 0;
+	}
+
+	link.link_status = ETH_LINK_UP; /* Interface is up */
+	link.link_duplex = ETH_LINK_FULL_DUPLEX;
+	switch (lio_dev->linfo.link.s.speed) {
+	case LIO_LINK_SPEED_10000:
+		link.link_speed = ETH_SPEED_NUM_10G;
+		break;
+	default:
+		link.link_speed = ETH_SPEED_NUM_NONE;
+		link.link_duplex = ETH_LINK_HALF_DUPLEX;
+	}
+
+	if (lio_dev_atomic_write_link_status(eth_dev, &link))
+		return -1;
+
+	if (link.link_status == old.link_status)
+		return -1;
+
+	return 0;
 }
 
 /**
@@ -246,6 +315,115 @@ lio_dev_tx_queue_release(void *txq)
 	}
 }
 
+/**
+ * Api to check link state.
+ */
+static void
+lio_dev_get_link_status(struct rte_eth_dev *eth_dev)
+{
+	struct lio_device *lio_dev = LIO_DEV(eth_dev);
+	uint16_t timeout = LIO_MAX_CMD_TIMEOUT;
+	struct lio_link_status_resp *resp;
+	union octeon_link_status *ls;
+	struct lio_soft_command *sc;
+	uint32_t resp_size;
+
+	if (!lio_dev->intf_open)
+		return;
+
+	resp_size = sizeof(struct lio_link_status_resp);
+	sc = lio_alloc_soft_command(lio_dev, 0, resp_size, 0);
+	if (sc == NULL)
+		return;
+
+	resp = (struct lio_link_status_resp *)sc->virtrptr;
+	lio_prepare_soft_command(lio_dev, sc, LIO_OPCODE,
+				 LIO_OPCODE_INFO, 0, 0, 0);
+
+	/* Setting wait time in seconds */
+	sc->wait_time = LIO_MAX_CMD_TIMEOUT / 1000;
+
+	if (lio_send_soft_command(lio_dev, sc) == LIO_IQ_SEND_FAILED)
+		goto get_status_fail;
+
+	while ((*sc->status_word == LIO_COMPLETION_WORD_INIT) && --timeout) {
+		lio_flush_iq(lio_dev, lio_dev->instr_queue[sc->iq_no]);
+		rte_delay_ms(1);
+	}
+
+	if (resp->status)
+		goto get_status_fail;
+
+	ls = &resp->link_info.link;
+
+	lio_swap_8B_data((uint64_t *)ls, sizeof(union octeon_link_status) >> 3);
+
+	if (lio_dev->linfo.link.link_status64 != ls->link_status64) {
+		lio_dev->linfo.link.link_status64 = ls->link_status64;
+		lio_dev_link_update(eth_dev, 0);
+	}
+
+	lio_free_soft_command(sc);
+
+	return;
+
+get_status_fail:
+	lio_free_soft_command(sc);
+}
+
+/* This function will be invoked every LSC_TIMEOUT ns (100ms)
+ * and will update link state if it changes.
+ */
+static void
+lio_sync_link_state_check(void *eth_dev)
+{
+	struct lio_device *lio_dev =
+		(((struct rte_eth_dev *)eth_dev)->data->dev_private);
+
+	if (lio_dev->port_configured)
+		lio_dev_get_link_status(eth_dev);
+
+	/* Schedule periodic link status check.
+	 * Stop check if interface is close and start again while opening.
+	 */
+	if (lio_dev->intf_open)
+		rte_eal_alarm_set(LIO_LSC_TIMEOUT, lio_sync_link_state_check,
+				  eth_dev);
+}
+
+static int
+lio_dev_start(struct rte_eth_dev *eth_dev)
+{
+	struct lio_device *lio_dev = LIO_DEV(eth_dev);
+	int ret = 0;
+
+	lio_dev_info(lio_dev, "Starting port %d\n", eth_dev->data->port_id);
+
+	if (lio_dev->fn_list.enable_io_queues(lio_dev))
+		return -1;
+
+	/* Ready for link status updates */
+	lio_dev->intf_open = 1;
+	rte_mb();
+
+	/* start polling for lsc */
+	ret = rte_eal_alarm_set(LIO_LSC_TIMEOUT,
+				lio_sync_link_state_check,
+				eth_dev);
+	if (ret) {
+		lio_dev_err(lio_dev,
+			    "link state check handler creation failed\n");
+		goto dev_lsc_handle_error;
+	}
+
+	return 0;
+
+dev_lsc_handle_error:
+	lio_dev->intf_open = 0;
+
+	return ret;
+}
+
 static int lio_dev_configure(struct rte_eth_dev *eth_dev)
 {
 	struct lio_device *lio_dev = LIO_DEV(eth_dev);
@@ -388,6 +566,8 @@ static int lio_dev_configure(struct rte_eth_dev *eth_dev)
 		return -ENOMEM;
 	}
 
+	lio_dev_link_update(eth_dev, 0);
+
 	lio_dev->port_configured = 1;
 
 	lio_free_soft_command(sc);
@@ -414,6 +594,8 @@ nic_config_fail:
 /* Define our ethernet definitions */
 static const struct eth_dev_ops liovf_eth_dev_ops = {
 	.dev_configure		= lio_dev_configure,
+	.dev_start		= lio_dev_start,
+	.link_update		= lio_dev_link_update,
 	.rx_queue_setup		= lio_dev_rx_queue_setup,
 	.rx_queue_release	= lio_dev_rx_queue_release,
 	.tx_queue_setup		= lio_dev_tx_queue_setup,

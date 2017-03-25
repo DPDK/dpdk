@@ -569,6 +569,8 @@ struct lio_device {
 	/** The state of this device */
 	rte_atomic64_t status;
 
+	uint8_t intf_open;
+
 	struct octeon_link_info linfo;
 
 	uint8_t *hw_addr;
