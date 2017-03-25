@@ -107,6 +107,11 @@ lio_first_time_init(struct lio_device *lio_dev,
 		return -1;
 	}
 
+	/* Initialize lists to manage the requests of different types that
+	 * arrive from applications for this lio device.
+	 */
+	lio_setup_response_list(lio_dev);
+
 	if (lio_dev->fn_list.setup_mbox(lio_dev)) {
 		lio_dev_err(lio_dev, "Mailbox setup failed\n");
 		goto error;

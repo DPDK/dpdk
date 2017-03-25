@@ -213,6 +213,17 @@ struct lio_sriov_info {
 	uint32_t num_vfs;
 };
 
+/* Head of a response list */
+struct lio_response_list {
+	/** List structure to add delete pending entries to */
+	struct lio_stailq_head head;
+
+	/** A lock for this response list */
+	rte_spinlock_t lock;
+
+	rte_atomic64_t pending_req_count;
+};
+
 /* Structure to define the configuration attributes for each Input queue. */
 struct lio_iq_config {
 	/* Max number of IQs available */
@@ -288,6 +299,9 @@ struct lio_device {
 
 	/** The input instruction queues */
 	struct lio_instr_queue *instr_queue[LIO_MAX_POSSIBLE_INSTR_QUEUES];
+
+	/** The singly-linked tail queues of instruction response */
+	struct lio_response_list response_list;
 
 	struct lio_io_enable io_qmask;
 

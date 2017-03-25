@@ -293,3 +293,109 @@ lio_free_soft_command(struct lio_soft_command *sc)
 {
 	rte_pktmbuf_free(sc->mbuf);
 }
+
+void
+lio_setup_response_list(struct lio_device *lio_dev)
+{
+	STAILQ_INIT(&lio_dev->response_list.head);
+	rte_spinlock_init(&lio_dev->response_list.lock);
+	rte_atomic64_set(&lio_dev->response_list.pending_req_count, 0);
+}
+
+int
+lio_process_ordered_list(struct lio_device *lio_dev)
+{
+	int resp_to_process = LIO_MAX_ORD_REQS_TO_PROCESS;
+	struct lio_response_list *ordered_sc_list;
+	struct lio_soft_command *sc;
+	int request_complete = 0;
+	uint64_t status64;
+	uint32_t status;
+
+	ordered_sc_list = &lio_dev->response_list;
+
+	do {
+		rte_spinlock_lock(&ordered_sc_list->lock);
+
+		if (STAILQ_EMPTY(&ordered_sc_list->head)) {
+			/* ordered_sc_list is empty; there is
+			 * nothing to process
+			 */
+			rte_spinlock_unlock(&ordered_sc_list->lock);
+			return -1;
+		}
+
+		sc = LIO_STQUEUE_FIRST_ENTRY(&ordered_sc_list->head,
+					     struct lio_soft_command, node);
+
+		status = LIO_REQUEST_PENDING;
+
+		/* check if octeon has finished DMA'ing a response
+		 * to where rptr is pointing to
+		 */
+		status64 = *sc->status_word;
+
+		if (status64 != LIO_COMPLETION_WORD_INIT) {
+			/* This logic ensures that all 64b have been written.
+			 * 1. check byte 0 for non-FF
+			 * 2. if non-FF, then swap result from BE to host order
+			 * 3. check byte 7 (swapped to 0) for non-FF
+			 * 4. if non-FF, use the low 32-bit status code
+			 * 5. if either byte 0 or byte 7 is FF, don't use status
+			 */
+			if ((status64 & 0xff) != 0xff) {
+				lio_swap_8B_data(&status64, 1);
+				if (((status64 & 0xff) != 0xff)) {
+					/* retrieve 16-bit firmware status */
+					status = (uint32_t)(status64 &
+							    0xffffULL);
+					if (status) {
+						status =
+						LIO_FIRMWARE_STATUS_CODE(
+									status);
+					} else {
+						/* i.e. no error */
+						status = LIO_REQUEST_DONE;
+					}
+				}
+			}
+		} else if ((sc->timeout && lio_check_timeout(lio_uptime,
+							     sc->timeout))) {
+			lio_dev_err(lio_dev,
+				    "cmd failed, timeout (%ld, %ld)\n",
+				    (long)lio_uptime, (long)sc->timeout);
+			status = LIO_REQUEST_TIMEOUT;
+		}
+
+		if (status != LIO_REQUEST_PENDING) {
+			/* we have received a response or we have timed out.
+			 * remove node from linked list
+			 */
+			STAILQ_REMOVE(&ordered_sc_list->head,
+				      &sc->node, lio_stailq_node, entries);
+			rte_atomic64_dec(
+			    &lio_dev->response_list.pending_req_count);
+			rte_spinlock_unlock(&ordered_sc_list->lock);
+
+			if (sc->callback)
+				sc->callback(status, sc->callback_arg);
+
+			request_complete++;
+		} else {
+			/* no response yet */
+			request_complete = 0;
+			rte_spinlock_unlock(&ordered_sc_list->lock);
+		}
+
+		/* If we hit the Max Ordered requests to process every loop,
+		 * we quit and let this function be invoked the next time
+		 * the poll thread runs to process the remaining requests.
+		 * This function can take up the entire CPU if there is
+		 * no upper limit to the requests processed.
+		 */
+		if (request_complete >= resp_to_process)
+			break;
+	} while (request_complete);
+
+	return 0;
+}

@@ -42,6 +42,14 @@
 
 #include "lio_struct.h"
 
+#define LIO_STQUEUE_FIRST_ENTRY(ptr, type, elem)	\
+	(type *)((char *)((ptr)->stqh_first) - offsetof(type, elem))
+
+#define lio_check_timeout(cur_time, chk_time) ((cur_time) > (chk_time))
+
+#define lio_uptime		\
+	(size_t)(rte_get_timer_cycles() / rte_get_timer_hz())
+
 struct lio_request_list {
 	uint32_t reqtype;
 	void *buf;
@@ -93,6 +101,71 @@ lio_alloc_soft_command(struct lio_device *lio_dev,
 		       uint32_t datasize, uint32_t rdatasize,
 		       uint32_t ctxsize);
 void lio_free_soft_command(struct lio_soft_command *sc);
+
+/** Maximum ordered requests to process in every invocation of
+ *  lio_process_ordered_list(). The function will continue to process requests
+ *  as long as it can find one that has finished processing. If it keeps
+ *  finding requests that have completed, the function can run for ever. The
+ *  value defined here sets an upper limit on the number of requests it can
+ *  process before it returns control to the poll thread.
+ */
+#define LIO_MAX_ORD_REQS_TO_PROCESS	4096
+
+/** Error codes used in Octeon Host-Core communication.
+ *
+ *   31		16 15		0
+ *   ----------------------------
+ * |		|		|
+ *   ----------------------------
+ *   Error codes are 32-bit wide. The upper 16-bits, called Major Error Number,
+ *   are reserved to identify the group to which the error code belongs. The
+ *   lower 16-bits, called Minor Error Number, carry the actual code.
+ *
+ *   So error codes are (MAJOR NUMBER << 16)| MINOR_NUMBER.
+ */
+/** Status for a request.
+ *  If the request is successfully queued, the driver will return
+ *  a LIO_REQUEST_PENDING status. LIO_REQUEST_TIMEOUT is only returned by
+ *  the driver if the response for request failed to arrive before a
+ *  time-out period or if the request processing * got interrupted due to
+ *  a signal respectively.
+ */
+enum {
+	/** A value of 0x00000000 indicates no error i.e. success */
+	LIO_REQUEST_DONE	= 0x00000000,
+	/** (Major number: 0x0000; Minor Number: 0x0001) */
+	LIO_REQUEST_PENDING	= 0x00000001,
+	LIO_REQUEST_TIMEOUT	= 0x00000003,
+
+};
+
+/*------ Error codes used by firmware (bits 15..0 set by firmware */
+#define LIO_FIRMWARE_MAJOR_ERROR_CODE	 0x0001
+#define LIO_FIRMWARE_STATUS_CODE(status) \
+	((LIO_FIRMWARE_MAJOR_ERROR_CODE << 16) | (status))
+
+/** Initialize the response lists. The number of response lists to create is
+ *  given by count.
+ *  @param lio_dev - the lio device structure.
+ */
+void lio_setup_response_list(struct lio_device *lio_dev);
+
+/** Check the status of first entry in the ordered list. If the instruction at
+ *  that entry finished processing or has timed-out, the entry is cleaned.
+ *  @param lio_dev - the lio device structure.
+ *  @return 1 if the ordered list is empty, 0 otherwise.
+ */
+int lio_process_ordered_list(struct lio_device *lio_dev);
+
+static inline void
+lio_swap_8B_data(uint64_t *data, uint32_t blocks)
+{
+	while (blocks) {
+		*data = rte_cpu_to_be_64(*data);
+		blocks--;
+		data++;
+	}
+}
 
 /** Setup instruction queue zero for the device
  *  @param lio_dev which lio device to setup
