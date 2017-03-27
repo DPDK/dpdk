@@ -165,10 +165,12 @@ cperf_mbuf_create(struct rte_mempool *mempool,
 		memcpy(mbuf_data, test_data, last_sz);
 	}
 
-	mbuf_data = (uint8_t *)rte_pktmbuf_append(mbuf,
-			options->auth_digest_sz);
-	if (mbuf_data == NULL)
-		goto error;
+	if (options->op_type != CPERF_CIPHER_ONLY) {
+		mbuf_data = (uint8_t *)rte_pktmbuf_append(mbuf,
+				options->auth_digest_sz);
+		if (mbuf_data == NULL)
+			goto error;
+	}
 
 	if (options->op_type == CPERF_AEAD) {
 		uint8_t *aead = (uint8_t *)rte_pktmbuf_prepend(mbuf,
