@@ -38,18 +38,6 @@
 #include "cperf_test_throughput.h"
 #include "cperf_ops.h"
 
-struct cperf_throughput_results {
-	uint64_t ops_enqueued;
-	uint64_t ops_dequeued;
-
-	uint64_t ops_enqueued_failed;
-	uint64_t ops_dequeued_failed;
-
-	double ops_per_second;
-	double throughput_gbps;
-	double cycles_per_byte;
-};
-
 struct cperf_throughput_ctx {
 	uint8_t dev_id;
 	uint16_t qp_id;
@@ -68,8 +56,6 @@ struct cperf_throughput_ctx {
 
 	const struct cperf_options *options;
 	const struct cperf_test_vector *test_vector;
-	struct cperf_throughput_results results;
-
 };
 
 static void
@@ -229,9 +215,6 @@ cperf_throughput_test_constructor(uint8_t dev_id, uint16_t qp_id,
 		goto err;
 
 	/* Generate mbufs_in with plaintext populated for test */
-	if (ctx->options->pool_sz % ctx->options->burst_sz)
-		goto err;
-
 	ctx->mbufs_in = rte_malloc(NULL,
 			(sizeof(struct rte_mbuf *) * ctx->options->pool_sz), 0);
 
@@ -297,15 +280,11 @@ cperf_throughput_test_runner(void *test_ctx)
 {
 	struct cperf_throughput_ctx *ctx = test_ctx;
 
-	uint64_t ops_enqd = 0, ops_enqd_total = 0, ops_enqd_failed = 0;
-	uint64_t ops_deqd = 0, ops_deqd_total = 0, ops_deqd_failed = 0;
-
-	uint64_t i, m_idx = 0, tsc_start, tsc_end, tsc_duration;
-
-	uint16_t ops_unused = 0;
+	static int only_once;
 
 	struct rte_crypto_op *ops[ctx->options->burst_sz];
 	struct rte_crypto_op *ops_processed[ctx->options->burst_sz];
+	uint64_t i;
 
 	uint32_t lcore = rte_lcore_id();
 
@@ -324,17 +303,18 @@ cperf_throughput_test_runner(void *test_ctx)
 
 	ctx->lcore_id = lcore;
 
-	if (!ctx->options->csv)
-		printf("\n# Running throughput test on device: %u, lcore: %u\n",
-			ctx->dev_id, lcore);
-
 	/* Warm up the host CPU before starting the test */
 	for (i = 0; i < ctx->options->total_ops; i++)
 		rte_cryptodev_enqueue_burst(ctx->dev_id, ctx->qp_id, NULL, 0);
 
-	tsc_start = rte_rdtsc_precise();
+	uint64_t ops_enqd = 0, ops_enqd_total = 0, ops_enqd_failed = 0;
+	uint64_t ops_deqd = 0, ops_deqd_total = 0, ops_deqd_failed = 0;
+	uint64_t m_idx = 0, tsc_start, tsc_end, tsc_duration;
 
+	tsc_start = rte_rdtsc_precise();
 	while (ops_enqd_total < ctx->options->total_ops) {
+
+		uint16_t ops_unused = 0;
 
 		uint16_t burst_size = ((ops_enqd_total + ctx->options->burst_sz)
 				<= ctx->options->total_ops) ?
@@ -433,22 +413,59 @@ cperf_throughput_test_runner(void *test_ctx)
 	tsc_duration = (tsc_end - tsc_start);
 
 	/* Calculate average operations processed per second */
-	ctx->results.ops_per_second = ((double)ctx->options->total_ops /
+	double ops_per_second = ((double)ctx->options->total_ops /
 			tsc_duration) * rte_get_tsc_hz();
 
 	/* Calculate average throughput (Gbps) in bits per second */
-	ctx->results.throughput_gbps = ((ctx->results.ops_per_second *
+	double throughput_gbps = ((ops_per_second *
 			ctx->options->buffer_sz * 8) / 1000000000);
 
-	/* Calculate average cycles per byte */
-	ctx->results.cycles_per_byte =  ((double)tsc_duration /
-			ctx->options->total_ops) / ctx->options->buffer_sz;
+	/* Calculate average cycles per packet */
+	double cycles_per_packet = ((double)tsc_duration /
+			ctx->options->total_ops);
 
-	ctx->results.ops_enqueued = ops_enqd_total;
-	ctx->results.ops_dequeued = ops_deqd_total;
+	if (!ctx->options->csv) {
+		if (!only_once)
+			printf("%12s%12s%12s%12s%12s%12s%12s%12s%12s%12s\n\n",
+				"lcore id", "Buf Size", "Burst Size",
+				"Enqueued", "Dequeued", "Failed Enq",
+				"Failed Deq", "MOps", "Gbps",
+				"Cycles/Buf");
+		only_once = 1;
 
-	ctx->results.ops_enqueued_failed = ops_enqd_failed;
-	ctx->results.ops_dequeued_failed = ops_deqd_failed;
+		printf("%12u%12u%12u%12"PRIu64"%12"PRIu64"%12"PRIu64
+				"%12"PRIu64"%12.4f%12.4f%12.2f\n",
+				ctx->lcore_id,
+				ctx->options->buffer_sz,
+				ctx->options->burst_sz,
+				ops_enqd_total,
+				ops_deqd_total,
+				ops_enqd_failed,
+				ops_deqd_failed,
+				ops_per_second/1000000,
+				throughput_gbps,
+				cycles_per_packet);
+	} else {
+		if (!only_once)
+			printf("# lcore id, Buffer Size(B),"
+				"Burst Size,Enqueued,Dequeued,Failed Enq,"
+				"Failed Deq,Ops(Millions),Throughput(Gbps),"
+				"Cycles/Buf\n\n");
+		only_once = 1;
+
+		printf("%10u;%10u;%u;%"PRIu64";%"PRIu64";%"PRIu64";%"PRIu64";"
+				"%.f3;%.f3;%.f3\n",
+				ctx->lcore_id,
+				ctx->options->buffer_sz,
+				ctx->options->burst_sz,
+				ops_enqd_total,
+				ops_deqd_total,
+				ops_enqd_failed,
+				ops_deqd_failed,
+				ops_per_second/1000000,
+				throughput_gbps,
+				cycles_per_packet);
+	}
 
 	return 0;
 }
@@ -458,50 +475,9 @@ void
 cperf_throughput_test_destructor(void *arg)
 {
 	struct cperf_throughput_ctx *ctx = arg;
-	struct cperf_throughput_results *results = &ctx->results;
-	static int only_once;
 
 	if (ctx == NULL)
 		return;
-
-	if (!ctx->options->csv) {
-		printf("\n# Device %d on lcore %u\n",
-				ctx->dev_id, ctx->lcore_id);
-		printf("# Buffer Size(B)\t  Enqueued\t  Dequeued\tFailed Enq"
-				"\tFailed Deq\tOps(Millions)\tThroughput(Gbps)"
-				"\tCycles Per Byte\n");
-
-		printf("\n%16u\t%10"PRIu64"\t%10"PRIu64"\t%10"PRIu64"\t"
-				"%10"PRIu64"\t%16.4f\t%16.4f\t%15.2f\n",
-				ctx->options->buffer_sz,
-				results->ops_enqueued,
-				results->ops_dequeued,
-				results->ops_enqueued_failed,
-				results->ops_dequeued_failed,
-				results->ops_per_second/1000000,
-				results->throughput_gbps,
-				results->cycles_per_byte);
-	} else {
-		if (!only_once)
-			printf("\n# CPU lcore id, Burst Size(B), "
-				"Buffer Size(B),Enqueued,Dequeued,Failed Enq,"
-				"Failed Deq,Ops(Millions),Throughput(Gbps),"
-				"Cycles Per Byte\n");
-		only_once = 1;
-
-		printf("%u;%u;%u;%"PRIu64";%"PRIu64";%"PRIu64";%"PRIu64";"
-				"%.f3;%.f3;%.f3\n",
-				ctx->lcore_id,
-				ctx->options->burst_sz,
-				ctx->options->buffer_sz,
-				results->ops_enqueued,
-				results->ops_dequeued,
-				results->ops_enqueued_failed,
-				results->ops_dequeued_failed,
-				results->ops_per_second/1000000,
-				results->throughput_gbps,
-				results->cycles_per_byte);
-	}
 
 	cperf_throughput_test_free(ctx, ctx->options->pool_sz);
 }

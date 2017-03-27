@@ -39,26 +39,6 @@
 #include "cperf_ops.h"
 
 
-struct cperf_latency_results {
-
-	uint64_t ops_failed;
-
-	uint64_t enqd_tot;
-	uint64_t enqd_max;
-	uint64_t enqd_min;
-
-	uint64_t deqd_tot;
-	uint64_t deqd_max;
-	uint64_t deqd_min;
-
-	uint64_t cycles_tot;
-	uint64_t cycles_max;
-	uint64_t cycles_min;
-
-	uint64_t burst_num;
-	uint64_t num;
-};
-
 struct cperf_op_result {
 	uint64_t tsc_start;
 	uint64_t tsc_end;
@@ -84,7 +64,6 @@ struct cperf_latency_ctx {
 	const struct cperf_options *options;
 	const struct cperf_test_vector *test_vector;
 	struct cperf_op_result *res;
-	struct cperf_latency_results results;
 };
 
 #define max(a, b) (a > b ? (uint64_t)a : (uint64_t)b)
@@ -248,9 +227,6 @@ cperf_latency_test_constructor(uint8_t dev_id, uint16_t qp_id,
 		goto err;
 
 	/* Generate mbufs_in with plaintext populated for test */
-	if (ctx->options->pool_sz % ctx->options->burst_sz)
-		goto err;
-
 	ctx->mbufs_in = rte_malloc(NULL,
 			(sizeof(struct rte_mbuf *) *
 			ctx->options->pool_sz), 0);
@@ -325,18 +301,14 @@ cperf_latency_test_runner(void *arg)
 	struct cperf_latency_ctx *ctx = arg;
 	struct cperf_op_result *pres;
 
+	static int only_once;
+
 	if (ctx == NULL)
 		return 0;
 
 	struct rte_crypto_op *ops[ctx->options->burst_sz];
 	struct rte_crypto_op *ops_processed[ctx->options->burst_sz];
-	uint64_t ops_enqd = 0, ops_deqd = 0;
-	uint64_t m_idx = 0, b_idx = 0, i;
-
-	uint64_t tsc_val, tsc_end, tsc_start;
-	uint64_t tsc_max = 0, tsc_min = ~0UL, tsc_tot = 0, tsc_idx = 0;
-	uint64_t enqd_max = 0, enqd_min = ~0UL, enqd_tot = 0;
-	uint64_t deqd_max = 0, deqd_min = ~0UL, deqd_tot = 0;
+	uint64_t i;
 
 	uint32_t lcore = rte_lcore_id();
 
@@ -359,8 +331,15 @@ cperf_latency_test_runner(void *arg)
 	for (i = 0; i < ctx->options->total_ops; i++)
 		rte_cryptodev_enqueue_burst(ctx->dev_id, ctx->qp_id, NULL, 0);
 
-	while (enqd_tot < ctx->options->total_ops) {
+	uint64_t ops_enqd = 0, ops_deqd = 0;
+	uint64_t m_idx = 0, b_idx = 0;
 
+	uint64_t tsc_val, tsc_end, tsc_start;
+	uint64_t tsc_max = 0, tsc_min = ~0UL, tsc_tot = 0, tsc_idx = 0;
+	uint64_t enqd_max = 0, enqd_min = ~0UL, enqd_tot = 0;
+	uint64_t deqd_max = 0, deqd_min = ~0UL, deqd_tot = 0;
+
+	while (enqd_tot < ctx->options->total_ops) {
 		uint16_t burst_size = ((enqd_tot + ctx->options->burst_sz)
 				<= ctx->options->total_ops) ?
 						ctx->options->burst_sz :
@@ -478,69 +457,30 @@ cperf_latency_test_runner(void *arg)
 		tsc_tot += tsc_val;
 	}
 
-	ctx->results.enqd_tot = enqd_tot;
-	ctx->results.enqd_max = enqd_max;
-	ctx->results.enqd_min = enqd_min;
-
-	ctx->results.deqd_tot = deqd_tot;
-	ctx->results.deqd_max = deqd_max;
-	ctx->results.deqd_min = deqd_min;
-
-	ctx->results.cycles_tot = tsc_tot;
-	ctx->results.cycles_max = tsc_max;
-	ctx->results.cycles_min = tsc_min;
-
-	ctx->results.burst_num = b_idx;
-	ctx->results.num = tsc_idx;
-
-	return 0;
-}
-
-void
-cperf_latency_test_destructor(void *arg)
-{
-	struct cperf_latency_ctx *ctx = arg;
-	uint64_t i;
-	if (ctx == NULL)
-		return;
-	static int only_once;
-	uint64_t etot, eavg, emax, emin;
-	uint64_t dtot, davg, dmax, dmin;
-	uint64_t ctot, cavg, cmax, cmin;
-	double ttot, tavg, tmax, tmin;
+	double time_tot, time_avg, time_max, time_min;
 
 	const uint64_t tunit = 1000000; /* us */
 	const uint64_t tsc_hz = rte_get_tsc_hz();
 
-	etot = ctx->results.enqd_tot;
-	eavg = ctx->results.enqd_tot / ctx->results.burst_num;
-	emax = ctx->results.enqd_max;
-	emin = ctx->results.enqd_min;
+	uint64_t enqd_avg = enqd_tot / b_idx;
+	uint64_t deqd_avg = deqd_tot / b_idx;
+	uint64_t tsc_avg = tsc_tot / tsc_idx;
 
-	dtot = ctx->results.deqd_tot;
-	davg = ctx->results.deqd_tot / ctx->results.burst_num;
-	dmax = ctx->results.deqd_max;
-	dmin = ctx->results.deqd_min;
-
-	ctot = ctx->results.cycles_tot;
-	cavg = ctx->results.cycles_tot / ctx->results.num;
-	cmax = ctx->results.cycles_max;
-	cmin = ctx->results.cycles_min;
-
-	ttot = tunit*(double)(ctot) / tsc_hz;
-	tavg = tunit*(double)(cavg) / tsc_hz;
-	tmax = tunit*(double)(cmax) / tsc_hz;
-	tmin = tunit*(double)(cmin) / tsc_hz;
+	time_tot = tunit*(double)(tsc_tot) / tsc_hz;
+	time_avg = tunit*(double)(tsc_avg) / tsc_hz;
+	time_max = tunit*(double)(tsc_max) / tsc_hz;
+	time_min = tunit*(double)(tsc_min) / tsc_hz;
 
 	if (ctx->options->csv) {
 		if (!only_once)
-			printf("\n# lcore, Pakt Seq #, Packet Size, cycles,"
-					" time (us)");
+			printf("\n# lcore, Buffer Size, Burst Size, Pakt Seq #, "
+					"Packet Size, cycles, time (us)");
 
 		for (i = 0; i < ctx->options->total_ops; i++) {
 
-			printf("\n%u;%"PRIu64";%"PRIu64";%.3f",
-				ctx->lcore_id, i + 1,
+			printf("\n%u;%u;%u;%"PRIu64";%"PRIu64";%.3f",
+				ctx->lcore_id, ctx->options->buffer_sz,
+				ctx->options->burst_sz, i + 1,
 				ctx->res[i].tsc_end - ctx->res[i].tsc_start,
 				tunit * (double) (ctx->res[i].tsc_end
 						- ctx->res[i].tsc_start)
@@ -552,22 +492,40 @@ cperf_latency_test_destructor(void *arg)
 		printf("\n# Device %d on lcore %u\n", ctx->dev_id,
 			ctx->lcore_id);
 		printf("\n# total operations: %u", ctx->options->total_ops);
-		printf("\n#     burst number: %"PRIu64,
-				ctx->results.burst_num);
+		printf("\n# Buffer size: %u", ctx->options->buffer_sz);
+		printf("\n# Burst size: %u", ctx->options->burst_sz);
+		printf("\n#     Number of bursts: %"PRIu64,
+				b_idx);
+
 		printf("\n#");
-		printf("\n#          \t       Total\t   Average\t   Maximum\t "
-				"  Minimum");
-		printf("\n#  enqueued\t%12"PRIu64"\t%10"PRIu64"\t%10"PRIu64"\t"
-				"%10"PRIu64, etot, eavg, emax, emin);
-		printf("\n#  dequeued\t%12"PRIu64"\t%10"PRIu64"\t%10"PRIu64"\t"
-				"%10"PRIu64, dtot, davg, dmax, dmin);
-		printf("\n#    cycles\t%12"PRIu64"\t%10"PRIu64"\t%10"PRIu64"\t"
-				"%10"PRIu64, ctot, cavg, cmax, cmin);
-		printf("\n# time [us]\t%12.0f\t%10.3f\t%10.3f\t%10.3f", ttot,
-			tavg, tmax, tmin);
+		printf("\n#          \t       Total\t   Average\t   "
+				"Maximum\t   Minimum");
+		printf("\n#  enqueued\t%12"PRIu64"\t%10"PRIu64"\t"
+				"%10"PRIu64"\t%10"PRIu64, enqd_tot,
+				enqd_avg, enqd_max, enqd_min);
+		printf("\n#  dequeued\t%12"PRIu64"\t%10"PRIu64"\t"
+				"%10"PRIu64"\t%10"PRIu64, deqd_tot,
+				deqd_avg, deqd_max, deqd_min);
+		printf("\n#    cycles\t%12"PRIu64"\t%10"PRIu64"\t"
+				"%10"PRIu64"\t%10"PRIu64, tsc_tot,
+				tsc_avg, tsc_max, tsc_min);
+		printf("\n# time [us]\t%12.0f\t%10.3f\t%10.3f\t%10.3f",
+				time_tot, time_avg, time_max, time_min);
 		printf("\n\n");
 
 	}
+
+	return 0;
+}
+
+void
+cperf_latency_test_destructor(void *arg)
+{
+	struct cperf_latency_ctx *ctx = arg;
+
+	if (ctx == NULL)
+		return;
+
 	cperf_latency_test_free(ctx, ctx->options->pool_sz);
 
 }

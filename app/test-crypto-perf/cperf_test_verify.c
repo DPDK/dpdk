@@ -38,16 +38,6 @@
 #include "cperf_test_verify.h"
 #include "cperf_ops.h"
 
-struct cperf_verify_results {
-	uint64_t ops_enqueued;
-	uint64_t ops_dequeued;
-
-	uint64_t ops_enqueued_failed;
-	uint64_t ops_dequeued_failed;
-
-	uint64_t ops_failed;
-};
-
 struct cperf_verify_ctx {
 	uint8_t dev_id;
 	uint16_t qp_id;
@@ -66,8 +56,6 @@ struct cperf_verify_ctx {
 
 	const struct cperf_options *options;
 	const struct cperf_test_vector *test_vector;
-	struct cperf_verify_results results;
-
 };
 
 struct cperf_op_result {
@@ -231,9 +219,6 @@ cperf_verify_test_constructor(uint8_t dev_id, uint16_t qp_id,
 		goto err;
 
 	/* Generate mbufs_in with plaintext populated for test */
-	if (ctx->options->pool_sz % ctx->options->burst_sz)
-		goto err;
-
 	ctx->mbufs_in = rte_malloc(NULL,
 			(sizeof(struct rte_mbuf *) * ctx->options->pool_sz), 0);
 
@@ -388,7 +373,7 @@ cperf_verify_op(struct rte_crypto_op *op,
 		if (options->auth_op == RTE_CRYPTO_AUTH_OP_GENERATE)
 			res += memcmp(data + auth_offset,
 					vector->digest.data,
-					vector->digest.length);
+					options->auth_digest_sz);
 	}
 
 	return !!res;
@@ -401,6 +386,9 @@ cperf_verify_test_runner(void *test_ctx)
 
 	uint64_t ops_enqd = 0, ops_enqd_total = 0, ops_enqd_failed = 0;
 	uint64_t ops_deqd = 0, ops_deqd_total = 0, ops_deqd_failed = 0;
+	uint64_t ops_failed = 0;
+
+	static int only_once;
 
 	uint64_t i, m_idx = 0;
 	uint16_t ops_unused = 0;
@@ -498,15 +486,15 @@ cperf_verify_test_runner(void *test_ctx)
 		for (i = 0; i < ops_deqd; i++) {
 			if (cperf_verify_op(ops_processed[i], ctx->options,
 						ctx->test_vector))
-				ctx->results.ops_failed++;
+				ops_failed++;
 			/* free crypto ops so they can be reused. We don't free
 			 * the mbufs here as we don't want to reuse them as
 			 * the crypto operation will change the data and cause
 			 * failures.
 			 */
 			rte_crypto_op_free(ops_processed[i]);
-			ops_deqd_total += ops_deqd;
 		}
+		ops_deqd_total += ops_deqd;
 	}
 
 	/* Dequeue any operations still in the crypto device */
@@ -526,22 +514,53 @@ cperf_verify_test_runner(void *test_ctx)
 		for (i = 0; i < ops_deqd; i++) {
 			if (cperf_verify_op(ops_processed[i], ctx->options,
 						ctx->test_vector))
-				ctx->results.ops_failed++;
+				ops_failed++;
 			/* free crypto ops so they can be reused. We don't free
 			 * the mbufs here as we don't want to reuse them as
 			 * the crypto operation will change the data and cause
 			 * failures.
 			 */
 			rte_crypto_op_free(ops_processed[i]);
-			ops_deqd_total += ops_deqd;
 		}
+		ops_deqd_total += ops_deqd;
 	}
 
-	ctx->results.ops_enqueued = ops_enqd_total;
-	ctx->results.ops_dequeued = ops_deqd_total;
+	if (!ctx->options->csv) {
+		if (!only_once)
+			printf("%12s%12s%12s%12s%12s%12s%12s%12s\n\n",
+				"lcore id", "Buf Size", "Burst size",
+				"Enqueued", "Dequeued", "Failed Enq",
+				"Failed Deq", "Failed Ops");
+		only_once = 1;
 
-	ctx->results.ops_enqueued_failed = ops_enqd_failed;
-	ctx->results.ops_dequeued_failed = ops_deqd_failed;
+		printf("%12u%12u%12u%12"PRIu64"%12"PRIu64"%12"PRIu64
+				"%12"PRIu64"%12"PRIu64"\n",
+				ctx->lcore_id,
+				ctx->options->buffer_sz,
+				ctx->options->burst_sz,
+				ops_enqd_total,
+				ops_deqd_total,
+				ops_enqd_failed,
+				ops_deqd_failed,
+				ops_failed);
+	} else {
+		if (!only_once)
+			printf("\n# lcore id, Buffer Size(B), "
+				"Burst Size,Enqueued,Dequeued,Failed Enq,"
+				"Failed Deq,Failed Ops\n");
+		only_once = 1;
+
+		printf("%10u;%10u;%u;%"PRIu64";%"PRIu64";%"PRIu64";%"PRIu64";"
+				"%"PRIu64"\n",
+				ctx->lcore_id,
+				ctx->options->buffer_sz,
+				ctx->options->burst_sz,
+				ops_enqd_total,
+				ops_deqd_total,
+				ops_enqd_failed,
+				ops_deqd_failed,
+				ops_failed);
+	}
 
 	return 0;
 }
@@ -552,44 +571,9 @@ void
 cperf_verify_test_destructor(void *arg)
 {
 	struct cperf_verify_ctx *ctx = arg;
-	struct cperf_verify_results *results = &ctx->results;
-	static int only_once;
 
 	if (ctx == NULL)
 		return;
-
-	if (!ctx->options->csv) {
-		printf("\n# Device %d on lcore %u\n",
-				ctx->dev_id, ctx->lcore_id);
-		printf("# Buffer Size(B)\t  Enqueued\t  Dequeued\tFailed Enq"
-				"\tFailed Deq\tEmpty Polls\n");
-
-		printf("\n%16u\t%10"PRIu64"\t%10"PRIu64"\t%10"PRIu64"\t"
-				"%10"PRIu64"\t%10"PRIu64"\n",
-				ctx->options->buffer_sz,
-				results->ops_enqueued,
-				results->ops_dequeued,
-				results->ops_enqueued_failed,
-				results->ops_dequeued_failed,
-				results->ops_failed);
-	} else {
-		if (!only_once)
-			printf("\n# CPU lcore id, Burst Size(B), "
-				"Buffer Size(B),Enqueued,Dequeued,Failed Enq,"
-				"Failed Deq,Empty Polls\n");
-		only_once = 1;
-
-		printf("%u;%u;%u;%"PRIu64";%"PRIu64";%"PRIu64";%"PRIu64";"
-				"%"PRIu64"\n",
-				ctx->lcore_id,
-				ctx->options->burst_sz,
-				ctx->options->buffer_sz,
-				results->ops_enqueued,
-				results->ops_dequeued,
-				results->ops_enqueued_failed,
-				results->ops_dequeued_failed,
-				results->ops_failed);
-	}
 
 	cperf_verify_test_free(ctx, ctx->options->pool_sz);
 }
