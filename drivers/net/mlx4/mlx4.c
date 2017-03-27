@@ -73,6 +73,7 @@
 #include <rte_alarm.h>
 #include <rte_memory.h>
 #include <rte_flow.h>
+#include <rte_kvargs.h>
 
 /* Generated configuration header. */
 #include "mlx4_autoconf.h"
@@ -114,6 +115,16 @@ struct mlx4_secondary_data {
 	struct rte_eth_dev_data *shared_dev_data; /* Shared device data. */
 	rte_spinlock_t lock; /* Port configuration lock. */
 } mlx4_secondary_data[RTE_MAX_ETHPORTS];
+
+struct mlx4_conf {
+	uint8_t active_ports;
+};
+
+/* Available parameters list. */
+const char *pmd_mlx4_init_params[] = {
+	MLX4_PMD_PORT_KVARG,
+	NULL,
+};
 
 /**
  * Check if running as a secondary process.
@@ -5386,6 +5397,84 @@ priv_dev_interrupt_handler_install(struct priv *priv, struct rte_eth_dev *dev)
 	}
 }
 
+/**
+ * Verify and store value for device argument.
+ *
+ * @param[in] key
+ *   Key argument to verify.
+ * @param[in] val
+ *   Value associated with key.
+ * @param out
+ *   User data.
+ *
+ * @return
+ *   0 on success, negative errno value on failure.
+ */
+static int
+mlx4_arg_parse(const char *key, const char *val, void *out)
+{
+	struct mlx4_conf *conf = out;
+	unsigned long tmp;
+
+	errno = 0;
+	tmp = strtoul(val, NULL, 0);
+	if (errno) {
+		WARN("%s: \"%s\" is not a valid integer", key, val);
+		return -errno;
+	}
+	if (strcmp(MLX4_PMD_PORT_KVARG, key) == 0) {
+		if (tmp >= MLX4_PMD_MAX_PHYS_PORTS) {
+			ERROR("invalid port index %lu (max: %u)",
+				tmp, MLX4_PMD_MAX_PHYS_PORTS - 1);
+			return -EINVAL;
+		}
+		conf->active_ports |= 1 << tmp;
+	} else {
+		WARN("%s: unknown parameter", key);
+		return -EINVAL;
+	}
+	return 0;
+}
+
+/**
+ * Parse device parameters.
+ *
+ * @param devargs
+ *   Device arguments structure.
+ *
+ * @return
+ *   0 on success, negative errno value on failure.
+ */
+static int
+mlx4_args(struct rte_devargs *devargs, struct mlx4_conf *conf)
+{
+	struct rte_kvargs *kvlist;
+	unsigned int arg_count;
+	int ret = 0;
+	int i;
+
+	if (devargs == NULL)
+		return 0;
+	kvlist = rte_kvargs_parse(devargs->args, pmd_mlx4_init_params);
+	if (kvlist == NULL) {
+		ERROR("failed to parse kvargs");
+		return -EINVAL;
+	}
+	/* Process parameters. */
+	for (i = 0; pmd_mlx4_init_params[i]; ++i) {
+		arg_count = rte_kvargs_count(kvlist, MLX4_PMD_PORT_KVARG);
+		while (arg_count-- > 0) {
+			ret = rte_kvargs_process(kvlist, MLX4_PMD_PORT_KVARG,
+					mlx4_arg_parse, conf);
+			if (ret != 0)
+				goto free_kvlist;
+		}
+	}
+free_kvlist:
+	rte_kvargs_free(kvlist);
+	return ret;
+}
+
 static struct eth_driver mlx4_driver;
 
 /**
@@ -5410,6 +5499,9 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	int err = 0;
 	struct ibv_context *attr_ctx = NULL;
 	struct ibv_device_attr device_attr;
+	struct mlx4_conf conf = {
+		.active_ports = 0,
+	};
 	unsigned int vf;
 	int idx;
 	int i;
@@ -5480,6 +5572,15 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		goto error;
 	INFO("%u port(s) detected", device_attr.phys_port_cnt);
 
+	if (mlx4_args(pci_dev->device.devargs, &conf)) {
+		ERROR("failed to process device arguments");
+		goto error;
+	}
+	/* Use all ports when none are defined */
+	if (conf.active_ports == 0) {
+		for (i = 0; i < MLX4_PMD_MAX_PHYS_PORTS; i++)
+			conf.active_ports |= 1 << i;
+	}
 	for (i = 0; i < device_attr.phys_port_cnt; i++) {
 		uint32_t port = i + 1; /* ports are indexed from one */
 		uint32_t test = (1 << i);
@@ -5493,6 +5594,9 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 #endif /* HAVE_EXP_QUERY_DEVICE */
 		struct ether_addr mac;
 
+		/* If port is not active, skip. */
+		if (!(conf.active_ports & (1 << i)))
+			continue;
 #ifdef HAVE_EXP_QUERY_DEVICE
 		exp_device_attr.comp_mask = IBV_EXP_DEVICE_ATTR_EXP_CAP_FLAGS;
 #ifdef RSS_SUPPORT

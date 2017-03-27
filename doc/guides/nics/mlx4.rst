@@ -162,6 +162,12 @@ Run-time configuration
 
 - **ethtool** operations on related kernel interfaces also affect the PMD.
 
+- ``port`` parameter [int]
+
+  This parameter provides a physical port to probe and can be specified multiple
+  times for additional ports. All ports are probed by default if left
+  unspecified.
+
 Kernel module parameters
 ~~~~~~~~~~~~~~~~~~~~~~~~
 

@@ -81,6 +81,9 @@
 /* Request send completion once in every 64 sends, might be less. */
 #define MLX4_PMD_TX_PER_COMP_REQ 64
 
+/* Maximum number of physical ports. */
+#define MLX4_PMD_MAX_PHYS_PORTS 2
+
 /* Maximum number of Scatter/Gather Elements per Work Request. */
 #ifndef MLX4_PMD_SGE_WR_N
 #define MLX4_PMD_SGE_WR_N 4
@@ -112,6 +115,9 @@
 
 /* Alarm timeout. */
 #define MLX4_ALARM_TIMEOUT_US 100000
+
+/* Port parameter. */
+#define MLX4_PMD_PORT_KVARG "port"
 
 enum {
 	PCI_VENDOR_ID_MELLANOX = 0x15b3,
