@@ -58,19 +58,13 @@ struct cperf_options {
 
 	uint32_t pool_sz;
 	uint32_t total_ops;
-	uint32_t test_buffer_size;
 	uint32_t segments_nb;
-
-	char device_type[RTE_CRYPTODEV_NAME_LEN];
-	enum cperf_op_type op_type;
+	uint32_t test_buffer_size;
 
 	uint32_t sessionless:1;
 	uint32_t out_of_place:1;
 	uint32_t silent:1;
 	uint32_t csv:1;
-
-	char *test_file;
-	char *test_name;
 
 	enum rte_crypto_cipher_algorithm cipher_algo;
 	enum rte_crypto_cipher_operation cipher_op;
@@ -84,6 +78,12 @@ struct cperf_options {
 	uint16_t auth_key_sz;
 	uint16_t auth_digest_sz;
 	uint16_t auth_aad_sz;
+
+	char device_type[RTE_CRYPTODEV_NAME_LEN];
+	enum cperf_op_type op_type;
+
+	char *test_file;
+	char *test_name;
 
 	uint32_t buffer_size_list[MAX_LIST];
 	uint8_t buffer_size_count;
