@@ -12,7 +12,6 @@
 
 const char *cperf_test_type_strs[] = {
 	[CPERF_TEST_TYPE_THROUGHPUT] = "throughput",
-	[CPERF_TEST_TYPE_CYCLECOUNT] = "cycle-count",
 	[CPERF_TEST_TYPE_LATENCY] = "latency"
 };
 
@@ -30,7 +29,6 @@ const struct cperf_test cperf_testmap[] = {
 				cperf_throughput_test_runner,
 				cperf_throughput_test_destructor
 		},
-		[CPERF_TEST_TYPE_CYCLECOUNT] =  { NULL },
 		[CPERF_TEST_TYPE_LATENCY] = {
 				cperf_latency_test_constructor,
 				cperf_latency_test_runner,

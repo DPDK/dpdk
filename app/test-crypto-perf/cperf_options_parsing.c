@@ -67,10 +67,6 @@ parse_cperf_test_type(struct cperf_options *opts, const char *arg)
 			CPERF_TEST_TYPE_THROUGHPUT
 		},
 		{
-			cperf_test_type_strs[CPERF_TEST_TYPE_CYCLECOUNT],
-			CPERF_TEST_TYPE_CYCLECOUNT
-		},
-		{
 			cperf_test_type_strs[CPERF_TEST_TYPE_LATENCY],
 			CPERF_TEST_TYPE_LATENCY
 		}
