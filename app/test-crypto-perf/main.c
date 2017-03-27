@@ -9,10 +9,12 @@
 #include "cperf_test_vector_parsing.h"
 #include "cperf_test_throughput.h"
 #include "cperf_test_latency.h"
+#include "cperf_test_verify.h"
 
 const char *cperf_test_type_strs[] = {
 	[CPERF_TEST_TYPE_THROUGHPUT] = "throughput",
-	[CPERF_TEST_TYPE_LATENCY] = "latency"
+	[CPERF_TEST_TYPE_LATENCY] = "latency",
+	[CPERF_TEST_TYPE_VERIFY] = "verify"
 };
 
 const char *cperf_op_type_strs[] = {
@@ -33,6 +35,11 @@ const struct cperf_test cperf_testmap[] = {
 				cperf_latency_test_constructor,
 				cperf_latency_test_runner,
 				cperf_latency_test_destructor
+		},
+		[CPERF_TEST_TYPE_VERIFY] = {
+				cperf_verify_test_constructor,
+				cperf_verify_test_runner,
+				cperf_verify_test_destructor
 		}
 };
 

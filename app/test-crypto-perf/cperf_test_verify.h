@@ -30,33 +30,29 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _CPERF_OPS_
-#define _CPERF_OPS_
+#ifndef _CPERF_VERIFY_
+#define _CPERF_VERIFY_
 
-#include <rte_crypto.h>
+#include <stdint.h>
+
+#include <rte_mbuf.h>
 
 #include "cperf.h"
+#include "cperf_ops.h"
 #include "cperf_options.h"
 #include "cperf_test_vectors.h"
 
 
-typedef struct rte_cryptodev_sym_session *(*cperf_sessions_create_t)(
-		uint8_t dev_id, const struct cperf_options *options,
-		const struct cperf_test_vector *test_vector);
-
-typedef int (*cperf_populate_ops_t)(struct rte_crypto_op **ops,
-		struct rte_mbuf **bufs_in, struct rte_mbuf **bufs_out,
-		uint16_t nb_ops, struct rte_cryptodev_sym_session *sess,
+void *
+cperf_verify_test_constructor(uint8_t dev_id, uint16_t qp_id,
 		const struct cperf_options *options,
-		const struct cperf_test_vector *test_vector);
-
-struct cperf_op_fns {
-	cperf_sessions_create_t sess_create;
-	cperf_populate_ops_t populate_ops;
-};
+		const struct cperf_test_vector *test_vector,
+		const struct cperf_op_fns *ops_fn);
 
 int
-cperf_get_op_functions(const struct cperf_options *options,
-		struct cperf_op_fns *op_fns);
+cperf_verify_test_runner(void *test_ctx);
 
-#endif /* _CPERF_OPS_ */
+void
+cperf_verify_test_destructor(void *test_ctx);
+
+#endif /* _CPERF_VERIFY_ */

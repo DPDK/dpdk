@@ -133,6 +133,7 @@ The following are the appication command-line options:
 
            throughput
            latency
+           verify
 
 * ``--silent``
 
@@ -190,11 +191,6 @@ The following are the appication command-line options:
 * ``--out-of-place``
 
         Enable out-of-place crypto operations mode.
-
-* ``--verify``
-
-        Enable verify that all crypto operations were successful.
-        The verification is done after the performance test.
 
 * ``--test-file <name>``
 
@@ -368,7 +364,7 @@ on two cores for cipher encryption aes-cbc, ten operations in silent mode::
    --cipher-op encrypt --optype cipher-only --silent
    --ptest latency --total-ops 10
 
-Call application for performance latency test of single open ssl PMD
+Call application for verification test of single open ssl PMD
 for cipher encryption aes-gcm and auth generation aes-gcm,ten operations
 in silent mode, test vector provide in file "test_aes_gcm.data"
 with packet verification::
@@ -377,8 +373,8 @@ with packet verification::
    --devtype crypto_openssl --cipher-algo aes-gcm --cipher-key-sz 16
    --cipher-iv-sz 16 --cipher-op encrypt --auth-algo aes-gcm --auth-key-sz 16
    --auth-digest-sz 16 --auth-aad-sz 16 --auth-op generate --optype aead
-   --silent --ptest latency --total-ops 10
-   --test-file test_aes_gcm.data --verify
+   --silent --ptest verify --total-ops 10
+   --test-file test_aes_gcm.data
 
 Test vector file for cipher algorithm aes cbc 256 with authorization sha::
 

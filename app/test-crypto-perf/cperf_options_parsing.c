@@ -67,6 +67,10 @@ parse_cperf_test_type(struct cperf_options *opts, const char *arg)
 			CPERF_TEST_TYPE_THROUGHPUT
 		},
 		{
+			cperf_test_type_strs[CPERF_TEST_TYPE_VERIFY],
+			CPERF_TEST_TYPE_VERIFY
+		},
+		{
 			cperf_test_type_strs[CPERF_TEST_TYPE_LATENCY],
 			CPERF_TEST_TYPE_LATENCY
 		}
@@ -262,15 +266,6 @@ parse_out_of_place(struct cperf_options *opts,
 }
 
 static int
-parse_verify(struct cperf_options *opts,
-		const char *arg __rte_unused)
-{
-	opts->verify = 1;
-
-	return 0;
-}
-
-static int
 parse_test_file(struct cperf_options *opts,
 		const char *arg)
 {
@@ -452,7 +447,6 @@ static struct option lgopts[] = {
 	{ CPERF_SILENT, no_argument, 0, 0 },
 	{ CPERF_SESSIONLESS, no_argument, 0, 0 },
 	{ CPERF_OUT_OF_PLACE, no_argument, 0, 0 },
-	{ CPERF_VERIFY, no_argument, 0, 0 },
 	{ CPERF_TEST_FILE, required_argument, 0, 0 },
 	{ CPERF_TEST_NAME, required_argument, 0, 0 },
 
@@ -490,7 +484,6 @@ cperf_options_default(struct cperf_options *opts)
 	opts->op_type = CPERF_CIPHER_THEN_AUTH;
 
 	opts->silent = 0;
-	opts->verify = 0;
 	opts->test_file = NULL;
 	opts->test_name = NULL;
 	opts->sessionless = 0;
@@ -525,7 +518,6 @@ cperf_opts_parse_long(int opt_idx, struct cperf_options *opts)
 		{ CPERF_OPTYPE,		parse_op_type },
 		{ CPERF_SESSIONLESS,	parse_sessionless },
 		{ CPERF_OUT_OF_PLACE,	parse_out_of_place },
-		{ CPERF_VERIFY,		parse_verify },
 		{ CPERF_TEST_FILE,	parse_test_file },
 		{ CPERF_TEST_NAME,	parse_test_name },
 		{ CPERF_CIPHER_ALGO,	parse_cipher_algo },
@@ -583,7 +575,8 @@ cperf_options_check(struct cperf_options *options)
 		return -EINVAL;
 	}
 
-	if (options->verify && options->test_file == NULL) {
+	if (options->test == CPERF_TEST_TYPE_VERIFY &&
+			options->test_file == NULL) {
 		RTE_LOG(ERR, USER1, "Define path to the file with test"
 				" vectors.\n");
 		return -EINVAL;
@@ -602,7 +595,7 @@ cperf_options_check(struct cperf_options *options)
 		return -EINVAL;
 	}
 
-	if (options->verify &&
+	if (options->test == CPERF_TEST_TYPE_VERIFY &&
 			options->total_ops > options->pool_sz) {
 		RTE_LOG(ERR, USER1, "Total number of ops must be less than or"
 				" equal to the pool size.\n");
@@ -669,7 +662,6 @@ cperf_options_dump(struct cperf_options *opts)
 	printf("# cryptodev type: %s\n", opts->device_type);
 	printf("#\n");
 	printf("# crypto operation: %s\n", cperf_op_type_strs[opts->op_type]);
-	printf("# verify operation: %s\n", opts->verify ? "yes" : "no");
 	printf("# sessionless: %s\n", opts->sessionless ? "yes" : "no");
 	printf("# out of place: %s\n", opts->out_of_place ? "yes" : "no");
 

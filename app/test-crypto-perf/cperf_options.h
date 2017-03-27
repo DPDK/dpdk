@@ -17,7 +17,6 @@
 #define CPERF_OPTYPE		("optype")
 #define CPERF_SESSIONLESS	("sessionless")
 #define CPERF_OUT_OF_PLACE	("out-of-place")
-#define CPERF_VERIFY		("verify")
 #define CPERF_TEST_FILE		("test-file")
 #define CPERF_TEST_NAME		("test-name")
 
@@ -36,7 +35,8 @@
 
 enum cperf_perf_test_type {
 	CPERF_TEST_TYPE_THROUGHPUT,
-	CPERF_TEST_TYPE_LATENCY
+	CPERF_TEST_TYPE_LATENCY,
+	CPERF_TEST_TYPE_VERIFY
 };
 
 
@@ -66,7 +66,6 @@ struct cperf_options {
 
 	uint32_t sessionless:1;
 	uint32_t out_of_place:1;
-	uint32_t verify:1;
 	uint32_t silent:1;
 	uint32_t csv:1;
 

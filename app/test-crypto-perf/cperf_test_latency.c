@@ -80,7 +80,6 @@ struct cperf_latency_ctx {
 	struct rte_cryptodev_sym_session *sess;
 
 	cperf_populate_ops_t populate_ops;
-	cperf_verify_crypto_op_t verify_op_output;
 
 	const struct cperf_options *options;
 	const struct cperf_test_vector *test_vector;
@@ -318,100 +317,6 @@ err:
 	return NULL;
 }
 
-static int
-cperf_latency_test_verifier(struct rte_mbuf *mbuf,
-		const struct cperf_options *options,
-		const struct cperf_test_vector *vector)
-{
-	const struct rte_mbuf *m;
-	uint32_t len;
-	uint16_t nb_segs;
-	uint8_t *data;
-	uint32_t cipher_offset, auth_offset;
-	uint8_t	cipher, auth;
-	int res = 0;
-
-	m = mbuf;
-	nb_segs = m->nb_segs;
-	len = 0;
-	while (m && nb_segs != 0) {
-		len += m->data_len;
-		m = m->next;
-		nb_segs--;
-	}
-
-	data = rte_malloc(NULL, len, 0);
-	if (data == NULL)
-		return 1;
-
-	m = mbuf;
-	nb_segs = m->nb_segs;
-	len = 0;
-	while (m && nb_segs != 0) {
-		memcpy(data + len, rte_pktmbuf_mtod(m, uint8_t *),
-				m->data_len);
-		len += m->data_len;
-		m = m->next;
-		nb_segs--;
-	}
-
-	switch (options->op_type) {
-	case CPERF_CIPHER_ONLY:
-		cipher = 1;
-		cipher_offset = 0;
-		auth = 0;
-		auth_offset = 0;
-		break;
-	case CPERF_CIPHER_THEN_AUTH:
-		cipher = 1;
-		cipher_offset = 0;
-		auth = 1;
-		auth_offset = vector->plaintext.length;
-		break;
-	case CPERF_AUTH_ONLY:
-		cipher = 0;
-		cipher_offset = 0;
-		auth = 1;
-		auth_offset = vector->plaintext.length;
-		break;
-	case CPERF_AUTH_THEN_CIPHER:
-		cipher = 1;
-		cipher_offset = 0;
-		auth = 1;
-		auth_offset = vector->plaintext.length;
-		break;
-	case CPERF_AEAD:
-		cipher = 1;
-		cipher_offset = vector->aad.length;
-		auth = 1;
-		auth_offset = vector->aad.length + vector->plaintext.length;
-		break;
-	}
-
-	if (cipher == 1) {
-		if (options->cipher_op == RTE_CRYPTO_CIPHER_OP_ENCRYPT)
-			res += memcmp(data + cipher_offset,
-					vector->ciphertext.data,
-					vector->ciphertext.length);
-		else
-			res += memcmp(data + cipher_offset,
-					vector->plaintext.data,
-					vector->plaintext.length);
-	}
-
-	if (auth == 1) {
-		if (options->auth_op == RTE_CRYPTO_AUTH_OP_GENERATE)
-			res += memcmp(data + auth_offset,
-					vector->digest.data,
-					vector->digest.length);
-	}
-
-	if (res != 0)
-		res = 1;
-
-	return res;
-}
-
 int
 cperf_latency_test_runner(void *arg)
 {
@@ -571,26 +476,6 @@ cperf_latency_test_runner(void *arg)
 		tsc_tot += tsc_val;
 	}
 
-	if (ctx->options->verify) {
-		struct rte_mbuf **mbufs;
-
-		if (ctx->options->out_of_place == 1)
-			mbufs = ctx->mbufs_out;
-		else
-			mbufs = ctx->mbufs_in;
-
-		for (i = 0; i < ctx->options->total_ops; i++) {
-
-			if (ctx->res[i].status != RTE_CRYPTO_OP_STATUS_SUCCESS
-					|| cperf_latency_test_verifier(mbufs[i],
-							ctx->options,
-							ctx->test_vector)) {
-
-				ctx->results.ops_failed++;
-			}
-		}
-	}
-
 	ctx->results.enqd_tot = enqd_tot;
 	ctx->results.enqd_max = enqd_max;
 	ctx->results.enqd_min = enqd_min;
@@ -665,8 +550,6 @@ cperf_latency_test_destructor(void *arg)
 		printf("\n# Device %d on lcore %u\n", ctx->dev_id,
 			ctx->lcore_id);
 		printf("\n# total operations: %u", ctx->options->total_ops);
-		printf("\n#  verified failed: %"PRIu64,
-				ctx->results.ops_failed);
 		printf("\n#     burst number: %"PRIu64,
 				ctx->results.burst_num);
 		printf("\n#");
