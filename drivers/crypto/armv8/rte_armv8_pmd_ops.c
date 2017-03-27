@@ -224,7 +224,7 @@ armv8_crypto_pmd_qp_create_processed_ops_ring(struct armv8_crypto_qp *qp,
 
 	r = rte_ring_lookup(qp->name);
 	if (r) {
-		if (r->prod.size >= ring_size) {
+		if (rte_ring_get_size(r) >= ring_size) {
 			ARMV8_CRYPTO_LOG_INFO(
 				"Reusing existing ring %s for processed ops",
 				 qp->name);
