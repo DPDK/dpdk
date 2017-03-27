@@ -69,9 +69,11 @@ TOOLCHAIN_ASFLAGS =
 #   error #13368: loop was not vectorized with "vector always assert"
 #   error #15527: loop was not vectorized: function call to fprintf cannot be vectorize
 #                   was declared "deprecated"
+#   Warning #11074, 11076: to prevent "inline-max-size" warnings.
 WERROR_FLAGS := -Wall -w2 -diag-disable 271 -diag-warning 1478
 WERROR_FLAGS += -diag-disable 13368 -diag-disable 15527
 WERROR_FLAGS += -diag-disable 188
+WERROR_FLAGS += -diag-disable 11074 -diag-disable 11076
 
 ifeq ($(RTE_DEVEL_BUILD),y)
 WERROR_FLAGS += -Werror-all
@@ -79,10 +81,6 @@ endif
 
 # process cpu flags
 include $(RTE_SDK)/mk/toolchain/$(RTE_TOOLCHAIN)/rte.toolchain-compat.mk
-# disable max-inline params boundaries for ICC compiler for version 15 and greater
-ifeq ($(shell test $(ICC_MAJOR_VERSION) -ge 14 && echo 1), 1)
-	TOOLCHAIN_CFLAGS += -no-inline-max-size -no-inline-max-total-size
-endif
 
 export CC AS AR LD OBJCOPY OBJDUMP STRIP READELF
 export TOOLCHAIN_CFLAGS TOOLCHAIN_LDFLAGS TOOLCHAIN_ASFLAGS
