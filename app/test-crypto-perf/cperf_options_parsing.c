@@ -38,6 +38,9 @@
 
 #include "cperf_options.h"
 
+#define AES_BLOCK_SIZE 16
+#define DES_BLOCK_SIZE 8
+
 struct name_id_map {
 	const char *name;
 	uint32_t id;
@@ -717,6 +720,8 @@ cperf_options_parse(struct cperf_options *options, int argc, char **argv)
 int
 cperf_options_check(struct cperf_options *options)
 {
+	uint32_t buffer_size, buffer_size_idx = 0;
+
 	if (options->segments_nb > options->min_buffer_size) {
 		RTE_LOG(ERR, USER1,
 				"Segments number greater than buffer size.\n");
@@ -727,6 +732,14 @@ cperf_options_check(struct cperf_options *options)
 			options->test_file == NULL) {
 		RTE_LOG(ERR, USER1, "Define path to the file with test"
 				" vectors.\n");
+		return -EINVAL;
+	}
+
+	if (options->test == CPERF_TEST_TYPE_VERIFY &&
+			options->op_type != CPERF_CIPHER_ONLY &&
+			options->test_name == NULL) {
+		RTE_LOG(ERR, USER1, "Define test name to get the correct digest"
+				" from the test vectors.\n");
 		return -EINVAL;
 	}
 
@@ -804,6 +817,45 @@ cperf_options_check(struct cperf_options *options)
 		if (options->op_type != CPERF_AEAD) {
 			RTE_LOG(ERR, USER1, "Use --optype aead\n");
 			return -EINVAL;
+		}
+	}
+
+	if (options->cipher_algo == RTE_CRYPTO_CIPHER_AES_CBC ||
+			options->cipher_algo == RTE_CRYPTO_CIPHER_AES_ECB) {
+		if (options->inc_buffer_size != 0)
+			buffer_size = options->min_buffer_size;
+		else
+			buffer_size = options->buffer_size_list[0];
+
+		while (buffer_size <= options->max_buffer_size) {
+			if ((buffer_size % AES_BLOCK_SIZE) != 0) {
+				RTE_LOG(ERR, USER1, "Some of the buffer sizes are "
+					"not suitable for the algorithm selected\n");
+				return -EINVAL;
+			}
+
+			if (options->inc_buffer_size != 0)
+				buffer_size += options->inc_buffer_size;
+			else {
+				if (++buffer_size_idx == options->buffer_size_count)
+					break;
+				buffer_size = options->buffer_size_list[buffer_size_idx];
+			}
+
+		}
+	}
+
+	if (options->cipher_algo == RTE_CRYPTO_CIPHER_DES_CBC ||
+			options->cipher_algo == RTE_CRYPTO_CIPHER_3DES_CBC ||
+			options->cipher_algo == RTE_CRYPTO_CIPHER_3DES_ECB) {
+		for (buffer_size = options->min_buffer_size;
+				buffer_size < options->max_buffer_size;
+				buffer_size += options->inc_buffer_size) {
+			if ((buffer_size % DES_BLOCK_SIZE) != 0) {
+				RTE_LOG(ERR, USER1, "Some of the buffer sizes are "
+					"not suitable for the algorithm selected\n");
+				return -EINVAL;
+			}
 		}
 	}
 
