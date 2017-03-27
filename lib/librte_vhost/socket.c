@@ -52,14 +52,18 @@
 #include "vhost.h"
 #include "vhost_user.h"
 
+
+TAILQ_HEAD(vhost_user_connection_list, vhost_user_connection);
+
 /*
  * Every time rte_vhost_driver_register() is invoked, an associated
  * vhost_user_socket struct will be created.
  */
 struct vhost_user_socket {
+	struct vhost_user_connection_list conn_list;
+	pthread_mutex_t conn_mutex;
 	char *path;
 	int listenfd;
-	int connfd;
 	bool is_server;
 	bool reconnect;
 	bool dequeue_zero_copy;
@@ -67,7 +71,10 @@ struct vhost_user_socket {
 
 struct vhost_user_connection {
 	struct vhost_user_socket *vsocket;
+	int connfd;
 	int vid;
+
+	TAILQ_ENTRY(vhost_user_connection) next;
 };
 
 #define MAX_VHOST_SOCKET 1024
@@ -209,19 +216,23 @@ vhost_user_add_connection(int fd, struct vhost_user_socket *vsocket)
 
 	RTE_LOG(INFO, VHOST_CONFIG, "new device, handle is %d\n", vid);
 
-	vsocket->connfd = fd;
+	conn->connfd = fd;
 	conn->vsocket = vsocket;
 	conn->vid = vid;
 	ret = fdset_add(&vhost_user.fdset, fd, vhost_user_read_cb,
 			NULL, conn);
 	if (ret < 0) {
-		vsocket->connfd = -1;
+		conn->connfd = -1;
 		free(conn);
 		close(fd);
 		RTE_LOG(ERR, VHOST_CONFIG,
 			"failed to add fd %d into vhost server fdset\n",
 			fd);
 	}
+
+	pthread_mutex_lock(&vsocket->conn_mutex);
+	TAILQ_INSERT_TAIL(&vsocket->conn_list, conn, next);
+	pthread_mutex_unlock(&vsocket->conn_mutex);
 }
 
 /* call back when there is new vhost-user connection from client  */
@@ -247,10 +258,14 @@ vhost_user_read_cb(int connfd, void *dat, int *remove)
 
 	ret = vhost_user_msg_handler(conn->vid, connfd);
 	if (ret < 0) {
-		vsocket->connfd = -1;
 		close(connfd);
 		*remove = 1;
 		vhost_destroy_device(conn->vid);
+
+		pthread_mutex_lock(&vsocket->conn_mutex);
+		TAILQ_REMOVE(&vsocket->conn_list, conn, next);
+		pthread_mutex_unlock(&vsocket->conn_mutex);
+
 		free(conn);
 
 		if (vsocket->reconnect)
@@ -502,7 +517,8 @@ rte_vhost_driver_register(const char *path, uint64_t flags)
 		goto out;
 	memset(vsocket, 0, sizeof(struct vhost_user_socket));
 	vsocket->path = strdup(path);
-	vsocket->connfd = -1;
+	TAILQ_INIT(&vsocket->conn_list);
+	pthread_mutex_init(&vsocket->conn_mutex, NULL);
 	vsocket->dequeue_zero_copy = flags & RTE_VHOST_USER_DEQUEUE_ZERO_COPY;
 
 	if ((flags & RTE_VHOST_USER_CLIENT) != 0) {
@@ -565,7 +581,7 @@ rte_vhost_driver_unregister(const char *path)
 {
 	int i;
 	int count;
-	struct vhost_user_connection *conn;
+	struct vhost_user_connection *conn, *next;
 
 	pthread_mutex_lock(&vhost_user.mutex);
 
@@ -581,15 +597,22 @@ rte_vhost_driver_unregister(const char *path)
 				vhost_user_remove_reconnect(vsocket);
 			}
 
-			conn = fdset_del(&vhost_user.fdset, vsocket->connfd);
-			if (conn) {
+			pthread_mutex_lock(&vsocket->conn_mutex);
+			for (conn = TAILQ_FIRST(&vsocket->conn_list);
+			     conn != NULL;
+			     conn = next) {
+				next = TAILQ_NEXT(conn, next);
+
+				fdset_del(&vhost_user.fdset, conn->connfd);
 				RTE_LOG(INFO, VHOST_CONFIG,
 					"free connfd = %d for device '%s'\n",
-					vsocket->connfd, path);
-				close(vsocket->connfd);
+					conn->connfd, path);
+				close(conn->connfd);
 				vhost_destroy_device(conn->vid);
+				TAILQ_REMOVE(&vsocket->conn_list, conn, next);
 				free(conn);
 			}
+			pthread_mutex_unlock(&vsocket->conn_mutex);
 
 			free(vsocket->path);
 			free(vsocket);
