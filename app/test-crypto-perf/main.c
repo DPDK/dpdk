@@ -179,11 +179,11 @@ cperf_check_test_vector(struct cperf_options *opts,
 		} else if (opts->cipher_algo != RTE_CRYPTO_CIPHER_NULL) {
 			if (test_vec->plaintext.data == NULL)
 				return -1;
-			if (test_vec->plaintext.length != opts->buffer_sz)
+			if (test_vec->plaintext.length < opts->max_buffer_size)
 				return -1;
 			if (test_vec->ciphertext.data == NULL)
 				return -1;
-			if (test_vec->ciphertext.length != opts->buffer_sz)
+			if (test_vec->ciphertext.length < opts->max_buffer_size)
 				return -1;
 			if (test_vec->iv.data == NULL)
 				return -1;
@@ -198,7 +198,7 @@ cperf_check_test_vector(struct cperf_options *opts,
 		if (opts->auth_algo != RTE_CRYPTO_AUTH_NULL) {
 			if (test_vec->plaintext.data == NULL)
 				return -1;
-			if (test_vec->plaintext.length != opts->buffer_sz)
+			if (test_vec->plaintext.length < opts->max_buffer_size)
 				return -1;
 			if (test_vec->auth_key.data == NULL)
 				return -1;
@@ -206,7 +206,7 @@ cperf_check_test_vector(struct cperf_options *opts,
 				return -1;
 			if (test_vec->digest.data == NULL)
 				return -1;
-			if (test_vec->digest.length != opts->auth_digest_sz)
+			if (test_vec->digest.length < opts->auth_digest_sz)
 				return -1;
 		}
 
@@ -215,16 +215,16 @@ cperf_check_test_vector(struct cperf_options *opts,
 		if (opts->cipher_algo == RTE_CRYPTO_CIPHER_NULL) {
 			if (test_vec->plaintext.data == NULL)
 				return -1;
-			if (test_vec->plaintext.length != opts->buffer_sz)
+			if (test_vec->plaintext.length < opts->max_buffer_size)
 				return -1;
 		} else if (opts->cipher_algo != RTE_CRYPTO_CIPHER_NULL) {
 			if (test_vec->plaintext.data == NULL)
 				return -1;
-			if (test_vec->plaintext.length != opts->buffer_sz)
+			if (test_vec->plaintext.length < opts->max_buffer_size)
 				return -1;
 			if (test_vec->ciphertext.data == NULL)
 				return -1;
-			if (test_vec->ciphertext.length != opts->buffer_sz)
+			if (test_vec->ciphertext.length < opts->max_buffer_size)
 				return -1;
 			if (test_vec->iv.data == NULL)
 				return -1;
@@ -242,13 +242,17 @@ cperf_check_test_vector(struct cperf_options *opts,
 				return -1;
 			if (test_vec->digest.data == NULL)
 				return -1;
-			if (test_vec->digest.length != opts->auth_digest_sz)
+			if (test_vec->digest.length < opts->auth_digest_sz)
 				return -1;
 		}
 	} else if (opts->op_type == CPERF_AEAD) {
 		if (test_vec->plaintext.data == NULL)
 			return -1;
-		if (test_vec->plaintext.length != opts->buffer_sz)
+		if (test_vec->plaintext.length < opts->max_buffer_size)
+			return -1;
+		if (test_vec->ciphertext.data == NULL)
+			return -1;
+		if (test_vec->ciphertext.length < opts->max_buffer_size)
 			return -1;
 		if (test_vec->aad.data == NULL)
 			return -1;
@@ -256,7 +260,7 @@ cperf_check_test_vector(struct cperf_options *opts,
 			return -1;
 		if (test_vec->digest.data == NULL)
 			return -1;
-		if (test_vec->digest.length != opts->auth_digest_sz)
+		if (test_vec->digest.length < opts->auth_digest_sz)
 			return -1;
 	}
 	return 0;
@@ -274,6 +278,8 @@ main(int argc, char **argv)
 	int nb_cryptodevs = 0;
 	uint8_t cdev_id, i;
 	uint8_t enabled_cdevs[RTE_CRYPTO_MAX_DEVS] = { 0 };
+
+	uint8_t buffer_size_idx = 0;
 
 	int ret;
 	uint32_t lcore_id;
@@ -370,20 +376,36 @@ main(int argc, char **argv)
 		i++;
 	}
 
-	i = 0;
-	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+	/* Get first size from range or list */
+	if (opts.inc_buffer_size != 0)
+		opts.test_buffer_size = opts.min_buffer_size;
+	else
+		opts.test_buffer_size = opts.buffer_size_list[0];
 
-		if (i == nb_cryptodevs)
-			break;
+	while (opts.test_buffer_size <= opts.max_buffer_size) {
+		i = 0;
+		RTE_LCORE_FOREACH_SLAVE(lcore_id) {
 
-		cdev_id = enabled_cdevs[i];
+			if (i == nb_cryptodevs)
+				break;
 
-		rte_eal_remote_launch(cperf_testmap[opts.test].runner,
+			cdev_id = enabled_cdevs[i];
+
+			rte_eal_remote_launch(cperf_testmap[opts.test].runner,
 				ctx[cdev_id], lcore_id);
-		i++;
-	}
+			i++;
+		}
+		rte_eal_mp_wait_lcore();
 
-	rte_eal_mp_wait_lcore();
+		/* Get next size from range or list */
+		if (opts.inc_buffer_size != 0)
+			opts.test_buffer_size += opts.inc_buffer_size;
+		else {
+			if (++buffer_size_idx == opts.buffer_size_count)
+				break;
+			opts.test_buffer_size = opts.buffer_size_list[buffer_size_idx];
+		}
+	}
 
 	i = 0;
 	RTE_LCORE_FOREACH_SLAVE(lcore_id) {

@@ -151,9 +151,24 @@ The following are the appication command-line options:
 
         Set the number of packets per burst.
 
+        This can be set as:
+          * Single value (i.e. ``--burst-sz 16``)
+          * Range of values, using the following structure ``min:inc:max``,
+            where ``min`` is minimum size, ``inc`` is the increment size and ``max``
+            is the maximum size (i.e. ``--burst-sz 16:2:32``)
+          * List of values, up to 32 values, separated in commas (i.e. ``--burst-sz 16,24,32``)
+
 * ``--buffer-sz <n>``
 
         Set the size of single packet (plaintext or ciphertext in it).
+
+        This can be set as:
+          * Single value (i.e. ``--buffer-sz 16``)
+          * Range of values, using the following structure ``min:inc:max``,
+            where ``min`` is minimum size, ``inc`` is the increment size and ``max``
+            is the maximum size (i.e. ``--buffer-sz 16:2:32``)
+          * List of values, up to 32 values, separated in commas (i.e. ``--buffer-sz 32,64,128``)
+
 
 * ``--segments-nb <n>``
 

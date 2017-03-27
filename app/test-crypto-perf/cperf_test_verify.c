@@ -107,8 +107,8 @@ cperf_mbuf_create(struct rte_mempool *mempool,
 		const struct cperf_test_vector *test_vector)
 {
 	struct rte_mbuf *mbuf;
-	uint32_t segment_sz = options->buffer_sz / segments_nb;
-	uint32_t last_sz = options->buffer_sz % segments_nb;
+	uint32_t segment_sz = options->max_buffer_size / segments_nb;
+	uint32_t last_sz = options->max_buffer_size % segments_nb;
 	uint8_t *mbuf_data;
 	uint8_t *test_data =
 			(options->cipher_op == RTE_CRYPTO_CIPHER_OP_ENCRYPT) ?
@@ -210,8 +210,8 @@ cperf_verify_test_constructor(uint8_t dev_id, uint16_t qp_id,
 			options->pool_sz * options->segments_nb, 0, 0,
 			RTE_PKTMBUF_HEADROOM +
 			RTE_CACHE_LINE_ROUNDUP(
-				(options->buffer_sz / options->segments_nb) +
-				(options->buffer_sz % options->segments_nb) +
+				(options->max_buffer_size / options->segments_nb) +
+				(options->max_buffer_size % options->segments_nb) +
 					options->auth_digest_sz),
 			rte_socket_id());
 
@@ -239,7 +239,7 @@ cperf_verify_test_constructor(uint8_t dev_id, uint16_t qp_id,
 				pool_name, options->pool_sz, 0, 0,
 				RTE_PKTMBUF_HEADROOM +
 				RTE_CACHE_LINE_ROUNDUP(
-					options->buffer_sz +
+					options->max_buffer_size +
 					options->auth_digest_sz),
 				rte_socket_id());
 
@@ -336,25 +336,25 @@ cperf_verify_op(struct rte_crypto_op *op,
 		cipher = 1;
 		cipher_offset = 0;
 		auth = 1;
-		auth_offset = vector->plaintext.length;
+		auth_offset = options->test_buffer_size;
 		break;
 	case CPERF_AUTH_ONLY:
 		cipher = 0;
 		cipher_offset = 0;
 		auth = 1;
-		auth_offset = vector->plaintext.length;
+		auth_offset = options->test_buffer_size;
 		break;
 	case CPERF_AUTH_THEN_CIPHER:
 		cipher = 1;
 		cipher_offset = 0;
 		auth = 1;
-		auth_offset = vector->plaintext.length;
+		auth_offset = options->test_buffer_size;
 		break;
 	case CPERF_AEAD:
 		cipher = 1;
 		cipher_offset = vector->aad.length;
 		auth = 1;
-		auth_offset = vector->aad.length + vector->plaintext.length;
+		auth_offset = vector->aad.length + options->test_buffer_size;
 		break;
 	}
 
@@ -362,11 +362,11 @@ cperf_verify_op(struct rte_crypto_op *op,
 		if (options->cipher_op == RTE_CRYPTO_CIPHER_OP_ENCRYPT)
 			res += memcmp(data + cipher_offset,
 					vector->ciphertext.data,
-					vector->ciphertext.length);
+					options->test_buffer_size);
 		else
 			res += memcmp(data + cipher_offset,
 					vector->plaintext.data,
-					vector->plaintext.length);
+					options->test_buffer_size);
 	}
 
 	if (auth == 1) {
@@ -393,8 +393,8 @@ cperf_verify_test_runner(void *test_ctx)
 	uint64_t i, m_idx = 0;
 	uint16_t ops_unused = 0;
 
-	struct rte_crypto_op *ops[ctx->options->burst_sz];
-	struct rte_crypto_op *ops_processed[ctx->options->burst_sz];
+	struct rte_crypto_op *ops[ctx->options->max_burst_size];
+	struct rte_crypto_op *ops_processed[ctx->options->max_burst_size];
 
 	uint32_t lcore = rte_lcore_id();
 
@@ -419,9 +419,9 @@ cperf_verify_test_runner(void *test_ctx)
 
 	while (ops_enqd_total < ctx->options->total_ops) {
 
-		uint16_t burst_size = ((ops_enqd_total + ctx->options->burst_sz)
+		uint16_t burst_size = ((ops_enqd_total + ctx->options->max_burst_size)
 				<= ctx->options->total_ops) ?
-						ctx->options->burst_sz :
+						ctx->options->max_burst_size :
 						ctx->options->total_ops -
 						ops_enqd_total;
 
@@ -467,10 +467,10 @@ cperf_verify_test_runner(void *test_ctx)
 
 		/* Dequeue processed burst of ops from crypto device */
 		ops_deqd = rte_cryptodev_dequeue_burst(ctx->dev_id, ctx->qp_id,
-				ops_processed, ctx->options->burst_sz);
+				ops_processed, ctx->options->max_burst_size);
 
 		m_idx += ops_needed;
-		if (m_idx + ctx->options->burst_sz > ctx->options->pool_sz)
+		if (m_idx + ctx->options->max_burst_size > ctx->options->pool_sz)
 			m_idx = 0;
 
 		if (ops_deqd == 0) {
@@ -505,7 +505,7 @@ cperf_verify_test_runner(void *test_ctx)
 
 		/* dequeue burst */
 		ops_deqd = rte_cryptodev_dequeue_burst(ctx->dev_id, ctx->qp_id,
-				ops_processed, ctx->options->burst_sz);
+				ops_processed, ctx->options->max_burst_size);
 		if (ops_deqd == 0) {
 			ops_deqd_failed++;
 			continue;
@@ -536,8 +536,8 @@ cperf_verify_test_runner(void *test_ctx)
 		printf("%12u%12u%12u%12"PRIu64"%12"PRIu64"%12"PRIu64
 				"%12"PRIu64"%12"PRIu64"\n",
 				ctx->lcore_id,
-				ctx->options->buffer_sz,
-				ctx->options->burst_sz,
+				ctx->options->max_buffer_size,
+				ctx->options->max_burst_size,
 				ops_enqd_total,
 				ops_deqd_total,
 				ops_enqd_failed,
@@ -553,8 +553,8 @@ cperf_verify_test_runner(void *test_ctx)
 		printf("%10u;%10u;%u;%"PRIu64";%"PRIu64";%"PRIu64";%"PRIu64";"
 				"%"PRIu64"\n",
 				ctx->lcore_id,
-				ctx->options->buffer_sz,
-				ctx->options->burst_sz,
+				ctx->options->max_buffer_size,
+				ctx->options->max_burst_size,
 				ops_enqd_total,
 				ops_deqd_total,
 				ops_enqd_failed,

@@ -124,6 +124,132 @@ parse_uint16_t(uint16_t *value, const char *arg)
 }
 
 static int
+parse_range(const char *arg, uint32_t *min, uint32_t *max, uint32_t *inc)
+{
+	char *token;
+	uint32_t number;
+
+	char *copy_arg = strdup(arg);
+
+	if (copy_arg == NULL)
+		return -1;
+
+	token = strtok(copy_arg, ":");
+
+	/* Parse minimum value */
+	if (token != NULL) {
+		number = strtoul(token, NULL, 10);
+
+		if (errno == EINVAL || errno == ERANGE ||
+				number == 0)
+			goto err_range;
+
+		*min = number;
+	} else
+		goto err_range;
+
+	token = strtok(NULL, ":");
+
+	/* Parse increment value */
+	if (token != NULL) {
+		number = strtoul(token, NULL, 10);
+
+		if (errno == EINVAL || errno == ERANGE ||
+				number == 0)
+			goto err_range;
+
+		*inc = number;
+	} else
+		goto err_range;
+
+	token = strtok(NULL, ":");
+
+	/* Parse maximum value */
+	if (token != NULL) {
+		number = strtoul(token, NULL, 10);
+
+		if (errno == EINVAL || errno == ERANGE ||
+				number == 0 ||
+				number < *min)
+			goto err_range;
+
+		*max = number;
+	} else
+		goto err_range;
+
+	if (strtok(NULL, ":") != NULL)
+		goto err_range;
+
+	free(copy_arg);
+	return 0;
+
+err_range:
+	free(copy_arg);
+	return -1;
+}
+
+static int
+parse_list(const char *arg, uint32_t *list, uint32_t *min, uint32_t *max)
+{
+	char *token;
+	uint32_t number;
+	uint8_t count = 0;
+
+	char *copy_arg = strdup(arg);
+
+	if (copy_arg == NULL)
+		return -1;
+
+	token = strtok(copy_arg, ",");
+
+	/* Parse first value */
+	if (token != NULL) {
+		number = strtoul(token, NULL, 10);
+
+		if (errno == EINVAL || errno == ERANGE ||
+				number == 0)
+			goto err_list;
+
+		list[count++] = number;
+		*min = number;
+		*max = number;
+	} else
+		goto err_list;
+
+	token = strtok(NULL, ",");
+
+	while (token != NULL) {
+		if (count == MAX_LIST) {
+			RTE_LOG(WARNING, USER1, "Using only the first %u sizes\n",
+					MAX_LIST);
+			break;
+		}
+
+		number = strtoul(token, NULL, 10);
+
+		if (errno == EINVAL || errno == ERANGE ||
+				number == 0)
+			goto err_list;
+
+		list[count++] = number;
+
+		if (number < *min)
+			*min = number;
+		if (number > *max)
+			*max = number;
+
+		token = strtok(NULL, ",");
+	}
+
+	free(copy_arg);
+	return count;
+
+err_list:
+	free(copy_arg);
+	return -1;
+}
+
+static int
 parse_total_ops(struct cperf_options *opts, const char *arg)
 {
 	int ret = parse_uint32_t(&opts->total_ops, arg);
@@ -153,32 +279,43 @@ parse_pool_sz(struct cperf_options *opts, const char *arg)
 static int
 parse_burst_sz(struct cperf_options *opts, const char *arg)
 {
-	int ret = parse_uint32_t(&opts->burst_sz, arg);
+	int ret;
 
-	if (ret)
-		RTE_LOG(ERR, USER1, "failed to parse burst size");
-	return ret;
+	/* Try parsing the argument as a range, if it fails, parse it as a list */
+	if (parse_range(arg, &opts->min_burst_size, &opts->max_burst_size,
+			&opts->inc_burst_size) < 0) {
+		ret = parse_list(arg, opts->burst_size_list,
+					&opts->min_burst_size,
+					&opts->max_burst_size);
+		if (ret < 0) {
+			RTE_LOG(ERR, USER1, "failed to parse burst size/s\n");
+			return -1;
+		}
+		opts->burst_size_count = ret;
+	}
+
+	return 0;
 }
 
 static int
 parse_buffer_sz(struct cperf_options *opts, const char *arg)
 {
-	uint32_t i, valid_buf_sz[] = {
-			32, 64, 128, 256, 384, 512, 768, 1024, 1280, 1536, 1792,
-			2048
-	};
+	int ret;
 
-	if (parse_uint32_t(&opts->buffer_sz, arg)) {
-		RTE_LOG(ERR, USER1, "failed to parse buffer size");
-		return -1;
+	/* Try parsing the argument as a range, if it fails, parse it as a list */
+	if (parse_range(arg, &opts->min_buffer_size, &opts->max_buffer_size,
+			&opts->inc_buffer_size) < 0) {
+		ret = parse_list(arg, opts->buffer_size_list,
+					&opts->min_buffer_size,
+					&opts->max_buffer_size);
+		if (ret < 0) {
+			RTE_LOG(ERR, USER1, "failed to parse burst size/s\n");
+			return -1;
+		}
+		opts->buffer_size_count = ret;
 	}
 
-	for (i = 0; i < RTE_DIM(valid_buf_sz); i++)
-		if (valid_buf_sz[i] == opts->buffer_sz)
-			return 0;
-
-	RTE_LOG(ERR, USER1, "invalid buffer size specified");
-	return -1;
+	return 0;
 }
 
 static int
@@ -474,8 +611,19 @@ cperf_options_default(struct cperf_options *opts)
 
 	opts->pool_sz = 8192;
 	opts->total_ops = 10000000;
-	opts->burst_sz = 32;
-	opts->buffer_sz = 64;
+
+	opts->buffer_size_list[0] = 64;
+	opts->buffer_size_count = 1;
+	opts->max_buffer_size = 64;
+	opts->min_buffer_size = 64;
+	opts->inc_buffer_size = 0;
+
+	opts->burst_size_list[0] = 32;
+	opts->burst_size_count = 1;
+	opts->max_burst_size = 32;
+	opts->min_burst_size = 32;
+	opts->inc_burst_size = 0;
+
 	opts->segments_nb = 1;
 
 	strncpy(opts->device_type, "crypto_aesni_mb",
@@ -569,7 +717,7 @@ cperf_options_parse(struct cperf_options *options, int argc, char **argv)
 int
 cperf_options_check(struct cperf_options *options)
 {
-	if (options->segments_nb > options->buffer_sz) {
+	if (options->segments_nb > options->min_buffer_size) {
 		RTE_LOG(ERR, USER1,
 				"Segments number greater than buffer size.\n");
 		return -EINVAL;
@@ -599,6 +747,22 @@ cperf_options_check(struct cperf_options *options)
 			options->total_ops > options->pool_sz) {
 		RTE_LOG(ERR, USER1, "Total number of ops must be less than or"
 				" equal to the pool size.\n");
+		return -EINVAL;
+	}
+
+	if (options->test == CPERF_TEST_TYPE_VERIFY &&
+			(options->inc_buffer_size != 0 ||
+			options->buffer_size_count > 1)) {
+		RTE_LOG(ERR, USER1, "Only one buffer size is allowed when "
+				"using the verify test.\n");
+		return -EINVAL;
+	}
+
+	if (options->test == CPERF_TEST_TYPE_VERIFY &&
+			(options->inc_burst_size != 0 ||
+			options->burst_size_count > 1)) {
+		RTE_LOG(ERR, USER1, "Only one burst size is allowed when "
+				"using the verify test.\n");
 		return -EINVAL;
 	}
 
@@ -649,15 +813,37 @@ cperf_options_check(struct cperf_options *options)
 void
 cperf_options_dump(struct cperf_options *opts)
 {
+	uint8_t size_idx;
+
 	printf("# Crypto Performance Application Options:\n");
 	printf("#\n");
 	printf("# cperf test: %s\n", cperf_test_type_strs[opts->test]);
 	printf("#\n");
 	printf("# size of crypto op / mbuf pool: %u\n", opts->pool_sz);
 	printf("# total number of ops: %u\n", opts->total_ops);
-	printf("# burst size: %u\n", opts->burst_sz);
-	printf("# buffer size: %u\n", opts->buffer_sz);
-	printf("# segments per buffer: %u\n", opts->segments_nb);
+	if (opts->inc_buffer_size != 0) {
+		printf("# buffer size:\n");
+		printf("#\t min: %u\n", opts->min_buffer_size);
+		printf("#\t max: %u\n", opts->max_buffer_size);
+		printf("#\t inc: %u\n", opts->inc_buffer_size);
+	} else {
+		printf("# buffer sizes: ");
+		for (size_idx = 0; size_idx < opts->buffer_size_count; size_idx++)
+			printf("%u ", opts->buffer_size_list[size_idx]);
+		printf("\n");
+	}
+	if (opts->inc_burst_size != 0) {
+		printf("# burst size:\n");
+		printf("#\t min: %u\n", opts->min_burst_size);
+		printf("#\t max: %u\n", opts->max_burst_size);
+		printf("#\t inc: %u\n", opts->inc_burst_size);
+	} else {
+		printf("# burst sizes: ");
+		for (size_idx = 0; size_idx < opts->burst_size_count; size_idx++)
+			printf("%u ", opts->burst_size_list[size_idx]);
+		printf("\n");
+	}
+	printf("\n# segments per buffer: %u\n", opts->segments_nb);
 	printf("#\n");
 	printf("# cryptodev type: %s\n", opts->device_type);
 	printf("#\n");

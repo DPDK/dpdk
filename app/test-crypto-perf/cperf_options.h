@@ -32,6 +32,7 @@
 #define CPERF_AUTH_AAD_SZ	("auth-aad-sz")
 #define CPERF_CSV		("csv-friendly")
 
+#define MAX_LIST 32
 
 enum cperf_perf_test_type {
 	CPERF_TEST_TYPE_THROUGHPUT,
@@ -57,8 +58,7 @@ struct cperf_options {
 
 	uint32_t pool_sz;
 	uint32_t total_ops;
-	uint32_t burst_sz;
-	uint32_t buffer_sz;
+	uint32_t test_buffer_size;
 	uint32_t segments_nb;
 
 	char device_type[RTE_CRYPTODEV_NAME_LEN];
@@ -84,6 +84,19 @@ struct cperf_options {
 	uint16_t auth_key_sz;
 	uint16_t auth_digest_sz;
 	uint16_t auth_aad_sz;
+
+	uint32_t buffer_size_list[MAX_LIST];
+	uint8_t buffer_size_count;
+	uint32_t max_buffer_size;
+	uint32_t min_buffer_size;
+	uint32_t inc_buffer_size;
+
+	uint32_t burst_size_list[MAX_LIST];
+	uint8_t burst_size_count;
+	uint32_t max_burst_size;
+	uint32_t min_burst_size;
+	uint32_t inc_burst_size;
+
 };
 
 void

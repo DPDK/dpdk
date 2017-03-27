@@ -264,12 +264,12 @@ parse_entry(char *entry, struct cperf_test_vector *vector,
 		if (tc_found)
 			vector->plaintext.length = data_length;
 		else {
-			if (opts->buffer_sz > data_length) {
+			if (opts->max_buffer_size > data_length) {
 				printf("Global plaintext shorter than "
 					"buffer_sz\n");
 				return -1;
 			}
-			vector->plaintext.length = opts->buffer_sz;
+			vector->plaintext.length = opts->max_buffer_size;
 		}
 
 	} else if (strstr(key_token, "cipher_key")) {
@@ -321,12 +321,12 @@ parse_entry(char *entry, struct cperf_test_vector *vector,
 		if (tc_found)
 			vector->ciphertext.length = data_length;
 		else {
-			if (opts->buffer_sz > data_length) {
+			if (opts->max_buffer_size > data_length) {
 				printf("Global ciphertext shorter than "
 					"buffer_sz\n");
 				return -1;
 			}
-			vector->ciphertext.length = opts->buffer_sz;
+			vector->ciphertext.length = opts->max_buffer_size;
 		}
 
 	} else if (strstr(key_token, "aad")) {
@@ -498,10 +498,10 @@ cperf_test_vector_get_from_file(struct cperf_options *opts)
 
 	/* other values not included in the file */
 	test_vector->data.cipher_offset = 0;
-	test_vector->data.cipher_length = opts->buffer_sz;
+	test_vector->data.cipher_length = opts->max_buffer_size;
 
 	test_vector->data.auth_offset = 0;
-	test_vector->data.auth_length = opts->buffer_sz;
+	test_vector->data.auth_length = opts->max_buffer_size;
 
 	return test_vector;
 }

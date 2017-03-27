@@ -53,7 +53,7 @@ cperf_set_ops_null_cipher(struct rte_crypto_op **ops,
 		sym_op->m_dst = bufs_out[i];
 
 		/* cipher parameters */
-		sym_op->cipher.data.length = options->buffer_sz;
+		sym_op->cipher.data.length = options->test_buffer_size;
 		sym_op->cipher.data.offset = 0;
 	}
 
@@ -78,7 +78,7 @@ cperf_set_ops_null_auth(struct rte_crypto_op **ops,
 		sym_op->m_dst = bufs_out[i];
 
 		/* auth parameters */
-		sym_op->auth.data.length = options->buffer_sz;
+		sym_op->auth.data.length = options->test_buffer_size;
 		sym_op->auth.data.offset = 0;
 	}
 
@@ -107,7 +107,7 @@ cperf_set_ops_cipher(struct rte_crypto_op **ops,
 		sym_op->cipher.iv.phys_addr = test_vector->iv.phys_addr;
 		sym_op->cipher.iv.length = test_vector->iv.length;
 
-		sym_op->cipher.data.length = options->buffer_sz;
+		sym_op->cipher.data.length = options->test_buffer_size;
 		sym_op->cipher.data.offset = 0;
 	}
 
@@ -139,7 +139,7 @@ cperf_set_ops_auth(struct rte_crypto_op **ops,
 			sym_op->auth.digest.length = options->auth_digest_sz;
 		} else {
 
-			uint32_t offset = options->buffer_sz;
+			uint32_t offset = options->test_buffer_size;
 			struct rte_mbuf *buf, *tbuf;
 
 			if (options->out_of_place) {
@@ -166,7 +166,7 @@ cperf_set_ops_auth(struct rte_crypto_op **ops,
 
 		}
 
-		sym_op->auth.data.length = options->buffer_sz;
+		sym_op->auth.data.length = options->test_buffer_size;
 		sym_op->auth.data.offset = 0;
 	}
 
@@ -195,7 +195,7 @@ cperf_set_ops_cipher_auth(struct rte_crypto_op **ops,
 		sym_op->cipher.iv.phys_addr = test_vector->iv.phys_addr;
 		sym_op->cipher.iv.length = test_vector->iv.length;
 
-		sym_op->cipher.data.length = options->buffer_sz;
+		sym_op->cipher.data.length = options->test_buffer_size;
 		sym_op->cipher.data.offset = 0;
 
 		/* authentication parameters */
@@ -206,7 +206,7 @@ cperf_set_ops_cipher_auth(struct rte_crypto_op **ops,
 			sym_op->auth.digest.length = options->auth_digest_sz;
 		} else {
 
-			uint32_t offset = options->buffer_sz;
+			uint32_t offset = options->test_buffer_size;
 			struct rte_mbuf *buf, *tbuf;
 
 			if (options->out_of_place) {
@@ -232,7 +232,7 @@ cperf_set_ops_cipher_auth(struct rte_crypto_op **ops,
 			sym_op->auth.aad.length = options->auth_aad_sz;
 		}
 
-		sym_op->auth.data.length = options->buffer_sz;
+		sym_op->auth.data.length = options->test_buffer_size;
 		sym_op->auth.data.offset = 0;
 	}
 
@@ -261,7 +261,7 @@ cperf_set_ops_aead(struct rte_crypto_op **ops,
 		sym_op->cipher.iv.phys_addr = test_vector->iv.phys_addr;
 		sym_op->cipher.iv.length = test_vector->iv.length;
 
-		sym_op->cipher.data.length = options->buffer_sz;
+		sym_op->cipher.data.length = options->test_buffer_size;
 		sym_op->cipher.data.offset =
 				RTE_ALIGN_CEIL(options->auth_aad_sz, 16);
 
@@ -302,7 +302,7 @@ cperf_set_ops_aead(struct rte_crypto_op **ops,
 			sym_op->auth.digest.length = options->auth_digest_sz;
 		}
 
-		sym_op->auth.data.length = options->buffer_sz;
+		sym_op->auth.data.length = options->test_buffer_size;
 		sym_op->auth.data.offset = options->auth_aad_sz;
 	}
 
