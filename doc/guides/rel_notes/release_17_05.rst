@@ -132,6 +132,17 @@ New Features
   performance enhancements viz. configurable TX data ring, Receive
   Data Ring, ability to register memory regions.
 
+* **Updated the tap driver.**
+
+  * Support MTU modification.
+  * Support packet type for Rx.
+  * Support segmented packets on Rx and Tx.
+  * Speed up Rx on tap when no packets are available.
+  * Support capturing traffic from another netdevice.
+  * Dynamically change link status when the underlying interface state changes.
+  * Generic flow API support for Ethernet, VLAN, IPv4, IPv6, UDP and TCP pattern
+    items with DROP, QUEUE and PASSTHRU actions for ingress traffic.
+
 
 Resolved Issues
 ---------------
