@@ -113,7 +113,7 @@ The following is the list of options that can be given to the EAL:
 .. code-block:: console
 
     ./rte-app [-c COREMASK | -l CORELIST] [-n NUM] [-b <domain:bus:devid.func>] \
-              [--socket-mem=MB,...] [-m MB] [-r NUM] [-v] [--file-prefix] \
+              [--socket-mem=MB,...] [-d LIB.so|DIR] [-m MB] [-r NUM] [-v] [--file-prefix] \
 	      [--proc-type <primary|secondary|auto>] [-- xen-dom0]
 
 The EAL options are as follows:
@@ -136,6 +136,11 @@ The EAL options are as follows:
 
 * ``--socket-mem``:
   Memory to allocate from hugepages on specific sockets.
+
+* ``-d``:
+  Add a driver or driver directory to be loaded.
+  The application should use this option to load the pmd drivers
+  that are built as shared libraries.
 
 * ``-m MB``:
   Memory to allocate from hugepages, regardless of processor socket. It is
