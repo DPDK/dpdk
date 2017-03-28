@@ -359,6 +359,9 @@ int t4_wr_mbox_meat_timeout(struct adapter *adap, int mbox,
 	struct mbox_entry entry;
 	u32 pcie_fw = 0;
 
+	if (!temp)
+		return -ENOMEM;
+
 	if ((size & 15) || size > MBOX_LEN) {
 		free(temp);
 		return -EINVAL;
