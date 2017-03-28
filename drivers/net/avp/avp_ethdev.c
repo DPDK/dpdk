@@ -61,6 +61,9 @@
 
 
 static int avp_dev_configure(struct rte_eth_dev *dev);
+static int avp_dev_start(struct rte_eth_dev *dev);
+static void avp_dev_stop(struct rte_eth_dev *dev);
+static void avp_dev_close(struct rte_eth_dev *dev);
 static void avp_dev_info_get(struct rte_eth_dev *dev,
 			     struct rte_eth_dev_info *dev_info);
 static void avp_vlan_offload_set(struct rte_eth_dev *dev, int mask);
@@ -150,6 +153,9 @@ static const struct rte_pci_id pci_id_avp_map[] = {
  */
 static const struct eth_dev_ops avp_eth_dev_ops = {
 	.dev_configure       = avp_dev_configure,
+	.dev_start           = avp_dev_start,
+	.dev_stop            = avp_dev_stop,
+	.dev_close           = avp_dev_close,
 	.dev_infos_get       = avp_dev_info_get,
 	.vlan_offload_set    = avp_vlan_offload_set,
 	.stats_get           = avp_dev_stats_get,
@@ -315,6 +321,23 @@ done:
 }
 
 static int
+avp_dev_ctrl_set_link_state(struct rte_eth_dev *eth_dev, unsigned int state)
+{
+	struct avp_dev *avp = AVP_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	struct rte_avp_request request;
+	int ret;
+
+	/* setup a link state change request */
+	memset(&request, 0, sizeof(request));
+	request.req_id = RTE_AVP_REQ_CFG_NETWORK_IF;
+	request.if_up = state;
+
+	ret = avp_dev_process_request(avp, &request);
+
+	return ret == 0 ? request.result : ret;
+}
+
+static int
 avp_dev_ctrl_set_config(struct rte_eth_dev *eth_dev,
 			struct rte_avp_device_config *config)
 {
@@ -326,6 +349,22 @@ avp_dev_ctrl_set_config(struct rte_eth_dev *eth_dev,
 	memset(&request, 0, sizeof(request));
 	request.req_id = RTE_AVP_REQ_CFG_DEVICE;
 	memcpy(&request.config, config, sizeof(request.config));
+
+	ret = avp_dev_process_request(avp, &request);
+
+	return ret == 0 ? request.result : ret;
+}
+
+static int
+avp_dev_ctrl_shutdown(struct rte_eth_dev *eth_dev)
+{
+	struct avp_dev *avp = AVP_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	struct rte_avp_request request;
+	int ret;
+
+	/* setup a shutdown request */
+	memset(&request, 0, sizeof(request));
+	request.req_id = RTE_AVP_REQ_SHUTDOWN_DEVICE;
 
 	ret = avp_dev_process_request(avp, &request);
 
@@ -1667,6 +1706,69 @@ unlock:
 	return ret;
 }
 
+static int
+avp_dev_start(struct rte_eth_dev *eth_dev)
+{
+	struct avp_dev *avp = AVP_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	int ret;
+
+	/* disable features that we do not support */
+	eth_dev->data->dev_conf.rxmode.hw_ip_checksum = 0;
+	eth_dev->data->dev_conf.rxmode.hw_vlan_filter = 0;
+	eth_dev->data->dev_conf.rxmode.hw_vlan_extend = 0;
+	eth_dev->data->dev_conf.rxmode.hw_strip_crc = 0;
+
+	/* update link state */
+	ret = avp_dev_ctrl_set_link_state(eth_dev, 1);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Link state change failed by host, ret=%d\n",
+			    ret);
+		goto unlock;
+	}
+
+	/* remember current link state */
+	avp->flags |= AVP_F_LINKUP;
+
+	ret = 0;
+
+unlock:
+	return ret;
+}
+
+static void
+avp_dev_stop(struct rte_eth_dev *eth_dev)
+{
+	struct avp_dev *avp = AVP_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	int ret;
+
+	avp->flags &= ~AVP_F_LINKUP;
+
+	/* update link state */
+	ret = avp_dev_ctrl_set_link_state(eth_dev, 0);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Link state change failed by host, ret=%d\n",
+			    ret);
+	}
+}
+
+static void
+avp_dev_close(struct rte_eth_dev *eth_dev)
+{
+	struct avp_dev *avp = AVP_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	int ret;
+
+	/* remember current link state */
+	avp->flags &= ~AVP_F_LINKUP;
+	avp->flags &= ~AVP_F_CONFIGURED;
+
+	/* update device state */
+	ret = avp_dev_ctrl_shutdown(eth_dev);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Device shutdown failed by host, ret=%d\n",
+			    ret);
+		/* continue */
+	}
+}
 
 static int
 avp_dev_link_update(struct rte_eth_dev *eth_dev,
