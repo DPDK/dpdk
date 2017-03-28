@@ -36,6 +36,8 @@ core-libs += librte_net librte_kvargs
 
 DIRS-$(CONFIG_RTE_LIBRTE_PMD_AF_PACKET) += af_packet
 DEPDIRS-af_packet = $(core-libs)
+DIRS-$(CONFIG_RTE_LIBRTE_AVP_PMD) += avp
+DEPDIRS-avp = $(core-libs)
 DIRS-$(CONFIG_RTE_LIBRTE_BNX2X_PMD) += bnx2x
 DEPDIRS-bnx2x = $(core-libs)
 DIRS-$(CONFIG_RTE_LIBRTE_PMD_BOND) += bonding

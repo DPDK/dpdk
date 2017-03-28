@@ -403,6 +403,11 @@ T: git://dpdk.org/next/dpdk-next-virtio
 F: drivers/net/virtio/
 F: doc/guides/nics/virtio.rst
 
+Wind River AVP
+M: Allain Legacy <allain.legacy@windriver.com>
+M: Matt Peters <matt.peters@windriver.com>
+F: drivers/net/avp/
+
 PCAP PMD
 M: Ferruh Yigit <ferruh.yigit@intel.com>
 F: drivers/net/pcap/

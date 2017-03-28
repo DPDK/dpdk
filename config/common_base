@@ -364,6 +364,11 @@ CONFIG_RTE_LIBRTE_QEDE_FW=""
 CONFIG_RTE_LIBRTE_PMD_AF_PACKET=n
 
 #
+# Compile WRS accelerated virtual port (AVP) guest PMD driver
+#
+CONFIG_RTE_LIBRTE_AVP_PMD=n
+
+#
 # Compile the TAP PMD
 # It is enabled by default for Linux only.
 #
