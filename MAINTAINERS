@@ -407,6 +407,7 @@ Wind River AVP
 M: Allain Legacy <allain.legacy@windriver.com>
 M: Matt Peters <matt.peters@windriver.com>
 F: drivers/net/avp/
+F: doc/guides/nics/avp.rst
 
 PCAP PMD
 M: Ferruh Yigit <ferruh.yigit@intel.com>

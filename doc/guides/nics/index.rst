@@ -36,6 +36,7 @@ Network Interface Controller Drivers
     :numbered:
 
     overview
+    avp
     bnx2x
     bnxt
     cxgbe

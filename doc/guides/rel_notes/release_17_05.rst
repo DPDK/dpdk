@@ -121,6 +121,11 @@ New Features
 
   Added poll mode driver support for Cavium LiquidIO II server adapter VFs.
 
+* **Added support for the Wind River Systems AVP PMD.**
+
+  Added a new networking driver for the AVP device type. Theses devices are
+  specific to the Wind River Systems virtualization platforms.
+
 * **Added vmxnet3 version 3 support.**
 
   Added support for vmxnet3 version 3 which includes several
