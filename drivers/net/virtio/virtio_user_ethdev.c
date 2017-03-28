@@ -243,6 +243,8 @@ static const char *valid_args[] = {
 	VIRTIO_USER_ARG_PATH,
 #define VIRTIO_USER_ARG_QUEUE_SIZE     "queue_size"
 	VIRTIO_USER_ARG_QUEUE_SIZE,
+#define VIRTIO_USER_ARG_INTERFACE_NAME "iface"
+	VIRTIO_USER_ARG_INTERFACE_NAME,
 	NULL
 };
 
@@ -258,6 +260,9 @@ get_string_arg(const char *key __rte_unused,
 		return -EINVAL;
 
 	*(char **)extra_args = strdup(value);
+
+	if (!*(char **)extra_args)
+		return -ENOMEM;
 
 	return 0;
 }
@@ -347,6 +352,7 @@ virtio_user_pmd_probe(const char *name, const char *params)
 	uint64_t cq = VIRTIO_USER_DEF_CQ_EN;
 	uint64_t queue_size = VIRTIO_USER_DEF_Q_SZ;
 	char *path = NULL;
+	char *ifname = NULL;
 	char *mac_addr = NULL;
 	int ret = -1;
 
@@ -373,6 +379,22 @@ virtio_user_pmd_probe(const char *name, const char *params)
 		PMD_INIT_LOG(ERR, "arg %s is mandatory for virtio_user",
 			  VIRTIO_USER_ARG_QUEUE_SIZE);
 		goto end;
+	}
+
+	if (rte_kvargs_count(kvlist, VIRTIO_USER_ARG_INTERFACE_NAME) == 1) {
+		if (is_vhost_user_by_type(path)) {
+			PMD_INIT_LOG(ERR,
+				"arg %s applies only to vhost-kernel backend",
+				VIRTIO_USER_ARG_INTERFACE_NAME);
+			goto end;
+		}
+
+		if (rte_kvargs_process(kvlist, VIRTIO_USER_ARG_INTERFACE_NAME,
+				       &get_string_arg, &ifname) < 0) {
+			PMD_INIT_LOG(ERR, "error to parse %s",
+				     VIRTIO_USER_ARG_INTERFACE_NAME);
+			goto end;
+		}
 	}
 
 	if (rte_kvargs_count(kvlist, VIRTIO_USER_ARG_MAC) == 1) {
@@ -433,7 +455,7 @@ virtio_user_pmd_probe(const char *name, const char *params)
 
 	hw = eth_dev->data->dev_private;
 	if (virtio_user_dev_init(hw->virtio_user_dev, path, queues, cq,
-				 queue_size, mac_addr) < 0) {
+				 queue_size, mac_addr, &ifname) < 0) {
 		PMD_INIT_LOG(ERR, "virtio_user_dev_init fails");
 		virtio_user_eth_dev_free(eth_dev);
 		goto end;
@@ -454,6 +476,8 @@ end:
 		free(path);
 	if (mac_addr)
 		free(mac_addr);
+	if (ifname)
+		free(ifname);
 	return ret;
 }
 
@@ -499,4 +523,5 @@ RTE_PMD_REGISTER_PARAM_STRING(net_virtio_user,
 	"mac=<mac addr> "
 	"cq=<int> "
 	"queue_size=<int> "
-	"queues=<int>");
+	"queues=<int> "
+	"iface=<string>");

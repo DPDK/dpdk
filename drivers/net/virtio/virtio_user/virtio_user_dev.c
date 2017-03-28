@@ -193,9 +193,6 @@ int virtio_user_stop_device(struct virtio_user_dev *dev)
 	for (i = 0; i < dev->max_queue_pairs; ++i)
 		dev->ops->enable_qp(dev, i, 0);
 
-	free(dev->ifname);
-	dev->ifname = NULL;
-
 	return 0;
 }
 
@@ -220,7 +217,7 @@ parse_mac(struct virtio_user_dev *dev, const char *mac)
 	}
 }
 
-static int
+int
 is_vhost_user_by_type(const char *path)
 {
 	struct stat sb;
@@ -268,7 +265,7 @@ virtio_user_dev_setup(struct virtio_user_dev *dev)
 
 int
 virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
-		     int cq, int queue_size, const char *mac)
+		     int cq, int queue_size, const char *mac, char **ifname)
 {
 	snprintf(dev->path, PATH_MAX, "%s", path);
 	dev->max_queue_pairs = queues;
@@ -276,6 +273,11 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 	dev->queue_size = queue_size;
 	dev->mac_specified = 0;
 	parse_mac(dev, mac);
+
+	if (*ifname) {
+		dev->ifname = *ifname;
+		*ifname = NULL;
+	}
 
 	if (virtio_user_dev_setup(dev) < 0) {
 		PMD_INIT_LOG(ERR, "backend set up fails");
@@ -327,6 +329,8 @@ virtio_user_dev_uninit(struct virtio_user_dev *dev)
 		free(dev->vhostfds);
 		free(dev->tapfds);
 	}
+
+	free(dev->ifname);
 }
 
 static uint8_t
