@@ -514,6 +514,7 @@ struct i40e_tunnel_filter_input {
 	enum i40e_tunnel_iptype ip_type;
 	uint16_t flags;          /* Filter type flag */
 	uint32_t tenant_id;      /* Tenant id to match */
+	uint16_t general_fields[32];  /* Big buffer */
 };
 
 struct i40e_tunnel_filter {

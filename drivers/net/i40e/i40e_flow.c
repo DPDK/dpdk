@@ -1725,23 +1725,26 @@ i40e_flow_destroy_tunnel_filter(struct i40e_pf *pf,
 {
 	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
 	struct i40e_vsi *vsi = pf->main_vsi;
-	struct i40e_aqc_add_remove_cloud_filters_element_data cld_filter;
+	struct i40e_aqc_add_rm_cloud_filt_elem_ext cld_filter;
 	struct i40e_tunnel_rule *tunnel_rule = &pf->tunnel;
 	struct i40e_tunnel_filter *node;
 	int ret = 0;
 
 	memset(&cld_filter, 0, sizeof(cld_filter));
 	ether_addr_copy((struct ether_addr *)&filter->input.outer_mac,
-			(struct ether_addr *)&cld_filter.outer_mac);
+			(struct ether_addr *)&cld_filter.element.outer_mac);
 	ether_addr_copy((struct ether_addr *)&filter->input.inner_mac,
-			(struct ether_addr *)&cld_filter.inner_mac);
-	cld_filter.inner_vlan = filter->input.inner_vlan;
-	cld_filter.flags = filter->input.flags;
-	cld_filter.tenant_id = filter->input.tenant_id;
-	cld_filter.queue_number = filter->queue;
+			(struct ether_addr *)&cld_filter.element.inner_mac);
+	cld_filter.element.inner_vlan = filter->input.inner_vlan;
+	cld_filter.element.flags = filter->input.flags;
+	cld_filter.element.tenant_id = filter->input.tenant_id;
+	cld_filter.element.queue_number = filter->queue;
+	rte_memcpy(cld_filter.general_fields,
+		   filter->input.general_fields,
+		   sizeof(cld_filter.general_fields));
 
 	ret = i40e_aq_remove_cloud_filters(hw, vsi->seid,
-					   &cld_filter, 1);
+					   &cld_filter.element, 1);
 	if (ret < 0)
 		return ret;
 

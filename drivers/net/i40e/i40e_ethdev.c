@@ -419,7 +419,7 @@ static int i40e_sw_ethertype_filter_insert(struct i40e_pf *pf,
 				   struct i40e_ethertype_filter *filter);
 
 static int i40e_tunnel_filter_convert(
-	struct i40e_aqc_add_remove_cloud_filters_element_data *cld_filter,
+	struct i40e_aqc_add_rm_cloud_filt_elem_ext *cld_filter,
 	struct i40e_tunnel_filter *tunnel_filter);
 static int i40e_sw_tunnel_filter_insert(struct i40e_pf *pf,
 				struct i40e_tunnel_filter *tunnel_filter);
@@ -6728,24 +6728,27 @@ i40e_dev_get_filter_type(uint16_t filter_type, uint16_t *flag)
 
 /* Convert tunnel filter structure */
 static int
-i40e_tunnel_filter_convert(struct i40e_aqc_add_remove_cloud_filters_element_data
-			   *cld_filter,
-			   struct i40e_tunnel_filter *tunnel_filter)
+i40e_tunnel_filter_convert(
+	struct i40e_aqc_add_rm_cloud_filt_elem_ext *cld_filter,
+	struct i40e_tunnel_filter *tunnel_filter)
 {
-	ether_addr_copy((struct ether_addr *)&cld_filter->outer_mac,
+	ether_addr_copy((struct ether_addr *)&cld_filter->element.outer_mac,
 			(struct ether_addr *)&tunnel_filter->input.outer_mac);
-	ether_addr_copy((struct ether_addr *)&cld_filter->inner_mac,
+	ether_addr_copy((struct ether_addr *)&cld_filter->element.inner_mac,
 			(struct ether_addr *)&tunnel_filter->input.inner_mac);
-	tunnel_filter->input.inner_vlan = cld_filter->inner_vlan;
-	if ((rte_le_to_cpu_16(cld_filter->flags) &
+	tunnel_filter->input.inner_vlan = cld_filter->element.inner_vlan;
+	if ((rte_le_to_cpu_16(cld_filter->element.flags) &
 	     I40E_AQC_ADD_CLOUD_FLAGS_IPV6) ==
 	    I40E_AQC_ADD_CLOUD_FLAGS_IPV6)
 		tunnel_filter->input.ip_type = I40E_TUNNEL_IPTYPE_IPV6;
 	else
 		tunnel_filter->input.ip_type = I40E_TUNNEL_IPTYPE_IPV4;
-	tunnel_filter->input.flags = cld_filter->flags;
-	tunnel_filter->input.tenant_id = cld_filter->tenant_id;
-	tunnel_filter->queue = cld_filter->queue_number;
+	tunnel_filter->input.flags = cld_filter->element.flags;
+	tunnel_filter->input.tenant_id = cld_filter->element.tenant_id;
+	tunnel_filter->queue = cld_filter->element.queue_number;
+	rte_memcpy(tunnel_filter->input.general_fields,
+		   cld_filter->general_fields,
+		   sizeof(cld_filter->general_fields));
 
 	return 0;
 }
@@ -6824,40 +6827,44 @@ i40e_dev_tunnel_filter_set(struct i40e_pf *pf,
 	int val, ret = 0;
 	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
 	struct i40e_vsi *vsi = pf->main_vsi;
-	struct i40e_aqc_add_remove_cloud_filters_element_data  *cld_filter;
-	struct i40e_aqc_add_remove_cloud_filters_element_data  *pfilter;
+	struct i40e_aqc_add_rm_cloud_filt_elem_ext *cld_filter;
+	struct i40e_aqc_add_rm_cloud_filt_elem_ext *pfilter;
 	struct i40e_tunnel_rule *tunnel_rule = &pf->tunnel;
 	struct i40e_tunnel_filter *tunnel, *node;
 	struct i40e_tunnel_filter check_filter; /* Check if filter exists */
 
 	cld_filter = rte_zmalloc("tunnel_filter",
-		sizeof(struct i40e_aqc_add_remove_cloud_filters_element_data),
-		0);
+			 sizeof(struct i40e_aqc_add_rm_cloud_filt_elem_ext),
+	0);
 
 	if (NULL == cld_filter) {
 		PMD_DRV_LOG(ERR, "Failed to alloc memory.");
-		return -EINVAL;
+		return -ENOMEM;
 	}
 	pfilter = cld_filter;
 
-	ether_addr_copy(&tunnel_filter->outer_mac, (struct ether_addr*)&pfilter->outer_mac);
-	ether_addr_copy(&tunnel_filter->inner_mac, (struct ether_addr*)&pfilter->inner_mac);
+	ether_addr_copy(&tunnel_filter->outer_mac,
+			(struct ether_addr *)&pfilter->element.outer_mac);
+	ether_addr_copy(&tunnel_filter->inner_mac,
+			(struct ether_addr *)&pfilter->element.inner_mac);
 
-	pfilter->inner_vlan = rte_cpu_to_le_16(tunnel_filter->inner_vlan);
+	pfilter->element.inner_vlan =
+		rte_cpu_to_le_16(tunnel_filter->inner_vlan);
 	if (tunnel_filter->ip_type == RTE_TUNNEL_IPTYPE_IPV4) {
 		ip_type = I40E_AQC_ADD_CLOUD_FLAGS_IPV4;
 		ipv4_addr = rte_be_to_cpu_32(tunnel_filter->ip_addr.ipv4_addr);
-		rte_memcpy(&pfilter->ipaddr.v4.data,
+		rte_memcpy(&pfilter->element.ipaddr.v4.data,
 				&rte_cpu_to_le_32(ipv4_addr),
-				sizeof(pfilter->ipaddr.v4.data));
+				sizeof(pfilter->element.ipaddr.v4.data));
 	} else {
 		ip_type = I40E_AQC_ADD_CLOUD_FLAGS_IPV6;
 		for (i = 0; i < 4; i++) {
 			convert_ipv6[i] =
 			rte_cpu_to_le_32(rte_be_to_cpu_32(tunnel_filter->ip_addr.ipv6_addr[i]));
 		}
-		rte_memcpy(&pfilter->ipaddr.v6.data, &convert_ipv6,
-				sizeof(pfilter->ipaddr.v6.data));
+		rte_memcpy(&pfilter->element.ipaddr.v6.data,
+			   &convert_ipv6,
+			   sizeof(pfilter->element.ipaddr.v6.data));
 	}
 
 	/* check tunneled type */
@@ -6879,17 +6886,18 @@ i40e_dev_tunnel_filter_set(struct i40e_pf *pf,
 	}
 
 	val = i40e_dev_get_filter_type(tunnel_filter->filter_type,
-						&pfilter->flags);
+				       &pfilter->element.flags);
 	if (val < 0) {
 		rte_free(cld_filter);
 		return -EINVAL;
 	}
 
-	pfilter->flags |= rte_cpu_to_le_16(
+	pfilter->element.flags |= rte_cpu_to_le_16(
 		I40E_AQC_ADD_CLOUD_FLAGS_TO_QUEUE |
 		ip_type | (tun_type << I40E_AQC_ADD_CLOUD_TNL_TYPE_SHIFT));
-	pfilter->tenant_id = rte_cpu_to_le_32(tunnel_filter->tenant_id);
-	pfilter->queue_number = rte_cpu_to_le_16(tunnel_filter->queue_id);
+	pfilter->element.tenant_id = rte_cpu_to_le_32(tunnel_filter->tenant_id);
+	pfilter->element.queue_number =
+		rte_cpu_to_le_16(tunnel_filter->queue_id);
 
 	/* Check if there is the filter in SW list */
 	memset(&check_filter, 0, sizeof(check_filter));
@@ -6906,20 +6914,21 @@ i40e_dev_tunnel_filter_set(struct i40e_pf *pf,
 	}
 
 	if (add) {
-		ret = i40e_aq_add_cloud_filters(hw, vsi->seid, cld_filter, 1);
+		ret = i40e_aq_add_cloud_filters(hw,
+					vsi->seid, &cld_filter->element, 1);
 		if (ret < 0) {
 			PMD_DRV_LOG(ERR, "Failed to add a tunnel filter.");
-			return ret;
+			return -ENOTSUP;
 		}
 		tunnel = rte_zmalloc("tunnel_filter", sizeof(*tunnel), 0);
 		rte_memcpy(tunnel, &check_filter, sizeof(check_filter));
 		ret = i40e_sw_tunnel_filter_insert(pf, tunnel);
 	} else {
 		ret = i40e_aq_remove_cloud_filters(hw, vsi->seid,
-						   cld_filter, 1);
+						   &cld_filter->element, 1);
 		if (ret < 0) {
 			PMD_DRV_LOG(ERR, "Failed to delete a tunnel filter.");
-			return ret;
+			return -ENOTSUP;
 		}
 		ret = i40e_sw_tunnel_filter_del(pf, &node->input);
 	}
@@ -10300,13 +10309,24 @@ i40e_tunnel_filter_restore(struct i40e_pf *pf)
 	struct i40e_tunnel_filter_list
 		*tunnel_list = &pf->tunnel.tunnel_list;
 	struct i40e_tunnel_filter *f;
-	struct i40e_aqc_add_remove_cloud_filters_element_data cld_filter;
+	struct i40e_aqc_add_rm_cloud_filt_elem_ext cld_filter;
 
 	TAILQ_FOREACH(f, tunnel_list, rules) {
 		memset(&cld_filter, 0, sizeof(cld_filter));
-		rte_memcpy(&cld_filter, &f->input, sizeof(f->input));
-		cld_filter.queue_number = f->queue;
-		i40e_aq_add_cloud_filters(hw, vsi->seid, &cld_filter, 1);
+		ether_addr_copy((struct ether_addr *)&f->input.outer_mac,
+			(struct ether_addr *)&cld_filter.element.outer_mac);
+		ether_addr_copy((struct ether_addr *)&f->input.inner_mac,
+			(struct ether_addr *)&cld_filter.element.inner_mac);
+		cld_filter.element.inner_vlan = f->input.inner_vlan;
+		cld_filter.element.flags = f->input.flags;
+		cld_filter.element.tenant_id = f->input.tenant_id;
+		cld_filter.element.queue_number = f->queue;
+		rte_memcpy(cld_filter.general_fields,
+			   f->input.general_fields,
+			   sizeof(f->input.general_fields));
+
+		i40e_aq_add_cloud_filters(hw, vsi->seid,
+					  &cld_filter.element, 1);
 	}
 }
 
