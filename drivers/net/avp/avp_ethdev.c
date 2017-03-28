@@ -79,11 +79,19 @@ static int avp_dev_tx_queue_setup(struct rte_eth_dev *dev,
 				  unsigned int socket_id,
 				  const struct rte_eth_txconf *tx_conf);
 
+static uint16_t avp_recv_scattered_pkts(void *rx_queue,
+					struct rte_mbuf **rx_pkts,
+					uint16_t nb_pkts);
+
+static uint16_t avp_recv_pkts(void *rx_queue,
+			      struct rte_mbuf **rx_pkts,
+			      uint16_t nb_pkts);
 static void avp_dev_rx_queue_release(void *rxq);
 static void avp_dev_tx_queue_release(void *txq);
 #define AVP_DEV_TO_PCI(eth_dev) RTE_DEV_TO_PCI((eth_dev)->device)
 
 
+#define AVP_MAX_RX_BURST 64
 #define AVP_MAX_MAC_ADDRS 1
 #define AVP_MIN_RX_BUFSIZE ETHER_MIN_LEN
 
@@ -299,6 +307,15 @@ avp_dev_ctrl_set_config(struct rte_eth_dev *eth_dev,
 	ret = avp_dev_process_request(avp, &request);
 
 	return ret == 0 ? request.result : ret;
+}
+
+/* translate from host mbuf virtual address to guest virtual address */
+static inline void *
+avp_dev_translate_buffer(struct avp_dev *avp, void *host_mbuf_address)
+{
+	return RTE_PTR_ADD(RTE_PTR_SUB(host_mbuf_address,
+				       (uintptr_t)avp->host_mbuf_addr),
+			   (uintptr_t)avp->mbuf_addr);
 }
 
 /* translate from host physical address to guest virtual address */
@@ -627,6 +644,7 @@ eth_avp_dev_init(struct rte_eth_dev *eth_dev)
 
 	pci_dev = AVP_DEV_TO_PCI(eth_dev);
 	eth_dev->dev_ops = &avp_eth_dev_ops;
+	eth_dev->rx_pkt_burst = &avp_recv_pkts;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
 		/*
@@ -635,6 +653,10 @@ eth_avp_dev_init(struct rte_eth_dev *eth_dev)
 		 * be mapped to the same virtual address so all pointers should
 		 * be valid.
 		 */
+		if (eth_dev->data->scattered_rx) {
+			PMD_DRV_LOG(NOTICE, "AVP device configured for chained mbufs\n");
+			eth_dev->rx_pkt_burst = avp_recv_scattered_pkts;
+		}
 		return 0;
 	}
 
@@ -702,6 +724,38 @@ static struct eth_driver rte_avp_pmd = {
 };
 
 static int
+avp_dev_enable_scattered(struct rte_eth_dev *eth_dev,
+			 struct avp_dev *avp)
+{
+	unsigned int max_rx_pkt_len;
+
+	max_rx_pkt_len = eth_dev->data->dev_conf.rxmode.max_rx_pkt_len;
+
+	if ((max_rx_pkt_len > avp->guest_mbuf_size) ||
+	    (max_rx_pkt_len > avp->host_mbuf_size)) {
+		/*
+		 * If the guest MTU is greater than either the host or guest
+		 * buffers then chained mbufs have to be enabled in the TX
+		 * direction.  It is assumed that the application will not need
+		 * to send packets larger than their max_rx_pkt_len (MRU).
+		 */
+		return 1;
+	}
+
+	if ((avp->max_rx_pkt_len > avp->guest_mbuf_size) ||
+	    (avp->max_rx_pkt_len > avp->host_mbuf_size)) {
+		/*
+		 * If the host MRU is greater than its own mbuf size or the
+		 * guest mbuf size then chained mbufs have to be enabled in the
+		 * RX direction.
+		 */
+		return 1;
+	}
+
+	return 0;
+}
+
+static int
 avp_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 		       uint16_t rx_queue_id,
 		       uint16_t nb_rx_desc,
@@ -726,6 +780,14 @@ avp_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 	mbp_priv = rte_mempool_get_priv(pool);
 	avp->guest_mbuf_size = (uint16_t)(mbp_priv->mbuf_data_room_size);
 	avp->guest_mbuf_size -= RTE_PKTMBUF_HEADROOM;
+
+	if (avp_dev_enable_scattered(eth_dev, avp)) {
+		if (!eth_dev->data->scattered_rx) {
+			PMD_DRV_LOG(NOTICE, "AVP device configured for chained mbufs\n");
+			eth_dev->data->scattered_rx = 1;
+			eth_dev->rx_pkt_burst = avp_recv_scattered_pkts;
+		}
+	}
 
 	PMD_DRV_LOG(DEBUG, "AVP max_rx_pkt_len=(%u,%u) mbuf_size=(%u,%u)\n",
 		    avp->max_rx_pkt_len,
@@ -795,6 +857,395 @@ avp_dev_tx_queue_setup(struct rte_eth_dev *eth_dev,
 	(void)nb_tx_desc;
 	(void)tx_conf;
 	return 0;
+}
+
+static inline int
+_avp_cmp_ether_addr(struct ether_addr *a, struct ether_addr *b)
+{
+	uint16_t *_a = (uint16_t *)&a->addr_bytes[0];
+	uint16_t *_b = (uint16_t *)&b->addr_bytes[0];
+	return (_a[0] ^ _b[0]) | (_a[1] ^ _b[1]) | (_a[2] ^ _b[2]);
+}
+
+static inline int
+_avp_mac_filter(struct avp_dev *avp, struct rte_mbuf *m)
+{
+	struct ether_hdr *eth = rte_pktmbuf_mtod(m, struct ether_hdr *);
+
+	if (likely(_avp_cmp_ether_addr(&avp->ethaddr, &eth->d_addr) == 0)) {
+		/* allow all packets destined to our address */
+		return 0;
+	}
+
+	if (likely(is_broadcast_ether_addr(&eth->d_addr))) {
+		/* allow all broadcast packets */
+		return 0;
+	}
+
+	if (likely(is_multicast_ether_addr(&eth->d_addr))) {
+		/* allow all multicast packets */
+		return 0;
+	}
+
+	if (avp->flags & AVP_F_PROMISC) {
+		/* allow all packets when in promiscuous mode */
+		return 0;
+	}
+
+	return -1;
+}
+
+#ifdef RTE_LIBRTE_AVP_DEBUG_BUFFERS
+static inline void
+__avp_dev_buffer_sanity_check(struct avp_dev *avp, struct rte_avp_desc *buf)
+{
+	struct rte_avp_desc *first_buf;
+	struct rte_avp_desc *pkt_buf;
+	unsigned int pkt_len;
+	unsigned int nb_segs;
+	void *pkt_data;
+	unsigned int i;
+
+	first_buf = avp_dev_translate_buffer(avp, buf);
+
+	i = 0;
+	pkt_len = 0;
+	nb_segs = first_buf->nb_segs;
+	do {
+		/* Adjust pointers for guest addressing */
+		pkt_buf = avp_dev_translate_buffer(avp, buf);
+		if (pkt_buf == NULL)
+			rte_panic("bad buffer: segment %u has an invalid address %p\n",
+				  i, buf);
+		pkt_data = avp_dev_translate_buffer(avp, pkt_buf->data);
+		if (pkt_data == NULL)
+			rte_panic("bad buffer: segment %u has a NULL data pointer\n",
+				  i);
+		if (pkt_buf->data_len == 0)
+			rte_panic("bad buffer: segment %u has 0 data length\n",
+				  i);
+		pkt_len += pkt_buf->data_len;
+		nb_segs--;
+		i++;
+
+	} while (nb_segs && (buf = pkt_buf->next) != NULL);
+
+	if (nb_segs != 0)
+		rte_panic("bad buffer: expected %u segments found %u\n",
+			  first_buf->nb_segs, (first_buf->nb_segs - nb_segs));
+	if (pkt_len != first_buf->pkt_len)
+		rte_panic("bad buffer: expected length %u found %u\n",
+			  first_buf->pkt_len, pkt_len);
+}
+
+#define avp_dev_buffer_sanity_check(a, b) \
+	__avp_dev_buffer_sanity_check((a), (b))
+
+#else /* RTE_LIBRTE_AVP_DEBUG_BUFFERS */
+
+#define avp_dev_buffer_sanity_check(a, b) do {} while (0)
+
+#endif
+
+/*
+ * Copy a host buffer chain to a set of mbufs.	This function assumes that
+ * there exactly the required number of mbufs to copy all source bytes.
+ */
+static inline struct rte_mbuf *
+avp_dev_copy_from_buffers(struct avp_dev *avp,
+			  struct rte_avp_desc *buf,
+			  struct rte_mbuf **mbufs,
+			  unsigned int count)
+{
+	struct rte_mbuf *m_previous = NULL;
+	struct rte_avp_desc *pkt_buf;
+	unsigned int total_length = 0;
+	unsigned int copy_length;
+	unsigned int src_offset;
+	struct rte_mbuf *m;
+	uint16_t ol_flags;
+	uint16_t vlan_tci;
+	void *pkt_data;
+	unsigned int i;
+
+	avp_dev_buffer_sanity_check(avp, buf);
+
+	/* setup the first source buffer */
+	pkt_buf = avp_dev_translate_buffer(avp, buf);
+	pkt_data = avp_dev_translate_buffer(avp, pkt_buf->data);
+	total_length = pkt_buf->pkt_len;
+	src_offset = 0;
+
+	if (pkt_buf->ol_flags & RTE_AVP_RX_VLAN_PKT) {
+		ol_flags = PKT_RX_VLAN_PKT;
+		vlan_tci = pkt_buf->vlan_tci;
+	} else {
+		ol_flags = 0;
+		vlan_tci = 0;
+	}
+
+	for (i = 0; (i < count) && (buf != NULL); i++) {
+		/* fill each destination buffer */
+		m = mbufs[i];
+
+		if (m_previous != NULL)
+			m_previous->next = m;
+
+		m_previous = m;
+
+		do {
+			/*
+			 * Copy as many source buffers as will fit in the
+			 * destination buffer.
+			 */
+			copy_length = RTE_MIN((avp->guest_mbuf_size -
+					       rte_pktmbuf_data_len(m)),
+					      (pkt_buf->data_len -
+					       src_offset));
+			rte_memcpy(RTE_PTR_ADD(rte_pktmbuf_mtod(m, void *),
+					       rte_pktmbuf_data_len(m)),
+				   RTE_PTR_ADD(pkt_data, src_offset),
+				   copy_length);
+			rte_pktmbuf_data_len(m) += copy_length;
+			src_offset += copy_length;
+
+			if (likely(src_offset == pkt_buf->data_len)) {
+				/* need a new source buffer */
+				buf = pkt_buf->next;
+				if (buf != NULL) {
+					pkt_buf = avp_dev_translate_buffer(
+						avp, buf);
+					pkt_data = avp_dev_translate_buffer(
+						avp, pkt_buf->data);
+					src_offset = 0;
+				}
+			}
+
+			if (unlikely(rte_pktmbuf_data_len(m) ==
+				     avp->guest_mbuf_size)) {
+				/* need a new destination mbuf */
+				break;
+			}
+
+		} while (buf != NULL);
+	}
+
+	m = mbufs[0];
+	m->ol_flags = ol_flags;
+	m->nb_segs = count;
+	rte_pktmbuf_pkt_len(m) = total_length;
+	m->vlan_tci = vlan_tci;
+
+	__rte_mbuf_sanity_check(m, 1);
+
+	return m;
+}
+
+static uint16_t
+avp_recv_scattered_pkts(void *rx_queue,
+			struct rte_mbuf **rx_pkts,
+			uint16_t nb_pkts)
+{
+	struct avp_queue *rxq = (struct avp_queue *)rx_queue;
+	struct rte_avp_desc *avp_bufs[AVP_MAX_RX_BURST];
+	struct rte_mbuf *mbufs[RTE_AVP_MAX_MBUF_SEGMENTS];
+	struct avp_dev *avp = rxq->avp;
+	struct rte_avp_desc *pkt_buf;
+	struct rte_avp_fifo *free_q;
+	struct rte_avp_fifo *rx_q;
+	struct rte_avp_desc *buf;
+	unsigned int count, avail, n;
+	unsigned int guest_mbuf_size;
+	struct rte_mbuf *m;
+	unsigned int required;
+	unsigned int buf_len;
+	unsigned int port_id;
+	unsigned int i;
+
+	guest_mbuf_size = avp->guest_mbuf_size;
+	port_id = avp->port_id;
+	rx_q = avp->rx_q[rxq->queue_id];
+	free_q = avp->free_q[rxq->queue_id];
+
+	/* setup next queue to service */
+	rxq->queue_id = (rxq->queue_id < rxq->queue_limit) ?
+		(rxq->queue_id + 1) : rxq->queue_base;
+
+	/* determine how many slots are available in the free queue */
+	count = avp_fifo_free_count(free_q);
+
+	/* determine how many packets are available in the rx queue */
+	avail = avp_fifo_count(rx_q);
+
+	/* determine how many packets can be received */
+	count = RTE_MIN(count, avail);
+	count = RTE_MIN(count, nb_pkts);
+	count = RTE_MIN(count, (unsigned int)AVP_MAX_RX_BURST);
+
+	if (unlikely(count == 0)) {
+		/* no free buffers, or no buffers on the rx queue */
+		return 0;
+	}
+
+	/* retrieve pending packets */
+	n = avp_fifo_get(rx_q, (void **)&avp_bufs, count);
+	PMD_RX_LOG(DEBUG, "Receiving %u packets from Rx queue at %p\n",
+		   count, rx_q);
+
+	count = 0;
+	for (i = 0; i < n; i++) {
+		/* prefetch next entry while processing current one */
+		if (i + 1 < n) {
+			pkt_buf = avp_dev_translate_buffer(avp,
+							   avp_bufs[i + 1]);
+			rte_prefetch0(pkt_buf);
+		}
+		buf = avp_bufs[i];
+
+		/* Peek into the first buffer to determine the total length */
+		pkt_buf = avp_dev_translate_buffer(avp, buf);
+		buf_len = pkt_buf->pkt_len;
+
+		/* Allocate enough mbufs to receive the entire packet */
+		required = (buf_len + guest_mbuf_size - 1) / guest_mbuf_size;
+		if (rte_pktmbuf_alloc_bulk(avp->pool, mbufs, required)) {
+			rxq->dev_data->rx_mbuf_alloc_failed++;
+			continue;
+		}
+
+		/* Copy the data from the buffers to our mbufs */
+		m = avp_dev_copy_from_buffers(avp, buf, mbufs, required);
+
+		/* finalize mbuf */
+		m->port = port_id;
+
+		if (_avp_mac_filter(avp, m) != 0) {
+			/* silently discard packets not destined to our MAC */
+			rte_pktmbuf_free(m);
+			continue;
+		}
+
+		/* return new mbuf to caller */
+		rx_pkts[count++] = m;
+		rxq->bytes += buf_len;
+	}
+
+	rxq->packets += count;
+
+	/* return the buffers to the free queue */
+	avp_fifo_put(free_q, (void **)&avp_bufs[0], n);
+
+	return count;
+}
+
+
+static uint16_t
+avp_recv_pkts(void *rx_queue,
+	      struct rte_mbuf **rx_pkts,
+	      uint16_t nb_pkts)
+{
+	struct avp_queue *rxq = (struct avp_queue *)rx_queue;
+	struct rte_avp_desc *avp_bufs[AVP_MAX_RX_BURST];
+	struct avp_dev *avp = rxq->avp;
+	struct rte_avp_desc *pkt_buf;
+	struct rte_avp_fifo *free_q;
+	struct rte_avp_fifo *rx_q;
+	unsigned int count, avail, n;
+	unsigned int pkt_len;
+	struct rte_mbuf *m;
+	char *pkt_data;
+	unsigned int i;
+
+	rx_q = avp->rx_q[rxq->queue_id];
+	free_q = avp->free_q[rxq->queue_id];
+
+	/* setup next queue to service */
+	rxq->queue_id = (rxq->queue_id < rxq->queue_limit) ?
+		(rxq->queue_id + 1) : rxq->queue_base;
+
+	/* determine how many slots are available in the free queue */
+	count = avp_fifo_free_count(free_q);
+
+	/* determine how many packets are available in the rx queue */
+	avail = avp_fifo_count(rx_q);
+
+	/* determine how many packets can be received */
+	count = RTE_MIN(count, avail);
+	count = RTE_MIN(count, nb_pkts);
+	count = RTE_MIN(count, (unsigned int)AVP_MAX_RX_BURST);
+
+	if (unlikely(count == 0)) {
+		/* no free buffers, or no buffers on the rx queue */
+		return 0;
+	}
+
+	/* retrieve pending packets */
+	n = avp_fifo_get(rx_q, (void **)&avp_bufs, count);
+	PMD_RX_LOG(DEBUG, "Receiving %u packets from Rx queue at %p\n",
+		   count, rx_q);
+
+	count = 0;
+	for (i = 0; i < n; i++) {
+		/* prefetch next entry while processing current one */
+		if (i < n - 1) {
+			pkt_buf = avp_dev_translate_buffer(avp,
+							   avp_bufs[i + 1]);
+			rte_prefetch0(pkt_buf);
+		}
+
+		/* Adjust host pointers for guest addressing */
+		pkt_buf = avp_dev_translate_buffer(avp, avp_bufs[i]);
+		pkt_data = avp_dev_translate_buffer(avp, pkt_buf->data);
+		pkt_len = pkt_buf->pkt_len;
+
+		if (unlikely((pkt_len > avp->guest_mbuf_size) ||
+			     (pkt_buf->nb_segs > 1))) {
+			/*
+			 * application should be using the scattered receive
+			 * function
+			 */
+			rxq->errors++;
+			continue;
+		}
+
+		/* process each packet to be transmitted */
+		m = rte_pktmbuf_alloc(avp->pool);
+		if (unlikely(m == NULL)) {
+			rxq->dev_data->rx_mbuf_alloc_failed++;
+			continue;
+		}
+
+		/* copy data out of the host buffer to our buffer */
+		m->data_off = RTE_PKTMBUF_HEADROOM;
+		rte_memcpy(rte_pktmbuf_mtod(m, void *), pkt_data, pkt_len);
+
+		/* initialize the local mbuf */
+		rte_pktmbuf_data_len(m) = pkt_len;
+		rte_pktmbuf_pkt_len(m) = pkt_len;
+		m->port = avp->port_id;
+
+		if (pkt_buf->ol_flags & RTE_AVP_RX_VLAN_PKT) {
+			m->ol_flags = PKT_RX_VLAN_PKT;
+			m->vlan_tci = pkt_buf->vlan_tci;
+		}
+
+		if (_avp_mac_filter(avp, m) != 0) {
+			/* silently discard packets not destined to our MAC */
+			rte_pktmbuf_free(m);
+			continue;
+		}
+
+		/* return new mbuf to caller */
+		rx_pkts[count++] = m;
+		rxq->bytes += pkt_len;
+	}
+
+	rxq->packets += count;
+
+	/* return the buffers to the free queue */
+	avp_fifo_put(free_q, (void **)&avp_bufs[0], n);
+
+	return count;
 }
 
 static void
