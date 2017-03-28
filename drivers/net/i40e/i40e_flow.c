@@ -90,10 +90,6 @@ static int i40e_flow_parse_fdir_action(struct rte_eth_dev *dev,
 				       const struct rte_flow_action *actions,
 				       struct rte_flow_error *error,
 				       struct rte_eth_fdir_filter *filter);
-static int i40e_flow_parse_tunnel_pattern(__rte_unused struct rte_eth_dev *dev,
-				  const struct rte_flow_item *pattern,
-				  struct rte_flow_error *error,
-				  struct rte_eth_tunnel_filter_conf *filter);
 static int i40e_flow_parse_tunnel_action(struct rte_eth_dev *dev,
 				 const struct rte_flow_action *actions,
 				 struct rte_flow_error *error,
@@ -112,12 +108,12 @@ static int i40e_flow_parse_fdir_filter(struct rte_eth_dev *dev,
 				       const struct rte_flow_action actions[],
 				       struct rte_flow_error *error,
 				       union i40e_filter_t *filter);
-static int i40e_flow_parse_tunnel_filter(struct rte_eth_dev *dev,
-					 const struct rte_flow_attr *attr,
-					 const struct rte_flow_item pattern[],
-					 const struct rte_flow_action actions[],
-					 struct rte_flow_error *error,
-					 union i40e_filter_t *filter);
+static int i40e_flow_parse_vxlan_filter(struct rte_eth_dev *dev,
+					const struct rte_flow_attr *attr,
+					const struct rte_flow_item pattern[],
+					const struct rte_flow_action actions[],
+					struct rte_flow_error *error,
+					union i40e_filter_t *filter);
 static int i40e_flow_destroy_ethertype_filter(struct i40e_pf *pf,
 				      struct i40e_ethertype_filter *filter);
 static int i40e_flow_destroy_tunnel_filter(struct i40e_pf *pf,
@@ -302,11 +298,11 @@ static struct i40e_valid_pattern i40e_supported_patterns[] = {
 	{ pattern_fdir_ipv6_tcp_ext, i40e_flow_parse_fdir_filter },
 	{ pattern_fdir_ipv6_sctp, i40e_flow_parse_fdir_filter },
 	{ pattern_fdir_ipv6_sctp_ext, i40e_flow_parse_fdir_filter },
-	/* tunnel */
-	{ pattern_vxlan_1, i40e_flow_parse_tunnel_filter },
-	{ pattern_vxlan_2, i40e_flow_parse_tunnel_filter },
-	{ pattern_vxlan_3, i40e_flow_parse_tunnel_filter },
-	{ pattern_vxlan_4, i40e_flow_parse_tunnel_filter },
+	/* VXLAN */
+	{ pattern_vxlan_1, i40e_flow_parse_vxlan_filter },
+	{ pattern_vxlan_2, i40e_flow_parse_vxlan_filter },
+	{ pattern_vxlan_3, i40e_flow_parse_vxlan_filter },
+	{ pattern_vxlan_4, i40e_flow_parse_vxlan_filter },
 };
 
 #define NEXT_ITEM_OF_ACTION(act, actions, index)                        \
@@ -1205,7 +1201,8 @@ i40e_check_tenant_id_mask(const uint8_t *mask)
  *    filled with 0.
  */
 static int
-i40e_flow_parse_vxlan_pattern(const struct rte_flow_item *pattern,
+i40e_flow_parse_vxlan_pattern(__rte_unused struct rte_eth_dev *dev,
+			      const struct rte_flow_item *pattern,
 			      struct rte_flow_error *error,
 			      struct rte_eth_tunnel_filter_conf *filter)
 {
@@ -1469,32 +1466,19 @@ i40e_flow_parse_vxlan_pattern(const struct rte_flow_item *pattern,
 }
 
 static int
-i40e_flow_parse_tunnel_pattern(__rte_unused struct rte_eth_dev *dev,
-			       const struct rte_flow_item *pattern,
-			       struct rte_flow_error *error,
-			       struct rte_eth_tunnel_filter_conf *filter)
-{
-	int ret;
-
-	ret = i40e_flow_parse_vxlan_pattern(pattern, error, filter);
-
-	return ret;
-}
-
-static int
-i40e_flow_parse_tunnel_filter(struct rte_eth_dev *dev,
-			      const struct rte_flow_attr *attr,
-			      const struct rte_flow_item pattern[],
-			      const struct rte_flow_action actions[],
-			      struct rte_flow_error *error,
-			      union i40e_filter_t *filter)
+i40e_flow_parse_vxlan_filter(struct rte_eth_dev *dev,
+			     const struct rte_flow_attr *attr,
+			     const struct rte_flow_item pattern[],
+			     const struct rte_flow_action actions[],
+			     struct rte_flow_error *error,
+			     union i40e_filter_t *filter)
 {
 	struct rte_eth_tunnel_filter_conf *tunnel_filter =
 		&filter->tunnel_filter;
 	int ret;
 
-	ret = i40e_flow_parse_tunnel_pattern(dev, pattern,
-					     error, tunnel_filter);
+	ret = i40e_flow_parse_vxlan_pattern(dev, pattern,
+					    error, tunnel_filter);
 	if (ret)
 		return ret;
 
