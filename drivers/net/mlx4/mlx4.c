@@ -5524,10 +5524,8 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	list = ibv_get_device_list(&i);
 	if (list == NULL) {
 		assert(errno);
-		if (errno == ENOSYS) {
-			WARN("cannot list devices, is ib_uverbs loaded?");
-			return 0;
-		}
+		if (errno == ENOSYS)
+			ERROR("cannot list devices, is ib_uverbs loaded?");
 		return -errno;
 	}
 	assert(i >= 0);
@@ -5559,11 +5557,11 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		ibv_free_device_list(list);
 		switch (err) {
 		case 0:
-			WARN("cannot access device, is mlx4_ib loaded?");
-			return 0;
+			ERROR("cannot access device, is mlx4_ib loaded?");
+			return -ENODEV;
 		case EINVAL:
-			WARN("cannot use device, are drivers up to date?");
-			return 0;
+			ERROR("cannot use device, are drivers up to date?");
+			return -EINVAL;
 		}
 		assert(err > 0);
 		return -err;
