@@ -66,7 +66,21 @@ static void avp_dev_info_get(struct rte_eth_dev *dev,
 static void avp_vlan_offload_set(struct rte_eth_dev *dev, int mask);
 static int avp_dev_link_update(struct rte_eth_dev *dev,
 			       __rte_unused int wait_to_complete);
+static int avp_dev_rx_queue_setup(struct rte_eth_dev *dev,
+				  uint16_t rx_queue_id,
+				  uint16_t nb_rx_desc,
+				  unsigned int socket_id,
+				  const struct rte_eth_rxconf *rx_conf,
+				  struct rte_mempool *pool);
 
+static int avp_dev_tx_queue_setup(struct rte_eth_dev *dev,
+				  uint16_t tx_queue_id,
+				  uint16_t nb_tx_desc,
+				  unsigned int socket_id,
+				  const struct rte_eth_txconf *tx_conf);
+
+static void avp_dev_rx_queue_release(void *rxq);
+static void avp_dev_tx_queue_release(void *txq);
 #define AVP_DEV_TO_PCI(eth_dev) RTE_DEV_TO_PCI((eth_dev)->device)
 
 
@@ -112,6 +126,10 @@ static const struct eth_dev_ops avp_eth_dev_ops = {
 	.dev_infos_get       = avp_dev_info_get,
 	.vlan_offload_set    = avp_vlan_offload_set,
 	.link_update         = avp_dev_link_update,
+	.rx_queue_setup      = avp_dev_rx_queue_setup,
+	.rx_queue_release    = avp_dev_rx_queue_release,
+	.tx_queue_setup      = avp_dev_tx_queue_setup,
+	.tx_queue_release    = avp_dev_tx_queue_release,
 };
 
 /**@{ AVP device flags */
@@ -399,6 +417,42 @@ avp_dev_check_regions(struct rte_eth_dev *eth_dev)
 }
 
 static void
+_avp_set_rx_queue_mappings(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
+{
+	struct avp_dev *avp =
+		AVP_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	struct avp_queue *rxq;
+	uint16_t queue_count;
+	uint16_t remainder;
+
+	rxq = (struct avp_queue *)eth_dev->data->rx_queues[rx_queue_id];
+
+	/*
+	 * Must map all AVP fifos as evenly as possible between the configured
+	 * device queues.  Each device queue will service a subset of the AVP
+	 * fifos. If there is an odd number of device queues the first set of
+	 * device queues will get the extra AVP fifos.
+	 */
+	queue_count = avp->num_rx_queues / eth_dev->data->nb_rx_queues;
+	remainder = avp->num_rx_queues % eth_dev->data->nb_rx_queues;
+	if (rx_queue_id < remainder) {
+		/* these queues must service one extra FIFO */
+		rxq->queue_base = rx_queue_id * (queue_count + 1);
+		rxq->queue_limit = rxq->queue_base + (queue_count + 1) - 1;
+	} else {
+		/* these queues service the regular number of FIFO */
+		rxq->queue_base = ((remainder * (queue_count + 1)) +
+				   ((rx_queue_id - remainder) * queue_count));
+		rxq->queue_limit = rxq->queue_base + queue_count - 1;
+	}
+
+	PMD_DRV_LOG(DEBUG, "rxq %u at %p base %u limit %u\n",
+		    rx_queue_id, rxq, rxq->queue_base, rxq->queue_limit);
+
+	rxq->queue_id = rxq->queue_base;
+}
+
+static void
 _avp_set_queue_counts(struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pci_dev = AVP_DEV_TO_PCI(eth_dev);
@@ -646,6 +700,130 @@ static struct eth_driver rte_avp_pmd = {
 	.eth_dev_uninit = eth_avp_dev_uninit,
 	.dev_private_size = sizeof(struct avp_adapter),
 };
+
+static int
+avp_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
+		       uint16_t rx_queue_id,
+		       uint16_t nb_rx_desc,
+		       unsigned int socket_id,
+		       const struct rte_eth_rxconf *rx_conf,
+		       struct rte_mempool *pool)
+{
+	struct avp_dev *avp = AVP_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	struct rte_pktmbuf_pool_private *mbp_priv;
+	struct avp_queue *rxq;
+
+	if (rx_queue_id >= eth_dev->data->nb_rx_queues) {
+		PMD_DRV_LOG(ERR, "RX queue id is out of range: rx_queue_id=%u, nb_rx_queues=%u\n",
+			    rx_queue_id, eth_dev->data->nb_rx_queues);
+		return -EINVAL;
+	}
+
+	/* Save mbuf pool pointer */
+	avp->pool = pool;
+
+	/* Save the local mbuf size */
+	mbp_priv = rte_mempool_get_priv(pool);
+	avp->guest_mbuf_size = (uint16_t)(mbp_priv->mbuf_data_room_size);
+	avp->guest_mbuf_size -= RTE_PKTMBUF_HEADROOM;
+
+	PMD_DRV_LOG(DEBUG, "AVP max_rx_pkt_len=(%u,%u) mbuf_size=(%u,%u)\n",
+		    avp->max_rx_pkt_len,
+		    eth_dev->data->dev_conf.rxmode.max_rx_pkt_len,
+		    avp->host_mbuf_size,
+		    avp->guest_mbuf_size);
+
+	/* allocate a queue object */
+	rxq = rte_zmalloc_socket("ethdev RX queue", sizeof(struct avp_queue),
+				 RTE_CACHE_LINE_SIZE, socket_id);
+	if (rxq == NULL) {
+		PMD_DRV_LOG(ERR, "Failed to allocate new Rx queue object\n");
+		return -ENOMEM;
+	}
+
+	/* save back pointers to AVP and Ethernet devices */
+	rxq->avp = avp;
+	rxq->dev_data = eth_dev->data;
+	eth_dev->data->rx_queues[rx_queue_id] = (void *)rxq;
+
+	/* setup the queue receive mapping for the current queue. */
+	_avp_set_rx_queue_mappings(eth_dev, rx_queue_id);
+
+	PMD_DRV_LOG(DEBUG, "Rx queue %u setup at %p\n", rx_queue_id, rxq);
+
+	(void)nb_rx_desc;
+	(void)rx_conf;
+	return 0;
+}
+
+static int
+avp_dev_tx_queue_setup(struct rte_eth_dev *eth_dev,
+		       uint16_t tx_queue_id,
+		       uint16_t nb_tx_desc,
+		       unsigned int socket_id,
+		       const struct rte_eth_txconf *tx_conf)
+{
+	struct avp_dev *avp = AVP_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	struct avp_queue *txq;
+
+	if (tx_queue_id >= eth_dev->data->nb_tx_queues) {
+		PMD_DRV_LOG(ERR, "TX queue id is out of range: tx_queue_id=%u, nb_tx_queues=%u\n",
+			    tx_queue_id, eth_dev->data->nb_tx_queues);
+		return -EINVAL;
+	}
+
+	/* allocate a queue object */
+	txq = rte_zmalloc_socket("ethdev TX queue", sizeof(struct avp_queue),
+				 RTE_CACHE_LINE_SIZE, socket_id);
+	if (txq == NULL) {
+		PMD_DRV_LOG(ERR, "Failed to allocate new Tx queue object\n");
+		return -ENOMEM;
+	}
+
+	/* only the configured set of transmit queues are used */
+	txq->queue_id = tx_queue_id;
+	txq->queue_base = tx_queue_id;
+	txq->queue_limit = tx_queue_id;
+
+	/* save back pointers to AVP and Ethernet devices */
+	txq->avp = avp;
+	txq->dev_data = eth_dev->data;
+	eth_dev->data->tx_queues[tx_queue_id] = (void *)txq;
+
+	PMD_DRV_LOG(DEBUG, "Tx queue %u setup at %p\n", tx_queue_id, txq);
+
+	(void)nb_tx_desc;
+	(void)tx_conf;
+	return 0;
+}
+
+static void
+avp_dev_rx_queue_release(void *rx_queue)
+{
+	struct avp_queue *rxq = (struct avp_queue *)rx_queue;
+	struct avp_dev *avp = rxq->avp;
+	struct rte_eth_dev_data *data = avp->dev_data;
+	unsigned int i;
+
+	for (i = 0; i < avp->num_rx_queues; i++) {
+		if (data->rx_queues[i] == rxq)
+			data->rx_queues[i] = NULL;
+	}
+}
+
+static void
+avp_dev_tx_queue_release(void *tx_queue)
+{
+	struct avp_queue *txq = (struct avp_queue *)tx_queue;
+	struct avp_dev *avp = txq->avp;
+	struct rte_eth_dev_data *data = avp->dev_data;
+	unsigned int i;
+
+	for (i = 0; i < avp->num_tx_queues; i++) {
+		if (data->tx_queues[i] == txq)
+			data->tx_queues[i] = NULL;
+	}
+}
 
 static int
 avp_dev_configure(struct rte_eth_dev *eth_dev)
