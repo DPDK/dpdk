@@ -515,6 +515,7 @@ struct i40e_tunnel_filter_input {
 	uint16_t flags;          /* Filter type flag */
 	uint32_t tenant_id;      /* Tenant id to match */
 	uint16_t general_fields[32];  /* Big buffer */
+	uint16_t vf_id;         /* VF id for tunnel filtering. */
 };
 
 struct i40e_tunnel_filter {
@@ -529,6 +530,33 @@ struct i40e_tunnel_rule {
 	struct i40e_tunnel_filter_list tunnel_list;
 	struct i40e_tunnel_filter  **hash_map;
 	struct rte_hash *hash_table;
+};
+
+/**
+ * Tunneling Packet filter configuration.
+ */
+struct i40e_tunnel_filter_conf {
+	struct ether_addr outer_mac;    /**< Outer MAC address to match. */
+	struct ether_addr inner_mac;    /**< Inner MAC address to match. */
+	uint16_t inner_vlan;            /**< Inner VLAN to match. */
+	uint32_t outer_vlan;            /**< Outer VLAN to match */
+	enum rte_tunnel_iptype ip_type; /**< IP address type. */
+	/**
+	 * Outer destination IP address to match if ETH_TUNNEL_FILTER_OIP
+	 * is set in filter_type, or inner destination IP address to match
+	 * if ETH_TUNNEL_FILTER_IIP is set in filter_type.
+	 */
+	union {
+		uint32_t ipv4_addr;     /**< IPv4 address in big endian. */
+		uint32_t ipv6_addr[4];  /**< IPv6 address in big endian. */
+	} ip_addr;
+	/** Flags from ETH_TUNNEL_FILTER_XX - see above. */
+	uint16_t filter_type;
+	enum rte_eth_tunnel_type tunnel_type; /**< Tunnel Type. */
+	uint32_t tenant_id;     /**< Tenant ID to match. VNI, GRE key... */
+	uint16_t queue_id;      /**< Queue assigned to if match. */
+	uint8_t is_to_vf;       /**< 0 - to PF, 1 - to VF */
+	uint16_t vf_id;         /**< VF id for tunnel filter insertion. */
 };
 
 #define I40E_MIRROR_MAX_ENTRIES_PER_RULE   64
@@ -719,6 +747,7 @@ union i40e_filter_t {
 	struct rte_eth_ethertype_filter ethertype_filter;
 	struct rte_eth_fdir_filter fdir_filter;
 	struct rte_eth_tunnel_filter_conf tunnel_filter;
+	struct i40e_tunnel_filter_conf consistent_tunnel_filter;
 };
 
 typedef int (*parse_filter_t)(struct rte_eth_dev *dev,
@@ -807,6 +836,9 @@ int i40e_add_del_fdir_filter(struct rte_eth_dev *dev,
 int i40e_dev_tunnel_filter_set(struct i40e_pf *pf,
 			       struct rte_eth_tunnel_filter_conf *tunnel_filter,
 			       uint8_t add);
+int i40e_dev_consistent_tunnel_filter_set(struct i40e_pf *pf,
+				  struct i40e_tunnel_filter_conf *tunnel_filter,
+				  uint8_t add);
 int i40e_fdir_flush(struct rte_eth_dev *dev);
 
 #define I40E_DEV_TO_PCI(eth_dev) \

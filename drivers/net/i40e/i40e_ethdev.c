@@ -6937,6 +6937,142 @@ i40e_dev_tunnel_filter_set(struct i40e_pf *pf,
 	return ret;
 }
 
+int
+i40e_dev_consistent_tunnel_filter_set(struct i40e_pf *pf,
+		      struct i40e_tunnel_filter_conf *tunnel_filter,
+		      uint8_t add)
+{
+	uint16_t ip_type;
+	uint32_t ipv4_addr;
+	uint8_t i, tun_type = 0;
+	/* internal variable to convert ipv6 byte order */
+	uint32_t convert_ipv6[4];
+	int val, ret = 0;
+	struct i40e_pf_vf *vf = NULL;
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	struct i40e_vsi *vsi;
+	struct i40e_aqc_add_rm_cloud_filt_elem_ext *cld_filter;
+	struct i40e_aqc_add_rm_cloud_filt_elem_ext *pfilter;
+	struct i40e_tunnel_rule *tunnel_rule = &pf->tunnel;
+	struct i40e_tunnel_filter *tunnel, *node;
+	struct i40e_tunnel_filter check_filter; /* Check if filter exists */
+
+	cld_filter = rte_zmalloc("tunnel_filter",
+			 sizeof(struct i40e_aqc_add_rm_cloud_filt_elem_ext),
+			 0);
+
+	if (cld_filter == NULL) {
+		PMD_DRV_LOG(ERR, "Failed to alloc memory.");
+		return -ENOMEM;
+	}
+	pfilter = cld_filter;
+
+	ether_addr_copy(&tunnel_filter->outer_mac,
+			(struct ether_addr *)&pfilter->element.outer_mac);
+	ether_addr_copy(&tunnel_filter->inner_mac,
+			(struct ether_addr *)&pfilter->element.inner_mac);
+
+	pfilter->element.inner_vlan =
+		rte_cpu_to_le_16(tunnel_filter->inner_vlan);
+	if (tunnel_filter->ip_type == RTE_TUNNEL_IPTYPE_IPV4) {
+		ip_type = I40E_AQC_ADD_CLOUD_FLAGS_IPV4;
+		ipv4_addr = rte_be_to_cpu_32(tunnel_filter->ip_addr.ipv4_addr);
+		rte_memcpy(&pfilter->element.ipaddr.v4.data,
+				&rte_cpu_to_le_32(ipv4_addr),
+				sizeof(pfilter->element.ipaddr.v4.data));
+	} else {
+		ip_type = I40E_AQC_ADD_CLOUD_FLAGS_IPV6;
+		for (i = 0; i < 4; i++) {
+			convert_ipv6[i] =
+			rte_cpu_to_le_32(rte_be_to_cpu_32(
+					 tunnel_filter->ip_addr.ipv6_addr[i]));
+		}
+		rte_memcpy(&pfilter->element.ipaddr.v6.data,
+			   &convert_ipv6,
+			   sizeof(pfilter->element.ipaddr.v6.data));
+	}
+
+	/* check tunneled type */
+	switch (tunnel_filter->tunnel_type) {
+	case RTE_TUNNEL_TYPE_VXLAN:
+		tun_type = I40E_AQC_ADD_CLOUD_TNL_TYPE_VXLAN;
+		break;
+	case RTE_TUNNEL_TYPE_NVGRE:
+		tun_type = I40E_AQC_ADD_CLOUD_TNL_TYPE_NVGRE_OMAC;
+		break;
+	case RTE_TUNNEL_TYPE_IP_IN_GRE:
+		tun_type = I40E_AQC_ADD_CLOUD_TNL_TYPE_IP;
+		break;
+	default:
+		/* Other tunnel types is not supported. */
+		PMD_DRV_LOG(ERR, "tunnel type is not supported.");
+		rte_free(cld_filter);
+		return -EINVAL;
+	}
+
+	val = i40e_dev_get_filter_type(tunnel_filter->filter_type,
+				       &pfilter->element.flags);
+	if (val < 0) {
+		rte_free(cld_filter);
+		return -EINVAL;
+	}
+
+	pfilter->element.flags |= rte_cpu_to_le_16(
+		I40E_AQC_ADD_CLOUD_FLAGS_TO_QUEUE |
+		ip_type | (tun_type << I40E_AQC_ADD_CLOUD_TNL_TYPE_SHIFT));
+	pfilter->element.tenant_id = rte_cpu_to_le_32(tunnel_filter->tenant_id);
+	pfilter->element.queue_number =
+		rte_cpu_to_le_16(tunnel_filter->queue_id);
+
+	if (!tunnel_filter->is_to_vf)
+		vsi = pf->main_vsi;
+	else {
+		if (tunnel_filter->vf_id >= pf->vf_num) {
+			PMD_DRV_LOG(ERR, "Invalid argument.");
+			return -EINVAL;
+		}
+		vf = &pf->vfs[tunnel_filter->vf_id];
+		vsi = vf->vsi;
+	}
+
+	/* Check if there is the filter in SW list */
+	memset(&check_filter, 0, sizeof(check_filter));
+	i40e_tunnel_filter_convert(cld_filter, &check_filter);
+	node = i40e_sw_tunnel_filter_lookup(tunnel_rule, &check_filter.input);
+	if (add && node) {
+		PMD_DRV_LOG(ERR, "Conflict with existing tunnel rules!");
+		return -EINVAL;
+	}
+
+	if (!add && !node) {
+		PMD_DRV_LOG(ERR, "There's no corresponding tunnel filter!");
+		return -EINVAL;
+	}
+
+	if (add) {
+		ret = i40e_aq_add_cloud_filters(hw,
+					vsi->seid, &cld_filter->element, 1);
+		if (ret < 0) {
+			PMD_DRV_LOG(ERR, "Failed to add a tunnel filter.");
+			return -ENOTSUP;
+		}
+		tunnel = rte_zmalloc("tunnel_filter", sizeof(*tunnel), 0);
+		rte_memcpy(tunnel, &check_filter, sizeof(check_filter));
+		ret = i40e_sw_tunnel_filter_insert(pf, tunnel);
+	} else {
+		ret = i40e_aq_remove_cloud_filters(hw, vsi->seid,
+						   &cld_filter->element, 1);
+		if (ret < 0) {
+			PMD_DRV_LOG(ERR, "Failed to delete a tunnel filter.");
+			return -ENOTSUP;
+		}
+		ret = i40e_sw_tunnel_filter_del(pf, &node->input);
+	}
+
+	rte_free(cld_filter);
+	return ret;
+}
+
 static int
 i40e_get_vxlan_port_idx(struct i40e_pf *pf, uint16_t port)
 {

@@ -93,7 +93,7 @@ static int i40e_flow_parse_fdir_action(struct rte_eth_dev *dev,
 static int i40e_flow_parse_tunnel_action(struct rte_eth_dev *dev,
 				 const struct rte_flow_action *actions,
 				 struct rte_flow_error *error,
-				 struct rte_eth_tunnel_filter_conf *filter);
+				 struct i40e_tunnel_filter_conf *filter);
 static int i40e_flow_parse_attr(const struct rte_flow_attr *attr,
 				struct rte_flow_error *error);
 static int i40e_flow_parse_ethertype_filter(struct rte_eth_dev *dev,
@@ -1127,34 +1127,54 @@ i40e_flow_parse_fdir_filter(struct rte_eth_dev *dev,
 }
 
 /* Parse to get the action info of a tunnle filter
- * Tunnel action only supports QUEUE.
+ * Tunnel action only supports PF, VF and QUEUE.
  */
 static int
 i40e_flow_parse_tunnel_action(struct rte_eth_dev *dev,
 			      const struct rte_flow_action *actions,
 			      struct rte_flow_error *error,
-			      struct rte_eth_tunnel_filter_conf *filter)
+			      struct i40e_tunnel_filter_conf *filter)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	const struct rte_flow_action *act;
 	const struct rte_flow_action_queue *act_q;
+	const struct rte_flow_action_vf *act_vf;
 	uint32_t index = 0;
 
-	/* Check if the first non-void action is QUEUE. */
+	/* Check if the first non-void action is PF or VF. */
 	NEXT_ITEM_OF_ACTION(act, actions, index);
-	if (act->type != RTE_FLOW_ACTION_TYPE_QUEUE) {
+	if (act->type != RTE_FLOW_ACTION_TYPE_PF &&
+	    act->type != RTE_FLOW_ACTION_TYPE_VF) {
 		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
 				   act, "Not supported action.");
 		return -rte_errno;
 	}
 
-	act_q = (const struct rte_flow_action_queue *)act->conf;
-	filter->queue_id = act_q->index;
-	if (filter->queue_id >= pf->dev_data->nb_rx_queues) {
-		rte_flow_error_set(error, EINVAL,
+	if (act->type == RTE_FLOW_ACTION_TYPE_VF) {
+		act_vf = (const struct rte_flow_action_vf *)act->conf;
+		filter->vf_id = act_vf->id;
+		filter->is_to_vf = 1;
+		if (filter->vf_id >= pf->vf_num) {
+			rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ACTION,
+				   act, "Invalid VF ID for tunnel filter");
+			return -rte_errno;
+		}
+	}
+
+	/* Check if the next non-void item is QUEUE */
+	index++;
+	NEXT_ITEM_OF_ACTION(act, actions, index);
+	if (act->type == RTE_FLOW_ACTION_TYPE_QUEUE) {
+		act_q = (const struct rte_flow_action_queue *)act->conf;
+		filter->queue_id = act_q->index;
+		if (!filter->is_to_vf)
+			if (filter->queue_id >= pf->dev_data->nb_rx_queues) {
+				rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ACTION,
 				   act, "Invalid queue ID for tunnel filter");
-		return -rte_errno;
+				return -rte_errno;
+			}
 	}
 
 	/* Check if the next non-void item is END */
@@ -1204,7 +1224,7 @@ static int
 i40e_flow_parse_vxlan_pattern(__rte_unused struct rte_eth_dev *dev,
 			      const struct rte_flow_item *pattern,
 			      struct rte_flow_error *error,
-			      struct rte_eth_tunnel_filter_conf *filter)
+			      struct i40e_tunnel_filter_conf *filter)
 {
 	const struct rte_flow_item *item = pattern;
 	const struct rte_flow_item_eth *eth_spec;
@@ -1473,8 +1493,8 @@ i40e_flow_parse_vxlan_filter(struct rte_eth_dev *dev,
 			     struct rte_flow_error *error,
 			     union i40e_filter_t *filter)
 {
-	struct rte_eth_tunnel_filter_conf *tunnel_filter =
-		&filter->tunnel_filter;
+	struct i40e_tunnel_filter_conf *tunnel_filter =
+		&filter->consistent_tunnel_filter;
 	int ret;
 
 	ret = i40e_flow_parse_vxlan_pattern(dev, pattern,
@@ -1605,8 +1625,8 @@ i40e_flow_create(struct rte_eth_dev *dev,
 					i40e_fdir_filter_list);
 		break;
 	case RTE_ETH_FILTER_TUNNEL:
-		ret = i40e_dev_tunnel_filter_set(pf,
-					 &cons_filter.tunnel_filter, 1);
+		ret = i40e_dev_consistent_tunnel_filter_set(pf,
+			    &cons_filter.consistent_tunnel_filter, 1);
 		if (ret)
 			goto free_flow;
 		flow->rule = TAILQ_LAST(&pf->tunnel.tunnel_list,
