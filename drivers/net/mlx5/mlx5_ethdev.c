@@ -995,7 +995,6 @@ recover:
 		struct rxq *rxq = (*priv->rxqs)[i];
 		struct rxq_ctrl *rxq_ctrl =
 			container_of(rxq, struct rxq_ctrl, rxq);
-		int sp;
 		unsigned int mb_len;
 		unsigned int tmp;
 
@@ -1003,10 +1002,9 @@ recover:
 			continue;
 		mb_len = rte_pktmbuf_data_room_size(rxq->mp);
 		assert(mb_len >= RTE_PKTMBUF_HEADROOM);
-		/* Toggle scattered support (sp) if necessary. */
-		sp = (max_frame_len > (mb_len - RTE_PKTMBUF_HEADROOM));
 		/* Provide new values to rxq_setup(). */
-		dev->data->dev_conf.rxmode.jumbo_frame = sp;
+		dev->data->dev_conf.rxmode.jumbo_frame =
+			(max_frame_len > ETHER_MAX_LEN);
 		dev->data->dev_conf.rxmode.max_rx_pkt_len = max_frame_len;
 		if (rehash)
 			ret = rxq_rehash(dev, rxq_ctrl);

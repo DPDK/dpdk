@@ -950,14 +950,10 @@ rxq_ctrl_setup(struct rte_eth_dev *dev, struct rxq_ctrl *rxq_ctrl,
 	(void)conf; /* Thresholds configuration (ignored). */
 	/* Enable scattered packets support for this queue if necessary. */
 	assert(mb_len >= RTE_PKTMBUF_HEADROOM);
-	/* If smaller than MRU, multi-segment support must be enabled. */
-	if (mb_len < (priv->mtu > dev->data->dev_conf.rxmode.max_rx_pkt_len ?
-		     dev->data->dev_conf.rxmode.max_rx_pkt_len :
-		     priv->mtu))
-		dev->data->dev_conf.rxmode.jumbo_frame = 1;
-	if ((dev->data->dev_conf.rxmode.jumbo_frame) &&
-	    (dev->data->dev_conf.rxmode.max_rx_pkt_len >
-	     (mb_len - RTE_PKTMBUF_HEADROOM))) {
+	if (dev->data->dev_conf.rxmode.max_rx_pkt_len <=
+	    (mb_len - RTE_PKTMBUF_HEADROOM)) {
+		tmpl.rxq.sges_n = 0;
+	} else if (dev->data->dev_conf.rxmode.enable_scatter) {
 		unsigned int size =
 			RTE_PKTMBUF_HEADROOM +
 			dev->data->dev_conf.rxmode.max_rx_pkt_len;
@@ -980,6 +976,13 @@ rxq_ctrl_setup(struct rte_eth_dev *dev, struct rxq_ctrl *rxq_ctrl,
 			      dev->data->dev_conf.rxmode.max_rx_pkt_len);
 			return EOVERFLOW;
 		}
+	} else {
+		WARN("%p: the requested maximum Rx packet size (%u) is"
+		     " larger than a single mbuf (%u) and scattered"
+		     " mode has not been requested",
+		     (void *)dev,
+		     dev->data->dev_conf.rxmode.max_rx_pkt_len,
+		     mb_len - RTE_PKTMBUF_HEADROOM);
 	}
 	DEBUG("%p: maximum number of segments per packet: %u",
 	      (void *)dev, 1 << tmpl.rxq.sges_n);

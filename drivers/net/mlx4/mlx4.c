@@ -3433,7 +3433,7 @@ rxq_rehash(struct rte_eth_dev *dev, struct rxq *rxq)
 	}
 	/* Enable scattered packets support for this queue if necessary. */
 	assert(mb_len >= RTE_PKTMBUF_HEADROOM);
-	if ((dev->data->dev_conf.rxmode.jumbo_frame) &&
+	if (dev->data->dev_conf.rxmode.enable_scatter &&
 	    (dev->data->dev_conf.rxmode.max_rx_pkt_len >
 	     (mb_len - RTE_PKTMBUF_HEADROOM))) {
 		tmpl.sp = 1;
@@ -3655,11 +3655,19 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 		tmpl.csum_l2tun = !!dev->data->dev_conf.rxmode.hw_ip_checksum;
 	/* Enable scattered packets support for this queue if necessary. */
 	assert(mb_len >= RTE_PKTMBUF_HEADROOM);
-	if ((dev->data->dev_conf.rxmode.jumbo_frame) &&
-	    (dev->data->dev_conf.rxmode.max_rx_pkt_len >
-	     (mb_len - RTE_PKTMBUF_HEADROOM))) {
+	if (dev->data->dev_conf.rxmode.max_rx_pkt_len <=
+	    (mb_len - RTE_PKTMBUF_HEADROOM)) {
+		tmpl.sp = 0;
+	} else if (dev->data->dev_conf.rxmode.enable_scatter) {
 		tmpl.sp = 1;
 		desc /= MLX4_PMD_SGE_WR_N;
+	} else {
+		WARN("%p: the requested maximum Rx packet size (%u) is"
+		     " larger than a single mbuf (%u) and scattered"
+		     " mode has not been requested",
+		     (void *)dev,
+		     dev->data->dev_conf.rxmode.max_rx_pkt_len,
+		     mb_len - RTE_PKTMBUF_HEADROOM);
 	}
 	DEBUG("%p: %s scattered packets support (%u WRs)",
 	      (void *)dev, (tmpl.sp ? "enabling" : "disabling"), desc);
@@ -4768,21 +4776,16 @@ mlx4_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	/* Reconfigure each RX queue. */
 	for (i = 0; (i != priv->rxqs_n); ++i) {
 		struct rxq *rxq = (*priv->rxqs)[i];
-		unsigned int mb_len;
 		unsigned int max_frame_len;
-		int sp;
 
 		if (rxq == NULL)
 			continue;
-		/* Calculate new maximum frame length according to MTU and
-		 * toggle scattered support (sp) if necessary. */
+		/* Calculate new maximum frame length according to MTU. */
 		max_frame_len = (priv->mtu + ETHER_HDR_LEN +
 				 (ETHER_MAX_VLAN_FRAME_LEN - ETHER_MAX_LEN));
-		mb_len = rte_pktmbuf_data_room_size(rxq->mp);
-		assert(mb_len >= RTE_PKTMBUF_HEADROOM);
-		sp = (max_frame_len > (mb_len - RTE_PKTMBUF_HEADROOM));
 		/* Provide new values to rxq_setup(). */
-		dev->data->dev_conf.rxmode.jumbo_frame = sp;
+		dev->data->dev_conf.rxmode.jumbo_frame =
+			(max_frame_len > ETHER_MAX_LEN);
 		dev->data->dev_conf.rxmode.max_rx_pkt_len = max_frame_len;
 		ret = rxq_rehash(dev, rxq);
 		if (ret) {
