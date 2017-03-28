@@ -49,4 +49,9 @@ LIBABIVER := 1
 SYMLINK-$(CONFIG_RTE_LIBRTE_AVP_PMD)-include += rte_avp_common.h
 SYMLINK-$(CONFIG_RTE_LIBRTE_AVP_PMD)-include += rte_avp_fifo.h
 
+#
+# all source files are stored in SRCS-y
+#
+SRCS-$(CONFIG_RTE_LIBRTE_AVP_PMD) += avp_ethdev.c
+
 include $(RTE_SDK)/mk/rte.lib.mk
