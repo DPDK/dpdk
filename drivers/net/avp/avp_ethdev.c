@@ -60,6 +60,13 @@
 
 
 
+static int avp_dev_configure(struct rte_eth_dev *dev);
+static void avp_dev_info_get(struct rte_eth_dev *dev,
+			     struct rte_eth_dev_info *dev_info);
+static void avp_vlan_offload_set(struct rte_eth_dev *dev, int mask);
+static int avp_dev_link_update(struct rte_eth_dev *dev,
+			       __rte_unused int wait_to_complete);
+
 #define AVP_DEV_TO_PCI(eth_dev) RTE_DEV_TO_PCI((eth_dev)->device)
 
 
@@ -97,6 +104,15 @@ static const struct rte_pci_id pci_id_avp_map[] = {
 	},
 };
 
+/*
+ * dev_ops for avp, bare necessities for basic operation
+ */
+static const struct eth_dev_ops avp_eth_dev_ops = {
+	.dev_configure       = avp_dev_configure,
+	.dev_infos_get       = avp_dev_info_get,
+	.vlan_offload_set    = avp_vlan_offload_set,
+	.link_update         = avp_dev_link_update,
+};
 
 /**@{ AVP device flags */
 #define AVP_F_PROMISC (1 << 1)
@@ -181,6 +197,91 @@ struct avp_queue {
 	uint64_t bytes;
 	uint64_t errors;
 };
+
+/* send a request and wait for a response
+ *
+ * @warning must be called while holding the avp->lock spinlock.
+ */
+static int
+avp_dev_process_request(struct avp_dev *avp, struct rte_avp_request *request)
+{
+	unsigned int retry = AVP_MAX_REQUEST_RETRY;
+	void *resp_addr = NULL;
+	unsigned int count;
+	int ret;
+
+	PMD_DRV_LOG(DEBUG, "Sending request %u to host\n", request->req_id);
+
+	request->result = -ENOTSUP;
+
+	/* Discard any stale responses before starting a new request */
+	while (avp_fifo_get(avp->resp_q, (void **)&resp_addr, 1))
+		PMD_DRV_LOG(DEBUG, "Discarding stale response\n");
+
+	rte_memcpy(avp->sync_addr, request, sizeof(*request));
+	count = avp_fifo_put(avp->req_q, &avp->host_sync_addr, 1);
+	if (count < 1) {
+		PMD_DRV_LOG(ERR, "Cannot send request %u to host\n",
+			    request->req_id);
+		ret = -EBUSY;
+		goto done;
+	}
+
+	while (retry--) {
+		/* wait for a response */
+		usleep(AVP_REQUEST_DELAY_USECS);
+
+		count = avp_fifo_count(avp->resp_q);
+		if (count >= 1) {
+			/* response received */
+			break;
+		}
+
+		if ((count < 1) && (retry == 0)) {
+			PMD_DRV_LOG(ERR, "Timeout while waiting for a response for %u\n",
+				    request->req_id);
+			ret = -ETIME;
+			goto done;
+		}
+	}
+
+	/* retrieve the response */
+	count = avp_fifo_get(avp->resp_q, (void **)&resp_addr, 1);
+	if ((count != 1) || (resp_addr != avp->host_sync_addr)) {
+		PMD_DRV_LOG(ERR, "Invalid response from host, count=%u resp=%p host_sync_addr=%p\n",
+			    count, resp_addr, avp->host_sync_addr);
+		ret = -ENODATA;
+		goto done;
+	}
+
+	/* copy to user buffer */
+	rte_memcpy(request, avp->sync_addr, sizeof(*request));
+	ret = 0;
+
+	PMD_DRV_LOG(DEBUG, "Result %d received for request %u\n",
+		    request->result, request->req_id);
+
+done:
+	return ret;
+}
+
+static int
+avp_dev_ctrl_set_config(struct rte_eth_dev *eth_dev,
+			struct rte_avp_device_config *config)
+{
+	struct avp_dev *avp = AVP_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	struct rte_avp_request request;
+	int ret;
+
+	/* setup a configure request */
+	memset(&request, 0, sizeof(request));
+	request.req_id = RTE_AVP_REQ_CFG_DEVICE;
+	memcpy(&request.config, config, sizeof(request.config));
+
+	ret = avp_dev_process_request(avp, &request);
+
+	return ret == 0 ? request.result : ret;
+}
 
 /* translate from host physical address to guest virtual address */
 static void *
@@ -295,6 +396,38 @@ avp_dev_check_regions(struct rte_eth_dev *eth_dev)
 	}
 
 	return 0;
+}
+
+static void
+_avp_set_queue_counts(struct rte_eth_dev *eth_dev)
+{
+	struct rte_pci_device *pci_dev = AVP_DEV_TO_PCI(eth_dev);
+	struct avp_dev *avp = AVP_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	struct rte_avp_device_info *host_info;
+	void *addr;
+
+	addr = pci_dev->mem_resource[RTE_AVP_PCI_DEVICE_BAR].addr;
+	host_info = (struct rte_avp_device_info *)addr;
+
+	/*
+	 * the transmit direction is not negotiated beyond respecting the max
+	 * number of queues because the host can handle arbitrary guest tx
+	 * queues (host rx queues).
+	 */
+	avp->num_tx_queues = eth_dev->data->nb_tx_queues;
+
+	/*
+	 * the receive direction is more restrictive.  The host requires a
+	 * minimum number of guest rx queues (host tx queues) therefore
+	 * negotiate a value that is at least as large as the host minimum
+	 * requirement.  If the host and guest values are not identical then a
+	 * mapping will be established in the receive_queue_setup function.
+	 */
+	avp->num_rx_queues = RTE_MAX(host_info->min_rx_queues,
+				     eth_dev->data->nb_rx_queues);
+
+	PMD_DRV_LOG(DEBUG, "Requesting %u Tx and %u Rx queues from host\n",
+		    avp->num_tx_queues, avp->num_rx_queues);
 }
 
 /*
@@ -439,6 +572,7 @@ eth_avp_dev_init(struct rte_eth_dev *eth_dev)
 	int ret;
 
 	pci_dev = AVP_DEV_TO_PCI(eth_dev);
+	eth_dev->dev_ops = &avp_eth_dev_ops;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
 		/*
@@ -512,6 +646,113 @@ static struct eth_driver rte_avp_pmd = {
 	.eth_dev_uninit = eth_avp_dev_uninit,
 	.dev_private_size = sizeof(struct avp_adapter),
 };
+
+static int
+avp_dev_configure(struct rte_eth_dev *eth_dev)
+{
+	struct rte_pci_device *pci_dev = AVP_DEV_TO_PCI(eth_dev);
+	struct avp_dev *avp = AVP_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	struct rte_avp_device_info *host_info;
+	struct rte_avp_device_config config;
+	int mask = 0;
+	void *addr;
+	int ret;
+
+	addr = pci_dev->mem_resource[RTE_AVP_PCI_DEVICE_BAR].addr;
+	host_info = (struct rte_avp_device_info *)addr;
+
+	/* Setup required number of queues */
+	_avp_set_queue_counts(eth_dev);
+
+	mask = (ETH_VLAN_STRIP_MASK |
+		ETH_VLAN_FILTER_MASK |
+		ETH_VLAN_EXTEND_MASK);
+	avp_vlan_offload_set(eth_dev, mask);
+
+	/* update device config */
+	memset(&config, 0, sizeof(config));
+	config.device_id = host_info->device_id;
+	config.driver_type = RTE_AVP_DRIVER_TYPE_DPDK;
+	config.driver_version = AVP_DPDK_DRIVER_VERSION;
+	config.features = avp->features;
+	config.num_tx_queues = avp->num_tx_queues;
+	config.num_rx_queues = avp->num_rx_queues;
+
+	ret = avp_dev_ctrl_set_config(eth_dev, &config);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Config request failed by host, ret=%d\n",
+			    ret);
+		goto unlock;
+	}
+
+	avp->flags |= AVP_F_CONFIGURED;
+	ret = 0;
+
+unlock:
+	return ret;
+}
+
+
+static int
+avp_dev_link_update(struct rte_eth_dev *eth_dev,
+					__rte_unused int wait_to_complete)
+{
+	struct avp_dev *avp = AVP_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	struct rte_eth_link *link = &eth_dev->data->dev_link;
+
+	link->link_speed = ETH_SPEED_NUM_10G;
+	link->link_duplex = ETH_LINK_FULL_DUPLEX;
+	link->link_status = !!(avp->flags & AVP_F_LINKUP);
+
+	return -1;
+}
+
+
+static void
+avp_dev_info_get(struct rte_eth_dev *eth_dev,
+		 struct rte_eth_dev_info *dev_info)
+{
+	struct avp_dev *avp = AVP_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+
+	dev_info->driver_name = "rte_avp_pmd";
+	dev_info->pci_dev = RTE_DEV_TO_PCI(eth_dev->device);
+	dev_info->max_rx_queues = avp->max_rx_queues;
+	dev_info->max_tx_queues = avp->max_tx_queues;
+	dev_info->min_rx_bufsize = AVP_MIN_RX_BUFSIZE;
+	dev_info->max_rx_pktlen = avp->max_rx_pkt_len;
+	dev_info->max_mac_addrs = AVP_MAX_MAC_ADDRS;
+	if (avp->host_features & RTE_AVP_FEATURE_VLAN_OFFLOAD) {
+		dev_info->rx_offload_capa = DEV_RX_OFFLOAD_VLAN_STRIP;
+		dev_info->tx_offload_capa = DEV_TX_OFFLOAD_VLAN_INSERT;
+	}
+}
+
+static void
+avp_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask)
+{
+	struct avp_dev *avp = AVP_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+
+	if (mask & ETH_VLAN_STRIP_MASK) {
+		if (avp->host_features & RTE_AVP_FEATURE_VLAN_OFFLOAD) {
+			if (eth_dev->data->dev_conf.rxmode.hw_vlan_strip)
+				avp->features |= RTE_AVP_FEATURE_VLAN_OFFLOAD;
+			else
+				avp->features &= ~RTE_AVP_FEATURE_VLAN_OFFLOAD;
+		} else {
+			PMD_DRV_LOG(ERR, "VLAN strip offload not supported\n");
+		}
+	}
+
+	if (mask & ETH_VLAN_FILTER_MASK) {
+		if (eth_dev->data->dev_conf.rxmode.hw_vlan_filter)
+			PMD_DRV_LOG(ERR, "VLAN filter offload not supported\n");
+	}
+
+	if (mask & ETH_VLAN_EXTEND_MASK) {
+		if (eth_dev->data->dev_conf.rxmode.hw_vlan_extend)
+			PMD_DRV_LOG(ERR, "VLAN extend offload not supported\n");
+	}
+}
 
 RTE_PMD_REGISTER_PCI(net_avp, rte_avp_pmd.pci_drv);
 RTE_PMD_REGISTER_PCI_TABLE(net_avp, pci_id_avp_map);
