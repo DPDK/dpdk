@@ -47,6 +47,7 @@
 #include <rte_ether.h>
 #include <rte_common.h>
 #include <rte_cycles.h>
+#include <rte_spinlock.h>
 #include <rte_byteorder.h>
 #include <rte_dev.h>
 #include <rte_memory.h>
@@ -59,6 +60,8 @@
 #include "avp_logs.h"
 
 
+static int avp_dev_create(struct rte_pci_device *pci_dev,
+			  struct rte_eth_dev *eth_dev);
 
 static int avp_dev_configure(struct rte_eth_dev *dev);
 static int avp_dev_start(struct rte_eth_dev *dev);
@@ -173,6 +176,7 @@ static const struct eth_dev_ops avp_eth_dev_ops = {
 #define AVP_F_PROMISC (1 << 1)
 #define AVP_F_CONFIGURED (1 << 2)
 #define AVP_F_LINKUP (1 << 3)
+#define AVP_F_DETACHED (1 << 4)
 /**@} */
 
 /* Ethernet device validation marker */
@@ -207,6 +211,9 @@ struct avp_dev {
 	/**< Allocated mbufs queue */
 	struct rte_avp_fifo *free_q[RTE_AVP_MAX_QUEUES];
 	/**< To be freed mbufs queue */
+
+	/* mutual exclusion over the 'flag' and 'resp_q/req_q' fields */
+	rte_spinlock_t lock;
 
 	/* For request & response */
 	struct rte_avp_fifo *req_q; /**< Request queue */
@@ -495,6 +502,46 @@ avp_dev_check_regions(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
+static int
+avp_dev_detach(struct rte_eth_dev *eth_dev)
+{
+	struct avp_dev *avp = AVP_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	int ret;
+
+	PMD_DRV_LOG(NOTICE, "Detaching port %u from AVP device 0x%" PRIx64 "\n",
+		    eth_dev->data->port_id, avp->device_id);
+
+	rte_spinlock_lock(&avp->lock);
+
+	if (avp->flags & AVP_F_DETACHED) {
+		PMD_DRV_LOG(NOTICE, "port %u already detached\n",
+			    eth_dev->data->port_id);
+		ret = 0;
+		goto unlock;
+	}
+
+	/* shutdown the device first so the host stops sending us packets. */
+	ret = avp_dev_ctrl_shutdown(eth_dev);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Failed to send/recv shutdown to host, ret=%d\n",
+			    ret);
+		avp->flags &= ~AVP_F_DETACHED;
+		goto unlock;
+	}
+
+	avp->flags |= AVP_F_DETACHED;
+	rte_wmb();
+
+	/* wait for queues to acknowledge the presence of the detach flag */
+	rte_delay_ms(1);
+
+	ret = 0;
+
+unlock:
+	rte_spinlock_unlock(&avp->lock);
+	return ret;
+}
+
 static void
 _avp_set_rx_queue_mappings(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 {
@@ -563,6 +610,240 @@ _avp_set_queue_counts(struct rte_eth_dev *eth_dev)
 		    avp->num_tx_queues, avp->num_rx_queues);
 }
 
+static int
+avp_dev_attach(struct rte_eth_dev *eth_dev)
+{
+	struct avp_dev *avp = AVP_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	struct rte_avp_device_config config;
+	unsigned int i;
+	int ret;
+
+	PMD_DRV_LOG(NOTICE, "Attaching port %u to AVP device 0x%" PRIx64 "\n",
+		    eth_dev->data->port_id, avp->device_id);
+
+	rte_spinlock_lock(&avp->lock);
+
+	if (!(avp->flags & AVP_F_DETACHED)) {
+		PMD_DRV_LOG(NOTICE, "port %u already attached\n",
+			    eth_dev->data->port_id);
+		ret = 0;
+		goto unlock;
+	}
+
+	/*
+	 * make sure that the detached flag is set prior to reconfiguring the
+	 * queues.
+	 */
+	avp->flags |= AVP_F_DETACHED;
+	rte_wmb();
+
+	/*
+	 * re-run the device create utility which will parse the new host info
+	 * and setup the AVP device queue pointers.
+	 */
+	ret = avp_dev_create(AVP_DEV_TO_PCI(eth_dev), eth_dev);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Failed to re-create AVP device, ret=%d\n",
+			    ret);
+		goto unlock;
+	}
+
+	if (avp->flags & AVP_F_CONFIGURED) {
+		/*
+		 * Update the receive queue mapping to handle cases where the
+		 * source and destination hosts have different queue
+		 * requirements.  As long as the DETACHED flag is asserted the
+		 * queue table should not be referenced so it should be safe to
+		 * update it.
+		 */
+		_avp_set_queue_counts(eth_dev);
+		for (i = 0; i < eth_dev->data->nb_rx_queues; i++)
+			_avp_set_rx_queue_mappings(eth_dev, i);
+
+		/*
+		 * Update the host with our config details so that it knows the
+		 * device is active.
+		 */
+		memset(&config, 0, sizeof(config));
+		config.device_id = avp->device_id;
+		config.driver_type = RTE_AVP_DRIVER_TYPE_DPDK;
+		config.driver_version = AVP_DPDK_DRIVER_VERSION;
+		config.features = avp->features;
+		config.num_tx_queues = avp->num_tx_queues;
+		config.num_rx_queues = avp->num_rx_queues;
+		config.if_up = !!(avp->flags & AVP_F_LINKUP);
+
+		ret = avp_dev_ctrl_set_config(eth_dev, &config);
+		if (ret < 0) {
+			PMD_DRV_LOG(ERR, "Config request failed by host, ret=%d\n",
+				    ret);
+			goto unlock;
+		}
+	}
+
+	rte_wmb();
+	avp->flags &= ~AVP_F_DETACHED;
+
+	ret = 0;
+
+unlock:
+	rte_spinlock_unlock(&avp->lock);
+	return ret;
+}
+
+static void
+avp_dev_interrupt_handler(struct rte_intr_handle *intr_handle,
+						  void *data)
+{
+	struct rte_eth_dev *eth_dev = data;
+	struct rte_pci_device *pci_dev = AVP_DEV_TO_PCI(eth_dev);
+	void *registers = pci_dev->mem_resource[RTE_AVP_PCI_MMIO_BAR].addr;
+	uint32_t status, value;
+	int ret;
+
+	if (registers == NULL)
+		rte_panic("no mapped MMIO register space\n");
+
+	/* read the interrupt status register
+	 * note: this register clears on read so all raised interrupts must be
+	 *    handled or remembered for later processing
+	 */
+	status = AVP_READ32(
+		RTE_PTR_ADD(registers,
+			    RTE_AVP_INTERRUPT_STATUS_OFFSET));
+
+	if (status | RTE_AVP_MIGRATION_INTERRUPT_MASK) {
+		/* handle interrupt based on current status */
+		value = AVP_READ32(
+			RTE_PTR_ADD(registers,
+				    RTE_AVP_MIGRATION_STATUS_OFFSET));
+		switch (value) {
+		case RTE_AVP_MIGRATION_DETACHED:
+			ret = avp_dev_detach(eth_dev);
+			break;
+		case RTE_AVP_MIGRATION_ATTACHED:
+			ret = avp_dev_attach(eth_dev);
+			break;
+		default:
+			PMD_DRV_LOG(ERR, "unexpected migration status, status=%u\n",
+				    value);
+			ret = -EINVAL;
+		}
+
+		/* acknowledge the request by writing out our current status */
+		value = (ret == 0 ? value : RTE_AVP_MIGRATION_ERROR);
+		AVP_WRITE32(value,
+			    RTE_PTR_ADD(registers,
+					RTE_AVP_MIGRATION_ACK_OFFSET));
+
+		PMD_DRV_LOG(NOTICE, "AVP migration interrupt handled\n");
+	}
+
+	if (status & ~RTE_AVP_MIGRATION_INTERRUPT_MASK)
+		PMD_DRV_LOG(WARNING, "AVP unexpected interrupt, status=0x%08x\n",
+			    status);
+
+	/* re-enable UIO interrupt handling */
+	ret = rte_intr_enable(intr_handle);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Failed to re-enable UIO interrupts, ret=%d\n",
+			    ret);
+		/* continue */
+	}
+}
+
+static int
+avp_dev_enable_interrupts(struct rte_eth_dev *eth_dev)
+{
+	struct rte_pci_device *pci_dev = AVP_DEV_TO_PCI(eth_dev);
+	void *registers = pci_dev->mem_resource[RTE_AVP_PCI_MMIO_BAR].addr;
+	int ret;
+
+	if (registers == NULL)
+		return -EINVAL;
+
+	/* enable UIO interrupt handling */
+	ret = rte_intr_enable(&pci_dev->intr_handle);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Failed to enable UIO interrupts, ret=%d\n",
+			    ret);
+		return ret;
+	}
+
+	/* inform the device that all interrupts are enabled */
+	AVP_WRITE32(RTE_AVP_APP_INTERRUPTS_MASK,
+		    RTE_PTR_ADD(registers, RTE_AVP_INTERRUPT_MASK_OFFSET));
+
+	return 0;
+}
+
+static int
+avp_dev_disable_interrupts(struct rte_eth_dev *eth_dev)
+{
+	struct rte_pci_device *pci_dev = AVP_DEV_TO_PCI(eth_dev);
+	void *registers = pci_dev->mem_resource[RTE_AVP_PCI_MMIO_BAR].addr;
+	int ret;
+
+	if (registers == NULL)
+		return 0;
+
+	/* inform the device that all interrupts are disabled */
+	AVP_WRITE32(RTE_AVP_NO_INTERRUPTS_MASK,
+		    RTE_PTR_ADD(registers, RTE_AVP_INTERRUPT_MASK_OFFSET));
+
+	/* enable UIO interrupt handling */
+	ret = rte_intr_disable(&pci_dev->intr_handle);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Failed to disable UIO interrupts, ret=%d\n",
+			    ret);
+		return ret;
+	}
+
+	return 0;
+}
+
+static int
+avp_dev_setup_interrupts(struct rte_eth_dev *eth_dev)
+{
+	struct rte_pci_device *pci_dev = AVP_DEV_TO_PCI(eth_dev);
+	int ret;
+
+	/* register a callback handler with UIO for interrupt notifications */
+	ret = rte_intr_callback_register(&pci_dev->intr_handle,
+					 avp_dev_interrupt_handler,
+					 (void *)eth_dev);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Failed to register UIO interrupt callback, ret=%d\n",
+			    ret);
+		return ret;
+	}
+
+	/* enable interrupt processing */
+	return avp_dev_enable_interrupts(eth_dev);
+}
+
+static int
+avp_dev_migration_pending(struct rte_eth_dev *eth_dev)
+{
+	struct rte_pci_device *pci_dev = AVP_DEV_TO_PCI(eth_dev);
+	void *registers = pci_dev->mem_resource[RTE_AVP_PCI_MMIO_BAR].addr;
+	uint32_t value;
+
+	if (registers == NULL)
+		return 0;
+
+	value = AVP_READ32(RTE_PTR_ADD(registers,
+				       RTE_AVP_MIGRATION_STATUS_OFFSET));
+	if (value == RTE_AVP_MIGRATION_DETACHED) {
+		/* migration is in progress; ack it if we have not already */
+		AVP_WRITE32(value,
+			    RTE_PTR_ADD(registers,
+					RTE_AVP_MIGRATION_ACK_OFFSET));
+		return 1;
+	}
+	return 0;
+}
+
 /*
  * create a AVP device using the supplied device info by first translating it
  * to guest address space(s).
@@ -615,6 +896,7 @@ avp_dev_create(struct rte_pci_device *pci_dev,
 		avp->port_id = eth_dev->data->port_id;
 		avp->host_mbuf_size = host_info->mbuf_size;
 		avp->host_features = host_info->features;
+		rte_spinlock_init(&avp->lock);
 		memcpy(&avp->ethaddr.addr_bytes[0],
 		       host_info->ethaddr, ETHER_ADDR_LEN);
 		/* adjust max values to not exceed our max */
@@ -728,11 +1010,24 @@ eth_avp_dev_init(struct rte_eth_dev *eth_dev)
 
 	eth_dev->data->dev_flags |= RTE_ETH_DEV_DETACHABLE;
 
+	/* Check current migration status */
+	if (avp_dev_migration_pending(eth_dev)) {
+		PMD_DRV_LOG(ERR, "VM live migration operation in progress\n");
+		return -EBUSY;
+	}
+
 	/* Check BAR resources */
 	ret = avp_dev_check_regions(eth_dev);
 	if (ret < 0) {
 		PMD_DRV_LOG(ERR, "Failed to validate BAR resources, ret=%d\n",
 			    ret);
+		return ret;
+	}
+
+	/* Enable interrupts */
+	ret = avp_dev_setup_interrupts(eth_dev);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Failed to enable interrupts, ret=%d\n", ret);
 		return ret;
 	}
 
@@ -760,11 +1055,19 @@ eth_avp_dev_init(struct rte_eth_dev *eth_dev)
 static int
 eth_avp_dev_uninit(struct rte_eth_dev *eth_dev)
 {
+	int ret;
+
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return -EPERM;
 
 	if (eth_dev->data == NULL)
 		return 0;
+
+	ret = avp_dev_disable_interrupts(eth_dev);
+	if (ret != 0) {
+		PMD_DRV_LOG(ERR, "Failed to disable interrupts, ret=%d\n", ret);
+		return ret;
+	}
 
 	if (eth_dev->data->mac_addrs != NULL) {
 		rte_free(eth_dev->data->mac_addrs);
@@ -1127,6 +1430,11 @@ avp_recv_scattered_pkts(void *rx_queue,
 	unsigned int port_id;
 	unsigned int i;
 
+	if (unlikely(avp->flags & AVP_F_DETACHED)) {
+		/* VM live migration in progress */
+		return 0;
+	}
+
 	guest_mbuf_size = avp->guest_mbuf_size;
 	port_id = avp->port_id;
 	rx_q = avp->rx_q[rxq->queue_id];
@@ -1220,6 +1528,11 @@ avp_recv_pkts(void *rx_queue,
 	struct rte_mbuf *m;
 	char *pkt_data;
 	unsigned int i;
+
+	if (unlikely(avp->flags & AVP_F_DETACHED)) {
+		/* VM live migration in progress */
+		return 0;
+	}
 
 	rx_q = avp->rx_q[rxq->queue_id];
 	free_q = avp->free_q[rxq->queue_id];
@@ -1428,6 +1741,13 @@ avp_xmit_scattered_pkts(void *tx_queue,
 	unsigned int i;
 
 	orig_nb_pkts = nb_pkts;
+	if (unlikely(avp->flags & AVP_F_DETACHED)) {
+		/* VM live migration in progress */
+		/* TODO ... buffer for X packets then drop? */
+		txq->errors += nb_pkts;
+		return 0;
+	}
+
 	tx_q = avp->tx_q[txq->queue_id];
 	alloc_q = avp->alloc_q[txq->queue_id];
 
@@ -1539,6 +1859,13 @@ avp_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	unsigned int tx_bytes;
 	char *pkt_data;
 	unsigned int i;
+
+	if (unlikely(avp->flags & AVP_F_DETACHED)) {
+		/* VM live migration in progress */
+		/* TODO ... buffer for X packets then drop?! */
+		txq->errors++;
+		return 0;
+	}
 
 	tx_q = avp->tx_q[txq->queue_id];
 	alloc_q = avp->alloc_q[txq->queue_id];
@@ -1672,6 +1999,13 @@ avp_dev_configure(struct rte_eth_dev *eth_dev)
 	void *addr;
 	int ret;
 
+	rte_spinlock_lock(&avp->lock);
+	if (avp->flags & AVP_F_DETACHED) {
+		PMD_DRV_LOG(ERR, "Operation not supported during VM live migration\n");
+		ret = -ENOTSUP;
+		goto unlock;
+	}
+
 	addr = pci_dev->mem_resource[RTE_AVP_PCI_DEVICE_BAR].addr;
 	host_info = (struct rte_avp_device_info *)addr;
 
@@ -1703,6 +2037,7 @@ avp_dev_configure(struct rte_eth_dev *eth_dev)
 	ret = 0;
 
 unlock:
+	rte_spinlock_unlock(&avp->lock);
 	return ret;
 }
 
@@ -1711,6 +2046,13 @@ avp_dev_start(struct rte_eth_dev *eth_dev)
 {
 	struct avp_dev *avp = AVP_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 	int ret;
+
+	rte_spinlock_lock(&avp->lock);
+	if (avp->flags & AVP_F_DETACHED) {
+		PMD_DRV_LOG(ERR, "Operation not supported during VM live migration\n");
+		ret = -ENOTSUP;
+		goto unlock;
+	}
 
 	/* disable features that we do not support */
 	eth_dev->data->dev_conf.rxmode.hw_ip_checksum = 0;
@@ -1732,6 +2074,7 @@ avp_dev_start(struct rte_eth_dev *eth_dev)
 	ret = 0;
 
 unlock:
+	rte_spinlock_unlock(&avp->lock);
 	return ret;
 }
 
@@ -1741,6 +2084,13 @@ avp_dev_stop(struct rte_eth_dev *eth_dev)
 	struct avp_dev *avp = AVP_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 	int ret;
 
+	rte_spinlock_lock(&avp->lock);
+	if (avp->flags & AVP_F_DETACHED) {
+		PMD_DRV_LOG(ERR, "Operation not supported during VM live migration\n");
+		goto unlock;
+	}
+
+	/* remember current link state */
 	avp->flags &= ~AVP_F_LINKUP;
 
 	/* update link state */
@@ -1749,6 +2099,9 @@ avp_dev_stop(struct rte_eth_dev *eth_dev)
 		PMD_DRV_LOG(ERR, "Link state change failed by host, ret=%d\n",
 			    ret);
 	}
+
+unlock:
+	rte_spinlock_unlock(&avp->lock);
 }
 
 static void
@@ -1757,9 +2110,21 @@ avp_dev_close(struct rte_eth_dev *eth_dev)
 	struct avp_dev *avp = AVP_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 	int ret;
 
+	rte_spinlock_lock(&avp->lock);
+	if (avp->flags & AVP_F_DETACHED) {
+		PMD_DRV_LOG(ERR, "Operation not supported during VM live migration\n");
+		goto unlock;
+	}
+
 	/* remember current link state */
 	avp->flags &= ~AVP_F_LINKUP;
 	avp->flags &= ~AVP_F_CONFIGURED;
+
+	ret = avp_dev_disable_interrupts(eth_dev);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "Failed to disable interrupts\n");
+		/* continue */
+	}
 
 	/* update device state */
 	ret = avp_dev_ctrl_shutdown(eth_dev);
@@ -1768,6 +2133,9 @@ avp_dev_close(struct rte_eth_dev *eth_dev)
 			    ret);
 		/* continue */
 	}
+
+unlock:
+	rte_spinlock_unlock(&avp->lock);
 }
 
 static int
@@ -1789,11 +2157,13 @@ avp_dev_promiscuous_enable(struct rte_eth_dev *eth_dev)
 {
 	struct avp_dev *avp = AVP_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 
+	rte_spinlock_lock(&avp->lock);
 	if ((avp->flags & AVP_F_PROMISC) == 0) {
 		avp->flags |= AVP_F_PROMISC;
 		PMD_DRV_LOG(DEBUG, "Promiscuous mode enabled on %u\n",
 			    eth_dev->data->port_id);
 	}
+	rte_spinlock_unlock(&avp->lock);
 }
 
 static void
@@ -1801,11 +2171,13 @@ avp_dev_promiscuous_disable(struct rte_eth_dev *eth_dev)
 {
 	struct avp_dev *avp = AVP_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 
+	rte_spinlock_lock(&avp->lock);
 	if ((avp->flags & AVP_F_PROMISC) != 0) {
 		avp->flags &= ~AVP_F_PROMISC;
 		PMD_DRV_LOG(DEBUG, "Promiscuous mode disabled on %u\n",
 			    eth_dev->data->port_id);
 	}
+	rte_spinlock_unlock(&avp->lock);
 }
 
 static void
