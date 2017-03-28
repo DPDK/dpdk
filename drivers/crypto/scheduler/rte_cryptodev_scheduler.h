@@ -34,7 +34,7 @@
 #ifndef _RTE_CRYPTO_SCHEDULER_H
 #define _RTE_CRYPTO_SCHEDULER_H
 
-#include <rte_cryptodev_scheduler_operations.h>
+#include "rte_cryptodev_scheduler_operations.h"
 
 #ifdef __cplusplus
 extern "C" {

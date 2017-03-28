@@ -36,7 +36,7 @@
 
 #include <rte_hash.h>
 #include <rte_reorder.h>
-#include <rte_cryptodev_scheduler.h>
+#include "rte_cryptodev_scheduler.h"
 
 /**< Maximum number of bonded devices per devices */
 #ifndef MAX_SLAVES_NUM

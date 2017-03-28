@@ -32,9 +32,9 @@
 #include <rte_reorder.h>
 #include <rte_cryptodev.h>
 #include <rte_cryptodev_pmd.h>
-#include <rte_cryptodev_scheduler.h>
 #include <rte_malloc.h>
 
+#include "rte_cryptodev_scheduler.h"
 #include "scheduler_pmd_private.h"
 
 /** update the scheduler pmd's capability with attaching device's

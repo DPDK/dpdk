@@ -37,8 +37,8 @@
 #include <rte_malloc.h>
 #include <rte_cpuflags.h>
 #include <rte_reorder.h>
-#include <rte_cryptodev_scheduler.h>
 
+#include "rte_cryptodev_scheduler.h"
 #include "scheduler_pmd_private.h"
 
 struct scheduler_init_params {
