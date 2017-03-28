@@ -2772,6 +2772,21 @@ fm10k_set_tx_function(struct rte_eth_dev *dev)
 	int use_sse = 1;
 	uint16_t tx_ftag_en = 0;
 
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		/* primary process has set the ftag flag and txq_flags */
+		txq = dev->data->tx_queues[0];
+		if (fm10k_tx_vec_condition_check(txq)) {
+			dev->tx_pkt_burst = fm10k_xmit_pkts;
+			dev->tx_pkt_prepare = fm10k_prep_pkts;
+			PMD_INIT_LOG(DEBUG, "Use regular Tx func");
+		} else {
+			PMD_INIT_LOG(DEBUG, "Use vector Tx func");
+			dev->tx_pkt_burst = fm10k_xmit_pkts_vec;
+			dev->tx_pkt_prepare = NULL;
+		}
+		return;
+	}
+
 	if (fm10k_check_ftag(dev->device->devargs))
 		tx_ftag_en = 1;
 
@@ -2832,6 +2847,9 @@ fm10k_set_rx_function(struct rte_eth_dev *dev)
 	else
 		PMD_INIT_LOG(DEBUG, "Use regular Rx func");
 
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return;
+
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
 		struct fm10k_rx_queue *rxq = dev->data->rx_queues[i];
 
@@ -2878,9 +2896,15 @@ eth_fm10k_dev_init(struct rte_eth_dev *dev)
 	dev->tx_pkt_burst = &fm10k_xmit_pkts;
 	dev->tx_pkt_prepare = &fm10k_prep_pkts;
 
-	/* only initialize in the primary process */
-	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+	/*
+	 * Primary process does the whole initialization, for secondary
+	 * processes, we just select the same Rx and Tx function as primary.
+	 */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		fm10k_set_rx_function(dev);
+		fm10k_set_tx_function(dev);
 		return 0;
+	}
 
 	rte_eth_copy_pci_info(dev, pdev);
 	dev->data->dev_flags |= RTE_ETH_DEV_DETACHABLE;
