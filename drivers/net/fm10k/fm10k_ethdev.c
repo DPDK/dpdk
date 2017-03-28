@@ -1803,7 +1803,8 @@ fm10k_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 	const struct rte_eth_rxconf *conf, struct rte_mempool *mp)
 {
 	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct fm10k_dev_info *dev_info = FM10K_DEV_PRIVATE_TO_INFO(dev);
+	struct fm10k_dev_info *dev_info =
+		FM10K_DEV_PRIVATE_TO_INFO(dev->data->dev_private);
 	struct fm10k_rx_queue *q;
 	const struct rte_memzone *mz;
 
@@ -2778,7 +2779,8 @@ fm10k_set_tx_function(struct rte_eth_dev *dev)
 static void __attribute__((cold))
 fm10k_set_rx_function(struct rte_eth_dev *dev)
 {
-	struct fm10k_dev_info *dev_info = FM10K_DEV_PRIVATE_TO_INFO(dev);
+	struct fm10k_dev_info *dev_info =
+		FM10K_DEV_PRIVATE_TO_INFO(dev->data->dev_private);
 	uint16_t i, rx_using_sse;
 	uint16_t rx_ftag_en = 0;
 
@@ -2820,7 +2822,8 @@ static void
 fm10k_params_init(struct rte_eth_dev *dev)
 {
 	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct fm10k_dev_info *info = FM10K_DEV_PRIVATE_TO_INFO(dev);
+	struct fm10k_dev_info *info =
+		FM10K_DEV_PRIVATE_TO_INFO(dev->data->dev_private);
 
 	/* Inialize bus info. Normally we would call fm10k_get_bus_info(), but
 	 * there is no way to get link status without reading BAR4.  Until this
