@@ -533,6 +533,20 @@ struct i40e_tunnel_rule {
 };
 
 /**
+ * Tunnel type.
+ */
+enum i40e_tunnel_type {
+	I40E_TUNNEL_TYPE_NONE = 0,
+	I40E_TUNNEL_TYPE_VXLAN,
+	I40E_TUNNEL_TYPE_GENEVE,
+	I40E_TUNNEL_TYPE_TEREDO,
+	I40E_TUNNEL_TYPE_NVGRE,
+	I40E_TUNNEL_TYPE_IP_IN_GRE,
+	I40E_L2_TUNNEL_TYPE_E_TAG,
+	I40E_TUNNEL_TYPE_MAX,
+};
+
+/**
  * Tunneling Packet filter configuration.
  */
 struct i40e_tunnel_filter_conf {
@@ -540,7 +554,7 @@ struct i40e_tunnel_filter_conf {
 	struct ether_addr inner_mac;    /**< Inner MAC address to match. */
 	uint16_t inner_vlan;            /**< Inner VLAN to match. */
 	uint32_t outer_vlan;            /**< Outer VLAN to match */
-	enum rte_tunnel_iptype ip_type; /**< IP address type. */
+	enum i40e_tunnel_iptype ip_type; /**< IP address type. */
 	/**
 	 * Outer destination IP address to match if ETH_TUNNEL_FILTER_OIP
 	 * is set in filter_type, or inner destination IP address to match
@@ -552,7 +566,7 @@ struct i40e_tunnel_filter_conf {
 	} ip_addr;
 	/** Flags from ETH_TUNNEL_FILTER_XX - see above. */
 	uint16_t filter_type;
-	enum rte_eth_tunnel_type tunnel_type; /**< Tunnel Type. */
+	enum i40e_tunnel_type tunnel_type; /**< Tunnel Type. */
 	uint32_t tenant_id;     /**< Tenant ID to match. VNI, GRE key... */
 	uint16_t queue_id;      /**< Queue assigned to if match. */
 	uint8_t is_to_vf;       /**< 0 - to PF, 1 - to VF */

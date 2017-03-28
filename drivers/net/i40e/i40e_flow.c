@@ -1324,7 +1324,7 @@ i40e_flow_parse_vxlan_pattern(__rte_unused struct rte_eth_dev *dev,
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
-			filter->ip_type = RTE_TUNNEL_IPTYPE_IPV4;
+			filter->ip_type = I40E_TUNNEL_IPTYPE_IPV4;
 			/* IPv4 is used to describe protocol,
 			 * spec and mask should be NULL.
 			 */
@@ -1337,7 +1337,7 @@ i40e_flow_parse_vxlan_pattern(__rte_unused struct rte_eth_dev *dev,
 			}
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
-			filter->ip_type = RTE_TUNNEL_IPTYPE_IPV6;
+			filter->ip_type = I40E_TUNNEL_IPTYPE_IPV6;
 			/* IPv6 is used to describe protocol,
 			 * spec and mask should be NULL.
 			 */
@@ -1480,7 +1480,7 @@ i40e_flow_parse_vxlan_pattern(__rte_unused struct rte_eth_dev *dev,
 		return -rte_errno;
 	}
 
-	filter->tunnel_type = RTE_TUNNEL_TYPE_VXLAN;
+	filter->tunnel_type = I40E_TUNNEL_TYPE_VXLAN;
 
 	return 0;
 }

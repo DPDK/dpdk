@@ -6974,7 +6974,7 @@ i40e_dev_consistent_tunnel_filter_set(struct i40e_pf *pf,
 
 	pfilter->element.inner_vlan =
 		rte_cpu_to_le_16(tunnel_filter->inner_vlan);
-	if (tunnel_filter->ip_type == RTE_TUNNEL_IPTYPE_IPV4) {
+	if (tunnel_filter->ip_type == I40E_TUNNEL_IPTYPE_IPV4) {
 		ip_type = I40E_AQC_ADD_CLOUD_FLAGS_IPV4;
 		ipv4_addr = rte_be_to_cpu_32(tunnel_filter->ip_addr.ipv4_addr);
 		rte_memcpy(&pfilter->element.ipaddr.v4.data,
@@ -6994,13 +6994,13 @@ i40e_dev_consistent_tunnel_filter_set(struct i40e_pf *pf,
 
 	/* check tunneled type */
 	switch (tunnel_filter->tunnel_type) {
-	case RTE_TUNNEL_TYPE_VXLAN:
+	case I40E_TUNNEL_TYPE_VXLAN:
 		tun_type = I40E_AQC_ADD_CLOUD_TNL_TYPE_VXLAN;
 		break;
-	case RTE_TUNNEL_TYPE_NVGRE:
+	case I40E_TUNNEL_TYPE_NVGRE:
 		tun_type = I40E_AQC_ADD_CLOUD_TNL_TYPE_NVGRE_OMAC;
 		break;
-	case RTE_TUNNEL_TYPE_IP_IN_GRE:
+	case I40E_TUNNEL_TYPE_IP_IN_GRE:
 		tun_type = I40E_AQC_ADD_CLOUD_TNL_TYPE_IP;
 		break;
 	default:
