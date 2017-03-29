@@ -43,6 +43,7 @@ enum ring_state {
 
 extern int *quota;
 extern unsigned int *low_watermark;
+extern unsigned int *high_watermark;
 
 extern uint8_t port_pairs[RTE_MAX_ETHPORTS];
 

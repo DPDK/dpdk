@@ -140,7 +140,7 @@ void init_ring(int lcore_id, uint8_t port_id)
 	if (ring == NULL)
 		rte_exit(EXIT_FAILURE, "%s\n", rte_strerror(rte_errno));
 
-	rte_ring_set_water_mark(ring, 80 * RING_SIZE / 100);
+	*high_watermark = 80 * RING_SIZE / 100;
 
 	rings[lcore_id][port_id] = ring;
 }
@@ -168,10 +168,11 @@ setup_shared_variables(void)
 	const struct rte_memzone *qw_memzone;
 
 	qw_memzone = rte_memzone_reserve(QUOTA_WATERMARK_MEMZONE_NAME,
-			2 * sizeof(int), rte_socket_id(), 0);
+			3 * sizeof(int), rte_socket_id(), 0);
 	if (qw_memzone == NULL)
 		rte_exit(EXIT_FAILURE, "%s\n", rte_strerror(rte_errno));
 
 	quota = qw_memzone->addr;
 	low_watermark = (unsigned int *) qw_memzone->addr + 1;
+	high_watermark = (unsigned int *) qw_memzone->addr + 2;
 }

@@ -1,5 +1,5 @@
 ..  BSD LICENSE
-    Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+    Copyright(c) 2010-2017 Intel Corporation. All rights reserved.
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -31,11 +31,13 @@
 Quota and Watermark Sample Application
 ======================================
 
-The Quota and Watermark sample application is a simple example of packet processing using Data Plane Development Kit (DPDK) that
-showcases the use of a quota as the maximum number of packets enqueue/dequeue at a time and low and high watermarks
-to signal low and high ring usage respectively.
+The Quota and Watermark sample application is a simple example of packet
+processing using Data Plane Development Kit (DPDK) that showcases the use
+of a quota as the maximum number of packets enqueue/dequeue at a time and
+low and high thresholds, or watermarks, to signal low and high ring usage
+respectively.
 
-Additionally, it shows how ring watermarks can be used to feedback congestion notifications to data producers by
+Additionally, it shows how the thresholds can be used to feedback congestion notifications to data producers by
 temporarily stopping processing overloaded rings and sending Ethernet flow control frames.
 
 This sample application is split in two parts:
@@ -64,7 +66,7 @@ each stage of which being connected by rings, as shown in :numref:`figure_pipeli
 
 
 An adjustable quota value controls how many packets are being moved through the pipeline per enqueue and dequeue.
-Adjustable watermark values associated with the rings control a back-off mechanism that
+Adjustable threshold values associated with the rings control a back-off mechanism that
 tries to prevent the pipeline from being overloaded by:
 
 *   Stopping enqueuing on rings for which the usage has crossed the high watermark threshold
@@ -216,25 +218,26 @@ in the *DPDK Getting Started Guide* and the *DPDK API Reference*.
 Shared Variables Setup
 ^^^^^^^^^^^^^^^^^^^^^^
 
-The quota and low_watermark shared variables are put into an rte_memzone using a call to setup_shared_variables():
+The quota and high and low watermark shared variables are put into an rte_memzone using a call to setup_shared_variables():
 
 .. code-block:: c
 
     void
     setup_shared_variables(void)
     {
-        const struct rte_memzone *qw_memzone;
+           const struct rte_memzone *qw_memzone;
 
-        qw_memzone = rte_memzone_reserve(QUOTA_WATERMARK_MEMZONE_NAME, 2 * sizeof(int), rte_socket_id(), RTE_MEMZONE_2MB);
+           qw_memzone = rte_memzone_reserve(QUOTA_WATERMARK_MEMZONE_NAME,
+                          3 * sizeof(int), rte_socket_id(), 0);
+           if (qw_memzone == NULL)
+                   rte_exit(EXIT_FAILURE, "%s\n", rte_strerror(rte_errno));
 
-        if (qw_memzone == NULL)
-            rte_exit(EXIT_FAILURE, "%s\n", rte_strerror(rte_errno));
+           quota = qw_memzone->addr;
+           low_watermark = (unsigned int *) qw_memzone->addr + 1;
+           high_watermark = (unsigned int *) qw_memzone->addr + 2;
+    }
 
-        quota = qw_memzone->addr;
-        low_watermark = (unsigned int *) qw_memzone->addr + sizeof(int);
-   }
-
-These two variables are initialized to a default value in main() and
+These three variables are initialized to a default value in main() and
 can be changed while qw is running using the qwctl control program.
 
 Application Arguments
@@ -349,27 +352,37 @@ This is done using the following code:
     /* Process each port round robin style */
 
     for (port_id = 0; port_id < RTE_MAX_ETHPORTS; port_id++) {
-        if (!is_bit_set(port_id, portmask))
-            continue;
+            if (!is_bit_set(port_id, portmask))
+                    continue;
 
-        ring = rings[lcore_id][port_id];
+            ring = rings[lcore_id][port_id];
 
-        if (ring_state[port_id] != RING_READY) {
-            if (rte_ring_count(ring) > *low_watermark)
-                continue;
-        else
-            ring_state[port_id] = RING_READY;
-        }
+            if (ring_state[port_id] != RING_READY) {
+                    if (rte_ring_count(ring) > *low_watermark)
+                            continue;
+                    else
+                            ring_state[port_id] = RING_READY;
+            }
 
-        /* Enqueue received packets on the RX ring */
+            /* Enqueue received packets on the RX ring */
+            nb_rx_pkts = rte_eth_rx_burst(port_id, 0, pkts,
+                            (uint16_t) *quota);
+            ret = rte_ring_enqueue_bulk(ring, (void *) pkts,
+                            nb_rx_pkts, &free);
+            if (RING_SIZE - free > *high_watermark) {
+                    ring_state[port_id] = RING_OVERLOADED;
+                    send_pause_frame(port_id, 1337);
+            }
 
-        nb_rx_pkts = rte_eth_rx_burst(port_id, 0, pkts, *quota);
+            if (ret == 0) {
 
-        ret = rte_ring_enqueue_bulk(ring, (void *) pkts, nb_rx_pkts);
-        if (ret == -EDQUOT) {
-            ring_state[port_id] = RING_OVERLOADED;
-            send_pause_frame(port_id, 1337);
-        }
+                    /*
+                     * Return  mbufs to the pool,
+                     * effectively dropping packets
+                     */
+                    for (i = 0; i < nb_rx_pkts; i++)
+                            rte_pktmbuf_free(pkts[i]);
+            }
     }
 
 For each port in the port mask, the corresponding ring's pointer is fetched into ring and that ring's state is checked:
@@ -390,30 +403,40 @@ This thread is running on most of the logical cores to create and arbitrarily lo
     previous_lcore_id = get_previous_lcore_id(lcore_id);
 
     for (port_id = 0; port_id < RTE_MAX_ETHPORTS; port_id++) {
-        if (!is_bit_set(port_id, portmask))
-            continue;
+            if (!is_bit_set(port_id, portmask))
+                    continue;
 
-        tx = rings[lcore_id][port_id];
-        rx = rings[previous_lcore_id][port_id];
-        if (ring_state[port_id] != RING_READY) {
-            if (rte_ring_count(tx) > *low_watermark)
-                continue;
-        else
-            ring_state[port_id] = RING_READY;
-        }
+            tx = rings[lcore_id][port_id];
+            rx = rings[previous_lcore_id][port_id];
 
-        /* Dequeue up to quota mbuf from rx */
+            if (ring_state[port_id] != RING_READY) {
+                    if (rte_ring_count(tx) > *low_watermark)
+                            continue;
+                    else
+                            ring_state[port_id] = RING_READY;
+            }
 
-        nb_dq_pkts = rte_ring_dequeue_burst(rx, pkts, *quota);
+            /* Dequeue up to quota mbuf from rx */
+            nb_dq_pkts = rte_ring_dequeue_burst(rx, pkts,
+                            *quota, NULL);
+            if (unlikely(nb_dq_pkts < 0))
+                    continue;
 
-        if (unlikely(nb_dq_pkts < 0))
-            continue;
+            /* Enqueue them on tx */
+            ret = rte_ring_enqueue_bulk(tx, pkts,
+                            nb_dq_pkts, &free);
+            if (RING_SIZE - free > *high_watermark)
+                    ring_state[port_id] = RING_OVERLOADED;
 
-        /* Enqueue them on tx */
+            if (ret == 0) {
 
-        ret = rte_ring_enqueue_bulk(tx, pkts, nb_dq_pkts);
-        if (ret == -EDQUOT)
-            ring_state[port_id] = RING_OVERLOADED;
+                    /*
+                     * Return  mbufs to the pool,
+                     * effectively dropping packets
+                     */
+                    for (i = 0; i < nb_dq_pkts; i++)
+                            rte_pktmbuf_free(pkts[i]);
+            }
     }
 
 The thread's logic works mostly like receive_stage(),
@@ -482,5 +505,6 @@ low_watermark from the rte_memzone previously created by qw.
 
         quota = qw_memzone->addr;
 
-        low_watermark = (unsigned int *) qw_memzone->addr + sizeof(int);
+        low_watermark = (unsigned int *) qw_memzone->addr + 1;
+        high_watermark = (unsigned int *) qw_memzone->addr + 2;
     }

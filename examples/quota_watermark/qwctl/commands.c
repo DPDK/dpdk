@@ -140,8 +140,8 @@ cmd_set_handler(__attribute__((unused)) void *parsed_result,
 		else
 			if (tokens->value >= *low_watermark * 100 / RING_SIZE
 					&& tokens->value <= 100)
-				rte_ring_set_water_mark(ring,
-					tokens->value * RING_SIZE / 100);
+				*high_watermark = tokens->value *
+						RING_SIZE / 100;
 			else
 				cmdline_printf(cl,
 					"ring high watermark must be between %u%% and 100%%\n",

@@ -36,5 +36,6 @@
 
 extern int *quota;
 extern unsigned int *low_watermark;
+extern unsigned int *high_watermark;
 
 #endif /* _MAIN_H_ */

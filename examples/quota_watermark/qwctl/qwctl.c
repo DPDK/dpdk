@@ -55,6 +55,7 @@
 
 int *quota;
 unsigned int *low_watermark;
+unsigned int *high_watermark;
 
 
 static void
@@ -68,6 +69,7 @@ setup_shared_variables(void)
 
 	quota = qw_memzone->addr;
 	low_watermark = (unsigned int *) qw_memzone->addr + 1;
+	high_watermark = (unsigned int *) qw_memzone->addr + 2;
 }
 
 int main(int argc, char **argv)
