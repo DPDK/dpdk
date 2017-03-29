@@ -954,11 +954,51 @@ static void ecore_iov_free_vf_igu_sbs(struct ecore_hwfn *p_hwfn,
 	vf->num_sbs = 0;
 }
 
+void ecore_iov_set_link(struct ecore_hwfn *p_hwfn,
+			u16 vfid,
+			struct ecore_mcp_link_params *params,
+			struct ecore_mcp_link_state *link,
+			struct ecore_mcp_link_capabilities *p_caps)
+{
+	struct ecore_vf_info *p_vf = ecore_iov_get_vf_info(p_hwfn, vfid, false);
+	struct ecore_bulletin_content *p_bulletin;
+
+	if (!p_vf)
+		return;
+
+	p_bulletin = p_vf->bulletin.p_virt;
+	p_bulletin->req_autoneg = params->speed.autoneg;
+	p_bulletin->req_adv_speed = params->speed.advertised_speeds;
+	p_bulletin->req_forced_speed = params->speed.forced_speed;
+	p_bulletin->req_autoneg_pause = params->pause.autoneg;
+	p_bulletin->req_forced_rx = params->pause.forced_rx;
+	p_bulletin->req_forced_tx = params->pause.forced_tx;
+	p_bulletin->req_loopback = params->loopback_mode;
+
+	p_bulletin->link_up = link->link_up;
+	p_bulletin->speed = link->speed;
+	p_bulletin->full_duplex = link->full_duplex;
+	p_bulletin->autoneg = link->an;
+	p_bulletin->autoneg_complete = link->an_complete;
+	p_bulletin->parallel_detection = link->parallel_detection;
+	p_bulletin->pfc_enabled = link->pfc_enabled;
+	p_bulletin->partner_adv_speed = link->partner_adv_speed;
+	p_bulletin->partner_tx_flow_ctrl_en = link->partner_tx_flow_ctrl_en;
+	p_bulletin->partner_rx_flow_ctrl_en = link->partner_rx_flow_ctrl_en;
+	p_bulletin->partner_adv_pause = link->partner_adv_pause;
+	p_bulletin->sfp_tx_fault = link->sfp_tx_fault;
+
+	p_bulletin->capability_speed = p_caps->speed_capabilities;
+}
+
 enum _ecore_status_t
 ecore_iov_init_hw_for_vf(struct ecore_hwfn *p_hwfn,
 			 struct ecore_ptt *p_ptt,
 			 struct ecore_iov_vf_init_params *p_params)
 {
+	struct ecore_mcp_link_capabilities link_caps;
+	struct ecore_mcp_link_params link_params;
+	struct ecore_mcp_link_state link_state;
 	u8 num_of_vf_available_chains  = 0;
 	struct ecore_vf_info *vf = OSAL_NULL;
 	u16 qid, num_irqs;
@@ -1045,6 +1085,17 @@ ecore_iov_init_hw_for_vf(struct ecore_hwfn *p_hwfn,
 			   p_queue->fw_cid);
 	}
 
+	/* Update the link configuration in bulletin.
+	 */
+	OSAL_MEMCPY(&link_params, ecore_mcp_get_link_params(p_hwfn),
+		    sizeof(link_params));
+	OSAL_MEMCPY(&link_state, ecore_mcp_get_link_state(p_hwfn),
+		    sizeof(link_state));
+	OSAL_MEMCPY(&link_caps, ecore_mcp_get_link_capabilities(p_hwfn),
+		    sizeof(link_caps));
+	ecore_iov_set_link(p_hwfn, p_params->rel_vf_id,
+			   &link_params, &link_state, &link_caps);
+
 	rc = ecore_iov_enable_vf_access(p_hwfn, p_ptt, vf);
 
 	if (rc == ECORE_SUCCESS) {
@@ -1057,43 +1108,6 @@ ecore_iov_init_hw_for_vf(struct ecore_hwfn *p_hwfn,
 	}
 
 	return rc;
-}
-
-void ecore_iov_set_link(struct ecore_hwfn *p_hwfn,
-			u16 vfid,
-			struct ecore_mcp_link_params *params,
-			struct ecore_mcp_link_state *link,
-			struct ecore_mcp_link_capabilities *p_caps)
-{
-	struct ecore_vf_info *p_vf = ecore_iov_get_vf_info(p_hwfn, vfid, false);
-	struct ecore_bulletin_content *p_bulletin;
-
-	if (!p_vf)
-		return;
-
-	p_bulletin = p_vf->bulletin.p_virt;
-	p_bulletin->req_autoneg = params->speed.autoneg;
-	p_bulletin->req_adv_speed = params->speed.advertised_speeds;
-	p_bulletin->req_forced_speed = params->speed.forced_speed;
-	p_bulletin->req_autoneg_pause = params->pause.autoneg;
-	p_bulletin->req_forced_rx = params->pause.forced_rx;
-	p_bulletin->req_forced_tx = params->pause.forced_tx;
-	p_bulletin->req_loopback = params->loopback_mode;
-
-	p_bulletin->link_up = link->link_up;
-	p_bulletin->speed = link->speed;
-	p_bulletin->full_duplex = link->full_duplex;
-	p_bulletin->autoneg = link->an;
-	p_bulletin->autoneg_complete = link->an_complete;
-	p_bulletin->parallel_detection = link->parallel_detection;
-	p_bulletin->pfc_enabled = link->pfc_enabled;
-	p_bulletin->partner_adv_speed = link->partner_adv_speed;
-	p_bulletin->partner_tx_flow_ctrl_en = link->partner_tx_flow_ctrl_en;
-	p_bulletin->partner_rx_flow_ctrl_en = link->partner_rx_flow_ctrl_en;
-	p_bulletin->partner_adv_pause = link->partner_adv_pause;
-	p_bulletin->sfp_tx_fault = link->sfp_tx_fault;
-
-	p_bulletin->capability_speed = p_caps->speed_capabilities;
 }
 
 enum _ecore_status_t ecore_iov_release_hw_for_vf(struct ecore_hwfn *p_hwfn,
