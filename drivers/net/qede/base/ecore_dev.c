@@ -219,9 +219,7 @@ static enum _ecore_status_t ecore_init_qm_info(struct ecore_hwfn *p_hwfn,
 	 * don't have a good recycle flow. Non ethernet PFs require only a
 	 * single physical queue.
 	 */
-	if (p_hwfn->hw_info.personality == ECORE_PCI_ETH_ROCE ||
-	    p_hwfn->hw_info.personality == ECORE_PCI_IWARP ||
-	    p_hwfn->hw_info.personality == ECORE_PCI_ETH)
+	if (ECORE_IS_L2_PERSONALITY(p_hwfn))
 		protocol_pqs = p_hwfn->hw_info.num_hw_tc;
 	else
 		protocol_pqs = 1;
@@ -229,7 +227,7 @@ static enum _ecore_status_t ecore_init_qm_info(struct ecore_hwfn *p_hwfn,
 	num_pqs = protocol_pqs + num_vfs + 1;	/* The '1' is for pure-LB */
 	num_vports = (u8)RESC_NUM(p_hwfn, ECORE_VPORT);
 
-	if (p_hwfn->hw_info.personality == ECORE_PCI_ETH_ROCE) {
+	if (ECORE_IS_ROCE_PERSONALITY(p_hwfn)) {
 		num_pqs++;	/* for RoCE queue */
 		init_rdma_offload_pq = true;
 		if (p_hwfn->pf_params.rdma_pf_params.enable_dcqcn) {
@@ -259,7 +257,7 @@ static enum _ecore_status_t ecore_init_qm_info(struct ecore_hwfn *p_hwfn,
 		qm_info->num_pf_rls = (u8)num_pf_rls;
 	}
 
-	if (p_hwfn->hw_info.personality == ECORE_PCI_IWARP) {
+	if (ECORE_IS_IWARP_PERSONALITY(p_hwfn)) {
 		num_pqs += 3;	/* for iwarp queue / pure-ack / ooo */
 		init_rdma_offload_pq = true;
 		init_pure_ack_pq = true;
@@ -335,9 +333,7 @@ static enum _ecore_status_t ecore_init_qm_info(struct ecore_hwfn *p_hwfn,
 		struct init_qm_pq_params *params =
 		    &qm_info->qm_pq_params[curr_queue++];
 
-		if (p_hwfn->hw_info.personality == ECORE_PCI_ETH_ROCE ||
-		    p_hwfn->hw_info.personality == ECORE_PCI_IWARP ||
-		    p_hwfn->hw_info.personality == ECORE_PCI_ETH) {
+		if (ECORE_IS_L2_PERSONALITY(p_hwfn)) {
 			params->vport_id = vport_id;
 			params->tc_id = i;
 			/* Note: this assumes that if we had a configuration
@@ -612,8 +608,7 @@ enum _ecore_status_t ecore_resc_alloc(struct ecore_dev *p_dev)
 
 		/* EQ */
 		n_eqes = ecore_chain_get_capacity(&p_hwfn->p_spq->chain);
-		if ((p_hwfn->hw_info.personality == ECORE_PCI_ETH_ROCE) ||
-		    (p_hwfn->hw_info.personality == ECORE_PCI_IWARP)) {
+		if (ECORE_IS_RDMA_PERSONALITY(p_hwfn)) {
 			/* Calculate the EQ size
 			 * ---------------------
 			 * Each ICID may generate up to one event at a time i.e.
@@ -636,7 +631,7 @@ enum _ecore_status_t ecore_resc_alloc(struct ecore_dev *p_dev)
 			 *          smaller than RoCE's so we avoid exact
 			 *          calculation.
 			 */
-			if (p_hwfn->hw_info.personality == ECORE_PCI_ETH_ROCE) {
+			if (ECORE_IS_ROCE_PERSONALITY(p_hwfn)) {
 				num_cons =
 				    ecore_cxt_get_proto_cid_count(
 						p_hwfn,

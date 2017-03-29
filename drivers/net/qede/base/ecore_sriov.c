@@ -86,6 +86,7 @@ static enum _ecore_status_t ecore_sp_vf_start(struct ecore_hwfn *p_hwfn,
 		p_ramrod->personality = PERSONALITY_ETH;
 		break;
 	case ECORE_PCI_ETH_ROCE:
+	case ECORE_PCI_ETH_IWARP:
 		p_ramrod->personality = PERSONALITY_RDMA_AND_ETH;
 		break;
 	default:

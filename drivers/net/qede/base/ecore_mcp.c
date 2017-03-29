@@ -1373,16 +1373,47 @@ enum _ecore_status_t ecore_mcp_get_media_type(struct ecore_dev *p_dev,
 	return ECORE_SUCCESS;
 }
 
+/* @DPDK */
+/* Old MFW has a global configuration for all PFs regarding RDMA support */
+static void
+ecore_mcp_get_shmem_proto_legacy(struct ecore_hwfn *p_hwfn,
+				 enum ecore_pci_personality *p_proto)
+{
+	*p_proto = ECORE_PCI_ETH;
+
+	DP_VERBOSE(p_hwfn, ECORE_MSG_IFUP,
+		   "According to Legacy capabilities, L2 personality is %08x\n",
+		   (u32)*p_proto);
+}
+
+/* @DPDK */
+static enum _ecore_status_t
+ecore_mcp_get_shmem_proto_mfw(struct ecore_hwfn *p_hwfn,
+			      struct ecore_ptt *p_ptt,
+			      enum ecore_pci_personality *p_proto)
+{
+	u32 resp = 0, param = 0;
+	enum _ecore_status_t rc;
+
+	DP_VERBOSE(p_hwfn, ECORE_MSG_IFUP,
+		   "According to capabilities, L2 personality is %08x [resp %08x param %08x]\n",
+		   (u32)*p_proto, resp, param);
+	return ECORE_SUCCESS;
+}
+
 static enum _ecore_status_t
 ecore_mcp_get_shmem_proto(struct ecore_hwfn *p_hwfn,
 			  struct public_func *p_info,
+			  struct ecore_ptt *p_ptt,
 			  enum ecore_pci_personality *p_proto)
 {
 	enum _ecore_status_t rc = ECORE_SUCCESS;
 
 	switch (p_info->config & FUNC_MF_CFG_PROTOCOL_MASK) {
 	case FUNC_MF_CFG_PROTOCOL_ETHERNET:
-		*p_proto = ECORE_PCI_ETH;
+		if (ecore_mcp_get_shmem_proto_mfw(p_hwfn, p_ptt, p_proto) !=
+		    ECORE_SUCCESS)
+			ecore_mcp_get_shmem_proto_legacy(p_hwfn, p_proto);
 		break;
 	default:
 		rc = ECORE_INVAL;
@@ -1403,7 +1434,8 @@ enum _ecore_status_t ecore_mcp_fill_shmem_func_info(struct ecore_hwfn *p_hwfn,
 	info->pause_on_host = (shmem_info.config &
 			       FUNC_MF_CFG_PAUSE_ON_HOST_RING) ? 1 : 0;
 
-	if (ecore_mcp_get_shmem_proto(p_hwfn, &shmem_info, &info->protocol)) {
+	if (ecore_mcp_get_shmem_proto(p_hwfn, &shmem_info, p_ptt,
+				      &info->protocol)) {
 		DP_ERR(p_hwfn, "Unknown personality %08x\n",
 		       (u32)(shmem_info.config & FUNC_MF_CFG_PROTOCOL_MASK));
 		return ECORE_INVAL;
@@ -1559,8 +1591,9 @@ int ecore_mcp_get_personality_cnt(struct ecore_hwfn *p_hwfn,
 		if (shmem_info.config & FUNC_MF_CFG_FUNC_HIDE)
 			continue;
 
-		if (ecore_mcp_get_shmem_proto(p_hwfn, &shmem_info,
-					      &protocol) != ECORE_SUCCESS)
+		if (ecore_mcp_get_shmem_proto(p_hwfn, &shmem_info, p_ptt,
+					      &protocol) !=
+		    ECORE_SUCCESS)
 			continue;
 
 		if ((1 << ((u32)protocol)) & personalities)

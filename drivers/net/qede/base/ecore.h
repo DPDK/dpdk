@@ -243,7 +243,8 @@ enum ecore_pci_personality {
 	ECORE_PCI_FCOE,
 	ECORE_PCI_ISCSI,
 	ECORE_PCI_ETH_ROCE,
-	ECORE_PCI_IWARP,
+	ECORE_PCI_ETH_IWARP,
+	ECORE_PCI_ETH_RDMA,
 	ECORE_PCI_DEFAULT /* default in shmem */
 };
 
@@ -328,6 +329,19 @@ enum ecore_hw_err_type {
 struct ecore_hw_info {
 	/* PCI personality */
 	enum ecore_pci_personality personality;
+#define ECORE_IS_RDMA_PERSONALITY(dev)			    \
+	((dev)->hw_info.personality == ECORE_PCI_ETH_ROCE ||  \
+	 (dev)->hw_info.personality == ECORE_PCI_ETH_IWARP || \
+	 (dev)->hw_info.personality == ECORE_PCI_ETH_RDMA)
+#define ECORE_IS_ROCE_PERSONALITY(dev)			   \
+	((dev)->hw_info.personality == ECORE_PCI_ETH_ROCE || \
+	 (dev)->hw_info.personality == ECORE_PCI_ETH_RDMA)
+#define ECORE_IS_IWARP_PERSONALITY(dev)			    \
+	((dev)->hw_info.personality == ECORE_PCI_ETH_IWARP || \
+	 (dev)->hw_info.personality == ECORE_PCI_ETH_RDMA)
+#define ECORE_IS_L2_PERSONALITY(dev)		      \
+	((dev)->hw_info.personality == ECORE_PCI_ETH || \
+	 ECORE_IS_RDMA_PERSONALITY(dev))
 
 	/* Resource Allocation scheme results */
 	u32 resc_start[ECORE_MAX_RESC];
