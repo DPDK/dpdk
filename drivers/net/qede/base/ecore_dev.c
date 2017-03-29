@@ -2888,10 +2888,6 @@ ecore_get_hw_info(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 	return ecore_hw_get_resc(p_hwfn, drv_resc_alloc);
 }
 
-#define ECORE_DEV_ID_MASK	0xff00
-#define ECORE_DEV_ID_MASK_BB	0x1600
-#define ECORE_DEV_ID_MASK_AH	0x8000
-
 static enum _ecore_status_t ecore_get_dev_info(struct ecore_dev *p_dev)
 {
 	struct ecore_hwfn *p_hwfn = ECORE_LEADING_HWFN(p_dev);

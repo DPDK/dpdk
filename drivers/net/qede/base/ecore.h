@@ -625,6 +625,10 @@ struct ecore_dev {
 #define ECORE_IS_AH(dev)	((dev)->type == ECORE_DEV_TYPE_AH)
 #define ECORE_IS_K2(dev)	ECORE_IS_AH(dev)
 
+#define ECORE_DEV_ID_MASK	0xff00
+#define ECORE_DEV_ID_MASK_BB	0x1600
+#define ECORE_DEV_ID_MASK_AH	0x8000
+
 	u16 vendor_id;
 	u16 device_id;
 
