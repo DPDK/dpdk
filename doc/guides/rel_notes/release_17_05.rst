@@ -133,6 +133,7 @@ API Changes
   have been made to it:
 
   * removed the build-time setting ``CONFIG_RTE_RING_SPLIT_PROD_CONS``
+  * removed the build-time setting ``CONFIG_RTE_LIBRTE_RING_DEBUG``
 
 ABI Changes
 -----------

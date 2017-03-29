@@ -110,13 +110,6 @@ Once an enqueue operation reaches the high water mark, the producer is notified,
 
 This mechanism can be used, for example, to exert a back pressure on I/O to inform the LAN to PAUSE.
 
-Debug
-~~~~~
-
-When debug is enabled (CONFIG_RTE_LIBRTE_RING_DEBUG is set),
-the library stores some per-ring statistic counters about the number of enqueues/dequeues.
-These statistics are per-core to avoid concurrent accesses or atomic operations.
-
 Use Cases
 ---------
 

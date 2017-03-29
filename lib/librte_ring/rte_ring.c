@@ -131,12 +131,6 @@ rte_ring_init(struct rte_ring *r, const char *name, unsigned count,
 			  RTE_CACHE_LINE_MASK) != 0);
 	RTE_BUILD_BUG_ON((offsetof(struct rte_ring, prod) &
 			  RTE_CACHE_LINE_MASK) != 0);
-#ifdef RTE_LIBRTE_RING_DEBUG
-	RTE_BUILD_BUG_ON((sizeof(struct rte_ring_debug_stats) &
-			  RTE_CACHE_LINE_MASK) != 0);
-	RTE_BUILD_BUG_ON((offsetof(struct rte_ring, stats) &
-			  RTE_CACHE_LINE_MASK) != 0);
-#endif
 
 	/* init the ring structure */
 	memset(r, 0, sizeof(*r));
@@ -284,11 +278,6 @@ rte_ring_set_water_mark(struct rte_ring *r, unsigned count)
 void
 rte_ring_dump(FILE *f, const struct rte_ring *r)
 {
-#ifdef RTE_LIBRTE_RING_DEBUG
-	struct rte_ring_debug_stats sum;
-	unsigned lcore_id;
-#endif
-
 	fprintf(f, "ring <%s>@%p\n", r->name, r);
 	fprintf(f, "  flags=%x\n", r->flags);
 	fprintf(f, "  size=%"PRIu32"\n", r->size);
@@ -302,36 +291,6 @@ rte_ring_dump(FILE *f, const struct rte_ring *r)
 		fprintf(f, "  watermark=0\n");
 	else
 		fprintf(f, "  watermark=%"PRIu32"\n", r->watermark);
-
-	/* sum and dump statistics */
-#ifdef RTE_LIBRTE_RING_DEBUG
-	memset(&sum, 0, sizeof(sum));
-	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {
-		sum.enq_success_bulk += r->stats[lcore_id].enq_success_bulk;
-		sum.enq_success_objs += r->stats[lcore_id].enq_success_objs;
-		sum.enq_quota_bulk += r->stats[lcore_id].enq_quota_bulk;
-		sum.enq_quota_objs += r->stats[lcore_id].enq_quota_objs;
-		sum.enq_fail_bulk += r->stats[lcore_id].enq_fail_bulk;
-		sum.enq_fail_objs += r->stats[lcore_id].enq_fail_objs;
-		sum.deq_success_bulk += r->stats[lcore_id].deq_success_bulk;
-		sum.deq_success_objs += r->stats[lcore_id].deq_success_objs;
-		sum.deq_fail_bulk += r->stats[lcore_id].deq_fail_bulk;
-		sum.deq_fail_objs += r->stats[lcore_id].deq_fail_objs;
-	}
-	fprintf(f, "  size=%"PRIu32"\n", r->size);
-	fprintf(f, "  enq_success_bulk=%"PRIu64"\n", sum.enq_success_bulk);
-	fprintf(f, "  enq_success_objs=%"PRIu64"\n", sum.enq_success_objs);
-	fprintf(f, "  enq_quota_bulk=%"PRIu64"\n", sum.enq_quota_bulk);
-	fprintf(f, "  enq_quota_objs=%"PRIu64"\n", sum.enq_quota_objs);
-	fprintf(f, "  enq_fail_bulk=%"PRIu64"\n", sum.enq_fail_bulk);
-	fprintf(f, "  enq_fail_objs=%"PRIu64"\n", sum.enq_fail_objs);
-	fprintf(f, "  deq_success_bulk=%"PRIu64"\n", sum.deq_success_bulk);
-	fprintf(f, "  deq_success_objs=%"PRIu64"\n", sum.deq_success_objs);
-	fprintf(f, "  deq_fail_bulk=%"PRIu64"\n", sum.deq_fail_bulk);
-	fprintf(f, "  deq_fail_objs=%"PRIu64"\n", sum.deq_fail_objs);
-#else
-	fprintf(f, "  no statistics available\n");
-#endif
 }
 
 /* dump the status of all rings on the console */

@@ -109,24 +109,6 @@ enum rte_ring_queue_behavior {
 	RTE_RING_QUEUE_VARIABLE   /* Enq/Deq as many items as possible from ring */
 };
 
-#ifdef RTE_LIBRTE_RING_DEBUG
-/**
- * A structure that stores the ring statistics (per-lcore).
- */
-struct rte_ring_debug_stats {
-	uint64_t enq_success_bulk; /**< Successful enqueues number. */
-	uint64_t enq_success_objs; /**< Objects successfully enqueued. */
-	uint64_t enq_quota_bulk;   /**< Successful enqueues above watermark. */
-	uint64_t enq_quota_objs;   /**< Objects enqueued above watermark. */
-	uint64_t enq_fail_bulk;    /**< Failed enqueues number. */
-	uint64_t enq_fail_objs;    /**< Objects that failed to be enqueued. */
-	uint64_t deq_success_bulk; /**< Successful dequeues number. */
-	uint64_t deq_success_objs; /**< Objects successfully dequeued. */
-	uint64_t deq_fail_bulk;    /**< Failed dequeues number. */
-	uint64_t deq_fail_objs;    /**< Objects that failed to be dequeued. */
-} __rte_cache_aligned;
-#endif
-
 #define RTE_RING_MZ_PREFIX "RG_"
 /**< The maximum length of a ring name. */
 #define RTE_RING_NAMESIZE (RTE_MEMZONE_NAMESIZE - \
@@ -184,10 +166,6 @@ struct rte_ring {
 	/** Ring consumer status. */
 	struct rte_ring_headtail cons __rte_aligned(CONS_ALIGN);
 
-#ifdef RTE_LIBRTE_RING_DEBUG
-	struct rte_ring_debug_stats stats[RTE_MAX_LCORE];
-#endif
-
 	void *ring[] __rte_cache_aligned;   /**< Memory space of ring starts here.
 	                                     * not volatile so need to be careful
 	                                     * about compiler re-ordering */
@@ -197,27 +175,6 @@ struct rte_ring {
 #define RING_F_SC_DEQ 0x0002 /**< The default dequeue is "single-consumer". */
 #define RTE_RING_QUOT_EXCEED (1 << 31)  /**< Quota exceed for burst ops */
 #define RTE_RING_SZ_MASK  (unsigned)(0x0fffffff) /**< Ring size mask */
-
-/**
- * @internal When debug is enabled, store ring statistics.
- * @param r
- *   A pointer to the ring.
- * @param name
- *   The name of the statistics field to increment in the ring.
- * @param n
- *   The number to add to the object-oriented statistics.
- */
-#ifdef RTE_LIBRTE_RING_DEBUG
-#define __RING_STAT_ADD(r, name, n) do {                        \
-		unsigned __lcore_id = rte_lcore_id();           \
-		if (__lcore_id < RTE_MAX_LCORE) {               \
-			r->stats[__lcore_id].name##_objs += n;  \
-			r->stats[__lcore_id].name##_bulk += 1;  \
-		}                                               \
-	} while(0)
-#else
-#define __RING_STAT_ADD(r, name, n) do {} while(0)
-#endif
 
 /**
  * Calculate the memory size needed for a ring
@@ -460,17 +417,12 @@ __rte_ring_mp_do_enqueue(struct rte_ring *r, void * const *obj_table,
 
 		/* check that we have enough room in ring */
 		if (unlikely(n > free_entries)) {
-			if (behavior == RTE_RING_QUEUE_FIXED) {
-				__RING_STAT_ADD(r, enq_fail, n);
+			if (behavior == RTE_RING_QUEUE_FIXED)
 				return -ENOBUFS;
-			}
 			else {
 				/* No free entry available */
-				if (unlikely(free_entries == 0)) {
-					__RING_STAT_ADD(r, enq_fail, n);
+				if (unlikely(free_entries == 0))
 					return 0;
-				}
-
 				n = free_entries;
 			}
 		}
@@ -485,15 +437,11 @@ __rte_ring_mp_do_enqueue(struct rte_ring *r, void * const *obj_table,
 	rte_smp_wmb();
 
 	/* if we exceed the watermark */
-	if (unlikely(((mask + 1) - free_entries + n) > r->watermark)) {
+	if (unlikely(((mask + 1) - free_entries + n) > r->watermark))
 		ret = (behavior == RTE_RING_QUEUE_FIXED) ? -EDQUOT :
 				(int)(n | RTE_RING_QUOT_EXCEED);
-		__RING_STAT_ADD(r, enq_quota, n);
-	}
-	else {
+	else
 		ret = (behavior == RTE_RING_QUEUE_FIXED) ? 0 : n;
-		__RING_STAT_ADD(r, enq_success, n);
-	}
 
 	/*
 	 * If there are other enqueues in progress that preceded us,
@@ -557,17 +505,12 @@ __rte_ring_sp_do_enqueue(struct rte_ring *r, void * const *obj_table,
 
 	/* check that we have enough room in ring */
 	if (unlikely(n > free_entries)) {
-		if (behavior == RTE_RING_QUEUE_FIXED) {
-			__RING_STAT_ADD(r, enq_fail, n);
+		if (behavior == RTE_RING_QUEUE_FIXED)
 			return -ENOBUFS;
-		}
 		else {
 			/* No free entry available */
-			if (unlikely(free_entries == 0)) {
-				__RING_STAT_ADD(r, enq_fail, n);
+			if (unlikely(free_entries == 0))
 				return 0;
-			}
-
 			n = free_entries;
 		}
 	}
@@ -580,15 +523,11 @@ __rte_ring_sp_do_enqueue(struct rte_ring *r, void * const *obj_table,
 	rte_smp_wmb();
 
 	/* if we exceed the watermark */
-	if (unlikely(((mask + 1) - free_entries + n) > r->watermark)) {
+	if (unlikely(((mask + 1) - free_entries + n) > r->watermark))
 		ret = (behavior == RTE_RING_QUEUE_FIXED) ? -EDQUOT :
 			(int)(n | RTE_RING_QUOT_EXCEED);
-		__RING_STAT_ADD(r, enq_quota, n);
-	}
-	else {
+	else
 		ret = (behavior == RTE_RING_QUEUE_FIXED) ? 0 : n;
-		__RING_STAT_ADD(r, enq_success, n);
-	}
 
 	r->prod.tail = prod_next;
 	return ret;
@@ -652,16 +591,11 @@ __rte_ring_mc_do_dequeue(struct rte_ring *r, void **obj_table,
 
 		/* Set the actual entries for dequeue */
 		if (n > entries) {
-			if (behavior == RTE_RING_QUEUE_FIXED) {
-				__RING_STAT_ADD(r, deq_fail, n);
+			if (behavior == RTE_RING_QUEUE_FIXED)
 				return -ENOENT;
-			}
 			else {
-				if (unlikely(entries == 0)){
-					__RING_STAT_ADD(r, deq_fail, n);
+				if (unlikely(entries == 0))
 					return 0;
-				}
-
 				n = entries;
 			}
 		}
@@ -691,7 +625,6 @@ __rte_ring_mc_do_dequeue(struct rte_ring *r, void **obj_table,
 			sched_yield();
 		}
 	}
-	__RING_STAT_ADD(r, deq_success, n);
 	r->cons.tail = cons_next;
 
 	return behavior == RTE_RING_QUEUE_FIXED ? 0 : n;
@@ -738,16 +671,11 @@ __rte_ring_sc_do_dequeue(struct rte_ring *r, void **obj_table,
 	entries = prod_tail - cons_head;
 
 	if (n > entries) {
-		if (behavior == RTE_RING_QUEUE_FIXED) {
-			__RING_STAT_ADD(r, deq_fail, n);
+		if (behavior == RTE_RING_QUEUE_FIXED)
 			return -ENOENT;
-		}
 		else {
-			if (unlikely(entries == 0)){
-				__RING_STAT_ADD(r, deq_fail, n);
+			if (unlikely(entries == 0))
 				return 0;
-			}
-
 			n = entries;
 		}
 	}
@@ -759,7 +687,6 @@ __rte_ring_sc_do_dequeue(struct rte_ring *r, void **obj_table,
 	DEQUEUE_PTRS();
 	rte_smp_rmb();
 
-	__RING_STAT_ADD(r, deq_success, n);
 	r->cons.tail = cons_next;
 	return behavior == RTE_RING_QUEUE_FIXED ? 0 : n;
 }
