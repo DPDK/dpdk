@@ -67,6 +67,12 @@ New Features
 
   sPAPR IOMMU based pci probing enabled for vfio-pci devices.
 
+* **Kept consistent PMD batching behaviour.**
+
+  Removed the limit of fm10k/i40e/ixgbe TX burst size and vhost RX/TX burst size
+  in order to support the same policy of "make an best effort to RX/TX pkts"
+  for PMDs.
+
 * **Updated the ixgbe base driver.**
 
   Updated the ixgbe base driver, including the following changes:
