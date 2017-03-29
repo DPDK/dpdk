@@ -1709,14 +1709,13 @@ enum _ecore_status_t ecore_mcp_resume(struct ecore_hwfn *p_hwfn,
 enum _ecore_status_t
 ecore_mcp_ov_update_current_config(struct ecore_hwfn *p_hwfn,
 				   struct ecore_ptt *p_ptt,
-				   enum ecore_ov_config_method config,
 				   enum ecore_ov_client client)
 {
 	enum _ecore_status_t rc;
 	u32 resp = 0, param = 0;
 	u32 drv_mb_param;
 
-	switch (config) {
+	switch (client) {
 	case ECORE_OV_CLIENT_DRV:
 		drv_mb_param = DRV_MB_PARAM_OV_CURR_CFG_OS;
 		break;
@@ -1727,7 +1726,7 @@ ecore_mcp_ov_update_current_config(struct ecore_hwfn *p_hwfn,
 		drv_mb_param = DRV_MB_PARAM_OV_CURR_CFG_VENDOR_SPEC;
 		break;
 	default:
-		DP_NOTICE(p_hwfn, true, "Invalid client type %d\n", config);
+		DP_NOTICE(p_hwfn, true, "Invalid client type %d\n", client);
 		return ECORE_INVAL;
 	}
 

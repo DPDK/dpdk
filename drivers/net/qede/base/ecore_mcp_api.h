@@ -173,12 +173,6 @@ union ecore_mcp_protocol_stats {
 };
 #endif
 
-enum ecore_ov_config_method {
-	ECORE_OV_CONFIG_MTU,
-	ECORE_OV_CONFIG_MAC,
-	ECORE_OV_CONFIG_WOL
-};
-
 enum ecore_ov_client {
 	ECORE_OV_CLIENT_DRV,
 	ECORE_OV_CLIENT_USER,
@@ -453,7 +447,6 @@ enum _ecore_status_t ecore_start_recovery_process(struct ecore_hwfn *p_hwfn,
  *
  *  @param p_hwfn
  *  @param p_ptt
- *  @param config - Configuation that has been updated
  *  @param client - ecore client type
  *
  * @return enum _ecore_status_t - ECORE_SUCCESS - operation was successful.
@@ -461,7 +454,6 @@ enum _ecore_status_t ecore_start_recovery_process(struct ecore_hwfn *p_hwfn,
 enum _ecore_status_t
 ecore_mcp_ov_update_current_config(struct ecore_hwfn *p_hwfn,
 				   struct ecore_ptt *p_ptt,
-				   enum ecore_ov_config_method config,
 				   enum ecore_ov_client client);
 
 /**
