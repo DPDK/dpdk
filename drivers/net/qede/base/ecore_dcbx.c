@@ -72,6 +72,23 @@ static bool ecore_dcbx_default_tlv(u32 app_info_bitmap, u16 proto_id, bool ieee)
 	return !!(ethtype && (proto_id == ECORE_ETH_TYPE_DEFAULT));
 }
 
+static bool ecore_dcbx_iwarp_tlv(struct ecore_hwfn *p_hwfn, u32 app_info_bitmap,
+				 u16 proto_id, bool ieee)
+{
+	bool port;
+
+	if (!p_hwfn->p_dcbx_info->iwarp_port)
+		return false;
+
+	if (ieee)
+		port = ecore_dcbx_ieee_app_port(app_info_bitmap,
+						DCBX_APP_SF_IEEE_TCP_PORT);
+	else
+		port = ecore_dcbx_app_port(app_info_bitmap);
+
+	return !!(port && (proto_id == p_hwfn->p_dcbx_info->iwarp_port));
+}
+
 static void
 ecore_dcbx_dp_protocol(struct ecore_hwfn *p_hwfn,
 		       struct ecore_dcbx_results *p_data)
@@ -896,17 +913,18 @@ ecore_dcbx_mib_update_event(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 
 enum _ecore_status_t ecore_dcbx_info_alloc(struct ecore_hwfn *p_hwfn)
 {
-	enum _ecore_status_t rc = ECORE_SUCCESS;
-
 	p_hwfn->p_dcbx_info = OSAL_ZALLOC(p_hwfn->p_dev, GFP_KERNEL,
 					  sizeof(*p_hwfn->p_dcbx_info));
 	if (!p_hwfn->p_dcbx_info) {
 		DP_NOTICE(p_hwfn, true,
 			  "Failed to allocate `struct ecore_dcbx_info'");
-		rc = ECORE_NOMEM;
+		return ECORE_NOMEM;
 	}
 
-	return rc;
+	p_hwfn->p_dcbx_info->iwarp_port =
+		p_hwfn->pf_params.rdma_pf_params.iwarp_port;
+
+	return ECORE_SUCCESS;
 }
 
 void ecore_dcbx_info_free(struct ecore_hwfn *p_hwfn,
@@ -937,9 +955,13 @@ void ecore_dcbx_set_pf_update_params(struct ecore_dcbx_results *p_src,
 
 	update_flag = p_src->arr[DCBX_PROTOCOL_ETH].update;
 	p_dest->update_eth_dcb_data_mode = update_flag;
+	update_flag = p_src->arr[DCBX_PROTOCOL_IWARP].update;
+	p_dest->update_iwarp_dcb_data_mode = update_flag;
 
 	p_dcb_data = &p_dest->eth_dcb_data;
 	ecore_dcbx_update_protocol_data(p_dcb_data, p_src, DCBX_PROTOCOL_ETH);
+	p_dcb_data = &p_dest->iwarp_dcb_data;
+	ecore_dcbx_update_protocol_data(p_dcb_data, p_src, DCBX_PROTOCOL_IWARP);
 }
 
 enum _ecore_status_t ecore_dcbx_query_params(struct ecore_hwfn *p_hwfn,

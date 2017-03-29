@@ -29,6 +29,7 @@ struct ecore_dcbx_info {
 	struct ecore_dcbx_set set;
 	struct ecore_dcbx_get get;
 	u8 dcbx_cap;
+	u16 iwarp_port;
 };
 
 struct ecore_dcbx_mib_meta_data {

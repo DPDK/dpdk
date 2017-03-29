@@ -76,6 +76,9 @@ struct ecore_rdma_pf_params {
 
 	/* Will allocate rate limiters to be used with QPs */
 	u8		enable_dcqcn;
+
+	/* TCP port number used for the iwarp traffic */
+	u16		iwarp_port;
 };
 
 struct ecore_pf_params {
