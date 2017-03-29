@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2017 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -147,6 +147,16 @@ struct rte_memzone; /* forward declaration, so as not to require memzone.h */
 #define CONS_ALIGN RTE_CACHE_LINE_SIZE
 #endif
 
+/* structure to hold a pair of head/tail values and other metadata */
+struct rte_ring_headtail {
+	volatile uint32_t head;  /**< Prod/consumer head. */
+	volatile uint32_t tail;  /**< Prod/consumer tail. */
+	uint32_t size;           /**< Size of ring. */
+	uint32_t mask;           /**< Mask (size-1) of ring. */
+	uint32_t single;         /**< True if single prod/cons */
+	uint32_t watermark;      /**< Max items before EDQUOT in producer. */
+};
+
 /**
  * An RTE ring structure.
  *
@@ -169,23 +179,10 @@ struct rte_ring {
 			/**< Memzone, if any, containing the rte_ring */
 
 	/** Ring producer status. */
-	struct prod {
-		uint32_t watermark;      /**< Maximum items before EDQUOT. */
-		uint32_t sp_enqueue;     /**< True, if single producer. */
-		uint32_t size;           /**< Size of ring. */
-		uint32_t mask;           /**< Mask (size-1) of ring. */
-		volatile uint32_t head;  /**< Producer head. */
-		volatile uint32_t tail;  /**< Producer tail. */
-	} prod __rte_aligned(PROD_ALIGN);
+	struct rte_ring_headtail prod __rte_aligned(PROD_ALIGN);
 
 	/** Ring consumer status. */
-	struct cons {
-		uint32_t sc_dequeue;     /**< True, if single consumer. */
-		uint32_t size;           /**< Size of the ring. */
-		uint32_t mask;           /**< Mask (size-1) of ring. */
-		volatile uint32_t head;  /**< Consumer head. */
-		volatile uint32_t tail;  /**< Consumer tail. */
-	} cons __rte_aligned(CONS_ALIGN);
+	struct rte_ring_headtail cons __rte_aligned(CONS_ALIGN);
 
 #ifdef RTE_LIBRTE_RING_DEBUG
 	struct rte_ring_debug_stats stats[RTE_MAX_LCORE];
@@ -837,7 +834,7 @@ static inline int __attribute__((always_inline))
 rte_ring_enqueue_bulk(struct rte_ring *r, void * const *obj_table,
 		      unsigned n)
 {
-	if (r->prod.sp_enqueue)
+	if (r->prod.single)
 		return rte_ring_sp_enqueue_bulk(r, obj_table, n);
 	else
 		return rte_ring_mp_enqueue_bulk(r, obj_table, n);
@@ -904,7 +901,7 @@ rte_ring_sp_enqueue(struct rte_ring *r, void *obj)
 static inline int __attribute__((always_inline))
 rte_ring_enqueue(struct rte_ring *r, void *obj)
 {
-	if (r->prod.sp_enqueue)
+	if (r->prod.single)
 		return rte_ring_sp_enqueue(r, obj);
 	else
 		return rte_ring_mp_enqueue(r, obj);
@@ -975,7 +972,7 @@ rte_ring_sc_dequeue_bulk(struct rte_ring *r, void **obj_table, unsigned n)
 static inline int __attribute__((always_inline))
 rte_ring_dequeue_bulk(struct rte_ring *r, void **obj_table, unsigned n)
 {
-	if (r->cons.sc_dequeue)
+	if (r->cons.single)
 		return rte_ring_sc_dequeue_bulk(r, obj_table, n);
 	else
 		return rte_ring_mc_dequeue_bulk(r, obj_table, n);
@@ -1039,7 +1036,7 @@ rte_ring_sc_dequeue(struct rte_ring *r, void **obj_p)
 static inline int __attribute__((always_inline))
 rte_ring_dequeue(struct rte_ring *r, void **obj_p)
 {
-	if (r->cons.sc_dequeue)
+	if (r->cons.single)
 		return rte_ring_sc_dequeue(r, obj_p);
 	else
 		return rte_ring_mc_dequeue(r, obj_p);
@@ -1206,7 +1203,7 @@ static inline unsigned __attribute__((always_inline))
 rte_ring_enqueue_burst(struct rte_ring *r, void * const *obj_table,
 		      unsigned n)
 {
-	if (r->prod.sp_enqueue)
+	if (r->prod.single)
 		return rte_ring_sp_enqueue_burst(r, obj_table, n);
 	else
 		return rte_ring_mp_enqueue_burst(r, obj_table, n);
@@ -1274,7 +1271,7 @@ rte_ring_sc_dequeue_burst(struct rte_ring *r, void **obj_table, unsigned n)
 static inline unsigned __attribute__((always_inline))
 rte_ring_dequeue_burst(struct rte_ring *r, void **obj_table, unsigned n)
 {
-	if (r->cons.sc_dequeue)
+	if (r->cons.single)
 		return rte_ring_sc_dequeue_burst(r, obj_table, n);
 	else
 		return rte_ring_mc_dequeue_burst(r, obj_table, n);

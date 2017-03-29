@@ -145,8 +145,8 @@ rte_ring_init(struct rte_ring *r, const char *name, unsigned count,
 		return -ENAMETOOLONG;
 	r->flags = flags;
 	r->prod.watermark = count;
-	r->prod.sp_enqueue = !!(flags & RING_F_SP_ENQ);
-	r->cons.sc_dequeue = !!(flags & RING_F_SC_DEQ);
+	r->prod.single = !!(flags & RING_F_SP_ENQ);
+	r->cons.single = !!(flags & RING_F_SC_DEQ);
 	r->prod.size = r->cons.size = count;
 	r->prod.mask = r->cons.mask = count-1;
 	r->prod.head = r->cons.head = 0;
