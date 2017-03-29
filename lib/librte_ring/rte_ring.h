@@ -139,6 +139,14 @@ struct rte_ring_debug_stats {
 
 struct rte_memzone; /* forward declaration, so as not to require memzone.h */
 
+#if RTE_CACHE_LINE_SIZE < 128
+#define PROD_ALIGN (RTE_CACHE_LINE_SIZE * 2)
+#define CONS_ALIGN (RTE_CACHE_LINE_SIZE * 2)
+#else
+#define PROD_ALIGN RTE_CACHE_LINE_SIZE
+#define CONS_ALIGN RTE_CACHE_LINE_SIZE
+#endif
+
 /**
  * An RTE ring structure.
  *
@@ -168,7 +176,7 @@ struct rte_ring {
 		uint32_t mask;           /**< Mask (size-1) of ring. */
 		volatile uint32_t head;  /**< Producer head. */
 		volatile uint32_t tail;  /**< Producer tail. */
-	} prod __rte_cache_aligned;
+	} prod __rte_aligned(PROD_ALIGN);
 
 	/** Ring consumer status. */
 	struct cons {
@@ -177,11 +185,7 @@ struct rte_ring {
 		uint32_t mask;           /**< Mask (size-1) of ring. */
 		volatile uint32_t head;  /**< Consumer head. */
 		volatile uint32_t tail;  /**< Consumer tail. */
-#ifdef RTE_RING_SPLIT_PROD_CONS
-	} cons __rte_cache_aligned;
-#else
-	} cons;
-#endif
+	} cons __rte_aligned(CONS_ALIGN);
 
 #ifdef RTE_LIBRTE_RING_DEBUG
 	struct rte_ring_debug_stats stats[RTE_MAX_LCORE];

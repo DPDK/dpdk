@@ -127,6 +127,13 @@ API Changes
 * The LPM ``next_hop`` field is extended from 8 bits to 21 bits for IPv6
   while keeping ABI compatibility.
 
+* **Reworked rte_ring library**
+
+  The rte_ring library has been reworked and updated. The following changes
+  have been made to it:
+
+  * removed the build-time setting ``CONFIG_RTE_RING_SPLIT_PROD_CONS``
+
 ABI Changes
 -----------
 
