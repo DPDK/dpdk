@@ -15,7 +15,7 @@
 #include "ecore_hsi_common.h"
 
 #define ECORE_ETH_MAX_VF_NUM_VLAN_FILTERS \
-	(MAX_NUM_VFS * ECORE_ETH_VF_NUM_VLAN_FILTERS)
+	(E4_MAX_NUM_VFS * ECORE_ETH_VF_NUM_VLAN_FILTERS)
 
 /* Represents a full message. Both the request filled by VF
  * and the response filled by the PF. The VF needs one copy
@@ -152,7 +152,7 @@ struct ecore_vf_info {
  * capability enabled.
  */
 struct ecore_pf_iov {
-	struct ecore_vf_info	vfs_array[MAX_NUM_VFS];
+	struct ecore_vf_info	vfs_array[E4_MAX_NUM_VFS];
 	u64			pending_events[ECORE_VF_ARRAY_LENGTH];
 	u64			pending_flr[ECORE_VF_ARRAY_LENGTH];
 	u16			base_vport_id;

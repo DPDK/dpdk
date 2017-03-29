@@ -3487,7 +3487,7 @@ u16 ecore_iov_get_next_active_vf(struct ecore_hwfn *p_hwfn, u16 rel_vf_id)
 			return i;
 
 out:
-	return MAX_NUM_VFS;
+	return E4_MAX_NUM_VFS;
 }
 
 enum _ecore_status_t ecore_iov_copy_vf_msg(struct ecore_hwfn *p_hwfn,

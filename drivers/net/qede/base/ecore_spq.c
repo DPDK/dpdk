@@ -191,15 +191,17 @@ static void ecore_spq_hw_initialize(struct ecore_hwfn *p_hwfn,
 
 	p_cxt = cxt_info.p_cxt;
 
-	SET_FIELD(p_cxt->xstorm_ag_context.flags10,
-		  XSTORM_CORE_CONN_AG_CTX_DQ_CF_EN, 1);
-	SET_FIELD(p_cxt->xstorm_ag_context.flags1,
-		  XSTORM_CORE_CONN_AG_CTX_DQ_CF_ACTIVE, 1);
-	/* SET_FIELD(p_cxt->xstorm_ag_context.flags10,
-	 *           XSTORM_CORE_CONN_AG_CTX_SLOW_PATH_EN, 1);
-	 */
-	SET_FIELD(p_cxt->xstorm_ag_context.flags9,
-		  XSTORM_CORE_CONN_AG_CTX_CONSOLID_PROD_CF_EN, 1);
+	if (ECORE_IS_BB(p_hwfn->p_dev) || ECORE_IS_AH(p_hwfn->p_dev)) {
+		SET_FIELD(p_cxt->xstorm_ag_context.flags10,
+			  E4_XSTORM_CORE_CONN_AG_CTX_DQ_CF_EN, 1);
+		SET_FIELD(p_cxt->xstorm_ag_context.flags1,
+			  E4_XSTORM_CORE_CONN_AG_CTX_DQ_CF_ACTIVE, 1);
+		/* SET_FIELD(p_cxt->xstorm_ag_context.flags10,
+		 *	  E4_XSTORM_CORE_CONN_AG_CTX_SLOW_PATH_EN, 1);
+		 */
+		SET_FIELD(p_cxt->xstorm_ag_context.flags9,
+			  E4_XSTORM_CORE_CONN_AG_CTX_CONSOLID_PROD_CF_EN, 1);
+	}
 
 	/* CDU validation - FIXME currently disabled */
 

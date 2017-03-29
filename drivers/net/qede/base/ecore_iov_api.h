@@ -701,7 +701,7 @@ enum _ecore_status_t ecore_iov_configure_min_tx_rate(struct ecore_dev *p_dev,
  * @param p_hwfn
  * @param rel_vf_id
  *
- * @return MAX_NUM_VFS in case no further active VFs, otherwise index.
+ * @return E4_MAX_NUM_VFS in case no further active VFs, otherwise index.
  */
 u16 ecore_iov_get_next_active_vf(struct ecore_hwfn *p_hwfn, u16 rel_vf_id);
 
@@ -709,7 +709,7 @@ u16 ecore_iov_get_next_active_vf(struct ecore_hwfn *p_hwfn, u16 rel_vf_id);
 
 #define ecore_for_each_vf(_p_hwfn, _i)					\
 	for (_i = ecore_iov_get_next_active_vf(_p_hwfn, 0);		\
-	     _i < MAX_NUM_VFS;						\
+	     _i < E4_MAX_NUM_VFS;					\
 	     _i = ecore_iov_get_next_active_vf(_p_hwfn, _i + 1))
 
 #endif

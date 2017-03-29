@@ -107,20 +107,20 @@
 #define MAX_NUM_PFS	(MAX_NUM_PFS_K2)
 #define MAX_NUM_OF_PFS_IN_CHIP (16) /* On both engines */
 
-#define MAX_NUM_VFS_K2	(192)
 #define MAX_NUM_VFS_BB	(120)
-#define MAX_NUM_VFS	(MAX_NUM_VFS_K2)
+#define MAX_NUM_VFS_K2	(192)
+#define E4_MAX_NUM_VFS	(MAX_NUM_VFS_K2)
 
 #define MAX_NUM_FUNCTIONS_BB	(MAX_NUM_PFS_BB + MAX_NUM_VFS_BB)
 #define MAX_NUM_FUNCTIONS_K2	(MAX_NUM_PFS_K2 + MAX_NUM_VFS_K2)
-#define MAX_NUM_FUNCTIONS	(MAX_NUM_PFS + MAX_NUM_VFS)
+#define MAX_NUM_FUNCTIONS	(MAX_NUM_PFS + E4_MAX_NUM_VFS)
 
 /* in both BB and K2, the VF number starts from 16. so for arrays containing all
  * possible PFs and VFs - we need a constant for this size
  */
 #define MAX_FUNCTION_NUMBER_BB	(MAX_NUM_PFS + MAX_NUM_VFS_BB)
 #define MAX_FUNCTION_NUMBER_K2	(MAX_NUM_PFS + MAX_NUM_VFS_K2)
-#define MAX_FUNCTION_NUMBER	(MAX_NUM_PFS + MAX_NUM_VFS)
+#define MAX_FUNCTION_NUMBER	(MAX_NUM_PFS + E4_MAX_NUM_VFS)
 
 #define MAX_NUM_VPORTS_K2	(208)
 #define MAX_NUM_VPORTS_BB	(160)
@@ -149,9 +149,10 @@
 #define MAX_PHYS_VOQS		(NUM_OF_PHYS_TCS * MAX_NUM_PORTS_BB)
 
 /* CIDs */
-#define NUM_OF_CONNECTION_TYPES	(8)
-#define NUM_OF_LCIDS		(320)
-#define NUM_OF_LTIDS		(320)
+#define E4_NUM_OF_CONNECTION_TYPES (8)
+#define NUM_OF_TASK_TYPES		(8)
+#define NUM_OF_LCIDS			(320)
+#define NUM_OF_LTIDS			(320)
 
 /* Clock values */
 #define MASTER_CLK_FREQ_E4		(375e6)
