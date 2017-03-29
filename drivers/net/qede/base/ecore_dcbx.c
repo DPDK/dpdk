@@ -129,11 +129,8 @@ ecore_dcbx_set_params(struct ecore_dcbx_results *p_data,
 		p_data->arr[type].update = DONT_UPDATE_DCB_DSCP;
 
 	/* QM reconf data */
-	if (p_hwfn->hw_info.personality == personality) {
+	if (p_hwfn->hw_info.personality == personality)
 		p_hwfn->hw_info.offload_tc = tc;
-		if (personality == ECORE_PCI_ISCSI)
-			p_hwfn->hw_info.ooo_tc = DCBX_ISCSI_OOO_TC;
-	}
 }
 
 /* Update app protocol data and hw_info fields with the TLV info */
@@ -317,6 +314,7 @@ ecore_dcbx_process_mib_info(struct ecore_hwfn *p_hwfn)
 
 	p_info->num_active_tc = ECORE_MFW_GET_FIELD(p_ets->flags,
 						    DCBX_ETS_MAX_TCS);
+	p_hwfn->qm_info.ooo_tc = ECORE_MFW_GET_FIELD(p_ets->flags, DCBX_OOO_TC);
 	data.pf_id = p_hwfn->rel_pf_id;
 	data.dcbx_enabled = !!dcbx_version;
 

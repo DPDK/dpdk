@@ -294,16 +294,20 @@ struct dcbx_ets_feature {
 #define DCBX_ETS_CBS_SHIFT                      3
 #define DCBX_ETS_MAX_TCS_MASK                   0x000000f0
 #define DCBX_ETS_MAX_TCS_SHIFT                  4
-#define DCBX_ISCSI_OOO_TC_MASK			0x00000f00
-#define DCBX_ISCSI_OOO_TC_SHIFT                 8
+#define DCBX_OOO_TC_MASK                        0x00000f00
+#define DCBX_OOO_TC_SHIFT                       8
 /* Entries in tc table are orginized that the left most is pri 0, right most is
  * prio 7
  */
 
 	u32  pri_tc_tbl[1];
-#define DCBX_ISCSI_OOO_TC			(4)
+/* Fixed TCP OOO TC usage is deprecated and used only for driver backward
+ * compatibility
+ */
+#define DCBX_TCP_OOO_TC				(4)
+#define DCBX_TCP_OOO_K2_4PORT_TC		(3)
 
-#define NIG_ETS_ISCSI_OOO_CLIENT_OFFSET		(DCBX_ISCSI_OOO_TC + 1)
+#define NIG_ETS_ISCSI_OOO_CLIENT_OFFSET		(DCBX_TCP_OOO_TC + 1)
 #define DCBX_CEE_STRICT_PRIORITY		0xf
 /* Entries in tc table are orginized that the left most is pri 0, right most is
  * prio 7

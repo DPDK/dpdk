@@ -291,6 +291,7 @@ u16 ecore_init_qm_get_num_pqs(struct ecore_hwfn *p_hwfn)
 static void ecore_init_qm_params(struct ecore_hwfn *p_hwfn)
 {
 	struct ecore_qm_info *qm_info = &p_hwfn->qm_info;
+	bool four_port;
 
 	/* pq and vport bases for this PF */
 	qm_info->start_pq = (u16)RESC_START(p_hwfn, ECORE_PQ);
@@ -300,10 +301,19 @@ static void ecore_init_qm_params(struct ecore_hwfn *p_hwfn)
 	qm_info->vport_rl_en = 1;
 	qm_info->vport_wfq_en = 1;
 
+	/* TC config is different for AH 4 port */
+	four_port = p_hwfn->p_dev->num_ports_in_engines == MAX_NUM_PORTS_K2;
+
 	/* in AH 4 port we have fewer TCs per port */
-	qm_info->max_phys_tcs_per_port =
-		p_hwfn->p_dev->num_ports_in_engines == MAX_NUM_PORTS_K2 ?
-			NUM_PHYS_TCS_4PORT_K2 : NUM_OF_PHYS_TCS;
+	qm_info->max_phys_tcs_per_port = four_port ? NUM_PHYS_TCS_4PORT_K2 :
+						     NUM_OF_PHYS_TCS;
+
+	/* unless MFW indicated otherwise, ooo_tc should be 3 for AH 4 port and
+	 * 4 otherwise
+	 */
+	if (!qm_info->ooo_tc)
+		qm_info->ooo_tc = four_port ? DCBX_TCP_OOO_K2_4PORT_TC :
+					      DCBX_TCP_OOO_TC;
 }
 
 /* initialize qm vport params */
@@ -532,8 +542,7 @@ static void ecore_init_qm_ooo_pq(struct ecore_hwfn *p_hwfn)
 		return;
 
 	ecore_init_qm_set_idx(p_hwfn, PQ_FLAGS_OOO, qm_info->num_pqs);
-	ecore_init_qm_pq(p_hwfn, qm_info, DCBX_ISCSI_OOO_TC,
-			 PQ_INIT_SHARE_VPORT);
+	ecore_init_qm_pq(p_hwfn, qm_info, qm_info->ooo_tc, PQ_INIT_SHARE_VPORT);
 }
 
 static void ecore_init_qm_pure_ack_pq(struct ecore_hwfn *p_hwfn)

@@ -358,9 +358,6 @@ struct ecore_hw_info {
 
 	u8 num_active_tc;
 
-	/* Traffic class used for tcp out of order traffic */
-	u8 ooo_tc;
-
 	/* The traffic class used by PF for it's offloaded protocol */
 	u8 offload_tc;
 
@@ -441,6 +438,7 @@ struct ecore_qm_info {
 	u16			num_vf_pqs;
 	u8			num_vports;
 	u8			max_phys_tcs_per_port;
+	u8			ooo_tc;
 	bool			pf_rl_en;
 	bool			pf_wfq_en;
 	bool			vport_rl_en;
