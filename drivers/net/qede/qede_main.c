@@ -276,6 +276,8 @@ static int qed_slowpath_start(struct ecore_dev *edev,
 	hw_init_params.int_mode = ECORE_INT_MODE_MSIX;
 	hw_init_params.allow_npar_tx_switch = allow_npar_tx_switching;
 	hw_init_params.bin_fw_data = data;
+	hw_init_params.mfw_timeout_val = ECORE_LOAD_REQ_LOCK_TO_DEFAULT;
+	hw_init_params.avoid_eng_reset = false;
 	rc = ecore_hw_init(edev, &hw_init_params);
 	if (rc) {
 		DP_ERR(edev, "ecore_hw_init failed\n");

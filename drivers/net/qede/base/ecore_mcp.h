@@ -136,32 +136,36 @@ enum _ecore_status_t ecore_mcp_handle_events(struct ecore_hwfn *p_hwfn,
  * @param p_hwfn - hw function
  * @param p_ptt - PTT required for register access
  * @return enum _ecore_status_t - ECORE_SUCCESS - operation
- * was successul.
+ * was successful.
  */
 enum _ecore_status_t ecore_issue_pulse(struct ecore_hwfn *p_hwfn,
 				       struct ecore_ptt *p_ptt);
 
+enum ecore_drv_role {
+	ECORE_DRV_ROLE_OS,
+	ECORE_DRV_ROLE_KDUMP,
+};
+
+struct ecore_load_req_params {
+	enum ecore_drv_role drv_role;
+	u8 timeout_val; /* 1..254, '0' - default value, '255' - no timeout */
+	bool avoid_eng_reset;
+	u32 load_code;
+};
+
 /**
- * @brief Sends a LOAD_REQ to the MFW, and in case operation
- *        succeed, returns whether this PF is the first on the
- *        chip/engine/port or function. This function should be
- *        called when driver is ready to accept MFW events after
- *        Storms initializations are done.
+ * @brief Sends a LOAD_REQ to the MFW, and in case the operation succeeds,
+ *        returns whether this PF is the first on the engine/port or function.
  *
- * @param p_hwfn       - hw function
- * @param p_ptt        - PTT required for register access
- * @param p_load_code  - The MCP response param containing one
- *      of the following:
- *      FW_MSG_CODE_DRV_LOAD_ENGINE
- *      FW_MSG_CODE_DRV_LOAD_PORT
- *      FW_MSG_CODE_DRV_LOAD_FUNCTION
- * @return enum _ecore_status_t -
- *      ECORE_SUCCESS - Operation was successul.
- *      ECORE_BUSY - Operation failed
+ * @param p_hwfn
+ * @param p_pt
+ * @param p_params
+ *
+ * @return enum _ecore_status_t - ECORE_SUCCESS - Operation was successful.
  */
 enum _ecore_status_t ecore_mcp_load_req(struct ecore_hwfn *p_hwfn,
 					struct ecore_ptt *p_ptt,
-					u32 *p_load_code);
+					struct ecore_load_req_params *p_params);
 
 /**
  * @brief Read the MFW mailbox into Current buffer.

@@ -518,50 +518,367 @@ static void ecore_mcp_mf_workaround(struct ecore_hwfn *p_hwfn,
 }
 #endif
 
+static bool ecore_mcp_can_force_load(u8 drv_role, u8 exist_drv_role)
+{
+	return (drv_role == DRV_ROLE_OS &&
+		exist_drv_role == DRV_ROLE_PREBOOT) ||
+	       (drv_role == DRV_ROLE_KDUMP && exist_drv_role == DRV_ROLE_OS);
+}
+
+static enum _ecore_status_t ecore_mcp_cancel_load_req(struct ecore_hwfn *p_hwfn,
+						      struct ecore_ptt *p_ptt)
+{
+	u32 resp = 0, param = 0;
+	enum _ecore_status_t rc;
+
+	rc = ecore_mcp_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_CANCEL_LOAD_REQ, 0,
+			   &resp, &param);
+	if (rc != ECORE_SUCCESS)
+		DP_NOTICE(p_hwfn, false,
+			  "Failed to send cancel load request, rc = %d\n", rc);
+
+	return rc;
+}
+
+#define CONFIG_ECORE_L2_BITMAP_IDX	(0x1 << 0)
+#define CONFIG_ECORE_SRIOV_BITMAP_IDX	(0x1 << 1)
+#define CONFIG_ECORE_ROCE_BITMAP_IDX	(0x1 << 2)
+#define CONFIG_ECORE_IWARP_BITMAP_IDX	(0x1 << 3)
+#define CONFIG_ECORE_FCOE_BITMAP_IDX	(0x1 << 4)
+#define CONFIG_ECORE_ISCSI_BITMAP_IDX	(0x1 << 5)
+#define CONFIG_ECORE_LL2_BITMAP_IDX	(0x1 << 6)
+
+static u32 ecore_get_config_bitmap(void)
+{
+	u32 config_bitmap = 0x0;
+
+#ifdef CONFIG_ECORE_L2
+	config_bitmap |= CONFIG_ECORE_L2_BITMAP_IDX;
+#endif
+#ifdef CONFIG_ECORE_SRIOV
+	config_bitmap |= CONFIG_ECORE_SRIOV_BITMAP_IDX;
+#endif
+#ifdef CONFIG_ECORE_ROCE
+	config_bitmap |= CONFIG_ECORE_ROCE_BITMAP_IDX;
+#endif
+#ifdef CONFIG_ECORE_IWARP
+	config_bitmap |= CONFIG_ECORE_IWARP_BITMAP_IDX;
+#endif
+#ifdef CONFIG_ECORE_FCOE
+	config_bitmap |= CONFIG_ECORE_FCOE_BITMAP_IDX;
+#endif
+#ifdef CONFIG_ECORE_ISCSI
+	config_bitmap |= CONFIG_ECORE_ISCSI_BITMAP_IDX;
+#endif
+#ifdef CONFIG_ECORE_LL2
+	config_bitmap |= CONFIG_ECORE_LL2_BITMAP_IDX;
+#endif
+
+	return config_bitmap;
+}
+
+struct ecore_load_req_in_params {
+	u8 hsi_ver;
+#define ECORE_LOAD_REQ_HSI_VER_DEFAULT	0
+#define ECORE_LOAD_REQ_HSI_VER_1	1
+	u32 drv_ver_0;
+	u32 drv_ver_1;
+	u32 fw_ver;
+	u8 drv_role;
+	u8 timeout_val;
+	u8 force_cmd;
+	bool avoid_eng_reset;
+};
+
+struct ecore_load_req_out_params {
+	u32 load_code;
+	u32 exist_drv_ver_0;
+	u32 exist_drv_ver_1;
+	u32 exist_fw_ver;
+	u8 exist_drv_role;
+	u8 mfw_hsi_ver;
+	bool drv_exists;
+};
+
+static enum _ecore_status_t
+__ecore_mcp_load_req(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
+		     struct ecore_load_req_in_params *p_in_params,
+		     struct ecore_load_req_out_params *p_out_params)
+{
+	union drv_union_data union_data_src, union_data_dst;
+	struct ecore_mcp_mb_params mb_params;
+	struct load_req_stc *p_load_req;
+	struct load_rsp_stc *p_load_rsp;
+	u32 hsi_ver;
+	enum _ecore_status_t rc;
+
+	p_load_req = &union_data_src.load_req;
+	OSAL_MEM_ZERO(p_load_req, sizeof(*p_load_req));
+	p_load_req->drv_ver_0 = p_in_params->drv_ver_0;
+	p_load_req->drv_ver_1 = p_in_params->drv_ver_1;
+	p_load_req->fw_ver = p_in_params->fw_ver;
+	ECORE_MFW_SET_FIELD(p_load_req->misc0, LOAD_REQ_ROLE,
+			    p_in_params->drv_role);
+	ECORE_MFW_SET_FIELD(p_load_req->misc0, LOAD_REQ_LOCK_TO,
+			    p_in_params->timeout_val);
+	ECORE_MFW_SET_FIELD(p_load_req->misc0, LOAD_REQ_FORCE,
+			    p_in_params->force_cmd);
+	ECORE_MFW_SET_FIELD(p_load_req->misc0, LOAD_REQ_FLAGS0,
+			    p_in_params->avoid_eng_reset);
+
+	hsi_ver = (p_in_params->hsi_ver == ECORE_LOAD_REQ_HSI_VER_DEFAULT) ?
+		  DRV_ID_MCP_HSI_VER_CURRENT :
+		  (p_in_params->hsi_ver << DRV_ID_MCP_HSI_VER_SHIFT);
+
+	OSAL_MEM_ZERO(&mb_params, sizeof(mb_params));
+	mb_params.cmd = DRV_MSG_CODE_LOAD_REQ;
+	mb_params.param = PDA_COMP | hsi_ver | p_hwfn->p_dev->drv_type;
+	mb_params.p_data_src = &union_data_src;
+	mb_params.p_data_dst = &union_data_dst;
+
+	DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
+		   "Load Request: param 0x%08x [init_hw %d, drv_type %d, hsi_ver %d, pda 0x%04x]\n",
+		   mb_params.param,
+		   ECORE_MFW_GET_FIELD(mb_params.param, DRV_ID_DRV_INIT_HW),
+		   ECORE_MFW_GET_FIELD(mb_params.param, DRV_ID_DRV_TYPE),
+		   ECORE_MFW_GET_FIELD(mb_params.param, DRV_ID_MCP_HSI_VER),
+		   ECORE_MFW_GET_FIELD(mb_params.param, DRV_ID_PDA_COMP_VER));
+
+	if (p_in_params->hsi_ver != ECORE_LOAD_REQ_HSI_VER_1)
+		DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
+			   "Load Request: drv_ver 0x%08x_0x%08x, fw_ver 0x%08x, misc0 0x%08x [role %d, timeout %d, force %d, flags0 0x%x]\n",
+			   p_load_req->drv_ver_0, p_load_req->drv_ver_1,
+			   p_load_req->fw_ver, p_load_req->misc0,
+			   ECORE_MFW_GET_FIELD(p_load_req->misc0,
+					       LOAD_REQ_ROLE),
+			   ECORE_MFW_GET_FIELD(p_load_req->misc0,
+					       LOAD_REQ_LOCK_TO),
+			   ECORE_MFW_GET_FIELD(p_load_req->misc0,
+					       LOAD_REQ_FORCE),
+			   ECORE_MFW_GET_FIELD(p_load_req->misc0,
+					       LOAD_REQ_FLAGS0));
+
+	rc = ecore_mcp_cmd_and_union(p_hwfn, p_ptt, &mb_params);
+	if (rc != ECORE_SUCCESS) {
+		DP_NOTICE(p_hwfn, false,
+			  "Failed to send load request, rc = %d\n", rc);
+		return rc;
+	}
+
+	DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
+		   "Load Response: resp 0x%08x\n", mb_params.mcp_resp);
+	p_out_params->load_code = mb_params.mcp_resp;
+
+	if (p_in_params->hsi_ver != ECORE_LOAD_REQ_HSI_VER_1 &&
+	    p_out_params->load_code != FW_MSG_CODE_DRV_LOAD_REFUSED_HSI_1) {
+		p_load_rsp = &union_data_dst.load_rsp;
+		DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
+			   "Load Response: exist_drv_ver 0x%08x_0x%08x, exist_fw_ver 0x%08x, misc0 0x%08x [exist_role %d, mfw_hsi %d, flags0 0x%x]\n",
+			   p_load_rsp->drv_ver_0, p_load_rsp->drv_ver_1,
+			   p_load_rsp->fw_ver, p_load_rsp->misc0,
+			   ECORE_MFW_GET_FIELD(p_load_rsp->misc0,
+					       LOAD_RSP_ROLE),
+			   ECORE_MFW_GET_FIELD(p_load_rsp->misc0,
+					       LOAD_RSP_HSI),
+			   ECORE_MFW_GET_FIELD(p_load_rsp->misc0,
+					       LOAD_RSP_FLAGS0));
+
+		p_out_params->exist_drv_ver_0 = p_load_rsp->drv_ver_0;
+		p_out_params->exist_drv_ver_1 = p_load_rsp->drv_ver_1;
+		p_out_params->exist_fw_ver = p_load_rsp->fw_ver;
+		p_out_params->exist_drv_role =
+			ECORE_MFW_GET_FIELD(p_load_rsp->misc0, LOAD_RSP_ROLE);
+		p_out_params->mfw_hsi_ver =
+			ECORE_MFW_GET_FIELD(p_load_rsp->misc0, LOAD_RSP_HSI);
+		p_out_params->drv_exists =
+			ECORE_MFW_GET_FIELD(p_load_rsp->misc0,
+					    LOAD_RSP_FLAGS0) &
+			LOAD_RSP_FLAGS0_DRV_EXISTS;
+	}
+
+	return ECORE_SUCCESS;
+}
+
+static enum _ecore_status_t eocre_get_mfw_drv_role(struct ecore_hwfn *p_hwfn,
+						   enum ecore_drv_role drv_role,
+						   u8 *p_mfw_drv_role)
+{
+	switch (drv_role) {
+	case ECORE_DRV_ROLE_OS:
+		*p_mfw_drv_role = DRV_ROLE_OS;
+		break;
+	case ECORE_DRV_ROLE_KDUMP:
+		*p_mfw_drv_role = DRV_ROLE_KDUMP;
+		break;
+	default:
+		DP_ERR(p_hwfn, "Unexpected driver role %d\n", drv_role);
+		return ECORE_INVAL;
+	}
+
+	return ECORE_SUCCESS;
+}
+
+enum ecore_load_req_force {
+	ECORE_LOAD_REQ_FORCE_NONE,
+	ECORE_LOAD_REQ_FORCE_PF,
+	ECORE_LOAD_REQ_FORCE_ALL,
+};
+
+static enum _ecore_status_t
+ecore_get_mfw_force_cmd(struct ecore_hwfn *p_hwfn,
+			enum ecore_load_req_force force_cmd,
+			u8 *p_mfw_force_cmd)
+{
+	switch (force_cmd) {
+	case ECORE_LOAD_REQ_FORCE_NONE:
+		*p_mfw_force_cmd = LOAD_REQ_FORCE_NONE;
+		break;
+	case ECORE_LOAD_REQ_FORCE_PF:
+		*p_mfw_force_cmd = LOAD_REQ_FORCE_PF;
+		break;
+	case ECORE_LOAD_REQ_FORCE_ALL:
+		*p_mfw_force_cmd = LOAD_REQ_FORCE_ALL;
+		break;
+	default:
+		DP_ERR(p_hwfn, "Unexpected force value %d\n", force_cmd);
+		return ECORE_INVAL;
+	}
+
+	return ECORE_SUCCESS;
+}
+
 enum _ecore_status_t ecore_mcp_load_req(struct ecore_hwfn *p_hwfn,
 					struct ecore_ptt *p_ptt,
-					u32 *p_load_code)
+					struct ecore_load_req_params *p_params)
 {
-	struct ecore_dev *p_dev = p_hwfn->p_dev;
-	struct ecore_mcp_mb_params mb_params;
+	struct ecore_load_req_out_params out_params;
+	struct ecore_load_req_in_params in_params;
+	u8 mfw_drv_role, mfw_force_cmd;
 	enum _ecore_status_t rc;
 
 #ifndef ASIC_ONLY
 	if (CHIP_REV_IS_EMUL(p_hwfn->p_dev)) {
-		ecore_mcp_mf_workaround(p_hwfn, p_load_code);
+		ecore_mcp_mf_workaround(p_hwfn, &p_params->load_code);
 		return ECORE_SUCCESS;
 	}
 #endif
 
-	OSAL_MEM_ZERO(&mb_params, sizeof(mb_params));
-	mb_params.cmd = DRV_MSG_CODE_LOAD_REQ;
-	mb_params.param = PDA_COMP | DRV_ID_MCP_HSI_VER_CURRENT |
-			  p_dev->drv_type;
-	rc = ecore_mcp_cmd_and_union(p_hwfn, p_ptt, &mb_params);
-
-	/* if mcp fails to respond we must abort */
-	if (rc != ECORE_SUCCESS) {
-		DP_ERR(p_hwfn, "MCP response failure, aborting\n");
+	OSAL_MEM_ZERO(&in_params, sizeof(in_params));
+	in_params.hsi_ver = ECORE_LOAD_REQ_HSI_VER_DEFAULT;
+	in_params.drv_ver_0 = ECORE_VERSION;
+	in_params.drv_ver_1 = ecore_get_config_bitmap();
+	in_params.fw_ver = STORM_FW_VERSION;
+	rc = eocre_get_mfw_drv_role(p_hwfn, p_params->drv_role, &mfw_drv_role);
+	if (rc != ECORE_SUCCESS)
 		return rc;
-	}
 
-	*p_load_code = mb_params.mcp_resp;
+	in_params.drv_role = mfw_drv_role;
+	in_params.timeout_val = p_params->timeout_val;
+	rc = ecore_get_mfw_force_cmd(p_hwfn, ECORE_LOAD_REQ_FORCE_NONE,
+				     &mfw_force_cmd);
+	if (rc != ECORE_SUCCESS)
+		return rc;
 
-	/* If MFW refused (e.g. other port is in diagnostic mode) we
-	 * must abort. This can happen in the following cases:
-	 * - Other port is in diagnostic mode
-	 * - Previously loaded function on the engine is not compliant with
-	 *   the requester.
-	 * - MFW cannot cope with the requester's DRV_MFW_HSI_VERSION.
-	 *      -
+	in_params.force_cmd = mfw_force_cmd;
+	in_params.avoid_eng_reset = p_params->avoid_eng_reset;
+
+	OSAL_MEM_ZERO(&out_params, sizeof(out_params));
+	rc = __ecore_mcp_load_req(p_hwfn, p_ptt, &in_params, &out_params);
+	if (rc != ECORE_SUCCESS)
+		return rc;
+
+	/* First handle cases where another load request should/might be sent:
+	 * - MFW expects the old interface [HSI version = 1]
+	 * - MFW responds that a force load request is required
 	 */
-	if (!(*p_load_code) ||
-	    ((*p_load_code) == FW_MSG_CODE_DRV_LOAD_REFUSED_HSI) ||
-	    ((*p_load_code) == FW_MSG_CODE_DRV_LOAD_REFUSED_PDA) ||
-	    ((*p_load_code) == FW_MSG_CODE_DRV_LOAD_REFUSED_DIAG)) {
-		DP_ERR(p_hwfn, "MCP refused load request, aborting\n");
-		return ECORE_BUSY;
+	if (out_params.load_code == FW_MSG_CODE_DRV_LOAD_REFUSED_HSI_1) {
+		DP_INFO(p_hwfn,
+			"MFW refused a load request due to HSI > 1. Resending with HSI = 1.\n");
+
+		/* The previous load request set the mailbox blocking */
+		p_hwfn->mcp_info->block_mb_sending = false;
+
+		in_params.hsi_ver = ECORE_LOAD_REQ_HSI_VER_1;
+		OSAL_MEM_ZERO(&out_params, sizeof(out_params));
+		rc = __ecore_mcp_load_req(p_hwfn, p_ptt, &in_params,
+					  &out_params);
+		if (rc != ECORE_SUCCESS)
+			return rc;
+	} else if (out_params.load_code ==
+		   FW_MSG_CODE_DRV_LOAD_REFUSED_REQUIRES_FORCE) {
+		/* The previous load request set the mailbox blocking */
+		p_hwfn->mcp_info->block_mb_sending = false;
+
+		if (ecore_mcp_can_force_load(in_params.drv_role,
+					     out_params.exist_drv_role)) {
+			DP_INFO(p_hwfn,
+				"A force load is required [existing: role %d, fw_ver 0x%08x, drv_ver 0x%08x_0x%08x]. Sending a force load request.\n",
+				out_params.exist_drv_role,
+				out_params.exist_fw_ver,
+				out_params.exist_drv_ver_0,
+				out_params.exist_drv_ver_1);
+
+			rc = ecore_get_mfw_force_cmd(p_hwfn,
+						     ECORE_LOAD_REQ_FORCE_ALL,
+						     &mfw_force_cmd);
+			if (rc != ECORE_SUCCESS)
+				return rc;
+
+			in_params.force_cmd = mfw_force_cmd;
+			OSAL_MEM_ZERO(&out_params, sizeof(out_params));
+			rc = __ecore_mcp_load_req(p_hwfn, p_ptt, &in_params,
+						  &out_params);
+			if (rc != ECORE_SUCCESS)
+				return rc;
+		} else {
+			DP_NOTICE(p_hwfn, false,
+				  "A force load is required [existing: role %d, fw_ver 0x%08x, drv_ver 0x%08x_0x%08x]. Avoiding to prevent disruption of active PFs.\n",
+				  out_params.exist_drv_role,
+				  out_params.exist_fw_ver,
+				  out_params.exist_drv_ver_0,
+				  out_params.exist_drv_ver_1);
+
+			ecore_mcp_cancel_load_req(p_hwfn, p_ptt);
+			return ECORE_BUSY;
+		}
 	}
+
+	/* Now handle the other types of responses.
+	 * The "REFUSED_HSI_1" and "REFUSED_REQUIRES_FORCE" responses are not
+	 * expected here after the additional revised load requests were sent.
+	 */
+	switch (out_params.load_code) {
+	case FW_MSG_CODE_DRV_LOAD_ENGINE:
+	case FW_MSG_CODE_DRV_LOAD_PORT:
+	case FW_MSG_CODE_DRV_LOAD_FUNCTION:
+		if (out_params.mfw_hsi_ver != ECORE_LOAD_REQ_HSI_VER_1 &&
+		    out_params.drv_exists) {
+			/* The role and fw/driver version match, but the PF is
+			 * already loaded and has not been unloaded gracefully.
+			 * This is unexpected since a quasi-FLR request was
+			 * previously sent as part of ecore_hw_prepare().
+			 */
+			DP_NOTICE(p_hwfn, false,
+				  "PF is already loaded - shouldn't have got here since a quasi-FLR request was previously sent!\n");
+			return ECORE_INVAL;
+		}
+		break;
+	case FW_MSG_CODE_DRV_LOAD_REFUSED_PDA:
+	case FW_MSG_CODE_DRV_LOAD_REFUSED_DIAG:
+	case FW_MSG_CODE_DRV_LOAD_REFUSED_HSI:
+	case FW_MSG_CODE_DRV_LOAD_REFUSED_REJECT:
+		DP_NOTICE(p_hwfn, false,
+			  "MFW refused a load request [resp 0x%08x]. Aborting.\n",
+			  out_params.load_code);
+		return ECORE_BUSY;
+	default:
+		DP_NOTICE(p_hwfn, false,
+			  "Unexpected response to load request [resp 0x%08x]. Aborting.\n",
+			  out_params.load_code);
+		break;
+	}
+
+	p_params->load_code = out_params.load_code;
 
 	return ECORE_SUCCESS;
 }

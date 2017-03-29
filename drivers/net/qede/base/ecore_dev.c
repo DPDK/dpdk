@@ -1901,10 +1901,11 @@ enum _ecore_status_t ecore_vf_start(struct ecore_hwfn *p_hwfn,
 enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 				   struct ecore_hw_init_params *p_params)
 {
-	enum _ecore_status_t rc = ECORE_SUCCESS, mfw_rc;
+	struct ecore_load_req_params load_req_params;
 	u32 load_code, param, drv_mb_param;
-	bool b_default_mtu = true;
 	struct ecore_hwfn *p_hwfn;
+	bool b_default_mtu = true;
+	enum _ecore_status_t rc = ECORE_SUCCESS, mfw_rc;
 	int i;
 
 	if ((p_params->int_mode == ECORE_INT_MODE_MSI) &&
@@ -1943,16 +1944,24 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 		if (rc != ECORE_SUCCESS)
 			return rc;
 
-		/* @@@TBD need to add here:
-		 * Check for fan failure
-		 * Prev_unload
-		 */
-		rc = ecore_mcp_load_req(p_hwfn, p_hwfn->p_main_ptt, &load_code);
-		if (rc) {
+		OSAL_MEM_ZERO(&load_req_params, sizeof(load_req_params));
+		load_req_params.drv_role = p_params->is_crash_kernel ?
+					   ECORE_DRV_ROLE_KDUMP :
+					   ECORE_DRV_ROLE_OS;
+		load_req_params.timeout_val = p_params->mfw_timeout_val;
+		load_req_params.avoid_eng_reset = p_params->avoid_eng_reset;
+		rc = ecore_mcp_load_req(p_hwfn, p_hwfn->p_main_ptt,
+					&load_req_params);
+		if (rc != ECORE_SUCCESS) {
 			DP_NOTICE(p_hwfn, true,
-				  "Failed sending LOAD_REQ command\n");
+				  "Failed sending a LOAD_REQ command\n");
 			return rc;
 		}
+
+		load_code = load_req_params.load_code;
+		DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
+			   "Load request was sent. Load code: 0x%x\n",
+			   load_code);
 
 		/* CQ75580:
 		 * When coming back from hiberbate state, the registers from
@@ -1965,10 +1974,6 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 		 * is done.
 		 */
 		ecore_reset_mb_shadow(p_hwfn, p_hwfn->p_main_ptt);
-
-		DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
-			   "Load request was sent. Resp:0x%x, Load code: 0x%x\n",
-			   rc, load_code);
 
 		/* Only relevant for recovery:
 		 * Clear the indication after the LOAD_REQ command is responded
@@ -1988,13 +1993,13 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 		case FW_MSG_CODE_DRV_LOAD_ENGINE:
 			rc = ecore_hw_init_common(p_hwfn, p_hwfn->p_main_ptt,
 						  p_hwfn->hw_info.hw_mode);
-			if (rc)
+			if (rc != ECORE_SUCCESS)
 				break;
 			/* Fall into */
 		case FW_MSG_CODE_DRV_LOAD_PORT:
 			rc = ecore_hw_init_port(p_hwfn, p_hwfn->p_main_ptt,
 						p_hwfn->hw_info.hw_mode);
-			if (rc)
+			if (rc != ECORE_SUCCESS)
 				break;
 			/* Fall into */
 		case FW_MSG_CODE_DRV_LOAD_FUNCTION:
@@ -2006,6 +2011,8 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 					      p_params->allow_npar_tx_switch);
 			break;
 		default:
+			DP_NOTICE(p_hwfn, false,
+				  "Unexpected load code [0x%08x]", load_code);
 			rc = ECORE_NOTIMPL;
 			break;
 		}
@@ -2021,6 +2028,7 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 				       0, &load_code, &param);
 		if (rc != ECORE_SUCCESS)
 			return rc;
+
 		if (mfw_rc != ECORE_SUCCESS) {
 			DP_NOTICE(p_hwfn, true,
 				  "Failed sending LOAD_DONE command\n");
@@ -2045,10 +2053,7 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 
 	if (IS_PF(p_dev)) {
 		p_hwfn = ECORE_LEADING_HWFN(p_dev);
-		drv_mb_param = (FW_MAJOR_VERSION << 24) |
-			       (FW_MINOR_VERSION << 16) |
-			       (FW_REVISION_VERSION << 8) |
-			       (FW_ENGINEERING_VERSION);
+		drv_mb_param = STORM_FW_VERSION;
 		rc = ecore_mcp_cmd(p_hwfn, p_hwfn->p_main_ptt,
 				   DRV_MSG_CODE_OV_UPDATE_STORM_FW_VER,
 				   drv_mb_param, &load_code, &param);

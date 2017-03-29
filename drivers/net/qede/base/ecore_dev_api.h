@@ -58,16 +58,38 @@ enum _ecore_status_t ecore_resc_alloc(struct ecore_dev *p_dev);
 void ecore_resc_setup(struct ecore_dev *p_dev);
 
 struct ecore_hw_init_params {
-	/* tunnelling parameters */
+	/* Tunnelling parameters */
 	struct ecore_tunnel_info *p_tunn;
-	bool b_hw_start;
-	/* interrupt mode [msix, inta, etc.] to use */
-	enum ecore_int_mode int_mode;
-/* npar tx switching to be used for vports configured for tx-switching */
 
+	bool b_hw_start;
+
+	/* Interrupt mode [msix, inta, etc.] to use */
+	enum ecore_int_mode int_mode;
+
+	/* NPAR tx switching to be used for vports configured for tx-switching
+	 */
 	bool allow_npar_tx_switch;
-	/* binary fw data pointer in binary fw file */
+
+	/* Binary fw data pointer in binary fw file */
 	const u8 *bin_fw_data;
+
+	/* Indicates whether the driver is running over a crash kernel.
+	 * As part of the load request, this will be used for providing the
+	 * driver role to the MFW.
+	 * In case of a crash kernel over PDA - this should be set to false.
+	 */
+	bool is_crash_kernel;
+
+	/* The timeout value that the MFW should use when locking the engine for
+	 * the driver load process.
+	 * A value of '0' means the default value, and '255' means no timeout.
+	 */
+	u8 mfw_timeout_val;
+#define ECORE_LOAD_REQ_LOCK_TO_DEFAULT	0
+#define ECORE_LOAD_REQ_LOCK_TO_NONE	255
+
+	/* Avoid engine reset when first PF loads on it */
+	bool avoid_eng_reset;
 };
 
 /**
