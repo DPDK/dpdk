@@ -232,6 +232,30 @@ static bool ecore_iov_validate_sb(struct ecore_hwfn *p_hwfn,
 	return false;
 }
 
+static bool ecore_iov_validate_active_rxq(struct ecore_hwfn *p_hwfn,
+					  struct ecore_vf_info *p_vf)
+{
+	u8 i;
+
+	for (i = 0; i < p_vf->num_rxqs; i++)
+		if (p_vf->vf_queues[i].rxq_active)
+			return true;
+
+	return false;
+}
+
+static bool ecore_iov_validate_active_txq(struct ecore_hwfn *p_hwfn,
+					  struct ecore_vf_info *p_vf)
+{
+	u8 i;
+
+	for (i = 0; i < p_vf->num_rxqs; i++)
+		if (p_vf->vf_queues[i].txq_active)
+			return true;
+
+	return false;
+}
+
 /* TODO - this is linux crc32; Need a way to ifdef it out for linux */
 u32 ecore_crc32(u32 crc, u8 *ptr, u32 length)
 {
@@ -1365,8 +1389,10 @@ static void ecore_iov_vf_cleanup(struct ecore_hwfn *p_hwfn,
 
 	p_vf->num_active_rxqs = 0;
 
-	for (i = 0; i < ECORE_MAX_VF_CHAINS_PER_PF; i++)
+	for (i = 0; i < ECORE_MAX_VF_CHAINS_PER_PF; i++) {
 		p_vf->vf_queues[i].rxq_active = 0;
+		p_vf->vf_queues[i].txq_active = 0;
+	}
 
 	OSAL_MEMSET(&p_vf->shadow_config, 0, sizeof(p_vf->shadow_config));
 	OSAL_MEMSET(&p_vf->acquire, 0, sizeof(p_vf->acquire));
@@ -1942,6 +1968,15 @@ static void ecore_iov_vf_mbx_stop_vport(struct ecore_hwfn *p_hwfn,
 
 	vf->vport_instance--;
 	vf->spoof_chk = false;
+
+	if ((ecore_iov_validate_active_rxq(p_hwfn, vf)) ||
+	    (ecore_iov_validate_active_txq(p_hwfn, vf))) {
+		vf->b_malicious = true;
+		DP_NOTICE(p_hwfn, false,
+			  "VF [%02x] - considered malicious;"
+			  " Unable to stop RX/TX queuess\n",
+			  vf->abs_vf_id);
+	}
 
 	rc = ecore_sp_vport_stop(p_hwfn, vf->opaque_fid, vf->vport_id);
 	if (rc != ECORE_SUCCESS) {
