@@ -1420,6 +1420,28 @@ i40e_xmit_pkts_simple(void *tx_queue,
 	return nb_tx;
 }
 
+static uint16_t
+i40e_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
+		   uint16_t nb_pkts)
+{
+	uint16_t nb_tx = 0;
+	struct i40e_tx_queue *txq = (struct i40e_tx_queue *)tx_queue;
+
+	while (nb_pkts) {
+		uint16_t ret, num;
+
+		num = (uint16_t)RTE_MIN(nb_pkts, txq->tx_rs_thresh);
+		ret = i40e_xmit_fixed_burst_vec(tx_queue, &tx_pkts[nb_tx],
+						num);
+		nb_tx += ret;
+		nb_pkts -= ret;
+		if (ret < num)
+			break;
+	}
+
+	return nb_tx;
+}
+
 /*********************************************************************
  *
  *  TX prep functions
@@ -2944,9 +2966,9 @@ i40e_rx_queue_release_mbufs_vec(struct i40e_rx_queue __rte_unused*rxq)
 }
 
 uint16_t __attribute__((weak))
-i40e_xmit_pkts_vec(void __rte_unused *tx_queue,
-		   struct rte_mbuf __rte_unused **tx_pkts,
-		   uint16_t __rte_unused nb_pkts)
+i40e_xmit_fixed_burst_vec(void __rte_unused * tx_queue,
+			  struct rte_mbuf __rte_unused **tx_pkts,
+			  uint16_t __rte_unused nb_pkts)
 {
 	return 0;
 }

@@ -562,8 +562,8 @@ vtx(volatile struct i40e_tx_desc *txdp,
 }
 
 uint16_t
-i40e_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
-		   uint16_t nb_pkts)
+i40e_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
+			  uint16_t nb_pkts)
 {
 	struct i40e_tx_queue *txq = (struct i40e_tx_queue *)tx_queue;
 	volatile struct i40e_tx_desc *txdp;

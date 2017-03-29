@@ -248,8 +248,8 @@ int i40e_rx_vec_dev_conf_condition_check(struct rte_eth_dev *dev);
 int i40e_rxq_vec_setup(struct i40e_rx_queue *rxq);
 int i40e_txq_vec_setup(struct i40e_tx_queue *txq);
 void i40e_rx_queue_release_mbufs_vec(struct i40e_rx_queue *rxq);
-uint16_t i40e_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
-			    uint16_t nb_pkts);
+uint16_t i40e_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
+				   uint16_t nb_pkts);
 void i40e_set_rx_function(struct rte_eth_dev *dev);
 void i40e_set_tx_function_flag(struct rte_eth_dev *dev,
 			       struct i40e_tx_queue *txq);
