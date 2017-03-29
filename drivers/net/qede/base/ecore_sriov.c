@@ -2626,7 +2626,6 @@ static void ecore_iov_vf_mbx_vport_update(struct ecore_hwfn *p_hwfn,
 	 */
 	tlvs_accepted = tlvs_mask;
 
-#ifndef LINUX_REMOVE
 	if (OSAL_IOV_VF_VPORT_UPDATE(p_hwfn, vf->relative_vf_id,
 				     &params, &tlvs_accepted) !=
 	    ECORE_SUCCESS) {
@@ -2634,7 +2633,6 @@ static void ecore_iov_vf_mbx_vport_update(struct ecore_hwfn *p_hwfn,
 		status = PFVF_STATUS_NOT_SUPPORTED;
 		goto out;
 	}
-#endif
 
 	if (!tlvs_accepted) {
 		if (tlvs_mask)

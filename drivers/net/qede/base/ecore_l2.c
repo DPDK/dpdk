@@ -274,8 +274,8 @@ ecore_sp_update_accept_mode(struct ecore_hwfn *p_hwfn,
 
 		p_ramrod->rx_mode.state = OSAL_CPU_TO_LE16(state);
 		DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
-			   "p_ramrod->rx_mode.state = 0x%x\n",
-			   state);
+			   "vport[%02x] p_ramrod->rx_mode.state = 0x%x\n",
+			   p_ramrod->common.vport_id, state);
 	}
 
 	/* Set Tx mode accept flags */
@@ -298,8 +298,8 @@ ecore_sp_update_accept_mode(struct ecore_hwfn *p_hwfn,
 
 		p_ramrod->tx_mode.state = OSAL_CPU_TO_LE16(state);
 		DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
-			   "p_ramrod->tx_mode.state = 0x%x\n",
-			   state);
+			   "vport[%02x] p_ramrod->tx_mode.state = 0x%x\n",
+			   p_ramrod->common.vport_id, state);
 	}
 }
 
