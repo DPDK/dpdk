@@ -181,7 +181,8 @@ enum ecore_ov_config_method {
 
 enum ecore_ov_client {
 	ECORE_OV_CLIENT_DRV,
-	ECORE_OV_CLIENT_USER
+	ECORE_OV_CLIENT_USER,
+	ECORE_OV_CLIENT_VENDOR_SPEC
 };
 
 enum ecore_ov_driver_state {

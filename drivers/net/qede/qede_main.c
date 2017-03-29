@@ -668,6 +668,25 @@ static void qed_remove(struct ecore_dev *edev)
 	ecore_hw_remove(edev);
 }
 
+static int qed_send_drv_state(struct ecore_dev *edev, bool active)
+{
+	struct ecore_hwfn *hwfn = ECORE_LEADING_HWFN(edev);
+	struct ecore_ptt *ptt;
+	int status = 0;
+
+	ptt = ecore_ptt_acquire(hwfn);
+	if (!ptt)
+		return -EAGAIN;
+
+	status = ecore_mcp_ov_update_driver_state(hwfn, ptt, active ?
+						  ECORE_OV_DRIVER_STATE_ACTIVE :
+						ECORE_OV_DRIVER_STATE_DISABLED);
+
+	ecore_ptt_release(hwfn, ptt);
+
+	return status;
+}
+
 const struct qed_common_ops qed_common_ops_pass = {
 	INIT_STRUCT_FIELD(probe, &qed_probe),
 	INIT_STRUCT_FIELD(update_pf_params, &qed_update_pf_params),
@@ -681,4 +700,5 @@ const struct qed_common_ops qed_common_ops_pass = {
 	INIT_STRUCT_FIELD(drain, &qed_drain),
 	INIT_STRUCT_FIELD(slowpath_stop, &qed_slowpath_stop),
 	INIT_STRUCT_FIELD(remove, &qed_remove),
+	INIT_STRUCT_FIELD(send_drv_state, &qed_send_drv_state),
 };

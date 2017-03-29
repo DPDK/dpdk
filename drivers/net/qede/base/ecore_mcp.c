@@ -1723,6 +1723,9 @@ ecore_mcp_ov_update_current_config(struct ecore_hwfn *p_hwfn,
 	case ECORE_OV_CLIENT_USER:
 		drv_mb_param = DRV_MB_PARAM_OV_CURR_CFG_OTHER;
 		break;
+	case ECORE_OV_CLIENT_VENDOR_SPEC:
+		drv_mb_param = DRV_MB_PARAM_OV_CURR_CFG_VENDOR_SPEC;
+		break;
 	default:
 		DP_NOTICE(p_hwfn, true, "Invalid client type %d\n", config);
 		return ECORE_INVAL;
@@ -1761,9 +1764,9 @@ ecore_mcp_ov_update_driver_state(struct ecore_hwfn *p_hwfn,
 	}
 
 	rc = ecore_mcp_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_OV_UPDATE_DRIVER_STATE,
-			   drv_state, &resp, &param);
+			   drv_mb_param, &resp, &param);
 	if (rc != ECORE_SUCCESS)
-		DP_ERR(p_hwfn, "MCP response failure, aborting\n");
+		DP_ERR(p_hwfn, "Failed to send driver state\n");
 
 	return rc;
 }

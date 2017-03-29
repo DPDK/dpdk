@@ -150,8 +150,11 @@ struct qed_common_ops {
 			    uint16_t sb_id, enum qed_sb_type type);
 
 	bool (*can_link_change)(struct ecore_dev *edev);
+
 	void (*update_msglvl)(struct ecore_dev *edev,
 			      uint32_t dp_module, uint8_t dp_level);
+
+	int (*send_drv_state)(struct ecore_dev *edev, bool active);
 };
 
 #endif /* _QEDE_IF_H */

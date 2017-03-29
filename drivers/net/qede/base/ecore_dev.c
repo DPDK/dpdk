@@ -1609,8 +1609,9 @@ static void ecore_reset_mb_shadow(struct ecore_hwfn *p_hwfn,
 enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 				   struct ecore_hw_init_params *p_params)
 {
-	enum _ecore_status_t rc, mfw_rc;
-	u32 load_code, param;
+	enum _ecore_status_t rc = ECORE_SUCCESS, mfw_rc;
+	u32 load_code, param, drv_mb_param;
+	struct ecore_hwfn *p_hwfn;
 	int i;
 
 	if ((p_params->int_mode == ECORE_INT_MODE_MSI) &&
@@ -1743,7 +1744,26 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 		p_hwfn->hw_init_done = true;
 	}
 
-	return ECORE_SUCCESS;
+	if (IS_PF(p_dev)) {
+		p_hwfn = ECORE_LEADING_HWFN(p_dev);
+		drv_mb_param = (FW_MAJOR_VERSION << 24) |
+			       (FW_MINOR_VERSION << 16) |
+			       (FW_REVISION_VERSION << 8) |
+			       (FW_ENGINEERING_VERSION);
+		rc = ecore_mcp_cmd(p_hwfn, p_hwfn->p_main_ptt,
+				   DRV_MSG_CODE_OV_UPDATE_STORM_FW_VER,
+				   drv_mb_param, &load_code, &param);
+		if (rc != ECORE_SUCCESS) {
+			DP_ERR(p_hwfn, "Failed to send firmware version\n");
+			return rc;
+		}
+
+		rc = ecore_mcp_ov_update_driver_state(p_hwfn,
+						      p_hwfn->p_main_ptt,
+						ECORE_OV_DRIVER_STATE_DISABLED);
+	}
+
+	return rc;
 }
 
 #define ECORE_HW_STOP_RETRY_LIMIT	(10)
@@ -3130,7 +3150,12 @@ enum _ecore_status_t ecore_hw_prepare(struct ecore_dev *p_dev,
 
 void ecore_hw_remove(struct ecore_dev *p_dev)
 {
+	struct ecore_hwfn *p_hwfn = ECORE_LEADING_HWFN(p_dev);
 	int i;
+
+	if (IS_PF(p_dev))
+		ecore_mcp_ov_update_driver_state(p_hwfn, p_hwfn->p_main_ptt,
+					ECORE_OV_DRIVER_STATE_NOT_LOADED);
 
 	for_each_hwfn(p_dev, i) {
 		struct ecore_hwfn *p_hwfn = &p_dev->hwfns[i];
