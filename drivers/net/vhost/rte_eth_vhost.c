@@ -392,6 +392,7 @@ eth_vhost_rx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 {
 	struct vhost_queue *r = q;
 	uint16_t i, nb_rx = 0;
+	uint16_t nb_receive = nb_bufs;
 
 	if (unlikely(rte_atomic32_read(&r->allow_queuing) == 0))
 		return 0;
@@ -402,8 +403,20 @@ eth_vhost_rx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 		goto out;
 
 	/* Dequeue packets from guest TX queue */
-	nb_rx = rte_vhost_dequeue_burst(r->vid,
-			r->virtqueue_id, r->mb_pool, bufs, nb_bufs);
+	while (nb_receive) {
+		uint16_t nb_pkts;
+		uint16_t num = (uint16_t)RTE_MIN(nb_receive,
+						 VHOST_MAX_PKT_BURST);
+
+		nb_pkts = rte_vhost_dequeue_burst(r->vid, r->virtqueue_id,
+						  r->mb_pool, &bufs[nb_rx],
+						  num);
+
+		nb_rx += nb_pkts;
+		nb_receive -= nb_pkts;
+		if (nb_pkts < num)
+			break;
+	}
 
 	r->stats.pkts += nb_rx;
 
