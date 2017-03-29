@@ -2253,6 +2253,7 @@ static void ecore_iov_vf_mbx_update_tunn_param(struct ecore_hwfn *p_hwfn,
 	bool b_update_required = false;
 	struct ecore_tunnel_info tunn;
 	u16 tunn_feature_mask = 0;
+	int i;
 
 	mbx->offset = (u8 *)mbx->reply_virt;
 
@@ -2300,11 +2301,20 @@ static void ecore_iov_vf_mbx_update_tunn_param(struct ecore_hwfn *p_hwfn,
 
 	/* If ECORE client is willing to update anything ? */
 	if (b_update_required) {
+		u16 geneve_port;
+
 		rc = ecore_sp_pf_update_tunn_cfg(p_hwfn, &tunn,
 						 ECORE_SPQ_MODE_EBLOCK,
 						 OSAL_NULL);
 		if (rc != ECORE_SUCCESS)
 			status = PFVF_STATUS_FAILURE;
+
+		geneve_port = p_tun->geneve_port.port;
+		ecore_for_each_vf(p_hwfn, i) {
+			ecore_iov_bulletin_set_udp_ports(p_hwfn, i,
+							 p_tun->vxlan_port.port,
+							 geneve_port);
+		}
 	}
 
 send_resp:
@@ -4026,6 +4036,29 @@ void ecore_iov_bulletin_set_forced_vlan(struct ecore_hwfn *p_hwfn,
 		vf_info->bulletin.p_virt->valid_bitmap &= ~feature;
 
 	ecore_iov_configure_vport_forced(p_hwfn, vf_info, feature);
+}
+
+void ecore_iov_bulletin_set_udp_ports(struct ecore_hwfn *p_hwfn,
+				      int vfid, u16 vxlan_port, u16 geneve_port)
+{
+	struct ecore_vf_info *vf_info;
+
+	vf_info = ecore_iov_get_vf_info(p_hwfn, (u16)vfid, true);
+	if (!vf_info) {
+		DP_NOTICE(p_hwfn->p_dev, true,
+			  "Can not set udp ports, invalid vfid [%d]\n", vfid);
+		return;
+	}
+
+	if (vf_info->b_malicious) {
+		DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
+			   "Can not set udp ports to malicious VF [%d]\n",
+			   vfid);
+		return;
+	}
+
+	vf_info->bulletin.p_virt->vxlan_udp_port = vxlan_port;
+	vf_info->bulletin.p_virt->geneve_udp_port = geneve_port;
 }
 
 bool ecore_iov_vf_has_vport_instance(struct ecore_hwfn *p_hwfn, int vfid)

@@ -1652,6 +1652,18 @@ bool ecore_vf_bulletin_get_forced_mac(struct ecore_hwfn *hwfn, u8 *dst_mac,
 	return true;
 }
 
+void ecore_vf_bulletin_get_udp_ports(struct ecore_hwfn *p_hwfn,
+				     u16 *p_vxlan_port,
+				     u16 *p_geneve_port)
+{
+	struct ecore_bulletin_content *p_bulletin;
+
+	p_bulletin = &p_hwfn->vf_iov_info->bulletin_shadow;
+
+	*p_vxlan_port = p_bulletin->vxlan_udp_port;
+	*p_geneve_port = p_bulletin->geneve_udp_port;
+}
+
 bool ecore_vf_bulletin_get_forced_vlan(struct ecore_hwfn *hwfn, u16 *dst_pvid)
 {
 	struct ecore_bulletin_content *bulletin;

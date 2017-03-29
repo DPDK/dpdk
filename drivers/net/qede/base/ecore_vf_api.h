@@ -152,5 +152,7 @@ void ecore_vf_get_fw_version(struct ecore_hwfn *p_hwfn,
 			     u16 *fw_minor,
 			     u16 *fw_rev,
 			     u16 *fw_eng);
+void ecore_vf_bulletin_get_udp_ports(struct ecore_hwfn *p_hwfn,
+				     u16 *p_vxlan_port, u16 *p_geneve_port);
 #endif
 #endif

@@ -554,9 +554,12 @@ struct ecore_bulletin_content {
 	u8 pfc_enabled;
 	u8 partner_tx_flow_ctrl_en;
 	u8 partner_rx_flow_ctrl_en;
+
 	u8 partner_adv_pause;
 	u8 sfp_tx_fault;
-	u8 padding4[6];
+	u16 vxlan_udp_port;
+	u16 geneve_udp_port;
+	u8 padding4[2];
 
 	u32 speed;
 	u32 partner_adv_speed;
