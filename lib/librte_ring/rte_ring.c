@@ -138,7 +138,6 @@ rte_ring_init(struct rte_ring *r, const char *name, unsigned count,
 	if (ret < 0 || ret >= (int)sizeof(r->name))
 		return -ENAMETOOLONG;
 	r->flags = flags;
-	r->watermark = count;
 	r->prod.single = !!(flags & RING_F_SP_ENQ);
 	r->cons.single = !!(flags & RING_F_SC_DEQ);
 	r->size = count;
@@ -256,24 +255,6 @@ rte_ring_free(struct rte_ring *r)
 	rte_free(te);
 }
 
-/*
- * change the high water mark. If *count* is 0, water marking is
- * disabled
- */
-int
-rte_ring_set_water_mark(struct rte_ring *r, unsigned count)
-{
-	if (count >= r->size)
-		return -EINVAL;
-
-	/* if count is 0, disable the watermarking */
-	if (count == 0)
-		count = r->size;
-
-	r->watermark = count;
-	return 0;
-}
-
 /* dump the status of the ring on the console */
 void
 rte_ring_dump(FILE *f, const struct rte_ring *r)
@@ -287,10 +268,6 @@ rte_ring_dump(FILE *f, const struct rte_ring *r)
 	fprintf(f, "  ph=%"PRIu32"\n", r->prod.head);
 	fprintf(f, "  used=%u\n", rte_ring_count(r));
 	fprintf(f, "  avail=%u\n", rte_ring_free_count(r));
-	if (r->watermark == r->size)
-		fprintf(f, "  watermark=0\n");
-	else
-		fprintf(f, "  watermark=%"PRIu32"\n", r->watermark);
 }
 
 /* dump the status of all rings on the console */

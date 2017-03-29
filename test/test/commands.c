@@ -228,57 +228,6 @@ cmdline_parse_inst_t cmd_dump_one = {
 
 /****************/
 
-struct cmd_set_ring_result {
-	cmdline_fixed_string_t set;
-	cmdline_fixed_string_t name;
-	uint32_t value;
-};
-
-static void cmd_set_ring_parsed(void *parsed_result, struct cmdline *cl,
-				__attribute__((unused)) void *data)
-{
-	struct cmd_set_ring_result *res = parsed_result;
-	struct rte_ring *r;
-	int ret;
-
-	r = rte_ring_lookup(res->name);
-	if (r == NULL) {
-		cmdline_printf(cl, "Cannot find ring\n");
-		return;
-	}
-
-	if (!strcmp(res->set, "set_watermark")) {
-		ret = rte_ring_set_water_mark(r, res->value);
-		if (ret != 0)
-			cmdline_printf(cl, "Cannot set water mark\n");
-	}
-}
-
-cmdline_parse_token_string_t cmd_set_ring_set =
-	TOKEN_STRING_INITIALIZER(struct cmd_set_ring_result, set,
-				 "set_watermark");
-
-cmdline_parse_token_string_t cmd_set_ring_name =
-	TOKEN_STRING_INITIALIZER(struct cmd_set_ring_result, name, NULL);
-
-cmdline_parse_token_num_t cmd_set_ring_value =
-	TOKEN_NUM_INITIALIZER(struct cmd_set_ring_result, value, UINT32);
-
-cmdline_parse_inst_t cmd_set_ring = {
-	.f = cmd_set_ring_parsed,  /* function to call */
-	.data = NULL,      /* 2nd arg of func */
-	.help_str = "set watermark: "
-			"set_watermark <ring_name> <value>",
-	.tokens = {        /* token list, NULL terminated */
-		(void *)&cmd_set_ring_set,
-		(void *)&cmd_set_ring_name,
-		(void *)&cmd_set_ring_value,
-		NULL,
-	},
-};
-
-/****************/
-
 struct cmd_quit_result {
 	cmdline_fixed_string_t quit;
 };
@@ -419,7 +368,6 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_autotest,
 	(cmdline_parse_inst_t *)&cmd_dump,
 	(cmdline_parse_inst_t *)&cmd_dump_one,
-	(cmdline_parse_inst_t *)&cmd_set_ring,
 	(cmdline_parse_inst_t *)&cmd_quit,
 	(cmdline_parse_inst_t *)&cmd_set_rxtx,
 	(cmdline_parse_inst_t *)&cmd_set_rxtx_anchor,

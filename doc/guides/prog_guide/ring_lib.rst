@@ -102,14 +102,6 @@ Name
 A ring is identified by a unique name.
 It is not possible to create two rings with the same name (rte_ring_create() returns NULL if this is attempted).
 
-Water Marking
-~~~~~~~~~~~~~
-
-The ring can have a high water mark (threshold).
-Once an enqueue operation reaches the high water mark, the producer is notified, if the water mark is configured.
-
-This mechanism can be used, for example, to exert a back pressure on I/O to inform the LAN to PAUSE.
-
 Use Cases
 ---------
 

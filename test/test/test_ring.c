@@ -78,21 +78,6 @@
  *      - Dequeue one object, two objects, MAX_BULK objects
  *      - Check that dequeued pointers are correct
  *
- *    - Test watermark and default bulk enqueue/dequeue:
- *
- *      - Set watermark
- *      - Set default bulk value
- *      - Enqueue objects, check that -EDQUOT is returned when
- *        watermark is exceeded
- *      - Check that dequeued pointers are correct
- *
- * #. Check live watermark change
- *
- *    - Start a loop on another lcore that will enqueue and dequeue
- *      objects in a ring. It will monitor the value of watermark.
- *    - At the same time, change the watermark on the master lcore.
- *    - The slave lcore will check that watermark changes from 16 to 32.
- *
  * #. Performance tests.
  *
  * Tests done in test_ring_perf.c
@@ -114,123 +99,6 @@ static struct rte_ring *r;
 	}
 
 #define	TEST_RING_FULL_EMTPY_ITER	8
-
-static int
-check_live_watermark_change(__attribute__((unused)) void *dummy)
-{
-	uint64_t hz = rte_get_timer_hz();
-	void *obj_table[MAX_BULK];
-	unsigned watermark, watermark_old = 16;
-	uint64_t cur_time, end_time;
-	int64_t diff = 0;
-	int i, ret;
-	unsigned count = 4;
-
-	/* init the object table */
-	memset(obj_table, 0, sizeof(obj_table));
-	end_time = rte_get_timer_cycles() + (hz / 4);
-
-	/* check that bulk and watermark are 4 and 32 (respectively) */
-	while (diff >= 0) {
-
-		/* add in ring until we reach watermark */
-		ret = 0;
-		for (i = 0; i < 16; i ++) {
-			if (ret != 0)
-				break;
-			ret = rte_ring_enqueue_bulk(r, obj_table, count);
-		}
-
-		if (ret != -EDQUOT) {
-			printf("Cannot enqueue objects, or watermark not "
-			       "reached (ret=%d)\n", ret);
-			return -1;
-		}
-
-		/* read watermark, the only change allowed is from 16 to 32 */
-		watermark = r->watermark;
-		if (watermark != watermark_old &&
-		    (watermark_old != 16 || watermark != 32)) {
-			printf("Bad watermark change %u -> %u\n", watermark_old,
-			       watermark);
-			return -1;
-		}
-		watermark_old = watermark;
-
-		/* dequeue objects from ring */
-		while (i--) {
-			ret = rte_ring_dequeue_bulk(r, obj_table, count);
-			if (ret != 0) {
-				printf("Cannot dequeue (ret=%d)\n", ret);
-				return -1;
-			}
-		}
-
-		cur_time = rte_get_timer_cycles();
-		diff = end_time - cur_time;
-	}
-
-	if (watermark_old != 32 ) {
-		printf(" watermark was not updated (wm=%u)\n",
-		       watermark_old);
-		return -1;
-	}
-
-	return 0;
-}
-
-static int
-test_live_watermark_change(void)
-{
-	unsigned lcore_id = rte_lcore_id();
-	unsigned lcore_id2 = rte_get_next_lcore(lcore_id, 0, 1);
-
-	printf("Test watermark live modification\n");
-	rte_ring_set_water_mark(r, 16);
-
-	/* launch a thread that will enqueue and dequeue, checking
-	 * watermark and quota */
-	rte_eal_remote_launch(check_live_watermark_change, NULL, lcore_id2);
-
-	rte_delay_ms(100);
-	rte_ring_set_water_mark(r, 32);
-	rte_delay_ms(100);
-
-	if (rte_eal_wait_lcore(lcore_id2) < 0)
-		return -1;
-
-	return 0;
-}
-
-/* Test for catch on invalid watermark values */
-static int
-test_set_watermark( void ){
-	unsigned count;
-	int setwm;
-
-	struct rte_ring *r = rte_ring_lookup("test_ring_basic_ex");
-	if(r == NULL){
-		printf( " ring lookup failed\n" );
-		goto error;
-	}
-	count = r->size * 2;
-	setwm = rte_ring_set_water_mark(r, count);
-	if (setwm != -EINVAL){
-		printf("Test failed to detect invalid watermark count value\n");
-		goto error;
-	}
-
-	count = 0;
-	rte_ring_set_water_mark(r, count);
-	if (r->watermark != r->size) {
-		printf("Test failed to detect invalid watermark count value\n");
-		goto error;
-	}
-	return 0;
-
-error:
-	return -1;
-}
 
 /*
  * helper routine for test_ring_basic
@@ -418,8 +286,7 @@ test_ring_basic(void)
 	cur_src = src;
 	cur_dst = dst;
 
-	printf("test watermark and default bulk enqueue / dequeue\n");
-	rte_ring_set_water_mark(r, 20);
+	printf("test default bulk enqueue / dequeue\n");
 	num_elems = 16;
 
 	cur_src = src;
@@ -433,8 +300,8 @@ test_ring_basic(void)
 	}
 	ret = rte_ring_enqueue_bulk(r, cur_src, num_elems);
 	cur_src += num_elems;
-	if (ret != -EDQUOT) {
-		printf("Watermark not exceeded\n");
+	if (ret != 0) {
+		printf("Cannot enqueue\n");
 		goto fail;
 	}
 	ret = rte_ring_dequeue_bulk(r, cur_dst, num_elems);
@@ -930,16 +797,6 @@ test_ring(void)
 		return -1;
 
 	/* basic operations */
-	if (test_live_watermark_change() < 0)
-		return -1;
-
-	if ( test_set_watermark() < 0){
-		printf ("Test failed to detect invalid parameter\n");
-		return -1;
-	}
-	else
-		printf ( "Test detected forced bad watermark values\n");
-
 	if ( test_create_count_odd() < 0){
 			printf ("Test failed to detect odd count\n");
 			return -1;

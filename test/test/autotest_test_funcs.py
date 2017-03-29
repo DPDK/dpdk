@@ -292,11 +292,4 @@ def ring_autotest(child, test_name):
     elif index == 2:
         return -1, "Fail [Timeout]"
 
-    child.sendline("set_watermark test 100")
-    child.sendline("dump_ring test")
-    index = child.expect(["  watermark=100",
-                          pexpect.TIMEOUT], timeout=1)
-    if index != 0:
-        return -1, "Fail [Bad watermark]"
-
     return 0, "Success"
