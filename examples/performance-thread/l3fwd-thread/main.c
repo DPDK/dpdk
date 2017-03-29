@@ -2213,7 +2213,7 @@ lthread_rx(void *dummy)
 				ret = rte_ring_sp_enqueue_burst(
 						rx_conf->ring[worker_id],
 						(void **) pkts_burst,
-						nb_rx);
+						nb_rx, NULL);
 
 				new_len = old_len + ret;
 
@@ -2453,7 +2453,7 @@ pthread_rx(void *dummy)
 			SET_CPU_BUSY(rx_conf, CPU_PROCESS);
 			worker_id = (worker_id + 1) % rx_conf->n_ring;
 			n = rte_ring_sp_enqueue_burst(rx_conf->ring[worker_id],
-					(void **)pkts_burst, nb_rx);
+					(void **)pkts_burst, nb_rx, NULL);
 
 			if (unlikely(n != nb_rx)) {
 				uint32_t k;

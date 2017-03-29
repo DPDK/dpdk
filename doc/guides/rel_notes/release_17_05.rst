@@ -137,6 +137,9 @@ API Changes
   * removed the build-time setting ``CONFIG_RTE_RING_PAUSE_REP_COUNT``
   * removed the function ``rte_ring_set_water_mark`` as part of a general
     removal of watermarks support in the library.
+  * added an extra parameter to the burst/bulk enqueue functions to
+    return the number of free spaces in the ring after enqueue. This can
+    be used by an application to implement its own watermark functionality.
   * changed the return value of the enqueue and dequeue bulk functions to
     match that of the burst equivalents. In all cases, ring functions which
     operate on multiple packets now return the number of elements enqueued

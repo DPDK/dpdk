@@ -339,7 +339,7 @@ process_ops(struct rte_crypto_op **ops, struct zuc_session *session,
 	}
 
 	enqueued_ops = rte_ring_enqueue_burst(qp->processed_ops,
-			(void **)ops, processed_ops);
+			(void **)ops, processed_ops, NULL);
 	qp->qp_stats.enqueued_count += enqueued_ops;
 	*accumulated_enqueued_ops += enqueued_ops;
 

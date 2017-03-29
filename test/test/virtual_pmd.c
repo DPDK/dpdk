@@ -380,7 +380,7 @@ virtual_ethdev_tx_burst_success(void *queue, struct rte_mbuf **bufs,
 		nb_pkts = 0;
 	else
 		nb_pkts = rte_ring_enqueue_burst(dev_private->tx_queue, (void **)bufs,
-				nb_pkts);
+				nb_pkts, NULL);
 
 	/* increment opacket count */
 	dev_private->eth_stats.opackets += nb_pkts;
@@ -496,7 +496,7 @@ virtual_ethdev_add_mbufs_to_rx_queue(uint8_t port_id,
 			vrtl_eth_dev->data->dev_private;
 
 	return rte_ring_enqueue_burst(dev_private->rx_queue, (void **)pkt_burst,
-			burst_length);
+			burst_length, NULL);
 }
 
 int

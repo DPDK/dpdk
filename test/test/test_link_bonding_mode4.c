@@ -206,7 +206,8 @@ slave_get_pkts(struct slave_conf *slave, struct rte_mbuf **buf, uint16_t size)
 static int
 slave_put_pkts(struct slave_conf *slave, struct rte_mbuf **buf, uint16_t size)
 {
-	return rte_ring_enqueue_burst(slave->rx_queue, (void **)buf, size);
+	return rte_ring_enqueue_burst(slave->rx_queue, (void **)buf,
+			size, NULL);
 }
 
 static uint16_t

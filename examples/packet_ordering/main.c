@@ -421,8 +421,8 @@ rx_thread(struct rte_ring *ring_out)
 					pkts[i++]->seqn = seqn++;
 
 				/* enqueue to rx_to_workers ring */
-				ret = rte_ring_enqueue_burst(ring_out, (void *) pkts,
-								nb_rx_pkts);
+				ret = rte_ring_enqueue_burst(ring_out,
+						(void *)pkts, nb_rx_pkts, NULL);
 				app_stats.rx.enqueue_pkts += ret;
 				if (unlikely(ret < nb_rx_pkts)) {
 					app_stats.rx.enqueue_failed_pkts +=
@@ -473,7 +473,8 @@ worker_thread(void *args_ptr)
 			burst_buffer[i++]->port ^= xor_val;
 
 		/* enqueue the modified mbufs to workers_to_tx ring */
-		ret = rte_ring_enqueue_burst(ring_out, (void *)burst_buffer, burst_size);
+		ret = rte_ring_enqueue_burst(ring_out, (void *)burst_buffer,
+				burst_size, NULL);
 		__sync_fetch_and_add(&app_stats.wkr.enqueue_pkts, ret);
 		if (unlikely(ret < burst_size)) {
 			/* Return the mbufs to their respective pool, dropping packets */

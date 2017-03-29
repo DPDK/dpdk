@@ -739,13 +739,15 @@ armv8_crypto_pmd_enqueue_burst(void *queue_pair, struct rte_crypto_op **ops,
 			goto enqueue_err;
 	}
 
-	retval = rte_ring_enqueue_burst(qp->processed_ops, (void *)ops, i);
+	retval = rte_ring_enqueue_burst(qp->processed_ops, (void *)ops, i,
+			NULL);
 	qp->stats.enqueued_count += retval;
 
 	return retval;
 
 enqueue_err:
-	retval = rte_ring_enqueue_burst(qp->processed_ops, (void *)ops, i);
+	retval = rte_ring_enqueue_burst(qp->processed_ops, (void *)ops, i,
+			NULL);
 	if (ops[i] != NULL)
 		ops[i]->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 

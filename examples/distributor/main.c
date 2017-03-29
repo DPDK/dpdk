@@ -257,7 +257,7 @@ lcore_rx(struct lcore_params *p)
 
 		struct rte_ring *tx_ring = p->dist_tx_ring;
 		uint16_t sent = rte_ring_enqueue_burst(tx_ring,
-				(void *)bufs, nb_ret);
+				(void *)bufs, nb_ret, NULL);
 #else
 		uint16_t nb_ret = nb_rx;
 		/*
@@ -268,7 +268,7 @@ lcore_rx(struct lcore_params *p)
 		/* struct rte_ring *out_ring = p->dist_tx_ring; */
 
 		uint16_t sent = rte_ring_enqueue_burst(out_ring,
-				(void *)bufs, nb_ret);
+				(void *)bufs, nb_ret, NULL);
 #endif
 
 		app_stats.rx.enqueued_pkts += sent;
@@ -350,7 +350,7 @@ lcore_distributor(struct lcore_params *p)
 			app_stats.dist.ret_pkts += nb_ret;
 
 			uint16_t sent = rte_ring_enqueue_burst(out_r,
-					(void *)bufs, nb_ret);
+					(void *)bufs, nb_ret, NULL);
 			app_stats.dist.sent_pkts += sent;
 			if (unlikely(sent < nb_ret)) {
 				app_stats.dist.enqdrop_pkts += nb_ret - sent;

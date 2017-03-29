@@ -107,7 +107,7 @@ app_rx_thread(struct thread_conf **confs)
 			}
 
 			if (unlikely(rte_ring_sp_enqueue_bulk(conf->rx_ring,
-					(void **)rx_mbufs, nb_rx) == 0)) {
+					(void **)rx_mbufs, nb_rx, NULL) == 0)) {
 				for(i = 0; i < nb_rx; i++) {
 					rte_pktmbuf_free(rx_mbufs[i]);
 
@@ -231,7 +231,7 @@ app_worker_thread(struct thread_conf **confs)
 					burst_conf.qos_dequeue);
 		if (likely(nb_pkt > 0))
 			while (rte_ring_sp_enqueue_bulk(conf->tx_ring,
-					(void **)mbufs, nb_pkt) == 0)
+					(void **)mbufs, nb_pkt, NULL) == 0)
 				; /* empty body */
 
 		conf_idx++;

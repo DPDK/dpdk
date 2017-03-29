@@ -167,7 +167,7 @@ send_burst(struct rte_port_ring_writer_ras *p)
 	uint32_t nb_tx;
 
 	nb_tx = rte_ring_sp_enqueue_burst(p->ring, (void **)p->tx_buf,
-			p->tx_buf_count);
+			p->tx_buf_count, NULL);
 
 	RTE_PORT_RING_WRITER_RAS_STATS_PKTS_DROP_ADD(p, p->tx_buf_count - nb_tx);
 	for ( ; nb_tx < p->tx_buf_count; nb_tx++)

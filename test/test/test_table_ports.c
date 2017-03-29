@@ -80,7 +80,7 @@ test_port_ring_reader(void)
 	mbuf[0] = (void *)rte_pktmbuf_alloc(pool);
 
 	expected_pkts = rte_ring_sp_enqueue_burst(port_ring_reader_params.ring,
-		mbuf, 1);
+		mbuf, 1, NULL);
 	received_pkts = rte_port_ring_reader_ops.f_rx(port, res_mbuf, 1);
 
 	if (received_pkts < expected_pkts)
@@ -93,7 +93,7 @@ test_port_ring_reader(void)
 		mbuf[i] = rte_pktmbuf_alloc(pool);
 
 	expected_pkts = rte_ring_sp_enqueue_burst(port_ring_reader_params.ring,
-		(void * const *) mbuf, RTE_PORT_IN_BURST_SIZE_MAX);
+		(void * const *) mbuf, RTE_PORT_IN_BURST_SIZE_MAX, NULL);
 	received_pkts = rte_port_ring_reader_ops.f_rx(port, res_mbuf,
 		RTE_PORT_IN_BURST_SIZE_MAX);
 

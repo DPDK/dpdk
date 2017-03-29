@@ -359,7 +359,7 @@ process_ops(struct rte_crypto_op **ops, struct kasumi_session *session,
 	}
 
 	enqueued_ops = rte_ring_enqueue_burst(qp->processed_ops,
-				(void **)ops, processed_ops);
+				(void **)ops, processed_ops, NULL);
 	qp->qp_stats.enqueued_count += enqueued_ops;
 	*accumulated_enqueued_ops += enqueued_ops;
 
@@ -410,7 +410,7 @@ process_op_bit(struct rte_crypto_op *op, struct kasumi_session *session,
 	}
 
 	enqueued_op = rte_ring_enqueue_burst(qp->processed_ops, (void **)&op,
-				processed_op);
+				processed_op, NULL);
 	qp->qp_stats.enqueued_count += enqueued_op;
 	*accumulated_enqueued_ops += enqueued_op;
 

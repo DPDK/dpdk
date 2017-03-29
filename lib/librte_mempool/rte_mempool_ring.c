@@ -43,7 +43,7 @@ common_ring_mp_enqueue(struct rte_mempool *mp, void * const *obj_table,
 		unsigned n)
 {
 	return rte_ring_mp_enqueue_bulk(mp->pool_data,
-			obj_table, n) == 0 ? -ENOBUFS : 0;
+			obj_table, n, NULL) == 0 ? -ENOBUFS : 0;
 }
 
 static int
@@ -51,7 +51,7 @@ common_ring_sp_enqueue(struct rte_mempool *mp, void * const *obj_table,
 		unsigned n)
 {
 	return rte_ring_sp_enqueue_bulk(mp->pool_data,
-			obj_table, n) == 0 ? -ENOBUFS : 0;
+			obj_table, n, NULL) == 0 ? -ENOBUFS : 0;
 }
 
 static int

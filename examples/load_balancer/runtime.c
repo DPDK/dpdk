@@ -144,7 +144,8 @@ app_lcore_io_rx_buffer_to_send (
 	ret = rte_ring_sp_enqueue_bulk(
 		lp->rx.rings[worker],
 		(void **) lp->rx.mbuf_out[worker].array,
-		bsz);
+		bsz,
+		NULL);
 
 	if (unlikely(ret == 0)) {
 		uint32_t k;
@@ -310,7 +311,8 @@ app_lcore_io_rx_flush(struct app_lcore_params_io *lp, uint32_t n_workers)
 		ret = rte_ring_sp_enqueue_bulk(
 			lp->rx.rings[worker],
 			(void **) lp->rx.mbuf_out[worker].array,
-			lp->rx.mbuf_out[worker].n_mbufs);
+			lp->rx.mbuf_out[worker].n_mbufs,
+			NULL);
 
 		if (unlikely(ret == 0)) {
 			uint32_t k;
@@ -553,7 +555,8 @@ app_lcore_worker(
 			ret = rte_ring_sp_enqueue_bulk(
 				lp->rings_out[port],
 				(void **) lp->mbuf_out[port].array,
-				bsz_wr);
+				bsz_wr,
+				NULL);
 
 #if APP_STATS
 			lp->rings_out_iters[port] ++;
@@ -605,7 +608,8 @@ app_lcore_worker_flush(struct app_lcore_params_worker *lp)
 		ret = rte_ring_sp_enqueue_bulk(
 			lp->rings_out[port],
 			(void **) lp->mbuf_out[port].array,
-			lp->mbuf_out[port].n_mbufs);
+			lp->mbuf_out[port].n_mbufs,
+			NULL);
 
 		if (unlikely(ret == 0)) {
 			uint32_t k;

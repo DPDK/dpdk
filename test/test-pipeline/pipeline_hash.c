@@ -546,7 +546,8 @@ app_main_loop_rx_metadata(void) {
 			ret = rte_ring_sp_enqueue_bulk(
 				app.rings_rx[i],
 				(void **) app.mbuf_rx.array,
-				n_mbufs);
+				n_mbufs,
+				NULL);
 		} while (ret == 0);
 	}
 }

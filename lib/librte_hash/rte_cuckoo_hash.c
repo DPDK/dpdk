@@ -808,7 +808,7 @@ remove_entry(const struct rte_hash *h, struct rte_hash_bucket *bkt, unsigned i)
 			/* Need to enqueue the free slots in global ring. */
 			n_slots = rte_ring_mp_enqueue_burst(h->free_slots,
 						cached_free_slots->objs,
-						LCORE_CACHE_SIZE);
+						LCORE_CACHE_SIZE, NULL);
 			cached_free_slots->len -= n_slots;
 		}
 		/* Put index of new free slot in cache. */

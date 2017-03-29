@@ -98,7 +98,7 @@ test_single_enqueue_dequeue(void)
 	const uint64_t sc_start = rte_rdtsc_precise();
 	rte_compiler_barrier();
 	for (i = 0; i < iterations; i++) {
-		rte_ring_enqueue_bulk(r, &burst, 1);
+		rte_ring_enqueue_bulk(r, &burst, 1, NULL);
 		rte_ring_dequeue_bulk(r, &burst, 1);
 	}
 	const uint64_t sc_end = rte_rdtsc_precise();
@@ -131,7 +131,8 @@ test_bulk_enqueue_dequeue(void)
 	for (sz = 0; sz < sizeof(bulk_sizes)/sizeof(bulk_sizes[0]); sz++) {
 		const uint64_t sc_start = rte_rdtsc();
 		for (i = 0; i < iterations; i++) {
-			rte_ring_sp_enqueue_bulk(r, (void *)burst, bulk_sizes[sz]);
+			rte_ring_sp_enqueue_bulk(r, (void *)burst,
+					bulk_sizes[sz], NULL);
 			rte_ring_sc_dequeue_bulk(r, (void *)burst, bulk_sizes[sz]);
 		}
 		const uint64_t sc_end = rte_rdtsc();

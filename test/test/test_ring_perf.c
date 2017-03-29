@@ -195,13 +195,13 @@ enqueue_bulk(void *p)
 
 	const uint64_t sp_start = rte_rdtsc();
 	for (i = 0; i < iterations; i++)
-		while (rte_ring_sp_enqueue_bulk(r, burst, size) == 0)
+		while (rte_ring_sp_enqueue_bulk(r, burst, size, NULL) == 0)
 			rte_pause();
 	const uint64_t sp_end = rte_rdtsc();
 
 	const uint64_t mp_start = rte_rdtsc();
 	for (i = 0; i < iterations; i++)
-		while (rte_ring_mp_enqueue_bulk(r, burst, size) == 0)
+		while (rte_ring_mp_enqueue_bulk(r, burst, size, NULL) == 0)
 			rte_pause();
 	const uint64_t mp_end = rte_rdtsc();
 
@@ -323,14 +323,16 @@ test_burst_enqueue_dequeue(void)
 	for (sz = 0; sz < sizeof(bulk_sizes)/sizeof(bulk_sizes[0]); sz++) {
 		const uint64_t sc_start = rte_rdtsc();
 		for (i = 0; i < iterations; i++) {
-			rte_ring_sp_enqueue_burst(r, burst, bulk_sizes[sz]);
+			rte_ring_sp_enqueue_burst(r, burst,
+					bulk_sizes[sz], NULL);
 			rte_ring_sc_dequeue_burst(r, burst, bulk_sizes[sz]);
 		}
 		const uint64_t sc_end = rte_rdtsc();
 
 		const uint64_t mc_start = rte_rdtsc();
 		for (i = 0; i < iterations; i++) {
-			rte_ring_mp_enqueue_burst(r, burst, bulk_sizes[sz]);
+			rte_ring_mp_enqueue_burst(r, burst,
+					bulk_sizes[sz], NULL);
 			rte_ring_mc_dequeue_burst(r, burst, bulk_sizes[sz]);
 		}
 		const uint64_t mc_end = rte_rdtsc();
@@ -357,14 +359,16 @@ test_bulk_enqueue_dequeue(void)
 	for (sz = 0; sz < sizeof(bulk_sizes)/sizeof(bulk_sizes[0]); sz++) {
 		const uint64_t sc_start = rte_rdtsc();
 		for (i = 0; i < iterations; i++) {
-			rte_ring_sp_enqueue_bulk(r, burst, bulk_sizes[sz]);
+			rte_ring_sp_enqueue_bulk(r, burst,
+					bulk_sizes[sz], NULL);
 			rte_ring_sc_dequeue_bulk(r, burst, bulk_sizes[sz]);
 		}
 		const uint64_t sc_end = rte_rdtsc();
 
 		const uint64_t mc_start = rte_rdtsc();
 		for (i = 0; i < iterations; i++) {
-			rte_ring_mp_enqueue_bulk(r, burst, bulk_sizes[sz]);
+			rte_ring_mp_enqueue_bulk(r, burst,
+					bulk_sizes[sz], NULL);
 			rte_ring_mc_dequeue_bulk(r, burst, bulk_sizes[sz]);
 		}
 		const uint64_t mc_end = rte_rdtsc();

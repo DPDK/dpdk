@@ -97,7 +97,7 @@ app_main_loop_rx(void) {
 			ret = rte_ring_sp_enqueue_bulk(
 				app.rings_rx[i],
 				(void **) app.mbuf_rx.array,
-				n_mbufs);
+				n_mbufs, NULL);
 		} while (ret == 0);
 	}
 }
@@ -130,7 +130,8 @@ app_main_loop_worker(void) {
 			ret = rte_ring_sp_enqueue_bulk(
 				app.rings_tx[i ^ 1],
 				(void **) worker_mbuf->array,
-				app.burst_size_worker_write);
+				app.burst_size_worker_write,
+				NULL);
 		} while (ret == 0);
 	}
 }
