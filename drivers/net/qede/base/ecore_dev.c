@@ -2311,9 +2311,7 @@ enum _ecore_status_t ecore_hw_reset(struct ecore_dev *p_dev)
 			unload_resp = FW_MSG_CODE_DRV_UNLOAD_ENGINE;
 		}
 
-		rc = ecore_mcp_cmd(p_hwfn, p_hwfn->p_main_ptt,
-				   DRV_MSG_CODE_UNLOAD_DONE,
-				   0, &unload_resp, &unload_param);
+		rc = ecore_mcp_unload_done(p_hwfn, p_hwfn->p_main_ptt);
 		if (rc != ECORE_SUCCESS) {
 			DP_NOTICE(p_hwfn,
 				  true, "ecore_hw_reset: UNLOAD_DONE failed\n");

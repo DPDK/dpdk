@@ -65,8 +65,10 @@ struct ecore_mcp_info {
 struct ecore_mcp_mb_params {
 	u32 cmd;
 	u32 param;
-	union drv_union_data *p_data_src;
-	union drv_union_data *p_data_dst;
+	void *p_data_src;
+	u8 data_src_size;
+	void *p_data_dst;
+	u8 data_dst_size;
 	u32 mcp_resp;
 	u32 mcp_param;
 };
@@ -159,7 +161,7 @@ struct ecore_load_req_params {
  *        returns whether this PF is the first on the engine/port or function.
  *
  * @param p_hwfn
- * @param p_pt
+ * @param p_ptt
  * @param p_params
  *
  * @return enum _ecore_status_t - ECORE_SUCCESS - Operation was successful.
@@ -167,6 +169,17 @@ struct ecore_load_req_params {
 enum _ecore_status_t ecore_mcp_load_req(struct ecore_hwfn *p_hwfn,
 					struct ecore_ptt *p_ptt,
 					struct ecore_load_req_params *p_params);
+
+/**
+ * @brief Sends a UNLOAD_DONE message to the MFW
+ *
+ * @param p_hwfn
+ * @param p_ptt
+ *
+ * @return enum _ecore_status_t - ECORE_SUCCESS - Operation was successful.
+ */
+enum _ecore_status_t ecore_mcp_unload_done(struct ecore_hwfn *p_hwfn,
+					   struct ecore_ptt *p_ptt);
 
 /**
  * @brief Read the MFW mailbox into Current buffer.

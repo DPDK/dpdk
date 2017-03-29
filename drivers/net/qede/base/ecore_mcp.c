@@ -364,6 +364,7 @@ ecore_mcp_cmd_and_union(struct ecore_hwfn *p_hwfn,
 			struct ecore_ptt *p_ptt,
 			struct ecore_mcp_mb_params *p_mb_params)
 {
+	union drv_union_data union_data;
 	u32 union_data_addr;
 	enum _ecore_status_t rc;
 
@@ -371,6 +372,15 @@ ecore_mcp_cmd_and_union(struct ecore_hwfn *p_hwfn,
 	if (!ecore_mcp_is_init(p_hwfn)) {
 		DP_NOTICE(p_hwfn, true, "MFW is not initialized !\n");
 		return ECORE_BUSY;
+	}
+
+	if (p_mb_params->data_src_size > sizeof(union_data) ||
+	    p_mb_params->data_dst_size > sizeof(union_data)) {
+		DP_ERR(p_hwfn,
+		       "The provided size is larger than the union data size [src_size %u, dst_size %u, union_data_size %zu]\n",
+		       p_mb_params->data_src_size, p_mb_params->data_dst_size,
+		       sizeof(union_data));
+		return ECORE_INVAL;
 	}
 
 	union_data_addr = p_hwfn->mcp_info->drv_mb_addr +
@@ -383,19 +393,21 @@ ecore_mcp_cmd_and_union(struct ecore_hwfn *p_hwfn,
 	if (rc != ECORE_SUCCESS)
 		return rc;
 
-	if (p_mb_params->p_data_src != OSAL_NULL)
-		ecore_memcpy_to(p_hwfn, p_ptt, union_data_addr,
-				p_mb_params->p_data_src,
-				sizeof(*p_mb_params->p_data_src));
+	OSAL_MEM_ZERO(&union_data, sizeof(union_data));
+	if (p_mb_params->p_data_src != OSAL_NULL && p_mb_params->data_src_size)
+		OSAL_MEMCPY(&union_data, p_mb_params->p_data_src,
+			    p_mb_params->data_src_size);
+	ecore_memcpy_to(p_hwfn, p_ptt, union_data_addr, &union_data,
+			sizeof(union_data));
 
 	rc = ecore_do_mcp_cmd(p_hwfn, p_ptt, p_mb_params->cmd,
 			      p_mb_params->param, &p_mb_params->mcp_resp,
 			      &p_mb_params->mcp_param);
 
-	if (p_mb_params->p_data_dst != OSAL_NULL)
+	if (p_mb_params->p_data_dst != OSAL_NULL &&
+	    p_mb_params->data_dst_size)
 		ecore_memcpy_from(p_hwfn, p_ptt, p_mb_params->p_data_dst,
-				  union_data_addr,
-				  sizeof(*p_mb_params->p_data_dst));
+				  union_data_addr, p_mb_params->data_dst_size);
 
 	ecore_mcp_mb_unlock(p_hwfn, p_mb_params->cmd);
 
@@ -443,14 +455,13 @@ enum _ecore_status_t ecore_mcp_nvm_wr_cmd(struct ecore_hwfn *p_hwfn,
 					  u32 i_txn_size, u32 *i_buf)
 {
 	struct ecore_mcp_mb_params mb_params;
-	union drv_union_data union_data;
 	enum _ecore_status_t rc;
 
 	OSAL_MEM_ZERO(&mb_params, sizeof(mb_params));
 	mb_params.cmd = cmd;
 	mb_params.param = param;
-	OSAL_MEMCPY((u32 *)&union_data.raw_data, i_buf, i_txn_size);
-	mb_params.p_data_src = &union_data;
+	mb_params.p_data_src = i_buf;
+	mb_params.data_src_size = (u8)i_txn_size;
 	rc = ecore_mcp_cmd_and_union(p_hwfn, p_ptt, &mb_params);
 	if (rc != ECORE_SUCCESS)
 		return rc;
@@ -470,13 +481,17 @@ enum _ecore_status_t ecore_mcp_nvm_rd_cmd(struct ecore_hwfn *p_hwfn,
 					  u32 *o_txn_size, u32 *o_buf)
 {
 	struct ecore_mcp_mb_params mb_params;
-	union drv_union_data union_data;
+	u8 raw_data[MCP_DRV_NVM_BUF_LEN];
 	enum _ecore_status_t rc;
 
 	OSAL_MEM_ZERO(&mb_params, sizeof(mb_params));
 	mb_params.cmd = cmd;
 	mb_params.param = param;
-	mb_params.p_data_dst = &union_data;
+	mb_params.p_data_dst = raw_data;
+
+	/* Use the maximal value since the actual one is part of the response */
+	mb_params.data_dst_size = MCP_DRV_NVM_BUF_LEN;
+
 	rc = ecore_mcp_cmd_and_union(p_hwfn, p_ptt, &mb_params);
 	if (rc != ECORE_SUCCESS)
 		return rc;
@@ -485,7 +500,8 @@ enum _ecore_status_t ecore_mcp_nvm_rd_cmd(struct ecore_hwfn *p_hwfn,
 	*o_mcp_param = mb_params.mcp_param;
 
 	*o_txn_size = *o_mcp_param;
-	OSAL_MEMCPY(o_buf, (u32 *)&union_data.raw_data, *o_txn_size);
+	/* @DPDK */
+	OSAL_MEMCPY(o_buf, raw_data, RTE_MIN(*o_txn_size, MCP_DRV_NVM_BUF_LEN));
 
 	return ECORE_SUCCESS;
 }
@@ -605,25 +621,23 @@ __ecore_mcp_load_req(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 		     struct ecore_load_req_in_params *p_in_params,
 		     struct ecore_load_req_out_params *p_out_params)
 {
-	union drv_union_data union_data_src, union_data_dst;
 	struct ecore_mcp_mb_params mb_params;
-	struct load_req_stc *p_load_req;
-	struct load_rsp_stc *p_load_rsp;
+	struct load_req_stc load_req;
+	struct load_rsp_stc load_rsp;
 	u32 hsi_ver;
 	enum _ecore_status_t rc;
 
-	p_load_req = &union_data_src.load_req;
-	OSAL_MEM_ZERO(p_load_req, sizeof(*p_load_req));
-	p_load_req->drv_ver_0 = p_in_params->drv_ver_0;
-	p_load_req->drv_ver_1 = p_in_params->drv_ver_1;
-	p_load_req->fw_ver = p_in_params->fw_ver;
-	ECORE_MFW_SET_FIELD(p_load_req->misc0, LOAD_REQ_ROLE,
+	OSAL_MEM_ZERO(&load_req, sizeof(load_req));
+	load_req.drv_ver_0 = p_in_params->drv_ver_0;
+	load_req.drv_ver_1 = p_in_params->drv_ver_1;
+	load_req.fw_ver = p_in_params->fw_ver;
+	ECORE_MFW_SET_FIELD(load_req.misc0, LOAD_REQ_ROLE,
 			    p_in_params->drv_role);
-	ECORE_MFW_SET_FIELD(p_load_req->misc0, LOAD_REQ_LOCK_TO,
+	ECORE_MFW_SET_FIELD(load_req.misc0, LOAD_REQ_LOCK_TO,
 			    p_in_params->timeout_val);
-	ECORE_MFW_SET_FIELD(p_load_req->misc0, LOAD_REQ_FORCE,
+	ECORE_MFW_SET_FIELD(load_req.misc0, LOAD_REQ_FORCE,
 			    p_in_params->force_cmd);
-	ECORE_MFW_SET_FIELD(p_load_req->misc0, LOAD_REQ_FLAGS0,
+	ECORE_MFW_SET_FIELD(load_req.misc0, LOAD_REQ_FLAGS0,
 			    p_in_params->avoid_eng_reset);
 
 	hsi_ver = (p_in_params->hsi_ver == ECORE_LOAD_REQ_HSI_VER_DEFAULT) ?
@@ -633,8 +647,10 @@ __ecore_mcp_load_req(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 	OSAL_MEM_ZERO(&mb_params, sizeof(mb_params));
 	mb_params.cmd = DRV_MSG_CODE_LOAD_REQ;
 	mb_params.param = PDA_COMP | hsi_ver | p_hwfn->p_dev->drv_type;
-	mb_params.p_data_src = &union_data_src;
-	mb_params.p_data_dst = &union_data_dst;
+	mb_params.p_data_src = &load_req;
+	mb_params.data_src_size = sizeof(load_req);
+	mb_params.p_data_dst = &load_rsp;
+	mb_params.data_dst_size = sizeof(load_rsp);
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
 		   "Load Request: param 0x%08x [init_hw %d, drv_type %d, hsi_ver %d, pda 0x%04x]\n",
@@ -647,15 +663,13 @@ __ecore_mcp_load_req(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 	if (p_in_params->hsi_ver != ECORE_LOAD_REQ_HSI_VER_1)
 		DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
 			   "Load Request: drv_ver 0x%08x_0x%08x, fw_ver 0x%08x, misc0 0x%08x [role %d, timeout %d, force %d, flags0 0x%x]\n",
-			   p_load_req->drv_ver_0, p_load_req->drv_ver_1,
-			   p_load_req->fw_ver, p_load_req->misc0,
-			   ECORE_MFW_GET_FIELD(p_load_req->misc0,
-					       LOAD_REQ_ROLE),
-			   ECORE_MFW_GET_FIELD(p_load_req->misc0,
+			   load_req.drv_ver_0, load_req.drv_ver_1,
+			   load_req.fw_ver, load_req.misc0,
+			   ECORE_MFW_GET_FIELD(load_req.misc0, LOAD_REQ_ROLE),
+			   ECORE_MFW_GET_FIELD(load_req.misc0,
 					       LOAD_REQ_LOCK_TO),
-			   ECORE_MFW_GET_FIELD(p_load_req->misc0,
-					       LOAD_REQ_FORCE),
-			   ECORE_MFW_GET_FIELD(p_load_req->misc0,
+			   ECORE_MFW_GET_FIELD(load_req.misc0, LOAD_REQ_FORCE),
+			   ECORE_MFW_GET_FIELD(load_req.misc0,
 					       LOAD_REQ_FLAGS0));
 
 	rc = ecore_mcp_cmd_and_union(p_hwfn, p_ptt, &mb_params);
@@ -671,28 +685,24 @@ __ecore_mcp_load_req(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 
 	if (p_in_params->hsi_ver != ECORE_LOAD_REQ_HSI_VER_1 &&
 	    p_out_params->load_code != FW_MSG_CODE_DRV_LOAD_REFUSED_HSI_1) {
-		p_load_rsp = &union_data_dst.load_rsp;
 		DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
 			   "Load Response: exist_drv_ver 0x%08x_0x%08x, exist_fw_ver 0x%08x, misc0 0x%08x [exist_role %d, mfw_hsi %d, flags0 0x%x]\n",
-			   p_load_rsp->drv_ver_0, p_load_rsp->drv_ver_1,
-			   p_load_rsp->fw_ver, p_load_rsp->misc0,
-			   ECORE_MFW_GET_FIELD(p_load_rsp->misc0,
-					       LOAD_RSP_ROLE),
-			   ECORE_MFW_GET_FIELD(p_load_rsp->misc0,
-					       LOAD_RSP_HSI),
-			   ECORE_MFW_GET_FIELD(p_load_rsp->misc0,
+			   load_rsp.drv_ver_0, load_rsp.drv_ver_1,
+			   load_rsp.fw_ver, load_rsp.misc0,
+			   ECORE_MFW_GET_FIELD(load_rsp.misc0, LOAD_RSP_ROLE),
+			   ECORE_MFW_GET_FIELD(load_rsp.misc0, LOAD_RSP_HSI),
+			   ECORE_MFW_GET_FIELD(load_rsp.misc0,
 					       LOAD_RSP_FLAGS0));
 
-		p_out_params->exist_drv_ver_0 = p_load_rsp->drv_ver_0;
-		p_out_params->exist_drv_ver_1 = p_load_rsp->drv_ver_1;
-		p_out_params->exist_fw_ver = p_load_rsp->fw_ver;
+		p_out_params->exist_drv_ver_0 = load_rsp.drv_ver_0;
+		p_out_params->exist_drv_ver_1 = load_rsp.drv_ver_1;
+		p_out_params->exist_fw_ver = load_rsp.fw_ver;
 		p_out_params->exist_drv_role =
-			ECORE_MFW_GET_FIELD(p_load_rsp->misc0, LOAD_RSP_ROLE);
+			ECORE_MFW_GET_FIELD(load_rsp.misc0, LOAD_RSP_ROLE);
 		p_out_params->mfw_hsi_ver =
-			ECORE_MFW_GET_FIELD(p_load_rsp->misc0, LOAD_RSP_HSI);
+			ECORE_MFW_GET_FIELD(load_rsp.misc0, LOAD_RSP_HSI);
 		p_out_params->drv_exists =
-			ECORE_MFW_GET_FIELD(p_load_rsp->misc0,
-					    LOAD_RSP_FLAGS0) &
+			ECORE_MFW_GET_FIELD(load_rsp.misc0, LOAD_RSP_FLAGS0) &
 			LOAD_RSP_FLAGS0_DRV_EXISTS;
 	}
 
@@ -883,6 +893,18 @@ enum _ecore_status_t ecore_mcp_load_req(struct ecore_hwfn *p_hwfn,
 	return ECORE_SUCCESS;
 }
 
+enum _ecore_status_t ecore_mcp_unload_done(struct ecore_hwfn *p_hwfn,
+					   struct ecore_ptt *p_ptt)
+{
+	struct ecore_mcp_mb_params mb_params;
+	struct mcp_mac wol_mac;
+
+	OSAL_MEM_ZERO(&mb_params, sizeof(mb_params));
+	mb_params.cmd = DRV_MSG_CODE_UNLOAD_DONE;
+
+	return ecore_mcp_cmd_and_union(p_hwfn, p_ptt, &mb_params);
+}
+
 static void ecore_mcp_handle_vf_flr(struct ecore_hwfn *p_hwfn,
 				    struct ecore_ptt *p_ptt)
 {
@@ -924,7 +946,6 @@ enum _ecore_status_t ecore_mcp_ack_vf_flr(struct ecore_hwfn *p_hwfn,
 	u32 func_addr = SECTION_ADDR(mfw_func_offsize,
 				     MCP_PF_ID(p_hwfn));
 	struct ecore_mcp_mb_params mb_params;
-	union drv_union_data union_data;
 	enum _ecore_status_t rc;
 	int i;
 
@@ -935,8 +956,8 @@ enum _ecore_status_t ecore_mcp_ack_vf_flr(struct ecore_hwfn *p_hwfn,
 
 	OSAL_MEM_ZERO(&mb_params, sizeof(mb_params));
 	mb_params.cmd = DRV_MSG_CODE_VF_DISABLED_DONE;
-	OSAL_MEMCPY(&union_data.ack_vf_disabled, vfs_to_ack, VF_MAX_STATIC / 8);
-	mb_params.p_data_src = &union_data;
+	mb_params.p_data_src = vfs_to_ack;
+	mb_params.data_src_size = VF_MAX_STATIC / 8;
 	rc = ecore_mcp_cmd_and_union(p_hwfn, p_ptt,
 				     &mb_params);
 	if (rc != ECORE_SUCCESS) {
@@ -1122,8 +1143,7 @@ enum _ecore_status_t ecore_mcp_set_link(struct ecore_hwfn *p_hwfn,
 {
 	struct ecore_mcp_link_params *params = &p_hwfn->mcp_info->link_input;
 	struct ecore_mcp_mb_params mb_params;
-	union drv_union_data union_data;
-	struct eth_phy_cfg *p_phy_cfg;
+	struct eth_phy_cfg phy_cfg;
 	enum _ecore_status_t rc = ECORE_SUCCESS;
 	u32 cmd;
 
@@ -1133,30 +1153,30 @@ enum _ecore_status_t ecore_mcp_set_link(struct ecore_hwfn *p_hwfn,
 #endif
 
 	/* Set the shmem configuration according to params */
-	p_phy_cfg = &union_data.drv_phy_cfg;
-	OSAL_MEMSET(p_phy_cfg, 0, sizeof(*p_phy_cfg));
+	OSAL_MEM_ZERO(&phy_cfg, sizeof(phy_cfg));
 	cmd = b_up ? DRV_MSG_CODE_INIT_PHY : DRV_MSG_CODE_LINK_RESET;
 	if (!params->speed.autoneg)
-		p_phy_cfg->speed = params->speed.forced_speed;
-	p_phy_cfg->pause |= (params->pause.autoneg) ? ETH_PAUSE_AUTONEG : 0;
-	p_phy_cfg->pause |= (params->pause.forced_rx) ? ETH_PAUSE_RX : 0;
-	p_phy_cfg->pause |= (params->pause.forced_tx) ? ETH_PAUSE_TX : 0;
-	p_phy_cfg->adv_speed = params->speed.advertised_speeds;
-	p_phy_cfg->loopback_mode = params->loopback_mode;
+		phy_cfg.speed = params->speed.forced_speed;
+	phy_cfg.pause |= (params->pause.autoneg) ? ETH_PAUSE_AUTONEG : 0;
+	phy_cfg.pause |= (params->pause.forced_rx) ? ETH_PAUSE_RX : 0;
+	phy_cfg.pause |= (params->pause.forced_tx) ? ETH_PAUSE_TX : 0;
+	phy_cfg.adv_speed = params->speed.advertised_speeds;
+	phy_cfg.loopback_mode = params->loopback_mode;
 	p_hwfn->b_drv_link_init = b_up;
 
 	if (b_up)
 		DP_VERBOSE(p_hwfn, ECORE_MSG_LINK,
 			   "Configuring Link: Speed 0x%08x, Pause 0x%08x,"
 			   " adv_speed 0x%08x, loopback 0x%08x\n",
-			   p_phy_cfg->speed, p_phy_cfg->pause,
-			   p_phy_cfg->adv_speed, p_phy_cfg->loopback_mode);
+			   phy_cfg.speed, phy_cfg.pause, phy_cfg.adv_speed,
+			   phy_cfg.loopback_mode);
 	else
 		DP_VERBOSE(p_hwfn, ECORE_MSG_LINK, "Resetting link\n");
 
 	OSAL_MEM_ZERO(&mb_params, sizeof(mb_params));
 	mb_params.cmd = cmd;
-	mb_params.p_data_src = &union_data;
+	mb_params.p_data_src = &phy_cfg;
+	mb_params.data_src_size = sizeof(phy_cfg);
 	rc = ecore_mcp_cmd_and_union(p_hwfn, p_ptt, &mb_params);
 
 	/* if mcp fails to respond we must abort */
@@ -1235,7 +1255,6 @@ static void ecore_mcp_send_protocol_stats(struct ecore_hwfn *p_hwfn,
 	enum ecore_mcp_protocol_type stats_type;
 	union ecore_mcp_protocol_stats stats;
 	struct ecore_mcp_mb_params mb_params;
-	union drv_union_data union_data;
 	u32 hsi_param;
 	enum _ecore_status_t rc;
 
@@ -1254,8 +1273,8 @@ static void ecore_mcp_send_protocol_stats(struct ecore_hwfn *p_hwfn,
 	OSAL_MEM_ZERO(&mb_params, sizeof(mb_params));
 	mb_params.cmd = DRV_MSG_CODE_GET_STATS;
 	mb_params.param = hsi_param;
-	OSAL_MEMCPY(&union_data, &stats, sizeof(stats));
-	mb_params.p_data_src = &union_data;
+	mb_params.p_data_src = &stats;
+	mb_params.data_src_size = sizeof(stats);
 	rc = ecore_mcp_cmd_and_union(p_hwfn, p_ptt, &mb_params);
 	if (rc != ECORE_SUCCESS)
 		DP_ERR(p_hwfn, "Failed to send protocol stats, rc = %d\n", rc);
@@ -1353,28 +1372,38 @@ static void ecore_mcp_handle_fan_failure(struct ecore_hwfn *p_hwfn,
 	ecore_hw_err_notify(p_hwfn, ECORE_HW_ERR_FAN_FAIL);
 }
 
+struct ecore_mdump_cmd_params {
+	u32 cmd;
+	void *p_data_src;
+	u8 data_src_size;
+	void *p_data_dst;
+	u8 data_dst_size;
+	u32 mcp_resp;
+};
+
 static enum _ecore_status_t
 ecore_mcp_mdump_cmd(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
-		    u32 mdump_cmd, union drv_union_data *p_data_src,
-		    union drv_union_data *p_data_dst, u32 *p_mcp_resp)
+		    struct ecore_mdump_cmd_params *p_mdump_cmd_params)
 {
 	struct ecore_mcp_mb_params mb_params;
 	enum _ecore_status_t rc;
 
 	OSAL_MEM_ZERO(&mb_params, sizeof(mb_params));
 	mb_params.cmd = DRV_MSG_CODE_MDUMP_CMD;
-	mb_params.param = mdump_cmd;
-	mb_params.p_data_src = p_data_src;
-	mb_params.p_data_dst = p_data_dst;
+	mb_params.param = p_mdump_cmd_params->cmd;
+	mb_params.p_data_src = p_mdump_cmd_params->p_data_src;
+	mb_params.data_src_size = p_mdump_cmd_params->data_src_size;
+	mb_params.p_data_dst = p_mdump_cmd_params->p_data_dst;
+	mb_params.data_dst_size = p_mdump_cmd_params->data_dst_size;
 	rc = ecore_mcp_cmd_and_union(p_hwfn, p_ptt, &mb_params);
 	if (rc != ECORE_SUCCESS)
 		return rc;
 
-	*p_mcp_resp = mb_params.mcp_resp;
-	if (*p_mcp_resp == FW_MSG_CODE_MDUMP_INVALID_CMD) {
+	p_mdump_cmd_params->mcp_resp = mb_params.mcp_resp;
+	if (p_mdump_cmd_params->mcp_resp == FW_MSG_CODE_MDUMP_INVALID_CMD) {
 		DP_NOTICE(p_hwfn, false,
 			  "MFW claims that the mdump command is illegal [mdump_cmd 0x%x]\n",
-			  mdump_cmd);
+			  p_mdump_cmd_params->cmd);
 		rc = ECORE_INVAL;
 	}
 
@@ -1384,61 +1413,67 @@ ecore_mcp_mdump_cmd(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 static enum _ecore_status_t ecore_mcp_mdump_ack(struct ecore_hwfn *p_hwfn,
 						struct ecore_ptt *p_ptt)
 {
-	u32 mcp_resp;
+	struct ecore_mdump_cmd_params mdump_cmd_params;
 
-	return ecore_mcp_mdump_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_MDUMP_ACK,
-				   OSAL_NULL, OSAL_NULL, &mcp_resp);
+	OSAL_MEM_ZERO(&mdump_cmd_params, sizeof(mdump_cmd_params));
+	mdump_cmd_params.cmd = DRV_MSG_CODE_MDUMP_ACK;
+
+	return ecore_mcp_mdump_cmd(p_hwfn, p_ptt, &mdump_cmd_params);
 }
 
 enum _ecore_status_t ecore_mcp_mdump_set_values(struct ecore_hwfn *p_hwfn,
 						struct ecore_ptt *p_ptt,
 						u32 epoch)
 {
-	union drv_union_data union_data;
-	u32 mcp_resp;
+	struct ecore_mdump_cmd_params mdump_cmd_params;
 
-	OSAL_MEMCPY(&union_data.raw_data, &epoch, sizeof(epoch));
+	OSAL_MEM_ZERO(&mdump_cmd_params, sizeof(mdump_cmd_params));
+	mdump_cmd_params.cmd = DRV_MSG_CODE_MDUMP_SET_VALUES;
+	mdump_cmd_params.p_data_src = &epoch;
+	mdump_cmd_params.data_src_size = sizeof(epoch);
 
-	return ecore_mcp_mdump_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_MDUMP_SET_VALUES,
-				   &union_data, OSAL_NULL, &mcp_resp);
+	return ecore_mcp_mdump_cmd(p_hwfn, p_ptt, &mdump_cmd_params);
 }
 
 enum _ecore_status_t ecore_mcp_mdump_trigger(struct ecore_hwfn *p_hwfn,
 					     struct ecore_ptt *p_ptt)
 {
-	u32 mcp_resp;
+	struct ecore_mdump_cmd_params mdump_cmd_params;
 
-	p_hwfn->p_dev->mdump_en = true;
+	OSAL_MEM_ZERO(&mdump_cmd_params, sizeof(mdump_cmd_params));
+	mdump_cmd_params.cmd = DRV_MSG_CODE_MDUMP_TRIGGER;
 
-	return ecore_mcp_mdump_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_MDUMP_TRIGGER,
-				   OSAL_NULL, OSAL_NULL, &mcp_resp);
+	return ecore_mcp_mdump_cmd(p_hwfn, p_ptt, &mdump_cmd_params);
 }
 
 static enum _ecore_status_t
 ecore_mcp_mdump_get_config(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 			   struct mdump_config_stc *p_mdump_config)
 {
-	union drv_union_data union_data;
-	u32 mcp_resp;
+	struct ecore_mdump_cmd_params mdump_cmd_params;
 	enum _ecore_status_t rc;
 
-	rc = ecore_mcp_mdump_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_MDUMP_GET_CONFIG,
-				 OSAL_NULL, &union_data, &mcp_resp);
+	OSAL_MEM_ZERO(&mdump_cmd_params, sizeof(mdump_cmd_params));
+	mdump_cmd_params.cmd = DRV_MSG_CODE_MDUMP_GET_CONFIG;
+	mdump_cmd_params.p_data_dst = p_mdump_config;
+	mdump_cmd_params.data_dst_size = sizeof(*p_mdump_config);
+
+	rc = ecore_mcp_mdump_cmd(p_hwfn, p_ptt, &mdump_cmd_params);
 	if (rc != ECORE_SUCCESS)
 		return rc;
 
-	if (mcp_resp == FW_MSG_CODE_UNSUPPORTED)
+	if (mdump_cmd_params.mcp_resp == FW_MSG_CODE_UNSUPPORTED) {
+		DP_INFO(p_hwfn,
+			"The mdump command is not supported by the MFW\n");
 		return ECORE_NOTIMPL;
-
-	if (mcp_resp != FW_MSG_CODE_OK) {
-		DP_NOTICE(p_hwfn, false,
-			  "Failed to get the mdump configuration and logs info [mcp_resp 0x%x]\n",
-			  mcp_resp);
-		rc = ECORE_UNKNOWN_ERROR;
 	}
 
-	OSAL_MEMCPY(p_mdump_config, &union_data.mdump_config,
-		    sizeof(*p_mdump_config));
+	if (mdump_cmd_params.mcp_resp != FW_MSG_CODE_OK) {
+		DP_NOTICE(p_hwfn, false,
+			  "Failed to get the mdump configuration and logs info [mcp_resp 0x%x]\n",
+			  mdump_cmd_params.mcp_resp);
+		rc = ECORE_UNKNOWN_ERROR;
+	}
 
 	return rc;
 }
@@ -1489,10 +1524,12 @@ ecore_mcp_mdump_get_info(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 enum _ecore_status_t ecore_mcp_mdump_clear_logs(struct ecore_hwfn *p_hwfn,
 						struct ecore_ptt *p_ptt)
 {
-	u32 mcp_resp;
+	struct ecore_mdump_cmd_params mdump_cmd_params;
 
-	return ecore_mcp_mdump_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_MDUMP_CLEAR_LOGS,
-				   OSAL_NULL, OSAL_NULL, &mcp_resp);
+	OSAL_MEM_ZERO(&mdump_cmd_params, sizeof(mdump_cmd_params));
+	mdump_cmd_params.cmd = DRV_MSG_CODE_MDUMP_CLEAR_LOGS;
+
+	return ecore_mcp_mdump_cmd(p_hwfn, p_ptt, &mdump_cmd_params);
 }
 
 static void ecore_mcp_handle_critical_error(struct ecore_hwfn *p_hwfn,
@@ -2001,9 +2038,8 @@ enum _ecore_status_t
 ecore_mcp_send_drv_version(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 			   struct ecore_mcp_drv_version *p_ver)
 {
-	struct drv_version_stc *p_drv_version;
 	struct ecore_mcp_mb_params mb_params;
-	union drv_union_data union_data;
+	struct drv_version_stc drv_version;
 	u32 num_words, i;
 	void *p_name;
 	OSAL_BE32 val;
@@ -2014,19 +2050,20 @@ ecore_mcp_send_drv_version(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 		return ECORE_SUCCESS;
 #endif
 
-	p_drv_version = &union_data.drv_version;
-	p_drv_version->version = p_ver->version;
+	OSAL_MEM_ZERO(&drv_version, sizeof(drv_version));
+	drv_version.version = p_ver->version;
 	num_words = (MCP_DRV_VER_STR_SIZE - 4) / 4;
 	for (i = 0; i < num_words; i++) {
 		/* The driver name is expected to be in a big-endian format */
 		p_name = &p_ver->name[i * sizeof(u32)];
 		val = OSAL_CPU_TO_BE32(*(u32 *)p_name);
-		*(u32 *)&p_drv_version->name[i * sizeof(u32)] = val;
+		*(u32 *)&drv_version.name[i * sizeof(u32)] = val;
 	}
 
 	OSAL_MEM_ZERO(&mb_params, sizeof(mb_params));
 	mb_params.cmd = DRV_MSG_CODE_SET_VERSION;
-	mb_params.p_data_src = &union_data;
+	mb_params.p_data_src = &drv_version;
+	mb_params.data_src_size = sizeof(drv_version);
 	rc = ecore_mcp_cmd_and_union(p_hwfn, p_ptt, &mb_params);
 	if (rc != ECORE_SUCCESS)
 		DP_ERR(p_hwfn, "MCP response failure, aborting\n");
@@ -2695,28 +2732,25 @@ ecore_mcp_get_temperature_info(struct ecore_hwfn *p_hwfn,
 			       struct ecore_temperature_info *p_temp_info)
 {
 	struct ecore_temperature_sensor *p_temp_sensor;
-	struct temperature_status_stc *p_mfw_temp_info;
+	struct temperature_status_stc mfw_temp_info;
 	struct ecore_mcp_mb_params mb_params;
-	union drv_union_data union_data;
 	u32 val;
 	enum _ecore_status_t rc;
 	u8 i;
 
 	OSAL_MEM_ZERO(&mb_params, sizeof(mb_params));
 	mb_params.cmd = DRV_MSG_CODE_GET_TEMPERATURE;
-	mb_params.p_data_dst = &union_data;
+	mb_params.p_data_dst = &mfw_temp_info;
+	mb_params.data_dst_size = sizeof(mfw_temp_info);
 	rc = ecore_mcp_cmd_and_union(p_hwfn, p_ptt, &mb_params);
 	if (rc != ECORE_SUCCESS)
 		return rc;
 
-	p_mfw_temp_info = &union_data.temp_info;
-
 	OSAL_BUILD_BUG_ON(ECORE_MAX_NUM_OF_SENSORS != MAX_NUM_OF_SENSORS);
-	p_temp_info->num_sensors = OSAL_MIN_T(u32,
-					      p_mfw_temp_info->num_of_sensors,
+	p_temp_info->num_sensors = OSAL_MIN_T(u32, mfw_temp_info.num_of_sensors,
 					      ECORE_MAX_NUM_OF_SENSORS);
 	for (i = 0; i < p_temp_info->num_sensors; i++) {
-		val = p_mfw_temp_info->sensor[i];
+		val = mfw_temp_info.sensor[i];
 		p_temp_sensor = &p_temp_info->sensors[i];
 		p_temp_sensor->sensor_location = (val & SENSOR_LOCATION_MASK) >>
 						 SENSOR_LOCATION_SHIFT;
@@ -2854,16 +2888,14 @@ ecore_mcp_resc_allocation_msg(struct ecore_hwfn *p_hwfn,
 			      struct ecore_resc_alloc_in_params *p_in_params,
 			      struct ecore_resc_alloc_out_params *p_out_params)
 {
-	struct resource_info *p_mfw_resc_info;
 	struct ecore_mcp_mb_params mb_params;
-	union drv_union_data union_data;
+	struct resource_info mfw_resc_info;
 	enum _ecore_status_t rc;
 
-	p_mfw_resc_info = &union_data.resource;
-	OSAL_MEM_ZERO(p_mfw_resc_info, sizeof(*p_mfw_resc_info));
+	OSAL_MEM_ZERO(&mfw_resc_info, sizeof(mfw_resc_info));
 
-	p_mfw_resc_info->res_id = ecore_mcp_get_mfw_res_id(p_in_params->res_id);
-	if (p_mfw_resc_info->res_id == RESOURCE_NUM_INVALID) {
+	mfw_resc_info.res_id = ecore_mcp_get_mfw_res_id(p_in_params->res_id);
+	if (mfw_resc_info.res_id == RESOURCE_NUM_INVALID) {
 		DP_ERR(p_hwfn,
 		       "Failed to match resource %d [%s] with the MFW resources\n",
 		       p_in_params->res_id,
@@ -2873,7 +2905,7 @@ ecore_mcp_resc_allocation_msg(struct ecore_hwfn *p_hwfn,
 
 	switch (p_in_params->cmd) {
 	case DRV_MSG_SET_RESOURCE_VALUE_MSG:
-		p_mfw_resc_info->size = p_in_params->resc_max_val;
+		mfw_resc_info.size = p_in_params->resc_max_val;
 		/* Fallthrough */
 	case DRV_MSG_GET_RESOURCE_ALLOC_MSG:
 		break;
@@ -2886,8 +2918,10 @@ ecore_mcp_resc_allocation_msg(struct ecore_hwfn *p_hwfn,
 	OSAL_MEM_ZERO(&mb_params, sizeof(mb_params));
 	mb_params.cmd = p_in_params->cmd;
 	mb_params.param = ECORE_RESC_ALLOC_VERSION;
-	mb_params.p_data_src = &union_data;
-	mb_params.p_data_dst = &union_data;
+	mb_params.p_data_src = &mfw_resc_info;
+	mb_params.data_src_size = sizeof(mfw_resc_info);
+	mb_params.p_data_dst = mb_params.p_data_src;
+	mb_params.data_dst_size = mb_params.data_src_size;
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
 		   "Resource message request: cmd 0x%08x, res_id %d [%s], hsi_version %d.%d, val 0x%x\n",
@@ -2905,11 +2939,11 @@ ecore_mcp_resc_allocation_msg(struct ecore_hwfn *p_hwfn,
 
 	p_out_params->mcp_resp = mb_params.mcp_resp;
 	p_out_params->mcp_param = mb_params.mcp_param;
-	p_out_params->resc_num = p_mfw_resc_info->size;
-	p_out_params->resc_start = p_mfw_resc_info->offset;
-	p_out_params->vf_resc_num = p_mfw_resc_info->vf_size;
-	p_out_params->vf_resc_start = p_mfw_resc_info->vf_offset;
-	p_out_params->flags = p_mfw_resc_info->flags;
+	p_out_params->resc_num = mfw_resc_info.size;
+	p_out_params->resc_start = mfw_resc_info.offset;
+	p_out_params->vf_resc_num = mfw_resc_info.vf_size;
+	p_out_params->vf_resc_start = mfw_resc_info.vf_offset;
+	p_out_params->flags = mfw_resc_info.flags;
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
 		   "Resource message response: mfw_hsi_version %d.%d, num 0x%x, start 0x%x, vf_num 0x%x, vf_start 0x%x, flags 0x%08x\n",
