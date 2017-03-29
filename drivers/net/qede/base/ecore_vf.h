@@ -38,17 +38,15 @@ struct ecore_vf_iov {
 	bool b_pre_fp_hsi;
 };
 
-#ifdef CONFIG_ECORE_SRIOV
-/**
- * @brief hw preparation for VF
- * sends ACQUIRE message
- *
- * @param p_hwfn
- *
- * @return enum _ecore_status_t
- */
-enum _ecore_status_t ecore_vf_hw_prepare(struct ecore_hwfn *p_hwfn);
 
+enum _ecore_status_t ecore_set_rxq_coalesce(struct ecore_hwfn *p_hwfn,
+					    struct ecore_ptt *p_ptt,
+					    u16 coalesce,
+					    struct ecore_queue_cid *p_cid);
+enum _ecore_status_t ecore_set_txq_coalesce(struct ecore_hwfn *p_hwfn,
+					    struct ecore_ptt *p_ptt,
+					    u16 coalesce,
+					    struct ecore_queue_cid *p_cid);
 /**
  * @brief VF - Set Rx/Tx coalesce per VF's relative queue.
  *	Coalesce value '0' will omit the configuration.
@@ -56,12 +54,23 @@ enum _ecore_status_t ecore_vf_hw_prepare(struct ecore_hwfn *p_hwfn);
  *	@param p_hwfn
  *	@param rx_coal - coalesce value in micro second for rx queue
  *	@param tx_coal - coalesce value in micro second for tx queue
- *	@param qid
+ *	@param queue_cid
  *
  **/
 enum _ecore_status_t ecore_vf_pf_set_coalesce(struct ecore_hwfn *p_hwfn,
 					      u16 rx_coal, u16 tx_coal,
 					      struct ecore_queue_cid *p_cid);
+
+#ifdef CONFIG_ECORE_SRIOV
+/**
+ * @brief hw preparation for VF
+ *	sends ACQUIRE message
+ *
+ * @param p_hwfn
+ *
+ * @return enum _ecore_status_t
+ */
+enum _ecore_status_t ecore_vf_hw_prepare(struct ecore_hwfn *p_hwfn);
 
 /**
  * @brief VF - start the RX Queue by sending a message to the PF
@@ -277,15 +286,5 @@ ecore_vf_pf_tunnel_param_update(struct ecore_hwfn *p_hwfn,
 				struct ecore_tunnel_info *p_tunn);
 
 void ecore_vf_set_vf_start_tunn_update_param(struct ecore_tunnel_info *p_tun);
-
-enum _ecore_status_t ecore_set_rxq_coalesce(struct ecore_hwfn *p_hwfn,
-					    struct ecore_ptt *p_ptt,
-					    u16 coalesce,
-					    struct ecore_queue_cid *p_cid);
-
-enum _ecore_status_t ecore_set_txq_coalesce(struct ecore_hwfn *p_hwfn,
-					    struct ecore_ptt *p_ptt,
-					    u16 coalesce,
-					    struct ecore_queue_cid *p_cid);
 #endif
 #endif /* __ECORE_VF_H__ */
