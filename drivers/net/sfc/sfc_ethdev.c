@@ -1370,9 +1370,6 @@ sfc_eth_dev_set_ops(struct rte_eth_dev *dev)
 	const char *tx_name = NULL;
 	int rc;
 
-	if (sa == NULL || sa->state == SFC_ADAPTER_UNINITIALIZED)
-		return -E_RTE_SECONDARY;
-
 	switch (sa->family) {
 	case EFX_FAMILY_HUNTINGTON:
 	case EFX_FAMILY_MEDFORD:
@@ -1511,6 +1508,16 @@ sfc_eth_dev_init(struct rte_eth_dev *dev)
 	sfc_adapter_lock_init(sa);
 	sfc_adapter_lock(sa);
 
+	sfc_log_init(sa, "probing");
+	rc = sfc_probe(sa);
+	if (rc != 0)
+		goto fail_probe;
+
+	sfc_log_init(sa, "set device ops");
+	rc = sfc_eth_dev_set_ops(dev);
+	if (rc != 0)
+		goto fail_set_ops;
+
 	sfc_log_init(sa, "attaching");
 	rc = sfc_attach(sa);
 	if (rc != 0)
@@ -1527,12 +1534,14 @@ sfc_eth_dev_init(struct rte_eth_dev *dev)
 
 	sfc_adapter_unlock(sa);
 
-	sfc_eth_dev_set_ops(dev);
-
 	sfc_log_init(sa, "done");
 	return 0;
 
 fail_attach:
+fail_set_ops:
+	sfc_unprobe(sa);
+
+fail_probe:
 	sfc_adapter_unlock(sa);
 	sfc_adapter_lock_fini(sa);
 	rte_free(dev->data->mac_addrs);
@@ -1558,6 +1567,7 @@ sfc_eth_dev_uninit(struct rte_eth_dev *dev)
 	sfc_adapter_lock(sa);
 
 	sfc_detach(sa);
+	sfc_unprobe(sa);
 
 	rte_free(dev->data->mac_addrs);
 	dev->data->mac_addrs = NULL;

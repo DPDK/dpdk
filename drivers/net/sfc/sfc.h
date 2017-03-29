@@ -283,6 +283,8 @@ int sfc_dma_alloc(const struct sfc_adapter *sa, const char *name, uint16_t id,
 		  size_t len, int socket_id, efsys_mem_t *esmp);
 void sfc_dma_free(const struct sfc_adapter *sa, efsys_mem_t *esmp);
 
+int sfc_probe(struct sfc_adapter *sa);
+void sfc_unprobe(struct sfc_adapter *sa);
 int sfc_attach(struct sfc_adapter *sa);
 void sfc_detach(struct sfc_adapter *sa);
 int sfc_start(struct sfc_adapter *sa);

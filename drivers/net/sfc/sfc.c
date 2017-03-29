@@ -571,45 +571,13 @@ fail_intr_init:
 int
 sfc_attach(struct sfc_adapter *sa)
 {
-	struct rte_pci_device *pci_dev = SFC_DEV_TO_PCI(sa->eth_dev);
 	const efx_nic_cfg_t *encp;
-	efx_nic_t *enp;
+	efx_nic_t *enp = sa->nic;
 	int rc;
 
 	sfc_log_init(sa, "entry");
 
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
-
-	sa->socket_id = rte_socket_id();
-
-	sfc_log_init(sa, "init mem bar");
-	rc = sfc_mem_bar_init(sa);
-	if (rc != 0)
-		goto fail_mem_bar_init;
-
-	sfc_log_init(sa, "get family");
-	rc = efx_family(pci_dev->id.vendor_id, pci_dev->id.device_id,
-			&sa->family);
-	if (rc != 0)
-		goto fail_family;
-	sfc_log_init(sa, "family is %u", sa->family);
-
-	sfc_log_init(sa, "create nic");
-	rte_spinlock_init(&sa->nic_lock);
-	rc = efx_nic_create(sa->family, (efsys_identifier_t *)sa,
-			    &sa->mem_bar, &sa->nic_lock, &enp);
-	if (rc != 0)
-		goto fail_nic_create;
-	sa->nic = enp;
-
-	rc = sfc_mcdi_init(sa);
-	if (rc != 0)
-		goto fail_mcdi_init;
-
-	sfc_log_init(sa, "probe nic");
-	rc = efx_nic_probe(enp);
-	if (rc != 0)
-		goto fail_nic_probe;
 
 	efx_mcdi_new_epoch(enp);
 
@@ -666,8 +634,71 @@ fail_intr_attach:
 
 fail_estimate_rsrc_limits:
 fail_nic_reset:
-	sfc_log_init(sa, "unprobe nic");
-	efx_nic_unprobe(enp);
+
+	sfc_log_init(sa, "failed %d", rc);
+	return rc;
+}
+
+void
+sfc_detach(struct sfc_adapter *sa)
+{
+	sfc_log_init(sa, "entry");
+
+	SFC_ASSERT(sfc_adapter_is_locked(sa));
+
+	sfc_flow_fini(sa);
+
+	sfc_filter_detach(sa);
+
+	sfc_intr_detach(sa);
+
+	sa->state = SFC_ADAPTER_UNINITIALIZED;
+}
+
+int
+sfc_probe(struct sfc_adapter *sa)
+{
+	struct rte_pci_device *pci_dev = SFC_DEV_TO_PCI(sa->eth_dev);
+	efx_nic_t *enp;
+	int rc;
+
+	sfc_log_init(sa, "entry");
+
+	SFC_ASSERT(sfc_adapter_is_locked(sa));
+
+	sa->socket_id = rte_socket_id();
+
+	sfc_log_init(sa, "init mem bar");
+	rc = sfc_mem_bar_init(sa);
+	if (rc != 0)
+		goto fail_mem_bar_init;
+
+	sfc_log_init(sa, "get family");
+	rc = efx_family(pci_dev->id.vendor_id, pci_dev->id.device_id,
+			&sa->family);
+	if (rc != 0)
+		goto fail_family;
+	sfc_log_init(sa, "family is %u", sa->family);
+
+	sfc_log_init(sa, "create nic");
+	rte_spinlock_init(&sa->nic_lock);
+	rc = efx_nic_create(sa->family, (efsys_identifier_t *)sa,
+			    &sa->mem_bar, &sa->nic_lock, &enp);
+	if (rc != 0)
+		goto fail_nic_create;
+	sa->nic = enp;
+
+	rc = sfc_mcdi_init(sa);
+	if (rc != 0)
+		goto fail_mcdi_init;
+
+	sfc_log_init(sa, "probe nic");
+	rc = efx_nic_probe(enp);
+	if (rc != 0)
+		goto fail_nic_probe;
+
+	sfc_log_init(sa, "done");
+	return 0;
 
 fail_nic_probe:
 	sfc_mcdi_fini(sa);
@@ -687,17 +718,13 @@ fail_mem_bar_init:
 }
 
 void
-sfc_detach(struct sfc_adapter *sa)
+sfc_unprobe(struct sfc_adapter *sa)
 {
 	efx_nic_t *enp = sa->nic;
 
 	sfc_log_init(sa, "entry");
 
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
-
-	sfc_filter_detach(sa);
-
-	sfc_intr_detach(sa);
 
 	sfc_log_init(sa, "unprobe nic");
 	efx_nic_unprobe(enp);
