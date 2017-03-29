@@ -35,17 +35,6 @@ u32 ecore_cxt_get_proto_cid_start(struct ecore_hwfn *p_hwfn,
 				  enum protocol_type type);
 u32 ecore_cxt_get_srq_count(struct ecore_hwfn *p_hwfn);
 
-#ifndef LINUX_REMOVE
-/**
- * @brief ecore_cxt_qm_iids - fills the cid/tid counts for the QM configuration
- *
- * @param p_hwfn
- * @param iids [out], a structure holding all the counters
- */
-void ecore_cxt_qm_iids(struct ecore_hwfn *p_hwfn,
-		       struct ecore_qm_iids *iids);
-#endif
-
 /**
  * @brief ecore_cxt_set_pf_params - Set the PF params for cxt init
  *

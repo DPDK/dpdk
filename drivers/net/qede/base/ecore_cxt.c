@@ -327,7 +327,8 @@ static OSAL_INLINE void ecore_cxt_tm_iids(struct ecore_cxt_mngr *p_mngr,
 	}
 }
 
-void ecore_cxt_qm_iids(struct ecore_hwfn *p_hwfn, struct ecore_qm_iids *iids)
+static void ecore_cxt_qm_iids(struct ecore_hwfn *p_hwfn,
+			      struct ecore_qm_iids *iids)
 {
 	struct ecore_cxt_mngr *p_mngr = p_hwfn->p_cxt_mngr;
 	struct ecore_tid_seg *segs;
@@ -1945,7 +1946,7 @@ enum _ecore_status_t ecore_cxt_get_cid_info(struct ecore_hwfn *p_hwfn,
 	return ECORE_SUCCESS;
 }
 
-void ecore_cxt_set_srq_count(struct ecore_hwfn *p_hwfn, u32 num_srqs)
+static void ecore_cxt_set_srq_count(struct ecore_hwfn *p_hwfn, u32 num_srqs)
 {
 	struct ecore_cxt_mngr *p_mgr = p_hwfn->p_cxt_mngr;
 

@@ -759,8 +759,8 @@ enum _ecore_status_t ecore_qm_reconf(struct ecore_hwfn *p_hwfn,
 				     struct ecore_ptt *p_ptt)
 {
 	struct ecore_qm_info *qm_info = &p_hwfn->qm_info;
-	enum _ecore_status_t rc;
 	bool b_rc;
+	enum _ecore_status_t rc;
 
 	/* initialize ecore's qm data structure */
 	ecore_init_qm_info(p_hwfn);
@@ -1507,54 +1507,6 @@ static void ecore_link_init_bb(struct ecore_hwfn *p_hwfn,
 }
 #endif
 
-static enum _ecore_status_t ecore_hw_init_port(struct ecore_hwfn *p_hwfn,
-					       struct ecore_ptt *p_ptt,
-					       int hw_mode)
-{
-	enum _ecore_status_t rc = ECORE_SUCCESS;
-
-	rc = ecore_init_run(p_hwfn, p_ptt, PHASE_PORT, p_hwfn->port_id,
-			    hw_mode);
-	if (rc != ECORE_SUCCESS)
-		return rc;
-#ifndef ASIC_ONLY
-	if (CHIP_REV_IS_ASIC(p_hwfn->p_dev))
-		return ECORE_SUCCESS;
-
-	if (CHIP_REV_IS_FPGA(p_hwfn->p_dev)) {
-		if (ECORE_IS_AH(p_hwfn->p_dev))
-			return ECORE_SUCCESS;
-		else if (ECORE_IS_BB(p_hwfn->p_dev))
-			ecore_link_init_bb(p_hwfn, p_ptt, p_hwfn->port_id);
-	} else if (CHIP_REV_IS_EMUL(p_hwfn->p_dev)) {
-		if (p_hwfn->p_dev->num_hwfns > 1) {
-			/* Activate OPTE in CMT */
-			u32 val;
-
-			val = ecore_rd(p_hwfn, p_ptt, MISCS_REG_RESET_PL_HV);
-			val |= 0x10;
-			ecore_wr(p_hwfn, p_ptt, MISCS_REG_RESET_PL_HV, val);
-			ecore_wr(p_hwfn, p_ptt, MISC_REG_CLK_100G_MODE, 1);
-			ecore_wr(p_hwfn, p_ptt, MISCS_REG_CLK_100G_MODE, 1);
-			ecore_wr(p_hwfn, p_ptt, MISC_REG_OPTE_MODE, 1);
-			ecore_wr(p_hwfn, p_ptt,
-				 NIG_REG_LLH_ENG_CLS_TCP_4_TUPLE_SEARCH, 1);
-			ecore_wr(p_hwfn, p_ptt,
-				 NIG_REG_LLH_ENG_CLS_ENG_ID_TBL, 0x55555555);
-			ecore_wr(p_hwfn, p_ptt,
-				 NIG_REG_LLH_ENG_CLS_ENG_ID_TBL + 0x4,
-				 0x55555555);
-		}
-
-		ecore_emul_link_init(p_hwfn, p_ptt);
-	} else {
-		DP_INFO(p_hwfn->p_dev, "link is not being configured\n");
-	}
-#endif
-
-	return rc;
-}
-
 static enum _ecore_status_t
 ecore_hw_init_dpi_size(struct ecore_hwfn *p_hwfn,
 		       struct ecore_ptt *p_ptt, u32 pwm_region_size, u32 n_cpus)
@@ -1623,7 +1575,7 @@ ecore_hw_init_pf_doorbell_bar(struct ecore_hwfn *p_hwfn,
 	u32 db_bar_size, n_cpus;
 	u32 roce_edpm_mode;
 	u32 pf_dems_shift;
-	int rc = ECORE_SUCCESS;
+	enum _ecore_status_t rc = ECORE_SUCCESS;
 	u8 cond;
 
 	db_bar_size = ecore_hw_bar_size(p_hwfn, BAR_ID_1);
@@ -1678,8 +1630,9 @@ ecore_hw_init_pf_doorbell_bar(struct ecore_hwfn *p_hwfn,
 		rc = ecore_hw_init_dpi_size(p_hwfn, p_ptt, pwm_regsize, n_cpus);
 	}
 
-	cond = ((rc) && (roce_edpm_mode == ECORE_ROCE_EDPM_MODE_ENABLE)) ||
-	    (roce_edpm_mode == ECORE_ROCE_EDPM_MODE_DISABLE);
+	cond = ((rc != ECORE_SUCCESS) &&
+		(roce_edpm_mode == ECORE_ROCE_EDPM_MODE_ENABLE)) ||
+		(roce_edpm_mode == ECORE_ROCE_EDPM_MODE_DISABLE);
 	if (cond || p_hwfn->dcbx_no_edpm) {
 		/* Either EDPM is disabled from user configuration, or it is
 		 * disabled via DCBx, or it is not mandatory and we failed to
@@ -1703,7 +1656,7 @@ ecore_hw_init_pf_doorbell_bar(struct ecore_hwfn *p_hwfn,
 		"disabled" : "enabled");
 
 	/* Check return codes from above calls */
-	if (rc) {
+	if (rc != ECORE_SUCCESS) {
 		DP_ERR(p_hwfn,
 		       "Failed to allocate enough DPIs\n");
 		return ECORE_NORESOURCES;
@@ -1719,6 +1672,54 @@ ecore_hw_init_pf_doorbell_bar(struct ecore_hwfn *p_hwfn,
 	ecore_wr(p_hwfn, p_ptt, DORQ_REG_PF_MIN_ADDR_REG1, min_addr_reg1);
 
 	return ECORE_SUCCESS;
+}
+
+static enum _ecore_status_t ecore_hw_init_port(struct ecore_hwfn *p_hwfn,
+					       struct ecore_ptt *p_ptt,
+					       int hw_mode)
+{
+	enum _ecore_status_t rc	= ECORE_SUCCESS;
+
+	rc = ecore_init_run(p_hwfn, p_ptt, PHASE_PORT, p_hwfn->port_id,
+			    hw_mode);
+	if (rc != ECORE_SUCCESS)
+		return rc;
+#ifndef ASIC_ONLY
+	if (CHIP_REV_IS_ASIC(p_hwfn->p_dev))
+		return ECORE_SUCCESS;
+
+	if (CHIP_REV_IS_FPGA(p_hwfn->p_dev)) {
+		if (ECORE_IS_AH(p_hwfn->p_dev))
+			return ECORE_SUCCESS;
+		else if (ECORE_IS_BB(p_hwfn->p_dev))
+			ecore_link_init_bb(p_hwfn, p_ptt, p_hwfn->port_id);
+	} else if (CHIP_REV_IS_EMUL(p_hwfn->p_dev)) {
+		if (p_hwfn->p_dev->num_hwfns > 1) {
+			/* Activate OPTE in CMT */
+			u32 val;
+
+			val = ecore_rd(p_hwfn, p_ptt, MISCS_REG_RESET_PL_HV);
+			val |= 0x10;
+			ecore_wr(p_hwfn, p_ptt, MISCS_REG_RESET_PL_HV, val);
+			ecore_wr(p_hwfn, p_ptt, MISC_REG_CLK_100G_MODE, 1);
+			ecore_wr(p_hwfn, p_ptt, MISCS_REG_CLK_100G_MODE, 1);
+			ecore_wr(p_hwfn, p_ptt, MISC_REG_OPTE_MODE, 1);
+			ecore_wr(p_hwfn, p_ptt,
+				 NIG_REG_LLH_ENG_CLS_TCP_4_TUPLE_SEARCH, 1);
+			ecore_wr(p_hwfn, p_ptt,
+				 NIG_REG_LLH_ENG_CLS_ENG_ID_TBL, 0x55555555);
+			ecore_wr(p_hwfn, p_ptt,
+				 NIG_REG_LLH_ENG_CLS_ENG_ID_TBL + 0x4,
+				 0x55555555);
+		}
+
+		ecore_emul_link_init(p_hwfn, p_ptt);
+	} else {
+		DP_INFO(p_hwfn->p_dev, "link is not being configured\n");
+	}
+#endif
+
+	return rc;
 }
 
 static enum _ecore_status_t
@@ -1922,8 +1923,8 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 {
 	struct ecore_load_req_params load_req_params;
 	u32 load_code, param, drv_mb_param;
-	struct ecore_hwfn *p_hwfn;
 	bool b_default_mtu = true;
+	struct ecore_hwfn *p_hwfn;
 	enum _ecore_status_t rc = ECORE_SUCCESS, mfw_rc;
 	int i;
 

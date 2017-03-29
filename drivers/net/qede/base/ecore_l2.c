@@ -946,17 +946,17 @@ ecore_eth_pf_rx_queue_start(struct ecore_hwfn *p_hwfn,
 			    dma_addr_t bd_chain_phys_addr,
 			    dma_addr_t cqe_pbl_addr,
 			    u16 cqe_pbl_size,
-			    void OSAL_IOMEM * *pp_producer)
+			    void OSAL_IOMEM * *pp_prod)
 {
 	u32 init_prod_val = 0;
 
-	*pp_producer = (u8 OSAL_IOMEM *)
-		       p_hwfn->regview +
-		       GTT_BAR0_MAP_REG_MSDM_RAM +
-		       MSTORM_ETH_PF_PRODS_OFFSET(p_cid->abs.queue_id);
+	*pp_prod = (u8 OSAL_IOMEM *)
+		    p_hwfn->regview +
+		    GTT_BAR0_MAP_REG_MSDM_RAM +
+		    MSTORM_ETH_PF_PRODS_OFFSET(p_cid->abs.queue_id);
 
 	/* Init the rcq, rx bd and rx sge (if valid) producers to 0 */
-	__internal_ram_wr(p_hwfn, *pp_producer, sizeof(u32),
+	__internal_ram_wr(p_hwfn, *pp_prod, sizeof(u32),
 			  (u32 *)(&init_prod_val));
 
 	return ecore_eth_rxq_start_ramrod(p_hwfn, p_cid,

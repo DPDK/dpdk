@@ -114,7 +114,7 @@ ecore_dcbx_dp_protocol(struct ecore_hwfn *p_hwfn,
 	}
 }
 
-void
+static void
 ecore_dcbx_set_params(struct ecore_dcbx_results *p_data,
 		      struct ecore_hwfn *p_hwfn,
 		      bool enable, u8 prio, u8 tc,

@@ -1285,8 +1285,8 @@ enum _ecore_status_t ecore_vf_pf_release(struct ecore_hwfn *p_hwfn)
 	struct ecore_vf_iov *p_iov = p_hwfn->vf_iov_info;
 	struct pfvf_def_resp_tlv *resp;
 	struct vfpf_first_tlv *req;
-	enum _ecore_status_t rc;
 	u32 size;
+	enum _ecore_status_t rc;
 
 	/* clear mailbox and prep first tlv */
 	req = ecore_vf_pf_prep(p_hwfn, CHANNEL_TLV_RELEASE, sizeof(*req));
