@@ -2768,7 +2768,60 @@ enum _ecore_status_t ecore_mcp_mem_ecc_events(struct ecore_hwfn *p_hwfn,
 			     0, &rsp, (u32 *)num_events);
 }
 
-#define ECORE_RESC_ALLOC_VERSION_MAJOR	1
+static enum resource_id_enum
+ecore_mcp_get_mfw_res_id(enum ecore_resources res_id)
+{
+	enum resource_id_enum mfw_res_id = RESOURCE_NUM_INVALID;
+
+	switch (res_id) {
+	case ECORE_SB:
+		mfw_res_id = RESOURCE_NUM_SB_E;
+		break;
+	case ECORE_L2_QUEUE:
+		mfw_res_id = RESOURCE_NUM_L2_QUEUE_E;
+		break;
+	case ECORE_VPORT:
+		mfw_res_id = RESOURCE_NUM_VPORT_E;
+		break;
+	case ECORE_RSS_ENG:
+		mfw_res_id = RESOURCE_NUM_RSS_ENGINES_E;
+		break;
+	case ECORE_PQ:
+		mfw_res_id = RESOURCE_NUM_PQ_E;
+		break;
+	case ECORE_RL:
+		mfw_res_id = RESOURCE_NUM_RL_E;
+		break;
+	case ECORE_MAC:
+	case ECORE_VLAN:
+		/* Each VFC resource can accommodate both a MAC and a VLAN */
+		mfw_res_id = RESOURCE_VFC_FILTER_E;
+		break;
+	case ECORE_ILT:
+		mfw_res_id = RESOURCE_ILT_E;
+		break;
+	case ECORE_LL2_QUEUE:
+		mfw_res_id = RESOURCE_LL2_QUEUE_E;
+		break;
+	case ECORE_RDMA_CNQ_RAM:
+	case ECORE_CMDQS_CQS:
+		/* CNQ/CMDQS are the same resource */
+		mfw_res_id = RESOURCE_CQS_E;
+		break;
+	case ECORE_RDMA_STATS_QUEUE:
+		mfw_res_id = RESOURCE_RDMA_STATS_QUEUE_E;
+		break;
+	case ECORE_BDQ:
+		mfw_res_id = RESOURCE_BDQ_E;
+		break;
+	default:
+		break;
+	}
+
+	return mfw_res_id;
+}
+
+#define ECORE_RESC_ALLOC_VERSION_MAJOR	2
 #define ECORE_RESC_ALLOC_VERSION_MINOR	0
 #define ECORE_RESC_ALLOC_VERSION				\
 	((ECORE_RESC_ALLOC_VERSION_MAJOR <<			\
@@ -2776,36 +2829,146 @@ enum _ecore_status_t ecore_mcp_mem_ecc_events(struct ecore_hwfn *p_hwfn,
 	 (ECORE_RESC_ALLOC_VERSION_MINOR <<			\
 	  DRV_MB_PARAM_RESOURCE_ALLOC_VERSION_MINOR_SHIFT))
 
-enum _ecore_status_t ecore_mcp_get_resc_info(struct ecore_hwfn *p_hwfn,
-					     struct ecore_ptt *p_ptt,
-					     struct resource_info *p_resc_info,
-					     u32 *p_mcp_resp, u32 *p_mcp_param)
+struct ecore_resc_alloc_in_params {
+	u32 cmd;
+	enum ecore_resources res_id;
+	u32 resc_max_val;
+};
+
+struct ecore_resc_alloc_out_params {
+	u32 mcp_resp;
+	u32 mcp_param;
+	u32 resc_num;
+	u32 resc_start;
+	u32 vf_resc_num;
+	u32 vf_resc_start;
+	u32 flags;
+};
+
+static enum _ecore_status_t
+ecore_mcp_resc_allocation_msg(struct ecore_hwfn *p_hwfn,
+			      struct ecore_ptt *p_ptt,
+			      struct ecore_resc_alloc_in_params *p_in_params,
+			      struct ecore_resc_alloc_out_params *p_out_params)
 {
+	struct resource_info *p_mfw_resc_info;
 	struct ecore_mcp_mb_params mb_params;
 	union drv_union_data union_data;
 	enum _ecore_status_t rc;
 
+	p_mfw_resc_info = &union_data.resource;
+	OSAL_MEM_ZERO(p_mfw_resc_info, sizeof(*p_mfw_resc_info));
+
+	p_mfw_resc_info->res_id = ecore_mcp_get_mfw_res_id(p_in_params->res_id);
+	if (p_mfw_resc_info->res_id == RESOURCE_NUM_INVALID) {
+		DP_ERR(p_hwfn,
+		       "Failed to match resource %d [%s] with the MFW resources\n",
+		       p_in_params->res_id,
+		       ecore_hw_get_resc_name(p_in_params->res_id));
+		return ECORE_INVAL;
+	}
+
+	switch (p_in_params->cmd) {
+	case DRV_MSG_SET_RESOURCE_VALUE_MSG:
+		p_mfw_resc_info->size = p_in_params->resc_max_val;
+		/* Fallthrough */
+	case DRV_MSG_GET_RESOURCE_ALLOC_MSG:
+		break;
+	default:
+		DP_ERR(p_hwfn, "Unexpected resource alloc command [0x%08x]\n",
+		       p_in_params->cmd);
+		return ECORE_INVAL;
+	}
+
 	OSAL_MEM_ZERO(&mb_params, sizeof(mb_params));
-	mb_params.cmd = DRV_MSG_GET_RESOURCE_ALLOC_MSG;
+	mb_params.cmd = p_in_params->cmd;
 	mb_params.param = ECORE_RESC_ALLOC_VERSION;
-	OSAL_MEMCPY(&union_data.resource, p_resc_info, sizeof(*p_resc_info));
 	mb_params.p_data_src = &union_data;
 	mb_params.p_data_dst = &union_data;
+
+	DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
+		   "Resource message request: cmd 0x%08x, res_id %d [%s], hsi_version %d.%d, val 0x%x\n",
+		   p_in_params->cmd, p_in_params->res_id,
+		   ecore_hw_get_resc_name(p_in_params->res_id),
+		   ECORE_MFW_GET_FIELD(mb_params.param,
+			   DRV_MB_PARAM_RESOURCE_ALLOC_VERSION_MAJOR),
+		   ECORE_MFW_GET_FIELD(mb_params.param,
+			   DRV_MB_PARAM_RESOURCE_ALLOC_VERSION_MINOR),
+		   p_in_params->resc_max_val);
+
 	rc = ecore_mcp_cmd_and_union(p_hwfn, p_ptt, &mb_params);
 	if (rc != ECORE_SUCCESS)
 		return rc;
 
-	*p_mcp_resp = mb_params.mcp_resp;
-	*p_mcp_param = mb_params.mcp_param;
-
-	OSAL_MEMCPY(p_resc_info, &union_data.resource, sizeof(*p_resc_info));
+	p_out_params->mcp_resp = mb_params.mcp_resp;
+	p_out_params->mcp_param = mb_params.mcp_param;
+	p_out_params->resc_num = p_mfw_resc_info->size;
+	p_out_params->resc_start = p_mfw_resc_info->offset;
+	p_out_params->vf_resc_num = p_mfw_resc_info->vf_size;
+	p_out_params->vf_resc_start = p_mfw_resc_info->vf_offset;
+	p_out_params->flags = p_mfw_resc_info->flags;
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
-		   "MFW resource_info: version 0x%x, res_id 0x%x, size 0x%x,"
-		   " offset 0x%x, vf_size 0x%x, vf_offset 0x%x, flags 0x%x\n",
-		   *p_mcp_param, p_resc_info->res_id, p_resc_info->size,
-		   p_resc_info->offset, p_resc_info->vf_size,
-		   p_resc_info->vf_offset, p_resc_info->flags);
+		   "Resource message response: mfw_hsi_version %d.%d, num 0x%x, start 0x%x, vf_num 0x%x, vf_start 0x%x, flags 0x%08x\n",
+		   ECORE_MFW_GET_FIELD(p_out_params->mcp_param,
+			   FW_MB_PARAM_RESOURCE_ALLOC_VERSION_MAJOR),
+		   ECORE_MFW_GET_FIELD(p_out_params->mcp_param,
+			   FW_MB_PARAM_RESOURCE_ALLOC_VERSION_MINOR),
+		   p_out_params->resc_num, p_out_params->resc_start,
+		   p_out_params->vf_resc_num, p_out_params->vf_resc_start,
+		   p_out_params->flags);
+
+	return ECORE_SUCCESS;
+}
+
+enum _ecore_status_t
+ecore_mcp_set_resc_max_val(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
+			   enum ecore_resources res_id, u32 resc_max_val,
+			   u32 *p_mcp_resp)
+{
+	struct ecore_resc_alloc_out_params out_params;
+	struct ecore_resc_alloc_in_params in_params;
+	enum _ecore_status_t rc;
+
+	OSAL_MEM_ZERO(&in_params, sizeof(in_params));
+	in_params.cmd = DRV_MSG_SET_RESOURCE_VALUE_MSG;
+	in_params.res_id = res_id;
+	in_params.resc_max_val = resc_max_val;
+	OSAL_MEM_ZERO(&out_params, sizeof(out_params));
+	rc = ecore_mcp_resc_allocation_msg(p_hwfn, p_ptt, &in_params,
+					   &out_params);
+	if (rc != ECORE_SUCCESS)
+		return rc;
+
+	*p_mcp_resp = out_params.mcp_resp;
+
+	return ECORE_SUCCESS;
+}
+
+enum _ecore_status_t
+ecore_mcp_get_resc_info(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
+			enum ecore_resources res_id, u32 *p_mcp_resp,
+			u32 *p_resc_num, u32 *p_resc_start)
+{
+	struct ecore_resc_alloc_out_params out_params;
+	struct ecore_resc_alloc_in_params in_params;
+	enum _ecore_status_t rc;
+
+	OSAL_MEM_ZERO(&in_params, sizeof(in_params));
+	in_params.cmd = DRV_MSG_GET_RESOURCE_ALLOC_MSG;
+	in_params.res_id = res_id;
+	OSAL_MEM_ZERO(&out_params, sizeof(out_params));
+	rc = ecore_mcp_resc_allocation_msg(p_hwfn, p_ptt, &in_params,
+					   &out_params);
+	if (rc != ECORE_SUCCESS)
+		return rc;
+
+	*p_mcp_resp = out_params.mcp_resp;
+
+	if (*p_mcp_resp == FW_MSG_CODE_RESOURCE_ALLOC_OK) {
+		*p_resc_num = out_params.resc_num;
+		*p_resc_start = out_params.resc_start;
+	}
 
 	return ECORE_SUCCESS;
 }
@@ -2831,8 +2994,11 @@ static enum _ecore_status_t ecore_mcp_resource_cmd(struct ecore_hwfn *p_hwfn,
 	if (rc != ECORE_SUCCESS)
 		return rc;
 
-	if (*p_mcp_resp == FW_MSG_CODE_UNSUPPORTED)
+	if (*p_mcp_resp == FW_MSG_CODE_UNSUPPORTED) {
+		DP_INFO(p_hwfn,
+			"The resource command is unsupported by the MFW\n");
 		return ECORE_NOTIMPL;
+	}
 
 	if (*p_mcp_param == RESOURCE_OPCODE_UNKNOWN_CMD) {
 		u8 opcode = ECORE_MFW_GET_FIELD(param, RESOURCE_CMD_REQ_OPCODE);
@@ -2846,36 +3012,35 @@ static enum _ecore_status_t ecore_mcp_resource_cmd(struct ecore_hwfn *p_hwfn,
 	return rc;
 }
 
-enum _ecore_status_t ecore_mcp_resc_lock(struct ecore_hwfn *p_hwfn,
-					 struct ecore_ptt *p_ptt,
-					 u8 resource_num, u8 timeout,
-					 bool *p_granted, u8 *p_owner)
+enum _ecore_status_t
+__ecore_mcp_resc_lock(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
+		      struct ecore_resc_lock_params *p_params)
 {
 	u32 param = 0, mcp_resp, mcp_param;
 	u8 opcode;
 	enum _ecore_status_t rc;
 
-	switch (timeout) {
+	switch (p_params->timeout) {
 	case ECORE_MCP_RESC_LOCK_TO_DEFAULT:
 		opcode = RESOURCE_OPCODE_REQ;
-		timeout = 0;
+		p_params->timeout = 0;
 		break;
 	case ECORE_MCP_RESC_LOCK_TO_NONE:
 		opcode = RESOURCE_OPCODE_REQ_WO_AGING;
-		timeout = 0;
+		p_params->timeout = 0;
 		break;
 	default:
 		opcode = RESOURCE_OPCODE_REQ_W_AGING;
 		break;
 	}
 
-	ECORE_MFW_SET_FIELD(param, RESOURCE_CMD_REQ_RESC, resource_num);
+	ECORE_MFW_SET_FIELD(param, RESOURCE_CMD_REQ_RESC, p_params->resource);
 	ECORE_MFW_SET_FIELD(param, RESOURCE_CMD_REQ_OPCODE, opcode);
-	ECORE_MFW_SET_FIELD(param, RESOURCE_CMD_REQ_AGE, timeout);
+	ECORE_MFW_SET_FIELD(param, RESOURCE_CMD_REQ_AGE, p_params->timeout);
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
-		   "Resource lock request: param 0x%08x [age %d, opcode %d, resc_num %d]\n",
-		   param, timeout, opcode, resource_num);
+		   "Resource lock request: param 0x%08x [age %d, opcode %d, resource %d]\n",
+		   param, p_params->timeout, opcode, p_params->resource);
 
 	/* Attempt to acquire the resource */
 	rc = ecore_mcp_resource_cmd(p_hwfn, p_ptt, param, &mcp_resp,
@@ -2884,19 +3049,20 @@ enum _ecore_status_t ecore_mcp_resc_lock(struct ecore_hwfn *p_hwfn,
 		return rc;
 
 	/* Analyze the response */
-	*p_owner = ECORE_MFW_GET_FIELD(mcp_param, RESOURCE_CMD_RSP_OWNER);
+	p_params->owner = ECORE_MFW_GET_FIELD(mcp_param,
+					     RESOURCE_CMD_RSP_OWNER);
 	opcode = ECORE_MFW_GET_FIELD(mcp_param, RESOURCE_CMD_RSP_OPCODE);
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
 		   "Resource lock response: mcp_param 0x%08x [opcode %d, owner %d]\n",
-		   mcp_param, opcode, *p_owner);
+		   mcp_param, opcode, p_params->owner);
 
 	switch (opcode) {
 	case RESOURCE_OPCODE_GNT:
-		*p_granted = true;
+		p_params->b_granted = true;
 		break;
 	case RESOURCE_OPCODE_BUSY:
-		*p_granted = false;
+		p_params->b_granted = false;
 		break;
 	default:
 		DP_NOTICE(p_hwfn, false,
@@ -2908,23 +3074,54 @@ enum _ecore_status_t ecore_mcp_resc_lock(struct ecore_hwfn *p_hwfn,
 	return ECORE_SUCCESS;
 }
 
-enum _ecore_status_t ecore_mcp_resc_unlock(struct ecore_hwfn *p_hwfn,
-					   struct ecore_ptt *p_ptt,
-					   u8 resource_num, bool force,
-					   bool *p_released)
+enum _ecore_status_t
+ecore_mcp_resc_lock(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
+		    struct ecore_resc_lock_params *p_params)
+{
+	u32 retry_cnt = 0;
+	enum _ecore_status_t rc;
+
+	do {
+		/* No need for an interval before the first iteration */
+		if (retry_cnt) {
+			if (p_params->sleep_b4_retry) {
+				u16 retry_interval_in_ms =
+					DIV_ROUND_UP(p_params->retry_interval,
+						     1000);
+
+				OSAL_MSLEEP(retry_interval_in_ms);
+			} else {
+				OSAL_UDELAY(p_params->retry_interval);
+			}
+		}
+
+		rc = __ecore_mcp_resc_lock(p_hwfn, p_ptt, p_params);
+		if (rc != ECORE_SUCCESS)
+			return rc;
+
+		if (p_params->b_granted)
+			break;
+	} while (retry_cnt++ < p_params->retry_num);
+
+	return ECORE_SUCCESS;
+}
+
+enum _ecore_status_t
+ecore_mcp_resc_unlock(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
+		      struct ecore_resc_unlock_params *p_params)
 {
 	u32 param = 0, mcp_resp, mcp_param;
 	u8 opcode;
 	enum _ecore_status_t rc;
 
-	opcode = force ? RESOURCE_OPCODE_FORCE_RELEASE
-		       : RESOURCE_OPCODE_RELEASE;
-	ECORE_MFW_SET_FIELD(param, RESOURCE_CMD_REQ_RESC, resource_num);
+	opcode = p_params->b_force ? RESOURCE_OPCODE_FORCE_RELEASE
+				   : RESOURCE_OPCODE_RELEASE;
+	ECORE_MFW_SET_FIELD(param, RESOURCE_CMD_REQ_RESC, p_params->resource);
 	ECORE_MFW_SET_FIELD(param, RESOURCE_CMD_REQ_OPCODE, opcode);
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
-		   "Resource unlock request: param 0x%08x [opcode %d, resc_num %d]\n",
-		   param, opcode, resource_num);
+		   "Resource unlock request: param 0x%08x [opcode %d, resource %d]\n",
+		   param, opcode, p_params->resource);
 
 	/* Attempt to release the resource */
 	rc = ecore_mcp_resource_cmd(p_hwfn, p_ptt, param, &mcp_resp,
@@ -2942,14 +3139,14 @@ enum _ecore_status_t ecore_mcp_resc_unlock(struct ecore_hwfn *p_hwfn,
 	switch (opcode) {
 	case RESOURCE_OPCODE_RELEASED_PREVIOUS:
 		DP_INFO(p_hwfn,
-			"Resource unlock request for an already released resource [resc_num %d]\n",
-			resource_num);
+			"Resource unlock request for an already released resource [%d]\n",
+			p_params->resource);
 		/* Fallthrough */
 	case RESOURCE_OPCODE_RELEASED:
-		*p_released = true;
+		p_params->b_released = true;
 		break;
 	case RESOURCE_OPCODE_WRONG_OWNER:
-		*p_released = false;
+		p_params->b_released = false;
 		break;
 	default:
 		DP_NOTICE(p_hwfn, false,

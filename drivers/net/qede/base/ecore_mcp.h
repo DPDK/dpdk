@@ -11,6 +11,7 @@
 
 #include "bcm_osal.h"
 #include "mcp_public.h"
+#include "ecore.h"
 #include "ecore_mcp_api.h"
 
 /* Using hwfn number (and not pf_num) is required since in CMT mode,
@@ -339,20 +340,37 @@ enum _ecore_status_t ecore_mcp_mdump_trigger(struct ecore_hwfn *p_hwfn,
 					     struct ecore_ptt *p_ptt);
 
 /**
+ * @brief - Sets the MFW's max value for the given resource
+ *
+ *  @param p_hwfn
+ *  @param p_ptt
+ *  @param res_id
+ *  @param resc_max_val
+ *  @param p_mcp_resp
+ *
+ * @return enum _ecore_status_t - ECORE_SUCCESS - operation was successful.
+ */
+enum _ecore_status_t
+ecore_mcp_set_resc_max_val(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
+			   enum ecore_resources res_id, u32 resc_max_val,
+			   u32 *p_mcp_resp);
+
+/**
  * @brief - Gets the MFW allocation info for the given resource
  *
  *  @param p_hwfn
  *  @param p_ptt
- *  @param p_resc_info
+ *  @param res_id
  *  @param p_mcp_resp
- *  @param p_mcp_param
+ *  @param p_resc_num
+ *  @param p_resc_start
  *
  * @return enum _ecore_status_t - ECORE_SUCCESS - operation was successful.
  */
-enum _ecore_status_t ecore_mcp_get_resc_info(struct ecore_hwfn *p_hwfn,
-					     struct ecore_ptt *p_ptt,
-					     struct resource_info *p_resc_info,
-					     u32 *p_mcp_resp, u32 *p_mcp_param);
+enum _ecore_status_t
+ecore_mcp_get_resc_info(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
+			enum ecore_resources res_id, u32 *p_mcp_resp,
+			u32 *p_resc_num, u32 *p_resc_start);
 
 /**
  * @brief - Initiates PF FLR
@@ -365,45 +383,79 @@ enum _ecore_status_t ecore_mcp_get_resc_info(struct ecore_hwfn *p_hwfn,
 enum _ecore_status_t ecore_mcp_initiate_pf_flr(struct ecore_hwfn *p_hwfn,
 					       struct ecore_ptt *p_ptt);
 
+#define ECORE_MCP_RESC_LOCK_MIN_VAL	RESOURCE_DUMP /* 0 */
+#define ECORE_MCP_RESC_LOCK_MAX_VAL	31
+
+enum ecore_resc_lock {
+	ECORE_RESC_LOCK_DBG_DUMP = ECORE_MCP_RESC_LOCK_MIN_VAL,
+	/* Locks that the MFW is aware of should be added here downwards */
+
+	/* Ecore only locks should be added here upwards */
+	ECORE_RESC_LOCK_RESC_ALLOC = ECORE_MCP_RESC_LOCK_MAX_VAL
+};
+
+struct ecore_resc_lock_params {
+	/* Resource number [valid values are 0..31] */
+	u8 resource;
+
+	/* Lock timeout value in seconds [default, none or 1..254] */
+	u8 timeout;
 #define ECORE_MCP_RESC_LOCK_TO_DEFAULT	0
 #define ECORE_MCP_RESC_LOCK_TO_NONE	255
+
+	/* Number of times to retry locking */
+	u8 retry_num;
+
+	/* The interval in usec between retries */
+	u16 retry_interval;
+
+	/* Use sleep or delay between retries */
+	bool sleep_b4_retry;
+
+	/* Will be set as true if the resource is free and granted */
+	bool b_granted;
+
+	/* Will be filled with the resource owner.
+	 * [0..15 = PF0-15, 16 = MFW, 17 = diag over serial]
+	 */
+	u8 owner;
+};
 
 /**
  * @brief Acquires MFW generic resource lock
  *
  *  @param p_hwfn
  *  @param p_ptt
- *  @param resource_num - valid values are 0..31
- *  @param timeout - lock timeout value in seconds
- *                   (1..254, '0' - default value, '255' - no timeout).
- *  @param p_granted - will be filled as true if the resource is free and
- *                     granted, or false if it is busy.
- *  @param p_owner - A pointer to a variable to be filled with the resource
- *                   owner (0..15 = PF0-15, 16 = MFW, 17 = diag over serial).
+ *  @param p_params
  *
  * @return enum _ecore_status_t - ECORE_SUCCESS - operation was successful.
  */
-enum _ecore_status_t ecore_mcp_resc_lock(struct ecore_hwfn *p_hwfn,
-					 struct ecore_ptt *p_ptt,
-					 u8 resource_num, u8 timeout,
-					 bool *p_granted, u8 *p_owner);
+enum _ecore_status_t
+ecore_mcp_resc_lock(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
+		    struct ecore_resc_lock_params *p_params);
+
+struct ecore_resc_unlock_params {
+	/* Resource number [valid values are 0..31] */
+	u8 resource;
+
+	/* Allow to release a resource even if belongs to another PF */
+	bool b_force;
+
+	/* Will be set as true if the resource is released */
+	bool b_released;
+};
 
 /**
  * @brief Releases MFW generic resource lock
  *
  *  @param p_hwfn
  *  @param p_ptt
- *  @param resource_num
- *  @param force -  allows to release a reeource even if belongs to another PF
- *  @param p_released - will be filled as true if the resource is released (or
- *			has been already released), and false if the resource is
- *			acquired by another PF and the `force' flag was not set.
+ *  @param p_params
  *
  * @return enum _ecore_status_t - ECORE_SUCCESS - operation was successful.
  */
-enum _ecore_status_t ecore_mcp_resc_unlock(struct ecore_hwfn *p_hwfn,
-					   struct ecore_ptt *p_ptt,
-					   u8 resource_num, bool force,
-					   bool *p_released);
+enum _ecore_status_t
+ecore_mcp_resc_unlock(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
+		      struct ecore_resc_unlock_params *p_params);
 
 #endif /* __ECORE_MCP_H__ */

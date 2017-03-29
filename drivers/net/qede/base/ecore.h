@@ -856,4 +856,6 @@ u16 ecore_init_qm_get_num_pqs(struct ecore_hwfn *p_hwfn);
 
 #define ECORE_LEADING_HWFN(dev)	(&dev->hwfns[0])
 
+const char *ecore_hw_get_resc_name(enum ecore_resources res_id);
+
 #endif /* __ECORE_H */

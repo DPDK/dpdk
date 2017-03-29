@@ -2420,64 +2420,109 @@ static void ecore_hw_set_feat(struct ecore_hwfn *p_hwfn)
 		   RESC_NUM(p_hwfn, ECORE_SB));
 }
 
-static enum resource_id_enum
-ecore_hw_get_mfw_res_id(enum ecore_resources res_id)
+const char *ecore_hw_get_resc_name(enum ecore_resources res_id)
 {
-	enum resource_id_enum mfw_res_id = RESOURCE_NUM_INVALID;
-
 	switch (res_id) {
 	case ECORE_SB:
-		mfw_res_id = RESOURCE_NUM_SB_E;
-		break;
+		return "SB";
 	case ECORE_L2_QUEUE:
-		mfw_res_id = RESOURCE_NUM_L2_QUEUE_E;
-		break;
+		return "L2_QUEUE";
 	case ECORE_VPORT:
-		mfw_res_id = RESOURCE_NUM_VPORT_E;
-		break;
+		return "VPORT";
 	case ECORE_RSS_ENG:
-		mfw_res_id = RESOURCE_NUM_RSS_ENGINES_E;
-		break;
+		return "RSS_ENG";
 	case ECORE_PQ:
-		mfw_res_id = RESOURCE_NUM_PQ_E;
-		break;
+		return "PQ";
 	case ECORE_RL:
-		mfw_res_id = RESOURCE_NUM_RL_E;
-		break;
+		return "RL";
 	case ECORE_MAC:
+		return "MAC";
 	case ECORE_VLAN:
-		/* Each VFC resource can accommodate both a MAC and a VLAN */
-		mfw_res_id = RESOURCE_VFC_FILTER_E;
-		break;
-	case ECORE_ILT:
-		mfw_res_id = RESOURCE_ILT_E;
-		break;
-	case ECORE_LL2_QUEUE:
-		mfw_res_id = RESOURCE_LL2_QUEUE_E;
-		break;
+		return "VLAN";
 	case ECORE_RDMA_CNQ_RAM:
+		return "RDMA_CNQ_RAM";
+	case ECORE_ILT:
+		return "ILT";
+	case ECORE_LL2_QUEUE:
+		return "LL2_QUEUE";
 	case ECORE_CMDQS_CQS:
-		/* CNQ/CMDQS are the same resource */
-		mfw_res_id = RESOURCE_CQS_E;
-		break;
+		return "CMDQS_CQS";
 	case ECORE_RDMA_STATS_QUEUE:
-		mfw_res_id = RESOURCE_RDMA_STATS_QUEUE_E;
-		break;
+		return "RDMA_STATS_QUEUE";
 	case ECORE_BDQ:
-		mfw_res_id = RESOURCE_BDQ_E;
-		break;
+		return "BDQ";
 	default:
-		break;
+		return "UNKNOWN_RESOURCE";
+	}
+}
+
+static enum _ecore_status_t
+__ecore_hw_set_soft_resc_size(struct ecore_hwfn *p_hwfn,
+			      enum ecore_resources res_id, u32 resc_max_val,
+			      u32 *p_mcp_resp)
+{
+	enum _ecore_status_t rc;
+
+	rc = ecore_mcp_set_resc_max_val(p_hwfn, p_hwfn->p_main_ptt, res_id,
+					resc_max_val, p_mcp_resp);
+	if (rc != ECORE_SUCCESS) {
+		DP_NOTICE(p_hwfn, true,
+			  "MFW response failure for a max value setting of resource %d [%s]\n",
+			  res_id, ecore_hw_get_resc_name(res_id));
+		return rc;
 	}
 
-	return mfw_res_id;
+	if (*p_mcp_resp != FW_MSG_CODE_RESOURCE_ALLOC_OK)
+		DP_INFO(p_hwfn,
+			"Failed to set the max value of resource %d [%s]. mcp_resp = 0x%08x.\n",
+			res_id, ecore_hw_get_resc_name(res_id), *p_mcp_resp);
+
+	return ECORE_SUCCESS;
+}
+
+static enum _ecore_status_t
+ecore_hw_set_soft_resc_size(struct ecore_hwfn *p_hwfn)
+{
+	bool b_ah = ECORE_IS_AH(p_hwfn->p_dev);
+	u32 resc_max_val, mcp_resp;
+	u8 res_id;
+	enum _ecore_status_t rc;
+
+	for (res_id = 0; res_id < ECORE_MAX_RESC; res_id++) {
+		/* @DPDK */
+		switch (res_id) {
+		case ECORE_LL2_QUEUE:
+		case ECORE_RDMA_CNQ_RAM:
+		case ECORE_RDMA_STATS_QUEUE:
+		case ECORE_BDQ:
+			resc_max_val = 0;
+			break;
+		default:
+			continue;
+		}
+
+		rc = __ecore_hw_set_soft_resc_size(p_hwfn, res_id,
+						   resc_max_val, &mcp_resp);
+		if (rc != ECORE_SUCCESS)
+			return rc;
+
+		/* There's no point to continue to the next resource if the
+		 * command is not supported by the MFW.
+		 * We do continue if the command is supported but the resource
+		 * is unknown to the MFW. Such a resource will be later
+		 * configured with the default allocation values.
+		 */
+		if (mcp_resp == FW_MSG_CODE_UNSUPPORTED)
+			return ECORE_NOTIMPL;
+	}
+
+	return ECORE_SUCCESS;
 }
 
 static
 enum _ecore_status_t ecore_hw_get_dflt_resc(struct ecore_hwfn *p_hwfn,
 					    enum ecore_resources res_id,
-					    u32 *p_resc_num,
-					    u32 *p_resc_start)
+					    u32 *p_resc_num, u32 *p_resc_start)
 {
 	u8 num_funcs = p_hwfn->num_funcs_on_engine;
 	bool b_ah = ECORE_IS_AH(p_hwfn->p_dev);
@@ -2553,56 +2598,19 @@ enum _ecore_status_t ecore_hw_get_dflt_resc(struct ecore_hwfn *p_hwfn,
 	return ECORE_SUCCESS;
 }
 
-static const char *ecore_hw_get_resc_name(enum ecore_resources res_id)
+static enum _ecore_status_t
+__ecore_hw_set_resc_info(struct ecore_hwfn *p_hwfn, enum ecore_resources res_id,
+			 bool drv_resc_alloc)
 {
-	switch (res_id) {
-	case ECORE_SB:
-		return "SB";
-	case ECORE_L2_QUEUE:
-		return "L2_QUEUE";
-	case ECORE_VPORT:
-		return "VPORT";
-	case ECORE_RSS_ENG:
-		return "RSS_ENG";
-	case ECORE_PQ:
-		return "PQ";
-	case ECORE_RL:
-		return "RL";
-	case ECORE_MAC:
-		return "MAC";
-	case ECORE_VLAN:
-		return "VLAN";
-	case ECORE_RDMA_CNQ_RAM:
-		return "RDMA_CNQ_RAM";
-	case ECORE_ILT:
-		return "ILT";
-	case ECORE_LL2_QUEUE:
-		return "LL2_QUEUE";
-	case ECORE_CMDQS_CQS:
-		return "CMDQS_CQS";
-	case ECORE_RDMA_STATS_QUEUE:
-		return "RDMA_STATS_QUEUE";
-	case ECORE_BDQ:
-		return "BDQ";
-	default:
-		return "UNKNOWN_RESOURCE";
-	}
-}
-
-static enum _ecore_status_t ecore_hw_set_resc_info(struct ecore_hwfn *p_hwfn,
-						   enum ecore_resources res_id,
-						   bool drv_resc_alloc)
-{
-	u32 dflt_resc_num = 0, dflt_resc_start = 0, mcp_resp, mcp_param;
-	u32 *p_resc_num, *p_resc_start;
-	struct resource_info resc_info;
+	u32 dflt_resc_num = 0, dflt_resc_start = 0;
+	u32 mcp_resp, *p_resc_num, *p_resc_start;
 	enum _ecore_status_t rc;
 
 	p_resc_num = &RESC_NUM(p_hwfn, res_id);
 	p_resc_start = &RESC_START(p_hwfn, res_id);
 
-	rc = ecore_hw_get_dflt_resc(p_hwfn, res_id,
-				    &dflt_resc_num, &dflt_resc_start);
+	rc = ecore_hw_get_dflt_resc(p_hwfn, res_id, &dflt_resc_num,
+				    &dflt_resc_start);
 	if (rc != ECORE_SUCCESS) {
 		DP_ERR(p_hwfn,
 		       "Failed to get default amount for resource %d [%s]\n",
@@ -2618,17 +2626,8 @@ static enum _ecore_status_t ecore_hw_set_resc_info(struct ecore_hwfn *p_hwfn,
 	}
 #endif
 
-	OSAL_MEM_ZERO(&resc_info, sizeof(resc_info));
-	resc_info.res_id = ecore_hw_get_mfw_res_id(res_id);
-	if (resc_info.res_id == RESOURCE_NUM_INVALID) {
-		DP_ERR(p_hwfn,
-		       "Failed to match resource %d with MFW resources\n",
-		       res_id);
-		return ECORE_INVAL;
-	}
-
-	rc = ecore_mcp_get_resc_info(p_hwfn, p_hwfn->p_main_ptt, &resc_info,
-				     &mcp_resp, &mcp_param);
+	rc = ecore_mcp_get_resc_info(p_hwfn, p_hwfn->p_main_ptt, res_id,
+				     &mcp_resp, p_resc_num, p_resc_start);
 	if (rc != ECORE_SUCCESS) {
 		DP_NOTICE(p_hwfn, true,
 			  "MFW response failure for an allocation request for"
@@ -2642,13 +2641,11 @@ static enum _ecore_status_t ecore_hw_set_resc_info(struct ecore_hwfn *p_hwfn,
 	 * - There is an internal error in the MFW while processing the request
 	 * - The resource ID is unknown to the MFW
 	 */
-	if (mcp_resp != FW_MSG_CODE_RESOURCE_ALLOC_OK &&
-	    mcp_resp != FW_MSG_CODE_RESOURCE_ALLOC_DEPRECATED) {
-		/* @DPDK */
+	if (mcp_resp != FW_MSG_CODE_RESOURCE_ALLOC_OK) {
 		DP_INFO(p_hwfn,
-			"Resource %d [%s]: No allocation info was received"
-			" [mcp_resp 0x%x]. Applying default values"
-			" [num %d, start %d].\n",
+			"Failed to receive allocation info for resource %d [%s]."
+			" mcp_resp = 0x%x. Applying default values"
+			" [%d,%d].\n",
 			res_id, ecore_hw_get_resc_name(res_id), mcp_resp,
 			dflt_resc_num, dflt_resc_start);
 
@@ -2660,16 +2657,13 @@ static enum _ecore_status_t ecore_hw_set_resc_info(struct ecore_hwfn *p_hwfn,
 	/* TBD - remove this when revising the handling of the SB resource */
 	if (res_id == ECORE_SB) {
 		/* Excluding the slowpath SB */
-		resc_info.size -= 1;
-		resc_info.offset -= p_hwfn->enabled_func_idx;
+		*p_resc_num -= 1;
+		*p_resc_start -= p_hwfn->enabled_func_idx;
 	}
-
-	*p_resc_num = resc_info.size;
-	*p_resc_start = resc_info.offset;
 
 	if (*p_resc_num != dflt_resc_num || *p_resc_start != dflt_resc_start) {
 		DP_INFO(p_hwfn,
-			"Resource %d [%s]: MFW allocation [num %d, start %d] differs from default values [num %d, start %d]%s\n",
+			"MFW allocation for resource %d [%s] differs from default values [%d,%d vs. %d,%d]%s\n",
 			res_id, ecore_hw_get_resc_name(res_id), *p_resc_num,
 			*p_resc_start, dflt_resc_num, dflt_resc_start,
 			drv_resc_alloc ? " - Applying default values" : "");
@@ -2682,12 +2676,32 @@ out:
 	return ECORE_SUCCESS;
 }
 
+static enum _ecore_status_t ecore_hw_set_resc_info(struct ecore_hwfn *p_hwfn,
+						   bool drv_resc_alloc)
+{
+	enum _ecore_status_t rc;
+	u8 res_id;
+
+	for (res_id = 0; res_id < ECORE_MAX_RESC; res_id++) {
+		rc = __ecore_hw_set_resc_info(p_hwfn, res_id, drv_resc_alloc);
+		if (rc != ECORE_SUCCESS)
+			return rc;
+	}
+
+	return ECORE_SUCCESS;
+}
+
+#define ECORE_RESC_ALLOC_LOCK_RETRY_CNT		10
+#define ECORE_RESC_ALLOC_LOCK_RETRY_INTVL_US	10000 /* 10 msec */
+
 static enum _ecore_status_t ecore_hw_get_resc(struct ecore_hwfn *p_hwfn,
 					      bool drv_resc_alloc)
 {
+	struct ecore_resc_unlock_params resc_unlock_params;
+	struct ecore_resc_lock_params resc_lock_params;
 	bool b_ah = ECORE_IS_AH(p_hwfn->p_dev);
-	enum _ecore_status_t rc;
 	u8 res_id;
+	enum _ecore_status_t rc;
 #ifndef ASIC_ONLY
 	u32 *resc_start = p_hwfn->hw_info.resc_start;
 	u32 *resc_num = p_hwfn->hw_info.resc_num;
@@ -2700,10 +2714,62 @@ static enum _ecore_status_t ecore_hw_get_resc(struct ecore_hwfn *p_hwfn,
 	u32 roce_min_ilt_lines = PXP_NUM_ILT_RECORDS_BB / MAX_NUM_PFS_BB;
 #endif
 
-	for (res_id = 0; res_id < ECORE_MAX_RESC; res_id++) {
-		rc = ecore_hw_set_resc_info(p_hwfn, res_id, drv_resc_alloc);
+	/* Setting the max values of the soft resources and the following
+	 * resources allocation queries should be atomic. Since several PFs can
+	 * run in parallel - a resource lock is needed.
+	 * If either the resource lock or resource set value commands are not
+	 * supported - skip the the max values setting, release the lock if
+	 * needed, and proceed to the queries. Other failures, including a
+	 * failure to acquire the lock, will cause this function to fail.
+	 * Old drivers that don't acquire the lock can run in parallel, and
+	 * their allocation values won't be affected by the updated max values.
+	 */
+	OSAL_MEM_ZERO(&resc_lock_params, sizeof(resc_lock_params));
+	resc_lock_params.resource = ECORE_RESC_LOCK_RESC_ALLOC;
+	resc_lock_params.retry_num = ECORE_RESC_ALLOC_LOCK_RETRY_CNT;
+	resc_lock_params.retry_interval = ECORE_RESC_ALLOC_LOCK_RETRY_INTVL_US;
+	resc_lock_params.sleep_b4_retry = true;
+	OSAL_MEM_ZERO(&resc_unlock_params, sizeof(resc_unlock_params));
+	resc_unlock_params.resource = ECORE_RESC_LOCK_RESC_ALLOC;
+
+	rc = ecore_mcp_resc_lock(p_hwfn, p_hwfn->p_main_ptt, &resc_lock_params);
+	if (rc != ECORE_SUCCESS && rc != ECORE_NOTIMPL) {
+		return rc;
+	} else if (rc == ECORE_NOTIMPL) {
+		DP_INFO(p_hwfn,
+			"Skip the max values setting of the soft resources since the resource lock is not supported by the MFW\n");
+	} else if (rc == ECORE_SUCCESS && !resc_lock_params.b_granted) {
+		DP_NOTICE(p_hwfn, false,
+			  "Failed to acquire the resource lock for the resource allocation commands\n");
+		rc = ECORE_BUSY;
+		goto unlock_and_exit;
+	} else {
+		rc = ecore_hw_set_soft_resc_size(p_hwfn);
+		if (rc != ECORE_SUCCESS && rc != ECORE_NOTIMPL) {
+			DP_NOTICE(p_hwfn, false,
+				  "Failed to set the max values of the soft resources\n");
+			goto unlock_and_exit;
+		} else if (rc == ECORE_NOTIMPL) {
+			DP_INFO(p_hwfn,
+				"Skip the max values setting of the soft resources since it is not supported by the MFW\n");
+			rc = ecore_mcp_resc_unlock(p_hwfn, p_hwfn->p_main_ptt,
+						   &resc_unlock_params);
+			if (rc != ECORE_SUCCESS)
+				DP_INFO(p_hwfn,
+					"Failed to release the resource lock for the resource allocation commands\n");
+		}
+	}
+
+	rc = ecore_hw_set_resc_info(p_hwfn, drv_resc_alloc);
+	if (rc != ECORE_SUCCESS)
+		goto unlock_and_exit;
+
+	if (resc_lock_params.b_granted && !resc_unlock_params.b_released) {
+		rc = ecore_mcp_resc_unlock(p_hwfn, p_hwfn->p_main_ptt,
+					   &resc_unlock_params);
 		if (rc != ECORE_SUCCESS)
-			return rc;
+			DP_INFO(p_hwfn,
+				"Failed to release the resource lock for the resource allocation commands\n");
 	}
 
 #ifndef ASIC_ONLY
@@ -2756,6 +2822,10 @@ static enum _ecore_status_t ecore_hw_get_resc(struct ecore_hwfn *p_hwfn,
 			   RESC_START(p_hwfn, res_id));
 
 	return ECORE_SUCCESS;
+
+unlock_and_exit:
+	ecore_mcp_resc_unlock(p_hwfn, p_hwfn->p_main_ptt, &resc_unlock_params);
+	return rc;
 }
 
 static enum _ecore_status_t
