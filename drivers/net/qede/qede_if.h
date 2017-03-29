@@ -116,8 +116,7 @@ struct qed_common_ops {
 		     struct rte_pci_device *pci_dev,
 		     enum qed_protocol protocol,
 		     uint32_t dp_module, uint8_t dp_level, bool is_vf);
-	void (*set_id)(struct ecore_dev *edev,
-		char name[], const char ver_str[]);
+	void (*set_name)(struct ecore_dev *edev, char name[]);
 	enum _ecore_status_t
 		(*chain_alloc)(struct ecore_dev *edev,
 			       enum ecore_chain_use_mode

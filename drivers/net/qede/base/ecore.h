@@ -30,7 +30,6 @@
 
 #define MAX_HWFNS_PER_DEVICE	2
 #define NAME_SIZE 128 /* @DPDK */
-#define VER_SIZE 16
 #define ECORE_WFQ_UNIT	100
 #include "../qede_logs.h" /* @DPDK */
 
@@ -706,7 +705,7 @@ struct ecore_dev {
 
 	int				pcie_width;
 	int				pcie_speed;
-	u8				ver_str[NAME_SIZE]; /* @DPDK */
+
 	/* Add MF related configuration */
 	u8				mcp_rev;
 	u8				boot_mode;

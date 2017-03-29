@@ -2175,7 +2175,7 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 
 	qede_alloc_etherdev(adapter, &dev_info);
 
-	adapter->ops->common->set_id(edev, edev->name, QEDE_PMD_VERSION);
+	adapter->ops->common->set_name(edev, edev->name);
 
 	if (!is_vf)
 		adapter->dev_info.num_mac_filters =

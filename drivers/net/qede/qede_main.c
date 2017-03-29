@@ -50,7 +50,9 @@ qed_probe(struct ecore_dev *edev, struct rte_pci_device *pci_dev,
 	int rc;
 
 	ecore_init_struct(edev);
+	edev->drv_type = DRV_ID_DRV_TYPE_LINUX;
 	qdev->protocol = protocol;
+
 	if (is_vf)
 		edev->b_is_vf = true;
 
@@ -420,9 +422,7 @@ qed_fill_eth_dev_info(struct ecore_dev *edev, struct qed_dev_eth_info *info)
 	return 0;
 }
 
-static void
-qed_set_id(struct ecore_dev *edev, char name[NAME_SIZE],
-	   const char ver_str[NAME_SIZE])
+static void qed_set_name(struct ecore_dev *edev, char name[NAME_SIZE])
 {
 	int i;
 
@@ -430,8 +430,6 @@ qed_set_id(struct ecore_dev *edev, char name[NAME_SIZE],
 	for_each_hwfn(edev, i) {
 		snprintf(edev->hwfns[i].name, NAME_SIZE, "%s-%d", name, i);
 	}
-	memcpy(edev->ver_str, ver_str, NAME_SIZE);
-	edev->drv_type = DRV_ID_DRV_TYPE_LINUX;
 }
 
 static uint32_t
@@ -714,7 +712,7 @@ const struct qed_common_ops qed_common_ops_pass = {
 	INIT_STRUCT_FIELD(probe, &qed_probe),
 	INIT_STRUCT_FIELD(update_pf_params, &qed_update_pf_params),
 	INIT_STRUCT_FIELD(slowpath_start, &qed_slowpath_start),
-	INIT_STRUCT_FIELD(set_id, &qed_set_id),
+	INIT_STRUCT_FIELD(set_name, &qed_set_name),
 	INIT_STRUCT_FIELD(chain_alloc, &ecore_chain_alloc),
 	INIT_STRUCT_FIELD(chain_free, &ecore_chain_free),
 	INIT_STRUCT_FIELD(sb_init, &qed_sb_init),

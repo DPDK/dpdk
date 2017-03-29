@@ -524,7 +524,6 @@ enum _ecore_status_t ecore_mcp_load_req(struct ecore_hwfn *p_hwfn,
 {
 	struct ecore_dev *p_dev = p_hwfn->p_dev;
 	struct ecore_mcp_mb_params mb_params;
-	union drv_union_data union_data;
 	enum _ecore_status_t rc;
 
 #ifndef ASIC_ONLY
@@ -538,8 +537,6 @@ enum _ecore_status_t ecore_mcp_load_req(struct ecore_hwfn *p_hwfn,
 	mb_params.cmd = DRV_MSG_CODE_LOAD_REQ;
 	mb_params.param = PDA_COMP | DRV_ID_MCP_HSI_VER_CURRENT |
 			  p_dev->drv_type;
-	OSAL_MEMCPY(&union_data.ver_str, p_dev->ver_str, MCP_DRV_VER_STR_SIZE);
-	mb_params.p_data_src = &union_data;
 	rc = ecore_mcp_cmd_and_union(p_hwfn, p_ptt, &mb_params);
 
 	/* if mcp fails to respond we must abort */
