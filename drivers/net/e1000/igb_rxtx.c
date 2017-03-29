@@ -1727,6 +1727,51 @@ eth_igb_rx_descriptor_done(void *rx_queue, uint16_t offset)
 	return !!(rxdp->wb.upper.status_error & E1000_RXD_STAT_DD);
 }
 
+int
+eth_igb_rx_descriptor_status(void *rx_queue, uint16_t offset)
+{
+	struct igb_rx_queue *rxq = rx_queue;
+	volatile uint32_t *status;
+	uint32_t desc;
+
+	if (unlikely(offset >= rxq->nb_rx_desc))
+		return -EINVAL;
+
+	if (offset >= rxq->nb_rx_desc - rxq->nb_rx_hold)
+		return RTE_ETH_RX_DESC_UNAVAIL;
+
+	desc = rxq->rx_tail + offset;
+	if (desc >= rxq->nb_rx_desc)
+		desc -= rxq->nb_rx_desc;
+
+	status = &rxq->rx_ring[desc].wb.upper.status_error;
+	if (*status & rte_cpu_to_le_32(E1000_RXD_STAT_DD))
+		return RTE_ETH_RX_DESC_DONE;
+
+	return RTE_ETH_RX_DESC_AVAIL;
+}
+
+int
+eth_igb_tx_descriptor_status(void *tx_queue, uint16_t offset)
+{
+	struct igb_tx_queue *txq = tx_queue;
+	volatile uint32_t *status;
+	uint32_t desc;
+
+	if (unlikely(offset >= txq->nb_tx_desc))
+		return -EINVAL;
+
+	desc = txq->tx_tail + offset;
+	if (desc >= txq->nb_tx_desc)
+		desc -= txq->nb_tx_desc;
+
+	status = &txq->tx_ring[desc].wb.status;
+	if (*status & rte_cpu_to_le_32(E1000_TXD_STAT_DD))
+		return RTE_ETH_TX_DESC_DONE;
+
+	return RTE_ETH_TX_DESC_FULL;
+}
+
 void
 igb_dev_clear_queues(struct rte_eth_dev *dev)
 {
