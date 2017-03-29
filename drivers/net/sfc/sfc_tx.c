@@ -307,9 +307,6 @@ sfc_tx_init(struct sfc_adapter *sa)
 		goto fail_tx_dma_desc_boundary;
 	}
 
-	if (~sa->dp_tx->features & SFC_DP_TX_FEAT_TSO)
-		sa->tso = B_FALSE;
-
 	rc = sfc_tx_check_mode(sa, &dev_conf->txmode);
 	if (rc != 0)
 		goto fail_check_mode;
