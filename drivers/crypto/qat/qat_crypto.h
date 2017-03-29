@@ -76,9 +76,6 @@ struct qat_qp {
 
 /** private data structure for each QAT device */
 struct qat_pmd_private {
-	char sess_mp_name[RTE_MEMPOOL_NAMESIZE];
-	struct rte_mempool *sess_mp;
-
 	unsigned max_nb_queue_pairs;
 	/**< Max number of queue pairs supported by device */
 	unsigned max_nb_sessions;

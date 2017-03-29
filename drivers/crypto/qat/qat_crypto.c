@@ -739,11 +739,9 @@ qat_get_cipher_xform(struct rte_crypto_sym_xform *xform)
 	return NULL;
 }
 void *
-qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
+qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev __rte_unused,
 		struct rte_crypto_sym_xform *xform, void *session_private)
 {
-	struct qat_pmd_private *internals = dev->data->dev_private;
-
 	struct qat_session *session = session_private;
 
 	struct rte_crypto_cipher_xform *cipher_xform = NULL;
@@ -884,7 +882,6 @@ error_out:
 		bpi_cipher_ctx_free(session->bpi_ctx);
 		session->bpi_ctx = NULL;
 	}
-	rte_mempool_put(internals->sess_mp, session);
 	return NULL;
 }
 
@@ -893,8 +890,6 @@ void *
 qat_crypto_sym_configure_session(struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform, void *session_private)
 {
-	struct qat_pmd_private *internals = dev->data->dev_private;
-
 	struct qat_session *session = session_private;
 
 	int qat_cmd_id;
@@ -943,17 +938,15 @@ qat_crypto_sym_configure_session(struct rte_cryptodev *dev,
 	return session;
 
 error_out:
-	rte_mempool_put(internals->sess_mp, session);
 	return NULL;
 }
 
 struct qat_session *
-qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev,
+qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev __rte_unused,
 				struct rte_crypto_sym_xform *xform,
 				struct qat_session *session_private)
 {
 
-	struct qat_pmd_private *internals = dev->data->dev_private;
 	struct qat_session *session = session_private;
 	struct rte_crypto_auth_xform *auth_xform = NULL;
 	struct rte_crypto_cipher_xform *cipher_xform = NULL;
@@ -1038,8 +1031,6 @@ qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev,
 	return session;
 
 error_out:
-	if (internals->sess_mp != NULL)
-		rte_mempool_put(internals->sess_mp, session);
 	return NULL;
 }
 
