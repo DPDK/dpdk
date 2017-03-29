@@ -352,11 +352,6 @@ Known Issues
 
   3. It MUST not be used by multi-producer/consumer pthreads, whose scheduling policies are SCHED_FIFO or SCHED_RR.
 
-  ``RTE_RING_PAUSE_REP_COUNT`` is defined for rte_ring to reduce contention. It's mainly for case 2, a yield is issued after number of times pause repeat.
-
-  It adds a sched_yield() syscall if the thread spins for too long while waiting on the other thread to finish its operations on the ring.
-  This gives the preempted thread a chance to proceed and finish with the ring enqueue/dequeue operation.
-
 + rte_timer
 
   Running  ``rte_timer_manager()`` on a non-EAL pthread is not allowed. However, resetting/stopping the timer from a non-EAL pthread is allowed.

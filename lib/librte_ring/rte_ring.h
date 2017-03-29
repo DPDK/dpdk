@@ -114,11 +114,6 @@ enum rte_ring_queue_behavior {
 #define RTE_RING_NAMESIZE (RTE_MEMZONE_NAMESIZE - \
 			   sizeof(RTE_RING_MZ_PREFIX) + 1)
 
-#ifndef RTE_RING_PAUSE_REP_COUNT
-#define RTE_RING_PAUSE_REP_COUNT 0 /**< Yield after pause num of times, no yield
-                                    *   if RTE_RING_PAUSE_REP not defined. */
-#endif
-
 struct rte_memzone; /* forward declaration, so as not to require memzone.h */
 
 #if RTE_CACHE_LINE_SIZE < 128
@@ -393,7 +388,7 @@ __rte_ring_mp_do_enqueue(struct rte_ring *r, void * const *obj_table,
 	uint32_t cons_tail, free_entries;
 	const unsigned max = n;
 	int success;
-	unsigned i, rep = 0;
+	unsigned int i;
 	uint32_t mask = r->mask;
 	int ret;
 
@@ -447,18 +442,9 @@ __rte_ring_mp_do_enqueue(struct rte_ring *r, void * const *obj_table,
 	 * If there are other enqueues in progress that preceded us,
 	 * we need to wait for them to complete
 	 */
-	while (unlikely(r->prod.tail != prod_head)) {
+	while (unlikely(r->prod.tail != prod_head))
 		rte_pause();
 
-		/* Set RTE_RING_PAUSE_REP_COUNT to avoid spin too long waiting
-		 * for other thread finish. It gives pre-empted thread a chance
-		 * to proceed and finish with ring dequeue operation. */
-		if (RTE_RING_PAUSE_REP_COUNT &&
-		    ++rep == RTE_RING_PAUSE_REP_COUNT) {
-			rep = 0;
-			sched_yield();
-		}
-	}
 	r->prod.tail = prod_next;
 	return ret;
 }
@@ -491,7 +477,7 @@ __rte_ring_sp_do_enqueue(struct rte_ring *r, void * const *obj_table,
 {
 	uint32_t prod_head, cons_tail;
 	uint32_t prod_next, free_entries;
-	unsigned i;
+	unsigned int i;
 	uint32_t mask = r->mask;
 	int ret;
 
@@ -568,7 +554,7 @@ __rte_ring_mc_do_dequeue(struct rte_ring *r, void **obj_table,
 	uint32_t cons_next, entries;
 	const unsigned max = n;
 	int success;
-	unsigned i, rep = 0;
+	unsigned int i;
 	uint32_t mask = r->mask;
 
 	/* Avoid the unnecessary cmpset operation below, which is also
@@ -613,18 +599,9 @@ __rte_ring_mc_do_dequeue(struct rte_ring *r, void **obj_table,
 	 * If there are other dequeues in progress that preceded us,
 	 * we need to wait for them to complete
 	 */
-	while (unlikely(r->cons.tail != cons_head)) {
+	while (unlikely(r->cons.tail != cons_head))
 		rte_pause();
 
-		/* Set RTE_RING_PAUSE_REP_COUNT to avoid spin too long waiting
-		 * for other thread finish. It gives pre-empted thread a chance
-		 * to proceed and finish with ring dequeue operation. */
-		if (RTE_RING_PAUSE_REP_COUNT &&
-		    ++rep == RTE_RING_PAUSE_REP_COUNT) {
-			rep = 0;
-			sched_yield();
-		}
-	}
 	r->cons.tail = cons_next;
 
 	return behavior == RTE_RING_QUEUE_FIXED ? 0 : n;
@@ -659,7 +636,7 @@ __rte_ring_sc_do_dequeue(struct rte_ring *r, void **obj_table,
 {
 	uint32_t cons_head, prod_tail;
 	uint32_t cons_next, entries;
-	unsigned i;
+	unsigned int i;
 	uint32_t mask = r->mask;
 
 	cons_head = r->cons.head;

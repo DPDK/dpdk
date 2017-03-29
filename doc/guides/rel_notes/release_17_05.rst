@@ -134,6 +134,7 @@ API Changes
 
   * removed the build-time setting ``CONFIG_RTE_RING_SPLIT_PROD_CONS``
   * removed the build-time setting ``CONFIG_RTE_LIBRTE_RING_DEBUG``
+  * removed the build-time setting ``CONFIG_RTE_RING_PAUSE_REP_COUNT``
 
 ABI Changes
 -----------
