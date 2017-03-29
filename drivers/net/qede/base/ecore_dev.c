@@ -1051,6 +1051,12 @@ static enum _ecore_status_t ecore_hw_init_common(struct ecore_hwfn *p_hwfn,
 	/* pretend to original PF */
 	ecore_fid_pretend(p_hwfn, p_ptt, p_hwfn->rel_pf_id);
 
+	/* @@@TMP:
+	 * CQ89456 - Mask the BRB "RC0_EOP_OUT_SYNC_FIFO_PUSH_ERROR" attention.
+	 */
+	if (ECORE_IS_AH(p_dev))
+		ecore_wr(p_hwfn, p_ptt, BRB_REG_INT_MASK_10, 0x4000000);
+
 	return rc;
 }
 
