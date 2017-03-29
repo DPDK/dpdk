@@ -233,9 +233,11 @@ struct ecore_mba_vers {
 };
 
 enum ecore_mfw_tlv_type {
-	ECORE_MFW_TLV_GENERIC = 0x1,	/* Core driver TLVs */
-	ECORE_MFW_TLV_FCOE = 0x2,	/* FCoE protocol TLVs */
-	ECORE_MFW_TLV_ISCSI = 0x4,	/* SCSI protocol TLVs */
+	ECORE_MFW_TLV_GENERIC = 0x1, /* Core driver TLVs */
+	ECORE_MFW_TLV_ETH = 0x2, /* L2 driver TLVs */
+	ECORE_MFW_TLV_FCOE = 0x4, /* FCoE protocol TLVs */
+	ECORE_MFW_TLV_ISCSI = 0x8, /* SCSI protocol TLVs */
+	ECORE_MFW_TLV_MAX = 0x16,
 };
 
 struct ecore_mfw_tlv_generic {
@@ -247,6 +249,21 @@ struct ecore_mfw_tlv_generic {
 	bool additional_mac1_set;
 	u64 additional_mac2;
 	bool additional_mac2_set;
+	u8 drv_state;
+	bool drv_state_set;
+	u8 pxe_progress;
+	bool pxe_progress_set;
+	u64 rx_frames;
+	bool rx_frames_set;
+	u64 rx_bytes;
+	bool rx_bytes_set;
+	u64 tx_frames;
+	bool tx_frames_set;
+	u64 tx_bytes;
+	bool tx_bytes_set;
+};
+
+struct ecore_mfw_tlv_eth {
 	u16 lso_maxoff_size;
 	bool lso_maxoff_size_set;
 	u16 lso_minseg_size;
@@ -259,12 +276,6 @@ struct ecore_mfw_tlv_generic {
 	bool rx_descr_size_set;
 	u16 netq_count;
 	bool netq_count_set;
-	u16 flex_vlan;
-	bool flex_vlan_set;
-	u8 drv_state;
-	bool drv_state_set;
-	u8 pxe_progress;
-	bool pxe_progress_set;
 	u32 tcp4_offloads;
 	bool tcp4_offloads_set;
 	u32 tcp6_offloads;
@@ -273,14 +284,6 @@ struct ecore_mfw_tlv_generic {
 	bool tx_descr_qdepth_set;
 	u16 rx_descr_qdepth;
 	bool rx_descr_qdepth_set;
-	u64 rx_frames;
-	bool rx_frames_set;
-	u64 rx_bytes;
-	bool rx_bytes_set;
-	u64 tx_frames;
-	bool tx_frames_set;
-	u64 tx_bytes;
-	bool tx_bytes_set;
 	u8 iov_offload;
 	bool iov_offload_set;
 	u8 txqs_empty;
@@ -446,8 +449,8 @@ struct ecore_mfw_tlv_fcoe {
 	bool ols_set;
 	u8 lr;
 	bool lr_set;
-	u8 llr;
-	bool llrt;
+	u8 lrr;
+	bool lrr_set;
 	u8 tx_lip;
 	bool tx_lip_set;
 	u8 rx_lip;
@@ -511,12 +514,11 @@ struct ecore_mfw_tlv_iscsi {
 	bool tx_frames_set;
 	u64 tx_bytes;
 	bool tx_bytes_set;
-	u32 cpcp_spcp_map;
-	bool cpcp_spcp_map_set;
 };
 
 union ecore_mfw_tlv_data {
 	struct ecore_mfw_tlv_generic generic;
+	struct ecore_mfw_tlv_eth eth;
 	struct ecore_mfw_tlv_fcoe fcoe;
 	struct ecore_mfw_tlv_iscsi iscsi;
 };

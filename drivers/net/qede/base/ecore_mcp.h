@@ -70,6 +70,14 @@ struct ecore_mcp_mb_params {
 	u32 mcp_param;
 };
 
+struct ecore_drv_tlv_hdr {
+	u8 tlv_type;	/* According to the enum below */
+	u8 tlv_length;	/* In dwords - not including this header */
+	u8 tlv_reserved;
+#define ECORE_DRV_TLV_FLAGS_CHANGED 0x01
+	u8 tlv_flags;
+};
+
 /**
  * @brief Initialize the interface with the MCP
  *

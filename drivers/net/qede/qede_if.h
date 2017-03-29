@@ -96,8 +96,29 @@ struct qed_slowpath_params {
 
 #define ILT_PAGE_SIZE_TCFC 0x8000	/* 32KB */
 
+struct qed_eth_tlvs {
+	u16 feat_flags;
+	u8 mac[3][ETH_ALEN];
+	u16 lso_maxoff;
+	u16 lso_minseg;
+	bool prom_mode;
+	u16 num_txqs;
+	u16 num_rxqs;
+	u16 num_netqs;
+	u16 flex_vlan;
+	u32 tcp4_offloads;
+	u32 tcp6_offloads;
+	u16 tx_avg_qdepth;
+	u16 rx_avg_qdepth;
+	u8 txqs_empty;
+	u8 rxqs_empty;
+	u8 num_txqs_full;
+	u8 num_rxqs_full;
+};
+
 struct qed_common_cb_ops {
 	void (*link_update)(void *dev, struct qed_link_output *link);
+	void (*get_tlv_data)(void *dev, struct qed_eth_tlvs *data);
 };
 
 struct qed_selftest_ops {
