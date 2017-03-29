@@ -285,6 +285,7 @@ void rte_ring_dump(FILE *f, const struct rte_ring *r);
  * Placed here since identical code needed in both
  * single and multi producer enqueue functions */
 #define ENQUEUE_PTRS() do { \
+	unsigned int i; \
 	const uint32_t size = r->size; \
 	uint32_t idx = prod_head & mask; \
 	if (likely(idx + n < size)) { \
@@ -311,6 +312,7 @@ void rte_ring_dump(FILE *f, const struct rte_ring *r);
  * Placed here since identical code needed in both
  * single and multi consumer dequeue functions */
 #define DEQUEUE_PTRS() do { \
+	unsigned int i; \
 	uint32_t idx = cons_head & mask; \
 	const uint32_t size = r->size; \
 	if (likely(idx + n < size)) { \
@@ -361,7 +363,6 @@ __rte_ring_mp_do_enqueue(struct rte_ring *r, void * const *obj_table,
 	uint32_t cons_tail, free_entries;
 	const unsigned int max = n;
 	int success;
-	unsigned int i;
 	uint32_t mask = r->mask;
 
 	/* move prod.head atomically */
@@ -431,7 +432,6 @@ __rte_ring_sp_do_enqueue(struct rte_ring *r, void * const *obj_table,
 {
 	uint32_t prod_head, cons_tail;
 	uint32_t prod_next, free_entries;
-	unsigned int i;
 	uint32_t mask = r->mask;
 
 	prod_head = r->prod.head;
@@ -495,7 +495,6 @@ __rte_ring_mc_do_dequeue(struct rte_ring *r, void **obj_table,
 	uint32_t cons_next, entries;
 	const unsigned max = n;
 	int success;
-	unsigned int i;
 	uint32_t mask = r->mask;
 
 	/* move cons.head atomically */
@@ -566,7 +565,6 @@ __rte_ring_sc_do_dequeue(struct rte_ring *r, void **obj_table,
 {
 	uint32_t cons_head, prod_tail;
 	uint32_t cons_next, entries;
-	unsigned int i;
 	uint32_t mask = r->mask;
 
 	cons_head = r->cons.head;
