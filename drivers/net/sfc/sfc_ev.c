@@ -800,10 +800,11 @@ sfc_ev_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	SFC_ASSERT(entries <= evq_info->max_entries);
 	evq_info->entries = entries;
 
+	rc = ENOMEM;
 	evq = rte_zmalloc_socket("sfc-evq", sizeof(*evq), RTE_CACHE_LINE_SIZE,
 				 socket_id);
 	if (evq == NULL)
-		return ENOMEM;
+		goto fail_evq_alloc;
 
 	evq->sa = sa;
 	evq->evq_index = sw_index;
@@ -812,13 +813,21 @@ sfc_ev_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	rc = sfc_dma_alloc(sa, "evq", sw_index, EFX_EVQ_SIZE(evq_info->entries),
 			   socket_id, &evq->mem);
 	if (rc != 0)
-		return rc;
+		goto fail_dma_alloc;
 
 	evq->init_state = SFC_EVQ_INITIALIZED;
 
 	evq_info->evq = evq;
 
 	return 0;
+
+fail_dma_alloc:
+	rte_free(evq);
+
+fail_evq_alloc:
+
+	sfc_log_init(sa, "failed %d", rc);
+	return rc;
 }
 
 void
