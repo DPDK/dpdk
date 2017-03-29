@@ -138,17 +138,47 @@ void ecore_hw_start_fastpath(struct ecore_hwfn *p_hwfn);
  */
 enum _ecore_status_t ecore_hw_reset(struct ecore_dev *p_dev);
 
+enum ecore_hw_prepare_result {
+	ECORE_HW_PREPARE_SUCCESS,
+
+	/* FAILED results indicate probe has failed & cleaned up */
+	ECORE_HW_PREPARE_FAILED_ENG2,
+	ECORE_HW_PREPARE_FAILED_ME,
+	ECORE_HW_PREPARE_FAILED_MEM,
+	ECORE_HW_PREPARE_FAILED_DEV,
+	ECORE_HW_PREPARE_FAILED_NVM,
+
+	/* BAD results indicate probe is passed even though some wrongness
+	 * has occurred; Trying to actually use [I.e., hw_init()] might have
+	 * dire reprecautions.
+	 */
+	ECORE_HW_PREPARE_BAD_IOV,
+	ECORE_HW_PREPARE_BAD_MCP,
+	ECORE_HW_PREPARE_BAD_IGU,
+};
+
 struct ecore_hw_prepare_params {
-	/* personality to initialize */
+	/* Personality to initialize */
 	int personality;
-	/* force the driver's default resource allocation */
+
+	/* Force the driver's default resource allocation */
 	bool drv_resc_alloc;
-	/* check the reg_fifo after any register access */
+
+	/* Check the reg_fifo after any register access */
 	bool chk_reg_fifo;
-	/* request the MFW to initiate PF FLR */
+
+	/* Request the MFW to initiate PF FLR */
 	bool initiate_pf_flr;
-	/* the OS Epoch time in seconds */
+
+	/* The OS Epoch time in seconds */
 	u32 epoch;
+
+	/* Allow prepare to pass even if some initializations are failing.
+	 * If set, the `p_prepare_res' field would be set with the return,
+	 * and might allow probe to pass even if there are certain issues.
+	 */
+	bool b_relaxed_probe;
+	enum ecore_hw_prepare_result p_relaxed_res;
 };
 
 /**

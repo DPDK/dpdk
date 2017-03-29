@@ -2445,12 +2445,15 @@ static enum _ecore_status_t ecore_hw_get_resc(struct ecore_hwfn *p_hwfn,
 	return ECORE_SUCCESS;
 }
 
-static enum _ecore_status_t ecore_hw_get_nvm_info(struct ecore_hwfn *p_hwfn,
-						  struct ecore_ptt *p_ptt)
+static enum _ecore_status_t
+ecore_hw_get_nvm_info(struct ecore_hwfn *p_hwfn,
+		      struct ecore_ptt *p_ptt,
+		      struct ecore_hw_prepare_params *p_params)
 {
 	u32 nvm_cfg1_offset, mf_mode, addr, generic_cont0, core_cfg, dcbx_mode;
 	u32 port_cfg_addr, link_temp, nvm_cfg_addr, device_capabilities;
 	struct ecore_mcp_link_params *link;
+	enum _ecore_status_t rc;
 
 	/* Read global nvm_cfg address */
 	nvm_cfg_addr = ecore_rd(p_hwfn, p_ptt, MISC_REG_GEN_PURP_CR0);
@@ -2458,6 +2461,8 @@ static enum _ecore_status_t ecore_hw_get_nvm_info(struct ecore_hwfn *p_hwfn,
 	/* Verify MCP has initialized it */
 	if (!nvm_cfg_addr) {
 		DP_NOTICE(p_hwfn, false, "Shared memory not initialized\n");
+		if (p_params->b_relaxed_probe)
+			p_params->p_relaxed_res = ECORE_HW_PREPARE_FAILED_NVM;
 		return ECORE_INVAL;
 	}
 
@@ -2643,7 +2648,13 @@ static enum _ecore_status_t ecore_hw_get_nvm_info(struct ecore_hwfn *p_hwfn,
 		OSAL_SET_BIT(ECORE_DEV_CAP_IWARP,
 			     &p_hwfn->hw_info.device_capabilities);
 
-	return ecore_mcp_fill_shmem_func_info(p_hwfn, p_ptt);
+	rc = ecore_mcp_fill_shmem_func_info(p_hwfn, p_ptt);
+	if (rc != ECORE_SUCCESS && p_params->b_relaxed_probe) {
+		rc = ECORE_SUCCESS;
+		p_params->p_relaxed_res = ECORE_HW_PREPARE_BAD_MCP;
+	}
+
+	return rc;
 }
 
 static void ecore_get_num_funcs(struct ecore_hwfn *p_hwfn,
@@ -2797,15 +2808,22 @@ static void ecore_hw_info_port_num(struct ecore_hwfn *p_hwfn,
 
 static enum _ecore_status_t
 ecore_get_hw_info(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
-		  enum ecore_pci_personality personality, bool drv_resc_alloc)
+		  enum ecore_pci_personality personality,
+		  struct ecore_hw_prepare_params *p_params)
 {
+	bool drv_resc_alloc = p_params->drv_resc_alloc;
 	enum _ecore_status_t rc;
 
 	/* Since all information is common, only first hwfns should do this */
 	if (IS_LEAD_HWFN(p_hwfn)) {
 		rc = ecore_iov_hw_info(p_hwfn);
-		if (rc != ECORE_SUCCESS)
-			return rc;
+		if (rc != ECORE_SUCCESS) {
+			if (p_params->b_relaxed_probe)
+				p_params->p_relaxed_res =
+						ECORE_HW_PREPARE_BAD_IOV;
+			else
+				return rc;
+		}
 	}
 
 	/* TODO In get_hw_info, amoungst others:
@@ -2820,7 +2838,7 @@ ecore_get_hw_info(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 #ifndef ASIC_ONLY
 	if (CHIP_REV_IS_ASIC(p_hwfn->p_dev)) {
 #endif
-	rc = ecore_hw_get_nvm_info(p_hwfn, p_ptt);
+	rc = ecore_hw_get_nvm_info(p_hwfn, p_ptt, p_params);
 	if (rc != ECORE_SUCCESS)
 		return rc;
 #ifndef ASIC_ONLY
@@ -2828,8 +2846,12 @@ ecore_get_hw_info(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 #endif
 
 	rc = ecore_int_igu_read_cam(p_hwfn, p_ptt);
-	if (rc != ECORE_SUCCESS)
-		return rc;
+	if (rc != ECORE_SUCCESS) {
+		if (p_params->b_relaxed_probe)
+			p_params->p_relaxed_res = ECORE_HW_PREPARE_BAD_IGU;
+		else
+			return rc;
+	}
 
 #ifndef ASIC_ONLY
 	if (CHIP_REV_IS_ASIC(p_hwfn->p_dev) && ecore_mcp_is_init(p_hwfn)) {
@@ -2896,7 +2918,13 @@ ecore_get_hw_info(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 	 * the resources/features depends on them.
 	 * This order is not harmful if not forcing.
 	 */
-	return ecore_hw_get_resc(p_hwfn, drv_resc_alloc);
+	rc = ecore_hw_get_resc(p_hwfn, drv_resc_alloc);
+	if (rc != ECORE_SUCCESS && p_params->b_relaxed_probe) {
+		rc = ECORE_SUCCESS;
+		p_params->p_relaxed_res = ECORE_HW_PREPARE_BAD_MCP;
+	}
+
+	return rc;
 }
 
 static enum _ecore_status_t ecore_get_dev_info(struct ecore_dev *p_dev)
@@ -3028,6 +3056,8 @@ ecore_hw_prepare_single(struct ecore_hwfn *p_hwfn,
 	if (REG_RD(p_hwfn, PXP_PF_ME_OPAQUE_ADDR) == 0xffffffff) {
 		DP_ERR(p_hwfn,
 		       "Reading the ME register returns all Fs; Preventing further chip access\n");
+		if (p_params->b_relaxed_probe)
+			p_params->p_relaxed_res = ECORE_HW_PREPARE_FAILED_ME;
 		return ECORE_INVAL;
 	}
 
@@ -3037,6 +3067,8 @@ ecore_hw_prepare_single(struct ecore_hwfn *p_hwfn,
 	rc = ecore_ptt_pool_alloc(p_hwfn);
 	if (rc) {
 		DP_NOTICE(p_hwfn, true, "Failed to prepare hwfn's hw\n");
+		if (p_params->b_relaxed_probe)
+			p_params->p_relaxed_res = ECORE_HW_PREPARE_FAILED_MEM;
 		goto err0;
 	}
 
@@ -3046,8 +3078,12 @@ ecore_hw_prepare_single(struct ecore_hwfn *p_hwfn,
 	/* First hwfn learns basic information, e.g., number of hwfns */
 	if (!p_hwfn->my_id) {
 		rc = ecore_get_dev_info(p_dev);
-		if (rc != ECORE_SUCCESS)
+		if (rc != ECORE_SUCCESS) {
+			if (p_params->b_relaxed_probe)
+				p_params->p_relaxed_res =
+					ECORE_HW_PREPARE_FAILED_DEV;
 			goto err1;
+		}
 	}
 
 	ecore_hw_hwfn_prepare(p_hwfn);
@@ -3056,12 +3092,14 @@ ecore_hw_prepare_single(struct ecore_hwfn *p_hwfn,
 	rc = ecore_mcp_cmd_init(p_hwfn, p_hwfn->p_main_ptt);
 	if (rc) {
 		DP_NOTICE(p_hwfn, true, "Failed initializing mcp command\n");
+		if (p_params->b_relaxed_probe)
+			p_params->p_relaxed_res = ECORE_HW_PREPARE_FAILED_MEM;
 		goto err1;
 	}
 
 	/* Read the device configuration information from the HW and SHMEM */
 	rc = ecore_get_hw_info(p_hwfn, p_hwfn->p_main_ptt,
-			       p_params->personality, p_params->drv_resc_alloc);
+			       p_params->personality, p_params);
 	if (rc) {
 		DP_NOTICE(p_hwfn, true, "Failed to get HW information\n");
 		goto err2;
@@ -3094,6 +3132,8 @@ ecore_hw_prepare_single(struct ecore_hwfn *p_hwfn,
 	rc = ecore_init_alloc(p_hwfn);
 	if (rc) {
 		DP_NOTICE(p_hwfn, true, "Failed to allocate the init array\n");
+		if (p_params->b_relaxed_probe)
+			p_params->p_relaxed_res = ECORE_HW_PREPARE_FAILED_MEM;
 		goto err2;
 	}
 #ifndef ASIC_ONLY
@@ -3128,6 +3168,9 @@ enum _ecore_status_t ecore_hw_prepare(struct ecore_dev *p_dev,
 	enum _ecore_status_t rc;
 
 	p_dev->chk_reg_fifo = p_params->chk_reg_fifo;
+
+	if (p_params->b_relaxed_probe)
+		p_params->p_relaxed_res = ECORE_HW_PREPARE_SUCCESS;
 
 	/* Store the precompiled init data ptrs */
 	if (IS_PF(p_dev))
@@ -3164,6 +3207,10 @@ enum _ecore_status_t ecore_hw_prepare(struct ecore_dev *p_dev,
 		 * initiliazed hwfn 0.
 		 */
 		if (rc != ECORE_SUCCESS) {
+			if (p_params->b_relaxed_probe)
+				p_params->p_relaxed_res =
+						ECORE_HW_PREPARE_FAILED_ENG2;
+
 			if (IS_PF(p_dev)) {
 				ecore_init_free(p_hwfn);
 				ecore_mcp_free(p_hwfn);
