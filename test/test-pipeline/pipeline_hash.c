@@ -547,6 +547,6 @@ app_main_loop_rx_metadata(void) {
 				app.rings_rx[i],
 				(void **) app.mbuf_rx.array,
 				n_mbufs);
-		} while (ret < 0);
+		} while (ret == 0);
 	}
 }

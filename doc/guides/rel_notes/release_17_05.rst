@@ -137,6 +137,17 @@ API Changes
   * removed the build-time setting ``CONFIG_RTE_RING_PAUSE_REP_COUNT``
   * removed the function ``rte_ring_set_water_mark`` as part of a general
     removal of watermarks support in the library.
+  * changed the return value of the enqueue and dequeue bulk functions to
+    match that of the burst equivalents. In all cases, ring functions which
+    operate on multiple packets now return the number of elements enqueued
+    or dequeued, as appropriate. The updated functions are:
+
+    - ``rte_ring_mp_enqueue_bulk``
+    - ``rte_ring_sp_enqueue_bulk``
+    - ``rte_ring_enqueue_bulk``
+    - ``rte_ring_mc_dequeue_bulk``
+    - ``rte_ring_sc_dequeue_bulk``
+    - ``rte_ring_dequeue_bulk``
 
 ABI Changes
 -----------

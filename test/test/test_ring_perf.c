@@ -195,13 +195,13 @@ enqueue_bulk(void *p)
 
 	const uint64_t sp_start = rte_rdtsc();
 	for (i = 0; i < iterations; i++)
-		while (rte_ring_sp_enqueue_bulk(r, burst, size) != 0)
+		while (rte_ring_sp_enqueue_bulk(r, burst, size) == 0)
 			rte_pause();
 	const uint64_t sp_end = rte_rdtsc();
 
 	const uint64_t mp_start = rte_rdtsc();
 	for (i = 0; i < iterations; i++)
-		while (rte_ring_mp_enqueue_bulk(r, burst, size) != 0)
+		while (rte_ring_mp_enqueue_bulk(r, burst, size) == 0)
 			rte_pause();
 	const uint64_t mp_end = rte_rdtsc();
 
@@ -230,13 +230,13 @@ dequeue_bulk(void *p)
 
 	const uint64_t sc_start = rte_rdtsc();
 	for (i = 0; i < iterations; i++)
-		while (rte_ring_sc_dequeue_bulk(r, burst, size) != 0)
+		while (rte_ring_sc_dequeue_bulk(r, burst, size) == 0)
 			rte_pause();
 	const uint64_t sc_end = rte_rdtsc();
 
 	const uint64_t mc_start = rte_rdtsc();
 	for (i = 0; i < iterations; i++)
-		while (rte_ring_mc_dequeue_bulk(r, burst, size) != 0)
+		while (rte_ring_mc_dequeue_bulk(r, burst, size) == 0)
 			rte_pause();
 	const uint64_t mc_end = rte_rdtsc();
 

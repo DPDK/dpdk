@@ -98,7 +98,7 @@ app_main_loop_rx(void) {
 				app.rings_rx[i],
 				(void **) app.mbuf_rx.array,
 				n_mbufs);
-		} while (ret < 0);
+		} while (ret == 0);
 	}
 }
 
@@ -123,7 +123,7 @@ app_main_loop_worker(void) {
 			(void **) worker_mbuf->array,
 			app.burst_size_worker_read);
 
-		if (ret == -ENOENT)
+		if (ret == 0)
 			continue;
 
 		do {
@@ -131,7 +131,7 @@ app_main_loop_worker(void) {
 				app.rings_tx[i ^ 1],
 				(void **) worker_mbuf->array,
 				app.burst_size_worker_write);
-		} while (ret < 0);
+		} while (ret == 0);
 	}
 }
 
@@ -152,7 +152,7 @@ app_main_loop_tx(void) {
 			(void **) &app.mbuf_tx[i].array[n_mbufs],
 			app.burst_size_tx_read);
 
-		if (ret == -ENOENT)
+		if (ret == 0)
 			continue;
 
 		n_mbufs += app.burst_size_tx_read;

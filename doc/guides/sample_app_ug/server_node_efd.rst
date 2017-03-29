@@ -286,7 +286,7 @@ repeated infinitely.
 
         cl = &nodes[node];
         if (rte_ring_enqueue_bulk(cl->rx_q, (void **)cl_rx_buf[node].buffer,
-                cl_rx_buf[node].count) != 0){
+                cl_rx_buf[node].count) != cl_rx_buf[node].count){
             for (j = 0; j < cl_rx_buf[node].count; j++)
                 rte_pktmbuf_free(cl_rx_buf[node].buffer[j]);
             cl->stats.rx_drop += cl_rx_buf[node].count;

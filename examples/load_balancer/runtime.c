@@ -146,7 +146,7 @@ app_lcore_io_rx_buffer_to_send (
 		(void **) lp->rx.mbuf_out[worker].array,
 		bsz);
 
-	if (unlikely(ret == -ENOBUFS)) {
+	if (unlikely(ret == 0)) {
 		uint32_t k;
 		for (k = 0; k < bsz; k ++) {
 			struct rte_mbuf *m = lp->rx.mbuf_out[worker].array[k];
@@ -312,7 +312,7 @@ app_lcore_io_rx_flush(struct app_lcore_params_io *lp, uint32_t n_workers)
 			(void **) lp->rx.mbuf_out[worker].array,
 			lp->rx.mbuf_out[worker].n_mbufs);
 
-		if (unlikely(ret < 0)) {
+		if (unlikely(ret == 0)) {
 			uint32_t k;
 			for (k = 0; k < lp->rx.mbuf_out[worker].n_mbufs; k ++) {
 				struct rte_mbuf *pkt_to_free = lp->rx.mbuf_out[worker].array[k];
@@ -349,9 +349,8 @@ app_lcore_io_tx(
 				(void **) &lp->tx.mbuf_out[port].array[n_mbufs],
 				bsz_rd);
 
-			if (unlikely(ret == -ENOENT)) {
+			if (unlikely(ret == 0))
 				continue;
-			}
 
 			n_mbufs += bsz_rd;
 
@@ -505,9 +504,8 @@ app_lcore_worker(
 			(void **) lp->mbuf_in.array,
 			bsz_rd);
 
-		if (unlikely(ret == -ENOENT)) {
+		if (unlikely(ret == 0))
 			continue;
-		}
 
 #if APP_WORKER_DROP_ALL_PACKETS
 		for (j = 0; j < bsz_rd; j ++) {
@@ -559,7 +557,7 @@ app_lcore_worker(
 
 #if APP_STATS
 			lp->rings_out_iters[port] ++;
-			if (ret == 0) {
+			if (ret > 0) {
 				lp->rings_out_count[port] += 1;
 			}
 			if (lp->rings_out_iters[port] == APP_STATS){
@@ -572,7 +570,7 @@ app_lcore_worker(
 			}
 #endif
 
-			if (unlikely(ret == -ENOBUFS)) {
+			if (unlikely(ret == 0)) {
 				uint32_t k;
 				for (k = 0; k < bsz_wr; k ++) {
 					struct rte_mbuf *pkt_to_free = lp->mbuf_out[port].array[k];
@@ -609,7 +607,7 @@ app_lcore_worker_flush(struct app_lcore_params_worker *lp)
 			(void **) lp->mbuf_out[port].array,
 			lp->mbuf_out[port].n_mbufs);
 
-		if (unlikely(ret < 0)) {
+		if (unlikely(ret == 0)) {
 			uint32_t k;
 			for (k = 0; k < lp->mbuf_out[port].n_mbufs; k ++) {
 				struct rte_mbuf *pkt_to_free = lp->mbuf_out[port].array[k];

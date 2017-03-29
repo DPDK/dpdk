@@ -117,20 +117,18 @@ test_ring_basic_full_empty(void * const src[], void *dst[])
 		rand = RTE_MAX(rte_rand() % RING_SIZE, 1UL);
 		printf("%s: iteration %u, random shift: %u;\n",
 		    __func__, i, rand);
-		TEST_RING_VERIFY(-ENOBUFS != rte_ring_enqueue_bulk(r, src,
-		    rand));
-		TEST_RING_VERIFY(0 == rte_ring_dequeue_bulk(r, dst, rand));
+		TEST_RING_VERIFY(rte_ring_enqueue_bulk(r, src, rand) != 0);
+		TEST_RING_VERIFY(rte_ring_dequeue_bulk(r, dst, rand) == rand);
 
 		/* fill the ring */
-		TEST_RING_VERIFY(-ENOBUFS != rte_ring_enqueue_bulk(r, src,
-		    rsz));
+		TEST_RING_VERIFY(rte_ring_enqueue_bulk(r, src, rsz) != 0);
 		TEST_RING_VERIFY(0 == rte_ring_free_count(r));
 		TEST_RING_VERIFY(rsz == rte_ring_count(r));
 		TEST_RING_VERIFY(rte_ring_full(r));
 		TEST_RING_VERIFY(0 == rte_ring_empty(r));
 
 		/* empty the ring */
-		TEST_RING_VERIFY(0 == rte_ring_dequeue_bulk(r, dst, rsz));
+		TEST_RING_VERIFY(rte_ring_dequeue_bulk(r, dst, rsz) == rsz);
 		TEST_RING_VERIFY(rsz == rte_ring_free_count(r));
 		TEST_RING_VERIFY(0 == rte_ring_count(r));
 		TEST_RING_VERIFY(0 == rte_ring_full(r));
@@ -171,37 +169,37 @@ test_ring_basic(void)
 	printf("enqueue 1 obj\n");
 	ret = rte_ring_sp_enqueue_bulk(r, cur_src, 1);
 	cur_src += 1;
-	if (ret != 0)
+	if (ret == 0)
 		goto fail;
 
 	printf("enqueue 2 objs\n");
 	ret = rte_ring_sp_enqueue_bulk(r, cur_src, 2);
 	cur_src += 2;
-	if (ret != 0)
+	if (ret == 0)
 		goto fail;
 
 	printf("enqueue MAX_BULK objs\n");
 	ret = rte_ring_sp_enqueue_bulk(r, cur_src, MAX_BULK);
 	cur_src += MAX_BULK;
-	if (ret != 0)
+	if (ret == 0)
 		goto fail;
 
 	printf("dequeue 1 obj\n");
 	ret = rte_ring_sc_dequeue_bulk(r, cur_dst, 1);
 	cur_dst += 1;
-	if (ret != 0)
+	if (ret == 0)
 		goto fail;
 
 	printf("dequeue 2 objs\n");
 	ret = rte_ring_sc_dequeue_bulk(r, cur_dst, 2);
 	cur_dst += 2;
-	if (ret != 0)
+	if (ret == 0)
 		goto fail;
 
 	printf("dequeue MAX_BULK objs\n");
 	ret = rte_ring_sc_dequeue_bulk(r, cur_dst, MAX_BULK);
 	cur_dst += MAX_BULK;
-	if (ret != 0)
+	if (ret == 0)
 		goto fail;
 
 	/* check data */
@@ -217,37 +215,37 @@ test_ring_basic(void)
 	printf("enqueue 1 obj\n");
 	ret = rte_ring_mp_enqueue_bulk(r, cur_src, 1);
 	cur_src += 1;
-	if (ret != 0)
+	if (ret == 0)
 		goto fail;
 
 	printf("enqueue 2 objs\n");
 	ret = rte_ring_mp_enqueue_bulk(r, cur_src, 2);
 	cur_src += 2;
-	if (ret != 0)
+	if (ret == 0)
 		goto fail;
 
 	printf("enqueue MAX_BULK objs\n");
 	ret = rte_ring_mp_enqueue_bulk(r, cur_src, MAX_BULK);
 	cur_src += MAX_BULK;
-	if (ret != 0)
+	if (ret == 0)
 		goto fail;
 
 	printf("dequeue 1 obj\n");
 	ret = rte_ring_mc_dequeue_bulk(r, cur_dst, 1);
 	cur_dst += 1;
-	if (ret != 0)
+	if (ret == 0)
 		goto fail;
 
 	printf("dequeue 2 objs\n");
 	ret = rte_ring_mc_dequeue_bulk(r, cur_dst, 2);
 	cur_dst += 2;
-	if (ret != 0)
+	if (ret == 0)
 		goto fail;
 
 	printf("dequeue MAX_BULK objs\n");
 	ret = rte_ring_mc_dequeue_bulk(r, cur_dst, MAX_BULK);
 	cur_dst += MAX_BULK;
-	if (ret != 0)
+	if (ret == 0)
 		goto fail;
 
 	/* check data */
@@ -264,11 +262,11 @@ test_ring_basic(void)
 	for (i = 0; i<RING_SIZE/MAX_BULK; i++) {
 		ret = rte_ring_mp_enqueue_bulk(r, cur_src, MAX_BULK);
 		cur_src += MAX_BULK;
-		if (ret != 0)
+		if (ret == 0)
 			goto fail;
 		ret = rte_ring_mc_dequeue_bulk(r, cur_dst, MAX_BULK);
 		cur_dst += MAX_BULK;
-		if (ret != 0)
+		if (ret == 0)
 			goto fail;
 	}
 
@@ -294,25 +292,25 @@ test_ring_basic(void)
 
 	ret = rte_ring_enqueue_bulk(r, cur_src, num_elems);
 	cur_src += num_elems;
-	if (ret != 0) {
+	if (ret == 0) {
 		printf("Cannot enqueue\n");
 		goto fail;
 	}
 	ret = rte_ring_enqueue_bulk(r, cur_src, num_elems);
 	cur_src += num_elems;
-	if (ret != 0) {
+	if (ret == 0) {
 		printf("Cannot enqueue\n");
 		goto fail;
 	}
 	ret = rte_ring_dequeue_bulk(r, cur_dst, num_elems);
 	cur_dst += num_elems;
-	if (ret != 0) {
+	if (ret == 0) {
 		printf("Cannot dequeue\n");
 		goto fail;
 	}
 	ret = rte_ring_dequeue_bulk(r, cur_dst, num_elems);
 	cur_dst += num_elems;
-	if (ret != 0) {
+	if (ret == 0) {
 		printf("Cannot dequeue2\n");
 		goto fail;
 	}
