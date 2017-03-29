@@ -144,11 +144,11 @@ rte_ring_init(struct rte_ring *r, const char *name, unsigned count,
 	if (ret < 0 || ret >= (int)sizeof(r->name))
 		return -ENAMETOOLONG;
 	r->flags = flags;
-	r->prod.watermark = count;
+	r->watermark = count;
 	r->prod.single = !!(flags & RING_F_SP_ENQ);
 	r->cons.single = !!(flags & RING_F_SC_DEQ);
-	r->prod.size = r->cons.size = count;
-	r->prod.mask = r->cons.mask = count-1;
+	r->size = count;
+	r->mask = count - 1;
 	r->prod.head = r->cons.head = 0;
 	r->prod.tail = r->cons.tail = 0;
 
@@ -269,14 +269,14 @@ rte_ring_free(struct rte_ring *r)
 int
 rte_ring_set_water_mark(struct rte_ring *r, unsigned count)
 {
-	if (count >= r->prod.size)
+	if (count >= r->size)
 		return -EINVAL;
 
 	/* if count is 0, disable the watermarking */
 	if (count == 0)
-		count = r->prod.size;
+		count = r->size;
 
-	r->prod.watermark = count;
+	r->watermark = count;
 	return 0;
 }
 
@@ -291,17 +291,17 @@ rte_ring_dump(FILE *f, const struct rte_ring *r)
 
 	fprintf(f, "ring <%s>@%p\n", r->name, r);
 	fprintf(f, "  flags=%x\n", r->flags);
-	fprintf(f, "  size=%"PRIu32"\n", r->prod.size);
+	fprintf(f, "  size=%"PRIu32"\n", r->size);
 	fprintf(f, "  ct=%"PRIu32"\n", r->cons.tail);
 	fprintf(f, "  ch=%"PRIu32"\n", r->cons.head);
 	fprintf(f, "  pt=%"PRIu32"\n", r->prod.tail);
 	fprintf(f, "  ph=%"PRIu32"\n", r->prod.head);
 	fprintf(f, "  used=%u\n", rte_ring_count(r));
 	fprintf(f, "  avail=%u\n", rte_ring_free_count(r));
-	if (r->prod.watermark == r->prod.size)
+	if (r->watermark == r->size)
 		fprintf(f, "  watermark=0\n");
 	else
-		fprintf(f, "  watermark=%"PRIu32"\n", r->prod.watermark);
+		fprintf(f, "  watermark=%"PRIu32"\n", r->watermark);
 
 	/* sum and dump statistics */
 #ifdef RTE_LIBRTE_RING_DEBUG
@@ -318,7 +318,7 @@ rte_ring_dump(FILE *f, const struct rte_ring *r)
 		sum.deq_fail_bulk += r->stats[lcore_id].deq_fail_bulk;
 		sum.deq_fail_objs += r->stats[lcore_id].deq_fail_objs;
 	}
-	fprintf(f, "  size=%"PRIu32"\n", r->prod.size);
+	fprintf(f, "  size=%"PRIu32"\n", r->size);
 	fprintf(f, "  enq_success_bulk=%"PRIu64"\n", sum.enq_success_bulk);
 	fprintf(f, "  enq_success_objs=%"PRIu64"\n", sum.enq_success_objs);
 	fprintf(f, "  enq_quota_bulk=%"PRIu64"\n", sum.enq_quota_bulk);

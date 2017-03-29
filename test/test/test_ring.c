@@ -148,7 +148,7 @@ check_live_watermark_change(__attribute__((unused)) void *dummy)
 		}
 
 		/* read watermark, the only change allowed is from 16 to 32 */
-		watermark = r->prod.watermark;
+		watermark = r->watermark;
 		if (watermark != watermark_old &&
 		    (watermark_old != 16 || watermark != 32)) {
 			printf("Bad watermark change %u -> %u\n", watermark_old,
@@ -213,7 +213,7 @@ test_set_watermark( void ){
 		printf( " ring lookup failed\n" );
 		goto error;
 	}
-	count = r->prod.size*2;
+	count = r->size * 2;
 	setwm = rte_ring_set_water_mark(r, count);
 	if (setwm != -EINVAL){
 		printf("Test failed to detect invalid watermark count value\n");
@@ -222,7 +222,7 @@ test_set_watermark( void ){
 
 	count = 0;
 	rte_ring_set_water_mark(r, count);
-	if (r->prod.watermark != r->prod.size) {
+	if (r->watermark != r->size) {
 		printf("Test failed to detect invalid watermark count value\n");
 		goto error;
 	}
