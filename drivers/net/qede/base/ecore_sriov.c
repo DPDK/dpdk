@@ -632,8 +632,8 @@ enum _ecore_status_t ecore_iov_hw_info(struct ecore_hwfn *p_hwfn)
 	return ECORE_SUCCESS;
 }
 
-bool _ecore_iov_pf_sanity_check(struct ecore_hwfn *p_hwfn, int vfid,
-				bool b_fail_malicious)
+static bool _ecore_iov_pf_sanity_check(struct ecore_hwfn *p_hwfn, int vfid,
+				       bool b_fail_malicious)
 {
 	/* Check PF supports sriov */
 	if (IS_VF(p_hwfn->p_dev) || !IS_ECORE_SRIOV(p_hwfn->p_dev) ||
@@ -2103,14 +2103,8 @@ static void ecore_iov_vf_mbx_start_txq(struct ecore_hwfn *p_hwfn,
 	struct ecore_queue_start_common_params params;
 	struct ecore_iov_vf_mbx *mbx = &vf->vf_mbx;
 	u8 status = PFVF_STATUS_NO_RESOURCE;
-	union ecore_qm_pq_params pq_params;
 	struct vfpf_start_txq_tlv *req;
 	enum _ecore_status_t rc;
-
-	/* Prepare the parameters which would choose the right PQ */
-	OSAL_MEMSET(&pq_params, 0, sizeof(pq_params));
-	pq_params.eth.is_vf = 1;
-	pq_params.eth.vf_id = vf->relative_vf_id;
 
 	OSAL_MEMSET(&params, 0, sizeof(params));
 	req = &mbx->req_virt->start_txq;
@@ -2132,7 +2126,8 @@ static void ecore_iov_vf_mbx_start_txq(struct ecore_hwfn *p_hwfn,
 					   &params,
 					   req->pbl_addr,
 					   req->pbl_size,
-					   &pq_params);
+					   ecore_get_cm_pq_idx_vf(p_hwfn,
+							vf->relative_vf_id));
 
 	if (rc)
 		status = PFVF_STATUS_FAILURE;

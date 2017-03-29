@@ -445,11 +445,13 @@ struct ecore_qm_info {
 	struct init_qm_port_params  *qm_port_params;
 	u16			start_pq;
 	u8			start_vport;
-	u8			pure_lb_pq;
-	u8			offload_pq;
-	u8			pure_ack_pq;
-	u8			ooo_pq;
-	u8			vf_queues_offset;
+	u16			pure_lb_pq;
+	u16			offload_pq;
+	u16			pure_ack_pq;
+	u16			ooo_pq;
+	u16			first_vf_pq;
+	u16			first_mcos_pq;
+	u16			first_rl_pq;
 	u16			num_pqs;
 	u16			num_vf_pqs;
 	u8			num_vports;
@@ -827,6 +829,28 @@ int ecore_device_num_engines(struct ecore_dev *p_dev);
 int ecore_device_num_ports(struct ecore_dev *p_dev);
 void ecore_set_fw_mac_addr(__le16 *fw_msb, __le16 *fw_mid, __le16 *fw_lsb,
 			   u8 *mac);
+
+/* Flags for indication of required queues */
+#define PQ_FLAGS_RLS	(1 << 0)
+#define PQ_FLAGS_MCOS	(1 << 1)
+#define PQ_FLAGS_LB	(1 << 2)
+#define PQ_FLAGS_OOO	(1 << 3)
+#define PQ_FLAGS_ACK    (1 << 4)
+#define PQ_FLAGS_OFLD	(1 << 5)
+#define PQ_FLAGS_VFS	(1 << 6)
+
+/* physical queue index for cm context intialization */
+u16 ecore_get_cm_pq_idx(struct ecore_hwfn *p_hwfn, u32 pq_flags);
+u16 ecore_get_cm_pq_idx_mcos(struct ecore_hwfn *p_hwfn, u8 tc);
+u16 ecore_get_cm_pq_idx_vf(struct ecore_hwfn *p_hwfn, u16 vf);
+u16 ecore_get_cm_pq_idx_rl(struct ecore_hwfn *p_hwfn, u8 qpid);
+
+/* amount of resources used in qm init */
+u8 ecore_init_qm_get_num_tcs(struct ecore_hwfn *p_hwfn);
+u16 ecore_init_qm_get_num_vfs(struct ecore_hwfn *p_hwfn);
+u16 ecore_init_qm_get_num_pf_rls(struct ecore_hwfn *p_hwfn);
+u16 ecore_init_qm_get_num_vports(struct ecore_hwfn *p_hwfn);
+u16 ecore_init_qm_get_num_pqs(struct ecore_hwfn *p_hwfn);
 
 #define ECORE_LEADING_HWFN(dev)	(&dev->hwfns[0])
 

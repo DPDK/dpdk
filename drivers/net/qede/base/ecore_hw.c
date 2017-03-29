@@ -905,44 +905,6 @@ ecore_dmae_host2host(struct ecore_hwfn *p_hwfn,
 	return rc;
 }
 
-u16 ecore_get_qm_pq(struct ecore_hwfn *p_hwfn,
-		    enum protocol_type proto,
-		    union ecore_qm_pq_params *p_params)
-{
-	u16 pq_id = 0;
-
-	if ((proto == PROTOCOLID_CORE ||
-	     proto == PROTOCOLID_ETH) && !p_params) {
-		DP_NOTICE(p_hwfn, true,
-			  "Protocol %d received NULL PQ params\n", proto);
-		return 0;
-	}
-
-	switch (proto) {
-	case PROTOCOLID_CORE:
-		if (p_params->core.tc == LB_TC)
-			pq_id = p_hwfn->qm_info.pure_lb_pq;
-		else if (p_params->core.tc == PKT_LB_TC)
-			pq_id = p_hwfn->qm_info.ooo_pq;
-		else
-			pq_id = p_hwfn->qm_info.offload_pq;
-		break;
-	case PROTOCOLID_ETH:
-		pq_id = p_params->eth.tc;
-		/* TODO - multi-CoS for VFs? */
-		if (p_params->eth.is_vf)
-			pq_id += p_hwfn->qm_info.vf_queues_offset +
-			    p_params->eth.vf_id;
-		break;
-	default:
-		pq_id = 0;
-	}
-
-	pq_id = CM_TX_PQ_BASE + pq_id + RESC_START(p_hwfn, ECORE_PQ);
-
-	return pq_id;
-}
-
 void ecore_hw_err_notify(struct ecore_hwfn *p_hwfn,
 			 enum ecore_hw_err_type err_type)
 {

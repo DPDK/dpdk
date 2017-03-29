@@ -834,13 +834,13 @@ ecore_sp_eth_txq_start_ramrod(struct ecore_hwfn *p_hwfn,
 			      struct ecore_queue_start_common_params *p_params,
 			      dma_addr_t pbl_addr,
 			      u16 pbl_size,
-			      union ecore_qm_pq_params *p_pq_params)
+			      u16 pq_id)
 {
 	struct tx_queue_start_ramrod_data *p_ramrod = OSAL_NULL;
 	struct ecore_spq_entry *p_ent = OSAL_NULL;
 	struct ecore_sp_init_data init_data;
 	struct ecore_hw_cid_data *p_tx_cid;
-	u16 pq_id, abs_tx_qzone_id = 0;
+	u16 abs_tx_qzone_id = 0;
 	enum _ecore_status_t rc = ECORE_NOTIMPL;
 	u8 abs_vport_id;
 
@@ -882,7 +882,6 @@ ecore_sp_eth_txq_start_ramrod(struct ecore_hwfn *p_hwfn,
 	p_ramrod->pbl_size = OSAL_CPU_TO_LE16(pbl_size);
 	DMA_REGPAIR_LE(p_ramrod->pbl_base_addr, pbl_addr);
 
-	pq_id = ecore_get_qm_pq(p_hwfn, PROTOCOLID_ETH, p_pq_params);
 	p_ramrod->qm_pq_id = OSAL_CPU_TO_LE16(pq_id);
 
 	return ecore_spq_post(p_hwfn, p_ent, OSAL_NULL);
@@ -898,7 +897,6 @@ ecore_sp_eth_tx_queue_start(struct ecore_hwfn *p_hwfn,
 			    void OSAL_IOMEM * *pp_doorbell)
 {
 	struct ecore_hw_cid_data *p_tx_cid;
-	union ecore_qm_pq_params pq_params;
 	u8 abs_stats_id = 0;
 	enum _ecore_status_t rc;
 
@@ -918,9 +916,6 @@ ecore_sp_eth_tx_queue_start(struct ecore_hwfn *p_hwfn,
 
 	p_tx_cid = &p_hwfn->p_tx_cids[p_params->queue_id];
 	OSAL_MEMSET(p_tx_cid, 0, sizeof(*p_tx_cid));
-	OSAL_MEMSET(&pq_params, 0, sizeof(pq_params));
-
-	pq_params.eth.tc = tc;
 
 	/* Allocate a CID for the queue */
 	rc = ecore_cxt_acquire_cid(p_hwfn, PROTOCOLID_ETH, &p_tx_cid->cid);
@@ -944,7 +939,8 @@ ecore_sp_eth_tx_queue_start(struct ecore_hwfn *p_hwfn,
 					   p_params,
 					   pbl_addr,
 					   pbl_size,
-					   &pq_params);
+					   ecore_get_cm_pq_idx_mcos(p_hwfn,
+								    tc));
 
 	*pp_doorbell = (u8 OSAL_IOMEM *)p_hwfn->doorbells +
 	    DB_ADDR(p_tx_cid->cid, DQ_DEMS_LEGACY);

@@ -1372,18 +1372,10 @@ void ecore_qm_init_pf(struct ecore_hwfn *p_hwfn)
 }
 
 /* CM PF */
-static enum _ecore_status_t ecore_cm_init_pf(struct ecore_hwfn *p_hwfn)
+void ecore_cm_init_pf(struct ecore_hwfn *p_hwfn)
 {
-	union ecore_qm_pq_params pq_params;
-	u16 pq;
-
-	/* XCM pure-LB queue */
-	OSAL_MEMSET(&pq_params, 0, sizeof(pq_params));
-	pq_params.core.tc = LB_TC;
-	pq = ecore_get_qm_pq(p_hwfn, PROTOCOLID_CORE, &pq_params);
-	STORE_RT_REG(p_hwfn, XCM_REG_CON_PHY_Q3_RT_OFFSET, pq);
-
-	return ECORE_SUCCESS;
+	STORE_RT_REG(p_hwfn, XCM_REG_CON_PHY_Q3_RT_OFFSET,
+		     ecore_get_cm_pq_idx(p_hwfn, PQ_FLAGS_LB));
 }
 
 /* DQ PF */

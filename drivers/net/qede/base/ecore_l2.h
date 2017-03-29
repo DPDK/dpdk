@@ -81,7 +81,7 @@ ecore_sp_eth_txq_start_ramrod(struct ecore_hwfn	*p_hwfn,
 			      struct ecore_queue_start_common_params *p_params,
 			      dma_addr_t pbl_addr,
 			      u16 pbl_size,
-			      union ecore_qm_pq_params *p_pq_params);
+			      u16 pq_id);
 
 u8 ecore_mcast_bin_from_mac(u8 *mac);
 

@@ -320,6 +320,8 @@ u32 qede_find_first_zero_bit(unsigned long *, u32);
 #define OSAL_BUILD_BUG_ON(cond)		nothing
 #define ETH_ALEN			ETHER_ADDR_LEN
 
+#define OSAL_BITMAP_WEIGHT(bitmap, count) 0
+
 #define OSAL_LINK_UPDATE(hwfn) qed_link_update(hwfn)
 #define OSAL_DCBX_AEN(hwfn, mib_type) nothing
 

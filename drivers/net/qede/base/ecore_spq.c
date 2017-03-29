@@ -173,11 +173,10 @@ ecore_spq_fill_entry(struct ecore_hwfn *p_hwfn, struct ecore_spq_entry *p_ent)
 static void ecore_spq_hw_initialize(struct ecore_hwfn *p_hwfn,
 				    struct ecore_spq *p_spq)
 {
-	u16 pq;
 	struct ecore_cxt_info cxt_info;
 	struct core_conn_context *p_cxt;
-	union ecore_qm_pq_params pq_params;
 	enum _ecore_status_t rc;
+	u16 physical_q;
 
 	cxt_info.iid = p_spq->cid;
 
@@ -206,10 +205,8 @@ static void ecore_spq_hw_initialize(struct ecore_hwfn *p_hwfn,
 	/* CDU validation - FIXME currently disabled */
 
 	/* QM physical queue */
-	OSAL_MEMSET(&pq_params, 0, sizeof(pq_params));
-	pq_params.core.tc = LB_TC;
-	pq = ecore_get_qm_pq(p_hwfn, PROTOCOLID_CORE, &pq_params);
-	p_cxt->xstorm_ag_context.physical_q0 = OSAL_CPU_TO_LE16(pq);
+	physical_q = ecore_get_cm_pq_idx(p_hwfn, PQ_FLAGS_LB);
+	p_cxt->xstorm_ag_context.physical_q0 = OSAL_CPU_TO_LE16(physical_q);
 
 	p_cxt->xstorm_st_context.spq_base_lo =
 	    DMA_LO_LE(p_spq->chain.p_phys_addr);
