@@ -222,6 +222,8 @@ static const struct eth_dev_ops mlx5_dev_ops = {
 	.rss_hash_update = mlx5_rss_hash_update,
 	.rss_hash_conf_get = mlx5_rss_hash_conf_get,
 	.filter_ctrl = mlx5_dev_filter_ctrl,
+	.rx_descriptor_status = mlx5_rx_descriptor_status,
+	.tx_descriptor_status = mlx5_tx_descriptor_status,
 };
 
 static struct {

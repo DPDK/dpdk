@@ -345,6 +345,82 @@ mlx5_tx_dbrec(struct txq *txq, volatile struct mlx5_wqe *wqe)
 }
 
 /**
+ * DPDK callback to check the status of a tx descriptor.
+ *
+ * @param tx_queue
+ *   The tx queue.
+ * @param[in] offset
+ *   The index of the descriptor in the ring.
+ *
+ * @return
+ *   The status of the tx descriptor.
+ */
+int
+mlx5_tx_descriptor_status(void *tx_queue, uint16_t offset)
+{
+	struct txq *txq = tx_queue;
+	const unsigned int elts_n = 1 << txq->elts_n;
+	const unsigned int elts_cnt = elts_n - 1;
+	unsigned int used;
+
+	txq_complete(txq);
+	used = (txq->elts_head - txq->elts_tail) & elts_cnt;
+	if (offset < used)
+		return RTE_ETH_TX_DESC_FULL;
+	return RTE_ETH_TX_DESC_DONE;
+}
+
+/**
+ * DPDK callback to check the status of a rx descriptor.
+ *
+ * @param rx_queue
+ *   The rx queue.
+ * @param[in] offset
+ *   The index of the descriptor in the ring.
+ *
+ * @return
+ *   The status of the tx descriptor.
+ */
+int
+mlx5_rx_descriptor_status(void *rx_queue, uint16_t offset)
+{
+	struct rxq *rxq = rx_queue;
+	struct rxq_zip *zip = &rxq->zip;
+	volatile struct mlx5_cqe *cqe;
+	const unsigned int cqe_n = (1 << rxq->cqe_n);
+	const unsigned int cqe_cnt = cqe_n - 1;
+	unsigned int cq_ci;
+	unsigned int used;
+
+	/* if we are processing a compressed cqe */
+	if (zip->ai) {
+		used = zip->cqe_cnt - zip->ca;
+		cq_ci = zip->cq_ci;
+	} else {
+		used = 0;
+		cq_ci = rxq->cq_ci;
+	}
+	cqe = &(*rxq->cqes)[cq_ci & cqe_cnt];
+	while (check_cqe(cqe, cqe_n, cq_ci) == 0) {
+		int8_t op_own;
+		unsigned int n;
+
+		op_own = cqe->op_own;
+		if (MLX5_CQE_FORMAT(op_own) == MLX5_COMPRESSED)
+			n = ntohl(cqe->byte_cnt);
+		else
+			n = 1;
+		cq_ci += n;
+		used += n;
+		cqe = &(*rxq->cqes)[cq_ci & cqe_cnt];
+	}
+	used = RTE_MIN(used, (1U << rxq->elts_n) - 1);
+	if (offset < used)
+		return RTE_ETH_RX_DESC_DONE;
+	return RTE_ETH_RX_DESC_AVAIL;
+}
+
+/**
  * DPDK callback for TX.
  *
  * @param dpdk_txq
