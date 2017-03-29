@@ -1424,8 +1424,7 @@ ecore_mcp_mdump_get_config(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 	if (rc != ECORE_SUCCESS)
 		return rc;
 
-	/* A zero response implies that the mdump command is not supported */
-	if (!mcp_resp)
+	if (mcp_resp == FW_MSG_CODE_UNSUPPORTED)
 		return ECORE_NOTIMPL;
 
 	if (mcp_resp != FW_MSG_CODE_OK) {
@@ -2832,8 +2831,7 @@ static enum _ecore_status_t ecore_mcp_resource_cmd(struct ecore_hwfn *p_hwfn,
 	if (rc != ECORE_SUCCESS)
 		return rc;
 
-	/* A zero response implies that the resource command is not supported */
-	if (!*p_mcp_resp)
+	if (*p_mcp_resp == FW_MSG_CODE_UNSUPPORTED)
 		return ECORE_NOTIMPL;
 
 	if (*p_mcp_param == RESOURCE_OPCODE_UNKNOWN_CMD) {

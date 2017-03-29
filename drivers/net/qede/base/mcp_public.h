@@ -1489,6 +1489,7 @@ struct public_drv_mb {
 
 	u32 fw_mb_header;
 #define FW_MSG_CODE_MASK                        0xffff0000
+#define FW_MSG_CODE_UNSUPPORTED			0x00000000
 #define FW_MSG_CODE_DRV_LOAD_ENGINE		0x10100000
 #define FW_MSG_CODE_DRV_LOAD_PORT               0x10110000
 #define FW_MSG_CODE_DRV_LOAD_FUNCTION           0x10120000
