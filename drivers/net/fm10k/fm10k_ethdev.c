@@ -197,9 +197,9 @@ fm10k_tx_vec_condition_check(__rte_unused struct fm10k_tx_queue *txq)
 }
 
 uint16_t __attribute__((weak))
-fm10k_xmit_pkts_vec(__rte_unused void *tx_queue,
-		__rte_unused struct rte_mbuf **tx_pkts,
-		__rte_unused uint16_t nb_pkts)
+fm10k_xmit_fixed_burst_vec(__rte_unused void *tx_queue,
+			   __rte_unused struct rte_mbuf **tx_pkts,
+			   __rte_unused uint16_t nb_pkts)
 {
 	return 0;
 }
@@ -2740,6 +2740,28 @@ fm10k_check_ftag(struct rte_devargs *devargs)
 	rte_kvargs_free(kvlist);
 
 	return 1;
+}
+
+static uint16_t
+fm10k_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
+		    uint16_t nb_pkts)
+{
+	uint16_t nb_tx = 0;
+	struct fm10k_tx_queue *txq = (struct fm10k_tx_queue *)tx_queue;
+
+	while (nb_pkts) {
+		uint16_t ret, num;
+
+		num = (uint16_t)RTE_MIN(nb_pkts, txq->rs_thresh);
+		ret = fm10k_xmit_fixed_burst_vec(tx_queue, &tx_pkts[nb_tx],
+						 num);
+		nb_tx += ret;
+		nb_pkts -= ret;
+		if (ret < num)
+			break;
+	}
+
+	return nb_tx;
 }
 
 static void __attribute__((cold))

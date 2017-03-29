@@ -800,8 +800,8 @@ tx_backlog_entry(struct rte_mbuf **txep,
 }
 
 uint16_t
-fm10k_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
-			uint16_t nb_pkts)
+fm10k_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
+			   uint16_t nb_pkts)
 {
 	struct fm10k_tx_queue *txq = (struct fm10k_tx_queue *)tx_queue;
 	volatile struct fm10k_tx_desc *txdp;
