@@ -130,8 +130,7 @@ struct vfio_group {
 struct vfio_config {
 	int vfio_enabled;
 	int vfio_container_fd;
-	int vfio_container_has_dma;
-	int vfio_group_idx;
+	int vfio_active_groups;
 	struct vfio_group vfio_groups[VFIO_MAX_GROUPS];
 };
 
@@ -177,6 +176,10 @@ vfio_get_group_no(const char *sysfs_base,
 int
 vfio_get_group_fd(int iommu_group_no);
 
+/* remove group fd from internal VFIO group fd array */
+int
+clear_group(int vfio_group_fd);
+
 /**
  * Setup vfio_cfg for the device identified by its address. It discovers
  * the configured I/O MMU groups or sets a new one for the device. If a new
@@ -186,6 +189,8 @@ vfio_get_group_fd(int iommu_group_no);
  */
 int vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 		int *vfio_dev_fd, struct vfio_device_info *device_info);
+
+int vfio_release_device(const char *sysfs_base, const char *dev_addr, int fd);
 
 int vfio_enable(const char *modname);
 int vfio_is_enabled(const char *modname);
@@ -197,6 +202,7 @@ int vfio_mp_sync_setup(void);
 
 #define SOCKET_REQ_CONTAINER 0x100
 #define SOCKET_REQ_GROUP 0x200
+#define SOCKET_CLR_GROUP 0x300
 #define SOCKET_OK 0x0
 #define SOCKET_NO_FD 0x1
 #define SOCKET_ERR 0xFF

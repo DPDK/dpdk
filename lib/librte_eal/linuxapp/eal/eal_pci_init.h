@@ -88,8 +88,9 @@ void pci_vfio_ioport_write(struct rte_pci_ioport *p,
 			   const void *data, size_t len, off_t offset);
 int pci_vfio_ioport_unmap(struct rte_pci_ioport *p);
 
-/* map VFIO resource prototype */
+/* map/unmap VFIO resource prototype */
 int pci_vfio_map_resource(struct rte_pci_device *dev);
+int pci_vfio_unmap_resource(struct rte_pci_device *dev);
 
 #endif
 

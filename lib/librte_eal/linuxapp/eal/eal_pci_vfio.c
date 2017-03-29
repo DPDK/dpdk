@@ -38,6 +38,7 @@
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
+#include <stdbool.h>
 
 #include <rte_log.h>
 #include <rte_pci.h>
@@ -172,7 +173,7 @@ pci_vfio_get_msix_bar(int fd, int *msix_bar, uint32_t *msix_table_offset,
 
 /* set PCI bus mastering */
 static int
-pci_vfio_set_bus_master(int dev_fd)
+pci_vfio_set_bus_master(int dev_fd, bool op)
 {
 	uint16_t reg;
 	int ret;
@@ -185,8 +186,11 @@ pci_vfio_set_bus_master(int dev_fd)
 		return -1;
 	}
 
-	/* set the master bit */
-	reg |= PCI_COMMAND_MASTER;
+	if (op)
+		/* set the master bit */
+		reg |= PCI_COMMAND_MASTER;
+	else
+		reg &= ~(PCI_COMMAND_MASTER);
 
 	ret = pwrite64(dev_fd, &reg, sizeof(reg),
 			VFIO_GET_REGION_ADDR(VFIO_PCI_CONFIG_REGION_INDEX) +
@@ -517,7 +521,7 @@ pci_vfio_map_resource(struct rte_pci_device *dev)
 		}
 
 		/* set bus mastering for the device */
-		if (pci_vfio_set_bus_master(vfio_dev_fd)) {
+		if (pci_vfio_set_bus_master(vfio_dev_fd, true)) {
 			RTE_LOG(ERR, EAL, "  %s cannot set up bus mastering!\n", pci_addr);
 			close(vfio_dev_fd);
 			rte_free(vfio_res);
@@ -530,6 +534,79 @@ pci_vfio_map_resource(struct rte_pci_device *dev)
 
 	if (internal_config.process_type == RTE_PROC_PRIMARY)
 		TAILQ_INSERT_TAIL(vfio_res_list, vfio_res, next);
+
+	return 0;
+}
+
+int
+pci_vfio_unmap_resource(struct rte_pci_device *dev)
+{
+	char pci_addr[PATH_MAX] = {0};
+	struct rte_pci_addr *loc = &dev->addr;
+	int i, ret;
+	struct mapped_pci_resource *vfio_res = NULL;
+	struct mapped_pci_res_list *vfio_res_list;
+
+	struct pci_map *maps;
+
+	/* store PCI address string */
+	snprintf(pci_addr, sizeof(pci_addr), PCI_PRI_FMT,
+			loc->domain, loc->bus, loc->devid, loc->function);
+
+
+	if (close(dev->intr_handle.fd) < 0) {
+		RTE_LOG(INFO, EAL, "Error when closing eventfd file descriptor for %s\n",
+			pci_addr);
+		return -1;
+	}
+
+	if (pci_vfio_set_bus_master(dev->intr_handle.vfio_dev_fd, false)) {
+		RTE_LOG(ERR, EAL, "  %s cannot unset bus mastering for PCI device!\n",
+				pci_addr);
+		return -1;
+	}
+
+	ret = vfio_release_device(pci_get_sysfs_path(), pci_addr,
+				  dev->intr_handle.vfio_dev_fd);
+	if (ret < 0) {
+		RTE_LOG(ERR, EAL,
+			"%s(): cannot release device\n", __func__);
+		return ret;
+	}
+
+	vfio_res_list = RTE_TAILQ_CAST(rte_vfio_tailq.head, mapped_pci_res_list);
+	/* Get vfio_res */
+	TAILQ_FOREACH(vfio_res, vfio_res_list, next) {
+		if (memcmp(&vfio_res->pci_addr, &dev->addr, sizeof(dev->addr)))
+			continue;
+		break;
+	}
+	/* if we haven't found our tailq entry, something's wrong */
+	if (vfio_res == NULL) {
+		RTE_LOG(ERR, EAL, "  %s cannot find TAILQ entry for PCI device!\n",
+				pci_addr);
+		return -1;
+	}
+
+	/* unmap BARs */
+	maps = vfio_res->maps;
+
+	RTE_LOG(INFO, EAL, "Releasing pci mapped resource for %s\n",
+		pci_addr);
+	for (i = 0; i < (int) vfio_res->nb_maps; i++) {
+
+		/*
+		 * We do not need to be aware of MSI-X table BAR mappings as
+		 * when mapping. Just using current maps array is enough
+		 */
+		if (maps[i].addr) {
+			RTE_LOG(INFO, EAL, "Calling pci_unmap_resource for %s at %p\n",
+				pci_addr, maps[i].addr);
+			pci_unmap_resource(maps[i].addr, maps[i].size);
+		}
+	}
+
+	TAILQ_REMOVE(vfio_res_list, vfio_res, next);
 
 	return 0;
 }

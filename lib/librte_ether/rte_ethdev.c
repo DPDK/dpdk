@@ -455,8 +455,8 @@ rte_eth_dev_is_detachable(uint8_t port_id)
 	case RTE_KDRV_UIO_GENERIC:
 	case RTE_KDRV_NIC_UIO:
 	case RTE_KDRV_NONE:
-		break;
 	case RTE_KDRV_VFIO:
+		break;
 	default:
 		return -ENOTSUP;
 	}

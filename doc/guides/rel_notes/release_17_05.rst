@@ -59,6 +59,10 @@ New Features
 
   The next_hop field is extended from 8 bits to 21 bits for IPv6.
 
+* **Added VFIO hotplug support.**
+
+  How hotplug supported with UIO and VFIO drivers.
+
 * **Added powerpc support in pci probing for vfio-pci devices.**
 
   sPAPR IOMMU based pci probing enabled for vfio-pci devices.

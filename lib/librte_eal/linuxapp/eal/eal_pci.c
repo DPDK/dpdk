@@ -121,7 +121,10 @@ rte_eal_pci_unmap_device(struct rte_pci_device *dev)
 	/* try unmapping the NIC resources using VFIO if it exists */
 	switch (dev->kdrv) {
 	case RTE_KDRV_VFIO:
-		RTE_LOG(ERR, EAL, "Hotplug doesn't support vfio yet\n");
+#ifdef VFIO_PRESENT
+		if (pci_vfio_is_enabled())
+			pci_vfio_unmap_resource(dev);
+#endif
 		break;
 	case RTE_KDRV_IGB_UIO:
 	case RTE_KDRV_UIO_GENERIC:
