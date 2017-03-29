@@ -3559,13 +3559,13 @@ static void ecore_chain_free_pbl(struct ecore_dev *p_dev,
 				 struct ecore_chain *p_chain)
 {
 	void **pp_virt_addr_tbl = p_chain->pbl.pp_virt_addr_tbl;
-	u8 *p_pbl_virt = (u8 *)p_chain->pbl.p_virt_table;
+	u8 *p_pbl_virt = (u8 *)p_chain->pbl_sp.p_virt_table;
 	u32 page_cnt = p_chain->page_cnt, i, pbl_size;
 
 	if (!pp_virt_addr_tbl)
 		return;
 
-	if (!p_chain->pbl.p_virt_table)
+	if (!p_pbl_virt)
 		goto out;
 
 	for (i = 0; i < page_cnt; i++) {
@@ -3581,10 +3581,10 @@ static void ecore_chain_free_pbl(struct ecore_dev *p_dev,
 
 	pbl_size = page_cnt * ECORE_CHAIN_PBL_ENTRY_SIZE;
 
-	if (!p_chain->pbl.external)
-		OSAL_DMA_FREE_COHERENT(p_dev, p_chain->pbl.p_virt_table,
-				       p_chain->pbl.p_phys_table, pbl_size);
-out:
+	if (!p_chain->b_external_pbl)
+		OSAL_DMA_FREE_COHERENT(p_dev, p_chain->pbl_sp.p_virt_table,
+				       p_chain->pbl_sp.p_phys_table, pbl_size);
+ out:
 	OSAL_VFREE(p_dev, p_chain->pbl.pp_virt_addr_tbl);
 }
 
@@ -3716,7 +3716,7 @@ ecore_chain_alloc_pbl(struct ecore_dev *p_dev,
 	} else {
 		p_pbl_virt = ext_pbl->p_pbl_virt;
 		p_pbl_phys = ext_pbl->p_pbl_phys;
-		p_chain->pbl.external = true;
+		p_chain->b_external_pbl = true;
 	}
 
 	ecore_chain_init_pbl_mem(p_chain, p_pbl_virt, p_pbl_phys,
