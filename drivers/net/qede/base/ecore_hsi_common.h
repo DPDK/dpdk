@@ -836,7 +836,12 @@ struct core_rx_fast_path_cqe {
 	__le16 packet_length /* Total packet length (from the parser) */;
 	__le16 vlan /* 802.1q VLAN tag */;
 	struct core_rx_cqe_opaque_data opaque_data /* Opaque Data */;
-	__le32 reserved[4];
+/* bit- map: each bit represents a specific error. errors indications are
+ * provided by the cracker. see spec for detailed description
+ */
+	struct parsing_err_flags err_flags;
+	__le16 reserved0;
+	__le32 reserved1[3];
 };
 
 /*
@@ -1042,13 +1047,13 @@ struct core_tx_stop_ramrod_data {
 /*
  * Enum flag for what type of dcb data to update
  */
-enum dcb_dhcp_update_flag {
+enum dcb_dscp_update_mode {
 /* use when no change should be done to dcb data */
-	DONT_UPDATE_DCB_DHCP,
+	DONT_UPDATE_DCB_DSCP,
 	UPDATE_DCB /* use to update only l2 (vlan) priority */,
-	UPDATE_DSCP /* use to update only l3 dhcp */,
-	UPDATE_DCB_DSCP /* update vlan pri and dhcp */,
-	MAX_DCB_DHCP_UPDATE_FLAG
+	UPDATE_DSCP /* use to update only l3 dscp */,
+	UPDATE_DCB_DSCP /* update vlan pri and dscp */,
+	MAX_DCB_DSCP_UPDATE_FLAG
 };
 
 
@@ -1232,6 +1237,10 @@ enum iwarp_ll2_tx_queues {
 	IWARP_LL2_IN_ORDER_TX_QUEUE = 1,
 /* LL2 queue for unaligned packets sent aligned by the driver */
 	IWARP_LL2_ALIGNED_TX_QUEUE,
+/* LL2 queue for unaligned packets sent aligned and was right-trimmed by the
+ * driver
+ */
+	IWARP_LL2_ALIGNED_RIGHT_TRIMMED_TX_QUEUE,
 	IWARP_LL2_ERROR /* Error indication */,
 	MAX_IWARP_LL2_TX_QUEUES
 };
@@ -1446,13 +1455,13 @@ struct pf_update_tunnel_config {
  */
 struct pf_update_ramrod_data {
 	u8 pf_id;
-	u8 update_eth_dcb_data_flag /* Update Eth DCB  data indication */;
-	u8 update_fcoe_dcb_data_flag /* Update FCOE DCB  data indication */;
-	u8 update_iscsi_dcb_data_flag /* Update iSCSI DCB  data indication */;
-	u8 update_roce_dcb_data_flag /* Update ROCE DCB  data indication */;
+	u8 update_eth_dcb_data_mode /* Update Eth DCB  data indication */;
+	u8 update_fcoe_dcb_data_mode /* Update FCOE DCB  data indication */;
+	u8 update_iscsi_dcb_data_mode /* Update iSCSI DCB  data indication */;
+	u8 update_roce_dcb_data_mode /* Update ROCE DCB  data indication */;
 /* Update RROCE (RoceV2) DCB  data indication */
-	u8 update_rroce_dcb_data_flag;
-	u8 update_iwarp_dcb_data_flag /* Update IWARP DCB  data indication */;
+	u8 update_rroce_dcb_data_mode;
+	u8 update_iwarp_dcb_data_mode /* Update IWARP DCB  data indication */;
 	u8 update_mf_vlan_flag /* Update MF outer vlan Id */;
 	struct protocol_dcb_data eth_dcb_data /* core eth related fields */;
 	struct protocol_dcb_data fcoe_dcb_data /* core fcoe related fields */;
@@ -1611,6 +1620,8 @@ struct tstorm_per_port_stat {
 	struct regpair fcoe_irregular_pkt;
 /* packet is an ROCE irregular packet */
 	struct regpair roce_irregular_pkt;
+/* packet is an IWARP irregular packet */
+	struct regpair iwarp_irregular_pkt;
 /* packet is an ETH irregular packet */
 	struct regpair eth_irregular_pkt;
 /* packet is an TOE irregular packet */
@@ -1861,8 +1872,11 @@ struct dmae_cmd {
 #define DMAE_CMD_SRC_VF_ID_SHIFT       0
 #define DMAE_CMD_DST_VF_ID_MASK        0xFF /* Destination VF id */
 #define DMAE_CMD_DST_VF_ID_SHIFT       8
-	__le32 comp_addr_lo /* PCIe completion address low or grc address */;
-/* PCIe completion address high or reserved (if completion address is in GRC) */
+/* PCIe completion address low in bytes or GRC completion address in DW */
+	__le32 comp_addr_lo;
+/* PCIe completion address high in bytes or reserved (if completion address is
+ * GRC)
+ */
 	__le32 comp_addr_hi;
 	__le32 comp_val /* Value to write to completion address */;
 	__le32 crc32 /* crc16 result */;
@@ -2249,10 +2263,6 @@ struct sdm_op_gen {
 #define SDM_OP_GEN_RESERVED_MASK    0xFFF /* reserved 20-31 */
 #define SDM_OP_GEN_RESERVED_SHIFT   20
 };
-
-
-
-
 
 struct ystorm_core_conn_ag_ctx {
 	u8 byte0 /* cdu_validation */;

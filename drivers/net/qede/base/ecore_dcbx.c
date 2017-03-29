@@ -126,7 +126,7 @@ ecore_dcbx_set_params(struct ecore_dcbx_results *p_data,
 	else if (enable)
 		p_data->arr[type].update = UPDATE_DCB;
 	else
-		p_data->arr[type].update = DONT_UPDATE_DCB_DHCP;
+		p_data->arr[type].update = DONT_UPDATE_DCB_DSCP;
 
 	/* QM reconf data */
 	if (p_hwfn->hw_info.personality == personality) {
@@ -938,7 +938,7 @@ void ecore_dcbx_set_pf_update_params(struct ecore_dcbx_results *p_src,
 	p_dest->pf_id = p_src->pf_id;
 
 	update_flag = p_src->arr[DCBX_PROTOCOL_ETH].update;
-	p_dest->update_eth_dcb_data_flag = update_flag;
+	p_dest->update_eth_dcb_data_mode = update_flag;
 
 	p_dcb_data = &p_dest->eth_dcb_data;
 	ecore_dcbx_update_protocol_data(p_dcb_data, p_src, DCBX_PROTOCOL_ETH);

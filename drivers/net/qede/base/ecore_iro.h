@@ -185,5 +185,13 @@
 #define TSTORM_RDMA_QUEUE_STAT_OFFSET(rdma_stat_counter_id) (IRO[46].base + \
 	((rdma_stat_counter_id) * IRO[46].m1))
 #define TSTORM_RDMA_QUEUE_STAT_SIZE (IRO[46].size)
+/* Xstorm iWARP rxmit stats */
+#define XSTORM_IWARP_RXMIT_STATS_OFFSET(pf_id) (IRO[47].base + \
+	((pf_id) * IRO[47].m1))
+#define XSTORM_IWARP_RXMIT_STATS_SIZE (IRO[47].size)
+/* Tstorm RoCE Event Statistics */
+#define TSTORM_ROCE_EVENTS_STAT_OFFSET(roce_pf_id) (IRO[48].base + \
+	((roce_pf_id) * IRO[48].m1))
+#define TSTORM_ROCE_EVENTS_STAT_SIZE (IRO[48].size)
 
 #endif /* __IRO_H__ */

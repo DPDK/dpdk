@@ -93,10 +93,12 @@ enum block_addr {
 	GRCBASE_PHY_PCIE = 0x620000,
 	GRCBASE_LED = 0x6b8000,
 	GRCBASE_AVS_WRAP = 0x6b0000,
-	GRCBASE_RGFS = 0x19d0000,
-	GRCBASE_TGFS = 0x19e0000,
-	GRCBASE_PTLD = 0x19f0000,
-	GRCBASE_YPLD = 0x1a10000,
+	GRCBASE_RGFS = 0x1fa0000,
+	GRCBASE_RGSRC = 0x1fa8000,
+	GRCBASE_TGFS = 0x1fb0000,
+	GRCBASE_TGSRC = 0x1fb8000,
+	GRCBASE_PTLD = 0x1fc0000,
+	GRCBASE_YPLD = 0x1fe0000,
 	GRCBASE_MISC_AEU = 0x8000,
 	GRCBASE_BAR0_MAP = 0x1c00000,
 	MAX_BLOCK_ADDR
@@ -184,7 +186,9 @@ enum block_id {
 	BLOCK_LED,
 	BLOCK_AVS_WRAP,
 	BLOCK_RGFS,
+	BLOCK_RGSRC,
 	BLOCK_TGFS,
+	BLOCK_TGSRC,
 	BLOCK_PTLD,
 	BLOCK_YPLD,
 	BLOCK_MISC_AEU,
@@ -208,6 +212,10 @@ enum bin_dbg_buffer_type {
 	BIN_BUF_DBG_ATTN_REGS /* Attention registers */,
 	BIN_BUF_DBG_ATTN_INDEXES /* Attention indexes */,
 	BIN_BUF_DBG_ATTN_NAME_OFFSETS /* Attention name offsets */,
+	BIN_BUF_DBG_BUS_BLOCKS /* Debug Bus blocks */,
+	BIN_BUF_DBG_BUS_LINES /* Debug Bus lines */,
+	BIN_BUF_DBG_BUS_BLOCKS_USER_DATA /* Debug Bus blocks user data */,
+	BIN_BUF_DBG_BUS_LINE_NAME_OFFSETS /* Debug Bus line name offsets */,
 	BIN_BUF_DBG_PARSING_STRINGS /* Debug Tools parsing strings */,
 	MAX_BIN_DBG_BUFFER_TYPE
 };
@@ -219,8 +227,8 @@ enum bin_dbg_buffer_type {
 struct dbg_attn_bit_mapping {
 	__le16 data;
 /* The index of an attention in the blocks attentions list
- * (if is_unused_idx_cnt=0), or a number of consecutive unused attention bits
- * (if is_unused_idx_cnt=1)
+ * (if is_unused_bit_cnt=0), or a number of consecutive unused attention bits
+ * (if is_unused_bit_cnt=1)
  */
 #define DBG_ATTN_BIT_MAPPING_VAL_MASK                0x7FFF
 #define DBG_ATTN_BIT_MAPPING_VAL_SHIFT               0
@@ -269,10 +277,10 @@ struct dbg_attn_reg_result {
 #define DBG_ATTN_REG_RESULT_STS_ADDRESS_MASK   0xFFFFFF
 #define DBG_ATTN_REG_RESULT_STS_ADDRESS_SHIFT  0
 /* Number of attention indexes in this register */
-#define DBG_ATTN_REG_RESULT_NUM_ATTN_IDX_MASK  0xFF
-#define DBG_ATTN_REG_RESULT_NUM_ATTN_IDX_SHIFT 24
-/* Offset of this registers block attention indexes (values in the range
- * 0..number of block attentions)
+#define DBG_ATTN_REG_RESULT_NUM_REG_ATTN_MASK  0xFF
+#define DBG_ATTN_REG_RESULT_NUM_REG_ATTN_SHIFT 24
+/* The offset of this registers attentions within the blocks attentions
+ * list (a value in the range 0..number of block attentions-1)
  */
 	__le16 attn_idx_offset;
 	__le16 reserved;
@@ -289,7 +297,7 @@ struct dbg_attn_block_result {
 /* Value from dbg_attn_type enum */
 #define DBG_ATTN_BLOCK_RESULT_ATTN_TYPE_MASK  0x3
 #define DBG_ATTN_BLOCK_RESULT_ATTN_TYPE_SHIFT 0
-/* Number of registers in the blok in which at least one attention bit is set */
+/* Number of registers in block in which at least one attention bit is set */
 #define DBG_ATTN_BLOCK_RESULT_NUM_REGS_MASK   0x3F
 #define DBG_ATTN_BLOCK_RESULT_NUM_REGS_SHIFT  2
 /* Offset of this registers block attention names in the attention name offsets
@@ -324,17 +332,17 @@ struct dbg_mode_hdr {
  */
 struct dbg_attn_reg {
 	struct dbg_mode_hdr mode /* Mode header */;
-/* Offset of this registers block attention indexes (values in the range
- * 0..number of block attentions)
+/* The offset of this registers attentions within the blocks attentions
+ * list (a value in the range 0..number of block attentions-1)
  */
 	__le16 attn_idx_offset;
 	__le32 data;
 /* STS attention register GRC address (in dwords) */
 #define DBG_ATTN_REG_STS_ADDRESS_MASK   0xFFFFFF
 #define DBG_ATTN_REG_STS_ADDRESS_SHIFT  0
-/* Number of attention indexes in this register */
-#define DBG_ATTN_REG_NUM_ATTN_IDX_MASK  0xFF
-#define DBG_ATTN_REG_NUM_ATTN_IDX_SHIFT 24
+/* Number of attention in this register */
+#define DBG_ATTN_REG_NUM_REG_ATTN_MASK  0xFF
+#define DBG_ATTN_REG_NUM_REG_ATTN_SHIFT 24
 /* STS_CLR attention register GRC address (in dwords) */
 	__le32 sts_clr_address;
 /* MASK attention register GRC address (in dwords) */
@@ -350,6 +358,53 @@ enum dbg_attn_type {
 	ATTN_TYPE_INTERRUPT,
 	ATTN_TYPE_PARITY,
 	MAX_DBG_ATTN_TYPE
+};
+
+
+/*
+ * Debug Bus block data
+ */
+struct dbg_bus_block {
+/* Number of debug lines in this block (excluding signature & latency events) */
+	u8 num_of_lines;
+/* Indicates if this block has a latency events debug line (0/1). */
+	u8 has_latency_events;
+/* Offset of this blocks lines in the Debug Bus lines array. */
+	__le16 lines_offset;
+};
+
+
+/*
+ * Debug Bus block user data
+ */
+struct dbg_bus_block_user_data {
+/* Number of debug lines in this block (excluding signature & latency events) */
+	u8 num_of_lines;
+/* Indicates if this block has a latency events debug line (0/1). */
+	u8 has_latency_events;
+/* Offset of this blocks lines in the debug bus line name offsets array. */
+	__le16 names_offset;
+};
+
+
+/*
+ * Block Debug line data
+ */
+struct dbg_bus_line {
+	u8 data;
+/* Number of groups in the line (0-3) */
+#define DBG_BUS_LINE_NUM_OF_GROUPS_MASK  0xF
+#define DBG_BUS_LINE_NUM_OF_GROUPS_SHIFT 0
+/* Indicates if this is a 128b line (0) or a 256b line (1). */
+#define DBG_BUS_LINE_IS_256B_MASK        0x1
+#define DBG_BUS_LINE_IS_256B_SHIFT       4
+#define DBG_BUS_LINE_RESERVED_MASK       0x7
+#define DBG_BUS_LINE_RESERVED_SHIFT      5
+/* Four 2-bit values, indicating the size of each group minus 1 (i.e.
+ * value=0 means size=1, value=1 means size=2, etc), starting from lsb.
+ * The sizes are in dwords (if is_256b=0) or in qwords (if is_256b=1).
+ */
+	u8 group_sizes;
 };
 
 
@@ -377,8 +432,11 @@ struct dbg_dump_mem {
 /* register size (in dwords) */
 #define DBG_DUMP_MEM_LENGTH_MASK        0xFFFFFF
 #define DBG_DUMP_MEM_LENGTH_SHIFT       0
-#define DBG_DUMP_MEM_RESERVED_MASK      0xFF
-#define DBG_DUMP_MEM_RESERVED_SHIFT     24
+/* indicates if the register is wide-bus */
+#define DBG_DUMP_MEM_WIDE_BUS_MASK      0x1
+#define DBG_DUMP_MEM_WIDE_BUS_SHIFT     24
+#define DBG_DUMP_MEM_RESERVED_MASK      0x7F
+#define DBG_DUMP_MEM_RESERVED_SHIFT     25
 };
 
 
@@ -388,10 +446,13 @@ struct dbg_dump_mem {
 struct dbg_dump_reg {
 	__le32 data;
 /* register address (in dwords) */
-#define DBG_DUMP_REG_ADDRESS_MASK  0xFFFFFF
-#define DBG_DUMP_REG_ADDRESS_SHIFT 0
-#define DBG_DUMP_REG_LENGTH_MASK   0xFF /* register size (in dwords) */
-#define DBG_DUMP_REG_LENGTH_SHIFT  24
+#define DBG_DUMP_REG_ADDRESS_MASK   0x7FFFFF /* register address (in dwords) */
+#define DBG_DUMP_REG_ADDRESS_SHIFT  0
+/* indicates if the register is wide-bus */
+#define DBG_DUMP_REG_WIDE_BUS_MASK  0x1
+#define DBG_DUMP_REG_WIDE_BUS_SHIFT 23
+#define DBG_DUMP_REG_LENGTH_MASK    0xFF /* register size (in dwords) */
+#define DBG_DUMP_REG_LENGTH_SHIFT   24
 };
 
 
@@ -424,8 +485,11 @@ struct dbg_idle_chk_cond_hdr {
 struct dbg_idle_chk_cond_reg {
 	__le32 data;
 /* Register GRC address (in dwords) */
-#define DBG_IDLE_CHK_COND_REG_ADDRESS_MASK   0xFFFFFF
+#define DBG_IDLE_CHK_COND_REG_ADDRESS_MASK   0x7FFFFF
 #define DBG_IDLE_CHK_COND_REG_ADDRESS_SHIFT  0
+/* indicates if the register is wide-bus */
+#define DBG_IDLE_CHK_COND_REG_WIDE_BUS_MASK  0x1
+#define DBG_IDLE_CHK_COND_REG_WIDE_BUS_SHIFT 23
 /* value from block_id enum */
 #define DBG_IDLE_CHK_COND_REG_BLOCK_ID_MASK  0xFF
 #define DBG_IDLE_CHK_COND_REG_BLOCK_ID_SHIFT 24
@@ -441,8 +505,11 @@ struct dbg_idle_chk_cond_reg {
 struct dbg_idle_chk_info_reg {
 	__le32 data;
 /* Register GRC address (in dwords) */
-#define DBG_IDLE_CHK_INFO_REG_ADDRESS_MASK   0xFFFFFF
+#define DBG_IDLE_CHK_INFO_REG_ADDRESS_MASK   0x7FFFFF
 #define DBG_IDLE_CHK_INFO_REG_ADDRESS_SHIFT  0
+/* indicates if the register is wide-bus */
+#define DBG_IDLE_CHK_INFO_REG_WIDE_BUS_MASK  0x1
+#define DBG_IDLE_CHK_INFO_REG_WIDE_BUS_SHIFT 23
 /* value from block_id enum */
 #define DBG_IDLE_CHK_INFO_REG_BLOCK_ID_MASK  0xFF
 #define DBG_IDLE_CHK_INFO_REG_BLOCK_ID_SHIFT 24
@@ -544,17 +611,21 @@ enum dbg_idle_chk_severity_types {
  * Debug Bus block data
  */
 struct dbg_bus_block_data {
-/* Indicates if the block is enabled for recording (0/1) */
-	u8 enabled;
-	u8 hw_id /* HW ID associated with the block */;
+	__le16 data;
+/* 4-bit value: bit i set -> dword/qword i is enabled. */
+#define DBG_BUS_BLOCK_DATA_ENABLE_MASK_MASK       0xF
+#define DBG_BUS_BLOCK_DATA_ENABLE_MASK_SHIFT      0
+/* Number of dwords/qwords to shift right the debug data (0-3) */
+#define DBG_BUS_BLOCK_DATA_RIGHT_SHIFT_MASK       0xF
+#define DBG_BUS_BLOCK_DATA_RIGHT_SHIFT_SHIFT      4
+/* 4-bit value: bit i set -> dword/qword i is forced valid. */
+#define DBG_BUS_BLOCK_DATA_FORCE_VALID_MASK_MASK  0xF
+#define DBG_BUS_BLOCK_DATA_FORCE_VALID_MASK_SHIFT 8
+/* 4-bit value: bit i set -> dword/qword i frame bit is forced. */
+#define DBG_BUS_BLOCK_DATA_FORCE_FRAME_MASK_MASK  0xF
+#define DBG_BUS_BLOCK_DATA_FORCE_FRAME_MASK_SHIFT 12
 	u8 line_num /* Debug line number to select */;
-	u8 right_shift /* Number of units to  right the debug data (0-3) */;
-	u8 cycle_en /* 4-bit value: bit i set -> unit i is enabled. */;
-/* 4-bit value: bit i set -> unit i is forced valid. */
-	u8 force_valid;
-/* 4-bit value: bit i set -> unit i frame bit is forced. */
-	u8 force_frame;
-	u8 reserved;
+	u8 hw_id /* HW ID associated with the block */;
 };
 
 
@@ -604,6 +675,21 @@ enum dbg_bus_constraint_ops {
 
 
 /*
+ * Debug Bus trigger state data
+ */
+struct dbg_bus_trigger_state_data {
+	u8 data;
+/* 4-bit value: bit i set -> dword i of the trigger state block
+ * (after right shift) is enabled.
+ */
+#define DBG_BUS_TRIGGER_STATE_DATA_BLOCK_SHIFTED_ENABLE_MASK_MASK  0xF
+#define DBG_BUS_TRIGGER_STATE_DATA_BLOCK_SHIFTED_ENABLE_MASK_SHIFT 0
+/* 4-bit value: bit i set -> dword i is compared by a constraint */
+#define DBG_BUS_TRIGGER_STATE_DATA_CONSTRAINT_DWORD_MASK_MASK      0xF
+#define DBG_BUS_TRIGGER_STATE_DATA_CONSTRAINT_DWORD_MASK_SHIFT     4
+};
+
+/*
  * Debug Bus memory address
  */
 struct dbg_bus_mem_addr {
@@ -650,14 +736,8 @@ union dbg_bus_storm_eid_params {
  * Debug Bus Storm data
  */
 struct dbg_bus_storm_data {
-/* Indicates if the Storm is enabled for fast debug recording (0/1) */
-	u8 fast_enabled;
-/* Fast debug Storm mode, valid only if fast_enabled is set */
-	u8 fast_mode;
-/* Indicates if the Storm is enabled for slow debug recording (0/1) */
-	u8 slow_enabled;
-/* Slow debug Storm mode, valid only if slow_enabled is set */
-	u8 slow_mode;
+	u8 enabled /* indicates if the Storm is enabled for recording */;
+	u8 mode /* Storm debug mode, valid only if the Storm is enabled */;
 	u8 hw_id /* HW ID associated with the Storm */;
 	u8 eid_filter_en /* Indicates if EID filtering is performed (0/1) */;
 /* 1 = EID range filter, 0 = EID mask filter. Valid only if eid_filter_en is
@@ -667,7 +747,6 @@ struct dbg_bus_storm_data {
 	u8 cid_filter_en /* Indicates if CID filtering is performed (0/1) */;
 /* EID filter params to filter on. Valid only if eid_filter_en is set. */
 	union dbg_bus_storm_eid_params eid_filter_params;
-	__le16 reserved;
 /* CID to filter on. Valid only if cid_filter_en is set. */
 	__le32 cid;
 };
@@ -679,20 +758,18 @@ struct dbg_bus_data {
 	__le32 app_version /* The tools version number of the application */;
 	u8 state /* The current debug bus state */;
 	u8 hw_dwords /* HW dwords per cycle */;
-	u8 next_hw_id /* Next HW ID to be associated with an input */;
+/* The HW IDs of the recorded HW blocks, where bits i*3..i*3+2 contain the
+ * HW ID of dword/qword i
+ */
+	__le16 hw_id_mask;
 	u8 num_enabled_blocks /* Number of blocks enabled for recording */;
 	u8 num_enabled_storms /* Number of Storms enabled for recording */;
 	u8 target /* Output target */;
-	u8 next_trigger_state /* ID of next trigger state to be added */;
-/* ID of next filter/trigger constraint to be added */
-	u8 next_constraint_id;
 	u8 one_shot_en /* Indicates if one-shot mode is enabled (0/1) */;
 	u8 grc_input_en /* Indicates if GRC recording is enabled (0/1) */;
 /* Indicates if timestamp recording is enabled (0/1) */
 	u8 timestamp_input_en;
 	u8 filter_en /* Indicates if the recording filter is enabled (0/1) */;
-/* Indicates if the recording trigger is enabled (0/1) */
-	u8 trigger_en;
 /* If true, the next added constraint belong to the filter. Otherwise,
  * it belongs to the last added trigger state. Valid only if either filter or
  * triggers are enabled.
@@ -706,6 +783,14 @@ struct dbg_bus_data {
  * Valid only if both filter and trigger are enabled (0/1)
  */
 	u8 filter_post_trigger;
+	__le16 reserved;
+/* Indicates if the recording trigger is enabled (0/1) */
+	u8 trigger_en;
+/* trigger states data */
+	struct dbg_bus_trigger_state_data trigger_states[3];
+	u8 next_trigger_state /* ID of next trigger state to be added */;
+/* ID of next filter/trigger constraint to be added */
+	u8 next_constraint_id;
 /* If true, all inputs are associated with HW ID 0. Otherwise, each input is
  * assigned a different HW ID (0/1)
  */
@@ -716,7 +801,6 @@ struct dbg_bus_data {
  * DBG_BUS_TARGET_ID_PCI.
  */
 	struct dbg_bus_pci_buf_data pci_buf;
-	__le16 reserved;
 /* Debug Bus data for each block */
 	struct dbg_bus_block_data blocks[88];
 /* Debug Bus data for each block */
@@ -745,17 +829,6 @@ enum dbg_bus_frame_modes {
 	DBG_BUS_FRAME_MODE_8HW_0ST = 4 /* 8 HW dwords, 0 Storm dwords */,
 	MAX_DBG_BUS_FRAME_MODES
 };
-
-
-/*
- * Debug bus input types
- */
-enum dbg_bus_input_types {
-	DBG_BUS_INPUT_TYPE_STORM,
-	DBG_BUS_INPUT_TYPE_BLOCK,
-	MAX_DBG_BUS_INPUT_TYPES
-};
-
 
 
 /*
@@ -850,6 +923,7 @@ enum dbg_bus_targets {
 	DBG_BUS_TARGET_ID_PCI /* records debug bus to a PCI buffer */,
 	MAX_DBG_BUS_TARGETS
 };
+
 
 
 /*
@@ -987,7 +1061,10 @@ enum dbg_status {
 	DBG_STATUS_REG_FIFO_BAD_DATA,
 	DBG_STATUS_PROTECTION_OVERRIDE_BAD_DATA,
 	DBG_STATUS_DBG_ARRAY_NOT_SET,
-	DBG_STATUS_MULTI_BLOCKS_WITH_FILTER,
+	DBG_STATUS_FILTER_BUG,
+	DBG_STATUS_NON_MATCHING_LINES,
+	DBG_STATUS_INVALID_TRIGGER_DWORD_OFFSET,
+	DBG_STATUS_DBG_BUS_IN_USE,
 	MAX_DBG_STATUS
 };
 
@@ -1028,7 +1105,7 @@ struct dbg_tools_data {
 /* Indicates if a block is in reset state (0/1) */
 	u8 block_in_reset[88];
 	u8 chip_id /* Chip ID (from enum chip_ids) */;
-	u8 platform_id /* Platform ID (from enum platform_ids) */;
+	u8 platform_id /* Platform ID */;
 	u8 initialized /* Indicates if the data was initialized */;
 	u8 reserved;
 };

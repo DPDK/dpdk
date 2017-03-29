@@ -739,6 +739,7 @@ enum eth_error_code {
 	ETH_FILTERS_VNI_ADD_FAIL_FULL,
 /* vni add filters command failed due to duplicate VNI filter */
 	ETH_FILTERS_VNI_ADD_FAIL_DUP,
+	ETH_FILTERS_GFT_UPDATE_FAIL /* Fail update GFT filter. */,
 	MAX_ETH_ERROR_CODE
 };
 
@@ -982,8 +983,10 @@ struct eth_vport_rss_config {
 	u8 rss_id;
 	u8 rss_mode /* The RSS mode for this function */;
 	u8 update_rss_key /* if set update the rss key */;
-	u8 update_rss_ind_table /* if set update the indirection table */;
-	u8 update_rss_capabilities /* if set update the capabilities */;
+/* if set update the indirection table values */
+	u8 update_rss_ind_table;
+/* if set update the capabilities and indirection table size. */
+	u8 update_rss_capabilities;
 	u8 tbl_size /* rss mask (Tbl size) */;
 	__le32 reserved2[2];
 /* RSS indirection table */
@@ -1267,7 +1270,10 @@ struct rx_update_gft_filter_data {
 /* Use enum to set type of flow using gft HW logic blocks */
 	u8 filter_type;
 	u8 filter_action /* Use to set type of action on filter */;
-	u8 reserved;
+/* 0 - dont assert in case of error. Just return an error code. 1 - assert in
+ * case of error.
+ */
+	u8 assert_on_error;
 };
 
 
@@ -2290,8 +2296,7 @@ enum gft_profile_upper_protocol_type {
  * GFT RAM line struct
  */
 struct gft_ram_line {
-	__le32 low32bits;
-/*  (use enum gft_vlan_select) */
+	__le32 lo;
 #define GFT_RAM_LINE_VLAN_SELECT_MASK              0x3
 #define GFT_RAM_LINE_VLAN_SELECT_SHIFT             0
 #define GFT_RAM_LINE_TUNNEL_ENTROPHY_MASK          0x1
@@ -2354,7 +2359,7 @@ struct gft_ram_line {
 #define GFT_RAM_LINE_DST_PORT_SHIFT                30
 #define GFT_RAM_LINE_SRC_PORT_MASK                 0x1
 #define GFT_RAM_LINE_SRC_PORT_SHIFT                31
-	__le32 high32bits;
+	__le32 hi;
 #define GFT_RAM_LINE_DSCP_MASK                     0x1
 #define GFT_RAM_LINE_DSCP_SHIFT                    0
 #define GFT_RAM_LINE_OVER_IP_PROTOCOL_MASK         0x1

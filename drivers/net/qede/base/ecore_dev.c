@@ -814,7 +814,7 @@ static enum _ecore_status_t ecore_calc_hw_mode(struct ecore_hwfn *p_hwfn)
 	int hw_mode = 0;
 
 	if (ECORE_IS_BB_B0(p_hwfn->p_dev)) {
-		hw_mode |= 1 << MODE_BB_B0;
+		hw_mode |= 1 << MODE_BB;
 	} else if (ECORE_IS_AH(p_hwfn->p_dev)) {
 		hw_mode |= 1 << MODE_K2;
 	} else {
@@ -886,29 +886,36 @@ static enum _ecore_status_t ecore_calc_hw_mode(struct ecore_hwfn *p_hwfn)
 static enum _ecore_status_t ecore_hw_init_chip(struct ecore_hwfn *p_hwfn,
 					       struct ecore_ptt *p_ptt)
 {
+	struct ecore_dev *p_dev = p_hwfn->p_dev;
 	u32 pl_hv = 1;
 	int i;
 
-	if (CHIP_REV_IS_EMUL(p_hwfn->p_dev) && ECORE_IS_AH(p_hwfn->p_dev))
-		pl_hv |= 0x600;
+	if (CHIP_REV_IS_EMUL(p_dev)) {
+		if (ECORE_IS_AH(p_dev))
+			pl_hv |= 0x600;
+	}
 
 	ecore_wr(p_hwfn, p_ptt, MISCS_REG_RESET_PL_HV + 4, pl_hv);
 
-	if (CHIP_REV_IS_EMUL(p_hwfn->p_dev) && ECORE_IS_AH(p_hwfn->p_dev))
-		ecore_wr(p_hwfn, p_ptt, MISCS_REG_RESET_PL_HV_2, 0x3ffffff);
+	if (CHIP_REV_IS_EMUL(p_dev) &&
+	    (ECORE_IS_AH(p_dev)))
+		ecore_wr(p_hwfn, p_ptt, MISCS_REG_RESET_PL_HV_2_K2_E5,
+			 0x3ffffff);
 
 	/* initialize port mode to 4x10G_E (10G with 4x10 SERDES) */
 	/* CNIG_REG_NW_PORT_MODE is same for A0 and B0 */
-	if (!CHIP_REV_IS_EMUL(p_hwfn->p_dev) || !ECORE_IS_AH(p_hwfn->p_dev))
-		ecore_wr(p_hwfn, p_ptt, CNIG_REG_NW_PORT_MODE_BB_B0, 4);
+	if (!CHIP_REV_IS_EMUL(p_dev) || ECORE_IS_BB(p_dev))
+		ecore_wr(p_hwfn, p_ptt, CNIG_REG_NW_PORT_MODE_BB, 4);
 
-	if (CHIP_REV_IS_EMUL(p_hwfn->p_dev) && ECORE_IS_AH(p_hwfn->p_dev)) {
-		/* 2 for 4-port, 1 for 2-port, 0 for 1-port */
-		ecore_wr(p_hwfn, p_ptt, MISC_REG_PORT_MODE,
-			 (p_hwfn->p_dev->num_ports_in_engines >> 1));
+	if (CHIP_REV_IS_EMUL(p_dev)) {
+		if (ECORE_IS_AH(p_dev)) {
+			/* 2 for 4-port, 1 for 2-port, 0 for 1-port */
+			ecore_wr(p_hwfn, p_ptt, MISC_REG_PORT_MODE,
+				 (p_dev->num_ports_in_engines >> 1));
 
-		ecore_wr(p_hwfn, p_ptt, MISC_REG_BLOCK_256B_EN,
-			 p_hwfn->p_dev->num_ports_in_engines == 4 ? 0 : 3);
+			ecore_wr(p_hwfn, p_ptt, MISC_REG_BLOCK_256B_EN,
+				 p_dev->num_ports_in_engines == 4 ? 0 : 3);
+		}
 	}
 
 	/* Poll on RBC */
@@ -1051,12 +1058,6 @@ static enum _ecore_status_t ecore_hw_init_common(struct ecore_hwfn *p_hwfn,
 	/* pretend to original PF */
 	ecore_fid_pretend(p_hwfn, p_ptt, p_hwfn->rel_pf_id);
 
-	/* @@@TMP:
-	 * CQ89456 - Mask the BRB "RC0_EOP_OUT_SYNC_FIFO_PUSH_ERROR" attention.
-	 */
-	if (ECORE_IS_AH(p_dev))
-		ecore_wr(p_hwfn, p_ptt, BRB_REG_INT_MASK_10, 0x4000000);
-
 	return rc;
 }
 
@@ -1072,20 +1073,19 @@ static void ecore_wr_nw_port(struct ecore_hwfn *p_hwfn,
 {
 	DP_VERBOSE(p_hwfn, ECORE_MSG_LINK,
 		   "CMD: %08x, ADDR: 0x%08x, DATA: %08x:%08x\n",
-		   ecore_rd(p_hwfn, p_ptt, CNIG_REG_PMEG_IF_CMD_BB_B0) |
+		   ecore_rd(p_hwfn, p_ptt, CNIG_REG_PMEG_IF_CMD_BB) |
 		   (8 << PMEG_IF_BYTE_COUNT),
 		   (reg_type << 25) | (addr << 8) | port,
 		   (u32)((data >> 32) & 0xffffffff),
 		   (u32)(data & 0xffffffff));
 
-	ecore_wr(p_hwfn, p_ptt, CNIG_REG_PMEG_IF_CMD_BB_B0,
-		 (ecore_rd(p_hwfn, p_ptt, CNIG_REG_PMEG_IF_CMD_BB_B0) &
+	ecore_wr(p_hwfn, p_ptt, CNIG_REG_PMEG_IF_CMD_BB,
+		 (ecore_rd(p_hwfn, p_ptt, CNIG_REG_PMEG_IF_CMD_BB) &
 		  0xffff00fe) | (8 << PMEG_IF_BYTE_COUNT));
-	ecore_wr(p_hwfn, p_ptt, CNIG_REG_PMEG_IF_ADDR_BB_B0,
+	ecore_wr(p_hwfn, p_ptt, CNIG_REG_PMEG_IF_ADDR_BB,
 		 (reg_type << 25) | (addr << 8) | port);
-	ecore_wr(p_hwfn, p_ptt, CNIG_REG_PMEG_IF_WRDATA_BB_B0,
-		 data & 0xffffffff);
-	ecore_wr(p_hwfn, p_ptt, CNIG_REG_PMEG_IF_WRDATA_BB_B0,
+	ecore_wr(p_hwfn, p_ptt, CNIG_REG_PMEG_IF_WRDATA_BB, data & 0xffffffff);
+	ecore_wr(p_hwfn, p_ptt, CNIG_REG_PMEG_IF_WRDATA_BB,
 		 (data >> 32) & 0xffffffff);
 }
 
@@ -1101,47 +1101,12 @@ static void ecore_wr_nw_port(struct ecore_hwfn *p_hwfn,
 #define XLMAC_PAUSE_CTRL (0x60d)
 #define XLMAC_PFC_CTRL (0x60e)
 
-static void ecore_emul_link_init_ah(struct ecore_hwfn *p_hwfn,
+static void ecore_emul_link_init_bb(struct ecore_hwfn *p_hwfn,
 				    struct ecore_ptt *p_ptt)
-{
-	u8 port = p_hwfn->port_id;
-	u32 mac_base = NWM_REG_MAC0 + (port << 2) * NWM_REG_MAC0_SIZE;
-
-	ecore_wr(p_hwfn, p_ptt, CNIG_REG_NIG_PORT0_CONF_K2 + (port << 2),
-		 (1 << CNIG_REG_NIG_PORT0_CONF_NIG_PORT_ENABLE_0_SHIFT) |
-		 (port << CNIG_REG_NIG_PORT0_CONF_NIG_PORT_NWM_PORT_MAP_0_SHIFT)
-		 | (0 << CNIG_REG_NIG_PORT0_CONF_NIG_PORT_RATE_0_SHIFT));
-
-	ecore_wr(p_hwfn, p_ptt, mac_base + ETH_MAC_REG_XIF_MODE,
-		 1 << ETH_MAC_REG_XIF_MODE_XGMII_SHIFT);
-
-	ecore_wr(p_hwfn, p_ptt, mac_base + ETH_MAC_REG_FRM_LENGTH,
-		 9018 << ETH_MAC_REG_FRM_LENGTH_FRM_LENGTH_SHIFT);
-
-	ecore_wr(p_hwfn, p_ptt, mac_base + ETH_MAC_REG_TX_IPG_LENGTH,
-		 0xc << ETH_MAC_REG_TX_IPG_LENGTH_TXIPG_SHIFT);
-
-	ecore_wr(p_hwfn, p_ptt, mac_base + ETH_MAC_REG_RX_FIFO_SECTIONS,
-		 8 << ETH_MAC_REG_RX_FIFO_SECTIONS_RX_SECTION_FULL_SHIFT);
-
-	ecore_wr(p_hwfn, p_ptt, mac_base + ETH_MAC_REG_TX_FIFO_SECTIONS,
-		 (0xA << ETH_MAC_REG_TX_FIFO_SECTIONS_TX_SECTION_EMPTY_SHIFT) |
-		 (8 << ETH_MAC_REG_TX_FIFO_SECTIONS_TX_SECTION_FULL_SHIFT));
-
-	ecore_wr(p_hwfn, p_ptt, mac_base + ETH_MAC_REG_COMMAND_CONFIG, 0xa853);
-}
-
-static void ecore_emul_link_init(struct ecore_hwfn *p_hwfn,
-				 struct ecore_ptt *p_ptt)
 {
 	u8 loopback = 0, port = p_hwfn->port_id * 2;
 
 	DP_INFO(p_hwfn->p_dev, "Configurating Emulation Link %02x\n", port);
-
-	if (ECORE_IS_AH(p_hwfn->p_dev)) {
-		ecore_emul_link_init_ah(p_hwfn, p_ptt);
-		return;
-	}
 
 	/* XLPORT MAC MODE *//* 0 Quad, 4 Single... */
 	ecore_wr_nw_port(p_hwfn, p_ptt, XLPORT_MODE_REG, (0x4 << 4) | 0x4, 1,
@@ -1171,8 +1136,53 @@ static void ecore_emul_link_init(struct ecore_hwfn *p_hwfn,
 	ecore_wr_nw_port(p_hwfn, p_ptt, XLPORT_ENABLE_REG, 0xf, 1, port);
 }
 
-static void ecore_link_init(struct ecore_hwfn *p_hwfn,
-			    struct ecore_ptt *p_ptt, u8 port)
+static void ecore_emul_link_init_ah_e5(struct ecore_hwfn *p_hwfn,
+				       struct ecore_ptt *p_ptt)
+{
+	u8 port = p_hwfn->port_id;
+	u32 mac_base = NWM_REG_MAC0_K2_E5 + (port << 2) * NWM_REG_MAC0_SIZE;
+
+	DP_INFO(p_hwfn->p_dev, "Configurating Emulation Link %02x\n", port);
+
+	ecore_wr(p_hwfn, p_ptt, CNIG_REG_NIG_PORT0_CONF_K2_E5 + (port << 2),
+		 (1 << CNIG_REG_NIG_PORT0_CONF_NIG_PORT_ENABLE_0_K2_E5_SHIFT) |
+		 (port <<
+		  CNIG_REG_NIG_PORT0_CONF_NIG_PORT_NWM_PORT_MAP_0_K2_E5_SHIFT) |
+		 (0 << CNIG_REG_NIG_PORT0_CONF_NIG_PORT_RATE_0_K2_E5_SHIFT));
+
+	ecore_wr(p_hwfn, p_ptt, mac_base + ETH_MAC_REG_XIF_MODE_K2_E5,
+		 1 << ETH_MAC_REG_XIF_MODE_XGMII_K2_E5_SHIFT);
+
+	ecore_wr(p_hwfn, p_ptt, mac_base + ETH_MAC_REG_FRM_LENGTH_K2_E5,
+		 9018 << ETH_MAC_REG_FRM_LENGTH_FRM_LENGTH_K2_E5_SHIFT);
+
+	ecore_wr(p_hwfn, p_ptt, mac_base + ETH_MAC_REG_TX_IPG_LENGTH_K2_E5,
+		 0xc << ETH_MAC_REG_TX_IPG_LENGTH_TXIPG_K2_E5_SHIFT);
+
+	ecore_wr(p_hwfn, p_ptt, mac_base + ETH_MAC_REG_RX_FIFO_SECTIONS_K2_E5,
+		 8 << ETH_MAC_REG_RX_FIFO_SECTIONS_RX_SECTION_FULL_K2_E5_SHIFT);
+
+	ecore_wr(p_hwfn, p_ptt, mac_base + ETH_MAC_REG_TX_FIFO_SECTIONS_K2_E5,
+		 (0xA <<
+		  ETH_MAC_REG_TX_FIFO_SECTIONS_TX_SECTION_EMPTY_K2_E5_SHIFT) |
+		 (8 <<
+		  ETH_MAC_REG_TX_FIFO_SECTIONS_TX_SECTION_FULL_K2_E5_SHIFT));
+
+	ecore_wr(p_hwfn, p_ptt, mac_base + ETH_MAC_REG_COMMAND_CONFIG_K2_E5,
+		 0xa853);
+}
+
+static void ecore_emul_link_init(struct ecore_hwfn *p_hwfn,
+				 struct ecore_ptt *p_ptt)
+{
+	if (ECORE_IS_AH(p_hwfn->p_dev))
+		ecore_emul_link_init_ah_e5(p_hwfn, p_ptt);
+	else /* BB */
+		ecore_emul_link_init_bb(p_hwfn, p_ptt);
+}
+
+static void ecore_link_init_bb(struct ecore_hwfn *p_hwfn,
+			       struct ecore_ptt *p_ptt,  u8 port)
 {
 	int port_offset = port ? 0x800 : 0;
 	u32 xmac_rxctrl = 0;
@@ -1185,10 +1195,10 @@ static void ecore_link_init(struct ecore_hwfn *p_hwfn,
 	ecore_wr(p_hwfn, p_ptt, MISC_REG_RESET_PL_PDA_VAUX + sizeof(u32),
 		 MISC_REG_RESET_REG_2_XMAC_BIT);	/* Set */
 
-	ecore_wr(p_hwfn, p_ptt, MISC_REG_XMAC_CORE_PORT_MODE, 1);
+	ecore_wr(p_hwfn, p_ptt, MISC_REG_XMAC_CORE_PORT_MODE_BB, 1);
 
 	/* Set the number of ports on the Warp Core to 10G */
-	ecore_wr(p_hwfn, p_ptt, MISC_REG_XMAC_PHY_PORT_MODE, 3);
+	ecore_wr(p_hwfn, p_ptt, MISC_REG_XMAC_PHY_PORT_MODE_BB, 3);
 
 	/* Soft reset of XMAC */
 	ecore_wr(p_hwfn, p_ptt, MISC_REG_RESET_PL_PDA_VAUX + 2 * sizeof(u32),
@@ -1199,20 +1209,21 @@ static void ecore_link_init(struct ecore_hwfn *p_hwfn,
 
 	/* FIXME: move to common end */
 	if (CHIP_REV_IS_FPGA(p_hwfn->p_dev))
-		ecore_wr(p_hwfn, p_ptt, XMAC_REG_MODE + port_offset, 0x20);
+		ecore_wr(p_hwfn, p_ptt, XMAC_REG_MODE_BB + port_offset, 0x20);
 
 	/* Set Max packet size: initialize XMAC block register for port 0 */
-	ecore_wr(p_hwfn, p_ptt, XMAC_REG_RX_MAX_SIZE + port_offset, 0x2710);
+	ecore_wr(p_hwfn, p_ptt, XMAC_REG_RX_MAX_SIZE_BB + port_offset, 0x2710);
 
 	/* CRC append for Tx packets: init XMAC block register for port 1 */
-	ecore_wr(p_hwfn, p_ptt, XMAC_REG_TX_CTRL_LO + port_offset, 0xC800);
+	ecore_wr(p_hwfn, p_ptt, XMAC_REG_TX_CTRL_LO_BB + port_offset, 0xC800);
 
 	/* Enable TX and RX: initialize XMAC block register for port 1 */
-	ecore_wr(p_hwfn, p_ptt, XMAC_REG_CTRL + port_offset,
-		 XMAC_REG_CTRL_TX_EN | XMAC_REG_CTRL_RX_EN);
-	xmac_rxctrl = ecore_rd(p_hwfn, p_ptt, XMAC_REG_RX_CTRL + port_offset);
-	xmac_rxctrl |= XMAC_REG_RX_CTRL_PROCESS_VARIABLE_PREAMBLE;
-	ecore_wr(p_hwfn, p_ptt, XMAC_REG_RX_CTRL + port_offset, xmac_rxctrl);
+	ecore_wr(p_hwfn, p_ptt, XMAC_REG_CTRL_BB + port_offset,
+		 XMAC_REG_CTRL_TX_EN_BB | XMAC_REG_CTRL_RX_EN_BB);
+	xmac_rxctrl = ecore_rd(p_hwfn, p_ptt,
+			       XMAC_REG_RX_CTRL_BB + port_offset);
+	xmac_rxctrl |= XMAC_REG_RX_CTRL_PROCESS_VARIABLE_PREAMBLE_BB;
+	ecore_wr(p_hwfn, p_ptt, XMAC_REG_RX_CTRL_BB + port_offset, xmac_rxctrl);
 }
 #endif
 
@@ -1233,7 +1244,8 @@ static enum _ecore_status_t ecore_hw_init_port(struct ecore_hwfn *p_hwfn,
 	if (CHIP_REV_IS_FPGA(p_hwfn->p_dev)) {
 		if (ECORE_IS_AH(p_hwfn->p_dev))
 			return ECORE_SUCCESS;
-		ecore_link_init(p_hwfn, p_ptt, p_hwfn->port_id);
+		else if (ECORE_IS_BB(p_hwfn->p_dev))
+			ecore_link_init_bb(p_hwfn, p_ptt, p_hwfn->port_id);
 	} else if (CHIP_REV_IS_EMUL(p_hwfn->p_dev)) {
 		if (p_hwfn->p_dev->num_hwfns > 1) {
 			/* Activate OPTE in CMT */
@@ -1667,7 +1679,7 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 		 * out that these registers get initialized during the call to
 		 * ecore_mcp_load_req request. So we need to reread them here
 		 * to get the proper shadow register value.
-		 * Note: This is a workaround for the missinginig MFW
+		 * Note: This is a workaround for the missing MFW
 		 * initialization. It may be removed once the implementation
 		 * is done.
 		 */
@@ -2033,22 +2045,22 @@ static void ecore_hw_hwfn_prepare(struct ecore_hwfn *p_hwfn)
 	/* clear indirect access */
 	if (ECORE_IS_AH(p_hwfn->p_dev)) {
 		ecore_wr(p_hwfn, p_hwfn->p_main_ptt,
-			 PGLUE_B_REG_PGL_ADDR_E8_F0, 0);
+			 PGLUE_B_REG_PGL_ADDR_E8_F0_K2_E5, 0);
 		ecore_wr(p_hwfn, p_hwfn->p_main_ptt,
-			 PGLUE_B_REG_PGL_ADDR_EC_F0, 0);
+			 PGLUE_B_REG_PGL_ADDR_EC_F0_K2_E5, 0);
 		ecore_wr(p_hwfn, p_hwfn->p_main_ptt,
-			 PGLUE_B_REG_PGL_ADDR_F0_F0, 0);
+			 PGLUE_B_REG_PGL_ADDR_F0_F0_K2_E5, 0);
 		ecore_wr(p_hwfn, p_hwfn->p_main_ptt,
-			 PGLUE_B_REG_PGL_ADDR_F4_F0, 0);
+			 PGLUE_B_REG_PGL_ADDR_F4_F0_K2_E5, 0);
 	} else {
 		ecore_wr(p_hwfn, p_hwfn->p_main_ptt,
-			 PGLUE_B_REG_PGL_ADDR_88_F0, 0);
+			 PGLUE_B_REG_PGL_ADDR_88_F0_BB, 0);
 		ecore_wr(p_hwfn, p_hwfn->p_main_ptt,
-			 PGLUE_B_REG_PGL_ADDR_8C_F0, 0);
+			 PGLUE_B_REG_PGL_ADDR_8C_F0_BB, 0);
 		ecore_wr(p_hwfn, p_hwfn->p_main_ptt,
-			 PGLUE_B_REG_PGL_ADDR_90_F0, 0);
+			 PGLUE_B_REG_PGL_ADDR_90_F0_BB, 0);
 		ecore_wr(p_hwfn, p_hwfn->p_main_ptt,
-			 PGLUE_B_REG_PGL_ADDR_94_F0, 0);
+			 PGLUE_B_REG_PGL_ADDR_94_F0_BB, 0);
 	}
 
 	/* Clean Previous errors if such exist */
@@ -2643,7 +2655,12 @@ static void ecore_get_num_funcs(struct ecore_hwfn *p_hwfn,
 	 * In case of CMT in BB, only the "even" functions are enabled, and thus
 	 * the number of functions for both hwfns is learnt from the same bits.
 	 */
-	reg_function_hide = ecore_rd(p_hwfn, p_ptt, MISCS_REG_FUNCTION_HIDE);
+	if (ECORE_IS_BB(p_dev) || ECORE_IS_AH(p_dev)) {
+		reg_function_hide = ecore_rd(p_hwfn, p_ptt,
+					     MISCS_REG_FUNCTION_HIDE_BB_K2);
+	} else { /* E5 */
+		reg_function_hide = 0;
+	}
 
 	if (reg_function_hide & 0x1) {
 		if (ECORE_IS_BB(p_dev)) {
@@ -2709,8 +2726,7 @@ static void ecore_hw_info_port_num_bb(struct ecore_hwfn *p_hwfn,
 		port_mode = 1;
 	else
 #endif
-		port_mode = ecore_rd(p_hwfn, p_ptt,
-				     CNIG_REG_NW_PORT_MODE_BB_B0);
+	port_mode = ecore_rd(p_hwfn, p_ptt, CNIG_REG_NW_PORT_MODE_BB);
 
 	if (port_mode < 3) {
 		p_hwfn->p_dev->num_ports_in_engines = 1;
@@ -2725,8 +2741,8 @@ static void ecore_hw_info_port_num_bb(struct ecore_hwfn *p_hwfn,
 	}
 }
 
-static void ecore_hw_info_port_num_ah(struct ecore_hwfn *p_hwfn,
-				      struct ecore_ptt *p_ptt)
+static void ecore_hw_info_port_num_ah_e5(struct ecore_hwfn *p_hwfn,
+					 struct ecore_ptt *p_ptt)
 {
 	u32 port;
 	int i;
@@ -2755,7 +2771,8 @@ static void ecore_hw_info_port_num_ah(struct ecore_hwfn *p_hwfn,
 #endif
 		for (i = 0; i < MAX_NUM_PORTS_K2; i++) {
 			port = ecore_rd(p_hwfn, p_ptt,
-					CNIG_REG_NIG_PORT0_CONF_K2 + (i * 4));
+					CNIG_REG_NIG_PORT0_CONF_K2_E5 +
+					(i * 4));
 			if (port & 1)
 				p_hwfn->p_dev->num_ports_in_engines++;
 		}
@@ -2767,7 +2784,7 @@ static void ecore_hw_info_port_num(struct ecore_hwfn *p_hwfn,
 	if (ECORE_IS_BB(p_hwfn->p_dev))
 		ecore_hw_info_port_num_bb(p_hwfn, p_ptt);
 	else
-		ecore_hw_info_port_num_ah(p_hwfn, p_ptt);
+		ecore_hw_info_port_num_ah_e5(p_hwfn, p_ptt);
 }
 
 static enum _ecore_status_t
@@ -3076,12 +3093,13 @@ ecore_hw_prepare_single(struct ecore_hwfn *p_hwfn,
 	if (CHIP_REV_IS_FPGA(p_dev)) {
 		DP_NOTICE(p_hwfn, false,
 			  "FPGA: workaround; Prevent DMAE parities\n");
-		ecore_wr(p_hwfn, p_hwfn->p_main_ptt, PCIE_REG_PRTY_MASK, 7);
+		ecore_wr(p_hwfn, p_hwfn->p_main_ptt, PCIE_REG_PRTY_MASK_K2_E5,
+			 7);
 
 		DP_NOTICE(p_hwfn, false,
 			  "FPGA: workaround: Set VF bar0 size\n");
 		ecore_wr(p_hwfn, p_hwfn->p_main_ptt,
-			 PGLUE_B_REG_VF_BAR0_SIZE, 4);
+			 PGLUE_B_REG_VF_BAR0_SIZE_K2_E5, 4);
 	}
 #endif
 

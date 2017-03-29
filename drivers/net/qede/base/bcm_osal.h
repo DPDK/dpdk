@@ -398,6 +398,7 @@ u32 qede_osal_log2(u32);
 #define OSAL_STRCPY(dst, string) strcpy(dst, string)
 #define OSAL_STRNCPY(dst, string, len) strncpy(dst, string, len)
 #define OSAL_STRCMP(str1, str2) strcmp(str1, str2)
+#define OSAL_STRTOUL(str, base, res) 0
 
 #define OSAL_INLINE inline
 #define OSAL_REG_ADDR(_p_hwfn, _offset) \

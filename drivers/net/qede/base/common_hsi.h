@@ -78,8 +78,16 @@
 
 #define CORE_SPQE_PAGE_SIZE_BYTES                       4096
 
-#define MAX_NUM_LL2_RX_QUEUES					32
-#define MAX_NUM_LL2_TX_STATS_COUNTERS			32
+/*
+ * Usually LL2 queues are opened in pairs TX-RX.
+ * There is a hard restriction on number of RX queues (limited by Tstorm RAM)
+ * and TX counters (Pstorm RAM).
+ * Number of TX queues is almost unlimited.
+ * The constants are different so as to allow asymmetric LL2 connections
+ */
+
+#define MAX_NUM_LL2_RX_QUEUES					48
+#define MAX_NUM_LL2_TX_STATS_COUNTERS			48
 
 
 /****************************************************************************/
@@ -89,8 +97,8 @@
 
 
 #define FW_MAJOR_VERSION		8
-#define FW_MINOR_VERSION		14
-#define FW_REVISION_VERSION		6
+#define FW_MINOR_VERSION		18
+#define FW_REVISION_VERSION		9
 #define FW_ENGINEERING_VERSION	0
 
 /***********************/
@@ -110,6 +118,7 @@
 #define MAX_NUM_VFS_BB	(120)
 #define MAX_NUM_VFS_K2	(192)
 #define E4_MAX_NUM_VFS	(MAX_NUM_VFS_K2)
+#define COMMON_MAX_NUM_VFS (240)
 
 #define MAX_NUM_FUNCTIONS_BB	(MAX_NUM_PFS_BB + MAX_NUM_VFS_BB)
 #define MAX_NUM_FUNCTIONS_K2	(MAX_NUM_PFS_K2 + MAX_NUM_VFS_K2)
@@ -176,6 +185,13 @@
 
 #define CDU_VF_FL_SEG_TYPE_OFFSET_REG_TYPE_SHIFT	(12)
 #define CDU_VF_FL_SEG_TYPE_OFFSET_REG_OFFSET_MASK	(0xfff)
+
+#define	CDU_CONTEXT_VALIDATION_CFG_ENABLE_SHIFT				(0)
+#define	CDU_CONTEXT_VALIDATION_CFG_VALIDATION_TYPE_SHIFT	(1)
+#define	CDU_CONTEXT_VALIDATION_CFG_USE_TYPE				(2)
+#define	CDU_CONTEXT_VALIDATION_CFG_USE_REGION				(3)
+#define	CDU_CONTEXT_VALIDATION_CFG_USE_CID				(4)
+#define	CDU_CONTEXT_VALIDATION_CFG_USE_ACTIVE				(5)
 
 
 /*****************/
@@ -472,7 +488,6 @@
 #define PXP_BAR_DQ                                          1
 
 /* PTT and GTT */
-#define PXP_NUM_PF_WINDOWS		12
 #define PXP_PER_PF_ENTRY_SIZE		8
 #define PXP_NUM_GLOBAL_WINDOWS		243
 #define PXP_GLOBAL_ENTRY_SIZE		4
@@ -497,6 +512,8 @@
 #define PXP_PF_ME_OPAQUE_ADDR		0x1f8
 #define PXP_PF_ME_CONCRETE_ADDR		0x1fc
 
+#define PXP_NUM_PF_WINDOWS		12
+
 #define PXP_EXTERNAL_BAR_PF_WINDOW_START	0x1000
 #define PXP_EXTERNAL_BAR_PF_WINDOW_NUM		PXP_NUM_PF_WINDOWS
 #define PXP_EXTERNAL_BAR_PF_WINDOW_SINGLE_SIZE	0x1000
@@ -519,8 +536,6 @@
 	 PXP_EXTERNAL_BAR_GLOBAL_WINDOW_LENGTH - 1)
 
 /* PF BAR */
-/*#define PXP_BAR0_START_GRC 0x1000 */
-/*#define PXP_BAR0_GRC_LENGTH 0xBFF000 */
 #define PXP_BAR0_START_GRC                      0x0000
 #define PXP_BAR0_GRC_LENGTH                     0x1C00000
 #define PXP_BAR0_END_GRC                        \
@@ -589,7 +604,7 @@
 #define SDM_OP_GEN_TRIG_AGG_INT			2
 #define SDM_OP_GEN_TRIG_LOADER			4
 #define SDM_OP_GEN_TRIG_INDICATE_ERROR	6
-#define SDM_OP_GEN_TRIG_RELEASE_THREAD	7
+#define SDM_OP_GEN_TRIG_INC_ORDER_CNT	9
 
 /***********************************************************/
 /* Completion types                                        */
@@ -612,6 +627,7 @@
 #define SDM_COMP_TYPE_RELEASE_THREAD	7
 /* Write to local RAM as a completion */
 #define SDM_COMP_TYPE_RAM		8
+#define SDM_COMP_TYPE_INC_ORDER_CNT	9 /* Applicable only for E4 */
 
 
 /******************/
@@ -881,7 +897,7 @@ enum db_dest {
  */
 enum db_dpm_type {
 	DPM_LEGACY /* Legacy DPM- to Xstorm RAM */,
-	DPM_ROCE /* RoCE DPM- to NIG */,
+	DPM_RDMA /* RDMA DPM (only RoCE in E4) - to NIG */,
 /* L2 DPM inline- to PBF, with packet data on doorbell */
 	DPM_L2_INLINE,
 	DPM_L2_BD /* L2 DPM with BD- to PBF, with TX BD data on doorbell */,
@@ -968,42 +984,42 @@ struct db_pwm_addr {
 };
 
 /*
- * Parameters to RoCE firmware, passed in EDPM doorbell
+ * Parameters to RDMA firmware, passed in EDPM doorbell
  */
-struct db_roce_dpm_params {
+struct db_rdma_dpm_params {
 	__le32 params;
 /* Size in QWORD-s of the DPM burst */
-#define DB_ROCE_DPM_PARAMS_SIZE_MASK            0x3F
-#define DB_ROCE_DPM_PARAMS_SIZE_SHIFT           0
-/* Type of DPM transacation (DPM_ROCE) (use enum db_dpm_type) */
-#define DB_ROCE_DPM_PARAMS_DPM_TYPE_MASK        0x3
-#define DB_ROCE_DPM_PARAMS_DPM_TYPE_SHIFT       6
-/* opcode for ROCE operation */
-#define DB_ROCE_DPM_PARAMS_OPCODE_MASK          0xFF
-#define DB_ROCE_DPM_PARAMS_OPCODE_SHIFT         8
+#define DB_RDMA_DPM_PARAMS_SIZE_MASK            0x3F
+#define DB_RDMA_DPM_PARAMS_SIZE_SHIFT           0
+/* Type of DPM transacation (DPM_RDMA) (use enum db_dpm_type) */
+#define DB_RDMA_DPM_PARAMS_DPM_TYPE_MASK        0x3
+#define DB_RDMA_DPM_PARAMS_DPM_TYPE_SHIFT       6
+/* opcode for RDMA operation */
+#define DB_RDMA_DPM_PARAMS_OPCODE_MASK          0xFF
+#define DB_RDMA_DPM_PARAMS_OPCODE_SHIFT         8
 /* the size of the WQE payload in bytes */
-#define DB_ROCE_DPM_PARAMS_WQE_SIZE_MASK        0x7FF
-#define DB_ROCE_DPM_PARAMS_WQE_SIZE_SHIFT       16
-#define DB_ROCE_DPM_PARAMS_RESERVED0_MASK       0x1
-#define DB_ROCE_DPM_PARAMS_RESERVED0_SHIFT      27
+#define DB_RDMA_DPM_PARAMS_WQE_SIZE_MASK        0x7FF
+#define DB_RDMA_DPM_PARAMS_WQE_SIZE_SHIFT       16
+#define DB_RDMA_DPM_PARAMS_RESERVED0_MASK       0x1
+#define DB_RDMA_DPM_PARAMS_RESERVED0_SHIFT      27
 /* RoCE completion flag */
-#define DB_ROCE_DPM_PARAMS_COMPLETION_FLG_MASK  0x1
-#define DB_ROCE_DPM_PARAMS_COMPLETION_FLG_SHIFT 28
-#define DB_ROCE_DPM_PARAMS_S_FLG_MASK           0x1 /* RoCE S flag */
-#define DB_ROCE_DPM_PARAMS_S_FLG_SHIFT          29
-#define DB_ROCE_DPM_PARAMS_RESERVED1_MASK       0x3
-#define DB_ROCE_DPM_PARAMS_RESERVED1_SHIFT      30
+#define DB_RDMA_DPM_PARAMS_COMPLETION_FLG_MASK  0x1
+#define DB_RDMA_DPM_PARAMS_COMPLETION_FLG_SHIFT 28
+#define DB_RDMA_DPM_PARAMS_S_FLG_MASK           0x1 /* RoCE S flag */
+#define DB_RDMA_DPM_PARAMS_S_FLG_SHIFT          29
+#define DB_RDMA_DPM_PARAMS_RESERVED1_MASK       0x3
+#define DB_RDMA_DPM_PARAMS_RESERVED1_SHIFT      30
 };
 
 /*
- * Structure for doorbell data, in ROCE DPM mode, for the first doorbell in a
+ * Structure for doorbell data, in RDMA DPM mode, for the first doorbell in a
  * DPM burst
  */
-struct db_roce_dpm_data {
+struct db_rdma_dpm_data {
 	__le16 icid /* internal CID */;
 	__le16 prod_val /* aggregated value to update */;
-/* parameters passed to RoCE firmware */
-	struct db_roce_dpm_params params;
+/* parameters passed to RDMA firmware */
+	struct db_rdma_dpm_params params;
 };
 
 /* Igu interrupt command */
@@ -1132,6 +1148,68 @@ struct parsing_and_err_flags {
  */
 #define PARSING_AND_ERR_FLAGS_TUNNELL4CHKSMERROR_MASK          0x1
 #define PARSING_AND_ERR_FLAGS_TUNNELL4CHKSMERROR_SHIFT         15
+};
+
+
+/*
+ * Parsing error flags bitmap.
+ */
+struct parsing_err_flags {
+	__le16 flags;
+/* MAC error indication */
+#define PARSING_ERR_FLAGS_MAC_ERROR_MASK                          0x1
+#define PARSING_ERR_FLAGS_MAC_ERROR_SHIFT                         0
+/* truncation error indication */
+#define PARSING_ERR_FLAGS_TRUNC_ERROR_MASK                        0x1
+#define PARSING_ERR_FLAGS_TRUNC_ERROR_SHIFT                       1
+/* packet too small indication */
+#define PARSING_ERR_FLAGS_PKT_TOO_SMALL_MASK                      0x1
+#define PARSING_ERR_FLAGS_PKT_TOO_SMALL_SHIFT                     2
+/* Header Missing Tag */
+#define PARSING_ERR_FLAGS_ANY_HDR_MISSING_TAG_MASK                0x1
+#define PARSING_ERR_FLAGS_ANY_HDR_MISSING_TAG_SHIFT               3
+/* from frame cracker output */
+#define PARSING_ERR_FLAGS_ANY_HDR_IP_VER_MISMTCH_MASK             0x1
+#define PARSING_ERR_FLAGS_ANY_HDR_IP_VER_MISMTCH_SHIFT            4
+/* from frame cracker output */
+#define PARSING_ERR_FLAGS_ANY_HDR_IP_V4_HDR_LEN_TOO_SMALL_MASK    0x1
+#define PARSING_ERR_FLAGS_ANY_HDR_IP_V4_HDR_LEN_TOO_SMALL_SHIFT   5
+/* set this error if: 1. total-len is smaller than hdr-len 2. total-ip-len
+ * indicates number that is bigger than real packet length 3. tunneling:
+ * total-ip-length of the outer header points to offset that is smaller than
+ * the one pointed to by the total-ip-len of the inner hdr.
+ */
+#define PARSING_ERR_FLAGS_ANY_HDR_IP_BAD_TOTAL_LEN_MASK           0x1
+#define PARSING_ERR_FLAGS_ANY_HDR_IP_BAD_TOTAL_LEN_SHIFT          6
+/* from frame cracker output */
+#define PARSING_ERR_FLAGS_IP_V4_CHKSM_ERROR_MASK                  0x1
+#define PARSING_ERR_FLAGS_IP_V4_CHKSM_ERROR_SHIFT                 7
+/* from frame cracker output. for either TCP or UDP */
+#define PARSING_ERR_FLAGS_ANY_HDR_L4_IP_LEN_MISMTCH_MASK          0x1
+#define PARSING_ERR_FLAGS_ANY_HDR_L4_IP_LEN_MISMTCH_SHIFT         8
+/* from frame cracker output */
+#define PARSING_ERR_FLAGS_ZERO_UDP_IP_V6_CHKSM_MASK               0x1
+#define PARSING_ERR_FLAGS_ZERO_UDP_IP_V6_CHKSM_SHIFT              9
+/* cksm calculated and value isn't 0xffff or L4-cksm-wasnt-calculated for any
+ * reason, like: udp/ipv4 checksum is 0 etc.
+ */
+#define PARSING_ERR_FLAGS_INNER_L4_CHKSM_ERROR_MASK               0x1
+#define PARSING_ERR_FLAGS_INNER_L4_CHKSM_ERROR_SHIFT              10
+/* from frame cracker output */
+#define PARSING_ERR_FLAGS_ANY_HDR_ZERO_TTL_OR_HOP_LIM_MASK        0x1
+#define PARSING_ERR_FLAGS_ANY_HDR_ZERO_TTL_OR_HOP_LIM_SHIFT       11
+/* from frame cracker output */
+#define PARSING_ERR_FLAGS_NON_8021Q_TAG_EXISTS_IN_BOTH_HDRS_MASK  0x1
+#define PARSING_ERR_FLAGS_NON_8021Q_TAG_EXISTS_IN_BOTH_HDRS_SHIFT 12
+/* set if geneve option size was over 32 byte */
+#define PARSING_ERR_FLAGS_GENEVE_OPTION_OVERSIZED_MASK            0x1
+#define PARSING_ERR_FLAGS_GENEVE_OPTION_OVERSIZED_SHIFT           13
+/* from frame cracker output */
+#define PARSING_ERR_FLAGS_TUNNEL_IP_V4_CHKSM_ERROR_MASK           0x1
+#define PARSING_ERR_FLAGS_TUNNEL_IP_V4_CHKSM_ERROR_SHIFT          14
+/* from frame cracker output */
+#define PARSING_ERR_FLAGS_TUNNEL_L4_CHKSM_ERROR_MASK              0x1
+#define PARSING_ERR_FLAGS_TUNNEL_L4_CHKSM_ERROR_SHIFT             15
 };
 
 
@@ -1492,49 +1570,57 @@ struct tdif_task_context {
 struct timers_context {
 	__le32 logical_client_0;
 /* Expiration time of logical client 0 */
-#define TIMERS_CONTEXT_EXPIRATIONTIMELC0_MASK     0xFFFFFFF
+#define TIMERS_CONTEXT_EXPIRATIONTIMELC0_MASK     0x7FFFFFF
 #define TIMERS_CONTEXT_EXPIRATIONTIMELC0_SHIFT    0
+#define TIMERS_CONTEXT_RESERVED0_MASK             0x1
+#define TIMERS_CONTEXT_RESERVED0_SHIFT            27
 /* Valid bit of logical client 0 */
 #define TIMERS_CONTEXT_VALIDLC0_MASK              0x1
 #define TIMERS_CONTEXT_VALIDLC0_SHIFT             28
 /* Active bit of logical client 0 */
 #define TIMERS_CONTEXT_ACTIVELC0_MASK             0x1
 #define TIMERS_CONTEXT_ACTIVELC0_SHIFT            29
-#define TIMERS_CONTEXT_RESERVED0_MASK             0x3
-#define TIMERS_CONTEXT_RESERVED0_SHIFT            30
+#define TIMERS_CONTEXT_RESERVED1_MASK             0x3
+#define TIMERS_CONTEXT_RESERVED1_SHIFT            30
 	__le32 logical_client_1;
 /* Expiration time of logical client 1 */
-#define TIMERS_CONTEXT_EXPIRATIONTIMELC1_MASK     0xFFFFFFF
+#define TIMERS_CONTEXT_EXPIRATIONTIMELC1_MASK     0x7FFFFFF
 #define TIMERS_CONTEXT_EXPIRATIONTIMELC1_SHIFT    0
+#define TIMERS_CONTEXT_RESERVED2_MASK             0x1
+#define TIMERS_CONTEXT_RESERVED2_SHIFT            27
 /* Valid bit of logical client 1 */
 #define TIMERS_CONTEXT_VALIDLC1_MASK              0x1
 #define TIMERS_CONTEXT_VALIDLC1_SHIFT             28
 /* Active bit of logical client 1 */
 #define TIMERS_CONTEXT_ACTIVELC1_MASK             0x1
 #define TIMERS_CONTEXT_ACTIVELC1_SHIFT            29
-#define TIMERS_CONTEXT_RESERVED1_MASK             0x3
-#define TIMERS_CONTEXT_RESERVED1_SHIFT            30
+#define TIMERS_CONTEXT_RESERVED3_MASK             0x3
+#define TIMERS_CONTEXT_RESERVED3_SHIFT            30
 	__le32 logical_client_2;
 /* Expiration time of logical client 2 */
-#define TIMERS_CONTEXT_EXPIRATIONTIMELC2_MASK     0xFFFFFFF
+#define TIMERS_CONTEXT_EXPIRATIONTIMELC2_MASK     0x7FFFFFF
 #define TIMERS_CONTEXT_EXPIRATIONTIMELC2_SHIFT    0
+#define TIMERS_CONTEXT_RESERVED4_MASK             0x1
+#define TIMERS_CONTEXT_RESERVED4_SHIFT            27
 /* Valid bit of logical client 2 */
 #define TIMERS_CONTEXT_VALIDLC2_MASK              0x1
 #define TIMERS_CONTEXT_VALIDLC2_SHIFT             28
 /* Active bit of logical client 2 */
 #define TIMERS_CONTEXT_ACTIVELC2_MASK             0x1
 #define TIMERS_CONTEXT_ACTIVELC2_SHIFT            29
-#define TIMERS_CONTEXT_RESERVED2_MASK             0x3
-#define TIMERS_CONTEXT_RESERVED2_SHIFT            30
+#define TIMERS_CONTEXT_RESERVED5_MASK             0x3
+#define TIMERS_CONTEXT_RESERVED5_SHIFT            30
 	__le32 host_expiration_fields;
 /* Expiration time on host (closest one) */
-#define TIMERS_CONTEXT_HOSTEXPRIRATIONVALUE_MASK  0xFFFFFFF
+#define TIMERS_CONTEXT_HOSTEXPRIRATIONVALUE_MASK  0x7FFFFFF
 #define TIMERS_CONTEXT_HOSTEXPRIRATIONVALUE_SHIFT 0
+#define TIMERS_CONTEXT_RESERVED6_MASK             0x1
+#define TIMERS_CONTEXT_RESERVED6_SHIFT            27
 /* Valid bit of host expiration */
 #define TIMERS_CONTEXT_HOSTEXPRIRATIONVALID_MASK  0x1
 #define TIMERS_CONTEXT_HOSTEXPRIRATIONVALID_SHIFT 28
-#define TIMERS_CONTEXT_RESERVED3_MASK             0x7
-#define TIMERS_CONTEXT_RESERVED3_SHIFT            29
+#define TIMERS_CONTEXT_RESERVED7_MASK             0x7
+#define TIMERS_CONTEXT_RESERVED7_SHIFT            29
 };
 
 

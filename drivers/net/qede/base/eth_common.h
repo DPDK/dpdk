@@ -182,7 +182,7 @@ struct eth_tx_1st_bd_flags {
 struct eth_tx_data_1st_bd {
 /* VLAN tag to insert to packet (if enabled by vlan_insertion flag). */
 	__le16 vlan;
-/* Number of BDs in packet. Should be at least 2 in non-LSO packet and at least
+/* Number of BDs in packet. Should be at least 1 in non-LSO packet and at least
  * 3 in LSO (or Tunnel with IPv6+ext) packet.
  */
 	u8 nbds;
