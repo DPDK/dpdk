@@ -30,12 +30,19 @@ struct qed_dev_info {
 
 	/* MFW version */
 	uint32_t mfw_rev;
+#define QED_MFW_VERSION_0_MASK		0x000000FF
+#define QED_MFW_VERSION_0_OFFSET	0
+#define QED_MFW_VERSION_1_MASK		0x0000FF00
+#define QED_MFW_VERSION_1_OFFSET	8
+#define QED_MFW_VERSION_2_MASK		0x00FF0000
+#define QED_MFW_VERSION_2_OFFSET	16
+#define QED_MFW_VERSION_3_MASK		0xFF000000
+#define QED_MFW_VERSION_3_OFFSET	24
 
 	uint32_t flash_size;
 	uint8_t mf_mode;
 	bool tx_switching;
 	u16 mtu;
-	/* To be added... */
 };
 
 enum qed_sb_type {

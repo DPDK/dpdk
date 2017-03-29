@@ -327,6 +327,8 @@ qed_fill_dev_info(struct ecore_dev *edev, struct qed_dev_info *dev_info)
 	memset(dev_info, 0, sizeof(struct qed_dev_info));
 	dev_info->num_hwfns = edev->num_hwfns;
 	dev_info->is_mf_default = IS_MF_DEFAULT(&edev->hwfns[0]);
+	dev_info->mtu = ECORE_LEADING_HWFN(edev)->hw_info.mtu;
+
 	rte_memcpy(&dev_info->hw_mac, &edev->hwfns[0].hw_info.hw_mac_addr,
 	       ETHER_ADDR_LEN);
 
@@ -337,13 +339,7 @@ qed_fill_dev_info(struct ecore_dev *edev, struct qed_dev_info *dev_info)
 		dev_info->fw_eng = FW_ENGINEERING_VERSION;
 		dev_info->mf_mode = edev->mf_mode;
 		dev_info->tx_switching = false;
-	} else {
-		ecore_vf_get_fw_version(&edev->hwfns[0], &dev_info->fw_major,
-					&dev_info->fw_minor, &dev_info->fw_rev,
-					&dev_info->fw_eng);
-	}
 
-	if (IS_PF(edev)) {
 		ptt = ecore_ptt_acquire(ECORE_LEADING_HWFN(edev));
 		if (ptt) {
 			ecore_mcp_get_mfw_ver(ECORE_LEADING_HWFN(edev), ptt,
@@ -361,11 +357,13 @@ qed_fill_dev_info(struct ecore_dev *edev, struct qed_dev_info *dev_info)
 			ecore_ptt_release(ECORE_LEADING_HWFN(edev), ptt);
 		}
 	} else {
+		ecore_vf_get_fw_version(&edev->hwfns[0], &dev_info->fw_major,
+					&dev_info->fw_minor, &dev_info->fw_rev,
+					&dev_info->fw_eng);
+
 		ecore_mcp_get_mfw_ver(ECORE_LEADING_HWFN(edev), ptt,
 				      &dev_info->mfw_rev, NULL);
 	}
-
-	dev_info->mtu = ECORE_LEADING_HWFN(edev)->hw_info.mtu;
 
 	return 0;
 }
