@@ -111,8 +111,9 @@ ecore_tunn_set_pf_fix_tunn_mode(struct ecore_hwfn *p_hwfn,
 				struct ecore_tunn_update_params *p_src,
 				struct pf_update_tunnel_config *p_tunn_cfg)
 {
-	unsigned long cached_tunn_mode = p_hwfn->p_dev->tunn_mode;
 	unsigned long update_mask = p_src->tunn_mode_update_mask;
+	struct ecore_tunnel_info *p_tun = &p_hwfn->p_dev->tunnel;
+	unsigned long cached_tunn_mode = p_tun->tunn_mode;
 	unsigned long tunn_mode = p_src->tunn_mode;
 	unsigned long new_tunn_mode = 0;
 
@@ -149,9 +150,10 @@ ecore_tunn_set_pf_fix_tunn_mode(struct ecore_hwfn *p_hwfn,
 	}
 
 	if (p_src->update_geneve_udp_port) {
+		p_tun->port_geneve_udp_port = p_src->geneve_udp_port;
 		p_tunn_cfg->set_geneve_udp_port_flg = 1;
 		p_tunn_cfg->geneve_udp_port =
-		    OSAL_CPU_TO_LE16(p_src->geneve_udp_port);
+				OSAL_CPU_TO_LE16(p_tun->port_geneve_udp_port);
 	}
 
 	if (OSAL_TEST_BIT(ECORE_MODE_L2GENEVE_TUNN, &update_mask)) {
@@ -178,33 +180,39 @@ ecore_tunn_set_pf_update_params(struct ecore_hwfn *p_hwfn,
 				struct ecore_tunn_update_params *p_src,
 				struct pf_update_tunnel_config *p_tunn_cfg)
 {
-	unsigned long tunn_mode = p_src->tunn_mode;
+	struct ecore_tunnel_info *p_tun = &p_hwfn->p_dev->tunnel;
 	enum tunnel_clss type;
 
 	ecore_tunn_set_pf_fix_tunn_mode(p_hwfn, p_src, p_tunn_cfg);
+	p_tun->tunn_mode = p_src->tunn_mode;
+
 	p_tunn_cfg->update_rx_pf_clss = p_src->update_rx_pf_clss;
 	p_tunn_cfg->update_tx_pf_clss = p_src->update_tx_pf_clss;
 
 	type = ecore_tunn_get_clss_type(p_src->tunn_clss_vxlan);
-	p_tunn_cfg->tunnel_clss_vxlan = type;
+	p_tun->tunn_clss_vxlan = type;
+	p_tunn_cfg->tunnel_clss_vxlan = p_tun->tunn_clss_vxlan;
 	type = ecore_tunn_get_clss_type(p_src->tunn_clss_l2gre);
-	p_tunn_cfg->tunnel_clss_l2gre = type;
+	p_tun->tunn_clss_l2gre = type;
+	p_tunn_cfg->tunnel_clss_l2gre = p_tun->tunn_clss_l2gre;
 	type = ecore_tunn_get_clss_type(p_src->tunn_clss_ipgre);
-	p_tunn_cfg->tunnel_clss_ipgre = type;
+	p_tun->tunn_clss_ipgre = type;
+	p_tunn_cfg->tunnel_clss_ipgre = p_tun->tunn_clss_ipgre;
 
 	if (p_src->update_vxlan_udp_port) {
+		p_tun->port_vxlan_udp_port = p_src->vxlan_udp_port;
 		p_tunn_cfg->set_vxlan_udp_port_flg = 1;
 		p_tunn_cfg->vxlan_udp_port =
-		    OSAL_CPU_TO_LE16(p_src->vxlan_udp_port);
+				OSAL_CPU_TO_LE16(p_tun->port_vxlan_udp_port);
 	}
 
-	if (OSAL_TEST_BIT(ECORE_MODE_L2GRE_TUNN, &tunn_mode))
+	if (OSAL_TEST_BIT(ECORE_MODE_L2GRE_TUNN, &p_tun->tunn_mode))
 		p_tunn_cfg->tx_enable_l2gre = 1;
 
-	if (OSAL_TEST_BIT(ECORE_MODE_IPGRE_TUNN, &tunn_mode))
+	if (OSAL_TEST_BIT(ECORE_MODE_IPGRE_TUNN, &p_tun->tunn_mode))
 		p_tunn_cfg->tx_enable_ipgre = 1;
 
-	if (OSAL_TEST_BIT(ECORE_MODE_VXLAN_TUNN, &tunn_mode))
+	if (OSAL_TEST_BIT(ECORE_MODE_VXLAN_TUNN, &p_tun->tunn_mode))
 		p_tunn_cfg->tx_enable_vxlan = 1;
 
 	if (ECORE_IS_BB_A0(p_hwfn->p_dev)) {
@@ -215,21 +223,24 @@ ecore_tunn_set_pf_update_params(struct ecore_hwfn *p_hwfn,
 	}
 
 	if (p_src->update_geneve_udp_port) {
+		p_tun->port_geneve_udp_port = p_src->geneve_udp_port;
 		p_tunn_cfg->set_geneve_udp_port_flg = 1;
 		p_tunn_cfg->geneve_udp_port =
-		    OSAL_CPU_TO_LE16(p_src->geneve_udp_port);
+				OSAL_CPU_TO_LE16(p_tun->port_geneve_udp_port);
 	}
 
-	if (OSAL_TEST_BIT(ECORE_MODE_L2GENEVE_TUNN, &tunn_mode))
+	if (OSAL_TEST_BIT(ECORE_MODE_L2GENEVE_TUNN, &p_tun->tunn_mode))
 		p_tunn_cfg->tx_enable_l2geneve = 1;
 
-	if (OSAL_TEST_BIT(ECORE_MODE_IPGENEVE_TUNN, &tunn_mode))
+	if (OSAL_TEST_BIT(ECORE_MODE_IPGENEVE_TUNN, &p_tun->tunn_mode))
 		p_tunn_cfg->tx_enable_ipgeneve = 1;
 
 	type = ecore_tunn_get_clss_type(p_src->tunn_clss_l2geneve);
-	p_tunn_cfg->tunnel_clss_l2geneve = type;
+	p_tun->tunn_clss_l2geneve = type;
+	p_tunn_cfg->tunnel_clss_l2geneve = p_tun->tunn_clss_l2geneve;
 	type = ecore_tunn_get_clss_type(p_src->tunn_clss_ipgeneve);
-	p_tunn_cfg->tunnel_clss_ipgeneve = type;
+	p_tun->tunn_clss_ipgeneve = type;
+	p_tunn_cfg->tunnel_clss_ipgeneve = p_tun->tunn_clss_ipgeneve;
 }
 
 static void ecore_set_hw_tunn_mode(struct ecore_hwfn *p_hwfn,
@@ -269,33 +280,37 @@ ecore_tunn_set_pf_start_params(struct ecore_hwfn *p_hwfn,
 			       struct ecore_tunn_start_params *p_src,
 			       struct pf_start_tunnel_config *p_tunn_cfg)
 {
-	unsigned long tunn_mode;
+	struct ecore_tunnel_info *p_tun = &p_hwfn->p_dev->tunnel;
 	enum tunnel_clss type;
 
 	if (!p_src)
 		return;
 
-	tunn_mode = p_src->tunn_mode;
+	p_tun->tunn_mode = p_src->tunn_mode;
 	type = ecore_tunn_get_clss_type(p_src->tunn_clss_vxlan);
-	p_tunn_cfg->tunnel_clss_vxlan = type;
+	p_tun->tunn_clss_vxlan = type;
+	p_tunn_cfg->tunnel_clss_vxlan = p_tun->tunn_clss_vxlan;
 	type = ecore_tunn_get_clss_type(p_src->tunn_clss_l2gre);
-	p_tunn_cfg->tunnel_clss_l2gre = type;
+	p_tun->tunn_clss_l2gre = type;
+	p_tunn_cfg->tunnel_clss_l2gre = p_tun->tunn_clss_l2gre;
 	type = ecore_tunn_get_clss_type(p_src->tunn_clss_ipgre);
-	p_tunn_cfg->tunnel_clss_ipgre = type;
+	p_tun->tunn_clss_ipgre = type;
+	p_tunn_cfg->tunnel_clss_ipgre = p_tun->tunn_clss_ipgre;
 
 	if (p_src->update_vxlan_udp_port) {
+		p_tun->port_vxlan_udp_port = p_src->vxlan_udp_port;
 		p_tunn_cfg->set_vxlan_udp_port_flg = 1;
 		p_tunn_cfg->vxlan_udp_port =
-		    OSAL_CPU_TO_LE16(p_src->vxlan_udp_port);
+				OSAL_CPU_TO_LE16(p_tun->port_vxlan_udp_port);
 	}
 
-	if (OSAL_TEST_BIT(ECORE_MODE_L2GRE_TUNN, &tunn_mode))
+	if (OSAL_TEST_BIT(ECORE_MODE_L2GRE_TUNN, &p_tun->tunn_mode))
 		p_tunn_cfg->tx_enable_l2gre = 1;
 
-	if (OSAL_TEST_BIT(ECORE_MODE_IPGRE_TUNN, &tunn_mode))
+	if (OSAL_TEST_BIT(ECORE_MODE_IPGRE_TUNN, &p_tun->tunn_mode))
 		p_tunn_cfg->tx_enable_ipgre = 1;
 
-	if (OSAL_TEST_BIT(ECORE_MODE_VXLAN_TUNN, &tunn_mode))
+	if (OSAL_TEST_BIT(ECORE_MODE_VXLAN_TUNN, &p_tun->tunn_mode))
 		p_tunn_cfg->tx_enable_vxlan = 1;
 
 	if (ECORE_IS_BB_A0(p_hwfn->p_dev)) {
@@ -306,21 +321,24 @@ ecore_tunn_set_pf_start_params(struct ecore_hwfn *p_hwfn,
 	}
 
 	if (p_src->update_geneve_udp_port) {
+		p_tun->port_geneve_udp_port = p_src->geneve_udp_port;
 		p_tunn_cfg->set_geneve_udp_port_flg = 1;
 		p_tunn_cfg->geneve_udp_port =
-		    OSAL_CPU_TO_LE16(p_src->geneve_udp_port);
+				OSAL_CPU_TO_LE16(p_tun->port_geneve_udp_port);
 	}
 
-	if (OSAL_TEST_BIT(ECORE_MODE_L2GENEVE_TUNN, &tunn_mode))
+	if (OSAL_TEST_BIT(ECORE_MODE_L2GENEVE_TUNN, &p_tun->tunn_mode))
 		p_tunn_cfg->tx_enable_l2geneve = 1;
 
-	if (OSAL_TEST_BIT(ECORE_MODE_IPGENEVE_TUNN, &tunn_mode))
+	if (OSAL_TEST_BIT(ECORE_MODE_IPGENEVE_TUNN, &p_tun->tunn_mode))
 		p_tunn_cfg->tx_enable_ipgeneve = 1;
 
 	type = ecore_tunn_get_clss_type(p_src->tunn_clss_l2geneve);
-	p_tunn_cfg->tunnel_clss_l2geneve = type;
+	p_tun->tunn_clss_l2geneve = type;
+	p_tunn_cfg->tunnel_clss_l2geneve = p_tun->tunn_clss_l2geneve;
 	type = ecore_tunn_get_clss_type(p_src->tunn_clss_ipgeneve);
-	p_tunn_cfg->tunnel_clss_ipgeneve = type;
+	p_tun->tunn_clss_ipgeneve = type;
+	p_tunn_cfg->tunnel_clss_ipgeneve = p_tun->tunn_clss_ipgeneve;
 }
 
 enum _ecore_status_t ecore_sp_pf_start(struct ecore_hwfn *p_hwfn,
@@ -420,9 +438,16 @@ enum _ecore_status_t ecore_sp_pf_start(struct ecore_hwfn *p_hwfn,
 	rc = ecore_spq_post(p_hwfn, p_ent, OSAL_NULL);
 
 	if (p_tunn) {
+		if (p_tunn->update_vxlan_udp_port)
+			ecore_set_vxlan_dest_port(p_hwfn, p_hwfn->p_main_ptt,
+						  p_tunn->vxlan_udp_port);
+
+		if (p_tunn->update_geneve_udp_port)
+			ecore_set_geneve_dest_port(p_hwfn, p_hwfn->p_main_ptt,
+						   p_tunn->geneve_udp_port);
+
 		ecore_set_hw_tunn_mode(p_hwfn, p_hwfn->p_main_ptt,
 				       p_tunn->tunn_mode);
-		p_hwfn->p_dev->tunn_mode = p_tunn->tunn_mode;
 	}
 
 	return rc;
@@ -529,12 +554,12 @@ ecore_sp_pf_update_tunn_cfg(struct ecore_hwfn *p_hwfn,
 	if (p_tunn->update_vxlan_udp_port)
 		ecore_set_vxlan_dest_port(p_hwfn, p_hwfn->p_main_ptt,
 					  p_tunn->vxlan_udp_port);
+
 	if (p_tunn->update_geneve_udp_port)
 		ecore_set_geneve_dest_port(p_hwfn, p_hwfn->p_main_ptt,
 					   p_tunn->geneve_udp_port);
 
 	ecore_set_hw_tunn_mode(p_hwfn, p_hwfn->p_main_ptt, p_tunn->tunn_mode);
-	p_hwfn->p_dev->tunn_mode = p_tunn->tunn_mode;
 
 	return rc;
 }

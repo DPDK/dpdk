@@ -470,6 +470,17 @@ struct ecore_fw_data {
 	u32 init_ops_size;
 };
 
+struct ecore_tunnel_info {
+	u8		tunn_clss_vxlan;
+	u8		tunn_clss_l2geneve;
+	u8		tunn_clss_ipgeneve;
+	u8		tunn_clss_l2gre;
+	u8		tunn_clss_ipgre;
+	unsigned long	tunn_mode;
+	u16		port_vxlan_udp_port;
+	u16		port_geneve_udp_port;
+};
+
 struct ecore_hwfn {
 	struct ecore_dev		*p_dev;
 	u8				my_id;		/* ID inside the PF */
@@ -724,8 +735,7 @@ struct ecore_dev {
 	/* SRIOV */
 	struct ecore_hw_sriov_info	*p_iov_info;
 #define IS_ECORE_SRIOV(p_dev)		(!!(p_dev)->p_iov_info)
-	unsigned long			tunn_mode;
-
+	struct ecore_tunnel_info	tunnel;
 	bool				b_is_vf;
 
 	u32				drv_type;

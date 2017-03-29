@@ -325,8 +325,26 @@ static int
 qed_fill_dev_info(struct ecore_dev *edev, struct qed_dev_info *dev_info)
 {
 	struct ecore_ptt *ptt = NULL;
+	struct ecore_tunnel_info *tun = &edev->tunnel;
 
 	memset(dev_info, 0, sizeof(struct qed_dev_info));
+
+	if (tun->tunn_mode & OSAL_BIT(ECORE_MODE_VXLAN_TUNN) &&
+	    tun->tunn_clss_vxlan == ECORE_TUNN_CLSS_MAC_VLAN)
+		dev_info->vxlan_enable = true;
+
+	if (tun->tunn_mode & OSAL_BIT(ECORE_MODE_L2GRE_TUNN) &&
+	    tun->tunn_mode & OSAL_BIT(ECORE_MODE_IPGRE_TUNN) &&
+	    tun->tunn_clss_l2gre == ECORE_TUNN_CLSS_MAC_VLAN &&
+	    tun->tunn_clss_ipgre == ECORE_TUNN_CLSS_MAC_VLAN)
+		dev_info->gre_enable = true;
+
+	if (tun->tunn_mode & OSAL_BIT(ECORE_MODE_L2GENEVE_TUNN) &&
+	    tun->tunn_mode & OSAL_BIT(ECORE_MODE_IPGENEVE_TUNN) &&
+	    tun->tunn_clss_l2geneve == ECORE_TUNN_CLSS_MAC_VLAN &&
+	    tun->tunn_clss_ipgeneve == ECORE_TUNN_CLSS_MAC_VLAN)
+		dev_info->geneve_enable = true;
+
 	dev_info->num_hwfns = edev->num_hwfns;
 	dev_info->is_mf_default = IS_MF_DEFAULT(&edev->hwfns[0]);
 	dev_info->mtu = ECORE_LEADING_HWFN(edev)->hw_info.mtu;

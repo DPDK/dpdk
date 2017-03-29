@@ -292,7 +292,8 @@ typedef struct osal_list_t {
 #define OSAL_WMB(dev)			rte_wmb()
 #define OSAL_DMA_SYNC(dev, addr, length, is_post) nothing
 
-#define OSAL_BITS_PER_BYTE		(8)
+#define OSAL_BIT(nr)            (1UL << (nr))
+#define OSAL_BITS_PER_BYTE	(8)
 #define OSAL_BITS_PER_UL	(sizeof(unsigned long) * OSAL_BITS_PER_BYTE)
 #define OSAL_BITS_PER_UL_MASK		(OSAL_BITS_PER_UL - 1)
 

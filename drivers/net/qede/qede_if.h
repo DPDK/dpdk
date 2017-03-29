@@ -43,6 +43,11 @@ struct qed_dev_info {
 	uint8_t mf_mode;
 	bool tx_switching;
 	u16 mtu;
+
+	/* Out param for qede */
+	bool vxlan_enable;
+	bool gre_enable;
+	bool geneve_enable;
 };
 
 enum qed_sb_type {
