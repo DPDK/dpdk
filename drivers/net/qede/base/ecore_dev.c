@@ -999,18 +999,6 @@ static enum _ecore_status_t ecore_hw_init_common(struct ecore_hwfn *p_hwfn,
 
 	ecore_cxt_hw_init_common(p_hwfn);
 
-	/* Close gate from NIG to BRB/Storm; By default they are open, but
-	 * we close them to prevent NIG from passing data to reset blocks.
-	 * Should have been done in the ENGINE phase, but init-tool lacks
-	 * proper port-pretend capabilities.
-	 */
-	ecore_wr(p_hwfn, p_ptt, NIG_REG_RX_BRB_OUT_EN, 0);
-	ecore_wr(p_hwfn, p_ptt, NIG_REG_STORM_OUT_EN, 0);
-	ecore_port_pretend(p_hwfn, p_ptt, p_hwfn->port_id ^ 1);
-	ecore_wr(p_hwfn, p_ptt, NIG_REG_RX_BRB_OUT_EN, 0);
-	ecore_wr(p_hwfn, p_ptt, NIG_REG_STORM_OUT_EN, 0);
-	ecore_port_unpretend(p_hwfn, p_ptt);
-
 	rc = ecore_init_run(p_hwfn, p_ptt, PHASE_ENGINE, ANY_PHASE_ID, hw_mode);
 	if (rc != ECORE_SUCCESS)
 		return rc;
