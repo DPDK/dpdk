@@ -121,6 +121,22 @@ struct qed_eth_tlvs {
 	u8 num_rxqs_full;
 };
 
+struct qed_tunn_update_params {
+	unsigned long   tunn_mode_update_mask;
+	unsigned long   tunn_mode;
+	u16             vxlan_udp_port;
+	u16             geneve_udp_port;
+	u8              update_rx_pf_clss;
+	u8              update_tx_pf_clss;
+	u8              update_vxlan_udp_port;
+	u8              update_geneve_udp_port;
+	u8              tunn_clss_vxlan;
+	u8              tunn_clss_l2geneve;
+	u8              tunn_clss_ipgeneve;
+	u8              tunn_clss_l2gre;
+	u8              tunn_clss_ipgre;
+};
+
 struct qed_common_cb_ops {
 	void (*link_update)(void *dev, struct qed_link_output *link);
 	void (*get_tlv_data)(void *dev, struct qed_eth_tlvs *data);

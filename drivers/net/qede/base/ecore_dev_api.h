@@ -59,7 +59,7 @@ void ecore_resc_setup(struct ecore_dev *p_dev);
 
 struct ecore_hw_init_params {
 	/* tunnelling parameters */
-	struct ecore_tunn_start_params *p_tunn;
+	struct ecore_tunnel_info *p_tunn;
 	bool b_hw_start;
 	/* interrupt mode [msix, inta, etc.] to use */
 	enum ecore_int_mode int_mode;

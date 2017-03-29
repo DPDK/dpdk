@@ -1696,7 +1696,7 @@ ecore_hw_init_pf_doorbell_bar(struct ecore_hwfn *p_hwfn,
 static enum _ecore_status_t
 ecore_hw_init_pf(struct ecore_hwfn *p_hwfn,
 		 struct ecore_ptt *p_ptt,
-		 struct ecore_tunn_start_params *p_tunn,
+		 struct ecore_tunnel_info *p_tunn,
 		 int hw_mode,
 		 bool b_hw_start,
 		 enum ecore_int_mode int_mode, bool allow_npar_tx_switch)

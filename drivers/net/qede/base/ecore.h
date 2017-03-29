@@ -204,33 +204,29 @@ enum ecore_tunn_clss {
 	MAX_ECORE_TUNN_CLSS,
 };
 
-struct ecore_tunn_start_params {
-	unsigned long tunn_mode;
-	u16	vxlan_udp_port;
-	u16	geneve_udp_port;
-	u8	update_vxlan_udp_port;
-	u8	update_geneve_udp_port;
-	u8	tunn_clss_vxlan;
-	u8	tunn_clss_l2geneve;
-	u8	tunn_clss_ipgeneve;
-	u8	tunn_clss_l2gre;
-	u8	tunn_clss_ipgre;
+struct ecore_tunn_update_type {
+	bool b_update_mode;
+	bool b_mode_enabled;
+	enum ecore_tunn_clss tun_cls;
 };
 
-struct ecore_tunn_update_params {
-	unsigned long tunn_mode_update_mask;
-	unsigned long tunn_mode;
-	u16	vxlan_udp_port;
-	u16	geneve_udp_port;
-	u8	update_rx_pf_clss;
-	u8	update_tx_pf_clss;
-	u8	update_vxlan_udp_port;
-	u8	update_geneve_udp_port;
-	u8	tunn_clss_vxlan;
-	u8	tunn_clss_l2geneve;
-	u8	tunn_clss_ipgeneve;
-	u8	tunn_clss_l2gre;
-	u8	tunn_clss_ipgre;
+struct ecore_tunn_update_udp_port {
+	bool b_update_port;
+	u16 port;
+};
+
+struct ecore_tunnel_info {
+	struct ecore_tunn_update_type vxlan;
+	struct ecore_tunn_update_type l2_geneve;
+	struct ecore_tunn_update_type ip_geneve;
+	struct ecore_tunn_update_type l2_gre;
+	struct ecore_tunn_update_type ip_gre;
+
+	struct ecore_tunn_update_udp_port vxlan_port;
+	struct ecore_tunn_update_udp_port geneve_port;
+
+	bool b_update_rx_cls;
+	bool b_update_tx_cls;
 };
 
 /* The PCI personality is not quite synonymous to protocol ID:
@@ -468,17 +464,6 @@ struct ecore_fw_data {
 	union init_op *init_ops;
 	const u32 *arr_data;
 	u32 init_ops_size;
-};
-
-struct ecore_tunnel_info {
-	u8		tunn_clss_vxlan;
-	u8		tunn_clss_l2geneve;
-	u8		tunn_clss_ipgeneve;
-	u8		tunn_clss_l2gre;
-	u8		tunn_clss_ipgre;
-	unsigned long	tunn_mode;
-	u16		port_vxlan_udp_port;
-	u16		port_geneve_udp_port;
 };
 
 struct ecore_hwfn {

@@ -68,30 +68,9 @@ enum _ecore_status_t ecore_sp_init_request(struct ecore_hwfn *p_hwfn,
  */
 
 enum _ecore_status_t ecore_sp_pf_start(struct ecore_hwfn *p_hwfn,
-				       struct ecore_tunn_start_params *p_tunn,
+				       struct ecore_tunnel_info *p_tunn,
 				       enum ecore_mf_mode mode,
 				       bool allow_npar_tx_switch);
-
-/**
- * @brief ecore_sp_pf_update_tunn_cfg - PF Function Tunnel configuration
- *					update  Ramrod
- *
- * This ramrod is sent to update a tunneling configuration
- * for a physical function (PF).
- *
- * @param p_hwfn
- * @param p_tunn - pf update tunneling parameters
- * @param comp_mode - completion mode
- * @param p_comp_data - callback function
- *
- * @return enum _ecore_status_t
- */
-
-enum _ecore_status_t
-ecore_sp_pf_update_tunn_cfg(struct ecore_hwfn *p_hwfn,
-			    struct ecore_tunn_update_params *p_tunn,
-			    enum spq_mode comp_mode,
-			    struct ecore_spq_comp_cb *p_comp_data);
 
 /**
  * @brief ecore_sp_pf_update - PF Function Update Ramrod
