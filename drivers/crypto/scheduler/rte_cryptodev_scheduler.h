@@ -49,6 +49,8 @@ enum rte_cryptodev_scheduler_mode {
 	CDEV_SCHED_MODE_ROUNDROBIN,
 	/** packet-size based distribution mode */
 	CDEV_SCHED_MODE_PKT_SIZE_DISTR,
+	/** fail-over mode */
+	CDEV_SCHED_MODE_FAILOVER,
 
 	CDEV_SCHED_MODE_COUNT /* number of modes */
 };
@@ -161,6 +163,7 @@ struct rte_cryptodev_scheduler {
 
 extern struct rte_cryptodev_scheduler *roundrobin_scheduler;
 extern struct rte_cryptodev_scheduler *pkt_size_based_distr_scheduler;
+extern struct rte_cryptodev_scheduler *failover_scheduler;
 
 #ifdef __cplusplus
 }

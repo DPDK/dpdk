@@ -141,3 +141,11 @@ operation:
    process additional crypto workload than what the QAT cryptodev can handle on
    its own, by making use of the available CPU cycles to deal with smaller
    crypto workloads.
+
+*   **CDEV_SCHED_MODE_FAILOVER:**
+
+   Fail-over mode, which works with 2 slaves, the primary slave and the
+   secondary slave. In this mode, the scheduler will enqueue the incoming
+   crypto operation burst to the primary slave. When one or more crypto
+   operations fail to be enqueued, then they will be enqueued to the secondary
+   slave.

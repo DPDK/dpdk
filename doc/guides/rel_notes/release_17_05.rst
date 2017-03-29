@@ -241,6 +241,9 @@ New Features
 
   * Added packet-size based distribution mode, which distributes the enqueued
     crypto operations among two slaves, based on their data lengths.
+  * Added fail-over scheduling mode, which enqueues crypto operations to a
+    primary slave first. Then, any operation that cannot be enqueued is
+    enqueued to a secondary slave.
 
 Resolved Issues
 ---------------
