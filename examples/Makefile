@@ -75,6 +75,9 @@ DIRS-$(CONFIG_RTE_LIBRTE_LPM) += load_balancer
 DIRS-y += multi_process
 DIRS-y += netmap_compat/bridge
 DIRS-$(CONFIG_RTE_LIBRTE_REORDER) += packet_ordering
+ifeq ($(CONFIG_RTE_ARCH_X86_64),y)
+DIRS-y += performance-thread
+endif
 DIRS-$(CONFIG_RTE_LIBRTE_IEEE1588) += ptpclient
 DIRS-$(CONFIG_RTE_LIBRTE_METER) += qos_meter
 DIRS-$(CONFIG_RTE_LIBRTE_SCHED) += qos_sched

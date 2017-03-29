@@ -236,10 +236,6 @@ for conf in $configs ; do
 	make -j$J -sC examples \
 		EXTRA_LDFLAGS="$DPDK_DEP_LDFLAGS" $verbose \
 		O=$(readlink -m $dir/examples)
-	! echo $target | grep -q '^x86_64' || \
-	make -j$J -sC examples/performance-thread \
-		EXTRA_LDFLAGS="$DPDK_DEP_LDFLAGS" $verbose \
-		O=$(readlink -m $dir/examples/performance-thread)
 	unset RTE_TARGET
 	echo "################## $dir done."
 	unset dir
