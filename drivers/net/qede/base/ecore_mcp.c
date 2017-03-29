@@ -1662,6 +1662,7 @@ ecore_mcp_send_drv_version(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 	p_drv_version->version = p_ver->version;
 	num_words = (MCP_DRV_VER_STR_SIZE - 4) / 4;
 	for (i = 0; i < num_words; i++) {
+		/* The driver name is expected to be in a big-endian format */
 		p_name = &p_ver->name[i * sizeof(u32)];
 		val = OSAL_CPU_TO_BE32(*(u32 *)p_name);
 		*(u32 *)&p_drv_version->name[i * sizeof(u32)] = val;
