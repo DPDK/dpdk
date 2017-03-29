@@ -86,6 +86,15 @@ do {									\
 	(((value) >> (name##_SHIFT)) & name##_MASK)
 #endif
 
+#define ECORE_MFW_GET_FIELD(name, field)				\
+	(((name) & (field ## _MASK)) >> (field ## _SHIFT))
+
+#define ECORE_MFW_SET_FIELD(name, field, value)				\
+do {									\
+	(name) &= ~((field ## _MASK) << (field ## _SHIFT));		\
+	(name) |= (((value) << (field ## _SHIFT)) & (field ## _MASK));	\
+} while (0)
+
 static OSAL_INLINE u32 DB_ADDR(u32 cid, u32 DEMS)
 {
 	u32 db_addr = FIELD_VALUE(DB_LEGACY_ADDR_DEMS, DEMS) |

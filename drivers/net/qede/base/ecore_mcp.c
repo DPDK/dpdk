@@ -2502,3 +2502,146 @@ enum _ecore_status_t ecore_mcp_initiate_pf_flr(struct ecore_hwfn *p_hwfn,
 	return ecore_mcp_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_INITIATE_PF_FLR, 0,
 			     &mcp_resp, &mcp_param);
 }
+
+static enum _ecore_status_t ecore_mcp_resource_cmd(struct ecore_hwfn *p_hwfn,
+						   struct ecore_ptt *p_ptt,
+						   u32 param, u32 *p_mcp_resp,
+						   u32 *p_mcp_param)
+{
+	enum _ecore_status_t rc;
+
+	rc = ecore_mcp_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_RESOURCE_CMD, param,
+			   p_mcp_resp, p_mcp_param);
+	if (rc != ECORE_SUCCESS)
+		return rc;
+
+	/* A zero response implies that the resource command is not supported */
+	if (!*p_mcp_resp)
+		return ECORE_NOTIMPL;
+
+	if (*p_mcp_param == RESOURCE_OPCODE_UNKNOWN_CMD) {
+		u8 opcode = ECORE_MFW_GET_FIELD(param, RESOURCE_CMD_REQ_OPCODE);
+
+		DP_NOTICE(p_hwfn, false,
+			  "The resource command is unknown to the MFW [param 0x%08x, opcode %d]\n",
+			  param, opcode);
+		return ECORE_INVAL;
+	}
+
+	return rc;
+}
+
+enum _ecore_status_t ecore_mcp_resc_lock(struct ecore_hwfn *p_hwfn,
+					 struct ecore_ptt *p_ptt,
+					 u8 resource_num, u8 timeout,
+					 bool *p_granted, u8 *p_owner)
+{
+	u32 param = 0, mcp_resp, mcp_param;
+	u8 opcode;
+	enum _ecore_status_t rc;
+
+	switch (timeout) {
+	case ECORE_MCP_RESC_LOCK_TO_DEFAULT:
+		opcode = RESOURCE_OPCODE_REQ;
+		timeout = 0;
+		break;
+	case ECORE_MCP_RESC_LOCK_TO_NONE:
+		opcode = RESOURCE_OPCODE_REQ_WO_AGING;
+		timeout = 0;
+		break;
+	default:
+		opcode = RESOURCE_OPCODE_REQ_W_AGING;
+		break;
+	}
+
+	ECORE_MFW_SET_FIELD(param, RESOURCE_CMD_REQ_RESC, resource_num);
+	ECORE_MFW_SET_FIELD(param, RESOURCE_CMD_REQ_OPCODE, opcode);
+	ECORE_MFW_SET_FIELD(param, RESOURCE_CMD_REQ_AGE, timeout);
+
+	DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
+		   "Resource lock request: param 0x%08x [age %d, opcode %d, resc_num %d]\n",
+		   param, timeout, opcode, resource_num);
+
+	/* Attempt to acquire the resource */
+	rc = ecore_mcp_resource_cmd(p_hwfn, p_ptt, param, &mcp_resp,
+				    &mcp_param);
+	if (rc != ECORE_SUCCESS)
+		return rc;
+
+	/* Analyze the response */
+	*p_owner = ECORE_MFW_GET_FIELD(mcp_param, RESOURCE_CMD_RSP_OWNER);
+	opcode = ECORE_MFW_GET_FIELD(mcp_param, RESOURCE_CMD_RSP_OPCODE);
+
+	DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
+		   "Resource lock response: mcp_param 0x%08x [opcode %d, owner %d]\n",
+		   mcp_param, opcode, *p_owner);
+
+	switch (opcode) {
+	case RESOURCE_OPCODE_GNT:
+		*p_granted = true;
+		break;
+	case RESOURCE_OPCODE_BUSY:
+		*p_granted = false;
+		break;
+	default:
+		DP_NOTICE(p_hwfn, false,
+			  "Unexpected opcode in resource lock response [mcp_param 0x%08x, opcode %d]\n",
+			  mcp_param, opcode);
+		return ECORE_INVAL;
+	}
+
+	return ECORE_SUCCESS;
+}
+
+enum _ecore_status_t ecore_mcp_resc_unlock(struct ecore_hwfn *p_hwfn,
+					   struct ecore_ptt *p_ptt,
+					   u8 resource_num, bool force,
+					   bool *p_released)
+{
+	u32 param = 0, mcp_resp, mcp_param;
+	u8 opcode;
+	enum _ecore_status_t rc;
+
+	opcode = force ? RESOURCE_OPCODE_FORCE_RELEASE
+		       : RESOURCE_OPCODE_RELEASE;
+	ECORE_MFW_SET_FIELD(param, RESOURCE_CMD_REQ_RESC, resource_num);
+	ECORE_MFW_SET_FIELD(param, RESOURCE_CMD_REQ_OPCODE, opcode);
+
+	DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
+		   "Resource unlock request: param 0x%08x [opcode %d, resc_num %d]\n",
+		   param, opcode, resource_num);
+
+	/* Attempt to release the resource */
+	rc = ecore_mcp_resource_cmd(p_hwfn, p_ptt, param, &mcp_resp,
+				    &mcp_param);
+	if (rc != ECORE_SUCCESS)
+		return rc;
+
+	/* Analyze the response */
+	opcode = ECORE_MFW_GET_FIELD(mcp_param, RESOURCE_CMD_RSP_OPCODE);
+
+	DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
+		   "Resource unlock response: mcp_param 0x%08x [opcode %d]\n",
+		   mcp_param, opcode);
+
+	switch (opcode) {
+	case RESOURCE_OPCODE_RELEASED_PREVIOUS:
+		DP_INFO(p_hwfn,
+			"Resource unlock request for an already released resource [resc_num %d]\n",
+			resource_num);
+		/* Fallthrough */
+	case RESOURCE_OPCODE_RELEASED:
+		*p_released = true;
+		break;
+	case RESOURCE_OPCODE_WRONG_OWNER:
+		*p_released = false;
+		break;
+	default:
+		DP_NOTICE(p_hwfn, false,
+			  "Unexpected opcode in resource unlock response [mcp_param 0x%08x, opcode %d]\n",
+			  mcp_param, opcode);
+		return ECORE_INVAL;
+	}
+
+	return ECORE_SUCCESS;
+}

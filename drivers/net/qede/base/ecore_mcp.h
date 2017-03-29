@@ -361,4 +361,45 @@ enum _ecore_status_t ecore_mcp_get_resc_info(struct ecore_hwfn *p_hwfn,
 enum _ecore_status_t ecore_mcp_initiate_pf_flr(struct ecore_hwfn *p_hwfn,
 					       struct ecore_ptt *p_ptt);
 
+#define ECORE_MCP_RESC_LOCK_TO_DEFAULT	0
+#define ECORE_MCP_RESC_LOCK_TO_NONE	255
+
+/**
+ * @brief Acquires MFW generic resource lock
+ *
+ *  @param p_hwfn
+ *  @param p_ptt
+ *  @param resource_num - valid values are 0..31
+ *  @param timeout - lock timeout value in seconds
+ *                   (1..254, '0' - default value, '255' - no timeout).
+ *  @param p_granted - will be filled as true if the resource is free and
+ *                     granted, or false if it is busy.
+ *  @param p_owner - A pointer to a variable to be filled with the resource
+ *                   owner (0..15 = PF0-15, 16 = MFW, 17 = diag over serial).
+ *
+ * @return enum _ecore_status_t - ECORE_SUCCESS - operation was successful.
+ */
+enum _ecore_status_t ecore_mcp_resc_lock(struct ecore_hwfn *p_hwfn,
+					 struct ecore_ptt *p_ptt,
+					 u8 resource_num, u8 timeout,
+					 bool *p_granted, u8 *p_owner);
+
+/**
+ * @brief Releases MFW generic resource lock
+ *
+ *  @param p_hwfn
+ *  @param p_ptt
+ *  @param resource_num
+ *  @param force -  allows to release a reeource even if belongs to another PF
+ *  @param p_released - will be filled as true if the resource is released (or
+ *			has been already released), and false if the resource is
+ *			acquired by another PF and the `force' flag was not set.
+ *
+ * @return enum _ecore_status_t - ECORE_SUCCESS - operation was successful.
+ */
+enum _ecore_status_t ecore_mcp_resc_unlock(struct ecore_hwfn *p_hwfn,
+					   struct ecore_ptt *p_ptt,
+					   u8 resource_num, bool force,
+					   bool *p_released);
+
 #endif /* __ECORE_MCP_H__ */
