@@ -3164,7 +3164,7 @@ ecore_iov_single_vf_flr_cleanup(struct ecore_hwfn *p_hwfn,
 
 bool ecore_iov_mark_vf_flr(struct ecore_hwfn *p_hwfn, u32 *p_disabled_vfs)
 {
-	bool found;
+	bool found = false;
 	u16 i;
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_IOV, "Marking FLR-ed VFs\n");
