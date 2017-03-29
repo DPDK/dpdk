@@ -375,55 +375,58 @@ handle_completed_gcm_crypto_op(struct aesni_gcm_qp *qp,
 		rte_mempool_put(qp->sess_mp, op->sym->session);
 		op->sym->session = NULL;
 	}
-
-	rte_ring_enqueue(qp->processed_pkts, (void *)op);
-}
-
-static uint16_t
-aesni_gcm_pmd_enqueue_burst(void *queue_pair,
-		struct rte_crypto_op **ops, uint16_t nb_ops)
-{
-	struct aesni_gcm_session *sess;
-	struct aesni_gcm_qp *qp = queue_pair;
-
-	int i, retval = 0;
-
-	for (i = 0; i < nb_ops; i++) {
-
-		sess = aesni_gcm_get_session(qp, ops[i]->sym);
-		if (unlikely(sess == NULL)) {
-			ops[i]->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
-			qp->qp_stats.enqueue_err_count++;
-			break;
-		}
-
-		retval = process_gcm_crypto_op(ops[i]->sym, sess);
-		if (retval < 0) {
-			ops[i]->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
-			qp->qp_stats.enqueue_err_count++;
-			break;
-		}
-
-		handle_completed_gcm_crypto_op(qp, ops[i]);
-
-		qp->qp_stats.enqueued_count++;
-	}
-	return i;
 }
 
 static uint16_t
 aesni_gcm_pmd_dequeue_burst(void *queue_pair,
 		struct rte_crypto_op **ops, uint16_t nb_ops)
 {
+	struct aesni_gcm_session *sess;
 	struct aesni_gcm_qp *qp = queue_pair;
 
-	unsigned nb_dequeued;
+	int retval = 0;
+	unsigned int i, nb_dequeued;
 
 	nb_dequeued = rte_ring_dequeue_burst(qp->processed_pkts,
 			(void **)ops, nb_ops, NULL);
-	qp->qp_stats.dequeued_count += nb_dequeued;
 
-	return nb_dequeued;
+	for (i = 0; i < nb_dequeued; i++) {
+
+		sess = aesni_gcm_get_session(qp, ops[i]->sym);
+		if (unlikely(sess == NULL)) {
+			ops[i]->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+			qp->qp_stats.dequeue_err_count++;
+			break;
+		}
+
+		retval = process_gcm_crypto_op(ops[i]->sym, sess);
+		if (retval < 0) {
+			ops[i]->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
+			qp->qp_stats.dequeue_err_count++;
+			break;
+		}
+
+		handle_completed_gcm_crypto_op(qp, ops[i]);
+	}
+
+	qp->qp_stats.dequeued_count += i;
+
+	return i;
+}
+
+static uint16_t
+aesni_gcm_pmd_enqueue_burst(void *queue_pair,
+		struct rte_crypto_op **ops, uint16_t nb_ops)
+{
+	struct aesni_gcm_qp *qp = queue_pair;
+
+	unsigned int nb_enqueued;
+
+	nb_enqueued = rte_ring_enqueue_burst(qp->processed_pkts,
+			(void **)ops, nb_ops, NULL);
+	qp->qp_stats.enqueued_count += nb_enqueued;
+
+	return nb_enqueued;
 }
 
 static int aesni_gcm_remove(const char *name);
