@@ -111,6 +111,11 @@
 #define rte_ixgbe_prefetch(p)   do {} while (0)
 #endif
 
+#ifdef RTE_IXGBE_INC_VECTOR
+uint16_t ixgbe_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
+				    uint16_t nb_pkts);
+#endif
+
 /*********************************************************************
  *
  *  TX functions
@@ -362,6 +367,30 @@ ixgbe_xmit_pkts_simple(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	return nb_tx;
 }
+
+#ifdef RTE_IXGBE_INC_VECTOR
+static uint16_t
+ixgbe_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
+		    uint16_t nb_pkts)
+{
+	uint16_t nb_tx = 0;
+	struct ixgbe_tx_queue *txq = (struct ixgbe_tx_queue *)tx_queue;
+
+	while (nb_pkts) {
+		uint16_t ret, num;
+
+		num = (uint16_t)RTE_MIN(nb_pkts, txq->tx_rs_thresh);
+		ret = ixgbe_xmit_fixed_burst_vec(tx_queue, &tx_pkts[nb_tx],
+						 num);
+		nb_tx += ret;
+		nb_pkts -= ret;
+		if (ret < num)
+			break;
+	}
+
+	return nb_tx;
+}
+#endif
 
 static inline void
 ixgbe_set_xmit_ctx(struct ixgbe_tx_queue *txq,

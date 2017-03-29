@@ -537,8 +537,8 @@ vtx(volatile union ixgbe_adv_tx_desc *txdp,
 }
 
 uint16_t
-ixgbe_xmit_pkts_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
-		       uint16_t nb_pkts)
+ixgbe_xmit_fixed_burst_vec(void *tx_queue, struct rte_mbuf **tx_pkts,
+			   uint16_t nb_pkts)
 {
 	struct ixgbe_tx_queue *txq = (struct ixgbe_tx_queue *)tx_queue;
 	volatile union ixgbe_adv_tx_desc *txdp;
