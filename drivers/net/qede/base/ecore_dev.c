@@ -1629,6 +1629,7 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 {
 	enum _ecore_status_t rc = ECORE_SUCCESS, mfw_rc;
 	u32 load_code, param, drv_mb_param;
+	bool b_default_mtu = true;
 	struct ecore_hwfn *p_hwfn;
 	int i;
 
@@ -1647,6 +1648,12 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 
 	for_each_hwfn(p_dev, i) {
 		struct ecore_hwfn *p_hwfn = &p_dev->hwfns[i];
+
+		/* If management didn't provide a default, set one of our own */
+		if (!p_hwfn->hw_info.mtu) {
+			p_hwfn->hw_info.mtu = 1500;
+			b_default_mtu = false;
+		}
 
 		if (IS_VF(p_dev)) {
 			p_hwfn->b_int_enabled = 1;
@@ -1775,6 +1782,10 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 			DP_ERR(p_hwfn, "Failed to send firmware version\n");
 			return rc;
 		}
+
+		if (!b_default_mtu)
+			ecore_mcp_ov_update_mtu(p_hwfn, p_hwfn->p_main_ptt,
+						p_hwfn->hw_info.mtu);
 
 		rc = ecore_mcp_ov_update_driver_state(p_hwfn,
 						      p_hwfn->p_main_ptt,

@@ -1438,9 +1438,6 @@ enum _ecore_status_t ecore_mcp_fill_shmem_func_info(struct ecore_hwfn *p_hwfn,
 
 	info->mtu = (u16)shmem_info.mtu_size;
 
-	if (info->mtu == 0)
-		info->mtu = 1500;
-
 	DP_VERBOSE(p_hwfn, (ECORE_MSG_SP | ECORE_MSG_IFUP),
 		   "Read configuration from shmem: pause_on_host %02x"
 		    " protocol %02x BW [%02x - %02x]"
