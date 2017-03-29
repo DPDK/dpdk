@@ -59,12 +59,13 @@ struct qed_update_vport_params {
 	uint8_t accept_any_vlan;
 	uint8_t update_rss_flg;
 	uint16_t mtu;
+	struct ecore_sge_tpa_params *sge_tpa_params;
 };
 
 struct qed_start_vport_params {
 	bool remove_inner_vlan;
 	bool handle_ptp_pkts;
-	bool gro_enable;
+	bool enable_lro;
 	bool drop_ttl0;
 	uint8_t vport_id;
 	uint16_t mtu;

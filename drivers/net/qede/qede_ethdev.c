@@ -769,7 +769,7 @@ static int qede_init_vport(struct qede_dev *qdev)
 	int rc;
 
 	start.remove_inner_vlan = 1;
-	start.gro_enable = 0;
+	start.enable_lro = qdev->enable_lro;
 	start.mtu = ETHER_MTU + QEDE_ETH_OVERHEAD;
 	start.vport_id = 0;
 	start.drop_ttl0 = false;
@@ -866,17 +866,19 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 	if (rxmode->enable_scatter == 1)
 		eth_dev->data->scattered_rx = 1;
 
-	if (rxmode->enable_lro == 1) {
-		DP_ERR(edev, "LRO is not supported\n");
-		return -EINVAL;
-	}
-
 	if (!rxmode->hw_strip_crc)
 		DP_INFO(edev, "L2 CRC stripping is always enabled in hw\n");
 
 	if (!rxmode->hw_ip_checksum)
 		DP_INFO(edev, "IP/UDP/TCP checksum offload is always enabled "
 			      "in hw\n");
+
+	if (rxmode->enable_lro) {
+		qdev->enable_lro = true;
+		/* Enable scatter mode for LRO */
+		if (!rxmode->enable_scatter)
+			eth_dev->data->scattered_rx = 1;
+	}
 
 	/* Check for the port restart case */
 	if (qdev->state != QEDE_DEV_INIT) {
@@ -957,13 +959,15 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 static const struct rte_eth_desc_lim qede_rx_desc_lim = {
 	.nb_max = NUM_RX_BDS_MAX,
 	.nb_min = 128,
-	.nb_align = 128	/* lowest common multiple */
+	.nb_align = 128 /* lowest common multiple */
 };
 
 static const struct rte_eth_desc_lim qede_tx_desc_lim = {
 	.nb_max = NUM_TX_BDS_MAX,
 	.nb_min = 256,
-	.nb_align = 256
+	.nb_align = 256,
+	.nb_seg_max = ETH_TX_MAX_BDS_PER_LSO_PACKET,
+	.nb_mtu_seg_max = ETH_TX_MAX_BDS_PER_NON_LSO_PACKET
 };
 
 static void
@@ -1005,12 +1009,16 @@ qede_dev_info_get(struct rte_eth_dev *eth_dev,
 				     DEV_RX_OFFLOAD_IPV4_CKSUM	|
 				     DEV_RX_OFFLOAD_UDP_CKSUM	|
 				     DEV_RX_OFFLOAD_TCP_CKSUM	|
-				     DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM);
+				     DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM |
+				     DEV_RX_OFFLOAD_TCP_LRO);
+
 	dev_info->tx_offload_capa = (DEV_TX_OFFLOAD_VLAN_INSERT	|
 				     DEV_TX_OFFLOAD_IPV4_CKSUM	|
 				     DEV_TX_OFFLOAD_UDP_CKSUM	|
 				     DEV_TX_OFFLOAD_TCP_CKSUM	|
-				     DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM);
+				     DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
+				     DEV_TX_OFFLOAD_TCP_TSO |
+				     DEV_TX_OFFLOAD_VXLAN_TNL_TSO);
 
 	memset(&link, 0, sizeof(struct qed_link_output));
 	qdev->ops->common->get_link(edev, &link);
@@ -2107,6 +2115,7 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 
 	eth_dev->rx_pkt_burst = qede_recv_pkts;
 	eth_dev->tx_pkt_burst = qede_xmit_pkts;
+	eth_dev->tx_pkt_prepare = qede_xmit_prep_pkts;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
 		DP_NOTICE(edev, false,

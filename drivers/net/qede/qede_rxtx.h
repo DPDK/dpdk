@@ -126,6 +126,19 @@
 
 #define QEDE_PKT_TYPE_TUNN_MAX_TYPE			0x20 /* 2^5 */
 
+#define QEDE_TX_CSUM_OFFLOAD_MASK (PKT_TX_IP_CKSUM              | \
+				   PKT_TX_TCP_CKSUM             | \
+				   PKT_TX_UDP_CKSUM             | \
+				   PKT_TX_OUTER_IP_CKSUM        | \
+				   PKT_TX_TCP_SEG)
+
+#define QEDE_TX_OFFLOAD_MASK (QEDE_TX_CSUM_OFFLOAD_MASK | \
+			      PKT_TX_QINQ_PKT           | \
+			      PKT_TX_VLAN_PKT)
+
+#define QEDE_TX_OFFLOAD_NOTSUP_MASK \
+	(PKT_TX_OFFLOAD_MASK ^ QEDE_TX_OFFLOAD_MASK)
+
 /*
  * RX BD descriptor ring
  */
@@ -133,6 +146,19 @@ struct qede_rx_entry {
 	struct rte_mbuf *mbuf;
 	uint32_t page_offset;
 	/* allows expansion .. */
+};
+
+/* TPA related structures */
+enum qede_agg_state {
+	QEDE_AGG_STATE_NONE  = 0,
+	QEDE_AGG_STATE_START = 1,
+	QEDE_AGG_STATE_ERROR = 2
+};
+
+struct qede_agg_info {
+	struct rte_mbuf *mbuf;
+	uint16_t start_cqe_bd_len;
+	uint8_t state; /* for sanity check */
 };
 
 /*
@@ -155,6 +181,7 @@ struct qede_rx_queue {
 	uint64_t rx_segs;
 	uint64_t rx_hw_errors;
 	uint64_t rx_alloc_errors;
+	struct qede_agg_info tpa_info[ETH_TPA_MAX_AGGS_NUM];
 	struct qede_dev *qdev;
 	void *handle;
 };
@@ -231,6 +258,9 @@ void qede_free_mem_load(struct rte_eth_dev *eth_dev);
 
 uint16_t qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts,
 			uint16_t nb_pkts);
+
+uint16_t qede_xmit_prep_pkts(void *p_txq, struct rte_mbuf **tx_pkts,
+			     uint16_t nb_pkts);
 
 uint16_t qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts,
 			uint16_t nb_pkts);

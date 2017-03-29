@@ -61,13 +61,13 @@ Supported Features
 - Scatter-Gather
 - VXLAN tunneling offload
 - N-tuple filter and flow director (limited support)
+- LRO/TSO
 
 Non-supported Features
 ----------------------
 
 - SR-IOV PF
 - GENEVE and NVGRE Tunneling offloads
-- LRO/TSO
 - NPAR
 
 Supported QLogic Adapters

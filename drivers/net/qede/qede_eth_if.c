@@ -18,8 +18,8 @@ qed_start_vport(struct ecore_dev *edev, struct qed_start_vport_params *p_params)
 		u8 tx_switching = 0;
 		struct ecore_sp_vport_start_params start = { 0 };
 
-		start.tpa_mode = p_params->gro_enable ? ECORE_TPA_MODE_GRO :
-		    ECORE_TPA_MODE_NONE;
+		start.tpa_mode = p_params->enable_lro ? ECORE_TPA_MODE_RSC :
+				ECORE_TPA_MODE_NONE;
 		start.remove_inner_vlan = p_params->remove_inner_vlan;
 		start.tx_switching = tx_switching;
 		start.only_untagged = false;	/* untagged only */
@@ -29,7 +29,6 @@ qed_start_vport(struct ecore_dev *edev, struct qed_start_vport_params *p_params)
 		start.concrete_fid = p_hwfn->hw_info.concrete_fid;
 		start.handle_ptp_pkts = p_params->handle_ptp_pkts;
 		start.vport_id = p_params->vport_id;
-		start.max_buffers_per_cqe = 16;	/* TODO-is this right */
 		start.mtu = p_params->mtu;
 		/* @DPDK - Disable FW placement */
 		start.zero_placement_offset = 1;
@@ -120,6 +119,7 @@ qed_update_vport(struct ecore_dev *edev, struct qed_update_vport_params *params)
 	sp_params.update_accept_any_vlan_flg =
 	    params->update_accept_any_vlan_flg;
 	sp_params.mtu = params->mtu;
+	sp_params.sge_tpa_params = params->sge_tpa_params;
 
 	for_each_hwfn(edev, i) {
 		struct ecore_hwfn *p_hwfn = &edev->hwfns[i];

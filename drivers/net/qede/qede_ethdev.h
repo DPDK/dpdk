@@ -193,8 +193,7 @@ struct qede_dev {
 	uint16_t rss_ind_table[ECORE_RSS_IND_TABLE_SIZE];
 	uint64_t rss_hf;
 	uint8_t rss_key_len;
-	uint32_t flags;
-	bool gro_disable;
+	bool enable_lro;
 	uint16_t num_queues;
 	uint8_t fp_num_tx;
 	uint8_t fp_num_rx;
