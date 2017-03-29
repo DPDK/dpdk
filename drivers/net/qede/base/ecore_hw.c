@@ -773,6 +773,18 @@ ecore_dmae_execute_command(struct ecore_hwfn *p_hwfn,
 	enum _ecore_status_t ecore_status = ECORE_SUCCESS;
 	u32 offset = 0;
 
+	if (p_hwfn->p_dev->recov_in_prog) {
+		DP_VERBOSE(p_hwfn, ECORE_MSG_HW,
+			   "Recovery is in progress. Avoid DMAE transaction [{src: addr 0x%lx, type %d}, {dst: addr 0x%lx, type %d}, size %d].\n",
+			   (unsigned long)src_addr, src_type,
+			   (unsigned long)dst_addr, dst_type,
+			   size_in_dwords);
+		/* Return success to let the flow to be completed successfully
+		 * w/o any error handling.
+		 */
+		return ECORE_SUCCESS;
+	}
+
 	ecore_dmae_opcode(p_hwfn,
 			  (src_type == ECORE_DMAE_ADDRESS_GRC),
 			  (dst_type == ECORE_DMAE_ADDRESS_GRC), p_params);
