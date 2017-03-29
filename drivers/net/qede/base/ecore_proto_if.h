@@ -21,6 +21,12 @@ struct ecore_eth_pf_params {
 	 * to update_pf_params routine invoked before slowpath start
 	 */
 	u16	num_cons;
+
+	/* To enable arfs, previous to HW-init a positive number needs to be
+	 * set [as filters require allocated searcher ILT memory].
+	 * This will set the maximal number of configured steering-filters.
+	 */
+	u32	num_arfs_filters;
 };
 
 /* Most of the the parameters below are described in the FW iSCSI / TCP HSI */

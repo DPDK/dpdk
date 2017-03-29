@@ -141,6 +141,14 @@ struct ecore_filter_accept_flags {
 #define ECORE_ACCEPT_BCAST		0x20
 };
 
+struct ecore_arfs_config_params {
+	bool tcp;
+	bool udp;
+	bool ipv4;
+	bool ipv6;
+	bool arfs_enable;	/* Enable or disable arfs mode */
+};
+
 /* Add / remove / move / remove-all unicast MAC-VLAN filters.
  * FW will assert in the following cases, so driver should take care...:
  * 1. Adding a filter to a full table.
@@ -414,4 +422,18 @@ void ecore_get_vport_stats(struct ecore_dev *p_dev,
 
 void ecore_reset_vport_stats(struct ecore_dev *p_dev);
 
+/**
+ *@brief ecore_arfs_mode_configure -
+ *
+ *Enable or disable rfs mode. It must accept atleast one of tcp or udp true
+ *and atleast one of ipv4 or ipv6 true to enable rfs mode.
+ *
+ *@param p_hwfn
+ *@param p_ptt
+ *@param p_cfg_params		arfs mode configuration parameters.
+ *
+ */
+void ecore_arfs_mode_configure(struct ecore_hwfn *p_hwfn,
+			       struct ecore_ptt *p_ptt,
+			       struct ecore_arfs_config_params *p_cfg_params);
 #endif

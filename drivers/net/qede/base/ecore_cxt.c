@@ -192,9 +192,6 @@ struct ecore_cxt_mngr {
 	 */
 	u32 vf_count;
 
-	/* total number of SRQ's for this hwfn */
-	u32				srq_count;
-
 	/* Acquired CIDs */
 	struct ecore_cid_acquired_map acquired[MAX_CONN_TYPES];
 	/* TBD - do we want this allocated to reserve space? */
@@ -213,10 +210,29 @@ struct ecore_cxt_mngr {
 	u32 t2_num_pages;
 	u64 first_free;
 	u64 last_free;
+
+	/* The infrastructure originally was very generic and context/task
+	 * oriented - per connection-type we would set how many of those
+	 * are needed, and later when determining how much memory we're
+	 * needing for a given block we'd iterate over all the relevant
+	 * connection-types.
+	 * But since then we've had some additional resources, some of which
+	 * require memory which is indepent of the general context/task
+	 * scheme. We add those here explicitly per-feature.
+	 */
+
+	/* total number of SRQ's for this hwfn */
+	u32				srq_count;
+
+	/* Maximal number of L2 steering filters */
+	u32				arfs_count;
+
+	/* TODO - VF arfs filters ? */
 };
 
 /* check if resources/configuration is required according to protocol type */
-static OSAL_INLINE bool src_proto(enum protocol_type type)
+static OSAL_INLINE bool src_proto(struct ecore_hwfn *p_hwfn,
+				  enum protocol_type type)
 {
 	return type == PROTOCOLID_TOE;
 }
@@ -254,18 +270,22 @@ struct ecore_src_iids {
 	u32 per_vf_cids;
 };
 
-static OSAL_INLINE void ecore_cxt_src_iids(struct ecore_cxt_mngr *p_mngr,
+static OSAL_INLINE void ecore_cxt_src_iids(struct ecore_hwfn *p_hwfn,
+					   struct ecore_cxt_mngr *p_mngr,
 					   struct ecore_src_iids *iids)
 {
 	u32 i;
 
 	for (i = 0; i < MAX_CONN_TYPES; i++) {
-		if (!src_proto(i))
+		if (!src_proto(p_hwfn, i))
 			continue;
 
 		iids->pf_cids += p_mngr->conn_cfg[i].cid_count;
 		iids->per_vf_cids += p_mngr->conn_cfg[i].cids_per_vf;
 	}
+
+	/* Add L2 filtering filters in addition */
+	iids->pf_cids += p_mngr->arfs_count;
 }
 
 /* counts the iids for the Timers block configuration */
@@ -686,7 +706,7 @@ enum _ecore_status_t ecore_cxt_cfg_ilt_compute(struct ecore_hwfn *p_hwfn)
 
 	/* SRC */
 	p_cli = &p_mngr->clients[ILT_CLI_SRC];
-	ecore_cxt_src_iids(p_mngr, &src_iids);
+	ecore_cxt_src_iids(p_hwfn, p_mngr, &src_iids);
 
 	/* Both the PF and VFs searcher connections are stored in the per PF
 	 * database. Thus sum the PF searcher cids and all the VFs searcher
@@ -800,7 +820,7 @@ static enum _ecore_status_t ecore_cxt_src_t2_alloc(struct ecore_hwfn *p_hwfn)
 	if (!p_src->active)
 		return ECORE_SUCCESS;
 
-	ecore_cxt_src_iids(p_mngr, &src_iids);
+	ecore_cxt_src_iids(p_hwfn, p_mngr, &src_iids);
 	conn_num = src_iids.pf_cids + src_iids.per_vf_cids * p_mngr->vf_count;
 	total_size = conn_num * sizeof(struct src_ent);
 
@@ -1619,7 +1639,7 @@ static void ecore_src_init_pf(struct ecore_hwfn *p_hwfn)
 	struct ecore_src_iids src_iids;
 
 	OSAL_MEM_ZERO(&src_iids, sizeof(src_iids));
-	ecore_cxt_src_iids(p_mngr, &src_iids);
+	ecore_cxt_src_iids(p_hwfn, p_mngr, &src_iids);
 	conn_num = src_iids.pf_cids + src_iids.per_vf_cids * p_mngr->vf_count;
 	if (!conn_num)
 		return;
@@ -1635,6 +1655,9 @@ static void ecore_src_init_pf(struct ecore_hwfn *p_hwfn)
 			 p_hwfn->p_cxt_mngr->first_free);
 	STORE_RT_REG_AGG(p_hwfn, SRC_REG_LASTFREE_RT_OFFSET,
 			 p_hwfn->p_cxt_mngr->last_free);
+	DP_VERBOSE(p_hwfn, ECORE_MSG_ILT,
+		   "Configured SEARCHER for 0x%08x connections\n",
+		   conn_num);
 }
 
 /* Timers PF */
@@ -1978,10 +2001,10 @@ enum _ecore_status_t ecore_cxt_set_pf_params(struct ecore_hwfn *p_hwfn)
 			 * As of now, allocates 16 * 2 per-VF [to retain regular
 			 * functionality].
 			 */
-			ecore_cxt_set_proto_cid_count(p_hwfn,
-				PROTOCOLID_ETH,
-				p_params->num_cons, 32);
-
+			ecore_cxt_set_proto_cid_count(p_hwfn, PROTOCOLID_ETH,
+						      p_params->num_cons, 32);
+			p_hwfn->p_cxt_mngr->arfs_count =
+						p_params->num_arfs_filters;
 			break;
 		}
 	default:

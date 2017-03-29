@@ -1497,6 +1497,37 @@ void ecore_set_geneve_enable(struct ecore_hwfn *p_hwfn,
 #define RAM_LINE_SIZE sizeof(u64)
 #define REG_SIZE sizeof(u32)
 
+void ecore_set_rfs_mode_disable(struct ecore_hwfn *p_hwfn,
+	struct ecore_ptt *p_ptt,
+	u16 pf_id)
+{
+	union gft_cam_line_union cam_line;
+	struct gft_ram_line ram_line;
+	u32 i, *ram_line_ptr;
+
+	ram_line_ptr = (u32 *)&ram_line;
+
+	/* Stop using gft logic, disable gft search */
+	ecore_wr(p_hwfn, p_ptt, PRS_REG_SEARCH_GFT, 0);
+	ecore_wr(p_hwfn, p_ptt, PRS_REG_CM_HDR_GFT, 0x0);
+
+	/* Clean ram & cam for next rfs/gft session*/
+
+	/* Zero camline */
+	OSAL_MEMSET(&cam_line, 0, sizeof(cam_line));
+	ecore_wr(p_hwfn, p_ptt, PRS_REG_GFT_CAM + CAM_LINE_SIZE * pf_id,
+					cam_line.cam_line_mapped.camline);
+
+	/* Zero ramline */
+	OSAL_MEMSET(&ram_line, 0, sizeof(ram_line));
+
+	/* Each iteration write to reg */
+	for (i = 0; i < RAM_LINE_SIZE / REG_SIZE; i++)
+		ecore_wr(p_hwfn, p_ptt, PRS_REG_GFT_PROFILE_MASK_RAM +
+			 RAM_LINE_SIZE * pf_id +
+			 i * REG_SIZE, *(ram_line_ptr + i));
+}
+
 
 void ecore_set_gft_event_id_cm_hdr(struct ecore_hwfn *p_hwfn,
 				   struct ecore_ptt *p_ptt)

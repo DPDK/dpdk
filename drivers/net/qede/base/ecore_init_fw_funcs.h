@@ -351,6 +351,17 @@ void ecore_set_gft_event_id_cm_hdr(struct ecore_hwfn *p_hwfn,
 				   struct ecore_ptt *p_ptt);
 
 /**
+ * @brief ecore_set_rfs_mode_disable - Disable and configure HW for RFS
+ *
+ * @param p_hwfn -   HW device data
+ * @param p_ptt -   ptt window used for writing the registers.
+ * @param pf_id - pf on which to disable RFS.
+ */
+void ecore_set_rfs_mode_disable(struct ecore_hwfn *p_hwfn,
+				struct ecore_ptt *p_ptt,
+				u16 pf_id);
+
+/**
 * @brief ecore_set_rfs_mode_enable - enable and configure HW for RFS
 *
 * @param p_ptt	- ptt window used for writing the registers.
