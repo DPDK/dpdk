@@ -457,6 +457,14 @@ struct tlv_buffer_size {
 	u8 tlv_buffer[TLV_BUFFER_SIZE];
 };
 
+struct vfpf_update_coalesce {
+	struct vfpf_first_tlv first_tlv;
+	u16 rx_coal;
+	u16 tx_coal;
+	u16 qid;
+	u8 padding[2];
+};
+
 union vfpf_tlvs {
 	struct vfpf_first_tlv			first_tlv;
 	struct vfpf_acquire_tlv			acquire;
@@ -469,6 +477,7 @@ union vfpf_tlvs {
 	struct vfpf_vport_update_tlv		vport_update;
 	struct vfpf_ucast_filter_tlv		ucast_filter;
 	struct vfpf_update_tunn_param_tlv	tunn_param_update;
+	struct vfpf_update_coalesce		update_coalesce;
 	struct tlv_buffer_size			tlv_buf_size;
 };
 
@@ -592,6 +601,7 @@ enum {
 	CHANNEL_TLV_VPORT_UPDATE_ACCEPT_ANY_VLAN,
 	CHANNEL_TLV_VPORT_UPDATE_SGE_TPA,
 	CHANNEL_TLV_UPDATE_TUNN_PARAM,
+	CHANNEL_TLV_COALESCE_UPDATE,
 	CHANNEL_TLV_MAX,
 
 	/* Required for iterating over vport-update tlvs.

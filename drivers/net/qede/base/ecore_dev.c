@@ -30,6 +30,7 @@
 #include "nvm_cfg.h"
 #include "ecore_dev_api.h"
 #include "ecore_dcbx.h"
+#include "ecore_l2.h"
 
 /* TODO - there's a bug in DCBx re-configuration flows in MF, as the QM
  * registers involved are not split and thus configuration is a race where
@@ -4198,11 +4199,6 @@ static enum _ecore_status_t ecore_set_coalesce(struct ecore_hwfn *p_hwfn,
 {
 	struct coalescing_timeset *p_coal_timeset;
 
-	if (IS_VF(p_hwfn->p_dev)) {
-		DP_NOTICE(p_hwfn, true, "VF coalescing config not supported\n");
-		return ECORE_INVAL;
-	}
-
 	if (p_hwfn->p_dev->int_coalescing_mode != ECORE_COAL_MODE_ENABLE) {
 		DP_NOTICE(p_hwfn, true,
 			  "Coalescing configuration not enabled\n");
@@ -4218,13 +4214,53 @@ static enum _ecore_status_t ecore_set_coalesce(struct ecore_hwfn *p_hwfn,
 	return ECORE_SUCCESS;
 }
 
+enum _ecore_status_t ecore_set_queue_coalesce(struct ecore_hwfn *p_hwfn,
+					      u16 rx_coal, u16 tx_coal,
+					      void *p_handle)
+{
+	struct ecore_queue_cid *p_cid = (struct ecore_queue_cid *)p_handle;
+	enum _ecore_status_t rc = ECORE_SUCCESS;
+	struct ecore_ptt *p_ptt;
+
+	/* TODO - Configuring a single queue's coalescing but
+	 * claiming all queues are abiding same configuration
+	 * for PF and VF both.
+	 */
+
+	if (IS_VF(p_hwfn->p_dev))
+		return ecore_vf_pf_set_coalesce(p_hwfn, rx_coal,
+						tx_coal, p_cid);
+
+	p_ptt = ecore_ptt_acquire(p_hwfn);
+	if (!p_ptt)
+		return ECORE_AGAIN;
+
+	if (rx_coal) {
+		rc = ecore_set_rxq_coalesce(p_hwfn, p_ptt, rx_coal, p_cid);
+		if (rc)
+			goto out;
+		p_hwfn->p_dev->rx_coalesce_usecs = rx_coal;
+	}
+
+	if (tx_coal) {
+		rc = ecore_set_txq_coalesce(p_hwfn, p_ptt, tx_coal, p_cid);
+		if (rc)
+			goto out;
+		p_hwfn->p_dev->tx_coalesce_usecs = tx_coal;
+	}
+out:
+	ecore_ptt_release(p_hwfn, p_ptt);
+
+	return rc;
+}
+
 enum _ecore_status_t ecore_set_rxq_coalesce(struct ecore_hwfn *p_hwfn,
 					    struct ecore_ptt *p_ptt,
-					    u16 coalesce, u16 qid, u16 sb_id)
+					    u16 coalesce,
+					    struct ecore_queue_cid *p_cid)
 {
 	struct ustorm_eth_queue_zone eth_qzone;
 	u8 timeset, timer_res;
-	u16 fw_qid = 0;
 	u32 address;
 	enum _ecore_status_t rc;
 
@@ -4241,33 +4277,30 @@ enum _ecore_status_t ecore_set_rxq_coalesce(struct ecore_hwfn *p_hwfn,
 	}
 	timeset = (u8)(coalesce >> timer_res);
 
-	rc = ecore_fw_l2_queue(p_hwfn, qid, &fw_qid);
-	if (rc != ECORE_SUCCESS)
-		return rc;
-
-	rc = ecore_int_set_timer_res(p_hwfn, p_ptt, timer_res, sb_id, false);
+	rc = ecore_int_set_timer_res(p_hwfn, p_ptt, timer_res,
+				     p_cid->abs.sb_idx, false);
 	if (rc != ECORE_SUCCESS)
 		goto out;
 
-	address = BAR0_MAP_REG_USDM_RAM + USTORM_ETH_QUEUE_ZONE_OFFSET(fw_qid);
+	address = BAR0_MAP_REG_USDM_RAM +
+		  USTORM_ETH_QUEUE_ZONE_OFFSET(p_cid->abs.queue_id);
 
 	rc = ecore_set_coalesce(p_hwfn, p_ptt, address, &eth_qzone,
 				sizeof(struct ustorm_eth_queue_zone), timeset);
 	if (rc != ECORE_SUCCESS)
 		goto out;
 
-	p_hwfn->p_dev->rx_coalesce_usecs = coalesce;
-out:
+ out:
 	return rc;
 }
 
 enum _ecore_status_t ecore_set_txq_coalesce(struct ecore_hwfn *p_hwfn,
 					    struct ecore_ptt *p_ptt,
-					    u16 coalesce, u16 qid, u16 sb_id)
+					    u16 coalesce,
+					    struct ecore_queue_cid *p_cid)
 {
 	struct xstorm_eth_queue_zone eth_qzone;
 	u8 timeset, timer_res;
-	u16 fw_qid = 0;
 	u32 address;
 	enum _ecore_status_t rc;
 
@@ -4285,23 +4318,17 @@ enum _ecore_status_t ecore_set_txq_coalesce(struct ecore_hwfn *p_hwfn,
 
 	timeset = (u8)(coalesce >> timer_res);
 
-	rc = ecore_fw_l2_queue(p_hwfn, qid, &fw_qid);
-	if (rc != ECORE_SUCCESS)
-		return rc;
-
-	rc = ecore_int_set_timer_res(p_hwfn, p_ptt, timer_res, sb_id, true);
+	rc = ecore_int_set_timer_res(p_hwfn, p_ptt, timer_res,
+				     p_cid->abs.sb_idx, true);
 	if (rc != ECORE_SUCCESS)
 		goto out;
 
-	address = BAR0_MAP_REG_XSDM_RAM + XSTORM_ETH_QUEUE_ZONE_OFFSET(fw_qid);
+	address = BAR0_MAP_REG_XSDM_RAM +
+		  XSTORM_ETH_QUEUE_ZONE_OFFSET(p_cid->abs.queue_id);
 
 	rc = ecore_set_coalesce(p_hwfn, p_ptt, address, &eth_qzone,
 				sizeof(struct xstorm_eth_queue_zone), timeset);
-	if (rc != ECORE_SUCCESS)
-		goto out;
-
-	p_hwfn->p_dev->tx_coalesce_usecs = coalesce;
-out:
+ out:
 	return rc;
 }
 

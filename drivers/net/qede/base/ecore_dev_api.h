@@ -570,41 +570,24 @@ enum _ecore_status_t ecore_final_cleanup(struct ecore_hwfn	*p_hwfn,
 					 struct ecore_ptt	*p_ptt,
 					 u16			id,
 					 bool			is_vf);
-
 /**
- * @brief ecore_set_rxq_coalesce - Configure coalesce parameters for an Rx queue
- *    The fact that we can configure coalescing to up to 511, but on varying
- *    accuracy [the bigger the value the less accurate] up to a mistake of 3usec
- *    for the highest values.
- *
- * @param p_hwfn
- * @param p_ptt
- * @param coalesce - Coalesce value in micro seconds.
- * @param qid - Queue index.
- * @param qid - SB Id
- *
- * @return enum _ecore_status_t
- */
-enum _ecore_status_t ecore_set_rxq_coalesce(struct ecore_hwfn *p_hwfn,
-					    struct ecore_ptt *p_ptt,
-					    u16 coalesce, u16 qid, u16 sb_id);
-
-/**
- * @brief ecore_set_txq_coalesce - Configure coalesce parameters for a Tx queue
- *    While the API allows setting coalescing per-qid, all tx queues sharing a
- *    SB should be in same range [i.e., either 0-0x7f, 0x80-0xff or 0x100-0x1ff]
+ * @brief ecore_set_queue_coalesce - Configure coalesce parameters for Rx and
+ *    Tx queue. The fact that we can configure coalescing to up to 511, but on
+ *    varying accuracy [the bigger the value the less accurate] up to a mistake
+ *    of 3usec for the highest values.
+ *    While the API allows setting coalescing per-qid, all queues sharing a SB
+ *    should be in same range [i.e., either 0-0x7f, 0x80-0xff or 0x100-0x1ff]
  *    otherwise configuration would break.
  *
  * @param p_hwfn
- * @param p_ptt
- * @param coalesce - Coalesce value in micro seconds.
- * @param qid - Queue index.
- * @param qid - SB Id
+ * @param rx_coal - Rx Coalesce value in micro seconds.
+ * @param tx_coal - TX Coalesce value in micro seconds.
+ * @param p_handle
  *
  * @return enum _ecore_status_t
- */
-enum _ecore_status_t ecore_set_txq_coalesce(struct ecore_hwfn *p_hwfn,
-					    struct ecore_ptt *p_ptt,
-					    u16 coalesce, u16 qid, u16 sb_id);
+ **/
+enum _ecore_status_t
+ecore_set_queue_coalesce(struct ecore_hwfn *p_hwfn, u16 rx_coal,
+			 u16 tx_coal, void *p_handle);
 
 #endif

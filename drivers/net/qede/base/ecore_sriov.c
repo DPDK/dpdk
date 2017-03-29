@@ -52,6 +52,7 @@ const char *ecore_channel_tlvs_string[] = {
 	"CHANNEL_TLV_VPORT_UPDATE_ACCEPT_ANY_VLAN",
 	"CHANNEL_TLV_VPORT_UPDATE_SGE_TPA",
 	"CHANNEL_TLV_UPDATE_TUNN_PARAM",
+	"CHANNEL_TLV_COALESCE_UPDATE",
 	"CHANNEL_TLV_MAX"
 };
 
@@ -1939,6 +1940,8 @@ static void ecore_iov_vf_mbx_start_vport(struct ecore_hwfn *p_hwfn,
 	vf->state = VF_ENABLED;
 	start = &mbx->req_virt->start_vport;
 
+	ecore_iov_enable_vf_traffic(p_hwfn, p_ptt, vf);
+
 	/* Initialize Status block in CAU */
 	for (sb_id = 0; sb_id < vf->num_sbs; sb_id++) {
 		if (!start->sb_addr[sb_id]) {
@@ -1953,7 +1956,6 @@ static void ecore_iov_vf_mbx_start_vport(struct ecore_hwfn *p_hwfn,
 				      vf->igu_sbs[sb_id],
 				      vf->abs_vf_id, 1);
 	}
-	ecore_iov_enable_vf_traffic(p_hwfn, p_ptt, vf);
 
 	vf->mtu = start->mtu;
 	vf->shadow_config.inner_vlan_removal = start->inner_vlan_removal;
@@ -3226,6 +3228,65 @@ static void ecore_iov_vf_mbx_release(struct ecore_hwfn *p_hwfn,
 			       length, status);
 }
 
+static void ecore_iov_vf_pf_set_coalesce(struct ecore_hwfn *p_hwfn,
+					 struct ecore_ptt *p_ptt,
+					 struct ecore_vf_info *vf)
+{
+	struct ecore_iov_vf_mbx *mbx = &vf->vf_mbx;
+	enum _ecore_status_t rc = ECORE_SUCCESS;
+	struct vfpf_update_coalesce *req;
+	u8 status = PFVF_STATUS_FAILURE;
+	struct ecore_queue_cid *p_cid;
+	u16 rx_coal, tx_coal;
+	u16  qid;
+
+	req = &mbx->req_virt->update_coalesce;
+
+	rx_coal = req->rx_coal;
+	tx_coal = req->tx_coal;
+	qid = req->qid;
+	p_cid = vf->vf_queues[qid].p_rx_cid;
+
+	if (!ecore_iov_validate_rxq(p_hwfn, vf, qid)) {
+		DP_ERR(p_hwfn, "VF[%d]: Invalid Rx queue_id = %d\n",
+		       vf->abs_vf_id, qid);
+		goto out;
+	}
+
+	if (!ecore_iov_validate_txq(p_hwfn, vf, qid)) {
+		DP_ERR(p_hwfn, "VF[%d]: Invalid Tx queue_id = %d\n",
+		       vf->abs_vf_id, qid);
+		goto out;
+	}
+
+	DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
+		   "VF[%d]: Setting coalesce for VF rx_coal = %d, tx_coal = %d at queue = %d\n",
+		   vf->abs_vf_id, rx_coal, tx_coal, qid);
+	if (rx_coal) {
+		rc = ecore_set_rxq_coalesce(p_hwfn, p_ptt, rx_coal, p_cid);
+		if (rc != ECORE_SUCCESS) {
+			DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
+				   "VF[%d]: Unable to set rx queue = %d coalesce\n",
+				   vf->abs_vf_id, vf->vf_queues[qid].fw_rx_qid);
+			goto out;
+		}
+	}
+	if (tx_coal) {
+		rc =  ecore_set_txq_coalesce(p_hwfn, p_ptt, tx_coal, p_cid);
+		if (rc != ECORE_SUCCESS) {
+			DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
+				   "VF[%d]: Unable to set tx queue = %d coalesce\n",
+				   vf->abs_vf_id, vf->vf_queues[qid].fw_tx_qid);
+			goto out;
+		}
+	}
+
+	status = PFVF_STATUS_SUCCESS;
+out:
+	ecore_iov_prepare_resp(p_hwfn, p_ptt, vf, CHANNEL_TLV_COALESCE_UPDATE,
+			       sizeof(struct pfvf_def_resp_tlv), status);
+}
+
 static enum _ecore_status_t
 ecore_iov_vf_flr_poll_dorq(struct ecore_hwfn *p_hwfn,
 			   struct ecore_vf_info *p_vf, struct ecore_ptt *p_ptt)
@@ -3578,6 +3639,9 @@ void ecore_iov_process_mbx_req(struct ecore_hwfn *p_hwfn,
 			break;
 		case CHANNEL_TLV_UPDATE_TUNN_PARAM:
 			ecore_iov_vf_mbx_update_tunn_param(p_hwfn, p_ptt, p_vf);
+			break;
+		case CHANNEL_TLV_COALESCE_UPDATE:
+			ecore_iov_vf_pf_set_coalesce(p_hwfn, p_ptt, p_vf);
 			break;
 		}
 	} else if (ecore_iov_tlv_supported(mbx->first_tlv.tl.type)) {
