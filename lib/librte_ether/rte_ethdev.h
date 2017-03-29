@@ -1179,6 +1179,12 @@ typedef uint32_t (*eth_rx_queue_count_t)(struct rte_eth_dev *dev,
 typedef int (*eth_rx_descriptor_done_t)(void *rxq, uint16_t offset);
 /**< @internal Check DD bit of specific RX descriptor */
 
+typedef int (*eth_rx_descriptor_status_t)(void *rxq, uint16_t offset);
+/**< @internal Check the status of a Rx descriptor */
+
+typedef int (*eth_tx_descriptor_status_t)(void *txq, uint16_t offset);
+/**< @internal Check the status of a Tx descriptor */
+
 typedef int (*eth_fw_version_get_t)(struct rte_eth_dev *dev,
 				     char *fw_version, size_t fw_size);
 /**< @internal Get firmware information of an Ethernet device. */
@@ -1487,6 +1493,10 @@ struct eth_dev_ops {
 	eth_rx_queue_count_t       rx_queue_count;
 	/**< Get the number of used RX descriptors. */
 	eth_rx_descriptor_done_t   rx_descriptor_done; /**< Check rxd DD bit. */
+	eth_rx_descriptor_status_t rx_descriptor_status;
+	/**< Check the status of a Rx descriptor. */
+	eth_tx_descriptor_status_t tx_descriptor_status;
+	/**< Check the status of a Tx descriptor. */
 	eth_rx_enable_intr_t       rx_queue_intr_enable;  /**< Enable Rx queue interrupt. */
 	eth_rx_disable_intr_t      rx_queue_intr_disable; /**< Disable Rx queue interrupt. */
 	eth_tx_queue_setup_t       tx_queue_setup;/**< Set up device TX queue. */
@@ -2776,6 +2786,121 @@ rte_eth_rx_descriptor_done(uint8_t port_id, uint16_t queue_id, uint16_t offset)
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_descriptor_done, -ENOTSUP);
 	return (*dev->dev_ops->rx_descriptor_done)( \
 		dev->data->rx_queues[queue_id], offset);
+}
+
+#define RTE_ETH_RX_DESC_AVAIL    0 /**< Desc available for hw. */
+#define RTE_ETH_RX_DESC_DONE     1 /**< Desc done, filled by hw. */
+#define RTE_ETH_RX_DESC_UNAVAIL  2 /**< Desc used by driver or hw. */
+
+/**
+ * Check the status of a Rx descriptor in the queue
+ *
+ * It should be called in a similar context than the Rx function:
+ * - on a dataplane core
+ * - not concurrently on the same queue
+ *
+ * Since it's a dataplane function, no check is performed on port_id and
+ * queue_id. The caller must therefore ensure that the port is enabled
+ * and the queue is configured and running.
+ *
+ * Note: accessing to a random descriptor in the ring may trigger cache
+ * misses and have a performance impact.
+ *
+ * @param port_id
+ *  A valid port identifier of the Ethernet device which.
+ * @param queue_id
+ *  A valid Rx queue identifier on this port.
+ * @param offset
+ *  The offset of the descriptor starting from tail (0 is the next
+ *  packet to be received by the driver).
+ *
+ * @return
+ *  - (RTE_ETH_RX_DESC_AVAIL): Descriptor is available for the hardware to
+ *    receive a packet.
+ *  - (RTE_ETH_RX_DESC_DONE): Descriptor is done, it is filled by hw, but
+ *    not yet processed by the driver (i.e. in the receive queue).
+ *  - (RTE_ETH_RX_DESC_UNAVAIL): Descriptor is unavailable, either hold by
+ *    the driver and not yet returned to hw, or reserved by the hw.
+ *  - (-EINVAL) bad descriptor offset.
+ *  - (-ENOTSUP) if the device does not support this function.
+ *  - (-ENODEV) bad port or queue (only if compiled with debug).
+ */
+static inline int
+rte_eth_rx_descriptor_status(uint8_t port_id, uint16_t queue_id,
+	uint16_t offset)
+{
+	struct rte_eth_dev *dev;
+	void *rxq;
+
+#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+#endif
+	dev = &rte_eth_devices[port_id];
+#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+	if (queue_id >= dev->data->nb_rx_queues)
+		return -ENODEV;
+#endif
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rx_descriptor_status, -ENOTSUP);
+	rxq = dev->data->rx_queues[queue_id];
+
+	return (*dev->dev_ops->rx_descriptor_status)(rxq, offset);
+}
+
+#define RTE_ETH_TX_DESC_FULL    0 /**< Desc filled for hw, waiting xmit. */
+#define RTE_ETH_TX_DESC_DONE    1 /**< Desc done, packet is transmitted. */
+#define RTE_ETH_TX_DESC_UNAVAIL 2 /**< Desc used by driver or hw. */
+
+/**
+ * Check the status of a Tx descriptor in the queue.
+ *
+ * It should be called in a similar context than the Tx function:
+ * - on a dataplane core
+ * - not concurrently on the same queue
+ *
+ * Since it's a dataplane function, no check is performed on port_id and
+ * queue_id. The caller must therefore ensure that the port is enabled
+ * and the queue is configured and running.
+ *
+ * Note: accessing to a random descriptor in the ring may trigger cache
+ * misses and have a performance impact.
+ *
+ * @param port_id
+ *  A valid port identifier of the Ethernet device which.
+ * @param queue_id
+ *  A valid Tx queue identifier on this port.
+ * @param offset
+ *  The offset of the descriptor starting from tail (0 is the place where
+ *  the next packet will be send).
+ *
+ * @return
+ *  - (RTE_ETH_TX_DESC_FULL) Descriptor is being processed by the hw, i.e.
+ *    in the transmit queue.
+ *  - (RTE_ETH_TX_DESC_DONE) Hardware is done with this descriptor, it can
+ *    be reused by the driver.
+ *  - (RTE_ETH_TX_DESC_UNAVAIL): Descriptor is unavailable, reserved by the
+ *    driver or the hardware.
+ *  - (-EINVAL) bad descriptor offset.
+ *  - (-ENOTSUP) if the device does not support this function.
+ *  - (-ENODEV) bad port or queue (only if compiled with debug).
+ */
+static inline int rte_eth_tx_descriptor_status(uint8_t port_id,
+	uint16_t queue_id, uint16_t offset)
+{
+	struct rte_eth_dev *dev;
+	void *txq;
+
+#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+#endif
+	dev = &rte_eth_devices[port_id];
+#ifdef RTE_LIBRTE_ETHDEV_DEBUG
+	if (queue_id >= dev->data->nb_tx_queues)
+		return -ENODEV;
+#endif
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->tx_descriptor_status, -ENOTSUP);
+	txq = dev->data->tx_queues[queue_id];
+
+	return (*dev->dev_ops->tx_descriptor_status)(txq, offset);
 }
 
 /**

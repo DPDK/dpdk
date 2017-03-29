@@ -47,6 +47,14 @@ New Features
   to request the driver to release mbufs from their Tx ring that are no longer
   in use, independent of whether or not the ``tx_rs_thresh`` has been crossed.
 
+* **Added descriptor status ethdev API.**
+
+  Added a new API to get the status of a descriptor.
+
+  For Rx, it is almost similar to the ``rx_descriptor_done`` API, except
+  it differentiates descriptors which are hold by the driver and not
+  returned to the hardware. For Tx, it is a new API.
+
 * **Increased number of next hops for LPM IPv6 to 2^21.**
 
   The next_hop field is extended from 8 bits to 21 bits for IPv6.
