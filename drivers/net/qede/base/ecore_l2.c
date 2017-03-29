@@ -50,10 +50,9 @@ _ecore_eth_queue_to_cid(struct ecore_hwfn *p_hwfn,
 	struct ecore_queue_cid *p_cid;
 	enum _ecore_status_t rc;
 
-	p_cid = OSAL_VALLOC(p_hwfn->p_dev, sizeof(*p_cid));
+	p_cid = OSAL_VZALLOC(p_hwfn->p_dev, sizeof(*p_cid));
 	if (p_cid == OSAL_NULL)
 		return OSAL_NULL;
-	OSAL_MEM_ZERO(p_cid, sizeof(*p_cid));
 
 	p_cid->opaque_fid = opaque_fid;
 	p_cid->cid = cid;

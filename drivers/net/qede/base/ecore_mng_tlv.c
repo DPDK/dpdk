@@ -1413,11 +1413,10 @@ ecore_mfw_update_tlvs(u8 tlv_group, struct ecore_hwfn *p_hwfn,
 	u32 offset;
 	int len;
 
-	p_tlv_data = OSAL_VALLOC(p_hwfn->p_dev, sizeof(*p_tlv_data));
+	p_tlv_data = OSAL_VZALLOC(p_hwfn->p_dev, sizeof(*p_tlv_data));
 	if (!p_tlv_data)
 		return ECORE_NOMEM;
 
-	OSAL_MEMSET(p_tlv_data, 0, sizeof(*p_tlv_data));
 	if (OSAL_MFW_FILL_TLV_DATA(p_hwfn, tlv_group, p_tlv_data)) {
 		OSAL_VFREE(p_hwfn->p_dev, p_tlv_data);
 		return ECORE_INVAL;
@@ -1487,7 +1486,7 @@ ecore_mfw_process_tlv_req(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt)
 		goto drv_done;
 	}
 
-	p_mfw_buf = (void *)OSAL_VALLOC(p_hwfn->p_dev, size);
+	p_mfw_buf = (void *)OSAL_VZALLOC(p_hwfn->p_dev, size);
 	if (!p_mfw_buf) {
 		DP_NOTICE(p_hwfn, false,
 			  "Failed allocate memory for p_mfw_buf\n");

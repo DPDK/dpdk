@@ -3717,13 +3717,12 @@ ecore_chain_alloc_pbl(struct ecore_dev *p_dev,
 	u32 page_cnt = p_chain->page_cnt, size, i;
 
 	size = page_cnt * sizeof(*pp_virt_addr_tbl);
-	pp_virt_addr_tbl = (void **)OSAL_VALLOC(p_dev, size);
+	pp_virt_addr_tbl = (void **)OSAL_VZALLOC(p_dev, size);
 	if (!pp_virt_addr_tbl) {
 		DP_NOTICE(p_dev, true,
 			  "Failed to allocate memory for the chain virtual addresses table\n");
 		return ECORE_NOMEM;
 	}
-	OSAL_MEM_ZERO(pp_virt_addr_tbl, size);
 
 	/* The allocation of the PBL table is done with its full size, since it
 	 * is expected to be successive.

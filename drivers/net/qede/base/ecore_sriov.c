@@ -2845,7 +2845,7 @@ static void ecore_iov_vf_mbx_vport_update(struct ecore_hwfn *p_hwfn,
 		goto out;
 	}
 
-	p_rss_params = OSAL_VALLOC(p_hwfn->p_dev, sizeof(*p_rss_params));
+	p_rss_params = OSAL_VZALLOC(p_hwfn->p_dev, sizeof(*p_rss_params));
 	if (p_rss_params == OSAL_NULL) {
 		status = PFVF_STATUS_FAILURE;
 		goto out;

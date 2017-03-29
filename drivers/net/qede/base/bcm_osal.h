@@ -89,7 +89,7 @@ typedef int bool;
 #define OSAL_ALLOC(dev, GFP, size) rte_malloc("qede", size, 0)
 #define OSAL_ZALLOC(dev, GFP, size) rte_zmalloc("qede", size, 0)
 #define OSAL_CALLOC(dev, GFP, num, size) rte_calloc("qede", num, size, 0)
-#define OSAL_VALLOC(dev, size) rte_malloc("qede", size, 0)
+#define OSAL_VZALLOC(dev, size) rte_zmalloc("qede", size, 0)
 #define OSAL_FREE(dev, memory)		  \
 	do {				  \
 		rte_free((void *)memory); \
