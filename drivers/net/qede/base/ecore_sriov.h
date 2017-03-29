@@ -111,6 +111,7 @@ struct ecore_vf_info {
 	u16			mtu;
 
 	u8			vport_id;
+	u8			rss_eng_id;
 	u8			relative_vf_id;
 	u8			abs_vf_id;
 #define ECORE_VF_ABS_ID(p_hwfn, p_vf)	(ECORE_PATH_ID(p_hwfn) ? \
@@ -155,7 +156,6 @@ struct ecore_pf_iov {
 	struct ecore_vf_info	vfs_array[E4_MAX_NUM_VFS];
 	u64			pending_events[ECORE_VF_ARRAY_LENGTH];
 	u64			pending_flr[ECORE_VF_ARRAY_LENGTH];
-	u16			base_vport_id;
 
 #ifndef REMOVE_DBG
 	/* This doesn't serve anything functionally, but it makes windows

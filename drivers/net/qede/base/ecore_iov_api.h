@@ -103,6 +103,11 @@ struct ecore_iov_vf_init_params {
 	 */
 	u16 req_rx_queue[ECORE_MAX_VF_CHAINS_PER_PF];
 	u16 req_tx_queue[ECORE_MAX_VF_CHAINS_PER_PF];
+
+	u8 vport_id;
+
+	/* Should be set in case RSS is going to be used for VF */
+	u8 rss_eng_id;
 };
 
 #ifdef CONFIG_ECORE_SW_CHANNEL
@@ -415,16 +420,6 @@ ecore_iov_bulletin_set_forced_untagged_default(struct ecore_hwfn *p_hwfn,
  */
 void ecore_iov_get_vfs_opaque_fid(struct ecore_hwfn *p_hwfn, int vfid,
 				  u16 *opaque_fid);
-
-/**
- * @brief Get VFs VPORT id.
- *
- * @param p_hwfn
- * @param vfid
- * @param vport id
- */
-void ecore_iov_get_vfs_vport_id(struct ecore_hwfn *p_hwfn, int vfid,
-				u8 *p_vport_id);
 
 /**
  * @brief Set forced VLAN [pvid] in PFs copy of bulletin board

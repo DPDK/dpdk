@@ -426,8 +426,6 @@ static void ecore_iov_setup_vfdb(struct ecore_hwfn *p_hwfn)
 		return;
 	}
 
-	p_iov_info->base_vport_id = 1;	/* @@@TBD resource allocation */
-
 	for (idx = 0; idx < p_iov->total_vfs; idx++) {
 		struct ecore_vf_info *vf = &p_iov_info->vfs_array[idx];
 		u32 concrete;
@@ -456,8 +454,6 @@ static void ecore_iov_setup_vfdb(struct ecore_hwfn *p_hwfn)
 		/* TODO - need to devise a better way of getting opaque */
 		vf->opaque_fid = (p_hwfn->hw_info.opaque_fid & 0xff) |
 		    (vf->abs_vf_id << 8);
-		/* @@TBD MichalK - add base vport_id of VFs to equation */
-		vf->vport_id = p_iov_info->base_vport_id + idx;
 
 		vf->num_mac_filters = ECORE_ETH_VF_NUM_MAC_FILTERS;
 		vf->num_vlan_filters = ECORE_ETH_VF_NUM_VLAN_FILTERS;
@@ -1018,6 +1014,34 @@ ecore_iov_init_hw_for_vf(struct ecore_hwfn *p_hwfn,
 			  p_params->rel_vf_id);
 		return ECORE_INVAL;
 	}
+
+	/* Perform sanity checking on the requested vport/rss */
+	if (p_params->vport_id >= RESC_NUM(p_hwfn, ECORE_VPORT)) {
+		DP_NOTICE(p_hwfn, true, "VF[%d] - can't use VPORT %02x\n",
+			  p_params->rel_vf_id, p_params->vport_id);
+		return ECORE_INVAL;
+	}
+
+	if ((p_params->num_queues > 1) &&
+	    (p_params->rss_eng_id >= RESC_NUM(p_hwfn, ECORE_RSS_ENG))) {
+		DP_NOTICE(p_hwfn, true, "VF[%d] - can't use RSS_ENG %02x\n",
+			  p_params->rel_vf_id, p_params->rss_eng_id);
+		return ECORE_INVAL;
+	}
+
+	/* TODO - remove this once we get confidence of change */
+	if (!p_params->vport_id) {
+		DP_NOTICE(p_hwfn, false,
+			  "VF[%d] - Unlikely that VF uses vport0. Forgotten?\n",
+			  p_params->rel_vf_id);
+	}
+	if ((!p_params->rss_eng_id) && (p_params->num_queues > 1)) {
+		DP_NOTICE(p_hwfn, false,
+			  "VF[%d] - Unlikely that VF uses RSS_eng0. Forgotten?\n",
+			  p_params->rel_vf_id);
+	}
+	vf->vport_id = p_params->vport_id;
+	vf->rss_eng_id = p_params->rss_eng_id;
 
 	/* Perform sanity checking on the requested queue_id */
 	for (i = 0; i < p_params->num_queues; i++) {
@@ -2752,7 +2776,7 @@ ecore_iov_vp_update_rss_param(struct ecore_hwfn *p_hwfn,
 		VFPF_UPDATE_RSS_KEY_FLAG);
 
 	p_rss->rss_enable = p_rss_tlv->rss_enable;
-	p_rss->rss_eng_id = vf->relative_vf_id + 1;
+	p_rss->rss_eng_id = vf->rss_eng_id;
 	p_rss->rss_caps = p_rss_tlv->rss_caps;
 	p_rss->rss_table_size_log = p_rss_tlv->rss_table_size_log;
 	OSAL_MEMCPY(p_rss->rss_key, p_rss_tlv->rss_key,
@@ -3972,18 +3996,6 @@ void ecore_iov_get_vfs_opaque_fid(struct ecore_hwfn *p_hwfn, int vfid,
 		return;
 
 	*opaque_fid = vf_info->opaque_fid;
-}
-
-void ecore_iov_get_vfs_vport_id(struct ecore_hwfn *p_hwfn, int vfid,
-				u8 *p_vort_id)
-{
-	struct ecore_vf_info *vf_info;
-
-	vf_info = ecore_iov_get_vf_info(p_hwfn, (u16)vfid, true);
-	if (!vf_info)
-		return;
-
-	*p_vort_id = vf_info->vport_id;
 }
 
 void ecore_iov_bulletin_set_forced_vlan(struct ecore_hwfn *p_hwfn,
