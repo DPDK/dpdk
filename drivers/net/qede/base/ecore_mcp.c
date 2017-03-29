@@ -1237,6 +1237,7 @@ static void ecore_mcp_send_protocol_stats(struct ecore_hwfn *p_hwfn,
 	struct ecore_mcp_mb_params mb_params;
 	union drv_union_data union_data;
 	u32 hsi_param;
+	enum _ecore_status_t rc;
 
 	switch (type) {
 	case MFW_DRV_MSG_GET_LAN_STATS:
@@ -1255,7 +1256,9 @@ static void ecore_mcp_send_protocol_stats(struct ecore_hwfn *p_hwfn,
 	mb_params.param = hsi_param;
 	OSAL_MEMCPY(&union_data, &stats, sizeof(stats));
 	mb_params.p_data_src = &union_data;
-	ecore_mcp_cmd_and_union(p_hwfn, p_ptt, &mb_params);
+	rc = ecore_mcp_cmd_and_union(p_hwfn, p_ptt, &mb_params);
+	if (rc != ECORE_SUCCESS)
+		DP_ERR(p_hwfn, "Failed to send protocol stats, rc = %d\n", rc);
 }
 
 static void ecore_read_pf_bandwidth(struct ecore_hwfn *p_hwfn,
