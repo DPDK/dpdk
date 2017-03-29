@@ -29,24 +29,172 @@
 #define ECORE_MAX_SGES_NUM 16
 #define CRC32_POLY 0x1edc6f41
 
+struct ecore_l2_info {
+	u32 queues;
+	unsigned long **pp_qid_usage;
+
+	/* The lock is meant to synchronize access to the qid usage */
+	osal_mutex_t lock;
+};
+
+enum _ecore_status_t ecore_l2_alloc(struct ecore_hwfn *p_hwfn)
+{
+	struct ecore_l2_info *p_l2_info;
+	unsigned long **pp_qids;
+	u32 i;
+
+	if (!ECORE_IS_L2_PERSONALITY(p_hwfn))
+		return ECORE_SUCCESS;
+
+	p_l2_info = OSAL_VZALLOC(p_hwfn->p_dev, sizeof(*p_l2_info));
+	if (!p_l2_info)
+		return ECORE_NOMEM;
+	p_hwfn->p_l2_info = p_l2_info;
+
+	if (IS_PF(p_hwfn->p_dev)) {
+		p_l2_info->queues = RESC_NUM(p_hwfn, ECORE_L2_QUEUE);
+	} else {
+		u8 rx = 0, tx = 0;
+
+		ecore_vf_get_num_rxqs(p_hwfn, &rx);
+		ecore_vf_get_num_txqs(p_hwfn, &tx);
+
+		p_l2_info->queues = (u32)OSAL_MAX_T(u8, rx, tx);
+	}
+
+	pp_qids = OSAL_VZALLOC(p_hwfn->p_dev,
+			       sizeof(unsigned long *) *
+			       p_l2_info->queues);
+	if (pp_qids == OSAL_NULL)
+		return ECORE_NOMEM;
+	p_l2_info->pp_qid_usage = pp_qids;
+
+	for (i = 0; i < p_l2_info->queues; i++) {
+		pp_qids[i] = OSAL_VZALLOC(p_hwfn->p_dev,
+					  MAX_QUEUES_PER_QZONE / 8);
+		if (pp_qids[i] == OSAL_NULL)
+			return ECORE_NOMEM;
+	}
+
+#ifdef CONFIG_ECORE_LOCK_ALLOC
+	OSAL_MUTEX_ALLOC(p_hwfn, &p_l2_info->lock);
+#endif
+
+	return ECORE_SUCCESS;
+}
+
+void ecore_l2_setup(struct ecore_hwfn *p_hwfn)
+{
+	if (!ECORE_IS_L2_PERSONALITY(p_hwfn))
+		return;
+
+	OSAL_MUTEX_INIT(&p_hwfn->p_l2_info->lock);
+}
+
+void ecore_l2_free(struct ecore_hwfn *p_hwfn)
+{
+	u32 i;
+
+	if (!ECORE_IS_L2_PERSONALITY(p_hwfn))
+		return;
+
+	if (p_hwfn->p_l2_info == OSAL_NULL)
+		return;
+
+	if (p_hwfn->p_l2_info->pp_qid_usage == OSAL_NULL)
+		goto out_l2_info;
+
+	/* Free until hit first uninitialized entry */
+	for (i = 0; i < p_hwfn->p_l2_info->queues; i++) {
+		if (p_hwfn->p_l2_info->pp_qid_usage[i] == OSAL_NULL)
+			break;
+		OSAL_VFREE(p_hwfn->p_dev,
+			   p_hwfn->p_l2_info->pp_qid_usage[i]);
+	}
+
+#ifdef CONFIG_ECORE_LOCK_ALLOC
+	/* Lock is last to initialize, if everything else was */
+	if (i == p_hwfn->p_l2_info->queues)
+		OSAL_MUTEX_DEALLOC(&p_hwfn->p_l2_info->lock);
+#endif
+
+	OSAL_VFREE(p_hwfn->p_dev, p_hwfn->p_l2_info->pp_qid_usage);
+
+out_l2_info:
+	OSAL_VFREE(p_hwfn->p_dev, p_hwfn->p_l2_info);
+	p_hwfn->p_l2_info = OSAL_NULL;
+}
+
+/* TODO - we'll need locking around these... */
+static bool ecore_eth_queue_qid_usage_add(struct ecore_hwfn *p_hwfn,
+					  struct ecore_queue_cid *p_cid)
+{
+	struct ecore_l2_info *p_l2_info = p_hwfn->p_l2_info;
+	u16 queue_id = p_cid->rel.queue_id;
+	bool b_rc = true;
+	u8 first;
+
+	OSAL_MUTEX_ACQUIRE(&p_l2_info->lock);
+
+	if (queue_id > p_l2_info->queues) {
+		DP_NOTICE(p_hwfn, true,
+			  "Requested to increase usage for qzone %04x out of %08x\n",
+			  queue_id, p_l2_info->queues);
+		b_rc = false;
+		goto out;
+	}
+
+	first = (u8)OSAL_FIND_FIRST_ZERO_BIT(p_l2_info->pp_qid_usage[queue_id],
+					     MAX_QUEUES_PER_QZONE);
+	if (first >= MAX_QUEUES_PER_QZONE) {
+		b_rc = false;
+		goto out;
+	}
+
+	OSAL_SET_BIT(first, p_l2_info->pp_qid_usage[queue_id]);
+	p_cid->qid_usage_idx = first;
+
+out:
+	OSAL_MUTEX_RELEASE(&p_l2_info->lock);
+	return b_rc;
+}
+
+static void ecore_eth_queue_qid_usage_del(struct ecore_hwfn *p_hwfn,
+					  struct ecore_queue_cid *p_cid)
+{
+	OSAL_MUTEX_ACQUIRE(&p_hwfn->p_l2_info->lock);
+
+	OSAL_CLEAR_BIT(p_cid->qid_usage_idx,
+		       p_hwfn->p_l2_info->pp_qid_usage[p_cid->rel.queue_id]);
+
+	OSAL_MUTEX_RELEASE(&p_hwfn->p_l2_info->lock);
+}
+
 void ecore_eth_queue_cid_release(struct ecore_hwfn *p_hwfn,
 				 struct ecore_queue_cid *p_cid)
 {
+	/* For VF-queues, stuff is a bit complicated as:
+	 *  - They always maintain the qid_usage on their own.
+	 *  - In legacy mode, they also maintain their CIDs.
+	 */
+
 	/* VFs' CIDs are 0-based in PF-view, and uninitialized on VF */
-	if (!p_cid->is_vf && IS_PF(p_hwfn->p_dev))
-		ecore_cxt_release_cid(p_hwfn, p_cid->cid);
+	if (IS_PF(p_hwfn->p_dev) && !p_cid->b_legacy_vf)
+		_ecore_cxt_release_cid(p_hwfn, p_cid->cid, p_cid->vfid);
+	if (!p_cid->b_legacy_vf)
+		ecore_eth_queue_qid_usage_del(p_hwfn, p_cid);
 	OSAL_VFREE(p_hwfn->p_dev, p_cid);
 }
 
 /* The internal is only meant to be directly called by PFs initializeing CIDs
  * for their VFs.
  */
-struct ecore_queue_cid *
+static struct ecore_queue_cid *
 _ecore_eth_queue_to_cid(struct ecore_hwfn *p_hwfn,
-			u16 opaque_fid, u32 cid, u8 vf_qid,
-			struct ecore_queue_start_common_params *p_params)
+			u16 opaque_fid, u32 cid,
+			struct ecore_queue_start_common_params *p_params,
+			struct ecore_queue_cid_vf_params *p_vf_params)
 {
-	bool b_is_same = (p_hwfn->hw_info.opaque_fid == opaque_fid);
 	struct ecore_queue_cid *p_cid;
 	enum _ecore_status_t rc;
 
@@ -56,13 +204,22 @@ _ecore_eth_queue_to_cid(struct ecore_hwfn *p_hwfn,
 
 	p_cid->opaque_fid = opaque_fid;
 	p_cid->cid = cid;
-	p_cid->vf_qid = vf_qid;
 	p_cid->rel = *p_params;
 	p_cid->p_owner = p_hwfn;
+
+	/* Fill-in bits related to VFs' queues if information was provided */
+	if (p_vf_params != OSAL_NULL) {
+		p_cid->vfid = p_vf_params->vfid;
+		p_cid->vf_qid = p_vf_params->vf_qid;
+		p_cid->b_legacy_vf = p_vf_params->b_legacy;
+	} else {
+		p_cid->vfid = ECORE_QUEUE_CID_PF;
+	}
 
 	/* Don't try calculating the absolute indices for VFs */
 	if (IS_VF(p_hwfn->p_dev)) {
 		p_cid->abs = p_cid->rel;
+
 		goto out;
 	}
 
@@ -82,7 +239,7 @@ _ecore_eth_queue_to_cid(struct ecore_hwfn *p_hwfn,
 	/* In case of a PF configuring its VF's queues, the stats-id is already
 	 * absolute [since there's a single index that's suitable per-VF].
 	 */
-	if (b_is_same) {
+	if (p_cid->vfid == ECORE_QUEUE_CID_PF) {
 		rc = ecore_fw_vport(p_hwfn, p_cid->rel.stats_id,
 				    &p_cid->abs.stats_id);
 		if (rc != ECORE_SUCCESS)
@@ -95,17 +252,23 @@ _ecore_eth_queue_to_cid(struct ecore_hwfn *p_hwfn,
 	p_cid->abs.sb = p_cid->rel.sb;
 	p_cid->abs.sb_idx = p_cid->rel.sb_idx;
 
-	/* This is tricky - we're actually interested in whehter this is a PF
-	 * entry meant for the VF.
-	 */
-	if (!b_is_same)
-		p_cid->is_vf = true;
 out:
+	/* VF-images have provided the qid_usage_idx on their own.
+	 * Otherwise, we need to allocate a unique one.
+	 */
+	if (!p_vf_params) {
+		if (!ecore_eth_queue_qid_usage_add(p_hwfn, p_cid))
+			goto fail;
+	} else {
+		p_cid->qid_usage_idx = p_vf_params->qid_usage_idx;
+	}
+
 	DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
-		   "opaque_fid: %04x CID %08x vport %02x [%02x] qzone %04x [%04x] stats %02x [%02x] SB %04x PI %02x\n",
+		   "opaque_fid: %04x CID %08x vport %02x [%02x] qzone %04x.%02x [%04x] stats %02x [%02x] SB %04x PI %02x\n",
 		   p_cid->opaque_fid, p_cid->cid,
 		   p_cid->rel.vport_id, p_cid->abs.vport_id,
-		   p_cid->rel.queue_id, p_cid->abs.queue_id,
+		   p_cid->rel.queue_id,	p_cid->qid_usage_idx,
+		   p_cid->abs.queue_id,
 		   p_cid->rel.stats_id, p_cid->abs.stats_id,
 		   p_cid->abs.sb, p_cid->abs.sb_idx);
 
@@ -116,31 +279,54 @@ fail:
 	return OSAL_NULL;
 }
 
-static struct ecore_queue_cid *
-ecore_eth_queue_to_cid(struct ecore_hwfn *p_hwfn,
-		       u16 opaque_fid,
-		       struct ecore_queue_start_common_params *p_params)
+struct ecore_queue_cid *
+ecore_eth_queue_to_cid(struct ecore_hwfn *p_hwfn, u16 opaque_fid,
+		       struct ecore_queue_start_common_params *p_params,
+		       struct ecore_queue_cid_vf_params *p_vf_params)
 {
 	struct ecore_queue_cid *p_cid;
+	u8 vfid = ECORE_CXT_PF_CID;
+	bool b_legacy_vf = false;
 	u32 cid = 0;
+
+	/* In case of legacy VFs, The CID can be derived from the additional
+	 * VF parameters - the VF assumes queue X uses CID X, so we can simply
+	 * use the vf_qid for this purpose as well.
+	 */
+	if (p_vf_params) {
+		vfid = p_vf_params->vfid;
+
+		if (p_vf_params->b_legacy) {
+			b_legacy_vf = true;
+			cid = p_vf_params->vf_qid;
+		}
+	}
 
 	/* Get a unique firmware CID for this queue, in case it's a PF.
 	 * VF's don't need a CID as the queue configuration will be done
 	 * by PF.
 	 */
-	if (IS_PF(p_hwfn->p_dev)) {
-		if (ecore_cxt_acquire_cid(p_hwfn, PROTOCOLID_ETH,
-					  &cid) != ECORE_SUCCESS) {
+	if (IS_PF(p_hwfn->p_dev) && !b_legacy_vf) {
+		if (_ecore_cxt_acquire_cid(p_hwfn, PROTOCOLID_ETH,
+					   &cid, vfid) != ECORE_SUCCESS) {
 			DP_NOTICE(p_hwfn, true, "Failed to acquire cid\n");
 			return OSAL_NULL;
 		}
 	}
 
-	p_cid = _ecore_eth_queue_to_cid(p_hwfn, opaque_fid, cid, 0, p_params);
-	if ((p_cid == OSAL_NULL) && IS_PF(p_hwfn->p_dev))
-		ecore_cxt_release_cid(p_hwfn, cid);
+	p_cid = _ecore_eth_queue_to_cid(p_hwfn, opaque_fid, cid,
+					p_params, p_vf_params);
+	if ((p_cid == OSAL_NULL) && IS_PF(p_hwfn->p_dev) && !b_legacy_vf)
+		_ecore_cxt_release_cid(p_hwfn, cid, vfid);
 
 	return p_cid;
+}
+
+static struct ecore_queue_cid *
+ecore_eth_queue_to_cid_pf(struct ecore_hwfn *p_hwfn, u16 opaque_fid,
+			  struct ecore_queue_start_common_params *p_params)
+{
+	return ecore_eth_queue_to_cid(p_hwfn, opaque_fid, p_params, OSAL_NULL);
 }
 
 enum _ecore_status_t
@@ -741,7 +927,7 @@ ecore_eth_rxq_start_ramrod(struct ecore_hwfn *p_hwfn,
 	p_ramrod->num_of_pbl_pages = OSAL_CPU_TO_LE16(cqe_pbl_size);
 	DMA_REGPAIR_LE(p_ramrod->cqe_pbl_addr, cqe_pbl_addr);
 
-	if (p_cid->is_vf) {
+	if (p_cid->vfid != ECORE_QUEUE_CID_PF) {
 		p_ramrod->vf_rx_prod_index = p_cid->vf_qid;
 		DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
 			   "Queue%s is meant for VF rxq[%02x]\n",
@@ -793,7 +979,7 @@ ecore_eth_rx_queue_start(struct ecore_hwfn *p_hwfn,
 	enum _ecore_status_t rc;
 
 	/* Allocate a CID for the queue */
-	p_cid = ecore_eth_queue_to_cid(p_hwfn, opaque_fid, p_params);
+	p_cid = ecore_eth_queue_to_cid_pf(p_hwfn, opaque_fid, p_params);
 	if (p_cid == OSAL_NULL)
 		return ECORE_NOMEM;
 
@@ -905,9 +1091,11 @@ ecore_eth_pf_rx_queue_stop(struct ecore_hwfn *p_hwfn,
 	/* Cleaning the queue requires the completion to arrive there.
 	 * In addition, VFs require the answer to come as eqe to PF.
 	 */
-	p_ramrod->complete_cqe_flg = (!p_cid->is_vf && !b_eq_completion_only) ||
+	p_ramrod->complete_cqe_flg = ((p_cid->vfid == ECORE_QUEUE_CID_PF) &&
+				      !b_eq_completion_only) ||
 				     b_cqe_completion;
-	p_ramrod->complete_event_flg = p_cid->is_vf || b_eq_completion_only;
+	p_ramrod->complete_event_flg = (p_cid->vfid != ECORE_QUEUE_CID_PF) ||
+				       b_eq_completion_only;
 
 	return ecore_spq_post(p_hwfn, p_ent, OSAL_NULL);
 }
@@ -1007,7 +1195,7 @@ ecore_eth_tx_queue_start(struct ecore_hwfn *p_hwfn, u16 opaque_fid,
 	struct ecore_queue_cid *p_cid;
 	enum _ecore_status_t rc;
 
-	p_cid = ecore_eth_queue_to_cid(p_hwfn, opaque_fid, p_params);
+	p_cid = ecore_eth_queue_to_cid_pf(p_hwfn, opaque_fid, p_params);
 	if (p_cid == OSAL_NULL)
 		return ECORE_INVAL;
 

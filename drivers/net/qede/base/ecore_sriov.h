@@ -13,6 +13,7 @@
 #include "ecore_vfpf_if.h"
 #include "ecore_iov_api.h"
 #include "ecore_hsi_common.h"
+#include "ecore_l2.h"
 
 #define ECORE_ETH_MAX_VF_NUM_VLAN_FILTERS \
 	(E4_MAX_NUM_VFS * ECORE_ETH_VF_NUM_VLAN_FILTERS)
@@ -62,12 +63,18 @@ struct ecore_iov_vf_mbx {
 					 */
 };
 
-struct ecore_vf_q_info {
+struct ecore_vf_queue_cid {
+	bool b_is_tx;
+	struct ecore_queue_cid *p_cid;
+};
+
+/* Describes a qzone associated with the VF */
+struct ecore_vf_queue {
+	/* Input from upper-layer, mapping relateive queue to queue-zone */
 	u16 fw_rx_qid;
-	struct ecore_queue_cid *p_rx_cid;
 	u16 fw_tx_qid;
-	struct ecore_queue_cid *p_tx_cid;
-	u8 fw_cid;
+
+	struct ecore_vf_queue_cid cids[MAX_QUEUES_PER_QZONE];
 };
 
 enum vf_state {
@@ -127,7 +134,7 @@ struct ecore_vf_info {
 	u8			num_mac_filters;
 	u8			num_vlan_filters;
 
-	struct ecore_vf_q_info	vf_queues[ECORE_MAX_VF_CHAINS_PER_PF];
+	struct ecore_vf_queue	vf_queues[ECORE_MAX_VF_CHAINS_PER_PF];
 	u16			igu_sbs[ECORE_MAX_VF_CHAINS_PER_PF];
 
 	/* TODO - Only windows is using it - should be removed */

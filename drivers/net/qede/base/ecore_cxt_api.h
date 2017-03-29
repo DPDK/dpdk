@@ -26,19 +26,6 @@ struct ecore_tid_mem {
 };
 
 /**
-* @brief ecore_cxt_acquire - Acquire a new cid of a specific protocol type
-*
-* @param p_hwfn
-* @param type
-* @param p_cid
-*
-* @return enum _ecore_status_t
-*/
-enum _ecore_status_t ecore_cxt_acquire_cid(struct ecore_hwfn  *p_hwfn,
-					   enum protocol_type type,
-					   u32 *p_cid);
-
-/**
 * @brief ecoreo_cid_get_cxt_info - Returns the context info for a specific cid
 *
 *

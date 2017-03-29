@@ -146,8 +146,11 @@ void ecore_resc_free(struct ecore_dev *p_dev)
 {
 	int i;
 
-	if (IS_VF(p_dev))
+	if (IS_VF(p_dev)) {
+		for_each_hwfn(p_dev, i)
+			ecore_l2_free(&p_dev->hwfns[i]);
 		return;
+	}
 
 	OSAL_FREE(p_dev, p_dev->fw_data);
 
@@ -163,6 +166,7 @@ void ecore_resc_free(struct ecore_dev *p_dev)
 		ecore_consq_free(p_hwfn);
 		ecore_int_free(p_hwfn);
 		ecore_iov_free(p_hwfn);
+		ecore_l2_free(p_hwfn);
 		ecore_dmae_info_free(p_hwfn);
 		ecore_dcbx_info_free(p_hwfn, p_hwfn->p_dcbx_info);
 		/* @@@TBD Flush work-queue ? */
@@ -839,8 +843,14 @@ enum _ecore_status_t ecore_resc_alloc(struct ecore_dev *p_dev)
 	enum _ecore_status_t rc = ECORE_SUCCESS;
 	int i;
 
-	if (IS_VF(p_dev))
+	if (IS_VF(p_dev)) {
+		for_each_hwfn(p_dev, i) {
+			rc = ecore_l2_alloc(&p_dev->hwfns[i]);
+			if (rc != ECORE_SUCCESS)
+				return rc;
+		}
 		return rc;
+	}
 
 	p_dev->fw_data = OSAL_ZALLOC(p_dev, GFP_KERNEL,
 				     sizeof(*p_dev->fw_data));
@@ -961,6 +971,10 @@ enum _ecore_status_t ecore_resc_alloc(struct ecore_dev *p_dev)
 		if (rc)
 			goto alloc_err;
 
+		rc = ecore_l2_alloc(p_hwfn);
+		if (rc != ECORE_SUCCESS)
+			goto alloc_err;
+
 		/* DMA info initialization */
 		rc = ecore_dmae_info_alloc(p_hwfn);
 		if (rc) {
@@ -999,8 +1013,11 @@ void ecore_resc_setup(struct ecore_dev *p_dev)
 {
 	int i;
 
-	if (IS_VF(p_dev))
+	if (IS_VF(p_dev)) {
+		for_each_hwfn(p_dev, i)
+			ecore_l2_setup(&p_dev->hwfns[i]);
 		return;
+	}
 
 	for_each_hwfn(p_dev, i) {
 		struct ecore_hwfn *p_hwfn = &p_dev->hwfns[i];
@@ -1018,6 +1035,7 @@ void ecore_resc_setup(struct ecore_dev *p_dev)
 
 		ecore_int_setup(p_hwfn, p_hwfn->p_main_ptt);
 
+		ecore_l2_setup(p_hwfn);
 		ecore_iov_setup(p_hwfn, p_hwfn->p_main_ptt);
 	}
 }

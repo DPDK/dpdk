@@ -200,6 +200,7 @@ struct ecore_cxt_mngr;
 struct ecore_dma_mem;
 struct ecore_sb_sp_info;
 struct ecore_ll2_info;
+struct ecore_l2_info;
 struct ecore_igu_info;
 struct ecore_mcp_info;
 struct ecore_dcbx_info;
@@ -598,6 +599,9 @@ struct ecore_hwfn {
 	/* If one of the following is set then EDPM shouldn't be used */
 	u8				dcbx_no_edpm;
 	u8				db_bar_no_edpm;
+
+	/* L2-related */
+	struct ecore_l2_info		*p_l2_info;
 };
 
 #ifndef __EXTRACT__LINUX__

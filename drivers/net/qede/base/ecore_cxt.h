@@ -130,14 +130,53 @@ void ecore_qm_init_pf(struct ecore_hwfn *p_hwfn);
 enum _ecore_status_t ecore_qm_reconf(struct ecore_hwfn *p_hwfn,
 				     struct ecore_ptt *p_ptt);
 
+#define ECORE_CXT_PF_CID (0xff)
+
 /**
-* @brief ecore_cxt_release - Release a cid
-*
-* @param p_hwfn
-* @param cid
-*/
-void ecore_cxt_release_cid(struct ecore_hwfn *p_hwfn,
-			   u32 cid);
+ * @brief ecore_cxt_release - Release a cid
+ *
+ * @param p_hwfn
+ * @param cid
+ */
+void ecore_cxt_release_cid(struct ecore_hwfn *p_hwfn, u32 cid);
+
+/**
+ * @brief ecore_cxt_release - Release a cid belonging to a vf-queue
+ *
+ * @param p_hwfn
+ * @param cid
+ * @param vfid - engine relative index. ECORE_CXT_PF_CID if belongs to PF
+ */
+void _ecore_cxt_release_cid(struct ecore_hwfn *p_hwfn,
+			    u32 cid, u8 vfid);
+
+/**
+ * @brief ecore_cxt_acquire - Acquire a new cid of a specific protocol type
+ *
+ * @param p_hwfn
+ * @param type
+ * @param p_cid
+ *
+ * @return enum _ecore_status_t
+ */
+enum _ecore_status_t ecore_cxt_acquire_cid(struct ecore_hwfn *p_hwfn,
+					   enum protocol_type type,
+					   u32 *p_cid);
+
+/**
+ * @brief _ecore_cxt_acquire - Acquire a new cid of a specific protocol type
+ *                             for a vf-queue
+ *
+ * @param p_hwfn
+ * @param type
+ * @param p_cid
+ * @param vfid - engine relative index. ECORE_CXT_PF_CID if belongs to PF
+ *
+ * @return enum _ecore_status_t
+ */
+enum _ecore_status_t _ecore_cxt_acquire_cid(struct ecore_hwfn *p_hwfn,
+					    enum protocol_type type,
+					    u32 *p_cid, u8 vfid);
 
 /**
  * @brief ecore_cxt_get_tid_mem_info - function checks if the

@@ -1582,6 +1582,12 @@ void ecore_vf_get_num_rxqs(struct ecore_hwfn *p_hwfn, u8 *num_rxqs)
 	*num_rxqs = p_hwfn->vf_iov_info->acquire_resp.resc.num_rxqs;
 }
 
+void ecore_vf_get_num_txqs(struct ecore_hwfn *p_hwfn,
+			   u8 *num_txqs)
+{
+	*num_txqs = p_hwfn->vf_iov_info->acquire_resp.resc.num_txqs;
+}
+
 void ecore_vf_get_port_mac(struct ecore_hwfn *p_hwfn, u8 *port_mac)
 {
 	OSAL_MEMCPY(port_mac,

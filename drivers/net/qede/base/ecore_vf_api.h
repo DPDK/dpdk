@@ -61,6 +61,15 @@ void ecore_vf_get_num_rxqs(struct ecore_hwfn *p_hwfn,
 			   u8 *num_rxqs);
 
 /**
+ * @brief Get number of Rx queues allocated for VF by ecore
+ *
+ *  @param p_hwfn
+ *  @param num_txqs - allocated RX queues
+ */
+void ecore_vf_get_num_txqs(struct ecore_hwfn *p_hwfn,
+			   u8 *num_txqs);
+
+/**
  * @brief Get port mac address for VF
  *
  * @param p_hwfn
