@@ -1217,10 +1217,16 @@ struct public_drv_mb {
 #define DRV_MSG_CODE_TIMESTAMP                  0x00210000
 /* This is an empty mailbox just return OK*/
 #define DRV_MSG_CODE_EMPTY_MB			0x00220000
+
 /* Param[0:4] - resource number (0-31), Param[5:7] - opcode,
  * param[15:8] - age
  */
 #define DRV_MSG_CODE_RESOURCE_CMD		0x00230000
+
+#define RESOURCE_CMD_REQ_RESC_MASK		0x0000001F
+#define RESOURCE_CMD_REQ_RESC_SHIFT		0
+#define RESOURCE_CMD_REQ_OPCODE_MASK		0x000000E0
+#define RESOURCE_CMD_REQ_OPCODE_SHIFT		5
 /* request resource ownership with default aging */
 #define RESOURCE_OPCODE_REQ			1
 /* request resource ownership without aging */
@@ -1230,6 +1236,13 @@ struct public_drv_mb {
 #define RESOURCE_OPCODE_RELEASE			4 /* release resource */
 /* force resource release */
 #define RESOURCE_OPCODE_FORCE_RELEASE		5
+#define RESOURCE_CMD_REQ_AGE_MASK		0x0000FF00
+#define RESOURCE_CMD_REQ_AGE_SHIFT		8
+
+#define RESOURCE_CMD_RSP_OWNER_MASK		0x000000FF
+#define RESOURCE_CMD_RSP_OWNER_SHIFT		0
+#define RESOURCE_CMD_RSP_OPCODE_MASK		0x00000700
+#define RESOURCE_CMD_RSP_OPCODE_SHIFT		8
 /* resource is free and granted to requester */
 #define RESOURCE_OPCODE_GNT			1
 /* resource is busy, param[7:0] indicates owner as follow 0-15 = PF0-15,
@@ -1243,8 +1256,10 @@ struct public_drv_mb {
 /* indicate wrong owner during release */
 #define RESOURCE_OPCODE_WRONG_OWNER		5
 #define RESOURCE_OPCODE_UNKNOWN_CMD		255
+
 /* dedicate resource 0 for dump */
 #define RESOURCE_DUMP				0
+
 #define DRV_MSG_CODE_GET_MBA_VERSION		0x00240000 /* Get MBA version */
 /* Send crash dump commands with param[3:0] - opcode */
 #define DRV_MSG_CODE_MDUMP_CMD			0x00250000
