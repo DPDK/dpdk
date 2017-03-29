@@ -156,6 +156,7 @@ struct qede_rx_queue {
 	uint64_t rx_hw_errors;
 	uint64_t rx_alloc_errors;
 	struct qede_dev *qdev;
+	void *handle;
 };
 
 /*
@@ -187,6 +188,7 @@ struct qede_tx_queue {
 	uint64_t xmit_pkts;
 	bool is_legacy;
 	struct qede_dev *qdev;
+	void *handle;
 };
 
 struct qede_fastpath {

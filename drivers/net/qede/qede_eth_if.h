@@ -47,13 +47,6 @@ struct qed_dev_eth_info {
 	bool is_legacy;
 };
 
-struct qed_stop_rxq_params {
-	uint8_t rss_id;
-	uint8_t rx_queue_id;
-	uint8_t vport_id;
-	bool eq_completion_only;
-};
-
 struct qed_update_vport_params {
 	uint8_t vport_id;
 	uint8_t update_vport_active_flg;
@@ -78,11 +71,6 @@ struct qed_start_vport_params {
 	bool clear_stats;
 };
 
-struct qed_stop_txq_params {
-	uint8_t rss_id;
-	uint8_t tx_queue_id;
-};
-
 struct qed_eth_ops {
 	const struct qed_common_ops *common;
 
@@ -103,19 +91,21 @@ struct qed_eth_ops {
 			  uint16_t bd_max_bytes,
 			  dma_addr_t bd_chain_phys_addr,
 			  dma_addr_t cqe_pbl_addr,
-			  uint16_t cqe_pbl_size, void OSAL_IOMEM * *pp_prod);
+			  uint16_t cqe_pbl_size,
+			  struct ecore_rxq_start_ret_params *ret_params);
 
 	int (*q_rx_stop)(struct ecore_dev *edev,
-			 struct qed_stop_rxq_params *params);
+			 uint8_t rss_id, void *handle);
 
 	int (*q_tx_start)(struct ecore_dev *edev,
 			  uint8_t rss_num,
 			  struct ecore_queue_start_common_params *p_params,
 			  dma_addr_t pbl_addr,
-			  uint16_t pbl_size, void OSAL_IOMEM * *pp_doorbell);
+			  uint16_t pbl_size,
+			  struct ecore_txq_start_ret_params *ret_params);
 
 	int (*q_tx_stop)(struct ecore_dev *edev,
-			 struct qed_stop_txq_params *params);
+			 uint8_t rss_id, void *handle);
 
 	int (*eth_cqe_completion)(struct ecore_dev *edev,
 				  uint8_t rss_id,

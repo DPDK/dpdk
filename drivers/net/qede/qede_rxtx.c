@@ -527,11 +527,14 @@ static int qede_start_queues(struct rte_eth_dev *eth_dev, bool clear_stats)
 	for_each_queue(i) {
 		fp = &qdev->fp_array[i];
 		if (fp->type & QEDE_FASTPATH_RX) {
+			struct ecore_rxq_start_ret_params ret_params;
+
 			p_phys_table = ecore_chain_get_pbl_phys(&fp->rxq->
 								rx_comp_ring);
 			page_cnt = ecore_chain_get_page_cnt(&fp->rxq->
 								rx_comp_ring);
 
+			memset(&ret_params, 0, sizeof(ret_params));
 			memset(&q_params, 0, sizeof(q_params));
 			q_params.queue_id = i;
 			q_params.vport_id = 0;
@@ -545,12 +548,16 @@ static int qede_start_queues(struct rte_eth_dev *eth_dev, bool clear_stats)
 					   fp->rxq->rx_bd_ring.p_phys_addr,
 					   p_phys_table,
 					   page_cnt,
-					   &fp->rxq->hw_rxq_prod_addr);
+					   &ret_params);
 			if (rc) {
 				DP_ERR(edev, "Start rxq #%d failed %d\n",
 				       fp->rxq->queue_id, rc);
 				return rc;
 			}
+
+			/* Use the return parameters */
+			fp->rxq->hw_rxq_prod_addr = ret_params.p_prod;
+			fp->rxq->handle = ret_params.p_handle;
 
 			fp->rxq->hw_cons_ptr =
 					&fp->sb_info->sb_virt->pi_array[RX_PI];
@@ -561,6 +568,8 @@ static int qede_start_queues(struct rte_eth_dev *eth_dev, bool clear_stats)
 		if (!(fp->type & QEDE_FASTPATH_TX))
 			continue;
 		for (tc = 0; tc < qdev->num_tc; tc++) {
+			struct ecore_txq_start_ret_params ret_params;
+
 			txq = fp->txqs[tc];
 			txq_index = tc * QEDE_RSS_COUNT(qdev) + i;
 
@@ -568,6 +577,7 @@ static int qede_start_queues(struct rte_eth_dev *eth_dev, bool clear_stats)
 			page_cnt = ecore_chain_get_page_cnt(&txq->tx_pbl);
 
 			memset(&q_params, 0, sizeof(q_params));
+			memset(&ret_params, 0, sizeof(ret_params));
 			q_params.queue_id = txq->queue_id;
 			q_params.vport_id = 0;
 			q_params.sb = fp->sb_info->igu_sb_id;
@@ -576,12 +586,15 @@ static int qede_start_queues(struct rte_eth_dev *eth_dev, bool clear_stats)
 			rc = qdev->ops->q_tx_start(edev, i, &q_params,
 						   p_phys_table,
 						   page_cnt, /* **pp_doorbell */
-						   &txq->doorbell_addr);
+						   &ret_params);
 			if (rc) {
 				DP_ERR(edev, "Start txq %u failed %d\n",
 				       txq_index, rc);
 				return rc;
 			}
+
+			txq->doorbell_addr = ret_params.p_doorbell;
+			txq->handle = ret_params.p_handle;
 
 			txq->hw_cons_ptr =
 			    &fp->sb_info->sb_virt->pi_array[TX_PI(tc)];
@@ -1399,6 +1412,7 @@ static int qede_stop_queues(struct qede_dev *qdev)
 {
 	struct qed_update_vport_params vport_update_params;
 	struct ecore_dev *edev = &qdev->edev;
+	struct qede_fastpath *fp;
 	int rc, tc, i;
 
 	/* Disable the vport */
@@ -1420,7 +1434,7 @@ static int qede_stop_queues(struct qede_dev *qdev)
 
 	/* Flush Tx queues. If needed, request drain from MCP */
 	for_each_queue(i) {
-		struct qede_fastpath *fp = &qdev->fp_array[i];
+		fp = &qdev->fp_array[i];
 
 		if (fp->type & QEDE_FASTPATH_TX) {
 			for (tc = 0; tc < qdev->num_tc; tc++) {
@@ -1435,23 +1449,17 @@ static int qede_stop_queues(struct qede_dev *qdev)
 
 	/* Stop all Queues in reverse order */
 	for (i = QEDE_QUEUE_CNT(qdev) - 1; i >= 0; i--) {
-		struct qed_stop_rxq_params rx_params;
+		fp = &qdev->fp_array[i];
 
 		/* Stop the Tx Queue(s) */
 		if (qdev->fp_array[i].type & QEDE_FASTPATH_TX) {
 			for (tc = 0; tc < qdev->num_tc; tc++) {
-				struct qed_stop_txq_params tx_params;
-				u8 val;
-
-				tx_params.rss_id = i;
-				val = qdev->fp_array[i].txqs[tc]->queue_id;
-				tx_params.tx_queue_id = val;
-
+				struct qede_tx_queue *txq = fp->txqs[tc];
 				DP_INFO(edev, "Stopping tx queues\n");
-				rc = qdev->ops->q_tx_stop(edev, &tx_params);
+				rc = qdev->ops->q_tx_stop(edev, i, txq->handle);
 				if (rc) {
 					DP_ERR(edev, "Failed to stop TXQ #%d\n",
-					       tx_params.tx_queue_id);
+					       i);
 					return rc;
 				}
 			}
@@ -1459,14 +1467,8 @@ static int qede_stop_queues(struct qede_dev *qdev)
 
 		/* Stop the Rx Queue */
 		if (qdev->fp_array[i].type & QEDE_FASTPATH_RX) {
-			memset(&rx_params, 0, sizeof(rx_params));
-			rx_params.rss_id = i;
-			rx_params.rx_queue_id = qdev->fp_array[i].rxq->queue_id;
-			rx_params.eq_completion_only = 1;
-
 			DP_INFO(edev, "Stopping rx queues\n");
-
-			rc = qdev->ops->q_rx_stop(edev, &rx_params);
+			rc = qdev->ops->q_rx_stop(edev, i, fp->rxq->handle);
 			if (rc) {
 				DP_ERR(edev, "Failed to stop RXQ #%d\n", i);
 				return rc;

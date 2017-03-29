@@ -451,19 +451,19 @@ free_p_iov:
 #define MSTORM_QZONE_START(dev)   (TSTORM_QZONE_START + \
 				   (TSTORM_QZONE_SIZE * NUM_OF_L2_QUEUES(dev)))
 
-enum _ecore_status_t ecore_vf_pf_rxq_start(struct ecore_hwfn *p_hwfn,
-					   u8 rx_qid,
-					   u16 sb,
-					   u8 sb_index,
-					   u16 bd_max_bytes,
-					   dma_addr_t bd_chain_phys_addr,
-					   dma_addr_t cqe_pbl_addr,
-					   u16 cqe_pbl_size,
-					   void OSAL_IOMEM **pp_prod)
+enum _ecore_status_t
+ecore_vf_pf_rxq_start(struct ecore_hwfn *p_hwfn,
+		      struct ecore_queue_cid *p_cid,
+		      u16 bd_max_bytes,
+		      dma_addr_t bd_chain_phys_addr,
+		      dma_addr_t cqe_pbl_addr,
+		      u16 cqe_pbl_size,
+		      void OSAL_IOMEM **pp_prod)
 {
 	struct ecore_vf_iov *p_iov = p_hwfn->vf_iov_info;
 	struct pfvf_start_queue_resp_tlv *resp;
 	struct vfpf_start_rxq_tlv *req;
+	u16 rx_qid = p_cid->rel.queue_id;
 	enum _ecore_status_t rc;
 
 	/* clear mailbox and prep first tlv */
@@ -473,19 +473,20 @@ enum _ecore_status_t ecore_vf_pf_rxq_start(struct ecore_hwfn *p_hwfn,
 	req->cqe_pbl_addr = cqe_pbl_addr;
 	req->cqe_pbl_size = cqe_pbl_size;
 	req->rxq_addr = bd_chain_phys_addr;
-	req->hw_sb = sb;
-	req->sb_index = sb_index;
+	req->hw_sb = p_cid->rel.sb;
+	req->sb_index = p_cid->rel.sb_idx;
 	req->bd_max_bytes = bd_max_bytes;
 	req->stat_id = -1; /* Keep initialized, for future compatibility */
 
 	/* If PF is legacy, we'll need to calculate producers ourselves
 	 * as well as clean them.
 	 */
-	if (pp_prod && p_iov->b_pre_fp_hsi) {
+	if (p_iov->b_pre_fp_hsi) {
 		u8 hw_qid = p_iov->acquire_resp.resc.hw_qid[rx_qid];
 		u32 init_prod_val = 0;
 
-		*pp_prod = (u8 OSAL_IOMEM *)p_hwfn->regview +
+		*pp_prod = (u8 OSAL_IOMEM *)
+			   p_hwfn->regview +
 			   MSTORM_QZONE_START(p_hwfn->p_dev) +
 			   (hw_qid) * MSTORM_QZONE_SIZE;
 
@@ -510,7 +511,7 @@ enum _ecore_status_t ecore_vf_pf_rxq_start(struct ecore_hwfn *p_hwfn,
 	}
 
 	/* Learn the address of the producer from the response */
-	if (pp_prod && !p_iov->b_pre_fp_hsi) {
+	if (!p_iov->b_pre_fp_hsi) {
 		u32 init_prod_val = 0;
 
 		*pp_prod = (u8 OSAL_IOMEM *)p_hwfn->regview + resp->offset;
@@ -534,7 +535,8 @@ exit:
 }
 
 enum _ecore_status_t ecore_vf_pf_rxq_stop(struct ecore_hwfn *p_hwfn,
-					  u16 rx_qid, bool cqe_completion)
+					  struct ecore_queue_cid *p_cid,
+					  bool cqe_completion)
 {
 	struct ecore_vf_iov *p_iov = p_hwfn->vf_iov_info;
 	struct vfpf_stop_rxqs_tlv *req;
@@ -544,7 +546,7 @@ enum _ecore_status_t ecore_vf_pf_rxq_stop(struct ecore_hwfn *p_hwfn,
 	/* clear mailbox and prep first tlv */
 	req = ecore_vf_pf_prep(p_hwfn, CHANNEL_TLV_STOP_RXQS, sizeof(*req));
 
-	req->rx_qid = rx_qid;
+	req->rx_qid = p_cid->rel.queue_id;
 	req->num_rxqs = 1;
 	req->cqe_completion = cqe_completion;
 
@@ -569,29 +571,28 @@ exit:
 	return rc;
 }
 
-enum _ecore_status_t ecore_vf_pf_txq_start(struct ecore_hwfn *p_hwfn,
-					   u16 tx_queue_id,
-					   u16 sb,
-					   u8 sb_index,
-					   dma_addr_t pbl_addr,
-					   u16 pbl_size,
-					   void OSAL_IOMEM **pp_doorbell)
+enum _ecore_status_t
+ecore_vf_pf_txq_start(struct ecore_hwfn *p_hwfn,
+		      struct ecore_queue_cid *p_cid,
+		      dma_addr_t pbl_addr, u16 pbl_size,
+		      void OSAL_IOMEM **pp_doorbell)
 {
 	struct ecore_vf_iov *p_iov = p_hwfn->vf_iov_info;
 	struct pfvf_start_queue_resp_tlv *resp;
 	struct vfpf_start_txq_tlv *req;
+	u16 qid = p_cid->rel.queue_id;
 	enum _ecore_status_t rc;
 
 	/* clear mailbox and prep first tlv */
 	req = ecore_vf_pf_prep(p_hwfn, CHANNEL_TLV_START_TXQ, sizeof(*req));
 
-	req->tx_qid = tx_queue_id;
+	req->tx_qid = qid;
 
 	/* Tx */
 	req->pbl_addr = pbl_addr;
 	req->pbl_size = pbl_size;
-	req->hw_sb = sb;
-	req->sb_index = sb_index;
+	req->hw_sb = p_cid->rel.sb;
+	req->sb_index = p_cid->rel.sb_idx;
 
 	/* add list termination tlv */
 	ecore_add_tlv(p_hwfn, &p_iov->offset,
@@ -608,32 +609,30 @@ enum _ecore_status_t ecore_vf_pf_txq_start(struct ecore_hwfn *p_hwfn,
 		goto exit;
 	}
 
-	if (pp_doorbell) {
-		/* Modern PFs provide the actual offsets, while legacy
-		 * provided only the queue id.
-		 */
-		if (!p_iov->b_pre_fp_hsi) {
-			*pp_doorbell = (u8 OSAL_IOMEM *)p_hwfn->doorbells +
-						       resp->offset;
-		} else {
-			u8 cid = p_iov->acquire_resp.resc.cid[tx_queue_id];
+	/* Modern PFs provide the actual offsets, while legacy
+	 * provided only the queue id.
+	 */
+	if (!p_iov->b_pre_fp_hsi) {
+		*pp_doorbell = (u8 OSAL_IOMEM *)p_hwfn->doorbells +
+						resp->offset;
+	} else {
+		u8 cid = p_iov->acquire_resp.resc.cid[qid];
 
 		*pp_doorbell = (u8 OSAL_IOMEM *)p_hwfn->doorbells +
-				DB_ADDR_VF(cid, DQ_DEMS_LEGACY);
-		}
-
-		DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
-			   "Txq[0x%02x]: doorbell at %p [offset 0x%08x]\n",
-			   tx_queue_id, *pp_doorbell, resp->offset);
+						DB_ADDR_VF(cid, DQ_DEMS_LEGACY);
 	}
 
+	DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
+		   "Txq[0x%02x]: doorbell at %p [offset 0x%08x]\n",
+		   qid, *pp_doorbell, resp->offset);
 exit:
 	ecore_vf_pf_req_end(p_hwfn, rc);
 
 	return rc;
 }
 
-enum _ecore_status_t ecore_vf_pf_txq_stop(struct ecore_hwfn *p_hwfn, u16 tx_qid)
+enum _ecore_status_t ecore_vf_pf_txq_stop(struct ecore_hwfn *p_hwfn,
+					  struct ecore_queue_cid *p_cid)
 {
 	struct ecore_vf_iov *p_iov = p_hwfn->vf_iov_info;
 	struct vfpf_stop_txqs_tlv *req;
@@ -643,7 +642,7 @@ enum _ecore_status_t ecore_vf_pf_txq_stop(struct ecore_hwfn *p_hwfn, u16 tx_qid)
 	/* clear mailbox and prep first tlv */
 	req = ecore_vf_pf_prep(p_hwfn, CHANNEL_TLV_STOP_TXQS, sizeof(*req));
 
-	req->tx_qid = tx_qid;
+	req->tx_qid = p_cid->rel.queue_id;
 	req->num_txqs = 1;
 
 	/* add list termination tlv */
@@ -668,20 +667,36 @@ exit:
 }
 
 enum _ecore_status_t ecore_vf_pf_rxqs_update(struct ecore_hwfn *p_hwfn,
-					     u16 rx_queue_id,
+					     struct ecore_queue_cid **pp_cid,
 					     u8 num_rxqs,
-					     u8 comp_cqe_flg, u8 comp_event_flg)
+					     u8 comp_cqe_flg,
+					     u8 comp_event_flg)
 {
 	struct ecore_vf_iov *p_iov = p_hwfn->vf_iov_info;
 	struct pfvf_def_resp_tlv *resp = &p_iov->pf2vf_reply->default_resp;
 	struct vfpf_update_rxq_tlv *req;
 	enum _ecore_status_t rc;
 
+	/* TODO - API is limited to assuming continuous regions of queues,
+	 * but VF queues might not fullfil this requirement.
+	 * Need to consider whether we need new TLVs for this, or whether
+	 * simply doing it iteratively is good enough.
+	 */
+	if (!num_rxqs)
+		return ECORE_INVAL;
+
+again:
 	/* clear mailbox and prep first tlv */
 	req = ecore_vf_pf_prep(p_hwfn, CHANNEL_TLV_UPDATE_RXQ, sizeof(*req));
 
-	req->rx_qid = rx_queue_id;
-	req->num_rxqs = num_rxqs;
+	/* Find the length of the current contagious range of queues beginning
+	 * at first queue's index.
+	 */
+	req->rx_qid = (*pp_cid)->rel.queue_id;
+	for (req->num_rxqs = 1; req->num_rxqs < num_rxqs; req->num_rxqs++)
+		if (pp_cid[req->num_rxqs]->rel.queue_id !=
+		    req->rx_qid + req->num_rxqs)
+			break;
 
 	if (comp_cqe_flg)
 		req->flags |= VFPF_RXQ_UPD_COMPLETE_CQE_FLAG;
@@ -702,9 +717,17 @@ enum _ecore_status_t ecore_vf_pf_rxqs_update(struct ecore_hwfn *p_hwfn,
 		goto exit;
 	}
 
+	/* Make sure we're done with all the queues */
+	if (req->num_rxqs < num_rxqs) {
+		num_rxqs -= req->num_rxqs;
+		pp_cid += req->num_rxqs;
+		/* TODO - should we give a non-locked variant instead? */
+		ecore_vf_pf_req_end(p_hwfn, rc);
+		goto again;
+	}
+
 exit:
 	ecore_vf_pf_req_end(p_hwfn, rc);
-
 	return rc;
 }
 

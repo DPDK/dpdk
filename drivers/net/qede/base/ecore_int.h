@@ -172,16 +172,6 @@ void ecore_int_free(struct ecore_hwfn *p_hwfn);
 void ecore_int_setup(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt);
 
 /**
- * @brief - Returns an Rx queue index appropriate for usage with given SB.
- *
- * @param p_hwfn
- * @param sb_id - absolute index of SB
- *
- * @return index of Rx queue
- */
-u16 ecore_int_queue_id_from_sb_id(struct ecore_hwfn *p_hwfn, u16 sb_id);
-
-/**
  * @brief - Enable Interrupt & Attention for hw function
  *
  * @param p_hwfn

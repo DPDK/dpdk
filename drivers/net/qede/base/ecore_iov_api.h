@@ -88,6 +88,23 @@ struct ecore_public_vf_info {
 	u16 forced_vlan;
 };
 
+struct ecore_iov_vf_init_params {
+	u16 rel_vf_id;
+
+	/* Number of requested Queues; Currently, don't support different
+	 * number of Rx/Tx queues.
+	 */
+	/* TODO - remove this limitation */
+	u16 num_queues;
+
+	/* Allow the client to choose which qzones to use for Rx/Tx,
+	 * and which queue_base to use for Tx queues on a per-queue basis.
+	 * Notice values should be relative to the PF resources.
+	 */
+	u16 req_rx_queue[ECORE_MAX_VF_CHAINS_PER_PF];
+	u16 req_tx_queue[ECORE_MAX_VF_CHAINS_PER_PF];
+};
+
 #ifdef CONFIG_ECORE_SW_CHANNEL
 /* This is SW channel related only... */
 enum mbx_state {
@@ -175,15 +192,14 @@ void ecore_iov_set_vf_to_disable(struct ecore_dev *p_dev,
  *
  * @param p_hwfn
  * @param p_ptt
- * @param rel_vf_id
- * @param num_rx_queues
+ * @param p_params
  *
  * @return enum _ecore_status_t
  */
 enum _ecore_status_t ecore_iov_init_hw_for_vf(struct ecore_hwfn *p_hwfn,
 					      struct ecore_ptt *p_ptt,
-					      u16 rel_vf_id,
-					      u16 num_rx_queues);
+					      struct ecore_iov_vf_init_params
+						     *p_params);
 
 /**
  * @brief ecore_iov_process_mbx_req - process a request received

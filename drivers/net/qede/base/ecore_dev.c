@@ -155,13 +155,6 @@ void ecore_resc_free(struct ecore_dev *p_dev)
 	for_each_hwfn(p_dev, i) {
 		struct ecore_hwfn *p_hwfn = &p_dev->hwfns[i];
 
-		OSAL_FREE(p_dev, p_hwfn->p_tx_cids);
-		OSAL_FREE(p_dev, p_hwfn->p_rx_cids);
-	}
-
-	for_each_hwfn(p_dev, i) {
-		struct ecore_hwfn *p_hwfn = &p_dev->hwfns[i];
-
 		ecore_cxt_mngr_free(p_hwfn);
 		ecore_qm_info_free(p_hwfn);
 		ecore_spq_free(p_hwfn);
@@ -843,36 +836,6 @@ enum _ecore_status_t ecore_resc_alloc(struct ecore_dev *p_dev)
 				     sizeof(*p_dev->fw_data));
 	if (!p_dev->fw_data)
 		return ECORE_NOMEM;
-
-	/* Allocate Memory for the Queue->CID mapping */
-	for_each_hwfn(p_dev, i) {
-		struct ecore_hwfn *p_hwfn = &p_dev->hwfns[i];
-		u32 num_tx_conns = RESC_NUM(p_hwfn, ECORE_L2_QUEUE);
-		int tx_size, rx_size;
-
-		/* @@@TMP - resc management, change to actual required size */
-		if (p_hwfn->pf_params.eth_pf_params.num_cons > num_tx_conns)
-			num_tx_conns = p_hwfn->pf_params.eth_pf_params.num_cons;
-		tx_size = sizeof(struct ecore_hw_cid_data) * num_tx_conns;
-		rx_size = sizeof(struct ecore_hw_cid_data) *
-		    RESC_NUM(p_hwfn, ECORE_L2_QUEUE);
-
-		p_hwfn->p_tx_cids = OSAL_ZALLOC(p_hwfn->p_dev, GFP_KERNEL,
-						tx_size);
-		if (!p_hwfn->p_tx_cids) {
-			DP_NOTICE(p_hwfn, true,
-				  "Failed to allocate memory for Tx Cids\n");
-			goto alloc_no_mem;
-		}
-
-		p_hwfn->p_rx_cids = OSAL_ZALLOC(p_hwfn->p_dev, GFP_KERNEL,
-						rx_size);
-		if (!p_hwfn->p_rx_cids) {
-			DP_NOTICE(p_hwfn, true,
-				  "Failed to allocate memory for Rx Cids\n");
-			goto alloc_no_mem;
-		}
-	}
 
 	for_each_hwfn(p_dev, i) {
 		struct ecore_hwfn *p_hwfn = &p_dev->hwfns[i];

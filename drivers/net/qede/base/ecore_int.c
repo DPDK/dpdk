@@ -2182,30 +2182,6 @@ void ecore_int_get_num_sbs(struct ecore_hwfn *p_hwfn,
 	p_sb_cnt_info->sb_free_blk = info->free_blks;
 }
 
-u16 ecore_int_queue_id_from_sb_id(struct ecore_hwfn *p_hwfn, u16 sb_id)
-{
-	struct ecore_igu_info *p_info = p_hwfn->hw_info.p_igu_info;
-
-	/* Determine origin of SB id */
-	if ((sb_id >= p_info->igu_base_sb) &&
-	    (sb_id < p_info->igu_base_sb + p_info->igu_sb_cnt)) {
-		return sb_id - p_info->igu_base_sb;
-	} else if ((sb_id >= p_info->igu_base_sb_iov) &&
-		   (sb_id < p_info->igu_base_sb_iov +
-			    p_info->igu_sb_cnt_iov)) {
-		/* We want the first VF queue to be adjacent to the
-		 * last PF queue. Since L2 queues can be partial to
-		 * SBs, we'll use the feature instead.
-		 */
-		return sb_id - p_info->igu_base_sb_iov +
-		       FEAT_NUM(p_hwfn, ECORE_PF_L2_QUE);
-	} else {
-		DP_NOTICE(p_hwfn, true, "SB %d not in range for function\n",
-			  sb_id);
-		return 0;
-	}
-}
-
 void ecore_int_disable_post_isr_release(struct ecore_dev *p_dev)
 {
 	int i;

@@ -394,16 +394,6 @@ struct ecore_hw_info {
 	u16 mtu;
 };
 
-struct ecore_hw_cid_data {
-	u32	cid;
-	bool	b_cid_allocated;
-	u8	vfid; /* 1-based; 0 signals this is for a PF */
-
-	/* Additional identifiers */
-	u16	opaque_fid;
-	u8	vport_id;
-};
-
 /* maximun size of read/write commands (HW limit) */
 #define DMAE_MAX_RW_SIZE	0x2000
 
@@ -565,9 +555,6 @@ struct ecore_hwfn {
 	struct ecore_pf_iov		*pf_iov_info;
 	struct ecore_mcp_info		*mcp_info;
 	struct ecore_dcbx_info		*p_dcbx_info;
-
-	struct ecore_hw_cid_data	*p_tx_cids;
-	struct ecore_hw_cid_data	*p_rx_cids;
 
 	struct ecore_dmae_info		dmae_info;
 

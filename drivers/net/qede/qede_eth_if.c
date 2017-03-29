@@ -148,7 +148,8 @@ qed_start_rxq(struct ecore_dev *edev,
 	      uint16_t bd_max_bytes,
 	      dma_addr_t bd_chain_phys_addr,
 	      dma_addr_t cqe_pbl_addr,
-	      uint16_t cqe_pbl_size, void OSAL_IOMEM * *pp_prod)
+	      uint16_t cqe_pbl_size,
+	      struct ecore_rxq_start_ret_params *ret_params)
 {
 	struct ecore_hwfn *p_hwfn;
 	int rc, hwfn_index;
@@ -159,12 +160,14 @@ qed_start_rxq(struct ecore_dev *edev,
 	p_params->queue_id = p_params->queue_id / edev->num_hwfns;
 	p_params->stats_id = p_params->vport_id;
 
-	rc = ecore_sp_eth_rx_queue_start(p_hwfn,
-					 p_hwfn->hw_info.opaque_fid,
-					 p_params,
-					 bd_max_bytes,
-					 bd_chain_phys_addr,
-					 cqe_pbl_addr, cqe_pbl_size, pp_prod);
+	rc = ecore_eth_rx_queue_start(p_hwfn,
+				      p_hwfn->hw_info.opaque_fid,
+				      p_params,
+				      bd_max_bytes,
+				      bd_chain_phys_addr,
+				      cqe_pbl_addr,
+				      cqe_pbl_size,
+				      ret_params);
 
 	if (rc) {
 		DP_ERR(edev, "Failed to start RXQ#%d\n", p_params->queue_id);
@@ -180,19 +183,17 @@ qed_start_rxq(struct ecore_dev *edev,
 }
 
 static int
-qed_stop_rxq(struct ecore_dev *edev, struct qed_stop_rxq_params *params)
+qed_stop_rxq(struct ecore_dev *edev, uint8_t rss_id, void *handle)
 {
 	int rc, hwfn_index;
 	struct ecore_hwfn *p_hwfn;
 
-	hwfn_index = params->rss_id % edev->num_hwfns;
+	hwfn_index = rss_id % edev->num_hwfns;
 	p_hwfn = &edev->hwfns[hwfn_index];
 
-	rc = ecore_sp_eth_rx_queue_stop(p_hwfn,
-					params->rx_queue_id / edev->num_hwfns,
-					params->eq_completion_only, false);
+	rc = ecore_eth_rx_queue_stop(p_hwfn, handle, true, false);
 	if (rc) {
-		DP_ERR(edev, "Failed to stop RXQ#%d\n", params->rx_queue_id);
+		DP_ERR(edev, "Failed to stop RXQ#%02x\n", rss_id);
 		return rc;
 	}
 
@@ -204,7 +205,8 @@ qed_start_txq(struct ecore_dev *edev,
 	      uint8_t rss_num,
 	      struct ecore_queue_start_common_params *p_params,
 	      dma_addr_t pbl_addr,
-	      uint16_t pbl_size, void OSAL_IOMEM * *pp_doorbell)
+	      uint16_t pbl_size,
+	      struct ecore_txq_start_ret_params *ret_params)
 {
 	struct ecore_hwfn *p_hwfn;
 	int rc, hwfn_index;
@@ -213,14 +215,13 @@ qed_start_txq(struct ecore_dev *edev,
 	p_hwfn = &edev->hwfns[hwfn_index];
 
 	p_params->queue_id = p_params->queue_id / edev->num_hwfns;
-	p_params->qzone_id = p_params->queue_id;
 	p_params->stats_id = p_params->vport_id;
 
-	rc = ecore_sp_eth_tx_queue_start(p_hwfn,
-					 p_hwfn->hw_info.opaque_fid,
-					 p_params,
-					 0 /* tc */,
-					 pbl_addr, pbl_size, pp_doorbell);
+	rc = ecore_eth_tx_queue_start(p_hwfn,
+				      p_hwfn->hw_info.opaque_fid,
+				      p_params, 0 /* tc */,
+				      pbl_addr, pbl_size,
+				      ret_params);
 
 	if (rc) {
 		DP_ERR(edev, "Failed to start TXQ#%d\n", p_params->queue_id);
@@ -236,18 +237,17 @@ qed_start_txq(struct ecore_dev *edev,
 }
 
 static int
-qed_stop_txq(struct ecore_dev *edev, struct qed_stop_txq_params *params)
+qed_stop_txq(struct ecore_dev *edev, uint8_t rss_id, void *handle)
 {
 	struct ecore_hwfn *p_hwfn;
 	int rc, hwfn_index;
 
-	hwfn_index = params->rss_id % edev->num_hwfns;
+	hwfn_index = rss_id % edev->num_hwfns;
 	p_hwfn = &edev->hwfns[hwfn_index];
 
-	rc = ecore_sp_eth_tx_queue_stop(p_hwfn,
-					params->tx_queue_id / edev->num_hwfns);
+	rc = ecore_eth_tx_queue_stop(p_hwfn, handle);
 	if (rc) {
-		DP_ERR(edev, "Failed to stop TXQ#%d\n", params->tx_queue_id);
+		DP_ERR(edev, "Failed to stop TXQ#%02x\n", rss_id);
 		return rc;
 	}
 

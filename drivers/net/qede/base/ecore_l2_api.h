@@ -28,22 +28,26 @@ enum ecore_rss_caps {
 #endif
 
 struct ecore_queue_start_common_params {
-	/* Rx/Tx queue relative id to keep obtained cid in corresponding array
-	 * RX - upper-bounded by number of FW-queues
-	 */
-	u16 queue_id;
+	/* Should always be relative to entity sending this. */
 	u8 vport_id;
+	u16 queue_id;
 
-	/* q_zone_id is relative, may be different from queue id
-	 * currently used by Tx-only, upper-bounded by number of FW-queues
-	 */
-	u16 qzone_id;
-
-	/* stats_id is relative or absolute depends on function */
+	/* Relative, but relevant only for PFs */
 	u8 stats_id;
+
+	/* These are always absolute */
 	u16 sb;
-	u16 sb_idx;
-	u16 vf_qid;
+	u8 sb_idx;
+};
+
+struct ecore_rxq_start_ret_params {
+	void OSAL_IOMEM *p_prod;
+	void *p_handle;
+};
+
+struct ecore_txq_start_ret_params {
+	void OSAL_IOMEM *p_doorbell;
+	void *p_handle;
 };
 
 struct ecore_rss_params {
@@ -167,42 +171,37 @@ ecore_filter_accept_cmd(
 	struct ecore_spq_comp_cb	 *p_comp_data);
 
 /**
- * @brief ecore_sp_eth_rx_queue_start - RX Queue Start Ramrod
+ * @brief ecore_eth_rx_queue_start - RX Queue Start Ramrod
  *
  * This ramrod initializes an RX Queue for a VPort. An Assert is generated if
  * the VPort ID is not currently initialized.
  *
  * @param p_hwfn
  * @param opaque_fid
- * @p_params			[stats_id is relative, packed in p_params]
+ * @p_params			Inputs; Relative for PF [SB being an exception]
  * @param bd_max_bytes		Maximum bytes that can be placed on a BD
  * @param bd_chain_phys_addr	Physical address of BDs for receive.
  * @param cqe_pbl_addr		Physical address of the CQE PBL Table.
  * @param cqe_pbl_size		Size of the CQE PBL Table
- * @param pp_prod		Pointer to place producer's
- *                              address for the Rx Q (May be
- *				NULL).
+ * @param p_ret_params		Pointed struct to be filled with outputs.
  *
  * @return enum _ecore_status_t
  */
 enum _ecore_status_t
-ecore_sp_eth_rx_queue_start(struct ecore_hwfn *p_hwfn,
-			    u16 opaque_fid,
-			    struct ecore_queue_start_common_params *p_params,
-			    u16 bd_max_bytes,
-			    dma_addr_t bd_chain_phys_addr,
-			    dma_addr_t cqe_pbl_addr,
-			    u16 cqe_pbl_size,
-			    void OSAL_IOMEM * *pp_prod);
+ecore_eth_rx_queue_start(struct ecore_hwfn *p_hwfn,
+			 u16 opaque_fid,
+			 struct ecore_queue_start_common_params *p_params,
+			 u16 bd_max_bytes,
+			 dma_addr_t bd_chain_phys_addr,
+			 dma_addr_t cqe_pbl_addr,
+			 u16 cqe_pbl_size,
+			 struct ecore_rxq_start_ret_params *p_ret_params);
 
 /**
- * @brief ecore_sp_eth_rx_queue_stop -
- *
- * This ramrod closes an RX queue. It sends RX queue stop ramrod
- * + CFC delete ramrod
+ * @brief ecore_eth_rx_queue_stop - This ramrod closes an Rx queue
  *
  * @param p_hwfn
- * @param rx_queue_id		RX Queue ID
+ * @param p_rxq			Handler of queue to close
  * @param eq_completion_only	If True completion will be on
  *				EQe, if False completion will be
  *				on EQe if p_hwfn opaque
@@ -213,13 +212,13 @@ ecore_sp_eth_rx_queue_start(struct ecore_hwfn *p_hwfn,
  * @return enum _ecore_status_t
  */
 enum _ecore_status_t
-ecore_sp_eth_rx_queue_stop(struct ecore_hwfn *p_hwfn,
-			   u16 rx_queue_id,
-			   bool eq_completion_only,
-			   bool cqe_completion);
+ecore_eth_rx_queue_stop(struct ecore_hwfn *p_hwfn,
+			void *p_rxq,
+			bool eq_completion_only,
+			bool cqe_completion);
 
 /**
- * @brief ecore_sp_eth_tx_queue_start - TX Queue Start Ramrod
+ * @brief - TX Queue Start Ramrod
  *
  * This ramrod initializes a TX Queue for a VPort. An Assert is generated if
  * the VPort is not currently initialized.
@@ -230,34 +229,29 @@ ecore_sp_eth_rx_queue_stop(struct ecore_hwfn *p_hwfn,
  * @param tc			traffic class to use with this L2 txq
  * @param pbl_addr		address of the pbl array
  * @param pbl_size		number of entries in pbl
- * @param pp_doorbell		Pointer to place doorbell pointer (May be NULL).
- *				This address should be used with the
- *				DIRECT_REG_WR macro.
+ * @param p_ret_params		Pointer to fill the return parameters in.
  *
  * @return enum _ecore_status_t
  */
 enum _ecore_status_t
-ecore_sp_eth_tx_queue_start(struct ecore_hwfn *p_hwfn,
-			    u16 opaque_fid,
-			    struct ecore_queue_start_common_params *p_params,
-			    u8 tc,
-			    dma_addr_t pbl_addr,
-			    u16 pbl_size,
-			    void OSAL_IOMEM * *pp_doorbell);
+ecore_eth_tx_queue_start(struct ecore_hwfn *p_hwfn,
+			 u16 opaque_fid,
+			 struct ecore_queue_start_common_params *p_params,
+			 u8 tc,
+			 dma_addr_t pbl_addr,
+			 u16 pbl_size,
+			 struct ecore_txq_start_ret_params *p_ret_params);
 
 /**
- * @brief ecore_sp_eth_tx_queue_stop -
- *
- * This ramrod closes a TX queue. It sends TX queue stop ramrod
- * + CFC delete ramrod
+ * @brief ecore_eth_tx_queue_stop - closes a Tx queue
  *
  * @param p_hwfn
- * @param tx_queue_id		TX Queue ID
+ * @param p_txq - handle to Tx queue needed to be closed
  *
  * @return enum _ecore_status_t
  */
-enum _ecore_status_t ecore_sp_eth_tx_queue_stop(struct ecore_hwfn *p_hwfn,
-						u16 tx_queue_id);
+enum _ecore_status_t ecore_eth_tx_queue_stop(struct ecore_hwfn *p_hwfn,
+					     void *p_txq);
 
 enum ecore_tpa_mode	{
 	ECORE_TPA_MODE_NONE,
@@ -389,19 +383,19 @@ ecore_sp_eth_filter_ucast(struct ecore_hwfn *p_hwfn,
  * @note Final phase API.
  *
  * @param p_hwfn
- * @param rx_queue_id		RX Queue ID
- * @param num_rxqs              Allow to update multiple rx
- *				queues, from rx_queue_id to
- *				(rx_queue_id + num_rxqs)
+ * @param pp_rxq_handlers	An array of queue handlers to be updated.
+ * @param num_rxqs              number of queues to update.
  * @param complete_cqe_flg	Post completion to the CQE Ring if set
  * @param complete_event_flg	Post completion to the Event Ring if set
+ * @param comp_mode
+ * @param p_comp_data
  *
  * @return enum _ecore_status_t
  */
 
 enum _ecore_status_t
 ecore_sp_eth_rx_queues_update(struct ecore_hwfn *p_hwfn,
-			      u16 rx_queue_id,
+			      void **pp_rxq_handlers,
 			      u8 num_rxqs,
 			      u8 complete_cqe_flg,
 			      u8 complete_event_flg,

@@ -64,10 +64,10 @@ struct ecore_iov_vf_mbx {
 
 struct ecore_vf_q_info {
 	u16 fw_rx_qid;
+	struct ecore_queue_cid *p_rx_cid;
 	u16 fw_tx_qid;
+	struct ecore_queue_cid *p_tx_cid;
 	u8 fw_cid;
-	u8 rxq_active;
-	u8 txq_active;
 };
 
 enum vf_state {
