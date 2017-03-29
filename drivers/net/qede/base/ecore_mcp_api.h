@@ -232,6 +232,295 @@ struct ecore_mba_vers {
 	u32 mba_vers[ECORE_MAX_NUM_OF_ROMIMG];
 };
 
+enum ecore_mfw_tlv_type {
+	ECORE_MFW_TLV_GENERIC = 0x1,	/* Core driver TLVs */
+	ECORE_MFW_TLV_FCOE = 0x2,	/* FCoE protocol TLVs */
+	ECORE_MFW_TLV_ISCSI = 0x4,	/* SCSI protocol TLVs */
+};
+
+struct ecore_mfw_tlv_generic {
+	u16 feat_flags;
+	bool feat_flags_set;
+	u64 local_mac;
+	bool local_mac_set;
+	u64 additional_mac1;
+	bool additional_mac1_set;
+	u64 additional_mac2;
+	bool additional_mac2_set;
+	u16 lso_maxoff_size;
+	bool lso_maxoff_size_set;
+	u16 lso_minseg_size;
+	bool lso_minseg_size_set;
+	u8 prom_mode;
+	bool prom_mode_set;
+	u16 tx_descr_size;
+	bool tx_descr_size_set;
+	u16 rx_descr_size;
+	bool rx_descr_size_set;
+	u16 netq_count;
+	bool netq_count_set;
+	u16 flex_vlan;
+	bool flex_vlan_set;
+	u8 drv_state;
+	bool drv_state_set;
+	u8 pxe_progress;
+	bool pxe_progress_set;
+	u32 tcp4_offloads;
+	bool tcp4_offloads_set;
+	u32 tcp6_offloads;
+	bool tcp6_offloads_set;
+	u16 tx_descr_qdepth;
+	bool tx_descr_qdepth_set;
+	u16 rx_descr_qdepth;
+	bool rx_descr_qdepth_set;
+	u64 rx_frames;
+	bool rx_frames_set;
+	u64 rx_bytes;
+	bool rx_bytes_set;
+	u64 tx_frames;
+	bool tx_frames_set;
+	u64 tx_bytes;
+	bool tx_bytes_set;
+	u8 iov_offload;
+	bool iov_offload_set;
+	u8 txqs_empty;
+	bool txqs_empty_set;
+	u8 rxqs_empty;
+	bool rxqs_empty_set;
+	u8 num_txqs_full;
+	bool num_txqs_full_set;
+	u8 num_rxqs_full;
+	bool num_rxqs_full_set;
+};
+
+struct ecore_mfw_tlv_fcoe {
+	u8 scsi_timeout;
+	bool scsi_timeout_set;
+	u32 rt_tov;
+	bool rt_tov_set;
+	u32 ra_tov;
+	bool ra_tov_set;
+	u32 ed_tov;
+	bool ed_tov_set;
+	u32 cr_tov;
+	bool cr_tov_set;
+	u8 boot_type;
+	bool boot_type_set;
+	u8 npiv_state;
+	bool npiv_state_set;
+	u32 num_npiv_ids;
+	bool num_npiv_ids_set;
+	u8 switch_name[8];
+	bool switch_name_set;
+	u16 switch_portnum;
+	bool switch_portnum_set;
+	u8 switch_portid[3];
+	bool switch_portid_set;
+	u8 vendor_name[8];
+	bool vendor_name_set;
+	u8 switch_model[8];
+	bool switch_model_set;
+	u8 switch_fw_version[8];
+	bool switch_fw_version_set;
+	u8 qos_pri;
+	bool qos_pri_set;
+	u8 port_alias[3];
+	bool port_alias_set;
+	u8 port_state;
+	bool port_state_set;
+	u16 fip_tx_descr_size;
+	bool fip_tx_descr_size_set;
+	u16 fip_rx_descr_size;
+	bool fip_rx_descr_size_set;
+	u16 link_failures;
+	bool link_failures_set;
+	u8 fcoe_boot_progress;
+	bool fcoe_boot_progress_set;
+	u64 rx_bcast;
+	bool rx_bcast_set;
+	u64 tx_bcast;
+	bool tx_bcast_set;
+	u16 fcoe_txq_depth;
+	bool fcoe_txq_depth_set;
+	u16 fcoe_rxq_depth;
+	bool fcoe_rxq_depth_set;
+	u64 fcoe_rx_frames;
+	bool fcoe_rx_frames_set;
+	u64 fcoe_rx_bytes;
+	bool fcoe_rx_bytes_set;
+	u64 fcoe_tx_frames;
+	bool fcoe_tx_frames_set;
+	u64 fcoe_tx_bytes;
+	bool fcoe_tx_bytes_set;
+	u16 crc_count;
+	bool crc_count_set;
+	u32 crc_err_src_fcid[5];
+	bool crc_err_src_fcid_set[5];
+	u8 crc_err_tstamp[5][14];
+	bool crc_err_tstamp_set[5];
+	u16 losync_err;
+	bool losync_err_set;
+	u16 losig_err;
+	bool losig_err_set;
+	u16 primtive_err;
+	bool primtive_err_set;
+	u16 disparity_err;
+	bool disparity_err_set;
+	u16 code_violation_err;
+	bool code_violation_err_set;
+	u32 flogi_param[4];
+	bool flogi_param_set[4];
+	u8 flogi_tstamp[14];
+	bool flogi_tstamp_set;
+	u32 flogi_acc_param[4];
+	bool flogi_acc_param_set[4];
+	u8 flogi_acc_tstamp[14];
+	bool flogi_acc_tstamp_set;
+	u32 flogi_rjt;
+	bool flogi_rjt_set;
+	u8 flogi_rjt_tstamp[14];
+	bool flogi_rjt_tstamp_set;
+	u32 fdiscs;
+	bool fdiscs_set;
+	u8 fdisc_acc;
+	bool fdisc_acc_set;
+	u8 fdisc_rjt;
+	bool fdisc_rjt_set;
+	u8 plogi;
+	bool plogi_set;
+	u8 plogi_acc;
+	bool plogi_acc_set;
+	u8 plogi_rjt;
+	bool plogi_rjt_set;
+	u32 plogi_dst_fcid[5];
+	bool plogi_dst_fcid_set[5];
+	u8 plogi_tstamp[5][14];
+	bool plogi_tstamp_set[5];
+	u32 plogi_acc_src_fcid[5];
+	bool plogi_acc_src_fcid_set[5];
+	u8 plogi_acc_tstamp[5][14];
+	bool plogi_acc_tstamp_set[5];
+	u8 tx_plogos;
+	bool tx_plogos_set;
+	u8 plogo_acc;
+	bool plogo_acc_set;
+	u8 plogo_rjt;
+	bool plogo_rjt_set;
+	u32 plogo_src_fcid[5];
+	bool plogo_src_fcid_set[5];
+	u8 plogo_tstamp[5][14];
+	bool plogo_tstamp_set[5];
+	u8 rx_logos;
+	bool rx_logos_set;
+	u8 tx_accs;
+	bool tx_accs_set;
+	u8 tx_prlis;
+	bool tx_prlis_set;
+	u8 rx_accs;
+	bool rx_accs_set;
+	u8 tx_abts;
+	bool tx_abts_set;
+	u8 rx_abts_acc;
+	bool rx_abts_acc_set;
+	u8 rx_abts_rjt;
+	bool rx_abts_rjt_set;
+	u32 abts_dst_fcid[5];
+	bool abts_dst_fcid_set[5];
+	u8 abts_tstamp[5][14];
+	bool abts_tstamp_set[5];
+	u8 rx_rscn;
+	bool rx_rscn_set;
+	u32 rx_rscn_nport[4];
+	bool rx_rscn_nport_set[4];
+	u8 tx_lun_rst;
+	bool tx_lun_rst_set;
+	u8 abort_task_sets;
+	bool abort_task_sets_set;
+	u8 tx_tprlos;
+	bool tx_tprlos_set;
+	u8 tx_nos;
+	bool tx_nos_set;
+	u8 rx_nos;
+	bool rx_nos_set;
+	u8 ols;
+	bool ols_set;
+	u8 lr;
+	bool lr_set;
+	u8 llr;
+	bool llrt;
+	u8 tx_lip;
+	bool tx_lip_set;
+	u8 rx_lip;
+	bool rx_lip_set;
+	u8 eofa;
+	bool eofa_set;
+	u8 eofni;
+	bool eofni_set;
+	u8 scsi_chks;
+	bool scsi_chks_set;
+	u8 scsi_cond_met;
+	bool scsi_cond_met_set;
+	u8 scsi_busy;
+	bool scsi_busy_set;
+	u8 scsi_inter;
+	bool scsi_inter_set;
+	u8 scsi_inter_cond_met;
+	bool scsi_inter_cond_met_set;
+	u8 scsi_rsv_conflicts;
+	bool scsi_rsv_conflicts_set;
+	u8 scsi_tsk_full;
+	bool scsi_tsk_full_set;
+	u8 scsi_aca_active;
+	bool scsi_aca_active_set;
+	u8 scsi_tsk_abort;
+	bool scsi_tsk_abort_set;
+	u32 scsi_rx_chk[5];
+	bool scsi_rx_chk_set[5];
+	u8 scsi_chk_tstamp[5][14];
+	bool scsi_chk_tstamp_set[5];
+};
+
+struct ecore_mfw_tlv_iscsi {
+	u8 target_llmnr;
+	bool target_llmnr_set;
+	u8 header_digest;
+	bool header_digest_set;
+	u8 data_digest;
+	bool data_digest_set;
+	u8 auth_method;
+	bool auth_method_set;
+	u16 boot_taget_portal;
+	bool boot_taget_portal_set;
+	u16 frame_size;
+	bool frame_size_set;
+	u16 tx_desc_size;
+	bool tx_desc_size_set;
+	u16 rx_desc_size;
+	bool rx_desc_size_set;
+	u8 boot_progress;
+	bool boot_progress_set;
+	u16 tx_desc_qdepth;
+	bool tx_desc_qdepth_set;
+	u16 rx_desc_qdepth;
+	bool rx_desc_qdepth_set;
+	u64 rx_frames;
+	bool rx_frames_set;
+	u64 rx_bytes;
+	bool rx_bytes_set;
+	u64 tx_frames;
+	bool tx_frames_set;
+	u64 tx_bytes;
+	bool tx_bytes_set;
+	u32 cpcp_spcp_map;
+	bool cpcp_spcp_map_set;
+};
+
+union ecore_mfw_tlv_data {
+	struct ecore_mfw_tlv_generic generic;
+	struct ecore_mfw_tlv_fcoe fcoe;
+	struct ecore_mfw_tlv_iscsi iscsi;
+};
+
 /**
  * @brief - returns the link params of the hw function
  *
@@ -819,5 +1108,17 @@ ecore_mcp_mdump_get_info(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
  */
 enum _ecore_status_t ecore_mcp_mdump_clear_logs(struct ecore_hwfn *p_hwfn,
 						struct ecore_ptt *p_ptt);
+
+/**
+ * @brief - Processes the TLV request from MFW i.e., get the required TLV info
+ *          from the ecore client and send it to the MFW.
+ *
+ * @param p_hwfn
+ * @param p_ptt
+ *
+ * @param return ECORE_SUCCESS upon success.
+ */
+enum _ecore_status_t ecore_mfw_process_tlv_req(struct ecore_hwfn *p_hwfn,
+					       struct ecore_ptt *p_ptt);
 
 #endif

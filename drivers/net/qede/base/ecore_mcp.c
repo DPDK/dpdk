@@ -2502,3 +2502,9 @@ enum _ecore_status_t ecore_mcp_initiate_pf_flr(struct ecore_hwfn *p_hwfn,
 	return ecore_mcp_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_INITIATE_PF_FLR, 0,
 			     &mcp_resp, &mcp_param);
 }
+
+enum _ecore_status_t
+ecore_mfw_process_tlv_req(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt)
+{
+	return ECORE_SUCCESS;
+}
