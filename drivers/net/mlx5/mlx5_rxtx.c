@@ -561,7 +561,8 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 #ifdef MLX5_PMD_SOFT_COUNTERS
 		total_length = length;
 #endif
-		assert(length >= MLX5_WQE_DWORD_SIZE);
+		if (length < (MLX5_WQE_DWORD_SIZE + 2))
+			break;
 		/* Update element. */
 		(*txq->elts)[elts_head] = buf;
 		elts_head = (elts_head + 1) & (elts_n - 1);
