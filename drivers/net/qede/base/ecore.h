@@ -602,6 +602,9 @@ struct ecore_hwfn {
 
 	/* L2-related */
 	struct ecore_l2_info		*p_l2_info;
+
+	/* @DPDK */
+	struct ecore_ptt		*p_arfs_ptt;
 };
 
 #ifndef __EXTRACT__LINUX__

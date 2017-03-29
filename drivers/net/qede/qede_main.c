@@ -12,8 +12,6 @@
 
 #include "qede_ethdev.h"
 
-static uint8_t npar_tx_switching = 1;
-
 /* Alarm timeout. */
 #define QEDE_ALARM_TIMEOUT_US 100000
 
@@ -224,23 +222,34 @@ static void qed_stop_iov_task(struct ecore_dev *edev)
 static int qed_slowpath_start(struct ecore_dev *edev,
 			      struct qed_slowpath_params *params)
 {
-	bool allow_npar_tx_switching;
 	const uint8_t *data = NULL;
 	struct ecore_hwfn *hwfn;
 	struct ecore_mcp_drv_version drv_version;
 	struct ecore_hw_init_params hw_init_params;
 	struct qede_dev *qdev = (struct qede_dev *)edev;
+	struct ecore_ptt *p_ptt;
 	int rc;
 
-#ifdef CONFIG_ECORE_BINARY_FW
 	if (IS_PF(edev)) {
+#ifdef CONFIG_ECORE_BINARY_FW
 		rc = qed_load_firmware_data(edev);
 		if (rc) {
 			DP_ERR(edev, "Failed to find fw file %s\n", fw_file);
 			goto err;
 		}
-	}
 #endif
+		hwfn = ECORE_LEADING_HWFN(edev);
+		if (edev->num_hwfns == 1) { /* skip aRFS for 100G device */
+			p_ptt = ecore_ptt_acquire(hwfn);
+			if (p_ptt) {
+				ECORE_LEADING_HWFN(edev)->p_arfs_ptt = p_ptt;
+			} else {
+				DP_ERR(edev, "Failed to acquire PTT for flowdir\n");
+				rc = -ENOMEM;
+				goto err;
+			}
+		}
+	}
 
 	rc = qed_nic_setup(edev);
 	if (rc)
@@ -268,13 +277,11 @@ static int qed_slowpath_start(struct ecore_dev *edev,
 		data = (const uint8_t *)edev->firmware + sizeof(u32);
 #endif
 
-	allow_npar_tx_switching = npar_tx_switching ? true : false;
-
 	/* Start the slowpath */
 	memset(&hw_init_params, 0, sizeof(hw_init_params));
 	hw_init_params.b_hw_start = true;
 	hw_init_params.int_mode = ECORE_INT_MODE_MSIX;
-	hw_init_params.allow_npar_tx_switch = allow_npar_tx_switching;
+	hw_init_params.allow_npar_tx_switch = true;
 	hw_init_params.bin_fw_data = data;
 	hw_init_params.mfw_timeout_val = ECORE_LOAD_REQ_LOCK_TO_DEFAULT;
 	hw_init_params.avoid_eng_reset = false;

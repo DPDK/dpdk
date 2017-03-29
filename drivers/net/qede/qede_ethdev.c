@@ -924,6 +924,15 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 		return -EINVAL;
 	}
 
+	/* Flow director mode check */
+	rc = qede_check_fdir_support(eth_dev);
+	if (rc) {
+		qdev->ops->vport_stop(edev, 0);
+		qede_dealloc_fp_resc(eth_dev);
+		return -EINVAL;
+	}
+	SLIST_INIT(&qdev->fdir_info.fdir_list_head);
+
 	SLIST_INIT(&qdev->vlan_list_head);
 
 	/* Add primary mac for PF */
@@ -1123,6 +1132,8 @@ static void qede_dev_close(struct rte_eth_dev *eth_dev)
 	int rc;
 
 	PMD_INIT_FUNC_TRACE(edev);
+
+	qede_fdir_dealloc_resc(eth_dev);
 
 	/* dev_stop() shall cleanup fp resources in hw but without releasing
 	 * dma memories and sw structures so that dev_start() can be called
@@ -1962,11 +1973,13 @@ int qede_dev_filter_ctrl(struct rte_eth_dev *eth_dev,
 		}
 		break;
 	case RTE_ETH_FILTER_FDIR:
+		return qede_fdir_filter_conf(eth_dev, filter_op, arg);
+	case RTE_ETH_FILTER_NTUPLE:
+		return qede_ntuple_filter_conf(eth_dev, filter_op, arg);
 	case RTE_ETH_FILTER_MACVLAN:
 	case RTE_ETH_FILTER_ETHERTYPE:
 	case RTE_ETH_FILTER_FLEXIBLE:
 	case RTE_ETH_FILTER_SYN:
-	case RTE_ETH_FILTER_NTUPLE:
 	case RTE_ETH_FILTER_HASH:
 	case RTE_ETH_FILTER_L2_TUNNEL:
 	case RTE_ETH_FILTER_MAX:
@@ -2057,6 +2070,7 @@ static void qede_update_pf_params(struct ecore_dev *edev)
 
 	memset(&pf_params, 0, sizeof(struct ecore_pf_params));
 	pf_params.eth_pf_params.num_cons = QEDE_PF_NUM_CONNS;
+	pf_params.eth_pf_params.num_arfs_filters = QEDE_RFS_MAX_FLTR;
 	qed_ops->common->update_pf_params(edev, &pf_params);
 }
 

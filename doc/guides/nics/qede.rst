@@ -60,6 +60,7 @@ Supported Features
 - Multiprocess aware
 - Scatter-Gather
 - VXLAN tunneling offload
+- N-tuple filter and flow director (limited support)
 
 Non-supported Features
 ----------------------
