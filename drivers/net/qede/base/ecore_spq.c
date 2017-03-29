@@ -355,7 +355,7 @@ enum _ecore_status_t ecore_eq_completion(struct ecore_hwfn *p_hwfn,
 	return rc;
 }
 
-struct ecore_eq *ecore_eq_alloc(struct ecore_hwfn *p_hwfn, u16 num_elem)
+enum _ecore_status_t ecore_eq_alloc(struct ecore_hwfn *p_hwfn, u16 num_elem)
 {
 	struct ecore_eq *p_eq;
 
@@ -364,7 +364,7 @@ struct ecore_eq *ecore_eq_alloc(struct ecore_hwfn *p_hwfn, u16 num_elem)
 	if (!p_eq) {
 		DP_NOTICE(p_hwfn, true,
 			  "Failed to allocate `struct ecore_eq'\n");
-		return OSAL_NULL;
+		return ECORE_NOMEM;
 	}
 
 	/* Allocate and initialize EQ chain*/
@@ -374,7 +374,7 @@ struct ecore_eq *ecore_eq_alloc(struct ecore_hwfn *p_hwfn, u16 num_elem)
 			      ECORE_CHAIN_CNT_TYPE_U16,
 			      num_elem,
 			      sizeof(union event_ring_element),
-			      &p_eq->chain, OSAL_NULL)) {
+			      &p_eq->chain, OSAL_NULL) != ECORE_SUCCESS) {
 		DP_NOTICE(p_hwfn, true, "Failed to allocate eq chain\n");
 		goto eq_allocate_fail;
 	}
@@ -383,24 +383,28 @@ struct ecore_eq *ecore_eq_alloc(struct ecore_hwfn *p_hwfn, u16 num_elem)
 	ecore_int_register_cb(p_hwfn, ecore_eq_completion,
 			      p_eq, &p_eq->eq_sb_index, &p_eq->p_fw_cons);
 
-	return p_eq;
+	p_hwfn->p_eq = p_eq;
+	return ECORE_SUCCESS;
 
 eq_allocate_fail:
-	ecore_eq_free(p_hwfn, p_eq);
-	return OSAL_NULL;
-}
-
-void ecore_eq_setup(struct ecore_hwfn *p_hwfn, struct ecore_eq *p_eq)
-{
-	ecore_chain_reset(&p_eq->chain);
-}
-
-void ecore_eq_free(struct ecore_hwfn *p_hwfn, struct ecore_eq *p_eq)
-{
-	if (!p_eq)
-		return;
-	ecore_chain_free(p_hwfn->p_dev, &p_eq->chain);
 	OSAL_FREE(p_hwfn->p_dev, p_eq);
+	return ECORE_NOMEM;
+}
+
+void ecore_eq_setup(struct ecore_hwfn *p_hwfn)
+{
+	ecore_chain_reset(&p_hwfn->p_eq->chain);
+}
+
+void ecore_eq_free(struct ecore_hwfn *p_hwfn)
+{
+	if (!p_hwfn->p_eq)
+		return;
+
+	ecore_chain_free(p_hwfn->p_dev, &p_hwfn->p_eq->chain);
+
+	OSAL_FREE(p_hwfn->p_dev, p_hwfn->p_eq);
+	p_hwfn->p_eq = OSAL_NULL;
 }
 
 /***************************************************************************
@@ -943,7 +947,7 @@ enum _ecore_status_t ecore_spq_completion(struct ecore_hwfn *p_hwfn,
 	return rc;
 }
 
-struct ecore_consq *ecore_consq_alloc(struct ecore_hwfn *p_hwfn)
+enum _ecore_status_t ecore_consq_alloc(struct ecore_hwfn *p_hwfn)
 {
 	struct ecore_consq *p_consq;
 
@@ -953,7 +957,7 @@ struct ecore_consq *ecore_consq_alloc(struct ecore_hwfn *p_hwfn)
 	if (!p_consq) {
 		DP_NOTICE(p_hwfn, true,
 			  "Failed to allocate `struct ecore_consq'\n");
-		return OSAL_NULL;
+		return ECORE_NOMEM;
 	}
 
 	/* Allocate and initialize EQ chain */
@@ -963,27 +967,29 @@ struct ecore_consq *ecore_consq_alloc(struct ecore_hwfn *p_hwfn)
 			      ECORE_CHAIN_CNT_TYPE_U16,
 			      ECORE_CHAIN_PAGE_SIZE / 0x80,
 			      0x80,
-			      &p_consq->chain, OSAL_NULL)) {
+			      &p_consq->chain, OSAL_NULL) != ECORE_SUCCESS) {
 		DP_NOTICE(p_hwfn, true, "Failed to allocate consq chain");
 		goto consq_allocate_fail;
 	}
 
-	return p_consq;
+	p_hwfn->p_consq = p_consq;
+	return ECORE_SUCCESS;
 
 consq_allocate_fail:
-	ecore_consq_free(p_hwfn, p_consq);
-	return OSAL_NULL;
-}
-
-void ecore_consq_setup(struct ecore_hwfn *p_hwfn, struct ecore_consq *p_consq)
-{
-	ecore_chain_reset(&p_consq->chain);
-}
-
-void ecore_consq_free(struct ecore_hwfn *p_hwfn, struct ecore_consq *p_consq)
-{
-	if (!p_consq)
-		return;
-	ecore_chain_free(p_hwfn->p_dev, &p_consq->chain);
 	OSAL_FREE(p_hwfn->p_dev, p_consq);
+	return ECORE_NOMEM;
+}
+
+void ecore_consq_setup(struct ecore_hwfn *p_hwfn)
+{
+	ecore_chain_reset(&p_hwfn->p_consq->chain);
+}
+
+void ecore_consq_free(struct ecore_hwfn *p_hwfn)
+{
+	if (!p_hwfn->p_consq)
+		return;
+
+	ecore_chain_free(p_hwfn->p_dev, &p_hwfn->p_consq->chain);
+	OSAL_FREE(p_hwfn->p_dev, p_hwfn->p_consq);
 }

@@ -194,28 +194,23 @@ void ecore_spq_return_entry(struct ecore_hwfn		*p_hwfn,
  * @param p_hwfn
  * @param num_elem number of elements in the eq
  *
- * @return struct ecore_eq* - a newly allocated structure; NULL upon error.
+ * @return enum _ecore_status_t
  */
-struct ecore_eq *ecore_eq_alloc(struct ecore_hwfn	*p_hwfn,
-				 u16			num_elem);
+enum _ecore_status_t ecore_eq_alloc(struct ecore_hwfn	*p_hwfn, u16 num_elem);
 
 /**
- * @brief ecore_eq_setup - Reset the SPQ to its start state.
+ * @brief ecore_eq_setup - Reset the EQ to its start state.
  *
  * @param p_hwfn
- * @param p_eq
  */
-void ecore_eq_setup(struct ecore_hwfn *p_hwfn,
-		    struct ecore_eq   *p_eq);
+void ecore_eq_setup(struct ecore_hwfn *p_hwfn);
 
 /**
- * @brief ecore_eq_deallocate - deallocates the given EQ struct.
+ * @brief ecore_eq_free - deallocates the given EQ struct.
  *
  * @param p_hwfn
- * @param p_eq
  */
-void ecore_eq_free(struct ecore_hwfn *p_hwfn,
-		   struct ecore_eq   *p_eq);
+void ecore_eq_free(struct ecore_hwfn *p_hwfn);
 
 /**
  * @brief ecore_eq_prod_update - update the FW with default EQ producer
@@ -261,32 +256,26 @@ enum _ecore_status_t ecore_spq_completion(struct ecore_hwfn	*p_hwfn,
 u32 ecore_spq_get_cid(struct ecore_hwfn *p_hwfn);
 
 /**
- * @brief ecore_consq_alloc - Allocates & initializes an ConsQ
- *        struct
+ * @brief ecore_consq_alloc - Allocates & initializes an ConsQ struct
  *
  * @param p_hwfn
  *
- * @return struct ecore_eq* - a newly allocated structure; NULL upon error.
+ * @return enum _ecore_status_t
  */
-struct ecore_consq *ecore_consq_alloc(struct ecore_hwfn	*p_hwfn);
+enum _ecore_status_t ecore_consq_alloc(struct ecore_hwfn *p_hwfn);
 
 /**
- * @brief ecore_consq_setup - Reset the ConsQ to its start
- *        state.
+ * @brief ecore_consq_setup - Reset the ConsQ to its start state.
  *
  * @param p_hwfn
- * @param p_eq
  */
-void ecore_consq_setup(struct ecore_hwfn *p_hwfn,
-		    struct ecore_consq   *p_consq);
+void ecore_consq_setup(struct ecore_hwfn *p_hwfn);
 
 /**
  * @brief ecore_consq_free - deallocates the given ConsQ struct.
  *
  * @param p_hwfn
- * @param p_eq
  */
-void ecore_consq_free(struct ecore_hwfn *p_hwfn,
-		   struct ecore_consq   *p_consq);
+void ecore_consq_free(struct ecore_hwfn *p_hwfn);
 
 #endif /* __ECORE_SPQ_H__ */

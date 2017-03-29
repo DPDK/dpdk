@@ -165,12 +165,9 @@ void ecore_resc_free(struct ecore_dev *p_dev)
 		ecore_cxt_mngr_free(p_hwfn);
 		ecore_qm_info_free(p_hwfn);
 		ecore_spq_free(p_hwfn);
-		ecore_eq_free(p_hwfn, p_hwfn->p_eq);
-		ecore_consq_free(p_hwfn, p_hwfn->p_consq);
+		ecore_eq_free(p_hwfn);
+		ecore_consq_free(p_hwfn);
 		ecore_int_free(p_hwfn);
-#ifdef CONFIG_ECORE_LL2
-		ecore_ll2_free(p_hwfn, p_hwfn->p_ll2_info);
-#endif
 		ecore_iov_free(p_hwfn);
 		ecore_dmae_info_free(p_hwfn);
 		ecore_dcbx_info_free(p_hwfn, p_hwfn->p_dcbx_info);
@@ -836,11 +833,6 @@ alloc_err:
 
 enum _ecore_status_t ecore_resc_alloc(struct ecore_dev *p_dev)
 {
-	struct ecore_consq *p_consq;
-	struct ecore_eq *p_eq;
-#ifdef	CONFIG_ECORE_LL2
-	struct ecore_ll2_info *p_ll2_info;
-#endif
 	enum _ecore_status_t rc = ECORE_SUCCESS;
 	int i;
 
@@ -988,24 +980,13 @@ enum _ecore_status_t ecore_resc_alloc(struct ecore_dev *p_dev)
 			goto alloc_no_mem;
 		}
 
-		p_eq = ecore_eq_alloc(p_hwfn, (u16)n_eqes);
-		if (!p_eq)
-			goto alloc_no_mem;
-		p_hwfn->p_eq = p_eq;
+		rc = ecore_eq_alloc(p_hwfn, (u16)n_eqes);
+		if (rc)
+			goto alloc_err;
 
-		p_consq = ecore_consq_alloc(p_hwfn);
-		if (!p_consq)
-			goto alloc_no_mem;
-		p_hwfn->p_consq = p_consq;
-
-#ifdef CONFIG_ECORE_LL2
-		if (p_hwfn->using_ll2) {
-			p_ll2_info = ecore_ll2_alloc(p_hwfn);
-			if (!p_ll2_info)
-				goto alloc_no_mem;
-			p_hwfn->p_ll2_info = p_ll2_info;
-		}
-#endif
+		rc = ecore_consq_alloc(p_hwfn);
+		if (rc)
+			goto alloc_err;
 
 		/* DMA info initialization */
 		rc = ecore_dmae_info_alloc(p_hwfn);
@@ -1053,8 +1034,8 @@ void ecore_resc_setup(struct ecore_dev *p_dev)
 
 		ecore_cxt_mngr_setup(p_hwfn);
 		ecore_spq_setup(p_hwfn);
-		ecore_eq_setup(p_hwfn, p_hwfn->p_eq);
-		ecore_consq_setup(p_hwfn, p_hwfn->p_consq);
+		ecore_eq_setup(p_hwfn);
+		ecore_consq_setup(p_hwfn);
 
 		/* Read shadow of current MFW mailbox */
 		ecore_mcp_read_mb(p_hwfn, p_hwfn->p_main_ptt);
@@ -1065,10 +1046,6 @@ void ecore_resc_setup(struct ecore_dev *p_dev)
 		ecore_int_setup(p_hwfn, p_hwfn->p_main_ptt);
 
 		ecore_iov_setup(p_hwfn, p_hwfn->p_main_ptt);
-#ifdef CONFIG_ECORE_LL2
-		if (p_hwfn->using_ll2)
-			ecore_ll2_setup(p_hwfn, p_hwfn->p_ll2_info);
-#endif
 	}
 }
 
