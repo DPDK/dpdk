@@ -342,7 +342,7 @@ virtual_ethdev_rx_burst_success(void *queue __rte_unused,
 	dev_private = vrtl_eth_dev->data->dev_private;
 
 	rx_count = rte_ring_dequeue_burst(dev_private->rx_queue, (void **) bufs,
-			nb_pkts);
+			nb_pkts, NULL);
 
 	/* increments ipackets count */
 	dev_private->eth_stats.ipackets += rx_count;
@@ -508,7 +508,7 @@ virtual_ethdev_get_mbufs_from_tx_queue(uint8_t port_id,
 
 	dev_private = vrtl_eth_dev->data->dev_private;
 	return rte_ring_dequeue_burst(dev_private->tx_queue, (void **)pkt_burst,
-		burst_length);
+		burst_length, NULL);
 }
 
 static uint8_t

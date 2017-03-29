@@ -1008,7 +1008,8 @@ bond_ethdev_tx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 		struct port *port = &mode_8023ad_ports[slaves[i]];
 
 		slave_slow_nb_pkts[i] = rte_ring_dequeue_burst(port->tx_ring,
-				slow_pkts, BOND_MODE_8023AX_SLAVE_TX_PKTS);
+				slow_pkts, BOND_MODE_8023AX_SLAVE_TX_PKTS,
+				NULL);
 		slave_nb_pkts[i] = slave_slow_nb_pkts[i];
 
 		for (j = 0; j < slave_slow_nb_pkts[i]; j++)

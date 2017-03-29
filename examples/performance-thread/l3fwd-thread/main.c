@@ -2077,7 +2077,7 @@ lthread_tx_per_ring(void *dummy)
 		 */
 		SET_CPU_BUSY(tx_conf, CPU_POLL);
 		nb_rx = rte_ring_sc_dequeue_burst(ring, (void **)pkts_burst,
-				MAX_PKT_BURST);
+				MAX_PKT_BURST, NULL);
 		SET_CPU_IDLE(tx_conf, CPU_POLL);
 
 		if (nb_rx > 0) {
@@ -2381,7 +2381,7 @@ pthread_tx(void *dummy)
 		 */
 		SET_CPU_BUSY(tx_conf, CPU_POLL);
 		nb_rx = rte_ring_sc_dequeue_burst(tx_conf->ring,
-				(void **)pkts_burst, MAX_PKT_BURST);
+				(void **)pkts_burst, MAX_PKT_BURST, NULL);
 		SET_CPU_IDLE(tx_conf, CPU_POLL);
 
 		if (unlikely(nb_rx == 0)) {

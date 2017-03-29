@@ -392,7 +392,7 @@ main(int argc, char *argv[])
 		 */
 		while (rx_pkts > 0 &&
 				unlikely(rte_ring_dequeue_bulk(rx_ring, pkts,
-					rx_pkts) == 0))
+					rx_pkts, NULL) == 0))
 			rx_pkts = (uint16_t)RTE_MIN(rte_ring_count(rx_ring),
 					PKT_READ_SIZE);
 

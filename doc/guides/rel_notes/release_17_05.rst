@@ -140,6 +140,8 @@ API Changes
   * added an extra parameter to the burst/bulk enqueue functions to
     return the number of free spaces in the ring after enqueue. This can
     be used by an application to implement its own watermark functionality.
+  * added an extra parameter to the burst/bulk dequeue functions to return
+    the number elements remaining in the ring after dequeue.
   * changed the return value of the enqueue and dequeue bulk functions to
     match that of the burst equivalents. In all cases, ring functions which
     operate on multiple packets now return the number of elements enqueued
@@ -151,6 +153,12 @@ API Changes
     - ``rte_ring_mc_dequeue_bulk``
     - ``rte_ring_sc_dequeue_bulk``
     - ``rte_ring_dequeue_bulk``
+
+    NOTE: the above functions all have different parameters as well as
+    different return values, due to the other listed changes above. This
+    means that all instances of the functions in existing code will be
+    flagged by the compiler. The return value usage should be checked
+    while fixing the compiler error due to the extra parameter.
 
 ABI Changes
 -----------

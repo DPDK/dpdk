@@ -1119,7 +1119,7 @@ openssl_pmd_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
 	unsigned int nb_dequeued = 0;
 
 	nb_dequeued = rte_ring_dequeue_burst(qp->processed_ops,
-			(void **)ops, nb_ops);
+			(void **)ops, nb_ops, NULL);
 	qp->stats.dequeued_count += nb_dequeued;
 
 	return nb_dequeued;

@@ -58,14 +58,14 @@ static int
 common_ring_mc_dequeue(struct rte_mempool *mp, void **obj_table, unsigned n)
 {
 	return rte_ring_mc_dequeue_bulk(mp->pool_data,
-			obj_table, n) == 0 ? -ENOBUFS : 0;
+			obj_table, n, NULL) == 0 ? -ENOBUFS : 0;
 }
 
 static int
 common_ring_sc_dequeue(struct rte_mempool *mp, void **obj_table, unsigned n)
 {
 	return rte_ring_sc_dequeue_bulk(mp->pool_data,
-			obj_table, n) == 0 ? -ENOBUFS : 0;
+			obj_table, n, NULL) == 0 ? -ENOBUFS : 0;
 }
 
 static unsigned

@@ -462,7 +462,7 @@ worker_thread(void *args_ptr)
 
 		/* dequeue the mbufs from rx_to_workers ring */
 		burst_size = rte_ring_dequeue_burst(ring_in,
-				(void *)burst_buffer, MAX_PKTS_BURST);
+				(void *)burst_buffer, MAX_PKTS_BURST, NULL);
 		if (unlikely(burst_size == 0))
 			continue;
 
@@ -510,7 +510,7 @@ send_thread(struct send_thread_args *args)
 
 		/* deque the mbufs from workers_to_tx ring */
 		nb_dq_mbufs = rte_ring_dequeue_burst(args->ring_in,
-				(void *)mbufs, MAX_PKTS_BURST);
+				(void *)mbufs, MAX_PKTS_BURST, NULL);
 
 		if (unlikely(nb_dq_mbufs == 0))
 			continue;
@@ -595,7 +595,7 @@ tx_thread(struct rte_ring *ring_in)
 
 		/* deque the mbufs from workers_to_tx ring */
 		dqnum = rte_ring_dequeue_burst(ring_in,
-				(void *)mbufs, MAX_PKTS_BURST);
+				(void *)mbufs, MAX_PKTS_BURST, NULL);
 
 		if (unlikely(dqnum == 0))
 			continue;

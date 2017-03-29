@@ -193,7 +193,8 @@ static uint8_t lacpdu_rx_count[RTE_MAX_ETHPORTS] = {0, };
 static int
 slave_get_pkts(struct slave_conf *slave, struct rte_mbuf **buf, uint16_t size)
 {
-	return rte_ring_dequeue_burst(slave->tx_queue, (void **)buf, size);
+	return rte_ring_dequeue_burst(slave->tx_queue, (void **)buf,
+			size, NULL);
 }
 
 /*

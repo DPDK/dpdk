@@ -334,7 +334,7 @@ lcore_distributor(struct lcore_params *p)
 	printf("\nCore %u acting as distributor core.\n", rte_lcore_id());
 	while (!quit_signal_dist) {
 		const uint16_t nb_rx = rte_ring_dequeue_burst(in_r,
-				(void *)bufs, BURST_SIZE*1);
+				(void *)bufs, BURST_SIZE*1, NULL);
 		if (nb_rx) {
 			app_stats.dist.in_pkts += nb_rx;
 
@@ -403,7 +403,7 @@ lcore_tx(struct rte_ring *in_r)
 
 			struct rte_mbuf *bufs[BURST_SIZE_TX];
 			const uint16_t nb_rx = rte_ring_dequeue_burst(in_r,
-					(void *)bufs, BURST_SIZE_TX);
+					(void *)bufs, BURST_SIZE_TX, NULL);
 			app_stats.tx.dequeue_pkts += nb_rx;
 
 			/* if we get no traffic, flush anything we have */

@@ -124,7 +124,7 @@ The code algorithm that dequeues messages may be something similar to the follow
 
     while (1) {
         /* Process as many elements as can be dequeued. */
-        count = rte_ring_dequeue_burst(ring, obj_table, MAX_BULK);
+        count = rte_ring_dequeue_burst(ring, obj_table, MAX_BULK, NULL);
         if (unlikely(count == 0))
             continue;
 

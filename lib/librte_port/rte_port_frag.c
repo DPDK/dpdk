@@ -186,7 +186,8 @@ rte_port_ring_reader_frag_rx(void *port,
 		/* If "pkts" buffer is empty, read packet burst from ring */
 		if (p->n_pkts == 0) {
 			p->n_pkts = rte_ring_sc_dequeue_burst(p->ring,
-				(void **) p->pkts, RTE_PORT_IN_BURST_SIZE_MAX);
+				(void **) p->pkts, RTE_PORT_IN_BURST_SIZE_MAX,
+				NULL);
 			RTE_PORT_RING_READER_FRAG_STATS_PKTS_IN_ADD(p, p->n_pkts);
 			if (p->n_pkts == 0)
 				return n_pkts_out;

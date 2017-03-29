@@ -247,7 +247,8 @@ pipeline_stage(__attribute__((unused)) void *args)
 			}
 
 			/* Dequeue up to quota mbuf from rx */
-			nb_dq_pkts = rte_ring_dequeue_burst(rx, pkts, *quota);
+			nb_dq_pkts = rte_ring_dequeue_burst(rx, pkts,
+					*quota, NULL);
 			if (unlikely(nb_dq_pkts < 0))
 				continue;
 
@@ -305,7 +306,7 @@ send_stage(__attribute__((unused)) void *args)
 
 			/* Dequeue packets from tx and send them */
 			nb_dq_pkts = (uint16_t) rte_ring_dequeue_burst(tx,
-					(void *) tx_pkts, *quota);
+					(void *) tx_pkts, *quota, NULL);
 			rte_eth_tx_burst(dest_port_id, 0, tx_pkts, nb_dq_pkts);
 
 			/* TODO: Check if nb_dq_pkts == nb_tx_pkts? */

@@ -349,7 +349,8 @@ app_lcore_io_tx(
 			ret = rte_ring_sc_dequeue_bulk(
 				ring,
 				(void **) &lp->tx.mbuf_out[port].array[n_mbufs],
-				bsz_rd);
+				bsz_rd,
+				NULL);
 
 			if (unlikely(ret == 0))
 				continue;
@@ -504,7 +505,8 @@ app_lcore_worker(
 		ret = rte_ring_sc_dequeue_bulk(
 			ring_in,
 			(void **) lp->mbuf_in.array,
-			bsz_rd);
+			bsz_rd,
+			NULL);
 
 		if (unlikely(ret == 0))
 			continue;

@@ -88,7 +88,7 @@ eth_ring_rx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 	void **ptrs = (void *)&bufs[0];
 	struct ring_queue *r = q;
 	const uint16_t nb_rx = (uint16_t)rte_ring_dequeue_burst(r->rng,
-			ptrs, nb_bufs);
+			ptrs, nb_bufs, NULL);
 	if (r->rng->flags & RING_F_SC_DEQ)
 		r->rx_pkts.cnt += nb_rx;
 	else

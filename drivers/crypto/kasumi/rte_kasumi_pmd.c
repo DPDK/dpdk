@@ -542,7 +542,7 @@ kasumi_pmd_dequeue_burst(void *queue_pair,
 	unsigned nb_dequeued;
 
 	nb_dequeued = rte_ring_dequeue_burst(qp->processed_ops,
-			(void **)c_ops, nb_ops);
+			(void **)c_ops, nb_ops, NULL);
 	qp->qp_stats.dequeued_count += nb_dequeued;
 
 	return nb_dequeued;

@@ -279,7 +279,8 @@ main(int argc, char *argv[])
 		uint16_t i, rx_pkts;
 		uint8_t port;
 
-		rx_pkts = rte_ring_dequeue_burst(rx_ring, pkts, PKT_READ_SIZE);
+		rx_pkts = rte_ring_dequeue_burst(rx_ring, pkts,
+				PKT_READ_SIZE, NULL);
 
 		if (unlikely(rx_pkts == 0)){
 			if (need_flush)

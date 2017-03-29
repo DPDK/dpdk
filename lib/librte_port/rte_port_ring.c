@@ -111,7 +111,8 @@ rte_port_ring_reader_rx(void *port, struct rte_mbuf **pkts, uint32_t n_pkts)
 	struct rte_port_ring_reader *p = (struct rte_port_ring_reader *) port;
 	uint32_t nb_rx;
 
-	nb_rx = rte_ring_sc_dequeue_burst(p->ring, (void **) pkts, n_pkts);
+	nb_rx = rte_ring_sc_dequeue_burst(p->ring, (void **) pkts,
+			n_pkts, NULL);
 	RTE_PORT_RING_READER_STATS_PKTS_IN_ADD(p, nb_rx);
 
 	return nb_rx;
@@ -124,7 +125,8 @@ rte_port_ring_multi_reader_rx(void *port, struct rte_mbuf **pkts,
 	struct rte_port_ring_reader *p = (struct rte_port_ring_reader *) port;
 	uint32_t nb_rx;
 
-	nb_rx = rte_ring_mc_dequeue_burst(p->ring, (void **) pkts, n_pkts);
+	nb_rx = rte_ring_mc_dequeue_burst(p->ring, (void **) pkts,
+			n_pkts, NULL);
 	RTE_PORT_RING_READER_STATS_PKTS_IN_ADD(p, nb_rx);
 
 	return nb_rx;
