@@ -291,6 +291,7 @@ enum ecore_resources {
 	ECORE_LL2_QUEUE,
 	ECORE_CMDQS_CQS,
 	ECORE_RDMA_STATS_QUEUE,
+	ECORE_BDQ,
 	ECORE_MAX_RESC,			/* must be last */
 };
 

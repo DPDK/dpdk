@@ -2463,6 +2463,9 @@ ecore_hw_get_mfw_res_id(enum ecore_resources res_id)
 	case ECORE_RDMA_STATS_QUEUE:
 		mfw_res_id = RESOURCE_RDMA_STATS_QUEUE_E;
 		break;
+	case ECORE_BDQ:
+		mfw_res_id = RESOURCE_BDQ_E;
+		break;
 	default:
 		break;
 	}
@@ -2470,67 +2473,84 @@ ecore_hw_get_mfw_res_id(enum ecore_resources res_id)
 	return mfw_res_id;
 }
 
-static u32 ecore_hw_get_dflt_resc_num(struct ecore_hwfn *p_hwfn,
-				      enum ecore_resources res_id)
+static
+enum _ecore_status_t ecore_hw_get_dflt_resc(struct ecore_hwfn *p_hwfn,
+					    enum ecore_resources res_id,
+					    u32 *p_resc_num,
+					    u32 *p_resc_start)
 {
 	u8 num_funcs = p_hwfn->num_funcs_on_engine;
 	bool b_ah = ECORE_IS_AH(p_hwfn->p_dev);
 	struct ecore_sb_cnt_info sb_cnt_info;
-	u32 dflt_resc_num = 0;
 
 	switch (res_id) {
 	case ECORE_SB:
 		OSAL_MEM_ZERO(&sb_cnt_info, sizeof(sb_cnt_info));
 		ecore_int_get_num_sbs(p_hwfn, &sb_cnt_info);
-		dflt_resc_num = sb_cnt_info.sb_cnt;
+		*p_resc_num = sb_cnt_info.sb_cnt;
 		break;
 	case ECORE_L2_QUEUE:
-		dflt_resc_num = (b_ah ? MAX_NUM_L2_QUEUES_K2 :
+		*p_resc_num = (b_ah ? MAX_NUM_L2_QUEUES_K2 :
 				 MAX_NUM_L2_QUEUES_BB) / num_funcs;
 		break;
 	case ECORE_VPORT:
-		dflt_resc_num = (b_ah ? MAX_NUM_VPORTS_K2 :
+		*p_resc_num = (b_ah ? MAX_NUM_VPORTS_K2 :
 				 MAX_NUM_VPORTS_BB) / num_funcs;
 		break;
 	case ECORE_RSS_ENG:
-		dflt_resc_num = (b_ah ? ETH_RSS_ENGINE_NUM_K2 :
+		*p_resc_num = (b_ah ? ETH_RSS_ENGINE_NUM_K2 :
 				 ETH_RSS_ENGINE_NUM_BB) / num_funcs;
 		break;
 	case ECORE_PQ:
-		dflt_resc_num = (b_ah ? MAX_QM_TX_QUEUES_K2 :
+		*p_resc_num = (b_ah ? MAX_QM_TX_QUEUES_K2 :
 				 MAX_QM_TX_QUEUES_BB) / num_funcs;
 		break;
 	case ECORE_RL:
-		dflt_resc_num = MAX_QM_GLOBAL_RLS / num_funcs;
+		*p_resc_num = MAX_QM_GLOBAL_RLS / num_funcs;
 		break;
 	case ECORE_MAC:
 	case ECORE_VLAN:
 		/* Each VFC resource can accommodate both a MAC and a VLAN */
-		dflt_resc_num = ETH_NUM_MAC_FILTERS / num_funcs;
+		*p_resc_num = ETH_NUM_MAC_FILTERS / num_funcs;
 		break;
 	case ECORE_ILT:
-		dflt_resc_num = (b_ah ? PXP_NUM_ILT_RECORDS_K2 :
+		*p_resc_num = (b_ah ? PXP_NUM_ILT_RECORDS_K2 :
 				 PXP_NUM_ILT_RECORDS_BB) / num_funcs;
 		break;
 	case ECORE_LL2_QUEUE:
-		dflt_resc_num = MAX_NUM_LL2_RX_QUEUES / num_funcs;
+		*p_resc_num = MAX_NUM_LL2_RX_QUEUES / num_funcs;
 		break;
 	case ECORE_RDMA_CNQ_RAM:
 	case ECORE_CMDQS_CQS:
 		/* CNQ/CMDQS are the same resource */
 		/* @DPDK */
-		dflt_resc_num = (NUM_OF_GLOBAL_QUEUES / 2) / num_funcs;
+		*p_resc_num = (NUM_OF_GLOBAL_QUEUES / 2) / num_funcs;
 		break;
 	case ECORE_RDMA_STATS_QUEUE:
 		/* @DPDK */
-		dflt_resc_num = (b_ah ? MAX_NUM_VPORTS_K2 :
+		*p_resc_num = (b_ah ? MAX_NUM_VPORTS_K2 :
 				 MAX_NUM_VPORTS_BB) / num_funcs;
+		break;
+	case ECORE_BDQ:
+		/* @DPDK */
+		*p_resc_num = 0;
 		break;
 	default:
 		break;
 	}
 
-	return dflt_resc_num;
+
+	switch (res_id) {
+	case ECORE_BDQ:
+		if (!*p_resc_num)
+			*p_resc_start = 0;
+		break;
+	default:
+		*p_resc_start = *p_resc_num * p_hwfn->enabled_func_idx;
+		break;
+	}
+
+	return ECORE_SUCCESS;
 }
 
 static const char *ecore_hw_get_resc_name(enum ecore_resources res_id)
@@ -2562,6 +2582,8 @@ static const char *ecore_hw_get_resc_name(enum ecore_resources res_id)
 		return "CMDQS_CQS";
 	case ECORE_RDMA_STATS_QUEUE:
 		return "RDMA_STATS_QUEUE";
+	case ECORE_BDQ:
+		return "BDQ";
 	default:
 		return "UNKNOWN_RESOURCE";
 	}
@@ -2579,14 +2601,14 @@ static enum _ecore_status_t ecore_hw_set_resc_info(struct ecore_hwfn *p_hwfn,
 	p_resc_num = &RESC_NUM(p_hwfn, res_id);
 	p_resc_start = &RESC_START(p_hwfn, res_id);
 
-	dflt_resc_num = ecore_hw_get_dflt_resc_num(p_hwfn, res_id);
-	if (!dflt_resc_num) {
+	rc = ecore_hw_get_dflt_resc(p_hwfn, res_id,
+				    &dflt_resc_num, &dflt_resc_start);
+	if (rc != ECORE_SUCCESS) {
 		DP_ERR(p_hwfn,
 		       "Failed to get default amount for resource %d [%s]\n",
 			res_id, ecore_hw_get_resc_name(res_id));
-		return ECORE_INVAL;
+		return rc;
 	}
-	dflt_resc_start = dflt_resc_num * p_hwfn->enabled_func_idx;
 
 #ifndef ASIC_ONLY
 	if (CHIP_REV_IS_SLOW(p_hwfn->p_dev)) {
