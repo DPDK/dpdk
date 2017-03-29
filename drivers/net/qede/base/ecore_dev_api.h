@@ -535,7 +535,7 @@ enum _ecore_status_t ecore_final_cleanup(struct ecore_hwfn	*p_hwfn,
  */
 enum _ecore_status_t ecore_set_rxq_coalesce(struct ecore_hwfn *p_hwfn,
 					    struct ecore_ptt *p_ptt,
-					    u16 coalesce, u8 qid, u16 sb_id);
+					    u16 coalesce, u16 qid, u16 sb_id);
 
 /**
  * @brief ecore_set_txq_coalesce - Configure coalesce parameters for a Tx queue
@@ -553,6 +553,6 @@ enum _ecore_status_t ecore_set_rxq_coalesce(struct ecore_hwfn *p_hwfn,
  */
 enum _ecore_status_t ecore_set_txq_coalesce(struct ecore_hwfn *p_hwfn,
 					    struct ecore_ptt *p_ptt,
-					    u16 coalesce, u8 qid, u16 sb_id);
+					    u16 coalesce, u16 qid, u16 sb_id);
 
 #endif

@@ -2118,8 +2118,8 @@ static void ecore_iov_vf_mbx_start_txq(struct ecore_hwfn *p_hwfn,
 	    !ecore_iov_validate_sb(p_hwfn, vf, req->hw_sb))
 		goto out;
 
-	params.queue_id = (u8)vf->vf_queues[req->tx_qid].fw_tx_qid;
-	params.qzone_id = (u8)vf->vf_queues[req->tx_qid].fw_tx_qid;
+	params.queue_id = vf->vf_queues[req->tx_qid].fw_tx_qid;
+	params.qzone_id = vf->vf_queues[req->tx_qid].fw_tx_qid;
 	params.vport_id = vf->vport_id;
 	params.stats_id = vf->abs_vf_id + 0x10;
 	params.sb = req->hw_sb;

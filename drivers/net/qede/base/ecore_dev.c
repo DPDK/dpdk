@@ -3876,7 +3876,7 @@ static enum _ecore_status_t ecore_set_coalesce(struct ecore_hwfn *p_hwfn,
 
 enum _ecore_status_t ecore_set_rxq_coalesce(struct ecore_hwfn *p_hwfn,
 					    struct ecore_ptt *p_ptt,
-					    u16 coalesce, u8 qid, u16 sb_id)
+					    u16 coalesce, u16 qid, u16 sb_id)
 {
 	struct ustorm_eth_queue_zone eth_qzone;
 	u8 timeset, timer_res;
@@ -3897,7 +3897,7 @@ enum _ecore_status_t ecore_set_rxq_coalesce(struct ecore_hwfn *p_hwfn,
 	}
 	timeset = (u8)(coalesce >> timer_res);
 
-	rc = ecore_fw_l2_queue(p_hwfn, (u16)qid, &fw_qid);
+	rc = ecore_fw_l2_queue(p_hwfn, qid, &fw_qid);
 	if (rc != ECORE_SUCCESS)
 		return rc;
 
@@ -3919,7 +3919,7 @@ enum _ecore_status_t ecore_set_rxq_coalesce(struct ecore_hwfn *p_hwfn,
 
 enum _ecore_status_t ecore_set_txq_coalesce(struct ecore_hwfn *p_hwfn,
 					    struct ecore_ptt *p_ptt,
-					    u16 coalesce, u8 qid, u16 sb_id)
+					    u16 coalesce, u16 qid, u16 sb_id)
 {
 	struct xstorm_eth_queue_zone eth_qzone;
 	u8 timeset, timer_res;
@@ -3941,7 +3941,7 @@ enum _ecore_status_t ecore_set_txq_coalesce(struct ecore_hwfn *p_hwfn,
 
 	timeset = (u8)(coalesce >> timer_res);
 
-	rc = ecore_fw_l2_queue(p_hwfn, (u16)qid, &fw_qid);
+	rc = ecore_fw_l2_queue(p_hwfn, qid, &fw_qid);
 	if (rc != ECORE_SUCCESS)
 		return rc;
 

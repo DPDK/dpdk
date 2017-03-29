@@ -212,7 +212,7 @@ ecore_sp_vport_update_rss(struct ecore_hwfn *p_hwfn,
 
 	for (i = 0; i < ECORE_RSS_IND_TABLE_SIZE; i++) {
 		rc = ecore_fw_l2_queue(p_hwfn,
-				       (u8)p_rss->rss_ind_table[i],
+				       p_rss->rss_ind_table[i],
 				       &abs_l2_queue);
 		if (rc != ECORE_SUCCESS)
 			return rc;

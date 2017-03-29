@@ -37,7 +37,7 @@ struct ecore_queue_start_common_params {
 	/* q_zone_id is relative, may be different from queue id
 	 * currently used by Tx-only, upper-bounded by number of FW-queues
 	 */
-	u8 qzone_id;
+	u16 qzone_id;
 
 	/* stats_id is relative or absolute depends on function */
 	u8 stats_id;
