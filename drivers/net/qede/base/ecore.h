@@ -28,7 +28,7 @@
 #include "ecore_proto_if.h"
 #include "mcp_public.h"
 
-#define MAX_HWFNS_PER_DEVICE	(4)
+#define MAX_HWFNS_PER_DEVICE	2
 #define NAME_SIZE 128 /* @DPDK */
 #define VER_SIZE 16
 #define ECORE_WFQ_UNIT	100
