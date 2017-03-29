@@ -171,6 +171,17 @@ enum _ecore_status_t ecore_mcp_load_req(struct ecore_hwfn *p_hwfn,
 					struct ecore_load_req_params *p_params);
 
 /**
+ * @brief Sends a UNLOAD_REQ message to the MFW
+ *
+ * @param p_hwfn
+ * @param p_ptt
+ *
+ * @return enum _ecore_status_t - ECORE_SUCCESS - Operation was successful.
+ */
+enum _ecore_status_t ecore_mcp_unload_req(struct ecore_hwfn *p_hwfn,
+					  struct ecore_ptt *p_ptt);
+
+/**
  * @brief Sends a UNLOAD_DONE message to the MFW
  *
  * @param p_hwfn

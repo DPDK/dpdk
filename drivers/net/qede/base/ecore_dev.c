@@ -2050,7 +2050,7 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 
 		if (mfw_rc != ECORE_SUCCESS) {
 			DP_NOTICE(p_hwfn, true,
-				  "Failed sending LOAD_DONE command\n");
+				  "Failed sending a LOAD_DONE command\n");
 			return mfw_rc;
 		}
 
@@ -2139,32 +2139,77 @@ void ecore_hw_timers_stop_all(struct ecore_dev *p_dev)
 	}
 }
 
+static enum _ecore_status_t ecore_verify_reg_val(struct ecore_hwfn *p_hwfn,
+						 struct ecore_ptt *p_ptt,
+						 u32 addr, u32 expected_val)
+{
+	u32 val = ecore_rd(p_hwfn, p_ptt, addr);
+
+	if (val != expected_val) {
+		DP_NOTICE(p_hwfn, true,
+			  "Value at address 0x%08x is 0x%08x while the expected value is 0x%08x\n",
+			  addr, val, expected_val);
+		return ECORE_UNKNOWN_ERROR;
+	}
+
+	return ECORE_SUCCESS;
+}
+
 enum _ecore_status_t ecore_hw_stop(struct ecore_dev *p_dev)
 {
-	enum _ecore_status_t rc = ECORE_SUCCESS, t_rc;
+	struct ecore_hwfn *p_hwfn;
+	struct ecore_ptt *p_ptt;
+	enum _ecore_status_t rc, rc2 = ECORE_SUCCESS;
 	int j;
 
 	for_each_hwfn(p_dev, j) {
-		struct ecore_hwfn *p_hwfn = &p_dev->hwfns[j];
-		struct ecore_ptt *p_ptt = p_hwfn->p_main_ptt;
+		p_hwfn = &p_dev->hwfns[j];
+		p_ptt = p_hwfn->p_main_ptt;
 
 		DP_VERBOSE(p_hwfn, ECORE_MSG_IFDOWN, "Stopping hw/fw\n");
 
 		if (IS_VF(p_dev)) {
 			ecore_vf_pf_int_cleanup(p_hwfn);
+			rc = ecore_vf_pf_reset(p_hwfn);
+			if (rc != ECORE_SUCCESS) {
+				DP_NOTICE(p_hwfn, true,
+					  "ecore_vf_pf_reset failed. rc = %d.\n",
+					  rc);
+				rc2 = ECORE_UNKNOWN_ERROR;
+			}
 			continue;
 		}
 
 		/* mark the hw as uninitialized... */
 		p_hwfn->hw_init_done = false;
 
+		/* Send unload command to MCP */
+		if (!p_dev->recov_in_prog) {
+			rc = ecore_mcp_unload_req(p_hwfn, p_ptt);
+			if (rc != ECORE_SUCCESS) {
+				DP_NOTICE(p_hwfn, true,
+					  "Failed sending a UNLOAD_REQ command. rc = %d.\n",
+					  rc);
+				rc2 = ECORE_UNKNOWN_ERROR;
+			}
+		}
+
+		OSAL_DPC_SYNC(p_hwfn);
+
+		/* After this point no MFW attentions are expected, e.g. prevent
+		 * race between pf stop and dcbx pf update.
+		 */
+
 		rc = ecore_sp_pf_stop(p_hwfn);
-		if (rc)
+		if (rc != ECORE_SUCCESS) {
 			DP_NOTICE(p_hwfn, true,
-				  "Failed to close PF against FW. Continue to stop HW to prevent illegal host access by the device\n");
+				  "Failed to close PF against FW [rc = %d]. Continue to stop HW to prevent illegal host access by the device.\n",
+				  rc);
+			rc2 = ECORE_UNKNOWN_ERROR;
+		}
 
 		/* perform debug action after PF stop was sent */
-		OSAL_AFTER_PF_STOP((void *)p_hwfn->p_dev, p_hwfn->my_id);
+		OSAL_AFTER_PF_STOP((void *)p_dev, p_hwfn->my_id);
 
 		/* close NIG to BRB gate */
 		ecore_wr(p_hwfn, p_ptt,
@@ -2191,20 +2236,48 @@ enum _ecore_status_t ecore_hw_stop(struct ecore_dev *p_dev)
 		ecore_int_igu_init_pure_rt(p_hwfn, p_ptt, false, true);
 		/* Need to wait 1ms to guarantee SBs are cleared */
 		OSAL_MSLEEP(1);
-	}
+
+		if (!p_dev->recov_in_prog) {
+			ecore_verify_reg_val(p_hwfn, p_ptt,
+					     QM_REG_USG_CNT_PF_TX, 0);
+			ecore_verify_reg_val(p_hwfn, p_ptt,
+					     QM_REG_USG_CNT_PF_OTHER, 0);
+			/* @@@TBD - assert on incorrect xCFC values (10.b) */
+		}
+
+		/* Disable PF in HW blocks */
+		ecore_wr(p_hwfn, p_ptt, DORQ_REG_PF_DB_ENABLE, 0);
+		ecore_wr(p_hwfn, p_ptt, QM_REG_PF_EN, 0);
+
+		if (!p_dev->recov_in_prog) {
+			ecore_mcp_unload_done(p_hwfn, p_ptt);
+			if (rc != ECORE_SUCCESS) {
+				DP_NOTICE(p_hwfn, true,
+					  "Failed sending a UNLOAD_DONE command. rc = %d.\n",
+					  rc);
+				rc2 = ECORE_UNKNOWN_ERROR;
+			}
+		}
+	} /* hwfn loop */
 
 	if (IS_PF(p_dev)) {
+		p_hwfn = ECORE_LEADING_HWFN(p_dev);
+		p_ptt = ECORE_LEADING_HWFN(p_dev)->p_main_ptt;
+
 		/* Disable DMAE in PXP - in CMT, this should only be done for
 		 * first hw-function, and only after all transactions have
 		 * stopped for all active hw-functions.
 		 */
-		t_rc = ecore_change_pci_hwfn(&p_dev->hwfns[0],
-					     p_dev->hwfns[0].p_main_ptt, false);
-		if (t_rc != ECORE_SUCCESS)
-			rc = t_rc;
+		rc = ecore_change_pci_hwfn(p_hwfn, p_ptt, false);
+		if (rc != ECORE_SUCCESS) {
+			DP_NOTICE(p_hwfn, true,
+				  "ecore_change_pci_hwfn failed. rc = %d.\n",
+				  rc);
+			rc2 = ECORE_UNKNOWN_ERROR;
+		}
 	}
 
-	return rc;
+	return rc2;
 }
 
 void ecore_hw_stop_fastpath(struct ecore_dev *p_dev)
@@ -2263,82 +2336,6 @@ void ecore_hw_start_fastpath(struct ecore_hwfn *p_hwfn)
 	/* Re-open incoming traffic */
 	ecore_wr(p_hwfn, p_hwfn->p_main_ptt,
 		 NIG_REG_RX_LLH_BRB_GATE_DNTFWD_PERPF, 0x0);
-}
-
-static enum _ecore_status_t ecore_reg_assert(struct ecore_hwfn *p_hwfn,
-					     struct ecore_ptt *p_ptt, u32 reg,
-					     bool expected)
-{
-	u32 assert_val = ecore_rd(p_hwfn, p_ptt, reg);
-
-	if (assert_val != expected) {
-		DP_NOTICE(p_hwfn, true, "Value at address 0x%08x != 0x%08x\n",
-			  reg, expected);
-		return ECORE_UNKNOWN_ERROR;
-	}
-
-	return 0;
-}
-
-enum _ecore_status_t ecore_hw_reset(struct ecore_dev *p_dev)
-{
-	enum _ecore_status_t rc = ECORE_SUCCESS;
-	u32 unload_resp, unload_param;
-	int i;
-
-	for_each_hwfn(p_dev, i) {
-		struct ecore_hwfn *p_hwfn = &p_dev->hwfns[i];
-
-		if (IS_VF(p_dev)) {
-			rc = ecore_vf_pf_reset(p_hwfn);
-			if (rc)
-				return rc;
-			continue;
-		}
-
-		DP_VERBOSE(p_hwfn, ECORE_MSG_IFDOWN, "Resetting hw/fw\n");
-
-		/* Check for incorrect states */
-		if (!p_dev->recov_in_prog) {
-			ecore_reg_assert(p_hwfn, p_hwfn->p_main_ptt,
-					 QM_REG_USG_CNT_PF_TX, 0);
-			ecore_reg_assert(p_hwfn, p_hwfn->p_main_ptt,
-					 QM_REG_USG_CNT_PF_OTHER, 0);
-			/* @@@TBD - assert on incorrect xCFC values (10.b) */
-		}
-
-		/* Disable PF in HW blocks */
-		ecore_wr(p_hwfn, p_hwfn->p_main_ptt, DORQ_REG_PF_DB_ENABLE, 0);
-		ecore_wr(p_hwfn, p_hwfn->p_main_ptt, QM_REG_PF_EN, 0);
-
-		if (p_dev->recov_in_prog) {
-			DP_VERBOSE(p_hwfn, ECORE_MSG_IFDOWN,
-				   "Recovery is in progress -> skip sending unload_req/done\n");
-			break;
-		}
-
-		/* Send unload command to MCP */
-		rc = ecore_mcp_cmd(p_hwfn, p_hwfn->p_main_ptt,
-				   DRV_MSG_CODE_UNLOAD_REQ,
-				   DRV_MB_PARAM_UNLOAD_WOL_MCP,
-				   &unload_resp, &unload_param);
-		if (rc != ECORE_SUCCESS) {
-			DP_NOTICE(p_hwfn, true,
-				  "ecore_hw_reset: UNLOAD_REQ failed\n");
-			/* @@TBD - what to do? for now, assume ENG. */
-			unload_resp = FW_MSG_CODE_DRV_UNLOAD_ENGINE;
-		}
-
-		rc = ecore_mcp_unload_done(p_hwfn, p_hwfn->p_main_ptt);
-		if (rc != ECORE_SUCCESS) {
-			DP_NOTICE(p_hwfn,
-				  true, "ecore_hw_reset: UNLOAD_DONE failed\n");
-			/* @@@TBD - Should it really ASSERT here ? */
-			return rc;
-		}
-	}
-
-	return rc;
 }
 
 /* Free hwfn memory and resources acquired in hw_hwfn_prepare */

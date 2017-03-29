@@ -190,6 +190,9 @@ static void ecore_spq_hw_initialize(struct ecore_hwfn *p_hwfn,
 
 	p_cxt = cxt_info.p_cxt;
 
+	/* @@@TBD we zero the context until we have ilt_reset implemented. */
+	OSAL_MEM_ZERO(p_cxt, sizeof(*p_cxt));
+
 	if (ECORE_IS_BB(p_hwfn->p_dev) || ECORE_IS_AH(p_hwfn->p_dev)) {
 		SET_FIELD(p_cxt->xstorm_ag_context.flags10,
 			  E4_XSTORM_CORE_CONN_AG_CTX_DQ_CF_EN, 1);

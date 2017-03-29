@@ -151,15 +151,6 @@ void ecore_prepare_hibernate(struct ecore_dev *p_dev);
  */
 void ecore_hw_start_fastpath(struct ecore_hwfn *p_hwfn);
 
-/**
- * @brief ecore_hw_reset -
- *
- * @param p_dev
- *
- * @return enum _ecore_status_t
- */
-enum _ecore_status_t ecore_hw_reset(struct ecore_dev *p_dev);
-
 enum ecore_hw_prepare_result {
 	ECORE_HW_PREPARE_SUCCESS,
 

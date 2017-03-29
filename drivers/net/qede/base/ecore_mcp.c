@@ -893,6 +893,18 @@ enum _ecore_status_t ecore_mcp_load_req(struct ecore_hwfn *p_hwfn,
 	return ECORE_SUCCESS;
 }
 
+enum _ecore_status_t ecore_mcp_unload_req(struct ecore_hwfn *p_hwfn,
+					  struct ecore_ptt *p_ptt)
+{
+	u32 wol_param, mcp_resp, mcp_param;
+
+	/* @DPDK */
+	wol_param = DRV_MB_PARAM_UNLOAD_WOL_MCP;
+
+	return ecore_mcp_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_UNLOAD_REQ, wol_param,
+			     &mcp_resp, &mcp_param);
+}
+
 enum _ecore_status_t ecore_mcp_unload_done(struct ecore_hwfn *p_hwfn,
 					   struct ecore_ptt *p_ptt)
 {

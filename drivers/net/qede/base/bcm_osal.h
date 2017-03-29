@@ -168,6 +168,7 @@ typedef pthread_mutex_t osal_mutex_t;
 #define OSAL_DPC_ALLOC(hwfn) OSAL_ALLOC(hwfn, GFP, sizeof(osal_dpc_t))
 #define OSAL_DPC_INIT(dpc, hwfn) nothing
 #define OSAL_POLL_MODE_DPC(hwfn) nothing
+#define OSAL_DPC_SYNC(hwfn) nothing
 
 /* Lists */
 

@@ -636,19 +636,6 @@ static int qed_nic_stop(struct ecore_dev *edev)
 	return rc;
 }
 
-static int qed_nic_reset(struct ecore_dev *edev)
-{
-	int rc;
-
-	rc = ecore_hw_reset(edev);
-	if (rc)
-		return rc;
-
-	ecore_resc_free(edev);
-
-	return 0;
-}
-
 static int qed_slowpath_stop(struct ecore_dev *edev)
 {
 #ifdef CONFIG_QED_SRIOV
@@ -667,10 +654,11 @@ static int qed_slowpath_stop(struct ecore_dev *edev)
 		if (IS_QED_ETH_IF(edev))
 			qed_sriov_disable(edev, true);
 #endif
-		qed_nic_stop(edev);
 	}
 
-	qed_nic_reset(edev);
+	qed_nic_stop(edev);
+
+	ecore_resc_free(edev);
 	qed_stop_iov_task(edev);
 
 	return 0;
