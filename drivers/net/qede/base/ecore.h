@@ -377,6 +377,8 @@ struct ecore_hw_info {
 
 	/* Default DCBX mode */
 	u8 dcbx_mode;
+
+	u16 mtu;
 };
 
 struct ecore_hw_cid_data {

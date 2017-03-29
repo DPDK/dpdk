@@ -365,6 +365,8 @@ qed_fill_dev_info(struct ecore_dev *edev, struct qed_dev_info *dev_info)
 				      &dev_info->mfw_rev, NULL);
 	}
 
+	dev_info->mtu = ECORE_LEADING_HWFN(edev)->hw_info.mtu;
+
 	return 0;
 }
 

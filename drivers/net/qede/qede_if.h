@@ -34,6 +34,7 @@ struct qed_dev_info {
 	uint32_t flash_size;
 	uint8_t mf_mode;
 	bool tx_switching;
+	u16 mtu;
 	/* To be added... */
 };
 

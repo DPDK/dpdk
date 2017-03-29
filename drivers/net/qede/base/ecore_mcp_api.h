@@ -84,6 +84,8 @@ struct ecore_mcp_function_info {
 
 #define ECORE_MCP_VLAN_UNSET		(0xffff)
 	u16 ovlan;
+
+	u16 mtu;
 };
 
 struct ecore_mcp_nvm_common {

@@ -2879,6 +2879,9 @@ ecore_get_hw_info(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 
 	ecore_get_num_funcs(p_hwfn, p_ptt);
 
+	if (ecore_mcp_is_init(p_hwfn))
+		p_hwfn->hw_info.mtu = p_hwfn->mcp_info->func_info.mtu;
+
 	/* In case of forcing the driver's default resource allocation, calling
 	 * ecore_hw_get_resc() should come after initializing the personality
 	 * and after getting the number of functions, since the calculation of
