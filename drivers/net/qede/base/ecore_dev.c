@@ -2437,13 +2437,19 @@ static void ecore_hw_set_feat(struct ecore_hwfn *p_hwfn)
 			   FEAT_NUM(p_hwfn, ECORE_PF_L2_QUE),
 			   sb_cnt_info.sb_iov_cnt);
 
+	feat_num[ECORE_FCOE_CQ] = OSAL_MIN_T(u32, RESC_NUM(p_hwfn, ECORE_SB),
+					     RESC_NUM(p_hwfn, ECORE_CMDQS_CQS));
+	feat_num[ECORE_ISCSI_CQ] = OSAL_MIN_T(u32, RESC_NUM(p_hwfn, ECORE_SB),
+					     RESC_NUM(p_hwfn, ECORE_CMDQS_CQS));
+
 	DP_VERBOSE(p_hwfn, ECORE_MSG_PROBE,
-		   "#PF_L2_QUEUES=%d VF_L2_QUEUES=%d #ROCE_CNQ=%d #SBS=%d num_features=%d\n",
+		   "#PF_L2_QUEUE=%d VF_L2_QUEUES=%d #ROCE_CNQ=%d #FCOE_CQ=%d #ISCSI_CQ=%d #SB=%d\n",
 		   (int)FEAT_NUM(p_hwfn, ECORE_PF_L2_QUE),
 		   (int)FEAT_NUM(p_hwfn, ECORE_VF_L2_QUE),
 		   (int)FEAT_NUM(p_hwfn, ECORE_RDMA_CNQ),
-		   RESC_NUM(p_hwfn, ECORE_SB),
-		   num_features);
+		   (int)FEAT_NUM(p_hwfn, ECORE_FCOE_CQ),
+		   (int)FEAT_NUM(p_hwfn, ECORE_ISCSI_CQ),
+		   RESC_NUM(p_hwfn, ECORE_SB));
 }
 
 static enum resource_id_enum
