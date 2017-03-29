@@ -138,8 +138,8 @@ rte_ring_init(struct rte_ring *r, const char *name, unsigned count,
 	if (ret < 0 || ret >= (int)sizeof(r->name))
 		return -ENAMETOOLONG;
 	r->flags = flags;
-	r->prod.single = !!(flags & RING_F_SP_ENQ);
-	r->cons.single = !!(flags & RING_F_SC_DEQ);
+	r->prod.single = (flags & RING_F_SP_ENQ) ? __IS_SP : __IS_MP;
+	r->cons.single = (flags & RING_F_SC_DEQ) ? __IS_SC : __IS_MC;
 	r->size = count;
 	r->mask = count - 1;
 	r->prod.head = r->cons.head = 0;
