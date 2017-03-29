@@ -51,6 +51,7 @@ const char *ecore_channel_tlvs_string[] = {
 	"CHANNEL_TLV_VPORT_UPDATE_RSS",
 	"CHANNEL_TLV_VPORT_UPDATE_ACCEPT_ANY_VLAN",
 	"CHANNEL_TLV_VPORT_UPDATE_SGE_TPA",
+	"CHANNEL_TLV_UPDATE_TUNN_PARAM",
 	"CHANNEL_TLV_MAX"
 };
 
@@ -2137,6 +2138,146 @@ out:
 					b_legacy_vf);
 }
 
+static void
+ecore_iov_pf_update_tun_response(struct pfvf_update_tunn_param_tlv *p_resp,
+				 struct ecore_tunnel_info *p_tun,
+				 u16 tunn_feature_mask)
+{
+	p_resp->tunn_feature_mask = tunn_feature_mask;
+	p_resp->vxlan_mode = p_tun->vxlan.b_mode_enabled;
+	p_resp->l2geneve_mode = p_tun->l2_geneve.b_mode_enabled;
+	p_resp->ipgeneve_mode = p_tun->ip_geneve.b_mode_enabled;
+	p_resp->l2gre_mode = p_tun->l2_gre.b_mode_enabled;
+	p_resp->ipgre_mode = p_tun->l2_gre.b_mode_enabled;
+	p_resp->vxlan_clss = p_tun->vxlan.tun_cls;
+	p_resp->l2gre_clss = p_tun->l2_gre.tun_cls;
+	p_resp->ipgre_clss = p_tun->ip_gre.tun_cls;
+	p_resp->l2geneve_clss = p_tun->l2_geneve.tun_cls;
+	p_resp->ipgeneve_clss = p_tun->ip_geneve.tun_cls;
+	p_resp->geneve_udp_port = p_tun->geneve_port.port;
+	p_resp->vxlan_udp_port = p_tun->vxlan_port.port;
+}
+
+static void
+__ecore_iov_pf_update_tun_param(struct vfpf_update_tunn_param_tlv *p_req,
+				struct ecore_tunn_update_type *p_tun,
+				enum ecore_tunn_mode mask, u8 tun_cls)
+{
+	if (p_req->tun_mode_update_mask & (1 << mask)) {
+		p_tun->b_update_mode = true;
+
+		if (p_req->tunn_mode & (1 << mask))
+			p_tun->b_mode_enabled = true;
+	}
+
+	p_tun->tun_cls = tun_cls;
+}
+
+static void
+ecore_iov_pf_update_tun_param(struct vfpf_update_tunn_param_tlv *p_req,
+			      struct ecore_tunn_update_type *p_tun,
+			      struct ecore_tunn_update_udp_port *p_port,
+			      enum ecore_tunn_mode mask,
+			      u8 tun_cls, u8 update_port, u16 port)
+{
+	if (update_port) {
+		p_port->b_update_port = true;
+		p_port->port = port;
+	}
+
+	__ecore_iov_pf_update_tun_param(p_req, p_tun, mask, tun_cls);
+}
+
+static bool
+ecore_iov_pf_validate_tunn_param(struct vfpf_update_tunn_param_tlv *p_req)
+{
+	bool b_update_requested = false;
+
+	if (p_req->tun_mode_update_mask || p_req->update_tun_cls ||
+	    p_req->update_geneve_port || p_req->update_vxlan_port)
+		b_update_requested = true;
+
+	return b_update_requested;
+}
+
+static void ecore_iov_vf_mbx_update_tunn_param(struct ecore_hwfn *p_hwfn,
+					       struct ecore_ptt *p_ptt,
+					       struct ecore_vf_info *p_vf)
+{
+	struct ecore_tunnel_info *p_tun = &p_hwfn->p_dev->tunnel;
+	struct ecore_iov_vf_mbx *mbx = &p_vf->vf_mbx;
+	struct pfvf_update_tunn_param_tlv *p_resp;
+	struct vfpf_update_tunn_param_tlv *p_req;
+	enum _ecore_status_t rc = ECORE_SUCCESS;
+	u8 status = PFVF_STATUS_SUCCESS;
+	bool b_update_required = false;
+	struct ecore_tunnel_info tunn;
+	u16 tunn_feature_mask = 0;
+
+	mbx->offset = (u8 *)mbx->reply_virt;
+
+	OSAL_MEM_ZERO(&tunn, sizeof(tunn));
+	p_req = &mbx->req_virt->tunn_param_update;
+
+	if (!ecore_iov_pf_validate_tunn_param(p_req)) {
+		DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
+			   "No tunnel update requested by VF\n");
+		status = PFVF_STATUS_FAILURE;
+		goto send_resp;
+	}
+
+	tunn.b_update_rx_cls = p_req->update_tun_cls;
+	tunn.b_update_tx_cls = p_req->update_tun_cls;
+
+	ecore_iov_pf_update_tun_param(p_req, &tunn.vxlan, &tunn.vxlan_port,
+				      ECORE_MODE_VXLAN_TUNN, p_req->vxlan_clss,
+				      p_req->update_vxlan_port,
+				      p_req->vxlan_port);
+	ecore_iov_pf_update_tun_param(p_req, &tunn.l2_geneve, &tunn.geneve_port,
+				      ECORE_MODE_L2GENEVE_TUNN,
+				      p_req->l2geneve_clss,
+				      p_req->update_geneve_port,
+				      p_req->geneve_port);
+	__ecore_iov_pf_update_tun_param(p_req, &tunn.ip_geneve,
+					ECORE_MODE_IPGENEVE_TUNN,
+					p_req->ipgeneve_clss);
+	__ecore_iov_pf_update_tun_param(p_req, &tunn.l2_gre,
+					ECORE_MODE_L2GRE_TUNN,
+					p_req->l2gre_clss);
+	__ecore_iov_pf_update_tun_param(p_req, &tunn.ip_gre,
+					ECORE_MODE_IPGRE_TUNN,
+					p_req->ipgre_clss);
+
+	/* If PF modifies VF's req then it should
+	 * still return an error in case of partial configuration
+	 * or modified configuration as opposed to requested one.
+	 */
+	rc = OSAL_PF_VALIDATE_MODIFY_TUNN_CONFIG(p_hwfn, &tunn_feature_mask,
+						 &b_update_required, &tunn);
+
+	if (rc != ECORE_SUCCESS)
+		status = PFVF_STATUS_FAILURE;
+
+	/* If ECORE client is willing to update anything ? */
+	if (b_update_required) {
+		rc = ecore_sp_pf_update_tunn_cfg(p_hwfn, &tunn,
+						 ECORE_SPQ_MODE_EBLOCK,
+						 OSAL_NULL);
+		if (rc != ECORE_SUCCESS)
+			status = PFVF_STATUS_FAILURE;
+	}
+
+send_resp:
+	p_resp = ecore_add_tlv(p_hwfn, &mbx->offset,
+			       CHANNEL_TLV_UPDATE_TUNN_PARAM, sizeof(*p_resp));
+
+	ecore_iov_pf_update_tun_response(p_resp, p_tun, tunn_feature_mask);
+	ecore_add_tlv(p_hwfn, &mbx->offset, CHANNEL_TLV_LIST_END,
+		      sizeof(struct channel_list_end_tlv));
+
+	ecore_iov_send_response(p_hwfn, p_ptt, p_vf, sizeof(*p_resp), status);
+}
+
 static void ecore_iov_vf_mbx_start_txq_resp(struct ecore_hwfn *p_hwfn,
 					    struct ecore_ptt *p_ptt,
 					    struct ecore_vf_info *p_vf,
@@ -3404,6 +3545,9 @@ void ecore_iov_process_mbx_req(struct ecore_hwfn *p_hwfn,
 			break;
 		case CHANNEL_TLV_RELEASE:
 			ecore_iov_vf_mbx_release(p_hwfn, p_ptt, p_vf);
+			break;
+		case CHANNEL_TLV_UPDATE_TUNN_PARAM:
+			ecore_iov_vf_mbx_update_tunn_param(p_hwfn, p_ptt, p_vf);
 			break;
 		}
 	} else if (ecore_iov_tlv_supported(mbx->first_tlv.tl.type)) {

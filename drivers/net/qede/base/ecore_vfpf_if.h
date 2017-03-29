@@ -416,6 +416,43 @@ struct vfpf_ucast_filter_tlv {
 	u16			padding[3];
 };
 
+/* tunnel update param tlv */
+struct vfpf_update_tunn_param_tlv {
+	struct vfpf_first_tlv   first_tlv;
+
+	u8			tun_mode_update_mask;
+	u8			tunn_mode;
+	u8			update_tun_cls;
+	u8			vxlan_clss;
+	u8			l2gre_clss;
+	u8			ipgre_clss;
+	u8			l2geneve_clss;
+	u8			ipgeneve_clss;
+	u8			update_geneve_port;
+	u8			update_vxlan_port;
+	u16			geneve_port;
+	u16			vxlan_port;
+	u8			padding[2];
+};
+
+struct pfvf_update_tunn_param_tlv {
+	struct pfvf_tlv hdr;
+
+	u16			tunn_feature_mask;
+	u8			vxlan_mode;
+	u8			l2geneve_mode;
+	u8			ipgeneve_mode;
+	u8			l2gre_mode;
+	u8			ipgre_mode;
+	u8			vxlan_clss;
+	u8			l2gre_clss;
+	u8			ipgre_clss;
+	u8			l2geneve_clss;
+	u8			ipgeneve_clss;
+	u16			vxlan_udp_port;
+	u16			geneve_udp_port;
+};
+
 struct tlv_buffer_size {
 	u8 tlv_buffer[TLV_BUFFER_SIZE];
 };
@@ -431,6 +468,7 @@ union vfpf_tlvs {
 	struct vfpf_vport_start_tlv		start_vport;
 	struct vfpf_vport_update_tlv		vport_update;
 	struct vfpf_ucast_filter_tlv		ucast_filter;
+	struct vfpf_update_tunn_param_tlv	tunn_param_update;
 	struct tlv_buffer_size			tlv_buf_size;
 };
 
@@ -439,6 +477,7 @@ union pfvf_tlvs {
 	struct pfvf_acquire_resp_tlv		acquire_resp;
 	struct tlv_buffer_size			tlv_buf_size;
 	struct pfvf_start_queue_resp_tlv	queue_start;
+	struct pfvf_update_tunn_param_tlv	tunn_param_resp;
 };
 
 /* This is a structure which is allocated in the VF, which the PF may update
@@ -552,6 +591,7 @@ enum {
 	CHANNEL_TLV_VPORT_UPDATE_RSS,
 	CHANNEL_TLV_VPORT_UPDATE_ACCEPT_ANY_VLAN,
 	CHANNEL_TLV_VPORT_UPDATE_SGE_TPA,
+	CHANNEL_TLV_UPDATE_TUNN_PARAM,
 	CHANNEL_TLV_MAX,
 
 	/* Required for iterating over vport-update tlvs.

@@ -258,5 +258,10 @@ void __ecore_vf_get_link_caps(struct ecore_hwfn *p_hwfn,
 			      struct ecore_mcp_link_capabilities *p_link_caps,
 			      struct ecore_bulletin_content *p_bulletin);
 
+enum _ecore_status_t
+ecore_vf_pf_tunnel_param_update(struct ecore_hwfn *p_hwfn,
+				struct ecore_tunnel_info *p_tunn);
+
+void ecore_vf_set_vf_start_tunn_update_param(struct ecore_tunnel_info *p_tun);
 #endif
 #endif /* __ECORE_VF_H__ */

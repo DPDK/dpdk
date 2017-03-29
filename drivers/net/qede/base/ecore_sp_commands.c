@@ -22,6 +22,7 @@
 #include "ecore_hw.h"
 #include "ecore_dcbx.h"
 #include "ecore_sriov.h"
+#include "ecore_vf.h"
 
 enum _ecore_status_t ecore_sp_init_request(struct ecore_hwfn *p_hwfn,
 					   struct ecore_spq_entry **pp_ent,
@@ -486,6 +487,9 @@ ecore_sp_pf_update_tunn_cfg(struct ecore_hwfn *p_hwfn,
 	struct ecore_spq_entry *p_ent = OSAL_NULL;
 	struct ecore_sp_init_data init_data;
 	enum _ecore_status_t rc = ECORE_NOTIMPL;
+
+	if (IS_VF(p_hwfn->p_dev))
+		return ecore_vf_pf_tunnel_param_update(p_hwfn, p_tunn);
 
 	if (ECORE_IS_BB_A0(p_hwfn->p_dev)) {
 		DP_NOTICE(p_hwfn, true,

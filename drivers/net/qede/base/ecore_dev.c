@@ -1876,6 +1876,19 @@ static void ecore_reset_mb_shadow(struct ecore_hwfn *p_hwfn,
 		    p_hwfn->mcp_info->mfw_mb_length);
 }
 
+enum _ecore_status_t ecore_vf_start(struct ecore_hwfn *p_hwfn,
+				    struct ecore_hw_init_params *p_params)
+{
+	if (p_params->p_tunn) {
+		ecore_vf_set_vf_start_tunn_update_param(p_params->p_tunn);
+		ecore_vf_pf_tunnel_param_update(p_hwfn, p_params->p_tunn);
+	}
+
+	p_hwfn->b_int_enabled = 1;
+
+	return ECORE_SUCCESS;
+}
+
 enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 				   struct ecore_hw_init_params *p_params)
 {
@@ -1908,7 +1921,7 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 		}
 
 		if (IS_VF(p_dev)) {
-			p_hwfn->b_int_enabled = 1;
+			ecore_vf_start(p_hwfn, p_params);
 			continue;
 		}
 

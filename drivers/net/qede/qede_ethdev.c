@@ -335,15 +335,15 @@ static void qede_set_ucast_cmn_params(struct ecore_filter_ucast *ucast)
 	/* ucast->assert_on_error = true; - For debug */
 }
 
-static void qede_set_cmn_tunn_param(struct qed_tunn_update_params *params,
-				    uint8_t clss, uint64_t mode, uint64_t mask)
+static void qede_set_cmn_tunn_param(struct ecore_tunnel_info *p_tunn,
+				    uint8_t clss, bool mode, bool mask)
 {
-	memset(params, 0, sizeof(struct qed_tunn_update_params));
-	params->tunn_mode = mode;
-	params->tunn_mode_update_mask = mask;
-	params->update_tx_pf_clss = 1;
-	params->update_rx_pf_clss = 1;
-	params->tunn_clss_vxlan = clss;
+	memset(p_tunn, 0, sizeof(struct ecore_tunnel_info));
+	p_tunn->vxlan.b_update_mode = mode;
+	p_tunn->vxlan.b_mode_enabled = mask;
+	p_tunn->b_update_rx_cls = true;
+	p_tunn->b_update_tx_cls = true;
+	p_tunn->vxlan.tun_cls = clss;
 }
 
 static int
@@ -1707,26 +1707,24 @@ qede_conf_udp_dst_port(struct rte_eth_dev *eth_dev,
 {
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
-	struct qed_tunn_update_params params;
 	struct ecore_tunnel_info tunn; /* @DPDK */
 	struct ecore_hwfn *p_hwfn;
 	int rc, i;
 
 	PMD_INIT_FUNC_TRACE(edev);
 
-	memset(&params, 0, sizeof(params));
 	memset(&tunn, 0, sizeof(tunn));
 	if (tunnel_udp->prot_type == RTE_TUNNEL_TYPE_VXLAN) {
-		params.update_vxlan_udp_port = 1;
-		params.vxlan_udp_port = (add) ? tunnel_udp->udp_port :
-					QEDE_VXLAN_DEF_PORT;
+		tunn.vxlan_port.b_update_port = true;
+		tunn.vxlan_port.port = (add) ? tunnel_udp->udp_port :
+						  QEDE_VXLAN_DEF_PORT;
 		for_each_hwfn(edev, i) {
 			p_hwfn = &edev->hwfns[i];
 			rc = ecore_sp_pf_update_tunn_cfg(p_hwfn, &tunn,
 						ECORE_SPQ_MODE_CB, NULL);
 			if (rc != ECORE_SUCCESS) {
 				DP_ERR(edev, "Unable to config UDP port %u\n",
-					params.vxlan_udp_port);
+				       tunn.vxlan_port.port);
 				return rc;
 			}
 		}
@@ -1819,7 +1817,6 @@ static int qede_vxlan_tunn_config(struct rte_eth_dev *eth_dev,
 {
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
-	struct qed_tunn_update_params params;
 	struct ecore_tunnel_info tunn;
 	struct ecore_hwfn *p_hwfn;
 	enum ecore_filter_ucast_type type;
@@ -1829,7 +1826,6 @@ static int qede_vxlan_tunn_config(struct rte_eth_dev *eth_dev,
 	uint16_t filter_type;
 	int rc, i;
 
-	memset(&tunn, 0, sizeof(tunn));
 	filter_type = conf->filter_type | qdev->vxlan_filter_type;
 	/* First determine if the given filter classification is supported */
 	qede_get_ecore_tunn_params(filter_type, &type, &clss, str);
@@ -1870,16 +1866,14 @@ static int qede_vxlan_tunn_config(struct rte_eth_dev *eth_dev,
 		qdev->vxlan_filter_type = filter_type;
 
 		DP_INFO(edev, "Enabling VXLAN tunneling\n");
-		qede_set_cmn_tunn_param(&params, clss,
-					(1 << ECORE_MODE_VXLAN_TUNN),
-					(1 << ECORE_MODE_VXLAN_TUNN));
+		qede_set_cmn_tunn_param(&tunn, clss, true, true);
 		for_each_hwfn(edev, i) {
 			p_hwfn = &edev->hwfns[i];
 			rc = ecore_sp_pf_update_tunn_cfg(p_hwfn,
 				&tunn, ECORE_SPQ_MODE_CB, NULL);
 			if (rc != ECORE_SUCCESS) {
 				DP_ERR(edev, "Failed to update tunn_clss %u\n",
-					params.tunn_clss_vxlan);
+				       tunn.vxlan.tun_cls);
 			}
 		}
 		qdev->num_tunn_filters++; /* Filter added successfully */
@@ -1906,8 +1900,7 @@ static int qede_vxlan_tunn_config(struct rte_eth_dev *eth_dev,
 			DP_INFO(edev, "Disabling VXLAN tunneling\n");
 
 			/* Use 0 as tunnel mode */
-			qede_set_cmn_tunn_param(&params, clss, 0,
-						(1 << ECORE_MODE_VXLAN_TUNN));
+			qede_set_cmn_tunn_param(&tunn, clss, false, true);
 			for_each_hwfn(edev, i) {
 				p_hwfn = &edev->hwfns[i];
 				rc = ecore_sp_pf_update_tunn_cfg(p_hwfn, &tunn,
@@ -1915,7 +1908,7 @@ static int qede_vxlan_tunn_config(struct rte_eth_dev *eth_dev,
 				if (rc != ECORE_SUCCESS) {
 					DP_ERR(edev,
 						"Failed to update tunn_clss %u\n",
-						params.tunn_clss_vxlan);
+						tunn.vxlan.tun_cls);
 					break;
 				}
 			}

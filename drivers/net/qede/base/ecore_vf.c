@@ -451,6 +451,160 @@ free_p_iov:
 #define MSTORM_QZONE_START(dev)   (TSTORM_QZONE_START + \
 				   (TSTORM_QZONE_SIZE * NUM_OF_L2_QUEUES(dev)))
 
+/* @DPDK - changed enum ecore_tunn_clss to enum ecore_tunn_mode */
+static void
+__ecore_vf_prep_tunn_req_tlv(struct vfpf_update_tunn_param_tlv *p_req,
+			     struct ecore_tunn_update_type *p_src,
+			     enum ecore_tunn_mode mask, u8 *p_cls)
+{
+	if (p_src->b_update_mode) {
+		p_req->tun_mode_update_mask |= (1 << mask);
+
+		if (p_src->b_mode_enabled)
+			p_req->tunn_mode |= (1 << mask);
+	}
+
+	*p_cls = p_src->tun_cls;
+}
+
+/* @DPDK - changed enum ecore_tunn_clss to enum ecore_tunn_mode */
+static void
+ecore_vf_prep_tunn_req_tlv(struct vfpf_update_tunn_param_tlv *p_req,
+			   struct ecore_tunn_update_type *p_src,
+			   enum ecore_tunn_mode mask, u8 *p_cls,
+			   struct ecore_tunn_update_udp_port *p_port,
+			   u8 *p_update_port, u16 *p_udp_port)
+{
+	if (p_port->b_update_port) {
+		*p_update_port = 1;
+		*p_udp_port = p_port->port;
+	}
+
+	__ecore_vf_prep_tunn_req_tlv(p_req, p_src, mask, p_cls);
+}
+
+void ecore_vf_set_vf_start_tunn_update_param(struct ecore_tunnel_info *p_tun)
+{
+	if (p_tun->vxlan.b_mode_enabled)
+		p_tun->vxlan.b_update_mode = true;
+	if (p_tun->l2_geneve.b_mode_enabled)
+		p_tun->l2_geneve.b_update_mode = true;
+	if (p_tun->ip_geneve.b_mode_enabled)
+		p_tun->ip_geneve.b_update_mode = true;
+	if (p_tun->l2_gre.b_mode_enabled)
+		p_tun->l2_gre.b_update_mode = true;
+	if (p_tun->ip_gre.b_mode_enabled)
+		p_tun->ip_gre.b_update_mode = true;
+
+	p_tun->b_update_rx_cls = true;
+	p_tun->b_update_tx_cls = true;
+}
+
+static void
+__ecore_vf_update_tunn_param(struct ecore_tunn_update_type *p_tun,
+			     u16 feature_mask, u8 tunn_mode, u8 tunn_cls,
+			     enum ecore_tunn_mode val)
+{
+	if (feature_mask & (1 << val)) {
+		p_tun->b_mode_enabled = tunn_mode;
+		p_tun->tun_cls = tunn_cls;
+	} else {
+		p_tun->b_mode_enabled = false;
+	}
+}
+
+static void
+ecore_vf_update_tunn_param(struct ecore_hwfn *p_hwfn,
+			   struct ecore_tunnel_info *p_tun,
+			   struct pfvf_update_tunn_param_tlv *p_resp)
+{
+	/* Update mode and classes provided by PF */
+	u16 feat_mask = p_resp->tunn_feature_mask;
+
+	__ecore_vf_update_tunn_param(&p_tun->vxlan, feat_mask,
+				     p_resp->vxlan_mode, p_resp->vxlan_clss,
+				     ECORE_MODE_VXLAN_TUNN);
+	__ecore_vf_update_tunn_param(&p_tun->l2_geneve, feat_mask,
+				     p_resp->l2geneve_mode,
+				     p_resp->l2geneve_clss,
+				     ECORE_MODE_L2GENEVE_TUNN);
+	__ecore_vf_update_tunn_param(&p_tun->ip_geneve, feat_mask,
+				     p_resp->ipgeneve_mode,
+				     p_resp->ipgeneve_clss,
+				     ECORE_MODE_IPGENEVE_TUNN);
+	__ecore_vf_update_tunn_param(&p_tun->l2_gre, feat_mask,
+				     p_resp->l2gre_mode, p_resp->l2gre_clss,
+				     ECORE_MODE_L2GRE_TUNN);
+	__ecore_vf_update_tunn_param(&p_tun->ip_gre, feat_mask,
+				     p_resp->ipgre_mode, p_resp->ipgre_clss,
+				     ECORE_MODE_IPGRE_TUNN);
+	p_tun->geneve_port.port = p_resp->geneve_udp_port;
+	p_tun->vxlan_port.port = p_resp->vxlan_udp_port;
+
+	DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
+		   "tunn mode: vxlan=0x%x, l2geneve=0x%x, ipgeneve=0x%x, l2gre=0x%x, ipgre=0x%x",
+		   p_tun->vxlan.b_mode_enabled, p_tun->l2_geneve.b_mode_enabled,
+		   p_tun->ip_geneve.b_mode_enabled,
+		   p_tun->l2_gre.b_mode_enabled,
+		   p_tun->ip_gre.b_mode_enabled);
+}
+
+enum _ecore_status_t
+ecore_vf_pf_tunnel_param_update(struct ecore_hwfn *p_hwfn,
+				struct ecore_tunnel_info *p_src)
+{
+	struct ecore_tunnel_info *p_tun = &p_hwfn->p_dev->tunnel;
+	struct ecore_vf_iov *p_iov = p_hwfn->vf_iov_info;
+	struct pfvf_update_tunn_param_tlv *p_resp;
+	struct vfpf_update_tunn_param_tlv *p_req;
+	enum _ecore_status_t rc;
+
+	p_req = ecore_vf_pf_prep(p_hwfn, CHANNEL_TLV_UPDATE_TUNN_PARAM,
+				 sizeof(*p_req));
+
+	if (p_src->b_update_rx_cls && p_src->b_update_tx_cls)
+		p_req->update_tun_cls = 1;
+
+	ecore_vf_prep_tunn_req_tlv(p_req, &p_src->vxlan, ECORE_MODE_VXLAN_TUNN,
+				   &p_req->vxlan_clss, &p_src->vxlan_port,
+				   &p_req->update_vxlan_port,
+				   &p_req->vxlan_port);
+	ecore_vf_prep_tunn_req_tlv(p_req, &p_src->l2_geneve,
+				   ECORE_MODE_L2GENEVE_TUNN,
+				   &p_req->l2geneve_clss, &p_src->geneve_port,
+				   &p_req->update_geneve_port,
+				   &p_req->geneve_port);
+	__ecore_vf_prep_tunn_req_tlv(p_req, &p_src->ip_geneve,
+				     ECORE_MODE_IPGENEVE_TUNN,
+				     &p_req->ipgeneve_clss);
+	__ecore_vf_prep_tunn_req_tlv(p_req, &p_src->l2_gre,
+				     ECORE_MODE_L2GRE_TUNN, &p_req->l2gre_clss);
+	__ecore_vf_prep_tunn_req_tlv(p_req, &p_src->ip_gre,
+				     ECORE_MODE_IPGRE_TUNN, &p_req->ipgre_clss);
+
+	/* add list termination tlv */
+	ecore_add_tlv(p_hwfn, &p_iov->offset,
+		      CHANNEL_TLV_LIST_END,
+		      sizeof(struct channel_list_end_tlv));
+
+	p_resp = &p_iov->pf2vf_reply->tunn_param_resp;
+	rc = ecore_send_msg2pf(p_hwfn, &p_resp->hdr.status, sizeof(*p_resp));
+
+	if (rc)
+		goto exit;
+
+	if (p_resp->hdr.status != PFVF_STATUS_SUCCESS) {
+		DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
+			   "Failed to update tunnel parameters\n");
+		rc = ECORE_INVAL;
+	}
+
+	ecore_vf_update_tunn_param(p_hwfn, p_tun, p_resp);
+exit:
+	ecore_vf_pf_req_end(p_hwfn, rc);
+	return rc;
+}
+
 enum _ecore_status_t
 ecore_vf_pf_rxq_start(struct ecore_hwfn *p_hwfn,
 		      struct ecore_queue_cid *p_cid,
