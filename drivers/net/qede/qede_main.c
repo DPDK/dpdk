@@ -687,6 +687,29 @@ static int qed_send_drv_state(struct ecore_dev *edev, bool active)
 	return status;
 }
 
+static int qed_get_sb_info(struct ecore_dev *edev, struct ecore_sb_info *sb,
+			   u16 qid, struct ecore_sb_info_dbg *sb_dbg)
+{
+	struct ecore_hwfn *hwfn = &edev->hwfns[qid % edev->num_hwfns];
+	struct ecore_ptt *ptt;
+	int rc;
+
+	if (IS_VF(edev))
+		return -EINVAL;
+
+	ptt = ecore_ptt_acquire(hwfn);
+	if (!ptt) {
+		DP_NOTICE(hwfn, true, "Can't acquire PTT\n");
+		return -EAGAIN;
+	}
+
+	memset(sb_dbg, 0, sizeof(*sb_dbg));
+	rc = ecore_int_get_sb_dbg(hwfn, ptt, sb, sb_dbg);
+
+	ecore_ptt_release(hwfn, ptt);
+	return rc;
+}
+
 const struct qed_common_ops qed_common_ops_pass = {
 	INIT_STRUCT_FIELD(probe, &qed_probe),
 	INIT_STRUCT_FIELD(update_pf_params, &qed_update_pf_params),

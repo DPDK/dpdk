@@ -2255,3 +2255,30 @@ enum _ecore_status_t ecore_int_set_timer_res(struct ecore_hwfn *p_hwfn,
 
 	return rc;
 }
+
+enum _ecore_status_t ecore_int_get_sb_dbg(struct ecore_hwfn *p_hwfn,
+					  struct ecore_ptt *p_ptt,
+					  struct ecore_sb_info *p_sb,
+					  struct ecore_sb_info_dbg *p_info)
+{
+	u16 sbid = p_sb->igu_sb_id;
+	int i;
+
+	if (IS_VF(p_hwfn->p_dev))
+		return ECORE_INVAL;
+
+	if (sbid > NUM_OF_SBS(p_hwfn->p_dev))
+		return ECORE_INVAL;
+
+	p_info->igu_prod = ecore_rd(p_hwfn, p_ptt,
+				    IGU_REG_PRODUCER_MEMORY + sbid * 4);
+	p_info->igu_cons = ecore_rd(p_hwfn, p_ptt,
+				    IGU_REG_CONSUMER_MEM + sbid * 4);
+
+	for (i = 0; i < PIS_PER_SB; i++)
+		p_info->pi[i] = (u16)ecore_rd(p_hwfn, p_ptt,
+					      CAU_REG_PI_MEMORY +
+					      sbid * 4 * PIS_PER_SB +  i * 4);
+
+	return ECORE_SUCCESS;
+}

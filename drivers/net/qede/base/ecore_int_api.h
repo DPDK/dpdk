@@ -41,6 +41,12 @@ struct ecore_sb_info {
 	struct ecore_dev *p_dev;
 };
 
+struct ecore_sb_info_dbg {
+	u32 igu_prod;
+	u32 igu_cons;
+	u16 pi[PIS_PER_SB];
+};
+
 struct ecore_sb_cnt_info {
 	int sb_cnt;
 	int sb_iov_cnt;
@@ -302,5 +308,20 @@ void ecore_int_disable_post_isr_release(struct ecore_dev *p_dev);
  *
  */
 void ecore_int_attn_clr_enable(struct ecore_dev *p_dev, bool clr_enable);
+
+/**
+ * @brief Read debug information regarding a given SB.
+ *
+ * @param p_hwfn
+ * @param p_ptt
+ * @param p_sb - point to Status block for which we want to get info.
+ * @param p_info - pointer to struct to fill with information regarding SB.
+ *
+ * @return ECORE_SUCCESS if pointer is filled; failure otherwise.
+ */
+enum _ecore_status_t ecore_int_get_sb_dbg(struct ecore_hwfn *p_hwfn,
+					  struct ecore_ptt *p_ptt,
+					  struct ecore_sb_info *p_sb,
+					  struct ecore_sb_info_dbg *p_info);
 
 #endif
