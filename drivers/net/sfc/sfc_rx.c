@@ -999,6 +999,8 @@ sfc_rx_qfini(struct sfc_adapter *sa, unsigned int sw_index)
 
 	sfc_dma_free(sa, &rxq->mem);
 	rte_free(rxq);
+
+	sfc_ev_qfini(sa, sfc_evq_index_by_rxq_sw_index(sa, sw_index));
 }
 
 #if EFSYS_OPT_RX_SCALE
