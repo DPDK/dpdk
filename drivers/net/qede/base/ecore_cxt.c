@@ -19,6 +19,7 @@
 #include "ecore_hw.h"
 #include "ecore_dev_api.h"
 #include "ecore_sriov.h"
+#include "ecore_mcp.h"
 
 /* Max number of connection types in HW (DQ/CDU etc.) */
 #define MAX_CONN_TYPES		PROTOCOLID_COMMON

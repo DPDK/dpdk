@@ -63,6 +63,12 @@ struct ecore_iscsi_pf_params {
 	u8		bdq_pbl_num_entries[2];
 };
 
+enum ecore_rdma_protocol {
+	ECORE_RDMA_PROTOCOL_DEFAULT,
+	ECORE_RDMA_PROTOCOL_ROCE,
+	ECORE_RDMA_PROTOCOL_IWARP,
+};
+
 struct ecore_rdma_pf_params {
 	/* Supplied to ECORE during resource allocation (may affect the ILT and
 	 * the doorbell BAR).
@@ -79,6 +85,7 @@ struct ecore_rdma_pf_params {
 
 	/* TCP port number used for the iwarp traffic */
 	u16		iwarp_port;
+	enum ecore_rdma_protocol rdma_protocol;
 };
 
 struct ecore_pf_params {
