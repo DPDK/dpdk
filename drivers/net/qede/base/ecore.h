@@ -157,8 +157,8 @@ enum DP_MODULE {
 	ECORE_MSG_CXT		= 0x800000,
 	ECORE_MSG_LL2		= 0x1000000,
 	ECORE_MSG_ILT		= 0x2000000,
-	ECORE_MSG_RDMA          = 0x4000000,
-	ECORE_MSG_DEBUG         = 0x8000000,
+	ECORE_MSG_RDMA		= 0x4000000,
+	ECORE_MSG_DEBUG		= 0x8000000,
 	/* to be added...up to 0x8000000 */
 };
 #endif
@@ -480,7 +480,7 @@ struct ecore_hwfn {
 	u32				dp_module;
 	u8				dp_level;
 	char				name[NAME_SIZE];
-	void                            *dp_ctx;
+	void				*dp_ctx;
 
 	bool				first_on_engine;
 	bool				hw_init_done;
@@ -535,8 +535,8 @@ struct ecore_hwfn {
 	u32				rdma_prs_search_reg;
 
 	/* Array of sb_info of all status blocks */
-	struct ecore_sb_info            *sbs_info[MAX_SB_PER_PF_MIMD];
-	u16                             num_sbs;
+	struct ecore_sb_info		*sbs_info[MAX_SB_PER_PF_MIMD];
+	u16				num_sbs;
 
 	struct ecore_cxt_mngr		*p_cxt_mngr;
 
@@ -608,7 +608,7 @@ struct ecore_dev {
 	u32				dp_module;
 	u8				dp_level;
 	char				name[NAME_SIZE];
-	void                            *dp_ctx;
+	void				*dp_ctx;
 
 	u8				type;
 #define ECORE_DEV_TYPE_BB	(0 << 0)
@@ -816,7 +816,7 @@ void ecore_set_fw_mac_addr(__le16 *fw_msb, __le16 *fw_mid, __le16 *fw_lsb,
 #define PQ_FLAGS_MCOS	(1 << 1)
 #define PQ_FLAGS_LB	(1 << 2)
 #define PQ_FLAGS_OOO	(1 << 3)
-#define PQ_FLAGS_ACK    (1 << 4)
+#define PQ_FLAGS_ACK	(1 << 4)
 #define PQ_FLAGS_OFLD	(1 << 5)
 #define PQ_FLAGS_VFS	(1 << 6)
 

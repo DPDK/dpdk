@@ -586,14 +586,14 @@ struct public_port {
 	u32 link_status;
 #define LINK_STATUS_LINK_UP				0x00000001
 #define LINK_STATUS_SPEED_AND_DUPLEX_MASK		0x0000001e
-#define LINK_STATUS_SPEED_AND_DUPLEX_1000THD			(1 << 1)
-#define LINK_STATUS_SPEED_AND_DUPLEX_1000TFD			(2 << 1)
-#define LINK_STATUS_SPEED_AND_DUPLEX_10G			(3 << 1)
-#define LINK_STATUS_SPEED_AND_DUPLEX_20G			(4 << 1)
-#define LINK_STATUS_SPEED_AND_DUPLEX_40G			(5 << 1)
-#define LINK_STATUS_SPEED_AND_DUPLEX_50G			(6 << 1)
-#define LINK_STATUS_SPEED_AND_DUPLEX_100G			(7 << 1)
-#define LINK_STATUS_SPEED_AND_DUPLEX_25G			(8 << 1)
+#define LINK_STATUS_SPEED_AND_DUPLEX_1000THD		(1 << 1)
+#define LINK_STATUS_SPEED_AND_DUPLEX_1000TFD		(2 << 1)
+#define LINK_STATUS_SPEED_AND_DUPLEX_10G		(3 << 1)
+#define LINK_STATUS_SPEED_AND_DUPLEX_20G		(4 << 1)
+#define LINK_STATUS_SPEED_AND_DUPLEX_40G		(5 << 1)
+#define LINK_STATUS_SPEED_AND_DUPLEX_50G		(6 << 1)
+#define LINK_STATUS_SPEED_AND_DUPLEX_100G		(7 << 1)
+#define LINK_STATUS_SPEED_AND_DUPLEX_25G		(8 << 1)
 #define LINK_STATUS_AUTO_NEGOTIATE_ENABLED		0x00000020
 #define LINK_STATUS_AUTO_NEGOTIATE_COMPLETE		0x00000040
 #define LINK_STATUS_PARALLEL_DETECTION_USED		0x00000080
@@ -607,10 +607,10 @@ struct public_port {
 #define LINK_STATUS_LINK_PARTNER_100G_CAPABLE		0x00008000
 #define LINK_STATUS_LINK_PARTNER_25G_CAPABLE		0x00010000
 #define LINK_STATUS_LINK_PARTNER_FLOW_CONTROL_MASK	0x000C0000
-#define LINK_STATUS_LINK_PARTNER_NOT_PAUSE_CAPABLE		(0 << 18)
-#define LINK_STATUS_LINK_PARTNER_SYMMETRIC_PAUSE		(1 << 18)
-#define LINK_STATUS_LINK_PARTNER_ASYMMETRIC_PAUSE		(2 << 18)
-#define LINK_STATUS_LINK_PARTNER_BOTH_PAUSE			(3 << 18)
+#define LINK_STATUS_LINK_PARTNER_NOT_PAUSE_CAPABLE	(0 << 18)
+#define LINK_STATUS_LINK_PARTNER_SYMMETRIC_PAUSE	(1 << 18)
+#define LINK_STATUS_LINK_PARTNER_ASYMMETRIC_PAUSE	(2 << 18)
+#define LINK_STATUS_LINK_PARTNER_BOTH_PAUSE		(3 << 18)
 #define LINK_STATUS_SFP_TX_FAULT			0x00100000
 #define LINK_STATUS_TX_FLOW_CONTROL_ENABLED		0x00200000
 #define LINK_STATUS_RX_FLOW_CONTROL_ENABLED		0x00400000
@@ -619,9 +619,9 @@ struct public_port {
 #define LINK_STATUS_MAC_REMOTE_FAULT			0x02000000
 #define LINK_STATUS_UNSUPPORTED_SPD_REQ			0x04000000
 #define LINK_STATUS_FEC_MODE_MASK			0x38000000
-#define LINK_STATUS_FEC_MODE_NONE				(0 << 27)
-#define LINK_STATUS_FEC_MODE_FIRECODE_CL74			(1 << 27)
-#define LINK_STATUS_FEC_MODE_RS_CL91				(2 << 27)
+#define LINK_STATUS_FEC_MODE_NONE			(0 << 27)
+#define LINK_STATUS_FEC_MODE_FIRECODE_CL74		(1 << 27)
+#define LINK_STATUS_FEC_MODE_RS_CL91			(2 << 27)
 #define LINK_STATUS_EXT_PHY_LINK_UP			0x40000000
 
 	u32 link_status1;
@@ -762,23 +762,23 @@ struct public_port {
 	 *          When 1'b1 those bits contains a value times 16 microseconds.
 	 */
 	u32 eee_status;
-	#define EEE_TIMER_MASK		0x000fffff
-	#define EEE_ADV_STATUS_MASK	0x00f00000
-		#define EEE_1G_ADV	(1 << 1)
-		#define EEE_10G_ADV	(1 << 2)
-	#define EEE_ADV_STATUS_SHIFT	20
-	#define	EEE_LP_ADV_STATUS_MASK	0x0f000000
-	#define EEE_LP_ADV_STATUS_SHIFT	24
-	#define EEE_REQUESTED_BIT	0x10000000
-	#define EEE_LPI_REQUESTED_BIT	0x20000000
-	#define EEE_ACTIVE_BIT		0x40000000
-	#define EEE_TIME_OUTPUT_BIT	0x80000000
+#define EEE_TIMER_MASK		0x000fffff
+#define EEE_ADV_STATUS_MASK	0x00f00000
+#define EEE_1G_ADV	(1 << 1)
+#define EEE_10G_ADV	(1 << 2)
+#define EEE_ADV_STATUS_SHIFT	20
+#define	EEE_LP_ADV_STATUS_MASK	0x0f000000
+#define EEE_LP_ADV_STATUS_SHIFT	24
+#define EEE_REQUESTED_BIT	0x10000000
+#define EEE_LPI_REQUESTED_BIT	0x20000000
+#define EEE_ACTIVE_BIT		0x40000000
+#define EEE_TIME_OUTPUT_BIT	0x80000000
 
 	u32 eee_remote;	/* Used for EEE in LLDP */
-	#define EEE_REMOTE_TW_TX_MASK	0x0000ffff
-	#define EEE_REMOTE_TW_TX_SHIFT	0
-	#define EEE_REMOTE_TW_RX_MASK	0xffff0000
-	#define EEE_REMOTE_TW_RX_SHIFT	16
+#define EEE_REMOTE_TW_TX_MASK	0x0000ffff
+#define EEE_REMOTE_TW_TX_SHIFT	0
+#define EEE_REMOTE_TW_RX_MASK	0xffff0000
+#define EEE_REMOTE_TW_RX_SHIFT	16
 };
 
 /**************************************/
@@ -1157,15 +1157,17 @@ struct public_drv_mb {
  * [3:0] - func, drv_data[7:0] - MAC/WWNN/WWPN
  */
 #define DRV_MSG_CODE_GET_VMAC                   0x00120000
-	#define DRV_MSG_CODE_VMAC_TYPE_MAC              1
-	#define DRV_MSG_CODE_VMAC_TYPE_WWNN             2
-	#define DRV_MSG_CODE_VMAC_TYPE_WWPN             3
+#define DRV_MSG_CODE_VMAC_TYPE_SHIFT            4
+#define DRV_MSG_CODE_VMAC_TYPE_MASK             0x30
+#define DRV_MSG_CODE_VMAC_TYPE_MAC              1
+#define DRV_MSG_CODE_VMAC_TYPE_WWNN             2
+#define DRV_MSG_CODE_VMAC_TYPE_WWPN             3
 /* Get statistics from pf, params [31:4] - reserved, [3:0] - stats type */
 #define DRV_MSG_CODE_GET_STATS                  0x00130000
-	#define DRV_MSG_CODE_STATS_TYPE_LAN             1
-	#define DRV_MSG_CODE_STATS_TYPE_FCOE            2
-	#define DRV_MSG_CODE_STATS_TYPE_ISCSI           3
-	#define DRV_MSG_CODE_STATS_TYPE_RDMA            4
+#define DRV_MSG_CODE_STATS_TYPE_LAN             1
+#define DRV_MSG_CODE_STATS_TYPE_FCOE            2
+#define DRV_MSG_CODE_STATS_TYPE_ISCSI           3
+#define DRV_MSG_CODE_STATS_TYPE_RDMA            4
 /* Host shall provide buffer and size for MFW  */
 #define DRV_MSG_CODE_PMD_DIAG_DUMP		0x00140000
 /* Host shall provide buffer and size for MFW  */
@@ -1193,8 +1195,8 @@ struct public_drv_mb {
 #define DRV_MSG_CODE_MASK_PARITIES		0x001a0000
 /* param[0] - Simulate fan failure,  param[1] - simulate over temp. */
 #define DRV_MSG_CODE_INDUCE_FAILURE		0x001b0000
-	#define DRV_MSG_FAN_FAILURE_TYPE		(1 << 0)
-	#define DRV_MSG_TEMPERATURE_FAILURE_TYPE	(1 << 1)
+#define DRV_MSG_FAN_FAILURE_TYPE		(1 << 0)
+#define DRV_MSG_TEMPERATURE_FAILURE_TYPE	(1 << 1)
 /* Param: [0:15] - gpio number */
 #define DRV_MSG_CODE_GPIO_READ			0x001c0000
 /* Param: [0:15] - gpio number, [16:31] - gpio value */
@@ -1215,50 +1217,50 @@ struct public_drv_mb {
  * param[15:8] - age
  */
 #define DRV_MSG_CODE_RESOURCE_CMD		0x00230000
-	/* request resource ownership with default aging */
-	#define RESOURCE_OPCODE_REQ			1
-	/* request resource ownership without aging */
-	#define RESOURCE_OPCODE_REQ_WO_AGING		2
-	/* request resource ownership with specific aging timer (in seconds) */
-	#define RESOURCE_OPCODE_REQ_W_AGING		3
-	#define RESOURCE_OPCODE_RELEASE			4 /* release resource */
-	/* force resource release */
-	#define RESOURCE_OPCODE_FORCE_RELEASE		5
-	/* resource is free and granted to requester */
-	#define RESOURCE_OPCODE_GNT			1
-	/* resource is busy, param[7:0] indicates owner as follow 0-15 = PF0-15,
-	 * 16 = MFW, 17 = diag over serial
-	 */
-	#define RESOURCE_OPCODE_BUSY			2
-	/* indicate release request was acknowledged */
-	#define RESOURCE_OPCODE_RELEASED		3
-	/* indicate release request was previously received by other owner */
-	#define RESOURCE_OPCODE_RELEASED_PREVIOUS	4
-	/* indicate wrong owner during release */
-	#define RESOURCE_OPCODE_WRONG_OWNER		5
-	#define RESOURCE_OPCODE_UNKNOWN_CMD		255
-	/* dedicate resource 0 for dump */
-	#define RESOURCE_DUMP				0
+/* request resource ownership with default aging */
+#define RESOURCE_OPCODE_REQ			1
+/* request resource ownership without aging */
+#define RESOURCE_OPCODE_REQ_WO_AGING		2
+/* request resource ownership with specific aging timer (in seconds) */
+#define RESOURCE_OPCODE_REQ_W_AGING		3
+#define RESOURCE_OPCODE_RELEASE			4 /* release resource */
+/* force resource release */
+#define RESOURCE_OPCODE_FORCE_RELEASE		5
+/* resource is free and granted to requester */
+#define RESOURCE_OPCODE_GNT			1
+/* resource is busy, param[7:0] indicates owner as follow 0-15 = PF0-15,
+ * 16 = MFW, 17 = diag over serial
+ */
+#define RESOURCE_OPCODE_BUSY			2
+/* indicate release request was acknowledged */
+#define RESOURCE_OPCODE_RELEASED		3
+/* indicate release request was previously received by other owner */
+#define RESOURCE_OPCODE_RELEASED_PREVIOUS	4
+/* indicate wrong owner during release */
+#define RESOURCE_OPCODE_WRONG_OWNER		5
+#define RESOURCE_OPCODE_UNKNOWN_CMD		255
+/* dedicate resource 0 for dump */
+#define RESOURCE_DUMP				0
 #define DRV_MSG_CODE_GET_MBA_VERSION		0x00240000 /* Get MBA version */
 /* Send crash dump commands with param[3:0] - opcode */
 #define DRV_MSG_CODE_MDUMP_CMD			0x00250000
-	#define MDUMP_DRV_PARAM_OPCODE_MASK		0x0000000f
-	/* acknowledge reception of error indication */
-	#define DRV_MSG_CODE_MDUMP_ACK			0x01
-	/* set epoc and personality as follow: drv_data[3:0] - epoch,
-	 * drv_data[7:4] - personality
-	 */
-	#define DRV_MSG_CODE_MDUMP_SET_VALUES		0x02
-	/* trigger crash dump procedure */
-	#define DRV_MSG_CODE_MDUMP_TRIGGER		0x03
-	/* Request valid logs and config words */
-	#define DRV_MSG_CODE_MDUMP_GET_CONFIG		0x04
-	/* Set triggers mask. drv_mb_param should indicate (bitwise) which
-	 * trigger enabled
-	 */
-	#define DRV_MSG_CODE_MDUMP_SET_ENABLE		0x05
-	/* Clear all logs */
-	#define DRV_MSG_CODE_MDUMP_CLEAR_LOGS		0x06
+#define MDUMP_DRV_PARAM_OPCODE_MASK		0x0000000f
+/* acknowledge reception of error indication */
+#define DRV_MSG_CODE_MDUMP_ACK			0x01
+/* set epoc and personality as follow: drv_data[3:0] - epoch,
+ * drv_data[7:4] - personality
+ */
+#define DRV_MSG_CODE_MDUMP_SET_VALUES		0x02
+/* trigger crash dump procedure */
+#define DRV_MSG_CODE_MDUMP_TRIGGER		0x03
+/* Request valid logs and config words */
+#define DRV_MSG_CODE_MDUMP_GET_CONFIG		0x04
+/* Set triggers mask. drv_mb_param should indicate (bitwise) which
+ * trigger enabled
+ */
+#define DRV_MSG_CODE_MDUMP_SET_ENABLE		0x05
+/* Clear all logs */
+#define DRV_MSG_CODE_MDUMP_CLEAR_LOGS		0x06
 #define DRV_MSG_CODE_MEM_ECC_EVENTS		0x00260000 /* Param: None */
 /* Param: [0:15] - gpio number */
 #define DRV_MSG_CODE_GPIO_INFO			0x00270000
@@ -1266,12 +1268,12 @@ struct public_drv_mb {
 #define DRV_MSG_CODE_EXT_PHY_READ		0x00280000
 /* Value should be placed in union */
 #define DRV_MSG_CODE_EXT_PHY_WRITE		0x00290000
-	#define DRV_MB_PARAM_ADDR_SHIFT			0
-	#define DRV_MB_PARAM_ADDR_MASK			0x0000FFFF
-	#define DRV_MB_PARAM_DEVAD_SHIFT		16
-	#define DRV_MB_PARAM_DEVAD_MASK			0x001F0000
-	#define DRV_MB_PARAM_PORT_SHIFT			21
-	#define DRV_MB_PARAM_PORT_MASK			0x00600000
+#define DRV_MB_PARAM_ADDR_SHIFT			0
+#define DRV_MB_PARAM_ADDR_MASK			0x0000FFFF
+#define DRV_MB_PARAM_DEVAD_SHIFT		16
+#define DRV_MB_PARAM_DEVAD_MASK			0x001F0000
+#define DRV_MB_PARAM_PORT_SHIFT			21
+#define DRV_MB_PARAM_PORT_MASK			0x00600000
 #define DRV_MSG_CODE_EXT_PHY_FW_UPGRADE		0x002a0000
 
 #define DRV_MSG_SEQ_NUMBER_MASK                 0x0000ffff
@@ -1510,7 +1512,7 @@ struct public_drv_mb {
 #define FW_MSG_CODE_EXTPHY_OPERATION_FAILED	0x00720000
 #define FW_MSG_CODE_EXTPHY_NO_PHY_DETECTED	0x00730000
 
-/* mdump related response codes */
+	/* mdump related response codes */
 #define FW_MSG_CODE_MDUMP_NO_IMAGE_FOUND	0x00010000
 #define FW_MSG_CODE_MDUMP_ALLOC_FAILED		0x00020000
 #define FW_MSG_CODE_MDUMP_INVALID_CMD		0x00030000
