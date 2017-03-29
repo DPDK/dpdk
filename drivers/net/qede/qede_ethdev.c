@@ -1487,11 +1487,11 @@ static int qede_rss_hash_update(struct rte_eth_dev *eth_dev,
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
 	struct ecore_sp_vport_update_params vport_update_params;
 	struct ecore_rss_params rss_params;
-	struct ecore_rss_params params;
 	struct ecore_hwfn *p_hwfn;
 	uint32_t *key = (uint32_t *)rss_conf->rss_key;
 	uint64_t hf = rss_conf->rss_hf;
 	uint8_t len = rss_conf->rss_key_len;
+	uint8_t idx;
 	uint8_t i;
 	int rc;
 
@@ -1526,6 +1526,11 @@ static int qede_rss_hash_update(struct rte_eth_dev *eth_dev,
 	/* tbl_size has to be set with capabilities */
 	rss_params.rss_table_size_log = 7;
 	vport_update_params.vport_id = 0;
+	/* pass the L2 handles instead of qids */
+	for (i = 0 ; i < ECORE_RSS_IND_TABLE_SIZE ; i++) {
+		idx = qdev->rss_ind_table[i];
+		rss_params.rss_ind_table[i] = qdev->fp_array[idx].rxq->handle;
+	}
 	vport_update_params.rss_params = &rss_params;
 
 	for_each_hwfn(edev, i) {
@@ -1607,14 +1612,18 @@ static int qede_rss_reta_update(struct rte_eth_dev *eth_dev,
 		shift = i % RTE_RETA_GROUP_SIZE;
 		if (reta_conf[idx].mask & (1ULL << shift)) {
 			entry = reta_conf[idx].reta[shift];
-			params.rss_ind_table[i] = entry;
+			/* Pass rxq handles to ecore */
+			params.rss_ind_table[i] =
+					qdev->fp_array[entry].rxq->handle;
+			/* Update the local copy for RETA query command */
+			qdev->rss_ind_table[i] = entry;
 		}
 	}
 
 	/* Fix up RETA for CMT mode device */
 	if (edev->num_hwfns > 1)
 		qdev->rss_enable = qed_update_rss_parm_cmt(edev,
-					&params.rss_ind_table[0]);
+					params.rss_ind_table[0]);
 	params.update_rss_ind_table = 1;
 	params.rss_table_size_log = 7;
 	params.update_rss_config = 1;
@@ -1633,10 +1642,6 @@ static int qede_rss_reta_update(struct rte_eth_dev *eth_dev,
 			return rc;
 		}
 	}
-
-	/* Update the local copy for RETA query command */
-	memcpy(qdev->rss_ind_table, params.rss_ind_table,
-	       sizeof(params.rss_ind_table));
 
 	return 0;
 }

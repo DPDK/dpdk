@@ -59,7 +59,9 @@ struct ecore_rss_params {
 	u8 update_rss_key;
 	u8 rss_caps;
 	u8 rss_table_size_log; /* The table size is 2 ^ rss_table_size_log */
-	u16 rss_ind_table[ECORE_RSS_IND_TABLE_SIZE];
+
+	/* Indirection table consist of rx queue handles */
+	void *rss_ind_table[ECORE_RSS_IND_TABLE_SIZE];
 	u32 rss_key[ECORE_RSS_KEY_SIZE];
 };
 

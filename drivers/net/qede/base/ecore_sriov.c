@@ -2704,12 +2704,14 @@ ecore_iov_vp_update_rss_param(struct ecore_hwfn *p_hwfn,
 			      struct ecore_vf_info *vf,
 			      struct ecore_sp_vport_update_params *p_data,
 			      struct ecore_rss_params *p_rss,
-			      struct ecore_iov_vf_mbx *p_mbx, u16 *tlvs_mask)
+			      struct ecore_iov_vf_mbx *p_mbx,
+			      u16 *tlvs_mask, u16 *tlvs_accepted)
 {
 	struct vfpf_vport_update_rss_tlv *p_rss_tlv;
 	u16 tlv = CHANNEL_TLV_VPORT_UPDATE_RSS;
-	u16 i, q_idx, max_q_idx;
+	bool b_reject = false;
 	u16 table_size;
+	u16 i, q_idx;
 
 	p_rss_tlv = (struct vfpf_vport_update_rss_tlv *)
 	    ecore_iov_search_list_tlvs(p_hwfn, p_mbx->req_virt, tlv);
@@ -2737,36 +2739,38 @@ ecore_iov_vp_update_rss_param(struct ecore_hwfn *p_hwfn,
 	p_rss->rss_eng_id = vf->relative_vf_id + 1;
 	p_rss->rss_caps = p_rss_tlv->rss_caps;
 	p_rss->rss_table_size_log = p_rss_tlv->rss_table_size_log;
-	OSAL_MEMCPY(p_rss->rss_ind_table, p_rss_tlv->rss_ind_table,
-		    sizeof(p_rss->rss_ind_table));
 	OSAL_MEMCPY(p_rss->rss_key, p_rss_tlv->rss_key,
 		    sizeof(p_rss->rss_key));
 
 	table_size = OSAL_MIN_T(u16, OSAL_ARRAY_SIZE(p_rss->rss_ind_table),
 				(1 << p_rss_tlv->rss_table_size_log));
 
-	max_q_idx = OSAL_ARRAY_SIZE(vf->vf_queues);
-
 	for (i = 0; i < table_size; i++) {
-		u16 index = vf->vf_queues[0].fw_rx_qid;
+		q_idx = p_rss_tlv->rss_ind_table[i];
+		if (!ecore_iov_validate_rxq(p_hwfn, vf, q_idx)) {
+			DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
+				   "VF[%d]: Omitting RSS due to wrong queue %04x\n",
+				   vf->relative_vf_id, q_idx);
+			b_reject = true;
+			goto out;
+		}
 
-		q_idx = p_rss->rss_ind_table[i];
-		if (q_idx >= max_q_idx)
-			DP_NOTICE(p_hwfn, true,
-				  "rss_ind_table[%d] = %d,"
-				  " rxq is out of range\n",
-				  i, q_idx);
-		else if (!vf->vf_queues[q_idx].p_rx_cid)
-			DP_NOTICE(p_hwfn, true,
-				  "rss_ind_table[%d] = %d, rxq is not active\n",
-				  i, q_idx);
-		else
-			index = vf->vf_queues[q_idx].fw_rx_qid;
-		p_rss->rss_ind_table[i] = index;
+		if (!vf->vf_queues[q_idx].p_rx_cid) {
+			DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
+				   "VF[%d]: Omitting RSS due to inactive queue %08x\n",
+				   vf->relative_vf_id, q_idx);
+			b_reject = true;
+			goto out;
+		}
+
+		p_rss->rss_ind_table[i] = vf->vf_queues[q_idx].p_rx_cid;
 	}
 
 	p_data->rss_params = p_rss;
+out:
 	*tlvs_mask |= 1 << ECORE_IOV_VP_UPDATE_RSS;
+	if (!b_reject)
+		*tlvs_accepted |= 1 << ECORE_IOV_VP_UPDATE_RSS;
 }
 
 static void
@@ -2822,11 +2826,11 @@ static void ecore_iov_vf_mbx_vport_update(struct ecore_hwfn *p_hwfn,
 					  struct ecore_ptt *p_ptt,
 					  struct ecore_vf_info *vf)
 {
+	struct ecore_rss_params *p_rss_params = OSAL_NULL;
 	struct ecore_sp_vport_update_params params;
 	struct ecore_iov_vf_mbx *mbx = &vf->vf_mbx;
 	struct ecore_sge_tpa_params sge_tpa_params;
 	u16 tlvs_mask = 0, tlvs_accepted = 0;
-	struct ecore_rss_params rss_params;
 	u8 status = PFVF_STATUS_SUCCESS;
 	u16 length;
 	enum _ecore_status_t rc;
@@ -2837,6 +2841,12 @@ static void ecore_iov_vf_mbx_vport_update(struct ecore_hwfn *p_hwfn,
 			   "No VPORT instance available for VF[%d],"
 			   " failing vport update\n",
 			   vf->abs_vf_id);
+		status = PFVF_STATUS_FAILURE;
+		goto out;
+	}
+
+	p_rss_params = OSAL_VALLOC(p_hwfn->p_dev, sizeof(*p_rss_params));
+	if (p_rss_params == OSAL_NULL) {
 		status = PFVF_STATUS_FAILURE;
 		goto out;
 	}
@@ -2854,19 +2864,24 @@ static void ecore_iov_vf_mbx_vport_update(struct ecore_hwfn *p_hwfn,
 	ecore_iov_vp_update_tx_switch(p_hwfn, &params, mbx, &tlvs_mask);
 	ecore_iov_vp_update_mcast_bin_param(p_hwfn, &params, mbx, &tlvs_mask);
 	ecore_iov_vp_update_accept_flag(p_hwfn, &params, mbx, &tlvs_mask);
-	ecore_iov_vp_update_rss_param(p_hwfn, vf, &params, &rss_params,
-				      mbx, &tlvs_mask);
 	ecore_iov_vp_update_accept_any_vlan(p_hwfn, &params, mbx, &tlvs_mask);
 	ecore_iov_vp_update_sge_tpa_param(p_hwfn, vf, &params,
 					  &sge_tpa_params, mbx, &tlvs_mask);
+
+	tlvs_accepted = tlvs_mask;
+
+	/* Some of the extended TLVs need to be validated first; In that case,
+	 * they can update the mask without updating the accepted [so that
+	 * PF could communicate to VF it has rejected request].
+	 */
+	ecore_iov_vp_update_rss_param(p_hwfn, vf, &params, p_rss_params,
+				      mbx, &tlvs_mask, &tlvs_accepted);
 
 	/* Just log a message if there is no single extended tlv in buffer.
 	 * When all features of vport update ramrod would be requested by VF
 	 * as extended TLVs in buffer then an error can be returned in response
 	 * if there is no extended TLV present in buffer.
 	 */
-	tlvs_accepted = tlvs_mask;
-
 	if (OSAL_IOV_VF_VPORT_UPDATE(p_hwfn, vf->relative_vf_id,
 				     &params, &tlvs_accepted) !=
 	    ECORE_SUCCESS) {
@@ -2894,6 +2909,7 @@ static void ecore_iov_vf_mbx_vport_update(struct ecore_hwfn *p_hwfn,
 		status = PFVF_STATUS_FAILURE;
 
 out:
+	OSAL_VFREE(p_hwfn->p_dev, p_rss_params);
 	length = ecore_iov_prep_vp_update_resp_tlvs(p_hwfn, vf, mbx, status,
 						    tlvs_mask, tlvs_accepted);
 	ecore_iov_send_response(p_hwfn, p_ptt, vf, length, status);

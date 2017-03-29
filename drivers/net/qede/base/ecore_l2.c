@@ -59,6 +59,7 @@ _ecore_eth_queue_to_cid(struct ecore_hwfn *p_hwfn,
 	p_cid->cid = cid;
 	p_cid->vf_qid = vf_qid;
 	p_cid->rel = *p_params;
+	p_cid->p_owner = p_hwfn;
 
 	/* Don't try calculating the absolute indices for VFs */
 	if (IS_VF(p_hwfn->p_dev)) {
@@ -267,10 +268,9 @@ ecore_sp_vport_update_rss(struct ecore_hwfn *p_hwfn,
 			  struct vport_update_ramrod_data *p_ramrod,
 			  struct ecore_rss_params *p_rss)
 {
-	enum _ecore_status_t rc = ECORE_SUCCESS;
 	struct eth_vport_rss_config *p_config;
-	u16 abs_l2_queue = 0;
-	int i;
+	int i, table_size;
+	enum _ecore_status_t rc = ECORE_SUCCESS;
 
 	if (!p_rss) {
 		p_ramrod->common.update_rss_flg = 0;
@@ -324,16 +324,40 @@ ecore_sp_vport_update_rss(struct ecore_hwfn *p_hwfn,
 		   p_config->capabilities,
 		   p_config->update_rss_ind_table, p_config->update_rss_key);
 
-	for (i = 0; i < ECORE_RSS_IND_TABLE_SIZE; i++) {
-		rc = ecore_fw_l2_queue(p_hwfn,
-				       p_rss->rss_ind_table[i],
-				       &abs_l2_queue);
-		if (rc != ECORE_SUCCESS)
-			return rc;
+	table_size = OSAL_MIN_T(int, ECORE_RSS_IND_TABLE_SIZE,
+				1 << p_config->tbl_size);
+	for (i = 0; i < table_size; i++) {
+		struct ecore_queue_cid *p_queue = p_rss->rss_ind_table[i];
 
-		p_config->indirection_table[i] = OSAL_CPU_TO_LE16(abs_l2_queue);
-		DP_VERBOSE(p_hwfn, ECORE_MSG_IFUP, "i= %d, queue = %d\n",
-			   i, p_config->indirection_table[i]);
+		if (!p_queue)
+			return ECORE_INVAL;
+
+		p_config->indirection_table[i] =
+				OSAL_CPU_TO_LE16(p_queue->abs.queue_id);
+	}
+
+	DP_VERBOSE(p_hwfn, ECORE_MSG_IFUP,
+		   "Configured RSS indirection table [%d entries]:\n",
+		   table_size);
+	for (i = 0; i < ECORE_RSS_IND_TABLE_SIZE; i += 0x10) {
+		DP_VERBOSE(p_hwfn, ECORE_MSG_IFUP,
+			   "%04x %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x\n",
+			   OSAL_LE16_TO_CPU(p_config->indirection_table[i]),
+			   OSAL_LE16_TO_CPU(p_config->indirection_table[i + 1]),
+			   OSAL_LE16_TO_CPU(p_config->indirection_table[i + 2]),
+			   OSAL_LE16_TO_CPU(p_config->indirection_table[i + 3]),
+			   OSAL_LE16_TO_CPU(p_config->indirection_table[i + 4]),
+			   OSAL_LE16_TO_CPU(p_config->indirection_table[i + 5]),
+			   OSAL_LE16_TO_CPU(p_config->indirection_table[i + 6]),
+			   OSAL_LE16_TO_CPU(p_config->indirection_table[i + 7]),
+			   OSAL_LE16_TO_CPU(p_config->indirection_table[i + 8]),
+			   OSAL_LE16_TO_CPU(p_config->indirection_table[i + 9]),
+			  OSAL_LE16_TO_CPU(p_config->indirection_table[i + 10]),
+			  OSAL_LE16_TO_CPU(p_config->indirection_table[i + 11]),
+			  OSAL_LE16_TO_CPU(p_config->indirection_table[i + 12]),
+			  OSAL_LE16_TO_CPU(p_config->indirection_table[i + 13]),
+			  OSAL_LE16_TO_CPU(p_config->indirection_table[i + 14]),
+			 OSAL_LE16_TO_CPU(p_config->indirection_table[i + 15]));
 	}
 
 	for (i = 0; i < 10; i++)

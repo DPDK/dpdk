@@ -36,6 +36,8 @@ struct ecore_queue_cid {
 
 	/* Legacy VFs might have Rx producer located elsewhere */
 	bool b_legacy_vf;
+
+	struct ecore_hwfn *p_owner;
 };
 
 void ecore_eth_queue_cid_release(struct ecore_hwfn *p_hwfn,
