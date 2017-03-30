@@ -49,6 +49,13 @@
 #define MAX_SW_PROD_Q_DEPTH 4096
 #define SW_FRAGMENTS_MAX 16
 
+/* report dequeue burst sizes in buckets */
+#define SW_DEQ_STAT_BUCKET_SHIFT 2
+/* how many packets pulled from port by sched */
+#define SCHED_DEQUEUE_BURST_SIZE 32
+
+#define SW_PORT_HIST_LIST (MAX_SW_PROD_Q_DEPTH) /* size of our history list */
+
 #define EVENTDEV_NAME_SW_PMD event_sw
 #define SW_PMD_NAME RTE_STR(event_sw)
 
@@ -129,11 +136,81 @@ struct sw_qid {
 	uint8_t priority;
 };
 
+struct sw_hist_list_entry {
+	int32_t qid;
+	int32_t fid;
+	struct reorder_buffer_entry *rob_entry;
+};
+
+struct sw_evdev;
+
+struct sw_port {
+	/* new enqueue / dequeue API doesn't have an instance pointer, only the
+	 * pointer to the port being enqueue/dequeued from
+	 */
+	struct sw_evdev *sw;
+
+	/* set when the port is initialized */
+	uint8_t initialized;
+	/* A numeric ID for the port */
+	uint8_t id;
+
+	int16_t is_directed; /** Takes from a single directed QID */
+	/**
+	 * For loadbalanced we can optimise pulling packets from
+	 * producers if there is no reordering involved
+	 */
+	int16_t num_ordered_qids;
+
+	/** Ring and buffer for pulling events from workers for scheduling */
+	struct qe_ring *rx_worker_ring __rte_cache_aligned;
+	/** Ring and buffer for pushing packets to workers after scheduling */
+	struct qe_ring *cq_worker_ring;
+
+	/* hole */
+
+	/* num releases yet to be completed on this port */
+	uint16_t outstanding_releases __rte_cache_aligned;
+	uint16_t inflight_max; /* app requested max inflights for this port */
+	uint16_t inflight_credits; /* num credits this port has right now */
+
+	uint16_t last_dequeue_burst_sz; /* how big the burst was */
+	uint64_t last_dequeue_ticks; /* used to track burst processing time */
+	uint64_t avg_pkt_ticks;      /* tracks average over NUM_SAMPLES burst */
+	uint64_t total_polls;        /* how many polls were counted in stats */
+	uint64_t zero_polls;         /* tracks polls returning nothing */
+	uint32_t poll_buckets[MAX_SW_CONS_Q_DEPTH >> SW_DEQ_STAT_BUCKET_SHIFT];
+		/* bucket values in 4s for shorter reporting */
+
+	/* History list structs, containing info on pkts egressed to worker */
+	uint16_t hist_head __rte_cache_aligned;
+	uint16_t hist_tail;
+	uint16_t inflights;
+	struct sw_hist_list_entry hist_list[SW_PORT_HIST_LIST];
+
+	/* track packets in and out of this port */
+	struct sw_point_stats stats;
+
+
+	uint32_t pp_buf_start;
+	uint32_t pp_buf_count;
+	uint16_t cq_buf_count;
+	struct rte_event pp_buf[SCHED_DEQUEUE_BURST_SIZE];
+	struct rte_event cq_buf[MAX_SW_CONS_Q_DEPTH];
+
+	uint8_t num_qids_mapped;
+};
+
 struct sw_evdev {
 	struct rte_eventdev_data *data;
 
 	uint32_t port_count;
 	uint32_t qid_count;
+
+	/* Contains all ports - load balanced and directed */
+	struct sw_port ports[SW_PORTS_MAX] __rte_cache_aligned;
+
+	rte_atomic32_t inflights __rte_cache_aligned;
 
 	/*
 	 * max events in this instance. Cached here for performance.
@@ -143,6 +220,9 @@ struct sw_evdev {
 
 	/* Internal queues - one per logical queue */
 	struct sw_qid qids[RTE_EVENT_MAX_QUEUES_PER_DEV] __rte_cache_aligned;
+
+	/* Cache how many packets are in each cq */
+	uint16_t cq_ring_space[SW_PORTS_MAX] __rte_cache_aligned;
 
 	int32_t sched_quanta;
 

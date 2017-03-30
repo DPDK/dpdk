@@ -39,11 +39,90 @@
 
 #include "sw_evdev.h"
 #include "iq_ring.h"
+#include "event_ring.h"
 
 #define EVENTDEV_NAME_SW_PMD event_sw
 #define NUMA_NODE_ARG "numa_node"
 #define SCHED_QUANTA_ARG "sched_quanta"
 #define CREDIT_QUANTA_ARG "credit_quanta"
+
+static void
+sw_info_get(struct rte_eventdev *dev, struct rte_event_dev_info *info);
+
+static int
+sw_port_setup(struct rte_eventdev *dev, uint8_t port_id,
+		const struct rte_event_port_conf *conf)
+{
+	struct sw_evdev *sw = sw_pmd_priv(dev);
+	struct sw_port *p = &sw->ports[port_id];
+	char buf[QE_RING_NAMESIZE];
+	unsigned int i;
+
+	struct rte_event_dev_info info;
+	sw_info_get(dev, &info);
+
+	/* detect re-configuring and return credits to instance if needed */
+	if (p->initialized) {
+		/* taking credits from pool is done one quanta at a time, and
+		 * credits may be spend (counted in p->inflights) or still
+		 * available in the port (p->inflight_credits). We must return
+		 * the sum to no leak credits
+		 */
+		int possible_inflights = p->inflight_credits + p->inflights;
+		rte_atomic32_sub(&sw->inflights, possible_inflights);
+	}
+
+	*p = (struct sw_port){0}; /* zero entire structure */
+	p->id = port_id;
+	p->sw = sw;
+
+	snprintf(buf, sizeof(buf), "sw%d_%s", dev->data->dev_id,
+			"rx_worker_ring");
+	p->rx_worker_ring = qe_ring_create(buf, MAX_SW_PROD_Q_DEPTH,
+			dev->data->socket_id);
+	if (p->rx_worker_ring == NULL) {
+		SW_LOG_ERR("Error creating RX worker ring for port %d\n",
+				port_id);
+		return -1;
+	}
+
+	p->inflight_max = conf->new_event_threshold;
+
+	snprintf(buf, sizeof(buf), "sw%d_%s", dev->data->dev_id,
+			"cq_worker_ring");
+	p->cq_worker_ring = qe_ring_create(buf, conf->dequeue_depth,
+			dev->data->socket_id);
+	if (p->cq_worker_ring == NULL) {
+		qe_ring_destroy(p->rx_worker_ring);
+		SW_LOG_ERR("Error creating CQ worker ring for port %d\n",
+				port_id);
+		return -1;
+	}
+	sw->cq_ring_space[port_id] = conf->dequeue_depth;
+
+	/* set hist list contents to empty */
+	for (i = 0; i < SW_PORT_HIST_LIST; i++) {
+		p->hist_list[i].fid = -1;
+		p->hist_list[i].qid = -1;
+	}
+	dev->data->ports[port_id] = p;
+
+	rte_smp_wmb();
+	p->initialized = 1;
+	return 0;
+}
+
+static void
+sw_port_release(void *port)
+{
+	struct sw_port *p = (void *)port;
+	if (p == NULL)
+		return;
+
+	qe_ring_destroy(p->rx_worker_ring);
+	qe_ring_destroy(p->cq_worker_ring);
+	memset(p, 0, sizeof(*p));
+}
 
 static int32_t
 qid_init(struct sw_evdev *sw, unsigned int idx, int type,
@@ -319,6 +398,8 @@ sw_probe(const char *name, const char *params)
 			.queue_setup = sw_queue_setup,
 			.queue_release = sw_queue_release,
 			.port_def_conf = sw_port_def_conf,
+			.port_setup = sw_port_setup,
+			.port_release = sw_port_release,
 	};
 
 	static const char *const args[] = {
