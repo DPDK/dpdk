@@ -67,7 +67,7 @@ typedef void (*aes_xcbc_expand_key_t)
 		(void *key, void *exp_k1, void *k2, void *k3);
 
 /** Multi-buffer library function pointer table */
-struct aesni_mb_ops {
+struct aesni_mb_op_fns {
 	struct {
 		init_mb_mgr_t init_mgr;
 		/**< Initialise scheduler  */
@@ -116,7 +116,7 @@ struct aesni_mb_ops {
 };
 
 
-static const struct aesni_mb_ops job_ops[] = {
+static const struct aesni_mb_op_fns job_ops[] = {
 		[RTE_AESNI_MB_NOT_SUPPORTED] = {
 			.job = {
 				NULL

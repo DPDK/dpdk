@@ -111,7 +111,7 @@ aesni_mb_get_chain_order(const struct rte_crypto_sym_xform *xform)
 
 /** Set session authentication parameters */
 static int
-aesni_mb_set_session_auth_parameters(const struct aesni_mb_ops *mb_ops,
+aesni_mb_set_session_auth_parameters(const struct aesni_mb_op_fns *mb_ops,
 		struct aesni_mb_session *sess,
 		const struct rte_crypto_sym_xform *xform)
 {
@@ -181,7 +181,7 @@ aesni_mb_set_session_auth_parameters(const struct aesni_mb_ops *mb_ops,
 
 /** Set session cipher parameters */
 static int
-aesni_mb_set_session_cipher_parameters(const struct aesni_mb_ops *mb_ops,
+aesni_mb_set_session_cipher_parameters(const struct aesni_mb_op_fns *mb_ops,
 		struct aesni_mb_session *sess,
 		const struct rte_crypto_sym_xform *xform)
 {
@@ -252,7 +252,7 @@ aesni_mb_set_session_cipher_parameters(const struct aesni_mb_ops *mb_ops,
 
 /** Parse crypto xform chain and set private session parameters */
 int
-aesni_mb_set_session_parameters(const struct aesni_mb_ops *mb_ops,
+aesni_mb_set_session_parameters(const struct aesni_mb_op_fns *mb_ops,
 		struct aesni_mb_session *sess,
 		const struct rte_crypto_sym_xform *xform)
 {
@@ -309,16 +309,43 @@ aesni_mb_set_session_parameters(const struct aesni_mb_ops *mb_ops,
 	return 0;
 }
 
+/**
+ * burst enqueue, place crypto operations on ingress queue for processing.
+ *
+ * @param __qp         Queue Pair to process
+ * @param ops          Crypto operations for processing
+ * @param nb_ops       Number of crypto operations for processing
+ *
+ * @return
+ * - Number of crypto operations enqueued
+ */
+static uint16_t
+aesni_mb_pmd_enqueue_burst(void *__qp, struct rte_crypto_op **ops,
+		uint16_t nb_ops)
+{
+	struct aesni_mb_qp *qp = __qp;
+
+	unsigned int nb_enqueued;
+
+	nb_enqueued = rte_ring_enqueue_burst(qp->ingress_queue,
+			(void **)ops, nb_ops, NULL);
+
+	qp->stats.enqueued_count += nb_enqueued;
+
+	return nb_enqueued;
+}
+
 /** Get multi buffer session */
-static struct aesni_mb_session *
+static inline struct aesni_mb_session *
 get_session(struct aesni_mb_qp *qp, struct rte_crypto_op *op)
 {
 	struct aesni_mb_session *sess = NULL;
 
 	if (op->sym->sess_type == RTE_CRYPTO_SYM_OP_WITH_SESSION) {
 		if (unlikely(op->sym->session->dev_type !=
-				RTE_CRYPTODEV_AESNI_MB_PMD))
+				RTE_CRYPTODEV_AESNI_MB_PMD)) {
 			return NULL;
+		}
 
 		sess = (struct aesni_mb_session *)op->sym->session->_private;
 	} else  {
@@ -330,7 +357,7 @@ get_session(struct aesni_mb_qp *qp, struct rte_crypto_op *op)
 		sess = (struct aesni_mb_session *)
 			((struct rte_cryptodev_sym_session *)_sess)->_private;
 
-		if (unlikely(aesni_mb_set_session_parameters(qp->ops,
+		if (unlikely(aesni_mb_set_session_parameters(qp->op_fns,
 				sess, op->sym->xform) != 0)) {
 			rte_mempool_put(qp->sess_mp, _sess);
 			sess = NULL;
@@ -353,18 +380,20 @@ get_session(struct aesni_mb_qp *qp, struct rte_crypto_op *op)
  * - Completed JOB_AES_HMAC structure pointer on success
  * - NULL pointer if completion of JOB_AES_HMAC structure isn't possible
  */
-static JOB_AES_HMAC *
-process_crypto_op(struct aesni_mb_qp *qp, struct rte_crypto_op *op,
-		struct aesni_mb_session *session)
+static inline int
+set_mb_job_params(JOB_AES_HMAC *job, struct aesni_mb_qp *qp,
+		struct rte_crypto_op *op)
 {
-	JOB_AES_HMAC *job;
-
 	struct rte_mbuf *m_src = op->sym->m_src, *m_dst;
+	struct aesni_mb_session *session;
 	uint16_t m_offset = 0;
 
-	job = (*qp->ops->job.get_next)(&qp->mb_mgr);
-	if (unlikely(job == NULL))
-		return job;
+	session = get_session(qp, op);
+	if (session == NULL) {
+		op->status = RTE_CRYPTO_OP_STATUS_INVALID_SESSION;
+		return -1;
+	}
+	op->status = RTE_CRYPTO_OP_STATUS_ENQUEUED;
 
 	/* Set crypto operation */
 	job->chain_order = session->chain_order;
@@ -399,7 +428,8 @@ process_crypto_op(struct aesni_mb_qp *qp, struct rte_crypto_op *op,
 		if (odata == NULL) {
 			MB_LOG_ERR("failed to allocate space in destination "
 					"mbuf for source data");
-			return NULL;
+			op->status = RTE_CRYPTO_OP_STATUS_ERROR;
+			return -1;
 		}
 
 		memcpy(odata, rte_pktmbuf_mtod(op->sym->m_src, void*),
@@ -418,7 +448,8 @@ process_crypto_op(struct aesni_mb_qp *qp, struct rte_crypto_op *op,
 		if (job->auth_tag_output == NULL) {
 			MB_LOG_ERR("failed to allocate space in output mbuf "
 					"for temp digest");
-			return NULL;
+			op->status = RTE_CRYPTO_OP_STATUS_ERROR;
+			return -1;
 		}
 
 		memset(job->auth_tag_output, 0,
@@ -453,7 +484,22 @@ process_crypto_op(struct aesni_mb_qp *qp, struct rte_crypto_op *op,
 	job->user_data = op;
 	job->user_data2 = m_dst;
 
-	return job;
+	return 0;
+}
+
+static inline void
+verify_digest(JOB_AES_HMAC *job, struct rte_crypto_op *op) {
+	struct rte_mbuf *m_dst = (struct rte_mbuf *)job->user_data2;
+
+	RTE_ASSERT(m_dst == NULL);
+
+	/* Verify digest if required */
+	if (memcmp(job->auth_tag_output, op->sym->auth.digest.data,
+			job->auth_tag_output_len_in_bytes) != 0)
+		op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
+
+	/* trim area used for digest from mbuf */
+	rte_pktmbuf_trim(m_dst,	get_digest_byte_length(job->hash_alg));
 }
 
 /**
@@ -466,37 +512,31 @@ process_crypto_op(struct aesni_mb_qp *qp, struct rte_crypto_op *op,
  * verification of supplied digest in the case of a HASH_CIPHER operation
  * - Returns NULL on invalid job
  */
-static struct rte_crypto_op *
+static inline struct rte_crypto_op *
 post_process_mb_job(struct aesni_mb_qp *qp, JOB_AES_HMAC *job)
 {
-	struct rte_crypto_op *op =
-			(struct rte_crypto_op *)job->user_data;
-	struct rte_mbuf *m_dst =
-			(struct rte_mbuf *)job->user_data2;
+	struct rte_crypto_op *op = (struct rte_crypto_op *)job->user_data;
+
 	struct aesni_mb_session *sess;
 
-	if (op == NULL || m_dst == NULL)
-		return NULL;
+	RTE_ASSERT(op == NULL);
 
-	/* set status as successful by default */
-	op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
+	if (unlikely(op->status == RTE_CRYPTO_OP_STATUS_ENQUEUED)) {
+		switch (job->status) {
+		case STS_COMPLETED:
+			op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
 
-	/* check if job has been processed  */
-	if (unlikely(job->status != STS_COMPLETED)) {
-		op->status = RTE_CRYPTO_OP_STATUS_ERROR;
-		return op;
-	} else if (job->hash_alg != NULL_HASH) {
-		sess = (struct aesni_mb_session *)op->sym->session->_private;
-		if (sess->auth.operation == RTE_CRYPTO_AUTH_OP_VERIFY) {
-			/* Verify digest if required */
-			if (memcmp(job->auth_tag_output,
-					op->sym->auth.digest.data,
-					job->auth_tag_output_len_in_bytes) != 0)
-				op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
+			if (job->hash_alg != NULL_HASH) {
+				sess = (struct aesni_mb_session *)
+						op->sym->session->_private;
 
-			/* trim area used for digest from mbuf */
-			rte_pktmbuf_trim(m_dst,
-					get_digest_byte_length(job->hash_alg));
+				if (sess->auth.operation ==
+						RTE_CRYPTO_AUTH_OP_VERIFY)
+					verify_digest(job, op);
+			}
+			break;
+		default:
+			op->status = RTE_CRYPTO_OP_STATUS_ERROR;
 		}
 	}
 
@@ -520,97 +560,54 @@ post_process_mb_job(struct aesni_mb_qp *qp, JOB_AES_HMAC *job)
  * - Number of processed jobs
  */
 static unsigned
-handle_completed_jobs(struct aesni_mb_qp *qp, JOB_AES_HMAC *job)
+handle_completed_jobs(struct aesni_mb_qp *qp, JOB_AES_HMAC *job,
+		struct rte_crypto_op **ops, uint16_t nb_ops)
 {
 	struct rte_crypto_op *op = NULL;
 	unsigned processed_jobs = 0;
 
-	while (job) {
-		processed_jobs++;
+	while (job != NULL && processed_jobs < nb_ops) {
 		op = post_process_mb_job(qp, job);
-		if (op)
-			rte_ring_enqueue(qp->processed_ops, (void *)op);
-		else
+
+		if (op) {
+			ops[processed_jobs++] = op;
+			qp->stats.dequeued_count++;
+		} else {
 			qp->stats.dequeue_err_count++;
-		job = (*qp->ops->job.get_completed_job)(&qp->mb_mgr);
+			break;
+		}
+
+		job = (*qp->op_fns->job.get_completed_job)(&qp->mb_mgr);
 	}
 
 	return processed_jobs;
 }
 
-static uint16_t
-aesni_mb_pmd_enqueue_burst(void *queue_pair, struct rte_crypto_op **ops,
+static inline uint16_t
+flush_mb_mgr(struct aesni_mb_qp *qp, struct rte_crypto_op **ops,
 		uint16_t nb_ops)
 {
-	struct aesni_mb_session *sess;
-	struct aesni_mb_qp *qp = queue_pair;
+	int processed_ops = 0;
 
-	JOB_AES_HMAC *job = NULL;
+	/* Flush the remaining jobs */
+	JOB_AES_HMAC *job = (*qp->op_fns->job.flush_job)(&qp->mb_mgr);
 
-	int i, processed_jobs = 0;
-
-	for (i = 0; i < nb_ops; i++) {
-#ifdef RTE_LIBRTE_PMD_AESNI_MB_DEBUG
-		if (unlikely(ops[i]->type != RTE_CRYPTO_OP_TYPE_SYMMETRIC)) {
-			MB_LOG_ERR("PMD only supports symmetric crypto "
-				"operation requests, op (%p) is not a "
-				"symmetric operation.", ops[i]);
-			qp->stats.enqueue_err_count++;
-			goto flush_jobs;
-		}
-
-		if (!rte_pktmbuf_is_contiguous(ops[i]->sym->m_src) ||
-				(ops[i]->sym->m_dst != NULL &&
-				!rte_pktmbuf_is_contiguous(
-						ops[i]->sym->m_dst))) {
-			MB_LOG_ERR("PMD supports only contiguous mbufs, "
-				"op (%p) provides noncontiguous mbuf as "
-				"source/destination buffer.\n", ops[i]);
-			ops[i]->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
-			qp->stats.enqueue_err_count++;
-			goto flush_jobs;
-		}
-#endif
-
-		sess = get_session(qp, ops[i]);
-		if (unlikely(sess == NULL)) {
-			qp->stats.enqueue_err_count++;
-			goto flush_jobs;
-		}
-
-		job = process_crypto_op(qp, ops[i], sess);
-		if (unlikely(job == NULL)) {
-			qp->stats.enqueue_err_count++;
-			goto flush_jobs;
-		}
-
-		/* Submit Job */
-		job = (*qp->ops->job.submit)(&qp->mb_mgr);
-
-		/*
-		 * If submit returns a processed job then handle it,
-		 * before submitting subsequent jobs
-		 */
-		if (job)
-			processed_jobs += handle_completed_jobs(qp, job);
-	}
-
-	if (processed_jobs == 0)
-		goto flush_jobs;
-	else
-		qp->stats.enqueued_count += processed_jobs;
-	return i;
-
-flush_jobs:
-	/*
-	 * If we haven't processed any jobs in submit loop, then flush jobs
-	 * queue to stop the output stalling
-	 */
-	job = (*qp->ops->job.flush_job)(&qp->mb_mgr);
 	if (job)
-		qp->stats.enqueued_count += handle_completed_jobs(qp, job);
+		processed_ops += handle_completed_jobs(qp, job,
+				&ops[processed_ops], nb_ops - processed_ops);
 
-	return i;
+	return processed_ops;
+}
+
+static inline JOB_AES_HMAC *
+set_job_null_op(JOB_AES_HMAC *job)
+{
+	job->chain_order = HASH_CIPHER;
+	job->cipher_mode = NULL_CIPHER;
+	job->hash_alg = NULL_HASH;
+	job->cipher_direction = DECRYPT;
+
+	return job;
 }
 
 static uint16_t
@@ -619,15 +616,55 @@ aesni_mb_pmd_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
 {
 	struct aesni_mb_qp *qp = queue_pair;
 
-	unsigned nb_dequeued;
+	struct rte_crypto_op *op;
+	JOB_AES_HMAC *job;
 
-	nb_dequeued = rte_ring_dequeue_burst(qp->processed_ops,
-			(void **)ops, nb_ops, NULL);
-	qp->stats.dequeued_count += nb_dequeued;
+	int retval, processed_jobs = 0;
 
-	return nb_dequeued;
+	do {
+		/* Get next operation to process from ingress queue */
+		retval = rte_ring_dequeue(qp->ingress_queue, (void **)&op);
+		if (retval < 0)
+			break;
+
+		/* Get next free mb job struct from mb manager */
+		job = (*qp->op_fns->job.get_next)(&qp->mb_mgr);
+		if (unlikely(job == NULL)) {
+			/* if no free mb job structs we need to flush mb_mgr */
+			processed_jobs += flush_mb_mgr(qp,
+					&ops[processed_jobs],
+					(nb_ops - processed_jobs) - 1);
+
+			job = (*qp->op_fns->job.get_next)(&qp->mb_mgr);
+		}
+
+		retval = set_mb_job_params(job, qp, op);
+		if (unlikely(retval != 0)) {
+			qp->stats.dequeue_err_count++;
+			set_job_null_op(job);
+		}
+
+		/* Submit job to multi-buffer for processing */
+		job = (*qp->op_fns->job.submit)(&qp->mb_mgr);
+
+		/*
+		 * If submit returns a processed job then handle it,
+		 * before submitting subsequent jobs
+		 */
+		if (job)
+			processed_jobs += handle_completed_jobs(qp, job,
+					&ops[processed_jobs],
+					nb_ops - processed_jobs);
+
+	} while (processed_jobs < nb_ops);
+
+	if (processed_jobs < 1)
+		processed_jobs += flush_mb_mgr(qp,
+				&ops[processed_jobs],
+				nb_ops - processed_jobs);
+
+	return processed_jobs;
 }
-
 
 static int cryptodev_aesni_mb_remove(const char *name);
 
@@ -713,7 +750,6 @@ init_error:
 	cryptodev_aesni_mb_remove(init_params->name);
 	return -EFAULT;
 }
-
 
 static int
 cryptodev_aesni_mb_probe(const char *name,

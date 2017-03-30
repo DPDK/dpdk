@@ -151,12 +151,12 @@ struct aesni_mb_qp {
 	/**< Queue Pair Identifier */
 	char name[RTE_CRYPTODEV_NAME_LEN];
 	/**< Unique Queue Pair Name */
-	const struct aesni_mb_ops *ops;
+	const struct aesni_mb_op_fns *op_fns;
 	/**< Vector mode dependent pointer table of the multi-buffer APIs */
 	MB_MGR mb_mgr;
 	/**< Multi-buffer instance */
-	struct rte_ring *processed_ops;
-	/**< Ring for placing process operations */
+	struct rte_ring *ingress_queue;
+       /**< Ring for placing operations ready for processing */
 	struct rte_mempool *sess_mp;
 	/**< Session Mempool */
 	struct rte_cryptodev_stats stats;
@@ -227,7 +227,7 @@ struct aesni_mb_session {
  *
  */
 extern int
-aesni_mb_set_session_parameters(const struct aesni_mb_ops *mb_ops,
+aesni_mb_set_session_parameters(const struct aesni_mb_op_fns *mb_ops,
 		struct aesni_mb_session *sess,
 		const struct rte_crypto_sym_xform *xform);
 
