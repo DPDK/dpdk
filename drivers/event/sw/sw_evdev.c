@@ -557,6 +557,7 @@ sw_probe(const char *name, const char *params)
 	dev->enqueue_burst = sw_event_enqueue_burst;
 	dev->dequeue = sw_event_dequeue;
 	dev->dequeue_burst = sw_event_dequeue_burst;
+	dev->schedule = sw_event_schedule;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;

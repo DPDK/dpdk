@@ -248,8 +248,18 @@ struct sw_evdev {
 	/* Cache how many packets are in each cq */
 	uint16_t cq_ring_space[SW_PORTS_MAX] __rte_cache_aligned;
 
-	int32_t sched_quanta;
+	/* Array of pointers to load-balanced QIDs sorted by priority level */
+	struct sw_qid *qids_prioritized[RTE_EVENT_MAX_QUEUES_PER_DEV];
 
+	/* Stats */
+	struct sw_point_stats stats __rte_cache_aligned;
+	uint64_t sched_called;
+	int32_t sched_quanta;
+	uint64_t sched_no_iq_enqueues;
+	uint64_t sched_no_cq_enqueues;
+	uint64_t sched_cq_qid_called;
+
+	uint8_t started;
 	uint32_t credit_update_quanta;
 };
 
@@ -272,5 +282,6 @@ uint16_t sw_event_enqueue_burst(void *port, const struct rte_event ev[],
 uint16_t sw_event_dequeue(void *port, struct rte_event *ev, uint64_t wait);
 uint16_t sw_event_dequeue_burst(void *port, struct rte_event *ev, uint16_t num,
 			uint64_t wait);
+void sw_event_schedule(struct rte_eventdev *dev);
 
 #endif /* _SW_EVDEV_H_ */
