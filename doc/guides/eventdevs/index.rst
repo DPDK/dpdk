@@ -1,6 +1,5 @@
 ..  BSD LICENSE
-    Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
-    All rights reserved.
+    Copyright(c) 2017 Intel Corporation. All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following conditions
@@ -28,23 +27,14 @@
     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-DPDK documentation
-==================
+Event Device Drivers
+====================
+
+The following are a list of event device PMDs, which can be used from an
+application trough the eventdev API.
 
 .. toctree::
-   :maxdepth: 1
+    :maxdepth: 2
+    :numbered:
 
-   linux_gsg/index
-   freebsd_gsg/index
-   sample_app_ug/index
-   prog_guide/index
-   howto/index
-   tools/index
-   testpmd_app_ug/index
-   nics/index
-   cryptodevs/index
-   eventdevs/index
-   xen/index
-   contributing/index
-   rel_notes/index
-   faq/index
+    sw
