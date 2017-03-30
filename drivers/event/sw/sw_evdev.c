@@ -442,6 +442,79 @@ sw_info_get(struct rte_eventdev *dev, struct rte_event_dev_info *info)
 }
 
 static int
+sw_start(struct rte_eventdev *dev)
+{
+	unsigned int i, j;
+	struct sw_evdev *sw = sw_pmd_priv(dev);
+	/* check all ports are set up */
+	for (i = 0; i < sw->port_count; i++)
+		if (sw->ports[i].rx_worker_ring == NULL) {
+			SW_LOG_ERR("Port %d not configured\n", i);
+			return -ESTALE;
+		}
+
+	/* check all queues are configured and mapped to ports*/
+	for (i = 0; i < sw->qid_count; i++)
+		if (sw->qids[i].iq[0] == NULL ||
+				sw->qids[i].cq_num_mapped_cqs == 0) {
+			SW_LOG_ERR("Queue %d not configured\n", i);
+			return -ENOLINK;
+		}
+
+	/* build up our prioritized array of qids */
+	/* We don't use qsort here, as if all/multiple entries have the same
+	 * priority, the result is non-deterministic. From "man 3 qsort":
+	 * "If two members compare as equal, their order in the sorted
+	 * array is undefined."
+	 */
+	uint32_t qidx = 0;
+	for (j = 0; j <= RTE_EVENT_DEV_PRIORITY_LOWEST; j++) {
+		for (i = 0; i < sw->qid_count; i++) {
+			if (sw->qids[i].priority == j) {
+				sw->qids_prioritized[qidx] = &sw->qids[i];
+				qidx++;
+			}
+		}
+	}
+
+	rte_smp_wmb();
+	sw->started = 1;
+
+	return 0;
+}
+
+static void
+sw_stop(struct rte_eventdev *dev)
+{
+	struct sw_evdev *sw = sw_pmd_priv(dev);
+	sw->started = 0;
+	rte_smp_wmb();
+}
+
+static int
+sw_close(struct rte_eventdev *dev)
+{
+	struct sw_evdev *sw = sw_pmd_priv(dev);
+	uint32_t i;
+
+	for (i = 0; i < sw->qid_count; i++)
+		sw_queue_release(dev, i);
+	sw->qid_count = 0;
+
+	for (i = 0; i < sw->port_count; i++)
+		sw_port_release(&sw->ports[i]);
+	sw->port_count = 0;
+
+	memset(&sw->stats, 0, sizeof(sw->stats));
+	sw->sched_called = 0;
+	sw->sched_no_iq_enqueues = 0;
+	sw->sched_no_cq_enqueues = 0;
+	sw->sched_cq_qid_called = 0;
+
+	return 0;
+}
+
+static int
 assign_numa_node(const char *key __rte_unused, const char *value, void *opaque)
 {
 	int *socket_id = opaque;
@@ -477,6 +550,9 @@ sw_probe(const char *name, const char *params)
 	static const struct rte_eventdev_ops evdev_sw_ops = {
 			.dev_configure = sw_dev_configure,
 			.dev_infos_get = sw_info_get,
+			.dev_close = sw_close,
+			.dev_start = sw_start,
+			.dev_stop = sw_stop,
 
 			.queue_def_conf = sw_queue_def_conf,
 			.queue_setup = sw_queue_setup,
