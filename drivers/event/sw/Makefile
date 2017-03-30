@@ -1,7 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2016 Cavium networks. All rights reserved.
-#   All rights reserved.
+#   Copyright(c) 2016-2017 Intel Corporation. All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
 #   modification, are permitted provided that the following conditions
@@ -13,7 +12,7 @@
 #       notice, this list of conditions and the following disclaimer in
 #       the documentation and/or other materials provided with the
 #       distribution.
-#     * Neither the name of Cavium networks nor the names of its
+#     * Neither the name of Intel Corporation nor the names of its
 #       contributors may be used to endorse or promote products derived
 #       from this software without specific prior written permission.
 #
@@ -31,11 +30,30 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-core-libs := librte_eal librte_eventdev
+# library name
+LIB = librte_pmd_sw_event.a
 
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_SKELETON_EVENTDEV) += skeleton
-DEPDIRS-skeleton = $(core-libs)
-DIRS-$(CONFIG_RTE_LIBRTE_PMD_SW_EVENTDEV) += sw
-DEPDIRS-sw = $(core-libs) librte_kvargs librte_ring
+# build flags
+CFLAGS += -O3
+CFLAGS += $(WERROR_FLAGS)
+# for older GCC versions, allow us to initialize an event using
+# designated initializers.
+ifeq ($(CONFIG_RTE_TOOLCHAIN_GCC),y)
+ifeq ($(shell test $(GCC_VERSION) -le 50 && echo 1), 1)
+CFLAGS += -Wno-missing-field-initializers
+endif
+endif
 
-include $(RTE_SDK)/mk/rte.subdir.mk
+# library version
+LIBABIVER := 1
+
+# versioning export map
+EXPORT_MAP := rte_pmd_evdev_sw_version.map
+
+# library source files
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_SW_EVENTDEV) += sw_evdev.c
+
+# export include files
+SYMLINK-y-include +=
+
+include $(RTE_SDK)/mk/rte.lib.mk
