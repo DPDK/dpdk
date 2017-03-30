@@ -39,5 +39,6 @@ HowTo Guides
     lm_virtio_vhost_user
     flow_bifurcation
     pvp_reference_benchmark
+    vfd
     virtio_user_for_container_networking
     virtio_user_as_exceptional_path
