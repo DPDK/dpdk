@@ -40,8 +40,8 @@
 
 #include "rte_aesni_mb_pmd_private.h"
 
-typedef void (*hash_one_block_t)(void *data, void *digest);
-typedef void (*aes_keyexp_t)(void *key, void *enc_exp_keys, void *dec_exp_keys);
+typedef void (*hash_one_block_t)(const void *data, void *digest);
+typedef void (*aes_keyexp_t)(const void *key, void *enc_exp_keys, void *dec_exp_keys);
 
 /**
  * Calculate the authentication pre-computes

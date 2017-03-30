@@ -48,23 +48,23 @@ enum aesni_mb_vector_mode {
 	RTE_AESNI_MB_AVX512
 };
 
-typedef void (*md5_one_block_t)(void *data, void *digest);
+typedef void (*md5_one_block_t)(const void *data, void *digest);
 
-typedef void (*sha1_one_block_t)(void *data, void *digest);
-typedef void (*sha224_one_block_t)(void *data, void *digest);
-typedef void (*sha256_one_block_t)(void *data, void *digest);
-typedef void (*sha384_one_block_t)(void *data, void *digest);
-typedef void (*sha512_one_block_t)(void *data, void *digest);
+typedef void (*sha1_one_block_t)(const void *data, void *digest);
+typedef void (*sha224_one_block_t)(const void *data, void *digest);
+typedef void (*sha256_one_block_t)(const void *data, void *digest);
+typedef void (*sha384_one_block_t)(const void *data, void *digest);
+typedef void (*sha512_one_block_t)(const void *data, void *digest);
 
 typedef void (*aes_keyexp_128_t)
-		(void *key, void *enc_exp_keys, void *dec_exp_keys);
+		(const void *key, void *enc_exp_keys, void *dec_exp_keys);
 typedef void (*aes_keyexp_192_t)
-		(void *key, void *enc_exp_keys, void *dec_exp_keys);
+		(const void *key, void *enc_exp_keys, void *dec_exp_keys);
 typedef void (*aes_keyexp_256_t)
-		(void *key, void *enc_exp_keys, void *dec_exp_keys);
+		(const void *key, void *enc_exp_keys, void *dec_exp_keys);
 
 typedef void (*aes_xcbc_expand_key_t)
-		(void *key, void *exp_k1, void *k2, void *k3);
+		(const void *key, void *exp_k1, void *k2, void *k3);
 
 /** Multi-buffer library function pointer table */
 struct aesni_mb_op_fns {
