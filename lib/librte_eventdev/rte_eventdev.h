@@ -757,7 +757,8 @@ rte_event_port_count(uint8_t dev_id);
  *   Event device identifier
  * @return
  *   - 0: Success, device started.
- *   - <0: Error code of the driver device start function.
+ *   - -ESTALE : Not all ports of the device are configured
+ *   - -ENOLINK: Not all queues are linked, which could lead to deadlock.
  */
 int
 rte_event_dev_start(uint8_t dev_id);
