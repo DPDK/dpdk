@@ -209,7 +209,8 @@ rte_cryptodev_scheduler_slave_attach(uint8_t scheduler_id, uint8_t slave_id)
 	}
 
 	sched_ctx = dev->data->dev_private;
-	if (sched_ctx->nb_slaves >= MAX_SLAVES_NUM) {
+	if (sched_ctx->nb_slaves >=
+			RTE_CRYPTODEV_SCHEDULER_MAX_NB_SLAVES) {
 		CS_LOG_ERR("Too many slaves attached");
 		return -ENOMEM;
 	}
@@ -482,4 +483,35 @@ rte_cryptodev_scheduler_load_user_scheduler(uint8_t scheduler_id,
 	sched_ctx->mode = scheduler->mode;
 
 	return 0;
+}
+
+int
+rte_cryptodev_scheduler_slaves_get(uint8_t scheduler_id, uint8_t *slaves)
+{
+	struct rte_cryptodev *dev = rte_cryptodev_pmd_get_dev(scheduler_id);
+	struct scheduler_ctx *sched_ctx;
+	uint32_t nb_slaves = 0;
+
+	if (!dev) {
+		CS_LOG_ERR("Operation not supported");
+		return -ENOTSUP;
+	}
+
+	if (dev->dev_type != RTE_CRYPTODEV_SCHEDULER_PMD) {
+		CS_LOG_ERR("Operation not supported");
+		return -ENOTSUP;
+	}
+
+	sched_ctx = dev->data->dev_private;
+
+	nb_slaves = sched_ctx->nb_slaves;
+
+	if (slaves && nb_slaves) {
+		uint32_t i;
+
+		for (i = 0; i < nb_slaves; i++)
+			slaves[i] = sched_ctx->slaves[i].dev_id;
+	}
+
+	return (int)nb_slaves;
 }

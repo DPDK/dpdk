@@ -36,11 +36,6 @@
 
 #include "rte_cryptodev_scheduler.h"
 
-/**< Maximum number of bonded devices per devices */
-#ifndef MAX_SLAVES_NUM
-#define MAX_SLAVES_NUM				(8)
-#endif
-
 #define PER_SLAVE_BUFF_SIZE			(256)
 
 #define CS_LOG_ERR(fmt, args...)					\
@@ -80,7 +75,7 @@ struct scheduler_ctx {
 
 	uint32_t max_nb_queue_pairs;
 
-	struct scheduler_slave slaves[MAX_SLAVES_NUM];
+	struct scheduler_slave slaves[RTE_CRYPTODEV_SCHEDULER_MAX_NB_SLAVES];
 	uint32_t nb_slaves;
 
 	enum rte_cryptodev_scheduler_mode mode;
@@ -103,7 +98,8 @@ struct scheduler_qp_ctx {
 } __rte_cache_aligned;
 
 struct scheduler_session {
-	struct rte_cryptodev_sym_session *sessions[MAX_SLAVES_NUM];
+	struct rte_cryptodev_sym_session *sessions[
+			RTE_CRYPTODEV_SCHEDULER_MAX_NB_SLAVES];
 };
 
 static inline uint16_t __attribute__((always_inline))

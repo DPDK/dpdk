@@ -44,7 +44,7 @@
 struct scheduler_init_params {
 	struct rte_crypto_vdev_init_params def_p;
 	uint32_t nb_slaves;
-	uint8_t slaves[MAX_SLAVES_NUM];
+	uint8_t slaves[RTE_CRYPTODEV_SCHEDULER_MAX_NB_SLAVES];
 };
 
 #define RTE_CRYPTODEV_VDEV_NAME				("name")
@@ -222,7 +222,7 @@ parse_slave_arg(const char *key __rte_unused,
 		return -1;
 	}
 
-	if (param->nb_slaves >= MAX_SLAVES_NUM - 1) {
+	if (param->nb_slaves >= RTE_CRYPTODEV_SCHEDULER_MAX_NB_SLAVES - 1) {
 		CS_LOG_ERR("Too many slaves.\n");
 		return -1;
 	}

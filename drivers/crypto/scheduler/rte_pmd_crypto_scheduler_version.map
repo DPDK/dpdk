@@ -10,3 +10,10 @@ DPDK_17.02 {
 	rte_cryptodev_scheduler_ordering_get;
 
 };
+
+DPDK_17.05 {
+	global:
+
+	rte_cryptodev_scheduler_slaves_get;
+
+} DPDK_17.02;

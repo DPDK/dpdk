@@ -37,7 +37,7 @@
 #include "scheduler_pmd_private.h"
 
 struct rr_scheduler_qp_ctx {
-	struct scheduler_slave slaves[MAX_SLAVES_NUM];
+	struct scheduler_slave slaves[RTE_CRYPTODEV_SCHEDULER_MAX_NB_SLAVES];
 	uint32_t nb_slaves;
 
 	uint32_t last_enq_slave_idx;
@@ -211,7 +211,8 @@ scheduler_start(struct rte_cryptodev *dev)
 				qp_ctx->private_qp_ctx;
 		uint32_t j;
 
-		memset(rr_qp_ctx->slaves, 0, MAX_SLAVES_NUM *
+		memset(rr_qp_ctx->slaves, 0,
+				RTE_CRYPTODEV_SCHEDULER_MAX_NB_SLAVES *
 				sizeof(struct scheduler_slave));
 		for (j = 0; j < sched_ctx->nb_slaves; j++) {
 			rr_qp_ctx->slaves[j].dev_id =
