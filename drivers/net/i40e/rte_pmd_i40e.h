@@ -66,6 +66,47 @@ struct rte_pmd_i40e_mb_event_param {
 };
 
 /**
+ * Option of package processing.
+ */
+enum rte_pmd_i40e_package_op {
+	RTE_PMD_I40E_PKG_OP_UNDEFINED = 0,
+	RTE_PMD_I40E_PKG_OP_WR_ADD,   /**< load package and add to info list */
+	RTE_PMD_I40E_PKG_OP_MAX = 32
+};
+
+#define RTE_PMD_I40E_DDP_NAME_SIZE 32
+
+/**
+ * Version for dynamic device personalization.
+ * Version in "major.minor.update.draft" format.
+ */
+struct rte_pmd_i40e_ddp_version {
+	uint8_t major;
+	uint8_t minor;
+	uint8_t update;
+	uint8_t draft;
+};
+
+/**
+ * Profile information in profile info list.
+ */
+struct rte_pmd_i40e_profile_info {
+	uint32_t track_id;
+	struct rte_pmd_i40e_ddp_version version;
+	uint8_t owner;
+	uint8_t reserved[7];
+	uint8_t name[RTE_PMD_I40E_DDP_NAME_SIZE];
+};
+
+/**
+ * Profile information list returned from HW.
+ */
+struct rte_pmd_i40e_profile_list {
+	uint32_t p_count;
+	struct rte_pmd_i40e_profile_info p_info[1];
+};
+
+/**
  * Notify VF when PF link status changes.
  *
  * @param port
@@ -417,5 +458,26 @@ int rte_pmd_i40e_set_vf_tc_max_bw(uint8_t port,
  *   - (-ENOTSUP) not supported by firmware.
  */
 int rte_pmd_i40e_set_tc_strict_prio(uint8_t port, uint8_t tc_map);
+
+/**
+ * Load/Unload a ddp package
+ *
+ * @param port
+ *    The port identifier of the Ethernet device.
+ * @param buff
+ *    buffer of package.
+ * @param size
+ *    size of buffer.
+ * @param op
+ *   Operation of package processing
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port* invalid.
+ *   - (-EINVAL) if bad parameter.
+ *   - (1) if profile exists.
+ */
+int rte_pmd_i40e_process_ddp_package(uint8_t port, uint8_t *buff,
+				     uint32_t size,
+				     enum rte_pmd_i40e_package_op op);
 
 #endif /* _PMD_I40E_H_ */

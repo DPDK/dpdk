@@ -11866,3 +11866,210 @@ rte_pmd_i40e_set_tc_strict_prio(uint8_t port, uint8_t tc_map)
 
 	return ret;
 }
+
+static void
+i40e_generate_profile_info_sec(char *name, struct i40e_ddp_version *version,
+			       uint32_t track_id, uint8_t *profile_info_sec,
+			       bool add)
+{
+	struct i40e_profile_section_header *sec = NULL;
+	struct i40e_profile_info *pinfo;
+
+	sec = (struct i40e_profile_section_header *)profile_info_sec;
+	sec->tbl_size = 1;
+	sec->data_end = sizeof(struct i40e_profile_section_header) +
+		sizeof(struct i40e_profile_info);
+	sec->section.type = SECTION_TYPE_INFO;
+	sec->section.offset = sizeof(struct i40e_profile_section_header);
+	sec->section.size = sizeof(struct i40e_profile_info);
+	pinfo = (struct i40e_profile_info *)(profile_info_sec +
+					     sec->section.offset);
+	pinfo->track_id = track_id;
+	memcpy(pinfo->name, name, I40E_DDP_NAME_SIZE);
+	memcpy(&pinfo->version, version, sizeof(struct i40e_ddp_version));
+	if (add)
+		pinfo->op = I40E_DDP_ADD_TRACKID;
+	else
+		pinfo->op = I40E_DDP_REMOVE_TRACKID;
+}
+
+static enum i40e_status_code
+i40e_add_rm_profile_info(struct i40e_hw *hw, uint8_t *profile_info_sec)
+{
+	enum i40e_status_code status = I40E_SUCCESS;
+	struct i40e_profile_section_header *sec;
+	uint32_t track_id;
+	uint32_t offset = 0;
+	uint32_t info = 0;
+
+	sec = (struct i40e_profile_section_header *)profile_info_sec;
+	track_id = ((struct i40e_profile_info *)(profile_info_sec +
+					 sec->section.offset))->track_id;
+
+	status = i40e_aq_write_ddp(hw, (void *)sec, sec->data_end,
+				   track_id, &offset, &info, NULL);
+	if (status)
+		PMD_DRV_LOG(ERR, "Failed to add/remove profile info: "
+			    "offset %d, info %d",
+			    offset, info);
+
+	return status;
+}
+
+#define I40E_PROFILE_INFO_SIZE 48
+#define I40E_MAX_PROFILE_NUM 16
+
+/* Check if the profile info exists */
+static int
+i40e_check_profile_info(uint8_t port, uint8_t *profile_info_sec)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port];
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint8_t *buff;
+	struct rte_pmd_i40e_profile_list *p_list;
+	struct rte_pmd_i40e_profile_info *pinfo, *p;
+	uint32_t i;
+	int ret;
+
+	buff = rte_zmalloc("pinfo_list",
+			   (I40E_PROFILE_INFO_SIZE * I40E_MAX_PROFILE_NUM + 4),
+			   0);
+	if (!buff) {
+		PMD_DRV_LOG(ERR, "failed to allocate memory");
+		return -1;
+	}
+
+	ret = i40e_aq_get_ddp_list(hw, (void *)buff,
+		      (I40E_PROFILE_INFO_SIZE * I40E_MAX_PROFILE_NUM + 4),
+		      0, NULL);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Failed to get profile info list.");
+		rte_free(buff);
+		return -1;
+	}
+	p_list = (struct rte_pmd_i40e_profile_list *)buff;
+	pinfo = (struct rte_pmd_i40e_profile_info *)(profile_info_sec +
+			     sizeof(struct i40e_profile_section_header));
+	for (i = 0; i < p_list->p_count; i++) {
+		p = &p_list->p_info[i];
+		if ((pinfo->track_id == p->track_id) &&
+		    !memcmp(&pinfo->version, &p->version,
+			    sizeof(struct i40e_ddp_version)) &&
+		    !memcmp(&pinfo->name, &p->name,
+			    I40E_DDP_NAME_SIZE)) {
+			PMD_DRV_LOG(INFO, "Profile exists.");
+			rte_free(buff);
+			return 1;
+		}
+	}
+
+	rte_free(buff);
+	return 0;
+}
+
+int
+rte_pmd_i40e_process_ddp_package(uint8_t port, uint8_t *buff,
+				 uint32_t size,
+				 enum rte_pmd_i40e_package_op op)
+{
+	struct rte_eth_dev *dev;
+	struct i40e_hw *hw;
+	struct i40e_package_header *pkg_hdr;
+	struct i40e_generic_seg_header *profile_seg_hdr;
+	struct i40e_generic_seg_header *metadata_seg_hdr;
+	uint32_t track_id;
+	uint8_t *profile_info_sec;
+	int is_exist;
+	enum i40e_status_code status = I40E_SUCCESS;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+
+	if (!is_device_supported(dev, &rte_i40e_pmd))
+		return -ENOTSUP;
+
+	hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	if (size < (sizeof(struct i40e_package_header) +
+		    sizeof(struct i40e_metadata_segment) +
+		    sizeof(uint32_t) * 2)) {
+		PMD_DRV_LOG(ERR, "Buff is invalid.");
+		return -EINVAL;
+	}
+
+	pkg_hdr = (struct i40e_package_header *)buff;
+
+	if (!pkg_hdr) {
+		PMD_DRV_LOG(ERR, "Failed to fill the package structure");
+		return -EINVAL;
+	}
+
+	if (pkg_hdr->segment_count < 2) {
+		PMD_DRV_LOG(ERR, "Segment_count should be 2 at least.");
+		return -EINVAL;
+	}
+
+	/* Find metadata segment */
+	metadata_seg_hdr = i40e_find_segment_in_package(SEGMENT_TYPE_METADATA,
+							pkg_hdr);
+	if (!metadata_seg_hdr) {
+		PMD_DRV_LOG(ERR, "Failed to find metadata segment header");
+		return -EINVAL;
+	}
+	track_id = ((struct i40e_metadata_segment *)metadata_seg_hdr)->track_id;
+
+	/* Find profile segment */
+	profile_seg_hdr = i40e_find_segment_in_package(SEGMENT_TYPE_I40E,
+						       pkg_hdr);
+	if (!profile_seg_hdr) {
+		PMD_DRV_LOG(ERR, "Failed to find profile segment header");
+		return -EINVAL;
+	}
+
+	profile_info_sec = rte_zmalloc("i40e_profile_info",
+			       sizeof(struct i40e_profile_section_header) +
+			       sizeof(struct i40e_profile_info),
+			       0);
+	if (!profile_info_sec) {
+		PMD_DRV_LOG(ERR, "Failed to allocate memory");
+		return -EINVAL;
+	}
+
+	if (op == RTE_PMD_I40E_PKG_OP_WR_ADD) {
+		/* Check if the profile exists */
+		i40e_generate_profile_info_sec(
+		     ((struct i40e_profile_segment *)profile_seg_hdr)->name,
+		     &((struct i40e_profile_segment *)profile_seg_hdr)->version,
+		     track_id, profile_info_sec, 1);
+		is_exist = i40e_check_profile_info(port, profile_info_sec);
+		if (is_exist > 0) {
+			PMD_DRV_LOG(ERR, "Profile already exists.");
+			rte_free(profile_info_sec);
+			return 1;
+		} else if (is_exist < 0) {
+			PMD_DRV_LOG(ERR, "Failed to check profile.");
+			rte_free(profile_info_sec);
+			return -EINVAL;
+		}
+
+		/* Write profile to HW */
+		status = i40e_write_profile(hw,
+				 (struct i40e_profile_segment *)profile_seg_hdr,
+				 track_id);
+		if (status) {
+			PMD_DRV_LOG(ERR, "Failed to write profile.");
+			rte_free(profile_info_sec);
+			return status;
+		}
+
+		/* Add profile info to info list */
+		status = i40e_add_rm_profile_info(hw, profile_info_sec);
+		if (status)
+			PMD_DRV_LOG(ERR, "Failed to add profile info.");
+	} else
+		PMD_DRV_LOG(ERR, "Operation not supported.");
+
+	rte_free(profile_info_sec);
+	return status;
+}
