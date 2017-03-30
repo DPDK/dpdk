@@ -346,6 +346,32 @@ parallel_test_group_list = [
 non_parallel_test_group_list = [
 
     {
+        "Prefix":    "eventdev",
+        "Memory":    "512",
+        "Tests":
+        [
+            {
+                "Name":    "Eventdev common autotest",
+                "Command": "eventdev_common_autotest",
+                "Func":    default_autotest,
+                "Report":  None,
+            },
+        ]
+    },
+    {
+        "Prefix":    "eventdev_sw",
+        "Memory":    "512",
+        "Tests":
+        [
+            {
+                "Name":    "Eventdev sw autotest",
+                "Command": "eventdev_sw_autotest",
+                "Func":    default_autotest,
+                "Report":  None,
+            },
+        ]
+    },
+    {
         "Prefix":    "kni",
         "Memory":    "512",
         "Tests":
