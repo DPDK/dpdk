@@ -159,6 +159,10 @@ enum index {
 	ITEM_SCTP_CKSUM,
 	ITEM_VXLAN,
 	ITEM_VXLAN_VNI,
+	ITEM_MPLS,
+	ITEM_MPLS_LABEL,
+	ITEM_GRE,
+	ITEM_GRE_PROTO,
 
 	/* Validate/create actions. */
 	ACTIONS,
@@ -432,6 +436,8 @@ static const enum index next_item[] = {
 	ITEM_TCP,
 	ITEM_SCTP,
 	ITEM_VXLAN,
+	ITEM_MPLS,
+	ITEM_GRE,
 	ZERO,
 };
 
@@ -534,6 +540,18 @@ static const enum index item_sctp[] = {
 
 static const enum index item_vxlan[] = {
 	ITEM_VXLAN_VNI,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_mpls[] = {
+	ITEM_MPLS_LABEL,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_gre[] = {
+	ITEM_GRE_PROTO,
 	ITEM_NEXT,
 	ZERO,
 };
@@ -1278,6 +1296,35 @@ static const struct token token_list[] = {
 		.help = "VXLAN identifier",
 		.next = NEXT(item_vxlan, NEXT_ENTRY(UNSIGNED), item_param),
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_vxlan, vni)),
+	},
+	[ITEM_MPLS] = {
+		.name = "mpls",
+		.help = "match MPLS header",
+		.priv = PRIV_ITEM(MPLS, sizeof(struct rte_flow_item_mpls)),
+		.next = NEXT(item_mpls),
+		.call = parse_vc,
+	},
+	[ITEM_MPLS_LABEL] = {
+		.name = "label",
+		.help = "MPLS label",
+		.next = NEXT(item_mpls, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_MASK_HTON(struct rte_flow_item_mpls,
+						  label_tc_s,
+						  "\xff\xff\xf0")),
+	},
+	[ITEM_GRE] = {
+		.name = "gre",
+		.help = "match GRE header",
+		.priv = PRIV_ITEM(GRE, sizeof(struct rte_flow_item_gre)),
+		.next = NEXT(item_gre),
+		.call = parse_vc,
+	},
+	[ITEM_GRE_PROTO] = {
+		.name = "protocol",
+		.help = "GRE protocol type",
+		.next = NEXT(item_gre, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_gre,
+					     protocol)),
 	},
 	/* Validate/create actions. */
 	[ACTIONS] = {

@@ -2481,6 +2481,14 @@ This section lists supported pattern items and their attributes, if any.
 
   - ``vni {unsigned}``: VXLAN identifier.
 
+- ``mpls``: match MPLS header.
+
+  - ``label {unsigned}``: MPLS label.
+
+- ``gre``: match GRE header.
+
+  - ``protocol {unsigned}``: protocol type.
+
 Actions list
 ^^^^^^^^^^^^
 

@@ -963,6 +963,8 @@ static const struct {
 	MK_FLOW_ITEM(TCP, sizeof(struct rte_flow_item_tcp)),
 	MK_FLOW_ITEM(SCTP, sizeof(struct rte_flow_item_sctp)),
 	MK_FLOW_ITEM(VXLAN, sizeof(struct rte_flow_item_vxlan)),
+	MK_FLOW_ITEM(MPLS, sizeof(struct rte_flow_item_mpls)),
+	MK_FLOW_ITEM(GRE, sizeof(struct rte_flow_item_gre)),
 };
 
 /** Compute storage space needed by item specification. */
