@@ -36,6 +36,7 @@
 #include <rte_memzone.h>
 #include <rte_kvargs.h>
 #include <rte_ring.h>
+#include <rte_errno.h>
 
 #include "sw_evdev.h"
 #include "iq_ring.h"
@@ -48,6 +49,88 @@
 
 static void
 sw_info_get(struct rte_eventdev *dev, struct rte_event_dev_info *info);
+
+static int
+sw_port_link(struct rte_eventdev *dev, void *port, const uint8_t queues[],
+		const uint8_t priorities[], uint16_t num)
+{
+	struct sw_port *p = port;
+	struct sw_evdev *sw = sw_pmd_priv(dev);
+	int i;
+
+	RTE_SET_USED(priorities);
+	for (i = 0; i < num; i++) {
+		struct sw_qid *q = &sw->qids[queues[i]];
+
+		/* check for qid map overflow */
+		if (q->cq_num_mapped_cqs >= RTE_DIM(q->cq_map)) {
+			rte_errno = -EDQUOT;
+			break;
+		}
+
+		if (p->is_directed && p->num_qids_mapped > 0) {
+			rte_errno = -EDQUOT;
+			break;
+		}
+
+		if (q->type == SW_SCHED_TYPE_DIRECT) {
+			/* check directed qids only map to one port */
+			if (p->num_qids_mapped > 0) {
+				rte_errno = -EDQUOT;
+				break;
+			}
+			/* check port only takes a directed flow */
+			if (num > 1) {
+				rte_errno = -EDQUOT;
+				break;
+			}
+
+			p->is_directed = 1;
+			p->num_qids_mapped = 1;
+		} else if (q->type == RTE_SCHED_TYPE_ORDERED) {
+			p->num_ordered_qids++;
+			p->num_qids_mapped++;
+		} else if (q->type == RTE_SCHED_TYPE_ATOMIC) {
+			p->num_qids_mapped++;
+		}
+
+		q->cq_map[q->cq_num_mapped_cqs] = p->id;
+		rte_smp_wmb();
+		q->cq_num_mapped_cqs++;
+	}
+	return i;
+}
+
+static int
+sw_port_unlink(struct rte_eventdev *dev, void *port, uint8_t queues[],
+		uint16_t nb_unlinks)
+{
+	struct sw_port *p = port;
+	struct sw_evdev *sw = sw_pmd_priv(dev);
+	unsigned int i, j;
+
+	int unlinked = 0;
+	for (i = 0; i < nb_unlinks; i++) {
+		struct sw_qid *q = &sw->qids[queues[i]];
+		for (j = 0; j < q->cq_num_mapped_cqs; j++) {
+			if (q->cq_map[j] == p->id) {
+				q->cq_map[j] =
+					q->cq_map[q->cq_num_mapped_cqs - 1];
+				rte_smp_wmb();
+				q->cq_num_mapped_cqs--;
+				unlinked++;
+
+				p->num_qids_mapped--;
+
+				if (q->type == RTE_SCHED_TYPE_ORDERED)
+					p->num_ordered_qids--;
+
+				continue;
+			}
+		}
+	}
+	return unlinked;
+}
 
 static int
 sw_port_setup(struct rte_eventdev *dev, uint8_t port_id,
@@ -400,6 +483,8 @@ sw_probe(const char *name, const char *params)
 			.port_def_conf = sw_port_def_conf,
 			.port_setup = sw_port_setup,
 			.port_release = sw_port_release,
+			.port_link = sw_port_link,
+			.port_unlink = sw_port_unlink,
 	};
 
 	static const char *const args[] = {
