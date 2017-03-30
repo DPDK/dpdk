@@ -282,8 +282,7 @@ sfc_efx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 		if (scatter_pkt != NULL) {
 			if (rte_pktmbuf_chain(scatter_pkt, m) != 0) {
-				rte_mempool_put(rxq->refill_mb_pool,
-						scatter_pkt);
+				rte_pktmbuf_free(scatter_pkt);
 				goto discard;
 			}
 			/* The packet to deliver */
