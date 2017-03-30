@@ -38,11 +38,177 @@
 #include <rte_ring.h>
 
 #include "sw_evdev.h"
+#include "iq_ring.h"
 
 #define EVENTDEV_NAME_SW_PMD event_sw
 #define NUMA_NODE_ARG "numa_node"
 #define SCHED_QUANTA_ARG "sched_quanta"
 #define CREDIT_QUANTA_ARG "credit_quanta"
+
+static int32_t
+qid_init(struct sw_evdev *sw, unsigned int idx, int type,
+		const struct rte_event_queue_conf *queue_conf)
+{
+	unsigned int i;
+	int dev_id = sw->data->dev_id;
+	int socket_id = sw->data->socket_id;
+	char buf[IQ_RING_NAMESIZE];
+	struct sw_qid *qid = &sw->qids[idx];
+
+	for (i = 0; i < SW_IQS_MAX; i++) {
+		snprintf(buf, sizeof(buf), "q_%u_iq_%d", idx, i);
+		qid->iq[i] = iq_ring_create(buf, socket_id);
+		if (!qid->iq[i]) {
+			SW_LOG_DBG("ring create failed");
+			goto cleanup;
+		}
+	}
+
+	/* Initialize the FID structures to no pinning (-1), and zero packets */
+	const struct sw_fid_t fid = {.cq = -1, .pcount = 0};
+	for (i = 0; i < RTE_DIM(qid->fids); i++)
+		qid->fids[i] = fid;
+
+	qid->id = idx;
+	qid->type = type;
+	qid->priority = queue_conf->priority;
+
+	if (qid->type == RTE_SCHED_TYPE_ORDERED) {
+		char ring_name[RTE_RING_NAMESIZE];
+		uint32_t window_size;
+
+		/* rte_ring and window_size_mask require require window_size to
+		 * be a power-of-2.
+		 */
+		window_size = rte_align32pow2(
+				queue_conf->nb_atomic_order_sequences);
+
+		qid->window_size = window_size - 1;
+
+		if (!window_size) {
+			SW_LOG_DBG(
+				"invalid reorder_window_size for ordered queue\n"
+				);
+			goto cleanup;
+		}
+
+		snprintf(buf, sizeof(buf), "sw%d_iq_%d_rob", dev_id, i);
+		qid->reorder_buffer = rte_zmalloc_socket(buf,
+				window_size * sizeof(qid->reorder_buffer[0]),
+				0, socket_id);
+		if (!qid->reorder_buffer) {
+			SW_LOG_DBG("reorder_buffer malloc failed\n");
+			goto cleanup;
+		}
+
+		memset(&qid->reorder_buffer[0],
+		       0,
+		       window_size * sizeof(qid->reorder_buffer[0]));
+
+		snprintf(ring_name, sizeof(ring_name), "sw%d_q%d_freelist",
+				dev_id, idx);
+
+		/* lookup the ring, and if it already exists, free it */
+		struct rte_ring *cleanup = rte_ring_lookup(ring_name);
+		if (cleanup)
+			rte_ring_free(cleanup);
+
+		qid->reorder_buffer_freelist = rte_ring_create(ring_name,
+				window_size,
+				socket_id,
+				RING_F_SP_ENQ | RING_F_SC_DEQ);
+		if (!qid->reorder_buffer_freelist) {
+			SW_LOG_DBG("freelist ring create failed");
+			goto cleanup;
+		}
+
+		/* Populate the freelist with reorder buffer entries. Enqueue
+		 * 'window_size - 1' entries because the rte_ring holds only
+		 * that many.
+		 */
+		for (i = 0; i < window_size - 1; i++) {
+			if (rte_ring_sp_enqueue(qid->reorder_buffer_freelist,
+						&qid->reorder_buffer[i]) < 0)
+				goto cleanup;
+		}
+
+		qid->reorder_buffer_index = 0;
+		qid->cq_next_tx = 0;
+	}
+
+	qid->initialized = 1;
+
+	return 0;
+
+cleanup:
+	for (i = 0; i < SW_IQS_MAX; i++) {
+		if (qid->iq[i])
+			iq_ring_destroy(qid->iq[i]);
+	}
+
+	if (qid->reorder_buffer) {
+		rte_free(qid->reorder_buffer);
+		qid->reorder_buffer = NULL;
+	}
+
+	if (qid->reorder_buffer_freelist) {
+		rte_ring_free(qid->reorder_buffer_freelist);
+		qid->reorder_buffer_freelist = NULL;
+	}
+
+	return -EINVAL;
+}
+
+static int
+sw_queue_setup(struct rte_eventdev *dev, uint8_t queue_id,
+		const struct rte_event_queue_conf *conf)
+{
+	int type;
+
+	/* SINGLE_LINK can be OR-ed with other types, so handle first */
+	if (RTE_EVENT_QUEUE_CFG_SINGLE_LINK & conf->event_queue_cfg) {
+		type = SW_SCHED_TYPE_DIRECT;
+	} else {
+		switch (conf->event_queue_cfg) {
+		case RTE_EVENT_QUEUE_CFG_ATOMIC_ONLY:
+			type = RTE_SCHED_TYPE_ATOMIC;
+			break;
+		case RTE_EVENT_QUEUE_CFG_ORDERED_ONLY:
+			type = RTE_SCHED_TYPE_ORDERED;
+			break;
+		case RTE_EVENT_QUEUE_CFG_PARALLEL_ONLY:
+			type = RTE_SCHED_TYPE_PARALLEL;
+			break;
+		case RTE_EVENT_QUEUE_CFG_ALL_TYPES:
+			SW_LOG_ERR("QUEUE_CFG_ALL_TYPES not supported\n");
+			return -ENOTSUP;
+		default:
+			SW_LOG_ERR("Unknown queue type %d requested\n",
+				   conf->event_queue_cfg);
+			return -EINVAL;
+		}
+	}
+
+	struct sw_evdev *sw = sw_pmd_priv(dev);
+	return qid_init(sw, queue_id, type, conf);
+}
+
+static void
+sw_queue_release(struct rte_eventdev *dev, uint8_t id)
+{
+	struct sw_evdev *sw = sw_pmd_priv(dev);
+	struct sw_qid *qid = &sw->qids[id];
+	uint32_t i;
+
+	for (i = 0; i < SW_IQS_MAX; i++)
+		iq_ring_destroy(qid->iq[i]);
+
+	if (qid->type == RTE_SCHED_TYPE_ORDERED) {
+		rte_free(qid->reorder_buffer);
+		rte_ring_free(qid->reorder_buffer_freelist);
+	}
+	memset(qid, 0, sizeof(*qid));
+}
 
 static void
 sw_queue_def_conf(struct rte_eventdev *dev, uint8_t queue_id,
@@ -150,6 +316,8 @@ sw_probe(const char *name, const char *params)
 			.dev_infos_get = sw_info_get,
 
 			.queue_def_conf = sw_queue_def_conf,
+			.queue_setup = sw_queue_setup,
+			.queue_release = sw_queue_release,
 			.port_def_conf = sw_port_def_conf,
 	};
 

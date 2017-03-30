@@ -52,6 +52,8 @@
 #define EVENTDEV_NAME_SW_PMD event_sw
 #define SW_PMD_NAME RTE_STR(event_sw)
 
+#define SW_SCHED_TYPE_DIRECT (RTE_SCHED_TYPE_PARALLEL + 1)
+
 #ifdef RTE_LIBRTE_PMD_EVDEV_SW_DEBUG
 #define SW_LOG_INFO(fmt, args...) \
 	RTE_LOG(INFO, EVENTDEV, "[%s] %s() line %u: " fmt "\n", \
@@ -138,6 +140,9 @@ struct sw_evdev {
 	 * (also available in data->conf.nb_events_limit)
 	 */
 	uint32_t nb_events_limit;
+
+	/* Internal queues - one per logical queue */
+	struct sw_qid qids[RTE_EVENT_MAX_QUEUES_PER_DEV] __rte_cache_aligned;
 
 	int32_t sched_quanta;
 
