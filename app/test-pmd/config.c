@@ -3245,3 +3245,70 @@ port_dcb_info_display(uint8_t port_id)
 		printf("\t%4d", dcb_info.tc_queue.tc_txq[0][i].nb_queue);
 	printf("\n");
 }
+
+uint8_t *
+open_ddp_package_file(const char *file_path, uint32_t *size)
+{
+	FILE *fh = fopen(file_path, "rb");
+	uint32_t pkg_size;
+	uint8_t *buf = NULL;
+	int ret = 0;
+
+	if (size)
+		*size = 0;
+
+	if (fh == NULL) {
+		printf("%s: Failed to open %s\n", __func__, file_path);
+		return buf;
+	}
+
+	ret = fseek(fh, 0, SEEK_END);
+	if (ret < 0) {
+		fclose(fh);
+		printf("%s: File operations failed\n", __func__);
+		return buf;
+	}
+
+	pkg_size = ftell(fh);
+
+	buf = (uint8_t *)malloc(pkg_size);
+	if (!buf) {
+		fclose(fh);
+		printf("%s: Failed to malloc memory\n",	__func__);
+		return buf;
+	}
+
+	ret = fseek(fh, 0, SEEK_SET);
+	if (ret < 0) {
+		fclose(fh);
+		printf("%s: File seek operation failed\n", __func__);
+		close_ddp_package_file(buf);
+		return NULL;
+	}
+
+	ret = fread(buf, 1, pkg_size, fh);
+	if (ret < 0) {
+		fclose(fh);
+		printf("%s: File read operation failed\n", __func__);
+		close_ddp_package_file(buf);
+		return NULL;
+	}
+
+	if (size)
+		*size = pkg_size;
+
+	fclose(fh);
+
+	return buf;
+}
+
+int
+close_ddp_package_file(uint8_t *buf)
+{
+	if (buf) {
+		free((void *)buf);
+		return 0;
+	}
+
+	return -1;
+}
