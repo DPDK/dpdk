@@ -6937,6 +6937,115 @@ i40e_dev_tunnel_filter_set(struct i40e_pf *pf,
 	return ret;
 }
 
+#define I40E_AQC_REPLACE_CLOUD_CMD_INPUT_TR_WORD0 0x48
+#define I40E_TR_VXLAN_GRE_KEY_MASK		0x4
+#define I40E_TR_GENEVE_KEY_MASK			0x8
+#define I40E_TR_GENERIC_UDP_TUNNEL_MASK		0x40
+#define I40E_TR_GRE_KEY_MASK			0x400
+#define I40E_TR_GRE_KEY_WITH_XSUM_MASK		0x800
+#define I40E_TR_GRE_NO_KEY_MASK			0x8000
+
+static enum
+i40e_status_code i40e_replace_mpls_l1_filter(struct i40e_pf *pf)
+{
+	struct i40e_aqc_replace_cloud_filters_cmd  filter_replace;
+	struct i40e_aqc_replace_cloud_filters_cmd_buf  filter_replace_buf;
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	enum i40e_status_code status = I40E_SUCCESS;
+
+	memset(&filter_replace, 0,
+	       sizeof(struct i40e_aqc_replace_cloud_filters_cmd));
+	memset(&filter_replace_buf, 0,
+	       sizeof(struct i40e_aqc_replace_cloud_filters_cmd_buf));
+
+	/* create L1 filter */
+	filter_replace.old_filter_type =
+		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_FV_IMAC;
+	filter_replace.new_filter_type = I40E_AQC_ADD_L1_FILTER_TEID_MPLS;
+	filter_replace.tr_bit = 0;
+
+	/* Prepare the buffer, 3 entries */
+	filter_replace_buf.data[0] =
+		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_FV_TEID_WORD0;
+	filter_replace_buf.data[0] |=
+		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_VALIDATED;
+	filter_replace_buf.data[2] = 0xFF;
+	filter_replace_buf.data[3] = 0xFF;
+	filter_replace_buf.data[4] =
+		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_FV_TEID_WORD1;
+	filter_replace_buf.data[4] |=
+		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_VALIDATED;
+	filter_replace_buf.data[7] = 0xF0;
+	filter_replace_buf.data[8]
+		= I40E_AQC_REPLACE_CLOUD_CMD_INPUT_TR_WORD0;
+	filter_replace_buf.data[8] |=
+		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_VALIDATED;
+	filter_replace_buf.data[10] = I40E_TR_VXLAN_GRE_KEY_MASK |
+		I40E_TR_GENEVE_KEY_MASK |
+		I40E_TR_GENERIC_UDP_TUNNEL_MASK;
+	filter_replace_buf.data[11] = (I40E_TR_GRE_KEY_MASK |
+		I40E_TR_GRE_KEY_WITH_XSUM_MASK |
+		I40E_TR_GRE_NO_KEY_MASK) >> 8;
+
+	status = i40e_aq_replace_cloud_filters(hw, &filter_replace,
+					       &filter_replace_buf);
+	return status;
+}
+
+static enum
+i40e_status_code i40e_replace_mpls_cloud_filter(struct i40e_pf *pf)
+{
+	struct i40e_aqc_replace_cloud_filters_cmd  filter_replace;
+	struct i40e_aqc_replace_cloud_filters_cmd_buf  filter_replace_buf;
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	enum i40e_status_code status = I40E_SUCCESS;
+
+	/* For MPLSoUDP */
+	memset(&filter_replace, 0,
+	       sizeof(struct i40e_aqc_replace_cloud_filters_cmd));
+	memset(&filter_replace_buf, 0,
+	       sizeof(struct i40e_aqc_replace_cloud_filters_cmd_buf));
+	filter_replace.valid_flags = I40E_AQC_REPLACE_CLOUD_FILTER |
+		I40E_AQC_MIRROR_CLOUD_FILTER;
+	filter_replace.old_filter_type = I40E_AQC_ADD_CLOUD_FILTER_IIP;
+	filter_replace.new_filter_type =
+		I40E_AQC_ADD_CLOUD_FILTER_TEID_MPLSoUDP;
+	/* Prepare the buffer, 2 entries */
+	filter_replace_buf.data[0] = I40E_AQC_REPLACE_CLOUD_CMD_INPUT_FV_STAG;
+	filter_replace_buf.data[0] |=
+		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_VALIDATED;
+	filter_replace_buf.data[4] = I40E_AQC_ADD_L1_FILTER_TEID_MPLS;
+	filter_replace_buf.data[4] |=
+		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_VALIDATED;
+	status = i40e_aq_replace_cloud_filters(hw, &filter_replace,
+					       &filter_replace_buf);
+	if (status < 0)
+		return status;
+
+	/* For MPLSoGRE */
+	memset(&filter_replace, 0,
+	       sizeof(struct i40e_aqc_replace_cloud_filters_cmd));
+	memset(&filter_replace_buf, 0,
+	       sizeof(struct i40e_aqc_replace_cloud_filters_cmd_buf));
+
+	filter_replace.valid_flags = I40E_AQC_REPLACE_CLOUD_FILTER |
+		I40E_AQC_MIRROR_CLOUD_FILTER;
+	filter_replace.old_filter_type = I40E_AQC_ADD_CLOUD_FILTER_IMAC;
+	filter_replace.new_filter_type =
+		I40E_AQC_ADD_CLOUD_FILTER_TEID_MPLSoGRE;
+	/* Prepare the buffer, 2 entries */
+	filter_replace_buf.data[0] = I40E_AQC_REPLACE_CLOUD_CMD_INPUT_FV_STAG;
+	filter_replace_buf.data[0] |=
+		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_VALIDATED;
+	filter_replace_buf.data[4] = I40E_AQC_ADD_L1_FILTER_TEID_MPLS;
+	filter_replace_buf.data[4] |=
+		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_VALIDATED;
+
+	status = i40e_aq_replace_cloud_filters(hw, &filter_replace,
+					       &filter_replace_buf);
+	return status;
+}
+
 int
 i40e_dev_consistent_tunnel_filter_set(struct i40e_pf *pf,
 		      struct i40e_tunnel_filter_conf *tunnel_filter,
@@ -6956,6 +7065,8 @@ i40e_dev_consistent_tunnel_filter_set(struct i40e_pf *pf,
 	struct i40e_tunnel_rule *tunnel_rule = &pf->tunnel;
 	struct i40e_tunnel_filter *tunnel, *node;
 	struct i40e_tunnel_filter check_filter; /* Check if filter exists */
+	uint32_t teid_le;
+	bool big_buffer = 0;
 
 	cld_filter = rte_zmalloc("tunnel_filter",
 			 sizeof(struct i40e_aqc_add_rm_cloud_filt_elem_ext),
@@ -7003,6 +7114,38 @@ i40e_dev_consistent_tunnel_filter_set(struct i40e_pf *pf,
 	case I40E_TUNNEL_TYPE_IP_IN_GRE:
 		tun_type = I40E_AQC_ADD_CLOUD_TNL_TYPE_IP;
 		break;
+	case I40E_TUNNEL_TYPE_MPLSoUDP:
+		if (!pf->mpls_replace_flag) {
+			i40e_replace_mpls_l1_filter(pf);
+			i40e_replace_mpls_cloud_filter(pf);
+			pf->mpls_replace_flag = 1;
+		}
+		teid_le = rte_cpu_to_le_32(tunnel_filter->tenant_id);
+		pfilter->general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X11_WORD0] =
+			teid_le >> 4;
+		pfilter->general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X11_WORD1] =
+			(teid_le & 0xF) << 12;
+		pfilter->general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X11_WORD2] =
+			0x40;
+		big_buffer = 1;
+		tun_type = I40E_AQC_ADD_CLOUD_TNL_TYPE_MPLSoUDP;
+		break;
+	case I40E_TUNNEL_TYPE_MPLSoGRE:
+		if (!pf->mpls_replace_flag) {
+			i40e_replace_mpls_l1_filter(pf);
+			i40e_replace_mpls_cloud_filter(pf);
+			pf->mpls_replace_flag = 1;
+		}
+		teid_le = rte_cpu_to_le_32(tunnel_filter->tenant_id);
+		pfilter->general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X11_WORD0] =
+			teid_le >> 4;
+		pfilter->general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X11_WORD1] =
+			(teid_le & 0xF) << 12;
+		pfilter->general_fields[I40E_AQC_ADD_CLOUD_FV_FLU_0X11_WORD2] =
+			0x0;
+		big_buffer = 1;
+		tun_type = I40E_AQC_ADD_CLOUD_TNL_TYPE_MPLSoGRE;
+		break;
 	default:
 		/* Other tunnel types is not supported. */
 		PMD_DRV_LOG(ERR, "tunnel type is not supported.");
@@ -7010,11 +7153,19 @@ i40e_dev_consistent_tunnel_filter_set(struct i40e_pf *pf,
 		return -EINVAL;
 	}
 
-	val = i40e_dev_get_filter_type(tunnel_filter->filter_type,
-				       &pfilter->element.flags);
-	if (val < 0) {
-		rte_free(cld_filter);
-		return -EINVAL;
+	if (tunnel_filter->tunnel_type == I40E_TUNNEL_TYPE_MPLSoUDP)
+		pfilter->element.flags =
+			I40E_AQC_ADD_CLOUD_FILTER_TEID_MPLSoUDP;
+	else if (tunnel_filter->tunnel_type == I40E_TUNNEL_TYPE_MPLSoGRE)
+		pfilter->element.flags =
+			I40E_AQC_ADD_CLOUD_FILTER_TEID_MPLSoGRE;
+	else {
+		val = i40e_dev_get_filter_type(tunnel_filter->filter_type,
+						&pfilter->element.flags);
+		if (val < 0) {
+			rte_free(cld_filter);
+			return -EINVAL;
+		}
 	}
 
 	pfilter->element.flags |= rte_cpu_to_le_16(
@@ -7050,7 +7201,11 @@ i40e_dev_consistent_tunnel_filter_set(struct i40e_pf *pf,
 	}
 
 	if (add) {
-		ret = i40e_aq_add_cloud_filters(hw,
+		if (big_buffer)
+			ret = i40e_aq_add_cloud_filters_big_buffer(hw,
+						   vsi->seid, cld_filter, 1);
+		else
+			ret = i40e_aq_add_cloud_filters(hw,
 					vsi->seid, &cld_filter->element, 1);
 		if (ret < 0) {
 			PMD_DRV_LOG(ERR, "Failed to add a tunnel filter.");
@@ -7060,7 +7215,11 @@ i40e_dev_consistent_tunnel_filter_set(struct i40e_pf *pf,
 		rte_memcpy(tunnel, &check_filter, sizeof(check_filter));
 		ret = i40e_sw_tunnel_filter_insert(pf, tunnel);
 	} else {
-		ret = i40e_aq_remove_cloud_filters(hw, vsi->seid,
+		if (big_buffer)
+			ret = i40e_aq_remove_cloud_filters_big_buffer(
+				hw, vsi->seid, cld_filter, 1);
+		else
+			ret = i40e_aq_remove_cloud_filters(hw, vsi->seid,
 						   &cld_filter->element, 1);
 		if (ret < 0) {
 			PMD_DRV_LOG(ERR, "Failed to delete a tunnel filter.");
@@ -10446,6 +10605,7 @@ i40e_tunnel_filter_restore(struct i40e_pf *pf)
 		*tunnel_list = &pf->tunnel.tunnel_list;
 	struct i40e_tunnel_filter *f;
 	struct i40e_aqc_add_rm_cloud_filt_elem_ext cld_filter;
+	bool big_buffer = 0;
 
 	TAILQ_FOREACH(f, tunnel_list, rules) {
 		memset(&cld_filter, 0, sizeof(cld_filter));
@@ -10461,8 +10621,20 @@ i40e_tunnel_filter_restore(struct i40e_pf *pf)
 			   f->input.general_fields,
 			   sizeof(f->input.general_fields));
 
-		i40e_aq_add_cloud_filters(hw, vsi->seid,
-					  &cld_filter.element, 1);
+		if (((f->input.flags &
+		     I40E_AQC_ADD_CLOUD_FILTER_TEID_MPLSoUDP) ==
+		     I40E_AQC_ADD_CLOUD_FILTER_TEID_MPLSoUDP) ||
+		    ((f->input.flags &
+		     I40E_AQC_ADD_CLOUD_FILTER_TEID_MPLSoGRE) ==
+		     I40E_AQC_ADD_CLOUD_FILTER_TEID_MPLSoGRE))
+			big_buffer = 1;
+
+		if (big_buffer)
+			i40e_aq_add_cloud_filters_big_buffer(hw,
+					     vsi->seid, &cld_filter, 1);
+		else
+			i40e_aq_add_cloud_filters(hw, vsi->seid,
+						  &cld_filter.element, 1);
 	}
 }
 

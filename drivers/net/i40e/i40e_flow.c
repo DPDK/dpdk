@@ -1935,6 +1935,7 @@ i40e_flow_destroy_tunnel_filter(struct i40e_pf *pf,
 	struct i40e_aqc_add_rm_cloud_filt_elem_ext cld_filter;
 	struct i40e_tunnel_rule *tunnel_rule = &pf->tunnel;
 	struct i40e_tunnel_filter *node;
+	bool big_buffer = 0;
 	int ret = 0;
 
 	memset(&cld_filter, 0, sizeof(cld_filter));
@@ -1950,8 +1951,18 @@ i40e_flow_destroy_tunnel_filter(struct i40e_pf *pf,
 		   filter->input.general_fields,
 		   sizeof(cld_filter.general_fields));
 
-	ret = i40e_aq_remove_cloud_filters(hw, vsi->seid,
-					   &cld_filter.element, 1);
+	if (((filter->input.flags & I40E_AQC_ADD_CLOUD_FILTER_TEID_MPLSoUDP) ==
+	    I40E_AQC_ADD_CLOUD_FILTER_TEID_MPLSoUDP) ||
+	    ((filter->input.flags & I40E_AQC_ADD_CLOUD_FILTER_TEID_MPLSoGRE) ==
+	     I40E_AQC_ADD_CLOUD_FILTER_TEID_MPLSoGRE))
+		big_buffer = 1;
+
+	if (big_buffer)
+		ret = i40e_aq_remove_cloud_filters_big_buffer(hw, vsi->seid,
+							      &cld_filter, 1);
+	else
+		ret = i40e_aq_remove_cloud_filters(hw, vsi->seid,
+						   &cld_filter.element, 1);
 	if (ret < 0)
 		return -ENOTSUP;
 
