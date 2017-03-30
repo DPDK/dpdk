@@ -62,6 +62,8 @@
 
 #define SW_SCHED_TYPE_DIRECT (RTE_SCHED_TYPE_PARALLEL + 1)
 
+#define SW_NUM_POLL_BUCKETS (MAX_SW_CONS_Q_DEPTH >> SW_DEQ_STAT_BUCKET_SHIFT)
+
 enum {
 	QE_FLAG_VALID_SHIFT = 0,
 	QE_FLAG_COMPLETE_SHIFT,
@@ -203,7 +205,7 @@ struct sw_port {
 	uint64_t avg_pkt_ticks;      /* tracks average over NUM_SAMPLES burst */
 	uint64_t total_polls;        /* how many polls were counted in stats */
 	uint64_t zero_polls;         /* tracks polls returning nothing */
-	uint32_t poll_buckets[MAX_SW_CONS_Q_DEPTH >> SW_DEQ_STAT_BUCKET_SHIFT];
+	uint32_t poll_buckets[SW_NUM_POLL_BUCKETS];
 		/* bucket values in 4s for shorter reporting */
 
 	/* History list structs, containing info on pkts egressed to worker */
@@ -230,6 +232,11 @@ struct sw_evdev {
 
 	uint32_t port_count;
 	uint32_t qid_count;
+	uint32_t xstats_count;
+	struct sw_xstats_entry *xstats;
+	uint32_t xstats_count_mode_dev;
+	uint32_t xstats_count_mode_port;
+	uint32_t xstats_count_mode_queue;
 
 	/* Contains all ports - load balanced and directed */
 	struct sw_port ports[SW_PORTS_MAX] __rte_cache_aligned;
@@ -261,6 +268,13 @@ struct sw_evdev {
 
 	uint8_t started;
 	uint32_t credit_update_quanta;
+
+	/* store num stats and offset of the stats for each port */
+	uint16_t xstats_count_per_port[SW_PORTS_MAX];
+	uint16_t xstats_offset_for_port[SW_PORTS_MAX];
+	/* store num stats and offset of the stats for each queue */
+	uint16_t xstats_count_per_qid[RTE_EVENT_MAX_QUEUES_PER_DEV];
+	uint16_t xstats_offset_for_qid[RTE_EVENT_MAX_QUEUES_PER_DEV];
 };
 
 static inline struct sw_evdev *
@@ -283,5 +297,22 @@ uint16_t sw_event_dequeue(void *port, struct rte_event *ev, uint64_t wait);
 uint16_t sw_event_dequeue_burst(void *port, struct rte_event *ev, uint16_t num,
 			uint64_t wait);
 void sw_event_schedule(struct rte_eventdev *dev);
+int sw_xstats_init(struct sw_evdev *dev);
+int sw_xstats_uninit(struct sw_evdev *dev);
+int sw_xstats_get_names(const struct rte_eventdev *dev,
+	enum rte_event_dev_xstats_mode mode, uint8_t queue_port_id,
+	struct rte_event_dev_xstats_name *xstats_names,
+	unsigned int *ids, unsigned int size);
+int sw_xstats_get(const struct rte_eventdev *dev,
+		enum rte_event_dev_xstats_mode mode, uint8_t queue_port_id,
+		const unsigned int ids[], uint64_t values[], unsigned int n);
+uint64_t sw_xstats_get_by_name(const struct rte_eventdev *dev,
+		const char *name, unsigned int *id);
+int sw_xstats_reset(struct rte_eventdev *dev,
+		enum rte_event_dev_xstats_mode mode,
+		int16_t queue_port_id,
+		const uint32_t ids[],
+		uint32_t nb_ids);
+
 
 #endif /* _SW_EVDEV_H_ */

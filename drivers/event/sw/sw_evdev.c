@@ -624,6 +624,9 @@ sw_start(struct rte_eventdev *dev)
 		}
 	}
 
+	if (sw_xstats_init(sw) < 0)
+		return -EINVAL;
+
 	rte_smp_wmb();
 	sw->started = 1;
 
@@ -634,6 +637,7 @@ static void
 sw_stop(struct rte_eventdev *dev)
 {
 	struct sw_evdev *sw = sw_pmd_priv(dev);
+	sw_xstats_uninit(sw);
 	sw->started = 0;
 	rte_smp_wmb();
 }
@@ -710,6 +714,11 @@ sw_probe(const char *name, const char *params)
 			.port_release = sw_port_release,
 			.port_link = sw_port_link,
 			.port_unlink = sw_port_unlink,
+
+			.xstats_get = sw_xstats_get,
+			.xstats_get_names = sw_xstats_get_names,
+			.xstats_get_by_name = sw_xstats_get_by_name,
+			.xstats_reset = sw_xstats_reset,
 	};
 
 	static const char *const args[] = {
