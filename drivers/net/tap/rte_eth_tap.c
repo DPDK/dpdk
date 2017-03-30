@@ -860,7 +860,6 @@ tap_rx_queue_setup(struct rte_eth_dev *dev,
 	struct rte_mbuf **tmp = &rxq->pool;
 	struct iovec (*iovecs)[nb_rx_desc + 1];
 	int data_off = RTE_PKTMBUF_HEADROOM;
-	uint16_t buf_size;
 	int ret = 0;
 	int fd;
 	int i;
@@ -885,18 +884,6 @@ tap_rx_queue_setup(struct rte_eth_dev *dev,
 		return -ENOMEM;
 	}
 	rxq->iovecs = iovecs;
-
-	/* Now get the space available for data in the mbuf */
-	buf_size = (uint16_t)(rte_pktmbuf_data_room_size(mp) -
-				RTE_PKTMBUF_HEADROOM);
-
-	if (buf_size < ETH_FRAME_LEN) {
-		RTE_LOG(WARNING, PMD,
-			"%s: %d bytes will not fit in mbuf (%d bytes)\n",
-			dev->data->name, ETH_FRAME_LEN, buf_size);
-		ret = -ENOMEM;
-		goto error;
-	}
 
 	fd = rx_setup_queue(dev, internals, rx_queue_id);
 	if (fd == -1) {
