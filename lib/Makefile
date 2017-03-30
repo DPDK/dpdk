@@ -81,10 +81,16 @@ DIRS-$(CONFIG_RTE_LIBRTE_DISTRIBUTOR) += librte_distributor
 DEPDIRS-librte_distributor := librte_eal librte_mbuf librte_ether
 DIRS-$(CONFIG_RTE_LIBRTE_PORT) += librte_port
 DEPDIRS-librte_port := librte_eal librte_mempool librte_mbuf librte_ether
-DEPDIRS-librte_port += librte_ip_frag librte_sched librte_kni
+DEPDIRS-librte_port += librte_ip_frag librte_sched
+ifeq ($(CONFIG_RTE_LIBRTE_KNI),y)
+DEPDIRS-librte_port += librte_kni
+endif
 DIRS-$(CONFIG_RTE_LIBRTE_TABLE) += librte_table
 DEPDIRS-librte_table := librte_eal librte_mempool librte_mbuf
-DEPDIRS-librte_table += librte_port librte_lpm librte_acl librte_hash
+DEPDIRS-librte_table += librte_port librte_lpm librte_hash
+ifeq ($(CONFIG_RTE_LIBRTE_ACL),y)
+DEPDIRS-librte_table += librte_acl
+endif
 DIRS-$(CONFIG_RTE_LIBRTE_PIPELINE) += librte_pipeline
 DEPDIRS-librte_pipeline := librte_eal librte_mempool librte_mbuf
 DEPDIRS-librte_pipeline += librte_table librte_port
