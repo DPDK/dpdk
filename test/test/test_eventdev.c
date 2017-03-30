@@ -519,9 +519,10 @@ test_eventdev_timeout_ticks(void)
 	uint64_t timeout_ticks;
 
 	ret = rte_event_dequeue_timeout_ticks(TEST_DEV_ID, 100, &timeout_ticks);
-	TEST_ASSERT_SUCCESS(ret, "Fail to get timeout_ticks");
+	if (ret != -ENOTSUP)
+		TEST_ASSERT_SUCCESS(ret, "Fail to get timeout_ticks");
 
-	return TEST_SUCCESS;
+	return ret;
 }
 
 
