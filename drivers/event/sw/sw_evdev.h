@@ -55,11 +55,35 @@
 #define SCHED_DEQUEUE_BURST_SIZE 32
 
 #define SW_PORT_HIST_LIST (MAX_SW_PROD_Q_DEPTH) /* size of our history list */
+#define NUM_SAMPLES 64 /* how many data points use for average stats */
 
 #define EVENTDEV_NAME_SW_PMD event_sw
 #define SW_PMD_NAME RTE_STR(event_sw)
 
 #define SW_SCHED_TYPE_DIRECT (RTE_SCHED_TYPE_PARALLEL + 1)
+
+enum {
+	QE_FLAG_VALID_SHIFT = 0,
+	QE_FLAG_COMPLETE_SHIFT,
+	QE_FLAG_NOT_EOP_SHIFT,
+	_QE_FLAG_COUNT
+};
+
+#define QE_FLAG_VALID    (1 << QE_FLAG_VALID_SHIFT)    /* for NEW FWD, FRAG */
+#define QE_FLAG_COMPLETE (1 << QE_FLAG_COMPLETE_SHIFT) /* set for FWD, DROP  */
+#define QE_FLAG_NOT_EOP  (1 << QE_FLAG_NOT_EOP_SHIFT)  /* set for FRAG only  */
+
+static const uint8_t sw_qe_flag_map[] = {
+		QE_FLAG_VALID /* NEW Event */,
+		QE_FLAG_VALID | QE_FLAG_COMPLETE /* FWD Event */,
+		QE_FLAG_COMPLETE /* RELEASE Event */,
+
+		/* Values which can be used for future support for partial
+		 * events, i.e. where one event comes back to the scheduler
+		 * as multiple which need to be tracked together
+		 */
+		QE_FLAG_VALID | QE_FLAG_COMPLETE | QE_FLAG_NOT_EOP,
+};
 
 #ifdef RTE_LIBRTE_PMD_EVDEV_SW_DEBUG
 #define SW_LOG_INFO(fmt, args...) \
@@ -240,5 +264,13 @@ sw_pmd_priv_const(const struct rte_eventdev *eventdev)
 {
 	return eventdev->data->dev_private;
 }
+
+uint16_t sw_event_enqueue(void *port, const struct rte_event *ev);
+uint16_t sw_event_enqueue_burst(void *port, const struct rte_event ev[],
+		uint16_t num);
+
+uint16_t sw_event_dequeue(void *port, struct rte_event *ev, uint64_t wait);
+uint16_t sw_event_dequeue_burst(void *port, struct rte_event *ev, uint16_t num,
+			uint64_t wait);
 
 #endif /* _SW_EVDEV_H_ */

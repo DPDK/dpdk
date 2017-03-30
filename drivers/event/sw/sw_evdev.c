@@ -411,6 +411,7 @@ sw_dev_configure(const struct rte_eventdev *dev)
 	sw->qid_count = conf->nb_event_queues;
 	sw->port_count = conf->nb_event_ports;
 	sw->nb_events_limit = conf->nb_events_limit;
+	rte_atomic32_set(&sw->inflights, 0);
 
 	if (conf->event_dev_cfg & RTE_EVENT_DEV_CFG_PER_DEQUEUE_TIMEOUT)
 		return -ENOTSUP;
@@ -552,6 +553,13 @@ sw_probe(const char *name, const char *params)
 		return -EFAULT;
 	}
 	dev->dev_ops = &evdev_sw_ops;
+	dev->enqueue = sw_event_enqueue;
+	dev->enqueue_burst = sw_event_enqueue_burst;
+	dev->dequeue = sw_event_dequeue;
+	dev->dequeue_burst = sw_event_dequeue_burst;
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
 
 	sw = dev->data->dev_private;
 	sw->data = dev->data;

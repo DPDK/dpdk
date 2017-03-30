@@ -52,6 +52,7 @@ EXPORT_MAP := rte_pmd_evdev_sw_version.map
 
 # library source files
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_SW_EVENTDEV) += sw_evdev.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_SW_EVENTDEV) += sw_evdev_worker.c
 
 # export include files
 SYMLINK-y-include +=
