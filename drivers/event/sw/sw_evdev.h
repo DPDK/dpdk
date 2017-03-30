@@ -35,6 +35,7 @@
 
 #include <rte_eventdev.h>
 #include <rte_eventdev_pmd.h>
+#include <rte_atomic.h>
 
 #define SW_DEFAULT_CREDIT_QUANTA 32
 #define SW_DEFAULT_SCHED_QUANTA 128
@@ -129,7 +130,17 @@ struct sw_qid {
 struct sw_evdev {
 	struct rte_eventdev_data *data;
 
+	uint32_t port_count;
+	uint32_t qid_count;
+
+	/*
+	 * max events in this instance. Cached here for performance.
+	 * (also available in data->conf.nb_events_limit)
+	 */
+	uint32_t nb_events_limit;
+
 	int32_t sched_quanta;
+
 	uint32_t credit_update_quanta;
 };
 

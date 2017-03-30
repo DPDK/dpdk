@@ -44,6 +44,23 @@
 #define SCHED_QUANTA_ARG "sched_quanta"
 #define CREDIT_QUANTA_ARG "credit_quanta"
 
+static int
+sw_dev_configure(const struct rte_eventdev *dev)
+{
+	struct sw_evdev *sw = sw_pmd_priv(dev);
+	const struct rte_eventdev_data *data = dev->data;
+	const struct rte_event_dev_config *conf = &data->dev_conf;
+
+	sw->qid_count = conf->nb_event_queues;
+	sw->port_count = conf->nb_event_ports;
+	sw->nb_events_limit = conf->nb_events_limit;
+
+	if (conf->event_dev_cfg & RTE_EVENT_DEV_CFG_PER_DEQUEUE_TIMEOUT)
+		return -ENOTSUP;
+
+	return 0;
+}
+
 static void
 sw_info_get(struct rte_eventdev *dev, struct rte_event_dev_info *info)
 {
@@ -100,6 +117,7 @@ static int
 sw_probe(const char *name, const char *params)
 {
 	static const struct rte_eventdev_ops evdev_sw_ops = {
+			.dev_configure = sw_dev_configure,
 			.dev_infos_get = sw_info_get,
 	};
 
