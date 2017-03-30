@@ -187,8 +187,8 @@ Pattern item
 Pattern items fall in two categories:
 
 - Matching protocol headers and packet data (ANY, RAW, ETH, VLAN, IPV4,
-  IPV6, ICMP, UDP, TCP, SCTP, VXLAN and so on), usually associated with a
-  specification structure.
+  IPV6, ICMP, UDP, TCP, SCTP, VXLAN, MPLS, GRE and so on), usually
+  associated with a specification structure.
 
 - Matching meta-data or affecting pattern processing (END, VOID, INVERT, PF,
   VF, PORT and so on), often without a specification structure.
@@ -862,6 +862,23 @@ Matches a VXLAN header (RFC 7348).
 - ``vni``: VXLAN network identifier.
 - ``rsvd1``: reserved, normally 0x00.
 - Default ``mask`` matches VNI only.
+
+Item: ``MPLS``
+^^^^^^^^^^^^^^
+
+Matches a MPLS header.
+
+- ``label_tc_s_ttl``: label, TC, Bottom of Stack and TTL.
+- Default ``mask`` matches label only.
+
+Item: ``GRE``
+^^^^^^^^^^^^^^
+
+Matches a GRE header.
+
+- ``c_rsvd0_ver``: checksum, reserved 0 and version.
+- ``protocol``: protocol type.
+- Default ``mask`` matches protocol only.
 
 Actions
 ~~~~~~~

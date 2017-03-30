@@ -282,6 +282,20 @@ enum rte_flow_item_type {
 	 * See struct rte_flow_item_nvgre.
 	 */
 	RTE_FLOW_ITEM_TYPE_NVGRE,
+
+	/**
+	 * Matches a MPLS header.
+	 *
+	 * See struct rte_flow_item_mpls.
+	 */
+	RTE_FLOW_ITEM_TYPE_MPLS,
+
+	/**
+	 * Matches a GRE header.
+	 *
+	 * See struct rte_flow_item_gre.
+	 */
+	RTE_FLOW_ITEM_TYPE_GRE,
 };
 
 /**
@@ -596,6 +610,43 @@ struct rte_flow_item_nvgre {
 	uint16_t protocol; /**< Protocol type (0x6558). */
 	uint8_t tni[3]; /**< Virtual subnet ID. */
 	uint8_t flow_id; /**< Flow ID. */
+};
+
+/**
+ * RTE_FLOW_ITEM_TYPE_MPLS.
+ *
+ * Matches a MPLS header.
+ */
+struct rte_flow_item_mpls {
+	/**
+	 * Label (20b), TC (3b), Bottom of Stack (1b).
+	 */
+	uint8_t label_tc_s[3];
+	uint8_t ttl; /** Time-to-Live. */
+};
+
+/** Default mask for RTE_FLOW_ITEM_TYPE_MPLS. */
+static const struct rte_flow_item_mpls rte_flow_item_mpls_mask = {
+	.label_tc_s = "\xff\xff\xf0",
+};
+
+/**
+ * RTE_FLOW_ITEM_TYPE_GRE.
+ *
+ * Matches a GRE header.
+ */
+struct rte_flow_item_gre {
+	/**
+	 * Checksum (1b), reserved 0 (12b), version (3b).
+	 * Refer to RFC 2784.
+	 */
+	uint16_t c_rsvd0_ver;
+	uint16_t protocol; /**< Protocol type. */
+};
+
+/** Default mask for RTE_FLOW_ITEM_TYPE_GRE. */
+static const struct rte_flow_item_gre rte_flow_item_gre_mask = {
+	.protocol = 0xffff,
 };
 
 /**
