@@ -214,6 +214,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 
 			"read txd (port_id) (queue_id) (txd_id)\n"
 			"    Display a TX descriptor of a port TX queue.\n\n"
+
+			"ddp get list (port_id)\n"
+			"    Get ddp profile info list\n\n"
 		);
 	}
 
@@ -12812,6 +12815,93 @@ cmdline_parse_inst_t cmd_ddp_add = {
 	},
 };
 
+/* Get dynamic device personalization profile info list*/
+#define PROFILE_INFO_SIZE 48
+#define MAX_PROFILE_NUM 16
+
+struct cmd_ddp_get_list_result {
+	cmdline_fixed_string_t ddp;
+	cmdline_fixed_string_t get;
+	cmdline_fixed_string_t list;
+	uint8_t port_id;
+};
+
+cmdline_parse_token_string_t cmd_ddp_get_list_ddp =
+	TOKEN_STRING_INITIALIZER(struct cmd_ddp_get_list_result, ddp, "ddp");
+cmdline_parse_token_string_t cmd_ddp_get_list_get =
+	TOKEN_STRING_INITIALIZER(struct cmd_ddp_get_list_result, get, "get");
+cmdline_parse_token_string_t cmd_ddp_get_list_list =
+	TOKEN_STRING_INITIALIZER(struct cmd_ddp_get_list_result, list, "list");
+cmdline_parse_token_num_t cmd_ddp_get_list_port_id =
+	TOKEN_NUM_INITIALIZER(struct cmd_ddp_get_list_result, port_id, UINT8);
+
+static void
+cmd_ddp_get_list_parsed(
+	void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	__attribute__((unused)) void *data)
+{
+	struct cmd_ddp_get_list_result *res = parsed_result;
+#ifdef RTE_LIBRTE_I40E_PMD
+	struct rte_pmd_i40e_profile_list *p_list;
+	struct rte_pmd_i40e_profile_info *p_info;
+	uint32_t p_num;
+	uint32_t size;
+	uint32_t i;
+#endif
+	int ret = -ENOTSUP;
+
+	if (res->port_id > nb_ports) {
+		printf("Invalid port, range is [0, %d]\n", nb_ports - 1);
+		return;
+	}
+
+#ifdef RTE_LIBRTE_I40E_PMD
+	size = PROFILE_INFO_SIZE * MAX_PROFILE_NUM + 4;
+	p_list = (struct rte_pmd_i40e_profile_list *)malloc(size);
+	if (!p_list)
+		printf("%s: Failed to malloc buffer\n", __func__);
+
+	if (ret == -ENOTSUP)
+		ret = rte_pmd_i40e_get_ddp_list(res->port_id,
+						(uint8_t *)p_list, size);
+
+	if (!ret) {
+		p_num = p_list->p_count;
+		printf("Profile number is: %d\n\n", p_num);
+
+		for (i = 0; i < p_num; i++) {
+			p_info = &p_list->p_info[i];
+			printf("Profile %d:\n", i);
+			printf("Track id:     0x%x\n", p_info->track_id);
+			printf("Version:      %d.%d.%d.%d\n",
+			       p_info->version.major,
+			       p_info->version.minor,
+			       p_info->version.update,
+			       p_info->version.draft);
+			printf("Profile name: %s\n\n", p_info->name);
+		}
+	}
+
+	free(p_list);
+#endif
+
+	if (ret < 0)
+		printf("Failed to get ddp list\n");
+}
+
+cmdline_parse_inst_t cmd_ddp_get_list = {
+	.f = cmd_ddp_get_list_parsed,
+	.data = NULL,
+	.help_str = "ddp get list <port_id>",
+	.tokens = {
+		(void *)&cmd_ddp_get_list_ddp,
+		(void *)&cmd_ddp_get_list_get,
+		(void *)&cmd_ddp_get_list_list,
+		(void *)&cmd_ddp_get_list_port_id,
+		NULL,
+	},
+};
 /* ******************************************************************************** */
 
 /* list of instructions */
@@ -12992,6 +13082,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_vf_tc_max_bw,
 	(cmdline_parse_inst_t *)&cmd_strict_link_prio,
 	(cmdline_parse_inst_t *)&cmd_ddp_add,
+	(cmdline_parse_inst_t *)&cmd_ddp_get_list,
 	NULL,
 };
 
