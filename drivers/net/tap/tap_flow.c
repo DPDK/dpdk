@@ -612,18 +612,20 @@ tap_flow_create_udp(const struct rte_flow_item *item, void *data)
 	/* check that previous ip_proto is compatible with udp */
 	if (info->ip_proto && info->ip_proto != IPPROTO_UDP)
 		return -1;
+	/* TC does not support UDP port masking. Only accept if exact match. */
+	if ((mask->hdr.src_port && mask->hdr.src_port != 0xffff) ||
+	    (mask->hdr.dst_port && mask->hdr.dst_port != 0xffff))
+		return -1;
 	if (!flow)
 		return 0;
 	msg = &flow->msg;
 	nlattr_add8(&msg->nh, TCA_FLOWER_KEY_IP_PROTO, IPPROTO_UDP);
 	if (!spec)
 		return 0;
-	if (spec->hdr.dst_port &&
-	    (spec->hdr.dst_port & mask->hdr.dst_port) == spec->hdr.dst_port)
+	if (spec->hdr.dst_port & mask->hdr.dst_port)
 		nlattr_add16(&msg->nh, TCA_FLOWER_KEY_UDP_DST,
 			     spec->hdr.dst_port);
-	if (spec->hdr.src_port &&
-	    (spec->hdr.src_port & mask->hdr.src_port) == spec->hdr.src_port)
+	if (spec->hdr.src_port & mask->hdr.src_port)
 		nlattr_add16(&msg->nh, TCA_FLOWER_KEY_UDP_SRC,
 			     spec->hdr.src_port);
 	return 0;
@@ -656,18 +658,20 @@ tap_flow_create_tcp(const struct rte_flow_item *item, void *data)
 	/* check that previous ip_proto is compatible with tcp */
 	if (info->ip_proto && info->ip_proto != IPPROTO_TCP)
 		return -1;
+	/* TC does not support TCP port masking. Only accept if exact match. */
+	if ((mask->hdr.src_port && mask->hdr.src_port != 0xffff) ||
+	    (mask->hdr.dst_port && mask->hdr.dst_port != 0xffff))
+		return -1;
 	if (!flow)
 		return 0;
 	msg = &flow->msg;
 	nlattr_add8(&msg->nh, TCA_FLOWER_KEY_IP_PROTO, IPPROTO_TCP);
 	if (!spec)
 		return 0;
-	if (spec->hdr.dst_port &&
-	    (spec->hdr.dst_port & mask->hdr.dst_port) == spec->hdr.dst_port)
+	if (spec->hdr.dst_port & mask->hdr.dst_port)
 		nlattr_add16(&msg->nh, TCA_FLOWER_KEY_TCP_DST,
 			     spec->hdr.dst_port);
-	if (spec->hdr.src_port &&
-	    (spec->hdr.src_port & mask->hdr.src_port) == spec->hdr.src_port)
+	if (spec->hdr.src_port & mask->hdr.src_port)
 		nlattr_add16(&msg->nh, TCA_FLOWER_KEY_TCP_SRC,
 			     spec->hdr.src_port);
 	return 0;
