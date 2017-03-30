@@ -106,6 +106,10 @@ New Features
   capability to change the TX scheduling mode for a TC. It's a global setting
   on a physical port.
 
+* **Added i40e dynamic device personalization support.**
+
+  * Added dynamic device personalization processing to i40e FW.
+
 * **Added TSO support for tunneled and non-tunneled packets on mlx5 driver.**
 
   Added support for Hardware TSO for tunneled and non-tunneled packets.
