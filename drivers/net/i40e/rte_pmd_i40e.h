@@ -480,4 +480,19 @@ int rte_pmd_i40e_process_ddp_package(uint8_t port, uint8_t *buff,
 				     uint32_t size,
 				     enum rte_pmd_i40e_package_op op);
 
+/**
+ * rte_pmd_i40e_get_ddp_list - Get loaded profile list
+ * @param port
+ *    port id
+ * @param buff
+ *    buffer for response
+ * @param size
+ *    buffer size
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port* invalid.
+ *   - (-EINVAL) if bad parameter.
+ */
+int rte_pmd_i40e_get_ddp_list(uint8_t port, uint8_t *buff, uint32_t size);
+
 #endif /* _PMD_I40E_H_ */

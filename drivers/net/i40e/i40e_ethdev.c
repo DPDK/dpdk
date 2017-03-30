@@ -11867,6 +11867,9 @@ rte_pmd_i40e_set_tc_strict_prio(uint8_t port, uint8_t tc_map)
 	return ret;
 }
 
+#define I40E_PROFILE_INFO_SIZE 48
+#define I40E_MAX_PROFILE_NUM 16
+
 static void
 i40e_generate_profile_info_sec(char *name, struct i40e_ddp_version *version,
 			       uint32_t track_id, uint8_t *profile_info_sec,
@@ -12071,5 +12074,30 @@ rte_pmd_i40e_process_ddp_package(uint8_t port, uint8_t *buff,
 		PMD_DRV_LOG(ERR, "Operation not supported.");
 
 	rte_free(profile_info_sec);
+	return status;
+}
+
+int
+rte_pmd_i40e_get_ddp_list(uint8_t port, uint8_t *buff, uint32_t size)
+{
+	struct rte_eth_dev *dev;
+	struct i40e_hw *hw;
+	enum i40e_status_code status = I40E_SUCCESS;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+
+	if (!is_device_supported(dev, &rte_i40e_pmd))
+		return -ENOTSUP;
+
+	if (size < (I40E_PROFILE_INFO_SIZE * I40E_MAX_PROFILE_NUM + 4))
+		return -EINVAL;
+
+	hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+
+	status = i40e_aq_get_ddp_list(hw, (void *)buff,
+				      size, 0, NULL);
+
 	return status;
 }
