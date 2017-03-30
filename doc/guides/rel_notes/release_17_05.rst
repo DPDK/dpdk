@@ -219,6 +219,14 @@ New Features
   Added the new octeontx ssovf eventdev driver for OCTEONTX devices. See the
   "Event Device Drivers" document for more details on this new driver.
 
+* **Added information metric library.**
+
+  A library that allows information metrics to be added and updated
+  by producers, typically other libraries, for later retrieval by
+  consumers such as applications. It is intended to provide a
+  reporting mechanism that is independent of other libraries such
+  as ethdev.
+
 
 Resolved Issues
 ---------------
@@ -440,6 +448,7 @@ The libraries prepended with a plus sign were incremented in this version.
    + librte_mbuf.so.3
      librte_mempool.so.2
      librte_meter.so.1
+   + librte_metrics.so.1
      librte_net.so.1
      librte_pdump.so.1
      librte_pipeline.so.3

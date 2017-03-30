@@ -675,6 +675,10 @@ F: lib/librte_jobstats/
 F: examples/l2fwd-jobstats/
 F: doc/guides/sample_app_ug/l2_forward_job_stats.rst
 
+Metrics
+M: Remy Horton <remy.horton@intel.com>
+F: lib/librte_metrics/
+
 
 Test Applications
 -----------------

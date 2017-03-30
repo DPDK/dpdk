@@ -4,7 +4,7 @@ API {#index}
 <!--
   BSD LICENSE
 
-  Copyright 2013 6WIND S.A.
+  Copyright 2013-2017 6WIND S.A.
 
   Redistribution and use in source and binary forms, with or without
   modification, are permitted provided that the following conditions
@@ -157,4 +157,5 @@ There are many libraries, so their headers may be grouped by topics:
   [common]             (@ref rte_common.h),
   [ABI compat]         (@ref rte_compat.h),
   [keepalive]          (@ref rte_keepalive.h),
+  [device metrics]     (@ref rte_metrics.h),
   [version]            (@ref rte_version.h)

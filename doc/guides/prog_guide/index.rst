@@ -1,5 +1,5 @@
 ..  BSD LICENSE
-    Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+    Copyright(c) 2010-2017 Intel Corporation. All rights reserved.
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -62,6 +62,7 @@ Programmer's Guide
     packet_classif_access_ctrl
     packet_framework
     vhost_lib
+    metrics_lib
     port_hotplug_framework
     source_org
     dev_kit_build_system

@@ -553,6 +553,11 @@ CONFIG_RTE_LIBRTE_EFD=y
 CONFIG_RTE_LIBRTE_JOBSTATS=y
 
 #
+# Compile the device metrics library
+#
+CONFIG_RTE_LIBRTE_METRICS=y
+
+#
 # Compile librte_lpm
 #
 CONFIG_RTE_LIBRTE_LPM=y
