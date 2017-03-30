@@ -44,6 +44,35 @@
 #define SCHED_QUANTA_ARG "sched_quanta"
 #define CREDIT_QUANTA_ARG "credit_quanta"
 
+static void
+sw_queue_def_conf(struct rte_eventdev *dev, uint8_t queue_id,
+				 struct rte_event_queue_conf *conf)
+{
+	RTE_SET_USED(dev);
+	RTE_SET_USED(queue_id);
+
+	static const struct rte_event_queue_conf default_conf = {
+		.nb_atomic_flows = 4096,
+		.nb_atomic_order_sequences = 1,
+		.event_queue_cfg = RTE_EVENT_QUEUE_CFG_ATOMIC_ONLY,
+		.priority = RTE_EVENT_DEV_PRIORITY_NORMAL,
+	};
+
+	*conf = default_conf;
+}
+
+static void
+sw_port_def_conf(struct rte_eventdev *dev, uint8_t port_id,
+		 struct rte_event_port_conf *port_conf)
+{
+	RTE_SET_USED(dev);
+	RTE_SET_USED(port_id);
+
+	port_conf->new_event_threshold = 1024;
+	port_conf->dequeue_depth = 16;
+	port_conf->enqueue_depth = 16;
+}
+
 static int
 sw_dev_configure(const struct rte_eventdev *dev)
 {
@@ -119,6 +148,9 @@ sw_probe(const char *name, const char *params)
 	static const struct rte_eventdev_ops evdev_sw_ops = {
 			.dev_configure = sw_dev_configure,
 			.dev_infos_get = sw_info_get,
+
+			.queue_def_conf = sw_queue_def_conf,
+			.port_def_conf = sw_port_def_conf,
 	};
 
 	static const char *const args[] = {
