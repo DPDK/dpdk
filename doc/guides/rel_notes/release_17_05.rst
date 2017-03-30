@@ -232,6 +232,11 @@ New Features
   A library that can be used to calculate device bit-rates. Calculated
   bitrates are reported using the metrics library.
 
+* **Added latency stats library.**
+
+  A library that measures packet latency. The collected statistics are jitter
+  and latency. For latency the minimum, average, and maximum is measured.
+
 
 Resolved Issues
 ---------------
@@ -450,6 +455,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_jobstats.so.1
      librte_kni.so.2
      librte_kvargs.so.1
+   + librte_latencystats.so.1
      librte_lpm.so.2
    + librte_mbuf.so.3
      librte_mempool.so.2

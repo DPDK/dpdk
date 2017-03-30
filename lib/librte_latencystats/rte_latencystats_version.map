@@ -1,0 +1,11 @@
+DPDK_17.05 {
+	global:
+
+	rte_latencystats_get;
+	rte_latencystats_get_names;
+	rte_latencystats_init;
+	rte_latencystats_uninit;
+	rte_latencystats_update;
+
+	local: *;
+};

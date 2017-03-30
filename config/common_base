@@ -563,6 +563,11 @@ CONFIG_RTE_LIBRTE_METRICS=y
 CONFIG_RTE_LIBRTE_BITRATE=y
 
 #
+# Compile the latency statistics library
+#
+CONFIG_RTE_LIBRTE_LATENCY_STATS=y
+
+#
 # Compile librte_lpm
 #
 CONFIG_RTE_LIBRTE_LPM=y

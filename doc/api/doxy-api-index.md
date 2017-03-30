@@ -159,4 +159,5 @@ There are many libraries, so their headers may be grouped by topics:
   [keepalive]          (@ref rte_keepalive.h),
   [device metrics]     (@ref rte_metrics.h),
   [bitrate statistics] (@ref rte_bitrate.h),
+  [latency statistics] (@ref rte_latencystats.h),
   [version]            (@ref rte_version.h)
