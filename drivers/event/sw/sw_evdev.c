@@ -441,6 +441,153 @@ sw_info_get(struct rte_eventdev *dev, struct rte_event_dev_info *info)
 	*info = evdev_sw_info;
 }
 
+static void
+sw_dump(struct rte_eventdev *dev, FILE *f)
+{
+	const struct sw_evdev *sw = sw_pmd_priv(dev);
+
+	static const char * const q_type_strings[] = {
+			"Ordered", "Atomic", "Parallel", "Directed"
+	};
+	uint32_t i;
+	fprintf(f, "EventDev %s: ports %d, qids %d\n", "todo-fix-name",
+			sw->port_count, sw->qid_count);
+
+	fprintf(f, "\trx   %"PRIu64"\n\tdrop %"PRIu64"\n\ttx   %"PRIu64"\n",
+		sw->stats.rx_pkts, sw->stats.rx_dropped, sw->stats.tx_pkts);
+	fprintf(f, "\tsched calls: %"PRIu64"\n", sw->sched_called);
+	fprintf(f, "\tsched cq/qid call: %"PRIu64"\n", sw->sched_cq_qid_called);
+	fprintf(f, "\tsched no IQ enq: %"PRIu64"\n", sw->sched_no_iq_enqueues);
+	fprintf(f, "\tsched no CQ enq: %"PRIu64"\n", sw->sched_no_cq_enqueues);
+	uint32_t inflights = rte_atomic32_read(&sw->inflights);
+	uint32_t credits = sw->nb_events_limit - inflights;
+	fprintf(f, "\tinflight %d, credits: %d\n", inflights, credits);
+
+#define COL_RED "\x1b[31m"
+#define COL_RESET "\x1b[0m"
+
+	for (i = 0; i < sw->port_count; i++) {
+		int max, j;
+		const struct sw_port *p = &sw->ports[i];
+		if (!p->initialized) {
+			fprintf(f, "  %sPort %d not initialized.%s\n",
+				COL_RED, i, COL_RESET);
+			continue;
+		}
+		fprintf(f, "  Port %d %s\n", i,
+			p->is_directed ? " (SingleCons)" : "");
+		fprintf(f, "\trx   %"PRIu64"\tdrop %"PRIu64"\ttx   %"PRIu64
+			"\t%sinflight %d%s\n", sw->ports[i].stats.rx_pkts,
+			sw->ports[i].stats.rx_dropped,
+			sw->ports[i].stats.tx_pkts,
+			(p->inflights == p->inflight_max) ?
+				COL_RED : COL_RESET,
+			sw->ports[i].inflights, COL_RESET);
+
+		fprintf(f, "\tMax New: %u"
+			"\tAvg cycles PP: %"PRIu64"\tCredits: %u\n",
+			sw->ports[i].inflight_max,
+			sw->ports[i].avg_pkt_ticks,
+			sw->ports[i].inflight_credits);
+		fprintf(f, "\tReceive burst distribution:\n");
+		float zp_percent = p->zero_polls * 100.0 / p->total_polls;
+		fprintf(f, zp_percent < 10 ? "\t\t0:%.02f%% " : "\t\t0:%.0f%% ",
+				zp_percent);
+		for (max = (int)RTE_DIM(p->poll_buckets); max-- > 0;)
+			if (p->poll_buckets[max] != 0)
+				break;
+		for (j = 0; j <= max; j++) {
+			if (p->poll_buckets[j] != 0) {
+				float poll_pc = p->poll_buckets[j] * 100.0 /
+					p->total_polls;
+				fprintf(f, "%u-%u:%.02f%% ",
+					((j << SW_DEQ_STAT_BUCKET_SHIFT) + 1),
+					((j+1) << SW_DEQ_STAT_BUCKET_SHIFT),
+					poll_pc);
+			}
+		}
+		fprintf(f, "\n");
+
+		if (p->rx_worker_ring) {
+			uint64_t used = qe_ring_count(p->rx_worker_ring);
+			uint64_t space = qe_ring_free_count(p->rx_worker_ring);
+			const char *col = (space == 0) ? COL_RED : COL_RESET;
+			fprintf(f, "\t%srx ring used: %4"PRIu64"\tfree: %4"
+					PRIu64 COL_RESET"\n", col, used, space);
+		} else
+			fprintf(f, "\trx ring not initialized.\n");
+
+		if (p->cq_worker_ring) {
+			uint64_t used = qe_ring_count(p->cq_worker_ring);
+			uint64_t space = qe_ring_free_count(p->cq_worker_ring);
+			const char *col = (space == 0) ? COL_RED : COL_RESET;
+			fprintf(f, "\t%scq ring used: %4"PRIu64"\tfree: %4"
+					PRIu64 COL_RESET"\n", col, used, space);
+		} else
+			fprintf(f, "\tcq ring not initialized.\n");
+	}
+
+	for (i = 0; i < sw->qid_count; i++) {
+		const struct sw_qid *qid = &sw->qids[i];
+		if (!qid->initialized) {
+			fprintf(f, "  %sQueue %d not initialized.%s\n",
+				COL_RED, i, COL_RESET);
+			continue;
+		}
+		int affinities_per_port[SW_PORTS_MAX] = {0};
+		uint32_t inflights = 0;
+
+		fprintf(f, "  Queue %d (%s)\n", i, q_type_strings[qid->type]);
+		fprintf(f, "\trx   %"PRIu64"\tdrop %"PRIu64"\ttx   %"PRIu64"\n",
+			qid->stats.rx_pkts, qid->stats.rx_dropped,
+			qid->stats.tx_pkts);
+		if (qid->type == RTE_SCHED_TYPE_ORDERED) {
+			struct rte_ring *rob_buf_free =
+				qid->reorder_buffer_freelist;
+			if (rob_buf_free)
+				fprintf(f, "\tReorder entries in use: %u\n",
+					rte_ring_free_count(rob_buf_free));
+			else
+				fprintf(f,
+					"\tReorder buffer not initialized\n");
+		}
+
+		uint32_t flow;
+		for (flow = 0; flow < RTE_DIM(qid->fids); flow++)
+			if (qid->fids[flow].cq != -1) {
+				affinities_per_port[qid->fids[flow].cq]++;
+				inflights += qid->fids[flow].pcount;
+			}
+
+		uint32_t cq;
+		fprintf(f, "\tInflights: %u\tFlows pinned per port: ",
+				inflights);
+		for (cq = 0; cq < sw->port_count; cq++)
+			fprintf(f, "%d ", affinities_per_port[cq]);
+		fprintf(f, "\n");
+
+		uint32_t iq;
+		uint32_t iq_printed = 0;
+		for (iq = 0; iq < SW_IQS_MAX; iq++) {
+			if (!qid->iq[iq]) {
+				fprintf(f, "\tiq %d is not initialized.\n", iq);
+				iq_printed = 1;
+				continue;
+			}
+			uint32_t used = iq_ring_count(qid->iq[iq]);
+			uint32_t free = iq_ring_free_count(qid->iq[iq]);
+			const char *col = (free == 0) ? COL_RED : COL_RESET;
+			if (used > 0) {
+				fprintf(f, "\t%siq %d: Used %d\tFree %d"
+					COL_RESET"\n", col, iq, used, free);
+				iq_printed = 1;
+			}
+		}
+		if (iq_printed == 0)
+			fprintf(f, "\t-- iqs empty --\n");
+	}
+}
+
 static int
 sw_start(struct rte_eventdev *dev)
 {
@@ -553,6 +700,7 @@ sw_probe(const char *name, const char *params)
 			.dev_close = sw_close,
 			.dev_start = sw_start,
 			.dev_stop = sw_stop,
+			.dump = sw_dump,
 
 			.queue_def_conf = sw_queue_def_conf,
 			.queue_setup = sw_queue_setup,
