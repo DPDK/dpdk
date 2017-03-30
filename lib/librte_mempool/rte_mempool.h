@@ -51,13 +51,15 @@
  * meta-data in the object data and retrieve them when allocating a
  * new object.
  *
- * Note: the mempool implementation is not preemptable. A lcore must
- * not be interrupted by another task that uses the same mempool
- * (because it uses a ring which is not preemptable). Also, mempool
- * functions must not be used outside the DPDK environment: for
- * example, in linuxapp environment, a thread that is not created by
- * the EAL must not use mempools. This is due to the per-lcore cache
- * that won't work as rte_lcore_id() will not return a correct value.
+ * Note: the mempool implementation is not preemptible. An lcore must not be
+ * interrupted by another task that uses the same mempool (because it uses a
+ * ring which is not preemptible). Also, usual mempool functions like
+ * rte_mempool_get() or rte_mempool_put() are designed to be called from an EAL
+ * thread due to the internal per-lcore cache. Due to the lack of caching,
+ * rte_mempool_get() or rte_mempool_put() performance will suffer when called
+ * by non-EAL threads. Instead, non-EAL threads should call
+ * rte_mempool_generic_get() or rte_mempool_generic_put() with a user cache
+ * created with rte_mempool_cache_create().
  */
 
 #include <stdio.h>
