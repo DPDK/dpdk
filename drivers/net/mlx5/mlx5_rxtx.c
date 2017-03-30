@@ -2030,8 +2030,8 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				pkt->hash.rss = rss_hash_res;
 				pkt->ol_flags = PKT_RX_RSS_HASH;
 			}
-			if (rxq->mark && (cqe->sop_drop_qpn !=
-					  htonl(MLX5_FLOW_MARK_INVALID))) {
+			if (rxq->mark &&
+			    MLX5_FLOW_MARK_IS_VALID(cqe->sop_drop_qpn)) {
 				pkt->ol_flags |= PKT_RX_FDIR;
 				if (cqe->sop_drop_qpn !=
 				    htonl(MLX5_FLOW_MARK_DEFAULT)) {

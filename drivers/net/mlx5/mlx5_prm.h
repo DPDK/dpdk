@@ -138,6 +138,13 @@
 /* Inner L4 checksum offload (Tunneled packets only). */
 #define MLX5_ETH_WQE_L4_INNER_CSUM (1u << 5)
 
+/* Is flow mark valid. */
+#if RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+#define MLX5_FLOW_MARK_IS_VALID(val) ((val) & 0xffffff00)
+#else
+#define MLX5_FLOW_MARK_IS_VALID(val) ((val) & 0xffffff)
+#endif
+
 /* INVALID is used by packets matching no flow rules. */
 #define MLX5_FLOW_MARK_INVALID 0
 
