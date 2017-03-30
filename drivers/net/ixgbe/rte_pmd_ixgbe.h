@@ -42,6 +42,20 @@
 #include <rte_ethdev.h>
 
 /**
+ * Notify VF when PF link status changes.
+ *
+ * @param port
+ *   The port identifier of the Ethernet device.
+ * @param vf
+ *   VF id.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port* invalid.
+ *   - (-EINVAL) if *vf* invalid.
+ */
+int rte_pmd_ixgbe_ping_vf(uint8_t port, uint16_t vf);
+
+/**
  * Set the VF MAC address.
  *
  * @param port

@@ -31,3 +31,9 @@ DPDK_17.02 {
 	rte_pmd_ixgbe_set_vf_tx;
 	rte_pmd_ixgbe_set_vf_vlan_filter;
 } DPDK_16.11;
+
+DPDK_17.05 {
+	global:
+
+	rte_pmd_ixgbe_ping_vf;
+} DPDK_17.02;
