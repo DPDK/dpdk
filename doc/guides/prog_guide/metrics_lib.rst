@@ -178,3 +178,68 @@ print out all metrics for a given port:
         free(metrics);
         free(names);
     }
+
+
+Bit-rate statistics library
+---------------------------
+
+The bit-rate library calculates the exponentially-weighted moving
+average and peak bit-rates for each active port (i.e. network device).
+These statistics are reported via the metrics library using the
+following names:
+
+    - ``mean_bits_in``: Average inbound bit-rate
+    - ``mean_bits_out``:  Average outbound bit-rate
+    - ``ewma_bits_in``: Average inbound bit-rate (EWMA smoothed)
+    - ``ewma_bits_out``:  Average outbound bit-rate (EWMA smoothed)
+    - ``peak_bits_in``:  Peak inbound bit-rate
+    - ``peak_bits_out``:  Peak outbound bit-rate
+
+Once initialised and clocked at the appropriate frequency, these
+statistics can be obtained by querying the metrics library.
+
+Initialization
+~~~~~~~~~~~~~~
+
+Before the library can be used, it has to be initialised by calling
+``rte_stats_bitrate_create()``, which will return a bit-rate
+calculation object. Since the bit-rate library uses the metrics library
+to report the calculated statistics, the bit-rate library then needs to
+register the calculated statistics with the metrics library. This is
+done using the helper function ``rte_stats_bitrate_reg()``.
+
+.. code-block:: c
+
+    struct rte_stats_bitrates *bitrate_data;
+
+    bitrate_data = rte_stats_bitrate_create();
+    if (bitrate_data == NULL)
+        rte_exit(EXIT_FAILURE, "Could not allocate bit-rate data.\n");
+    rte_stats_bitrate_reg(bitrate_data);
+
+Controlling the sampling rate
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Since the library works by periodic sampling but does not use an
+internal thread, the application has to periodically call
+``rte_stats_bitrate_calc()``. The frequency at which this function
+is called should be the intended sampling rate required for the
+calculated statistics. For instance if per-second statistics are
+desired, this function should be called once a second.
+
+.. code-block:: c
+
+    tics_datum = rte_rdtsc();
+    tics_per_1sec = rte_get_timer_hz();
+
+    while( 1 ) {
+        /* ... */
+        tics_current = rte_rdtsc();
+	if (tics_current - tics_datum >= tics_per_1sec) {
+	    /* Periodic bitrate calculation */
+	    for (idx_port = 0; idx_port < cnt_ports; idx_port++)
+	            rte_stats_bitrate_calc(bitrate_data, idx_port);
+		tics_datum = tics_current;
+	    }
+        /* ... */
+    }

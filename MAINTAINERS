@@ -679,6 +679,10 @@ Metrics
 M: Remy Horton <remy.horton@intel.com>
 F: lib/librte_metrics/
 
+Bit-rate statistics
+M: Remy Horton <remy.horton@intel.com>
+F: lib/librte_bitratestats/
+
 
 Test Applications
 -----------------

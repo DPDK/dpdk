@@ -227,6 +227,11 @@ New Features
   reporting mechanism that is independent of other libraries such
   as ethdev.
 
+* **Added bit-rate calculation library.**
+
+  A library that can be used to calculate device bit-rates. Calculated
+  bitrates are reported using the metrics library.
+
 
 Resolved Issues
 ---------------
@@ -433,6 +438,7 @@ The libraries prepended with a plus sign were incremented in this version.
 .. code-block:: diff
 
      librte_acl.so.2
+   + librte_bitratestats.so.1
      librte_cfgfile.so.2
      librte_cmdline.so.2
      librte_cryptodev.so.2

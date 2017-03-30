@@ -558,6 +558,11 @@ CONFIG_RTE_LIBRTE_JOBSTATS=y
 CONFIG_RTE_LIBRTE_METRICS=y
 
 #
+# Compile the bitrate statistics library
+#
+CONFIG_RTE_LIBRTE_BITRATE=y
+
+#
 # Compile librte_lpm
 #
 CONFIG_RTE_LIBRTE_LPM=y

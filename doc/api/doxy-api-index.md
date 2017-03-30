@@ -158,4 +158,5 @@ There are many libraries, so their headers may be grouped by topics:
   [ABI compat]         (@ref rte_compat.h),
   [keepalive]          (@ref rte_keepalive.h),
   [device metrics]     (@ref rte_metrics.h),
+  [bitrate statistics] (@ref rte_bitrate.h),
   [version]            (@ref rte_version.h)
