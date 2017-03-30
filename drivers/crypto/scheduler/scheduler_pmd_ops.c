@@ -367,6 +367,8 @@ scheduler_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 			return ret;
 	}
 
+	sched_ctx->qp_conf.nb_descriptors = qp_conf->nb_descriptors;
+
 	/* Allocate the queue pair data structure. */
 	qp_ctx = rte_zmalloc_socket(name, sizeof(*qp_ctx), RTE_CACHE_LINE_SIZE,
 			socket_id);

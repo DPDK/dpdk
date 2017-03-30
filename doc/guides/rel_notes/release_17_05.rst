@@ -237,6 +237,10 @@ New Features
   A library that measures packet latency. The collected statistics are jitter
   and latency. For latency the minimum, average, and maximum is measured.
 
+* **Updated the Cryptodev Scheduler PMD.**
+
+  * Added packet-size based distribution mode, which distributes the enqueued
+    crypto operations among two slaves, based on their data lengths.
 
 Resolved Issues
 ---------------

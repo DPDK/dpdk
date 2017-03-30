@@ -336,6 +336,13 @@ rte_crpytodev_scheduler_mode_set(uint8_t scheduler_id,
 			return -1;
 		}
 		break;
+	case CDEV_SCHED_MODE_PKT_SIZE_DISTR:
+		if (rte_cryptodev_scheduler_load_user_scheduler(scheduler_id,
+				pkt_size_based_distr_scheduler) < 0) {
+			CS_LOG_ERR("Failed to load scheduler");
+			return -1;
+		}
+		break;
 	default:
 		CS_LOG_ERR("Not yet supported");
 		return -ENOTSUP;

@@ -126,3 +126,18 @@ operation:
    among its slaves in a round-robin manner. This mode may help to fill
    the throughput gap between the physical core and the existing cryptodevs
    to increase the overall performance.
+
+*   **CDEV_SCHED_MODE_PKT_SIZE_DISTR:**
+
+   Packet-size based distribution mode, which works with 2 slaves, the primary
+   slave and the secondary slave, and distributes the enqueued crypto
+   operations to them based on their data lengths. A crypto operation will be
+   distributed to the primary slave if its data length is equal to or bigger
+   than the designated threshold, otherwise it will be handled by the secondary
+   slave.
+
+   A typical usecase in this mode is with the QAT cryptodev as the primary and
+   a software cryptodev as the secondary slave. This may help applications to
+   process additional crypto workload than what the QAT cryptodev can handle on
+   its own, by making use of the available CPU cycles to deal with smaller
+   crypto workloads.
