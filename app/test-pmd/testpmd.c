@@ -83,6 +83,10 @@
 #ifdef RTE_LIBRTE_BITRATE
 #include <rte_bitrate.h>
 #endif
+#include <rte_metrics.h>
+#ifdef RTE_LIBRTE_LATENCY_STATS
+#include <rte_latencystats.h>
+#endif
 
 #include "testpmd.h"
 
@@ -273,6 +277,20 @@ uint8_t no_link_check = 0; /* check by default */
 
 /* The NIC bypass watchdog timeout. */
 uint32_t bypass_timeout = RTE_BYPASS_TMT_OFF;
+
+#endif
+
+#ifdef RTE_LIBRTE_LATENCY_STATS
+
+/*
+ * Set when latency stats is enabled in the commandline
+ */
+uint8_t latencystats_enabled;
+
+/*
+ * Lcore ID to serive latency statistics.
+ */
+lcoreid_t latencystats_lcore_id = -1;
 
 #endif
 
@@ -953,6 +971,11 @@ run_pkt_fwd_on_lcore(struct fwd_lcore *fc, packet_fwd_t pkt_fwd)
 			tics_datum = tics_current;
 		}
 #endif
+#ifdef RTE_LIBRTE_LATENCY_STATS
+		if (latencystats_lcore_id == rte_lcore_id())
+			rte_latencystats_update();
+#endif
+
 	} while (! fc->stopped);
 }
 
@@ -2095,6 +2118,9 @@ signal_handler(int signum)
 		/* uninitialize packet capture framework */
 		rte_pdump_uninit();
 #endif
+#ifdef RTE_LIBRTE_LATENCY_STATS
+		rte_latencystats_uninit();
+#endif
 		force_quit();
 		/* exit with the expected status */
 		signal(signum, SIG_DFL);
@@ -2155,6 +2181,17 @@ main(int argc, char** argv)
 
 	/* Init metrics library */
 	rte_metrics_init(rte_socket_id());
+
+#ifdef RTE_LIBRTE_LATENCY_STATS
+	if (latencystats_enabled != 0) {
+		int ret = rte_latencystats_init(1, NULL);
+		if (ret)
+			printf("Warning: latencystats init()"
+				" returned error %d\n",	ret);
+		printf("Latencystats running on lcore %d\n",
+			latencystats_lcore_id);
+	}
+#endif
 
 	/* Setup bitrate stats */
 #ifdef RTE_LIBRTE_BITRATE

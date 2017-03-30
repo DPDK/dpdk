@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2017 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -380,6 +380,12 @@ extern enum dcb_queue_mapping_mode dcb_q_mapping;
 
 extern uint16_t mbuf_data_size; /**< Mbuf data space size. */
 extern uint32_t param_total_num_mbufs;
+
+
+#ifdef RTE_LIBRTE_LATENCY_STATS
+extern uint8_t latencystats_enabled;
+extern lcoreid_t latencystats_lcore_id;
+#endif
 
 extern struct rte_fdir_conf fdir_conf;
 
