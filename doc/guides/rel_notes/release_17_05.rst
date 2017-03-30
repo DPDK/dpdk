@@ -188,6 +188,13 @@ New Features
   and applications are free to choose whatever model
   (or combination of the two) that best suits their needs.
 
+* **Added Software Eventdev PMD.**
+
+  Added support for the software eventdev PMD. The software eventdev is a
+  software based scheduler device that implements the eventdev API. This
+  PMD allows an application to configure a pipeline using the eventdev
+  library, and run the scheduling workload on a CPU core.
+
 
 Resolved Issues
 ---------------
