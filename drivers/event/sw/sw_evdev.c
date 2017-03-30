@@ -44,6 +44,28 @@
 #define SCHED_QUANTA_ARG "sched_quanta"
 #define CREDIT_QUANTA_ARG "credit_quanta"
 
+static void
+sw_info_get(struct rte_eventdev *dev, struct rte_event_dev_info *info)
+{
+	RTE_SET_USED(dev);
+
+	static const struct rte_event_dev_info evdev_sw_info = {
+			.driver_name = SW_PMD_NAME,
+			.max_event_queues = RTE_EVENT_MAX_QUEUES_PER_DEV,
+			.max_event_queue_flows = SW_QID_NUM_FIDS,
+			.max_event_queue_priority_levels = SW_Q_PRIORITY_MAX,
+			.max_event_priority_levels = SW_IQS_MAX,
+			.max_event_ports = SW_PORTS_MAX,
+			.max_event_port_dequeue_depth = MAX_SW_CONS_Q_DEPTH,
+			.max_event_port_enqueue_depth = MAX_SW_PROD_Q_DEPTH,
+			.max_num_events = SW_INFLIGHT_EVENTS_TOTAL,
+			.event_dev_cap = (RTE_EVENT_DEV_CAP_QUEUE_QOS |
+					RTE_EVENT_DEV_CAP_EVENT_QOS),
+	};
+
+	*info = evdev_sw_info;
+}
+
 static int
 assign_numa_node(const char *key __rte_unused, const char *value, void *opaque)
 {
@@ -78,6 +100,7 @@ static int
 sw_probe(const char *name, const char *params)
 {
 	static const struct rte_eventdev_ops evdev_sw_ops = {
+			.dev_infos_get = sw_info_get,
 	};
 
 	static const char *const args[] = {
