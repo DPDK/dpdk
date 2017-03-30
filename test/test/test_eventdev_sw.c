@@ -309,6 +309,100 @@ test_event_dev_stats_get(int dev_id, struct test_event_dev_stats *stats)
 	return 0;
 }
 
+/* run_prio_packet_test
+ * This performs a basic packet priority check on the test instance passed in.
+ * It is factored out of the main priority tests as the same tests must be
+ * performed to ensure prioritization of each type of QID.
+ *
+ * Requirements:
+ *  - An initialized test structure, including mempool
+ *  - t->port[0] is initialized for both Enq / Deq of packets to the QID
+ *  - t->qid[0] is the QID to be tested
+ *  - if LB QID, the CQ must be mapped to the QID.
+ */
+static int
+run_prio_packet_test(struct test *t)
+{
+	int err;
+	const uint32_t MAGIC_SEQN[] = {4711, 1234};
+	const uint32_t PRIORITY[] = {
+		RTE_EVENT_DEV_PRIORITY_NORMAL,
+		RTE_EVENT_DEV_PRIORITY_HIGHEST
+	};
+	unsigned int i;
+	for (i = 0; i < RTE_DIM(MAGIC_SEQN); i++) {
+		/* generate pkt and enqueue */
+		struct rte_event ev;
+		struct rte_mbuf *arp = rte_gen_arp(0, t->mbuf_pool);
+		if (!arp) {
+			printf("%d: gen of pkt failed\n", __LINE__);
+			return -1;
+		}
+		arp->seqn = MAGIC_SEQN[i];
+
+		ev = (struct rte_event){
+			.priority = PRIORITY[i],
+			.op = RTE_EVENT_OP_NEW,
+			.queue_id = t->qid[0],
+			.mbuf = arp
+		};
+		err = rte_event_enqueue_burst(evdev, t->port[0], &ev, 1);
+		if (err < 0) {
+			printf("%d: error failed to enqueue\n", __LINE__);
+			return -1;
+		}
+	}
+
+	rte_event_schedule(evdev);
+
+	struct test_event_dev_stats stats;
+	err = test_event_dev_stats_get(evdev, &stats);
+	if (err) {
+		printf("%d: error failed to get stats\n", __LINE__);
+		return -1;
+	}
+
+	if (stats.port_rx_pkts[t->port[0]] != 2) {
+		printf("%d: error stats incorrect for directed port\n",
+				__LINE__);
+		rte_event_dev_dump(evdev, stdout);
+		return -1;
+	}
+
+	struct rte_event ev, ev2;
+	uint32_t deq_pkts;
+	deq_pkts = rte_event_dequeue_burst(evdev, t->port[0], &ev, 1, 0);
+	if (deq_pkts != 1) {
+		printf("%d: error failed to deq\n", __LINE__);
+		rte_event_dev_dump(evdev, stdout);
+		return -1;
+	}
+	if (ev.mbuf->seqn != MAGIC_SEQN[1]) {
+		printf("%d: first packet out not highest priority\n",
+				__LINE__);
+		rte_event_dev_dump(evdev, stdout);
+		return -1;
+	}
+	rte_pktmbuf_free(ev.mbuf);
+
+	deq_pkts = rte_event_dequeue_burst(evdev, t->port[0], &ev2, 1, 0);
+	if (deq_pkts != 1) {
+		printf("%d: error failed to deq\n", __LINE__);
+		rte_event_dev_dump(evdev, stdout);
+		return -1;
+	}
+	if (ev2.mbuf->seqn != MAGIC_SEQN[0]) {
+		printf("%d: second packet out not lower priority\n",
+				__LINE__);
+		rte_event_dev_dump(evdev, stdout);
+		return -1;
+	}
+	rte_pktmbuf_free(ev2.mbuf);
+
+	cleanup(t);
+	return 0;
+}
+
 static int
 test_single_directed_packet(struct test *t)
 {
@@ -389,6 +483,94 @@ test_single_directed_packet(struct test *t)
 	rte_pktmbuf_free(ev.mbuf);
 	cleanup(t);
 	return 0;
+}
+
+
+static int
+test_priority_directed(struct test *t)
+{
+	if (init(t, 1, 1) < 0 ||
+			create_ports(t, 1) < 0 ||
+			create_directed_qids(t, 1, t->port) < 0) {
+		printf("%d: Error initializing device\n", __LINE__);
+		return -1;
+	}
+
+	if (rte_event_dev_start(evdev) < 0) {
+		printf("%d: Error with start call\n", __LINE__);
+		return -1;
+	}
+
+	return run_prio_packet_test(t);
+}
+
+static int
+test_priority_atomic(struct test *t)
+{
+	if (init(t, 1, 1) < 0 ||
+			create_ports(t, 1) < 0 ||
+			create_atomic_qids(t, 1) < 0) {
+		printf("%d: Error initializing device\n", __LINE__);
+		return -1;
+	}
+
+	/* map the QID */
+	if (rte_event_port_link(evdev, t->port[0], &t->qid[0], NULL, 1) != 1) {
+		printf("%d: error mapping qid to port\n", __LINE__);
+		return -1;
+	}
+	if (rte_event_dev_start(evdev) < 0) {
+		printf("%d: Error with start call\n", __LINE__);
+		return -1;
+	}
+
+	return run_prio_packet_test(t);
+}
+
+static int
+test_priority_ordered(struct test *t)
+{
+	if (init(t, 1, 1) < 0 ||
+			create_ports(t, 1) < 0 ||
+			create_ordered_qids(t, 1) < 0) {
+		printf("%d: Error initializing device\n", __LINE__);
+		return -1;
+	}
+
+	/* map the QID */
+	if (rte_event_port_link(evdev, t->port[0], &t->qid[0], NULL, 1) != 1) {
+		printf("%d: error mapping qid to port\n", __LINE__);
+		return -1;
+	}
+	if (rte_event_dev_start(evdev) < 0) {
+		printf("%d: Error with start call\n", __LINE__);
+		return -1;
+	}
+
+	return run_prio_packet_test(t);
+}
+
+static int
+test_priority_unordered(struct test *t)
+{
+	if (init(t, 1, 1) < 0 ||
+			create_ports(t, 1) < 0 ||
+			create_unordered_qids(t, 1) < 0) {
+		printf("%d: Error initializing device\n", __LINE__);
+		return -1;
+	}
+
+	/* map the QID */
+	if (rte_event_port_link(evdev, t->port[0], &t->qid[0], NULL, 1) != 1) {
+		printf("%d: error mapping qid to port\n", __LINE__);
+		return -1;
+	}
+	if (rte_event_dev_start(evdev) < 0) {
+		printf("%d: Error with start call\n", __LINE__);
+		return -1;
+	}
+
+	return run_prio_packet_test(t);
 }
 
 static int
@@ -762,6 +944,347 @@ ordered_reconfigure(struct test *t)
 failed:
 	cleanup(t);
 	return -1;
+}
+
+static int
+qid_priorities(struct test *t)
+{
+	/* Test works by having a CQ with enough empty space for all packets,
+	 * and enqueueing 3 packets to 3 QIDs. They must return based on the
+	 * priority of the QID, not the ingress order, to pass the test
+	 */
+	unsigned int i;
+	/* Create instance with 1 ports, and 3 qids */
+	if (init(t, 3, 1) < 0 ||
+			create_ports(t, 1) < 0) {
+		printf("%d: Error initializing device\n", __LINE__);
+		return -1;
+	}
+
+	for (i = 0; i < 3; i++) {
+		/* Create QID */
+		const struct rte_event_queue_conf conf = {
+			.event_queue_cfg = RTE_EVENT_QUEUE_CFG_ATOMIC_ONLY,
+			/* increase priority (0 == highest), as we go */
+			.priority = RTE_EVENT_DEV_PRIORITY_NORMAL - i,
+			.nb_atomic_flows = 1024,
+			.nb_atomic_order_sequences = 1024,
+		};
+
+		if (rte_event_queue_setup(evdev, i, &conf) < 0) {
+			printf("%d: error creating qid %d\n", __LINE__, i);
+			return -1;
+		}
+		t->qid[i] = i;
+	}
+	t->nb_qids = i;
+	/* map all QIDs to port */
+	rte_event_port_link(evdev, t->port[0], NULL, NULL, 0);
+
+	if (rte_event_dev_start(evdev) < 0) {
+		printf("%d: Error with start call\n", __LINE__);
+		return -1;
+	}
+
+	/* enqueue 3 packets, setting seqn and QID to check priority */
+	for (i = 0; i < 3; i++) {
+		struct rte_event ev;
+		struct rte_mbuf *arp = rte_gen_arp(0, t->mbuf_pool);
+		if (!arp) {
+			printf("%d: gen of pkt failed\n", __LINE__);
+			return -1;
+		}
+		ev.queue_id = t->qid[i];
+		ev.op = RTE_EVENT_OP_NEW;
+		ev.mbuf = arp;
+		arp->seqn = i;
+
+		int err = rte_event_enqueue_burst(evdev, t->port[0], &ev, 1);
+		if (err != 1) {
+			printf("%d: Failed to enqueue\n", __LINE__);
+			return -1;
+		}
+	}
+
+	rte_event_schedule(evdev);
+
+	/* dequeue packets, verify priority was upheld */
+	struct rte_event ev[32];
+	uint32_t deq_pkts =
+		rte_event_dequeue_burst(evdev, t->port[0], ev, 32, 0);
+	if (deq_pkts != 3) {
+		printf("%d: failed to deq packets\n", __LINE__);
+		rte_event_dev_dump(evdev, stdout);
+		return -1;
+	}
+	for (i = 0; i < 3; i++) {
+		if (ev[i].mbuf->seqn != 2-i) {
+			printf(
+				"%d: qid priority test: seqn %d incorrectly prioritized\n",
+					__LINE__, i);
+		}
+	}
+
+	cleanup(t);
+	return 0;
+}
+
+static int
+load_balancing(struct test *t)
+{
+	const int rx_enq = 0;
+	int err;
+	uint32_t i;
+
+	if (init(t, 1, 4) < 0 ||
+			create_ports(t, 4) < 0 ||
+			create_atomic_qids(t, 1) < 0) {
+		printf("%d: Error initializing device\n", __LINE__);
+		return -1;
+	}
+
+	for (i = 0; i < 3; i++) {
+		/* map port 1 - 3 inclusive */
+		if (rte_event_port_link(evdev, t->port[i+1], &t->qid[0],
+				NULL, 1) != 1) {
+			printf("%d: error mapping qid to port %d\n",
+					__LINE__, i);
+			return -1;
+		}
+	}
+
+	if (rte_event_dev_start(evdev) < 0) {
+		printf("%d: Error with start call\n", __LINE__);
+		return -1;
+	}
+
+	/************** FORWARD ****************/
+	/*
+	 * Create a set of flows that test the load-balancing operation of the
+	 * implementation. Fill CQ 0 and 1 with flows 0 and 1, and test
+	 * with a new flow, which should be sent to the 3rd mapped CQ
+	 */
+	static uint32_t flows[] = {0, 1, 1, 0, 0, 2, 2, 0, 2};
+
+	for (i = 0; i < RTE_DIM(flows); i++) {
+		struct rte_mbuf *arp = rte_gen_arp(0, t->mbuf_pool);
+		if (!arp) {
+			printf("%d: gen of pkt failed\n", __LINE__);
+			return -1;
+		}
+
+		struct rte_event ev = {
+				.op = RTE_EVENT_OP_NEW,
+				.queue_id = t->qid[0],
+				.flow_id = flows[i],
+				.mbuf = arp,
+		};
+		/* generate pkt and enqueue */
+		err = rte_event_enqueue_burst(evdev, t->port[rx_enq], &ev, 1);
+		if (err < 0) {
+			printf("%d: Failed to enqueue\n", __LINE__);
+			return -1;
+		}
+	}
+
+	rte_event_schedule(evdev);
+
+	struct test_event_dev_stats stats;
+	err = test_event_dev_stats_get(evdev, &stats);
+	if (err) {
+		printf("%d: failed to get stats\n", __LINE__);
+		return -1;
+	}
+
+	if (stats.port_inflight[1] != 4) {
+		printf("%d:%s: port 1 inflight not correct\n", __LINE__,
+				__func__);
+		return -1;
+	}
+	if (stats.port_inflight[2] != 2) {
+		printf("%d:%s: port 2 inflight not correct\n", __LINE__,
+				__func__);
+		return -1;
+	}
+	if (stats.port_inflight[3] != 3) {
+		printf("%d:%s: port 3 inflight not correct\n", __LINE__,
+				__func__);
+		return -1;
+	}
+
+	cleanup(t);
+	return 0;
+}
+
+static int
+load_balancing_history(struct test *t)
+{
+	struct test_event_dev_stats stats = {0};
+	const int rx_enq = 0;
+	int err;
+	uint32_t i;
+
+	/* Create instance with 1 atomic QID going to 3 ports + 1 prod port */
+	if (init(t, 1, 4) < 0 ||
+			create_ports(t, 4) < 0 ||
+			create_atomic_qids(t, 1) < 0)
+		return -1;
+
+	/* CQ mapping to QID */
+	if (rte_event_port_link(evdev, t->port[1], &t->qid[0], NULL, 1) != 1) {
+		printf("%d: error mapping port 1 qid\n", __LINE__);
+		return -1;
+	}
+	if (rte_event_port_link(evdev, t->port[2], &t->qid[0], NULL, 1) != 1) {
+		printf("%d: error mapping port 2 qid\n", __LINE__);
+		return -1;
+	}
+	if (rte_event_port_link(evdev, t->port[3], &t->qid[0], NULL, 1) != 1) {
+		printf("%d: error mapping port 3 qid\n", __LINE__);
+		return -1;
+	}
+	if (rte_event_dev_start(evdev) < 0) {
+		printf("%d: Error with start call\n", __LINE__);
+		return -1;
+	}
+
+	/*
+	 * Create a set of flows that test the load-balancing operation of the
+	 * implementation. Fill CQ 0, 1 and 2 with flows 0, 1 and 2, drop
+	 * the packet from CQ 0, send in a new set of flows. Ensure that:
+	 *  1. The new flow 3 gets into the empty CQ0
+	 *  2. packets for existing flow gets added into CQ1
+	 *  3. Next flow 0 pkt is now onto CQ2, since CQ0 and CQ1 now contain
+	 *     more outstanding pkts
+	 *
+	 *  This test makes sure that when a flow ends (i.e. all packets
+	 *  have been completed for that flow), that the flow can be moved
+	 *  to a different CQ when new packets come in for that flow.
+	 */
+	static uint32_t flows1[] = {0, 1, 1, 2};
+
+	for (i = 0; i < RTE_DIM(flows1); i++) {
+		struct rte_mbuf *arp = rte_gen_arp(0, t->mbuf_pool);
+		struct rte_event ev = {
+				.flow_id = flows1[i],
+				.op = RTE_EVENT_OP_NEW,
+				.queue_id = t->qid[0],
+				.event_type = RTE_EVENT_TYPE_CPU,
+				.priority = RTE_EVENT_DEV_PRIORITY_NORMAL,
+				.mbuf = arp
+		};
+
+		if (!arp) {
+			printf("%d: gen of pkt failed\n", __LINE__);
+			return -1;
+		}
+		arp->hash.rss = flows1[i];
+		err = rte_event_enqueue_burst(evdev, t->port[rx_enq], &ev, 1);
+		if (err < 0) {
+			printf("%d: Failed to enqueue\n", __LINE__);
+			return -1;
+		}
+	}
+
+	/* call the scheduler */
+	rte_event_schedule(evdev);
+
+	/* Dequeue the flow 0 packet from port 1, so that we can then drop */
+	struct rte_event ev;
+	if (!rte_event_dequeue_burst(evdev, t->port[1], &ev, 1, 0)) {
+		printf("%d: failed to dequeue\n", __LINE__);
+		return -1;
+	}
+	if (ev.mbuf->hash.rss != flows1[0]) {
+		printf("%d: unexpected flow received\n", __LINE__);
+		return -1;
+	}
+
+	/* drop the flow 0 packet from port 1 */
+	rte_event_enqueue_burst(evdev, t->port[1], &release_ev, 1);
+
+	/* call the scheduler */
+	rte_event_schedule(evdev);
+
+	/*
+	 * Set up the next set of flows, first a new flow to fill up
+	 * CQ 0, so that the next flow 0 packet should go to CQ2
+	 */
+	static uint32_t flows2[] = { 3, 3, 3, 1, 1, 0 };
+
+	for (i = 0; i < RTE_DIM(flows2); i++) {
+		struct rte_mbuf *arp = rte_gen_arp(0, t->mbuf_pool);
+		struct rte_event ev = {
+				.flow_id = flows2[i],
+				.op = RTE_EVENT_OP_NEW,
+				.queue_id = t->qid[0],
+				.event_type = RTE_EVENT_TYPE_CPU,
+				.priority = RTE_EVENT_DEV_PRIORITY_NORMAL,
+				.mbuf = arp
+		};
+
+		if (!arp) {
+			printf("%d: gen of pkt failed\n", __LINE__);
+			return -1;
+		}
+		arp->hash.rss = flows2[i];
+
+		err = rte_event_enqueue_burst(evdev, t->port[rx_enq], &ev, 1);
+		if (err < 0) {
+			printf("%d: Failed to enqueue\n", __LINE__);
+			return -1;
+		}
+	}
+
+	/* schedule */
+	rte_event_schedule(evdev);
+
+	err = test_event_dev_stats_get(evdev, &stats);
+	if (err) {
+		printf("%d:failed to get stats\n", __LINE__);
+		return -1;
+	}
+
+	/*
+	 * Now check the resulting inflights on each port.
+	 */
+	if (stats.port_inflight[1] != 3) {
+		printf("%d:%s: port 1 inflight not correct\n", __LINE__,
+				__func__);
+		printf("Inflights, ports 1, 2, 3: %u, %u, %u\n",
+				(unsigned int)stats.port_inflight[1],
+				(unsigned int)stats.port_inflight[2],
+				(unsigned int)stats.port_inflight[3]);
+		return -1;
+	}
+	if (stats.port_inflight[2] != 4) {
+		printf("%d:%s: port 2 inflight not correct\n", __LINE__,
+				__func__);
+		printf("Inflights, ports 1, 2, 3: %u, %u, %u\n",
+				(unsigned int)stats.port_inflight[1],
+				(unsigned int)stats.port_inflight[2],
+				(unsigned int)stats.port_inflight[3]);
+		return -1;
+	}
+	if (stats.port_inflight[3] != 2) {
+		printf("%d:%s: port 3 inflight not correct\n", __LINE__,
+				__func__);
+		printf("Inflights, ports 1, 2, 3: %u, %u, %u\n",
+				(unsigned int)stats.port_inflight[1],
+				(unsigned int)stats.port_inflight[2],
+				(unsigned int)stats.port_inflight[3]);
+		return -1;
+	}
+
+	for (i = 1; i <= 3; i++) {
+		struct rte_event ev;
+		while (rte_event_dequeue_burst(evdev, i, &ev, 1, 0))
+			rte_event_enqueue_burst(evdev, i, &release_ev, 1);
+	}
+	rte_event_schedule(evdev);
+
+	cleanup(t);
+	return 0;
 }
 
 static int
@@ -1370,10 +1893,47 @@ test_sw_eventdev(void)
 		printf("ERROR - Burst Packets test FAILED.\n");
 		return ret;
 	}
+	printf("*** Running Load Balancing test...\n");
+	ret = load_balancing(t);
+	if (ret != 0) {
+		printf("ERROR - Load Balancing test FAILED.\n");
+		return ret;
+	}
+	printf("*** Running Prioritized Directed test...\n");
+	ret = test_priority_directed(t);
+	if (ret != 0) {
+		printf("ERROR - Prioritized Directed test FAILED.\n");
+		return ret;
+	}
+	printf("*** Running Prioritized Atomic test...\n");
+	ret = test_priority_atomic(t);
+	if (ret != 0) {
+		printf("ERROR - Prioritized Atomic test FAILED.\n");
+		return ret;
+	}
+
+	printf("*** Running Prioritized Ordered test...\n");
+	ret = test_priority_ordered(t);
+	if (ret != 0) {
+		printf("ERROR - Prioritized Ordered test FAILED.\n");
+		return ret;
+	}
+	printf("*** Running Prioritized Unordered test...\n");
+	ret = test_priority_unordered(t);
+	if (ret != 0) {
+		printf("ERROR - Prioritized Unordered test FAILED.\n");
+		return ret;
+	}
 	printf("*** Running Invalid QID test...\n");
 	ret = invalid_qid(t);
 	if (ret != 0) {
 		printf("ERROR - Invalid QID test FAILED.\n");
+		return ret;
+	}
+	printf("*** Running Load Balancing History test...\n");
+	ret = load_balancing_history(t);
+	if (ret != 0) {
+		printf("ERROR - Load Balancing History test FAILED.\n");
 		return ret;
 	}
 	printf("*** Running Inflight Count test...\n");
@@ -1386,6 +1946,12 @@ test_sw_eventdev(void)
 	ret = abuse_inflights(t);
 	if (ret != 0) {
 		printf("ERROR - Abuse Inflights test FAILED.\n");
+		return ret;
+	}
+	printf("*** Running QID Priority test...\n");
+	ret = qid_priorities(t);
+	if (ret != 0) {
+		printf("ERROR - QID Priority test FAILED.\n");
 		return ret;
 	}
 	printf("*** Running Ordered Reconfigure test...\n");
