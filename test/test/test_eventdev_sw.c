@@ -742,6 +742,377 @@ abuse_inflights(struct test *t)
 }
 
 static int
+xstats_tests(struct test *t)
+{
+	const int wrk_enq = 2;
+	int err;
+
+	/* Create instance with 4 ports */
+	if (init(t, 1, 4) < 0 ||
+			create_ports(t, 4) < 0 ||
+			create_atomic_qids(t, 1) < 0) {
+		printf("%d: Error initializing device\n", __LINE__);
+		return -1;
+	}
+
+	/* CQ mapping to QID */
+	err = rte_event_port_link(evdev, t->port[wrk_enq], NULL, NULL, 0);
+	if (err != 1) {
+		printf("%d: error mapping lb qid\n", __LINE__);
+		cleanup(t);
+		return -1;
+	}
+
+	if (rte_event_dev_start(evdev) < 0) {
+		printf("%d: Error with start call\n", __LINE__);
+		return -1;
+	}
+
+	const uint32_t XSTATS_MAX = 1024;
+
+	uint32_t i;
+	uint32_t ids[XSTATS_MAX];
+	uint64_t values[XSTATS_MAX];
+	struct rte_event_dev_xstats_name xstats_names[XSTATS_MAX];
+
+	for (i = 0; i < XSTATS_MAX; i++)
+		ids[i] = i;
+
+	/* Device names / values */
+	int ret = rte_event_dev_xstats_names_get(evdev,
+					RTE_EVENT_DEV_XSTATS_DEVICE,
+					0, xstats_names, ids, XSTATS_MAX);
+	if (ret != 6) {
+		printf("%d: expected 6 stats, got return %d\n", __LINE__, ret);
+		return -1;
+	}
+	ret = rte_event_dev_xstats_get(evdev,
+					RTE_EVENT_DEV_XSTATS_DEVICE,
+					0, ids, values, ret);
+	if (ret != 6) {
+		printf("%d: expected 6 stats, got return %d\n", __LINE__, ret);
+		return -1;
+	}
+
+	/* Port names / values */
+	ret = rte_event_dev_xstats_names_get(evdev,
+					RTE_EVENT_DEV_XSTATS_PORT, 0,
+					xstats_names, ids, XSTATS_MAX);
+	if (ret != 21) {
+		printf("%d: expected 21 stats, got return %d\n", __LINE__, ret);
+		return -1;
+	}
+	ret = rte_event_dev_xstats_get(evdev,
+					RTE_EVENT_DEV_XSTATS_PORT, 0,
+					ids, values, ret);
+	if (ret != 21) {
+		printf("%d: expected 21 stats, got return %d\n", __LINE__, ret);
+		return -1;
+	}
+
+	/* Queue names / values */
+	ret = rte_event_dev_xstats_names_get(evdev,
+					RTE_EVENT_DEV_XSTATS_QUEUE,
+					0, xstats_names, ids, XSTATS_MAX);
+	if (ret != 13) {
+		printf("%d: expected 13 stats, got return %d\n", __LINE__, ret);
+		return -1;
+	}
+
+	/* NEGATIVE TEST: with wrong queue passed, 0 stats should be returned */
+	ret = rte_event_dev_xstats_get(evdev,
+					RTE_EVENT_DEV_XSTATS_QUEUE,
+					1, ids, values, ret);
+	if (ret != -EINVAL) {
+		printf("%d: expected 0 stats, got return %d\n", __LINE__, ret);
+		return -1;
+	}
+
+	ret = rte_event_dev_xstats_get(evdev,
+					RTE_EVENT_DEV_XSTATS_QUEUE,
+					0, ids, values, ret);
+	if (ret != 13) {
+		printf("%d: expected 13 stats, got return %d\n", __LINE__, ret);
+		return -1;
+	}
+
+	/* enqueue packets to check values */
+	for (i = 0; i < 3; i++) {
+		struct rte_event ev;
+		struct rte_mbuf *arp = rte_gen_arp(0, t->mbuf_pool);
+		if (!arp) {
+			printf("%d: gen of pkt failed\n", __LINE__);
+			return -1;
+		}
+		ev.queue_id = t->qid[i];
+		ev.op = RTE_EVENT_OP_NEW;
+		ev.mbuf = arp;
+		ev.flow_id = 7;
+		arp->seqn = i;
+
+		int err = rte_event_enqueue_burst(evdev, t->port[0], &ev, 1);
+		if (err != 1) {
+			printf("%d: Failed to enqueue\n", __LINE__);
+			return -1;
+		}
+	}
+
+	rte_event_schedule(evdev);
+
+	/* Device names / values */
+	int num_stats = rte_event_dev_xstats_names_get(evdev,
+					RTE_EVENT_DEV_XSTATS_DEVICE, 0,
+					xstats_names, ids, XSTATS_MAX);
+	if (num_stats < 0)
+		goto fail;
+	ret = rte_event_dev_xstats_get(evdev,
+					RTE_EVENT_DEV_XSTATS_DEVICE,
+					0, ids, values, num_stats);
+	static const uint64_t expected[] = {3, 3, 0, 1, 0, 0};
+	for (i = 0; (signed int)i < ret; i++) {
+		if (expected[i] != values[i]) {
+			printf(
+				"%d Error xstat %d (id %d) %s : %"PRIu64
+				", expect %"PRIu64"\n",
+				__LINE__, i, ids[i], xstats_names[i].name,
+				values[i], expected[i]);
+			goto fail;
+		}
+	}
+
+	ret = rte_event_dev_xstats_reset(evdev, RTE_EVENT_DEV_XSTATS_DEVICE,
+					0, NULL, 0);
+
+	/* ensure reset statistics are zero-ed */
+	static const uint64_t expected_zero[] = {0, 0, 0, 0, 0, 0};
+	ret = rte_event_dev_xstats_get(evdev,
+					RTE_EVENT_DEV_XSTATS_DEVICE,
+					0, ids, values, num_stats);
+	for (i = 0; (signed int)i < ret; i++) {
+		if (expected_zero[i] != values[i]) {
+			printf(
+				"%d Error, xstat %d (id %d) %s : %"PRIu64
+				", expect %"PRIu64"\n",
+				__LINE__, i, ids[i], xstats_names[i].name,
+				values[i], expected_zero[i]);
+			goto fail;
+		}
+	}
+
+	/* port reset checks */
+	num_stats = rte_event_dev_xstats_names_get(evdev,
+					RTE_EVENT_DEV_XSTATS_PORT, 0,
+					xstats_names, ids, XSTATS_MAX);
+	if (num_stats < 0)
+		goto fail;
+	ret = rte_event_dev_xstats_get(evdev, RTE_EVENT_DEV_XSTATS_PORT,
+					0, ids, values, num_stats);
+
+	static const uint64_t port_expected[] = {
+		3 /* rx */,
+		0 /* tx */,
+		0 /* drop */,
+		0 /* inflights */,
+		0 /* avg pkt cycles */,
+		29 /* credits */,
+		0 /* rx ring used */,
+		4096 /* rx ring free */,
+		0 /* cq ring used */,
+		32 /* cq ring free */,
+		0 /* dequeue calls */,
+		/* 10 dequeue burst buckets */
+		0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0,
+	};
+	if (ret != RTE_DIM(port_expected)) {
+		printf(
+			"%s %d: wrong number of port stats (%d), expected %zu\n",
+			__func__, __LINE__, ret, RTE_DIM(port_expected));
+	}
+
+	for (i = 0; (signed int)i < ret; i++) {
+		if (port_expected[i] != values[i]) {
+			printf(
+				"%s : %d: Error stat %s is %"PRIu64
+				", expected %"PRIu64"\n",
+				__func__, __LINE__, xstats_names[i].name,
+				values[i], port_expected[i]);
+			goto fail;
+		}
+	}
+
+	ret = rte_event_dev_xstats_reset(evdev, RTE_EVENT_DEV_XSTATS_PORT,
+					0, NULL, 0);
+
+	/* ensure reset statistics are zero-ed */
+	static const uint64_t port_expected_zero[] = {
+		0 /* rx */,
+		0 /* tx */,
+		0 /* drop */,
+		0 /* inflights */,
+		0 /* avg pkt cycles */,
+		29 /* credits */,
+		0 /* rx ring used */,
+		4096 /* rx ring free */,
+		0 /* cq ring used */,
+		32 /* cq ring free */,
+		0 /* dequeue calls */,
+		/* 10 dequeue burst buckets */
+		0, 0, 0, 0, 0,
+		0, 0, 0, 0, 0,
+	};
+	ret = rte_event_dev_xstats_get(evdev,
+					RTE_EVENT_DEV_XSTATS_PORT,
+					0, ids, values, num_stats);
+	for (i = 0; (signed int)i < ret; i++) {
+		if (port_expected_zero[i] != values[i]) {
+			printf(
+				"%d, Error, xstat %d (id %d) %s : %"PRIu64
+				", expect %"PRIu64"\n",
+				__LINE__, i, ids[i], xstats_names[i].name,
+				values[i], port_expected_zero[i]);
+			goto fail;
+		}
+	}
+
+	/* QUEUE STATS TESTS */
+	num_stats = rte_event_dev_xstats_names_get(evdev,
+						RTE_EVENT_DEV_XSTATS_QUEUE, 0,
+						xstats_names, ids, XSTATS_MAX);
+	ret = rte_event_dev_xstats_get(evdev, RTE_EVENT_DEV_XSTATS_QUEUE,
+					0, ids, values, num_stats);
+	if (ret < 0) {
+		printf("xstats get returned %d\n", ret);
+		goto fail;
+	}
+	if ((unsigned int)ret > XSTATS_MAX)
+		printf("%s %d: more xstats available than space\n",
+				__func__, __LINE__);
+
+	static const uint64_t queue_expected[] = {
+		3 /* rx */,
+		3 /* tx */,
+		0 /* drop */,
+		3 /* inflights */,
+		512 /* iq size */,
+		0, 0, 0, 0, /* iq 0, 1, 2, 3 used */
+		0, 0, 1, 0, /* qid_0_port_X_pinned_flows */
+	};
+	for (i = 0; (signed int)i < ret; i++) {
+		if (queue_expected[i] != values[i]) {
+			printf(
+				"%d, Error, xstat %d (id %d) %s : %"PRIu64
+				", expect %"PRIu64"\n",
+				__LINE__, i, ids[i], xstats_names[i].name,
+				values[i], queue_expected[i]);
+			goto fail;
+		}
+	}
+
+	/* Reset the queue stats here */
+	ret = rte_event_dev_xstats_reset(evdev,
+					RTE_EVENT_DEV_XSTATS_QUEUE, 0,
+					NULL,
+					0);
+
+	/* Verify that the resetable stats are reset, and others are not */
+	static const uint64_t queue_expected_zero[] = {
+		0 /* rx */,
+		0 /* tx */,
+		0 /* drop */,
+		3 /* inflight */,
+		512 /* iq size */,
+		0, 0, 0, 0, /* 4 iq used */
+		0, 0, 1, 0, /* qid to port pinned flows */
+	};
+
+	ret = rte_event_dev_xstats_get(evdev, RTE_EVENT_DEV_XSTATS_QUEUE, 0,
+					ids, values, num_stats);
+	int fails = 0;
+	for (i = 0; (signed int)i < ret; i++) {
+		if (queue_expected_zero[i] != values[i]) {
+			printf(
+				"%d, Error, xstat %d (id %d) %s : %"PRIu64
+				", expect %"PRIu64"\n",
+				__LINE__, i, ids[i], xstats_names[i].name,
+				values[i], queue_expected_zero[i]);
+			fails++;
+		}
+	}
+	if (fails) {
+		printf("%d : %d of values were not as expected above\n",
+				__LINE__, fails);
+		goto fail;
+	}
+
+	cleanup(t);
+	return 0;
+
+fail:
+	rte_event_dev_dump(0, stdout);
+	cleanup(t);
+	return -1;
+}
+
+
+static int
+xstats_id_abuse_tests(struct test *t)
+{
+	int err;
+	const uint32_t XSTATS_MAX = 1024;
+	const uint32_t link_port = 2;
+
+	uint32_t ids[XSTATS_MAX];
+	struct rte_event_dev_xstats_name xstats_names[XSTATS_MAX];
+
+	/* Create instance with 4 ports */
+	if (init(t, 1, 4) < 0 ||
+			create_ports(t, 4) < 0 ||
+			create_atomic_qids(t, 1) < 0) {
+		printf("%d: Error initializing device\n", __LINE__);
+		goto fail;
+	}
+
+	err = rte_event_port_link(evdev, t->port[link_port], NULL, NULL, 0);
+	if (err != 1) {
+		printf("%d: error mapping lb qid\n", __LINE__);
+		goto fail;
+	}
+
+	if (rte_event_dev_start(evdev) < 0) {
+		printf("%d: Error with start call\n", __LINE__);
+		goto fail;
+	}
+
+	/* no test for device, as it ignores the port/q number */
+	int num_stats = rte_event_dev_xstats_names_get(evdev,
+					RTE_EVENT_DEV_XSTATS_PORT,
+					UINT8_MAX-1, xstats_names, ids,
+					XSTATS_MAX);
+	if (num_stats != 0) {
+		printf("%d: expected %d stats, got return %d\n", __LINE__,
+				0, num_stats);
+		goto fail;
+	}
+
+	num_stats = rte_event_dev_xstats_names_get(evdev,
+					RTE_EVENT_DEV_XSTATS_QUEUE,
+					UINT8_MAX-1, xstats_names, ids,
+					XSTATS_MAX);
+	if (num_stats != 0) {
+		printf("%d: expected %d stats, got return %d\n", __LINE__,
+				0, num_stats);
+		goto fail;
+	}
+
+	cleanup(t);
+	return 0;
+fail:
+	cleanup(t);
+	return -1;
+}
+
+static int
 port_reconfig_credits(struct test *t)
 {
 	if (init(t, 1, 1) < 0) {
@@ -899,6 +1270,417 @@ port_single_lb_reconfig(struct test *t)
 		printf("%d: Error with start call\n", __LINE__);
 		goto fail;
 	}
+
+	cleanup(t);
+	return 0;
+fail:
+	cleanup(t);
+	return -1;
+}
+
+static int
+xstats_brute_force(struct test *t)
+{
+	uint32_t i;
+	const uint32_t XSTATS_MAX = 1024;
+	uint32_t ids[XSTATS_MAX];
+	uint64_t values[XSTATS_MAX];
+	struct rte_event_dev_xstats_name xstats_names[XSTATS_MAX];
+
+
+	/* Create instance with 4 ports */
+	if (init(t, 1, 4) < 0 ||
+			create_ports(t, 4) < 0 ||
+			create_atomic_qids(t, 1) < 0) {
+		printf("%d: Error initializing device\n", __LINE__);
+		return -1;
+	}
+
+	int err = rte_event_port_link(evdev, t->port[0], NULL, NULL, 0);
+	if (err != 1) {
+		printf("%d: error mapping lb qid\n", __LINE__);
+		goto fail;
+	}
+
+	if (rte_event_dev_start(evdev) < 0) {
+		printf("%d: Error with start call\n", __LINE__);
+		goto fail;
+	}
+
+	for (i = 0; i < XSTATS_MAX; i++)
+		ids[i] = i;
+
+	for (i = 0; i < 3; i++) {
+		uint32_t mode = RTE_EVENT_DEV_XSTATS_DEVICE + i;
+		uint32_t j;
+		for (j = 0; j < UINT8_MAX; j++) {
+			rte_event_dev_xstats_names_get(evdev, mode,
+				j, xstats_names, ids, XSTATS_MAX);
+
+			rte_event_dev_xstats_get(evdev, mode, j, ids,
+						 values, XSTATS_MAX);
+		}
+	}
+
+	cleanup(t);
+	return 0;
+fail:
+	cleanup(t);
+	return -1;
+}
+
+static int
+xstats_id_reset_tests(struct test *t)
+{
+	const int wrk_enq = 2;
+	int err;
+
+	/* Create instance with 4 ports */
+	if (init(t, 1, 4) < 0 ||
+			create_ports(t, 4) < 0 ||
+			create_atomic_qids(t, 1) < 0) {
+		printf("%d: Error initializing device\n", __LINE__);
+		return -1;
+	}
+
+	/* CQ mapping to QID */
+	err = rte_event_port_link(evdev, t->port[wrk_enq], NULL, NULL, 0);
+	if (err != 1) {
+		printf("%d: error mapping lb qid\n", __LINE__);
+		goto fail;
+	}
+
+	if (rte_event_dev_start(evdev) < 0) {
+		printf("%d: Error with start call\n", __LINE__);
+		goto fail;
+	}
+
+#define XSTATS_MAX 1024
+	int ret;
+	uint32_t i;
+	uint32_t ids[XSTATS_MAX];
+	uint64_t values[XSTATS_MAX];
+	struct rte_event_dev_xstats_name xstats_names[XSTATS_MAX];
+
+	for (i = 0; i < XSTATS_MAX; i++)
+		ids[i] = i;
+
+#define NUM_DEV_STATS 6
+	/* Device names / values */
+	int num_stats = rte_event_dev_xstats_names_get(evdev,
+					RTE_EVENT_DEV_XSTATS_DEVICE,
+					0, xstats_names, ids, XSTATS_MAX);
+	if (num_stats != NUM_DEV_STATS) {
+		printf("%d: expected %d stats, got return %d\n", __LINE__,
+				NUM_DEV_STATS, num_stats);
+		goto fail;
+	}
+	ret = rte_event_dev_xstats_get(evdev,
+					RTE_EVENT_DEV_XSTATS_DEVICE,
+					0, ids, values, num_stats);
+	if (ret != NUM_DEV_STATS) {
+		printf("%d: expected %d stats, got return %d\n", __LINE__,
+				NUM_DEV_STATS, ret);
+		goto fail;
+	}
+
+#define NPKTS 7
+	for (i = 0; i < NPKTS; i++) {
+		struct rte_event ev;
+		struct rte_mbuf *arp = rte_gen_arp(0, t->mbuf_pool);
+		if (!arp) {
+			printf("%d: gen of pkt failed\n", __LINE__);
+			goto fail;
+		}
+		ev.queue_id = t->qid[i];
+		ev.op = RTE_EVENT_OP_NEW;
+		ev.mbuf = arp;
+		arp->seqn = i;
+
+		int err = rte_event_enqueue_burst(evdev, t->port[0], &ev, 1);
+		if (err != 1) {
+			printf("%d: Failed to enqueue\n", __LINE__);
+			goto fail;
+		}
+	}
+
+	rte_event_schedule(evdev);
+
+	static const char * const dev_names[] = {
+		"dev_rx", "dev_tx", "dev_drop", "dev_sched_calls",
+		"dev_sched_no_iq_enq", "dev_sched_no_cq_enq",
+	};
+	uint64_t dev_expected[] = {NPKTS, NPKTS, 0, 1, 0, 0};
+	for (i = 0; (int)i < ret; i++) {
+		unsigned int id;
+		uint64_t val = rte_event_dev_xstats_by_name_get(evdev,
+								dev_names[i],
+								&id);
+		if (id != i) {
+			printf("%d: %s id incorrect, expected %d got %d\n",
+					__LINE__, dev_names[i], i, id);
+			goto fail;
+		}
+		if (val != dev_expected[i]) {
+			printf("%d: %s value incorrect, expected %"
+				PRIu64" got %d\n", __LINE__, dev_names[i],
+				dev_expected[i], id);
+			goto fail;
+		}
+		/* reset to zero */
+		int reset_ret = rte_event_dev_xstats_reset(evdev,
+						RTE_EVENT_DEV_XSTATS_DEVICE, 0,
+						&id,
+						1);
+		if (reset_ret) {
+			printf("%d: failed to reset successfully\n", __LINE__);
+			goto fail;
+		}
+		dev_expected[i] = 0;
+		/* check value again */
+		val = rte_event_dev_xstats_by_name_get(evdev, dev_names[i], 0);
+		if (val != dev_expected[i]) {
+			printf("%d: %s value incorrect, expected %"PRIu64
+				" got %"PRIu64"\n", __LINE__, dev_names[i],
+				dev_expected[i], val);
+			goto fail;
+		}
+	};
+
+/* 48 is stat offset from start of the devices whole xstats.
+ * This WILL break every time we add a statistic to a port
+ * or the device, but there is no other way to test
+ */
+#define PORT_OFF 48
+/* num stats for the tested port. CQ size adds more stats to a port */
+#define NUM_PORT_STATS 21
+/* the port to test. */
+#define PORT 2
+	num_stats = rte_event_dev_xstats_names_get(evdev,
+					RTE_EVENT_DEV_XSTATS_PORT, PORT,
+					xstats_names, ids, XSTATS_MAX);
+	if (num_stats != NUM_PORT_STATS) {
+		printf("%d: expected %d stats, got return %d\n",
+			__LINE__, NUM_PORT_STATS, num_stats);
+		goto fail;
+	}
+	ret = rte_event_dev_xstats_get(evdev, RTE_EVENT_DEV_XSTATS_PORT, PORT,
+					ids, values, num_stats);
+
+	if (ret != NUM_PORT_STATS) {
+		printf("%d: expected %d stats, got return %d\n",
+				__LINE__, NUM_PORT_STATS, ret);
+		goto fail;
+	}
+	static const char * const port_names[] = {
+		"port_2_rx",
+		"port_2_tx",
+		"port_2_drop",
+		"port_2_inflight",
+		"port_2_avg_pkt_cycles",
+		"port_2_credits",
+		"port_2_rx_ring_used",
+		"port_2_rx_ring_free",
+		"port_2_cq_ring_used",
+		"port_2_cq_ring_free",
+		"port_2_dequeue_calls",
+		"port_2_dequeues_returning_0",
+		"port_2_dequeues_returning_1-4",
+		"port_2_dequeues_returning_5-8",
+		"port_2_dequeues_returning_9-12",
+		"port_2_dequeues_returning_13-16",
+		"port_2_dequeues_returning_17-20",
+		"port_2_dequeues_returning_21-24",
+		"port_2_dequeues_returning_25-28",
+		"port_2_dequeues_returning_29-32",
+		"port_2_dequeues_returning_33-36",
+	};
+	uint64_t port_expected[] = {
+		0, /* rx */
+		NPKTS, /* tx */
+		0, /* drop */
+		NPKTS, /* inflight */
+		0, /* avg pkt cycles */
+		0, /* credits */
+		0, /* rx ring used */
+		4096, /* rx ring free */
+		NPKTS,  /* cq ring used */
+		25, /* cq ring free */
+		0, /* dequeue zero calls */
+		0, 0, 0, 0, 0, /* 10 dequeue buckets */
+		0, 0, 0, 0, 0,
+	};
+	uint64_t port_expected_zero[] = {
+		0, /* rx */
+		0, /* tx */
+		0, /* drop */
+		NPKTS, /* inflight */
+		0, /* avg pkt cycles */
+		0, /* credits */
+		0, /* rx ring used */
+		4096, /* rx ring free */
+		NPKTS,  /* cq ring used */
+		25, /* cq ring free */
+		0, /* dequeue zero calls */
+		0, 0, 0, 0, 0, /* 10 dequeue buckets */
+		0, 0, 0, 0, 0,
+	};
+	if (RTE_DIM(port_expected) != NUM_PORT_STATS ||
+			RTE_DIM(port_names) != NUM_PORT_STATS) {
+		printf("%d: port array of wrong size\n", __LINE__);
+		goto fail;
+	}
+
+	int failed = 0;
+	for (i = 0; (int)i < ret; i++) {
+		unsigned int id;
+		uint64_t val = rte_event_dev_xstats_by_name_get(evdev,
+								port_names[i],
+								&id);
+		if (id != i + PORT_OFF) {
+			printf("%d: %s id incorrect, expected %d got %d\n",
+					__LINE__, port_names[i], i+PORT_OFF,
+					id);
+			failed = 1;
+		}
+		if (val != port_expected[i]) {
+			printf("%d: %s value incorrect, expected %"PRIu64
+				" got %d\n", __LINE__, port_names[i],
+				port_expected[i], id);
+			failed = 1;
+		}
+		/* reset to zero */
+		int reset_ret = rte_event_dev_xstats_reset(evdev,
+						RTE_EVENT_DEV_XSTATS_PORT, PORT,
+						&id,
+						1);
+		if (reset_ret) {
+			printf("%d: failed to reset successfully\n", __LINE__);
+			failed = 1;
+		}
+		/* check value again */
+		val = rte_event_dev_xstats_by_name_get(evdev, port_names[i], 0);
+		if (val != port_expected_zero[i]) {
+			printf("%d: %s value incorrect, expected %"PRIu64
+				" got %"PRIu64"\n", __LINE__, port_names[i],
+				port_expected_zero[i], val);
+			failed = 1;
+		}
+	};
+	if (failed)
+		goto fail;
+
+/* num queue stats */
+#define NUM_Q_STATS 13
+/* queue offset from start of the devices whole xstats.
+ * This will break every time we add a statistic to a device/port/queue
+ */
+#define QUEUE_OFF 90
+	const uint32_t queue = 0;
+	num_stats = rte_event_dev_xstats_names_get(evdev,
+					RTE_EVENT_DEV_XSTATS_QUEUE, queue,
+					xstats_names, ids, XSTATS_MAX);
+	if (num_stats != NUM_Q_STATS) {
+		printf("%d: expected %d stats, got return %d\n",
+			__LINE__, NUM_Q_STATS, num_stats);
+		goto fail;
+	}
+	ret = rte_event_dev_xstats_get(evdev, RTE_EVENT_DEV_XSTATS_QUEUE,
+					queue, ids, values, num_stats);
+	if (ret != NUM_Q_STATS) {
+		printf("%d: expected 21 stats, got return %d\n", __LINE__, ret);
+		goto fail;
+	}
+	static const char * const queue_names[] = {
+		"qid_0_rx",
+		"qid_0_tx",
+		"qid_0_drop",
+		"qid_0_inflight",
+		"qid_0_iq_size",
+		"qid_0_iq_0_used",
+		"qid_0_iq_1_used",
+		"qid_0_iq_2_used",
+		"qid_0_iq_3_used",
+		"qid_0_port_0_pinned_flows",
+		"qid_0_port_1_pinned_flows",
+		"qid_0_port_2_pinned_flows",
+		"qid_0_port_3_pinned_flows",
+	};
+	uint64_t queue_expected[] = {
+		7, /* rx */
+		7, /* tx */
+		0, /* drop */
+		7, /* inflight */
+		512, /* iq size */
+		0, /* iq 0 used */
+		0, /* iq 1 used */
+		0, /* iq 2 used */
+		0, /* iq 3 used */
+		0, /* qid 0 port 0 pinned flows */
+		0, /* qid 0 port 1 pinned flows */
+		1, /* qid 0 port 2 pinned flows */
+		0, /* qid 0 port 4 pinned flows */
+	};
+	uint64_t queue_expected_zero[] = {
+		0, /* rx */
+		0, /* tx */
+		0, /* drop */
+		7, /* inflight */
+		512, /* iq size */
+		0, /* iq 0 used */
+		0, /* iq 1 used */
+		0, /* iq 2 used */
+		0, /* iq 3 used */
+		0, /* qid 0 port 0 pinned flows */
+		0, /* qid 0 port 1 pinned flows */
+		1, /* qid 0 port 2 pinned flows */
+		0, /* qid 0 port 4 pinned flows */
+	};
+	if (RTE_DIM(queue_expected) != NUM_Q_STATS ||
+			RTE_DIM(queue_names) != NUM_Q_STATS) {
+		printf("%d : queue array of wrong size\n", __LINE__);
+		goto fail;
+	}
+
+	failed = 0;
+	for (i = 0; (int)i < ret; i++) {
+		unsigned int id;
+		uint64_t val = rte_event_dev_xstats_by_name_get(evdev,
+								queue_names[i],
+								&id);
+		if (id != i + QUEUE_OFF) {
+			printf("%d: %s id incorrect, expected %d got %d\n",
+					__LINE__, queue_names[i], i+QUEUE_OFF,
+					id);
+			failed = 1;
+		}
+		if (val != queue_expected[i]) {
+			printf("%d: %s value incorrect, expected %"PRIu64
+				" got %d\n", __LINE__, queue_names[i],
+				queue_expected[i], id);
+			failed = 1;
+		}
+		/* reset to zero */
+		int reset_ret = rte_event_dev_xstats_reset(evdev,
+						RTE_EVENT_DEV_XSTATS_QUEUE,
+						queue, &id, 1);
+		if (reset_ret) {
+			printf("%d: failed to reset successfully\n", __LINE__);
+			failed = 1;
+		}
+		/* check value again */
+		val = rte_event_dev_xstats_by_name_get(evdev, queue_names[i],
+							0);
+		if (val != queue_expected_zero[i]) {
+			printf("%d: %s value incorrect, expected %"PRIu64
+				" got %"PRIu64"\n", __LINE__, queue_names[i],
+				queue_expected_zero[i], val);
+			failed = 1;
+		}
+	};
+
+	if (failed)
+		goto fail;
 
 	cleanup(t);
 	return 0;
@@ -1946,6 +2728,30 @@ test_sw_eventdev(void)
 	ret = abuse_inflights(t);
 	if (ret != 0) {
 		printf("ERROR - Abuse Inflights test FAILED.\n");
+		return ret;
+	}
+	printf("*** Running XStats test...\n");
+	ret = xstats_tests(t);
+	if (ret != 0) {
+		printf("ERROR - XStats test FAILED.\n");
+		return ret;
+	}
+	printf("*** Running XStats ID Reset test...\n");
+	ret = xstats_id_reset_tests(t);
+	if (ret != 0) {
+		printf("ERROR - XStats ID Reset test FAILED.\n");
+		return ret;
+	}
+	printf("*** Running XStats Brute Force test...\n");
+	ret = xstats_brute_force(t);
+	if (ret != 0) {
+		printf("ERROR - XStats Brute Force test FAILED.\n");
+		return ret;
+	}
+	printf("*** Running XStats ID Abuse test...\n");
+	ret = xstats_id_abuse_tests(t);
+	if (ret != 0) {
+		printf("ERROR - XStats ID Abuse test FAILED.\n");
 		return ret;
 	}
 	printf("*** Running QID Priority test...\n");
