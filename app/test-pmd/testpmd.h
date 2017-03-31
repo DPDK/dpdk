@@ -299,6 +299,7 @@ extern uint16_t nb_rx_queue_stats_mappings;
 extern uint16_t verbose_level; /**< Drives messages being displayed, if any. */
 extern uint8_t  interactive;
 extern uint8_t  auto_start;
+extern char cmdline_filename[PATH_MAX]; /**< offline commands file */
 extern uint8_t  numa_support; /**< set by "--numa" parameter */
 extern uint16_t port_topology; /**< set by "--port-topology" parameter */
 extern uint8_t no_flush_rx; /**<set by "--no-flush-rx" parameter */
@@ -496,6 +497,7 @@ unsigned int parse_item_list(char* str, const char* item_name,
 			unsigned int max_items,
 			unsigned int *parsed_items, int check_unique_values);
 void launch_args_parse(int argc, char** argv);
+void cmdline_read_from_file(const char *filename);
 void prompt(void);
 void prompt_exit(void);
 void nic_stats_display(portid_t port_id);

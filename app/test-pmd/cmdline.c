@@ -13720,6 +13720,27 @@ cmdline_parse_ctx_t main_ctx[] = {
 	NULL,
 };
 
+/* read cmdline commands from file */
+void
+cmdline_read_from_file(const char *filename)
+{
+	struct cmdline *cl;
+
+	cl = cmdline_file_new(main_ctx, "testpmd> ", filename);
+	if (cl == NULL) {
+		printf("Failed to create file based cmdline context: %s\n",
+		       filename);
+		return;
+	}
+
+	cmdline_interact(cl);
+	cmdline_quit(cl);
+
+	cmdline_free(cl);
+
+	printf("Read CLI commands from %s\n", filename);
+}
+
 /* prompt function, called from main on MASTER lcore */
 void
 prompt(void)

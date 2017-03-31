@@ -86,6 +86,45 @@ These are divided into sections and can be accessed using help, help section or 
        help all        : All of the above sections.
 
 
+Command File Functions
+----------------------
+
+To facilitate loading large number of commands or to avoid cutting and pasting where not
+practical or possible testpmd supports alternative methods for executing commands.
+
+* If started with the ``--cmdline-file=FILENAME`` command line argument testpmd
+  will execute all CLI commands contained within the file immediately before
+  starting packet forwarding or entering interactive mode.
+
+.. code-block:: console
+
+   ./testpmd -n4 -r2 ... -- -i --cmdline-file=/home/ubuntu/flow-create-commands.txt
+   Interactive-mode selected
+   CLI commands to be read from /home/ubuntu/flow-create-commands.txt
+   Configuring Port 0 (socket 0)
+   Port 0: 7C:FE:90:CB:74:CE
+   Configuring Port 1 (socket 0)
+   Port 1: 7C:FE:90:CB:74:CA
+   Checking link statuses...
+   Port 0 Link Up - speed 10000 Mbps - full-duplex
+   Port 1 Link Up - speed 10000 Mbps - full-duplex
+   Done
+   Flow rule #0 created
+   Flow rule #1 created
+   ...
+   ...
+   Flow rule #498 created
+   Flow rule #499 created
+   Read all CLI commands from /home/ubuntu/flow-create-commands.txt
+   testpmd>
+
+
+In all cases output from any included command will be displayed as standard output.
+Execution will continue until the end of the file is reached regardless of
+whether any errors occur.  The end user must examine the output to determine if
+any failures occurred.
+
+
 Control Functions
 -----------------
 

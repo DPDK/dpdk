@@ -86,6 +86,7 @@ usage(char* progname)
 	printf("usage: %s "
 #ifdef RTE_LIBRTE_CMDLINE
 	       "[--interactive|-i] "
+	       "[--cmdline-file=FILENAME] "
 #endif
 	       "[--help|-h] | [--auto-start|-a] | ["
 	       "--coremask=COREMASK --portmask=PORTMASK --numa "
@@ -103,6 +104,7 @@ usage(char* progname)
 	       progname);
 #ifdef RTE_LIBRTE_CMDLINE
 	printf("  --interactive: run in interactive mode.\n");
+	printf("  --cmdline-file: execute cli commands before startup.\n");
 #endif
 	printf("  --auto-start: start forwarding on init "
 	       "[always when non-interactive].\n");
@@ -513,6 +515,7 @@ launch_args_parse(int argc, char** argv)
 		{ "help",			0, 0, 0 },
 #ifdef RTE_LIBRTE_CMDLINE
 		{ "interactive",		0, 0, 0 },
+		{ "cmdline-file",		1, 0, 0 },
 		{ "auto-start",			0, 0, 0 },
 		{ "eth-peers-configfile",	1, 0, 0 },
 		{ "eth-peer",			1, 0, 0 },
@@ -611,6 +614,13 @@ launch_args_parse(int argc, char** argv)
 			if (!strcmp(lgopts[opt_idx].name, "interactive")) {
 				printf("Interactive-mode selected\n");
 				interactive = 1;
+			}
+			if (!strcmp(lgopts[opt_idx].name, "cmdline-file")) {
+				printf("CLI commands to be read from %s\n",
+				       optarg);
+				snprintf(cmdline_filename,
+					 sizeof(cmdline_filename), "%s",
+					 optarg);
 			}
 			if (!strcmp(lgopts[opt_idx].name, "auto-start")) {
 				printf("Auto-start selected\n");
