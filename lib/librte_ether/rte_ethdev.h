@@ -1746,6 +1746,25 @@ struct rte_eth_dev_data {
 extern struct rte_eth_dev rte_eth_devices[];
 
 /**
+ * Iterates over valid ethdev ports.
+ *
+ * @param port_id
+ *   The id of the next possible valid port.
+ * @return
+ *   Next valid port id, RTE_MAX_ETHPORTS if there is none.
+ */
+uint8_t rte_eth_find_next(uint8_t port_id);
+
+/**
+ * Macro to iterate over all enabled ethdev ports.
+ */
+#define RTE_ETH_FOREACH_DEV(p)					\
+	for (p = rte_eth_find_next(0);				\
+	     (unsigned int)p < (unsigned int)RTE_MAX_ETHPORTS;	\
+	     p = rte_eth_find_next(p + 1))
+
+
+/**
  * Get the total number of Ethernet devices that have been successfully
  * initialized by the [matching] Ethernet driver during the PCI probing phase.
  * All devices whose port identifier is in the range
@@ -1753,7 +1772,7 @@ extern struct rte_eth_dev rte_eth_devices[];
  * immediately after invoking rte_eal_init().
  * If the application unplugs a port using hotplug function, The enabled port
  * numbers may be noncontiguous. In the case, the applications need to manage
- * enabled port by themselves.
+ * enabled port by using the ``RTE_ETH_FOREACH_DEV()`` macro.
  *
  * @return
  *   - The total number of usable Ethernet devices.

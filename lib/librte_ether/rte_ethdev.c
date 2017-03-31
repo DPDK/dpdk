@@ -138,6 +138,19 @@ enum {
 	STAT_QMAP_RX
 };
 
+uint8_t
+rte_eth_find_next(uint8_t port_id)
+{
+	while (port_id < RTE_MAX_ETHPORTS &&
+	       rte_eth_devices[port_id].state != RTE_ETH_DEV_ATTACHED)
+		port_id++;
+
+	if (port_id >= RTE_MAX_ETHPORTS)
+		return RTE_MAX_ETHPORTS;
+
+	return port_id;
+}
+
 static void
 rte_eth_dev_data_alloc(void)
 {
@@ -424,9 +437,7 @@ rte_eth_dev_get_port_by_name(const char *name, uint8_t *port_id)
 		return -ENODEV;
 
 	*port_id = RTE_MAX_ETHPORTS;
-
-	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
-
+	RTE_ETH_FOREACH_DEV(i) {
 		if (!strncmp(name,
 			rte_eth_dev_data[i].name, strlen(name))) {
 
