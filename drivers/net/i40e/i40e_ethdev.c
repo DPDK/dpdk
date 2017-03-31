@@ -423,6 +423,7 @@ static int i40e_tunnel_filter_convert(
 	struct i40e_tunnel_filter *tunnel_filter);
 static int i40e_sw_tunnel_filter_insert(struct i40e_pf *pf,
 				struct i40e_tunnel_filter *tunnel_filter);
+static int i40e_cloud_filter_qinq_create(struct i40e_pf *pf);
 
 static void i40e_ethertype_filter_restore(struct i40e_pf *pf);
 static void i40e_tunnel_filter_restore(struct i40e_pf *pf);
@@ -7155,6 +7156,23 @@ i40e_dev_consistent_tunnel_filter_set(struct i40e_pf *pf,
 		big_buffer = 1;
 		tun_type = I40E_AQC_ADD_CLOUD_TNL_TYPE_MPLSoGRE;
 		break;
+	case I40E_TUNNEL_TYPE_QINQ:
+		if (!pf->qinq_replace_flag) {
+			ret = i40e_cloud_filter_qinq_create(pf);
+			if (ret < 0)
+				PMD_DRV_LOG(ERR,
+					"Failed to create a qinq tunnel filter.");
+			pf->qinq_replace_flag = 1;
+		}
+		/*	Add in the General fields the values of
+		 *	the Outer and Inner VLAN
+		 *	Big Buffer should be set, see changes in
+		 *	i40e_aq_add_cloud_filters
+		 */
+		pfilter->general_fields[0] = tunnel_filter->inner_vlan;
+		pfilter->general_fields[1] = tunnel_filter->outer_vlan;
+		big_buffer = 1;
+		break;
 	default:
 		/* Other tunnel types is not supported. */
 		PMD_DRV_LOG(ERR, "tunnel type is not supported.");
@@ -7168,6 +7186,9 @@ i40e_dev_consistent_tunnel_filter_set(struct i40e_pf *pf,
 	else if (tunnel_filter->tunnel_type == I40E_TUNNEL_TYPE_MPLSoGRE)
 		pfilter->element.flags =
 			I40E_AQC_ADD_CLOUD_FILTER_TEID_MPLSoGRE;
+	else if (tunnel_filter->tunnel_type == I40E_TUNNEL_TYPE_QINQ)
+		pfilter->element.flags |=
+			I40E_AQC_ADD_CLOUD_FILTER_CUSTOM_QINQ;
 	else {
 		val = i40e_dev_get_filter_type(tunnel_filter->filter_type,
 						&pfilter->element.flags);
@@ -12281,4 +12302,109 @@ rte_pmd_i40e_get_ddp_list(uint8_t port, uint8_t *buff, uint32_t size)
 				      size, 0, NULL);
 
 	return status;
+}
+
+/* Create a QinQ cloud filter
+ *
+ * The Fortville NIC has limited resources for tunnel filters,
+ * so we can only reuse existing filters.
+ *
+ * In step 1 we define which Field Vector fields can be used for
+ * filter types.
+ * As we do not have the inner tag defined as a field,
+ * we have to define it first, by reusing one of L1 entries.
+ *
+ * In step 2 we are replacing one of existing filter types with
+ * a new one for QinQ.
+ * As we reusing L1 and replacing L2, some of the default filter
+ * types will disappear,which depends on L1 and L2 entries we reuse.
+ *
+ * Step 1: Create L1 filter of outer vlan (12b) + inner vlan (12b)
+ *
+ * 1.	Create L1 filter of outer vlan (12b) which will be in use
+ *		later when we define the cloud filter.
+ *	a.	Valid_flags.replace_cloud = 0
+ *	b.	Old_filter = 10 (Stag_Inner_Vlan)
+ *	c.	New_filter = 0x10
+ *	d.	TR bit = 0xff (optional, not used here)
+ *	e.	Buffer – 2 entries:
+ *		i.	Byte 0 = 8 (outer vlan FV index).
+ *			Byte 1 = 0 (rsv)
+ *			Byte 2-3 = 0x0fff
+ *		ii.	Byte 0 = 37 (inner vlan FV index).
+ *			Byte 1 =0 (rsv)
+ *			Byte 2-3 = 0x0fff
+ *
+ * Step 2:
+ * 2.	Create cloud filter using two L1 filters entries: stag and
+ *		new filter(outer vlan+ inner vlan)
+ *	a.	Valid_flags.replace_cloud = 1
+ *	b.	Old_filter = 1 (instead of outer IP)
+ *	c.	New_filter = 0x10
+ *	d.	Buffer – 2 entries:
+ *		i.	Byte 0 = 0x80 | 7 (valid | Stag).
+ *			Byte 1-3 = 0 (rsv)
+ *		ii.	Byte 8 = 0x80 | 0x10 (valid | new l1 filter step1)
+ *			Byte 9-11 = 0 (rsv)
+ */
+static int
+i40e_cloud_filter_qinq_create(struct i40e_pf *pf)
+{
+	int ret = -ENOTSUP;
+	struct i40e_aqc_replace_cloud_filters_cmd  filter_replace;
+	struct i40e_aqc_replace_cloud_filters_cmd_buf  filter_replace_buf;
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+
+	/* Init */
+	memset(&filter_replace, 0,
+	       sizeof(struct i40e_aqc_replace_cloud_filters_cmd));
+	memset(&filter_replace_buf, 0,
+	       sizeof(struct i40e_aqc_replace_cloud_filters_cmd_buf));
+
+	/* create L1 filter */
+	filter_replace.old_filter_type =
+		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_FV_STAG_IVLAN;
+	filter_replace.new_filter_type = I40E_AQC_ADD_CLOUD_FILTER_CUSTOM_QINQ;
+	filter_replace.tr_bit = 0;
+
+	/* Prepare the buffer, 2 entries */
+	filter_replace_buf.data[0] = I40E_AQC_REPLACE_CLOUD_CMD_INPUT_FV_VLAN;
+	filter_replace_buf.data[0] |=
+		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_VALIDATED;
+	/* Field Vector 12b mask */
+	filter_replace_buf.data[2] = 0xff;
+	filter_replace_buf.data[3] = 0x0f;
+	filter_replace_buf.data[4] =
+		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_FV_INNER_VLAN;
+	filter_replace_buf.data[4] |=
+		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_VALIDATED;
+	/* Field Vector 12b mask */
+	filter_replace_buf.data[6] = 0xff;
+	filter_replace_buf.data[7] = 0x0f;
+	ret = i40e_aq_replace_cloud_filters(hw, &filter_replace,
+			&filter_replace_buf);
+	if (ret != I40E_SUCCESS)
+		return ret;
+
+	/* Apply the second L2 cloud filter */
+	memset(&filter_replace, 0,
+	       sizeof(struct i40e_aqc_replace_cloud_filters_cmd));
+	memset(&filter_replace_buf, 0,
+	       sizeof(struct i40e_aqc_replace_cloud_filters_cmd_buf));
+
+	/* create L2 filter, input for L2 filter will be L1 filter  */
+	filter_replace.valid_flags = I40E_AQC_REPLACE_CLOUD_FILTER;
+	filter_replace.old_filter_type = I40E_AQC_ADD_CLOUD_FILTER_OIP;
+	filter_replace.new_filter_type = I40E_AQC_ADD_CLOUD_FILTER_CUSTOM_QINQ;
+
+	/* Prepare the buffer, 2 entries */
+	filter_replace_buf.data[0] = I40E_AQC_REPLACE_CLOUD_CMD_INPUT_FV_STAG;
+	filter_replace_buf.data[0] |=
+		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_VALIDATED;
+	filter_replace_buf.data[4] = I40E_AQC_ADD_CLOUD_FILTER_CUSTOM_QINQ;
+	filter_replace_buf.data[4] |=
+		I40E_AQC_REPLACE_CLOUD_CMD_INPUT_VALIDATED;
+	ret = i40e_aq_replace_cloud_filters(hw, &filter_replace,
+			&filter_replace_buf);
+	return ret;
 }
