@@ -717,7 +717,8 @@ app_link_up_internal(struct app_params *app, struct app_link_params *cp)
 
 	/* PMD link up */
 	status = rte_eth_dev_set_link_up(cp->pmd_id);
-	if (status < 0)
+	/* Do not panic if PMD does not provide link up functionality */
+	if (status < 0 && status != -ENOTSUP)
 		rte_panic("%s (%" PRIu32 "): PMD set link up error %"
 			PRId32 "\n", cp->name, cp->pmd_id, status);
 
@@ -733,7 +734,8 @@ app_link_down_internal(struct app_params *app, struct app_link_params *cp)
 
 	/* PMD link down */
 	status = rte_eth_dev_set_link_down(cp->pmd_id);
-	if (status < 0)
+	/* Do not panic if PMD does not provide link down functionality */
+	if (status < 0 && status != -ENOTSUP)
 		rte_panic("%s (%" PRIu32 "): PMD set link down error %"
 			PRId32 "\n", cp->name, cp->pmd_id, status);
 
