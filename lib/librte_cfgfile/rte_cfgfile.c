@@ -35,6 +35,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <rte_common.h>
 #include <rte_string_fns.h>
 
 #include "rte_cfgfile.h"
@@ -57,6 +58,25 @@ struct rte_cfgfile {
 /** when we resize a section structure, how many extra entries
  * for new entries do we add in */
 #define CFG_ALLOC_ENTRY_BATCH 16
+
+/**
+ * Default cfgfile load parameters.
+ */
+static const struct rte_cfgfile_parameters default_cfgfile_params = {
+	.comment_character = CFG_DEFAULT_COMMENT_CHARACTER,
+};
+
+/**
+ * Defines the list of acceptable comment characters supported by this
+ * library.
+ */
+static const char valid_comment_chars[] = {
+	'!',
+	'#',
+	'%',
+	';',
+	'@'
+};
 
 static unsigned
 _strip(char *str, unsigned len)
@@ -85,8 +105,44 @@ _strip(char *str, unsigned len)
 	return newlen;
 }
 
+static int
+rte_cfgfile_check_params(const struct rte_cfgfile_parameters *params)
+{
+	unsigned int valid_comment;
+	unsigned int i;
+
+	if (!params) {
+		printf("Error - missing cfgfile parameters\n");
+		return -EINVAL;
+	}
+
+	valid_comment = 0;
+	for (i = 0; i < RTE_DIM(valid_comment_chars); i++) {
+		if (params->comment_character == valid_comment_chars[i]) {
+			valid_comment = 1;
+			break;
+		}
+	}
+
+	if (valid_comment == 0)	{
+		printf("Error - invalid comment characters %c\n",
+		       params->comment_character);
+		return -ENOTSUP;
+	}
+
+	return 0;
+}
+
 struct rte_cfgfile *
 rte_cfgfile_load(const char *filename, int flags)
+{
+	return rte_cfgfile_load_with_params(filename, flags,
+					    &default_cfgfile_params);
+}
+
+struct rte_cfgfile *
+rte_cfgfile_load_with_params(const char *filename, int flags,
+			     const struct rte_cfgfile_parameters *params)
 {
 	int allocated_sections = CFG_ALLOC_SECTION_BATCH;
 	int allocated_entries = 0;
@@ -95,6 +151,9 @@ rte_cfgfile_load(const char *filename, int flags)
 	char buffer[256] = {0};
 	int lineno = 0;
 	struct rte_cfgfile *cfg = NULL;
+
+	if (rte_cfgfile_check_params(params))
+		return NULL;
 
 	FILE *f = fopen(filename, "r");
 	if (f == NULL)
@@ -132,7 +191,7 @@ rte_cfgfile_load(const char *filename, int flags)
 					"Check if line too long\n", lineno);
 			goto error1;
 		}
-		pos = memchr(buffer, ';', sizeof(buffer));
+		pos = memchr(buffer, params->comment_character, sizeof(buffer));
 		if (pos != NULL) {
 			*pos = '\0';
 			len = pos -  buffer;

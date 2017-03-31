@@ -66,6 +66,12 @@ struct rte_cfgfile_entry {
 	char value[CFG_VALUE_LEN]; /**< Value */
 };
 
+/** Configuration file operation optional arguments */
+struct rte_cfgfile_parameters {
+	/** Config file comment character; one of '!', '#', '%', ';', '@' */
+	char comment_character;
+};
+
 /**@{ cfgfile load operation flags */
 enum {
 	/**
@@ -76,6 +82,9 @@ enum {
 	CFG_FLAG_GLOBAL_SECTION = 1,
 };
 /**@} */
+
+/** Defines the default comment character used for parsing config files. */
+#define CFG_DEFAULT_COMMENT_CHARACTER ';'
 
 /**
 * Open config file
@@ -88,6 +97,22 @@ enum {
 *   Handle to configuration file on success, NULL otherwise
 */
 struct rte_cfgfile *rte_cfgfile_load(const char *filename, int flags);
+
+/**
+ * Open config file with specified optional parameters.
+ *
+ * @param filename
+ *   Config file name
+ * @param flags
+ *   Config file flags
+ * @param params
+ *   Additional configuration attributes.  Must be configured with desired
+ *   values prior to invoking this API.
+ * @return
+ *   Handle to configuration file on success, NULL otherwise
+ */
+struct rte_cfgfile *rte_cfgfile_load_with_params(const char *filename,
+	int flags, const struct rte_cfgfile_parameters *params);
 
 /**
 * Get number of sections in config file
