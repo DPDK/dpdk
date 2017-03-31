@@ -108,7 +108,7 @@ static int
 rte_port_fd_reader_rx(void *port, struct rte_mbuf **pkts, uint32_t n_pkts)
 {
 	struct rte_port_fd_reader *p = port;
-	uint32_t i;
+	uint32_t i, j;
 
 	if (rte_pktmbuf_alloc_bulk(p->mempool, pkts, n_pkts) != 0)
 		return 0;
@@ -126,12 +126,12 @@ rte_port_fd_reader_rx(void *port, struct rte_mbuf **pkts, uint32_t n_pkts)
 		pkt->pkt_len = n_bytes;
 	}
 
-	for ( ; i < n_pkts; i++)
-		rte_pktmbuf_free(pkts[i]);
+	for (j = i; j < n_pkts; j++)
+		rte_pktmbuf_free(pkts[j]);
 
 	RTE_PORT_FD_READER_STATS_PKTS_IN_ADD(p, i);
 
-	return n_pkts;
+	return i;
 }
 
 static int
