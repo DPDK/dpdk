@@ -174,7 +174,7 @@ nic_stats_display(portid_t port_id)
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN)) {
 		printf("Valid port range is [0");
-		FOREACH_PORT(pid, ports)
+		RTE_ETH_FOREACH_DEV(pid)
 			printf(", %d", pid);
 		printf("]\n");
 		return;
@@ -252,7 +252,7 @@ nic_stats_clear(portid_t port_id)
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN)) {
 		printf("Valid port range is [0");
-		FOREACH_PORT(pid, ports)
+		RTE_ETH_FOREACH_DEV(pid)
 			printf(", %d", pid);
 		printf("]\n");
 		return;
@@ -334,7 +334,7 @@ nic_stats_mapping_display(portid_t port_id)
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN)) {
 		printf("Valid port range is [0");
-		FOREACH_PORT(pid, ports)
+		RTE_ETH_FOREACH_DEV(pid)
 			printf(", %d", pid);
 		printf("]\n");
 		return;
@@ -453,7 +453,7 @@ port_infos_display(portid_t port_id)
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN)) {
 		printf("Valid port range is [0");
-		FOREACH_PORT(pid, ports)
+		RTE_ETH_FOREACH_DEV(pid)
 			printf(", %d", pid);
 		printf("]\n");
 		return;
@@ -730,7 +730,7 @@ port_id_is_invalid(portid_t port_id, enum print_warning warning)
 	if (port_id == (portid_t)RTE_PORT_ALL)
 		return 0;
 
-	if (port_id < RTE_MAX_ETHPORTS && ports[port_id].enabled)
+	if (rte_eth_dev_is_valid_port(port_id))
 		return 0;
 
 	if (warning == ENABLED_WARN)
@@ -2286,7 +2286,7 @@ set_fwd_ports_mask(uint64_t portmask)
 		return;
 	}
 	nb_pt = 0;
-	for (i = 0; i < (unsigned)RTE_MIN(64, RTE_MAX_ETHPORTS); i++) {
+	RTE_ETH_FOREACH_DEV(i) {
 		if (! ((uint64_t)(1ULL << i) & portmask))
 			continue;
 		portlist[nb_pt++] = i;

@@ -163,7 +163,6 @@ struct port_flow {
  * The data structure associated with each port.
  */
 struct rte_port {
-	uint8_t                 enabled;    /**< Port enabled or not */
 	struct rte_eth_dev_info dev_info;   /**< PCI info + driver name */
 	struct rte_eth_conf     dev_conf;   /**< Port configuration. */
 	struct ether_addr       eth_addr;   /**< Port ethernet address */
@@ -194,14 +193,6 @@ struct rte_port {
 	uint8_t                 slave_flag; /**< bonding slave port */
 	struct port_flow        *flow_list; /**< Associated flows. */
 };
-
-extern portid_t __rte_unused
-find_next_port(portid_t p, struct rte_port *ports, int size);
-
-#define FOREACH_PORT(p, ports) \
-	for (p = find_next_port(0, ports, RTE_MAX_ETHPORTS); \
-	    p < RTE_MAX_ETHPORTS; \
-	    p = find_next_port(p + 1, ports, RTE_MAX_ETHPORTS))
 
 /**
  * The data structure associated with each forwarding logical core.

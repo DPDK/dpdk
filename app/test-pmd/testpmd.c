@@ -359,20 +359,6 @@ static void check_all_ports_link_status(uint32_t port_mask);
 static int all_ports_started(void);
 
 /*
- * Find next enabled port
- */
-portid_t
-find_next_port(portid_t p, struct rte_port *ports, int size)
-{
-	if (ports == NULL)
-		rte_exit(-EINVAL, "failed to find a next port id\n");
-
-	while ((p < size) && (ports[p].enabled == 0))
-		p++;
-	return p;
-}
-
-/*
  * Setup default configuration.
  */
 static void
@@ -572,7 +558,7 @@ init_config(void)
 						 socket_num);
 	}
 
-	FOREACH_PORT(pid, ports) {
+	RTE_ETH_FOREACH_DEV(pid) {
 		port = &ports[pid];
 		rte_eth_dev_info_get(pid, &port->dev_info);
 
@@ -657,7 +643,7 @@ init_fwd_streams(void)
 	queueid_t q;
 
 	/* set socket id according to numa or not */
-	FOREACH_PORT(pid, ports) {
+	RTE_ETH_FOREACH_DEV(pid) {
 		port = &ports[pid];
 		if (nb_rxq > port->dev_info.max_rx_queues) {
 			printf("Fail: nb_rxq(%d) is greater than "
@@ -1301,7 +1287,7 @@ all_ports_started(void)
 	portid_t pi;
 	struct rte_port *port;
 
-	FOREACH_PORT(pi, ports) {
+	RTE_ETH_FOREACH_DEV(pi) {
 		port = &ports[pi];
 		/* Check if there is a port which is not started */
 		if ((port->port_status != RTE_PORT_STARTED) &&
@@ -1319,7 +1305,7 @@ all_ports_stopped(void)
 	portid_t pi;
 	struct rte_port *port;
 
-	FOREACH_PORT(pi, ports) {
+	RTE_ETH_FOREACH_DEV(pi) {
 		port = &ports[pi];
 		if ((port->port_status != RTE_PORT_STOPPED) &&
 			(port->slave_flag == 0))
@@ -1367,7 +1353,7 @@ start_port(portid_t pid)
 
 	if(dcb_config)
 		dcb_test = 1;
-	FOREACH_PORT(pi, ports) {
+	RTE_ETH_FOREACH_DEV(pi) {
 		if (pid != pi && pid != (portid_t)RTE_PORT_ALL)
 			continue;
 
@@ -1524,7 +1510,7 @@ stop_port(portid_t pid)
 
 	printf("Stopping ports...\n");
 
-	FOREACH_PORT(pi, ports) {
+	RTE_ETH_FOREACH_DEV(pi) {
 		if (pid != pi && pid != (portid_t)RTE_PORT_ALL)
 			continue;
 
@@ -1567,7 +1553,7 @@ close_port(portid_t pid)
 
 	printf("Closing ports...\n");
 
-	FOREACH_PORT(pi, ports) {
+	RTE_ETH_FOREACH_DEV(pi) {
 		if (pid != pi && pid != (portid_t)RTE_PORT_ALL)
 			continue;
 
@@ -1622,7 +1608,6 @@ attach_port(char *identifier)
 	if (rte_eth_dev_attach(identifier, &pi))
 		return;
 
-	ports[pi].enabled = 1;
 	socket_id = (unsigned)rte_eth_dev_socket_id(pi);
 	/* if socket_id is invalid, set to 0 */
 	if (check_socket_id(socket_id) < 0)
@@ -1656,7 +1641,6 @@ detach_port(uint8_t port_id)
 	if (rte_eth_dev_detach(port_id, name))
 		return;
 
-	ports[port_id].enabled = 0;
 	nb_ports = rte_eth_dev_count();
 
 	printf("Port '%s' is detached. Now total ports is %d\n",
@@ -1675,7 +1659,7 @@ pmd_test_exit(void)
 
 	if (ports != NULL) {
 		no_link_check = 1;
-		FOREACH_PORT(pt_id, ports) {
+		RTE_ETH_FOREACH_DEV(pt_id) {
 			printf("\nShutting down port %d...\n", pt_id);
 			fflush(stdout);
 			stop_port(pt_id);
@@ -1706,7 +1690,7 @@ check_all_ports_link_status(uint32_t port_mask)
 	fflush(stdout);
 	for (count = 0; count <= MAX_CHECK_TIME; count++) {
 		all_ports_up = 1;
-		FOREACH_PORT(portid, ports) {
+		RTE_ETH_FOREACH_DEV(portid) {
 			if ((port_mask & (1 << portid)) == 0)
 				continue;
 			memset(&link, 0, sizeof(link));
@@ -1871,7 +1855,7 @@ init_port_config(void)
 	portid_t pid;
 	struct rte_port *port;
 
-	FOREACH_PORT(pid, ports) {
+	RTE_ETH_FOREACH_DEV(pid) {
 		port = &ports[pid];
 		port->dev_conf.rxmode = rx_mode;
 		port->dev_conf.fdir_conf = fdir_conf;
@@ -2084,8 +2068,6 @@ init_port_dcb_config(portid_t pid,
 static void
 init_port(void)
 {
-	portid_t pid;
-
 	/* Configuration of Ethernet ports. */
 	ports = rte_zmalloc("testpmd: ports",
 			    sizeof(struct rte_port) * RTE_MAX_ETHPORTS,
@@ -2095,10 +2077,6 @@ init_port(void)
 				"rte_zmalloc(%d struct rte_port) failed\n",
 				RTE_MAX_ETHPORTS);
 	}
-
-	/* enabled allocated ports */
-	for (pid = 0; pid < nb_ports; pid++)
-		ports[pid].enabled = 1;
 }
 
 static void
@@ -2176,7 +2154,7 @@ main(int argc, char** argv)
 		rte_exit(EXIT_FAILURE, "Start ports failed\n");
 
 	/* set all ports to promiscuous mode by default */
-	FOREACH_PORT(port_id, ports)
+	RTE_ETH_FOREACH_DEV(port_id)
 		rte_eth_promiscuous_enable(port_id);
 
 	/* Init metrics library */

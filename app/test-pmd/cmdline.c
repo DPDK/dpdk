@@ -1169,7 +1169,7 @@ cmd_config_speed_all_parsed(void *parsed_result,
 			&link_speed) < 0)
 		return;
 
-	FOREACH_PORT(pid, ports) {
+	RTE_ETH_FOREACH_DEV(pid) {
 		ports[pid].dev_conf.link_speeds = link_speed;
 	}
 
@@ -4673,7 +4673,6 @@ static void cmd_create_bonded_device_parsed(void *parsed_result,
 		nb_ports = rte_eth_dev_count();
 		reconfig(port_id, res->socket);
 		rte_eth_promiscuous_enable(port_id);
-		ports[port_id].enabled = 1;
 	}
 
 }
@@ -5032,7 +5031,7 @@ static void cmd_set_promisc_mode_parsed(void *parsed_result,
 
 	/* all ports */
 	if (allports) {
-		FOREACH_PORT(i, ports) {
+		RTE_ETH_FOREACH_DEV(i) {
 			if (enable)
 				rte_eth_promiscuous_enable(i);
 			else
@@ -5112,7 +5111,7 @@ static void cmd_set_allmulti_mode_parsed(void *parsed_result,
 
 	/* all ports */
 	if (allports) {
-		FOREACH_PORT(i, ports) {
+		RTE_ETH_FOREACH_DEV(i) {
 			if (enable)
 				rte_eth_allmulticast_enable(i);
 			else
@@ -5846,31 +5845,31 @@ static void cmd_showportall_parsed(void *parsed_result,
 	struct cmd_showportall_result *res = parsed_result;
 	if (!strcmp(res->show, "clear")) {
 		if (!strcmp(res->what, "stats"))
-			FOREACH_PORT(i, ports)
+			RTE_ETH_FOREACH_DEV(i)
 				nic_stats_clear(i);
 		else if (!strcmp(res->what, "xstats"))
-			FOREACH_PORT(i, ports)
+			RTE_ETH_FOREACH_DEV(i)
 				nic_xstats_clear(i);
 	} else if (!strcmp(res->what, "info"))
-		FOREACH_PORT(i, ports)
+		RTE_ETH_FOREACH_DEV(i)
 			port_infos_display(i);
 	else if (!strcmp(res->what, "stats"))
-		FOREACH_PORT(i, ports)
+		RTE_ETH_FOREACH_DEV(i)
 			nic_stats_display(i);
 	else if (!strcmp(res->what, "xstats"))
-		FOREACH_PORT(i, ports)
+		RTE_ETH_FOREACH_DEV(i)
 			nic_xstats_display(i);
 	else if (!strcmp(res->what, "fdir"))
-		FOREACH_PORT(i, ports)
+		RTE_ETH_FOREACH_DEV(i)
 			fdir_get_infos(i);
 	else if (!strcmp(res->what, "stat_qmap"))
-		FOREACH_PORT(i, ports)
+		RTE_ETH_FOREACH_DEV(i)
 			nic_stats_mapping_display(i);
 	else if (!strcmp(res->what, "dcb_tc"))
-		FOREACH_PORT(i, ports)
+		RTE_ETH_FOREACH_DEV(i)
 			port_dcb_info_display(i);
 	else if (!strcmp(res->what, "cap"))
-		FOREACH_PORT(i, ports)
+		RTE_ETH_FOREACH_DEV(i)
 			port_offload_cap_display(i);
 }
 
@@ -10353,7 +10352,7 @@ cmd_config_l2_tunnel_eth_type_all_parsed
 	entry.l2_tunnel_type = str2fdir_l2_tunnel_type(res->l2_tunnel_type);
 	entry.ether_type = res->eth_type_val;
 
-	FOREACH_PORT(pid, ports) {
+	RTE_ETH_FOREACH_DEV(pid) {
 		rte_eth_dev_l2_tunnel_eth_type_conf(pid, &entry);
 	}
 }
@@ -10469,7 +10468,7 @@ cmd_config_l2_tunnel_en_dis_all_parsed(
 	else
 		en = 0;
 
-	FOREACH_PORT(pid, ports) {
+	RTE_ETH_FOREACH_DEV(pid) {
 		rte_eth_dev_l2_tunnel_offload_set(pid,
 						  &entry,
 						  ETH_L2_TUNNEL_ENABLE_MASK,
@@ -13377,7 +13376,7 @@ cmd_reconfig_device_queue(portid_t id, uint8_t dev, uint8_t queue)
 	if (id == (portid_t)RTE_PORT_ALL) {
 		portid_t pid;
 
-		FOREACH_PORT(pid, ports) {
+		RTE_ETH_FOREACH_DEV(pid) {
 			/* check if need_reconfig has been set to 1 */
 			if (ports[pid].need_reconfig == 0)
 				ports[pid].need_reconfig = dev;

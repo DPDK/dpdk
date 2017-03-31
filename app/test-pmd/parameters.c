@@ -398,7 +398,7 @@ parse_portnuma_config(const char *q_arg)
 		port_id = (uint8_t)int_fld[FLD_PORT];
 		if (port_id_is_invalid(port_id, ENABLED_WARN)) {
 			printf("Valid port range is [0");
-			FOREACH_PORT(pid, ports)
+			RTE_ETH_FOREACH_DEV(pid)
 				printf(", %d", pid);
 			printf("]\n");
 			return -1;
@@ -458,7 +458,7 @@ parse_ringnuma_config(const char *q_arg)
 		port_id = (uint8_t)int_fld[FLD_PORT];
 		if (port_id_is_invalid(port_id, ENABLED_WARN)) {
 			printf("Valid port range is [0");
-			FOREACH_PORT(pid, ports)
+			RTE_ETH_FOREACH_DEV(pid)
 				printf(", %d", pid);
 			printf("]\n");
 			return -1;
