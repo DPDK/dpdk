@@ -54,21 +54,11 @@ virtio_user_create_queue(struct virtio_user_dev *dev, uint32_t queue_sel)
 	 * firstly because vhost depends on this msg to allocate virtqueue
 	 * pair.
 	 */
-	int callfd;
 	struct vhost_vring_file file;
 
-	/* May use invalid flag, but some backend leverages kickfd and callfd as
-	 * criteria to judge if dev is alive. so finally we use real event_fd.
-	 */
-	callfd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
-	if (callfd < 0) {
-		PMD_DRV_LOG(ERR, "callfd error, %s", strerror(errno));
-		return -1;
-	}
 	file.index = queue_sel;
-	file.fd = callfd;
+	file.fd = dev->callfds[queue_sel];
 	dev->ops->send_request(dev, VHOST_USER_SET_VRING_CALL, &file);
-	dev->callfds[queue_sel] = callfd;
 
 	return 0;
 }
@@ -76,7 +66,6 @@ virtio_user_create_queue(struct virtio_user_dev *dev, uint32_t queue_sel)
 static int
 virtio_user_kick_queue(struct virtio_user_dev *dev, uint32_t queue_sel)
 {
-	int kickfd;
 	struct vhost_vring_file file;
 	struct vhost_vring_state state;
 	struct vring *vring = &dev->vrings[queue_sel];
@@ -103,15 +92,9 @@ virtio_user_kick_queue(struct virtio_user_dev *dev, uint32_t queue_sel)
 	 * lastly because vhost depends on this msg to judge if
 	 * virtio is ready.
 	 */
-	kickfd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
-	if (kickfd < 0) {
-		PMD_DRV_LOG(ERR, "kickfd error, %s", strerror(errno));
-		return -1;
-	}
 	file.index = queue_sel;
-	file.fd = kickfd;
+	file.fd = dev->kickfds[queue_sel];
 	dev->ops->send_request(dev, VHOST_USER_SET_VRING_KICK, &file);
-	dev->kickfds[queue_sel] = kickfd;
 
 	return 0;
 }
@@ -185,11 +168,6 @@ int virtio_user_stop_device(struct virtio_user_dev *dev)
 {
 	uint32_t i;
 
-	for (i = 0; i < dev->max_queue_pairs * 2; ++i) {
-		close(dev->callfds[i]);
-		close(dev->kickfds[i]);
-	}
-
 	for (i = 0; i < dev->max_queue_pairs; ++i)
 		dev->ops->enable_qp(dev, i, 0);
 
@@ -229,18 +207,60 @@ is_vhost_user_by_type(const char *path)
 }
 
 static int
-virtio_user_dev_setup(struct virtio_user_dev *dev)
+virtio_user_dev_init_notify(struct virtio_user_dev *dev)
 {
-	uint32_t i, q;
+	uint32_t i, j;
+	int callfd;
+	int kickfd;
 
-	dev->vhostfd = -1;
 	for (i = 0; i < VIRTIO_MAX_VIRTQUEUES; ++i) {
-		dev->kickfds[i] = -1;
-		dev->callfds[i] = -1;
+		if (i >= dev->max_queue_pairs * 2) {
+			dev->kickfds[i] = -1;
+			dev->callfds[i] = -1;
+			continue;
+		}
+
+		/* May use invalid flag, but some backend uses kickfd and
+		 * callfd as criteria to judge if dev is alive. so finally we
+		 * use real event_fd.
+		 */
+		callfd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
+		if (callfd < 0) {
+			PMD_DRV_LOG(ERR, "callfd error, %s", strerror(errno));
+			break;
+		}
+		kickfd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
+		if (kickfd < 0) {
+			PMD_DRV_LOG(ERR, "kickfd error, %s", strerror(errno));
+			break;
+		}
+		dev->callfds[i] = callfd;
+		dev->kickfds[i] = kickfd;
 	}
 
+	if (i < VIRTIO_MAX_VIRTQUEUES) {
+		for (j = 0; j <= i; ++j) {
+			close(dev->callfds[j]);
+			close(dev->kickfds[j]);
+		}
+
+		return -1;
+	}
+
+	return 0;
+}
+
+static int
+virtio_user_dev_setup(struct virtio_user_dev *dev)
+{
+	uint32_t q;
+
+	dev->vhostfd = -1;
 	dev->vhostfds = NULL;
 	dev->tapfds = NULL;
+
+	if (virtio_user_dev_init_notify(dev) < 0)
+		return -1;
 
 	if (is_vhost_user_by_type(dev->path)) {
 		dev->ops = &ops_user;
@@ -320,6 +340,11 @@ virtio_user_dev_uninit(struct virtio_user_dev *dev)
 	uint32_t i;
 
 	virtio_user_stop_device(dev);
+
+	for (i = 0; i < dev->max_queue_pairs * 2; ++i) {
+		close(dev->callfds[i]);
+		close(dev->kickfds[i]);
+	}
 
 	close(dev->vhostfd);
 
