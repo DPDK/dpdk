@@ -134,8 +134,8 @@ struct sfc_txq_info {
 	boolean_t		deferred_started;
 };
 
-int sfc_tx_init(struct sfc_adapter *sa);
-void sfc_tx_fini(struct sfc_adapter *sa);
+int sfc_tx_configure(struct sfc_adapter *sa);
+void sfc_tx_close(struct sfc_adapter *sa);
 
 int sfc_tx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 		 uint16_t nb_tx_desc, unsigned int socket_id,

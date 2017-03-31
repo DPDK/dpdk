@@ -290,7 +290,7 @@ sfc_tx_check_mode(struct sfc_adapter *sa, const struct rte_eth_txmode *txmode)
 }
 
 int
-sfc_tx_init(struct sfc_adapter *sa)
+sfc_tx_configure(struct sfc_adapter *sa)
 {
 	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
 	const struct rte_eth_conf *dev_conf = &sa->eth_dev->data->dev_conf;
@@ -341,7 +341,7 @@ fail_tx_dma_desc_boundary:
 }
 
 void
-sfc_tx_fini(struct sfc_adapter *sa)
+sfc_tx_close(struct sfc_adapter *sa)
 {
 	int sw_index;
 

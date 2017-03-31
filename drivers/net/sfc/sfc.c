@@ -417,15 +417,15 @@ sfc_configure(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_rx_configure;
 
-	rc = sfc_tx_init(sa);
+	rc = sfc_tx_configure(sa);
 	if (rc != 0)
-		goto fail_tx_init;
+		goto fail_tx_configure;
 
 	sa->state = SFC_ADAPTER_CONFIGURED;
 	sfc_log_init(sa, "done");
 	return 0;
 
-fail_tx_init:
+fail_tx_configure:
 	sfc_rx_close(sa);
 
 fail_rx_configure:
@@ -451,7 +451,7 @@ sfc_close(struct sfc_adapter *sa)
 	SFC_ASSERT(sa->state == SFC_ADAPTER_CONFIGURED);
 	sa->state = SFC_ADAPTER_CLOSING;
 
-	sfc_tx_fini(sa);
+	sfc_tx_close(sa);
 	sfc_rx_close(sa);
 	sfc_port_close(sa);
 	sfc_intr_close(sa);
