@@ -213,6 +213,7 @@ M: Olivier Matz <olivier.matz@6wind.com>
 F: lib/librte_mempool/
 F: drivers/mempool/Makefile
 F: drivers/mempool/ring/
+F: drivers/mempool/stack/
 F: doc/guides/prog_guide/mempool_lib.rst
 F: test/test/test_mempool*
 F: test/test/test_func_reentrancy.c

@@ -1,6 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2017 NXP. All rights reserved.
+#   Copyright(c) 2017 NXP.
 #   All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
@@ -31,11 +31,21 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-core-libs := librte_eal librte_mempool librte_ring
+#
+# library name
+#
+LIB = librte_mempool_stack.a
 
-DIRS-$(CONFIG_RTE_DRIVER_MEMPOOL_RING) += ring
-DEPDIRS-ring = $(core-libs)
-DIRS-$(CONFIG_RTE_DRIVER_MEMPOOL_STACK) += stack
-DEPDIRS-stack = $(core-libs)
+CFLAGS += -O3
+CFLAGS += $(WERROR_FLAGS)
 
-include $(RTE_SDK)/mk/rte.subdir.mk
+# Headers
+CFLAGS += -I$(RTE_SDK)/lib/librte_mempool
+
+EXPORT_MAP := rte_mempool_stack_version.map
+
+LIBABIVER := 1
+
+SRCS-$(CONFIG_RTE_DRIVER_MEMPOOL_STACK) += rte_mempool_stack.c
+
+include $(RTE_SDK)/mk/rte.lib.mk

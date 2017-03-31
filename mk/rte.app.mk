@@ -102,6 +102,7 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_REORDER)        += -lrte_reorder
 ifeq ($(CONFIG_RTE_BUILD_SHARED_LIB),n)
 # plugins (link only if static libraries)
 _LDLIBS-$(CONFIG_RTE_DRIVER_MEMPOOL_RING)   += -lrte_mempool_ring
+_LDLIBS-$(CONFIG_RTE_DRIVER_MEMPOOL_STACK)  += -lrte_mempool_stack
 
 _LDLIBS-$(CONFIG_RTE_LIBRTE_PMD_AF_PACKET)  += -lrte_pmd_af_packet
 _LDLIBS-$(CONFIG_RTE_LIBRTE_BNX2X_PMD)      += -lrte_pmd_bnx2x -lz
