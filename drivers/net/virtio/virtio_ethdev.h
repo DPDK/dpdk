@@ -113,4 +113,6 @@ uint16_t virtio_xmit_pkts_simple(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 int eth_virtio_dev_init(struct rte_eth_dev *eth_dev);
 
+void virtio_interrupt_handler(struct rte_intr_handle *handle, void *param);
+
 #endif /* _VIRTIO_ETHDEV_H_ */

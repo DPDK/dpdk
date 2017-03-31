@@ -34,10 +34,14 @@
 #include <stdint.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 
 #include <rte_malloc.h>
 #include <rte_kvargs.h>
 #include <rte_vdev.h>
+#include <rte_alarm.h>
 
 #include "virtio_ethdev.h"
 #include "virtio_logs.h"
@@ -48,6 +52,17 @@
 
 #define virtio_user_get_dev(hw) \
 	((struct virtio_user_dev *)(hw)->virtio_user_dev)
+
+static void
+virtio_user_delayed_handler(void *param)
+{
+	struct virtio_hw *hw = (struct virtio_hw *)param;
+	struct rte_eth_dev *dev = &rte_eth_devices[hw->port_id];
+
+	rte_intr_callback_unregister(dev->intr_handle,
+				     virtio_interrupt_handler,
+				     dev);
+}
 
 static void
 virtio_user_read_dev_config(struct virtio_hw *hw, size_t offset,
@@ -63,8 +78,37 @@ virtio_user_read_dev_config(struct virtio_hw *hw, size_t offset,
 		return;
 	}
 
-	if (offset == offsetof(struct virtio_net_config, status))
+	if (offset == offsetof(struct virtio_net_config, status)) {
+		char buf[128];
+
+		if (dev->vhostfd >= 0) {
+			int r;
+			int flags;
+
+			flags = fcntl(dev->vhostfd, F_GETFL);
+			fcntl(dev->vhostfd, F_SETFL, flags | O_NONBLOCK);
+			r = recv(dev->vhostfd, buf, 128, MSG_PEEK);
+			if (r == 0 || (r < 0 && errno != EAGAIN)) {
+				dev->status &= (~VIRTIO_NET_S_LINK_UP);
+				PMD_DRV_LOG(ERR, "virtio-user port %u is down",
+					    hw->port_id);
+				/* Only client mode is available now. Once the
+				 * connection is broken, it can never be up
+				 * again. Besides, this function could be called
+				 * in the process of interrupt handling,
+				 * callback cannot be unregistered here, set an
+				 * alarm to do it.
+				 */
+				rte_eal_alarm_set(1,
+						  virtio_user_delayed_handler,
+						  (void *)hw);
+			} else {
+				dev->status |= VIRTIO_NET_S_LINK_UP;
+			}
+			fcntl(dev->vhostfd, F_SETFL, flags & (~O_NONBLOCK));
+		}
 		*(uint16_t *)dst = dev->status;
+	}
 
 	if (offset == offsetof(struct virtio_net_config, max_virtqueue_pairs))
 		*(uint16_t *)dst = dev->max_queue_pairs;
@@ -325,7 +369,11 @@ virtio_user_eth_dev_alloc(const char *name)
 	hw->port_id = data->port_id;
 	dev->port_id = data->port_id;
 	virtio_hw_internal[hw->port_id].vtpci_ops = &virtio_user_ops;
-	hw->use_msix = 0;
+	/*
+	 * MSIX is required to enable LSC (see virtio_init_device).
+	 * Here just pretend that we support msix.
+	 */
+	hw->use_msix = 1;
 	hw->modern   = 0;
 	hw->use_simple_rxtx = 0;
 	hw->virtio_user_dev = dev;

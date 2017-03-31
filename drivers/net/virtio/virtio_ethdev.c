@@ -1205,7 +1205,7 @@ virtio_negotiate_features(struct virtio_hw *hw, uint64_t req_features)
  * Process Virtio Config changed interrupt and call the callback
  * if link state changed.
  */
-static void
+void
 virtio_interrupt_handler(struct rte_intr_handle *handle,
 			 void *param)
 {

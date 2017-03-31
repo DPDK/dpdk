@@ -163,11 +163,12 @@ New Features
 
 * **Added interrupt mode support for virtio-user.**
 
-  Implemented Rxq interrupt mode support for virtio-user as a virtual
+  Implemented Rxq interrupt mode and LSC support for virtio-user as a virtual
   device. Supported cases:
 
   * Rxq interrupt for virtio-user + vhost-user as the backend.
   * Rxq interrupt for virtio-user + vhost-kernel as the backend.
+  * LSC interrupt for virtio-user + vhost-user as the backend.
 
 
 Resolved Issues
@@ -223,6 +224,11 @@ Known Issues
    This section is a comment. do not overwrite or remove it.
    Also, make sure to start the actual text at the margin.
    =========================================================
+
+* **LSC interrupt cannot work for virtio-user + vhost-kernel.**
+
+  LSC interrupt cannot be detected when setting the backend, tap device,
+  up/down as we fail to find a way to monitor such event.
 
 
 API Changes
