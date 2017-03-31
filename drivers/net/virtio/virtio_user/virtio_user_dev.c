@@ -251,6 +251,30 @@ virtio_user_dev_init_notify(struct virtio_user_dev *dev)
 }
 
 static int
+virtio_user_fill_intr_handle(struct virtio_user_dev *dev)
+{
+	uint32_t i;
+	struct rte_eth_dev *eth_dev = &rte_eth_devices[dev->port_id];
+
+	if (!eth_dev->intr_handle) {
+		eth_dev->intr_handle = malloc(sizeof(*eth_dev->intr_handle));
+		if (!eth_dev->intr_handle) {
+			PMD_DRV_LOG(ERR, "fail to allocate intr_handle");
+			return -1;
+		}
+		memset(eth_dev->intr_handle, 0, sizeof(*eth_dev->intr_handle));
+	}
+
+	for (i = 0; i < dev->max_queue_pairs; ++i)
+		eth_dev->intr_handle->efds[i] = dev->callfds[i];
+	eth_dev->intr_handle->nb_efd = dev->max_queue_pairs;
+	eth_dev->intr_handle->max_intr = dev->max_queue_pairs + 1;
+	eth_dev->intr_handle->type = RTE_INTR_HANDLE_VDEV;
+
+	return 0;
+}
+
+static int
 virtio_user_dev_setup(struct virtio_user_dev *dev)
 {
 	uint32_t q;
@@ -260,6 +284,9 @@ virtio_user_dev_setup(struct virtio_user_dev *dev)
 	dev->tapfds = NULL;
 
 	if (virtio_user_dev_init_notify(dev) < 0)
+		return -1;
+
+	if (virtio_user_fill_intr_handle(dev) < 0)
 		return -1;
 
 	if (is_vhost_user_by_type(dev->path)) {

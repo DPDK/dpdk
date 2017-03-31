@@ -161,6 +161,14 @@ New Features
   * Enable Vhost PMD's MTU get feature.
   * Get max MTU value from host in Virtio PMD
 
+* **Added interrupt mode support for virtio-user.**
+
+  Implemented Rxq interrupt mode support for virtio-user as a virtual
+  device. Supported cases:
+
+  * Rxq interrupt for virtio-user + vhost-user as the backend.
+  * Rxq interrupt for virtio-user + vhost-kernel as the backend.
+
 
 Resolved Issues
 ---------------

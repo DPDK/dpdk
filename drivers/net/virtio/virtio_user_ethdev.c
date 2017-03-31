@@ -148,6 +148,15 @@ virtio_user_set_config_irq(struct virtio_hw *hw __rte_unused,
 	return VIRTIO_MSI_NO_VECTOR;
 }
 
+static uint16_t
+virtio_user_set_queue_irq(struct virtio_hw *hw __rte_unused,
+			  struct virtqueue *vq __rte_unused,
+			  uint16_t vec)
+{
+	/* pretend we have done that */
+	return vec;
+}
+
 /* This function is to get the queue size, aka, number of descs, of a specified
  * queue. Different with the VHOST_USER_GET_QUEUE_NUM, which is used to get the
  * max supported queues.
@@ -226,6 +235,7 @@ const struct virtio_pci_ops virtio_user_ops = {
 	.set_features	= virtio_user_set_features,
 	.get_isr	= virtio_user_get_isr,
 	.set_config_irq	= virtio_user_set_config_irq,
+	.set_queue_irq	= virtio_user_set_queue_irq,
 	.get_queue_num	= virtio_user_get_queue_num,
 	.setup_queue	= virtio_user_setup_queue,
 	.del_queue	= virtio_user_del_queue,
@@ -313,6 +323,7 @@ virtio_user_eth_dev_alloc(const char *name)
 	}
 
 	hw->port_id = data->port_id;
+	dev->port_id = data->port_id;
 	virtio_hw_internal[hw->port_id].vtpci_ops = &virtio_user_ops;
 	hw->use_msix = 0;
 	hw->modern   = 0;
