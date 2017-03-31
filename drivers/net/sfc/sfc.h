@@ -302,8 +302,10 @@ void sfc_intr_close(struct sfc_adapter *sa);
 int sfc_intr_start(struct sfc_adapter *sa);
 void sfc_intr_stop(struct sfc_adapter *sa);
 
-int sfc_port_init(struct sfc_adapter *sa);
-void sfc_port_fini(struct sfc_adapter *sa);
+int sfc_port_attach(struct sfc_adapter *sa);
+void sfc_port_detach(struct sfc_adapter *sa);
+int sfc_port_configure(struct sfc_adapter *sa);
+void sfc_port_close(struct sfc_adapter *sa);
 int sfc_port_start(struct sfc_adapter *sa);
 void sfc_port_stop(struct sfc_adapter *sa);
 void sfc_port_link_mode_to_info(efx_link_mode_t link_mode,

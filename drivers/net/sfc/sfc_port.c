@@ -296,23 +296,41 @@ sfc_port_stop(struct sfc_adapter *sa)
 }
 
 int
-sfc_port_init(struct sfc_adapter *sa)
+sfc_port_configure(struct sfc_adapter *sa)
 {
 	const struct rte_eth_dev_data *dev_data = sa->eth_dev->data;
+	struct sfc_port *port = &sa->port;
+
+	sfc_log_init(sa, "entry");
+
+	if (dev_data->dev_conf.rxmode.jumbo_frame)
+		port->pdu = dev_data->dev_conf.rxmode.max_rx_pkt_len;
+	else
+		port->pdu = EFX_MAC_PDU(dev_data->mtu);
+
+	return 0;
+}
+
+void
+sfc_port_close(struct sfc_adapter *sa)
+{
+	sfc_log_init(sa, "entry");
+}
+
+int
+sfc_port_attach(struct sfc_adapter *sa)
+{
 	struct sfc_port *port = &sa->port;
 	long kvarg_stats_update_period_ms;
 	int rc;
 
 	sfc_log_init(sa, "entry");
 
+	efx_phy_adv_cap_get(sa->nic, EFX_PHY_CAP_PERM, &port->phy_adv_cap_mask);
+
 	/* Enable flow control by default */
 	port->flow_ctrl = EFX_FCNTL_RESPOND | EFX_FCNTL_GENERATE;
 	port->flow_ctrl_autoneg = B_TRUE;
-
-	if (dev_data->dev_conf.rxmode.jumbo_frame)
-		port->pdu = dev_data->dev_conf.rxmode.max_rx_pkt_len;
-	else
-		port->pdu = EFX_MAC_PDU(dev_data->mtu);
 
 	port->max_mcast_addrs = EFX_MAC_MULTICAST_LIST_MAX;
 	port->nb_mcast_addrs = 0;
@@ -374,7 +392,7 @@ fail_mcast_addr_list_buf_alloc:
 }
 
 void
-sfc_port_fini(struct sfc_adapter *sa)
+sfc_port_detach(struct sfc_adapter *sa)
 {
 	struct sfc_port *port = &sa->port;
 
