@@ -251,6 +251,7 @@ New Features
 
   * AES DOCSIS BPI algorithm.
   * DES DOCSIS BPI algorithm.
+  * ZUC EEA3/EIA3 algorithms.
 
 * **Updated the AESNI MB PMD.**
 

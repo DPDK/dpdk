@@ -80,6 +80,14 @@ struct qat_alg_buf {
 	uint64_t addr;
 } __rte_packed;
 
+enum qat_crypto_proto_flag {
+	QAT_CRYPTO_PROTO_FLAG_NONE = 0,
+	QAT_CRYPTO_PROTO_FLAG_CCM = 1,
+	QAT_CRYPTO_PROTO_FLAG_GCM = 2,
+	QAT_CRYPTO_PROTO_FLAG_SNOW3G = 3,
+	QAT_CRYPTO_PROTO_FLAG_ZUC = 4
+};
+
 /*
  * Maximum number of SGL entries
  */
@@ -144,7 +152,7 @@ int qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
 						unsigned int operation);
 
 void qat_alg_init_common_hdr(struct icp_qat_fw_comn_req_hdr *header,
-						uint16_t proto);
+					enum qat_crypto_proto_flag proto_flags);
 
 void qat_alg_ablkcipher_init_enc(struct qat_alg_ablkcipher_cd *cd,
 					int alg, const uint8_t *key,
@@ -162,4 +170,5 @@ int qat_alg_validate_kasumi_key(int key_len, enum icp_qat_hw_cipher_algo *alg);
 int qat_alg_validate_3des_key(int key_len, enum icp_qat_hw_cipher_algo *alg);
 int qat_alg_validate_des_key(int key_len, enum icp_qat_hw_cipher_algo *alg);
 int qat_cipher_get_block_size(enum icp_qat_hw_cipher_algo qat_cipher_alg);
+int qat_alg_validate_zuc_key(int key_len, enum icp_qat_hw_cipher_algo *alg);
 #endif

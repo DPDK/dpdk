@@ -69,7 +69,7 @@
 
 #define BYTE_LENGTH    8
 
-static int __rte_unused
+static int
 qat_is_cipher_alg_supported(enum rte_crypto_cipher_algorithm algo,
 		struct qat_pmd_private *internals) {
 	int i = 0;
@@ -89,7 +89,7 @@ qat_is_cipher_alg_supported(enum rte_crypto_cipher_algorithm algo,
 	return 0;
 }
 
-static int __rte_unused
+static int
 qat_is_auth_alg_supported(enum rte_crypto_auth_algorithm algo,
 		struct qat_pmd_private *internals) {
 	int i = 0;
@@ -287,11 +287,11 @@ qat_get_cipher_xform(struct rte_crypto_sym_xform *xform)
 	return NULL;
 }
 void *
-qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev __rte_unused,
+qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform, void *session_private)
 {
 	struct qat_session *session = session_private;
-
+	struct qat_pmd_private *internals = dev->data->dev_private;
 	struct rte_crypto_cipher_xform *cipher_xform = NULL;
 
 	/* Get cipher xform from crypto xform chain */
@@ -397,13 +397,27 @@ qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev __rte_unused,
 		}
 		session->qat_mode = ICP_QAT_HW_CIPHER_CBC_MODE;
 		break;
+	case RTE_CRYPTO_CIPHER_ZUC_EEA3:
+		if (!qat_is_cipher_alg_supported(
+			cipher_xform->algo, internals)) {
+			PMD_DRV_LOG(ERR, "%s not supported on this device",
+				rte_crypto_cipher_algorithm_strings
+					[cipher_xform->algo]);
+			goto error_out;
+		}
+		if (qat_alg_validate_zuc_key(cipher_xform->key.length,
+				&session->qat_cipher_alg) != 0) {
+			PMD_DRV_LOG(ERR, "Invalid ZUC cipher key size");
+			goto error_out;
+		}
+		session->qat_mode = ICP_QAT_HW_CIPHER_ECB_MODE;
+		break;
 	case RTE_CRYPTO_CIPHER_3DES_ECB:
 	case RTE_CRYPTO_CIPHER_AES_ECB:
 	case RTE_CRYPTO_CIPHER_AES_CCM:
 	case RTE_CRYPTO_CIPHER_AES_F8:
 	case RTE_CRYPTO_CIPHER_AES_XTS:
 	case RTE_CRYPTO_CIPHER_ARC4:
-	case RTE_CRYPTO_CIPHER_ZUC_EEA3:
 		PMD_DRV_LOG(ERR, "Crypto QAT PMD: Unsupported Cipher alg %u",
 				cipher_xform->algo);
 		goto error_out;
@@ -490,7 +504,7 @@ error_out:
 }
 
 struct qat_session *
-qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev __rte_unused,
+qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev,
 				struct rte_crypto_sym_xform *xform,
 				struct qat_session *session_private)
 {
@@ -498,6 +512,7 @@ qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev __rte_unused,
 	struct qat_session *session = session_private;
 	struct rte_crypto_auth_xform *auth_xform = NULL;
 	struct rte_crypto_cipher_xform *cipher_xform = NULL;
+	struct qat_pmd_private *internals = dev->data->dev_private;
 	auth_xform = qat_get_auth_xform(xform);
 
 	switch (auth_xform->algo) {
@@ -537,6 +552,15 @@ qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev __rte_unused,
 	case RTE_CRYPTO_AUTH_KASUMI_F9:
 		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_KASUMI_F9;
 		break;
+	case RTE_CRYPTO_AUTH_ZUC_EIA3:
+		if (!qat_is_auth_alg_supported(auth_xform->algo, internals)) {
+			PMD_DRV_LOG(ERR, "%s not supported on this device",
+				rte_crypto_auth_algorithm_strings
+				[auth_xform->algo]);
+			goto error_out;
+		}
+		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_ZUC_3G_128_EIA3;
+		break;
 	case RTE_CRYPTO_AUTH_SHA1:
 	case RTE_CRYPTO_AUTH_SHA256:
 	case RTE_CRYPTO_AUTH_SHA512:
@@ -546,7 +570,6 @@ qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev __rte_unused,
 	case RTE_CRYPTO_AUTH_AES_CCM:
 	case RTE_CRYPTO_AUTH_AES_CMAC:
 	case RTE_CRYPTO_AUTH_AES_CBC_MAC:
-	case RTE_CRYPTO_AUTH_ZUC_EIA3:
 		PMD_DRV_LOG(ERR, "Crypto: Unsupported hash alg %u",
 				auth_xform->algo);
 		goto error_out;
@@ -777,6 +800,7 @@ qat_pmd_dequeue_op_burst(void *qp, struct rte_crypto_op **ops,
 #ifdef RTE_LIBRTE_PMD_QAT_DEBUG_RX
 		rte_hexdump(stdout, "qat_response:", (uint8_t *)resp_msg,
 			sizeof(struct icp_qat_fw_comn_resp));
+
 #endif
 		if (ICP_QAT_FW_COMN_STATUS_FLAG_OK !=
 				ICP_QAT_FW_COMN_RESP_CRYPTO_STAT_GET(
@@ -917,14 +941,16 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
 
 		if (ctx->qat_cipher_alg ==
 					 ICP_QAT_HW_CIPHER_ALGO_SNOW_3G_UEA2 ||
-			ctx->qat_cipher_alg == ICP_QAT_HW_CIPHER_ALGO_KASUMI) {
+			ctx->qat_cipher_alg == ICP_QAT_HW_CIPHER_ALGO_KASUMI ||
+			ctx->qat_cipher_alg ==
+				ICP_QAT_HW_CIPHER_ALGO_ZUC_3G_128_EEA3) {
 
 			if (unlikely(
 				(cipher_param->cipher_length % BYTE_LENGTH != 0)
 				 || (cipher_param->cipher_offset
 							% BYTE_LENGTH != 0))) {
 				PMD_DRV_LOG(ERR,
-		  "SNOW3G/KASUMI in QAT PMD only supports byte aligned values");
+		  "SNOW3G/KASUMI/ZUC in QAT PMD only supports byte aligned values");
 				op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 				return -EINVAL;
 			}
@@ -963,11 +989,13 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
 	if (do_auth) {
 
 		if (ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_SNOW_3G_UIA2 ||
-			ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_KASUMI_F9) {
+			ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_KASUMI_F9 ||
+			ctx->qat_hash_alg ==
+				ICP_QAT_HW_AUTH_ALGO_ZUC_3G_128_EIA3) {
 			if (unlikely((auth_param->auth_off % BYTE_LENGTH != 0)
 				|| (auth_param->auth_len % BYTE_LENGTH != 0))) {
 				PMD_DRV_LOG(ERR,
-		"For SNOW3G/KASUMI, QAT PMD only supports byte aligned values");
+		"For SNOW3G/KASUMI/ZUC, QAT PMD only supports byte aligned values");
 				op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 				return -EINVAL;
 			}

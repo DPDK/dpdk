@@ -109,6 +109,9 @@ static int qat_hash_get_state1_size(enum icp_qat_hw_auth_algo qat_hash_alg)
 	case ICP_QAT_HW_AUTH_ALGO_GALOIS_64:
 		return QAT_HW_ROUND_UP(ICP_QAT_HW_GALOIS_128_STATE1_SZ,
 						QAT_HW_DEFAULT_ALIGNMENT);
+	case ICP_QAT_HW_AUTH_ALGO_ZUC_3G_128_EIA3:
+		return QAT_HW_ROUND_UP(ICP_QAT_HW_ZUC_3G_EIA3_STATE1_SZ,
+						QAT_HW_DEFAULT_ALIGNMENT);
 	case ICP_QAT_HW_AUTH_ALGO_SNOW_3G_UIA2:
 		return QAT_HW_ROUND_UP(ICP_QAT_HW_SNOW_3G_UIA2_STATE1_SZ,
 						QAT_HW_DEFAULT_ALIGNMENT);
@@ -441,7 +444,7 @@ static int qat_alg_do_precomputes(enum icp_qat_hw_auth_algo hash_alg,
 }
 
 void qat_alg_init_common_hdr(struct icp_qat_fw_comn_req_hdr *header,
-		uint16_t proto)
+		enum qat_crypto_proto_flag proto_flags)
 {
 	PMD_INIT_FUNC_TRACE();
 	header->hdr_flags =
@@ -454,12 +457,58 @@ void qat_alg_init_common_hdr(struct icp_qat_fw_comn_req_hdr *header,
 				  ICP_QAT_FW_LA_PARTIAL_NONE);
 	ICP_QAT_FW_LA_CIPH_IV_FLD_FLAG_SET(header->serv_specif_flags,
 					   ICP_QAT_FW_CIPH_IV_16BYTE_DATA);
-	ICP_QAT_FW_LA_PROTO_SET(header->serv_specif_flags,
-				proto);
+
+	switch (proto_flags)		{
+	case QAT_CRYPTO_PROTO_FLAG_NONE:
+		ICP_QAT_FW_LA_PROTO_SET(header->serv_specif_flags,
+					ICP_QAT_FW_LA_NO_PROTO);
+		break;
+	case QAT_CRYPTO_PROTO_FLAG_CCM:
+		ICP_QAT_FW_LA_PROTO_SET(header->serv_specif_flags,
+					ICP_QAT_FW_LA_CCM_PROTO);
+		break;
+	case QAT_CRYPTO_PROTO_FLAG_GCM:
+		ICP_QAT_FW_LA_PROTO_SET(header->serv_specif_flags,
+					ICP_QAT_FW_LA_GCM_PROTO);
+		break;
+	case QAT_CRYPTO_PROTO_FLAG_SNOW3G:
+		ICP_QAT_FW_LA_PROTO_SET(header->serv_specif_flags,
+					ICP_QAT_FW_LA_SNOW_3G_PROTO);
+		break;
+	case QAT_CRYPTO_PROTO_FLAG_ZUC:
+		ICP_QAT_FW_LA_ZUC_3G_PROTO_FLAG_SET(header->serv_specif_flags,
+			ICP_QAT_FW_LA_ZUC_3G_PROTO);
+		break;
+	}
+
 	ICP_QAT_FW_LA_UPDATE_STATE_SET(header->serv_specif_flags,
 					   ICP_QAT_FW_LA_NO_UPDATE_STATE);
 	ICP_QAT_FW_LA_DIGEST_IN_BUFFER_SET(header->serv_specif_flags,
 					ICP_QAT_FW_LA_NO_DIGEST_IN_BUFFER);
+}
+
+/*
+ *	Snow3G and ZUC should never use this function
+ *	and set its protocol flag in both cipher and auth part of content
+ *	descriptor building function
+ */
+static enum qat_crypto_proto_flag
+qat_get_crypto_proto_flag(uint16_t flags)
+{
+	int proto = ICP_QAT_FW_LA_PROTO_GET(flags);
+	enum qat_crypto_proto_flag qat_proto_flag =
+			QAT_CRYPTO_PROTO_FLAG_NONE;
+
+	switch (proto) {
+	case ICP_QAT_FW_LA_GCM_PROTO:
+		qat_proto_flag = QAT_CRYPTO_PROTO_FLAG_GCM;
+		break;
+	case ICP_QAT_FW_LA_CCM_PROTO:
+		qat_proto_flag = QAT_CRYPTO_PROTO_FLAG_CCM;
+		break;
+	}
+
+	return qat_proto_flag;
 }
 
 int qat_alg_aead_session_create_content_desc_cipher(struct qat_session *cdesc,
@@ -474,8 +523,9 @@ int qat_alg_aead_session_create_content_desc_cipher(struct qat_session *cdesc,
 	struct icp_qat_fw_cipher_cd_ctrl_hdr *cipher_cd_ctrl = ptr;
 	struct icp_qat_fw_auth_cd_ctrl_hdr *hash_cd_ctrl = ptr;
 	enum icp_qat_hw_cipher_convert key_convert;
+	enum qat_crypto_proto_flag qat_proto_flag =
+		QAT_CRYPTO_PROTO_FLAG_NONE;
 	uint32_t total_key_size;
-	uint16_t proto = ICP_QAT_FW_LA_NO_PROTO;	/* no CCM/GCM/SNOW 3G */
 	uint16_t cipher_offset, cd_size;
 	uint32_t wordIndex  = 0;
 	uint32_t *temp_key = NULL;
@@ -515,7 +565,9 @@ int qat_alg_aead_session_create_content_desc_cipher(struct qat_session *cdesc,
 		 */
 		cdesc->qat_dir = ICP_QAT_HW_CIPHER_ENCRYPT;
 		key_convert = ICP_QAT_HW_CIPHER_NO_CONVERT;
-	} else if (cdesc->qat_cipher_alg == ICP_QAT_HW_CIPHER_ALGO_SNOW_3G_UEA2)
+	} else if (cdesc->qat_cipher_alg == ICP_QAT_HW_CIPHER_ALGO_SNOW_3G_UEA2
+		|| cdesc->qat_cipher_alg ==
+			ICP_QAT_HW_CIPHER_ALGO_ZUC_3G_128_EEA3)
 		key_convert = ICP_QAT_HW_CIPHER_KEY_CONVERT;
 	else if (cdesc->qat_dir == ICP_QAT_HW_CIPHER_ENCRYPT)
 		key_convert = ICP_QAT_HW_CIPHER_NO_CONVERT;
@@ -527,7 +579,8 @@ int qat_alg_aead_session_create_content_desc_cipher(struct qat_session *cdesc,
 			ICP_QAT_HW_SNOW_3G_UEA2_IV_SZ;
 		cipher_cd_ctrl->cipher_state_sz =
 			ICP_QAT_HW_SNOW_3G_UEA2_IV_SZ >> 3;
-		proto = ICP_QAT_FW_LA_SNOW_3G_PROTO;
+		qat_proto_flag = QAT_CRYPTO_PROTO_FLAG_SNOW3G;
+
 	} else if (cdesc->qat_cipher_alg == ICP_QAT_HW_CIPHER_ALGO_KASUMI) {
 		total_key_size = ICP_QAT_HW_KASUMI_F8_KEY_SZ;
 		cipher_cd_ctrl->cipher_state_sz = ICP_QAT_HW_KASUMI_BLK_SZ >> 3;
@@ -536,25 +589,34 @@ int qat_alg_aead_session_create_content_desc_cipher(struct qat_session *cdesc,
 	} else if (cdesc->qat_cipher_alg == ICP_QAT_HW_CIPHER_ALGO_3DES) {
 		total_key_size = ICP_QAT_HW_3DES_KEY_SZ;
 		cipher_cd_ctrl->cipher_state_sz = ICP_QAT_HW_3DES_BLK_SZ >> 3;
-		proto = ICP_QAT_FW_LA_PROTO_GET(header->serv_specif_flags);
+		qat_proto_flag =
+			qat_get_crypto_proto_flag(header->serv_specif_flags);
 	} else if (cdesc->qat_cipher_alg == ICP_QAT_HW_CIPHER_ALGO_DES) {
 		total_key_size = ICP_QAT_HW_DES_KEY_SZ;
 		cipher_cd_ctrl->cipher_state_sz = ICP_QAT_HW_DES_BLK_SZ >> 3;
-		proto = ICP_QAT_FW_LA_PROTO_GET(header->serv_specif_flags);
+		qat_proto_flag =
+			qat_get_crypto_proto_flag(header->serv_specif_flags);
+	} else if (cdesc->qat_cipher_alg ==
+		ICP_QAT_HW_CIPHER_ALGO_ZUC_3G_128_EEA3) {
+		total_key_size = ICP_QAT_HW_ZUC_3G_EEA3_KEY_SZ +
+			ICP_QAT_HW_ZUC_3G_EEA3_IV_SZ;
+		cipher_cd_ctrl->cipher_state_sz =
+			ICP_QAT_HW_ZUC_3G_EEA3_IV_SZ >> 3;
+		qat_proto_flag = QAT_CRYPTO_PROTO_FLAG_ZUC;
 	} else {
 		total_key_size = cipherkeylen;
 		cipher_cd_ctrl->cipher_state_sz = ICP_QAT_HW_AES_BLK_SZ >> 3;
-		proto = ICP_QAT_FW_LA_PROTO_GET(header->serv_specif_flags);
+		qat_proto_flag =
+			qat_get_crypto_proto_flag(header->serv_specif_flags);
 	}
 	cipher_cd_ctrl->cipher_key_sz = total_key_size >> 3;
 	cipher_offset = cdesc->cd_cur_ptr-((uint8_t *)&cdesc->cd);
 	cipher_cd_ctrl->cipher_cfg_offset = cipher_offset >> 3;
 
 	header->service_cmd_id = cdesc->qat_cmd;
-	qat_alg_init_common_hdr(header, proto);
+	qat_alg_init_common_hdr(header, qat_proto_flag);
 
 	cipher = (struct icp_qat_hw_cipher_algo_blk *)cdesc->cd_cur_ptr;
-
 	cipher->cipher_config.val =
 	    ICP_QAT_HW_CIPHER_CONFIG_BUILD(cdesc->qat_mode,
 					cdesc->qat_cipher_alg, key_convert,
@@ -615,12 +677,13 @@ int qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
 		(struct icp_qat_fw_la_auth_req_params *)
 		((char *)&req_tmpl->serv_specif_rqpars +
 		sizeof(struct icp_qat_fw_la_cipher_req_params));
-	uint16_t proto = ICP_QAT_FW_LA_NO_PROTO;	/* no CCM/GCM/SNOW 3G */
 	uint16_t state1_size = 0, state2_size = 0;
 	uint16_t hash_offset, cd_size;
 	uint32_t *aad_len = NULL;
 	uint32_t wordIndex  = 0;
 	uint32_t *pTempKey;
+	enum qat_crypto_proto_flag qat_proto_flag =
+		QAT_CRYPTO_PROTO_FLAG_NONE;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -670,7 +733,8 @@ int qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
 				cdesc->qat_hash_alg, digestsize);
 
 	if (cdesc->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_SNOW_3G_UIA2
-		|| cdesc->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_KASUMI_F9)
+		|| cdesc->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_KASUMI_F9
+		|| cdesc->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_ZUC_3G_128_EIA3)
 		hash->auth_counter.counter = 0;
 	else
 		hash->auth_counter.counter = rte_bswap32(
@@ -733,7 +797,7 @@ int qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
 		break;
 	case ICP_QAT_HW_AUTH_ALGO_GALOIS_128:
 	case ICP_QAT_HW_AUTH_ALGO_GALOIS_64:
-		proto = ICP_QAT_FW_LA_GCM_PROTO;
+		qat_proto_flag = QAT_CRYPTO_PROTO_FLAG_GCM;
 		state1_size = ICP_QAT_HW_GALOIS_128_STATE1_SZ;
 		if (qat_alg_do_precomputes(cdesc->qat_hash_alg,
 			authkey, authkeylen, cdesc->cd_cur_ptr + state1_size,
@@ -755,7 +819,7 @@ int qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
 		*aad_len = rte_bswap32(add_auth_data_length);
 		break;
 	case ICP_QAT_HW_AUTH_ALGO_SNOW_3G_UIA2:
-		proto = ICP_QAT_FW_LA_SNOW_3G_PROTO;
+		qat_proto_flag = QAT_CRYPTO_PROTO_FLAG_SNOW3G;
 		state1_size = qat_hash_get_state1_size(
 				ICP_QAT_HW_AUTH_ALGO_SNOW_3G_UIA2);
 		state2_size = ICP_QAT_HW_SNOW_3G_UIA2_STATE2_SZ;
@@ -775,6 +839,24 @@ int qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
 				authkeylen + ICP_QAT_HW_SNOW_3G_UEA2_IV_SZ;
 		auth_param->hash_state_sz =
 				RTE_ALIGN_CEIL(add_auth_data_length, 16) >> 3;
+		break;
+	case ICP_QAT_HW_AUTH_ALGO_ZUC_3G_128_EIA3:
+		hash->auth_config.config =
+			ICP_QAT_HW_AUTH_CONFIG_BUILD(ICP_QAT_HW_AUTH_MODE0,
+				cdesc->qat_hash_alg, digestsize);
+		qat_proto_flag = QAT_CRYPTO_PROTO_FLAG_ZUC;
+		state1_size = qat_hash_get_state1_size(
+				ICP_QAT_HW_AUTH_ALGO_ZUC_3G_128_EIA3);
+		state2_size = ICP_QAT_HW_ZUC_3G_EIA3_STATE2_SZ;
+		memset(cdesc->cd_cur_ptr, 0, state1_size + state2_size
+			+ ICP_QAT_HW_ZUC_3G_EEA3_IV_SZ);
+
+		memcpy(cdesc->cd_cur_ptr + state1_size, authkey, authkeylen);
+		cdesc->cd_cur_ptr += state1_size + state2_size
+			+ ICP_QAT_HW_ZUC_3G_EEA3_IV_SZ;
+		auth_param->hash_state_sz =
+				RTE_ALIGN_CEIL(add_auth_data_length, 16) >> 3;
+
 		break;
 	case ICP_QAT_HW_AUTH_ALGO_MD5:
 		if (qat_alg_do_precomputes(ICP_QAT_HW_AUTH_ALGO_MD5,
@@ -813,7 +895,7 @@ int qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
 	}
 
 	/* Request template setup */
-	qat_alg_init_common_hdr(header, proto);
+	qat_alg_init_common_hdr(header, qat_proto_flag);
 	header->service_cmd_id = cdesc->qat_cmd;
 
 	/* Auth CD config setup */
@@ -912,6 +994,18 @@ int qat_alg_validate_3des_key(int key_len, enum icp_qat_hw_cipher_algo *alg)
 	case QAT_3DES_KEY_SZ_OPT1:
 	case QAT_3DES_KEY_SZ_OPT2:
 		*alg = ICP_QAT_HW_CIPHER_ALGO_3DES;
+		break;
+	default:
+		return -EINVAL;
+	}
+	return 0;
+}
+
+int qat_alg_validate_zuc_key(int key_len, enum icp_qat_hw_cipher_algo *alg)
+{
+	switch (key_len) {
+	case ICP_QAT_HW_ZUC_3G_EEA3_KEY_SZ:
+		*alg = ICP_QAT_HW_CIPHER_ALGO_ZUC_3G_128_EEA3;
 		break;
 	default:
 		return -EINVAL;
