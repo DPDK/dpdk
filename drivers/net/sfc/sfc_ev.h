@@ -106,8 +106,8 @@ sfc_evq_index_by_txq_sw_index(struct sfc_adapter *sa, unsigned int txq_sw_index)
 	return 1 + sa->eth_dev->data->nb_rx_queues + txq_sw_index;
 }
 
-int sfc_ev_init(struct sfc_adapter *sa);
-void sfc_ev_fini(struct sfc_adapter *sa);
+int sfc_ev_attach(struct sfc_adapter *sa);
+void sfc_ev_detach(struct sfc_adapter *sa);
 int sfc_ev_start(struct sfc_adapter *sa);
 void sfc_ev_stop(struct sfc_adapter *sa);
 

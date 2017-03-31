@@ -870,7 +870,7 @@ sfc_kvarg_perf_profile_handler(__rte_unused const char *key,
 }
 
 int
-sfc_ev_init(struct sfc_adapter *sa)
+sfc_ev_attach(struct sfc_adapter *sa)
 {
 	int rc;
 
@@ -909,7 +909,7 @@ fail_kvarg_perf_profile:
 }
 
 void
-sfc_ev_fini(struct sfc_adapter *sa)
+sfc_ev_detach(struct sfc_adapter *sa)
 {
 	sfc_log_init(sa, "entry");
 

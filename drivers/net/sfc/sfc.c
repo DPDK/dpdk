@@ -409,10 +409,6 @@ sfc_configure(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_intr_configure;
 
-	rc = sfc_ev_init(sa);
-	if (rc != 0)
-		goto fail_ev_init;
-
 	rc = sfc_port_init(sa);
 	if (rc != 0)
 		goto fail_port_init;
@@ -436,9 +432,6 @@ fail_rx_init:
 	sfc_port_fini(sa);
 
 fail_port_init:
-	sfc_ev_fini(sa);
-
-fail_ev_init:
 	sfc_intr_close(sa);
 
 fail_intr_configure:
@@ -461,7 +454,6 @@ sfc_close(struct sfc_adapter *sa)
 	sfc_tx_fini(sa);
 	sfc_rx_fini(sa);
 	sfc_port_fini(sa);
-	sfc_ev_fini(sa);
 	sfc_intr_close(sa);
 
 	sa->state = SFC_ADAPTER_INITIALIZED;
@@ -607,6 +599,10 @@ sfc_attach(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_intr_attach;
 
+	rc = sfc_ev_attach(sa);
+	if (rc != 0)
+		goto fail_ev_attach;
+
 	efx_phy_adv_cap_get(sa->nic, EFX_PHY_CAP_PERM,
 			    &sa->port.phy_adv_cap_mask);
 
@@ -630,6 +626,9 @@ sfc_attach(struct sfc_adapter *sa)
 
 fail_filter_attach:
 fail_set_rss_defaults:
+	sfc_ev_detach(sa);
+
+fail_ev_attach:
 	sfc_intr_detach(sa);
 
 fail_intr_attach:
@@ -652,7 +651,7 @@ sfc_detach(struct sfc_adapter *sa)
 	sfc_flow_fini(sa);
 
 	sfc_filter_detach(sa);
-
+	sfc_ev_detach(sa);
 	sfc_intr_detach(sa);
 
 	sa->state = SFC_ADAPTER_UNINITIALIZED;
