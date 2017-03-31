@@ -688,6 +688,9 @@ RTE_PMD_REGISTER_KMOD_DEP(net_i40e, "* igb_uio | uio_pci_generic | vfio");
 #ifndef I40E_GLQF_PIT
 #define I40E_GLQF_PIT(_i)    (0x00268C80 + ((_i) * 4))
 #endif
+#ifndef I40E_GLQF_L3_MAP
+#define I40E_GLQF_L3_MAP(_i) (0x0026C700 + ((_i) * 4))
+#endif
 
 static inline void i40e_GLQF_reg_init(struct i40e_hw *hw)
 {
@@ -1128,6 +1131,12 @@ eth_i40e_dev_init(struct rte_eth_dev *dev)
 		     ((hw->nvm.version >> 12) & 0xf),
 		     ((hw->nvm.version >> 4) & 0xff),
 		     (hw->nvm.version & 0xf), hw->nvm.eetrack);
+
+	/* initialise the L3_MAP register */
+	ret = i40e_aq_debug_write_register(hw, I40E_GLQF_L3_MAP(40),
+				   0x00000028,	NULL);
+	if (ret)
+		PMD_INIT_LOG(ERR, "Failed to write L3 MAP register %d", ret);
 
 	/* Need the special FW version to support floating VEB */
 	config_floating_veb(dev);
