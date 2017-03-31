@@ -139,6 +139,7 @@ virtio_user_start_device(struct virtio_user_dev *dev)
 	features &= ~(1ull << VIRTIO_NET_F_MAC);
 	/* Strip VIRTIO_NET_F_CTRL_VQ, as devices do not really need to know */
 	features &= ~(1ull << VIRTIO_NET_F_CTRL_VQ);
+	features &= ~(1ull << VIRTIO_NET_F_STATUS);
 	ret = dev->ops->send_request(dev, VHOST_USER_SET_FEATURES, &features);
 	if (ret < 0)
 		goto error;
@@ -357,6 +358,9 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 		dev->device_features &= ~(1ull << VIRTIO_NET_F_MQ);
 		dev->device_features &= ~(1ull << VIRTIO_NET_F_CTRL_MAC_ADDR);
 	}
+
+	/* The backend will not report this feature, we add it explicitly */
+	dev->device_features |= (1ull << VIRTIO_NET_F_STATUS);
 
 	return 0;
 }

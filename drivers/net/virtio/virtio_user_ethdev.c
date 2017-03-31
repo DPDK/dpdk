@@ -135,17 +135,17 @@ virtio_user_set_features(struct virtio_hw *hw, uint64_t features)
 static uint8_t
 virtio_user_get_isr(struct virtio_hw *hw __rte_unused)
 {
-	/* When config interrupt happens, driver calls this function to query
-	 * what kinds of change happen. Interrupt mode not supported for now.
+	/* rxq interrupts and config interrupt are separated in virtio-user,
+	 * here we only report config change.
 	 */
-	return 0;
+	return VIRTIO_PCI_ISR_CONFIG;
 }
 
 static uint16_t
 virtio_user_set_config_irq(struct virtio_hw *hw __rte_unused,
 		    uint16_t vec __rte_unused)
 {
-	return VIRTIO_MSI_NO_VECTOR;
+	return 0;
 }
 
 static uint16_t
