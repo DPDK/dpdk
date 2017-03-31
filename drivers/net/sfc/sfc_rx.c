@@ -901,7 +901,8 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 
 	evq_index = sfc_evq_index_by_rxq_sw_index(sa, sw_index);
 
-	rc = sfc_ev_qinit(sa, evq_index, rxq_info->entries, socket_id);
+	rc = sfc_ev_qinit(sa, evq_index, SFC_EVQ_TYPE_RX, sw_index,
+			  rxq_info->entries, socket_id);
 	if (rc != 0)
 		goto fail_ev_qinit;
 

@@ -55,6 +55,21 @@
 /* Management event queue polling period in microseconds */
 #define SFC_MGMT_EV_QPOLL_PERIOD_US	(US_PER_S)
 
+static const char *
+sfc_evq_type2str(enum sfc_evq_type type)
+{
+	switch (type) {
+	case SFC_EVQ_TYPE_MGMT:
+		return "mgmt-evq";
+	case SFC_EVQ_TYPE_RX:
+		return "rx-evq";
+	case SFC_EVQ_TYPE_TX:
+		return "tx-evq";
+	default:
+		SFC_ASSERT(B_FALSE);
+		return NULL;
+	}
+}
 
 static boolean_t
 sfc_ev_initialized(void *arg)
@@ -786,13 +801,15 @@ sfc_ev_stop(struct sfc_adapter *sa)
 
 int
 sfc_ev_qinit(struct sfc_adapter *sa, unsigned int sw_index,
+	     enum sfc_evq_type type, unsigned int type_index,
 	     unsigned int entries, int socket_id)
 {
 	struct sfc_evq_info *evq_info;
 	struct sfc_evq *evq;
 	int rc;
 
-	sfc_log_init(sa, "sw_index=%u", sw_index);
+	sfc_log_init(sa, "sw_index=%u type=%s type_index=%u",
+		     sw_index, sfc_evq_type2str(type), type_index);
 
 	evq_info = &sa->evq_info[sw_index];
 
@@ -808,9 +825,11 @@ sfc_ev_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 
 	evq->sa = sa;
 	evq->evq_index = sw_index;
+	evq->type = type;
 
 	/* Allocate DMA space */
-	rc = sfc_dma_alloc(sa, "evq", sw_index, EFX_EVQ_SIZE(evq_info->entries),
+	rc = sfc_dma_alloc(sa, sfc_evq_type2str(type), type_index,
+			   EFX_EVQ_SIZE(evq_info->entries),
 			   socket_id, &evq->mem);
 	if (rc != 0)
 		goto fail_dma_alloc;
@@ -930,8 +949,8 @@ sfc_ev_init(struct sfc_adapter *sa)
 			goto fail_ev_qinit_info;
 	}
 
-	rc = sfc_ev_qinit(sa, sa->mgmt_evq_index, SFC_MGMT_EVQ_ENTRIES,
-			  sa->socket_id);
+	rc = sfc_ev_qinit(sa, sa->mgmt_evq_index, SFC_EVQ_TYPE_MGMT, 0,
+			  SFC_MGMT_EVQ_ENTRIES, sa->socket_id);
 	if (rc != 0)
 		goto fail_mgmt_evq_init;
 

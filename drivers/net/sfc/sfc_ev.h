@@ -58,6 +58,14 @@ enum sfc_evq_state {
 	SFC_EVQ_NSTATES
 };
 
+enum sfc_evq_type {
+	SFC_EVQ_TYPE_MGMT = 0,
+	SFC_EVQ_TYPE_RX,
+	SFC_EVQ_TYPE_TX,
+
+	SFC_EVQ_NTYPES
+};
+
 struct sfc_evq {
 	/* Used on datapath */
 	efx_evq_t			*common;
@@ -72,6 +80,7 @@ struct sfc_evq {
 	struct sfc_adapter		*sa;
 	unsigned int			evq_index;
 	enum sfc_evq_state		init_state;
+	enum sfc_evq_type		type;
 };
 
 struct sfc_evq_info {
@@ -138,6 +147,7 @@ int sfc_ev_start(struct sfc_adapter *sa);
 void sfc_ev_stop(struct sfc_adapter *sa);
 
 int sfc_ev_qinit(struct sfc_adapter *sa, unsigned int sw_index,
+		 enum sfc_evq_type type, unsigned int type_index,
 		 unsigned int entries, int socket_id);
 void sfc_ev_qfini(struct sfc_adapter *sa, unsigned int sw_index);
 int sfc_ev_qstart(struct sfc_adapter *sa, unsigned int sw_index);

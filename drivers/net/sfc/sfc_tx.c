@@ -150,7 +150,8 @@ sfc_tx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	SFC_ASSERT(nb_tx_desc <= sa->txq_max_entries);
 	txq_info->entries = nb_tx_desc;
 
-	rc = sfc_ev_qinit(sa, evq_index, txq_info->entries, socket_id);
+	rc = sfc_ev_qinit(sa, evq_index, SFC_EVQ_TYPE_TX, sw_index,
+			  txq_info->entries, socket_id);
 	if (rc != 0)
 		goto fail_ev_qinit;
 
