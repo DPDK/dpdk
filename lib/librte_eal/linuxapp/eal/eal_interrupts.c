@@ -46,6 +46,7 @@
 #include <sys/ioctl.h>
 #include <sys/eventfd.h>
 #include <assert.h>
+#include <stdbool.h>
 
 #include <rte_common.h>
 #include <rte_interrupts.h>
@@ -583,6 +584,9 @@ rte_intr_callback_unregister(const struct rte_intr_handle *intr_handle,
 int
 rte_intr_enable(const struct rte_intr_handle *intr_handle)
 {
+	if (intr_handle && intr_handle->type == RTE_INTR_HANDLE_VDEV)
+		return 0;
+
 	if (!intr_handle || intr_handle->fd < 0 || intr_handle->uio_cfg_fd < 0)
 		return -1;
 
@@ -627,6 +631,9 @@ rte_intr_enable(const struct rte_intr_handle *intr_handle)
 int
 rte_intr_disable(const struct rte_intr_handle *intr_handle)
 {
+	if (intr_handle && intr_handle->type == RTE_INTR_HANDLE_VDEV)
+		return 0;
+
 	if (!intr_handle || intr_handle->fd < 0 || intr_handle->uio_cfg_fd < 0)
 		return -1;
 
@@ -671,6 +678,7 @@ rte_intr_disable(const struct rte_intr_handle *intr_handle)
 static int
 eal_intr_process_interrupts(struct epoll_event *events, int nfds)
 {
+	bool call = false;
 	int n, bytes_read;
 	struct rte_intr_source *src;
 	struct rte_intr_callback *cb;
@@ -719,13 +727,18 @@ eal_intr_process_interrupts(struct epoll_event *events, int nfds)
 			bytes_read = sizeof(buf.vfio_intr_count);
 			break;
 #endif
+		case RTE_INTR_HANDLE_VDEV:
 		case RTE_INTR_HANDLE_EXT:
+			bytes_read = 0;
+			call = true;
+			break;
+
 		default:
 			bytes_read = 1;
 			break;
 		}
 
-		if (src->intr_handle.type != RTE_INTR_HANDLE_EXT) {
+		if (bytes_read > 0) {
 			/**
 			 * read out to clear the ready-to-be-read flag
 			 * for epoll_wait.
@@ -742,12 +755,14 @@ eal_intr_process_interrupts(struct epoll_event *events, int nfds)
 			} else if (bytes_read == 0)
 				RTE_LOG(ERR, EAL, "Read nothing from file "
 					"descriptor %d\n", events[n].data.fd);
+			else
+				call = true;
 		}
 
 		/* grab a lock, again to call callbacks and update status. */
 		rte_spinlock_lock(&intr_lock);
 
-		if (bytes_read > 0) {
+		if (call) {
 
 			/* Finally, call all callbacks. */
 			TAILQ_FOREACH(cb, &src->callbacks, next) {
@@ -858,7 +873,7 @@ eal_intr_thread_main(__rte_unused void *arg)
 		TAILQ_FOREACH(src, &intr_sources, next) {
 			if (src->callbacks.tqh_first == NULL)
 				continue; /* skip those with no callbacks */
-			ev.events = EPOLLIN | EPOLLPRI;
+			ev.events = EPOLLIN | EPOLLPRI | EPOLLRDHUP | EPOLLHUP;
 			ev.data.fd = src->intr_handle.fd;
 
 			/**
@@ -942,6 +957,12 @@ eal_intr_proc_rxtx_intr(int fd, const struct rte_intr_handle *intr_handle)
 		bytes_read = sizeof(buf.vfio_intr_count);
 		break;
 #endif
+	case RTE_INTR_HANDLE_VDEV:
+		/* for vdev, fd points to:
+		 * a. eventfd which does not need to read out;
+		 * b. datapath fd which needs PMD to read out.
+		 */
+		return;
 	case RTE_INTR_HANDLE_EXT:
 		return;
 	default:
@@ -1212,6 +1233,8 @@ rte_intr_efd_enable(struct rte_intr_handle *intr_handle, uint32_t nb_efd)
 		}
 		intr_handle->nb_efd   = n;
 		intr_handle->max_intr = NB_OTHER_INTR + n;
+	} else if (intr_handle->type == RTE_INTR_HANDLE_VDEV) {
+		/* do nothing, and let vdev driver to initialize this struct */
 	} else {
 		intr_handle->efds[0]  = intr_handle->fd;
 		intr_handle->nb_efd   = RTE_MIN(nb_efd, 1U);
@@ -1254,6 +1277,9 @@ int
 rte_intr_cap_multiple(struct rte_intr_handle *intr_handle)
 {
 	if (intr_handle->type == RTE_INTR_HANDLE_VFIO_MSIX)
+		return 1;
+
+	if (intr_handle->type == RTE_INTR_HANDLE_VDEV)
 		return 1;
 
 	return 0;

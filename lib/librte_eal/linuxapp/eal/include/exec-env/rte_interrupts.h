@@ -49,8 +49,9 @@ enum rte_intr_handle_type {
 	RTE_INTR_HANDLE_VFIO_LEGACY,  /**< vfio device handle (legacy) */
 	RTE_INTR_HANDLE_VFIO_MSI,     /**< vfio device handle (MSI) */
 	RTE_INTR_HANDLE_VFIO_MSIX,    /**< vfio device handle (MSIX) */
-	RTE_INTR_HANDLE_ALARM,    /**< alarm handle */
-	RTE_INTR_HANDLE_EXT, /**< external handler */
+	RTE_INTR_HANDLE_ALARM,        /**< alarm handle */
+	RTE_INTR_HANDLE_EXT,          /**< external handler */
+	RTE_INTR_HANDLE_VDEV,         /**< virtual device */
 	RTE_INTR_HANDLE_MAX
 };
 
