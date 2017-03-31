@@ -119,6 +119,22 @@ practical or possible testpmd supports alternative methods for executing command
    testpmd>
 
 
+* At run-time additional commands can be loaded in bulk by invoking the ``load FILENAME``
+  command.
+
+.. code-block:: console
+
+   testpmd> load /home/ubuntu/flow-create-commands.txt
+   Flow rule #0 created
+   Flow rule #1 created
+   ...
+   ...
+   Flow rule #498 created
+   Flow rule #499 created
+   Read all CLI commands from /home/ubuntu/flow-create-commands.txt
+   testpmd>
+
+
 In all cases output from any included command will be displayed as standard output.
 Execution will continue until the end of the file is reached regardless of
 whether any errors occur.  The end user must examine the output to determine if

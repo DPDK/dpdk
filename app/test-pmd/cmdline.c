@@ -13529,6 +13529,40 @@ cmdline_parse_inst_t cmd_ptype_mapping_update = {
 	},
 };
 
+/* Common result structure for file commands */
+struct cmd_cmdfile_result {
+	cmdline_fixed_string_t load;
+	cmdline_fixed_string_t filename;
+};
+
+/* Common CLI fields for file commands */
+cmdline_parse_token_string_t cmd_load_cmdfile =
+	TOKEN_STRING_INITIALIZER(struct cmd_cmdfile_result, load, "load");
+cmdline_parse_token_string_t cmd_load_cmdfile_filename =
+	TOKEN_STRING_INITIALIZER(struct cmd_cmdfile_result, filename, NULL);
+
+static void
+cmd_load_from_file_parsed(
+	void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	__attribute__((unused)) void *data)
+{
+	struct cmd_cmdfile_result *res = parsed_result;
+
+	cmdline_read_from_file(res->filename);
+}
+
+cmdline_parse_inst_t cmd_load_from_file = {
+	.f = cmd_load_from_file_parsed,
+	.data = NULL,
+	.help_str = "load <filename>",
+	.tokens = {
+		(void *)&cmd_load_cmdfile,
+		(void *)&cmd_load_cmdfile_filename,
+		NULL,
+	},
+};
+
 /* ******************************************************************************** */
 
 /* list of instructions */
@@ -13536,6 +13570,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_help_brief,
 	(cmdline_parse_inst_t *)&cmd_help_long,
 	(cmdline_parse_inst_t *)&cmd_quit,
+	(cmdline_parse_inst_t *)&cmd_load_from_file,
 	(cmdline_parse_inst_t *)&cmd_showport,
 	(cmdline_parse_inst_t *)&cmd_showqueue,
 	(cmdline_parse_inst_t *)&cmd_showportall,
