@@ -1215,7 +1215,7 @@ sfc_rx_check_mode(struct sfc_adapter *sa, struct rte_eth_rxmode *rxmode)
  * It should be used to allocate NUMA-unaware resources.
  */
 int
-sfc_rx_init(struct sfc_adapter *sa)
+sfc_rx_configure(struct sfc_adapter *sa)
 {
 	struct rte_eth_conf *dev_conf = &sa->eth_dev->data->dev_conf;
 	unsigned int sw_index;
@@ -1270,7 +1270,7 @@ fail_check_mode:
  * reconfiguration or shutdown.
  */
 void
-sfc_rx_fini(struct sfc_adapter *sa)
+sfc_rx_close(struct sfc_adapter *sa)
 {
 	unsigned int sw_index;
 

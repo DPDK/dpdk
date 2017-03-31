@@ -149,8 +149,8 @@ struct sfc_rxq_info {
 	boolean_t		deferred_started;
 };
 
-int sfc_rx_init(struct sfc_adapter *sa);
-void sfc_rx_fini(struct sfc_adapter *sa);
+int sfc_rx_configure(struct sfc_adapter *sa);
+void sfc_rx_close(struct sfc_adapter *sa);
 int sfc_rx_start(struct sfc_adapter *sa);
 void sfc_rx_stop(struct sfc_adapter *sa);
 
