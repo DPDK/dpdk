@@ -57,7 +57,6 @@
 #include "test_cryptodev_snow3g_test_vectors.h"
 #include "test_cryptodev_snow3g_hash_test_vectors.h"
 #include "test_cryptodev_zuc_test_vectors.h"
-#include "test_cryptodev_zuc_hash_test_vectors.h"
 #include "test_cryptodev_gcm_test_vectors.h"
 #include "test_cryptodev_hmac_test_vectors.h"
 
@@ -4031,7 +4030,7 @@ test_zuc_encryption_sgl(const struct zuc_test_data *tdata)
 }
 
 static int
-test_zuc_authentication(const struct zuc_hash_test_data *tdata)
+test_zuc_authentication(const struct zuc_test_data *tdata)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
