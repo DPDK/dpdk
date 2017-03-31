@@ -656,7 +656,7 @@ typedef void (rte_mempool_ctor_t)(struct rte_mempool *, void *);
  *     when using rte_mempool_get() or rte_mempool_get_bulk() is
  *     "single-consumer". Otherwise, it is "multi-consumers".
  *   - MEMPOOL_F_NO_PHYS_CONTIG: If set, allocated objects won't
- *     necessarilly be contiguous in physical memory.
+ *     necessarily be contiguous in physical memory.
  * @return
  *   The pointer to the new allocated mempool, on success. NULL on error
  *   with rte_errno set appropriately. Possible rte_errno values include:
@@ -796,7 +796,7 @@ rte_mempool_free(struct rte_mempool *mp);
  * Add physically contiguous memory for objects in the pool at init
  *
  * Add a virtually and physically contiguous memory chunk in the pool
- * where objects can be instanciated.
+ * where objects can be instantiated.
  *
  * If the given physical address is unknown (paddr = RTE_BAD_PHYS_ADDR),
  * the chunk doesn't need to be physically contiguous (only virtually),
@@ -827,7 +827,7 @@ int rte_mempool_populate_phys(struct rte_mempool *mp, char *vaddr,
  * Add physical memory for objects in the pool at init
  *
  * Add a virtually contiguous memory chunk in the pool where objects can
- * be instanciated. The physical addresses corresponding to the virtual
+ * be instantiated. The physical addresses corresponding to the virtual
  * area are described in paddr[], pg_num, pg_shift.
  *
  * @param mp
@@ -858,7 +858,7 @@ int rte_mempool_populate_phys_tab(struct rte_mempool *mp, char *vaddr,
  * Add virtually contiguous memory for objects in the pool at init
  *
  * Add a virtually contiguous memory chunk in the pool where objects can
- * be instanciated.
+ * be instantiated.
  *
  * @param mp
  *   A pointer to the mempool structure.
