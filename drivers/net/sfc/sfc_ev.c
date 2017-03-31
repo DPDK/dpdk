@@ -814,7 +814,6 @@ sfc_ev_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	evq_info = &sa->evq_info[sw_index];
 
 	SFC_ASSERT(rte_is_power_of_2(entries));
-	SFC_ASSERT(entries <= evq_info->max_entries);
 	evq_info->entries = entries;
 
 	rc = ENOMEM;
@@ -871,14 +870,9 @@ static int
 sfc_ev_qinit_info(struct sfc_adapter *sa, unsigned int sw_index)
 {
 	struct sfc_evq_info *evq_info = &sa->evq_info[sw_index];
-	unsigned int max_entries;
 
 	sfc_log_init(sa, "sw_index=%u", sw_index);
 
-	max_entries = sfc_evq_max_entries(sa, sw_index);
-	SFC_ASSERT(rte_is_power_of_2(max_entries));
-
-	evq_info->max_entries = max_entries;
 	evq_info->flags = sa->evq_flags |
 		((sa->intr.lsc_intr && sw_index == sa->mgmt_evq_index) ?
 			EFX_EVQ_FLAGS_NOTIFY_INTERRUPT :

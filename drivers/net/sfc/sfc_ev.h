@@ -84,11 +84,7 @@ struct sfc_evq {
 };
 
 struct sfc_evq_info {
-	/* Maximum number of EVQ entries taken into account when buffer
-	 * table space is allocated.
-	 */
-	unsigned int		max_entries;
-	/* Real number of EVQ entries, less or equal to max_entries */
+	/* Number of EVQ entries */
 	unsigned int		entries;
 	/* Event queue creation flags */
 	uint32_t		flags;
@@ -111,21 +107,6 @@ sfc_ev_qcount(struct sfc_adapter *sa)
 	 * Own EVQ for each Tx and Rx queue.
 	 */
 	return 1 + dev_data->nb_rx_queues + dev_data->nb_tx_queues;
-}
-
-static inline unsigned int
-sfc_evq_max_entries(struct sfc_adapter *sa, unsigned int sw_index)
-{
-	unsigned int max_entries;
-
-	if (sw_index == sa->mgmt_evq_index)
-		max_entries = SFC_MGMT_EVQ_ENTRIES;
-	else if (sw_index <= sa->eth_dev->data->nb_rx_queues)
-		max_entries = EFX_RXQ_MAXNDESCS;
-	else
-		max_entries = efx_nic_cfg_get(sa->nic)->enc_txq_max_ndescs;
-
-	return max_entries;
 }
 
 static inline unsigned int
