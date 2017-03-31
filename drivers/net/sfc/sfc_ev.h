@@ -81,11 +81,10 @@ struct sfc_evq {
 	unsigned int			evq_index;
 	enum sfc_evq_state		init_state;
 	enum sfc_evq_type		type;
+	unsigned int			entries;
 };
 
 struct sfc_evq_info {
-	/* Number of EVQ entries */
-	unsigned int		entries;
 	/* Event queue creation flags */
 	uint32_t		flags;
 	/* NUMA-aware EVQ data structure used on datapath */

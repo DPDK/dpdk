@@ -599,11 +599,10 @@ sfc_ev_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 	esmp = &evq->mem;
 
 	/* Clear all events */
-	(void)memset((void *)esmp->esm_base, 0xff,
-		     EFX_EVQ_SIZE(evq_info->entries));
+	(void)memset((void *)esmp->esm_base, 0xff, EFX_EVQ_SIZE(evq->entries));
 
 	/* Create the common code event queue */
-	rc = efx_ev_qcreate(sa->nic, sw_index, esmp, evq_info->entries,
+	rc = efx_ev_qcreate(sa->nic, sw_index, esmp, evq->entries,
 			    0 /* unused on EF10 */, 0, evq_info->flags,
 			    &evq->common);
 	if (rc != 0)
@@ -814,7 +813,6 @@ sfc_ev_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	evq_info = &sa->evq_info[sw_index];
 
 	SFC_ASSERT(rte_is_power_of_2(entries));
-	evq_info->entries = entries;
 
 	rc = ENOMEM;
 	evq = rte_zmalloc_socket("sfc-evq", sizeof(*evq), RTE_CACHE_LINE_SIZE,
@@ -825,11 +823,11 @@ sfc_ev_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	evq->sa = sa;
 	evq->evq_index = sw_index;
 	evq->type = type;
+	evq->entries = entries;
 
 	/* Allocate DMA space */
 	rc = sfc_dma_alloc(sa, sfc_evq_type2str(type), type_index,
-			   EFX_EVQ_SIZE(evq_info->entries),
-			   socket_id, &evq->mem);
+			   EFX_EVQ_SIZE(evq->entries), socket_id, &evq->mem);
 	if (rc != 0)
 		goto fail_dma_alloc;
 
