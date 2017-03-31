@@ -170,6 +170,24 @@ New Features
   * Rxq interrupt for virtio-user + vhost-kernel as the backend.
   * LSC interrupt for virtio-user + vhost-user as the backend.
 
+* **Added event driven programming model library (rte_eventdev).**
+
+  This API introduces event driven programming model.
+
+  In a polling model, lcores poll ethdev ports and associated
+  rx queues directly to look for packet. In an event driven model,
+  by contrast, lcores call the scheduler that selects packets for
+  them based on programmer-specified criteria. Eventdev library
+  added support for event driven programming model, which offer
+  applications automatic multicore scaling, dynamic load balancing,
+  pipelining, packet ingress order maintenance and
+  synchronization services to simplify application packet processing.
+
+  By introducing event driven programming model, DPDK can support
+  both polling and event driven programming models for packet processing,
+  and applications are free to choose whatever model
+  (or combination of the two) that best suits their needs.
+
 
 Resolved Issues
 ---------------
