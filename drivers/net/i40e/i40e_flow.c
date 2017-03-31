@@ -2095,7 +2095,9 @@ i40e_flow_destroy_tunnel_filter(struct i40e_pf *pf,
 	if (((filter->input.flags & I40E_AQC_ADD_CLOUD_FILTER_TEID_MPLSoUDP) ==
 	    I40E_AQC_ADD_CLOUD_FILTER_TEID_MPLSoUDP) ||
 	    ((filter->input.flags & I40E_AQC_ADD_CLOUD_FILTER_TEID_MPLSoGRE) ==
-	     I40E_AQC_ADD_CLOUD_FILTER_TEID_MPLSoGRE))
+	    I40E_AQC_ADD_CLOUD_FILTER_TEID_MPLSoGRE) ||
+	    ((filter->input.flags & I40E_AQC_ADD_CLOUD_FILTER_CUSTOM_QINQ) ==
+	    I40E_AQC_ADD_CLOUD_FILTER_CUSTOM_QINQ))
 		big_buffer = 1;
 
 	if (big_buffer)
