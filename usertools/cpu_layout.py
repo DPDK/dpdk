@@ -4,6 +4,7 @@
 #   BSD LICENSE
 #
 #   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+#   Copyright(c) 2017 Cavium Networks Ltd. All rights reserved.
 #   All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
@@ -38,40 +39,32 @@ import sys
 sockets = []
 cores = []
 core_map = {}
-
-fd = open("/proc/cpuinfo")
-lines = fd.readlines()
+base_path = "/sys/devices/system/cpu"
+fd = open("{}/kernel_max".format(base_path))
+max_cpus = int(fd.read())
 fd.close()
-
-core_details = []
-core_lines = {}
-for line in lines:
-    if len(line.strip()) != 0:
-        name, value = line.split(":", 1)
-        core_lines[name.strip()] = value.strip()
-    else:
-        core_details.append(core_lines)
-        core_lines = {}
-
-for core in core_details:
-    for field in ["processor", "core id", "physical id"]:
-        if field not in core:
-            print("Error getting '%s' value from /proc/cpuinfo" % field)
-            sys.exit(1)
-        core[field] = int(core[field])
-
-    if core["core id"] not in cores:
-        cores.append(core["core id"])
-    if core["physical id"] not in sockets:
-        sockets.append(core["physical id"])
-    key = (core["physical id"], core["core id"])
+for cpu in xrange(max_cpus + 1):
+    try:
+        fd = open("{}/cpu{}/topology/core_id".format(base_path, cpu))
+    except:
+        break
+    core = int(fd.read())
+    fd.close()
+    fd = open("{}/cpu{}/topology/physical_package_id".format(base_path, cpu))
+    socket = int(fd.read())
+    fd.close()
+    if core not in cores:
+        cores.append(core)
+    if socket not in sockets:
+        sockets.append(socket)
+    key = (socket, core)
     if key not in core_map:
         core_map[key] = []
-    core_map[key].append(core["processor"])
+    core_map[key].append(cpu)
 
-print("============================================================")
-print("Core and Socket Information (as reported by '/proc/cpuinfo')")
-print("============================================================\n")
+print(format("=" * (47 + len(base_path))))
+print("Core and Socket Information (as reported by '{}')".format(base_path))
+print("{}\n".format("=" * (47 + len(base_path))))
 print("cores = ", cores)
 print("sockets = ", sockets)
 print("")
