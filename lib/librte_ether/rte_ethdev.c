@@ -138,11 +138,6 @@ enum {
 	STAT_QMAP_RX
 };
 
-enum {
-	DEV_DETACHED = 0,
-	DEV_ATTACHED
-};
-
 static void
 rte_eth_dev_data_alloc(void)
 {
@@ -170,7 +165,7 @@ rte_eth_dev_allocated(const char *name)
 	unsigned i;
 
 	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
-		if ((rte_eth_devices[i].attached == DEV_ATTACHED) &&
+		if ((rte_eth_devices[i].state == RTE_ETH_DEV_ATTACHED) &&
 		    strcmp(rte_eth_devices[i].data->name, name) == 0)
 			return &rte_eth_devices[i];
 	}
@@ -183,7 +178,7 @@ rte_eth_dev_find_free_port(void)
 	unsigned i;
 
 	for (i = 0; i < RTE_MAX_ETHPORTS; i++) {
-		if (rte_eth_devices[i].attached == DEV_DETACHED)
+		if (rte_eth_devices[i].state == RTE_ETH_DEV_UNUSED)
 			return i;
 	}
 	return RTE_MAX_ETHPORTS;
@@ -195,7 +190,7 @@ eth_dev_get(uint8_t port_id)
 	struct rte_eth_dev *eth_dev = &rte_eth_devices[port_id];
 
 	eth_dev->data = &rte_eth_dev_data[port_id];
-	eth_dev->attached = DEV_ATTACHED;
+	eth_dev->state = RTE_ETH_DEV_ATTACHED;
 	TAILQ_INIT(&(eth_dev->link_intr_cbs));
 
 	eth_dev_last_created_port = port_id;
@@ -271,7 +266,7 @@ rte_eth_dev_release_port(struct rte_eth_dev *eth_dev)
 	if (eth_dev == NULL)
 		return -EINVAL;
 
-	eth_dev->attached = DEV_DETACHED;
+	eth_dev->state = RTE_ETH_DEV_UNUSED;
 	nb_ports--;
 	return 0;
 }
@@ -377,7 +372,7 @@ int
 rte_eth_dev_is_valid_port(uint8_t port_id)
 {
 	if (port_id >= RTE_MAX_ETHPORTS ||
-	    rte_eth_devices[port_id].attached != DEV_ATTACHED)
+	    rte_eth_devices[port_id].state != RTE_ETH_DEV_ATTACHED)
 		return 0;
 	else
 		return 1;
