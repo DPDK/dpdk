@@ -108,9 +108,16 @@ tap_trigger_cb(int sig __rte_unused)
 	tap_trigger = (tap_trigger + 1) | 0x80000000;
 }
 
+/* Specifies on what netdevices the ioctl should be applied */
+enum ioctl_mode {
+	LOCAL_AND_REMOTE,
+	LOCAL_ONLY,
+	REMOTE_ONLY,
+};
+
 static int
 tap_ioctl(struct pmd_internals *pmd, unsigned long request,
-	  struct ifreq *ifr, int set);
+	  struct ifreq *ifr, int set, enum ioctl_mode mode);
 
 static int tap_intr_handle_set(struct rte_eth_dev *dev, int set);
 
@@ -222,10 +229,15 @@ tun_alloc(struct pmd_internals *pmd, uint16_t qid)
 	if (qid == 0) {
 		struct ifreq ifr;
 
-		if (tap_ioctl(pmd, SIOCGIFHWADDR, &ifr, 0) < 0)
-			goto error;
-		rte_memcpy(&pmd->eth_addr, ifr.ifr_hwaddr.sa_data,
+		/*
+		 * pmd->eth_addr contains the desired MAC, either from remote
+		 * or from a random assignment. Sync it with the tap netdevice.
+		 */
+		ifr.ifr_hwaddr.sa_family = AF_LOCAL;
+		rte_memcpy(ifr.ifr_hwaddr.sa_data, &pmd->eth_addr,
 			   ETHER_ADDR_LEN);
+		if (tap_ioctl(pmd, SIOCSIFHWADDR, &ifr, 0, LOCAL_ONLY) < 0)
+			goto error;
 
 		pmd->if_index = if_nametoindex(pmd->name);
 		if (!pmd->if_index) {
@@ -437,27 +449,22 @@ pmd_tx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 
 static int
 tap_ioctl(struct pmd_internals *pmd, unsigned long request,
-	  struct ifreq *ifr, int set)
+	  struct ifreq *ifr, int set, enum ioctl_mode mode)
 {
 	short req_flags = ifr->ifr_flags;
-	int remote = !!pmd->remote_if_index;
+	int remote = pmd->remote_if_index &&
+		(mode == REMOTE_ONLY || mode == LOCAL_AND_REMOTE);
 
+	if (!pmd->remote_if_index && mode == REMOTE_ONLY)
+		return 0;
 	/*
 	 * If there is a remote netdevice, apply ioctl on it, then apply it on
 	 * the tap netdevice.
 	 */
-	if (request == SIOCGIFFLAGS && !set) {
-		/*
-		 * Special case for getting flags. If set is given,
-		 * then return the flags from the remote netdevice only.
-		 * Otherwise return the flags from the tap netdevice.
-		 */
-		remote = 0;
-	}
 apply:
 	if (remote)
 		snprintf(ifr->ifr_name, IFNAMSIZ, "%s", pmd->remote_iface);
-	else
+	else if (mode == LOCAL_ONLY || mode == LOCAL_AND_REMOTE)
 		snprintf(ifr->ifr_name, IFNAMSIZ, "%s", pmd->name);
 	switch (request) {
 	case SIOCSIFFLAGS:
@@ -470,16 +477,7 @@ apply:
 			ifr->ifr_flags &= ~req_flags;
 		break;
 	case SIOCGIFFLAGS:
-		if (remote && set)
-			remote = 0; /* don't loop */
-		break;
 	case SIOCGIFHWADDR:
-		/* Set remote MAC on the tap netdevice */
-		if (!remote && pmd->remote_if_index) {
-			request = SIOCSIFHWADDR;
-			goto apply;
-		}
-		break;
 	case SIOCSIFHWADDR:
 	case SIOCSIFMTU:
 		break;
@@ -490,7 +488,7 @@ apply:
 	}
 	if (ioctl(pmd->ioctl_sock, request, ifr) < 0)
 		goto error;
-	if (remote--)
+	if (remote-- && mode == LOCAL_AND_REMOTE)
 		goto apply;
 	return 0;
 
@@ -507,7 +505,7 @@ tap_link_set_down(struct rte_eth_dev *dev)
 	struct ifreq ifr = { .ifr_flags = IFF_UP };
 
 	dev->data->dev_link.link_status = ETH_LINK_DOWN;
-	return tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 0);
+	return tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 0, LOCAL_AND_REMOTE);
 }
 
 static int
@@ -517,7 +515,7 @@ tap_link_set_up(struct rte_eth_dev *dev)
 	struct ifreq ifr = { .ifr_flags = IFF_UP };
 
 	dev->data->dev_link.link_status = ETH_LINK_UP;
-	return tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 1);
+	return tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 1, LOCAL_AND_REMOTE);
 }
 
 static int
@@ -702,14 +700,14 @@ tap_link_update(struct rte_eth_dev *dev, int wait_to_complete __rte_unused)
 	struct ifreq ifr = { .ifr_flags = 0 };
 
 	if (pmd->remote_if_index) {
-		tap_ioctl(pmd, SIOCGIFFLAGS, &ifr, 1);
+		tap_ioctl(pmd, SIOCGIFFLAGS, &ifr, 0, REMOTE_ONLY);
 		if (!(ifr.ifr_flags & IFF_UP) ||
 		    !(ifr.ifr_flags & IFF_RUNNING)) {
 			dev_link->link_status = ETH_LINK_DOWN;
 			return 0;
 		}
 	}
-	tap_ioctl(pmd, SIOCGIFFLAGS, &ifr, 0);
+	tap_ioctl(pmd, SIOCGIFFLAGS, &ifr, 0, LOCAL_ONLY);
 	dev_link->link_status =
 		((ifr.ifr_flags & IFF_UP) && (ifr.ifr_flags & IFF_RUNNING) ?
 		 ETH_LINK_UP :
@@ -724,7 +722,7 @@ tap_promisc_enable(struct rte_eth_dev *dev)
 	struct ifreq ifr = { .ifr_flags = IFF_PROMISC };
 
 	dev->data->promiscuous = 1;
-	tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 1);
+	tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 1, LOCAL_AND_REMOTE);
 	if (pmd->remote_if_index)
 		tap_flow_implicit_create(pmd, TAP_REMOTE_PROMISC);
 }
@@ -736,7 +734,7 @@ tap_promisc_disable(struct rte_eth_dev *dev)
 	struct ifreq ifr = { .ifr_flags = IFF_PROMISC };
 
 	dev->data->promiscuous = 0;
-	tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 0);
+	tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 0, LOCAL_AND_REMOTE);
 	if (pmd->remote_if_index)
 		tap_flow_implicit_destroy(pmd, TAP_REMOTE_PROMISC);
 }
@@ -748,7 +746,7 @@ tap_allmulti_enable(struct rte_eth_dev *dev)
 	struct ifreq ifr = { .ifr_flags = IFF_ALLMULTI };
 
 	dev->data->all_multicast = 1;
-	tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 1);
+	tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 1, LOCAL_AND_REMOTE);
 	if (pmd->remote_if_index)
 		tap_flow_implicit_create(pmd, TAP_REMOTE_ALLMULTI);
 }
@@ -760,7 +758,7 @@ tap_allmulti_disable(struct rte_eth_dev *dev)
 	struct ifreq ifr = { .ifr_flags = IFF_ALLMULTI };
 
 	dev->data->all_multicast = 0;
-	tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 0);
+	tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 0, LOCAL_AND_REMOTE);
 	if (pmd->remote_if_index)
 		tap_flow_implicit_destroy(pmd, TAP_REMOTE_ALLMULTI);
 }
@@ -780,7 +778,7 @@ tap_mac_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
 
 	ifr.ifr_hwaddr.sa_family = AF_LOCAL;
 	rte_memcpy(ifr.ifr_hwaddr.sa_data, mac_addr, ETHER_ADDR_LEN);
-	if (tap_ioctl(pmd, SIOCSIFHWADDR, &ifr, 1) < 0)
+	if (tap_ioctl(pmd, SIOCSIFHWADDR, &ifr, 1, LOCAL_AND_REMOTE) < 0)
 		return;
 	rte_memcpy(&pmd->eth_addr, mac_addr, ETHER_ADDR_LEN);
 }
@@ -811,7 +809,8 @@ tap_setup_queue(struct rte_eth_dev *dev,
 				struct ifreq ifr;
 
 				ifr.ifr_mtu = dev->data->mtu;
-				if (tap_ioctl(pmd, SIOCSIFMTU, &ifr, 1) < 0) {
+				if (tap_ioctl(pmd, SIOCSIFMTU, &ifr, 1,
+					      LOCAL_AND_REMOTE) < 0) {
 					close(fd);
 					return -1;
 				}
@@ -953,7 +952,7 @@ tap_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	struct ifreq ifr = { .ifr_mtu = mtu };
 	int err = 0;
 
-	err = tap_ioctl(pmd, SIOCSIFMTU, &ifr, 1);
+	err = tap_ioctl(pmd, SIOCSIFMTU, &ifr, 1, LOCAL_AND_REMOTE);
 	if (!err)
 		dev->data->mtu = mtu;
 
@@ -1197,13 +1196,25 @@ eth_dev_tap_create(const char *name, char *tap_name, char *remote_iface)
 	 */
 	pmd->nlsk_fd = nl_init(0);
 	if (strlen(remote_iface)) {
+		struct ifreq ifr;
+
 		pmd->remote_if_index = if_nametoindex(remote_iface);
 		snprintf(pmd->remote_iface, RTE_ETH_NAME_MAX_LEN,
 			 "%s", remote_iface);
-		if (!pmd->remote_if_index)
+		if (!pmd->remote_if_index) {
 			RTE_LOG(ERR, PMD, "Could not find %s ifindex: "
 				"remote interface will remain unconfigured\n",
 				remote_iface);
+			return 0;
+		}
+		if (tap_ioctl(pmd, SIOCGIFHWADDR, &ifr, 0, REMOTE_ONLY) < 0) {
+			RTE_LOG(ERR, PMD, "Could not get remote MAC address\n");
+			goto error_exit;
+		}
+		rte_memcpy(&pmd->eth_addr, ifr.ifr_hwaddr.sa_data,
+			   ETHER_ADDR_LEN);
+	} else {
+		eth_random_addr((uint8_t *)&pmd->eth_addr);
 	}
 
 	return 0;
