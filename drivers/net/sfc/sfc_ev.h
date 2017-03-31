@@ -85,8 +85,6 @@ struct sfc_evq {
 };
 
 struct sfc_evq_info {
-	/* Event queue creation flags */
-	uint32_t		flags;
 	/* NUMA-aware EVQ data structure used on datapath */
 	struct sfc_evq		*evq;
 };

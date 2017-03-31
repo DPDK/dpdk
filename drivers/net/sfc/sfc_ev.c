@@ -588,6 +588,7 @@ sfc_ev_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 	const struct sfc_evq_info *evq_info;
 	struct sfc_evq *evq;
 	efsys_mem_t *esmp;
+	uint32_t evq_flags = sa->evq_flags;
 	unsigned int total_delay_us;
 	unsigned int delay_us;
 	int rc;
@@ -601,9 +602,14 @@ sfc_ev_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 	/* Clear all events */
 	(void)memset((void *)esmp->esm_base, 0xff, EFX_EVQ_SIZE(evq->entries));
 
+	if (sa->intr.lsc_intr && sw_index == sa->mgmt_evq_index)
+		evq_flags |= EFX_EVQ_FLAGS_NOTIFY_INTERRUPT;
+	else
+		evq_flags |= EFX_EVQ_FLAGS_NOTIFY_DISABLED;
+
 	/* Create the common code event queue */
 	rc = efx_ev_qcreate(sa->nic, sw_index, esmp, evq->entries,
-			    0 /* unused on EF10 */, 0, evq_info->flags,
+			    0 /* unused on EF10 */, 0, evq_flags,
 			    &evq->common);
 	if (rc != 0)
 		goto fail_ev_qcreate;
@@ -867,14 +873,7 @@ sfc_ev_qfini(struct sfc_adapter *sa, unsigned int sw_index)
 static int
 sfc_ev_qinit_info(struct sfc_adapter *sa, unsigned int sw_index)
 {
-	struct sfc_evq_info *evq_info = &sa->evq_info[sw_index];
-
 	sfc_log_init(sa, "sw_index=%u", sw_index);
-
-	evq_info->flags = sa->evq_flags |
-		((sa->intr.lsc_intr && sw_index == sa->mgmt_evq_index) ?
-			EFX_EVQ_FLAGS_NOTIFY_INTERRUPT :
-			EFX_EVQ_FLAGS_NOTIFY_DISABLED);
 
 	return 0;
 }
