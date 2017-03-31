@@ -258,12 +258,21 @@ rte_cfgfile_load_with_params(const char *filename, int flags,
 
 			struct rte_cfgfile_section *sect =
 				cfg->sections[curr_section];
-			char *split[2];
-			if (rte_strsplit(buffer, sizeof(buffer), split, 2, '=')
-				!= 2) {
-				printf("Error at line %d - cannot split "
-					"string\n", lineno);
-				goto error1;
+			int n;
+			char *split[2] = {NULL};
+			n = rte_strsplit(buffer, sizeof(buffer), split, 2, '=');
+			if (flags & CFG_FLAG_EMPTY_VALUES) {
+				if ((n < 1) || (n > 2)) {
+					printf("Error at line %d - cannot split string, n=%d\n",
+					       lineno, n);
+					goto error1;
+				}
+			} else {
+				if (n != 2) {
+					printf("Error at line %d - cannot split string, n=%d\n",
+					       lineno, n);
+					goto error1;
+				}
 			}
 
 			curr_entry++;
@@ -293,7 +302,7 @@ rte_cfgfile_load_with_params(const char *filename, int flags,
 			snprintf(entry->name, sizeof(entry->name), "%s",
 				split[0]);
 			snprintf(entry->value, sizeof(entry->value), "%s",
-				split[1]);
+				 split[1] ? split[1] : "");
 			_strip(entry->name, strnlen(entry->name,
 				sizeof(entry->name)));
 			_strip(entry->value, strnlen(entry->value,

@@ -80,6 +80,12 @@ enum {
 	 * section.
 	 */
 	CFG_FLAG_GLOBAL_SECTION = 1,
+
+	/**
+	 * Indicates that file supports key value entries where the value can
+	 * be zero length (e.g., "key=").
+	 */
+	CFG_FLAG_EMPTY_VALUES = 2,
 };
 /**@} */
 
