@@ -37,6 +37,8 @@
 #include <rte_cryptodev_pmd.h>
 #include <rte_memzone.h>
 
+#include "qat_crypto_capabilities.h"
+
 /*
  * This macro rounds up a number to a be a multiple of
  * the alignment when the alignment is a power of 2
@@ -80,6 +82,7 @@ struct qat_pmd_private {
 	/**< Max number of queue pairs supported by device */
 	unsigned max_nb_sessions;
 	/**< Max number of sessions supported by device */
+	const struct rte_cryptodev_capabilities *qat_dev_capabilities;
 };
 
 int qat_dev_config(struct rte_cryptodev *dev,

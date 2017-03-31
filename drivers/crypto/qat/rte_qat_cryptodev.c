@@ -39,6 +39,17 @@
 #include "qat_crypto.h"
 #include "qat_logs.h"
 
+static const struct rte_cryptodev_capabilities qat_cpm16_capabilities[] = {
+	QAT_BASE_CPM16_SYM_CAPABILITIES,
+	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
+};
+
+static const struct rte_cryptodev_capabilities qat_cpm17_capabilities[] = {
+	QAT_BASE_CPM16_SYM_CAPABILITIES,
+	QAT_EXTRA_CPM17_SYM_CAPABILITIES,
+	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
+};
+
 static struct rte_cryptodev_ops crypto_qat_ops = {
 
 		/* Device related operations */
@@ -105,6 +116,19 @@ crypto_qat_dev_init(__attribute__((unused)) struct rte_cryptodev_driver *crypto_
 
 	internals = cryptodev->data->dev_private;
 	internals->max_nb_sessions = RTE_QAT_PMD_MAX_NB_SESSIONS;
+	switch (RTE_DEV_TO_PCI(cryptodev->device)->id.device_id) {
+	case 0x0443:
+		internals->qat_dev_capabilities = qat_cpm16_capabilities;
+		break;
+	case 0x37c9:
+	case 0x19e3:
+		internals->qat_dev_capabilities = qat_cpm17_capabilities;
+		break;
+	default:
+		PMD_DRV_LOG(ERR,
+			"Invalid dev_id, can't determine capabilities");
+		break;
+	}
 
 	/*
 	 * For secondary processes, we don't initialise any further as primary
