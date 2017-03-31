@@ -50,8 +50,6 @@
 
 void tc_init_msg(struct nlmsg *msg, uint16_t ifindex, uint16_t type,
 		 uint16_t flags);
-int qdisc_exists(int nlsk_fd, uint16_t ifindex, uint32_t handle,
-		 uint32_t parent);
 int qdisc_list(int nlsk_fd, uint16_t ifindex);
 int qdisc_flush(int nlsk_fd, uint16_t ifindex);
 int qdisc_create_ingress(int nlsk_fd, uint16_t ifindex);

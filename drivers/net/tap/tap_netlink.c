@@ -159,7 +159,7 @@ nl_send(int nlsk_fd, struct nlmsghdr *nh)
  *   The netlink socket file descriptor used for communication.
  *
  * @return
- *   0 on success, -1 otherwise.
+ *   0 on success, -1 otherwise with errno set.
  */
 int
 nl_recv_ack(int nlsk_fd)
@@ -179,14 +179,13 @@ nl_recv_ack(int nlsk_fd)
  *   Custom arguments for the callback.
  *
  * @return
- *   0 on success, -1 otherwise.
+ *   0 on success, -1 otherwise with errno set.
  */
 int
 nl_recv(int nlsk_fd, int (*cb)(struct nlmsghdr *, void *arg), void *arg)
 {
 	/* man 7 netlink EXAMPLE */
 	struct sockaddr_nl sa;
-	struct nlmsghdr *nh;
 	char buf[BUF_SIZE];
 	struct iovec iov = {
 		.iov_base = buf,
@@ -196,49 +195,43 @@ nl_recv(int nlsk_fd, int (*cb)(struct nlmsghdr *, void *arg), void *arg)
 		.msg_name = &sa,
 		.msg_namelen = sizeof(sa),
 		.msg_iov = &iov,
+		/* One message at a time */
 		.msg_iovlen = 1,
 	};
-	int recv_bytes = 0, done = 0, multipart = 0, error = 0;
+	int multipart = 0;
+	int ret = 0;
 
-read:
-	recv_bytes = recvmsg(nlsk_fd, &msg, 0);
-	if (recv_bytes < 0)
-		return -1;
-	for (nh = (struct nlmsghdr *)buf;
-	     NLMSG_OK(nh, (unsigned int)recv_bytes);
-	     nh = NLMSG_NEXT(nh, recv_bytes)) {
-		/*
-		 * Multi-part messages and their following DONE message have the
-		 * NLM_F_MULTI flag set. Make note, in order to read the DONE
-		 * message afterwards.
-		 */
-		if (nh->nlmsg_flags & NLM_F_MULTI)
-			multipart = 1;
-		if (nh->nlmsg_type == NLMSG_ERROR) {
-			struct nlmsgerr *err_data = NLMSG_DATA(nh);
+	do {
+		struct nlmsghdr *nh;
+		int recv_bytes = 0;
 
-			if (err_data->error == 0)
-				RTE_LOG(DEBUG, PMD, "%s() ack message recvd\n",
-					__func__);
-			else {
-				RTE_LOG(DEBUG, PMD,
-					"%s() error message recvd\n", __func__);
-				error = 1;
+		recv_bytes = recvmsg(nlsk_fd, &msg, 0);
+		if (recv_bytes < 0)
+			return -1;
+		for (nh = (struct nlmsghdr *)buf;
+		     NLMSG_OK(nh, (unsigned int)recv_bytes);
+		     nh = NLMSG_NEXT(nh, recv_bytes)) {
+			if (nh->nlmsg_type == NLMSG_ERROR) {
+				struct nlmsgerr *err_data = NLMSG_DATA(nh);
+
+				if (err_data->error < 0) {
+					errno = -err_data->error;
+					return -1;
+				}
+				/* Ack message. */
+				return 0;
 			}
+			/* Multi-part msgs and their trailing DONE message. */
+			if (nh->nlmsg_flags & NLM_F_MULTI) {
+				if (nh->nlmsg_type == NLMSG_DONE)
+					return 0;
+				multipart = 1;
+			}
+			if (cb)
+				ret = cb(nh, arg);
 		}
-		/* The end of multipart message. */
-		if (nh->nlmsg_type == NLMSG_DONE)
-			/* No need to call the callback for a DONE message. */
-			done = 1;
-		else if (cb)
-			if (cb(nh, arg) < 0)
-				error = 1;
-	}
-	if (multipart && !done)
-		goto read;
-	if (error)
-		return -1;
-	return 0;
+	} while (multipart);
+	return ret;
 }
 
 /**

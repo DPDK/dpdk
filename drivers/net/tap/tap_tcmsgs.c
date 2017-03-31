@@ -94,7 +94,7 @@ tc_init_msg(struct nlmsg *msg, uint16_t ifindex, uint16_t type, uint16_t flags)
  *   Additional info to identify the QDISC (handle and parent).
  *
  * @return
- *   0 on success, -1 otherwise.
+ *   0 on success, -1 otherwise with errno set.
  */
 static int
 qdisc_del(int nlsk_fd, uint16_t ifindex, struct qdisc *qinfo)
@@ -117,12 +117,16 @@ qdisc_del(int nlsk_fd, uint16_t ifindex, struct qdisc *qinfo)
 		fd = nlsk_fd;
 	}
 	if (nl_send(fd, &msg.nh) < 0)
-		return -1;
+		goto error;
 	if (nl_recv_ack(fd) < 0)
-		return -1;
+		goto error;
 	if (!nlsk_fd)
 		return nl_final(fd);
 	return 0;
+error:
+	if (!nlsk_fd)
+		nl_final(fd);
+	return -1;
 }
 
 /**
@@ -134,7 +138,7 @@ qdisc_del(int nlsk_fd, uint16_t ifindex, struct qdisc *qinfo)
  *   The netdevice ifindex where to add the multiqueue QDISC.
  *
  * @return
- *   -1 if the qdisc cannot be added, and 0 otherwise.
+ *   0 on success, -1 otherwise with errno set.
  */
 int
 qdisc_add_multiq(int nlsk_fd, uint16_t ifindex)
@@ -164,7 +168,7 @@ qdisc_add_multiq(int nlsk_fd, uint16_t ifindex)
  *   The netdevice ifindex where the QDISC will be added.
  *
  * @return
- *   -1 if the qdisc cannot be added, and 0 otherwise.
+ *   0 on success, -1 otherwise with errno set.
  */
 int
 qdisc_add_ingress(int nlsk_fd, uint16_t ifindex)
@@ -184,34 +188,6 @@ qdisc_add_ingress(int nlsk_fd, uint16_t ifindex)
 }
 
 /**
- * Callback function to check for QDISC existence.
- * If the QDISC is found to exist, increment "exists" in the custom arg.
- *
- * @param[in] nh
- *   The netlink message to parse, received from the kernel.
- * @param[in, out] arg
- *   Custom arguments for the callback.
- *
- * @return
- *   0.
- */
-static int
-qdisc_exist_cb(struct nlmsghdr *nh, void *arg)
-{
-	struct list_args *args = (struct list_args *)arg;
-	struct qdisc_custom_arg *custom = args->custom_arg;
-	struct tcmsg *t = NLMSG_DATA(nh);
-
-	/* filter by request iface */
-	if (args->ifindex != (unsigned int)t->tcm_ifindex)
-		return 0;
-	if (t->tcm_handle != custom->handle || t->tcm_parent != custom->parent)
-		return 0;
-	custom->exists++;
-	return 0;
-}
-
-/**
  * Callback function to delete a QDISC.
  *
  * @param[in] nh
@@ -220,7 +196,7 @@ qdisc_exist_cb(struct nlmsghdr *nh, void *arg)
  *   Custom arguments for the callback.
  *
  * @return
- *   0.
+ *   0 on success, -1 otherwise with errno set.
  */
 static int
 qdisc_del_cb(struct nlmsghdr *nh, void *arg)
@@ -256,10 +232,7 @@ qdisc_del_cb(struct nlmsghdr *nh, void *arg)
  *   The arguments to provide the callback function with.
  *
  * @return
- *   -1 if either sending the netlink message failed, or if receiving the answer
- *   failed, or finally if the callback returned a negative value for that
- *   answer.
- *   0 is returned otherwise.
+ *   0 on success, -1 otherwise with errno set.
  */
 static int
 qdisc_iterate(int nlsk_fd, uint16_t ifindex,
@@ -281,36 +254,6 @@ qdisc_iterate(int nlsk_fd, uint16_t ifindex,
 }
 
 /**
- * Check whether a given QDISC already exists for the netdevice.
- *
- * @param[in] nlsk_fd
- *   The netlink socket file descriptor used for communication.
- * @param[in] ifindex
- *   The netdevice ifindex to check QDISC existence for.
- * @param[in] callback
- *   The function to call for each QDISC.
- * @param[in, out] arg
- *   The arguments to provide the callback function with.
- *
- * @return
- *   1 if the qdisc exists, 0 otherwise.
- */
-int
-qdisc_exists(int nlsk_fd, uint16_t ifindex, uint32_t handle, uint32_t parent)
-{
-	struct qdisc_custom_arg arg = {
-		.handle = handle,
-		.parent = parent,
-		.exists = 0,
-	};
-
-	qdisc_iterate(nlsk_fd, ifindex, qdisc_exist_cb, &arg);
-	if (arg.exists)
-		return 1;
-	return 0;
-}
-
-/**
  * Delete all QDISCs for a given netdevice.
  *
  * @param[in] nlsk_fd
@@ -319,7 +262,7 @@ qdisc_exists(int nlsk_fd, uint16_t ifindex, uint32_t handle, uint32_t parent)
  *   The netdevice ifindex where to find QDISCs.
  *
  * @return
- *   -1 if the lookup failed, 0 otherwise.
+ *   0 on success, -1 otherwise with errno set.
  */
 int
 qdisc_flush(int nlsk_fd, uint16_t ifindex)
@@ -342,12 +285,13 @@ qdisc_flush(int nlsk_fd, uint16_t ifindex)
 int
 qdisc_create_multiq(int nlsk_fd, uint16_t ifindex)
 {
-	if (!qdisc_exists(nlsk_fd, ifindex,
-			  TC_H_MAKE(MULTIQ_MAJOR_HANDLE, 0), TC_H_ROOT)) {
-		if (qdisc_add_multiq(nlsk_fd, ifindex) < 0) {
-			RTE_LOG(ERR, PMD, "Could not add multiq qdisc\n");
-			return -1;
-		}
+	int err = 0;
+
+	err = qdisc_add_multiq(nlsk_fd, ifindex);
+	if (err < 0 && errno != -EEXIST) {
+		RTE_LOG(ERR, PMD, "Could not add multiq qdisc (%d): %s\n",
+			errno, strerror(errno));
+		return -1;
 	}
 	return 0;
 }
@@ -367,12 +311,13 @@ qdisc_create_multiq(int nlsk_fd, uint16_t ifindex)
 int
 qdisc_create_ingress(int nlsk_fd, uint16_t ifindex)
 {
-	if (!qdisc_exists(nlsk_fd, ifindex,
-			  TC_H_MAKE(TC_H_INGRESS, 0), TC_H_INGRESS)) {
-		if (qdisc_add_ingress(nlsk_fd, ifindex) < 0) {
-			RTE_LOG(ERR, PMD, "Could not add ingress qdisc\n");
-			return -1;
-		}
+	int err = 0;
+
+	err = qdisc_add_ingress(nlsk_fd, ifindex);
+	if (err < 0 && errno != -EEXIST) {
+		RTE_LOG(ERR, PMD, "Could not add ingress qdisc (%d): %s\n",
+			errno, strerror(errno));
+		return -1;
 	}
 	return 0;
 }

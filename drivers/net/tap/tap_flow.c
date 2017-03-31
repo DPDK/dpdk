@@ -31,6 +31,8 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <errno.h>
+#include <string.h>
 #include <sys/queue.h>
 
 #include <rte_byteorder.h>
@@ -1169,6 +1171,9 @@ tap_flow_create(struct rte_eth_dev *dev,
 	}
 	err = nl_recv_ack(pmd->nlsk_fd);
 	if (err < 0) {
+		RTE_LOG(ERR, PMD,
+			"Kernel refused TC filter rule creation (%d): %s\n",
+			errno, strerror(errno));
 		rte_flow_error_set(error, EEXIST, RTE_FLOW_ERROR_TYPE_HANDLE,
 				   NULL, "overlapping rules");
 		goto fail;
@@ -1210,6 +1215,9 @@ tap_flow_create(struct rte_eth_dev *dev,
 		}
 		err = nl_recv_ack(pmd->nlsk_fd);
 		if (err < 0) {
+			RTE_LOG(ERR, PMD,
+				"Kernel refused TC filter rule creation (%d): %s\n",
+				errno, strerror(errno));
 			rte_flow_error_set(
 				error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
 				NULL, "overlapping rules");
@@ -1257,7 +1265,13 @@ tap_flow_destroy_pmd(struct pmd_internals *pmd,
 		goto end;
 	}
 	ret = nl_recv_ack(pmd->nlsk_fd);
+	/* If errno is ENOENT, the rule is already no longer in the kernel. */
+	if (ret < 0 && errno == ENOENT)
+		ret = 0;
 	if (ret < 0) {
+		RTE_LOG(ERR, PMD,
+			"Kernel refused TC filter rule deletion (%d): %s\n",
+			errno, strerror(errno));
 		rte_flow_error_set(
 			error, ENOTSUP, RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
 			"couldn't receive kernel ack to our request");
@@ -1275,7 +1289,12 @@ tap_flow_destroy_pmd(struct pmd_internals *pmd,
 			goto end;
 		}
 		ret = nl_recv_ack(pmd->nlsk_fd);
+		if (ret < 0 && errno == ENOENT)
+			ret = 0;
 		if (ret < 0) {
+			RTE_LOG(ERR, PMD,
+				"Kernel refused TC filter rule deletion (%d): %s\n",
+				errno, strerror(errno));
 			rte_flow_error_set(
 				error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
 				NULL, "Failure trying to receive nl ack");
@@ -1390,7 +1409,8 @@ int tap_flow_implicit_create(struct pmd_internals *pmd,
 	err = nl_recv_ack(pmd->nlsk_fd);
 	if (err < 0) {
 		RTE_LOG(ERR, PMD,
-			"Kernel refused TC filter rule creation");
+			"Kernel refused TC filter rule creation (%d): %s\n",
+			errno, strerror(errno));
 		goto fail;
 	}
 	LIST_INSERT_HEAD(&pmd->implicit_flows, remote_flow, next);
