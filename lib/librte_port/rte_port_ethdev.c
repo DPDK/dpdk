@@ -456,8 +456,8 @@ rte_port_ethdev_writer_nodrop_tx_bulk(void *port,
 			return 0;
 
 		/*
-		 * If we didnt manage to send all packets in single burst, move
-		 * remaining packets to the buffer and call send burst.
+		 * If we did not manage to send all packets in single burst,
+		 * move remaining packets to the buffer and call send burst.
 		 */
 		for (; n_pkts_ok < n_pkts; n_pkts_ok++) {
 			struct rte_mbuf *pkt = pkts[n_pkts_ok];
