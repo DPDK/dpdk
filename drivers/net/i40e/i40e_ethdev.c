@@ -10656,7 +10656,10 @@ i40e_tunnel_filter_restore(struct i40e_pf *pf)
 		     I40E_AQC_ADD_CLOUD_FILTER_TEID_MPLSoUDP) ||
 		    ((f->input.flags &
 		     I40E_AQC_ADD_CLOUD_FILTER_TEID_MPLSoGRE) ==
-		     I40E_AQC_ADD_CLOUD_FILTER_TEID_MPLSoGRE))
+		     I40E_AQC_ADD_CLOUD_FILTER_TEID_MPLSoGRE) ||
+		    ((f->input.flags &
+		     I40E_AQC_ADD_CLOUD_FILTER_CUSTOM_QINQ) ==
+		     I40E_AQC_ADD_CLOUD_FILTER_CUSTOM_QINQ))
 			big_buffer = 1;
 
 		if (big_buffer)
