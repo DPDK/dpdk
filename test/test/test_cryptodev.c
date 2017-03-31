@@ -1963,6 +1963,65 @@ create_wireless_algo_cipher_auth_session(uint8_t dev_id,
 }
 
 static int
+create_wireless_cipher_auth_session(uint8_t dev_id,
+		enum rte_crypto_cipher_operation cipher_op,
+		enum rte_crypto_auth_operation auth_op,
+		enum rte_crypto_auth_algorithm auth_algo,
+		enum rte_crypto_cipher_algorithm cipher_algo,
+		const struct wireless_test_data *tdata)
+{
+	const uint8_t key_len = tdata->key.len;
+	uint8_t cipher_auth_key[key_len];
+
+	struct crypto_unittest_params *ut_params = &unittest_params;
+	const uint8_t *key = tdata->key.data;
+	const uint8_t aad_len = tdata->aad.len;
+	const uint8_t auth_len = tdata->digest.len;
+
+	memcpy(cipher_auth_key, key, key_len);
+
+	/* Setup Authentication Parameters */
+	ut_params->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
+	ut_params->auth_xform.next = NULL;
+
+	ut_params->auth_xform.auth.op = auth_op;
+	ut_params->auth_xform.auth.algo = auth_algo;
+	ut_params->auth_xform.auth.key.length = key_len;
+	/* Hash key = cipher key */
+	ut_params->auth_xform.auth.key.data = cipher_auth_key;
+	ut_params->auth_xform.auth.digest_length = auth_len;
+	ut_params->auth_xform.auth.add_auth_data_length = aad_len;
+
+	/* Setup Cipher Parameters */
+	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+	ut_params->cipher_xform.next = &ut_params->auth_xform;
+
+	ut_params->cipher_xform.cipher.algo = cipher_algo;
+	ut_params->cipher_xform.cipher.op = cipher_op;
+	ut_params->cipher_xform.cipher.key.data = cipher_auth_key;
+	ut_params->cipher_xform.cipher.key.length = key_len;
+
+	TEST_HEXDUMP(stdout, "key:", key, key_len);
+
+	/* Create Crypto session*/
+	ut_params->sess = rte_cryptodev_sym_session_create(dev_id,
+				&ut_params->cipher_xform);
+
+	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
+	return 0;
+}
+
+static int
+create_zuc_cipher_auth_encrypt_generate_session(uint8_t dev_id,
+		const struct wireless_test_data *tdata)
+{
+	return create_wireless_cipher_auth_session(dev_id,
+		RTE_CRYPTO_CIPHER_OP_ENCRYPT,
+		RTE_CRYPTO_AUTH_OP_GENERATE, RTE_CRYPTO_AUTH_ZUC_EIA3,
+		RTE_CRYPTO_CIPHER_ZUC_EEA3, tdata);
+}
+
+static int
 create_wireless_algo_auth_cipher_session(uint8_t dev_id,
 		enum rte_crypto_cipher_operation cipher_op,
 		enum rte_crypto_auth_operation auth_op,
@@ -2084,6 +2143,120 @@ create_wireless_algo_hash_operation(const uint8_t *auth_tag,
 	sym_op->auth.data.offset = auth_offset;
 
 	return 0;
+}
+
+static int
+create_wireless_cipher_hash_operation(const struct wireless_test_data *tdata,
+	enum rte_crypto_auth_operation op,
+	enum rte_crypto_auth_algorithm auth_algo,
+	enum rte_crypto_cipher_algorithm cipher_algo)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+
+	const uint8_t *auth_tag = tdata->digest.data;
+	const unsigned int auth_tag_len = tdata->digest.len;
+	const uint8_t *aad = tdata->aad.data;
+	const uint8_t aad_len = tdata->aad.len;
+	unsigned int plaintext_len = ceil_byte_length(tdata->plaintext.len);
+	unsigned int data_pad_len = RTE_ALIGN_CEIL(plaintext_len, 16);
+
+	const uint8_t *iv = tdata->iv.data;
+	const uint8_t iv_len = tdata->iv.len;
+	const unsigned int cipher_len = tdata->validCipherLenInBits.len;
+	const unsigned int cipher_offset =
+		tdata->validCipherOffsetLenInBits.len;
+	const unsigned int auth_len = tdata->validAuthLenInBits.len;
+	const unsigned int auth_offset = tdata->validAuthOffsetLenInBits.len;
+
+	unsigned int iv_pad_len = 0;
+	unsigned int aad_buffer_len;
+
+	/* Generate Crypto op data structure */
+	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
+			RTE_CRYPTO_OP_TYPE_SYMMETRIC);
+	TEST_ASSERT_NOT_NULL(ut_params->op,
+			"Failed to allocate pktmbuf offload");
+	/* Set crypto operation data parameters */
+	rte_crypto_op_attach_sym_session(ut_params->op, ut_params->sess);
+
+	struct rte_crypto_sym_op *sym_op = ut_params->op->sym;
+
+	/* set crypto operation source mbuf */
+	sym_op->m_src = ut_params->ibuf;
+
+	/* digest */
+	sym_op->auth.digest.data = (uint8_t *)rte_pktmbuf_append(
+			ut_params->ibuf, auth_tag_len);
+
+	TEST_ASSERT_NOT_NULL(sym_op->auth.digest.data,
+			"no room to append auth tag");
+	ut_params->digest = sym_op->auth.digest.data;
+	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
+			ut_params->ibuf, data_pad_len);
+	sym_op->auth.digest.length = auth_tag_len;
+	if (op == RTE_CRYPTO_AUTH_OP_GENERATE)
+		memset(sym_op->auth.digest.data, 0, auth_tag_len);
+	else
+		rte_memcpy(sym_op->auth.digest.data, auth_tag, auth_tag_len);
+
+	TEST_HEXDUMP(stdout, "digest:",
+		sym_op->auth.digest.data,
+		sym_op->auth.digest.length);
+
+	/* aad */
+	/*
+	* Always allocate the aad up to the block size.
+	* The cryptodev API calls out -
+	*  - the array must be big enough to hold the AAD, plus any
+	*   space to round this up to the nearest multiple of the
+	*   block size (8 bytes for KASUMI and 16 bytes for SNOW 3G).
+	*/
+	if (auth_algo == RTE_CRYPTO_AUTH_KASUMI_F9)
+		aad_buffer_len = ALIGN_POW2_ROUNDUP(aad_len, 8);
+	else
+		aad_buffer_len = ALIGN_POW2_ROUNDUP(aad_len, 16);
+	sym_op->auth.aad.data =
+		(uint8_t *)rte_pktmbuf_prepend(
+			ut_params->ibuf, aad_buffer_len);
+	TEST_ASSERT_NOT_NULL(sym_op->auth.aad.data,
+			"no room to prepend aad");
+	sym_op->auth.aad.phys_addr = rte_pktmbuf_mtophys(
+			ut_params->ibuf);
+	sym_op->auth.aad.length = aad_len;
+	memset(sym_op->auth.aad.data, 0, aad_buffer_len);
+	rte_memcpy(sym_op->auth.aad.data, aad, aad_len);
+	TEST_HEXDUMP(stdout, "aad:", sym_op->auth.aad.data, aad_len);
+
+	/* iv */
+	if (cipher_algo == RTE_CRYPTO_CIPHER_KASUMI_F8)
+		iv_pad_len = RTE_ALIGN_CEIL(iv_len, 8);
+	else
+		iv_pad_len = RTE_ALIGN_CEIL(iv_len, 16);
+	sym_op->cipher.iv.data = (uint8_t *)rte_pktmbuf_prepend(
+		ut_params->ibuf, iv_pad_len);
+
+	TEST_ASSERT_NOT_NULL(sym_op->cipher.iv.data, "no room to prepend iv");
+	memset(sym_op->cipher.iv.data, 0, iv_pad_len);
+	sym_op->cipher.iv.phys_addr = rte_pktmbuf_mtophys(ut_params->ibuf);
+	sym_op->cipher.iv.length = iv_pad_len;
+	rte_memcpy(sym_op->cipher.iv.data, iv, iv_len);
+	sym_op->cipher.data.length = cipher_len;
+	sym_op->cipher.data.offset = cipher_offset + auth_offset;
+	sym_op->auth.data.length = auth_len;
+	sym_op->auth.data.offset = auth_offset + cipher_offset;
+
+	return 0;
+}
+
+static int
+create_zuc_cipher_hash_generate_operation(
+		const struct wireless_test_data *tdata)
+{
+	return create_wireless_cipher_hash_operation(tdata,
+		RTE_CRYPTO_AUTH_OP_GENERATE,
+		RTE_CRYPTO_AUTH_ZUC_EIA3,
+		RTE_CRYPTO_CIPHER_ZUC_EEA3);
 }
 
 static int
@@ -3550,6 +3723,93 @@ static int test_snow3g_decryption_oop(const struct snow3g_test_data *tdata)
 }
 
 static int
+test_zuc_cipher_auth(const struct wireless_test_data *tdata)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	struct crypto_unittest_params *ut_params = &unittest_params;
+
+	int retval;
+
+	uint8_t *plaintext, *ciphertext;
+	unsigned int plaintext_pad_len;
+	unsigned int plaintext_len;
+
+	struct rte_cryptodev_sym_capability_idx cap_idx;
+
+	/* Check if device supports ZUC EEA3 */
+	cap_idx.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+	cap_idx.algo.cipher = RTE_CRYPTO_CIPHER_ZUC_EEA3;
+
+	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
+			&cap_idx) == NULL)
+		return -ENOTSUP;
+
+	/* Check if device supports ZUC EIA3 */
+	cap_idx.type = RTE_CRYPTO_SYM_XFORM_AUTH;
+	cap_idx.algo.auth = RTE_CRYPTO_AUTH_ZUC_EIA3;
+
+	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
+			&cap_idx) == NULL)
+		return -ENOTSUP;
+
+	/* Create ZUC session */
+	retval = create_zuc_cipher_auth_encrypt_generate_session(
+			ts_params->valid_devs[0],
+			tdata);
+	if (retval < 0)
+		return retval;
+	ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
+
+	/* clear mbuf payload */
+	memset(rte_pktmbuf_mtod(ut_params->ibuf, uint8_t *), 0,
+			rte_pktmbuf_tailroom(ut_params->ibuf));
+
+	plaintext_len = ceil_byte_length(tdata->plaintext.len);
+	/* Append data which is padded to a multiple of */
+	/* the algorithms block size */
+	plaintext_pad_len = RTE_ALIGN_CEIL(plaintext_len, 16);
+	plaintext = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
+				plaintext_pad_len);
+	memcpy(plaintext, tdata->plaintext.data, plaintext_len);
+
+	TEST_HEXDUMP(stdout, "plaintext:", plaintext, plaintext_len);
+
+	/* Create ZUC operation */
+	retval = create_zuc_cipher_hash_generate_operation(tdata);
+	if (retval < 0)
+		return retval;
+
+	ut_params->op = process_crypto_request(ts_params->valid_devs[0],
+			ut_params->op);
+	TEST_ASSERT_NOT_NULL(ut_params->op, "failed to retrieve obuf");
+	ut_params->obuf = ut_params->op->sym->m_src;
+	if (ut_params->obuf)
+		ciphertext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
+				+ tdata->iv.len + tdata->aad.len;
+	else
+		ciphertext = plaintext;
+
+	TEST_HEXDUMP(stdout, "ciphertext:", ciphertext, plaintext_len);
+	/* Validate obuf */
+	TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(
+			ciphertext,
+			tdata->ciphertext.data,
+			tdata->validDataLenInBits.len,
+			"ZUC Ciphertext data not as expected");
+
+	ut_params->digest = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
+	    + plaintext_pad_len + tdata->aad.len + tdata->iv.len;
+
+	/* Validate obuf */
+	TEST_ASSERT_BUFFERS_ARE_EQUAL(
+			ut_params->digest,
+			tdata->digest.data,
+			4,
+			"ZUC Generated auth tag not as expected");
+	return 0;
+}
+
+static int
 test_snow3g_cipher_auth(const struct snow3g_test_data *tdata)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
@@ -3887,7 +4147,7 @@ test_kasumi_cipher_auth(const struct kasumi_test_data *tdata)
 }
 
 static int
-test_zuc_encryption(const struct zuc_test_data *tdata)
+test_zuc_encryption(const struct wireless_test_data *tdata)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
@@ -3896,6 +4156,16 @@ test_zuc_encryption(const struct zuc_test_data *tdata)
 	uint8_t *plaintext, *ciphertext;
 	unsigned plaintext_pad_len;
 	unsigned plaintext_len;
+
+	struct rte_cryptodev_sym_capability_idx cap_idx;
+
+	/* Check if device supports ZUC EEA3 */
+	cap_idx.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+	cap_idx.algo.cipher = RTE_CRYPTO_CIPHER_ZUC_EEA3;
+
+	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
+			&cap_idx) == NULL)
+		return -ENOTSUP;
 
 	/* Create ZUC session */
 	retval = create_wireless_algo_cipher_session(ts_params->valid_devs[0],
@@ -3952,7 +4222,7 @@ test_zuc_encryption(const struct zuc_test_data *tdata)
 }
 
 static int
-test_zuc_encryption_sgl(const struct zuc_test_data *tdata)
+test_zuc_encryption_sgl(const struct wireless_test_data *tdata)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
@@ -3965,11 +4235,21 @@ test_zuc_encryption_sgl(const struct zuc_test_data *tdata)
 	uint8_t ciphertext_buffer[2048];
 	struct rte_cryptodev_info dev_info;
 
+	struct rte_cryptodev_sym_capability_idx cap_idx;
+
+	/* Check if device supports ZUC EEA3 */
+	cap_idx.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+	cap_idx.algo.cipher = RTE_CRYPTO_CIPHER_ZUC_EEA3;
+
+	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
+			&cap_idx) == NULL)
+		return -ENOTSUP;
+
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
 	if (!(dev_info.feature_flags & RTE_CRYPTODEV_FF_MBUF_SCATTER_GATHER)) {
 		printf("Device doesn't support scatter-gather. "
 				"Test Skipped.\n");
-		return 0;
+		return -ENOTSUP;
 	}
 
 	plaintext_len = ceil_byte_length(tdata->plaintext.len);
@@ -4030,7 +4310,7 @@ test_zuc_encryption_sgl(const struct zuc_test_data *tdata)
 }
 
 static int
-test_zuc_authentication(const struct zuc_test_data *tdata)
+test_zuc_authentication(const struct wireless_test_data *tdata)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
@@ -4039,6 +4319,16 @@ test_zuc_authentication(const struct zuc_test_data *tdata)
 	unsigned plaintext_pad_len;
 	unsigned plaintext_len;
 	uint8_t *plaintext;
+
+	struct rte_cryptodev_sym_capability_idx cap_idx;
+
+	/* Check if device supports ZUC EIA3 */
+	cap_idx.type = RTE_CRYPTO_SYM_XFORM_AUTH;
+	cap_idx.algo.auth = RTE_CRYPTO_AUTH_ZUC_EIA3;
+
+	if (rte_cryptodev_sym_capability_get(ts_params->valid_devs[0],
+			&cap_idx) == NULL)
+		return -ENOTSUP;
 
 	/* Create ZUC session */
 	retval = create_wireless_algo_hash_session(ts_params->valid_devs[0],
@@ -4284,67 +4574,97 @@ test_kasumi_cipher_auth_test_case_1(void)
 static int
 test_zuc_encryption_test_case_1(void)
 {
-	return test_zuc_encryption(&zuc_test_case_1);
+	return test_zuc_encryption(&zuc_test_case_cipher_193b);
 }
 
 static int
 test_zuc_encryption_test_case_2(void)
 {
-	return test_zuc_encryption(&zuc_test_case_2);
+	return test_zuc_encryption(&zuc_test_case_cipher_800b);
 }
 
 static int
 test_zuc_encryption_test_case_3(void)
 {
-	return test_zuc_encryption(&zuc_test_case_3);
+	return test_zuc_encryption(&zuc_test_case_cipher_1570b);
 }
 
 static int
 test_zuc_encryption_test_case_4(void)
 {
-	return test_zuc_encryption(&zuc_test_case_4);
+	return test_zuc_encryption(&zuc_test_case_cipher_2798b);
 }
 
 static int
 test_zuc_encryption_test_case_5(void)
 {
-	return test_zuc_encryption(&zuc_test_case_5);
+	return test_zuc_encryption(&zuc_test_case_cipher_4019b);
 }
 
 static int
 test_zuc_encryption_test_case_6_sgl(void)
 {
-	return test_zuc_encryption_sgl(&zuc_test_case_1);
+	return test_zuc_encryption_sgl(&zuc_test_case_cipher_193b);
 }
 
 static int
 test_zuc_hash_generate_test_case_1(void)
 {
-	return test_zuc_authentication(&zuc_hash_test_case_1);
+	return test_zuc_authentication(&zuc_test_case_auth_1b);
 }
 
 static int
 test_zuc_hash_generate_test_case_2(void)
 {
-	return test_zuc_authentication(&zuc_hash_test_case_2);
+	return test_zuc_authentication(&zuc_test_case_auth_90b);
 }
 
 static int
 test_zuc_hash_generate_test_case_3(void)
 {
-	return test_zuc_authentication(&zuc_hash_test_case_3);
+	return test_zuc_authentication(&zuc_test_case_auth_577b);
 }
 
 static int
 test_zuc_hash_generate_test_case_4(void)
 {
-	return test_zuc_authentication(&zuc_hash_test_case_4);
+	return test_zuc_authentication(&zuc_test_case_auth_2079b);
 }
 
 static int
 test_zuc_hash_generate_test_case_5(void)
 {
-	return test_zuc_authentication(&zuc_hash_test_case_5);
+	return test_zuc_authentication(&zuc_test_auth_5670b);
+}
+
+static int
+test_zuc_hash_generate_test_case_6(void)
+{
+	return test_zuc_authentication(&zuc_test_case_auth_128b);
+}
+
+static int
+test_zuc_hash_generate_test_case_7(void)
+{
+	return test_zuc_authentication(&zuc_test_case_auth_2080b);
+}
+
+static int
+test_zuc_hash_generate_test_case_8(void)
+{
+	return test_zuc_authentication(&zuc_test_case_auth_584b);
+}
+
+static int
+test_zuc_cipher_auth_test_case_1(void)
+{
+	return test_zuc_cipher_auth(&zuc_test_case_cipher_200b_auth_200b);
+}
+
+static int
+test_zuc_cipher_auth_test_case_2(void)
+{
+	return test_zuc_cipher_auth(&zuc_test_case_cipher_800b_auth_120b);
 }
 
 static int
@@ -7681,6 +8001,32 @@ static struct unit_test_suite cryptodev_qat_testsuite  = {
 			test_snow3g_cipher_auth_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_snow3g_auth_cipher_test_case_1),
+
+		/** ZUC encrypt only (EEA3) */
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc_encryption_test_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc_encryption_test_case_2),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc_encryption_test_case_3),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc_encryption_test_case_4),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc_encryption_test_case_5),
+
+		/** ZUC authenticate (EIA3) */
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc_hash_generate_test_case_6),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc_hash_generate_test_case_7),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc_hash_generate_test_case_8),
+
+		/** ZUC alg-chain (EEA3/EIA3) */
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc_cipher_auth_test_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_zuc_cipher_auth_test_case_2),
 
 		/** HMAC_MD5 Authentication */
 		TEST_CASE_ST(ut_setup, ut_teardown,
