@@ -289,13 +289,36 @@ sfc_tx_check_mode(struct sfc_adapter *sa, const struct rte_eth_txmode *txmode)
 	return rc;
 }
 
+/**
+ * Destroy excess queues that are no longer needed after reconfiguration
+ * or complete close.
+ */
+static void
+sfc_tx_fini_queues(struct sfc_adapter *sa, unsigned int nb_tx_queues)
+{
+	int sw_index;
+
+	SFC_ASSERT(nb_tx_queues <= sa->txq_count);
+
+	sw_index = sa->txq_count;
+	while (--sw_index >= (int)nb_tx_queues) {
+		if (sa->txq_info[sw_index].txq != NULL)
+			sfc_tx_qfini(sa, sw_index);
+	}
+
+	sa->txq_count = nb_tx_queues;
+}
+
 int
 sfc_tx_configure(struct sfc_adapter *sa)
 {
 	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
 	const struct rte_eth_conf *dev_conf = &sa->eth_dev->data->dev_conf;
-	unsigned int sw_index;
+	const unsigned int nb_tx_queues = sa->eth_dev->data->nb_tx_queues;
 	int rc = 0;
+
+	sfc_log_init(sa, "nb_tx_queues=%u (old %u)",
+		     nb_tx_queues, sa->txq_count);
 
 	/*
 	 * The datapath implementation assumes absence of boundary
@@ -311,28 +334,49 @@ sfc_tx_configure(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_check_mode;
 
-	sa->txq_count = sa->eth_dev->data->nb_tx_queues;
+	if (nb_tx_queues == sa->txq_count)
+		goto done;
 
-	sa->txq_info = rte_calloc_socket("sfc-txqs", sa->txq_count,
-					 sizeof(sa->txq_info[0]), 0,
-					 sa->socket_id);
-	if (sa->txq_info == NULL)
-		goto fail_txqs_alloc;
+	if (sa->txq_info == NULL) {
+		sa->txq_info = rte_calloc_socket("sfc-txqs", nb_tx_queues,
+						 sizeof(sa->txq_info[0]), 0,
+						 sa->socket_id);
+		if (sa->txq_info == NULL)
+			goto fail_txqs_alloc;
+	} else {
+		struct sfc_txq_info *new_txq_info;
 
-	for (sw_index = 0; sw_index < sa->txq_count; ++sw_index) {
-		rc = sfc_tx_qinit_info(sa, sw_index);
-		if (rc != 0)
-			goto fail_tx_qinit_info;
+		if (nb_tx_queues < sa->txq_count)
+			sfc_tx_fini_queues(sa, nb_tx_queues);
+
+		new_txq_info =
+			rte_realloc(sa->txq_info,
+				    nb_tx_queues * sizeof(sa->txq_info[0]), 0);
+		if (new_txq_info == NULL && nb_tx_queues > 0)
+			goto fail_txqs_realloc;
+
+		sa->txq_info = new_txq_info;
+		if (nb_tx_queues > sa->txq_count)
+			memset(&sa->txq_info[sa->txq_count], 0,
+			       (nb_tx_queues - sa->txq_count) *
+			       sizeof(sa->txq_info[0]));
 	}
 
+	while (sa->txq_count < nb_tx_queues) {
+		rc = sfc_tx_qinit_info(sa, sa->txq_count);
+		if (rc != 0)
+			goto fail_tx_qinit_info;
+
+		sa->txq_count++;
+	}
+
+done:
 	return 0;
 
 fail_tx_qinit_info:
-	rte_free(sa->txq_info);
-	sa->txq_info = NULL;
-
+fail_txqs_realloc:
 fail_txqs_alloc:
-	sa->txq_count = 0;
+	sfc_tx_close(sa);
 
 fail_check_mode:
 fail_tx_dma_desc_boundary:
@@ -343,17 +387,10 @@ fail_tx_dma_desc_boundary:
 void
 sfc_tx_close(struct sfc_adapter *sa)
 {
-	int sw_index;
-
-	sw_index = sa->txq_count;
-	while (--sw_index >= 0) {
-		if (sa->txq_info[sw_index].txq != NULL)
-			sfc_tx_qfini(sa, sw_index);
-	}
+	sfc_tx_fini_queues(sa, 0);
 
 	rte_free(sa->txq_info);
 	sa->txq_info = NULL;
-	sa->txq_count = 0;
 }
 
 int
