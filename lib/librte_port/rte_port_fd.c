@@ -110,13 +110,8 @@ rte_port_fd_reader_rx(void *port, struct rte_mbuf **pkts, uint32_t n_pkts)
 	struct rte_port_fd_reader *p = port;
 	uint32_t i;
 
-	if (rte_mempool_get_bulk(p->mempool, (void **) pkts, n_pkts) != 0)
+	if (rte_pktmbuf_alloc_bulk(p->mempool, pkts, n_pkts) != 0)
 		return 0;
-
-	for (i = 0; i < n_pkts; i++) {
-		rte_mbuf_refcnt_set(pkts[i], 1);
-		rte_pktmbuf_reset(pkts[i]);
-	}
 
 	for (i = 0; i < n_pkts; i++) {
 		struct rte_mbuf *pkt = pkts[i];
