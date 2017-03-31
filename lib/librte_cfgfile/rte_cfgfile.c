@@ -191,7 +191,7 @@ rte_cfgfile_load_with_params(const char *filename, int flags,
 					"Check if line too long\n", lineno);
 			goto error1;
 		}
-		pos = memchr(buffer, params->comment_character, sizeof(buffer));
+		pos = memchr(buffer, params->comment_character, len);
 		if (pos != NULL) {
 			*pos = '\0';
 			len = pos -  buffer;
