@@ -775,12 +775,35 @@ tap_mac_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
 			dev->data->name);
 		return;
 	}
+	/* Check the actual current MAC address on the tap netdevice */
+	if (tap_ioctl(pmd, SIOCGIFHWADDR, &ifr, 0, LOCAL_ONLY) != 0) {
+		RTE_LOG(ERR, PMD,
+			"%s: couldn't check current tap MAC address\n",
+			dev->data->name);
+		return;
+	}
+	if (is_same_ether_addr((struct ether_addr *)&ifr.ifr_hwaddr.sa_data,
+			       mac_addr))
+		return;
 
 	ifr.ifr_hwaddr.sa_family = AF_LOCAL;
 	rte_memcpy(ifr.ifr_hwaddr.sa_data, mac_addr, ETHER_ADDR_LEN);
 	if (tap_ioctl(pmd, SIOCSIFHWADDR, &ifr, 1, LOCAL_AND_REMOTE) < 0)
 		return;
 	rte_memcpy(&pmd->eth_addr, mac_addr, ETHER_ADDR_LEN);
+	if (pmd->remote_if_index) {
+		/* Replace MAC redirection rule after a MAC change */
+		if (tap_flow_implicit_destroy(pmd, TAP_REMOTE_LOCAL_MAC) < 0) {
+			RTE_LOG(ERR, PMD,
+				"%s: Couldn't delete MAC redirection rule\n",
+				dev->data->name);
+			return;
+		}
+		if (tap_flow_implicit_create(pmd, TAP_REMOTE_LOCAL_MAC) < 0)
+			RTE_LOG(ERR, PMD,
+				"%s: Couldn't add MAC redirection rule\n",
+				dev->data->name);
+	}
 }
 
 static int
