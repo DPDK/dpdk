@@ -55,7 +55,7 @@ sfc_intr_handle_mgmt_evq(struct sfc_adapter *sa)
 
 	rte_spinlock_lock(&sa->mgmt_evq_lock);
 
-	evq = sa->evq_info[sa->mgmt_evq_index].evq;
+	evq = sa->mgmt_evq;
 
 	if (evq->init_state != SFC_EVQ_STARTED) {
 		sfc_log_init(sa, "interrupt on stopped EVQ %u", evq->evq_index);

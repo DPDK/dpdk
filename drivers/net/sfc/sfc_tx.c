@@ -134,7 +134,6 @@ sfc_tx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	struct sfc_txq_info *txq_info;
 	struct sfc_evq *evq;
 	struct sfc_txq *txq;
-	unsigned int evq_index = sfc_evq_index_by_txq_sw_index(sa, sw_index);
 	int rc = 0;
 	struct sfc_dp_tx_qcreate_info info;
 
@@ -150,12 +149,10 @@ sfc_tx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	SFC_ASSERT(nb_tx_desc <= sa->txq_max_entries);
 	txq_info->entries = nb_tx_desc;
 
-	rc = sfc_ev_qinit(sa, evq_index, SFC_EVQ_TYPE_TX, sw_index,
-			  txq_info->entries, socket_id);
+	rc = sfc_ev_qinit(sa, SFC_EVQ_TYPE_TX, sw_index,
+			  txq_info->entries, socket_id, &evq);
 	if (rc != 0)
 		goto fail_ev_qinit;
-
-	evq = sa->evq_info[evq_index].evq;
 
 	rc = ENOMEM;
 	txq = rte_zmalloc_socket("sfc-txq", sizeof(*txq), 0, socket_id);
@@ -209,7 +206,7 @@ fail_dma_alloc:
 	rte_free(txq);
 
 fail_txq_alloc:
-	sfc_ev_qfini(sa, evq_index);
+	sfc_ev_qfini(evq);
 
 fail_ev_qinit:
 	txq_info->entries = 0;
@@ -241,9 +238,11 @@ sfc_tx_qfini(struct sfc_adapter *sa, unsigned int sw_index)
 	txq_info->entries = 0;
 
 	sfc_dma_free(sa, &txq->mem);
-	rte_free(txq);
 
-	sfc_ev_qfini(sa, sfc_evq_index_by_txq_sw_index(sa, sw_index));
+	sfc_ev_qfini(txq->evq);
+	txq->evq = NULL;
+
+	rte_free(txq);
 }
 
 static int
@@ -379,7 +378,7 @@ sfc_tx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 
 	evq = txq->evq;
 
-	rc = sfc_ev_qstart(sa, evq->evq_index);
+	rc = sfc_ev_qstart(evq, sfc_evq_index_by_txq_sw_index(sa, sw_index));
 	if (rc != 0)
 		goto fail_ev_qstart;
 
@@ -429,7 +428,7 @@ fail_dp_qstart:
 	efx_tx_qdestroy(txq->common);
 
 fail_tx_qcreate:
-	sfc_ev_qstop(sa, evq->evq_index);
+	sfc_ev_qstop(evq);
 
 fail_ev_qstart:
 	return rc;
@@ -497,7 +496,7 @@ sfc_tx_qstop(struct sfc_adapter *sa, unsigned int sw_index)
 
 	efx_tx_qdestroy(txq->common);
 
-	sfc_ev_qstop(sa, txq->evq->evq_index);
+	sfc_ev_qstop(txq->evq);
 
 	/*
 	 * It seems to be used by DPDK for debug purposes only ('rte_ether')

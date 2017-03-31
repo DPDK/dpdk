@@ -84,27 +84,14 @@ struct sfc_evq {
 	unsigned int			entries;
 };
 
-struct sfc_evq_info {
-	/* NUMA-aware EVQ data structure used on datapath */
-	struct sfc_evq		*evq;
-};
-
 /*
  * Functions below define event queue to transmit/receive queue and vice
  * versa mapping.
+ * Own event queue is allocated for management, each Rx and each Tx queue.
+ * Zero event queue is used for management events.
+ * Rx event queues from 1 to RxQ number follow management event queue.
+ * Tx event queues follow Rx event queues.
  */
-
-static inline unsigned int
-sfc_ev_qcount(struct sfc_adapter *sa)
-{
-	const struct rte_eth_dev_data *dev_data = sa->eth_dev->data;
-
-	/*
-	 * One management EVQ for global events.
-	 * Own EVQ for each Tx and Rx queue.
-	 */
-	return 1 + dev_data->nb_rx_queues + dev_data->nb_tx_queues;
-}
 
 static inline unsigned int
 sfc_evq_index_by_rxq_sw_index(__rte_unused struct sfc_adapter *sa,
@@ -124,12 +111,12 @@ void sfc_ev_fini(struct sfc_adapter *sa);
 int sfc_ev_start(struct sfc_adapter *sa);
 void sfc_ev_stop(struct sfc_adapter *sa);
 
-int sfc_ev_qinit(struct sfc_adapter *sa, unsigned int sw_index,
+int sfc_ev_qinit(struct sfc_adapter *sa,
 		 enum sfc_evq_type type, unsigned int type_index,
-		 unsigned int entries, int socket_id);
-void sfc_ev_qfini(struct sfc_adapter *sa, unsigned int sw_index);
-int sfc_ev_qstart(struct sfc_adapter *sa, unsigned int sw_index);
-void sfc_ev_qstop(struct sfc_adapter *sa, unsigned int sw_index);
+		 unsigned int entries, int socket_id, struct sfc_evq **evqp);
+void sfc_ev_qfini(struct sfc_evq *evq);
+int sfc_ev_qstart(struct sfc_evq *evq, unsigned int hw_index);
+void sfc_ev_qstop(struct sfc_evq *evq);
 
 int sfc_ev_qprime(struct sfc_evq *evq);
 void sfc_ev_qpoll(struct sfc_evq *evq);

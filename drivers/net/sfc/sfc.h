@@ -139,7 +139,6 @@ struct sfc_intr {
 	boolean_t			lsc_intr;
 };
 
-struct sfc_evq_info;
 struct sfc_rxq_info;
 struct sfc_txq_info;
 struct sfc_dp_rx;
@@ -204,10 +203,10 @@ struct sfc_adapter {
 
 	uint32_t			evq_flags;
 	unsigned int			evq_count;
-	struct sfc_evq_info		*evq_info;
 
 	unsigned int			mgmt_evq_index;
 	rte_spinlock_t			mgmt_evq_lock;
+	struct sfc_evq			*mgmt_evq;
 
 	unsigned int			rxq_count;
 	struct sfc_rxq_info		*rxq_info;

@@ -642,7 +642,7 @@ sfc_rx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 
 	evq = rxq->evq;
 
-	rc = sfc_ev_qstart(sa, evq->evq_index);
+	rc = sfc_ev_qstart(evq, sfc_evq_index_by_rxq_sw_index(sa, sw_index));
 	if (rc != 0)
 		goto fail_ev_qstart;
 
@@ -680,7 +680,7 @@ fail_dp_qstart:
 	sfc_rx_qflush(sa, sw_index);
 
 fail_rx_qcreate:
-	sfc_ev_qstop(sa, evq->evq_index);
+	sfc_ev_qstop(evq);
 
 fail_ev_qstart:
 	return rc;
@@ -718,7 +718,7 @@ sfc_rx_qstop(struct sfc_adapter *sa, unsigned int sw_index)
 
 	efx_rx_qdestroy(rxq->common);
 
-	sfc_ev_qstop(sa, rxq->evq->evq_index);
+	sfc_ev_qstop(rxq->evq);
 }
 
 static int
@@ -861,7 +861,6 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	int rc;
 	uint16_t buf_size;
 	struct sfc_rxq_info *rxq_info;
-	unsigned int evq_index;
 	struct sfc_evq *evq;
 	struct sfc_rxq *rxq;
 	struct sfc_dp_rx_qcreate_info info;
@@ -899,14 +898,10 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 		sa->eth_dev->data->dev_conf.rxmode.enable_scatter ?
 		EFX_RXQ_TYPE_SCATTER : EFX_RXQ_TYPE_DEFAULT;
 
-	evq_index = sfc_evq_index_by_rxq_sw_index(sa, sw_index);
-
-	rc = sfc_ev_qinit(sa, evq_index, SFC_EVQ_TYPE_RX, sw_index,
-			  rxq_info->entries, socket_id);
+	rc = sfc_ev_qinit(sa, SFC_EVQ_TYPE_RX, sw_index,
+			  rxq_info->entries, socket_id, &evq);
 	if (rc != 0)
 		goto fail_ev_qinit;
-
-	evq = sa->evq_info[evq_index].evq;
 
 	rc = ENOMEM;
 	rxq = rte_zmalloc_socket("sfc-rxq", sizeof(*rxq), RTE_CACHE_LINE_SIZE,
@@ -968,7 +963,7 @@ fail_dma_alloc:
 	rte_free(rxq);
 
 fail_rxq_alloc:
-	sfc_ev_qfini(sa, evq_index);
+	sfc_ev_qfini(evq);
 
 fail_ev_qinit:
 	rxq_info->entries = 0;
@@ -998,9 +993,11 @@ sfc_rx_qfini(struct sfc_adapter *sa, unsigned int sw_index)
 	rxq_info->entries = 0;
 
 	sfc_dma_free(sa, &rxq->mem);
-	rte_free(rxq);
 
-	sfc_ev_qfini(sa, sfc_evq_index_by_rxq_sw_index(sa, sw_index));
+	sfc_ev_qfini(rxq->evq);
+	rxq->evq = NULL;
+
+	rte_free(rxq);
 }
 
 #if EFSYS_OPT_RX_SCALE

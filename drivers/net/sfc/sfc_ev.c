@@ -566,7 +566,7 @@ void
 sfc_ev_mgmt_qpoll(struct sfc_adapter *sa)
 {
 	if (rte_spinlock_trylock(&sa->mgmt_evq_lock)) {
-		struct sfc_evq *mgmt_evq = sa->evq_info[sa->mgmt_evq_index].evq;
+		struct sfc_evq *mgmt_evq = sa->mgmt_evq;
 
 		if (mgmt_evq->init_state == SFC_EVQ_STARTED)
 			sfc_ev_qpoll(mgmt_evq);
@@ -582,33 +582,33 @@ sfc_ev_qprime(struct sfc_evq *evq)
 	return efx_ev_qprime(evq->common, evq->read_ptr);
 }
 
+/* Event queue HW index allocation scheme is described in sfc_ev.h. */
 int
-sfc_ev_qstart(struct sfc_adapter *sa, unsigned int sw_index)
+sfc_ev_qstart(struct sfc_evq *evq, unsigned int hw_index)
 {
-	const struct sfc_evq_info *evq_info;
-	struct sfc_evq *evq;
+	struct sfc_adapter *sa = evq->sa;
 	efsys_mem_t *esmp;
 	uint32_t evq_flags = sa->evq_flags;
 	unsigned int total_delay_us;
 	unsigned int delay_us;
 	int rc;
 
-	sfc_log_init(sa, "sw_index=%u", sw_index);
+	sfc_log_init(sa, "hw_index=%u", hw_index);
 
-	evq_info = &sa->evq_info[sw_index];
-	evq = evq_info->evq;
 	esmp = &evq->mem;
+
+	evq->evq_index = hw_index;
 
 	/* Clear all events */
 	(void)memset((void *)esmp->esm_base, 0xff, EFX_EVQ_SIZE(evq->entries));
 
-	if (sa->intr.lsc_intr && sw_index == sa->mgmt_evq_index)
+	if (sa->intr.lsc_intr && hw_index == sa->mgmt_evq_index)
 		evq_flags |= EFX_EVQ_FLAGS_NOTIFY_INTERRUPT;
 	else
 		evq_flags |= EFX_EVQ_FLAGS_NOTIFY_DISABLED;
 
 	/* Create the common code event queue */
-	rc = efx_ev_qcreate(sa->nic, sw_index, esmp, evq->entries,
+	rc = efx_ev_qcreate(sa->nic, hw_index, esmp, evq->entries,
 			    0 /* unused on EF10 */, 0, evq_flags,
 			    &evq->common);
 	if (rc != 0)
@@ -671,19 +671,14 @@ fail_ev_qcreate:
 }
 
 void
-sfc_ev_qstop(struct sfc_adapter *sa, unsigned int sw_index)
+sfc_ev_qstop(struct sfc_evq *evq)
 {
-	const struct sfc_evq_info *evq_info;
-	struct sfc_evq *evq;
+	if (evq == NULL)
+		return;
 
-	sfc_log_init(sa, "sw_index=%u", sw_index);
+	sfc_log_init(evq->sa, "hw_index=%u", evq->evq_index);
 
-	SFC_ASSERT(sw_index < sa->evq_count);
-
-	evq_info = &sa->evq_info[sw_index];
-	evq = evq_info->evq;
-
-	if (evq == NULL || evq->init_state != SFC_EVQ_STARTED)
+	if (evq->init_state != SFC_EVQ_STARTED)
 		return;
 
 	evq->init_state = SFC_EVQ_INITIALIZED;
@@ -692,6 +687,8 @@ sfc_ev_qstop(struct sfc_adapter *sa, unsigned int sw_index)
 	evq->exception = B_FALSE;
 
 	efx_ev_qdestroy(evq->common);
+
+	evq->evq_index = 0;
 }
 
 static void
@@ -740,12 +737,12 @@ sfc_ev_start(struct sfc_adapter *sa)
 	/* Start management EVQ used for global events */
 	rte_spinlock_lock(&sa->mgmt_evq_lock);
 
-	rc = sfc_ev_qstart(sa, sa->mgmt_evq_index);
+	rc = sfc_ev_qstart(sa->mgmt_evq, sa->mgmt_evq_index);
 	if (rc != 0)
 		goto fail_mgmt_evq_start;
 
 	if (sa->intr.lsc_intr) {
-		rc = sfc_ev_qprime(sa->evq_info[sa->mgmt_evq_index].evq);
+		rc = sfc_ev_qprime(sa->mgmt_evq);
 		if (rc != 0)
 			goto fail_evq0_prime;
 	}
@@ -768,7 +765,7 @@ sfc_ev_start(struct sfc_adapter *sa)
 	return 0;
 
 fail_evq0_prime:
-	sfc_ev_qstop(sa, 0);
+	sfc_ev_qstop(sa->mgmt_evq);
 
 fail_mgmt_evq_start:
 	rte_spinlock_unlock(&sa->mgmt_evq_lock);
@@ -782,41 +779,27 @@ fail_ev_init:
 void
 sfc_ev_stop(struct sfc_adapter *sa)
 {
-	unsigned int sw_index;
-
 	sfc_log_init(sa, "entry");
 
 	sfc_ev_mgmt_periodic_qpoll_stop(sa);
 
-	/* Make sure that all event queues are stopped */
-	sw_index = sa->evq_count;
-	while (sw_index-- > 0) {
-		if (sw_index == sa->mgmt_evq_index) {
-			/* Locks are required for the management EVQ */
-			rte_spinlock_lock(&sa->mgmt_evq_lock);
-			sfc_ev_qstop(sa, sa->mgmt_evq_index);
-			rte_spinlock_unlock(&sa->mgmt_evq_lock);
-		} else {
-			sfc_ev_qstop(sa, sw_index);
-		}
-	}
+	rte_spinlock_lock(&sa->mgmt_evq_lock);
+	sfc_ev_qstop(sa->mgmt_evq);
+	rte_spinlock_unlock(&sa->mgmt_evq_lock);
 
 	efx_ev_fini(sa->nic);
 }
 
 int
-sfc_ev_qinit(struct sfc_adapter *sa, unsigned int sw_index,
+sfc_ev_qinit(struct sfc_adapter *sa,
 	     enum sfc_evq_type type, unsigned int type_index,
-	     unsigned int entries, int socket_id)
+	     unsigned int entries, int socket_id, struct sfc_evq **evqp)
 {
-	struct sfc_evq_info *evq_info;
 	struct sfc_evq *evq;
 	int rc;
 
-	sfc_log_init(sa, "sw_index=%u type=%s type_index=%u",
-		     sw_index, sfc_evq_type2str(type), type_index);
-
-	evq_info = &sa->evq_info[sw_index];
+	sfc_log_init(sa, "type=%s type_index=%u",
+		     sfc_evq_type2str(type), type_index);
 
 	SFC_ASSERT(rte_is_power_of_2(entries));
 
@@ -827,7 +810,6 @@ sfc_ev_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 		goto fail_evq_alloc;
 
 	evq->sa = sa;
-	evq->evq_index = sw_index;
 	evq->type = type;
 	evq->entries = entries;
 
@@ -839,7 +821,9 @@ sfc_ev_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 
 	evq->init_state = SFC_EVQ_INITIALIZED;
 
-	evq_info->evq = evq;
+	sa->evq_count++;
+
+	*evqp = evq;
 
 	return 0;
 
@@ -853,29 +837,18 @@ fail_evq_alloc:
 }
 
 void
-sfc_ev_qfini(struct sfc_adapter *sa, unsigned int sw_index)
+sfc_ev_qfini(struct sfc_evq *evq)
 {
-	struct sfc_evq *evq;
-
-	sfc_log_init(sa, "sw_index=%u", sw_index);
-
-	evq = sa->evq_info[sw_index].evq;
+	struct sfc_adapter *sa = evq->sa;
 
 	SFC_ASSERT(evq->init_state == SFC_EVQ_INITIALIZED);
-
-	sa->evq_info[sw_index].evq = NULL;
 
 	sfc_dma_free(sa, &evq->mem);
 
 	rte_free(evq);
-}
 
-static int
-sfc_ev_qinit_info(struct sfc_adapter *sa, unsigned int sw_index)
-{
-	sfc_log_init(sa, "sw_index=%u", sw_index);
-
-	return 0;
+	SFC_ASSERT(sa->evq_count > 0);
+	sa->evq_count--;
 }
 
 static int
@@ -896,19 +869,10 @@ sfc_kvarg_perf_profile_handler(__rte_unused const char *key,
 	return 0;
 }
 
-static void
-sfc_ev_qfini_info(struct sfc_adapter *sa, unsigned int sw_index)
-{
-	sfc_log_init(sa, "sw_index=%u", sw_index);
-
-	/* Nothing to cleanup */
-}
-
 int
 sfc_ev_init(struct sfc_adapter *sa)
 {
 	int rc;
-	unsigned int sw_index;
 
 	sfc_log_init(sa, "entry");
 
@@ -922,26 +886,11 @@ sfc_ev_init(struct sfc_adapter *sa)
 		goto fail_kvarg_perf_profile;
 	}
 
-	sa->evq_count = sfc_ev_qcount(sa);
 	sa->mgmt_evq_index = 0;
 	rte_spinlock_init(&sa->mgmt_evq_lock);
 
-	/* Allocate EVQ info array */
-	rc = ENOMEM;
-	sa->evq_info = rte_calloc_socket("sfc-evqs", sa->evq_count,
-					 sizeof(struct sfc_evq_info), 0,
-					 sa->socket_id);
-	if (sa->evq_info == NULL)
-		goto fail_evqs_alloc;
-
-	for (sw_index = 0; sw_index < sa->evq_count; ++sw_index) {
-		rc = sfc_ev_qinit_info(sa, sw_index);
-		if (rc != 0)
-			goto fail_ev_qinit_info;
-	}
-
-	rc = sfc_ev_qinit(sa, sa->mgmt_evq_index, SFC_EVQ_TYPE_MGMT, 0,
-			  SFC_MGMT_EVQ_ENTRIES, sa->socket_id);
+	rc = sfc_ev_qinit(sa, SFC_EVQ_TYPE_MGMT, 0, SFC_MGMT_EVQ_ENTRIES,
+			  sa->socket_id, &sa->mgmt_evq);
 	if (rc != 0)
 		goto fail_mgmt_evq_init;
 
@@ -953,15 +902,6 @@ sfc_ev_init(struct sfc_adapter *sa)
 	return 0;
 
 fail_mgmt_evq_init:
-fail_ev_qinit_info:
-	while (sw_index-- > 0)
-		sfc_ev_qfini_info(sa, sw_index);
-
-	rte_free(sa->evq_info);
-	sa->evq_info = NULL;
-
-fail_evqs_alloc:
-	sa->evq_count = 0;
 
 fail_kvarg_perf_profile:
 	sfc_log_init(sa, "failed %d", rc);
@@ -971,19 +911,11 @@ fail_kvarg_perf_profile:
 void
 sfc_ev_fini(struct sfc_adapter *sa)
 {
-	int sw_index;
-
 	sfc_log_init(sa, "entry");
 
-	/* Cleanup all event queues */
-	sw_index = sa->evq_count;
-	while (--sw_index >= 0) {
-		if (sa->evq_info[sw_index].evq != NULL)
-			sfc_ev_qfini(sa, sw_index);
-		sfc_ev_qfini_info(sa, sw_index);
-	}
+	sfc_ev_qfini(sa->mgmt_evq);
 
-	rte_free(sa->evq_info);
-	sa->evq_info = NULL;
-	sa->evq_count = 0;
+	if (sa->evq_count != 0)
+		sfc_err(sa, "%u EvQs are not destroyed before detach",
+			sa->evq_count);
 }
