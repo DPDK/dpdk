@@ -195,6 +195,11 @@ New Features
   PMD allows an application to configure a pipeline using the eventdev
   library, and run the scheduling workload on a CPU core.
 
+* **Added Cavium OCTEONTX Eventdev PMD.**
+
+  Added the new octeontx ssovf eventdev driver for OCTEONTX devices. See the
+  "Event Device Drivers" document for more details on this new driver.
+
 
 Resolved Issues
 ---------------
