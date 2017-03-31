@@ -107,6 +107,22 @@ rte_cfgfile_load(const char *filename, int flags)
 
 	memset(cfg->sections, 0, sizeof(cfg->sections[0]) * allocated_sections);
 
+	if (flags & CFG_FLAG_GLOBAL_SECTION) {
+		curr_section = 0;
+		allocated_entries = CFG_ALLOC_ENTRY_BATCH;
+		cfg->sections[curr_section] = malloc(
+			sizeof(*cfg->sections[0]) +
+			sizeof(cfg->sections[0]->entries[0]) *
+			allocated_entries);
+		if (cfg->sections[curr_section] == NULL) {
+			printf("Error - no memory for global section\n");
+			goto error1;
+		}
+
+		snprintf(cfg->sections[curr_section]->name,
+				 sizeof(cfg->sections[0]->name), "GLOBAL");
+	}
+
 	while (fgets(buffer, sizeof(buffer), f) != NULL) {
 		char *pos = NULL;
 		size_t len = strnlen(buffer, sizeof(buffer));

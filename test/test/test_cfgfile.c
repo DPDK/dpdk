@@ -163,6 +163,36 @@ test_cfgfile_missing_section(void)
 }
 
 static int
+test_cfgfile_global_properties(void)
+{
+	struct rte_cfgfile *cfgfile;
+	const char *value;
+	int ret;
+
+	cfgfile = rte_cfgfile_load(CFG_FILES_ETC "/missing_section.ini",
+				   CFG_FLAG_GLOBAL_SECTION);
+	TEST_ASSERT_NOT_NULL(cfgfile, "Failed to load config file");
+
+	ret = rte_cfgfile_num_sections(cfgfile, NULL, 0);
+	TEST_ASSERT(ret == 1, "Unexpected number of sections: %d", ret);
+
+	ret = rte_cfgfile_has_section(cfgfile, "GLOBAL");
+	TEST_ASSERT(ret, "global section missing");
+
+	ret = rte_cfgfile_section_num_entries(cfgfile, "GLOBAL");
+	TEST_ASSERT(ret == 1, "GLOBAL unexpected number of entries: %d", ret);
+
+	value = rte_cfgfile_get_entry(cfgfile, "GLOBAL", "key");
+	TEST_ASSERT(strcmp("value", value) == 0,
+		    "key unexpected value: %s", value);
+
+	ret = rte_cfgfile_close(cfgfile);
+	TEST_ASSERT_SUCCESS(ret, "Failed to close cfgfile");
+
+	return 0;
+}
+
+static int
 test_cfgfile_empty_file(void)
 {
 	struct rte_cfgfile *cfgfile;
@@ -196,6 +226,9 @@ test_cfgfile(void)
 		return -1;
 
 	if (test_cfgfile_missing_section())
+		return -1;
+
+	if (test_cfgfile_global_properties())
 		return -1;
 
 	if (test_cfgfile_empty_file())

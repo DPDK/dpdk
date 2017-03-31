@@ -66,13 +66,24 @@ struct rte_cfgfile_entry {
 	char value[CFG_VALUE_LEN]; /**< Value */
 };
 
+/**@{ cfgfile load operation flags */
+enum {
+	/**
+	 * Indicates that the file supports key value entries before the first
+	 * defined section.  These entries can be accessed in the "GLOBAL"
+	 * section.
+	 */
+	CFG_FLAG_GLOBAL_SECTION = 1,
+};
+/**@} */
+
 /**
 * Open config file
 *
 * @param filename
 *   Config file name
 * @param flags
-*   Config file flags, Reserved for future use. Must be set to 0.
+*   Config file flags
 * @return
 *   Handle to configuration file on success, NULL otherwise
 */
