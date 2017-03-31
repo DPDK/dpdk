@@ -1,6 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
+#   Copyright(c) 2017 NXP.
 #   All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
@@ -13,7 +13,7 @@
 #       notice, this list of conditions and the following disclaimer in
 #       the documentation and/or other materials provided with the
 #       distribution.
-#     * Neither the name of Intel Corporation nor the names of its
+#     * Neither the name of NXP nor the names of its
 #       contributors may be used to endorse or promote products derived
 #       from this software without specific prior written permission.
 #
@@ -31,8 +31,18 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-DIRS-y += mempool
-DIRS-y += net
-DIRS-$(CONFIG_RTE_LIBRTE_CRYPTODEV) += crypto
+#
+# library name
+#
+LIB = librte_mempool_ring.a
 
-include $(RTE_SDK)/mk/rte.subdir.mk
+CFLAGS += -O3
+CFLAGS += $(WERROR_FLAGS)
+
+EXPORT_MAP := rte_mempool_ring_version.map
+
+LIBABIVER := 1
+
+SRCS-$(CONFIG_RTE_DRIVER_MEMPOOL_RING) += rte_mempool_ring.c
+
+include $(RTE_SDK)/mk/rte.lib.mk
