@@ -192,8 +192,6 @@ sfc_dev_configure(struct rte_eth_dev *dev)
 	sfc_adapter_lock(sa);
 	switch (sa->state) {
 	case SFC_ADAPTER_CONFIGURED:
-		sfc_close(sa);
-		SFC_ASSERT(sa->state == SFC_ADAPTER_INITIALIZED);
 		/* FALLTHROUGH */
 	case SFC_ADAPTER_INITIALIZED:
 		rc = sfc_configure(sa);

@@ -398,7 +398,8 @@ sfc_configure(struct sfc_adapter *sa)
 
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
 
-	SFC_ASSERT(sa->state == SFC_ADAPTER_INITIALIZED);
+	SFC_ASSERT(sa->state == SFC_ADAPTER_INITIALIZED ||
+		   sa->state == SFC_ADAPTER_CONFIGURED);
 	sa->state = SFC_ADAPTER_CONFIGURING;
 
 	rc = sfc_check_conf(sa);
