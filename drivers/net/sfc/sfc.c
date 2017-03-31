@@ -405,9 +405,9 @@ sfc_configure(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_check_conf;
 
-	rc = sfc_intr_init(sa);
+	rc = sfc_intr_configure(sa);
 	if (rc != 0)
-		goto fail_intr_init;
+		goto fail_intr_configure;
 
 	rc = sfc_ev_init(sa);
 	if (rc != 0)
@@ -439,9 +439,9 @@ fail_port_init:
 	sfc_ev_fini(sa);
 
 fail_ev_init:
-	sfc_intr_fini(sa);
+	sfc_intr_close(sa);
 
-fail_intr_init:
+fail_intr_configure:
 fail_check_conf:
 	sa->state = SFC_ADAPTER_INITIALIZED;
 	sfc_log_init(sa, "failed %d", rc);
@@ -462,7 +462,7 @@ sfc_close(struct sfc_adapter *sa)
 	sfc_rx_fini(sa);
 	sfc_port_fini(sa);
 	sfc_ev_fini(sa);
-	sfc_intr_fini(sa);
+	sfc_intr_close(sa);
 
 	sa->state = SFC_ADAPTER_INITIALIZED;
 	sfc_log_init(sa, "done");

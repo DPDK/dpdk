@@ -298,8 +298,8 @@ void sfc_close(struct sfc_adapter *sa);
 
 int sfc_intr_attach(struct sfc_adapter *sa);
 void sfc_intr_detach(struct sfc_adapter *sa);
-int sfc_intr_init(struct sfc_adapter *sa);
-void sfc_intr_fini(struct sfc_adapter *sa);
+int sfc_intr_configure(struct sfc_adapter *sa);
+void sfc_intr_close(struct sfc_adapter *sa);
 int sfc_intr_start(struct sfc_adapter *sa);
 void sfc_intr_stop(struct sfc_adapter *sa);
 

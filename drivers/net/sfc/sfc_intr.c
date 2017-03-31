@@ -259,7 +259,7 @@ sfc_intr_stop(struct sfc_adapter *sa)
 }
 
 int
-sfc_intr_init(struct sfc_adapter *sa)
+sfc_intr_configure(struct sfc_adapter *sa)
 {
 	struct sfc_intr *intr = &sa->intr;
 
@@ -293,7 +293,7 @@ done:
 }
 
 void
-sfc_intr_fini(struct sfc_adapter *sa)
+sfc_intr_close(struct sfc_adapter *sa)
 {
 	sfc_log_init(sa, "entry");
 
