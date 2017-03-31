@@ -1207,9 +1207,29 @@ sfc_rx_check_mode(struct sfc_adapter *sa, struct rte_eth_rxmode *rxmode)
 }
 
 /**
+ * Destroy excess queues that are no longer needed after reconfiguration
+ * or complete close.
+ */
+static void
+sfc_rx_fini_queues(struct sfc_adapter *sa, unsigned int nb_rx_queues)
+{
+	int sw_index;
+
+	SFC_ASSERT(nb_rx_queues <= sa->rxq_count);
+
+	sw_index = sa->rxq_count;
+	while (--sw_index >= (int)nb_rx_queues) {
+		if (sa->rxq_info[sw_index].rxq != NULL)
+			sfc_rx_qfini(sa, sw_index);
+	}
+
+	sa->rxq_count = nb_rx_queues;
+}
+
+/**
  * Initialize Rx subsystem.
  *
- * Called at device configuration stage when number of receive queues is
+ * Called at device (re)configuration stage when number of receive queues is
  * specified together with other device level receive configuration.
  *
  * It should be used to allocate NUMA-unaware resources.
@@ -1218,26 +1238,53 @@ int
 sfc_rx_configure(struct sfc_adapter *sa)
 {
 	struct rte_eth_conf *dev_conf = &sa->eth_dev->data->dev_conf;
+	const unsigned int nb_rx_queues = sa->eth_dev->data->nb_rx_queues;
 	unsigned int sw_index;
 	int rc;
+
+	sfc_log_init(sa, "nb_rx_queues=%u (old %u)",
+		     nb_rx_queues, sa->rxq_count);
 
 	rc = sfc_rx_check_mode(sa, &dev_conf->rxmode);
 	if (rc != 0)
 		goto fail_check_mode;
 
-	sa->rxq_count = sa->eth_dev->data->nb_rx_queues;
+	if (nb_rx_queues == sa->rxq_count)
+		goto done;
 
-	rc = ENOMEM;
-	sa->rxq_info = rte_calloc_socket("sfc-rxqs", sa->rxq_count,
-					 sizeof(struct sfc_rxq_info), 0,
-					 sa->socket_id);
-	if (sa->rxq_info == NULL)
-		goto fail_rxqs_alloc;
+	if (sa->rxq_info == NULL) {
+		rc = ENOMEM;
+		sa->rxq_info = rte_calloc_socket("sfc-rxqs", nb_rx_queues,
+						 sizeof(sa->rxq_info[0]), 0,
+						 sa->socket_id);
+		if (sa->rxq_info == NULL)
+			goto fail_rxqs_alloc;
+	} else {
+		struct sfc_rxq_info *new_rxq_info;
 
-	for (sw_index = 0; sw_index < sa->rxq_count; ++sw_index) {
-		rc = sfc_rx_qinit_info(sa, sw_index);
+		if (nb_rx_queues < sa->rxq_count)
+			sfc_rx_fini_queues(sa, nb_rx_queues);
+
+		rc = ENOMEM;
+		new_rxq_info =
+			rte_realloc(sa->rxq_info,
+				    nb_rx_queues * sizeof(sa->rxq_info[0]), 0);
+		if (new_rxq_info == NULL && nb_rx_queues > 0)
+			goto fail_rxqs_realloc;
+
+		sa->rxq_info = new_rxq_info;
+		if (nb_rx_queues > sa->rxq_count)
+			memset(&sa->rxq_info[sa->rxq_count], 0,
+			       (nb_rx_queues - sa->rxq_count) *
+			       sizeof(sa->rxq_info[0]));
+	}
+
+	while (sa->rxq_count < nb_rx_queues) {
+		rc = sfc_rx_qinit_info(sa, sa->rxq_count);
 		if (rc != 0)
 			goto fail_rx_qinit_info;
+
+		sa->rxq_count++;
 	}
 
 #if EFSYS_OPT_RX_SCALE
@@ -1250,14 +1297,14 @@ sfc_rx_configure(struct sfc_adapter *sa)
 	}
 #endif
 
+done:
 	return 0;
 
 fail_rx_qinit_info:
-	rte_free(sa->rxq_info);
-	sa->rxq_info = NULL;
-
+fail_rxqs_realloc:
 fail_rxqs_alloc:
-	sa->rxq_count = 0;
+	sfc_rx_close(sa);
+
 fail_check_mode:
 	sfc_log_init(sa, "failed %d", rc);
 	return rc;
@@ -1266,21 +1313,13 @@ fail_check_mode:
 /**
  * Shutdown Rx subsystem.
  *
- * Called at device close stage, for example, before device
- * reconfiguration or shutdown.
+ * Called at device close stage, for example, before device shutdown.
  */
 void
 sfc_rx_close(struct sfc_adapter *sa)
 {
-	unsigned int sw_index;
-
-	sw_index = sa->rxq_count;
-	while (sw_index-- > 0) {
-		if (sa->rxq_info[sw_index].rxq != NULL)
-			sfc_rx_qfini(sa, sw_index);
-	}
+	sfc_rx_fini_queues(sa, 0);
 
 	rte_free(sa->rxq_info);
 	sa->rxq_info = NULL;
-	sa->rxq_count = 0;
 }
