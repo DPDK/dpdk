@@ -144,16 +144,29 @@ nicvf_periodic_alarm_stop(void (fn)(void *), void *arg)
  * Return 0 means link status changed, -1 means not changed
  */
 static int
-nicvf_dev_link_update(struct rte_eth_dev *dev,
-		      int wait_to_complete __rte_unused)
+nicvf_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 {
+#define CHECK_INTERVAL 100  /* 100ms */
+#define MAX_CHECK_TIME 90   /* 9s (90 * 100ms) in total */
 	struct rte_eth_link link;
 	struct nicvf *nic = nicvf_pmd_priv(dev);
+	int i;
 
 	PMD_INIT_FUNC_TRACE();
 
-	memset(&link, 0, sizeof(link));
-	nicvf_set_eth_link_status(nic, &link);
+	if (wait_to_complete) {
+		/* rte_eth_link_get() might need to wait up to 9 seconds */
+		for (i = 0; i < MAX_CHECK_TIME; i++) {
+			memset(&link, 0, sizeof(link));
+			nicvf_set_eth_link_status(nic, &link);
+			if (link.link_status)
+				break;
+			rte_delay_ms(CHECK_INTERVAL);
+		}
+	} else {
+		memset(&link, 0, sizeof(link));
+		nicvf_set_eth_link_status(nic, &link);
+	}
 	return nicvf_atomic_write_link_status(dev, &link);
 }
 
