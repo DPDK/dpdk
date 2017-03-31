@@ -69,7 +69,8 @@ static void
 app_init_core_map(struct app_params *app)
 {
 	APP_LOG(app, HIGH, "Initializing CPU core map ...");
-	app->core_map = cpu_core_map_init(4, 32, 4, 0);
+	app->core_map = cpu_core_map_init(RTE_MAX_NUMA_NODES, RTE_MAX_LCORE,
+				4, 0);
 
 	if (app->core_map == NULL)
 		rte_panic("Cannot create CPU core map\n");
