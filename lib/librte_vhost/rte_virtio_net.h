@@ -93,7 +93,15 @@ struct vhost_device_ops {
 
 	int (*vring_state_changed)(int vid, uint16_t queue_id, int enable);	/**< triggered when a vring is enabled or disabled */
 
-	void *reserved[5]; /**< Reserved for future extension */
+	/**
+	 * Features could be changed after the feature negotiation.
+	 * For example, VHOST_F_LOG_ALL will be set/cleared at the
+	 * start/end of live migration, respectively. This callback
+	 * is used to inform the application on such change.
+	 */
+	int (*features_changed)(int vid, uint64_t features);
+
+	void *reserved[4]; /**< Reserved for future extension */
 };
 
 /**

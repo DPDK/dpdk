@@ -167,6 +167,11 @@ vhost_user_set_features(struct virtio_net *dev, uint64_t features)
 	if (features & ~vhost_features)
 		return -1;
 
+	if ((dev->flags & VIRTIO_DEV_RUNNING) && dev->features != features) {
+		if (dev->notify_ops->features_changed)
+			dev->notify_ops->features_changed(dev->vid, features);
+	}
+
 	dev->features = features;
 	if (dev->features &
 		((1 << VIRTIO_NET_F_MRG_RXBUF) | (1ULL << VIRTIO_F_VERSION_1))) {

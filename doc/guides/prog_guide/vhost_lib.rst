@@ -143,6 +143,12 @@ The following is an overview of some key Vhost API functions:
     This callback is invoked when a specific queue's state is changed, for
     example to enabled or disabled.
 
+  * ``features_changed(int vid, uint64_t features)``
+
+    This callback is invoked when the features is changed. For example,
+    ``VHOST_F_LOG_ALL`` will be set/cleared at the start/end of live
+    migration, respectively.
+
 * ``rte_vhost_enqueue_burst(vid, queue_id, pkts, count)``
 
   Transmits (enqueues) ``count`` packets from host to guest.
