@@ -39,5 +39,6 @@ DPDK_17.05 {
 	rte_vhost_get_mtu;
 	rte_vhost_get_negotiated_features;
 	rte_vhost_get_vhost_vring;
+	rte_vhost_gpa_to_vva;
 
 } DPDK_16.07;

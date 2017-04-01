@@ -103,6 +103,34 @@ struct virtio_net_device_ops {
 	void *reserved[5]; /**< Reserved for future extension */
 };
 
+/**
+ * Convert guest physical address to host virtual address
+ *
+ * @param mem
+ *  the guest memory regions
+ * @param gpa
+ *  the guest physical address for querying
+ * @return
+ *  the host virtual address on success, 0 on failure
+ */
+static inline uint64_t __attribute__((always_inline))
+rte_vhost_gpa_to_vva(struct rte_vhost_memory *mem, uint64_t gpa)
+{
+	struct rte_vhost_mem_region *reg;
+	uint32_t i;
+
+	for (i = 0; i < mem->nregions; i++) {
+		reg = &mem->regions[i];
+		if (gpa >= reg->guest_phys_addr &&
+		    gpa <  reg->guest_phys_addr + reg->size) {
+			return gpa - reg->guest_phys_addr +
+			       reg->host_user_addr;
+		}
+	}
+
+	return 0;
+}
+
 int rte_vhost_enable_guest_notification(int vid, uint16_t queue_id, int enable);
 
 /**

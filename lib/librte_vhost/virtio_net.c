@@ -199,7 +199,7 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vring_desc *descs,
 	uint16_t nr_desc = 1;
 
 	desc = &descs[desc_idx];
-	desc_addr = gpa_to_vva(dev, desc->addr);
+	desc_addr = rte_vhost_gpa_to_vva(dev->mem, desc->addr);
 	/*
 	 * Checking of 'desc_addr' placed outside of 'unlikely' macro to avoid
 	 * performance issue with some versions of gcc (4.8.4 and 5.3.0) which
@@ -239,7 +239,7 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vring_desc *descs,
 				return -1;
 
 			desc = &descs[desc->next];
-			desc_addr = gpa_to_vva(dev, desc->addr);
+			desc_addr = rte_vhost_gpa_to_vva(dev->mem, desc->addr);
 			if (unlikely(!desc_addr))
 				return -1;
 
@@ -323,7 +323,8 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 		int err;
 
 		if (vq->desc[desc_idx].flags & VRING_DESC_F_INDIRECT) {
-			descs = (struct vring_desc *)(uintptr_t)gpa_to_vva(dev,
+			descs = (struct vring_desc *)(uintptr_t)
+				rte_vhost_gpa_to_vva(dev->mem,
 					vq->desc[desc_idx].addr);
 			if (unlikely(!descs)) {
 				count = i;
@@ -383,7 +384,7 @@ fill_vec_buf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 
 	if (vq->desc[idx].flags & VRING_DESC_F_INDIRECT) {
 		descs = (struct vring_desc *)(uintptr_t)
-					gpa_to_vva(dev, vq->desc[idx].addr);
+			rte_vhost_gpa_to_vva(dev->mem, vq->desc[idx].addr);
 		if (unlikely(!descs))
 			return -1;
 
@@ -473,7 +474,7 @@ copy_mbuf_to_desc_mergeable(struct virtio_net *dev, struct rte_mbuf *m,
 	if (unlikely(m == NULL))
 		return -1;
 
-	desc_addr = gpa_to_vva(dev, buf_vec[vec_idx].buf_addr);
+	desc_addr = rte_vhost_gpa_to_vva(dev->mem, buf_vec[vec_idx].buf_addr);
 	if (buf_vec[vec_idx].buf_len < dev->vhost_hlen || !desc_addr)
 		return -1;
 
@@ -495,7 +496,8 @@ copy_mbuf_to_desc_mergeable(struct virtio_net *dev, struct rte_mbuf *m,
 		/* done with current desc buf, get the next one */
 		if (desc_avail == 0) {
 			vec_idx++;
-			desc_addr = gpa_to_vva(dev, buf_vec[vec_idx].buf_addr);
+			desc_addr = rte_vhost_gpa_to_vva(dev->mem,
+					buf_vec[vec_idx].buf_addr);
 			if (unlikely(!desc_addr))
 				return -1;
 
@@ -798,7 +800,7 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vring_desc *descs,
 			(desc->flags & VRING_DESC_F_INDIRECT))
 		return -1;
 
-	desc_addr = gpa_to_vva(dev, desc->addr);
+	desc_addr = rte_vhost_gpa_to_vva(dev->mem, desc->addr);
 	if (unlikely(!desc_addr))
 		return -1;
 
@@ -818,7 +820,7 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vring_desc *descs,
 		if (unlikely(desc->flags & VRING_DESC_F_INDIRECT))
 			return -1;
 
-		desc_addr = gpa_to_vva(dev, desc->addr);
+		desc_addr = rte_vhost_gpa_to_vva(dev->mem, desc->addr);
 		if (unlikely(!desc_addr))
 			return -1;
 
@@ -882,7 +884,7 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vring_desc *descs,
 			if (unlikely(desc->flags & VRING_DESC_F_INDIRECT))
 				return -1;
 
-			desc_addr = gpa_to_vva(dev, desc->addr);
+			desc_addr = rte_vhost_gpa_to_vva(dev->mem, desc->addr);
 			if (unlikely(!desc_addr))
 				return -1;
 
@@ -1125,7 +1127,8 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 			rte_prefetch0(&vq->desc[desc_indexes[i + 1]]);
 
 		if (vq->desc[desc_indexes[i]].flags & VRING_DESC_F_INDIRECT) {
-			desc = (struct vring_desc *)(uintptr_t)gpa_to_vva(dev,
+			desc = (struct vring_desc *)(uintptr_t)
+				rte_vhost_gpa_to_vva(dev->mem,
 					vq->desc[desc_indexes[i]].addr);
 			if (unlikely(!desc))
 				break;
