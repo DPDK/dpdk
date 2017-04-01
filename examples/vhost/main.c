@@ -1538,9 +1538,14 @@ main(int argc, char *argv[])
 			rte_vhost_driver_enable_features(file,
 				1ULL << VIRTIO_NET_F_CTRL_RX);
 		}
-	}
 
-	rte_vhost_driver_callback_register(&virtio_net_device_ops);
+		ret = rte_vhost_driver_callback_register(file,
+			&virtio_net_device_ops);
+		if (ret != 0) {
+			rte_exit(EXIT_FAILURE,
+				"failed to register vhost driver callbacks.\n");
+		}
+	}
 
 	rte_vhost_driver_session_start();
 	return 0;

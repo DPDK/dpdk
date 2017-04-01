@@ -695,6 +695,12 @@ vring_state_changed(int vid, uint16_t vring, int enable)
 	return 0;
 }
 
+static struct virtio_net_device_ops vhost_ops = {
+	.new_device          = new_device,
+	.destroy_device      = destroy_device,
+	.vring_state_changed = vring_state_changed,
+};
+
 int
 rte_eth_vhost_get_queue_event(uint8_t port_id,
 		struct rte_eth_vhost_queue_event *event)
@@ -764,15 +770,6 @@ rte_eth_vhost_get_vid_from_port_id(uint8_t port_id)
 static void *
 vhost_driver_session(void *param __rte_unused)
 {
-	static struct virtio_net_device_ops vhost_ops;
-
-	/* set vhost arguments */
-	vhost_ops.new_device = new_device;
-	vhost_ops.destroy_device = destroy_device;
-	vhost_ops.vring_state_changed = vring_state_changed;
-	if (rte_vhost_driver_callback_register(&vhost_ops) < 0)
-		RTE_LOG(ERR, PMD, "Can't register callbacks\n");
-
 	/* start event handling */
 	rte_vhost_driver_session_start();
 
@@ -1115,6 +1112,11 @@ eth_dev_vhost_create(const char *name, char *iface_name, int16_t queues,
 
 	if (rte_vhost_driver_register(iface_name, flags))
 		goto error;
+
+	if (rte_vhost_driver_callback_register(iface_name, &vhost_ops) < 0) {
+		RTE_LOG(ERR, PMD, "Can't register callbacks\n");
+		goto error;
+	}
 
 	/* We need only one message handling thread */
 	if (rte_atomic16_add_return(&nb_started_ports, 1) == 1) {

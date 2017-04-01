@@ -135,7 +135,7 @@ vhost_user_reset_owner(struct virtio_net *dev)
 {
 	if (dev->flags & VIRTIO_DEV_RUNNING) {
 		dev->flags &= ~VIRTIO_DEV_RUNNING;
-		notify_ops->destroy_device(dev->vid);
+		dev->notify_ops->destroy_device(dev->vid);
 	}
 
 	cleanup_device(dev, 0);
@@ -509,7 +509,7 @@ vhost_user_set_mem_table(struct virtio_net *dev, struct VhostUserMsg *pmsg)
 	/* Remove from the data plane. */
 	if (dev->flags & VIRTIO_DEV_RUNNING) {
 		dev->flags &= ~VIRTIO_DEV_RUNNING;
-		notify_ops->destroy_device(dev->vid);
+		dev->notify_ops->destroy_device(dev->vid);
 	}
 
 	if (dev->mem) {
@@ -693,7 +693,7 @@ vhost_user_set_vring_kick(struct virtio_net *dev, struct VhostUserMsg *pmsg)
 						"dequeue zero copy is enabled\n");
 			}
 
-			if (notify_ops->new_device(dev->vid) == 0)
+			if (dev->notify_ops->new_device(dev->vid) == 0)
 				dev->flags |= VIRTIO_DEV_RUNNING;
 		}
 	}
@@ -727,7 +727,7 @@ vhost_user_get_vring_base(struct virtio_net *dev,
 	/* We have to stop the queue (virtio) if it is running. */
 	if (dev->flags & VIRTIO_DEV_RUNNING) {
 		dev->flags &= ~VIRTIO_DEV_RUNNING;
-		notify_ops->destroy_device(dev->vid);
+		dev->notify_ops->destroy_device(dev->vid);
 	}
 
 	dev->flags &= ~VIRTIO_DEV_READY;
@@ -769,8 +769,8 @@ vhost_user_set_vring_enable(struct virtio_net *dev,
 		"set queue enable: %d to qp idx: %d\n",
 		enable, state->index);
 
-	if (notify_ops->vring_state_changed)
-		notify_ops->vring_state_changed(dev->vid, state->index, enable);
+	if (dev->notify_ops->vring_state_changed)
+		dev->notify_ops->vring_state_changed(dev->vid, state->index, enable);
 
 	dev->virtqueue[state->index]->enabled = enable;
 
@@ -983,6 +983,16 @@ vhost_user_msg_handler(int vid, int fd)
 	dev = get_device(vid);
 	if (dev == NULL)
 		return -1;
+
+	if (!dev->notify_ops) {
+		dev->notify_ops = vhost_driver_callback_get(dev->ifname);
+		if (!dev->notify_ops) {
+			RTE_LOG(ERR, VHOST_CONFIG,
+				"failed to get callback ops for driver %s\n",
+				dev->ifname);
+			return -1;
+		}
+	}
 
 	ret = read_vhost_message(fd, &msg);
 	if (ret <= 0 || msg.request >= VHOST_USER_MAX) {

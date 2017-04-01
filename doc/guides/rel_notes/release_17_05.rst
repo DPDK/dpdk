@@ -292,6 +292,10 @@ API Changes
     * ``rte_eth_vhost_feature_enable``
     * ``rte_eth_vhost_feature_get``
 
+  * The vhost API ``rte_vhost_driver_callback_register(ops)`` is reworked to
+    be per vhost-user socket file. Thus, it takes one more argument:
+    ``rte_vhost_driver_callback_register(path, ops)``.
+
 
 ABI Changes
 -----------

@@ -77,6 +77,8 @@ struct vhost_user_socket {
 	 */
 	uint64_t supported_features;
 	uint64_t features;
+
+	struct virtio_net_device_ops const *notify_ops;
 };
 
 struct vhost_user_connection {
@@ -741,6 +743,36 @@ rte_vhost_driver_unregister(const char *path)
 	pthread_mutex_unlock(&vhost_user.mutex);
 
 	return -1;
+}
+
+/*
+ * Register ops so that we can add/remove device to data core.
+ */
+int
+rte_vhost_driver_callback_register(const char *path,
+	struct virtio_net_device_ops const * const ops)
+{
+	struct vhost_user_socket *vsocket;
+
+	pthread_mutex_lock(&vhost_user.mutex);
+	vsocket = find_vhost_user_socket(path);
+	if (vsocket)
+		vsocket->notify_ops = ops;
+	pthread_mutex_unlock(&vhost_user.mutex);
+
+	return vsocket ? 0 : -1;
+}
+
+struct virtio_net_device_ops const *
+vhost_driver_callback_get(const char *path)
+{
+	struct vhost_user_socket *vsocket;
+
+	pthread_mutex_lock(&vhost_user.mutex);
+	vsocket = find_vhost_user_socket(path);
+	pthread_mutex_unlock(&vhost_user.mutex);
+
+	return vsocket ? vsocket->notify_ops : NULL;
 }
 
 int

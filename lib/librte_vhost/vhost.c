@@ -51,9 +51,6 @@
 
 struct virtio_net *vhost_devices[MAX_VHOST_DEVICE];
 
-/* device ops to add/remove device to/from data core. */
-struct virtio_net_device_ops const *notify_ops;
-
 struct virtio_net *
 get_device(int vid)
 {
@@ -253,7 +250,7 @@ vhost_destroy_device(int vid)
 
 	if (dev->flags & VIRTIO_DEV_RUNNING) {
 		dev->flags &= ~VIRTIO_DEV_RUNNING;
-		notify_ops->destroy_device(vid);
+		dev->notify_ops->destroy_device(vid);
 	}
 
 	cleanup_device(dev, 1);
@@ -394,16 +391,5 @@ rte_vhost_enable_guest_notification(int vid, uint16_t queue_id, int enable)
 	}
 
 	dev->virtqueue[queue_id]->used->flags = VRING_USED_F_NO_NOTIFY;
-	return 0;
-}
-
-/*
- * Register ops so that we can add/remove device to data core.
- */
-int
-rte_vhost_driver_callback_register(struct virtio_net_device_ops const * const ops)
-{
-	notify_ops = ops;
-
 	return 0;
 }

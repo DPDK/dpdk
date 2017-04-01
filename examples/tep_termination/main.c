@@ -1256,7 +1256,12 @@ main(int argc, char *argv[])
 	rte_vhost_driver_disable_features(dev_basename,
 		1ULL << VIRTIO_NET_F_MRG_RXBUF);
 
-	rte_vhost_driver_callback_register(&virtio_net_device_ops);
+	ret = rte_vhost_driver_callback_register(dev_basename,
+		&virtio_net_device_ops);
+	if (ret != 0) {
+		rte_exit(EXIT_FAILURE,
+			"failed to register vhost driver callbacks.\n");
+	}
 
 	rte_vhost_driver_session_start();
 

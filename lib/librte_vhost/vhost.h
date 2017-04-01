@@ -185,6 +185,8 @@ struct virtio_net {
 	struct ether_addr	mac;
 	uint16_t		mtu;
 
+	struct virtio_net_device_ops const *notify_ops;
+
 	uint32_t		nr_guest_pages;
 	uint32_t		max_guest_pages;
 	struct guest_page       *guest_pages;
@@ -288,7 +290,6 @@ gpa_to_hpa(struct virtio_net *dev, uint64_t gpa, uint64_t size)
 	return 0;
 }
 
-struct virtio_net_device_ops const *notify_ops;
 struct virtio_net *get_device(int vid);
 
 int vhost_new_device(void);
@@ -300,6 +301,8 @@ int alloc_vring_queue_pair(struct virtio_net *dev, uint32_t qp_idx);
 
 void vhost_set_ifname(int, const char *if_name, unsigned int if_len);
 void vhost_enable_dequeue_zero_copy(int vid);
+
+struct virtio_net_device_ops const *vhost_driver_callback_get(const char *path);
 
 /*
  * Backend-specific cleanup.

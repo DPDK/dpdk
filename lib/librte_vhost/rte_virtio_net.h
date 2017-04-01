@@ -137,7 +137,8 @@ int rte_vhost_driver_disable_features(const char *path, uint64_t features);
 int rte_vhost_driver_get_features(const char *path, uint64_t *features);
 
 /* Register callbacks. */
-int rte_vhost_driver_callback_register(struct virtio_net_device_ops const * const);
+int rte_vhost_driver_callback_register(const char *path,
+	struct virtio_net_device_ops const * const ops);
 /* Start vhost driver session blocking loop. */
 int rte_vhost_driver_session_start(void);
 
