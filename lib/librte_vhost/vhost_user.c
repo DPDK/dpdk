@@ -615,14 +615,14 @@ virtio_is_ready(struct virtio_net *dev)
 	struct vhost_virtqueue *vq;
 	uint32_t i;
 
+	if (dev->nr_vring == 0)
+		return 0;
+
 	for (i = 0; i < dev->nr_vring; i++) {
 		vq = dev->virtqueue[i];
 
-		if (!vq_is_ready(vq)) {
-			RTE_LOG(INFO, VHOST_CONFIG,
-				"virtio is not ready for processing.\n");
+		if (!vq_is_ready(vq))
 			return 0;
-		}
 	}
 
 	RTE_LOG(INFO, VHOST_CONFIG,
@@ -651,10 +651,6 @@ vhost_user_set_vring_call(struct virtio_net *dev, struct VhostUserMsg *pmsg)
 	vq->callfd = file.fd;
 }
 
-/*
- *  In vhost-user, when we receive kick message, will test whether virtio
- *  device is ready for packet processing.
- */
 static void
 vhost_user_set_vring_kick(struct virtio_net *dev, struct VhostUserMsg *pmsg)
 {
@@ -673,20 +669,6 @@ vhost_user_set_vring_kick(struct virtio_net *dev, struct VhostUserMsg *pmsg)
 	if (vq->kickfd >= 0)
 		close(vq->kickfd);
 	vq->kickfd = file.fd;
-
-	if (virtio_is_ready(dev)) {
-		dev->flags |= VIRTIO_DEV_READY;
-
-		if (!(dev->flags & VIRTIO_DEV_RUNNING)) {
-			if (dev->dequeue_zero_copy) {
-				RTE_LOG(INFO, VHOST_CONFIG,
-						"dequeue zero copy is enabled\n");
-			}
-
-			if (dev->notify_ops->new_device(dev->vid) == 0)
-				dev->flags |= VIRTIO_DEV_RUNNING;
-		}
-	}
 }
 
 static void
@@ -1106,6 +1088,20 @@ vhost_user_msg_handler(int vid, int fd)
 		msg.payload.u64 = !!ret;
 		msg.size = sizeof(msg.payload.u64);
 		send_vhost_message(fd, &msg);
+	}
+
+	if (!(dev->flags & VIRTIO_DEV_RUNNING) && virtio_is_ready(dev)) {
+		dev->flags |= VIRTIO_DEV_READY;
+
+		if (!(dev->flags & VIRTIO_DEV_RUNNING)) {
+			if (dev->dequeue_zero_copy) {
+				RTE_LOG(INFO, VHOST_CONFIG,
+						"dequeue zero copy is enabled\n");
+			}
+
+			if (dev->notify_ops->new_device(dev->vid) == 0)
+				dev->flags |= VIRTIO_DEV_RUNNING;
+		}
 	}
 
 	return 0;
