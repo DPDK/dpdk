@@ -228,7 +228,7 @@ int rte_vhost_get_mtu(int vid, uint16_t *mtu);
  * is allocated.
  *
  * @param vid
- *  virtio-net device ID
+ *  vhost device ID
  *
  * @return
  *  The numa node, -1 on failure
@@ -240,11 +240,11 @@ int rte_vhost_get_numa_node(int vid);
  * Get the number of queues the device supports.
  *
  * Note this function is deprecated, as it returns a queue pair number,
- * which is virtio-net specific. Instead, rte_vhost_get_vring_num should
+ * which is vhost specific. Instead, rte_vhost_get_vring_num should
  * be used.
  *
  * @param vid
- *  virtio-net device ID
+ *  vhost device ID
  *
  * @return
  *  The number of queues, 0 on failure
@@ -268,7 +268,7 @@ uint16_t rte_vhost_get_vring_num(int vid);
  * file path.
  *
  * @param vid
- *  virtio-net device ID
+ *  vhost device ID
  * @param buf
  *  The buffer to stored the queried ifname
  * @param len
@@ -283,7 +283,7 @@ int rte_vhost_get_ifname(int vid, char *buf, size_t len);
  * Get how many avail entries are left in the queue
  *
  * @param vid
- *  virtio-net device ID
+ *  vhost device ID
  * @param queue_id
  *  virtio queue index
  *
@@ -298,7 +298,7 @@ uint16_t rte_vhost_avail_entries(int vid, uint16_t queue_id);
  * count is returned to indicate the number of packets that were succesfully
  * added to the RX queue.
  * @param vid
- *  virtio-net device ID
+ *  vhost device ID
  * @param queue_id
  *  virtio queue index in mq case
  * @param pkts
@@ -316,7 +316,7 @@ uint16_t rte_vhost_enqueue_burst(int vid, uint16_t queue_id,
  * construct host mbufs, copies guest buffer content to host mbufs and
  * store them in pkts to be processed.
  * @param vid
- *  virtio-net device
+ *  vhost device ID
  * @param queue_id
  *  virtio queue index in mq case
  * @param mbuf_pool

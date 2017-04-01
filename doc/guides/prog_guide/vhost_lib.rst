@@ -130,12 +130,12 @@ The following is an overview of some key Vhost API functions:
 
   * ``new_device(int vid)``
 
-    This callback is invoked when a virtio net device becomes ready. ``vid``
-    is the virtio net device ID.
+    This callback is invoked when a virtio device becomes ready. ``vid``
+    is the vhost device ID.
 
   * ``destroy_device(int vid)``
 
-    This callback is invoked when a virtio net device shuts down (or when the
+    This callback is invoked when a virtio device shuts down (or when the
     vhost connection is broken).
 
   * ``vring_state_changed(int vid, uint16_t queue_id, int enable)``
