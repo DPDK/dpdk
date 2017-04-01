@@ -296,6 +296,9 @@ API Changes
     be per vhost-user socket file. Thus, it takes one more argument:
     ``rte_vhost_driver_callback_register(path, ops)``.
 
+  * The vhost API ``rte_vhost_get_queue_num`` is deprecated, instead,
+    ``rte_vhost_get_vring_num`` should be used.
+
 
 ABI Changes
 -----------

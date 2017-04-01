@@ -595,7 +595,7 @@ new_device(int vid)
 		vq->port = eth_dev->data->port_id;
 	}
 
-	for (i = 0; i < rte_vhost_get_queue_num(vid) * VIRTIO_QNUM; i++)
+	for (i = 0; i < rte_vhost_get_vring_num(vid); i++)
 		rte_vhost_enable_guest_notification(vid, i, 0);
 
 	rte_vhost_get_mtu(vid, &eth_dev->data->mtu);

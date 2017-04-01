@@ -243,7 +243,12 @@ int rte_vhost_get_mtu(int vid, uint16_t *mtu);
 int rte_vhost_get_numa_node(int vid);
 
 /**
+ * @deprecated
  * Get the number of queues the device supports.
+ *
+ * Note this function is deprecated, as it returns a queue pair number,
+ * which is virtio-net specific. Instead, rte_vhost_get_vring_num should
+ * be used.
  *
  * @param vid
  *  virtio-net device ID
@@ -251,7 +256,19 @@ int rte_vhost_get_numa_node(int vid);
  * @return
  *  The number of queues, 0 on failure
  */
+__rte_deprecated
 uint32_t rte_vhost_get_queue_num(int vid);
+
+/**
+ * Get the number of vrings the device supports.
+ *
+ * @param vid
+ *  vhost device ID
+ *
+ * @return
+ *  The number of vrings, 0 on failure
+ */
+uint16_t rte_vhost_get_vring_num(int vid);
 
 /**
  * Get the virtio net device's ifname, which is the vhost-user socket

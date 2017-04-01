@@ -317,6 +317,17 @@ rte_vhost_get_queue_num(int vid)
 	return dev->nr_vring / 2;
 }
 
+uint16_t
+rte_vhost_get_vring_num(int vid)
+{
+	struct virtio_net *dev = get_device(vid);
+
+	if (dev == NULL)
+		return 0;
+
+	return dev->nr_vring;
+}
+
 int
 rte_vhost_get_ifname(int vid, char *buf, size_t len)
 {
