@@ -354,6 +354,8 @@ int rte_vhost_get_ifname(int vid, char *buf, size_t len);
  */
 uint16_t rte_vhost_avail_entries(int vid, uint16_t queue_id);
 
+struct rte_mbuf;
+struct rte_mempool;
 /**
  * This function adds buffers to the virtio devices RX virtqueue. Buffers can
  * be received from the physical port or from another virtual device. A packet
