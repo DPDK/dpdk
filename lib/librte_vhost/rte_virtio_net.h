@@ -132,6 +132,49 @@ rte_vhost_gpa_to_vva(struct rte_vhost_memory *mem, uint64_t gpa)
 	return 0;
 }
 
+#define RTE_VHOST_NEED_LOG(features)	((features) & (1ULL << VHOST_F_LOG_ALL))
+
+/**
+ * Log the memory write start with given address.
+ *
+ * This function only need be invoked when the live migration starts.
+ * Therefore, we won't need call it at all in the most of time. For
+ * making the performance impact be minimum, it's suggested to do a
+ * check before calling it:
+ *
+ *        if (unlikely(RTE_VHOST_NEED_LOG(features)))
+ *                rte_vhost_log_write(vid, addr, len);
+ *
+ * @param vid
+ *  vhost device ID
+ * @param addr
+ *  the starting address for write
+ * @param len
+ *  the length to write
+ */
+void rte_vhost_log_write(int vid, uint64_t addr, uint64_t len);
+
+/**
+ * Log the used ring update start at given offset.
+ *
+ * Same as rte_vhost_log_write, it's suggested to do a check before
+ * calling it:
+ *
+ *        if (unlikely(RTE_VHOST_NEED_LOG(features)))
+ *                rte_vhost_log_used_vring(vid, vring_idx, offset, len);
+ *
+ * @param vid
+ *  vhost device ID
+ * @param vring_idx
+ *  the vring index
+ * @param offset
+ *  the offset inside the used ring
+ * @param len
+ *  the length to write
+ */
+void rte_vhost_log_used_vring(int vid, uint16_t vring_idx,
+			      uint64_t offset, uint64_t len);
+
 int rte_vhost_enable_guest_notification(int vid, uint16_t queue_id, int enable);
 
 /**

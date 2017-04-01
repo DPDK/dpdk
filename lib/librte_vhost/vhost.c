@@ -444,3 +444,34 @@ rte_vhost_enable_guest_notification(int vid, uint16_t queue_id, int enable)
 	dev->virtqueue[queue_id]->used->flags = VRING_USED_F_NO_NOTIFY;
 	return 0;
 }
+
+void
+rte_vhost_log_write(int vid, uint64_t addr, uint64_t len)
+{
+	struct virtio_net *dev = get_device(vid);
+
+	if (dev == NULL)
+		return;
+
+	vhost_log_write(dev, addr, len);
+}
+
+void
+rte_vhost_log_used_vring(int vid, uint16_t vring_idx,
+			 uint64_t offset, uint64_t len)
+{
+	struct virtio_net *dev;
+	struct vhost_virtqueue *vq;
+
+	dev = get_device(vid);
+	if (dev == NULL)
+		return;
+
+	if (vring_idx >= VHOST_MAX_VRING)
+		return;
+	vq = dev->virtqueue[vring_idx];
+	if (!vq)
+		return;
+
+	vhost_log_used_vring(dev, vq, offset, len);
+}

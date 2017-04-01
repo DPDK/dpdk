@@ -41,5 +41,7 @@ DPDK_17.05 {
 	rte_vhost_get_vhost_vring;
 	rte_vhost_get_vring_num;
 	rte_vhost_gpa_to_vva;
+	rte_vhost_log_used_vring;
+	rte_vhost_log_write;
 
 } DPDK_16.07;

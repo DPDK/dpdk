@@ -198,6 +198,44 @@ struct virtio_net {
 	struct guest_page       *guest_pages;
 } __rte_cache_aligned;
 
+
+#define VHOST_LOG_PAGE	4096
+
+static inline void __attribute__((always_inline))
+vhost_log_page(uint8_t *log_base, uint64_t page)
+{
+	log_base[page / 8] |= 1 << (page % 8);
+}
+
+static inline void __attribute__((always_inline))
+vhost_log_write(struct virtio_net *dev, uint64_t addr, uint64_t len)
+{
+	uint64_t page;
+
+	if (likely(((dev->features & (1ULL << VHOST_F_LOG_ALL)) == 0) ||
+		   !dev->log_base || !len))
+		return;
+
+	if (unlikely(dev->log_size <= ((addr + len - 1) / VHOST_LOG_PAGE / 8)))
+		return;
+
+	/* To make sure guest memory updates are committed before logging */
+	rte_smp_wmb();
+
+	page = addr / VHOST_LOG_PAGE;
+	while (page * VHOST_LOG_PAGE < addr + len) {
+		vhost_log_page((uint8_t *)(uintptr_t)dev->log_base, page);
+		page += 1;
+	}
+}
+
+static inline void __attribute__((always_inline))
+vhost_log_used_vring(struct virtio_net *dev, struct vhost_virtqueue *vq,
+		     uint64_t offset, uint64_t len)
+{
+	vhost_log_write(dev, vq->log_guest_addr + offset, len);
+}
+
 /* Macros for printing using RTE_LOG */
 #define RTE_LOGTYPE_VHOST_CONFIG RTE_LOGTYPE_USER1
 #define RTE_LOGTYPE_VHOST_DATA   RTE_LOGTYPE_USER1
