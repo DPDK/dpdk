@@ -70,19 +70,6 @@ struct virtio_net_device_ops {
 	void *reserved[5]; /**< Reserved for future extension */
 };
 
-/**
- *  Disable features in feature_mask. Returns 0 on success.
- */
-int rte_vhost_feature_disable(uint64_t feature_mask);
-
-/**
- *  Enable features in feature_mask. Returns 0 on success.
- */
-int rte_vhost_feature_enable(uint64_t feature_mask);
-
-/* Returns currently supported vhost features */
-uint64_t rte_vhost_feature_get(void);
-
 int rte_vhost_enable_guest_notification(int vid, uint16_t queue_id, int enable);
 
 /**

@@ -7,9 +7,6 @@ DPDK_2.0 {
 	rte_vhost_driver_session_start;
 	rte_vhost_enable_guest_notification;
 	rte_vhost_enqueue_burst;
-	rte_vhost_feature_disable;
-	rte_vhost_feature_enable;
-	rte_vhost_feature_get;
 
 	local: *;
 };

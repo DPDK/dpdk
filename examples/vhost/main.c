@@ -328,16 +328,6 @@ port_init(uint8_t port)
 
 	if (port >= rte_eth_dev_count()) return -1;
 
-	if (enable_tx_csum == 0)
-		rte_vhost_feature_disable(1ULL << VIRTIO_NET_F_CSUM);
-
-	if (enable_tso == 0) {
-		rte_vhost_feature_disable(1ULL << VIRTIO_NET_F_HOST_TSO4);
-		rte_vhost_feature_disable(1ULL << VIRTIO_NET_F_HOST_TSO6);
-		rte_vhost_feature_disable(1ULL << VIRTIO_NET_F_GUEST_TSO4);
-		rte_vhost_feature_disable(1ULL << VIRTIO_NET_F_GUEST_TSO6);
-	}
-
 	rx_rings = (uint16_t)dev_info.max_rx_queues;
 	/* Configure ethernet device. */
 	retval = rte_eth_dev_configure(port, rx_rings, tx_rings, &port_conf);
@@ -531,7 +521,6 @@ us_vhost_parse_args(int argc, char **argv)
 			vmdq_conf_default.rx_adv_conf.vmdq_rx_conf.rx_mode =
 				ETH_VMDQ_ACCEPT_BROADCAST |
 				ETH_VMDQ_ACCEPT_MULTICAST;
-			rte_vhost_feature_enable(1ULL << VIRTIO_NET_F_CTRL_RX);
 
 			break;
 
@@ -1509,9 +1498,6 @@ main(int argc, char *argv[])
 	RTE_LCORE_FOREACH_SLAVE(lcore_id)
 		rte_eal_remote_launch(switch_worker, NULL, lcore_id);
 
-	if (mergeable == 0)
-		rte_vhost_feature_disable(1ULL << VIRTIO_NET_F_MRG_RXBUF);
-
 	if (client_mode)
 		flags |= RTE_VHOST_USER_CLIENT;
 
@@ -1520,12 +1506,37 @@ main(int argc, char *argv[])
 
 	/* Register vhost user driver to handle vhost messages. */
 	for (i = 0; i < nb_sockets; i++) {
-		ret = rte_vhost_driver_register
-				(socket_files + i * PATH_MAX, flags);
+		char *file = socket_files + i * PATH_MAX;
+		ret = rte_vhost_driver_register(file, flags);
 		if (ret != 0) {
 			unregister_drivers(i);
 			rte_exit(EXIT_FAILURE,
 				"vhost driver register failure.\n");
+		}
+		if (mergeable == 0) {
+			rte_vhost_driver_disable_features(file,
+				1ULL << VIRTIO_NET_F_MRG_RXBUF);
+		}
+
+		if (enable_tx_csum == 0) {
+			rte_vhost_driver_disable_features(file,
+				1ULL << VIRTIO_NET_F_CSUM);
+		}
+
+		if (enable_tso == 0) {
+			rte_vhost_driver_disable_features(file,
+				1ULL << VIRTIO_NET_F_HOST_TSO4);
+			rte_vhost_driver_disable_features(file,
+				1ULL << VIRTIO_NET_F_HOST_TSO6);
+			rte_vhost_driver_disable_features(file,
+				1ULL << VIRTIO_NET_F_GUEST_TSO4);
+			rte_vhost_driver_disable_features(file,
+				1ULL << VIRTIO_NET_F_GUEST_TSO6);
+		}
+
+		if (promiscuous) {
+			rte_vhost_driver_enable_features(file,
+				1ULL << VIRTIO_NET_F_CTRL_RX);
 		}
 	}
 

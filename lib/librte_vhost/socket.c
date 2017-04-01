@@ -579,7 +579,13 @@ rte_vhost_driver_get_features(const char *path, uint64_t *features)
 		*features = vsocket->features;
 	pthread_mutex_unlock(&vhost_user.mutex);
 
-	return vsocket ? 0 : -1;
+	if (!vsocket) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"socket file %s is not registered yet.\n", path);
+		return -1;
+	} else {
+		return 0;
+	}
 }
 
 /*
@@ -612,6 +618,21 @@ rte_vhost_driver_register(const char *path, uint64_t flags)
 	TAILQ_INIT(&vsocket->conn_list);
 	pthread_mutex_init(&vsocket->conn_mutex, NULL);
 	vsocket->dequeue_zero_copy = flags & RTE_VHOST_USER_DEQUEUE_ZERO_COPY;
+
+	/*
+	 * Set the supported features correctly for the builtin vhost-user
+	 * net driver.
+	 *
+	 * Applications know nothing about features the builtin virtio net
+	 * driver (virtio_net.c) supports, thus it's not possible for them
+	 * to invoke rte_vhost_driver_set_features(). To workaround it, here
+	 * we set it unconditionally. If the application want to implement
+	 * another vhost-user driver (say SCSI), it should call the
+	 * rte_vhost_driver_set_features(), which will overwrite following
+	 * two values.
+	 */
+	vsocket->supported_features = VIRTIO_NET_SUPPORTED_FEATURES;
+	vsocket->features           = VIRTIO_NET_SUPPORTED_FEATURES;
 
 	if ((flags & RTE_VHOST_USER_CLIENT) != 0) {
 		vsocket->reconnect = !(flags & RTE_VHOST_USER_NO_RECONNECT);

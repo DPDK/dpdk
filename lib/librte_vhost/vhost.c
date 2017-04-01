@@ -49,28 +49,6 @@
 
 #include "vhost.h"
 
-#define VHOST_USER_F_PROTOCOL_FEATURES	30
-
-/* Features supported by this lib. */
-#define VHOST_SUPPORTED_FEATURES ((1ULL << VIRTIO_NET_F_MRG_RXBUF) | \
-				(1ULL << VIRTIO_NET_F_CTRL_VQ) | \
-				(1ULL << VIRTIO_NET_F_CTRL_RX) | \
-				(1ULL << VIRTIO_NET_F_GUEST_ANNOUNCE) | \
-				(1ULL << VIRTIO_NET_F_MQ)      | \
-				(1ULL << VIRTIO_F_VERSION_1)   | \
-				(1ULL << VHOST_F_LOG_ALL)      | \
-				(1ULL << VHOST_USER_F_PROTOCOL_FEATURES) | \
-				(1ULL << VIRTIO_NET_F_HOST_TSO4) | \
-				(1ULL << VIRTIO_NET_F_HOST_TSO6) | \
-				(1ULL << VIRTIO_NET_F_CSUM)    | \
-				(1ULL << VIRTIO_NET_F_GUEST_CSUM) | \
-				(1ULL << VIRTIO_NET_F_GUEST_TSO4) | \
-				(1ULL << VIRTIO_NET_F_GUEST_TSO6) | \
-				(1ULL << VIRTIO_RING_F_INDIRECT_DESC) | \
-				(1ULL << VIRTIO_NET_F_MTU))
-
-uint64_t VHOST_FEATURES = VHOST_SUPPORTED_FEATURES;
-
 struct virtio_net *vhost_devices[MAX_VHOST_DEVICE];
 
 /* device ops to add/remove device to/from data core. */
@@ -417,26 +395,6 @@ rte_vhost_enable_guest_notification(int vid, uint16_t queue_id, int enable)
 
 	dev->virtqueue[queue_id]->used->flags = VRING_USED_F_NO_NOTIFY;
 	return 0;
-}
-
-uint64_t rte_vhost_feature_get(void)
-{
-	return VHOST_FEATURES;
-}
-
-int rte_vhost_feature_disable(uint64_t feature_mask)
-{
-	VHOST_FEATURES = VHOST_FEATURES & ~feature_mask;
-	return 0;
-}
-
-int rte_vhost_feature_enable(uint64_t feature_mask)
-{
-	if ((feature_mask & VHOST_SUPPORTED_FEATURES) == feature_mask) {
-		VHOST_FEATURES = VHOST_FEATURES | feature_mask;
-		return 0;
-	}
-	return -1;
 }
 
 /*

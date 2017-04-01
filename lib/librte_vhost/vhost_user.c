@@ -147,9 +147,12 @@ vhost_user_reset_owner(struct virtio_net *dev)
  * The features that we support are requested.
  */
 static uint64_t
-vhost_user_get_features(void)
+vhost_user_get_features(struct virtio_net *dev)
 {
-	return VHOST_FEATURES;
+	uint64_t features = 0;
+
+	rte_vhost_driver_get_features(dev->ifname, &features);
+	return features;
 }
 
 /*
@@ -158,7 +161,10 @@ vhost_user_get_features(void)
 static int
 vhost_user_set_features(struct virtio_net *dev, uint64_t features)
 {
-	if (features & ~VHOST_FEATURES)
+	uint64_t vhost_features = 0;
+
+	rte_vhost_driver_get_features(dev->ifname, &vhost_features);
+	if (features & ~vhost_features)
 		return -1;
 
 	dev->features = features;
@@ -1006,7 +1012,7 @@ vhost_user_msg_handler(int vid, int fd)
 
 	switch (msg.request) {
 	case VHOST_USER_GET_FEATURES:
-		msg.payload.u64 = vhost_user_get_features();
+		msg.payload.u64 = vhost_user_get_features(dev);
 		msg.size = sizeof(msg.payload.u64);
 		send_vhost_message(fd, &msg);
 		break;

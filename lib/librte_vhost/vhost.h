@@ -133,6 +133,27 @@ struct vhost_virtqueue {
  #define VIRTIO_F_VERSION_1 32
 #endif
 
+#define VHOST_USER_F_PROTOCOL_FEATURES	30
+
+/* Features supported by this builtin vhost-user net driver. */
+#define VIRTIO_NET_SUPPORTED_FEATURES ((1ULL << VIRTIO_NET_F_MRG_RXBUF) | \
+				(1ULL << VIRTIO_NET_F_CTRL_VQ) | \
+				(1ULL << VIRTIO_NET_F_CTRL_RX) | \
+				(1ULL << VIRTIO_NET_F_GUEST_ANNOUNCE) | \
+				(1ULL << VIRTIO_NET_F_MQ)      | \
+				(1ULL << VIRTIO_F_VERSION_1)   | \
+				(1ULL << VHOST_F_LOG_ALL)      | \
+				(1ULL << VHOST_USER_F_PROTOCOL_FEATURES) | \
+				(1ULL << VIRTIO_NET_F_HOST_TSO4) | \
+				(1ULL << VIRTIO_NET_F_HOST_TSO6) | \
+				(1ULL << VIRTIO_NET_F_CSUM)    | \
+				(1ULL << VIRTIO_NET_F_GUEST_CSUM) | \
+				(1ULL << VIRTIO_NET_F_GUEST_TSO4) | \
+				(1ULL << VIRTIO_NET_F_GUEST_TSO6) | \
+				(1ULL << VIRTIO_RING_F_INDIRECT_DESC) | \
+				(1ULL << VIRTIO_NET_F_MTU))
+
+
 struct guest_page {
 	uint64_t guest_phys_addr;
 	uint64_t host_phys_addr;

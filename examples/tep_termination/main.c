@@ -1248,11 +1248,13 @@ main(int argc, char *argv[])
 		rte_eal_remote_launch(switch_worker,
 			mbuf_pool, lcore_id);
 	}
-	rte_vhost_feature_disable(1ULL << VIRTIO_NET_F_MRG_RXBUF);
 
 	ret = rte_vhost_driver_register((char *)&dev_basename, 0);
 	if (ret != 0)
 		rte_exit(EXIT_FAILURE, "failed to register vhost driver.\n");
+
+	rte_vhost_driver_disable_features(dev_basename,
+		1ULL << VIRTIO_NET_F_MRG_RXBUF);
 
 	rte_vhost_driver_callback_register(&virtio_net_device_ops);
 
