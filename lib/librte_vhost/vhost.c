@@ -360,6 +360,19 @@ rte_vhost_get_ifname(int vid, char *buf, size_t len)
 }
 
 int
+rte_vhost_get_negotiated_features(int vid, uint64_t *features)
+{
+	struct virtio_net *dev;
+
+	dev = get_device(vid);
+	if (!dev)
+		return -1;
+
+	*features = dev->features;
+	return 0;
+}
+
+int
 rte_vhost_get_mem_table(int vid, struct rte_vhost_memory **mem)
 {
 	struct virtio_net *dev;

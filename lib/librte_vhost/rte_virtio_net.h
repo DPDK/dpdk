@@ -158,6 +158,18 @@ int rte_vhost_driver_disable_features(const char *path, uint64_t features);
  */
 int rte_vhost_driver_get_features(const char *path, uint64_t *features);
 
+/**
+ * Get the feature bits after negotiation
+ *
+ * @param vid
+ *  Vhost device ID
+ * @param features
+ *  A pointer to store the queried feature bits
+ * @return
+ *  0 on success, -1 on failure
+ */
+int rte_vhost_get_negotiated_features(int vid, uint64_t *features);
+
 /* Register callbacks. */
 int rte_vhost_driver_callback_register(const char *path,
 	struct virtio_net_device_ops const * const ops);
