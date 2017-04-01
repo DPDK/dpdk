@@ -176,7 +176,7 @@ struct virtio_net {
 	uint16_t		vhost_hlen;
 	/* to tell if we need broadcast rarp packet */
 	rte_atomic16_t		broadcast_rarp;
-	uint32_t		virt_qp_nb;
+	uint32_t		nr_vring;
 	int			dequeue_zero_copy;
 	struct vhost_virtqueue	*virtqueue[VHOST_MAX_QUEUE_PAIRS * 2];
 #define IF_NAME_SZ (PATH_MAX > IFNAMSIZ ? PATH_MAX : IFNAMSIZ)
@@ -256,7 +256,7 @@ void cleanup_device(struct virtio_net *dev, int destroy);
 void reset_device(struct virtio_net *dev);
 void vhost_destroy_device(int);
 
-int alloc_vring_queue_pair(struct virtio_net *dev, uint32_t qp_idx);
+int alloc_vring_queue(struct virtio_net *dev, uint32_t vring_idx);
 
 void vhost_set_ifname(int, const char *if_name, unsigned int if_len);
 void vhost_enable_dequeue_zero_copy(int vid);

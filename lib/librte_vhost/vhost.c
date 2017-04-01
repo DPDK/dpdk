@@ -84,10 +84,8 @@ cleanup_device(struct virtio_net *dev, int destroy)
 
 	vhost_backend_cleanup(dev);
 
-	for (i = 0; i < dev->virt_qp_nb; i++) {
-		cleanup_vq(dev->virtqueue[i * VIRTIO_QNUM + VIRTIO_RXQ], destroy);
-		cleanup_vq(dev->virtqueue[i * VIRTIO_QNUM + VIRTIO_TXQ], destroy);
-	}
+	for (i = 0; i < dev->nr_vring; i++)
+		cleanup_vq(dev->virtqueue[i], destroy);
 }
 
 /*
@@ -97,24 +95,21 @@ static void
 free_device(struct virtio_net *dev)
 {
 	uint32_t i;
-	struct vhost_virtqueue *rxq, *txq;
+	struct vhost_virtqueue *vq;
 
-	for (i = 0; i < dev->virt_qp_nb; i++) {
-		rxq = dev->virtqueue[i * VIRTIO_QNUM + VIRTIO_RXQ];
-		txq = dev->virtqueue[i * VIRTIO_QNUM + VIRTIO_TXQ];
+	for (i = 0; i < dev->nr_vring; i++) {
+		vq = dev->virtqueue[i];
 
-		rte_free(rxq->shadow_used_ring);
-		rte_free(txq->shadow_used_ring);
+		rte_free(vq->shadow_used_ring);
 
-		/* rxq and txq are allocated together as queue-pair */
-		rte_free(rxq);
+		rte_free(vq);
 	}
 
 	rte_free(dev);
 }
 
 static void
-init_vring_queue(struct vhost_virtqueue *vq, int qp_idx)
+init_vring_queue(struct vhost_virtqueue *vq)
 {
 	memset(vq, 0, sizeof(struct vhost_virtqueue));
 
@@ -124,69 +119,48 @@ init_vring_queue(struct vhost_virtqueue *vq, int qp_idx)
 	/* Backends are set to -1 indicating an inactive device. */
 	vq->backend = -1;
 
-	/* always set the default vq pair to enabled */
-	if (qp_idx == 0)
-		vq->enabled = 1;
+	/*
+	 * always set the vq to enabled; this is to keep compatibility
+	 * with the old QEMU, whereas there is no SET_VRING_ENABLE message.
+	 */
+	vq->enabled = 1;
 
 	TAILQ_INIT(&vq->zmbuf_list);
 }
 
 static void
-init_vring_queue_pair(struct virtio_net *dev, uint32_t qp_idx)
-{
-	uint32_t base_idx = qp_idx * VIRTIO_QNUM;
-
-	init_vring_queue(dev->virtqueue[base_idx + VIRTIO_RXQ], qp_idx);
-	init_vring_queue(dev->virtqueue[base_idx + VIRTIO_TXQ], qp_idx);
-}
-
-static void
-reset_vring_queue(struct vhost_virtqueue *vq, int qp_idx)
+reset_vring_queue(struct vhost_virtqueue *vq)
 {
 	int callfd;
 
 	callfd = vq->callfd;
-	init_vring_queue(vq, qp_idx);
+	init_vring_queue(vq);
 	vq->callfd = callfd;
 }
 
-static void
-reset_vring_queue_pair(struct virtio_net *dev, uint32_t qp_idx)
-{
-	uint32_t base_idx = qp_idx * VIRTIO_QNUM;
-
-	reset_vring_queue(dev->virtqueue[base_idx + VIRTIO_RXQ], qp_idx);
-	reset_vring_queue(dev->virtqueue[base_idx + VIRTIO_TXQ], qp_idx);
-}
-
 int
-alloc_vring_queue_pair(struct virtio_net *dev, uint32_t qp_idx)
+alloc_vring_queue(struct virtio_net *dev, uint32_t vring_idx)
 {
-	struct vhost_virtqueue *virtqueue = NULL;
-	uint32_t virt_rx_q_idx = qp_idx * VIRTIO_QNUM + VIRTIO_RXQ;
-	uint32_t virt_tx_q_idx = qp_idx * VIRTIO_QNUM + VIRTIO_TXQ;
+	struct vhost_virtqueue *vq;
 
-	virtqueue = rte_malloc(NULL,
-			       sizeof(struct vhost_virtqueue) * VIRTIO_QNUM, 0);
-	if (virtqueue == NULL) {
+	vq = rte_malloc(NULL, sizeof(struct vhost_virtqueue), 0);
+	if (vq == NULL) {
 		RTE_LOG(ERR, VHOST_CONFIG,
-			"Failed to allocate memory for virt qp:%d.\n", qp_idx);
+			"Failed to allocate memory for vring:%u.\n", vring_idx);
 		return -1;
 	}
 
-	dev->virtqueue[virt_rx_q_idx] = virtqueue;
-	dev->virtqueue[virt_tx_q_idx] = virtqueue + VIRTIO_TXQ;
+	dev->virtqueue[vring_idx] = vq;
+	init_vring_queue(vq);
 
-	init_vring_queue_pair(dev, qp_idx);
-
-	dev->virt_qp_nb += 1;
+	dev->nr_vring += 1;
 
 	return 0;
 }
 
 /*
  * Reset some variables in device structure, while keeping few
- * others untouched, such as vid, ifname, virt_qp_nb: they
+ * others untouched, such as vid, ifname, nr_vring: they
  * should be same unless the device is removed.
  */
 void
@@ -198,8 +172,8 @@ reset_device(struct virtio_net *dev)
 	dev->protocol_features = 0;
 	dev->flags = 0;
 
-	for (i = 0; i < dev->virt_qp_nb; i++)
-		reset_vring_queue_pair(dev, i);
+	for (i = 0; i < dev->nr_vring; i++)
+		reset_vring_queue(dev->virtqueue[i]);
 }
 
 /*
@@ -340,7 +314,7 @@ rte_vhost_get_queue_num(int vid)
 	if (dev == NULL)
 		return 0;
 
-	return dev->virt_qp_nb;
+	return dev->nr_vring / 2;
 }
 
 int

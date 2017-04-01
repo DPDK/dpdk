@@ -86,9 +86,9 @@ vhost_log_used_vring(struct virtio_net *dev, struct vhost_virtqueue *vq,
 }
 
 static bool
-is_valid_virt_queue_idx(uint32_t idx, int is_tx, uint32_t qp_nb)
+is_valid_virt_queue_idx(uint32_t idx, int is_tx, uint32_t nr_vring)
 {
-	return (is_tx ^ (idx & 1)) == 0 && idx < qp_nb * VIRTIO_QNUM;
+	return (is_tx ^ (idx & 1)) == 0 && idx < nr_vring;
 }
 
 static inline void __attribute__((always_inline))
@@ -283,7 +283,7 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 	uint32_t i, sz;
 
 	LOG_DEBUG(VHOST_DATA, "(%d) %s\n", dev->vid, __func__);
-	if (unlikely(!is_valid_virt_queue_idx(queue_id, 0, dev->virt_qp_nb))) {
+	if (unlikely(!is_valid_virt_queue_idx(queue_id, 0, dev->nr_vring))) {
 		RTE_LOG(ERR, VHOST_DATA, "(%d) %s: invalid virtqueue idx %d.\n",
 			dev->vid, __func__, queue_id);
 		return 0;
@@ -554,7 +554,7 @@ virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id,
 	uint16_t avail_head;
 
 	LOG_DEBUG(VHOST_DATA, "(%d) %s\n", dev->vid, __func__);
-	if (unlikely(!is_valid_virt_queue_idx(queue_id, 0, dev->virt_qp_nb))) {
+	if (unlikely(!is_valid_virt_queue_idx(queue_id, 0, dev->nr_vring))) {
 		RTE_LOG(ERR, VHOST_DATA, "(%d) %s: invalid virtqueue idx %d.\n",
 			dev->vid, __func__, queue_id);
 		return 0;
@@ -1019,7 +1019,7 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 	if (!dev)
 		return 0;
 
-	if (unlikely(!is_valid_virt_queue_idx(queue_id, 1, dev->virt_qp_nb))) {
+	if (unlikely(!is_valid_virt_queue_idx(queue_id, 1, dev->nr_vring))) {
 		RTE_LOG(ERR, VHOST_DATA, "(%d) %s: invalid virtqueue idx %d.\n",
 			dev->vid, __func__, queue_id);
 		return 0;

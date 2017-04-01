@@ -233,13 +233,6 @@ numa_realloc(struct virtio_net *dev, int index)
 	struct vhost_virtqueue *old_vq, *vq;
 	int ret;
 
-	/*
-	 * vq is allocated on pairs, we should try to do realloc
-	 * on first queue of one queue pair only.
-	 */
-	if (index % VIRTIO_QNUM != 0)
-		return dev;
-
 	old_dev = dev;
 	vq = old_vq = dev->virtqueue[index];
 
@@ -257,8 +250,7 @@ numa_realloc(struct virtio_net *dev, int index)
 	if (oldnode != newnode) {
 		RTE_LOG(INFO, VHOST_CONFIG,
 			"reallocate vq from %d to %d node\n", oldnode, newnode);
-		vq = rte_malloc_socket(NULL, sizeof(*vq) * VIRTIO_QNUM, 0,
-				       newnode);
+		vq = rte_malloc_socket(NULL, sizeof(*vq), 0, newnode);
 		if (!vq)
 			return dev;
 
@@ -290,7 +282,6 @@ numa_realloc(struct virtio_net *dev, int index)
 
 out:
 	dev->virtqueue[index] = vq;
-	dev->virtqueue[index + 1] = vq + 1;
 	vhost_devices[dev->vid] = dev;
 
 	return dev;
@@ -621,14 +612,13 @@ vq_is_ready(struct vhost_virtqueue *vq)
 static int
 virtio_is_ready(struct virtio_net *dev)
 {
-	struct vhost_virtqueue *rvq, *tvq;
+	struct vhost_virtqueue *vq;
 	uint32_t i;
 
-	for (i = 0; i < dev->virt_qp_nb; i++) {
-		rvq = dev->virtqueue[i * VIRTIO_QNUM + VIRTIO_RXQ];
-		tvq = dev->virtqueue[i * VIRTIO_QNUM + VIRTIO_TXQ];
+	for (i = 0; i < dev->nr_vring; i++) {
+		vq = dev->virtqueue[i];
 
-		if (!vq_is_ready(rvq) || !vq_is_ready(tvq)) {
+		if (!vq_is_ready(vq)) {
 			RTE_LOG(INFO, VHOST_CONFIG,
 				"virtio is not ready for processing.\n");
 			return 0;
@@ -940,7 +930,6 @@ static int
 vhost_user_check_and_alloc_queue_pair(struct virtio_net *dev, VhostUserMsg *msg)
 {
 	uint16_t vring_idx;
-	uint16_t qp_idx;
 
 	switch (msg->request) {
 	case VHOST_USER_SET_VRING_KICK:
@@ -960,17 +949,16 @@ vhost_user_check_and_alloc_queue_pair(struct virtio_net *dev, VhostUserMsg *msg)
 		return 0;
 	}
 
-	qp_idx = vring_idx / VIRTIO_QNUM;
-	if (qp_idx >= VHOST_MAX_QUEUE_PAIRS) {
+	if (vring_idx >= VHOST_MAX_VRING) {
 		RTE_LOG(ERR, VHOST_CONFIG,
 			"invalid vring index: %u\n", vring_idx);
 		return -1;
 	}
 
-	if (dev->virtqueue[qp_idx * VIRTIO_QNUM])
+	if (dev->virtqueue[vring_idx])
 		return 0;
 
-	return alloc_vring_queue_pair(dev, qp_idx);
+	return alloc_vring_queue(dev, vring_idx);
 }
 
 int
