@@ -504,12 +504,6 @@ vhost_user_set_mem_table(struct virtio_net *dev, struct VhostUserMsg *pmsg)
 	uint32_t i;
 	int fd;
 
-	/* Remove from the data plane. */
-	if (dev->flags & VIRTIO_DEV_RUNNING) {
-		dev->flags &= ~VIRTIO_DEV_RUNNING;
-		dev->notify_ops->destroy_device(dev->vid);
-	}
-
 	if (dev->mem) {
 		free_mem_region(dev);
 		rte_free(dev->mem);
