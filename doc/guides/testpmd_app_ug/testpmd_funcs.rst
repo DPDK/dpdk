@@ -921,6 +921,13 @@ Set some TCs' strict link priority mode on a physical port::
 
    testpmd> set tx strict-link-priority (port_id) (tc_bitmap)
 
+set tc tx min bandwidth
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Set all TCs' TX min relative bandwidth (%) globally for all PF and VFs::
+
+   testpmd> set tc tx min-bandwidth (port_id) (bw1, bw2, ...)
+
 set flow_ctrl rx
 ~~~~~~~~~~~~~~~~
 

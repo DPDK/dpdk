@@ -330,6 +330,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"set tx strict-link-priority (port_id) (tc_bitmap)\n"
 			"    Set some TCs' strict link priority mode on a physical port.\n\n"
 
+			"set tc tx min-bandwidth (port_id) (bw1, bw2, ...)\n"
+			"    Set all TCs' min bandwidth(%%) for all PF and VFs.\n\n"
+
 			"vlan set filter (on|off) (port_id)\n"
 			"    Set the VLAN filter on a port.\n\n"
 
@@ -12644,6 +12647,68 @@ cmdline_parse_inst_t cmd_vf_tc_min_bw = {
 	},
 };
 
+static void
+cmd_tc_min_bw_parsed(
+	void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	__attribute__((unused)) void *data)
+{
+	struct cmd_vf_tc_bw_result *res = parsed_result;
+	struct rte_port *port;
+	uint8_t tc_num;
+	uint8_t bw[16];
+	int ret = -ENOTSUP;
+
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
+		return;
+
+	port = &ports[res->port_id];
+	/** Check if the port is not started **/
+	if (port->port_status != RTE_PORT_STOPPED) {
+		printf("Please stop port %d first\n", res->port_id);
+		return;
+	}
+
+	ret = vf_tc_min_bw_parse_bw_list(bw, &tc_num, res->bw_list);
+	if (ret)
+		return;
+
+#ifdef RTE_LIBRTE_IXGBE_PMD
+	ret = rte_pmd_ixgbe_set_tc_bw_alloc(res->port_id, tc_num, bw);
+#endif
+
+	switch (ret) {
+	case 0:
+		break;
+	case -EINVAL:
+		printf("invalid bandwidth\n");
+		break;
+	case -ENODEV:
+		printf("invalid port_id %d\n", res->port_id);
+		break;
+	case -ENOTSUP:
+		printf("function not implemented\n");
+		break;
+	default:
+		printf("programming error: (%s)\n", strerror(-ret));
+	}
+}
+
+cmdline_parse_inst_t cmd_tc_min_bw = {
+	.f = cmd_tc_min_bw_parsed,
+	.data = NULL,
+	.help_str = "set tc tx min-bandwidth <port_id> <bw1, bw2, ...>",
+	.tokens = {
+		(void *)&cmd_vf_tc_bw_set,
+		(void *)&cmd_vf_tc_bw_tc,
+		(void *)&cmd_vf_tc_bw_tx,
+		(void *)&cmd_vf_tc_bw_min_bw,
+		(void *)&cmd_vf_tc_bw_port_id,
+		(void *)&cmd_vf_tc_bw_bw_list,
+		NULL,
+	},
+};
+
 /* TC max bandwidth setting */
 static void
 cmd_vf_tc_max_bw_parsed(
@@ -13083,6 +13148,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_vf_tc_min_bw,
 	(cmdline_parse_inst_t *)&cmd_vf_tc_max_bw,
 	(cmdline_parse_inst_t *)&cmd_strict_link_prio,
+	(cmdline_parse_inst_t *)&cmd_tc_min_bw,
 	(cmdline_parse_inst_t *)&cmd_ddp_add,
 	(cmdline_parse_inst_t *)&cmd_ddp_get_list,
 	NULL,
