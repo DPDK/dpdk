@@ -501,6 +501,17 @@ M: Fan Zhang <roy.fan.zhang@intel.com>
 F: drivers/crypto/scheduler/
 F: doc/guides/cryptodevs/scheduler.rst
 
+Eventdev Drivers
+----------------
+M: Jerin Jacob <jerin.jacob@caviumnetworks.com>
+T: git://dpdk.org/next/dpdk-next-eventdev
+
+Software Eventdev PMD
+M: Harry van Haaren <harry.van.haaren@intel.com>
+F: drivers/event/sw/
+F: test/test/test_eventdev_sw.c
+F: doc/guides/eventdevs/sw.rst
+
 
 Packet processing
 -----------------
