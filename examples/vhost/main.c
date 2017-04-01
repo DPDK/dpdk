@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2017 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -65,7 +65,6 @@
 #define MBUF_CACHE_SIZE	128
 #define MBUF_DATA_SIZE	RTE_MBUF_DEFAULT_BUF_SIZE
 
-#define MAX_PKT_BURST 32		/* Max burst size for RX/TX */
 #define BURST_TX_DRAIN_US 100	/* TX drain every ~100us */
 
 #define BURST_RX_WAIT_US 15	/* Defines how long we wait between retries on RX */
@@ -128,6 +127,8 @@ static uint32_t enable_tso;
 
 static int client_mode;
 static int dequeue_zero_copy;
+
+static int builtin_net_driver;
 
 /* Specify timeout (in useconds) between retries on RX. */
 static uint32_t burst_rx_delay_time = BURST_RX_WAIT_US;
@@ -499,6 +500,7 @@ us_vhost_parse_args(int argc, char **argv)
 		{"tso", required_argument, NULL, 0},
 		{"client", no_argument, &client_mode, 1},
 		{"dequeue-zero-copy", no_argument, &dequeue_zero_copy, 1},
+		{"builtin-net-driver", no_argument, &builtin_net_driver, 1},
 		{NULL, 0, 0, 0},
 	};
 
@@ -795,7 +797,12 @@ virtio_xmit(struct vhost_dev *dst_vdev, struct vhost_dev *src_vdev,
 {
 	uint16_t ret;
 
-	ret = rte_vhost_enqueue_burst(dst_vdev->vid, VIRTIO_RXQ, &m, 1);
+	if (builtin_net_driver) {
+		ret = vs_enqueue_pkts(dst_vdev, VIRTIO_RXQ, &m, 1);
+	} else {
+		ret = rte_vhost_enqueue_burst(dst_vdev->vid, VIRTIO_RXQ, &m, 1);
+	}
+
 	if (enable_stats) {
 		rte_atomic64_inc(&dst_vdev->stats.rx_total_atomic);
 		rte_atomic64_add(&dst_vdev->stats.rx_atomic, ret);
@@ -1066,8 +1073,13 @@ drain_eth_rx(struct vhost_dev *vdev)
 		}
 	}
 
-	enqueue_count = rte_vhost_enqueue_burst(vdev->vid, VIRTIO_RXQ,
+	if (builtin_net_driver) {
+		enqueue_count = vs_enqueue_pkts(vdev, VIRTIO_RXQ,
 						pkts, rx_count);
+	} else {
+		enqueue_count = rte_vhost_enqueue_burst(vdev->vid, VIRTIO_RXQ,
+						pkts, rx_count);
+	}
 	if (enable_stats) {
 		rte_atomic64_add(&vdev->stats.rx_total_atomic, rx_count);
 		rte_atomic64_add(&vdev->stats.rx_atomic, enqueue_count);
@@ -1083,8 +1095,13 @@ drain_virtio_tx(struct vhost_dev *vdev)
 	uint16_t count;
 	uint16_t i;
 
-	count = rte_vhost_dequeue_burst(vdev->vid, VIRTIO_TXQ, mbuf_pool,
+	if (builtin_net_driver) {
+		count = vs_dequeue_pkts(vdev, VIRTIO_TXQ, mbuf_pool,
 					pkts, MAX_PKT_BURST);
+	} else {
+		count = rte_vhost_dequeue_burst(vdev->vid, VIRTIO_TXQ,
+					mbuf_pool, pkts, MAX_PKT_BURST);
+	}
 
 	/* setup VMDq for the first packet */
 	if (unlikely(vdev->ready == DEVICE_MAC_LEARNING) && count) {
@@ -1187,6 +1204,9 @@ destroy_device(int vid)
 		rte_pause();
 	}
 
+	if (builtin_net_driver)
+		vs_vhost_net_remove(vdev);
+
 	TAILQ_REMOVE(&lcore_info[vdev->coreid].vdev_list, vdev,
 		     lcore_vdev_entry);
 	TAILQ_REMOVE(&vhost_dev_list, vdev, global_vdev_entry);
@@ -1234,6 +1254,9 @@ new_device(int vid)
 		return -1;
 	}
 	vdev->vid = vid;
+
+	if (builtin_net_driver)
+		vs_vhost_net_setup(vdev);
 
 	TAILQ_INSERT_TAIL(&vhost_dev_list, vdev, global_vdev_entry);
 	vdev->vmdq_rx_q = vid * queues_per_pool + vmdq_queue_base;
@@ -1513,6 +1536,10 @@ main(int argc, char *argv[])
 			rte_exit(EXIT_FAILURE,
 				"vhost driver register failure.\n");
 		}
+
+		if (builtin_net_driver)
+			rte_vhost_driver_set_features(file, VIRTIO_NET_FEATURES);
+
 		if (mergeable == 0) {
 			rte_vhost_driver_disable_features(file,
 				1ULL << VIRTIO_NET_F_MRG_RXBUF);

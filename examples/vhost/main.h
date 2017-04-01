@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2017 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -45,11 +45,19 @@
 
 enum {VIRTIO_RXQ, VIRTIO_TXQ, VIRTIO_QNUM};
 
+#define MAX_PKT_BURST 32		/* Max burst size for RX/TX */
+
 struct device_statistics {
 	uint64_t	tx;
 	uint64_t	tx_total;
 	rte_atomic64_t	rx_atomic;
 	rte_atomic64_t	rx_total_atomic;
+};
+
+struct vhost_queue {
+	struct rte_vhost_vring	vr;
+	uint16_t		last_avail_idx;
+	uint16_t		last_used_idx;
 };
 
 struct vhost_dev {
@@ -69,9 +77,16 @@ struct vhost_dev {
 	volatile uint8_t remove;
 
 	int vid;
+	uint64_t features;
+	size_t hdr_len;
+	uint16_t nr_vrings;
+	struct rte_vhost_memory *mem;
 	struct device_statistics stats;
 	TAILQ_ENTRY(vhost_dev) global_vdev_entry;
 	TAILQ_ENTRY(vhost_dev) lcore_vdev_entry;
+
+#define MAX_QUEUE_PAIRS	4
+	struct vhost_queue queues[MAX_QUEUE_PAIRS * 2];
 } __rte_cache_aligned;
 
 TAILQ_HEAD(vhost_dev_tailq_list, vhost_dev);
@@ -92,4 +107,15 @@ struct lcore_info {
 	struct vhost_dev_tailq_list vdev_list;
 };
 
+/* we implement non-extra virtio net features */
+#define VIRTIO_NET_FEATURES	0
+
+void vs_vhost_net_setup(struct vhost_dev *dev);
+void vs_vhost_net_remove(struct vhost_dev *dev);
+uint16_t vs_enqueue_pkts(struct vhost_dev *dev, uint16_t queue_id,
+			 struct rte_mbuf **pkts, uint32_t count);
+
+uint16_t vs_dequeue_pkts(struct vhost_dev *dev, uint16_t queue_id,
+			 struct rte_mempool *mbuf_pool,
+			 struct rte_mbuf **pkts, uint16_t count);
 #endif /* _MAIN_H_ */

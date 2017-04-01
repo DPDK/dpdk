@@ -48,7 +48,7 @@ else
 APP = vhost-switch
 
 # all source are stored in SRCS-y
-SRCS-y := main.c
+SRCS-y := main.c virtio_net.c
 
 CFLAGS += -O2 -D_FILE_OFFSET_BITS=64
 CFLAGS += $(WERROR_FLAGS)
