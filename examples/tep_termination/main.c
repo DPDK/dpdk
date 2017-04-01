@@ -1263,7 +1263,13 @@ main(int argc, char *argv[])
 			"failed to register vhost driver callbacks.\n");
 	}
 
-	rte_vhost_driver_session_start();
+	if (rte_vhost_driver_start(dev_basename) < 0) {
+		rte_exit(EXIT_FAILURE,
+			"failed to start vhost driver.\n");
+	}
+
+	RTE_LCORE_FOREACH_SLAVE(lcore_id)
+		rte_eal_wait_lcore(lcore_id);
 
 	return 0;
 }

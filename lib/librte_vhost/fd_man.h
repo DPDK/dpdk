@@ -64,6 +64,6 @@ int fdset_add(struct fdset *pfdset, int fd,
 
 void *fdset_del(struct fdset *pfdset, int fd);
 
-void fdset_event_dispatch(struct fdset *pfdset);
+void *fdset_event_dispatch(void *arg);
 
 #endif

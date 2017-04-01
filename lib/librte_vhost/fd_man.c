@@ -210,8 +210,8 @@ fdset_del(struct fdset *pfdset, int fd)
  * will wait until the flag is reset to zero(which indicates the callback is
  * finished), then it could free the context after fdset_del.
  */
-void
-fdset_event_dispatch(struct fdset *pfdset)
+void *
+fdset_event_dispatch(void *arg)
 {
 	int i;
 	struct pollfd *pfd;
@@ -221,9 +221,10 @@ fdset_event_dispatch(struct fdset *pfdset)
 	int fd, numfds;
 	int remove1, remove2;
 	int need_shrink;
+	struct fdset *pfdset = arg;
 
 	if (pfdset == NULL)
-		return;
+		return NULL;
 
 	while (1) {
 
@@ -294,4 +295,6 @@ fdset_event_dispatch(struct fdset *pfdset)
 		if (need_shrink)
 			fdset_shrink(pfdset);
 	}
+
+	return NULL;
 }

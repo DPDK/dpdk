@@ -256,8 +256,19 @@ int rte_vhost_get_negotiated_features(int vid, uint64_t *features);
 /* Register callbacks. */
 int rte_vhost_driver_callback_register(const char *path,
 	struct vhost_device_ops const * const ops);
-/* Start vhost driver session blocking loop. */
-int rte_vhost_driver_session_start(void);
+
+/**
+ *
+ * Start the vhost-user driver.
+ *
+ * This function triggers the vhost-user negotiation.
+ *
+ * @param path
+ *  The vhost-user socket file path
+ * @return
+ *  0 on success, -1 on failure
+ */
+int rte_vhost_driver_start(const char *path);
 
 /**
  * Get the MTU value of the device if set in QEMU.

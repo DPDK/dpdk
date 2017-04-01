@@ -1545,9 +1545,16 @@ main(int argc, char *argv[])
 			rte_exit(EXIT_FAILURE,
 				"failed to register vhost driver callbacks.\n");
 		}
+
+		if (rte_vhost_driver_start(file) < 0) {
+			rte_exit(EXIT_FAILURE,
+				"failed to start vhost driver.\n");
+		}
 	}
 
-	rte_vhost_driver_session_start();
+	RTE_LCORE_FOREACH_SLAVE(lcore_id)
+		rte_eal_wait_lcore(lcore_id);
+
 	return 0;
 
 }

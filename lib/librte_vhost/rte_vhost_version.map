@@ -4,7 +4,6 @@ DPDK_2.0 {
 	rte_vhost_dequeue_burst;
 	rte_vhost_driver_callback_register;
 	rte_vhost_driver_register;
-	rte_vhost_driver_session_start;
 	rte_vhost_enable_guest_notification;
 	rte_vhost_enqueue_burst;
 
@@ -35,6 +34,7 @@ DPDK_17.05 {
 	rte_vhost_driver_enable_features;
 	rte_vhost_driver_get_features;
 	rte_vhost_driver_set_features;
+	rte_vhost_driver_start;
 	rte_vhost_get_mem_table;
 	rte_vhost_get_mtu;
 	rte_vhost_get_negotiated_features;

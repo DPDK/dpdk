@@ -315,6 +315,10 @@ API Changes
   * The vhost struct ``virtio_net_device_ops`` is renamed to
     ``vhost_device_ops``
 
+  * The vhost API ``rte_vhost_driver_session_start`` is removed. Instead,
+    ``rte_vhost_driver_start`` should be used, and no need to create a
+    thread to call it.
+
 
 ABI Changes
 -----------

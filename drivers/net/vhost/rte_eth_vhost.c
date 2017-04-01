@@ -128,9 +128,6 @@ static struct internal_list_head internal_list =
 
 static pthread_mutex_t internal_list_lock = PTHREAD_MUTEX_INITIALIZER;
 
-static rte_atomic16_t nb_started_ports;
-static pthread_t session_th;
-
 static struct rte_eth_link pmd_link = {
 		.link_speed = 10000,
 		.link_duplex = ETH_LINK_FULL_DUPLEX,
@@ -769,42 +766,6 @@ rte_eth_vhost_get_vid_from_port_id(uint8_t port_id)
 	return vid;
 }
 
-static void *
-vhost_driver_session(void *param __rte_unused)
-{
-	/* start event handling */
-	rte_vhost_driver_session_start();
-
-	return NULL;
-}
-
-static int
-vhost_driver_session_start(void)
-{
-	int ret;
-
-	ret = pthread_create(&session_th,
-			NULL, vhost_driver_session, NULL);
-	if (ret)
-		RTE_LOG(ERR, PMD, "Can't create a thread\n");
-
-	return ret;
-}
-
-static void
-vhost_driver_session_stop(void)
-{
-	int ret;
-
-	ret = pthread_cancel(session_th);
-	if (ret)
-		RTE_LOG(ERR, PMD, "Can't cancel the thread\n");
-
-	ret = pthread_join(session_th, NULL);
-	if (ret)
-		RTE_LOG(ERR, PMD, "Can't join the thread\n");
-}
-
 static int
 eth_dev_start(struct rte_eth_dev *dev)
 {
@@ -1120,10 +1081,10 @@ eth_dev_vhost_create(const char *name, char *iface_name, int16_t queues,
 		goto error;
 	}
 
-	/* We need only one message handling thread */
-	if (rte_atomic16_add_return(&nb_started_ports, 1) == 1) {
-		if (vhost_driver_session_start())
-			goto error;
+	if (rte_vhost_driver_start(iface_name) < 0) {
+		RTE_LOG(ERR, PMD, "Failed to start driver for %s\n",
+			iface_name);
+		goto error;
 	}
 
 	return data->port_id;
@@ -1249,9 +1210,6 @@ rte_pmd_vhost_remove(const char *name)
 	eth_dev_stop(eth_dev);
 
 	eth_dev_close(eth_dev);
-
-	if (rte_atomic16_sub_return(&nb_started_ports, 1) == 0)
-		vhost_driver_session_stop();
 
 	rte_free(vring_states[eth_dev->data->port_id]);
 	vring_states[eth_dev->data->port_id] = NULL;
