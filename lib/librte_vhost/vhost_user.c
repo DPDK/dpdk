@@ -92,7 +92,7 @@ static void
 free_mem_region(struct virtio_net *dev)
 {
 	uint32_t i;
-	struct virtio_memory_region *reg;
+	struct rte_vhost_mem_region *reg;
 
 	if (!dev || !dev->mem)
 		return;
@@ -310,7 +310,7 @@ numa_realloc(struct virtio_net *dev, int index __rte_unused)
 static uint64_t
 qva_to_vva(struct virtio_net *dev, uint64_t qva)
 {
-	struct virtio_memory_region *reg;
+	struct rte_vhost_mem_region *reg;
 	uint32_t i;
 
 	/* Find the region where the address lives. */
@@ -438,7 +438,7 @@ add_one_guest_page(struct virtio_net *dev, uint64_t guest_phys_addr,
 }
 
 static void
-add_guest_pages(struct virtio_net *dev, struct virtio_memory_region *reg,
+add_guest_pages(struct virtio_net *dev, struct rte_vhost_mem_region *reg,
 		uint64_t page_size)
 {
 	uint64_t reg_size = reg->size;
@@ -498,7 +498,7 @@ static int
 vhost_user_set_mem_table(struct virtio_net *dev, struct VhostUserMsg *pmsg)
 {
 	struct VhostUserMemory memory = pmsg->payload.memory;
-	struct virtio_memory_region *reg;
+	struct rte_vhost_mem_region *reg;
 	void *mmap_addr;
 	uint64_t mmap_size;
 	uint64_t mmap_offset;
@@ -525,8 +525,8 @@ vhost_user_set_mem_table(struct virtio_net *dev, struct VhostUserMsg *pmsg)
 						sizeof(struct guest_page));
 	}
 
-	dev->mem = rte_zmalloc("vhost-mem-table", sizeof(struct virtio_memory) +
-		sizeof(struct virtio_memory_region) * memory.nregions, 0);
+	dev->mem = rte_zmalloc("vhost-mem-table", sizeof(struct rte_vhost_memory) +
+		sizeof(struct rte_vhost_mem_region) * memory.nregions, 0);
 	if (dev->mem == NULL) {
 		RTE_LOG(ERR, VHOST_CONFIG,
 			"(%d) failed to allocate memory for dev->mem\n",

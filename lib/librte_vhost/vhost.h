@@ -166,7 +166,7 @@ struct guest_page {
  */
 struct virtio_net {
 	/* Frontend (QEMU) memory and memory region information */
-	struct virtio_memory	*mem;
+	struct rte_vhost_memory	*mem;
 	uint64_t		features;
 	uint64_t		protocol_features;
 	int			vid;
@@ -191,30 +191,6 @@ struct virtio_net {
 	uint32_t		max_guest_pages;
 	struct guest_page       *guest_pages;
 } __rte_cache_aligned;
-
-/**
- * Information relating to memory regions including offsets to
- * addresses in QEMUs memory file.
- */
-struct virtio_memory_region {
-	uint64_t guest_phys_addr;
-	uint64_t guest_user_addr;
-	uint64_t host_user_addr;
-	uint64_t size;
-	void	 *mmap_addr;
-	uint64_t mmap_size;
-	int fd;
-};
-
-
-/**
- * Memory structure includes region and mapping information.
- */
-struct virtio_memory {
-	uint32_t nregions;
-	struct virtio_memory_region regions[0];
-};
-
 
 /* Macros for printing using RTE_LOG */
 #define RTE_LOGTYPE_VHOST_CONFIG RTE_LOGTYPE_USER1
@@ -255,7 +231,7 @@ extern struct virtio_net *vhost_devices[MAX_VHOST_DEVICE];
 static inline uint64_t __attribute__((always_inline))
 gpa_to_vva(struct virtio_net *dev, uint64_t gpa)
 {
-	struct virtio_memory_region *reg;
+	struct rte_vhost_mem_region *reg;
 	uint32_t i;
 
 	for (i = 0; i < dev->mem->nregions; i++) {

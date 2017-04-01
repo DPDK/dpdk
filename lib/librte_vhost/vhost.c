@@ -359,6 +359,29 @@ rte_vhost_get_ifname(int vid, char *buf, size_t len)
 	return 0;
 }
 
+int
+rte_vhost_get_mem_table(int vid, struct rte_vhost_memory **mem)
+{
+	struct virtio_net *dev;
+	struct rte_vhost_memory *m;
+	size_t size;
+
+	dev = get_device(vid);
+	if (!dev)
+		return -1;
+
+	size = dev->mem->nregions * sizeof(struct rte_vhost_mem_region);
+	m = malloc(size);
+	if (!m)
+		return -1;
+
+	m->nregions = dev->mem->nregions;
+	memcpy(m->regions, dev->mem->regions, size);
+	*mem = m;
+
+	return 0;
+}
+
 uint16_t
 rte_vhost_avail_entries(int vid, uint16_t queue_id)
 {

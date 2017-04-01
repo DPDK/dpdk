@@ -59,6 +59,28 @@
 enum {VIRTIO_RXQ, VIRTIO_TXQ, VIRTIO_QNUM};
 
 /**
+ * Information relating to memory regions including offsets to
+ * addresses in QEMUs memory file.
+ */
+struct rte_vhost_mem_region {
+	uint64_t guest_phys_addr;
+	uint64_t guest_user_addr;
+	uint64_t host_user_addr;
+	uint64_t size;
+	void	 *mmap_addr;
+	uint64_t mmap_size;
+	int fd;
+};
+
+/**
+ * Memory structure includes region and mapping information.
+ */
+struct rte_vhost_memory {
+	uint32_t nregions;
+	struct rte_vhost_mem_region regions[0];
+};
+
+/**
  * Device and vring operations.
  */
 struct virtio_net_device_ops {
@@ -247,5 +269,21 @@ uint16_t rte_vhost_enqueue_burst(int vid, uint16_t queue_id,
  */
 uint16_t rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 	struct rte_mempool *mbuf_pool, struct rte_mbuf **pkts, uint16_t count);
+
+/**
+ * Get guest mem table: a list of memory regions.
+ *
+ * An rte_vhost_vhost_memory object will be allocated internaly, to hold the
+ * guest memory regions. Application should free it at destroy_device()
+ * callback.
+ *
+ * @param vid
+ *  vhost device ID
+ * @param mem
+ *  To store the returned mem regions
+ * @return
+ *  0 on success, -1 on failure
+ */
+int rte_vhost_get_mem_table(int vid, struct rte_vhost_memory **mem);
 
 #endif /* _VIRTIO_NET_H_ */

@@ -35,6 +35,7 @@ DPDK_17.05 {
 	rte_vhost_driver_enable_features;
 	rte_vhost_driver_get_features;
 	rte_vhost_driver_set_features;
+	rte_vhost_get_mem_table;
 	rte_vhost_get_mtu;
 
 } DPDK_16.07;
