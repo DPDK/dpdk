@@ -11481,6 +11481,32 @@ int rte_pmd_i40e_set_vf_vlan_tag(uint8_t port, uint16_t vf_id, uint8_t on)
 	return ret;
 }
 
+static int
+i40e_vlan_filter_count(struct i40e_vsi *vsi)
+{
+	uint32_t j, k;
+	uint16_t vlan_id;
+	int count = 0;
+
+	for (j = 0; j < I40E_VFTA_SIZE; j++) {
+		if (!vsi->vfta[j])
+			continue;
+
+		for (k = 0; k < I40E_UINT32_BIT_SIZE; k++) {
+			if (!(vsi->vfta[j] & (1 << k)))
+				continue;
+
+			vlan_id = j * I40E_UINT32_BIT_SIZE + k;
+			if (!vlan_id)
+				continue;
+
+			count++;
+		}
+	}
+
+	return count;
+}
+
 int rte_pmd_i40e_set_vf_vlan_filter(uint8_t port, uint16_t vlan_id,
 				    uint64_t vf_mask, uint8_t on)
 {
@@ -11498,7 +11524,7 @@ int rte_pmd_i40e_set_vf_vlan_filter(uint8_t port, uint16_t vlan_id,
 	if (!is_device_supported(dev, &rte_i40e_pmd))
 		return -ENOTSUP;
 
-	if (vlan_id > ETHER_MAX_VLAN_ID) {
+	if (vlan_id > ETHER_MAX_VLAN_ID || !vlan_id) {
 		PMD_DRV_LOG(ERR, "Invalid VLAN ID.");
 		return -EINVAL;
 	}
@@ -11532,15 +11558,25 @@ int rte_pmd_i40e_set_vf_vlan_filter(uint8_t port, uint16_t vlan_id,
 			if (on) {
 				if (!vsi->vlan_filter_on) {
 					vsi->vlan_filter_on = true;
+					i40e_aq_set_vsi_vlan_promisc(hw,
+								     vsi->seid,
+								     false,
+								     NULL);
 					if (!vsi->vlan_anti_spoof_on)
 						i40e_add_rm_all_vlan_filter(
 							vsi, true);
 				}
-				i40e_aq_set_vsi_vlan_promisc(hw, vsi->seid,
-							     false, NULL);
 				ret = i40e_vsi_add_vlan(vsi, vlan_id);
 			} else {
 				ret = i40e_vsi_delete_vlan(vsi, vlan_id);
+
+				if (!i40e_vlan_filter_count(vsi)) {
+					vsi->vlan_filter_on = false;
+					i40e_aq_set_vsi_vlan_promisc(hw,
+								     vsi->seid,
+								     true,
+								     NULL);
+				}
 			}
 		}
 	}
