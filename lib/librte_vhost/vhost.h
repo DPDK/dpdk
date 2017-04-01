@@ -39,8 +39,12 @@
 #include <sys/queue.h>
 #include <unistd.h>
 #include <linux/vhost.h>
+#include <linux/virtio_net.h>
+#include <sys/socket.h>
+#include <linux/if.h>
 
 #include <rte_log.h>
+#include <rte_ether.h>
 
 #include "rte_virtio_net.h"
 

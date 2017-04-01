@@ -36,6 +36,8 @@
 
 #include <sys/queue.h>
 
+#include <rte_ether.h>
+
 /* Macros for printing using RTE_LOG */
 #define RTE_LOGTYPE_VHOST_CONFIG RTE_LOGTYPE_USER1
 #define RTE_LOGTYPE_VHOST_DATA   RTE_LOGTYPE_USER2

@@ -42,14 +42,10 @@
 #include <stdint.h>
 #include <linux/vhost.h>
 #include <linux/virtio_ring.h>
-#include <linux/virtio_net.h>
 #include <sys/eventfd.h>
-#include <sys/socket.h>
-#include <linux/if.h>
 
 #include <rte_memory.h>
 #include <rte_mempool.h>
-#include <rte_ether.h>
 
 #define RTE_VHOST_USER_CLIENT		(1ULL << 0)
 #define RTE_VHOST_USER_NO_RECONNECT	(1ULL << 1)

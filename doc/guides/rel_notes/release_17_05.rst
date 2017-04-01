@@ -305,6 +305,13 @@ API Changes
     * ``VIRTIO_TXQ``
     * ``VIRTIO_QNUM``
 
+  * Following net specific header files are removed in ``rte_virtio_net.h``
+
+    * ``linux/virtio_net.h``
+    * ``sys/socket.h``
+    * ``linux/if.h``
+    * ``rte_ether.h``
+
 
 ABI Changes
 -----------
