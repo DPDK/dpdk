@@ -53,7 +53,7 @@ vhost library should be able to:
 Vhost API Overview
 ------------------
 
-The following is an overview of the Vhost API functions:
+The following is an overview of some key Vhost API functions:
 
 * ``rte_vhost_driver_register(path, flags)``
 
@@ -110,6 +110,12 @@ The following is an overview of the Vhost API functions:
       of those segments, thus the fewer the segments, the quicker we will get
       the mapping. NOTE: we may speed it by using tree searching in future.
 
+* ``rte_vhost_driver_set_features(path, features)``
+
+  This function sets the feature bits the vhost-user driver supports. The
+  vhost-user driver could be vhost-user net, yet it could be something else,
+  say, vhost-user SCSI.
+
 * ``rte_vhost_driver_session_start()``
 
   This function starts the vhost session loop to handle vhost messages. It
@@ -145,7 +151,7 @@ The following is an overview of the Vhost API functions:
 
   Receives (dequeues) ``count`` packets from guest, and stored them at ``pkts``.
 
-* ``rte_vhost_feature_disable/rte_vhost_feature_enable(feature_mask)``
+* ``rte_vhost_driver_disable/enable_features(path, features))``
 
   This function disables/enables some features. For example, it can be used to
   disable mergeable buffers and TSO features, which both are enabled by

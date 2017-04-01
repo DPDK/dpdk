@@ -34,6 +34,10 @@ DPDK_16.07 {
 DPDK_17.05 {
 	global:
 
+	rte_vhost_driver_disable_features;
+	rte_vhost_driver_enable_features;
+	rte_vhost_driver_get_features;
+	rte_vhost_driver_set_features;
 	rte_vhost_get_mtu;
 
 } DPDK_16.07;

@@ -94,6 +94,61 @@ int rte_vhost_driver_register(const char *path, uint64_t flags);
 /* Unregister vhost driver. This is only meaningful to vhost user. */
 int rte_vhost_driver_unregister(const char *path);
 
+/**
+ * Set the feature bits the vhost-user driver supports.
+ *
+ * @param path
+ *  The vhost-user socket file path
+ * @param features
+ *  Supported features
+ * @return
+ *  0 on success, -1 on failure
+ */
+int rte_vhost_driver_set_features(const char *path, uint64_t features);
+
+/**
+ * Enable vhost-user driver features.
+ *
+ * Note that
+ * - the param features should be a subset of the feature bits provided
+ *   by rte_vhost_driver_set_features().
+ * - it must be invoked before vhost-user negotiation starts.
+ *
+ * @param path
+ *  The vhost-user socket file path
+ * @param features
+ *  Features to enable
+ * @return
+ *  0 on success, -1 on failure
+ */
+int rte_vhost_driver_enable_features(const char *path, uint64_t features);
+
+/**
+ * Disable vhost-user driver features.
+ *
+ * The two notes at rte_vhost_driver_enable_features() also apply here.
+ *
+ * @param path
+ *  The vhost-user socket file path
+ * @param features
+ *  Features to disable
+ * @return
+ *  0 on success, -1 on failure
+ */
+int rte_vhost_driver_disable_features(const char *path, uint64_t features);
+
+/**
+ * Get the feature bits before feature negotiation.
+ *
+ * @param path
+ *  The vhost-user socket file path
+ * @param features
+ *  A pointer to store the queried feature bits
+ * @return
+ *  0 on success, -1 on failure
+ */
+int rte_vhost_driver_get_features(const char *path, uint64_t *features);
+
 /* Register callbacks. */
 int rte_vhost_driver_callback_register(struct virtio_net_device_ops const * const);
 /* Start vhost driver session blocking loop. */

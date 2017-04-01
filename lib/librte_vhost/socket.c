@@ -67,6 +67,16 @@ struct vhost_user_socket {
 	bool is_server;
 	bool reconnect;
 	bool dequeue_zero_copy;
+
+	/*
+	 * The "supported_features" indicates the feature bits the
+	 * vhost driver supports. The "features" indicates the feature
+	 * bits after the rte_vhost_driver_features_disable/enable().
+	 * It is also the final feature bits used for vhost-user
+	 * features negotiation.
+	 */
+	uint64_t supported_features;
+	uint64_t features;
 };
 
 struct vhost_user_connection {
@@ -488,6 +498,88 @@ vhost_user_create_client(struct vhost_user_socket *vsocket)
 	pthread_mutex_unlock(&reconn_list.mutex);
 
 	return 0;
+}
+
+static struct vhost_user_socket *
+find_vhost_user_socket(const char *path)
+{
+	int i;
+
+	for (i = 0; i < vhost_user.vsocket_cnt; i++) {
+		struct vhost_user_socket *vsocket = vhost_user.vsockets[i];
+
+		if (!strcmp(vsocket->path, path))
+			return vsocket;
+	}
+
+	return NULL;
+}
+
+int
+rte_vhost_driver_disable_features(const char *path, uint64_t features)
+{
+	struct vhost_user_socket *vsocket;
+
+	pthread_mutex_lock(&vhost_user.mutex);
+	vsocket = find_vhost_user_socket(path);
+	if (vsocket)
+		vsocket->features &= ~features;
+	pthread_mutex_unlock(&vhost_user.mutex);
+
+	return vsocket ? 0 : -1;
+}
+
+int
+rte_vhost_driver_enable_features(const char *path, uint64_t features)
+{
+	struct vhost_user_socket *vsocket;
+
+	pthread_mutex_lock(&vhost_user.mutex);
+	vsocket = find_vhost_user_socket(path);
+	if (vsocket) {
+		if ((vsocket->supported_features & features) != features) {
+			/*
+			 * trying to enable features the driver doesn't
+			 * support.
+			 */
+			pthread_mutex_unlock(&vhost_user.mutex);
+			return -1;
+		}
+		vsocket->features |= features;
+	}
+	pthread_mutex_unlock(&vhost_user.mutex);
+
+	return vsocket ? 0 : -1;
+}
+
+int
+rte_vhost_driver_set_features(const char *path, uint64_t features)
+{
+	struct vhost_user_socket *vsocket;
+
+	pthread_mutex_lock(&vhost_user.mutex);
+	vsocket = find_vhost_user_socket(path);
+	if (vsocket) {
+		vsocket->supported_features = features;
+		vsocket->features = features;
+	}
+	pthread_mutex_unlock(&vhost_user.mutex);
+
+	return vsocket ? 0 : -1;
+}
+
+int
+rte_vhost_driver_get_features(const char *path, uint64_t *features)
+{
+	struct vhost_user_socket *vsocket;
+
+	pthread_mutex_lock(&vhost_user.mutex);
+	vsocket = find_vhost_user_socket(path);
+	if (vsocket)
+		*features = vsocket->features;
+	pthread_mutex_unlock(&vhost_user.mutex);
+
+	return vsocket ? 0 : -1;
 }
 
 /*
