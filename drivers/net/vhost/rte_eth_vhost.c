@@ -1001,31 +1001,6 @@ eth_link_update(struct rte_eth_dev *dev __rte_unused,
 	return 0;
 }
 
-/**
- * Disable features in feature_mask. Returns 0 on success.
- */
-int
-rte_eth_vhost_feature_disable(uint64_t feature_mask)
-{
-	return rte_vhost_feature_disable(feature_mask);
-}
-
-/**
- * Enable features in feature_mask. Returns 0 on success.
- */
-int
-rte_eth_vhost_feature_enable(uint64_t feature_mask)
-{
-	return rte_vhost_feature_enable(feature_mask);
-}
-
-/* Returns currently supported vhost features */
-uint64_t
-rte_eth_vhost_feature_get(void)
-{
-	return rte_vhost_feature_get();
-}
-
 static const struct eth_dev_ops ops = {
 	.dev_start = eth_dev_start,
 	.dev_stop = eth_dev_stop,

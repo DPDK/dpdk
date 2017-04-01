@@ -280,6 +280,19 @@ API Changes
     flagged by the compiler. The return value usage should be checked
     while fixing the compiler error due to the extra parameter.
 
+* **Reworked rte_vhost library**
+
+  The rte_vhost library has been reworked to make it generic enough so that
+  user could build other vhost-user drivers on top of it. To achieve that,
+  following changes have been made:
+
+  * The following vhost-pmd APIs are removed:
+
+    * ``rte_eth_vhost_feature_disable``
+    * ``rte_eth_vhost_feature_enable``
+    * ``rte_eth_vhost_feature_get``
+
+
 ABI Changes
 -----------
 

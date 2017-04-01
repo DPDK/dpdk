@@ -43,36 +43,6 @@ extern "C" {
 
 #include <rte_virtio_net.h>
 
-/**
- * Disable features in feature_mask.
- *
- * @param feature_mask
- *  Vhost features defined in "linux/virtio_net.h".
- * @return
- *  - On success, zero.
- *  - On failure, a negative value.
- */
-int rte_eth_vhost_feature_disable(uint64_t feature_mask);
-
-/**
- * Enable features in feature_mask.
- *
- * @param feature_mask
- *  Vhost features defined in "linux/virtio_net.h".
- * @return
- *  - On success, zero.
- *  - On failure, a negative value.
- */
-int rte_eth_vhost_feature_enable(uint64_t feature_mask);
-
-/**
- * Returns currently supported vhost features.
- *
- * @return
- *  Vhost features defined in "linux/virtio_net.h".
- */
-uint64_t rte_eth_vhost_feature_get(void);
-
 /*
  * Event description.
  */
