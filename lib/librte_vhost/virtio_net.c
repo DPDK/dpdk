@@ -39,7 +39,7 @@
 #include <rte_memcpy.h>
 #include <rte_ether.h>
 #include <rte_ip.h>
-#include <rte_virtio_net.h>
+#include <rte_vhost.h>
 #include <rte_tcp.h>
 #include <rte_udp.h>
 #include <rte_sctp.h>

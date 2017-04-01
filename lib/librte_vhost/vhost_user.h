@@ -37,7 +37,7 @@
 #include <stdint.h>
 #include <linux/vhost.h>
 
-#include "rte_virtio_net.h"
+#include "rte_vhost.h"
 
 /* refer to hw/virtio/vhost-user.c */
 

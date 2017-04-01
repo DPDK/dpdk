@@ -319,6 +319,9 @@ API Changes
     ``rte_vhost_driver_start`` should be used, and no need to create a
     thread to call it.
 
+  * The vhost public header file ``rte_virtio_net.h`` is renamed to
+    ``rte_vhost.h``
+
 
 ABI Changes
 -----------

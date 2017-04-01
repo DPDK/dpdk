@@ -51,6 +51,6 @@ SRCS-$(CONFIG_RTE_LIBRTE_VHOST) := fd_man.c socket.c vhost.c vhost_user.c \
 				   virtio_net.c
 
 # install includes
-SYMLINK-$(CONFIG_RTE_LIBRTE_VHOST)-include += rte_virtio_net.h
+SYMLINK-$(CONFIG_RTE_LIBRTE_VHOST)-include += rte_vhost.h
 
 include $(RTE_SDK)/mk/rte.lib.mk

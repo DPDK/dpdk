@@ -95,15 +95,6 @@ Deprecation Notices
   Target release for removal of the legacy API will be defined once most
   PMDs have switched to rte_flow.
 
-* vhost: API/ABI changes are planned for 17.05, for making DPDK vhost library
-  generic enough so that applications can build different vhost-user drivers
-  (instead of vhost-user net only) on top of that.
-  Specifically, ``virtio_net_device_ops`` will be renamed to ``vhost_device_ops``.
-  Correspondingly, some API's parameter need be changed. Few more functions also
-  need be reworked to let it be device aware. For example, different virtio device
-  has different feature set, meaning functions like ``rte_vhost_feature_disable``
-  need be changed. Last, file rte_virtio_net.h will be renamed to rte_vhost.h.
-
 * ABI changes are planned for 17.05 in the ``rte_cryptodev_ops`` structure.
   A pointer to a rte_cryptodev_config structure will be added to the
   function prototype ``cryptodev_configure_t``, as a new parameter.

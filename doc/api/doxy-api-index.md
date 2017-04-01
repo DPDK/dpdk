@@ -47,7 +47,7 @@ There are many libraries, so their headers may be grouped by topics:
 
 - **device specific**:
   [bond]               (@ref rte_eth_bond.h),
-  [vhost]              (@ref rte_virtio_net.h),
+  [vhost]              (@ref rte_vhost.h),
   [KNI]                (@ref rte_kni.h),
   [ixgbe]              (@ref rte_pmd_ixgbe.h),
   [i40e]               (@ref rte_pmd_i40e.h)

@@ -49,7 +49,7 @@
 #include <rte_tcp.h>
 
 #include "main.h"
-#include "rte_virtio_net.h"
+#include "rte_vhost.h"
 #include "vxlan.h"
 #include "vxlan_setup.h"
 

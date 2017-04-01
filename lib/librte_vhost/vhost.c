@@ -45,7 +45,7 @@
 #include <rte_string_fns.h>
 #include <rte_memory.h>
 #include <rte_malloc.h>
-#include <rte_virtio_net.h>
+#include <rte_vhost.h>
 
 #include "vhost.h"
 

@@ -49,7 +49,7 @@
 #include <rte_log.h>
 #include <rte_string_fns.h>
 #include <rte_malloc.h>
-#include <rte_virtio_net.h>
+#include <rte_vhost.h>
 
 #include "main.h"
 #include "vxlan.h"

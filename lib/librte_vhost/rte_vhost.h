@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2017 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -31,12 +31,12 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _VIRTIO_NET_H_
-#define _VIRTIO_NET_H_
+#ifndef _RTE_VHOST_H_
+#define _RTE_VHOST_H_
 
 /**
  * @file
- * Interface to vhost net
+ * Interface to vhost-user
  */
 
 #include <stdint.h>
@@ -424,4 +424,4 @@ int rte_vhost_get_mem_table(int vid, struct rte_vhost_memory **mem);
 int rte_vhost_get_vhost_vring(int vid, uint16_t vring_idx,
 			      struct rte_vhost_vring *vring);
 
-#endif /* _VIRTIO_NET_H_ */
+#endif /* _RTE_VHOST_H_ */

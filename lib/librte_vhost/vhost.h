@@ -46,7 +46,7 @@
 #include <rte_log.h>
 #include <rte_ether.h>
 
-#include "rte_virtio_net.h"
+#include "rte_vhost.h"
 
 /* Used to indicate that the device is running on a data core */
 #define VIRTIO_DEV_RUNNING 1

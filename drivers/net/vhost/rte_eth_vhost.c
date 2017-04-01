@@ -40,7 +40,7 @@
 #include <rte_memcpy.h>
 #include <rte_vdev.h>
 #include <rte_kvargs.h>
-#include <rte_virtio_net.h>
+#include <rte_vhost.h>
 #include <rte_spinlock.h>
 
 #include "rte_eth_vhost.h"
