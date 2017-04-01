@@ -428,6 +428,11 @@ struct ixgbe_macsec_stats {
 	uint64_t in_pkts_notusingsa;
 };
 
+/* The configuration of bandwidth */
+struct ixgbe_bw_conf {
+	uint8_t tc_num; /* Number of TCs. */
+};
+
 /*
  * Structure to store private data for each driver instance (for each port).
  */
@@ -449,6 +454,7 @@ struct ixgbe_adapter {
 #endif /* RTE_NIC_BYPASS */
 	struct ixgbe_filter_info    filter;
 	struct ixgbe_l2_tn_info     l2_tn;
+	struct ixgbe_bw_conf        bw_conf;
 
 	bool rx_bulk_alloc_allowed;
 	bool rx_vec_allowed;
@@ -501,6 +507,9 @@ struct ixgbe_adapter {
 
 #define IXGBE_DEV_PRIVATE_TO_L2_TN_INFO(adapter) \
 	(&((struct ixgbe_adapter *)adapter)->l2_tn)
+
+#define IXGBE_DEV_PRIVATE_TO_BW_CONF(adapter) \
+	(&((struct ixgbe_adapter *)adapter)->bw_conf)
 
 /*
  * RX/TX function prototypes

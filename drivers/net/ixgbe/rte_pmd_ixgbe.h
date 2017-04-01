@@ -405,6 +405,29 @@ rte_pmd_ixgbe_set_vf_vlan_filter(uint8_t port, uint16_t vlan, uint64_t vf_mask, 
 int rte_pmd_ixgbe_set_vf_rate_limit(uint8_t port, uint16_t vf, uint16_t tx_rate, uint64_t q_msk);
 
 /**
+ * Set all the TCs' bandwidth weight.
+ *
+ * The bw_weight means the percentage occupied by the TC.
+ * It can be taken as the relative min bandwidth setting.
+ *
+ * @param port
+ *    The port identifier of the Ethernet device.
+ * @param tc_num
+ *    Number of TCs.
+ * @param bw_weight
+ *    An array of relative bandwidth weight for all the TCs.
+ *    The summary of the bw_weight should be 100.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port* invalid.
+ *   - (-EINVAL) if bad parameter.
+ *   - (-ENOTSUP) not supported by firmware.
+ */
+int rte_pmd_ixgbe_set_tc_bw_alloc(uint8_t port,
+				  uint8_t tc_num,
+				  uint8_t *bw_weight);
+
+/**
  * Response sent back to ixgbe driver from user app after callback
  */
 enum rte_pmd_ixgbe_mb_event_rsp {

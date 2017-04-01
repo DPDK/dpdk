@@ -3762,6 +3762,8 @@ ixgbe_dcb_hw_configure(struct rte_eth_dev *dev,
 	uint32_t max_frame = dev->data->mtu + ETHER_HDR_LEN + ETHER_CRC_LEN;
 	struct ixgbe_hw *hw =
 			IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct ixgbe_bw_conf *bw_conf =
+		IXGBE_DEV_PRIVATE_TO_BW_CONF(dev->data->dev_private);
 
 	switch (dev->data->dev_conf.rxmode.mq_mode) {
 	case ETH_MQ_RX_VMDQ_DCB:
@@ -3833,8 +3835,9 @@ ixgbe_dcb_hw_configure(struct rte_eth_dev *dev,
 		/* Re-configure 4 TCs BW */
 		for (i = 0; i < nb_tcs; i++) {
 			tc = &dcb_config->tc_config[i];
-			tc->path[IXGBE_DCB_TX_CONFIG].bwg_percent =
-						(uint8_t)(100 / nb_tcs);
+			if (bw_conf->tc_num != nb_tcs)
+				tc->path[IXGBE_DCB_TX_CONFIG].bwg_percent =
+					(uint8_t)(100 / nb_tcs);
 			tc->path[IXGBE_DCB_RX_CONFIG].bwg_percent =
 						(uint8_t)(100 / nb_tcs);
 		}
@@ -3847,8 +3850,9 @@ ixgbe_dcb_hw_configure(struct rte_eth_dev *dev,
 		/* Re-configure 8 TCs BW */
 		for (i = 0; i < nb_tcs; i++) {
 			tc = &dcb_config->tc_config[i];
-			tc->path[IXGBE_DCB_TX_CONFIG].bwg_percent =
-				(uint8_t)(100 / nb_tcs + (i & 1));
+			if (bw_conf->tc_num != nb_tcs)
+				tc->path[IXGBE_DCB_TX_CONFIG].bwg_percent =
+					(uint8_t)(100 / nb_tcs + (i & 1));
 			tc->path[IXGBE_DCB_RX_CONFIG].bwg_percent =
 				(uint8_t)(100 / nb_tcs + (i & 1));
 		}

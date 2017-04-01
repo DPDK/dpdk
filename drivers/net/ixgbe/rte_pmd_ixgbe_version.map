@@ -36,4 +36,5 @@ DPDK_17.05 {
 	global:
 
 	rte_pmd_ixgbe_ping_vf;
+	rte_pmd_ixgbe_set_tc_bw_alloc;
 } DPDK_17.02;

@@ -1135,6 +1135,8 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev)
 		IXGBE_DEV_PRIVATE_TO_DCB_CFG(eth_dev->data->dev_private);
 	struct ixgbe_filter_info *filter_info =
 		IXGBE_DEV_PRIVATE_TO_FILTER_INFO(eth_dev->data->dev_private);
+	struct ixgbe_bw_conf *bw_conf =
+		IXGBE_DEV_PRIVATE_TO_BW_CONF(eth_dev->data->dev_private);
 	uint32_t ctrl_ext;
 	uint16_t csum;
 	int diag, i;
@@ -1345,6 +1347,9 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev)
 	TAILQ_INIT(&filter_fdir_list);
 	TAILQ_INIT(&filter_l2_tunnel_list);
 	TAILQ_INIT(&ixgbe_flow_list);
+
+	/* initialize bandwidth configuration info */
+	memset(bw_conf, 0, sizeof(struct ixgbe_bw_conf));
 
 	return 0;
 }
@@ -8696,6 +8701,79 @@ ixgbe_clear_all_l2_tn_filter(struct rte_eth_dev *dev)
 		if (ret < 0)
 			return ret;
 	}
+
+	return 0;
+}
+
+int
+rte_pmd_ixgbe_set_tc_bw_alloc(uint8_t port,
+			      uint8_t tc_num,
+			      uint8_t *bw_weight)
+{
+	struct rte_eth_dev *dev;
+	struct ixgbe_dcb_config *dcb_config;
+	struct ixgbe_dcb_tc_config *tc;
+	struct rte_eth_conf *eth_conf;
+	struct ixgbe_bw_conf *bw_conf;
+	uint8_t i;
+	uint8_t nb_tcs;
+	uint16_t sum;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+
+	if (!is_device_supported(dev, &rte_ixgbe_pmd))
+		return -ENOTSUP;
+
+	if (tc_num > IXGBE_DCB_MAX_TRAFFIC_CLASS) {
+		PMD_DRV_LOG(ERR, "TCs should be no more than %d.",
+			    IXGBE_DCB_MAX_TRAFFIC_CLASS);
+		return -EINVAL;
+	}
+
+	dcb_config = IXGBE_DEV_PRIVATE_TO_DCB_CFG(dev->data->dev_private);
+	bw_conf = IXGBE_DEV_PRIVATE_TO_BW_CONF(dev->data->dev_private);
+	eth_conf = &dev->data->dev_conf;
+
+	if (eth_conf->txmode.mq_mode == ETH_MQ_TX_DCB) {
+		nb_tcs = eth_conf->tx_adv_conf.dcb_tx_conf.nb_tcs;
+	} else if (eth_conf->txmode.mq_mode == ETH_MQ_TX_VMDQ_DCB) {
+		if (eth_conf->tx_adv_conf.vmdq_dcb_tx_conf.nb_queue_pools ==
+		    ETH_32_POOLS)
+			nb_tcs = ETH_4_TCS;
+		else
+			nb_tcs = ETH_8_TCS;
+	} else {
+		nb_tcs = 1;
+	}
+
+	if (nb_tcs != tc_num) {
+		PMD_DRV_LOG(ERR,
+			    "Weight should be set for all %d enabled TCs.",
+			    nb_tcs);
+		return -EINVAL;
+	}
+
+	sum = 0;
+	for (i = 0; i < nb_tcs; i++)
+		sum += bw_weight[i];
+	if (sum != 100) {
+		PMD_DRV_LOG(ERR,
+			    "The summary of the TC weight should be 100.");
+		return -EINVAL;
+	}
+
+	for (i = 0; i < nb_tcs; i++) {
+		tc = &dcb_config->tc_config[i];
+		tc->path[IXGBE_DCB_TX_CONFIG].bwg_percent = bw_weight[i];
+	}
+	for (; i < IXGBE_DCB_MAX_TRAFFIC_CLASS; i++) {
+		tc = &dcb_config->tc_config[i];
+		tc->path[IXGBE_DCB_TX_CONFIG].bwg_percent = 0;
+	}
+
+	bw_conf->tc_num = nb_tcs;
 
 	return 0;
 }
