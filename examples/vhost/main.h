@@ -41,6 +41,8 @@
 #define RTE_LOGTYPE_VHOST_DATA   RTE_LOGTYPE_USER2
 #define RTE_LOGTYPE_VHOST_PORT   RTE_LOGTYPE_USER3
 
+enum {VIRTIO_RXQ, VIRTIO_TXQ, VIRTIO_QNUM};
+
 struct device_statistics {
 	uint64_t	tx;
 	uint64_t	tx_total;

@@ -299,6 +299,12 @@ API Changes
   * The vhost API ``rte_vhost_get_queue_num`` is deprecated, instead,
     ``rte_vhost_get_vring_num`` should be used.
 
+  * Following macros are removed in ``rte_virtio_net.h``
+
+    * ``VIRTIO_RXQ``
+    * ``VIRTIO_TXQ``
+    * ``VIRTIO_QNUM``
+
 
 ABI Changes
 -----------

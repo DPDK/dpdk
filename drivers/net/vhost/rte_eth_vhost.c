@@ -45,6 +45,8 @@
 
 #include "rte_eth_vhost.h"
 
+enum {VIRTIO_RXQ, VIRTIO_TXQ, VIRTIO_QNUM};
+
 #define ETH_VHOST_IFACE_ARG		"iface"
 #define ETH_VHOST_QUEUES_ARG		"queues"
 #define ETH_VHOST_CLIENT_ARG		"client"

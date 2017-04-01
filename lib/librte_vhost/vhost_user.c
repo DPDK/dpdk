@@ -233,6 +233,8 @@ numa_realloc(struct virtio_net *dev, int index)
 	struct vhost_virtqueue *old_vq, *vq;
 	int ret;
 
+	enum {VIRTIO_RXQ, VIRTIO_TXQ, VIRTIO_QNUM};
+
 	old_dev = dev;
 	vq = old_vq = dev->virtqueue[index];
 

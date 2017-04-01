@@ -55,9 +55,6 @@
 #define RTE_VHOST_USER_NO_RECONNECT	(1ULL << 1)
 #define RTE_VHOST_USER_DEQUEUE_ZERO_COPY	(1ULL << 2)
 
-/* Enum for virtqueue management. */
-enum {VIRTIO_RXQ, VIRTIO_TXQ, VIRTIO_QNUM};
-
 /**
  * Information relating to memory regions including offsets to
  * addresses in QEMUs memory file.

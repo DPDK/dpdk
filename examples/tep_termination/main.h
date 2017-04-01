@@ -54,6 +54,8 @@
 /* Max number of devices. Limited by the application. */
 #define MAX_DEVICES 64
 
+enum {VIRTIO_RXQ, VIRTIO_TXQ, VIRTIO_QNUM};
+
 /* Per-device statistics struct */
 struct device_statistics {
 	uint64_t tx_total;
