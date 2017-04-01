@@ -312,6 +312,9 @@ API Changes
     * ``linux/if.h``
     * ``rte_ether.h``
 
+  * The vhost struct ``virtio_net_device_ops`` is renamed to
+    ``vhost_device_ops``
+
 
 ABI Changes
 -----------

@@ -87,7 +87,7 @@ struct rte_vhost_vring {
 /**
  * Device and vring operations.
  */
-struct virtio_net_device_ops {
+struct vhost_device_ops {
 	int (*new_device)(int vid);		/**< Add device. */
 	void (*destroy_device)(int vid);	/**< Remove device. */
 
@@ -204,7 +204,7 @@ int rte_vhost_get_negotiated_features(int vid, uint64_t *features);
 
 /* Register callbacks. */
 int rte_vhost_driver_callback_register(const char *path,
-	struct virtio_net_device_ops const * const ops);
+	struct vhost_device_ops const * const ops);
 /* Start vhost driver session blocking loop. */
 int rte_vhost_driver_session_start(void);
 

@@ -122,7 +122,7 @@ The following is an overview of some key Vhost API functions:
   starts an infinite loop, therefore it should be called in a dedicated
   thread.
 
-* ``rte_vhost_driver_callback_register(path, virtio_net_device_ops)``
+* ``rte_vhost_driver_callback_register(path, vhost_device_ops)``
 
   This function registers a set of callbacks, to let DPDK applications take
   the appropriate action when some events happen. The following events are

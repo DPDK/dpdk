@@ -191,7 +191,7 @@ struct virtio_net {
 	struct ether_addr	mac;
 	uint16_t		mtu;
 
-	struct virtio_net_device_ops const *notify_ops;
+	struct vhost_device_ops const *notify_ops;
 
 	uint32_t		nr_guest_pages;
 	uint32_t		max_guest_pages;
@@ -265,7 +265,7 @@ int alloc_vring_queue(struct virtio_net *dev, uint32_t vring_idx);
 void vhost_set_ifname(int, const char *if_name, unsigned int if_len);
 void vhost_enable_dequeue_zero_copy(int vid);
 
-struct virtio_net_device_ops const *vhost_driver_callback_get(const char *path);
+struct vhost_device_ops const *vhost_driver_callback_get(const char *path);
 
 /*
  * Backend-specific cleanup.

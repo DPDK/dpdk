@@ -697,7 +697,7 @@ vring_state_changed(int vid, uint16_t vring, int enable)
 	return 0;
 }
 
-static struct virtio_net_device_ops vhost_ops = {
+static struct vhost_device_ops vhost_ops = {
 	.new_device          = new_device,
 	.destroy_device      = destroy_device,
 	.vring_state_changed = vring_state_changed,

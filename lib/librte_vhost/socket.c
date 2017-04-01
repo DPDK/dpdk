@@ -78,7 +78,7 @@ struct vhost_user_socket {
 	uint64_t supported_features;
 	uint64_t features;
 
-	struct virtio_net_device_ops const *notify_ops;
+	struct vhost_device_ops const *notify_ops;
 };
 
 struct vhost_user_connection {
@@ -750,7 +750,7 @@ rte_vhost_driver_unregister(const char *path)
  */
 int
 rte_vhost_driver_callback_register(const char *path,
-	struct virtio_net_device_ops const * const ops)
+	struct vhost_device_ops const * const ops)
 {
 	struct vhost_user_socket *vsocket;
 
@@ -763,7 +763,7 @@ rte_vhost_driver_callback_register(const char *path,
 	return vsocket ? 0 : -1;
 }
 
-struct virtio_net_device_ops const *
+struct vhost_device_ops const *
 vhost_driver_callback_get(const char *path)
 {
 	struct vhost_user_socket *vsocket;

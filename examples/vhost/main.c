@@ -1270,7 +1270,7 @@ new_device(int vid)
  * These callback allow devices to be added to the data core when configuration
  * has been fully complete.
  */
-static const struct virtio_net_device_ops virtio_net_device_ops =
+static const struct vhost_device_ops virtio_net_device_ops =
 {
 	.new_device =  new_device,
 	.destroy_device = destroy_device,

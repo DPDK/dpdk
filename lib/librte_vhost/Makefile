@@ -36,7 +36,7 @@ LIB = librte_vhost.a
 
 EXPORT_MAP := rte_vhost_version.map
 
-LIBABIVER := 3
+LIBABIVER := 4
 
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR) -O3 -D_FILE_OFFSET_BITS=64
 CFLAGS += -I vhost_user
