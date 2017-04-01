@@ -395,6 +395,36 @@ rte_vhost_get_mem_table(int vid, struct rte_vhost_memory **mem)
 	return 0;
 }
 
+int
+rte_vhost_get_vhost_vring(int vid, uint16_t vring_idx,
+			  struct rte_vhost_vring *vring)
+{
+	struct virtio_net *dev;
+	struct vhost_virtqueue *vq;
+
+	dev = get_device(vid);
+	if (!dev)
+		return -1;
+
+	if (vring_idx >= VHOST_MAX_VRING)
+		return -1;
+
+	vq = dev->virtqueue[vring_idx];
+	if (!vq)
+		return -1;
+
+	vring->desc  = vq->desc;
+	vring->avail = vq->avail;
+	vring->used  = vq->used;
+	vring->log_guest_addr  = vq->log_guest_addr;
+
+	vring->callfd  = vq->callfd;
+	vring->kickfd  = vq->kickfd;
+	vring->size    = vq->size;
+
+	return 0;
+}
+
 uint16_t
 rte_vhost_avail_entries(int vid, uint16_t queue_id)
 {

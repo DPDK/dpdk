@@ -120,6 +120,8 @@ struct vhost_virtqueue {
 #ifndef VIRTIO_NET_F_MQ
  #define VIRTIO_NET_F_MQ		22
 #endif
+
+#define VHOST_MAX_VRING			0x100
 #define VHOST_MAX_QUEUE_PAIRS		0x80
 
 #ifndef VIRTIO_NET_F_MTU

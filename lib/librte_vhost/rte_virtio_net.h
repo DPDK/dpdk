@@ -80,6 +80,17 @@ struct rte_vhost_memory {
 	struct rte_vhost_mem_region regions[0];
 };
 
+struct rte_vhost_vring {
+	struct vring_desc	*desc;
+	struct vring_avail	*avail;
+	struct vring_used	*used;
+	uint64_t		log_guest_addr;
+
+	int			callfd;
+	int			kickfd;
+	uint16_t		size;
+};
+
 /**
  * Device and vring operations.
  */
@@ -297,5 +308,20 @@ uint16_t rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
  *  0 on success, -1 on failure
  */
 int rte_vhost_get_mem_table(int vid, struct rte_vhost_memory **mem);
+
+/**
+ * Get guest vring info, including the vring address, vring size, etc.
+ *
+ * @param vid
+ *  vhost device ID
+ * @param vring_idx
+ *  vring index
+ * @param vring
+ *  the structure to hold the requested vring info
+ * @return
+ *  0 on success, -1 on failure
+ */
+int rte_vhost_get_vhost_vring(int vid, uint16_t vring_idx,
+			      struct rte_vhost_vring *vring);
 
 #endif /* _VIRTIO_NET_H_ */
