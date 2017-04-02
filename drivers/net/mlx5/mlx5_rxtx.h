@@ -133,11 +133,8 @@ struct rxq_ctrl {
 	struct priv *priv; /* Back pointer to private data. */
 	struct ibv_cq *cq; /* Completion Queue. */
 	struct ibv_exp_wq *wq; /* Work Queue. */
-	struct ibv_exp_res_domain *rd; /* Resource Domain. */
 	struct fdir_queue *fdir_queue; /* Flow director queue. */
 	struct ibv_mr *mr; /* Memory Region (for mp). */
-	struct ibv_exp_wq_family *if_wq; /* WQ burst interface. */
-	struct ibv_exp_cq_family_v1 *if_cq; /* CQ interface. */
 	struct ibv_comp_channel *channel;
 	unsigned int socket; /* CPU socket ID for allocations. */
 	struct rxq rxq; /* Data path structure. */
@@ -283,9 +280,6 @@ struct txq_ctrl {
 	struct priv *priv; /* Back pointer to private data. */
 	struct ibv_cq *cq; /* Completion Queue. */
 	struct ibv_qp *qp; /* Queue Pair. */
-	struct ibv_exp_qp_burst_family *if_qp; /* QP burst interface. */
-	struct ibv_exp_cq_family *if_cq; /* CQ interface. */
-	struct ibv_exp_res_domain *rd; /* Resource Domain. */
 	unsigned int socket; /* CPU socket ID for allocations. */
 	struct txq txq; /* Data path structure. */
 };

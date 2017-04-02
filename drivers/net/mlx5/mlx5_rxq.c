@@ -743,51 +743,16 @@ rxq_free_elts(struct rxq_ctrl *rxq_ctrl)
 void
 rxq_cleanup(struct rxq_ctrl *rxq_ctrl)
 {
-	struct ibv_exp_release_intf_params params;
-
 	DEBUG("cleaning up %p", (void *)rxq_ctrl);
 	rxq_free_elts(rxq_ctrl);
 	if (rxq_ctrl->fdir_queue != NULL)
 		priv_fdir_queue_destroy(rxq_ctrl->priv, rxq_ctrl->fdir_queue);
-	if (rxq_ctrl->if_wq != NULL) {
-		assert(rxq_ctrl->priv != NULL);
-		assert(rxq_ctrl->priv->ctx != NULL);
-		assert(rxq_ctrl->wq != NULL);
-		params = (struct ibv_exp_release_intf_params){
-			.comp_mask = 0,
-		};
-		claim_zero(ibv_exp_release_intf(rxq_ctrl->priv->ctx,
-						rxq_ctrl->if_wq,
-						&params));
-	}
-	if (rxq_ctrl->if_cq != NULL) {
-		assert(rxq_ctrl->priv != NULL);
-		assert(rxq_ctrl->priv->ctx != NULL);
-		assert(rxq_ctrl->cq != NULL);
-		params = (struct ibv_exp_release_intf_params){
-			.comp_mask = 0,
-		};
-		claim_zero(ibv_exp_release_intf(rxq_ctrl->priv->ctx,
-						rxq_ctrl->if_cq,
-						&params));
-	}
 	if (rxq_ctrl->wq != NULL)
 		claim_zero(ibv_exp_destroy_wq(rxq_ctrl->wq));
 	if (rxq_ctrl->cq != NULL)
 		claim_zero(ibv_destroy_cq(rxq_ctrl->cq));
 	if (rxq_ctrl->channel != NULL)
 		claim_zero(ibv_destroy_comp_channel(rxq_ctrl->channel));
-	if (rxq_ctrl->rd != NULL) {
-		struct ibv_exp_destroy_res_domain_attr attr = {
-			.comp_mask = 0,
-		};
-
-		assert(rxq_ctrl->priv != NULL);
-		assert(rxq_ctrl->priv->ctx != NULL);
-		claim_zero(ibv_exp_destroy_res_domain(rxq_ctrl->priv->ctx,
-						      rxq_ctrl->rd,
-						      &attr));
-	}
 	if (rxq_ctrl->mr != NULL)
 		claim_zero(ibv_dereg_mr(rxq_ctrl->mr));
 	memset(rxq_ctrl, 0, sizeof(*rxq_ctrl));
@@ -935,13 +900,10 @@ rxq_ctrl_setup(struct rte_eth_dev *dev, struct rxq_ctrl *rxq_ctrl,
 	};
 	struct ibv_exp_wq_attr mod;
 	union {
-		struct ibv_exp_query_intf_params params;
 		struct ibv_exp_cq_init_attr cq;
-		struct ibv_exp_res_domain_init_attr rd;
 		struct ibv_exp_wq_init_attr wq;
 		struct ibv_exp_cq_attr cq_attr;
 	} attr;
-	enum ibv_exp_query_intf_status status;
 	unsigned int mb_len = rte_pktmbuf_data_room_size(mp);
 	unsigned int cqe_n = desc - 1;
 	struct rte_mbuf *(*elts)[desc] = NULL;
@@ -1008,19 +970,6 @@ rxq_ctrl_setup(struct rte_eth_dev *dev, struct rxq_ctrl *rxq_ctrl,
 		      (void *)dev, strerror(ret));
 		goto error;
 	}
-	attr.rd = (struct ibv_exp_res_domain_init_attr){
-		.comp_mask = (IBV_EXP_RES_DOMAIN_THREAD_MODEL |
-			      IBV_EXP_RES_DOMAIN_MSG_MODEL),
-		.thread_model = IBV_EXP_THREAD_SINGLE,
-		.msg_model = IBV_EXP_MSG_HIGH_BW,
-	};
-	tmpl.rd = ibv_exp_create_res_domain(priv->ctx, &attr.rd);
-	if (tmpl.rd == NULL) {
-		ret = ENOMEM;
-		ERROR("%p: RD creation failure: %s",
-		      (void *)dev, strerror(ret));
-		goto error;
-	}
 	if (dev->data->dev_conf.intr_conf.rxq) {
 		tmpl.channel = ibv_create_comp_channel(priv->ctx);
 		if (tmpl.channel == NULL) {
@@ -1032,8 +981,7 @@ rxq_ctrl_setup(struct rte_eth_dev *dev, struct rxq_ctrl *rxq_ctrl,
 		}
 	}
 	attr.cq = (struct ibv_exp_cq_init_attr){
-		.comp_mask = IBV_EXP_CQ_INIT_ATTR_RES_DOMAIN,
-		.res_domain = tmpl.rd,
+		.comp_mask = 0,
 	};
 	if (priv->cqe_comp) {
 		attr.cq.comp_mask |= IBV_EXP_CQ_INIT_ATTR_FLAGS;
@@ -1065,10 +1013,8 @@ rxq_ctrl_setup(struct rte_eth_dev *dev, struct rxq_ctrl *rxq_ctrl,
 		.pd = priv->pd,
 		.cq = tmpl.cq,
 		.comp_mask =
-			IBV_EXP_CREATE_WQ_RES_DOMAIN |
 			IBV_EXP_CREATE_WQ_VLAN_OFFLOADS |
 			0,
-		.res_domain = tmpl.rd,
 		.vlan_offloads = (tmpl.rxq.vlan_strip ?
 				  IBV_EXP_RECEIVE_WQ_CVLAN_STRIP :
 				  0),
@@ -1129,29 +1075,6 @@ rxq_ctrl_setup(struct rte_eth_dev *dev, struct rxq_ctrl *rxq_ctrl,
 	/* Save port ID. */
 	tmpl.rxq.port_id = dev->data->port_id;
 	DEBUG("%p: RTE port ID: %u", (void *)rxq_ctrl, tmpl.rxq.port_id);
-	attr.params = (struct ibv_exp_query_intf_params){
-		.intf_scope = IBV_EXP_INTF_GLOBAL,
-		.intf_version = 1,
-		.intf = IBV_EXP_INTF_CQ,
-		.obj = tmpl.cq,
-	};
-	tmpl.if_cq = ibv_exp_query_intf(priv->ctx, &attr.params, &status);
-	if (tmpl.if_cq == NULL) {
-		ERROR("%p: CQ interface family query failed with status %d",
-		      (void *)dev, status);
-		goto error;
-	}
-	attr.params = (struct ibv_exp_query_intf_params){
-		.intf_scope = IBV_EXP_INTF_GLOBAL,
-		.intf = IBV_EXP_INTF_WQ,
-		.obj = tmpl.wq,
-	};
-	tmpl.if_wq = ibv_exp_query_intf(priv->ctx, &attr.params, &status);
-	if (tmpl.if_wq == NULL) {
-		ERROR("%p: WQ interface family query failed with status %d",
-		      (void *)dev, status);
-		goto error;
-	}
 	/* Change queue state to ready. */
 	mod = (struct ibv_exp_wq_attr){
 		.attr_mask = IBV_EXP_WQ_ATTR_STATE,
