@@ -1,0 +1,59 @@
+..
+     BSD LICENSE
+
+     Copyright(c) 2017 Intel Corporation. All rights reserved.
+     All rights reserved.
+
+     Redistribution and use in source and binary forms, with or without
+     modification, are permitted provided that the following conditions
+     are met:
+
+       * Redistributions of source code must retain the above copyright
+         notice, this list of conditions and the following disclaimer.
+       * Redistributions in binary form must reproduce the above copyright
+         notice, this list of conditions and the following disclaimer in
+         the documentation and/or other materials provided with the
+         distribution.
+       * Neither the name of Intel Corporation nor the names of its
+         contributors may be used to endorse or promote products derived
+         from this software without specific prior written permission.
+
+     THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+     "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+     LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+     A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+     OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+     SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+     LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+     DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+     THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+     (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+     OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+Intel® I40E driver
+==================
+
+This directory contains source code of FreeBSD i40e driver of version
+cid-i40e.2017.03.21.tar.gz released by the team which develops
+basic drivers for any i40e NIC. The directory of base/ contains the
+original source package.
+This driver is valid for the product(s) listed below
+
+* Intel® Ethernet Converged Network Adapters X710
+* Intel® Ethernet Converged Network Adapters XL710
+* Intel® Ethernet Network Adapter XXV710
+* Intel® Ethernet Connection X722 for 10GBASE-T
+* Intel® Ethernet Connection X722 for 10GbE backplane
+* Intel® Ethernet Connection X722 for 10GbE SFP+
+* Intel® Ethernet Connection X722 for 1GbE
+* Intel® Ethernet Controller X710 and XL710 Family
+* Intel® Ethernet Controller XXV710 for 25GbE backplane
+* Intel® Ethernet Controller XXV710 for 25GbE SFP28
+
+Updating the driver
+===================
+
+NOTE: The source code in this directory should not be modified apart from
+the following file(s):
+
+    i40e_osdep.h
