@@ -377,6 +377,8 @@ mlx5_flow_item_validate(const struct rte_flow_item *item,
  *   Perform verbose error reporting if not NULL.
  * @param[in, out] flow
  *   Flow structure to update.
+ * @param[in, out] action
+ *   Action structure to update.
  *
  * @return
  *   0 on success, a negative errno value otherwise and rte_errno is set.
@@ -387,14 +389,10 @@ priv_flow_validate(struct priv *priv,
 		   const struct rte_flow_item items[],
 		   const struct rte_flow_action actions[],
 		   struct rte_flow_error *error,
-		   struct mlx5_flow *flow)
+		   struct mlx5_flow *flow,
+		   struct mlx5_flow_action *action)
 {
 	const struct mlx5_flow_items *cur_item = mlx5_flow_items;
-	struct mlx5_flow_action action = {
-		.queue = 0,
-		.drop = 0,
-		.mark = 0,
-	};
 
 	(void)priv;
 	if (attr->group) {
@@ -474,7 +472,7 @@ priv_flow_validate(struct priv *priv,
 		if (actions->type == RTE_FLOW_ACTION_TYPE_VOID) {
 			continue;
 		} else if (actions->type == RTE_FLOW_ACTION_TYPE_DROP) {
-			action.drop = 1;
+			action->drop = 1;
 		} else if (actions->type == RTE_FLOW_ACTION_TYPE_QUEUE) {
 			const struct rte_flow_action_queue *queue =
 				(const struct rte_flow_action_queue *)
@@ -484,34 +482,35 @@ priv_flow_validate(struct priv *priv,
 
 			if (!queue || (queue->index > (priv->rxqs_n - 1)))
 				goto exit_action_not_supported;
-			for (n = 0; n < action.queues_n; ++n) {
-				if (action.queues[n] == queue->index) {
+			for (n = 0; n < action->queues_n; ++n) {
+				if (action->queues[n] == queue->index) {
 					found = 1;
 					break;
 				}
 			}
-			if (action.queues_n && !found) {
+			if (action->queues_n && !found) {
 				rte_flow_error_set(error, ENOTSUP,
 					   RTE_FLOW_ERROR_TYPE_ACTION,
 					   actions,
 					   "queue action not in RSS queues");
 				return -rte_errno;
 			}
-			action.queue = 1;
-			action.queues_n = 1;
-			action.queues[0] = queue->index;
+			action->queue = 1;
+			action->queues_n = 1;
+			action->queues[0] = queue->index;
 		} else if (actions->type == RTE_FLOW_ACTION_TYPE_RSS) {
 			const struct rte_flow_action_rss *rss =
 				(const struct rte_flow_action_rss *)
 				actions->conf;
 			uint16_t n;
 
-			if (action.queues_n == 1) {
+			if (action->queues_n == 1) {
 				uint16_t found = 0;
 
-				assert(action.queues_n);
+				assert(action->queues_n);
 				for (n = 0; n < rss->num; ++n) {
-					if (action.queues[0] == rss->queue[n]) {
+					if (action->queues[0] ==
+					    rss->queue[n]) {
 						found = 1;
 						break;
 					}
@@ -525,10 +524,10 @@ priv_flow_validate(struct priv *priv,
 					return -rte_errno;
 				}
 			}
-			action.queue = 1;
+			action->queue = 1;
 			for (n = 0; n < rss->num; ++n)
-				action.queues[n] = rss->queue[n];
-			action.queues_n = rss->num;
+				action->queues[n] = rss->queue[n];
+			action->queues_n = rss->num;
 		} else if (actions->type == RTE_FLOW_ACTION_TYPE_MARK) {
 			const struct rte_flow_action_mark *mark =
 				(const struct rte_flow_action_mark *)
@@ -548,16 +547,17 @@ priv_flow_validate(struct priv *priv,
 						   " and 16777199");
 				return -rte_errno;
 			}
-			action.mark = 1;
+			action->mark = 1;
+			action->mark_id = mark->id;
 		} else if (actions->type == RTE_FLOW_ACTION_TYPE_FLAG) {
-			action.mark = 1;
+			action->mark = 1;
 		} else {
 			goto exit_action_not_supported;
 		}
 	}
-	if (action.mark && !flow->ibv_attr && !action.drop)
+	if (action->mark && !flow->ibv_attr && !action->drop)
 		flow->offset += sizeof(struct ibv_exp_flow_spec_action_tag);
-	if (!action.queue && !action.drop) {
+	if (!action->queue && !action->drop) {
 		rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_HANDLE,
 				   NULL, "no valid action");
 		return -rte_errno;
@@ -589,9 +589,17 @@ mlx5_flow_validate(struct rte_eth_dev *dev,
 	struct priv *priv = dev->data->dev_private;
 	int ret;
 	struct mlx5_flow flow = { .offset = sizeof(struct ibv_exp_flow_attr) };
+	struct mlx5_flow_action action = {
+		.queue = 0,
+		.drop = 0,
+		.mark = 0,
+		.mark_id = MLX5_FLOW_MARK_DEFAULT,
+		.queues_n = 0,
+	};
 
 	priv_lock(priv);
-	ret = priv_flow_validate(priv, attr, items, actions, error, &flow);
+	ret = priv_flow_validate(priv, attr, items, actions, error, &flow,
+				 &action);
 	priv_unlock(priv);
 	return ret;
 }
@@ -1130,11 +1138,18 @@ priv_flow_create(struct priv *priv,
 		 struct rte_flow_error *error)
 {
 	struct rte_flow *rte_flow;
-	struct mlx5_flow_action action;
 	struct mlx5_flow flow = { .offset = sizeof(struct ibv_exp_flow_attr), };
+	struct mlx5_flow_action action = {
+		.queue = 0,
+		.drop = 0,
+		.mark = 0,
+		.mark_id = MLX5_FLOW_MARK_DEFAULT,
+		.queues_n = 0,
+	};
 	int err;
 
-	err = priv_flow_validate(priv, attr, items, actions, error, &flow);
+	err = priv_flow_validate(priv, attr, items, actions, error, &flow,
+				 &action);
 	if (err)
 		goto exit;
 	flow.ibv_attr = rte_malloc(__func__, flow.offset, 0);
@@ -1156,52 +1171,8 @@ priv_flow_create(struct priv *priv,
 	flow.inner = 0;
 	flow.hash_fields = 0;
 	claim_zero(priv_flow_validate(priv, attr, items, actions,
-				      error, &flow));
-	action = (struct mlx5_flow_action){
-		.queue = 0,
-		.drop = 0,
-		.mark = 0,
-		.mark_id = MLX5_FLOW_MARK_DEFAULT,
-	};
-	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; ++actions) {
-		if (actions->type == RTE_FLOW_ACTION_TYPE_VOID) {
-			continue;
-		} else if (actions->type == RTE_FLOW_ACTION_TYPE_QUEUE) {
-			action.queue = 1;
-			action.queues[action.queues_n++] =
-				((const struct rte_flow_action_queue *)
-				 actions->conf)->index;
-		} else if (actions->type == RTE_FLOW_ACTION_TYPE_RSS) {
-			const struct rte_flow_action_rss *rss =
-				(const struct rte_flow_action_rss *)
-				 actions->conf;
-			uint16_t n;
-
-			action.queue = 1;
-			action.queues_n = rss->num;
-			for (n = 0; n < rss->num; ++n)
-				action.queues[n] = rss->queue[n];
-		} else if (actions->type == RTE_FLOW_ACTION_TYPE_DROP) {
-			action.drop = 1;
-			action.mark = 0;
-		} else if (actions->type == RTE_FLOW_ACTION_TYPE_MARK) {
-			const struct rte_flow_action_mark *mark =
-				(const struct rte_flow_action_mark *)
-				actions->conf;
-
-			if (mark)
-				action.mark_id = mark->id;
-			action.mark = !action.drop;
-		} else if (actions->type == RTE_FLOW_ACTION_TYPE_FLAG) {
-			action.mark = 1;
-		} else {
-			rte_flow_error_set(error, ENOTSUP,
-					   RTE_FLOW_ERROR_TYPE_ACTION,
-					   actions, "unsupported action");
-			goto exit;
-		}
-	}
-	if (action.mark) {
+				      error, &flow, &action));
+	if (action.mark && !action.drop) {
 		mlx5_flow_create_flag_mark(&flow, action.mark_id);
 		flow.offset += sizeof(struct ibv_exp_flow_spec_action_tag);
 	}
