@@ -431,8 +431,10 @@ igbuio_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 	 * the iommu identity mapping if kernel boots with iommu=pt.
 	 * Note this is not a problem if no IOMMU at all.
 	 */
-	map_addr = dma_zalloc_coherent(&dev->dev, 1024,
-				       &map_dma_addr, GFP_KERNEL);
+	map_addr = dma_alloc_coherent(&dev->dev, 1024, &map_dma_addr,
+			GFP_KERNEL);
+	if (map_addr)
+		memset(map_addr, 0, 1024);
 
 	if (!map_addr)
 		dev_info(&dev->dev, "dma mapping failed\n");
