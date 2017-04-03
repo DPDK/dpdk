@@ -190,6 +190,8 @@ rte_event_dev_queue_config(struct rte_eventdev *dev, uint8_t nb_queues)
 	return 0;
 }
 
+#define EVENT_QUEUE_SERVICE_PRIORITY_INVALID (0xdead)
+
 static inline int
 rte_event_dev_port_config(struct rte_eventdev *dev, uint8_t nb_ports)
 {
@@ -251,6 +253,9 @@ rte_event_dev_port_config(struct rte_eventdev *dev, uint8_t nb_ports)
 					"nb_ports %u", nb_ports);
 			return -(ENOMEM);
 		}
+		for (i = 0; i < nb_ports * RTE_EVENT_MAX_QUEUES_PER_DEV; i++)
+			dev->data->links_map[i] =
+				EVENT_QUEUE_SERVICE_PRIORITY_INVALID;
 	} else if (dev->data->ports != NULL && nb_ports != 0) {/* re-config */
 		RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->port_release, -ENOTSUP);
 
@@ -305,6 +310,10 @@ rte_event_dev_port_config(struct rte_eventdev *dev, uint8_t nb_ports)
 
 		if (nb_ports > old_nb_ports) {
 			uint8_t new_ps = nb_ports - old_nb_ports;
+			unsigned int old_links_map_end =
+				old_nb_ports * RTE_EVENT_MAX_QUEUES_PER_DEV;
+			unsigned int links_map_end =
+				nb_ports * RTE_EVENT_MAX_QUEUES_PER_DEV;
 
 			memset(ports + old_nb_ports, 0,
 				sizeof(ports[0]) * new_ps);
@@ -312,9 +321,9 @@ rte_event_dev_port_config(struct rte_eventdev *dev, uint8_t nb_ports)
 				sizeof(ports_dequeue_depth[0]) * new_ps);
 			memset(ports_enqueue_depth + old_nb_ports, 0,
 				sizeof(ports_enqueue_depth[0]) * new_ps);
-			memset(links_map +
-				(old_nb_ports * RTE_EVENT_MAX_QUEUES_PER_DEV),
-				0, sizeof(ports_enqueue_depth[0]) * new_ps);
+			for (i = old_links_map_end; i < links_map_end; i++)
+				links_map[i] =
+					EVENT_QUEUE_SERVICE_PRIORITY_INVALID;
 		}
 
 		dev->data->ports = ports;
@@ -814,8 +823,6 @@ rte_event_port_link(uint8_t dev_id, uint8_t port_id,
 
 	return diag;
 }
-
-#define EVENT_QUEUE_SERVICE_PRIORITY_INVALID (0xdead)
 
 int
 rte_event_port_unlink(uint8_t dev_id, uint8_t port_id,
