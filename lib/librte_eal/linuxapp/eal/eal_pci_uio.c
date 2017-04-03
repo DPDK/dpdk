@@ -38,6 +38,7 @@
 #include <inttypes.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
+#include <sys/sysmacros.h>
 #include <linux/pci_regs.h>
 
 #if defined(RTE_ARCH_X86)
