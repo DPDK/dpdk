@@ -245,6 +245,7 @@ extern "C" {
 
 #include <rte_common.h>
 #include <rte_memory.h>
+#include <rte_errno.h>
 
 struct rte_mbuf; /* we just use mbuf pointers; no need to include rte_mbuf.h */
 
@@ -1119,9 +1120,15 @@ rte_event_schedule(uint8_t dev_id)
  *   The number of event objects actually enqueued on the event device. The
  *   return value can be less than the value of the *nb_events* parameter when
  *   the event devices queue is full or if invalid parameters are specified in a
- *   *rte_event*. If return value is less than *nb_events*, the remaining events
- *   at the end of ev[] are not consumed,and the caller has to take care of them
- *
+ *   *rte_event*. If the return value is less than *nb_events*, the remaining
+ *   events at the end of ev[] are not consumed and the caller has to take care
+ *   of them, and rte_errno is set accordingly. Possible errno values include:
+ *   - -EINVAL  The port ID is invalid, device ID is invalid, an event's queue
+ *              ID is invalid, or an event's sched type doesn't match the
+ *              capabilities of the destination queue.
+ *   - -ENOSPC  The event port was backpressured and unable to enqueue
+ *              one or more events. This error code is only applicable to
+ *              closed systems.
  * @see rte_event_port_enqueue_depth()
  */
 static inline uint16_t
@@ -1129,6 +1136,18 @@ rte_event_enqueue_burst(uint8_t dev_id, uint8_t port_id,
 			const struct rte_event ev[], uint16_t nb_events)
 {
 	struct rte_eventdev *dev = &rte_eventdevs[dev_id];
+
+#ifdef RTE_LIBRTE_EVENTDEV_DEBUG
+	if (dev_id >= RTE_EVENT_MAX_DEVS || !rte_eventdevs[dev_id].attached) {
+		rte_errno = -EINVAL;
+		return 0;
+	}
+
+	if (port_id >= dev->data->nb_ports) {
+		rte_errno = -EINVAL;
+		return 0;
+	}
+#endif
 
 	/*
 	 * Allow zero cost non burst mode routine invocation if application
@@ -1239,6 +1258,18 @@ rte_event_dequeue_burst(uint8_t dev_id, uint8_t port_id, struct rte_event ev[],
 			uint16_t nb_events, uint64_t timeout_ticks)
 {
 	struct rte_eventdev *dev = &rte_eventdevs[dev_id];
+
+#ifdef RTE_LIBRTE_EVENTDEV_DEBUG
+	if (dev_id >= RTE_EVENT_MAX_DEVS || !rte_eventdevs[dev_id].attached) {
+		rte_errno = -EINVAL;
+		return 0;
+	}
+
+	if (port_id >= dev->data->nb_ports) {
+		rte_errno = -EINVAL;
+		return 0;
+	}
+#endif
 
 	/*
 	 * Allow zero cost non burst mode routine invocation if application
