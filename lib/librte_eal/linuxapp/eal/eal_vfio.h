@@ -60,19 +60,6 @@
 #define VFIO_IOMMU_SPAPR_TCE_CREATE _IO(VFIO_TYPE, VFIO_BASE + 19)
 #define VFIO_IOMMU_SPAPR_TCE_REMOVE _IO(VFIO_TYPE, VFIO_BASE + 20)
 
-/* SPAPR_v2 is not present, but SPAPR might be */
-#ifndef VFIO_SPAPR_TCE_IOMMU
-#define VFIO_IOMMU_SPAPR_TCE_GET_INFO _IO(VFIO_TYPE, VFIO_BASE + 12)
-
-struct vfio_iommu_spapr_tce_info {
-	uint32_t argsz;
-	uint32_t flags;
-	uint32_t dma32_window_start;
-	uint32_t dma32_window_size;
-	struct vfio_iommu_spapr_tce_ddw_info ddw;
-};
-#endif
-
 struct vfio_iommu_spapr_register_memory {
 	uint32_t argsz;
 	uint32_t flags;
@@ -97,7 +84,21 @@ struct vfio_iommu_spapr_tce_ddw_info {
 	uint32_t max_dynamic_windows_supported;
 	uint32_t levels;
 };
-#else
+
+/* SPAPR_v2 is not present, but SPAPR might be */
+#ifndef VFIO_SPAPR_TCE_IOMMU
+#define VFIO_IOMMU_SPAPR_TCE_GET_INFO _IO(VFIO_TYPE, VFIO_BASE + 12)
+
+struct vfio_iommu_spapr_tce_info {
+	uint32_t argsz;
+	uint32_t flags;
+	uint32_t dma32_window_start;
+	uint32_t dma32_window_size;
+	struct vfio_iommu_spapr_tce_ddw_info ddw;
+};
+#endif /* VFIO_SPAPR_TCE_IOMMU */
+
+#else /* VFIO_SPAPR_TCE_v2_IOMMU */
 #define RTE_VFIO_SPAPR VFIO_SPAPR_TCE_v2_IOMMU
 #endif
 
