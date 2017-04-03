@@ -488,16 +488,18 @@ priv_flow_validate(struct priv *priv,
 					break;
 				}
 			}
-			if (action->queues_n && !found) {
+			if (action->queues_n > 1 && !found) {
 				rte_flow_error_set(error, ENOTSUP,
 					   RTE_FLOW_ERROR_TYPE_ACTION,
 					   actions,
 					   "queue action not in RSS queues");
 				return -rte_errno;
 			}
-			action->queue = 1;
-			action->queues_n = 1;
-			action->queues[0] = queue->index;
+			if (!found) {
+				action->queue = 1;
+				action->queues_n = 1;
+				action->queues[0] = queue->index;
+			}
 		} else if (actions->type == RTE_FLOW_ACTION_TYPE_RSS) {
 			const struct rte_flow_action_rss *rss =
 				(const struct rte_flow_action_rss *)
@@ -520,6 +522,16 @@ priv_flow_validate(struct priv *priv,
 						   RTE_FLOW_ERROR_TYPE_ACTION,
 						   actions,
 						   "queue action not in RSS"
+						   " queues");
+					return -rte_errno;
+				}
+			}
+			for (n = 0; n < rss->num; ++n) {
+				if (rss->queue[n] >= priv->rxqs_n) {
+					rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ACTION,
+						   actions,
+						   "queue id > number of"
 						   " queues");
 					return -rte_errno;
 				}
