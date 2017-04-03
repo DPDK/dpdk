@@ -111,11 +111,15 @@ enum rte_crypto_cipher_algorithm {
 	RTE_CRYPTO_CIPHER_AES_DOCSISBPI,
 	/**< AES algorithm using modes required by
 	 * DOCSIS Baseline Privacy Plus Spec.
+	 * Chained mbufs are not supported in this mode, i.e. rte_mbuf.next
+	 * for m_src and m_dst in the rte_crypto_sym_op must be NULL.
 	 */
 
 	RTE_CRYPTO_CIPHER_DES_DOCSISBPI,
 	/**< DES algorithm using modes required by
 	 * DOCSIS Baseline Privacy Plus Spec.
+	 * Chained mbufs are not supported in this mode, i.e. rte_mbuf.next
+	 * for m_src and m_dst in the rte_crypto_sym_op must be NULL.
 	 */
 
 	RTE_CRYPTO_CIPHER_LIST_END
