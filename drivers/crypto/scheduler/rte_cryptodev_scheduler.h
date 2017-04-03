@@ -45,7 +45,14 @@ extern "C" {
 #define RTE_CRYPTODEV_SCHEDULER_MAX_NB_SLAVES	(8)
 #endif
 
+/* round-robin scheduling mode */
+#define SCHEDULER_MODE_NAME_ROUND_ROBIN		round-robin
+/* packet-size based distribution scheduling mode */
+#define SCHEDULER_MODE_NAME_PKT_SIZE_DISTR	packet-size-distr
+/* fail-over mode */
+#define SCHEDULER_MODE_NAME_FAIL_OVER		fail-over
 /**
+
  * Crypto scheduler PMD operation modes
  */
 enum rte_cryptodev_scheduler_mode {

@@ -94,6 +94,14 @@ two calls:
   here. Multiple cryptodevs can be attached initially by presenting this
   parameter multiple times.
 
+* mode: Specify the scheduling mode of the PMD. The supported scheduling
+  mode parameter values are specified in the "Cryptodev Scheduler Modes
+  Overview" section.
+
+* ordering: Specify the status of the crypto operations ordering feature.
+  The value of this parameter can be "enable" or "disable". This feature
+  is disabled by default.
+
 Example:
 
 .. code-block:: console
@@ -122,12 +130,16 @@ operation:
 
 *   **CDEV_SCHED_MODE_ROUNDROBIN:**
 
+   *Initialization mode parameter*: **round-robin**
+
    Round-robin mode, which distributes the enqueued burst of crypto ops
    among its slaves in a round-robin manner. This mode may help to fill
    the throughput gap between the physical core and the existing cryptodevs
    to increase the overall performance.
 
 *   **CDEV_SCHED_MODE_PKT_SIZE_DISTR:**
+
+   *Initialization mode parameter*: **packet-size-distr**
 
    Packet-size based distribution mode, which works with 2 slaves, the primary
    slave and the secondary slave, and distributes the enqueued crypto
@@ -143,6 +155,8 @@ operation:
    crypto workloads.
 
 *   **CDEV_SCHED_MODE_FAILOVER:**
+
+   *Initialization mode parameter*: **fail-over**
 
    Fail-over mode, which works with 2 slaves, the primary slave and the
    secondary slave. In this mode, the scheduler will enqueue the incoming
