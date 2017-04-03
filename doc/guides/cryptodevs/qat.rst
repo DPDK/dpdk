@@ -36,6 +36,7 @@ hardware accelerator devices:
 * ``Intel QuickAssist Technology DH895xCC``
 * ``Intel QuickAssist Technology C62x``
 * ``Intel QuickAssist Technology C3xxx``
+* ``Intel QuickAssist Technology D15xx``
 
 
 Features
@@ -123,12 +124,14 @@ available kernel drivers and device ids are :
    +----------+--------+---------------+------------+--------+---------+--------+------------+
    | C3xxx    | 4.5+   | qat_c3xxx     | c3xxx      | 19e2   | 1       | 19e3   | 16         |
    +----------+--------+---------------+------------+--------+---------+--------+------------+
+   | D15xx    | p      | qat_d15xx     | d15xx      | 6f54   | 1       | 6f55   | 16         |
+   +----------+--------+---------------+------------+--------+---------+--------+------------+
 
 
 The ``Driver`` column indicates either the Linux kernel version in which
 support for this device was introduced or a driver available on Intel's 01.org
 website. There are both linux and 01.org kernel drivers available for some
-devices.
+devices. p = release pending.
 
 If you are running on a kernel which includes a driver for your device, see
 `Installation using kernel.org driver`_ below. Otherwise see
@@ -328,8 +331,8 @@ adjust the unbind command below::
         done; \
     done
 
-For Intel(R) QuickAssist Technology C3xxx device
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+For Intel(R) QuickAssist Technology C3xxx or D15xx device
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The unbind command below assumes ``BDFs`` of ``01:01.00-01:02.07``, if your
 VFs are different adjust the unbind command below::

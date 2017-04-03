@@ -88,6 +88,9 @@ static const struct rte_pci_id pci_id_qat_map[] = {
 		{
 			RTE_PCI_DEVICE(0x8086, 0x19e3),
 		},
+		{
+			RTE_PCI_DEVICE(0x8086, 0x6f55),
+		},
 		{.device_id = 0},
 };
 
