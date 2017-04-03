@@ -1293,7 +1293,8 @@ rte_event_dequeue_burst(uint8_t dev_id, uint8_t port_id, struct rte_event ev[],
  *   with RTE_EVENT_DEV_PRIORITY_NORMAL servicing priority
  *
  * @param nb_links
- *   The number of links to establish
+ *   The number of links to establish. This parameter is ignored if queues is
+ *   NULL.
  *
  * @return
  * The number of links actually established. The return value can be less than
@@ -1338,7 +1339,8 @@ rte_event_port_link(uint8_t dev_id, uint8_t port_id,
  *   event queue(s) from the event port *port_id*.
  *
  * @param nb_unlinks
- *   The number of unlinks to establish
+ *   The number of unlinks to establish. This parameter is ignored if queues is
+ *   NULL.
  *
  * @return
  * The number of unlinks actually established. The return value can be less
