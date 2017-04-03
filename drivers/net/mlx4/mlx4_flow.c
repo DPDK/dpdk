@@ -103,6 +103,11 @@ struct mlx4_flow_items {
 	const enum rte_flow_item_type *const items;
 };
 
+struct rte_flow_drop {
+	struct ibv_qp *qp; /**< Verbs queue pair. */
+	struct ibv_cq *cq; /**< Verbs completion queue. */
+};
+
 /** Valid action for this PMD. */
 static const enum rte_flow_action_type valid_actions[] = {
 	RTE_FLOW_ACTION_TYPE_DROP,
@@ -711,6 +716,87 @@ mlx4_flow_validate(struct rte_eth_dev *dev,
 }
 
 /**
+ * Destroy a drop queue.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ */
+static void
+mlx4_flow_destroy_drop_queue(struct priv *priv)
+{
+	if (priv->flow_drop_queue) {
+		struct rte_flow_drop *fdq = priv->flow_drop_queue;
+
+		priv->flow_drop_queue = NULL;
+		claim_zero(ibv_destroy_qp(fdq->qp));
+		claim_zero(ibv_destroy_cq(fdq->cq));
+		rte_free(fdq);
+	}
+}
+
+/**
+ * Create a single drop queue for all drop flows.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ *
+ * @return
+ *   0 on success, negative value otherwise.
+ */
+static int
+mlx4_flow_create_drop_queue(struct priv *priv)
+{
+	struct ibv_qp *qp;
+	struct ibv_cq *cq;
+	struct rte_flow_drop *fdq;
+
+	fdq = rte_calloc(__func__, 1, sizeof(*fdq), 0);
+	if (!fdq) {
+		ERROR("Cannot allocate memory for drop struct");
+		goto err;
+	}
+	cq = ibv_exp_create_cq(priv->ctx, 1, NULL, NULL, 0,
+			      &(struct ibv_exp_cq_init_attr){
+					.comp_mask = 0,
+			      });
+	if (!cq) {
+		ERROR("Cannot create drop CQ");
+		goto err_create_cq;
+	}
+	qp = ibv_exp_create_qp(priv->ctx,
+			      &(struct ibv_exp_qp_init_attr){
+					.send_cq = cq,
+					.recv_cq = cq,
+					.cap = {
+						.max_recv_wr = 1,
+						.max_recv_sge = 1,
+					},
+					.qp_type = IBV_QPT_RAW_PACKET,
+					.comp_mask =
+						IBV_EXP_QP_INIT_ATTR_PD |
+						IBV_EXP_QP_INIT_ATTR_PORT,
+					.pd = priv->pd,
+					.port_num = priv->port,
+			      });
+	if (!qp) {
+		ERROR("Cannot create drop QP");
+		goto err_create_qp;
+	}
+	*fdq = (struct rte_flow_drop){
+		.qp = qp,
+		.cq = cq,
+	};
+	priv->flow_drop_queue = fdq;
+	return 0;
+err_create_qp:
+	claim_zero(ibv_destroy_cq(cq));
+err_create_cq:
+	rte_free(fdq);
+err:
+	return -1;
+}
+
+/**
  * Complete flow rule creation.
  *
  * @param priv
@@ -731,7 +817,6 @@ priv_flow_create_action_queue(struct priv *priv,
 			      struct mlx4_flow_action *action,
 			      struct rte_flow_error *error)
 {
-	struct rxq *rxq;
 	struct ibv_qp *qp;
 	struct rte_flow *rte_flow;
 
@@ -743,47 +828,13 @@ priv_flow_create_action_queue(struct priv *priv,
 				   NULL, "cannot allocate flow memory");
 		return NULL;
 	}
-	rxq = (*priv->rxqs)[action->queue_id];
 	if (action->drop) {
-		rte_flow->cq =
-			ibv_exp_create_cq(priv->ctx, 1, NULL, NULL, 0,
-					  &(struct ibv_exp_cq_init_attr){
-						  .comp_mask = 0,
-					  });
-		if (!rte_flow->cq) {
-			rte_flow_error_set(error, ENOMEM,
-					   RTE_FLOW_ERROR_TYPE_HANDLE,
-					   NULL, "cannot allocate CQ");
-			goto error;
-		}
-		rte_flow->qp = ibv_exp_create_qp(
-			priv->ctx,
-			&(struct ibv_exp_qp_init_attr){
-				.send_cq = rte_flow->cq,
-				.recv_cq = rte_flow->cq,
-				.cap = {
-					.max_recv_wr = 1,
-					.max_recv_sge = 1,
-				},
-				.qp_type = IBV_QPT_RAW_PACKET,
-				.comp_mask =
-					IBV_EXP_QP_INIT_ATTR_PD |
-					IBV_EXP_QP_INIT_ATTR_PORT |
-					IBV_EXP_QP_INIT_ATTR_RES_DOMAIN,
-				.pd = priv->pd,
-				.res_domain = rxq->rd,
-				.port_num = priv->port,
-			});
-		if (!rte_flow->qp) {
-			rte_flow_error_set(error, ENOMEM,
-					   RTE_FLOW_ERROR_TYPE_HANDLE,
-					   NULL, "cannot allocate QP");
-			goto error;
-		}
-		qp = rte_flow->qp;
+		qp = priv->flow_drop_queue->qp;
 	} else {
-		rte_flow->rxq = rxq;
+		struct rxq *rxq = (*priv->rxqs)[action->queue_id];
+
 		qp = rxq->qp;
+		rte_flow->qp = qp;
 	}
 	rte_flow->ibv_attr = ibv_attr;
 	rte_flow->ibv_flow = ibv_create_flow(qp, rte_flow->ibv_attr);
@@ -795,12 +846,6 @@ priv_flow_create_action_queue(struct priv *priv,
 	return rte_flow;
 
 error:
-	assert(rte_flow);
-	if (rte_flow->cq)
-		ibv_destroy_cq(rte_flow->cq);
-	if (rte_flow->qp)
-		ibv_destroy_qp(rte_flow->qp);
-	rte_free(rte_flow->ibv_attr);
 	rte_free(rte_flow);
 	return NULL;
 }
@@ -878,7 +923,8 @@ priv_flow_create(struct priv *priv,
 	}
 	rte_flow = priv_flow_create_action_queue(priv, flow.ibv_attr,
 						 &action, error);
-	return rte_flow;
+	if (rte_flow)
+		return rte_flow;
 exit:
 	rte_free(flow.ibv_attr);
 	return NULL;
@@ -925,10 +971,6 @@ priv_flow_destroy(struct priv *priv, struct rte_flow *flow)
 	LIST_REMOVE(flow, next);
 	if (flow->ibv_flow)
 		claim_zero(ibv_destroy_flow(flow->ibv_flow));
-	if (flow->qp)
-		claim_zero(ibv_destroy_qp(flow->qp));
-	if (flow->cq)
-		claim_zero(ibv_destroy_cq(flow->cq));
 	rte_free(flow->ibv_attr);
 	DEBUG("Flow destroyed %p", (void *)flow);
 	rte_free(flow);
@@ -1010,6 +1052,7 @@ mlx4_priv_flow_stop(struct priv *priv)
 		flow->ibv_flow = NULL;
 		DEBUG("Flow %p removed", (void *)flow);
 	}
+	mlx4_flow_destroy_drop_queue(priv);
 }
 
 /**
@@ -1024,13 +1067,17 @@ mlx4_priv_flow_stop(struct priv *priv)
 int
 mlx4_priv_flow_start(struct priv *priv)
 {
+	int ret;
 	struct ibv_qp *qp;
 	struct rte_flow *flow;
 
+	ret = mlx4_flow_create_drop_queue(priv);
+	if (ret)
+		return -1;
 	for (flow = LIST_FIRST(&priv->flows);
 	     flow;
 	     flow = LIST_NEXT(flow, next)) {
-		qp = flow->qp ? flow->qp : flow->rxq->qp;
+		qp = flow->qp ? flow->qp : priv->flow_drop_queue->qp;
 		flow->ibv_flow = ibv_create_flow(qp, flow->ibv_attr);
 		if (!flow->ibv_flow) {
 			DEBUG("Flow %p cannot be applied", (void *)flow);

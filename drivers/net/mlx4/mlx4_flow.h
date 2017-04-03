@@ -56,11 +56,9 @@
 
 struct rte_flow {
 	LIST_ENTRY(rte_flow) next; /**< Pointer to the next flow structure. */
-	struct rxq *rxq; /**< Pointer to the queue, NULL if drop queue. */
 	struct ibv_flow *ibv_flow; /**< Verbs flow. */
 	struct ibv_flow_attr *ibv_attr; /**< Pointer to Verbs attributes. */
 	struct ibv_qp *qp; /**< Verbs queue pair. */
-	struct ibv_cq *cq; /**< Verbs completion queue. */
 };
 
 int
