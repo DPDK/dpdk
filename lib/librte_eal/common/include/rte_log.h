@@ -50,17 +50,21 @@ extern "C" {
 #include <stdio.h>
 #include <stdarg.h>
 
+struct rte_log_dynamic_type;
+
 /** The rte_log structure. */
 struct rte_logs {
 	uint32_t type;  /**< Bitfield with enabled logs. */
 	uint32_t level; /**< Log level. */
 	FILE *file;     /**< Output file set by rte_openlog_stream, or NULL. */
+	size_t dynamic_types_len;
+	struct rte_log_dynamic_type *dynamic_types;
 };
 
 /** Global log informations */
 extern struct rte_logs rte_logs;
 
-/* SDK log type */
+/* SDK log type, keep sync'd with rte_log_init() */
 #define RTE_LOGTYPE_EAL     0x00000001 /**< Log related to eal. */
 #define RTE_LOGTYPE_MALLOC  0x00000002 /**< Log related to malloc. */
 #define RTE_LOGTYPE_RING    0x00000004 /**< Log related to ring. */
@@ -91,6 +95,9 @@ extern struct rte_logs rte_logs;
 #define RTE_LOGTYPE_USER6   0x20000000 /**< User-defined log type 6. */
 #define RTE_LOGTYPE_USER7   0x40000000 /**< User-defined log type 7. */
 #define RTE_LOGTYPE_USER8   0x80000000 /**< User-defined log type 8. */
+
+/** First identifier for extended logs */
+#define RTE_LOGTYPE_FIRST_EXT_ID 32
 
 /* Can't use 0, as it gives compiler warnings */
 #define RTE_LOG_EMERG    1U  /**< System is unusable.               */
@@ -149,6 +156,18 @@ void rte_set_log_type(uint32_t type, int enable);
 uint32_t rte_get_log_type(void);
 
 /**
+ * Set the log level for a given type.
+ *
+ * @param logtype
+ *   The log type identifier.
+ * @param level
+ *   The level to be set.
+ * @return
+ *   0 on success, a negative value if logtype or level is invalid.
+ */
+int rte_log_set_level(uint32_t logtype, uint32_t level);
+
+/**
  * Get the current loglevel for the message being processed.
  *
  * Before calling the user-defined stream for logging, the log
@@ -175,6 +194,20 @@ int rte_log_cur_msg_loglevel(void);
  *   The logtype of the message being processed.
  */
 int rte_log_cur_msg_logtype(void);
+
+/**
+ * Register a dynamic log type
+ *
+ * If a log is already registered with the same type, the returned value
+ * is the same than the previous one.
+ *
+ * @param name
+ *   The string identifying the log type.
+ * @return
+ *   - >0: success, the returned value is the log type identifier.
+ *   - (-ENONEM): cannot allocate memory.
+ */
+int rte_log_register(const char *name);
 
 /**
  * Generates a log message.

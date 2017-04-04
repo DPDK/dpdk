@@ -61,6 +61,11 @@ New Features
   to request the driver to release mbufs from their Tx ring that are no longer
   in use, independent of whether or not the ``tx_rs_thresh`` has been crossed.
 
+* **Added EAL dynamic log framework.**
+
+  Added new APIs to dynamically register named log types, and control
+  the level of each type independently.
+
 * **Added descriptor status ethdev API.**
 
   Added a new API to get the status of a descriptor.

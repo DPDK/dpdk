@@ -35,7 +35,10 @@
 #include <stdint.h>
 #include <stdarg.h>
 #include <stdlib.h>
+#include <string.h>
+#include <errno.h>
 
+#include <rte_eal.h>
 #include <rte_log.h>
 #include <rte_per_lcore.h>
 
@@ -58,6 +61,11 @@ static FILE *default_log_stream;
 struct log_cur_msg {
 	uint32_t loglevel; /**< log level - see rte_log.h */
 	uint32_t logtype;  /**< log type  - see rte_log.h */
+};
+
+struct rte_log_dynamic_type {
+	const char *name;
+	uint32_t loglevel;
 };
 
  /* per core log */
@@ -91,10 +99,17 @@ rte_get_log_level(void)
 void
 rte_set_log_type(uint32_t type, int enable)
 {
+	if (type < RTE_LOGTYPE_FIRST_EXT_ID) {
+		if (enable)
+			rte_logs.type |= type;
+		else
+			rte_logs.type &= ~type;
+	}
+
 	if (enable)
-		rte_logs.type |= type;
+		rte_log_set_level(type, 0);
 	else
-		rte_logs.type &= (~type);
+		rte_log_set_level(type, RTE_LOG_DEBUG);
 }
 
 /* Get global log type */
@@ -102,6 +117,19 @@ uint32_t
 rte_get_log_type(void)
 {
 	return rte_logs.type;
+}
+
+int
+rte_log_set_level(uint32_t type, uint32_t level)
+{
+	if (type >= rte_logs.dynamic_types_len)
+		return -1;
+	if (level > RTE_LOG_DEBUG)
+		return -1;
+
+	rte_logs.dynamic_types[type].loglevel = level;
+
+	return 0;
 }
 
 /* get the current loglevel for the message beeing processed */
@@ -114,6 +142,105 @@ int rte_log_cur_msg_loglevel(void)
 int rte_log_cur_msg_logtype(void)
 {
 	return RTE_PER_LCORE(log_cur_msg).logtype;
+}
+
+static int
+rte_log_lookup(const char *name)
+{
+	size_t i;
+
+	for (i = 0; i < rte_logs.dynamic_types_len; i++) {
+		if (rte_logs.dynamic_types[i].name == NULL)
+			continue;
+		if (strcmp(name, rte_logs.dynamic_types[i].name) == 0)
+			return i;
+	}
+
+	return -1;
+}
+
+/* register an extended log type, assuming table is large enough, and id
+ * is not yet registered.
+ */
+static int
+__rte_log_register(const char *name, int id)
+{
+	char *dup_name = strdup(name);
+
+	if (dup_name == NULL)
+		return -ENOMEM;
+
+	rte_logs.dynamic_types[id].name = dup_name;
+	rte_logs.dynamic_types[id].loglevel = RTE_LOG_DEBUG;
+
+	return id;
+}
+
+/* register an extended log type */
+int
+rte_log_register(const char *name)
+{
+	struct rte_log_dynamic_type *new_dynamic_types;
+	int id, ret;
+
+	id = rte_log_lookup(name);
+	if (id >= 0)
+		return id;
+
+	new_dynamic_types = realloc(rte_logs.dynamic_types,
+		sizeof(struct rte_log_dynamic_type) *
+		(rte_logs.dynamic_types_len + 1));
+	if (new_dynamic_types == NULL)
+		return -ENOMEM;
+	rte_logs.dynamic_types = new_dynamic_types;
+
+	ret = __rte_log_register(name, rte_logs.dynamic_types_len);
+	if (ret < 0)
+		return ret;
+
+	rte_logs.dynamic_types_len++;
+
+	return ret;
+}
+
+RTE_INIT(rte_log_init);
+static void
+rte_log_init(void)
+{
+	rte_logs.dynamic_types = calloc(RTE_LOGTYPE_FIRST_EXT_ID,
+		sizeof(struct rte_log_dynamic_type));
+	if (rte_logs.dynamic_types == NULL)
+		return;
+
+	/* register legacy log types, keep sync'd with RTE_LOGTYPE_* */
+	__rte_log_register("eal", 0);
+	__rte_log_register("malloc", 1);
+	__rte_log_register("ring", 2);
+	__rte_log_register("mempool", 3);
+	__rte_log_register("timer", 4);
+	__rte_log_register("pmd", 5);
+	__rte_log_register("hash", 6);
+	__rte_log_register("lpm", 7);
+	__rte_log_register("kni", 8);
+	__rte_log_register("acl", 9);
+	__rte_log_register("power", 10);
+	__rte_log_register("meter", 11);
+	__rte_log_register("sched", 12);
+	__rte_log_register("port", 13);
+	__rte_log_register("table", 14);
+	__rte_log_register("pipeline", 15);
+	__rte_log_register("mbuf", 16);
+	__rte_log_register("cryptodev", 17);
+	__rte_log_register("user1", 24);
+	__rte_log_register("user2", 25);
+	__rte_log_register("user3", 26);
+	__rte_log_register("user4", 27);
+	__rte_log_register("user5", 28);
+	__rte_log_register("user6", 29);
+	__rte_log_register("user7", 30);
+	__rte_log_register("user8", 31);
+
+	rte_logs.dynamic_types_len = RTE_LOGTYPE_FIRST_EXT_ID;
 }
 
 /*
@@ -139,7 +266,11 @@ rte_vlog(uint32_t level, uint32_t logtype, const char *format, va_list ap)
 		}
 	}
 
-	if ((level > rte_logs.level) || !(logtype & rte_logs.type))
+	if (level > rte_logs.level)
+		return 0;
+	if (logtype >= rte_logs.dynamic_types_len)
+		return -1;
+	if (level > rte_logs.dynamic_types[logtype].loglevel)
 		return 0;
 
 	/* save loglevel and logtype in a global per-lcore variable */

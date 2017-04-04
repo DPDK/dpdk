@@ -182,3 +182,11 @@ DPDK_17.02 {
 	rte_bus_unregister;
 
 } DPDK_16.11;
+
+DPDK_17.05 {
+	global:
+
+	rte_log_register;
+	rte_log_set_level;
+
+} DPDK_17.02;

@@ -603,22 +603,30 @@ In the DPDK environment, use the logging interface provided:
 
 .. code-block:: c
 
- #define RTE_LOGTYPE_TESTAPP1 RTE_LOGTYPE_USER1
- #define RTE_LOGTYPE_TESTAPP2 RTE_LOGTYPE_USER2
+ /* register log types for this application */
+ int my_logtype1 = rte_log_register("myapp.log1");
+ int my_logtype2 = rte_log_register("myapp.log2");
 
- /* enable these logs type */
- rte_set_log_type(RTE_LOGTYPE_TESTAPP1, 1);
- rte_set_log_type(RTE_LOGTYPE_TESTAPP2, 1);
+ /* set global log level to INFO */
+ rte_log_set_global_level(RTE_LOG_INFO);
+
+ /* only display messages higher than NOTICE for log2 (default
+  * is DEBUG) */
+ rte_log_set_level(my_logtype2, RTE_LOG_NOTICE);
+
+ /* enable all PMD logs (whose identifier string starts with "pmd") */
+ rte_log_set_level_regexp("pmd.*", RTE_LOG_DEBUG);
 
  /* log in debug level */
- rte_set_log_level(RTE_LOG_DEBUG);
- RTE_LOG(DEBUG, TESTAPP1, "this is is a debug level message\n");
- RTE_LOG(INFO, TESTAPP1, "this is is a info level message\n");
- RTE_LOG(WARNING, TESTAPP1, "this is is a warning level message\n");
+ rte_log_set_global_level(RTE_LOG_DEBUG);
+ RTE_LOG(DEBUG, my_logtype1, "this is is a debug level message\n");
+ RTE_LOG(INFO, my_logtype1, "this is is a info level message\n");
+ RTE_LOG(WARNING, my_logtype1, "this is is a warning level message\n");
+ RTE_LOG(WARNING, my_logtype2, "this is is a debug level message (not displayed)\n");
 
  /* log in info level */
- rte_set_log_level(RTE_LOG_INFO);
- RTE_LOG(DEBUG, TESTAPP2, "debug level message (not displayed)\n");
+ rte_log_set_global_level(RTE_LOG_INFO);
+ RTE_LOG(DEBUG, my_logtype1, "debug level message (not displayed)\n");
 
 Branch Prediction
 ~~~~~~~~~~~~~~~~~

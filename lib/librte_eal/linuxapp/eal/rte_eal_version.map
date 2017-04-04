@@ -191,5 +191,7 @@ DPDK_17.05 {
 	global:
 
 	rte_intr_free_epoll_fd;
+	rte_log_register;
+	rte_log_set_level;
 
 } DPDK_17.02;
