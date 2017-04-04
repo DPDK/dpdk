@@ -386,9 +386,8 @@ sfc_ef10_rx_process_event(struct sfc_ef10_rxq *rxq, efx_qword_t rx_ev,
 
 	*rx_pkts++ = m;
 
-	*(uint64_t *)(&m->rearm_data) = rxq->rearm_data;
-	/* rearm_data rewrites ol_flags which is updated below */
-	rte_compiler_barrier();
+	RTE_BUILD_BUG_ON(sizeof(m->rearm_data[0]) != sizeof(rxq->rearm_data));
+	m->rearm_data[0] = rxq->rearm_data;
 
 	/* Classify packet based on Rx event */
 	sfc_ef10_rx_ev_to_offloads(rxq, rx_ev, m);
@@ -412,7 +411,7 @@ sfc_ef10_rx_process_event(struct sfc_ef10_rxq *rxq, efx_qword_t rx_ev,
 	rte_pktmbuf_data_len(m) = pkt_len;
 	rte_pktmbuf_pkt_len(m) = pkt_len;
 
-	m->next = NULL;
+	SFC_ASSERT(m->next == NULL);
 
 	/* Remember mbuf to copy offload flags and packet type from */
 	m0 = m;
@@ -426,9 +425,9 @@ sfc_ef10_rx_process_event(struct sfc_ef10_rxq *rxq, efx_qword_t rx_ev,
 		if (ready > rxq->prepared)
 			*rx_pkts++ = m;
 
-		*(uint64_t *)(&m->rearm_data) = rxq->rearm_data;
-		/* rearm_data rewrites ol_flags which is updated below */
-		rte_compiler_barrier();
+		RTE_BUILD_BUG_ON(sizeof(m->rearm_data[0]) !=
+				 sizeof(rxq->rearm_data));
+		m->rearm_data[0] = rxq->rearm_data;
 
 		/* Event-dependent information is the same */
 		m->ol_flags = m0->ol_flags;
@@ -449,7 +448,7 @@ sfc_ef10_rx_process_event(struct sfc_ef10_rxq *rxq, efx_qword_t rx_ev,
 		rte_pktmbuf_data_len(m) = pkt_len;
 		rte_pktmbuf_pkt_len(m) = pkt_len;
 
-		m->next = NULL;
+		SFC_ASSERT(m->next == NULL);
 	}
 
 	return n_rx_pkts;
@@ -560,7 +559,8 @@ sfc_ef10_mk_mbuf_rearm_data(uint16_t port_id, uint16_t prefix_size)
 
 	/* rearm_data covers structure members filled in above */
 	rte_compiler_barrier();
-	return *(uint64_t *)(&m.rearm_data);
+	RTE_BUILD_BUG_ON(sizeof(m.rearm_data[0]) != sizeof(uint64_t));
+	return m.rearm_data[0];
 }
 
 static sfc_dp_rx_qcreate_t sfc_ef10_rx_qcreate;
