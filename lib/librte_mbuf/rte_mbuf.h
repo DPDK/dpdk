@@ -477,8 +477,6 @@ struct rte_mbuf {
 		uint32_t usr;	  /**< User defined tags. See rte_distributor_process() */
 	} hash;                   /**< hash information */
 
-	uint32_t seqn; /**< Sequence number. See also rte_reorder_insert() */
-
 	/** Outer VLAN TCI (CPU order), valid if PKT_RX_QINQ_STRIPPED is set. */
 	uint16_t vlan_tci_outer;
 
@@ -523,6 +521,10 @@ struct rte_mbuf {
 
 	/** Timesync flags for use with IEEE1588. */
 	uint16_t timesync;
+
+	/** Sequence number. See also rte_reorder_insert(). */
+	uint32_t seqn;
+
 } __rte_cache_aligned;
 
 /**
