@@ -90,9 +90,6 @@ ixgbe_rxq_rearm(struct ixgbe_rx_queue *rxq)
 		/*
 		 * Flush mbuf with pkt template.
 		 * Data to be rearmed is 6 bytes long.
-		 * Though, RX will overwrite ol_flags that are coming next
-		 * anyway. So overwrite whole 8 bytes with one load:
-		 * 6 bytes of rearm_data plus first 2 bytes of ol_flags.
 		 */
 		p0 = (uintptr_t)&mb0->rearm_data;
 		*(uint64_t *)p0 = rxq->mbuf_initializer;

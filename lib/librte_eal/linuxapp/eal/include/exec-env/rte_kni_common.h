@@ -116,11 +116,10 @@ struct rte_kni_fifo {
 struct rte_kni_mbuf {
 	void *buf_addr __attribute__((__aligned__(RTE_CACHE_LINE_SIZE)));
 	uint64_t buf_physaddr;
-	char pad0[2];
 	uint16_t data_off;      /**< Start address of data in segment buffer. */
 	char pad1[2];
 	uint8_t nb_segs;        /**< Number of segments. */
-	char pad4[1];
+	char pad4[3];
 	uint64_t ol_flags;      /**< Offload features. */
 	char pad2[4];
 	uint32_t pkt_len;       /**< Total pkt len: sum of all segment data_len. */

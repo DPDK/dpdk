@@ -85,9 +85,6 @@ ixgbe_rxq_rearm(struct ixgbe_rx_queue *rxq)
 		/*
 		 * Flush mbuf with pkt template.
 		 * Data to be rearmed is 6 bytes long.
-		 * Though, RX will overwrite ol_flags that are coming next
-		 * anyway. So overwrite whole 8 bytes with one load:
-		 * 6 bytes of rearm_data plus first 2 bytes of ol_flags.
 		 */
 		vst1_u8((uint8_t *)&mb0->rearm_data, p);
 		paddr = mb0->buf_physaddr + RTE_PKTMBUF_HEADROOM;
