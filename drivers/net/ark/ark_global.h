@@ -86,6 +86,28 @@
 		void     *v;	   \
 	} name
 
+struct ark_user_ext {
+	void *(*dev_init)(struct rte_eth_dev *, void *abar, int port_id);
+	void (*dev_uninit)(struct rte_eth_dev *, void *);
+	int (*dev_get_port_count)(struct rte_eth_dev *, void *);
+	int (*dev_configure)(struct rte_eth_dev *, void *);
+	int (*dev_start)(struct rte_eth_dev *, void *);
+	void (*dev_stop)(struct rte_eth_dev *, void *);
+	void (*dev_close)(struct rte_eth_dev *, void *);
+	int (*link_update)(struct rte_eth_dev *, int wait_to_complete, void *);
+	int (*dev_set_link_up)(struct rte_eth_dev *, void *);
+	int (*dev_set_link_down)(struct rte_eth_dev *, void *);
+	void (*stats_get)(struct rte_eth_dev *, struct rte_eth_stats *, void *);
+	void (*stats_reset)(struct rte_eth_dev *, void *);
+	void (*mac_addr_add)(struct rte_eth_dev *,
+						  struct ether_addr *,
+						 uint32_t,
+						 uint32_t,
+						 void *);
+	void (*mac_addr_remove)(struct rte_eth_dev *, uint32_t, void *);
+	void (*mac_addr_set)(struct rte_eth_dev *, struct ether_addr *, void *);
+};
+
 struct ark_adapter {
 	/* User extension private data */
 	void *user_data;
@@ -107,6 +129,7 @@ struct ark_adapter {
 	struct rte_eth_dev *eth_dev;
 
 	void *d_handle;
+	struct ark_user_ext user_ext;
 
 	/* Our Bar 0 */
 	uint8_t *bar0;

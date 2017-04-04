@@ -150,6 +150,12 @@ New Features
 
   Added poll mode driver support for Cavium LiquidIO II server adapter VFs.
 
+* **Added Atomic Rules Arkville PMD.**
+
+  Added a new poll mode driver for the Arkville family of
+  devices from Atomic Rules.   The net/ark PMD supports line-rate
+  agnostic, multi-queue data movement on Arkville core FPGA instances.
+
 * **Added support for the Wind River Systems AVP PMD.**
 
   Added a new networking driver for the AVP device type. Theses devices are
