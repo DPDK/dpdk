@@ -519,10 +519,8 @@ rte_eal_init(int argc, char **argv)
 
 	thread_id = pthread_self();
 
-	eal_log_level_parse(argc, argv);
-
 	/* set log level as early as possible */
-	rte_set_log_level(internal_config.log_level);
+	eal_log_level_parse(argc, argv);
 
 	if (rte_eal_cpu_init() < 0) {
 		rte_eal_init_alert("Cannot detect lcores.");
