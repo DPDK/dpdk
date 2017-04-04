@@ -184,6 +184,11 @@ extern "C" {
  */
 #define PKT_RX_LRO           (1ULL << 16)
 
+/**
+ * Indicate that the timestamp field in the mbuf is valid.
+ */
+#define PKT_RX_TIMESTAMP     (1ULL << 17)
+
 /* add new RX flags here */
 
 /* add new TX flags here */
@@ -481,6 +486,12 @@ struct rte_mbuf {
 	uint16_t vlan_tci_outer;
 
 	uint16_t buf_len;         /**< Length of segment buffer. */
+
+	/** Valid if PKT_RX_TIMESTAMP is set. The unit and time reference
+	 * are not normalized but are always the same for a given port.
+	 */
+	uint64_t timestamp;
+
 	/* second cache line - fields only used in slow path or on TX */
 	MARKER cacheline1 __rte_cache_min_aligned;
 
@@ -1208,6 +1219,7 @@ static inline void rte_pktmbuf_attach(struct rte_mbuf *mi, struct rte_mbuf *m)
 	mi->nb_segs = 1;
 	mi->ol_flags = m->ol_flags | IND_ATTACHED_MBUF;
 	mi->packet_type = m->packet_type;
+	mi->timestamp = m->timestamp;
 
 	__rte_mbuf_sanity_check(mi, 1);
 	__rte_mbuf_sanity_check(m, 0);

@@ -323,6 +323,7 @@ const char *rte_get_rx_ol_flag_name(uint64_t mask)
 	case PKT_RX_IEEE1588_TMST: return "PKT_RX_IEEE1588_TMST";
 	case PKT_RX_QINQ_STRIPPED: return "PKT_RX_QINQ_STRIPPED";
 	case PKT_RX_LRO: return "PKT_RX_LRO";
+	case PKT_RX_TIMESTAMP: return "PKT_RX_TIMESTAMP";
 	default: return NULL;
 	}
 }
@@ -357,6 +358,7 @@ rte_get_rx_ol_flag_list(uint64_t mask, char *buf, size_t buflen)
 		{ PKT_RX_IEEE1588_TMST, PKT_RX_IEEE1588_TMST, NULL },
 		{ PKT_RX_QINQ_STRIPPED, PKT_RX_QINQ_STRIPPED, NULL },
 		{ PKT_RX_LRO, PKT_RX_LRO, NULL },
+		{ PKT_RX_TIMESTAMP, PKT_RX_TIMESTAMP, NULL },
 	};
 	const char *name;
 	unsigned int i;
