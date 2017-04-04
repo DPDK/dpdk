@@ -49,7 +49,9 @@ LIBABIVER := 1
 SRCS-$(CONFIG_RTE_LIBRTE_ARK_PMD) += ark_ddm.c
 SRCS-$(CONFIG_RTE_LIBRTE_ARK_PMD) += ark_ethdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_ARK_PMD) += ark_mpu.c
+SRCS-$(CONFIG_RTE_LIBRTE_ARK_PMD) += ark_pktchkr.c
 SRCS-$(CONFIG_RTE_LIBRTE_ARK_PMD) += ark_pktdir.c
+SRCS-$(CONFIG_RTE_LIBRTE_ARK_PMD) += ark_pktgen.c
 SRCS-$(CONFIG_RTE_LIBRTE_ARK_PMD) += ark_rqp.c
 SRCS-$(CONFIG_RTE_LIBRTE_ARK_PMD) += ark_udm.c
 
