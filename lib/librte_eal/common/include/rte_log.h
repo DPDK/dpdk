@@ -158,6 +158,18 @@ uint32_t rte_get_log_type(void);
 /**
  * Set the log level for a given type.
  *
+ * @param pattern
+ *   The regexp identifying the log type.
+ * @param level
+ *   The level to be set.
+ * @return
+ *   0 on success, a negative value if level is invalid.
+ */
+int rte_log_set_level_regexp(const char *pattern, uint32_t level);
+
+/**
+ * Set the log level for a given type.
+ *
  * @param logtype
  *   The log type identifier.
  * @param level

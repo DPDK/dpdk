@@ -37,6 +37,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <regex.h>
 
 #include <rte_eal.h>
 #include <rte_log.h>
@@ -128,6 +129,26 @@ rte_log_set_level(uint32_t type, uint32_t level)
 		return -1;
 
 	rte_logs.dynamic_types[type].loglevel = level;
+
+	return 0;
+}
+
+/* set level */
+int
+rte_log_set_level_regexp(const char *pattern, uint32_t level)
+{
+	regex_t r;
+	size_t i;
+
+	if (level > RTE_LOG_DEBUG)
+		return -1;
+
+	for (i = 0; i < rte_logs.dynamic_types_len; i++) {
+		if (rte_logs.dynamic_types[i].name == NULL)
+			continue;
+		if (regexec(&r, pattern, 0, NULL, 0) == 0)
+			rte_logs.dynamic_types[i].loglevel = level;
+	}
 
 	return 0;
 }
