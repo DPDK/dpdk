@@ -621,9 +621,14 @@ rte_distributor_create_v1705(const char *name,
 
 	if (alg_type == RTE_DIST_ALG_SINGLE) {
 		d = malloc(sizeof(struct rte_distributor));
+		if (d == NULL) {
+			rte_errno = ENOMEM;
+			return NULL;
+		}
 		d->d_v20 = rte_distributor_create_v20(name,
 				socket_id, num_workers);
 		if (d->d_v20 == NULL) {
+			free(d);
 			/* rte_errno will have been set */
 			return NULL;
 		}
