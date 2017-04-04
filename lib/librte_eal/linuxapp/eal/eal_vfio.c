@@ -298,33 +298,37 @@ vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 			clear_group(vfio_group_fd);
 			return -1;
 		}
-	}
 
-	/*
-	 * pick an IOMMU type and set up DMA mappings for container
-	 *
-	 * needs to be done only once, only when first group is assigned to
-	 * a container and only in primary process. Note this can happen several
-	 * times with the hotplug functionality.
-	 */
-	if (internal_config.process_type == RTE_PROC_PRIMARY &&
-			vfio_cfg.vfio_active_groups == 1) {
-		/* select an IOMMU type which we will be using */
-		const struct vfio_iommu_type *t =
+		/*
+		 * pick an IOMMU type and set up DMA mappings for container
+		 *
+		 * needs to be done only once, only when first group is
+		 * assigned to a container and only in primary process.
+		 * Note this can happen several times with the hotplug
+		 * functionality.
+		 */
+		if (internal_config.process_type == RTE_PROC_PRIMARY &&
+				vfio_cfg.vfio_active_groups == 1) {
+			/* select an IOMMU type which we will be using */
+			const struct vfio_iommu_type *t =
 				vfio_set_iommu_type(vfio_cfg.vfio_container_fd);
-		if (!t) {
-			RTE_LOG(ERR, EAL, "  %s failed to select IOMMU type\n", dev_addr);
-			close(vfio_group_fd);
-			clear_group(vfio_group_fd);
-			return -1;
-		}
-		ret = t->dma_map_func(vfio_cfg.vfio_container_fd);
-		if (ret) {
-			RTE_LOG(ERR, EAL, "  %s DMA remapping failed, "
-					"error %i (%s)\n", dev_addr, errno, strerror(errno));
-			close(vfio_group_fd);
-			clear_group(vfio_group_fd);
-			return -1;
+			if (!t) {
+				RTE_LOG(ERR, EAL,
+					"  %s failed to select IOMMU type\n",
+					dev_addr);
+				close(vfio_group_fd);
+				clear_group(vfio_group_fd);
+				return -1;
+			}
+			ret = t->dma_map_func(vfio_cfg.vfio_container_fd);
+			if (ret) {
+				RTE_LOG(ERR, EAL,
+					"  %s DMA remapping failed, error %i (%s)\n",
+					dev_addr, errno, strerror(errno));
+				close(vfio_group_fd);
+				clear_group(vfio_group_fd);
+				return -1;
+			}
 		}
 	}
 
