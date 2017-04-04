@@ -325,6 +325,19 @@ For example::
    testpmd> read txd 0 0 4
         0x00000001 - 0x24C3C440 / 0x000F0000 - 0x2330003C
 
+show vf stats
+~~~~~~~~~~~~~
+
+Display VF statistics::
+
+   testpmd> show vf stats (port_id) (vf_id)
+
+clear vf stats
+~~~~~~~~~~~~~~
+
+Reset VF statistics::
+
+   testpmd> clear vf stats (port_id) (vf_id)
 
 Configuration Functions
 -----------------------

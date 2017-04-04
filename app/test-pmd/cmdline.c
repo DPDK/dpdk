@@ -217,6 +217,12 @@ static void cmd_help_long_parsed(void *parsed_result,
 
 			"ddp get list (port_id)\n"
 			"    Get ddp profile info list\n\n"
+
+			"show vf stats (port_id) (vf_id)\n"
+			"    Display a VF's statistics.\n\n"
+
+			"clear vf stats (port_id) (vf_id)\n"
+			"    Reset a VF's statistics.\n\n"
 		);
 	}
 
@@ -12972,6 +12978,190 @@ cmdline_parse_inst_t cmd_ddp_get_list = {
 		NULL,
 	},
 };
+
+/* show vf stats */
+
+/* Common result structure for show vf stats */
+struct cmd_show_vf_stats_result {
+	cmdline_fixed_string_t show;
+	cmdline_fixed_string_t vf;
+	cmdline_fixed_string_t stats;
+	uint8_t port_id;
+	uint16_t vf_id;
+};
+
+/* Common CLI fields show vf stats*/
+cmdline_parse_token_string_t cmd_show_vf_stats_show =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_show_vf_stats_result,
+		 show, "show");
+cmdline_parse_token_string_t cmd_show_vf_stats_vf =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_show_vf_stats_result,
+		 vf, "vf");
+cmdline_parse_token_string_t cmd_show_vf_stats_stats =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_show_vf_stats_result,
+		 stats, "stats");
+cmdline_parse_token_num_t cmd_show_vf_stats_port_id =
+	TOKEN_NUM_INITIALIZER
+		(struct cmd_show_vf_stats_result,
+		 port_id, UINT8);
+cmdline_parse_token_num_t cmd_show_vf_stats_vf_id =
+	TOKEN_NUM_INITIALIZER
+		(struct cmd_show_vf_stats_result,
+		 vf_id, UINT16);
+
+static void
+cmd_show_vf_stats_parsed(
+	void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	__attribute__((unused)) void *data)
+{
+	struct cmd_show_vf_stats_result *res = parsed_result;
+	struct rte_eth_stats stats;
+	int ret = -ENOTSUP;
+	static const char *nic_stats_border = "########################";
+
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
+		return;
+
+	memset(&stats, 0, sizeof(stats));
+
+#ifdef RTE_LIBRTE_I40E_PMD
+	ret = rte_pmd_i40e_get_vf_stats(res->port_id,
+					res->vf_id,
+					&stats);
+#endif
+
+	switch (ret) {
+	case 0:
+		break;
+	case -EINVAL:
+		printf("invalid vf_id %d\n", res->vf_id);
+		break;
+	case -ENODEV:
+		printf("invalid port_id %d\n", res->port_id);
+		break;
+	case -ENOTSUP:
+		printf("function not implemented\n");
+		break;
+	default:
+		printf("programming error: (%s)\n", strerror(-ret));
+	}
+
+	printf("\n  %s NIC statistics for port %-2d vf %-2d %s\n",
+		nic_stats_border, res->port_id, res->vf_id, nic_stats_border);
+
+	printf("  RX-packets: %-10"PRIu64" RX-missed: %-10"PRIu64" RX-bytes:  "
+	       "%-"PRIu64"\n",
+	       stats.ipackets, stats.imissed, stats.ibytes);
+	printf("  RX-errors: %-"PRIu64"\n", stats.ierrors);
+	printf("  RX-nombuf:  %-10"PRIu64"\n",
+	       stats.rx_nombuf);
+	printf("  TX-packets: %-10"PRIu64" TX-errors: %-10"PRIu64" TX-bytes:  "
+	       "%-"PRIu64"\n",
+	       stats.opackets, stats.oerrors, stats.obytes);
+
+	printf("  %s############################%s\n",
+			       nic_stats_border, nic_stats_border);
+}
+
+cmdline_parse_inst_t cmd_show_vf_stats = {
+	.f = cmd_show_vf_stats_parsed,
+	.data = NULL,
+	.help_str = "show vf stats <port_id> <vf_id>",
+	.tokens = {
+		(void *)&cmd_show_vf_stats_show,
+		(void *)&cmd_show_vf_stats_vf,
+		(void *)&cmd_show_vf_stats_stats,
+		(void *)&cmd_show_vf_stats_port_id,
+		(void *)&cmd_show_vf_stats_vf_id,
+		NULL,
+	},
+};
+
+/* clear vf stats */
+
+/* Common result structure for clear vf stats */
+struct cmd_clear_vf_stats_result {
+	cmdline_fixed_string_t clear;
+	cmdline_fixed_string_t vf;
+	cmdline_fixed_string_t stats;
+	uint8_t port_id;
+	uint16_t vf_id;
+};
+
+/* Common CLI fields clear vf stats*/
+cmdline_parse_token_string_t cmd_clear_vf_stats_clear =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_clear_vf_stats_result,
+		 clear, "clear");
+cmdline_parse_token_string_t cmd_clear_vf_stats_vf =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_clear_vf_stats_result,
+		 vf, "vf");
+cmdline_parse_token_string_t cmd_clear_vf_stats_stats =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_clear_vf_stats_result,
+		 stats, "stats");
+cmdline_parse_token_num_t cmd_clear_vf_stats_port_id =
+	TOKEN_NUM_INITIALIZER
+		(struct cmd_clear_vf_stats_result,
+		 port_id, UINT8);
+cmdline_parse_token_num_t cmd_clear_vf_stats_vf_id =
+	TOKEN_NUM_INITIALIZER
+		(struct cmd_clear_vf_stats_result,
+		 vf_id, UINT16);
+
+static void
+cmd_clear_vf_stats_parsed(
+	void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	__attribute__((unused)) void *data)
+{
+	struct cmd_clear_vf_stats_result *res = parsed_result;
+	int ret = -ENOTSUP;
+
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
+		return;
+
+#ifdef RTE_LIBRTE_I40E_PMD
+	ret = rte_pmd_i40e_reset_vf_stats(res->port_id,
+					  res->vf_id);
+#endif
+
+	switch (ret) {
+	case 0:
+		break;
+	case -EINVAL:
+		printf("invalid vf_id %d\n", res->vf_id);
+		break;
+	case -ENODEV:
+		printf("invalid port_id %d\n", res->port_id);
+		break;
+	case -ENOTSUP:
+		printf("function not implemented\n");
+		break;
+	default:
+		printf("programming error: (%s)\n", strerror(-ret));
+	}
+}
+
+cmdline_parse_inst_t cmd_clear_vf_stats = {
+	.f = cmd_clear_vf_stats_parsed,
+	.data = NULL,
+	.help_str = "clear vf stats <port_id> <vf_id>",
+	.tokens = {
+		(void *)&cmd_clear_vf_stats_clear,
+		(void *)&cmd_clear_vf_stats_vf,
+		(void *)&cmd_clear_vf_stats_stats,
+		(void *)&cmd_clear_vf_stats_port_id,
+		(void *)&cmd_clear_vf_stats_vf_id,
+		NULL,
+	},
+};
+
 /* ******************************************************************************** */
 
 /* list of instructions */
@@ -13154,6 +13344,8 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_tc_min_bw,
 	(cmdline_parse_inst_t *)&cmd_ddp_add,
 	(cmdline_parse_inst_t *)&cmd_ddp_get_list,
+	(cmdline_parse_inst_t *)&cmd_show_vf_stats,
+	(cmdline_parse_inst_t *)&cmd_clear_vf_stats,
 	NULL,
 };
 
