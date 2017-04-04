@@ -47,6 +47,10 @@
 #include <rte_dev.h>
 #include <rte_version.h>
 
+#include "ark_pktdir.h"
+#include "ark_pktgen.h"
+#include "ark_pktchkr.h"
+
 #define ETH_ARK_ARG_MAXLEN	64
 #define ARK_SYSCTRL_BASE  0x0
 #define ARK_PKTGEN_BASE   0x10000
@@ -86,6 +90,12 @@ struct ark_adapter {
 	/* User extension private data */
 	void *user_data;
 
+	/* Pointers to packet generator and checker */
+	int start_pg;
+	ark_pkt_gen_t pg;
+	ark_pkt_chkr_t pc;
+	ark_pkt_dir_t pd;
+
 	int num_ports;
 
 	/* Packet generator/checker args */
@@ -103,6 +113,24 @@ struct ark_adapter {
 
 	/* Application Bar */
 	uint8_t *a_bar;
+
+	/* Arkville demo block offsets */
+	def_ptr(sys_ctrl, sysctrl);
+	def_ptr(pkt_gen, pktgen);
+	def_ptr(mpu_rx, mpurx);
+	def_ptr(UDM, udm);
+	def_ptr(mpu_tx, mputx);
+	def_ptr(DDM, ddm);
+	def_ptr(CMAC, cmac);
+	def_ptr(external, external);
+	def_ptr(pkt_dir, pktdir);
+	def_ptr(pkt_chkr, pktchkr);
+
+	int started;
+	uint16_t rx_queues;
+	uint16_t tx_queues;
+
+	struct ark_rqpace_t *rqpacing;
 };
 
 typedef uint32_t *ark_t;
