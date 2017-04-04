@@ -426,16 +426,13 @@ config_slave_sess(struct scheduler_ctx *sched_ctx,
 
 	for (i = 0; i < sched_ctx->nb_slaves; i++) {
 		struct scheduler_slave *slave = &sched_ctx->slaves[i];
-		struct rte_cryptodev *dev =
-				rte_cryptodev_pmd_get_dev(slave->dev_id);
 
 		if (sess->sessions[i]) {
 			if (create)
 				continue;
 			/* !create */
-			(*dev->dev_ops->session_clear)(dev,
-					(void *)sess->sessions[i]);
-			sess->sessions[i] = NULL;
+			sess->sessions[i] = rte_cryptodev_sym_session_free(
+					slave->dev_id, sess->sessions[i]);
 		} else {
 			if (!create)
 				continue;
