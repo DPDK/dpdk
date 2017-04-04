@@ -123,12 +123,12 @@ ixgbe_tx_free_bufs(struct ixgbe_tx_queue *txq)
 	 * tx_next_dd - (tx_rs_thresh-1)
 	 */
 	txep = &txq->sw_ring_v[txq->tx_next_dd - (n - 1)];
-	m = __rte_pktmbuf_prefree_seg(txep[0].mbuf);
+	m = rte_pktmbuf_prefree_seg(txep[0].mbuf);
 	if (likely(m != NULL)) {
 		free[0] = m;
 		nb_free = 1;
 		for (i = 1; i < n; i++) {
-			m = __rte_pktmbuf_prefree_seg(txep[i].mbuf);
+			m = rte_pktmbuf_prefree_seg(txep[i].mbuf);
 			if (likely(m != NULL)) {
 				if (likely(m->pool == free[0]->pool))
 					free[nb_free++] = m;
@@ -143,7 +143,7 @@ ixgbe_tx_free_bufs(struct ixgbe_tx_queue *txq)
 		rte_mempool_put_bulk(free[0]->pool, (void **)free, nb_free);
 	} else {
 		for (i = 1; i < n; i++) {
-			m = __rte_pktmbuf_prefree_seg(txep[i].mbuf);
+			m = rte_pktmbuf_prefree_seg(txep[i].mbuf);
 			if (m != NULL)
 				rte_mempool_put(m->pool, m);
 		}

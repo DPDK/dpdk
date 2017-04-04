@@ -434,12 +434,12 @@ static inline void tx_free_bulk_mbuf(struct rte_mbuf **txep, int num)
 	if (unlikely(num == 0))
 		return;
 
-	m = __rte_pktmbuf_prefree_seg(txep[0]);
+	m = rte_pktmbuf_prefree_seg(txep[0]);
 	if (likely(m != NULL)) {
 		free[0] = m;
 		nb_free = 1;
 		for (i = 1; i < num; i++) {
-			m = __rte_pktmbuf_prefree_seg(txep[i]);
+			m = rte_pktmbuf_prefree_seg(txep[i]);
 			if (likely(m != NULL)) {
 				if (likely(m->pool == free[0]->pool))
 					free[nb_free++] = m;
@@ -455,7 +455,7 @@ static inline void tx_free_bulk_mbuf(struct rte_mbuf **txep, int num)
 		rte_mempool_put_bulk(free[0]->pool, (void **)free, nb_free);
 	} else {
 		for (i = 1; i < num; i++) {
-			m = __rte_pktmbuf_prefree_seg(txep[i]);
+			m = rte_pktmbuf_prefree_seg(txep[i]);
 			if (m != NULL)
 				rte_mempool_put(m->pool, m);
 			txep[i] = NULL;

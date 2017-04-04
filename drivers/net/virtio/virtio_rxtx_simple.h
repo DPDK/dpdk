@@ -98,13 +98,13 @@ virtio_xmit_cleanup(struct virtqueue *vq)
 	desc_idx = (uint16_t)(vq->vq_used_cons_idx &
 		   ((vq->vq_nentries >> 1) - 1));
 	m = (struct rte_mbuf *)vq->vq_descx[desc_idx++].cookie;
-	m = __rte_pktmbuf_prefree_seg(m);
+	m = rte_pktmbuf_prefree_seg(m);
 	if (likely(m != NULL)) {
 		free[0] = m;
 		nb_free = 1;
 		for (i = 1; i < VIRTIO_TX_FREE_NR; i++) {
 			m = (struct rte_mbuf *)vq->vq_descx[desc_idx++].cookie;
-			m = __rte_pktmbuf_prefree_seg(m);
+			m = rte_pktmbuf_prefree_seg(m);
 			if (likely(m != NULL)) {
 				if (likely(m->pool == free[0]->pool))
 					free[nb_free++] = m;
@@ -123,7 +123,7 @@ virtio_xmit_cleanup(struct virtqueue *vq)
 	} else {
 		for (i = 1; i < VIRTIO_TX_FREE_NR; i++) {
 			m = (struct rte_mbuf *)vq->vq_descx[desc_idx++].cookie;
-			m = __rte_pktmbuf_prefree_seg(m);
+			m = rte_pktmbuf_prefree_seg(m);
 			if (m != NULL)
 				rte_mempool_put(m->pool, m);
 		}

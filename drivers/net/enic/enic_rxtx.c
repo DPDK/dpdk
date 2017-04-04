@@ -473,7 +473,7 @@ static inline void enic_free_wq_bufs(struct vnic_wq *wq, u16 completed_index)
 	pool = ((struct rte_mbuf *)buf->mb)->pool;
 	for (i = 0; i < nb_to_free; i++) {
 		buf = &wq->bufs[tail_idx];
-		m = __rte_pktmbuf_prefree_seg((struct rte_mbuf *)(buf->mb));
+		m = rte_pktmbuf_prefree_seg((struct rte_mbuf *)(buf->mb));
 		buf->mb = NULL;
 
 		if (unlikely(m == NULL)) {

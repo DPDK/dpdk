@@ -1220,8 +1220,23 @@ static inline void rte_pktmbuf_detach(struct rte_mbuf *m)
 		__rte_mbuf_raw_free(md);
 }
 
-static inline struct rte_mbuf* __attribute__((always_inline))
-__rte_pktmbuf_prefree_seg(struct rte_mbuf *m)
+/**
+ * Decrease reference counter and unlink a mbuf segment
+ *
+ * This function does the same than a free, except that it does not
+ * return the segment to its pool.
+ * It decreases the reference counter, and if it reaches 0, it is
+ * detached from its parent for an indirect mbuf.
+ *
+ * @param m
+ *   The mbuf to be unlinked
+ * @return
+ *   - (m) if it is the last reference. It can be recycled or freed.
+ *   - (NULL) if the mbuf still has remaining references on it.
+ */
+__attribute__((always_inline))
+static inline struct rte_mbuf *
+rte_pktmbuf_prefree_seg(struct rte_mbuf *m)
 {
 	__rte_mbuf_sanity_check(m, 0);
 
@@ -1232,6 +1247,14 @@ __rte_pktmbuf_prefree_seg(struct rte_mbuf *m)
 		return m;
 	}
 	return NULL;
+}
+
+/* deprecated, replaced by rte_pktmbuf_prefree_seg() */
+__rte_deprecated
+static inline struct rte_mbuf *
+__rte_pktmbuf_prefree_seg(struct rte_mbuf *m)
+{
+	return rte_pktmbuf_prefree_seg(m);
 }
 
 /**
@@ -1246,7 +1269,8 @@ __rte_pktmbuf_prefree_seg(struct rte_mbuf *m)
 static inline void __attribute__((always_inline))
 rte_pktmbuf_free_seg(struct rte_mbuf *m)
 {
-	if (likely(NULL != (m = __rte_pktmbuf_prefree_seg(m)))) {
+	m = rte_pktmbuf_prefree_seg(m);
+	if (likely(m != NULL)) {
 		m->next = NULL;
 		__rte_mbuf_raw_free(m);
 	}
