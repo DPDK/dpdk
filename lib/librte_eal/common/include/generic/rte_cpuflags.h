@@ -39,6 +39,7 @@
  * Architecture specific API to determine available CPU features at runtime.
  */
 
+#include "rte_common.h"
 #include <errno.h>
 
 /**
@@ -79,6 +80,7 @@ rte_cpu_get_flag_enabled(enum rte_cpu_flag_t feature);
  * that were specified at compile time. It is called automatically within the
  * EAL, so does not need to be used by applications.
  */
+__rte_deprecated
 void
 rte_cpu_check_supported(void);
 
