@@ -797,18 +797,28 @@ static inline struct rte_mbuf *rte_mbuf_raw_alloc(struct rte_mempool *mp)
 }
 
 /**
- * @internal Put mbuf back into its original mempool.
- * The use of that function is reserved for RTE internal needs.
- * Please use rte_pktmbuf_free().
+ * Put mbuf back into its original mempool.
+ *
+ * The caller must ensure that the mbuf is direct and that the
+ * reference counter is 0.
  *
  * @param m
  *   The mbuf to be freed.
  */
 static inline void __attribute__((always_inline))
-__rte_mbuf_raw_free(struct rte_mbuf *m)
+rte_mbuf_raw_free(struct rte_mbuf *m)
 {
+	RTE_ASSERT(RTE_MBUF_DIRECT(m));
 	RTE_ASSERT(rte_mbuf_refcnt_read(m) == 0);
 	rte_mempool_put(m->pool, m);
+}
+
+/* compat with older versions */
+__rte_deprecated
+static inline void __attribute__((always_inline))
+__rte_mbuf_raw_free(struct rte_mbuf *m)
+{
+	rte_mbuf_raw_free(m);
 }
 
 /* Operations on ctrl mbuf */
@@ -1217,7 +1227,7 @@ static inline void rte_pktmbuf_detach(struct rte_mbuf *m)
 	m->ol_flags = 0;
 
 	if (rte_mbuf_refcnt_update(md, -1) == 0)
-		__rte_mbuf_raw_free(md);
+		rte_mbuf_raw_free(md);
 }
 
 /**
@@ -1272,7 +1282,7 @@ rte_pktmbuf_free_seg(struct rte_mbuf *m)
 	m = rte_pktmbuf_prefree_seg(m);
 	if (likely(m != NULL)) {
 		m->next = NULL;
-		__rte_mbuf_raw_free(m);
+		rte_mbuf_raw_free(m);
 	}
 }
 

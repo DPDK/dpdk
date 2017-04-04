@@ -2000,7 +2000,7 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				assert(pkt != (*rxq->elts)[idx]);
 				rep = NEXT(pkt);
 				rte_mbuf_refcnt_set(pkt, 0);
-				__rte_mbuf_raw_free(pkt);
+				rte_mbuf_raw_free(pkt);
 				pkt = rep;
 			}
 			break;
@@ -2011,13 +2011,13 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 					       &rss_hash_res);
 			if (!len) {
 				rte_mbuf_refcnt_set(rep, 0);
-				__rte_mbuf_raw_free(rep);
+				rte_mbuf_raw_free(rep);
 				break;
 			}
 			if (unlikely(len == -1)) {
 				/* RX error, packet is likely too large. */
 				rte_mbuf_refcnt_set(rep, 0);
-				__rte_mbuf_raw_free(rep);
+				rte_mbuf_raw_free(rep);
 				++rxq->stats.idropped;
 				goto skip;
 			}

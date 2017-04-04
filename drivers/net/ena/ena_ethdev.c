@@ -680,7 +680,7 @@ static void ena_rx_queue_release_bufs(struct ena_ring *ring)
 			ring->rx_buffer_info[ring->next_to_clean & ring_mask];
 
 		if (m)
-			__rte_mbuf_raw_free(m);
+			rte_mbuf_raw_free(m);
 
 		ring->next_to_clean++;
 	}
