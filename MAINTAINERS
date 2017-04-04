@@ -286,6 +286,14 @@ M: Evgeny Schemeilin <evgenys@amazon.com>
 F: drivers/net/ena/
 F: doc/guides/nics/ena.rst
 
+Atomic Rules ARK
+M: Shepard Siegel <shepard.siegel@atomicrules.com>
+M: Ed Czeck <ed.czeck@atomicrules.com>
+M: John Miller <john.miller@atomicrules.com>
+F: drivers/net/ark/
+F: doc/guides/nics/ark.rst
+F: doc/guides/nics/features/ark.ini
+
 Broadcom bnxt
 M: Stephen Hurd <stephen.hurd@broadcom.com>
 M: Ajit Khaparde <ajit.khaparde@broadcom.com>

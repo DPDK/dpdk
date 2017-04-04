@@ -36,6 +36,7 @@ Network Interface Controller Drivers
     :numbered:
 
     overview
+    ark
     avp
     bnx2x
     bnxt

@@ -1,0 +1,110 @@
+/*-
+ * BSD LICENSE
+ *
+ * Copyright (c) 2015-2017 Atomic Rules LLC
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * * Redistributions of source code must retain the above copyright
+ * notice, this list of conditions and the following disclaimer.
+ * * Redistributions in binary form must reproduce the above copyright
+ * notice, this list of conditions and the following disclaimer in
+ * the documentation and/or other materials provided with the
+ * distribution.
+ * * Neither the name of copyright holder nor the names of its
+ * contributors may be used to endorse or promote products derived
+ * from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#ifndef _ARK_GLOBAL_H_
+#define _ARK_GLOBAL_H_
+
+#include <time.h>
+#include <assert.h>
+
+#include <rte_mbuf.h>
+#include <rte_ethdev.h>
+#include <rte_malloc.h>
+#include <rte_memcpy.h>
+#include <rte_string_fns.h>
+#include <rte_cycles.h>
+#include <rte_kvargs.h>
+#include <rte_dev.h>
+#include <rte_version.h>
+
+#define ETH_ARK_ARG_MAXLEN	64
+#define ARK_SYSCTRL_BASE  0x0
+#define ARK_PKTGEN_BASE   0x10000
+#define ARK_MPU_RX_BASE   0x20000
+#define ARK_UDM_BASE      0x30000
+#define ARK_MPU_TX_BASE   0x40000
+#define ARK_DDM_BASE      0x60000
+#define ARK_CMAC_BASE     0x80000
+#define ARK_PKTDIR_BASE   0xa0000
+#define ARK_PKTCHKR_BASE  0x90000
+#define ARK_RCPACING_BASE 0xb0000
+#define ARK_EXTERNAL_BASE 0x100000
+#define ARK_MPU_QOFFSET   0x00100
+#define ARK_MAX_PORTS     8
+
+#define offset8(n)     n
+#define offset16(n)   ((n) / 2)
+#define offset32(n)   ((n) / 4)
+#define offset64(n)   ((n) / 8)
+
+/* Maximum length of arg list in bytes */
+#define ARK_MAX_ARG_LEN 256
+
+/*
+ * Structure to store private data for each PF/VF instance.
+ */
+#define def_ptr(type, name) \
+	union type {		   \
+		uint64_t *t64;	   \
+		uint32_t *t32;	   \
+		uint16_t *t16;	   \
+		uint8_t  *t8;	   \
+		void     *v;	   \
+	} name
+
+struct ark_adapter {
+	/* User extension private data */
+	void *user_data;
+
+	int num_ports;
+
+	/* Packet generator/checker args */
+	char pkt_gen_args[ARK_MAX_ARG_LEN];
+	char pkt_chkr_args[ARK_MAX_ARG_LEN];
+	uint32_t pkt_dir_v;
+
+	/* eth device */
+	struct rte_eth_dev *eth_dev;
+
+	void *d_handle;
+
+	/* Our Bar 0 */
+	uint8_t *bar0;
+
+	/* Application Bar */
+	uint8_t *a_bar;
+};
+
+typedef uint32_t *ark_t;
+
+#endif
