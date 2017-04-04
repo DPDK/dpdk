@@ -112,8 +112,6 @@ eth_null_rx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs)
 			break;
 		bufs[i]->data_len = (uint16_t)packet_size;
 		bufs[i]->pkt_len = packet_size;
-		bufs[i]->nb_segs = 1;
-		bufs[i]->next = NULL;
 		bufs[i]->port = h->internals->port_id;
 	}
 

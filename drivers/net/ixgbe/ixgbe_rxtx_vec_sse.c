@@ -425,12 +425,6 @@ _recv_raw_pkts_vec(struct ixgbe_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 			/* store the resulting 32-bit value */
 			*(int *)split_packet = _mm_cvtsi128_si32(eop_bits);
 			split_packet += RTE_IXGBE_DESCS_PER_LOOP;
-
-			/* zero-out next pointers */
-			rx_pkts[pos]->next = NULL;
-			rx_pkts[pos + 1]->next = NULL;
-			rx_pkts[pos + 2]->next = NULL;
-			rx_pkts[pos + 3]->next = NULL;
 		}
 
 		/* C.3 calc available number of desc */

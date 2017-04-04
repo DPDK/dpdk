@@ -1585,8 +1585,6 @@ ixgbe_rx_alloc_bufs(struct ixgbe_rx_queue *rxq, bool reset_mbuf)
 		/* populate the static rte mbuf fields */
 		mb = rxep[i].mbuf;
 		if (reset_mbuf) {
-			mb->next = NULL;
-			mb->nb_segs = 1;
 			mb->port = rxq->port_id;
 		}
 
@@ -2193,12 +2191,6 @@ next_desc:
 			next_sc_entry->fbuf = first_seg;
 			goto next_desc;
 		}
-
-		/*
-		 * This is the last buffer of the received packet - return
-		 * the current cluster to the user.
-		 */
-		rxm->next = NULL;
 
 		/* Initialize the first mbuf of the returned packet */
 		ixgbe_fill_cluster_head_buf(first_seg, &rxd, rxq, staterr);
