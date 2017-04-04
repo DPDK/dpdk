@@ -583,7 +583,7 @@ pkt_copy_split(const struct rte_mbuf *pkt)
 		rc = mbuf_copy_split(pkt, md, seglen, nb_seg);
 		if (rc < 0)
 			RTE_LOG(ERR, USER1,
-				"mbuf_copy_split for %p(len=%u, nb_seg=%hhu) "
+				"mbuf_copy_split for %p(len=%u, nb_seg=%u) "
 				"into %u segments failed with error code: %d\n",
 				pkt, pkt->pkt_len, pkt->nb_segs, nb_seg, rc);
 
@@ -801,7 +801,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 			char buf[256];
 
 			printf("-----------------\n");
-			printf("port=%u, mbuf=%p, pkt_len=%u, nb_segs=%hhu:\n",
+			printf("port=%u, mbuf=%p, pkt_len=%u, nb_segs=%u:\n",
 				fs->rx_port, m, m->pkt_len, m->nb_segs);
 			/* dump rx parsed packet info */
 			rte_get_rx_ol_flag_list(rx_ol_flags, buf, sizeof(buf));

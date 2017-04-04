@@ -400,12 +400,13 @@ struct rte_mbuf {
 	void *buf_addr;           /**< Virtual address of segment buffer. */
 	phys_addr_t buf_physaddr; /**< Physical address of segment buffer. */
 
-	/* next 6 bytes are initialised on RX descriptor rearm */
+	/* next 8 bytes are initialised on RX descriptor rearm */
 	MARKER64 rearm_data;
 	uint16_t data_off;
 
 	/**
-	 * 16-bit Reference counter.
+	 * Reference counter. Its size should at least equal to the size
+	 * of port field (16 bits), to support zero-copy broadcast.
 	 * It should only be accessed using the following functions:
 	 * rte_mbuf_refcnt_update(), rte_mbuf_refcnt_read(), and
 	 * rte_mbuf_refcnt_set(). The functionality of these functions (atomic,
@@ -417,9 +418,10 @@ struct rte_mbuf {
 		rte_atomic16_t refcnt_atomic; /**< Atomically accessed refcnt */
 		uint16_t refcnt;              /**< Non-atomically accessed refcnt */
 	};
-	uint8_t nb_segs;          /**< Number of segments. */
-	uint8_t port;             /**< Input port. */
-	uint16_t pad;             /**< 2B pad for naturally aligned ol_flags */
+	uint16_t nb_segs;         /**< Number of segments. */
+
+	/** Input port (16 bits to support more than 256 virtual ports). */
+	uint16_t port;
 
 	uint64_t ol_flags;        /**< Offload features. */
 
