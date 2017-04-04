@@ -8,6 +8,14 @@ API and ABI deprecation notices are to be posted here.
 Deprecation Notices
 -------------------
 
+* eal: the following functions are deprecated starting from 17.05 and will
+  be removed in 17.08:
+
+  - ``rte_set_log_level``, replaced by ``rte_log_set_global_level``
+  - ``rte_get_log_level``, replaced by ``rte_log_get_global_level``
+  - ``rte_set_log_type``, replaced by ``rte_log_set_level``
+  - ``rte_get_log_type``, replaced by ``rte_log_get_level``
+
 * ring: Changes are planned to rte_ring APIs in release 17.05. Proposed
   changes include:
 

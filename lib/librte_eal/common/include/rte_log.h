@@ -50,6 +50,8 @@ extern "C" {
 #include <stdio.h>
 #include <stdarg.h>
 
+#include <rte_common.h>
+
 struct rte_log_dynamic_type;
 
 /** The rte_log structure. */
@@ -133,11 +135,26 @@ int rte_openlog_stream(FILE *f);
  * @param level
  *   Log level. A value between RTE_LOG_EMERG (1) and RTE_LOG_DEBUG (8).
  */
+void rte_log_set_global_level(uint32_t level);
+
+/**
+ * Deprecated, replaced by rte_log_set_global_level().
+ */
+__rte_deprecated
 void rte_set_log_level(uint32_t level);
 
 /**
  * Get the global log level.
+ *
+ * @return
+ *   The current global log level.
  */
+uint32_t rte_log_get_global_level(void);
+
+/**
+ * Deprecated, replaced by rte_log_get_global_level().
+ */
+__rte_deprecated
 uint32_t rte_get_log_level(void);
 
 /**
@@ -148,11 +165,13 @@ uint32_t rte_get_log_level(void);
  * @param enable
  *   True for enable; false for disable.
  */
+__rte_deprecated
 void rte_set_log_type(uint32_t type, int enable);
 
 /**
  * Get the global log type.
  */
+__rte_deprecated
 uint32_t rte_get_log_type(void);
 
 /**

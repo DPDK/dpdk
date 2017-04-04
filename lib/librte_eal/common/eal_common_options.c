@@ -773,7 +773,7 @@ eal_parse_log_level(const char *arg, struct internal_config *conf)
 
 	if (type == NULL) {
 		conf->log_level = tmp;
-		rte_set_log_level(tmp);
+		rte_log_set_global_level(tmp);
 	} else if (rte_log_set_level_regexp(type, tmp) < 0) {
 		printf("cannot set log level %s,%lu\n",
 			type, tmp);

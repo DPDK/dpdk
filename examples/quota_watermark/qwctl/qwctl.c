@@ -77,7 +77,7 @@ int main(int argc, char **argv)
 	int ret;
 	struct cmdline *cl;
 
-	rte_set_log_level(RTE_LOG_INFO);
+	rte_log_set_global_level(RTE_LOG_INFO);
 
 	ret = rte_eal_init(argc, argv);
 	if (ret < 0)
