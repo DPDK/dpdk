@@ -186,6 +186,7 @@ DPDK_17.02 {
 DPDK_17.05 {
 	global:
 
+	rte_log_dump;
 	rte_log_register;
 	rte_log_set_level;
 

@@ -210,6 +210,16 @@ int rte_log_cur_msg_logtype(void);
 int rte_log_register(const char *name);
 
 /**
+ * Dump log information.
+ *
+ * Dump the global level and the registered log types.
+ *
+ * @param f
+ *   The output stream where the dump should be sent.
+ */
+void rte_log_dump(FILE *f);
+
+/**
  * Generates a log message.
  *
  * The message will be sent in the stream defined by the previous call

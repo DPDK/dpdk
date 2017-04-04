@@ -243,6 +243,40 @@ rte_log_init(void)
 	rte_logs.dynamic_types_len = RTE_LOGTYPE_FIRST_EXT_ID;
 }
 
+static const char *
+loglevel_to_string(uint32_t level)
+{
+	switch (level) {
+	case RTE_LOG_EMERG: return "emerg";
+	case RTE_LOG_ALERT: return "alert";
+	case RTE_LOG_CRIT: return "critical";
+	case RTE_LOG_ERR: return "error";
+	case RTE_LOG_WARNING: return "warning";
+	case RTE_LOG_NOTICE: return "notice";
+	case RTE_LOG_INFO: return "info";
+	case RTE_LOG_DEBUG: return "debug";
+	default: return "unknown";
+	}
+}
+
+/* dump global level and registered log types */
+void
+rte_log_dump(FILE *f)
+{
+	size_t i;
+
+	fprintf(f, "global log level is %s\n",
+		loglevel_to_string(rte_get_log_level()));
+
+	for (i = 0; i < rte_logs.dynamic_types_len; i++) {
+		if (rte_logs.dynamic_types[i].name == NULL)
+			continue;
+		fprintf(f, "id %zu: %s, level is %s\n",
+			i, rte_logs.dynamic_types[i].name,
+			loglevel_to_string(rte_logs.dynamic_types[i].loglevel));
+	}
+}
+
 /*
  * Generates a log message The message will be sent in the stream
  * defined by the previous call to rte_openlog_stream().
