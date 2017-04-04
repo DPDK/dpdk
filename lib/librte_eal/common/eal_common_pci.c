@@ -443,6 +443,7 @@ rte_eal_pci_probe(void)
 				 dev->addr.devid, dev->addr.function);
 			rte_errno = errno;
 			failed++;
+			ret = 0;
 		}
 	}
 
