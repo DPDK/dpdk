@@ -158,13 +158,15 @@ static void cmd_dump_parsed(void *parsed_result,
 		rte_mempool_list_dump(stdout);
 	else if (!strcmp(res->dump, "dump_devargs"))
 		rte_eal_devargs_dump(stdout);
+	else if (!strcmp(res->dump, "dump_log_types"))
+		rte_log_dump(stdout);
 }
 
 cmdline_parse_token_string_t cmd_dump_dump =
 	TOKEN_STRING_INITIALIZER(struct cmd_dump_result, dump,
 				 "dump_physmem#dump_memzone#"
 				 "dump_struct_sizes#dump_ring#dump_mempool#"
-				 "dump_devargs");
+				 "dump_devargs#dump_log_types");
 
 cmdline_parse_inst_t cmd_dump = {
 	.f = cmd_dump_parsed,  /* function to call */
