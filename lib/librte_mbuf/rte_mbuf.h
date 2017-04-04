@@ -775,6 +775,11 @@ rte_mbuf_sanity_check(const struct rte_mbuf *m, int is_header);
  * initializing all the required fields. See rte_pktmbuf_reset().
  * For standard needs, prefer rte_pktmbuf_alloc().
  *
+ * The caller can expect that the following fields of the mbuf structure
+ * are initialized: buf_addr, buf_physaddr, buf_len, refcnt=1, nb_segs=1,
+ * next=NULL, pool, priv_size. The other fields must be initialized
+ * by the caller.
+ *
  * @param mp
  *   The mempool from which mbuf is allocated.
  * @return
@@ -789,8 +794,9 @@ static inline struct rte_mbuf *rte_mbuf_raw_alloc(struct rte_mempool *mp)
 	if (rte_mempool_get(mp, &mb) < 0)
 		return NULL;
 	m = (struct rte_mbuf *)mb;
-	RTE_ASSERT(rte_mbuf_refcnt_read(m) == 0);
-	rte_mbuf_refcnt_set(m, 1);
+	RTE_ASSERT(rte_mbuf_refcnt_read(m) == 1);
+	RTE_ASSERT(m->next == NULL);
+	RTE_ASSERT(m->nb_segs == 1);
 	__rte_mbuf_sanity_check(m, 0);
 
 	return m;
@@ -799,8 +805,13 @@ static inline struct rte_mbuf *rte_mbuf_raw_alloc(struct rte_mempool *mp)
 /**
  * Put mbuf back into its original mempool.
  *
- * The caller must ensure that the mbuf is direct and that the
- * reference counter is 0.
+ * The caller must ensure that the mbuf is direct and properly
+ * reinitialized (refcnt=1, next=NULL, nb_segs=1), as done by
+ * rte_pktmbuf_prefree_seg().
+ *
+ * This function should be used with care, when optimization is
+ * required. For standard needs, prefer rte_pktmbuf_free() or
+ * rte_pktmbuf_free_seg().
  *
  * @param m
  *   The mbuf to be freed.
@@ -809,13 +820,16 @@ static inline void __attribute__((always_inline))
 rte_mbuf_raw_free(struct rte_mbuf *m)
 {
 	RTE_ASSERT(RTE_MBUF_DIRECT(m));
-	RTE_ASSERT(rte_mbuf_refcnt_read(m) == 0);
+	RTE_ASSERT(rte_mbuf_refcnt_read(m) == 1);
+	RTE_ASSERT(m->next == NULL);
+	RTE_ASSERT(m->nb_segs == 1);
+	__rte_mbuf_sanity_check(m, 0);
 	rte_mempool_put(m->pool, m);
 }
 
 /* compat with older versions */
 __rte_deprecated
-static inline void __attribute__((always_inline))
+static inline void
 __rte_mbuf_raw_free(struct rte_mbuf *m)
 {
 	rte_mbuf_raw_free(m);
@@ -1226,8 +1240,12 @@ static inline void rte_pktmbuf_detach(struct rte_mbuf *m)
 	m->data_len = 0;
 	m->ol_flags = 0;
 
-	if (rte_mbuf_refcnt_update(md, -1) == 0)
+	if (rte_mbuf_refcnt_update(md, -1) == 0) {
+		md->next = NULL;
+		md->nb_segs = 1;
+		rte_mbuf_refcnt_set(md, 1);
 		rte_mbuf_raw_free(md);
+	}
 }
 
 /**
@@ -1250,10 +1268,30 @@ rte_pktmbuf_prefree_seg(struct rte_mbuf *m)
 {
 	__rte_mbuf_sanity_check(m, 0);
 
-	if (likely(rte_mbuf_refcnt_update(m, -1) == 0)) {
-		/* if this is an indirect mbuf, it is detached. */
+	if (likely(rte_mbuf_refcnt_read(m) == 1)) {
+
 		if (RTE_MBUF_INDIRECT(m))
 			rte_pktmbuf_detach(m);
+
+		if (m->next != NULL) {
+			m->next = NULL;
+			m->nb_segs = 1;
+		}
+
+		return m;
+
+       } else if (rte_atomic16_add_return(&m->refcnt_atomic, -1) == 0) {
+
+
+		if (RTE_MBUF_INDIRECT(m))
+			rte_pktmbuf_detach(m);
+
+		if (m->next != NULL) {
+			m->next = NULL;
+			m->nb_segs = 1;
+		}
+		rte_mbuf_refcnt_set(m, 1);
+
 		return m;
 	}
 	return NULL;
@@ -1280,10 +1318,8 @@ static inline void __attribute__((always_inline))
 rte_pktmbuf_free_seg(struct rte_mbuf *m)
 {
 	m = rte_pktmbuf_prefree_seg(m);
-	if (likely(m != NULL)) {
-		m->next = NULL;
+	if (likely(m != NULL))
 		rte_mbuf_raw_free(m);
-	}
 }
 
 /**

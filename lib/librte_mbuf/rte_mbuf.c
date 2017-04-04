@@ -146,6 +146,8 @@ rte_pktmbuf_init(struct rte_mempool *mp,
 	m->pool = mp;
 	m->nb_segs = 1;
 	m->port = 0xff;
+	rte_mbuf_refcnt_set(m, 1);
+	m->next = NULL;
 }
 
 /* helper to create a mbuf pool */
