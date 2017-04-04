@@ -710,6 +710,9 @@ struct _kc_ethtool_pauseparam {
 #elif ( LINUX_VERSION_CODE >= KERNEL_VERSION(3,12,28) )
 /* SLES12 is at least 3.12.28+ based */
 #define SLE_VERSION_CODE SLE_VERSION(12,0,0)
+#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 4, 57))
+/* SLES12SP3 is at least 4.4.57+ based */
+#define SLE_VERSION_CODE SLE_VERSION(12, 3, 0)
 #endif /* LINUX_VERSION_CODE == KERNEL_VERSION(x,y,z) */
 #endif /* CONFIG_SUSE_KERNEL */
 #ifndef SLE_VERSION_CODE
@@ -3929,8 +3932,9 @@ skb_set_hash(struct sk_buff *skb, __u32 hash, __always_unused int type)
 #define vlan_tx_tag_present skb_vlan_tag_present
 #endif
 
-#if ( LINUX_VERSION_CODE >= KERNEL_VERSION(4,9,0) )
+#if ((LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)) || \
+    (SLE_VERSION_CODE && SLE_VERSION_CODE >= SLE_VERSION(12, 3, 0)))
 #define HAVE_VF_VLAN_PROTO
-#endif /* >= 4.9.0 */
+#endif /* >= 4.9.0, >= SLES12SP3 */
 
 #endif /* _KCOMPAT_H_ */
