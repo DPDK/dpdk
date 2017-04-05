@@ -53,12 +53,4 @@ SRCS-$(CONFIG_RTE_LIBRTE_PMD_KNI) += rte_eth_kni.c
 #
 SYMLINK-y-include +=
 
-# this lib depends upon:
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_KNI) += lib/librte_eal
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_KNI) += lib/librte_ether
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_KNI) += lib/librte_kni
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_KNI) += lib/librte_kvargs
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_KNI) += lib/librte_mbuf
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_KNI) += lib/librte_mempool
-
 include $(RTE_SDK)/mk/rte.lib.mk

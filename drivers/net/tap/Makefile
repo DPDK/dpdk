@@ -52,15 +52,6 @@ SRCS-$(CONFIG_RTE_LIBRTE_PMD_TAP) += tap_flow.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_TAP) += tap_netlink.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_TAP) += tap_tcmsgs.c
 
-# this lib depends upon:
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_TAP) += lib/librte_eal
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_TAP) += lib/librte_mbuf
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_TAP) += lib/librte_mempool
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_TAP) += lib/librte_ether
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_TAP) += lib/librte_kvargs
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_TAP) += lib/librte_net
-DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_TAP) += lib/librte_hash
-
 include $(RTE_SDK)/mk/rte.lib.mk
 
 # Generate and clean-up tap_autoconf.h.
