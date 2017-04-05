@@ -527,6 +527,11 @@ Network headers
 M: Olivier Matz <olivier.matz@6wind.com>
 F: lib/librte_net/
 
+Packet CRC
+M: Jasvinder Singh <jasvinder.singh@intel.com>
+F: lib/librte_net/rte_net_crc*
+F: lib/librte_net/net_crc_sse.h
+
 IP fragmentation & reassembly
 M: Konstantin Ananyev <konstantin.ananyev@intel.com>
 F: lib/librte_ip_frag/

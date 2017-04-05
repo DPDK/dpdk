@@ -4,3 +4,11 @@ DPDK_16.11 {
 
 	local: *;
 };
+
+DPDK_17.05 {
+	global:
+
+	rte_net_crc_calc;
+	rte_net_crc_set_alg;
+
+} DPDK_16.11;
