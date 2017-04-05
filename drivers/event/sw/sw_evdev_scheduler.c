@@ -376,7 +376,7 @@ sw_refill_pp_buf(struct sw_evdev *sw, struct sw_port *port)
 static inline uint32_t __attribute__((always_inline))
 __pull_port_lb(struct sw_evdev *sw, uint32_t port_id, int allow_reorder)
 {
-	static const struct reorder_buffer_entry dummy_rob;
+	static struct reorder_buffer_entry dummy_rob;
 	uint32_t pkts_iter = 0;
 	struct sw_port *port = &sw->ports[port_id];
 
