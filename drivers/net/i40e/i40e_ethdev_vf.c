@@ -2024,6 +2024,10 @@ i40evf_add_del_all_mac_addr(struct rte_eth_dev *dev, bool add)
 		}
 
 		list = rte_zmalloc("i40evf_del_mac_buffer", len, 0);
+		if (!list) {
+			PMD_DRV_LOG(ERR, "fail to allocate memory");
+			return;
+		}
 
 		for (i = begin; i < next_begin; i++) {
 			addr = &dev->data->mac_addrs[i];
