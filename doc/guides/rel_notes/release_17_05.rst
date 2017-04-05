@@ -41,6 +41,20 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **Reorganized the mbuf structure.**
+
+  * Align fields to facilitate the writing of ``data_off``, ``refcnt``, and
+    ``nb_segs`` in one operation.
+  * Use 2 bytes for port and number of segments.
+  * Move the sequence number in the second cache line.
+  * Add a timestamp field.
+  * Set default value for ``refcnt``, ``next`` and ``nb_segs`` at mbuf free.
+
+* **Added mbuf raw free API**
+
+  Moved ``rte_mbuf_raw_free()`` and ``rte_pktmbuf_prefree_seg()`` functions to
+  the public API.
+
 * **Added free Tx mbuf on demand API.**
 
   Added a new function ``rte_eth_tx_done_cleanup()`` which allows an application
@@ -366,6 +380,11 @@ ABI Changes
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* **Reorganized the mbuf structure.**
+
+  The order and size of the fields in the ``mbuf`` structure changed,
+  as described in the `New Features`_ section.
+
 
 Removed Items
 -------------
@@ -413,7 +432,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_kni.so.2
      librte_kvargs.so.1
      librte_lpm.so.2
-     librte_mbuf.so.2
+   + librte_mbuf.so.3
      librte_mempool.so.2
      librte_meter.so.1
      librte_net.so.1

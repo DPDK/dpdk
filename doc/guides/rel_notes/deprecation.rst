@@ -75,13 +75,6 @@ Deprecation Notices
   ``rte_pmd_ixgbe_bypass_wd_timeout_show``, ``rte_pmd_ixgbe_bypass_ver_show``,
   ``rte_pmd_ixgbe_bypass_wd_reset``.
 
-* ABI changes are planned for 17.05 in the ``rte_mbuf`` structure: some fields
-  may be reordered to facilitate the writing of ``data_off``, ``refcnt``, and
-  ``nb_segs`` in one operation, because some platforms have an overhead if the
-  store address is not naturally aligned. Other mbuf fields, such as the
-  ``port`` field, may be moved or removed as part of this mbuf work. A
-  ``timestamp`` will also be added.
-
 * The mbuf flags PKT_RX_VLAN_PKT and PKT_RX_QINQ_PKT are deprecated and
   are respectively replaced by PKT_RX_VLAN_STRIPPED and
   PKT_RX_QINQ_STRIPPED, that are better described. The old flags and
