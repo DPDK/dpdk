@@ -120,7 +120,8 @@ rte_net_intel_cksum_flags_prepare(struct rte_mbuf *m, uint64_t ol_flags)
 	struct udp_hdr *udp_hdr;
 	uint64_t inner_l3_offset = m->l2_len;
 
-	if (ol_flags & PKT_TX_OUTER_IP_CKSUM)
+	if ((ol_flags & PKT_TX_OUTER_IP_CKSUM) ||
+		(ol_flags & PKT_TX_OUTER_IPV6))
 		inner_l3_offset += m->outer_l2_len + m->outer_l3_len;
 
 	if ((ol_flags & PKT_TX_UDP_CKSUM) == PKT_TX_UDP_CKSUM) {
