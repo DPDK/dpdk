@@ -209,9 +209,6 @@ ssows_flush_events(struct ssows *ws, uint8_t queue_id)
 	uint64_t enable, get_work0, get_work1;
 	uint8_t *base = octeontx_ssovf_bar(OCTEONTX_SSO_GROUP, queue_id, 0);
 
-	RTE_SET_USED(get_work0);
-	RTE_SET_USED(get_work1);
-
 	enable = ssovf_read64(base + SSO_VHGRP_QCTL);
 	if (!enable)
 		return;
@@ -227,6 +224,9 @@ ssows_flush_events(struct ssows *ws, uint8_t queue_id)
 		cq_ds_cnt &= 0x1FFF1FFF0000;
 		ssovf_load_pair(get_work0, get_work1, ws->base + reg_off);
 	}
+
+	RTE_SET_USED(get_work0);
+	RTE_SET_USED(get_work1);
 }
 
 void
