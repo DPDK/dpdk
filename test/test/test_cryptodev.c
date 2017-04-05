@@ -7846,11 +7846,11 @@ test_scheduler_mode_op(void)
 		"Failed to set cdev %u to user defined mode", sched_id);
 
 	/* set round robin mode */
-	ret = rte_crpytodev_scheduler_mode_set(sched_id,
+	ret = rte_cryptodev_scheduler_mode_set(sched_id,
 			CDEV_SCHED_MODE_ROUNDROBIN);
 	TEST_ASSERT(ret == 0,
 		"Failed to set cdev %u to round-robin mode", sched_id);
-	TEST_ASSERT(rte_crpytodev_scheduler_mode_get(sched_id) ==
+	TEST_ASSERT(rte_cryptodev_scheduler_mode_get(sched_id) ==
 			CDEV_SCHED_MODE_ROUNDROBIN, "Scheduling Mode "
 					"not match");
 

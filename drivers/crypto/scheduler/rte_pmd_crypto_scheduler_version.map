@@ -14,6 +14,8 @@ DPDK_17.02 {
 DPDK_17.05 {
 	global:
 
+	rte_cryptodev_scheduler_mode_get;
+	rte_cryptodev_scheduler_mode_set;
 	rte_cryptodev_scheduler_slaves_get;
 
 } DPDK_17.02;

@@ -303,7 +303,7 @@ rte_cryptodev_scheduler_slave_detach(uint8_t scheduler_id, uint8_t slave_id)
 }
 
 int
-rte_crpytodev_scheduler_mode_set(uint8_t scheduler_id,
+rte_cryptodev_scheduler_mode_set(uint8_t scheduler_id,
 		enum rte_cryptodev_scheduler_mode mode)
 {
 	struct rte_cryptodev *dev = rte_cryptodev_pmd_get_dev(scheduler_id);
@@ -359,8 +359,15 @@ rte_crpytodev_scheduler_mode_set(uint8_t scheduler_id,
 	return 0;
 }
 
+int
+rte_crpytodev_scheduler_mode_set(uint8_t scheduler_id,
+		enum rte_cryptodev_scheduler_mode mode)
+{
+	return rte_cryptodev_scheduler_mode_set(scheduler_id, mode);
+}
+
 enum rte_cryptodev_scheduler_mode
-rte_crpytodev_scheduler_mode_get(uint8_t scheduler_id)
+rte_cryptodev_scheduler_mode_get(uint8_t scheduler_id)
 {
 	struct rte_cryptodev *dev = rte_cryptodev_pmd_get_dev(scheduler_id);
 	struct scheduler_ctx *sched_ctx;
@@ -378,6 +385,12 @@ rte_crpytodev_scheduler_mode_get(uint8_t scheduler_id)
 	sched_ctx = dev->data->dev_private;
 
 	return sched_ctx->mode;
+}
+
+enum rte_cryptodev_scheduler_mode
+rte_crpytodev_scheduler_mode_get(uint8_t scheduler_id)
+{
+	return rte_cryptodev_scheduler_mode_get(scheduler_id);
 }
 
 int

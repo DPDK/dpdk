@@ -75,3 +75,9 @@ Deprecation Notices
   PMDs that implement the latter.
   Target release for removal of the legacy API will be defined once most
   PMDs have switched to rte_flow.
+
+* crypto/scheduler: the following two functions are deprecated starting
+  from 17.05 and will be removed in 17.08:
+
+  - ``rte_crpytodev_scheduler_mode_get``, replaced by ``rte_cryptodev_scheduler_mode_get``
+  - ``rte_crpytodev_scheduler_mode_set``, replaced by ``rte_cryptodev_scheduler_mode_set``

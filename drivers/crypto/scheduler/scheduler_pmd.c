@@ -159,7 +159,7 @@ cryptodev_scheduler_create(const char *name,
 
 	if (init_params->mode > CDEV_SCHED_MODE_USERDEFINED &&
 			init_params->mode < CDEV_SCHED_MODE_COUNT) {
-		ret = rte_crpytodev_scheduler_mode_set(dev->data->dev_id,
+		ret = rte_cryptodev_scheduler_mode_set(dev->data->dev_id,
 			init_params->mode);
 		if (ret < 0) {
 			rte_cryptodev_pmd_release_device(dev);

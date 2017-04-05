@@ -109,6 +109,7 @@ rte_cryptodev_scheduler_slave_attach(uint8_t scheduler_id, uint8_t slave_id);
 int
 rte_cryptodev_scheduler_slave_detach(uint8_t scheduler_id, uint8_t slave_id);
 
+
 /**
  * Set the scheduling mode
  *
@@ -119,7 +120,7 @@ rte_cryptodev_scheduler_slave_detach(uint8_t scheduler_id, uint8_t slave_id);
  *	0 if attaching successful, negative integer if otherwise.
  */
 int
-rte_crpytodev_scheduler_mode_set(uint8_t scheduler_id,
+rte_cryptodev_scheduler_mode_set(uint8_t scheduler_id,
 		enum rte_cryptodev_scheduler_mode mode);
 
 /**
@@ -128,6 +129,32 @@ rte_crpytodev_scheduler_mode_set(uint8_t scheduler_id,
  * @param	scheduler_id	The target scheduler device ID
  *		mode		Pointer to write the scheduling mode
  */
+enum rte_cryptodev_scheduler_mode
+rte_cryptodev_scheduler_mode_get(uint8_t scheduler_id);
+
+/**
+ * @deprecated
+ * Set the scheduling mode
+ *
+ * @param	scheduler_id	The target scheduler device ID
+ *		mode		The scheduling mode
+ *
+ * @return
+ *	0 if attaching successful, negative integer if otherwise.
+ */
+__rte_deprecated
+int
+rte_crpytodev_scheduler_mode_set(uint8_t scheduler_id,
+		enum rte_cryptodev_scheduler_mode mode);
+
+/**
+ * @deprecated
+ * Get the current scheduling mode
+ *
+ * @param	scheduler_id	The target scheduler device ID
+ *		mode		Pointer to write the scheduling mode
+ */
+__rte_deprecated
 enum rte_cryptodev_scheduler_mode
 rte_crpytodev_scheduler_mode_get(uint8_t scheduler_id);
 
