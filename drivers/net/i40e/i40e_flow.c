@@ -1740,6 +1740,13 @@ i40e_flow_parse_mpls_filter(struct rte_eth_dev *dev,
 	return ret;
 }
 
+/* 1. Last in item should be NULL as range is not supported.
+ * 2. Supported filter types: QINQ.
+ * 3. Mask of fields which need to be matched should be
+ *    filled with 1.
+ * 4. Mask of fields which needn't to be matched should be
+ *    filled with 0.
+ */
 static int
 i40e_flow_parse_qinq_pattern(__rte_unused struct rte_eth_dev *dev,
 			      const struct rte_flow_item *pattern,
@@ -1747,8 +1754,6 @@ i40e_flow_parse_qinq_pattern(__rte_unused struct rte_eth_dev *dev,
 			      struct i40e_tunnel_filter_conf *filter)
 {
 	const struct rte_flow_item *item = pattern;
-	const struct rte_flow_item_eth *eth_spec;
-	const struct rte_flow_item_eth *eth_mask;
 	const struct rte_flow_item_vlan *vlan_spec = NULL;
 	const struct rte_flow_item_vlan *vlan_mask = NULL;
 	const struct rte_flow_item_vlan *i_vlan_spec = NULL;
@@ -1770,13 +1775,11 @@ i40e_flow_parse_qinq_pattern(__rte_unused struct rte_eth_dev *dev,
 		item_type = item->type;
 		switch (item_type) {
 		case RTE_FLOW_ITEM_TYPE_ETH:
-			eth_spec = (const struct rte_flow_item_eth *)item->spec;
-			eth_mask = (const struct rte_flow_item_eth *)item->mask;
-			if (eth_spec && eth_mask) {
+			if (item->spec || item->mask) {
 				rte_flow_error_set(error, EINVAL,
 						   RTE_FLOW_ERROR_TYPE_ITEM,
 						   item,
-						   "Invalid ether spec/mask");
+						   "Invalid ETH item");
 				return -rte_errno;
 			}
 			break;
