@@ -162,6 +162,8 @@ SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += test_cmdline_cirbuf.c
 SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += test_cmdline_string.c
 SRCS-$(CONFIG_RTE_LIBRTE_CMDLINE) += test_cmdline_lib.c
 
+SRCS-$(CONFIG_RTE_LIBRTE_NET) += test_crc.c
+
 ifeq ($(CONFIG_RTE_LIBRTE_SCHED),y)
 SRCS-y += test_red.c
 SRCS-y += test_sched.c
