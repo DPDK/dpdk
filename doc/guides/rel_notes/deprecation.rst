@@ -16,26 +16,6 @@ Deprecation Notices
   - ``rte_set_log_type``, replaced by ``rte_log_set_level``
   - ``rte_get_log_type``, replaced by ``rte_log_get_level``
 
-* ring: Changes are planned to rte_ring APIs in release 17.05. Proposed
-  changes include:
-
-    - Removing build time options for the ring:
-      CONFIG_RTE_RING_SPLIT_PROD_CONS
-      CONFIG_RTE_RING_PAUSE_REP_COUNT
-    - Adding an additional parameter to enqueue functions to return the
-      amount of free space in the ring
-    - Adding an additional parameter to dequeue functions to return the
-      number of remaining elements in the ring
-    - Removing direct support for watermarks in the rings, since the
-      additional return value from the enqueue function makes it
-      unneeded
-    - Adjusting the return values of the bulk() enq/deq functions to
-      make them consistent with the burst() equivalents. [Note, parameter
-      to these functions are changing too, per points above, so compiler
-      will flag them as needing update in legacy code]
-    - Updates to some library functions e.g. rte_ring_get_memsize() to
-      allow for variably-sized ring elements.
-
 * igb_uio: iomem mapping and sysfs files created for iomem and ioport in
   igb_uio will be removed, because we are able to detect these from what Linux
   has exposed, like the way we have done with uio-pci-generic. This change
@@ -104,9 +84,3 @@ Deprecation Notices
   ``rte_cryptodev_info.sym``. Some drivers may support limited number of
   sessions per queue_pair. With this new parameter application will know
   how many sessions can be mapped to each queue_pair of a device.
-
-* distributor: library API will be changed to incorporate a burst-oriented
-  API. This will include a change to ``rte_distributor_create``
-  to specify which type of instance to create (single or burst), and
-  additional calls for ``rte_distributor_poll_pkt_burst`` and
-  ``rte_distributor_return_pkt_burst``, among others.
