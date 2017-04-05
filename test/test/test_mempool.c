@@ -513,6 +513,7 @@ test_mempool(void)
 	struct rte_mempool *mp_cache = NULL;
 	struct rte_mempool *mp_nocache = NULL;
 	struct rte_mempool *mp_stack = NULL;
+	struct rte_mempool *default_pool = NULL;
 
 	rte_atomic32_init(&synchro);
 
@@ -562,6 +563,32 @@ test_mempool(void)
 	}
 	rte_mempool_obj_iter(mp_stack, my_obj_init, NULL);
 
+	/* Create a mempool based on Default handler */
+	printf("Testing %s mempool handler\n",
+	       RTE_MBUF_DEFAULT_MEMPOOL_OPS);
+	default_pool = rte_mempool_create_empty("default_pool",
+						MEMPOOL_SIZE,
+						MEMPOOL_ELT_SIZE,
+						RTE_MEMPOOL_CACHE_MAX_SIZE, 0,
+						SOCKET_ID_ANY, 0);
+
+	if (default_pool == NULL) {
+		printf("cannot allocate default mempool\n");
+		goto err;
+	}
+	if (rte_mempool_set_ops_byname(default_pool,
+				RTE_MBUF_DEFAULT_MEMPOOL_OPS, NULL) < 0) {
+		printf("cannot set %s handler\n",
+			RTE_MBUF_DEFAULT_MEMPOOL_OPS);
+		goto err;
+	}
+	if (rte_mempool_populate_default(default_pool) < 0) {
+		printf("cannot populate %s mempool\n",
+			RTE_MBUF_DEFAULT_MEMPOOL_OPS);
+		goto err;
+	}
+	rte_mempool_obj_iter(default_pool, my_obj_init, NULL);
+
 	/* retrieve the mempool from its name */
 	if (rte_mempool_lookup("test_nocache") != mp_nocache) {
 		printf("Cannot lookup mempool from its name\n");
@@ -606,6 +633,9 @@ test_mempool(void)
 	if (test_mempool_basic(mp_stack, 1) < 0)
 		goto err;
 
+	if (test_mempool_basic(default_pool, 1) < 0)
+		goto err;
+
 	rte_mempool_list_dump(stdout);
 
 	ret = 0;
@@ -614,6 +644,8 @@ err:
 	rte_mempool_free(mp_nocache);
 	rte_mempool_free(mp_cache);
 	rte_mempool_free(mp_stack);
+	rte_mempool_free(default_pool);
+
 	return ret;
 }
 
