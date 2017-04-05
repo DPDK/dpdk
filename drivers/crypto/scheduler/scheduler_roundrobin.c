@@ -265,7 +265,9 @@ struct rte_cryptodev_scheduler_ops scheduler_rr_ops = {
 	scheduler_start,
 	scheduler_stop,
 	scheduler_config_qp,
-	scheduler_create_private_ctx
+	scheduler_create_private_ctx,
+	NULL,	/* option_set */
+	NULL	/* option_get */
 };
 
 struct rte_cryptodev_scheduler scheduler = {

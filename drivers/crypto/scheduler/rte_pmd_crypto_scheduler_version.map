@@ -16,6 +16,8 @@ DPDK_17.05 {
 
 	rte_cryptodev_scheduler_mode_get;
 	rte_cryptodev_scheduler_mode_set;
+	rte_cryptodev_scheduler_option_get;
+	rte_cryptodev_scheduler_option_set;
 	rte_cryptodev_scheduler_slaves_get;
 
 } DPDK_17.02;

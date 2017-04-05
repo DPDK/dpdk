@@ -154,6 +154,13 @@ operation:
    its own, by making use of the available CPU cycles to deal with smaller
    crypto workloads.
 
+   The threshold is set to 128 bytes by default. It can be updated by calling
+   function **rte_cryptodev_scheduler_option_set**. The parameter of
+   **option_type** must be **CDEV_SCHED_OPTION_THRESHOLD** and **option** should
+   point to a rte_cryptodev_scheduler_threshold_option structure filled with
+   appropriate threshold value. Please NOTE this threshold has be a power-of-2
+   unsigned integer.
+
 *   **CDEV_SCHED_MODE_FAILOVER:**
 
    *Initialization mode parameter*: **fail-over**

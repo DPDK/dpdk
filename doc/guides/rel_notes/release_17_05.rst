@@ -269,6 +269,8 @@ New Features
   * Added fail-over scheduling mode, which enqueues crypto operations to a
     primary slave first. Then, any operation that cannot be enqueued is
     enqueued to a secondary slave.
+  * Added mode specific option support, so each scheduleing mode can
+    now be configured individually by the new added API.
 
 * **Updated the QAT PMD.**
 

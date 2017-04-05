@@ -399,6 +399,51 @@ scheduler_create_private_ctx(struct rte_cryptodev *dev)
 
 	return 0;
 }
+static int
+scheduler_option_set(struct rte_cryptodev *dev, uint32_t option_type,
+		void *option)
+{
+	struct psd_scheduler_ctx *psd_ctx = ((struct scheduler_ctx *)
+			dev->data->dev_private)->private_ctx;
+	uint32_t threshold;
+
+	if ((enum rte_cryptodev_schedule_option_type)option_type !=
+			CDEV_SCHED_OPTION_THRESHOLD) {
+		CS_LOG_ERR("Option not supported");
+		return -EINVAL;
+	}
+
+	threshold = ((struct rte_cryptodev_scheduler_threshold_option *)
+			option)->threshold;
+	if (!rte_is_power_of_2(threshold)) {
+		CS_LOG_ERR("Threshold is not power of 2");
+		return -EINVAL;
+	}
+
+	psd_ctx->threshold = ~(threshold - 1);
+
+	return 0;
+}
+
+static int
+scheduler_option_get(struct rte_cryptodev *dev, uint32_t option_type,
+		void *option)
+{
+	struct psd_scheduler_ctx *psd_ctx = ((struct scheduler_ctx *)
+			dev->data->dev_private)->private_ctx;
+	struct rte_cryptodev_scheduler_threshold_option *threshold_option;
+
+	if ((enum rte_cryptodev_schedule_option_type)option_type !=
+			CDEV_SCHED_OPTION_THRESHOLD) {
+		CS_LOG_ERR("Option not supported");
+		return -EINVAL;
+	}
+
+	threshold_option = option;
+	threshold_option->threshold = (~psd_ctx->threshold) + 1;
+
+	return 0;
+}
 
 struct rte_cryptodev_scheduler_ops scheduler_ps_ops = {
 	slave_attach,
@@ -407,6 +452,8 @@ struct rte_cryptodev_scheduler_ops scheduler_ps_ops = {
 	scheduler_stop,
 	scheduler_config_qp,
 	scheduler_create_private_ctx,
+	scheduler_option_set,
+	scheduler_option_get
 };
 
 struct rte_cryptodev_scheduler psd_scheduler = {

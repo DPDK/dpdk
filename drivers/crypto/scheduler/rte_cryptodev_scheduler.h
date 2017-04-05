@@ -70,6 +70,23 @@ enum rte_cryptodev_scheduler_mode {
 #define RTE_CRYPTODEV_SCHEDULER_NAME_MAX_LEN	(64)
 #define RTE_CRYPTODEV_SCHEDULER_DESC_MAX_LEN	(256)
 
+/**
+ * Crypto scheduler option types
+ */
+enum rte_cryptodev_schedule_option_type {
+	CDEV_SCHED_OPTION_NOT_SET = 0,
+	CDEV_SCHED_OPTION_THRESHOLD,
+
+	CDEV_SCHED_OPTION_COUNT
+};
+
+/**
+ * Threshold option structure
+ */
+struct rte_cryptodev_scheduler_threshold_option {
+	uint32_t threshold;
+};
+
 struct rte_cryptodev_scheduler;
 
 /**
@@ -204,6 +221,44 @@ rte_cryptodev_scheduler_ordering_get(uint8_t scheduler_id);
  */
 int
 rte_cryptodev_scheduler_slaves_get(uint8_t scheduler_id, uint8_t *slaves);
+
+/**
+ * Set the mode specific option
+ *
+ * @param dev_id
+ *   The target scheduler device ID
+ * @param option_type
+ *   The option type enumerate
+ * @param option
+ *   The specific mode's option structure
+ *
+ * @return
+ *   - 0 if successful
+ *   - negative integer if otherwise.
+ */
+int
+rte_cryptodev_scheduler_option_set(uint8_t scheduler_id,
+		enum rte_cryptodev_schedule_option_type option_type,
+		void *option);
+
+/**
+ * Set the mode specific option
+ *
+ * @param dev_id
+ *   The target scheduler device ID
+ * @param option_type
+ *   The option type enumerate
+ * @param option
+ *   If successful, the function will write back the current
+ *
+ * @return
+ *   - 0 if successful
+ *   - negative integer if otherwise.
+ */
+int
+rte_cryptodev_scheduler_option_get(uint8_t scheduler_id,
+		enum rte_cryptodev_schedule_option_type option_type,
+		void *option);
 
 typedef uint16_t (*rte_cryptodev_scheduler_burst_enqueue_t)(void *qp_ctx,
 		struct rte_crypto_op **ops, uint16_t nb_ops);

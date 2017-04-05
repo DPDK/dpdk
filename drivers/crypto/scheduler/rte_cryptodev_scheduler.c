@@ -479,6 +479,8 @@ rte_cryptodev_scheduler_load_user_scheduler(uint8_t scheduler_id,
 	sched_ctx->ops.scheduler_stop = scheduler->ops->scheduler_stop;
 	sched_ctx->ops.slave_attach = scheduler->ops->slave_attach;
 	sched_ctx->ops.slave_detach = scheduler->ops->slave_detach;
+	sched_ctx->ops.option_set = scheduler->ops->option_set;
+	sched_ctx->ops.option_get = scheduler->ops->option_get;
 
 	if (sched_ctx->private_ctx)
 		rte_free(sched_ctx->private_ctx);
@@ -527,4 +529,65 @@ rte_cryptodev_scheduler_slaves_get(uint8_t scheduler_id, uint8_t *slaves)
 	}
 
 	return (int)nb_slaves;
+}
+
+int
+rte_cryptodev_scheduler_option_set(uint8_t scheduler_id,
+		enum rte_cryptodev_schedule_option_type option_type,
+		void *option)
+{
+	struct rte_cryptodev *dev = rte_cryptodev_pmd_get_dev(scheduler_id);
+	struct scheduler_ctx *sched_ctx;
+
+	if (option_type == CDEV_SCHED_OPTION_NOT_SET ||
+			option_type >= CDEV_SCHED_OPTION_COUNT) {
+		CS_LOG_ERR("Invalid option parameter");
+		return -EINVAL;
+	}
+
+	if (!option) {
+		CS_LOG_ERR("Invalid option parameter");
+		return -EINVAL;
+	}
+
+	if (dev->data->dev_started) {
+		CS_LOG_ERR("Illegal operation");
+		return -EBUSY;
+	}
+
+	sched_ctx = dev->data->dev_private;
+
+	RTE_FUNC_PTR_OR_ERR_RET(*sched_ctx->ops.option_set, -ENOTSUP);
+
+	return (*sched_ctx->ops.option_set)(dev, option_type, option);
+}
+
+int
+rte_cryptodev_scheduler_option_get(uint8_t scheduler_id,
+		enum rte_cryptodev_schedule_option_type option_type,
+		void *option)
+{
+	struct rte_cryptodev *dev = rte_cryptodev_pmd_get_dev(scheduler_id);
+	struct scheduler_ctx *sched_ctx;
+
+	if (!dev) {
+		CS_LOG_ERR("Operation not supported");
+		return -ENOTSUP;
+	}
+
+	if (!option) {
+		CS_LOG_ERR("Invalid option parameter");
+		return -EINVAL;
+	}
+
+	if (dev->dev_type != RTE_CRYPTODEV_SCHEDULER_PMD) {
+		CS_LOG_ERR("Operation not supported");
+		return -ENOTSUP;
+	}
+
+	sched_ctx = dev->data->dev_private;
+
+	RTE_FUNC_PTR_OR_ERR_RET(*sched_ctx->ops.option_get, -ENOTSUP);
+
+	return (*sched_ctx->ops.option_get)(dev, option_type, option);
 }
