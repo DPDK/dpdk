@@ -147,7 +147,7 @@ struct rte_ring {
 	 * compatibility requirements, it could be changed to RTE_RING_NAMESIZE
 	 * next time the ABI changes
 	 */
-	char name[RTE_MEMZONE_NAMESIZE];    /**< Name of the ring. */
+	char name[RTE_MEMZONE_NAMESIZE] __rte_cache_aligned; /**< Name of the ring. */
 	int flags;               /**< Flags supplied at creation. */
 	const struct rte_memzone *memzone;
 			/**< Memzone, if any, containing the rte_ring */
@@ -159,7 +159,7 @@ struct rte_ring {
 
 	/** Ring consumer status. */
 	struct rte_ring_headtail cons __rte_aligned(CONS_ALIGN);
-} __rte_cache_aligned;
+};
 
 #define RING_F_SP_ENQ 0x0001 /**< The default enqueue is "single-producer". */
 #define RING_F_SC_DEQ 0x0002 /**< The default dequeue is "single-consumer". */
