@@ -509,6 +509,7 @@ walk_cb(struct rte_mempool *mp, void *userdata __rte_unused)
 static int
 test_mempool(void)
 {
+	int ret = -1;
 	struct rte_mempool *mp_cache = NULL;
 	struct rte_mempool *mp_nocache = NULL;
 	struct rte_mempool *mp_stack = NULL;
@@ -607,13 +608,13 @@ test_mempool(void)
 
 	rte_mempool_list_dump(stdout);
 
-	return 0;
+	ret = 0;
 
 err:
 	rte_mempool_free(mp_nocache);
 	rte_mempool_free(mp_cache);
 	rte_mempool_free(mp_stack);
-	return -1;
+	return ret;
 }
 
 REGISTER_TEST_COMMAND(mempool_autotest, test_mempool);
