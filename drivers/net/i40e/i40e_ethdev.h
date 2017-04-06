@@ -524,12 +524,13 @@ struct i40e_tunnel_filter_input {
 	uint16_t flags;          /* Filter type flag */
 	uint32_t tenant_id;      /* Tenant id to match */
 	uint16_t general_fields[32];  /* Big buffer */
-	uint16_t vf_id;         /* VF id for tunnel filtering. */
 };
 
 struct i40e_tunnel_filter {
 	TAILQ_ENTRY(i40e_tunnel_filter) rules;
 	struct i40e_tunnel_filter_input input;
+	uint8_t is_to_vf; /* 0 - to PF, 1 - to VF */
+	uint16_t vf_id;   /* VF id, avaiblable when is_to_vf is 1. */
 	uint16_t queue; /* Queue assigned to when match */
 };
 
@@ -582,7 +583,7 @@ struct i40e_tunnel_filter_conf {
 	uint32_t tenant_id;     /**< Tenant ID to match. VNI, GRE key... */
 	uint16_t queue_id;      /**< Queue assigned to if match. */
 	uint8_t is_to_vf;       /**< 0 - to PF, 1 - to VF */
-	uint16_t vf_id;         /**< VF id for tunnel filter insertion. */
+	uint16_t vf_id;         /**< VF id, avaiblable when is_to_vf is 1. */
 };
 
 #define I40E_MIRROR_MAX_ENTRIES_PER_RULE   64

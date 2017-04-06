@@ -2072,7 +2072,8 @@ i40e_flow_destroy_tunnel_filter(struct i40e_pf *pf,
 				struct i40e_tunnel_filter *filter)
 {
 	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
-	struct i40e_vsi *vsi = pf->main_vsi;
+	struct i40e_vsi *vsi;
+	struct i40e_pf_vf *vf;
 	struct i40e_aqc_add_rm_cloud_filt_elem_ext cld_filter;
 	struct i40e_tunnel_rule *tunnel_rule = &pf->tunnel;
 	struct i40e_tunnel_filter *node;
@@ -2091,6 +2092,13 @@ i40e_flow_destroy_tunnel_filter(struct i40e_pf *pf,
 	rte_memcpy(cld_filter.general_fields,
 		   filter->input.general_fields,
 		   sizeof(cld_filter.general_fields));
+
+	if (!filter->is_to_vf)
+		vsi = pf->main_vsi;
+	else {
+		vf = &pf->vfs[filter->vf_id];
+		vsi = vf->vsi;
+	}
 
 	if (((filter->input.flags & I40E_AQC_ADD_CLOUD_FILTER_TEID_MPLSoUDP) ==
 	    I40E_AQC_ADD_CLOUD_FILTER_TEID_MPLSoUDP) ||

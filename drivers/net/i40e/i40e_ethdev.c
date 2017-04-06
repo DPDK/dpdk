@@ -7221,6 +7221,8 @@ i40e_dev_consistent_tunnel_filter_set(struct i40e_pf *pf,
 	/* Check if there is the filter in SW list */
 	memset(&check_filter, 0, sizeof(check_filter));
 	i40e_tunnel_filter_convert(cld_filter, &check_filter);
+	check_filter.is_to_vf = tunnel_filter->is_to_vf;
+	check_filter.vf_id = tunnel_filter->vf_id;
 	node = i40e_sw_tunnel_filter_lookup(tunnel_rule, &check_filter.input);
 	if (add && node) {
 		PMD_DRV_LOG(ERR, "Conflict with existing tunnel rules!");
@@ -10632,7 +10634,8 @@ static void
 i40e_tunnel_filter_restore(struct i40e_pf *pf)
 {
 	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
-	struct i40e_vsi *vsi = pf->main_vsi;
+	struct i40e_vsi *vsi;
+	struct i40e_pf_vf *vf;
 	struct i40e_tunnel_filter_list
 		*tunnel_list = &pf->tunnel.tunnel_list;
 	struct i40e_tunnel_filter *f;
@@ -10640,6 +10643,12 @@ i40e_tunnel_filter_restore(struct i40e_pf *pf)
 	bool big_buffer = 0;
 
 	TAILQ_FOREACH(f, tunnel_list, rules) {
+		if (!f->is_to_vf)
+			vsi = pf->main_vsi;
+		else {
+			vf = &pf->vfs[f->vf_id];
+			vsi = vf->vsi;
+		}
 		memset(&cld_filter, 0, sizeof(cld_filter));
 		ether_addr_copy((struct ether_addr *)&f->input.outer_mac,
 			(struct ether_addr *)&cld_filter.element.outer_mac);
