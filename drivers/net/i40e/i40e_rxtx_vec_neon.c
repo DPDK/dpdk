@@ -57,7 +57,6 @@ i40e_rxq_rearm(struct i40e_rx_queue *rxq)
 	uint64x2_t dma_addr0, dma_addr1;
 	uint64x2_t zero = vdupq_n_u64(0);
 	uint64_t paddr;
-	uint8x8_t p;
 
 	rxdp = rxq->rx_ring + rxq->rxrearm_start;
 
@@ -77,27 +76,17 @@ i40e_rxq_rearm(struct i40e_rx_queue *rxq)
 		return;
 	}
 
-	p = vld1_u8((uint8_t *)&rxq->mbuf_initializer);
-
 	/* Initialize the mbufs in vector, process 2 mbufs in one loop */
 	for (i = 0; i < RTE_I40E_RXQ_REARM_THRESH; i += 2, rxep += 2) {
 		mb0 = rxep[0].mbuf;
 		mb1 = rxep[1].mbuf;
 
-		 /* Flush mbuf with pkt template.
-		 * Data to be rearmed is 6 bytes long.
-		 * Though, RX will overwrite ol_flags that are coming next
-		 * anyway. So overwrite whole 8 bytes with one load:
-		 * 6 bytes of rearm_data plus first 2 bytes of ol_flags.
-		 */
-		vst1_u8((uint8_t *)&mb0->rearm_data, p);
 		paddr = mb0->buf_physaddr + RTE_PKTMBUF_HEADROOM;
 		dma_addr0 = vdupq_n_u64(paddr);
 
 		/* flush desc with pa dma_addr */
 		vst1q_u64((uint64_t *)&rxdp++->read, dma_addr0);
 
-		vst1_u8((uint8_t *)&mb1->rearm_data, p);
 		paddr = mb1->buf_physaddr + RTE_PKTMBUF_HEADROOM;
 		dma_addr1 = vdupq_n_u64(paddr);
 		vst1q_u64((uint64_t *)&rxdp++->read, dma_addr1);
@@ -117,9 +106,12 @@ i40e_rxq_rearm(struct i40e_rx_queue *rxq)
 }
 
 static inline void
-desc_to_olflags_v(uint64x2_t descs[4], struct rte_mbuf **rx_pkts)
+desc_to_olflags_v(struct i40e_rx_queue *rxq, uint64x2_t descs[4],
+		  struct rte_mbuf **rx_pkts)
 {
 	uint32x4_t vlan0, vlan1, rss, l3_l4e;
+	const uint64x2_t mbuf_init = {rxq->mbuf_initializer, 0};
+	uint64x2_t rearm0, rearm1, rearm2, rearm3;
 
 	/* mask everything except RSS, flow director and VLAN flags
 	 * bit2 is for VLAN tag, bit11 for flow director indication
@@ -127,6 +119,20 @@ desc_to_olflags_v(uint64x2_t descs[4], struct rte_mbuf **rx_pkts)
 	 */
 	const uint32x4_t rss_vlan_msk = {
 			0x1c03804, 0x1c03804, 0x1c03804, 0x1c03804};
+
+	const uint32x4_t cksum_mask = {
+			PKT_RX_IP_CKSUM_GOOD | PKT_RX_IP_CKSUM_BAD |
+			PKT_RX_L4_CKSUM_GOOD | PKT_RX_L4_CKSUM_BAD |
+			PKT_RX_EIP_CKSUM_BAD,
+			PKT_RX_IP_CKSUM_GOOD | PKT_RX_IP_CKSUM_BAD |
+			PKT_RX_L4_CKSUM_GOOD | PKT_RX_L4_CKSUM_BAD |
+			PKT_RX_EIP_CKSUM_BAD,
+			PKT_RX_IP_CKSUM_GOOD | PKT_RX_IP_CKSUM_BAD |
+			PKT_RX_L4_CKSUM_GOOD | PKT_RX_L4_CKSUM_BAD |
+			PKT_RX_EIP_CKSUM_BAD,
+			PKT_RX_IP_CKSUM_GOOD | PKT_RX_IP_CKSUM_BAD |
+			PKT_RX_L4_CKSUM_GOOD | PKT_RX_L4_CKSUM_BAD |
+			PKT_RX_EIP_CKSUM_BAD};
 
 	/* map rss and vlan type to rss hash and vlan flag */
 	const uint8x16_t vlan_flags = {
@@ -142,14 +148,16 @@ desc_to_olflags_v(uint64x2_t descs[4], struct rte_mbuf **rx_pkts)
 			0, 0, 0, 0};
 
 	const uint8x16_t l3_l4e_flags = {
-			0,
-			PKT_RX_IP_CKSUM_BAD,
-			PKT_RX_L4_CKSUM_BAD,
-			PKT_RX_L4_CKSUM_BAD | PKT_RX_IP_CKSUM_BAD,
-			PKT_RX_EIP_CKSUM_BAD,
-			PKT_RX_EIP_CKSUM_BAD | PKT_RX_IP_CKSUM_BAD,
-			PKT_RX_EIP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD,
-			PKT_RX_EIP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD | PKT_RX_IP_CKSUM_BAD,
+			(PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_GOOD) >> 1,
+			PKT_RX_IP_CKSUM_BAD >> 1,
+			(PKT_RX_IP_CKSUM_GOOD | PKT_RX_L4_CKSUM_BAD) >> 1,
+			(PKT_RX_L4_CKSUM_BAD | PKT_RX_IP_CKSUM_BAD) >> 1,
+			(PKT_RX_IP_CKSUM_GOOD | PKT_RX_EIP_CKSUM_BAD) >> 1,
+			(PKT_RX_EIP_CKSUM_BAD | PKT_RX_IP_CKSUM_BAD) >> 1,
+			(PKT_RX_IP_CKSUM_GOOD | PKT_RX_EIP_CKSUM_BAD |
+			 PKT_RX_L4_CKSUM_BAD) >> 1,
+			(PKT_RX_EIP_CKSUM_BAD | PKT_RX_L4_CKSUM_BAD |
+			 PKT_RX_IP_CKSUM_BAD) >> 1,
 			0, 0, 0, 0, 0, 0, 0, 0};
 
 	vlan0 = vzipq_u32(vreinterpretq_u32_u64(descs[0]),
@@ -169,15 +177,23 @@ desc_to_olflags_v(uint64x2_t descs[4], struct rte_mbuf **rx_pkts)
 	l3_l4e = vshrq_n_u32(vlan1, 22);
 	l3_l4e = vreinterpretq_u32_u8(vqtbl1q_u8(l3_l4e_flags,
 					      vreinterpretq_u8_u32(l3_l4e)));
-
+	/* then we shift left 1 bit */
+	l3_l4e = vshlq_n_u32(l3_l4e, 1);
+	/* we need to mask out the reduntant bits */
+	l3_l4e = vandq_u32(l3_l4e, cksum_mask);
 
 	vlan0 = vorrq_u32(vlan0, rss);
 	vlan0 = vorrq_u32(vlan0, l3_l4e);
 
-	rx_pkts[0]->ol_flags = vgetq_lane_u32(vlan0, 0);
-	rx_pkts[1]->ol_flags = vgetq_lane_u32(vlan0, 1);
-	rx_pkts[2]->ol_flags = vgetq_lane_u32(vlan0, 2);
-	rx_pkts[3]->ol_flags = vgetq_lane_u32(vlan0, 3);
+	rearm0 = vsetq_lane_u64(vgetq_lane_u32(vlan0, 0), mbuf_init, 1);
+	rearm1 = vsetq_lane_u64(vgetq_lane_u32(vlan0, 1), mbuf_init, 1);
+	rearm2 = vsetq_lane_u64(vgetq_lane_u32(vlan0, 2), mbuf_init, 1);
+	rearm3 = vsetq_lane_u64(vgetq_lane_u32(vlan0, 3), mbuf_init, 1);
+
+	vst1q_u64((uint64_t *)&rx_pkts[0]->rearm_data, rearm0);
+	vst1q_u64((uint64_t *)&rx_pkts[1]->rearm_data, rearm1);
+	vst1q_u64((uint64_t *)&rx_pkts[2]->rearm_data, rearm2);
+	vst1q_u64((uint64_t *)&rx_pkts[3]->rearm_data, rearm3);
 }
 
 #define PKTLEN_SHIFT     10
@@ -348,7 +364,7 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 				    sterr_tmp2.val[1]).val[0];
 		stat = vgetq_lane_u64(vreinterpretq_u64_u16(staterr), 0);
 
-		desc_to_olflags_v(descs, &rx_pkts[pos]);
+		desc_to_olflags_v(rxq, descs, &rx_pkts[pos]);
 
 		/* D.2 pkt 3,4 set in_port/nb_seg and remove crc */
 		tmp = vsubq_u16(vreinterpretq_u16_u8(pkt_mb4), crc_adjust);
