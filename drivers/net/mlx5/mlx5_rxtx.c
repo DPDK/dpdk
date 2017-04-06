@@ -1972,7 +1972,7 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		&(*rxq->cqes)[rxq->cq_ci & cqe_cnt];
 	unsigned int i = 0;
 	unsigned int rq_ci = rxq->rq_ci << sges_n;
-	int len; /* keep its value across iterations. */
+	int len = 0; /* keep its value across iterations. */
 
 	while (pkts_n) {
 		unsigned int idx = rq_ci & wqe_cnt;
