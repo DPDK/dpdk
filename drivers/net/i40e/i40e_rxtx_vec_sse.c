@@ -82,18 +82,9 @@ i40e_rxq_rearm(struct i40e_rx_queue *rxq)
 	/* Initialize the mbufs in vector, process 2 mbufs in one loop */
 	for (i = 0; i < RTE_I40E_RXQ_REARM_THRESH; i += 2, rxep += 2) {
 		__m128i vaddr0, vaddr1;
-		uintptr_t p0, p1;
 
 		mb0 = rxep[0].mbuf;
 		mb1 = rxep[1].mbuf;
-
-		/* Flush mbuf with pkt template.
-		 * Data to be rearmed is 6 bytes long.
-		 */
-		p0 = (uintptr_t)&mb0->rearm_data;
-		*(uint64_t *)p0 = rxq->mbuf_initializer;
-		p1 = (uintptr_t)&mb1->rearm_data;
-		*(uint64_t *)p1 = rxq->mbuf_initializer;
 
 		/* load buf_addr(lo 64bit) and buf_physaddr(hi 64bit) */
 		vaddr0 = _mm_loadu_si128((__m128i *)&mb0->buf_addr);
@@ -125,6 +116,13 @@ i40e_rxq_rearm(struct i40e_rx_queue *rxq)
 	I40E_PCI_REG_WRITE(rxq->qrx_tail, rx_id);
 }
 
+static inline void
+desc_to_olflags_v(struct i40e_rx_queue *rxq, __m128i descs[4] __rte_unused,
+	struct rte_mbuf **rx_pkts)
+{
+	const __m128i mbuf_init = _mm_set_epi64x(0, rxq->mbuf_initializer);
+	__m128i rearm0, rearm1, rearm2, rearm3;
+
 /* Handling the offload flags (olflags) field takes computation
  * time when receiving packets. Therefore we provide a flag to disable
  * the processing of the olflags field when they are not needed. This
@@ -133,9 +131,6 @@ i40e_rxq_rearm(struct i40e_rx_queue *rxq)
  */
 #ifdef RTE_LIBRTE_I40E_RX_OLFLAGS_ENABLE
 
-static inline void
-desc_to_olflags_v(__m128i descs[4], struct rte_mbuf **rx_pkts)
-{
 	__m128i vlan0, vlan1, rss, l3_l4e;
 
 	/* mask everything except RSS, flow director and VLAN flags
@@ -203,14 +198,27 @@ desc_to_olflags_v(__m128i descs[4], struct rte_mbuf **rx_pkts)
 	vlan0 = _mm_or_si128(vlan0, rss);
 	vlan0 = _mm_or_si128(vlan0, l3_l4e);
 
-	rx_pkts[0]->ol_flags = _mm_extract_epi16(vlan0, 0);
-	rx_pkts[1]->ol_flags = _mm_extract_epi16(vlan0, 2);
-	rx_pkts[2]->ol_flags = _mm_extract_epi16(vlan0, 4);
-	rx_pkts[3]->ol_flags = _mm_extract_epi16(vlan0, 6);
-}
+	/*
+	 * At this point, we have the 4 sets of flags in the low 16-bits
+	 * of each 32-bit value in vlan0.
+	 * We want to extract these, and merge them with the mbuf init data
+	 * so we can do a single 16-byte write to the mbuf to set the flags
+	 * and all the other initialization fields. Extracting the
+	 * appropriate flags means that we have to do a shift and blend for
+	 * each mbuf before we do the write.
+	 */
+	rearm0 = _mm_blend_epi16(mbuf_init, _mm_slli_si128(vlan0, 8), 0x10);
+	rearm1 = _mm_blend_epi16(mbuf_init, _mm_slli_si128(vlan0, 4), 0x10);
+	rearm2 = _mm_blend_epi16(mbuf_init, vlan0, 0x10);
+	rearm3 = _mm_blend_epi16(mbuf_init, _mm_srli_si128(vlan0, 4), 0x10);
 #else
-#define desc_to_olflags_v(desc, rx_pkts) do {} while (0)
+	rearm0 = rearm1 = rearm2 = rearm3 = mbuf_init;
 #endif
+	_mm_store_si128((__m128i *)&rx_pkts[0]->rearm_data, rearm0);
+	_mm_store_si128((__m128i *)&rx_pkts[1]->rearm_data, rearm1);
+	_mm_store_si128((__m128i *)&rx_pkts[2]->rearm_data, rearm2);
+	_mm_store_si128((__m128i *)&rx_pkts[3]->rearm_data, rearm3);
+}
 
 #define PKTLEN_SHIFT     10
 
@@ -369,7 +377,7 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		/* C.1 4=>2 filter staterr info only */
 		sterr_tmp1 = _mm_unpackhi_epi32(descs[1], descs[0]);
 
-		desc_to_olflags_v(descs, &rx_pkts[pos]);
+		desc_to_olflags_v(rxq, descs, &rx_pkts[pos]);
 
 		/* D.2 pkt 3,4 set in_port/nb_seg and remove crc */
 		pkt_mb4 = _mm_add_epi16(pkt_mb4, crc_adjust);
