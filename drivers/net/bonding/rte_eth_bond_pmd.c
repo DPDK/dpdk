@@ -1661,7 +1661,22 @@ void
 bond_ethdev_close(struct rte_eth_dev *dev)
 {
 	struct bond_dev_private *internals = dev->data->dev_private;
+	uint8_t bond_port_id = internals->port_id;
+	int skipped = 0;
 
+	RTE_LOG(INFO, EAL, "Closing bonded device %s\n", dev->data->name);
+	while (internals->slave_count != skipped) {
+		uint8_t port_id = internals->slaves[skipped].port_id;
+
+		rte_eth_dev_stop(port_id);
+
+		if (rte_eth_bond_slave_remove(bond_port_id, port_id) != 0) {
+			RTE_LOG(ERR, EAL,
+				"Failed to remove port %d from bonded device "
+				"%s\n", port_id, dev->data->name);
+			skipped++;
+		}
+	}
 	bond_ethdev_free_queues(dev);
 	rte_bitmap_reset(internals->vlan_filter_bmp);
 }
