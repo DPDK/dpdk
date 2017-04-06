@@ -72,12 +72,6 @@
 #define ETH_TAP_SPEED_ARG       "speed"
 #define ETH_TAP_REMOTE_ARG      "remote"
 
-#ifdef IFF_MULTI_QUEUE
-#define RTE_PMD_TAP_MAX_QUEUES	16
-#else
-#define RTE_PMD_TAP_MAX_QUEUES	1
-#endif
-
 #define FLOWER_KERNEL_VERSION KERNEL_VERSION(4, 2, 0)
 #define FLOWER_VLAN_KERNEL_VERSION KERNEL_VERSION(4, 9, 0)
 

@@ -43,7 +43,11 @@
 #include <rte_ethdev.h>
 #include <rte_ether.h>
 
-#define RTE_PMD_TAP_MAX_QUEUES 16
+#ifdef IFF_MULTI_QUEUE
+#define RTE_PMD_TAP_MAX_QUEUES	16
+#else
+#define RTE_PMD_TAP_MAX_QUEUES	1
+#endif
 
 struct pkt_stats {
 	uint64_t opackets;              /* Number of output packets */
