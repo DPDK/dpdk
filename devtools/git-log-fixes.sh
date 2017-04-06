@@ -103,6 +103,16 @@ origin_version () # <origin_hash> ...
 	done | sort -uV | head -n1
 }
 
+# print a marker for stable tag presence
+stable_tag () # <hash>
+{
+	if git log --format='%b' -1 $1 | grep -qi '^Cc: *stable@dpdk.org' ; then
+		echo 'S'
+	else
+		echo '-'
+	fi
+}
+
 git log --oneline --reverse $range |
 while read id headline ; do
 	origins=$(origin_filter $id)
@@ -116,5 +126,6 @@ while read id headline ; do
 	else
 		origver='N/A'
 	fi
-	printf '%s %7s %s (%s)\n' $version $id "$headline" "$origver"
+	stable=$(stable_tag $id)
+	printf '%s %7s %s %s (%s)\n' $version $id $stable "$headline" "$origver"
 done
