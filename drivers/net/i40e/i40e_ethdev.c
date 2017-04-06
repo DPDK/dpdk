@@ -7793,7 +7793,44 @@ i40e_set_hash_filter_global_config(struct i40e_hw *hw,
 		pctype = i40e_flowtype_to_pctype(i);
 		reg = (g_cfg->sym_hash_enable_mask[0] & (1UL << i)) ?
 				I40E_GLQF_HSYM_SYMH_ENA_MASK : 0;
-		i40e_write_rx_ctl(hw, I40E_GLQF_HSYM(pctype), reg);
+		if (hw->mac.type == I40E_MAC_X722) {
+			if (pctype == I40E_FILTER_PCTYPE_NONF_IPV4_UDP) {
+				i40e_write_rx_ctl(hw, I40E_GLQF_HSYM(
+				  I40E_FILTER_PCTYPE_NONF_IPV4_UDP), reg);
+				i40e_write_rx_ctl(hw, I40E_GLQF_HSYM(
+				  I40E_FILTER_PCTYPE_NONF_UNICAST_IPV4_UDP),
+				  reg);
+				i40e_write_rx_ctl(hw, I40E_GLQF_HSYM(
+				  I40E_FILTER_PCTYPE_NONF_MULTICAST_IPV4_UDP),
+				  reg);
+			} else if (pctype == I40E_FILTER_PCTYPE_NONF_IPV4_TCP) {
+				i40e_write_rx_ctl(hw, I40E_GLQF_HSYM(
+				  I40E_FILTER_PCTYPE_NONF_IPV4_TCP), reg);
+				i40e_write_rx_ctl(hw, I40E_GLQF_HSYM(
+				  I40E_FILTER_PCTYPE_NONF_IPV4_TCP_SYN_NO_ACK),
+				  reg);
+			} else if (pctype == I40E_FILTER_PCTYPE_NONF_IPV6_UDP) {
+				i40e_write_rx_ctl(hw, I40E_GLQF_HSYM(
+				  I40E_FILTER_PCTYPE_NONF_IPV6_UDP), reg);
+				i40e_write_rx_ctl(hw, I40E_GLQF_HSYM(
+				  I40E_FILTER_PCTYPE_NONF_UNICAST_IPV6_UDP),
+				  reg);
+				i40e_write_rx_ctl(hw, I40E_GLQF_HSYM(
+				  I40E_FILTER_PCTYPE_NONF_MULTICAST_IPV6_UDP),
+				  reg);
+			} else if (pctype == I40E_FILTER_PCTYPE_NONF_IPV6_TCP) {
+				i40e_write_rx_ctl(hw, I40E_GLQF_HSYM(
+				  I40E_FILTER_PCTYPE_NONF_IPV6_TCP), reg);
+				i40e_write_rx_ctl(hw, I40E_GLQF_HSYM(
+				  I40E_FILTER_PCTYPE_NONF_IPV6_TCP_SYN_NO_ACK),
+				  reg);
+			} else {
+				i40e_write_rx_ctl(hw, I40E_GLQF_HSYM(pctype),
+				  reg);
+			}
+		} else {
+			i40e_write_rx_ctl(hw, I40E_GLQF_HSYM(pctype), reg);
+		}
 	}
 
 	reg = i40e_read_rx_ctl(hw, I40E_GLQF_CTL);
