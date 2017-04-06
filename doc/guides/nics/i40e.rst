@@ -105,11 +105,6 @@ Please note that enabling debugging options may affect system performance.
   Toggle the use of Vector PMD instead of normal RX/TX path.
   To enable vPMD for RX, bulk allocation for Rx must be allowed.
 
-- ``CONFIG_RTE_LIBRTE_I40E_RX_OLFLAGS_ENABLE`` (default ``y``)
-
-  Toggle to enable RX ``olflags``.
-  This is only meaningful when Vector PMD is used.
-
 - ``CONFIG_RTE_LIBRTE_I40E_16BYTE_RX_DESC`` (default ``n``)
 
   Toggle to use a 16-byte RX descriptor, by default the RX descriptor is 32 byte.

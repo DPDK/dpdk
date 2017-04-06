@@ -123,14 +123,6 @@ desc_to_olflags_v(struct i40e_rx_queue *rxq, __m128i descs[4] __rte_unused,
 	const __m128i mbuf_init = _mm_set_epi64x(0, rxq->mbuf_initializer);
 	__m128i rearm0, rearm1, rearm2, rearm3;
 
-/* Handling the offload flags (olflags) field takes computation
- * time when receiving packets. Therefore we provide a flag to disable
- * the processing of the olflags field when they are not needed. This
- * gives improved performance, at the cost of losing the offload info
- * in the received packet
- */
-#ifdef RTE_LIBRTE_I40E_RX_OLFLAGS_ENABLE
-
 	__m128i vlan0, vlan1, rss, l3_l4e;
 
 	/* mask everything except RSS, flow director and VLAN flags
@@ -211,9 +203,6 @@ desc_to_olflags_v(struct i40e_rx_queue *rxq, __m128i descs[4] __rte_unused,
 	rearm1 = _mm_blend_epi16(mbuf_init, _mm_slli_si128(vlan0, 4), 0x10);
 	rearm2 = _mm_blend_epi16(mbuf_init, vlan0, 0x10);
 	rearm3 = _mm_blend_epi16(mbuf_init, _mm_srli_si128(vlan0, 4), 0x10);
-#else
-	rearm0 = rearm1 = rearm2 = rearm3 = mbuf_init;
-#endif
 	_mm_store_si128((__m128i *)&rx_pkts[0]->rearm_data, rearm0);
 	_mm_store_si128((__m128i *)&rx_pkts[1]->rearm_data, rearm1);
 	_mm_store_si128((__m128i *)&rx_pkts[2]->rearm_data, rearm2);

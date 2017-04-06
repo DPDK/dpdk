@@ -116,14 +116,6 @@ i40e_rxq_rearm(struct i40e_rx_queue *rxq)
 	I40E_PCI_REG_WRITE(rxq->qrx_tail, rx_id);
 }
 
-/* Handling the offload flags (olflags) field takes computation
- * time when receiving packets. Therefore we provide a flag to disable
- * the processing of the olflags field when they are not needed. This
- * gives improved performance, at the cost of losing the offload info
- * in the received packet
- */
-#ifdef RTE_LIBRTE_I40E_RX_OLFLAGS_ENABLE
-
 static inline void
 desc_to_olflags_v(uint64x2_t descs[4], struct rte_mbuf **rx_pkts)
 {
@@ -187,9 +179,6 @@ desc_to_olflags_v(uint64x2_t descs[4], struct rte_mbuf **rx_pkts)
 	rx_pkts[2]->ol_flags = vgetq_lane_u32(vlan0, 2);
 	rx_pkts[3]->ol_flags = vgetq_lane_u32(vlan0, 3);
 }
-#else
-#define desc_to_olflags_v(descs, rx_pkts) do {} while (0)
-#endif
 
 #define PKTLEN_SHIFT     10
 
