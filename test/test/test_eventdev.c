@@ -36,7 +36,7 @@
 #include <rte_malloc.h>
 #include <rte_memcpy.h>
 #include <rte_eventdev.h>
-#include <rte_cryptodev.h>
+#include <rte_dev.h>
 
 #include "test.h"
 
