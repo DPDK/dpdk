@@ -50,10 +50,19 @@ SRCS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX_SSOVF) += ssovf_worker.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX_SSOVF) += ssovf_evdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX_SSOVF) += ssovf_probe.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX_SSOVF) += ssovf_mbox.c
+
 ifeq ($(CONFIG_RTE_TOOLCHAIN_GCC),y)
 CFLAGS_ssovf_worker.o += -fno-prefetch-loop-arrays
-endif
+
+ifeq ($(shell test $(GCC_VERSION) -ge 46 && echo 1), 1)
 CFLAGS_ssovf_worker.o += -Ofast
+else
+CFLAGS_ssovf_worker.o += -O3 -ffast-math
+endif
+
+else
+CFLAGS_ssovf_worker.o += -Ofast
+endif
 
 # install this header file
 SYMLINK-$(CONFIG_RTE_LIBRTE_PMD_OCTEONTX_SSOVF)-include := rte_pmd_octeontx_ssovf.h

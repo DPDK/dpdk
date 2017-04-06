@@ -92,7 +92,7 @@ mbox_send_request(struct mbox *m, struct octeontx_mbox_hdr *hdr,
 			const void *txmsg, uint16_t txsize)
 {
 	struct mbox_ram_hdr old_hdr;
-	struct mbox_ram_hdr new_hdr = {.u64 = 0};
+	struct mbox_ram_hdr new_hdr = { {0} };
 	uint64_t *ram_mbox_hdr = (uint64_t *)m->ram_mbox_base;
 	uint8_t *ram_mbox_msg = m->ram_mbox_base + sizeof(struct mbox_ram_hdr);
 
