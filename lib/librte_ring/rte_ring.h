@@ -290,7 +290,7 @@ void rte_ring_dump(FILE *f, const struct rte_ring *r);
 	unsigned int i; \
 	const uint32_t size = (r)->size; \
 	uint32_t idx = prod_head & (r)->mask; \
-	obj_type *ring = (void *)ring_start; \
+	obj_type *ring = (obj_type *)ring_start; \
 	if (likely(idx + n < size)) { \
 		for (i = 0; i < (n & ((~(unsigned)0x3))); i+=4, idx+=4) { \
 			ring[idx] = obj_table[i]; \
@@ -321,7 +321,7 @@ void rte_ring_dump(FILE *f, const struct rte_ring *r);
 	unsigned int i; \
 	uint32_t idx = cons_head & (r)->mask; \
 	const uint32_t size = (r)->size; \
-	obj_type *ring = (void *)ring_start; \
+	obj_type *ring = (obj_type *)ring_start; \
 	if (likely(idx + n < size)) { \
 		for (i = 0; i < (n & (~(unsigned)0x3)); i+=4, idx+=4) {\
 			obj_table[i] = ring[idx]; \
