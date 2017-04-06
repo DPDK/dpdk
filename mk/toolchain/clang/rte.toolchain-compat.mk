@@ -38,7 +38,8 @@
 
 # find out CLANG version
 
-CLANG_VERSION := $(shell $(CC) -v 2>&1 | grep version | sed "s/.*version \([0-9]*\.[0-9]*\).*/\1/")
+CLANG_VERSION := $(shell $(CC) -v 2>&1 | \
+	sed -n "s/.*version \([0-9]*\.[0-9]*\).*/\1/p")
 
 CLANG_MAJOR_VERSION := $(shell echo $(CLANG_VERSION) | cut -f1 -d.)
 
