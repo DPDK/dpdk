@@ -39,8 +39,6 @@
  * Netronome vNIC DPDK Poll-Mode Driver: Main entry point
  */
 
-#include <math.h>
-
 #include <rte_byteorder.h>
 #include <rte_common.h>
 #include <rte_log.h>
@@ -1473,7 +1471,7 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 	 * of descriptors in log2 format
 	 */
 	nn_cfg_writeq(hw, NFP_NET_CFG_RXR_ADDR(queue_idx), rxq->dma);
-	nn_cfg_writeb(hw, NFP_NET_CFG_RXR_SZ(queue_idx), log2(nb_desc));
+	nn_cfg_writeb(hw, NFP_NET_CFG_RXR_SZ(queue_idx), rte_log2_u32(nb_desc));
 
 	return 0;
 }
@@ -1628,7 +1626,7 @@ nfp_net_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	 * of descriptors in log2 format
 	 */
 	nn_cfg_writeq(hw, NFP_NET_CFG_TXR_ADDR(queue_idx), txq->dma);
-	nn_cfg_writeb(hw, NFP_NET_CFG_TXR_SZ(queue_idx), log2(nb_desc));
+	nn_cfg_writeb(hw, NFP_NET_CFG_TXR_SZ(queue_idx), rte_log2_u32(nb_desc));
 
 	return 0;
 }

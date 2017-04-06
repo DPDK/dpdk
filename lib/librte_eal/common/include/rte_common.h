@@ -336,6 +336,23 @@ rte_bsf32(uint32_t v)
 	return __builtin_ctz(v);
 }
 
+/**
+ * Return the rounded-up log2 of a integer.
+ *
+ * @param v
+ *     The input parameter.
+ * @return
+ *     The rounded-up log2 of the input, or 0 if the input is 0.
+ */
+static inline uint32_t
+rte_log2_u32(uint32_t v)
+{
+	if (v == 0)
+		return 0;
+	v = rte_align32pow2(v);
+	return rte_bsf32(v);
+}
+
 #ifndef offsetof
 /** Return the offset of a field in a structure. */
 #define offsetof(TYPE, MEMBER)  __builtin_offsetof (TYPE, MEMBER)
