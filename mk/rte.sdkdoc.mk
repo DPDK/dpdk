@@ -68,7 +68,7 @@ all: api-html guides-html guides-pdf
 clean: api-html-clean guides-html-clean guides-pdf-clean guides-man-clean
 
 .PHONY: api-html
-api-html: api-html-clean $(API_EXAMPLES)
+api-html: $(API_EXAMPLES)
 	@echo 'doxygen for API...'
 	$(Q)mkdir -p $(RTE_OUTPUT)/doc/html
 	$(Q)(cat $(RTE_SDK)/doc/api/doxy-api.conf     && \
@@ -85,11 +85,12 @@ api-html: api-html-clean $(API_EXAMPLES)
 
 .PHONY: api-html-clean
 api-html-clean:
+	$(Q)rm -f $(API_EXAMPLES)
 	$(Q)rm -f $(RTE_OUTPUT)/doc/html/api/*
 	$(Q)rmdir -p --ignore-fail-on-non-empty $(RTE_OUTPUT)/doc/html/api 2>&- || true
 
-$(API_EXAMPLES):
-	$(Q)mkdir -p $(RTE_OUTPUT)/doc/html
+$(API_EXAMPLES): api-html-clean
+	$(Q)mkdir -p $(@D)
 	@printf '/**\n' > $(API_EXAMPLES)
 	@printf '@page examples DPDK Example Programs\n\n' >> $(API_EXAMPLES)
 	@find examples -type f -name '*.c' -printf '@example %p\n' >> $(API_EXAMPLES)
