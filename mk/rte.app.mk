@@ -186,10 +186,21 @@ _LDLIBS-y += $(EXECENV_LDLIBS)
 
 LDLIBS += $(_LDLIBS-y) $(CPU_LDLIBS) $(EXTRA_LDLIBS)
 
-# Eliminate duplicates without sorting
-LDLIBS := $(shell echo $(LDLIBS) | \
-	awk '{for (i = 1; i <= NF; i++) { \
-		if ($$i !~ /^-l.*/ || !seen[$$i]++) print $$i }}')
+# all the words except the first one
+allbutfirst = $(wordlist 2,$(words $(1)),$(1))
+
+# Eliminate duplicates without sorting, only keep the last occurrence
+filter-libs = \
+	$(if $(1),$(strip\
+		$(if \
+			$(and \
+				$(filter $(firstword $(1)),$(call allbutfirst,$(1))),\
+				$(filter -l%,$(firstword $(1)))),\
+			,\
+			$(firstword $(1))) \
+		$(call filter-libs,$(call allbutfirst,$(1)))))
+
+LDLIBS := $(call filter-libs,$(LDLIBS))
 
 ifeq ($(RTE_DEVEL_BUILD)$(CONFIG_RTE_BUILD_SHARED_LIB),yy)
 LDFLAGS += -rpath=$(RTE_SDK_BIN)/lib
