@@ -45,8 +45,7 @@
  * Interrupts
  */
 
-static void bnxt_int_handler(struct rte_intr_handle *handle __rte_unused,
-			     void *param)
+static void bnxt_int_handler(void *param)
 {
 	struct rte_eth_dev *eth_dev = (struct rte_eth_dev *)param;
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;

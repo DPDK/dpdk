@@ -279,14 +279,14 @@ static void qede_interrupt_action(struct ecore_hwfn *p_hwfn)
 }
 
 static void
-qede_interrupt_handler(struct rte_intr_handle *handle, void *param)
+qede_interrupt_handler(void *param)
 {
 	struct rte_eth_dev *eth_dev = (struct rte_eth_dev *)param;
 	struct qede_dev *qdev = eth_dev->data->dev_private;
 	struct ecore_dev *edev = &qdev->edev;
 
 	qede_interrupt_action(ECORE_LEADING_HWFN(edev));
-	if (rte_intr_enable(handle))
+	if (rte_intr_enable(eth_dev->intr_handle))
 		DP_ERR(edev, "rte_intr_enable failed\n");
 }
 

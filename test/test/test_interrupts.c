@@ -199,8 +199,9 @@ test_interrupt_handle_compare(struct rte_intr_handle *intr_handle_l,
  * Callback for the test interrupt.
  */
 static void
-test_interrupt_callback(struct rte_intr_handle *intr_handle, void *arg)
+test_interrupt_callback(void *arg)
 {
+	struct rte_intr_handle *intr_handle = (struct rte_intr_handle *)arg;
 	if (test_intr_type >= TEST_INTERRUPT_HANDLE_MAX) {
 		printf("invalid interrupt type\n");
 		flag = -1;
@@ -230,9 +231,9 @@ test_interrupt_callback(struct rte_intr_handle *intr_handle, void *arg)
  * Callback for the test interrupt.
  */
 static void
-test_interrupt_callback_1(struct rte_intr_handle *intr_handle,
-	__attribute__((unused)) void *arg)
+test_interrupt_callback_1(void *arg)
 {
+	struct rte_intr_handle *intr_handle = (struct rte_intr_handle *)arg;
 	if (test_interrupt_handle_sanity_check(intr_handle) < 0) {
 		printf("null or invalid intr_handle for %s\n", __func__);
 		flag = -1;
@@ -364,7 +365,7 @@ test_interrupt_full_path_check(enum test_interrupt_handle_type intr_type)
 	test_intr_handle = intr_handles[intr_type];
 	test_intr_type = intr_type;
 	if (rte_intr_callback_register(&test_intr_handle,
-			test_interrupt_callback, NULL) < 0) {
+			test_interrupt_callback, &test_intr_handle) < 0) {
 		printf("fail to register callback\n");
 		return -1;
 	}
@@ -378,7 +379,7 @@ test_interrupt_full_path_check(enum test_interrupt_handle_type intr_type)
 
 	rte_delay_ms(TEST_INTERRUPT_CHECK_INTERVAL);
 	if (rte_intr_callback_unregister(&test_intr_handle,
-			test_interrupt_callback, NULL) < 0)
+			test_interrupt_callback, &test_intr_handle) < 0)
 		return -1;
 
 	if (flag == 0) {
@@ -441,7 +442,7 @@ test_interrupt(void)
 	/* check if it will fail to register cb with invalid intr_handle */
 	test_intr_handle = intr_handles[TEST_INTERRUPT_HANDLE_INVALID];
 	if (rte_intr_callback_register(&test_intr_handle,
-			test_interrupt_callback, NULL) == 0) {
+			test_interrupt_callback, &test_intr_handle) == 0) {
 		printf("unexpectedly register successfully with invalid "
 			"intr_handle\n");
 		goto out;
@@ -449,7 +450,7 @@ test_interrupt(void)
 
 	/* check if it will fail to register without callback */
 	test_intr_handle = intr_handles[TEST_INTERRUPT_HANDLE_VALID];
-	if (rte_intr_callback_register(&test_intr_handle, NULL, NULL) == 0) {
+	if (rte_intr_callback_register(&test_intr_handle, NULL, &test_intr_handle) == 0) {
 		printf("unexpectedly register successfully with "
 			"null callback\n");
 		goto out;
@@ -466,7 +467,7 @@ test_interrupt(void)
 	/* check if it will fail to unregister cb with invalid intr_handle */
 	test_intr_handle = intr_handles[TEST_INTERRUPT_HANDLE_INVALID];
 	if (rte_intr_callback_unregister(&test_intr_handle,
-			test_interrupt_callback, NULL) > 0) {
+			test_interrupt_callback, &test_intr_handle) > 0) {
 		printf("unexpectedly unregister successfully with "
 			"invalid intr_handle\n");
 		goto out;
@@ -475,12 +476,12 @@ test_interrupt(void)
 	/* check if it is ok to register the same intr_handle twice */
 	test_intr_handle = intr_handles[TEST_INTERRUPT_HANDLE_VALID];
 	if (rte_intr_callback_register(&test_intr_handle,
-			test_interrupt_callback, NULL) < 0) {
+			test_interrupt_callback, &test_intr_handle) < 0) {
 		printf("it fails to register test_interrupt_callback\n");
 		goto out;
 	}
 	if (rte_intr_callback_register(&test_intr_handle,
-			test_interrupt_callback_1, NULL) < 0) {
+			test_interrupt_callback_1, &test_intr_handle) < 0) {
 		printf("it fails to register test_interrupt_callback_1\n");
 		goto out;
 	}
@@ -492,7 +493,7 @@ test_interrupt(void)
 		goto out;
 	}
 	if (rte_intr_callback_unregister(&test_intr_handle,
-			test_interrupt_callback, NULL) <= 0) {
+			test_interrupt_callback, &test_intr_handle) <= 0) {
 		printf("it fails to unregister test_interrupt_callback\n");
 		goto out;
 	}

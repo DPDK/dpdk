@@ -328,8 +328,7 @@ static void i40e_stat_update_48(struct i40e_hw *hw,
 			       uint64_t *offset,
 			       uint64_t *stat);
 static void i40e_pf_config_irq0(struct i40e_hw *hw, bool no_queue);
-static void i40e_dev_interrupt_handler(struct rte_intr_handle *handle,
-				       void *param);
+static void i40e_dev_interrupt_handler(void *param);
 static int i40e_res_pool_init(struct i40e_res_pool_info *pool,
 				uint32_t base, uint32_t num);
 static void i40e_res_pool_destroy(struct i40e_res_pool_info *pool);
@@ -5816,8 +5815,7 @@ i40e_dev_handle_aq_msg(struct rte_eth_dev *dev)
  *  void
  */
 static void
-i40e_dev_interrupt_handler(struct rte_intr_handle *intr_handle,
-			   void *param)
+i40e_dev_interrupt_handler(void *param)
 {
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -5861,7 +5859,7 @@ i40e_dev_interrupt_handler(struct rte_intr_handle *intr_handle,
 done:
 	/* Enable interrupt */
 	i40e_pf_enable_irq0(hw);
-	rte_intr_enable(intr_handle);
+	rte_intr_enable(dev->intr_handle);
 }
 
 static int

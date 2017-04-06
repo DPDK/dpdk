@@ -2542,9 +2542,7 @@ error:
  *  void
  */
 static void
-fm10k_dev_interrupt_handler_pf(
-			struct rte_intr_handle *handle,
-			void *param)
+fm10k_dev_interrupt_handler_pf(void *param)
 {
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
 	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -2594,7 +2592,7 @@ fm10k_dev_interrupt_handler_pf(
 	FM10K_WRITE_REG(hw, FM10K_ITR(0), FM10K_ITR_AUTOMASK |
 					FM10K_ITR_MASK_CLEAR);
 	/* Re-enable interrupt from host side */
-	rte_intr_enable(handle);
+	rte_intr_enable(dev->intr_handle);
 }
 
 /**
@@ -2609,9 +2607,7 @@ fm10k_dev_interrupt_handler_pf(
  *  void
  */
 static void
-fm10k_dev_interrupt_handler_vf(
-			struct rte_intr_handle *handle,
-			void *param)
+fm10k_dev_interrupt_handler_vf(void *param)
 {
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
 	struct fm10k_hw *hw = FM10K_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -2628,7 +2624,7 @@ fm10k_dev_interrupt_handler_vf(
 	FM10K_WRITE_REG(hw, FM10K_VFITR(0), FM10K_ITR_AUTOMASK |
 					FM10K_ITR_MASK_CLEAR);
 	/* Re-enable interrupt from host side */
-	rte_intr_enable(handle);
+	rte_intr_enable(dev->intr_handle);
 }
 
 /* Mailbox message handler in VF */

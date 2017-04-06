@@ -63,8 +63,7 @@
 /* Prototypes */
 static void nfp_net_close(struct rte_eth_dev *dev);
 static int nfp_net_configure(struct rte_eth_dev *dev);
-static void nfp_net_dev_interrupt_handler(struct rte_intr_handle *handle,
-					  void *param);
+static void nfp_net_dev_interrupt_handler(void *param);
 static void nfp_net_dev_interrupt_delayed_handler(void *param);
 static int nfp_net_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 static void nfp_net_infos_get(struct rte_eth_dev *dev,
@@ -1304,8 +1303,7 @@ nfp_net_irq_unmask(struct rte_eth_dev *dev)
 }
 
 static void
-nfp_net_dev_interrupt_handler(__rte_unused struct rte_intr_handle *handle,
-			      void *param)
+nfp_net_dev_interrupt_handler(void *param)
 {
 	int64_t timeout;
 	struct rte_eth_link link;

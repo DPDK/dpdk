@@ -692,8 +692,7 @@ unlock:
 }
 
 static void
-avp_dev_interrupt_handler(struct rte_intr_handle *intr_handle,
-						  void *data)
+avp_dev_interrupt_handler(void *data)
 {
 	struct rte_eth_dev *eth_dev = data;
 	struct rte_pci_device *pci_dev = AVP_DEV_TO_PCI(eth_dev);
@@ -744,7 +743,7 @@ avp_dev_interrupt_handler(struct rte_intr_handle *intr_handle,
 			    status);
 
 	/* re-enable UIO interrupt handling */
-	ret = rte_intr_enable(intr_handle);
+	ret = rte_intr_enable(&pci_dev->intr_handle);
 	if (ret < 0) {
 		PMD_DRV_LOG(ERR, "Failed to re-enable UIO interrupts, ret=%d\n",
 			    ret);

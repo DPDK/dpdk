@@ -1274,13 +1274,12 @@ mlx5_dev_link_status_handler(void *arg)
  *   Callback argument.
  */
 void
-mlx5_dev_interrupt_handler(struct rte_intr_handle *intr_handle, void *cb_arg)
+mlx5_dev_interrupt_handler(void *cb_arg)
 {
 	struct rte_eth_dev *dev = cb_arg;
 	struct priv *priv = dev->data->dev_private;
 	int ret;
 
-	(void)intr_handle;
 	priv_lock(priv);
 	ret = priv_dev_link_status_handler(priv, dev);
 	priv_unlock(priv);

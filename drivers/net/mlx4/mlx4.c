@@ -5251,7 +5251,7 @@ mlx4_getenv_int(const char *name)
 static void
 mlx4_dev_link_status_handler(void *);
 static void
-mlx4_dev_interrupt_handler(struct rte_intr_handle *, void *);
+mlx4_dev_interrupt_handler(void *);
 
 /**
  * Link status handler.
@@ -5333,13 +5333,12 @@ mlx4_dev_link_status_handler(void *arg)
  *   Callback argument.
  */
 static void
-mlx4_dev_interrupt_handler(struct rte_intr_handle *intr_handle, void *cb_arg)
+mlx4_dev_interrupt_handler(void *cb_arg)
 {
 	struct rte_eth_dev *dev = cb_arg;
 	struct priv *priv = dev->data->dev_private;
 	int ret;
 
-	(void)intr_handle;
 	priv_lock(priv);
 	ret = priv_dev_link_status_handler(priv, dev);
 	priv_unlock(priv);

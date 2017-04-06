@@ -1003,8 +1003,7 @@ tap_nl_msg_handler(struct nlmsghdr *nh, void *arg)
 }
 
 static void
-tap_dev_intr_handler(struct rte_intr_handle *intr_handle __rte_unused,
-		     void *cb_arg)
+tap_dev_intr_handler(void *cb_arg)
 {
 	struct rte_eth_dev *dev = cb_arg;
 	struct pmd_internals *pmd = dev->data->dev_private;

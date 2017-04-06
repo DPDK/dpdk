@@ -85,8 +85,7 @@ static int eth_em_rxq_interrupt_setup(struct rte_eth_dev *dev);
 static int eth_em_interrupt_get_status(struct rte_eth_dev *dev);
 static int eth_em_interrupt_action(struct rte_eth_dev *dev,
 				   struct rte_intr_handle *handle);
-static void eth_em_interrupt_handler(struct rte_intr_handle *handle,
-							void *param);
+static void eth_em_interrupt_handler(void *param);
 
 static int em_hw_init(struct e1000_hw *hw);
 static int em_hardware_init(struct e1000_hw *hw);
@@ -1658,13 +1657,12 @@ eth_em_interrupt_action(struct rte_eth_dev *dev,
  *  void
  */
 static void
-eth_em_interrupt_handler(struct rte_intr_handle *handle,
-			 void *param)
+eth_em_interrupt_handler(void *param)
 {
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
 
 	eth_em_interrupt_get_status(dev);
-	eth_em_interrupt_action(dev, handle);
+	eth_em_interrupt_action(dev, dev->intr_handle);
 	_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
 }
 

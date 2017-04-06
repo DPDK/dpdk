@@ -744,8 +744,7 @@ eal_intr_process_interrupts(struct epoll_event *events, int nfds)
 				rte_spinlock_unlock(&intr_lock);
 
 				/* call the actual callback */
-				active_cb.cb_fn(&src->intr_handle,
-					active_cb.cb_arg);
+				active_cb.cb_fn(active_cb.cb_arg);
 
 				/*get the lock back. */
 				rte_spinlock_lock(&intr_lock);

@@ -423,8 +423,7 @@ int enic_link_update(struct enic *enic)
 }
 
 static void
-enic_intr_handler(__rte_unused struct rte_intr_handle *handle,
-	void *arg)
+enic_intr_handler(void *arg)
 {
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)arg;
 	struct enic *enic = pmd_priv(dev);

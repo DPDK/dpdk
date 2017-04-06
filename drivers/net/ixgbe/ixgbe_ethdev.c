@@ -238,8 +238,7 @@ static int ixgbe_dev_rxq_interrupt_setup(struct rte_eth_dev *dev);
 static int ixgbe_dev_interrupt_get_status(struct rte_eth_dev *dev);
 static int ixgbe_dev_interrupt_action(struct rte_eth_dev *dev,
 				      struct rte_intr_handle *handle);
-static void ixgbe_dev_interrupt_handler(struct rte_intr_handle *handle,
-		void *param);
+static void ixgbe_dev_interrupt_handler(void *param);
 static void ixgbe_dev_interrupt_delayed_handler(void *param);
 static void ixgbe_add_rar(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
 		uint32_t index, uint32_t pool);
@@ -360,8 +359,7 @@ static int ixgbe_timesync_read_time(struct rte_eth_dev *dev,
 				   struct timespec *timestamp);
 static int ixgbe_timesync_write_time(struct rte_eth_dev *dev,
 				   const struct timespec *timestamp);
-static void ixgbevf_dev_interrupt_handler(struct rte_intr_handle *handle,
-					  void *param);
+static void ixgbevf_dev_interrupt_handler(void *param);
 
 static int ixgbe_dev_l2_tunnel_eth_type_conf
 	(struct rte_eth_dev *dev, struct rte_eth_l2_tunnel_conf *l2_tunnel);
@@ -3917,13 +3915,12 @@ ixgbe_dev_interrupt_delayed_handler(void *param)
  *  void
  */
 static void
-ixgbe_dev_interrupt_handler(struct rte_intr_handle *handle,
-			    void *param)
+ixgbe_dev_interrupt_handler(void *param)
 {
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
 
 	ixgbe_dev_interrupt_get_status(dev);
-	ixgbe_dev_interrupt_action(dev, handle);
+	ixgbe_dev_interrupt_action(dev, dev->intr_handle);
 }
 
 static int
@@ -8182,8 +8179,7 @@ ixgbevf_dev_interrupt_action(struct rte_eth_dev *dev)
 }
 
 static void
-ixgbevf_dev_interrupt_handler(__rte_unused struct rte_intr_handle *handle,
-			      void *param)
+ixgbevf_dev_interrupt_handler(void *param)
 {
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
 

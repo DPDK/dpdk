@@ -83,7 +83,7 @@ static rte_spinlock_t alarm_list_lk = RTE_SPINLOCK_INITIALIZER;
 
 static struct rte_intr_handle intr_handle = {.fd = -1 };
 static int handler_registered = 0;
-static void eal_alarm_callback(struct rte_intr_handle *hdl, void *arg);
+static void eal_alarm_callback(void *arg);
 
 int
 rte_eal_alarm_init(void)
@@ -102,8 +102,7 @@ error:
 }
 
 static void
-eal_alarm_callback(struct rte_intr_handle *hdl __rte_unused,
-		void *arg __rte_unused)
+eal_alarm_callback(void *arg __rte_unused)
 {
 	struct timespec now;
 	struct alarm_entry *ap;

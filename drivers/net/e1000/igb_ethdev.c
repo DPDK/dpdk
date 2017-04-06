@@ -136,8 +136,7 @@ static int eth_igb_rxq_interrupt_setup(struct rte_eth_dev *dev);
 static int eth_igb_interrupt_get_status(struct rte_eth_dev *dev);
 static int eth_igb_interrupt_action(struct rte_eth_dev *dev,
 				    struct rte_intr_handle *handle);
-static void eth_igb_interrupt_handler(struct rte_intr_handle *handle,
-							void *param);
+static void eth_igb_interrupt_handler(void *param);
 static int  igb_hardware_init(struct e1000_hw *hw);
 static void igb_hw_control_acquire(struct e1000_hw *hw);
 static void igb_hw_control_release(struct e1000_hw *hw);
@@ -283,8 +282,7 @@ static void eth_igb_assign_msix_vector(struct e1000_hw *hw, int8_t direction,
 static void eth_igb_write_ivar(struct e1000_hw *hw, uint8_t msix_vector,
 			       uint8_t index, uint8_t offset);
 static void eth_igb_configure_msix_intr(struct rte_eth_dev *dev);
-static void eth_igbvf_interrupt_handler(struct rte_intr_handle *handle,
-					void *param);
+static void eth_igbvf_interrupt_handler(void *param);
 static void igbvf_mbx_process(struct rte_eth_dev *dev);
 
 /*
@@ -2784,12 +2782,12 @@ eth_igb_interrupt_action(struct rte_eth_dev *dev,
  *  void
  */
 static void
-eth_igb_interrupt_handler(struct rte_intr_handle *handle, void *param)
+eth_igb_interrupt_handler(void *param)
 {
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
 
 	eth_igb_interrupt_get_status(dev);
-	eth_igb_interrupt_action(dev, handle);
+	eth_igb_interrupt_action(dev, dev->intr_handle);
 }
 
 static int
@@ -2846,13 +2844,12 @@ eth_igbvf_interrupt_action(struct rte_eth_dev *dev, struct rte_intr_handle *intr
 }
 
 static void
-eth_igbvf_interrupt_handler(struct rte_intr_handle *handle,
-			    void *param)
+eth_igbvf_interrupt_handler(void *param)
 {
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
 
 	eth_igbvf_interrupt_get_status(dev);
-	eth_igbvf_interrupt_action(dev, handle);
+	eth_igbvf_interrupt_action(dev, dev->intr_handle);
 }
 
 static int

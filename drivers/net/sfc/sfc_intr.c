@@ -70,13 +70,14 @@ sfc_intr_handle_mgmt_evq(struct sfc_adapter *sa)
 }
 
 static void
-sfc_intr_line_handler(struct rte_intr_handle *intr_handle, void *cb_arg)
+sfc_intr_line_handler(void *cb_arg)
 {
 	struct sfc_adapter *sa = (struct sfc_adapter *)cb_arg;
 	efx_nic_t *enp = sa->nic;
 	boolean_t fatal;
 	uint32_t qmask;
 	unsigned int lsc_seq = sa->port.lsc_seq;
+	struct rte_pci_device *pci_dev = SFC_DEV_TO_PCI(sa->eth_dev);
 
 	sfc_log_init(sa, "entry");
 
@@ -99,7 +100,7 @@ sfc_intr_line_handler(struct rte_intr_handle *intr_handle, void *cb_arg)
 	if (qmask & (1 << sa->mgmt_evq_index))
 		sfc_intr_handle_mgmt_evq(sa);
 
-	if (rte_intr_enable(intr_handle) != 0)
+	if (rte_intr_enable(&pci_dev->intr_handle) != 0)
 		sfc_err(sa, "cannot reenable interrupts");
 
 	sfc_log_init(sa, "done");
@@ -115,12 +116,13 @@ exit:
 }
 
 static void
-sfc_intr_message_handler(struct rte_intr_handle *intr_handle, void *cb_arg)
+sfc_intr_message_handler(void *cb_arg)
 {
 	struct sfc_adapter *sa = (struct sfc_adapter *)cb_arg;
 	efx_nic_t *enp = sa->nic;
 	boolean_t fatal;
 	unsigned int lsc_seq = sa->port.lsc_seq;
+	struct rte_pci_device *pci_dev = SFC_DEV_TO_PCI(sa->eth_dev);
 
 	sfc_log_init(sa, "entry");
 
@@ -141,7 +143,7 @@ sfc_intr_message_handler(struct rte_intr_handle *intr_handle, void *cb_arg)
 
 	sfc_intr_handle_mgmt_evq(sa);
 
-	if (rte_intr_enable(intr_handle) != 0)
+	if (rte_intr_enable(&pci_dev->intr_handle) != 0)
 		sfc_err(sa, "cannot reenable interrupts");
 
 	sfc_log_init(sa, "done");

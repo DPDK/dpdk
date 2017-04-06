@@ -119,12 +119,13 @@ bnx2x_interrupt_action(struct rte_eth_dev *dev)
 }
 
 static __rte_unused void
-bnx2x_interrupt_handler(struct rte_intr_handle *handle, void *param)
+bnx2x_interrupt_handler(void *param)
 {
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
+	struct bnx2x_softc *sc = dev->data->dev_private;
 
 	bnx2x_interrupt_action(dev);
-	rte_intr_enable(handle);
+	rte_intr_enable(&sc->pci_dev->intr_handle);
 }
 
 /*

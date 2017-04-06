@@ -1422,8 +1422,7 @@ i40evf_handle_aq_msg(struct rte_eth_dev *dev)
  *  void
  */
 static void
-i40evf_dev_interrupt_handler(struct rte_intr_handle *intr_handle,
-			     void *param)
+i40evf_dev_interrupt_handler(void *param)
 {
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -1452,7 +1451,7 @@ i40evf_dev_interrupt_handler(struct rte_intr_handle *intr_handle,
 
 done:
 	i40evf_enable_irq0(hw);
-	rte_intr_enable(intr_handle);
+	rte_intr_enable(dev->intr_handle);
 }
 
 static int
