@@ -200,6 +200,12 @@ On a NUMA machine, pages should be allocated explicitly on separate nodes::
 
     For 1G pages, it is not possible to reserve the hugepage memory after the system has booted.
 
+    On IBM POWER system, the nr_overcommit_hugepages should be set to the same value as nr_hugepages.
+    For example, if the required page number is 128, the following commands are used::
+
+        echo 128 > /sys/kernel/mm/hugepages/hugepages-16384kB/nr_hugepages
+        echo 128 > /sys/kernel/mm/hugepages/hugepages-16384kB/nr_overcommit_hugepages
+
 Using Hugepages with the DPDK
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

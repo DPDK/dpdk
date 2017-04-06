@@ -331,7 +331,13 @@ get_virtual_area(size_t *size, size_t hugepage_sz)
 	}
 	do {
 		addr = mmap(addr,
-				(*size) + hugepage_sz, PROT_READ, MAP_PRIVATE, fd, 0);
+				(*size) + hugepage_sz, PROT_READ,
+#ifdef RTE_ARCH_PPC_64
+				MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB,
+#else
+				MAP_PRIVATE,
+#endif
+				fd, 0);
 		if (addr == MAP_FAILED)
 			*size -= hugepage_sz;
 	} while (addr == MAP_FAILED && *size > 0);
@@ -1359,7 +1365,13 @@ rte_eal_hugepage_attach(void)
 		 * use mmap to get identical addresses as the primary process.
 		 */
 		base_addr = mmap(mcfg->memseg[s].addr, mcfg->memseg[s].len,
-				 PROT_READ, MAP_PRIVATE, fd_zero, 0);
+				 PROT_READ,
+#ifdef RTE_ARCH_PPC_64
+				 MAP_PRIVATE | MAP_ANONYMOUS | MAP_HUGETLB,
+#else
+				 MAP_PRIVATE,
+#endif
+				 fd_zero, 0);
 		if (base_addr == MAP_FAILED ||
 		    base_addr != mcfg->memseg[s].addr) {
 			max_seg = s;
