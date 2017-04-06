@@ -31,6 +31,11 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
+# set in mk/toolchain/xxx/rte.toolchain-compat.mk
+ifeq ($(CONFIG_RTE_LIBRTE_THUNDERX_NICVF_PMD),d)
+        $(warning thunderx pmd is not supported by old compilers)
+endif
+
 core-libs := librte_eal librte_mbuf librte_mempool librte_ring librte_ether
 core-libs += librte_net librte_kvargs
 
