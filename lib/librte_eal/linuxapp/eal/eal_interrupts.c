@@ -279,29 +279,6 @@ vfio_disable_msi(const struct rte_intr_handle *intr_handle) {
 	return ret;
 }
 
-static int
-get_max_intr(const struct rte_intr_handle *intr_handle)
-{
-	struct rte_intr_source *src;
-
-	TAILQ_FOREACH(src, &intr_sources, next) {
-		if (src->intr_handle.fd != intr_handle->fd)
-			continue;
-
-		if (src->intr_handle.max_intr < intr_handle->max_intr)
-			src->intr_handle.max_intr = intr_handle->max_intr;
-		if (!src->intr_handle.max_intr)
-			src->intr_handle.max_intr = 1;
-		else if (src->intr_handle.max_intr > RTE_MAX_RXTX_INTR_VEC_ID)
-			src->intr_handle.max_intr
-				= RTE_MAX_RXTX_INTR_VEC_ID + 1;
-
-		return src->intr_handle.max_intr;
-	}
-
-	return -1;
-}
-
 /* enable MSI-X interrupts */
 static int
 vfio_enable_msix(const struct rte_intr_handle *intr_handle) {
@@ -314,15 +291,10 @@ vfio_enable_msix(const struct rte_intr_handle *intr_handle) {
 
 	irq_set = (struct vfio_irq_set *) irq_set_buf;
 	irq_set->argsz = len;
-
-	ret = get_max_intr(intr_handle);
-	if (ret < 0) {
-		RTE_LOG(ERR, EAL, "Invalid number of MSI-X irqs for fd %d\n",
-			intr_handle->fd);
-		return -1;
-	}
-
-	irq_set->count = ret;
+	/* 0 < irq_set->count < RTE_MAX_RXTX_INTR_VEC_ID + 1 */
+	irq_set->count = intr_handle->max_intr ?
+		(intr_handle->max_intr > RTE_MAX_RXTX_INTR_VEC_ID + 1 ?
+		RTE_MAX_RXTX_INTR_VEC_ID + 1 : intr_handle->max_intr) : 1;
 	irq_set->flags = VFIO_IRQ_SET_DATA_EVENTFD | VFIO_IRQ_SET_ACTION_TRIGGER;
 	irq_set->index = VFIO_PCI_MSIX_IRQ_INDEX;
 	irq_set->start = 0;
