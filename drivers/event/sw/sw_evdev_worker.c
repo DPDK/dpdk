@@ -48,9 +48,8 @@ sw_event_release(struct sw_port *p, uint8_t index)
 	RTE_SET_USED(index);
 
 	/* create drop message */
-	struct rte_event ev = {
-		.op = sw_qe_flag_map[RTE_EVENT_OP_RELEASE],
-	};
+	struct rte_event ev;
+	ev.op = sw_qe_flag_map[RTE_EVENT_OP_RELEASE];
 
 	uint16_t free_count;
 	qe_ring_enqueue_burst(p->rx_worker_ring, &ev, 1, &free_count);
