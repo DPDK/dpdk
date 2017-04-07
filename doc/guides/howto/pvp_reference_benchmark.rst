@@ -158,7 +158,7 @@ Testpmd launch
       $RTE_SDK/install/bin/testpmd -l 0,2,3,4,5 --socket-mem=1024 -n 4 \
           --vdev 'net_vhost0,iface=/tmp/vhost-user1' \
           --vdev 'net_vhost1,iface=/tmp/vhost-user2' -- \
-          --portmask=f --disable-hw-vlan -i --rxq=1 --txq=1
+          --portmask=f --disable-hw-vlan -i --rxq=1 --txq=1 \
           --nb-cores=4 --forward-mode=io
 
    With this command, isolated CPUs 2 to 5 will be used as lcores for PMD threads.
