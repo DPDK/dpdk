@@ -98,7 +98,7 @@ rte_table_stub_lookup(
 static int
 rte_table_stub_stats_read(void *table, struct rte_table_stats *stats, int clear)
 {
-	struct rte_table_stub *t = (struct rte_table_stub *) table;
+	struct rte_table_stub *t = table;
 
 	if (stats != NULL)
 		memcpy(stats, &t->stats, sizeof(t->stats));

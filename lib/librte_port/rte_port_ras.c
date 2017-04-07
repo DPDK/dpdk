@@ -93,7 +93,7 @@ static void *
 rte_port_ring_writer_ras_create(void *params, int socket_id, int is_ipv4)
 {
 	struct rte_port_ring_writer_ras_params *conf =
-			(struct rte_port_ring_writer_ras_params *) params;
+			params;
 	struct rte_port_ring_writer_ras *port;
 	uint64_t frag_cycles;
 
@@ -243,7 +243,7 @@ static int
 rte_port_ring_writer_ras_tx(void *port, struct rte_mbuf *pkt)
 {
 	struct rte_port_ring_writer_ras *p =
-			(struct rte_port_ring_writer_ras *) port;
+			port;
 
 	RTE_PORT_RING_WRITER_RAS_STATS_PKTS_IN_ADD(p, 1);
 	p->f_ras(p, pkt);
@@ -259,7 +259,7 @@ rte_port_ring_writer_ras_tx_bulk(void *port,
 		uint64_t pkts_mask)
 {
 	struct rte_port_ring_writer_ras *p =
-			(struct rte_port_ring_writer_ras *) port;
+			port;
 
 	if ((pkts_mask & (pkts_mask + 1)) == 0) {
 		uint64_t n_pkts = __builtin_popcountll(pkts_mask);
@@ -295,7 +295,7 @@ static int
 rte_port_ring_writer_ras_flush(void *port)
 {
 	struct rte_port_ring_writer_ras *p =
-			(struct rte_port_ring_writer_ras *) port;
+			port;
 
 	if (p->tx_buf_count > 0)
 		send_burst(p);
@@ -307,7 +307,7 @@ static int
 rte_port_ring_writer_ras_free(void *port)
 {
 	struct rte_port_ring_writer_ras *p =
-			(struct rte_port_ring_writer_ras *) port;
+			port;
 
 	if (port == NULL) {
 		RTE_LOG(ERR, PORT, "%s: Parameter port is NULL\n", __func__);
@@ -326,7 +326,7 @@ rte_port_ras_writer_stats_read(void *port,
 		struct rte_port_out_stats *stats, int clear)
 {
 	struct rte_port_ring_writer_ras *p =
-		(struct rte_port_ring_writer_ras *) port;
+		port;
 
 	if (stats != NULL)
 		memcpy(stats, &p->stats, sizeof(p->stats));

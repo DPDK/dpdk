@@ -1462,7 +1462,7 @@ static int ixgbe_eeprom_test(struct ixgbe_adapter *adapter, u64 *data)
 
 static irqreturn_t ixgbe_test_intr(int irq, void *data)
 {
-	struct net_device *netdev = (struct net_device *) data;
+	struct net_device *netdev = data;
 	struct ixgbe_adapter *adapter = netdev_priv(netdev);
 
 	adapter->test_icr |= IXGBE_READ_REG(&adapter->hw, IXGBE_EICR);
@@ -2447,7 +2447,7 @@ static int ixgbe_get_rxnfc(struct net_device *dev, struct ethtool_rxnfc *cmd,
 		break;
 	case ETHTOOL_GRXCLSRLALL:
 		ret = ixgbe_get_ethtool_fdir_all(adapter, cmd,
-						 (u32 *)rule_locs);
+						 rule_locs);
 		break;
 	case ETHTOOL_GRXFH:
 		ret = ixgbe_get_rss_hash_opts(adapter, cmd);

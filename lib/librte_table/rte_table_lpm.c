@@ -82,7 +82,7 @@ struct rte_table_lpm {
 static void *
 rte_table_lpm_create(void *params, int socket_id, uint32_t entry_size)
 {
-	struct rte_table_lpm_params *p = (struct rte_table_lpm_params *) params;
+	struct rte_table_lpm_params *p = params;
 	struct rte_table_lpm *lpm;
 	struct rte_lpm_config lpm_config;
 
@@ -154,7 +154,7 @@ rte_table_lpm_create(void *params, int socket_id, uint32_t entry_size)
 static int
 rte_table_lpm_free(void *table)
 {
-	struct rte_table_lpm *lpm = (struct rte_table_lpm *) table;
+	struct rte_table_lpm *lpm = table;
 
 	/* Check input parameters */
 	if (lpm == NULL) {
@@ -210,8 +210,8 @@ rte_table_lpm_entry_add(
 	int *key_found,
 	void **entry_ptr)
 {
-	struct rte_table_lpm *lpm = (struct rte_table_lpm *) table;
-	struct rte_table_lpm_key *ip_prefix = (struct rte_table_lpm_key *) key;
+	struct rte_table_lpm *lpm = table;
+	struct rte_table_lpm_key *ip_prefix = key;
 	uint32_t nht_pos, nht_pos0_valid;
 	int status;
 	uint32_t nht_pos0 = 0;
@@ -277,8 +277,8 @@ rte_table_lpm_entry_delete(
 	int *key_found,
 	void *entry)
 {
-	struct rte_table_lpm *lpm = (struct rte_table_lpm *) table;
-	struct rte_table_lpm_key *ip_prefix = (struct rte_table_lpm_key *) key;
+	struct rte_table_lpm *lpm = table;
+	struct rte_table_lpm_key *ip_prefix = key;
 	uint32_t nht_pos;
 	int status;
 
@@ -372,7 +372,7 @@ rte_table_lpm_lookup(
 static int
 rte_table_lpm_stats_read(void *table, struct rte_table_stats *stats, int clear)
 {
-	struct rte_table_lpm *t = (struct rte_table_lpm *) table;
+	struct rte_table_lpm *t = table;
 
 	if (stats != NULL)
 		memcpy(stats, &t->stats, sizeof(t->stats));

@@ -185,7 +185,7 @@ rte_net_crc_calc(const void *data,
 	rte_net_crc_handler f_handle;
 
 	f_handle = handlers[type];
-	ret = f_handle((const uint8_t *) data, data_len);
+	ret = f_handle(data, data_len);
 
 	return ret;
 }

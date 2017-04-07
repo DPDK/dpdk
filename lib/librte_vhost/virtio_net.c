@@ -629,14 +629,14 @@ parse_ethernet(struct rte_mbuf *m, uint16_t *l4_proto, void **l4_hdr)
 
 	switch (ethertype) {
 	case ETHER_TYPE_IPv4:
-		ipv4_hdr = (struct ipv4_hdr *)l3_hdr;
+		ipv4_hdr = l3_hdr;
 		*l4_proto = ipv4_hdr->next_proto_id;
 		m->l3_len = (ipv4_hdr->version_ihl & 0x0f) * 4;
 		*l4_hdr = (char *)l3_hdr + m->l3_len;
 		m->ol_flags |= PKT_TX_IPV4;
 		break;
 	case ETHER_TYPE_IPv6:
-		ipv6_hdr = (struct ipv6_hdr *)l3_hdr;
+		ipv6_hdr = l3_hdr;
 		*l4_proto = ipv6_hdr->proto;
 		m->l3_len = sizeof(struct ipv6_hdr);
 		*l4_hdr = (char *)l3_hdr + m->l3_len;
@@ -686,7 +686,7 @@ vhost_dequeue_offload(struct virtio_net_hdr *hdr, struct rte_mbuf *m)
 		switch (hdr->gso_type & ~VIRTIO_NET_HDR_GSO_ECN) {
 		case VIRTIO_NET_HDR_GSO_TCPV4:
 		case VIRTIO_NET_HDR_GSO_TCPV6:
-			tcp_hdr = (struct tcp_hdr *)l4_hdr;
+			tcp_hdr = l4_hdr;
 			m->ol_flags |= PKT_TX_TCP_SEG;
 			m->tso_segsz = hdr->gso_size;
 			m->l4_len = (tcp_hdr->data_off & 0xf0) >> 2;

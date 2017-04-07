@@ -64,7 +64,7 @@ static void *
 rte_port_sched_reader_create(void *params, int socket_id)
 {
 	struct rte_port_sched_reader_params *conf =
-			(struct rte_port_sched_reader_params *) params;
+			params;
 	struct rte_port_sched_reader *port;
 
 	/* Check input parameters */
@@ -91,7 +91,7 @@ rte_port_sched_reader_create(void *params, int socket_id)
 static int
 rte_port_sched_reader_rx(void *port, struct rte_mbuf **pkts, uint32_t n_pkts)
 {
-	struct rte_port_sched_reader *p = (struct rte_port_sched_reader *) port;
+	struct rte_port_sched_reader *p = port;
 	uint32_t nb_rx;
 
 	nb_rx = rte_sched_port_dequeue(p->sched, pkts, n_pkts);
@@ -118,7 +118,7 @@ rte_port_sched_reader_stats_read(void *port,
 		struct rte_port_in_stats *stats, int clear)
 {
 	struct rte_port_sched_reader *p =
-		(struct rte_port_sched_reader *) port;
+		port;
 
 	if (stats != NULL)
 		memcpy(stats, &p->stats, sizeof(p->stats));
@@ -160,7 +160,7 @@ static void *
 rte_port_sched_writer_create(void *params, int socket_id)
 {
 	struct rte_port_sched_writer_params *conf =
-			(struct rte_port_sched_writer_params *) params;
+			params;
 	struct rte_port_sched_writer *port;
 
 	/* Check input parameters */
@@ -292,7 +292,7 @@ rte_port_sched_writer_stats_read(void *port,
 		struct rte_port_out_stats *stats, int clear)
 {
 	struct rte_port_sched_writer *p =
-		(struct rte_port_sched_writer *) port;
+		port;
 
 	if (stats != NULL)
 		memcpy(stats, &p->stats, sizeof(p->stats));

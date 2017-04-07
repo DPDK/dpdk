@@ -190,7 +190,7 @@ rte_table_hash_cuckoo_free(void *table) {
 		return -EINVAL;
 	}
 
-	struct rte_table_hash *t = (struct rte_table_hash *)table;
+	struct rte_table_hash *t = table;
 
 	rte_hash_free(t->h_table);
 	rte_free(t);
@@ -218,7 +218,7 @@ rte_table_hash_cuckoo_entry_add(void *table, void *key, void *entry,
 		return -EINVAL;
 	}
 
-	struct rte_table_hash *t = (struct rte_table_hash *)table;
+	struct rte_table_hash *t = table;
 
 	/*  Find Existing entries */
 	pos = rte_hash_lookup(t->h_table, key);
@@ -268,7 +268,7 @@ rte_table_hash_cuckoo_entry_delete(void *table, void *key,
 		return -EINVAL;
 	}
 
-	struct rte_table_hash *t = (struct rte_table_hash *)table;
+	struct rte_table_hash *t = table;
 
 	pos = rte_hash_del_key(t->h_table, key);
 	if (pos >= 0) {
@@ -359,7 +359,7 @@ static int
 rte_table_hash_cuckoo_stats_read(void *table, struct rte_table_stats *stats,
 	int clear)
 {
-	struct rte_table_hash *t = (struct rte_table_hash *) table;
+	struct rte_table_hash *t = table;
 
 	if (stats != NULL)
 		memcpy(stats, &t->stats, sizeof(t->stats));

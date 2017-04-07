@@ -180,7 +180,7 @@ rte_table_hash_create_key8_lru(void *params, int socket_id, uint32_t entry_size)
 static int
 rte_table_hash_free_key8_lru(void *table)
 {
-	struct rte_table_hash *f = (struct rte_table_hash *) table;
+	struct rte_table_hash *f = table;
 
 	/* Check input parameters */
 	if (f == NULL) {
@@ -200,7 +200,7 @@ rte_table_hash_entry_add_key8_lru(
 	int *key_found,
 	void **entry_ptr)
 {
-	struct rte_table_hash *f = (struct rte_table_hash *) table;
+	struct rte_table_hash *f = table;
 	struct rte_bucket_4_8 *bucket;
 	uint64_t signature, mask, pos;
 	uint32_t bucket_index, i;
@@ -263,7 +263,7 @@ rte_table_hash_entry_delete_key8_lru(
 	int *key_found,
 	void *entry)
 {
-	struct rte_table_hash *f = (struct rte_table_hash *) table;
+	struct rte_table_hash *f = table;
 	struct rte_bucket_4_8 *bucket;
 	uint64_t signature, mask;
 	uint32_t bucket_index, i;
@@ -392,7 +392,7 @@ rte_table_hash_create_key8_ext(void *params, int socket_id, uint32_t entry_size)
 static int
 rte_table_hash_free_key8_ext(void *table)
 {
-	struct rte_table_hash *f = (struct rte_table_hash *) table;
+	struct rte_table_hash *f = table;
 
 	/* Check input parameters */
 	if (f == NULL) {
@@ -412,7 +412,7 @@ rte_table_hash_entry_add_key8_ext(
 	int *key_found,
 	void **entry_ptr)
 {
-	struct rte_table_hash *f = (struct rte_table_hash *) table;
+	struct rte_table_hash *f = table;
 	struct rte_bucket_4_8 *bucket0, *bucket, *bucket_prev;
 	uint64_t signature;
 	uint32_t bucket_index, i;
@@ -493,7 +493,7 @@ rte_table_hash_entry_delete_key8_ext(
 	int *key_found,
 	void *entry)
 {
-	struct rte_table_hash *f = (struct rte_table_hash *) table;
+	struct rte_table_hash *f = table;
 	struct rte_bucket_4_8 *bucket0, *bucket, *bucket_prev;
 	uint64_t signature;
 	uint32_t bucket_index, i;
@@ -1415,7 +1415,7 @@ grind_next_buckets:
 static int
 rte_table_hash_key8_stats_read(void *table, struct rte_table_stats *stats, int clear)
 {
-	struct rte_table_hash *t = (struct rte_table_hash *) table;
+	struct rte_table_hash *t = table;
 
 	if (stats != NULL)
 		memcpy(stats, &t->stats, sizeof(t->stats));

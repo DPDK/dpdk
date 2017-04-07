@@ -179,7 +179,7 @@ rte_table_hash_create_key32_lru(void *params,
 static int
 rte_table_hash_free_key32_lru(void *table)
 {
-	struct rte_table_hash *f = (struct rte_table_hash *) table;
+	struct rte_table_hash *f = table;
 
 	/* Check input parameters */
 	if (f == NULL) {
@@ -199,7 +199,7 @@ rte_table_hash_entry_add_key32_lru(
 	int *key_found,
 	void **entry_ptr)
 {
-	struct rte_table_hash *f = (struct rte_table_hash *) table;
+	struct rte_table_hash *f = table;
 	struct rte_bucket_4_32 *bucket;
 	uint64_t signature, pos;
 	uint32_t bucket_index, i;
@@ -265,7 +265,7 @@ rte_table_hash_entry_delete_key32_lru(
 	int *key_found,
 	void *entry)
 {
-	struct rte_table_hash *f = (struct rte_table_hash *) table;
+	struct rte_table_hash *f = table;
 	struct rte_bucket_4_32 *bucket;
 	uint64_t signature;
 	uint32_t bucket_index, i;
@@ -329,7 +329,7 @@ rte_table_hash_create_key32_ext(void *params,
 	uint32_t entry_size)
 {
 	struct rte_table_hash_key32_ext_params *p =
-			(struct rte_table_hash_key32_ext_params *) params;
+			params;
 	struct rte_table_hash *f;
 	uint32_t n_buckets, n_buckets_ext, n_entries_per_bucket;
 	uint32_t key_size, bucket_size_cl, stack_size_cl, total_size, i;
@@ -392,7 +392,7 @@ rte_table_hash_create_key32_ext(void *params,
 static int
 rte_table_hash_free_key32_ext(void *table)
 {
-	struct rte_table_hash *f = (struct rte_table_hash *) table;
+	struct rte_table_hash *f = table;
 
 	/* Check input parameters */
 	if (f == NULL) {
@@ -412,7 +412,7 @@ rte_table_hash_entry_add_key32_ext(
 	int *key_found,
 	void **entry_ptr)
 {
-	struct rte_table_hash *f = (struct rte_table_hash *) table;
+	struct rte_table_hash *f = table;
 	struct rte_bucket_4_32 *bucket0, *bucket, *bucket_prev;
 	uint64_t signature;
 	uint32_t bucket_index, i;
@@ -492,7 +492,7 @@ rte_table_hash_entry_delete_key32_ext(
 	int *key_found,
 	void *entry)
 {
-	struct rte_table_hash *f = (struct rte_table_hash *) table;
+	struct rte_table_hash *f = table;
 	struct rte_bucket_4_32 *bucket0, *bucket, *bucket_prev;
 	uint64_t signature;
 	uint32_t bucket_index, i;
@@ -1110,7 +1110,7 @@ grind_next_buckets:
 static int
 rte_table_hash_key32_stats_read(void *table, struct rte_table_stats *stats, int clear)
 {
-	struct rte_table_hash *t = (struct rte_table_hash *) table;
+	struct rte_table_hash *t = table;
 
 	if (stats != NULL)
 		memcpy(stats, &t->stats, sizeof(t->stats));

@@ -195,7 +195,7 @@ rte_eal_config_create(void)
 		rte_panic("Cannot mmap memory for rte_config\n");
 	}
 	memcpy(rte_mem_cfg_addr, &early_mem_config, sizeof(early_mem_config));
-	rte_config.mem_config = (struct rte_mem_config *) rte_mem_cfg_addr;
+	rte_config.mem_config = rte_mem_cfg_addr;
 }
 
 /* attach to an existing shared memory config */
@@ -220,7 +220,7 @@ rte_eal_config_attach(void)
 	if (rte_mem_cfg_addr == MAP_FAILED)
 		rte_panic("Cannot mmap memory for rte_config\n");
 
-	rte_config.mem_config = (struct rte_mem_config *) rte_mem_cfg_addr;
+	rte_config.mem_config = rte_mem_cfg_addr;
 }
 
 /* Detect if we are a primary or a secondary process */

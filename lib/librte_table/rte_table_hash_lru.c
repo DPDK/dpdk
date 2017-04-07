@@ -149,7 +149,7 @@ static void *
 rte_table_hash_lru_create(void *params, int socket_id, uint32_t entry_size)
 {
 	struct rte_table_hash_lru_params *p =
-		(struct rte_table_hash_lru_params *) params;
+		params;
 	struct rte_table_hash *t;
 	uint32_t total_size, table_meta_sz;
 	uint32_t bucket_sz, key_sz, key_stack_sz, data_sz;
@@ -227,7 +227,7 @@ rte_table_hash_lru_create(void *params, int socket_id, uint32_t entry_size)
 static int
 rte_table_hash_lru_free(void *table)
 {
-	struct rte_table_hash *t = (struct rte_table_hash *) table;
+	struct rte_table_hash *t = table;
 
 	/* Check input parameters */
 	if (t == NULL)
@@ -241,7 +241,7 @@ static int
 rte_table_hash_lru_entry_add(void *table, void *key, void *entry,
 	int *key_found, void **entry_ptr)
 {
-	struct rte_table_hash *t = (struct rte_table_hash *) table;
+	struct rte_table_hash *t = table;
 	struct bucket *bkt;
 	uint64_t sig;
 	uint32_t bkt_index, i;
@@ -325,7 +325,7 @@ static int
 rte_table_hash_lru_entry_delete(void *table, void *key, int *key_found,
 	void *entry)
 {
-	struct rte_table_hash *t = (struct rte_table_hash *) table;
+	struct rte_table_hash *t = table;
 	struct bucket *bkt;
 	uint64_t sig;
 	uint32_t bkt_index, i;
@@ -1068,7 +1068,7 @@ static int rte_table_hash_lru_lookup_dosig(
 static int
 rte_table_hash_lru_stats_read(void *table, struct rte_table_stats *stats, int clear)
 {
-	struct rte_table_hash *t = (struct rte_table_hash *) table;
+	struct rte_table_hash *t = table;
 
 	if (stats != NULL)
 		memcpy(stats, &t->stats, sizeof(t->stats));

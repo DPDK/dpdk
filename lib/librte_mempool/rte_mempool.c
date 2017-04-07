@@ -1044,7 +1044,7 @@ void rte_mempool_check_cookies(const struct rte_mempool *mp,
 	/* Force to drop the "const" attribute. This is done only when
 	 * DEBUG is enabled */
 	tmp = (void *) obj_table_const;
-	obj_table = (void **) tmp;
+	obj_table = tmp;
 
 	while (n--) {
 		obj = obj_table[n];

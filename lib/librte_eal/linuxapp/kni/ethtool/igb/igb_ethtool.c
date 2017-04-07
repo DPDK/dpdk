@@ -1126,7 +1126,7 @@ static int igb_eeprom_test(struct igb_adapter *adapter, u64 *data)
 
 static irqreturn_t igb_test_intr(int irq, void *data)
 {
-	struct igb_adapter *adapter = (struct igb_adapter *) data;
+	struct igb_adapter *adapter = data;
 	struct e1000_hw *hw = &adapter->hw;
 
 	adapter->test_icr |= E1000_READ_REG(hw, E1000_ICR);

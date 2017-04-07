@@ -187,7 +187,7 @@ rte_table_hash_create_key16_lru(void *params,
 static int
 rte_table_hash_free_key16_lru(void *table)
 {
-	struct rte_table_hash *f = (struct rte_table_hash *) table;
+	struct rte_table_hash *f = table;
 
 	/* Check input parameters */
 	if (f == NULL) {
@@ -207,7 +207,7 @@ rte_table_hash_entry_add_key16_lru(
 	int *key_found,
 	void **entry_ptr)
 {
-	struct rte_table_hash *f = (struct rte_table_hash *) table;
+	struct rte_table_hash *f = table;
 	struct rte_bucket_4_16 *bucket;
 	uint64_t signature, pos;
 	uint32_t bucket_index, i;
@@ -273,7 +273,7 @@ rte_table_hash_entry_delete_key16_lru(
 	int *key_found,
 	void *entry)
 {
-	struct rte_table_hash *f = (struct rte_table_hash *) table;
+	struct rte_table_hash *f = table;
 	struct rte_bucket_4_16 *bucket;
 	uint64_t signature;
 	uint32_t bucket_index, i;
@@ -407,7 +407,7 @@ rte_table_hash_create_key16_ext(void *params,
 static int
 rte_table_hash_free_key16_ext(void *table)
 {
-	struct rte_table_hash *f = (struct rte_table_hash *) table;
+	struct rte_table_hash *f = table;
 
 	/* Check input parameters */
 	if (f == NULL) {
@@ -427,7 +427,7 @@ rte_table_hash_entry_add_key16_ext(
 	int *key_found,
 	void **entry_ptr)
 {
-	struct rte_table_hash *f = (struct rte_table_hash *) table;
+	struct rte_table_hash *f = table;
 	struct rte_bucket_4_16 *bucket0, *bucket, *bucket_prev;
 	uint64_t signature;
 	uint32_t bucket_index, i;
@@ -504,7 +504,7 @@ rte_table_hash_entry_delete_key16_ext(
 	int *key_found,
 	void *entry)
 {
-	struct rte_table_hash *f = (struct rte_table_hash *) table;
+	struct rte_table_hash *f = table;
 	struct rte_bucket_4_16 *bucket0, *bucket, *bucket_prev;
 	uint64_t signature;
 	uint32_t bucket_index, i;
@@ -1463,7 +1463,7 @@ grind_next_buckets:
 static int
 rte_table_hash_key16_stats_read(void *table, struct rte_table_stats *stats, int clear)
 {
-	struct rte_table_hash *t = (struct rte_table_hash *) table;
+	struct rte_table_hash *t = table;
 
 	if (stats != NULL)
 		memcpy(stats, &t->stats, sizeof(t->stats));

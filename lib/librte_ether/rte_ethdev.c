@@ -2527,7 +2527,7 @@ _rte_eth_dev_callback_process(struct rte_eth_dev *dev,
 		dev_cb = *cb_lst;
 		cb_lst->active = 1;
 		if (cb_arg != NULL)
-			dev_cb.cb_arg = (void *) cb_arg;
+			dev_cb.cb_arg = cb_arg;
 
 		rte_spinlock_unlock(&rte_eth_dev_cb_lock);
 		dev_cb.cb_fn(dev->data->port_id, dev_cb.event,

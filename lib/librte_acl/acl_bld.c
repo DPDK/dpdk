@@ -830,8 +830,8 @@ acl_gen_range_trie(struct acl_build_context *context,
 {
 	int32_t n;
 	struct rte_acl_node *root;
-	const uint8_t *lo = (const uint8_t *)min;
-	const uint8_t *hi = (const uint8_t *)max;
+	const uint8_t *lo = min;
+	const uint8_t *hi = max;
 
 	*pend = acl_alloc_node(context, level+size);
 	root = acl_alloc_node(context, level++);
@@ -886,8 +886,8 @@ acl_gen_mask_trie(struct acl_build_context *context,
 	struct rte_acl_node *root;
 	struct rte_acl_node *node, *prev;
 	struct rte_acl_bitset bits;
-	const uint8_t *val = (const uint8_t *)value;
-	const uint8_t *msk = (const uint8_t *)mask;
+	const uint8_t *val = value;
+	const uint8_t *msk = mask;
 
 	root = acl_alloc_node(context, level++);
 	prev = root;

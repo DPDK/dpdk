@@ -610,12 +610,12 @@ static int
 cmp_physaddr(const void *a, const void *b)
 {
 #ifndef RTE_ARCH_PPC_64
-	const struct hugepage_file *p1 = (const struct hugepage_file *)a;
-	const struct hugepage_file *p2 = (const struct hugepage_file *)b;
+	const struct hugepage_file *p1 = a;
+	const struct hugepage_file *p2 = b;
 #else
 	/* PowerPC needs memory sorted in reverse order from x86 */
-	const struct hugepage_file *p1 = (const struct hugepage_file *)b;
-	const struct hugepage_file *p2 = (const struct hugepage_file *)a;
+	const struct hugepage_file *p1 = b;
+	const struct hugepage_file *p2 = a;
 #endif
 	if (p1->physaddr < p2->physaddr)
 		return -1;

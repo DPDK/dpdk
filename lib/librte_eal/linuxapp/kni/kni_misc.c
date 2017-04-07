@@ -159,7 +159,7 @@ static int
 kni_thread_multiple(void *param)
 {
 	int j;
-	struct kni_dev *dev = (struct kni_dev *)param;
+	struct kni_dev *dev = param;
 
 	while (!kthread_should_stop()) {
 		for (j = 0; j < KNI_RX_LOOP_NUM; j++) {

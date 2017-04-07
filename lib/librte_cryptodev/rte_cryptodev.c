@@ -254,7 +254,7 @@ static int
 parse_integer_arg(const char *key __rte_unused,
 		const char *value, void *extra_args)
 {
-	int *i = (int *) extra_args;
+	int *i = extra_args;
 
 	*i = atoi(value);
 	if (*i < 0) {
@@ -1383,7 +1383,7 @@ rte_cryptodev_sym_session_create(uint8_t dev_id,
 		return NULL;
 	}
 
-	sess = (struct rte_cryptodev_sym_session *)_sess;
+	sess = _sess;
 
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->session_configure, NULL);
 	if (dev->dev_ops->session_configure(dev, xform, sess->_private) ==
