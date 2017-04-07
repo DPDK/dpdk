@@ -2830,3 +2830,44 @@ Output can be limited to specific groups::
    5       0       1000    i-      ETH IPV6 ICMP => QUEUE
    7       63      0       i-      ETH IPV6 UDP VXLAN => MARK QUEUE
    testpmd>
+
+Sample QinQ flow rules
+~~~~~~~~~~~~~~~~~~~~~~
+
+Validate and create a QinQ rule on port 0 to steer traffic to a VF queue in a VM.
+
+::
+
+   testpmd> flow validate 0 ingress pattern eth / vlan tpid is 0x8100 tci is 4 /
+       vlan tpid is 0x8100 tci is 5 / end actions vf id 1 / queue index 0 / end
+   Flow rule #0 validated
+
+   testpmd> flow create 0 ingress pattern eth / vlan tpid is 0x8100 tci is 4 /
+       vlan tpid is 0x8100 tci is 5 / end actions vf id 1 / queue index 0 / end
+   Flow rule #0 created
+
+   testpmd> flow list 0
+   ID      Group   Prio    Attr    Rule
+   0       0       0       i-      ETH VLAN VLAN=>VF QUEUE
+
+Validate and create a QinQ rule on port 0 to steer traffic to a queue on the host.
+
+::
+
+   testpmd> flow validate 0 ingress pattern eth / vlan tpid is 0x8100 tci is 6 /
+        vlan tpid is 0x8100 tci is 7 / end actions pf / queue index 0 / end
+   Flow rule #1 validated
+
+   testpmd> flow create 0 ingress pattern eth / vlan tpid is 0x8100 tci is 6 /
+        vlan tpid is 0x8100 tci is 7 / end actions pf / queue index 1 / end
+   Flow rule #1 created
+
+   testpmd> flow list 0
+   ID      Group   Prio    Attr    Rule
+   0       0       0       i-      ETH VLAN VLAN=>VF QUEUE
+   1       0       0       i-      ETH VLAN VLAN=>PF QUEUE
+
+After creating QinQ rule(s) the following command should be issued to enable QinQ::
+
+   testpmd> vlan set qinq on 0
+
