@@ -318,11 +318,6 @@ M: Nelson Escobar <neescoba@cisco.com>
 F: drivers/net/enic/
 F: doc/guides/nics/enic.rst
 
-Combo szedata2
-M: Matej Vido <vido@cesnet.cz>
-F: drivers/net/szedata2/
-F: doc/guides/nics/szedata2.rst
-
 Intel e1000
 M: Wenzhuo Lu <wenzhuo.lu@intel.com>
 F: drivers/net/e1000/
@@ -358,6 +353,11 @@ M: Adrien Mazarguil <adrien.mazarguil@6wind.com>
 M: Nelio Laranjeiro <nelio.laranjeiro@6wind.com>
 F: drivers/net/mlx5/
 F: doc/guides/nics/mlx5.rst
+
+Netcope szedata2
+M: Matej Vido <vido@cesnet.cz>
+F: drivers/net/szedata2/
+F: doc/guides/nics/szedata2.rst
 
 Netronome nfp
 M: Alejandro Lucero <alejandro.lucero@netronome.com>
