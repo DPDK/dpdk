@@ -201,7 +201,7 @@ test_interrupt_handle_compare(struct rte_intr_handle *intr_handle_l,
 static void
 test_interrupt_callback(void *arg)
 {
-	struct rte_intr_handle *intr_handle = (struct rte_intr_handle *)arg;
+	struct rte_intr_handle *intr_handle = arg;
 	if (test_intr_type >= TEST_INTERRUPT_HANDLE_MAX) {
 		printf("invalid interrupt type\n");
 		flag = -1;
@@ -233,7 +233,7 @@ test_interrupt_callback(void *arg)
 static void
 test_interrupt_callback_1(void *arg)
 {
-	struct rte_intr_handle *intr_handle = (struct rte_intr_handle *)arg;
+	struct rte_intr_handle *intr_handle = arg;
 	if (test_interrupt_handle_sanity_check(intr_handle) < 0) {
 		printf("null or invalid intr_handle for %s\n", __func__);
 		flag = -1;

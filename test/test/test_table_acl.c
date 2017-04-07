@@ -720,7 +720,7 @@ test_pipeline_single_filter(int expected_count)
 		} else {
 			printf("Got %d object(s) from ring %d!\n", ret, i);
 			for (j = 0; j < ret; j++) {
-				mbuf = (struct rte_mbuf *)objs[j];
+				mbuf = objs[j];
 				rte_hexdump(stdout, "mbuf",
 					rte_pktmbuf_mtod(mbuf, char *), 64);
 				rte_pktmbuf_free(mbuf);

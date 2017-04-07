@@ -366,7 +366,7 @@ static uint16_t
 virtual_ethdev_tx_burst_success(void *queue, struct rte_mbuf **bufs,
 		uint16_t nb_pkts)
 {
-	struct virtual_ethdev_queue *tx_q = (struct virtual_ethdev_queue *)queue;
+	struct virtual_ethdev_queue *tx_q = queue;
 
 	struct rte_eth_dev *vrtl_eth_dev;
 	struct virtual_ethdev_private *dev_private;
@@ -402,7 +402,7 @@ virtual_ethdev_tx_burst_fail(void *queue, struct rte_mbuf **bufs,
 
 	int i;
 
-	tx_q = (struct virtual_ethdev_queue *)queue;
+	tx_q = queue;
 	vrtl_eth_dev = &rte_eth_devices[tx_q->port_id];
 	dev_private = vrtl_eth_dev->data->dev_private;
 

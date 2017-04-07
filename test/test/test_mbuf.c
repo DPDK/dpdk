@@ -692,7 +692,7 @@ test_refcnt_slave(__attribute__((unused)) void *arg)
 	while (refcnt_stop_slaves == 0) {
 		if (rte_ring_dequeue(refcnt_mbuf_ring, &mp) == 0) {
 			free++;
-			rte_pktmbuf_free((struct rte_mbuf *)mp);
+			rte_pktmbuf_free(mp);
 		}
 	}
 

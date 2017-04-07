@@ -75,7 +75,7 @@ uint64_t pipeline_test_hash(void *key,
 		__attribute__((unused)) uint32_t key_size,
 		__attribute__((unused)) uint64_t seed)
 {
-	uint32_t *k32 = (uint32_t *) key;
+	uint32_t *k32 = key;
 	uint32_t ip_dst = rte_be_to_cpu_32(k32[0]);
 	uint64_t signature = ip_dst;
 

@@ -306,7 +306,7 @@ static int test_five_keys(void)
 		key_array[i] = &keys[i];
 
 	rte_efd_lookup_bulk(handle, test_socket_id, 5,
-			(const void **) (void *) &key_array, result);
+			(void *) &key_array, result);
 
 	for (i = 0; i < 5; i++) {
 		TEST_ASSERT_EQUAL(result[i], data[i],
