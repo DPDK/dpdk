@@ -42,7 +42,6 @@
 #include <rte_metrics.h>
 #include <rte_memzone.h>
 #include <rte_lcore.h>
-#include <rte_timer.h>
 
 #include "rte_latencystats.h"
 
