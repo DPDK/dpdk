@@ -31,16 +31,16 @@
 SZEDATA2 poll mode driver library
 =================================
 
-The SZEDATA2 poll mode driver library implements support for cards from COMBO
-family (**COMBO-80G**, **COMBO-100G**).
-The SZEDATA2 PMD uses interface provided by libsze2 library to communicate
-with COMBO cards over sze2 layer.
+The SZEDATA2 poll mode driver library implements support for the Netcope
+FPGA Boards (**NFB-***), FPGA-based programmable NICs.
+The SZEDATA2 PMD uses interface provided by the libsze2 library to communicate
+with the NFB cards over the sze2 layer.
 
-More information about family of
-`COMBO cards <https://www.liberouter.org/technologies/cards/>`_
+More information about the
+`NFB cards <http://www.netcope.com/en/products/fpga-boards>`_
 and used technology
-(`NetCOPE platform <https://www.liberouter.org/technologies/netcope/>`_) can be
-found on the `Liberouter website <https://www.liberouter.org/>`_.
+(`Netcope Development Kit <http://www.netcope.com/en/products/fpga-development-kit>`_)
+can be found on the `Netcope Technologies website <http://www.netcope.com/>`_.
 
 .. note::
 
@@ -77,7 +77,7 @@ separately:
    sharing of resources for user space applications.
 
 Information about getting the dependencies can be found `here
-<https://www.liberouter.org/technologies/netcope/access-to-libsze2-library/>`_.
+<http://www.netcope.com/en/company/community-support/dpdk-libsze2>`_.
 
 Configuration
 -------------
