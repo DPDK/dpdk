@@ -792,10 +792,13 @@ eth_dev_close(struct rte_eth_dev *dev)
 {
 	struct pmd_internal *internal;
 	struct internal_list *list;
+	unsigned int i;
 
 	internal = dev->data->dev_private;
 	if (!internal)
 		return;
+
+	eth_dev_stop(dev);
 
 	rte_vhost_driver_unregister(internal->iface_name);
 
@@ -808,9 +811,17 @@ eth_dev_close(struct rte_eth_dev *dev)
 	pthread_mutex_unlock(&internal_list_lock);
 	rte_free(list);
 
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
+		rte_free(dev->data->rx_queues[i]);
+	for (i = 0; i < dev->data->nb_tx_queues; i++)
+		rte_free(dev->data->tx_queues[i]);
+
+	rte_free(dev->data->mac_addrs);
 	free(internal->dev_name);
 	free(internal->iface_name);
 	rte_free(internal);
+
+	dev->data->dev_private = NULL;
 }
 
 static int
@@ -1199,7 +1210,6 @@ rte_pmd_vhost_remove(struct rte_vdev_device *dev)
 {
 	const char *name;
 	struct rte_eth_dev *eth_dev = NULL;
-	unsigned int i;
 
 	name = rte_vdev_device_name(dev);
 	RTE_LOG(INFO, PMD, "Un-Initializing pmd_vhost for %s\n", name);
@@ -1209,19 +1219,11 @@ rte_pmd_vhost_remove(struct rte_vdev_device *dev)
 	if (eth_dev == NULL)
 		return -ENODEV;
 
-	eth_dev_stop(eth_dev);
-
 	eth_dev_close(eth_dev);
 
 	rte_free(vring_states[eth_dev->data->port_id]);
 	vring_states[eth_dev->data->port_id] = NULL;
 
-	for (i = 0; i < eth_dev->data->nb_rx_queues; i++)
-		rte_free(eth_dev->data->rx_queues[i]);
-	for (i = 0; i < eth_dev->data->nb_tx_queues; i++)
-		rte_free(eth_dev->data->tx_queues[i]);
-
-	rte_free(eth_dev->data->mac_addrs);
 	rte_free(eth_dev->data);
 
 	rte_eth_dev_release_port(eth_dev);
