@@ -129,6 +129,13 @@ New Features
 
   * Added dynamic device personalization processing to i40e FW.
 
+* **Added Cloud Filter for QinQ steering to i40e.**
+
+  * Added a QinQ cloud filter on the i40e PMD, for steering traffic to a VM
+    using both VLAN tags.
+  * QinQ is not supported in Vector Mode on the i40e PMD.
+  * Vector Mode must be disabled when using the QinQ Cloud Filter.
+
 * **Added TSO support for tunneled and non-tunneled packets on mlx5 driver.**
 
   Added support for Hardware TSO for tunneled and non-tunneled packets.
@@ -282,6 +289,7 @@ New Features
   The OpenSSL PMD has been updated with additional support for:
 
   * DES DOCSIS BPI algorithm.
+
 
 Resolved Issues
 ---------------
