@@ -89,7 +89,7 @@ static struct rte_eth_conf port_conf = {
 		.hw_ip_checksum = 1,
 		.hw_vlan_filter = 0,
 		.jumbo_frame    = 0,
-		.hw_strip_crc   = 0,
+		.hw_strip_crc   = 1,
 	},
 	.rx_adv_conf = {
 		.rss_conf = {

@@ -149,7 +149,7 @@ static const struct rte_eth_conf vmdq_conf_default = {
 		 */
 		.hw_vlan_strip  = 1, /**< VLAN strip enabled. */
 		.jumbo_frame    = 0, /**< Jumbo Frame Support disabled */
-		.hw_strip_crc   = 0, /**< CRC stripped by hardware */
+		.hw_strip_crc   = 1, /**< CRC stripped by hardware */
 	},
 
 	.txmode = {

@@ -59,7 +59,7 @@ struct rte_eth_conf eth_conf = {
 		.hw_ip_checksum = 0,
 		.hw_vlan_filter = 0,
 		.jumbo_frame    = 0,
-		.hw_strip_crc   = 0,
+		.hw_strip_crc   = 1,
 	},
 	.txmode = {
 		.mq_mode = ETH_MQ_TX_NONE,
