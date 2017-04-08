@@ -153,7 +153,7 @@ usage(char* progname)
 	printf("  --latencystats=N: enable latency and jitter statistcs "
 	       "monitoring on forwarding lcore id N.\n");
 #endif
-	printf("  --crc-strip: enable CRC stripping by hardware.\n");
+	printf("  --disable-crc-strip: disable CRC stripping by hardware.\n");
 	printf("  --enable-lro: enable large receive offload.\n");
 	printf("  --enable-rx-cksum: enable rx hardware checksum offload.\n");
 	printf("  --disable-hw-vlan: disable hardware vlan.\n");
@@ -533,7 +533,7 @@ launch_args_parse(int argc, char** argv)
 #ifdef RTE_LIBRTE_LATENCY_STATS
 		{ "latencystats",               1, 0, 0 },
 #endif
-		{ "crc-strip",                  0, 0, 0 },
+		{ "disable-crc-strip",          0, 0, 0 },
 		{ "enable-lro",                 0, 0, 0 },
 		{ "enable-rx-cksum",            0, 0, 0 },
 		{ "enable-scatter",             0, 0, 0 },
@@ -786,8 +786,8 @@ launch_args_parse(int argc, char** argv)
 						 " must be >= 0\n", n);
 			}
 #endif
-			if (!strcmp(lgopts[opt_idx].name, "crc-strip"))
-				rx_mode.hw_strip_crc = 1;
+			if (!strcmp(lgopts[opt_idx].name, "disable-crc-strip"))
+				rx_mode.hw_strip_crc = 0;
 			if (!strcmp(lgopts[opt_idx].name, "enable-lro"))
 				rx_mode.enable_lro = 1;
 			if (!strcmp(lgopts[opt_idx].name, "enable-scatter"))

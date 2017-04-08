@@ -1378,9 +1378,9 @@ Set hardware CRC stripping on or off for all ports::
 
    testpmd> port config all crc-strip (on|off)
 
-CRC stripping is off by default.
+CRC stripping is on by default.
 
-The ``on`` option is equivalent to the ``--crc-strip`` command-line option.
+The ``off`` option is equivalent to the ``--disable-crc-strip`` command-line option.
 
 port config - scatter
 ~~~~~~~~~~~~~~~~~~~~~~~

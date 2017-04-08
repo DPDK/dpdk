@@ -281,9 +281,9 @@ The commandline options are:
     In perfect filter mode, when a rule is added with queue = -1, the packet will be enqueued into the RX drop-queue.
     If the drop-queue does not exist, the packet is dropped. The default value is N=127.
 
-*   ``--crc-strip``
+*   ``--disable-crc-strip``
 
-    Enable hardware CRC stripping.
+    Disable hardware CRC stripping.
 
 *   ``--enable-lro``
 
