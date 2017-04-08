@@ -172,7 +172,7 @@ struct rte_eth_rxmode rx_mode = {
 	.hw_vlan_strip  = 1, /**< VLAN strip enabled. */
 	.hw_vlan_extend = 0, /**< Extended VLAN disabled. */
 	.jumbo_frame    = 0, /**< Jumbo Frame Support disabled. */
-	.hw_strip_crc   = 0, /**< CRC stripping by hardware disabled. */
+	.hw_strip_crc   = 1, /**< CRC stripping by hardware enabled. */
 };
 
 struct rte_fdir_conf fdir_conf = {
@@ -191,7 +191,7 @@ static struct rte_eth_conf default_pmd_conf = {
 		.hw_ip_checksum = 0, /**< IP checksum offload enabled */
 		.hw_vlan_filter = 0, /**< VLAN filtering disabled */
 		.jumbo_frame    = 0, /**< Jumbo Frame Support disabled */
-		.hw_strip_crc   = 0, /**< CRC stripped by hardware */
+		.hw_strip_crc   = 1, /**< CRC stripped by hardware */
 	},
 	.txmode = {
 		.mq_mode = ETH_MQ_TX_NONE,

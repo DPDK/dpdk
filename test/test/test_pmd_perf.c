@@ -100,7 +100,7 @@ static struct rte_eth_conf port_conf = {
 		.hw_vlan_strip  = 0, /**< VLAN strip enabled. */
 		.hw_vlan_extend = 0, /**< Extended VLAN disabled. */
 		.jumbo_frame    = 0, /**< Jumbo Frame Support disabled */
-		.hw_strip_crc   = 0, /**< CRC stripped by hardware */
+		.hw_strip_crc   = 1, /**< CRC stripped by hardware */
 		.enable_scatter = 0, /**< scatter rx disabled */
 	},
 	.txmode = {
