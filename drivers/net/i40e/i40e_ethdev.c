@@ -5742,18 +5742,10 @@ static void
 i40e_notify_all_vfs_link_status(struct rte_eth_dev *dev)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
-	struct i40e_virtchnl_pf_event event;
 	int i;
 
-	event.event = I40E_VIRTCHNL_EVENT_LINK_CHANGE;
-	event.event_data.link_event.link_status =
-		dev->data->dev_link.link_status;
-	event.event_data.link_event.link_speed =
-		(enum i40e_aq_link_speed)dev->data->dev_link.link_speed;
-
 	for (i = 0; i < pf->vf_num; i++)
-		i40e_pf_host_send_msg_to_vf(&pf->vfs[i], I40E_VIRTCHNL_OP_EVENT,
-				I40E_SUCCESS, (uint8_t *)&event, sizeof(event));
+		i40e_notify_vf_link_status(dev, &pf->vfs[i]);
 }
 
 static void
