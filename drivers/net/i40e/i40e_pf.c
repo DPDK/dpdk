@@ -1188,8 +1188,33 @@ i40e_notify_vf_link_status(struct rte_eth_dev *dev, struct i40e_pf_vf *vf)
 	event.event = I40E_VIRTCHNL_EVENT_LINK_CHANGE;
 	event.event_data.link_event.link_status =
 		dev->data->dev_link.link_status;
-	event.event_data.link_event.link_speed =
-		(enum i40e_aq_link_speed)dev->data->dev_link.link_speed;
+
+	/* need to convert the ETH_SPEED_xxx into I40E_LINK_SPEED_xxx */
+	switch (dev->data->dev_link.link_speed) {
+	case ETH_SPEED_NUM_100M:
+		event.event_data.link_event.link_speed = I40E_LINK_SPEED_100MB;
+		break;
+	case ETH_SPEED_NUM_1G:
+		event.event_data.link_event.link_speed = I40E_LINK_SPEED_1GB;
+		break;
+	case ETH_SPEED_NUM_10G:
+		event.event_data.link_event.link_speed = I40E_LINK_SPEED_10GB;
+		break;
+	case ETH_SPEED_NUM_20G:
+		event.event_data.link_event.link_speed = I40E_LINK_SPEED_20GB;
+		break;
+	case ETH_SPEED_NUM_25G:
+		event.event_data.link_event.link_speed = I40E_LINK_SPEED_25GB;
+		break;
+	case ETH_SPEED_NUM_40G:
+		event.event_data.link_event.link_speed = I40E_LINK_SPEED_40GB;
+		break;
+	default:
+		event.event_data.link_event.link_speed =
+			I40E_LINK_SPEED_UNKNOWN;
+		break;
+	}
+
 	i40e_pf_host_send_msg_to_vf(vf, I40E_VIRTCHNL_OP_EVENT,
 		I40E_SUCCESS, (uint8_t *)&event, sizeof(event));
 }
