@@ -1576,12 +1576,12 @@ static uint16_t eth_ena_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		recv_idx++;
 	}
 
-	desc_in_use += 1;
+	rx_ring->next_to_clean = next_to_clean;
+
+	desc_in_use = desc_in_use - completed + 1;
 	/* Burst refill to save doorbells, memory barriers, const interval */
 	if (ring_size - desc_in_use > ENA_RING_DESCS_RATIO(ring_size))
 		ena_populate_rx_queue(rx_ring, ring_size - desc_in_use);
-
-	rx_ring->next_to_clean = next_to_clean;
 
 	return recv_idx;
 }
