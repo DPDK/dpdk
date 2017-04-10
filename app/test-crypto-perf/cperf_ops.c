@@ -107,7 +107,13 @@ cperf_set_ops_cipher(struct rte_crypto_op **ops,
 		sym_op->cipher.iv.phys_addr = test_vector->iv.phys_addr;
 		sym_op->cipher.iv.length = test_vector->iv.length;
 
-		sym_op->cipher.data.length = options->test_buffer_size;
+		if (options->cipher_algo == RTE_CRYPTO_CIPHER_SNOW3G_UEA2 ||
+				options->cipher_algo == RTE_CRYPTO_CIPHER_KASUMI_F8 ||
+				options->cipher_algo == RTE_CRYPTO_CIPHER_ZUC_EEA3)
+			sym_op->cipher.data.length = options->test_buffer_size << 3;
+		else
+			sym_op->cipher.data.length = options->test_buffer_size;
+
 		sym_op->cipher.data.offset = 0;
 	}
 
@@ -166,7 +172,13 @@ cperf_set_ops_auth(struct rte_crypto_op **ops,
 
 		}
 
-		sym_op->auth.data.length = options->test_buffer_size;
+		if (options->auth_algo == RTE_CRYPTO_AUTH_SNOW3G_UIA2 ||
+				options->auth_algo == RTE_CRYPTO_AUTH_KASUMI_F9 ||
+				options->auth_algo == RTE_CRYPTO_AUTH_ZUC_EIA3)
+			sym_op->auth.data.length = options->test_buffer_size << 3;
+		else
+			sym_op->auth.data.length = options->test_buffer_size;
+
 		sym_op->auth.data.offset = 0;
 	}
 
@@ -195,7 +207,13 @@ cperf_set_ops_cipher_auth(struct rte_crypto_op **ops,
 		sym_op->cipher.iv.phys_addr = test_vector->iv.phys_addr;
 		sym_op->cipher.iv.length = test_vector->iv.length;
 
-		sym_op->cipher.data.length = options->test_buffer_size;
+		if (options->cipher_algo == RTE_CRYPTO_CIPHER_SNOW3G_UEA2 ||
+				options->cipher_algo == RTE_CRYPTO_CIPHER_KASUMI_F8 ||
+				options->cipher_algo == RTE_CRYPTO_CIPHER_ZUC_EEA3)
+			sym_op->cipher.data.length = options->test_buffer_size << 3;
+		else
+			sym_op->cipher.data.length = options->test_buffer_size;
+
 		sym_op->cipher.data.offset = 0;
 
 		/* authentication parameters */
@@ -232,7 +250,13 @@ cperf_set_ops_cipher_auth(struct rte_crypto_op **ops,
 			sym_op->auth.aad.length = options->auth_aad_sz;
 		}
 
-		sym_op->auth.data.length = options->test_buffer_size;
+		if (options->auth_algo == RTE_CRYPTO_AUTH_SNOW3G_UIA2 ||
+				options->auth_algo == RTE_CRYPTO_AUTH_KASUMI_F9 ||
+				options->auth_algo == RTE_CRYPTO_AUTH_ZUC_EIA3)
+			sym_op->auth.data.length = options->test_buffer_size << 3;
+		else
+			sym_op->auth.data.length = options->test_buffer_size;
+
 		sym_op->auth.data.offset = 0;
 	}
 
