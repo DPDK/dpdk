@@ -310,13 +310,6 @@ ixgbe_rx_vec_dev_conf_condition_check_default(struct rte_eth_dev *dev)
 	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
 	struct rte_fdir_conf *fconf = &dev->data->dev_conf.fdir_conf;
 
-#ifndef RTE_IXGBE_RX_OLFLAGS_ENABLE
-	/* whithout rx ol_flags, no VP flag report */
-	if (rxmode->hw_vlan_strip != 0 ||
-	    rxmode->hw_vlan_extend != 0)
-		return -1;
-#endif
-
 	/* no fdir support */
 	if (fconf->mode != RTE_FDIR_MODE_NONE)
 		return -1;

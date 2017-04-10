@@ -86,20 +86,6 @@ ixgbe_rxq_rearm(struct ixgbe_rx_queue *rxq)
 		mb0 = rxep[0].mbuf;
 		mb1 = rxep[1].mbuf;
 
-#ifndef RTE_IXGBE_RX_OLFLAGS_ENABLE
-		{
-			uintptr_t p0, p1;
-			/*
-			 * Flush mbuf with pkt template.
-			 * Data to be rearmed is 6 bytes long.
-			 */
-			p0 = (uintptr_t)&mb0->rearm_data;
-			*(uint64_t *)p0 = rxq->mbuf_initializer;
-			p1 = (uintptr_t)&mb1->rearm_data;
-			*(uint64_t *)p1 = rxq->mbuf_initializer;
-		}
-#endif
-
 		/* load buf_addr(lo 64bit) and buf_physaddr(hi 64bit) */
 		vaddr0 = _mm_loadu_si128((__m128i *)&(mb0->buf_addr));
 		vaddr1 = _mm_loadu_si128((__m128i *)&(mb1->buf_addr));
@@ -133,14 +119,6 @@ ixgbe_rxq_rearm(struct ixgbe_rx_queue *rxq)
 	/* Update the tail pointer on the NIC */
 	IXGBE_PCI_REG_WRITE(rxq->rdt_reg_addr, rx_id);
 }
-
-/* Handling the offload flags (olflags) field takes computation
- * time when receiving packets. Therefore we provide a flag to disable
- * the processing of the olflags field when they are not needed. This
- * gives improved performance, at the cost of losing the offload info
- * in the received packet
- */
-#ifdef RTE_IXGBE_RX_OLFLAGS_ENABLE
 
 static inline void
 desc_to_olflags_v(__m128i descs[4], __m128i mbuf_init, uint8_t vlan_flags,
@@ -261,11 +239,6 @@ desc_to_olflags_v(__m128i descs[4], __m128i mbuf_init, uint8_t vlan_flags,
 	_mm_store_si128((__m128i *)&rx_pkts[2]->rearm_data, rearm2);
 	_mm_store_si128((__m128i *)&rx_pkts[3]->rearm_data, rearm3);
 }
-#else
-#define desc_to_olflags_v(desc, vlan_flags, rx_pkts) do { \
-		RTE_SET_USED(vlan_flags); \
-	} while (0)
-#endif
 
 /*
  * vPMD raw receive routine, only accept(nb_pkts >= RTE_IXGBE_DESCS_PER_LOOP)

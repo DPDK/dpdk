@@ -111,14 +111,6 @@ ixgbe_rxq_rearm(struct ixgbe_rx_queue *rxq)
 	IXGBE_PCI_REG_WRITE(rxq->rdt_reg_addr, rx_id);
 }
 
-/* Handling the offload flags (olflags) field takes computation
- * time when receiving packets. Therefore we provide a flag to disable
- * the processing of the olflags field when they are not needed. This
- * gives improved performance, at the cost of losing the offload info
- * in the received packet
- */
-#ifdef RTE_IXGBE_RX_OLFLAGS_ENABLE
-
 #define VTAG_SHIFT     (3)
 
 static inline void
@@ -167,9 +159,6 @@ desc_to_olflags_v(uint8x16x2_t sterr_tmp1, uint8x16x2_t sterr_tmp2,
 	rx_pkts[2]->ol_flags = vol.e[2];
 	rx_pkts[3]->ol_flags = vol.e[3];
 }
-#else
-#define desc_to_olflags_v(sterr_tmp1, sterr_tmp2, staterr, rx_pkts)
-#endif
 
 /*
  * vPMD raw receive routine, only accept(nb_pkts >= RTE_IXGBE_DESCS_PER_LOOP)
