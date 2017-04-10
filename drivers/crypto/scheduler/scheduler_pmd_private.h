@@ -84,14 +84,14 @@ struct scheduler_ctx {
 
 	uint8_t reordering_enabled;
 
-	struct rte_cryptodev_qp_conf qp_conf;
-
 	char name[RTE_CRYPTODEV_SCHEDULER_NAME_MAX_LEN];
 	char description[RTE_CRYPTODEV_SCHEDULER_DESC_MAX_LEN];
 } __rte_cache_aligned;
 
 struct scheduler_qp_ctx {
 	void *private_qp_ctx;
+
+	uint32_t max_nb_objs;
 
 	struct rte_ring *order_ring;
 	uint32_t seqn;

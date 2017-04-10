@@ -52,7 +52,6 @@ struct psd_scheduler_qp_ctx {
 	struct scheduler_slave primary_slave;
 	struct scheduler_slave secondary_slave;
 	uint32_t threshold;
-	uint32_t max_nb_objs;
 	uint8_t deq_idx;
 } __rte_cache_aligned;
 
@@ -65,13 +64,13 @@ struct psd_schedule_op {
 static uint16_t
 schedule_enqueue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 {
-	struct psd_scheduler_qp_ctx *qp_ctx =
-			((struct scheduler_qp_ctx *)qp)->private_qp_ctx;
+	struct scheduler_qp_ctx *qp_ctx = qp;
+	struct psd_scheduler_qp_ctx *psd_qp_ctx = qp_ctx->private_qp_ctx;
 	struct rte_crypto_op *sched_ops[NB_PKT_SIZE_SLAVES][nb_ops];
 	struct scheduler_session *sess;
 	uint32_t in_flight_ops[NB_PKT_SIZE_SLAVES] = {
-			qp_ctx->primary_slave.nb_inflight_cops,
-			qp_ctx->secondary_slave.nb_inflight_cops
+			psd_qp_ctx->primary_slave.nb_inflight_cops,
+			psd_qp_ctx->secondary_slave.nb_inflight_cops
 	};
 	struct psd_schedule_op enq_ops[NB_PKT_SIZE_SLAVES] = {
 		{PRIMARY_SLAVE_IDX, 0}, {SECONDARY_SLAVE_IDX, 0}
@@ -107,7 +106,7 @@ schedule_enqueue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 		job_len += (ops[i]->sym->cipher.data.length == 0) *
 				ops[i]->sym->auth.data.length;
 		/* decide the target op based on the job length */
-		p_enq_op = &enq_ops[!(job_len & qp_ctx->threshold)];
+		p_enq_op = &enq_ops[!(job_len & psd_qp_ctx->threshold)];
 
 		/* stop schedule cops before the queue is full, this shall
 		 * prevent the failed enqueue
@@ -127,7 +126,7 @@ schedule_enqueue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 		job_len = ops[i+1]->sym->cipher.data.length;
 		job_len += (ops[i+1]->sym->cipher.data.length == 0) *
 				ops[i+1]->sym->auth.data.length;
-		p_enq_op = &enq_ops[!(job_len & qp_ctx->threshold)];
+		p_enq_op = &enq_ops[!(job_len & psd_qp_ctx->threshold)];
 
 		if (p_enq_op->pos + in_flight_ops[p_enq_op->slave_idx] ==
 				qp_ctx->max_nb_objs) {
@@ -144,7 +143,7 @@ schedule_enqueue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 		job_len = ops[i+2]->sym->cipher.data.length;
 		job_len += (ops[i+2]->sym->cipher.data.length == 0) *
 				ops[i+2]->sym->auth.data.length;
-		p_enq_op = &enq_ops[!(job_len & qp_ctx->threshold)];
+		p_enq_op = &enq_ops[!(job_len & psd_qp_ctx->threshold)];
 
 		if (p_enq_op->pos + in_flight_ops[p_enq_op->slave_idx] ==
 				qp_ctx->max_nb_objs) {
@@ -162,7 +161,7 @@ schedule_enqueue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 		job_len = ops[i+3]->sym->cipher.data.length;
 		job_len += (ops[i+3]->sym->cipher.data.length == 0) *
 				ops[i+3]->sym->auth.data.length;
-		p_enq_op = &enq_ops[!(job_len & qp_ctx->threshold)];
+		p_enq_op = &enq_ops[!(job_len & psd_qp_ctx->threshold)];
 
 		if (p_enq_op->pos + in_flight_ops[p_enq_op->slave_idx] ==
 				qp_ctx->max_nb_objs) {
@@ -182,7 +181,7 @@ schedule_enqueue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 		job_len = ops[i]->sym->cipher.data.length;
 		job_len += (ops[i]->sym->cipher.data.length == 0) *
 				ops[i]->sym->auth.data.length;
-		p_enq_op = &enq_ops[!(job_len & qp_ctx->threshold)];
+		p_enq_op = &enq_ops[!(job_len & psd_qp_ctx->threshold)];
 
 		if (p_enq_op->pos + in_flight_ops[p_enq_op->slave_idx] ==
 				qp_ctx->max_nb_objs) {
@@ -196,23 +195,23 @@ schedule_enqueue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 	}
 
 	processed_ops_pri = rte_cryptodev_enqueue_burst(
-			qp_ctx->primary_slave.dev_id,
-			qp_ctx->primary_slave.qp_id,
+			psd_qp_ctx->primary_slave.dev_id,
+			psd_qp_ctx->primary_slave.qp_id,
 			sched_ops[PRIMARY_SLAVE_IDX],
 			enq_ops[PRIMARY_SLAVE_IDX].pos);
 	/* enqueue shall not fail as the slave queue is monitored */
 	RTE_ASSERT(processed_ops_pri == enq_ops[PRIMARY_SLAVE_IDX].pos);
 
-	qp_ctx->primary_slave.nb_inflight_cops += processed_ops_pri;
+	psd_qp_ctx->primary_slave.nb_inflight_cops += processed_ops_pri;
 
 	processed_ops_sec = rte_cryptodev_enqueue_burst(
-			qp_ctx->secondary_slave.dev_id,
-			qp_ctx->secondary_slave.qp_id,
+			psd_qp_ctx->secondary_slave.dev_id,
+			psd_qp_ctx->secondary_slave.qp_id,
 			sched_ops[SECONDARY_SLAVE_IDX],
 			enq_ops[SECONDARY_SLAVE_IDX].pos);
 	RTE_ASSERT(processed_ops_sec == enq_ops[SECONDARY_SLAVE_IDX].pos);
 
-	qp_ctx->secondary_slave.nb_inflight_cops += processed_ops_sec;
+	psd_qp_ctx->secondary_slave.nb_inflight_cops += processed_ops_sec;
 
 	return processed_ops_pri + processed_ops_sec;
 }
@@ -325,8 +324,6 @@ scheduler_start(struct rte_cryptodev *dev)
 		ps_qp_ctx->secondary_slave.nb_inflight_cops = 0;
 
 		ps_qp_ctx->threshold = psd_ctx->threshold;
-
-		ps_qp_ctx->max_nb_objs = sched_ctx->qp_conf.nb_descriptors;
 	}
 
 	if (sched_ctx->reordering_enabled) {
