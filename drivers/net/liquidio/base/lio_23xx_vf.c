@@ -31,6 +31,8 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <string.h>
+
 #include <rte_ethdev.h>
 #include <rte_cycles.h>
 #include <rte_malloc.h>
@@ -382,7 +384,7 @@ cn23xx_vf_ask_pf_to_do_flr(struct lio_device *lio_dev)
 {
 	struct lio_mbox_cmd mbox_cmd;
 
-	mbox_cmd.msg.mbox_msg64 = 0;
+	memset(&mbox_cmd, 0, sizeof(struct lio_mbox_cmd));
 	mbox_cmd.msg.s.type = LIO_MBOX_REQUEST;
 	mbox_cmd.msg.s.resp_needed = 0;
 	mbox_cmd.msg.s.cmd = LIO_VF_FLR_REQUEST;
