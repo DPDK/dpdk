@@ -1173,6 +1173,8 @@ static int ena_populate_rx_queue(struct ena_ring *rxq, unsigned int count)
 		rc = ena_com_add_single_rx_desc(rxq->ena_com_io_sq,
 						&ebuf, next_to_use_masked);
 		if (unlikely(rc)) {
+			rte_mempool_put_bulk(rxq->mb_pool, (void **)(&mbuf),
+					     count - i);
 			RTE_LOG(WARNING, PMD, "failed adding rx desc\n");
 			break;
 		}
