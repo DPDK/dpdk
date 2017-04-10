@@ -51,6 +51,8 @@
 
 #define MAX_PER_IQ_DEQUEUE 48
 #define FLOWID_MASK (SW_QID_NUM_FIDS-1)
+/* use cheap bit mixing, we only need to lose a few bits */
+#define SW_HASH_FLOWID(f) (((f) ^ (f >> 10)) & FLOWID_MASK)
 
 static inline uint32_t
 sw_schedule_atomic_to_cq(struct sw_evdev *sw, struct sw_qid * const qid,
@@ -72,9 +74,7 @@ sw_schedule_atomic_to_cq(struct sw_evdev *sw, struct sw_qid * const qid,
 	iq_ring_dequeue_burst(qid->iq[iq_num], qes, count);
 	for (i = 0; i < count; i++) {
 		const struct rte_event *qe = &qes[i];
-		/* use cheap bit mixing, we only need to lose a few bits */
-		uint32_t flow_id32 = (qes[i].flow_id) ^ (qes[i].flow_id >> 10);
-		const uint16_t flow_id = FLOWID_MASK & flow_id32;
+		const uint16_t flow_id = SW_HASH_FLOWID(qes[i].flow_id);
 		struct sw_fid_t *fid = &qid->fids[flow_id];
 		int cq = fid->cq;
 
@@ -183,8 +183,7 @@ sw_schedule_parallel_to_cq(struct sw_evdev *sw, struct sw_qid * const qid,
 		qid->stats.tx_pkts++;
 
 		const int head = (p->hist_head & (SW_PORT_HIST_LIST-1));
-
-		p->hist_list[head].fid = qe->flow_id;
+		p->hist_list[head].fid = SW_HASH_FLOWID(qe->flow_id);
 		p->hist_list[head].qid = qid_id;
 
 		if (keep_order)
