@@ -328,7 +328,7 @@ nicvf_mbox_qset_config(struct nicvf *nic, struct pf_qs_cfg *qs_cfg)
 {
 	struct nic_mbx mbx = { .msg = { 0 } };
 
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#if NICVF_BYTE_ORDER == NICVF_BIG_ENDIAN
 	qs_cfg->be = 1;
 #endif
 	/* Send a mailbox msg to PF to config Qset */

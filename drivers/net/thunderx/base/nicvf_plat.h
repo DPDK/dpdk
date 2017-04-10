@@ -65,6 +65,10 @@
 #define nicvf_cpu_to_be_64(x) rte_cpu_to_be_64(x)
 #define nicvf_be_to_cpu_64(x) rte_be_to_cpu_64(x)
 
+#define NICVF_BYTE_ORDER RTE_BYTE_ORDER
+#define NICVF_BIG_ENDIAN RTE_BIG_ENDIAN
+#define NICVF_LITTLE_ENDIAN RTE_LITTLE_ENDIAN
+
 /* Constants */
 #include <rte_ether.h>
 #define NICVF_MAC_ADDR_SIZE ETHER_ADDR_LEN

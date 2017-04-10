@@ -36,6 +36,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "nicvf_plat.h"
+
 /* Virtual function register offsets */
 
 #define NIC_VF_CFG                      (0x000020)
@@ -212,10 +214,6 @@
 #define assert_primary(nic) assert((nic)->sqs_mode == 0)
 
 typedef uint64_t nicvf_phys_addr_t;
-
-#ifndef __BYTE_ORDER__
-#error __BYTE_ORDER__ not defined
-#endif
 
 /* vNIC HW Enumerations */
 
@@ -559,7 +557,7 @@ enum nic_stat_vnic_tx_e {
 typedef union {
 	uint64_t u64;
 	struct {
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#if NICVF_BYTE_ORDER == NICVF_BIG_ENDIAN
 		uint64_t cqe_type:4;
 		uint64_t stdn_fault:1;
 		uint64_t rsvd0:1;
@@ -604,7 +602,7 @@ typedef union {
 typedef union {
 	uint64_t u64;
 	struct {
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#if NICVF_BYTE_ORDER == NICVF_BIG_ENDIAN
 		uint64_t pkt_len:16;
 		uint64_t l2_ptr:8;
 		uint64_t l3_ptr:8;
@@ -629,7 +627,7 @@ typedef union {
 typedef union {
 	uint64_t u64;
 	struct {
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#if NICVF_BYTE_ORDER == NICVF_BIG_ENDIAN
 		uint64_t rss_tag:32;
 		uint64_t vlan_tci:16;
 		uint64_t vlan_ptr:8;
@@ -646,7 +644,7 @@ typedef union {
 typedef union {
 	uint64_t u64;
 	struct {
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#if NICVF_BYTE_ORDER == NICVF_BIG_ENDIAN
 		uint16_t rb3_sz;
 		uint16_t rb2_sz;
 		uint16_t rb1_sz;
@@ -663,7 +661,7 @@ typedef union {
 typedef union {
 	uint64_t u64;
 	struct {
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#if NICVF_BYTE_ORDER == NICVF_BIG_ENDIAN
 		uint16_t rb7_sz;
 		uint16_t rb6_sz;
 		uint16_t rb5_sz;
@@ -680,7 +678,7 @@ typedef union {
 typedef union {
 	uint64_t u64;
 	struct {
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#if NICVF_BYTE_ORDER == NICVF_BIG_ENDIAN
 		uint16_t rb11_sz;
 		uint16_t rb10_sz;
 		uint16_t rb9_sz;
@@ -697,7 +695,7 @@ typedef union {
 typedef union {
 	uint64_t u64;
 	struct {
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#if NICVF_BYTE_ORDER == NICVF_BIG_ENDIAN
 		uint64_t vlan_found:1;
 		uint64_t vlan_stripped:1;
 		uint64_t vlan2_found:1;
@@ -742,7 +740,7 @@ struct cqe_rx_t {
 };
 
 struct cqe_rx_tcp_err_t {
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#if NICVF_BYTE_ORDER == NICVF_BIG_ENDIAN
 	uint64_t   cqe_type:4; /* W0 */
 	uint64_t   rsvd0:60;
 
@@ -764,7 +762,7 @@ struct cqe_rx_tcp_err_t {
 };
 
 struct cqe_rx_tcp_t {
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#if NICVF_BYTE_ORDER == NICVF_BIG_ENDIAN
 	uint64_t   cqe_type:4; /* W0 */
 	uint64_t   rsvd0:52;
 	uint64_t   cq_tcp_status:8;
@@ -786,7 +784,7 @@ struct cqe_rx_tcp_t {
 };
 
 struct cqe_send_t {
-#if defined(__BIG_ENDIAN_BITFIELD)
+#if NICVF_BYTE_ORDER == NICVF_BIG_ENDIAN
 	uint64_t   cqe_type:4; /* W0 */
 	uint64_t   rsvd0:4;
 	uint64_t   sqe_ptr:16;
@@ -798,7 +796,7 @@ struct cqe_send_t {
 	uint64_t   send_status:8;
 
 	uint64_t   ptp_timestamp:64; /* W1 */
-#elif defined(__LITTLE_ENDIAN_BITFIELD)
+#elif NICVF_BYTE_ORDER == NICVF_LITTLE_ENDIAN
 	uint64_t   send_status:8;
 	uint64_t   rsvd3:8;
 	uint64_t   sq_idx:3;
@@ -814,7 +812,7 @@ struct cqe_send_t {
 };
 
 struct cq_entry_type_t {
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#if NICVF_BYTE_ORDER == NICVF_BIG_ENDIAN
 	uint64_t cqe_type:4;
 	uint64_t __pad:60;
 #else
@@ -835,7 +833,7 @@ union cq_entry_t {
 NICVF_STATIC_ASSERT(sizeof(union cq_entry_t) == 512);
 
 struct rbdr_entry_t {
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#if NICVF_BYTE_ORDER == NICVF_BIG_ENDIAN
 	union {
 		struct {
 			uint64_t   rsvd0:15;
@@ -860,7 +858,7 @@ NICVF_STATIC_ASSERT(sizeof(struct rbdr_entry_t) == sizeof(uint64_t));
 
 /* TCP reassembly context */
 struct rbe_tcp_cnxt_t {
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#if NICVF_BYTE_ORDER == NICVF_BIG_ENDIAN
 	uint64_t   tcp_pkt_cnt:12;
 	uint64_t   rsvd1:4;
 	uint64_t   align_hdr_bytes:4;
@@ -899,7 +897,7 @@ struct rx_hdr_t {
 };
 
 struct sq_crc_subdesc {
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#if NICVF_BYTE_ORDER == NICVF_BIG_ENDIAN
 	uint64_t    rsvd1:32;
 	uint64_t    crc_ival:32;
 	uint64_t    subdesc_type:4;
@@ -921,7 +919,7 @@ struct sq_crc_subdesc {
 };
 
 struct sq_gather_subdesc {
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#if NICVF_BYTE_ORDER == NICVF_BIG_ENDIAN
 	uint64_t    subdesc_type:4; /* W0 */
 	uint64_t    ld_type:2;
 	uint64_t    rsvd0:42;
@@ -942,7 +940,7 @@ struct sq_gather_subdesc {
 
 /* SQ immediate subdescriptor */
 struct sq_imm_subdesc {
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#if NICVF_BYTE_ORDER == NICVF_BIG_ENDIAN
 	uint64_t    subdesc_type:4; /* W0 */
 	uint64_t    rsvd0:46;
 	uint64_t    len:14;
@@ -958,7 +956,7 @@ struct sq_imm_subdesc {
 };
 
 struct sq_mem_subdesc {
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#if NICVF_BYTE_ORDER == NICVF_BIG_ENDIAN
 	uint64_t    subdesc_type:4; /* W0 */
 	uint64_t    mem_alg:4;
 	uint64_t    mem_dsz:2;
@@ -982,7 +980,7 @@ struct sq_mem_subdesc {
 };
 
 struct sq_hdr_subdesc {
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#if NICVF_BYTE_ORDER == NICVF_BIG_ENDIAN
 	uint64_t    subdesc_type:4;
 	uint64_t    tso:1;
 	uint64_t    post_cqe:1; /* Post CQE on no error also */
@@ -1045,7 +1043,7 @@ NICVF_STATIC_ASSERT(sizeof(union sq_entry_t) == 16);
 
 /* Queue config register formats */
 struct rq_cfg { union { struct {
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#if NICVF_BYTE_ORDER == NICVF_BIG_ENDIAN
 	uint64_t reserved_2_63:62;
 	uint64_t ena:1;
 	uint64_t reserved_0:1;
@@ -1059,7 +1057,7 @@ struct rq_cfg { union { struct {
 }; };
 
 struct cq_cfg { union { struct {
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#if NICVF_BYTE_ORDER == NICVF_BIG_ENDIAN
 	uint64_t reserved_43_63:21;
 	uint64_t ena:1;
 	uint64_t reset:1;
@@ -1085,7 +1083,7 @@ struct cq_cfg { union { struct {
 }; };
 
 struct sq_cfg { union { struct {
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#if NICVF_BYTE_ORDER == NICVF_BIG_ENDIAN
 	uint64_t reserved_20_63:44;
 	uint64_t ena:1;
 	uint64_t reserved_18_18:1;
@@ -1111,7 +1109,7 @@ struct sq_cfg { union { struct {
 }; };
 
 struct rbdr_cfg { union { struct {
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#if NICVF_BYTE_ORDER == NICVF_BIG_ENDIAN
 	uint64_t reserved_45_63:19;
 	uint64_t ena:1;
 	uint64_t reset:1;
@@ -1139,7 +1137,7 @@ struct rbdr_cfg { union { struct {
 }; };
 
 struct pf_qs_cfg { union { struct {
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#if NICVF_BYTE_ORDER == NICVF_BIG_ENDIAN
 	uint64_t reserved_32_63:32;
 	uint64_t ena:1;
 	uint64_t reserved_27_30:4;
@@ -1169,7 +1167,7 @@ struct pf_qs_cfg { union { struct {
 }; };
 
 struct pf_rq_cfg { union { struct {
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#if NICVF_BYTE_ORDER == NICVF_BIG_ENDIAN
 	uint64_t reserved1:1;
 	uint64_t reserved0:34;
 	uint64_t strip_pre_l2:1;
@@ -1197,7 +1195,7 @@ struct pf_rq_cfg { union { struct {
 }; };
 
 struct pf_rq_drop_cfg { union { struct {
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#if NICVF_BYTE_ORDER == NICVF_BIG_ENDIAN
 	uint64_t rbdr_red:1;
 	uint64_t cq_red:1;
 	uint64_t reserved3:14;
