@@ -1156,14 +1156,13 @@ void
 lio_dev_rx_queue_release(void *rxq)
 {
 	struct lio_droq *droq = rxq;
-	struct lio_device *lio_dev = droq->lio_dev;
 	int oq_no;
 
-	/* Run time queue deletion not supported */
-	if (lio_dev->port_configured)
-		return;
+	if (droq) {
+		/* Run time queue deletion not supported */
+		if (droq->lio_dev->port_configured)
+			return;
 
-	if (droq != NULL) {
 		oq_no = droq->q_no;
 		lio_delete_droq_queue(droq->lio_dev, oq_no);
 	}
@@ -1251,14 +1250,14 @@ void
 lio_dev_tx_queue_release(void *txq)
 {
 	struct lio_instr_queue *tq = txq;
-	struct lio_device *lio_dev = tq->lio_dev;
 	uint32_t fw_mapped_iq_no;
 
-	/* Run time queue deletion not supported */
-	if (lio_dev->port_configured)
-		return;
 
-	if (tq != NULL) {
+	if (tq) {
+		/* Run time queue deletion not supported */
+		if (tq->lio_dev->port_configured)
+			return;
+
 		/* Free sg_list */
 		lio_delete_sglist(tq);
 
