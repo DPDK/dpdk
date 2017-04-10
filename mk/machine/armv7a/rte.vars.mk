@@ -57,7 +57,7 @@
 MACHINE_CFLAGS += -march=armv7-a
 
 ifdef CONFIG_RTE_ARCH_ARM_TUNE
-MACHINE_CFLAGS += -mtune=$(CONFIG_RTE_ARCH_ARM_TUNE)
+MACHINE_CFLAGS += -mtune=$(CONFIG_RTE_ARCH_ARM_TUNE:"%"=%)
 endif
 
 MACHINE_CFLAGS += -mfpu=neon
