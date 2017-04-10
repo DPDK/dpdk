@@ -64,7 +64,7 @@ sync_caps(struct rte_cryptodev_capabilities *caps,
 
 		for (j = 0; j < nb_slave_caps; j++) {
 			const struct rte_cryptodev_capabilities *s_cap =
-					&slave_caps[i];
+					&slave_caps[j];
 
 			if (s_cap->op != cap->op || s_cap->sym.xform_type !=
 					cap->sym.xform_type)
