@@ -125,6 +125,7 @@ crypto_qat_dev_init(__attribute__((unused)) struct rte_cryptodev_driver *crypto_
 		break;
 	case 0x37c9:
 	case 0x19e3:
+	case 0x6f55:
 		internals->qat_dev_capabilities = qat_cpm17_capabilities;
 		break;
 	default:
