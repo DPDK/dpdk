@@ -1,7 +1,7 @@
 #   BSD LICENSE
 #
-#   Copyright (c) 2016 Freescale Semiconductor, Inc. All rights reserved.
-#   Copyright (c) 2016 NXP. All rights reserved.
+#   Copyright(c) 2016 NXP. All rights reserved.
+#   All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
 #   modification, are permitted provided that the following conditions
@@ -13,7 +13,7 @@
 #       notice, this list of conditions and the following disclaimer in
 #       the documentation and/or other materials provided with the
 #       distribution.
-#     * Neither the name of Freescale Semiconductor nor the names of its
+#     * Neither the name of NXP nor the names of its
 #       contributors may be used to endorse or promote products derived
 #       from this software without specific prior written permission.
 #
@@ -28,29 +28,36 @@
 #   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 #   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#
 
-#include "defconfig_arm64-armv8a-linuxapp-gcc"
-
-# NXP (Freescale) - Soc Architecture with WRIOP and QBMAN support
-CONFIG_RTE_MACHINE="dpaa2"
-CONFIG_RTE_ARCH_ARM_TUNE="cortex-a57+fp+simd"
+include $(RTE_SDK)/mk/rte.vars.mk
 
 #
-# Compile Environment Abstraction Layer
+# library name
 #
-CONFIG_RTE_MAX_LCORE=8
-CONFIG_RTE_MAX_NUMA_NODES=1
+LIB = librte_mempool_dpaa2.a
 
-CONFIG_RTE_PKTMBUF_HEADROOM=256
+ifeq ($(CONFIG_RTE_LIBRTE_DPAA2_DEBUG_INIT),y)
+CFLAGS += -O0 -g
+CFLAGS += "-Wno-error"
+else
+CFLAGS += -O3
+CFLAGS += $(WERROR_FLAGS)
+endif
 
-#
-# Compile Support Libraries for DPAA2
-#
-CONFIG_RTE_LIBRTE_DPAA2_MEMPOOL=y
-CONFIG_RTE_MBUF_DEFAULT_MEMPOOL_OPS="dpaa2"
+CFLAGS += -I$(RTE_SDK)/drivers/bus/fslmc
+CFLAGS += -I$(RTE_SDK)/drivers/bus/fslmc/qbman/include
+CFLAGS += -I$(RTE_SDK)/lib/librte_eal/linuxapp/eal
 
+# versioning export map
+EXPORT_MAP := rte_mempool_dpaa2_version.map
+
+# Lbrary version
+LIBABIVER := 1
+
+# all source are stored in SRCS-y
 #
-# Compile NXP DPAA2 FSL-MC Bus
-#
-CONFIG_RTE_LIBRTE_FSLMC_BUS=y
+SRCS-$(CONFIG_RTE_LIBRTE_DPAA2_MEMPOOL) += dpaa2_hw_mempool.c
+
+LDLIBS += -lrte_bus_fslmc
+
+include $(RTE_SDK)/mk/rte.lib.mk

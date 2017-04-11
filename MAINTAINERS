@@ -373,6 +373,7 @@ F: doc/guides/nics/nfp.rst
 NXP dpaa2
 M: Hemant Agrawal <hemant.agrawal@nxp.com>
 F: drivers/bus/fslmc/
+F: drivers/mempool/dpaa2/
 
 QLogic bnx2x
 M: Harish Patil <harish.patil@cavium.com>

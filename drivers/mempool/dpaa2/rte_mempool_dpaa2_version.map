@@ -1,0 +1,8 @@
+DPDK_17.05 {
+	global:
+
+	rte_dpaa2_bpid_info;
+	rte_dpaa2_mbuf_alloc_bulk;
+
+	local: *;
+};
