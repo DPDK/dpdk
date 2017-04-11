@@ -210,6 +210,48 @@ MC_FAILURE:
 	return v_addr;
 }
 
+static inline int
+dpaa2_compare_dpaa2_dev(const struct rte_dpaa2_device *dev,
+			 const struct rte_dpaa2_device *dev2)
+{
+	/*not the same family device */
+	if (dev->dev_type != DPAA2_MC_DPNI_DEVID ||
+			dev->dev_type != DPAA2_MC_DPSECI_DEVID)
+		return -1;
+
+	if (dev->object_id == dev2->object_id)
+		return 0;
+	else
+		return 1;
+}
+
+static void
+fslmc_bus_add_device(struct rte_dpaa2_device *dev)
+{
+	struct rte_fslmc_device_list *dev_l;
+
+	dev_l = &rte_fslmc_bus.device_list;
+
+	/* device is valid, add in list (sorted) */
+	if (TAILQ_EMPTY(dev_l)) {
+		TAILQ_INSERT_TAIL(dev_l, dev, next);
+	} else {
+		struct rte_dpaa2_device *dev2;
+		int ret;
+
+		TAILQ_FOREACH(dev2, dev_l, next) {
+			ret = dpaa2_compare_dpaa2_dev(dev, dev2);
+			if (ret <= 0)
+				continue;
+
+			TAILQ_INSERT_BEFORE(dev2, dev, next);
+			return;
+		}
+
+		TAILQ_INSERT_TAIL(dev_l, dev, next);
+	}
+}
+
 /* Following function shall fetch total available list of MC devices
  * from VFIO container & populate private list of devices and other
  * data structures
@@ -218,7 +260,7 @@ int fslmc_vfio_process_group(void)
 {
 	struct fslmc_vfio_device *vdev;
 	struct vfio_device_info device_info = { .argsz = sizeof(device_info) };
-	char *temp_obj, *object_type __rte_unused, *mcp_obj, *dev_name;
+	char *temp_obj, *object_type, *mcp_obj, *dev_name;
 	int32_t object_id, i, dev_fd;
 	DIR *d;
 	struct dirent *dir;
@@ -348,6 +390,25 @@ int fslmc_vfio_process_group(void)
 		if (ioctl(vdev->fd, VFIO_DEVICE_GET_INFO, &device_info)) {
 			FSLMC_VFIO_LOG(ERR, "DPAA2 VFIO_DEVICE_GET_INFO fail");
 			goto FAILURE;
+		}
+		if (!strcmp(object_type, "dpni") ||
+		    !strcmp(object_type, "dpseci")) {
+			struct rte_dpaa2_device *dev;
+
+			dev = malloc(sizeof(struct rte_dpaa2_device));
+			if (dev == NULL)
+				return -1;
+
+			memset(dev, 0, sizeof(*dev));
+			/* store hw_id of dpni/dpseci device */
+			dev->object_id = object_id;
+			dev->dev_type = (strcmp(object_type, "dpseci")) ?
+				DPAA2_MC_DPNI_DEVID : DPAA2_MC_DPSECI_DEVID;
+
+			FSLMC_VFIO_LOG(DEBUG, "DPAA2: Added [%s-%d]\n",
+				      object_type, object_id);
+
+			fslmc_bus_add_device(dev);
 		}
 	}
 	closedir(d);
