@@ -191,6 +191,55 @@ eth_mbuf_to_fd(struct rte_mbuf *mbuf,
 		DPAA2_GET_FD_BPID(fd), DPAA2_GET_FD_LEN(fd));
 }
 
+
+static inline int __attribute__((hot))
+eth_copy_mbuf_to_fd(struct rte_mbuf *mbuf,
+		    struct qbman_fd *fd, uint16_t bpid)
+{
+	struct rte_mbuf *m;
+	void *mb = NULL;
+
+	if (rte_dpaa2_mbuf_alloc_bulk(
+		rte_dpaa2_bpid_info[bpid].bp_list->mp, &mb, 1)) {
+		PMD_TX_LOG(WARNING, "Unable to allocated DPAA2 buffer");
+		rte_pktmbuf_free(mbuf);
+		return -1;
+	}
+	m = (struct rte_mbuf *)mb;
+	memcpy((char *)m->buf_addr + mbuf->data_off,
+	       (void *)((char *)mbuf->buf_addr + mbuf->data_off),
+		mbuf->pkt_len);
+
+	/* Copy required fields */
+	m->data_off = mbuf->data_off;
+	m->ol_flags = mbuf->ol_flags;
+	m->packet_type = mbuf->packet_type;
+	m->tx_offload = mbuf->tx_offload;
+
+	/*Resetting the buffer pool id and offset field*/
+	fd->simple.bpid_offset = 0;
+
+	DPAA2_SET_FD_ADDR(fd, (m->buf_addr));
+	DPAA2_SET_FD_LEN(fd, mbuf->data_len);
+	DPAA2_SET_FD_BPID(fd, bpid);
+	DPAA2_SET_FD_OFFSET(fd, mbuf->data_off);
+	DPAA2_SET_FD_ASAL(fd, DPAA2_ASAL_VAL);
+
+	PMD_TX_LOG(DEBUG, " mbuf %p BMAN buf addr %p",
+		   (void *)mbuf, mbuf->buf_addr);
+
+	PMD_TX_LOG(DEBUG, " fdaddr =%lx bpid =%d meta =%d off =%d, len =%d",
+		   DPAA2_GET_FD_ADDR(fd),
+		DPAA2_GET_FD_BPID(fd),
+		rte_dpaa2_bpid_info[DPAA2_GET_FD_BPID(fd)].meta_data_size,
+		DPAA2_GET_FD_OFFSET(fd),
+		DPAA2_GET_FD_LEN(fd));
+	/*free the original packet */
+	rte_pktmbuf_free(mbuf);
+
+	return 0;
+}
+
 uint16_t
 dpaa2_dev_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 {
@@ -331,8 +380,29 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			DPAA2_RESET_FD_CTRL((&fd_arr[loop]));
 			DPAA2_SET_FD_FLC((&fd_arr[loop]), NULL);
 			mp = (*bufs)->pool;
-			bpid = mempool_to_bpid(mp);
-			eth_mbuf_to_fd(*bufs, &fd_arr[loop], bpid);
+			/* Not a hw_pkt pool allocated frame */
+			if (mp->ops_index != priv->bp_list->dpaa2_ops_index) {
+				PMD_TX_LOG(ERR, "non hw offload bufffer ");
+				/* alloc should be from the default buffer pool
+				 * attached to this interface
+				 */
+				if (priv->bp_list) {
+					bpid = priv->bp_list->buf_pool.bpid;
+				} else {
+					PMD_TX_LOG(ERR, "errr: why no bpool"
+						   " attached");
+					num_tx = 0;
+					goto skip_tx;
+				}
+				if (eth_copy_mbuf_to_fd(*bufs,
+							&fd_arr[loop], bpid)) {
+					bufs++;
+					continue;
+				}
+			} else {
+				bpid = mempool_to_bpid(mp);
+				eth_mbuf_to_fd(*bufs, &fd_arr[loop], bpid);
+			}
 			bufs++;
 		}
 		loop = 0;
@@ -345,5 +415,6 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		dpaa2_q->tx_pkts += frames_to_send;
 		nb_pkts -= frames_to_send;
 	}
+skip_tx:
 	return num_tx;
 }
