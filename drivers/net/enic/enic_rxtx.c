@@ -386,7 +386,6 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 
 		if (rq->is_sop) {
 			first_seg = rxmb;
-			first_seg->nb_segs = 1;
 			first_seg->pkt_len = seg_length;
 		} else {
 			first_seg->pkt_len = (uint16_t)(first_seg->pkt_len
@@ -395,7 +394,6 @@ enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			last_seg->next = rxmb;
 		}
 
-		rxmb->next = NULL;
 		rxmb->port = enic->port_id;
 		rxmb->data_len = seg_length;
 
