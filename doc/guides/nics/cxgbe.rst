@@ -125,24 +125,11 @@ enabling debugging options may affect system performance.
 
 .. _driver-compilation:
 
-Driver Compilation
-~~~~~~~~~~~~~~~~~~
+Driver compilation and testing
+------------------------------
 
-To compile CXGBE PMD for Linux x86_64 gcc target, run the following "make"
-command:
-
-.. code-block:: console
-
-   cd <DPDK-source-directory>
-   make config T=x86_64-native-linuxapp-gcc install
-
-To compile CXGBE PMD for FreeBSD x86_64 clang target, run the following "gmake"
-command:
-
-.. code-block:: console
-
-   cd <DPDK-source-directory>
-   gmake config T=x86_64-native-bsdapp-clang install
+Refer to the document :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>`
+for details.
 
 Linux
 -----
@@ -218,13 +205,6 @@ Running testpmd
 This section demonstrates how to launch **testpmd** with Chelsio T5
 devices managed by librte_pmd_cxgbe in Linux operating system.
 
-#. Change to DPDK source directory where the target has been compiled in
-   section :ref:`driver-compilation`:
-
-   .. code-block:: console
-
-      cd <DPDK-source-directory>
-
 #. Load the kernel module:
 
    .. code-block:: console
@@ -255,59 +235,15 @@ devices managed by librte_pmd_cxgbe in Linux operating system.
 
       modprobe -ar cxgb4 csiostor
 
-#. Request huge pages:
+#. Running testpmd
 
-   .. code-block:: console
-
-      echo 1024 > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages/nr_hugepages
-
-#. Mount huge pages:
-
-   .. code-block:: console
-
-      mkdir /mnt/huge
-      mount -t hugetlbfs nodev /mnt/huge
-
-#. Load igb_uio or vfio-pci driver:
-
-   .. code-block:: console
-
-      insmod ./x86_64-native-linuxapp-gcc/kmod/igb_uio.ko
-
-   or
-
-   .. code-block:: console
-
-      modprobe vfio-pci
-
-#. Bind the Chelsio T5 adapters to igb_uio or vfio-pci loaded in the previous
-   step:
-
-   .. code-block:: console
-
-      ./usertools/dpdk-devbind.py --bind igb_uio 0000:02:00.4
-
-   or
-
-   Setup VFIO permissions for regular users and then bind to vfio-pci:
-
-   .. code-block:: console
-
-      sudo chmod a+x /dev/vfio
-
-      sudo chmod 0666 /dev/vfio/*
-
-      ./usertools/dpdk-devbind.py --bind vfio-pci 0000:02:00.4
+   Follow instructions available in the document
+   :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>`
+   to run testpmd.
 
    .. note::
 
       Currently, CXGBE PMD only supports the binding of PF4 for Chelsio T5 NICs.
-
-#. Start testpmd with basic parameters:
-
-   .. code-block:: console
-
-      ./x86_64-native-linuxapp-gcc/app/testpmd -l 0-3 -n 4 -w 0000:02:00.4 -- -i
 
    Example output:
 
@@ -334,10 +270,10 @@ devices managed by librte_pmd_cxgbe in Linux operating system.
       Done
       testpmd>
 
-.. note::
+   .. note::
 
-   Flow control pause TX/RX is disabled by default and can be enabled via
-   testpmd. Refer section :ref:`flow-control` for more details.
+      Flow control pause TX/RX is disabled by default and can be enabled via
+      testpmd. Refer section :ref:`flow-control` for more details.
 
 FreeBSD
 -------
