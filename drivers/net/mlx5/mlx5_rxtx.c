@@ -2041,23 +2041,19 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 						mlx5_flow_mark_get(mark);
 				}
 			}
-			if (rxq->csum | rxq->csum_l2tun | rxq->vlan_strip |
-			    rxq->crc_present) {
-				if (rxq->csum) {
-					pkt->packet_type =
-						rxq_cq_to_pkt_type(cqe);
-					pkt->ol_flags |=
-						rxq_cq_to_ol_flags(rxq, cqe);
-				}
-				if (ntohs(cqe->hdr_type_etc) &
-				    MLX5_CQE_VLAN_STRIPPED) {
-					pkt->ol_flags |= PKT_RX_VLAN_PKT |
-						PKT_RX_VLAN_STRIPPED;
-					pkt->vlan_tci = ntohs(cqe->vlan_info);
-				}
-				if (rxq->crc_present)
-					len -= ETHER_CRC_LEN;
+			if (rxq->csum | rxq->csum_l2tun) {
+				pkt->packet_type = rxq_cq_to_pkt_type(cqe);
+				pkt->ol_flags |= rxq_cq_to_ol_flags(rxq, cqe);
 			}
+			if (rxq->vlan_strip &&
+			    (cqe->hdr_type_etc &
+			     htons(MLX5_CQE_VLAN_STRIPPED))) {
+				pkt->ol_flags |= PKT_RX_VLAN_PKT |
+					PKT_RX_VLAN_STRIPPED;
+				pkt->vlan_tci = ntohs(cqe->vlan_info);
+			}
+			if (rxq->crc_present)
+				len -= ETHER_CRC_LEN;
 			PKT_LEN(pkt) = len;
 		}
 		DATA_LEN(rep) = DATA_LEN(seg);
