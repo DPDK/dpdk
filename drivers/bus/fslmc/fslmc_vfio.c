@@ -76,8 +76,10 @@
 static struct fslmc_vfio_group vfio_groups[VFIO_MAX_GRP];
 static struct fslmc_vfio_container vfio_containers[VFIO_MAX_CONTAINERS];
 static int container_device_fd;
+static uint32_t *msi_intr_vaddr;
 void *(*rte_mcp_ptr_list);
 static uint32_t mcp_id;
+static int is_dma_done;
 
 static int vfio_connect_container(struct fslmc_vfio_group *vfio_group)
 {
@@ -147,6 +149,35 @@ static int vfio_connect_container(struct fslmc_vfio_group *vfio_group)
 	return 0;
 }
 
+static int vfio_map_irq_region(struct fslmc_vfio_group *group)
+{
+	int ret;
+	unsigned long *vaddr = NULL;
+	struct vfio_iommu_type1_dma_map map = {
+		.argsz = sizeof(map),
+		.flags = VFIO_DMA_MAP_FLAG_READ | VFIO_DMA_MAP_FLAG_WRITE,
+		.vaddr = 0x6030000,
+		.iova = 0x6030000,
+		.size = 0x1000,
+	};
+
+	vaddr = (unsigned long *)mmap(NULL, 0x1000, PROT_WRITE |
+		PROT_READ, MAP_SHARED, container_device_fd, 0x6030000);
+	if (vaddr == MAP_FAILED) {
+		FSLMC_VFIO_LOG(ERR, "Unable to map region (errno = %d)", errno);
+		return -errno;
+	}
+
+	msi_intr_vaddr = (uint32_t *)((char *)(vaddr) + 64);
+	map.vaddr = (unsigned long)vaddr;
+	ret = ioctl(group->container->fd, VFIO_IOMMU_MAP_DMA, &map);
+	if (ret == 0)
+		return 0;
+
+	FSLMC_VFIO_LOG(ERR, "VFIO_IOMMU_MAP_DMA fails (errno = %d)", errno);
+	return -errno;
+}
+
 int vfio_dmamap_mem_region(uint64_t vaddr,
 			   uint64_t iova,
 			   uint64_t size)
@@ -167,6 +198,71 @@ int vfio_dmamap_mem_region(uint64_t vaddr,
 		FSLMC_VFIO_LOG(ERR, "VFIO_IOMMU_MAP_DMA (errno = %d)", errno);
 		return -1;
 	}
+	return 0;
+}
+
+int rte_fslmc_vfio_dmamap(void)
+{
+	int ret;
+	struct fslmc_vfio_group *group;
+	struct vfio_iommu_type1_dma_map dma_map = {
+		.argsz = sizeof(struct vfio_iommu_type1_dma_map),
+		.flags = VFIO_DMA_MAP_FLAG_READ | VFIO_DMA_MAP_FLAG_WRITE,
+	};
+
+	int i;
+	const struct rte_memseg *memseg;
+
+	if (is_dma_done)
+		return 0;
+	is_dma_done = 1;
+
+	for (i = 0; i < RTE_MAX_MEMSEG; i++) {
+		memseg = rte_eal_get_physmem_layout();
+		if (memseg == NULL) {
+			FSLMC_VFIO_LOG(ERR, "Cannot get physical layout.");
+			return -ENODEV;
+		}
+
+		if (memseg[i].addr == NULL && memseg[i].len == 0)
+			break;
+
+		dma_map.size = memseg[i].len;
+		dma_map.vaddr = memseg[i].addr_64;
+#ifdef RTE_LIBRTE_DPAA2_USE_PHYS_IOVA
+		dma_map.iova = memseg[i].phys_addr;
+#else
+		dma_map.iova = dma_map.vaddr;
+#endif
+
+		/* SET DMA MAP for IOMMU */
+		group = &vfio_groups[0];
+
+		if (!group->container) {
+			FSLMC_VFIO_LOG(ERR, "Container is not connected ");
+			return -1;
+		}
+
+		FSLMC_VFIO_LOG(DEBUG, "-->Initial SHM Virtual ADDR %llX",
+			     dma_map.vaddr);
+		FSLMC_VFIO_LOG(DEBUG, "-----> DMA size 0x%llX\n", dma_map.size);
+		ret = ioctl(group->container->fd, VFIO_IOMMU_MAP_DMA,
+			    &dma_map);
+		if (ret) {
+			FSLMC_VFIO_LOG(ERR, "VFIO_IOMMU_MAP_DMA API"
+				       "(errno = %d)", errno);
+			return ret;
+		}
+		FSLMC_VFIO_LOG(DEBUG, "-----> dma_map.vaddr = 0x%llX",
+			     dma_map.vaddr);
+	}
+
+	/* TODO - This is a W.A. as VFIO currently does not add the mapping of
+	 * the interrupt region to SMMU. This should be removed once the
+	 * support is added in the Kernel.
+	 */
+	vfio_map_irq_region(group);
+
 	return 0;
 }
 

@@ -41,6 +41,7 @@ DPDK_17.05 {
 	qbman_swp_send_multiple;
 	rte_fslmc_driver_register;
 	rte_fslmc_driver_unregister;
+	rte_fslmc_vfio_dmamap;
 	rte_mcp_ptr_list;
 
 	local: *;

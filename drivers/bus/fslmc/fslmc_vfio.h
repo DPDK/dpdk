@@ -70,6 +70,7 @@ int vfio_dmamap_mem_region(
 
 int fslmc_vfio_setup_group(void);
 int fslmc_vfio_process_group(void);
+int rte_fslmc_vfio_dmamap(void);
 
 /* create dpio device */
 int dpaa2_create_dpio_device(struct fslmc_vfio_device *vdev,
