@@ -310,6 +310,28 @@ dpaa2_dev_tx_queue_release(void *q __rte_unused)
 	PMD_INIT_FUNC_TRACE();
 }
 
+static const uint32_t *
+dpaa2_supported_ptypes_get(struct rte_eth_dev *dev)
+{
+	static const uint32_t ptypes[] = {
+		/*todo -= add more types */
+		RTE_PTYPE_L2_ETHER,
+		RTE_PTYPE_L3_IPV4,
+		RTE_PTYPE_L3_IPV4_EXT,
+		RTE_PTYPE_L3_IPV6,
+		RTE_PTYPE_L3_IPV6_EXT,
+		RTE_PTYPE_L4_TCP,
+		RTE_PTYPE_L4_UDP,
+		RTE_PTYPE_L4_SCTP,
+		RTE_PTYPE_L4_ICMP,
+		RTE_PTYPE_UNKNOWN
+	};
+
+	if (dev->rx_pkt_burst == dpaa2_dev_rx)
+		return ptypes;
+	return NULL;
+}
+
 static int
 dpaa2_dev_start(struct rte_eth_dev *dev)
 {
@@ -517,6 +539,7 @@ static struct eth_dev_ops dpaa2_ethdev_ops = {
 	.promiscuous_enable   = dpaa2_dev_promiscuous_enable,
 	.promiscuous_disable  = dpaa2_dev_promiscuous_disable,
 	.dev_infos_get	   = dpaa2_dev_info_get,
+	.dev_supported_ptypes_get = dpaa2_supported_ptypes_get,
 	.mtu_set           = dpaa2_dev_mtu_set,
 	.rx_queue_setup    = dpaa2_dev_rx_queue_setup,
 	.rx_queue_release  = dpaa2_dev_rx_queue_release,
