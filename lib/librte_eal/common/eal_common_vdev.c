@@ -72,12 +72,51 @@ rte_eal_vdrv_unregister(struct rte_vdev_driver *driver)
 	TAILQ_REMOVE(&vdev_driver_list, driver, next);
 }
 
+/*
+ * Parse "driver" devargs without adding a dependency on rte_kvargs.h
+ */
+static char *parse_driver_arg(const char *args)
+{
+	const char *c;
+	char *str;
+
+	if (!args || args[0] == '\0')
+		return NULL;
+
+	c = args;
+
+	do {
+		if (strncmp(c, "driver=", 7) == 0) {
+			c += 7;
+			break;
+		}
+
+		c = strchr(c, ',');
+		if (c)
+			c++;
+	} while (c);
+
+	if (c)
+		str = strdup(c);
+	else
+		str = NULL;
+
+	return str;
+}
+
 static int
 vdev_probe_all_drivers(struct rte_vdev_device *dev)
 {
-	const char *name = rte_vdev_device_name(dev);
+	const char *name;
+	char *drv_name;
 	struct rte_vdev_driver *driver;
-	int ret;
+	int ret = 1;
+
+	drv_name = parse_driver_arg(rte_vdev_device_args(dev));
+	name = drv_name ? drv_name : rte_vdev_device_name(dev);
+
+	RTE_LOG(DEBUG, EAL, "Search driver %s to probe device %s\n", name,
+		rte_vdev_device_name(dev));
 
 	TAILQ_FOREACH(driver, &vdev_driver_list, next) {
 		/*
@@ -92,7 +131,7 @@ vdev_probe_all_drivers(struct rte_vdev_device *dev)
 			ret = driver->probe(dev);
 			if (ret)
 				dev->device.driver = NULL;
-			return ret;
+			goto out;
 		}
 	}
 
@@ -105,11 +144,13 @@ vdev_probe_all_drivers(struct rte_vdev_device *dev)
 			ret = driver->probe(dev);
 			if (ret)
 				dev->device.driver = NULL;
-			return ret;
+			break;
 		}
 	}
 
-	return 1;
+out:
+	free(drv_name);
+	return ret;
 }
 
 static struct rte_vdev_device *
