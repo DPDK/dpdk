@@ -39,11 +39,20 @@ extern "C" {
 
 #include <sys/queue.h>
 #include <rte_dev.h>
+#include <rte_devargs.h>
 
 struct rte_vdev_device {
 	TAILQ_ENTRY(rte_vdev_device) next;      /**< Next attached vdev */
 	struct rte_device device;               /**< Inherit core device */
 };
+
+static inline const char *
+rte_vdev_device_name(const struct rte_vdev_device *dev)
+{
+	if (dev && dev->device.devargs)
+		return dev->device.devargs->virt.drv_name;
+	return NULL;
+}
 
 /** Double linked list of virtual device drivers. */
 TAILQ_HEAD(vdev_driver_list, rte_vdev_driver);
