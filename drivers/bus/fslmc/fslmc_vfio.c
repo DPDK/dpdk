@@ -61,6 +61,9 @@
 #include "rte_fslmc.h"
 #include "fslmc_vfio.h"
 
+#include "portal/dpaa2_hw_pvt.h"
+#include "portal/dpaa2_hw_dpio.h"
+
 #define VFIO_MAX_CONTAINERS	1
 
 #define FSLMC_VFIO_LOG(level, fmt, args...) \
@@ -261,12 +264,13 @@ int fslmc_vfio_process_group(void)
 	struct fslmc_vfio_device *vdev;
 	struct vfio_device_info device_info = { .argsz = sizeof(device_info) };
 	char *temp_obj, *object_type, *mcp_obj, *dev_name;
-	int32_t object_id, i, dev_fd;
+	int32_t object_id, i, dev_fd, ret;
 	DIR *d;
 	struct dirent *dir;
 	char path[PATH_MAX];
 	int64_t v_addr;
 	int ndev_count;
+	int dpio_count = 0;
 	struct fslmc_vfio_group *group = &vfio_groups[0];
 	static int process_once;
 
@@ -410,8 +414,19 @@ int fslmc_vfio_process_group(void)
 
 			fslmc_bus_add_device(dev);
 		}
+		if (!strcmp(object_type, "dpio")) {
+			ret = dpaa2_create_dpio_device(vdev,
+						       &device_info,
+						       object_id);
+			if (!ret)
+				dpio_count++;
+		}
 	}
 	closedir(d);
+
+	ret = dpaa2_affine_qbman_swp();
+	if (ret)
+		FSLMC_VFIO_LOG(DEBUG, "Error in affining qbman swp %d", ret);
 
 	return 0;
 

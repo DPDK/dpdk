@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright (c) 2015-2016 Freescale Semiconductor, Inc. All rights reserved.
+ *   Copyright (c) 2016 Freescale Semiconductor, Inc. All rights reserved.
  *   Copyright (c) 2016 NXP. All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -31,49 +31,30 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _FSLMC_VFIO_H_
-#define _FSLMC_VFIO_H_
+#ifndef _DPAA2_HW_DPIO_H_
+#define _DPAA2_HW_DPIO_H_
 
-#include "eal_vfio.h"
+#include <mc/fsl_dpio.h>
+#include <mc/fsl_mc_sys.h>
 
-#define DPAA2_VENDOR_ID		0x1957
-#define DPAA2_MC_DPNI_DEVID	7
-#define DPAA2_MC_DPSECI_DEVID	3
+struct dpaa2_io_portal_t {
+	struct dpaa2_dpio_dev *dpio_dev;
+	struct dpaa2_dpio_dev *sec_dpio_dev;
+	uint64_t net_tid;
+	uint64_t sec_tid;
+};
 
-#define VFIO_MAX_GRP 1
+/*! Global per thread DPIO portal */
+RTE_DECLARE_PER_LCORE(struct dpaa2_io_portal_t, _dpaa2_io);
 
-typedef struct fslmc_vfio_device {
-	int fd; /* fslmc root container device ?? */
-	int index; /*index of child object */
-	struct fslmc_vfio_device *child; /* Child object */
-} fslmc_vfio_device;
+#define DPAA2_PER_LCORE_DPIO RTE_PER_LCORE(_dpaa2_io).dpio_dev
+#define DPAA2_PER_LCORE_PORTAL DPAA2_PER_LCORE_DPIO->sw_portal
 
-typedef struct fslmc_vfio_group {
-	int fd; /* /dev/vfio/"groupid" */
-	int groupid;
-	struct fslmc_vfio_container *container;
-	int object_index;
-	struct fslmc_vfio_device *vfio_device;
-} fslmc_vfio_group;
+#define DPAA2_PER_LCORE_SEC_DPIO RTE_PER_LCORE(_dpaa2_io).sec_dpio_dev
+#define DPAA2_PER_LCORE_SEC_PORTAL DPAA2_PER_LCORE_SEC_DPIO->sw_portal
 
-typedef struct fslmc_vfio_container {
-	int fd; /* /dev/vfio/vfio */
-	int used;
-	int index; /* index in group list */
-	struct fslmc_vfio_group *group_list[VFIO_MAX_GRP];
-} fslmc_vfio_container;
+/* Affine a DPIO portal to current processing thread */
+int dpaa2_affine_qbman_swp(void);
 
-int vfio_dmamap_mem_region(
-	uint64_t vaddr,
-	uint64_t iova,
-	uint64_t size);
 
-int fslmc_vfio_setup_group(void);
-int fslmc_vfio_process_group(void);
-
-/* create dpio device */
-int dpaa2_create_dpio_device(struct fslmc_vfio_device *vdev,
-			     struct vfio_device_info *obj_info,
-			     int object_id);
-
-#endif /* _FSLMC_VFIO_H_ */
+#endif /* _DPAA2_HW_DPIO_H_ */

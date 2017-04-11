@@ -1,6 +1,7 @@
 DPDK_17.05 {
 	global:
 
+	dpaa2_affine_qbman_swp;
 	dpbp_disable;
 	dpbp_enable;
 	dpbp_get_attributes;
@@ -15,6 +16,7 @@ DPDK_17.05 {
 	dpio_reset;
 	dpio_set_stashing_destination;
 	mc_send_command;
+	per_lcore__dpaa2_io;
 	qbman_check_command_complete;
 	qbman_eq_desc_clear;
 	qbman_eq_desc_set_no_orp;
