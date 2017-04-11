@@ -50,6 +50,7 @@ static unsigned default_packet_copy;
 static const char *valid_arguments[] = {
 	ETH_NULL_PACKET_SIZE_ARG,
 	ETH_NULL_PACKET_COPY_ARG,
+	"driver",
 	NULL
 };
 

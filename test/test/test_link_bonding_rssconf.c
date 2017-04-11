@@ -551,7 +551,8 @@ test_setup(void)
 		port_id = rte_eth_dev_count();
 		snprintf(name, sizeof(name), SLAVE_DEV_NAME_FMT, port_id);
 
-		retval = eth_dev_null_create(name, 0, 64, 0);
+		retval = rte_eal_vdev_init(name,
+			"driver=net_null,size=64,copy=0");
 		TEST_ASSERT_SUCCESS(retval, "Failed to create null device '%s'\n",
 				name);
 
