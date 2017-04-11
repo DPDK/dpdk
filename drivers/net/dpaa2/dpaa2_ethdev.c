@@ -62,6 +62,7 @@ dpaa2_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	dev_info->if_index = priv->hw_id;
 
+	dev_info->max_mac_addrs = priv->max_mac_filters;
 	dev_info->max_rx_queues = (uint16_t)priv->nb_rx_queues;
 	dev_info->max_tx_queues = (uint16_t)priv->nb_tx_queues;
 
@@ -443,12 +444,34 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 
 	priv->hw = dpni_dev;
 	priv->hw_id = hw_id;
+	priv->options = attr.options;
+	priv->max_mac_filters = attr.mac_filter_entries;
+	priv->max_vlan_filters = attr.vlan_filter_entries;
 	priv->flags = 0;
 
 	/* Allocate memory for hardware structure for queues */
 	ret = dpaa2_alloc_rx_tx_queues(eth_dev);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "dpaa2_alloc_rx_tx_queuesFailed\n");
+		return -ret;
+	}
+
+	/* Allocate memory for storing MAC addresses */
+	eth_dev->data->mac_addrs = rte_zmalloc("dpni",
+		ETHER_ADDR_LEN * attr.mac_filter_entries, 0);
+	if (eth_dev->data->mac_addrs == NULL) {
+		PMD_INIT_LOG(ERR, "Failed to allocate %d bytes needed to "
+						"store MAC addresses",
+				ETHER_ADDR_LEN * attr.mac_filter_entries);
+		return -ENOMEM;
+	}
+
+	ret = dpni_get_primary_mac_addr(dpni_dev, CMD_PRI_LOW,
+					priv->token,
+			(uint8_t *)(eth_dev->data->mac_addrs[0].addr_bytes));
+	if (ret) {
+		PMD_INIT_LOG(ERR, "DPNI get mac address failed:"
+					" Error Code = %d\n", ret);
 		return -ret;
 	}
 
@@ -490,6 +513,11 @@ dpaa2_dev_uninit(struct rte_eth_dev *eth_dev)
 		priv->rx_vq[0] = NULL;
 	}
 
+	/* Allocate memory for storing MAC addresses */
+	if (eth_dev->data->mac_addrs) {
+		rte_free(eth_dev->data->mac_addrs);
+		eth_dev->data->mac_addrs = NULL;
+	}
 
 	/*Close the device at underlying layer*/
 	ret = dpni_close(dpni, CMD_PRI_LOW, priv->token);

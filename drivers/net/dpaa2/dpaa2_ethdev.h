@@ -57,7 +57,10 @@ struct dpaa2_dev_priv {
 	void *rx_vq[MAX_RX_QUEUES];
 	void *tx_vq[MAX_TX_QUEUES];
 
+	uint32_t options;
 	uint16_t num_dist_per_tc[MAX_TCS];
+	uint8_t max_mac_filters;
+	uint8_t max_vlan_filters;
 	uint8_t num_tc;
 	uint8_t flags; /*dpaa2 config flags */
 };
