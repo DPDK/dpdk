@@ -504,7 +504,7 @@ modern_del_queue(struct virtio_hw *hw, struct virtqueue *vq)
 static void
 modern_notify_queue(struct virtio_hw *hw __rte_unused, struct virtqueue *vq)
 {
-	rte_write16(1, vq->notify_addr);
+	rte_write16(vq->vq_queue_index, vq->notify_addr);
 }
 
 const struct virtio_pci_ops modern_ops = {
