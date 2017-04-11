@@ -79,30 +79,7 @@ void rte_eal_device_remove(struct rte_device *dev)
 int
 rte_eal_dev_init(void)
 {
-	struct rte_devargs *devargs;
-	int ret = 0;
-
-	/*
-	 * Note that the dev_driver_list is populated here
-	 * from calls made to rte_eal_driver_register from constructor functions
-	 * embedded into PMD modules via the RTE_PMD_REGISTER_VDEV macro
-	 */
-
-	/* call the init function for each virtual device */
-	TAILQ_FOREACH(devargs, &devargs_list, next) {
-
-		if (devargs->type != RTE_DEVTYPE_VIRTUAL)
-			continue;
-
-		if (rte_eal_vdev_init(devargs->virt.drv_name,
-					devargs->args)) {
-			RTE_LOG(ERR, EAL, "failed to initialize %s device\n",
-					devargs->virt.drv_name);
-			ret = -1;
-		}
-	}
-
-	return ret;
+	return 0;
 }
 
 int rte_eal_dev_attach(const char *name, const char *devargs)

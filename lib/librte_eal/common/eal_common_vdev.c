@@ -37,16 +37,23 @@
 #include <stdint.h>
 #include <sys/queue.h>
 
+#include <rte_eal.h>
+#include <rte_bus.h>
 #include <rte_vdev.h>
 #include <rte_common.h>
+#include <rte_devargs.h>
 
 struct vdev_driver_list vdev_driver_list =
 	TAILQ_HEAD_INITIALIZER(vdev_driver_list);
+
+static void rte_vdev_bus_register(void);
 
 /* register a driver */
 void
 rte_eal_vdrv_register(struct rte_vdev_driver *driver)
 {
+	rte_vdev_bus_register();
+
 	TAILQ_INSERT_TAIL(&vdev_driver_list, driver, next);
 	rte_eal_driver_register(&driver->driver);
 }
@@ -121,4 +128,58 @@ rte_eal_vdev_uninit(const char *name)
 
 	RTE_LOG(ERR, EAL, "no driver found for %s\n", name);
 	return -EINVAL;
+}
+
+static int
+vdev_scan(void)
+{
+	/* for virtual devices we don't need to scan anything */
+	return 0;
+}
+
+static int
+vdev_probe(void)
+{
+	struct rte_devargs *devargs;
+
+	/*
+	 * Note that the dev_driver_list is populated here
+	 * from calls made to rte_eal_driver_register from constructor functions
+	 * embedded into PMD modules via the RTE_PMD_REGISTER_VDEV macro
+	 */
+
+	/* call the init function for each virtual device */
+	TAILQ_FOREACH(devargs, &devargs_list, next) {
+
+		if (devargs->type != RTE_DEVTYPE_VIRTUAL)
+			continue;
+
+		if (rte_eal_vdev_init(devargs->virt.drv_name,
+				      devargs->args)) {
+			RTE_LOG(ERR, EAL, "failed to initialize %s device\n",
+				devargs->virt.drv_name);
+			return -1;
+		}
+	}
+
+	return 0;
+}
+
+static struct rte_bus rte_vdev_bus = {
+	.scan = vdev_scan,
+	.probe = vdev_probe,
+};
+
+RTE_INIT(rte_vdev_bus_register);
+
+static void rte_vdev_bus_register(void)
+{
+	static int registered;
+
+	if (registered)
+		return;
+
+	registered = 1;
+	rte_vdev_bus.name = RTE_STR(virtual);
+	rte_bus_register(&rte_vdev_bus);
 }
