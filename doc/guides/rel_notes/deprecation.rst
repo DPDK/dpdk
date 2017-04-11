@@ -27,7 +27,7 @@ Deprecation Notices
   Such APIs are planned to be renamed according to ``rte_*`` naming convention
   and exported from librte_eal.
 
-* The PCI and VDEV subsystems will be converted as drivers of the new bus model.
+* The VDEV subsystem will be converted as driver of the new bus model.
   It will imply some EAL API changes in 17.05.
 
 * ``eth_driver`` is planned to be removed in 17.05. This currently serves as

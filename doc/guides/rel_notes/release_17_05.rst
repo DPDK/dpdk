@@ -479,7 +479,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_cmdline.so.2
      librte_cryptodev.so.2
      librte_distributor.so.1
-     librte_eal.so.3
+   + librte_eal.so.4
      librte_ethdev.so.6
      librte_hash.so.2
      librte_ip_frag.so.1
