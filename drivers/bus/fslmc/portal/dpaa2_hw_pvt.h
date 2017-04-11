@@ -48,6 +48,16 @@
 #define DPAA2_MBUF_MAX_ACQ_REL	7
 
 #define MAX_BPID 256
+#define DPAA2_MBUF_HW_ANNOTATION	64
+#define DPAA2_FD_PTA_SIZE		64
+
+#if (DPAA2_MBUF_HW_ANNOTATION + DPAA2_FD_PTA_SIZE) > RTE_PKTMBUF_HEADROOM
+#error "Annotation requirement is more than RTE_PKTMBUF_HEADROOM"
+#endif
+
+/* we will re-use the HEADROOM for annotation in RX */
+#define DPAA2_HW_BUF_RESERVE	0
+#define DPAA2_PACKET_LAYOUT_ALIGN	64 /*changing from 256 */
 
 struct dpaa2_dpio_dev {
 	TAILQ_ENTRY(dpaa2_dpio_dev) next;
