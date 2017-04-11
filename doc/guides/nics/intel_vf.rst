@@ -124,12 +124,12 @@ However:
 
     The above is an important consideration to take into account when targeting specific packets to a selected port.
 
-Intel® Fortville 10/40 Gigabit Ethernet Controller VF Infrastructure
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Intel® X710/XL710 Gigabit Ethernet Controller VF Infrastructure
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 In a virtualized environment, the programmer can enable a maximum of *128 Virtual Functions (VF)*
-globally per Intel® Fortville 10/40 Gigabit Ethernet Controller NIC device.
-Each VF can have a maximum of 16 queue pairs.
+globally per Intel® X710/XL710 Gigabit Ethernet Controller NIC device.
+The number of queue pairs of each VF can be configured by ``CONFIG_RTE_LIBRTE_I40E_QUEUE_NUM_PER_VF`` in ``config`` file.
 The Physical Function in host could be either configured by the Linux* i40e driver
 (in the case of the Linux Kernel-based Virtual Machine [KVM]) or by DPDK PMD PF driver.
 When using both DPDK PMD PF/VF drivers, the whole NIC will be taken over by DPDK based application.
@@ -156,47 +156,6 @@ For example,
 
     Launch the DPDK testpmd/example or your own host daemon application using the DPDK PMD library.
 
-*   Using the DPDK PMD PF ixgbe driver to enable VF RSS:
-
-    Same steps as above to install the modules of uio, igb_uio, specify max_vfs for PCI device, and
-    launch the DPDK testpmd/example or your own host daemon application using the DPDK PMD library.
-
-    The available queue number(at most 4) per VF depends on the total number of pool, which is
-    determined by the max number of VF at PF initialization stage and the number of queue specified
-    in config:
-
-    *   If the max number of VF is set in the range of 1 to 32:
-
-        If the number of rxq is specified as 4(e.g. '--rxq 4' in testpmd), then there are totally 32
-        pools(ETH_32_POOLS), and each VF could have 4 or less(e.g. 2) queues;
-
-        If the number of rxq is specified as 2(e.g. '--rxq 2' in testpmd), then there are totally 32
-        pools(ETH_32_POOLS), and each VF could have 2 queues;
-
-    *   If the max number of VF is in the range of 33 to 64:
-
-        If the number of rxq is 4 ('--rxq 4' in testpmd), then error message is expected as rxq is not
-        correct at this case;
-
-        If the number of rxq is 2 ('--rxq 2' in testpmd), then there is totally 64 pools(ETH_64_POOLS),
-        and each VF have 2 queues;
-
-    On host, to enable VF RSS functionality, rx mq mode should be set as ETH_MQ_RX_VMDQ_RSS
-    or ETH_MQ_RX_RSS mode, and SRIOV mode should be activated(max_vfs >= 1).
-    It also needs config VF RSS information like hash function, RSS key, RSS key length.
-
-    .. code-block:: console
-
-        testpmd -l 0-15 -n 4 -- --coremask=<core-mask> --rxq=4 --txq=4 -i
-
-.. Note: The preferred option is -c XX or -l n-n,n instead of a coremask value. The --coremask option
-         is a feature of the application and not DPDK EAL options.
-
-    The limitation for VF RSS on Intel® 82599 10 Gigabit Ethernet Controller is:
-    The hash and key are shared among PF and all VF, the RETA table with 128 entries is also shared
-    among PF and all VF; So it could not to provide a method to query the hash and reta content per
-    VF on guest, while, if possible, please query them on host(PF) for the shared RETA information.
-
 Virtual Function enumeration is performed in the following sequence by the Linux* pci driver for a dual-port NIC.
 When you enable the four Virtual Functions with the above command, the four enabled functions have a Function#
 represented by (Bus#, Device#, Function#) in sequence starting from 0 to 3.
@@ -209,6 +168,9 @@ However:
 .. note::
 
     The above is an important consideration to take into account when targeting specific packets to a selected port.
+
+    For Intel® X710/XL710 Gigabit Ethernet Controller, queues are in pairs. One queue pair means one receive queue and
+    one transmit queue. The default number of queue pairs per VF is 4, and can be 16 in maximum.
 
 Intel® 82599 10 Gigabit Ethernet Controller VF Infrastructure
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -243,6 +205,42 @@ For example,
         echo 2 > /sys/bus/pci/devices/0000\:bb\:ss.f/max_vfs (To enable two VFs on a specific PCI device)
 
     Launch the DPDK testpmd/example or your own host daemon application using the DPDK PMD library.
+
+*   Using the DPDK PMD PF ixgbe driver to enable VF RSS:
+
+    Same steps as above to install the modules of uio, igb_uio, specify max_vfs for PCI device, and
+    launch the DPDK testpmd/example or your own host daemon application using the DPDK PMD library.
+
+    The available queue number (at most 4) per VF depends on the total number of pool, which is
+    determined by the max number of VF at PF initialization stage and the number of queue specified
+    in config:
+
+    *   If the max number of VFs (max_vfs) is set in the range of 1 to 32:
+
+        If the number of Rx queues is specified as 4 (``--rxq=4`` in testpmd), then there are totally 32
+        pools (ETH_32_POOLS), and each VF could have 4 Rx queues;
+
+        If the number of Rx queues is specified as 2 (``--rxq=2`` in testpmd), then there are totally 32
+        pools (ETH_32_POOLS), and each VF could have 2 Rx queues;
+
+    *   If the max number of VFs (max_vfs) is in the range of 33 to 64:
+
+        If the number of Rx queues in specified as 4 (``--rxq=4`` in testpmd), then error message is expected
+        as ``rxq`` is not correct at this case;
+
+        If the number of rxq is 2 (``--rxq=2`` in testpmd), then there is totally 64 pools (ETH_64_POOLS),
+        and each VF have 2 Rx queues;
+
+    On host, to enable VF RSS functionality, rx mq mode should be set as ETH_MQ_RX_VMDQ_RSS
+    or ETH_MQ_RX_RSS mode, and SRIOV mode should be activated (max_vfs >= 1).
+    It also needs config VF RSS information like hash function, RSS key, RSS key length.
+
+.. note::
+
+    The limitation for VF RSS on Intel® 82599 10 Gigabit Ethernet Controller is:
+    The hash and key are shared among PF and all VF, the RETA table with 128 entries is also shared
+    among PF and all VF; So it could not to provide a method to query the hash and reta content per
+    VF on guest, while, if possible, please query them on host for the shared RETA information.
 
 Virtual Function enumeration is performed in the following sequence by the Linux* pci driver for a dual-port NIC.
 When you enable the four Virtual Functions with the above command, the four enabled functions have a Function#
