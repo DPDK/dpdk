@@ -1651,7 +1651,6 @@ struct rte_eth_dev {
 	eth_tx_burst_t tx_pkt_burst; /**< Pointer to PMD transmit function. */
 	eth_tx_prep_t tx_pkt_prepare; /**< Pointer to PMD transmit prepare function. */
 	struct rte_eth_dev_data *data;  /**< Pointer to device data */
-	const struct eth_driver *driver;/**< Driver for this device */
 	const struct eth_dev_ops *dev_ops; /**< Functions exported by PMD */
 	struct rte_device *device; /**< Backing device */
 	struct rte_intr_handle *intr_handle; /**< Device interrupt handle */
@@ -1853,78 +1852,6 @@ int rte_eth_dev_attach(const char *devargs, uint8_t *port_id);
  *  0 on success and devname is filled, negative on error
  */
 int rte_eth_dev_detach(uint8_t port_id, char *devname);
-
-struct eth_driver;
-/**
- * @internal
- * Initialization function of an Ethernet driver invoked for each matching
- * Ethernet PCI device detected during the PCI probing phase.
- *
- * @param eth_dev
- *   The *eth_dev* pointer is the address of the *rte_eth_dev* structure
- *   associated with the matching device and which have been [automatically]
- *   allocated in the *rte_eth_devices* array.
- *   The *eth_dev* structure is supplied to the driver initialization function
- *   with the following fields already initialized:
- *
- *   - *pci_dev*: Holds the pointers to the *rte_pci_device* structure which
- *     contains the generic PCI information of the matching device.
- *
- *   - *driver*: Holds the pointer to the *eth_driver* structure.
- *
- *   - *dev_private*: Holds a pointer to the device private data structure.
- *
- *   - *mtu*: Contains the default Ethernet maximum frame length (1500).
- *
- *   - *port_id*: Contains the port index of the device (actually the index
- *     of the *eth_dev* structure in the *rte_eth_devices* array).
- *
- * @return
- *   - 0: Success, the device is properly initialized by the driver.
- *        In particular, the driver MUST have set up the *dev_ops* pointer
- *        of the *eth_dev* structure.
- *   - <0: Error code of the device initialization failure.
- */
-typedef int (*eth_dev_init_t)(struct rte_eth_dev *eth_dev);
-
-/**
- * @internal
- * Finalization function of an Ethernet driver invoked for each matching
- * Ethernet PCI device detected during the PCI closing phase.
- *
- * @param eth_dev
- *   The *eth_dev* pointer is the address of the *rte_eth_dev* structure
- *   associated with the matching device and which have been [automatically]
- *   allocated in the *rte_eth_devices* array.
- * @return
- *   - 0: Success, the device is properly finalized by the driver.
- *        In particular, the driver MUST free the *dev_ops* pointer
- *        of the *eth_dev* structure.
- *   - <0: Error code of the device initialization failure.
- */
-typedef int (*eth_dev_uninit_t)(struct rte_eth_dev *eth_dev);
-
-/**
- * @internal
- * The structure associated with a PMD Ethernet driver.
- *
- * Each Ethernet driver acts as a PCI driver and is represented by a generic
- * *eth_driver* structure that holds:
- *
- * - An *rte_pci_driver* structure (which must be the first field).
- *
- * - The *eth_dev_init* function invoked for each matching PCI device.
- *
- * - The *eth_dev_uninit* function invoked for each matching PCI device.
- *
- * - The size of the private data to allocate for each matching device.
- */
-struct eth_driver {
-	struct rte_pci_driver pci_drv;    /**< The PMD is also a PCI driver. */
-	eth_dev_init_t eth_dev_init;      /**< Device init function. */
-	eth_dev_uninit_t eth_dev_uninit;  /**< Device uninit function. */
-	unsigned int dev_private_size;    /**< Size of device private data. */
-};
 
 /**
  * Convert a numerical speed in Mbps to a bitmap flag that can be used in

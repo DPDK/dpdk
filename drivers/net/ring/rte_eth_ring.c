@@ -338,7 +338,6 @@ do_eth_dev_ring_create(const char *name,
 	data->mac_addrs = &internals->address;
 
 	eth_dev->data = data;
-	eth_dev->driver = NULL;
 	eth_dev->dev_ops = &ops;
 	data->dev_flags = RTE_ETH_DEV_DETACHABLE;
 	data->kdrv = RTE_KDRV_NONE;

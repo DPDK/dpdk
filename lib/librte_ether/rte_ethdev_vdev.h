@@ -73,7 +73,6 @@ rte_eth_vdev_allocate(struct rte_vdev_device *dev, size_t private_data_size)
 	}
 
 	eth_dev->device = &dev->device;
-	eth_dev->driver = NULL;
 	eth_dev->intr_handle = NULL;
 
 	eth_dev->data->kdrv = RTE_KDRV_NONE;

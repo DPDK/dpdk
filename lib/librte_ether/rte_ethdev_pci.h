@@ -84,7 +84,6 @@ rte_eth_dev_pci_allocate(struct rte_pci_device *dev, size_t private_data_size)
 	}
 
 	eth_dev->device = &dev->device;
-	eth_dev->driver = NULL;
 	eth_dev->intr_handle = &dev->intr_handle;
 	rte_eth_copy_pci_info(eth_dev, dev);
 	return eth_dev;
@@ -102,7 +101,6 @@ rte_eth_dev_pci_release(struct rte_eth_dev *eth_dev)
 	eth_dev->data->dev_private = NULL;
 
 	eth_dev->device = NULL;
-	eth_dev->driver = NULL;
 	eth_dev->intr_handle = NULL;
 }
 

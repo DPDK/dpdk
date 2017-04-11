@@ -532,7 +532,6 @@ virtual_ethdev_create(const char *name, struct ether_addr *mac_addr,
 {
 	struct rte_pci_device *pci_dev = NULL;
 	struct rte_eth_dev *eth_dev = NULL;
-	struct eth_driver *eth_drv = NULL;
 	struct rte_pci_driver *pci_drv = NULL;
 	struct rte_pci_id *id_table = NULL;
 	struct virtual_ethdev_private *dev_private = NULL;
@@ -548,10 +547,6 @@ virtual_ethdev_create(const char *name, struct ether_addr *mac_addr,
 
 	pci_dev = rte_zmalloc_socket(name, sizeof(*pci_dev), 0, socket_id);
 	if (pci_dev == NULL)
-		goto err;
-
-	eth_drv = rte_zmalloc_socket(name, sizeof(*eth_drv), 0, socket_id);
-	if (eth_drv == NULL)
 		goto err;
 
 	pci_drv = rte_zmalloc_socket(name, sizeof(*pci_drv), 0, socket_id);
@@ -594,8 +589,8 @@ virtual_ethdev_create(const char *name, struct ether_addr *mac_addr,
 		pci_drv->drv_flags &= ~RTE_PCI_DRV_INTR_LSC;
 
 
-	eth_drv->pci_drv = (struct rte_pci_driver)(*pci_drv);
-	eth_dev->driver = eth_drv;
+	eth_dev->device = &pci_dev->device;
+	eth_dev->device->driver = &pci_drv->driver;
 
 	eth_dev->data->nb_rx_queues = (uint16_t)1;
 	eth_dev->data->nb_tx_queues = (uint16_t)1;
@@ -622,7 +617,7 @@ virtual_ethdev_create(const char *name, struct ether_addr *mac_addr,
 	dev_private->dev_ops = virtual_ethdev_default_dev_ops;
 	eth_dev->dev_ops = &dev_private->dev_ops;
 
-	pci_dev->device.driver = &eth_drv->pci_drv.driver;
+	pci_dev->device.driver = &pci_drv->driver;
 	eth_dev->device = &pci_dev->device;
 
 	eth_dev->rx_pkt_burst = virtual_ethdev_rx_burst_success;
@@ -633,7 +628,6 @@ virtual_ethdev_create(const char *name, struct ether_addr *mac_addr,
 err:
 	rte_free(pci_dev);
 	rte_free(pci_drv);
-	rte_free(eth_drv);
 	rte_free(id_table);
 	rte_free(dev_private);
 
