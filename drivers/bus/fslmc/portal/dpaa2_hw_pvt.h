@@ -37,6 +37,12 @@
 #include <mc/fsl_mc_sys.h>
 #include <fsl_qbman_portal.h>
 
+#ifndef false
+#define false      0
+#endif
+#ifndef true
+#define true       1
+#endif
 #define DPAA2_DQRR_RING_SIZE	16
 	/** <Maximum number of slots available in RX ring*/
 
