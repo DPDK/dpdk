@@ -50,6 +50,7 @@ SRCS-y += rte_flow.c
 # Export include files
 #
 SYMLINK-y-include += rte_ethdev.h
+SYMLINK-y-include += rte_ethdev_pci.h
 SYMLINK-y-include += rte_ethdev_vdev.h
 SYMLINK-y-include += rte_eth_ctrl.h
 SYMLINK-y-include += rte_dev_info.h
