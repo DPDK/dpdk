@@ -3117,26 +3117,6 @@ rte_eth_dev_get_dcb_info(uint8_t port_id,
 	return (*dev->dev_ops->get_dcb_info)(dev, dcb_info);
 }
 
-void
-rte_eth_copy_pci_info(struct rte_eth_dev *eth_dev, struct rte_pci_device *pci_dev)
-{
-	if ((eth_dev == NULL) || (pci_dev == NULL)) {
-		RTE_PMD_DEBUG_TRACE("NULL pointer eth_dev=%p pci_dev=%p\n",
-				eth_dev, pci_dev);
-		return;
-	}
-
-	eth_dev->intr_handle = &pci_dev->intr_handle;
-
-	eth_dev->data->dev_flags = 0;
-	if (pci_dev->driver->drv_flags & RTE_PCI_DRV_INTR_LSC)
-		eth_dev->data->dev_flags |= RTE_ETH_DEV_INTR_LSC;
-
-	eth_dev->data->kdrv = pci_dev->kdrv;
-	eth_dev->data->numa_node = pci_dev->device.numa_node;
-	eth_dev->data->drv_name = pci_dev->driver->driver.name;
-}
-
 int
 rte_eth_dev_l2_tunnel_eth_type_conf(uint8_t port_id,
 				    struct rte_eth_l2_tunnel_conf *l2_tunnel)

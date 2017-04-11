@@ -39,6 +39,38 @@
 #include <rte_ethdev.h>
 
 /**
+ * Copy pci device info to the Ethernet device data.
+ *
+ * @param eth_dev
+ * The *eth_dev* pointer is the address of the *rte_eth_dev* structure.
+ * @param pci_dev
+ * The *pci_dev* pointer is the address of the *rte_pci_device* structure.
+ *
+ * @return
+ *   - 0 on success, negative on error
+ */
+static inline void
+rte_eth_copy_pci_info(struct rte_eth_dev *eth_dev,
+	struct rte_pci_device *pci_dev)
+{
+	if ((eth_dev == NULL) || (pci_dev == NULL)) {
+		RTE_PMD_DEBUG_TRACE("NULL pointer eth_dev=%p pci_dev=%p\n",
+				eth_dev, pci_dev);
+		return;
+	}
+
+	eth_dev->intr_handle = &pci_dev->intr_handle;
+
+	eth_dev->data->dev_flags = 0;
+	if (pci_dev->driver->drv_flags & RTE_PCI_DRV_INTR_LSC)
+		eth_dev->data->dev_flags |= RTE_ETH_DEV_INTR_LSC;
+
+	eth_dev->data->kdrv = pci_dev->kdrv;
+	eth_dev->data->numa_node = pci_dev->device.numa_node;
+	eth_dev->data->drv_name = pci_dev->driver->driver.name;
+}
+
+/**
  * @internal
  * Allocates a new ethdev slot for an ethernet device and returns the pointer
  * to that slot for the driver to use.

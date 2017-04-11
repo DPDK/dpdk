@@ -7,7 +7,6 @@ DPDK_2.2 {
 	rte_eth_allmulticast_disable;
 	rte_eth_allmulticast_enable;
 	rte_eth_allmulticast_get;
-	rte_eth_copy_pci_info;
 	rte_eth_dev_allocate;
 	rte_eth_dev_allocated;
 	rte_eth_dev_attach;

@@ -4422,20 +4422,6 @@ int rte_eth_timesync_read_time(uint8_t port_id, struct timespec *time);
 int rte_eth_timesync_write_time(uint8_t port_id, const struct timespec *time);
 
 /**
- * Copy pci device info to the Ethernet device data.
- *
- * @param eth_dev
- * The *eth_dev* pointer is the address of the *rte_eth_dev* structure.
- * @param pci_dev
- * The *pci_dev* pointer is the address of the *rte_pci_device* structure.
- *
- * @return
- *   - 0 on success, negative on error
- */
-void rte_eth_copy_pci_info(struct rte_eth_dev *eth_dev,
-		struct rte_pci_device *pci_dev);
-
-/**
  * Create memzone for HW rings.
  * malloc can't be used as the physical address is needed.
  * If the memzone is already created, then this function returns a ptr
