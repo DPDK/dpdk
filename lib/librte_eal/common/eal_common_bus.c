@@ -86,13 +86,27 @@ int
 rte_bus_probe(void)
 {
 	int ret;
-	struct rte_bus *bus;
+	struct rte_bus *bus, *vbus = NULL;
 
 	TAILQ_FOREACH(bus, &rte_bus_list, next) {
+		if (!strcmp(bus->name, "virtual")) {
+			vbus = bus;
+			continue;
+		}
+
 		ret = bus->probe();
 		if (ret) {
 			RTE_LOG(ERR, EAL, "Bus (%s) probe failed.\n",
 				bus->name);
+			return ret;
+		}
+	}
+
+	if (vbus) {
+		ret = vbus->probe();
+		if (ret) {
+			RTE_LOG(ERR, EAL, "Bus (%s) probe failed.\n",
+				vbus->name);
 			return ret;
 		}
 	}
