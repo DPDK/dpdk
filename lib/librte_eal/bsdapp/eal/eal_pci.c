@@ -282,6 +282,9 @@ pci_scan_one(int dev_pci_fd, struct pci_conf *conf)
 	/* FreeBSD has no NUMA support (yet) */
 	dev->device.numa_node = 0;
 
+	rte_eal_pci_device_name(&dev->addr, dev->name, sizeof(dev->name));
+	dev->device.name = dev->name;
+
 	/* FreeBSD has only one pass through driver */
 	dev->kdrv = RTE_KDRV_NIC_UIO;
 

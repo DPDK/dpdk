@@ -122,6 +122,7 @@ struct rte_driver;
  */
 struct rte_device {
 	TAILQ_ENTRY(rte_device) next; /**< Next device */
+	const char *name;             /**< Device name */
 	const struct rte_driver *driver;/**< Associated driver */
 	int numa_node;                /**< NUMA node connection */
 	struct rte_devargs *devargs;  /**< Device user arguments */

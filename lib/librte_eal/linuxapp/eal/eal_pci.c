@@ -324,6 +324,9 @@ pci_scan_one(const char *dirname, const struct rte_pci_addr *addr)
 		dev->device.numa_node = tmp;
 	}
 
+	rte_eal_pci_device_name(addr, dev->name, sizeof(dev->name));
+	dev->device.name = dev->name;
+
 	/* parse resources */
 	snprintf(filename, sizeof(filename), "%s/resource", dirname);
 	if (pci_parse_sysfs_resource(filename, dev) < 0) {

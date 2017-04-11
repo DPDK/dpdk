@@ -68,6 +68,9 @@ rte_eal_driver_unregister(struct rte_driver *driver)
 
 void rte_eal_device_insert(struct rte_device *dev)
 {
+	RTE_VERIFY(dev->name);
+	RTE_VERIFY(dev->name[0] != '\0');
+
 	TAILQ_INSERT_TAIL(&dev_device_list, dev, next);
 }
 

@@ -180,6 +180,7 @@ rte_eal_vdev_init(const char *name, const char *args)
 
 	dev->device.devargs = devargs;
 	dev->device.numa_node = SOCKET_ID_ANY;
+	dev->device.name = devargs->virt.drv_name;
 
 	ret = vdev_probe_all_drivers(dev);
 	if (ret) {
@@ -271,6 +272,7 @@ vdev_scan(void)
 
 		dev->device.devargs = devargs;
 		dev->device.numa_node = SOCKET_ID_ANY;
+		dev->device.name = devargs->virt.drv_name;
 
 		rte_eal_device_insert(&dev->device);
 		TAILQ_INSERT_TAIL(&vdev_device_list, dev, next);
