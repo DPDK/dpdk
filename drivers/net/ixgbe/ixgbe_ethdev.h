@@ -666,6 +666,11 @@ int ixgbe_disable_sec_tx_path_generic(struct ixgbe_hw *hw);
 
 int ixgbe_enable_sec_tx_path_generic(struct ixgbe_hw *hw);
 
+int ixgbe_vt_check(struct ixgbe_hw *hw);
+int ixgbe_set_vf_rate_limit(struct rte_eth_dev *dev, uint16_t vf,
+			    uint16_t tx_rate, uint64_t q_msk);
+bool is_ixgbe_supported(struct rte_eth_dev *dev);
+
 static inline int
 ixgbe_ethertype_filter_lookup(struct ixgbe_filter_info *filter_info,
 			      uint16_t ethertype)
