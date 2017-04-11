@@ -370,6 +370,10 @@ M: Alejandro Lucero <alejandro.lucero@netronome.com>
 F: drivers/net/nfp/
 F: doc/guides/nics/nfp.rst
 
+NXP dpaa2
+M: Hemant Agrawal <hemant.agrawal@nxp.com>
+F: drivers/bus/fslmc/
+
 QLogic bnx2x
 M: Harish Patil <harish.patil@cavium.com>
 M: Rasesh Mody <rasesh.mody@cavium.com>

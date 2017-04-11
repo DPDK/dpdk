@@ -1,7 +1,7 @@
 #   BSD LICENSE
 #
-#   Copyright (c) 2016 Freescale Semiconductor, Inc. All rights reserved.
-#   Copyright (c) 2016 NXP. All rights reserved.
+#   Copyright(c) 2016 NXP. All rights reserved.
+#   All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
 #   modification, are permitted provided that the following conditions
@@ -13,7 +13,7 @@
 #       notice, this list of conditions and the following disclaimer in
 #       the documentation and/or other materials provided with the
 #       distribution.
-#     * Neither the name of Freescale Semiconductor nor the names of its
+#     * Neither the name of NXP nor the names of its
 #       contributors may be used to endorse or promote products derived
 #       from this software without specific prior written permission.
 #
@@ -28,21 +28,12 @@
 #   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 #   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#
 
-#include "defconfig_arm64-armv8a-linuxapp-gcc"
+include $(RTE_SDK)/mk/rte.vars.mk
 
-# NXP (Freescale) - Soc Architecture with WRIOP and QBMAN support
-CONFIG_RTE_MACHINE="dpaa2"
-CONFIG_RTE_ARCH_ARM_TUNE="cortex-a57+fp+simd"
+core-libs := librte_eal librte_mbuf librte_mempool librte_ring librte_ether
 
-#
-# Compile Environment Abstraction Layer
-#
-CONFIG_RTE_MAX_LCORE=8
-CONFIG_RTE_MAX_NUMA_NODES=1
+DIRS-$(CONFIG_RTE_LIBRTE_FSLMC_BUS) += fslmc
+DEPDIRS-fslmc = $(core-libs)
 
-#
-# Compile NXP DPAA2 FSL-MC Bus
-#
-CONFIG_RTE_LIBRTE_FSLMC_BUS=y
+include $(RTE_SDK)/mk/rte.subdir.mk

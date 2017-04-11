@@ -1,0 +1,8 @@
+DPDK_17.05 {
+	global:
+
+	rte_fslmc_driver_register;
+	rte_fslmc_driver_unregister;
+
+	local: *;
+};
