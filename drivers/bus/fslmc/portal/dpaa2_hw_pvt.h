@@ -173,6 +173,72 @@ struct qbman_fle {
  */
 #define DPAA2_EQ_RESP_ALWAYS		1
 
+#ifdef RTE_LIBRTE_DPAA2_USE_PHYS_IOVA
+static void *dpaa2_mem_ptov(phys_addr_t paddr) __attribute__((unused));
+/* todo - this is costly, need to write a fast coversion routine */
+static void *dpaa2_mem_ptov(phys_addr_t paddr)
+{
+	const struct rte_memseg *memseg = rte_eal_get_physmem_layout();
+	int i;
+
+	for (i = 0; i < RTE_MAX_MEMSEG && memseg[i].addr_64 != 0; i++) {
+		if (paddr >= memseg[i].phys_addr &&
+		   (char *)paddr < (char *)memseg[i].phys_addr + memseg[i].len)
+			return (void *)(memseg[i].addr_64
+				+ (paddr - memseg[i].phys_addr));
+	}
+	return NULL;
+}
+
+static phys_addr_t dpaa2_mem_vtop(uint64_t vaddr) __attribute__((unused));
+static phys_addr_t dpaa2_mem_vtop(uint64_t vaddr)
+{
+	const struct rte_memseg *memseg = rte_eal_get_physmem_layout();
+	int i;
+
+	for (i = 0; i < RTE_MAX_MEMSEG && memseg[i].addr_64 != 0; i++) {
+		if (vaddr >= memseg[i].addr_64 &&
+		    vaddr < memseg[i].addr_64 + memseg[i].len)
+			return memseg[i].phys_addr
+				+ (vaddr - memseg[i].addr_64);
+	}
+	return (phys_addr_t)(NULL);
+}
+
+/**
+ * When we are using Physical addresses as IO Virtual Addresses,
+ * Need to call conversion routines dpaa2_mem_vtop & dpaa2_mem_ptov
+ * whereever required.
+ * These routines are called with help of below MACRO's
+ */
+
+#define DPAA2_MBUF_VADDR_TO_IOVA(mbuf) ((mbuf)->buf_physaddr)
+
+/**
+ * macro to convert Virtual address to IOVA
+ */
+#define DPAA2_VADDR_TO_IOVA(_vaddr) dpaa2_mem_vtop((uint64_t)(_vaddr))
+
+/**
+ * macro to convert IOVA to Virtual address
+ */
+#define DPAA2_IOVA_TO_VADDR(_iova) dpaa2_mem_ptov((phys_addr_t)(_iova))
+
+/**
+ * macro to convert modify the memory containing IOVA to Virtual address
+ */
+#define DPAA2_MODIFY_IOVA_TO_VADDR(_mem, _type) \
+	{_mem = (_type)(dpaa2_mem_ptov((phys_addr_t)(_mem))); }
+
+#else	/* RTE_LIBRTE_DPAA2_USE_PHYS_IOVA */
+
+#define DPAA2_MBUF_VADDR_TO_IOVA(mbuf) ((mbuf)->buf_addr)
+#define DPAA2_VADDR_TO_IOVA(_vaddr) (_vaddr)
+#define DPAA2_IOVA_TO_VADDR(_iova) (_iova)
+#define DPAA2_MODIFY_IOVA_TO_VADDR(_mem, _type)
+
+#endif /* RTE_LIBRTE_DPAA2_USE_PHYS_IOVA */
+
 struct dpaa2_dpbp_dev *dpaa2_alloc_dpbp_dev(void);
 void dpaa2_free_dpbp_dev(struct dpaa2_dpbp_dev *dpbp);
 
