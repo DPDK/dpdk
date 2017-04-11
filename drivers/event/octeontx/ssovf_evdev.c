@@ -488,17 +488,17 @@ static const struct rte_eventdev_ops ssovf_ops = {
 };
 
 static int
-ssovf_vdev_probe(const char *name, const char *params)
+ssovf_vdev_probe(struct rte_vdev_device *vdev)
 {
 	struct octeontx_ssovf_info oinfo;
 	struct ssovf_mbox_dev_info info;
 	struct ssovf_evdev *edev;
 	struct rte_eventdev *eventdev;
 	static int ssovf_init_once;
+	const char *name;
 	int ret;
 
-	RTE_SET_USED(params);
-
+	name = rte_vdev_device_name(vdev);
 	/* More than one instance is not supported */
 	if (ssovf_init_once) {
 		ssovf_log_err("Request to create >1 %s instance", name);
@@ -563,8 +563,11 @@ error:
 }
 
 static int
-ssovf_vdev_remove(const char *name)
+ssovf_vdev_remove(struct rte_vdev_device *vdev)
 {
+	const char *name;
+
+	name = rte_vdev_device_name(vdev);
 	ssovf_log_info("Closing %s", name);
 	return rte_event_pmd_vdev_uninit(name);
 }

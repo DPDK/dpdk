@@ -936,8 +936,9 @@ eth_from_pcaps(const char *name, struct pmd_devargs *rx_queues,
 }
 
 static int
-pmd_pcap_probe(const char *name, const char *params)
+pmd_pcap_probe(struct rte_vdev_device *dev)
 {
+	const char *name;
 	unsigned int is_rx_pcap = 0, is_tx_pcap = 0;
 	struct rte_kvargs *kvlist;
 	struct pmd_devargs pcaps = {0};
@@ -945,13 +946,14 @@ pmd_pcap_probe(const char *name, const char *params)
 	int single_iface = 0;
 	int ret;
 
+	name = rte_vdev_device_name(dev);
 	RTE_LOG(INFO, PMD, "Initializing pmd_pcap for %s\n", name);
 
 	gettimeofday(&start_time, NULL);
 	start_cycles = rte_get_timer_cycles();
 	hz = rte_get_timer_hz();
 
-	kvlist = rte_kvargs_parse(params, valid_arguments);
+	kvlist = rte_kvargs_parse(rte_vdev_device_args(dev), valid_arguments);
 	if (kvlist == NULL)
 		return -1;
 
@@ -1035,18 +1037,18 @@ free_kvlist:
 }
 
 static int
-pmd_pcap_remove(const char *name)
+pmd_pcap_remove(struct rte_vdev_device *dev)
 {
 	struct rte_eth_dev *eth_dev = NULL;
 
 	RTE_LOG(INFO, PMD, "Closing pcap ethdev on numa socket %u\n",
 			rte_socket_id());
 
-	if (name == NULL)
+	if (!dev)
 		return -1;
 
 	/* reserve an ethdev entry */
-	eth_dev = rte_eth_dev_allocated(name);
+	eth_dev = rte_eth_dev_allocated(rte_vdev_device_name(dev));
 	if (eth_dev == NULL)
 		return -1;
 

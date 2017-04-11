@@ -923,8 +923,9 @@ rte_eth_from_packet(const char *name,
 }
 
 static int
-rte_pmd_af_packet_probe(const char *name, const char *params)
+rte_pmd_af_packet_probe(struct rte_vdev_device *dev)
 {
+	const char *name = rte_vdev_device_name(dev);
 	unsigned numa_node;
 	int ret = 0;
 	struct rte_kvargs *kvlist;
@@ -934,7 +935,7 @@ rte_pmd_af_packet_probe(const char *name, const char *params)
 
 	numa_node = rte_socket_id();
 
-	kvlist = rte_kvargs_parse(params, valid_arguments);
+	kvlist = rte_kvargs_parse(rte_vdev_device_args(dev), valid_arguments);
 	if (kvlist == NULL) {
 		ret = -1;
 		goto exit;
@@ -961,7 +962,7 @@ exit:
 }
 
 static int
-rte_pmd_af_packet_remove(const char *name)
+rte_pmd_af_packet_remove(struct rte_vdev_device *dev)
 {
 	struct rte_eth_dev *eth_dev = NULL;
 	struct pmd_internals *internals;
@@ -970,11 +971,11 @@ rte_pmd_af_packet_remove(const char *name)
 	RTE_LOG(INFO, PMD, "Closing AF_PACKET ethdev on numa socket %u\n",
 			rte_socket_id());
 
-	if (name == NULL)
+	if (dev == NULL)
 		return -1;
 
 	/* find the ethdev entry */
-	eth_dev = rte_eth_dev_allocated(name);
+	eth_dev = rte_eth_dev_allocated(rte_vdev_device_name(dev));
 	if (eth_dev == NULL)
 		return -1;
 

@@ -1132,8 +1132,9 @@ open_int(const char *key __rte_unused, const char *value, void *extra_args)
 }
 
 static int
-rte_pmd_vhost_probe(const char *name, const char *params)
+rte_pmd_vhost_probe(struct rte_vdev_device *dev)
 {
+	const char *name;
 	struct rte_kvargs *kvlist = NULL;
 	int ret = 0;
 	char *iface_name;
@@ -1142,9 +1143,10 @@ rte_pmd_vhost_probe(const char *name, const char *params)
 	int client_mode = 0;
 	int dequeue_zero_copy = 0;
 
+	name = rte_vdev_device_name(dev);
 	RTE_LOG(INFO, PMD, "Initializing pmd_vhost for %s\n", name);
 
-	kvlist = rte_kvargs_parse(params, valid_arguments);
+	kvlist = rte_kvargs_parse(rte_vdev_device_args(dev), valid_arguments);
 	if (kvlist == NULL)
 		return -1;
 
@@ -1195,11 +1197,13 @@ out_free:
 }
 
 static int
-rte_pmd_vhost_remove(const char *name)
+rte_pmd_vhost_remove(struct rte_vdev_device *dev)
 {
+	const char *name;
 	struct rte_eth_dev *eth_dev = NULL;
 	unsigned int i;
 
+	name = rte_vdev_device_name(dev);
 	RTE_LOG(INFO, PMD, "Un-Initializing pmd_vhost for %s\n", name);
 
 	/* find an ethdev entry */

@@ -606,17 +606,20 @@ get_packet_copy_arg(const char *key __rte_unused,
 }
 
 static int
-rte_pmd_null_probe(const char *name, const char *params)
+rte_pmd_null_probe(struct rte_vdev_device *dev)
 {
+	const char *name, *params;
 	unsigned numa_node;
 	unsigned packet_size = default_packet_size;
 	unsigned packet_copy = default_packet_copy;
 	struct rte_kvargs *kvlist = NULL;
 	int ret;
 
-	if (name == NULL)
+	if (!dev)
 		return -EINVAL;
 
+	name = rte_vdev_device_name(dev);
+	params = rte_vdev_device_args(dev);
 	RTE_LOG(INFO, PMD, "Initializing pmd_null for %s\n", name);
 
 	numa_node = rte_socket_id();
@@ -658,18 +661,18 @@ free_kvlist:
 }
 
 static int
-rte_pmd_null_remove(const char *name)
+rte_pmd_null_remove(struct rte_vdev_device *dev)
 {
 	struct rte_eth_dev *eth_dev = NULL;
 
-	if (name == NULL)
+	if (!dev)
 		return -EINVAL;
 
 	RTE_LOG(INFO, PMD, "Closing null ethdev on numa socket %u\n",
 			rte_socket_id());
 
 	/* find the ethdev entry */
-	eth_dev = rte_eth_dev_allocated(name);
+	eth_dev = rte_eth_dev_allocated(rte_vdev_device_name(dev));
 	if (eth_dev == NULL)
 		return -1;
 

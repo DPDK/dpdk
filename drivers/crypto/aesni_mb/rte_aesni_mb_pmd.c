@@ -669,10 +669,11 @@ aesni_mb_pmd_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
 	return processed_jobs;
 }
 
-static int cryptodev_aesni_mb_remove(const char *name);
+static int cryptodev_aesni_mb_remove(struct rte_vdev_device *vdev);
 
 static int
-cryptodev_aesni_mb_create(struct rte_crypto_vdev_init_params *init_params)
+cryptodev_aesni_mb_create(struct rte_vdev_device *vdev,
+			  struct rte_crypto_vdev_init_params *init_params)
 {
 	struct rte_cryptodev *dev;
 	struct aesni_mb_private *internals;
@@ -750,13 +751,12 @@ init_error:
 	MB_LOG_ERR("driver %s: cryptodev_aesni_create failed",
 			init_params->name);
 
-	cryptodev_aesni_mb_remove(init_params->name);
+	cryptodev_aesni_mb_remove(vdev);
 	return -EFAULT;
 }
 
 static int
-cryptodev_aesni_mb_probe(const char *name,
-		const char *input_args)
+cryptodev_aesni_mb_probe(struct rte_vdev_device *vdev)
 {
 	struct rte_crypto_vdev_init_params init_params = {
 		RTE_CRYPTODEV_VDEV_DEFAULT_MAX_NB_QUEUE_PAIRS,
@@ -764,7 +764,11 @@ cryptodev_aesni_mb_probe(const char *name,
 		rte_socket_id(),
 		""
 	};
+	const char *name;
+	const char *input_args;
 
+	name = rte_vdev_device_name(vdev);
+	input_args = rte_vdev_device_args(vdev);
 	rte_cryptodev_parse_vdev_init_params(&init_params, input_args);
 
 	RTE_LOG(INFO, PMD, "Initialising %s on NUMA node %d\n", name,
@@ -777,12 +781,15 @@ cryptodev_aesni_mb_probe(const char *name,
 	RTE_LOG(INFO, PMD, "  Max number of sessions = %d\n",
 			init_params.max_nb_sessions);
 
-	return cryptodev_aesni_mb_create(&init_params);
+	return cryptodev_aesni_mb_create(vdev, &init_params);
 }
 
 static int
-cryptodev_aesni_mb_remove(const char *name)
+cryptodev_aesni_mb_remove(struct rte_vdev_device *vdev)
 {
+	const char *name;
+
+	name = rte_vdev_device_name(vdev);
 	if (name == NULL)
 		return -EINVAL;
 

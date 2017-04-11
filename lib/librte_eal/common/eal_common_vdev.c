@@ -76,7 +76,6 @@ static int
 vdev_probe_all_drivers(struct rte_vdev_device *dev)
 {
 	const char *name = rte_vdev_device_name(dev);
-	const char *args = rte_vdev_device_args(dev);
 	struct rte_vdev_driver *driver;
 	int ret;
 
@@ -90,7 +89,7 @@ vdev_probe_all_drivers(struct rte_vdev_device *dev)
 		if (!strncmp(driver->driver.name, name,
 			    strlen(driver->driver.name))) {
 			dev->device.driver = &driver->driver;
-			ret = driver->probe(name, args);
+			ret = driver->probe(dev);
 			if (ret)
 				dev->device.driver = NULL;
 			return ret;
@@ -103,7 +102,7 @@ vdev_probe_all_drivers(struct rte_vdev_device *dev)
 		    !strncmp(driver->driver.alias, name,
 			    strlen(driver->driver.alias))) {
 			dev->device.driver = &driver->driver;
-			ret = driver->probe(name, args);
+			ret = driver->probe(dev);
 			if (ret)
 				dev->device.driver = NULL;
 			return ret;
@@ -215,7 +214,7 @@ vdev_remove_driver(struct rte_vdev_device *dev)
 
 	driver = container_of(dev->device.driver, const struct rte_vdev_driver,
 		driver);
-	return driver->remove(name);
+	return driver->remove(dev);
 }
 
 int

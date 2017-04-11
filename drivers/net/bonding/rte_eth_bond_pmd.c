@@ -2240,16 +2240,19 @@ const struct eth_dev_ops default_dev_ops = {
 };
 
 static int
-bond_probe(const char *name, const char *params)
+bond_probe(struct rte_vdev_device *dev)
 {
+	const char *name;
 	struct bond_dev_private *internals;
 	struct rte_kvargs *kvlist;
 	uint8_t bonding_mode, socket_id;
 	int  arg_count, port_id;
 
+	name = rte_vdev_device_name(dev);
 	RTE_LOG(INFO, EAL, "Initializing pmd_bond for %s\n", name);
 
-	kvlist = rte_kvargs_parse(params, pmd_bond_init_valid_arguments);
+	kvlist = rte_kvargs_parse(rte_vdev_device_args(dev),
+		pmd_bond_init_valid_arguments);
 	if (kvlist == NULL)
 		return -1;
 
@@ -2307,13 +2310,15 @@ parse_error:
 }
 
 static int
-bond_remove(const char *name)
+bond_remove(struct rte_vdev_device *dev)
 {
+	const char *name;
 	int  ret;
 
-	if (name == NULL)
+	if (!dev)
 		return -EINVAL;
 
+	name = rte_vdev_device_name(dev);
 	RTE_LOG(INFO, EAL, "Uninitializing pmd_bond for %s\n", name);
 
 	/* free link bonding eth device */

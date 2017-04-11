@@ -696,7 +696,7 @@ set_credit_quanta(const char *key __rte_unused, const char *value, void *opaque)
 }
 
 static int
-sw_probe(const char *name, const char *params)
+sw_probe(struct rte_vdev_device *vdev)
 {
 	static const struct rte_eventdev_ops evdev_sw_ops = {
 			.dev_configure = sw_dev_configure,
@@ -727,12 +727,16 @@ sw_probe(const char *name, const char *params)
 		CREDIT_QUANTA_ARG,
 		NULL
 	};
+	const char *name;
+	const char *params;
 	struct rte_eventdev *dev;
 	struct sw_evdev *sw;
 	int socket_id = rte_socket_id();
 	int sched_quanta  = SW_DEFAULT_SCHED_QUANTA;
 	int credit_quanta = SW_DEFAULT_CREDIT_QUANTA;
 
+	name = rte_vdev_device_name(vdev);
+	params = rte_vdev_device_args(vdev);
 	if (params != NULL && params[0] != '\0') {
 		struct rte_kvargs *kvlist = rte_kvargs_parse(params, args);
 
@@ -806,8 +810,11 @@ sw_probe(const char *name, const char *params)
 }
 
 static int
-sw_remove(const char *name)
+sw_remove(struct rte_vdev_device *vdev)
 {
+	const char *name;
+
+	name = rte_vdev_device_name(vdev);
 	if (name == NULL)
 		return -EINVAL;
 

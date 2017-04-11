@@ -193,14 +193,16 @@ cryptodev_scheduler_create(const char *name,
 }
 
 static int
-cryptodev_scheduler_remove(const char *name)
+cryptodev_scheduler_remove(struct rte_vdev_device *vdev)
 {
+	const char *name;
 	struct rte_cryptodev *dev;
 	struct scheduler_ctx *sched_ctx;
 
-	if (name == NULL)
+	if (vdev == NULL)
 		return -EINVAL;
 
+	name = rte_vdev_device_name(vdev);
 	dev = rte_cryptodev_pmd_get_named_dev(name);
 	if (dev == NULL)
 		return -EINVAL;
@@ -413,7 +415,7 @@ free_kvlist:
 }
 
 static int
-cryptodev_scheduler_probe(const char *name, const char *input_args)
+cryptodev_scheduler_probe(struct rte_vdev_device *vdev)
 {
 	struct scheduler_init_params init_params = {
 		.def_p = {
@@ -428,9 +430,11 @@ cryptodev_scheduler_probe(const char *name, const char *input_args)
 		.enable_ordering = 0
 	};
 
-	scheduler_parse_init_params(&init_params, input_args);
+	scheduler_parse_init_params(&init_params,
+				    rte_vdev_device_args(vdev));
 
-	RTE_LOG(INFO, PMD, "Initialising %s on NUMA node %d\n", name,
+	RTE_LOG(INFO, PMD, "Initialising %s on NUMA node %d\n",
+			rte_vdev_device_name(vdev),
 			init_params.def_p.socket_id);
 	RTE_LOG(INFO, PMD, "  Max number of queue pairs = %d\n",
 			init_params.def_p.max_nb_queue_pairs);
@@ -440,7 +444,8 @@ cryptodev_scheduler_probe(const char *name, const char *input_args)
 		RTE_LOG(INFO, PMD, "  User defined name = %s\n",
 			init_params.def_p.name);
 
-	return cryptodev_scheduler_create(name, &init_params);
+	return cryptodev_scheduler_create(rte_vdev_device_name(vdev),
+					  &init_params);
 }
 
 static struct rte_vdev_driver cryptodev_scheduler_pmd_drv = {

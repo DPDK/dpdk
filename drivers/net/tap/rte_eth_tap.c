@@ -1288,13 +1288,17 @@ set_remote_iface(const char *key __rte_unused,
 /* Open a TAP interface device.
  */
 static int
-rte_pmd_tap_probe(const char *name, const char *params)
+rte_pmd_tap_probe(struct rte_vdev_device *dev)
 {
+	const char *name, *params;
 	int ret;
 	struct rte_kvargs *kvlist = NULL;
 	int speed;
 	char tap_name[RTE_ETH_NAME_MAX_LEN];
 	char remote_iface[RTE_ETH_NAME_MAX_LEN];
+
+	name = rte_vdev_device_name(dev);
+	params = rte_vdev_device_args(dev);
 
 	speed = ETH_SPEED_NUM_10G;
 	snprintf(tap_name, sizeof(tap_name), "%s%d",
@@ -1355,7 +1359,7 @@ leave:
 /* detach a TAP device.
  */
 static int
-rte_pmd_tap_remove(const char *name)
+rte_pmd_tap_remove(struct rte_vdev_device *dev)
 {
 	struct rte_eth_dev *eth_dev = NULL;
 	struct pmd_internals *internals;
@@ -1365,7 +1369,7 @@ rte_pmd_tap_remove(const char *name)
 		rte_socket_id());
 
 	/* find the ethdev entry */
-	eth_dev = rte_eth_dev_allocated(name);
+	eth_dev = rte_eth_dev_allocated(rte_vdev_device_name(dev));
 	if (!eth_dev)
 		return 0;
 

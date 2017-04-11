@@ -502,11 +502,15 @@ out:
 }
 
 static int
-rte_pmd_ring_probe(const char *name, const char *params)
+rte_pmd_ring_probe(struct rte_vdev_device *dev)
 {
+	const char *name, *params;
 	struct rte_kvargs *kvlist = NULL;
 	int ret = 0;
 	struct node_action_list *info = NULL;
+
+	name = rte_vdev_device_name(dev);
+	params = rte_vdev_device_args(dev);
 
 	RTE_LOG(INFO, PMD, "Initializing pmd_ring for %s\n", name);
 
@@ -577,8 +581,9 @@ out_free:
 }
 
 static int
-rte_pmd_ring_remove(const char *name)
+rte_pmd_ring_remove(struct rte_vdev_device *dev)
 {
+	const char *name = rte_vdev_device_name(dev);
 	struct rte_eth_dev *eth_dev = NULL;
 	struct pmd_internals *internals = NULL;
 	struct ring_queue *r = NULL;

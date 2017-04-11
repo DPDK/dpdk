@@ -44,7 +44,7 @@
 
 #include "rte_armv8_pmd_private.h"
 
-static int cryptodev_armv8_crypto_uninit(const char *name);
+static int cryptodev_armv8_crypto_uninit(struct rte_vdev_device *vdev);
 
 /**
  * Pointers to the supported combined mode crypto functions are stored
@@ -773,7 +773,8 @@ armv8_crypto_pmd_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
 
 /** Create ARMv8 crypto device */
 static int
-cryptodev_armv8_crypto_create(struct rte_crypto_vdev_init_params *init_params)
+cryptodev_armv8_crypto_create(struct rte_vdev_device *vdev,
+			      struct rte_crypto_vdev_init_params *init_params)
 {
 	struct rte_cryptodev *dev;
 	struct armv8_crypto_private *internals;
@@ -845,14 +846,13 @@ init_error:
 		"driver %s: cryptodev_armv8_crypto_create failed",
 		init_params->name);
 
-	cryptodev_armv8_crypto_uninit(init_params->name);
+	cryptodev_armv8_crypto_uninit(vdev);
 	return -EFAULT;
 }
 
 /** Initialise ARMv8 crypto device */
 static int
-cryptodev_armv8_crypto_init(const char *name,
-		const char *input_args)
+cryptodev_armv8_crypto_init(struct rte_vdev_device *vdev)
 {
 	struct rte_crypto_vdev_init_params init_params = {
 		RTE_CRYPTODEV_VDEV_DEFAULT_MAX_NB_QUEUE_PAIRS,
@@ -860,7 +860,11 @@ cryptodev_armv8_crypto_init(const char *name,
 		rte_socket_id(),
 		{0}
 	};
+	const char *name;
+	const char *input_args;
 
+	name = rte_vdev_device_name(vdev);
+	input_args = rte_vdev_device_args(vdev);
 	rte_cryptodev_parse_vdev_init_params(&init_params, input_args);
 
 	RTE_LOG(INFO, PMD, "Initialising %s on NUMA node %d\n", name,
@@ -874,13 +878,16 @@ cryptodev_armv8_crypto_init(const char *name,
 	RTE_LOG(INFO, PMD, "  Max number of sessions = %d\n",
 			init_params.max_nb_sessions);
 
-	return cryptodev_armv8_crypto_create(&init_params);
+	return cryptodev_armv8_crypto_create(vdev, &init_params);
 }
 
 /** Uninitialise ARMv8 crypto device */
 static int
-cryptodev_armv8_crypto_uninit(const char *name)
+cryptodev_armv8_crypto_uninit(struct rte_vdev_device *vdev)
 {
+	const char *name;
+
+	name = rte_vdev_device_name(vdev);
 	if (name == NULL)
 		return -EINVAL;
 

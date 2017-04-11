@@ -402,7 +402,7 @@ virtio_user_eth_dev_free(struct rte_eth_dev *eth_dev)
  * Returns 0 on success.
  */
 static int
-virtio_user_pmd_probe(const char *name, const char *params)
+virtio_user_pmd_probe(struct rte_vdev_device *dev)
 {
 	struct rte_kvargs *kvlist = NULL;
 	struct rte_eth_dev *eth_dev;
@@ -415,13 +415,7 @@ virtio_user_pmd_probe(const char *name, const char *params)
 	char *mac_addr = NULL;
 	int ret = -1;
 
-	if (!params || params[0] == '\0') {
-		PMD_INIT_LOG(ERR, "arg %s is mandatory for virtio_user",
-			  VIRTIO_USER_ARG_QUEUE_SIZE);
-		goto end;
-	}
-
-	kvlist = rte_kvargs_parse(params, valid_args);
+	kvlist = rte_kvargs_parse(rte_vdev_device_args(dev), valid_args);
 	if (!kvlist) {
 		PMD_INIT_LOG(ERR, "error when parsing param");
 		goto end;
@@ -507,7 +501,7 @@ virtio_user_pmd_probe(const char *name, const char *params)
 	}
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-		eth_dev = virtio_user_eth_dev_alloc(name);
+		eth_dev = virtio_user_eth_dev_alloc(rte_vdev_device_name(dev));
 		if (!eth_dev) {
 			PMD_INIT_LOG(ERR, "virtio_user fails to alloc device");
 			goto end;
@@ -521,7 +515,7 @@ virtio_user_pmd_probe(const char *name, const char *params)
 			goto end;
 		}
 	} else {
-		eth_dev = rte_eth_dev_attach_secondary(name);
+		eth_dev = rte_eth_dev_attach_secondary(rte_vdev_device_name(dev));
 		if (!eth_dev)
 			goto end;
 	}
@@ -548,15 +542,17 @@ end:
 
 /** Called by rte_eth_dev_detach() */
 static int
-virtio_user_pmd_remove(const char *name)
+virtio_user_pmd_remove(struct rte_vdev_device *vdev)
 {
+	const char *name;
 	struct rte_eth_dev *eth_dev;
 	struct virtio_hw *hw;
 	struct virtio_user_dev *dev;
 
-	if (!name)
+	if (!vdev)
 		return -EINVAL;
 
+	name = rte_vdev_device_name(vdev);
 	PMD_DRV_LOG(INFO, "Un-Initializing %s", name);
 	eth_dev = rte_eth_dev_allocated(name);
 	if (!eth_dev)

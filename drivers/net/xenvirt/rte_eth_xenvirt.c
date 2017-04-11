@@ -726,7 +726,7 @@ eth_dev_xenvirt_free(const char *name, const unsigned numa_node)
 
 /*TODO: Support multiple process model */
 static int
-rte_pmd_xenvirt_probe(const char *name, const char *params)
+rte_pmd_xenvirt_probe(struct rte_vdev_device *dev)
 {
 	if (virtio_idx == 0) {
 		if (xenstore_init() != 0) {
@@ -738,14 +738,15 @@ rte_pmd_xenvirt_probe(const char *name, const char *params)
 			return -1;
 		}
 	}
-	eth_dev_xenvirt_create(name, params, rte_socket_id(), DEV_CREATE);
+	eth_dev_xenvirt_create(rte_vdev_device_name(dev),
+		rte_vdev_device_args(dev), rte_socket_id(), DEV_CREATE);
 	return 0;
 }
 
 static int
-rte_pmd_xenvirt_remove(const char *name)
+rte_pmd_xenvirt_remove(struct rte_vdev_device *dev)
 {
-	eth_dev_xenvirt_free(name, rte_socket_id());
+	eth_dev_xenvirt_free(rte_vdev_device_name(dev), rte_socket_id());
 
 	if (virtio_idx == 0) {
 		if (xenstore_uninit() != 0)

@@ -68,12 +68,12 @@ TAILQ_HEAD(vdev_driver_list, rte_vdev_driver);
 /**
  * Probe function called for each virtual device driver once.
  */
-typedef int (rte_vdev_probe_t)(const char *name, const char *args);
+typedef int (rte_vdev_probe_t)(struct rte_vdev_device *dev);
 
 /**
  * Remove function called for each virtual device driver once.
  */
-typedef int (rte_vdev_remove_t)(const char *name);
+typedef int (rte_vdev_remove_t)(struct rte_vdev_device *dev);
 
 /**
  * A virtual device driver abstraction.

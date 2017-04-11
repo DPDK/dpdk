@@ -439,10 +439,11 @@ zuc_pmd_dequeue_burst(void *queue_pair,
 	return nb_dequeued;
 }
 
-static int cryptodev_zuc_remove(const char *name);
+static int cryptodev_zuc_remove(struct rte_vdev_device *vdev);
 
 static int
-cryptodev_zuc_create(struct rte_crypto_vdev_init_params *init_params)
+cryptodev_zuc_create(struct rte_vdev_device *vdev,
+		     struct rte_crypto_vdev_init_params *init_params)
 {
 	struct rte_cryptodev *dev;
 	struct zuc_private *internals;
@@ -495,13 +496,12 @@ init_error:
 	ZUC_LOG_ERR("driver %s: cryptodev_zuc_create failed",
 			init_params->name);
 
-	cryptodev_zuc_remove(init_params->name);
+	cryptodev_zuc_remove(vdev);
 	return -EFAULT;
 }
 
 static int
-cryptodev_zuc_probe(const char *name,
-		const char *input_args)
+cryptodev_zuc_probe(struct rte_vdev_device *vdev)
 {
 	struct rte_crypto_vdev_init_params init_params = {
 		RTE_CRYPTODEV_VDEV_DEFAULT_MAX_NB_QUEUE_PAIRS,
@@ -509,6 +509,11 @@ cryptodev_zuc_probe(const char *name,
 		rte_socket_id(),
 		{0}
 	};
+	const char *name;
+	const char *input_args;
+
+	name = rte_vdev_device_name(vdev);
+	input_args = rte_vdev_device_args(vdev);
 
 	rte_cryptodev_parse_vdev_init_params(&init_params, input_args);
 
@@ -522,12 +527,15 @@ cryptodev_zuc_probe(const char *name,
 	RTE_LOG(INFO, PMD, "  Max number of sessions = %d\n",
 			init_params.max_nb_sessions);
 
-	return cryptodev_zuc_create(&init_params);
+	return cryptodev_zuc_create(vdev, &init_params);
 }
 
 static int
-cryptodev_zuc_remove(const char *name)
+cryptodev_zuc_remove(struct rte_vdev_device *vdev)
 {
+	const char *name;
+
+	name = rte_vdev_device_name(vdev);
 	if (name == NULL)
 		return -EINVAL;
 

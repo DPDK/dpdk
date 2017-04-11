@@ -393,7 +393,7 @@ eth_kni_create(const char *name, struct eth_kni_args *args,
 
 	eth_dev->data = data;
 	eth_dev->dev_ops = &eth_kni_ops;
-	eth_dev->driver = NULL;
+	eth_dev->device->driver = NULL;
 
 	data->dev_flags = RTE_ETH_DEV_DETACHABLE;
 	data->kdrv = RTE_KDRV_NONE;
@@ -442,12 +442,16 @@ eth_kni_kvargs_process(struct eth_kni_args *args, const char *params)
 }
 
 static int
-eth_kni_probe(const char *name, const char *params)
+eth_kni_probe(struct rte_vdev_device *vdev)
 {
 	struct rte_eth_dev *eth_dev;
 	struct eth_kni_args args;
+	const char *name;
+	const char *params;
 	int ret;
 
+	name = rte_vdev_device_name(vdev);
+	params = rte_vdev_device_args(vdev);
 	RTE_LOG(INFO, PMD, "Initializing eth_kni for %s\n", name);
 
 	ret = eth_kni_kvargs_process(&args, params);
@@ -475,11 +479,13 @@ kni_uninit:
 }
 
 static int
-eth_kni_remove(const char *name)
+eth_kni_remove(struct rte_vdev_device *vdev)
 {
 	struct rte_eth_dev *eth_dev;
 	struct pmd_internals *internals;
+	const char *name;
 
+	name = rte_vdev_device_name(vdev);
 	RTE_LOG(INFO, PMD, "Un-Initializing eth_kni for %s\n", name);
 
 	/* find the ethdev entry */

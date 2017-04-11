@@ -548,10 +548,11 @@ kasumi_pmd_dequeue_burst(void *queue_pair,
 	return nb_dequeued;
 }
 
-static int cryptodev_kasumi_remove(const char *name);
+static int cryptodev_kasumi_remove(struct rte_vdev_device *vdev);
 
 static int
-cryptodev_kasumi_create(struct rte_crypto_vdev_init_params *init_params)
+cryptodev_kasumi_create(struct rte_vdev_device *vdev,
+			struct rte_crypto_vdev_init_params *init_params)
 {
 	struct rte_cryptodev *dev;
 	struct kasumi_private *internals;
@@ -606,13 +607,12 @@ init_error:
 	KASUMI_LOG_ERR("driver %s: cryptodev_kasumi_create failed",
 			init_params->name);
 
-	cryptodev_kasumi_remove(init_params->name);
+	cryptodev_kasumi_remove(vdev);
 	return -EFAULT;
 }
 
 static int
-cryptodev_kasumi_probe(const char *name,
-		const char *input_args)
+cryptodev_kasumi_probe(struct rte_vdev_device *vdev)
 {
 	struct rte_crypto_vdev_init_params init_params = {
 		RTE_CRYPTODEV_VDEV_DEFAULT_MAX_NB_QUEUE_PAIRS,
@@ -620,6 +620,11 @@ cryptodev_kasumi_probe(const char *name,
 		rte_socket_id(),
 		{0}
 	};
+	const char *name;
+	const char *input_args;
+
+	name = rte_vdev_device_name(vdev);
+	input_args = rte_vdev_device_args(vdev);
 
 	rte_cryptodev_parse_vdev_init_params(&init_params, input_args);
 
@@ -633,12 +638,15 @@ cryptodev_kasumi_probe(const char *name,
 	RTE_LOG(INFO, PMD, "  Max number of sessions = %d\n",
 			init_params.max_nb_sessions);
 
-	return cryptodev_kasumi_create(&init_params);
+	return cryptodev_kasumi_create(vdev, &init_params);
 }
 
 static int
-cryptodev_kasumi_remove(const char *name)
+cryptodev_kasumi_remove(struct rte_vdev_device *vdev)
 {
+	const char *name;
+
+	name = rte_vdev_device_name(vdev);
 	if (name == NULL)
 		return -EINVAL;
 

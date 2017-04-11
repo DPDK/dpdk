@@ -468,16 +468,22 @@ fail:
 }
 
 static int
-skeleton_eventdev_probe(const char *name, __rte_unused const char *input_args)
+skeleton_eventdev_probe(struct rte_vdev_device *vdev)
 {
+	const char *name;
+
+	name = rte_vdev_device_name(vdev);
 	RTE_LOG(INFO, PMD, "Initializing %s on NUMA node %d\n", name,
 			rte_socket_id());
 	return skeleton_eventdev_create(name, rte_socket_id());
 }
 
 static int
-skeleton_eventdev_remove(const char *name)
+skeleton_eventdev_remove(struct rte_vdev_device *vdev)
 {
+	const char *name;
+
+	name = rte_vdev_device_name(vdev);
 	PMD_DRV_LOG(INFO, "Closing %s on NUMA node %d", name, rte_socket_id());
 
 	return rte_event_pmd_vdev_uninit(name);
