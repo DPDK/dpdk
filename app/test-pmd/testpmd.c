@@ -84,7 +84,6 @@
 #ifdef RTE_LIBRTE_BITRATE
 #include <rte_bitrate.h>
 #endif
-#include <rte_metrics.h>
 #ifdef RTE_LIBRTE_LATENCY_STATS
 #include <rte_latencystats.h>
 #endif
