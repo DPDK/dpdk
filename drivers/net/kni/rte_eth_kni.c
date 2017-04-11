@@ -36,6 +36,7 @@
 #include <unistd.h>
 
 #include <rte_ethdev.h>
+#include <rte_ethdev_vdev.h>
 #include <rte_kni.h>
 #include <rte_kvargs.h>
 #include <rte_malloc.h>
@@ -358,32 +359,32 @@ static const struct eth_dev_ops eth_kni_ops = {
 static struct rte_vdev_driver eth_kni_drv;
 
 static struct rte_eth_dev *
-eth_kni_create(const char *name, struct eth_kni_args *args,
+eth_kni_create(struct rte_vdev_device *vdev,
+		struct eth_kni_args *args,
 		unsigned int numa_node)
 {
-	struct pmd_internals *internals = NULL;
+	struct pmd_internals *internals;
 	struct rte_eth_dev_data *data;
 	struct rte_eth_dev *eth_dev;
+	const char *name;
 
 	RTE_LOG(INFO, PMD, "Creating kni ethdev on numa socket %u\n",
 			numa_node);
 
+	name = rte_vdev_device_name(vdev);
 	data = rte_zmalloc_socket(name, sizeof(*data), 0, numa_node);
 	if (data == NULL)
-		goto error;
-
-	internals = rte_zmalloc_socket(name, sizeof(*internals), 0, numa_node);
-	if (internals == NULL)
-		goto error;
+		return NULL;
 
 	/* reserve an ethdev entry */
-	eth_dev = rte_eth_dev_allocate(name);
-	if (eth_dev == NULL)
-		goto error;
+	eth_dev = rte_eth_vdev_allocate(vdev, sizeof(*internals));
+	if (eth_dev == NULL) {
+		rte_free(data);
+		return NULL;
+	}
 
-	data->dev_private = internals;
-	data->port_id = eth_dev->data->port_id;
-	memmove(data->name, eth_dev->data->name, sizeof(data->name));
+	internals = eth_dev->data->dev_private;
+	rte_memcpy(data, eth_dev->data, sizeof(*data));
 	data->nb_rx_queues = 1;
 	data->nb_tx_queues = 1;
 	data->dev_link = pmd_link;
@@ -393,22 +394,12 @@ eth_kni_create(const char *name, struct eth_kni_args *args,
 
 	eth_dev->data = data;
 	eth_dev->dev_ops = &eth_kni_ops;
-	eth_dev->device->driver = NULL;
 
 	data->dev_flags = RTE_ETH_DEV_DETACHABLE;
-	data->kdrv = RTE_KDRV_NONE;
-	data->drv_name = eth_kni_drv.driver.name;
-	data->numa_node = numa_node;
 
 	internals->no_request_thread = args->no_request_thread;
 
 	return eth_dev;
-
-error:
-	rte_free(data);
-	rte_free(internals);
-
-	return NULL;
 }
 
 static int
@@ -462,7 +453,7 @@ eth_kni_probe(struct rte_vdev_device *vdev)
 	if (ret < 0)
 		return ret;
 
-	eth_dev = eth_kni_create(name, &args, rte_socket_id());
+	eth_dev = eth_kni_create(vdev, &args, rte_socket_id());
 	if (eth_dev == NULL)
 		goto kni_uninit;
 

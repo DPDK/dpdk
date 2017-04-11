@@ -40,6 +40,7 @@
 
 #include <rte_cycles.h>
 #include <rte_ethdev.h>
+#include <rte_ethdev_vdev.h>
 #include <rte_kvargs.h>
 #include <rte_malloc.h>
 #include <rte_mbuf.h>
@@ -790,14 +791,17 @@ open_tx_iface(const char *key, const char *value, void *extra_args)
 static struct rte_vdev_driver pmd_pcap_drv;
 
 static int
-pmd_init_internals(const char *name, const unsigned int nb_rx_queues,
+pmd_init_internals(struct rte_vdev_device *vdev,
+		const unsigned int nb_rx_queues,
 		const unsigned int nb_tx_queues,
 		struct pmd_internals **internals,
 		struct rte_eth_dev **eth_dev)
 {
 	struct rte_eth_dev_data *data = NULL;
-	unsigned int numa_node = rte_socket_id();
+	unsigned int numa_node = vdev->device.numa_node;
+	const char *name;
 
+	name = rte_vdev_device_name(vdev);
 	RTE_LOG(INFO, PMD, "Creating pcap-backed ethdev on numa socket %u\n",
 		numa_node);
 
@@ -806,17 +810,14 @@ pmd_init_internals(const char *name, const unsigned int nb_rx_queues,
 	 */
 	data = rte_zmalloc_socket(name, sizeof(*data), 0, numa_node);
 	if (data == NULL)
-		goto error;
-
-	*internals = rte_zmalloc_socket(name, sizeof(**internals), 0,
-			numa_node);
-	if (*internals == NULL)
-		goto error;
+		return -1;
 
 	/* reserve an ethdev entry */
-	*eth_dev = rte_eth_dev_allocate(name);
-	if (*eth_dev == NULL)
-		goto error;
+	*eth_dev = rte_eth_vdev_allocate(vdev, sizeof(**internals));
+	if (*eth_dev == NULL) {
+		rte_free(data);
+		return -1;
+	}
 
 	/* now put it all together
 	 * - store queue data in internals,
@@ -824,9 +825,8 @@ pmd_init_internals(const char *name, const unsigned int nb_rx_queues,
 	 * - point eth_dev_data to internals
 	 * - and point eth_dev structure to new eth_dev_data structure
 	 */
-	data->dev_private = *internals;
-	data->port_id = (*eth_dev)->data->port_id;
-	snprintf(data->name, sizeof(data->name), "%s", (*eth_dev)->data->name);
+	*internals = (*eth_dev)->data->dev_private;
+	rte_memcpy(data, (*eth_dev)->data, sizeof(*data));
 	data->nb_rx_queues = (uint16_t)nb_rx_queues;
 	data->nb_tx_queues = (uint16_t)nb_tx_queues;
 	data->dev_link = pmd_link;
@@ -838,26 +838,17 @@ pmd_init_internals(const char *name, const unsigned int nb_rx_queues,
 	 */
 	(*eth_dev)->data = data;
 	(*eth_dev)->dev_ops = &ops;
-	(*eth_dev)->driver = NULL;
 	data->dev_flags = RTE_ETH_DEV_DETACHABLE;
-	data->kdrv = RTE_KDRV_NONE;
-	data->drv_name = pmd_pcap_drv.driver.name;
-	data->numa_node = numa_node;
 
 	return 0;
-
-error:
-	rte_free(data);
-	rte_free(*internals);
-
-	return -1;
 }
 
 static int
-eth_from_pcaps_common(const char *name, struct pmd_devargs *rx_queues,
-		const unsigned int nb_rx_queues, struct pmd_devargs *tx_queues,
-		const unsigned int nb_tx_queues, struct rte_kvargs *kvlist,
-		struct pmd_internals **internals, struct rte_eth_dev **eth_dev)
+eth_from_pcaps_common(struct rte_vdev_device *vdev,
+		struct pmd_devargs *rx_queues, const unsigned int nb_rx_queues,
+		struct pmd_devargs *tx_queues, const unsigned int nb_tx_queues,
+		struct rte_kvargs *kvlist, struct pmd_internals **internals,
+		struct rte_eth_dev **eth_dev)
 {
 	struct rte_kvargs_pair *pair = NULL;
 	unsigned int k_idx;
@@ -869,7 +860,7 @@ eth_from_pcaps_common(const char *name, struct pmd_devargs *rx_queues,
 	if (tx_queues == NULL && nb_tx_queues > 0)
 		return -1;
 
-	if (pmd_init_internals(name, nb_rx_queues, nb_tx_queues, internals,
+	if (pmd_init_internals(vdev, nb_rx_queues, nb_tx_queues, internals,
 			eth_dev) < 0)
 		return -1;
 
@@ -907,16 +898,17 @@ eth_from_pcaps_common(const char *name, struct pmd_devargs *rx_queues,
 }
 
 static int
-eth_from_pcaps(const char *name, struct pmd_devargs *rx_queues,
-		const unsigned int nb_rx_queues, struct pmd_devargs *tx_queues,
-		const unsigned int nb_tx_queues, struct rte_kvargs *kvlist,
-		int single_iface, unsigned int using_dumpers)
+eth_from_pcaps(struct rte_vdev_device *vdev,
+		struct pmd_devargs *rx_queues, const unsigned int nb_rx_queues,
+		struct pmd_devargs *tx_queues, const unsigned int nb_tx_queues,
+		struct rte_kvargs *kvlist, int single_iface,
+		unsigned int using_dumpers)
 {
 	struct pmd_internals *internals = NULL;
 	struct rte_eth_dev *eth_dev = NULL;
 	int ret;
 
-	ret = eth_from_pcaps_common(name, rx_queues, nb_rx_queues,
+	ret = eth_from_pcaps_common(vdev, rx_queues, nb_rx_queues,
 		tx_queues, nb_tx_queues, kvlist, &internals, &eth_dev);
 
 	if (ret < 0)
@@ -1027,7 +1019,7 @@ pmd_pcap_probe(struct rte_vdev_device *dev)
 		goto free_kvlist;
 
 create_eth:
-	ret = eth_from_pcaps(name, &pcaps, pcaps.num_of_queue, &dumpers,
+	ret = eth_from_pcaps(dev, &pcaps, pcaps.num_of_queue, &dumpers,
 		dumpers.num_of_queue, kvlist, single_iface, is_tx_pcap);
 
 free_kvlist:

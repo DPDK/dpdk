@@ -40,6 +40,7 @@
 
 #include <rte_malloc.h>
 #include <rte_kvargs.h>
+#include <rte_ethdev_vdev.h>
 #include <rte_vdev.h>
 #include <rte_alarm.h>
 
@@ -336,27 +337,21 @@ get_integer_arg(const char *key __rte_unused,
 static struct rte_vdev_driver virtio_user_driver;
 
 static struct rte_eth_dev *
-virtio_user_eth_dev_alloc(const char *name)
+virtio_user_eth_dev_alloc(struct rte_vdev_device *vdev)
 {
 	struct rte_eth_dev *eth_dev;
 	struct rte_eth_dev_data *data;
 	struct virtio_hw *hw;
 	struct virtio_user_dev *dev;
 
-	eth_dev = rte_eth_dev_allocate(name);
+	eth_dev = rte_eth_vdev_allocate(vdev, sizeof(*hw));
 	if (!eth_dev) {
 		PMD_INIT_LOG(ERR, "cannot alloc rte_eth_dev");
 		return NULL;
 	}
 
 	data = eth_dev->data;
-
-	hw = rte_zmalloc(NULL, sizeof(*hw), 0);
-	if (!hw) {
-		PMD_INIT_LOG(ERR, "malloc virtio_hw failed");
-		rte_eth_dev_release_port(eth_dev);
-		return NULL;
-	}
+	hw = eth_dev->data->dev_private;
 
 	dev = rte_zmalloc(NULL, sizeof(*dev), 0);
 	if (!dev) {
@@ -377,12 +372,7 @@ virtio_user_eth_dev_alloc(const char *name)
 	hw->modern   = 0;
 	hw->use_simple_rxtx = 0;
 	hw->virtio_user_dev = dev;
-	data->dev_private = hw;
-	data->drv_name = virtio_user_driver.driver.name;
-	data->numa_node = SOCKET_ID_ANY;
-	data->kdrv = RTE_KDRV_NONE;
 	data->dev_flags = RTE_ETH_DEV_DETACHABLE;
-	eth_dev->driver = NULL;
 	return eth_dev;
 }
 
@@ -501,7 +491,7 @@ virtio_user_pmd_probe(struct rte_vdev_device *dev)
 	}
 
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-		eth_dev = virtio_user_eth_dev_alloc(rte_vdev_device_name(dev));
+		eth_dev = virtio_user_eth_dev_alloc(dev);
 		if (!eth_dev) {
 			PMD_INIT_LOG(ERR, "virtio_user fails to alloc device");
 			goto end;

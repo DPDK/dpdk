@@ -36,6 +36,7 @@
 #include <rte_mbuf.h>
 #include <rte_malloc.h>
 #include <rte_ethdev.h>
+#include <rte_ethdev_vdev.h>
 #include <rte_tcp.h>
 #include <rte_udp.h>
 #include <rte_ip.h>
@@ -2253,31 +2254,20 @@ bond_alloc(struct rte_vdev_device *dev, uint8_t mode)
 	 * and internal (private) data
 	 */
 
-	if (name == NULL) {
-		RTE_BOND_LOG(ERR, "Invalid name specified");
-		goto err;
-	}
-
 	if (socket_id >= number_of_sockets()) {
 		RTE_BOND_LOG(ERR,
 				"Invalid socket id specified to create bonded device on.");
 		goto err;
 	}
 
-	internals = rte_zmalloc_socket(name, sizeof(*internals), 0, socket_id);
-	if (internals == NULL) {
-		RTE_BOND_LOG(ERR, "Unable to malloc internals on socket");
-		goto err;
-	}
-
 	/* reserve an ethdev entry */
-	eth_dev = rte_eth_dev_allocate(name);
+	eth_dev = rte_eth_vdev_allocate(dev, sizeof(*internals));
 	if (eth_dev == NULL) {
 		RTE_BOND_LOG(ERR, "Unable to allocate rte_eth_dev");
 		goto err;
 	}
 
-	eth_dev->data->dev_private = internals;
+	internals = eth_dev->data->dev_private;
 	eth_dev->data->nb_rx_queues = (uint16_t)1;
 	eth_dev->data->nb_tx_queues = (uint16_t)1;
 
@@ -2291,10 +2281,6 @@ bond_alloc(struct rte_vdev_device *dev, uint8_t mode)
 	eth_dev->dev_ops = &default_dev_ops;
 	eth_dev->data->dev_flags = RTE_ETH_DEV_INTR_LSC |
 		RTE_ETH_DEV_DETACHABLE;
-	eth_dev->driver = NULL;
-	eth_dev->data->kdrv = RTE_KDRV_NONE;
-	eth_dev->data->drv_name = pmd_bond_drv.driver.name;
-	eth_dev->data->numa_node =  socket_id;
 
 	rte_spinlock_init(&internals->lock);
 

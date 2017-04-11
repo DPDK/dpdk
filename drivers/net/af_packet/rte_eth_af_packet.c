@@ -38,6 +38,7 @@
 
 #include <rte_mbuf.h>
 #include <rte_ethdev.h>
+#include <rte_ethdev_vdev.h>
 #include <rte_malloc.h>
 #include <rte_kvargs.h>
 #include <rte_vdev.h>
@@ -539,18 +540,19 @@ open_packet_iface(const char *key __rte_unused,
 static struct rte_vdev_driver pmd_af_packet_drv;
 
 static int
-rte_pmd_init_internals(const char *name,
+rte_pmd_init_internals(struct rte_vdev_device *dev,
                        const int sockfd,
                        const unsigned nb_queues,
                        unsigned int blocksize,
                        unsigned int blockcnt,
                        unsigned int framesize,
                        unsigned int framecnt,
-                       const unsigned numa_node,
                        struct pmd_internals **internals,
                        struct rte_eth_dev **eth_dev,
                        struct rte_kvargs *kvlist)
 {
+	const char *name = rte_vdev_device_name(dev);
+	const unsigned int numa_node = dev->device.numa_node;
 	struct rte_eth_dev_data *data = NULL;
 	struct rte_kvargs_pair *pair = NULL;
 	struct ifreq ifr;
@@ -768,7 +770,7 @@ rte_pmd_init_internals(const char *name,
 	}
 
 	/* reserve an ethdev entry */
-	*eth_dev = rte_eth_dev_allocate(name);
+	*eth_dev = rte_eth_vdev_allocate(dev, 0);
 	if (*eth_dev == NULL)
 		goto error;
 
@@ -782,22 +784,16 @@ rte_pmd_init_internals(const char *name,
 
 	(*internals)->nb_queues = nb_queues;
 
+	rte_memcpy(data, (*eth_dev)->data, sizeof(*data));
 	data->dev_private = *internals;
-	data->port_id = (*eth_dev)->data->port_id;
 	data->nb_rx_queues = (uint16_t)nb_queues;
 	data->nb_tx_queues = (uint16_t)nb_queues;
 	data->dev_link = pmd_link;
 	data->mac_addrs = &(*internals)->eth_addr;
-	strncpy(data->name,
-		(*eth_dev)->data->name, strlen((*eth_dev)->data->name));
 
 	(*eth_dev)->data = data;
 	(*eth_dev)->dev_ops = &ops;
-	(*eth_dev)->driver = NULL;
 	(*eth_dev)->data->dev_flags = RTE_ETH_DEV_DETACHABLE;
-	(*eth_dev)->data->drv_name = pmd_af_packet_drv.driver.name;
-	(*eth_dev)->data->kdrv = RTE_KDRV_NONE;
-	(*eth_dev)->data->numa_node = numa_node;
 
 	return 0;
 
@@ -822,11 +818,11 @@ error_early:
 }
 
 static int
-rte_eth_from_packet(const char *name,
+rte_eth_from_packet(struct rte_vdev_device *dev,
                     int const *sockfd,
-                    const unsigned numa_node,
                     struct rte_kvargs *kvlist)
 {
+	const char *name = rte_vdev_device_name(dev);
 	struct pmd_internals *internals = NULL;
 	struct rte_eth_dev *eth_dev = NULL;
 	struct rte_kvargs_pair *pair = NULL;
@@ -909,11 +905,11 @@ rte_eth_from_packet(const char *name,
 	RTE_LOG(INFO, PMD, "%s:\tframe size %d\n", name, framesize);
 	RTE_LOG(INFO, PMD, "%s:\tframe count %d\n", name, framecount);
 
-	if (rte_pmd_init_internals(name, *sockfd, qpairs,
-	                           blocksize, blockcount,
-	                           framesize, framecount,
-	                           numa_node, &internals, &eth_dev,
-	                           kvlist) < 0)
+	if (rte_pmd_init_internals(dev, *sockfd, qpairs,
+				   blocksize, blockcount,
+				   framesize, framecount,
+				   &internals, &eth_dev,
+				   kvlist) < 0)
 		return -1;
 
 	eth_dev->rx_pkt_burst = eth_af_packet_rx;
@@ -925,15 +921,12 @@ rte_eth_from_packet(const char *name,
 static int
 rte_pmd_af_packet_probe(struct rte_vdev_device *dev)
 {
-	const char *name = rte_vdev_device_name(dev);
-	unsigned numa_node;
 	int ret = 0;
 	struct rte_kvargs *kvlist;
 	int sockfd = -1;
 
-	RTE_LOG(INFO, PMD, "Initializing pmd_af_packet for %s\n", name);
-
-	numa_node = rte_socket_id();
+	RTE_LOG(INFO, PMD, "Initializing pmd_af_packet for %s\n",
+		rte_vdev_device_name(dev));
 
 	kvlist = rte_kvargs_parse(rte_vdev_device_args(dev), valid_arguments);
 	if (kvlist == NULL) {
@@ -953,7 +946,10 @@ rte_pmd_af_packet_probe(struct rte_vdev_device *dev)
 			goto exit;
 	}
 
-	ret = rte_eth_from_packet(name, &sockfd, numa_node, kvlist);
+	if (dev->device.numa_node == SOCKET_ID_ANY)
+		dev->device.numa_node = rte_socket_id();
+
+	ret = rte_eth_from_packet(dev, &sockfd, kvlist);
 	close(sockfd); /* no longer needed */
 
 exit:

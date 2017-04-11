@@ -36,6 +36,7 @@
 #include <rte_common.h>
 #include <rte_mbuf.h>
 #include <rte_ethdev.h>
+#include <rte_ethdev_vdev.h>
 #include <rte_malloc.h>
 #include <rte_vdev.h>
 #include <rte_kvargs.h>
@@ -1131,12 +1132,13 @@ tap_kernel_support(struct pmd_internals *pmd)
 }
 
 static int
-eth_dev_tap_create(const char *name, char *tap_name, char *remote_iface)
+eth_dev_tap_create(struct rte_vdev_device *vdev, char *tap_name,
+		   char *remote_iface)
 {
 	int numa_node = rte_socket_id();
-	struct rte_eth_dev *dev = NULL;
-	struct pmd_internals *pmd = NULL;
-	struct rte_eth_dev_data *data = NULL;
+	struct rte_eth_dev *dev;
+	struct pmd_internals *pmd;
+	struct rte_eth_dev_data *data;
 	int i;
 
 	RTE_LOG(DEBUG, PMD, "  TAP device on numa %u\n", rte_socket_id());
@@ -1147,22 +1149,14 @@ eth_dev_tap_create(const char *name, char *tap_name, char *remote_iface)
 		goto error_exit;
 	}
 
-	pmd = rte_zmalloc_socket(tap_name, sizeof(*pmd), 0, numa_node);
-	if (!pmd) {
-		RTE_LOG(ERR, PMD, "TAP Unable to allocate internal struct\n");
-		goto error_exit;
-	}
-
-	/* name in allocation and data->name must be consistent */
-	snprintf(data->name, sizeof(data->name), "%s", name);
-	dev = rte_eth_dev_allocate(name);
+	dev = rte_eth_vdev_allocate(vdev, sizeof(*pmd));
 	if (!dev) {
 		RTE_LOG(ERR, PMD, "TAP Unable to allocate device struct\n");
 		goto error_exit;
 	}
 
+	pmd = dev->data->dev_private;
 	snprintf(pmd->name, sizeof(pmd->name), "%s", tap_name);
-
 	pmd->nb_queues = RTE_PMD_TAP_MAX_QUEUES;
 
 	pmd->ioctl_sock = socket(AF_INET, SOCK_DGRAM, 0);
@@ -1174,13 +1168,11 @@ eth_dev_tap_create(const char *name, char *tap_name, char *remote_iface)
 	}
 
 	/* Setup some default values */
+	rte_memcpy(data, dev->data, sizeof(*data));
 	data->dev_private = pmd;
-	data->port_id = dev->data->port_id;
-	data->mtu = dev->data->mtu;
 	data->dev_flags = RTE_ETH_DEV_DETACHABLE | RTE_ETH_DEV_INTR_LSC;
-	data->kdrv = RTE_KDRV_NONE;
-	data->drv_name = pmd_tap_drv.driver.name;
 	data->numa_node = numa_node;
+	data->drv_name = pmd_tap_drv.driver.name;
 
 	data->dev_link = pmd_link;
 	data->mac_addrs = &pmd->eth_addr;
@@ -1189,7 +1181,6 @@ eth_dev_tap_create(const char *name, char *tap_name, char *remote_iface)
 
 	dev->data = data;
 	dev->dev_ops = &ops;
-	dev->driver = NULL;
 	dev->rx_pkt_burst = pmd_rx_burst;
 	dev->tx_pkt_burst = pmd_tx_burst;
 
@@ -1236,13 +1227,10 @@ eth_dev_tap_create(const char *name, char *tap_name, char *remote_iface)
 	return 0;
 
 error_exit:
-	RTE_LOG(DEBUG, PMD, "TAP Unable to initialize %s\n", name);
+	RTE_LOG(DEBUG, PMD, "TAP Unable to initialize %s\n",
+		rte_vdev_device_name(vdev));
 
 	rte_free(data);
-	rte_free(pmd);
-
-	rte_eth_dev_release_port(dev);
-
 	return -EINVAL;
 }
 
@@ -1343,7 +1331,7 @@ rte_pmd_tap_probe(struct rte_vdev_device *dev)
 	RTE_LOG(NOTICE, PMD, "Initializing pmd_tap for %s as %s\n",
 		name, tap_name);
 
-	ret = eth_dev_tap_create(name, tap_name, remote_iface);
+	ret = eth_dev_tap_create(dev, tap_name, remote_iface);
 
 leave:
 	if (ret == -1) {

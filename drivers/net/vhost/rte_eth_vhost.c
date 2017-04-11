@@ -36,6 +36,7 @@
 
 #include <rte_mbuf.h>
 #include <rte_ethdev.h>
+#include <rte_ethdev_vdev.h>
 #include <rte_malloc.h>
 #include <rte_memcpy.h>
 #include <rte_vdev.h>
@@ -983,9 +984,10 @@ static const struct eth_dev_ops ops = {
 static struct rte_vdev_driver pmd_vhost_drv;
 
 static int
-eth_dev_vhost_create(const char *name, char *iface_name, int16_t queues,
-		     const unsigned numa_node, uint64_t flags)
+eth_dev_vhost_create(struct rte_vdev_device *dev, char *iface_name,
+	int16_t queues, const unsigned int numa_node, uint64_t flags)
 {
+	const char *name = rte_vdev_device_name(dev);
 	struct rte_eth_dev_data *data = NULL;
 	struct pmd_internal *internal = NULL;
 	struct rte_eth_dev *eth_dev = NULL;
@@ -996,15 +998,11 @@ eth_dev_vhost_create(const char *name, char *iface_name, int16_t queues,
 	RTE_LOG(INFO, PMD, "Creating VHOST-USER backend on numa socket %u\n",
 		numa_node);
 
-	/* now do all data allocation - for eth_dev structure, dummy pci driver
-	 * and internal (private) data
+	/* now do all data allocation - for eth_dev structure and internal
+	 * (private) data
 	 */
 	data = rte_zmalloc_socket(name, sizeof(*data), 0, numa_node);
 	if (data == NULL)
-		goto error;
-
-	internal = rte_zmalloc_socket(name, sizeof(*internal), 0, numa_node);
-	if (internal == NULL)
 		goto error;
 
 	list = rte_zmalloc_socket(name, sizeof(*list), 0, numa_node);
@@ -1012,7 +1010,7 @@ eth_dev_vhost_create(const char *name, char *iface_name, int16_t queues,
 		goto error;
 
 	/* reserve an ethdev entry */
-	eth_dev = rte_eth_dev_allocate(name);
+	eth_dev = rte_eth_vdev_allocate(dev, sizeof(*internal));
 	if (eth_dev == NULL)
 		goto error;
 
@@ -1029,10 +1027,10 @@ eth_dev_vhost_create(const char *name, char *iface_name, int16_t queues,
 
 	/* now put it all together
 	 * - store queue data in internal,
-	 * - store numa_node info in ethdev data
 	 * - point eth_dev_data to internals
 	 * - and point eth_dev structure to new eth_dev_data structure
 	 */
+	internal = eth_dev->data->dev_private;
 	internal->dev_name = strdup(name);
 	if (internal->dev_name == NULL)
 		goto error;
@@ -1048,26 +1046,21 @@ eth_dev_vhost_create(const char *name, char *iface_name, int16_t queues,
 	rte_spinlock_init(&vring_state->lock);
 	vring_states[eth_dev->data->port_id] = vring_state;
 
-	data->dev_private = internal;
-	data->port_id = eth_dev->data->port_id;
-	memmove(data->name, eth_dev->data->name, sizeof(data->name));
+	/* We'll replace the 'data' originally allocated by eth_dev. So the
+	 * vhost PMD resources won't be shared between multi processes.
+	 */
+	rte_memcpy(data, eth_dev->data, sizeof(*data));
+	eth_dev->data = data;
+
 	data->nb_rx_queues = queues;
 	data->nb_tx_queues = queues;
 	internal->max_queues = queues;
 	data->dev_link = pmd_link;
 	data->mac_addrs = eth_addr;
-
-	/* We'll replace the 'data' originally allocated by eth_dev. So the
-	 * vhost PMD resources won't be shared between multi processes.
-	 */
-	eth_dev->data = data;
-	eth_dev->dev_ops = &ops;
-	eth_dev->driver = NULL;
 	data->dev_flags =
 		RTE_ETH_DEV_DETACHABLE | RTE_ETH_DEV_INTR_LSC;
-	data->kdrv = RTE_KDRV_NONE;
-	data->drv_name = pmd_vhost_drv.driver.name;
-	data->numa_node = numa_node;
+
+	eth_dev->dev_ops = &ops;
 
 	/* finally assign rx and tx ops */
 	eth_dev->rx_pkt_burst = eth_vhost_rx;
@@ -1090,8 +1083,10 @@ eth_dev_vhost_create(const char *name, char *iface_name, int16_t queues,
 	return data->port_id;
 
 error:
-	if (internal)
+	if (internal) {
+		free(internal->iface_name);
 		free(internal->dev_name);
+	}
 	rte_free(vring_state);
 	rte_free(eth_addr);
 	if (eth_dev)
@@ -1134,7 +1129,6 @@ open_int(const char *key __rte_unused, const char *value, void *extra_args)
 static int
 rte_pmd_vhost_probe(struct rte_vdev_device *dev)
 {
-	const char *name;
 	struct rte_kvargs *kvlist = NULL;
 	int ret = 0;
 	char *iface_name;
@@ -1143,8 +1137,8 @@ rte_pmd_vhost_probe(struct rte_vdev_device *dev)
 	int client_mode = 0;
 	int dequeue_zero_copy = 0;
 
-	name = rte_vdev_device_name(dev);
-	RTE_LOG(INFO, PMD, "Initializing pmd_vhost for %s\n", name);
+	RTE_LOG(INFO, PMD, "Initializing pmd_vhost for %s\n",
+		rte_vdev_device_name(dev));
 
 	kvlist = rte_kvargs_parse(rte_vdev_device_args(dev), valid_arguments);
 	if (kvlist == NULL)
@@ -1189,7 +1183,11 @@ rte_pmd_vhost_probe(struct rte_vdev_device *dev)
 			flags |= RTE_VHOST_USER_DEQUEUE_ZERO_COPY;
 	}
 
-	eth_dev_vhost_create(name, iface_name, queues, rte_socket_id(), flags);
+	if (dev->device.numa_node == SOCKET_ID_ANY)
+		dev->device.numa_node = rte_socket_id();
+
+	eth_dev_vhost_create(dev, iface_name, queues, dev->device.numa_node,
+		flags);
 
 out_free:
 	rte_kvargs_free(kvlist);
