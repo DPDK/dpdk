@@ -204,26 +204,6 @@ nn_cfg_writeq(struct nfp_net_hw *hw, int off, uint64_t val)
 	nn_writeq(rte_cpu_to_le_64(val), hw->ctrl_bar + off);
 }
 
-/* Creating memzone for hardware rings. */
-static const struct rte_memzone *
-ring_dma_zone_reserve(struct rte_eth_dev *dev, const char *ring_name,
-		      uint16_t queue_id, uint32_t ring_size, int socket_id)
-{
-	char z_name[RTE_MEMZONE_NAMESIZE];
-	const struct rte_memzone *mz;
-
-	snprintf(z_name, sizeof(z_name), "%s_%s_%d_%d",
-		 dev->driver->pci_drv.driver.name,
-		 ring_name, dev->data->port_id, queue_id);
-
-	mz = rte_memzone_lookup(z_name);
-	if (mz)
-		return mz;
-
-	return rte_memzone_reserve_aligned(z_name, ring_size, socket_id, 0,
-					   NFP_MEMZONE_ALIGN);
-}
-
 /*
  * Atomically reads link status information from global structure rte_eth_dev.
  *
@@ -1455,9 +1435,10 @@ nfp_net_rx_queue_setup(struct rte_eth_dev *dev,
 	 * handle the maximum ring size is allocated in order to allow for
 	 * resizing in later calls to the queue setup function.
 	 */
-	tz = ring_dma_zone_reserve(dev, "rx_ring", queue_idx,
+	tz = rte_eth_dma_zone_reserve(dev, "rx_ring", queue_idx,
 				   sizeof(struct nfp_net_rx_desc) *
-				   NFP_NET_MAX_RX_DESC, socket_id);
+				   NFP_NET_MAX_RX_DESC, NFP_MEMZONE_ALIGN,
+				   socket_id);
 
 	if (tz == NULL) {
 		RTE_LOG(ERR, PMD, "Error allocatig rx dma\n");
@@ -1597,9 +1578,10 @@ nfp_net_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	 * handle the maximum ring size is allocated in order to allow for
 	 * resizing in later calls to the queue setup function.
 	 */
-	tz = ring_dma_zone_reserve(dev, "tx_ring", queue_idx,
+	tz = rte_eth_dma_zone_reserve(dev, "tx_ring", queue_idx,
 				   sizeof(struct nfp_net_tx_desc) *
-				   NFP_NET_MAX_TX_DESC, socket_id);
+				   NFP_NET_MAX_TX_DESC, NFP_MEMZONE_ALIGN,
+				   socket_id);
 	if (tz == NULL) {
 		RTE_LOG(ERR, PMD, "Error allocating tx dma\n");
 		nfp_net_tx_queue_release(txq);
