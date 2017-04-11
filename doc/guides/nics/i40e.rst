@@ -126,82 +126,15 @@ Please note that enabling debugging options may affect system performance.
   Interrupt Throttling interval.
 
 
-Driver Compilation
-~~~~~~~~~~~~~~~~~~
+Driver compilation and testing
+------------------------------
 
-To compile the I40E PMD see :ref:`Getting Started Guide for Linux <linux_gsg>` or
-:ref:`Getting Started Guide for FreeBSD <freebsd_gsg>` depending on your platform.
-
-
-Linux
------
-
-
-Running testpmd
-~~~~~~~~~~~~~~~
-
-This section demonstrates how to launch ``testpmd`` with Intel XL710/X710
-devices managed by ``librte_pmd_i40e`` in the Linux operating system.
-
-#. Load ``igb_uio`` or ``vfio-pci`` driver:
-
-   .. code-block:: console
-
-      modprobe uio
-      insmod ./x86_64-native-linuxapp-gcc/kmod/igb_uio.ko
-
-   or
-
-   .. code-block:: console
-
-      modprobe vfio-pci
-
-#. Bind the XL710/X710 adapters to ``igb_uio`` or ``vfio-pci`` loaded in the previous step:
-
-   .. code-block:: console
-
-      ./usertools/dpdk-devbind.py --bind igb_uio 0000:83:00.0
-
-   Or setup VFIO permissions for regular users and then bind to ``vfio-pci``:
-
-   .. code-block:: console
-
-      ./usertools/dpdk-devbind.py --bind vfio-pci 0000:83:00.0
-
-#. Start ``testpmd`` with basic parameters:
-
-   .. code-block:: console
-
-      ./x86_64-native-linuxapp-gcc/app/testpmd -l 0-3 -n 4 -w 83:00.0 -- -i
-
-   Example output:
-
-   .. code-block:: console
-
-      ...
-      EAL: PCI device 0000:83:00.0 on NUMA socket 1
-      EAL: probe driver: 8086:1572 rte_i40e_pmd
-      EAL: PCI memory mapped at 0x7f7f80000000
-      EAL: PCI memory mapped at 0x7f7f80800000
-      PMD: eth_i40e_dev_init(): FW 5.0 API 1.5 NVM 05.00.02 eetrack 8000208a
-      Interactive-mode selected
-      Configuring Port 0 (socket 0)
-      ...
-
-      PMD: i40e_dev_rx_queue_setup(): Rx Burst Bulk Alloc Preconditions are
-      satisfied.Rx Burst Bulk Alloc function will be used on port=0, queue=0.
-
-      ...
-      Port 0: 68:05:CA:26:85:84
-      Checking link statuses...
-      Port 0 Link Up - speed 10000 Mbps - full-duplex
-      Done
-
-      testpmd>
+Refer to the document :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>`
+for details.
 
 
 SR-IOV: Prerequisites and sample Application Notes
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+--------------------------------------------------
 
 #. Load the kernel module:
 
@@ -249,6 +182,37 @@ SR-IOV: Prerequisites and sample Application Notes
 
 #. Assign VF to VM, and bring up the VM.
    Please see the documentation for the *I40E/IXGBE/IGB Virtual Function Driver*.
+
+#. Running testpmd:
+
+   Follow instructions available in the document
+   :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>`
+   to run testpmd.
+
+   Example output:
+
+   .. code-block:: console
+
+      ...
+      EAL: PCI device 0000:83:00.0 on NUMA socket 1
+      EAL: probe driver: 8086:1572 rte_i40e_pmd
+      EAL: PCI memory mapped at 0x7f7f80000000
+      EAL: PCI memory mapped at 0x7f7f80800000
+      PMD: eth_i40e_dev_init(): FW 5.0 API 1.5 NVM 05.00.02 eetrack 8000208a
+      Interactive-mode selected
+      Configuring Port 0 (socket 0)
+      ...
+
+      PMD: i40e_dev_rx_queue_setup(): Rx Burst Bulk Alloc Preconditions are
+      satisfied.Rx Burst Bulk Alloc function will be used on port=0, queue=0.
+
+      ...
+      Port 0: 68:05:CA:26:85:84
+      Checking link statuses...
+      Port 0 Link Up - speed 10000 Mbps - full-duplex
+      Done
+
+      testpmd>
 
 
 Sample Application Notes
