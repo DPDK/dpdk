@@ -89,3 +89,9 @@ ark_rqp_dump(struct ark_rqpace_t *rqp)
 		      "cplh pending max", rqp->cplh_pending_max,
 		      "cpld pending max", rqp->cpld_pending_max);
 }
+
+int
+ark_rqp_lasped(struct ark_rqpace_t *rqp)
+{
+	return rqp->lasped;
+}

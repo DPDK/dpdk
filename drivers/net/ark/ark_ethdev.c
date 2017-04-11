@@ -318,6 +318,15 @@ eth_ark_dev_init(struct rte_eth_dev *dev)
 			    ark->sysctrl.t32[4], __func__);
 		return -1;
 	}
+	if (ark->sysctrl.t32[3] != 0) {
+		if (ark_rqp_lasped(ark->rqpacing)) {
+			PMD_DRV_LOG(ERR, "Arkville Evaluation System - "
+				    "Timer has Expired\n");
+			return -1;
+		}
+		PMD_DRV_LOG(WARNING, "Arkville Evaluation System - "
+			    "Timer is Running\n");
+	}
 
 	PMD_DRV_LOG(INFO,
 		    "HW Sanity test has PASSED, expected constant"
