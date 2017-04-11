@@ -258,7 +258,7 @@ nicvf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 
 	/* Reading per RX ring stats */
 	for (qidx = rx_start; qidx <= rx_end; qidx++) {
-		if (qidx == RTE_ETHDEV_QUEUE_STAT_CNTRS)
+		if (qidx >= RTE_ETHDEV_QUEUE_STAT_CNTRS)
 			break;
 
 		nicvf_hw_get_rx_qstats(nic, &rx_qstats, qidx);
@@ -271,7 +271,7 @@ nicvf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 
 	/* Reading per TX ring stats */
 	for (qidx = tx_start; qidx <= tx_end; qidx++) {
-		if (qidx == RTE_ETHDEV_QUEUE_STAT_CNTRS)
+		if (qidx >= RTE_ETHDEV_QUEUE_STAT_CNTRS)
 			break;
 
 		nicvf_hw_get_tx_qstats(nic, &tx_qstats, qidx);
@@ -290,7 +290,7 @@ nicvf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 
 		/* Reading per RX ring stats */
 		for (qidx = rx_start; qidx <= rx_end; qidx++) {
-			if (qidx == RTE_ETHDEV_QUEUE_STAT_CNTRS)
+			if (qidx >= RTE_ETHDEV_QUEUE_STAT_CNTRS)
 				break;
 
 			nicvf_hw_get_rx_qstats(snic, &rx_qstats,
@@ -303,7 +303,7 @@ nicvf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 		nicvf_tx_range(dev, snic, &tx_start, &tx_end);
 		/* Reading per TX ring stats */
 		for (qidx = tx_start; qidx <= tx_end; qidx++) {
-			if (qidx == RTE_ETHDEV_QUEUE_STAT_CNTRS)
+			if (qidx >= RTE_ETHDEV_QUEUE_STAT_CNTRS)
 				break;
 
 			nicvf_hw_get_tx_qstats(snic, &tx_qstats,
