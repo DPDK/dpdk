@@ -411,3 +411,35 @@ dpaa2_create_dpio_device(struct fslmc_vfio_device *vdev,
 
 	return 0;
 }
+
+void
+dpaa2_free_dq_storage(struct queue_storage_info_t *q_storage)
+{
+	int i = 0;
+
+	for (i = 0; i < NUM_DQS_PER_QUEUE; i++) {
+		if (q_storage->dq_storage[i])
+			rte_free(q_storage->dq_storage[i]);
+	}
+}
+
+int
+dpaa2_alloc_dq_storage(struct queue_storage_info_t *q_storage)
+{
+	int i = 0;
+
+	for (i = 0; i < NUM_DQS_PER_QUEUE; i++) {
+		q_storage->dq_storage[i] = rte_malloc(NULL,
+			DPAA2_DQRR_RING_SIZE * sizeof(struct qbman_result),
+			RTE_CACHE_LINE_SIZE);
+		if (!q_storage->dq_storage[i])
+			goto fail;
+	}
+	return 0;
+fail:
+	i -= 1;
+	while (i >= 0)
+		rte_free(q_storage->dq_storage[i]);
+
+	return -1;
+}

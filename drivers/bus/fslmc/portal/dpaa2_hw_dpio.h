@@ -59,5 +59,12 @@ int dpaa2_affine_qbman_swp(void);
 /* Affine additional DPIO portal to current crypto processing thread */
 int dpaa2_affine_qbman_swp_sec(void);
 
+/* allocate memory for FQ - dq storage */
+int
+dpaa2_alloc_dq_storage(struct queue_storage_info_t *q_storage);
+
+/* free memory for FQ- dq storage */
+void
+dpaa2_free_dq_storage(struct queue_storage_info_t *q_storage);
 
 #endif /* _DPAA2_HW_DPIO_H_ */
