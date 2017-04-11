@@ -76,7 +76,7 @@ dpaa2_setup_flow_dist(struct rte_eth_dev *eth_dev,
 	memset(&tc_cfg, 0, sizeof(struct dpni_rx_tc_dist_cfg));
 
 	dpaa2_distset_to_dpkg_profile_cfg(req_dist_set, &kg_cfg);
-	tc_cfg.key_cfg_iova = (uint64_t)(p_params);
+	tc_cfg.key_cfg_iova = (uint64_t)(DPAA2_VADDR_TO_IOVA(p_params));
 	tc_cfg.dist_size = eth_dev->data->nb_rx_queues;
 	tc_cfg.dist_mode = DPNI_DIST_MODE_HASH;
 
@@ -119,7 +119,7 @@ int dpaa2_remove_flow_dist(
 	memset(p_params, 0, DIST_PARAM_IOVA_SIZE);
 	memset(&tc_cfg, 0, sizeof(struct dpni_rx_tc_dist_cfg));
 
-	tc_cfg.key_cfg_iova = (uint64_t)(p_params);
+	tc_cfg.key_cfg_iova = (uint64_t)(DPAA2_VADDR_TO_IOVA(p_params));
 	tc_cfg.dist_size = 0;
 	tc_cfg.dist_mode = DPNI_DIST_MODE_NONE;
 

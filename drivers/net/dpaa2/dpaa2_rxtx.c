@@ -136,7 +136,7 @@ static inline struct rte_mbuf *__attribute__((hot))
 eth_fd_to_mbuf(const struct qbman_fd *fd)
 {
 	struct rte_mbuf *mbuf = DPAA2_INLINE_MBUF_FROM_BUF(
-			DPAA2_GET_FD_ADDR(fd),
+		DPAA2_IOVA_TO_VADDR(DPAA2_GET_FD_ADDR(fd)),
 		     rte_dpaa2_bpid_info[DPAA2_GET_FD_BPID(fd)].meta_data_size);
 
 	/* need to repopulated some of the fields,
@@ -151,10 +151,11 @@ eth_fd_to_mbuf(const struct qbman_fd *fd)
 	/* Parse the packet */
 	/* parse results are after the private - sw annotation area */
 	mbuf->packet_type = dpaa2_dev_rx_parse(
-			(uint64_t)(DPAA2_GET_FD_ADDR(fd))
+			(uint64_t)DPAA2_IOVA_TO_VADDR(DPAA2_GET_FD_ADDR(fd))
 			 + DPAA2_FD_PTA_SIZE);
 
-	dpaa2_dev_rx_offload((uint64_t)(DPAA2_GET_FD_ADDR(fd)) +
+	dpaa2_dev_rx_offload((uint64_t)DPAA2_IOVA_TO_VADDR(
+			     DPAA2_GET_FD_ADDR(fd)) +
 			     DPAA2_FD_PTA_SIZE, mbuf);
 
 	mbuf->next = NULL;
@@ -177,7 +178,7 @@ eth_mbuf_to_fd(struct rte_mbuf *mbuf,
 	/*Resetting the buffer pool id and offset field*/
 	fd->simple.bpid_offset = 0;
 
-	DPAA2_SET_FD_ADDR(fd, (mbuf->buf_addr));
+	DPAA2_SET_FD_ADDR(fd, DPAA2_MBUF_VADDR_TO_IOVA(mbuf));
 	DPAA2_SET_FD_LEN(fd, mbuf->data_len);
 	DPAA2_SET_FD_BPID(fd, bpid);
 	DPAA2_SET_FD_OFFSET(fd, mbuf->data_off);
@@ -219,7 +220,7 @@ eth_copy_mbuf_to_fd(struct rte_mbuf *mbuf,
 	/*Resetting the buffer pool id and offset field*/
 	fd->simple.bpid_offset = 0;
 
-	DPAA2_SET_FD_ADDR(fd, (m->buf_addr));
+	DPAA2_SET_FD_ADDR(fd, DPAA2_MBUF_VADDR_TO_IOVA(m));
 	DPAA2_SET_FD_LEN(fd, mbuf->data_len);
 	DPAA2_SET_FD_BPID(fd, bpid);
 	DPAA2_SET_FD_OFFSET(fd, mbuf->data_off);
@@ -271,7 +272,7 @@ dpaa2_dev_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	qbman_pull_desc_set_fq(&pulldesc, fqid);
 	/* todo optimization - we can have dq_storage_phys available*/
 	qbman_pull_desc_set_storage(&pulldesc, dq_storage,
-			(dma_addr_t)(dq_storage), 1);
+			(dma_addr_t)(DPAA2_VADDR_TO_IOVA(dq_storage)), 1);
 
 	/*Issue a volatile dequeue command. */
 	while (1) {
@@ -312,7 +313,8 @@ dpaa2_dev_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		}
 
 		fd = qbman_result_DQ_fd(dq_storage);
-		mbuf = (struct rte_mbuf *)(DPAA2_GET_FD_ADDR(fd)
+		mbuf = (struct rte_mbuf *)DPAA2_IOVA_TO_VADDR(
+		   DPAA2_GET_FD_ADDR(fd)
 		   - rte_dpaa2_bpid_info[DPAA2_GET_FD_BPID(fd)].meta_data_size);
 		/* Prefeth mbuf */
 		rte_prefetch0(mbuf);
