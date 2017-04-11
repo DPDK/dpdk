@@ -66,13 +66,10 @@ rte_eal_vdrv_unregister(struct rte_vdev_driver *driver)
 	TAILQ_REMOVE(&vdev_driver_list, driver, next);
 }
 
-int
-rte_eal_vdev_init(const char *name, const char *args)
+static int
+vdev_probe_all_drivers(const char *name, const char *args)
 {
 	struct rte_vdev_driver *driver;
-
-	if (name == NULL)
-		return -EINVAL;
 
 	TAILQ_FOREACH(driver, &vdev_driver_list, next) {
 		/*
@@ -94,17 +91,28 @@ rte_eal_vdev_init(const char *name, const char *args)
 			return driver->probe(name, args);
 	}
 
-	RTE_LOG(ERR, EAL, "no driver found for %s\n", name);
-	return -EINVAL;
+	return 1;
 }
 
 int
-rte_eal_vdev_uninit(const char *name)
+rte_eal_vdev_init(const char *name, const char *args)
 {
-	struct rte_vdev_driver *driver;
+	int ret;
 
 	if (name == NULL)
 		return -EINVAL;
+
+	ret = vdev_probe_all_drivers(name, args);
+	if (ret  > 0)
+		RTE_LOG(ERR, EAL, "no driver found for %s\n", name);
+
+	return ret;
+}
+
+static int
+vdev_remove_driver(const char *name)
+{
+	struct rte_vdev_driver *driver;
 
 	TAILQ_FOREACH(driver, &vdev_driver_list, next) {
 		/*
@@ -126,8 +134,22 @@ rte_eal_vdev_uninit(const char *name)
 			return driver->remove(name);
 	}
 
-	RTE_LOG(ERR, EAL, "no driver found for %s\n", name);
-	return -EINVAL;
+	return 1;
+}
+
+int
+rte_eal_vdev_uninit(const char *name)
+{
+	int ret;
+
+	if (name == NULL)
+		return -EINVAL;
+
+	ret = vdev_remove_driver(name);
+	if (ret > 0)
+		RTE_LOG(ERR, EAL, "no driver found for %s\n", name);
+
+	return ret;
 }
 
 static int
