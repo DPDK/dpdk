@@ -37,9 +37,12 @@
 #include <mc/fsl_mc_sys.h>
 #include <fsl_qbman_portal.h>
 
+#define DPAA2_DQRR_RING_SIZE	16
+	/** <Maximum number of slots available in RX ring*/
 
 #define MC_PORTAL_INDEX		0
 #define NUM_DPIO_REGIONS	2
+#define NUM_DQS_PER_QUEUE       2
 
 /* Maximum release/acquire from QBMAN */
 #define DPAA2_MBUF_MAX_ACQ_REL	7
@@ -75,6 +78,23 @@ struct dpaa2_dpbp_dev {
 	uint16_t token;
 	rte_atomic16_t in_use;
 	uint32_t dpbp_id; /*HW ID for DPBP object */
+};
+
+struct queue_storage_info_t {
+	struct qbman_result *dq_storage[NUM_DQS_PER_QUEUE];
+};
+
+struct dpaa2_queue {
+	struct rte_mempool *mb_pool; /**< mbuf pool to populate RX ring. */
+	void *dev;
+	int32_t eventfd;	/*!< Event Fd of this queue */
+	uint32_t fqid;		/*!< Unique ID of this queue */
+	uint8_t tc_index;	/*!< traffic class identifier */
+	uint16_t flow_id;	/*!< To be used by DPAA2 frmework */
+	uint64_t rx_pkts;
+	uint64_t tx_pkts;
+	uint64_t err_pkts;
+	struct queue_storage_info_t *q_storage;
 };
 
 /*! Global MCP list */
