@@ -43,6 +43,10 @@
 #ifndef true
 #define true       1
 #endif
+
+#ifndef ETH_VLAN_HLEN
+#define ETH_VLAN_HLEN   4 /** < Vlan Header Length */
+#endif
 #define DPAA2_DQRR_RING_SIZE	16
 	/** <Maximum number of slots available in RX ring*/
 
