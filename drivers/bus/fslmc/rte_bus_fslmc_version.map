@@ -1,6 +1,25 @@
 DPDK_17.05 {
 	global:
 
+	qbman_check_command_complete;
+	qbman_eq_desc_clear;
+	qbman_eq_desc_set_no_orp;
+	qbman_eq_desc_set_qd;
+	qbman_eq_desc_set_response;
+	qbman_get_version;
+	qbman_pull_desc_clear;
+	qbman_pull_desc_set_fq;
+	qbman_pull_desc_set_numframes;
+	qbman_pull_desc_set_storage;
+	qbman_release_desc_clear;
+	qbman_release_desc_set_bpid;
+	qbman_result_DQ_fd;
+	qbman_result_DQ_flags;
+	qbman_result_has_new_result;
+	qbman_swp_acquire;
+	qbman_swp_pull;
+	qbman_swp_release;
+	qbman_swp_send_multiple;
 	rte_fslmc_driver_register;
 	rte_fslmc_driver_unregister;
 
