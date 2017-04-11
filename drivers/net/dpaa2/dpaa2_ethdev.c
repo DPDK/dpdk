@@ -54,6 +54,58 @@
 
 static struct rte_dpaa2_driver rte_dpaa2_pmd;
 
+/**
+ * Atomically reads the link status information from global
+ * structure rte_eth_dev.
+ *
+ * @param dev
+ *   - Pointer to the structure rte_eth_dev to read from.
+ *   - Pointer to the buffer to be saved with the link status.
+ *
+ * @return
+ *   - On success, zero.
+ *   - On failure, negative value.
+ */
+static inline int
+dpaa2_dev_atomic_read_link_status(struct rte_eth_dev *dev,
+				  struct rte_eth_link *link)
+{
+	struct rte_eth_link *dst = link;
+	struct rte_eth_link *src = &dev->data->dev_link;
+
+	if (rte_atomic64_cmpset((uint64_t *)dst, *(uint64_t *)dst,
+				*(uint64_t *)src) == 0)
+		return -1;
+
+	return 0;
+}
+
+/**
+ * Atomically writes the link status information into global
+ * structure rte_eth_dev.
+ *
+ * @param dev
+ *   - Pointer to the structure rte_eth_dev to read from.
+ *   - Pointer to the buffer to be saved with the link status.
+ *
+ * @return
+ *   - On success, zero.
+ *   - On failure, negative value.
+ */
+static inline int
+dpaa2_dev_atomic_write_link_status(struct rte_eth_dev *dev,
+				   struct rte_eth_link *link)
+{
+	struct rte_eth_link *dst = &dev->data->dev_link;
+	struct rte_eth_link *src = link;
+
+	if (rte_atomic64_cmpset((uint64_t *)dst, *(uint64_t *)dst,
+				*(uint64_t *)src) == 0)
+		return -1;
+
+	return 0;
+}
+
 static void
 dpaa2_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
@@ -430,6 +482,7 @@ dpaa2_dev_stop(struct rte_eth_dev *dev)
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
 	struct fsl_mc_io *dpni = (struct fsl_mc_io *)priv->hw;
 	int ret;
+	struct rte_eth_link link;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -439,6 +492,10 @@ dpaa2_dev_stop(struct rte_eth_dev *dev)
 			     ret, priv->hw_id);
 		return;
 	}
+
+	/* clear the recorded link status */
+	memset(&link, 0, sizeof(link));
+	dpaa2_dev_atomic_write_link_status(dev, &link);
 }
 
 static void
@@ -531,6 +588,55 @@ dpaa2_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	return 0;
 }
 
+/* return 0 means link status changed, -1 means not changed */
+static int
+dpaa2_dev_link_update(struct rte_eth_dev *dev,
+			int wait_to_complete __rte_unused)
+{
+	int ret;
+	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+	struct fsl_mc_io *dpni = (struct fsl_mc_io *)priv->hw;
+	struct rte_eth_link link, old;
+	struct dpni_link_state state = {0};
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (dpni == NULL) {
+		RTE_LOG(ERR, PMD, "error : dpni is NULL");
+		return 0;
+	}
+	memset(&old, 0, sizeof(old));
+	dpaa2_dev_atomic_read_link_status(dev, &old);
+
+	ret = dpni_get_link_state(dpni, CMD_PRI_LOW, priv->token, &state);
+	if (ret < 0) {
+		RTE_LOG(ERR, PMD, "error: dpni_get_link_state %d", ret);
+		return -1;
+	}
+
+	if ((old.link_status == state.up) && (old.link_speed == state.rate)) {
+		RTE_LOG(DEBUG, PMD, "No change in status\n");
+		return -1;
+	}
+
+	memset(&link, 0, sizeof(struct rte_eth_link));
+	link.link_status = state.up;
+	link.link_speed = state.rate;
+
+	if (state.options & DPNI_LINK_OPT_HALF_DUPLEX)
+		link.link_duplex = ETH_LINK_HALF_DUPLEX;
+	else
+		link.link_duplex = ETH_LINK_FULL_DUPLEX;
+
+	dpaa2_dev_atomic_write_link_status(dev, &link);
+
+	if (link.link_status)
+		PMD_DRV_LOG(INFO, "Port %d Link is Up\n", dev->data->port_id);
+	else
+		PMD_DRV_LOG(INFO, "Port %d Link is Down\n", dev->data->port_id);
+	return 0;
+}
+
 static struct eth_dev_ops dpaa2_ethdev_ops = {
 	.dev_configure	  = dpaa2_eth_dev_configure,
 	.dev_start	      = dpaa2_dev_start,
@@ -538,6 +644,7 @@ static struct eth_dev_ops dpaa2_ethdev_ops = {
 	.dev_close	      = dpaa2_dev_close,
 	.promiscuous_enable   = dpaa2_dev_promiscuous_enable,
 	.promiscuous_disable  = dpaa2_dev_promiscuous_disable,
+	.link_update	   = dpaa2_dev_link_update,
 	.dev_infos_get	   = dpaa2_dev_info_get,
 	.dev_supported_ptypes_get = dpaa2_supported_ptypes_get,
 	.mtu_set           = dpaa2_dev_mtu_set,
