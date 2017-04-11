@@ -56,5 +56,8 @@ RTE_DECLARE_PER_LCORE(struct dpaa2_io_portal_t, _dpaa2_io);
 /* Affine a DPIO portal to current processing thread */
 int dpaa2_affine_qbman_swp(void);
 
+/* Affine additional DPIO portal to current crypto processing thread */
+int dpaa2_affine_qbman_swp_sec(void);
+
 
 #endif /* _DPAA2_HW_DPIO_H_ */

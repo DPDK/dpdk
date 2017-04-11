@@ -276,6 +276,51 @@ dpaa2_affine_qbman_swp(void)
 }
 
 int
+dpaa2_affine_qbman_swp_sec(void)
+{
+	unsigned int lcore_id = rte_lcore_id();
+	uint64_t tid = syscall(SYS_gettid);
+
+	if (lcore_id == LCORE_ID_ANY)
+		lcore_id = rte_get_master_lcore();
+	/* if the core id is not supported */
+	else if (lcore_id >= RTE_MAX_LCORE)
+		return -1;
+
+	if (dpaa2_io_portal[lcore_id].sec_dpio_dev) {
+		PMD_DRV_LOG(INFO, "DPAA Portal=0x%x (%d) is being shared"
+			    " between thread %lu and current  %lu",
+			    dpaa2_io_portal[lcore_id].sec_dpio_dev,
+			    dpaa2_io_portal[lcore_id].sec_dpio_dev->index,
+			    dpaa2_io_portal[lcore_id].sec_tid,
+			    tid);
+		RTE_PER_LCORE(_dpaa2_io).sec_dpio_dev
+			= dpaa2_io_portal[lcore_id].sec_dpio_dev;
+		rte_atomic16_inc(&dpaa2_io_portal
+				 [lcore_id].sec_dpio_dev->ref_count);
+		dpaa2_io_portal[lcore_id].sec_tid = tid;
+
+		PMD_DRV_LOG(DEBUG, "Old Portal=0x%x (%d) affined thread - %lu",
+			    dpaa2_io_portal[lcore_id].sec_dpio_dev,
+			    dpaa2_io_portal[lcore_id].sec_dpio_dev->index,
+			    tid);
+		return 0;
+	}
+
+	/* Populate the dpaa2_io_portal structure */
+	dpaa2_io_portal[lcore_id].sec_dpio_dev = dpaa2_get_qbman_swp();
+
+	if (dpaa2_io_portal[lcore_id].sec_dpio_dev) {
+		RTE_PER_LCORE(_dpaa2_io).sec_dpio_dev
+			= dpaa2_io_portal[lcore_id].sec_dpio_dev;
+		dpaa2_io_portal[lcore_id].sec_tid = tid;
+		return 0;
+	} else {
+		return -1;
+	}
+}
+
+int
 dpaa2_create_dpio_device(struct fslmc_vfio_device *vdev,
 			 struct vfio_device_info *obj_info,
 		int object_id)

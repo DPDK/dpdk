@@ -2,6 +2,7 @@ DPDK_17.05 {
 	global:
 
 	dpaa2_affine_qbman_swp;
+	dpaa2_affine_qbman_swp_sec;
 	dpaa2_alloc_dpbp_dev;
 	dpaa2_free_dpbp_dev;
 	dpbp_disable;
