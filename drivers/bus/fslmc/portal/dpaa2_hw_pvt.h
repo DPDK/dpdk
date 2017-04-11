@@ -43,10 +43,16 @@
 #ifndef true
 #define true       1
 #endif
+#define lower_32_bits(x) ((uint32_t)(x))
+#define upper_32_bits(x) ((uint32_t)(((x) >> 16) >> 16))
 
 #ifndef ETH_VLAN_HLEN
 #define ETH_VLAN_HLEN   4 /** < Vlan Header Length */
 #endif
+
+#define MAX_TX_RING_SLOTS	8
+	/** <Maximum number of slots available in TX ring*/
+
 #define DPAA2_DQRR_RING_SIZE	16
 	/** <Maximum number of slots available in RX ring*/
 
@@ -119,6 +125,53 @@ struct dpaa2_queue {
 
 /*! Global MCP list */
 extern void *(*rte_mcp_ptr_list);
+
+/* Refer to Table 7-3 in SEC BG */
+struct qbman_fle {
+	uint32_t addr_lo;
+	uint32_t addr_hi;
+	uint32_t length;
+	/* FMT must be 00, MSB is final bit  */
+	uint32_t fin_bpid_offset;
+	uint32_t frc;
+	uint32_t reserved[3]; /* Not used currently */
+};
+
+/*Macros to define operations on FD*/
+#define DPAA2_SET_FD_ADDR(fd, addr) do {			\
+	fd->simple.addr_lo = lower_32_bits((uint64_t)(addr));	\
+	fd->simple.addr_hi = upper_32_bits((uint64_t)(addr));	\
+} while (0)
+#define DPAA2_SET_FD_LEN(fd, length)	(fd)->simple.len = length
+#define DPAA2_SET_FD_BPID(fd, bpid)	((fd)->simple.bpid_offset |= bpid)
+#define DPAA2_SET_FD_OFFSET(fd, offset)	\
+	((fd->simple.bpid_offset |= (uint32_t)(offset) << 16))
+#define DPAA2_RESET_FD_CTRL(fd)	(fd)->simple.ctrl = 0
+
+#define	DPAA2_SET_FD_ASAL(fd, asal)	((fd)->simple.ctrl |= (asal << 16))
+#define DPAA2_SET_FD_FLC(fd, addr)	do { \
+	fd->simple.flc_lo = lower_32_bits((uint64_t)(addr));	\
+	fd->simple.flc_hi = upper_32_bits((uint64_t)(addr));	\
+} while (0)
+#define DPAA2_GET_FD_ADDR(fd)	\
+((uint64_t)((((uint64_t)((fd)->simple.addr_hi)) << 32) + (fd)->simple.addr_lo))
+
+#define DPAA2_GET_FD_LEN(fd)	((fd)->simple.len)
+#define DPAA2_GET_FD_BPID(fd)	(((fd)->simple.bpid_offset & 0x00003FFF))
+#define DPAA2_GET_FD_OFFSET(fd)	(((fd)->simple.bpid_offset & 0x0FFF0000) >> 16)
+#define DPAA2_INLINE_MBUF_FROM_BUF(buf, meta_data_size) \
+	((struct rte_mbuf *)((uint64_t)(buf) - (meta_data_size)))
+
+#define DPAA2_ASAL_VAL (DPAA2_MBUF_HW_ANNOTATION / 64)
+
+/* Only Enqueue Error responses will be
+ * pushed on FQID_ERR of Enqueue FQ
+ */
+#define DPAA2_EQ_RESP_ERR_FQ		0
+/* All Enqueue responses will be pushed on address
+ * set with qbman_eq_desc_set_response
+ */
+#define DPAA2_EQ_RESP_ALWAYS		1
 
 struct dpaa2_dpbp_dev *dpaa2_alloc_dpbp_dev(void);
 void dpaa2_free_dpbp_dev(struct dpaa2_dpbp_dev *dpbp);
