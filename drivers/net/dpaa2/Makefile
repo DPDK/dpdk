@@ -1,7 +1,7 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2010-2015 Intel Corporation. All rights reserved.
-#   All rights reserved.
+#   Copyright (c) 2016 Freescale Semiconductor, Inc. All rights reserved.
+#   Copyright (c) 2016 NXP. All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
 #   modification, are permitted provided that the following conditions
@@ -13,7 +13,7 @@
 #       notice, this list of conditions and the following disclaimer in
 #       the documentation and/or other materials provided with the
 #       distribution.
-#     * Neither the name of Intel Corporation nor the names of its
+#     * Neither the name of Freescale Semiconductor, Inc nor the names of its
 #       contributors may be used to endorse or promote products derived
 #       from this software without specific prior written permission.
 #
@@ -31,12 +31,27 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-DIRS-y += bus
-DIRS-y += mempool
-DEPDIRS-mempool := bus
-DIRS-y += net
-DEPDIRS-net := bus mempool
-DIRS-$(CONFIG_RTE_LIBRTE_CRYPTODEV) += crypto
-DIRS-$(CONFIG_RTE_LIBRTE_EVENTDEV) += event
+#
+# library name
+#
+LIB = librte_pmd_dpaa2.a
 
-include $(RTE_SDK)/mk/rte.subdir.mk
+CFLAGS += -O3
+CFLAGS += $(WERROR_FLAGS)
+
+CFLAGS += -I$(RTE_SDK)/drivers/net/dpaa2
+CFLAGS += -I$(RTE_SDK)/drivers/bus/fslmc
+CFLAGS += -I$(RTE_SDK)/drivers/bus/fslmc/qbman/include
+CFLAGS += -I$(RTE_SDK)/lib/librte_eal/linuxapp/eal
+
+# versioning export map
+EXPORT_MAP := rte_pmd_dpaa2_version.map
+
+# library version
+LIBABIVER := 1
+
+SRCS-$(CONFIG_RTE_LIBRTE_DPAA2_PMD) += dpaa2_ethdev.c
+
+LDLIBS += -lrte_bus_fslmc
+
+include $(RTE_SDK)/mk/rte.lib.mk

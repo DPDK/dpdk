@@ -309,6 +309,11 @@ CONFIG_RTE_LIBRTE_FSLMC_BUS=n
 CONFIG_RTE_LIBRTE_DPAA2_MEMPOOL=n
 
 #
+# Compile burst-oriented NXP DPAA2 PMD driver
+#
+CONFIG_RTE_LIBRTE_DPAA2_PMD=n
+
+#
 # Compile burst-oriented VIRTIO PMD driver
 #
 CONFIG_RTE_LIBRTE_VIRTIO_PMD=y
