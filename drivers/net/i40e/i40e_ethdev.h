@@ -869,6 +869,17 @@ int i40e_dev_consistent_tunnel_filter_set(struct i40e_pf *pf,
 				  struct i40e_tunnel_filter_conf *tunnel_filter,
 				  uint8_t add);
 int i40e_fdir_flush(struct rte_eth_dev *dev);
+int i40e_find_all_vlan_for_mac(struct i40e_vsi *vsi,
+			       struct i40e_macvlan_filter *mv_f,
+			       int num, struct ether_addr *addr);
+int i40e_remove_macvlan_filters(struct i40e_vsi *vsi,
+				struct i40e_macvlan_filter *filter,
+				int total);
+void i40e_set_vlan_filter(struct i40e_vsi *vsi, uint16_t vlan_id, bool on);
+int i40e_add_macvlan_filters(struct i40e_vsi *vsi,
+			     struct i40e_macvlan_filter *filter,
+			     int total);
+bool is_i40e_supported(struct rte_eth_dev *dev);
 
 #define I40E_DEV_TO_PCI(eth_dev) \
 	RTE_DEV_TO_PCI((eth_dev)->device)
