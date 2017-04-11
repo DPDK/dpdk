@@ -115,7 +115,8 @@ dpaa2_alloc_rx_tx_queues(struct rte_eth_dev *dev)
 	}
 
 	vq_id = 0;
-	for (dist_idx = 0; dist_idx < priv->nb_rx_queues; dist_idx++) {
+	for (dist_idx = 0; dist_idx < priv->num_dist_per_tc[DPAA2_DEF_TC];
+	     dist_idx++) {
 		mcq = (struct dpaa2_queue *)priv->rx_vq[vq_id];
 		mcq->tc_index = DPAA2_DEF_TC;
 		mcq->flow_id = dist_idx;
@@ -141,6 +142,7 @@ dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 {
 	struct rte_eth_dev_data *data = dev->data;
 	struct rte_eth_conf *eth_conf = &data->dev_conf;
+	int ret;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -152,6 +154,18 @@ dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 		return -1;
 	}
 
+	if (eth_conf->rxmode.mq_mode == ETH_MQ_RX_RSS) {
+		/* Return in case number of Rx queues is 1 */
+		if (data->nb_rx_queues == 1)
+			return 0;
+		ret = dpaa2_setup_flow_dist(dev,
+				eth_conf->rx_adv_conf.rss_conf.rss_hf);
+		if (ret) {
+			PMD_INIT_LOG(ERR, "unable to set flow distribution."
+				     "please check queue config\n");
+			return ret;
+		}
+	}
 	return 0;
 }
 
@@ -183,7 +197,7 @@ dpaa2_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	dpaa2_q->mb_pool = mb_pool; /**< mbuf pool to populate RX ring. */
 
 	/*Get the tc id and flow id from given VQ id*/
-	flow_id = rx_queue_id;
+	flow_id = rx_queue_id % priv->num_dist_per_tc[dpaa2_q->tc_index];
 	memset(&cfg, 0, sizeof(struct dpni_queue));
 
 	options = options | DPNI_QUEUE_OPT_USER_CTX;
@@ -373,7 +387,7 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 	struct fsl_mc_io *dpni_dev;
 	struct dpni_attr attr;
 	struct dpaa2_dev_priv *priv = eth_dev->data->dev_private;
-	int ret, hw_id;
+	int i, ret, hw_id;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -415,7 +429,16 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 	}
 
 	priv->num_tc = attr.num_tcs;
-	priv->nb_rx_queues = attr.num_queues;
+	for (i = 0; i < attr.num_tcs; i++) {
+		priv->num_dist_per_tc[i] = attr.num_queues;
+		break;
+	}
+
+	/* Distribution is per Tc only,
+	 * so choosing RX queues from default TC only
+	 */
+	priv->nb_rx_queues = priv->num_dist_per_tc[DPAA2_DEF_TC];
+
 	priv->nb_tx_queues = attr.num_queues;
 
 	priv->hw = dpni_dev;

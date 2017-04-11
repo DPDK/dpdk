@@ -37,11 +37,15 @@
 #include <mc/fsl_dpni.h>
 #include <mc/fsl_mc_sys.h>
 
+#define MAX_TCS			DPNI_MAX_TC
 #define MAX_RX_QUEUES		16
 #define MAX_TX_QUEUES		16
 
 /*default tc to be used for ,congestion, distribution etc configuration. */
 #define DPAA2_DEF_TC		0
+
+/* Size of the input SMMU mapped memory required by MC */
+#define DIST_PARAM_IOVA_SIZE 256
 
 struct dpaa2_dev_priv {
 	void *hw;
@@ -53,7 +57,15 @@ struct dpaa2_dev_priv {
 	void *rx_vq[MAX_RX_QUEUES];
 	void *tx_vq[MAX_TX_QUEUES];
 
+	uint16_t num_dist_per_tc[MAX_TCS];
 	uint8_t num_tc;
 	uint8_t flags; /*dpaa2 config flags */
 };
+
+int dpaa2_setup_flow_dist(struct rte_eth_dev *eth_dev,
+			  uint32_t req_dist_set);
+
+int dpaa2_remove_flow_dist(struct rte_eth_dev *eth_dev,
+			   uint8_t tc_index);
+
 #endif /* _DPAA2_ETHDEV_H */
