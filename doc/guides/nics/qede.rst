@@ -124,122 +124,14 @@ enabling debugging options may affect system performance.
   Empty string indicates driver will pick up the firmware file
   from the default location.
 
-Driver Compilation
-~~~~~~~~~~~~~~~~~~
+Driver compilation and testing
+------------------------------
 
-To compile QEDE PMD for Linux x86_64 gcc target, run the following ``make``
-command::
-
-   cd <DPDK-source-directory>
-   make config T=x86_64-native-linuxapp-gcc install
-
-To compile QEDE PMD for Linux x86_64 clang target, run the following ``make``
-command::
-
-   cd <DPDK-source-directory>
-   make config T=x86_64-native-linuxapp-clang install
-
-To compile QEDE PMD for FreeBSD x86_64 clang target, run the following ``gmake``
-command::
-
-   cd <DPDK-source-directory>
-   gmake config T=x86_64-native-bsdapp-clang install
-
-To compile QEDE PMD for FreeBSD x86_64 gcc target, run the following ``gmake``
-command::
-
-   cd <DPDK-source-directory>
-   gmake config T=x86_64-native-bsdapp-gcc install -Wl,-rpath=\
-                                        /usr/local/lib/gcc49 CC=gcc49
-
-
-Sample Application Notes
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-This section demonstrates how to launch ``testpmd`` with QLogic 4xxxx
-devices managed by ``librte_pmd_qede`` in Linux operating system.
-
-#. Request huge pages:
-
-   .. code-block:: console
-
-      echo 1024 > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages/ \
-                                                                nr_hugepages
-
-#. Load ``igb_uio`` driver:
-
-   .. code-block:: console
-
-      insmod ./x86_64-native-linuxapp-gcc/kmod/igb_uio.ko
-
-#. Bind the QLogic 4xxxx adapters to ``igb_uio`` loaded in the
-   previous step:
-
-   .. code-block:: console
-
-      ./usertools/dpdk-devbind.py --bind igb_uio 0000:84:00.0 0000:84:00.1 \
-                                              0000:84:00.2 0000:84:00.3
-
-#. Start ``testpmd`` with basic parameters:
-   (Enable QEDE_DEBUG_INFO=y to view informational messages)
-
-   .. code-block:: console
-
-      testpmd -l 0,4-11 -n 4 -- -i --nb-cores=8 --portmask=0xf --rxd=4096 \
-      --txd=4096 --txfreet=4068 --enable-rx-cksum --rxq=4 --txq=4 \
-      --rss-ip --rss-udp
-
-      [...]
-
-    EAL: PCI device 0000:84:00.0 on NUMA socket 1
-    EAL:   probe driver: 1077:1634 rte_qede_pmd
-    EAL:   Not managed by a supported kernel driver, skipped
-    EAL: PCI device 0000:84:00.1 on NUMA socket 1
-    EAL:   probe driver: 1077:1634 rte_qede_pmd
-    EAL:   Not managed by a supported kernel driver, skipped
-    EAL: PCI device 0000:88:00.0 on NUMA socket 1
-    EAL:   probe driver: 1077:1656 rte_qede_pmd
-    EAL:   PCI memory mapped at 0x7f738b200000
-    EAL:   PCI memory mapped at 0x7f738b280000
-    EAL:   PCI memory mapped at 0x7f738b300000
-    PMD: Chip details : BB1
-    PMD: Driver version : QEDE PMD 8.7.9.0_1.0.0
-    PMD: Firmware version : 8.7.7.0
-    PMD: Management firmware version : 8.7.8.0
-    PMD: Firmware file : /lib/firmware/qed/qed_init_values_zipped-8.7.7.0.bin
-    [QEDE PMD: (84:00.0:dpdk-port-0)]qede_common_dev_init:macaddr \
-                                                        00:0e:1e:d2:09:9c
-      [...]
-    [QEDE PMD: (84:00.0:dpdk-port-0)]qede_tx_queue_setup:txq 0 num_desc 4096 \
-                                                tx_free_thresh 4068 socket 0
-    [QEDE PMD: (84:00.0:dpdk-port-0)]qede_tx_queue_setup:txq 1 num_desc 4096 \
-                                                tx_free_thresh 4068 socket 0
-    [QEDE PMD: (84:00.0:dpdk-port-0)]qede_tx_queue_setup:txq 2 num_desc 4096 \
-                                                 tx_free_thresh 4068 socket 0
-    [QEDE PMD: (84:00.0:dpdk-port-0)]qede_tx_queue_setup:txq 3 num_desc 4096 \
-                                                 tx_free_thresh 4068 socket 0
-    [QEDE PMD: (84:00.0:dpdk-port-0)]qede_rx_queue_setup:rxq 0 num_desc 4096 \
-                                                rx_buf_size=2148 socket 0
-    [QEDE PMD: (84:00.0:dpdk-port-0)]qede_rx_queue_setup:rxq 1 num_desc 4096 \
-                                                rx_buf_size=2148 socket 0
-    [QEDE PMD: (84:00.0:dpdk-port-0)]qede_rx_queue_setup:rxq 2 num_desc 4096 \
-                                                rx_buf_size=2148 socket 0
-    [QEDE PMD: (84:00.0:dpdk-port-0)]qede_rx_queue_setup:rxq 3 num_desc 4096 \
-                                                rx_buf_size=2148 socket 0
-    [QEDE PMD: (84:00.0:dpdk-port-0)]qede_dev_start:port 0
-    [QEDE PMD: (84:00.0:dpdk-port-0)]qede_dev_start:link status: down
-      [...]
-    Checking link statuses...
-    Port 0 Link Up - speed 25000 Mbps - full-duplex
-    Port 1 Link Up - speed 25000 Mbps - full-duplex
-    Port 2 Link Up - speed 25000 Mbps - full-duplex
-    Port 3 Link Up - speed 25000 Mbps - full-duplex
-    Done
-    testpmd>
-
+Refer to the document :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>`
+for details.
 
 SR-IOV: Prerequisites and Sample Application Notes
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+--------------------------------------------------
 
 This section provides instructions to configure SR-IOV with Linux OS.
 
@@ -311,4 +203,68 @@ This section provides instructions to configure SR-IOV with Linux OS.
 
    The VF devices may be passed through to the guest VM using ``virt-manager`` or
    ``virsh``. QEDE PMD should be used to bind the VF devices in the guest VM
-   using the instructions outlined in the Application notes above.
+   using the instructions from Driver compilation and testing section above.
+
+
+#. Running testpmd
+   (Enable QEDE_DEBUG_INFO=y to view informational messages):
+
+   Refer to the document
+   :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>` to run
+   ``testpmd`` application.
+
+   Example output:
+
+   .. code-block:: console
+
+      testpmd -l 0,4-11 -n 4 -- -i --nb-cores=8 --portmask=0xf --rxd=4096 \
+      --txd=4096 --txfreet=4068 --enable-rx-cksum --rxq=4 --txq=4 \
+      --rss-ip --rss-udp
+
+      [...]
+
+    EAL: PCI device 0000:84:00.0 on NUMA socket 1
+    EAL:   probe driver: 1077:1634 rte_qede_pmd
+    EAL:   Not managed by a supported kernel driver, skipped
+    EAL: PCI device 0000:84:00.1 on NUMA socket 1
+    EAL:   probe driver: 1077:1634 rte_qede_pmd
+    EAL:   Not managed by a supported kernel driver, skipped
+    EAL: PCI device 0000:88:00.0 on NUMA socket 1
+    EAL:   probe driver: 1077:1656 rte_qede_pmd
+    EAL:   PCI memory mapped at 0x7f738b200000
+    EAL:   PCI memory mapped at 0x7f738b280000
+    EAL:   PCI memory mapped at 0x7f738b300000
+    PMD: Chip details : BB1
+    PMD: Driver version : QEDE PMD 8.7.9.0_1.0.0
+    PMD: Firmware version : 8.7.7.0
+    PMD: Management firmware version : 8.7.8.0
+    PMD: Firmware file : /lib/firmware/qed/qed_init_values_zipped-8.7.7.0.bin
+    [QEDE PMD: (84:00.0:dpdk-port-0)]qede_common_dev_init:macaddr \
+                                                        00:0e:1e:d2:09:9c
+      [...]
+    [QEDE PMD: (84:00.0:dpdk-port-0)]qede_tx_queue_setup:txq 0 num_desc 4096 \
+                                                tx_free_thresh 4068 socket 0
+    [QEDE PMD: (84:00.0:dpdk-port-0)]qede_tx_queue_setup:txq 1 num_desc 4096 \
+                                                tx_free_thresh 4068 socket 0
+    [QEDE PMD: (84:00.0:dpdk-port-0)]qede_tx_queue_setup:txq 2 num_desc 4096 \
+                                                 tx_free_thresh 4068 socket 0
+    [QEDE PMD: (84:00.0:dpdk-port-0)]qede_tx_queue_setup:txq 3 num_desc 4096 \
+                                                 tx_free_thresh 4068 socket 0
+    [QEDE PMD: (84:00.0:dpdk-port-0)]qede_rx_queue_setup:rxq 0 num_desc 4096 \
+                                                rx_buf_size=2148 socket 0
+    [QEDE PMD: (84:00.0:dpdk-port-0)]qede_rx_queue_setup:rxq 1 num_desc 4096 \
+                                                rx_buf_size=2148 socket 0
+    [QEDE PMD: (84:00.0:dpdk-port-0)]qede_rx_queue_setup:rxq 2 num_desc 4096 \
+                                                rx_buf_size=2148 socket 0
+    [QEDE PMD: (84:00.0:dpdk-port-0)]qede_rx_queue_setup:rxq 3 num_desc 4096 \
+                                                rx_buf_size=2148 socket 0
+    [QEDE PMD: (84:00.0:dpdk-port-0)]qede_dev_start:port 0
+    [QEDE PMD: (84:00.0:dpdk-port-0)]qede_dev_start:link status: down
+      [...]
+    Checking link statuses...
+    Port 0 Link Up - speed 25000 Mbps - full-duplex
+    Port 1 Link Up - speed 25000 Mbps - full-duplex
+    Port 2 Link Up - speed 25000 Mbps - full-duplex
+    Port 3 Link Up - speed 25000 Mbps - full-duplex
+    Done
+    testpmd>
