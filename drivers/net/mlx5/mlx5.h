@@ -313,5 +313,6 @@ int mlx5_flow_destroy(struct rte_eth_dev *, struct rte_flow *,
 int mlx5_flow_flush(struct rte_eth_dev *, struct rte_flow_error *);
 int priv_flow_start(struct priv *);
 void priv_flow_stop(struct priv *);
+int priv_flow_rxq_in_use(struct priv *, struct rxq *);
 
 #endif /* RTE_PMD_MLX5_H_ */

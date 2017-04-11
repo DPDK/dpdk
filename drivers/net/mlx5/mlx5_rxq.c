@@ -59,6 +59,7 @@
 #include <rte_ethdev.h>
 #include <rte_common.h>
 #include <rte_interrupts.h>
+#include <rte_debug.h>
 #ifdef PEDANTIC
 #pragma GCC diagnostic error "-Wpedantic"
 #endif
@@ -1248,6 +1249,9 @@ mlx5_rx_queue_release(void *dpdk_rxq)
 	rxq_ctrl = container_of(rxq, struct rxq_ctrl, rxq);
 	priv = rxq_ctrl->priv;
 	priv_lock(priv);
+	if (priv_flow_rxq_in_use(priv, rxq))
+		rte_panic("Rx queue %p is still used by a flow and cannot be"
+			  " removed\n", (void *)rxq_ctrl);
 	for (i = 0; (i != priv->rxqs_n); ++i)
 		if ((*priv->rxqs)[i] == rxq) {
 			DEBUG("%p: removing RX queue %p from list",

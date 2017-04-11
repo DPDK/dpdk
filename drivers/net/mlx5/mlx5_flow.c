@@ -1535,3 +1535,34 @@ priv_flow_start(struct priv *priv)
 	}
 	return 0;
 }
+
+/**
+ * Verify if the Rx queue is used in a flow.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param rxq
+ *   Pointer to the queue to search.
+ *
+ * @return
+ *   Nonzero if the queue is used by a flow.
+ */
+int
+priv_flow_rxq_in_use(struct priv *priv, struct rxq *rxq)
+{
+	struct rte_flow *flow;
+
+	for (flow = LIST_FIRST(&priv->flows);
+	     flow;
+	     flow = LIST_NEXT(flow, next)) {
+		unsigned int n;
+
+		if (flow->drop)
+			continue;
+		for (n = 0; n < flow->rxqs_n; ++n) {
+			if (flow->rxqs[n] == rxq)
+				return 1;
+		}
+	}
+	return 0;
+}
