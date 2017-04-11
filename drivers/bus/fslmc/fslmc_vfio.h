@@ -76,4 +76,6 @@ int dpaa2_create_dpio_device(struct fslmc_vfio_device *vdev,
 			     struct vfio_device_info *obj_info,
 			     int object_id);
 
+int dpaa2_create_dpbp_device(int dpbp_id);
+
 #endif /* _FSLMC_VFIO_H_ */

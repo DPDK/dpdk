@@ -41,6 +41,11 @@
 #define MC_PORTAL_INDEX		0
 #define NUM_DPIO_REGIONS	2
 
+/* Maximum release/acquire from QBMAN */
+#define DPAA2_MBUF_MAX_ACQ_REL	7
+
+#define MAX_BPID 256
+
 struct dpaa2_dpio_dev {
 	TAILQ_ENTRY(dpaa2_dpio_dev) next;
 		/**< Pointer to Next device instance */
@@ -63,6 +68,19 @@ struct dpaa2_dpio_dev {
 	int32_t hw_id; /**< An unique ID of this DPIO device instance */
 };
 
+struct dpaa2_dpbp_dev {
+	TAILQ_ENTRY(dpaa2_dpbp_dev) next;
+		/**< Pointer to Next device instance */
+	struct fsl_mc_io dpbp;  /** handle to DPBP portal object */
+	uint16_t token;
+	rte_atomic16_t in_use;
+	uint32_t dpbp_id; /*HW ID for DPBP object */
+};
+
 /*! Global MCP list */
 extern void *(*rte_mcp_ptr_list);
+
+struct dpaa2_dpbp_dev *dpaa2_alloc_dpbp_dev(void);
+void dpaa2_free_dpbp_dev(struct dpaa2_dpbp_dev *dpbp);
+
 #endif

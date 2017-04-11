@@ -270,7 +270,7 @@ int fslmc_vfio_process_group(void)
 	char path[PATH_MAX];
 	int64_t v_addr;
 	int ndev_count;
-	int dpio_count = 0;
+	int dpio_count = 0, dpbp_count = 0;
 	struct fslmc_vfio_group *group = &vfio_groups[0];
 	static int process_once;
 
@@ -421,6 +421,11 @@ int fslmc_vfio_process_group(void)
 			if (!ret)
 				dpio_count++;
 		}
+		if (!strcmp(object_type, "dpbp")) {
+			ret = dpaa2_create_dpbp_device(object_id);
+			if (!ret)
+				dpbp_count++;
+		}
 	}
 	closedir(d);
 
@@ -428,6 +433,8 @@ int fslmc_vfio_process_group(void)
 	if (ret)
 		FSLMC_VFIO_LOG(DEBUG, "Error in affining qbman swp %d", ret);
 
+	FSLMC_VFIO_LOG(DEBUG, "DPAA2: Added dpbp_count = %d dpio_count=%d\n",
+		      dpbp_count, dpio_count);
 	return 0;
 
 FAILURE:
