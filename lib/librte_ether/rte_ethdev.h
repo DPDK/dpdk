@@ -179,7 +179,6 @@ extern "C" {
 
 #include <rte_log.h>
 #include <rte_interrupts.h>
-#include <rte_pci.h>
 #include <rte_dev.h>
 #include <rte_devargs.h>
 #include <rte_errno.h>
@@ -900,6 +899,8 @@ struct rte_eth_conf {
 #define DEV_TX_OFFLOAD_IPIP_TNL_TSO     0x00000800    /**< Used for tunneling packet. */
 #define DEV_TX_OFFLOAD_GENEVE_TNL_TSO   0x00001000    /**< Used for tunneling packet. */
 #define DEV_TX_OFFLOAD_MACSEC_INSERT    0x00002000
+
+struct rte_pci_device;
 
 /**
  * Ethernet device information
