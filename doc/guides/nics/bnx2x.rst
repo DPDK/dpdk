@@ -123,143 +123,14 @@ enabling debugging options may affect system performance.
 
 .. _bnx2x_driver-compilation:
 
-Driver Compilation
-~~~~~~~~~~~~~~~~~~
+Driver compilation and testing
+------------------------------
 
-BNX2X PMD for Linux x86_64 gcc target, run the following "make"
-command::
-
-   cd <DPDK-source-directory>
-   make config T=x86_64-native-linuxapp-gcc install
-
-To compile BNX2X PMD for Linux x86_64 clang target, run the following "make"
-command::
-
-   cd <DPDK-source-directory>
-   make config T=x86_64-native-linuxapp-clang install
-
-To compile BNX2X PMD for Linux i686 gcc target, run the following "make"
-command::
-
-   cd <DPDK-source-directory>
-   make config T=i686-native-linuxapp-gcc install
-
-To compile BNX2X PMD for Linux i686 gcc target, run the following "make"
-command:
-
-.. code-block:: console
-
-   cd <DPDK-source-directory>
-   make config T=i686-native-linuxapp-gcc install
-
-To compile BNX2X PMD for FreeBSD x86_64 clang target, run the following "gmake"
-command::
-
-   cd <DPDK-source-directory>
-   gmake config T=x86_64-native-bsdapp-clang install
-
-To compile BNX2X PMD for FreeBSD x86_64 gcc target, run the following "gmake"
-command::
-
-   cd <DPDK-source-directory>
-   gmake config T=x86_64-native-bsdapp-gcc install -Wl,-rpath=/usr/local/lib/gcc49 CC=gcc49
-
-To compile BNX2X PMD for FreeBSD x86_64 gcc target, run the following "gmake"
-command:
-
-.. code-block:: console
-
-   cd <DPDK-source-directory>
-   gmake config T=x86_64-native-bsdapp-gcc install -Wl,-rpath=/usr/local/lib/gcc49 CC=gcc49
-
-Linux
------
-
-.. _bnx2x_Linux-installation:
-
-Linux Installation
-~~~~~~~~~~~~~~~~~~
-
-Sample Application Notes
-~~~~~~~~~~~~~~~~~~~~~~~~
-
-This section demonstrates how to launch ``testpmd`` with QLogic 578xx
-devices managed by ``librte_pmd_bnx2x`` in Linux operating system.
-
-#. Request huge pages:
-
-   .. code-block:: console
-
-      echo 1024 > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages/nr_hugepages
-
-#. Load ``igb_uio`` or ``vfio-pci`` driver:
-
-   .. code-block:: console
-
-      insmod ./x86_64-native-linuxapp-gcc/kmod/igb_uio.ko
-
-   or
-
-   .. code-block:: console
-
-      modprobe vfio-pci
-
-#. Bind the QLogic adapters to ``igb_uio`` or ``vfio-pci`` loaded in the
-   previous step::
-
-      ./usertools/dpdk-devbind.py --bind igb_uio 0000:84:00.0 0000:84:00.1
-
-   or
-
-   Setup VFIO permissions for regular users and then bind to ``vfio-pci``:
-
-   .. code-block:: console
-
-      sudo chmod a+x /dev/vfio
-
-      sudo chmod 0666 /dev/vfio/*
-
-      ./usertools/dpdk-devbind.py --bind vfio-pci 0000:84:00.0 0000:84:00.1
-
-#. Start ``testpmd`` with basic parameters:
-
-   .. code-block:: console
-
-      ./x86_64-native-linuxapp-gcc/app/testpmd -l 0-3 -n 4 -- -i
-
-   Example output:
-
-   .. code-block:: console
-
-      [...]
-      EAL: PCI device 0000:84:00.0 on NUMA socket 1
-      EAL:   probe driver: 14e4:168e rte_bnx2x_pmd
-      EAL:   PCI memory mapped at 0x7f14f6fe5000
-      EAL:   PCI memory mapped at 0x7f14f67e5000
-      EAL:   PCI memory mapped at 0x7f15fbd9b000
-      EAL: PCI device 0000:84:00.1 on NUMA socket 1
-      EAL:   probe driver: 14e4:168e rte_bnx2x_pmd
-      EAL:   PCI memory mapped at 0x7f14f5fe5000
-      EAL:   PCI memory mapped at 0x7f14f57e5000
-      EAL:   PCI memory mapped at 0x7f15fbd4f000
-      Interactive-mode selected
-      Configuring Port 0 (socket 0)
-      PMD: bnx2x_dev_tx_queue_setup(): fp[00] req_bd=512, thresh=512,
-                   usable_bd=1020, total_bd=1024,
-                                tx_pages=4
-      PMD: bnx2x_dev_rx_queue_setup(): fp[00] req_bd=128, thresh=0,
-                   usable_bd=510, total_bd=512,
-                                rx_pages=1, cq_pages=8
-      PMD: bnx2x_print_adapter_info():
-      [...]
-      Checking link statuses...
-      Port 0 Link Up - speed 10000 Mbps - full-duplex
-      Port 1 Link Up - speed 10000 Mbps - full-duplex
-      Done
-      testpmd>
+Refer to the document :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>`
+for details.
 
 SR-IOV: Prerequisites and sample Application Notes
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+--------------------------------------------------
 
 This section provides instructions to configure SR-IOV with Linux OS.
 
@@ -311,7 +182,6 @@ This section provides instructions to configure SR-IOV with Linux OS.
 
       echo 2 > /sys/devices/pci0000:00/0000:00:03.0/0000:81:00.0/sriov_numvfs
 
-
 #. Assign VF MAC address:
 
    Assign MAC address to the VF using iproute2 utility. The syntax is:
@@ -323,9 +193,45 @@ This section provides instructions to configure SR-IOV with Linux OS.
 
       ip link set ens5f0 vf 0 mac 52:54:00:2f:9d:e8
 
-
 #. PCI Passthrough:
 
    The VF devices may be passed through to the guest VM using virt-manager or
    virsh etc. bnx2x PMD should be used to bind the VF devices in the guest VM
    using the instructions outlined in the Application notes below.
+
+#. Running testpmd:
+
+   Follow instructions available in the document
+   :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>`
+   to run testpmd.
+
+   Example output:
+
+   .. code-block:: console
+
+      [...]
+      EAL: PCI device 0000:84:00.0 on NUMA socket 1
+      EAL:   probe driver: 14e4:168e rte_bnx2x_pmd
+      EAL:   PCI memory mapped at 0x7f14f6fe5000
+      EAL:   PCI memory mapped at 0x7f14f67e5000
+      EAL:   PCI memory mapped at 0x7f15fbd9b000
+      EAL: PCI device 0000:84:00.1 on NUMA socket 1
+      EAL:   probe driver: 14e4:168e rte_bnx2x_pmd
+      EAL:   PCI memory mapped at 0x7f14f5fe5000
+      EAL:   PCI memory mapped at 0x7f14f57e5000
+      EAL:   PCI memory mapped at 0x7f15fbd4f000
+      Interactive-mode selected
+      Configuring Port 0 (socket 0)
+      PMD: bnx2x_dev_tx_queue_setup(): fp[00] req_bd=512, thresh=512,
+                   usable_bd=1020, total_bd=1024,
+                                tx_pages=4
+      PMD: bnx2x_dev_rx_queue_setup(): fp[00] req_bd=128, thresh=0,
+                   usable_bd=510, total_bd=512,
+                                rx_pages=1, cq_pages=8
+      PMD: bnx2x_print_adapter_info():
+      [...]
+      Checking link statuses...
+      Port 0 Link Up - speed 10000 Mbps - full-duplex
+      Port 1 Link Up - speed 10000 Mbps - full-duplex
+      Done
+      testpmd>
