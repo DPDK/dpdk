@@ -2231,7 +2231,7 @@ ixgbe_parse_fdir_filter_tunnel(const struct rte_flow_attr *attr,
 	index++;
 	NEXT_ITEM_OF_PATTERN(item, pattern, index);
 	if ((item->type != RTE_FLOW_ITEM_TYPE_VLAN) &&
-		(item->type != RTE_FLOW_ITEM_TYPE_VLAN)) {
+		(item->type != RTE_FLOW_ITEM_TYPE_IPV4)) {
 		memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
 		rte_flow_error_set(error, EINVAL,
 			RTE_FLOW_ERROR_TYPE_ITEM,
