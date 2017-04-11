@@ -476,6 +476,39 @@ dpaa2_dev_promiscuous_disable(
 	if (ret < 0)
 		RTE_LOG(ERR, PMD, "Unable to disable promiscuous mode %d", ret);
 }
+
+static int
+dpaa2_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
+{
+	int ret;
+	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+	struct fsl_mc_io *dpni = (struct fsl_mc_io *)priv->hw;
+	uint32_t frame_size = mtu + ETHER_HDR_LEN + ETHER_CRC_LEN;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (dpni == NULL) {
+		RTE_LOG(ERR, PMD, "dpni is NULL");
+		return -EINVAL;
+	}
+
+	/* check that mtu is within the allowed range */
+	if ((mtu < ETHER_MIN_MTU) || (frame_size > DPAA2_MAX_RX_PKT_LEN))
+		return -EINVAL;
+
+	/* Set the Max Rx frame length as 'mtu' +
+	 * Maximum Ethernet header length
+	 */
+	ret = dpni_set_max_frame_length(dpni, CMD_PRI_LOW, priv->token,
+					mtu + ETH_VLAN_HLEN);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "setting the max frame length failed");
+		return -1;
+	}
+	PMD_DRV_LOG(INFO, "MTU is configured %d for the device\n", mtu);
+	return 0;
+}
+
 static struct eth_dev_ops dpaa2_ethdev_ops = {
 	.dev_configure	  = dpaa2_eth_dev_configure,
 	.dev_start	      = dpaa2_dev_start,
@@ -484,6 +517,7 @@ static struct eth_dev_ops dpaa2_ethdev_ops = {
 	.promiscuous_enable   = dpaa2_dev_promiscuous_enable,
 	.promiscuous_disable  = dpaa2_dev_promiscuous_disable,
 	.dev_infos_get	   = dpaa2_dev_info_get,
+	.mtu_set           = dpaa2_dev_mtu_set,
 	.rx_queue_setup    = dpaa2_dev_rx_queue_setup,
 	.rx_queue_release  = dpaa2_dev_rx_queue_release,
 	.tx_queue_setup    = dpaa2_dev_tx_queue_setup,
