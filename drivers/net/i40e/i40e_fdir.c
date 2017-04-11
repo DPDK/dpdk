@@ -257,7 +257,7 @@ i40e_fdir_setup(struct i40e_pf *pf)
 
 	/* reserve memory for the fdir programming packet */
 	snprintf(z_name, sizeof(z_name), "%s_%s_%d",
-			eth_dev->driver->pci_drv.driver.name,
+			eth_dev->data->drv_name,
 			I40E_FDIR_MZ_NAME,
 			eth_dev->data->port_id);
 	mz = i40e_memzone_reserve(z_name, I40E_FDIR_PKT_LEN, SOCKET_ID_ANY);

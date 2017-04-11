@@ -55,6 +55,7 @@
 #include <rte_alarm.h>
 #include <rte_ether.h>
 #include <rte_ethdev.h>
+#include <rte_ethdev_pci.h>
 #include <rte_atomic.h>
 #include <rte_malloc.h>
 #include <rte_dev.h>
@@ -1543,22 +1544,30 @@ i40evf_dev_uninit(struct rte_eth_dev *eth_dev)
 
 	return 0;
 }
+
+static int eth_i40evf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
+	struct rte_pci_device *pci_dev)
+{
+	return rte_eth_dev_pci_generic_probe(pci_dev,
+		sizeof(struct i40e_adapter), i40evf_dev_init);
+}
+
+static int eth_i40evf_pci_remove(struct rte_pci_device *pci_dev)
+{
+	return rte_eth_dev_pci_generic_remove(pci_dev, i40evf_dev_uninit);
+}
+
 /*
  * virtual function driver struct
  */
-static struct eth_driver rte_i40evf_pmd = {
-	.pci_drv = {
-		.id_table = pci_id_i40evf_map,
-		.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
-		.probe = rte_eth_dev_pci_probe,
-		.remove = rte_eth_dev_pci_remove,
-	},
-	.eth_dev_init = i40evf_dev_init,
-	.eth_dev_uninit = i40evf_dev_uninit,
-	.dev_private_size = sizeof(struct i40e_adapter),
+static struct rte_pci_driver rte_i40evf_pmd = {
+	.id_table = pci_id_i40evf_map,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
+	.probe = eth_i40evf_pci_probe,
+	.remove = eth_i40evf_pci_remove,
 };
 
-RTE_PMD_REGISTER_PCI(net_i40e_vf, rte_i40evf_pmd.pci_drv);
+RTE_PMD_REGISTER_PCI(net_i40e_vf, rte_i40evf_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_i40e_vf, pci_id_i40evf_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_i40e_vf, "* igb_uio | vfio");
 

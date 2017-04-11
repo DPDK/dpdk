@@ -37,6 +37,7 @@
 #include <unistd.h>
 
 #include <rte_ethdev.h>
+#include <rte_ethdev_pci.h>
 #include <rte_memcpy.h>
 #include <rte_string_fns.h>
 #include <rte_memzone.h>
@@ -1076,17 +1077,37 @@ eth_avp_dev_uninit(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
+static int
+eth_avp_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
+		  struct rte_pci_device *pci_dev)
+{
+	struct rte_eth_dev *eth_dev;
+	int ret;
 
-static struct eth_driver rte_avp_pmd = {
-	{
-		.id_table = pci_id_avp_map,
-		.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
-		.probe = rte_eth_dev_pci_probe,
-		.remove = rte_eth_dev_pci_remove,
-	},
-	.eth_dev_init = eth_avp_dev_init,
-	.eth_dev_uninit = eth_avp_dev_uninit,
-	.dev_private_size = sizeof(struct avp_adapter),
+	eth_dev = rte_eth_dev_pci_allocate(pci_dev,
+					   sizeof(struct avp_adapter));
+	if (eth_dev == NULL)
+		return -ENOMEM;
+
+	ret = eth_avp_dev_init(eth_dev);
+	if (ret)
+		rte_eth_dev_pci_release(eth_dev);
+
+	return ret;
+}
+
+static int
+eth_avp_pci_remove(struct rte_pci_device *pci_dev)
+{
+	return rte_eth_dev_pci_generic_remove(pci_dev,
+					      eth_avp_dev_uninit);
+}
+
+static struct rte_pci_driver rte_avp_pmd = {
+	.id_table = pci_id_avp_map,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
+	.probe = eth_avp_pci_probe,
+	.remove = eth_avp_pci_remove,
 };
 
 static int
@@ -2287,5 +2308,5 @@ avp_dev_stats_reset(struct rte_eth_dev *eth_dev)
 	}
 }
 
-RTE_PMD_REGISTER_PCI(net_avp, rte_avp_pmd.pci_drv);
+RTE_PMD_REGISTER_PCI(net_avp, rte_avp_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_avp, pci_id_avp_map);

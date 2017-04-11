@@ -56,6 +56,7 @@
 #endif
 #include <rte_malloc.h>
 #include <rte_ethdev.h>
+#include <rte_ethdev_pci.h>
 #include <rte_pci.h>
 #include <rte_common.h>
 #include <rte_kvargs.h>
@@ -365,7 +366,7 @@ mlx5_args(struct priv *priv, struct rte_devargs *devargs)
 	return 0;
 }
 
-static struct eth_driver mlx5_driver;
+static struct rte_pci_driver mlx5_driver;
 
 /**
  * DPDK callback to register a PCI device.
@@ -396,7 +397,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	int i;
 
 	(void)pci_drv;
-	assert(pci_drv == &mlx5_driver.pci_drv);
+	assert(pci_drv == &mlx5_driver);
 	/* Get mlx5_dev[] index. */
 	idx = mlx5_dev_idx(&pci_dev->addr);
 	if (idx == -1) {
@@ -731,7 +732,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 
 		eth_dev->device = &pci_dev->device;
 		rte_eth_copy_pci_info(eth_dev, pci_dev);
-		eth_dev->driver = &mlx5_driver;
+		eth_dev->device->driver = &mlx5_driver.driver;
 		priv->dev = eth_dev;
 		eth_dev->dev_ops = &mlx5_dev_ops;
 
@@ -813,16 +814,13 @@ static const struct rte_pci_id mlx5_pci_id_map[] = {
 	}
 };
 
-static struct eth_driver mlx5_driver = {
-	.pci_drv = {
-		.driver = {
-			.name = MLX5_DRIVER_NAME
-		},
-		.id_table = mlx5_pci_id_map,
-		.probe = mlx5_pci_probe,
-		.drv_flags = RTE_PCI_DRV_INTR_LSC,
+static struct rte_pci_driver mlx5_driver = {
+	.driver = {
+		.name = MLX5_DRIVER_NAME
 	},
-	.dev_private_size = sizeof(struct priv)
+	.id_table = mlx5_pci_id_map,
+	.probe = mlx5_pci_probe,
+	.drv_flags = RTE_PCI_DRV_INTR_LSC,
 };
 
 /**
@@ -840,7 +838,7 @@ rte_mlx5_pmd_init(void)
 	 */
 	setenv("RDMAV_HUGEPAGES_SAFE", "1", 1);
 	ibv_fork_init();
-	rte_eal_pci_register(&mlx5_driver.pci_drv);
+	rte_eal_pci_register(&mlx5_driver);
 }
 
 RTE_PMD_EXPORT_NAME(net_mlx5, __COUNTER__);

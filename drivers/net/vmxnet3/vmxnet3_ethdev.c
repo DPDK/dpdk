@@ -56,6 +56,7 @@
 #include <rte_alarm.h>
 #include <rte_ether.h>
 #include <rte_ethdev.h>
+#include <rte_ethdev_pci.h>
 #include <rte_atomic.h>
 #include <rte_string_fns.h>
 #include <rte_malloc.h>
@@ -377,16 +378,23 @@ eth_vmxnet3_dev_uninit(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
-static struct eth_driver rte_vmxnet3_pmd = {
-	.pci_drv = {
-		.id_table = pci_id_vmxnet3_map,
-		.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
-		.probe = rte_eth_dev_pci_probe,
-		.remove = rte_eth_dev_pci_remove,
-	},
-	.eth_dev_init = eth_vmxnet3_dev_init,
-	.eth_dev_uninit = eth_vmxnet3_dev_uninit,
-	.dev_private_size = sizeof(struct vmxnet3_hw),
+static int eth_vmxnet3_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
+	struct rte_pci_device *pci_dev)
+{
+	return rte_eth_dev_pci_generic_probe(pci_dev,
+		sizeof(struct vmxnet3_hw), eth_vmxnet3_dev_init);
+}
+
+static int eth_vmxnet3_pci_remove(struct rte_pci_device *pci_dev)
+{
+	return rte_eth_dev_pci_generic_remove(pci_dev, eth_vmxnet3_dev_uninit);
+}
+
+static struct rte_pci_driver rte_vmxnet3_pmd = {
+	.id_table = pci_id_vmxnet3_map,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
+	.probe = eth_vmxnet3_pci_probe,
+	.remove = eth_vmxnet3_pci_remove,
 };
 
 static int
@@ -1116,6 +1124,6 @@ vmxnet3_process_events(struct vmxnet3_hw *hw)
 }
 #endif
 
-RTE_PMD_REGISTER_PCI(net_vmxnet3, rte_vmxnet3_pmd.pci_drv);
+RTE_PMD_REGISTER_PCI(net_vmxnet3, rte_vmxnet3_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_vmxnet3, pci_id_vmxnet3_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_vmxnet3, "* igb_uio | uio_pci_generic | vfio");

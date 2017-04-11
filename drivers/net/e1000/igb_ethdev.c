@@ -45,6 +45,7 @@
 #include <rte_pci.h>
 #include <rte_ether.h>
 #include <rte_ethdev.h>
+#include <rte_ethdev_pci.h>
 #include <rte_memory.h>
 #include <rte_memzone.h>
 #include <rte_eal.h>
@@ -1088,31 +1089,46 @@ eth_igbvf_dev_uninit(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
-static struct eth_driver rte_igb_pmd = {
-	.pci_drv = {
-		.id_table = pci_id_igb_map,
-		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
-		.probe = rte_eth_dev_pci_probe,
-		.remove = rte_eth_dev_pci_remove,
-	},
-	.eth_dev_init = eth_igb_dev_init,
-	.eth_dev_uninit = eth_igb_dev_uninit,
-	.dev_private_size = sizeof(struct e1000_adapter),
+static int eth_igb_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
+	struct rte_pci_device *pci_dev)
+{
+	return rte_eth_dev_pci_generic_probe(pci_dev,
+		sizeof(struct e1000_adapter), eth_igb_dev_init);
+}
+
+static int eth_igb_pci_remove(struct rte_pci_device *pci_dev)
+{
+	return rte_eth_dev_pci_generic_remove(pci_dev, eth_igb_dev_uninit);
+}
+
+static struct rte_pci_driver rte_igb_pmd = {
+	.id_table = pci_id_igb_map,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
+	.probe = eth_igb_pci_probe,
+	.remove = eth_igb_pci_remove,
 };
+
+
+static int eth_igbvf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
+	struct rte_pci_device *pci_dev)
+{
+	return rte_eth_dev_pci_generic_probe(pci_dev,
+		sizeof(struct e1000_adapter), eth_igbvf_dev_init);
+}
+
+static int eth_igbvf_pci_remove(struct rte_pci_device *pci_dev)
+{
+	return rte_eth_dev_pci_generic_remove(pci_dev, eth_igbvf_dev_uninit);
+}
 
 /*
  * virtual function driver struct
  */
-static struct eth_driver rte_igbvf_pmd = {
-	.pci_drv = {
-		.id_table = pci_id_igbvf_map,
-		.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
-		.probe = rte_eth_dev_pci_probe,
-		.remove = rte_eth_dev_pci_remove,
-	},
-	.eth_dev_init = eth_igbvf_dev_init,
-	.eth_dev_uninit = eth_igbvf_dev_uninit,
-	.dev_private_size = sizeof(struct e1000_adapter),
+static struct rte_pci_driver rte_igbvf_pmd = {
+	.id_table = pci_id_igbvf_map,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
+	.probe = eth_igbvf_pci_probe,
+	.remove = eth_igbvf_pci_remove,
 };
 
 static void
@@ -5309,9 +5325,9 @@ eth_igb_configure_msix_intr(struct rte_eth_dev *dev)
 	E1000_WRITE_FLUSH(hw);
 }
 
-RTE_PMD_REGISTER_PCI(net_e1000_igb, rte_igb_pmd.pci_drv);
+RTE_PMD_REGISTER_PCI(net_e1000_igb, rte_igb_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_e1000_igb, pci_id_igb_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_e1000_igb, "* igb_uio | uio_pci_generic | vfio");
-RTE_PMD_REGISTER_PCI(net_e1000_igb_vf, rte_igbvf_pmd.pci_drv);
+RTE_PMD_REGISTER_PCI(net_e1000_igb_vf, rte_igbvf_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_e1000_igb_vf, pci_id_igbvf_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_e1000_igb_vf, "* igb_uio | vfio");

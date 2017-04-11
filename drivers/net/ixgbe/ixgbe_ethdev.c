@@ -56,6 +56,7 @@
 #include <rte_alarm.h>
 #include <rte_ether.h>
 #include <rte_ethdev.h>
+#include <rte_ethdev_pci.h>
 #include <rte_atomic.h>
 #include <rte_malloc.h>
 #include <rte_random.h>
@@ -247,7 +248,7 @@ static void ixgbe_set_default_mac_addr(struct rte_eth_dev *dev,
 					   struct ether_addr *mac_addr);
 static void ixgbe_dcb_init(struct ixgbe_hw *hw, struct ixgbe_dcb_config *dcb_config);
 static bool is_device_supported(struct rte_eth_dev *dev,
-				struct eth_driver *drv);
+				struct rte_pci_driver *drv);
 
 /* For Virtual Function support */
 static int eth_ixgbevf_dev_init(struct rte_eth_dev *eth_dev);
@@ -1768,31 +1769,45 @@ eth_ixgbevf_dev_uninit(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
-static struct eth_driver rte_ixgbe_pmd = {
-	.pci_drv = {
-		.id_table = pci_id_ixgbe_map,
-		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
-		.probe = rte_eth_dev_pci_probe,
-		.remove = rte_eth_dev_pci_remove,
-	},
-	.eth_dev_init = eth_ixgbe_dev_init,
-	.eth_dev_uninit = eth_ixgbe_dev_uninit,
-	.dev_private_size = sizeof(struct ixgbe_adapter),
+static int eth_ixgbe_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
+	struct rte_pci_device *pci_dev)
+{
+	return rte_eth_dev_pci_generic_probe(pci_dev,
+		sizeof(struct ixgbe_adapter), eth_ixgbe_dev_init);
+}
+
+static int eth_ixgbe_pci_remove(struct rte_pci_device *pci_dev)
+{
+	return rte_eth_dev_pci_generic_remove(pci_dev, eth_ixgbe_dev_uninit);
+}
+
+static struct rte_pci_driver rte_ixgbe_pmd = {
+	.id_table = pci_id_ixgbe_map,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
+	.probe = eth_ixgbe_pci_probe,
+	.remove = eth_ixgbe_pci_remove,
 };
+
+static int eth_ixgbevf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
+	struct rte_pci_device *pci_dev)
+{
+	return rte_eth_dev_pci_generic_probe(pci_dev,
+		sizeof(struct ixgbe_adapter), eth_ixgbevf_dev_init);
+}
+
+static int eth_ixgbevf_pci_remove(struct rte_pci_device *pci_dev)
+{
+	return rte_eth_dev_pci_generic_remove(pci_dev, eth_ixgbevf_dev_uninit);
+}
 
 /*
  * virtual function driver struct
  */
-static struct eth_driver rte_ixgbevf_pmd = {
-	.pci_drv = {
-		.id_table = pci_id_ixgbevf_map,
-		.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
-		.probe = rte_eth_dev_pci_probe,
-		.remove = rte_eth_dev_pci_remove,
-	},
-	.eth_dev_init = eth_ixgbevf_dev_init,
-	.eth_dev_uninit = eth_ixgbevf_dev_uninit,
-	.dev_private_size = sizeof(struct ixgbe_adapter),
+static struct rte_pci_driver rte_ixgbevf_pmd = {
+	.id_table = pci_id_ixgbevf_map,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
+	.probe = eth_ixgbevf_pci_probe,
+	.remove = eth_ixgbevf_pci_remove,
 };
 
 static int
@@ -4383,10 +4398,9 @@ ixgbe_set_default_mac_addr(struct rte_eth_dev *dev, struct ether_addr *addr)
 }
 
 static bool
-is_device_supported(struct rte_eth_dev *dev, struct eth_driver *drv)
+is_device_supported(struct rte_eth_dev *dev, struct rte_pci_driver *drv)
 {
-	if (strcmp(dev->driver->pci_drv.driver.name,
-		   drv->pci_drv.driver.name))
+	if (strcmp(dev->data->drv_name, drv->driver.name))
 		return false;
 
 	return true;
@@ -8774,9 +8788,9 @@ rte_pmd_ixgbe_set_tc_bw_alloc(uint8_t port,
 	return 0;
 }
 
-RTE_PMD_REGISTER_PCI(net_ixgbe, rte_ixgbe_pmd.pci_drv);
+RTE_PMD_REGISTER_PCI(net_ixgbe, rte_ixgbe_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_ixgbe, pci_id_ixgbe_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_ixgbe, "* igb_uio | uio_pci_generic | vfio");
-RTE_PMD_REGISTER_PCI(net_ixgbe_vf, rte_ixgbevf_pmd.pci_drv);
+RTE_PMD_REGISTER_PCI(net_ixgbe_vf, rte_ixgbevf_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_ixgbe_vf, pci_id_ixgbevf_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_ixgbe_vf, "* igb_uio | vfio");

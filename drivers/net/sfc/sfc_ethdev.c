@@ -31,6 +31,7 @@
 
 #include <rte_dev.h>
 #include <rte_ethdev.h>
+#include <rte_ethdev_pci.h>
 #include <rte_pci.h>
 #include <rte_errno.h>
 
@@ -1596,21 +1597,28 @@ static const struct rte_pci_id pci_id_sfc_efx_map[] = {
 	{ .vendor_id = 0 /* sentinel */ }
 };
 
-static struct eth_driver sfc_efx_pmd = {
-	.pci_drv = {
-		.id_table = pci_id_sfc_efx_map,
-		.drv_flags =
-			RTE_PCI_DRV_INTR_LSC |
-			RTE_PCI_DRV_NEED_MAPPING,
-		.probe = rte_eth_dev_pci_probe,
-		.remove = rte_eth_dev_pci_remove,
-	},
-	.eth_dev_init = sfc_eth_dev_init,
-	.eth_dev_uninit = sfc_eth_dev_uninit,
-	.dev_private_size = sizeof(struct sfc_adapter),
+static int sfc_eth_dev_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
+	struct rte_pci_device *pci_dev)
+{
+	return rte_eth_dev_pci_generic_probe(pci_dev,
+		sizeof(struct sfc_adapter), sfc_eth_dev_init);
+}
+
+static int sfc_eth_dev_pci_remove(struct rte_pci_device *pci_dev)
+{
+	return rte_eth_dev_pci_generic_remove(pci_dev, sfc_eth_dev_uninit);
+}
+
+static struct rte_pci_driver sfc_efx_pmd = {
+	.id_table = pci_id_sfc_efx_map,
+	.drv_flags =
+		RTE_PCI_DRV_INTR_LSC |
+		RTE_PCI_DRV_NEED_MAPPING,
+	.probe = sfc_eth_dev_pci_probe,
+	.remove = sfc_eth_dev_pci_remove,
 };
 
-RTE_PMD_REGISTER_PCI(net_sfc_efx, sfc_efx_pmd.pci_drv);
+RTE_PMD_REGISTER_PCI(net_sfc_efx, sfc_efx_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_sfc_efx, pci_id_sfc_efx_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_sfc_efx, "* igb_uio | uio_pci_generic | vfio");
 RTE_PMD_REGISTER_PARAM_STRING(net_sfc_efx,

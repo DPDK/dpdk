@@ -38,6 +38,7 @@
 #include <unistd.h>
 
 #include <rte_ethdev.h>
+#include <rte_ethdev_pci.h>
 #include <rte_memcpy.h>
 #include <rte_string_fns.h>
 #include <rte_memzone.h>
@@ -1612,19 +1613,26 @@ eth_virtio_dev_uninit(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
-static struct eth_driver rte_virtio_pmd = {
-	.pci_drv = {
-		.driver = {
-			.name = "net_virtio",
-		},
-		.id_table = pci_id_virtio_map,
-		.drv_flags = 0,
-		.probe = rte_eth_dev_pci_probe,
-		.remove = rte_eth_dev_pci_remove,
+static int eth_virtio_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
+	struct rte_pci_device *pci_dev)
+{
+	return rte_eth_dev_pci_generic_probe(pci_dev, sizeof(struct virtio_hw),
+		eth_virtio_dev_init);
+}
+
+static int eth_virtio_pci_remove(struct rte_pci_device *pci_dev)
+{
+	return rte_eth_dev_pci_generic_remove(pci_dev, eth_virtio_dev_uninit);
+}
+
+static struct rte_pci_driver rte_virtio_pmd = {
+	.driver = {
+		.name = "net_virtio",
 	},
-	.eth_dev_init = eth_virtio_dev_init,
-	.eth_dev_uninit = eth_virtio_dev_uninit,
-	.dev_private_size = sizeof(struct virtio_hw),
+	.id_table = pci_id_virtio_map,
+	.drv_flags = 0,
+	.probe = eth_virtio_pci_probe,
+	.remove = eth_virtio_pci_remove,
 };
 
 RTE_INIT(rte_virtio_pmd_init);
@@ -1636,7 +1644,7 @@ rte_virtio_pmd_init(void)
 		return;
 	}
 
-	rte_eal_pci_register(&rte_virtio_pmd.pci_drv);
+	rte_eal_pci_register(&rte_virtio_pmd);
 }
 
 /*

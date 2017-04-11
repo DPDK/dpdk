@@ -57,6 +57,7 @@
 #include <rte_alarm.h>
 #include <rte_ether.h>
 #include <rte_ethdev.h>
+#include <rte_ethdev_pci.h>
 #include <rte_atomic.h>
 #include <rte_malloc.h>
 #include <rte_random.h>
@@ -1039,17 +1040,25 @@ out_free_adapter:
 	return err;
 }
 
-static struct eth_driver rte_cxgbe_pmd = {
-	.pci_drv = {
-		.id_table = cxgb4_pci_tbl,
-		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
-		.probe = rte_eth_dev_pci_probe,
-		.remove = rte_eth_dev_pci_remove,
-	},
-	.eth_dev_init = eth_cxgbe_dev_init,
-	.dev_private_size = sizeof(struct port_info),
+static int eth_cxgbe_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
+	struct rte_pci_device *pci_dev)
+{
+	return rte_eth_dev_pci_generic_probe(pci_dev,
+		sizeof(struct port_info), eth_cxgbe_dev_init);
+}
+
+static int eth_cxgbe_pci_remove(struct rte_pci_device *pci_dev)
+{
+	return rte_eth_dev_pci_generic_remove(pci_dev, NULL);
+}
+
+static struct rte_pci_driver rte_cxgbe_pmd = {
+	.id_table = cxgb4_pci_tbl,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
+	.probe = eth_cxgbe_pci_probe,
+	.remove = eth_cxgbe_pci_remove,
 };
 
-RTE_PMD_REGISTER_PCI(net_cxgbe, rte_cxgbe_pmd.pci_drv);
+RTE_PMD_REGISTER_PCI(net_cxgbe, rte_cxgbe_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_cxgbe, cxgb4_pci_tbl);
 RTE_PMD_REGISTER_KMOD_DEP(net_cxgbe, "* igb_uio | uio_pci_generic | vfio");

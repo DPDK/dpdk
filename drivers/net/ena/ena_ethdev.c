@@ -33,6 +33,7 @@
 
 #include <rte_ether.h>
 #include <rte_ethdev.h>
+#include <rte_ethdev_pci.h>
 #include <rte_tcp.h>
 #include <rte_atomic.h>
 #include <rte_dev.h>
@@ -1776,17 +1777,25 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 	return sent_idx;
 }
 
-static struct eth_driver rte_ena_pmd = {
-	.pci_drv = {
-		.id_table = pci_id_ena_map,
-		.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
-		.probe = rte_eth_dev_pci_probe,
-		.remove = rte_eth_dev_pci_remove,
-	},
-	.eth_dev_init = eth_ena_dev_init,
-	.dev_private_size = sizeof(struct ena_adapter),
+static int eth_ena_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
+	struct rte_pci_device *pci_dev)
+{
+	return rte_eth_dev_pci_generic_probe(pci_dev,
+		sizeof(struct ena_adapter), eth_ena_dev_init);
+}
+
+static int eth_ena_pci_remove(struct rte_pci_device *pci_dev)
+{
+	return rte_eth_dev_pci_generic_remove(pci_dev, NULL);
+}
+
+static struct rte_pci_driver rte_ena_pmd = {
+	.id_table = pci_id_ena_map,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
+	.probe = eth_ena_pci_probe,
+	.remove = eth_ena_pci_remove,
 };
 
-RTE_PMD_REGISTER_PCI(net_ena, rte_ena_pmd.pci_drv);
+RTE_PMD_REGISTER_PCI(net_ena, rte_ena_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_ena, pci_id_ena_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_ena, "* igb_uio | uio_pci_generic | vfio");

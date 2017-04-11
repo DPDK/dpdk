@@ -45,6 +45,7 @@
 #include <rte_pci.h>
 #include <rte_ether.h>
 #include <rte_ethdev.h>
+#include <rte_ethdev_pci.h>
 #include <rte_memzone.h>
 #include <rte_malloc.h>
 #include <rte_memcpy.h>
@@ -642,16 +643,23 @@ static const struct rte_i40e_xstats_name_off rte_i40e_txq_prio_strings[] = {
 #define I40E_NB_TXQ_PRIO_XSTATS (sizeof(rte_i40e_txq_prio_strings) / \
 		sizeof(rte_i40e_txq_prio_strings[0]))
 
-static struct eth_driver rte_i40e_pmd = {
-	.pci_drv = {
-		.id_table = pci_id_i40e_map,
-		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
-		.probe = rte_eth_dev_pci_probe,
-		.remove = rte_eth_dev_pci_remove,
-	},
-	.eth_dev_init = eth_i40e_dev_init,
-	.eth_dev_uninit = eth_i40e_dev_uninit,
-	.dev_private_size = sizeof(struct i40e_adapter),
+static int eth_i40e_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
+	struct rte_pci_device *pci_dev)
+{
+	return rte_eth_dev_pci_generic_probe(pci_dev,
+		sizeof(struct i40e_adapter), eth_i40e_dev_init);
+}
+
+static int eth_i40e_pci_remove(struct rte_pci_device *pci_dev)
+{
+	return rte_eth_dev_pci_generic_remove(pci_dev, eth_i40e_dev_uninit);
+}
+
+static struct rte_pci_driver rte_i40e_pmd = {
+	.id_table = pci_id_i40e_map,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
+	.probe = eth_i40e_pci_probe,
+	.remove = eth_i40e_pci_remove,
 };
 
 static inline int
@@ -682,7 +690,7 @@ rte_i40e_dev_atomic_write_link_status(struct rte_eth_dev *dev,
 	return 0;
 }
 
-RTE_PMD_REGISTER_PCI(net_i40e, rte_i40e_pmd.pci_drv);
+RTE_PMD_REGISTER_PCI(net_i40e, rte_i40e_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_i40e, pci_id_i40e_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_i40e, "* igb_uio | uio_pci_generic | vfio");
 
@@ -10689,10 +10697,10 @@ i40e_filter_restore(struct i40e_pf *pf)
 }
 
 static bool
-is_device_supported(struct rte_eth_dev *dev, struct eth_driver *drv)
+is_device_supported(struct rte_eth_dev *dev, struct rte_pci_driver *drv)
 {
-	if (strcmp(dev->driver->pci_drv.driver.name,
-		   drv->pci_drv.driver.name))
+	if (strcmp(dev->data->drv_name,
+		   drv->driver.name))
 		return false;
 
 	return true;

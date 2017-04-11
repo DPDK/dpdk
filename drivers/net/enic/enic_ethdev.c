@@ -38,6 +38,7 @@
 #include <rte_dev.h>
 #include <rte_pci.h>
 #include <rte_ethdev.h>
+#include <rte_ethdev_pci.h>
 #include <rte_string_fns.h>
 
 #include "vnic_intr.h"
@@ -629,17 +630,25 @@ static int eth_enicpmd_dev_init(struct rte_eth_dev *eth_dev)
 	return enic_probe(enic);
 }
 
-static struct eth_driver rte_enic_pmd = {
-	.pci_drv = {
-		.id_table = pci_id_enic_map,
-		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
-		.probe = rte_eth_dev_pci_probe,
-		.remove = rte_eth_dev_pci_remove,
-	},
-	.eth_dev_init = eth_enicpmd_dev_init,
-	.dev_private_size = sizeof(struct enic),
+static int eth_enic_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
+	struct rte_pci_device *pci_dev)
+{
+	return rte_eth_dev_pci_generic_probe(pci_dev, sizeof(struct enic),
+		eth_enicpmd_dev_init);
+}
+
+static int eth_enic_pci_remove(struct rte_pci_device *pci_dev)
+{
+	return rte_eth_dev_pci_generic_remove(pci_dev, NULL);
+}
+
+static struct rte_pci_driver rte_enic_pmd = {
+	.id_table = pci_id_enic_map,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
+	.probe = eth_enic_pci_probe,
+	.remove = eth_enic_pci_remove,
 };
 
-RTE_PMD_REGISTER_PCI(net_enic, rte_enic_pmd.pci_drv);
+RTE_PMD_REGISTER_PCI(net_enic, rte_enic_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_enic, pci_id_enic_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_enic, "* igb_uio | uio_pci_generic | vfio");

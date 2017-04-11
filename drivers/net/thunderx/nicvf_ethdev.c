@@ -53,6 +53,7 @@
 #include <rte_eal.h>
 #include <rte_ether.h>
 #include <rte_ethdev.h>
+#include <rte_ethdev_pci.h>
 #include <rte_interrupts.h>
 #include <rte_log.h>
 #include <rte_memory.h>
@@ -2131,17 +2132,25 @@ static const struct rte_pci_id pci_id_nicvf_map[] = {
 	},
 };
 
-static struct eth_driver rte_nicvf_pmd = {
-	.pci_drv = {
-		.id_table = pci_id_nicvf_map,
-		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
-		.probe = rte_eth_dev_pci_probe,
-		.remove = rte_eth_dev_pci_remove,
-	},
-	.eth_dev_init = nicvf_eth_dev_init,
-	.dev_private_size = sizeof(struct nicvf),
+static int nicvf_eth_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
+	struct rte_pci_device *pci_dev)
+{
+	return rte_eth_dev_pci_generic_probe(pci_dev, sizeof(struct nicvf),
+		nicvf_eth_dev_init);
+}
+
+static int nicvf_eth_pci_remove(struct rte_pci_device *pci_dev)
+{
+	return rte_eth_dev_pci_generic_remove(pci_dev, NULL);
+}
+
+static struct rte_pci_driver rte_nicvf_pmd = {
+	.id_table = pci_id_nicvf_map,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
+	.probe = nicvf_eth_pci_probe,
+	.remove = nicvf_eth_pci_remove,
 };
 
-RTE_PMD_REGISTER_PCI(net_thunderx, rte_nicvf_pmd.pci_drv);
+RTE_PMD_REGISTER_PCI(net_thunderx, rte_nicvf_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_thunderx, pci_id_nicvf_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_thunderx, "* igb_uio | uio_pci_generic | vfio");

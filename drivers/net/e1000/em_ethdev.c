@@ -45,6 +45,7 @@
 #include <rte_pci.h>
 #include <rte_ether.h>
 #include <rte_ethdev.h>
+#include <rte_ethdev_pci.h>
 #include <rte_memory.h>
 #include <rte_memzone.h>
 #include <rte_eal.h>
@@ -417,16 +418,23 @@ eth_em_dev_uninit(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
-static struct eth_driver rte_em_pmd = {
-	.pci_drv = {
-		.id_table = pci_id_em_map,
-		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
-		.probe = rte_eth_dev_pci_probe,
-		.remove = rte_eth_dev_pci_remove,
-	},
-	.eth_dev_init = eth_em_dev_init,
-	.eth_dev_uninit = eth_em_dev_uninit,
-	.dev_private_size = sizeof(struct e1000_adapter),
+static int eth_em_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
+	struct rte_pci_device *pci_dev)
+{
+	return rte_eth_dev_pci_generic_probe(pci_dev,
+		sizeof(struct e1000_adapter), eth_em_dev_init);
+}
+
+static int eth_em_pci_remove(struct rte_pci_device *pci_dev)
+{
+	return rte_eth_dev_pci_generic_remove(pci_dev, eth_em_dev_uninit);
+}
+
+static struct rte_pci_driver rte_em_pmd = {
+	.id_table = pci_id_em_map,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
+	.probe = eth_em_pci_probe,
+	.remove = eth_em_pci_remove,
 };
 
 static int
@@ -1857,6 +1865,6 @@ eth_em_set_mc_addr_list(struct rte_eth_dev *dev,
 	return 0;
 }
 
-RTE_PMD_REGISTER_PCI(net_e1000_em, rte_em_pmd.pci_drv);
+RTE_PMD_REGISTER_PCI(net_e1000_em, rte_em_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_e1000_em, pci_id_em_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_e1000_em, "* igb_uio | uio_pci_generic | vfio");

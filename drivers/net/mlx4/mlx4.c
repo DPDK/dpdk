@@ -60,6 +60,7 @@
 
 #include <rte_ether.h>
 #include <rte_ethdev.h>
+#include <rte_ethdev_pci.h>
 #include <rte_dev.h>
 #include <rte_mbuf.h>
 #include <rte_errno.h>
@@ -5477,7 +5478,7 @@ free_kvlist:
 	return ret;
 }
 
-static struct eth_driver mlx4_driver;
+static struct rte_pci_driver mlx4_driver;
 
 /**
  * DPDK callback to register a PCI device.
@@ -5509,7 +5510,7 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	int i;
 
 	(void)pci_drv;
-	assert(pci_drv == &mlx4_driver.pci_drv);
+	assert(pci_drv == &mlx4_driver);
 	/* Get mlx4_dev[] index. */
 	idx = mlx4_dev_idx(&pci_dev->addr);
 	if (idx == -1) {
@@ -5808,7 +5809,7 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 
 		rte_eth_copy_pci_info(eth_dev, pci_dev);
 
-		eth_dev->driver = &mlx4_driver;
+		eth_dev->device->driver = &mlx4_driver.driver;
 
 		priv->dev = eth_dev;
 		eth_dev->dev_ops = &mlx4_dev_ops;
@@ -5872,16 +5873,13 @@ static const struct rte_pci_id mlx4_pci_id_map[] = {
 	}
 };
 
-static struct eth_driver mlx4_driver = {
-	.pci_drv = {
-		.driver = {
-			.name = MLX4_DRIVER_NAME
-		},
-		.id_table = mlx4_pci_id_map,
-		.probe = mlx4_pci_probe,
-		.drv_flags = RTE_PCI_DRV_INTR_LSC,
+static struct rte_pci_driver mlx4_driver = {
+	.driver = {
+		.name = MLX4_DRIVER_NAME
 	},
-	.dev_private_size = sizeof(struct priv)
+	.id_table = mlx4_pci_id_map,
+	.probe = mlx4_pci_probe,
+	.drv_flags = RTE_PCI_DRV_INTR_LSC,
 };
 
 /**
@@ -5900,7 +5898,7 @@ rte_mlx4_pmd_init(void)
 	 */
 	setenv("RDMAV_HUGEPAGES_SAFE", "1", 1);
 	ibv_fork_init();
-	rte_eal_pci_register(&mlx4_driver.pci_drv);
+	rte_eal_pci_register(&mlx4_driver);
 }
 
 RTE_PMD_EXPORT_NAME(net_mlx4, __COUNTER__);

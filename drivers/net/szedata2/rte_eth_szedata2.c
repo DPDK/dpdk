@@ -45,6 +45,7 @@
 
 #include <rte_mbuf.h>
 #include <rte_ethdev.h>
+#include <rte_ethdev_pci.h>
 #include <rte_malloc.h>
 #include <rte_memcpy.h>
 #include <rte_kvargs.h>
@@ -1587,18 +1588,26 @@ static const struct rte_pci_id rte_szedata2_pci_id_table[] = {
 	}
 };
 
-static struct eth_driver szedata2_eth_driver = {
-	.pci_drv = {
-		.id_table = rte_szedata2_pci_id_table,
-		.probe = rte_eth_dev_pci_probe,
-		.remove = rte_eth_dev_pci_remove,
-	},
-	.eth_dev_init     = rte_szedata2_eth_dev_init,
-	.eth_dev_uninit   = rte_szedata2_eth_dev_uninit,
-	.dev_private_size = sizeof(struct pmd_internals),
+static int szedata2_eth_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
+	struct rte_pci_device *pci_dev)
+{
+	return rte_eth_dev_pci_generic_probe(pci_dev,
+		sizeof(struct pmd_internals), rte_szedata2_eth_dev_init);
+}
+
+static int szedata2_eth_pci_remove(struct rte_pci_device *pci_dev)
+{
+	return rte_eth_dev_pci_generic_remove(pci_dev,
+		rte_szedata2_eth_dev_uninit);
+}
+
+static struct rte_pci_driver szedata2_eth_driver = {
+	.id_table = rte_szedata2_pci_id_table,
+	.probe = szedata2_eth_pci_probe,
+	.remove = szedata2_eth_pci_remove,
 };
 
-RTE_PMD_REGISTER_PCI(RTE_SZEDATA2_DRIVER_NAME, szedata2_eth_driver.pci_drv);
+RTE_PMD_REGISTER_PCI(RTE_SZEDATA2_DRIVER_NAME, szedata2_eth_driver);
 RTE_PMD_REGISTER_PCI_TABLE(RTE_SZEDATA2_DRIVER_NAME, rte_szedata2_pci_id_table);
 RTE_PMD_REGISTER_KMOD_DEP(RTE_SZEDATA2_DRIVER_NAME,
 	"* combo6core & combov3 & szedata2 & szedata2_cv3");

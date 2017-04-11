@@ -12,6 +12,7 @@
 #include "bnx2x_rxtx.h"
 
 #include <rte_dev.h>
+#include <rte_ethdev_pci.h>
 
 /*
  * The set of PCI devices this driver supports
@@ -627,34 +628,57 @@ eth_bnx2xvf_dev_init(struct rte_eth_dev *eth_dev)
 	return bnx2x_common_dev_init(eth_dev, 1);
 }
 
-static struct eth_driver rte_bnx2x_pmd = {
-	.pci_drv = {
-		.id_table = pci_id_bnx2x_map,
-		.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
-		.probe = rte_eth_dev_pci_probe,
-		.remove = rte_eth_dev_pci_remove,
-	},
-	.eth_dev_init = eth_bnx2x_dev_init,
-	.dev_private_size = sizeof(struct bnx2x_softc),
+static struct rte_pci_driver rte_bnx2x_pmd;
+static struct rte_pci_driver rte_bnx2xvf_pmd;
+
+static int eth_bnx2x_pci_probe(struct rte_pci_driver *pci_drv,
+	struct rte_pci_device *pci_dev)
+{
+	struct rte_eth_dev *eth_dev;
+	int ret;
+
+	eth_dev = rte_eth_dev_pci_allocate(pci_dev, sizeof(struct bnx2x_softc));
+	if (!eth_dev)
+		return -ENOMEM;
+
+	if (pci_drv == &rte_bnx2x_pmd)
+		ret = eth_bnx2x_dev_init(eth_dev);
+	else if (pci_drv == &rte_bnx2xvf_pmd)
+		ret = eth_bnx2xvf_dev_init(eth_dev);
+	else
+		ret = -EINVAL;
+
+	if (ret)
+		rte_eth_dev_pci_release(eth_dev);
+
+	return ret;
+}
+
+static int eth_bnx2x_pci_remove(struct rte_pci_device *pci_dev)
+{
+	return rte_eth_dev_pci_generic_remove(pci_dev, NULL);
+}
+
+static struct rte_pci_driver rte_bnx2x_pmd = {
+	.id_table = pci_id_bnx2x_map,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
+	.probe = eth_bnx2x_pci_probe,
+	.remove = eth_bnx2x_pci_remove,
 };
 
 /*
  * virtual function driver struct
  */
-static struct eth_driver rte_bnx2xvf_pmd = {
-	.pci_drv = {
-		.id_table = pci_id_bnx2xvf_map,
-		.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
-		.probe = rte_eth_dev_pci_probe,
-		.remove = rte_eth_dev_pci_remove,
-	},
-	.eth_dev_init = eth_bnx2xvf_dev_init,
-	.dev_private_size = sizeof(struct bnx2x_softc),
+static struct rte_pci_driver rte_bnx2xvf_pmd = {
+	.id_table = pci_id_bnx2xvf_map,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
+	.probe = eth_bnx2x_pci_probe,
+	.remove = eth_bnx2x_pci_remove,
 };
 
-RTE_PMD_REGISTER_PCI(net_bnx2x, rte_bnx2x_pmd.pci_drv);
+RTE_PMD_REGISTER_PCI(net_bnx2x, rte_bnx2x_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_bnx2x, pci_id_bnx2x_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_bnx2x, "* igb_uio | uio_pci_generic | vfio");
-RTE_PMD_REGISTER_PCI(net_bnx2xvf, rte_bnx2xvf_pmd.pci_drv);
+RTE_PMD_REGISTER_PCI(net_bnx2xvf, rte_bnx2xvf_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_bnx2xvf, pci_id_bnx2xvf_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_bnx2xvf, "* igb_uio | vfio");

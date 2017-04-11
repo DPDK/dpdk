@@ -32,6 +32,7 @@
  */
 
 #include <rte_ethdev.h>
+#include <rte_ethdev_pci.h>
 #include <rte_cycles.h>
 #include <rte_malloc.h>
 #include <rte_alarm.h>
@@ -2011,24 +2012,45 @@ lio_eth_dev_init(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
+static int
+lio_eth_dev_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
+		      struct rte_pci_device *pci_dev)
+{
+	struct rte_eth_dev *eth_dev;
+	int ret;
+
+	eth_dev = rte_eth_dev_pci_allocate(pci_dev,
+					   sizeof(struct lio_device));
+	if (eth_dev == NULL)
+		return -ENOMEM;
+
+	ret = lio_eth_dev_init(eth_dev);
+	if (ret)
+		rte_eth_dev_pci_release(eth_dev);
+
+	return ret;
+}
+
+static int
+lio_eth_dev_pci_remove(struct rte_pci_device *pci_dev)
+{
+	return rte_eth_dev_pci_generic_remove(pci_dev,
+					      lio_eth_dev_uninit);
+}
+
 /* Set of PCI devices this driver supports */
 static const struct rte_pci_id pci_id_liovf_map[] = {
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_CAVIUM, LIO_CN23XX_VF_VID) },
 	{ .vendor_id = 0, /* sentinel */ }
 };
 
-static struct eth_driver rte_liovf_pmd = {
-	.pci_drv = {
-		.id_table	= pci_id_liovf_map,
-		.drv_flags      = RTE_PCI_DRV_NEED_MAPPING,
-		.probe		= rte_eth_dev_pci_probe,
-		.remove		= rte_eth_dev_pci_remove,
-	},
-	.eth_dev_init		= lio_eth_dev_init,
-	.eth_dev_uninit		= lio_eth_dev_uninit,
-	.dev_private_size	= sizeof(struct lio_device),
+static struct rte_pci_driver rte_liovf_pmd = {
+	.id_table	= pci_id_liovf_map,
+	.drv_flags      = RTE_PCI_DRV_NEED_MAPPING,
+	.probe		= lio_eth_dev_pci_probe,
+	.remove		= lio_eth_dev_pci_remove,
 };
 
-RTE_PMD_REGISTER_PCI(net_liovf, rte_liovf_pmd.pci_drv);
+RTE_PMD_REGISTER_PCI(net_liovf, rte_liovf_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_liovf, pci_id_liovf_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_liovf, "* igb_uio | vfio");

@@ -2382,35 +2382,47 @@ static const struct rte_pci_id pci_id_qede_map[] = {
 	{.vendor_id = 0,}
 };
 
-static struct eth_driver rte_qedevf_pmd = {
-	.pci_drv = {
-		    .id_table = pci_id_qedevf_map,
-		    .drv_flags =
-		    RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
-		    .probe = rte_eth_dev_pci_probe,
-		    .remove = rte_eth_dev_pci_remove,
-		   },
-	.eth_dev_init = qedevf_eth_dev_init,
-	.eth_dev_uninit = qedevf_eth_dev_uninit,
-	.dev_private_size = sizeof(struct qede_dev),
+static int qedevf_eth_dev_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
+	struct rte_pci_device *pci_dev)
+{
+	return rte_eth_dev_pci_generic_probe(pci_dev,
+		sizeof(struct qede_dev), qedevf_eth_dev_init);
+}
+
+static int qedevf_eth_dev_pci_remove(struct rte_pci_device *pci_dev)
+{
+	return rte_eth_dev_pci_generic_remove(pci_dev, qedevf_eth_dev_uninit);
+}
+
+static struct rte_pci_driver rte_qedevf_pmd = {
+	.id_table = pci_id_qedevf_map,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
+	.probe = qedevf_eth_dev_pci_probe,
+	.remove = qedevf_eth_dev_pci_remove,
 };
 
-static struct eth_driver rte_qede_pmd = {
-	.pci_drv = {
-		    .id_table = pci_id_qede_map,
-		    .drv_flags =
-		    RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
-		    .probe = rte_eth_dev_pci_probe,
-		    .remove = rte_eth_dev_pci_remove,
-		   },
-	.eth_dev_init = qede_eth_dev_init,
-	.eth_dev_uninit = qede_eth_dev_uninit,
-	.dev_private_size = sizeof(struct qede_dev),
+static int qede_eth_dev_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
+	struct rte_pci_device *pci_dev)
+{
+	return rte_eth_dev_pci_generic_probe(pci_dev,
+		sizeof(struct qede_dev), qede_eth_dev_init);
+}
+
+static int qede_eth_dev_pci_remove(struct rte_pci_device *pci_dev)
+{
+	return rte_eth_dev_pci_generic_remove(pci_dev, qede_eth_dev_uninit);
+}
+
+static struct rte_pci_driver rte_qede_pmd = {
+	.id_table = pci_id_qede_map,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
+	.probe = qede_eth_dev_pci_probe,
+	.remove = qede_eth_dev_pci_remove,
 };
 
-RTE_PMD_REGISTER_PCI(net_qede, rte_qede_pmd.pci_drv);
+RTE_PMD_REGISTER_PCI(net_qede, rte_qede_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_qede, pci_id_qede_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_qede, "* igb_uio | uio_pci_generic | vfio");
-RTE_PMD_REGISTER_PCI(net_qede_vf, rte_qedevf_pmd.pci_drv);
+RTE_PMD_REGISTER_PCI(net_qede_vf, rte_qedevf_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_qede_vf, pci_id_qedevf_map);
 RTE_PMD_REGISTER_KMOD_DEP(net_qede_vf, "* igb_uio | vfio");
