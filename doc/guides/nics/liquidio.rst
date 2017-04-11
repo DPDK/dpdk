@@ -80,90 +80,6 @@ Please note that enabling debugging options may affect system performance.
   Toggle display of register reads and writes.
 
 
-.. _lio_driver-compilation:
-
-Driver Compilation
-------------------
-
-To compile LiquidIO PMD for Linux x86_64 gcc target, run the following "make"
-command:
-
-.. code-block:: console
-
-   cd <DPDK-source-directory>
-   make install T=x86_64-native-linuxapp-gcc
-
-
-Sample Application Notes
-------------------------
-
-This section demonstrates how to launch ``testpmd`` with LiquidIO® CN23XX
-device managed by ``librte_pmd_lio`` in Linux operating system.
-
-#. Mount huge pages:
-
-   .. code-block:: console
-
-      mkdir /mnt/huge
-      mount -t hugetlbfs nodev /mnt/huge
-
-#. Request huge pages:
-
-   .. code-block:: console
-
-      echo 1024 > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages/nr_hugepages
-
-#. Load ``vfio-pci`` driver:
-
-   .. code-block:: console
-
-      modprobe vfio-pci
-
-#. Bind the LiquidIO VFs to ``vfio-pci`` loaded in previous step:
-
-   Setup VFIO permissions for regular users and then bind to ``vfio-pci``:
-
-   .. code-block:: console
-
-      sudo chmod a+x /dev/vfio
-
-      sudo chmod 0666 /dev/vfio/*
-
-      ./usertools/dpdk-devbind.py --bind vfio-pci 0000:03:00.3 0000:03:08.3
-
-#. Start ``testpmd`` with basic parameters:
-
-   .. code-block:: console
-
-      ./build/app/testpmd -c 0xf -n 4 -- -i
-
-   Example output:
-
-   .. code-block:: console
-
-      [...]
-      EAL: PCI device 0000:03:00.3 on NUMA socket 0
-      EAL:   probe driver: 177d:9712 net_liovf
-      EAL:   using IOMMU type 1 (Type 1)
-      PMD: net_liovf[03:00.3]INFO: DEVICE : CN23XX VF
-      EAL: PCI device 0000:03:08.3 on NUMA socket 0
-      EAL:   probe driver: 177d:9712 net_liovf
-      PMD: net_liovf[03:08.3]INFO: DEVICE : CN23XX VF
-      Interactive-mode selected
-      USER1: create a new mbuf pool <mbuf_pool_socket_0>: n=171456, size=2176, socket=0
-      Configuring Port 0 (socket 0)
-      PMD: net_liovf[03:00.3]INFO: Starting port 0
-      Port 0: F2:A8:1B:5E:B4:66
-      Configuring Port 1 (socket 0)
-      PMD: net_liovf[03:08.3]INFO: Starting port 1
-      Port 1: 32:76:CC:EE:56:D7
-      Checking link statuses...
-      Port 0 Link Up - speed 10000 Mbps - full-duplex
-      Port 1 Link Up - speed 10000 Mbps - full-duplex
-      Done
-      testpmd>
-
-
 SR-IOV: Prerequisites and Sample Application Notes
 --------------------------------------------------
 
@@ -216,7 +132,6 @@ This section provides instructions to configure SR-IOV with Linux OS.
       echo 1 > /sys/bus/pci/devices/0000:03:00.0/sriov_numvfs
       echo 1 > /sys/bus/pci/devices/0000:03:00.1/sriov_numvfs
 
-
 #. Assign VF MAC address:
 
    Assign MAC address to the VF using iproute2 utility. The syntax is::
@@ -228,7 +143,6 @@ This section provides instructions to configure SR-IOV with Linux OS.
    .. code-block:: console
 
       ip link set p4p1 vf 0 mac F2:A8:1B:5E:B4:66
-
 
 #. Assign VF(s) to VM.
 
@@ -245,12 +159,41 @@ This section provides instructions to configure SR-IOV with Linux OS.
       -device virtio-blk-pci,scsi=off,drive=disk1,id=virtio-disk1,bootindex=1 \
       -device vfio-pci,host=03:00.3 -device vfio-pci,host=03:08.3
 
-
 #. Running testpmd
 
-   Refer :ref:`notes above <lio_driver-compilation>`
-   to compile and run ``testpmd`` application.
-   Use ``igb_uio`` instead of ``vfio-pci`` in VM.
+   Refer to the document
+   :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>` to run
+   ``testpmd`` application.
+
+   .. note::
+
+      Use ``igb_uio`` instead of ``vfio-pci`` in VM.
+
+   Example output:
+
+   .. code-block:: console
+
+      [...]
+      EAL: PCI device 0000:03:00.3 on NUMA socket 0
+      EAL:   probe driver: 177d:9712 net_liovf
+      EAL:   using IOMMU type 1 (Type 1)
+      PMD: net_liovf[03:00.3]INFO: DEVICE : CN23XX VF
+      EAL: PCI device 0000:03:08.3 on NUMA socket 0
+      EAL:   probe driver: 177d:9712 net_liovf
+      PMD: net_liovf[03:08.3]INFO: DEVICE : CN23XX VF
+      Interactive-mode selected
+      USER1: create a new mbuf pool <mbuf_pool_socket_0>: n=171456, size=2176, socket=0
+      Configuring Port 0 (socket 0)
+      PMD: net_liovf[03:00.3]INFO: Starting port 0
+      Port 0: F2:A8:1B:5E:B4:66
+      Configuring Port 1 (socket 0)
+      PMD: net_liovf[03:08.3]INFO: Starting port 1
+      Port 1: 32:76:CC:EE:56:D7
+      Checking link statuses...
+      Port 0 Link Up - speed 10000 Mbps - full-duplex
+      Port 1 Link Up - speed 10000 Mbps - full-duplex
+      Done
+      testpmd>
 
 
 Limitations
