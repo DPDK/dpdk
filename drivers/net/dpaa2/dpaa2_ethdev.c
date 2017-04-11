@@ -437,11 +437,52 @@ dpaa2_dev_close(struct rte_eth_dev *dev)
 	}
 }
 
+static void
+dpaa2_dev_promiscuous_enable(
+		struct rte_eth_dev *dev)
+{
+	int ret;
+	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+	struct fsl_mc_io *dpni = (struct fsl_mc_io *)priv->hw;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (dpni == NULL) {
+		RTE_LOG(ERR, PMD, "dpni is NULL");
+		return;
+	}
+
+	ret = dpni_set_unicast_promisc(dpni, CMD_PRI_LOW, priv->token, true);
+	if (ret < 0)
+		RTE_LOG(ERR, PMD, "Unable to enable promiscuous mode %d", ret);
+}
+
+static void
+dpaa2_dev_promiscuous_disable(
+		struct rte_eth_dev *dev)
+{
+	int ret;
+	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+	struct fsl_mc_io *dpni = (struct fsl_mc_io *)priv->hw;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (dpni == NULL) {
+		RTE_LOG(ERR, PMD, "dpni is NULL");
+		return;
+	}
+
+	ret = dpni_set_unicast_promisc(dpni, CMD_PRI_LOW, priv->token, false);
+	if (ret < 0)
+		RTE_LOG(ERR, PMD, "Unable to disable promiscuous mode %d", ret);
+}
 static struct eth_dev_ops dpaa2_ethdev_ops = {
 	.dev_configure	  = dpaa2_eth_dev_configure,
 	.dev_start	      = dpaa2_dev_start,
 	.dev_stop	      = dpaa2_dev_stop,
 	.dev_close	      = dpaa2_dev_close,
+	.promiscuous_enable   = dpaa2_dev_promiscuous_enable,
+	.promiscuous_disable  = dpaa2_dev_promiscuous_disable,
 	.dev_infos_get	   = dpaa2_dev_info_get,
 	.rx_queue_setup    = dpaa2_dev_rx_queue_setup,
 	.rx_queue_release  = dpaa2_dev_rx_queue_release,
