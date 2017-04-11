@@ -1,6 +1,7 @@
 DPDK_17.05 {
 	global:
 
+	mc_send_command;
 	qbman_check_command_complete;
 	qbman_eq_desc_clear;
 	qbman_eq_desc_set_no_orp;

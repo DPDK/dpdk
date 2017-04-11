@@ -49,6 +49,7 @@ CFLAGS += $(WERROR_FLAGS)
 endif
 
 CFLAGS += -I$(RTE_SDK)/drivers/bus/fslmc
+CFLAGS += -I$(RTE_SDK)/drivers/bus/fslmc/mc
 CFLAGS += -I$(RTE_SDK)/drivers/bus/fslmc/qbman/include
 CFLAGS += -I$(RTE_SDK)/lib/librte_eal/linuxapp/eal
 
@@ -60,6 +61,9 @@ LIBABIVER := 1
 
 SRCS-$(CONFIG_RTE_LIBRTE_FSLMC_BUS) += \
         qbman/qbman_portal.c
+
+SRCS-$(CONFIG_RTE_LIBRTE_FSLMC_BUS) += \
+        mc/mc_sys.c
 
 SRCS-$(CONFIG_RTE_LIBRTE_FSLMC_BUS) += fslmc_bus.c
 
