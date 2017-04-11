@@ -34,11 +34,26 @@
 #ifndef _DPAA2_ETHDEV_H
 #define _DPAA2_ETHDEV_H
 
+#include <mc/fsl_dpni.h>
+#include <mc/fsl_mc_sys.h>
+
+#define MAX_RX_QUEUES		16
+#define MAX_TX_QUEUES		16
+
+/*default tc to be used for ,congestion, distribution etc configuration. */
+#define DPAA2_DEF_TC		0
+
 struct dpaa2_dev_priv {
 	void *hw;
 	int32_t hw_id;
+	int32_t qdid;
 	uint16_t token;
+	uint8_t nb_tx_queues;
+	uint8_t nb_rx_queues;
+	void *rx_vq[MAX_RX_QUEUES];
+	void *tx_vq[MAX_TX_QUEUES];
 
+	uint8_t num_tc;
 	uint8_t flags; /*dpaa2 config flags */
 };
 #endif /* _DPAA2_ETHDEV_H */
