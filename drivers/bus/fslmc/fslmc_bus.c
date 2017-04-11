@@ -42,6 +42,7 @@
 #include <rte_ethdev.h>
 
 #include "rte_fslmc.h"
+#include "fslmc_vfio.h"
 
 #define FSLMC_BUS_LOG(level, fmt, args...) \
 	RTE_LOG(level, EAL, "%s(): " fmt "\n", __func__, ##args)
@@ -51,6 +52,21 @@ struct rte_fslmc_bus rte_fslmc_bus;
 static int
 rte_fslmc_scan(void)
 {
+	int ret;
+
+	ret = fslmc_vfio_setup_group();
+	if (ret) {
+		FSLMC_BUS_LOG(ERR, "fslmc: Unable to setup VFIO");
+		return ret;
+	}
+
+	ret = fslmc_vfio_process_group();
+	if (ret) {
+		FSLMC_BUS_LOG(ERR, "fslmc: Unable to setup devices");
+		return -1;
+	}
+
+	RTE_LOG(INFO, EAL, "fslmc: Bus scan completed\n");
 	return 0;
 }
 
