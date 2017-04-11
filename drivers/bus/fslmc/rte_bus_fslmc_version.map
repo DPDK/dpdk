@@ -1,6 +1,12 @@
 DPDK_17.05 {
 	global:
 
+	dpbp_disable;
+	dpbp_enable;
+	dpbp_get_attributes;
+	dpbp_get_num_free_bufs;
+	dpbp_open;
+	dpbp_reset;
 	dpio_close;
 	dpio_disable;
 	dpio_enable;
