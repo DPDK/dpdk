@@ -36,8 +36,13 @@ include $(RTE_SDK)/mk/rte.vars.mk
 #
 LIB = librte_pmd_dpaa2.a
 
+ifeq ($(CONFIG_RTE_LIBRTE_DPAA2_DEBUG_INIT),y)
+CFLAGS += -O0 -g
+CFLAGS += "-Wno-error"
+else
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
+endif
 
 CFLAGS += -I$(RTE_SDK)/drivers/net/dpaa2
 CFLAGS += -I$(RTE_SDK)/drivers/bus/fslmc

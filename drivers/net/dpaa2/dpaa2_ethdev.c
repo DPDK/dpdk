@@ -45,6 +45,7 @@
 #include <rte_ethdev.h>
 #include <rte_fslmc.h>
 
+#include <fslmc_logs.h>
 #include <fslmc_vfio.h>
 #include "dpaa2_ethdev.h"
 
@@ -53,6 +54,8 @@ static struct rte_dpaa2_driver rte_dpaa2_pmd;
 static int
 dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 {
+	PMD_INIT_FUNC_TRACE();
+
 	/* For secondary processes, the primary has done all the work */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
@@ -65,6 +68,8 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 static int
 dpaa2_dev_uninit(struct rte_eth_dev *eth_dev __rte_unused)
 {
+	PMD_INIT_FUNC_TRACE();
+
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return -EPERM;
 
@@ -92,8 +97,8 @@ rte_dpaa2_probe(struct rte_dpaa2_driver *dpaa2_drv __rte_unused,
 						sizeof(struct dpaa2_dev_priv),
 						RTE_CACHE_LINE_SIZE);
 		if (eth_dev->data->dev_private == NULL) {
-			RTE_LOG(CRIT, PMD, "Cannot allocate memzone for"
-				" private port data\n");
+			PMD_INIT_LOG(CRIT, "Cannot allocate memzone for"
+				     " private port data\n");
 			rte_eth_dev_release_port(eth_dev);
 			return -ENOMEM;
 		}
