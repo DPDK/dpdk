@@ -277,6 +277,17 @@ dpaa2_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	options = options | DPNI_QUEUE_OPT_USER_CTX;
 	cfg.user_context = (uint64_t)(dpaa2_q);
 
+	/*if ls2088 or rev2 device, enable the stashing */
+	if ((qbman_get_version() & 0xFFFF0000) > QMAN_REV_4000) {
+		options |= DPNI_QUEUE_OPT_FLC;
+		cfg.flc.stash_control = true;
+		cfg.flc.value &= 0xFFFFFFFFFFFFFFC0;
+		/* 00 00 00 - last 6 bit represent annotation, context stashing,
+		 * data stashing setting 01 01 00 (0x14) to enable
+		 * 1 line annotation, 1 line context
+		 */
+		cfg.flc.value |= 0x14;
+	}
 	ret = dpni_set_queue(dpni, CMD_PRI_LOW, priv->token, DPNI_QUEUE_RX,
 			     dpaa2_q->tc_index, flow_id, options, &cfg);
 	if (ret) {
