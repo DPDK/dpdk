@@ -292,7 +292,7 @@ eth_ark_recv_pkts(void *rx_queue,
 		mbuf->port = meta->port;
 		mbuf->pkt_len = meta->pkt_len;
 		mbuf->data_len = meta->pkt_len;
-		mbuf->data_off = RTE_PKTMBUF_HEADROOM;
+		mbuf->timestamp = meta->timestamp;
 		mbuf->udata64 = meta->user_data;
 
 		if (ARK_RX_DEBUG) {	/* debug sanity checks */
@@ -322,6 +322,7 @@ eth_ark_recv_pkts(void *rx_queue,
 				mbuf->pkt_len = 63;
 				meta->pkt_len = 63;
 			}
+			/* seqn is only set under debug */
 			mbuf->seqn = cons_index;
 		}
 
