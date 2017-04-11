@@ -156,6 +156,18 @@ New Features
   devices from Atomic Rules.   The net/ark PMD supports line-rate
   agnostic, multi-queue data movement on Arkville core FPGA instances.
 
+* **Added support for NXP DPAA2 - FSLMC bus.**
+
+  Added the new bus "fslmc" driver for NXP DPAA2 devices. See the
+  "Network Interface Controller Drivers" document for more details on this new
+  driver.
+
+* **Added support for NXP DPAA2 Network PMD.**
+
+  Added the new "dpaa2" net driver for NXP DPAA2 devices. See the
+  "Network Interface Controller Drivers" document for more details on this new
+  driver.
+
 * **Added support for the Wind River Systems AVP PMD.**
 
   Added a new networking driver for the AVP device type. Theses devices are
