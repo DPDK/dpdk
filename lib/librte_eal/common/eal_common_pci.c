@@ -84,11 +84,6 @@
 
 #include "eal_private.h"
 
-struct pci_driver_list pci_driver_list =
-	TAILQ_HEAD_INITIALIZER(pci_driver_list);
-struct pci_device_list pci_device_list =
-	TAILQ_HEAD_INITIALIZER(pci_device_list);
-
 extern struct rte_pci_bus rte_pci_bus;
 
 #define SYSFS_PCI_DEVICES "/sys/bus/pci/devices"
@@ -315,7 +310,7 @@ pci_probe_all_drivers(struct rte_pci_device *dev)
 	if (dev->driver != NULL)
 		return 0;
 
-	TAILQ_FOREACH(dr, &pci_driver_list, next) {
+	FOREACH_DRIVER_ON_PCIBUS(dr) {
 		rc = rte_eal_pci_probe_one_driver(dr, dev);
 		if (rc < 0)
 			/* negative value is an error */
@@ -336,6 +331,7 @@ int
 rte_eal_pci_probe_one(const struct rte_pci_addr *addr)
 {
 	struct rte_pci_device *dev = NULL;
+
 	int ret = 0;
 
 	if (addr == NULL)
@@ -347,7 +343,7 @@ rte_eal_pci_probe_one(const struct rte_pci_addr *addr)
 	if (pci_update_device(addr) < 0)
 		goto err_return;
 
-	TAILQ_FOREACH(dev, &pci_device_list, next) {
+	FOREACH_DEVICE_ON_PCIBUS(dev) {
 		if (rte_eal_compare_pci_addr(&dev->addr, addr))
 			continue;
 
@@ -377,7 +373,7 @@ rte_eal_pci_detach(const struct rte_pci_addr *addr)
 	if (addr == NULL)
 		return -1;
 
-	TAILQ_FOREACH(dev, &pci_device_list, next) {
+	FOREACH_DEVICE_ON_PCIBUS(dev) {
 		if (rte_eal_compare_pci_addr(&dev->addr, addr))
 			continue;
 
@@ -389,7 +385,7 @@ rte_eal_pci_detach(const struct rte_pci_addr *addr)
 			/* positive value means driver doesn't support it */
 			continue;
 
-		TAILQ_REMOVE(&pci_device_list, dev, next);
+		rte_eal_pci_remove_device(dev);
 		free(dev);
 		return 0;
 	}
@@ -419,7 +415,7 @@ rte_eal_pci_probe(void)
 	if (rte_eal_devargs_type_count(RTE_DEVTYPE_WHITELISTED_PCI) == 0)
 		probe_all = 1;
 
-	TAILQ_FOREACH(dev, &pci_device_list, next) {
+	FOREACH_DEVICE_ON_PCIBUS(dev) {
 		probed++;
 
 		/* set devargs in PCI structure */
@@ -472,7 +468,7 @@ rte_eal_pci_dump(FILE *f)
 {
 	struct rte_pci_device *dev = NULL;
 
-	TAILQ_FOREACH(dev, &pci_device_list, next) {
+	FOREACH_DEVICE_ON_PCIBUS(dev) {
 		pci_dump_one_device(f, dev);
 	}
 }
@@ -481,16 +477,16 @@ rte_eal_pci_dump(FILE *f)
 void
 rte_eal_pci_register(struct rte_pci_driver *driver)
 {
-	TAILQ_INSERT_TAIL(&pci_driver_list, driver, next);
-	rte_eal_driver_register(&driver->driver);
+	TAILQ_INSERT_TAIL(&rte_pci_bus.driver_list, driver, next);
+	driver->bus = &rte_pci_bus;
 }
 
 /* unregister a driver */
 void
 rte_eal_pci_unregister(struct rte_pci_driver *driver)
 {
-	rte_eal_driver_unregister(&driver->driver);
-	TAILQ_REMOVE(&pci_driver_list, driver, next);
+	TAILQ_REMOVE(&rte_pci_bus.driver_list, driver, next);
+	driver->bus = NULL;
 }
 
 /* Add a device to PCI bus */

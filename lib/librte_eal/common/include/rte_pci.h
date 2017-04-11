@@ -87,12 +87,6 @@ extern "C" {
 #include <rte_dev.h>
 #include <rte_bus.h>
 
-TAILQ_HEAD(pci_device_list, rte_pci_device); /**< PCI devices in D-linked Q. */
-TAILQ_HEAD(pci_driver_list, rte_pci_driver); /**< PCI drivers in D-linked Q. */
-
-extern struct pci_driver_list pci_driver_list; /**< Global list of PCI drivers. */
-extern struct pci_device_list pci_device_list; /**< Global list of PCI devices. */
-
 /** Pathname of PCI devices directory. */
 const char *pci_get_sysfs_path(void);
 
@@ -207,8 +201,6 @@ struct rte_pci_device {
 	.subsystem_vendor_id = PCI_ANY_ID, \
 	.subsystem_device_id = PCI_ANY_ID
 #endif
-
-struct rte_pci_driver;
 
 /**
  * Initialisation function for the driver called during PCI probing.
@@ -401,17 +393,14 @@ rte_eal_compare_pci_addr(const struct rte_pci_addr *addr,
 int rte_eal_pci_scan(void);
 
 /**
- * Probe the PCI bus for registered drivers.
- *
- * Scan the content of the PCI bus, and call the probe() function for
- * all registered drivers that have a matching entry in its id_table
- * for discovered devices.
+ * Probe the PCI bus
  *
  * @return
  *   - 0 on success.
- *   - Negative on error.
+ *   - !0 on error.
  */
-int rte_eal_pci_probe(void);
+int
+rte_eal_pci_probe(void);
 
 /**
  * Map the PCI device resources in user space virtual memory address

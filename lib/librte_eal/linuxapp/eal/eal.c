@@ -830,13 +830,6 @@ rte_eal_init(int argc, char **argv)
 		return -1;
 	}
 
-	if (rte_eal_pci_init() < 0) {
-		rte_eal_init_alert("Cannot init PCI\n");
-		rte_errno = EPROTO;
-		rte_atomic32_clear(&run_once);
-		return -1;
-	}
-
 #ifdef VFIO_PRESENT
 	if (rte_eal_vfio_setup() < 0) {
 		rte_eal_init_alert("Cannot init VFIO\n");
@@ -942,13 +935,6 @@ rte_eal_init(int argc, char **argv)
 	/* Probe all the buses and devices/drivers on them */
 	if (rte_bus_probe()) {
 		rte_eal_init_alert("Cannot probe devices\n");
-		rte_errno = ENOTSUP;
-		return -1;
-	}
-
-	/* Probe & Initialize PCI devices */
-	if (rte_eal_pci_probe()) {
-		rte_eal_init_alert("Cannot probe PCI\n");
 		rte_errno = ENOTSUP;
 		return -1;
 	}

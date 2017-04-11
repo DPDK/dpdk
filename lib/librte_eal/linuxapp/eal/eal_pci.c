@@ -354,21 +354,19 @@ pci_scan_one(const char *dirname, const struct rte_pci_addr *addr)
 		dev->kdrv = RTE_KDRV_NONE;
 
 	/* device is valid, add in list (sorted) */
-	if (TAILQ_EMPTY(&pci_device_list)) {
-		rte_eal_device_insert(&dev->device);
-		TAILQ_INSERT_TAIL(&pci_device_list, dev, next);
+	if (TAILQ_EMPTY(&rte_pci_bus.device_list)) {
+		rte_eal_pci_add_device(dev);
 	} else {
 		struct rte_pci_device *dev2;
 		int ret;
 
-		TAILQ_FOREACH(dev2, &pci_device_list, next) {
+		TAILQ_FOREACH(dev2, &rte_pci_bus.device_list, next) {
 			ret = rte_eal_compare_pci_addr(&dev->addr, &dev2->addr);
 			if (ret > 0)
 				continue;
 
 			if (ret < 0) {
-				TAILQ_INSERT_BEFORE(dev2, dev, next);
-				rte_eal_device_insert(&dev->device);
+				rte_eal_pci_insert_device(dev2, dev);
 			} else { /* already registered */
 				dev2->kdrv = dev->kdrv;
 				dev2->max_vfs = dev->max_vfs;
@@ -378,8 +376,8 @@ pci_scan_one(const char *dirname, const struct rte_pci_addr *addr)
 			}
 			return 0;
 		}
-		rte_eal_device_insert(&dev->device);
-		TAILQ_INSERT_TAIL(&pci_device_list, dev, next);
+
+		rte_eal_pci_add_device(dev);
 	}
 
 	return 0;
@@ -455,6 +453,10 @@ rte_eal_pci_scan(void)
 	char dirname[PATH_MAX];
 	struct rte_pci_addr addr;
 
+	/* for debug purposes, PCI can be disabled */
+	if (internal_config.no_pci)
+		return 0;
+
 	dir = opendir(pci_get_sysfs_path());
 	if (dir == NULL) {
 		RTE_LOG(ERR, EAL, "%s(): opendir failed: %s\n",
@@ -471,6 +473,7 @@ rte_eal_pci_scan(void)
 
 		snprintf(dirname, sizeof(dirname), "%s/%s",
 				pci_get_sysfs_path(), e->d_name);
+
 		if (pci_scan_one(dirname, &addr) < 0)
 			goto error;
 	}
@@ -714,20 +717,4 @@ rte_eal_pci_ioport_unmap(struct rte_pci_ioport *p)
 	}
 
 	return ret;
-}
-
-/* Init the PCI EAL subsystem */
-int
-rte_eal_pci_init(void)
-{
-	/* for debug purposes, PCI can be disabled */
-	if (internal_config.no_pci)
-		return 0;
-
-	if (rte_eal_pci_scan() < 0) {
-		RTE_LOG(ERR, EAL, "%s(): Cannot scan PCI bus\n", __func__);
-		return -1;
-	}
-
-	return 0;
 }
