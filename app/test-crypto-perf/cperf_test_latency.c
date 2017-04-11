@@ -396,7 +396,7 @@ cperf_latency_test_runner(void *arg)
 			for (i = ops_enqd; i < burst_size; i++)
 				rte_crypto_op_free(ops[i]);
 
-			for (i = 0; i < burst_size; i++) {
+			for (i = 0; i < ops_enqd; i++) {
 				ctx->res[tsc_idx].tsc_start = tsc_start;
 				ops[i]->opaque_data = (void *)&ctx->res[tsc_idx];
 				tsc_idx++;
