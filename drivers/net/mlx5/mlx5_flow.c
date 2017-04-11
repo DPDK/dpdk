@@ -98,11 +98,11 @@ struct rte_flow {
 	struct ibv_exp_flow *ibv_flow; /**< Verbs flow. */
 	struct ibv_exp_wq *wq; /**< Verbs work queue. */
 	struct ibv_cq *cq; /**< Verbs completion queue. */
-	struct rxq *(*rxqs)[]; /**< Pointer to the queues array. */
 	uint16_t rxqs_n; /**< Number of queues in this flow, 0 if drop queue. */
 	uint32_t mark:1; /**< Set if the flow is marked. */
 	uint32_t drop:1; /**< Drop queue. */
 	uint64_t hash_fields; /**< Fields that participate in the hash. */
+	struct rxq *rxqs[]; /**< Pointer to the queues array. */
 };
 
 /** Static initializer for items. */
@@ -1038,24 +1038,20 @@ priv_flow_create_action_queue(struct priv *priv,
 	assert(priv->pd);
 	assert(priv->ctx);
 	assert(!action->drop);
-	rte_flow = rte_calloc(__func__, 1,
-			      sizeof(*rte_flow) + sizeof(struct rxq *) *
-			      action->queues_n, 0);
+	rte_flow = rte_calloc(__func__, 1, sizeof(*rte_flow) +
+			      sizeof(*rte_flow->rxqs) * action->queues_n, 0);
 	if (!rte_flow) {
 		rte_flow_error_set(error, ENOMEM, RTE_FLOW_ERROR_TYPE_HANDLE,
 				   NULL, "cannot allocate flow memory");
 		return NULL;
 	}
-	rte_flow->rxqs = (struct rxq *(*)[])((uintptr_t)rte_flow +
-					     sizeof(struct rxq *) *
-					     action->queues_n);
 	for (i = 0; i < action->queues_n; ++i) {
 		struct rxq_ctrl *rxq;
 
 		rxq = container_of((*priv->rxqs)[action->queues[i]],
 				   struct rxq_ctrl, rxq);
 		wqs[i] = rxq->wq;
-		(*rte_flow->rxqs)[i] = &rxq->rxq;
+		rte_flow->rxqs[i] = &rxq->rxq;
 		++rte_flow->rxqs_n;
 		rxq->rxq.mark |= action->mark;
 	}
@@ -1265,7 +1261,7 @@ priv_flow_destroy(struct priv *priv,
 		 * present in any other marked flow (RSS or not).
 		 */
 		for (queue_n = 0; queue_n < flow->rxqs_n; ++queue_n) {
-			rxq = (*flow->rxqs)[queue_n];
+			rxq = flow->rxqs[queue_n];
 			for (tmp = LIST_FIRST(&priv->flows);
 			     tmp;
 			     tmp = LIST_NEXT(tmp, next)) {
@@ -1278,7 +1274,7 @@ priv_flow_destroy(struct priv *priv,
 				     ++tqueue_n) {
 					struct rxq *trxq;
 
-					trxq = (*tmp->rxqs)[tqueue_n];
+					trxq = tmp->rxqs[tqueue_n];
 					if (rxq == trxq)
 						++mark_n;
 				}
@@ -1489,7 +1485,7 @@ priv_flow_stop(struct priv *priv)
 			unsigned int n;
 
 			for (n = 0; n < flow->rxqs_n; ++n)
-				(*flow->rxqs)[n]->mark = 0;
+				flow->rxqs[n]->mark = 0;
 		}
 		DEBUG("Flow %p removed", (void *)flow);
 	}
@@ -1534,7 +1530,7 @@ priv_flow_start(struct priv *priv)
 			unsigned int n;
 
 			for (n = 0; n < flow->rxqs_n; ++n)
-				(*flow->rxqs)[n]->mark = 1;
+				flow->rxqs[n]->mark = 1;
 		}
 	}
 	return 0;
