@@ -10303,8 +10303,6 @@ i40e_dcb_init_configure(struct rte_eth_dev *dev, bool sw_dcb)
 			hw->local_dcbx_config.pfc.willing = 0;
 			hw->local_dcbx_config.pfc.pfccap =
 						I40E_MAX_TRAFFIC_CLASS;
-			hw->local_dcbx_config.pfc.pfcenable =
-						I40E_DEFAULT_TCMAP;
 			/* FW needs one App to configure HW */
 			hw->local_dcbx_config.numapps = 1;
 			hw->local_dcbx_config.app[0].selector =
