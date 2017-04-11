@@ -52,7 +52,6 @@
 #include <rte_string_fns.h>
 #include <rte_errno.h>
 #include <rte_eth_bond.h>
-#include <rte_eth_null.h>
 
 #include "test.h"
 
