@@ -239,58 +239,23 @@ application runs to completion, the ARK PMD can be detached from igb_uio if nece
 Usage Example
 -------------
 
-This section demonstrates how to launch **testpmd** with Atomic Rules ARK
-devices managed by librte_pmd_ark.
+Follow instructions available in the document
+:ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>` to launch
+**testpmd** with Atomic Rules ARK devices managed by librte_pmd_ark.
 
-#. Load the kernel modules:
+Example output:
 
-   .. code-block:: console
+.. code-block:: console
 
-      modprobe uio
-      insmod ./x86_64-native-linuxapp-gcc/kmod/igb_uio.ko
-
-   .. note::
-
-      The ARK PMD driver depends upon the igb_uio user space I/O kernel module
-
-#. Mount and request huge pages:
-
-   .. code-block:: console
-
-      mount -t hugetlbfs nodev /mnt/huge
-      echo 256 > /sys/devices/system/node/node0/hugepages/hugepages-2048kB/nr_hugepages
-
-#. Bind UIO driver to ARK device at 0000:01:00.0 (using dpdk-devbind.py):
-
-   .. code-block:: console
-
-      ./usertools/dpdk-devbind.py --bind=igb_uio 0000:01:00.0
-
-   .. note::
-
-      The last argument to dpdk-devbind.py is the 4-tuple that indentifies a specific PCIe
-      device. You can use lspci -d 1d6c: to indentify all Atomic Rules devices in the system,
-      and thus determine the correct 4-tuple argument to dpdk-devbind.py
-
-#. Start testpmd with basic parameters:
-
-   .. code-block:: console
-
-      ./x86_64-native-linuxapp-gcc/app/testpmd -l 0-3 -n 4 -- -i
-
-   Example output:
-
-   .. code-block:: console
-
-      [...]
-      EAL: PCI device 0000:01:00.0 on NUMA socket -1
-      EAL:   probe driver: 1d6c:100e rte_ark_pmd
-      EAL:   PCI memory mapped at 0x7f9b6c400000
-      PMD: eth_ark_dev_init(): Initializing 0:2:0.1
-      ARKP PMD CommitID: 378f3a67
-      Configuring Port 0 (socket 0)
-      Port 0: DC:3C:F6:00:00:01
-      Checking link statuses...
-      Port 0 Link Up - speed 100000 Mbps - full-duplex
-      Done
-      testpmd>
+   [...]
+   EAL: PCI device 0000:01:00.0 on NUMA socket -1
+   EAL:   probe driver: 1d6c:100e rte_ark_pmd
+   EAL:   PCI memory mapped at 0x7f9b6c400000
+   PMD: eth_ark_dev_init(): Initializing 0:2:0.1
+   ARKP PMD CommitID: 378f3a67
+   Configuring Port 0 (socket 0)
+   Port 0: DC:3C:F6:00:00:01
+   Checking link statuses...
+   Port 0 Link Up - speed 100000 Mbps - full-duplex
+   Done
+   testpmd>
