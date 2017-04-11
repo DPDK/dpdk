@@ -908,6 +908,8 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 
 	eth_dev->rx_pkt_burst = dpaa2_dev_rx;
 	eth_dev->tx_pkt_burst = dpaa2_dev_tx;
+	rte_fslmc_vfio_dmamap();
+
 	return 0;
 }
 
