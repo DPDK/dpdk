@@ -20,7 +20,6 @@ DPDK_2.0 {
 	rte_dump_tailq;
 	rte_eal_alarm_cancel;
 	rte_eal_alarm_set;
-	rte_eal_dev_init;
 	rte_eal_devargs_add;
 	rte_eal_devargs_dump;
 	rte_eal_devargs_type_count;

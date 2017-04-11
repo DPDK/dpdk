@@ -76,12 +76,6 @@ void rte_eal_device_remove(struct rte_device *dev)
 	TAILQ_REMOVE(&dev_device_list, dev, next);
 }
 
-int
-rte_eal_dev_init(void)
-{
-	return 0;
-}
-
 int rte_eal_dev_attach(const char *name, const char *devargs)
 {
 	struct rte_pci_addr addr;

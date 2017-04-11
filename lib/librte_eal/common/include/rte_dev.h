@@ -171,11 +171,6 @@ void rte_eal_driver_register(struct rte_driver *driver);
 void rte_eal_driver_unregister(struct rte_driver *driver);
 
 /**
- * Initalize all the registered drivers in this process
- */
-int rte_eal_dev_init(void);
-
-/**
  * Initialize a driver specified by name.
  *
  * @param name
