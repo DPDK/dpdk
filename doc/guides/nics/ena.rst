@@ -200,52 +200,23 @@ application runs to completion, the ENA can be detached from igb_uio if necessar
 Usage example
 -------------
 
-This section demonstrates how to launch **testpmd** with Amazon ENA
-devices managed by librte_pmd_ena.
+Follow instructions available in the document
+:ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>` to launch
+**testpmd** with Amazon ENA devices managed by librte_pmd_ena.
 
-#. Load the kernel modules:
+Example output:
 
-   .. code-block:: console
+.. code-block:: console
 
-      modprobe uio
-      insmod ./x86_64-native-linuxapp-gcc/kmod/igb_uio.ko
-
-   .. note::
-
-      Currently Amazon ENA PMD driver depends on igb_uio user space I/O kernel module
-
-#. Mount and request huge pages:
-
-   .. code-block:: console
-
-      mount -t hugetlbfs nodev /mnt/hugepages
-      echo 1024 > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages
-
-#. Bind UIO driver to ENA device (using provided by DPDK binding tool):
-
-   .. code-block:: console
-
-      ./usertools/dpdk-devbind.py --bind=igb_uio 0000:02:00.1
-
-#. Start testpmd with basic parameters:
-
-   .. code-block:: console
-
-      ./x86_64-native-linuxapp-gcc/app/testpmd -l 0-3 -n 4 -- -i
-
-   Example output:
-
-   .. code-block:: console
-
-      [...]
-      EAL: PCI device 0000:02:00.1 on NUMA socket -1
-      EAL:   probe driver: 1d0f:ec20 rte_ena_pmd
-      EAL:   PCI memory mapped at 0x7f9b6c400000
-      PMD: eth_ena_dev_init(): Initializing 0:2:0.1
-      Interactive-mode selected
-      Configuring Port 0 (socket 0)
-      Port 0: 00:00:00:11:00:01
-      Checking link statuses...
-      Port 0 Link Up - speed 10000 Mbps - full-duplex
-      Done
-      testpmd>
+   [...]
+   EAL: PCI device 0000:02:00.1 on NUMA socket -1
+   EAL:   probe driver: 1d0f:ec20 rte_ena_pmd
+   EAL:   PCI memory mapped at 0x7f9b6c400000
+   PMD: eth_ena_dev_init(): Initializing 0:2:0.1
+   Interactive-mode selected
+   Configuring Port 0 (socket 0)
+   Port 0: 00:00:00:11:00:01
+   Checking link statuses...
+   Port 0 Link Up - speed 10000 Mbps - full-duplex
+   Done
+   testpmd>
