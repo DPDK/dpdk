@@ -49,6 +49,7 @@
 #include <fslmc_vfio.h>
 #include <dpaa2_hw_pvt.h>
 #include <dpaa2_hw_mempool.h>
+#include <dpaa2_hw_dpio.h>
 
 #include "dpaa2_ethdev.h"
 
@@ -169,9 +170,8 @@ dpaa2_alloc_rx_tx_queues(struct rte_eth_dev *dev)
 
 		memset(dpaa2_q->q_storage, 0,
 		       sizeof(struct queue_storage_info_t));
-		dpaa2_q->q_storage->dq_storage[0] = rte_malloc(NULL,
-			DPAA2_DQRR_RING_SIZE * sizeof(struct qbman_result),
-			RTE_CACHE_LINE_SIZE);
+		if (dpaa2_alloc_dq_storage(dpaa2_q->q_storage))
+			goto fail;
 	}
 
 	for (i = 0; i < priv->nb_tx_queues; i++) {
@@ -195,7 +195,7 @@ fail:
 	mc_q = priv->rx_vq[0];
 	while (i >= 0) {
 		dpaa2_q = (struct dpaa2_queue *)priv->rx_vq[i];
-		rte_free(dpaa2_q->q_storage->dq_storage[0]);
+		dpaa2_free_dq_storage(dpaa2_q->q_storage);
 		rte_free(dpaa2_q->q_storage);
 		priv->rx_vq[i--] = NULL;
 	}
