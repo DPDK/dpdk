@@ -63,6 +63,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_FSLMC_BUS) += \
         qbman/qbman_portal.c
 
 SRCS-$(CONFIG_RTE_LIBRTE_FSLMC_BUS) += \
+        mc/dpio.c \
         mc/mc_sys.c
 
 SRCS-$(CONFIG_RTE_LIBRTE_FSLMC_BUS) += fslmc_bus.c

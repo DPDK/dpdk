@@ -1,6 +1,13 @@
 DPDK_17.05 {
 	global:
 
+	dpio_close;
+	dpio_disable;
+	dpio_enable;
+	dpio_get_attributes;
+	dpio_open;
+	dpio_reset;
+	dpio_set_stashing_destination;
 	mc_send_command;
 	qbman_check_command_complete;
 	qbman_eq_desc_clear;
