@@ -45,8 +45,10 @@ CFLAGS += $(WERROR_FLAGS)
 endif
 
 CFLAGS += -I$(RTE_SDK)/drivers/net/dpaa2
+CFLAGS += -I$(RTE_SDK)/drivers/net/dpaa2/mc
 CFLAGS += -I$(RTE_SDK)/drivers/bus/fslmc
 CFLAGS += -I$(RTE_SDK)/drivers/bus/fslmc/qbman/include
+CFLAGS += -I$(RTE_SDK)/drivers/bus/fslmc/mc
 CFLAGS += -I$(RTE_SDK)/lib/librte_eal/linuxapp/eal
 
 # versioning export map
@@ -56,6 +58,7 @@ EXPORT_MAP := rte_pmd_dpaa2_version.map
 LIBABIVER := 1
 
 SRCS-$(CONFIG_RTE_LIBRTE_DPAA2_PMD) += dpaa2_ethdev.c
+SRCS-$(CONFIG_RTE_LIBRTE_DPAA2_PMD) += mc/dpni.c
 
 LDLIBS += -lrte_bus_fslmc
 
