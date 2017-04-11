@@ -1,0 +1,260 @@
+/*-
+ *   BSD LICENSE
+ *
+ *   Copyright (c) 2016 Freescale Semiconductor, Inc. All rights reserved.
+ *   Copyright (c) 2016 NXP. All rights reserved.
+ *
+ *   Redistribution and use in source and binary forms, with or without
+ *   modification, are permitted provided that the following conditions
+ *   are met:
+ *
+ *     * Redistributions of source code must retain the above copyright
+ *       notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in
+ *       the documentation and/or other materials provided with the
+ *       distribution.
+ *     * Neither the name of Freescale Semiconductor, Inc nor the names of its
+ *       contributors may be used to endorse or promote products derived
+ *       from this software without specific prior written permission.
+ *
+ *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ *   A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *   OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *   SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ *   LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ *   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ *   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#include <time.h>
+#include <net/if.h>
+
+#include <rte_mbuf.h>
+#include <rte_ethdev.h>
+#include <rte_malloc.h>
+#include <rte_memcpy.h>
+#include <rte_string_fns.h>
+#include <rte_dev.h>
+#include <rte_ethdev.h>
+
+#include <fslmc_logs.h>
+#include <fslmc_vfio.h>
+#include <dpaa2_hw_pvt.h>
+#include <dpaa2_hw_dpio.h>
+#include <dpaa2_hw_mempool.h>
+
+#include "dpaa2_ethdev.h"
+
+static inline struct rte_mbuf *__attribute__((hot))
+eth_fd_to_mbuf(const struct qbman_fd *fd)
+{
+	struct rte_mbuf *mbuf = DPAA2_INLINE_MBUF_FROM_BUF(
+			DPAA2_GET_FD_ADDR(fd),
+		     rte_dpaa2_bpid_info[DPAA2_GET_FD_BPID(fd)].meta_data_size);
+
+	/* need to repopulated some of the fields,
+	 * as they may have changed in last transmission
+	 */
+	mbuf->nb_segs = 1;
+	mbuf->ol_flags = 0;
+	mbuf->data_off = DPAA2_GET_FD_OFFSET(fd);
+	mbuf->data_len = DPAA2_GET_FD_LEN(fd);
+	mbuf->pkt_len = mbuf->data_len;
+
+	mbuf->packet_type = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4;
+
+	mbuf->next = NULL;
+	rte_mbuf_refcnt_set(mbuf, 1);
+
+	PMD_RX_LOG(DEBUG, "to mbuf - mbuf =%p, mbuf->buf_addr =%p, off = %d,"
+		"fd_off=%d fd =%lx, meta = %d  bpid =%d, len=%d\n",
+		mbuf, mbuf->buf_addr, mbuf->data_off,
+		DPAA2_GET_FD_OFFSET(fd), DPAA2_GET_FD_ADDR(fd),
+		rte_dpaa2_bpid_info[DPAA2_GET_FD_BPID(fd)].meta_data_size,
+		DPAA2_GET_FD_BPID(fd), DPAA2_GET_FD_LEN(fd));
+
+	return mbuf;
+}
+
+static void __attribute__ ((noinline)) __attribute__((hot))
+eth_mbuf_to_fd(struct rte_mbuf *mbuf,
+	       struct qbman_fd *fd, uint16_t bpid)
+{
+	/*Resetting the buffer pool id and offset field*/
+	fd->simple.bpid_offset = 0;
+
+	DPAA2_SET_FD_ADDR(fd, (mbuf->buf_addr));
+	DPAA2_SET_FD_LEN(fd, mbuf->data_len);
+	DPAA2_SET_FD_BPID(fd, bpid);
+	DPAA2_SET_FD_OFFSET(fd, mbuf->data_off);
+	DPAA2_SET_FD_ASAL(fd, DPAA2_ASAL_VAL);
+
+	PMD_TX_LOG(DEBUG, "mbuf =%p, mbuf->buf_addr =%p, off = %d,"
+		"fd_off=%d fd =%lx, meta = %d  bpid =%d, len=%d\n",
+		mbuf, mbuf->buf_addr, mbuf->data_off,
+		DPAA2_GET_FD_OFFSET(fd), DPAA2_GET_FD_ADDR(fd),
+		rte_dpaa2_bpid_info[DPAA2_GET_FD_BPID(fd)].meta_data_size,
+		DPAA2_GET_FD_BPID(fd), DPAA2_GET_FD_LEN(fd));
+}
+
+uint16_t
+dpaa2_dev_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
+{
+	/* Function is responsible to receive frames for a given device and VQ*/
+	struct dpaa2_queue *dpaa2_q = (struct dpaa2_queue *)queue;
+	struct qbman_result *dq_storage;
+	uint32_t fqid = dpaa2_q->fqid;
+	int ret, num_rx = 0;
+	uint8_t is_last = 0, status;
+	struct qbman_swp *swp;
+	const struct qbman_fd *fd;
+	struct qbman_pull_desc pulldesc;
+	struct rte_eth_dev *dev = dpaa2_q->dev;
+
+	if (unlikely(!DPAA2_PER_LCORE_DPIO)) {
+		ret = dpaa2_affine_qbman_swp();
+		if (ret) {
+			RTE_LOG(ERR, PMD, "Failure in affining portal\n");
+			return 0;
+		}
+	}
+	swp = DPAA2_PER_LCORE_PORTAL;
+	dq_storage = dpaa2_q->q_storage->dq_storage[0];
+
+	qbman_pull_desc_clear(&pulldesc);
+	qbman_pull_desc_set_numframes(&pulldesc,
+				      (nb_pkts > DPAA2_DQRR_RING_SIZE) ?
+				       DPAA2_DQRR_RING_SIZE : nb_pkts);
+	qbman_pull_desc_set_fq(&pulldesc, fqid);
+	/* todo optimization - we can have dq_storage_phys available*/
+	qbman_pull_desc_set_storage(&pulldesc, dq_storage,
+			(dma_addr_t)(dq_storage), 1);
+
+	/*Issue a volatile dequeue command. */
+	while (1) {
+		if (qbman_swp_pull(swp, &pulldesc)) {
+			PMD_RX_LOG(ERR, "VDQ command is not issued."
+				   "QBMAN is busy\n");
+			/* Portal was busy, try again */
+			continue;
+		}
+		break;
+	};
+
+	/* Receive the packets till Last Dequeue entry is found with
+	 * respect to the above issues PULL command.
+	 */
+	while (!is_last) {
+		struct rte_mbuf *mbuf;
+		/*Check if the previous issued command is completed.
+		 * Also seems like the SWP is shared between the
+		 * Ethernet Driver and the SEC driver.
+		 */
+		while (!qbman_check_command_complete(swp, dq_storage))
+			;
+		/* Loop until the dq_storage is updated with
+		 * new token by QBMAN
+		 */
+		while (!qbman_result_has_new_result(swp, dq_storage))
+			;
+		/* Check whether Last Pull command is Expired and
+		 * setting Condition for Loop termination
+		 */
+		if (qbman_result_DQ_is_pull_complete(dq_storage)) {
+			is_last = 1;
+			/* Check for valid frame. */
+			status = (uint8_t)qbman_result_DQ_flags(dq_storage);
+			if (unlikely((status & QBMAN_DQ_STAT_VALIDFRAME) == 0))
+				continue;
+		}
+
+		fd = qbman_result_DQ_fd(dq_storage);
+		mbuf = (struct rte_mbuf *)(DPAA2_GET_FD_ADDR(fd)
+		   - rte_dpaa2_bpid_info[DPAA2_GET_FD_BPID(fd)].meta_data_size);
+		/* Prefeth mbuf */
+		rte_prefetch0(mbuf);
+		/* Prefetch Annotation address for the parse results */
+		rte_prefetch0((void *)((uint64_t)DPAA2_GET_FD_ADDR(fd)
+						+ DPAA2_FD_PTA_SIZE + 16));
+
+		bufs[num_rx] = eth_fd_to_mbuf(fd);
+		bufs[num_rx]->port = dev->data->port_id;
+
+		num_rx++;
+		dq_storage++;
+	} /* End of Packet Rx loop */
+
+	dpaa2_q->rx_pkts += num_rx;
+
+	/*Return the total number of packets received to DPAA2 app*/
+	return num_rx;
+}
+
+/*
+ * Callback to handle sending packets through WRIOP based interface
+ */
+uint16_t
+dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
+{
+	/* Function to transmit the frames to given device and VQ*/
+	uint32_t loop;
+	int32_t ret;
+	struct qbman_fd fd_arr[MAX_TX_RING_SLOTS];
+	uint32_t frames_to_send;
+	struct rte_mempool *mp;
+	struct qbman_eq_desc eqdesc;
+	struct dpaa2_queue *dpaa2_q = (struct dpaa2_queue *)queue;
+	struct qbman_swp *swp;
+	uint16_t num_tx = 0;
+	uint16_t bpid;
+	struct rte_eth_dev *dev = dpaa2_q->dev;
+	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+
+	if (unlikely(!DPAA2_PER_LCORE_DPIO)) {
+		ret = dpaa2_affine_qbman_swp();
+		if (ret) {
+			RTE_LOG(ERR, PMD, "Failure in affining portal\n");
+			return 0;
+		}
+	}
+	swp = DPAA2_PER_LCORE_PORTAL;
+
+	PMD_TX_LOG(DEBUG, "===> dev =%p, fqid =%d", dev, dpaa2_q->fqid);
+
+	/*Prepare enqueue descriptor*/
+	qbman_eq_desc_clear(&eqdesc);
+	qbman_eq_desc_set_no_orp(&eqdesc, DPAA2_EQ_RESP_ERR_FQ);
+	qbman_eq_desc_set_response(&eqdesc, 0, 0);
+	qbman_eq_desc_set_qd(&eqdesc, priv->qdid,
+			     dpaa2_q->flow_id, dpaa2_q->tc_index);
+
+	/*Clear the unused FD fields before sending*/
+	while (nb_pkts) {
+		frames_to_send = (nb_pkts >> 3) ? MAX_TX_RING_SLOTS : nb_pkts;
+
+		for (loop = 0; loop < frames_to_send; loop++) {
+			fd_arr[loop].simple.frc = 0;
+			DPAA2_RESET_FD_CTRL((&fd_arr[loop]));
+			DPAA2_SET_FD_FLC((&fd_arr[loop]), NULL);
+			mp = (*bufs)->pool;
+			bpid = mempool_to_bpid(mp);
+			eth_mbuf_to_fd(*bufs, &fd_arr[loop], bpid);
+			bufs++;
+		}
+		loop = 0;
+		while (loop < frames_to_send) {
+			loop += qbman_swp_send_multiple(swp, &eqdesc,
+					&fd_arr[loop], frames_to_send - loop);
+		}
+
+		num_tx += frames_to_send;
+		dpaa2_q->tx_pkts += frames_to_send;
+		nb_pkts -= frames_to_send;
+	}
+	return num_tx;
+}

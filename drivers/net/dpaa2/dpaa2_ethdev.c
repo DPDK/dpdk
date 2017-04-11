@@ -679,6 +679,8 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 	eth_dev->dev_ops = &dpaa2_ethdev_ops;
 	eth_dev->data->drv_name = rte_dpaa2_pmd.driver.name;
 
+	eth_dev->rx_pkt_burst = dpaa2_dev_rx;
+	eth_dev->tx_pkt_burst = dpaa2_dev_tx;
 	return 0;
 }
 
@@ -732,6 +734,8 @@ dpaa2_dev_uninit(struct rte_eth_dev *eth_dev)
 	free(dpni);
 
 	eth_dev->dev_ops = NULL;
+	eth_dev->rx_pkt_burst = NULL;
+	eth_dev->tx_pkt_burst = NULL;
 
 	return 0;
 }

@@ -77,4 +77,7 @@ int dpaa2_remove_flow_dist(struct rte_eth_dev *eth_dev,
 
 int dpaa2_attach_bp_list(struct dpaa2_dev_priv *priv, void *blist);
 
+uint16_t dpaa2_dev_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts);
+uint16_t dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts);
+
 #endif /* _DPAA2_ETHDEV_H */
