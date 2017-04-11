@@ -108,6 +108,11 @@ rte_eth_dev_pci_release(struct rte_eth_dev *eth_dev)
 
 typedef int (*eth_dev_pci_callback_t)(struct rte_eth_dev *eth_dev);
 
+/**
+ * @internal
+ * Wrapper for use by pci drivers in a .probe function to attach to a ethdev
+ * interface.
+ */
 static inline int
 rte_eth_dev_pci_generic_probe(struct rte_pci_device *pci_dev,
 	size_t private_data_size, eth_dev_pci_callback_t dev_init)
@@ -127,6 +132,11 @@ rte_eth_dev_pci_generic_probe(struct rte_pci_device *pci_dev,
 	return ret;
 }
 
+/**
+ * @internal
+ * Wrapper for use by pci drivers in a .remove function to detach a ethdev
+ * interface.
+ */
 static inline int
 rte_eth_dev_pci_generic_remove(struct rte_pci_device *pci_dev,
 	eth_dev_pci_callback_t dev_uninit)

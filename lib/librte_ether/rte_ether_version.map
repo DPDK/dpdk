@@ -134,14 +134,6 @@ DPDK_16.07 {
 
 } DPDK_16.04;
 
-DPDK_16.11 {
-	global:
-
-	rte_eth_dev_pci_probe;
-	rte_eth_dev_pci_remove;
-
-} DPDK_16.07;
-
 DPDK_17.02 {
 	global:
 
@@ -153,7 +145,7 @@ DPDK_17.02 {
 	rte_flow_query;
 	rte_flow_validate;
 
-} DPDK_16.11;
+} DPDK_16.07;
 
 DPDK_17.05 {
 	global:
