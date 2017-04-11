@@ -228,9 +228,6 @@ extern const char *prgname;
 
 int commands_init(void);
 
-int test_pci(void);
-int test_pci_run;
-
 int test_mp_secondary(void);
 
 int test_set_rxtx_conf(cmdline_fixed_string_t mode);

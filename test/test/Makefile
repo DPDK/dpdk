@@ -83,8 +83,6 @@ test_resource.res: test_resource.c
 	@ cp $< $@
 $(eval $(call linked_resource,test_resource_c,test_resource.res))
 $(eval $(call linked_tar_resource,test_resource_tar,test_resource.c))
-SRCS-$(CONFIG_RTE_APP_TEST_RESOURCE_TAR) += test_pci.c
-$(eval $(call linked_tar_resource,test_pci_sysfs,test_pci_sysfs))
 SRCS-$(CONFIG_RTE_APP_TEST_RESOURCE_TAR) += test_cfgfile.c
 $(eval $(call linked_tar_resource,test_cfgfiles,test_cfgfiles))
 SRCS-y += test_prefetch.c

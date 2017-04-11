@@ -98,8 +98,6 @@ F: test/test/test_errno.c
 F: test/test/test_interrupts.c
 F: test/test/test_logs.c
 F: test/test/test_memcpy*
-F: test/test/test_pci.c
-F: test/test/test_pci_sysfs/
 F: test/test/test_per_lcore.c
 F: test/test/test_prefetch.c
 F: test/test/test_rwlock.c
