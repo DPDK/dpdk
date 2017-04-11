@@ -68,7 +68,17 @@ dpaa2_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->min_rx_bufsize = DPAA2_MIN_RX_BUF_SIZE;
 	dev_info->max_rx_queues = (uint16_t)priv->nb_rx_queues;
 	dev_info->max_tx_queues = (uint16_t)priv->nb_tx_queues;
-
+	dev_info->rx_offload_capa =
+		DEV_RX_OFFLOAD_IPV4_CKSUM |
+		DEV_RX_OFFLOAD_UDP_CKSUM |
+		DEV_RX_OFFLOAD_TCP_CKSUM |
+		DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM;
+	dev_info->tx_offload_capa =
+		DEV_TX_OFFLOAD_IPV4_CKSUM |
+		DEV_TX_OFFLOAD_UDP_CKSUM |
+		DEV_TX_OFFLOAD_TCP_CKSUM |
+		DEV_TX_OFFLOAD_SCTP_CKSUM |
+		DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM;
 	dev_info->speed_capa = ETH_LINK_SPEED_1G |
 			ETH_LINK_SPEED_2_5G |
 			ETH_LINK_SPEED_10G;
@@ -252,8 +262,13 @@ dpaa2_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	memset(&tx_conf_cfg, 0, sizeof(struct dpni_queue));
 	memset(&tx_flow_cfg, 0, sizeof(struct dpni_queue));
 
-	tc_id = 0;
-	flow_id = tx_queue_id;
+	if (priv->num_tc == 1) {
+		tc_id = 0;
+		flow_id = tx_queue_id % priv->num_dist_per_tc[tc_id];
+	} else {
+		tc_id = tx_queue_id;
+		flow_id = 0;
+	}
 
 	ret = dpni_set_queue(dpni, CMD_PRI_LOW, priv->token, DPNI_QUEUE_TX,
 			     tc_id, flow_id, options, &tx_flow_cfg);
@@ -302,6 +317,7 @@ dpaa2_dev_start(struct rte_eth_dev *dev)
 	struct dpaa2_dev_priv *priv = data->dev_private;
 	struct fsl_mc_io *dpni = (struct fsl_mc_io *)priv->hw;
 	struct dpni_queue cfg;
+	struct dpni_error_cfg	err_cfg;
 	uint16_t qdid;
 	struct dpni_queue_id qid;
 	struct dpaa2_queue *dpaa2_q;
@@ -335,6 +351,48 @@ dpaa2_dev_start(struct rte_eth_dev *dev)
 			return ret;
 		}
 		dpaa2_q->fqid = qid.fqid;
+	}
+
+	ret = dpni_set_offload(dpni, CMD_PRI_LOW, priv->token,
+			       DPNI_OFF_RX_L3_CSUM, true);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Error to set RX l3 csum:Error = %d\n", ret);
+		return ret;
+	}
+
+	ret = dpni_set_offload(dpni, CMD_PRI_LOW, priv->token,
+			       DPNI_OFF_RX_L4_CSUM, true);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Error to get RX l4 csum:Error = %d\n", ret);
+		return ret;
+	}
+
+	ret = dpni_set_offload(dpni, CMD_PRI_LOW, priv->token,
+			       DPNI_OFF_TX_L3_CSUM, true);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Error to set TX l3 csum:Error = %d\n", ret);
+		return ret;
+	}
+
+	ret = dpni_set_offload(dpni, CMD_PRI_LOW, priv->token,
+			       DPNI_OFF_TX_L4_CSUM, true);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Error to get TX l4 csum:Error = %d\n", ret);
+		return ret;
+	}
+
+	/*checksum errors, send them to normal path and set it in annotation */
+	err_cfg.errors = DPNI_ERROR_L3CE | DPNI_ERROR_L4CE;
+
+	err_cfg.error_action = DPNI_ERROR_ACTION_CONTINUE;
+	err_cfg.set_frame_annotation = true;
+
+	ret = dpni_set_errors_behavior(dpni, CMD_PRI_LOW,
+				       priv->token, &err_cfg);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Error to dpni_set_errors_behavior:"
+			     "code = %d\n", ret);
+		return ret;
 	}
 
 	return 0;
@@ -453,7 +511,13 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 	 */
 	priv->nb_rx_queues = priv->num_dist_per_tc[DPAA2_DEF_TC];
 
-	priv->nb_tx_queues = attr.num_queues;
+	if (attr.num_tcs == 1)
+		priv->nb_tx_queues = attr.num_queues;
+	else
+		priv->nb_tx_queues = attr.num_tcs;
+
+	PMD_INIT_LOG(DEBUG, "num_tc %d", priv->num_tc);
+	PMD_INIT_LOG(DEBUG, "nb_rx_queues %d", priv->nb_rx_queues);
 
 	priv->hw = dpni_dev;
 	priv->hw_id = hw_id;
