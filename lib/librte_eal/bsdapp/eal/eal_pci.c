@@ -87,6 +87,8 @@
  * enabling bus master.
  */
 
+extern struct rte_pci_bus rte_pci_bus;
+
 /* Map pci device */
 int
 rte_eal_pci_map_device(struct rte_pci_device *dev)

@@ -35,6 +35,7 @@
 #include <dirent.h>
 
 #include <rte_log.h>
+#include <rte_bus.h>
 #include <rte_pci.h>
 #include <rte_eal_memconfig.h>
 #include <rte_malloc.h>
@@ -53,6 +54,8 @@
  * When a registered device matches a driver, it is then initialized with
  * IGB_UIO driver (or doesn't initialize, if the device wasn't bound to it).
  */
+
+extern struct rte_pci_bus rte_pci_bus;
 
 static int
 pci_get_kernel_driver_by_path(const char *filename, char *dri_name)
