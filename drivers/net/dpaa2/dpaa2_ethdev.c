@@ -588,6 +588,90 @@ dpaa2_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	return 0;
 }
 
+static
+void dpaa2_dev_stats_get(struct rte_eth_dev *dev,
+			 struct rte_eth_stats *stats)
+{
+	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+	struct fsl_mc_io *dpni = (struct fsl_mc_io *)priv->hw;
+	int32_t  retcode;
+	uint8_t page0 = 0, page1 = 1, page2 = 2;
+	union dpni_statistics value;
+
+	memset(&value, 0, sizeof(union dpni_statistics));
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (!dpni) {
+		RTE_LOG(ERR, PMD, "dpni is NULL");
+		return;
+	}
+
+	if (!stats) {
+		RTE_LOG(ERR, PMD, "stats is NULL");
+		return;
+	}
+
+	/*Get Counters from page_0*/
+	retcode = dpni_get_statistics(dpni, CMD_PRI_LOW, priv->token,
+				      page0, &value);
+	if (retcode)
+		goto err;
+
+	stats->ipackets = value.page_0.ingress_all_frames;
+	stats->ibytes = value.page_0.ingress_all_bytes;
+
+	/*Get Counters from page_1*/
+	retcode = dpni_get_statistics(dpni, CMD_PRI_LOW, priv->token,
+				      page1, &value);
+	if (retcode)
+		goto err;
+
+	stats->opackets = value.page_1.egress_all_frames;
+	stats->obytes = value.page_1.egress_all_bytes;
+
+	/*Get Counters from page_2*/
+	retcode = dpni_get_statistics(dpni, CMD_PRI_LOW, priv->token,
+				      page2, &value);
+	if (retcode)
+		goto err;
+
+	stats->ierrors = value.page_2.ingress_discarded_frames;
+	stats->oerrors = value.page_2.egress_discarded_frames;
+	stats->imissed = value.page_2.ingress_nobuffer_discards;
+
+	return;
+
+err:
+	RTE_LOG(ERR, PMD, "Operation not completed:Error Code = %d\n", retcode);
+	return;
+};
+
+static
+void dpaa2_dev_stats_reset(struct rte_eth_dev *dev)
+{
+	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+	struct fsl_mc_io *dpni = (struct fsl_mc_io *)priv->hw;
+	int32_t  retcode;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (dpni == NULL) {
+		RTE_LOG(ERR, PMD, "dpni is NULL");
+		return;
+	}
+
+	retcode =  dpni_reset_statistics(dpni, CMD_PRI_LOW, priv->token);
+	if (retcode)
+		goto error;
+
+	return;
+
+error:
+	RTE_LOG(ERR, PMD, "Operation not completed:Error Code = %d\n", retcode);
+	return;
+};
+
 /* return 0 means link status changed, -1 means not changed */
 static int
 dpaa2_dev_link_update(struct rte_eth_dev *dev,
@@ -645,6 +729,8 @@ static struct eth_dev_ops dpaa2_ethdev_ops = {
 	.promiscuous_enable   = dpaa2_dev_promiscuous_enable,
 	.promiscuous_disable  = dpaa2_dev_promiscuous_disable,
 	.link_update	   = dpaa2_dev_link_update,
+	.stats_get	       = dpaa2_dev_stats_get,
+	.stats_reset	   = dpaa2_dev_stats_reset,
 	.dev_infos_get	   = dpaa2_dev_info_get,
 	.dev_supported_ptypes_get = dpaa2_supported_ptypes_get,
 	.mtu_set           = dpaa2_dev_mtu_set,
