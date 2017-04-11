@@ -46,6 +46,7 @@
 
 #include <fslmc_logs.h>
 #include <dpaa2_hw_pvt.h>
+#include <dpaa2_hw_mempool.h>
 
 #include "../dpaa2_ethdev.h"
 
@@ -284,4 +285,60 @@ dpaa2_distset_to_dpkg_profile_cfg(
 		loop++;
 	}
 	kg_cfg->num_extracts = i;
+}
+
+int
+dpaa2_attach_bp_list(struct dpaa2_dev_priv *priv,
+		     void *blist)
+{
+	/* Function to attach a DPNI with a buffer pool list. Buffer pool list
+	 * handle is passed in blist.
+	 */
+	int32_t retcode;
+	struct fsl_mc_io *dpni = priv->hw;
+	struct dpni_pools_cfg bpool_cfg;
+	struct dpaa2_bp_list *bp_list = (struct dpaa2_bp_list *)blist;
+	struct dpni_buffer_layout layout;
+	int tot_size;
+
+	/* ... rx buffer layout .
+	 * Check alignment for buffer layouts first
+	 */
+
+	/* ... rx buffer layout ... */
+	tot_size = DPAA2_HW_BUF_RESERVE + RTE_PKTMBUF_HEADROOM;
+	tot_size = RTE_ALIGN_CEIL(tot_size,
+				  DPAA2_PACKET_LAYOUT_ALIGN);
+
+	memset(&layout, 0, sizeof(struct dpni_buffer_layout));
+	layout.options = DPNI_BUF_LAYOUT_OPT_DATA_HEAD_ROOM;
+
+	layout.data_head_room =
+		tot_size - DPAA2_FD_PTA_SIZE - DPAA2_MBUF_HW_ANNOTATION;
+	retcode = dpni_set_buffer_layout(dpni, CMD_PRI_LOW, priv->token,
+					 DPNI_QUEUE_RX, &layout);
+	if (retcode) {
+		PMD_INIT_LOG(ERR, "Err(%d) in setting rx buffer layout\n",
+			     retcode);
+		return retcode;
+	}
+
+	/*Attach buffer pool to the network interface as described by the user*/
+	bpool_cfg.num_dpbp = 1;
+	bpool_cfg.pools[0].dpbp_id = bp_list->buf_pool.dpbp_node->dpbp_id;
+	bpool_cfg.pools[0].backup_pool = 0;
+	bpool_cfg.pools[0].buffer_size =
+		RTE_ALIGN_CEIL(bp_list->buf_pool.size,
+			       256 /*DPAA2_PACKET_LAYOUT_ALIGN*/);
+
+	retcode = dpni_set_pools(dpni, CMD_PRI_LOW, priv->token, &bpool_cfg);
+	if (retcode != 0) {
+		PMD_INIT_LOG(ERR, "Error in attaching the buffer pool list"
+				" bpid = %d Error code = %d\n",
+				bpool_cfg.pools[0].dpbp_id, retcode);
+		return retcode;
+	}
+
+	priv->bp_list = bp_list;
+	return 0;
 }

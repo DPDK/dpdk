@@ -48,6 +48,7 @@
 #include <fslmc_logs.h>
 #include <fslmc_vfio.h>
 #include <dpaa2_hw_pvt.h>
+#include <dpaa2_hw_mempool.h>
 
 #include "dpaa2_ethdev.h"
 
@@ -63,6 +64,8 @@ dpaa2_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->if_index = priv->hw_id;
 
 	dev_info->max_mac_addrs = priv->max_mac_filters;
+	dev_info->max_rx_pktlen = DPAA2_MAX_RX_PKT_LEN;
+	dev_info->min_rx_bufsize = DPAA2_MIN_RX_BUF_SIZE;
 	dev_info->max_rx_queues = (uint16_t)priv->nb_rx_queues;
 	dev_info->max_tx_queues = (uint16_t)priv->nb_tx_queues;
 
@@ -187,6 +190,7 @@ dpaa2_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	struct dpni_queue cfg;
 	uint8_t options = 0;
 	uint8_t flow_id;
+	uint32_t bpid;
 	int ret;
 
 	PMD_INIT_FUNC_TRACE();
@@ -194,6 +198,13 @@ dpaa2_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	PMD_INIT_LOG(DEBUG, "dev =%p, queue =%d, pool = %p, conf =%p",
 		     dev, rx_queue_id, mb_pool, rx_conf);
 
+	if (!priv->bp_list || priv->bp_list->mp != mb_pool) {
+		bpid = mempool_to_bpid(mb_pool);
+		ret = dpaa2_attach_bp_list(priv,
+					   rte_dpaa2_bpid_info[bpid].bp_list);
+		if (ret)
+			return ret;
+	}
 	dpaa2_q = (struct dpaa2_queue *)priv->rx_vq[rx_queue_id];
 	dpaa2_q->mb_pool = mb_pool; /**< mbuf pool to populate RX ring. */
 
@@ -388,7 +399,9 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 	struct fsl_mc_io *dpni_dev;
 	struct dpni_attr attr;
 	struct dpaa2_dev_priv *priv = eth_dev->data->dev_private;
+	struct dpni_buffer_layout layout;
 	int i, ret, hw_id;
+	int tot_size;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -473,6 +486,55 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 		PMD_INIT_LOG(ERR, "DPNI get mac address failed:"
 					" Error Code = %d\n", ret);
 		return -ret;
+	}
+
+	/* ... rx buffer layout ... */
+	tot_size = DPAA2_HW_BUF_RESERVE + RTE_PKTMBUF_HEADROOM;
+	tot_size = RTE_ALIGN_CEIL(tot_size,
+				  DPAA2_PACKET_LAYOUT_ALIGN);
+
+	memset(&layout, 0, sizeof(struct dpni_buffer_layout));
+	layout.options = DPNI_BUF_LAYOUT_OPT_FRAME_STATUS |
+				DPNI_BUF_LAYOUT_OPT_PARSER_RESULT |
+				DPNI_BUF_LAYOUT_OPT_DATA_HEAD_ROOM |
+				DPNI_BUF_LAYOUT_OPT_PRIVATE_DATA_SIZE;
+
+	layout.pass_frame_status = 1;
+	layout.data_head_room = tot_size
+		- DPAA2_FD_PTA_SIZE - DPAA2_MBUF_HW_ANNOTATION;
+	layout.private_data_size = DPAA2_FD_PTA_SIZE;
+	layout.pass_parser_result = 1;
+	PMD_INIT_LOG(DEBUG, "Tot_size = %d, head room = %d, private = %d",
+		     tot_size, layout.data_head_room, layout.private_data_size);
+	ret = dpni_set_buffer_layout(dpni_dev, CMD_PRI_LOW, priv->token,
+				     DPNI_QUEUE_RX, &layout);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Err(%d) in setting rx buffer layout", ret);
+		return -1;
+	}
+
+	/* ... tx buffer layout ... */
+	memset(&layout, 0, sizeof(struct dpni_buffer_layout));
+	layout.options = DPNI_BUF_LAYOUT_OPT_FRAME_STATUS;
+	layout.pass_frame_status = 1;
+	ret = dpni_set_buffer_layout(dpni_dev, CMD_PRI_LOW, priv->token,
+				     DPNI_QUEUE_TX, &layout);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Error (%d) in setting tx buffer"
+				  " layout", ret);
+		return -1;
+	}
+
+	/* ... tx-conf and error buffer layout ... */
+	memset(&layout, 0, sizeof(struct dpni_buffer_layout));
+	layout.options = DPNI_BUF_LAYOUT_OPT_FRAME_STATUS;
+	layout.pass_frame_status = 1;
+	ret = dpni_set_buffer_layout(dpni_dev, CMD_PRI_LOW, priv->token,
+				     DPNI_QUEUE_TX_CONFIRM, &layout);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Error (%d) in setting tx-conf buffer"
+				  " layout", ret);
+		return -1;
 	}
 
 	eth_dev->dev_ops = &dpaa2_ethdev_ops;

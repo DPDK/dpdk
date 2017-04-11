@@ -37,6 +37,9 @@
 #include <mc/fsl_dpni.h>
 #include <mc/fsl_mc_sys.h>
 
+#define DPAA2_MIN_RX_BUF_SIZE 512
+#define DPAA2_MAX_RX_PKT_LEN  10240 /*WRIOP support*/
+
 #define MAX_TCS			DPNI_MAX_TC
 #define MAX_RX_QUEUES		16
 #define MAX_TX_QUEUES		16
@@ -57,6 +60,7 @@ struct dpaa2_dev_priv {
 	void *rx_vq[MAX_RX_QUEUES];
 	void *tx_vq[MAX_TX_QUEUES];
 
+	struct dpaa2_bp_list *bp_list; /**<Attached buffer pool list */
 	uint32_t options;
 	uint16_t num_dist_per_tc[MAX_TCS];
 	uint8_t max_mac_filters;
@@ -70,5 +74,7 @@ int dpaa2_setup_flow_dist(struct rte_eth_dev *eth_dev,
 
 int dpaa2_remove_flow_dist(struct rte_eth_dev *eth_dev,
 			   uint8_t tc_index);
+
+int dpaa2_attach_bp_list(struct dpaa2_dev_priv *priv, void *blist);
 
 #endif /* _DPAA2_ETHDEV_H */
