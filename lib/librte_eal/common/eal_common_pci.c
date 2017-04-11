@@ -154,73 +154,108 @@ pci_unmap_resource(void *requested_addr, size_t size)
 }
 
 /*
+ * Match the PCI Driver and Device using the ID Table
+ *
+ * @param pci_drv
+ *	PCI driver from which ID table would be extracted
+ * @param pci_dev
+ *	PCI device to match against the driver
+ * @return
+ *	1 for successful match
+ *	0 for unsuccessful match
+ */
+static int
+rte_pci_match(const struct rte_pci_driver *pci_drv,
+	      const struct rte_pci_device *pci_dev)
+{
+	const struct rte_pci_id *id_table;
+
+	for (id_table = pci_drv->id_table; id_table->vendor_id != 0;
+	     id_table++) {
+		/* check if device's identifiers match the driver's ones */
+		if (id_table->vendor_id != pci_dev->id.vendor_id &&
+				id_table->vendor_id != PCI_ANY_ID)
+			continue;
+		if (id_table->device_id != pci_dev->id.device_id &&
+				id_table->device_id != PCI_ANY_ID)
+			continue;
+		if (id_table->subsystem_vendor_id !=
+		    pci_dev->id.subsystem_vendor_id &&
+		    id_table->subsystem_vendor_id != PCI_ANY_ID)
+			continue;
+		if (id_table->subsystem_device_id !=
+		    pci_dev->id.subsystem_device_id &&
+		    id_table->subsystem_device_id != PCI_ANY_ID)
+			continue;
+		if (id_table->class_id != pci_dev->id.class_id &&
+				id_table->class_id != RTE_CLASS_ANY_ID)
+			continue;
+
+		return 1;
+	}
+
+	return 0;
+}
+
+/*
  * If vendor/device ID match, call the probe() function of the
  * driver.
  */
 static int
-rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr, struct rte_pci_device *dev)
+rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr,
+			     struct rte_pci_device *dev)
 {
 	int ret;
-	const struct rte_pci_id *id_table;
+	struct rte_pci_addr *loc;
 
-	for (id_table = dr->id_table; id_table->vendor_id != 0; id_table++) {
+	if ((dr == NULL) || (dev == NULL))
+		return -EINVAL;
 
-		/* check if device's identifiers match the driver's ones */
-		if (id_table->vendor_id != dev->id.vendor_id &&
-				id_table->vendor_id != PCI_ANY_ID)
-			continue;
-		if (id_table->device_id != dev->id.device_id &&
-				id_table->device_id != PCI_ANY_ID)
-			continue;
-		if (id_table->subsystem_vendor_id != dev->id.subsystem_vendor_id &&
-				id_table->subsystem_vendor_id != PCI_ANY_ID)
-			continue;
-		if (id_table->subsystem_device_id != dev->id.subsystem_device_id &&
-				id_table->subsystem_device_id != PCI_ANY_ID)
-			continue;
-		if (id_table->class_id != dev->id.class_id &&
-				id_table->class_id != RTE_CLASS_ANY_ID)
-			continue;
+	loc = &dev->addr;
 
-		struct rte_pci_addr *loc = &dev->addr;
-
-		RTE_LOG(INFO, EAL, "PCI device "PCI_PRI_FMT" on NUMA socket %i\n",
-				loc->domain, loc->bus, loc->devid, loc->function,
-				dev->device.numa_node);
-
-		/* no initialization when blacklisted, return without error */
-		if (dev->device.devargs != NULL &&
-			dev->device.devargs->type ==
-				RTE_DEVTYPE_BLACKLISTED_PCI) {
-			RTE_LOG(INFO, EAL, "  Device is blacklisted, not initializing\n");
-			return 1;
-		}
-
-		RTE_LOG(INFO, EAL, "  probe driver: %x:%x %s\n", dev->id.vendor_id,
-				dev->id.device_id, dr->driver.name);
-
-		if (dr->drv_flags & RTE_PCI_DRV_NEED_MAPPING) {
-			/* map resources for devices that use igb_uio or VFIO */
-			ret = rte_eal_pci_map_device(dev);
-			if (ret != 0)
-				return ret;
-		}
-
-		/* reference driver structure */
-		dev->driver = dr;
-
-		/* call the driver probe() function */
-		ret = dr->probe(dr, dev);
-		if (ret) {
-			dev->driver = NULL;
-			if (dr->drv_flags & RTE_PCI_DRV_NEED_MAPPING)
-				rte_eal_pci_unmap_device(dev);
-		}
-
-		return ret;
+	/* The device is not blacklisted; Check if driver supports it */
+	if (!rte_pci_match(dr, dev)) {
+		/* Match of device and driver failed */
+		RTE_LOG(DEBUG, EAL, "Driver (%s) doesn't match the device\n",
+			dr->driver.name);
+		return 1;
 	}
-	/* return positive value if driver doesn't support this device */
-	return 1;
+
+	RTE_LOG(INFO, EAL, "PCI device "PCI_PRI_FMT" on NUMA socket %i\n",
+			loc->domain, loc->bus, loc->devid, loc->function,
+			dev->device.numa_node);
+
+	/* no initialization when blacklisted, return without error */
+	if (dev->device.devargs != NULL &&
+		dev->device.devargs->type ==
+			RTE_DEVTYPE_BLACKLISTED_PCI) {
+		RTE_LOG(INFO, EAL, "  Device is blacklisted, not"
+			" initializing\n");
+		return 1;
+	}
+
+	RTE_LOG(INFO, EAL, "  probe driver: %x:%x %s\n", dev->id.vendor_id,
+		dev->id.device_id, dr->driver.name);
+
+	if (dr->drv_flags & RTE_PCI_DRV_NEED_MAPPING) {
+		/* map resources for devices that use igb_uio */
+		ret = rte_eal_pci_map_device(dev);
+		if (ret != 0)
+			return ret;
+	}
+
+	/* reference driver structure */
+	dev->driver = dr;
+
+	/* call the driver probe() function */
+	ret = dr->probe(dr, dev);
+	if (ret) {
+		dev->driver = NULL;
+		if (dr->drv_flags & RTE_PCI_DRV_NEED_MAPPING)
+			rte_eal_pci_unmap_device(dev);
+	}
+
+	return ret;
 }
 
 /*
@@ -231,51 +266,36 @@ static int
 rte_eal_pci_detach_dev(struct rte_pci_driver *dr,
 		struct rte_pci_device *dev)
 {
-	const struct rte_pci_id *id_table;
+	struct rte_pci_addr *loc;
 
 	if ((dr == NULL) || (dev == NULL))
 		return -EINVAL;
 
-	for (id_table = dr->id_table; id_table->vendor_id != 0; id_table++) {
-
-		/* check if device's identifiers match the driver's ones */
-		if (id_table->vendor_id != dev->id.vendor_id &&
-				id_table->vendor_id != PCI_ANY_ID)
-			continue;
-		if (id_table->device_id != dev->id.device_id &&
-				id_table->device_id != PCI_ANY_ID)
-			continue;
-		if (id_table->subsystem_vendor_id != dev->id.subsystem_vendor_id &&
-				id_table->subsystem_vendor_id != PCI_ANY_ID)
-			continue;
-		if (id_table->subsystem_device_id != dev->id.subsystem_device_id &&
-				id_table->subsystem_device_id != PCI_ANY_ID)
-			continue;
-
-		struct rte_pci_addr *loc = &dev->addr;
-
-		RTE_LOG(DEBUG, EAL, "PCI device "PCI_PRI_FMT" on NUMA socket %i\n",
-				loc->domain, loc->bus, loc->devid,
-				loc->function, dev->device.numa_node);
-
-		RTE_LOG(DEBUG, EAL, "  remove driver: %x:%x %s\n", dev->id.vendor_id,
-				dev->id.device_id, dr->driver.name);
-
-		if (dr->remove && (dr->remove(dev) < 0))
-			return -1;	/* negative value is an error */
-
-		/* clear driver structure */
-		dev->driver = NULL;
-
-		if (dr->drv_flags & RTE_PCI_DRV_NEED_MAPPING)
-			/* unmap resources for devices that use igb_uio */
-			rte_eal_pci_unmap_device(dev);
-
-		return 0;
+	if (!rte_pci_match(dr, dev)) {
+		/* Device and driver don't match */
+		return 1;
 	}
 
-	/* return positive value if driver doesn't support this device */
-	return 1;
+	loc = &dev->addr;
+
+	RTE_LOG(DEBUG, EAL, "PCI device "PCI_PRI_FMT" on NUMA socket %i\n",
+			loc->domain, loc->bus, loc->devid,
+			loc->function, dev->device.numa_node);
+
+	RTE_LOG(DEBUG, EAL, "  remove driver: %x:%x %s\n", dev->id.vendor_id,
+			dev->id.device_id, dr->driver.name);
+
+	if (dr->remove && (dr->remove(dev) < 0))
+		return -1;	/* negative value is an error */
+
+	/* clear driver structure */
+	dev->driver = NULL;
+
+	if (dr->drv_flags & RTE_PCI_DRV_NEED_MAPPING)
+		/* unmap resources for devices that use igb_uio */
+		rte_eal_pci_unmap_device(dev);
+
+	return 0;
 }
 
 /*
