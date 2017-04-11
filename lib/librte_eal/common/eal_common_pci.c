@@ -263,19 +263,15 @@ rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr,
  * driver.
  */
 static int
-rte_eal_pci_detach_dev(struct rte_pci_driver *dr,
-		struct rte_pci_device *dev)
+rte_eal_pci_detach_dev(struct rte_pci_device *dev)
 {
 	struct rte_pci_addr *loc;
+	struct rte_pci_driver *dr;
 
-	if ((dr == NULL) || (dev == NULL))
+	if (dev == NULL)
 		return -EINVAL;
 
-	if (!rte_pci_match(dr, dev)) {
-		/* Device and driver don't match */
-		return 1;
-	}
-
+	dr = dev->driver;
 	loc = &dev->addr;
 
 	RTE_LOG(DEBUG, EAL, "PCI device "PCI_PRI_FMT" on NUMA socket %i\n",
@@ -318,33 +314,6 @@ pci_probe_all_drivers(struct rte_pci_device *dev)
 
 	TAILQ_FOREACH(dr, &pci_driver_list, next) {
 		rc = rte_eal_pci_probe_one_driver(dr, dev);
-		if (rc < 0)
-			/* negative value is an error */
-			return -1;
-		if (rc > 0)
-			/* positive value means driver doesn't support it */
-			continue;
-		return 0;
-	}
-	return 1;
-}
-
-/*
- * If vendor/device ID match, call the remove() function of all
- * registered driver for the given device. Return -1 if initialization
- * failed, return 1 if no driver is found for this device.
- */
-static int
-pci_detach_all_drivers(struct rte_pci_device *dev)
-{
-	struct rte_pci_driver *dr = NULL;
-	int rc = 0;
-
-	if (dev == NULL)
-		return -1;
-
-	TAILQ_FOREACH(dr, &pci_driver_list, next) {
-		rc = rte_eal_pci_detach_dev(dr, dev);
 		if (rc < 0)
 			/* negative value is an error */
 			return -1;
@@ -409,9 +378,13 @@ rte_eal_pci_detach(const struct rte_pci_addr *addr)
 		if (rte_eal_compare_pci_addr(&dev->addr, addr))
 			continue;
 
-		ret = pci_detach_all_drivers(dev);
+		ret = rte_eal_pci_detach_dev(dev);
 		if (ret < 0)
+			/* negative value is an error */
 			goto err_return;
+		if (ret > 0)
+			/* positive value means driver doesn't support it */
+			continue;
 
 		TAILQ_REMOVE(&pci_device_list, dev, next);
 		free(dev);
