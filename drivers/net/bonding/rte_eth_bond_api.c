@@ -38,12 +38,11 @@
 #include <rte_ethdev.h>
 #include <rte_tcp.h>
 #include <rte_vdev.h>
+#include <rte_kvargs.h>
 
 #include "rte_eth_bond.h"
 #include "rte_eth_bond_private.h"
 #include "rte_eth_bond_8023ad_private.h"
-
-#define DEFAULT_POLLING_INTERVAL_10_MS (10)
 
 int
 check_for_bonded_ethdev(const struct rte_eth_dev *eth_dev)
@@ -163,163 +162,45 @@ number_of_sockets(void)
 int
 rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
 {
-	struct bond_dev_private *internals = NULL;
-	struct rte_eth_dev *eth_dev = NULL;
-	uint32_t vlan_filter_bmp_size;
-
-	/* now do all data allocation - for eth_dev structure, dummy pci driver
-	 * and internal (private) data
-	 */
+	struct bond_dev_private *internals;
+	char devargs[52];
+	uint8_t port_id;
+	int ret;
 
 	if (name == NULL) {
 		RTE_BOND_LOG(ERR, "Invalid name specified");
-		goto err;
+		return -EINVAL;
 	}
 
-	if (socket_id >= number_of_sockets()) {
-		RTE_BOND_LOG(ERR,
-				"Invalid socket id specified to create bonded device on.");
-		goto err;
-	}
+	ret = snprintf(devargs, sizeof(devargs),
+		"driver=net_bonding,mode=%d,socket_id=%d", mode, socket_id);
+	if (ret < 0 || ret >= (int)sizeof(devargs))
+		return -ENOMEM;
 
-	internals = rte_zmalloc_socket(name, sizeof(*internals), 0, socket_id);
-	if (internals == NULL) {
-		RTE_BOND_LOG(ERR, "Unable to malloc internals on socket");
-		goto err;
-	}
+	ret = rte_eal_vdev_init(name, devargs);
+	if (ret)
+		return -ENOMEM;
 
-	/* reserve an ethdev entry */
-	eth_dev = rte_eth_dev_allocate(name);
-	if (eth_dev == NULL) {
-		RTE_BOND_LOG(ERR, "Unable to allocate rte_eth_dev");
-		goto err;
-	}
+	ret = rte_eth_dev_get_port_by_name(name, &port_id);
+	RTE_ASSERT(!ret);
 
-	eth_dev->data->dev_private = internals;
-	eth_dev->data->nb_rx_queues = (uint16_t)1;
-	eth_dev->data->nb_tx_queues = (uint16_t)1;
+	/*
+	 * To make bond_ethdev_configure() happy we need to free the
+	 * internals->kvlist here.
+	 *
+	 * Also see comment in bond_ethdev_configure().
+	 */
+	internals = rte_eth_devices[port_id].data->dev_private;
+	rte_kvargs_free(internals->kvlist);
+	internals->kvlist = NULL;
 
-	eth_dev->data->mac_addrs = rte_zmalloc_socket(name, ETHER_ADDR_LEN, 0,
-			socket_id);
-	if (eth_dev->data->mac_addrs == NULL) {
-		RTE_BOND_LOG(ERR, "Unable to malloc mac_addrs");
-		goto err;
-	}
-
-	eth_dev->dev_ops = &default_dev_ops;
-	eth_dev->data->dev_flags = RTE_ETH_DEV_INTR_LSC |
-		RTE_ETH_DEV_DETACHABLE;
-	eth_dev->driver = NULL;
-	eth_dev->data->kdrv = RTE_KDRV_NONE;
-	eth_dev->data->drv_name = pmd_bond_drv.driver.name;
-	eth_dev->data->numa_node =  socket_id;
-
-	rte_spinlock_init(&internals->lock);
-
-	internals->port_id = eth_dev->data->port_id;
-	internals->mode = BONDING_MODE_INVALID;
-	internals->current_primary_port = RTE_MAX_ETHPORTS + 1;
-	internals->balance_xmit_policy = BALANCE_XMIT_POLICY_LAYER2;
-	internals->xmit_hash = xmit_l2_hash;
-	internals->user_defined_mac = 0;
-	internals->link_props_set = 0;
-
-	internals->link_status_polling_enabled = 0;
-
-	internals->link_status_polling_interval_ms = DEFAULT_POLLING_INTERVAL_10_MS;
-	internals->link_down_delay_ms = 0;
-	internals->link_up_delay_ms = 0;
-
-	internals->slave_count = 0;
-	internals->active_slave_count = 0;
-	internals->rx_offload_capa = 0;
-	internals->tx_offload_capa = 0;
-	internals->candidate_max_rx_pktlen = 0;
-	internals->max_rx_pktlen = 0;
-
-	/* Initially allow to choose any offload type */
-	internals->flow_type_rss_offloads = ETH_RSS_PROTO_MASK;
-
-	memset(internals->active_slaves, 0, sizeof(internals->active_slaves));
-	memset(internals->slaves, 0, sizeof(internals->slaves));
-
-	/* Set mode 4 default configuration */
-	bond_mode_8023ad_setup(eth_dev, NULL);
-	if (bond_ethdev_mode_set(eth_dev, mode)) {
-		RTE_BOND_LOG(ERR, "Failed to set bonded device %d mode too %d",
-				 eth_dev->data->port_id, mode);
-		goto err;
-	}
-
-	vlan_filter_bmp_size =
-		rte_bitmap_get_memory_footprint(ETHER_MAX_VLAN_ID + 1);
-	internals->vlan_filter_bmpmem = rte_malloc(name, vlan_filter_bmp_size,
-						   RTE_CACHE_LINE_SIZE);
-	if (internals->vlan_filter_bmpmem == NULL) {
-		RTE_BOND_LOG(ERR,
-			     "Failed to allocate vlan bitmap for bonded device %u\n",
-			     eth_dev->data->port_id);
-		goto err;
-	}
-
-	internals->vlan_filter_bmp = rte_bitmap_init(ETHER_MAX_VLAN_ID + 1,
-			internals->vlan_filter_bmpmem, vlan_filter_bmp_size);
-	if (internals->vlan_filter_bmp == NULL) {
-		RTE_BOND_LOG(ERR,
-			     "Failed to init vlan bitmap for bonded device %u\n",
-			     eth_dev->data->port_id);
-		rte_free(internals->vlan_filter_bmpmem);
-		goto err;
-	}
-
-	return eth_dev->data->port_id;
-
-err:
-	rte_free(internals);
-	if (eth_dev != NULL) {
-		rte_free(eth_dev->data->mac_addrs);
-		rte_eth_dev_release_port(eth_dev);
-	}
-	return -1;
+	return port_id;
 }
 
 int
 rte_eth_bond_free(const char *name)
 {
-	struct rte_eth_dev *eth_dev = NULL;
-	struct bond_dev_private *internals;
-
-	/* now free all data allocation - for eth_dev structure,
-	 * dummy pci driver and internal (private) data
-	 */
-
-	/* find an ethdev entry */
-	eth_dev = rte_eth_dev_allocated(name);
-	if (eth_dev == NULL)
-		return -ENODEV;
-
-	internals = eth_dev->data->dev_private;
-	if (internals->slave_count != 0)
-		return -EBUSY;
-
-	if (eth_dev->data->dev_started == 1) {
-		bond_ethdev_stop(eth_dev);
-		bond_ethdev_close(eth_dev);
-	}
-
-	eth_dev->dev_ops = NULL;
-	eth_dev->rx_pkt_burst = NULL;
-	eth_dev->tx_pkt_burst = NULL;
-
-	internals = eth_dev->data->dev_private;
-	rte_bitmap_free(internals->vlan_filter_bmp);
-	rte_free(internals->vlan_filter_bmpmem);
-	rte_free(eth_dev->data->dev_private);
-	rte_free(eth_dev->data->mac_addrs);
-
-	rte_eth_dev_release_port(eth_dev);
-
-	return 0;
+	return rte_eal_vdev_uninit(name);
 }
 
 static int

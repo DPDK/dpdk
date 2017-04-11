@@ -47,7 +47,7 @@ const char *pmd_bond_init_valid_arguments[] = {
 	PMD_BOND_XMIT_POLICY_KVARG,
 	PMD_BOND_SOCKET_ID_KVARG,
 	PMD_BOND_MAC_ADDR_KVARG,
-
+	"driver",
 	NULL
 };
 
