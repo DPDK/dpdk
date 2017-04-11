@@ -101,94 +101,17 @@ Please note that enabling debugging options may affect system performance.
 
   Toggle display of PF mailbox related run-time check messages
 
-Driver Compilation
-~~~~~~~~~~~~~~~~~~
+Driver compilation and testing
+------------------------------
 
-To compile the ThunderX NICVF PMD for Linux arm64 gcc target, run the
-following “make” command:
+Refer to the document :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>`
+for details.
 
-.. code-block:: console
-
-   cd <DPDK-source-directory>
-   make config T=arm64-thunderx-linuxapp-gcc install
+To compile the ThunderX NICVF PMD for Linux arm64 gcc,
+use arm64-thunderx-linuxapp-gcc as target.
 
 Linux
 -----
-
-.. _thunderx_testpmd_example:
-
-Running testpmd
-~~~~~~~~~~~~~~~
-
-This section demonstrates how to launch ``testpmd`` with ThunderX NIC VF device
-managed by ``librte_pmd_thunderx_nicvf`` in the Linux operating system.
-
-#. Load ``vfio-pci`` driver:
-
-   .. code-block:: console
-
-      modprobe vfio-pci
-
-   .. _thunderx_vfio_noiommu:
-
-#. Enable **VFIO-NOIOMMU** mode (optional):
-
-   .. code-block:: console
-
-      echo 1 > /sys/module/vfio/parameters/enable_unsafe_noiommu_mode
-
-   .. note::
-
-      **VFIO-NOIOMMU** is required only when running in VM context and should not be enabled otherwise.
-      See also :ref:`SR-IOV: Prerequisites and sample Application Notes <thunderx_sriov_example>`.
-
-#. Bind the ThunderX NIC VF device to ``vfio-pci`` loaded in the previous step:
-
-   Setup VFIO permissions for regular users and then bind to ``vfio-pci``:
-
-   .. code-block:: console
-
-      ./usertools/dpdk-devbind.py --bind vfio-pci 0002:01:00.2
-
-#. Start ``testpmd`` with basic parameters:
-
-   .. code-block:: console
-
-      ./arm64-thunderx-linuxapp-gcc/app/testpmd -l 0-3 -n 4 -w 0002:01:00.2 \
-        -- -i --disable-hw-vlan-filter --no-flush-rx \
-        --port-topology=loop
-
-   Example output:
-
-   .. code-block:: console
-
-      ...
-
-      PMD: rte_nicvf_pmd_init(): librte_pmd_thunderx nicvf version 1.0
-
-      ...
-      EAL:   probe driver: 177d:11 rte_nicvf_pmd
-      EAL:   using IOMMU type 1 (Type 1)
-      EAL:   PCI memory mapped at 0x3ffade50000
-      EAL: Trying to map BAR 4 that contains the MSI-X table.
-           Trying offsets: 0x40000000000:0x0000, 0x10000:0x1f0000
-      EAL:   PCI memory mapped at 0x3ffadc60000
-      PMD: nicvf_eth_dev_init(): nicvf: device (177d:11) 2:1:0:2
-      PMD: nicvf_eth_dev_init(): node=0 vf=1 mode=tns-bypass sqs=false
-           loopback_supported=true
-      PMD: nicvf_eth_dev_init(): Port 0 (177d:11) mac=a6:c6:d9:17:78:01
-      Interactive-mode selected
-      Configuring Port 0 (socket 0)
-      ...
-
-      PMD: nicvf_dev_configure(): Configured ethdev port0 hwcap=0x0
-      Port 0: A6:C6:D9:17:78:01
-      Checking link statuses...
-      Port 0 Link Up - speed 10000 Mbps - full-duplex
-      Done
-      testpmd>
-
-.. _thunderx_sriov_example:
 
 SR-IOV: Prerequisites and sample Application Notes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -248,58 +171,10 @@ This section provides instructions to configure SR-IOV with Linux OS.
 
       Unless ``thunder-nicvf`` driver is in use make sure your kernel config includes ``CONFIG_THUNDER_NIC_VF`` setting.
 
-#. Verify PF/VF bind using ``dpdk-devbind.py``:
-
-   .. code-block:: console
-
-      ./usertools/dpdk-devbind.py --status
-
-   Example output:
-
-   .. code-block:: console
-
-      ...
-      0002:01:00.0 'Device a01e' if= drv=thunder-nic unused=vfio-pci
-      0002:01:00.1 'Device 0011' if=eth0 drv=thunder-nicvf unused=vfio-pci
-      0002:01:00.2 'Device 0011' if=eth1 drv=thunder-nicvf unused=vfio-pci
-      ...
-
-#. Load ``vfio-pci`` driver:
-
-   .. code-block:: console
-
-      modprobe vfio-pci
-
-#. Bind VF devices to ``vfio-pci`` using ``dpdk-devbind.py``:
-
-   .. code-block:: console
-
-      ./usertools/dpdk-devbind.py --bind vfio-pci 0002:01:00.1
-      ./usertools/dpdk-devbind.py --bind vfio-pci 0002:01:00.2
-
-#. Verify VF bind using ``dpdk-devbind.py``:
-
-   .. code-block:: console
-
-      ./usertools/dpdk-devbind.py --status
-
-   Example output:
-
-   .. code-block:: console
-
-      ...
-      0002:01:00.1 'Device 0011' drv=vfio-pci unused=
-      0002:01:00.2 'Device 0011' drv=vfio-pci unused=
-      ...
-      0002:01:00.0 'Device a01e' if= drv=thunder-nic unused=vfio-pci
-      ...
-
 #. Pass VF device to VM context (PCIe Passthrough):
 
    The VF devices may be passed through to the guest VM using qemu or
    virt-manager or virsh etc.
-   ``librte_pmd_thunderx_nicvf`` or ``thunder-nicvf`` should be used to bind
-   the VF devices in the guest VM in :ref:`VFIO-NOIOMMU <thunderx_vfio_noiommu>` mode.
 
    Example qemu guest launch command:
 
@@ -320,8 +195,55 @@ This section provides instructions to configure SR-IOV with Linux OS.
       -serial stdio \
       -mem-path /dev/huge
 
-#. Refer to section :ref:`Running testpmd <thunderx_testpmd_example>` for instruction
-   how to launch ``testpmd`` application.
+#. Enable **VFIO-NOIOMMU** mode (optional):
+
+   .. code-block:: console
+
+      echo 1 > /sys/module/vfio/parameters/enable_unsafe_noiommu_mode
+
+   .. note::
+
+      **VFIO-NOIOMMU** is required only when running in VM context and should not be enabled otherwise.
+
+#. Running testpmd:
+
+   Follow instructions available in the document
+   :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>`
+   to run testpmd.
+
+   Example output:
+
+   .. code-block:: console
+
+      ./arm64-thunderx-linuxapp-gcc/app/testpmd -l 0-3 -n 4 -w 0002:01:00.2 \
+        -- -i --disable-hw-vlan-filter --disable-crc-strip --no-flush-rx \
+        --port-topology=loop
+
+      ...
+
+      PMD: rte_nicvf_pmd_init(): librte_pmd_thunderx nicvf version 1.0
+
+      ...
+      EAL:   probe driver: 177d:11 rte_nicvf_pmd
+      EAL:   using IOMMU type 1 (Type 1)
+      EAL:   PCI memory mapped at 0x3ffade50000
+      EAL: Trying to map BAR 4 that contains the MSI-X table.
+           Trying offsets: 0x40000000000:0x0000, 0x10000:0x1f0000
+      EAL:   PCI memory mapped at 0x3ffadc60000
+      PMD: nicvf_eth_dev_init(): nicvf: device (177d:11) 2:1:0:2
+      PMD: nicvf_eth_dev_init(): node=0 vf=1 mode=tns-bypass sqs=false
+           loopback_supported=true
+      PMD: nicvf_eth_dev_init(): Port 0 (177d:11) mac=a6:c6:d9:17:78:01
+      Interactive-mode selected
+      Configuring Port 0 (socket 0)
+      ...
+
+      PMD: nicvf_dev_configure(): Configured ethdev port0 hwcap=0x0
+      Port 0: A6:C6:D9:17:78:01
+      Checking link statuses...
+      Port 0 Link Up - speed 10000 Mbps - full-duplex
+      Done
+      testpmd>
 
 Multiple Queue Set per DPDK port configuration
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
