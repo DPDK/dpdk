@@ -43,6 +43,11 @@
 #include <rte_common.h>
 #include <rte_devargs.h>
 
+/** Double linked list of virtual device drivers. */
+TAILQ_HEAD(vdev_device_list, rte_vdev_device);
+
+static struct vdev_device_list vdev_device_list =
+	TAILQ_HEAD_INITIALIZER(vdev_device_list);
 struct vdev_driver_list vdev_driver_list =
 	TAILQ_HEAD_INITIALIZER(vdev_driver_list);
 
