@@ -2589,6 +2589,9 @@ ixgbe_flow_create(struct rte_eth_dev *dev,
 out:
 	TAILQ_REMOVE(&ixgbe_flow_list,
 		ixgbe_flow_mem_ptr, entries);
+	rte_flow_error_set(error, -ret,
+			   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+			   "Failed to create flow.");
 	rte_free(ixgbe_flow_mem_ptr);
 	rte_free(flow);
 	return NULL;
