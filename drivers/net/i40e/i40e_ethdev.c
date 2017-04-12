@@ -415,6 +415,7 @@ static int i40e_cloud_filter_qinq_create(struct i40e_pf *pf);
 static void i40e_ethertype_filter_restore(struct i40e_pf *pf);
 static void i40e_tunnel_filter_restore(struct i40e_pf *pf);
 static void i40e_filter_restore(struct i40e_pf *pf);
+static void i40e_notify_all_vfs_link_status(struct rte_eth_dev *dev);
 
 int i40e_logtype_init;
 int i40e_logtype_driver;
@@ -2301,6 +2302,8 @@ out:
 	rte_i40e_dev_atomic_write_link_status(dev, &link);
 	if (link.link_status == old.link_status)
 		return -1;
+
+	i40e_notify_all_vfs_link_status(dev);
 
 	return 0;
 }
@@ -5774,11 +5777,9 @@ i40e_dev_handle_aq_msg(struct rte_eth_dev *dev)
 			break;
 		case i40e_aqc_opc_get_link_status:
 			ret = i40e_dev_link_update(dev, 0);
-			if (!ret) {
-				i40e_notify_all_vfs_link_status(dev);
+			if (!ret)
 				_rte_eth_dev_callback_process(dev,
 					RTE_ETH_EVENT_INTR_LSC, NULL);
-			}
 			break;
 		default:
 			PMD_DRV_LOG(ERR, "Request %u is not supported yet",
