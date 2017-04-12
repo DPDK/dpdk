@@ -463,7 +463,7 @@ cperf_test_vector_get_dummy(struct cperf_options *options)
 			break;
 		}
 
-		if (aad_alloc) {
+		if (aad_alloc && options->auth_aad_sz) {
 			t_vec->aad.data = rte_malloc(NULL,
 					options->auth_aad_sz, 16);
 			if (t_vec->aad.data == NULL) {
