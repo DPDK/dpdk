@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2016 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2016-2017 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -72,6 +72,8 @@
 #define ETH_TAP_IFACE_ARG       "iface"
 #define ETH_TAP_SPEED_ARG       "speed"
 #define ETH_TAP_REMOTE_ARG      "remote"
+#define ETH_TAP_MAC_ARG         "mac"
+#define ETH_TAP_MAC_FIXED       "fixed"
 
 #define FLOWER_KERNEL_VERSION KERNEL_VERSION(4, 2, 0)
 #define FLOWER_VLAN_KERNEL_VERSION KERNEL_VERSION(4, 9, 0)
@@ -82,6 +84,7 @@ static const char *valid_arguments[] = {
 	ETH_TAP_IFACE_ARG,
 	ETH_TAP_SPEED_ARG,
 	ETH_TAP_REMOTE_ARG,
+	ETH_TAP_MAC_ARG,
 	NULL
 };
 
@@ -1135,7 +1138,7 @@ tap_kernel_support(struct pmd_internals *pmd)
 
 static int
 eth_dev_tap_create(struct rte_vdev_device *vdev, char *tap_name,
-		   char *remote_iface)
+		   char *remote_iface, int fixed_mac_type)
 {
 	int numa_node = rte_socket_id();
 	struct rte_eth_dev *dev;
@@ -1195,6 +1198,17 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, char *tap_name,
 		pmd->txq[i].fd = -1;
 	}
 
+	if (fixed_mac_type) {
+		/* fixed mac = 00:64:74:61:70:<iface_idx> */
+		static int iface_idx;
+		char mac[ETHER_ADDR_LEN] = "\0dtap";
+
+		mac[ETHER_ADDR_LEN - 1] = iface_idx++;
+		rte_memcpy(&pmd->eth_addr, mac, ETHER_ADDR_LEN);
+	} else {
+		eth_random_addr((uint8_t *)&pmd->eth_addr);
+	}
+
 	tap_kernel_support(pmd);
 	if (!pmd->flower_support)
 		return 0;
@@ -1222,8 +1236,6 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, char *tap_name,
 		}
 		rte_memcpy(&pmd->eth_addr, ifr.ifr_hwaddr.sa_data,
 			   ETHER_ADDR_LEN);
-	} else {
-		eth_random_addr((uint8_t *)&pmd->eth_addr);
 	}
 
 	return 0;
@@ -1275,6 +1287,17 @@ set_remote_iface(const char *key __rte_unused,
 	return 0;
 }
 
+static int
+set_mac_type(const char *key __rte_unused,
+	     const char *value,
+	     void *extra_args)
+{
+	if (value &&
+	    !strncasecmp(ETH_TAP_MAC_FIXED, value, strlen(ETH_TAP_MAC_FIXED)))
+		*(int *)extra_args = 1;
+	return 0;
+}
+
 /* Open a TAP interface device.
  */
 static int
@@ -1286,6 +1309,7 @@ rte_pmd_tap_probe(struct rte_vdev_device *dev)
 	int speed;
 	char tap_name[RTE_ETH_NAME_MAX_LEN];
 	char remote_iface[RTE_ETH_NAME_MAX_LEN];
+	int fixed_mac_type = 0;
 
 	name = rte_vdev_device_name(dev);
 	params = rte_vdev_device_args(dev);
@@ -1326,6 +1350,15 @@ rte_pmd_tap_probe(struct rte_vdev_device *dev)
 				if (ret == -1)
 					goto leave;
 			}
+
+			if (rte_kvargs_count(kvlist, ETH_TAP_MAC_ARG) == 1) {
+				ret = rte_kvargs_process(kvlist,
+							 ETH_TAP_MAC_ARG,
+							 &set_mac_type,
+							 &fixed_mac_type);
+				if (ret == -1)
+					goto leave;
+			}
 		}
 	}
 	pmd_link.link_speed = speed;
@@ -1333,7 +1366,7 @@ rte_pmd_tap_probe(struct rte_vdev_device *dev)
 	RTE_LOG(NOTICE, PMD, "Initializing pmd_tap for %s as %s\n",
 		name, tap_name);
 
-	ret = eth_dev_tap_create(dev, tap_name, remote_iface);
+	ret = eth_dev_tap_create(dev, tap_name, remote_iface, fixed_mac_type);
 
 leave:
 	if (ret == -1) {
@@ -1391,4 +1424,5 @@ RTE_PMD_REGISTER_ALIAS(net_tap, eth_tap);
 RTE_PMD_REGISTER_PARAM_STRING(net_tap,
 			      ETH_TAP_IFACE_ARG "=<string> "
 			      ETH_TAP_SPEED_ARG "=<int> "
+			      ETH_TAP_MAC_ARG "=" ETH_TAP_MAC_FIXED " "
 			      ETH_TAP_REMOTE_ARG "=<string>");

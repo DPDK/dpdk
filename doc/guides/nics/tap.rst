@@ -46,7 +46,7 @@ These TAP interfaces can be used with Wireshark or tcpdump or Pktgen-DPDK
 along with being able to be used as a network connection to the DPDK
 application. The method enable one or more interfaces is to use the
 ``--vdev=net_tap0`` option on the DPDK application command line. Each
-``--vdev=net_tap1`` option give will create an interface named dtap0, dtap1,
+``--vdev=net_tap1`` option given will create an interface named dtap0, dtap1,
 and so on.
 
 The interface name can be changed by adding the ``iface=foo0``, for example::
@@ -57,6 +57,17 @@ Also the speed of the interface can be changed from 10G to whatever number
 needed, but the interface does not enforce that speed, for example::
 
    --vdev=net_tap0,iface=foo0,speed=25000
+
+Normally the PMD will generate a random MAC address, but when testing or with
+a static configuration the developer may need a fixed MAC address style.
+Using the option ``mac=fixed`` you can create a fixed known MAC address::
+
+   --vdev=net_tap0,mac=fixed
+
+The MAC address will have a fixed value with the last octet incrementing by one
+for each interface string containing ``mac=fixed``. The MAC address is formatted
+as 00:'d':'t':'a':'p':[00-FF]. Convert the characters to hex and you get the
+actual MAC address: ``00:64:74:61:70:[00-FF]``.
 
 It is possible to specify a remote netdevice to capture packets from by adding
 ``remote=foo1``, for example::
