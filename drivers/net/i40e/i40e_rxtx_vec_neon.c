@@ -201,7 +201,8 @@ desc_to_olflags_v(struct i40e_rx_queue *rxq, uint64x2_t descs[4],
 #define I40E_VPMD_DESC_DD_MASK	0x0001000100010001ULL
 
 static inline void
-desc_to_ptype_v(uint64x2_t descs[4], struct rte_mbuf **rx_pkts)
+desc_to_ptype_v(uint64x2_t descs[4], struct rte_mbuf **rx_pkts,
+		uint32_t *ptype_tbl)
 {
 	int i;
 	uint8_t ptype;
@@ -210,7 +211,7 @@ desc_to_ptype_v(uint64x2_t descs[4], struct rte_mbuf **rx_pkts)
 	for (i = 0; i < 4; i++) {
 		tmp = vreinterpretq_u8_u64(vshrq_n_u64(descs[i], 30));
 		ptype = vgetq_lane_u8(tmp, 8);
-		rx_pkts[i]->packet_type = i40e_rxd_pkt_type_mapping(ptype);
+		rx_pkts[i]->packet_type = ptype_tbl[ptype];
 	}
 
 }
@@ -230,6 +231,7 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 	uint16_t nb_pkts_recd;
 	int pos;
 	uint64_t var;
+	uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
 
 	/* mask to shuffle from desc. to mbuf */
 	uint8x16_t shuf_msk = {
@@ -434,7 +436,7 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 			 pkt_mb2);
 		vst1q_u8((void *)&rx_pkts[pos]->rx_descriptor_fields1,
 			 pkt_mb1);
-		desc_to_ptype_v(descs, &rx_pkts[pos]);
+		desc_to_ptype_v(descs, &rx_pkts[pos], ptype_tbl);
 		/* C.4 calc avaialbe number of desc */
 		var = __builtin_popcountll(stat & I40E_VPMD_DESC_DD_MASK);
 		nb_pkts_recd += var;

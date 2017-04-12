@@ -212,7 +212,8 @@ desc_to_olflags_v(struct i40e_rx_queue *rxq, __m128i descs[4] __rte_unused,
 #define PKTLEN_SHIFT     10
 
 static inline void
-desc_to_ptype_v(__m128i descs[4], struct rte_mbuf **rx_pkts)
+desc_to_ptype_v(__m128i descs[4], struct rte_mbuf **rx_pkts,
+		uint32_t *ptype_tbl)
 {
 	__m128i ptype0 = _mm_unpackhi_epi64(descs[0], descs[1]);
 	__m128i ptype1 = _mm_unpackhi_epi64(descs[2], descs[3]);
@@ -220,10 +221,10 @@ desc_to_ptype_v(__m128i descs[4], struct rte_mbuf **rx_pkts)
 	ptype0 = _mm_srli_epi64(ptype0, 30);
 	ptype1 = _mm_srli_epi64(ptype1, 30);
 
-	rx_pkts[0]->packet_type = i40e_rxd_pkt_type_mapping(_mm_extract_epi8(ptype0, 0));
-	rx_pkts[1]->packet_type = i40e_rxd_pkt_type_mapping(_mm_extract_epi8(ptype0, 8));
-	rx_pkts[2]->packet_type = i40e_rxd_pkt_type_mapping(_mm_extract_epi8(ptype1, 0));
-	rx_pkts[3]->packet_type = i40e_rxd_pkt_type_mapping(_mm_extract_epi8(ptype1, 8));
+	rx_pkts[0]->packet_type = ptype_tbl[_mm_extract_epi8(ptype0, 0)];
+	rx_pkts[1]->packet_type = ptype_tbl[_mm_extract_epi8(ptype0, 8)];
+	rx_pkts[2]->packet_type = ptype_tbl[_mm_extract_epi8(ptype1, 0)];
+	rx_pkts[3]->packet_type = ptype_tbl[_mm_extract_epi8(ptype1, 8)];
 }
 
  /*
@@ -242,6 +243,7 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 	int pos;
 	uint64_t var;
 	__m128i shuf_msk;
+	uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
 
 	__m128i crc_adjust = _mm_set_epi16(
 				0, 0, 0,    /* ignore non-length fields */
@@ -429,7 +431,7 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 				 pkt_mb2);
 		_mm_storeu_si128((void *)&rx_pkts[pos]->rx_descriptor_fields1,
 				 pkt_mb1);
-		desc_to_ptype_v(descs, &rx_pkts[pos]);
+		desc_to_ptype_v(descs, &rx_pkts[pos], ptype_tbl);
 		/* C.4 calc avaialbe number of desc */
 		var = __builtin_popcountll(_mm_cvtsi128_si64(staterr));
 		nb_pkts_recd += var;

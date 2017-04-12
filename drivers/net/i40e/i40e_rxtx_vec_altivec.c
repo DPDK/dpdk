@@ -198,7 +198,8 @@ desc_to_olflags_v(vector unsigned long descs[4], struct rte_mbuf **rx_pkts)
 #define PKTLEN_SHIFT     10
 
 static inline void
-desc_to_ptype_v(vector unsigned long descs[4], struct rte_mbuf **rx_pkts)
+desc_to_ptype_v(vector unsigned long descs[4], struct rte_mbuf **rx_pkts,
+		uint32_t *ptype_tbl)
 {
 	vector unsigned long ptype0 = vec_mergel(descs[0], descs[1]);
 	vector unsigned long ptype1 = vec_mergel(descs[2], descs[3]);
@@ -206,14 +207,14 @@ desc_to_ptype_v(vector unsigned long descs[4], struct rte_mbuf **rx_pkts)
 	ptype0 = vec_sr(ptype0, (vector unsigned long){30, 30});
 	ptype1 = vec_sr(ptype1, (vector unsigned long){30, 30});
 
-	rx_pkts[0]->packet_type = i40e_rxd_pkt_type_mapping(
-					(*(vector unsigned char *)&ptype0)[0]);
-	rx_pkts[1]->packet_type = i40e_rxd_pkt_type_mapping(
-					(*(vector unsigned char *)&ptype0)[8]);
-	rx_pkts[2]->packet_type = i40e_rxd_pkt_type_mapping(
-					(*(vector unsigned char *)&ptype1)[0]);
-	rx_pkts[3]->packet_type = i40e_rxd_pkt_type_mapping(
-					(*(vector unsigned char *)&ptype1)[8]);
+	rx_pkts[0]->packet_type =
+		ptype_tbl[(*(vector unsigned char *)&ptype0)[0])];
+	rx_pkts[1]->packet_type =
+		ptype_tbl[(*(vector unsigned char *)&ptype0)[8])];
+	rx_pkts[2]->packet_type =
+		ptype_tbl[(*(vector unsigned char *)&ptype1)[0])];
+	rx_pkts[3]->packet_type =
+		ptype_tbl[(*(vector unsigned char *)&ptype1)[8])];
 }
 
  /* Notice:
@@ -231,6 +232,7 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 	int pos;
 	uint64_t var;
 	vector unsigned char shuf_msk;
+	uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
 
 	vector unsigned short crc_adjust = (vector unsigned short){
 		0, 0,         /* ignore pkt_type field */
@@ -455,7 +457,7 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		vec_st(pkt_mb1, 0,
 		 (vector unsigned char *)&rx_pkts[pos]->rx_descriptor_fields1
 		);
-		desc_to_ptype_v(descs, &rx_pkts[pos]);
+		desc_to_ptype_v(descs, &rx_pkts[pos], ptype_tbl);
 		desc_to_olflags_v(descs, &rx_pkts[pos]);
 
 		/* C.4 calc avaialbe number of desc */

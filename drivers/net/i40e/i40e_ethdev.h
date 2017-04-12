@@ -744,6 +744,8 @@ struct i40e_vf {
 	uint64_t flags;
 };
 
+#define I40E_MAX_PKT_TYPE 256
+
 /*
  * Structure to store private data for each PF/VF instance.
  */
@@ -768,6 +770,9 @@ struct i40e_adapter {
 	struct rte_timecounter systime_tc;
 	struct rte_timecounter rx_tstamp_tc;
 	struct rte_timecounter tx_tstamp_tc;
+
+	/* ptype mapping table */
+	uint32_t ptype_tbl[I40E_MAX_PKT_TYPE] __rte_cache_min_aligned;
 };
 
 extern const struct rte_flow_ops i40e_flow_ops;

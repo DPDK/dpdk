@@ -61,7 +61,6 @@
 
 #define DEFAULT_TX_RS_THRESH   32
 #define DEFAULT_TX_FREE_THRESH 32
-#define I40E_MAX_PKT_TYPE      256
 
 #define I40E_TX_MAX_BURST  32
 
@@ -458,6 +457,7 @@ i40e_rx_scan_hw_ring(struct i40e_rx_queue *rxq)
 	int32_t s[I40E_LOOK_AHEAD], nb_dd;
 	int32_t i, j, nb_rx = 0;
 	uint64_t pkt_flags;
+	uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
 
 	rxdp = &rxq->rx_ring[rxq->rx_tail];
 	rxep = &rxq->sw_ring[rxq->rx_tail];
@@ -506,9 +506,9 @@ i40e_rx_scan_hw_ring(struct i40e_rx_queue *rxq)
 			pkt_flags = i40e_rxd_status_to_pkt_flags(qword1);
 			pkt_flags |= i40e_rxd_error_to_pkt_flags(qword1);
 			mb->packet_type =
-				i40e_rxd_pkt_type_mapping((uint8_t)((qword1 &
-						I40E_RXD_QW1_PTYPE_MASK) >>
-						I40E_RXD_QW1_PTYPE_SHIFT));
+				ptype_tbl[(uint8_t)((qword1 &
+				I40E_RXD_QW1_PTYPE_MASK) >>
+				I40E_RXD_QW1_PTYPE_SHIFT)];
 			if (pkt_flags & PKT_RX_RSS_HASH)
 				mb->hash.rss = rte_le_to_cpu_32(\
 					rxdp[j].wb.qword0.hi_dword.rss);
@@ -700,6 +700,7 @@ i40e_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	uint16_t rx_id, nb_hold;
 	uint64_t dma_addr;
 	uint64_t pkt_flags;
+	uint32_t *ptype_tbl;
 
 	nb_rx = 0;
 	nb_hold = 0;
@@ -707,6 +708,7 @@ i40e_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	rx_id = rxq->rx_tail;
 	rx_ring = rxq->rx_ring;
 	sw_ring = rxq->sw_ring;
+	ptype_tbl = rxq->vsi->adapter->ptype_tbl;
 
 	while (nb_rx < nb_pkts) {
 		rxdp = &rx_ring[rx_id];
@@ -763,8 +765,8 @@ i40e_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		pkt_flags = i40e_rxd_status_to_pkt_flags(qword1);
 		pkt_flags |= i40e_rxd_error_to_pkt_flags(qword1);
 		rxm->packet_type =
-			i40e_rxd_pkt_type_mapping((uint8_t)((qword1 &
-			I40E_RXD_QW1_PTYPE_MASK) >> I40E_RXD_QW1_PTYPE_SHIFT));
+			ptype_tbl[(uint8_t)((qword1 &
+			I40E_RXD_QW1_PTYPE_MASK) >> I40E_RXD_QW1_PTYPE_SHIFT)];
 		if (pkt_flags & PKT_RX_RSS_HASH)
 			rxm->hash.rss =
 				rte_le_to_cpu_32(rxd.wb.qword0.hi_dword.rss);
@@ -818,6 +820,7 @@ i40e_recv_scattered_pkts(void *rx_queue,
 	uint64_t qword1;
 	uint64_t dma_addr;
 	uint64_t pkt_flags;
+	uint32_t *ptype_tbl = rxq->vsi->adapter->ptype_tbl;
 
 	while (nb_rx < nb_pkts) {
 		rxdp = &rx_ring[rx_id];
@@ -925,8 +928,8 @@ i40e_recv_scattered_pkts(void *rx_queue,
 		pkt_flags = i40e_rxd_status_to_pkt_flags(qword1);
 		pkt_flags |= i40e_rxd_error_to_pkt_flags(qword1);
 		first_seg->packet_type =
-			i40e_rxd_pkt_type_mapping((uint8_t)((qword1 &
-			I40E_RXD_QW1_PTYPE_MASK) >> I40E_RXD_QW1_PTYPE_SHIFT));
+			ptype_tbl[(uint8_t)((qword1 &
+			I40E_RXD_QW1_PTYPE_MASK) >> I40E_RXD_QW1_PTYPE_SHIFT)];
 		if (pkt_flags & PKT_RX_RSS_HASH)
 			first_seg->hash.rss =
 				rte_le_to_cpu_32(rxd.wb.qword0.hi_dword.rss);
@@ -2920,6 +2923,17 @@ i40e_set_tx_function(struct rte_eth_dev *dev)
 		dev->tx_pkt_burst = i40e_xmit_pkts;
 		dev->tx_pkt_prepare = i40e_prep_pkts;
 	}
+}
+
+void __attribute__((cold))
+i40e_set_default_ptype_table(struct rte_eth_dev *dev)
+{
+	struct i40e_adapter *ad =
+		I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	int i;
+
+	for (i = 0; i <= I40E_MAX_PKT_TYPE; i++)
+		ad->ptype_tbl[i] = i40e_get_default_pkt_type(i);
 }
 
 /* Stubs needed for linkage when CONFIG_RTE_I40E_INC_VECTOR is set to 'n' */

@@ -254,13 +254,14 @@ void i40e_set_rx_function(struct rte_eth_dev *dev);
 void i40e_set_tx_function_flag(struct rte_eth_dev *dev,
 			       struct i40e_tx_queue *txq);
 void i40e_set_tx_function(struct rte_eth_dev *dev);
+void i40e_set_default_ptype_table(struct rte_eth_dev *dev);
 
 /* For each value it means, datasheet of hardware can tell more details
  *
  * @note: fix i40e_dev_supported_ptypes_get() if any change here.
  */
 static inline uint32_t
-i40e_rxd_pkt_type_mapping(uint8_t ptype)
+i40e_get_default_pkt_type(uint8_t ptype)
 {
 	static const uint32_t type_table[UINT8_MAX + 1] __rte_cache_aligned = {
 		/* L2 types */

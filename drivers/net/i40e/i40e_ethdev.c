@@ -1059,6 +1059,7 @@ eth_i40e_dev_init(struct rte_eth_dev *dev)
 		i40e_set_tx_function(dev);
 		return 0;
 	}
+	i40e_set_default_ptype_table(dev);
 	pci_dev = I40E_DEV_TO_PCI(dev);
 	intr_handle = &pci_dev->intr_handle;
 
