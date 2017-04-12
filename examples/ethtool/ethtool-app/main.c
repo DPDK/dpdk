@@ -172,7 +172,6 @@ static void setup_ports(struct app_config *app_cfg, int cnt_ports)
 				 "%s:%i: rte_eth_dev_start failed",
 				 __FILE__, __LINE__
 				);
-		rte_eth_promiscuous_enable(idx_port);
 		rte_eth_macaddr_get(idx_port, &ptr_port->mac_addr);
 		rte_spinlock_init(&ptr_port->lock);
 	}
