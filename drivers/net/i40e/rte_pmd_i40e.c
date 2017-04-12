@@ -37,6 +37,7 @@
 #include "base/i40e_prototype.h"
 #include "i40e_ethdev.h"
 #include "i40e_pf.h"
+#include "i40e_rxtx.h"
 #include "rte_pmd_i40e.h"
 
 /* The max bandwidth of i40e is 40Gbps. */
@@ -1704,4 +1705,233 @@ rte_pmd_i40e_get_ddp_list(uint8_t port, uint8_t *buff, uint32_t size)
 				      size, 0, NULL);
 
 	return status;
+}
+
+static int check_invalid_pkt_type(uint32_t pkt_type)
+{
+	uint32_t l2, l3, l4, tnl, il2, il3, il4;
+
+	l2 = pkt_type & RTE_PTYPE_L2_MASK;
+	l3 = pkt_type & RTE_PTYPE_L3_MASK;
+	l4 = pkt_type & RTE_PTYPE_L4_MASK;
+	tnl = pkt_type & RTE_PTYPE_TUNNEL_MASK;
+	il2 = pkt_type & RTE_PTYPE_INNER_L2_MASK;
+	il3 = pkt_type & RTE_PTYPE_INNER_L3_MASK;
+	il4 = pkt_type & RTE_PTYPE_INNER_L4_MASK;
+
+	if (l2 &&
+	    l2 != RTE_PTYPE_L2_ETHER &&
+	    l2 != RTE_PTYPE_L2_ETHER_TIMESYNC &&
+	    l2 != RTE_PTYPE_L2_ETHER_ARP &&
+	    l2 != RTE_PTYPE_L2_ETHER_LLDP &&
+	    l2 != RTE_PTYPE_L2_ETHER_NSH &&
+	    l2 != RTE_PTYPE_L2_ETHER_VLAN &&
+	    l2 != RTE_PTYPE_L2_ETHER_QINQ)
+		return -1;
+
+	if (l3 &&
+	    l3 != RTE_PTYPE_L3_IPV4 &&
+	    l3 != RTE_PTYPE_L3_IPV4_EXT &&
+	    l3 != RTE_PTYPE_L3_IPV6 &&
+	    l3 != RTE_PTYPE_L3_IPV4_EXT_UNKNOWN &&
+	    l3 != RTE_PTYPE_L3_IPV6_EXT &&
+	    l3 != RTE_PTYPE_L3_IPV6_EXT_UNKNOWN)
+		return -1;
+
+	if (l4 &&
+	    l4 != RTE_PTYPE_L4_TCP &&
+	    l4 != RTE_PTYPE_L4_UDP &&
+	    l4 != RTE_PTYPE_L4_FRAG &&
+	    l4 != RTE_PTYPE_L4_SCTP &&
+	    l4 != RTE_PTYPE_L4_ICMP &&
+	    l4 != RTE_PTYPE_L4_NONFRAG)
+		return -1;
+
+	if (tnl &&
+	    tnl != RTE_PTYPE_TUNNEL_IP &&
+	    tnl != RTE_PTYPE_TUNNEL_GRENAT &&
+	    tnl != RTE_PTYPE_TUNNEL_VXLAN &&
+	    tnl != RTE_PTYPE_TUNNEL_NVGRE &&
+	    tnl != RTE_PTYPE_TUNNEL_GENEVE &&
+	    tnl != RTE_PTYPE_TUNNEL_GRENAT)
+		return -1;
+
+	if (il2 &&
+	    il2 != RTE_PTYPE_INNER_L2_ETHER &&
+	    il2 != RTE_PTYPE_INNER_L2_ETHER_VLAN &&
+	    il2 != RTE_PTYPE_INNER_L2_ETHER_QINQ)
+		return -1;
+
+	if (il3 &&
+	    il3 != RTE_PTYPE_INNER_L3_IPV4 &&
+	    il3 != RTE_PTYPE_INNER_L3_IPV4_EXT &&
+	    il3 != RTE_PTYPE_INNER_L3_IPV6 &&
+	    il3 != RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN &&
+	    il3 != RTE_PTYPE_INNER_L3_IPV6_EXT &&
+	    il3 != RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN)
+		return -1;
+
+	if (il4 &&
+	    il4 != RTE_PTYPE_INNER_L4_TCP &&
+	    il4 != RTE_PTYPE_INNER_L4_UDP &&
+	    il4 != RTE_PTYPE_INNER_L4_FRAG &&
+	    il4 != RTE_PTYPE_INNER_L4_SCTP &&
+	    il4 != RTE_PTYPE_INNER_L4_ICMP &&
+	    il4 != RTE_PTYPE_INNER_L4_NONFRAG)
+		return -1;
+
+	return 0;
+}
+
+static int check_invalid_ptype_mapping(
+		struct rte_pmd_i40e_ptype_mapping *mapping_table,
+		uint16_t count)
+{
+	int i;
+
+	for (i = 0; i < count; i++) {
+		uint16_t ptype = mapping_table[i].hw_ptype;
+		uint32_t pkt_type = mapping_table[i].sw_ptype;
+
+		if (ptype >= I40E_MAX_PKT_TYPE)
+			return -1;
+
+		if (pkt_type == RTE_PTYPE_UNKNOWN)
+			continue;
+
+		if (pkt_type & RTE_PMD_I40E_PTYPE_USER_DEFINE_MASK)
+			continue;
+
+		if (check_invalid_pkt_type(pkt_type))
+			return -1;
+	}
+
+	return 0;
+}
+
+int
+rte_pmd_i40e_ptype_mapping_update(
+			uint8_t port,
+			struct rte_pmd_i40e_ptype_mapping *mapping_items,
+			uint16_t count,
+			uint8_t exclusive)
+{
+	struct rte_eth_dev *dev;
+	struct i40e_adapter *ad;
+	int i;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+
+	if (!is_i40e_supported(dev))
+		return -ENOTSUP;
+
+	if (count > I40E_MAX_PKT_TYPE)
+		return -EINVAL;
+
+	if (check_invalid_ptype_mapping(mapping_items, count))
+		return -EINVAL;
+
+	ad = I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+
+	if (exclusive) {
+		for (i = 0; i < I40E_MAX_PKT_TYPE; i++)
+			ad->ptype_tbl[i] = RTE_PTYPE_UNKNOWN;
+	}
+
+	for (i = 0; i < count; i++)
+		ad->ptype_tbl[mapping_items[i].hw_ptype]
+			= mapping_items[i].sw_ptype;
+
+	return 0;
+}
+
+int rte_pmd_i40e_ptype_mapping_reset(uint8_t port)
+{
+	struct rte_eth_dev *dev;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+
+	if (!is_i40e_supported(dev))
+		return -ENOTSUP;
+
+	i40e_set_default_ptype_table(dev);
+
+	return 0;
+}
+
+int rte_pmd_i40e_ptype_mapping_get(
+			uint8_t port,
+			struct rte_pmd_i40e_ptype_mapping *mapping_items,
+			uint16_t size,
+			uint16_t *count,
+			uint8_t valid_only)
+{
+	struct rte_eth_dev *dev;
+	struct i40e_adapter *ad;
+	int n = 0;
+	uint16_t i;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+
+	if (!is_i40e_supported(dev))
+		return -ENOTSUP;
+
+	ad = I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+
+	for (i = 0; i < I40E_MAX_PKT_TYPE; i++) {
+		if (n >= size)
+			break;
+		if (valid_only && ad->ptype_tbl[i] == RTE_PTYPE_UNKNOWN)
+			continue;
+		mapping_items[n].hw_ptype = i;
+		mapping_items[n].sw_ptype = ad->ptype_tbl[i];
+		n++;
+	}
+
+	*count = n;
+	return 0;
+}
+
+int rte_pmd_i40e_ptype_mapping_replace(uint8_t port,
+				       uint32_t target,
+				       uint8_t mask,
+				       uint32_t pkt_type)
+{
+	struct rte_eth_dev *dev;
+	struct i40e_adapter *ad;
+	uint16_t i;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+
+	if (!is_i40e_supported(dev))
+		return -ENOTSUP;
+
+	if (!mask && check_invalid_pkt_type(target))
+		return -EINVAL;
+
+	if (check_invalid_pkt_type(pkt_type))
+		return -EINVAL;
+
+	ad = I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+
+	for (i = 0; i < I40E_MAX_PKT_TYPE; i++) {
+		if (mask) {
+			if ((target | ad->ptype_tbl[i]) == target &&
+			    (target & ad->ptype_tbl[i]))
+				ad->ptype_tbl[i] = pkt_type;
+		} else {
+			if (ad->ptype_tbl[i] == target)
+				ad->ptype_tbl[i] = pkt_type;
+		}
+	}
+
+	return 0;
 }
