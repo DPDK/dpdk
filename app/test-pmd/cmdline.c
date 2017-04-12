@@ -605,6 +605,18 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"ddp add (port_id) (profile_path)\n"
 			"    Load a profile package on a port\n\n"
 
+			"ptype mapping get (port_id) (valid_only)\n"
+			"    Get ptype mapping on a port\n\n"
+
+			"ptype mapping replace (port_id) (target) (mask) (pky_type)\n"
+			"    Replace target with the pkt_type in ptype mapping\n\n"
+
+			"ptype mapping reset (port_id)\n"
+			"    Reset ptype mapping on a port\n\n"
+
+			"ptype mapping update (port_id) (hw_ptype) (sw_ptype)\n"
+			"    Update a ptype mapping item on a port\n\n"
+
 			, list_pkt_forwarding_modes()
 		);
 	}
@@ -13161,6 +13173,362 @@ cmdline_parse_inst_t cmd_clear_vf_stats = {
 	},
 };
 
+/* ptype mapping get */
+
+/* Common result structure for ptype mapping get */
+struct cmd_ptype_mapping_get_result {
+	cmdline_fixed_string_t ptype;
+	cmdline_fixed_string_t mapping;
+	cmdline_fixed_string_t get;
+	uint8_t port_id;
+	uint8_t valid_only;
+};
+
+/* Common CLI fields for ptype mapping get */
+cmdline_parse_token_string_t cmd_ptype_mapping_get_ptype =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_ptype_mapping_get_result,
+		 ptype, "ptype");
+cmdline_parse_token_string_t cmd_ptype_mapping_get_mapping =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_ptype_mapping_get_result,
+		 mapping, "mapping");
+cmdline_parse_token_string_t cmd_ptype_mapping_get_get =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_ptype_mapping_get_result,
+		 get, "get");
+cmdline_parse_token_num_t cmd_ptype_mapping_get_port_id =
+	TOKEN_NUM_INITIALIZER
+		(struct cmd_ptype_mapping_get_result,
+		 port_id, UINT8);
+cmdline_parse_token_num_t cmd_ptype_mapping_get_valid_only =
+	TOKEN_NUM_INITIALIZER
+		(struct cmd_ptype_mapping_get_result,
+		 valid_only, UINT8);
+
+static void
+cmd_ptype_mapping_get_parsed(
+	void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	__attribute__((unused)) void *data)
+{
+	struct cmd_ptype_mapping_get_result *res = parsed_result;
+	int ret = -ENOTSUP;
+#ifdef RTE_LIBRTE_I40E_PMD
+	int max_ptype_num = 256;
+	struct rte_pmd_i40e_ptype_mapping mapping[max_ptype_num];
+	uint16_t count;
+	int i;
+#endif
+
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
+		return;
+
+#ifdef RTE_LIBRTE_I40E_PMD
+	ret = rte_pmd_i40e_ptype_mapping_get(res->port_id,
+					mapping,
+					max_ptype_num,
+					&count,
+					res->valid_only);
+#endif
+
+	switch (ret) {
+	case 0:
+		break;
+	case -ENODEV:
+		printf("invalid port_id %d\n", res->port_id);
+		break;
+	case -ENOTSUP:
+		printf("function not implemented\n");
+		break;
+	default:
+		printf("programming error: (%s)\n", strerror(-ret));
+	}
+
+#ifdef RTE_LIBRTE_I40E_PMD
+	if (!ret) {
+		for (i = 0; i < count; i++)
+			printf("%3d\t0x%08x\n",
+				mapping[i].hw_ptype, mapping[i].sw_ptype);
+	}
+#endif
+}
+
+cmdline_parse_inst_t cmd_ptype_mapping_get = {
+	.f = cmd_ptype_mapping_get_parsed,
+	.data = NULL,
+	.help_str = "ptype mapping get <port_id> <valid_only>",
+	.tokens = {
+		(void *)&cmd_ptype_mapping_get_ptype,
+		(void *)&cmd_ptype_mapping_get_mapping,
+		(void *)&cmd_ptype_mapping_get_get,
+		(void *)&cmd_ptype_mapping_get_port_id,
+		(void *)&cmd_ptype_mapping_get_valid_only,
+		NULL,
+	},
+};
+
+/* ptype mapping replace */
+
+/* Common result structure for ptype mapping replace */
+struct cmd_ptype_mapping_replace_result {
+	cmdline_fixed_string_t ptype;
+	cmdline_fixed_string_t mapping;
+	cmdline_fixed_string_t replace;
+	uint8_t port_id;
+	uint32_t target;
+	uint8_t mask;
+	uint32_t pkt_type;
+};
+
+/* Common CLI fields for ptype mapping replace */
+cmdline_parse_token_string_t cmd_ptype_mapping_replace_ptype =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_ptype_mapping_replace_result,
+		 ptype, "ptype");
+cmdline_parse_token_string_t cmd_ptype_mapping_replace_mapping =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_ptype_mapping_replace_result,
+		 mapping, "mapping");
+cmdline_parse_token_string_t cmd_ptype_mapping_replace_replace =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_ptype_mapping_replace_result,
+		 replace, "replace");
+cmdline_parse_token_num_t cmd_ptype_mapping_replace_port_id =
+	TOKEN_NUM_INITIALIZER
+		(struct cmd_ptype_mapping_replace_result,
+		 port_id, UINT8);
+cmdline_parse_token_num_t cmd_ptype_mapping_replace_target =
+	TOKEN_NUM_INITIALIZER
+		(struct cmd_ptype_mapping_replace_result,
+		 target, UINT32);
+cmdline_parse_token_num_t cmd_ptype_mapping_replace_mask =
+	TOKEN_NUM_INITIALIZER
+		(struct cmd_ptype_mapping_replace_result,
+		 mask, UINT8);
+cmdline_parse_token_num_t cmd_ptype_mapping_replace_pkt_type =
+	TOKEN_NUM_INITIALIZER
+		(struct cmd_ptype_mapping_replace_result,
+		 pkt_type, UINT32);
+
+static void
+cmd_ptype_mapping_replace_parsed(
+	void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	__attribute__((unused)) void *data)
+{
+	struct cmd_ptype_mapping_replace_result *res = parsed_result;
+	int ret = -ENOTSUP;
+
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
+		return;
+
+#ifdef RTE_LIBRTE_I40E_PMD
+	ret = rte_pmd_i40e_ptype_mapping_replace(res->port_id,
+					res->target,
+					res->mask,
+					res->pkt_type);
+#endif
+
+	switch (ret) {
+	case 0:
+		break;
+	case -EINVAL:
+		printf("invalid ptype 0x%8x or 0x%8x\n",
+				res->target, res->pkt_type);
+		break;
+	case -ENODEV:
+		printf("invalid port_id %d\n", res->port_id);
+		break;
+	case -ENOTSUP:
+		printf("function not implemented\n");
+		break;
+	default:
+		printf("programming error: (%s)\n", strerror(-ret));
+	}
+}
+
+cmdline_parse_inst_t cmd_ptype_mapping_replace = {
+	.f = cmd_ptype_mapping_replace_parsed,
+	.data = NULL,
+	.help_str =
+		"ptype mapping replace <port_id> <target> <mask> <pkt_type>",
+	.tokens = {
+		(void *)&cmd_ptype_mapping_replace_ptype,
+		(void *)&cmd_ptype_mapping_replace_mapping,
+		(void *)&cmd_ptype_mapping_replace_replace,
+		(void *)&cmd_ptype_mapping_replace_port_id,
+		(void *)&cmd_ptype_mapping_replace_target,
+		(void *)&cmd_ptype_mapping_replace_mask,
+		(void *)&cmd_ptype_mapping_replace_pkt_type,
+		NULL,
+	},
+};
+
+/* ptype mapping reset */
+
+/* Common result structure for ptype mapping reset */
+struct cmd_ptype_mapping_reset_result {
+	cmdline_fixed_string_t ptype;
+	cmdline_fixed_string_t mapping;
+	cmdline_fixed_string_t reset;
+	uint8_t port_id;
+};
+
+/* Common CLI fields for ptype mapping reset*/
+cmdline_parse_token_string_t cmd_ptype_mapping_reset_ptype =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_ptype_mapping_reset_result,
+		 ptype, "ptype");
+cmdline_parse_token_string_t cmd_ptype_mapping_reset_mapping =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_ptype_mapping_reset_result,
+		 mapping, "mapping");
+cmdline_parse_token_string_t cmd_ptype_mapping_reset_reset =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_ptype_mapping_reset_result,
+		 reset, "reset");
+cmdline_parse_token_num_t cmd_ptype_mapping_reset_port_id =
+	TOKEN_NUM_INITIALIZER
+		(struct cmd_ptype_mapping_reset_result,
+		 port_id, UINT8);
+
+static void
+cmd_ptype_mapping_reset_parsed(
+	void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	__attribute__((unused)) void *data)
+{
+	struct cmd_ptype_mapping_reset_result *res = parsed_result;
+	int ret = -ENOTSUP;
+
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
+		return;
+
+#ifdef RTE_LIBRTE_I40E_PMD
+	ret = rte_pmd_i40e_ptype_mapping_reset(res->port_id);
+#endif
+
+	switch (ret) {
+	case 0:
+		break;
+	case -ENODEV:
+		printf("invalid port_id %d\n", res->port_id);
+		break;
+	case -ENOTSUP:
+		printf("function not implemented\n");
+		break;
+	default:
+		printf("programming error: (%s)\n", strerror(-ret));
+	}
+}
+
+cmdline_parse_inst_t cmd_ptype_mapping_reset = {
+	.f = cmd_ptype_mapping_reset_parsed,
+	.data = NULL,
+	.help_str = "ptype mapping reset <port_id>",
+	.tokens = {
+		(void *)&cmd_ptype_mapping_reset_ptype,
+		(void *)&cmd_ptype_mapping_reset_mapping,
+		(void *)&cmd_ptype_mapping_reset_reset,
+		(void *)&cmd_ptype_mapping_reset_port_id,
+		NULL,
+	},
+};
+
+/* ptype mapping update */
+
+/* Common result structure for ptype mapping update */
+struct cmd_ptype_mapping_update_result {
+	cmdline_fixed_string_t ptype;
+	cmdline_fixed_string_t mapping;
+	cmdline_fixed_string_t reset;
+	uint8_t port_id;
+	uint8_t hw_ptype;
+	uint32_t sw_ptype;
+};
+
+/* Common CLI fields for ptype mapping update*/
+cmdline_parse_token_string_t cmd_ptype_mapping_update_ptype =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_ptype_mapping_update_result,
+		 ptype, "ptype");
+cmdline_parse_token_string_t cmd_ptype_mapping_update_mapping =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_ptype_mapping_update_result,
+		 mapping, "mapping");
+cmdline_parse_token_string_t cmd_ptype_mapping_update_update =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_ptype_mapping_update_result,
+		 reset, "update");
+cmdline_parse_token_num_t cmd_ptype_mapping_update_port_id =
+	TOKEN_NUM_INITIALIZER
+		(struct cmd_ptype_mapping_update_result,
+		 port_id, UINT8);
+cmdline_parse_token_num_t cmd_ptype_mapping_update_hw_ptype =
+	TOKEN_NUM_INITIALIZER
+		(struct cmd_ptype_mapping_update_result,
+		 hw_ptype, UINT8);
+cmdline_parse_token_num_t cmd_ptype_mapping_update_sw_ptype =
+	TOKEN_NUM_INITIALIZER
+		(struct cmd_ptype_mapping_update_result,
+		 sw_ptype, UINT32);
+
+static void
+cmd_ptype_mapping_update_parsed(
+	void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	__attribute__((unused)) void *data)
+{
+	struct cmd_ptype_mapping_update_result *res = parsed_result;
+	int ret = -ENOTSUP;
+#ifdef RTE_LIBRTE_I40E_PMD
+	struct rte_pmd_i40e_ptype_mapping mapping;
+#endif
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
+		return;
+
+#ifdef RTE_LIBRTE_I40E_PMD
+	mapping.hw_ptype = res->hw_ptype;
+	mapping.sw_ptype = res->sw_ptype;
+	ret = rte_pmd_i40e_ptype_mapping_update(res->port_id,
+						&mapping,
+						1,
+						0);
+#endif
+
+	switch (ret) {
+	case 0:
+		break;
+	case -EINVAL:
+		printf("invalid ptype 0x%8x\n", res->sw_ptype);
+		break;
+	case -ENODEV:
+		printf("invalid port_id %d\n", res->port_id);
+		break;
+	case -ENOTSUP:
+		printf("function not implemented\n");
+		break;
+	default:
+		printf("programming error: (%s)\n", strerror(-ret));
+	}
+}
+
+cmdline_parse_inst_t cmd_ptype_mapping_update = {
+	.f = cmd_ptype_mapping_update_parsed,
+	.data = NULL,
+	.help_str = "ptype mapping update <port_id> <hw_ptype> <sw_ptype>",
+	.tokens = {
+		(void *)&cmd_ptype_mapping_update_ptype,
+		(void *)&cmd_ptype_mapping_update_mapping,
+		(void *)&cmd_ptype_mapping_update_update,
+		(void *)&cmd_ptype_mapping_update_port_id,
+		(void *)&cmd_ptype_mapping_update_hw_ptype,
+		(void *)&cmd_ptype_mapping_update_sw_ptype,
+		NULL,
+	},
+};
+
 /* ******************************************************************************** */
 
 /* list of instructions */
@@ -13345,6 +13713,10 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_ddp_get_list,
 	(cmdline_parse_inst_t *)&cmd_show_vf_stats,
 	(cmdline_parse_inst_t *)&cmd_clear_vf_stats,
+	(cmdline_parse_inst_t *)&cmd_ptype_mapping_get,
+	(cmdline_parse_inst_t *)&cmd_ptype_mapping_replace,
+	(cmdline_parse_inst_t *)&cmd_ptype_mapping_reset,
+	(cmdline_parse_inst_t *)&cmd_ptype_mapping_update,
 	NULL,
 };
 

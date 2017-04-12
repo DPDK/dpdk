@@ -1156,6 +1156,42 @@ Add an E-tag forwarding filter on a port::
 Delete an E-tag forwarding filter on a port::
    testpmd> E-tag set filter del e-tag-id (value) port (port_id)
 
+ptype mapping
+~~~~~~~~~~~~~
+
+List all items from the ptype mapping table::
+
+   testpmd> ptype mapping get (port_id) (valid_only)
+
+Where:
+
+* ``valid_only``: A flag indicates if only list valid items(=1) or all itemss(=0).
+
+Replace a specific or a group of software defined ptype with a new one::
+
+   testpmd> ptype mapping replace  (port_id) (target) (mask) (pkt_type)
+
+where:
+
+* ``target``: A specific software ptype or a mask to represent a group of software ptypes.
+
+* ``mask``: A flag indicate if "target" is a specific software ptype(=0) or a ptype mask(=1).
+
+* ``pkt_type``: The new software ptype to replace the old ones.
+
+Update hardware defined ptype to software defined packet type mapping table::
+
+   testpmd> ptype mapping update (port_id) (hw_ptype) (sw_ptype)
+
+where:
+
+* ``hw_ptype``: hardware ptype as the index of the ptype mapping table.
+
+* ``sw_ptype``: software ptype as the value of the ptype mapping table.
+
+Reset ptype mapping table::
+
+   testpmd> ptype mapping reset (port_id)
 
 Port Functions
 --------------
