@@ -2330,6 +2330,7 @@ int rte_eth_xstats_get_id_by_name(uint8_t port_id, const char *xstat_name,
  *     shall not be used by the caller.
  *   - A negative value on error (invalid port id).
  */
+__rte_deprecated
 int rte_eth_xstats_get_all(uint8_t port_id, struct rte_eth_xstat *xstats,
 	unsigned int n);
 
@@ -2353,6 +2354,7 @@ int rte_eth_xstats_get_all(uint8_t port_id, struct rte_eth_xstat *xstats,
  *     shall not be used by the caller.
  *   - A negative value on error (invalid port id).
  */
+__rte_deprecated
 int rte_eth_xstats_get_names_all(uint8_t port_id,
 		struct rte_eth_xstat_name *xstats_names, unsigned int n);
 

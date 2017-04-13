@@ -1712,7 +1712,7 @@ MAP_STATIC_SYMBOL(int
 		rte_eth_xstats_get(uint8_t port_id, uint64_t *ids,
 		uint64_t *values, unsigned int n), rte_eth_xstats_get_v1705);
 
-int
+__rte_deprecated int
 rte_eth_xstats_get_all(uint8_t port_id, struct rte_eth_xstat *xstats,
 	unsigned int n)
 {
@@ -1735,7 +1735,7 @@ rte_eth_xstats_get_all(uint8_t port_id, struct rte_eth_xstat *xstats,
 	return size;
 }
 
-int
+__rte_deprecated int
 rte_eth_xstats_get_names_all(uint8_t port_id,
 		struct rte_eth_xstat_name *xstats_names, unsigned int n)
 {
