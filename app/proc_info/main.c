@@ -358,7 +358,7 @@ nic_xstats_display(uint8_t port_id)
 	int len, ret, i;
 	static const char *nic_stats_border = "########################";
 
-	len = rte_eth_xstats_get_names(port_id, NULL, 0);
+	len = rte_eth_xstats_get_names_all(port_id, NULL, 0);
 	if (len < 0) {
 		printf("Cannot get xstats count\n");
 		return;
@@ -375,7 +375,7 @@ nic_xstats_display(uint8_t port_id)
 		free(xstats);
 		return;
 	}
-	if (len != rte_eth_xstats_get_names(
+	if (len != rte_eth_xstats_get_names_all(
 			port_id, xstats_names, len)) {
 		printf("Cannot get xstat names\n");
 		goto err;
@@ -385,7 +385,7 @@ nic_xstats_display(uint8_t port_id)
 			   port_id);
 	printf("%s############################\n",
 			   nic_stats_border);
-	ret = rte_eth_xstats_get(port_id, xstats, len);
+	ret = rte_eth_xstats_get_all(port_id, xstats, len);
 	if (ret < 0 || ret > len) {
 		printf("Cannot get xstats\n");
 		goto err;

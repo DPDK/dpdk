@@ -264,9 +264,9 @@ nic_stats_clear(portid_t port_id)
 void
 nic_xstats_display(portid_t port_id)
 {
-	struct rte_eth_xstat *xstats;
 	int cnt_xstats, idx_xstat;
 	struct rte_eth_xstat_name *xstats_names;
+	uint64_t *values;
 
 	printf("###### NIC extended statistics for port %-2d\n", port_id);
 	if (!rte_eth_dev_is_valid_port(port_id)) {
@@ -275,7 +275,7 @@ nic_xstats_display(portid_t port_id)
 	}
 
 	/* Get count */
-	cnt_xstats = rte_eth_xstats_get_names(port_id, NULL, 0);
+	cnt_xstats = rte_eth_xstats_get_names(port_id, NULL, 0, NULL);
 	if (cnt_xstats  < 0) {
 		printf("Error: Cannot get count of xstats\n");
 		return;
@@ -288,23 +288,24 @@ nic_xstats_display(portid_t port_id)
 		return;
 	}
 	if (cnt_xstats != rte_eth_xstats_get_names(
-			port_id, xstats_names, cnt_xstats)) {
+			port_id, xstats_names, cnt_xstats, NULL)) {
 		printf("Error: Cannot get xstats lookup\n");
 		free(xstats_names);
 		return;
 	}
 
 	/* Get stats themselves */
-	xstats = malloc(sizeof(struct rte_eth_xstat) * cnt_xstats);
-	if (xstats == NULL) {
+	values = malloc(sizeof(values) * cnt_xstats);
+	if (values == NULL) {
 		printf("Cannot allocate memory for xstats\n");
 		free(xstats_names);
 		return;
 	}
-	if (cnt_xstats != rte_eth_xstats_get(port_id, xstats, cnt_xstats)) {
+	if (cnt_xstats != rte_eth_xstats_get(port_id, NULL, values,
+			cnt_xstats)) {
 		printf("Error: Unable to get xstats\n");
 		free(xstats_names);
-		free(xstats);
+		free(values);
 		return;
 	}
 
@@ -312,9 +313,9 @@ nic_xstats_display(portid_t port_id)
 	for (idx_xstat = 0; idx_xstat < cnt_xstats; idx_xstat++)
 		printf("%s: %"PRIu64"\n",
 			xstats_names[idx_xstat].name,
-			xstats[idx_xstat].value);
+			values[idx_xstat]);
 	free(xstats_names);
-	free(xstats);
+	free(values);
 }
 
 void
