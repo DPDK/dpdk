@@ -386,6 +386,9 @@ int rte_pmd_i40e_reset_vf_stats(uint8_t port,
  *    ID specifying VF.
  * @param bw
  *    Bandwidth for this VF.
+ *    The value should be an absolute bandwidth in Mbps.
+ *    The bandwidth is a L2 bandwidth counting the bytes of ethernet packets.
+ *    Not count the bytes added by physical layer.
  * @return
  *   - (0) if successful.
  *   - (-ENODEV) if *port* invalid.
@@ -433,6 +436,9 @@ int rte_pmd_i40e_set_vf_tc_bw_alloc(uint8_t port,
  *    Number specifying TC.
  * @param bw
  *    Max bandwidth for this TC.
+ *    The value should be an absolute bandwidth in Mbps.
+ *    The bandwidth is a L2 bandwidth counting the bytes of ethernet packets.
+ *    Not count the bytes added by physical layer.
  * @return
  *   - (0) if successful.
  *   - (-ENODEV) if *port* invalid.
