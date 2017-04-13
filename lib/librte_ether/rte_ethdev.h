@@ -1667,7 +1667,7 @@ struct rte_eth_dev {
 	 * received packets before passing them to the driver for transmission.
 	 */
 	struct rte_eth_rxtx_callback *pre_tx_burst_cbs[RTE_MAX_QUEUES_PER_PORT];
-	enum rte_eth_dev_state state:8; /**< Flag indicating the port state */
+	enum rte_eth_dev_state state; /**< Flag indicating the port state */
 } __rte_cache_aligned;
 
 struct rte_eth_dev_sriov {
