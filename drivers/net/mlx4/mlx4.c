@@ -3170,6 +3170,8 @@ mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			/* Increase out of memory counters. */
 			++rxq->stats.rx_nombuf;
 			++rxq->priv->dev->data->rx_mbuf_alloc_failed;
+			/* Add SGE to array for repost. */
+			sges[i] = elt->sge;
 			goto repost;
 		}
 
