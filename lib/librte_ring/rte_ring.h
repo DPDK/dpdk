@@ -841,7 +841,7 @@ rte_ring_sc_dequeue(struct rte_ring *r, void **obj_p)
 static inline int __attribute__((always_inline))
 rte_ring_dequeue(struct rte_ring *r, void **obj_p)
 {
-	return rte_ring_dequeue_bulk(r, obj_p, 1, NULL) ? 0 : -ENOBUFS;
+	return rte_ring_dequeue_bulk(r, obj_p, 1, NULL) ? 0 : -ENOENT;
 }
 
 /**
