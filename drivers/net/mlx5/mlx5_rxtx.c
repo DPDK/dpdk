@@ -499,6 +499,8 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	unsigned int j = 0;
 	unsigned int k = 0;
 	unsigned int max;
+	unsigned int max_inline = txq->max_inline;
+	const unsigned int inline_en = !!max_inline && txq->inline_en;
 	uint16_t max_wqe;
 	unsigned int comp;
 	volatile struct mlx5_wqe_v *wqe = NULL;
@@ -685,14 +687,14 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			}
 		}
 		/* Inline if enough room. */
-		if (txq->inline_en || tso) {
+		if (inline_en || tso) {
 			uintptr_t end = (uintptr_t)
 				(((uintptr_t)txq->wqes) +
 				 (1 << txq->wqe_n) * MLX5_WQE_SIZE);
-			unsigned int max_inline = txq->max_inline *
-						  RTE_CACHE_LINE_SIZE -
-						  (pkt_inline_sz - 2);
-			uintptr_t addr_end = (addr + max_inline) &
+			unsigned int inline_room = max_inline *
+						   RTE_CACHE_LINE_SIZE -
+						   (pkt_inline_sz - 2);
+			uintptr_t addr_end = (addr + inline_room) &
 					     ~(RTE_CACHE_LINE_SIZE - 1);
 			unsigned int copy_b = (addr_end > addr) ?
 				RTE_MIN((addr_end - addr), length) :
