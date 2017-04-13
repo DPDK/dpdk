@@ -1379,6 +1379,50 @@ get_xstats_count(uint8_t port_id)
 }
 
 int
+rte_eth_xstats_get_id_by_name(uint8_t port_id, const char *xstat_name,
+		uint64_t *id)
+{
+	int cnt_xstats, idx_xstat;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+
+	if (!id) {
+		RTE_PMD_DEBUG_TRACE("Error: id pointer is NULL\n");
+		return -1;
+	}
+
+	if (!xstat_name) {
+		RTE_PMD_DEBUG_TRACE("Error: xstat_name pointer is NULL\n");
+		return -1;
+	}
+
+	/* Get count */
+	cnt_xstats = rte_eth_xstats_get_names(port_id, NULL, 0, NULL);
+	if (cnt_xstats  < 0) {
+		RTE_PMD_DEBUG_TRACE("Error: Cannot get count of xstats\n");
+		return -1;
+	}
+
+	/* Get id-name lookup table */
+	struct rte_eth_xstat_name xstats_names[cnt_xstats];
+
+	if (cnt_xstats != rte_eth_xstats_get_names(
+			port_id, xstats_names, cnt_xstats, NULL)) {
+		RTE_PMD_DEBUG_TRACE("Error: Cannot get xstats lookup\n");
+		return -1;
+	}
+
+	for (idx_xstat = 0; idx_xstat < cnt_xstats; idx_xstat++) {
+		if (!strcmp(xstats_names[idx_xstat].name, xstat_name)) {
+			*id = idx_xstat;
+			return 0;
+		};
+	}
+
+	return -EINVAL;
+}
+
+int
 rte_eth_xstats_get_names_v1607(uint8_t port_id,
 	struct rte_eth_xstat_name *xstats_names,
 	unsigned int size)

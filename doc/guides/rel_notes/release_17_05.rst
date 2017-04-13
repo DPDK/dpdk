@@ -457,6 +457,8 @@ API Changes
   * Added new functions ``rte_eth_xstats_get_all`` and ``rte_eth_xstats_get_names_all to provide backward compatibility for
     ``rte_eth_xstats_get`` and ``rte_eth_xstats_get_names``
 
+  * Added new function ``rte_eth_xstats_get_id_by_name``
+
 
 ABI Changes
 -----------
