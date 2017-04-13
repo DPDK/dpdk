@@ -534,67 +534,46 @@ Please note that enabling debugging options may affect system performance.
 
   Toggle display of transmit fast path buffer free run-time message
 
+Driver compilation and testing
+------------------------------
 
-Driver Compilation
-~~~~~~~~~~~~~~~~~~
+Refer to the document :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>`
+for details.
 
-To compile the DPAA2 PMD for Linux arm64 gcc target, run the
-following ``make`` command:
+#. Running testpmd:
 
-.. code-block:: console
+   Follow instructions available in the document
+   :ref:`compiling and testing a PMD for a NIC <pmd_build_and_test>`
+   to run testpmd.
 
-   cd <DPDK-source-directory>
-   make config T=arm64-dpaa2-linuxapp-gcc install
-
-.. _dpaa2_testpmd_example:
-
-Running testpmd
-~~~~~~~~~~~~~~~
-
-This section demonstrates how to launch ``testpmd`` with DPAA2 device
-managed by ``librte_pmd_dpaa2`` in the Linux operating system.
-
-#. Configure the resource container:
-
-   Configure resources in MC and create the DPRC container:
-
-   .. code-block:: console
-
-      export the DPRC container
-      e.g. export DPRCT=dprc.2
-
-#. Start ``testpmd`` with basic parameters:
+   Example output:
 
    .. code-block:: console
 
       ./arm64-dpaa2-linuxapp-gcc/testpmd -c 0xff -n 1 \
         -- -i --portmask=0x3 --nb-cores=1 --no-flush-rx
 
-   Example output:
-
-   .. code-block:: console
-
-        .....
-        EAL: Registered [pci] bus.
-        EAL: Registered [fslmc] bus.
-        EAL: Detected 8 lcore(s)
-        EAL: Probing VFIO support...
-        EAL: VFIO support initialized
-        .....
-        PMD: DPAA2: Processing Container = dprc.2
-        EAL: fslmc: DPRC contains = 51 devices
-        EAL: fslmc: Bus scan completed
-        .....
-        Configuring Port 0 (socket 0)
-        Port 0: 00:00:00:00:00:01
-        Configuring Port 1 (socket 0)
-        Port 1: 00:00:00:00:00:02
-        .....
-        Checking link statuses...
-        Port 0 Link Up - speed 10000 Mbps - full-duplex
-        Port 1 Link Up - speed 10000 Mbps - full-duplex
-        Done
-        testpmd>
+      .....
+      EAL: Registered [pci] bus.
+      EAL: Registered [fslmc] bus.
+      EAL: Detected 8 lcore(s)
+      EAL: Probing VFIO support...
+      EAL: VFIO support initialized
+      .....
+      PMD: DPAA2: Processing Container = dprc.2
+      EAL: fslmc: DPRC contains = 51 devices
+      EAL: fslmc: Bus scan completed
+      .....
+      Configuring Port 0 (socket 0)
+      Port 0: 00:00:00:00:00:01
+      Configuring Port 1 (socket 0)
+      Port 1: 00:00:00:00:00:02
+      .....
+      Checking link statuses...
+      Port 0 Link Up - speed 10000 Mbps - full-duplex
+      Port 1 Link Up - speed 10000 Mbps - full-duplex
+      Done
+      testpmd>
 
 Limitations
 -----------
