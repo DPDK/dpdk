@@ -311,6 +311,25 @@ virtio_user_dev_setup(struct virtio_user_dev *dev)
 	return dev->ops->setup(dev);
 }
 
+/* Use below macro to filter features from vhost backend */
+#define VIRTIO_USER_SUPPORTED_FEATURES			\
+	(1ULL << VIRTIO_NET_F_MAC		|	\
+	 1ULL << VIRTIO_NET_F_STATUS		|	\
+	 1ULL << VIRTIO_NET_F_MQ		|	\
+	 1ULL << VIRTIO_NET_F_CTRL_MAC_ADDR	|	\
+	 1ULL << VIRTIO_NET_F_CTRL_VQ		|	\
+	 1ULL << VIRTIO_NET_F_CTRL_RX		|	\
+	 1ULL << VIRTIO_NET_F_CTRL_VLAN		|	\
+	 1ULL << VIRTIO_NET_F_CSUM		|	\
+	 1ULL << VIRTIO_NET_F_HOST_TSO4		|	\
+	 1ULL << VIRTIO_NET_F_HOST_TSO6		|	\
+	 1ULL << VIRTIO_NET_F_MRG_RXBUF		|	\
+	 1ULL << VIRTIO_RING_F_INDIRECT_DESC	|	\
+	 1ULL << VIRTIO_NET_F_GUEST_CSUM	|	\
+	 1ULL << VIRTIO_NET_F_GUEST_TSO4	|	\
+	 1ULL << VIRTIO_NET_F_GUEST_TSO6	|	\
+	 1ULL << VIRTIO_F_VERSION_1)
+
 int
 virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 		     int cq, int queue_size, const char *mac, char **ifname)
@@ -361,6 +380,8 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 
 	/* The backend will not report this feature, we add it explicitly */
 	dev->device_features |= (1ull << VIRTIO_NET_F_STATUS);
+
+	dev->device_features &= VIRTIO_USER_SUPPORTED_FEATURES;
 
 	return 0;
 }
