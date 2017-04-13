@@ -379,7 +379,8 @@ virtio_user_dev_init(struct virtio_user_dev *dev, char *path, int queues,
 	}
 
 	/* The backend will not report this feature, we add it explicitly */
-	dev->device_features |= (1ull << VIRTIO_NET_F_STATUS);
+	if (is_vhost_user_by_type(dev->path))
+		dev->device_features |= (1ull << VIRTIO_NET_F_STATUS);
 
 	dev->device_features &= VIRTIO_USER_SUPPORTED_FEATURES;
 
