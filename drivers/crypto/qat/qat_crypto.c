@@ -1014,6 +1014,12 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
 				}
 			}
 
+		} else if (ctx->qat_hash_alg ==
+					ICP_QAT_HW_AUTH_ALGO_GALOIS_128 ||
+				ctx->qat_hash_alg ==
+					ICP_QAT_HW_AUTH_ALGO_GALOIS_64) {
+			auth_ofs = op->sym->cipher.data.offset;
+			auth_len = op->sym->cipher.data.length;
 		} else {
 			auth_ofs = op->sym->auth.data.offset;
 			auth_len = op->sym->auth.data.length;
