@@ -234,6 +234,10 @@ i40e_rx_vec_dev_conf_condition_check_default(struct rte_eth_dev *dev)
 	if (rxmode->header_split == 1)
 		return -1;
 
+	/* no QinQ support */
+	if (rxmode->hw_vlan_extend == 1)
+		return -1;
+
 	return 0;
 #else
 	RTE_SET_USED(dev);
