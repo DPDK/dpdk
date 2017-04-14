@@ -72,10 +72,21 @@ struct nicvf_txq {
 	uint16_t tx_free_thresh;
 } __rte_cache_aligned;
 
+union mbuf_initializer {
+	struct {
+		uint16_t data_off;
+		uint16_t refcnt;
+		uint16_t nb_segs;
+		uint16_t port;
+	} fields;
+	uint64_t value;
+};
+
 struct nicvf_rxq {
 	uint64_t mbuf_phys_off;
 	uintptr_t cq_status;
 	uintptr_t cq_door;
+	union mbuf_initializer mbuf_initializer;
 	nicvf_phys_addr_t phys;
 	union cq_entry_t *desc;
 	struct nicvf_rbdr *shared_rbdr;

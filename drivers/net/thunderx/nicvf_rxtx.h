@@ -84,6 +84,33 @@ fill_sq_desc_gather(union sq_entry_t *entry, struct rte_mbuf *pkt)
 }
 #endif
 
+static inline void
+nicvf_mbuff_init_update(struct rte_mbuf *pkt, const uint64_t mbuf_init,
+				uint16_t apad)
+{
+	union mbuf_initializer init = {.value = mbuf_init};
+#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
+	init.fields.data_off += apad;
+#else
+	init.value += apad;
+#endif
+	*(uint64_t *)(&pkt->rearm_data) = init.value;
+}
+
+static inline void
+nicvf_mbuff_init_mseg_update(struct rte_mbuf *pkt, const uint64_t mbuf_init,
+						uint16_t apad, uint16_t nb_segs)
+{
+	union mbuf_initializer init = {.value = mbuf_init};
+#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
+	init.fields.data_off += apad;
+#else
+	init.value += apad;
+#endif
+	init.fields.nb_segs = nb_segs;
+	*(uint64_t *)(&pkt->rearm_data) = init.value;
+}
+
 uint32_t nicvf_dev_rx_queue_count(struct rte_eth_dev *dev, uint16_t queue_idx);
 uint32_t nicvf_dev_rbdr_refill(struct rte_eth_dev *dev, uint16_t queue_idx);
 

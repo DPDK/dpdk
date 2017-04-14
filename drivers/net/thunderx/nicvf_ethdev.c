@@ -1232,6 +1232,23 @@ nicvf_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t qidx)
 	return nicvf_vf_stop_tx_queue(dev, nic, qidx);
 }
 
+static inline void
+nicvf_rxq_mbuf_setup(struct nicvf_rxq *rxq)
+{
+	uintptr_t p;
+	struct rte_mbuf mb_def;
+
+	RTE_BUILD_BUG_ON(sizeof(union mbuf_initializer) != 8);
+	mb_def.nb_segs = 1;
+	mb_def.data_off = RTE_PKTMBUF_HEADROOM;
+	mb_def.port = rxq->port_id;
+	rte_mbuf_refcnt_set(&mb_def, 1);
+
+	/* Prevent compiler reordering: rearm_data covers previous fields */
+	rte_compiler_barrier();
+	p = (uintptr_t)&mb_def.rearm_data;
+	rxq->mbuf_initializer.value = *(uint64_t *)p;
+}
 
 static int
 nicvf_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
@@ -1324,6 +1341,7 @@ nicvf_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 	else
 		rxq->rbptr_offset = NICVF_CQE_RBPTR_WORD;
 
+	nicvf_rxq_mbuf_setup(rxq);
 
 	/* Alloc completion queue */
 	if (nicvf_qset_cq_alloc(dev, nic, rxq, rxq->queue_id, nb_desc)) {
