@@ -1776,6 +1776,7 @@ virtio_dev_start(struct rte_eth_dev *dev)
 		txvq = dev->data->tx_queues[i];
 		VIRTQUEUE_DUMP(txvq->vq);
 	}
+	hw->started = 1;
 
 	return 0;
 }
@@ -1831,6 +1832,7 @@ static void virtio_dev_free_mbufs(struct rte_eth_dev *dev)
 static void
 virtio_dev_stop(struct rte_eth_dev *dev)
 {
+	struct virtio_hw *hw = dev->data->dev_private;
 	struct rte_eth_link link;
 	struct rte_intr_conf *intr_conf = &dev->data->dev_conf.intr_conf;
 
@@ -1839,6 +1841,7 @@ virtio_dev_stop(struct rte_eth_dev *dev)
 	if (intr_conf->lsc || intr_conf->rxq)
 		rte_intr_disable(dev->intr_handle);
 
+	hw->started = 0;
 	memset(&link, 0, sizeof(link));
 	virtio_dev_atomic_write_link_status(dev, &link);
 }
@@ -1855,7 +1858,9 @@ virtio_dev_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complet
 	link.link_duplex = ETH_LINK_FULL_DUPLEX;
 	link.link_speed  = SPEED_10G;
 
-	if (vtpci_with_feature(hw, VIRTIO_NET_F_STATUS)) {
+	if (hw->started == 0) {
+		link.link_status = ETH_LINK_DOWN;
+	} else if (vtpci_with_feature(hw, VIRTIO_NET_F_STATUS)) {
 		PMD_INIT_LOG(DEBUG, "Get link status from hw");
 		vtpci_read_dev_config(hw,
 				offsetof(struct virtio_net_config, status),
