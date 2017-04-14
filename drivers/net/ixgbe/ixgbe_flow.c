@@ -1315,7 +1315,6 @@ ixgbe_parse_fdir_act_attr(const struct rte_flow_attr *attr,
 		{0xAC, 0x7B, 0xA1,	{0xFF, 0xFF, 0xFF,
 		0x2C, 0x6D, 0x36}	0xFF, 0xFF, 0xFF}
  * MAC VLAN	tci	0x2016		0xEFFF
- *		tpid	0x8100		0xFFFF
  * END
  * Other members in mask and spec should set to 0x00.
  * Item->last should be NULL.
@@ -1513,23 +1512,8 @@ ixgbe_parse_fdir_filter_normal(const struct rte_flow_attr *attr,
 		vlan_spec = (const struct rte_flow_item_vlan *)item->spec;
 		vlan_mask = (const struct rte_flow_item_vlan *)item->mask;
 
-		if (vlan_spec->tpid != rte_cpu_to_be_16(ETHER_TYPE_VLAN)) {
-			memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
-			rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ITEM,
-				item, "Not supported by fdir filter");
-			return -rte_errno;
-		}
-
 		rule->ixgbe_fdir.formatted.vlan_id = vlan_spec->tci;
 
-		if (vlan_mask->tpid != (uint16_t)~0U) {
-			memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
-			rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ITEM,
-				item, "Not supported by fdir filter");
-			return -rte_errno;
-		}
 		rule->mask.vlan_tci_mask = vlan_mask->tci;
 		rule->mask.vlan_tci_mask &= rte_cpu_to_be_16(0xEFFF);
 		/* More than one tags are not supported. */
@@ -1824,6 +1808,7 @@ ixgbe_parse_fdir_filter_normal(const struct rte_flow_attr *attr,
  * IPV4/IPV6	NULL			NULL
  * UDP		NULL			NULL
  * VxLAN	vni{0x00, 0x32, 0x54}	{0xFF, 0xFF, 0xFF}
+ * MAC VLAN	tci	0x2016		0xEFFF
  * END
  * NEGRV pattern example:
  * ITEM		Spec			Mask
@@ -1831,6 +1816,7 @@ ixgbe_parse_fdir_filter_normal(const struct rte_flow_attr *attr,
  * IPV4/IPV6	NULL			NULL
  * NVGRE	protocol	0x6558	0xFFFF
  *		tni{0x00, 0x32, 0x54}	{0xFF, 0xFF, 0xFF}
+ * MAC VLAN	tci	0x2016		0xEFFF
  * END
  * other members in mask and spec should set to 0x00.
  * item->last should be NULL.
@@ -2258,23 +2244,8 @@ ixgbe_parse_fdir_filter_tunnel(const struct rte_flow_attr *attr,
 		vlan_spec = (const struct rte_flow_item_vlan *)item->spec;
 		vlan_mask = (const struct rte_flow_item_vlan *)item->mask;
 
-		if (vlan_spec->tpid != rte_cpu_to_be_16(ETHER_TYPE_VLAN)) {
-			memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
-			rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ITEM,
-				item, "Not supported by fdir filter");
-			return -rte_errno;
-		}
-
 		rule->ixgbe_fdir.formatted.vlan_id = vlan_spec->tci;
 
-		if (vlan_mask->tpid != (uint16_t)~0U) {
-			memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
-			rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ITEM,
-				item, "Not supported by fdir filter");
-			return -rte_errno;
-		}
 		rule->mask.vlan_tci_mask = vlan_mask->tci;
 		rule->mask.vlan_tci_mask &= rte_cpu_to_be_16(0xEFFF);
 		/* More than one tags are not supported. */
