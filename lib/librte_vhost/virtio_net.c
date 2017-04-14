@@ -105,6 +105,12 @@ update_shadow_used_ring(struct vhost_virtqueue *vq,
 	vq->shadow_used_ring[i].len = len;
 }
 
+/* avoid write operation when necessary, to lessen cache issues */
+#define ASSIGN_UNLESS_EQUAL(var, val) do {	\
+	if ((var) != (val))			\
+		(var) = (val);			\
+} while (0)
+
 static void
 virtio_enqueue_offload(struct rte_mbuf *m_buf, struct virtio_net_hdr *net_hdr)
 {
@@ -126,6 +132,10 @@ virtio_enqueue_offload(struct rte_mbuf *m_buf, struct virtio_net_hdr *net_hdr)
 						cksum));
 			break;
 		}
+	} else {
+		ASSIGN_UNLESS_EQUAL(net_hdr->csum_start, 0);
+		ASSIGN_UNLESS_EQUAL(net_hdr->csum_offset, 0);
+		ASSIGN_UNLESS_EQUAL(net_hdr->flags, 0);
 	}
 
 	if (m_buf->ol_flags & PKT_TX_TCP_SEG) {
@@ -136,17 +146,11 @@ virtio_enqueue_offload(struct rte_mbuf *m_buf, struct virtio_net_hdr *net_hdr)
 		net_hdr->gso_size = m_buf->tso_segsz;
 		net_hdr->hdr_len = m_buf->l2_len + m_buf->l3_len
 					+ m_buf->l4_len;
+	} else {
+		ASSIGN_UNLESS_EQUAL(net_hdr->gso_type, 0);
+		ASSIGN_UNLESS_EQUAL(net_hdr->gso_size, 0);
+		ASSIGN_UNLESS_EQUAL(net_hdr->hdr_len, 0);
 	}
-}
-
-static inline void
-copy_virtio_net_hdr(struct virtio_net *dev, uint64_t desc_addr,
-		    struct virtio_net_hdr_mrg_rxbuf hdr)
-{
-	if (dev->vhost_hlen == sizeof(struct virtio_net_hdr_mrg_rxbuf))
-		*(struct virtio_net_hdr_mrg_rxbuf *)(uintptr_t)desc_addr = hdr;
-	else
-		*(struct virtio_net_hdr *)(uintptr_t)desc_addr = hdr.hdr;
 }
 
 static inline int __attribute__((always_inline))
@@ -158,7 +162,6 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vring_desc *descs,
 	uint32_t cpy_len;
 	struct vring_desc *desc;
 	uint64_t desc_addr;
-	struct virtio_net_hdr_mrg_rxbuf virtio_hdr = {{0, 0, 0, 0, 0, 0}, 0};
 	/* A counter to avoid desc dead loop chain */
 	uint16_t nr_desc = 1;
 
@@ -174,8 +177,7 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vring_desc *descs,
 
 	rte_prefetch0((void *)(uintptr_t)desc_addr);
 
-	virtio_enqueue_offload(m, &virtio_hdr.hdr);
-	copy_virtio_net_hdr(dev, desc_addr, virtio_hdr);
+	virtio_enqueue_offload(m, (struct virtio_net_hdr *)(uintptr_t)desc_addr);
 	vhost_log_write(dev, desc->addr, dev->vhost_hlen);
 	PRINT_PACKET(dev, (uintptr_t)desc_addr, dev->vhost_hlen, 0);
 
@@ -426,7 +428,6 @@ static inline int __attribute__((always_inline))
 copy_mbuf_to_desc_mergeable(struct virtio_net *dev, struct rte_mbuf *m,
 			    struct buf_vector *buf_vec, uint16_t num_buffers)
 {
-	struct virtio_net_hdr_mrg_rxbuf virtio_hdr = {{0, 0, 0, 0, 0, 0}, 0};
 	uint32_t vec_idx = 0;
 	uint64_t desc_addr;
 	uint32_t mbuf_offset, mbuf_avail;
@@ -447,7 +448,6 @@ copy_mbuf_to_desc_mergeable(struct virtio_net *dev, struct rte_mbuf *m,
 	hdr_phys_addr = buf_vec[vec_idx].buf_addr;
 	rte_prefetch0((void *)(uintptr_t)hdr_addr);
 
-	virtio_hdr.num_buffers = num_buffers;
 	LOG_DEBUG(VHOST_DATA, "(%d) RX: num merge buffers %d\n",
 		dev->vid, num_buffers);
 
@@ -480,8 +480,13 @@ copy_mbuf_to_desc_mergeable(struct virtio_net *dev, struct rte_mbuf *m,
 		}
 
 		if (hdr_addr) {
-			virtio_enqueue_offload(hdr_mbuf, &virtio_hdr.hdr);
-			copy_virtio_net_hdr(dev, hdr_addr, virtio_hdr);
+			struct virtio_net_hdr_mrg_rxbuf *hdr;
+
+			hdr = (struct virtio_net_hdr_mrg_rxbuf *)(uintptr_t)
+				hdr_addr;
+			virtio_enqueue_offload(hdr_mbuf, &hdr->hdr);
+			ASSIGN_UNLESS_EQUAL(hdr->num_buffers, num_buffers);
+
 			vhost_log_write(dev, hdr_phys_addr, dev->vhost_hlen);
 			PRINT_PACKET(dev, (uintptr_t)hdr_addr,
 				     dev->vhost_hlen, 0);
