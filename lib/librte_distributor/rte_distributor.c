@@ -555,13 +555,15 @@ total_outstanding(const struct rte_distributor *d)
 int
 rte_distributor_flush_v1705(struct rte_distributor *d)
 {
-	const unsigned int flushed = total_outstanding(d);
+	unsigned int flushed;
 	unsigned int wkr;
 
 	if (d->alg_type == RTE_DIST_ALG_SINGLE) {
 		/* Call the old API */
 		return rte_distributor_flush_v20(d->d_v20);
 	}
+
+	flushed = total_outstanding(d);
 
 	while (total_outstanding(d) > 0)
 		rte_distributor_process(d, NULL, 0);
@@ -590,6 +592,7 @@ rte_distributor_clear_returns_v1705(struct rte_distributor *d)
 	if (d->alg_type == RTE_DIST_ALG_SINGLE) {
 		/* Call the old API */
 		rte_distributor_clear_returns_v20(d->d_v20);
+		return;
 	}
 
 	/* throw away returns, so workers can exit */
