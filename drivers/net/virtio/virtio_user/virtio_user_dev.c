@@ -271,6 +271,8 @@ virtio_user_fill_intr_handle(struct virtio_user_dev *dev)
 	eth_dev->intr_handle->nb_efd = dev->max_queue_pairs;
 	eth_dev->intr_handle->max_intr = dev->max_queue_pairs + 1;
 	eth_dev->intr_handle->type = RTE_INTR_HANDLE_VDEV;
+	if (dev->vhostfd >= 0)
+		eth_dev->intr_handle->fd = dev->vhostfd;
 
 	return 0;
 }
@@ -283,12 +285,6 @@ virtio_user_dev_setup(struct virtio_user_dev *dev)
 	dev->vhostfd = -1;
 	dev->vhostfds = NULL;
 	dev->tapfds = NULL;
-
-	if (virtio_user_dev_init_notify(dev) < 0)
-		return -1;
-
-	if (virtio_user_fill_intr_handle(dev) < 0)
-		return -1;
 
 	if (is_vhost_user_by_type(dev->path)) {
 		dev->ops = &ops_user;
@@ -308,7 +304,16 @@ virtio_user_dev_setup(struct virtio_user_dev *dev)
 		}
 	}
 
-	return dev->ops->setup(dev);
+	if (dev->ops->setup(dev) < 0)
+		return -1;
+
+	if (virtio_user_dev_init_notify(dev) < 0)
+		return -1;
+
+	if (virtio_user_fill_intr_handle(dev) < 0)
+		return -1;
+
+	return 0;
 }
 
 /* Use below macro to filter features from vhost backend */
