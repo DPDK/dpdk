@@ -971,17 +971,24 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
 		}
 
 		/* copy IV into request if it fits */
-		if (op->sym->cipher.iv.length && (op->sym->cipher.iv.length <=
-				sizeof(cipher_param->u.cipher_IV_array))) {
-			rte_memcpy(cipher_param->u.cipher_IV_array,
-					op->sym->cipher.iv.data,
-					op->sym->cipher.iv.length);
-		} else {
-			ICP_QAT_FW_LA_CIPH_IV_FLD_FLAG_SET(
-					qat_req->comn_hdr.serv_specif_flags,
-					ICP_QAT_FW_CIPH_IV_64BIT_PTR);
-			cipher_param->u.s.cipher_IV_ptr =
-					op->sym->cipher.iv.phys_addr;
+		/*
+		 * If IV length is zero do not copy anything but still
+		 * use request descriptor embedded IV
+		 *
+		 */
+		if (op->sym->cipher.iv.length) {
+			if (op->sym->cipher.iv.length <=
+					sizeof(cipher_param->u.cipher_IV_array)) {
+				rte_memcpy(cipher_param->u.cipher_IV_array,
+						op->sym->cipher.iv.data,
+						op->sym->cipher.iv.length);
+			} else {
+				ICP_QAT_FW_LA_CIPH_IV_FLD_FLAG_SET(
+						qat_req->comn_hdr.serv_specif_flags,
+						ICP_QAT_FW_CIPH_IV_64BIT_PTR);
+				cipher_param->u.s.cipher_IV_ptr =
+						op->sym->cipher.iv.phys_addr;
+			}
 		}
 		min_ofs = cipher_ofs;
 	}
