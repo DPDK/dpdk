@@ -448,6 +448,7 @@ __pull_port_lb(struct sw_evdev *sw, uint32_t port_id, int allow_reorder)
 				struct reorder_buffer_entry *rob_entry =
 						hist_entry->rob_entry;
 
+				hist_entry->rob_entry = NULL;
 				/* Although fragmentation not currently
 				 * supported by eventdev API, we support it
 				 * here. Open: How do we alert the user that
