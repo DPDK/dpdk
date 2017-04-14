@@ -5782,7 +5782,7 @@ i40e_dev_handle_aq_msg(struct rte_eth_dev *dev)
 					RTE_ETH_EVENT_INTR_LSC, NULL);
 			break;
 		default:
-			PMD_DRV_LOG(ERR, "Request %u is not supported yet",
+			PMD_DRV_LOG(DEBUG, "Request %u is not supported yet",
 				    opcode);
 			break;
 		}
