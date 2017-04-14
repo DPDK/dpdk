@@ -7148,8 +7148,8 @@ i40e_dev_consistent_tunnel_filter_set(struct i40e_pf *pf,
 		if (!pf->qinq_replace_flag) {
 			ret = i40e_cloud_filter_qinq_create(pf);
 			if (ret < 0)
-				PMD_DRV_LOG(ERR,
-					"Failed to create a qinq tunnel filter.");
+				PMD_DRV_LOG(DEBUG,
+					    "QinQ tunnel filter already created.");
 			pf->qinq_replace_flag = 1;
 		}
 		/*	Add in the General fields the values of
