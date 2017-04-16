@@ -396,7 +396,7 @@ static int
 us_vhost_parse_socket_path(const char *q_arg)
 {
 	/* parse number string */
-	if (strnlen(q_arg, PATH_MAX) > PATH_MAX)
+	if (strnlen(q_arg, PATH_MAX) == PATH_MAX)
 		return -1;
 
 	socket_files = realloc(socket_files, PATH_MAX * (nb_sockets + 1));
