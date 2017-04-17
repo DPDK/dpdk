@@ -4507,8 +4507,8 @@ i40e_update_default_filter_setting(struct i40e_vsi *vsi)
 		struct i40e_mac_filter *f;
 		struct ether_addr *mac;
 
-		PMD_DRV_LOG(WARNING,
-			"Cannot remove the default macvlan filter");
+		PMD_DRV_LOG(DEBUG,
+			    "Cannot remove the default macvlan filter");
 		/* It needs to add the permanent mac into mac list */
 		f = rte_zmalloc("macv_filter", sizeof(*f), 0);
 		if (f == NULL) {
