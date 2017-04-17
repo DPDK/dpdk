@@ -101,9 +101,7 @@ pkt_burst_receive(struct fwd_stream *fs)
 	uint64_t start_tsc;
 	uint64_t end_tsc;
 	uint64_t core_cycles;
-#endif
 
-#ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
 	start_tsc = rte_rdtsc();
 #endif
 
