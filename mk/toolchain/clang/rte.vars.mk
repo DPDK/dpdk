@@ -79,5 +79,10 @@ include $(RTE_SDK)/mk/toolchain/$(RTE_TOOLCHAIN)/rte.toolchain-compat.mk
 # workaround clang bug with warning "missing field initializer" for "= {0}"
 WERROR_FLAGS += -Wno-missing-field-initializers
 
+# disable packed member unalign warnings
+ifeq ($(shell test $(CLANG_MAJOR_VERSION) -ge 4 && echo 1), 1)
+WERROR_FLAGS += -Wno-address-of-packed-member
+endif
+
 export CC AS AR LD OBJCOPY OBJDUMP STRIP READELF
 export TOOLCHAIN_CFLAGS TOOLCHAIN_LDFLAGS TOOLCHAIN_ASFLAGS
