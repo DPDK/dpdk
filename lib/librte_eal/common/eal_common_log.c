@@ -159,10 +159,14 @@ rte_log_set_level_regexp(const char *pattern, uint32_t level)
 	if (level > RTE_LOG_DEBUG)
 		return -1;
 
+	if (regcomp(&r, pattern, 0) != 0)
+		return -1;
+
 	for (i = 0; i < rte_logs.dynamic_types_len; i++) {
 		if (rte_logs.dynamic_types[i].name == NULL)
 			continue;
-		if (regexec(&r, pattern, 0, NULL, 0) == 0)
+		if (regexec(&r, rte_logs.dynamic_types[i].name, 0,
+				NULL, 0) == 0)
 			rte_logs.dynamic_types[i].loglevel = level;
 	}
 
