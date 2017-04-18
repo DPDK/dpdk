@@ -7751,14 +7751,17 @@ test_scheduler_attach_slave_op(void)
 	uint8_t sched_id = ts_params->valid_devs[0];
 	uint32_t nb_devs, i, nb_devs_attached = 0;
 	int ret;
+	char vdev_name[32];
 
 	/* create 2 AESNI_MB if necessary */
 	nb_devs = rte_cryptodev_count_devtype(
 			RTE_CRYPTODEV_AESNI_MB_PMD);
 	if (nb_devs < 2) {
 		for (i = nb_devs; i < 2; i++) {
-			ret = rte_eal_vdev_init(
-				RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD), NULL);
+			snprintf(vdev_name, sizeof(vdev_name), "%s_%u",
+					RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD),
+					i);
+			ret = rte_eal_vdev_init(vdev_name, NULL);
 
 			TEST_ASSERT(ret == 0,
 				"Failed to create instance %u of"
