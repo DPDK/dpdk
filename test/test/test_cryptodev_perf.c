@@ -321,7 +321,7 @@ testsuite_setup(void)
 			return TEST_FAILED;
 		}
 
-	/* Create 2 AESNI MB devices if required */
+	/* Create an AESNI MB device if required */
 	if (gbl_cryptodev_perftest_devtype == RTE_CRYPTODEV_AESNI_MB_PMD) {
 #ifndef RTE_LIBRTE_PMD_AESNI_MB
 		RTE_LOG(ERR, USER1, "CONFIG_RTE_LIBRTE_PMD_AESNI_MB must be"
@@ -329,19 +329,17 @@ testsuite_setup(void)
 		return TEST_FAILED;
 #endif
 		nb_devs = rte_cryptodev_count_devtype(RTE_CRYPTODEV_AESNI_MB_PMD);
-		if (nb_devs < 2) {
-			for (i = nb_devs; i < 2; i++) {
-				ret = rte_eal_vdev_init(
-					RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD), NULL);
+		if (nb_devs < 1) {
+			ret = rte_eal_vdev_init(
+				RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD), NULL);
 
-				TEST_ASSERT(ret == 0,
-					"Failed to create instance %u of pmd : %s",
-					i, RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD));
-			}
+			TEST_ASSERT(ret == 0,
+				"Failed to create instance of pmd : %s",
+				RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD));
 		}
 	}
 
-	/* Create 2 AESNI GCM devices if required */
+	/* Create an AESNI GCM device if required */
 	if (gbl_cryptodev_perftest_devtype == RTE_CRYPTODEV_AESNI_GCM_PMD) {
 #ifndef RTE_LIBRTE_PMD_AESNI_GCM
 		RTE_LOG(ERR, USER1, "CONFIG_RTE_LIBRTE_PMD_AESNI_GCM must be"
@@ -349,19 +347,17 @@ testsuite_setup(void)
 		return TEST_FAILED;
 #endif
 		nb_devs = rte_cryptodev_count_devtype(RTE_CRYPTODEV_AESNI_GCM_PMD);
-		if (nb_devs < 2) {
-			for (i = nb_devs; i < 2; i++) {
-				ret = rte_eal_vdev_init(
-					RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD), NULL);
+		if (nb_devs < 1) {
+			ret = rte_eal_vdev_init(
+				RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD), NULL);
 
-				TEST_ASSERT(ret == 0,
-					"Failed to create instance %u of pmd : %s",
-					i, RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD));
-			}
+			TEST_ASSERT(ret == 0,
+				"Failed to create instance of pmd : %s",
+				RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD));
 		}
 	}
 
-	/* Create 2 SNOW3G devices if required */
+	/* Create a SNOW3G device if required */
 	if (gbl_cryptodev_perftest_devtype == RTE_CRYPTODEV_SNOW3G_PMD) {
 #ifndef RTE_LIBRTE_PMD_SNOW3G
 		RTE_LOG(ERR, USER1, "CONFIG_RTE_LIBRTE_PMD_SNOW3G must be"
@@ -369,19 +365,17 @@ testsuite_setup(void)
 		return TEST_FAILED;
 #endif
 		nb_devs = rte_cryptodev_count_devtype(RTE_CRYPTODEV_SNOW3G_PMD);
-		if (nb_devs < 2) {
-			for (i = nb_devs; i < 2; i++) {
-				ret = rte_eal_vdev_init(
-					RTE_STR(CRYPTODEV_NAME_SNOW3G_PMD), NULL);
+		if (nb_devs < 1) {
+			ret = rte_eal_vdev_init(
+				RTE_STR(CRYPTODEV_NAME_SNOW3G_PMD), NULL);
 
-				TEST_ASSERT(ret == 0,
-					"Failed to create instance %u of pmd : %s",
-					i, RTE_STR(CRYPTODEV_NAME_SNOW3G_PMD));
-			}
+			TEST_ASSERT(ret == 0,
+				"Failed to create instance of pmd : %s",
+				RTE_STR(CRYPTODEV_NAME_SNOW3G_PMD));
 		}
 	}
 
-	/* Create 2 OPENSSL devices if required */
+	/* Create an OPENSSL device if required */
 	if (gbl_cryptodev_perftest_devtype == RTE_CRYPTODEV_OPENSSL_PMD) {
 #ifndef RTE_LIBRTE_PMD_OPENSSL
 		RTE_LOG(ERR, USER1, "CONFIG_RTE_LIBRTE_PMD_OPENSSL must be"
@@ -390,20 +384,18 @@ testsuite_setup(void)
 #endif
 		nb_devs = rte_cryptodev_count_devtype(
 				RTE_CRYPTODEV_OPENSSL_PMD);
-		if (nb_devs < 2) {
-			for (i = nb_devs; i < 2; i++) {
-				ret = rte_eal_vdev_init(
-					RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD),
-					NULL);
+		if (nb_devs < 1) {
+			ret = rte_eal_vdev_init(
+				RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD),
+				NULL);
 
-				TEST_ASSERT(ret == 0, "Failed to create "
-					"instance %u of pmd : %s", i,
-					RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD));
-			}
+			TEST_ASSERT(ret == 0, "Failed to create "
+				"instance of pmd : %s",
+				RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD));
 		}
 	}
 
-	/* Create 2 ARMv8 devices if required */
+	/* Create an ARMv8 device if required */
 	if (gbl_cryptodev_perftest_devtype == RTE_CRYPTODEV_ARMV8_PMD) {
 #ifndef RTE_LIBRTE_PMD_ARMV8_CRYPTO
 		RTE_LOG(ERR, USER1, "CONFIG_RTE_LIBRTE_PMD_ARMV8_CRYPTO must be"
@@ -412,16 +404,14 @@ testsuite_setup(void)
 #endif
 		nb_devs = rte_cryptodev_count_devtype(
 				RTE_CRYPTODEV_ARMV8_PMD);
-		if (nb_devs < 2) {
-			for (i = nb_devs; i < 2; i++) {
-				ret = rte_eal_vdev_init(
-					RTE_STR(CRYPTODEV_NAME_ARMV8_PMD),
-					NULL);
+		if (nb_devs < 1) {
+			ret = rte_eal_vdev_init(
+				RTE_STR(CRYPTODEV_NAME_ARMV8_PMD),
+				NULL);
 
-				TEST_ASSERT(ret == 0, "Failed to create "
-					"instance %u of pmd : %s", i,
-					RTE_STR(CRYPTODEV_NAME_ARMV8_PMD));
-			}
+			TEST_ASSERT(ret == 0, "Failed to create "
+				"instance of pmd : %s",
+				RTE_STR(CRYPTODEV_NAME_ARMV8_PMD));
 		}
 	}
 
