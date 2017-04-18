@@ -178,8 +178,8 @@ The EAL also allows timed callbacks to be used in the same way as for NIC interr
 
 .. note::
 
-    In DPDK PMD, the only interrupts handled by the dedicated host thread are those for link status change,
-    i.e. link up and link down notification.
+    In DPDK PMD, the only interrupts handled by the dedicated host thread are those for link status change
+    (link up and link down notification) and for sudden device removal.
 
 
 + RX Interrupt Event
@@ -206,6 +206,23 @@ The eth_dev driver takes responsibility to program the latter mapping.
 
 The RX interrupt are controlled/enabled/disabled by ethdev APIs - 'rte_eth_dev_rx_intr_*'. They return failure if the PMD
 hasn't support them yet. The intr_conf.rxq flag is used to turn on the capability of RX interrupt per device.
+
++ Device Removal Event
+
+This event is triggered by a device being removed at a bus level. Its
+underlying resources may have been made unavailable (i.e. PCI mappings
+unmapped). The PMD must make sure that on such occurrence, the application can
+still safely use its callbacks.
+
+This event can be subscribed to in the same way one would subscribe to a link
+status change event. The execution context is thus the same, i.e. it is the
+dedicated interrupt host thread.
+
+Considering this, it is likely that an application would want to close a
+device having emitted a Device Removal Event. In such case, calling
+``rte_eth_dev_close()`` can trigger it to unregister its own Device Removal Event
+callback. Care must be taken not to close the device from the interrupt handler
+context. It is necessary to reschedule such closing operation.
 
 Blacklisting
 ~~~~~~~~~~~~

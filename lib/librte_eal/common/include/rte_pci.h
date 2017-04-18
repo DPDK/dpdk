@@ -239,6 +239,8 @@ struct rte_pci_bus {
 #define RTE_PCI_DRV_NEED_MAPPING 0x0001
 /** Device driver supports link state interrupt */
 #define RTE_PCI_DRV_INTR_LSC	0x0008
+/** Device driver supports device removal interrupt */
+#define RTE_PCI_DRV_INTR_RMV 0x0010
 
 /**
  * A structure describing a PCI mapping.

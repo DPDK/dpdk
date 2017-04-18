@@ -749,15 +749,18 @@ rte_eth_dev_configure(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 		return -EINVAL;
 	}
 
-	/*
-	 * If link state interrupt is enabled, check that the
-	 * device supports it.
-	 */
+	/* Check that the device supports requested interrupts */
 	if ((dev_conf->intr_conf.lsc == 1) &&
 		(!(dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC))) {
 			RTE_PMD_DEBUG_TRACE("driver %s does not support lsc\n",
 					dev->data->drv_name);
 			return -EINVAL;
+	}
+	if ((dev_conf->intr_conf.rmv == 1) &&
+	    (!(dev->data->dev_flags & RTE_ETH_DEV_INTR_RMV))) {
+		RTE_PMD_DEBUG_TRACE("driver %s does not support rmv\n",
+				    dev->data->drv_name);
+		return -EINVAL;
 	}
 
 	/*

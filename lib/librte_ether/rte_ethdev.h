@@ -816,9 +816,11 @@ struct rte_eth_udp_tunnel {
  */
 struct rte_intr_conf {
 	/** enable/disable lsc interrupt. 0 (default) - disable, 1 enable */
-	uint16_t lsc;
+	uint32_t lsc:1;
 	/** enable/disable rxq interrupt. 0 (default) - disable, 1 enable */
-	uint16_t rxq;
+	uint32_t rxq:1;
+	/** enable/disable rmv interrupt. 0 (default) - disable, 1 enable */
+	uint32_t rmv:1;
 };
 
 /**
@@ -1759,6 +1761,8 @@ struct rte_eth_dev_data {
 #define RTE_ETH_DEV_INTR_LSC     0x0002
 /** Device is a bonded slave */
 #define RTE_ETH_DEV_BONDED_SLAVE 0x0004
+/** Device supports device removal interrupt */
+#define RTE_ETH_DEV_INTR_RMV     0x0008
 
 /**
  * @internal
@@ -3466,6 +3470,7 @@ enum rte_eth_event_type {
 			/**< reset interrupt event, sent to VF on PF reset */
 	RTE_ETH_EVENT_VF_MBOX,  /**< message from the VF received by PF */
 	RTE_ETH_EVENT_MACSEC,   /**< MACsec offload related event */
+	RTE_ETH_EVENT_INTR_RMV, /**< device removal event */
 	RTE_ETH_EVENT_MAX       /**< max value of this enum */
 };
 
