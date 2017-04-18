@@ -167,6 +167,8 @@ struct l2fwd_crypto_options {
 
 	uint16_t block_size;
 	char string_type[MAX_STR_LEN];
+
+	uint64_t cryptodev_mask;
 };
 
 /** l2fwd crypto lcore params */
@@ -857,7 +859,8 @@ l2fwd_crypto_usage(const char *prgname)
 		"  --aad_random_size SIZE: size of AAD when generated randomly\n"
 		"  --digest_size SIZE: size of digest to be generated/verified\n"
 
-		"  --sessionless\n",
+		"  --sessionless\n"
+		"  --cryptodev_mask MASK: hexadecimal bitmask of crypto devices to configure\n",
 	       prgname);
 }
 
@@ -1001,6 +1004,27 @@ parse_auth_op(enum rte_crypto_auth_operation *op, char *optarg)
 	return -1;
 }
 
+static int
+parse_cryptodev_mask(struct l2fwd_crypto_options *options,
+		const char *q_arg)
+{
+	char *end = NULL;
+	uint64_t pm;
+
+	/* parse hexadecimal string */
+	pm = strtoul(q_arg, &end, 16);
+	if ((pm == '\0') || (end == NULL) || (*end != '\0'))
+		pm = 0;
+
+	options->cryptodev_mask = pm;
+	if (options->cryptodev_mask == 0) {
+		printf("invalid cryptodev_mask specified\n");
+		return -1;
+	}
+
+	return 0;
+}
+
 /** Parse long options */
 static int
 l2fwd_crypto_parse_args_long_options(struct l2fwd_crypto_options *options,
@@ -1100,6 +1124,9 @@ l2fwd_crypto_parse_args_long_options(struct l2fwd_crypto_options *options,
 		options->sessionless = 1;
 		return 0;
 	}
+
+	else if (strcmp(lgopts[option_index].name, "cryptodev_mask") == 0)
+		return parse_cryptodev_mask(options, optarg);
 
 	return -1;
 }
@@ -1215,6 +1242,7 @@ l2fwd_crypto_default_options(struct l2fwd_crypto_options *options)
 	options->auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_GENERATE;
 
 	options->type = CDEV_TYPE_ANY;
+	options->cryptodev_mask = UINT64_MAX;
 }
 
 static void
@@ -1337,6 +1365,7 @@ l2fwd_crypto_parse_args(struct l2fwd_crypto_options *options,
 			{ "digest_size", required_argument, 0, 0 },
 
 			{ "sessionless", no_argument, 0, 0 },
+			{ "cryptodev_mask", required_argument, 0, 0},
 
 			{ NULL, 0, 0, 0 }
 	};
@@ -1477,6 +1506,17 @@ check_type(struct l2fwd_crypto_options *options, struct rte_cryptodev_info *dev_
 	return -1;
 }
 
+/* Check if the device is enabled by cryptodev_mask */
+static int
+check_cryptodev_mask(struct l2fwd_crypto_options *options,
+		uint8_t cdev_id)
+{
+	if (options->cryptodev_mask & (1 << cdev_id))
+		return 0;
+
+	return -1;
+}
+
 static inline int
 check_supported_size(uint16_t length, uint16_t min, uint16_t max,
 		uint16_t increment)
@@ -1530,6 +1570,9 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 				.cache_size = 64
 			}
 		};
+
+		if (check_cryptodev_mask(options, (uint8_t)cdev_id))
+			continue;
 
 		rte_cryptodev_info_get(cdev_id, &dev_info);
 

@@ -89,7 +89,7 @@ The application requires a number of command line options:
     [--cipher_key_random_size SIZE] [--iv IV] [--iv_random_size SIZE] /
     [--auth_algo ALGO] [--auth_op GENERATE/VERIFY] [--auth_key KEY] /
     [--auth_key_random_size SIZE] [--aad AAD] [--aad_random_size SIZE] /
-    [--digest size SIZE] [--sessionless]
+    [--digest size SIZE] [--sessionless] [--cryptodev_mask MASK]
 
 where,
 
@@ -156,6 +156,11 @@ where,
 *   digest_size: set the size of the digest to be generated/verified.
 
 *   sessionless: no crypto session will be created.
+
+*   cryptodev_mask: A hexadecimal bitmask of the cryptodevs to be used by the
+    application.
+
+    (default is all cryptodevs).
 
 
 The application requires that crypto devices capable of performing
