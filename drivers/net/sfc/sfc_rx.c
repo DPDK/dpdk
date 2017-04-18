@@ -1320,6 +1320,8 @@ sfc_rx_close(struct sfc_adapter *sa)
 {
 	sfc_rx_fini_queues(sa, 0);
 
+	sa->rss_channels = 0;
+
 	rte_free(sa->rxq_info);
 	sa->rxq_info = NULL;
 }
