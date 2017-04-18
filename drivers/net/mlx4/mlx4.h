@@ -347,6 +347,7 @@ struct priv {
 	struct rte_intr_handle intr_handle; /* Interrupt handler. */
 	struct rte_flow_drop *flow_drop_queue; /* Flow drop queue. */
 	LIST_HEAD(mlx4_flows, rte_flow) flows;
+	struct rte_intr_conf intr_conf; /* Active interrupt configuration. */
 	rte_spinlock_t lock; /* Lock for control functions. */
 };
 

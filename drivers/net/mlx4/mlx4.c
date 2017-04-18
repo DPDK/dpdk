@@ -3932,8 +3932,14 @@ mlx4_rx_queue_release(void *dpdk_rxq)
 	priv_unlock(priv);
 }
 
-static void
+static int
 priv_dev_interrupt_handler_install(struct priv *, struct rte_eth_dev *);
+
+static int
+priv_dev_removal_interrupt_handler_install(struct priv *, struct rte_eth_dev *);
+
+static int
+priv_dev_link_interrupt_handler_install(struct priv *, struct rte_eth_dev *);
 
 /**
  * DPDK callback to start the device.
@@ -3987,7 +3993,18 @@ mlx4_dev_start(struct rte_eth_dev *dev)
 		     (void *)dev, strerror(ret));
 		goto err;
 	} while ((--r) && ((rxq = (*priv->rxqs)[++i]), i));
-	priv_dev_interrupt_handler_install(priv, dev);
+	ret = priv_dev_link_interrupt_handler_install(priv, dev);
+	if (ret) {
+		ERROR("%p: LSC handler install failed",
+		     (void *)dev);
+		goto err;
+	}
+	ret = priv_dev_removal_interrupt_handler_install(priv, dev);
+	if (ret) {
+		ERROR("%p: RMV handler install failed",
+		     (void *)dev);
+		goto err;
+	}
 	ret = mlx4_priv_flow_start(priv);
 	if (ret) {
 		ERROR("%p: flow start failed: %s",
@@ -4106,8 +4123,15 @@ removed_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	return 0;
 }
 
-static void
+static int
 priv_dev_interrupt_handler_uninstall(struct priv *, struct rte_eth_dev *);
+
+static int
+priv_dev_removal_interrupt_handler_uninstall(struct priv *,
+					     struct rte_eth_dev *);
+
+static int
+priv_dev_link_interrupt_handler_uninstall(struct priv *, struct rte_eth_dev *);
 
 /**
  * DPDK callback to close the device.
@@ -4171,7 +4195,8 @@ mlx4_dev_close(struct rte_eth_dev *dev)
 		claim_zero(ibv_close_device(priv->ctx));
 	} else
 		assert(priv->ctx == NULL);
-	priv_dev_interrupt_handler_uninstall(priv, dev);
+	priv_dev_removal_interrupt_handler_uninstall(priv, dev);
+	priv_dev_link_interrupt_handler_uninstall(priv, dev);
 	priv_unlock(priv);
 	memset(priv, 0, sizeof(*priv));
 }
@@ -4731,6 +4756,10 @@ mlx4_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 	return -1;
 }
 
+static int
+mlx4_ibv_device_to_pci_addr(const struct ibv_device *device,
+			    struct rte_pci_addr *pci_addr);
+
 /**
  * DPDK callback to change the MTU.
  *
@@ -5257,32 +5286,41 @@ static void
 mlx4_dev_interrupt_handler(void *);
 
 /**
- * Link status handler.
+ * Link/device status handler.
  *
  * @param priv
  *   Pointer to private structure.
  * @param dev
  *   Pointer to the rte_eth_dev structure.
+ * @param events
+ *   Pointer to event flags holder.
  *
  * @return
- *   Nonzero if the callback process can be called immediately.
+ *   Number of events
  */
 static int
-priv_dev_link_status_handler(struct priv *priv, struct rte_eth_dev *dev)
+priv_dev_status_handler(struct priv *priv, struct rte_eth_dev *dev,
+			uint32_t *events)
 {
 	struct ibv_async_event event;
 	int port_change = 0;
 	int ret = 0;
 
+	*events = 0;
 	/* Read all message and acknowledge them. */
 	for (;;) {
 		if (ibv_get_async_event(priv->ctx, &event))
 			break;
-
-		if (event.event_type == IBV_EVENT_PORT_ACTIVE ||
-		    event.event_type == IBV_EVENT_PORT_ERR)
+		if ((event.event_type == IBV_EVENT_PORT_ACTIVE ||
+		     event.event_type == IBV_EVENT_PORT_ERR) &&
+		    (priv->intr_conf.lsc == 1)) {
 			port_change = 1;
-		else
+			ret++;
+		} else if (event.event_type == IBV_EVENT_DEVICE_FATAL &&
+			   priv->intr_conf.rmv == 1) {
+			*events |= (1 << RTE_ETH_EVENT_INTR_RMV);
+			ret++;
+		} else
 			DEBUG("event type %d on port %d not handled",
 			      event.event_type, event.element.port_num);
 		ibv_ack_async_event(&event);
@@ -5300,8 +5338,9 @@ priv_dev_link_status_handler(struct priv *priv, struct rte_eth_dev *dev)
 			rte_eal_alarm_set(MLX4_ALARM_TIMEOUT_US,
 					  mlx4_dev_link_status_handler,
 					  dev);
-		} else
-			ret = 1;
+		} else {
+			*events |= (1 << RTE_ETH_EVENT_INTR_LSC);
+		}
 	}
 	return ret;
 }
@@ -5317,13 +5356,14 @@ mlx4_dev_link_status_handler(void *arg)
 {
 	struct rte_eth_dev *dev = arg;
 	struct priv *priv = dev->data->dev_private;
+	uint32_t events;
 	int ret;
 
 	priv_lock(priv);
 	assert(priv->pending_alarm == 1);
-	ret = priv_dev_link_status_handler(priv, dev);
+	ret = priv_dev_status_handler(priv, dev, &events);
 	priv_unlock(priv);
-	if (ret)
+	if (ret > 0 && events & (1 << RTE_ETH_EVENT_INTR_LSC))
 		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
 }
 
@@ -5341,12 +5381,26 @@ mlx4_dev_interrupt_handler(void *cb_arg)
 	struct rte_eth_dev *dev = cb_arg;
 	struct priv *priv = dev->data->dev_private;
 	int ret;
+	uint32_t ev;
+	int i;
 
 	priv_lock(priv);
-	ret = priv_dev_link_status_handler(priv, dev);
+	ret = priv_dev_status_handler(priv, dev, &ev);
 	priv_unlock(priv);
-	if (ret)
-		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
+	if (ret > 0) {
+		for (i = RTE_ETH_EVENT_UNKNOWN;
+		     i < RTE_ETH_EVENT_MAX;
+		     i++) {
+			if (ev & (1 << i)) {
+				ev &= ~(1 << i);
+				_rte_eth_dev_callback_process(dev, i, NULL);
+				ret--;
+			}
+		}
+		if (ret)
+			WARN("%d event%s not processed", ret,
+			     (ret > 1 ? "s were" : " was"));
+	}
 }
 
 /**
@@ -5356,20 +5410,30 @@ mlx4_dev_interrupt_handler(void *cb_arg)
  *   Pointer to private structure.
  * @param dev
  *   Pointer to the rte_eth_dev structure.
+ * @return
+ *   0 on success, negative errno value on failure.
  */
-static void
+static int
 priv_dev_interrupt_handler_uninstall(struct priv *priv, struct rte_eth_dev *dev)
 {
-	if (!dev->data->dev_conf.intr_conf.lsc)
-		return;
-	rte_intr_callback_unregister(&priv->intr_handle,
-				     mlx4_dev_interrupt_handler,
-				     dev);
-	if (priv->pending_alarm)
-		rte_eal_alarm_cancel(mlx4_dev_link_status_handler, dev);
-	priv->pending_alarm = 0;
+	int ret;
+
+	if (priv->intr_conf.lsc ||
+	    priv->intr_conf.rmv)
+		return 0;
+	ret = rte_intr_callback_unregister(&priv->intr_handle,
+					   mlx4_dev_interrupt_handler,
+					   dev);
+	if (ret < 0) {
+		ERROR("rte_intr_callback_unregister failed with %d"
+		      "%s%s%s", ret,
+		      (errno ? " (errno: " : ""),
+		      (errno ? strerror(errno) : ""),
+		      (errno ? ")" : ""));
+	}
 	priv->intr_handle.fd = 0;
 	priv->intr_handle.type = RTE_INTR_HANDLE_UNKNOWN;
+	return ret;
 }
 
 /**
@@ -5379,27 +5443,148 @@ priv_dev_interrupt_handler_uninstall(struct priv *priv, struct rte_eth_dev *dev)
  *   Pointer to private structure.
  * @param dev
  *   Pointer to the rte_eth_dev structure.
+ * @return
+ *   0 on success, negative errno value on failure.
  */
-static void
-priv_dev_interrupt_handler_install(struct priv *priv, struct rte_eth_dev *dev)
+static int
+priv_dev_interrupt_handler_install(struct priv *priv,
+				   struct rte_eth_dev *dev)
 {
-	int rc, flags;
+	int flags;
+	int rc;
 
-	if (!dev->data->dev_conf.intr_conf.lsc)
-		return;
+	/* Check whether the interrupt handler has already been installed
+	 * for either type of interrupt
+	 */
+	if (priv->intr_conf.lsc &&
+	    priv->intr_conf.rmv &&
+	    priv->intr_handle.fd)
+		return 0;
 	assert(priv->ctx->async_fd > 0);
 	flags = fcntl(priv->ctx->async_fd, F_GETFL);
 	rc = fcntl(priv->ctx->async_fd, F_SETFL, flags | O_NONBLOCK);
 	if (rc < 0) {
 		INFO("failed to change file descriptor async event queue");
 		dev->data->dev_conf.intr_conf.lsc = 0;
+		dev->data->dev_conf.intr_conf.rmv = 0;
+		return -errno;
 	} else {
 		priv->intr_handle.fd = priv->ctx->async_fd;
 		priv->intr_handle.type = RTE_INTR_HANDLE_EXT;
-		rte_intr_callback_register(&priv->intr_handle,
-					   mlx4_dev_interrupt_handler,
-					   dev);
+		rc = rte_intr_callback_register(&priv->intr_handle,
+						 mlx4_dev_interrupt_handler,
+						 dev);
+		if (rc) {
+			ERROR("rte_intr_callback_register failed "
+			      " (errno: %s)", strerror(errno));
+			return rc;
+		}
 	}
+	return 0;
+}
+
+/**
+ * Uninstall interrupt handler.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param dev
+ *   Pointer to the rte_eth_dev structure.
+ * @return
+ *   0 on success, negative value on error.
+ */
+static int
+priv_dev_removal_interrupt_handler_uninstall(struct priv *priv,
+					    struct rte_eth_dev *dev)
+{
+	if (dev->data->dev_conf.intr_conf.rmv) {
+		priv->intr_conf.rmv = 0;
+		return priv_dev_interrupt_handler_uninstall(priv, dev);
+	}
+	return 0;
+}
+
+/**
+ * Uninstall interrupt handler.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param dev
+ *   Pointer to the rte_eth_dev structure.
+ * @return
+ *   0 on success, negative value on error,
+ */
+static int
+priv_dev_link_interrupt_handler_uninstall(struct priv *priv,
+					  struct rte_eth_dev *dev)
+{
+	int ret = 0;
+
+	if (dev->data->dev_conf.intr_conf.lsc) {
+		priv->intr_conf.lsc = 0;
+		ret = priv_dev_interrupt_handler_uninstall(priv, dev);
+		if (ret)
+			return ret;
+	}
+	if (priv->pending_alarm)
+		if (rte_eal_alarm_cancel(mlx4_dev_link_status_handler,
+					 dev)) {
+			ERROR("rte_eal_alarm_cancel failed "
+			      " (errno: %s)", strerror(rte_errno));
+			return -rte_errno;
+		}
+	priv->pending_alarm = 0;
+	return 0;
+}
+
+/**
+ * Install link interrupt handler.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param dev
+ *   Pointer to the rte_eth_dev structure.
+ * @return
+ *   0 on success, negative value on error.
+ */
+static int
+priv_dev_link_interrupt_handler_install(struct priv *priv,
+					struct rte_eth_dev *dev)
+{
+	int ret;
+
+	if (dev->data->dev_conf.intr_conf.lsc) {
+		ret = priv_dev_interrupt_handler_install(priv, dev);
+		if (ret)
+			return ret;
+		priv->intr_conf.lsc = 1;
+	}
+	return 0;
+}
+
+/**
+ * Install removal interrupt handler.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param dev
+ *   Pointer to the rte_eth_dev structure.
+ * @return
+ *   0 on success, negative value on error.
+ */
+static int
+priv_dev_removal_interrupt_handler_install(struct priv *priv,
+					   struct rte_eth_dev *dev)
+{
+	int ret;
+
+	if (dev->data->dev_conf.intr_conf.rmv) {
+		ret = priv_dev_interrupt_handler_install(priv, dev);
+		if (ret)
+			return ret;
+		priv->intr_conf.rmv = 1;
+	}
+	return 0;
 }
 
 /**
@@ -5881,7 +6066,8 @@ static struct rte_pci_driver mlx4_driver = {
 	},
 	.id_table = mlx4_pci_id_map,
 	.probe = mlx4_pci_probe,
-	.drv_flags = RTE_PCI_DRV_INTR_LSC,
+	.drv_flags = RTE_PCI_DRV_INTR_LSC |
+		     RTE_PCI_DRV_INTR_RMV,
 };
 
 /**
