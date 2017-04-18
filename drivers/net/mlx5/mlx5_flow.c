@@ -506,6 +506,13 @@ priv_flow_validate(struct priv *priv,
 				actions->conf;
 			uint16_t n;
 
+			if (!rss || !rss->num) {
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ACTION,
+						   actions,
+						   "no valid queues");
+				return -rte_errno;
+			}
 			if (action->queues_n == 1) {
 				uint16_t found = 0;
 
