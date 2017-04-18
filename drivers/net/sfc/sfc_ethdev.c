@@ -1084,9 +1084,11 @@ sfc_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 {
 	struct sfc_adapter *sa = dev->data->dev_private;
 
-	if ((sa->rss_channels == 1) ||
-	    (sa->rss_support != EFX_RX_SCALE_EXCLUSIVE))
+	if (sa->rss_support != EFX_RX_SCALE_EXCLUSIVE)
 		return -ENOTSUP;
+
+	if (sa->rss_channels == 0)
+		return -EINVAL;
 
 	sfc_adapter_lock(sa);
 
@@ -1114,10 +1116,14 @@ sfc_dev_rss_hash_update(struct rte_eth_dev *dev,
 	unsigned int efx_hash_types;
 	int rc = 0;
 
-	if ((sa->rss_channels == 1) ||
-	    (sa->rss_support != EFX_RX_SCALE_EXCLUSIVE)) {
+	if (sa->rss_support != EFX_RX_SCALE_EXCLUSIVE) {
 		sfc_err(sa, "RSS is not available");
 		return -ENOTSUP;
+	}
+
+	if (sa->rss_channels == 0) {
+		sfc_err(sa, "RSS is not configured");
+		return -EINVAL;
 	}
 
 	if ((rss_conf->rss_key != NULL) &&
@@ -1176,9 +1182,11 @@ sfc_dev_rss_reta_query(struct rte_eth_dev *dev,
 	struct sfc_adapter *sa = dev->data->dev_private;
 	int entry;
 
-	if ((sa->rss_channels == 1) ||
-	    (sa->rss_support != EFX_RX_SCALE_EXCLUSIVE))
+	if (sa->rss_support != EFX_RX_SCALE_EXCLUSIVE)
 		return -ENOTSUP;
+
+	if (sa->rss_channels == 0)
+		return -EINVAL;
 
 	if (reta_size != EFX_RSS_TBL_SIZE)
 		return -EINVAL;
@@ -1209,10 +1217,14 @@ sfc_dev_rss_reta_update(struct rte_eth_dev *dev,
 	int rc;
 
 
-	if ((sa->rss_channels == 1) ||
-	    (sa->rss_support != EFX_RX_SCALE_EXCLUSIVE)) {
+	if (sa->rss_support != EFX_RX_SCALE_EXCLUSIVE) {
 		sfc_err(sa, "RSS is not available");
 		return -ENOTSUP;
+	}
+
+	if (sa->rss_channels == 0) {
+		sfc_err(sa, "RSS is not configured");
+		return -EINVAL;
 	}
 
 	if (reta_size != EFX_RSS_TBL_SIZE) {

@@ -577,7 +577,7 @@ sfc_rx_qflush(struct sfc_adapter *sa, unsigned int sw_index)
 static int
 sfc_rx_default_rxq_set_filter(struct sfc_adapter *sa, struct sfc_rxq *rxq)
 {
-	boolean_t rss = (sa->rss_channels > 1) ? B_TRUE : B_FALSE;
+	boolean_t rss = (sa->rss_channels > 0) ? B_TRUE : B_FALSE;
 	struct sfc_port *port = &sa->port;
 	int rc;
 
@@ -1052,7 +1052,7 @@ sfc_rx_rss_config(struct sfc_adapter *sa)
 	int rc = 0;
 
 #if EFSYS_OPT_RX_SCALE
-	if (sa->rss_channels > 1) {
+	if (sa->rss_channels > 0) {
 		rc = efx_rx_scale_mode_set(sa->nic, EFX_RX_HASHALG_TOEPLITZ,
 					   sa->rss_hash_types, B_TRUE);
 		if (rc != 0)
@@ -1289,9 +1289,9 @@ sfc_rx_configure(struct sfc_adapter *sa)
 
 #if EFSYS_OPT_RX_SCALE
 	sa->rss_channels = (dev_conf->rxmode.mq_mode == ETH_MQ_RX_RSS) ?
-			   MIN(sa->rxq_count, EFX_MAXRSS) : 1;
+			   MIN(sa->rxq_count, EFX_MAXRSS) : 0;
 
-	if (sa->rss_channels > 1) {
+	if (sa->rss_channels > 0) {
 		for (sw_index = 0; sw_index < EFX_RSS_TBL_SIZE; ++sw_index)
 			sa->rss_tbl[sw_index] = sw_index % sa->rss_channels;
 	}
