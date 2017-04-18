@@ -4610,7 +4610,8 @@ s32 ixgbe_led_on_t_X550em(struct ixgbe_hw *hw, u32 led_idx)
 	ixgbe_write_phy_reg(hw, IXGBE_X557_LED_PROVISIONING + led_idx,
 			    IXGBE_MDIO_VENDOR_SPECIFIC_1_DEV_TYPE, phy_data);
 
-	return IXGBE_SUCCESS;
+	/* Some designs have the LEDs wired to the MAC */
+	return ixgbe_led_on_generic(hw, led_idx);
 }
 
 /**
@@ -4634,7 +4635,8 @@ s32 ixgbe_led_off_t_X550em(struct ixgbe_hw *hw, u32 led_idx)
 	ixgbe_write_phy_reg(hw, IXGBE_X557_LED_PROVISIONING + led_idx,
 			    IXGBE_MDIO_VENDOR_SPECIFIC_1_DEV_TYPE, phy_data);
 
-	return IXGBE_SUCCESS;
+	/* Some designs have the LEDs wired to the MAC */
+	return ixgbe_led_off_generic(hw, led_idx);
 }
 
 /**
