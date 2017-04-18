@@ -414,12 +414,17 @@ cryptodev_scheduler_probe(struct rte_vdev_device *vdev)
 		.enable_ordering = 0,
 		.slave_names = { {0} }
 	};
+	const char *name;
+
+	name = rte_vdev_device_name(vdev);
+	if (name == NULL)
+		return -EINVAL;
 
 	scheduler_parse_init_params(&init_params,
 				    rte_vdev_device_args(vdev));
 
 	RTE_LOG(INFO, PMD, "Initialising %s on NUMA node %d\n",
-			rte_vdev_device_name(vdev),
+			name,
 			init_params.def_p.socket_id);
 	RTE_LOG(INFO, PMD, "  Max number of queue pairs = %d\n",
 			init_params.def_p.max_nb_queue_pairs);

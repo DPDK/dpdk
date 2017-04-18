@@ -768,6 +768,8 @@ cryptodev_aesni_mb_probe(struct rte_vdev_device *vdev)
 	const char *input_args;
 
 	name = rte_vdev_device_name(vdev);
+	if (name == NULL)
+		return -EINVAL;
 	input_args = rte_vdev_device_args(vdev);
 	rte_cryptodev_parse_vdev_init_params(&init_params, input_args);
 

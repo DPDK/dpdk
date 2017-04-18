@@ -226,12 +226,14 @@ cryptodev_null_probe(struct rte_vdev_device *dev)
 		rte_socket_id(),
 		{0}
 	};
+	const char *name;
 
-	rte_cryptodev_parse_vdev_init_params(&init_params,
-		rte_vdev_device_args(dev));
+	name = rte_vdev_device_name(dev);
+	if (name == NULL)
+		return -EINVAL;
 
 	RTE_LOG(INFO, PMD, "Initialising %s on NUMA node %d\n",
-		rte_vdev_device_name(dev), init_params.socket_id);
+		name, init_params.socket_id);
 	if (init_params.name[0] != '\0')
 		RTE_LOG(INFO, PMD, "  User defined name = %s\n",
 			init_params.name);
