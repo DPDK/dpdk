@@ -94,6 +94,18 @@
 /* Device parameter to enable hardware TSO offload. */
 #define MLX5_TSO "tso"
 
+/* Default PMD specific parameter value. */
+#define MLX5_ARG_UNSET (-1)
+
+struct mlx5_args {
+	int cqe_comp;
+	int txq_inline;
+	int txqs_inline;
+	int mps;
+	int mpw_hdr_dseg;
+	int inline_max_packet_sz;
+	int tso;
+};
 /**
  * Retrieve integer value from environment variable.
  *
@@ -287,7 +299,7 @@ mlx5_dev_idx(struct rte_pci_addr *pci_addr)
 static int
 mlx5_args_check(const char *key, const char *val, void *opaque)
 {
-	struct priv *priv = opaque;
+	struct mlx5_args *args = opaque;
 	unsigned long tmp;
 
 	errno = 0;
@@ -297,19 +309,19 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 		return errno;
 	}
 	if (strcmp(MLX5_RXQ_CQE_COMP_EN, key) == 0) {
-		priv->cqe_comp = !!tmp;
+		args->cqe_comp = !!tmp;
 	} else if (strcmp(MLX5_TXQ_INLINE, key) == 0) {
-		priv->txq_inline = tmp;
+		args->txq_inline = tmp;
 	} else if (strcmp(MLX5_TXQS_MIN_INLINE, key) == 0) {
-		priv->txqs_inline = tmp;
+		args->txqs_inline = tmp;
 	} else if (strcmp(MLX5_TXQ_MPW_EN, key) == 0) {
-		priv->mps = !!tmp ? priv->mps : MLX5_MPW_DISABLED;
+		args->mps = !!tmp;
 	} else if (strcmp(MLX5_TXQ_MPW_HDR_DSEG_EN, key) == 0) {
-		priv->mpw_hdr_dseg = !!tmp;
+		args->mpw_hdr_dseg = !!tmp;
 	} else if (strcmp(MLX5_TXQ_MAX_INLINE_LEN, key) == 0) {
-		priv->inline_max_packet_sz = tmp;
+		args->inline_max_packet_sz = tmp;
 	} else if (strcmp(MLX5_TSO, key) == 0) {
-		priv->tso = !!tmp;
+		args->tso = !!tmp;
 	} else {
 		WARN("%s: unknown parameter", key);
 		return -EINVAL;
@@ -329,7 +341,7 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
  *   0 on success, errno value on failure.
  */
 static int
-mlx5_args(struct priv *priv, struct rte_devargs *devargs)
+mlx5_args(struct mlx5_args *args, struct rte_devargs *devargs)
 {
 	const char **params = (const char *[]){
 		MLX5_RXQ_CQE_COMP_EN,
@@ -355,7 +367,7 @@ mlx5_args(struct priv *priv, struct rte_devargs *devargs)
 	for (i = 0; (params[i] != NULL); ++i) {
 		if (rte_kvargs_count(kvlist, params[i])) {
 			ret = rte_kvargs_process(kvlist, params[i],
-						 mlx5_args_check, priv);
+						 mlx5_args_check, args);
 			if (ret != 0) {
 				rte_kvargs_free(kvlist);
 				return ret;
@@ -367,6 +379,34 @@ mlx5_args(struct priv *priv, struct rte_devargs *devargs)
 }
 
 static struct rte_pci_driver mlx5_driver;
+
+/**
+ * Assign parameters from args into priv, only non default
+ * values are considered.
+ *
+ * @param[out] priv
+ *   Pointer to private structure.
+ * @param[in] args
+ *   Pointer to args values.
+ */
+static void
+mlx5_args_assign(struct priv *priv, struct mlx5_args *args)
+{
+	if (args->cqe_comp != MLX5_ARG_UNSET)
+		priv->cqe_comp = args->cqe_comp;
+	if (args->txq_inline != MLX5_ARG_UNSET)
+		priv->txq_inline = args->txq_inline;
+	if (args->txqs_inline != MLX5_ARG_UNSET)
+		priv->txqs_inline = args->txqs_inline;
+	if (args->mps != MLX5_ARG_UNSET)
+		priv->mps = args->mps ? priv->mps : 0;
+	if (args->mpw_hdr_dseg != MLX5_ARG_UNSET)
+		priv->mpw_hdr_dseg = args->mpw_hdr_dseg;
+	if (args->inline_max_packet_sz != MLX5_ARG_UNSET)
+		priv->inline_max_packet_sz = args->inline_max_packet_sz;
+	if (args->tso != MLX5_ARG_UNSET)
+		priv->tso = args->tso;
+}
 
 /**
  * DPDK callback to register a PCI device.
@@ -503,6 +543,15 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		struct ibv_exp_device_attr exp_device_attr;
 		struct ether_addr mac;
 		uint16_t num_vfs = 0;
+		struct mlx5_args args = {
+			.cqe_comp = MLX5_ARG_UNSET,
+			.txq_inline = MLX5_ARG_UNSET,
+			.txqs_inline = MLX5_ARG_UNSET,
+			.mps = MLX5_ARG_UNSET,
+			.mpw_hdr_dseg = MLX5_ARG_UNSET,
+			.inline_max_packet_sz = MLX5_ARG_UNSET,
+			.tso = MLX5_ARG_UNSET,
+		};
 
 		exp_device_attr.comp_mask =
 			IBV_EXP_DEVICE_ATTR_EXP_CAP_FLAGS |
@@ -571,12 +620,13 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		}
 		priv->cqe_comp = 1; /* Enable compression by default. */
 		priv->tunnel_en = tunnel_en;
-		err = mlx5_args(priv, pci_dev->device.devargs);
+		err = mlx5_args(&args, pci_dev->device.devargs);
 		if (err) {
 			ERROR("failed to process device arguments: %s",
 			      strerror(err));
 			goto port_error;
 		}
+		mlx5_args_assign(priv, &args);
 		if (ibv_exp_query_device(ctx, &exp_device_attr)) {
 			ERROR("ibv_exp_query_device() failed");
 			goto port_error;
