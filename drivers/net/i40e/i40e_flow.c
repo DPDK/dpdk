@@ -1234,13 +1234,19 @@ i40e_flow_parse_tunnel_action(struct rte_eth_dev *dev,
 	if (act->type == RTE_FLOW_ACTION_TYPE_QUEUE) {
 		act_q = (const struct rte_flow_action_queue *)act->conf;
 		filter->queue_id = act_q->index;
-		if (!filter->is_to_vf)
-			if (filter->queue_id >= pf->dev_data->nb_rx_queues) {
-				rte_flow_error_set(error, EINVAL,
+		if ((!filter->is_to_vf) &&
+		    (filter->queue_id >= pf->dev_data->nb_rx_queues)) {
+			rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ACTION,
 				   act, "Invalid queue ID for tunnel filter");
-				return -rte_errno;
-			}
+			return -rte_errno;
+		} else if (filter->is_to_vf &&
+			   (filter->queue_id >= pf->vf_nb_qps)) {
+			rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ACTION,
+				   act, "Invalid queue ID for tunnel filter");
+			return -rte_errno;
+		}
 	}
 
 	/* Check if the next non-void item is END */
