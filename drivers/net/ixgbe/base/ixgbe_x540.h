@@ -43,7 +43,7 @@ s32 ixgbe_setup_mac_link_X540(struct ixgbe_hw *hw, ixgbe_link_speed speed,
 			      bool link_up_wait_to_complete);
 s32 ixgbe_reset_hw_X540(struct ixgbe_hw *hw);
 s32 ixgbe_start_hw_X540(struct ixgbe_hw *hw);
-u32 ixgbe_get_supported_physical_layer_X540(struct ixgbe_hw *hw);
+u64 ixgbe_get_supported_physical_layer_X540(struct ixgbe_hw *hw);
 
 s32 ixgbe_init_eeprom_params_X540(struct ixgbe_hw *hw);
 s32 ixgbe_read_eerd_X540(struct ixgbe_hw *hw, u16 offset, u16 *data);

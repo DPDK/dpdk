@@ -3673,9 +3673,9 @@ s32 ixgbe_update_flash_X550(struct ixgbe_hw *hw)
  *
  *  Determines physical layer capabilities of the current configuration.
  **/
-u32 ixgbe_get_supported_physical_layer_X550em(struct ixgbe_hw *hw)
+u64 ixgbe_get_supported_physical_layer_X550em(struct ixgbe_hw *hw)
 {
-	u32 physical_layer = IXGBE_PHYSICAL_LAYER_UNKNOWN;
+	u64 physical_layer = IXGBE_PHYSICAL_LAYER_UNKNOWN;
 	u16 ext_ability = 0;
 
 	DEBUGFUNC("ixgbe_get_supported_physical_layer_X550em");
@@ -3684,6 +3684,20 @@ u32 ixgbe_get_supported_physical_layer_X550em(struct ixgbe_hw *hw)
 
 	switch (hw->phy.type) {
 	case ixgbe_phy_x550em_kr:
+		if (hw->mac.type == ixgbe_mac_X550EM_a) {
+			if (hw->phy.nw_mng_if_sel &
+			    IXGBE_NW_MNG_IF_SEL_PHY_SPEED_2_5G) {
+				physical_layer =
+					IXGBE_PHYSICAL_LAYER_2500BASE_KX;
+				break;
+			} else if (hw->device_id ==
+				   IXGBE_DEV_ID_X550EM_A_KR_L) {
+				physical_layer =
+					IXGBE_PHYSICAL_LAYER_1000BASE_KX;
+				break;
+			}
+		}
+		/* fall through */
 	case ixgbe_phy_x550em_xfi:
 		physical_layer = IXGBE_PHYSICAL_LAYER_10GBASE_KR |
 				 IXGBE_PHYSICAL_LAYER_1000BASE_KX;

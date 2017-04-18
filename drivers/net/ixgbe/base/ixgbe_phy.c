@@ -1575,9 +1575,9 @@ err_read_i2c_eeprom:
  *
  *  Determines physical layer capabilities of the current SFP.
  */
-s32 ixgbe_get_supported_phy_sfp_layer_generic(struct ixgbe_hw *hw)
+u64 ixgbe_get_supported_phy_sfp_layer_generic(struct ixgbe_hw *hw)
 {
-	u32 physical_layer = IXGBE_PHYSICAL_LAYER_UNKNOWN;
+	u64 physical_layer = IXGBE_PHYSICAL_LAYER_UNKNOWN;
 	u8 comp_codes_10g = 0;
 	u8 comp_codes_1g = 0;
 
