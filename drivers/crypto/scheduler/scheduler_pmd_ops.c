@@ -41,6 +41,46 @@
 
 #include "scheduler_pmd_private.h"
 
+/** attaching the slaves predefined by scheduler's EAL options */
+static int
+scheduler_attach_init_slave(struct rte_cryptodev *dev)
+{
+	struct scheduler_ctx *sched_ctx = dev->data->dev_private;
+	uint8_t scheduler_id = dev->data->dev_id;
+	int i;
+
+	for (i = sched_ctx->nb_init_slaves - 1; i >= 0; i--) {
+		const char *dev_name = sched_ctx->init_slave_names[i];
+		struct rte_cryptodev *slave_dev =
+				rte_cryptodev_pmd_get_named_dev(dev_name);
+		int status;
+
+		if (!slave_dev) {
+			CS_LOG_ERR("Failed to locate slave dev %s",
+					dev_name);
+			return -EINVAL;
+		}
+
+		status = rte_cryptodev_scheduler_slave_attach(
+				scheduler_id, slave_dev->data->dev_id);
+
+		if (status < 0) {
+			CS_LOG_ERR("Failed to attach slave cryptodev %u",
+					slave_dev->data->dev_id);
+			return status;
+		}
+
+		CS_LOG_INFO("Scheduler %s attached slave %s\n",
+				dev->data->name,
+				sched_ctx->init_slave_names[i]);
+
+		rte_free(sched_ctx->init_slave_names[i]);
+
+		sched_ctx->nb_init_slaves -= 1;
+	}
+
+	return 0;
+}
 /** Configure device */
 static int
 scheduler_pmd_config(struct rte_cryptodev *dev,
@@ -48,7 +88,14 @@ scheduler_pmd_config(struct rte_cryptodev *dev,
 {
 	struct scheduler_ctx *sched_ctx = dev->data->dev_private;
 	uint32_t i;
-	int ret = 0;
+	int ret;
+
+	/* although scheduler_attach_init_slave presents multiple times,
+	 * there will be only 1 meaningful execution.
+	 */
+	ret = scheduler_attach_init_slave(dev);
+	if (ret < 0)
+		return ret;
 
 	for (i = 0; i < sched_ctx->nb_slaves; i++) {
 		uint8_t slave_dev_id = sched_ctx->slaves[i].dev_id;
@@ -115,6 +162,13 @@ scheduler_pmd_start(struct rte_cryptodev *dev)
 
 	if (dev->data->dev_started)
 		return 0;
+
+	/* although scheduler_attach_init_slave presents multiple times,
+	 * there will be only 1 meaningful execution.
+	 */
+	ret = scheduler_attach_init_slave(dev);
+	if (ret < 0)
+		return ret;
 
 	for (i = 0; i < dev->data->nb_queue_pairs; i++) {
 		ret = update_order_ring(dev, i);
@@ -298,6 +352,11 @@ scheduler_pmd_info_get(struct rte_cryptodev *dev,
 	if (!dev_info)
 		return;
 
+	/* although scheduler_attach_init_slave presents multiple times,
+	 * there will be only 1 meaningful execution.
+	 */
+	scheduler_attach_init_slave(dev);
+
 	for (i = 0; i < sched_ctx->nb_slaves; i++) {
 		uint8_t slave_dev_id = sched_ctx->slaves[i].dev_id;
 		struct rte_cryptodev_info slave_info;
@@ -377,6 +436,16 @@ scheduler_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	qp_ctx->max_nb_objs = qp_conf->nb_descriptors - 1;
 
 	dev->data->queue_pairs[qp_id] = qp_ctx;
+
+	/* although scheduler_attach_init_slave presents multiple times,
+	 * there will be only 1 meaningful execution.
+	 */
+	ret = scheduler_attach_init_slave(dev);
+	if (ret < 0) {
+		CS_LOG_ERR("Failed to attach slave");
+		scheduler_pmd_qp_release(dev, qp_id);
+		return ret;
+	}
 
 	if (*sched_ctx->ops.config_queue_pair) {
 		if ((*sched_ctx->ops.config_queue_pair)(dev, qp_id) < 0) {

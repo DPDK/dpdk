@@ -86,6 +86,9 @@ struct scheduler_ctx {
 
 	char name[RTE_CRYPTODEV_SCHEDULER_NAME_MAX_LEN];
 	char description[RTE_CRYPTODEV_SCHEDULER_DESC_MAX_LEN];
+
+	char *init_slave_names[RTE_CRYPTODEV_SCHEDULER_MAX_NB_SLAVES];
+	int nb_init_slaves;
 } __rte_cache_aligned;
 
 struct scheduler_qp_ctx {
