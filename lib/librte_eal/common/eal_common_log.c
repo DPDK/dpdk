@@ -309,6 +309,7 @@ static const char *
 loglevel_to_string(uint32_t level)
 {
 	switch (level) {
+	case 0: return "disabled";
 	case RTE_LOG_EMERG: return "emerg";
 	case RTE_LOG_ALERT: return "alert";
 	case RTE_LOG_CRIT: return "critical";
