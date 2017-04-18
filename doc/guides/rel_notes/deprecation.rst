@@ -47,7 +47,7 @@ Deprecation Notices
   ``_rte_eth_dev_callback_process``. In 17.08 the function will return an ``int``
   instead of ``void`` and a fourth parameter ``void *ret_param`` will be added.
 
-* ethdev: for 17.05 it is planned to deprecate the following nine rte_eth_dev_*
+* ethdev: for 17.08 it is planned to deprecate the following nine rte_eth_dev_*
   functions and move them into the ixgbe PMD:
 
   ``rte_eth_dev_bypass_init``, ``rte_eth_dev_bypass_state_set``,
