@@ -492,7 +492,6 @@ eal_log_level_parse(int argc, char **argv)
 	argvopt = argv;
 	optind = 1;
 
-	eal_reset_internal_config(&internal_config);
 	rte_log_set_global_level(internal_config.log_level);
 
 	while ((opt = getopt_long(argc, argvopt, eal_short_options,
@@ -776,6 +775,8 @@ rte_eal_init(int argc, char **argv)
 	logid = strdup(logid ? logid + 1: argv[0]);
 
 	thread_id = pthread_self();
+
+	eal_reset_internal_config(&internal_config);
 
 	/* set log level as early as possible */
 	eal_log_level_parse(argc, argv);
