@@ -43,8 +43,8 @@ Deprecation Notices
   ``eth_driver``. Similarly, ``rte_pci_driver`` is planned to be removed from
   ``rte_cryptodev_driver`` in 17.05.
 
-* ethdev: An API change is planned for 17.05 for the function
-  ``_rte_eth_dev_callback_process``. In 17.05 the function will return an ``int``
+* ethdev: An API change is planned for 17.08 for the function
+  ``_rte_eth_dev_callback_process``. In 17.08 the function will return an ``int``
   instead of ``void`` and a fourth parameter ``void *ret_param`` will be added.
 
 * ethdev: for 17.05 it is planned to deprecate the following nine rte_eth_dev_*
