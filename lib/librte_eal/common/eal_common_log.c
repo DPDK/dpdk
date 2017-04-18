@@ -282,6 +282,12 @@ rte_log_init(void)
 {
 	uint32_t i;
 
+#if RTE_LOG_LEVEL >= RTE_LOG_DEBUG
+	rte_log_set_global_level(RTE_LOG_INFO);
+#else
+	rte_log_set_global_level(RTE_LOG_LEVEL);
+#endif
+
 	rte_logs.dynamic_types = calloc(RTE_LOGTYPE_FIRST_EXT_ID,
 		sizeof(struct rte_log_dynamic_type));
 	if (rte_logs.dynamic_types == NULL)

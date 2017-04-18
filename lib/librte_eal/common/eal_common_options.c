@@ -148,12 +148,6 @@ eal_reset_internal_config(struct internal_config *internal_cfg)
 	internal_cfg->base_virtaddr = 0;
 
 	internal_cfg->syslog_facility = LOG_DAEMON;
-	/* default value from build option */
-#if RTE_LOG_LEVEL >= RTE_LOG_DEBUG
-	internal_cfg->log_level = RTE_LOG_INFO;
-#else
-	internal_cfg->log_level = RTE_LOG_LEVEL;
-#endif
 
 	internal_cfg->xen_dom0_support = 0;
 
@@ -739,7 +733,7 @@ eal_parse_syslog(const char *facility, struct internal_config *conf)
 }
 
 static int
-eal_parse_log_level(const char *arg, struct internal_config *conf)
+eal_parse_log_level(const char *arg)
 {
 	char *end, *str, *type, *level;
 	unsigned long tmp;
@@ -772,7 +766,6 @@ eal_parse_log_level(const char *arg, struct internal_config *conf)
 		type, tmp);
 
 	if (type == NULL) {
-		conf->log_level = tmp;
 		rte_log_set_global_level(tmp);
 	} else if (rte_log_set_level_regexp(type, tmp) < 0) {
 		printf("cannot set log level %s,%lu\n",
@@ -926,7 +919,7 @@ eal_parse_common_option(int opt, const char *optarg,
 		break;
 
 	case OPT_LOG_LEVEL_NUM: {
-		if (eal_parse_log_level(optarg, conf) < 0) {
+		if (eal_parse_log_level(optarg) < 0) {
 			RTE_LOG(ERR, EAL,
 				"invalid parameters for --"
 				OPT_LOG_LEVEL "\n");
