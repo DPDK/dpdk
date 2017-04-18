@@ -930,7 +930,7 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	info.prefix_size = encp->enc_rx_prefix_size;
 
 #if EFSYS_OPT_RX_SCALE
-	if (sa->hash_support == EFX_RX_HASH_AVAILABLE)
+	if (sa->hash_support == EFX_RX_HASH_AVAILABLE && sa->rss_channels > 0)
 		info.flags |= SFC_RXQ_FLAG_RSS_HASH;
 #endif
 
