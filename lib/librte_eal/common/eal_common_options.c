@@ -762,9 +762,6 @@ eal_parse_log_level(const char *arg)
 	if (tmp >= UINT32_MAX)
 		goto fail;
 
-	printf("set log level %s,%lu\n",
-		type, tmp);
-
 	if (type == NULL) {
 		rte_log_set_global_level(tmp);
 	} else if (rte_log_set_level_regexp(type, tmp) < 0) {
