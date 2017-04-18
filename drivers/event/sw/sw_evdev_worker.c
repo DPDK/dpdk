@@ -105,9 +105,12 @@ sw_event_enqueue_burst(void *port, const struct rte_event ev[], uint16_t num)
 		 */
 		if ((new_ops[i] & QE_FLAG_COMPLETE) && outstanding)
 			p->outstanding_releases--;
-		/* Branch to avoid touching p->stats except error case */
-		if (unlikely(invalid_qid))
+
+		/* error case: branch to avoid touching p->stats */
+		if (unlikely(invalid_qid)) {
 			p->stats.rx_dropped++;
+			p->inflight_credits++;
+		}
 	}
 
 	/* returns number of events actually enqueued */
