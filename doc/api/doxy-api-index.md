@@ -51,7 +51,8 @@ There are many libraries, so their headers may be grouped by topics:
   [vhost]              (@ref rte_vhost.h),
   [KNI]                (@ref rte_kni.h),
   [ixgbe]              (@ref rte_pmd_ixgbe.h),
-  [i40e]               (@ref rte_pmd_i40e.h)
+  [i40e]               (@ref rte_pmd_i40e.h),
+  [crypto_scheduler]   (@ref rte_cryptodev_scheduler.h)
 
 - **memory**:
   [memseg]             (@ref rte_memory.h),
