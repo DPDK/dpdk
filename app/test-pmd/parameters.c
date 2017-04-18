@@ -200,6 +200,7 @@ usage(char* progname)
 		" or total packet length.\n");
 	printf("  --disable-link-check: disable check on link status when "
 	       "starting/stopping ports.\n");
+	printf("  --no-lsc-interrupt: disable link status change interrupt.\n");
 }
 
 #ifdef RTE_LIBRTE_CMDLINE
@@ -568,6 +569,7 @@ launch_args_parse(int argc, char** argv)
 		{ "no-flush-rx",	0, 0, 0 },
 		{ "txpkts",			1, 0, 0 },
 		{ "disable-link-check",		0, 0, 0 },
+		{ "no-lsc-interrupt",		0, 0, 0 },
 		{ 0, 0, 0, 0 },
 	};
 
@@ -998,6 +1000,8 @@ launch_args_parse(int argc, char** argv)
 				no_flush_rx = 1;
 			if (!strcmp(lgopts[opt_idx].name, "disable-link-check"))
 				no_link_check = 1;
+			if (!strcmp(lgopts[opt_idx].name, "no-lsc-interrupt"))
+				lsc_interrupt = 0;
 
 			break;
 		case 'h':

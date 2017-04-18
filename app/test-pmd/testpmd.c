@@ -271,6 +271,11 @@ uint8_t no_flush_rx = 0; /* flush by default */
 uint8_t no_link_check = 0; /* check by default */
 
 /*
+ * Enable link status change notification
+ */
+uint8_t lsc_interrupt = 1; /* enabled by default */
+
+/*
  * NIC bypass mode configuration options.
  */
 #ifdef RTE_NIC_BYPASS
@@ -1746,6 +1751,9 @@ check_all_ports_link_status(uint32_t port_mask)
 		if (all_ports_up == 1 || count == (MAX_CHECK_TIME - 1)) {
 			print_flag = 1;
 		}
+
+		if (lsc_interrupt)
+			break;
 	}
 }
 
@@ -1929,6 +1937,11 @@ init_port_config(void)
 #ifdef RTE_NIC_BYPASS
 		rte_eth_dev_bypass_init(pid);
 #endif
+
+		if (lsc_interrupt &&
+		    (rte_eth_devices[pid].data->dev_flags &
+		     RTE_ETH_DEV_INTR_LSC))
+			port->dev_conf.intr_conf.lsc = 1;
 	}
 }
 
