@@ -2897,16 +2897,29 @@ Output can be limited to specific groups::
 Sample QinQ flow rules
 ~~~~~~~~~~~~~~~~~~~~~~
 
+Before creating QinQ rule(s) the following commands should be issued to enable QinQ::
+
+   testpmd> port stop 0
+   testpmd> vlan set qinq on 0
+
+The above command sets the inner and outer TPID's to 0x8100.
+
+To change the TPID's the following commands should be used::
+
+   testpmd> vlan set outer tpid 0xa100 0
+   testpmd> vlan set inner tpid 0x9100 0
+   testpmd> port start 0
+
 Validate and create a QinQ rule on port 0 to steer traffic to a VF queue in a VM.
 
 ::
 
-   testpmd> flow validate 0 ingress pattern eth / vlan tpid is 0x8100 tci is 4 /
-       vlan tpid is 0x8100 tci is 5 / end actions vf id 1 / queue index 0 / end
+   testpmd> flow validate 0 ingress pattern eth / vlan tci is 123 /
+       vlan tci is 456 / end actions vf id 1 / queue index 0 / end
    Flow rule #0 validated
 
-   testpmd> flow create 0 ingress pattern eth / vlan tpid is 0x8100 tci is 4 /
-       vlan tpid is 0x8100 tci is 5 / end actions vf id 1 / queue index 0 / end
+   testpmd> flow create 0 ingress pattern eth / vlan tci is 4 /
+       vlan tci is 456 / end actions vf id 123 / queue index 0 / end
    Flow rule #0 created
 
    testpmd> flow list 0
@@ -2917,20 +2930,16 @@ Validate and create a QinQ rule on port 0 to steer traffic to a queue on the hos
 
 ::
 
-   testpmd> flow validate 0 ingress pattern eth / vlan tpid is 0x8100 tci is 6 /
-        vlan tpid is 0x8100 tci is 7 / end actions pf / queue index 0 / end
+   testpmd> flow validate 0 ingress pattern eth / vlan tci is 321 /
+        vlan tci is 654 / end actions pf / queue index 0 / end
    Flow rule #1 validated
 
-   testpmd> flow create 0 ingress pattern eth / vlan tpid is 0x8100 tci is 6 /
-        vlan tpid is 0x8100 tci is 7 / end actions pf / queue index 1 / end
+   testpmd> flow create 0 ingress pattern eth / vlan tci is 321 /
+        vlan tci is 654 / end actions pf / queue index 1 / end
    Flow rule #1 created
 
    testpmd> flow list 0
    ID      Group   Prio    Attr    Rule
    0       0       0       i-      ETH VLAN VLAN=>VF QUEUE
    1       0       0       i-      ETH VLAN VLAN=>PF QUEUE
-
-After creating QinQ rule(s) the following command should be issued to enable QinQ::
-
-   testpmd> vlan set qinq on 0
 
