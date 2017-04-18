@@ -611,13 +611,6 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		priv->pd = pd;
 		priv->mtu = ETHER_MTU;
 		priv->mps = mps; /* Enable MPW by default if supported. */
-		/* Set default values for Enhanced MPW, a.k.a MPWv2. */
-		if (mps == MLX5_MPW_ENHANCED) {
-			priv->mpw_hdr_dseg = 0;
-			priv->txqs_inline = MLX5_EMPW_MIN_TXQS;
-			priv->inline_max_packet_sz = MLX5_EMPW_MAX_INLINE_LEN;
-			priv->txq_inline = MLX5_WQE_SIZE_MAX - MLX5_WQE_SIZE;
-		}
 		priv->cqe_comp = 1; /* Enable compression by default. */
 		priv->tunnel_en = tunnel_en;
 		err = mlx5_args(&args, pci_dev->device.devargs);
@@ -689,6 +682,17 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		INFO("%sMPS is %s",
 		     priv->mps == MLX5_MPW_ENHANCED ? "Enhanced " : "",
 		     priv->mps != MLX5_MPW_DISABLED ? "enabled" : "disabled");
+		/* Set default values for Enhanced MPW, a.k.a MPWv2. */
+		if (priv->mps == MLX5_MPW_ENHANCED) {
+			if (args.txqs_inline == MLX5_ARG_UNSET)
+				priv->txqs_inline = MLX5_EMPW_MIN_TXQS;
+			if (args.inline_max_packet_sz == MLX5_ARG_UNSET)
+				priv->inline_max_packet_sz =
+					MLX5_EMPW_MAX_INLINE_LEN;
+			if (args.txq_inline == MLX5_ARG_UNSET)
+				priv->txq_inline = MLX5_WQE_SIZE_MAX -
+						   MLX5_WQE_SIZE;
+		}
 		/* Allocate and register default RSS hash keys. */
 		priv->rss_conf = rte_calloc(__func__, hash_rxq_init_n,
 					    sizeof((*priv->rss_conf)[0]), 0);
