@@ -324,6 +324,7 @@ eal_log_level_parse(int argc, char **argv)
 	optreset = 1;
 
 	eal_reset_internal_config(&internal_config);
+	rte_log_set_global_level(internal_config.log_level);
 
 	while ((opt = getopt_long(argc, argvopt, eal_short_options,
 				  eal_long_options, &option_index)) != EOF) {
