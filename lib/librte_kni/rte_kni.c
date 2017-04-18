@@ -452,16 +452,16 @@ kni_free_fifo(struct rte_kni_fifo *fifo)
 }
 
 static void
-kni_free_fifo_phy(struct rte_kni_fifo *fifo)
+kni_free_fifo_phy(struct rte_mempool *pktmbuf_pool, struct rte_kni_fifo *fifo)
 {
 	void *mbuf_phys;
 	int ret;
 
+	rte_mempool_free(pktmbuf_pool);
+
+	/* All mbufs alredy freed with rte_mempoll_free, just free the fifo */
 	do {
 		ret = kni_fifo_get(fifo, &mbuf_phys, 1);
-		/*
-		 * TODO: free mbufs
-		 */
 	} while (ret);
 }
 
@@ -470,6 +470,7 @@ rte_kni_release(struct rte_kni *kni)
 {
 	struct rte_kni_device_info dev_info;
 	uint32_t slot_id;
+	uint32_t retry = 5;
 
 	if (!kni || !kni->in_use)
 		return -1;
@@ -481,9 +482,16 @@ rte_kni_release(struct rte_kni *kni)
 	}
 
 	/* mbufs in all fifo should be released, except request/response */
+
+	/* wait until all rxq packets processed by kernel */
+	while (kni_fifo_count(kni->rx_q) && retry--)
+		usleep(1000);
+
+	if (kni_fifo_count(kni->rx_q))
+		RTE_LOG(ERR, KNI, "Fail to free all Rx-q items\n");
+
+	kni_free_fifo_phy(kni->pktmbuf_pool, kni->alloc_q);
 	kni_free_fifo(kni->tx_q);
-	kni_free_fifo_phy(kni->rx_q);
-	kni_free_fifo_phy(kni->alloc_q);
 	kni_free_fifo(kni->free_q);
 
 	slot_id = kni->slot_id;
