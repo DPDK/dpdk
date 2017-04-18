@@ -351,6 +351,9 @@ struct rte_stats_bitrates *bitrate_data;
 /* Forward function declarations */
 static void map_port_queue_stats_mapping_registers(uint8_t pi, struct rte_port *port);
 static void check_all_ports_link_status(uint32_t port_mask);
+static void eth_event_callback(uint8_t port_id,
+			       enum rte_eth_event_type type,
+			       void *param);
 
 /*
  * Check if all the ports are started.
@@ -1347,6 +1350,7 @@ start_port(portid_t pid)
 	queueid_t qi;
 	struct rte_port *port;
 	struct ether_addr mac_addr;
+	enum rte_eth_event_type event_type;
 
 	if (port_id_is_invalid(pid, ENABLED_WARN))
 		return 0;
@@ -1458,6 +1462,21 @@ start_port(portid_t pid)
 				return -1;
 			}
 		}
+
+		for (event_type = RTE_ETH_EVENT_UNKNOWN;
+		     event_type < RTE_ETH_EVENT_MAX;
+		     event_type++) {
+			diag = rte_eth_dev_callback_register(pi,
+							event_type,
+							eth_event_callback,
+							NULL);
+			if (diag) {
+				printf("Failed to setup even callback for event %d\n",
+					event_type);
+				return -1;
+			}
+		}
+
 		/* start port */
 		if (rte_eth_dev_start(pi) < 0) {
 			printf("Fail to start port %d\n", pi);
@@ -1727,6 +1746,34 @@ check_all_ports_link_status(uint32_t port_mask)
 		if (all_ports_up == 1 || count == (MAX_CHECK_TIME - 1)) {
 			print_flag = 1;
 		}
+	}
+}
+
+/* This function is used by the interrupt thread */
+static void
+eth_event_callback(uint8_t port_id, enum rte_eth_event_type type, void *param)
+{
+	static const char * const event_desc[] = {
+		[RTE_ETH_EVENT_UNKNOWN] = "Unknown",
+		[RTE_ETH_EVENT_INTR_LSC] = "LSC",
+		[RTE_ETH_EVENT_QUEUE_STATE] = "Queue state",
+		[RTE_ETH_EVENT_INTR_RESET] = "Interrupt reset",
+		[RTE_ETH_EVENT_VF_MBOX] = "VF Mbox",
+		[RTE_ETH_EVENT_MACSEC] = "MACsec",
+		[RTE_ETH_EVENT_INTR_RMV] = "device removal",
+		[RTE_ETH_EVENT_MAX] = NULL,
+	};
+
+	RTE_SET_USED(param);
+
+	if (type >= RTE_ETH_EVENT_MAX) {
+		fprintf(stderr, "\nPort %" PRIu8 ": %s called upon invalid event %d\n",
+			port_id, __func__, type);
+		fflush(stderr);
+	} else {
+		printf("\nPort %" PRIu8 ": %s event\n", port_id,
+			event_desc[type]);
+		fflush(stdout);
 	}
 }
 
