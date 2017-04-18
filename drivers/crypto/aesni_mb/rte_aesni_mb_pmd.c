@@ -672,23 +672,17 @@ aesni_mb_pmd_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
 static int cryptodev_aesni_mb_remove(struct rte_vdev_device *vdev);
 
 static int
-cryptodev_aesni_mb_create(struct rte_vdev_device *vdev,
-			  struct rte_crypto_vdev_init_params *init_params)
+cryptodev_aesni_mb_create(const char *name,
+			struct rte_vdev_device *vdev,
+			struct rte_crypto_vdev_init_params *init_params)
 {
 	struct rte_cryptodev *dev;
 	struct aesni_mb_private *internals;
 	enum aesni_mb_vector_mode vector_mode;
 
-	if (init_params->name[0] == '\0') {
-		int ret = rte_cryptodev_pmd_create_dev_name(
-				init_params->name,
-				RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD));
-
-		if (ret < 0) {
-			MB_LOG_ERR("failed to create unique name");
-			return ret;
-		}
-	}
+	if (init_params->name[0] == '\0')
+		snprintf(init_params->name, sizeof(init_params->name),
+				"%s", name);
 
 	/* Check CPU for supported vector instruction set */
 	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX512F))
@@ -783,7 +777,7 @@ cryptodev_aesni_mb_probe(struct rte_vdev_device *vdev)
 	RTE_LOG(INFO, PMD, "  Max number of sessions = %d\n",
 			init_params.max_nb_sessions);
 
-	return cryptodev_aesni_mb_create(vdev, &init_params);
+	return cryptodev_aesni_mb_create(name, vdev, &init_params);
 }
 
 static int

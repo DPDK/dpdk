@@ -773,12 +773,12 @@ armv8_crypto_pmd_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
 
 /** Create ARMv8 crypto device */
 static int
-cryptodev_armv8_crypto_create(struct rte_vdev_device *vdev,
-			      struct rte_crypto_vdev_init_params *init_params)
+cryptodev_armv8_crypto_create(const char *name,
+			struct rte_vdev_device *vdev,
+			struct rte_crypto_vdev_init_params *init_params)
 {
 	struct rte_cryptodev *dev;
 	struct armv8_crypto_private *internals;
-	int ret;
 
 	/* Check CPU for support for AES instruction set */
 	if (!rte_cpu_get_flag_enabled(RTE_CPUFLAG_AES)) {
@@ -802,16 +802,9 @@ cryptodev_armv8_crypto_create(struct rte_vdev_device *vdev,
 		return -EFAULT;
 	}
 
-	if (init_params->name[0] == '\0') {
-		ret = rte_cryptodev_pmd_create_dev_name(
-				init_params->name,
-				RTE_STR(CRYPTODEV_NAME_ARMV8_PMD));
-
-		if (ret < 0) {
-			ARMV8_CRYPTO_LOG_ERR("failed to create unique name");
-			return ret;
-		}
-	}
+	if (init_params->name[0] == '\0')
+		snprintf(init_params->name, sizeof(init_params->name),
+				"%s", name);
 
 	dev = rte_cryptodev_pmd_virtual_dev_init(init_params->name,
 				sizeof(struct armv8_crypto_private),
@@ -880,7 +873,7 @@ cryptodev_armv8_crypto_init(struct rte_vdev_device *vdev)
 	RTE_LOG(INFO, PMD, "  Max number of sessions = %d\n",
 			init_params.max_nb_sessions);
 
-	return cryptodev_armv8_crypto_create(vdev, &init_params);
+	return cryptodev_armv8_crypto_create(name, vdev, &init_params);
 }
 
 /** Uninitialise ARMv8 crypto device */

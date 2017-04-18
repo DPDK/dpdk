@@ -1264,22 +1264,16 @@ openssl_pmd_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
 
 /** Create OPENSSL crypto device */
 static int
-cryptodev_openssl_create(struct rte_vdev_device *vdev,
-			 struct rte_crypto_vdev_init_params *init_params)
+cryptodev_openssl_create(const char *name,
+			struct rte_vdev_device *vdev,
+			struct rte_crypto_vdev_init_params *init_params)
 {
 	struct rte_cryptodev *dev;
 	struct openssl_private *internals;
 
-	if (init_params->name[0] == '\0') {
-		int ret = rte_cryptodev_pmd_create_dev_name(
-				init_params->name,
-				RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD));
-
-		if (ret < 0) {
-			OPENSSL_LOG_ERR("failed to create unique name");
-			return ret;
-		}
-	}
+	if (init_params->name[0] == '\0')
+		snprintf(init_params->name, sizeof(init_params->name),
+				"%s", name);
 
 	dev = rte_cryptodev_pmd_virtual_dev_init(init_params->name,
 			sizeof(struct openssl_private),
@@ -1347,7 +1341,7 @@ cryptodev_openssl_probe(struct rte_vdev_device *vdev)
 	RTE_LOG(INFO, PMD, "  Max number of sessions = %d\n",
 			init_params.max_nb_sessions);
 
-	return cryptodev_openssl_create(vdev, &init_params);
+	return cryptodev_openssl_create(name, vdev, &init_params);
 }
 
 /** Uninitialise OPENSSL crypto device */

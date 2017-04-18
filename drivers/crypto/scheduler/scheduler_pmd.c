@@ -91,27 +91,17 @@ static int
 cryptodev_scheduler_create(const char *name,
 	struct scheduler_init_params *init_params)
 {
-	char crypto_dev_name[RTE_CRYPTODEV_NAME_MAX_LEN] = {0};
 	struct rte_cryptodev *dev;
 	struct scheduler_ctx *sched_ctx;
 	uint32_t i;
 	int ret;
 
-	if (init_params->def_p.name[0] == '\0') {
-		ret = rte_cryptodev_pmd_create_dev_name(
-				crypto_dev_name,
-				RTE_STR(CRYPTODEV_NAME_SCHEDULER_PMD));
+	if (init_params->def_p.name[0] == '\0')
+		snprintf(init_params->def_p.name,
+				sizeof(init_params->def_p.name),
+				"%s", name);
 
-		if (ret < 0) {
-			CS_LOG_ERR("failed to create unique name");
-			return ret;
-		}
-	} else {
-		strncpy(crypto_dev_name, init_params->def_p.name,
-				RTE_CRYPTODEV_NAME_MAX_LEN - 1);
-	}
-
-	dev = rte_cryptodev_pmd_virtual_dev_init(crypto_dev_name,
+	dev = rte_cryptodev_pmd_virtual_dev_init(init_params->def_p.name,
 			sizeof(struct scheduler_ctx),
 			init_params->def_p.socket_id);
 	if (dev == NULL) {
@@ -434,8 +424,8 @@ cryptodev_scheduler_probe(struct rte_vdev_device *vdev)
 		RTE_LOG(INFO, PMD, "  User defined name = %s\n",
 			init_params.def_p.name);
 
-	return cryptodev_scheduler_create(rte_vdev_device_name(vdev),
-					  &init_params);
+	return cryptodev_scheduler_create(name,
+					&init_params);
 }
 
 static struct rte_vdev_driver cryptodev_scheduler_pmd_drv = {

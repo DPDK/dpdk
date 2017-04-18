@@ -542,23 +542,17 @@ snow3g_pmd_dequeue_burst(void *queue_pair,
 static int cryptodev_snow3g_remove(struct rte_vdev_device *vdev);
 
 static int
-cryptodev_snow3g_create(struct rte_vdev_device *vdev,
+cryptodev_snow3g_create(const char *name,
+			struct rte_vdev_device *vdev,
 			struct rte_crypto_vdev_init_params *init_params)
 {
 	struct rte_cryptodev *dev;
 	struct snow3g_private *internals;
 	uint64_t cpu_flags = 0;
 
-	if (init_params->name[0] == '\0') {
-		int ret = rte_cryptodev_pmd_create_dev_name(
-				init_params->name,
-				RTE_STR(CRYPTODEV_NAME_SNOW3G_PMD));
-
-		if (ret < 0) {
-			SNOW3G_LOG_ERR("failed to create unique name");
-			return ret;
-		}
-	}
+	if (init_params->name[0] == '\0')
+		snprintf(init_params->name, sizeof(init_params->name),
+				"%s", name);
 
 	/* Check CPU for supported vector instruction set */
 	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_SSE4_1))
@@ -629,7 +623,7 @@ cryptodev_snow3g_probe(struct rte_vdev_device *vdev)
 	RTE_LOG(INFO, PMD, "  Max number of sessions = %d\n",
 			init_params.max_nb_sessions);
 
-	return cryptodev_snow3g_create(vdev, &init_params);
+	return cryptodev_snow3g_create(name, vdev, &init_params);
 }
 
 static int
