@@ -837,8 +837,7 @@ sfc_flow_parse_pattern(const struct rte_flow_item pattern[],
 		return -rte_errno;
 	}
 
-	for (; pattern != NULL &&
-	       pattern->type != RTE_FLOW_ITEM_TYPE_END; pattern++) {
+	for (; pattern->type != RTE_FLOW_ITEM_TYPE_END; pattern++) {
 		item = sfc_flow_get_item(pattern->type);
 		if (item == NULL) {
 			rte_flow_error_set(error, ENOTSUP,
@@ -866,13 +865,6 @@ sfc_flow_parse_pattern(const struct rte_flow_item pattern[],
 
 		if (item->layer != SFC_FLOW_ITEM_ANY_LAYER)
 			prev_layer = item->layer;
-	}
-
-	if (pattern == NULL) {
-		rte_flow_error_set(error, EINVAL,
-				   RTE_FLOW_ERROR_TYPE_ITEM, NULL,
-				   "NULL item");
-		return -rte_errno;
 	}
 
 	return 0;
