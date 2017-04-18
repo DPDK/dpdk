@@ -21,7 +21,7 @@ Descriptions of section entries:
 
 General Project Administration
 ------------------------------
-M: Thomas Monjalon <thomas.monjalon@6wind.com>
+M: Thomas Monjalon <thomas@monjalon.net>
 T: git://dpdk.org/dpdk
 F: MAINTAINERS
 F: devtools/check-maintainers.sh
@@ -50,7 +50,7 @@ F: doc/
 
 Build System
 ------------
-M: Thomas Monjalon <thomas.monjalon@6wind.com>
+M: Thomas Monjalon <thomas@monjalon.net>
 F: GNUmakefile
 F: Makefile
 F: config/
@@ -231,7 +231,7 @@ F: doc/guides/prog_guide/mbuf_lib.rst
 F: test/test/test_mbuf.c
 
 Ethernet API
-M: Thomas Monjalon <thomas.monjalon@6wind.com>
+M: Thomas Monjalon <thomas@monjalon.net>
 F: lib/librte_ether/
 F: devtools/test-null.sh
 
