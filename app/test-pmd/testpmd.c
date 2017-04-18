@@ -59,6 +59,7 @@
 #include <rte_memzone.h>
 #include <rte_launch.h>
 #include <rte_eal.h>
+#include <rte_alarm.h>
 #include <rte_per_lcore.h>
 #include <rte_lcore.h>
 #include <rte_atomic.h>
@@ -274,6 +275,11 @@ uint8_t no_link_check = 0; /* check by default */
  * Enable link status change notification
  */
 uint8_t lsc_interrupt = 1; /* enabled by default */
+
+/*
+ * Enable device removal notification.
+ */
+uint8_t rmv_interrupt = 1; /* enabled by default */
 
 /*
  * NIC bypass mode configuration options.
@@ -1757,6 +1763,29 @@ check_all_ports_link_status(uint32_t port_mask)
 	}
 }
 
+static void
+rmv_event_callback(void *arg)
+{
+	struct rte_eth_dev *dev;
+	struct rte_devargs *da;
+	char name[32] = "";
+	uint8_t port_id = (intptr_t)arg;
+
+	RTE_ETH_VALID_PORTID_OR_RET(port_id);
+	dev = &rte_eth_devices[port_id];
+	da = dev->device->devargs;
+
+	stop_port(port_id);
+	close_port(port_id);
+	if (da->type == RTE_DEVTYPE_VIRTUAL)
+		snprintf(name, sizeof(name), "%s", da->virt.drv_name);
+	else if (da->type == RTE_DEVTYPE_WHITELISTED_PCI)
+		rte_eal_pci_device_name(&da->pci.addr, name, sizeof(name));
+	printf("removing device %s\n", name);
+	rte_eal_dev_detach(name);
+	dev->state = RTE_ETH_DEV_UNUSED;
+}
+
 /* This function is used by the interrupt thread */
 static void
 eth_event_callback(uint8_t port_id, enum rte_eth_event_type type, void *param)
@@ -1782,6 +1811,16 @@ eth_event_callback(uint8_t port_id, enum rte_eth_event_type type, void *param)
 		printf("\nPort %" PRIu8 ": %s event\n", port_id,
 			event_desc[type]);
 		fflush(stdout);
+	}
+
+	switch (type) {
+	case RTE_ETH_EVENT_INTR_RMV:
+		if (rte_eal_alarm_set(100000,
+				rmv_event_callback, (void *)(intptr_t)port_id))
+			fprintf(stderr, "Could not set up deferred device removal\n");
+		break;
+	default:
+		break;
 	}
 }
 
@@ -1942,6 +1981,10 @@ init_port_config(void)
 		    (rte_eth_devices[pid].data->dev_flags &
 		     RTE_ETH_DEV_INTR_LSC))
 			port->dev_conf.intr_conf.lsc = 1;
+		if (rmv_interrupt &&
+		    (rte_eth_devices[pid].data->dev_flags &
+		     RTE_ETH_DEV_INTR_RMV))
+			port->dev_conf.intr_conf.rmv = 1;
 	}
 }
 

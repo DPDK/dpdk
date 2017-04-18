@@ -201,6 +201,7 @@ usage(char* progname)
 	printf("  --disable-link-check: disable check on link status when "
 	       "starting/stopping ports.\n");
 	printf("  --no-lsc-interrupt: disable link status change interrupt.\n");
+	printf("  --no-rmv-interrupt: disable device removal interrupt.");
 }
 
 #ifdef RTE_LIBRTE_CMDLINE
@@ -570,6 +571,7 @@ launch_args_parse(int argc, char** argv)
 		{ "txpkts",			1, 0, 0 },
 		{ "disable-link-check",		0, 0, 0 },
 		{ "no-lsc-interrupt",		0, 0, 0 },
+		{ "no-rmv-interrupt",		0, 0, 0 },
 		{ 0, 0, 0, 0 },
 	};
 
@@ -1002,6 +1004,8 @@ launch_args_parse(int argc, char** argv)
 				no_link_check = 1;
 			if (!strcmp(lgopts[opt_idx].name, "no-lsc-interrupt"))
 				lsc_interrupt = 0;
+			if (!strcmp(lgopts[opt_idx].name, "no-rmv-interrupt"))
+				rmv_interrupt = 0;
 
 			break;
 		case 'h':
