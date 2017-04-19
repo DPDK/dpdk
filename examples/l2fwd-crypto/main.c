@@ -1705,7 +1705,6 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 				continue;
 			}
 
-			options->block_size = cap->sym.auth.block_size;
 			/*
 			 * Check if length of provided AAD is supported
 			 * by the algorithm chosen.
