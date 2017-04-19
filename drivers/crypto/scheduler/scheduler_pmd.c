@@ -171,6 +171,20 @@ cryptodev_scheduler_create(const char *name,
 		sched_ctx->nb_init_slaves++;
 	}
 
+	/*
+	 * Initialize capabilities structure as an empty structure,
+	 * in case device information is requested when no slaves are attached
+	 */
+	sched_ctx->capabilities = rte_zmalloc_socket(NULL,
+			sizeof(struct rte_cryptodev_capabilities),
+			0, SOCKET_ID_ANY);
+
+	if (!sched_ctx->capabilities) {
+		RTE_LOG(ERR, PMD, "Not enough memory for capability "
+				"information\n");
+		return -ENOMEM;
+	}
+
 	return 0;
 }
 
