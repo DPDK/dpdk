@@ -673,7 +673,6 @@ eth_dev_xenvirt_create(const char *name, const char *params,
 	eth_dev->data->dev_flags = RTE_ETH_DEV_DETACHABLE;
 	eth_dev->data->kdrv = RTE_KDRV_NONE;
 	eth_dev->data->drv_name = pmd_xenvirt_drv.driver.name;
-	eth_dev->driver = NULL;
 	eth_dev->data->numa_node = numa_node;
 
 	eth_dev->rx_pkt_burst = eth_xenvirt_rx;
