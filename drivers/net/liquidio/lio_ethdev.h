@@ -52,7 +52,8 @@ struct lio_dev_ctrl_cmd {
 
 enum lio_bus_speed {
 	LIO_LINK_SPEED_UNKNOWN  = 0,
-	LIO_LINK_SPEED_10000    = 10000
+	LIO_LINK_SPEED_10000    = 10000,
+	LIO_LINK_SPEED_25000    = 25000
 };
 
 struct octeon_if_cfg_info {

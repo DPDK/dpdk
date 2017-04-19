@@ -937,6 +937,9 @@ lio_dev_link_update(struct rte_eth_dev *eth_dev,
 	case LIO_LINK_SPEED_10000:
 		link.link_speed = ETH_SPEED_NUM_10G;
 		break;
+	case LIO_LINK_SPEED_25000:
+		link.link_speed = ETH_SPEED_NUM_25G;
+		break;
 	default:
 		link.link_speed = ETH_SPEED_NUM_NONE;
 		link.link_duplex = ETH_LINK_HALF_DUPLEX;
