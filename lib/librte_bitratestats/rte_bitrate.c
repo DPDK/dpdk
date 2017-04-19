@@ -118,6 +118,11 @@ rte_stats_bitrate_calc(struct rte_stats_bitrates *bitrate_data,
 	else
 		delta = (delta * alpha_percent - 50) / 100;
 	port_data->ewma_ibits += delta;
+	/* Integer roundoff prevents EWMA between 0 and (100/alpha_percent)
+	 * ever reaching zero in no-traffic conditions
+	 */
+	if (cnt_bits == 0 && delta == 0)
+		port_data->ewma_ibits = 0;
 	port_data->mean_ibits = cnt_bits;
 
 	/* Outgoing bitrate (also EWMA) */
@@ -132,6 +137,8 @@ rte_stats_bitrate_calc(struct rte_stats_bitrates *bitrate_data,
 	else
 		delta = (delta * alpha_percent - 50) / 100;
 	port_data->ewma_obits += delta;
+	if (cnt_bits == 0 && delta == 0)
+		port_data->ewma_obits = 0;
 	port_data->mean_obits = cnt_bits;
 
 	values[0] = port_data->ewma_ibits;
