@@ -132,7 +132,7 @@ scheduler_order_drain(struct rte_ring *order_ring,
 	struct rte_crypto_op *op;
 	uint32_t nb_objs = rte_ring_count(order_ring);
 	uint32_t nb_ops_to_deq = 0;
-	int status = -1;
+	uint32_t nb_ops_deqd = 0;
 
 	if (nb_objs > nb_ops)
 		nb_objs = nb_ops;
@@ -145,10 +145,10 @@ scheduler_order_drain(struct rte_ring *order_ring,
 	}
 
 	if (nb_ops_to_deq)
-		status = rte_ring_sc_dequeue_bulk(order_ring, (void **)ops,
-				nb_ops_to_deq, NULL);
+		nb_ops_deqd = rte_ring_sc_dequeue_bulk(order_ring,
+				(void **)ops, nb_ops_to_deq, NULL);
 
-	return (status == 0) ? nb_ops_to_deq : 0;
+	return nb_ops_deqd;
 }
 /** device specific operations function pointer structure */
 extern struct rte_cryptodev_ops *rte_crypto_scheduler_pmd_ops;
