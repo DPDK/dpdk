@@ -66,37 +66,37 @@ struct rte_logs {
 /** Global log informations */
 extern struct rte_logs rte_logs;
 
-/* SDK log type, keep sync'd with rte_log_init() */
-#define RTE_LOGTYPE_EAL     0x00000001 /**< Log related to eal. */
-#define RTE_LOGTYPE_MALLOC  0x00000002 /**< Log related to malloc. */
-#define RTE_LOGTYPE_RING    0x00000004 /**< Log related to ring. */
-#define RTE_LOGTYPE_MEMPOOL 0x00000008 /**< Log related to mempool. */
-#define RTE_LOGTYPE_TIMER   0x00000010 /**< Log related to timers. */
-#define RTE_LOGTYPE_PMD     0x00000020 /**< Log related to poll mode driver. */
-#define RTE_LOGTYPE_HASH    0x00000040 /**< Log related to hash table. */
-#define RTE_LOGTYPE_LPM     0x00000080 /**< Log related to LPM. */
-#define RTE_LOGTYPE_KNI     0x00000100 /**< Log related to KNI. */
-#define RTE_LOGTYPE_ACL     0x00000200 /**< Log related to ACL. */
-#define RTE_LOGTYPE_POWER   0x00000400 /**< Log related to power. */
-#define RTE_LOGTYPE_METER   0x00000800 /**< Log related to QoS meter. */
-#define RTE_LOGTYPE_SCHED   0x00001000 /**< Log related to QoS port scheduler. */
-#define RTE_LOGTYPE_PORT    0x00002000 /**< Log related to port. */
-#define RTE_LOGTYPE_TABLE   0x00004000 /**< Log related to table. */
-#define RTE_LOGTYPE_PIPELINE 0x00008000 /**< Log related to pipeline. */
-#define RTE_LOGTYPE_MBUF    0x00010000 /**< Log related to mbuf. */
-#define RTE_LOGTYPE_CRYPTODEV 0x00020000 /**< Log related to cryptodev. */
-#define RTE_LOGTYPE_EFD     0x00040000 /**< Log related to EFD. */
-#define RTE_LOGTYPE_EVENTDEV 0x00080000 /**< Log related to eventdev. */
+/* SDK log type */
+#define RTE_LOGTYPE_EAL        0 /**< Log related to eal. */
+#define RTE_LOGTYPE_MALLOC     1 /**< Log related to malloc. */
+#define RTE_LOGTYPE_RING       2 /**< Log related to ring. */
+#define RTE_LOGTYPE_MEMPOOL    3 /**< Log related to mempool. */
+#define RTE_LOGTYPE_TIMER      4 /**< Log related to timers. */
+#define RTE_LOGTYPE_PMD        5 /**< Log related to poll mode driver. */
+#define RTE_LOGTYPE_HASH       6 /**< Log related to hash table. */
+#define RTE_LOGTYPE_LPM        7 /**< Log related to LPM. */
+#define RTE_LOGTYPE_KNI        8 /**< Log related to KNI. */
+#define RTE_LOGTYPE_ACL        9 /**< Log related to ACL. */
+#define RTE_LOGTYPE_POWER     10 /**< Log related to power. */
+#define RTE_LOGTYPE_METER     11 /**< Log related to QoS meter. */
+#define RTE_LOGTYPE_SCHED     12 /**< Log related to QoS port scheduler. */
+#define RTE_LOGTYPE_PORT      13 /**< Log related to port. */
+#define RTE_LOGTYPE_TABLE     14 /**< Log related to table. */
+#define RTE_LOGTYPE_PIPELINE  15 /**< Log related to pipeline. */
+#define RTE_LOGTYPE_MBUF      16 /**< Log related to mbuf. */
+#define RTE_LOGTYPE_CRYPTODEV 17 /**< Log related to cryptodev. */
+#define RTE_LOGTYPE_EFD       18 /**< Log related to EFD. */
+#define RTE_LOGTYPE_EVENTDEV  19 /**< Log related to eventdev. */
 
 /* these log types can be used in an application */
-#define RTE_LOGTYPE_USER1   0x01000000 /**< User-defined log type 1. */
-#define RTE_LOGTYPE_USER2   0x02000000 /**< User-defined log type 2. */
-#define RTE_LOGTYPE_USER3   0x04000000 /**< User-defined log type 3. */
-#define RTE_LOGTYPE_USER4   0x08000000 /**< User-defined log type 4. */
-#define RTE_LOGTYPE_USER5   0x10000000 /**< User-defined log type 5. */
-#define RTE_LOGTYPE_USER6   0x20000000 /**< User-defined log type 6. */
-#define RTE_LOGTYPE_USER7   0x40000000 /**< User-defined log type 7. */
-#define RTE_LOGTYPE_USER8   0x80000000 /**< User-defined log type 8. */
+#define RTE_LOGTYPE_USER1     24 /**< User-defined log type 1. */
+#define RTE_LOGTYPE_USER2     25 /**< User-defined log type 2. */
+#define RTE_LOGTYPE_USER3     26 /**< User-defined log type 3. */
+#define RTE_LOGTYPE_USER4     27 /**< User-defined log type 4. */
+#define RTE_LOGTYPE_USER5     28 /**< User-defined log type 5. */
+#define RTE_LOGTYPE_USER6     29 /**< User-defined log type 6. */
+#define RTE_LOGTYPE_USER7     30 /**< User-defined log type 7. */
+#define RTE_LOGTYPE_USER8     31 /**< User-defined log type 8. */
 
 /** First identifier for extended logs */
 #define RTE_LOGTYPE_FIRST_EXT_ID 32

@@ -118,9 +118,9 @@ rte_set_log_type(uint32_t type, int enable)
 {
 	if (type < RTE_LOGTYPE_FIRST_EXT_ID) {
 		if (enable)
-			rte_logs.type |= type;
+			rte_logs.type |= 1 << type;
 		else
-			rte_logs.type &= ~type;
+			rte_logs.type &= ~(1 << type);
 	}
 
 	if (enable)
@@ -240,42 +240,57 @@ rte_log_register(const char *name)
 	return ret;
 }
 
+struct logtype {
+	uint32_t log_id;
+	const char *logtype;
+};
+
+static const struct logtype logtype_strings[] = {
+	{RTE_LOGTYPE_EAL,        "eal"},
+	{RTE_LOGTYPE_MALLOC,     "malloc"},
+	{RTE_LOGTYPE_RING,       "ring"},
+	{RTE_LOGTYPE_MEMPOOL,    "mempool"},
+	{RTE_LOGTYPE_TIMER,      "timer"},
+	{RTE_LOGTYPE_PMD,        "pmd"},
+	{RTE_LOGTYPE_HASH,       "hash"},
+	{RTE_LOGTYPE_LPM,        "lpm"},
+	{RTE_LOGTYPE_KNI,        "kni"},
+	{RTE_LOGTYPE_ACL,        "acl"},
+	{RTE_LOGTYPE_POWER,      "power"},
+	{RTE_LOGTYPE_METER,      "meter"},
+	{RTE_LOGTYPE_SCHED,      "sched"},
+	{RTE_LOGTYPE_PORT,       "port"},
+	{RTE_LOGTYPE_TABLE,      "table"},
+	{RTE_LOGTYPE_PIPELINE,   "pipeline"},
+	{RTE_LOGTYPE_MBUF,       "mbuf"},
+	{RTE_LOGTYPE_CRYPTODEV,  "cryptodev"},
+	{RTE_LOGTYPE_EFD,        "efd"},
+	{RTE_LOGTYPE_EVENTDEV,   "eventdev"},
+	{RTE_LOGTYPE_USER1,      "user1"},
+	{RTE_LOGTYPE_USER2,      "user2"},
+	{RTE_LOGTYPE_USER3,      "user3"},
+	{RTE_LOGTYPE_USER4,      "user4"},
+	{RTE_LOGTYPE_USER5,      "user5"},
+	{RTE_LOGTYPE_USER6,      "user6"},
+	{RTE_LOGTYPE_USER7,      "user7"},
+	{RTE_LOGTYPE_USER8,      "user8"}
+};
+
 RTE_INIT(rte_log_init);
 static void
 rte_log_init(void)
 {
+	uint32_t i;
+
 	rte_logs.dynamic_types = calloc(RTE_LOGTYPE_FIRST_EXT_ID,
 		sizeof(struct rte_log_dynamic_type));
 	if (rte_logs.dynamic_types == NULL)
 		return;
 
-	/* register legacy log types, keep sync'd with RTE_LOGTYPE_* */
-	__rte_log_register("eal", 0);
-	__rte_log_register("malloc", 1);
-	__rte_log_register("ring", 2);
-	__rte_log_register("mempool", 3);
-	__rte_log_register("timer", 4);
-	__rte_log_register("pmd", 5);
-	__rte_log_register("hash", 6);
-	__rte_log_register("lpm", 7);
-	__rte_log_register("kni", 8);
-	__rte_log_register("acl", 9);
-	__rte_log_register("power", 10);
-	__rte_log_register("meter", 11);
-	__rte_log_register("sched", 12);
-	__rte_log_register("port", 13);
-	__rte_log_register("table", 14);
-	__rte_log_register("pipeline", 15);
-	__rte_log_register("mbuf", 16);
-	__rte_log_register("cryptodev", 17);
-	__rte_log_register("user1", 24);
-	__rte_log_register("user2", 25);
-	__rte_log_register("user3", 26);
-	__rte_log_register("user4", 27);
-	__rte_log_register("user5", 28);
-	__rte_log_register("user6", 29);
-	__rte_log_register("user7", 30);
-	__rte_log_register("user8", 31);
+	/* register legacy log types */
+	for (i = 0; i < RTE_DIM(logtype_strings); i++)
+		__rte_log_register(logtype_strings[i].logtype,
+				logtype_strings[i].log_id);
 
 	rte_logs.dynamic_types_len = RTE_LOGTYPE_FIRST_EXT_ID;
 }
