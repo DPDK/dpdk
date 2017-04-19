@@ -74,12 +74,13 @@ virtio_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 {
 	struct virtnet_rx *rxvq = rx_queue;
 	struct virtqueue *vq = rxvq->vq;
+	struct virtio_hw *hw = vq->hw;
 	uint16_t nb_used;
 	uint16_t desc_idx;
 	struct vring_used_elem *rused;
 	struct rte_mbuf **sw_ring;
 	struct rte_mbuf **sw_ring_end;
-	uint16_t nb_pkts_received;
+	uint16_t nb_pkts_received = 0;
 	__m128i shuf_msk1, shuf_msk2, len_adjust;
 
 	shuf_msk1 = _mm_set_epi8(
@@ -108,6 +109,9 @@ virtio_recv_pkts_vec(void *rx_queue, struct rte_mbuf **rx_pkts,
 		(uint16_t)-vq->hw->vtnet_hdr_size,
 		0, (uint16_t)-vq->hw->vtnet_hdr_size,
 		0, 0);
+
+	if (unlikely(hw->started == 0))
+		return nb_pkts_received;
 
 	if (unlikely(nb_pkts < RTE_VIRTIO_DESC_PER_LOOP))
 		return 0;
