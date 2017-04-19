@@ -79,7 +79,7 @@ latex_documents = [
 ]
 
 # Latex directives to be included directly in the latex/pdf docs.
-latex_preamble = r"""
+custom_latex_preamble = r"""
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{helvet}
@@ -95,7 +95,7 @@ latex_elements = {
     'classoptions': ',openany,oneside',
     'babel': '\\usepackage[english]{babel}',
     # customize Latex formatting
-    'preamble': latex_preamble
+    'preamble': custom_latex_preamble
 }
 
 
