@@ -41,8 +41,8 @@ More information can be found at `Cavium Official Website
 Supported LiquidIO Adapters
 -----------------------------
 
-- LiquidIO II CN2350 210SV
-- LiquidIO II CN2360 210SV
+- LiquidIO II CN2350 210SV/225SV
+- LiquidIO II CN2360 210SV/225SV
 
 
 Pre-Installation Configuration
