@@ -876,6 +876,8 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vring_desc *descs,
 					"allocate memory for mbuf.\n");
 				return -1;
 			}
+			if (unlikely(dev->dequeue_zero_copy))
+				rte_mbuf_refcnt_update(cur, 1);
 
 			prev->next = cur;
 			prev->data_len = mbuf_offset;
