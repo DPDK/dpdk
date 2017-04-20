@@ -208,13 +208,13 @@ desc_to_ptype_v(vector unsigned long descs[4], struct rte_mbuf **rx_pkts,
 	ptype1 = vec_sr(ptype1, (vector unsigned long){30, 30});
 
 	rx_pkts[0]->packet_type =
-		ptype_tbl[(*(vector unsigned char *)&ptype0)[0])];
+		ptype_tbl[(*(vector unsigned char *)&ptype0)[0]];
 	rx_pkts[1]->packet_type =
-		ptype_tbl[(*(vector unsigned char *)&ptype0)[8])];
+		ptype_tbl[(*(vector unsigned char *)&ptype0)[8]];
 	rx_pkts[2]->packet_type =
-		ptype_tbl[(*(vector unsigned char *)&ptype1)[0])];
+		ptype_tbl[(*(vector unsigned char *)&ptype1)[0]];
 	rx_pkts[3]->packet_type =
-		ptype_tbl[(*(vector unsigned char *)&ptype1)[8])];
+		ptype_tbl[(*(vector unsigned char *)&ptype1)[8]];
 }
 
  /* Notice:
