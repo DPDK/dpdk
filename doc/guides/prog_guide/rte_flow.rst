@@ -1332,9 +1332,11 @@ supported and can be created.
                      const struct rte_flow_action actions[],
                      struct rte_flow_error *error);
 
-While this function has no effect on the target device, the flow rule is
-validated against its current configuration state and the returned value
-should be considered valid by the caller for that state only.
+The flow rule is validated for correctness and whether it could be accepted
+by the device given sufficient resources. The rule is checked against the
+current device mode and queue configuration. The flow rule may also
+optionally be validated against existing flow rules and device resources.
+This function has no effect on the target device.
 
 The returned value is guaranteed to remain valid only as long as no
 successful calls to ``rte_flow_create()`` or ``rte_flow_destroy()`` are made
@@ -1360,8 +1362,12 @@ Return values:
 - ``-EINVAL``: unknown or invalid rule specification.
 - ``-ENOTSUP``: valid but unsupported rule specification (e.g. partial
   bit-masks are unsupported).
-- ``-EEXIST``: collision with an existing rule.
-- ``-ENOMEM``: not enough resources.
+- ``EEXIST``: collision with an existing rule. Only returned if device
+  supports flow rule collision checking and there was a flow rule
+  collision. Not receiving this return code is no guarantee that creating
+  the rule will not fail due to a collision.
+- ``ENOMEM``: not enough memory to execute the function, or if the device
+  supports resource validation, resource limitation on the device.
 - ``-EBUSY``: action cannot be performed due to busy device resources, may
   succeed if the affected queues or even the entire port are in a stopped
   state (see ``rte_eth_dev_rx_queue_stop()`` and ``rte_eth_dev_stop()``).
