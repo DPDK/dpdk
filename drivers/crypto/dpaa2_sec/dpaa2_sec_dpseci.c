@@ -48,6 +48,8 @@
 #include <fslmc_vfio.h>
 #include <dpaa2_hw_pvt.h>
 #include <dpaa2_hw_dpio.h>
+#include <fsl_dpseci.h>
+#include <fsl_mc_sys.h>
 
 #include "dpaa2_sec_priv.h"
 #include "dpaa2_sec_logs.h"
@@ -56,6 +58,144 @@
 #define FSL_DEVICE_ID           0x410
 #define FSL_SUBSYSTEM_SEC       1
 #define FSL_MC_DPSECI_DEVID     3
+
+static int
+dpaa2_sec_dev_configure(struct rte_cryptodev *dev __rte_unused,
+			struct rte_cryptodev_config *config __rte_unused)
+{
+	PMD_INIT_FUNC_TRACE();
+
+	return -ENOTSUP;
+}
+
+static int
+dpaa2_sec_dev_start(struct rte_cryptodev *dev)
+{
+	struct dpaa2_sec_dev_private *priv = dev->data->dev_private;
+	struct fsl_mc_io *dpseci = (struct fsl_mc_io *)priv->hw;
+	struct dpseci_attr attr;
+	struct dpaa2_queue *dpaa2_q;
+	struct dpaa2_sec_qp **qp = (struct dpaa2_sec_qp **)
+					dev->data->queue_pairs;
+	struct dpseci_rx_queue_attr rx_attr;
+	struct dpseci_tx_queue_attr tx_attr;
+	int ret, i;
+
+	PMD_INIT_FUNC_TRACE();
+
+	memset(&attr, 0, sizeof(struct dpseci_attr));
+
+	ret = dpseci_enable(dpseci, CMD_PRI_LOW, priv->token);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "DPSECI with HW_ID = %d ENABLE FAILED\n",
+			     priv->hw_id);
+		goto get_attr_failure;
+	}
+	ret = dpseci_get_attributes(dpseci, CMD_PRI_LOW, priv->token, &attr);
+	if (ret) {
+		PMD_INIT_LOG(ERR,
+			     "DPSEC ATTRIBUTE READ FAILED, disabling DPSEC\n");
+		goto get_attr_failure;
+	}
+	for (i = 0; i < attr.num_rx_queues && qp[i]; i++) {
+		dpaa2_q = &qp[i]->rx_vq;
+		dpseci_get_rx_queue(dpseci, CMD_PRI_LOW, priv->token, i,
+				    &rx_attr);
+		dpaa2_q->fqid = rx_attr.fqid;
+		PMD_INIT_LOG(DEBUG, "rx_fqid: %d", dpaa2_q->fqid);
+	}
+	for (i = 0; i < attr.num_tx_queues && qp[i]; i++) {
+		dpaa2_q = &qp[i]->tx_vq;
+		dpseci_get_tx_queue(dpseci, CMD_PRI_LOW, priv->token, i,
+				    &tx_attr);
+		dpaa2_q->fqid = tx_attr.fqid;
+		PMD_INIT_LOG(DEBUG, "tx_fqid: %d", dpaa2_q->fqid);
+	}
+
+	return 0;
+get_attr_failure:
+	dpseci_disable(dpseci, CMD_PRI_LOW, priv->token);
+	return -1;
+}
+
+static void
+dpaa2_sec_dev_stop(struct rte_cryptodev *dev)
+{
+	struct dpaa2_sec_dev_private *priv = dev->data->dev_private;
+	struct fsl_mc_io *dpseci = (struct fsl_mc_io *)priv->hw;
+	int ret;
+
+	PMD_INIT_FUNC_TRACE();
+
+	ret = dpseci_disable(dpseci, CMD_PRI_LOW, priv->token);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failure in disabling dpseci %d device",
+			     priv->hw_id);
+		return;
+	}
+
+	ret = dpseci_reset(dpseci, CMD_PRI_LOW, priv->token);
+	if (ret < 0) {
+		PMD_INIT_LOG(ERR, "SEC Device cannot be reset:Error = %0x\n",
+			     ret);
+		return;
+	}
+}
+
+static int
+dpaa2_sec_dev_close(struct rte_cryptodev *dev)
+{
+	struct dpaa2_sec_dev_private *priv = dev->data->dev_private;
+	struct fsl_mc_io *dpseci = (struct fsl_mc_io *)priv->hw;
+	int ret;
+
+	PMD_INIT_FUNC_TRACE();
+
+	/* Function is reverse of dpaa2_sec_dev_init.
+	 * It does the following:
+	 * 1. Detach a DPSECI from attached resources i.e. buffer pools, dpbp_id
+	 * 2. Close the DPSECI device
+	 * 3. Free the allocated resources.
+	 */
+
+	/*Close the device at underlying layer*/
+	ret = dpseci_close(dpseci, CMD_PRI_LOW, priv->token);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Failure closing dpseci device with"
+			     " error code %d\n", ret);
+		return -1;
+	}
+
+	/*Free the allocated memory for ethernet private data and dpseci*/
+	priv->hw = NULL;
+	free(dpseci);
+
+	return 0;
+}
+
+static void
+dpaa2_sec_dev_infos_get(struct rte_cryptodev *dev,
+			struct rte_cryptodev_info *info)
+{
+	struct dpaa2_sec_dev_private *internals = dev->data->dev_private;
+
+	PMD_INIT_FUNC_TRACE();
+	if (info != NULL) {
+		info->max_nb_queue_pairs = internals->max_nb_queue_pairs;
+		info->feature_flags = dev->feature_flags;
+		info->capabilities = dpaa2_sec_capabilities;
+		info->sym.max_nb_sessions = internals->max_nb_sessions;
+		info->dev_type = RTE_CRYPTODEV_DPAA2_SEC_PMD;
+	}
+}
+
+static struct rte_cryptodev_ops crypto_ops = {
+	.dev_configure	      = dpaa2_sec_dev_configure,
+	.dev_start	      = dpaa2_sec_dev_start,
+	.dev_stop	      = dpaa2_sec_dev_stop,
+	.dev_close	      = dpaa2_sec_dev_close,
+	.dev_infos_get        = dpaa2_sec_dev_infos_get,
+};
 
 static int
 dpaa2_sec_uninit(const struct rte_cryptodev_driver *crypto_drv __rte_unused,
@@ -73,6 +213,10 @@ dpaa2_sec_dev_init(struct rte_cryptodev *cryptodev)
 	struct dpaa2_sec_dev_private *internals;
 	struct rte_device *dev = cryptodev->device;
 	struct rte_dpaa2_device *dpaa2_dev;
+	struct fsl_mc_io *dpseci;
+	uint16_t token;
+	struct dpseci_attr attr;
+	int retcode, hw_id;
 
 	PMD_INIT_FUNC_TRACE();
 	dpaa2_dev = container_of(dev, struct rte_dpaa2_device, device);
@@ -80,8 +224,10 @@ dpaa2_sec_dev_init(struct rte_cryptodev *cryptodev)
 		PMD_INIT_LOG(ERR, "dpaa2_device not found\n");
 		return -1;
 	}
+	hw_id = dpaa2_dev->object_id;
 
 	cryptodev->dev_type = RTE_CRYPTODEV_DPAA2_SEC_PMD;
+	cryptodev->dev_ops = &crypto_ops;
 
 	cryptodev->feature_flags = RTE_CRYPTODEV_FF_SYMMETRIC_CRYPTO |
 			RTE_CRYPTODEV_FF_HW_ACCELERATED |
@@ -99,9 +245,44 @@ dpaa2_sec_dev_init(struct rte_cryptodev *cryptodev)
 		PMD_INIT_LOG(DEBUG, "Device already init by primary process");
 		return 0;
 	}
+	/*Open the rte device via MC and save the handle for further use*/
+	dpseci = (struct fsl_mc_io *)rte_calloc(NULL, 1,
+				sizeof(struct fsl_mc_io), 0);
+	if (!dpseci) {
+		PMD_INIT_LOG(ERR,
+			     "Error in allocating the memory for dpsec object");
+		return -1;
+	}
+	dpseci->regs = rte_mcp_ptr_list[0];
+
+	retcode = dpseci_open(dpseci, CMD_PRI_LOW, hw_id, &token);
+	if (retcode != 0) {
+		PMD_INIT_LOG(ERR, "Cannot open the dpsec device: Error = %x",
+			     retcode);
+		goto init_error;
+	}
+	retcode = dpseci_get_attributes(dpseci, CMD_PRI_LOW, token, &attr);
+	if (retcode != 0) {
+		PMD_INIT_LOG(ERR,
+			     "Cannot get dpsec device attributed: Error = %x",
+			     retcode);
+		goto init_error;
+	}
+	sprintf(cryptodev->data->name, "dpsec-%u", hw_id);
+
+	internals->max_nb_queue_pairs = attr.num_tx_queues;
+	cryptodev->data->nb_queue_pairs = internals->max_nb_queue_pairs;
+	internals->hw = dpseci;
+	internals->token = token;
 
 	PMD_INIT_LOG(DEBUG, "driver %s: created\n", cryptodev->data->name);
 	return 0;
+
+init_error:
+	PMD_INIT_LOG(ERR, "driver %s: create failed\n", cryptodev->data->name);
+
+	/* dpaa2_sec_uninit(crypto_dev_name); */
+	return -EFAULT;
 }
 
 static int
