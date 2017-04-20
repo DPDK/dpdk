@@ -4522,6 +4522,7 @@ ixgbe_set_rsc(struct rte_eth_dev *dev)
 	bool rsc_capable = false;
 	uint16_t i;
 	uint32_t rdrxctl;
+	uint32_t rfctl;
 
 	/* Sanity check */
 	dev->dev_ops->dev_infos_get(dev, &dev_info);
@@ -4549,22 +4550,18 @@ ixgbe_set_rsc(struct rte_eth_dev *dev)
 	}
 
 	/* RFCTL configuration  */
-	if (rsc_capable) {
-		uint32_t rfctl = IXGBE_READ_REG(hw, IXGBE_RFCTL);
-
-		if (rx_conf->enable_lro)
-			/*
-			 * Since NFS packets coalescing is not supported - clear
-			 * RFCTL.NFSW_DIS and RFCTL.NFSR_DIS when RSC is
-			 * enabled.
-			 */
-			rfctl &= ~(IXGBE_RFCTL_RSC_DIS | IXGBE_RFCTL_NFSW_DIS |
-				   IXGBE_RFCTL_NFSR_DIS);
-		else
-			rfctl |= IXGBE_RFCTL_RSC_DIS;
-
-		IXGBE_WRITE_REG(hw, IXGBE_RFCTL, rfctl);
-	}
+	rfctl = IXGBE_READ_REG(hw, IXGBE_RFCTL);
+	if ((rsc_capable) && (rx_conf->enable_lro))
+		/*
+		 * Since NFS packets coalescing is not supported - clear
+		 * RFCTL.NFSW_DIS and RFCTL.NFSR_DIS when RSC is
+		 * enabled.
+		 */
+		rfctl &= ~(IXGBE_RFCTL_RSC_DIS | IXGBE_RFCTL_NFSW_DIS |
+			   IXGBE_RFCTL_NFSR_DIS);
+	else
+		rfctl |= IXGBE_RFCTL_RSC_DIS;
+	IXGBE_WRITE_REG(hw, IXGBE_RFCTL, rfctl);
 
 	/* If LRO hasn't been requested - we are done here. */
 	if (!rx_conf->enable_lro)
