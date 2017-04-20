@@ -262,6 +262,12 @@ New Features
   A library that measures packet latency. The collected statistics are jitter
   and latency. For latency the minimum, average, and maximum is measured.
 
+* **Added NXP DPAA2 SEC crypto PMD.**
+
+  A new "dpaa2_sec" hardware based crypto PMD for NXP DPAA2 devices has been
+  added. See the "Crypto Device Drivers" document for more details on this
+  driver.
+
 * **Updated the Cryptodev Scheduler PMD.**
 
   * Added packet-size based distribution mode, which distributes the enqueued

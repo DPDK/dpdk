@@ -49,6 +49,8 @@ Contents summary
 - Overview of DPAA2 objects
 - DPAA2 driver architecture overview
 
+.. _dpaa2_overview:
+
 DPAA2 Overview
 ~~~~~~~~~~~~~~
 
