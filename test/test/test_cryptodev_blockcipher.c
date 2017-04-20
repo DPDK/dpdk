@@ -663,6 +663,9 @@ test_blockcipher_all_tests(struct rte_mempool *mbuf_pool,
 	case RTE_CRYPTODEV_SCHEDULER_PMD:
 		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_SCHEDULER;
 		break;
+	case RTE_CRYPTODEV_DPAA2_SEC_PMD:
+		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_DPAA2_SEC;
+		break;
 	default:
 		TEST_ASSERT(0, "Unrecognized cryptodev type");
 		break;
