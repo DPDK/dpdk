@@ -13,7 +13,7 @@
 #       notice, this list of conditions and the following disclaimer in
 #       the documentation and/or other materials provided with the
 #       distribution.
-#     * Neither the name of Freescale Semiconductor nor the names of its
+#     * Neither the name of Freescale Semiconductor, Inc nor the names of its
 #       contributors may be used to endorse or promote products derived
 #       from this software without specific prior written permission.
 #
@@ -28,54 +28,49 @@
 #   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 #   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#
 
-#include "defconfig_arm64-armv8a-linuxapp-gcc"
-
-# NXP (Freescale) - Soc Architecture with WRIOP and QBMAN support
-CONFIG_RTE_MACHINE="dpaa2"
-CONFIG_RTE_ARCH_ARM_TUNE="cortex-a57+fp+simd"
+include $(RTE_SDK)/mk/rte.vars.mk
 
 #
-# Compile Environment Abstraction Layer
+# library name
 #
-CONFIG_RTE_MAX_LCORE=8
-CONFIG_RTE_MAX_NUMA_NODES=1
+LIB = librte_pmd_dpaa2_sec.a
 
-CONFIG_RTE_PKTMBUF_HEADROOM=256
+# build flags
+ifeq ($(CONFIG_RTE_LIBRTE_DPAA2_SEC_DEBUG_INIT),y)
+CFLAGS += -O0 -g
+CFLAGS += "-Wno-error"
+else
+CFLAGS += -O3
+CFLAGS += $(WERROR_FLAGS)
+endif
+CFLAGS += -D _GNU_SOURCE
 
-#
-# Compile Support Libraries for DPAA2
-#
-CONFIG_RTE_LIBRTE_DPAA2_MEMPOOL=y
-CONFIG_RTE_MBUF_DEFAULT_MEMPOOL_OPS="dpaa2"
-CONFIG_RTE_LIBRTE_DPAA2_USE_PHYS_IOVA=y
+CFLAGS += -I$(RTE_SDK)/drivers/crypto/dpaa2_sec/
+CFLAGS += -I$(RTE_SDK)/drivers/bus/fslmc/
+CFLAGS += -I$(RTE_SDK)/drivers/bus/fslmc/qbman/include
+CFLAGS += -I$(RTE_SDK)/drivers/bus/fslmc/mc
+CFLAGS += -I$(RTE_SDK)/drivers/bus/fslmc/portal
+CFLAGS += -I$(RTE_SDK)/drivers/mempool/dpaa2/
+CFLAGS += -I$(RTE_SDK)/lib/librte_eal/linuxapp/eal
 
-#
-# Compile NXP DPAA2 FSL-MC Bus
-#
-CONFIG_RTE_LIBRTE_FSLMC_BUS=y
+# versioning export map
+EXPORT_MAP := rte_pmd_dpaa2_sec_version.map
 
-#
-# Compile burst-oriented NXP DPAA2 PMD driver
-#
-CONFIG_RTE_LIBRTE_DPAA2_PMD=y
-CONFIG_RTE_LIBRTE_DPAA2_DEBUG_INIT=n
-CONFIG_RTE_LIBRTE_DPAA2_DEBUG_DRIVER=n
-CONFIG_RTE_LIBRTE_DPAA2_DEBUG_RX=n
-CONFIG_RTE_LIBRTE_DPAA2_DEBUG_TX=n
-CONFIG_RTE_LIBRTE_DPAA2_DEBUG_TX_FREE=n
+# library version
+LIBABIVER := 1
 
-#
-# Compile NXP DPAA2 crypto sec driver for CAAM HW
-#
-CONFIG_RTE_LIBRTE_PMD_DPAA2_SEC=y
-CONFIG_RTE_LIBRTE_DPAA2_SEC_DEBUG_INIT=n
-CONFIG_RTE_LIBRTE_DPAA2_SEC_DEBUG_DRIVER=n
-CONFIG_RTE_LIBRTE_DPAA2_SEC_DEBUG_RX=n
+# library source files
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_DPAA2_SEC) += dpaa2_sec_dpseci.c
 
-#
-# Number of sessions to create in the session memory pool
-# on a single DPAA2 SEC device.
-#
-CONFIG_RTE_DPAA2_SEC_PMD_MAX_NB_SESSIONS=2048
+# library dependencies
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_DPAA2_SEC) += lib/librte_eal
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_DPAA2_SEC) += lib/librte_mempool lib/librte_mbuf
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_DPAA2_SEC) += lib/librte_cryptodev
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_DPAA2_SEC) += drivers/bus/fslmc
+DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_DPAA2_SEC) += drivers/mempool/dpaa2
+
+LDLIBS += -lrte_bus_fslmc
+LDLIBS += -lrte_mempool_dpaa2
+
+include $(RTE_SDK)/mk/rte.lib.mk
