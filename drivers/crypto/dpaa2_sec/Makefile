@@ -47,6 +47,7 @@ endif
 CFLAGS += -D _GNU_SOURCE
 
 CFLAGS += -I$(RTE_SDK)/drivers/crypto/dpaa2_sec/
+CFLAGS += -I$(RTE_SDK)/drivers/crypto/dpaa2_sec/mc
 CFLAGS += -I$(RTE_SDK)/drivers/bus/fslmc/
 CFLAGS += -I$(RTE_SDK)/drivers/bus/fslmc/qbman/include
 CFLAGS += -I$(RTE_SDK)/drivers/bus/fslmc/mc
@@ -62,6 +63,7 @@ LIBABIVER := 1
 
 # library source files
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_DPAA2_SEC) += dpaa2_sec_dpseci.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_DPAA2_SEC) += mc/dpseci.c
 
 # library dependencies
 DEPDIRS-$(CONFIG_RTE_LIBRTE_PMD_DPAA2_SEC) += lib/librte_eal
