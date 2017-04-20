@@ -325,7 +325,9 @@ static int
 igbuio_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 {
 	struct rte_uio_pci_dev *udev;
+#ifdef HAVE_PCI_ENABLE_MSIX
 	struct msix_entry msix_entry;
+#endif
 	dma_addr_t map_dma_addr;
 	void *map_addr;
 	int err;
@@ -381,6 +383,7 @@ igbuio_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 	switch (igbuio_intr_mode_preferred) {
 	case RTE_INTR_MODE_MSIX:
 		/* Only 1 msi-x vector needed */
+#ifdef HAVE_PCI_ENABLE_MSIX
 		msix_entry.entry = 0;
 		if (pci_enable_msix(dev, &msix_entry, 1) == 0) {
 			dev_dbg(&dev->dev, "using MSI-X");
@@ -389,6 +392,14 @@ igbuio_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 			udev->mode = RTE_INTR_MODE_MSIX;
 			break;
 		}
+#else
+		if (pci_alloc_irq_vectors(dev, 1, 1, PCI_IRQ_MSIX) == 1) {
+			dev_dbg(&dev->dev, "using MSI-X");
+			udev->info.irq = pci_irq_vector(dev, 0);
+			udev->mode = RTE_INTR_MODE_MSIX;
+			break;
+		}
+#endif
 		/* fall back to INTX */
 	case RTE_INTR_MODE_LEGACY:
 		if (pci_intx_mask_supported(dev)) {

@@ -123,3 +123,7 @@ static bool pci_check_and_mask_intx(struct pci_dev *pdev)
 }
 
 #endif /* < 3.3.0 */
+
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
+#define HAVE_PCI_ENABLE_MSIX
+#endif
