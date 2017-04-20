@@ -1387,12 +1387,88 @@ dpaa2_sec_dev_infos_get(struct rte_cryptodev *dev,
 	}
 }
 
+static
+void dpaa2_sec_stats_get(struct rte_cryptodev *dev,
+			 struct rte_cryptodev_stats *stats)
+{
+	struct dpaa2_sec_dev_private *priv = dev->data->dev_private;
+	struct fsl_mc_io *dpseci = (struct fsl_mc_io *)priv->hw;
+	struct dpseci_sec_counters counters = {0};
+	struct dpaa2_sec_qp **qp = (struct dpaa2_sec_qp **)
+					dev->data->queue_pairs;
+	int ret, i;
+
+	PMD_INIT_FUNC_TRACE();
+	if (stats == NULL) {
+		PMD_DRV_LOG(ERR, "invalid stats ptr NULL");
+		return;
+	}
+	for (i = 0; i < dev->data->nb_queue_pairs; i++) {
+		if (qp[i] == NULL) {
+			PMD_DRV_LOG(DEBUG, "Uninitialised queue pair");
+			continue;
+		}
+
+		stats->enqueued_count += qp[i]->tx_vq.tx_pkts;
+		stats->dequeued_count += qp[i]->rx_vq.rx_pkts;
+		stats->enqueue_err_count += qp[i]->tx_vq.err_pkts;
+		stats->dequeue_err_count += qp[i]->rx_vq.err_pkts;
+	}
+
+	ret = dpseci_get_sec_counters(dpseci, CMD_PRI_LOW, priv->token,
+				      &counters);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "dpseci_get_sec_counters failed\n");
+	} else {
+		PMD_DRV_LOG(INFO, "dpseci hw stats:"
+			    "\n\tNumber of Requests Dequeued = %lu"
+			    "\n\tNumber of Outbound Encrypt Requests = %lu"
+			    "\n\tNumber of Inbound Decrypt Requests = %lu"
+			    "\n\tNumber of Outbound Bytes Encrypted = %lu"
+			    "\n\tNumber of Outbound Bytes Protected = %lu"
+			    "\n\tNumber of Inbound Bytes Decrypted = %lu"
+			    "\n\tNumber of Inbound Bytes Validated = %lu",
+			    counters.dequeued_requests,
+			    counters.ob_enc_requests,
+			    counters.ib_dec_requests,
+			    counters.ob_enc_bytes,
+			    counters.ob_prot_bytes,
+			    counters.ib_dec_bytes,
+			    counters.ib_valid_bytes);
+	}
+}
+
+static
+void dpaa2_sec_stats_reset(struct rte_cryptodev *dev)
+{
+	int i;
+	struct dpaa2_sec_qp **qp = (struct dpaa2_sec_qp **)
+				   (dev->data->queue_pairs);
+
+	PMD_INIT_FUNC_TRACE();
+
+	for (i = 0; i < dev->data->nb_queue_pairs; i++) {
+		if (qp[i] == NULL) {
+			PMD_DRV_LOG(DEBUG, "Uninitialised queue pair");
+			continue;
+		}
+		qp[i]->tx_vq.rx_pkts = 0;
+		qp[i]->tx_vq.tx_pkts = 0;
+		qp[i]->tx_vq.err_pkts = 0;
+		qp[i]->rx_vq.rx_pkts = 0;
+		qp[i]->rx_vq.tx_pkts = 0;
+		qp[i]->rx_vq.err_pkts = 0;
+	}
+}
+
 static struct rte_cryptodev_ops crypto_ops = {
 	.dev_configure	      = dpaa2_sec_dev_configure,
 	.dev_start	      = dpaa2_sec_dev_start,
 	.dev_stop	      = dpaa2_sec_dev_stop,
 	.dev_close	      = dpaa2_sec_dev_close,
 	.dev_infos_get        = dpaa2_sec_dev_infos_get,
+	.stats_get	      = dpaa2_sec_stats_get,
+	.stats_reset	      = dpaa2_sec_stats_reset,
 	.queue_pair_setup     = dpaa2_sec_queue_pair_setup,
 	.queue_pair_release   = dpaa2_sec_queue_pair_release,
 	.queue_pair_start     = dpaa2_sec_queue_pair_start,
