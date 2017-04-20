@@ -24,6 +24,7 @@ DPDK_17.05 {
 	per_lcore__dpaa2_io;
 	qbman_check_command_complete;
 	qbman_eq_desc_clear;
+	qbman_eq_desc_set_fq;
 	qbman_eq_desc_set_no_orp;
 	qbman_eq_desc_set_qd;
 	qbman_eq_desc_set_response;
