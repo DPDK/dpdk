@@ -312,9 +312,11 @@ sfc_intr_attach(struct sfc_adapter *sa)
 
 	switch (pci_dev->intr_handle.type) {
 #ifdef RTE_EXEC_ENV_LINUXAPP
+	case RTE_INTR_HANDLE_UIO_INTX:
 	case RTE_INTR_HANDLE_VFIO_LEGACY:
 		intr->type = EFX_INTR_LINE;
 		break;
+	case RTE_INTR_HANDLE_UIO:
 	case RTE_INTR_HANDLE_VFIO_MSI:
 	case RTE_INTR_HANDLE_VFIO_MSIX:
 		intr->type = EFX_INTR_MESSAGE;
