@@ -33,7 +33,8 @@
 
 #ifndef _PTHREAD_SHIM_H_
 #define _PTHREAD_SHIM_H_
-#include <pthread.h>
+
+#include <rte_lcore.h>
 
 /*
  * This pthread shim is an example that demonstrates how legacy code

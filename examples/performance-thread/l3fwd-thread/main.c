@@ -90,6 +90,10 @@
 #define APP_LOOKUP_METHOD             APP_LOOKUP_LPM
 #endif
 
+#ifndef __GLIBC__ /* sched_getcpu() is glibc specific */
+#define sched_getcpu() rte_lcore_id()
+#endif
+
 static int
 check_ptype(int portid)
 {
