@@ -47,18 +47,9 @@
 #define sfc_ef10_tx_err(dpq, ...) \
 	SFC_DP_LOG(SFC_KVARG_DATAPATH_EF10, ERR, dpq, __VA_ARGS__)
 
-/** Maximum length of the mbuf segment data */
-#define SFC_MBUF_SEG_LEN_MAX \
-	((1u << (8 * sizeof(((struct rte_mbuf *)0)->data_len))) - 1)
-
 /** Maximum length of the DMA descriptor data */
 #define SFC_EF10_TX_DMA_DESC_LEN_MAX \
 	((1u << ESF_DZ_TX_KER_BYTE_CNT_WIDTH) - 1)
-
-/** Maximum number of DMA descriptors per mbuf segment */
-#define SFC_EF10_TX_MBUF_SEG_DESCS_MAX \
-	SFC_DIV_ROUND_UP(SFC_MBUF_SEG_LEN_MAX, \
-			 SFC_EF10_TX_DMA_DESC_LEN_MAX)
 
 /**
  * Maximum number of descriptors/buffers in the Tx ring.
@@ -221,6 +212,53 @@ sfc_ef10_tx_qpush(struct sfc_ef10_txq *txq, unsigned int added,
 	*(volatile __m128i *)txq->doorbell = oword.eo_u128[0];
 }
 
+static unsigned int
+sfc_ef10_tx_pkt_descs_max(const struct rte_mbuf *m)
+{
+	unsigned int extra_descs_per_seg;
+	unsigned int extra_descs_per_pkt;
+
+	/*
+	 * VLAN offload is not supported yet, so no extra descriptors
+	 * are required for VLAN option descriptor.
+	 */
+
+/** Maximum length of the mbuf segment data */
+#define SFC_MBUF_SEG_LEN_MAX		UINT16_MAX
+	RTE_BUILD_BUG_ON(sizeof(m->data_len) != 2);
+
+	/*
+	 * Each segment is already counted once below.  So, calculate
+	 * how many extra DMA descriptors may be required per segment in
+	 * the worst case because of maximum DMA descriptor length limit.
+	 * If maximum segment length is less or equal to maximum DMA
+	 * descriptor length, no extra DMA descriptors are required.
+	 */
+	extra_descs_per_seg =
+		(SFC_MBUF_SEG_LEN_MAX - 1) / SFC_EF10_TX_DMA_DESC_LEN_MAX;
+
+/** Maximum length of the packet */
+#define SFC_MBUF_PKT_LEN_MAX		UINT32_MAX
+	RTE_BUILD_BUG_ON(sizeof(m->pkt_len) != 4);
+
+	/*
+	 * One more limitation on maximum number of extra DMA descriptors
+	 * comes from slicing entire packet because of DMA descriptor length
+	 * limit taking into account that there is at least one segment
+	 * which is already counted below (so division of the maximum
+	 * packet length minus one with round down).
+	 * TSO is not supported yet, so packet length is limited by
+	 * maximum PDU size.
+	 */
+	extra_descs_per_pkt =
+		(RTE_MIN((unsigned int)EFX_MAC_PDU_MAX,
+			 SFC_MBUF_PKT_LEN_MAX) - 1) /
+		SFC_EF10_TX_DMA_DESC_LEN_MAX;
+
+	return m->nb_segs + RTE_MIN(m->nb_segs * extra_descs_per_seg,
+				    extra_descs_per_pkt);
+}
+
 static uint16_t
 sfc_ef10_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {
@@ -258,8 +296,7 @@ sfc_ef10_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		if (likely(pktp + 1 != pktp_end))
 			rte_mbuf_prefetch_part1(pktp[1]);
 
-		if (m_seg->nb_segs * SFC_EF10_TX_MBUF_SEG_DESCS_MAX >
-		    dma_desc_space) {
+		if (sfc_ef10_tx_pkt_descs_max(m_seg) > dma_desc_space) {
 			if (reap_done)
 				break;
 
@@ -273,8 +310,7 @@ sfc_ef10_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			reap_done = true;
 			dma_desc_space = SFC_EF10_TXQ_LIMIT(ptr_mask + 1) -
 				(added - txq->completed);
-			if (m_seg->nb_segs * SFC_EF10_TX_MBUF_SEG_DESCS_MAX >
-			    dma_desc_space)
+			if (sfc_ef10_tx_pkt_descs_max(m_seg) > dma_desc_space)
 				break;
 		}
 
