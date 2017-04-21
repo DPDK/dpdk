@@ -107,7 +107,7 @@ proc_info_usage(const char *prgname)
 			"default\n"
 		"  --metrics: to display derived metrics of the ports, disabled by "
 			"default\n"
-		"  --xstats-name NAME: to display single xstat value by NAME\n"
+		"  --xstats-name NAME: displays the ID of a single xstats NAME\n"
 		"  --xstats-ids IDLIST: to display xstat values by id. "
 			"The argument is comma-separated list of xstat ids to print out.\n"
 		"  --stats-reset: to reset port statistics\n"
