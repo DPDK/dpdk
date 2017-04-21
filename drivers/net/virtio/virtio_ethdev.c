@@ -1348,7 +1348,7 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 	if (virtio_negotiate_features(hw, req_features) < 0)
 		return -1;
 
-	if (eth_dev->device) {
+	if (!hw->virtio_user_dev) {
 		pci_dev = RTE_DEV_TO_PCI(eth_dev->device);
 		rte_eth_copy_pci_info(eth_dev, pci_dev);
 	}
