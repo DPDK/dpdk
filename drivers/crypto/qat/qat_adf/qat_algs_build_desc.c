@@ -121,6 +121,9 @@ static int qat_hash_get_state1_size(enum icp_qat_hw_auth_algo qat_hash_alg)
 	case ICP_QAT_HW_AUTH_ALGO_KASUMI_F9:
 		return QAT_HW_ROUND_UP(ICP_QAT_HW_KASUMI_F9_STATE1_SZ,
 						QAT_HW_DEFAULT_ALIGNMENT);
+	case ICP_QAT_HW_AUTH_ALGO_NULL:
+		return QAT_HW_ROUND_UP(ICP_QAT_HW_NULL_STATE1_SZ,
+						QAT_HW_DEFAULT_ALIGNMENT);
 	case ICP_QAT_HW_AUTH_ALGO_DELIMITER:
 		/* return maximum state1 size in this case */
 		return QAT_HW_ROUND_UP(ICP_QAT_HW_SHA512_STATE1_SZ,
@@ -867,6 +870,9 @@ int qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
 		state2_size = ICP_QAT_HW_MD5_STATE2_SZ;
 		break;
 	case ICP_QAT_HW_AUTH_ALGO_NULL:
+		state1_size = qat_hash_get_state1_size(
+				ICP_QAT_HW_AUTH_ALGO_NULL);
+		state2_size = ICP_QAT_HW_NULL_STATE2_SZ;
 		break;
 	case ICP_QAT_HW_AUTH_ALGO_KASUMI_F9:
 		state1_size = qat_hash_get_state1_size(
