@@ -597,7 +597,7 @@ init_config(void)
 		uint8_t i;
 		unsigned int nb_mbuf;
 
-		if (param_total_num_mbufs)
+		if (param_total_num_mbufs && nb_ports != 0)
 			nb_mbuf_per_pool = nb_mbuf_per_pool/nb_ports;
 
 		for (i = 0; i < max_socket; i++) {
