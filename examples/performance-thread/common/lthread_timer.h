@@ -46,11 +46,22 @@ extern "C" {
 static inline uint64_t
 _ns_to_clks(uint64_t ns)
 {
-	unsigned __int128 clkns = rte_get_tsc_hz();
+	/*
+	 * clkns needs to be divided by 1E9 to get ns clocks. However,
+	 * dividing by this first would lose a lot of accuracy.
+	 * Dividing after a multiply by ns, could cause overflow of
+	 * uint64_t if ns is about 5 seconds [if we assume a max tsc
+	 * rate of 4GHz]. Therefore we first divide by 1E4, then
+	 * multiply and finally divide by 1E5. This allows ns to be
+	 * values many hours long, without overflow, while still keeping
+	 * reasonable accuracy.
+	 */
+	uint64_t clkns = rte_get_tsc_hz() / 1e4;
 
 	clkns *= ns;
-	clkns /= 1000000000;
-	return (uint64_t) clkns;
+	clkns /= 1e5;
+
+	return clkns;
 }
 
 
