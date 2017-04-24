@@ -565,7 +565,7 @@ struct rte_eth_rss_reta_entry64 {
 
 /**
  * This enum indicates the possible number of traffic classes
- * in DCB configratioins
+ * in DCB configurations
  */
 enum rte_eth_nb_tcs {
 	ETH_4_TCS = 4, /**< 4 TCs with DCB. */
@@ -1853,7 +1853,7 @@ struct rte_eth_dev *rte_eth_dev_attach_secondary(const char *name);
 int rte_eth_dev_release_port(struct rte_eth_dev *eth_dev);
 
 /**
- * Attach a new Ethernet device specified by aruguments.
+ * Attach a new Ethernet device specified by arguments.
  *
  * @param devargs
  *  A pointer to a strings array describing the new device
@@ -2592,7 +2592,7 @@ int rte_eth_dev_fw_version_get(uint8_t port_id,
  * @param ptype_mask
  *   A hint of what kind of packet type which the caller is interested in.
  * @param ptypes
- *   An array pointer to store adequent packet types, allocated by caller.
+ *   An array pointer to store adequate packet types, allocated by caller.
  * @param num
  *  Size of the array pointed by param ptypes.
  * @return
@@ -2732,12 +2732,12 @@ int rte_eth_dev_set_vlan_offload(uint8_t port_id, int offload_mask);
 int rte_eth_dev_get_vlan_offload(uint8_t port_id);
 
 /**
- * Set port based TX VLAN insersion on or off.
+ * Set port based TX VLAN insertion on or off.
  *
  * @param port_id
  *  The port identifier of the Ethernet device.
  * @param pvid
- *  Port based TX VLAN identifier togeth with user priority.
+ *  Port based TX VLAN identifier together with user priority.
  * @param on
  *  Turn on or off the port based TX VLAN insertion.
  *
@@ -2794,7 +2794,7 @@ int rte_eth_dev_set_vlan_pvid(uint8_t port_id, uint16_t pvid, int on);
  *   method to retrieve bursts of received packets and to immediately
  *   queue them for further parallel processing by another logical core,
  *   for instance. However, instead of having received packets being
- *   individually queued by the driver, this approach allows the invoker
+ *   individually queued by the driver, this approach allows the caller
  *   of the rte_eth_rx_burst() function to queue a burst of retrieved
  *   packets at a time and therefore dramatically reduce the cost of
  *   enqueue/dequeue operations per packet.
@@ -3549,7 +3549,7 @@ void _rte_eth_dev_callback_process(struct rte_eth_dev *dev,
 /**
  * When there is no rx packet coming in Rx Queue for a long time, we can
  * sleep lcore related to RX Queue for power saving, and enable rx interrupt
- * to be triggered when rx packect arrives.
+ * to be triggered when Rx packet arrives.
  *
  * The rte_eth_dev_rx_intr_enable() function enables rx queue
  * interrupt on specific rx queue of a port.
@@ -4219,31 +4219,31 @@ int rte_eth_dev_get_dcb_info(uint8_t port_id,
 void *rte_eth_add_rx_callback(uint8_t port_id, uint16_t queue_id,
 		rte_rx_callback_fn fn, void *user_param);
 
-/*
-* Add a callback that must be called first on packet RX on a given port
-* and queue.
-*
-* This API configures a first function to be called for each burst of
-* packets received on a given NIC port queue. The return value is a pointer
-* that can be used to later remove the callback using
-* rte_eth_remove_rx_callback().
-*
-* Multiple functions are called in the order that they are added.
-*
-* @param port_id
-*   The port identifier of the Ethernet device.
-* @param queue_id
-*   The queue on the Ethernet device on which the callback is to be added.
-* @param fn
-*   The callback function
-* @param user_param
-*   A generic pointer parameter which will be passed to each invocation of the
-*   callback function on this port and queue.
-*
-* @return
-*   NULL on error.
-*   On success, a pointer value which can later be used to remove the callback.
-*/
+/**
+ * Add a callback that must be called first on packet RX on a given port
+ * and queue.
+ *
+ * This API configures a first function to be called for each burst of
+ * packets received on a given NIC port queue. The return value is a pointer
+ * that can be used to later remove the callback using
+ * rte_eth_remove_rx_callback().
+ *
+ * Multiple functions are called in the order that they are added.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param queue_id
+ *   The queue on the Ethernet device on which the callback is to be added.
+ * @param fn
+ *   The callback function
+ * @param user_param
+ *   A generic pointer parameter which will be passed to each invocation of the
+ *   callback function on this port and queue.
+ *
+ * @return
+ *   NULL on error.
+ *   On success, a pointer value which can later be used to remove the callback.
+ */
 void *rte_eth_add_first_rx_callback(uint8_t port_id, uint16_t queue_id,
 		rte_rx_callback_fn fn, void *user_param);
 
@@ -4652,7 +4652,7 @@ rte_eth_dev_l2_tunnel_offload_set(uint8_t port_id,
 				  uint8_t en);
 
 /**
-* Get the port id from pci adrress or device name
+* Get the port id from pci address or device name
 * Ex: 0000:2:00.0 or vdev name net_pcap0
 *
 * @param name
