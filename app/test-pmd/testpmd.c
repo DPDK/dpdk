@@ -543,34 +543,6 @@ init_config(void)
 		fwd_lcores[lc_id]->cpuid_idx = lc_id;
 	}
 
-	/*
-	 * Create pools of mbuf.
-	 * If NUMA support is disabled, create a single pool of mbuf in
-	 * socket 0 memory by default.
-	 * Otherwise, create a pool of mbuf in the memory of sockets 0 and 1.
-	 *
-	 * Use the maximum value of nb_rxd and nb_txd here, then nb_rxd and
-	 * nb_txd can be configured at run time.
-	 */
-	if (param_total_num_mbufs)
-		nb_mbuf_per_pool = param_total_num_mbufs;
-	else {
-		nb_mbuf_per_pool = RTE_TEST_RX_DESC_MAX + (nb_lcores * mb_mempool_cache)
-				+ RTE_TEST_TX_DESC_MAX + MAX_PKT_BURST;
-
-		if (!numa_support)
-			nb_mbuf_per_pool =
-				(nb_mbuf_per_pool * RTE_MAX_ETHPORTS);
-	}
-
-	if (!numa_support) {
-		if (socket_num == UMA_NO_CONFIG)
-			mbuf_pool_create(mbuf_data_size, nb_mbuf_per_pool, 0);
-		else
-			mbuf_pool_create(mbuf_data_size, nb_mbuf_per_pool,
-						 socket_num);
-	}
-
 	RTE_ETH_FOREACH_DEV(pid) {
 		port = &ports[pid];
 		rte_eth_dev_info_get(pid, &port->dev_info);
@@ -593,20 +565,37 @@ init_config(void)
 		port->need_reconfig_queues = 1;
 	}
 
+	/*
+	 * Create pools of mbuf.
+	 * If NUMA support is disabled, create a single pool of mbuf in
+	 * socket 0 memory by default.
+	 * Otherwise, create a pool of mbuf in the memory of sockets 0 and 1.
+	 *
+	 * Use the maximum value of nb_rxd and nb_txd here, then nb_rxd and
+	 * nb_txd can be configured at run time.
+	 */
+	if (param_total_num_mbufs)
+		nb_mbuf_per_pool = param_total_num_mbufs;
+	else {
+		nb_mbuf_per_pool = RTE_TEST_RX_DESC_MAX +
+			(nb_lcores * mb_mempool_cache) +
+			RTE_TEST_TX_DESC_MAX + MAX_PKT_BURST;
+		nb_mbuf_per_pool *= RTE_MAX_ETHPORTS;
+	}
+
 	if (numa_support) {
 		uint8_t i;
-		unsigned int nb_mbuf;
 
-		if (param_total_num_mbufs && nb_ports != 0)
-			nb_mbuf_per_pool = nb_mbuf_per_pool/nb_ports;
-
-		for (i = 0; i < max_socket; i++) {
-			nb_mbuf = (nb_mbuf_per_pool * RTE_MAX_ETHPORTS);
-			if (nb_mbuf)
-				mbuf_pool_create(mbuf_data_size,
-						nb_mbuf,i);
-		}
+		for (i = 0; i < max_socket; i++)
+			mbuf_pool_create(mbuf_data_size, nb_mbuf_per_pool, i);
+	} else {
+		if (socket_num == UMA_NO_CONFIG)
+			mbuf_pool_create(mbuf_data_size, nb_mbuf_per_pool, 0);
+		else
+			mbuf_pool_create(mbuf_data_size, nb_mbuf_per_pool,
+						 socket_num);
 	}
+
 	init_port_config();
 
 	/*
