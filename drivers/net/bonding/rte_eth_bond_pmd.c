@@ -1435,9 +1435,11 @@ slave_configure(struct rte_eth_dev *bonded_eth_dev,
 	}
 
 	/* If lsc interrupt is set, check initial slave's link status */
-	if (slave_eth_dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)
+	if (slave_eth_dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC) {
+		slave_eth_dev->dev_ops->link_update(slave_eth_dev, 0);
 		bond_ethdev_lsc_event_callback(slave_eth_dev->data->port_id,
 			RTE_ETH_EVENT_INTR_LSC, &bonded_eth_dev->data->port_id);
+	}
 
 	return 0;
 }
