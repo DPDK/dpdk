@@ -61,6 +61,12 @@ New Features
   to request the driver to release mbufs from their Tx ring that are no longer
   in use, independent of whether or not the ``tx_rs_thresh`` has been crossed.
 
+* **Added device removal interrupt.**
+
+  Added a new ethdev event ``RTE_ETH_DEV_INTR_RMV`` to signify
+  the sudden removal of a device.
+  This event can be advertized by PCI drivers and enabled accordingly.
+
 * **Added EAL dynamic log framework.**
 
   Added new APIs to dynamically register named log types, and control
