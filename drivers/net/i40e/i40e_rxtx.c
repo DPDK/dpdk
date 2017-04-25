@@ -2926,7 +2926,7 @@ i40e_set_default_ptype_table(struct rte_eth_dev *dev)
 		I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	int i;
 
-	for (i = 0; i <= I40E_MAX_PKT_TYPE; i++)
+	for (i = 0; i < I40E_MAX_PKT_TYPE; i++)
 		ad->ptype_tbl[i] = i40e_get_default_pkt_type(i);
 }
 
