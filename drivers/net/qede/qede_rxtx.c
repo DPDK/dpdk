@@ -1712,10 +1712,6 @@ int qede_dev_start(struct rte_eth_dev *eth_dev)
 	/* Bring-up the link */
 	qede_dev_set_link_state(eth_dev, true);
 
-	/* Reset ring */
-	if (qede_reset_fp_rings(qdev))
-		return -ENOMEM;
-
 	/* Start/resume traffic */
 	qdev->ops->fastpath_start(edev);
 
@@ -1835,6 +1831,7 @@ static int qede_stop_queues(struct qede_dev *qdev)
 			}
 		}
 	}
+	qede_reset_fp_rings(qdev);
 
 	return 0;
 }
