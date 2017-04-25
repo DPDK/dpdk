@@ -31,10 +31,8 @@
 #endif
 
 #define QEDE_VALID_FLOW(flow_type) \
-	((flow_type) == RTE_ETH_FLOW_FRAG_IPV4		|| \
-	(flow_type) == RTE_ETH_FLOW_NONFRAG_IPV4_TCP	|| \
+	((flow_type) == RTE_ETH_FLOW_NONFRAG_IPV4_TCP	|| \
 	(flow_type) == RTE_ETH_FLOW_NONFRAG_IPV4_UDP	|| \
-	(flow_type) == RTE_ETH_FLOW_FRAG_IPV6		|| \
 	(flow_type) == RTE_ETH_FLOW_NONFRAG_IPV6_TCP	|| \
 	(flow_type) == RTE_ETH_FLOW_NONFRAG_IPV6_UDP)
 
@@ -274,10 +272,8 @@ qede_fdir_construct_pkt(struct rte_eth_dev *eth_dev,
 	uint8_t size, dst = 0;
 	uint16_t len;
 	static const uint8_t next_proto[] = {
-		[RTE_ETH_FLOW_FRAG_IPV4] = IPPROTO_IP,
 		[RTE_ETH_FLOW_NONFRAG_IPV4_TCP] = IPPROTO_TCP,
 		[RTE_ETH_FLOW_NONFRAG_IPV4_UDP] = IPPROTO_UDP,
-		[RTE_ETH_FLOW_FRAG_IPV6] = IPPROTO_NONE,
 		[RTE_ETH_FLOW_NONFRAG_IPV6_TCP] = IPPROTO_TCP,
 		[RTE_ETH_FLOW_NONFRAG_IPV6_UDP] = IPPROTO_UDP,
 	};
@@ -300,11 +296,10 @@ qede_fdir_construct_pkt(struct rte_eth_dev *eth_dev,
 	raw_pkt += sizeof(uint16_t);
 	len += sizeof(uint16_t);
 
-	/* fill the common ip header */
 	switch (input->flow_type) {
 	case RTE_ETH_FLOW_NONFRAG_IPV4_TCP:
 	case RTE_ETH_FLOW_NONFRAG_IPV4_UDP:
-	case RTE_ETH_FLOW_FRAG_IPV4:
+		/* fill the common ip header */
 		ip = (struct ipv4_hdr *)raw_pkt;
 		*ether_type = rte_cpu_to_be_16(ETHER_TYPE_IPv4);
 		ip->version_ihl = QEDE_FDIR_IP_DEFAULT_VERSION_IHL;
@@ -320,10 +315,31 @@ qede_fdir_construct_pkt(struct rte_eth_dev *eth_dev,
 		ip->src_addr = input->flow.ip4_flow.src_ip;
 		len += sizeof(struct ipv4_hdr);
 		params->ipv4 = true;
+
+		raw_pkt = (uint8_t *)buff;
+		/* UDP */
+		if (input->flow_type == RTE_ETH_FLOW_NONFRAG_IPV4_UDP) {
+			udp = (struct udp_hdr *)(raw_pkt + len);
+			udp->dst_port = input->flow.udp4_flow.dst_port;
+			udp->src_port = input->flow.udp4_flow.src_port;
+			udp->dgram_len = sizeof(struct udp_hdr);
+			len += sizeof(struct udp_hdr);
+			/* adjust ip total_length */
+			ip->total_length += sizeof(struct udp_hdr);
+			params->udp = true;
+		} else { /* TCP */
+			tcp = (struct tcp_hdr *)(raw_pkt + len);
+			tcp->src_port = input->flow.tcp4_flow.src_port;
+			tcp->dst_port = input->flow.tcp4_flow.dst_port;
+			tcp->data_off = QEDE_FDIR_TCP_DEFAULT_DATAOFF;
+			len += sizeof(struct tcp_hdr);
+			/* adjust ip total_length */
+			ip->total_length += sizeof(struct tcp_hdr);
+			params->tcp = true;
+		}
 		break;
 	case RTE_ETH_FLOW_NONFRAG_IPV6_TCP:
 	case RTE_ETH_FLOW_NONFRAG_IPV6_UDP:
-	case RTE_ETH_FLOW_FRAG_IPV6:
 		ip6 = (struct ipv6_hdr *)raw_pkt;
 		*ether_type = rte_cpu_to_be_16(ETHER_TYPE_IPv6);
 		ip6->proto = input->flow.ipv6_flow.proto ?
@@ -334,6 +350,23 @@ qede_fdir_construct_pkt(struct rte_eth_dev *eth_dev,
 		rte_memcpy(&ip6->dst_addr, &input->flow.ipv6_flow.src_ip,
 			   IPV6_ADDR_LEN);
 		len += sizeof(struct ipv6_hdr);
+
+		raw_pkt = (uint8_t *)buff;
+		/* UDP */
+		if (input->flow_type == RTE_ETH_FLOW_NONFRAG_IPV6_UDP) {
+			udp = (struct udp_hdr *)(raw_pkt + len);
+			udp->src_port = input->flow.udp6_flow.dst_port;
+			udp->dst_port = input->flow.udp6_flow.src_port;
+			len += sizeof(struct udp_hdr);
+			params->udp = true;
+		} else { /* TCP */
+			tcp = (struct tcp_hdr *)(raw_pkt + len);
+			tcp->src_port = input->flow.tcp4_flow.src_port;
+			tcp->dst_port = input->flow.tcp4_flow.dst_port;
+			tcp->data_off = QEDE_FDIR_TCP_DEFAULT_DATAOFF;
+			len += sizeof(struct tcp_hdr);
+			params->tcp = true;
+		}
 		break;
 	default:
 		DP_ERR(edev, "Unsupported flow_type %u\n",
@@ -341,50 +374,6 @@ qede_fdir_construct_pkt(struct rte_eth_dev *eth_dev,
 		return 0;
 	}
 
-	/* fill the L4 header */
-	raw_pkt = (uint8_t *)buff;
-	switch (input->flow_type) {
-	case RTE_ETH_FLOW_NONFRAG_IPV4_UDP:
-		udp = (struct udp_hdr *)(raw_pkt + len);
-		udp->dst_port = input->flow.udp4_flow.dst_port;
-		udp->src_port = input->flow.udp4_flow.src_port;
-		udp->dgram_len = sizeof(struct udp_hdr);
-		len += sizeof(struct udp_hdr);
-		/* adjust ip total_length */
-		ip->total_length += sizeof(struct udp_hdr);
-		params->udp = true;
-	break;
-	case RTE_ETH_FLOW_NONFRAG_IPV4_TCP:
-		tcp = (struct tcp_hdr *)(raw_pkt + len);
-		tcp->src_port = input->flow.tcp4_flow.src_port;
-		tcp->dst_port = input->flow.tcp4_flow.dst_port;
-		tcp->data_off = QEDE_FDIR_TCP_DEFAULT_DATAOFF;
-		len += sizeof(struct tcp_hdr);
-		/* adjust ip total_length */
-		ip->total_length += sizeof(struct tcp_hdr);
-		params->tcp = true;
-	break;
-	case RTE_ETH_FLOW_NONFRAG_IPV6_TCP:
-		tcp = (struct tcp_hdr *)(raw_pkt + len);
-		tcp->data_off = QEDE_FDIR_TCP_DEFAULT_DATAOFF;
-		tcp->src_port = input->flow.udp6_flow.src_port;
-		tcp->dst_port = input->flow.udp6_flow.dst_port;
-		/* adjust ip total_length */
-		len += sizeof(struct tcp_hdr);
-		params->tcp = true;
-	break;
-	case RTE_ETH_FLOW_NONFRAG_IPV6_UDP:
-		udp = (struct udp_hdr *)(raw_pkt + len);
-		udp->src_port = input->flow.udp6_flow.dst_port;
-		udp->dst_port = input->flow.udp6_flow.src_port;
-		/* adjust ip total_length */
-		len += sizeof(struct udp_hdr);
-		params->udp = true;
-	break;
-	default:
-		DP_ERR(edev, "Unsupported flow_type %d\n", input->flow_type);
-		return 0;
-	}
 	return len;
 }
 
