@@ -104,7 +104,7 @@ do {									\
 
 #define ECORE_MFW_SET_FIELD(name, field, value)				\
 do {									\
-	(name) &= ~((field ## _MASK) << (field ## _SHIFT));		\
+	(name) &= ~(field ## _MASK);					\
 	(name) |= (((value) << (field ## _SHIFT)) & (field ## _MASK));	\
 } while (0)
 
