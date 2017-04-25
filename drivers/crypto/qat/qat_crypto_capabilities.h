@@ -200,9 +200,9 @@
 					.increment = 4			\
 				},					\
 				.aad_size = {				\
-					.min = 8,			\
-					.max = 12,			\
-					.increment = 4			\
+					.min = 0,			\
+					.max = 240,			\
+					.increment = 1			\
 				}					\
 			}, }						\
 		}, }							\
