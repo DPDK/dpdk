@@ -310,11 +310,10 @@ struct rte_crypto_auth_xform {
 	 * this specifies the length of the digest to be compared for the
 	 * session.
 	 *
+	 * It is the caller's responsibility to ensure that the
+	 * digest length is compliant with the hash algorithm being used.
 	 * If the value is less than the maximum length allowed by the hash,
-	 * the result shall be truncated.  If the value is greater than the
-	 * maximum length allowed by the hash then an error will be generated
-	 * by *rte_cryptodev_sym_session_create* or by the
-	 * *rte_cryptodev_sym_enqueue_burst* if using session-less APIs.
+	 * the result shall be truncated.
 	 */
 
 	uint32_t add_auth_data_length;
@@ -597,7 +596,9 @@ struct rte_crypto_sym_op {
 			phys_addr_t phys_addr;
 			/**< Physical address of digest */
 			uint16_t length;
-			/**< Length of digest */
+			/**< Length of digest. This must be the same value as
+			 * @ref rte_crypto_auth_xform.digest_length.
+			 */
 		} digest; /**< Digest parameters */
 
 		struct {
