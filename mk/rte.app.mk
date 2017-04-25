@@ -235,7 +235,7 @@ build: _postbuild
 exe2cmd = $(strip $(call dotfile,$(patsubst %,%.cmd,$(1))))
 
 ifeq ($(LINK_USING_CC),1)
-O_TO_EXE = $(CC) -o $@ $(CFLAGS) $(OBJS-y) $(call linkerprefix, \
+O_TO_EXE = $(CC) -o $@ $(CFLAGS) $(EXTRA_CFLAGS) $(OBJS-y) $(call linkerprefix, \
 	$(LDLIBS) $(LDFLAGS) $(LDFLAGS_$(@)) $(EXTRA_LDFLAGS) \
 	$(MAPFLAGS))
 else
