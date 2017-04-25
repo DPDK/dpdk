@@ -142,15 +142,21 @@ New Features
   * QinQ is not supported in Vector Mode on the i40e PMD.
   * Vector Mode must be disabled when using the QinQ Cloud Filter.
 
-* **Added TSO support for tunneled and non-tunneled packets on mlx5 driver.**
+* **Updated mlx5 PMD.**
 
-  Added support for Hardware TSO for tunneled and non-tunneled packets.
-  Tunneling protocols supported are GRE and VXLAN.
+  * Supported ether type in flow item.
+  * Extended IPv6 flow item with Vtc flow, Protocol and Hop limit.
+  * Supported flag flow action.
+  * Supported RSS action flow rule.
+  * Supported TSO for tunneled and non-tunneled packets.
+  * Supported hardware checksum offloads for tunneled packets.
+  * Supported user space Rx interrupt event.
+  * Enhanced multi-packet send function for ConnectX-5.
 
-* **Added support for Rx interrupts on mlx5 driver.**
+* **Updated mlx4 PMD.**
 
-  Rx queues can be armed with an interrupt which will trigger on the
-  next packet arrival.
+  * Supported basic flow items and actions.
+  * Supported device removal event.
 
 * **Updated the sfc_efx driver.**
 
