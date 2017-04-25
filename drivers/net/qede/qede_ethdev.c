@@ -551,8 +551,6 @@ qede_mac_addr_set(struct rte_eth_dev *eth_dev, struct ether_addr *mac_addr)
 {
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
-	struct ecore_filter_ucast ucast;
-	int rc;
 
 	if (IS_VF(edev) && !ecore_vf_check_mac(ECORE_LEADING_HWFN(edev),
 					       mac_addr->addr_bytes)) {
@@ -562,29 +560,7 @@ qede_mac_addr_set(struct rte_eth_dev *eth_dev, struct ether_addr *mac_addr)
 		return;
 	}
 
-	/* First remove the primary mac */
-	qede_set_ucast_cmn_params(&ucast);
-	ucast.opcode = ECORE_FILTER_REMOVE;
-	ucast.type = ECORE_FILTER_MAC;
-	ether_addr_copy(&qdev->primary_mac,
-			(struct ether_addr *)&ucast.mac);
-	rc = ecore_filter_ucast_cmd(edev, &ucast, ECORE_SPQ_MODE_CB, NULL);
-	if (rc != 0) {
-		DP_ERR(edev, "Unable to remove current macaddr"
-			     " Reverting to previous default mac\n");
-		ether_addr_copy(&qdev->primary_mac,
-				&eth_dev->data->mac_addrs[0]);
-		return;
-	}
-
-	/* Add new MAC */
-	ucast.opcode = ECORE_FILTER_ADD;
-	ether_addr_copy(mac_addr, (struct ether_addr *)&ucast.mac);
-	rc = ecore_filter_ucast_cmd(edev, &ucast, ECORE_SPQ_MODE_CB, NULL);
-	if (rc != 0)
-		DP_ERR(edev, "Unable to add new default mac\n");
-	else
-		ether_addr_copy(mac_addr, &qdev->primary_mac);
+	qede_mac_addr_add(eth_dev, mac_addr, 0, 0);
 }
 
 static void qede_config_accept_any_vlan(struct qede_dev *qdev, bool action)
@@ -924,10 +900,6 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 	SLIST_INIT(&qdev->fdir_info.fdir_list_head);
 
 	SLIST_INIT(&qdev->vlan_list_head);
-
-	/* Add primary mac for PF */
-	if (IS_PF(edev))
-		qede_mac_addr_set(eth_dev, &qdev->primary_mac);
 
 	/* Enable VLAN offloads by default */
 	qede_vlan_offload_set(eth_dev, ETH_VLAN_STRIP_MASK  |
