@@ -258,7 +258,7 @@ cmdline_parse(struct cmdline *cl, const char * buf)
 	union {
 		char buf[CMDLINE_PARSE_RESULT_BUFSIZE];
 		long double align; /* strong alignment constraint for buf */
-	} result;
+	} result, tmp_result;
 	cmdline_parse_token_hdr_t *dyn_tokens[CMDLINE_PARSE_DYNAMIC_TOKENS];
 	void (*f)(void *, struct cmdline *, void *) = NULL;
 	void *data = NULL;
@@ -321,14 +321,16 @@ cmdline_parse(struct cmdline *cl, const char * buf)
 		debug_printf("INST %d\n", inst_num);
 
 		/* fully parsed */
-		tok = match_inst(inst, buf, 0, result.buf, sizeof(result.buf),
-				 &dyn_tokens);
+		tok = match_inst(inst, buf, 0, tmp_result.buf,
+				 sizeof(tmp_result.buf), &dyn_tokens);
 
 		if (tok > 0) /* we matched at least one token */
 			err = CMDLINE_PARSE_BAD_ARGS;
 
 		else if (!tok) {
 			debug_printf("INST fully parsed\n");
+			memcpy(&result, &tmp_result,
+			       sizeof(result));
 			/* skip spaces */
 			while (isblank2(*curbuf)) {
 				curbuf++;
