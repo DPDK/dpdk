@@ -991,6 +991,7 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	uint8_t bitfield_val;
 	uint8_t offset, tpa_agg_idx, flags;
 	struct qede_agg_info *tpa_info;
+	uint32_t rss_hash;
 
 	hw_comp_cons = rte_le_to_cpu_16(*rxq->hw_cons_ptr);
 	sw_comp_cons = ecore_chain_get_cons_idx(&rxq->rx_comp_ring);
@@ -1005,6 +1006,7 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		packet_type = RTE_PTYPE_UNKNOWN;
 		vlan_tci = 0;
 		tpa_start_flg = false;
+		rss_hash = 0;
 
 		/* Get the CQE from the completion ring */
 		cqe =
@@ -1068,6 +1070,10 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			offset = fp_cqe->placement_offset;
 			len = rte_le_to_cpu_16(fp_cqe->len_on_first_bd);
 			pkt_len = rte_le_to_cpu_16(fp_cqe->pkt_len);
+			vlan_tci = rte_le_to_cpu_16(fp_cqe->vlan_tag);
+			rss_hash = rte_le_to_cpu_32(fp_cqe->rss_hash);
+			htype = (uint8_t)GET_FIELD(bitfield_val,
+					ETH_FAST_PATH_RX_REG_CQE_RSS_HASH_TYPE);
 		} else {
 			parse_flag =
 			    rte_le_to_cpu_16(cqe_start_tpa->pars_flags.flags);
@@ -1075,6 +1081,10 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			offset = cqe_start_tpa->placement_offset;
 			/* seg_len = len_on_first_bd */
 			len = rte_le_to_cpu_16(cqe_start_tpa->len_on_first_bd);
+			vlan_tci = rte_le_to_cpu_16(cqe_start_tpa->vlan_tag);
+			htype = (uint8_t)GET_FIELD(bitfield_val,
+				ETH_FAST_PATH_RX_TPA_START_CQE_RSS_HASH_TYPE);
+			rss_hash = rte_le_to_cpu_32(cqe_start_tpa->rss_hash);
 		}
 		if (qede_tunn_exist(parse_flag)) {
 			PMD_RX_LOG(INFO, rxq, "Rx tunneled packet\n");
@@ -1121,24 +1131,18 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		}
 
 		if (CQE_HAS_VLAN(parse_flag)) {
-			vlan_tci = rte_le_to_cpu_16(fp_cqe->vlan_tag);
 			ol_flags |= PKT_RX_VLAN_PKT;
+			rx_mb->vlan_tci = vlan_tci;
 		}
-
 		if (CQE_HAS_OUTER_VLAN(parse_flag)) {
-			vlan_tci = rte_le_to_cpu_16(fp_cqe->vlan_tag);
 			ol_flags |= PKT_RX_QINQ_PKT;
+			rx_mb->vlan_tci = vlan_tci;
 			rx_mb->vlan_tci_outer = 0;
 		}
-
 		/* RSS Hash */
-		htype = (uint8_t)GET_FIELD(bitfield_val,
-					ETH_FAST_PATH_RX_REG_CQE_RSS_HASH_TYPE);
-		if (qdev->rss_enable && htype) {
+		if (qdev->rss_enable) {
 			ol_flags |= PKT_RX_RSS_HASH;
-			rx_mb->hash.rss = rte_le_to_cpu_32(fp_cqe->rss_hash);
-			PMD_RX_LOG(INFO, rxq, "Hash result 0x%x\n",
-				   rx_mb->hash.rss);
+			rx_mb->hash.rss = rss_hash;
 		}
 
 		if (unlikely(qede_alloc_rx_buffer(rxq) != 0)) {
@@ -1185,10 +1189,12 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rx_mb->port = rxq->port_id;
 		rx_mb->ol_flags = ol_flags;
 		rx_mb->data_len = len;
-		rx_mb->vlan_tci = vlan_tci;
 		rx_mb->packet_type = packet_type;
-		PMD_RX_LOG(INFO, rxq, "pkt_type %04x len %04x flags %04lx\n",
-			   packet_type, len, (unsigned long)ol_flags);
+		PMD_RX_LOG(INFO, rxq,
+			   "pkt_type 0x%04x len %u hash_type %d hash_val 0x%x"
+			   " ol_flags 0x%04lx\n",
+			   packet_type, len, htype, rx_mb->hash.rss,
+			   (unsigned long)ol_flags);
 		if (!tpa_start_flg) {
 			rx_mb->nb_segs = fp_cqe->bd_num;
 			rx_mb->pkt_len = pkt_len;
