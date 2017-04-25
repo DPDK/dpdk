@@ -604,6 +604,7 @@ static int qede_vlan_stripping(struct rte_eth_dev *eth_dev, bool set_stripping)
 		DP_ERR(edev, "Update V-PORT failed %d\n", rc);
 		return rc;
 	}
+	qdev->vlan_strip_flg = set_stripping;
 
 	return 0;
 }

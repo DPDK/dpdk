@@ -1132,11 +1132,17 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 
 		if (CQE_HAS_VLAN(parse_flag)) {
 			ol_flags |= PKT_RX_VLAN_PKT;
-			rx_mb->vlan_tci = vlan_tci;
+			if (qdev->vlan_strip_flg) {
+				ol_flags |= PKT_RX_VLAN_STRIPPED;
+				rx_mb->vlan_tci = vlan_tci;
+			}
 		}
 		if (CQE_HAS_OUTER_VLAN(parse_flag)) {
 			ol_flags |= PKT_RX_QINQ_PKT;
-			rx_mb->vlan_tci = vlan_tci;
+			if (qdev->vlan_strip_flg) {
+				rx_mb->vlan_tci = vlan_tci;
+				ol_flags |= PKT_RX_QINQ_STRIPPED;
+			}
 			rx_mb->vlan_tci_outer = 0;
 		}
 		/* RSS Hash */

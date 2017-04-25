@@ -211,6 +211,7 @@ struct qede_dev {
 	uint16_t num_tunn_filters;
 	uint16_t vxlan_filter_type;
 	struct qede_fdir_info fdir_info;
+	bool vlan_strip_flg;
 	char drv_ver[QEDE_PMD_DRV_VER_STR_SIZE];
 };
 
