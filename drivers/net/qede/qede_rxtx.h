@@ -149,16 +149,9 @@ struct qede_rx_entry {
 };
 
 /* TPA related structures */
-enum qede_agg_state {
-	QEDE_AGG_STATE_NONE  = 0,
-	QEDE_AGG_STATE_START = 1,
-	QEDE_AGG_STATE_ERROR = 2
-};
-
 struct qede_agg_info {
-	struct rte_mbuf *mbuf;
-	uint16_t start_cqe_bd_len;
-	uint8_t state; /* for sanity check */
+	struct rte_mbuf *tpa_head; /* Pointer to first TPA segment */
+	struct rte_mbuf *tpa_tail; /* Pointer to last TPA segment */
 };
 
 /*

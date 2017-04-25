@@ -514,14 +514,17 @@ qede_update_sge_tpa_params(struct ecore_sge_tpa_params *sge_tpa_params,
 	/* Enable LRO in split mode */
 	sge_tpa_params->tpa_ipv4_en_flg = enable;
 	sge_tpa_params->tpa_ipv6_en_flg = enable;
-	sge_tpa_params->tpa_ipv4_tunn_en_flg = enable;
-	sge_tpa_params->tpa_ipv6_tunn_en_flg = enable;
+	sge_tpa_params->tpa_ipv4_tunn_en_flg = false;
+	sge_tpa_params->tpa_ipv6_tunn_en_flg = false;
 	/* set if tpa enable changes */
 	sge_tpa_params->update_tpa_en_flg = 1;
 	/* set if tpa parameters should be handled */
 	sge_tpa_params->update_tpa_param_flg = enable;
 
 	sge_tpa_params->max_buffers_per_cqe = 20;
+	/* Enable TPA in split mode. In this mode each TPA segment
+	 * starts on the new BD, so there is one BD per segment.
+	 */
 	sge_tpa_params->tpa_pkt_split_flg = 1;
 	sge_tpa_params->tpa_hdr_data_split_flg = 0;
 	sge_tpa_params->tpa_gro_consistent_flg = 0;
@@ -793,43 +796,48 @@ static inline uint32_t qede_rx_cqe_to_pkt_type(uint16_t flags)
 }
 
 static inline void
+qede_rx_process_tpa_cmn_cont_end_cqe(struct qede_dev *qdev,
+				     struct qede_rx_queue *rxq,
+				     uint8_t agg_index, uint16_t len)
+{
+	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
+	struct qede_agg_info *tpa_info;
+	struct rte_mbuf *curr_frag; /* Pointer to currently filled TPA seg */
+	uint16_t cons_idx;
+
+	/* Under certain conditions it is possible that FW may not consume
+	 * additional or new BD. So decision to consume the BD must be made
+	 * based on len_list[0].
+	 */
+	if (rte_le_to_cpu_16(len)) {
+		tpa_info = &rxq->tpa_info[agg_index];
+		cons_idx = rxq->sw_rx_cons & NUM_RX_BDS(rxq);
+		curr_frag = rxq->sw_rx_ring[cons_idx].mbuf;
+		assert(curr_frag);
+		curr_frag->nb_segs = 1;
+		curr_frag->pkt_len = rte_le_to_cpu_16(len);
+		curr_frag->data_len = curr_frag->pkt_len;
+		tpa_info->tpa_tail->next = curr_frag;
+		tpa_info->tpa_tail = curr_frag;
+		qede_rx_bd_ring_consume(rxq);
+		if (unlikely(qede_alloc_rx_buffer(rxq) != 0)) {
+			PMD_RX_LOG(ERR, rxq, "mbuf allocation fails\n");
+			rte_eth_devices[rxq->port_id].data->rx_mbuf_alloc_failed++;
+			rxq->rx_alloc_errors++;
+		}
+	}
+}
+
+static inline void
 qede_rx_process_tpa_cont_cqe(struct qede_dev *qdev,
 			     struct qede_rx_queue *rxq,
 			     struct eth_fast_path_rx_tpa_cont_cqe *cqe)
 {
-	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
-	struct qede_agg_info *tpa_info;
-	struct rte_mbuf *temp_frag; /* Pointer to mbuf chain head */
-	struct rte_mbuf *curr_frag;
-	uint8_t list_count = 0;
-	uint16_t cons_idx;
-	uint8_t i;
-
-	PMD_RX_LOG(INFO, rxq, "TPA cont[%02x] - len_list [%04x %04x]\n",
-		   cqe->tpa_agg_index, rte_le_to_cpu_16(cqe->len_list[0]),
-		   rte_le_to_cpu_16(cqe->len_list[1]));
-
-	tpa_info = &rxq->tpa_info[cqe->tpa_agg_index];
-	temp_frag = tpa_info->mbuf;
-	assert(temp_frag);
-
-	for (i = 0; cqe->len_list[i]; i++) {
-		cons_idx = rxq->sw_rx_cons & NUM_RX_BDS(rxq);
-		curr_frag = rxq->sw_rx_ring[cons_idx].mbuf;
-		qede_rx_bd_ring_consume(rxq);
-		curr_frag->data_len = rte_le_to_cpu_16(cqe->len_list[i]);
-		temp_frag->next = curr_frag;
-		temp_frag = curr_frag;
-		list_count++;
-	}
-
-	/* Allocate RX mbuf on the RX BD ring for those many consumed  */
-	for (i = 0 ; i < list_count ; i++) {
-		if (unlikely(qede_alloc_rx_buffer(rxq) != 0)) {
-			DP_ERR(edev, "Failed to allocate mbuf for LRO cont\n");
-			tpa_info->state = QEDE_AGG_STATE_ERROR;
-		}
-	}
+	PMD_RX_LOG(INFO, rxq, "TPA cont[%d] - len [%d]\n",
+		   cqe->tpa_agg_index, rte_le_to_cpu_16(cqe->len_list[0]));
+	/* only len_list[0] will have value */
+	qede_rx_process_tpa_cmn_cont_end_cqe(qdev, rxq, cqe->tpa_agg_index,
+					     cqe->len_list[0]);
 }
 
 static inline void
@@ -837,47 +845,22 @@ qede_rx_process_tpa_end_cqe(struct qede_dev *qdev,
 			    struct qede_rx_queue *rxq,
 			    struct eth_fast_path_rx_tpa_end_cqe *cqe)
 {
-	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
 	struct qede_agg_info *tpa_info;
-	struct rte_mbuf *temp_frag; /* Pointer to mbuf chain head */
-	struct rte_mbuf *curr_frag;
-	struct rte_mbuf *rx_mb;
-	uint8_t list_count = 0;
-	uint16_t cons_idx;
-	uint8_t i;
+	struct rte_mbuf *rx_mb; /* Pointer to head of the chained agg */
 
-	PMD_RX_LOG(INFO, rxq, "TPA End[%02x] - len_list [%04x %04x]\n",
-		   cqe->tpa_agg_index, rte_le_to_cpu_16(cqe->len_list[0]),
-		   rte_le_to_cpu_16(cqe->len_list[1]));
-
-	tpa_info = &rxq->tpa_info[cqe->tpa_agg_index];
-	temp_frag = tpa_info->mbuf;
-	assert(temp_frag);
-
-	for (i = 0; cqe->len_list[i]; i++) {
-		cons_idx = rxq->sw_rx_cons & NUM_RX_BDS(rxq);
-		curr_frag = rxq->sw_rx_ring[cons_idx].mbuf;
-		qede_rx_bd_ring_consume(rxq);
-		curr_frag->data_len = rte_le_to_cpu_16(cqe->len_list[i]);
-		temp_frag->next = curr_frag;
-		temp_frag = curr_frag;
-		list_count++;
-	}
-
-	/* Allocate RX mbuf on the RX BD ring for those many consumed */
-	for (i = 0 ; i < list_count ; i++) {
-		if (unlikely(qede_alloc_rx_buffer(rxq) != 0)) {
-			DP_ERR(edev, "Failed to allocate mbuf for lro end\n");
-			tpa_info->state = QEDE_AGG_STATE_ERROR;
-		}
-	}
-
+	qede_rx_process_tpa_cmn_cont_end_cqe(qdev, rxq, cqe->tpa_agg_index,
+					     cqe->len_list[0]);
 	/* Update total length and frags based on end TPA */
-	rx_mb = rxq->tpa_info[cqe->tpa_agg_index].mbuf;
-	/* TBD: Add sanity checks here */
+	tpa_info = &rxq->tpa_info[cqe->tpa_agg_index];
+	rx_mb = rxq->tpa_info[cqe->tpa_agg_index].tpa_head;
+	/* TODO:  Add Sanity Checks */
 	rx_mb->nb_segs = cqe->num_of_bds;
 	rx_mb->pkt_len = cqe->total_packet_len;
-	tpa_info->state = QEDE_AGG_STATE_NONE;
+
+	PMD_RX_LOG(INFO, rxq, "TPA End[%d] reason %d cqe_len %d nb_segs %d"
+		   " pkt_len %d\n", cqe->tpa_agg_index, cqe->end_reason,
+		   rte_le_to_cpu_16(cqe->len_list[0]), rx_mb->nb_segs,
+		   rx_mb->pkt_len);
 }
 
 static inline uint32_t qede_rx_cqe_to_tunn_pkt_type(uint16_t flags)
@@ -1037,9 +1020,15 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			cqe_start_tpa = &cqe->fast_path_tpa_start;
 			tpa_info = &rxq->tpa_info[cqe_start_tpa->tpa_agg_index];
 			tpa_start_flg = true;
+			/* Mark it as LRO packet */
+			ol_flags |= PKT_RX_LRO;
+			/* In split mode,  seg_len is same as len_on_first_bd
+			 * and ext_bd_len_list will be empty since there are
+			 * no additional buffers
+			 */
 			PMD_RX_LOG(INFO, rxq,
-			    "TPA start[%u] - len %04x [header %02x]"
-			    " [bd_list[0] %04x], [seg_len %04x]\n",
+			    "TPA start[%d] - len_on_first_bd %d header %d"
+			    " [bd_list[0] %d], [seg_len %d]\n",
 			    cqe_start_tpa->tpa_agg_index,
 			    rte_le_to_cpu_16(cqe_start_tpa->len_on_first_bd),
 			    cqe_start_tpa->header_len,
@@ -1050,14 +1039,13 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		case ETH_RX_CQE_TYPE_TPA_CONT:
 			qede_rx_process_tpa_cont_cqe(qdev, rxq,
 						     &cqe->fast_path_tpa_cont);
-			continue;
+			goto next_cqe;
 		case ETH_RX_CQE_TYPE_TPA_END:
 			qede_rx_process_tpa_end_cqe(qdev, rxq,
 						    &cqe->fast_path_tpa_end);
 			tpa_agg_idx = cqe->fast_path_tpa_end.tpa_agg_index;
-			rx_mb = rxq->tpa_info[tpa_agg_idx].mbuf;
-			PMD_RX_LOG(INFO, rxq, "TPA end reason %d\n",
-				   cqe->fast_path_tpa_end.end_reason);
+			tpa_info = &rxq->tpa_info[tpa_agg_idx];
+			rx_mb = rxq->tpa_info[tpa_agg_idx].tpa_head;
 			goto tpa_end;
 		case ETH_RX_CQE_TYPE_SLOW_PATH:
 			PMD_RX_LOG(INFO, rxq, "Got unexpected slowpath CQE\n");
@@ -1087,9 +1075,6 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			offset = cqe_start_tpa->placement_offset;
 			/* seg_len = len_on_first_bd */
 			len = rte_le_to_cpu_16(cqe_start_tpa->len_on_first_bd);
-			tpa_info->start_cqe_bd_len = len +
-						cqe_start_tpa->header_len;
-			tpa_info->mbuf = rx_mb;
 		}
 		if (qede_tunn_exist(parse_flag)) {
 			PMD_RX_LOG(INFO, rxq, "Rx tunneled packet\n");
@@ -1207,6 +1192,10 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		if (!tpa_start_flg) {
 			rx_mb->nb_segs = fp_cqe->bd_num;
 			rx_mb->pkt_len = pkt_len;
+		} else {
+			/* store ref to the updated mbuf */
+			tpa_info->tpa_head = rx_mb;
+			tpa_info->tpa_tail = tpa_info->tpa_head;
 		}
 		rte_prefetch1(rte_pktmbuf_mtod(rx_mb, void *));
 tpa_end:
