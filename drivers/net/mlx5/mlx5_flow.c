@@ -778,6 +778,7 @@ mlx5_flow_create_ipv6(const struct rte_flow_item *item,
 	struct mlx5_flow *flow = (struct mlx5_flow *)data;
 	struct ibv_exp_flow_spec_ipv6_ext *ipv6;
 	unsigned int ipv6_size = sizeof(struct ibv_exp_flow_spec_ipv6_ext);
+	unsigned int i;
 
 	++flow->ibv_attr->num_of_specs;
 	flow->ibv_attr->priority = 1;
@@ -803,6 +804,11 @@ mlx5_flow_create_ipv6(const struct rte_flow_item *item,
 	ipv6->mask.flow_label = mask->hdr.vtc_flow;
 	ipv6->mask.next_hdr = mask->hdr.proto;
 	ipv6->mask.hop_limit = mask->hdr.hop_limits;
+	/* Remove unwanted bits from values. */
+	for (i = 0; i < RTE_DIM(ipv6->val.src_ip); ++i) {
+		ipv6->val.src_ip[i] &= ipv6->mask.src_ip[i];
+		ipv6->val.dst_ip[i] &= ipv6->mask.dst_ip[i];
+	}
 	ipv6->val.flow_label &= ipv6->mask.flow_label;
 	ipv6->val.next_hdr &= ipv6->mask.next_hdr;
 	ipv6->val.hop_limit &= ipv6->mask.hop_limit;
