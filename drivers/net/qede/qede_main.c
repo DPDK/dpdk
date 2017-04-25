@@ -74,7 +74,7 @@ qed_probe(struct ecore_dev *edev, struct rte_pci_device *pci_dev,
 
 static int qed_nic_setup(struct ecore_dev *edev)
 {
-	int rc, i;
+	int rc;
 
 	rc = ecore_resc_alloc(edev);
 	if (rc)
@@ -226,7 +226,6 @@ static int qed_slowpath_start(struct ecore_dev *edev,
 	struct ecore_hwfn *hwfn;
 	struct ecore_mcp_drv_version drv_version;
 	struct ecore_hw_init_params hw_init_params;
-	struct qede_dev *qdev = (struct qede_dev *)edev;
 	struct ecore_ptt *p_ptt;
 	int rc;
 
@@ -268,9 +267,9 @@ static int qed_slowpath_start(struct ecore_dev *edev,
 			goto err1;
 		}
 	}
+#endif
 
 	qed_start_iov_task(edev);
-#endif
 
 #ifdef CONFIG_ECORE_BINARY_FW
 	if (IS_PF(edev))
@@ -401,7 +400,6 @@ qed_fill_dev_info(struct ecore_dev *edev, struct qed_dev_info *dev_info)
 int
 qed_fill_eth_dev_info(struct ecore_dev *edev, struct qed_dev_eth_info *info)
 {
-	struct qede_dev *qdev = (struct qede_dev *)edev;
 	uint8_t queues = 0;
 	int i;
 
@@ -498,7 +496,6 @@ static void qed_fill_link(struct ecore_hwfn *hwfn,
 	struct ecore_mcp_link_params params;
 	struct ecore_mcp_link_state link;
 	struct ecore_mcp_link_capabilities link_caps;
-	uint32_t media_type;
 	uint8_t change = 0;
 
 	memset(if_link, 0, sizeof(*if_link));
@@ -732,6 +729,7 @@ const struct qed_common_ops qed_common_ops_pass = {
 	INIT_STRUCT_FIELD(chain_alloc, &ecore_chain_alloc),
 	INIT_STRUCT_FIELD(chain_free, &ecore_chain_free),
 	INIT_STRUCT_FIELD(sb_init, &qed_sb_init),
+	INIT_STRUCT_FIELD(get_sb_info, &qed_get_sb_info),
 	INIT_STRUCT_FIELD(get_link, &qed_get_current_link),
 	INIT_STRUCT_FIELD(set_link, &qed_set_link),
 	INIT_STRUCT_FIELD(drain, &qed_drain),

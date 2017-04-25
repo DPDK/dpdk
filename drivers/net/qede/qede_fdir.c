@@ -74,9 +74,7 @@ int qede_check_fdir_support(struct rte_eth_dev *eth_dev)
 void qede_fdir_dealloc_resc(struct rte_eth_dev *eth_dev)
 {
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
-	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
 	struct qede_fdir_entry *tmp = NULL;
-	struct qede_fdir_entry *fdir;
 
 	SLIST_FOREACH(tmp, &qdev->fdir_info.fdir_list_head, list) {
 		if (tmp) {
@@ -98,12 +96,11 @@ qede_config_cmn_fdir_filter(struct rte_eth_dev *eth_dev,
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
 	char mz_name[RTE_MEMZONE_NAMESIZE] = {0};
 	struct qede_fdir_entry *tmp = NULL;
-	struct qede_fdir_entry *fdir;
+	struct qede_fdir_entry *fdir = NULL;
 	const struct rte_memzone *mz;
 	struct ecore_hwfn *p_hwfn;
 	enum _ecore_status_t rc;
 	uint16_t pkt_len;
-	uint16_t len;
 	void *pkt;
 
 	if (add) {
@@ -251,7 +248,7 @@ qede_fdir_filter_add(struct rte_eth_dev *eth_dev,
 }
 
 /* Fills the L3/L4 headers and returns the actual length  of flowdir packet */
-static uint16_t
+uint16_t
 qede_fdir_construct_pkt(struct rte_eth_dev *eth_dev,
 			struct rte_eth_fdir_filter *fdir,
 			void *buff,
@@ -268,8 +265,6 @@ qede_fdir_construct_pkt(struct rte_eth_dev *eth_dev,
 	struct ipv6_hdr *ip6;
 	struct udp_hdr *udp;
 	struct tcp_hdr *tcp;
-	struct sctp_hdr *sctp;
-	uint8_t size, dst = 0;
 	uint16_t len;
 	static const uint8_t next_proto[] = {
 		[RTE_ETH_FLOW_NONFRAG_IPV4_TCP] = IPPROTO_TCP,
@@ -425,8 +420,7 @@ int qede_ntuple_filter_conf(struct rte_eth_dev *eth_dev,
 	struct rte_eth_fdir_filter fdir_entry;
 	struct rte_eth_tcpv4_flow *tcpv4_flow;
 	struct rte_eth_udpv4_flow *udpv4_flow;
-	struct ecore_hwfn *p_hwfn;
-	bool add;
+	bool add = false;
 
 	switch (filter_op) {
 	case RTE_ETH_FILTER_NOP:
@@ -440,7 +434,6 @@ int qede_ntuple_filter_conf(struct rte_eth_dev *eth_dev,
 		add = true;
 	break;
 	case RTE_ETH_FILTER_DELETE:
-		add = false;
 	break;
 	case RTE_ETH_FILTER_INFO:
 	case RTE_ETH_FILTER_GET:

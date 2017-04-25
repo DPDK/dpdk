@@ -198,6 +198,10 @@ struct qed_common_ops {
 			    dma_addr_t sb_phy_addr,
 			    uint16_t sb_id, enum qed_sb_type type);
 
+	int (*get_sb_info)(struct ecore_dev *edev,
+			   struct ecore_sb_info *sb, u16 qid,
+			   struct ecore_sb_info_dbg *sb_dbg);
+
 	bool (*can_link_change)(struct ecore_dev *edev);
 
 	void (*update_msglvl)(struct ecore_dev *edev,

@@ -215,28 +215,15 @@ struct qede_dev {
 	char drv_ver[QEDE_PMD_DRV_VER_STR_SIZE];
 };
 
-/* Static functions */
-static int qede_vlan_filter_set(struct rte_eth_dev *eth_dev,
-				uint16_t vlan_id, int on);
-
-static int qede_rss_hash_update(struct rte_eth_dev *eth_dev,
-				struct rte_eth_rss_conf *rss_conf);
-
-static int qede_rss_reta_update(struct rte_eth_dev *eth_dev,
-				struct rte_eth_rss_reta_entry64 *reta_conf,
-				uint16_t reta_size);
-
-static void qede_init_rss_caps(uint8_t *rss_caps, uint64_t hf);
-
-static inline uint32_t qede_rx_cqe_to_pkt_type(uint16_t flags);
-
-static uint16_t qede_fdir_construct_pkt(struct rte_eth_dev *eth_dev,
-					struct rte_eth_fdir_filter *fdir,
-					void *buff,
-					struct ecore_arfs_config_params *param);
-
 /* Non-static functions */
 int qede_config_rss(struct rte_eth_dev *eth_dev);
+
+int qede_rss_hash_update(struct rte_eth_dev *eth_dev,
+			 struct rte_eth_rss_conf *rss_conf);
+
+int qede_rss_reta_update(struct rte_eth_dev *eth_dev,
+			 struct rte_eth_rss_reta_entry64 *reta_conf,
+			 uint16_t reta_size);
 
 int qed_fill_eth_dev_info(struct ecore_dev *edev,
 				 struct qed_dev_eth_info *info);
@@ -252,6 +239,11 @@ int qede_ntuple_filter_conf(struct rte_eth_dev *eth_dev,
 			    enum rte_filter_op filter_op, void *arg);
 
 int qede_check_fdir_support(struct rte_eth_dev *eth_dev);
+
+uint16_t qede_fdir_construct_pkt(struct rte_eth_dev *eth_dev,
+				 struct rte_eth_fdir_filter *fdir,
+				 void *buff,
+				 struct ecore_arfs_config_params *params);
 
 void qede_fdir_dealloc_resc(struct rte_eth_dev *eth_dev);
 

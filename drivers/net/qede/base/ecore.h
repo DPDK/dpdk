@@ -808,8 +808,8 @@ struct ecore_dev {
  *
  * @return OSAL_INLINE u8
  */
-static OSAL_INLINE u8 ecore_concrete_to_sw_fid(struct ecore_dev *p_dev,
-					  u32 concrete_fid)
+static OSAL_INLINE u8
+ecore_concrete_to_sw_fid(__rte_unused struct ecore_dev *p_dev, u32 concrete_fid)
 {
 	u8 vfid     = GET_FIELD(concrete_fid, PXP_CONCRETE_FID_VFID);
 	u8 pfid     = GET_FIELD(concrete_fid, PXP_CONCRETE_FID_PFID);

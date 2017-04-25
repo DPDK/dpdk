@@ -298,6 +298,7 @@ qede_alloc_etherdev(struct qede_dev *qdev, struct qed_dev_eth_info *info)
 	qdev->ops = qed_ops;
 }
 
+#ifdef RTE_LIBRTE_QEDE_DEBUG_INFO
 static void qede_print_adapter_info(struct qede_dev *qdev)
 {
 	struct ecore_dev *edev = &qdev->edev;
@@ -326,6 +327,7 @@ static void qede_print_adapter_info(struct qede_dev *qdev)
 	DP_INFO(edev, " Firmware file : %s\n", fw_file);
 	DP_INFO(edev, "*********************************\n");
 }
+#endif
 
 static void qede_set_ucast_cmn_params(struct ecore_filter_ucast *ucast)
 {
@@ -508,7 +510,7 @@ qede_mac_int_ops(struct rte_eth_dev *eth_dev, struct ecore_filter_ucast *ucast,
 
 static void
 qede_mac_addr_add(struct rte_eth_dev *eth_dev, struct ether_addr *mac_addr,
-		  uint32_t index, __rte_unused uint32_t pool)
+		  __rte_unused uint32_t index, __rte_unused uint32_t pool)
 {
 	struct ecore_filter_ucast ucast;
 
@@ -523,9 +525,7 @@ qede_mac_addr_remove(struct rte_eth_dev *eth_dev, uint32_t index)
 {
 	struct qede_dev *qdev = eth_dev->data->dev_private;
 	struct ecore_dev *edev = &qdev->edev;
-	struct ether_addr mac_addr;
 	struct ecore_filter_ucast ucast;
-	int rc;
 
 	PMD_INIT_FUNC_TRACE(edev);
 
@@ -607,46 +607,6 @@ static int qede_vlan_stripping(struct rte_eth_dev *eth_dev, bool set_stripping)
 	qdev->vlan_strip_flg = set_stripping;
 
 	return 0;
-}
-
-static void qede_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask)
-{
-	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
-	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
-	struct rte_eth_rxmode *rxmode = &eth_dev->data->dev_conf.rxmode;
-
-	if (mask & ETH_VLAN_STRIP_MASK) {
-		if (rxmode->hw_vlan_strip)
-			(void)qede_vlan_stripping(eth_dev, 1);
-		else
-			(void)qede_vlan_stripping(eth_dev, 0);
-	}
-
-	if (mask & ETH_VLAN_FILTER_MASK) {
-		/* VLAN filtering kicks in when a VLAN is added */
-		if (rxmode->hw_vlan_filter) {
-			qede_vlan_filter_set(eth_dev, 0, 1);
-		} else {
-			if (qdev->configured_vlans > 1) { /* Excluding VLAN0 */
-				DP_ERR(edev,
-				  " Please remove existing VLAN filters"
-				  " before disabling VLAN filtering\n");
-				/* Signal app that VLAN filtering is still
-				 * enabled
-				 */
-				rxmode->hw_vlan_filter = true;
-			} else {
-				qede_vlan_filter_set(eth_dev, 0, 0);
-			}
-		}
-	}
-
-	if (mask & ETH_VLAN_EXTEND_MASK)
-		DP_INFO(edev, "No offloads are supported with VLAN Q-in-Q"
-			" and classification is based on outer tag only\n");
-
-	DP_INFO(edev, "vlan offload mask %d vlan-strip %d vlan-filter %d\n",
-		mask, rxmode->hw_vlan_strip, rxmode->hw_vlan_filter);
 }
 
 static int qede_vlan_filter_set(struct rte_eth_dev *eth_dev,
@@ -739,6 +699,46 @@ static int qede_vlan_filter_set(struct rte_eth_dev *eth_dev,
 	return rc;
 }
 
+static void qede_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask)
+{
+	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
+	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
+	struct rte_eth_rxmode *rxmode = &eth_dev->data->dev_conf.rxmode;
+
+	if (mask & ETH_VLAN_STRIP_MASK) {
+		if (rxmode->hw_vlan_strip)
+			(void)qede_vlan_stripping(eth_dev, 1);
+		else
+			(void)qede_vlan_stripping(eth_dev, 0);
+	}
+
+	if (mask & ETH_VLAN_FILTER_MASK) {
+		/* VLAN filtering kicks in when a VLAN is added */
+		if (rxmode->hw_vlan_filter) {
+			qede_vlan_filter_set(eth_dev, 0, 1);
+		} else {
+			if (qdev->configured_vlans > 1) { /* Excluding VLAN0 */
+				DP_ERR(edev,
+				  " Please remove existing VLAN filters"
+				  " before disabling VLAN filtering\n");
+				/* Signal app that VLAN filtering is still
+				 * enabled
+				 */
+				rxmode->hw_vlan_filter = true;
+			} else {
+				qede_vlan_filter_set(eth_dev, 0, 0);
+			}
+		}
+	}
+
+	if (mask & ETH_VLAN_EXTEND_MASK)
+		DP_INFO(edev, "No offloads are supported with VLAN Q-in-Q"
+			" and classification is based on outer tag only\n");
+
+	DP_INFO(edev, "vlan offload mask %d vlan-strip %d vlan-filter %d\n",
+		mask, rxmode->hw_vlan_strip, rxmode->hw_vlan_filter);
+}
+
 static int qede_init_vport(struct qede_dev *qdev)
 {
 	struct ecore_dev *edev = &qdev->edev;
@@ -778,7 +778,9 @@ static void qede_prandom_bytes(uint32_t *buff)
 int qede_config_rss(struct rte_eth_dev *eth_dev)
 {
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
+#ifdef RTE_LIBRTE_QEDE_DEBUG_INFO
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
+#endif
 	uint32_t def_rss_key[ECORE_RSS_KEY_SIZE];
 	struct rte_eth_rss_reta_entry64 reta_conf[2];
 	struct rte_eth_rss_conf rss_conf;
@@ -819,7 +821,7 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 	struct qede_dev *qdev = eth_dev->data->dev_private;
 	struct ecore_dev *edev = &qdev->edev;
 	struct rte_eth_rxmode *rxmode = &eth_dev->data->dev_conf.rxmode;
-	int rc, i, j;
+	int rc;
 
 	PMD_INIT_FUNC_TRACE(edev);
 
@@ -1045,10 +1047,12 @@ qede_link_update(struct rte_eth_dev *eth_dev, __rte_unused int wait_to_complete)
 
 static void qede_promiscuous_enable(struct rte_eth_dev *eth_dev)
 {
+#ifdef RTE_LIBRTE_QEDE_DEBUG_INIT
 	struct qede_dev *qdev = eth_dev->data->dev_private;
 	struct ecore_dev *edev = &qdev->edev;
 
 	PMD_INIT_FUNC_TRACE(edev);
+#endif
 
 	enum qed_filter_rx_mode_type type = QED_FILTER_RX_MODE_TYPE_PROMISC;
 
@@ -1060,10 +1064,12 @@ static void qede_promiscuous_enable(struct rte_eth_dev *eth_dev)
 
 static void qede_promiscuous_disable(struct rte_eth_dev *eth_dev)
 {
+#ifdef RTE_LIBRTE_QEDE_DEBUG_INIT
 	struct qede_dev *qdev = eth_dev->data->dev_private;
 	struct ecore_dev *edev = &qdev->edev;
 
 	PMD_INIT_FUNC_TRACE(edev);
+#endif
 
 	if (rte_eth_allmulticast_get(eth_dev->data->port_id) == 1)
 		qed_configure_filter_rx_mode(eth_dev,
@@ -1180,8 +1186,8 @@ qede_get_stats(struct rte_eth_dev *eth_dev, struct rte_eth_stats *eth_stats)
 			       RTE_ETHDEV_QUEUE_STAT_CNTRS);
 	txq_stat_cntrs = RTE_MIN(QEDE_TSS_COUNT(qdev),
 			       RTE_ETHDEV_QUEUE_STAT_CNTRS);
-	if ((rxq_stat_cntrs != QEDE_RSS_COUNT(qdev)) ||
-	    (txq_stat_cntrs != QEDE_TSS_COUNT(qdev)))
+	if ((rxq_stat_cntrs != (unsigned int)QEDE_RSS_COUNT(qdev)) ||
+	    (txq_stat_cntrs != (unsigned int)QEDE_TSS_COUNT(qdev)))
 		DP_VERBOSE(edev, ECORE_MSG_DEBUG,
 		       "Not all the queue stats will be displayed. Set"
 		       " RTE_ETHDEV_QUEUE_STAT_CNTRS config param"
@@ -1234,7 +1240,8 @@ qede_get_xstats_count(struct qede_dev *qdev) {
 
 static int
 qede_get_xstats_names(__rte_unused struct rte_eth_dev *dev,
-		      struct rte_eth_xstat_name *xstats_names, unsigned limit)
+		      struct rte_eth_xstat_name *xstats_names,
+		      __rte_unused unsigned int limit)
 {
 	struct qede_dev *qdev = dev->data->dev_private;
 	const unsigned int stat_cnt = qede_get_xstats_count(qdev);
@@ -1462,8 +1469,8 @@ static void qede_init_rss_caps(uint8_t *rss_caps, uint64_t hf)
 	*rss_caps |= (hf & ETH_RSS_NONFRAG_IPV6_UDP)  ? ECORE_RSS_IPV6_UDP : 0;
 }
 
-static int qede_rss_hash_update(struct rte_eth_dev *eth_dev,
-				struct rte_eth_rss_conf *rss_conf)
+int qede_rss_hash_update(struct rte_eth_dev *eth_dev,
+			 struct rte_eth_rss_conf *rss_conf)
 {
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
@@ -1567,9 +1574,9 @@ static int qede_rss_hash_conf_get(struct rte_eth_dev *eth_dev,
 	return 0;
 }
 
-static int qede_rss_reta_update(struct rte_eth_dev *eth_dev,
-				struct rte_eth_rss_reta_entry64 *reta_conf,
-				uint16_t reta_size)
+int qede_rss_reta_update(struct rte_eth_dev *eth_dev,
+			 struct rte_eth_rss_reta_entry64 *reta_conf,
+			 uint16_t reta_size)
 {
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
@@ -1655,7 +1662,7 @@ static int qede_rss_reta_query(struct rte_eth_dev *eth_dev,
 	return 0;
 }
 
-int qede_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
+static int qede_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 {
 	struct qede_dev *qdev = QEDE_INIT_QDEV(dev);
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
@@ -1749,14 +1756,14 @@ qede_conf_udp_dst_port(struct rte_eth_dev *eth_dev,
 	return 0;
 }
 
-int
+static int
 qede_udp_dst_port_del(struct rte_eth_dev *eth_dev,
 		      struct rte_eth_udp_tunnel *tunnel_udp)
 {
 	return qede_conf_udp_dst_port(eth_dev, tunnel_udp, false);
 }
 
-int
+static int
 qede_udp_dst_port_add(struct rte_eth_dev *eth_dev,
 		      struct rte_eth_udp_tunnel *tunnel_udp)
 {
@@ -2090,7 +2097,6 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 	/* Fix up ecore debug level */
 	uint32_t dp_module = ~0 & ~ECORE_MSG_HW;
 	uint8_t dp_level = ECORE_LEVEL_VERBOSE;
-	uint32_t max_mac_addrs;
 	int rc;
 
 	/* Extract key data structures */
@@ -2248,7 +2254,9 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 	eth_dev->dev_ops = (is_vf) ? &qede_eth_vf_dev_ops : &qede_eth_dev_ops;
 
 	if (do_once) {
+#ifdef RTE_LIBRTE_QEDE_DEBUG_INFO
 		qede_print_adapter_info(adapter);
+#endif
 		do_once = false;
 	}
 

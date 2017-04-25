@@ -114,7 +114,7 @@ static OSAL_INLINE void __internal_ram_wr(struct ecore_hwfn *p_hwfn,
 					  void OSAL_IOMEM *addr,
 					  int size, u32 *data)
 #else
-static OSAL_INLINE void __internal_ram_wr(void *p_hwfn,
+static OSAL_INLINE void __internal_ram_wr(__rte_unused void *p_hwfn,
 					  void OSAL_IOMEM *addr,
 					  int size, u32 *data)
 #endif
@@ -130,7 +130,7 @@ static OSAL_INLINE void __internal_ram_wr_relaxed(struct ecore_hwfn *p_hwfn,
 						  void OSAL_IOMEM * addr,
 						  int size, u32 *data)
 #else
-static OSAL_INLINE void __internal_ram_wr_relaxed(void *p_hwfn,
+static OSAL_INLINE void __internal_ram_wr_relaxed(__rte_unused void *p_hwfn,
 						  void OSAL_IOMEM * addr,
 						  int size, u32 *data)
 #endif

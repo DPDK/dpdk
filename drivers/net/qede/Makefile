@@ -76,25 +76,27 @@ endif
 #
 #
 BASE_DRIVER_OBJS=$(patsubst %.c,%.o,$(notdir $(wildcard $(SRCDIR)/base/*.c)))
-$(foreach obj, $(BASE_DRIVER_OBJS), $(eval CFLAGS+=$(CFLAGS_BASE_DRIVER)))
+$(foreach obj, $(BASE_DRIVER_OBJS), $(eval CFLAGS_$(obj)+=$(CFLAGS_BASE_DRIVER)))
+
+VPATH += $(SRCDIR)/base
 
 #
 # all source are stored in SRCS-y
 #
-SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += base/ecore_dev.c
-SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += base/ecore_hw.c
-SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += base/ecore_cxt.c
-SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += base/ecore_l2.c
-SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += base/ecore_sp_commands.c
-SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += base/ecore_init_fw_funcs.c
-SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += base/ecore_spq.c
-SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += base/ecore_init_ops.c
-SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += base/ecore_mcp.c
-SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += base/ecore_int.c
-SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += base/ecore_dcbx.c
-SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += base/bcm_osal.c
-SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += base/ecore_sriov.c
-SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += base/ecore_vf.c
+SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += ecore_dev.c
+SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += ecore_hw.c
+SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += ecore_cxt.c
+SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += ecore_l2.c
+SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += ecore_sp_commands.c
+SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += ecore_init_fw_funcs.c
+SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += ecore_spq.c
+SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += ecore_init_ops.c
+SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += ecore_mcp.c
+SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += ecore_int.c
+SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += ecore_dcbx.c
+SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += bcm_osal.c
+SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += ecore_sriov.c
+SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += ecore_vf.c
 SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += qede_ethdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += qede_eth_if.c
 SRCS-$(CONFIG_RTE_LIBRTE_QEDE_PMD) += qede_main.c

@@ -83,7 +83,7 @@ static void qede_tx_queue_release_mbufs(struct qede_tx_queue *txq)
 int
 qede_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		    uint16_t nb_desc, unsigned int socket_id,
-		    const struct rte_eth_rxconf *rx_conf,
+		    __rte_unused const struct rte_eth_rxconf *rx_conf,
 		    struct rte_mempool *mp)
 {
 	struct qede_dev *qdev = dev->data->dev_private;
@@ -330,8 +330,8 @@ qede_tx_queue_setup(struct rte_eth_dev *dev,
 static void qede_init_fp(struct qede_dev *qdev)
 {
 	struct qede_fastpath *fp;
-	uint8_t i, rss_id, tc;
-	int fp_rx = qdev->fp_num_rx, rxq = 0, txq = 0;
+	uint8_t i;
+	int fp_rx = qdev->fp_num_rx;
 
 	memset((void *)qdev->fp_array, 0, (QEDE_QUEUE_CNT(qdev) *
 					   sizeof(*qdev->fp_array)));
@@ -367,11 +367,9 @@ void qede_free_fp_arrays(struct qede_dev *qdev)
 	}
 }
 
-int qede_alloc_fp_array(struct qede_dev *qdev)
+static int qede_alloc_fp_array(struct qede_dev *qdev)
 {
-	struct qede_fastpath *fp;
 	struct ecore_dev *edev = &qdev->edev;
-	int i;
 
 	qdev->fp_array = rte_calloc("fp", QEDE_QUEUE_CNT(qdev),
 				    sizeof(*qdev->fp_array),
@@ -477,7 +475,8 @@ void qede_dealloc_fp_resc(struct rte_eth_dev *eth_dev)
 }
 
 static inline void
-qede_update_rx_prod(struct qede_dev *edev, struct qede_rx_queue *rxq)
+qede_update_rx_prod(__rte_unused struct qede_dev *edev,
+		    struct qede_rx_queue *rxq)
 {
 	uint16_t bd_prod = ecore_chain_get_prod_idx(&rxq->rx_bd_ring);
 	uint16_t cqe_prod = ecore_chain_get_prod_idx(&rxq->rx_comp_ring);
@@ -534,7 +533,8 @@ qede_update_sge_tpa_params(struct ecore_sge_tpa_params *sge_tpa_params,
 	sge_tpa_params->tpa_min_size_to_cont = mtu / 2;
 }
 
-static int qede_start_queues(struct rte_eth_dev *eth_dev, bool clear_stats)
+static int qede_start_queues(struct rte_eth_dev *eth_dev,
+			     __rte_unused bool clear_stats)
 {
 	struct qede_dev *qdev = eth_dev->data->dev_private;
 	struct ecore_dev *edev = &qdev->edev;
@@ -547,7 +547,6 @@ static int qede_start_queues(struct rte_eth_dev *eth_dev, bool clear_stats)
 	dma_addr_t p_phys_table;
 	int txq_index;
 	uint16_t page_cnt;
-	int vlan_removal_en = 1;
 	int rc, tc, i;
 
 	for_each_queue(i) {
@@ -700,6 +699,33 @@ static inline uint8_t qede_check_notunn_csum_l4(uint16_t flag)
 	return 0;
 }
 
+static inline uint32_t qede_rx_cqe_to_pkt_type(uint16_t flags)
+{
+	uint16_t val;
+
+	/* Lookup table */
+	static const uint32_t
+	ptype_lkup_tbl[QEDE_PKT_TYPE_MAX] __rte_cache_aligned = {
+		[QEDE_PKT_TYPE_IPV4] = RTE_PTYPE_L3_IPV4,
+		[QEDE_PKT_TYPE_IPV6] = RTE_PTYPE_L3_IPV6,
+		[QEDE_PKT_TYPE_IPV4_TCP] = RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L4_TCP,
+		[QEDE_PKT_TYPE_IPV6_TCP] = RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L4_TCP,
+		[QEDE_PKT_TYPE_IPV4_UDP] = RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L4_UDP,
+		[QEDE_PKT_TYPE_IPV6_UDP] = RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L4_UDP,
+	};
+
+	/* Bits (0..3) provides L3/L4 protocol type */
+	val = ((PARSING_AND_ERR_FLAGS_L3TYPE_MASK <<
+	       PARSING_AND_ERR_FLAGS_L3TYPE_SHIFT) |
+	       (PARSING_AND_ERR_FLAGS_L4PROTOCOL_MASK <<
+		PARSING_AND_ERR_FLAGS_L4PROTOCOL_SHIFT)) & flags;
+
+	if (val < QEDE_PKT_TYPE_MAX)
+		return ptype_lkup_tbl[val] | RTE_PTYPE_L2_ETHER;
+	else
+		return RTE_PTYPE_UNKNOWN;
+}
+
 static inline uint8_t
 qede_check_notunn_csum_l3(struct rte_mbuf *m, uint16_t flag)
 {
@@ -735,7 +761,7 @@ static inline void qede_rx_bd_ring_consume(struct qede_rx_queue *rxq)
 }
 
 static inline void
-qede_reuse_page(struct qede_dev *qdev,
+qede_reuse_page(__rte_unused struct qede_dev *qdev,
 		struct qede_rx_queue *rxq, struct qede_rx_entry *curr_cons)
 {
 	struct eth_rx_bd *rx_bd_prod = ecore_chain_produce(&rxq->rx_bd_ring);
@@ -768,39 +794,11 @@ qede_recycle_rx_bd_ring(struct qede_rx_queue *rxq,
 	}
 }
 
-static inline uint32_t qede_rx_cqe_to_pkt_type(uint16_t flags)
-{
-	uint16_t val;
-
-	/* Lookup table */
-	static const uint32_t
-	ptype_lkup_tbl[QEDE_PKT_TYPE_MAX] __rte_cache_aligned = {
-		[QEDE_PKT_TYPE_IPV4] = RTE_PTYPE_L3_IPV4,
-		[QEDE_PKT_TYPE_IPV6] = RTE_PTYPE_L3_IPV6,
-		[QEDE_PKT_TYPE_IPV4_TCP] = RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L4_TCP,
-		[QEDE_PKT_TYPE_IPV6_TCP] = RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L4_TCP,
-		[QEDE_PKT_TYPE_IPV4_UDP] = RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L4_UDP,
-		[QEDE_PKT_TYPE_IPV6_UDP] = RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L4_UDP,
-	};
-
-	/* Bits (0..3) provides L3/L4 protocol type */
-	val = ((PARSING_AND_ERR_FLAGS_L3TYPE_MASK <<
-	       PARSING_AND_ERR_FLAGS_L3TYPE_SHIFT) |
-	       (PARSING_AND_ERR_FLAGS_L4PROTOCOL_MASK <<
-		PARSING_AND_ERR_FLAGS_L4PROTOCOL_SHIFT)) & flags;
-
-	if (val < QEDE_PKT_TYPE_MAX)
-		return ptype_lkup_tbl[val] | RTE_PTYPE_L2_ETHER;
-	else
-		return RTE_PTYPE_UNKNOWN;
-}
-
 static inline void
-qede_rx_process_tpa_cmn_cont_end_cqe(struct qede_dev *qdev,
+qede_rx_process_tpa_cmn_cont_end_cqe(__rte_unused struct qede_dev *qdev,
 				     struct qede_rx_queue *rxq,
 				     uint8_t agg_index, uint16_t len)
 {
-	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
 	struct qede_agg_info *tpa_info;
 	struct rte_mbuf *curr_frag; /* Pointer to currently filled TPA seg */
 	uint16_t cons_idx;
@@ -845,13 +843,11 @@ qede_rx_process_tpa_end_cqe(struct qede_dev *qdev,
 			    struct qede_rx_queue *rxq,
 			    struct eth_fast_path_rx_tpa_end_cqe *cqe)
 {
-	struct qede_agg_info *tpa_info;
 	struct rte_mbuf *rx_mb; /* Pointer to head of the chained agg */
 
 	qede_rx_process_tpa_cmn_cont_end_cqe(qdev, rxq, cqe->tpa_agg_index,
 					     cqe->len_list[0]);
 	/* Update total length and frags based on end TPA */
-	tpa_info = &rxq->tpa_info[cqe->tpa_agg_index];
 	rx_mb = rxq->tpa_info[cqe->tpa_agg_index].tpa_head;
 	/* TODO:  Add Sanity Checks */
 	rx_mb->nb_segs = cqe->num_of_bds;
@@ -930,7 +926,6 @@ qede_process_sg_pkts(void *p_rxq,  struct rte_mbuf *rx_mb,
 {
 	struct qede_rx_queue *rxq = p_rxq;
 	struct qede_dev *qdev = rxq->qdev;
-	struct ecore_dev *edev = &qdev->edev;
 	register struct rte_mbuf *seg1 = NULL;
 	register struct rte_mbuf *seg2 = NULL;
 	uint16_t sw_rx_index;
@@ -970,17 +965,19 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	uint16_t hw_comp_cons, sw_comp_cons, sw_rx_index;
 	uint16_t rx_pkt = 0;
 	union eth_rx_cqe *cqe;
-	struct eth_fast_path_rx_reg_cqe *fp_cqe;
+	struct eth_fast_path_rx_reg_cqe *fp_cqe = NULL;
 	register struct rte_mbuf *rx_mb = NULL;
 	register struct rte_mbuf *seg1 = NULL;
 	enum eth_rx_cqe_type cqe_type;
-	uint16_t pkt_len; /* Sum of all BD segments */
+	uint16_t pkt_len = 0; /* Sum of all BD segments */
 	uint16_t len; /* Length of first BD */
 	uint8_t num_segs = 1;
 	uint16_t preload_idx;
-	uint8_t csum_flag;
 	uint16_t parse_flag;
+#ifdef RTE_LIBRTE_QEDE_DEBUG_RX
+	uint8_t bitfield_val;
 	enum rss_hash_type htype;
+#endif
 	uint8_t tunn_parse_flag;
 	uint8_t j;
 	struct eth_fast_path_rx_tpa_start_cqe *cqe_start_tpa;
@@ -988,9 +985,8 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	uint32_t packet_type;
 	uint16_t vlan_tci;
 	bool tpa_start_flg;
-	uint8_t bitfield_val;
 	uint8_t offset, tpa_agg_idx, flags;
-	struct qede_agg_info *tpa_info;
+	struct qede_agg_info *tpa_info = NULL;
 	uint32_t rss_hash;
 
 	hw_comp_cons = rte_le_to_cpu_16(*rxq->hw_cons_ptr);
@@ -1066,24 +1062,28 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		/* Handle regular CQE or TPA start CQE */
 		if (!tpa_start_flg) {
 			parse_flag = rte_le_to_cpu_16(fp_cqe->pars_flags.flags);
-			bitfield_val = fp_cqe->bitfields;
 			offset = fp_cqe->placement_offset;
 			len = rte_le_to_cpu_16(fp_cqe->len_on_first_bd);
 			pkt_len = rte_le_to_cpu_16(fp_cqe->pkt_len);
 			vlan_tci = rte_le_to_cpu_16(fp_cqe->vlan_tag);
 			rss_hash = rte_le_to_cpu_32(fp_cqe->rss_hash);
+#ifdef RTE_LIBRTE_QEDE_DEBUG_RX
+			bitfield_val = fp_cqe->bitfields;
 			htype = (uint8_t)GET_FIELD(bitfield_val,
 					ETH_FAST_PATH_RX_REG_CQE_RSS_HASH_TYPE);
+#endif
 		} else {
 			parse_flag =
 			    rte_le_to_cpu_16(cqe_start_tpa->pars_flags.flags);
-			bitfield_val = cqe_start_tpa->bitfields;
 			offset = cqe_start_tpa->placement_offset;
 			/* seg_len = len_on_first_bd */
 			len = rte_le_to_cpu_16(cqe_start_tpa->len_on_first_bd);
 			vlan_tci = rte_le_to_cpu_16(cqe_start_tpa->vlan_tag);
+#ifdef RTE_LIBRTE_QEDE_DEBUG_RX
+			bitfield_val = cqe_start_tpa->bitfields;
 			htype = (uint8_t)GET_FIELD(bitfield_val,
 				ETH_FAST_PATH_RX_TPA_START_CQE_RSS_HASH_TYPE);
+#endif
 			rss_hash = rte_le_to_cpu_32(cqe_start_tpa->rss_hash);
 		}
 		if (qede_tunn_exist(parse_flag)) {
@@ -1241,7 +1241,6 @@ qede_free_tx_pkt(struct qede_tx_queue *txq)
 	struct rte_mbuf *mbuf;
 	uint16_t nb_segs;
 	uint16_t idx;
-	uint8_t nbds;
 
 	idx = TX_CONS(txq);
 	mbuf = txq->sw_tx_ring[idx].mbuf;
@@ -1265,16 +1264,21 @@ qede_free_tx_pkt(struct qede_tx_queue *txq)
 }
 
 static inline void
-qede_process_tx_compl(struct ecore_dev *edev, struct qede_tx_queue *txq)
+qede_process_tx_compl(__rte_unused struct ecore_dev *edev,
+		      struct qede_tx_queue *txq)
 {
 	uint16_t hw_bd_cons;
+#ifdef RTE_LIBRTE_QEDE_DEBUG_TX
 	uint16_t sw_tx_cons;
+#endif
 
 	rte_compiler_barrier();
 	hw_bd_cons = rte_le_to_cpu_16(*txq->hw_cons_ptr);
+#ifdef RTE_LIBRTE_QEDE_DEBUG_TX
 	sw_tx_cons = ecore_chain_get_cons_idx(&txq->tx_pbl);
 	PMD_TX_LOG(DEBUG, txq, "Tx Completions = %u\n",
 		   abs(hw_bd_cons - sw_tx_cons));
+#endif
 	while (hw_bd_cons !=  ecore_chain_get_cons_idx(&txq->tx_pbl))
 		qede_free_tx_pkt(txq);
 }
@@ -1361,10 +1365,16 @@ print_tx_bd_info(struct qede_tx_queue *txq,
 
 /* TX prepare to check packets meets TX conditions */
 uint16_t
+#ifdef RTE_LIBRTE_QEDE_DEBUG_TX
 qede_xmit_prep_pkts(void *p_txq, struct rte_mbuf **tx_pkts,
 		    uint16_t nb_pkts)
 {
 	struct qede_tx_queue *txq = p_txq;
+#else
+qede_xmit_prep_pkts(__rte_unused void *p_txq, struct rte_mbuf **tx_pkts,
+		    uint16_t nb_pkts)
+{
+#endif
 	uint64_t ol_flags;
 	struct rte_mbuf *m;
 	uint16_t i;
@@ -1411,9 +1421,11 @@ qede_xmit_prep_pkts(void *p_txq, struct rte_mbuf **tx_pkts,
 		}
 	}
 
+#ifdef RTE_LIBRTE_QEDE_DEBUG_TX
 	if (unlikely(i != nb_pkts))
 		PMD_TX_LOG(ERR, txq, "TX prepare failed for %u\n",
 			   nb_pkts - i);
+#endif
 	return i;
 }
 
@@ -1651,7 +1663,7 @@ static void qede_init_fp_queue(struct rte_eth_dev *eth_dev)
 {
 	struct qede_dev *qdev = eth_dev->data->dev_private;
 	struct qede_fastpath *fp;
-	uint8_t i, rss_id, txq_index, tc;
+	uint8_t i, txq_index, tc;
 	int rxq = 0, txq = 0;
 
 	for_each_queue(i) {
@@ -1679,8 +1691,6 @@ int qede_dev_start(struct rte_eth_dev *eth_dev)
 {
 	struct qede_dev *qdev = eth_dev->data->dev_private;
 	struct ecore_dev *edev = &qdev->edev;
-	struct qed_link_output link_output;
-	struct qede_fastpath *fp;
 	int rc;
 
 	DP_INFO(edev, "Device state is %d\n", qdev->state);
