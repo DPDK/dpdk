@@ -37,15 +37,4 @@ struct ecore_tid_mem {
 enum _ecore_status_t ecore_cxt_get_cid_info(struct ecore_hwfn *p_hwfn,
 					    struct ecore_cxt_info *p_info);
 
-/**
-* @brief ecore_cxt_get_tid_mem_info
-*
-* @param p_hwfn
-* @param p_info
-*
-* @return enum _ecore_status_t
-*/
-enum _ecore_status_t ecore_cxt_get_tid_mem_info(struct ecore_hwfn *p_hwfn,
-						struct ecore_tid_mem *p_info);
-
 #endif

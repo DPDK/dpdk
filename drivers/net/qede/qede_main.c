@@ -265,7 +265,7 @@ static int qed_slowpath_start(struct ecore_dev *edev,
 		if (rc) {
 			DP_NOTICE(edev, true,
 			"Failed to allocate stream memory\n");
-			goto err2;
+			goto err1;
 		}
 	}
 
@@ -306,7 +306,7 @@ static int qed_slowpath_start(struct ecore_dev *edev,
 		if (rc) {
 			DP_NOTICE(edev, true,
 				  "Failed sending drv version command\n");
-			return rc;
+			goto err3;
 		}
 	}
 
@@ -314,8 +314,14 @@ static int qed_slowpath_start(struct ecore_dev *edev,
 
 	return 0;
 
+err3:
 	ecore_hw_stop(edev);
 err2:
+	qed_stop_iov_task(edev);
+#ifdef CONFIG_ECORE_ZIPPED_FW
+	qed_free_stream_mem(edev);
+err1:
+#endif
 	ecore_resc_free(edev);
 err:
 #ifdef CONFIG_ECORE_BINARY_FW

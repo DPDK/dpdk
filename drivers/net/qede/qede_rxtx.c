@@ -1459,7 +1459,7 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		bd3 = NULL;
 		hdr_size = 0;
 
-		mbuf = *tx_pkts;
+		mbuf = *tx_pkts++;
 		assert(mbuf);
 
 		/* Check minimum TX BDS availability against available BDs */
@@ -1501,7 +1501,6 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		/* Fill the entry in the SW ring and the BDs in the FW ring */
 		idx = TX_PROD(txq);
-		*tx_pkts++;
 		txq->sw_tx_ring[idx].mbuf = mbuf;
 
 		/* BD1 */

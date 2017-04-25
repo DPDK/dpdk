@@ -2014,47 +2014,6 @@ enum _ecore_status_t ecore_cxt_set_pf_params(struct ecore_hwfn *p_hwfn)
 	return ECORE_SUCCESS;
 }
 
-enum _ecore_status_t ecore_cxt_get_tid_mem_info(struct ecore_hwfn *p_hwfn,
-						struct ecore_tid_mem *p_info)
-{
-	struct ecore_cxt_mngr *p_mngr = p_hwfn->p_cxt_mngr;
-	u32 proto, seg, total_lines, i, shadow_line;
-	struct ecore_ilt_client_cfg *p_cli;
-	struct ecore_ilt_cli_blk *p_fl_seg;
-	struct ecore_tid_seg *p_seg_info;
-
-	/* Verify the personality */
-	switch (p_hwfn->hw_info.personality) {
-	default:
-		return ECORE_INVAL;
-	}
-
-	p_cli = &p_mngr->clients[ILT_CLI_CDUT];
-	if (!p_cli->active)
-		return ECORE_INVAL;
-
-	p_seg_info = &p_mngr->conn_cfg[proto].tid_seg[seg];
-	if (!p_seg_info->has_fl_mem)
-		return ECORE_INVAL;
-
-	p_fl_seg = &p_cli->pf_blks[CDUT_FL_SEG_BLK(seg, PF)];
-	total_lines = DIV_ROUND_UP(p_fl_seg->total_size,
-				   p_fl_seg->real_size_in_page);
-
-	for (i = 0; i < total_lines; i++) {
-		shadow_line = i + p_fl_seg->start_line -
-		    p_hwfn->p_cxt_mngr->pf_start_line;
-		p_info->blocks[i] = p_mngr->ilt_shadow[shadow_line].p_virt;
-	}
-	p_info->waste = ILT_PAGE_IN_BYTES(p_cli->p_size.val) -
-	    p_fl_seg->real_size_in_page;
-	p_info->tid_size = p_mngr->task_type_size[p_seg_info->type];
-	p_info->num_tids_per_block = p_fl_seg->real_size_in_page /
-	    p_info->tid_size;
-
-	return ECORE_SUCCESS;
-}
-
 /* This function is very RoCE oriented, if another protocol in the future
  * will want this feature we'll need to modify the function to be more generic
  */
@@ -2291,53 +2250,4 @@ enum _ecore_status_t ecore_cxt_free_proto_ilt(struct ecore_hwfn *p_hwfn,
 				      ecore_cxt_get_srq_count(p_hwfn));
 
 	return rc;
-}
-
-enum _ecore_status_t ecore_cxt_get_task_ctx(struct ecore_hwfn *p_hwfn,
-					    u32 tid,
-					    u8 ctx_type, void **pp_task_ctx)
-{
-	struct ecore_cxt_mngr *p_mngr = p_hwfn->p_cxt_mngr;
-	struct ecore_ilt_client_cfg *p_cli;
-	struct ecore_ilt_cli_blk *p_seg;
-	struct ecore_tid_seg *p_seg_info;
-	u32 proto, seg;
-	u32 total_lines;
-	u32 tid_size, ilt_idx;
-	u32 num_tids_per_block;
-
-	/* Verify the personality */
-	switch (p_hwfn->hw_info.personality) {
-	default:
-		return ECORE_INVAL;
-	}
-
-	p_cli = &p_mngr->clients[ILT_CLI_CDUT];
-	if (!p_cli->active)
-		return ECORE_INVAL;
-
-	p_seg_info = &p_mngr->conn_cfg[proto].tid_seg[seg];
-
-	if (ctx_type == ECORE_CTX_WORKING_MEM) {
-		p_seg = &p_cli->pf_blks[CDUT_SEG_BLK(seg)];
-	} else if (ctx_type == ECORE_CTX_FL_MEM) {
-		if (!p_seg_info->has_fl_mem)
-			return ECORE_INVAL;
-		p_seg = &p_cli->pf_blks[CDUT_FL_SEG_BLK(seg, PF)];
-	} else {
-		return ECORE_INVAL;
-	}
-	total_lines = DIV_ROUND_UP(p_seg->total_size, p_seg->real_size_in_page);
-	tid_size = p_mngr->task_type_size[p_seg_info->type];
-	num_tids_per_block = p_seg->real_size_in_page / tid_size;
-
-	if (total_lines < tid / num_tids_per_block)
-		return ECORE_INVAL;
-
-	ilt_idx = tid / num_tids_per_block + p_seg->start_line -
-	    p_mngr->pf_start_line;
-	*pp_task_ctx = (u8 *)p_mngr->ilt_shadow[ilt_idx].p_virt +
-	    (tid % num_tids_per_block) * tid_size;
-
-	return ECORE_SUCCESS;
 }
