@@ -465,3 +465,11 @@ The commandline options are:
 *   ``--disable-link-check``
 
     Disable check on link status when starting/stopping ports.
+
+*  ``--no-lsc-interrupt``
+
+   Disable LSC interrupts for all ports, even those supporting it.
+
+*  ``--no-rmv-interrupt``
+
+  Disable RMV interrupts for all ports, even those supporting it.
