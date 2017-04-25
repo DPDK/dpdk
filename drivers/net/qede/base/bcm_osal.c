@@ -98,9 +98,7 @@ inline u32 qede_find_first_zero_bit(unsigned long *addr, u32 limit)
 	u32 nwords = 0;
 	OSAL_BUILD_BUG_ON(!limit);
 	nwords = (limit - 1) / OSAL_BITS_PER_UL + 1;
-	for (i = 0; i < nwords; i++)
-		if (~(addr[i] != 0))
-			break;
+	for (i = 0; i < nwords && ~(addr[i]) == 0; i++);
 	return (i == nwords) ? limit : i * OSAL_BITS_PER_UL + qede_ffz(addr[i]);
 }
 
