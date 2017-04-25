@@ -88,6 +88,7 @@ Limitations
 * SNOW 3G (UIA2) and KASUMI (F9) supported only if hash length, hash offset fields are byte-aligned.
 * No BSD support as BSD QAT kernel driver not available.
 * ZUC EEA3/EIA3 is not supported by dh895xcc devices
+* Maximum additional authenticated data (AAD) for GCM is 240 bytes long.
 
 
 Installation
