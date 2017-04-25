@@ -610,6 +610,7 @@ static inline uint16_t
 rx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 {
 	struct i40e_rx_queue *rxq = (struct i40e_rx_queue *)rx_queue;
+	struct rte_eth_dev *dev;
 	uint16_t nb_rx = 0;
 
 	if (!nb_pkts)
@@ -627,9 +628,10 @@ rx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		if (i40e_rx_alloc_bufs(rxq) != 0) {
 			uint16_t i, j;
 
-			PMD_RX_LOG(DEBUG, "Rx mbuf alloc failed for "
-				   "port_id=%u, queue_id=%u",
-				   rxq->port_id, rxq->queue_id);
+			dev = I40E_VSI_TO_ETH_DEV(rxq->vsi);
+			dev->data->rx_mbuf_alloc_failed +=
+				rxq->rx_free_thresh;
+
 			rxq->rx_nb_avail = 0;
 			rxq->rx_tail = (uint16_t)(rxq->rx_tail - nb_rx);
 			for (i = 0, j = rxq->rx_tail; i < nb_rx; i++, j++)
@@ -691,6 +693,7 @@ i40e_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	union i40e_rx_desc rxd;
 	struct i40e_rx_entry *sw_ring;
 	struct i40e_rx_entry *rxe;
+	struct rte_eth_dev *dev;
 	struct rte_mbuf *rxm;
 	struct rte_mbuf *nmb;
 	uint16_t nb_rx;
@@ -721,10 +724,13 @@ i40e_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			break;
 
 		nmb = rte_mbuf_raw_alloc(rxq->mp);
-		if (unlikely(!nmb))
+		if (unlikely(!nmb)) {
+			dev = I40E_VSI_TO_ETH_DEV(rxq->vsi);
+			dev->data->rx_mbuf_alloc_failed++;
 			break;
-		rxd = *rxdp;
+		}
 
+		rxd = *rxdp;
 		nb_hold++;
 		rxe = &sw_ring[rx_id];
 		rx_id++;
@@ -816,6 +822,7 @@ i40e_recv_scattered_pkts(void *rx_queue,
 	struct rte_mbuf *nmb, *rxm;
 	uint16_t rx_id = rxq->rx_tail;
 	uint16_t nb_rx = 0, nb_hold = 0, rx_packet_len;
+	struct rte_eth_dev *dev;
 	uint32_t rx_status;
 	uint64_t qword1;
 	uint64_t dma_addr;
@@ -833,8 +840,12 @@ i40e_recv_scattered_pkts(void *rx_queue,
 			break;
 
 		nmb = rte_mbuf_raw_alloc(rxq->mp);
-		if (unlikely(!nmb))
+		if (unlikely(!nmb)) {
+			dev = I40E_VSI_TO_ETH_DEV(rxq->vsi);
+			dev->data->rx_mbuf_alloc_failed++;
 			break;
+		}
+
 		rxd = *rxdp;
 		nb_hold++;
 		rxe = &sw_ring[rx_id];
