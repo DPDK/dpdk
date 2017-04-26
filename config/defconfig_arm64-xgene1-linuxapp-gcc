@@ -32,3 +32,4 @@
 #include "defconfig_arm64-armv8a-linuxapp-gcc"
 
 CONFIG_RTE_MACHINE="xgene1"
+CONFIG_RTE_CACHE_LINE_SIZE=64
