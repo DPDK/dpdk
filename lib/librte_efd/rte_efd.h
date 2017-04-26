@@ -40,6 +40,8 @@
  * RTE EFD Table
  */
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
