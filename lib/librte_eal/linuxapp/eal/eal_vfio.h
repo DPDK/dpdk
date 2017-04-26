@@ -69,13 +69,21 @@ struct vfio_iommu_spapr_register_memory {
 
 struct vfio_iommu_spapr_tce_create {
 	uint32_t argsz;
+	uint32_t flags;
+	/* in */
 	uint32_t page_shift;
+	uint32_t __resv1;
 	uint64_t window_size;
 	uint32_t levels;
+	uint32_t __resv2;
+	/* out */
+	uint64_t start_addr;
 };
 
 struct vfio_iommu_spapr_tce_remove {
 	uint32_t argsz;
+	uint32_t flags;
+	/* in */
 	uint64_t start_addr;
 };
 
