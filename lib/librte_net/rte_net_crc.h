@@ -34,6 +34,8 @@
 #ifndef _RTE_NET_CRC_H_
 #define _RTE_NET_CRC_H_
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
