@@ -244,6 +244,7 @@ rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr,
 
 	/* reference driver structure */
 	dev->driver = dr;
+	dev->device.driver = &dr->driver;
 
 	/* call the driver probe() function */
 	ret = dr->probe(dr, dev);
