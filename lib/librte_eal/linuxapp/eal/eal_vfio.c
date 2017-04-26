@@ -184,6 +184,7 @@ clear_group(int vfio_group_fd)
 			if (vfio_cfg.vfio_groups[i].fd == vfio_group_fd) {
 				vfio_cfg.vfio_groups[i].group_no = -1;
 				vfio_cfg.vfio_groups[i].fd = -1;
+				vfio_cfg.vfio_groups[i].devices = 0;
 				vfio_cfg.vfio_active_groups--;
 				return 0;
 			}
@@ -357,6 +358,7 @@ vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 		clear_group(vfio_group_fd);
 		return -1;
 	}
+	vfio_cfg.vfio_groups[vfio_group_fd].devices++;
 
 	return 0;
 }
@@ -394,17 +396,30 @@ vfio_release_device(const char *sysfs_base, const char *dev_addr,
 	 * code will unset the container and the IOMMU mappings.
 	 */
 
-	if (close(vfio_group_fd) < 0)
-		RTE_LOG(INFO, EAL, "Error when closing vfio_group_fd for %s\n",
-				   dev_addr);
-
-	if (close(vfio_dev_fd) < 0)
+	/* Closing a device */
+	if (close(vfio_dev_fd) < 0) {
 		RTE_LOG(INFO, EAL, "Error when closing vfio_dev_fd for %s\n",
 				   dev_addr);
+		return -1;
+	}
 
-	if (clear_group(vfio_group_fd) < 0)
-		RTE_LOG(INFO, EAL, "Error when clearing group for %s\n",
-				   dev_addr);
+	/* An VFIO group can have several devices attached. Just when there is
+	 * no devices remaining should the group be closed.
+	 */
+	if (--vfio_cfg.vfio_groups[vfio_group_fd].devices == 0) {
+
+		if (close(vfio_group_fd) < 0) {
+			RTE_LOG(INFO, EAL, "Error when closing vfio_group_fd for %s\n",
+				dev_addr);
+			return -1;
+		}
+
+		if (clear_group(vfio_group_fd) < 0) {
+			RTE_LOG(INFO, EAL, "Error when clearing group for %s\n",
+					   dev_addr);
+			return -1;
+		}
+	}
 
 	return 0;
 }
@@ -419,6 +434,7 @@ vfio_enable(const char *modname)
 	for (i = 0; i < VFIO_MAX_GROUPS; i++) {
 		vfio_cfg.vfio_groups[i].fd = -1;
 		vfio_cfg.vfio_groups[i].group_no = -1;
+		vfio_cfg.vfio_groups[i].devices = 0;
 	}
 
 	/* inform the user that we are probing for VFIO */

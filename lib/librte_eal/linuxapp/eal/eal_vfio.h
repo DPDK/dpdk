@@ -126,6 +126,7 @@ int vfio_mp_sync_connect_to_primary(void);
 struct vfio_group {
 	int group_no;
 	int fd;
+	int devices;
 };
 
 struct vfio_config {
