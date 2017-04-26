@@ -314,9 +314,11 @@ struct rte_flow_item_any {
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_ANY. */
+#ifndef __cplusplus
 static const struct rte_flow_item_any rte_flow_item_any_mask = {
 	.num = 0x00000000,
 };
+#endif
 
 /**
  * RTE_FLOW_ITEM_TYPE_VF
@@ -341,9 +343,11 @@ struct rte_flow_item_vf {
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_VF. */
+#ifndef __cplusplus
 static const struct rte_flow_item_vf rte_flow_item_vf_mask = {
 	.id = 0x00000000,
 };
+#endif
 
 /**
  * RTE_FLOW_ITEM_TYPE_PORT
@@ -370,9 +374,11 @@ struct rte_flow_item_port {
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_PORT. */
+#ifndef __cplusplus
 static const struct rte_flow_item_port rte_flow_item_port_mask = {
 	.index = 0x00000000,
 };
+#endif
 
 /**
  * RTE_FLOW_ITEM_TYPE_RAW
@@ -403,6 +409,7 @@ struct rte_flow_item_raw {
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_RAW. */
+#ifndef __cplusplus
 static const struct rte_flow_item_raw rte_flow_item_raw_mask = {
 	.relative = 1,
 	.search = 1,
@@ -411,6 +418,7 @@ static const struct rte_flow_item_raw rte_flow_item_raw_mask = {
 	.limit = 0xffff,
 	.length = 0xffff,
 };
+#endif
 
 /**
  * RTE_FLOW_ITEM_TYPE_ETH
@@ -424,11 +432,13 @@ struct rte_flow_item_eth {
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_ETH. */
+#ifndef __cplusplus
 static const struct rte_flow_item_eth rte_flow_item_eth_mask = {
 	.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
 	.src.addr_bytes = "\xff\xff\xff\xff\xff\xff",
 	.type = 0x0000,
 };
+#endif
 
 /**
  * RTE_FLOW_ITEM_TYPE_VLAN
@@ -444,10 +454,12 @@ struct rte_flow_item_vlan {
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_VLAN. */
+#ifndef __cplusplus
 static const struct rte_flow_item_vlan rte_flow_item_vlan_mask = {
 	.tpid = 0x0000,
 	.tci = 0xffff,
 };
+#endif
 
 /**
  * RTE_FLOW_ITEM_TYPE_IPV4
@@ -461,12 +473,14 @@ struct rte_flow_item_ipv4 {
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_IPV4. */
+#ifndef __cplusplus
 static const struct rte_flow_item_ipv4 rte_flow_item_ipv4_mask = {
 	.hdr = {
 		.src_addr = 0xffffffff,
 		.dst_addr = 0xffffffff,
 	},
 };
+#endif
 
 /**
  * RTE_FLOW_ITEM_TYPE_IPV6.
@@ -480,6 +494,7 @@ struct rte_flow_item_ipv6 {
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_IPV6. */
+#ifndef __cplusplus
 static const struct rte_flow_item_ipv6 rte_flow_item_ipv6_mask = {
 	.hdr = {
 		.src_addr =
@@ -490,6 +505,7 @@ static const struct rte_flow_item_ipv6 rte_flow_item_ipv6_mask = {
 			"\xff\xff\xff\xff\xff\xff\xff\xff",
 	},
 };
+#endif
 
 /**
  * RTE_FLOW_ITEM_TYPE_ICMP.
@@ -501,12 +517,14 @@ struct rte_flow_item_icmp {
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_ICMP. */
+#ifndef __cplusplus
 static const struct rte_flow_item_icmp rte_flow_item_icmp_mask = {
 	.hdr = {
 		.icmp_type = 0xff,
 		.icmp_code = 0xff,
 	},
 };
+#endif
 
 /**
  * RTE_FLOW_ITEM_TYPE_UDP.
@@ -518,12 +536,14 @@ struct rte_flow_item_udp {
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_UDP. */
+#ifndef __cplusplus
 static const struct rte_flow_item_udp rte_flow_item_udp_mask = {
 	.hdr = {
 		.src_port = 0xffff,
 		.dst_port = 0xffff,
 	},
 };
+#endif
 
 /**
  * RTE_FLOW_ITEM_TYPE_TCP.
@@ -535,12 +555,14 @@ struct rte_flow_item_tcp {
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_TCP. */
+#ifndef __cplusplus
 static const struct rte_flow_item_tcp rte_flow_item_tcp_mask = {
 	.hdr = {
 		.src_port = 0xffff,
 		.dst_port = 0xffff,
 	},
 };
+#endif
 
 /**
  * RTE_FLOW_ITEM_TYPE_SCTP.
@@ -552,12 +574,14 @@ struct rte_flow_item_sctp {
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_SCTP. */
+#ifndef __cplusplus
 static const struct rte_flow_item_sctp rte_flow_item_sctp_mask = {
 	.hdr = {
 		.src_port = 0xffff,
 		.dst_port = 0xffff,
 	},
 };
+#endif
 
 /**
  * RTE_FLOW_ITEM_TYPE_VXLAN.
@@ -572,9 +596,11 @@ struct rte_flow_item_vxlan {
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_VXLAN. */
+#ifndef __cplusplus
 static const struct rte_flow_item_vxlan rte_flow_item_vxlan_mask = {
 	.vni = "\xff\xff\xff",
 };
+#endif
 
 /**
  * RTE_FLOW_ITEM_TYPE_E_TAG.
@@ -626,9 +652,11 @@ struct rte_flow_item_mpls {
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_MPLS. */
+#ifndef __cplusplus
 static const struct rte_flow_item_mpls rte_flow_item_mpls_mask = {
 	.label_tc_s = "\xff\xff\xf0",
 };
+#endif
 
 /**
  * RTE_FLOW_ITEM_TYPE_GRE.
@@ -645,9 +673,11 @@ struct rte_flow_item_gre {
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_GRE. */
+#ifndef __cplusplus
 static const struct rte_flow_item_gre rte_flow_item_gre_mask = {
 	.protocol = 0xffff,
 };
+#endif
 
 /**
  * Matching pattern item definition.
