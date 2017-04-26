@@ -905,9 +905,9 @@ rte_event_dev_close(uint8_t dev_id);
  * The generic *rte_event* structure to hold the event attributes
  * for dequeue and enqueue operation
  */
+RTE_STD_C11
 struct rte_event {
 	/** WORD0 */
-	RTE_STD_C11
 	union {
 		uint64_t event;
 		/** Event attributes for dequeue or enqueue operation */
@@ -967,7 +967,6 @@ struct rte_event {
 		};
 	};
 	/** WORD1 */
-	RTE_STD_C11
 	union {
 		uint64_t u64;
 		/**< Opaque 64-bit value */
