@@ -52,6 +52,12 @@
 #ifndef _RTE_METRICS_H_
 #define _RTE_METRICS_H_
 
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /** Maximum length of metric name (including null-terminator) */
 #define RTE_METRICS_MAX_NAME_LEN 64
 
@@ -236,5 +242,9 @@ int rte_metrics_update_values(
 	uint16_t key,
 	const uint64_t *values,
 	uint32_t count);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
