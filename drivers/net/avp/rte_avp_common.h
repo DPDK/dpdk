@@ -59,6 +59,17 @@
 
 #ifdef __KERNEL__
 #include <linux/if.h>
+#define RTE_STD_C11
+#else
+#include <stdint.h>
+#include <rte_common.h>
+#include <rte_memory.h>
+#include <rte_ether.h>
+#include <rte_atomic.h>
+#endif
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
 /**
@@ -115,6 +126,7 @@ struct rte_avp_device_config {
  */
 struct rte_avp_request {
 	uint32_t req_id; /**< Request id */
+	RTE_STD_C11
 	union {
 		uint32_t new_mtu; /**< New MTU */
 		uint8_t if_up;	/**< 1: interface up, 0: interface down */
@@ -133,7 +145,7 @@ struct rte_avp_fifo {
 	volatile unsigned int read; /**< Next position to be read */
 	unsigned int len; /**< Circular buffer length */
 	unsigned int elem_size; /**< Pointer size - for 32/64 bit OS */
-	void *volatile buffer[0]; /**< The buffer contains mbuf pointers */
+	void *volatile buffer[]; /**< The buffer contains mbuf pointers */
 };
 
 
@@ -412,5 +424,9 @@ struct rte_avp_device_info {
 #define RTE_AVP_IOCTL_CREATE  _IOWR(0, 2, struct rte_avp_device_info)
 #define RTE_AVP_IOCTL_RELEASE _IOWR(0, 3, struct rte_avp_device_info)
 #define RTE_AVP_IOCTL_QUERY   _IOWR(0, 4, struct rte_avp_device_config)
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _RTE_AVP_COMMON_H_ */

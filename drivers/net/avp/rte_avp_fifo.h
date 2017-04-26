@@ -57,6 +57,12 @@
 #ifndef _RTE_AVP_FIFO_H_
 #define _RTE_AVP_FIFO_H_
 
+#include "rte_avp_common.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifdef __KERNEL__
 /* Write memory barrier for kernel compiles */
 #define AVP_WMB() smp_wmb()
@@ -70,6 +76,8 @@
 #endif
 
 #ifndef __KERNEL__
+#include <rte_debug.h>
+
 /**
  * Initializes the avp fifo structure
  */
@@ -153,5 +161,9 @@ avp_fifo_free_count(struct rte_avp_fifo *fifo)
 {
 	return (fifo->read - fifo->write - 1) & (fifo->len - 1);
 }
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _RTE_AVP_FIFO_H_ */
