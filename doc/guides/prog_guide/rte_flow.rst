@@ -863,6 +863,32 @@ Matches a VXLAN header (RFC 7348).
 - ``rsvd1``: reserved, normally 0x00.
 - Default ``mask`` matches VNI only.
 
+Item: ``E_TAG``
+^^^^^^^^^^^^^^^
+
+Matches an IEEE 802.1BR E-Tag header.
+
+- ``tpid``: tag protocol identifier (0x893F)
+- ``epcp_edei_in_ecid_b``: E-Tag control information (E-TCI), E-PCP (3b),
+  E-DEI (1b), ingress E-CID base (12b).
+- ``rsvd_grp_ecid_b``: reserved (2b), GRP (2b), E-CID base (12b).
+- ``in_ecid_e``: ingress E-CID ext.
+- ``ecid_e``: E-CID ext.
+- Default ``mask`` simultaneously matches GRP and E-CID base.
+
+Item: ``NVGRE``
+^^^^^^^^^^^^^^^
+
+Matches a NVGRE header (RFC 7637).
+
+- ``c_k_s_rsvd0_ver``: checksum (1b), undefined (1b), key bit (1b),
+  sequence number (1b), reserved 0 (9b), version (3b). This field must have
+  value 0x2000 according to RFC 7637.
+- ``protocol``: protocol type (0x6558).
+- ``tni``: virtual subnet ID.
+- ``flow_id``: flow ID.
+- Default ``mask`` matches TNI only.
+
 Item: ``MPLS``
 ^^^^^^^^^^^^^^
 

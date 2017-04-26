@@ -159,6 +159,10 @@ enum index {
 	ITEM_SCTP_CKSUM,
 	ITEM_VXLAN,
 	ITEM_VXLAN_VNI,
+	ITEM_E_TAG,
+	ITEM_E_TAG_GRP_ECID_B,
+	ITEM_NVGRE,
+	ITEM_NVGRE_TNI,
 	ITEM_MPLS,
 	ITEM_MPLS_LABEL,
 	ITEM_GRE,
@@ -436,6 +440,8 @@ static const enum index next_item[] = {
 	ITEM_TCP,
 	ITEM_SCTP,
 	ITEM_VXLAN,
+	ITEM_E_TAG,
+	ITEM_NVGRE,
 	ITEM_MPLS,
 	ITEM_GRE,
 	ZERO,
@@ -540,6 +546,18 @@ static const enum index item_sctp[] = {
 
 static const enum index item_vxlan[] = {
 	ITEM_VXLAN_VNI,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_e_tag[] = {
+	ITEM_E_TAG_GRP_ECID_B,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_nvgre[] = {
+	ITEM_NVGRE_TNI,
 	ITEM_NEXT,
 	ZERO,
 };
@@ -1296,6 +1314,34 @@ static const struct token token_list[] = {
 		.help = "VXLAN identifier",
 		.next = NEXT(item_vxlan, NEXT_ENTRY(UNSIGNED), item_param),
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_vxlan, vni)),
+	},
+	[ITEM_E_TAG] = {
+		.name = "e_tag",
+		.help = "match E-Tag header",
+		.priv = PRIV_ITEM(E_TAG, sizeof(struct rte_flow_item_e_tag)),
+		.next = NEXT(item_e_tag),
+		.call = parse_vc,
+	},
+	[ITEM_E_TAG_GRP_ECID_B] = {
+		.name = "grp_ecid_b",
+		.help = "GRP and E-CID base",
+		.next = NEXT(item_e_tag, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_MASK_HTON(struct rte_flow_item_e_tag,
+						  rsvd_grp_ecid_b,
+						  "\x3f\xff")),
+	},
+	[ITEM_NVGRE] = {
+		.name = "nvgre",
+		.help = "match NVGRE header",
+		.priv = PRIV_ITEM(NVGRE, sizeof(struct rte_flow_item_nvgre)),
+		.next = NEXT(item_nvgre),
+		.call = parse_vc,
+	},
+	[ITEM_NVGRE_TNI] = {
+		.name = "tni",
+		.help = "virtual subnet ID",
+		.next = NEXT(item_nvgre, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_nvgre, tni)),
 	},
 	[ITEM_MPLS] = {
 		.name = "mpls",

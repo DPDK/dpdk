@@ -49,6 +49,7 @@
 #include <rte_sctp.h>
 #include <rte_tcp.h>
 #include <rte_udp.h>
+#include <rte_byteorder.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -620,6 +621,19 @@ struct rte_flow_item_e_tag {
 	uint8_t ecid_e; /**< E-CID ext. */
 };
 
+/** Default mask for RTE_FLOW_ITEM_TYPE_E_TAG. */
+#ifndef __cplusplus
+static const struct rte_flow_item_e_tag rte_flow_item_e_tag_mask = {
+#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
+	.rsvd_grp_ecid_b = 0x3fff,
+#elif RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
+	.rsvd_grp_ecid_b = 0xff3f,
+#else
+#error Unsupported endianness.
+#endif
+};
+#endif
+
 /**
  * RTE_FLOW_ITEM_TYPE_NVGRE.
  *
@@ -637,6 +651,13 @@ struct rte_flow_item_nvgre {
 	uint8_t tni[3]; /**< Virtual subnet ID. */
 	uint8_t flow_id; /**< Flow ID. */
 };
+
+/** Default mask for RTE_FLOW_ITEM_TYPE_NVGRE. */
+#ifndef __cplusplus
+static const struct rte_flow_item_nvgre rte_flow_item_nvgre_mask = {
+	.tni = "\xff\xff\xff",
+};
+#endif
 
 /**
  * RTE_FLOW_ITEM_TYPE_MPLS.

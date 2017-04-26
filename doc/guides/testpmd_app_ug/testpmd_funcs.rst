@@ -2537,6 +2537,14 @@ This section lists supported pattern items and their attributes, if any.
 
   - ``vni {unsigned}``: VXLAN identifier.
 
+- ``e_tag``: match IEEE 802.1BR E-Tag header.
+
+  - ``grp_ecid_b {unsigned}``: GRP and E-CID base.
+
+- ``nvgre``: match NVGRE header.
+
+  - ``tni {unsigned}``: virtual subnet ID.
+
 - ``mpls``: match MPLS header.
 
   - ``label {unsigned}``: MPLS label.
