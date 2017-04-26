@@ -33,8 +33,8 @@ MAKEFLAGS += --no-print-directory
 ALL_DEPDIRS := $(patsubst DEPDIRS-%,%,$(filter DEPDIRS-%,$(.VARIABLES)))
 
 # output directory
-O ?= .
-BASE_OUTPUT ?= $(O)
+O ?= $(CURDIR)
+BASE_OUTPUT ?= $(abspath $(O))
 CUR_SUBDIR ?= .
 
 .PHONY: all
