@@ -91,6 +91,9 @@
  * RTE_PTYPE_INNER_L4_UDP.
  */
 
+#include <stddef.h>
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
