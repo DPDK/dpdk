@@ -54,13 +54,6 @@ extern "C" {
 
 #include "rte_eventdev.h"
 
-#ifdef RTE_LIBRTE_EVENTDEV_DEBUG
-#define RTE_PMD_DEBUG_TRACE(...) \
-	rte_pmd_debug_trace(__func__, __VA_ARGS__)
-#else
-#define RTE_PMD_DEBUG_TRACE(...)
-#endif
-
 /* Logging Macros */
 #define RTE_EDEV_LOG_ERR(fmt, args...) \
 	RTE_LOG(ERR, EVENTDEV, "%s() line %u: " fmt "\n",  \

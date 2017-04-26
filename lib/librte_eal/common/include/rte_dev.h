@@ -49,6 +49,7 @@ extern "C" {
 #include <stdio.h>
 #include <sys/queue.h>
 
+#include <rte_config.h>
 #include <rte_log.h>
 
 __attribute__((format(printf, 2, 0)))
@@ -69,6 +70,19 @@ rte_pmd_debug_trace(const char *func_name, const char *fmt, ...)
 
 	rte_log(RTE_LOG_ERR, RTE_LOGTYPE_PMD, "%s: %s", func_name, buffer);
 }
+
+/*
+ * Enable RTE_PMD_DEBUG_TRACE() when at least one component relying on the
+ * RTE_*_RET() macros defined below is compiled in debug mode.
+ */
+#if defined(RTE_LIBRTE_ETHDEV_DEBUG) || \
+	defined(RTE_LIBRTE_CRYPTODEV_DEBUG) || \
+	defined(RTE_LIBRTE_EVENTDEV_DEBUG)
+#define RTE_PMD_DEBUG_TRACE(...) \
+	rte_pmd_debug_trace(__func__, __VA_ARGS__)
+#else
+#define RTE_PMD_DEBUG_TRACE(...) (void)0
+#endif
 
 /* Macros for checking for restricting functions to primary instance only */
 #define RTE_PROC_PRIMARY_OR_ERR_RET(retval) do { \
