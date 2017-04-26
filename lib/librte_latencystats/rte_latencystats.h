@@ -40,7 +40,9 @@
  * library to provide application and flow based latency stats.
  */
 
+#include <stdint.h>
 #include <rte_metrics.h>
+#include <rte_mbuf.h>
 
 #ifdef __cplusplus
 extern "C" {
