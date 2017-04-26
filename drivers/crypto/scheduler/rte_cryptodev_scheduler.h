@@ -46,6 +46,7 @@
  * operation: round robin, packet-size based, and fail-over.
  */
 
+#include <stdint.h>
 #include "rte_cryptodev_scheduler_operations.h"
 
 #ifdef __cplusplus
