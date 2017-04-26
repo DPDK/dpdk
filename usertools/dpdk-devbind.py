@@ -386,25 +386,6 @@ def unbind_one(dev_id, force):
               "Skipping unbind" % (dev_id))
         return
 
-    # For kernels > 3.15 driver_override is used to bind a device to a driver.
-    # Before unbinding it, overwrite driver_override with empty string so that
-    # the device can be bound to any other driver
-    filename = "/sys/bus/pci/devices/%s/driver_override" % dev_id
-    if os.path.exists(filename):
-        try:
-            f = open(filename, "w")
-        except:
-            print("Error: unbind failed for %s - Cannot open %s"
-                  % (dev_id, filename))
-            sys.exit(1)
-        try:
-            f.write("\00")
-            f.close()
-        except:
-            print("Error: unbind failed for %s - Cannot open %s"
-                  % (dev_id, filename))
-            sys.exit(1)
-
     # write to /sys to unbind
     filename = "/sys/bus/pci/drivers/%s/unbind" % dev["Driver_str"]
     try:
@@ -506,6 +487,25 @@ def bind_one(dev_id, driver, force):
         if saved_driver is not None:  # restore any previous driver
             bind_one(dev_id, saved_driver, force)
         return
+
+    # For kernels > 3.15 driver_override is used to bind a device to a driver.
+    # Before unbinding it, overwrite driver_override with empty string so that
+    # the device can be bound to any other driver
+    filename = "/sys/bus/pci/devices/%s/driver_override" % dev_id
+    if os.path.exists(filename):
+        try:
+            f = open(filename, "w")
+        except:
+            print("Error: unbind failed for %s - Cannot open %s"
+                  % (dev_id, filename))
+            sys.exit(1)
+        try:
+            f.write("\00")
+            f.close()
+        except:
+            print("Error: unbind failed for %s - Cannot open %s"
+                  % (dev_id, filename))
+            sys.exit(1)
 
 
 def unbind_all(dev_list, force=False):
