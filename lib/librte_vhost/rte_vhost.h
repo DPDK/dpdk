@@ -40,12 +40,18 @@
  */
 
 #include <stdint.h>
-#include <linux/vhost.h>
-#include <linux/virtio_ring.h>
 #include <sys/eventfd.h>
 
 #include <rte_memory.h>
 #include <rte_mempool.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* These are not C++-aware. */
+#include <linux/vhost.h>
+#include <linux/virtio_ring.h>
 
 #define RTE_VHOST_USER_CLIENT		(1ULL << 0)
 #define RTE_VHOST_USER_NO_RECONNECT	(1ULL << 1)
@@ -70,7 +76,7 @@ struct rte_vhost_mem_region {
  */
 struct rte_vhost_memory {
 	uint32_t nregions;
-	struct rte_vhost_mem_region regions[0];
+	struct rte_vhost_mem_region regions[];
 };
 
 struct rte_vhost_vring {
@@ -425,5 +431,9 @@ int rte_vhost_get_mem_table(int vid, struct rte_vhost_memory **mem);
  */
 int rte_vhost_get_vhost_vring(int vid, uint16_t vring_idx,
 			      struct rte_vhost_vring *vring);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _RTE_VHOST_H_ */

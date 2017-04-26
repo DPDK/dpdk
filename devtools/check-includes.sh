@@ -109,10 +109,12 @@ include_dir=${1:-build/include}
 	'rte_byteorder_64.h' \
 	'generic/*' \
 	'exec-env/*' \
+	'rte_vhost.h' \
+	'rte_eth_vhost.h' \
 }
 : ${IGNORE_CXX= \
+	'rte_vhost.h' \
 	'rte_eth_vhost.h' \
-	'rte_virtio_net.h' \
 }
 
 temp_cc=/tmp/${0##*/}.$$.c
