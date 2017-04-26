@@ -34,6 +34,12 @@
 #ifndef _RTE_BITRATE_H_
 #define _RTE_BITRATE_H_
 
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  *  Bitrate statistics data structure.
  *  This data structure is intentionally opaque.
@@ -80,5 +86,9 @@ int rte_stats_bitrate_reg(struct rte_stats_bitrates *bitrate_data);
  */
 int rte_stats_bitrate_calc(struct rte_stats_bitrates *bitrate_data,
 	uint8_t port_id);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _RTE_BITRATE_H_ */
