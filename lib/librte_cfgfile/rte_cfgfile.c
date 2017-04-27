@@ -408,7 +408,20 @@ rte_cfgfile_section_num_entries(struct rte_cfgfile *cfg,
 	return s->num_entries;
 }
 
+int
+rte_cfgfile_section_num_entries_by_index(struct rte_cfgfile *cfg,
+	char *sectionname, int index)
+{
+	const struct rte_cfgfile_section *sect;
 
+	if (index < 0 || index >= cfg->num_sections)
+		return -1;
+
+	sect = cfg->sections[index];
+	snprintf(sectionname, CFG_NAME_LEN, "%s", sect->name);
+
+	return sect->num_entries;
+}
 int
 rte_cfgfile_section_entries(struct rte_cfgfile *cfg, const char *sectionname,
 		struct rte_cfgfile_entry *entries, int max_entries)

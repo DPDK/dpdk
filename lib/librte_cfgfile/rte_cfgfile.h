@@ -184,6 +184,26 @@ int rte_cfgfile_section_num_entries(struct rte_cfgfile *cfg,
 	const char *sectionname);
 
 /**
+* Get number of entries in given config file section
+*
+* The index of a section is the same as the index of its name in the
+* result of rte_cfgfile_sections. This API can be used when there are
+* multiple sections with the same name.
+*
+* @param cfg
+*   Config file
+* @param sectionname
+*   Section name
+* @param index
+*   Section index
+* @return
+*   Number of entries in section on success, -1 otherwise
+*/
+int rte_cfgfile_section_num_entries_by_index(struct rte_cfgfile *cfg,
+	char *sectionname,
+	int index);
+
+/**
 * Get section entries as key-value pairs
 *
 * If multiple sections have the given name this function operates on the
