@@ -50,6 +50,7 @@
  */
 #define PCI_CAPABILITY_LIST	0x34
 #define PCI_CAP_ID_VNDR		0x09
+#define PCI_CAP_ID_MSIX		0x11
 
 /*
  * The remaining space is defined by each driver as the per-driver
@@ -649,6 +650,9 @@ virtio_read_caps(struct rte_pci_device *dev, struct virtio_hw *hw)
 				"failed to read pci cap at pos: %x", pos);
 			break;
 		}
+
+		if (cap.cap_vndr == PCI_CAP_ID_MSIX)
+			hw->use_msix = 1;
 
 		if (cap.cap_vndr != PCI_CAP_ID_VNDR) {
 			PMD_INIT_LOG(DEBUG,
