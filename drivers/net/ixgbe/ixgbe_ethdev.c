@@ -3782,8 +3782,12 @@ ixgbe_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct rte_eth_link link, old;
 	ixgbe_link_speed link_speed = IXGBE_LINK_SPEED_UNKNOWN;
+	struct ixgbe_interrupt *intr =
+		IXGBE_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
 	int link_up;
 	int diag;
+	u32 speed = 0;
+	bool autoneg = false;
 
 	link.link_status = ETH_LINK_DOWN;
 	link.link_speed = 0;
@@ -3792,6 +3796,14 @@ ixgbe_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 	rte_ixgbe_dev_atomic_read_link_status(dev, &old);
 
 	hw->mac.get_link_status = true;
+
+	if ((intr->flags & IXGBE_FLAG_NEED_LINK_CONFIG) &&
+		hw->mac.ops.get_media_type(hw) == ixgbe_media_type_fiber) {
+		speed = hw->phy.autoneg_advertised;
+		if (!speed)
+			ixgbe_get_link_capabilities(hw, &speed, &autoneg);
+		ixgbe_setup_link(hw, speed, true);
+	}
 
 	/* check if it needs to wait to complete, if lsc interrupt is enabled */
 	if (wait_to_complete == 0 || dev->data->dev_conf.intr_conf.lsc != 0)
@@ -3810,10 +3822,12 @@ ixgbe_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 
 	if (link_up == 0) {
 		rte_ixgbe_dev_atomic_write_link_status(dev, &link);
+		intr->flags |= IXGBE_FLAG_NEED_LINK_CONFIG;
 		if (link.link_status == old.link_status)
 			return -1;
 		return 0;
 	}
+	intr->flags &= ~IXGBE_FLAG_NEED_LINK_CONFIG;
 	link.link_status = ETH_LINK_UP;
 	link.link_duplex = ETH_LINK_FULL_DUPLEX;
 
