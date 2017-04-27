@@ -346,6 +346,11 @@ Libraries
 Examples
 ~~~~~~~~
 
+* **l2fwd-keepalive: Fixed unclean shutdowns.**
+
+  Added clean shutdown to l2fwd-keepalive so that it can free up
+  stale resources used for inter-process communication.
+
 
 Other
 ~~~~~
