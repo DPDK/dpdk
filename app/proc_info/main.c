@@ -86,6 +86,14 @@ static uint32_t reset_stats;
 static uint32_t reset_xstats;
 /**< Enable memory info. */
 static uint32_t mem_info;
+/**< Enable displaying xstat name. */
+static uint32_t enable_xstats_name;
+static char *xstats_name;
+
+/**< Enable xstats by ids. */
+#define MAX_NB_XSTATS_IDS 1024
+static uint32_t nb_xstats_ids;
+static uint64_t xstats_ids[MAX_NB_XSTATS_IDS];
 
 /**< display usage */
 static void
@@ -99,6 +107,9 @@ proc_info_usage(const char *prgname)
 			"default\n"
 		"  --metrics: to display derived metrics of the ports, disabled by "
 			"default\n"
+		"  --xstats-name NAME: to display single xstat id by NAME\n"
+		"  --xstats-ids IDLIST: to display xstat values by id. "
+			"The argument is comma-separated list of xstat ids to print out.\n"
 		"  --stats-reset: to reset port statistics\n"
 		"  --xstats-reset: to reset port extended statistics\n"
 		"  --collectd-format: to print statistics to STDOUT in expected by collectd format\n"
@@ -130,6 +141,33 @@ parse_portmask(const char *portmask)
 
 	return pm;
 
+}
+
+/*
+ * Parse ids value list into array
+ */
+static int
+parse_xstats_ids(char *list, uint64_t *ids, int limit) {
+	int length;
+	char *token;
+	char *ctx = NULL;
+	char *endptr;
+
+	length = 0;
+	token = strtok_r(list, ",", &ctx);
+	while (token != NULL) {
+		ids[length] = strtoull(token, &endptr, 10);
+		if (*endptr != '\0')
+			return -EINVAL;
+
+		length++;
+		if (length >= limit)
+			return -E2BIG;
+
+		token = strtok_r(NULL, ",", &ctx);
+	}
+
+	return length;
 }
 
 static int
@@ -178,7 +216,9 @@ proc_info_parse_args(int argc, char **argv)
 		{"xstats", 0, NULL, 0},
 		{"metrics", 0, NULL, 0},
 		{"xstats-reset", 0, NULL, 0},
+		{"xstats-name", required_argument, NULL, 1},
 		{"collectd-format", 0, NULL, 0},
+		{"xstats-ids", 1, NULL, 1},
 		{"host-id", 0, NULL, 0},
 		{NULL, 0, 0, 0}
 	};
@@ -224,7 +264,28 @@ proc_info_parse_args(int argc, char **argv)
 					MAX_LONG_OPT_SZ))
 				reset_xstats = 1;
 			break;
+		case 1:
+			/* Print xstat single value given by name*/
+			if (!strncmp(long_option[option_index].name,
+					"xstats-name", MAX_LONG_OPT_SZ)) {
+				enable_xstats_name = 1;
+				xstats_name = optarg;
+				printf("name:%s:%s\n",
+						long_option[option_index].name,
+						optarg);
+			} else if (!strncmp(long_option[option_index].name,
+					"xstats-ids",
+					MAX_LONG_OPT_SZ))	{
+				nb_xstats_ids = parse_xstats_ids(optarg,
+						xstats_ids, MAX_NB_XSTATS_IDS);
 
+				if (nb_xstats_ids <= 0) {
+					printf("xstats-id list parse error.\n");
+					return -1;
+				}
+
+			}
+			break;
 		default:
 			proc_info_usage(prgname);
 			return -1;
@@ -351,20 +412,30 @@ static void collectd_resolve_cnt_type(char *cnt_type, size_t cnt_type_len,
 }
 
 static void
-nic_xstats_display(uint8_t port_id)
+nic_xstats_by_name_display(uint8_t port_id, char *name)
+{
+	uint64_t id;
+
+	printf("###### NIC statistics for port %-2d, statistic name '%s':\n",
+			   port_id, name);
+
+	if (rte_eth_xstats_get_id_by_name(port_id, name, &id) == 0)
+		printf("%s: %"PRIu64"\n", name, id);
+	else
+		printf("Statistic not found...\n");
+
+}
+
+static void
+nic_xstats_by_ids_display(uint8_t port_id, uint64_t *ids, int len)
 {
 	struct rte_eth_xstat_name *xstats_names;
-	struct rte_eth_xstat *xstats;
-	int len, ret, i;
+	uint64_t *values;
+	int ret, i;
 	static const char *nic_stats_border = "########################";
 
-	len = rte_eth_xstats_get_names(port_id, NULL, 0);
-	if (len < 0) {
-		printf("Cannot get xstats count\n");
-		return;
-	}
-	xstats = malloc(sizeof(xstats[0]) * len);
-	if (xstats == NULL) {
+	values = malloc(sizeof(values) * len);
+	if (values == NULL) {
 		printf("Cannot allocate memory for xstats\n");
 		return;
 	}
@@ -372,11 +443,63 @@ nic_xstats_display(uint8_t port_id)
 	xstats_names = malloc(sizeof(struct rte_eth_xstat_name) * len);
 	if (xstats_names == NULL) {
 		printf("Cannot allocate memory for xstat names\n");
-		free(xstats);
+		free(values);
 		return;
 	}
-	if (len != rte_eth_xstats_get_names(
-			port_id, xstats_names, len)) {
+
+	if (len != rte_eth_xstats_get_names_by_id(
+			port_id, xstats_names, len, ids)) {
+		printf("Cannot get xstat names\n");
+		goto err;
+	}
+
+	printf("###### NIC extended statistics for port %-2d #########\n",
+			   port_id);
+	printf("%s############################\n", nic_stats_border);
+	ret = rte_eth_xstats_get_by_id(port_id, ids, values, len);
+	if (ret < 0 || ret > len) {
+		printf("Cannot get xstats\n");
+		goto err;
+	}
+
+	for (i = 0; i < len; i++)
+		printf("%s: %"PRIu64"\n",
+			xstats_names[i].name,
+			values[i]);
+
+	printf("%s############################\n", nic_stats_border);
+err:
+	free(values);
+	free(xstats_names);
+}
+
+static void
+nic_xstats_display(uint8_t port_id)
+{
+	struct rte_eth_xstat_name *xstats_names;
+	uint64_t *values;
+	int len, ret, i;
+	static const char *nic_stats_border = "########################";
+
+	len = rte_eth_xstats_get_names_by_id(port_id, NULL, 0, NULL);
+	if (len < 0) {
+		printf("Cannot get xstats count\n");
+		return;
+	}
+	values = malloc(sizeof(values) * len);
+	if (values == NULL) {
+		printf("Cannot allocate memory for xstats\n");
+		return;
+	}
+
+	xstats_names = malloc(sizeof(struct rte_eth_xstat_name) * len);
+	if (xstats_names == NULL) {
+		printf("Cannot allocate memory for xstat names\n");
+		free(values);
+		return;
+	}
+	if (len != rte_eth_xstats_get_names_by_id(
+			port_id, xstats_names, len, NULL)) {
 		printf("Cannot get xstat names\n");
 		goto err;
 	}
@@ -385,7 +508,7 @@ nic_xstats_display(uint8_t port_id)
 			   port_id);
 	printf("%s############################\n",
 			   nic_stats_border);
-	ret = rte_eth_xstats_get(port_id, xstats, len);
+	ret = rte_eth_xstats_get_by_id(port_id, NULL, values, len);
 	if (ret < 0 || ret > len) {
 		printf("Cannot get xstats\n");
 		goto err;
@@ -401,18 +524,18 @@ nic_xstats_display(uint8_t port_id)
 						  xstats_names[i].name);
 			sprintf(buf, "PUTVAL %s/dpdkstat-port.%u/%s-%s N:%"
 				PRIu64"\n", host_id, port_id, counter_type,
-				xstats_names[i].name, xstats[i].value);
+				xstats_names[i].name, values[i]);
 			write(stdout_fd, buf, strlen(buf));
 		} else {
 			printf("%s: %"PRIu64"\n", xstats_names[i].name,
-			       xstats[i].value);
+					values[i]);
 		}
 	}
 
 	printf("%s############################\n",
 			   nic_stats_border);
 err:
-	free(xstats);
+	free(values);
 	free(xstats_names);
 }
 
@@ -551,6 +674,11 @@ main(int argc, char **argv)
 				nic_stats_clear(i);
 			else if (reset_xstats)
 				nic_xstats_clear(i);
+			else if (enable_xstats_name)
+				nic_xstats_by_name_display(i, xstats_name);
+			else if (nb_xstats_ids > 0)
+				nic_xstats_by_ids_display(i, xstats_ids,
+						nb_xstats_ids);
 			else if (enable_metrics)
 				metrics_display(i);
 		}
