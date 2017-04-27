@@ -875,7 +875,9 @@ tap_rx_queue_setup(struct rte_eth_dev *dev,
 	struct pmd_internals *internals = dev->data->dev_private;
 	struct rx_queue *rxq = &internals->rxq[rx_queue_id];
 	struct rte_mbuf **tmp = &rxq->pool;
-	struct iovec (*iovecs)[nb_rx_desc + 1];
+	long iov_max = sysconf(_SC_IOV_MAX);
+	uint16_t nb_desc = RTE_MIN(nb_rx_desc, iov_max - 1);
+	struct iovec (*iovecs)[nb_desc + 1];
 	int data_off = RTE_PKTMBUF_HEADROOM;
 	int ret = 0;
 	int fd;
@@ -891,13 +893,13 @@ tap_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->mp = mp;
 	rxq->trigger_seen = 1; /* force initial burst */
 	rxq->in_port = dev->data->port_id;
-	rxq->nb_rx_desc = nb_rx_desc;
+	rxq->nb_rx_desc = nb_desc;
 	iovecs = rte_zmalloc_socket(dev->data->name, sizeof(*iovecs), 0,
 				    socket_id);
 	if (!iovecs) {
 		RTE_LOG(WARNING, PMD,
 			"%s: Couldn't allocate %d RX descriptors\n",
-			dev->data->name, nb_rx_desc);
+			dev->data->name, nb_desc);
 		return -ENOMEM;
 	}
 	rxq->iovecs = iovecs;
@@ -911,7 +913,7 @@ tap_rx_queue_setup(struct rte_eth_dev *dev,
 	(*rxq->iovecs)[0].iov_len = sizeof(struct tun_pi);
 	(*rxq->iovecs)[0].iov_base = &rxq->pi;
 
-	for (i = 1; i <= nb_rx_desc; i++) {
+	for (i = 1; i <= nb_desc; i++) {
 		*tmp = rte_pktmbuf_alloc(rxq->mp);
 		if (!*tmp) {
 			RTE_LOG(WARNING, PMD,
