@@ -2379,6 +2379,26 @@ int rte_eth_xstats_get_by_id(uint8_t port_id, const uint64_t *ids,
 			     uint64_t *values, unsigned int n);
 
 /**
+ * Gets the ID of a statistic from its name.
+ *
+ * This function searches for the statistics using string compares, and
+ * as such should not be used on the fast-path. For fast-path retrieval of
+ * specific statistics, store the ID as provided in *id* from this function,
+ * and pass the ID to rte_eth_xstats_get()
+ *
+ * @param port_id The port to look up statistics from
+ * @param xstat_name The name of the statistic to return
+ * @param[out] id A pointer to an app-supplied uint64_t which should be
+ *                set to the ID of the stat if the stat exists.
+ * @return
+ *    0 on success
+ *    -ENODEV for invalid port_id,
+ *    -EINVAL if the xstat_name doesn't exist in port_id
+ */
+int rte_eth_xstats_get_id_by_name(uint8_t port_id, const char *xstat_name,
+		uint64_t *id);
+
+/**
  * Reset extended statistics of an Ethernet device.
  *
  * @param port_id
