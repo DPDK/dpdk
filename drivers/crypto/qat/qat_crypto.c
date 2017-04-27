@@ -1275,9 +1275,9 @@ void qat_crypto_sym_stats_get(struct rte_cryptodev *dev,
 		}
 
 		stats->enqueued_count += qp[i]->stats.enqueued_count;
-		stats->dequeued_count += qp[i]->stats.enqueued_count;
+		stats->dequeued_count += qp[i]->stats.dequeued_count;
 		stats->enqueue_err_count += qp[i]->stats.enqueue_err_count;
-		stats->dequeue_err_count += qp[i]->stats.enqueue_err_count;
+		stats->dequeue_err_count += qp[i]->stats.dequeue_err_count;
 	}
 }
 
