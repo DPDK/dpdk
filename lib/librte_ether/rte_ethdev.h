@@ -1112,11 +1112,22 @@ typedef int (*eth_xstats_get_t)(struct rte_eth_dev *dev,
 	struct rte_eth_xstat *stats, unsigned n);
 /**< @internal Get extended stats of an Ethernet device. */
 
+typedef int (*eth_xstats_get_by_id_t)(struct rte_eth_dev *dev,
+				      const uint64_t *ids,
+				      uint64_t *values,
+				      unsigned int n);
+/**< @internal Get extended stats of an Ethernet device. */
+
 typedef void (*eth_xstats_reset_t)(struct rte_eth_dev *dev);
 /**< @internal Reset extended stats of an Ethernet device. */
 
 typedef int (*eth_xstats_get_names_t)(struct rte_eth_dev *dev,
 	struct rte_eth_xstat_name *xstats_names, unsigned size);
+/**< @internal Get names of extended stats of an Ethernet device. */
+
+typedef int (*eth_xstats_get_names_by_id_t)(struct rte_eth_dev *dev,
+	struct rte_eth_xstat_name *xstats_names, const uint64_t *ids,
+	unsigned int size);
 /**< @internal Get names of extended stats of an Ethernet device. */
 
 typedef int (*eth_queue_stats_mapping_set_t)(struct rte_eth_dev *dev,
@@ -1557,6 +1568,11 @@ struct eth_dev_ops {
 	eth_timesync_adjust_time   timesync_adjust_time; /** Adjust the device clock. */
 	eth_timesync_read_time     timesync_read_time; /** Get the device clock time. */
 	eth_timesync_write_time    timesync_write_time; /** Set the device clock time. */
+
+	eth_xstats_get_by_id_t     xstats_get_by_id;
+	/**< Get extended device statistic values by ID. */
+	eth_xstats_get_names_by_id_t xstats_get_names_by_id;
+	/**< Get name of extended device statistics by ID. */
 };
 
 /**
@@ -2308,6 +2324,59 @@ int rte_eth_xstats_get_names(uint8_t port_id,
  */
 int rte_eth_xstats_get(uint8_t port_id, struct rte_eth_xstat *xstats,
 		unsigned int n);
+
+/**
+ * Retrieve names of extended statistics of an Ethernet device.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param xstats_names
+ *   An rte_eth_xstat_name array of at least *size* elements to
+ *   be filled. If set to NULL, the function returns the required number
+ *   of elements.
+ * @param ids
+ *   IDs array given by app to retrieve specific statistics
+ * @param size
+ *   The size of the xstats_names array (number of elements).
+ * @return
+ *   - A positive value lower or equal to size: success. The return value
+ *     is the number of entries filled in the stats table.
+ *   - A positive value higher than size: error, the given statistics table
+ *     is too small. The return value corresponds to the size that should
+ *     be given to succeed. The entries in the table are not valid and
+ *     shall not be used by the caller.
+ *   - A negative value on error (invalid port id).
+ */
+int
+rte_eth_xstats_get_names_by_id(uint8_t port_id,
+	struct rte_eth_xstat_name *xstats_names, unsigned int size,
+	uint64_t *ids);
+
+/**
+ * Retrieve extended statistics of an Ethernet device.
+ *
+ * @param port_id
+ *   The port identifier of the Ethernet device.
+ * @param ids
+ *   A pointer to an ids array passed by application. This tells wich
+ *   statistics values function should retrieve. This parameter
+ *   can be set to NULL if n is 0. In this case function will retrieve
+ *   all avalible statistics.
+ * @param values
+ *   A pointer to a table to be filled with device statistics values.
+ * @param n
+ *   The size of the ids array (number of elements).
+ * @return
+ *   - A positive value lower or equal to n: success. The return value
+ *     is the number of entries filled in the stats table.
+ *   - A positive value higher than n: error, the given statistics table
+ *     is too small. The return value corresponds to the size that should
+ *     be given to succeed. The entries in the table are not valid and
+ *     shall not be used by the caller.
+ *   - A negative value on error (invalid port id).
+ */
+int rte_eth_xstats_get_by_id(uint8_t port_id, const uint64_t *ids,
+			     uint64_t *values, unsigned int n);
 
 /**
  * Reset extended statistics of an Ethernet device.
