@@ -420,10 +420,12 @@ static inline void
 app_lcore_io_tx_flush(struct app_lcore_params_io *lp)
 {
 	uint8_t port;
+	uint32_t i;
 
-	for (port = 0; port < lp->tx.n_nic_ports; port ++) {
+	for (i = 0; i < lp->tx.n_nic_ports; i++) {
 		uint32_t n_pkts;
 
+		port = lp->tx.nic_ports[i];
 		if (likely((lp->tx.mbuf_out_flush[port] == 0) ||
 		           (lp->tx.mbuf_out[port].n_mbufs == 0))) {
 			lp->tx.mbuf_out_flush[port] = 1;
