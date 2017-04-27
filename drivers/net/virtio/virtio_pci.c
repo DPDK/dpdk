@@ -279,32 +279,6 @@ legacy_notify_queue(struct virtio_hw *hw, struct virtqueue *vq)
 			 VIRTIO_PCI_QUEUE_NOTIFY);
 }
 
-#ifdef RTE_EXEC_ENV_LINUXAPP
-static int
-legacy_virtio_has_msix(const struct rte_pci_addr *loc)
-{
-	DIR *d;
-	char dirname[PATH_MAX];
-
-	snprintf(dirname, sizeof(dirname),
-		     "%s/" PCI_PRI_FMT "/msi_irqs", pci_get_sysfs_path(),
-		     loc->domain, loc->bus, loc->devid, loc->function);
-
-	d = opendir(dirname);
-	if (d)
-		closedir(d);
-
-	return d != NULL;
-}
-#else
-static int
-legacy_virtio_has_msix(const struct rte_pci_addr *loc __rte_unused)
-{
-	/* nic_uio does not enable interrupts, return 0 (false). */
-	return 0;
-}
-#endif
-
 const struct virtio_pci_ops legacy_ops = {
 	.read_dev_cfg	= legacy_read_dev_config,
 	.write_dev_cfg	= legacy_write_dev_config,
@@ -725,7 +699,6 @@ vtpci_init(struct rte_pci_device *dev, struct virtio_hw *hw)
 	}
 
 	virtio_hw_internal[hw->port_id].vtpci_ops = &legacy_ops;
-	hw->use_msix = legacy_virtio_has_msix(&dev->addr);
 	hw->modern   = 0;
 
 	return 0;
