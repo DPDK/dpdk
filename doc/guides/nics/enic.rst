@@ -140,6 +140,81 @@ Masking of these feilds for partial match is also supported.
 Without advanced filter support, the flow director is limited to IPv4
 perfect filtering of the 5-tuple with no masking of fields supported.
 
+SR-IOV mode utilization
+-----------------------
+
+UCS blade servers configured with dynamic vNIC connection policies in UCS
+manager are capable of supporting assigned devices on virtual machines (VMs)
+through a KVM hypervisor. Assigned devices, also known as 'passthrough'
+devices, are SR-IOV virtual functions (VFs) on the host which are exposed
+to VM instances.
+
+The Cisco Virtual Machine Fabric Extender (VM-FEX) gives the VM a dedicated
+interface on the Fabric Interconnect (FI). Layer 2 switching is done at
+the FI. This may eliminate the requirement for software switching on the
+host to route intra-host VM traffic.
+
+Please refer to `Creating a Dynamic vNIC Connection Policy
+<http://www.cisco.com/c/en/us/td/docs/unified_computing/ucs/sw/vm_fex/vmware/gui/config_guide/b_GUI_VMware_VM-FEX_UCSM_Configuration_Guide/b_GUI_VMware_VM-FEX_UCSM_Configuration_Guide_chapter_010.html#task_433E01651F69464783A68E66DA8A47A5>`_
+for information on configuring SR-IOV Adapter policies using UCS manager.
+
+Once the policies are in place and the host OS is rebooted, VFs should be
+visible on the host, E.g.:
+
+.. code-block:: console
+
+     # lspci | grep Cisco | grep Ethernet
+     0d:00.0 Ethernet controller: Cisco Systems Inc VIC Ethernet NIC (rev a2)
+     0d:00.1 Ethernet controller: Cisco Systems Inc VIC SR-IOV VF (rev a2)
+     0d:00.2 Ethernet controller: Cisco Systems Inc VIC SR-IOV VF (rev a2)
+     0d:00.3 Ethernet controller: Cisco Systems Inc VIC SR-IOV VF (rev a2)
+     0d:00.4 Ethernet controller: Cisco Systems Inc VIC SR-IOV VF (rev a2)
+     0d:00.5 Ethernet controller: Cisco Systems Inc VIC SR-IOV VF (rev a2)
+     0d:00.6 Ethernet controller: Cisco Systems Inc VIC SR-IOV VF (rev a2)
+     0d:00.7 Ethernet controller: Cisco Systems Inc VIC SR-IOV VF (rev a2)
+
+Enable Intel IOMMU on the host and install KVM and libvirt. A VM instance should
+be created with an assigned device. When using libvirt, this configuration can
+be done within the domain (i.e. VM) config file. For example this entry maps
+host VF 0d:00:01 into the VM.
+
+.. code-block:: console
+
+    <interface type='hostdev' managed='yes'>
+      <mac address='52:54:00:ac:ff:b6'/>
+      <source>
+        <address type='pci' domain='0x0000' bus='0x0d' slot='0x00' function='0x1'/>
+      </source>
+
+Alternatively, the configuration can be done in a separate file using the
+``network`` keyword. These methods are described in the libvirt documentation for
+`Network XML format <https://libvirt.org/formatnetwork.html>`_.
+
+When the VM instance is started, the enic KVM driver will bind the host VF to
+vfio, complete provisioning on the FI and bring up the link.
+
+.. note::
+
+    It is not possible to use a VF directly from the host because it is not
+    fully provisioned until the hypervisor brings up the VM that it is assigned
+    to.
+
+In the VM instance, the VF will now be visible. E.g., here the VF 00:04.0 is
+seen on the VM instance and should be available for binding to a DPDK.
+
+.. code-block:: console
+
+     # lspci | grep Ether
+     00:04.0 Ethernet controller: Cisco Systems Inc VIC SR-IOV VF (rev a2)
+
+Follow the normal DPDK install procedure, binding the VF to either ``igb_uio``
+or ``vfio`` in non-IOMMU mode.
+
+Please see :ref:`Limitations <enic_limitations>` for limitations in
+the use of SR-IOV.
+
+.. _enic_limitations:
+
 Limitations
 -----------
 
@@ -168,6 +243,23 @@ Limitations
 
 - Flow director features are not supported on generation 1 Cisco VIC adapters
   (M81KR and P81E)
+
+- **SR-IOV**
+
+  - KVM hypervisor support only. VMware has not been tested.
+  - Requires VM-FEX, and so is only available on UCS managed servers connected
+    to Fabric Interconnects. It is not on standalone C-Series servers.
+  - VF devices are not usable directly from the host. They can  only be used
+    as assigned devices on VM instances.
+  - Currently, unbind of the enic kernel mode driver 'enic' on the VM instance
+    may hang. As a workaround, enic.ko should blacklisted or removed from the
+    boot process.
+  - pci_generic cannot be used as the uio module in the VM. igb_uio or
+    vfio in non-IOMMU mode can be used.
+  - The number of RQs in UCSM dynamic vNIC configurations must be at least 2.
+  - The number of SR-IOV devices is limited to 256. Components on target system
+    might limit this number to fewer than 256.
+
 
 How to build the suite?
 -----------------------
@@ -216,6 +308,7 @@ Supported features
 - IPV4, IPV6 and TCP RSS hashing
 - Scattered Rx
 - MTU update
+- SR-IOV on UCS managed servers connected to Fabric Interconnects.
 
 Known bugs and Unsupported features in this release
 ---------------------------------------------------
