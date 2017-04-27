@@ -182,12 +182,21 @@ static int ixgbe_dev_xstats_get(struct rte_eth_dev *dev,
 				struct rte_eth_xstat *xstats, unsigned n);
 static int ixgbevf_dev_xstats_get(struct rte_eth_dev *dev,
 				  struct rte_eth_xstat *xstats, unsigned n);
+static int
+ixgbe_dev_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
+		uint64_t *values, unsigned int n);
 static void ixgbe_dev_stats_reset(struct rte_eth_dev *dev);
 static void ixgbe_dev_xstats_reset(struct rte_eth_dev *dev);
 static int ixgbe_dev_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
-	struct rte_eth_xstat_name *xstats_names, __rte_unused unsigned limit);
+	struct rte_eth_xstat_name *xstats_names,
+	__rte_unused unsigned int size);
 static int ixgbevf_dev_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
 	struct rte_eth_xstat_name *xstats_names, __rte_unused unsigned limit);
+static int ixgbe_dev_xstats_get_names_by_id(
+	__rte_unused struct rte_eth_dev *dev,
+	struct rte_eth_xstat_name *xstats_names,
+	const uint64_t *ids,
+	unsigned int limit);
 static int ixgbe_dev_queue_stats_mapping_set(struct rte_eth_dev *eth_dev,
 					     uint16_t queue_id,
 					     uint8_t stat_idx,
@@ -523,9 +532,11 @@ static const struct eth_dev_ops ixgbe_eth_dev_ops = {
 	.link_update          = ixgbe_dev_link_update,
 	.stats_get            = ixgbe_dev_stats_get,
 	.xstats_get           = ixgbe_dev_xstats_get,
+	.xstats_get_by_id     = ixgbe_dev_xstats_get_by_id,
 	.stats_reset          = ixgbe_dev_stats_reset,
 	.xstats_reset         = ixgbe_dev_xstats_reset,
 	.xstats_get_names     = ixgbe_dev_xstats_get_names,
+	.xstats_get_names_by_id = ixgbe_dev_xstats_get_names_by_id,
 	.queue_stats_mapping_set = ixgbe_dev_queue_stats_mapping_set,
 	.fw_version_get       = ixgbe_fw_version_get,
 	.dev_infos_get        = ixgbe_dev_info_get,
@@ -3127,7 +3138,7 @@ ixgbe_xstats_calc_num(void) {
 }
 
 static int ixgbe_dev_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
-	struct rte_eth_xstat_name *xstats_names, __rte_unused unsigned limit)
+	struct rte_eth_xstat_name *xstats_names, __rte_unused unsigned int size)
 {
 	const unsigned cnt_stats = ixgbe_xstats_calc_num();
 	unsigned stat, i, count;
@@ -3180,6 +3191,84 @@ static int ixgbe_dev_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
 		}
 	}
 	return cnt_stats;
+}
+
+static int ixgbe_dev_xstats_get_names_by_id(
+	__rte_unused struct rte_eth_dev *dev,
+	struct rte_eth_xstat_name *xstats_names,
+	const uint64_t *ids,
+	unsigned int limit)
+{
+	if (!ids) {
+		const unsigned int cnt_stats = ixgbe_xstats_calc_num();
+		unsigned int stat, i, count;
+
+		if (xstats_names != NULL) {
+			count = 0;
+
+			/* Note: limit >= cnt_stats checked upstream
+			 * in rte_eth_xstats_names()
+			 */
+
+			/* Extended stats from ixgbe_hw_stats */
+			for (i = 0; i < IXGBE_NB_HW_STATS; i++) {
+				snprintf(xstats_names[count].name,
+					sizeof(xstats_names[count].name),
+					"%s",
+					rte_ixgbe_stats_strings[i].name);
+				count++;
+			}
+
+			/* MACsec Stats */
+			for (i = 0; i < IXGBE_NB_MACSEC_STATS; i++) {
+				snprintf(xstats_names[count].name,
+					sizeof(xstats_names[count].name),
+					"%s",
+					rte_ixgbe_macsec_strings[i].name);
+				count++;
+			}
+
+			/* RX Priority Stats */
+			for (stat = 0; stat < IXGBE_NB_RXQ_PRIO_STATS; stat++) {
+				for (i = 0; i < IXGBE_NB_RXQ_PRIO_VALUES; i++) {
+					snprintf(xstats_names[count].name,
+					    sizeof(xstats_names[count].name),
+					    "rx_priority%u_%s", i,
+					    rte_ixgbe_rxq_strings[stat].name);
+					count++;
+				}
+			}
+
+			/* TX Priority Stats */
+			for (stat = 0; stat < IXGBE_NB_TXQ_PRIO_STATS; stat++) {
+				for (i = 0; i < IXGBE_NB_TXQ_PRIO_VALUES; i++) {
+					snprintf(xstats_names[count].name,
+					    sizeof(xstats_names[count].name),
+					    "tx_priority%u_%s", i,
+					    rte_ixgbe_txq_strings[stat].name);
+					count++;
+				}
+			}
+		}
+		return cnt_stats;
+	}
+
+	uint16_t i;
+	uint16_t size = ixgbe_xstats_calc_num();
+	struct rte_eth_xstat_name xstats_names_copy[size];
+
+	ixgbe_dev_xstats_get_names_by_id(dev, xstats_names_copy, NULL,
+			size);
+
+	for (i = 0; i < limit; i++) {
+		if (ids[i] >= size) {
+			PMD_INIT_LOG(ERR, "id value isn't valid");
+			return -1;
+		}
+		strcpy(xstats_names[i].name,
+				xstats_names_copy[ids[i]].name);
+	}
+	return limit;
 }
 
 static int ixgbevf_dev_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
@@ -3270,6 +3359,97 @@ ixgbe_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 		}
 	}
 	return count;
+}
+
+static int
+ixgbe_dev_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
+		uint64_t *values, unsigned int n)
+{
+	if (!ids) {
+		struct ixgbe_hw *hw =
+				IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+		struct ixgbe_hw_stats *hw_stats =
+				IXGBE_DEV_PRIVATE_TO_STATS(
+						dev->data->dev_private);
+		struct ixgbe_macsec_stats *macsec_stats =
+				IXGBE_DEV_PRIVATE_TO_MACSEC_STATS(
+					dev->data->dev_private);
+		uint64_t total_missed_rx, total_qbrc, total_qprc, total_qprdc;
+		unsigned int i, stat, count = 0;
+
+		count = ixgbe_xstats_calc_num();
+
+		if (!ids && n < count)
+			return count;
+
+		total_missed_rx = 0;
+		total_qbrc = 0;
+		total_qprc = 0;
+		total_qprdc = 0;
+
+		ixgbe_read_stats_registers(hw, hw_stats, macsec_stats,
+				&total_missed_rx, &total_qbrc, &total_qprc,
+				&total_qprdc);
+
+		/* If this is a reset xstats is NULL, and we have cleared the
+		 * registers by reading them.
+		 */
+		if (!ids && !values)
+			return 0;
+
+		/* Extended stats from ixgbe_hw_stats */
+		count = 0;
+		for (i = 0; i < IXGBE_NB_HW_STATS; i++) {
+			values[count] = *(uint64_t *)(((char *)hw_stats) +
+					rte_ixgbe_stats_strings[i].offset);
+			count++;
+		}
+
+		/* MACsec Stats */
+		for (i = 0; i < IXGBE_NB_MACSEC_STATS; i++) {
+			values[count] = *(uint64_t *)(((char *)macsec_stats) +
+					rte_ixgbe_macsec_strings[i].offset);
+			count++;
+		}
+
+		/* RX Priority Stats */
+		for (stat = 0; stat < IXGBE_NB_RXQ_PRIO_STATS; stat++) {
+			for (i = 0; i < IXGBE_NB_RXQ_PRIO_VALUES; i++) {
+				values[count] =
+					*(uint64_t *)(((char *)hw_stats) +
+					rte_ixgbe_rxq_strings[stat].offset +
+					(sizeof(uint64_t) * i));
+				count++;
+			}
+		}
+
+		/* TX Priority Stats */
+		for (stat = 0; stat < IXGBE_NB_TXQ_PRIO_STATS; stat++) {
+			for (i = 0; i < IXGBE_NB_TXQ_PRIO_VALUES; i++) {
+				values[count] =
+					*(uint64_t *)(((char *)hw_stats) +
+					rte_ixgbe_txq_strings[stat].offset +
+					(sizeof(uint64_t) * i));
+				count++;
+			}
+		}
+		return count;
+	}
+
+	uint16_t i;
+	uint16_t size = ixgbe_xstats_calc_num();
+	uint64_t values_copy[size];
+
+	ixgbe_dev_xstats_get_by_id(dev, NULL, values_copy, size);
+
+	for (i = 0; i < n; i++) {
+		if (ids[i] >= size) {
+			PMD_INIT_LOG(ERR, "id value isn't valid");
+			return -1;
+		}
+		values[i] = values_copy[ids[i]];
+	}
+	return n;
 }
 
 static void
