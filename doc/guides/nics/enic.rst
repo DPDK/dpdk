@@ -1,5 +1,5 @@
 ..  BSD LICENSE
-    Copyright (c) 2015, Cisco Systems, Inc.
+    Copyright (c) 2017, Cisco Systems, Inc.
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -71,9 +71,9 @@ Configuration information
 
     - The number of RQs configured in the vNIC should be greater or
       equal to *twice* the value of the expected nb_rx_q parameter in
-      the call to rte_eth_dev_configure().  With the addition of rx
+      the call to rte_eth_dev_configure().  With the addition of Rx
       scatter, a pair of RQs on the vnic is needed for each receive
-      queue used by DPDK, even if rx scatter is not being used.
+      queue used by DPDK, even if Rx scatter is not being used.
       Having a vNIC with only 1 RQ is not a valid configuration, and
       will fail with an error message.
 
@@ -99,7 +99,7 @@ Configuration information
     gives the application the greatest amount of flexibility in its
     queue configuration.
 
-    - *Note*: Since the introduction of rx scatter, for performance
+    - *Note*: Since the introduction of Rx scatter, for performance
       reasons, this PMD uses two RQs on the vNIC per receive queue in
       DPDK.  One RQ holds descriptors for the start of a packet the
       second RQ holds the descriptors for the rest of the fragments of
@@ -135,7 +135,7 @@ of the server.
 
 With advanced filters, perfect matching of all fields of IPv4, IPv6 headers
 as well as TCP, UDP and SCTP L4 headers is available through flow director.
-Masking of these feilds for partial match is also supported.
+Masking of these fields for partial match is also supported.
 
 Without advanced filter support, the flow director is limited to IPv4
 perfect filtering of the 5-tuple with no masking of fields supported.
@@ -190,7 +190,7 @@ Alternatively, the configuration can be done in a separate file using the
 ``network`` keyword. These methods are described in the libvirt documentation for
 `Network XML format <https://libvirt.org/formatnetwork.html>`_.
 
-When the VM instance is started, the enic KVM driver will bind the host VF to
+When the VM instance is started, the ENIC KVM driver will bind the host VF to
 vfio, complete provisioning on the FI and bring up the link.
 
 .. note::
@@ -251,22 +251,24 @@ Limitations
     to Fabric Interconnects. It is not on standalone C-Series servers.
   - VF devices are not usable directly from the host. They can  only be used
     as assigned devices on VM instances.
-  - Currently, unbind of the enic kernel mode driver 'enic' on the VM instance
-    may hang. As a workaround, enic.ko should blacklisted or removed from the
-    boot process.
+  - Currently, unbind of the ENIC kernel mode driver 'enic.ko' on the VM
+    instance may hang. As a workaround, enic.ko should blacklisted or removed
+    from the boot process.
   - pci_generic cannot be used as the uio module in the VM. igb_uio or
     vfio in non-IOMMU mode can be used.
   - The number of RQs in UCSM dynamic vNIC configurations must be at least 2.
   - The number of SR-IOV devices is limited to 256. Components on target system
     might limit this number to fewer than 256.
 
+How to build the suite
+----------------------
 
-How to build the suite?
------------------------
-The build instructions for the DPDK suite should be followed. By default
-the ENIC PMD library will be built into the DPDK library.
+Refer to the document :ref:`compiling and testing a PMD for a NIC
+<pmd_build_and_test>` for details.
 
-For configuring and using UIO and VFIO frameworks, please refer the
+By default the ENIC PMD library will be built into the DPDK library.
+
+For configuring and using UIO and VFIO frameworks, please refer to the
 documentation that comes with DPDK suite.
 
 Supported Cisco VIC adapters
@@ -288,11 +290,13 @@ ENIC PMD supports all recent generations of Cisco VIC adapters including:
 
 Supported Operating Systems
 ---------------------------
+
 Any Linux distribution fulfilling the conditions described in Dependencies
 section of DPDK documentation.
 
 Supported features
 ------------------
+
 - Unicast, multicast and broadcast transmission and reception
 - Receive queue polling
 - Port Hardware Statistics
@@ -310,8 +314,9 @@ Supported features
 - MTU update
 - SR-IOV on UCS managed servers connected to Fabric Interconnects.
 
-Known bugs and Unsupported features in this release
+Known bugs and unsupported features in this release
 ---------------------------------------------------
+
 - Signature or flex byte based flow direction
 - Drop feature of flow direction
 - VLAN based flow direction
@@ -322,6 +327,7 @@ Known bugs and Unsupported features in this release
 
 Prerequisites
 -------------
+
 - Prepare the system as recommended by DPDK suite.  This includes environment
   variables, hugepages configuration, tool-chains and configuration
 - Insert vfio-pci kernel module using the command 'modprobe vfio-pci' if the
@@ -331,9 +337,8 @@ Prerequisites
 - DPDK suite should be configured based on the user's decision to use VFIO or
   UIO framework
 - If the vNIC device(s) to be used is bound to the kernel mode Ethernet driver
-  (enic), use 'ifconfig' to bring the interface down. The dpdk-devbind.py tool
-  can then be used to unbind the device's bus id from the enic kernel mode
-  driver.
+  use 'ifconfig' to bring the interface down. The dpdk-devbind.py tool can
+  then be used to unbind the device's bus id from the ENIC kernel mode driver.
 - Bind the intended vNIC to vfio-pci in case the user wants ENIC PMD to use
   VFIO framework using dpdk-devbind.py.
 - Bind the intended vNIC to igb_uio in case the user wants ENIC PMD to use
@@ -364,10 +369,12 @@ libraries and the initialization time of the application.
 
 Additional Reference
 --------------------
+
 - http://www.cisco.com/c/en/us/products/servers-unified-computing
 
 Contact Information
 -------------------
+
 Any questions or bugs should be reported to DPDK community and to the ENIC PMD
 maintainers:
 
