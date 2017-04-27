@@ -103,6 +103,14 @@ CONFIG_RTE_EAL_IGB_UIO=n
 CONFIG_RTE_EAL_VFIO=n
 CONFIG_RTE_MALLOC_DEBUG=n
 
+#
+# Recognize/ignore the AVX/AVX512 CPU flags for performance/power testing.
+# AVX512 is marked as experimental for now, will enable it after enough
+# field test and possible optimization.
+#
+CONFIG_RTE_ENABLE_AVX=y
+CONFIG_RTE_ENABLE_AVX512=n
+
 # Default driver path (or "" to disable)
 CONFIG_RTE_EAL_PMD_PATH=""
 
