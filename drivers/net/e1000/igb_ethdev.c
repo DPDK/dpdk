@@ -116,13 +116,9 @@ static void eth_igb_stats_get(struct rte_eth_dev *dev,
 				struct rte_eth_stats *rte_stats);
 static int eth_igb_xstats_get(struct rte_eth_dev *dev,
 			      struct rte_eth_xstat *xstats, unsigned n);
-static int eth_igb_xstats_get_by_ids(struct rte_eth_dev *dev, uint64_t *ids,
-		uint64_t *values, unsigned int n);
 static int eth_igb_xstats_get_names(struct rte_eth_dev *dev,
-		struct rte_eth_xstat_name *xstats_names, unsigned int limit);
-static int eth_igb_xstats_get_names_by_ids(struct rte_eth_dev *dev,
-		struct rte_eth_xstat_name *xstats_names, uint64_t *ids,
-		unsigned int limit);
+				    struct rte_eth_xstat_name *xstats_names,
+				    unsigned int limit);
 static void eth_igb_stats_reset(struct rte_eth_dev *dev);
 static void eth_igb_xstats_reset(struct rte_eth_dev *dev);
 static int eth_igb_fw_version_get(struct rte_eth_dev *dev,
@@ -393,8 +389,6 @@ static const struct eth_dev_ops eth_igb_ops = {
 	.link_update          = eth_igb_link_update,
 	.stats_get            = eth_igb_stats_get,
 	.xstats_get           = eth_igb_xstats_get,
-	.xstats_get_by_ids    = eth_igb_xstats_get_by_ids,
-	.xstats_get_names_by_ids = eth_igb_xstats_get_names_by_ids,
 	.xstats_get_names     = eth_igb_xstats_get_names,
 	.stats_reset          = eth_igb_stats_reset,
 	.xstats_reset         = eth_igb_xstats_reset,
@@ -1868,41 +1862,6 @@ static int eth_igb_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
 	return IGB_NB_XSTATS;
 }
 
-static int eth_igb_xstats_get_names_by_ids(struct rte_eth_dev *dev,
-		struct rte_eth_xstat_name *xstats_names, uint64_t *ids,
-		unsigned int limit)
-{
-	unsigned int i;
-
-	if (!ids) {
-		if (xstats_names == NULL)
-			return IGB_NB_XSTATS;
-
-		for (i = 0; i < IGB_NB_XSTATS; i++)
-			snprintf(xstats_names[i].name,
-					sizeof(xstats_names[i].name),
-					"%s", rte_igb_stats_strings[i].name);
-
-		return IGB_NB_XSTATS;
-
-	} else {
-		struct rte_eth_xstat_name xstats_names_copy[IGB_NB_XSTATS];
-
-		eth_igb_xstats_get_names_by_ids(dev, xstats_names_copy, NULL,
-				IGB_NB_XSTATS);
-
-		for (i = 0; i < limit; i++) {
-			if (ids[i] >= IGB_NB_XSTATS) {
-				PMD_INIT_LOG(ERR, "id value isn't valid");
-				return -1;
-			}
-			strcpy(xstats_names[i].name,
-					xstats_names_copy[ids[i]].name);
-		}
-		return limit;
-	}
-}
-
 static int
 eth_igb_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 		   unsigned n)
@@ -1931,53 +1890,6 @@ eth_igb_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 	}
 
 	return IGB_NB_XSTATS;
-}
-
-static int
-eth_igb_xstats_get_by_ids(struct rte_eth_dev *dev, uint64_t *ids,
-		uint64_t *values, unsigned int n)
-{
-	unsigned int i;
-
-	if (!ids) {
-		struct e1000_hw *hw =
-			E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-		struct e1000_hw_stats *hw_stats =
-			E1000_DEV_PRIVATE_TO_STATS(dev->data->dev_private);
-
-		if (n < IGB_NB_XSTATS)
-			return IGB_NB_XSTATS;
-
-		igb_read_stats_registers(hw, hw_stats);
-
-		/* If this is a reset xstats is NULL, and we have cleared the
-		 * registers by reading them.
-		 */
-		if (!values)
-			return 0;
-
-		/* Extended stats */
-		for (i = 0; i < IGB_NB_XSTATS; i++)
-			values[i] = *(uint64_t *)(((char *)hw_stats) +
-					rte_igb_stats_strings[i].offset);
-
-		return IGB_NB_XSTATS;
-
-	} else {
-		uint64_t values_copy[IGB_NB_XSTATS];
-
-		eth_igb_xstats_get_by_ids(dev, NULL, values_copy,
-				IGB_NB_XSTATS);
-
-		for (i = 0; i < n; i++) {
-			if (ids[i] >= IGB_NB_XSTATS) {
-				PMD_INIT_LOG(ERR, "id value isn't valid");
-				return -1;
-			}
-			values[i] = values_copy[ids[i]];
-		}
-		return n;
-	}
 }
 
 static void

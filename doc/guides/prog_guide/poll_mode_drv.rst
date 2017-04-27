@@ -334,21 +334,24 @@ The Ethernet device API exported by the Ethernet PMDs is described in the *DPDK 
 Extended Statistics API
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-The extended statistics API allows a PMD to expose all statistics that are
-available to it, including statistics that are unique to the device.
-Each statistic has three properties ``name``, ``id`` and ``value``:
+The extended statistics API allows each individual PMD to expose a unique set
+of statistics. Accessing these from application programs is done via two
+functions:
 
-* ``name``: A human readable string formatted by the scheme detailed below.
-* ``id``: An integer that represents only that statistic.
-* ``value``: A unsigned 64-bit integer that is the value of the statistic.
+* ``rte_eth_xstats_get``: Fills in an array of ``struct rte_eth_xstat``
+  with extended statistics.
+* ``rte_eth_xstats_get_names``: Fills in an array of
+  ``struct rte_eth_xstat_name`` with extended statistic name lookup
+  information.
 
-Note that extended statistic identifiers are
+Each ``struct rte_eth_xstat`` contains an identifier and value pair, and
+each ``struct rte_eth_xstat_name`` contains a string. Each identifier
+within the ``struct rte_eth_xstat`` lookup array must have a corresponding
+entry in the ``struct rte_eth_xstat_name`` lookup array. Within the latter
+the index of the entry is the identifier the string is associated with.
+These identifiers, as well as the number of extended statistic exposed, must
+remain constant during runtime. Note that extended statistic identifiers are
 driver-specific, and hence might not be the same for different ports.
-The API consists of various ``rte_eth_xstats_*()`` functions, and allows an
-application to be flexible in how it retrieves statistics.
-
-Scheme for Human Readable Names
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 A naming scheme exists for the strings exposed to clients of the API. This is
 to allow scraping of the API for statistics of interest. The naming scheme uses
@@ -360,8 +363,8 @@ strings split by a single underscore ``_``. The scheme is as follows:
 * detail n
 * unit
 
-Examples of common statistics xstats strings, formatted to comply to the
-above scheme:
+Examples of common statistics xstats strings, formatted to comply to the scheme
+proposed above:
 
 * ``rx_bytes``
 * ``rx_crc_errors``
@@ -375,7 +378,7 @@ associated with the receive side of the NIC.  The second component ``packets``
 indicates that the unit of measure is packets.
 
 A more complicated example: ``tx_size_128_to_255_packets``. In this example,
-``tx`` indicates transmission, ``size``  is the first detail, ``128`` etc. are
+``tx`` indicates transmission, ``size``  is the first detail, ``128`` etc are
 more details, and ``packets`` indicates that this is a packet counter.
 
 Some additions in the metadata scheme are as follows:
@@ -389,139 +392,3 @@ Some additions in the metadata scheme are as follows:
 An example where queue numbers are used is as follows: ``tx_q7_bytes`` which
 indicates this statistic applies to queue number 7, and represents the number
 of transmitted bytes on that queue.
-
-API Design
-^^^^^^^^^^
-
-The xstats API uses the ``name``, ``id``, and ``value`` to allow performant
-lookup of specific statistics. Performant lookup means two things;
-
-* No string comparisons with the ``name`` of the statistic in fast-path
-* Allow requesting of only the statistics of interest
-
-The API ensures these requirements are met by mapping the ``name`` of the
-statistic to a unique ``id``, which is used as a key for lookup in the fast-path.
-The API allows applications to request an array of ``id`` values, so that the
-PMD only performs the required calculations. Expected usage is that the
-application scans the ``name`` of each statistic, and caches the ``id``
-if it has an interest in that statistic. On the fast-path, the integer can be used
-to retrieve the actual ``value`` of the statistic that the ``id`` represents.
-
-API Functions
-^^^^^^^^^^^^^
-
-The API is built out of a small number of functions, which can be used to
-retrieve the number of statistics and the names, IDs and values of those
-statistics.
-
-* ``rte_eth_xstats_get_names()``: returns the names of the statistics. When given a
-  ``NULL`` parameter the function returns the number of statistics that are available.
-
-* ``rte_eth_xstats_get_id_by_name()``: Searches for the statistic ID that matches
-  ``xstat_name``. If found, the ``id`` integer is set.
-
-* ``rte_eth_xstats_get()``: Fills in an array of ``uint64_t`` values
-  with matching the provided ``ids`` array. If the ``ids`` array is NULL, it
-  returns all statistics that are available.
-
-
-Application Usage
-^^^^^^^^^^^^^^^^^
-
-Imagine an application that wants to view the dropped packet count. If no
-packets are dropped, the application does not read any other metrics for
-performance reasons. If packets are dropped, the application has a particular
-set of statistics that it requests. This "set" of statistics allows the app to
-decide what next steps to perform. The following code-snippets show how the
-xstats API can be used to achieve this goal.
-
-First step is to get all statistics names and list them:
-
-.. code-block:: c
-
-    struct rte_eth_xstat_name *xstats_names;
-    uint64_t *values;
-    int len, i;
-
-    /* Get number of stats */
-    len = rte_eth_xstats_get_names(port_id, NULL, NULL, 0);
-    if (len < 0) {
-        printf("Cannot get xstats count\n");
-        goto err;
-    }
-
-    xstats_names = malloc(sizeof(struct rte_eth_xstat_name) * len);
-    if (xstats_names == NULL) {
-        printf("Cannot allocate memory for xstat names\n");
-        goto err;
-    }
-
-    /* Retrieve xstats names, passing NULL for IDs to return all statistics */
-    if (len != rte_eth_xstats_get_names(port_id, xstats_names, NULL, len)) {
-        printf("Cannot get xstat names\n");
-        goto err;
-    }
-
-    values = malloc(sizeof(values) * len);
-    if (values == NULL) {
-        printf("Cannot allocate memory for xstats\n");
-        goto err;
-    }
-
-    /* Getting xstats values */
-    if (len != rte_eth_xstats_get(port_id, NULL, values, len)) {
-        printf("Cannot get xstat values\n");
-        goto err;
-    }
-
-    /* Print all xstats names and values */
-    for (i = 0; i < len; i++) {
-        printf("%s: %"PRIu64"\n", xstats_names[i].name, values[i]);
-    }
-
-The application has access to the names of all of the statistics that the PMD
-exposes. The application can decide which statistics are of interest, cache the
-ids of those statistics by looking up the name as follows:
-
-.. code-block:: c
-
-    uint64_t id;
-    uint64_t value;
-    const char *xstat_name = "rx_errors";
-
-    if(!rte_eth_xstats_get_id_by_name(port_id, xstat_name, &id)) {
-        rte_eth_xstats_get(port_id, &id, &value, 1);
-        printf("%s: %"PRIu64"\n", xstat_name, value);
-    }
-    else {
-        printf("Cannot find xstats with a given name\n");
-        goto err;
-    }
-
-The API provides flexibility to the application so that it can look up multiple
-statistics using an array containing multiple ``id`` numbers. This reduces the
-function call overhead of retrieving statistics, and makes lookup of multiple
-statistics simpler for the application.
-
-.. code-block:: c
-
-    #define APP_NUM_STATS 4
-    /* application cached these ids previously; see above */
-    uint64_t ids_array[APP_NUM_STATS] = {3,4,7,21};
-    uint64_t value_array[APP_NUM_STATS];
-
-    /* Getting multiple xstats values from array of IDs */
-    rte_eth_xstats_get(port_id, ids_array, value_array, APP_NUM_STATS);
-
-    uint32_t i;
-    for(i = 0; i < APP_NUM_STATS; i++) {
-        printf("%d: %"PRIu64"\n", ids_array[i], value_array[i]);
-    }
-
-
-This array lookup API for xstats allows the application create multiple
-"groups" of statistics, and look up the values of those IDs using a single API
-call. As an end result, the application is able to achieve its goal of
-monitoring a single statistic ("rx_errors" in this case), and if that shows
-packets being dropped, it can easily retrieve a "set" of statistics using the
-IDs array parameter to ``rte_eth_xstats_get`` function.

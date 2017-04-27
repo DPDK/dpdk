@@ -151,10 +151,5 @@ DPDK_17.05 {
 
 	rte_eth_dev_attach_secondary;
 	rte_eth_find_next;
-	rte_eth_xstats_get;
-	rte_eth_xstats_get_all;
-	rte_eth_xstats_get_id_by_name;
-	rte_eth_xstats_get_names;
-	rte_eth_xstats_get_names_all;
 
 } DPDK_17.02;
