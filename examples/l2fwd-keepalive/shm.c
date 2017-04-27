@@ -129,3 +129,13 @@ void rte_keepalive_relayed_state(struct rte_keepalive_shm *shm,
 				strerror(errno));
 	}
 }
+
+void rte_keepalive_shm_cleanup(struct rte_keepalive_shm *ka_shm)
+{
+	if (shm_unlink(RTE_KEEPALIVE_SHM_NAME) == -1 && errno != ENOENT)
+		printf("Warning: Error unlinking  %s (%s)\n",
+			RTE_KEEPALIVE_SHM_NAME, strerror(errno));
+
+	if (ka_shm && munmap(ka_shm, sizeof(struct rte_keepalive_shm)) != 0)
+		printf("Warning: munmap() failed\n");
+}

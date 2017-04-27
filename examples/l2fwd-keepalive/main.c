@@ -567,6 +567,7 @@ main(int argc, char **argv)
 	unsigned lcore_id, rx_lcore_id;
 	unsigned nb_ports_in_mask = 0;
 	struct sigaction signal_handler;
+	struct rte_keepalive_shm *ka_shm;
 
 	memset(&signal_handler, 0, sizeof(signal_handler));
 	terminate_signal_received = 0;
@@ -751,9 +752,8 @@ main(int argc, char **argv)
 	rte_timer_subsystem_init();
 	rte_timer_init(&stats_timer);
 
+	ka_shm = NULL;
 	if (check_period > 0) {
-		struct rte_keepalive_shm *ka_shm;
-
 		ka_shm = rte_keepalive_shm_create();
 		if (ka_shm == NULL)
 			rte_exit(EXIT_FAILURE,
@@ -813,5 +813,7 @@ main(int argc, char **argv)
 			return -1;
 	}
 
+	if (ka_shm != NULL)
+		rte_keepalive_shm_cleanup(ka_shm);
 	return 0;
 }

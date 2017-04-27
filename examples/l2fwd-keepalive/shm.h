@@ -87,3 +87,12 @@ struct rte_keepalive_shm *rte_keepalive_shm_create(void);
 void rte_keepalive_relayed_state(struct rte_keepalive_shm *shm,
 	const int id_core, const enum rte_keepalive_state core_state,
 	uint64_t last_alive);
+
+/** Shutdown cleanup of shared host memory keepalive object.
+ * @param *shm
+ *  Pointer to SHM keepalive structure. May be NULL.
+ *
+ *  If *shm is NULL, this function will only attempt to remove the
+ *  shared host memory handle and not unmap the underlying memory.
+ */
+void rte_keepalive_shm_cleanup(struct rte_keepalive_shm *ka_shm);
