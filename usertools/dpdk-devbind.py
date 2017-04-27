@@ -86,7 +86,8 @@ Options:
         Display usage information and quit
 
     -s, --status:
-        Print the current status of all known network and crypto devices.
+        Print the current status of all known network, crypto, event
+        and mempool devices.
         For each device, it displays the PCI domain, bus, slot and function,
         along with a text description of the device. Depending upon whether the
         device is being used by a kernel driver, the igb_uio driver, or no
@@ -98,6 +99,10 @@ Options:
         NOTE: if this flag is passed along with a bind/unbind option, the
         status display will always occur after the other operations have taken
         place.
+
+    --status-dev:
+        Print the status of given device group. Supported device groups are:
+        "net", "crypto", "event" and "mempool"
 
     -b driver, --bind=driver:
         Select the driver to use or \"none\" to unbind the device
@@ -118,6 +123,9 @@ Examples:
 
 To display current device status:
         %(argv0)s --status
+
+To display current network device status:
+        %(argv0)s --status-dev net
 
 To bind eth1 from the current driver and move to use igb_uio
         %(argv0)s --bind=igb_uio eth1
@@ -598,16 +606,24 @@ def show_status():
     Displays to the user what devices are bound to the igb_uio driver, the
     kernel driver or to no driver'''
 
-    show_device_status(network_devices, "Network")
-    show_device_status(crypto_devices, "Crypto")
-    show_device_status(eventdev_devices, "Eventdev")
-    show_device_status(mempool_devices, "Mempool")
+    if status_dev == "net" or status_dev == "all":
+        show_device_status(network_devices, "Network")
+
+    if status_dev == "crypto" or status_dev == "all":
+        show_device_status(crypto_devices, "Crypto")
+
+    if status_dev == "event" or status_dev == "all":
+        show_device_status(eventdev_devices, "Eventdev")
+
+    if status_dev == "mempool" or status_dev == "all":
+        show_device_status(mempool_devices, "Mempool")
 
 def parse_args():
     '''Parses the command-line arguments given by the user and takes the
     appropriate action for each'''
     global b_flag
     global status_flag
+    global status_dev
     global force_flag
     global args
     if len(sys.argv) <= 1:
@@ -616,8 +632,8 @@ def parse_args():
 
     try:
         opts, args = getopt.getopt(sys.argv[1:], "b:us",
-                                   ["help", "usage", "status", "force",
-                                    "bind=", "unbind"])
+                                   ["help", "usage", "status", "status-dev=",
+                                    "force", "bind=", "unbind", ])
     except getopt.GetoptError as error:
         print(str(error))
         print("Run '%s --usage' for further information" % sys.argv[0])
@@ -627,8 +643,12 @@ def parse_args():
         if opt == "--help" or opt == "--usage":
             usage()
             sys.exit(0)
+        if opt == "--status-dev":
+            status_flag = True
+            status_dev = arg
         if opt == "--status" or opt == "-s":
             status_flag = True
+            status_dev = "all"
         if opt == "--force":
             force_flag = True
         if opt == "-b" or opt == "-u" or opt == "--bind" or opt == "--unbind":
