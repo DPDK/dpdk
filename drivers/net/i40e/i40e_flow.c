@@ -608,6 +608,7 @@ i40e_flow_parse_ethertype_pattern(struct rte_eth_dev *dev,
 
 			if (filter->ether_type == ETHER_TYPE_IPv4 ||
 			    filter->ether_type == ETHER_TYPE_IPv6 ||
+			    filter->ether_type == ETHER_TYPE_LLDP ||
 			    filter->ether_type == outer_tpid) {
 				rte_flow_error_set(error, EINVAL,
 						   RTE_FLOW_ERROR_TYPE_ITEM,
