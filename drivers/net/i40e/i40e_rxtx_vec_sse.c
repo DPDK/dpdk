@@ -87,6 +87,8 @@ i40e_rxq_rearm(struct i40e_rx_queue *rxq)
 		mb1 = rxep[1].mbuf;
 
 		/* load buf_addr(lo 64bit) and buf_physaddr(hi 64bit) */
+		RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, buf_physaddr) !=
+				offsetof(struct rte_mbuf, buf_addr) + 8);
 		vaddr0 = _mm_loadu_si128((__m128i *)&mb0->buf_addr);
 		vaddr1 = _mm_loadu_si128((__m128i *)&mb1->buf_addr);
 
@@ -203,6 +205,12 @@ desc_to_olflags_v(struct i40e_rx_queue *rxq, __m128i descs[4] __rte_unused,
 	rearm1 = _mm_blend_epi16(mbuf_init, _mm_slli_si128(vlan0, 4), 0x10);
 	rearm2 = _mm_blend_epi16(mbuf_init, vlan0, 0x10);
 	rearm3 = _mm_blend_epi16(mbuf_init, _mm_srli_si128(vlan0, 4), 0x10);
+
+	/* write the rearm data and the olflags in one write */
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, ol_flags) !=
+			offsetof(struct rte_mbuf, rearm_data) + 8);
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, rearm_data) !=
+			RTE_ALIGN(offsetof(struct rte_mbuf, rearm_data), 16));
 	_mm_store_si128((__m128i *)&rx_pkts[0]->rearm_data, rearm0);
 	_mm_store_si128((__m128i *)&rx_pkts[1]->rearm_data, rearm1);
 	_mm_store_si128((__m128i *)&rx_pkts[2]->rearm_data, rearm2);
@@ -252,6 +260,15 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 				-rxq->crc_len, /* sub crc on pkt_len */
 				0, 0            /* ignore pkt_type field */
 			);
+	/*
+	 * compile-time check the above crc_adjust layout is correct.
+	 * NOTE: the first field (lowest address) is given last in set_epi16
+	 * call above.
+	 */
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, pkt_len) !=
+			offsetof(struct rte_mbuf, rx_descriptor_fields1) + 4);
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, data_len) !=
+			offsetof(struct rte_mbuf, rx_descriptor_fields1) + 8);
 	__m128i dd_check, eop_check;
 
 	/* nb_pkts shall be less equal than RTE_I40E_MAX_RX_BURST */
@@ -296,6 +313,19 @@ _recv_raw_pkts_vec(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_pkts,
 		0xFF, 0xFF,  /* pkt_type set as unknown */
 		0xFF, 0xFF  /*pkt_type set as unknown */
 		);
+	/*
+	 * Compile-time verify the shuffle mask
+	 * NOTE: some field positions already verified above, but duplicated
+	 * here for completeness in case of future modifications.
+	 */
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, pkt_len) !=
+			offsetof(struct rte_mbuf, rx_descriptor_fields1) + 4);
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, data_len) !=
+			offsetof(struct rte_mbuf, rx_descriptor_fields1) + 8);
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, vlan_tci) !=
+			offsetof(struct rte_mbuf, rx_descriptor_fields1) + 10);
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, hash) !=
+			offsetof(struct rte_mbuf, rx_descriptor_fields1) + 12);
 
 	/* Cache is empty -> need to scan the buffer rings, but first move
 	 * the next 'n' mbufs into the cache
