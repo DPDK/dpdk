@@ -1654,6 +1654,7 @@ main(int argc, char **argv)
 	uint32_t n_tx_queue, nb_lcores;
 	uint32_t dev_rxq_num, dev_txq_num;
 	uint8_t portid, nb_rx_queue, queue, socketid;
+	uint16_t org_rxq_intr = port_conf.intr_conf.rxq;
 
 	/* catch SIGINT and restore cpufreq governor to ondemand */
 	signal(SIGINT, signal_exit_now);
@@ -1714,8 +1715,13 @@ main(int argc, char **argv)
 			n_tx_queue = dev_txq_num;
 		printf("Creating queues: nb_rxq=%d nb_txq=%u... ",
 			nb_rx_queue, (unsigned)n_tx_queue );
+		/* If number of Rx queue is 0, no need to enable Rx interrupt */
+		if (nb_rx_queue == 0)
+			port_conf.intr_conf.rxq = 0;
 		ret = rte_eth_dev_configure(portid, nb_rx_queue,
 					(uint16_t)n_tx_queue, &port_conf);
+		/* Revert to original value */
+		port_conf.intr_conf.rxq = org_rxq_intr;
 		if (ret < 0)
 			rte_exit(EXIT_FAILURE, "Cannot configure device: "
 					"err=%d, port=%d\n", ret, portid);
