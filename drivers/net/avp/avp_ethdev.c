@@ -712,7 +712,7 @@ avp_dev_interrupt_handler(void *data)
 		RTE_PTR_ADD(registers,
 			    RTE_AVP_INTERRUPT_STATUS_OFFSET));
 
-	if (status | RTE_AVP_MIGRATION_INTERRUPT_MASK) {
+	if (status & RTE_AVP_MIGRATION_INTERRUPT_MASK) {
 		/* handle interrupt based on current status */
 		value = AVP_READ32(
 			RTE_PTR_ADD(registers,
