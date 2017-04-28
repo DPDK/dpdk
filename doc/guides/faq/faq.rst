@@ -66,14 +66,14 @@ To request memory to be reserved on a specific socket, please use the --socket-m
 I am running a 32-bit DPDK application on a NUMA system, and sometimes the application initializes fine but cannot allocate memory. Why is that happening?
 ----------------------------------------------------------------------------------------------------------------------------------------------------------
 
-32-bit applications have limitations in terms of how much virtual memory is available, hence the number of hugepages they are able to allocate is also limited (1 GB per page size).
-If your system has a lot (>1 GB per page size) of hugepage memory, not all of it will be allocated.
+32-bit applications have limitations in terms of how much virtual memory is available, hence the number of hugepages they are able to allocate is also limited (1 GB size).
+If your system has a lot (>1 GB size) of hugepage memory, not all of it will be allocated.
 Due to hugepages typically being allocated on a local NUMA node, the hugepages allocation the application gets during the initialization depends on which
 NUMA node it is running on (the EAL does not affinitize cores until much later in the initialization process).
 Sometimes, the Linux OS runs the DPDK application on a core that is located on a different NUMA node from DPDK master core and
 therefore all the hugepages are allocated on the wrong socket.
 
-To avoid this scenario, either lower the amount of hugepage memory available to 1 GB per page size (or less), or run the application with taskset
+To avoid this scenario, either lower the amount of hugepage memory available to 1 GB size (or less), or run the application with taskset
 affinitizing the application to a would-be master core.
 
 For example, if your EAL coremask is 0xff0, the master core will usually be the first core in the coremask (0x10); this is what you have to supply to taskset::
