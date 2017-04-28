@@ -201,7 +201,9 @@ usage(char* progname)
 	printf("  --disable-link-check: disable check on link status when "
 	       "starting/stopping ports.\n");
 	printf("  --no-lsc-interrupt: disable link status change interrupt.\n");
-	printf("  --no-rmv-interrupt: disable device removal interrupt.");
+	printf("  --no-rmv-interrupt: disable device removal interrupt.\n");
+	printf("  --bitrate-stats=N: set the logical core N to perform "
+		"bit-rate calculation.\n");
 }
 
 #ifdef RTE_LIBRTE_CMDLINE
@@ -536,6 +538,9 @@ launch_args_parse(int argc, char** argv)
 #ifdef RTE_LIBRTE_LATENCY_STATS
 		{ "latencystats",               1, 0, 0 },
 #endif
+#ifdef RTE_LIBRTE_BITRATE
+		{ "bitrate-stats",              1, 0, 0 },
+#endif
 		{ "disable-crc-strip",          0, 0, 0 },
 		{ "enable-lro",                 0, 0, 0 },
 		{ "enable-rx-cksum",            0, 0, 0 },
@@ -790,6 +795,18 @@ launch_args_parse(int argc, char** argv)
 				} else
 					rte_exit(EXIT_FAILURE,
 						 "invalid lcore id %d for latencystats"
+						 " must be >= 0\n", n);
+			}
+#endif
+#ifdef RTE_LIBRTE_BITRATE
+			if (!strcmp(lgopts[opt_idx].name, "bitrate-stats")) {
+				n = atoi(optarg);
+				if (n >= 0) {
+					bitrate_lcore_id = (lcoreid_t) n;
+					bitrate_enabled = 1;
+				} else
+					rte_exit(EXIT_FAILURE,
+						 "invalid lcore id %d for bitrate stats"
 						 " must be >= 0\n", n);
 			}
 #endif

@@ -466,10 +466,14 @@ The commandline options are:
 
     Disable check on link status when starting/stopping ports.
 
-*  ``--no-lsc-interrupt``
+*   ``--no-lsc-interrupt``
 
-   Disable LSC interrupts for all ports, even those supporting it.
+    Disable LSC interrupts for all ports, even those supporting it.
 
-*  ``--no-rmv-interrupt``
+*   ``--no-rmv-interrupt``
 
-  Disable RMV interrupts for all ports, even those supporting it.
+    Disable RMV interrupts for all ports, even those supporting it.
+
+*   ``--bitrate-stats=N``
+
+    Set the logical core N to perform bitrate calculation.

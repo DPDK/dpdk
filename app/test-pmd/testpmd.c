@@ -355,8 +355,12 @@ uint16_t nb_rx_queue_stats_mappings = 0;
 
 unsigned max_socket = 0;
 
+#ifdef RTE_LIBRTE_BITRATE
 /* Bitrate statistics */
 struct rte_stats_bitrates *bitrate_data;
+lcoreid_t bitrate_lcore_id;
+uint8_t bitrate_enabled;
+#endif
 
 /* Forward function declarations */
 static void map_port_queue_stats_mapping_registers(uint8_t pi, struct rte_port *port);
@@ -951,12 +955,18 @@ run_pkt_fwd_on_lcore(struct fwd_lcore *fc, packet_fwd_t pkt_fwd)
 		for (sm_id = 0; sm_id < nb_fs; sm_id++)
 			(*pkt_fwd)(fsm[sm_id]);
 #ifdef RTE_LIBRTE_BITRATE
-		tics_current = rte_rdtsc();
-		if (tics_current - tics_datum >= tics_per_1sec) {
-			/* Periodic bitrate calculation */
-			for (idx_port = 0; idx_port < cnt_ports; idx_port++)
-				rte_stats_bitrate_calc(bitrate_data, idx_port);
-			tics_datum = tics_current;
+		if (bitrate_enabled != 0 &&
+				bitrate_lcore_id == rte_lcore_id()) {
+			tics_current = rte_rdtsc();
+			if (tics_current - tics_datum >= tics_per_1sec) {
+				/* Periodic bitrate calculation */
+				for (idx_port = 0;
+						idx_port < cnt_ports;
+						idx_port++)
+					rte_stats_bitrate_calc(bitrate_data,
+						idx_port);
+				tics_datum = tics_current;
+			}
 		}
 #endif
 #ifdef RTE_LIBRTE_LATENCY_STATS
@@ -2227,6 +2237,9 @@ main(int argc, char** argv)
 		rte_panic("Empty set of forwarding logical cores - check the "
 			  "core mask supplied in the command parameters\n");
 
+	/* Bitrate stats disabled by default */
+	bitrate_enabled = 0;
+
 	argc -= diag;
 	argv += diag;
 	if (argc > 1)
@@ -2264,10 +2277,13 @@ main(int argc, char** argv)
 
 	/* Setup bitrate stats */
 #ifdef RTE_LIBRTE_BITRATE
-	bitrate_data = rte_stats_bitrate_create();
-	if (bitrate_data == NULL)
-		rte_exit(EXIT_FAILURE, "Could not allocate bitrate data.\n");
-	rte_stats_bitrate_reg(bitrate_data);
+	if (bitrate_enabled != 0) {
+		bitrate_data = rte_stats_bitrate_create();
+		if (bitrate_data == NULL)
+			rte_exit(EXIT_FAILURE,
+				"Could not allocate bitrate data.\n");
+		rte_stats_bitrate_reg(bitrate_data);
+	}
 #endif
 
 
