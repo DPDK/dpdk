@@ -403,7 +403,13 @@ struct rte_mbuf {
 	MARKER cacheline0;
 
 	void *buf_addr;           /**< Virtual address of segment buffer. */
-	phys_addr_t buf_physaddr; /**< Physical address of segment buffer. */
+	/**
+	 * Physical address of segment buffer.
+	 * Force alignment to 8-bytes, so as to ensure we have the exact
+	 * same mbuf cacheline0 layout for 32-bit and 64-bit. This makes
+	 * working on vector drivers easier.
+	 */
+	phys_addr_t buf_physaddr __rte_aligned(sizeof(phys_addr_t));
 
 	/* next 8 bytes are initialised on RX descriptor rearm */
 	MARKER64 rearm_data;
