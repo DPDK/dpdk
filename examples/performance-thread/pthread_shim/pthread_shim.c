@@ -48,6 +48,21 @@
 
 #define POSIX_ERRNO(x)  (x)
 
+/* some releases of FreeBSD 10, e.g. 10.0, don't have CPU_COUNT macro */
+#ifndef CPU_COUNT
+#define CPU_COUNT(x) __cpu_count(x)
+
+static inline unsigned int
+__cpu_count(const rte_cpuset_t *cpuset)
+{
+	unsigned int i, count = 0;
+	for (i = 0; i < RTE_MAX_LCORE; i++)
+		if (CPU_ISSET(i, cpuset))
+			count++;
+	return count;
+}
+#endif
+
 /*
  * this flag determines at run time if we override pthread
  * calls and map then to equivalent lthread calls
