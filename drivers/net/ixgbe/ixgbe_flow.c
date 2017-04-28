@@ -121,8 +121,8 @@
  * IPV4		src_addr 192.168.1.20	0xFFFFFFFF
  *		dst_addr 192.167.3.50	0xFFFFFFFF
  *		next_proto_id	17	0xFF
- * UDP/TCP	src_port	80	0xFFFF
- *		dst_port	80	0xFFFF
+ * UDP/TCP/	src_port	80	0xFFFF
+ * SCTP		dst_port	80	0xFFFF
  * END
  * other members in mask and spec should set to 0x00.
  * item->last should be NULL.
@@ -142,6 +142,8 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 	const struct rte_flow_item_tcp *tcp_mask;
 	const struct rte_flow_item_udp *udp_spec;
 	const struct rte_flow_item_udp *udp_mask;
+	const struct rte_flow_item_sctp *sctp_spec;
+	const struct rte_flow_item_sctp *sctp_mask;
 	uint32_t index;
 
 	if (!pattern) {
@@ -253,7 +255,8 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 	index++;
 	NEXT_ITEM_OF_PATTERN(item, pattern, index);
 	if (item->type != RTE_FLOW_ITEM_TYPE_TCP &&
-	    item->type != RTE_FLOW_ITEM_TYPE_UDP) {
+	    item->type != RTE_FLOW_ITEM_TYPE_UDP &&
+	    item->type != RTE_FLOW_ITEM_TYPE_SCTP) {
 		memset(filter, 0, sizeof(struct rte_eth_ntuple_filter));
 		rte_flow_error_set(error, EINVAL,
 			RTE_FLOW_ERROR_TYPE_ITEM,
@@ -319,7 +322,7 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 		filter->dst_port  = tcp_spec->hdr.dst_port;
 		filter->src_port  = tcp_spec->hdr.src_port;
 		filter->tcp_flags = tcp_spec->hdr.tcp_flags;
-	} else {
+	} else if (item->type == RTE_FLOW_ITEM_TYPE_UDP) {
 		udp_mask = (const struct rte_flow_item_udp *)item->mask;
 
 		/**
@@ -342,6 +345,29 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 		udp_spec = (const struct rte_flow_item_udp *)item->spec;
 		filter->dst_port = udp_spec->hdr.dst_port;
 		filter->src_port = udp_spec->hdr.src_port;
+	} else {
+		sctp_mask = (const struct rte_flow_item_sctp *)item->mask;
+
+		/**
+		 * Only support src & dst ports,
+		 * others should be masked.
+		 */
+		if (sctp_mask->hdr.tag ||
+		    sctp_mask->hdr.cksum) {
+			memset(filter, 0,
+				sizeof(struct rte_eth_ntuple_filter));
+			rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item, "Not supported by ntuple filter");
+			return -rte_errno;
+		}
+
+		filter->dst_port_mask = sctp_mask->hdr.dst_port;
+		filter->src_port_mask = sctp_mask->hdr.src_port;
+
+		sctp_spec = (const struct rte_flow_item_sctp *)item->spec;
+		filter->dst_port = sctp_spec->hdr.dst_port;
+		filter->src_port = sctp_spec->hdr.src_port;
 	}
 
 	/* check if the next not void item is END */
