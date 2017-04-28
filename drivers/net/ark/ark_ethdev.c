@@ -922,6 +922,7 @@ eth_ark_check_args(struct ark_adapter *ark, const char *params)
 	struct rte_kvargs *kvlist;
 	unsigned int k_idx;
 	struct rte_kvargs_pair *pair = NULL;
+	int ret = -1;
 
 	kvlist = rte_kvargs_parse(params, valid_arguments);
 	if (kvlist == NULL)
@@ -942,7 +943,7 @@ eth_ark_check_args(struct ark_adapter *ark, const char *params)
 			       &process_pktdir_arg,
 			       ark) != 0) {
 		PMD_DRV_LOG(ERR, "Unable to parse arg %s\n", ARK_PKTDIR_ARG);
-		return -1;
+		goto free_kvlist;
 	}
 
 	if (rte_kvargs_process(kvlist,
@@ -950,7 +951,7 @@ eth_ark_check_args(struct ark_adapter *ark, const char *params)
 			       &process_file_args,
 			       ark->pkt_gen_args) != 0) {
 		PMD_DRV_LOG(ERR, "Unable to parse arg %s\n", ARK_PKTGEN_ARG);
-		return -1;
+		goto free_kvlist;
 	}
 
 	if (rte_kvargs_process(kvlist,
@@ -958,7 +959,7 @@ eth_ark_check_args(struct ark_adapter *ark, const char *params)
 			       &process_file_args,
 			       ark->pkt_chkr_args) != 0) {
 		PMD_DRV_LOG(ERR, "Unable to parse arg %s\n", ARK_PKTCHKR_ARG);
-		return -1;
+		goto free_kvlist;
 	}
 
 	PMD_DRV_LOG(INFO, "packet director set to 0x%x\n", ark->pkt_dir_v);
@@ -980,7 +981,12 @@ eth_ark_check_args(struct ark_adapter *ark, const char *params)
 		ark_pktchkr_setup(ark->pc);
 	}
 
-	return 0;
+	ret = 0;
+
+free_kvlist:
+	rte_kvargs_free(kvlist);
+
+	return ret;
 }
 
 RTE_PMD_REGISTER_PCI(net_ark, rte_ark_pmd);
