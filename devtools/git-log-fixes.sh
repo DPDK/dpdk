@@ -116,7 +116,8 @@ stable_tag () # <hash>
 git log --oneline --reverse $range |
 while read id headline ; do
 	origins=$(origin_filter $id)
-	[ -n "$origins" ] || echo "$headline" | grep -q fix || continue
+	stable=$(stable_tag $id)
+	[ "$stable" = "S" ] || [ -n "$origins" ] || echo "$headline" | grep -q fix || continue
 	version=$(commit_version $id)
 	if [ -n "$origins" ] ; then
 		origver="$(origin_version $origins)"
@@ -126,6 +127,5 @@ while read id headline ; do
 	else
 		origver='N/A'
 	fi
-	stable=$(stable_tag $id)
 	printf '%s %7s %s %s (%s)\n' $version $id $stable "$headline" "$origver"
 done
