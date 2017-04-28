@@ -1,8 +1,7 @@
-/*-
+/*
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
- *   All rights reserved.
+ *   Copyright (C) Cavium networks Ltd. 2017.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -14,7 +13,7 @@
  *       notice, this list of conditions and the following disclaimer in
  *       the documentation and/or other materials provided with the
  *       distribution.
- *     * Neither the name of Intel Corporation nor the names of its
+ *     * Neither the name of Cavium networks nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
  *
@@ -31,86 +30,54 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __INCLUDE_RTE_LRU_H__
-#define __INCLUDE_RTE_LRU_H__
+#ifndef __RTE_LRU_ARM64_H__
+#define __RTE_LRU_ARM64_H__
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#ifdef RTE_ARCH_X86_64
-#include "rte_lru_x86.h"
-#elif defined(RTE_ARCH_ARM64)
-#include "rte_lru_arm64.h"
-#else
-#undef RTE_TABLE_HASH_LRU_STRATEGY
+#include <stdint.h>
+#include <rte_vect.h>
+
+#ifndef RTE_TABLE_HASH_LRU_STRATEGY
+#ifdef RTE_MACHINE_CPUFLAG_NEON
+#define RTE_TABLE_HASH_LRU_STRATEGY                        3
+#else /* if no NEON, use simple scalar version */
 #define RTE_TABLE_HASH_LRU_STRATEGY                        1
 #endif
+#endif
 
-#if RTE_TABLE_HASH_LRU_STRATEGY == 0
+#if RTE_TABLE_HASH_LRU_STRATEGY == 3
 
 #define lru_init(bucket)						\
-do									\
-	bucket = bucket;						\
-while (0)
+	{ bucket->lru_list = ~0LLU; }
 
-#define lru_pos(bucket) (bucket->lru_list & 0xFFFFLLU)
+static inline int
+f_lru_pos(uint64_t lru_list)
+{
+	/* Compare the vector to zero vector */
+	uint16x4_t lru_vec = vld1_u16((uint16_t *)&lru_list);
+	uint16x4_t min_vec = vmov_n_u16(vminv_u16(lru_vec));
+	uint64_t mask = vget_lane_u64(vreinterpret_u64_u16(
+			vceq_u16(min_vec, lru_vec)), 0);
+	return __builtin_clzl(mask) >> 4;
+}
+#define lru_pos(bucket) f_lru_pos(bucket->lru_list)
 
 #define lru_update(bucket, mru_val)					\
 do {									\
-	bucket = bucket;						\
-	mru_val = mru_val;						\
+	const uint64_t orvals[] = {0xFFFFLLU, 0xFFFFLLU << 16,		\
+		0xFFFFLLU << 32, 0xFFFFLLU << 48, 0LLU};		\
+	const uint64_t decs[] = {0x1000100010001LLU, 0};		\
+	uint64x1_t lru = vdup_n_u64(bucket->lru_list);			\
+	uint64x1_t vdec = vdup_n_u64(decs[mru_val>>2]);			\
+	bucket->lru_list = vget_lane_u64(vreinterpret_u64_u16(		\
+				vsub_u16(vreinterpret_u16_u64(lru),	\
+					vreinterpret_u16_u64(vdec))),	\
+				0);					\
+	bucket->lru_list |= orvals[mru_val];				\
 } while (0)
-
-#elif RTE_TABLE_HASH_LRU_STRATEGY == 1
-
-#define lru_init(bucket)						\
-do									\
-	bucket->lru_list = 0x0000000100020003LLU;			\
-while (0)
-
-#define lru_pos(bucket) (bucket->lru_list & 0xFFFFLLU)
-
-#define lru_update(bucket, mru_val)					\
-do {									\
-	uint64_t x, pos, x0, x1, x2, mask;				\
-									\
-	x = bucket->lru_list;						\
-									\
-	pos = 4;							\
-	if ((x >> 48) == ((uint64_t) mru_val))				\
-		pos = 3;						\
-									\
-	if (((x >> 32) & 0xFFFFLLU) == ((uint64_t) mru_val))		\
-		pos = 2;						\
-									\
-	if (((x >> 16) & 0xFFFFLLU) == ((uint64_t) mru_val))		\
-		pos = 1;						\
-									\
-	if ((x & 0xFFFFLLU) == ((uint64_t) mru_val))			\
-		pos = 0;						\
-									\
-									\
-	pos <<= 4;							\
-	mask = (~0LLU) << pos;						\
-	x0 = x & (~mask);						\
-	x1 = (x >> 16) & mask;						\
-	x2 = (x << (48 - pos)) & (0xFFFFLLU << 48);			\
-	x = x0 | x1 | x2;						\
-									\
-	if (pos != 64)							\
-		bucket->lru_list = x;					\
-} while (0)
-
-#elif (RTE_TABLE_HASH_LRU_STRATEGY == 2) || (RTE_TABLE_HASH_LRU_STRATEGY == 3)
-
-/**
- * These strategies are implemented in architecture specific header files.
- */
-
-#else
-
-#error "Incorrect value for RTE_TABLE_HASH_LRU_STRATEGY"
 
 #endif
 

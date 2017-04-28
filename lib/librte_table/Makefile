@@ -72,6 +72,9 @@ SYMLINK-$(CONFIG_RTE_LIBRTE_TABLE)-include += rte_lru.h
 ifeq ($(CONFIG_RTE_ARCH_X86),y)
 SYMLINK-$(CONFIG_RTE_LIBRTE_TABLE)-include += rte_lru_x86.h
 endif
+ifeq ($(CONFIG_RTE_ARCH_ARM64),y)
+SYMLINK-$(CONFIG_RTE_LIBRTE_TABLE)-include += rte_lru_arm64.h
+endif
 SYMLINK-$(CONFIG_RTE_LIBRTE_TABLE)-include += rte_table_array.h
 SYMLINK-$(CONFIG_RTE_LIBRTE_TABLE)-include += rte_table_stub.h
 
