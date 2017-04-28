@@ -46,6 +46,8 @@ fd.close()
 for cpu in xrange(max_cpus + 1):
     try:
         fd = open("{}/cpu{}/topology/core_id".format(base_path, cpu))
+    except IOError:
+        continue
     except:
         break
     core = int(fd.read())
@@ -70,7 +72,10 @@ print("sockets = ", sockets)
 print("")
 
 max_processor_len = len(str(len(cores) * len(sockets) * 2 - 1))
-max_core_map_len = max_processor_len * 2 + len('[, ]') + len('Socket ')
+max_thread_count = len(core_map.values()[0])
+max_core_map_len = (max_processor_len * max_thread_count)  \
+                      + len(", ") * (max_thread_count - 1) \
+                      + len('[]') + len('Socket ')
 max_core_id_len = len(str(max(cores)))
 
 output = " ".ljust(max_core_id_len + len('Core '))
@@ -87,5 +92,8 @@ print(output)
 for c in cores:
     output = "Core %s" % str(c).ljust(max_core_id_len)
     for s in sockets:
-        output += " " + str(core_map[(s, c)]).ljust(max_core_map_len)
+        if core_map.has_key((s,c)):
+            output += " " + str(core_map[(s, c)]).ljust(max_core_map_len)
+        else:
+            output += " " * (max_core_map_len + 1)
     print(output)
