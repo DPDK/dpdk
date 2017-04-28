@@ -113,6 +113,10 @@ Deprecation Notices
   - ``rte_cryptodev_queue_pair_attach_sym_session``
   - ``rte_cryptodev_queue_pair_detach_sym_session``
 
+* cryptodev: the structures ``rte_crypto_op``, ``rte_crypto_sym_op``
+  and ``rte_crypto_sym_xform`` will be restructured in 17.08,
+  for correctness and improvement.
+
 * crypto/scheduler: the following two functions are deprecated starting
   from 17.05 and will be removed in 17.08:
 
