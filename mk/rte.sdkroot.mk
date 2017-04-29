@@ -92,6 +92,10 @@ default: all
 config showconfigs showversion showversionum:
 	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkconfig.mk $@
 
+.PHONY: cscope gtags tags etags
+cscope gtags tags etags:
+	$(Q)$(RTE_SDK)/devtools/build-tags.sh $@ $T
+
 .PHONY: test test-basic test-fast test-ring test-mempool test-perf coverage
 test test-basic test-fast test-ring test-mempool test-perf coverage:
 	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdktest.mk $@

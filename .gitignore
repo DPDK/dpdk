@@ -3,3 +3,12 @@ doc/guides/cryptodevs/overview_feature_table.txt
 doc/guides/cryptodevs/overview_cipher_table.txt
 doc/guides/cryptodevs/overview_auth_table.txt
 doc/guides/cryptodevs/overview_aead_table.txt
+cscope.out.po
+cscope.out.in
+cscope.out
+cscope.files
+GTAGS
+GPATH
+GRTAGS
+tags
+TAGS
