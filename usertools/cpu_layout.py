@@ -35,6 +35,10 @@
 #
 from __future__ import print_function
 import sys
+try:
+    xrange # Python 2
+except NameError:
+    xrange = range # Python 3
 
 sockets = []
 cores = []
@@ -72,7 +76,7 @@ print("sockets = ", sockets)
 print("")
 
 max_processor_len = len(str(len(cores) * len(sockets) * 2 - 1))
-max_thread_count = len(core_map.values()[0])
+max_thread_count = len(list(core_map.values())[0])
 max_core_map_len = (max_processor_len * max_thread_count)  \
                       + len(", ") * (max_thread_count - 1) \
                       + len('[]') + len('Socket ')
@@ -92,7 +96,7 @@ print(output)
 for c in cores:
     output = "Core %s" % str(c).ljust(max_core_id_len)
     for s in sockets:
-        if core_map.has_key((s,c)):
+        if (s,c) in core_map:
             output += " " + str(core_map[(s, c)]).ljust(max_core_map_len)
         else:
             output += " " * (max_core_map_len + 1)
