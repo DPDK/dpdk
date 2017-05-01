@@ -1239,6 +1239,13 @@ nicvf_rxq_mbuf_setup(struct nicvf_rxq *rxq)
 	struct rte_mbuf mb_def;
 
 	RTE_BUILD_BUG_ON(sizeof(union mbuf_initializer) != 8);
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, data_off) % 8 != 0);
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, refcnt) -
+				offsetof(struct rte_mbuf, data_off) != 2);
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, nb_segs) -
+				offsetof(struct rte_mbuf, data_off) != 4);
+	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, port) -
+				offsetof(struct rte_mbuf, data_off) != 6);
 	mb_def.nb_segs = 1;
 	mb_def.data_off = RTE_PKTMBUF_HEADROOM;
 	mb_def.port = rxq->port_id;
