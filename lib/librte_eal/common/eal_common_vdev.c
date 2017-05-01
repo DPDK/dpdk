@@ -61,14 +61,12 @@ rte_eal_vdrv_register(struct rte_vdev_driver *driver)
 	rte_vdev_bus_register();
 
 	TAILQ_INSERT_TAIL(&vdev_driver_list, driver, next);
-	rte_eal_driver_register(&driver->driver);
 }
 
 /* unregister a driver */
 void
 rte_eal_vdrv_unregister(struct rte_vdev_driver *driver)
 {
-	rte_eal_driver_unregister(&driver->driver);
 	TAILQ_REMOVE(&vdev_driver_list, driver, next);
 }
 
@@ -232,7 +230,6 @@ rte_eal_vdev_init(const char *name, const char *args)
 
 	TAILQ_INSERT_TAIL(&devargs_list, devargs, next);
 
-	rte_eal_device_insert(&dev->device);
 	TAILQ_INSERT_TAIL(&vdev_device_list, dev, next);
 	return 0;
 
@@ -280,7 +277,6 @@ rte_eal_vdev_uninit(const char *name)
 		return ret;
 
 	TAILQ_REMOVE(&vdev_device_list, dev, next);
-	rte_eal_device_remove(&dev->device);
 
 	TAILQ_REMOVE(&devargs_list, devargs, next);
 
@@ -315,7 +311,6 @@ vdev_scan(void)
 		dev->device.numa_node = SOCKET_ID_ANY;
 		dev->device.name = devargs->virt.drv_name;
 
-		rte_eal_device_insert(&dev->device);
 		TAILQ_INSERT_TAIL(&vdev_device_list, dev, next);
 	}
 
@@ -326,12 +321,6 @@ static int
 vdev_probe(void)
 {
 	struct rte_vdev_device *dev;
-
-	/*
-	 * Note that the dev_driver_list is populated here
-	 * from calls made to rte_eal_driver_register from constructor functions
-	 * embedded into PMD modules via the RTE_PMD_REGISTER_VDEV macro
-	 */
 
 	/* call the init function for each virtual device */
 	TAILQ_FOREACH(dev, &vdev_device_list, next) {

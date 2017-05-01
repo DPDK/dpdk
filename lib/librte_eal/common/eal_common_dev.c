@@ -45,40 +45,6 @@
 
 #include "eal_private.h"
 
-/** Global list of device drivers. */
-static struct rte_driver_list dev_driver_list =
-	TAILQ_HEAD_INITIALIZER(dev_driver_list);
-/** Global list of device drivers. */
-static struct rte_device_list dev_device_list =
-	TAILQ_HEAD_INITIALIZER(dev_device_list);
-
-/* register a driver */
-void
-rte_eal_driver_register(struct rte_driver *driver)
-{
-	TAILQ_INSERT_TAIL(&dev_driver_list, driver, next);
-}
-
-/* unregister a driver */
-void
-rte_eal_driver_unregister(struct rte_driver *driver)
-{
-	TAILQ_REMOVE(&dev_driver_list, driver, next);
-}
-
-void rte_eal_device_insert(struct rte_device *dev)
-{
-	RTE_VERIFY(dev->name);
-	RTE_VERIFY(dev->name[0] != '\0');
-
-	TAILQ_INSERT_TAIL(&dev_device_list, dev, next);
-}
-
-void rte_eal_device_remove(struct rte_device *dev)
-{
-	TAILQ_REMOVE(&dev_device_list, dev, next);
-}
-
 int rte_eal_dev_attach(const char *name, const char *devargs)
 {
 	struct rte_pci_addr addr;

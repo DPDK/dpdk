@@ -23,8 +23,6 @@ DPDK_2.0 {
 	rte_eal_devargs_add;
 	rte_eal_devargs_dump;
 	rte_eal_devargs_type_count;
-	rte_eal_driver_register;
-	rte_eal_driver_unregister;
 	rte_eal_get_configuration;
 	rte_eal_get_lcore_state;
 	rte_eal_get_physmem_layout;

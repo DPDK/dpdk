@@ -123,11 +123,6 @@ struct rte_mem_resource {
 	void *addr;         /**< Virtual address, NULL when not mapped. */
 };
 
-/** Double linked list of device drivers. */
-TAILQ_HEAD(rte_driver_list, rte_driver);
-/** Double linked list of devices. */
-TAILQ_HEAD(rte_device_list, rte_device);
-
 /* Forward declaration */
 struct rte_driver;
 
@@ -143,22 +138,6 @@ struct rte_device {
 };
 
 /**
- * Insert a device detected by a bus scanning.
- *
- * @param dev
- *   A pointer to a rte_device structure describing the detected device.
- */
-void rte_eal_device_insert(struct rte_device *dev);
-
-/**
- * Remove a device (e.g. when being unplugged).
- *
- * @param dev
- *   A pointer to a rte_device structure describing the device to be removed.
- */
-void rte_eal_device_remove(struct rte_device *dev);
-
-/**
  * A structure describing a device driver.
  */
 struct rte_driver {
@@ -166,24 +145,6 @@ struct rte_driver {
 	const char *name;                   /**< Driver name. */
 	const char *alias;              /**< Driver alias. */
 };
-
-/**
- * Register a device driver.
- *
- * @param driver
- *   A pointer to a rte_dev structure describing the driver
- *   to be registered.
- */
-void rte_eal_driver_register(struct rte_driver *driver);
-
-/**
- * Unregister a device driver.
- *
- * @param driver
- *   A pointer to a rte_dev structure describing the driver
- *   to be unregistered.
- */
-void rte_eal_driver_unregister(struct rte_driver *driver);
 
 /**
  * Initialize a driver specified by name.
