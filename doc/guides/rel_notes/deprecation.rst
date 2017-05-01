@@ -75,6 +75,13 @@ Deprecation Notices
   PKT_RX_QINQ_STRIPPED, that are better described. The old flags and
   their behavior will be kept until 17.02 and will be removed in 17.05.
 
+* ethdev: Tx offloads will no longer be enabled by default in 17.08.
+  Instead, the ``rte_eth_txmode`` structure will be extended with
+  bit field to enable each Tx offload.
+  Besides of making the Rx/Tx configuration API more consistent for the
+  application, PMDs will be able to provide a better out of the box performance.
+  As part of the work, ``ETH_TXQ_FLAGS_NO*`` will be superseded as well.
+
 * ethdev: the legacy filter API, including
   ``rte_eth_dev_filter_supported()``, ``rte_eth_dev_filter_ctrl()`` as well
   as filter types MACVLAN, ETHERTYPE, FLEXIBLE, SYN, NTUPLE, TUNNEL, FDIR,
