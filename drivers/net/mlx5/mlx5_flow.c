@@ -1465,13 +1465,18 @@ priv_flow_delete_drop_queue(struct priv *priv)
 	struct rte_flow_drop *fdq = priv->flow_drop_queue;
 	unsigned int i;
 
-	claim_zero(ibv_destroy_qp(fdq->qp));
-	claim_zero(ibv_exp_destroy_rwq_ind_table(fdq->ind_table));
+	if (!fdq)
+		return;
+	if (fdq->qp)
+		claim_zero(ibv_destroy_qp(fdq->qp));
+	if (fdq->ind_table)
+		claim_zero(ibv_exp_destroy_rwq_ind_table(fdq->ind_table));
 	for (i = 0; i != MLX5_DROP_WQ_N; ++i) {
-		assert(fdq->wqs[i]);
-		claim_zero(ibv_exp_destroy_wq(fdq->wqs[i]));
+		if (fdq->wqs[i])
+			claim_zero(ibv_exp_destroy_wq(fdq->wqs[i]));
 	}
-	claim_zero(ibv_destroy_cq(fdq->cq));
+	if (fdq->cq)
+		claim_zero(ibv_destroy_cq(fdq->cq));
 	rte_free(fdq);
 	priv->flow_drop_queue = NULL;
 }
