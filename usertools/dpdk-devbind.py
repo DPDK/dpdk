@@ -161,12 +161,11 @@ def find_module(mod):
 
     # check using depmod
     try:
-        depmod_out = check_output(["modinfo", "-n", mod],
-                                  stderr=subprocess.STDOUT).lower()
-        if "error" not in depmod_out:
-            path = depmod_out.strip()
-            if exists(path):
-                return path
+        with open(os.devnull, "w") as fnull:
+            path = check_output(["modinfo", "-n", mod], stderr=fnull).strip()
+
+        if path and exists(path):
+            return path
     except:  # if modinfo can't find module, it fails, so continue
         pass
 
