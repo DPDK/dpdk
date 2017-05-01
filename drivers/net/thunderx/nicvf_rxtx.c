@@ -464,11 +464,10 @@ nicvf_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		rxq->head = cqe_head;
 		nicvf_addr_write(rxq->cq_door, to_process);
 		rxq->recv_buffers += to_process;
-		if (rxq->recv_buffers > rxq->rx_free_thresh) {
-			rxq->recv_buffers -= nicvf_fill_rbdr(rxq,
-						rxq->rx_free_thresh);
-			NICVF_RX_ASSERT(rxq->recv_buffers >= 0);
-		}
+	}
+	if (rxq->recv_buffers > rxq->rx_free_thresh) {
+		rxq->recv_buffers -= nicvf_fill_rbdr(rxq, rxq->rx_free_thresh);
+		NICVF_RX_ASSERT(rxq->recv_buffers >= 0);
 	}
 
 	return to_process;
@@ -555,11 +554,10 @@ nicvf_recv_pkts_multiseg(void *rx_queue, struct rte_mbuf **rx_pkts,
 		rxq->head = cqe_head;
 		nicvf_addr_write(rxq->cq_door, to_process);
 		rxq->recv_buffers += buffers_consumed;
-		if (rxq->recv_buffers > rxq->rx_free_thresh) {
-			rxq->recv_buffers -=
-				nicvf_fill_rbdr(rxq, rxq->rx_free_thresh);
-			NICVF_RX_ASSERT(rxq->recv_buffers >= 0);
-		}
+	}
+	if (rxq->recv_buffers > rxq->rx_free_thresh) {
+		rxq->recv_buffers -= nicvf_fill_rbdr(rxq, rxq->rx_free_thresh);
+		NICVF_RX_ASSERT(rxq->recv_buffers >= 0);
 	}
 
 	return to_process;
