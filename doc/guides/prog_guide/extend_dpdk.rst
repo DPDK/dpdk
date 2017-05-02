@@ -39,14 +39,14 @@ Example: Adding a New Library libfoo
 
 To add a new library to the DPDK, proceed as follows:
 
-#.  Add a new configuration option:
+#. Add a new configuration option:
 
    .. code-block:: bash
 
         for f in config/\*; do \
             echo CONFIG_RTE_LIBFOO=y >> $f; done
 
-#.  Create a new directory with sources:
+#. Create a new directory with sources:
 
    .. code-block:: console
 
@@ -54,7 +54,7 @@ To add a new library to the DPDK, proceed as follows:
         touch ${RTE_SDK}/lib/libfoo/foo.c
         touch ${RTE_SDK}/lib/libfoo/foo.h
 
-#.  Add a foo() function in libfoo.
+#. Add a foo() function in libfoo.
 
     Definition is in foo.c:
 
@@ -71,7 +71,7 @@ To add a new library to the DPDK, proceed as follows:
         extern void foo(void);
 
 
-#.  Update lib/Makefile:
+#. Update lib/Makefile:
 
     .. code-block:: console
 
@@ -79,7 +79,7 @@ To add a new library to the DPDK, proceed as follows:
         # add:
         # DIRS-$(CONFIG_RTE_LIBFOO) += libfoo
 
-#.  Create a new Makefile for this library, for example, derived from mempool Makefile:
+#. Create a new Makefile for this library, for example, derived from mempool Makefile:
 
     .. code-block:: console
 
@@ -91,11 +91,11 @@ To add a new library to the DPDK, proceed as follows:
         # rte_mempool -> foo
 
 
-#.  Update mk/DPDK.app.mk, and add -lfoo in LDLIBS variable when the option is enabled.
-    This will automatically add this flag when linking a DPDK application.
+#. Update mk/DPDK.app.mk, and add -lfoo in LDLIBS variable when the option is enabled.
+   This will automatically add this flag when linking a DPDK application.
 
 
-#.  Build the DPDK with the new library (we only show a specific target here):
+#. Build the DPDK with the new library (we only show a specific target here):
 
     .. code-block:: console
 
@@ -104,7 +104,7 @@ To add a new library to the DPDK, proceed as follows:
         make
 
 
-#.  Check that the library is installed:
+#. Check that the library is installed:
 
     .. code-block:: console
 
