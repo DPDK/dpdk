@@ -96,9 +96,11 @@ Config File Options
 The following options can be modified in the ``.config`` file. Please note that
 enabling debugging options may affect system performance.
 
-- ``CONFIG_RTE_LIBRTE_BNX2X_PMD`` (default **y**)
+- ``CONFIG_RTE_LIBRTE_BNX2X_PMD`` (default **n**)
 
-  Toggle compilation of bnx2x driver.
+  Toggle compilation of bnx2x driver. To use bnx2x PMD set this config parameter
+  to 'y'. Also, in order for firmware binary to load user will need zlib devel
+  package installed.
 
 - ``CONFIG_RTE_LIBRTE_BNX2X_DEBUG`` (default **n**)
 
