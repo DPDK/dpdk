@@ -321,7 +321,7 @@ To support Rx interrupts,
 
     .. code-block:: console
 
-        python tools/dpdk-devbind.py -b vfio-pci 00:03.0
+        python usertools/dpdk-devbind.py -b vfio-pci 00:03.0
 
 Example
 ~~~~~~~

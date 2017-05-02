@@ -366,7 +366,7 @@ Bind the virtio-net devices to DPDK:
 
    .. code-block:: console
 
-      $RTE_SDK/tools/dpdk-devbind.py -b vfio-pci 0000:00:10.0 0000:00:11.0
+      $RTE_SDK/usertools/dpdk-devbind.py -b vfio-pci 0000:00:10.0 0000:00:11.0
 
 Start testpmd:
 
