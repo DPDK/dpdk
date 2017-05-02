@@ -4659,9 +4659,11 @@ ixgbe_remove_rar(struct rte_eth_dev *dev, uint32_t index)
 static void
 ixgbe_set_default_mac_addr(struct rte_eth_dev *dev, struct ether_addr *addr)
 {
+	struct rte_pci_device *pci_dev = IXGBE_DEV_TO_PCI(dev);
+
 	ixgbe_remove_rar(dev, 0);
 
-	ixgbe_add_rar(dev, addr, 0, 0);
+	ixgbe_add_rar(dev, addr, 0, pci_dev->max_vfs);
 }
 
 static bool
