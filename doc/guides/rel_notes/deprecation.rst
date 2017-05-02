@@ -122,3 +122,9 @@ Deprecation Notices
 
   - ``rte_crpytodev_scheduler_mode_get``, replaced by ``rte_cryptodev_scheduler_mode_get``
   - ``rte_crpytodev_scheduler_mode_set``, replaced by ``rte_cryptodev_scheduler_mode_set``
+
+* librte_table: The ``key_mask`` parameter will be added to all the hash tables
+  that currently do not have it, as well as to the hash compute function prototype.
+  The non-"do-sig" versions of the hash tables will be removed
+  (including the ``signature_offset`` parameter)
+  and the "do-sig" versions renamed accordingly.
