@@ -251,6 +251,13 @@ enum i40e_flxpld_layer_idx {
 	I40E_INSET_FLEX_PAYLOAD_W5 | I40E_INSET_FLEX_PAYLOAD_W6 | \
 	I40E_INSET_FLEX_PAYLOAD_W7 | I40E_INSET_FLEX_PAYLOAD_W8)
 
+/**
+ * The overhead from MTU to max frame size.
+ * Considering QinQ packet, the VLAN tag needs to be counted twice.
+ */
+#define I40E_ETH_OVERHEAD \
+	(ETHER_HDR_LEN + ETHER_CRC_LEN + I40E_VLAN_TAG_SIZE * 2)
+
 struct i40e_adapter;
 
 /**
