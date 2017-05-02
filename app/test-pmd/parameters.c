@@ -206,6 +206,10 @@ usage(char* progname)
 	printf("  --no-rmv-interrupt: disable device removal interrupt.\n");
 	printf("  --bitrate-stats=N: set the logical core N to perform "
 		"bit-rate calculation.\n");
+	printf("  --print-event <unknown|intr_lsc|queue_state|intr_reset|vf_mbox|macsec|intr_rmv>: "
+	       "enable print of designated event");
+	printf("  --mask-event <unknown|intr_lsc|queue_state|intr_reset|vf_mbox|macsec|intr_rmv>: "
+	       "disable print of designated event");
 }
 
 #ifdef RTE_LIBRTE_CMDLINE
@@ -503,6 +507,36 @@ parse_ringnuma_config(const char *q_arg)
 	return 0;
 }
 
+static int
+parse_event_printing_config(const char *optarg, int enable)
+{
+	uint32_t mask = 0;
+
+	if (!strcmp(optarg, "unknown"))
+		mask = UINT32_C(1) << RTE_ETH_EVENT_UNKNOWN;
+	else if (!strcmp(optarg, "intr_lsc"))
+		mask = UINT32_C(1) << RTE_ETH_EVENT_INTR_LSC;
+	else if (!strcmp(optarg, "queue_state"))
+		mask = UINT32_C(1) << RTE_ETH_EVENT_QUEUE_STATE;
+	else if (!strcmp(optarg, "intr_reset"))
+		mask = UINT32_C(1) << RTE_ETH_EVENT_INTR_RESET;
+	else if (!strcmp(optarg, "vf_mbox"))
+		mask = UINT32_C(1) << RTE_ETH_EVENT_VF_MBOX;
+	else if (!strcmp(optarg, "macsec"))
+		mask = UINT32_C(1) << RTE_ETH_EVENT_MACSEC;
+	else if (!strcmp(optarg, "intr_rmv"))
+		mask = UINT32_C(1) << RTE_ETH_EVENT_INTR_RMV;
+	else {
+		fprintf(stderr, "Invalid event: %s\n", optarg);
+		return -1;
+	}
+	if (enable)
+		event_print_mask |= mask;
+	else
+		event_print_mask &= ~mask;
+	return 0;
+}
+
 void
 launch_args_parse(int argc, char** argv)
 {
@@ -581,6 +615,8 @@ launch_args_parse(int argc, char** argv)
 		{ "disable-link-check",		0, 0, 0 },
 		{ "no-lsc-interrupt",		0, 0, 0 },
 		{ "no-rmv-interrupt",		0, 0, 0 },
+		{ "print-event",		1, 0, 0 },
+		{ "mask-event",			1, 0, 0 },
 		{ 0, 0, 0, 0 },
 	};
 
@@ -1032,6 +1068,16 @@ launch_args_parse(int argc, char** argv)
 				lsc_interrupt = 0;
 			if (!strcmp(lgopts[opt_idx].name, "no-rmv-interrupt"))
 				rmv_interrupt = 0;
+			if (!strcmp(lgopts[opt_idx].name, "print-event"))
+				if (parse_event_printing_config(optarg, 1)) {
+					rte_exit(EXIT_FAILURE,
+						 "invalid print-event argument\n");
+				}
+			if (!strcmp(lgopts[opt_idx].name, "mask-event"))
+				if (parse_event_printing_config(optarg, 0)) {
+					rte_exit(EXIT_FAILURE,
+						 "invalid mask-event argument\n");
+				}
 
 			break;
 		case 'h':

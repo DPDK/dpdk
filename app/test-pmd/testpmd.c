@@ -282,6 +282,17 @@ uint8_t lsc_interrupt = 1; /* enabled by default */
 uint8_t rmv_interrupt = 1; /* enabled by default */
 
 /*
+ * Display or mask ether events
+ * Default to all events except VF_MBOX
+ */
+uint32_t event_print_mask = (UINT32_C(1) << RTE_ETH_EVENT_UNKNOWN) |
+			    (UINT32_C(1) << RTE_ETH_EVENT_INTR_LSC) |
+			    (UINT32_C(1) << RTE_ETH_EVENT_QUEUE_STATE) |
+			    (UINT32_C(1) << RTE_ETH_EVENT_INTR_RESET) |
+			    (UINT32_C(1) << RTE_ETH_EVENT_MACSEC) |
+			    (UINT32_C(1) << RTE_ETH_EVENT_INTR_RMV);
+
+/*
  * NIC bypass mode configuration options.
  */
 #ifdef RTE_NIC_BYPASS
@@ -1814,7 +1825,7 @@ eth_event_callback(uint8_t port_id, enum rte_eth_event_type type, void *param)
 		fprintf(stderr, "\nPort %" PRIu8 ": %s called upon invalid event %d\n",
 			port_id, __func__, type);
 		fflush(stderr);
-	} else {
+	} else if (event_print_mask & (UINT32_C(1) << type)) {
 		printf("\nPort %" PRIu8 ": %s event\n", port_id,
 			event_desc[type]);
 		fflush(stdout);
