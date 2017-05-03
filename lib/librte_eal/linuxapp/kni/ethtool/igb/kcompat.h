@@ -3937,4 +3937,8 @@ skb_set_hash(struct sk_buff *skb, __u32 hash, __always_unused int type)
 #define HAVE_VF_VLAN_PROTO
 #endif /* >= 4.9.0, >= SLES12SP3 */
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 8, 0)
+#define HAVE_PCI_ENABLE_MSIX
+#endif
+
 #endif /* _KCOMPAT_H_ */
