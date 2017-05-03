@@ -279,13 +279,13 @@ DPDK and must be installed separately:
 
 Currently supported by DPDK:
 
-- Mellanox OFED version: **4.0-1.0.1.0**
+- Mellanox OFED version: **4.0-2.0.0.0**
 - firmware version:
 
-  - ConnectX-4: **12.18.1000**
-  - ConnectX-4 Lx: **14.18.1000**
-  - ConnectX-5: **16.18.1000**
-  - ConnectX-5 Ex: **16.18.1000**
+  - ConnectX-4: **12.18.2000**
+  - ConnectX-4 Lx: **14.18.2000**
+  - ConnectX-5: **16.19.1200**
+  - ConnectX-5 Ex: **16.19.1200**
 
 Getting Mellanox OFED
 ~~~~~~~~~~~~~~~~~~~~~

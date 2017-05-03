@@ -244,8 +244,8 @@ DPDK and must be installed separately:
 
 Currently supported by DPDK:
 
-- Mellanox OFED **4.0-1.0.1.0**.
-- Firmware version **2.40.5030**.
+- Mellanox OFED **4.0-2.0.0.0**.
+- Firmware version **2.40.7000**.
 - Supported architectures:  **x86_64** and **POWER8**.
 
 Getting Mellanox OFED
