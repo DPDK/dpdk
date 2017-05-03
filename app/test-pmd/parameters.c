@@ -680,12 +680,8 @@ launch_args_parse(int argc, char** argv)
 				parse_fwd_portmask(optarg);
 			if (!strcmp(lgopts[opt_idx].name, "no-numa"))
 				numa_support = 0;
-			if (!strcmp(lgopts[opt_idx].name, "numa")) {
+			if (!strcmp(lgopts[opt_idx].name, "numa"))
 				numa_support = 1;
-				memset(port_numa,NUMA_NO_CONFIG,RTE_MAX_ETHPORTS);
-				memset(rxring_numa,NUMA_NO_CONFIG,RTE_MAX_ETHPORTS);
-				memset(txring_numa,NUMA_NO_CONFIG,RTE_MAX_ETHPORTS);
-			}
 			if (!strcmp(lgopts[opt_idx].name, "mp-anon")) {
 				mp_anon = 1;
 			}

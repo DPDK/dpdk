@@ -529,6 +529,13 @@ init_config(void)
 	uint8_t port_per_socket[RTE_MAX_NUMA_NODES];
 
 	memset(port_per_socket,0,RTE_MAX_NUMA_NODES);
+
+	if (numa_support) {
+		memset(port_numa, NUMA_NO_CONFIG, RTE_MAX_ETHPORTS);
+		memset(rxring_numa, NUMA_NO_CONFIG, RTE_MAX_ETHPORTS);
+		memset(txring_numa, NUMA_NO_CONFIG, RTE_MAX_ETHPORTS);
+	}
+
 	/* Configuration of logical cores. */
 	fwd_lcores = rte_zmalloc("testpmd: fwd_lcores",
 				sizeof(struct fwd_lcore *) * nb_lcores,
