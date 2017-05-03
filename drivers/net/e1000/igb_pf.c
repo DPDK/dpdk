@@ -332,12 +332,16 @@ igb_vf_set_mac_addr(struct rte_eth_dev *dev, uint32_t vf, uint32_t *msgbuf)
 		*(E1000_DEV_PRIVATE_TO_P_VFDATA(dev->data->dev_private));
 	int rar_entry = hw->mac.rar_entry_count - (vf + 1);
 	uint8_t *new_mac = (uint8_t *)(&msgbuf[1]);
+	int rah;
 
 	if (is_unicast_ether_addr((struct ether_addr *)new_mac)) {
 		if (!is_zero_ether_addr((struct ether_addr *)new_mac))
 			rte_memcpy(vfinfo[vf].vf_mac_addresses, new_mac,
 				sizeof(vfinfo[vf].vf_mac_addresses));
 		hw->mac.ops.rar_set(hw, new_mac, rar_entry);
+		rah = E1000_READ_REG(hw, E1000_RAH(rar_entry));
+		rah |= (0x1 << (E1000_RAH_POOLSEL_SHIFT + vf));
+		E1000_WRITE_REG(hw, E1000_RAH(rar_entry), rah);
 		return 0;
 	}
 	return -1;
