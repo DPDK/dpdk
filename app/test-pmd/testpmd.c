@@ -2239,7 +2239,9 @@ main(int argc, char** argv)
 			  "core mask supplied in the command parameters\n");
 
 	/* Bitrate stats disabled by default */
+#ifdef RTE_LIBRTE_BITRATE
 	bitrate_enabled = 0;
+#endif
 
 	argc -= diag;
 	argv += diag;
