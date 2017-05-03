@@ -451,17 +451,35 @@ kni_free_fifo(struct rte_kni_fifo *fifo)
 	} while (ret);
 }
 
+static void *
+va2pa(struct rte_mbuf *m)
+{
+	return (void *)((unsigned long)m -
+			((unsigned long)m->buf_addr -
+			 (unsigned long)m->buf_physaddr));
+}
+
 static void
-kni_free_fifo_phy(struct rte_mempool *pktmbuf_pool, struct rte_kni_fifo *fifo)
+obj_free(struct rte_mempool *mp __rte_unused, void *opaque, void *obj,
+		unsigned obj_idx __rte_unused)
+{
+	struct rte_mbuf *m = obj;
+	void *mbuf_phys = opaque;
+
+	if (va2pa(m) == mbuf_phys)
+		rte_pktmbuf_free(m);
+}
+
+static void
+kni_free_fifo_phy(struct rte_mempool *mp, struct rte_kni_fifo *fifo)
 {
 	void *mbuf_phys;
 	int ret;
 
-	rte_mempool_free(pktmbuf_pool);
-
-	/* All mbufs alredy freed with rte_mempoll_free, just free the fifo */
 	do {
 		ret = kni_fifo_get(fifo, &mbuf_phys, 1);
+		if (ret)
+			rte_mempool_obj_iter(mp, obj_free, mbuf_phys);
 	} while (ret);
 }
 
@@ -555,14 +573,6 @@ rte_kni_handle_request(struct rte_kni *kni)
 	}
 
 	return 0;
-}
-
-static void *
-va2pa(struct rte_mbuf *m)
-{
-	return (void *)((unsigned long)m -
-			((unsigned long)m->buf_addr -
-			 (unsigned long)m->buf_physaddr));
 }
 
 unsigned
