@@ -230,6 +230,9 @@ txq_ctrl_setup(struct rte_eth_dev *dev, struct txq_ctrl *txq_ctrl,
 		struct ibv_exp_cq_attr cq_attr;
 	} attr;
 	unsigned int cqe_n;
+	const unsigned int max_tso_inline = ((MLX5_MAX_TSO_HEADER +
+					     (RTE_CACHE_LINE_SIZE - 1)) /
+					      RTE_CACHE_LINE_SIZE);
 	int ret = 0;
 
 	if (mlx5_getenv_int("MLX5_ENABLE_CQE_COMPRESSION")) {
@@ -307,16 +310,23 @@ txq_ctrl_setup(struct rte_eth_dev *dev, struct txq_ctrl *txq_ctrl,
 					  priv->inline_max_packet_sz) +
 				  (RTE_CACHE_LINE_SIZE - 1)) /
 				 RTE_CACHE_LINE_SIZE) * RTE_CACHE_LINE_SIZE;
+		} else if (priv->tso) {
+			int inline_diff = tmpl.txq.max_inline - max_tso_inline;
+
+			/*
+			 * Adjust inline value as Verbs aggregates
+			 * tso_inline and txq_inline fields.
+			 */
+			attr.init.cap.max_inline_data = inline_diff > 0 ?
+							inline_diff *
+							RTE_CACHE_LINE_SIZE :
+							0;
 		} else {
 			attr.init.cap.max_inline_data =
 				tmpl.txq.max_inline * RTE_CACHE_LINE_SIZE;
 		}
 	}
 	if (priv->tso) {
-		uint16_t max_tso_inline = ((MLX5_MAX_TSO_HEADER +
-					   (RTE_CACHE_LINE_SIZE - 1)) /
-					    RTE_CACHE_LINE_SIZE);
-
 		attr.init.max_tso_header =
 			max_tso_inline * RTE_CACHE_LINE_SIZE;
 		attr.init.comp_mask |= IBV_EXP_QP_INIT_ATTR_MAX_TSO_HEADER;
