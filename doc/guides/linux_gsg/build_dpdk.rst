@@ -155,6 +155,10 @@ can provide the uio capability. This module can be loaded using the command
 
     sudo modprobe uio_pci_generic
 
+.. note::
+
+    ``uio_pci_generic`` module doesn't support the creation of virtual functions.
+
 As an alternative to the ``uio_pci_generic``, the DPDK also includes the igb_uio
 module which can be found in the kmod subdirectory referred to above. It can
 be loaded as shown below:
@@ -186,6 +190,10 @@ VFIO kernel modules have been included in the Linux kernel since version 3.6.0 a
 however please consult your distributions documentation to make sure that is the case.
 
 Also, to use VFIO, both kernel and BIOS must support and be configured to use IO virtualization (such as Intel® VT-d).
+
+.. note::
+
+    ``vfio-pci`` module doesn't support the creation of virtual functions.
 
 For proper operation of VFIO when running DPDK applications as a non-privileged user, correct permissions should also be set up.
 This can be done by using the DPDK setup script (called dpdk-setup.sh and located in the usertools directory).
