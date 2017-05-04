@@ -4111,10 +4111,7 @@ ixgbe_alloc_rx_queue_mbufs(struct ixgbe_rx_queue *rxq)
 			return -ENOMEM;
 		}
 
-		rte_mbuf_refcnt_set(mbuf, 1);
-		mbuf->next = NULL;
 		mbuf->data_off = RTE_PKTMBUF_HEADROOM;
-		mbuf->nb_segs = 1;
 		mbuf->port = rxq->port_id;
 
 		dma_addr =
