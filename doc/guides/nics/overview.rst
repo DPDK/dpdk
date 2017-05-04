@@ -50,59 +50,6 @@ Most of these differences are summarized below.
 
 .. _table_net_pmd_features:
 
-.. raw:: html
-
-   <style>
-      .wy-nav-content {
-         opacity: .99;
-      }
-      table#id1 {
-         cursor: default;
-         overflow: hidden;
-      }
-      table#id1 th, table#id1 td {
-         text-align: center;
-      }
-      table#id1 th {
-         font-size: 80%;
-         white-space: pre-wrap;
-         vertical-align: top;
-         padding: 2px;
-      }
-      table#id1 th:first-child {
-         vertical-align: bottom;
-      }
-      table#id1 td {
-         font-size: 70%;
-         padding: 1px;
-      }
-      table#id1 td:first-child {
-         padding-left: 1em;
-         text-align: left;
-      }
-      table#id1 tr:nth-child(2n-1) td {
-         background-color: rgba(210, 210, 210, 0.2);
-      }
-      table#id1 th:not(:first-child):hover,
-      table#id1 td:not(:first-child):hover {
-         position: relative;
-      }
-      table#id1 th:not(:first-child):hover::after,
-      table#id1 td:not(:first-child):hover::after {
-         content: '';
-         height: 6000px;
-         top: -3000px;
-         width: 100%;
-         left: 0;
-         position: absolute;
-         z-index: -1;
-         background-color: #ffb;
-      }
-      table#id1 tr:hover td {
-         background-color: #ffb;
-      }
-   </style>
-
 .. include:: overview_table.txt
 
 .. Note::
