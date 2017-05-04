@@ -167,8 +167,8 @@ rte_net_crc_set_alg(enum rte_net_crc_alg alg)
 		handlers = handlers_sse42;
 #else
 		alg = RTE_NET_CRC_SCALAR;
-		break;
 #endif
+		break;
 	case RTE_NET_CRC_SCALAR:
 	default:
 		handlers = handlers_scalar;
