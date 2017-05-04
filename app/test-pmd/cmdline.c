@@ -8741,6 +8741,7 @@ cmd_flow_director_filter_parsed(void *parsed_result,
 	case RTE_ETH_FLOW_FRAG_IPV4:
 	case RTE_ETH_FLOW_NONFRAG_IPV4_OTHER:
 		entry.input.flow.ip4_flow.proto = res->proto_value;
+		/* fall-through */
 	case RTE_ETH_FLOW_NONFRAG_IPV4_UDP:
 	case RTE_ETH_FLOW_NONFRAG_IPV4_TCP:
 		IPV4_ADDR_TO_UINT(res->ip_dst,
@@ -8773,6 +8774,7 @@ cmd_flow_director_filter_parsed(void *parsed_result,
 	case RTE_ETH_FLOW_FRAG_IPV6:
 	case RTE_ETH_FLOW_NONFRAG_IPV6_OTHER:
 		entry.input.flow.ipv6_flow.proto = res->proto_value;
+		/* fall-through */
 	case RTE_ETH_FLOW_NONFRAG_IPV6_UDP:
 	case RTE_ETH_FLOW_NONFRAG_IPV6_TCP:
 		IPV6_ADDR_TO_ARRAY(res->ip_dst,
