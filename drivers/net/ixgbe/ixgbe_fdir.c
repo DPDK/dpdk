@@ -730,6 +730,7 @@ ixgbe_fdir_filter_to_atr_input(const struct rte_eth_fdir_filter *fdir_filter,
 			fdir_filter->input.flow.udp4_flow.src_port;
 		input->formatted.dst_port =
 			fdir_filter->input.flow.udp4_flow.dst_port;
+		/* fall-through */
 	/*for SCTP flow type, port and verify_tag are meaningless in ixgbe.*/
 	case RTE_ETH_FLOW_NONFRAG_IPV4_SCTP:
 	case RTE_ETH_FLOW_NONFRAG_IPV4_OTHER:
@@ -745,6 +746,7 @@ ixgbe_fdir_filter_to_atr_input(const struct rte_eth_fdir_filter *fdir_filter,
 			fdir_filter->input.flow.udp6_flow.src_port;
 		input->formatted.dst_port =
 			fdir_filter->input.flow.udp6_flow.dst_port;
+		/* fall-through */
 	/*for SCTP flow type, port and verify_tag are meaningless in ixgbe.*/
 	case RTE_ETH_FLOW_NONFRAG_IPV6_SCTP:
 	case RTE_ETH_FLOW_NONFRAG_IPV6_OTHER:
