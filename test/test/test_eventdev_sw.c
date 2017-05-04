@@ -2526,7 +2526,7 @@ parallel_basic(struct test *t, int check_order)
 	int i;
 	uint32_t deq_pkts, j;
 	struct rte_mbuf *mbufs[3];
-	struct rte_mbuf *mbufs_out[3];
+	struct rte_mbuf *mbufs_out[3] = { 0 };
 	const uint32_t MAGIC_SEQN = 1234;
 
 	/* Create instance with 4 ports */
