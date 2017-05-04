@@ -1808,6 +1808,8 @@ parse_vc_spec(struct context *ctx, const struct token *token,
 		return -1;
 	/* Parse parameter types. */
 	switch (ctx->curr) {
+		static const enum index prefix[] = NEXT_ENTRY(PREFIX);
+
 	case ITEM_PARAM_IS:
 		index = 0;
 		objmask = 1;
@@ -1822,7 +1824,7 @@ parse_vc_spec(struct context *ctx, const struct token *token,
 		/* Modify next token to expect a prefix. */
 		if (ctx->next_num < 2)
 			return -1;
-		ctx->next[ctx->next_num - 2] = NEXT_ENTRY(PREFIX);
+		ctx->next[ctx->next_num - 2] = prefix;
 		/* Fall through. */
 	case ITEM_PARAM_MASK:
 		index = 2;
