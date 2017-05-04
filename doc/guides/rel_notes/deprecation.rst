@@ -92,6 +92,27 @@ Deprecation Notices
   - the function ``rte_cryptodev_count_devtype`` will be replaced by
     ``rte_cryptodev_device_count_by_driver``
 
+* cryptodev: API changes are planned for 17.08 for the sessions management
+  to make it agnostic to the underlying devices, removing coupling with
+  crypto PMDs, so a single session can be used on multiple devices.
+
+  - ``struct rte_cryptodev_sym_session``, dev_id, dev_type will be removed,
+    _private field changed to the indirect array of private data pointers of
+    all supported devices
+
+  An API of followed functions will be changed to allow operate on multiple
+  devices with one session:
+
+  - ``rte_cryptodev_sym_session_create``
+  - ``rte_cryptodev_sym_session_free``
+  - ``rte_cryptodev_sym_session_pool_create``
+
+  While dev_id will not be stored in the ``struct rte_cryptodev_sym_session``,
+  directly, the change of followed API is required:
+
+  - ``rte_cryptodev_queue_pair_attach_sym_session``
+  - ``rte_cryptodev_queue_pair_detach_sym_session``
+
 * crypto/scheduler: the following two functions are deprecated starting
   from 17.05 and will be removed in 17.08:
 
