@@ -99,5 +99,12 @@ ifeq ($(shell test $(GCC_VERSION) -lt 47 && echo 1), 1)
 WERROR_FLAGS += -Wno-uninitialized
 endif
 
+ifeq ($(shell test $(GCC_VERSION) -gt 70 && echo 1), 1)
+# Tell GCC only to error for switch fallthroughs without a suitable comment
+WERROR_FLAGS += -Wimplicit-fallthrough=2
+# Ignore errors for snprintf truncation
+WERROR_FLAGS += -Wno-format-truncation
+endif
+
 export CC AS AR LD OBJCOPY OBJDUMP STRIP READELF
 export TOOLCHAIN_CFLAGS TOOLCHAIN_LDFLAGS TOOLCHAIN_ASFLAGS
