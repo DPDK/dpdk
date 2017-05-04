@@ -935,7 +935,7 @@ vmxnet3_dev_link_update(struct rte_eth_dev *dev,
 			__rte_unused int wait_to_complete)
 {
 	struct vmxnet3_hw *hw = dev->data->dev_private;
-	struct rte_eth_link old, link;
+	struct rte_eth_link old = { 0 }, link;
 	uint32_t ret;
 
 	/* Link status doesn't change for stopped dev */
