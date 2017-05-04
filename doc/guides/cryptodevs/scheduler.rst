@@ -72,10 +72,10 @@ Initialization
 
 To use the PMD in an application, user must:
 
-* Call rte_eal_vdev_init("crpyto_scheduler") within the application.
+* Call rte_vdev_init("crpyto_scheduler") within the application.
 
 * Use --vdev="crpyto_scheduler" in the EAL options, which will call
-  rte_eal_vdev_init() internally.
+  rte_vdev_init() internally.
 
 
 The following parameters (all optional) can be provided in the previous

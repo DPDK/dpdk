@@ -90,9 +90,9 @@ In order to enable this virtual crypto PMD, user must:
 
 To use the PMD in an application, user must:
 
-* Call rte_eal_vdev_init("crypto_kasumi") within the application.
+* Call rte_vdev_init("crypto_kasumi") within the application.
 
-* Use --vdev="crypto_kasumi" in the EAL options, which will call rte_eal_vdev_init() internally.
+* Use --vdev="crypto_kasumi" in the EAL options, which will call rte_vdev_init() internally.
 
 The following parameters (all optional) can be provided in the previous two calls:
 

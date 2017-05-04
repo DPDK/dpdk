@@ -76,9 +76,9 @@ Initialization
 
 To use the PMD in an application, user must:
 
-* Call rte_eal_vdev_init("crypto_null") within the application.
+* Call rte_vdev_init("crypto_null") within the application.
 
-* Use --vdev="crypto_null" in the EAL options, which will call rte_eal_vdev_init() internally.
+* Use --vdev="crypto_null" in the EAL options, which will call rte_vdev_init() internally.
 
 The following parameters (all optional) can be provided in the previous two calls:
 

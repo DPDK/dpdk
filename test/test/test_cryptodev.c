@@ -219,7 +219,7 @@ testsuite_setup(void)
 		nb_devs = rte_cryptodev_count_devtype(
 				RTE_CRYPTODEV_AESNI_MB_PMD);
 		if (nb_devs < 1) {
-			ret = rte_eal_vdev_init(
+			ret = rte_vdev_init(
 				RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD), NULL);
 
 			TEST_ASSERT(ret == 0,
@@ -239,7 +239,7 @@ testsuite_setup(void)
 		nb_devs = rte_cryptodev_count_devtype(
 				RTE_CRYPTODEV_AESNI_GCM_PMD);
 		if (nb_devs < 1) {
-			TEST_ASSERT_SUCCESS(rte_eal_vdev_init(
+			TEST_ASSERT_SUCCESS(rte_vdev_init(
 				RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD), NULL),
 				"Failed to create instance of"
 				" pmd : %s",
@@ -256,7 +256,7 @@ testsuite_setup(void)
 #endif
 		nb_devs = rte_cryptodev_count_devtype(RTE_CRYPTODEV_SNOW3G_PMD);
 		if (nb_devs < 1) {
-			TEST_ASSERT_SUCCESS(rte_eal_vdev_init(
+			TEST_ASSERT_SUCCESS(rte_vdev_init(
 				RTE_STR(CRYPTODEV_NAME_SNOW3G_PMD), NULL),
 				"Failed to create instance of"
 				" pmd : %s",
@@ -273,7 +273,7 @@ testsuite_setup(void)
 #endif
 		nb_devs = rte_cryptodev_count_devtype(RTE_CRYPTODEV_KASUMI_PMD);
 		if (nb_devs < 1) {
-			TEST_ASSERT_SUCCESS(rte_eal_vdev_init(
+			TEST_ASSERT_SUCCESS(rte_vdev_init(
 				RTE_STR(CRYPTODEV_NAME_KASUMI_PMD), NULL),
 				"Failed to create instance of"
 				" pmd : %s",
@@ -290,7 +290,7 @@ testsuite_setup(void)
 #endif
 		nb_devs = rte_cryptodev_count_devtype(RTE_CRYPTODEV_ZUC_PMD);
 		if (nb_devs < 1) {
-			TEST_ASSERT_SUCCESS(rte_eal_vdev_init(
+			TEST_ASSERT_SUCCESS(rte_vdev_init(
 				RTE_STR(CRYPTODEV_NAME_ZUC_PMD), NULL),
 				"Failed to create instance of"
 				" pmd : %s",
@@ -308,7 +308,7 @@ testsuite_setup(void)
 		nb_devs = rte_cryptodev_count_devtype(
 				RTE_CRYPTODEV_NULL_PMD);
 		if (nb_devs < 1) {
-			ret = rte_eal_vdev_init(
+			ret = rte_vdev_init(
 				RTE_STR(CRYPTODEV_NAME_NULL_PMD), NULL);
 
 			TEST_ASSERT(ret == 0,
@@ -328,7 +328,7 @@ testsuite_setup(void)
 		nb_devs = rte_cryptodev_count_devtype(
 				RTE_CRYPTODEV_OPENSSL_PMD);
 		if (nb_devs < 1) {
-			ret = rte_eal_vdev_init(
+			ret = rte_vdev_init(
 				RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD),
 				NULL);
 
@@ -348,7 +348,7 @@ testsuite_setup(void)
 		nb_devs = rte_cryptodev_count_devtype(
 				RTE_CRYPTODEV_ARMV8_PMD);
 		if (nb_devs < 1) {
-			ret = rte_eal_vdev_init(
+			ret = rte_vdev_init(
 				RTE_STR(CRYPTODEV_NAME_ARMV8_PMD),
 				NULL);
 
@@ -369,7 +369,7 @@ testsuite_setup(void)
 		nb_devs = rte_cryptodev_count_devtype(
 				RTE_CRYPTODEV_SCHEDULER_PMD);
 		if (nb_devs < 1) {
-			ret = rte_eal_vdev_init(
+			ret = rte_vdev_init(
 				RTE_STR(CRYPTODEV_NAME_SCHEDULER_PMD),
 				NULL);
 
@@ -7825,7 +7825,7 @@ test_scheduler_attach_slave_op(void)
 			snprintf(vdev_name, sizeof(vdev_name), "%s_%u",
 					RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD),
 					i);
-			ret = rte_eal_vdev_init(vdev_name, NULL);
+			ret = rte_vdev_init(vdev_name, NULL);
 
 			TEST_ASSERT(ret == 0,
 				"Failed to create instance %u of"

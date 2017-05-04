@@ -51,7 +51,7 @@ testsuite_setup(void)
 	if (!count) {
 		printf("Failed to find a valid event device,"
 			" testing with event_skeleton device\n");
-		return rte_eal_vdev_init("event_skeleton", NULL);
+		return rte_vdev_init("event_skeleton", NULL);
 	}
 	return TEST_SUCCESS;
 }

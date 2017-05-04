@@ -56,7 +56,7 @@ static void rte_vdev_bus_register(void);
 
 /* register a driver */
 void
-rte_eal_vdrv_register(struct rte_vdev_driver *driver)
+rte_vdev_register(struct rte_vdev_driver *driver)
 {
 	rte_vdev_bus_register();
 
@@ -65,7 +65,7 @@ rte_eal_vdrv_register(struct rte_vdev_driver *driver)
 
 /* unregister a driver */
 void
-rte_eal_vdrv_unregister(struct rte_vdev_driver *driver)
+rte_vdev_unregister(struct rte_vdev_driver *driver)
 {
 	TAILQ_REMOVE(&vdev_driver_list, driver, next);
 }
@@ -194,7 +194,7 @@ alloc_devargs(const char *name, const char *args)
 }
 
 int
-rte_eal_vdev_init(const char *name, const char *args)
+rte_vdev_init(const char *name, const char *args)
 {
 	struct rte_vdev_device *dev;
 	struct rte_devargs *devargs;
@@ -257,7 +257,7 @@ vdev_remove_driver(struct rte_vdev_device *dev)
 }
 
 int
-rte_eal_vdev_uninit(const char *name)
+rte_vdev_uninit(const char *name)
 {
 	struct rte_vdev_device *dev;
 	struct rte_devargs *devargs;

@@ -332,7 +332,7 @@ testsuite_setup(void)
 #endif
 		nb_devs = rte_cryptodev_count_devtype(RTE_CRYPTODEV_AESNI_MB_PMD);
 		if (nb_devs < 1) {
-			ret = rte_eal_vdev_init(
+			ret = rte_vdev_init(
 				RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD), NULL);
 
 			TEST_ASSERT(ret == 0,
@@ -350,7 +350,7 @@ testsuite_setup(void)
 #endif
 		nb_devs = rte_cryptodev_count_devtype(RTE_CRYPTODEV_AESNI_GCM_PMD);
 		if (nb_devs < 1) {
-			ret = rte_eal_vdev_init(
+			ret = rte_vdev_init(
 				RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD), NULL);
 
 			TEST_ASSERT(ret == 0,
@@ -368,7 +368,7 @@ testsuite_setup(void)
 #endif
 		nb_devs = rte_cryptodev_count_devtype(RTE_CRYPTODEV_SNOW3G_PMD);
 		if (nb_devs < 1) {
-			ret = rte_eal_vdev_init(
+			ret = rte_vdev_init(
 				RTE_STR(CRYPTODEV_NAME_SNOW3G_PMD), NULL);
 
 			TEST_ASSERT(ret == 0,
@@ -387,7 +387,7 @@ testsuite_setup(void)
 		nb_devs = rte_cryptodev_count_devtype(
 				RTE_CRYPTODEV_OPENSSL_PMD);
 		if (nb_devs < 1) {
-			ret = rte_eal_vdev_init(
+			ret = rte_vdev_init(
 				RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD),
 				NULL);
 
@@ -407,7 +407,7 @@ testsuite_setup(void)
 		nb_devs = rte_cryptodev_count_devtype(
 				RTE_CRYPTODEV_ARMV8_PMD);
 		if (nb_devs < 1) {
-			ret = rte_eal_vdev_init(
+			ret = rte_vdev_init(
 				RTE_STR(CRYPTODEV_NAME_ARMV8_PMD),
 				NULL);
 

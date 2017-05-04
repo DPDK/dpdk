@@ -129,10 +129,10 @@ SSO PCIe VF devices will be probed and then the vdev device can be created
 from the application code, or from the EAL command line based on
 the number of probed/bound SSO PCIe VF device to DPDK by
 
-* Invoking ``rte_eal_vdev_init("event_octeontx")`` from the application
+* Invoking ``rte_vdev_init("event_octeontx")`` from the application
 
 * Using ``--vdev="event_octeontx"`` in the EAL options, which will call
-  rte_eal_vdev_init() internally
+  rte_vdev_init() internally
 
 Example:
 

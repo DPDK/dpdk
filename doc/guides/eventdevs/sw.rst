@@ -60,10 +60,10 @@ Configuration and Options
 The software eventdev is a vdev device, and as such can be created from the
 application code, or from the EAL command line:
 
-* Call ``rte_eal_vdev_init("event_sw0")`` from the application
+* Call ``rte_vdev_init("event_sw0")`` from the application
 
 * Use ``--vdev="event_sw0"`` in the EAL options, which will call
-  rte_eal_vdev_init() internally
+  rte_vdev_init() internally
 
 Example:
 

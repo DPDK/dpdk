@@ -92,7 +92,7 @@ struct rte_vdev_driver {
  *   A pointer to a rte_vdev_driver structure describing the driver
  *   to be registered.
  */
-void rte_eal_vdrv_register(struct rte_vdev_driver *driver);
+void rte_vdev_register(struct rte_vdev_driver *driver);
 
 /**
  * Unregister a virtual device driver.
@@ -101,7 +101,7 @@ void rte_eal_vdrv_register(struct rte_vdev_driver *driver);
  *   A pointer to a rte_vdev_driver structure describing the driver
  *   to be unregistered.
  */
-void rte_eal_vdrv_unregister(struct rte_vdev_driver *driver);
+void rte_vdev_unregister(struct rte_vdev_driver *driver);
 
 #define RTE_PMD_REGISTER_VDEV(nm, vdrv)\
 RTE_INIT(vdrvinitfn_ ##vdrv);\
@@ -110,7 +110,7 @@ static void vdrvinitfn_ ##vdrv(void)\
 {\
 	(vdrv).driver.name = RTE_STR(nm);\
 	(vdrv).driver.alias = vdrvinit_ ## nm ## _alias;\
-	rte_eal_vdrv_register(&vdrv);\
+	rte_vdev_register(&vdrv);\
 } \
 RTE_PMD_EXPORT_NAME(nm, __COUNTER__)
 

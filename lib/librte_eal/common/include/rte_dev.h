@@ -153,7 +153,7 @@ struct rte_device {
  * @return
  *  0 on success, negative on error
  */
-int rte_eal_vdev_init(const char *name, const char *args);
+int rte_vdev_init(const char *name, const char *args);
 
 /**
  * Uninitalize a driver specified by name.
@@ -163,7 +163,7 @@ int rte_eal_vdev_init(const char *name, const char *args);
  * @return
  *  0 on success, negative on error
  */
-int rte_eal_vdev_uninit(const char *name);
+int rte_vdev_uninit(const char *name);
 
 /**
  * Attach a device to a registered driver.

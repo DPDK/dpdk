@@ -177,7 +177,7 @@ rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
 	if (ret < 0 || ret >= (int)sizeof(devargs))
 		return -ENOMEM;
 
-	ret = rte_eal_vdev_init(name, devargs);
+	ret = rte_vdev_init(name, devargs);
 	if (ret)
 		return -ENOMEM;
 
@@ -200,7 +200,7 @@ rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
 int
 rte_eth_bond_free(const char *name)
 {
-	return rte_eal_vdev_uninit(name);
+	return rte_vdev_uninit(name);
 }
 
 static int

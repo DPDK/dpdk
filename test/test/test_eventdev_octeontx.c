@@ -115,7 +115,7 @@ testsuite_setup(void)
 	if (evdev < 0) {
 		printf("%d: Eventdev %s not found - creating.\n",
 				__LINE__, eventdev_name);
-		if (rte_eal_vdev_init(eventdev_name, NULL) < 0) {
+		if (rte_vdev_init(eventdev_name, NULL) < 0) {
 			printf("Error creating eventdev %s\n", eventdev_name);
 			return TEST_FAILED;
 		}

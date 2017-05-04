@@ -59,7 +59,7 @@ int rte_eal_dev_attach(const char *name, const char *devargs)
 			goto err;
 
 	} else {
-		if (rte_eal_vdev_init(name, devargs))
+		if (rte_vdev_init(name, devargs))
 			goto err;
 	}
 
@@ -83,7 +83,7 @@ int rte_eal_dev_detach(const char *name)
 		if (rte_pci_detach(&addr) < 0)
 			goto err;
 	} else {
-		if (rte_eal_vdev_uninit(name))
+		if (rte_vdev_uninit(name))
 			goto err;
 	}
 	return 0;
