@@ -452,7 +452,7 @@ eth_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	if (s < 0)
 		return -EINVAL;
 
-	strncpy(ifr.ifr_name, internals->if_name, IFNAMSIZ);
+	snprintf(ifr.ifr_name, IFNAMSIZ, "%s", internals->if_name);
 	ret = ioctl(s, SIOCSIFMTU, &ifr);
 	close(s);
 
@@ -472,7 +472,7 @@ eth_dev_change_flags(char *if_name, uint32_t flags, uint32_t mask)
 	if (s < 0)
 		return;
 
-	strncpy(ifr.ifr_name, if_name, IFNAMSIZ);
+	snprintf(ifr.ifr_name, IFNAMSIZ, "%s", if_name);
 	if (ioctl(s, SIOCGIFFLAGS, &ifr) < 0)
 		goto out;
 	ifr.ifr_flags &= mask;
