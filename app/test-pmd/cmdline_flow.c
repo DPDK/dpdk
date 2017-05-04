@@ -1057,13 +1057,13 @@ static const struct token token_list[] = {
 		.name = "dst",
 		.help = "destination MAC",
 		.next = NEXT(item_eth, NEXT_ENTRY(MAC_ADDR), item_param),
-		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_eth, dst)),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_eth, dst)),
 	},
 	[ITEM_ETH_SRC] = {
 		.name = "src",
 		.help = "source MAC",
 		.next = NEXT(item_eth, NEXT_ENTRY(MAC_ADDR), item_param),
-		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_eth, src)),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_eth, src)),
 	},
 	[ITEM_ETH_TYPE] = {
 		.name = "type",
@@ -2237,6 +2237,9 @@ parse_mac_addr(struct context *ctx, const struct token *token,
 	size = arg->size;
 	/* Bit-mask fill is not supported. */
 	if (arg->mask || size != sizeof(tmp))
+		goto error;
+	/* Only network endian is supported. */
+	if (!arg->hton)
 		goto error;
 	ret = cmdline_parse_etheraddr(NULL, str, &tmp, size);
 	if (ret < 0 || (unsigned int)ret != len)
