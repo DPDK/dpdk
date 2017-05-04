@@ -357,7 +357,7 @@ static inline int rte_vlan_strip(struct rte_mbuf *m)
 		return -1;
 
 	struct vlan_hdr *vh = (struct vlan_hdr *)(eh + 1);
-	m->ol_flags |= PKT_RX_VLAN_PKT;
+	m->ol_flags |= PKT_RX_VLAN_PKT | PKT_RX_VLAN_STRIPPED;
 	m->vlan_tci = rte_be_to_cpu_16(vh->vlan_tci);
 
 	/* Copy ether header over rather than moving whole packet */
@@ -406,6 +406,8 @@ static inline int rte_vlan_insert(struct rte_mbuf **m)
 
 	vh = (struct vlan_hdr *) (nh + 1);
 	vh->vlan_tci = rte_cpu_to_be_16((*m)->vlan_tci);
+
+	(*m)->ol_flags &= ~PKT_RX_VLAN_STRIPPED;
 
 	return 0;
 }
