@@ -2725,7 +2725,7 @@ static int ecore_mcast_validate_e2(__rte_unused struct bnx2x_softc *sc,
 		/* DEL command deletes all currently configured MACs */
 	case ECORE_MCAST_CMD_DEL:
 		o->set_registry_size(o, 0);
-		/* Don't break */
+		/* fall-through */
 
 		/* RESTORE command will restore the entire multicast configuration */
 	case ECORE_MCAST_CMD_RESTORE:

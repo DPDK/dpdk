@@ -5898,6 +5898,7 @@ elink_status_t elink_set_led(struct elink_params *params,
 		 */
 		if (!vars->link_up)
 			break;
+		/* fall-through */
 	case ELINK_LED_MODE_ON:
 		if (((params->phy[ELINK_EXT_PHY1].type ==
 		      PORT_HW_CFG_XGXS_EXT_PHY_TYPE_BNX2X8727) ||
@@ -11534,11 +11535,13 @@ static void elink_phy_def_cfg(struct elink_params *params,
 	switch (link_config & PORT_FEATURE_LINK_SPEED_MASK) {
 	case PORT_FEATURE_LINK_SPEED_10M_HALF:
 		phy->req_duplex = DUPLEX_HALF;
+		/* fall-through */
 	case PORT_FEATURE_LINK_SPEED_10M_FULL:
 		phy->req_line_speed = ELINK_SPEED_10;
 		break;
 	case PORT_FEATURE_LINK_SPEED_100M_HALF:
 		phy->req_duplex = DUPLEX_HALF;
+		/* fall-through */
 	case PORT_FEATURE_LINK_SPEED_100M_FULL:
 		phy->req_line_speed = ELINK_SPEED_100;
 		break;
