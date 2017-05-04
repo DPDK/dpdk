@@ -518,6 +518,14 @@ def bind_one(dev_id, driver, force):
 
 def unbind_all(dev_list, force=False):
     """Unbind method, takes a list of device locations"""
+
+    if dev_list[0] == "dpdk":
+        for d in devices.keys():
+            if "Driver_str" in devices[d]:
+                if devices[d]["Driver_str"] in dpdk_drivers:
+                    unbind_one(devices[d]["Slot"], force)
+        return
+
     dev_list = map(dev_id_from_dev_name, dev_list)
     for d in dev_list:
         unbind_one(d, force)
