@@ -315,6 +315,7 @@ can_parse_signed(int64_t expected_result, enum cmdline_numtype type)
 	case UINT64:
 		if (expected_result < 0)
 			return 0;
+		break;
 	case INT8:
 		if (expected_result > INT8_MAX || expected_result < INT8_MIN)
 			return 0;
