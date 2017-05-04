@@ -1156,21 +1156,25 @@ static inline int rte_pktmbuf_alloc_bulk(struct rte_mempool *pool,
 			rte_mbuf_refcnt_set(mbufs[idx], 1);
 			rte_pktmbuf_reset(mbufs[idx]);
 			idx++;
+			/* fall-through */
 	case 3:
 			RTE_ASSERT(rte_mbuf_refcnt_read(mbufs[idx]) == 0);
 			rte_mbuf_refcnt_set(mbufs[idx], 1);
 			rte_pktmbuf_reset(mbufs[idx]);
 			idx++;
+			/* fall-through */
 	case 2:
 			RTE_ASSERT(rte_mbuf_refcnt_read(mbufs[idx]) == 0);
 			rte_mbuf_refcnt_set(mbufs[idx], 1);
 			rte_pktmbuf_reset(mbufs[idx]);
 			idx++;
+			/* fall-through */
 	case 1:
 			RTE_ASSERT(rte_mbuf_refcnt_read(mbufs[idx]) == 0);
 			rte_mbuf_refcnt_set(mbufs[idx], 1);
 			rte_pktmbuf_reset(mbufs[idx]);
 			idx++;
+			/* fall-through */
 		}
 	}
 	return 0;

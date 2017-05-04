@@ -250,7 +250,7 @@ cmdline_parse_num(cmdline_parse_token_hdr_t *tk, const char *srcbuf, void *res,
 
 		case HEX:
 			st = HEX_OK;
-			/* no break */
+			/* fall-through no break */
 		case HEX_OK:
 			if (c >= '0' && c <= '9') {
 				if (add_to_res(c - '0', &res1, 16) < 0)
@@ -282,7 +282,7 @@ cmdline_parse_num(cmdline_parse_token_hdr_t *tk, const char *srcbuf, void *res,
 
 		case BIN:
 			st = BIN_OK;
-			/* no break */
+			/* fall-through */
 		case BIN_OK:
 			if (c >= '0' && c <= '1') {
 				if (add_to_res(c - '0', &res1, 2) < 0)
