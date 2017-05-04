@@ -104,7 +104,7 @@ Porting Netmap applications typically involves two major steps:
 
 Since the ``compat_netmap`` functions have the same signature as the usual libc calls, the change is trivial in most cases.
 
-The usual DPDK initialization code involving ``rte_eal_init()`` and ``rte_eal_pci_probe()``
+The usual DPDK initialization code involving ``rte_eal_init()`` and ``rte_pci_probe()``
 has to be added to the Netmap application in the same way it is used in all other DPDK sample applications.
 Please refer to the *DPDK Programmer's Guide* and example source code for details about initialization.
 

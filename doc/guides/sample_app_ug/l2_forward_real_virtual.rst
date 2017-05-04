@@ -238,7 +238,7 @@ in the *DPDK Programmer's Guide* - Rel 1.4 EAR and the *DPDK API Reference*.
 
 .. code-block:: c
 
-    if (rte_eal_pci_probe() < 0)
+    if (rte_pci_probe() < 0)
         rte_exit(EXIT_FAILURE, "Cannot probe PCI\n");
 
     nb_ports = rte_eth_dev_count();
@@ -279,7 +279,7 @@ Observe that:
 
 *   rte_igb_pmd_init_all() simultaneously registers the driver as a PCI driver and as an Ethernet* Poll Mode Driver.
 
-*   rte_eal_pci_probe() parses the devices on the PCI bus and initializes recognized devices.
+*   rte_pci_probe() parses the devices on the PCI bus and initializes recognized devices.
 
 The next step is to configure the RX and TX queues.
 For each port, there is only one RX queue (only one lcore is able to poll a given port).

@@ -35,12 +35,6 @@ DPDK_2.0 {
 	rte_eal_mp_remote_launch;
 	rte_eal_mp_wait_lcore;
 	rte_eal_parse_devargs_str;
-	rte_eal_pci_dump;
-	rte_eal_pci_probe;
-	rte_eal_pci_probe_one;
-	rte_eal_pci_register;
-	rte_eal_pci_scan;
-	rte_eal_pci_unregister;
 	rte_eal_process_type;
 	rte_eal_remote_launch;
 	rte_eal_tailq_lookup;
@@ -106,9 +100,6 @@ DPDK_2.0 {
 DPDK_2.1 {
 	global:
 
-	rte_eal_pci_detach;
-	rte_eal_pci_read_config;
-	rte_eal_pci_write_config;
 	rte_epoll_ctl;
 	rte_epoll_wait;
 	rte_intr_allow_others;
@@ -138,12 +129,6 @@ DPDK_16.04 {
 	global:
 
 	rte_cpu_get_flag_name;
-	rte_eal_pci_ioport_map;
-	rte_eal_pci_ioport_read;
-	rte_eal_pci_ioport_unmap;
-	rte_eal_pci_ioport_write;
-	rte_eal_pci_map_device;
-	rte_eal_pci_unmap_device;
 	rte_eal_primary_proc_alive;
 
 } DPDK_2.2;
@@ -193,6 +178,21 @@ DPDK_17.05 {
 	rte_log_set_global_level;
 	rte_log_set_level;
 	rte_log_set_level_regexp;
+	rte_pci_detach;
+	rte_pci_dump;
+	rte_pci_ioport_map;
+	rte_pci_ioport_read;
+	rte_pci_ioport_unmap;
+	rte_pci_ioport_write;
+	rte_pci_map_device;
+	rte_pci_probe;
+	rte_pci_probe_one;
+	rte_pci_read_config;
+	rte_pci_register;
+	rte_pci_scan;
+	rte_pci_unmap_device;
+	rte_pci_unregister;
+	rte_pci_write_config;
 	vfio_get_container_fd;
 	vfio_get_group_fd;
 	vfio_get_group_no;

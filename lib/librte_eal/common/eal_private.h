@@ -121,7 +121,7 @@ struct rte_pci_device;
  *	PCI device to add
  * @return void
  */
-void rte_eal_pci_add_device(struct rte_pci_device *pci_dev);
+void rte_pci_add_device(struct rte_pci_device *pci_dev);
 
 /**
  * Insert a PCI device in the PCI Bus at a particular location in the device
@@ -134,8 +134,8 @@ void rte_eal_pci_add_device(struct rte_pci_device *pci_dev);
  *	PCI device to be added before exist_pci_dev
  * @return void
  */
-void rte_eal_pci_insert_device(struct rte_pci_device *exist_pci_dev,
-			       struct rte_pci_device *new_pci_dev);
+void rte_pci_insert_device(struct rte_pci_device *exist_pci_dev,
+		struct rte_pci_device *new_pci_dev);
 
 /**
  * Remove a PCI device from the PCI Bus. This sets to NULL the bus references
@@ -145,7 +145,7 @@ void rte_eal_pci_insert_device(struct rte_pci_device *exist_pci_dev,
  *	PCI device to be removed from PCI Bus
  * @return void
  */
-void rte_eal_pci_remove_device(struct rte_pci_device *pci_device);
+void rte_pci_remove_device(struct rte_pci_device *pci_device);
 
 /**
  * Update a pci device object by asking the kernel for the latest information.

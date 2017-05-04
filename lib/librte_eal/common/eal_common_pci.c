@@ -200,8 +200,8 @@ rte_pci_match(const struct rte_pci_driver *pci_drv,
  * driver.
  */
 static int
-rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr,
-			     struct rte_pci_device *dev)
+rte_pci_probe_one_driver(struct rte_pci_driver *dr,
+			 struct rte_pci_device *dev)
 {
 	int ret;
 	struct rte_pci_addr *loc;
@@ -237,7 +237,7 @@ rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr,
 
 	if (dr->drv_flags & RTE_PCI_DRV_NEED_MAPPING) {
 		/* map resources for devices that use igb_uio */
-		ret = rte_eal_pci_map_device(dev);
+		ret = rte_pci_map_device(dev);
 		if (ret != 0)
 			return ret;
 	}
@@ -251,7 +251,7 @@ rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr,
 	if (ret) {
 		dev->driver = NULL;
 		if (dr->drv_flags & RTE_PCI_DRV_NEED_MAPPING)
-			rte_eal_pci_unmap_device(dev);
+			rte_pci_unmap_device(dev);
 	}
 
 	return ret;
@@ -262,7 +262,7 @@ rte_eal_pci_probe_one_driver(struct rte_pci_driver *dr,
  * driver.
  */
 static int
-rte_eal_pci_detach_dev(struct rte_pci_device *dev)
+rte_pci_detach_dev(struct rte_pci_device *dev)
 {
 	struct rte_pci_addr *loc;
 	struct rte_pci_driver *dr;
@@ -288,7 +288,7 @@ rte_eal_pci_detach_dev(struct rte_pci_device *dev)
 
 	if (dr->drv_flags & RTE_PCI_DRV_NEED_MAPPING)
 		/* unmap resources for devices that use igb_uio */
-		rte_eal_pci_unmap_device(dev);
+		rte_pci_unmap_device(dev);
 
 	return 0;
 }
@@ -312,7 +312,7 @@ pci_probe_all_drivers(struct rte_pci_device *dev)
 		return 0;
 
 	FOREACH_DRIVER_ON_PCIBUS(dr) {
-		rc = rte_eal_pci_probe_one_driver(dr, dev);
+		rc = rte_pci_probe_one_driver(dr, dev);
 		if (rc < 0)
 			/* negative value is an error */
 			return -1;
@@ -329,7 +329,7 @@ pci_probe_all_drivers(struct rte_pci_device *dev)
  * the driver of the devive.
  */
 int
-rte_eal_pci_probe_one(const struct rte_pci_addr *addr)
+rte_pci_probe_one(const struct rte_pci_addr *addr)
 {
 	struct rte_pci_device *dev = NULL;
 
@@ -366,7 +366,7 @@ err_return:
  * Detach device specified by its pci address.
  */
 int
-rte_eal_pci_detach(const struct rte_pci_addr *addr)
+rte_pci_detach(const struct rte_pci_addr *addr)
 {
 	struct rte_pci_device *dev = NULL;
 	int ret = 0;
@@ -378,7 +378,7 @@ rte_eal_pci_detach(const struct rte_pci_addr *addr)
 		if (rte_eal_compare_pci_addr(&dev->addr, addr))
 			continue;
 
-		ret = rte_eal_pci_detach_dev(dev);
+		ret = rte_pci_detach_dev(dev);
 		if (ret < 0)
 			/* negative value is an error */
 			goto err_return;
@@ -386,7 +386,7 @@ rte_eal_pci_detach(const struct rte_pci_addr *addr)
 			/* positive value means driver doesn't support it */
 			continue;
 
-		rte_eal_pci_remove_device(dev);
+		rte_pci_remove_device(dev);
 		free(dev);
 		return 0;
 	}
@@ -405,7 +405,7 @@ err_return:
  * for discovered devices.
  */
 int
-rte_eal_pci_probe(void)
+rte_pci_probe(void)
 {
 	struct rte_pci_device *dev = NULL;
 	size_t probed = 0, failed = 0;
@@ -465,7 +465,7 @@ pci_dump_one_device(FILE *f, struct rte_pci_device *dev)
 
 /* dump devices on the bus */
 void
-rte_eal_pci_dump(FILE *f)
+rte_pci_dump(FILE *f)
 {
 	struct rte_pci_device *dev = NULL;
 
@@ -476,7 +476,7 @@ rte_eal_pci_dump(FILE *f)
 
 /* register a driver */
 void
-rte_eal_pci_register(struct rte_pci_driver *driver)
+rte_pci_register(struct rte_pci_driver *driver)
 {
 	TAILQ_INSERT_TAIL(&rte_pci_bus.driver_list, driver, next);
 	driver->bus = &rte_pci_bus;
@@ -484,7 +484,7 @@ rte_eal_pci_register(struct rte_pci_driver *driver)
 
 /* unregister a driver */
 void
-rte_eal_pci_unregister(struct rte_pci_driver *driver)
+rte_pci_unregister(struct rte_pci_driver *driver)
 {
 	TAILQ_REMOVE(&rte_pci_bus.driver_list, driver, next);
 	driver->bus = NULL;
@@ -492,30 +492,30 @@ rte_eal_pci_unregister(struct rte_pci_driver *driver)
 
 /* Add a device to PCI bus */
 void
-rte_eal_pci_add_device(struct rte_pci_device *pci_dev)
+rte_pci_add_device(struct rte_pci_device *pci_dev)
 {
 	TAILQ_INSERT_TAIL(&rte_pci_bus.device_list, pci_dev, next);
 }
 
 /* Insert a device into a predefined position in PCI bus */
 void
-rte_eal_pci_insert_device(struct rte_pci_device *exist_pci_dev,
-			  struct rte_pci_device *new_pci_dev)
+rte_pci_insert_device(struct rte_pci_device *exist_pci_dev,
+		      struct rte_pci_device *new_pci_dev)
 {
 	TAILQ_INSERT_BEFORE(exist_pci_dev, new_pci_dev, next);
 }
 
 /* Remove a device from PCI bus */
 void
-rte_eal_pci_remove_device(struct rte_pci_device *pci_dev)
+rte_pci_remove_device(struct rte_pci_device *pci_dev)
 {
 	TAILQ_REMOVE(&rte_pci_bus.device_list, pci_dev, next);
 }
 
 struct rte_pci_bus rte_pci_bus = {
 	.bus = {
-		.scan = rte_eal_pci_scan,
-		.probe = rte_eal_pci_probe,
+		.scan = rte_pci_scan,
+		.probe = rte_pci_probe,
 	},
 	.device_list = TAILQ_HEAD_INITIALIZER(rte_pci_bus.device_list),
 	.driver_list = TAILQ_HEAD_INITIALIZER(rte_pci_bus.driver_list),

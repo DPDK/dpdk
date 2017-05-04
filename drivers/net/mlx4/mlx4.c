@@ -6086,7 +6086,7 @@ rte_mlx4_pmd_init(void)
 	 */
 	setenv("RDMAV_HUGEPAGES_SAFE", "1", 1);
 	ibv_fork_init();
-	rte_eal_pci_register(&mlx4_driver);
+	rte_pci_register(&mlx4_driver);
 }
 
 RTE_PMD_EXPORT_NAME(net_mlx4, __COUNTER__);

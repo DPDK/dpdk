@@ -138,7 +138,7 @@ To fully understand this code, it is recommended to study the chapters that rela
 
 .. code-block:: c
 
-    if (rte_eal_pci_probe() < 0)
+    if (rte_pci_probe() < 0)
         rte_exit(EXIT_FAILURE, "Cannot probe PCI\n");
 
     nb_ports = rte_eth_dev_count();
@@ -171,7 +171,7 @@ To fully understand this code, it is recommended to study the chapters that rela
 
 Observe that:
 
-*   rte_eal_pci_probe()  parses the devices on the PCI bus and initializes recognized devices.
+*   rte_pci_probe()  parses the devices on the PCI bus and initializes recognized devices.
 
 The next step is to configure the RX and TX queues.
 For each port, there is only one RX queue (only one lcore is able to poll a given port).

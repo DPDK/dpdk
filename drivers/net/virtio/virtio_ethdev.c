@@ -1484,7 +1484,7 @@ virtio_remap_pci(struct rte_pci_device *pci_dev, struct virtio_hw *hw)
 	if (hw->modern) {
 		/*
 		 * We don't have to re-parse the PCI config space, since
-		 * rte_eal_pci_map_device() makes sure the mapped address
+		 * rte_pci_map_device() makes sure the mapped address
 		 * in secondary process would equal to the one mapped in
 		 * the primary process: error will be returned if that
 		 * requirement is not met.
@@ -1493,12 +1493,12 @@ virtio_remap_pci(struct rte_pci_device *pci_dev, struct virtio_hw *hw)
 		 * (such as dev_cfg, common_cfg, etc.) parsed from the
 		 * primary process, which is stored in shared memory.
 		 */
-		if (rte_eal_pci_map_device(pci_dev)) {
+		if (rte_pci_map_device(pci_dev)) {
 			PMD_INIT_LOG(DEBUG, "failed to map pci device!");
 			return -1;
 		}
 	} else {
-		if (rte_eal_pci_ioport_map(pci_dev, 0, VTPCI_IO(hw)) < 0)
+		if (rte_pci_ioport_map(pci_dev, 0, VTPCI_IO(hw)) < 0)
 			return -1;
 	}
 
@@ -1608,7 +1608,7 @@ eth_virtio_dev_uninit(struct rte_eth_dev *eth_dev)
 						virtio_interrupt_handler,
 						eth_dev);
 	if (eth_dev->device)
-		rte_eal_pci_unmap_device(RTE_DEV_TO_PCI(eth_dev->device));
+		rte_pci_unmap_device(RTE_DEV_TO_PCI(eth_dev->device));
 
 	PMD_INIT_LOG(DEBUG, "dev_uninit completed");
 
@@ -1646,7 +1646,7 @@ rte_virtio_pmd_init(void)
 		return;
 	}
 
-	rte_eal_pci_register(&rte_virtio_pmd);
+	rte_pci_register(&rte_virtio_pmd);
 }
 
 /*

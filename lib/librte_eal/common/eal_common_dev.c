@@ -55,7 +55,7 @@ int rte_eal_dev_attach(const char *name, const char *devargs)
 	}
 
 	if (eal_parse_pci_DomBDF(name, &addr) == 0) {
-		if (rte_eal_pci_probe_one(&addr) < 0)
+		if (rte_pci_probe_one(&addr) < 0)
 			goto err;
 
 	} else {
@@ -80,7 +80,7 @@ int rte_eal_dev_detach(const char *name)
 	}
 
 	if (eal_parse_pci_DomBDF(name, &addr) == 0) {
-		if (rte_eal_pci_detach(&addr) < 0)
+		if (rte_pci_detach(&addr) < 0)
 			goto err;
 	} else {
 		if (rte_eal_vdev_uninit(name))

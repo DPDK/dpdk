@@ -478,7 +478,7 @@ static inline void t4_os_pci_write_cfg4(struct adapter *adapter, size_t addr,
 {
 	u32 val32 = val;
 
-	if (rte_eal_pci_write_config(adapter->pdev, &val32, sizeof(val32),
+	if (rte_pci_write_config(adapter->pdev, &val32, sizeof(val32),
 				     addr) < 0)
 		dev_err(adapter, "Can't write to PCI config space\n");
 }
@@ -494,7 +494,7 @@ static inline void t4_os_pci_write_cfg4(struct adapter *adapter, size_t addr,
 static inline void t4_os_pci_read_cfg4(struct adapter *adapter, size_t addr,
 				       u32 *val)
 {
-	if (rte_eal_pci_read_config(adapter->pdev, val, sizeof(*val),
+	if (rte_pci_read_config(adapter->pdev, val, sizeof(*val),
 				    addr) < 0)
 		dev_err(adapter, "Can't read from PCI config space\n");
 }
@@ -512,7 +512,7 @@ static inline void t4_os_pci_write_cfg2(struct adapter *adapter, size_t addr,
 {
 	u16 val16 = val;
 
-	if (rte_eal_pci_write_config(adapter->pdev, &val16, sizeof(val16),
+	if (rte_pci_write_config(adapter->pdev, &val16, sizeof(val16),
 				     addr) < 0)
 		dev_err(adapter, "Can't write to PCI config space\n");
 }
@@ -528,7 +528,7 @@ static inline void t4_os_pci_write_cfg2(struct adapter *adapter, size_t addr,
 static inline void t4_os_pci_read_cfg2(struct adapter *adapter, size_t addr,
 				       u16 *val)
 {
-	if (rte_eal_pci_read_config(adapter->pdev, val, sizeof(*val),
+	if (rte_pci_read_config(adapter->pdev, val, sizeof(*val),
 				    addr) < 0)
 		dev_err(adapter, "Can't read from PCI config space\n");
 }
@@ -544,7 +544,7 @@ static inline void t4_os_pci_read_cfg2(struct adapter *adapter, size_t addr,
 static inline void t4_os_pci_read_cfg(struct adapter *adapter, size_t addr,
 				      u8 *val)
 {
-	if (rte_eal_pci_read_config(adapter->pdev, val, sizeof(*val),
+	if (rte_pci_read_config(adapter->pdev, val, sizeof(*val),
 				    addr) < 0)
 		dev_err(adapter, "Can't read from PCI config space\n");
 }

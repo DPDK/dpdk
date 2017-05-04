@@ -91,7 +91,7 @@ extern struct rte_pci_bus rte_pci_bus;
 
 /* Map pci device */
 int
-rte_eal_pci_map_device(struct rte_pci_device *dev)
+rte_pci_map_device(struct rte_pci_device *dev)
 {
 	int ret = -1;
 
@@ -113,7 +113,7 @@ rte_eal_pci_map_device(struct rte_pci_device *dev)
 
 /* Unmap pci device */
 void
-rte_eal_pci_unmap_device(struct rte_pci_device *dev)
+rte_pci_unmap_device(struct rte_pci_device *dev)
 {
 	/* try unmapping the NIC resources */
 	switch (dev->kdrv) {
@@ -282,7 +282,7 @@ pci_scan_one(int dev_pci_fd, struct pci_conf *conf)
 	/* FreeBSD has no NUMA support (yet) */
 	dev->device.numa_node = 0;
 
-	rte_eal_pci_device_name(&dev->addr, dev->name, sizeof(dev->name));
+	rte_pci_device_name(&dev->addr, dev->name, sizeof(dev->name));
 	dev->device.name = dev->name;
 
 	/* FreeBSD has only one pass through driver */
@@ -319,7 +319,7 @@ pci_scan_one(int dev_pci_fd, struct pci_conf *conf)
 
 	/* device is valid, add in list (sorted) */
 	if (TAILQ_EMPTY(&rte_pci_bus.device_list)) {
-		rte_eal_pci_add_device(dev);
+		rte_pci_add_device(dev);
 	}
 	else {
 		struct rte_pci_device *dev2 = NULL;
@@ -330,7 +330,7 @@ pci_scan_one(int dev_pci_fd, struct pci_conf *conf)
 			if (ret > 0)
 				continue;
 			else if (ret < 0) {
-				rte_eal_pci_insert_device(dev2, dev);
+				rte_pci_insert_device(dev2, dev);
 			} else { /* already registered */
 				dev2->kdrv = dev->kdrv;
 				dev2->max_vfs = dev->max_vfs;
@@ -341,7 +341,7 @@ pci_scan_one(int dev_pci_fd, struct pci_conf *conf)
 			}
 			return 0;
 		}
-		rte_eal_pci_add_device(dev);
+		rte_pci_add_device(dev);
 	}
 
 	return 0;
@@ -356,7 +356,7 @@ skipdev:
  * list. Call pci_scan_one() for each pci entry found.
  */
 int
-rte_eal_pci_scan(void)
+rte_pci_scan(void)
 {
 	int fd;
 	unsigned dev_count = 0;
@@ -455,8 +455,8 @@ error:
 }
 
 /* Read PCI config space. */
-int rte_eal_pci_read_config(const struct rte_pci_device *dev,
-			    void *buf, size_t len, off_t offset)
+int rte_pci_read_config(const struct rte_pci_device *dev,
+		void *buf, size_t len, off_t offset)
 {
 	int fd = -1;
 	struct pci_io pi = {
@@ -495,8 +495,8 @@ int rte_eal_pci_read_config(const struct rte_pci_device *dev,
 }
 
 /* Write PCI config space. */
-int rte_eal_pci_write_config(const struct rte_pci_device *dev,
-			     const void *buf, size_t len, off_t offset)
+int rte_pci_write_config(const struct rte_pci_device *dev,
+		const void *buf, size_t len, off_t offset)
 {
 	int fd = -1;
 
@@ -538,8 +538,8 @@ int rte_eal_pci_write_config(const struct rte_pci_device *dev,
 }
 
 int
-rte_eal_pci_ioport_map(struct rte_pci_device *dev, int bar,
-		       struct rte_pci_ioport *p)
+rte_pci_ioport_map(struct rte_pci_device *dev, int bar,
+		struct rte_pci_ioport *p)
 {
 	int ret;
 
@@ -566,7 +566,7 @@ rte_eal_pci_ioport_map(struct rte_pci_device *dev, int bar,
 
 static void
 pci_uio_ioport_read(struct rte_pci_ioport *p,
-		    void *data, size_t len, off_t offset)
+		void *data, size_t len, off_t offset)
 {
 #if defined(RTE_ARCH_X86)
 	uint8_t *d;
@@ -594,8 +594,8 @@ pci_uio_ioport_read(struct rte_pci_ioport *p,
 }
 
 void
-rte_eal_pci_ioport_read(struct rte_pci_ioport *p,
-			void *data, size_t len, off_t offset)
+rte_pci_ioport_read(struct rte_pci_ioport *p,
+		void *data, size_t len, off_t offset)
 {
 	switch (p->dev->kdrv) {
 	case RTE_KDRV_NIC_UIO:
@@ -608,7 +608,7 @@ rte_eal_pci_ioport_read(struct rte_pci_ioport *p,
 
 static void
 pci_uio_ioport_write(struct rte_pci_ioport *p,
-		     const void *data, size_t len, off_t offset)
+		const void *data, size_t len, off_t offset)
 {
 #if defined(RTE_ARCH_X86)
 	const uint8_t *s;
@@ -636,8 +636,8 @@ pci_uio_ioport_write(struct rte_pci_ioport *p,
 }
 
 void
-rte_eal_pci_ioport_write(struct rte_pci_ioport *p,
-			 const void *data, size_t len, off_t offset)
+rte_pci_ioport_write(struct rte_pci_ioport *p,
+		const void *data, size_t len, off_t offset)
 {
 	switch (p->dev->kdrv) {
 	case RTE_KDRV_NIC_UIO:
@@ -649,7 +649,7 @@ rte_eal_pci_ioport_write(struct rte_pci_ioport *p,
 }
 
 int
-rte_eal_pci_ioport_unmap(struct rte_pci_ioport *p)
+rte_pci_ioport_unmap(struct rte_pci_ioport *p)
 {
 	int ret;
 

@@ -1977,7 +1977,7 @@ bnx2x_set_rx_mode(struct bnx2x_softc *sc)
 static inline int pci_read(struct bnx2x_softc *sc, size_t addr,
 			   void *val, uint8_t size)
 {
-	if (rte_eal_pci_read_config(sc->pci_dev, val, size, addr) <= 0) {
+	if (rte_pci_read_config(sc->pci_dev, val, size, addr) <= 0) {
 		PMD_DRV_LOG(ERR, "Can't read from PCI config space");
 		return ENXIO;
 	}
@@ -1989,7 +1989,7 @@ static inline int pci_write_word(struct bnx2x_softc *sc, size_t addr, off_t val)
 {
 	uint16_t val16 = val;
 
-	if (rte_eal_pci_write_config(sc->pci_dev, &val16,
+	if (rte_pci_write_config(sc->pci_dev, &val16,
 				     sizeof(val16), addr) <= 0) {
 		PMD_DRV_LOG(ERR, "Can't write to PCI config space");
 		return ENXIO;
@@ -2001,7 +2001,7 @@ static inline int pci_write_word(struct bnx2x_softc *sc, size_t addr, off_t val)
 static inline int pci_write_long(struct bnx2x_softc *sc, size_t addr, off_t val)
 {
 	uint32_t val32 = val;
-	if (rte_eal_pci_write_config(sc->pci_dev, &val32,
+	if (rte_pci_write_config(sc->pci_dev, &val32,
 				     sizeof(val32), addr) <= 0) {
 		PMD_DRV_LOG(ERR, "Can't write to PCI config space");
 		return ENXIO;

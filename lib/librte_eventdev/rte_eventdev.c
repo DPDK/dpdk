@@ -1263,7 +1263,7 @@ rte_event_pmd_pci_probe(struct rte_pci_driver *pci_drv,
 	if (eventdrv == NULL)
 		return -ENODEV;
 
-	rte_eal_pci_device_name(&pci_dev->addr, eventdev_name,
+	rte_pci_device_name(&pci_dev->addr, eventdev_name,
 			sizeof(eventdev_name));
 
 	eventdev = rte_event_pmd_allocate(eventdev_name,
@@ -1317,7 +1317,7 @@ rte_event_pmd_pci_remove(struct rte_pci_device *pci_dev)
 	if (pci_dev == NULL)
 		return -EINVAL;
 
-	rte_eal_pci_device_name(&pci_dev->addr, eventdev_name,
+	rte_pci_device_name(&pci_dev->addr, eventdev_name,
 			sizeof(eventdev_name));
 
 	eventdev = rte_event_pmd_get_named_dev(eventdev_name);

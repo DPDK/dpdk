@@ -204,9 +204,9 @@ Then, a call to init_dpdk(), defined in init.c, is made to initialize the poll m
 
         /* Bind the drivers to usable devices */
 
-        ret = rte_eal_pci_probe();
+        ret = rte_pci_probe();
         if (ret < 0)
-            rte_exit(EXIT_FAILURE, "rte_eal_pci_probe(): error %d\n", ret);
+            rte_exit(EXIT_FAILURE, "rte_pci_probe(): error %d\n", ret);
 
         if (rte_eth_dev_count() < 2)
             rte_exit(EXIT_FAILURE, "Not enough Ethernet port available\n");

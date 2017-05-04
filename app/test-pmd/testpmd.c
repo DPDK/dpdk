@@ -1779,7 +1779,7 @@ rmv_event_callback(void *arg)
 	if (da->type == RTE_DEVTYPE_VIRTUAL)
 		snprintf(name, sizeof(name), "%s", da->virt.drv_name);
 	else if (da->type == RTE_DEVTYPE_WHITELISTED_PCI)
-		rte_eal_pci_device_name(&da->pci.addr, name, sizeof(name));
+		rte_pci_device_name(&da->pci.addr, name, sizeof(name));
 	printf("removing device %s\n", name);
 	rte_eal_dev_detach(name);
 	dev->state = RTE_ETH_DEV_UNUSED;

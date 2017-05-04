@@ -716,7 +716,7 @@ rte_cryptodev_pci_probe(struct rte_pci_driver *pci_drv,
 	if (cryptodrv == NULL)
 		return -ENODEV;
 
-	rte_eal_pci_device_name(&pci_dev->addr, cryptodev_name,
+	rte_pci_device_name(&pci_dev->addr, cryptodev_name,
 			sizeof(cryptodev_name));
 
 	cryptodev = rte_cryptodev_pmd_allocate(cryptodev_name, rte_socket_id());
@@ -772,7 +772,7 @@ rte_cryptodev_pci_remove(struct rte_pci_device *pci_dev)
 	if (pci_dev == NULL)
 		return -EINVAL;
 
-	rte_eal_pci_device_name(&pci_dev->addr, cryptodev_name,
+	rte_pci_device_name(&pci_dev->addr, cryptodev_name,
 			sizeof(cryptodev_name));
 
 	cryptodev = rte_cryptodev_pmd_get_named_dev(cryptodev_name);
