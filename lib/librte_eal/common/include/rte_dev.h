@@ -123,8 +123,14 @@ struct rte_mem_resource {
 	void *addr;         /**< Virtual address, NULL when not mapped. */
 };
 
-/* Forward declaration */
-struct rte_driver;
+/**
+ * A structure describing a device driver.
+ */
+struct rte_driver {
+	TAILQ_ENTRY(rte_driver) next;  /**< Next in list. */
+	const char *name;                   /**< Driver name. */
+	const char *alias;              /**< Driver alias. */
+};
 
 /**
  * A structure describing a generic device.
@@ -135,15 +141,6 @@ struct rte_device {
 	const struct rte_driver *driver;/**< Associated driver */
 	int numa_node;                /**< NUMA node connection */
 	struct rte_devargs *devargs;  /**< Device user arguments */
-};
-
-/**
- * A structure describing a device driver.
- */
-struct rte_driver {
-	TAILQ_ENTRY(rte_driver) next;  /**< Next in list. */
-	const char *name;                   /**< Driver name. */
-	const char *alias;              /**< Driver alias. */
 };
 
 /**
