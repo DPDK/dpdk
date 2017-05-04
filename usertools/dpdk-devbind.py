@@ -354,8 +354,7 @@ def device_type_match(dev, devices_type):
             # count must be the number of non None parameters to match
             if match_count == param_count:
                 return True
-            else:
-                return False
+    return False
 
 def dev_id_from_dev_name(dev_name):
     '''Take a device "name" - a string passed in by user to identify a NIC
