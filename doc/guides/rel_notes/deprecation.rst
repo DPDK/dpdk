@@ -81,6 +81,9 @@ Deprecation Notices
   Target release for removal of the legacy API will be defined once most
   PMDs have switched to rte_flow.
 
+* cryptodev: All PMD names definitions will be moved to the individual PMDs
+  in 17.08.
+
 * crypto/scheduler: the following two functions are deprecated starting
   from 17.05 and will be removed in 17.08:
 
