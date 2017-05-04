@@ -76,6 +76,9 @@ endif
 
 ifeq ($(shell test $(GCC_VERSION) -ge 50 && echo 1), 1)
 CFLAGS_ixgbe_common.o += -Wno-logical-not-parentheses
+ifeq ($(shell test $(GCC_VERSION) -ge 70 && echo 1), 1)
+CFLAGS_BASE_DRIVER += -Wno-implicit-fallthrough
+endif
 endif
 
 endif

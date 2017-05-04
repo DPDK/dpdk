@@ -71,6 +71,9 @@ CFLAGS_BASE_DRIVER += -Wno-missing-field-initializers
 ifeq ($(shell test $(GCC_VERSION) -ge 44 && echo 1), 1)
 CFLAGS     += -Wno-deprecated
 CFLAGS_BASE_DRIVER += -Wno-unused-but-set-variable
+ifeq ($(shell test $(GCC_VERSION) -ge 70 && echo 1), 1)
+CFLAGS_BASE_DRIVER += -Wno-implicit-fallthrough
+endif
 endif
 endif
 
