@@ -84,6 +84,14 @@ Deprecation Notices
 * cryptodev: All PMD names definitions will be moved to the individual PMDs
   in 17.08.
 
+* cryptodev: The following changes will be done in in 17.08:
+
+  - the device type enumeration ``rte_cryptodev_type`` will be removed
+  - the following structures will be changed: ``rte_cryptodev_session``,
+    ``rte_cryptodev_sym_session``, ``rte_cryptodev_info``, ``rte_cryptodev``
+  - the function ``rte_cryptodev_count_devtype`` will be replaced by
+    ``rte_cryptodev_device_count_by_driver``
+
 * crypto/scheduler: the following two functions are deprecated starting
   from 17.05 and will be removed in 17.08:
 
