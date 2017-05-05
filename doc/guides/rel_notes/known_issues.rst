@@ -721,3 +721,24 @@ igb uio legacy mode can not be used in X710/XL710/XXV710
 
 **Driver/Module**:
    Poll Mode Driver (PMD).
+
+
+igb_uio can not be used when running l3fwd-power
+------------------------------------------------
+
+**Description**:
+   Link Status Change(LSC) interrupt and packet receiving interrupt are all enabled in l3fwd-power
+   APP. Because of UIO only support one interrupt, so these two kinds of interrupt need to share
+   one, and the receiving interrupt have the higher priority, so can't get the right link status.
+
+**Implication**:
+   When insmod ``igb_uio`` and running l3fwd-power APP, link status getting doesn't work properly.
+
+**Resolution/Workaround**:
+   Use vfio-pci when LSC and packet receiving interrupt enabled.
+
+**Affected Environment/Platform**:
+   ALL.
+
+**Driver/Module**:
+   ``igb_uio`` module.
