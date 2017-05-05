@@ -133,6 +133,10 @@ test_phys_addrs_available(void)
 	uint64_t tmp;
 	phys_addr_t physaddr;
 
+	/* For dom0, phys addresses can always be available */
+	if (rte_xen_dom0_supported())
+		return;
+
 	physaddr = rte_mem_virt2phy(&tmp);
 	if (physaddr == RTE_BAD_PHYS_ADDR) {
 		RTE_LOG(ERR, EAL,
