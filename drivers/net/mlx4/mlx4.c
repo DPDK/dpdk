@@ -4503,26 +4503,30 @@ end:
  * @param vmdq
  *   VMDq pool index to associate address with (ignored).
  */
-static void
+static int
 mlx4_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
 		  uint32_t index, uint32_t vmdq)
 {
 	struct priv *priv = dev->data->dev_private;
+	int re;
 
 	if (mlx4_is_secondary())
-		return;
+		return -ENOTSUP;
 	(void)vmdq;
 	priv_lock(priv);
 	DEBUG("%p: adding MAC address at index %" PRIu32,
 	      (void *)dev, index);
 	/* Last array entry is reserved for broadcast. */
-	if (index >= (elemof(priv->mac) - 1))
+	if (index >= (elemof(priv->mac) - 1)) {
+		re = EINVAL;
 		goto end;
-	priv_mac_addr_add(priv, index,
-			  (const uint8_t (*)[ETHER_ADDR_LEN])
-			  mac_addr->addr_bytes);
+	}
+	re = priv_mac_addr_add(priv, index,
+			       (const uint8_t (*)[ETHER_ADDR_LEN])
+			       mac_addr->addr_bytes);
 end:
 	priv_unlock(priv);
+	return -re;
 }
 
 /**

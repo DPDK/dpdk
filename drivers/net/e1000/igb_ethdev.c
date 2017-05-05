@@ -171,9 +171,9 @@ static int eth_igb_led_off(struct rte_eth_dev *dev);
 
 static void igb_intr_disable(struct e1000_hw *hw);
 static int  igb_get_rx_buffer_size(struct e1000_hw *hw);
-static void eth_igb_rar_set(struct rte_eth_dev *dev,
-		struct ether_addr *mac_addr,
-		uint32_t index, uint32_t pool);
+static int eth_igb_rar_set(struct rte_eth_dev *dev,
+			   struct ether_addr *mac_addr,
+			   uint32_t index, uint32_t pool);
 static void eth_igb_rar_clear(struct rte_eth_dev *dev, uint32_t index);
 static void eth_igb_default_mac_addr_set(struct rte_eth_dev *dev,
 		struct ether_addr *addr);
@@ -3079,7 +3079,7 @@ eth_igb_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 }
 
 #define E1000_RAH_POOLSEL_SHIFT      (18)
-static void
+static int
 eth_igb_rar_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
 	        uint32_t index, __rte_unused uint32_t pool)
 {
@@ -3090,6 +3090,7 @@ eth_igb_rar_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
 	rah = E1000_READ_REG(hw, E1000_RAH(index));
 	rah |= (0x1 << (E1000_RAH_POOLSEL_SHIFT + pool));
 	E1000_WRITE_REG(hw, E1000_RAH(index), rah);
+	return 0;
 }
 
 static void

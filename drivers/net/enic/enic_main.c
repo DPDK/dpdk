@@ -202,20 +202,19 @@ void enic_del_mac_address(struct enic *enic, int mac_index)
 		dev_err(enic, "del mac addr failed\n");
 }
 
-void enic_set_mac_address(struct enic *enic, uint8_t *mac_addr)
+int enic_set_mac_address(struct enic *enic, uint8_t *mac_addr)
 {
 	int err;
 
 	if (!is_eth_addr_valid(mac_addr)) {
 		dev_err(enic, "invalid mac address\n");
-		return;
+		return -EINVAL;
 	}
 
 	err = vnic_dev_add_addr(enic->vdev, mac_addr);
-	if (err) {
+	if (err)
 		dev_err(enic, "add mac addr failed\n");
-		return;
-	}
+	return err;
 }
 
 static void

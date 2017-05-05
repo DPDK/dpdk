@@ -1282,7 +1282,7 @@ typedef int (*eth_dev_led_off_t)(struct rte_eth_dev *dev);
 typedef void (*eth_mac_addr_remove_t)(struct rte_eth_dev *dev, uint32_t index);
 /**< @internal Remove MAC address from receive address register */
 
-typedef void (*eth_mac_addr_add_t)(struct rte_eth_dev *dev,
+typedef int (*eth_mac_addr_add_t)(struct rte_eth_dev *dev,
 				  struct ether_addr *mac_addr,
 				  uint32_t index,
 				  uint32_t vmdq);

@@ -451,14 +451,17 @@ bnx2x_dev_infos_get(struct rte_eth_dev *dev, __rte_unused struct rte_eth_dev_inf
 	dev_info->speed_capa = ETH_LINK_SPEED_10G | ETH_LINK_SPEED_20G;
 }
 
-static void
+static int
 bnx2x_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
 		uint32_t index, uint32_t pool)
 {
 	struct bnx2x_softc *sc = dev->data->dev_private;
 
-	if (sc->mac_ops.mac_addr_add)
+	if (sc->mac_ops.mac_addr_add) {
 		sc->mac_ops.mac_addr_add(dev, mac_addr, index, pool);
+		return 0;
+	}
+	return -ENOTSUP;
 }
 
 static void

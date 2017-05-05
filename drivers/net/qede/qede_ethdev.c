@@ -508,16 +508,18 @@ qede_mac_int_ops(struct rte_eth_dev *eth_dev, struct ecore_filter_ucast *ucast,
 	return rc;
 }
 
-static void
+static int
 qede_mac_addr_add(struct rte_eth_dev *eth_dev, struct ether_addr *mac_addr,
 		  __rte_unused uint32_t index, __rte_unused uint32_t pool)
 {
 	struct ecore_filter_ucast ucast;
+	int re;
 
 	qede_set_ucast_cmn_params(&ucast);
 	ucast.type = ECORE_FILTER_MAC;
 	ether_addr_copy(mac_addr, (struct ether_addr *)&ucast.mac);
-	(void)qede_mac_int_ops(eth_dev, &ucast, 1);
+	re = (int)qede_mac_int_ops(eth_dev, &ucast, 1);
+	return re;
 }
 
 static void

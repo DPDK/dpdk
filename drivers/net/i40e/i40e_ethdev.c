@@ -291,10 +291,10 @@ static int i40e_flow_ctrl_set(struct rte_eth_dev *dev,
 			      struct rte_eth_fc_conf *fc_conf);
 static int i40e_priority_flow_ctrl_set(struct rte_eth_dev *dev,
 				       struct rte_eth_pfc_conf *pfc_conf);
-static void i40e_macaddr_add(struct rte_eth_dev *dev,
-			  struct ether_addr *mac_addr,
-			  uint32_t index,
-			  uint32_t pool);
+static int i40e_macaddr_add(struct rte_eth_dev *dev,
+			    struct ether_addr *mac_addr,
+			    uint32_t index,
+			    uint32_t pool);
 static void i40e_macaddr_remove(struct rte_eth_dev *dev, uint32_t index);
 static int i40e_dev_rss_reta_update(struct rte_eth_dev *dev,
 				    struct rte_eth_rss_reta_entry64 *reta_conf,
@@ -3267,7 +3267,7 @@ i40e_priority_flow_ctrl_set(__rte_unused struct rte_eth_dev *dev,
 }
 
 /* Add a MAC address, and update filters */
-static void
+static int
 i40e_macaddr_add(struct rte_eth_dev *dev,
 		 struct ether_addr *mac_addr,
 		 __rte_unused uint32_t index,
@@ -3284,13 +3284,13 @@ i40e_macaddr_add(struct rte_eth_dev *dev,
 		PMD_DRV_LOG(ERR, "VMDQ not %s, can't set mac to pool %u",
 			pf->flags & I40E_FLAG_VMDQ ? "configured" : "enabled",
 			pool);
-		return;
+		return -ENOTSUP;
 	}
 
 	if (pool > pf->nb_cfg_vmdq_vsi) {
 		PMD_DRV_LOG(ERR, "Pool number %u invalid. Max pool is %u",
 				pool, pf->nb_cfg_vmdq_vsi);
-		return;
+		return -EINVAL;
 	}
 
 	(void)rte_memcpy(&mac_filter.mac_addr, mac_addr, ETHER_ADDR_LEN);
@@ -3307,8 +3307,9 @@ i40e_macaddr_add(struct rte_eth_dev *dev,
 	ret = i40e_vsi_add_mac(vsi, &mac_filter);
 	if (ret != I40E_SUCCESS) {
 		PMD_DRV_LOG(ERR, "Failed to add MACVLAN filter");
-		return;
+		return -ENODEV;
 	}
+	return 0;
 }
 
 /* Remove a MAC address, and update filters */

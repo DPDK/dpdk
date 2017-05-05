@@ -2369,6 +2369,7 @@ rte_eth_dev_mac_addr_add(uint8_t port_id, struct ether_addr *addr,
 	struct rte_eth_dev *dev;
 	int index;
 	uint64_t pool_mask;
+	int ret;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	dev = &rte_eth_devices[port_id];
@@ -2401,15 +2402,17 @@ rte_eth_dev_mac_addr_add(uint8_t port_id, struct ether_addr *addr,
 	}
 
 	/* Update NIC */
-	(*dev->dev_ops->mac_addr_add)(dev, addr, index, pool);
+	ret = (*dev->dev_ops->mac_addr_add)(dev, addr, index, pool);
 
-	/* Update address in NIC data structure */
-	ether_addr_copy(addr, &dev->data->mac_addrs[index]);
+	if (ret == 0) {
+		/* Update address in NIC data structure */
+		ether_addr_copy(addr, &dev->data->mac_addrs[index]);
 
-	/* Update pool bitmap in NIC data structure */
-	dev->data->mac_pool_sel[index] |= (1ULL << pool);
+		/* Update pool bitmap in NIC data structure */
+		dev->data->mac_pool_sel[index] |= (1ULL << pool);
+	}
 
-	return 0;
+	return ret;
 }
 
 int

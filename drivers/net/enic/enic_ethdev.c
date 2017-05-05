@@ -533,14 +533,14 @@ static void enicpmd_dev_allmulticast_disable(struct rte_eth_dev *eth_dev)
 	enic_add_packet_filter(enic);
 }
 
-static void enicpmd_add_mac_addr(struct rte_eth_dev *eth_dev,
+static int enicpmd_add_mac_addr(struct rte_eth_dev *eth_dev,
 	struct ether_addr *mac_addr,
 	__rte_unused uint32_t index, __rte_unused uint32_t pool)
 {
 	struct enic *enic = pmd_priv(eth_dev);
 
 	ENICPMD_FUNC_TRACE();
-	enic_set_mac_address(enic, mac_addr->addr_bytes);
+	return enic_set_mac_address(enic, mac_addr->addr_bytes);
 }
 
 static void enicpmd_remove_mac_addr(struct rte_eth_dev *eth_dev, uint32_t index)

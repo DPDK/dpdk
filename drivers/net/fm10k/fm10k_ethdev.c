@@ -1690,7 +1690,7 @@ static void fm10k_MAC_filter_set(struct rte_eth_dev *dev,
 }
 
 /* Add a MAC address, and update filters */
-static void
+static int
 fm10k_macaddr_add(struct rte_eth_dev *dev,
 		struct ether_addr *mac_addr,
 		uint32_t index,
@@ -1701,6 +1701,7 @@ fm10k_macaddr_add(struct rte_eth_dev *dev,
 	macvlan = FM10K_DEV_PRIVATE_TO_MACVLAN(dev->data->dev_private);
 	fm10k_MAC_filter_set(dev, mac_addr->addr_bytes, TRUE, pool);
 	macvlan->mac_vmdq_id[index] = pool;
+	return 0;
 }
 
 /* Remove a MAC address, and update filters */

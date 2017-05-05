@@ -120,8 +120,8 @@ static int eth_em_led_on(struct rte_eth_dev *dev);
 static int eth_em_led_off(struct rte_eth_dev *dev);
 
 static int em_get_rx_buffer_size(struct e1000_hw *hw);
-static void eth_em_rar_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
-		uint32_t index, uint32_t pool);
+static int eth_em_rar_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
+			  uint32_t index, uint32_t pool);
 static void eth_em_rar_clear(struct rte_eth_dev *dev, uint32_t index);
 
 static int eth_em_set_mc_addr_list(struct rte_eth_dev *dev,
@@ -1794,13 +1794,13 @@ eth_em_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	return -EIO;
 }
 
-static void
+static int
 eth_em_rar_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
 		uint32_t index, __rte_unused uint32_t pool)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	e1000_rar_set(hw, mac_addr->addr_bytes, index);
+	return e1000_rar_set(hw, mac_addr->addr_bytes, index);
 }
 
 static void

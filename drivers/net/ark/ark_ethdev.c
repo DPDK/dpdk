@@ -71,10 +71,10 @@ static void eth_ark_dev_stats_get(struct rte_eth_dev *dev,
 static void eth_ark_dev_stats_reset(struct rte_eth_dev *dev);
 static void eth_ark_set_default_mac_addr(struct rte_eth_dev *dev,
 					 struct ether_addr *mac_addr);
-static void eth_ark_macaddr_add(struct rte_eth_dev *dev,
-				struct ether_addr *mac_addr,
-				uint32_t index,
-				uint32_t pool);
+static int eth_ark_macaddr_add(struct rte_eth_dev *dev,
+			       struct ether_addr *mac_addr,
+			       uint32_t index,
+			       uint32_t pool);
 static void eth_ark_macaddr_remove(struct rte_eth_dev *dev,
 				   uint32_t index);
 
@@ -831,7 +831,7 @@ eth_ark_dev_stats_reset(struct rte_eth_dev *dev)
 		ark->user_ext.stats_reset(dev, ark->user_data);
 }
 
-static void
+static int
 eth_ark_macaddr_add(struct rte_eth_dev *dev,
 		    struct ether_addr *mac_addr,
 		    uint32_t index,
@@ -840,12 +840,15 @@ eth_ark_macaddr_add(struct rte_eth_dev *dev,
 	struct ark_adapter *ark =
 		(struct ark_adapter *)dev->data->dev_private;
 
-	if (ark->user_ext.mac_addr_add)
+	if (ark->user_ext.mac_addr_add) {
 		ark->user_ext.mac_addr_add(dev,
 					   mac_addr,
 					   index,
 					   pool,
 					   ark->user_data);
+		return 0;
+	}
+	return -ENOTSUP;
 }
 
 static void

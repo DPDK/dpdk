@@ -87,7 +87,7 @@ static void virtio_dev_stats_reset(struct rte_eth_dev *dev);
 static void virtio_dev_free_mbufs(struct rte_eth_dev *dev);
 static int virtio_vlan_filter_set(struct rte_eth_dev *dev,
 				uint16_t vlan_id, int on);
-static void virtio_mac_addr_add(struct rte_eth_dev *dev,
+static int virtio_mac_addr_add(struct rte_eth_dev *dev,
 				struct ether_addr *mac_addr,
 				uint32_t index, uint32_t vmdq __rte_unused);
 static void virtio_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index);
@@ -1025,7 +1025,7 @@ virtio_get_hwaddr(struct virtio_hw *hw)
 	}
 }
 
-static void
+static int
 virtio_mac_table_set(struct virtio_hw *hw,
 		     const struct virtio_net_ctrl_mac *uc,
 		     const struct virtio_net_ctrl_mac *mc)
@@ -1035,7 +1035,7 @@ virtio_mac_table_set(struct virtio_hw *hw,
 
 	if (!vtpci_with_feature(hw, VIRTIO_NET_F_CTRL_MAC_ADDR)) {
 		PMD_DRV_LOG(INFO, "host does not support mac table");
-		return;
+		return -1;
 	}
 
 	ctrl.hdr.class = VIRTIO_NET_CTRL_MAC;
@@ -1050,9 +1050,10 @@ virtio_mac_table_set(struct virtio_hw *hw,
 	err = virtio_send_command(hw->cvq, &ctrl, len, 2);
 	if (err != 0)
 		PMD_DRV_LOG(NOTICE, "mac table set failed: %d", err);
+	return err;
 }
 
-static void
+static int
 virtio_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
 		    uint32_t index, uint32_t vmdq __rte_unused)
 {
@@ -1063,7 +1064,7 @@ virtio_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
 
 	if (index >= VIRTIO_MAX_MAC_ADDRS) {
 		PMD_DRV_LOG(ERR, "mac address index %u out of range", index);
-		return;
+		return -EINVAL;
 	}
 
 	uc = alloca(VIRTIO_MAX_MAC_ADDRS * ETHER_ADDR_LEN + sizeof(uc->entries));
@@ -1080,7 +1081,7 @@ virtio_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
 		memcpy(&tbl->macs[tbl->entries++], addr, ETHER_ADDR_LEN);
 	}
 
-	virtio_mac_table_set(hw, uc, mc);
+	return virtio_mac_table_set(hw, uc, mc);
 }
 
 static void

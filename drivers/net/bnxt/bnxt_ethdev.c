@@ -618,9 +618,9 @@ static void bnxt_mac_addr_remove_op(struct rte_eth_dev *eth_dev,
 	}
 }
 
-static void bnxt_mac_addr_add_op(struct rte_eth_dev *eth_dev,
-				 struct ether_addr *mac_addr,
-				 uint32_t index, uint32_t pool)
+static int bnxt_mac_addr_add_op(struct rte_eth_dev *eth_dev,
+				struct ether_addr *mac_addr,
+				uint32_t index, uint32_t pool)
 {
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
 	struct bnxt_vnic_info *vnic = STAILQ_FIRST(&bp->ff_pool[pool]);
@@ -628,30 +628,30 @@ static void bnxt_mac_addr_add_op(struct rte_eth_dev *eth_dev,
 
 	if (BNXT_VF(bp)) {
 		RTE_LOG(ERR, PMD, "Cannot add MAC address to a VF interface\n");
-		return;
+		return -ENOTSUP;
 	}
 
 	if (!vnic) {
 		RTE_LOG(ERR, PMD, "VNIC not found for pool %d!\n", pool);
-		return;
+		return -EINVAL;
 	}
 	/* Attach requested MAC address to the new l2_filter */
 	STAILQ_FOREACH(filter, &vnic->filter, next) {
 		if (filter->mac_index == index) {
 			RTE_LOG(ERR, PMD,
 				"MAC addr already existed for pool %d\n", pool);
-			return;
+			return -EINVAL;
 		}
 	}
 	filter = bnxt_alloc_filter(bp);
 	if (!filter) {
 		RTE_LOG(ERR, PMD, "L2 filter alloc failed\n");
-		return;
+		return -ENODEV;
 	}
 	STAILQ_INSERT_TAIL(&vnic->filter, filter, next);
 	filter->mac_index = index;
 	memcpy(filter->l2_addr, mac_addr, ETHER_ADDR_LEN);
-	bnxt_hwrm_set_filter(bp, vnic, filter);
+	return bnxt_hwrm_set_filter(bp, vnic, filter);
 }
 
 int bnxt_link_update_op(struct rte_eth_dev *eth_dev, int wait_to_complete)
