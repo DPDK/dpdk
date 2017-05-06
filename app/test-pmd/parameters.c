@@ -206,10 +206,10 @@ usage(char* progname)
 	printf("  --no-rmv-interrupt: disable device removal interrupt.\n");
 	printf("  --bitrate-stats=N: set the logical core N to perform "
 		"bit-rate calculation.\n");
-	printf("  --print-event <unknown|intr_lsc|queue_state|intr_reset|vf_mbox|macsec|intr_rmv>: "
-	       "enable print of designated event");
-	printf("  --mask-event <unknown|intr_lsc|queue_state|intr_reset|vf_mbox|macsec|intr_rmv>: "
-	       "disable print of designated event");
+	printf("  --print-event <unknown|intr_lsc|queue_state|intr_reset|vf_mbox|macsec|intr_rmv|all>: "
+	       "enable print of designated event or all of them.");
+	printf("  --mask-event <unknown|intr_lsc|queue_state|intr_reset|vf_mbox|macsec|intr_rmv|all>: "
+	       "disable print of designated event or all of them.");
 }
 
 #ifdef RTE_LIBRTE_CMDLINE
@@ -536,6 +536,8 @@ parse_event_printing_config(const char *optarg, int enable)
 		mask = UINT32_C(1) << RTE_ETH_EVENT_MACSEC;
 	else if (!strcmp(optarg, "intr_rmv"))
 		mask = UINT32_C(1) << RTE_ETH_EVENT_INTR_RMV;
+	else if (!strcmp(optarg, "all"))
+		mask = ~UINT32_C(0);
 	else {
 		fprintf(stderr, "Invalid event: %s\n", optarg);
 		return -1;
