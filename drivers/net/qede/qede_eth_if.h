@@ -129,6 +129,4 @@ const struct qed_eth_ops *qed_get_eth_ops(void);
 int qed_configure_filter_rx_mode(struct rte_eth_dev *eth_dev,
 				 enum qed_filter_rx_mode_type type);
 
-bool qed_update_rss_parm_cmt(struct ecore_dev *edev, uint16_t *p_tbl);
-
 #endif /* _QEDE_ETH_IF_H */

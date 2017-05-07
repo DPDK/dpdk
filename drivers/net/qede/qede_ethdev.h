@@ -37,6 +37,7 @@
 #include "base/ecore_sp_commands.h"
 #include "base/ecore_l2.h"
 #include "base/ecore_dev_api.h"
+#include "base/ecore_l2.h"
 
 #include "qede_logs.h"
 #include "qede_if.h"

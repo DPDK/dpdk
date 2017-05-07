@@ -67,33 +67,6 @@ static int qed_stop_vport(struct ecore_dev *edev, uint8_t vport_id)
 	return 0;
 }
 
-bool qed_update_rss_parm_cmt(struct ecore_dev *edev, uint16_t *p_tbl)
-{
-	uint16_t max = 0, k;
-	bool rss_mode = 0; /* disable */
-	int divisor;
-
-	/* Find largest entry, since it's possible RSS needs to
-	 * be disabled [in case only 1 queue per-hwfn]
-	 */
-	for (k = 0; k < ECORE_RSS_IND_TABLE_SIZE; k++)
-		max = (max > p_tbl[k]) ?  max : p_tbl[k];
-
-	/* Either fix RSS values or disable RSS */
-	if (edev->num_hwfns < max + 1) {
-		divisor = (max + edev->num_hwfns - 1) / edev->num_hwfns;
-		DP_VERBOSE(edev, ECORE_MSG_SPQ,
-			   "CMT - fixing RSS values (modulo %02x)\n",
-			   divisor);
-		for (k = 0; k < ECORE_RSS_IND_TABLE_SIZE; k++)
-			p_tbl[k] = p_tbl[k] % divisor;
-
-		rss_mode = 1;
-	}
-
-	return rss_mode;
-}
-
 static int
 qed_update_vport(struct ecore_dev *edev, struct qed_update_vport_params *params)
 {

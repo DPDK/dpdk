@@ -1576,6 +1576,61 @@ static int qede_rss_hash_conf_get(struct rte_eth_dev *eth_dev,
 	return 0;
 }
 
+static bool qede_update_rss_parm_cmt(struct ecore_dev *edev,
+				    struct ecore_rss_params *rss)
+{
+	int i, fn;
+	bool rss_mode = 1; /* enable */
+	struct ecore_queue_cid *cid;
+	struct ecore_rss_params *t_rss;
+
+	/* In regular scenario, we'd simply need to take input handlers.
+	 * But in CMT, we'd have to split the handlers according to the
+	 * engine they were configured on. We'd then have to understand
+	 * whether RSS is really required, since 2-queues on CMT doesn't
+	 * require RSS.
+	 */
+
+	/* CMT should be round-robin */
+	for (i = 0; i < ECORE_RSS_IND_TABLE_SIZE; i++) {
+		cid = rss->rss_ind_table[i];
+
+		if (cid->p_owner == ECORE_LEADING_HWFN(edev))
+			t_rss = &rss[0];
+		else
+			t_rss = &rss[1];
+
+		t_rss->rss_ind_table[i / edev->num_hwfns] = cid;
+	}
+
+	t_rss = &rss[1];
+	t_rss->update_rss_ind_table = 1;
+	t_rss->rss_table_size_log = 7;
+	t_rss->update_rss_config = 1;
+
+	/* Make sure RSS is actually required */
+	for_each_hwfn(edev, fn) {
+		for (i = 1; i < ECORE_RSS_IND_TABLE_SIZE / edev->num_hwfns;
+		     i++) {
+			if (rss[fn].rss_ind_table[i] !=
+			    rss[fn].rss_ind_table[0])
+				break;
+		}
+
+		if (i == ECORE_RSS_IND_TABLE_SIZE / edev->num_hwfns) {
+			DP_INFO(edev,
+				"CMT - 1 queue per-hwfn; Disabling RSS\n");
+			rss_mode = 0;
+			goto out;
+		}
+	}
+
+out:
+	t_rss->rss_enable = rss_mode;
+
+	return rss_mode;
+}
+
 int qede_rss_reta_update(struct rte_eth_dev *eth_dev,
 			 struct rte_eth_rss_reta_entry64 *reta_conf,
 			 uint16_t reta_size)
@@ -1583,11 +1638,11 @@ int qede_rss_reta_update(struct rte_eth_dev *eth_dev,
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
 	struct ecore_sp_vport_update_params vport_update_params;
-	struct ecore_rss_params params;
+	struct ecore_rss_params *params;
 	struct ecore_hwfn *p_hwfn;
 	uint16_t i, idx, shift;
 	uint8_t entry;
-	int rc;
+	int rc = 0;
 
 	if (reta_size > ETH_RSS_RETA_SIZE_128) {
 		DP_ERR(edev, "reta_size %d is not supported by hardware\n",
@@ -1596,7 +1651,8 @@ int qede_rss_reta_update(struct rte_eth_dev *eth_dev,
 	}
 
 	memset(&vport_update_params, 0, sizeof(vport_update_params));
-	memset(&params, 0, sizeof(params));
+	params = rte_zmalloc("qede_rss", sizeof(*params) * edev->num_hwfns,
+			     RTE_CACHE_LINE_SIZE);
 
 	for (i = 0; i < reta_size; i++) {
 		idx = i / RTE_RETA_GROUP_SIZE;
@@ -1604,24 +1660,25 @@ int qede_rss_reta_update(struct rte_eth_dev *eth_dev,
 		if (reta_conf[idx].mask & (1ULL << shift)) {
 			entry = reta_conf[idx].reta[shift];
 			/* Pass rxq handles to ecore */
-			params.rss_ind_table[i] =
+			params->rss_ind_table[i] =
 					qdev->fp_array[entry].rxq->handle;
 			/* Update the local copy for RETA query command */
 			qdev->rss_ind_table[i] = entry;
 		}
 	}
 
+	params->update_rss_ind_table = 1;
+	params->rss_table_size_log = 7;
+	params->update_rss_config = 1;
+
 	/* Fix up RETA for CMT mode device */
 	if (edev->num_hwfns > 1)
-		qdev->rss_enable = qed_update_rss_parm_cmt(edev,
-					params.rss_ind_table[0]);
-	params.update_rss_ind_table = 1;
-	params.rss_table_size_log = 7;
-	params.update_rss_config = 1;
+		qdev->rss_enable = qede_update_rss_parm_cmt(edev,
+							    params);
 	vport_update_params.vport_id = 0;
 	/* Use the current value of rss_enable */
-	params.rss_enable = qdev->rss_enable;
-	vport_update_params.rss_params = &params;
+	params->rss_enable = qdev->rss_enable;
+	vport_update_params.rss_params = params;
 
 	for_each_hwfn(edev, i) {
 		p_hwfn = &edev->hwfns[i];
@@ -1630,11 +1687,13 @@ int qede_rss_reta_update(struct rte_eth_dev *eth_dev,
 					   ECORE_SPQ_MODE_EBLOCK, NULL);
 		if (rc) {
 			DP_ERR(edev, "vport-update for RSS failed\n");
-			return rc;
+			goto out;
 		}
 	}
 
-	return 0;
+out:
+	rte_free(params);
+	return rc;
 }
 
 static int qede_rss_reta_query(struct rte_eth_dev *eth_dev,
