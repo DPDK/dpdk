@@ -618,13 +618,13 @@ pci_uio_ioport_write(struct rte_pci_ioport *p,
 	for (s = data; len > 0; s += size, reg += size, len -= size) {
 		if (len >= 4) {
 			size = 4;
-			outl(*(const uint32_t *)s, reg);
+			outl(reg, *(const uint32_t *)s);
 		} else if (len >= 2) {
 			size = 2;
-			outw(*(const uint16_t *)s, reg);
+			outw(reg, *(const uint16_t *)s);
 		} else {
 			size = 1;
-			outb(*s, reg);
+			outb(reg, *s);
 		}
 	}
 #else
