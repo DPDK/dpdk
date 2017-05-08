@@ -4107,14 +4107,15 @@ ixgbe_dev_interrupt_action(struct rte_eth_dev *dev,
 			timeout = IXGBE_LINK_DOWN_CHECK_TIMEOUT;
 
 		ixgbe_dev_link_status_print(dev);
-		intr->mask_original = intr->mask;
-		/* only disable lsc interrupt */
-		intr->mask &= ~IXGBE_EIMS_LSC;
 		if (rte_eal_alarm_set(timeout * 1000,
 				      ixgbe_dev_interrupt_delayed_handler, (void *)dev) < 0)
 			PMD_DRV_LOG(ERR, "Error setting alarm");
-		else
-			intr->mask = intr->mask_original;
+		else {
+			/* remember original mask */
+			intr->mask_original = intr->mask;
+			/* only disable lsc interrupt */
+			intr->mask &= ~IXGBE_EIMS_LSC;
+		}
 	}
 
 	PMD_DRV_LOG(DEBUG, "enable intr immediately");
