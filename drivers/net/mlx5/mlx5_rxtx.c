@@ -538,7 +538,7 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 #endif
 
 		/* first_seg */
-		buf = *(pkts++);
+		buf = *pkts;
 		segs_n = buf->nb_segs;
 		/*
 		 * Make sure there is enough room to store this packet and
@@ -549,15 +549,13 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			break;
 		max -= segs_n;
 		--segs_n;
-		if (!segs_n)
-			--pkts_n;
 		if (unlikely(--max_wqe == 0))
 			break;
 		wqe = (volatile struct mlx5_wqe_v *)
 			tx_mlx5_wqe(txq, txq->wqe_ci);
 		rte_prefetch0(tx_mlx5_wqe(txq, txq->wqe_ci + 1));
-		if (pkts_n > 1)
-			rte_prefetch0(*pkts);
+		if (pkts_n - i > 1)
+			rte_prefetch0(*(pkts + 1));
 		addr = rte_pktmbuf_mtod(buf, uintptr_t);
 		length = DATA_LEN(buf);
 		ehdr = (((uint8_t *)addr)[1] << 8) |
@@ -569,14 +567,10 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			break;
 		/* Update element. */
 		(*txq->elts)[elts_head] = buf;
-		elts_head = (elts_head + 1) & (elts_n - 1);
 		/* Prefetch next buffer data. */
-		if (pkts_n > 1) {
-			volatile void *pkt_addr;
-
-			pkt_addr = rte_pktmbuf_mtod(*pkts, volatile void *);
-			rte_prefetch0(pkt_addr);
-		}
+		if (pkts_n - i > 1)
+			rte_prefetch0(
+			    rte_pktmbuf_mtod(*(pkts + 1), volatile void *));
 		/* Should we enable HW CKSUM offload */
 		if (buf->ol_flags &
 		    (PKT_TX_IP_CKSUM | PKT_TX_TCP_CKSUM | PKT_TX_UDP_CKSUM)) {
@@ -679,10 +673,6 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 					};
 					ds = 1;
 					total_length = 0;
-					pkts--;
-					pkts_n++;
-					elts_head = (elts_head - 1) &
-						    (elts_n - 1);
 					k++;
 					goto next_wqe;
 				}
@@ -815,17 +805,17 @@ next_seg:
 			naddr,
 			naddr >> 32,
 		};
-		(*txq->elts)[elts_head] = buf;
 		elts_head = (elts_head + 1) & (elts_n - 1);
+		(*txq->elts)[elts_head] = buf;
 		++sg;
 		/* Advance counter only if all segs are successfully posted. */
-		if (sg < segs_n) {
+		if (sg < segs_n)
 			goto next_seg;
-		} else {
-			--pkts_n;
+		else
 			j += sg;
-		}
 next_pkt:
+		elts_head = (elts_head + 1) & (elts_n - 1);
+		++pkts;
 		++i;
 		/* Initialize known and common part of the WQE structure. */
 		if (tso) {
@@ -863,7 +853,7 @@ next_wqe:
 		/* Increment sent bytes counter. */
 		txq->stats.obytes += total_length;
 #endif
-	} while (pkts_n);
+	} while (i < pkts_n);
 	/* Take a shortcut if nothing must be sent. */
 	if (unlikely((i + k) == 0))
 		return 0;
