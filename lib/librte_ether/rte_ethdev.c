@@ -1714,7 +1714,7 @@ rte_eth_xstats_get_by_id(uint8_t port_id, const uint64_t *ids, uint64_t *values,
 
 		size = rte_eth_xstats_get_by_id(port_id, NULL, NULL, 0);
 
-		values_copy = malloc(sizeof(values_copy) * size);
+		values_copy = malloc(sizeof(*values_copy) * size);
 		if (!values_copy) {
 			RTE_PMD_DEBUG_TRACE(
 			    "ERROR: can't allocate memory for values_copy\n");
