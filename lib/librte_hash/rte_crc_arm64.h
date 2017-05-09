@@ -110,8 +110,10 @@ rte_hash_crc_set_alg(uint8_t alg)
 	case CRC32_ARM64:
 		if (!rte_cpu_get_flag_enabled(RTE_CPUFLAG_CRC32))
 			alg = CRC32_SW;
+		/* fall-through */
 	case CRC32_SW:
 		crc32_alg = alg;
+		/* fall-through */
 	default:
 		break;
 	}
