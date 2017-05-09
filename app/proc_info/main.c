@@ -434,7 +434,7 @@ nic_xstats_by_ids_display(uint8_t port_id, uint64_t *ids, int len)
 	int ret, i;
 	static const char *nic_stats_border = "########################";
 
-	values = malloc(sizeof(values) * len);
+	values = malloc(sizeof(*values) * len);
 	if (values == NULL) {
 		printf("Cannot allocate memory for xstats\n");
 		return;
@@ -486,7 +486,7 @@ nic_xstats_display(uint8_t port_id)
 		printf("Cannot get xstats count\n");
 		return;
 	}
-	values = malloc(sizeof(values) * len);
+	values = malloc(sizeof(*values) * len);
 	if (values == NULL) {
 		printf("Cannot allocate memory for xstats\n");
 		return;
