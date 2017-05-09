@@ -365,7 +365,8 @@ struct queue_stats_mappings *rx_queue_stats_mappings = rx_queue_stats_mappings_a
 uint16_t nb_tx_queue_stats_mappings = 0;
 uint16_t nb_rx_queue_stats_mappings = 0;
 
-unsigned max_socket = 0;
+unsigned int num_sockets = 0;
+unsigned int socket_ids[RTE_MAX_NUMA_NODES];
 
 #ifdef RTE_LIBRTE_BITRATE
 /* Bitrate statistics */
@@ -388,6 +389,22 @@ static void eth_event_callback(uint8_t port_id,
 static int all_ports_started(void);
 
 /*
+ * Helper function to check if socket is allready discovered.
+ * If yes, return positive value. If not, return zero.
+ */
+int
+new_socket_id(unsigned int socket_id)
+{
+	unsigned int i;
+
+	for (i = 0; i < num_sockets; i++) {
+		if (socket_ids[i] == socket_id)
+			return 0;
+	}
+	return 1;
+}
+
+/*
  * Setup default configuration.
  */
 static void
@@ -399,11 +416,14 @@ set_default_fwd_lcores_config(void)
 
 	nb_lc = 0;
 	for (i = 0; i < RTE_MAX_LCORE; i++) {
-		sock_num = rte_lcore_to_socket_id(i) + 1;
-		if (sock_num > max_socket) {
-			if (sock_num > RTE_MAX_NUMA_NODES)
-				rte_exit(EXIT_FAILURE, "Total sockets greater than %u\n", RTE_MAX_NUMA_NODES);
-			max_socket = sock_num;
+		sock_num = rte_lcore_to_socket_id(i);
+		if (new_socket_id(sock_num)) {
+			if (num_sockets >= RTE_MAX_NUMA_NODES) {
+				rte_exit(EXIT_FAILURE,
+					 "Total sockets greater than %u\n",
+					 RTE_MAX_NUMA_NODES);
+			}
+			socket_ids[num_sockets++] = sock_num;
 		}
 		if (!rte_lcore_is_enabled(i))
 			continue;
@@ -517,7 +537,7 @@ check_socket_id(const unsigned int socket_id)
 {
 	static int warning_once = 0;
 
-	if (socket_id >= max_socket) {
+	if (new_socket_id(socket_id)) {
 		if (!warning_once && numa_support)
 			printf("Warning: NUMA should be configured manually by"
 			       " using --port-numa-config and"
@@ -609,8 +629,9 @@ init_config(void)
 	if (numa_support) {
 		uint8_t i;
 
-		for (i = 0; i < max_socket; i++)
-			mbuf_pool_create(mbuf_data_size, nb_mbuf_per_pool, i);
+		for (i = 0; i < num_sockets; i++)
+			mbuf_pool_create(mbuf_data_size, nb_mbuf_per_pool,
+					 socket_ids[i]);
 	} else {
 		if (socket_num == UMA_NO_CONFIG)
 			mbuf_pool_create(mbuf_data_size, nb_mbuf_per_pool, 0);

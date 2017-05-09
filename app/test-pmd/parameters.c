@@ -369,6 +369,18 @@ parse_queue_stats_mapping_config(const char *q_arg, int is_rx)
 	return 0;
 }
 
+static void
+print_invalid_socket_id_error(void)
+{
+	unsigned int i = 0;
+
+	printf("Invalid socket id, options are: ");
+	for (i = 0; i < num_sockets; i++) {
+		printf("%u%s", socket_ids[i],
+		      (i == num_sockets - 1) ? "\n" : ",");
+	}
+}
+
 static int
 parse_portnuma_config(const char *q_arg)
 {
@@ -414,9 +426,8 @@ parse_portnuma_config(const char *q_arg)
 			return -1;
 		}
 		socket_id = (uint8_t)int_fld[FLD_SOCKET];
-		if(socket_id >= max_socket) {
-			printf("Invalid socket id, range is [0, %d]\n",
-				 max_socket - 1);
+		if (new_socket_id(socket_id)) {
+			print_invalid_socket_id_error();
 			return -1;
 		}
 		port_numa[port_id] = socket_id;
@@ -474,9 +485,8 @@ parse_ringnuma_config(const char *q_arg)
 			return -1;
 		}
 		socket_id = (uint8_t)int_fld[FLD_SOCKET];
-		if (socket_id >= max_socket) {
-			printf("Invalid socket id, range is [0, %d]\n",
-				max_socket - 1);
+		if (new_socket_id(socket_id)) {
+			print_invalid_socket_id_error();
 			return -1;
 		}
 		ring_flag = (uint8_t)int_fld[FLD_FLAG];
@@ -732,12 +742,13 @@ launch_args_parse(int argc, char** argv)
 					   "invalid ring-numa configuration\n");
 			if (!strcmp(lgopts[opt_idx].name, "socket-num")) {
 				n = atoi(optarg);
-				if((uint8_t)n < max_socket)
+				if (!new_socket_id((uint8_t)n)) {
 					socket_num = (uint8_t)n;
-				else
+				} else {
+					print_invalid_socket_id_error();
 					rte_exit(EXIT_FAILURE,
-						"The socket number should be < %d\n",
-						max_socket);
+						"Invalid socket id");
+				}
 			}
 			if (!strcmp(lgopts[opt_idx].name, "mbuf-size")) {
 				n = atoi(optarg);

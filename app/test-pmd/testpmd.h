@@ -343,7 +343,8 @@ extern lcoreid_t nb_lcores; /**< Number of logical cores probed at init time. */
 extern lcoreid_t nb_cfg_lcores; /**< Number of configured logical cores. */
 extern lcoreid_t nb_fwd_lcores; /**< Number of forwarding logical cores. */
 extern unsigned int fwd_lcores_cpuids[RTE_MAX_LCORE];
-extern unsigned max_socket;
+extern unsigned int num_sockets;
+extern unsigned int socket_ids[RTE_MAX_NUMA_NODES];
 
 /*
  * Configuration of Ethernet ports:
@@ -638,6 +639,7 @@ enum print_warning {
 	DISABLED_WARN
 };
 int port_id_is_invalid(portid_t port_id, enum print_warning warning);
+int new_socket_id(unsigned int socket_id);
 
 /*
  * Work-around of a compilation error with ICC on invocations of the
