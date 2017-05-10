@@ -3799,7 +3799,7 @@ ixgbe_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 	hw->mac.get_link_status = true;
 
 	if ((intr->flags & IXGBE_FLAG_NEED_LINK_CONFIG) &&
-		hw->mac.ops.get_media_type(hw) == ixgbe_media_type_fiber) {
+		ixgbe_get_media_type(hw) == ixgbe_media_type_fiber) {
 		speed = hw->phy.autoneg_advertised;
 		if (!speed)
 			ixgbe_get_link_capabilities(hw, &speed, &autoneg);
