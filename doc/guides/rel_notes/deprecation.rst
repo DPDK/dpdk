@@ -29,10 +29,10 @@ Deprecation Notices
   targets release 17.05.
 
 * The VDEV subsystem will be converted as driver of the new bus model.
-  It will imply some EAL API changes in 17.05.
+  It may imply some EAL API changes in 17.08.
 
 * The struct ``rte_pci_driver`` is planned to be removed from
-  ``rte_cryptodev_driver`` in 17.05.
+  ``rte_cryptodev_driver`` and ``rte_eventdev_driver`` in 17.08.
 
 * ethdev: An API change is planned for 17.08 for the function
   ``_rte_eth_dev_callback_process``. In 17.08 the function will return an ``int``
@@ -64,7 +64,7 @@ Deprecation Notices
 * The mbuf flags PKT_RX_VLAN_PKT and PKT_RX_QINQ_PKT are deprecated and
   are respectively replaced by PKT_RX_VLAN_STRIPPED and
   PKT_RX_QINQ_STRIPPED, that are better described. The old flags and
-  their behavior will be kept until 17.02 and will be removed in 17.05.
+  their behavior will be kept until 17.05 and will be removed in 17.08.
 
 * ethdev: Tx offloads will no longer be enabled by default in 17.08.
   Instead, the ``rte_eth_txmode`` structure will be extended with
