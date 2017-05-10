@@ -16,6 +16,13 @@ Deprecation Notices
   - ``rte_set_log_type``, replaced by ``rte_log_set_level``
   - ``rte_get_log_type``, replaced by ``rte_log_get_level``
 
+* devargs: An ABI change is planned for 17.08 for the structure ``rte_devargs``.
+  The current version is dependent on bus-specific device identifier, which will
+  be made generic and abstracted, in order to make the EAL bus-agnostic.
+
+  Accompanying this evolution, device command line parameters will thus support
+  explicit bus definition in a device declaration.
+
 * igb_uio: iomem mapping and sysfs files created for iomem and ioport in
   igb_uio will be removed, because we are able to detect these from what Linux
   has exposed, like the way we have done with uio-pci-generic. This change
