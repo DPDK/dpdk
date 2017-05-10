@@ -788,6 +788,13 @@ rte_mbuf_refcnt_set(struct rte_mbuf *m, uint16_t new_value)
 void
 rte_mbuf_sanity_check(const struct rte_mbuf *m, int is_header);
 
+#define MBUF_RAW_ALLOC_CHECK(m) do {				\
+	RTE_ASSERT(rte_mbuf_refcnt_read(m) == 1);		\
+	RTE_ASSERT((m)->next == NULL);				\
+	RTE_ASSERT((m)->nb_segs == 1);				\
+	__rte_mbuf_sanity_check(m, 0);				\
+} while (0)
+
 /**
  * Allocate an unitialized mbuf from mempool *mp*.
  *
@@ -815,11 +822,7 @@ static inline struct rte_mbuf *rte_mbuf_raw_alloc(struct rte_mempool *mp)
 	if (rte_mempool_get(mp, &mb) < 0)
 		return NULL;
 	m = (struct rte_mbuf *)mb;
-	RTE_ASSERT(rte_mbuf_refcnt_read(m) == 1);
-	RTE_ASSERT(m->next == NULL);
-	RTE_ASSERT(m->nb_segs == 1);
-	__rte_mbuf_sanity_check(m, 0);
-
+	MBUF_RAW_ALLOC_CHECK(m);
 	return m;
 }
 
@@ -1152,26 +1155,22 @@ static inline int rte_pktmbuf_alloc_bulk(struct rte_mempool *pool,
 	switch (count % 4) {
 	case 0:
 		while (idx != count) {
-			RTE_ASSERT(rte_mbuf_refcnt_read(mbufs[idx]) == 0);
-			rte_mbuf_refcnt_set(mbufs[idx], 1);
+			MBUF_RAW_ALLOC_CHECK(mbufs[idx]);
 			rte_pktmbuf_reset(mbufs[idx]);
 			idx++;
 			/* fall-through */
 	case 3:
-			RTE_ASSERT(rte_mbuf_refcnt_read(mbufs[idx]) == 0);
-			rte_mbuf_refcnt_set(mbufs[idx], 1);
+			MBUF_RAW_ALLOC_CHECK(mbufs[idx]);
 			rte_pktmbuf_reset(mbufs[idx]);
 			idx++;
 			/* fall-through */
 	case 2:
-			RTE_ASSERT(rte_mbuf_refcnt_read(mbufs[idx]) == 0);
-			rte_mbuf_refcnt_set(mbufs[idx], 1);
+			MBUF_RAW_ALLOC_CHECK(mbufs[idx]);
 			rte_pktmbuf_reset(mbufs[idx]);
 			idx++;
 			/* fall-through */
 	case 1:
-			RTE_ASSERT(rte_mbuf_refcnt_read(mbufs[idx]) == 0);
-			rte_mbuf_refcnt_set(mbufs[idx], 1);
+			MBUF_RAW_ALLOC_CHECK(mbufs[idx]);
 			rte_pktmbuf_reset(mbufs[idx]);
 			idx++;
 			/* fall-through */
