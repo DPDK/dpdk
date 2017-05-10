@@ -28,19 +28,10 @@ Deprecation Notices
   has exposed, like the way we have done with uio-pci-generic. This change
   targets release 17.05.
 
-* vfio: Some functions are planned to be exported outside librte_eal in 17.05.
-  VFIO APIs like ``vfio_setup_device``, ``vfio_get_group_fd`` can be used by
-  subsystem other than EAL/PCI. For that, these need to be exported symbols.
-  Such APIs are planned to be renamed according to ``rte_*`` naming convention
-  and exported from librte_eal.
-
 * The VDEV subsystem will be converted as driver of the new bus model.
   It will imply some EAL API changes in 17.05.
 
-* ``eth_driver`` is planned to be removed in 17.05. This currently serves as
-  a placeholder for PMDs to register themselves. Changes for ``rte_bus`` will
-  provide a way to handle device initialization currently being done in
-  ``eth_driver``. Similarly, ``rte_pci_driver`` is planned to be removed from
+* The struct ``rte_pci_driver`` is planned to be removed from
   ``rte_cryptodev_driver`` in 17.05.
 
 * ethdev: An API change is planned for 17.08 for the function
