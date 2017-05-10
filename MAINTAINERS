@@ -185,6 +185,7 @@ F: lib/librte_eal/linuxapp/eal/include/exec-env/rte_dom0_common.h
 F: drivers/net/xenvirt/
 F: doc/guides/xen/
 F: examples/vhost_xen/
+F: doc/guides/nics/features/xenvirt.ini
 
 FreeBSD EAL (with overlaps)
 M: Bruce Richardson <bruce.richardson@intel.com>
@@ -257,6 +258,7 @@ Networking Drivers
 ------------------
 M: Ferruh Yigit <ferruh.yigit@intel.com>
 T: git://dpdk.org/next/dpdk-next-net
+F: doc/guides/nics/features/default.ini
 
 Link bonding
 M: Declan Doherty <declan.doherty@intel.com>
@@ -264,6 +266,7 @@ F: drivers/net/bonding/
 F: doc/guides/prog_guide/link_bonding_poll_mode_drv_lib.rst
 F: test/test/test_link_bonding*
 F: examples/bond/
+F: doc/guides/nics/features/bonding.ini
 
 Linux KNI
 M: Ferruh Yigit <ferruh.yigit@intel.com>
@@ -277,6 +280,7 @@ F: doc/guides/sample_app_ug/kernel_nic_interface.rst
 Linux AF_PACKET
 M: John W. Linville <linville@tuxdriver.com>
 F: drivers/net/af_packet/
+F: doc/guides/nics/features/afpacket.ini
 
 Amazon ENA
 M: Marcin Wojtas <mw@semihalf.com>
@@ -285,6 +289,7 @@ M: Guy Tzalik <gtzalik@amazon.com>
 M: Evgeny Schemeilin <evgenys@amazon.com>
 F: drivers/net/ena/
 F: doc/guides/nics/ena.rst
+F: doc/guides/nics/features/ena.ini
 
 Atomic Rules ARK
 M: Shepard Siegel <shepard.siegel@atomicrules.com>
@@ -299,12 +304,14 @@ M: Stephen Hurd <stephen.hurd@broadcom.com>
 M: Ajit Khaparde <ajit.khaparde@broadcom.com>
 F: drivers/net/bnxt/
 F: doc/guides/nics/bnxt.rst
+F: doc/guides/nics/features/bnxt.ini
 
 Cavium ThunderX nicvf
 M: Jerin Jacob <jerin.jacob@caviumnetworks.com>
 M: Maciej Czekaj <maciej.czekaj@caviumnetworks.com>
 F: drivers/net/thunderx/
 F: doc/guides/nics/thunderx.rst
+F: doc/guides/nics/features/thunderx.ini
 
 Cavium LiquidIO
 M: Shijith Thotton <shijith.thotton@cavium.com>
@@ -317,18 +324,22 @@ Chelsio cxgbe
 M: Rahul Lakkireddy <rahul.lakkireddy@chelsio.com>
 F: drivers/net/cxgbe/
 F: doc/guides/nics/cxgbe.rst
+F: doc/guides/nics/features/cxgbe.ini
 
 Cisco enic
 M: John Daley <johndale@cisco.com>
 M: Nelson Escobar <neescoba@cisco.com>
 F: drivers/net/enic/
 F: doc/guides/nics/enic.rst
+F: doc/guides/nics/features/enic.ini
 
 Intel e1000
 M: Wenzhuo Lu <wenzhuo.lu@intel.com>
 F: drivers/net/e1000/
 F: doc/guides/nics/e1000em.rst
 F: doc/guides/nics/intel_vf.rst
+F: doc/guides/nics/features/e1000.ini
+F: doc/guides/nics/features/igb*.ini
 
 Intel ixgbe
 M: Wenzhuo Lu <wenzhuo.lu@intel.com>
@@ -336,6 +347,7 @@ M: Konstantin Ananyev <konstantin.ananyev@intel.com>
 F: drivers/net/ixgbe/
 F: doc/guides/nics/ixgbe.rst
 F: doc/guides/nics/intel_vf.rst
+F: doc/guides/nics/features/ixgbe*.ini
 
 Intel i40e
 M: Helin Zhang <helin.zhang@intel.com>
@@ -343,32 +355,38 @@ M: Jingjing Wu <jingjing.wu@intel.com>
 F: drivers/net/i40e/
 F: doc/guides/nics/i40e.rst
 F: doc/guides/nics/intel_vf.rst
+F: doc/guides/nics/features/i40e*.ini
 
 Intel fm10k
 M: Jing Chen <jing.d.chen@intel.com>
 F: drivers/net/fm10k/
+F: doc/guides/nics/features/fm10k*.ini
 
 Mellanox mlx4
 M: Adrien Mazarguil <adrien.mazarguil@6wind.com>
 M: Nelio Laranjeiro <nelio.laranjeiro@6wind.com>
 F: drivers/net/mlx4/
 F: doc/guides/nics/mlx4.rst
+F: doc/guides/nics/features/mlx4.ini
 
 Mellanox mlx5
 M: Adrien Mazarguil <adrien.mazarguil@6wind.com>
 M: Nelio Laranjeiro <nelio.laranjeiro@6wind.com>
 F: drivers/net/mlx5/
 F: doc/guides/nics/mlx5.rst
+F: doc/guides/nics/features/mlx5.ini
 
 Netcope szedata2
 M: Matej Vido <vido@cesnet.cz>
 F: drivers/net/szedata2/
 F: doc/guides/nics/szedata2.rst
+F: doc/guides/nics/features/szedata2.ini
 
 Netronome nfp
 M: Alejandro Lucero <alejandro.lucero@netronome.com>
 F: drivers/net/nfp/
 F: doc/guides/nics/nfp.rst
+F: doc/guides/nics/features/nfp.ini
 
 NXP dpaa2
 M: Hemant Agrawal <hemant.agrawal@nxp.com>
@@ -377,18 +395,21 @@ F: drivers/bus/fslmc/
 F: drivers/mempool/dpaa2/
 F: drivers/net/dpaa2/
 F: doc/guides/nics/dpaa2.rst
+F: doc/guides/nics/features/dpaa2.ini
 
 QLogic bnx2x
 M: Harish Patil <harish.patil@cavium.com>
 M: Rasesh Mody <rasesh.mody@cavium.com>
 F: drivers/net/bnx2x/
 F: doc/guides/nics/bnx2x.rst
+F: doc/guides/nics/features/bnx2x*.ini
 
 QLogic qede PMD
 M: Rasesh Mody <rasesh.mody@cavium.com>
 M: Harish Patil <harish.patil@cavium.com>
 F: drivers/net/qede/
 F: doc/guides/nics/qede.rst
+F: doc/guides/nics/features/qede*.ini
 
 Solarflare sfc_efx
 M: Andrew Rybchenko <arybchenko@solarflare.com>
@@ -400,6 +421,7 @@ VMware vmxnet3
 M: Shrikrishna Khare <skhare@vmware.com>
 F: drivers/net/vmxnet3/
 F: doc/guides/nics/vmxnet3.rst
+F: doc/guides/nics/features/vmxnet3.ini
 
 Vhost-user
 M: Yuanhan Liu <yuanhan.liu@linux.intel.com>
@@ -416,6 +438,7 @@ M: Yuanhan Liu <yuanhan.liu@linux.intel.com>
 M: Maxime Coquelin <maxime.coquelin@redhat.com>
 T: git://dpdk.org/next/dpdk-next-virtio
 F: drivers/net/vhost/
+F: doc/guides/nics/features/vhost.ini
 
 Virtio PMD
 M: Yuanhan Liu <yuanhan.liu@linux.intel.com>
@@ -423,27 +446,32 @@ M: Maxime Coquelin <maxime.coquelin@redhat.com>
 T: git://dpdk.org/next/dpdk-next-virtio
 F: drivers/net/virtio/
 F: doc/guides/nics/virtio.rst
+F: doc/guides/nics/features/virtio*.ini
 
 Wind River AVP
 M: Allain Legacy <allain.legacy@windriver.com>
 M: Matt Peters <matt.peters@windriver.com>
 F: drivers/net/avp/
 F: doc/guides/nics/avp.rst
+F: doc/guides/nics/features/avp.ini
 
 PCAP PMD
 M: Ferruh Yigit <ferruh.yigit@intel.com>
 F: drivers/net/pcap/
 F: doc/guides/nics/pcap_ring.rst
+F: doc/guides/nics/features/pcap.ini
 
 Tap PMD
 M: Pascal Mazon <pascal.mazon@6wind.com>
 F: drivers/net/tap/
 F: doc/guides/nics/tap.rst
+F: doc/guides/nics/features/tap.ini
 
 KNI PMD
 M: Ferruh Yigit <ferruh.yigit@intel.com>
 F: drivers/net/kni/
 F: doc/guides/nics/kni.rst
+F: doc/guides/nics/features/kni.ini
 
 Ring PMD
 M: Bruce Richardson <bruce.richardson@intel.com>
@@ -451,32 +479,38 @@ F: drivers/net/ring/
 F: doc/guides/nics/pcap_ring.rst
 F: test/test/test_pmd_ring.c
 F: test/test/test_pmd_ring_perf.c
+F: doc/guides/nics/features/ring.ini
 
 Null Networking PMD
 M: Tetsuya Mukawa <mtetsuyah@gmail.com>
 F: drivers/net/null/
+F: doc/guides/nics/features/null.ini
 
 
 Crypto Drivers
 --------------
 M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 T: git://dpdk.org/next/dpdk-next-crypto
+F: doc/guides/cryptodevs/features/default.ini
 
 ARMv8 Crypto PMD
 M: Zbigniew Bodek <zbigniew.bodek@caviumnetworks.com>
 M: Jerin Jacob <jerin.jacob@caviumnetworks.com>
 F: drivers/crypto/armv8/
 F: doc/guides/cryptodevs/armv8.rst
+F: doc/guides/cryptodevs/features/armv8.ini
 
 Intel AES-NI GCM PMD
 M: Declan Doherty <declan.doherty@intel.com>
 F: drivers/crypto/aesni_gcm/
 F: doc/guides/cryptodevs/aesni_gcm.rst
+F: doc/guides/cryptodevs/features/aesni_gcm.ini
 
 Intel AES-NI Multi-Buffer
 M: Declan Doherty <declan.doherty@intel.com>
 F: drivers/crypto/aesni_mb/
 F: doc/guides/cryptodevs/aesni_mb.rst
+F: doc/guides/cryptodevs/features/aesni_mb.ini
 
 Intel QuickAssist
 M: John Griffin <john.griffin@intel.com>
@@ -484,37 +518,44 @@ M: Fiona Trahe <fiona.trahe@intel.com>
 M: Deepak Kumar Jain <deepak.k.jain@intel.com>
 F: drivers/crypto/qat/
 F: doc/guides/cryptodevs/qat.rst
+F: doc/guides/cryptodevs/features/qat.ini
 
 NXP DPAA2_SEC
 M: Akhil Goyal <akhil.goyal@nxp.com>
 M: Hemant Agrawal <hemant.agrawal@nxp.com>
 F: drivers/crypto/dpaa2_sec/
 F: doc/guides/cryptodevs/dpaa2_sec.rst
+F: doc/guides/cryptodevs/features/dpaa2_sec.ini
 
 SNOW 3G PMD
 M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 F: drivers/crypto/snow3g/
 F: doc/guides/cryptodevs/snow3g.rst
+F: doc/guides/cryptodevs/features/snow3g.ini
 
 KASUMI PMD
 M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 F: drivers/crypto/kasumi/
 F: doc/guides/cryptodevs/kasumi.rst
+F: doc/guides/cryptodevs/features/kasumi.ini
 
 ZUC PMD
 M: Pablo de Lara <pablo.de.lara.guarch@intel.com>
 F: drivers/crypto/zuc/
 F: doc/guides/cryptodevs/zuc.rst
+F: doc/guides/cryptodevs/features/zuc.ini
 
 OpenSSL PMD
 M: Declan Doherty <declan.doherty@intel.com>
 F: drivers/crypto/openssl/
 F: doc/guides/cryptodevs/openssl.rst
+F: doc/guides/cryptodevs/features/openssl.ini
 
 Null Crypto PMD
 M: Declan Doherty <declan.doherty@intel.com>
 F: drivers/crypto/null/
 F: doc/guides/cryptodevs/null.rst
+F: doc/guides/cryptodevs/features/null.ini
 
 Crypto Scheduler PMD
 M: Fan Zhang <roy.fan.zhang@intel.com>
