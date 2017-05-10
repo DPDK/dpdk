@@ -109,6 +109,7 @@ error:
 	priv_mac_addrs_disable(priv);
 	priv_destroy_hash_rxqs(priv);
 	priv_flow_stop(priv);
+	priv_unlock(priv);
 	return -err;
 }
 
