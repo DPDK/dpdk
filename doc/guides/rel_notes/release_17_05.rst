@@ -41,31 +41,34 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
-* **Reorganized the mbuf structure.**
+* **Reorganized mbuf structure.**
+
+  The mbuf structure has been reorganized as follows:
 
   * Align fields to facilitate the writing of ``data_off``, ``refcnt``, and
     ``nb_segs`` in one operation.
   * Use 2 bytes for port and number of segments.
-  * Move the sequence number in the second cache line.
+  * Move the sequence number to the second cache line.
   * Add a timestamp field.
   * Set default value for ``refcnt``, ``next`` and ``nb_segs`` at mbuf free.
 
-* **Added mbuf raw free API**
+* **Added mbuf raw free API.**
 
   Moved ``rte_mbuf_raw_free()`` and ``rte_pktmbuf_prefree_seg()`` functions to
   the public API.
 
 * **Added free Tx mbuf on demand API.**
 
-  Added a new function ``rte_eth_tx_done_cleanup()`` which allows an application
-  to request the driver to release mbufs from their Tx ring that are no longer
-  in use, independent of whether or not the ``tx_rs_thresh`` has been crossed.
+  Added a new function ``rte_eth_tx_done_cleanup()`` which allows an
+  application to request the driver to release mbufs that are no longer in use
+  from a Tx ring, independent of whether or not the ``tx_rs_thresh`` has been
+  crossed.
 
 * **Added device removal interrupt.**
 
   Added a new ethdev event ``RTE_ETH_DEV_INTR_RMV`` to signify
   the sudden removal of a device.
-  This event can be advertized by PCI drivers and enabled accordingly.
+  This event can be advertised by PCI drivers and enabled accordingly.
 
 * **Added EAL dynamic log framework.**
 
@@ -77,25 +80,25 @@ New Features
   Added a new API to get the status of a descriptor.
 
   For Rx, it is almost similar to the ``rx_descriptor_done`` API, except
-  it differentiates descriptors which are hold by the driver and not
+  it differentiates descriptors which are held by the driver and not
   returned to the hardware. For Tx, it is a new API.
 
 * **Increased number of next hops for LPM IPv6 to 2^21.**
 
-  The next_hop field is extended from 8 bits to 21 bits for IPv6.
+  The next_hop field has been extended from 8 bits to 21 bits for IPv6.
 
 * **Added VFIO hotplug support.**
 
-  How hotplug supported with UIO and VFIO drivers.
+  Added hotplug support for VFIO in addition to the existing UIO support.
 
-* **Added powerpc support in pci probing for vfio-pci devices.**
+* **Added PowerPC support to pci probing for vfio-pci devices.**
 
-  sPAPR IOMMU based pci probing enabled for vfio-pci devices.
+  Enabled sPAPR IOMMU based pci probing for vfio-pci devices.
 
-* **Kept consistent PMD batching behaviour.**
+* **Kept consistent PMD batching behavior.**
 
-  Removed the limit of fm10k/i40e/ixgbe TX burst size and vhost RX/TX burst size
-  in order to support the same policy of "make an best effort to RX/TX pkts"
+  Removed the limit of fm10k/i40e/ixgbe Tx burst size and vhost Rx/Tx burst size
+  in order to support the same policy of "make an best effort to Rx/Tx pkts"
   for PMDs.
 
 * **Updated the ixgbe base driver.**
@@ -106,64 +109,62 @@ New Features
   * Complete HW initialization even if SFP is not present.
   * Add VF xcast promiscuous mode.
 
-* **Added powerpc support for i40e and its vector PMD .**
+* **Added PowerPC support for i40e and its vector PMD.**
 
-  i40e PMD and its vector PMD enabled by default in powerpc.
+  Enabled i40e PMD and its vector PMD by default in PowerPC.
 
-* **Added VF max bandwidth setting on i40e.**
+* **Added VF max bandwidth setting in i40e.**
 
-  i40e HW supports to set the max bandwidth for a VF. Enable this capability.
+  Enabled capability to set the max bandwidth for a VF in i40e.
 
-* **Added VF TC min bandwidth setting on i40e.**
+* **Added VF TC min and max bandwidth setting in i40e.**
 
-  i40e HW supports to set the allocated bandwidth for a TC on a VF. Enable this
-  capability.
-
-* **Added VF TC max bandwidth setting on i40e.**
-
-  i40e HW supports to set the max bandwidth for a TC on a VF. Enable this
-  capability.
+  Enabled capability to set the min and max allocated bandwidth for a TC on a
+  VF in i40.
 
 * **Added TC strict priority mode setting on i40e.**
 
-  There're 2 TX scheduling modes supported for TCs by i40e HW, round ribon mode
-  and strict priority mode. By default it's round robin mode. Enable the
-  capability to change the TX scheduling mode for a TC. It's a global setting
-  on a physical port.
+  There are 2 Tx scheduling modes supported for TCs by i40e HW: round robin
+  mode and strict priority mode. By default the round robin mode is used. It
+  is now possible to change the Tx scheduling mode for a TC. This is a global
+  setting on a physical port.
 
 * **Added i40e dynamic device personalization support.**
 
-  * Added dynamic device personalization processing to i40e FW.
+  * Added dynamic device personalization processing to i40e firmware.
 
 * **Added Cloud Filter for QinQ steering to i40e.**
 
   * Added a QinQ cloud filter on the i40e PMD, for steering traffic to a VM
-    using both VLAN tags.
-  * QinQ is not supported in Vector Mode on the i40e PMD.
-  * Vector Mode must be disabled when using the QinQ Cloud Filter.
+    using both VLAN tags. Note, this feature is not supported in Vector Mode.
 
 * **Updated mlx5 PMD.**
 
-  * Supported ether type in flow item.
-  * Extended IPv6 flow item with Vtc flow, Protocol and Hop limit.
-  * Supported flag flow action.
-  * Supported RSS action flow rule.
-  * Supported TSO for tunneled and non-tunneled packets.
-  * Supported hardware checksum offloads for tunneled packets.
-  * Supported user space Rx interrupt event.
-  * Enhanced multi-packet send function for ConnectX-5.
+  Updated the mlx5 driver, including the following changes:
+
+  * Added Generic flow API support for classification according to ether type.
+  * Extended Generic flow API support for classification of IPv6 flow
+    according to Vtc flow, Protocol and Hop limit.
+  * Added Generic flow API support for FLAG action.
+  * Added Generic flow API support for RSS action.
+  * Added support for TSO for non-tunneled and VXLAN packets.
+  * Added support for hardware Tx checksum offloads for VXLAN packets.
+  * Added support for user space Rx interrupt mode.
+  * Improved ConnectX-5 single core and maximum performance.
 
 * **Updated mlx4 PMD.**
 
-  * Supported basic flow items and actions.
-  * Supported device removal event.
+  Updated the mlx4 driver, including the following changes:
+
+  * Added support for Generic flow API basic flow items and actions.
+  * Added support for device removal event.
 
 * **Updated the sfc_efx driver.**
 
-  * Generic flow API support for Ethernet, VLAN, IPv4, IPv6, UDP and TCP
+  * Added Generic Flow API support for Ethernet, VLAN, IPv4, IPv6, UDP and TCP
     pattern items with QUEUE action for ingress traffic.
 
-  * Support virtual functions (VFs)
+  * Added support for virtual functions (VFs).
 
 * **Added LiquidIO network PMD.**
 
@@ -172,19 +173,19 @@ New Features
 * **Added Atomic Rules Arkville PMD.**
 
   Added a new poll mode driver for the Arkville family of
-  devices from Atomic Rules.   The net/ark PMD supports line-rate
+  devices from Atomic Rules. The net/ark PMD supports line-rate
   agnostic, multi-queue data movement on Arkville core FPGA instances.
 
 * **Added support for NXP DPAA2 - FSLMC bus.**
 
   Added the new bus "fslmc" driver for NXP DPAA2 devices. See the
-  "Network Interface Controller Drivers" document for more details on this new
+  "Network Interface Controller Drivers" document for more details of this new
   driver.
 
 * **Added support for NXP DPAA2 Network PMD.**
 
   Added the new "dpaa2" net driver for NXP DPAA2 devices. See the
-  "Network Interface Controller Drivers" document for more details on this new
+  "Network Interface Controller Drivers" document for more details of this new
   driver.
 
 * **Added support for the Wind River Systems AVP PMD.**
@@ -195,23 +196,26 @@ New Features
 * **Added vmxnet3 version 3 support.**
 
   Added support for vmxnet3 version 3 which includes several
-  performance enhancements viz. configurable TX data ring, Receive
-  Data Ring, ability to register memory regions.
+  performance enhancements such as configurable Tx data ring, Receive
+  Data Ring, and the ability to register memory regions.
 
-* **Updated the tap driver.**
+* **Updated the TAP driver.**
+
+  Updated the TAP PMD to:
 
   * Support MTU modification.
   * Support packet type for Rx.
   * Support segmented packets on Rx and Tx.
-  * Speed up Rx on tap when no packets are available.
+  * Speed up Rx on TAP when no packets are available.
   * Support capturing traffic from another netdevice.
   * Dynamically change link status when the underlying interface state changes.
-  * Generic flow API support for Ethernet, VLAN, IPv4, IPv6, UDP and TCP pattern
-    items with DROP, QUEUE and PASSTHRU actions for ingress traffic.
+  * Added Generic Flow API support for Ethernet, VLAN, IPv4, IPv6, UDP and
+    TCP pattern items with DROP, QUEUE and PASSTHRU actions for ingress
+    traffic.
 
 * **Added MTU feature support to Virtio and Vhost.**
 
-  Implemented new Virtio MTU feature into Vhost and Virtio:
+  Implemented new Virtio MTU feature in Vhost and Virtio:
 
   * Add ``rte_vhost_mtu_get()`` API to Vhost library.
   * Enable Vhost PMD's MTU get feature.
@@ -228,21 +232,21 @@ New Features
 
 * **Added event driven programming model library (rte_eventdev).**
 
-  This API introduces event driven programming model.
+  This API introduces an event driven programming model.
 
   In a polling model, lcores poll ethdev ports and associated
-  rx queues directly to look for packet. In an event driven model,
-  by contrast, lcores call the scheduler that selects packets for
-  them based on programmer-specified criteria. Eventdev library
-  added support for event driven programming model, which offer
+  Rx queues directly to look for a packet. By contrast in an event
+  driven model, lcores call the scheduler that selects packets for
+  them based on programmer-specified criteria. The Eventdev library
+  adds support for an event driven programming model, which offers
   applications automatic multicore scaling, dynamic load balancing,
   pipelining, packet ingress order maintenance and
   synchronization services to simplify application packet processing.
 
-  By introducing event driven programming model, DPDK can support
+  By introducing an event driven programming model, DPDK can support
   both polling and event driven programming models for packet processing,
   and applications are free to choose whatever model
-  (or combination of the two) that best suits their needs.
+  (or combination of the two) best suits their needs.
 
 * **Added Software Eventdev PMD.**
 
@@ -256,9 +260,9 @@ New Features
   Added the new octeontx ssovf eventdev driver for OCTEONTX devices. See the
   "Event Device Drivers" document for more details on this new driver.
 
-* **Added information metric library.**
+* **Added information metrics library.**
 
-  A library that allows information metrics to be added and updated
+  Added a library that allows information metrics to be added and updated
   by producers, typically other libraries, for later retrieval by
   consumers such as applications. It is intended to provide a
   reporting mechanism that is independent of other libraries such
@@ -266,13 +270,14 @@ New Features
 
 * **Added bit-rate calculation library.**
 
-  A library that can be used to calculate device bit-rates. Calculated
+  Added a library that can be used to calculate device bit-rates. Calculated
   bitrates are reported using the metrics library.
 
 * **Added latency stats library.**
 
-  A library that measures packet latency. The collected statistics are jitter
-  and latency. For latency the minimum, average, and maximum is measured.
+  Added a library that measures packet latency. The collected statistics are
+  jitter and latency. For latency the minimum, average, and maximum is
+  measured.
 
 * **Added NXP DPAA2 SEC crypto PMD.**
 
@@ -282,13 +287,13 @@ New Features
 
 * **Updated the Cryptodev Scheduler PMD.**
 
-  * Added packet-size based distribution mode, which distributes the enqueued
+  * Added a packet-size based distribution mode, which distributes the enqueued
     crypto operations among two slaves, based on their data lengths.
   * Added fail-over scheduling mode, which enqueues crypto operations to a
     primary slave first. Then, any operation that cannot be enqueued is
     enqueued to a secondary slave.
-  * Added mode specific option support, so each scheduleing mode can
-    now be configured individually by the new added API.
+  * Added mode specific option support, so each scheduling mode can
+    now be configured individually by the new API.
 
 * **Updated the QAT PMD.**
 
@@ -331,29 +336,10 @@ Resolved Issues
    =========================================================
 
 
-EAL
-~~~
-
-
-Drivers
-~~~~~~~
-
-
-Libraries
-~~~~~~~~~
-
-
-Examples
-~~~~~~~~
-
 * **l2fwd-keepalive: Fixed unclean shutdowns.**
 
   Added clean shutdown to l2fwd-keepalive so that it can free up
   stale resources used for inter-process communication.
-
-
-Other
-~~~~~
 
 
 Known Issues
@@ -370,7 +356,7 @@ Known Issues
    Also, make sure to start the actual text at the margin.
    =========================================================
 
-* **LSC interrupt cannot work for virtio-user + vhost-kernel.**
+* **LSC interrupt doesn't work for virtio-user + vhost-kernel.**
 
   LSC interrupt cannot be detected when setting the backend, tap device,
   up/down as we fail to find a way to monitor such event.
@@ -392,22 +378,22 @@ API Changes
 * The LPM ``next_hop`` field is extended from 8 bits to 21 bits for IPv6
   while keeping ABI compatibility.
 
-* **Reworked rte_ring library**
+* **Reworked rte_ring library.**
 
   The rte_ring library has been reworked and updated. The following changes
   have been made to it:
 
-  * removed the build-time setting ``CONFIG_RTE_RING_SPLIT_PROD_CONS``
-  * removed the build-time setting ``CONFIG_RTE_LIBRTE_RING_DEBUG``
-  * removed the build-time setting ``CONFIG_RTE_RING_PAUSE_REP_COUNT``
-  * removed the function ``rte_ring_set_water_mark`` as part of a general
+  * Removed the build-time setting ``CONFIG_RTE_RING_SPLIT_PROD_CONS``.
+  * Removed the build-time setting ``CONFIG_RTE_LIBRTE_RING_DEBUG``.
+  * Removed the build-time setting ``CONFIG_RTE_RING_PAUSE_REP_COUNT``.
+  * Removed the function ``rte_ring_set_water_mark`` as part of a general
     removal of watermarks support in the library.
-  * added an extra parameter to the burst/bulk enqueue functions to
+  * Added an extra parameter to the burst/bulk enqueue functions to
     return the number of free spaces in the ring after enqueue. This can
     be used by an application to implement its own watermark functionality.
-  * added an extra parameter to the burst/bulk dequeue functions to return
+  * Added an extra parameter to the burst/bulk dequeue functions to return
     the number elements remaining in the ring after dequeue.
-  * changed the return value of the enqueue and dequeue bulk functions to
+  * Changed the return value of the enqueue and dequeue bulk functions to
     match that of the burst equivalents. In all cases, ring functions which
     operate on multiple packets now return the number of elements enqueued
     or dequeued, as appropriate. The updated functions are:
@@ -425,11 +411,11 @@ API Changes
     flagged by the compiler. The return value usage should be checked
     while fixing the compiler error due to the extra parameter.
 
-* **Reworked rte_vhost library**
+* **Reworked rte_vhost library.**
 
   The rte_vhost library has been reworked to make it generic enough so that
-  user could build other vhost-user drivers on top of it. To achieve that,
-  following changes have been made:
+  the user could build other vhost-user drivers on top of it. To achieve this
+  the following changes have been made:
 
   * The following vhost-pmd APIs are removed:
 
@@ -444,13 +430,13 @@ API Changes
   * The vhost API ``rte_vhost_get_queue_num`` is deprecated, instead,
     ``rte_vhost_get_vring_num`` should be used.
 
-  * Following macros are removed in ``rte_virtio_net.h``
+  * The following macros are removed in ``rte_virtio_net.h``
 
     * ``VIRTIO_RXQ``
     * ``VIRTIO_TXQ``
     * ``VIRTIO_QNUM``
 
-  * Following net specific header files are removed in ``rte_virtio_net.h``
+  * The following net specific header files are removed in ``rte_virtio_net.h``
 
     * ``linux/virtio_net.h``
     * ``sys/socket.h``
@@ -461,8 +447,8 @@ API Changes
     ``vhost_device_ops``
 
   * The vhost API ``rte_vhost_driver_session_start`` is removed. Instead,
-    ``rte_vhost_driver_start`` should be used, and no need to create a
-    thread to call it.
+    ``rte_vhost_driver_start`` should be used, and there is no need to create
+    a thread to call it.
 
   * The vhost public header file ``rte_virtio_net.h`` is renamed to
     ``rte_vhost.h``
@@ -486,8 +472,8 @@ ABI Changes
   The order and size of the fields in the ``mbuf`` structure changed,
   as described in the `New Features`_ section.
 
-* The ``rte_cryptodev_info.sym`` structure has new field ``max_nb_sessions_per_qp``
-  to support drivers which may support limited number of sessions per queue_pair.
+* The ``rte_cryptodev_info.sym`` structure has a new field ``max_nb_sessions_per_qp``
+  to support drivers which may support a limited number of sessions per queue_pair.
 
 
 Removed Items
@@ -502,9 +488,9 @@ Removed Items
    Also, make sure to start the actual text at the margin.
    =========================================================
 
-* KNI vhost support removed.
+* KNI vhost support has been removed.
 
-* dpdk_qat sample application removed.
+* The dpdk_qat sample application has been removed.
 
 Shared Library Versions
 -----------------------
