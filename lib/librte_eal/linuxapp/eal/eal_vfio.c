@@ -172,6 +172,55 @@ vfio_get_group_fd(int iommu_group_no)
 	return -1;
 }
 
+
+static int
+get_vfio_group_idx(int vfio_group_fd)
+{
+	int i;
+	for (i = 0; i < VFIO_MAX_GROUPS; i++)
+		if (vfio_cfg.vfio_groups[i].fd == vfio_group_fd)
+			return i;
+	return -1;
+}
+
+static void
+vfio_group_device_get(int vfio_group_fd)
+{
+	int i;
+
+	i = get_vfio_group_idx(vfio_group_fd);
+	if (i < 0 || i > VFIO_MAX_GROUPS)
+		RTE_LOG(ERR, EAL, "  wrong vfio_group index (%d)\n", i);
+	else
+		vfio_cfg.vfio_groups[i].devices++;
+}
+
+static void
+vfio_group_device_put(int vfio_group_fd)
+{
+	int i;
+
+	i = get_vfio_group_idx(vfio_group_fd);
+	if (i < 0 || i > VFIO_MAX_GROUPS)
+		RTE_LOG(ERR, EAL, "  wrong vfio_group index (%d)\n", i);
+	else
+		vfio_cfg.vfio_groups[i].devices--;
+}
+
+static int
+vfio_group_device_count(int vfio_group_fd)
+{
+	int i;
+
+	i = get_vfio_group_idx(vfio_group_fd);
+	if (i < 0 || i > VFIO_MAX_GROUPS) {
+		RTE_LOG(ERR, EAL, "  wrong vfio_group index (%d)\n", i);
+		return -1;
+	}
+
+	return vfio_cfg.vfio_groups[i].devices;
+}
+
 int
 clear_group(int vfio_group_fd)
 {
@@ -180,15 +229,14 @@ clear_group(int vfio_group_fd)
 
 	if (internal_config.process_type == RTE_PROC_PRIMARY) {
 
-		for (i = 0; i < VFIO_MAX_GROUPS; i++)
-			if (vfio_cfg.vfio_groups[i].fd == vfio_group_fd) {
-				vfio_cfg.vfio_groups[i].group_no = -1;
-				vfio_cfg.vfio_groups[i].fd = -1;
-				vfio_cfg.vfio_groups[i].devices = 0;
-				vfio_cfg.vfio_active_groups--;
-				return 0;
-			}
-		return -1;
+		i = get_vfio_group_idx(vfio_group_fd);
+		if (i < 0)
+			return -1;
+		vfio_cfg.vfio_groups[i].group_no = -1;
+		vfio_cfg.vfio_groups[i].fd = -1;
+		vfio_cfg.vfio_groups[i].devices = 0;
+		vfio_cfg.vfio_active_groups--;
+		return 0;
 	}
 
 	/* This is just for SECONDARY processes */
@@ -358,7 +406,7 @@ vfio_setup_device(const char *sysfs_base, const char *dev_addr,
 		clear_group(vfio_group_fd);
 		return -1;
 	}
-	vfio_cfg.vfio_groups[vfio_group_fd].devices++;
+	vfio_group_device_get(vfio_group_fd);
 
 	return 0;
 }
@@ -406,7 +454,8 @@ vfio_release_device(const char *sysfs_base, const char *dev_addr,
 	/* An VFIO group can have several devices attached. Just when there is
 	 * no devices remaining should the group be closed.
 	 */
-	if (--vfio_cfg.vfio_groups[vfio_group_fd].devices == 0) {
+	vfio_group_device_put(vfio_group_fd);
+	if (!vfio_group_device_count(vfio_group_fd)) {
 
 		if (close(vfio_group_fd) < 0) {
 			RTE_LOG(INFO, EAL, "Error when closing vfio_group_fd for %s\n",
