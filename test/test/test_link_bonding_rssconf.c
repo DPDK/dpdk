@@ -62,7 +62,7 @@
 
 #define BONDED_DEV_NAME         ("rssconf_bond_dev")
 
-#define SLAVE_DEV_NAME_FMT      ("rssconf_slave%d")
+#define SLAVE_DEV_NAME_FMT      ("net_null%d")
 #define SLAVE_RXTX_QUEUE_FMT      ("rssconf_slave%d_q%d")
 
 #define NUM_MBUFS 8191
@@ -550,8 +550,7 @@ test_setup(void)
 		port_id = rte_eth_dev_count();
 		snprintf(name, sizeof(name), SLAVE_DEV_NAME_FMT, port_id);
 
-		retval = rte_vdev_init(name,
-			"driver=net_null,size=64,copy=0");
+		retval = rte_vdev_init(name, "size=64,copy=0");
 		TEST_ASSERT_SUCCESS(retval, "Failed to create null device '%s'\n",
 				name);
 
