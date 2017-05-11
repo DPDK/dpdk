@@ -624,6 +624,7 @@ kni_allocate_mbufs(struct rte_kni *kni)
 	int i, ret;
 	struct rte_mbuf *pkts[MAX_MBUF_BURST_NUM];
 	void *phys[MAX_MBUF_BURST_NUM];
+	int allocq_free;
 
 	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, pool) !=
 			 offsetof(struct rte_kni_mbuf, pool));
@@ -646,7 +647,9 @@ kni_allocate_mbufs(struct rte_kni *kni)
 		return;
 	}
 
-	for (i = 0; i < MAX_MBUF_BURST_NUM; i++) {
+	allocq_free = (kni->alloc_q->read - kni->alloc_q->write - 1) \
+			& (MAX_MBUF_BURST_NUM - 1);
+	for (i = 0; i < allocq_free; i++) {
 		pkts[i] = rte_pktmbuf_alloc(kni->pktmbuf_pool);
 		if (unlikely(pkts[i] == NULL)) {
 			/* Out of memory */
