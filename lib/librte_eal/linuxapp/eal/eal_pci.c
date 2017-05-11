@@ -310,18 +310,18 @@ pci_scan_one(const char *dirname, const struct rte_pci_addr *addr)
 			dev->max_vfs = (uint16_t)tmp;
 	}
 
-	/* get numa node */
+	/* get numa node, default to 0 if not present */
 	snprintf(filename, sizeof(filename), "%s/numa_node",
 		 dirname);
-	if (access(filename, R_OK) != 0) {
-		/* if no NUMA support, set default to 0 */
-		dev->device.numa_node = 0;
-	} else {
-		if (eal_parse_sysfs_value(filename, &tmp) < 0) {
-			free(dev);
-			return -1;
-		}
+
+	if (eal_parse_sysfs_value(filename, &tmp) == 0 &&
+		tmp < RTE_MAX_NUMA_NODES)
 		dev->device.numa_node = tmp;
+	else {
+		RTE_LOG(WARNING, EAL,
+			"numa_node is invalid or not present. "
+			"Set it 0 as default\n");
+		dev->device.numa_node = 0;
 	}
 
 	rte_pci_device_name(addr, dev->name, sizeof(dev->name));
