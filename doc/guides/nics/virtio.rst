@@ -34,15 +34,13 @@ Poll Mode Driver for Emulated Virtio NIC
 Virtio is a para-virtualization framework initiated by IBM, and supported by KVM hypervisor.
 In the Data Plane Development Kit (DPDK),
 we provide a virtio Poll Mode Driver (PMD) as a software solution, comparing to SRIOV hardware solution,
+
 for fast guest VM to guest VM communication and guest VM to host communication.
 
 Vhost is a kernel acceleration module for virtio qemu backend.
 The DPDK extends kni to support vhost raw socket interface,
 which enables vhost to directly read/ write packets from/to a physical port.
 With this enhancement, virtio could achieve quite promising performance.
-
-In future release, we will also make enhancement to vhost backend,
-releasing peak performance of virtio PMD driver.
 
 For basic qemu-KVM installation and other Intel EM poll mode driver in guest VM,
 please refer to Chapter "Driver for VM Emulated Devices".
@@ -73,15 +71,20 @@ In this release, the virtio PMD driver provides the basic functionality of packe
 
 *   It supports multicast packets and promiscuous mode.
 
-*   The descriptor number for the Rx/Tx queue is hard-coded to be 256 by qemu.
+*   The descriptor number for the Rx/Tx queue is hard-coded to be 256 by qemu 2.7 and below.
     If given a different descriptor number by the upper application,
     the virtio PMD generates a warning and fall back to the hard-coded value.
+    Rx queue size can be configureable and up to 1024 since qemu 2.8 and above. Rx queue size is 256
+    by default. Tx queue size is still hard-coded to be 256.
 
 *   Features of mac/vlan filter are supported, negotiation with vhost/backend are needed to support them.
     When backend can't support vlan filter, virtio app on guest should disable vlan filter to make sure
     the virtio port is configured correctly. E.g. specify '--disable-hw-vlan' in testpmd command line.
 
-*   RTE_PKTMBUF_HEADROOM should be defined larger than sizeof(struct virtio_net_hdr), which is 10 bytes.
+*   "RTE_PKTMBUF_HEADROOM" should be defined
+    no less than "sizeof(struct virtio_net_hdr_mrg_rxbuf)", which is 12 bytes when mergeable or
+    "VIRTIO_F_VERSION_1" is set.
+    no less than "sizeof(struct virtio_net_hdr)", which is 10 bytes, when using non-mergeable.
 
 *   Virtio does not support runtime configuration.
 
