@@ -515,6 +515,13 @@ vhost_user_set_mem_table(struct virtio_net *dev, struct VhostUserMsg *pmsg)
 		dev->max_guest_pages = 8;
 		dev->guest_pages = malloc(dev->max_guest_pages *
 						sizeof(struct guest_page));
+		if (dev->guest_pages == NULL) {
+			RTE_LOG(ERR, VHOST_CONFIG,
+				"(%d) failed to allocate memory "
+				"for dev->guest_pages\n",
+				dev->vid);
+			return -1;
+		}
 	}
 
 	dev->mem = rte_zmalloc("vhost-mem-table", sizeof(struct rte_vhost_memory) +
