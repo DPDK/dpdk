@@ -57,6 +57,7 @@ enum xstats_type {
 	iq_used,
 	/* qid port mapping specific */
 	pinned,
+	pkts, /* note: qid-to-port pkts */
 };
 
 typedef uint64_t (*xstats_fn)(const struct sw_evdev *dev,
@@ -179,6 +180,8 @@ get_qid_port_stat(const struct sw_evdev *sw, uint16_t obj_idx,
 			return pin;
 		} while (0);
 		break;
+	case pkts:
+		return qid->to_port[port];
 	default: return -1;
 	}
 }
@@ -246,8 +249,11 @@ sw_xstats_init(struct sw_evdev *sw)
 	static const enum xstats_type qid_iq_types[] = { iq_used };
 	/* reset allowed */
 
-	static const char * const qid_port_stats[] = { "pinned_flows" };
-	static const enum xstats_type qid_port_types[] = { pinned };
+	static const char * const qid_port_stats[] = { "pinned_flows",
+		"packets"
+	};
+	static const enum xstats_type qid_port_types[] = { pinned, pkts };
+	static const uint8_t qid_port_reset_allowed[] = {0, 1};
 	/* reset allowed */
 	/* ---- end of stat definitions ---- */
 
@@ -376,7 +382,8 @@ sw_xstats_init(struct sw_evdev *sw)
 					.stat = qid_port_types[i],
 					.mode = RTE_EVENT_DEV_XSTATS_QUEUE,
 					.extra_arg = port,
-					.reset_allowed = 0,
+					.reset_allowed =
+						qid_port_reset_allowed[i],
 				};
 				snprintf(sname, sizeof(sname),
 						"qid_%u_port_%u_%s",

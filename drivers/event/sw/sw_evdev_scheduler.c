@@ -119,6 +119,7 @@ sw_schedule_atomic_to_cq(struct sw_evdev *sw, struct sw_qid * const qid,
 
 		p->stats.tx_pkts++;
 		qid->stats.tx_pkts++;
+		qid->to_port[cq]++;
 
 		/* if we just filled in the last slot, flush the buffer */
 		if (sw->cq_ring_space[cq] == 0) {

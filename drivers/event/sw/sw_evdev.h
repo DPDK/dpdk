@@ -149,6 +149,7 @@ struct sw_qid {
 	uint32_t cq_num_mapped_cqs;
 	uint32_t cq_next_tx; /* cq to write next (non-atomic) packet */
 	uint32_t cq_map[SW_PORTS_MAX];
+	uint64_t to_port[SW_PORTS_MAX];
 
 	/* Track flow ids for atomic load balancing */
 	struct sw_fid_t fids[SW_QID_NUM_FIDS];

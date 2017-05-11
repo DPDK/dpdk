@@ -877,8 +877,8 @@ xstats_tests(struct test *t)
 	ret = rte_event_dev_xstats_names_get(evdev,
 					RTE_EVENT_DEV_XSTATS_QUEUE,
 					0, xstats_names, ids, XSTATS_MAX);
-	if (ret != 13) {
-		printf("%d: expected 13 stats, got return %d\n", __LINE__, ret);
+	if (ret != 17) {
+		printf("%d: expected 17 stats, got return %d\n", __LINE__, ret);
 		return -1;
 	}
 
@@ -894,8 +894,8 @@ xstats_tests(struct test *t)
 	ret = rte_event_dev_xstats_get(evdev,
 					RTE_EVENT_DEV_XSTATS_QUEUE,
 					0, ids, values, ret);
-	if (ret != 13) {
-		printf("%d: expected 13 stats, got return %d\n", __LINE__, ret);
+	if (ret != 17) {
+		printf("%d: expected 17 stats, got return %d\n", __LINE__, ret);
 		return -1;
 	}
 
@@ -1059,7 +1059,11 @@ xstats_tests(struct test *t)
 		3 /* inflights */,
 		512 /* iq size */,
 		0, 0, 0, 0, /* iq 0, 1, 2, 3 used */
-		0, 0, 1, 0, /* qid_0_port_X_pinned_flows */
+		/* QID-to-Port: pinned_flows, packets */
+		0, 0,
+		0, 0,
+		1, 3,
+		0, 0,
 	};
 	for (i = 0; (signed int)i < ret; i++) {
 		if (queue_expected[i] != values[i]) {
@@ -1086,7 +1090,11 @@ xstats_tests(struct test *t)
 		3 /* inflight */,
 		512 /* iq size */,
 		0, 0, 0, 0, /* 4 iq used */
-		0, 0, 1, 0, /* qid to port pinned flows */
+		/* QID-to-Port: pinned_flows, packets */
+		0, 0,
+		0, 0,
+		1, 0,
+		0, 0,
 	};
 
 	ret = rte_event_dev_xstats_get(evdev, RTE_EVENT_DEV_XSTATS_QUEUE, 0,
@@ -1634,7 +1642,7 @@ xstats_id_reset_tests(struct test *t)
 		goto fail;
 
 /* num queue stats */
-#define NUM_Q_STATS 13
+#define NUM_Q_STATS 17
 /* queue offset from start of the devices whole xstats.
  * This will break every time we add a statistic to a device/port/queue
  */
@@ -1665,9 +1673,13 @@ xstats_id_reset_tests(struct test *t)
 		"qid_0_iq_2_used",
 		"qid_0_iq_3_used",
 		"qid_0_port_0_pinned_flows",
+		"qid_0_port_0_packets",
 		"qid_0_port_1_pinned_flows",
+		"qid_0_port_1_packets",
 		"qid_0_port_2_pinned_flows",
+		"qid_0_port_2_packets",
 		"qid_0_port_3_pinned_flows",
+		"qid_0_port_3_packets",
 	};
 	uint64_t queue_expected[] = {
 		7, /* rx */
@@ -1679,10 +1691,11 @@ xstats_id_reset_tests(struct test *t)
 		0, /* iq 1 used */
 		0, /* iq 2 used */
 		0, /* iq 3 used */
-		0, /* qid 0 port 0 pinned flows */
-		0, /* qid 0 port 1 pinned flows */
-		1, /* qid 0 port 2 pinned flows */
-		0, /* qid 0 port 4 pinned flows */
+		/* QID-to-Port: pinned_flows, packets */
+		0, 0,
+		0, 0,
+		1, 7,
+		0, 0,
 	};
 	uint64_t queue_expected_zero[] = {
 		0, /* rx */
@@ -1694,12 +1707,14 @@ xstats_id_reset_tests(struct test *t)
 		0, /* iq 1 used */
 		0, /* iq 2 used */
 		0, /* iq 3 used */
-		0, /* qid 0 port 0 pinned flows */
-		0, /* qid 0 port 1 pinned flows */
-		1, /* qid 0 port 2 pinned flows */
-		0, /* qid 0 port 4 pinned flows */
+		/* QID-to-Port: pinned_flows, packets */
+		0, 0,
+		0, 0,
+		1, 0,
+		0, 0,
 	};
 	if (RTE_DIM(queue_expected) != NUM_Q_STATS ||
+			RTE_DIM(queue_expected_zero) != NUM_Q_STATS ||
 			RTE_DIM(queue_names) != NUM_Q_STATS) {
 		printf("%d : queue array of wrong size\n", __LINE__);
 		goto fail;
@@ -1718,9 +1733,9 @@ xstats_id_reset_tests(struct test *t)
 			failed = 1;
 		}
 		if (val != queue_expected[i]) {
-			printf("%d: %s value incorrect, expected %"PRIu64
-				" got %d\n", __LINE__, queue_names[i],
-				queue_expected[i], id);
+			printf("%d: %d: %s value , expected %"PRIu64
+				" got %"PRIu64"\n", i, __LINE__,
+				queue_names[i], queue_expected[i], val);
 			failed = 1;
 		}
 		/* reset to zero */

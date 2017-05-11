@@ -559,12 +559,13 @@ sw_dump(struct rte_eventdev *dev, FILE *f)
 				inflights += qid->fids[flow].pcount;
 			}
 
-		uint32_t cq;
-		fprintf(f, "\tInflights: %u\tFlows pinned per port: ",
-				inflights);
-		for (cq = 0; cq < sw->port_count; cq++)
-			fprintf(f, "%d ", affinities_per_port[cq]);
-		fprintf(f, "\n");
+		uint32_t port;
+		fprintf(f, "\tPer Port Stats:\n");
+		for (port = 0; port < sw->port_count; port++) {
+			fprintf(f, "\t  Port %d: Pkts: %"PRIu64, port,
+					qid->to_port[port]);
+			fprintf(f, "\tFlows: %d\n", affinities_per_port[port]);
+		}
 
 		uint32_t iq;
 		uint32_t iq_printed = 0;
