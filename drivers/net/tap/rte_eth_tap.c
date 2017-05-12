@@ -861,26 +861,6 @@ tap_setup_queue(struct rte_eth_dev *dev,
 }
 
 static int
-rx_setup_queue(struct rte_eth_dev *dev,
-		struct pmd_internals *internals,
-		uint16_t qid)
-{
-	dev->data->rx_queues[qid] = &internals->rxq[qid];
-
-	return tap_setup_queue(dev, internals, qid);
-}
-
-static int
-tx_setup_queue(struct rte_eth_dev *dev,
-		struct pmd_internals *internals,
-		uint16_t qid)
-{
-	dev->data->tx_queues[qid] = &internals->txq[qid];
-
-	return tap_setup_queue(dev, internals, qid);
-}
-
-static int
 tap_rx_queue_setup(struct rte_eth_dev *dev,
 		   uint16_t rx_queue_id,
 		   uint16_t nb_rx_desc,
@@ -920,7 +900,8 @@ tap_rx_queue_setup(struct rte_eth_dev *dev,
 	}
 	rxq->iovecs = iovecs;
 
-	fd = rx_setup_queue(dev, internals, rx_queue_id);
+	dev->data->rx_queues[rx_queue_id] = rxq;
+	fd = tap_setup_queue(dev, internals, rx_queue_id);
 	if (fd == -1) {
 		ret = fd;
 		goto error;
@@ -971,7 +952,8 @@ tap_tx_queue_setup(struct rte_eth_dev *dev,
 	if (tx_queue_id >= internals->nb_queues)
 		return -1;
 
-	ret = tx_setup_queue(dev, internals, tx_queue_id);
+	dev->data->tx_queues[tx_queue_id] = &internals->txq[tx_queue_id];
+	ret = tap_setup_queue(dev, internals, tx_queue_id);
 	if (ret == -1)
 		return -1;
 
