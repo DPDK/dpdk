@@ -80,7 +80,7 @@
 /* ARM64 specific functions */
 #if defined(RTE_ARCH_ARM64)
 #define nicvf_prefetch_store_keep(_ptr) ({\
-	asm volatile("prfm pstl1keep, %a0\n" : : "p" (_ptr)); })
+	asm volatile("prfm pstl1keep, [%x0]\n" : : "r" (_ptr)); })
 
 
 #define NICVF_LOAD_PAIR(reg1, reg2, addr) ({		\
