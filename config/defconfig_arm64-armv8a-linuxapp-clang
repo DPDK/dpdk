@@ -1,6 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright (C) Cavium networks 2015. All rights reserved.
+#   Copyright (C) Cavium networks 2017. All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
 #   modification, are permitted provided that the following conditions
@@ -31,5 +31,5 @@
 
 #include "common_armv8a_linuxapp"
 
-CONFIG_RTE_TOOLCHAIN="gcc"
-CONFIG_RTE_TOOLCHAIN_GCC=y
+CONFIG_RTE_TOOLCHAIN="clang"
+CONFIG_RTE_TOOLCHAIN_CLANG=y

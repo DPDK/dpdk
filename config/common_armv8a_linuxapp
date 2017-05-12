@@ -1,6 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright (C) Cavium networks 2015. All rights reserved.
+#   Copyright (C) Cavium networks 2017. All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
 #   modification, are permitted provided that the following conditions
@@ -29,7 +29,25 @@
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
-#include "common_armv8a_linuxapp"
+#include "common_linuxapp"
 
-CONFIG_RTE_TOOLCHAIN="gcc"
-CONFIG_RTE_TOOLCHAIN_GCC=y
+CONFIG_RTE_MACHINE="armv8a"
+
+CONFIG_RTE_ARCH="arm64"
+CONFIG_RTE_ARCH_ARM64=y
+CONFIG_RTE_ARCH_64=y
+
+CONFIG_RTE_FORCE_INTRINSICS=y
+
+# Maximum available cache line size in arm64 implementations.
+# Setting to maximum available cache line size in generic config
+# to address minimum DMA alignment across all arm64 implementations.
+CONFIG_RTE_CACHE_LINE_SIZE=128
+
+CONFIG_RTE_EAL_IGB_UIO=n
+
+CONFIG_RTE_LIBRTE_FM10K_PMD=n
+CONFIG_RTE_LIBRTE_SFC_EFX_PMD=n
+CONFIG_RTE_LIBRTE_AVP_PMD=n
+
+CONFIG_RTE_SCHED_VECTOR=n
