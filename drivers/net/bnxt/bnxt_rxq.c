@@ -213,7 +213,7 @@ err_out:
 	return rc;
 }
 
-static void bnxt_rx_queue_release_mbufs(struct bnxt_rx_queue *rxq __rte_unused)
+static void bnxt_rx_queue_release_mbufs(struct bnxt_rx_queue *rxq)
 {
 	struct bnxt_sw_rx_bd *sw_ring;
 	uint16_t i;

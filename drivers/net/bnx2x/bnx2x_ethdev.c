@@ -119,7 +119,7 @@ bnx2x_interrupt_action(struct rte_eth_dev *dev)
 		bnx2x_link_update(dev);
 }
 
-static __rte_unused void
+static void
 bnx2x_interrupt_handler(void *param)
 {
 	struct rte_eth_dev *dev = (struct rte_eth_dev *)param;
@@ -439,7 +439,7 @@ bnx2x_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
 }
 
 static void
-bnx2x_dev_infos_get(struct rte_eth_dev *dev, __rte_unused struct rte_eth_dev_info *dev_info)
+bnx2x_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	struct bnx2x_softc *sc = dev->data->dev_private;
 	dev_info->pci_dev = RTE_DEV_TO_PCI(dev->device);

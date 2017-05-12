@@ -213,12 +213,12 @@ static void ena_tx_queue_release(void *queue);
 static void ena_rx_queue_release_bufs(struct ena_ring *ring);
 static void ena_tx_queue_release_bufs(struct ena_ring *ring);
 static int ena_link_update(struct rte_eth_dev *dev,
-			   __rte_unused int wait_to_complete);
+			   int wait_to_complete);
 static int ena_queue_restart(struct ena_ring *ring);
 static int ena_queue_restart_all(struct rte_eth_dev *dev,
 				 enum ena_ring_type ring_type);
 static void ena_stats_restart(struct rte_eth_dev *dev);
-static void ena_infos_get(__rte_unused struct rte_eth_dev *dev,
+static void ena_infos_get(struct rte_eth_dev *dev,
 			  struct rte_eth_dev_info *dev_info);
 static int ena_rss_reta_update(struct rte_eth_dev *dev,
 			       struct rte_eth_rss_reta_entry64 *reta_conf,

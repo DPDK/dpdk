@@ -237,8 +237,7 @@ sfc_ev_dp_tx(void *arg, __rte_unused uint32_t label, uint32_t id)
 }
 
 static boolean_t
-sfc_ev_exception(void *arg, __rte_unused uint32_t code,
-		 __rte_unused uint32_t data)
+sfc_ev_exception(void *arg, uint32_t code, __rte_unused uint32_t data)
 {
 	struct sfc_evq *evq = arg;
 

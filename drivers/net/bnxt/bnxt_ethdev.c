@@ -918,7 +918,7 @@ static int bnxt_rss_hash_conf_get_op(struct rte_eth_dev *eth_dev,
 }
 
 static int bnxt_flow_ctrl_get_op(struct rte_eth_dev *dev,
-			       struct rte_eth_fc_conf *fc_conf __rte_unused)
+			       struct rte_eth_fc_conf *fc_conf)
 {
 	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
 	struct rte_eth_link link_info;

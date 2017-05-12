@@ -901,7 +901,7 @@ vmxnet3_dev_tx_queue_setup(struct rte_eth_dev *dev,
 			   uint16_t queue_idx,
 			   uint16_t nb_desc,
 			   unsigned int socket_id,
-			   __rte_unused const struct rte_eth_txconf *tx_conf)
+			   const struct rte_eth_txconf *tx_conf)
 {
 	struct vmxnet3_hw *hw = dev->data->dev_private;
 	const struct rte_memzone *mz;

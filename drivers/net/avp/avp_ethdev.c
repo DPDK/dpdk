@@ -71,8 +71,7 @@ static void avp_dev_close(struct rte_eth_dev *dev);
 static void avp_dev_info_get(struct rte_eth_dev *dev,
 			     struct rte_eth_dev_info *dev_info);
 static void avp_vlan_offload_set(struct rte_eth_dev *dev, int mask);
-static int avp_dev_link_update(struct rte_eth_dev *dev,
-			       __rte_unused int wait_to_complete);
+static int avp_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete);
 static void avp_dev_promiscuous_enable(struct rte_eth_dev *dev);
 static void avp_dev_promiscuous_disable(struct rte_eth_dev *dev);
 

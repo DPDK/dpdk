@@ -591,7 +591,7 @@ tap_stats_reset(struct rte_eth_dev *dev)
 }
 
 static void
-tap_dev_close(struct rte_eth_dev *dev __rte_unused)
+tap_dev_close(struct rte_eth_dev *dev)
 {
 	int i;
 	struct pmd_internals *internals = dev->data->dev_private;

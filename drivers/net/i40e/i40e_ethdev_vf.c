@@ -108,7 +108,7 @@ static void i40evf_dev_stop(struct rte_eth_dev *dev);
 static void i40evf_dev_info_get(struct rte_eth_dev *dev,
 				struct rte_eth_dev_info *dev_info);
 static int i40evf_dev_link_update(struct rte_eth_dev *dev,
-				  __rte_unused int wait_to_complete);
+				  int wait_to_complete);
 static void i40evf_dev_stats_get(struct rte_eth_dev *dev,
 				struct rte_eth_stats *stats);
 static int i40evf_dev_xstats_get(struct rte_eth_dev *dev,
@@ -159,7 +159,7 @@ static int
 i40evf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id);
 static int
 i40evf_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id);
-static void i40evf_handle_pf_event(__rte_unused struct rte_eth_dev *dev,
+static void i40evf_handle_pf_event(struct rte_eth_dev *dev,
 				   uint8_t *msg,
 				   uint16_t msglen);
 
@@ -1318,9 +1318,8 @@ i40evf_uninit_vf(struct rte_eth_dev *dev)
 }
 
 static void
-i40evf_handle_pf_event(__rte_unused struct rte_eth_dev *dev,
-			   uint8_t *msg,
-			   __rte_unused uint16_t msglen)
+i40evf_handle_pf_event(struct rte_eth_dev *dev, uint8_t *msg,
+		__rte_unused uint16_t msglen)
 {
 	struct i40e_virtchnl_pf_event *pf_msg =
 			(struct i40e_virtchnl_pf_event *)msg;

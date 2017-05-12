@@ -1588,7 +1588,7 @@ fm10k_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 }
 
 static void
-fm10k_vlan_offload_set(__rte_unused struct rte_eth_dev *dev, int mask)
+fm10k_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 {
 	if (mask & ETH_VLAN_STRIP_MASK) {
 		if (!dev->data->dev_conf.rxmode.hw_vlan_strip)

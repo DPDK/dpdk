@@ -268,31 +268,31 @@ bond_ethdev_lsc_event_callback(uint8_t port_id, enum rte_eth_event_type type,
 		void *param);
 
 int
-bond_ethdev_parse_slave_port_kvarg(const char *key __rte_unused,
+bond_ethdev_parse_slave_port_kvarg(const char *key,
 		const char *value, void *extra_args);
 
 int
-bond_ethdev_parse_slave_mode_kvarg(const char *key __rte_unused,
+bond_ethdev_parse_slave_mode_kvarg(const char *key,
 		const char *value, void *extra_args);
 
 int
-bond_ethdev_parse_socket_id_kvarg(const char *key __rte_unused,
+bond_ethdev_parse_socket_id_kvarg(const char *key,
 		const char *value, void *extra_args);
 
 int
-bond_ethdev_parse_primary_slave_port_id_kvarg(const char *key __rte_unused,
+bond_ethdev_parse_primary_slave_port_id_kvarg(const char *key,
 		const char *value, void *extra_args);
 
 int
-bond_ethdev_parse_balance_xmit_policy_kvarg(const char *key __rte_unused,
+bond_ethdev_parse_balance_xmit_policy_kvarg(const char *key,
 		const char *value, void *extra_args);
 
 int
-bond_ethdev_parse_bond_mac_addr_kvarg(const char *key __rte_unused,
+bond_ethdev_parse_bond_mac_addr_kvarg(const char *key,
 		const char *value, void *extra_args);
 
 int
-bond_ethdev_parse_time_ms_kvarg(const char *key __rte_unused,
+bond_ethdev_parse_time_ms_kvarg(const char *key,
 		const char *value, void *extra_args);
 
 void

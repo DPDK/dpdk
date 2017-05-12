@@ -134,7 +134,7 @@ parse_port_id(const char *port_str)
 }
 
 int
-bond_ethdev_parse_slave_port_kvarg(const char *key __rte_unused,
+bond_ethdev_parse_slave_port_kvarg(const char *key,
 		const char *value, void *extra_args)
 {
 	struct bond_ethdev_slave_ports *slave_ports;

@@ -135,7 +135,7 @@ i40e_flow_parse_qinq_filter(struct rte_eth_dev *dev,
 			      struct rte_flow_error *error,
 			      union i40e_filter_t *filter);
 static int
-i40e_flow_parse_qinq_pattern(__rte_unused struct rte_eth_dev *dev,
+i40e_flow_parse_qinq_pattern(struct rte_eth_dev *dev,
 			      const struct rte_flow_item *pattern,
 			      struct rte_flow_error *error,
 			      struct i40e_tunnel_filter_conf *filter);

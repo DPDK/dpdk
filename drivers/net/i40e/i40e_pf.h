@@ -114,7 +114,7 @@ struct i40e_virtchnl_pvid_info {
 int i40e_pf_host_vf_reset(struct i40e_pf_vf *vf, bool do_hw_reset);
 void i40e_pf_host_handle_vf_msg(struct rte_eth_dev *dev,
 				uint16_t abs_vf_id, uint32_t opcode,
-				__rte_unused uint32_t retval,
+				uint32_t retval,
 				uint8_t *msg, uint16_t msglen);
 int i40e_pf_host_init(struct rte_eth_dev *dev);
 int i40e_pf_host_uninit(struct rte_eth_dev *dev);

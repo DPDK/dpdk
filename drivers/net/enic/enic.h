@@ -293,9 +293,9 @@ extern int enic_clsf_init(struct enic *enic);
 extern void enic_clsf_destroy(struct enic *enic);
 uint16_t enic_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 			uint16_t nb_pkts);
-uint16_t enic_dummy_recv_pkts(__rte_unused void *rx_queue,
-			      __rte_unused struct rte_mbuf **rx_pkts,
-			      __rte_unused uint16_t nb_pkts);
+uint16_t enic_dummy_recv_pkts(void *rx_queue,
+			      struct rte_mbuf **rx_pkts,
+			      uint16_t nb_pkts);
 uint16_t enic_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			       uint16_t nb_pkts);
 int enic_set_mtu(struct enic *enic, uint16_t new_mtu);
@@ -303,7 +303,7 @@ int enic_link_update(struct enic *enic);
 void enic_fdir_info(struct enic *enic);
 void enic_fdir_info_get(struct enic *enic, struct rte_eth_fdir_info *stats);
 void copy_fltr_v1(struct filter_v2 *fltr, struct rte_eth_fdir_input *input,
-		  __rte_unused struct rte_eth_fdir_masks *masks);
+		  struct rte_eth_fdir_masks *masks);
 void copy_fltr_v2(struct filter_v2 *fltr, struct rte_eth_fdir_input *input,
 		  struct rte_eth_fdir_masks *masks);
 #endif /* _ENIC_H_ */

@@ -3081,7 +3081,7 @@ eth_igb_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 #define E1000_RAH_POOLSEL_SHIFT      (18)
 static int
 eth_igb_rar_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
-	        uint32_t index, __rte_unused uint32_t pool)
+		uint32_t index, uint32_t pool)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint32_t rah;

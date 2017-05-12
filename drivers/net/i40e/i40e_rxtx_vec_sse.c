@@ -119,7 +119,7 @@ i40e_rxq_rearm(struct i40e_rx_queue *rxq)
 }
 
 static inline void
-desc_to_olflags_v(struct i40e_rx_queue *rxq, __m128i descs[4] __rte_unused,
+desc_to_olflags_v(struct i40e_rx_queue *rxq, __m128i descs[4],
 	struct rte_mbuf **rx_pkts)
 {
 	const __m128i mbuf_init = _mm_set_epi64x(0, rxq->mbuf_initializer);

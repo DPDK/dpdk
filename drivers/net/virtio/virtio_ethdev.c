@@ -71,7 +71,7 @@ static void virtio_dev_allmulticast_disable(struct rte_eth_dev *dev);
 static void virtio_dev_info_get(struct rte_eth_dev *dev,
 				struct rte_eth_dev_info *dev_info);
 static int virtio_dev_link_update(struct rte_eth_dev *dev,
-	__rte_unused int wait_to_complete);
+	int wait_to_complete);
 
 static void virtio_set_hwaddr(struct virtio_hw *hw);
 static void virtio_get_hwaddr(struct virtio_hw *hw);
@@ -89,16 +89,16 @@ static int virtio_vlan_filter_set(struct rte_eth_dev *dev,
 				uint16_t vlan_id, int on);
 static int virtio_mac_addr_add(struct rte_eth_dev *dev,
 				struct ether_addr *mac_addr,
-				uint32_t index, uint32_t vmdq __rte_unused);
+				uint32_t index, uint32_t vmdq);
 static void virtio_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index);
 static void virtio_mac_addr_set(struct rte_eth_dev *dev,
 				struct ether_addr *mac_addr);
 
 static int virtio_dev_queue_stats_mapping_set(
-	__rte_unused struct rte_eth_dev *eth_dev,
-	__rte_unused uint16_t queue_id,
-	__rte_unused uint8_t stat_idx,
-	__rte_unused uint8_t is_rx);
+	struct rte_eth_dev *eth_dev,
+	uint16_t queue_id,
+	uint8_t stat_idx,
+	uint8_t is_rx);
 
 /*
  * The set of PCI devices this driver supports

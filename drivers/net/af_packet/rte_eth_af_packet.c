@@ -565,7 +565,12 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 	int rc, tpver, discard;
 	int qsockfd = -1;
 	unsigned int i, q, rdsize;
-	int fanout_arg __rte_unused, bypass __rte_unused;
+#if defined(PACKET_FANOUT)
+	int fanout_arg;
+#endif
+#if defined(PACKET_QDISC_BYPASS)
+	int bypass;
+#endif
 
 	for (k_idx = 0; k_idx < kvlist->count; k_idx++) {
 		pair = &kvlist->pairs[k_idx];

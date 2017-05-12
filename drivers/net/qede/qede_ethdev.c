@@ -1241,7 +1241,7 @@ qede_get_xstats_count(struct qede_dev *qdev) {
 }
 
 static int
-qede_get_xstats_names(__rte_unused struct rte_eth_dev *dev,
+qede_get_xstats_names(struct rte_eth_dev *dev,
 		      struct rte_eth_xstat_name *xstats_names,
 		      __rte_unused unsigned int limit)
 {

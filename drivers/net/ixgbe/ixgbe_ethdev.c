@@ -187,13 +187,13 @@ ixgbe_dev_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
 		uint64_t *values, unsigned int n);
 static void ixgbe_dev_stats_reset(struct rte_eth_dev *dev);
 static void ixgbe_dev_xstats_reset(struct rte_eth_dev *dev);
-static int ixgbe_dev_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
+static int ixgbe_dev_xstats_get_names(struct rte_eth_dev *dev,
 	struct rte_eth_xstat_name *xstats_names,
-	__rte_unused unsigned int size);
-static int ixgbevf_dev_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
-	struct rte_eth_xstat_name *xstats_names, __rte_unused unsigned limit);
+	unsigned int size);
+static int ixgbevf_dev_xstats_get_names(struct rte_eth_dev *dev,
+	struct rte_eth_xstat_name *xstats_names, unsigned limit);
 static int ixgbe_dev_xstats_get_names_by_id(
-	__rte_unused struct rte_eth_dev *dev,
+	struct rte_eth_dev *dev,
 	struct rte_eth_xstat_name *xstats_names,
 	const uint64_t *ids,
 	unsigned int limit);
@@ -3194,7 +3194,7 @@ static int ixgbe_dev_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
 }
 
 static int ixgbe_dev_xstats_get_names_by_id(
-	__rte_unused struct rte_eth_dev *dev,
+	struct rte_eth_dev *dev,
 	struct rte_eth_xstat_name *xstats_names,
 	const uint64_t *ids,
 	unsigned int limit)
