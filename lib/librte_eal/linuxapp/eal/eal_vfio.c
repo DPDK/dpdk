@@ -189,7 +189,7 @@ vfio_group_device_get(int vfio_group_fd)
 	int i;
 
 	i = get_vfio_group_idx(vfio_group_fd);
-	if (i < 0 || i > VFIO_MAX_GROUPS)
+	if (i < 0 || i > (VFIO_MAX_GROUPS - 1))
 		RTE_LOG(ERR, EAL, "  wrong vfio_group index (%d)\n", i);
 	else
 		vfio_cfg.vfio_groups[i].devices++;
@@ -201,7 +201,7 @@ vfio_group_device_put(int vfio_group_fd)
 	int i;
 
 	i = get_vfio_group_idx(vfio_group_fd);
-	if (i < 0 || i > VFIO_MAX_GROUPS)
+	if (i < 0 || i > (VFIO_MAX_GROUPS - 1))
 		RTE_LOG(ERR, EAL, "  wrong vfio_group index (%d)\n", i);
 	else
 		vfio_cfg.vfio_groups[i].devices--;
@@ -213,7 +213,7 @@ vfio_group_device_count(int vfio_group_fd)
 	int i;
 
 	i = get_vfio_group_idx(vfio_group_fd);
-	if (i < 0 || i > VFIO_MAX_GROUPS) {
+	if (i < 0 || i > (VFIO_MAX_GROUPS - 1)) {
 		RTE_LOG(ERR, EAL, "  wrong vfio_group index (%d)\n", i);
 		return -1;
 	}
