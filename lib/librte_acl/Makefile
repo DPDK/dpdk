@@ -51,7 +51,10 @@ SRCS-$(CONFIG_RTE_LIBRTE_ACL) += acl_run_scalar.c
 
 ifneq ($(filter y,$(CONFIG_RTE_ARCH_ARM) $(CONFIG_RTE_ARCH_ARM64)),)
 SRCS-$(CONFIG_RTE_LIBRTE_ACL) += acl_run_neon.c
-CFLAGS_acl_run_neon.o += -flax-vector-conversions -Wno-maybe-uninitialized
+CFLAGS_acl_run_neon.o += -flax-vector-conversions
+ifeq ($(CONFIG_RTE_TOOLCHAIN_GCC),y)
+CFLAGS_acl_run_neon.o += -Wno-maybe-uninitialized
+endif
 else ifeq ($(CONFIG_RTE_ARCH_PPC_64),y)
 SRCS-$(CONFIG_RTE_LIBRTE_ACL) += acl_run_altivec.c
 else
