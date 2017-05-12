@@ -114,10 +114,6 @@ enum ioctl_mode {
 	REMOTE_ONLY,
 };
 
-static int
-tap_ioctl(struct pmd_internals *pmd, unsigned long request,
-	  struct ifreq *ifr, int set, enum ioctl_mode mode);
-
 static int tap_intr_handle_set(struct rte_eth_dev *dev, int set);
 
 /* Tun/Tap allocation routine
@@ -126,7 +122,7 @@ static int tap_intr_handle_set(struct rte_eth_dev *dev, int set);
  * supplied name.
  */
 static int
-tun_alloc(struct pmd_internals *pmd, uint16_t qid)
+tun_alloc(struct pmd_internals *pmd)
 {
 	struct ifreq ifr;
 #ifdef IFF_MULTI_QUEUE
@@ -225,75 +221,6 @@ tun_alloc(struct pmd_internals *pmd, uint16_t qid)
 			strerror(errno));
 	}
 
-	if (qid == 0) {
-		struct ifreq ifr;
-
-		/*
-		 * pmd->eth_addr contains the desired MAC, either from remote
-		 * or from a random assignment. Sync it with the tap netdevice.
-		 */
-		ifr.ifr_hwaddr.sa_family = AF_LOCAL;
-		rte_memcpy(ifr.ifr_hwaddr.sa_data, &pmd->eth_addr,
-			   ETHER_ADDR_LEN);
-		if (tap_ioctl(pmd, SIOCSIFHWADDR, &ifr, 0, LOCAL_ONLY) < 0)
-			goto error;
-
-		pmd->if_index = if_nametoindex(pmd->name);
-		if (!pmd->if_index) {
-			RTE_LOG(ERR, PMD,
-				"Could not find ifindex for %s: rte_flow won't be usable.\n",
-				pmd->name);
-			return fd;
-		}
-		if (!pmd->flower_support)
-			return fd;
-		if (qdisc_create_multiq(pmd->nlsk_fd, pmd->if_index) < 0) {
-			RTE_LOG(ERR, PMD,
-				"Could not create multiq qdisc for %s: rte_flow won't be usable.\n",
-				pmd->name);
-			return fd;
-		}
-		if (qdisc_create_ingress(pmd->nlsk_fd, pmd->if_index) < 0) {
-			RTE_LOG(ERR, PMD,
-				"Could not create multiq qdisc for %s: rte_flow won't be usable.\n",
-				pmd->name);
-			return fd;
-		}
-		if (pmd->remote_if_index) {
-			/*
-			 * Flush usually returns negative value because it tries
-			 * to delete every QDISC (and on a running device, one
-			 * QDISC at least is needed). Ignore negative return
-			 * value.
-			 */
-			qdisc_flush(pmd->nlsk_fd, pmd->remote_if_index);
-			if (qdisc_create_ingress(pmd->nlsk_fd,
-						 pmd->remote_if_index) < 0)
-				goto remote_fail;
-			LIST_INIT(&pmd->implicit_flows);
-			if (tap_flow_implicit_create(
-				    pmd, TAP_REMOTE_LOCAL_MAC) < 0)
-				goto remote_fail;
-			if (tap_flow_implicit_create(
-				    pmd, TAP_REMOTE_BROADCAST) < 0)
-				goto remote_fail;
-			if (tap_flow_implicit_create(
-				    pmd, TAP_REMOTE_BROADCASTV6) < 0)
-				goto remote_fail;
-			if (tap_flow_implicit_create(
-				    pmd, TAP_REMOTE_TX) < 0)
-				goto remote_fail;
-		}
-	}
-
-	return fd;
-
-remote_fail:
-	RTE_LOG(ERR, PMD,
-		"Could not set up remote flow rules for %s: remote disabled.\n",
-		pmd->name);
-	pmd->remote_if_index = 0;
-	tap_flow_implicit_flush(pmd, NULL);
 	return fd;
 
 error:
@@ -830,21 +757,11 @@ tap_setup_queue(struct rte_eth_dev *dev,
 	if (fd == -1) {
 		RTE_LOG(INFO, PMD, "Add queue to TAP %s for qid %d\n",
 			pmd->name, qid);
-		fd = tun_alloc(pmd, qid);
+		fd = tun_alloc(pmd);
 		if (fd < 0) {
-			RTE_LOG(ERR, PMD, "tun_alloc(%s, %d) failed\n",
-				pmd->name, qid);
+			RTE_LOG(ERR, PMD, "%s: tun_alloc() failed.\n",
+				pmd->name);
 			return -1;
-		}
-		if (qid == 0) {
-			struct ifreq ifr;
-
-			ifr.ifr_mtu = dev->data->mtu;
-			if (tap_ioctl(pmd, SIOCSIFMTU, &ifr, 1,
-				      LOCAL_AND_REMOTE) < 0) {
-				close(fd);
-				return -1;
-			}
 		}
 	}
 
@@ -1135,6 +1052,7 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, char *tap_name,
 	struct rte_eth_dev *dev;
 	struct pmd_internals *pmd;
 	struct rte_eth_dev_data *data;
+	struct ifreq ifr;
 	int i;
 
 	RTE_LOG(DEBUG, PMD, "  TAP device on numa %u\n", rte_socket_id());
@@ -1200,37 +1118,132 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, char *tap_name,
 		eth_random_addr((uint8_t *)&pmd->eth_addr);
 	}
 
-	tap_kernel_support(pmd);
-	if (!pmd->flower_support)
-		return 0;
-	LIST_INIT(&pmd->flows);
-	/*
-	 * If no netlink socket can be created, then it will fail when
-	 * creating/destroying flow rules.
-	 */
-	pmd->nlsk_fd = nl_init(0);
-	if (strlen(remote_iface)) {
-		struct ifreq ifr;
+	/* Immediately create the netdevice (this will create the 1st queue). */
+	if (tap_setup_queue(dev, pmd, 0) == -1)
+		goto error_exit;
 
-		pmd->remote_if_index = if_nametoindex(remote_iface);
-		snprintf(pmd->remote_iface, RTE_ETH_NAME_MAX_LEN,
-			 "%s", remote_iface);
-		if (!pmd->remote_if_index) {
-			RTE_LOG(ERR, PMD, "Could not find %s ifindex: "
-				"remote interface will remain unconfigured\n",
-				remote_iface);
+	ifr.ifr_mtu = dev->data->mtu;
+	if (tap_ioctl(pmd, SIOCSIFMTU, &ifr, 1, LOCAL_AND_REMOTE) < 0)
+		goto error_exit;
+
+	memset(&ifr, 0, sizeof(struct ifreq));
+	ifr.ifr_hwaddr.sa_family = AF_LOCAL;
+	rte_memcpy(ifr.ifr_hwaddr.sa_data, &pmd->eth_addr, ETHER_ADDR_LEN);
+	if (tap_ioctl(pmd, SIOCSIFHWADDR, &ifr, 0, LOCAL_ONLY) < 0)
+		goto error_exit;
+
+	tap_kernel_support(pmd);
+	if (!pmd->flower_support) {
+		if (remote_iface[0]) {
+			RTE_LOG(ERR, PMD,
+				"%s: kernel does not support TC rules, required for remote feature.",
+				pmd->name);
+			goto error_exit;
+		} else {
+			RTE_LOG(INFO, PMD,
+				"%s: kernel too old for Flow API support.\n",
+				pmd->name);
 			return 0;
 		}
-		if (tap_ioctl(pmd, SIOCGIFHWADDR, &ifr, 0, REMOTE_ONLY) < 0)
-			goto error_exit;
+	}
+
+	/*
+	 * Set up everything related to rte_flow:
+	 * - netlink socket
+	 * - tap / remote if_index
+	 * - mandatory QDISCs
+	 * - rte_flow actual/implicit lists
+	 * - implicit rules
+	 */
+	pmd->nlsk_fd = nl_init(0);
+	if (pmd->nlsk_fd == -1) {
+		RTE_LOG(WARNING, PMD, "%s: failed to create netlink socket.",
+			pmd->name);
+		goto disable_rte_flow;
+	}
+	pmd->if_index = if_nametoindex(pmd->name);
+	if (!pmd->if_index) {
+		RTE_LOG(ERR, PMD, "%s: failed to get if_index.", pmd->name);
+		goto disable_rte_flow;
+	}
+	if (qdisc_create_multiq(pmd->nlsk_fd, pmd->if_index) < 0) {
+		RTE_LOG(ERR, PMD, "%s: failed to create multiq qdisc.",
+			pmd->name);
+		goto disable_rte_flow;
+	}
+	if (qdisc_create_ingress(pmd->nlsk_fd, pmd->if_index) < 0) {
+		RTE_LOG(ERR, PMD, "%s: failed to create ingress qdisc.",
+			pmd->name);
+		goto disable_rte_flow;
+	}
+	LIST_INIT(&pmd->flows);
+
+	if (strlen(remote_iface)) {
+		pmd->remote_if_index = if_nametoindex(remote_iface);
+		if (!pmd->remote_if_index) {
+			RTE_LOG(ERR, PMD, "%s: failed to get %s if_index.",
+				pmd->name, remote_iface);
+			goto error_remote;
+		}
+		snprintf(pmd->remote_iface, RTE_ETH_NAME_MAX_LEN,
+			 "%s", remote_iface);
+		if (tap_ioctl(pmd, SIOCGIFHWADDR, &ifr, 0, REMOTE_ONLY) < 0) {
+			RTE_LOG(ERR, PMD, "%s: failed to get %s MAC address.",
+				pmd->name, pmd->remote_iface);
+			goto error_remote;
+		}
 		rte_memcpy(&pmd->eth_addr, ifr.ifr_hwaddr.sa_data,
 			   ETHER_ADDR_LEN);
+		/* The desired MAC is already in ifreq after SIOCGIFHWADDR. */
+		if (tap_ioctl(pmd, SIOCSIFHWADDR, &ifr, 0, LOCAL_ONLY) < 0) {
+			RTE_LOG(ERR, PMD, "%s: failed to get %s MAC address.",
+				pmd->name, remote_iface);
+			goto error_remote;
+		}
+
+		/*
+		 * Flush usually returns negative value because it tries to
+		 * delete every QDISC (and on a running device, one QDISC at
+		 * least is needed). Ignore negative return value.
+		 */
+		qdisc_flush(pmd->nlsk_fd, pmd->remote_if_index);
+		if (qdisc_create_ingress(pmd->nlsk_fd,
+					 pmd->remote_if_index) < 0) {
+			RTE_LOG(ERR, PMD, "%s: failed to create ingress qdisc.",
+				pmd->remote_iface);
+			goto error_remote;
+		}
+		LIST_INIT(&pmd->implicit_flows);
+		if (tap_flow_implicit_create(pmd, TAP_REMOTE_TX) < 0 ||
+		    tap_flow_implicit_create(pmd, TAP_REMOTE_LOCAL_MAC) < 0 ||
+		    tap_flow_implicit_create(pmd, TAP_REMOTE_BROADCAST) < 0 ||
+		    tap_flow_implicit_create(pmd, TAP_REMOTE_BROADCASTV6) < 0) {
+			RTE_LOG(ERR, PMD,
+				"%s: failed to create implicit rules.",
+				pmd->name);
+			goto error_remote;
+		}
 	}
 
 	return 0;
 
+disable_rte_flow:
+	RTE_LOG(ERR, PMD, " Disabling rte flow support: %s(%d)\n",
+		strerror(errno), errno);
+	if (strlen(remote_iface)) {
+		RTE_LOG(ERR, PMD, "Remote feature requires flow support.\n");
+		goto error_exit;
+	}
+	pmd->flower_support = 0;
+	return 0;
+
+error_remote:
+	RTE_LOG(ERR, PMD, " Can't set up remote feature: %s(%d)\n",
+		strerror(errno), errno);
+	tap_flow_implicit_flush(pmd, NULL);
+
 error_exit:
-	RTE_LOG(DEBUG, PMD, "TAP Unable to initialize %s\n",
+	RTE_LOG(ERR, PMD, "TAP Unable to initialize %s\n",
 		rte_vdev_device_name(vdev));
 
 	rte_free(data);
