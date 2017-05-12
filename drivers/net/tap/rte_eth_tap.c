@@ -41,6 +41,7 @@
 #include <rte_vdev.h>
 #include <rte_kvargs.h>
 #include <rte_net.h>
+#include <rte_debug.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -445,6 +446,24 @@ pmd_tx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	return num_tx;
 }
 
+static const char *
+tap_ioctl_req2str(unsigned long request)
+{
+	switch (request) {
+	case SIOCSIFFLAGS:
+		return "SIOCSIFFLAGS";
+	case SIOCGIFFLAGS:
+		return "SIOCGIFFLAGS";
+	case SIOCGIFHWADDR:
+		return "SIOCGIFHWADDR";
+	case SIOCSIFHWADDR:
+		return "SIOCSIFHWADDR";
+	case SIOCSIFMTU:
+		return "SIOCSIFMTU";
+	}
+	return "UNKNOWN";
+}
+
 static int
 tap_ioctl(struct pmd_internals *pmd, unsigned long request,
 	  struct ifreq *ifr, int set, enum ioctl_mode mode)
@@ -480,9 +499,7 @@ apply:
 	case SIOCSIFMTU:
 		break;
 	default:
-		RTE_LOG(WARNING, PMD, "%s: ioctl() called with wrong arg\n",
-			pmd->name);
-		return -EINVAL;
+		RTE_ASSERT(!"unsupported request type: must not happen");
 	}
 	if (ioctl(pmd->ioctl_sock, request, ifr) < 0)
 		goto error;
@@ -491,8 +508,8 @@ apply:
 	return 0;
 
 error:
-	RTE_LOG(ERR, PMD, "%s: ioctl(%lu) failed with error: %s\n",
-		ifr->ifr_name, request, strerror(errno));
+	RTE_LOG(DEBUG, PMD, "%s: %s(%s) failed: %s(%d)\n", ifr->ifr_name,
+		__func__, tap_ioctl_req2str(request), strerror(errno), errno);
 	return -errno;
 }
 
@@ -774,12 +791,8 @@ tap_mac_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
 		return;
 	}
 	/* Check the actual current MAC address on the tap netdevice */
-	if (tap_ioctl(pmd, SIOCGIFHWADDR, &ifr, 0, LOCAL_ONLY) != 0) {
-		RTE_LOG(ERR, PMD,
-			"%s: couldn't check current tap MAC address\n",
-			dev->data->name);
+	if (tap_ioctl(pmd, SIOCGIFHWADDR, &ifr, 0, LOCAL_ONLY) != 0)
 		return;
-	}
 	if (is_same_ether_addr((struct ether_addr *)&ifr.ifr_hwaddr.sa_data,
 			       mac_addr))
 		return;
@@ -1230,10 +1243,8 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, char *tap_name,
 				remote_iface);
 			return 0;
 		}
-		if (tap_ioctl(pmd, SIOCGIFHWADDR, &ifr, 0, REMOTE_ONLY) < 0) {
-			RTE_LOG(ERR, PMD, "Could not get remote MAC address\n");
+		if (tap_ioctl(pmd, SIOCGIFHWADDR, &ifr, 0, REMOTE_ONLY) < 0)
 			goto error_exit;
-		}
 		rte_memcpy(&pmd->eth_addr, ifr.ifr_hwaddr.sa_data,
 			   ETHER_ADDR_LEN);
 	}
