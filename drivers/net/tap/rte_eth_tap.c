@@ -825,29 +825,25 @@ tap_setup_queue(struct rte_eth_dev *dev,
 	struct pmd_internals *pmd = dev->data->dev_private;
 	struct rx_queue *rx = &internals->rxq[qid];
 	struct tx_queue *tx = &internals->txq[qid];
-	int fd;
+	int fd = rx->fd == -1 ? tx->fd : rx->fd;
 
-	fd = rx->fd;
-	if (fd < 0) {
-		fd = tx->fd;
+	if (fd == -1) {
+		RTE_LOG(INFO, PMD, "Add queue to TAP %s for qid %d\n",
+			pmd->name, qid);
+		fd = tun_alloc(pmd, qid);
 		if (fd < 0) {
-			RTE_LOG(INFO, PMD, "Add queue to TAP %s for qid %d\n",
+			RTE_LOG(ERR, PMD, "tun_alloc(%s, %d) failed\n",
 				pmd->name, qid);
-			fd = tun_alloc(pmd, qid);
-			if (fd < 0) {
-				RTE_LOG(ERR, PMD, "tun_alloc(%s, %d) failed\n",
-					pmd->name, qid);
-				return -1;
-			}
-			if (qid == 0) {
-				struct ifreq ifr;
+			return -1;
+		}
+		if (qid == 0) {
+			struct ifreq ifr;
 
-				ifr.ifr_mtu = dev->data->mtu;
-				if (tap_ioctl(pmd, SIOCSIFMTU, &ifr, 1,
-					      LOCAL_AND_REMOTE) < 0) {
-					close(fd);
-					return -1;
-				}
+			ifr.ifr_mtu = dev->data->mtu;
+			if (tap_ioctl(pmd, SIOCSIFMTU, &ifr, 1,
+				      LOCAL_AND_REMOTE) < 0) {
+				close(fd);
+				return -1;
 			}
 		}
 	}
