@@ -54,7 +54,8 @@ rte_eal_wait_lcore(unsigned slave_id)
 		return 0;
 
 	while (lcore_config[slave_id].state != WAIT &&
-	       lcore_config[slave_id].state != FINISHED);
+	       lcore_config[slave_id].state != FINISHED)
+		rte_pause();
 
 	rte_rmb();
 
