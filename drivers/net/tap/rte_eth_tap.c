@@ -705,11 +705,11 @@ tap_allmulti_disable(struct rte_eth_dev *dev)
 		tap_flow_implicit_destroy(pmd, TAP_REMOTE_ALLMULTI);
 }
 
-
 static void
 tap_mac_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
 {
 	struct pmd_internals *pmd = dev->data->dev_private;
+	enum ioctl_mode mode = LOCAL_ONLY;
 	struct ifreq ifr;
 
 	if (is_zero_ether_addr(mac_addr)) {
@@ -718,15 +718,20 @@ tap_mac_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
 		return;
 	}
 	/* Check the actual current MAC address on the tap netdevice */
-	if (tap_ioctl(pmd, SIOCGIFHWADDR, &ifr, 0, LOCAL_ONLY) != 0)
+	if (tap_ioctl(pmd, SIOCGIFHWADDR, &ifr, 0, LOCAL_ONLY) < 0)
 		return;
 	if (is_same_ether_addr((struct ether_addr *)&ifr.ifr_hwaddr.sa_data,
 			       mac_addr))
 		return;
-
+	/* Check the current MAC address on the remote */
+	if (tap_ioctl(pmd, SIOCGIFHWADDR, &ifr, 0, REMOTE_ONLY) < 0)
+		return;
+	if (!is_same_ether_addr((struct ether_addr *)&ifr.ifr_hwaddr.sa_data,
+			       mac_addr))
+		mode = LOCAL_AND_REMOTE;
 	ifr.ifr_hwaddr.sa_family = AF_LOCAL;
 	rte_memcpy(ifr.ifr_hwaddr.sa_data, mac_addr, ETHER_ADDR_LEN);
-	if (tap_ioctl(pmd, SIOCSIFHWADDR, &ifr, 1, LOCAL_AND_REMOTE) < 0)
+	if (tap_ioctl(pmd, SIOCSIFHWADDR, &ifr, 1, mode) < 0)
 		return;
 	rte_memcpy(&pmd->eth_addr, mac_addr, ETHER_ADDR_LEN);
 	if (pmd->remote_if_index) {
