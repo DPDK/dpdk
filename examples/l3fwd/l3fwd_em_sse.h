@@ -45,7 +45,7 @@
 
 #include "l3fwd_sse.h"
 
-static inline __attribute__((always_inline)) uint16_t
+static __rte_always_inline uint16_t
 em_get_dst_port(const struct lcore_conf *qconf, struct rte_mbuf *pkt,
 		uint8_t portid)
 {

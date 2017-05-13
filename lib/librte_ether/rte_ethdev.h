@@ -3266,7 +3266,7 @@ rte_eth_tx_buffer_flush(uint8_t port_id, uint16_t queue_id,
  *     causing N packets to be sent, and the error callback to be called for
  *     the rest.
  */
-static inline uint16_t __attribute__((always_inline))
+static __rte_always_inline uint16_t
 rte_eth_tx_buffer(uint8_t port_id, uint16_t queue_id,
 		struct rte_eth_dev_tx_buffer *buffer, struct rte_mbuf *tx_pkt)
 {

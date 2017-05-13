@@ -55,7 +55,7 @@ is_valid_virt_queue_idx(uint32_t idx, int is_tx, uint32_t nr_vring)
 	return (is_tx ^ (idx & 1)) == 0 && idx < nr_vring;
 }
 
-static inline void __attribute__((always_inline))
+static __rte_always_inline void
 do_flush_shadow_used_ring(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			  uint16_t to, uint16_t from, uint16_t size)
 {
@@ -67,7 +67,7 @@ do_flush_shadow_used_ring(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			size * sizeof(struct vring_used_elem));
 }
 
-static inline void __attribute__((always_inline))
+static __rte_always_inline void
 flush_shadow_used_ring(struct virtio_net *dev, struct vhost_virtqueue *vq)
 {
 	uint16_t used_idx = vq->last_used_idx & (vq->size - 1);
@@ -95,7 +95,7 @@ flush_shadow_used_ring(struct virtio_net *dev, struct vhost_virtqueue *vq)
 		sizeof(vq->used->idx));
 }
 
-static inline void __attribute__((always_inline))
+static __rte_always_inline void
 update_shadow_used_ring(struct vhost_virtqueue *vq,
 			 uint16_t desc_idx, uint16_t len)
 {
@@ -153,7 +153,7 @@ virtio_enqueue_offload(struct rte_mbuf *m_buf, struct virtio_net_hdr *net_hdr)
 	}
 }
 
-static inline int __attribute__((always_inline))
+static __rte_always_inline int
 copy_mbuf_to_desc(struct virtio_net *dev, struct vring_desc *descs,
 		  struct rte_mbuf *m, uint16_t desc_idx, uint32_t size)
 {
@@ -237,7 +237,7 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vring_desc *descs,
  * added to the RX queue. This function works when the mbuf is scattered, but
  * it doesn't support the mergeable feature.
  */
-static inline uint32_t __attribute__((always_inline))
+static __rte_always_inline uint32_t
 virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 	      struct rte_mbuf **pkts, uint32_t count)
 {
@@ -335,7 +335,7 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 	return count;
 }
 
-static inline int __attribute__((always_inline))
+static __rte_always_inline int
 fill_vec_buf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			 uint32_t avail_idx, uint32_t *vec_idx,
 			 struct buf_vector *buf_vec, uint16_t *desc_chain_head,
@@ -424,7 +424,7 @@ reserve_avail_buf_mergeable(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	return 0;
 }
 
-static inline int __attribute__((always_inline))
+static __rte_always_inline int
 copy_mbuf_to_desc_mergeable(struct virtio_net *dev, struct rte_mbuf *m,
 			    struct buf_vector *buf_vec, uint16_t num_buffers)
 {
@@ -512,7 +512,7 @@ copy_mbuf_to_desc_mergeable(struct virtio_net *dev, struct rte_mbuf *m,
 	return 0;
 }
 
-static inline uint32_t __attribute__((always_inline))
+static __rte_always_inline uint32_t
 virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id,
 	struct rte_mbuf **pkts, uint32_t count)
 {
@@ -655,7 +655,7 @@ parse_ethernet(struct rte_mbuf *m, uint16_t *l4_proto, void **l4_hdr)
 	}
 }
 
-static inline void __attribute__((always_inline))
+static __rte_always_inline void
 vhost_dequeue_offload(struct virtio_net_hdr *hdr, struct rte_mbuf *m)
 {
 	uint16_t l4_proto = 0;
@@ -743,13 +743,13 @@ make_rarp_packet(struct rte_mbuf *rarp_mbuf, const struct ether_addr *mac)
 	return 0;
 }
 
-static inline void __attribute__((always_inline))
+static __rte_always_inline void
 put_zmbuf(struct zcopy_mbuf *zmbuf)
 {
 	zmbuf->in_use = 0;
 }
 
-static inline int __attribute__((always_inline))
+static __rte_always_inline int
 copy_desc_to_mbuf(struct virtio_net *dev, struct vring_desc *descs,
 		  uint16_t max_desc, struct rte_mbuf *m, uint16_t desc_idx,
 		  struct rte_mempool *mbuf_pool)
@@ -899,7 +899,7 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vring_desc *descs,
 	return 0;
 }
 
-static inline void __attribute__((always_inline))
+static __rte_always_inline void
 update_used_ring(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		 uint32_t used_idx, uint32_t desc_idx)
 {
@@ -910,7 +910,7 @@ update_used_ring(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			sizeof(vq->used->ring[used_idx]));
 }
 
-static inline void __attribute__((always_inline))
+static __rte_always_inline void
 update_used_idx(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		uint32_t count)
 {
@@ -930,7 +930,7 @@ update_used_idx(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		eventfd_write(vq->callfd, (eventfd_t)1);
 }
 
-static inline struct zcopy_mbuf *__attribute__((always_inline))
+static __rte_always_inline struct zcopy_mbuf *
 get_zmbuf(struct vhost_virtqueue *vq)
 {
 	uint16_t i;
@@ -961,7 +961,7 @@ again:
 	return NULL;
 }
 
-static inline bool __attribute__((always_inline))
+static __rte_always_inline bool
 mbuf_is_consumed(struct rte_mbuf *m)
 {
 	while (m) {

@@ -191,7 +191,7 @@ struct layout {
 	dst->c = src->c;					\
 }
 
-static inline __attribute__((always_inline)) void
+static __rte_always_inline void
 pkt_work_routing(
 	struct rte_mbuf *pkt,
 	struct rte_pipeline_table_entry *table_entry,
@@ -317,7 +317,7 @@ pkt_work_routing(
 	}
 }
 
-static inline __attribute__((always_inline)) void
+static __rte_always_inline void
 pkt4_work_routing(
 	struct rte_mbuf **pkts,
 	struct rte_pipeline_table_entry **table_entries,

@@ -48,7 +48,7 @@ struct fo_scheduler_qp_ctx {
 	uint8_t deq_idx;
 };
 
-static inline uint16_t __attribute__((always_inline))
+static __rte_always_inline uint16_t
 failover_slave_enqueue(struct scheduler_slave *slave, uint8_t slave_idx,
 		struct rte_crypto_op **ops, uint16_t nb_ops)
 {

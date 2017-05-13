@@ -86,7 +86,7 @@ static const rte_ymm_t ymm_range_base = {
  * tr_hi contains high 32 bits for 8 transition.
  * next_input contains up to 4 input bytes for 8 flows.
  */
-static inline __attribute__((always_inline)) ymm_t
+static __rte_always_inline ymm_t
 transition8(ymm_t next_input, const uint64_t *trans, ymm_t *tr_lo, ymm_t *tr_hi)
 {
 	const int32_t *tr;

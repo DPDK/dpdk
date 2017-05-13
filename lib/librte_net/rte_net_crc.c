@@ -116,7 +116,7 @@ crc32_eth_init_lut(uint32_t poly,
 	}
 }
 
-static inline __attribute__((always_inline)) uint32_t
+static __rte_always_inline uint32_t
 crc32_eth_calc_lut(const uint8_t *data,
 	uint32_t data_len,
 	uint32_t crc,

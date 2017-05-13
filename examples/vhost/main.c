@@ -691,7 +691,7 @@ static unsigned check_ports_num(unsigned nb_ports)
 	return valid_num_ports;
 }
 
-static inline struct vhost_dev *__attribute__((always_inline))
+static __rte_always_inline struct vhost_dev *
 find_vhost_dev(struct ether_addr *mac)
 {
 	struct vhost_dev *vdev;
@@ -791,7 +791,7 @@ unlink_vmdq(struct vhost_dev *vdev)
 	}
 }
 
-static inline void __attribute__((always_inline))
+static __rte_always_inline void
 virtio_xmit(struct vhost_dev *dst_vdev, struct vhost_dev *src_vdev,
 	    struct rte_mbuf *m)
 {
@@ -815,7 +815,7 @@ virtio_xmit(struct vhost_dev *dst_vdev, struct vhost_dev *src_vdev,
  * Check if the packet destination MAC address is for a local device. If so then put
  * the packet on that devices RX queue. If not then return.
  */
-static inline int __attribute__((always_inline))
+static __rte_always_inline int
 virtio_tx_local(struct vhost_dev *vdev, struct rte_mbuf *m)
 {
 	struct ether_hdr *pkt_hdr;
@@ -851,7 +851,7 @@ virtio_tx_local(struct vhost_dev *vdev, struct rte_mbuf *m)
  * Check if the destination MAC of a packet is one local VM,
  * and get its vlan tag, and offset if it is.
  */
-static inline int __attribute__((always_inline))
+static __rte_always_inline int
 find_local_dest(struct vhost_dev *vdev, struct rte_mbuf *m,
 	uint32_t *offset, uint16_t *vlan_tag)
 {
@@ -919,7 +919,7 @@ free_pkts(struct rte_mbuf **pkts, uint16_t n)
 		rte_pktmbuf_free(pkts[n]);
 }
 
-static inline void __attribute__((always_inline))
+static __rte_always_inline void
 do_drain_mbuf_table(struct mbuf_table *tx_q)
 {
 	uint16_t count;
@@ -936,7 +936,7 @@ do_drain_mbuf_table(struct mbuf_table *tx_q)
  * This function routes the TX packet to the correct interface. This
  * may be a local device or the physical port.
  */
-static inline void __attribute__((always_inline))
+static __rte_always_inline void
 virtio_tx_route(struct vhost_dev *vdev, struct rte_mbuf *m, uint16_t vlan_tag)
 {
 	struct mbuf_table *tx_q;
@@ -1024,7 +1024,7 @@ queue2nic:
 }
 
 
-static inline void __attribute__((always_inline))
+static __rte_always_inline void
 drain_mbuf_table(struct mbuf_table *tx_q)
 {
 	static uint64_t prev_tsc;
@@ -1044,7 +1044,7 @@ drain_mbuf_table(struct mbuf_table *tx_q)
 	}
 }
 
-static inline void __attribute__((always_inline))
+static __rte_always_inline void
 drain_eth_rx(struct vhost_dev *vdev)
 {
 	uint16_t rx_count, enqueue_count;
@@ -1088,7 +1088,7 @@ drain_eth_rx(struct vhost_dev *vdev)
 	free_pkts(pkts, rx_count);
 }
 
-static inline void __attribute__((always_inline))
+static __rte_always_inline void
 drain_virtio_tx(struct vhost_dev *vdev)
 {
 	struct rte_mbuf *pkts[MAX_PKT_BURST];

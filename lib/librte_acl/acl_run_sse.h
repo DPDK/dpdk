@@ -149,7 +149,7 @@ acl_process_matches(xmm_t *indices, int slot, const struct rte_acl_ctx *ctx,
 /*
  * Check for any match in 4 transitions (contained in 2 SSE registers)
  */
-static inline __attribute__((always_inline)) void
+static __rte_always_inline void
 acl_match_check_x4(int slot, const struct rte_acl_ctx *ctx, struct parms *parms,
 	struct acl_flow_data *flows, xmm_t *indices1, xmm_t *indices2,
 	xmm_t match_mask)
@@ -176,7 +176,7 @@ acl_match_check_x4(int slot, const struct rte_acl_ctx *ctx, struct parms *parms,
 /*
  * Process 4 transitions (in 2 XMM registers) in parallel
  */
-static inline __attribute__((always_inline)) xmm_t
+static __rte_always_inline xmm_t
 transition4(xmm_t next_input, const uint64_t *trans,
 	xmm_t *indices1, xmm_t *indices2)
 {

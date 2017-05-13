@@ -559,7 +559,7 @@ check_ports_num(unsigned max_nb_ports)
  * This function routes the TX packet to the correct interface. This may be a local device
  * or the physical port.
  */
-static inline void __attribute__((always_inline))
+static __rte_always_inline void
 virtio_tx_route(struct vhost_dev *vdev, struct rte_mbuf *m)
 {
 	struct mbuf_table *tx_q;

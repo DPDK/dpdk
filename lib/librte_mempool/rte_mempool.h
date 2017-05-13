@@ -993,7 +993,7 @@ rte_mempool_cache_free(struct rte_mempool_cache *cache);
  * @param mp
  *   A pointer to the mempool.
  */
-static inline void __attribute__((always_inline))
+static __rte_always_inline void
 rte_mempool_cache_flush(struct rte_mempool_cache *cache,
 			struct rte_mempool *mp)
 {
@@ -1011,7 +1011,7 @@ rte_mempool_cache_flush(struct rte_mempool_cache *cache,
  * @return
  *   A pointer to the mempool cache or NULL if disabled or non-EAL thread.
  */
-static inline struct rte_mempool_cache *__attribute__((always_inline))
+static __rte_always_inline struct rte_mempool_cache *
 rte_mempool_default_cache(struct rte_mempool *mp, unsigned lcore_id)
 {
 	if (mp->cache_size == 0)
@@ -1038,7 +1038,7 @@ rte_mempool_default_cache(struct rte_mempool *mp, unsigned lcore_id)
  *   The flags used for the mempool creation.
  *   Single-producer (MEMPOOL_F_SP_PUT flag) or multi-producers.
  */
-static inline void __attribute__((always_inline))
+static __rte_always_inline void
 __mempool_generic_put(struct rte_mempool *mp, void * const *obj_table,
 		      unsigned n, struct rte_mempool_cache *cache)
 {
@@ -1100,7 +1100,7 @@ ring_enqueue:
  *   The flags used for the mempool creation.
  *   Single-producer (MEMPOOL_F_SP_PUT flag) or multi-producers.
  */
-static inline void __attribute__((always_inline))
+static __rte_always_inline void
 rte_mempool_generic_put(struct rte_mempool *mp, void * const *obj_table,
 			unsigned n, struct rte_mempool_cache *cache,
 			__rte_unused int flags)
@@ -1123,7 +1123,7 @@ rte_mempool_generic_put(struct rte_mempool *mp, void * const *obj_table,
  * @param n
  *   The number of objects to add in the mempool from obj_table.
  */
-static inline void __attribute__((always_inline))
+static __rte_always_inline void
 rte_mempool_put_bulk(struct rte_mempool *mp, void * const *obj_table,
 		     unsigned n)
 {
@@ -1144,7 +1144,7 @@ rte_mempool_put_bulk(struct rte_mempool *mp, void * const *obj_table,
  * @param obj
  *   A pointer to the object to be added.
  */
-static inline void __attribute__((always_inline))
+static __rte_always_inline void
 rte_mempool_put(struct rte_mempool *mp, void *obj)
 {
 	rte_mempool_put_bulk(mp, &obj, 1);
@@ -1167,7 +1167,7 @@ rte_mempool_put(struct rte_mempool *mp, void *obj)
  *   - >=0: Success; number of objects supplied.
  *   - <0: Error; code of ring dequeue function.
  */
-static inline int __attribute__((always_inline))
+static __rte_always_inline int
 __mempool_generic_get(struct rte_mempool *mp, void **obj_table,
 		      unsigned n, struct rte_mempool_cache *cache)
 {
@@ -1248,7 +1248,7 @@ ring_dequeue:
  *   - 0: Success; objects taken.
  *   - -ENOENT: Not enough entries in the mempool; no object is retrieved.
  */
-static inline int __attribute__((always_inline))
+static __rte_always_inline int
 rte_mempool_generic_get(struct rte_mempool *mp, void **obj_table, unsigned n,
 			struct rte_mempool_cache *cache, __rte_unused int flags)
 {
@@ -1281,7 +1281,7 @@ rte_mempool_generic_get(struct rte_mempool *mp, void **obj_table, unsigned n,
  *   - 0: Success; objects taken
  *   - -ENOENT: Not enough entries in the mempool; no object is retrieved.
  */
-static inline int __attribute__((always_inline))
+static __rte_always_inline int
 rte_mempool_get_bulk(struct rte_mempool *mp, void **obj_table, unsigned n)
 {
 	struct rte_mempool_cache *cache;
@@ -1309,7 +1309,7 @@ rte_mempool_get_bulk(struct rte_mempool *mp, void **obj_table, unsigned n)
  *   - 0: Success; objects taken.
  *   - -ENOENT: Not enough entries in the mempool; no object is retrieved.
  */
-static inline int __attribute__((always_inline))
+static __rte_always_inline int
 rte_mempool_get(struct rte_mempool *mp, void **obj_p)
 {
 	return rte_mempool_get_bulk(mp, obj_p, 1);

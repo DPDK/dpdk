@@ -369,8 +369,8 @@ void lthread_scheduler_shutdown_all(void)
 /*
  * Resume a suspended lthread
  */
-static inline void
-_lthread_resume(struct lthread *lt) __attribute__ ((always_inline));
+static __rte_always_inline void
+_lthread_resume(struct lthread *lt);
 static inline void _lthread_resume(struct lthread *lt)
 {
 	struct lthread_sched *sched = THIS_SCHED;

@@ -32,7 +32,7 @@
 
 #include "ssovf_worker.h"
 
-static force_inline void
+static __rte_always_inline void
 ssows_new_event(struct ssows *ws, const struct rte_event *ev)
 {
 	const uint64_t event_ptr = ev->u64;
@@ -43,7 +43,7 @@ ssows_new_event(struct ssows *ws, const struct rte_event *ev)
 	ssows_add_work(ws, event_ptr, tag, new_tt, grp);
 }
 
-static force_inline void
+static __rte_always_inline void
 ssows_fwd_swtag(struct ssows *ws, const struct rte_event *ev, const uint8_t grp)
 {
 	const uint8_t cur_tt = ws->cur_tt;
@@ -72,7 +72,7 @@ ssows_fwd_swtag(struct ssows *ws, const struct rte_event *ev, const uint8_t grp)
 
 #define OCT_EVENT_TYPE_GRP_FWD (RTE_EVENT_TYPE_MAX - 1)
 
-static force_inline void
+static __rte_always_inline void
 ssows_fwd_group(struct ssows *ws, const struct rte_event *ev, const uint8_t grp)
 {
 	const uint64_t event_ptr = ev->u64;
@@ -95,7 +95,7 @@ ssows_fwd_group(struct ssows *ws, const struct rte_event *ev, const uint8_t grp)
 	ssows_add_work(ws, event_ptr, tag, new_tt, grp);
 }
 
-static force_inline void
+static __rte_always_inline void
 ssows_forward_event(struct ssows *ws, const struct rte_event *ev)
 {
 	const uint8_t grp = ev->queue_id;
@@ -112,14 +112,14 @@ ssows_forward_event(struct ssows *ws, const struct rte_event *ev)
 		ssows_fwd_group(ws, ev, grp);
 }
 
-static force_inline void
+static __rte_always_inline void
 ssows_release_event(struct ssows *ws)
 {
 	if (likely(ws->cur_tt != SSO_SYNC_UNTAGGED))
 		ssows_swtag_untag(ws);
 }
 
-force_inline uint16_t __hot
+__rte_always_inline uint16_t __hot
 ssows_deq(void *port, struct rte_event *ev, uint64_t timeout_ticks)
 {
 	struct ssows *ws = port;
@@ -135,7 +135,7 @@ ssows_deq(void *port, struct rte_event *ev, uint64_t timeout_ticks)
 	}
 }
 
-force_inline uint16_t __hot
+__rte_always_inline uint16_t __hot
 ssows_deq_timeout(void *port, struct rte_event *ev, uint64_t timeout_ticks)
 {
 	struct ssows *ws = port;
@@ -171,7 +171,7 @@ ssows_deq_timeout_burst(void *port, struct rte_event ev[], uint16_t nb_events,
 	return ssows_deq_timeout(port, ev, timeout_ticks);
 }
 
-force_inline uint16_t __hot
+__rte_always_inline uint16_t __hot
 ssows_enq(void *port, const struct rte_event *ev)
 {
 	struct ssows *ws = port;

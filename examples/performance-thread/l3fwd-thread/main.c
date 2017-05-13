@@ -720,7 +720,7 @@ send_single_packet(struct rte_mbuf *m, uint8_t port)
 
 #if ((APP_LOOKUP_METHOD == APP_LOOKUP_LPM) && \
 	(ENABLE_MULTI_BUFFER_OPTIMIZE == 1))
-static inline __attribute__((always_inline)) void
+static __rte_always_inline void
 send_packetsx4(uint8_t port,
 	struct rte_mbuf *m[], uint32_t num)
 {
@@ -1287,7 +1287,7 @@ simple_ipv6_fwd_8pkts(struct rte_mbuf *m[8], uint8_t portid)
 }
 #endif /* APP_LOOKUP_METHOD */
 
-static inline __attribute__((always_inline)) void
+static __rte_always_inline void
 l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid)
 {
 	struct ether_hdr *eth_hdr;
@@ -1375,7 +1375,7 @@ l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid)
  * If we encounter invalid IPV4 packet, then set destination port for it
  * to BAD_PORT value.
  */
-static inline __attribute__((always_inline)) void
+static __rte_always_inline void
 rfc1812_process(struct ipv4_hdr *ipv4_hdr, uint16_t *dp, uint32_t ptype)
 {
 	uint8_t ihl;
@@ -1403,7 +1403,7 @@ rfc1812_process(struct ipv4_hdr *ipv4_hdr, uint16_t *dp, uint32_t ptype)
 #if ((APP_LOOKUP_METHOD == APP_LOOKUP_LPM) && \
 	(ENABLE_MULTI_BUFFER_OPTIMIZE == 1))
 
-static inline __attribute__((always_inline)) uint16_t
+static __rte_always_inline uint16_t
 get_dst_port(struct rte_mbuf *pkt, uint32_t dst_ipv4, uint8_t portid)
 {
 	uint32_t next_hop;

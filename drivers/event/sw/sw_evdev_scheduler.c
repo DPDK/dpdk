@@ -362,7 +362,7 @@ sw_schedule_reorder(struct sw_evdev *sw, int qid_start, int qid_end)
 	return pkts_iter;
 }
 
-static inline void __attribute__((always_inline))
+static __rte_always_inline void
 sw_refill_pp_buf(struct sw_evdev *sw, struct sw_port *port)
 {
 	RTE_SET_USED(sw);
@@ -372,7 +372,7 @@ sw_refill_pp_buf(struct sw_evdev *sw, struct sw_port *port)
 			RTE_DIM(port->pp_buf));
 }
 
-static inline uint32_t __attribute__((always_inline))
+static __rte_always_inline uint32_t
 __pull_port_lb(struct sw_evdev *sw, uint32_t port_id, int allow_reorder)
 {
 	static struct reorder_buffer_entry dummy_rob;

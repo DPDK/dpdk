@@ -105,7 +105,7 @@ struct scheduler_session {
 			RTE_CRYPTODEV_SCHEDULER_MAX_NB_SLAVES];
 };
 
-static inline uint16_t __attribute__((always_inline))
+static __rte_always_inline uint16_t
 get_max_enqueue_order_count(struct rte_ring *order_ring, uint16_t nb_ops)
 {
 	uint32_t count = rte_ring_free_count(order_ring);
@@ -113,7 +113,7 @@ get_max_enqueue_order_count(struct rte_ring *order_ring, uint16_t nb_ops)
 	return count > nb_ops ? nb_ops : count;
 }
 
-static inline void __attribute__((always_inline))
+static __rte_always_inline void
 scheduler_order_insert(struct rte_ring *order_ring,
 		struct rte_crypto_op **ops, uint16_t nb_ops)
 {
@@ -125,7 +125,7 @@ scheduler_order_insert(struct rte_ring *order_ring,
 	op = ring[(order_ring->cons.head + pos) & order_ring->mask]; \
 } while (0)
 
-static inline uint16_t __attribute__((always_inline))
+static __rte_always_inline uint16_t
 scheduler_order_drain(struct rte_ring *order_ring,
 		struct rte_crypto_op **ops, uint16_t nb_ops)
 {

@@ -56,10 +56,6 @@ struct iq_ring {
 	struct rte_event ring[QID_IQ_DEPTH];
 };
 
-#ifndef force_inline
-#define force_inline inline __attribute__((always_inline))
-#endif
-
 static inline struct iq_ring *
 iq_ring_create(const char *name, unsigned int socket_id)
 {
@@ -81,19 +77,19 @@ iq_ring_destroy(struct iq_ring *r)
 	rte_free(r);
 }
 
-static force_inline uint16_t
+static __rte_always_inline uint16_t
 iq_ring_count(const struct iq_ring *r)
 {
 	return r->write_idx - r->read_idx;
 }
 
-static force_inline uint16_t
+static __rte_always_inline uint16_t
 iq_ring_free_count(const struct iq_ring *r)
 {
 	return QID_IQ_MASK - iq_ring_count(r);
 }
 
-static force_inline uint16_t
+static __rte_always_inline uint16_t
 iq_ring_enqueue_burst(struct iq_ring *r, struct rte_event *qes, uint16_t nb_qes)
 {
 	const uint16_t read = r->read_idx;
@@ -112,7 +108,7 @@ iq_ring_enqueue_burst(struct iq_ring *r, struct rte_event *qes, uint16_t nb_qes)
 	return nb_qes;
 }
 
-static force_inline uint16_t
+static __rte_always_inline uint16_t
 iq_ring_dequeue_burst(struct iq_ring *r, struct rte_event *qes, uint16_t nb_qes)
 {
 	uint16_t read = r->read_idx;
@@ -132,7 +128,7 @@ iq_ring_dequeue_burst(struct iq_ring *r, struct rte_event *qes, uint16_t nb_qes)
 }
 
 /* assumes there is space, from a previous dequeue_burst */
-static force_inline uint16_t
+static __rte_always_inline uint16_t
 iq_ring_put_back(struct iq_ring *r, struct rte_event *qes, uint16_t nb_qes)
 {
 	uint16_t i, read = r->read_idx;
@@ -144,19 +140,19 @@ iq_ring_put_back(struct iq_ring *r, struct rte_event *qes, uint16_t nb_qes)
 	return nb_qes;
 }
 
-static force_inline const struct rte_event *
+static __rte_always_inline const struct rte_event *
 iq_ring_peek(const struct iq_ring *r)
 {
 	return &r->ring[r->read_idx & QID_IQ_MASK];
 }
 
-static force_inline void
+static __rte_always_inline void
 iq_ring_pop(struct iq_ring *r)
 {
 	r->read_idx++;
 }
 
-static force_inline int
+static __rte_always_inline int
 iq_ring_enqueue(struct iq_ring *r, const struct rte_event *qe)
 {
 	const uint16_t read = r->read_idx;

@@ -42,17 +42,13 @@ enum {
 	SSO_SYNC_EMPTY
 };
 
-#ifndef force_inline
-#define force_inline inline __attribute__((always_inline))
-#endif
-
 #ifndef __hot
 #define __hot	__attribute__((hot))
 #endif
 
 /* SSO Operations */
 
-static force_inline uint16_t
+static __rte_always_inline uint16_t
 ssows_get_work(struct ssows *ws, struct rte_event *ev)
 {
 	uint64_t get_work0, get_work1;
@@ -70,7 +66,7 @@ ssows_get_work(struct ssows *ws, struct rte_event *ev)
 	return !!get_work1;
 }
 
-static force_inline void
+static __rte_always_inline void
 ssows_add_work(struct ssows *ws, const uint64_t event_ptr, const uint32_t tag,
 			const uint8_t new_tt, const uint8_t grp)
 {
@@ -80,7 +76,7 @@ ssows_add_work(struct ssows *ws, const uint64_t event_ptr, const uint32_t tag,
 	ssovf_store_pair(add_work0, event_ptr, ws->grps[grp]);
 }
 
-static force_inline void
+static __rte_always_inline void
 ssows_swtag_full(struct ssows *ws, const uint64_t event_ptr, const uint32_t tag,
 			const uint8_t new_tt, const uint8_t grp)
 {
@@ -92,7 +88,7 @@ ssows_swtag_full(struct ssows *ws, const uint64_t event_ptr, const uint32_t tag,
 				SSOW_VHWS_OP_SWTAG_FULL0));
 }
 
-static force_inline void
+static __rte_always_inline void
 ssows_swtag_desched(struct ssows *ws, uint32_t tag, uint8_t new_tt, uint8_t grp)
 {
 	uint64_t val;
@@ -101,7 +97,7 @@ ssows_swtag_desched(struct ssows *ws, uint32_t tag, uint8_t new_tt, uint8_t grp)
 	ssovf_write64(val, ws->base + SSOW_VHWS_OP_SWTAG_DESCHED);
 }
 
-static force_inline void
+static __rte_always_inline void
 ssows_swtag_norm(struct ssows *ws, uint32_t tag, uint8_t new_tt)
 {
 	uint64_t val;
@@ -110,27 +106,27 @@ ssows_swtag_norm(struct ssows *ws, uint32_t tag, uint8_t new_tt)
 	ssovf_write64(val, ws->base + SSOW_VHWS_OP_SWTAG_NORM);
 }
 
-static force_inline void
+static __rte_always_inline void
 ssows_swtag_untag(struct ssows *ws)
 {
 	ssovf_write64(0, ws->base + SSOW_VHWS_OP_SWTAG_UNTAG);
 	ws->cur_tt = SSO_SYNC_UNTAGGED;
 }
 
-static force_inline void
+static __rte_always_inline void
 ssows_upd_wqp(struct ssows *ws, uint8_t grp, uint64_t event_ptr)
 {
 	ssovf_store_pair((uint64_t)grp << 34, event_ptr, (ws->base +
 				SSOW_VHWS_OP_UPD_WQP_GRP0));
 }
 
-static force_inline void
+static __rte_always_inline void
 ssows_desched(struct ssows *ws)
 {
 	ssovf_write64(0, ws->base + SSOW_VHWS_OP_DESCHED);
 }
 
-static force_inline void
+static __rte_always_inline void
 ssows_swtag_wait(struct ssows *ws)
 {
 	/* Wait for the SWTAG/SWTAG_FULL operation */

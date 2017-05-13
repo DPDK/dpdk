@@ -36,7 +36,7 @@
 
 #include "l3fwd_sse.h"
 
-static inline __attribute__((always_inline)) uint16_t
+static __rte_always_inline uint16_t
 lpm_get_dst_port(const struct lcore_conf *qconf, struct rte_mbuf *pkt,
 		uint8_t portid)
 {
@@ -75,7 +75,7 @@ lpm_get_dst_port(const struct lcore_conf *qconf, struct rte_mbuf *pkt,
  * precalculated. If packet is ipv6 dst_addr is taken directly from packet
  * header and dst_ipv4 value is not used.
  */
-static inline __attribute__((always_inline)) uint16_t
+static __rte_always_inline uint16_t
 lpm_get_dst_port_with_ipv4(const struct lcore_conf *qconf, struct rte_mbuf *pkt,
 	uint32_t dst_ipv4, uint8_t portid)
 {

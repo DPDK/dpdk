@@ -102,7 +102,7 @@ reassemble_packets(struct i40e_rx_queue *rxq, struct rte_mbuf **rx_bufs,
 	return pkt_idx;
 }
 
-static inline int __attribute__((always_inline))
+static __rte_always_inline int
 i40e_tx_free_bufs(struct i40e_tx_queue *txq)
 {
 	struct i40e_tx_entry *txep;
@@ -159,7 +159,7 @@ i40e_tx_free_bufs(struct i40e_tx_queue *txq)
 	return txq->tx_rs_thresh;
 }
 
-static inline void __attribute__((always_inline))
+static __rte_always_inline void
 tx_backlog_entry(struct i40e_tx_entry *txep,
 		 struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {

@@ -738,7 +738,7 @@ vtx(volatile struct fm10k_tx_desc *txdp,
 		vtx1(txdp, *pkt, flags);
 }
 
-static inline int __attribute__((always_inline))
+static __rte_always_inline int
 fm10k_tx_free_bufs(struct fm10k_tx_queue *txq)
 {
 	struct rte_mbuf **txep;
@@ -794,7 +794,7 @@ fm10k_tx_free_bufs(struct fm10k_tx_queue *txq)
 	return txq->rs_thresh;
 }
 
-static inline void __attribute__((always_inline))
+static __rte_always_inline void
 tx_backlog_entry(struct rte_mbuf **txep,
 		 struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 {

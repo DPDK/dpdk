@@ -174,7 +174,7 @@ _qnode_pool_create(const char *name, int prealloc_size) {
 /*
  * Insert a node into the pool
  */
-static inline void __attribute__ ((always_inline))
+static __rte_always_inline void
 _qnode_pool_insert(struct qnode_pool *p, struct qnode *n)
 {
 	n->next = NULL;
@@ -198,7 +198,7 @@ _qnode_pool_insert(struct qnode_pool *p, struct qnode *n)
  * last item from the queue incurs the penalty of an atomic exchange. Since the
  * pool is maintained with a bulk pre-allocation the cost of this is amortised.
  */
-static inline struct qnode *__attribute__ ((always_inline))
+static __rte_always_inline struct qnode *
 _pool_remove(struct qnode_pool *p)
 {
 	struct qnode *head;
@@ -239,7 +239,7 @@ _pool_remove(struct qnode_pool *p)
  * This adds a retry to the _pool_remove function
  * defined above
  */
-static inline struct qnode *__attribute__ ((always_inline))
+static __rte_always_inline struct qnode *
 _qnode_pool_remove(struct qnode_pool *p)
 {
 	struct qnode *n;
@@ -259,7 +259,7 @@ _qnode_pool_remove(struct qnode_pool *p)
  * Allocate a node from the pool
  * If the pool is empty add mode nodes
  */
-static inline struct qnode *__attribute__ ((always_inline))
+static __rte_always_inline struct qnode *
 _qnode_alloc(void)
 {
 	struct qnode_pool *p = (THIS_SCHED)->qnode_pool;
@@ -304,7 +304,7 @@ _qnode_alloc(void)
 /*
 * free a queue node to the per scheduler pool from which it came
 */
-static inline void __attribute__ ((always_inline))
+static __rte_always_inline void
 _qnode_free(struct qnode *n)
 {
 	struct qnode_pool *p = n->pool;

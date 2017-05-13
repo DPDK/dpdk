@@ -510,7 +510,7 @@ static unsigned check_ports_num(unsigned nb_ports)
  * Function to convert guest physical addresses to vhost virtual addresses. This
  * is used to convert virtio buffer addresses.
  */
-static inline uint64_t __attribute__((always_inline))
+static __rte_always_inline uint64_t
 gpa_to_vva(struct virtio_net *dev, uint64_t guest_pa)
 {
 	struct virtio_memory_regions *region;
@@ -537,7 +537,7 @@ gpa_to_vva(struct virtio_net *dev, uint64_t guest_pa)
  * count is returned to indicate the number of packets that were succesfully
  * added to the RX queue.
  */
-static inline uint32_t __attribute__((always_inline))
+static __rte_always_inline uint32_t
 virtio_dev_rx(struct virtio_net *dev, struct rte_mbuf **pkts, uint32_t count)
 {
 	struct vhost_virtqueue *vq;
@@ -662,7 +662,7 @@ virtio_dev_rx(struct virtio_net *dev, struct rte_mbuf **pkts, uint32_t count)
 /*
  * Compares a packet destination MAC address to a device MAC address.
  */
-static inline int __attribute__((always_inline))
+static __rte_always_inline int
 ether_addr_cmp(struct ether_addr *ea, struct ether_addr *eb)
 {
 	return ((*(uint64_t *)ea ^ *(uint64_t *)eb) & MAC_ADDR_CMP) == 0;
@@ -757,7 +757,7 @@ unlink_vmdq(struct virtio_net *dev)
  * Check if the packet destination MAC address is for a local device. If so then put
  * the packet on that devices RX queue. If not then return.
  */
-static inline unsigned __attribute__((always_inline))
+static __rte_always_inline unsigned
 virtio_tx_local(struct virtio_net *dev, struct rte_mbuf *m)
 {
 	struct virtio_net_data_ll *dev_ll;
@@ -814,7 +814,7 @@ virtio_tx_local(struct virtio_net *dev, struct rte_mbuf *m)
  * This function routes the TX packet to the correct interface. This may be a local device
  * or the physical port.
  */
-static inline void __attribute__((always_inline))
+static __rte_always_inline void
 virtio_tx_route(struct virtio_net* dev, struct rte_mbuf *m, struct rte_mempool *mbuf_pool, uint16_t vlan_tag)
 {
 	struct mbuf_table *tx_q;
@@ -883,7 +883,7 @@ virtio_tx_route(struct virtio_net* dev, struct rte_mbuf *m, struct rte_mempool *
 	return;
 }
 
-static inline void __attribute__((always_inline))
+static __rte_always_inline void
 virtio_dev_tx(struct virtio_net* dev, struct rte_mempool *mbuf_pool)
 {
 	struct rte_mbuf m;

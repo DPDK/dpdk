@@ -49,7 +49,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdbool.h>
+
 #include <rte_byteorder.h>
+#include <rte_common.h>
 
 #ifndef __BYTE_ORDER__
 #error "Undefined endianness"
@@ -60,7 +62,7 @@
 #endif
 
 #ifndef __always_inline
-#define __always_inline (inline __attribute__((always_inline)))
+#define __always_inline __rte_always_inline
 #endif
 
 #ifndef __always_unused

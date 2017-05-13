@@ -80,7 +80,7 @@ vs_vhost_net_remove(struct vhost_dev *dev)
 	free(dev->mem);
 }
 
-static inline int __attribute__((always_inline))
+static __rte_always_inline int
 enqueue_pkt(struct vhost_dev *dev, struct rte_vhost_vring *vr,
 	    struct rte_mbuf *m, uint16_t desc_idx)
 {
@@ -217,7 +217,7 @@ vs_enqueue_pkts(struct vhost_dev *dev, uint16_t queue_id,
 	return count;
 }
 
-static inline int __attribute__((always_inline))
+static __rte_always_inline int
 dequeue_pkt(struct vhost_dev *dev, struct rte_vhost_vring *vr,
 	    struct rte_mbuf *m, uint16_t desc_idx,
 	    struct rte_mempool *mbuf_pool)

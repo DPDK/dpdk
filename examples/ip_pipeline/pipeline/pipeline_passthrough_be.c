@@ -76,7 +76,7 @@ static pipeline_msg_req_handler handlers[] = {
 		pipeline_msg_req_invalid_handler,
 };
 
-static inline __attribute__((always_inline)) void
+static __rte_always_inline void
 pkt_work_dma(
 	struct rte_mbuf *pkt,
 	void *arg,
@@ -121,7 +121,7 @@ pkt_work_dma(
 	}
 }
 
-static inline __attribute__((always_inline)) void
+static __rte_always_inline void
 pkt4_work_dma(
 	struct rte_mbuf **pkts,
 	void *arg,
@@ -217,7 +217,7 @@ pkt4_work_dma(
 	}
 }
 
-static inline __attribute__((always_inline)) void
+static __rte_always_inline void
 pkt_work_swap(
 	struct rte_mbuf *pkt,
 	void *arg)
@@ -241,7 +241,7 @@ pkt_work_swap(
 	}
 }
 
-static inline __attribute__((always_inline)) void
+static __rte_always_inline void
 pkt4_work_swap(
 	struct rte_mbuf **pkts,
 	void *arg)

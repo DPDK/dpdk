@@ -293,7 +293,7 @@ rte_port_ring_multi_writer_tx(void *port, struct rte_mbuf *pkt)
 	return 0;
 }
 
-static inline int __attribute__((always_inline))
+static __rte_always_inline int
 rte_port_ring_writer_tx_bulk_internal(void *port,
 		struct rte_mbuf **pkts,
 		uint64_t pkts_mask,
@@ -609,7 +609,7 @@ rte_port_ring_multi_writer_nodrop_tx(void *port, struct rte_mbuf *pkt)
 	return 0;
 }
 
-static inline int __attribute__((always_inline))
+static __rte_always_inline int
 rte_port_ring_writer_nodrop_tx_bulk_internal(void *port,
 		struct rte_mbuf **pkts,
 		uint64_t pkts_mask,

@@ -61,10 +61,6 @@ struct qe_ring {
 	struct rte_event ring[0] __rte_cache_aligned;
 };
 
-#ifndef force_inline
-#define force_inline inline __attribute__((always_inline))
-#endif
-
 static inline struct qe_ring *
 qe_ring_create(const char *name, unsigned int size, unsigned int socket_id)
 {
@@ -91,19 +87,19 @@ qe_ring_destroy(struct qe_ring *r)
 	rte_free(r);
 }
 
-static force_inline unsigned int
+static __rte_always_inline unsigned int
 qe_ring_count(const struct qe_ring *r)
 {
 	return r->write_idx - r->read_idx;
 }
 
-static force_inline unsigned int
+static __rte_always_inline unsigned int
 qe_ring_free_count(const struct qe_ring *r)
 {
 	return r->size - qe_ring_count(r);
 }
 
-static force_inline unsigned int
+static __rte_always_inline unsigned int
 qe_ring_enqueue_burst(struct qe_ring *r, const struct rte_event *qes,
 		unsigned int nb_qes, uint16_t *free_count)
 {
@@ -130,7 +126,7 @@ qe_ring_enqueue_burst(struct qe_ring *r, const struct rte_event *qes,
 	return nb_qes;
 }
 
-static force_inline unsigned int
+static __rte_always_inline unsigned int
 qe_ring_enqueue_burst_with_ops(struct qe_ring *r, const struct rte_event *qes,
 		unsigned int nb_qes, uint8_t *ops)
 {
@@ -157,7 +153,7 @@ qe_ring_enqueue_burst_with_ops(struct qe_ring *r, const struct rte_event *qes,
 	return nb_qes;
 }
 
-static force_inline unsigned int
+static __rte_always_inline unsigned int
 qe_ring_dequeue_burst(struct qe_ring *r, struct rte_event *qes,
 		unsigned int nb_qes)
 {

@@ -58,7 +58,7 @@ lpm_get_ipv6_dst_port(void *ipv6_hdr,  uint8_t portid, void *lookup_struct)
 			&next_hop) == 0) ?  next_hop : portid);
 }
 
-static inline __attribute__((always_inline)) void
+static __rte_always_inline void
 l3fwd_lpm_simple_forward(struct rte_mbuf *m, uint8_t portid,
 		struct lcore_conf *qconf)
 {

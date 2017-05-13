@@ -44,6 +44,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <rte_vect.h>
+#include <rte_common.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -64,8 +65,8 @@ extern "C" {
  * @return
  *   Pointer to the destination data.
  */
-static inline void *
-rte_memcpy(void *dst, const void *src, size_t n) __attribute__((always_inline));
+static __rte_always_inline void *
+rte_memcpy(void *dst, const void *src, size_t n);
 
 #ifdef RTE_MACHINE_CPUFLAG_AVX512F
 

@@ -34,7 +34,7 @@
 #ifndef __L3FWD_EM_H__
 #define __L3FWD_EM_H__
 
-static inline __attribute__((always_inline)) void
+static __rte_always_inline void
 l3fwd_em_simple_forward(struct rte_mbuf *m, uint8_t portid,
 		struct lcore_conf *qconf)
 {

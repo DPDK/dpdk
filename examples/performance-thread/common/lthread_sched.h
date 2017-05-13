@@ -112,8 +112,8 @@ static inline uint64_t _sched_now(void)
 	return 1;
 }
 
-static inline void
-_affinitize(void) __attribute__ ((always_inline));
+static __rte_always_inline void
+_affinitize(void);
 static inline void
 _affinitize(void)
 {
@@ -123,8 +123,8 @@ _affinitize(void)
 	ctx_switch(&(THIS_SCHED)->ctx, &lt->ctx);
 }
 
-static inline void
-_suspend(void) __attribute__ ((always_inline));
+static __rte_always_inline void
+_suspend(void);
 static inline void
 _suspend(void)
 {
@@ -136,8 +136,8 @@ _suspend(void)
 	(THIS_SCHED)->nb_blocked_threads--;
 }
 
-static inline void
-_reschedule(void) __attribute__ ((always_inline));
+static __rte_always_inline void
+_reschedule(void);
 static inline void
 _reschedule(void)
 {

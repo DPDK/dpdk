@@ -154,7 +154,7 @@ _lthread_queue_create(const char *name)
 /**
  * Return true if the queue is empty
  */
-static inline int __attribute__ ((always_inline))
+static __rte_always_inline int
 _lthread_queue_empty(struct lthread_queue *q)
 {
 	return q->tail == q->head;
@@ -185,7 +185,7 @@ RTE_DECLARE_PER_LCORE(struct lthread_sched *, this_sched);
  * Insert a node into a queue
  * this implementation is multi producer safe
  */
-static inline struct qnode *__attribute__ ((always_inline))
+static __rte_always_inline struct qnode *
 _lthread_queue_insert_mp(struct lthread_queue
 							  *q, void *data)
 {
@@ -219,7 +219,7 @@ _lthread_queue_insert_mp(struct lthread_queue
  * Insert an node into a queue in single producer mode
  * this implementation is NOT mult producer safe
  */
-static inline struct qnode *__attribute__ ((always_inline))
+static __rte_always_inline struct qnode *
 _lthread_queue_insert_sp(struct lthread_queue
 							  *q, void *data)
 {
@@ -247,7 +247,7 @@ _lthread_queue_insert_sp(struct lthread_queue
 /*
  * Remove a node from a queue
  */
-static inline void *__attribute__ ((always_inline))
+static __rte_always_inline void *
 _lthread_queue_poll(struct lthread_queue *q)
 {
 	void *data = NULL;
@@ -278,7 +278,7 @@ _lthread_queue_poll(struct lthread_queue *q)
 /*
  * Remove a node from a queue
  */
-static inline void *__attribute__ ((always_inline))
+static __rte_always_inline void *
 _lthread_queue_remove(struct lthread_queue *q)
 {
 	void *data = NULL;

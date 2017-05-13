@@ -69,34 +69,28 @@
 #include "mlx5_defs.h"
 #include "mlx5_prm.h"
 
-static inline int
+static __rte_always_inline int
 check_cqe(volatile struct mlx5_cqe *cqe,
-	  unsigned int cqes_n, const uint16_t ci)
-	  __attribute__((always_inline));
+	  unsigned int cqes_n, const uint16_t ci);
 
-static inline void
-txq_complete(struct txq *txq) __attribute__((always_inline));
+static __rte_always_inline void
+txq_complete(struct txq *txq);
 
-static inline uint32_t
-txq_mp2mr(struct txq *txq, struct rte_mempool *mp)
-	__attribute__((always_inline));
+static __rte_always_inline uint32_t
+txq_mp2mr(struct txq *txq, struct rte_mempool *mp);
 
-static inline void
-mlx5_tx_dbrec(struct txq *txq, volatile struct mlx5_wqe *wqe)
-	__attribute__((always_inline));
+static __rte_always_inline void
+mlx5_tx_dbrec(struct txq *txq, volatile struct mlx5_wqe *wqe);
 
-static inline uint32_t
-rxq_cq_to_pkt_type(volatile struct mlx5_cqe *cqe)
-	__attribute__((always_inline));
+static __rte_always_inline uint32_t
+rxq_cq_to_pkt_type(volatile struct mlx5_cqe *cqe);
 
-static inline int
+static __rte_always_inline int
 mlx5_rx_poll_len(struct rxq *rxq, volatile struct mlx5_cqe *cqe,
-		 uint16_t cqe_cnt, uint32_t *rss_hash)
-		 __attribute__((always_inline));
+		 uint16_t cqe_cnt, uint32_t *rss_hash);
 
-static inline uint32_t
-rxq_cq_to_ol_flags(struct rxq *rxq, volatile struct mlx5_cqe *cqe)
-		   __attribute__((always_inline));
+static __rte_always_inline uint32_t
+rxq_cq_to_ol_flags(struct rxq *rxq, volatile struct mlx5_cqe *cqe);
 
 #ifndef NDEBUG
 

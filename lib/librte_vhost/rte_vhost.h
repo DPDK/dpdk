@@ -120,7 +120,7 @@ struct vhost_device_ops {
  * @return
  *  the host virtual address on success, 0 on failure
  */
-static inline uint64_t __attribute__((always_inline))
+static __rte_always_inline uint64_t
 rte_vhost_gpa_to_vva(struct rte_vhost_memory *mem, uint64_t gpa)
 {
 	struct rte_vhost_mem_region *reg;

@@ -73,7 +73,7 @@ struct crc_pclmulqdq_ctx crc16_ccitt_pclmulqdq __rte_aligned(16);
  * @return
  *   New 16 byte folded data
  */
-static inline __attribute__((always_inline)) __m128i
+static __rte_always_inline __m128i
 crcr32_folding_round(__m128i data_block,
 		__m128i precomp,
 		__m128i fold)
@@ -96,7 +96,7 @@ crcr32_folding_round(__m128i data_block,
  *  64 bits reduced data
  */
 
-static inline __attribute__((always_inline)) __m128i
+static __rte_always_inline __m128i
 crcr32_reduce_128_to_64(__m128i data128, __m128i precomp)
 {
 	__m128i tmp0, tmp1, tmp2;
@@ -125,7 +125,7 @@ crcr32_reduce_128_to_64(__m128i data128, __m128i precomp)
  *   reduced 32 bits data
  */
 
-static inline __attribute__((always_inline)) uint32_t
+static __rte_always_inline uint32_t
 crcr32_reduce_64_to_32(__m128i data64, __m128i precomp)
 {
 	static const uint32_t mask1[4] __rte_aligned(16) = {
@@ -171,7 +171,7 @@ static const uint8_t crc_xmm_shift_tab[48] __rte_aligned(16) = {
  *   reg << (num * 8)
  */
 
-static inline __attribute__((always_inline)) __m128i
+static __rte_always_inline __m128i
 xmm_shift_left(__m128i reg, const unsigned int num)
 {
 	const __m128i *p = (const __m128i *)(crc_xmm_shift_tab + 16 - num);
@@ -179,7 +179,7 @@ xmm_shift_left(__m128i reg, const unsigned int num)
 	return _mm_shuffle_epi8(reg, _mm_loadu_si128(p));
 }
 
-static inline __attribute__((always_inline)) uint32_t
+static __rte_always_inline uint32_t
 crc32_eth_calc_pclmulqdq(
 	const uint8_t *data,
 	uint32_t data_len,

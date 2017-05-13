@@ -99,13 +99,13 @@ resolve_priority_neon(uint64_t transition, int n, const struct rte_acl_ctx *ctx,
 /*
  * Check for any match in 4 transitions
  */
-static inline __attribute__((always_inline)) uint32_t
+static __rte_always_inline uint32_t
 check_any_match_x4(uint64_t val[])
 {
 	return (val[0] | val[1] | val[2] | val[3]) & RTE_ACL_NODE_MATCH;
 }
 
-static inline __attribute__((always_inline)) void
+static __rte_always_inline void
 acl_match_check_x4(int slot, const struct rte_acl_ctx *ctx, struct parms *parms,
 		   struct acl_flow_data *flows, uint64_t transitions[])
 {
@@ -124,7 +124,7 @@ acl_match_check_x4(int slot, const struct rte_acl_ctx *ctx, struct parms *parms,
 /*
  * Process 4 transitions (in 2 NEON Q registers) in parallel
  */
-static inline __attribute__((always_inline)) int32x4_t
+static __rte_always_inline int32x4_t
 transition4(int32x4_t next_input, const uint64_t *trans, uint64_t transitions[])
 {
 	int32x4x2_t tr_hi_lo;

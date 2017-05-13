@@ -123,7 +123,7 @@ void virtqueue_dump(struct virtqueue *vq);
  */
 struct rte_mbuf * virtqueue_detatch_unused(struct virtqueue *vq);
 
-static inline int __attribute__((always_inline))
+static __rte_always_inline int
 virtqueue_full(const struct virtqueue *vq)
 {
 	return vq->vq_free_cnt == 0;
@@ -131,7 +131,7 @@ virtqueue_full(const struct virtqueue *vq)
 
 #define VIRTQUEUE_NUSED(vq) ((uint16_t)((vq)->vq_ring.used->idx - (vq)->vq_used_cons_idx))
 
-static inline void __attribute__((always_inline))
+static __rte_always_inline void
 vq_ring_update_avail(struct virtqueue *vq, uint16_t desc_idx)
 {
 	uint16_t avail_idx;
@@ -148,7 +148,7 @@ vq_ring_update_avail(struct virtqueue *vq, uint16_t desc_idx)
 	vq->vq_ring.avail->idx++;
 }
 
-static inline void  __attribute__((always_inline))
+static __rte_always_inline void
 vq_ring_free_chain(struct virtqueue *vq, uint16_t desc_idx)
 {
 	struct vring_desc *dp;
@@ -171,7 +171,7 @@ vq_ring_free_chain(struct virtqueue *vq, uint16_t desc_idx)
 	vq->vq_desc_head_idx = desc_idx;
 }
 
-static inline int  __attribute__((always_inline))
+static __rte_always_inline int
 virtqueue_enqueue_recv_refill(struct virtqueue *rxvq, struct rte_mbuf *cookie)
 {
 	const uint16_t needed = 1;
@@ -201,7 +201,7 @@ virtqueue_enqueue_recv_refill(struct virtqueue *rxvq, struct rte_mbuf *cookie)
 	return 0;
 }
 
-static inline int  __attribute__((always_inline))
+static __rte_always_inline int
 virtqueue_enqueue_xmit(struct virtqueue *txvq, struct rte_mbuf *cookie)
 {
 
@@ -242,7 +242,7 @@ virtqueue_enqueue_xmit(struct virtqueue *txvq, struct rte_mbuf *cookie)
 	return 0;
 }
 
-static inline uint16_t  __attribute__((always_inline))
+static __rte_always_inline uint16_t
 virtqueue_dequeue_burst(struct virtqueue *vq, struct rte_mbuf **rx_pkts, uint32_t *len, uint16_t num)
 {
 	struct vring_used_elem *uep;

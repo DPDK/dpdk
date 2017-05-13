@@ -36,7 +36,7 @@
 
 #include "l3fwd_sse.h"
 
-static inline __attribute__((always_inline)) void
+static __rte_always_inline void
 em_get_dst_port_ipv4x8(struct lcore_conf *qconf, struct rte_mbuf *m[8],
 		uint8_t portid, uint16_t dst_port[8])
 {
@@ -160,7 +160,7 @@ get_ipv6_5tuple(struct rte_mbuf *m0, __m128i mask0,
 	key->xmm[2] = _mm_and_si128(tmpdata2, mask1);
 }
 
-static inline __attribute__((always_inline)) void
+static __rte_always_inline void
 em_get_dst_port_ipv6x8(struct lcore_conf *qconf, struct rte_mbuf *m[8],
 		uint8_t portid, uint16_t dst_port[8])
 {
@@ -232,7 +232,7 @@ em_get_dst_port_ipv6x8(struct lcore_conf *qconf, struct rte_mbuf *m[8],
 
 }
 
-static inline __attribute__((always_inline)) uint16_t
+static __rte_always_inline uint16_t
 em_get_dst_port(const struct lcore_conf *qconf, struct rte_mbuf *pkt,
 		uint8_t portid)
 {

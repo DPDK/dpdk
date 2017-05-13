@@ -840,7 +840,7 @@ static inline struct rte_mbuf *rte_mbuf_raw_alloc(struct rte_mempool *mp)
  * @param m
  *   The mbuf to be freed.
  */
-static inline void __attribute__((always_inline))
+static __rte_always_inline void
 rte_mbuf_raw_free(struct rte_mbuf *m)
 {
 	RTE_ASSERT(RTE_MBUF_DIRECT(m));
@@ -1287,8 +1287,7 @@ static inline void rte_pktmbuf_detach(struct rte_mbuf *m)
  *   - (m) if it is the last reference. It can be recycled or freed.
  *   - (NULL) if the mbuf still has remaining references on it.
  */
-__attribute__((always_inline))
-static inline struct rte_mbuf *
+static __rte_always_inline struct rte_mbuf *
 rte_pktmbuf_prefree_seg(struct rte_mbuf *m)
 {
 	__rte_mbuf_sanity_check(m, 0);
@@ -1339,7 +1338,7 @@ __rte_pktmbuf_prefree_seg(struct rte_mbuf *m)
  * @param m
  *   The packet mbuf segment to be freed.
  */
-static inline void __attribute__((always_inline))
+static __rte_always_inline void
 rte_pktmbuf_free_seg(struct rte_mbuf *m)
 {
 	m = rte_pktmbuf_prefree_seg(m);
