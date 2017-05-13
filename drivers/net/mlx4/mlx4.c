@@ -1098,7 +1098,7 @@ static int mlx4_check_mempool(struct rte_mempool *mp, uintptr_t *start,
 
 /* For best performance, this function should not be inlined. */
 static struct ibv_mr *mlx4_mp2mr(struct ibv_pd *, struct rte_mempool *)
-	__attribute__((noinline));
+	__rte_noinline;
 
 /**
  * Register mempool as a memory region.

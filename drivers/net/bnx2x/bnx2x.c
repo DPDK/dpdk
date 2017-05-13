@@ -120,7 +120,7 @@ static int bnx2x_alloc_mem(struct bnx2x_softc *sc);
 static void bnx2x_free_mem(struct bnx2x_softc *sc);
 static int bnx2x_alloc_fw_stats_mem(struct bnx2x_softc *sc);
 static void bnx2x_free_fw_stats_mem(struct bnx2x_softc *sc);
-static __attribute__ ((noinline))
+static __rte_noinline
 int bnx2x_nic_load(struct bnx2x_softc *sc);
 
 static int bnx2x_handle_sp_tq(struct bnx2x_softc *sc);
@@ -1962,7 +1962,7 @@ static void bnx2x_squeeze_objects(struct bnx2x_softc *sc)
 }
 
 /* stop the controller */
-__attribute__ ((noinline))
+__rte_noinline
 int
 bnx2x_nic_unload(struct bnx2x_softc *sc, uint32_t unload_mode, uint8_t keep_link)
 {
@@ -7124,7 +7124,7 @@ void bnx2x_periodic_callout(struct bnx2x_softc *sc)
 }
 
 /* start the controller */
-static __attribute__ ((noinline))
+static __rte_noinline
 int bnx2x_nic_load(struct bnx2x_softc *sc)
 {
 	uint32_t val;
