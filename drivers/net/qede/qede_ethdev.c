@@ -946,7 +946,7 @@ qede_dev_info_get(struct rte_eth_dev *eth_dev,
 
 	PMD_INIT_FUNC_TRACE(edev);
 
-	dev_info->pci_dev = RTE_DEV_TO_PCI(eth_dev->device);
+	dev_info->pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	dev_info->min_rx_bufsize = (uint32_t)QEDE_MIN_RX_BUFF_SIZE;
 	dev_info->max_rx_pktlen = (uint32_t)ETH_TX_MAX_NON_LSO_PKT_LEN;
 	dev_info->rx_desc_lim = qede_rx_desc_lim;
@@ -1103,7 +1103,7 @@ static void qede_poll_sp_sb_cb(void *param)
 
 static void qede_dev_close(struct rte_eth_dev *eth_dev)
 {
-	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(eth_dev->device);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
 	int rc;
@@ -2163,7 +2163,7 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 	/* Extract key data structures */
 	adapter = eth_dev->data->dev_private;
 	edev = &adapter->edev;
-	pci_dev = RTE_DEV_TO_PCI(eth_dev->device);
+	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	pci_addr = pci_dev->addr;
 
 	PMD_INIT_FUNC_TRACE(edev);

@@ -36,7 +36,8 @@
 #define SFC_LOG(sa, level, ...) \
 	do {								\
 		const struct rte_eth_dev *_dev = (sa)->eth_dev;		\
-		const struct rte_pci_device *_pci_dev = SFC_DEV_TO_PCI(_dev); \
+		const struct rte_pci_device *_pci_dev =			\
+			RTE_ETH_DEV_TO_PCI(_dev);			\
 									\
 		RTE_LOG(level, PMD,					\
 			RTE_FMT("sfc_efx " PCI_PRI_FMT " #%" PRIu8 ": "	\

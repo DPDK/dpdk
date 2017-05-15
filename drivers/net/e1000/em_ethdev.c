@@ -316,7 +316,7 @@ eth_em_dev_is_ich8(struct e1000_hw *hw)
 static int
 eth_em_dev_init(struct rte_eth_dev *eth_dev)
 {
-	struct rte_pci_device *pci_dev = E1000_DEV_TO_PCI(eth_dev);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	struct e1000_adapter *adapter =
 		E1000_DEV_PRIVATE(eth_dev->data->dev_private);
@@ -390,7 +390,7 @@ eth_em_dev_init(struct rte_eth_dev *eth_dev)
 static int
 eth_em_dev_uninit(struct rte_eth_dev *eth_dev)
 {
-	struct rte_pci_device *pci_dev = E1000_DEV_TO_PCI(eth_dev);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	struct e1000_adapter *adapter =
 		E1000_DEV_PRIVATE(eth_dev->data->dev_private);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
@@ -593,8 +593,7 @@ eth_em_start(struct rte_eth_dev *dev)
 		E1000_DEV_PRIVATE(dev->data->dev_private);
 	struct e1000_hw *hw =
 		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct rte_pci_device *pci_dev =
-		E1000_DEV_TO_PCI(dev);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	int ret, mask;
 	uint32_t intr_vector = 0;
@@ -777,7 +776,7 @@ eth_em_stop(struct rte_eth_dev *dev)
 {
 	struct rte_eth_link link;
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct rte_pci_device *pci_dev = E1000_DEV_TO_PCI(dev);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 
 	em_rxq_intr_disable(hw);
@@ -1041,7 +1040,7 @@ static int
 eth_em_rx_queue_intr_enable(struct rte_eth_dev *dev, __rte_unused uint16_t queue_id)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct rte_pci_device *pci_dev = E1000_DEV_TO_PCI(dev);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 
 	em_rxq_intr_enable(hw);
@@ -1091,7 +1090,7 @@ eth_em_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	dev_info->pci_dev = RTE_DEV_TO_PCI(dev->device);
+	dev_info->pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	dev_info->min_rx_bufsize = 256; /* See BSIZE field of RCTL register. */
 	dev_info->max_rx_pktlen = em_get_max_pktlen(hw);
 	dev_info->max_mac_addrs = hw->mac.rar_entry_count;
@@ -1598,7 +1597,7 @@ static int
 eth_em_interrupt_action(struct rte_eth_dev *dev,
 			struct rte_intr_handle *intr_handle)
 {
-	struct rte_pci_device *pci_dev = E1000_DEV_TO_PCI(dev);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct e1000_hw *hw =
 		E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct e1000_interrupt *intr =

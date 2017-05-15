@@ -1958,7 +1958,7 @@ lio_eth_dev_uninit(struct rte_eth_dev *eth_dev)
 static int
 lio_eth_dev_init(struct rte_eth_dev *eth_dev)
 {
-	struct rte_pci_device *pdev = RTE_DEV_TO_PCI(eth_dev->device);
+	struct rte_pci_device *pdev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	struct lio_device *lio_dev = LIO_DEV(eth_dev);
 
 	PMD_INIT_FUNC_TRACE();

@@ -112,9 +112,6 @@ static void avp_dev_stats_get(struct rte_eth_dev *dev,
 static void avp_dev_stats_reset(struct rte_eth_dev *dev);
 
 
-#define AVP_DEV_TO_PCI(eth_dev) RTE_DEV_TO_PCI((eth_dev)->device)
-
-
 #define AVP_MAX_RX_BURST 64
 #define AVP_MAX_TX_BURST 64
 #define AVP_MAX_MAC_ADDRS 1
@@ -392,7 +389,7 @@ static void *
 avp_dev_translate_address(struct rte_eth_dev *eth_dev,
 			  phys_addr_t host_phys_addr)
 {
-	struct rte_pci_device *pci_dev = AVP_DEV_TO_PCI(eth_dev);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	struct rte_mem_resource *resource;
 	struct rte_avp_memmap_info *info;
 	struct rte_avp_memmap *map;
@@ -445,7 +442,7 @@ avp_dev_version_check(uint32_t version)
 static int
 avp_dev_check_regions(struct rte_eth_dev *eth_dev)
 {
-	struct rte_pci_device *pci_dev = AVP_DEV_TO_PCI(eth_dev);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	struct rte_avp_memmap_info *memmap;
 	struct rte_avp_device_info *info;
 	struct rte_mem_resource *resource;
@@ -581,7 +578,7 @@ _avp_set_rx_queue_mappings(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 static void
 _avp_set_queue_counts(struct rte_eth_dev *eth_dev)
 {
-	struct rte_pci_device *pci_dev = AVP_DEV_TO_PCI(eth_dev);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	struct avp_dev *avp = AVP_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 	struct rte_avp_device_info *host_info;
 	void *addr;
@@ -641,7 +638,7 @@ avp_dev_attach(struct rte_eth_dev *eth_dev)
 	 * re-run the device create utility which will parse the new host info
 	 * and setup the AVP device queue pointers.
 	 */
-	ret = avp_dev_create(AVP_DEV_TO_PCI(eth_dev), eth_dev);
+	ret = avp_dev_create(RTE_ETH_DEV_TO_PCI(eth_dev), eth_dev);
 	if (ret < 0) {
 		PMD_DRV_LOG(ERR, "Failed to re-create AVP device, ret=%d\n",
 			    ret);
@@ -695,7 +692,7 @@ static void
 avp_dev_interrupt_handler(void *data)
 {
 	struct rte_eth_dev *eth_dev = data;
-	struct rte_pci_device *pci_dev = AVP_DEV_TO_PCI(eth_dev);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	void *registers = pci_dev->mem_resource[RTE_AVP_PCI_MMIO_BAR].addr;
 	uint32_t status, value;
 	int ret;
@@ -754,7 +751,7 @@ avp_dev_interrupt_handler(void *data)
 static int
 avp_dev_enable_interrupts(struct rte_eth_dev *eth_dev)
 {
-	struct rte_pci_device *pci_dev = AVP_DEV_TO_PCI(eth_dev);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	void *registers = pci_dev->mem_resource[RTE_AVP_PCI_MMIO_BAR].addr;
 	int ret;
 
@@ -779,7 +776,7 @@ avp_dev_enable_interrupts(struct rte_eth_dev *eth_dev)
 static int
 avp_dev_disable_interrupts(struct rte_eth_dev *eth_dev)
 {
-	struct rte_pci_device *pci_dev = AVP_DEV_TO_PCI(eth_dev);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	void *registers = pci_dev->mem_resource[RTE_AVP_PCI_MMIO_BAR].addr;
 	int ret;
 
@@ -804,7 +801,7 @@ avp_dev_disable_interrupts(struct rte_eth_dev *eth_dev)
 static int
 avp_dev_setup_interrupts(struct rte_eth_dev *eth_dev)
 {
-	struct rte_pci_device *pci_dev = AVP_DEV_TO_PCI(eth_dev);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	int ret;
 
 	/* register a callback handler with UIO for interrupt notifications */
@@ -824,7 +821,7 @@ avp_dev_setup_interrupts(struct rte_eth_dev *eth_dev)
 static int
 avp_dev_migration_pending(struct rte_eth_dev *eth_dev)
 {
-	struct rte_pci_device *pci_dev = AVP_DEV_TO_PCI(eth_dev);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	void *registers = pci_dev->mem_resource[RTE_AVP_PCI_MMIO_BAR].addr;
 	uint32_t value;
 
@@ -985,7 +982,7 @@ eth_avp_dev_init(struct rte_eth_dev *eth_dev)
 	struct rte_pci_device *pci_dev;
 	int ret;
 
-	pci_dev = AVP_DEV_TO_PCI(eth_dev);
+	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	eth_dev->dev_ops = &avp_eth_dev_ops;
 	eth_dev->rx_pkt_burst = &avp_recv_pkts;
 	eth_dev->tx_pkt_burst = &avp_xmit_pkts;
@@ -2010,7 +2007,7 @@ avp_dev_tx_queue_release(void *tx_queue)
 static int
 avp_dev_configure(struct rte_eth_dev *eth_dev)
 {
-	struct rte_pci_device *pci_dev = AVP_DEV_TO_PCI(eth_dev);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	struct avp_dev *avp = AVP_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 	struct rte_avp_device_info *host_info;
 	struct rte_avp_device_config config;
@@ -2206,7 +2203,7 @@ avp_dev_info_get(struct rte_eth_dev *eth_dev,
 	struct avp_dev *avp = AVP_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
 
 	dev_info->driver_name = "rte_avp_pmd";
-	dev_info->pci_dev = RTE_DEV_TO_PCI(eth_dev->device);
+	dev_info->pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	dev_info->max_rx_queues = avp->max_rx_queues;
 	dev_info->max_tx_queues = avp->max_tx_queues;
 	dev_info->min_rx_bufsize = AVP_MIN_RX_BUFSIZE;

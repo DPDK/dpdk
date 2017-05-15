@@ -69,7 +69,7 @@ find_port_id_by_pci_addr(const struct rte_pci_addr *pci_addr)
 		    rte_eth_devices[i].data->kdrv == RTE_KDRV_NONE)
 			continue;
 
-		pci_dev = RTE_DEV_TO_PCI(rte_eth_devices[i].device);
+		pci_dev = RTE_ETH_DEV_TO_PCI(&rte_eth_devices[i]);
 		eth_pci_addr = &pci_dev->addr;
 
 		if (pci_addr->bus == eth_pci_addr->bus &&

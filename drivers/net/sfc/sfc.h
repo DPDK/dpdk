@@ -46,9 +46,6 @@
 extern "C" {
 #endif
 
-#define SFC_DEV_TO_PCI(eth_dev) \
-	RTE_DEV_TO_PCI((eth_dev)->device)
-
 #if EFSYS_OPT_RX_SCALE
 /** RSS key length (bytes) */
 #define SFC_RSS_KEY_SIZE	40

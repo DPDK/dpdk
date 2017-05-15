@@ -1355,7 +1355,7 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 		return -1;
 
 	if (!hw->virtio_user_dev) {
-		pci_dev = RTE_DEV_TO_PCI(eth_dev->device);
+		pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 		rte_eth_copy_pci_info(eth_dev, pci_dev);
 	}
 
@@ -1537,8 +1537,7 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
 		if (!hw->virtio_user_dev) {
-			ret = virtio_remap_pci(RTE_DEV_TO_PCI(eth_dev->device),
-					       hw);
+			ret = virtio_remap_pci(RTE_ETH_DEV_TO_PCI(eth_dev), hw);
 			if (ret)
 				return ret;
 		}
@@ -1567,7 +1566,7 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 	 * virtio_user_eth_dev_alloc() before eth_virtio_dev_init() is called.
 	 */
 	if (!hw->virtio_user_dev) {
-		ret = vtpci_init(RTE_DEV_TO_PCI(eth_dev->device), hw);
+		ret = vtpci_init(RTE_ETH_DEV_TO_PCI(eth_dev), hw);
 		if (ret)
 			return ret;
 	}
@@ -1609,7 +1608,7 @@ eth_virtio_dev_uninit(struct rte_eth_dev *eth_dev)
 						virtio_interrupt_handler,
 						eth_dev);
 	if (eth_dev->device)
-		rte_pci_unmap_device(RTE_DEV_TO_PCI(eth_dev->device));
+		rte_pci_unmap_device(RTE_ETH_DEV_TO_PCI(eth_dev));
 
 	PMD_INIT_LOG(DEBUG, "dev_uninit completed");
 
@@ -1894,7 +1893,7 @@ virtio_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	dev_info->speed_capa = ETH_LINK_SPEED_10G; /* fake value */
 
-	dev_info->pci_dev = dev->device ? RTE_DEV_TO_PCI(dev->device) : NULL;
+	dev_info->pci_dev = dev->device ? RTE_ETH_DEV_TO_PCI(dev) : NULL;
 	dev_info->max_rx_queues =
 		RTE_MIN(hw->max_queue_pairs, VIRTIO_MAX_RX_QUEUES);
 	dev_info->max_tx_queues =

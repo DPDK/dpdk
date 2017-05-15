@@ -942,7 +942,7 @@ sfc_rx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	info.mem_bar = sa->mem_bar.esb_base;
 
 	rc = sa->dp_rx->qcreate(sa->eth_dev->data->port_id, sw_index,
-				&SFC_DEV_TO_PCI(sa->eth_dev)->addr,
+				&RTE_ETH_DEV_TO_PCI(sa->eth_dev)->addr,
 				socket_id, &info, &rxq->dp);
 	if (rc != 0)
 		goto fail_dp_rx_qcreate;

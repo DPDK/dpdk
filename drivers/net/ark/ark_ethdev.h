@@ -34,8 +34,4 @@
 #ifndef _ARK_ETHDEV_H_
 #define _ARK_ETHDEV_H_
 
-#define ARK_DEV_TO_PCI(eth_dev)			\
-	RTE_DEV_TO_PCI((eth_dev)->device)
-
-
 #endif

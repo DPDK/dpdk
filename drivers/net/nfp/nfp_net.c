@@ -647,7 +647,7 @@ nfp_configure_rx_interrupt(struct rte_eth_dev *dev,
 static int
 nfp_net_start(struct rte_eth_dev *dev)
 {
-	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(dev->device);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	uint32_t new_ctrl, update = 0;
 	struct nfp_net_hw *hw;
@@ -772,7 +772,7 @@ nfp_net_close(struct rte_eth_dev *dev)
 	PMD_INIT_LOG(DEBUG, "Close");
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	pci_dev = RTE_DEV_TO_PCI(dev->device);
+	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 
 	/*
 	 * We assume that the DPDK application is stopping all the
@@ -1081,7 +1081,7 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
-	dev_info->pci_dev = RTE_DEV_TO_PCI(dev->device);
+	dev_info->pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	dev_info->max_rx_queues = (uint16_t)hw->max_rx_queues;
 	dev_info->max_tx_queues = (uint16_t)hw->max_tx_queues;
 	dev_info->min_rx_bufsize = ETHER_MIN_MTU;
@@ -1201,7 +1201,7 @@ nfp_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 	int base = 0;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	pci_dev = RTE_DEV_TO_PCI(dev->device);
+	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 
 	if (pci_dev->intr_handle.type != RTE_INTR_HANDLE_UIO)
 		base = 1;
@@ -1221,7 +1221,7 @@ nfp_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
 	int base = 0;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	pci_dev = RTE_DEV_TO_PCI(dev->device);
+	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 
 	if (pci_dev->intr_handle.type != RTE_INTR_HANDLE_UIO)
 		base = 1;
@@ -1235,7 +1235,7 @@ nfp_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
 static void
 nfp_net_dev_link_status_print(struct rte_eth_dev *dev)
 {
-	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(dev->device);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_eth_link link;
 
 	memset(&link, 0, sizeof(link));
@@ -1269,7 +1269,7 @@ nfp_net_irq_unmask(struct rte_eth_dev *dev)
 	struct rte_pci_device *pci_dev;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	pci_dev = RTE_DEV_TO_PCI(dev->device);
+	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 
 	if (hw->ctrl & NFP_NET_CFG_CTRL_MSIXAUTO) {
 		/* If MSI-X auto-masking is used, clear the entry */
@@ -2450,7 +2450,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
-	pci_dev = RTE_DEV_TO_PCI(eth_dev->device);
+	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
 	eth_dev->data->dev_flags |= RTE_ETH_DEV_DETACHABLE;
 

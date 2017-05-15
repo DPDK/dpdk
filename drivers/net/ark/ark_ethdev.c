@@ -278,7 +278,7 @@ eth_ark_dev_init(struct rte_eth_dev *dev)
 	ret = check_for_ext(ark);
 	if (ret)
 		return ret;
-	pci_dev = ARK_DEV_TO_PCI(dev);
+	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	rte_eth_copy_pci_info(dev, pci_dev);
 
 	/* Use dummy function until setup */
@@ -751,7 +751,7 @@ eth_ark_dev_info_get(struct rte_eth_dev *dev,
 				ETH_LINK_SPEED_40G |
 				ETH_LINK_SPEED_50G |
 				ETH_LINK_SPEED_100G);
-	dev_info->pci_dev = ARK_DEV_TO_PCI(dev);
+	dev_info->pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 }
 
 static int

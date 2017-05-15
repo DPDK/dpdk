@@ -1373,11 +1373,11 @@ static void
 nicvf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	struct nicvf *nic = nicvf_pmd_priv(dev);
-	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(dev->device);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 
 	PMD_INIT_FUNC_TRACE();
 
-	dev_info->pci_dev = RTE_DEV_TO_PCI(dev->device);
+	dev_info->pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 
 	dev_info->min_rx_bufsize = ETHER_MIN_MTU;
 	dev_info->max_rx_pktlen = NIC_HW_MAX_FRS;
@@ -2024,7 +2024,7 @@ nicvf_eth_dev_init(struct rte_eth_dev *eth_dev)
 		}
 	}
 
-	pci_dev = RTE_DEV_TO_PCI(eth_dev->device);
+	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
 
 	nic->device_id = pci_dev->id.device_id;

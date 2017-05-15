@@ -185,7 +185,7 @@ sfc_tx_qinit(struct sfc_adapter *sa, unsigned int sw_index,
 	info.mem_bar = sa->mem_bar.esb_base;
 
 	rc = sa->dp_tx->qcreate(sa->eth_dev->data->port_id, sw_index,
-				&SFC_DEV_TO_PCI(sa->eth_dev)->addr,
+				&RTE_ETH_DEV_TO_PCI(sa->eth_dev)->addr,
 				socket_id, &info, &txq->dp);
 	if (rc != 0)
 		goto fail_dp_tx_qinit;

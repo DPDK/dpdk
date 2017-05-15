@@ -892,9 +892,6 @@ int i40e_add_macvlan_filters(struct i40e_vsi *vsi,
 			     int total);
 bool is_i40e_supported(struct rte_eth_dev *dev);
 
-#define I40E_DEV_TO_PCI(eth_dev) \
-	RTE_DEV_TO_PCI((eth_dev)->device)
-
 /* I40E_DEV_PRIVATE_TO */
 #define I40E_DEV_PRIVATE_TO_PF(adapter) \
 	(&((struct i40e_adapter *)adapter)->pf)

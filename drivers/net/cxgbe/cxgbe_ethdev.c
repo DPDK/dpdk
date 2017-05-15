@@ -148,7 +148,7 @@ static void cxgbe_dev_info_get(struct rte_eth_dev *eth_dev,
 		.nb_align = 1,
 	};
 
-	device_info->pci_dev = RTE_DEV_TO_PCI(eth_dev->device);
+	device_info->pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 
 	device_info->min_rx_bufsize = CXGBE_MIN_RX_BUFSIZE;
 	device_info->max_rx_pktlen = CXGBE_MAX_RX_PKTLEN;
@@ -1008,7 +1008,7 @@ static int eth_cxgbe_dev_init(struct rte_eth_dev *eth_dev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
-	pci_dev = RTE_DEV_TO_PCI(eth_dev->device);
+	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 
 	snprintf(name, sizeof(name), "cxgbeadapter%d", eth_dev->data->port_id);
 	adapter = rte_zmalloc(name, sizeof(*adapter), 0);

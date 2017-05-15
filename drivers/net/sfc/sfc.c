@@ -465,7 +465,7 @@ static int
 sfc_mem_bar_init(struct sfc_adapter *sa)
 {
 	struct rte_eth_dev *eth_dev = sa->eth_dev;
-	struct rte_pci_device *pci_dev = SFC_DEV_TO_PCI(eth_dev);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	efsys_bar_t *ebp = &sa->mem_bar;
 	unsigned int i;
 	struct rte_mem_resource *res;
@@ -666,7 +666,7 @@ sfc_detach(struct sfc_adapter *sa)
 int
 sfc_probe(struct sfc_adapter *sa)
 {
-	struct rte_pci_device *pci_dev = SFC_DEV_TO_PCI(sa->eth_dev);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(sa->eth_dev);
 	efx_nic_t *enp;
 	int rc;
 

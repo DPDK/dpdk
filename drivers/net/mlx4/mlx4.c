@@ -4300,7 +4300,7 @@ mlx4_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	unsigned int max;
 	char ifname[IF_NAMESIZE];
 
-	info->pci_dev = RTE_DEV_TO_PCI(dev->device);
+	info->pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 
 	if (priv == NULL)
 		return;
