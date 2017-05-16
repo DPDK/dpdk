@@ -372,7 +372,7 @@ set_arg(char *arg, char *val)
 			o->v.INT = atoll(val);
 			break;
 		case OTSTRING:
-			strncpy(o->v.STR, val, ARK_MAX_STR_LEN);
+			snprintf(o->v.STR, ARK_MAX_STR_LEN, "%s", val);
 			break;
 		}
 		return 1;
