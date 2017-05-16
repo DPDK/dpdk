@@ -588,7 +588,11 @@ eth_ark_dev_start(struct rte_eth_dev *dev)
 		/* Delay packet generatpr start allow the hardware to be ready
 		 * This is only used for sanity checking with internal generator
 		 */
-		pthread_create(&thread, NULL, delay_pg_start, ark);
+		if (pthread_create(&thread, NULL, delay_pg_start, ark)) {
+			PMD_DRV_LOG(ERR, "Could not create pktgen "
+				    "starter thread\n");
+			return -1;
+		}
 	}
 
 	if (ark->user_ext.dev_start)
