@@ -899,6 +899,12 @@ process_file_args(const char *key, const char *value, void *extra_args)
 	int  size = 0;
 	int first = 1;
 
+	if (file == NULL) {
+		PMD_DRV_LOG(ERR, "Unable to open "
+			    "config file %s\n", value);
+		return -1;
+	}
+
 	while (fgets(line, sizeof(line), file)) {
 		size += strlen(line);
 		if (size >= ARK_MAX_ARG_LEN) {
