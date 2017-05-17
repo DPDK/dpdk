@@ -73,9 +73,8 @@
 #define I40E_FDIR_IPv6_PAYLOAD_LEN          380
 #define I40E_FDIR_UDP_DEFAULT_LEN           400
 
-/* Wait count and interval for fdir filter programming */
-#define I40E_FDIR_WAIT_COUNT       10
-#define I40E_FDIR_WAIT_INTERVAL_US 1000
+/* Wait time for fdir filter programming */
+#define I40E_FDIR_MAX_WAIT_US 10000
 
 /* Wait count and interval for fdir filter flush */
 #define I40E_FDIR_FLUSH_RETRY       50
@@ -1299,28 +1298,27 @@ i40e_fdir_filter_programming(struct i40e_pf *pf,
 	/* Update the tx tail register */
 	rte_wmb();
 	I40E_PCI_REG_WRITE(txq->qtx_tail, txq->tx_tail);
-
-	for (i = 0; i < I40E_FDIR_WAIT_COUNT; i++) {
-		rte_delay_us(I40E_FDIR_WAIT_INTERVAL_US);
+	for (i = 0; i < I40E_FDIR_MAX_WAIT_US; i++) {
 		if ((txdp->cmd_type_offset_bsz &
 				rte_cpu_to_le_64(I40E_TXD_QW1_DTYPE_MASK)) ==
 				rte_cpu_to_le_64(I40E_TX_DESC_DTYPE_DESC_DONE))
 			break;
+		rte_delay_us(1);
 	}
-	if (i >= I40E_FDIR_WAIT_COUNT) {
+	if (i >= I40E_FDIR_MAX_WAIT_US) {
 		PMD_DRV_LOG(ERR, "Failed to program FDIR filter:"
 			    " time out to get DD on tx queue.");
 		return -ETIMEDOUT;
 	}
 	/* totally delay 10 ms to check programming status*/
-	rte_delay_us((I40E_FDIR_WAIT_COUNT - i) * I40E_FDIR_WAIT_INTERVAL_US);
-	if (i40e_check_fdir_programming_status(rxq) < 0) {
-		PMD_DRV_LOG(ERR, "Failed to program FDIR filter:"
-			    " programming status reported.");
-		return -ENOSYS;
+	for (; i < I40E_FDIR_MAX_WAIT_US; i++) {
+		if (i40e_check_fdir_programming_status(rxq) >= 0)
+			return 0;
+		rte_delay_us(1);
 	}
-
-	return 0;
+	PMD_DRV_LOG(ERR,
+		"Failed to program FDIR filter: programming status reported.");
+	return -ETIMEDOUT;
 }
 
 /*
