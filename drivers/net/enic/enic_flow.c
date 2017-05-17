@@ -89,6 +89,9 @@ struct enic_action_cap {
 };
 
 /* Forward declarations */
+static enic_copy_item_fn enic_copy_item_ipv4_v1;
+static enic_copy_item_fn enic_copy_item_udp_v1;
+static enic_copy_item_fn enic_copy_item_tcp_v1;
 static enic_copy_item_fn enic_copy_item_eth_v2;
 static enic_copy_item_fn enic_copy_item_vlan_v2;
 static enic_copy_item_fn enic_copy_item_ipv4_v2;
@@ -100,6 +103,36 @@ static enic_copy_item_fn enic_copy_item_sctp_v2;
 static enic_copy_item_fn enic_copy_item_vxlan_v2;
 static copy_action_fn enic_copy_action_v1;
 static copy_action_fn enic_copy_action_v2;
+
+/**
+ * Legacy NICs or NICs with outdated firmware. Only 5-tuple perfect match
+ * is supported.
+ */
+static const struct enic_items enic_items_v1[] = {
+	[RTE_FLOW_ITEM_TYPE_IPV4] = {
+		.copy_item = enic_copy_item_ipv4_v1,
+		.valid_start_item = 1,
+		.prev_items = (const enum rte_flow_item_type[]) {
+			       RTE_FLOW_ITEM_TYPE_END,
+		},
+	},
+	[RTE_FLOW_ITEM_TYPE_UDP] = {
+		.copy_item = enic_copy_item_udp_v1,
+		.valid_start_item = 0,
+		.prev_items = (const enum rte_flow_item_type[]) {
+			       RTE_FLOW_ITEM_TYPE_IPV4,
+			       RTE_FLOW_ITEM_TYPE_END,
+		},
+	},
+	[RTE_FLOW_ITEM_TYPE_TCP] = {
+		.copy_item = enic_copy_item_tcp_v1,
+		.valid_start_item = 0,
+		.prev_items = (const enum rte_flow_item_type[]) {
+			       RTE_FLOW_ITEM_TYPE_IPV4,
+			       RTE_FLOW_ITEM_TYPE_END,
+		},
+	},
+};
 
 /**
  * NICs have Advanced Filters capability but they are disabled. This means
@@ -252,6 +285,9 @@ static const struct enic_items enic_items_v3[] = {
 
 /** Filtering capabilities indexed this NICs supported filter type. */
 static const struct enic_filter_cap enic_filter_cap[] = {
+	[FILTER_IPV4_5TUPLE] = {
+		.item_info = enic_items_v1,
+	},
 	[FILTER_USNIC_IP] = {
 		.item_info = enic_items_v2,
 	},
@@ -285,6 +321,171 @@ static const struct enic_action_cap enic_action_cap[] = {
 		.copy_fn = enic_copy_action_v2,
 	},
 };
+
+static int
+mask_exact_match(const u8 *supported, const u8 *supplied,
+		 unsigned int size)
+{
+	unsigned int i;
+	for (i = 0; i < size; i++) {
+		if (supported[i] != supplied[i])
+			return 0;
+	}
+	return 1;
+}
+
+/**
+ * Copy IPv4 item into version 1 NIC filter.
+ *
+ * @param item[in]
+ *   Item specification.
+ * @param enic_filter[out]
+ *   Partially filled in NIC filter structure.
+ * @param inner_ofst[in]
+ *   Should always be 0 for version 1.
+ */
+static int
+enic_copy_item_ipv4_v1(const struct rte_flow_item *item,
+		       struct filter_v2 *enic_filter, u8 *inner_ofst)
+{
+	const struct rte_flow_item_ipv4 *spec = item->spec;
+	const struct rte_flow_item_ipv4 *mask = item->mask;
+	struct filter_ipv4_5tuple *enic_5tup = &enic_filter->u.ipv4;
+	struct ipv4_hdr supported_mask = {
+		.src_addr = 0xffffffff,
+		.dst_addr = 0xffffffff,
+	};
+
+	FLOW_TRACE();
+
+	if (*inner_ofst)
+		return ENOTSUP;
+
+	if (!mask)
+		mask = &rte_flow_item_ipv4_mask;
+
+	/* This is an exact match filter, both fields must be set */
+	if (!spec || !spec->hdr.src_addr || !spec->hdr.dst_addr) {
+		FLOW_LOG(ERR, "IPv4 exact match src/dst addr");
+		return ENOTSUP;
+	}
+
+	/* check that the suppied mask exactly matches capabilty */
+	if (!mask_exact_match((const u8 *)&supported_mask,
+			      (const u8 *)item->mask, sizeof(*mask))) {
+		FLOW_LOG(ERR, "IPv4 exact match mask");
+		return ENOTSUP;
+	}
+
+	enic_filter->u.ipv4.flags = FILTER_FIELDS_IPV4_5TUPLE;
+	enic_5tup->src_addr = spec->hdr.src_addr;
+	enic_5tup->dst_addr = spec->hdr.dst_addr;
+
+	return 0;
+}
+
+/**
+ * Copy UDP item into version 1 NIC filter.
+ *
+ * @param item[in]
+ *   Item specification.
+ * @param enic_filter[out]
+ *   Partially filled in NIC filter structure.
+ * @param inner_ofst[in]
+ *   Should always be 0 for version 1.
+ */
+static int
+enic_copy_item_udp_v1(const struct rte_flow_item *item,
+		      struct filter_v2 *enic_filter, u8 *inner_ofst)
+{
+	const struct rte_flow_item_udp *spec = item->spec;
+	const struct rte_flow_item_udp *mask = item->mask;
+	struct filter_ipv4_5tuple *enic_5tup = &enic_filter->u.ipv4;
+	struct udp_hdr supported_mask = {
+		.src_port = 0xffff,
+		.dst_port = 0xffff,
+	};
+
+	FLOW_TRACE();
+
+	if (*inner_ofst)
+		return ENOTSUP;
+
+	if (!mask)
+		mask = &rte_flow_item_udp_mask;
+
+	/* This is an exact match filter, both ports must be set */
+	if (!spec || !spec->hdr.src_port || !spec->hdr.dst_port) {
+		FLOW_LOG(ERR, "UDP exact match src/dst addr");
+		return ENOTSUP;
+	}
+
+	/* check that the suppied mask exactly matches capabilty */
+	if (!mask_exact_match((const u8 *)&supported_mask,
+			      (const u8 *)item->mask, sizeof(*mask))) {
+		FLOW_LOG(ERR, "UDP exact match mask");
+		return ENOTSUP;
+	}
+
+	enic_filter->u.ipv4.flags = FILTER_FIELDS_IPV4_5TUPLE;
+	enic_5tup->src_port = spec->hdr.src_port;
+	enic_5tup->dst_port = spec->hdr.dst_port;
+	enic_5tup->protocol = PROTO_UDP;
+
+	return 0;
+}
+
+/**
+ * Copy TCP item into version 1 NIC filter.
+ *
+ * @param item[in]
+ *   Item specification.
+ * @param enic_filter[out]
+ *   Partially filled in NIC filter structure.
+ * @param inner_ofst[in]
+ *   Should always be 0 for version 1.
+ */
+static int
+enic_copy_item_tcp_v1(const struct rte_flow_item *item,
+		      struct filter_v2 *enic_filter, u8 *inner_ofst)
+{
+	const struct rte_flow_item_tcp *spec = item->spec;
+	const struct rte_flow_item_tcp *mask = item->mask;
+	struct filter_ipv4_5tuple *enic_5tup = &enic_filter->u.ipv4;
+	struct tcp_hdr supported_mask = {
+		.src_port = 0xffff,
+		.dst_port = 0xffff,
+	};
+
+	FLOW_TRACE();
+
+	if (*inner_ofst)
+		return ENOTSUP;
+
+	if (!mask)
+		mask = &rte_flow_item_tcp_mask;
+
+	/* This is an exact match filter, both ports must be set */
+	if (!spec || !spec->hdr.src_port || !spec->hdr.dst_port) {
+		FLOW_LOG(ERR, "TCPIPv4 exact match src/dst addr");
+		return ENOTSUP;
+	}
+
+	/* check that the suppied mask exactly matches capabilty */
+	if (!mask_exact_match((const u8 *)&supported_mask,
+			     (const u8 *)item->mask, sizeof(*mask))) {
+		FLOW_LOG(ERR, "TCP exact match mask");
+		return ENOTSUP;
+	}
+
+	enic_filter->u.ipv4.flags = FILTER_FIELDS_IPV4_5TUPLE;
+	enic_5tup->src_port = spec->hdr.src_port;
+	enic_5tup->dst_port = spec->hdr.dst_port;
+	enic_5tup->protocol = PROTO_TCP;
+
+	return 0;
+}
+
 /**
  * Copy ETH item into version 2 NIC filter.
  *
@@ -878,11 +1079,6 @@ enic_match_action(const struct rte_flow_action *action,
 static const struct enic_filter_cap *
 enic_get_filter_cap(struct enic *enic)
 {
-	/* FIXME: only support advanced filters for now */
-	if ((enic->flow_filter_mode != FILTER_DPDK_1) &&
-	   (enic->flow_filter_mode != FILTER_USNIC_IP))
-		return (const struct enic_filter_cap *)NULL;
-
 	if (enic->flow_filter_mode)
 		return &enic_filter_cap[enic->flow_filter_mode];
 
