@@ -104,6 +104,21 @@ int enic_get_vnic_config(struct enic *enic)
 	dev_info(enic, "Advanced Filters %savailable\n", ((enic->adv_filters)
 		 ? "" : "not "));
 
+	err = vnic_dev_capable_filter_mode(enic->vdev, &enic->flow_filter_mode,
+					   &enic->filter_tags);
+	if (err) {
+		dev_err(enic_get_dev(enic),
+			"Error getting filter modes, %d\n", err);
+		return err;
+	}
+
+	dev_info(enic, "Flow api filter mode: %s, Filter tagging %savailable\n",
+		((enic->flow_filter_mode == FILTER_DPDK_1) ? "DPDK" :
+		((enic->flow_filter_mode == FILTER_USNIC_IP) ? "USNIC" :
+		((enic->flow_filter_mode == FILTER_IPV4_5TUPLE) ? "5TUPLE" :
+		"NONE"))),
+		((enic->filter_tags) ? "" : "not "));
+
 	c->wq_desc_count =
 		min_t(u32, ENIC_MAX_WQ_DESCS,
 		max_t(u32, ENIC_MIN_WQ_DESCS,

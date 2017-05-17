@@ -80,6 +80,8 @@
 #define PCI_DEVICE_ID_CISCO_VIC_ENET         0x0043  /* ethernet vnic */
 #define PCI_DEVICE_ID_CISCO_VIC_ENET_VF      0x0071  /* enet SRIOV VF */
 
+/* Special Filter id for non-specific packet flagging. Don't change value */
+#define ENIC_MAGIC_FILTER_ID 0xffff
 
 #define ENICPMD_FDIR_MAX           64
 
@@ -111,6 +113,12 @@ struct enic_memzone_entry {
 	LIST_ENTRY(enic_memzone_entry) entries;
 };
 
+struct rte_flow {
+	LIST_ENTRY(rte_flow) next;
+	u16 enic_filter_id;
+	struct filter_v2 enic_filter;
+};
+
 /* Per-instance private data structure */
 struct enic {
 	struct enic *next;
@@ -135,7 +143,9 @@ struct enic {
 	int link_status;
 	u8 hw_ip_checksum;
 	u16 max_mtu;
-	u16 adv_filters;
+	u8 adv_filters;
+	u32 flow_filter_mode;
+	u8 filter_tags;
 
 	unsigned int flags;
 	unsigned int priv_flags;
@@ -170,6 +180,8 @@ struct enic {
 	rte_spinlock_t memzone_list_lock;
 	rte_spinlock_t mtu_lock;
 
+	LIST_HEAD(enic_flows, rte_flow) flows;
+	rte_spinlock_t flows_lock;
 };
 
 /* Get the CQ index from a Start of Packet(SOP) RQ index */
