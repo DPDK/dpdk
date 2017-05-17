@@ -630,6 +630,8 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 		goto error_early;
 	}
 	(*internals)->if_name = strdup(pair->value);
+	if ((*internals)->if_name == NULL)
+		goto error_early;
 	(*internals)->if_index = ifr.ifr_ifindex;
 
 	if (ioctl(sockfd, SIOCGIFHWADDR, &ifr) == -1) {
