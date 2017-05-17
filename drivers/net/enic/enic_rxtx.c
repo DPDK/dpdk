@@ -253,8 +253,20 @@ enic_cq_rx_to_pkt_flags(struct cq_desc *cqd, struct rte_mbuf *mbuf)
 	}
 	mbuf->vlan_tci = vlan_tci;
 
-	/* RSS flag */
-	if (enic_cq_rx_desc_rss_type(cqrd)) {
+	if ((cqd->type_color & CQ_DESC_TYPE_MASK) == CQ_DESC_TYPE_CLASSIFIER) {
+		struct cq_enet_rq_clsf_desc *clsf_cqd;
+		uint16_t filter_id;
+		clsf_cqd = (struct cq_enet_rq_clsf_desc *)cqd;
+		filter_id = clsf_cqd->filter_id;
+		if (filter_id) {
+			pkt_flags |= PKT_RX_FDIR;
+			if (filter_id != ENIC_MAGIC_FILTER_ID) {
+				mbuf->hash.fdir.hi = clsf_cqd->filter_id;
+				pkt_flags |= PKT_RX_FDIR_ID;
+			}
+		}
+	} else if (enic_cq_rx_desc_rss_type(cqrd)) {
+		/* RSS flag */
 		pkt_flags |= PKT_RX_RSS_HASH;
 		mbuf->hash.rss = enic_cq_rx_desc_rss_hash(cqrd);
 	}
