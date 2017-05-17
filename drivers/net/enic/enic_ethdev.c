@@ -116,13 +116,25 @@ enicpmd_dev_filter_ctrl(struct rte_eth_dev *dev,
 		     enum rte_filter_op filter_op,
 		     void *arg)
 {
-	int ret = -EINVAL;
+	int ret = 0;
 
-	if (RTE_ETH_FILTER_FDIR == filter_type)
+	ENICPMD_FUNC_TRACE();
+
+	switch (filter_type) {
+	case RTE_ETH_FILTER_GENERIC:
+		if (filter_op != RTE_ETH_FILTER_GET)
+			return -EINVAL;
+		*(const void **)arg = &enic_flow_ops;
+		break;
+	case RTE_ETH_FILTER_FDIR:
 		ret = enicpmd_fdir_ctrl_func(dev, filter_op, arg);
-	else
+		break;
+	default:
 		dev_warning(enic, "Filter type (%d) not supported",
 			filter_type);
+		ret = -EINVAL;
+		break;
+	}
 
 	return ret;
 }

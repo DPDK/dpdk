@@ -306,4 +306,5 @@ void copy_fltr_v1(struct filter_v2 *fltr, struct rte_eth_fdir_input *input,
 		  struct rte_eth_fdir_masks *masks);
 void copy_fltr_v2(struct filter_v2 *fltr, struct rte_eth_fdir_input *input,
 		  struct rte_eth_fdir_masks *masks);
+extern const struct rte_flow_ops enic_flow_ops;
 #endif /* _ENIC_H_ */
