@@ -92,6 +92,8 @@
 #define _CMD_VTYPE(cmd)          (((cmd) >> _CMD_VTYPESHIFT) & _CMD_VTYPEMASK)
 #define _CMD_N(cmd)              (((cmd) >> _CMD_NSHIFT) & _CMD_NMASK)
 
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+
 enum vnic_devcmd_cmd {
 	CMD_NONE                = _CMDC(_CMD_DIR_NONE, _CMD_VTYPE_NONE, 0),
 
@@ -598,11 +600,28 @@ enum vnic_devcmd_cmd {
 	 * out: (u32) a0=filter identifier
 	 *
 	 * Capability query:
-	 * out: (u64) a0= 1 if capabliity query supported
-	 *      (u64) a1= MAX filter type supported
+	 * in:  (u64) a1= supported filter capability exchange modes
+	 * out: (u64) a0= 1 if capability query supported
+	 *      if (u64) a1 = 0: a1 = MAX filter type supported
+	 *      if (u64) a1 & FILTER_CAP_MODE_V1_FLAG:
+	 *                       a1 = bitmask of supported filters
+	 *                       a2 = FILTER_CAP_MODE_V1
+	 *                       a3 = bitmask of supported actions
 	 */
 	CMD_ADD_ADV_FILTER = _CMDC(_CMD_DIR_RW, _CMD_VTYPE_ENET, 77),
 };
+
+/* Modes for exchanging advanced filter capabilities. The modes supported by
+ * the driver are passed in the CMD_ADD_ADV_FILTER capability command and the
+ * mode selected is returned.
+ *    V0: the maximum filter type supported is returned
+ *    V1: bitmasks of supported filters and actions are returned
+ */
+enum filter_cap_mode {
+	FILTER_CAP_MODE_V0 = 0,  /* Must always be 0 for legacy drivers */
+	FILTER_CAP_MODE_V1 = 1,
+};
+#define FILTER_CAP_MODE_V1_FLAG (1 << FILTER_CAP_MODE_V1)
 
 /* CMD_ENABLE2 flags */
 #define CMD_ENABLE2_STANDBY 0x0
@@ -837,6 +856,7 @@ struct filter_generic_1 {
 /* Specifies the filter_action type. */
 enum {
 	FILTER_ACTION_RQ_STEERING = 0,
+	FILTER_ACTION_V2 = 1,
 	FILTER_ACTION_MAX
 };
 
@@ -845,6 +865,22 @@ struct filter_action {
 	union {
 		u32 rq_idx;
 	} u;
+} __attribute__((packed));
+
+#define FILTER_ACTION_RQ_STEERING_FLAG	(1 << 0)
+#define FILTER_ACTION_FILTER_ID_FLAG	(1 << 1)
+#define FILTER_ACTION_V2_ALL		(FILTER_ACTION_RQ_STEERING_FLAG \
+					 | FILTER_ACTION_FILTER_ID_FLAG)
+
+/* Version 2 of filter action must be a strict extension of struct filter_action
+ * where the first fields exactly match in size and meaning.
+ */
+struct filter_action_v2 {
+	u32 type;
+	u32 rq_idx;
+	u32 flags;                     /* use FILTER_ACTION_XXX_FLAG defines */
+	u16 filter_id;
+	u_int8_t reserved[32];         /* for future expansion */
 } __attribute__((packed));
 
 /* Specifies the filter type. */
@@ -858,6 +894,21 @@ enum filter_type {
 	FILTER_DPDK_1 = 6,
 	FILTER_MAX
 };
+
+#define FILTER_USNIC_ID_FLAG		(1 << FILTER_USNIC_ID)
+#define FILTER_IPV4_5TUPLE_FLAG		(1 << FILTER_IPV4_5TUPLE)
+#define FILTER_MAC_VLAN_FLAG		(1 << FILTER_MAC_VLAN)
+#define FILTER_VLAN_IP_3TUPLE_FLAG	(1 << FILTER_VLAN_IP_3TUPLE)
+#define FILTER_NVGRE_VMQ_FLAG		(1 << FILTER_NVGRE_VMQ)
+#define FILTER_USNIC_IP_FLAG		(1 << FILTER_USNIC_IP)
+#define FILTER_DPDK_1_FLAG		(1 << FILTER_DPDK_1)
+#define FILTER_V1_ALL			(FILTER_USNIC_ID_FLAG | \
+					FILTER_IPV4_5TUPLE_FLAG | \
+					FILTER_MAC_VLAN_FLAG | \
+					FILTER_VLAN_IP_3TUPLE_FLAG | \
+					FILTER_NVGRE_VMQ_FLAG | \
+					FILTER_USNIC_IP_FLAG | \
+					FILTER_DPDK_1_FLAG)
 
 struct filter {
 	u32 type;
@@ -903,7 +954,7 @@ struct filter_tlv {
 /* Data for CMD_ADD_FILTER is 2 TLV and filter + action structs */
 #define FILTER_MAX_BUF_SIZE 100
 #define FILTER_V2_MAX_BUF_SIZE (sizeof(struct filter_v2) + \
-	sizeof(struct filter_action) + \
+	sizeof(struct filter_action_v2) + \
 	(2 * sizeof(struct filter_tlv)))
 
 /*
@@ -947,6 +998,30 @@ enum {
 	CLSF_ADD = 0,
 	CLSF_DEL = 1,
 };
+
+/*
+ * Get the action structure size given action type. To be "future-proof,"
+ * drivers should use this instead of "sizeof (struct filter_action_v2)"
+ * when computing length for TLV.
+ */
+static inline u_int32_t
+vnic_action_size(struct filter_action_v2 *fap)
+{
+	u_int32_t size;
+
+	switch (fap->type) {
+	case FILTER_ACTION_RQ_STEERING:
+		size = sizeof(struct filter_action);
+		break;
+	case FILTER_ACTION_V2:
+		size = sizeof(struct filter_action_v2);
+		break;
+	default:
+		size = sizeof(struct filter_action);
+		break;
+	}
+	return size;
+}
 
 /*
  * Writing cmd register causes STAT_BUSY to get set in status register.

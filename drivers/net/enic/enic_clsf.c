@@ -345,7 +345,7 @@ int enic_fdir_del_fltr(struct enic *enic, struct rte_eth_fdir_filter *params)
 
 		/* Delete the filter */
 		vnic_dev_classifier(enic->vdev, CLSF_DEL,
-			&key->fltr_id, NULL);
+			&key->fltr_id, NULL, NULL);
 		rte_free(key);
 		enic->fdir.nodes[pos] = NULL;
 		enic->fdir.stats.free++;
@@ -365,8 +365,10 @@ int enic_fdir_add_fltr(struct enic *enic, struct rte_eth_fdir_filter *params)
 	u32 flowtype_supported;
 	u16 flex_bytes;
 	u16 queue;
+	struct filter_action_v2 action;
 
 	memset(&fltr, 0, sizeof(fltr));
+	memset(&action, 0, sizeof(action));
 	flowtype_supported = enic->fdir.types_mask
 			     & (1 << params->input.flow_type);
 
@@ -439,7 +441,7 @@ int enic_fdir_add_fltr(struct enic *enic, struct rte_eth_fdir_filter *params)
 			 * Delete the filter and add the modified one later
 			 */
 			vnic_dev_classifier(enic->vdev, CLSF_DEL,
-				&key->fltr_id, NULL);
+				&key->fltr_id, NULL, NULL);
 			enic->fdir.stats.free++;
 		}
 
@@ -451,8 +453,11 @@ int enic_fdir_add_fltr(struct enic *enic, struct rte_eth_fdir_filter *params)
 
 	enic->fdir.copy_fltr_fn(&fltr, &params->input,
 				&enic->rte_dev->data->dev_conf.fdir_conf.mask);
+	action.type = FILTER_ACTION_RQ_STEERING;
+	action.rq_idx = queue;
 
-	if (!vnic_dev_classifier(enic->vdev, CLSF_ADD, &queue, &fltr)) {
+	if (!vnic_dev_classifier(enic->vdev, CLSF_ADD, &queue, &fltr,
+	    &action)) {
 		key->fltr_id = queue;
 	} else {
 		dev_err(enic, "Add classifier entry failed\n");
@@ -462,7 +467,8 @@ int enic_fdir_add_fltr(struct enic *enic, struct rte_eth_fdir_filter *params)
 	}
 
 	if (do_free)
-		vnic_dev_classifier(enic->vdev, CLSF_DEL, &old_fltr_id, NULL);
+		vnic_dev_classifier(enic->vdev, CLSF_DEL, &old_fltr_id, NULL,
+				    NULL);
 	else{
 		enic->fdir.stats.free--;
 		enic->fdir.stats.add++;
@@ -488,7 +494,7 @@ void enic_clsf_destroy(struct enic *enic)
 		key = enic->fdir.nodes[index];
 		if (key) {
 			vnic_dev_classifier(enic->vdev, CLSF_DEL,
-				&key->fltr_id, NULL);
+				&key->fltr_id, NULL, NULL);
 			rte_free(key);
 			enic->fdir.nodes[index] = NULL;
 		}

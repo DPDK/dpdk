@@ -71,6 +71,19 @@ struct cq_enet_rq_desc {
 	u8 type_color;
 };
 
+/* Completion queue descriptor: Ethernet receive queue, 16B */
+struct cq_enet_rq_clsf_desc {
+	__le16 completed_index_flags;
+	__le16 q_number_rss_type_flags;
+	__le16 filter_id;
+	__le16 lif;
+	__le16 bytes_written_flags;
+	__le16 vlan;
+	__le16 checksum_fcoe;
+	u8 flags;
+	u8 type_color;
+};
+
 #define CQ_ENET_RQ_DESC_FLAGS_INGRESS_PORT          (0x1 << 12)
 #define CQ_ENET_RQ_DESC_FLAGS_FCOE                  (0x1 << 13)
 #define CQ_ENET_RQ_DESC_FLAGS_EOP                   (0x1 << 14)
