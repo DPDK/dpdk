@@ -3551,7 +3551,8 @@ eth_igb_rss_reta_query(struct rte_eth_dev *dev,
 
 #define MAC_TYPE_FILTER_SUP(type)    do {\
 	if ((type) != e1000_82580 && (type) != e1000_i350 &&\
-		(type) != e1000_82576)\
+		(type) != e1000_82576 && (type) != e1000_i210 &&\
+		(type) != e1000_i211)\
 		return -ENOTSUP;\
 } while (0)
 
