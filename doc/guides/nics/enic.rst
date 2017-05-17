@@ -213,6 +213,45 @@ or ``vfio`` in non-IOMMU mode.
 Please see :ref:`Limitations <enic_limitations>` for limitations in
 the use of SR-IOV.
 
+.. _enic-genic-flow-api:
+
+Generic Flow API support
+------------------------
+
+Generic Flow API is supported. The baseline support is:
+
+- **1200 series VICs**
+
+  5-tuple exact Flow support for 1200 series adapters. This allows:
+
+  - Attributes: ingress
+  - Items: ipv4, ipv6, udp, tcp (must exactly match src/dst IP
+    addresses and ports and all must be specified).
+  - Actions: queue and void
+  - Selectors: 'is'
+
+- **1300 series VICS with Advanced filters disabled**
+
+  With advanced filters disabled, an IPv4 or IPv6 item must be specified
+  in the pattern.
+
+  - Attributes: ingress
+  - Items: eth, ipv4, ipv6, udp, tcp, vxlan, inner eth, ipv4, ipv6, udp, tcp
+  - Actions: queue and void
+  - Selectors: 'is', 'spec' and 'mask'. 'last' is not supported
+  - In total, up to 64 bytes of mask is allowed across all haeders
+
+- **1300 series VICS with Advanced filters enabled**
+
+  - Attributes: ingress
+  - Items: eth, ipv4, ipv6, udp, tcp, vxlan, inner eth, ipv4, ipv6, udp, tcp
+  - Actions: queue, mark, flag and void
+  - Selectors: 'is', 'spec' and 'mask'. 'last' is not supported
+  - In total, up to 64 bytes of mask is allowed across all haeders
+
+More features may be added in future firmware and new versions of the VIC.
+Please refer to the release notes.
+
 .. _enic_limitations:
 
 Limitations
@@ -260,8 +299,20 @@ Limitations
   - The number of SR-IOV devices is limited to 256. Components on target system
     might limit this number to fewer than 256.
 
+- **Flow API**
+
+  - The number of filters that can be specified with the Generic Flow API is
+    dependent on how many header fields are being masked. Use 'flow create' in
+    a loop to determine how many filters your VIC will support (not more than
+    1000 for 1300 series VICs). Filter are checked for matching in the order they
+    were added. Since there currently is no grouping or priority support,
+    'catch-all' filters should be added last.
+
 How to build the suite
 ----------------------
+
+The build instructions for the DPDK suite should be followed. By default
+the ENIC PMD library will be built into the DPDK library.
 
 Refer to the document :ref:`compiling and testing a PMD for a NIC
 <pmd_build_and_test>` for details.
@@ -313,6 +364,7 @@ Supported features
 - Scattered Rx
 - MTU update
 - SR-IOV on UCS managed servers connected to Fabric Interconnects.
+- Flow API
 
 Known bugs and unsupported features in this release
 ---------------------------------------------------

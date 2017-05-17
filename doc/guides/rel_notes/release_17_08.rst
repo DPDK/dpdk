@@ -41,6 +41,12 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **Added Generic Flow API support to enic.**
+
+  Flow API support for outer Ethernet, VLAN, IPv4, IPv6, UDP, TCP, SCTP, VxLAN
+  and inner Ethernet, VLAN, IPv4, IPv6, UDP and TCP pattern items with QUEUE,
+  MARK, FLAG and VOID actions for ingress traffic.
+
 
 Resolved Issues
 ---------------
