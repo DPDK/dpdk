@@ -1097,6 +1097,142 @@ enic_get_action_cap(struct enic *enic)
 		ea = &enic_action_cap[FILTER_ACTION_RQ_STEERING_FLAG];
 	return ea;
 }
+
+/* Debug function to dump internal NIC action structure. */
+static void
+enic_dump_actions(const struct filter_action_v2 *ea)
+{
+	if (ea->type == FILTER_ACTION_RQ_STEERING) {
+		FLOW_LOG(INFO, "Action(V1), queue: %u\n", ea->rq_idx);
+	} else if (ea->type == FILTER_ACTION_V2) {
+		FLOW_LOG(INFO, "Actions(V2)\n");
+		if (ea->flags & FILTER_ACTION_RQ_STEERING_FLAG)
+			FLOW_LOG(INFO, "\tqueue: %u\n",
+			       enic_sop_rq_idx_to_rte_idx(ea->rq_idx));
+		if (ea->flags & FILTER_ACTION_FILTER_ID_FLAG)
+			FLOW_LOG(INFO, "\tfilter_id: %u\n", ea->filter_id);
+	}
+}
+
+/* Debug function to dump internal NIC filter structure. */
+static void
+enic_dump_filter(const struct filter_v2 *filt)
+{
+	const struct filter_generic_1 *gp;
+	int i, j, mbyte;
+	char buf[128], *bp;
+	char ip4[16], ip6[16], udp[16], tcp[16], tcpudp[16], ip4csum[16];
+	char l4csum[16], ipfrag[16];
+
+	switch (filt->type) {
+	case FILTER_IPV4_5TUPLE:
+		FLOW_LOG(INFO, "FILTER_IPV4_5TUPLE\n");
+		break;
+	case FILTER_USNIC_IP:
+	case FILTER_DPDK_1:
+		/* FIXME: this should be a loop */
+		gp = &filt->u.generic_1;
+		FLOW_LOG(INFO, "Filter: vlan: 0x%04x, mask: 0x%04x\n",
+		       gp->val_vlan, gp->mask_vlan);
+
+		if (gp->mask_flags & FILTER_GENERIC_1_IPV4)
+			sprintf(ip4, "%s ",
+				(gp->val_flags & FILTER_GENERIC_1_IPV4)
+				 ? "ip4(y)" : "ip4(n)");
+		else
+			sprintf(ip4, "%s ", "ip4(x)");
+
+		if (gp->mask_flags & FILTER_GENERIC_1_IPV6)
+			sprintf(ip6, "%s ",
+				(gp->val_flags & FILTER_GENERIC_1_IPV4)
+				 ? "ip6(y)" : "ip6(n)");
+		else
+			sprintf(ip6, "%s ", "ip6(x)");
+
+		if (gp->mask_flags & FILTER_GENERIC_1_UDP)
+			sprintf(udp, "%s ",
+				(gp->val_flags & FILTER_GENERIC_1_UDP)
+				 ? "udp(y)" : "udp(n)");
+		else
+			sprintf(udp, "%s ", "udp(x)");
+
+		if (gp->mask_flags & FILTER_GENERIC_1_TCP)
+			sprintf(tcp, "%s ",
+				(gp->val_flags & FILTER_GENERIC_1_TCP)
+				 ? "tcp(y)" : "tcp(n)");
+		else
+			sprintf(tcp, "%s ", "tcp(x)");
+
+		if (gp->mask_flags & FILTER_GENERIC_1_TCP_OR_UDP)
+			sprintf(tcpudp, "%s ",
+				(gp->val_flags & FILTER_GENERIC_1_TCP_OR_UDP)
+				 ? "tcpudp(y)" : "tcpudp(n)");
+		else
+			sprintf(tcpudp, "%s ", "tcpudp(x)");
+
+		if (gp->mask_flags & FILTER_GENERIC_1_IP4SUM_OK)
+			sprintf(ip4csum, "%s ",
+				(gp->val_flags & FILTER_GENERIC_1_IP4SUM_OK)
+				 ? "ip4csum(y)" : "ip4csum(n)");
+		else
+			sprintf(ip4csum, "%s ", "ip4csum(x)");
+
+		if (gp->mask_flags & FILTER_GENERIC_1_L4SUM_OK)
+			sprintf(l4csum, "%s ",
+				(gp->val_flags & FILTER_GENERIC_1_L4SUM_OK)
+				 ? "l4csum(y)" : "l4csum(n)");
+		else
+			sprintf(l4csum, "%s ", "l4csum(x)");
+
+		if (gp->mask_flags & FILTER_GENERIC_1_IPFRAG)
+			sprintf(ipfrag, "%s ",
+				(gp->val_flags & FILTER_GENERIC_1_IPFRAG)
+				 ? "ipfrag(y)" : "ipfrag(n)");
+		else
+			sprintf(ipfrag, "%s ", "ipfrag(x)");
+		FLOW_LOG(INFO, "\tFlags: %s%s%s%s%s%s%s%s\n", ip4, ip6, udp,
+			 tcp, tcpudp, ip4csum, l4csum, ipfrag);
+
+		for (i = 0; i < FILTER_GENERIC_1_NUM_LAYERS; i++) {
+			mbyte = FILTER_GENERIC_1_KEY_LEN - 1;
+			while (mbyte && !gp->layer[i].mask[mbyte])
+				mbyte--;
+			if (mbyte == 0)
+				continue;
+
+			bp = buf;
+			for (j = 0; j <= mbyte; j++) {
+				sprintf(bp, "%02x",
+					gp->layer[i].mask[j]);
+				bp += 2;
+			}
+			*bp = '\0';
+			FLOW_LOG(INFO, "\tL%u mask: %s\n", i + 2, buf);
+			bp = buf;
+			for (j = 0; j <= mbyte; j++) {
+				sprintf(bp, "%02x",
+					gp->layer[i].val[j]);
+				bp += 2;
+			}
+			*bp = '\0';
+			FLOW_LOG(INFO, "\tL%u  val: %s\n", i + 2, buf);
+		}
+		break;
+	default:
+		FLOW_LOG(INFO, "FILTER UNKNOWN\n");
+		break;
+	}
+}
+
+/* Debug function to dump internal NIC flow structures. */
+static void
+enic_dump_flow(const struct filter_action_v2 *ea, const struct filter_v2 *filt)
+{
+	enic_dump_filter(filt);
+	enic_dump_actions(ea);
+}
+
+
 /**
  * Internal flow parse/validate function.
  *
@@ -1308,6 +1444,8 @@ enic_flow_validate(struct rte_eth_dev *dev, const struct rte_flow_attr *attrs,
 
 	ret = enic_flow_parse(dev, attrs, pattern, actions, error,
 			       &enic_filter, &enic_action);
+	if (!ret)
+		enic_dump_flow(&enic_action, &enic_filter);
 	return ret;
 }
 
