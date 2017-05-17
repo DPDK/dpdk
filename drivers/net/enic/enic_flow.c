@@ -98,7 +98,84 @@ static enic_copy_item_fn enic_copy_item_tcp_v2;
 static enic_copy_item_fn enic_copy_item_sctp_v2;
 static enic_copy_item_fn enic_copy_item_sctp_v2;
 static enic_copy_item_fn enic_copy_item_vxlan_v2;
+static copy_action_fn enic_copy_action_v1;
 static copy_action_fn enic_copy_action_v2;
+
+/**
+ * NICs have Advanced Filters capability but they are disabled. This means
+ * that layer 3 must be specified.
+ */
+static const struct enic_items enic_items_v2[] = {
+	[RTE_FLOW_ITEM_TYPE_ETH] = {
+		.copy_item = enic_copy_item_eth_v2,
+		.valid_start_item = 1,
+		.prev_items = (const enum rte_flow_item_type[]) {
+			       RTE_FLOW_ITEM_TYPE_VXLAN,
+			       RTE_FLOW_ITEM_TYPE_END,
+		},
+	},
+	[RTE_FLOW_ITEM_TYPE_VLAN] = {
+		.copy_item = enic_copy_item_vlan_v2,
+		.valid_start_item = 1,
+		.prev_items = (const enum rte_flow_item_type[]) {
+			       RTE_FLOW_ITEM_TYPE_ETH,
+			       RTE_FLOW_ITEM_TYPE_END,
+		},
+	},
+	[RTE_FLOW_ITEM_TYPE_IPV4] = {
+		.copy_item = enic_copy_item_ipv4_v2,
+		.valid_start_item = 1,
+		.prev_items = (const enum rte_flow_item_type[]) {
+			       RTE_FLOW_ITEM_TYPE_ETH,
+			       RTE_FLOW_ITEM_TYPE_VLAN,
+			       RTE_FLOW_ITEM_TYPE_END,
+		},
+	},
+	[RTE_FLOW_ITEM_TYPE_IPV6] = {
+		.copy_item = enic_copy_item_ipv6_v2,
+		.valid_start_item = 1,
+		.prev_items = (const enum rte_flow_item_type[]) {
+			       RTE_FLOW_ITEM_TYPE_ETH,
+			       RTE_FLOW_ITEM_TYPE_VLAN,
+			       RTE_FLOW_ITEM_TYPE_END,
+		},
+	},
+	[RTE_FLOW_ITEM_TYPE_UDP] = {
+		.copy_item = enic_copy_item_udp_v2,
+		.valid_start_item = 0,
+		.prev_items = (const enum rte_flow_item_type[]) {
+			       RTE_FLOW_ITEM_TYPE_IPV4,
+			       RTE_FLOW_ITEM_TYPE_IPV6,
+			       RTE_FLOW_ITEM_TYPE_END,
+		},
+	},
+	[RTE_FLOW_ITEM_TYPE_TCP] = {
+		.copy_item = enic_copy_item_tcp_v2,
+		.valid_start_item = 0,
+		.prev_items = (const enum rte_flow_item_type[]) {
+			       RTE_FLOW_ITEM_TYPE_IPV4,
+			       RTE_FLOW_ITEM_TYPE_IPV6,
+			       RTE_FLOW_ITEM_TYPE_END,
+		},
+	},
+	[RTE_FLOW_ITEM_TYPE_SCTP] = {
+		.copy_item = enic_copy_item_sctp_v2,
+		.valid_start_item = 0,
+		.prev_items = (const enum rte_flow_item_type[]) {
+			       RTE_FLOW_ITEM_TYPE_IPV4,
+			       RTE_FLOW_ITEM_TYPE_IPV6,
+			       RTE_FLOW_ITEM_TYPE_END,
+		},
+	},
+	[RTE_FLOW_ITEM_TYPE_VXLAN] = {
+		.copy_item = enic_copy_item_vxlan_v2,
+		.valid_start_item = 0,
+		.prev_items = (const enum rte_flow_item_type[]) {
+			       RTE_FLOW_ITEM_TYPE_UDP,
+			       RTE_FLOW_ITEM_TYPE_END,
+		},
+	},
+};
 
 /** NICs with Advanced filters enabled */
 static const struct enic_items enic_items_v3[] = {
@@ -175,9 +252,18 @@ static const struct enic_items enic_items_v3[] = {
 
 /** Filtering capabilities indexed this NICs supported filter type. */
 static const struct enic_filter_cap enic_filter_cap[] = {
+	[FILTER_USNIC_IP] = {
+		.item_info = enic_items_v2,
+	},
 	[FILTER_DPDK_1] = {
 		.item_info = enic_items_v3,
 	},
+};
+
+/** Supported actions for older NICs */
+static const enum rte_flow_action_type enic_supported_actions_v1[] = {
+	RTE_FLOW_ACTION_TYPE_QUEUE,
+	RTE_FLOW_ACTION_TYPE_END,
 };
 
 /** Supported actions for newer NICs */
@@ -190,6 +276,10 @@ static const enum rte_flow_action_type enic_supported_actions_v2[] = {
 
 /** Action capabilities indexed by NIC version information */
 static const struct enic_action_cap enic_action_cap[] = {
+	[FILTER_ACTION_RQ_STEERING_FLAG] = {
+		.actions = enic_supported_actions_v1,
+		.copy_fn = enic_copy_action_v1,
+	},
 	[FILTER_ACTION_V2_ALL] = {
 		.actions = enic_supported_actions_v2,
 		.copy_fn = enic_copy_action_v2,
@@ -640,7 +730,6 @@ enic_copy_filter(const struct rte_flow_item pattern[],
 	enum rte_flow_item_type prev_item;
 	const struct enic_items *item_info;
 
-	enic_filter->type = FILTER_DPDK_1;
 	u8 is_first_item = 1;
 
 	FLOW_TRACE();
@@ -678,6 +767,44 @@ stacking_error:
 			   item, "stacking error");
 	return -rte_errno;
 }
+
+/**
+ * Build the intenal version 1 NIC action structure from the provided pattern.
+ * The pattern is validated as the items are copied.
+ *
+ * @param actions[in]
+ * @param enic_action[out]
+ *   NIC specfilc actions derived from the actions.
+ * @param error[out]
+ */
+static int
+enic_copy_action_v1(const struct rte_flow_action actions[],
+		    struct filter_action_v2 *enic_action)
+{
+	FLOW_TRACE();
+
+	for (; actions->type != RTE_FLOW_ACTION_TYPE_END; actions++) {
+		if (actions->type == RTE_FLOW_ACTION_TYPE_VOID)
+			continue;
+
+		switch (actions->type) {
+		case RTE_FLOW_ACTION_TYPE_QUEUE: {
+			const struct rte_flow_action_queue *queue =
+				(const struct rte_flow_action_queue *)
+				actions->conf;
+			enic_action->rq_idx =
+				enic_rte_rq_idx_to_sop_idx(queue->index);
+			break;
+		}
+		default:
+			RTE_ASSERT(0);
+			break;
+		}
+	}
+	enic_action->type = FILTER_ACTION_RQ_STEERING;
+	return 0;
+}
+
 /**
  * Build the intenal version 2 NIC action structure from the provided pattern.
  * The pattern is validated as the items are copied.
@@ -752,7 +879,8 @@ static const struct enic_filter_cap *
 enic_get_filter_cap(struct enic *enic)
 {
 	/* FIXME: only support advanced filters for now */
-	if (enic->flow_filter_mode != FILTER_DPDK_1)
+	if ((enic->flow_filter_mode != FILTER_DPDK_1) &&
+	   (enic->flow_filter_mode != FILTER_USNIC_IP))
 		return (const struct enic_filter_cap *)NULL;
 
 	if (enic->flow_filter_mode)
@@ -769,6 +897,8 @@ enic_get_action_cap(struct enic *enic)
 
 	if (enic->filter_tags)
 		ea = &enic_action_cap[FILTER_ACTION_V2_ALL];
+	else
+		ea = &enic_action_cap[FILTER_ACTION_RQ_STEERING_FLAG];
 	return ea;
 }
 /**
@@ -881,6 +1011,7 @@ enic_flow_parse(struct rte_eth_dev *dev,
 			   NULL, "Flow API not available");
 		return -rte_errno;
 	}
+	enic_filter->type = enic->flow_filter_mode;
 	ret = enic_copy_filter(pattern, enic_filter_cap->item_info,
 				       enic_filter, error);
 	return ret;
