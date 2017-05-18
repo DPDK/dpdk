@@ -339,7 +339,6 @@ rte_eth_dev_get_port_by_name(const char *name, uint8_t *port_id)
 	if (!nb_ports)
 		return -ENODEV;
 
-	*port_id = RTE_MAX_ETHPORTS;
 	RTE_ETH_FOREACH_DEV(i) {
 		if (!strncmp(name,
 			rte_eth_dev_data[i].name, strlen(name))) {

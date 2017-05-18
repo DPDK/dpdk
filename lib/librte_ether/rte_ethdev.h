@@ -4587,7 +4587,7 @@ rte_eth_dev_l2_tunnel_offload_set(uint8_t port_id,
 * @param port_id
 *   pointer to port identifier of the device
 * @return
-*   - (0) if successful.
+*   - (0) if successful and port_id is filled.
 *   - (-ENODEV or -EINVAL) on failure.
 */
 int
