@@ -199,20 +199,6 @@
  * operation. Instead, Event drivers export Poll-Mode enqueue and dequeue
  * functions to applications.
  *
- * An event driven based application has following typical workflow on fastpath:
- * \code{.c}
- *	while (1) {
- *
- *		rte_event_schedule(dev_id);
- *
- *		rte_event_dequeue(...);
- *
- *		(event processing)
- *
- *		rte_event_enqueue(...);
- *	}
- * \endcode
- *
  * The events are injected to event device through *enqueue* operation by
  * event producers in the system. The typical event producers are ethdev
  * subsystem for generating packet events, CPU(SW) for generating events based
@@ -236,6 +222,15 @@
  * The RTE_EVENT_DEV_CAP_DISTRIBUTED_SCHED capability flag is not set
  * indicates the device is centralized and thus needs a dedicated scheduling
  * thread that repeatedly calls rte_event_schedule().
+ *
+ * An event driven worker thread has following typical workflow on fastpath:
+ * \code{.c}
+ *	while (1) {
+ *		rte_event_dequeue_burst(...);
+ *		(event processing)
+ *		rte_event_enqueue_burst(...);
+ *	}
+ * \endcode
  *
  */
 
