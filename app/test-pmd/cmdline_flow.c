@@ -152,6 +152,7 @@ enum index {
 	ITEM_TCP,
 	ITEM_TCP_SRC,
 	ITEM_TCP_DST,
+	ITEM_TCP_FLAGS,
 	ITEM_SCTP,
 	ITEM_SCTP_SRC,
 	ITEM_SCTP_DST,
@@ -531,6 +532,7 @@ static const enum index item_udp[] = {
 static const enum index item_tcp[] = {
 	ITEM_TCP_SRC,
 	ITEM_TCP_DST,
+	ITEM_TCP_FLAGS,
 	ITEM_NEXT,
 	ZERO,
 };
@@ -1266,6 +1268,13 @@ static const struct token token_list[] = {
 		.next = NEXT(item_tcp, NEXT_ENTRY(UNSIGNED), item_param),
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_tcp,
 					     hdr.dst_port)),
+	},
+	[ITEM_TCP_FLAGS] = {
+		.name = "flags",
+		.help = "TCP flags",
+		.next = NEXT(item_tcp, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_tcp,
+					     hdr.tcp_flags)),
 	},
 	[ITEM_SCTP] = {
 		.name = "sctp",
