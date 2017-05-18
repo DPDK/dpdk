@@ -699,7 +699,7 @@ struct sfc_dp_rx sfc_ef10_rx = {
 		.type		= SFC_DP_RX,
 		.hw_fw_caps	= SFC_DP_HW_FW_CAP_EF10,
 	},
-	.features		= 0,
+	.features		= SFC_DP_RX_FEAT_MULTI_PROCESS,
 	.qcreate		= sfc_ef10_rx_qcreate,
 	.qdestroy		= sfc_ef10_rx_qdestroy,
 	.qstart			= sfc_ef10_rx_qstart,

@@ -225,7 +225,18 @@ struct sfc_adapter {
 	uint8_t				rss_key[SFC_RSS_KEY_SIZE];
 #endif
 
+	/*
+	 * Shared memory copy of the Rx datapath name to be used by
+	 * the secondary process to find Rx datapath to be used.
+	 */
+	char				*dp_rx_name;
 	const struct sfc_dp_rx		*dp_rx;
+
+	/*
+	 * Shared memory copy of the Tx datapath name to be used by
+	 * the secondary process to find Rx datapath to be used.
+	 */
+	char				*dp_tx_name;
 	const struct sfc_dp_tx		*dp_tx;
 };
 

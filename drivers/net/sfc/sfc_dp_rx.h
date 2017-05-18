@@ -161,6 +161,7 @@ struct sfc_dp_rx {
 
 	unsigned int				features;
 #define SFC_DP_RX_FEAT_SCATTER			0x1
+#define SFC_DP_RX_FEAT_MULTI_PROCESS		0x2
 	sfc_dp_rx_qcreate_t			*qcreate;
 	sfc_dp_rx_qdestroy_t			*qdestroy;
 	sfc_dp_rx_qstart_t			*qstart;

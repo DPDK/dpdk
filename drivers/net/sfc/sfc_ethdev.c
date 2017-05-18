@@ -913,6 +913,10 @@ sfc_set_mc_addr_list(struct rte_eth_dev *dev, struct ether_addr *mc_addr_set,
 	return -rc;
 }
 
+/*
+ * The function is used by the secondary process as well. It must not
+ * use any process-local pointers from the adapter data.
+ */
 static void
 sfc_rx_queue_info_get(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 		      struct rte_eth_rxq_info *qinfo)
@@ -939,6 +943,10 @@ sfc_rx_queue_info_get(struct rte_eth_dev *dev, uint16_t rx_queue_id,
 	sfc_adapter_unlock(sa);
 }
 
+/*
+ * The function is used by the secondary process as well. It must not
+ * use any process-local pointers from the adapter data.
+ */
 static void
 sfc_tx_queue_info_get(struct rte_eth_dev *dev, uint16_t tx_queue_id,
 		      struct rte_eth_txq_info *qinfo)
@@ -1372,6 +1380,29 @@ static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.fw_version_get			= sfc_fw_version_get,
 };
 
+/**
+ * Duplicate a string in potentially shared memory required for
+ * multi-process support.
+ *
+ * strdup() allocates from process-local heap/memory.
+ */
+static char *
+sfc_strdup(const char *str)
+{
+	size_t size;
+	char *copy;
+
+	if (str == NULL)
+		return NULL;
+
+	size = strlen(str) + 1;
+	copy = rte_malloc(__func__, size, 0);
+	if (copy != NULL)
+		rte_memcpy(copy, str, size);
+
+	return copy;
+}
+
 static int
 sfc_eth_dev_set_ops(struct rte_eth_dev *dev)
 {
@@ -1419,7 +1450,13 @@ sfc_eth_dev_set_ops(struct rte_eth_dev *dev)
 		}
 	}
 
-	sfc_info(sa, "use %s Rx datapath", sa->dp_rx->dp.name);
+	sa->dp_rx_name = sfc_strdup(sa->dp_rx->dp.name);
+	if (sa->dp_rx_name == NULL) {
+		rc = ENOMEM;
+		goto fail_dp_rx_name;
+	}
+
+	sfc_info(sa, "use %s Rx datapath", sa->dp_rx_name);
 
 	dev->rx_pkt_burst = sa->dp_rx->pkt_burst;
 
@@ -1452,7 +1489,13 @@ sfc_eth_dev_set_ops(struct rte_eth_dev *dev)
 		}
 	}
 
-	sfc_info(sa, "use %s Tx datapath", sa->dp_tx->dp.name);
+	sa->dp_tx_name = sfc_strdup(sa->dp_tx->dp.name);
+	if (sa->dp_tx_name == NULL) {
+		rc = ENOMEM;
+		goto fail_dp_tx_name;
+	}
+
+	sfc_info(sa, "use %s Tx datapath", sa->dp_tx_name);
 
 	dev->tx_pkt_burst = sa->dp_tx->pkt_burst;
 
@@ -1460,11 +1503,16 @@ sfc_eth_dev_set_ops(struct rte_eth_dev *dev)
 
 	return 0;
 
+fail_dp_tx_name:
 fail_dp_tx_caps:
 	sa->dp_tx = NULL;
 
 fail_dp_tx:
 fail_kvarg_tx_datapath:
+	rte_free(sa->dp_rx_name);
+	sa->dp_rx_name = NULL;
+
+fail_dp_rx_name:
 fail_dp_rx_caps:
 	sa->dp_rx = NULL;
 
@@ -1482,8 +1530,78 @@ sfc_eth_dev_clear_ops(struct rte_eth_dev *dev)
 	dev->rx_pkt_burst = NULL;
 	dev->tx_pkt_burst = NULL;
 
+	rte_free(sa->dp_tx_name);
+	sa->dp_tx_name = NULL;
 	sa->dp_tx = NULL;
+
+	rte_free(sa->dp_rx_name);
+	sa->dp_rx_name = NULL;
 	sa->dp_rx = NULL;
+}
+
+static const struct eth_dev_ops sfc_eth_dev_secondary_ops = {
+	.rxq_info_get			= sfc_rx_queue_info_get,
+	.txq_info_get			= sfc_tx_queue_info_get,
+};
+
+static int
+sfc_eth_dev_secondary_set_ops(struct rte_eth_dev *dev)
+{
+	/*
+	 * Device private data has really many process-local pointers.
+	 * Below code should be extremely careful to use data located
+	 * in shared memory only.
+	 */
+	struct sfc_adapter *sa = dev->data->dev_private;
+	const struct sfc_dp_rx *dp_rx;
+	const struct sfc_dp_tx *dp_tx;
+	int rc;
+
+	dp_rx = sfc_dp_find_rx_by_name(&sfc_dp_head, sa->dp_rx_name);
+	if (dp_rx == NULL) {
+		sfc_err(sa, "cannot find %s Rx datapath", sa->dp_tx_name);
+		rc = ENOENT;
+		goto fail_dp_rx;
+	}
+	if (~dp_rx->features & SFC_DP_RX_FEAT_MULTI_PROCESS) {
+		sfc_err(sa, "%s Rx datapath does not support multi-process",
+			sa->dp_tx_name);
+		rc = EINVAL;
+		goto fail_dp_rx_multi_process;
+	}
+
+	dp_tx = sfc_dp_find_tx_by_name(&sfc_dp_head, sa->dp_tx_name);
+	if (dp_tx == NULL) {
+		sfc_err(sa, "cannot find %s Tx datapath", sa->dp_tx_name);
+		rc = ENOENT;
+		goto fail_dp_tx;
+	}
+	if (~dp_tx->features & SFC_DP_TX_FEAT_MULTI_PROCESS) {
+		sfc_err(sa, "%s Tx datapath does not support multi-process",
+			sa->dp_tx_name);
+		rc = EINVAL;
+		goto fail_dp_tx_multi_process;
+	}
+
+	dev->rx_pkt_burst = dp_rx->pkt_burst;
+	dev->tx_pkt_burst = dp_tx->pkt_burst;
+	dev->dev_ops = &sfc_eth_dev_secondary_ops;
+
+	return 0;
+
+fail_dp_tx_multi_process:
+fail_dp_tx:
+fail_dp_rx_multi_process:
+fail_dp_rx:
+	return rc;
+}
+
+static void
+sfc_eth_dev_secondary_clear_ops(struct rte_eth_dev *dev)
+{
+	dev->dev_ops = NULL;
+	dev->tx_pkt_burst = NULL;
+	dev->rx_pkt_burst = NULL;
 }
 
 static void
@@ -1511,6 +1629,9 @@ sfc_eth_dev_init(struct rte_eth_dev *dev)
 	const struct ether_addr *from;
 
 	sfc_register_dp();
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -sfc_eth_dev_secondary_set_ops(dev);
 
 	/* Required for logging */
 	sa->pci_addr = pci_dev->addr;
@@ -1595,8 +1716,14 @@ fail_kvargs_parse:
 static int
 sfc_eth_dev_uninit(struct rte_eth_dev *dev)
 {
-	struct sfc_adapter *sa = dev->data->dev_private;
+	struct sfc_adapter *sa;
 
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		sfc_eth_dev_secondary_clear_ops(dev);
+		return 0;
+	}
+
+	sa = dev->data->dev_private;
 	sfc_log_init(sa, "entry");
 
 	sfc_adapter_lock(sa);

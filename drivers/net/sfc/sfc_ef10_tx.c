@@ -534,7 +534,8 @@ struct sfc_dp_tx sfc_ef10_tx = {
 		.type		= SFC_DP_TX,
 		.hw_fw_caps	= SFC_DP_HW_FW_CAP_EF10,
 	},
-	.features		= SFC_DP_TX_FEAT_MULTI_SEG,
+	.features		= SFC_DP_TX_FEAT_MULTI_SEG |
+				  SFC_DP_TX_FEAT_MULTI_PROCESS,
 	.qcreate		= sfc_ef10_tx_qcreate,
 	.qdestroy		= sfc_ef10_tx_qdestroy,
 	.qstart			= sfc_ef10_tx_qstart,
@@ -549,7 +550,7 @@ struct sfc_dp_tx sfc_ef10_simple_tx = {
 		.name		= SFC_KVARG_DATAPATH_EF10_SIMPLE,
 		.type		= SFC_DP_TX,
 	},
-	.features		= 0,
+	.features		= SFC_DP_TX_FEAT_MULTI_PROCESS,
 	.qcreate		= sfc_ef10_tx_qcreate,
 	.qdestroy		= sfc_ef10_tx_qdestroy,
 	.qstart			= sfc_ef10_tx_qstart,
