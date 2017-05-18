@@ -139,13 +139,6 @@ test_ethdev_config_run(struct rte_event_dev_config *dev_conf,
 }
 
 static void
-min_dequeue_limit(struct rte_event_dev_config *dev_conf,
-		  struct rte_event_dev_info *info)
-{
-	dev_conf->dequeue_timeout_ns = info->min_dequeue_timeout_ns - 1;
-}
-
-static void
 max_dequeue_limit(struct rte_event_dev_config *dev_conf,
 		  struct rte_event_dev_info *info)
 {
@@ -210,9 +203,6 @@ test_eventdev_configure(void)
 	TEST_ASSERT_SUCCESS(ret, "Failed to get event dev info");
 
 	/* Check limits */
-	TEST_ASSERT_EQUAL(-EINVAL,
-		test_ethdev_config_run(&dev_conf, &info, min_dequeue_limit),
-		 "Config negative test failed");
 	TEST_ASSERT_EQUAL(-EINVAL,
 		test_ethdev_config_run(&dev_conf, &info, max_dequeue_limit),
 		 "Config negative test failed");

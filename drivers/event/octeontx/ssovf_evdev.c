@@ -197,6 +197,8 @@ ssovf_configure(const struct rte_eventdev *dev)
 
 	ssovf_func_trace();
 	deq_tmo_ns = conf->dequeue_timeout_ns;
+	if (deq_tmo_ns == 0)
+		deq_tmo_ns = edev->min_deq_timeout_ns;
 
 	if (conf->event_dev_cfg & RTE_EVENT_DEV_CFG_PER_DEQUEUE_TIMEOUT) {
 		edev->is_timeout_deq = 1;

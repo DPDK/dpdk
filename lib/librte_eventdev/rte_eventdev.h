@@ -412,6 +412,7 @@ struct rte_event_dev_config {
 	 * This value should be in the range of *min_dequeue_timeout_ns* and
 	 * *max_dequeue_timeout_ns* which previously provided in
 	 * rte_event_dev_info_get()
+	 * The value 0 is allowed, in which case, default dequeue timeout used.
 	 * @see RTE_EVENT_DEV_CFG_PER_DEQUEUE_TIMEOUT
 	 */
 	int32_t nb_events_limit;

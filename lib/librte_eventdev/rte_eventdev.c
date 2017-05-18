@@ -366,9 +366,10 @@ rte_event_dev_configure(uint8_t dev_id,
 
 	/* Check dequeue_timeout_ns value is in limit */
 	if (!(dev_conf->event_dev_cfg & RTE_EVENT_DEV_CFG_PER_DEQUEUE_TIMEOUT)) {
-		if (dev_conf->dequeue_timeout_ns < info.min_dequeue_timeout_ns
+		if (dev_conf->dequeue_timeout_ns &&
+		    (dev_conf->dequeue_timeout_ns < info.min_dequeue_timeout_ns
 			|| dev_conf->dequeue_timeout_ns >
-				 info.max_dequeue_timeout_ns) {
+				 info.max_dequeue_timeout_ns)) {
 			RTE_EDEV_LOG_ERR("dev%d invalid dequeue_timeout_ns=%d"
 			" min_dequeue_timeout_ns=%d max_dequeue_timeout_ns=%d",
 			dev_id, dev_conf->dequeue_timeout_ns,
