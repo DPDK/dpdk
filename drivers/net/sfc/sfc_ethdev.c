@@ -1407,7 +1407,7 @@ sfc_eth_dev_set_ops(struct rte_eth_dev *dev)
 				"Insufficient Hw/FW capabilities to use Rx datapath %s",
 				rx_name);
 			rc = EINVAL;
-			goto fail_dp_rx;
+			goto fail_dp_rx_caps;
 		}
 	} else {
 		sa->dp_rx = sfc_dp_find_rx_by_caps(&sfc_dp_head, avail_caps);
@@ -1440,7 +1440,7 @@ sfc_eth_dev_set_ops(struct rte_eth_dev *dev)
 				"Insufficient Hw/FW capabilities to use Tx datapath %s",
 				tx_name);
 			rc = EINVAL;
-			goto fail_dp_tx;
+			goto fail_dp_tx_caps;
 		}
 	} else {
 		sa->dp_tx = sfc_dp_find_tx_by_caps(&sfc_dp_head, avail_caps);
@@ -1460,11 +1460,30 @@ sfc_eth_dev_set_ops(struct rte_eth_dev *dev)
 
 	return 0;
 
+fail_dp_tx_caps:
+	sa->dp_tx = NULL;
+
 fail_dp_tx:
 fail_kvarg_tx_datapath:
+fail_dp_rx_caps:
+	sa->dp_rx = NULL;
+
 fail_dp_rx:
 fail_kvarg_rx_datapath:
 	return rc;
+}
+
+static void
+sfc_eth_dev_clear_ops(struct rte_eth_dev *dev)
+{
+	struct sfc_adapter *sa = dev->data->dev_private;
+
+	dev->dev_ops = NULL;
+	dev->rx_pkt_burst = NULL;
+	dev->tx_pkt_burst = NULL;
+
+	sa->dp_tx = NULL;
+	sa->dp_rx = NULL;
 }
 
 static void
@@ -1549,6 +1568,8 @@ sfc_eth_dev_init(struct rte_eth_dev *dev)
 	return 0;
 
 fail_attach:
+	sfc_eth_dev_clear_ops(dev);
+
 fail_set_ops:
 	sfc_unprobe(sa);
 
@@ -1577,15 +1598,13 @@ sfc_eth_dev_uninit(struct rte_eth_dev *dev)
 
 	sfc_adapter_lock(sa);
 
+	sfc_eth_dev_clear_ops(dev);
+
 	sfc_detach(sa);
 	sfc_unprobe(sa);
 
 	rte_free(dev->data->mac_addrs);
 	dev->data->mac_addrs = NULL;
-
-	dev->dev_ops = NULL;
-	dev->rx_pkt_burst = NULL;
-	dev->tx_pkt_burst = NULL;
 
 	sfc_kvargs_cleanup(sa);
 
