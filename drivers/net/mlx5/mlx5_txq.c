@@ -173,23 +173,27 @@ txq_setup(struct txq_ctrl *tmpl, struct txq_ctrl *txq_ctrl)
 {
 	struct mlx5_qp *qp = to_mqp(tmpl->qp);
 	struct ibv_cq *ibcq = tmpl->cq;
-	struct mlx5_cq *cq = to_mxxx(cq, cq);
+	struct ibv_mlx5_cq_info cq_info;
 
-	if (cq->cqe_sz != RTE_CACHE_LINE_SIZE) {
+	if (ibv_mlx5_exp_get_cq_info(ibcq, &cq_info)) {
+		ERROR("Unable to query CQ info. check your OFED.");
+		return ENOTSUP;
+	}
+	if (cq_info.cqe_size != RTE_CACHE_LINE_SIZE) {
 		ERROR("Wrong MLX5_CQE_SIZE environment variable value: "
 		      "it should be set to %u", RTE_CACHE_LINE_SIZE);
 		return EINVAL;
 	}
-	tmpl->txq.cqe_n = log2above(ibcq->cqe);
+	tmpl->txq.cqe_n = log2above(cq_info.cqe_cnt);
 	tmpl->txq.qp_num_8s = qp->ctrl_seg.qp_num << 8;
 	tmpl->txq.wqes = qp->gen_data.sqstart;
 	tmpl->txq.wqe_n = log2above(qp->sq.wqe_cnt);
 	tmpl->txq.qp_db = &qp->gen_data.db[MLX5_SND_DBR];
 	tmpl->txq.bf_reg = qp->gen_data.bf->reg;
-	tmpl->txq.cq_db = cq->dbrec;
+	tmpl->txq.cq_db = cq_info.dbrec;
 	tmpl->txq.cqes =
 		(volatile struct mlx5_cqe (*)[])
-		(uintptr_t)cq->active_buf->buf;
+		(uintptr_t)cq_info.buf;
 	tmpl->txq.elts =
 		(struct rte_mbuf *(*)[1 << tmpl->txq.elts_n])
 		((uintptr_t)txq_ctrl + sizeof(*txq_ctrl));
