@@ -1513,6 +1513,9 @@ sfc_eth_dev_init(struct rte_eth_dev *dev)
 	sfc_register_dp();
 
 	/* Required for logging */
+	sa->pci_addr = pci_dev->addr;
+	sa->port_id = dev->data->port_id;
+
 	sa->eth_dev = dev;
 
 	/* Copy PCI device info to the dev->data */

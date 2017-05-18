@@ -35,18 +35,16 @@
 /* Log PMD message, automatically add prefix and \n */
 #define SFC_LOG(sa, level, ...) \
 	do {								\
-		const struct rte_eth_dev *_dev = (sa)->eth_dev;		\
-		const struct rte_pci_device *_pci_dev =			\
-			RTE_ETH_DEV_TO_PCI(_dev);			\
+		const struct sfc_adapter *__sa = (sa);			\
 									\
 		RTE_LOG(level, PMD,					\
 			RTE_FMT("sfc_efx " PCI_PRI_FMT " #%" PRIu8 ": "	\
 				RTE_FMT_HEAD(__VA_ARGS__,) "\n",	\
-				_pci_dev->addr.domain,			\
-				_pci_dev->addr.bus,			\
-				_pci_dev->addr.devid,			\
-				_pci_dev->addr.function,		\
-				_dev->data->port_id,			\
+				__sa->pci_addr.domain,			\
+				__sa->pci_addr.bus,			\
+				__sa->pci_addr.devid,			\
+				__sa->pci_addr.function,		\
+				__sa->port_id,				\
 				RTE_FMT_TAIL(__VA_ARGS__,)));		\
 	} while (0)
 

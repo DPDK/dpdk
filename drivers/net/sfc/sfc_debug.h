@@ -47,14 +47,12 @@
 /* Log PMD message, automatically add prefix and \n */
 #define sfc_panic(sa, fmt, args...) \
 	do {								\
-		const struct rte_eth_dev *_dev = (sa)->eth_dev;		\
-		const struct rte_pci_device *_pci_dev =			\
-			RTE_ETH_DEV_TO_PCI(_dev);			\
+		const struct sfc_adapter *_sa = (sa);			\
 									\
 		rte_panic("sfc " PCI_PRI_FMT " #%" PRIu8 ": " fmt "\n",	\
-			  _pci_dev->addr.domain, _pci_dev->addr.bus,	\
-			  _pci_dev->addr.devid, _pci_dev->addr.function,\
-			  _dev->data->port_id, ##args);			\
+			  _sa->pci_addr.domain, _sa->pci_addr.bus,	\
+			  _sa->pci_addr.devid, _sa->pci_addr.function,	\
+			  _sa->port_id, ##args);			\
 	} while (0)
 
 #endif /* _SFC_DEBUG_H_ */

@@ -179,6 +179,8 @@ struct sfc_adapter {
 	 */
 	rte_spinlock_t			lock;
 	enum sfc_adapter_state		state;
+	struct rte_pci_addr		pci_addr;
+	uint16_t			port_id;
 	struct rte_eth_dev		*eth_dev;
 	struct rte_kvargs		*kvargs;
 	bool				debug_init;
