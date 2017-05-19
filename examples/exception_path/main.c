@@ -42,8 +42,10 @@
 #include <getopt.h>
 
 #include <netinet/in.h>
-#include <linux/if.h>
+#include <net/if.h>
+#ifdef RTE_EXEC_ENV_LINUXAPP
 #include <linux/if_tun.h>
+#endif
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
@@ -182,6 +184,7 @@ signal_handler(int signum)
 	}
 }
 
+#ifdef RTE_EXEC_ENV_LINUXAPP
 /*
  * Create a tap network interface, or use existing one with same name.
  * If name[0]='\0' then a name is automatically assigned and returned in name.
@@ -214,6 +217,29 @@ static int tap_create(char *name)
 
 	return fd;
 }
+#else
+/*
+ * Find a free tap network interface, or create a new one.
+ * The name is automatically assigned and returned in name.
+ */
+static int tap_create(char *name)
+{
+	int i, fd = -1;
+	char devname[PATH_MAX];
+
+	for (i = 0; i < 255; i++) {
+		snprintf(devname, sizeof(devname), "/dev/tap%d", i);
+		fd = open(devname, O_RDWR);
+		if (fd >= 0 || errno != EBUSY)
+			break;
+	}
+
+	if (name)
+		snprintf(name, IFNAMSIZ, "tap%d", i);
+
+	return fd;
+}
+#endif
 
 /* Main processing loop */
 static int
