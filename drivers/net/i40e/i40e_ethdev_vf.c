@@ -1569,7 +1569,7 @@ static struct rte_pci_driver rte_i40evf_pmd = {
 
 RTE_PMD_REGISTER_PCI(net_i40e_vf, rte_i40evf_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_i40e_vf, pci_id_i40evf_map);
-RTE_PMD_REGISTER_KMOD_DEP(net_i40e_vf, "* igb_uio | vfio");
+RTE_PMD_REGISTER_KMOD_DEP(net_i40e_vf, "* igb_uio | vfio-pci");
 
 static int
 i40evf_dev_configure(struct rte_eth_dev *dev)

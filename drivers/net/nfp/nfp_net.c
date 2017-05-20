@@ -2605,7 +2605,7 @@ static struct rte_pci_driver rte_nfp_net_pmd = {
 
 RTE_PMD_REGISTER_PCI(net_nfp, rte_nfp_net_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_nfp, pci_id_nfp_net_map);
-RTE_PMD_REGISTER_KMOD_DEP(net_nfp, "* igb_uio | uio_pci_generic | vfio");
+RTE_PMD_REGISTER_KMOD_DEP(net_nfp, "* igb_uio | uio_pci_generic | vfio-pci");
 
 /*
  * Local variables:

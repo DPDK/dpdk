@@ -2055,4 +2055,4 @@ static struct rte_pci_driver rte_liovf_pmd = {
 
 RTE_PMD_REGISTER_PCI(net_liovf, rte_liovf_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_liovf, pci_id_liovf_map);
-RTE_PMD_REGISTER_KMOD_DEP(net_liovf, "* igb_uio | vfio");
+RTE_PMD_REGISTER_KMOD_DEP(net_liovf, "* igb_uio | vfio-pci");
