@@ -210,6 +210,8 @@ API Changes
   * The crypto device type enumeration has been removed from cryptodev library.
   * The function ``rte_crypto_count_devtype()`` has been removed, and replaced
     by the new function ``rte_crypto_count_by_driver()``.
+  * Moved crypto device driver names definitions to the particular PMDs.
+    These names are not public anymore.
 
 
 ABI Changes

@@ -54,9 +54,6 @@ Deprecation Notices
   Target release for removal of the legacy API will be defined once most
   PMDs have switched to rte_flow.
 
-* cryptodev: All PMD names definitions will be moved to the individual PMDs
-  in 17.08.
-
 * cryptodev: API changes are planned for 17.08 for the sessions management
   to make it agnostic to the underlying devices, removing coupling with
   crypto PMDs, so a single session can be used on multiple devices.

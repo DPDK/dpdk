@@ -33,6 +33,9 @@
 #ifndef _RTE_ARMV8_PMD_PRIVATE_H_
 #define _RTE_ARMV8_PMD_PRIVATE_H_
 
+#define CRYPTODEV_NAME_ARMV8_PMD	crypto_armv8
+/**< ARMv8 Crypto PMD device name */
+
 #define ARMV8_CRYPTO_LOG_ERR(fmt, args...) \
 	RTE_LOG(ERR, CRYPTODEV, "[%s] %s() line %u: " fmt "\n",  \
 			RTE_STR(CRYPTODEV_NAME_ARMV8_CRYPTO_PMD), \

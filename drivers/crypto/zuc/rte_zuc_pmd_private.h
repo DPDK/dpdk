@@ -35,6 +35,9 @@
 
 #include <sso_zuc.h>
 
+#define CRYPTODEV_NAME_ZUC_PMD		crypto_zuc
+/**< KASUMI PMD device name */
+
 #define ZUC_LOG_ERR(fmt, args...) \
 	RTE_LOG(ERR, CRYPTODEV, "[%s] %s() line %u: " fmt "\n",  \
 			RTE_STR(CRYPTODEV_NAME_ZUC_PMD), \

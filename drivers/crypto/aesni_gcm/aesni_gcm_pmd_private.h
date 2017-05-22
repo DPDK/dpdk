@@ -35,6 +35,9 @@
 
 #include "aesni_gcm_ops.h"
 
+#define CRYPTODEV_NAME_AESNI_GCM_PMD	crypto_aesni_gcm
+/**< AES-NI GCM PMD device name */
+
 #define GCM_LOG_ERR(fmt, args...) \
 	RTE_LOG(ERR, CRYPTODEV, "[%s] %s() line %u: " fmt "\n",  \
 			RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD), \

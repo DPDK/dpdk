@@ -39,6 +39,9 @@
 
 #include "qat_crypto_capabilities.h"
 
+#define CRYPTODEV_NAME_QAT_SYM_PMD	crypto_qat
+/**< Intel QAT Symmetric Crypto PMD device name */
+
 /*
  * This macro rounds up a number to a be a multiple of
  * the alignment when the alignment is a power of 2

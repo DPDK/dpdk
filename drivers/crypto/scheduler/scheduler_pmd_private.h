@@ -36,6 +36,9 @@
 
 #include "rte_cryptodev_scheduler.h"
 
+#define CRYPTODEV_NAME_SCHEDULER_PMD	crypto_scheduler
+/**< Scheduler Crypto PMD device name */
+
 #define PER_SLAVE_BUFF_SIZE			(256)
 
 #define CS_LOG_ERR(fmt, args...)					\

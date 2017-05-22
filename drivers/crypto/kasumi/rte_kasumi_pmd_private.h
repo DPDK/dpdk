@@ -35,6 +35,9 @@
 
 #include <sso_kasumi.h>
 
+#define CRYPTODEV_NAME_KASUMI_PMD	crypto_kasumi
+/**< KASUMI PMD device name */
+
 #define KASUMI_LOG_ERR(fmt, args...) \
 	RTE_LOG(ERR, CRYPTODEV, "[%s] %s() line %u: " fmt "\n",  \
 			RTE_STR(CRYPTODEV_NAME_KASUMI_PMD), \

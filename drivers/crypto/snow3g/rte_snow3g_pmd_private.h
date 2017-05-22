@@ -35,6 +35,9 @@
 
 #include <sso_snow3g.h>
 
+#define CRYPTODEV_NAME_SNOW3G_PMD	crypto_snow3g
+/**< SNOW 3G PMD device name */
+
 #define SNOW3G_LOG_ERR(fmt, args...) \
 	RTE_LOG(ERR, CRYPTODEV, "[%s] %s() line %u: " fmt "\n",  \
 			RTE_STR(CRYPTODEV_NAME_SNOW3G_PMD), \

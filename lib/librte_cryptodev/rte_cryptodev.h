@@ -51,29 +51,6 @@ extern "C" {
 #include <rte_common.h>
 #include <rte_vdev.h>
 
-#define CRYPTODEV_NAME_NULL_PMD		crypto_null
-/**< Null crypto PMD device name */
-#define CRYPTODEV_NAME_AESNI_MB_PMD	crypto_aesni_mb
-/**< AES-NI Multi buffer PMD device name */
-#define CRYPTODEV_NAME_AESNI_GCM_PMD	crypto_aesni_gcm
-/**< AES-NI GCM PMD device name */
-#define CRYPTODEV_NAME_OPENSSL_PMD	crypto_openssl
-/**< Open SSL Crypto PMD device name */
-#define CRYPTODEV_NAME_QAT_SYM_PMD	crypto_qat
-/**< Intel QAT Symmetric Crypto PMD device name */
-#define CRYPTODEV_NAME_SNOW3G_PMD	crypto_snow3g
-/**< SNOW 3G PMD device name */
-#define CRYPTODEV_NAME_KASUMI_PMD	crypto_kasumi
-/**< KASUMI PMD device name */
-#define CRYPTODEV_NAME_ZUC_PMD		crypto_zuc
-/**< KASUMI PMD device name */
-#define CRYPTODEV_NAME_ARMV8_PMD	crypto_armv8
-/**< ARMv8 Crypto PMD device name */
-#define CRYPTODEV_NAME_SCHEDULER_PMD	crypto_scheduler
-/**< Scheduler Crypto PMD device name */
-#define CRYPTODEV_NAME_DPAA2_SEC_PMD	crypto_dpaa2_sec
-/**< NXP DPAA2 - SEC PMD device name */
-
 extern const char **rte_cyptodev_names;
 
 /* Logging Macros */

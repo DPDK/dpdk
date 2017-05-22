@@ -36,6 +36,8 @@
 #include <openssl/evp.h>
 #include <openssl/des.h>
 
+#define CRYPTODEV_NAME_OPENSSL_PMD	crypto_openssl
+/**< Open SSL Crypto PMD device name */
 
 #define OPENSSL_LOG_ERR(fmt, args...) \
 	RTE_LOG(ERR, CRYPTODEV, "[%s] %s() line %u: " fmt "\n",  \

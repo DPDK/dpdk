@@ -35,6 +35,9 @@
 
 #include "aesni_mb_ops.h"
 
+#define CRYPTODEV_NAME_AESNI_MB_PMD	crypto_aesni_mb
+/**< AES-NI Multi buffer PMD device name */
+
 #define MB_LOG_ERR(fmt, args...) \
 	RTE_LOG(ERR, CRYPTODEV, "[%s] %s() line %u: " fmt "\n",  \
 			RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD), \

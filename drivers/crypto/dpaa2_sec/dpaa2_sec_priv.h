@@ -34,6 +34,9 @@
 #ifndef _RTE_DPAA2_SEC_PMD_PRIVATE_H_
 #define _RTE_DPAA2_SEC_PMD_PRIVATE_H_
 
+#define CRYPTODEV_NAME_DPAA2_SEC_PMD	crypto_dpaa2_sec_pmd
+/**< Open SSL Crypto PMD device name */
+
 #define MAX_QUEUES		64
 #define MAX_DESC_SIZE		64
 /** private data structure for each DPAA2_SEC device */
