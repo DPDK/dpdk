@@ -33,6 +33,7 @@
 
 #include <rte_atomic.h>
 #include <rte_branch_prediction.h>
+#include <rte_byteorder.h>
 #include <rte_common.h>
 #include <rte_mbuf.h>
 #include <rte_ethdev.h>
@@ -42,6 +43,7 @@
 #include <rte_kvargs.h>
 #include <rte_net.h>
 #include <rte_debug.h>
+#include <rte_ip.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -229,6 +231,60 @@ error:
 	return -1;
 }
 
+static void
+tap_verify_csum(struct rte_mbuf *mbuf)
+{
+	uint32_t l2 = mbuf->packet_type & RTE_PTYPE_L2_MASK;
+	uint32_t l3 = mbuf->packet_type & RTE_PTYPE_L3_MASK;
+	uint32_t l4 = mbuf->packet_type & RTE_PTYPE_L4_MASK;
+	unsigned int l2_len = sizeof(struct ether_hdr);
+	unsigned int l3_len;
+	uint16_t cksum = 0;
+	void *l3_hdr;
+	void *l4_hdr;
+
+	if (l2 == RTE_PTYPE_L2_ETHER_VLAN)
+		l2_len += 4;
+	else if (l2 == RTE_PTYPE_L2_ETHER_QINQ)
+		l2_len += 8;
+	/* Don't verify checksum for packets with discontinuous L2 header */
+	if (unlikely(l2_len + sizeof(struct ipv4_hdr) >
+		     rte_pktmbuf_data_len(mbuf)))
+		return;
+	l3_hdr = rte_pktmbuf_mtod_offset(mbuf, void *, l2_len);
+	if (l3 == RTE_PTYPE_L3_IPV4 || l3 == RTE_PTYPE_L3_IPV4_EXT) {
+		struct ipv4_hdr *iph = l3_hdr;
+
+		/* ihl contains the number of 4-byte words in the header */
+		l3_len = 4 * (iph->version_ihl & 0xf);
+		if (unlikely(l2_len + l3_len > rte_pktmbuf_data_len(mbuf)))
+			return;
+
+		cksum = ~rte_raw_cksum(iph, l3_len);
+		mbuf->ol_flags |= cksum ?
+			PKT_RX_IP_CKSUM_BAD :
+			PKT_RX_IP_CKSUM_GOOD;
+	} else if (l3 == RTE_PTYPE_L3_IPV6) {
+		l3_len = sizeof(struct ipv6_hdr);
+	} else {
+		/* IPv6 extensions are not supported */
+		return;
+	}
+	if (l4 == RTE_PTYPE_L4_UDP || l4 == RTE_PTYPE_L4_TCP) {
+		l4_hdr = rte_pktmbuf_mtod_offset(mbuf, void *, l2_len + l3_len);
+		/* Don't verify checksum for multi-segment packets. */
+		if (mbuf->nb_segs > 1)
+			return;
+		if (l3 == RTE_PTYPE_L3_IPV4)
+			cksum = ~rte_ipv4_udptcp_cksum(l3_hdr, l4_hdr);
+		else if (l3 == RTE_PTYPE_L3_IPV6)
+			cksum = ~rte_ipv6_udptcp_cksum(l3_hdr, l4_hdr);
+		mbuf->ol_flags |= cksum ?
+			PKT_RX_L4_CKSUM_BAD :
+			PKT_RX_L4_CKSUM_GOOD;
+	}
+}
+
 /* Callback to handle the rx burst of packets to the correct interface and
  * file descriptor(s) in a multi-queue setup.
  */
@@ -309,6 +365,8 @@ pmd_rx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		seg->next = NULL;
 		mbuf->packet_type = rte_net_get_ptype(mbuf, NULL,
 						      RTE_PTYPE_ALL_MASK);
+		if (rxq->rxmode->hw_ip_checksum)
+			tap_verify_csum(mbuf);
 
 		/* account for the receive frame */
 		bufs[num_rx++] = mbuf;
@@ -319,6 +377,56 @@ end:
 	rxq->stats.ibytes += num_rx_bytes;
 
 	return num_rx;
+}
+
+static void
+tap_tx_offload(char *packet, uint64_t ol_flags, unsigned int l2_len,
+	       unsigned int l3_len)
+{
+	void *l3_hdr = packet + l2_len;
+
+	if (ol_flags & (PKT_TX_IP_CKSUM | PKT_TX_IPV4)) {
+		struct ipv4_hdr *iph = l3_hdr;
+		uint16_t cksum;
+
+		iph->hdr_checksum = 0;
+		cksum = rte_raw_cksum(iph, l3_len);
+		iph->hdr_checksum = (cksum == 0xffff) ? cksum : ~cksum;
+	}
+	if (ol_flags & PKT_TX_L4_MASK) {
+		uint16_t l4_len;
+		uint32_t cksum;
+		uint16_t *l4_cksum;
+		void *l4_hdr;
+
+		l4_hdr = packet + l2_len + l3_len;
+		if ((ol_flags & PKT_TX_L4_MASK) == PKT_TX_UDP_CKSUM)
+			l4_cksum = &((struct udp_hdr *)l4_hdr)->dgram_cksum;
+		else if ((ol_flags & PKT_TX_L4_MASK) == PKT_TX_TCP_CKSUM)
+			l4_cksum = &((struct tcp_hdr *)l4_hdr)->cksum;
+		else
+			return;
+		*l4_cksum = 0;
+		if (ol_flags & PKT_TX_IPV4) {
+			struct ipv4_hdr *iph = l3_hdr;
+
+			l4_len = rte_be_to_cpu_16(iph->total_length) - l3_len;
+			cksum = rte_ipv4_phdr_cksum(l3_hdr, 0);
+		} else {
+			struct ipv6_hdr *ip6h = l3_hdr;
+
+			/* payload_len does not include ext headers */
+			l4_len = rte_be_to_cpu_16(ip6h->payload_len) -
+				l3_len + sizeof(struct ipv6_hdr);
+			cksum = rte_ipv6_phdr_cksum(l3_hdr, 0);
+		}
+		cksum += rte_raw_cksum(l4_hdr, l4_len);
+		cksum = ((cksum & 0xffff0000) >> 16) + (cksum & 0xffff);
+		cksum = (~cksum) & 0xffff;
+		if (cksum == 0)
+			cksum = 0xffff;
+		*l4_cksum = cksum;
+	}
 }
 
 /* Callback to handle sending packets from the tap interface
@@ -341,6 +449,7 @@ pmd_tx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		struct iovec iovecs[mbuf->nb_segs + 1];
 		struct tun_pi pi = { .flags = 0 };
 		struct rte_mbuf *seg = mbuf;
+		char m_copy[mbuf->data_len];
 		int n;
 		int j;
 
@@ -355,6 +464,19 @@ pmd_tx_burst(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			iovecs[j].iov_base =
 				rte_pktmbuf_mtod(seg, void *);
 			seg = seg->next;
+		}
+		if (mbuf->ol_flags & (PKT_TX_IP_CKSUM | PKT_TX_IPV4) ||
+		    (mbuf->ol_flags & PKT_TX_L4_MASK) == PKT_TX_UDP_CKSUM ||
+		    (mbuf->ol_flags & PKT_TX_L4_MASK) == PKT_TX_TCP_CKSUM) {
+			/* Support only packets with all data in the same seg */
+			if (mbuf->nb_segs > 1)
+				break;
+			/* To change checksums, work on a copy of data. */
+			rte_memcpy(m_copy, rte_pktmbuf_mtod(mbuf, void *),
+				   rte_pktmbuf_data_len(mbuf));
+			tap_tx_offload(m_copy, mbuf->ol_flags,
+				       mbuf->l2_len, mbuf->l3_len);
+			iovecs[1].iov_base = m_copy;
 		}
 		/* copy the tx frame data */
 		n = writev(txq->fd, iovecs, mbuf->nb_segs + 1);
@@ -533,6 +655,13 @@ tap_dev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->min_rx_bufsize = 0;
 	dev_info->pci_dev = NULL;
 	dev_info->speed_capa = tap_dev_speed_capa();
+	dev_info->rx_offload_capa = (DEV_RX_OFFLOAD_IPV4_CKSUM |
+				     DEV_RX_OFFLOAD_UDP_CKSUM |
+				     DEV_RX_OFFLOAD_TCP_CKSUM);
+	dev_info->tx_offload_capa =
+		(DEV_TX_OFFLOAD_IPV4_CKSUM |
+		 DEV_TX_OFFLOAD_UDP_CKSUM |
+		 DEV_TX_OFFLOAD_TCP_CKSUM);
 }
 
 static void
