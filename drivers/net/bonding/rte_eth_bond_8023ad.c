@@ -435,7 +435,7 @@ periodic_machine(struct bond_dev_private *internals, uint8_t slave_id)
 			 * In other case (was fast and now it is slow) just switch
 			 * timeout to slow without forcing send of LACP (because standard
 			 * say so)*/
-			if (!is_partner_fast)
+			if (is_partner_fast)
 				SM_FLAG_SET(port, NTT);
 		} else
 			return; /* Nothing changed */
