@@ -401,9 +401,6 @@ tap_flow_create_eth(const struct rte_flow_item *item, void *data)
 	if (!flow)
 		return 0;
 	msg = &flow->msg;
-	if (spec->type & mask->type)
-		msg->t.tcm_info = TC_H_MAKE(msg->t.tcm_info,
-					    (spec->type & mask->type));
 	if (!is_zero_ether_addr(&spec->dst)) {
 		nlattr_add(&msg->nh, TCA_FLOWER_KEY_ETH_DST, ETHER_ADDR_LEN,
 			   &spec->dst.addr_bytes);
@@ -508,8 +505,6 @@ tap_flow_create_ipv4(const struct rte_flow_item *item, void *data)
 	msg = &flow->msg;
 	if (!info->eth_type)
 		info->eth_type = htons(ETH_P_IP);
-	if (!info->vlan)
-		msg->t.tcm_info = TC_H_MAKE(msg->t.tcm_info, htons(ETH_P_IP));
 	if (!spec)
 		return 0;
 	if (spec->hdr.dst_addr) {
@@ -566,8 +561,6 @@ tap_flow_create_ipv6(const struct rte_flow_item *item, void *data)
 	msg = &flow->msg;
 	if (!info->eth_type)
 		info->eth_type = htons(ETH_P_IPV6);
-	if (!info->vlan)
-		msg->t.tcm_info = TC_H_MAKE(msg->t.tcm_info, htons(ETH_P_IPV6));
 	if (!spec)
 		return 0;
 	if (memcmp(spec->hdr.dst_addr, empty_addr, 16)) {
