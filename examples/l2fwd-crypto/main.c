@@ -1372,7 +1372,7 @@ l2fwd_crypto_parse_args(struct l2fwd_crypto_options *options,
 
 	l2fwd_crypto_default_options(options);
 
-	while ((opt = getopt_long(argc, argvopt, "p:q:st:", lgopts,
+	while ((opt = getopt_long(argc, argvopt, "p:q:sT:", lgopts,
 			&option_index)) != EOF) {
 		switch (opt) {
 		/* long options */
