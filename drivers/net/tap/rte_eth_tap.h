@@ -87,6 +87,7 @@ struct pmd_internals {
 	int if_index;                     /* IF_INDEX for the port */
 	int ioctl_sock;                   /* socket for ioctl calls */
 	int nlsk_fd;                      /* Netlink socket fd */
+	int flow_isolate;                 /* 1 if flow isolation is enabled */
 	int flower_support;               /* 1 if kernel supports, else 0 */
 	int flower_vlan_support;          /* 1 if kernel supports, else 0 */
 	LIST_HEAD(tap_flows, rte_flow) flows;        /* rte_flow rules */

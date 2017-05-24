@@ -794,7 +794,7 @@ tap_promisc_enable(struct rte_eth_dev *dev)
 
 	dev->data->promiscuous = 1;
 	tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 1, LOCAL_AND_REMOTE);
-	if (pmd->remote_if_index)
+	if (pmd->remote_if_index && !pmd->flow_isolate)
 		tap_flow_implicit_create(pmd, TAP_REMOTE_PROMISC);
 }
 
@@ -806,7 +806,7 @@ tap_promisc_disable(struct rte_eth_dev *dev)
 
 	dev->data->promiscuous = 0;
 	tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 0, LOCAL_AND_REMOTE);
-	if (pmd->remote_if_index)
+	if (pmd->remote_if_index && !pmd->flow_isolate)
 		tap_flow_implicit_destroy(pmd, TAP_REMOTE_PROMISC);
 }
 
@@ -818,7 +818,7 @@ tap_allmulti_enable(struct rte_eth_dev *dev)
 
 	dev->data->all_multicast = 1;
 	tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 1, LOCAL_AND_REMOTE);
-	if (pmd->remote_if_index)
+	if (pmd->remote_if_index && !pmd->flow_isolate)
 		tap_flow_implicit_create(pmd, TAP_REMOTE_ALLMULTI);
 }
 
@@ -830,7 +830,7 @@ tap_allmulti_disable(struct rte_eth_dev *dev)
 
 	dev->data->all_multicast = 0;
 	tap_ioctl(pmd, SIOCSIFFLAGS, &ifr, 0, LOCAL_AND_REMOTE);
-	if (pmd->remote_if_index)
+	if (pmd->remote_if_index && !pmd->flow_isolate)
 		tap_flow_implicit_destroy(pmd, TAP_REMOTE_ALLMULTI);
 }
 
@@ -863,7 +863,7 @@ tap_mac_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
 	if (tap_ioctl(pmd, SIOCSIFHWADDR, &ifr, 1, mode) < 0)
 		return;
 	rte_memcpy(&pmd->eth_addr, mac_addr, ETHER_ADDR_LEN);
-	if (pmd->remote_if_index) {
+	if (pmd->remote_if_index && !pmd->flow_isolate) {
 		/* Replace MAC redirection rule after a MAC change */
 		if (tap_flow_implicit_destroy(pmd, TAP_REMOTE_LOCAL_MAC) < 0) {
 			RTE_LOG(ERR, PMD,

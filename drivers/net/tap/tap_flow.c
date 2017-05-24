@@ -82,6 +82,8 @@ enum {
 };
 #endif
 
+#define ISOLATE_HANDLE 1
+
 struct rte_flow {
 	LIST_ENTRY(rte_flow) next; /* Pointer to the next rte_flow structure */
 	struct rte_flow *remote_flow; /* associated remote flow */
@@ -98,6 +100,7 @@ struct convert_data {
 struct remote_rule {
 	struct rte_flow_attr attr;
 	struct rte_flow_item items[2];
+	struct rte_flow_action actions[2];
 	int mirred;
 };
 
@@ -126,11 +129,17 @@ tap_flow_destroy(struct rte_eth_dev *dev,
 		 struct rte_flow *flow,
 		 struct rte_flow_error *error);
 
+static int
+tap_flow_isolate(struct rte_eth_dev *dev,
+		 int set,
+		 struct rte_flow_error *error);
+
 static const struct rte_flow_ops tap_flow_ops = {
 	.validate = tap_flow_validate,
 	.create = tap_flow_create,
 	.destroy = tap_flow_destroy,
 	.flush = tap_flow_flush,
+	.isolate = tap_flow_isolate,
 };
 
 /* Static initializer for items. */
@@ -258,6 +267,47 @@ static const struct tap_flow_items tap_flow_items[] = {
 	},
 };
 
+/*
+ *                TC rules, by growing priority
+ *
+ *        Remote netdevice                  Tap netdevice
+ * +-------------+-------------+  +-------------+-------------+
+ * |   Ingress   |   Egress    |  |   Ingress   |   Egress    |
+ * |-------------|-------------|  |-------------|-------------|
+ * |             |  \       /  |  |             |  REMOTE TX  | prio 1
+ * |             |   \     /   |  |             |   \     /   | prio 2
+ * |  EXPLICIT   |    \   /    |  |  EXPLICIT   |    \   /    |   .
+ * |             |     \ /     |  |             |     \ /     |   .
+ * |    RULES    |      X      |  |    RULES    |      X      |   .
+ * |      .      |     / \     |  |      .      |     / \     |   .
+ * |      .      |    /   \    |  |      .      |    /   \    |   .
+ * |      .      |   /     \   |  |      .      |   /     \   |   .
+ * |      .      |  /       \  |  |      .      |  /       \  |   .
+ *
+ *      ....           ....           ....           ....
+ *
+ * |      .      |  \       /  |  |      .      |  \       /  |   .
+ * |      .      |   \     /   |  |      .      |   \     /   |   .
+ * |             |    \   /    |  |             |    \   /    |
+ * |  LOCAL_MAC  |     \ /     |  |    \   /    |     \ /     | last prio - 5
+ * |   PROMISC   |      X      |  |     \ /     |      X      | last prio - 4
+ * |   ALLMULTI  |     / \     |  |      X      |     / \     | last prio - 3
+ * |  BROADCAST  |    /   \    |  |     / \     |    /   \    | last prio - 2
+ * | BROADCASTV6 |   /     \   |  |    /   \    |   /     \   | last prio - 1
+ * |     xx      |  /       \  |  |   ISOLATE   |  /       \  | last prio
+ * +-------------+-------------+  +-------------+-------------+
+ *
+ * The implicit flow rules are stored in a list in with mandatorily the last two
+ * being the ISOLATE and REMOTE_TX rules. e.g.:
+ *
+ * LOCAL_MAC -> BROADCAST -> BROADCASTV6 -> REMOTE_TX -> ISOLATE -> NULL
+ *
+ * That enables tap_flow_isolate() to remove implicit rules by popping the list
+ * head and remove it as long as it applies on the remote netdevice. The
+ * implicit rule for TX redirection is not removed, as isolate concerns only
+ * incoming traffic.
+ */
+
 static struct remote_rule implicit_rte_flows[TAP_REMOTE_MAX_IDX] = {
 	[TAP_REMOTE_LOCAL_MAC] = {
 		.attr = {
@@ -363,6 +413,19 @@ static struct remote_rule implicit_rte_flows[TAP_REMOTE_MAX_IDX] = {
 			.type = RTE_FLOW_ITEM_TYPE_END,
 		},
 		.mirred = TCA_EGRESS_MIRROR,
+	},
+	[TAP_ISOLATE] = {
+		.attr = {
+			.group = MAX_GROUP,
+			.priority = PRIORITY_MASK - TAP_ISOLATE,
+			.ingress = 1,
+		},
+		.items[0] = {
+			.type = RTE_FLOW_ITEM_TYPE_VOID,
+		},
+		.items[1] = {
+			.type = RTE_FLOW_ITEM_TYPE_END,
+		},
 	},
 };
 
@@ -1318,6 +1381,82 @@ tap_flow_destroy(struct rte_eth_dev *dev,
 }
 
 /**
+ * Enable/disable flow isolation.
+ *
+ * @see rte_flow_isolate()
+ * @see rte_flow_ops
+ */
+static int
+tap_flow_isolate(struct rte_eth_dev *dev,
+		 int set,
+		 struct rte_flow_error *error __rte_unused)
+{
+	struct pmd_internals *pmd = dev->data->dev_private;
+
+	if (!pmd->flower_support)
+		return -rte_flow_error_set(
+			error, ENOTSUP, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+			"rte_flow isolate requires TC flower kernel support");
+	if (set)
+		pmd->flow_isolate = 1;
+	else
+		pmd->flow_isolate = 0;
+	/*
+	 * If netdevice is there, setup appropriate flow rules immediately.
+	 * Otherwise it will be set when bringing up the netdevice (tun_alloc).
+	 */
+	if (!pmd->rxq[0].fd)
+		return 0;
+	if (set) {
+		struct rte_flow *flow;
+
+		while (1) {
+			flow = LIST_FIRST(&pmd->implicit_flows);
+			if (!flow)
+				break;
+			/*
+			 * Remove all implicit rules on the remote.
+			 * Keep the local rule to redirect packets on TX.
+			 * Keep also the last implicit local rule: ISOLATE.
+			 */
+			if (flow->msg.t.tcm_ifindex == pmd->if_index)
+				break;
+			if (tap_flow_destroy_pmd(pmd, flow, NULL) < 0)
+				goto error;
+		}
+		/* Switch the TC rule according to pmd->flow_isolate */
+		if (tap_flow_implicit_create(pmd, TAP_ISOLATE) == -1)
+			goto error;
+	} else {
+		/* Switch the TC rule according to pmd->flow_isolate */
+		if (tap_flow_implicit_create(pmd, TAP_ISOLATE) == -1)
+			goto error;
+		if (!pmd->remote_if_index)
+			return 0;
+		if (tap_flow_implicit_create(pmd, TAP_REMOTE_TX) < 0)
+			goto error;
+		if (tap_flow_implicit_create(pmd, TAP_REMOTE_LOCAL_MAC) < 0)
+			goto error;
+		if (tap_flow_implicit_create(pmd, TAP_REMOTE_BROADCAST) < 0)
+			goto error;
+		if (tap_flow_implicit_create(pmd, TAP_REMOTE_BROADCASTV6) < 0)
+			goto error;
+		if (dev->data->promiscuous &&
+		    tap_flow_implicit_create(pmd, TAP_REMOTE_PROMISC) < 0)
+			goto error;
+		if (dev->data->all_multicast &&
+		    tap_flow_implicit_create(pmd, TAP_REMOTE_ALLMULTI) < 0)
+			goto error;
+	}
+	return 0;
+error:
+	pmd->flow_isolate = 0;
+	return -rte_flow_error_set(
+		error, ENOTSUP, RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+		"TC rule creation failed");
+}
+
+/**
  * Destroy all flows.
  *
  * @see rte_flow_flush()
@@ -1351,6 +1490,13 @@ tap_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *error)
 int tap_flow_implicit_create(struct pmd_internals *pmd,
 			     enum implicit_rule_index idx)
 {
+	uint16_t flags = NLM_F_REQUEST | NLM_F_ACK | NLM_F_EXCL | NLM_F_CREATE;
+	struct rte_flow_action *actions = implicit_rte_flows[idx].actions;
+	struct rte_flow_action isolate_actions[2] = {
+		[1] = {
+			.type = RTE_FLOW_ACTION_TYPE_END,
+		},
+	};
 	struct rte_flow_item *items = implicit_rte_flows[idx].items;
 	struct rte_flow_attr *attr = &implicit_rte_flows[idx].attr;
 	struct rte_flow_item_eth eth_local = { .type = 0 };
@@ -1377,6 +1523,14 @@ int tap_flow_implicit_create(struct pmd_internals *pmd,
 	msg = &remote_flow->msg;
 	if (idx == TAP_REMOTE_TX) {
 		if_index = pmd->if_index;
+	} else if (idx == TAP_ISOLATE) {
+		if_index = pmd->if_index;
+		/* Don't be exclusive for this rule, it can be changed later. */
+		flags = NLM_F_REQUEST | NLM_F_ACK | NLM_F_CREATE;
+		isolate_actions[0].type = pmd->flow_isolate ?
+			RTE_FLOW_ACTION_TYPE_DROP :
+			RTE_FLOW_ACTION_TYPE_PASSTHRU;
+		actions = isolate_actions;
 	} else if (idx == TAP_REMOTE_LOCAL_MAC) {
 		/*
 		 * eth addr couldn't be set in implicit_rte_flows[] as it is not
@@ -1385,11 +1539,18 @@ int tap_flow_implicit_create(struct pmd_internals *pmd,
 		memcpy(&eth_local.dst, &pmd->eth_addr, sizeof(pmd->eth_addr));
 		items = items_local;
 	}
-	tc_init_msg(msg, if_index, RTM_NEWTFILTER,
-		    NLM_F_REQUEST | NLM_F_ACK | NLM_F_EXCL | NLM_F_CREATE);
+	tc_init_msg(msg, if_index, RTM_NEWTFILTER, flags);
 	msg->t.tcm_info = TC_H_MAKE(0, htons(ETH_P_ALL));
-	tap_flow_set_handle(remote_flow);
-	if (priv_flow_process(pmd, attr, items, NULL, NULL,
+	/*
+	 * The ISOLATE rule is always present and must have a static handle, as
+	 * the action is changed whether the feature is enabled (DROP) or
+	 * disabled (PASSTHRU).
+	 */
+	if (idx == TAP_ISOLATE)
+		remote_flow->msg.t.tcm_handle = ISOLATE_HANDLE;
+	else
+		tap_flow_set_handle(remote_flow);
+	if (priv_flow_process(pmd, attr, items, actions, NULL,
 			      remote_flow, implicit_rte_flows[idx].mirred)) {
 		RTE_LOG(ERR, PMD, "rte flow rule validation failed\n");
 		goto fail;
