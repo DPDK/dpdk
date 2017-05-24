@@ -347,6 +347,8 @@ priv_special_flow_enable_all(struct priv *priv)
 {
 	enum hash_rxq_flow_type flow_type;
 
+	if (priv->isolated)
+		return 0;
 	for (flow_type = HASH_RXQ_FLOW_TYPE_PROMISC;
 			flow_type != HASH_RXQ_FLOW_TYPE_MAC;
 			++flow_type) {

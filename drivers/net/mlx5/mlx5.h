@@ -129,6 +129,7 @@ struct priv {
 	unsigned int pending_alarm:1; /* An alarm is pending. */
 	unsigned int tso:1; /* Whether TSO is supported. */
 	unsigned int tunnel_en:1;
+	unsigned int isolated:1; /* Whether isolated mode is enabled. */
 	/* Whether Tx offloads for tunneled packets are supported. */
 	unsigned int max_tso_payload_sz; /* Maximum TCP payload for TSO. */
 	unsigned int txq_inline; /* Maximum packet size for inlining. */
@@ -311,6 +312,7 @@ struct rte_flow *mlx5_flow_create(struct rte_eth_dev *,
 int mlx5_flow_destroy(struct rte_eth_dev *, struct rte_flow *,
 		      struct rte_flow_error *);
 int mlx5_flow_flush(struct rte_eth_dev *, struct rte_flow_error *);
+int mlx5_flow_isolate(struct rte_eth_dev *, int, struct rte_flow_error *);
 int priv_flow_start(struct priv *);
 void priv_flow_stop(struct priv *);
 int priv_flow_rxq_in_use(struct priv *, struct rxq *);

@@ -1053,6 +1053,7 @@ static const struct rte_flow_ops mlx5_flow_ops = {
 	.destroy = mlx5_flow_destroy,
 	.flush = mlx5_flow_flush,
 	.query = NULL,
+	.isolate = mlx5_flow_isolate,
 };
 
 /**

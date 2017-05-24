@@ -443,6 +443,8 @@ priv_mac_addrs_enable(struct priv *priv)
 	unsigned int i;
 	int ret;
 
+	if (priv->isolated)
+		return 0;
 	if (!priv_allow_flow_type(priv, HASH_RXQ_FLOW_TYPE_MAC))
 		return 0;
 	for (i = 0; (i != priv->hash_rxqs_n); ++i) {

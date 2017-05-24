@@ -363,6 +363,8 @@ priv_create_hash_rxqs(struct priv *priv)
 	assert(priv->hash_rxqs_n == 0);
 	assert(priv->pd != NULL);
 	assert(priv->ctx != NULL);
+	if (priv->isolated)
+		return 0;
 	if (priv->rxqs_n == 0)
 		return EINVAL;
 	assert(priv->rxqs != NULL);

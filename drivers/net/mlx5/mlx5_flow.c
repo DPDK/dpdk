@@ -1600,3 +1600,30 @@ priv_flow_rxq_in_use(struct priv *priv, struct rxq *rxq)
 	}
 	return 0;
 }
+
+/**
+ * Isolated mode.
+ *
+ * @see rte_flow_isolate()
+ * @see rte_flow_ops
+ */
+int
+mlx5_flow_isolate(struct rte_eth_dev *dev,
+		  int enable,
+		  struct rte_flow_error *error)
+{
+	struct priv *priv = dev->data->dev_private;
+
+	priv_lock(priv);
+	if (priv->started) {
+		rte_flow_error_set(error, EBUSY,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL,
+				   "port must be stopped first");
+		priv_unlock(priv);
+		return -rte_errno;
+	}
+	priv->isolated = !!enable;
+	priv_unlock(priv);
+	return 0;
+}
