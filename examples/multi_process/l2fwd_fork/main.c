@@ -937,7 +937,6 @@ main(int argc, char **argv)
 	unsigned rx_lcore_id;
 	unsigned nb_ports_in_mask = 0;
 	unsigned i;
-	int flags = 0;
 	uint64_t prev_tsc, diff_tsc, cur_tsc, timer_tsc;
 
 	/* Save cpu_affinity first, restore it in case it's floating process option */
@@ -987,7 +986,6 @@ main(int argc, char **argv)
 		if ((l2fwd_enabled_port_mask & (1 << portid)) == 0)
 			continue;
 		char buf_name[RTE_MEMPOOL_NAMESIZE];
-		flags = MEMPOOL_F_SP_PUT | MEMPOOL_F_SC_GET;
 		snprintf(buf_name, RTE_MEMPOOL_NAMESIZE, MBUF_NAME, portid);
 		l2fwd_pktmbuf_pool[portid] =
 			rte_pktmbuf_pool_create(buf_name, NB_MBUF, 32,
