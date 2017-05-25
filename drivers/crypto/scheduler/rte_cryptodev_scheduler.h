@@ -186,38 +186,6 @@ enum rte_cryptodev_scheduler_mode
 rte_cryptodev_scheduler_mode_get(uint8_t scheduler_id);
 
 /**
- * @deprecated
- * Set the scheduling mode
- *
- * @param scheduler_id
- *   The target scheduler device ID
- * @param mode
- *   The scheduling mode
- *
- * @return
- *	0 if attaching successful, negative integer if otherwise.
- */
-__rte_deprecated
-int
-rte_crpytodev_scheduler_mode_set(uint8_t scheduler_id,
-		enum rte_cryptodev_scheduler_mode mode);
-
-/**
- * @deprecated
- * Get the current scheduling mode
- *
- * @param scheduler_id
- *   The target scheduler device ID
- *
- * @return
- *	If successful, returns the scheduling mode, negative integer
- *	otherwise
- */
-__rte_deprecated
-enum rte_cryptodev_scheduler_mode
-rte_crpytodev_scheduler_mode_get(uint8_t scheduler_id);
-
-/**
  * Set the crypto ops reordering feature on/off
  *
  * @param scheduler_id

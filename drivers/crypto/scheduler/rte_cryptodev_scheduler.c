@@ -359,13 +359,6 @@ rte_cryptodev_scheduler_mode_set(uint8_t scheduler_id,
 	return 0;
 }
 
-int
-rte_crpytodev_scheduler_mode_set(uint8_t scheduler_id,
-		enum rte_cryptodev_scheduler_mode mode)
-{
-	return rte_cryptodev_scheduler_mode_set(scheduler_id, mode);
-}
-
 enum rte_cryptodev_scheduler_mode
 rte_cryptodev_scheduler_mode_get(uint8_t scheduler_id)
 {
@@ -385,12 +378,6 @@ rte_cryptodev_scheduler_mode_get(uint8_t scheduler_id)
 	sched_ctx = dev->data->dev_private;
 
 	return sched_ctx->mode;
-}
-
-enum rte_cryptodev_scheduler_mode
-rte_crpytodev_scheduler_mode_get(uint8_t scheduler_id)
-{
-	return rte_cryptodev_scheduler_mode_get(scheduler_id);
 }
 
 int
