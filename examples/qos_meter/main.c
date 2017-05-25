@@ -308,6 +308,8 @@ int
 main(int argc, char **argv)
 {
 	uint32_t lcore_id;
+	uint16_t nb_rxd = NIC_RX_QUEUE_DESC;
+	uint16_t nb_txd = NIC_TX_QUEUE_DESC;
 	int ret;
 
 	/* EAL init */
@@ -337,13 +339,18 @@ main(int argc, char **argv)
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Port %d configuration error (%d)\n", port_rx, ret);
 
-	ret = rte_eth_rx_queue_setup(port_rx, NIC_RX_QUEUE, NIC_RX_QUEUE_DESC,
+	ret = rte_eth_dev_adjust_nb_rx_tx_desc(port_rx, &nb_rxd, &nb_txd);
+	if (ret < 0)
+		rte_exit(EXIT_FAILURE, "Port %d adjust number of descriptors error (%d)\n",
+				port_rx, ret);
+
+	ret = rte_eth_rx_queue_setup(port_rx, NIC_RX_QUEUE, nb_rxd,
 				rte_eth_dev_socket_id(port_rx),
 				NULL, pool);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Port %d RX queue setup error (%d)\n", port_rx, ret);
 
-	ret = rte_eth_tx_queue_setup(port_rx, NIC_TX_QUEUE, NIC_TX_QUEUE_DESC,
+	ret = rte_eth_tx_queue_setup(port_rx, NIC_TX_QUEUE, nb_txd,
 				rte_eth_dev_socket_id(port_rx),
 				NULL);
 	if (ret < 0)
@@ -353,13 +360,20 @@ main(int argc, char **argv)
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Port %d configuration error (%d)\n", port_tx, ret);
 
-	ret = rte_eth_rx_queue_setup(port_tx, NIC_RX_QUEUE, NIC_RX_QUEUE_DESC,
+	nb_rxd = NIC_RX_QUEUE_DESC;
+	nb_txd = NIC_TX_QUEUE_DESC;
+	ret = rte_eth_dev_adjust_nb_rx_tx_desc(port_tx, &nb_rxd, &nb_txd);
+	if (ret < 0)
+		rte_exit(EXIT_FAILURE, "Port %d adjust number of descriptors error (%d)\n",
+				port_tx, ret);
+
+	ret = rte_eth_rx_queue_setup(port_tx, NIC_RX_QUEUE, nb_rxd,
 				rte_eth_dev_socket_id(port_tx),
 				NULL, pool);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Port %d RX queue setup error (%d)\n", port_tx, ret);
 
-	ret = rte_eth_tx_queue_setup(port_tx, NIC_TX_QUEUE, NIC_TX_QUEUE_DESC,
+	ret = rte_eth_tx_queue_setup(port_tx, NIC_TX_QUEUE, nb_txd,
 				rte_eth_dev_socket_id(port_tx),
 				NULL);
 	if (ret < 0)

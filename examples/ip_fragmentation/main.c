@@ -960,6 +960,14 @@ main(int argc, char **argv)
 				ret, portid);
 		}
 
+		ret = rte_eth_dev_adjust_nb_rx_tx_desc(portid, &nb_rxd,
+					    &nb_txd);
+		if (ret < 0) {
+			printf("\n");
+			rte_exit(EXIT_FAILURE, "Cannot adjust number of "
+				"descriptors: err=%d, port=%d\n", ret, portid);
+		}
+
 		/* init one RX queue */
 		ret = rte_eth_rx_queue_setup(portid, 0, nb_rxd,
 					     socket, NULL,

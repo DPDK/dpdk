@@ -177,6 +177,8 @@ static void
 slave_port_init(uint8_t portid, struct rte_mempool *mbuf_pool)
 {
 	int retval;
+	uint16_t nb_rxd = RTE_RX_DESC_DEFAULT;
+	uint16_t nb_txd = RTE_TX_DESC_DEFAULT;
 
 	if (portid >= rte_eth_dev_count())
 		rte_exit(EXIT_FAILURE, "Invalid port\n");
@@ -186,8 +188,13 @@ slave_port_init(uint8_t portid, struct rte_mempool *mbuf_pool)
 		rte_exit(EXIT_FAILURE, "port %u: configuration failed (res=%d)\n",
 				portid, retval);
 
+	retval = rte_eth_dev_adjust_nb_rx_tx_desc(portid, &nb_rxd, &nb_txd);
+	if (retval != 0)
+		rte_exit(EXIT_FAILURE, "port %u: rte_eth_dev_adjust_nb_rx_tx_desc "
+				"failed (res=%d)\n", portid, retval);
+
 	/* RX setup */
-	retval = rte_eth_rx_queue_setup(portid, 0, RTE_RX_DESC_DEFAULT,
+	retval = rte_eth_rx_queue_setup(portid, 0, nb_rxd,
 					rte_eth_dev_socket_id(portid), NULL,
 					mbuf_pool);
 	if (retval < 0)
@@ -195,7 +202,7 @@ slave_port_init(uint8_t portid, struct rte_mempool *mbuf_pool)
 				portid, retval);
 
 	/* TX setup */
-	retval = rte_eth_tx_queue_setup(portid, 0, RTE_TX_DESC_DEFAULT,
+	retval = rte_eth_tx_queue_setup(portid, 0, nb_txd,
 				rte_eth_dev_socket_id(portid), NULL);
 
 	if (retval < 0)
@@ -221,6 +228,8 @@ bond_port_init(struct rte_mempool *mbuf_pool)
 {
 	int retval;
 	uint8_t i;
+	uint16_t nb_rxd = RTE_RX_DESC_DEFAULT;
+	uint16_t nb_txd = RTE_TX_DESC_DEFAULT;
 
 	retval = rte_eth_bond_create("bond0", BONDING_MODE_ALB,
 			0 /*SOCKET_ID_ANY*/);
@@ -235,8 +244,13 @@ bond_port_init(struct rte_mempool *mbuf_pool)
 		rte_exit(EXIT_FAILURE, "port %u: configuration failed (res=%d)\n",
 				BOND_PORT, retval);
 
+	retval = rte_eth_dev_adjust_nb_rx_tx_desc(BOND_PORT, &nb_rxd, &nb_txd);
+	if (retval != 0)
+		rte_exit(EXIT_FAILURE, "port %u: rte_eth_dev_adjust_nb_rx_tx_desc "
+				"failed (res=%d)\n", BOND_PORT, retval);
+
 	/* RX setup */
-	retval = rte_eth_rx_queue_setup(BOND_PORT, 0, RTE_RX_DESC_DEFAULT,
+	retval = rte_eth_rx_queue_setup(BOND_PORT, 0, nb_rxd,
 					rte_eth_dev_socket_id(BOND_PORT), NULL,
 					mbuf_pool);
 	if (retval < 0)
@@ -244,7 +258,7 @@ bond_port_init(struct rte_mempool *mbuf_pool)
 				BOND_PORT, retval);
 
 	/* TX setup */
-	retval = rte_eth_tx_queue_setup(BOND_PORT, 0, RTE_TX_DESC_DEFAULT,
+	retval = rte_eth_tx_queue_setup(BOND_PORT, 0, nb_txd,
 				rte_eth_dev_socket_id(BOND_PORT), NULL);
 
 	if (retval < 0)

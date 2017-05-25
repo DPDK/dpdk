@@ -2297,6 +2297,14 @@ initialize_ports(struct l2fwd_crypto_options *options)
 			return -1;
 		}
 
+		retval = rte_eth_dev_adjust_nb_rx_tx_desc(portid, &nb_rxd,
+							  &nb_txd);
+		if (retval < 0) {
+			printf("Cannot adjust number of descriptors: err=%d, port=%u\n",
+				retval, (unsigned) portid);
+			return -1;
+		}
+
 		/* init one RX queue */
 		fflush(stdout);
 		retval = rte_eth_rx_queue_setup(portid, 0, nb_rxd,

@@ -904,7 +904,7 @@ setup_queue_tbl(struct rx_queue *rxq, uint32_t lcore, uint32_t queue)
 	nb_mbuf = RTE_MAX(max_flow_num, 2UL * MAX_PKT_BURST) * MAX_FRAG_NUM;
 	nb_mbuf *= (port_conf.rxmode.max_rx_pkt_len + BUF_SIZE - 1) / BUF_SIZE;
 	nb_mbuf *= 2; /* ipv4 and ipv6 */
-	nb_mbuf += RTE_TEST_RX_DESC_DEFAULT + RTE_TEST_TX_DESC_DEFAULT;
+	nb_mbuf += nb_rxd + nb_txd;
 
 	nb_mbuf = RTE_MAX(nb_mbuf, (uint32_t)NB_MBUF);
 
@@ -1088,6 +1088,14 @@ main(int argc, char **argv)
 		rxq->portid = portid;
 		rxq->lpm = socket_lpm[socket];
 		rxq->lpm6 = socket_lpm6[socket];
+
+		ret = rte_eth_dev_adjust_nb_rx_tx_desc(portid, &nb_rxd,
+						       &nb_txd);
+		if (ret < 0)
+			rte_exit(EXIT_FAILURE,
+				 "Cannot adjust number of descriptors: err=%d, port=%d\n",
+				 ret, portid);
+
 		if (setup_queue_tbl(rxq, rx_lcore_id, queueid) < 0)
 			rte_exit(EXIT_FAILURE, "Failed to set up queue table\n");
 		qconf->n_rx_queue++;

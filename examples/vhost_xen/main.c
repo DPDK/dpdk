@@ -279,7 +279,8 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 	struct rte_eth_rxconf *rxconf;
 	struct rte_eth_conf port_conf;
 	uint16_t rx_rings, tx_rings = (uint16_t)rte_lcore_count();
-	const uint16_t rx_ring_size = RTE_TEST_RX_DESC_DEFAULT, tx_ring_size = RTE_TEST_TX_DESC_DEFAULT;
+	uint16_t rx_ring_size = RTE_TEST_RX_DESC_DEFAULT;
+	uint16_t tx_ring_size = RTE_TEST_TX_DESC_DEFAULT;
 	int retval;
 	uint16_t q;
 
@@ -306,6 +307,17 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 	retval = rte_eth_dev_configure(port, rx_rings, tx_rings, &port_conf);
 	if (retval != 0)
 		return retval;
+
+	retval = rte_eth_dev_adjust_nb_rx_tx_desc(port, &rx_ring_size,
+		&tx_ring_size);
+	if (retval != 0)
+		return retval;
+	if (rx_ring_size > RTE_TEST_RX_DESC_DEFAULT ||
+		tx_ring_size > RTE_TEST_TX_DESC_DEFAULT) {
+		RTE_LOG(ERR, VHOST_PORT, "Mbuf pool has an insufficient size for "
+			"port %u.\n", port);
+		return -1;
+	}
 
 	rte_eth_dev_info_get(port, &dev_info);
 	rxconf = &dev_info.default_rxconf;

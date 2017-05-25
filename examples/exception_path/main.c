@@ -448,6 +448,8 @@ static void
 init_port(uint8_t port)
 {
 	int ret;
+	uint16_t nb_rxd = NB_RXD;
+	uint16_t nb_txd = NB_TXD;
 
 	/* Initialise device and RX/TX queues */
 	PRINT_INFO("Initialising port %u ...", (unsigned)port);
@@ -457,14 +459,21 @@ init_port(uint8_t port)
 		FATAL_ERROR("Could not configure port%u (%d)",
 		            (unsigned)port, ret);
 
-	ret = rte_eth_rx_queue_setup(port, 0, NB_RXD, rte_eth_dev_socket_id(port),
+	ret = rte_eth_dev_adjust_nb_rx_tx_desc(port, &nb_rxd, &nb_txd);
+	if (ret < 0)
+		FATAL_ERROR("Could not adjust number of descriptors for port%u (%d)",
+			    (unsigned)port, ret);
+
+	ret = rte_eth_rx_queue_setup(port, 0, nb_rxd,
+				rte_eth_dev_socket_id(port),
 				NULL,
 				pktmbuf_pool);
 	if (ret < 0)
 		FATAL_ERROR("Could not setup up RX queue for port%u (%d)",
 		            (unsigned)port, ret);
 
-	ret = rte_eth_tx_queue_setup(port, 0, NB_TXD, rte_eth_dev_socket_id(port),
+	ret = rte_eth_tx_queue_setup(port, 0, nb_txd,
+				rte_eth_dev_socket_id(port),
 				NULL);
 	if (ret < 0)
 		FATAL_ERROR("Could not setup up TX queue for port%u (%d)",

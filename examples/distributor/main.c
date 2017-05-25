@@ -138,6 +138,8 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 	const uint16_t rxRings = 1, txRings = rte_lcore_count() - 1;
 	int retval;
 	uint16_t q;
+	uint16_t nb_rxd = RX_RING_SIZE;
+	uint16_t nb_txd = TX_RING_SIZE;
 
 	if (port >= rte_eth_dev_count())
 		return -1;
@@ -146,8 +148,12 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 	if (retval != 0)
 		return retval;
 
+	retval = rte_eth_dev_adjust_nb_rx_tx_desc(port, &nb_rxd, &nb_txd);
+	if (retval != 0)
+		return retval;
+
 	for (q = 0; q < rxRings; q++) {
-		retval = rte_eth_rx_queue_setup(port, q, RX_RING_SIZE,
+		retval = rte_eth_rx_queue_setup(port, q, nb_rxd,
 						rte_eth_dev_socket_id(port),
 						NULL, mbuf_pool);
 		if (retval < 0)
@@ -155,7 +161,7 @@ port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 	}
 
 	for (q = 0; q < txRings; q++) {
-		retval = rte_eth_tx_queue_setup(port, q, TX_RING_SIZE,
+		retval = rte_eth_tx_queue_setup(port, q, nb_txd,
 						rte_eth_dev_socket_id(port),
 						NULL);
 		if (retval < 0)

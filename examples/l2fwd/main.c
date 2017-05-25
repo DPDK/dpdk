@@ -666,6 +666,13 @@ main(int argc, char **argv)
 			rte_exit(EXIT_FAILURE, "Cannot configure device: err=%d, port=%u\n",
 				  ret, (unsigned) portid);
 
+		ret = rte_eth_dev_adjust_nb_rx_tx_desc(portid, &nb_rxd,
+						       &nb_txd);
+		if (ret < 0)
+			rte_exit(EXIT_FAILURE,
+				 "Cannot adjust number of descriptors: err=%d, port=%u\n",
+				 ret, (unsigned) portid);
+
 		rte_eth_macaddr_get(portid,&l2fwd_ports_eth_addr[portid]);
 
 		/* init one RX queue */

@@ -130,8 +130,8 @@ init_port(uint8_t port_num)
 		}
 	};
 	const uint16_t rx_rings = 1, tx_rings = num_nodes;
-	const uint16_t rx_ring_size = RTE_MP_RX_DESC_DEFAULT;
-	const uint16_t tx_ring_size = RTE_MP_TX_DESC_DEFAULT;
+	uint16_t rx_ring_size = RTE_MP_RX_DESC_DEFAULT;
+	uint16_t tx_ring_size = RTE_MP_TX_DESC_DEFAULT;
 
 	uint16_t q;
 	int retval;
@@ -144,6 +144,11 @@ init_port(uint8_t port_num)
 	 * rx and tx rings.
 	 */
 	retval = rte_eth_dev_configure(port_num, rx_rings, tx_rings, &port_conf);
+	if (retval != 0)
+		return retval;
+
+	retval = rte_eth_dev_adjust_nb_rx_tx_desc(port_num, &rx_ring_size,
+			&tx_ring_size);
 	if (retval != 0)
 		return retval;
 

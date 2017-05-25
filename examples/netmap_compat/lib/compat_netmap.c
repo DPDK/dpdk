@@ -719,6 +719,15 @@ rte_netmap_init_port(uint8_t portid, const struct rte_netmap_port_conf *conf)
 	    return ret;
 	}
 
+	ret = rte_eth_dev_adjust_nb_rx_tx_desc(portid, &rx_slots, &tx_slots);
+
+	if (ret < 0) {
+		RTE_LOG(ERR, USER1,
+			"Couldn't ot adjust number of descriptors for port %hhu\n",
+			portid);
+		return ret;
+	}
+
 	for (i = 0; i < conf->nr_tx_rings; i++) {
 		ret = rte_eth_tx_queue_setup(portid, i, tx_slots,
 			conf->socket_id, NULL);

@@ -229,6 +229,8 @@ smp_port_init(uint8_t port, struct rte_mempool *mbuf_pool, uint16_t num_queues)
 	struct rte_eth_dev_info info;
 	int retval;
 	uint16_t q;
+	uint16_t nb_rxd = RX_RING_SIZE;
+	uint16_t nb_txd = TX_RING_SIZE;
 
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY)
 		return 0;
@@ -246,8 +248,12 @@ smp_port_init(uint8_t port, struct rte_mempool *mbuf_pool, uint16_t num_queues)
 	if (retval < 0)
 		return retval;
 
+	retval = rte_eth_dev_adjust_nb_rx_tx_desc(port, &nb_rxd, &nb_txd);
+	if (retval < 0)
+		return retval;
+
 	for (q = 0; q < rx_rings; q ++) {
-		retval = rte_eth_rx_queue_setup(port, q, RX_RING_SIZE,
+		retval = rte_eth_rx_queue_setup(port, q, nb_rxd,
 				rte_eth_dev_socket_id(port),
 				&info.default_rxconf,
 				mbuf_pool);
@@ -256,7 +262,7 @@ smp_port_init(uint8_t port, struct rte_mempool *mbuf_pool, uint16_t num_queues)
 	}
 
 	for (q = 0; q < tx_rings; q ++) {
-		retval = rte_eth_tx_queue_setup(port, q, TX_RING_SIZE,
+		retval = rte_eth_tx_queue_setup(port, q, nb_txd,
 				rte_eth_dev_socket_id(port),
 				NULL);
 		if (retval < 0)

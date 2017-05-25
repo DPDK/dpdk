@@ -339,6 +339,19 @@ port_init(uint8_t port)
 		return retval;
 	}
 
+	retval = rte_eth_dev_adjust_nb_rx_tx_desc(port, &rx_ring_size,
+		&tx_ring_size);
+	if (retval != 0) {
+		RTE_LOG(ERR, VHOST_PORT, "Failed to adjust number of descriptors "
+			"for port %u: %s.\n", port, strerror(-retval));
+		return retval;
+	}
+	if (rx_ring_size > RTE_TEST_RX_DESC_DEFAULT) {
+		RTE_LOG(ERR, VHOST_PORT, "Mbuf pool has an insufficient size "
+			"for Rx queues on port %u.\n", port);
+		return -1;
+	}
+
 	/* Setup the queues. */
 	for (q = 0; q < rx_rings; q ++) {
 		retval = rte_eth_rx_queue_setup(port, q, rx_ring_size,

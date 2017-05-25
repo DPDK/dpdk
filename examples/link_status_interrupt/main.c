@@ -650,6 +650,13 @@ main(int argc, char **argv)
 			rte_exit(EXIT_FAILURE, "Cannot configure device: err=%d, port=%u\n",
 				  ret, (unsigned) portid);
 
+		ret = rte_eth_dev_adjust_nb_rx_tx_desc(portid, &nb_rxd,
+						       &nb_txd);
+		if (ret < 0)
+			rte_exit(EXIT_FAILURE,
+				 "rte_eth_dev_adjust_nb_rx_tx_desc: err=%d, port=%u\n",
+				 ret, (unsigned) portid);
+
 		/* register lsi interrupt callback, need to be after
 		 * rte_eth_dev_configure(). if (intr_conf.lsc == 0), no
 		 * lsc interrupt will be present, and below callback to

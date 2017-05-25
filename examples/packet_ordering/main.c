@@ -290,6 +290,8 @@ configure_eth_port(uint8_t port_id)
 	const uint8_t nb_ports = rte_eth_dev_count();
 	int ret;
 	uint16_t q;
+	uint16_t nb_rxd = RX_DESC_PER_QUEUE;
+	uint16_t nb_txd = TX_DESC_PER_QUEUE;
 
 	if (port_id > nb_ports)
 		return -1;
@@ -298,8 +300,12 @@ configure_eth_port(uint8_t port_id)
 	if (ret != 0)
 		return ret;
 
+	ret = rte_eth_dev_adjust_nb_rx_tx_desc(port_id, &nb_rxd, &nb_txd);
+	if (ret != 0)
+		return ret;
+
 	for (q = 0; q < rxRings; q++) {
-		ret = rte_eth_rx_queue_setup(port_id, q, RX_DESC_PER_QUEUE,
+		ret = rte_eth_rx_queue_setup(port_id, q, nb_rxd,
 				rte_eth_dev_socket_id(port_id), NULL,
 				mbuf_pool);
 		if (ret < 0)
@@ -307,7 +313,7 @@ configure_eth_port(uint8_t port_id)
 	}
 
 	for (q = 0; q < txRings; q++) {
-		ret = rte_eth_tx_queue_setup(port_id, q, TX_DESC_PER_QUEUE,
+		ret = rte_eth_tx_queue_setup(port_id, q, nb_txd,
 				rte_eth_dev_socket_id(port_id), NULL);
 		if (ret < 0)
 			return ret;

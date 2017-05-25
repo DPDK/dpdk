@@ -76,6 +76,8 @@ static struct rte_eth_fc_conf fc_conf = {
 void configure_eth_port(uint8_t port_id)
 {
 	int ret;
+	uint16_t nb_rxd = RX_DESC_PER_QUEUE;
+	uint16_t nb_txd = TX_DESC_PER_QUEUE;
 
 	rte_eth_dev_stop(port_id);
 
@@ -84,8 +86,14 @@ void configure_eth_port(uint8_t port_id)
 		rte_exit(EXIT_FAILURE, "Cannot configure port %u (error %d)\n",
 				(unsigned int) port_id, ret);
 
+	ret = rte_eth_dev_adjust_nb_rx_tx_desc(port_id, &nb_rxd, &nb_txd);
+	if (ret < 0)
+		rte_exit(EXIT_FAILURE,
+				"Cannot adjust number of descriptors for port %u (error %d)\n",
+				(unsigned int) port_id, ret);
+
 	/* Initialize the port's RX queue */
-	ret = rte_eth_rx_queue_setup(port_id, 0, RX_DESC_PER_QUEUE,
+	ret = rte_eth_rx_queue_setup(port_id, 0, nb_rxd,
 			rte_eth_dev_socket_id(port_id),
 			NULL,
 			mbuf_pool);
@@ -95,7 +103,7 @@ void configure_eth_port(uint8_t port_id)
 				(unsigned int) port_id, ret);
 
 	/* Initialize the port's TX queue */
-	ret = rte_eth_tx_queue_setup(port_id, 0, TX_DESC_PER_QUEUE,
+	ret = rte_eth_tx_queue_setup(port_id, 0, nb_txd,
 			rte_eth_dev_socket_id(port_id),
 			NULL);
 	if (ret < 0)

@@ -135,8 +135,8 @@ vxlan_port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 	uint16_t q;
 	struct rte_eth_dev_info dev_info;
 	uint16_t rx_rings, tx_rings = (uint16_t)rte_lcore_count();
-	const uint16_t rx_ring_size = RTE_TEST_RX_DESC_DEFAULT;
-	const uint16_t tx_ring_size = RTE_TEST_TX_DESC_DEFAULT;
+	uint16_t rx_ring_size = RTE_TEST_RX_DESC_DEFAULT;
+	uint16_t tx_ring_size = RTE_TEST_TX_DESC_DEFAULT;
 	struct rte_eth_udp_tunnel tunnel_udp;
 	struct rte_eth_rxconf *rxconf;
 	struct rte_eth_txconf *txconf;
@@ -163,6 +163,11 @@ vxlan_port_init(uint8_t port, struct rte_mempool *mbuf_pool)
 
 	/* Configure ethernet device. */
 	retval = rte_eth_dev_configure(port, rx_rings, tx_rings, &port_conf);
+	if (retval != 0)
+		return retval;
+
+	retval = rte_eth_dev_adjust_nb_rx_tx_desc(port, &rx_ring_size,
+			&tx_ring_size);
 	if (retval != 0)
 		return retval;
 

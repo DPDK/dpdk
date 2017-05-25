@@ -430,6 +430,8 @@ app_init_nics(void)
 	/* Init NIC ports and queues, then start the ports */
 	for (port = 0; port < APP_MAX_NIC_PORTS; port ++) {
 		struct rte_mempool *pool;
+		uint16_t nic_rx_ring_size;
+		uint16_t nic_tx_ring_size;
 
 		n_rx_queues = app_get_nic_rx_queues_per_port(port);
 		n_tx_queues = app.nic_tx_port_mask[port];
@@ -449,6 +451,17 @@ app_init_nics(void)
 			rte_panic("Cannot init NIC port %u (%d)\n", (unsigned) port, ret);
 		}
 		rte_eth_promiscuous_enable(port);
+
+		nic_rx_ring_size = app.nic_rx_ring_size;
+		nic_tx_ring_size = app.nic_tx_ring_size;
+		ret = rte_eth_dev_adjust_nb_rx_tx_desc(
+			port, &nic_rx_ring_size, &nic_tx_ring_size);
+		if (ret < 0) {
+			rte_panic("Cannot adjust number of descriptors for port %u (%d)\n",
+				(unsigned) port, ret);
+		}
+		app.nic_rx_ring_size = nic_rx_ring_size;
+		app.nic_tx_ring_size = nic_tx_ring_size;
 
 		/* Init RX queues */
 		for (queue = 0; queue < APP_MAX_RX_QUEUES_PER_NIC_PORT; queue ++) {

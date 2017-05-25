@@ -1363,6 +1363,11 @@ port_init(uint8_t portid)
 		rte_exit(EXIT_FAILURE, "Cannot configure device: "
 				"err=%d, port=%d\n", ret, portid);
 
+	ret = rte_eth_dev_adjust_nb_rx_tx_desc(portid, &nb_rxd, &nb_txd);
+	if (ret < 0)
+		rte_exit(EXIT_FAILURE, "Cannot adjust number of descriptors: "
+				"err=%d, port=%d\n", ret, portid);
+
 	/* init one TX queue per lcore */
 	tx_queueid = 0;
 	for (lcore_id = 0; lcore_id < RTE_MAX_LCORE; lcore_id++) {

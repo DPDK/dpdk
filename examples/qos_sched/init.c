@@ -106,6 +106,8 @@ app_init_port(uint8_t portid, struct rte_mempool *mp)
 	struct rte_eth_link link;
 	struct rte_eth_rxconf rx_conf;
 	struct rte_eth_txconf tx_conf;
+	uint16_t rx_size;
+	uint16_t tx_size;
 
 	/* check if port already initialized (multistream configuration) */
 	if (app_inited_port_mask & (1u << portid))
@@ -131,6 +133,15 @@ app_init_port(uint8_t portid, struct rte_mempool *mp)
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Cannot configure device: "
 				"err=%d, port=%"PRIu8"\n", ret, portid);
+
+	rx_size = ring_conf.rx_size;
+	tx_size = ring_conf.tx_size;
+	ret = rte_eth_dev_adjust_nb_rx_tx_desc(portid, &rx_size, &tx_size);
+	if (ret < 0)
+		rte_exit(EXIT_FAILURE, "rte_eth_dev_adjust_nb_rx_tx_desc: "
+				"err=%d, port=%"PRIu8"\n", ret, portid);
+	ring_conf.rx_size = rx_size;
+	ring_conf.tx_size = tx_size;
 
 	/* init one RX queue */
 	fflush(stdout);
