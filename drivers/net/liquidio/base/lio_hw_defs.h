@@ -42,6 +42,12 @@
 
 #define LIO_CN23XX_VF_VID	0x9712
 
+/* CN23xx subsystem device ids */
+#define PCI_SUBSYS_DEV_ID_CN2350_210	0x0004
+#define PCI_SUBSYS_DEV_ID_CN2360_210	0x0005
+#define PCI_SUBSYS_DEV_ID_CN2360_225	0x0006
+#define PCI_SUBSYS_DEV_ID_CN2350_225	0x0007
+
 /* --------------------------CONFIG VALUES------------------------ */
 
 /* CN23xx IQ configuration macros */
