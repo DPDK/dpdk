@@ -3360,3 +3360,40 @@ rte_eth_dev_l2_tunnel_offload_set(uint8_t port_id,
 				-ENOTSUP);
 	return (*dev->dev_ops->l2_tunnel_offload_set)(dev, l2_tunnel, mask, en);
 }
+
+static void
+rte_eth_dev_adjust_nb_desc(uint16_t *nb_desc,
+			   const struct rte_eth_desc_lim *desc_lim)
+{
+	if (desc_lim->nb_align != 0)
+		*nb_desc = RTE_ALIGN_CEIL(*nb_desc, desc_lim->nb_align);
+
+	if (desc_lim->nb_max != 0)
+		*nb_desc = RTE_MIN(*nb_desc, desc_lim->nb_max);
+
+	*nb_desc = RTE_MAX(*nb_desc, desc_lim->nb_min);
+}
+
+int
+rte_eth_dev_adjust_nb_rx_tx_desc(uint8_t port_id,
+				 uint16_t *nb_rx_desc,
+				 uint16_t *nb_tx_desc)
+{
+	struct rte_eth_dev *dev;
+	struct rte_eth_dev_info dev_info;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+
+	dev = &rte_eth_devices[port_id];
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_infos_get, -ENOTSUP);
+
+	rte_eth_dev_info_get(port_id, &dev_info);
+
+	if (nb_rx_desc != NULL)
+		rte_eth_dev_adjust_nb_desc(nb_rx_desc, &dev_info.rx_desc_lim);
+
+	if (nb_tx_desc != NULL)
+		rte_eth_dev_adjust_nb_desc(nb_tx_desc, &dev_info.tx_desc_lim);
+
+	return 0;
+}
