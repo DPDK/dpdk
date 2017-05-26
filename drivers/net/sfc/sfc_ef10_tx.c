@@ -128,14 +128,10 @@ sfc_ef10_tx_get_event(struct sfc_ef10_txq *txq, efx_qword_t *tx_ev)
 	return true;
 }
 
-static void
-sfc_ef10_tx_reap(struct sfc_ef10_txq *txq)
+static unsigned int
+sfc_ef10_tx_process_events(struct sfc_ef10_txq *txq)
 {
-	const unsigned int old_read_ptr = txq->evq_read_ptr;
-	const unsigned int ptr_mask = txq->ptr_mask;
-	unsigned int completed = txq->completed;
-	unsigned int pending = completed;
-	const unsigned int curr_done = pending - 1;
+	const unsigned int curr_done = txq->completed - 1;
 	unsigned int anew_done = curr_done;
 	efx_qword_t tx_ev;
 
@@ -148,7 +144,18 @@ sfc_ef10_tx_reap(struct sfc_ef10_txq *txq)
 		/* Update the latest done descriptor */
 		anew_done = EFX_QWORD_FIELD(tx_ev, ESF_DZ_TX_DESCR_INDX);
 	}
-	pending += (anew_done - curr_done) & ptr_mask;
+	return (anew_done - curr_done) & txq->ptr_mask;
+}
+
+static void
+sfc_ef10_tx_reap(struct sfc_ef10_txq *txq)
+{
+	const unsigned int old_read_ptr = txq->evq_read_ptr;
+	const unsigned int ptr_mask = txq->ptr_mask;
+	unsigned int completed = txq->completed;
+	unsigned int pending = completed;
+
+	pending += sfc_ef10_tx_process_events(txq);
 
 	if (pending != completed) {
 		do {
@@ -349,6 +356,33 @@ sfc_ef10_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	return pktp - &tx_pkts[0];
 }
 
+static void
+sfc_ef10_simple_tx_reap(struct sfc_ef10_txq *txq)
+{
+	const unsigned int old_read_ptr = txq->evq_read_ptr;
+	const unsigned int ptr_mask = txq->ptr_mask;
+	unsigned int completed = txq->completed;
+	unsigned int pending = completed;
+
+	pending += sfc_ef10_tx_process_events(txq);
+
+	if (pending != completed) {
+		do {
+			struct sfc_ef10_tx_sw_desc *txd;
+
+			txd = &txq->sw_ring[completed & ptr_mask];
+
+			rte_pktmbuf_free_seg(txd->mbuf);
+		} while (++completed != pending);
+
+		txq->completed = completed;
+	}
+
+	sfc_ef10_ev_qclear(txq->evq_hw_ring, ptr_mask, old_read_ptr,
+			   txq->evq_read_ptr);
+}
+
+
 static uint16_t
 sfc_ef10_simple_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			  uint16_t nb_pkts)
@@ -372,7 +406,7 @@ sfc_ef10_simple_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 	reap_done = (dma_desc_space < RTE_MAX(txq->free_thresh, nb_pkts));
 	if (reap_done) {
-		sfc_ef10_tx_reap(txq);
+		sfc_ef10_simple_tx_reap(txq);
 		dma_desc_space = SFC_EF10_TXQ_LIMIT(ptr_mask + 1) -
 				 (added - txq->completed);
 	}
@@ -401,7 +435,7 @@ sfc_ef10_simple_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 
 #if SFC_TX_XMIT_PKTS_REAP_AT_LEAST_ONCE
 	if (!reap_done)
-		sfc_ef10_tx_reap(txq);
+		sfc_ef10_simple_tx_reap(txq);
 #endif
 
 	return pktp - &tx_pkts[0];
