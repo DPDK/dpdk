@@ -54,6 +54,7 @@
 #include "dpaa2_ethdev.h"
 
 static struct rte_dpaa2_driver rte_dpaa2_pmd;
+static int dpaa2_dev_uninit(struct rte_eth_dev *eth_dev);
 
 /**
  * Atomically reads the link status information from global
@@ -772,7 +773,7 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 
 	hw_id = dpaa2_dev->object_id;
 
-	dpni_dev = (struct fsl_mc_io *)malloc(sizeof(struct fsl_mc_io));
+	dpni_dev = rte_malloc(NULL, sizeof(struct fsl_mc_io), 0);
 	if (!dpni_dev) {
 		PMD_INIT_LOG(ERR, "malloc failed for dpni device\n");
 		return -1;
@@ -781,24 +782,28 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 	dpni_dev->regs = rte_mcp_ptr_list[0];
 	ret = dpni_open(dpni_dev, CMD_PRI_LOW, hw_id, &priv->token);
 	if (ret) {
-		PMD_INIT_LOG(ERR, "Failure in opening dpni@%d device with"
-			" error code %d\n", hw_id, ret);
+		PMD_INIT_LOG(ERR,
+			     "Failure in opening dpni@%d with err code %d\n",
+			     hw_id, ret);
+		rte_free(dpni_dev);
 		return -1;
 	}
 
 	/* Clean the device first */
 	ret = dpni_reset(dpni_dev, CMD_PRI_LOW, priv->token);
 	if (ret) {
-		PMD_INIT_LOG(ERR, "Failure cleaning dpni@%d device with"
-			" error code %d\n", hw_id, ret);
-		return -1;
+		PMD_INIT_LOG(ERR,
+			     "Failure cleaning dpni@%d with err code %d\n",
+			     hw_id, ret);
+		goto init_err;
 	}
 
 	ret = dpni_get_attributes(dpni_dev, CMD_PRI_LOW, priv->token, &attr);
 	if (ret) {
-		PMD_INIT_LOG(ERR, "Failure in getting dpni@%d attribute, "
-			" error code %d\n", hw_id, ret);
-		return -1;
+		PMD_INIT_LOG(ERR,
+			     "Failure in get dpni@%d attribute, err code %d\n",
+			     hw_id, ret);
+		goto init_err;
 	}
 
 	priv->num_tc = attr.num_tcs;
@@ -831,28 +836,28 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 	ret = dpaa2_alloc_rx_tx_queues(eth_dev);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "dpaa2_alloc_rx_tx_queuesFailed\n");
-		return -ret;
+		goto init_err;
 	}
 
 	/* Allocate memory for storing MAC addresses */
 	eth_dev->data->mac_addrs = rte_zmalloc("dpni",
 		ETHER_ADDR_LEN * attr.mac_filter_entries, 0);
 	if (eth_dev->data->mac_addrs == NULL) {
-		PMD_INIT_LOG(ERR, "Failed to allocate %d bytes needed to "
-						"store MAC addresses",
-				ETHER_ADDR_LEN * attr.mac_filter_entries);
-		return -ENOMEM;
+		PMD_INIT_LOG(ERR,
+		   "Failed to allocate %d bytes needed to store MAC addresses",
+			     ETHER_ADDR_LEN * attr.mac_filter_entries);
+		ret = -ENOMEM;
+		goto init_err;
 	}
 
 	ret = dpni_get_primary_mac_addr(dpni_dev, CMD_PRI_LOW,
 					priv->token,
 			(uint8_t *)(eth_dev->data->mac_addrs[0].addr_bytes));
 	if (ret) {
-		PMD_INIT_LOG(ERR, "DPNI get mac address failed:"
-					" Error Code = %d\n", ret);
-		return -ret;
+		PMD_INIT_LOG(ERR, "DPNI get mac address failed:Err Code = %d\n",
+			     ret);
+		goto init_err;
 	}
-
 
 	/* ... tx buffer layout ... */
 	memset(&layout, 0, sizeof(struct dpni_buffer_layout));
@@ -861,9 +866,9 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 	ret = dpni_set_buffer_layout(dpni_dev, CMD_PRI_LOW, priv->token,
 				     DPNI_QUEUE_TX, &layout);
 	if (ret) {
-		PMD_INIT_LOG(ERR, "Error (%d) in setting tx buffer"
-				  " layout", ret);
-		return -1;
+		PMD_INIT_LOG(ERR, "Error (%d) in setting tx buffer layout",
+			     ret);
+		goto init_err;
 	}
 
 	/* ... tx-conf and error buffer layout ... */
@@ -873,9 +878,9 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 	ret = dpni_set_buffer_layout(dpni_dev, CMD_PRI_LOW, priv->token,
 				     DPNI_QUEUE_TX_CONFIRM, &layout);
 	if (ret) {
-		PMD_INIT_LOG(ERR, "Error (%d) in setting tx-conf buffer"
-				  " layout", ret);
-		return -1;
+		PMD_INIT_LOG(ERR, "Error (%d) in setting tx-conf buffer layout",
+			     ret);
+		goto init_err;
 	}
 
 	eth_dev->dev_ops = &dpaa2_ethdev_ops;
@@ -886,6 +891,9 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 	rte_fslmc_vfio_dmamap();
 
 	return 0;
+init_err:
+	dpaa2_dev_uninit(eth_dev);
+	return ret;
 }
 
 static int
@@ -920,22 +928,23 @@ dpaa2_dev_uninit(struct rte_eth_dev *eth_dev)
 		priv->rx_vq[0] = NULL;
 	}
 
-	/* Allocate memory for storing MAC addresses */
+	/* free memory for storing MAC addresses */
 	if (eth_dev->data->mac_addrs) {
 		rte_free(eth_dev->data->mac_addrs);
 		eth_dev->data->mac_addrs = NULL;
 	}
 
-	/*Close the device at underlying layer*/
+	/* Close the device at underlying layer*/
 	ret = dpni_close(dpni, CMD_PRI_LOW, priv->token);
 	if (ret) {
-		PMD_INIT_LOG(ERR, "Failure closing dpni device with"
-			" error code %d\n", ret);
+		PMD_INIT_LOG(ERR,
+			     "Failure closing dpni device with err code %d\n",
+			     ret);
 	}
 
-	/*Free the allocated memory for ethernet private data and dpni*/
+	/* Free the allocated memory for ethernet private data and dpni*/
 	priv->hw = NULL;
-	free(dpni);
+	rte_free(dpni);
 
 	eth_dev->dev_ops = NULL;
 	eth_dev->rx_pkt_burst = NULL;
