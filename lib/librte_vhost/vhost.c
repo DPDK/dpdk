@@ -369,7 +369,7 @@ rte_vhost_get_mem_table(int vid, struct rte_vhost_memory **mem)
 		return -1;
 
 	size = dev->mem->nregions * sizeof(struct rte_vhost_mem_region);
-	m = malloc(size);
+	m = malloc(sizeof(struct rte_vhost_memory) + size);
 	if (!m)
 		return -1;
 
