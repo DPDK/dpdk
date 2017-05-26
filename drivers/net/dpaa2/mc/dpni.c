@@ -708,6 +708,72 @@ int dpni_get_port_mac_addr(struct fsl_mc_io *mc_io,
 	return 0;
 }
 
+int dpni_enable_vlan_filter(struct fsl_mc_io *mc_io,
+			    uint32_t cmd_flags,
+			  uint16_t token,
+			  int en)
+{
+	struct mc_command cmd = { 0 };
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPNI_CMDID_ENABLE_VLAN_FILTER,
+					  cmd_flags,
+					  token);
+	DPNI_CMD_ENABLE_VLAN_FILTER(cmd, en);
+
+	/* send command to mc*/
+	return mc_send_command(mc_io, &cmd);
+}
+
+int dpni_add_vlan_id(struct fsl_mc_io *mc_io,
+		     uint32_t cmd_flags,
+		     uint16_t token,
+		     uint16_t vlan_id)
+{
+	struct mc_command cmd = { 0 };
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPNI_CMDID_ADD_VLAN_ID,
+					  cmd_flags,
+					  token);
+	DPNI_CMD_ADD_VLAN_ID(cmd, vlan_id);
+
+	/* send command to mc*/
+	return mc_send_command(mc_io, &cmd);
+}
+
+int dpni_remove_vlan_id(struct fsl_mc_io *mc_io,
+			uint32_t cmd_flags,
+			uint16_t token,
+			uint16_t vlan_id)
+{
+	struct mc_command cmd = { 0 };
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPNI_CMDID_REMOVE_VLAN_ID,
+					  cmd_flags,
+					  token);
+	DPNI_CMD_REMOVE_VLAN_ID(cmd, vlan_id);
+
+	/* send command to mc*/
+	return mc_send_command(mc_io, &cmd);
+}
+
+int dpni_clear_vlan_filters(struct fsl_mc_io *mc_io,
+			    uint32_t cmd_flags,
+			    uint16_t token)
+{
+	struct mc_command cmd = { 0 };
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPNI_CMDID_CLR_VLAN_FILTERS,
+					  cmd_flags,
+					  token);
+
+	/* send command to mc*/
+	return mc_send_command(mc_io, &cmd);
+}
+
 int dpni_set_rx_tc_dist(struct fsl_mc_io *mc_io,
 			uint32_t cmd_flags,
 			uint16_t token,

@@ -945,6 +945,60 @@ int dpni_get_port_mac_addr(struct fsl_mc_io	*mc_io,
 			   uint8_t		mac_addr[6]);
 
 /**
+ * dpni_enable_vlan_filter() - Enable/disable VLAN filtering mode
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPNI object
+ * @en:		Set to '1' to enable; '0' to disable
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dpni_enable_vlan_filter(struct fsl_mc_io	*mc_io,
+			    uint32_t		cmd_flags,
+			    uint16_t		token,
+			    int			en);
+
+/**
+ * dpni_add_vlan_id() - Add VLAN ID filter
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPNI object
+ * @vlan_id:	VLAN ID to add
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dpni_add_vlan_id(struct fsl_mc_io	*mc_io,
+		     uint32_t		cmd_flags,
+		     uint16_t		token,
+		     uint16_t		vlan_id);
+
+/**
+ * dpni_remove_vlan_id() - Remove VLAN ID filter
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPNI object
+ * @vlan_id:	VLAN ID to remove
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dpni_remove_vlan_id(struct fsl_mc_io	*mc_io,
+			uint32_t		cmd_flags,
+			uint16_t		token,
+			uint16_t		vlan_id);
+
+/**
+ * dpni_clear_vlan_filters() - Clear all VLAN filters
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPNI object
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dpni_clear_vlan_filters(struct fsl_mc_io	*mc_io,
+			    uint32_t		cmd_flags,
+			    uint16_t		token);
+
+/**
  * enum dpni_dist_mode - DPNI distribution mode
  * @DPNI_DIST_MODE_NONE: No distribution
  * @DPNI_DIST_MODE_HASH: Use hash distribution; only relevant if

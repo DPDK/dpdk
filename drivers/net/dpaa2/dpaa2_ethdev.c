@@ -108,6 +108,56 @@ dpaa2_dev_atomic_write_link_status(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static int
+dpaa2_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
+{
+	int ret;
+	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+	struct fsl_mc_io *dpni = priv->hw;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (dpni == NULL) {
+		RTE_LOG(ERR, PMD, "dpni is NULL");
+		return -1;
+	}
+
+	if (on)
+		ret = dpni_add_vlan_id(dpni, CMD_PRI_LOW,
+				       priv->token, vlan_id);
+	else
+		ret = dpni_remove_vlan_id(dpni, CMD_PRI_LOW,
+					  priv->token, vlan_id);
+
+	if (ret < 0)
+		PMD_DRV_LOG(ERR, "ret = %d Unable to add/rem vlan %d hwid =%d",
+			    ret, vlan_id, priv->hw_id);
+
+	return ret;
+}
+
+static void
+dpaa2_vlan_offload_set(struct rte_eth_dev *dev, int mask)
+{
+	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+	struct fsl_mc_io *dpni = priv->hw;
+	int ret;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (mask & ETH_VLAN_FILTER_MASK) {
+		if (dev->data->dev_conf.rxmode.hw_vlan_filter)
+			ret = dpni_enable_vlan_filter(dpni, CMD_PRI_LOW,
+						      priv->token, true);
+		else
+			ret = dpni_enable_vlan_filter(dpni, CMD_PRI_LOW,
+						      priv->token, false);
+		if (ret < 0)
+			RTE_LOG(ERR, PMD, "Unable to set vlan filter ret = %d",
+				ret);
+	}
+}
+
 static void
 dpaa2_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
@@ -542,6 +592,9 @@ dpaa2_dev_start(struct rte_eth_dev *dev)
 			     "code = %d\n", ret);
 		return ret;
 	}
+	/* VLAN Offload Settings */
+	if (priv->max_vlan_filters)
+		dpaa2_vlan_offload_set(dev, ETH_VLAN_FILTER_MASK);
 
 	return 0;
 }
@@ -951,6 +1004,8 @@ static struct eth_dev_ops dpaa2_ethdev_ops = {
 	.dev_infos_get	   = dpaa2_dev_info_get,
 	.dev_supported_ptypes_get = dpaa2_supported_ptypes_get,
 	.mtu_set           = dpaa2_dev_mtu_set,
+	.vlan_filter_set      = dpaa2_vlan_filter_set,
+	.vlan_offload_set     = dpaa2_vlan_offload_set,
 	.rx_queue_setup    = dpaa2_dev_rx_queue_setup,
 	.rx_queue_release  = dpaa2_dev_rx_queue_release,
 	.tx_queue_setup    = dpaa2_dev_tx_queue_setup,

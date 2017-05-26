@@ -75,6 +75,11 @@
 #define DPNI_CMDID_REMOVE_MAC_ADDR                     ((0x227 << 4) | (0x1))
 #define DPNI_CMDID_CLR_MAC_FILTERS                     ((0x228 << 4) | (0x1))
 
+#define DPNI_CMDID_ENABLE_VLAN_FILTER                  ((0x230 << 4) | (0x1))
+#define DPNI_CMDID_ADD_VLAN_ID                         ((0x231 << 4) | (0x1))
+#define DPNI_CMDID_REMOVE_VLAN_ID                      ((0x232 << 4) | (0x1))
+#define DPNI_CMDID_CLR_VLAN_FILTERS                    ((0x233 << 4) | (0x1))
+
 #define DPNI_CMDID_SET_RX_TC_DIST                      ((0x235 << 4) | (0x1))
 
 #define DPNI_CMDID_GET_STATISTICS                      ((0x25D << 4) | (0x1))
@@ -324,6 +329,18 @@ do { \
 	MC_CMD_OP(cmd, 0, 0,  1,  int,      unicast); \
 	MC_CMD_OP(cmd, 0, 1,  1,  int,      multicast); \
 } while (0)
+
+/*                cmd, param, offset, width, type, arg_name */
+#define DPNI_CMD_ENABLE_VLAN_FILTER(cmd, en) \
+	MC_CMD_OP(cmd, 0, 0,  1,  int,	    en)
+
+/*                cmd, param, offset, width, type, arg_name */
+#define DPNI_CMD_ADD_VLAN_ID(cmd, vlan_id) \
+	MC_CMD_OP(cmd, 0, 32, 16, uint16_t, vlan_id)
+
+/*                cmd, param, offset, width, type, arg_name */
+#define DPNI_CMD_REMOVE_VLAN_ID(cmd, vlan_id) \
+	MC_CMD_OP(cmd, 0, 32, 16, uint16_t, vlan_id)
 
 
 /*                cmd, param, offset, width, type, arg_name */
