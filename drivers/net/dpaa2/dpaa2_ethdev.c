@@ -55,6 +55,8 @@
 
 static struct rte_dpaa2_driver rte_dpaa2_pmd;
 static int dpaa2_dev_uninit(struct rte_eth_dev *eth_dev);
+static int dpaa2_dev_set_link_up(struct rte_eth_dev *dev);
+static int dpaa2_dev_set_link_down(struct rte_eth_dev *dev);
 
 /**
  * Atomically reads the link status information from global
@@ -530,6 +532,9 @@ dpaa2_dev_start(struct rte_eth_dev *dev)
 		return ret;
 	}
 
+	/* Power up the phy. Needed to make the link go Up */
+	dpaa2_dev_set_link_up(dev);
+
 	ret = dpni_get_qdid(dpni, CMD_PRI_LOW, priv->token,
 			    DPNI_QUEUE_TX, &qdid);
 	if (ret) {
@@ -613,6 +618,8 @@ dpaa2_dev_stop(struct rte_eth_dev *dev)
 
 	PMD_INIT_FUNC_TRACE();
 
+	dpaa2_dev_set_link_down(dev);
+
 	ret = dpni_disable(dpni, CMD_PRI_LOW, priv->token);
 	if (ret) {
 		PMD_INIT_LOG(ERR, "Failure (ret %d) in disabling dpni %d dev\n",
@@ -632,6 +639,7 @@ dpaa2_dev_close(struct rte_eth_dev *dev)
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
 	struct fsl_mc_io *dpni = (struct fsl_mc_io *)priv->hw;
 	int i, ret;
+	struct rte_eth_link link;
 	struct dpaa2_queue *dpaa2_q;
 
 	PMD_INIT_FUNC_TRACE();
@@ -651,6 +659,9 @@ dpaa2_dev_close(struct rte_eth_dev *dev)
 			     " error code %d\n", ret);
 		return;
 	}
+
+	memset(&link, 0, sizeof(link));
+	dpaa2_dev_atomic_write_link_status(dev, &link);
 }
 
 static void
@@ -989,6 +1000,111 @@ dpaa2_dev_link_update(struct rte_eth_dev *dev,
 	return 0;
 }
 
+/**
+ * Toggle the DPNI to enable, if not already enabled.
+ * This is not strictly PHY up/down - it is more of logical toggling.
+ */
+static int
+dpaa2_dev_set_link_up(struct rte_eth_dev *dev)
+{
+	int ret = -EINVAL;
+	struct dpaa2_dev_priv *priv;
+	struct fsl_mc_io *dpni;
+	int en = 0;
+
+	PMD_INIT_FUNC_TRACE();
+
+	priv = dev->data->dev_private;
+	dpni = (struct fsl_mc_io *)priv->hw;
+
+	if (dpni == NULL) {
+		RTE_LOG(ERR, PMD, "Device has not yet been configured");
+		return ret;
+	}
+
+	/* Check if DPNI is currently enabled */
+	ret = dpni_is_enabled(dpni, CMD_PRI_LOW, priv->token, &en);
+	if (ret) {
+		/* Unable to obtain dpni status; Not continuing */
+		PMD_DRV_LOG(ERR, "Interface Link UP failed (%d)", ret);
+		return -EINVAL;
+	}
+
+	/* Enable link if not already enabled */
+	if (!en) {
+		ret = dpni_enable(dpni, CMD_PRI_LOW, priv->token);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "Interface Link UP failed (%d)", ret);
+			return -EINVAL;
+		}
+	}
+	/* changing tx burst function to start enqueues */
+	dev->tx_pkt_burst = dpaa2_dev_tx;
+	dev->data->dev_link.link_status = 1;
+
+	PMD_DRV_LOG(INFO, "Port %d Link UP successful", dev->data->port_id);
+	return ret;
+}
+
+/**
+ * Toggle the DPNI to disable, if not already disabled.
+ * This is not strictly PHY up/down - it is more of logical toggling.
+ */
+static int
+dpaa2_dev_set_link_down(struct rte_eth_dev *dev)
+{
+	int ret = -EINVAL;
+	struct dpaa2_dev_priv *priv;
+	struct fsl_mc_io *dpni;
+	int dpni_enabled = 0;
+	int retries = 10;
+
+	PMD_INIT_FUNC_TRACE();
+
+	priv = dev->data->dev_private;
+	dpni = (struct fsl_mc_io *)priv->hw;
+
+	if (dpni == NULL) {
+		RTE_LOG(ERR, PMD, "Device has not yet been configured");
+		return ret;
+	}
+
+	/*changing  tx burst function to avoid any more enqueues */
+	dev->tx_pkt_burst = dummy_dev_tx;
+
+	/* Loop while dpni_disable() attempts to drain the egress FQs
+	 * and confirm them back to us.
+	 */
+	do {
+		ret = dpni_disable(dpni, 0, priv->token);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "dpni disable failed (%d)", ret);
+			return ret;
+		}
+		ret = dpni_is_enabled(dpni, 0, priv->token, &dpni_enabled);
+		if (ret) {
+			PMD_DRV_LOG(ERR, "dpni_is_enabled failed (%d)", ret);
+			return ret;
+		}
+		if (dpni_enabled)
+			/* Allow the MC some slack */
+			rte_delay_us(100 * 1000);
+	} while (dpni_enabled && --retries);
+
+	if (!retries) {
+		PMD_DRV_LOG(WARNING, "Retry count exceeded disabling DPNI\n");
+		/* todo- we may have to manually cleanup queues.
+		 */
+	} else {
+		PMD_DRV_LOG(INFO, "Port %d Link DOWN successful",
+			    dev->data->port_id);
+	}
+
+	dev->data->dev_link.link_status = 0;
+
+	return ret;
+}
+
 static struct eth_dev_ops dpaa2_ethdev_ops = {
 	.dev_configure	  = dpaa2_eth_dev_configure,
 	.dev_start	      = dpaa2_dev_start,
@@ -998,6 +1114,8 @@ static struct eth_dev_ops dpaa2_ethdev_ops = {
 	.promiscuous_disable  = dpaa2_dev_promiscuous_disable,
 	.allmulticast_enable  = dpaa2_dev_allmulticast_enable,
 	.allmulticast_disable = dpaa2_dev_allmulticast_disable,
+	.dev_set_link_up      = dpaa2_dev_set_link_up,
+	.dev_set_link_down    = dpaa2_dev_set_link_down,
 	.link_update	   = dpaa2_dev_link_update,
 	.stats_get	       = dpaa2_dev_stats_get,
 	.stats_reset	   = dpaa2_dev_stats_reset,
