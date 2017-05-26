@@ -330,6 +330,9 @@ dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		if (dev->data->dev_conf.rxmode.hw_vlan_strip)
 			rte_vlan_strip(bufs[num_rx]);
 
+		if (dev->data->dev_conf.rxmode.hw_vlan_strip)
+			rte_vlan_strip(bufs[num_rx]);
+
 		dq_storage++;
 		num_rx++;
 	}
