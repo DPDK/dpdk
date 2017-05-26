@@ -516,12 +516,15 @@ static void
 sfc_ef10_tx_qreap(struct sfc_dp_txq *dp_txq)
 {
 	struct sfc_ef10_txq *txq = sfc_ef10_txq_by_dp_txq(dp_txq);
-	unsigned int txds;
+	unsigned int completed;
 
-	for (txds = 0; txds <= txq->ptr_mask; ++txds) {
-		if (txq->sw_ring[txds].mbuf != NULL) {
-			rte_pktmbuf_free(txq->sw_ring[txds].mbuf);
-			txq->sw_ring[txds].mbuf = NULL;
+	for (completed = txq->completed; completed != txq->added; ++completed) {
+		struct sfc_ef10_tx_sw_desc *txd;
+
+		txd = &txq->sw_ring[completed & txq->ptr_mask];
+		if (txd->mbuf != NULL) {
+			rte_pktmbuf_free(txd->mbuf);
+			txd->mbuf = NULL;
 		}
 	}
 
