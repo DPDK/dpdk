@@ -49,3 +49,10 @@ DPDK_17.05 {
 
 	local: *;
 };
+
+DPDK_17.08 {
+	global:
+
+	rte_global_active_dqs_list;
+
+} DPDK_17.05;

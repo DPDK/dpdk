@@ -67,6 +67,8 @@
 struct dpaa2_io_portal_t dpaa2_io_portal[RTE_MAX_LCORE];
 RTE_DEFINE_PER_LCORE(struct dpaa2_io_portal_t, _dpaa2_io);
 
+struct swp_active_dqs rte_global_active_dqs_list[NUM_MAX_SWP];
+
 TAILQ_HEAD(dpio_device_list, dpaa2_dpio_dev);
 static struct dpio_device_list *dpio_dev_list; /*!< DPIO device list */
 static uint32_t io_space_count;
