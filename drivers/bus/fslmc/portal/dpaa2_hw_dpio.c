@@ -61,6 +61,7 @@
 #include <fslmc_vfio.h>
 #include "dpaa2_hw_pvt.h"
 #include "dpaa2_hw_dpio.h"
+#include <mc/fsl_dpmng.h>
 
 #define NUM_HOST_CPUS RTE_MAX_LCORE
 
@@ -179,6 +180,22 @@ dpaa2_configure_stashing(struct dpaa2_dpio_dev *dpio_dev)
 {
 	int sdest;
 	int cpu_id, ret;
+	static int first_time;
+
+	/* find the SoC type for the first time */
+	if (!first_time) {
+		struct mc_soc_version mc_plat_info = {0};
+
+		if (mc_get_soc_version(dpio_dev->dpio,
+				       CMD_PRI_LOW, &mc_plat_info)) {
+			PMD_INIT_LOG(ERR, "\tmc_get_soc_version failed\n");
+		} else if ((mc_plat_info.svr & 0xffff0000) == SVR_LS1080A) {
+			dpaa2_core_cluster_base = 0x02;
+			dpaa2_cluster_sz = 4;
+			PMD_INIT_LOG(DEBUG, "\tLS108x (A53) Platform Detected");
+		}
+		first_time = 1;
+	}
 
 	/* Set the Stashing Destination */
 	cpu_id = rte_lcore_id();
@@ -191,8 +208,6 @@ dpaa2_configure_stashing(struct dpaa2_dpio_dev *dpio_dev)
 	}
 	/* Set the STASH Destination depending on Current CPU ID.
 	 * Valid values of SDEST are 4,5,6,7. Where,
-	 * CPU 0-1 will have SDEST 4
-	 * CPU 2-3 will have SDEST 5.....and so on.
 	 */
 
 	sdest = dpaa2_core_cluster_sdest(cpu_id);

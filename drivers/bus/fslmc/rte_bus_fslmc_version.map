@@ -53,6 +53,8 @@ DPDK_17.05 {
 DPDK_17.08 {
 	global:
 
+	mc_get_soc_version;
+	mc_get_version;
 	qbman_result_SCN_state_in_mem;
 	rte_global_active_dqs_list;
 
