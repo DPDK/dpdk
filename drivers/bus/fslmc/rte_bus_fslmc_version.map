@@ -53,6 +53,7 @@ DPDK_17.05 {
 DPDK_17.08 {
 	global:
 
+	qbman_result_SCN_state_in_mem;
 	rte_global_active_dqs_list;
 
 } DPDK_17.05;
