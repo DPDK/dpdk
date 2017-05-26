@@ -740,6 +740,30 @@ union dpni_statistics {
 #define DPNI_LINK_OPT_ASYM_PAUSE	0x0000000000000008ULL
 
 /**
+ * struct - Structure representing DPNI link configuration
+ * @rate: Rate
+ * @options: Mask of available options; use 'DPNI_LINK_OPT_<X>' values
+ */
+struct dpni_link_cfg {
+	uint32_t rate;
+	uint64_t options;
+};
+
+/**
+ * dpni_set_link_cfg() - set the link configuration.
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPNI object
+ * @cfg:	Link configuration
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dpni_set_link_cfg(struct fsl_mc_io			*mc_io,
+		      uint32_t				cmd_flags,
+		      uint16_t				token,
+		      const struct dpni_link_cfg	*cfg);
+
+/**
  * struct dpni_link_state - Structure representing DPNI link state
  * @rate: Rate
  * @options: Mask of available options; use 'DPNI_LINK_OPT_<X>' values

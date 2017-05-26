@@ -444,6 +444,24 @@ int dpni_get_qdid(struct fsl_mc_io *mc_io,
 
 	return 0;
 }
+
+int dpni_set_link_cfg(struct fsl_mc_io *mc_io,
+		      uint32_t cmd_flags,
+		      uint16_t token,
+		      const struct dpni_link_cfg *cfg)
+{
+	struct mc_command cmd = { 0 };
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPNI_CMDID_SET_LINK_CFG,
+					  cmd_flags,
+					  token);
+	DPNI_CMD_SET_LINK_CFG(cmd, cfg);
+
+	/* send command to mc*/
+	return mc_send_command(mc_io, &cmd);
+}
+
 int dpni_get_link_state(struct fsl_mc_io *mc_io,
 			uint32_t cmd_flags,
 			uint16_t token,

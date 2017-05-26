@@ -64,6 +64,7 @@
 #define DPNI_CMDID_GET_LINK_STATE                      ((0x215 << 4) | (0x1))
 #define DPNI_CMDID_SET_MAX_FRAME_LENGTH                ((0x216 << 4) | (0x1))
 #define DPNI_CMDID_GET_MAX_FRAME_LENGTH                ((0x217 << 4) | (0x1))
+#define DPNI_CMDID_SET_LINK_CFG                        ((0x21a << 4) | (0x1))
 
 #define DPNI_CMDID_SET_MCAST_PROMISC                   ((0x220 << 4) | (0x1))
 #define DPNI_CMDID_GET_MCAST_PROMISC                   ((0x221 << 4) | (0x1))
@@ -235,6 +236,13 @@ do { \
 	MC_RSP_OP(cmd, 4, 0, 64, uint64_t, (stat)->raw.counter[4]); \
 	MC_RSP_OP(cmd, 5, 0, 64, uint64_t, (stat)->raw.counter[5]); \
 	MC_RSP_OP(cmd, 6, 0, 64, uint64_t, (stat)->raw.counter[6]); \
+} while (0)
+
+/*                cmd, param, offset, width, type, arg_name */
+#define DPNI_CMD_SET_LINK_CFG(cmd, cfg) \
+do { \
+	MC_CMD_OP(cmd, 1, 0,  32, uint32_t, cfg->rate);\
+	MC_CMD_OP(cmd, 2, 0,  64, uint64_t, cfg->options);\
 } while (0)
 
 /*                cmd, param, offset, width, type, arg_name */
