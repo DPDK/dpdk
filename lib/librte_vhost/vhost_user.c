@@ -114,6 +114,10 @@ vhost_backend_cleanup(struct virtio_net *dev)
 		rte_free(dev->mem);
 		dev->mem = NULL;
 	}
+
+	free(dev->guest_pages);
+	dev->guest_pages = NULL;
+
 	if (dev->log_addr) {
 		munmap((void *)(uintptr_t)dev->log_addr, dev->log_size);
 		dev->log_addr = 0;
