@@ -785,3 +785,53 @@ int dpni_reset_statistics(struct fsl_mc_io *mc_io,
 	/* send command to mc*/
 	return mc_send_command(mc_io, &cmd);
 }
+
+int dpni_set_taildrop(struct fsl_mc_io *mc_io,
+		      uint32_t cmd_flags,
+		      uint16_t token,
+		      enum dpni_congestion_point cg_point,
+		      enum dpni_queue_type q_type,
+		      uint8_t tc,
+		      uint8_t q_index,
+		      struct dpni_taildrop *taildrop)
+{
+	struct mc_command cmd = { 0 };
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPNI_CMDID_SET_TAILDROP,
+					  cmd_flags,
+					  token);
+	DPNI_CMD_SET_TAILDROP(cmd, cg_point, q_type, tc, q_index, taildrop);
+
+	/* send command to mc*/
+	return mc_send_command(mc_io, &cmd);
+}
+
+int dpni_get_taildrop(struct fsl_mc_io *mc_io,
+		      uint32_t cmd_flags,
+		     uint16_t token,
+			 enum dpni_congestion_point cg_point,
+			 enum dpni_queue_type q_type,
+			 uint8_t tc,
+			 uint8_t q_index,
+			 struct dpni_taildrop *taildrop)
+{
+	struct mc_command cmd = { 0 };
+	int err;
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPNI_CMDID_GET_TAILDROP,
+					  cmd_flags,
+					  token);
+	DPNI_CMD_GET_TAILDROP(cmd, cg_point, q_type, tc, q_index);
+
+	/* send command to mc*/
+	err = mc_send_command(mc_io, &cmd);
+	if (err)
+		return err;
+
+	/* retrieve response parameters */
+	DPNI_RSP_GET_TAILDROP(cmd, taildrop);
+
+	return 0;
+}

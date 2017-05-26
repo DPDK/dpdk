@@ -76,6 +76,8 @@
 #define DPNI_CMDID_RESET_STATISTICS                    ((0x25E << 4) | (0x1))
 #define DPNI_CMDID_GET_QUEUE                           ((0x25F << 4) | (0x1))
 #define DPNI_CMDID_SET_QUEUE                           ((0x260 << 4) | (0x1))
+#define DPNI_CMDID_GET_TAILDROP                        ((0x261 << 4) | (0x1))
+#define DPNI_CMDID_SET_TAILDROP                        ((0x262 << 4) | (0x1))
 
 #define DPNI_CMDID_GET_PORT_MAC_ADDR                   ((0x263 << 4) | (0x1))
 
@@ -326,6 +328,33 @@ do { \
 	MC_RSP_OP(cmd, 0, 16, 16, uint16_t, minor);\
 } while (0)
 
+#define DPNI_CMD_GET_TAILDROP(cmd, cp, q_type, tc, q_index) \
+do { \
+	MC_CMD_OP(cmd, 0,  0,  8, enum dpni_congestion_point, cp); \
+	MC_CMD_OP(cmd, 0,  8,  8, enum dpni_queue_type, q_type); \
+	MC_CMD_OP(cmd, 0, 16,  8, uint8_t, tc); \
+	MC_CMD_OP(cmd, 0, 24,  8, uint8_t, q_index); \
+} while (0)
+
+#define DPNI_RSP_GET_TAILDROP(cmd, taildrop) \
+do { \
+	MC_RSP_OP(cmd, 1,  0,  1, char, (taildrop)->enable); \
+	MC_RSP_OP(cmd, 1, 16,  8, enum dpni_congestion_unit, \
+				(taildrop)->units); \
+	MC_RSP_OP(cmd, 1, 32, 32, uint32_t, (taildrop)->threshold); \
+} while (0)
+
+#define DPNI_CMD_SET_TAILDROP(cmd, cp, q_type, tc, q_index, taildrop) \
+do { \
+	MC_CMD_OP(cmd, 0,  0,  8, enum dpni_congestion_point, cp); \
+	MC_CMD_OP(cmd, 0,  8,  8, enum dpni_queue_type, q_type); \
+	MC_CMD_OP(cmd, 0, 16,  8, uint8_t, tc); \
+	MC_CMD_OP(cmd, 0, 24,  8, uint8_t, q_index); \
+	MC_CMD_OP(cmd, 1,  0,  1, char, (taildrop)->enable); \
+	MC_CMD_OP(cmd, 1, 16,  8, enum dpni_congestion_unit, \
+				(taildrop)->units); \
+	MC_CMD_OP(cmd, 1, 32, 32, uint32_t, (taildrop)->threshold); \
+} while (0)
 
 #define DPNI_CMD_SET_TX_CONFIRMATION_MODE(cmd, mode) \
 	MC_CMD_OP(cmd, 0, 32, 8, enum dpni_confirmation_mode, mode)

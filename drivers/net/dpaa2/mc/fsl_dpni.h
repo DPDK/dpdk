@@ -1336,4 +1336,89 @@ int dpni_reset_statistics(struct fsl_mc_io *mc_io,
 			  uint32_t cmd_flags,
 			  uint16_t token);
 
+/**
+ * enum dpni_congestion_point - Structure representing congestion point
+ * @DPNI_CP_QUEUE:	Set taildrop per queue, identified by QUEUE_TYPE, TC and
+ *				QUEUE_INDEX
+ * @DPNI_CP_GROUP:	Set taildrop per queue group. Depending on options used
+ *				to define the DPNI this can be either per
+ *				TC (default) or per interface
+ *				(DPNI_OPT_SHARED_CONGESTION set at DPNI create).
+ *				QUEUE_INDEX is ignored if this type is used.
+ */
+enum dpni_congestion_point {
+	DPNI_CP_QUEUE,
+	DPNI_CP_GROUP,
+};
+
+/**
+ * struct dpni_taildrop - Structure representing the taildrop
+ * @enable:	Indicates whether the taildrop is active or not.
+ * @units:	Indicates the unit of THRESHOLD. Queue taildrop only
+ *			supports byte units, this field is ignored and
+ *			assumed = 0 if CONGESTION_POINT is 0.
+ * @threshold:	Threshold value, in units identified by UNITS field. Value 0
+ *			cannot be used as a valid taildrop threshold,
+ *			THRESHOLD must be > 0 if the taildrop is
+ *			enabled.
+ */
+struct dpni_taildrop {
+	char enable;
+	enum dpni_congestion_unit units;
+	uint32_t threshold;
+};
+
+/**
+ * dpni_set_taildrop() - Set taildrop per queue or TC
+ *
+ * Setting a per-TC taildrop (cg_point = DPNI_CP_GROUP) will reset any current
+ * congestion notification or early drop (WRED) configuration previously applied
+ * to the same TC.
+ *
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPNI object
+ * @cg_point:	Congestion point.  DPNI_CP_QUEUE is only supported in
+ *		combination with DPNI_QUEUE_RX.
+ * @q_type:	Queue type, can be DPNI_QUEUE_RX or DPNI_QUEUE_TX.
+ * @tc:		Traffic class to apply this taildrop to
+ * @q_index:	Index of the queue if the DPNI supports multiple queues for
+ *			traffic distribution.
+ *			Ignored if CONGESTION_POINT is not DPNI_CP_QUEUE.
+ * @taildrop:	Taildrop structure
+ *
+ * Return:  '0' on Success; Error code otherwise.
+ */
+int dpni_set_taildrop(struct fsl_mc_io *mc_io,
+		      uint32_t cmd_flags,
+		      uint16_t token,
+		      enum dpni_congestion_point cg_point,
+		      enum dpni_queue_type q_type,
+		      uint8_t tc,
+		      uint8_t q_index,
+		      struct dpni_taildrop *taildrop);
+
+/**
+ * dpni_get_taildrop() - Get taildrop information
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPNI object
+ * @cg_point:	Congestion point
+ * @q_type:
+ * @tc:		Traffic class to apply this taildrop to
+ * @q_index:	Index of the queue if the DPNI supports multiple queues for
+ *			traffic distribution. Ignored if CONGESTION_POINT
+ *			is not 0.
+ * @taildrop:	Taildrop structure
+ *
+ * Return:  '0' on Success; Error code otherwise.
+ */
+int dpni_get_taildrop(struct fsl_mc_io *mc_io,
+		      uint32_t cmd_flags,
+		      uint16_t token,
+		      enum dpni_congestion_point cg_point,
+		      enum dpni_queue_type q_type,
+		      uint8_t tc,
+		      uint8_t q_index,
+		      struct dpni_taildrop *taildrop);
 #endif /* __FSL_DPNI_H */

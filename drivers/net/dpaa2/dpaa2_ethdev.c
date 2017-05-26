@@ -309,6 +309,25 @@ dpaa2_dev_rx_queue_setup(struct rte_eth_dev *dev,
 		return -1;
 	}
 
+	if (!(priv->flags & DPAA2_RX_TAILDROP_OFF)) {
+		struct dpni_taildrop taildrop;
+
+		taildrop.enable = 1;
+		/*enabling per rx queue congestion control */
+		taildrop.threshold = CONG_THRESHOLD_RX_Q;
+		taildrop.units = DPNI_CONGESTION_UNIT_BYTES;
+		PMD_INIT_LOG(DEBUG, "Enabling Early Drop on queue = %d",
+			     rx_queue_id);
+		ret = dpni_set_taildrop(dpni, CMD_PRI_LOW, priv->token,
+					DPNI_CP_QUEUE, DPNI_QUEUE_RX,
+					dpaa2_q->tc_index, flow_id, &taildrop);
+		if (ret) {
+			PMD_INIT_LOG(ERR, "Error in setting the rx flow"
+				     " err : = %d\n", ret);
+			return -1;
+		}
+	}
+
 	dev->data->rx_queues[rx_queue_id] = dpaa2_q;
 	return 0;
 }
