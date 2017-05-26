@@ -57,5 +57,5 @@
 MACHINE_CFLAGS += -march=armv8-a+crc
 
 ifdef CONFIG_RTE_ARCH_ARM_TUNE
-MACHINE_CFLAGS += -mcpu=$(CONFIG_RTE_ARCH_ARM_TUNE:"%"=%)
+MACHINE_CFLAGS += -mtune=$(CONFIG_RTE_ARCH_ARM_TUNE:"%"=%)
 endif
