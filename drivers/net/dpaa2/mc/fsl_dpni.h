@@ -72,10 +72,7 @@ struct fsl_mc_io;
  * All flows within traffic class considered; see dpni_set_queue()
  */
 #define DPNI_ALL_TC_FLOWS			(uint16_t)(-1)
-/**
- * Generate new flow ID; see dpni_set_queue()
- */
-#define DPNI_NEW_FLOW_ID			(uint16_t)(-1)
+
 /**
  * Tx traffic is always released to a buffer pool on transmit, there are no
  * resources allocated to have the frames confirmed back to the source after
@@ -961,6 +958,16 @@ int dpni_set_rx_tc_dist(struct fsl_mc_io			*mc_io,
 			uint16_t				token,
 			uint8_t					tc_id,
 			const struct dpni_rx_tc_dist_cfg	*cfg);
+/**
+ * enum dpni_congestion_unit - DPNI congestion units
+ * @DPNI_CONGESTION_UNIT_BYTES: bytes units
+ * @DPNI_CONGESTION_UNIT_FRAMES: frames units
+ */
+enum dpni_congestion_unit {
+	DPNI_CONGESTION_UNIT_BYTES = 0,
+	DPNI_CONGESTION_UNIT_FRAMES
+};
+
 
 /**
  * enum dpni_dest - DPNI destination types
@@ -980,6 +987,119 @@ enum dpni_dest {
 	DPNI_DEST_DPIO = 1,
 	DPNI_DEST_DPCON = 2
 };
+
+/**
+ * struct dpni_dest_cfg - Structure representing DPNI destination parameters
+ * @dest_type: Destination type
+ * @dest_id: Either DPIO ID or DPCON ID, depending on the destination type
+ * @priority: Priority selection within the DPIO or DPCON channel; valid values
+ *		are 0-1 or 0-7, depending on the number of priorities in that
+ *		channel; not relevant for 'DPNI_DEST_NONE' option
+ */
+struct dpni_dest_cfg {
+	enum dpni_dest	dest_type;
+	int		dest_id;
+	uint8_t		priority;
+};
+
+/* DPNI congestion options */
+
+/**
+ * CSCN message is written to message_iova once entering a
+ * congestion state (see 'threshold_entry')
+ */
+#define DPNI_CONG_OPT_WRITE_MEM_ON_ENTER	0x00000001
+/**
+ * CSCN message is written to message_iova once exiting a
+ * congestion state (see 'threshold_exit')
+ */
+#define DPNI_CONG_OPT_WRITE_MEM_ON_EXIT		0x00000002
+/**
+ * CSCN write will attempt to allocate into a cache (coherent write);
+ * valid only if 'DPNI_CONG_OPT_WRITE_MEM_<X>' is selected
+ */
+#define DPNI_CONG_OPT_COHERENT_WRITE		0x00000004
+/**
+ * if 'dest_cfg.dest_type != DPNI_DEST_NONE' CSCN message is sent to
+ * DPIO/DPCON's WQ channel once entering a congestion state
+ * (see 'threshold_entry')
+ */
+#define DPNI_CONG_OPT_NOTIFY_DEST_ON_ENTER	0x00000008
+/**
+ * if 'dest_cfg.dest_type != DPNI_DEST_NONE' CSCN message is sent to
+ * DPIO/DPCON's WQ channel once exiting a congestion state
+ * (see 'threshold_exit')
+ */
+#define DPNI_CONG_OPT_NOTIFY_DEST_ON_EXIT	0x00000010
+/**
+ * if 'dest_cfg.dest_type != DPNI_DEST_NONE' when the CSCN is written to the
+ * sw-portal's DQRR, the DQRI interrupt is asserted immediately (if enabled)
+ */
+#define DPNI_CONG_OPT_INTR_COALESCING_DISABLED	0x00000020
+
+/**
+ * struct dpni_congestion_notification_cfg - congestion notification
+ *		configuration
+ * @units: units type
+ * @threshold_entry: above this threshold we enter a congestion state.
+ *	set it to '0' to disable it
+ * @threshold_exit: below this threshold we exit the congestion state.
+ * @message_ctx: The context that will be part of the CSCN message
+ * @message_iova: I/O virtual address (must be in DMA-able memory),
+ *	must be 16B aligned; valid only if 'DPNI_CONG_OPT_WRITE_MEM_<X>' is
+ *	contained in 'options'
+ * @dest_cfg: CSCN can be send to either DPIO or DPCON WQ channel
+ * @notification_mode: Mask of available options; use 'DPNI_CONG_OPT_<X>' values
+ */
+
+struct dpni_congestion_notification_cfg {
+	enum dpni_congestion_unit	units;
+	uint32_t			threshold_entry;
+	uint32_t			threshold_exit;
+	uint64_t			message_ctx;
+	uint64_t			message_iova;
+	struct dpni_dest_cfg		dest_cfg;
+	uint16_t			notification_mode;
+};
+
+/**
+ * dpni_set_congestion_notification() - Set traffic class congestion
+ *	notification configuration
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPNI object
+ * @qtype:	Type of queue - Rx, Tx and Tx confirm types are supported
+ * @tc_id:	Traffic class selection (0-7)
+ * @cfg:	congestion notification configuration
+ *
+ * Return:	'0' on Success; error code otherwise.
+ */
+int dpni_set_congestion_notification(
+			struct fsl_mc_io		*mc_io,
+			uint32_t			cmd_flags,
+			uint16_t			token,
+			enum dpni_queue_type		qtype,
+			uint8_t				tc_id,
+			const struct dpni_congestion_notification_cfg *cfg);
+
+/**
+ * dpni_get_congestion_notification() - Get traffic class congestion
+ *	notification configuration
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPNI object
+ * @qtype:	Type of queue - Rx, Tx and Tx confirm types are supported
+ * @tc_id:	Traffic class selection (0-7)
+ * @cfg:	congestion notification configuration
+ *
+ * Return:	'0' on Success; error code otherwise.
+ */
+int dpni_get_congestion_notification(struct fsl_mc_io		*mc_io,
+				     uint32_t			cmd_flags,
+				     uint16_t			token,
+				     enum dpni_queue_type	qtype,
+				     uint8_t			tc_id,
+				struct dpni_congestion_notification_cfg *cfg);
 
 
 /**
@@ -1077,6 +1197,8 @@ enum dpni_confirmation_mode {
  * Calling this function with 'mode' set to DPNI_CONF_SINGLE switches all
  * Tx confirmations to a shared Tx conf queue.  The ID of the queue when
  * calling dpni_set/get_queue is -1.
+ * Tx confirmation mode can only be changed while the DPNI is disabled.
+ * Executing this command while the DPNI is enabled will return an error.
  *
  * Return:	'0' on Success; Error code otherwise.
  */

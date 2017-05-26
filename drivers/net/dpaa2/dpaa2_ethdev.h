@@ -47,8 +47,22 @@
 /*default tc to be used for ,congestion, distribution etc configuration. */
 #define DPAA2_DEF_TC		0
 
+/* Threshold for a queue to *Enter* Congestion state.
+ * It is set to 32KB
+ */
+#define CONG_ENTER_TX_THRESHOLD   (32 * 1024)
+
+/* Threshold for a queue to *Exit* Congestion state.
+ */
+#define CONG_EXIT_TX_THRESHOLD    (24 * 1024)
+
 /* Size of the input SMMU mapped memory required by MC */
 #define DIST_PARAM_IOVA_SIZE 256
+
+/* Enable TX Congestion control support
+ * default is disable
+ */
+#define DPAA2_TX_CGR_SUPPORT	0x01
 
 struct dpaa2_dev_priv {
 	void *hw;

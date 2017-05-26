@@ -82,6 +82,8 @@
 #define DPNI_CMDID_GET_BUFFER_LAYOUT                   ((0x264 << 4) | (0x1))
 #define DPNI_CMDID_SET_BUFFER_LAYOUT                   ((0x265 << 4) | (0x1))
 
+#define DPNI_CMDID_SET_CONGESTION_NOTIFICATION         ((0x267 << 4) | (0x1))
+#define DPNI_CMDID_GET_CONGESTION_NOTIFICATION         ((0x268 << 4) | (0x1))
 #define DPNI_CMDID_GET_OFFLOAD                         ((0x26B << 4) | (0x1))
 #define DPNI_CMDID_SET_OFFLOAD                         ((0x26C << 4) | (0x1))
 #define DPNI_CMDID_SET_TX_CONFIRMATION_MODE            ((0x266 << 4) | (0x1))
@@ -330,5 +332,39 @@ do { \
 
 #define DPNI_RSP_GET_TX_CONFIRMATION_MODE(cmd, mode) \
 	MC_RSP_OP(cmd, 0, 32, 8, enum dpni_confirmation_mode, mode)
+
+#define DPNI_CMD_SET_CONGESTION_NOTIFICATION(cmd, qtype, tc, cfg) \
+do { \
+	MC_CMD_OP(cmd, 0,  0,  8, enum dpni_queue_type, qtype); \
+	MC_CMD_OP(cmd, 0,  8,  8, uint8_t, tc); \
+	MC_CMD_OP(cmd, 1,  0, 32, uint32_t, (cfg)->dest_cfg.dest_id); \
+	MC_CMD_OP(cmd, 1, 32, 16, uint16_t, (cfg)->notification_mode); \
+	MC_CMD_OP(cmd, 1, 48,  8, uint8_t, (cfg)->dest_cfg.priority); \
+	MC_CMD_OP(cmd, 1, 56,  4, enum dpni_dest, (cfg)->dest_cfg.dest_type); \
+	MC_CMD_OP(cmd, 1, 60,  2, enum dpni_congestion_unit, (cfg)->units); \
+	MC_CMD_OP(cmd, 2,  0, 64, uint64_t, (cfg)->message_iova); \
+	MC_CMD_OP(cmd, 3,  0, 64, uint64_t, (cfg)->message_ctx); \
+	MC_CMD_OP(cmd, 4,  0, 32, uint32_t, (cfg)->threshold_entry); \
+	MC_CMD_OP(cmd, 4, 32, 32, uint32_t, (cfg)->threshold_exit); \
+} while (0)
+
+#define DPNI_CMD_GET_CONGESTION_NOTIFICATION(cmd, qtype, tc) \
+do { \
+	MC_CMD_OP(cmd, 0,  0,  8, enum dpni_queue_type, qtype); \
+	MC_CMD_OP(cmd, 0,  8,  8, uint8_t, tc); \
+} while (0)
+
+#define DPNI_RSP_GET_CONGESTION_NOTIFICATION(cmd, cfg) \
+do { \
+	MC_RSP_OP(cmd, 1,  0, 32, uint32_t, (cfg)->dest_cfg.dest_id); \
+	MC_RSP_OP(cmd, 1,  0, 16, uint16_t, (cfg)->notification_mode); \
+	MC_RSP_OP(cmd, 1, 48,  8, uint8_t, (cfg)->dest_cfg.priority); \
+	MC_RSP_OP(cmd, 1, 56,  4, enum dpni_dest, (cfg)->dest_cfg.dest_type); \
+	MC_RSP_OP(cmd, 1, 60,  2, enum dpni_congestion_unit, (cfg)->units); \
+	MC_RSP_OP(cmd, 2,  0, 64, uint64_t, (cfg)->message_iova); \
+	MC_RSP_OP(cmd, 3,  0, 64, uint64_t, (cfg)->message_ctx); \
+	MC_RSP_OP(cmd, 4,  0, 32, uint32_t, (cfg)->threshold_entry); \
+	MC_RSP_OP(cmd, 4, 32, 32, uint32_t, (cfg)->threshold_exit); \
+} while (0)
 
 #endif /* _FSL_DPNI_CMD_H */

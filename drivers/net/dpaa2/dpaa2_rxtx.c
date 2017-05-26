@@ -406,6 +406,10 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 
 	/*Clear the unused FD fields before sending*/
 	while (nb_pkts) {
+		/*Check if the queue is congested*/
+		if (qbman_result_SCN_state_in_mem(dpaa2_q->cscn))
+			goto skip_tx;
+
 		frames_to_send = (nb_pkts >> 3) ? MAX_TX_RING_SLOTS : nb_pkts;
 
 		for (loop = 0; loop < frames_to_send; loop++) {

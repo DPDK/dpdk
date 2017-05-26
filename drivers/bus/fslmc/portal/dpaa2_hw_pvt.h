@@ -123,7 +123,10 @@ struct dpaa2_queue {
 	uint64_t rx_pkts;
 	uint64_t tx_pkts;
 	uint64_t err_pkts;
-	struct queue_storage_info_t *q_storage;
+	union {
+		struct queue_storage_info_t *q_storage;
+		struct qbman_result *cscn;
+	};
 };
 
 struct swp_active_dqs {

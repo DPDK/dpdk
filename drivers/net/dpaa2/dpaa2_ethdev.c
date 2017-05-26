@@ -177,8 +177,13 @@ dpaa2_alloc_rx_tx_queues(struct rte_eth_dev *dev)
 
 	for (i = 0; i < priv->nb_tx_queues; i++) {
 		mc_q->dev = dev;
-		mc_q->flow_id = DPNI_NEW_FLOW_ID;
+		mc_q->flow_id = 0xffff;
 		priv->tx_vq[i] = mc_q++;
+		dpaa2_q = (struct dpaa2_queue *)priv->tx_vq[i];
+		dpaa2_q->cscn = rte_malloc(NULL,
+					   sizeof(struct qbman_result), 16);
+		if (!dpaa2_q->cscn)
+			goto fail_tx;
 	}
 
 	vq_id = 0;
@@ -191,6 +196,14 @@ dpaa2_alloc_rx_tx_queues(struct rte_eth_dev *dev)
 	}
 
 	return 0;
+fail_tx:
+	i -= 1;
+	while (i >= 0) {
+		dpaa2_q = (struct dpaa2_queue *)priv->tx_vq[i];
+		rte_free(dpaa2_q->cscn);
+		priv->tx_vq[i--] = NULL;
+	}
+	i = priv->nb_rx_queues;
 fail:
 	i -= 1;
 	mc_q = priv->rx_vq[0];
@@ -320,7 +333,7 @@ dpaa2_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	PMD_INIT_FUNC_TRACE();
 
 	/* Return if queue already configured */
-	if (dpaa2_q->flow_id != DPNI_NEW_FLOW_ID)
+	if (dpaa2_q->flow_id != 0xffff)
 		return 0;
 
 	memset(&tx_conf_cfg, 0, sizeof(struct dpni_queue));
@@ -358,6 +371,36 @@ dpaa2_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	}
 	dpaa2_q->tc_index = tc_id;
 
+	if (priv->flags & DPAA2_TX_CGR_SUPPORT) {
+		struct dpni_congestion_notification_cfg cong_notif_cfg;
+
+		cong_notif_cfg.units = DPNI_CONGESTION_UNIT_BYTES;
+		/* Notify about congestion when the queue size is 32 KB */
+		cong_notif_cfg.threshold_entry = CONG_ENTER_TX_THRESHOLD;
+		/* Notify that the queue is not congested when the data in
+		 * the queue is below this thershold.
+		 */
+		cong_notif_cfg.threshold_exit = CONG_EXIT_TX_THRESHOLD;
+		cong_notif_cfg.message_ctx = 0;
+		cong_notif_cfg.message_iova = (uint64_t)dpaa2_q->cscn;
+		cong_notif_cfg.dest_cfg.dest_type = DPNI_DEST_NONE;
+		cong_notif_cfg.notification_mode =
+					 DPNI_CONG_OPT_WRITE_MEM_ON_ENTER |
+					 DPNI_CONG_OPT_WRITE_MEM_ON_EXIT |
+					 DPNI_CONG_OPT_COHERENT_WRITE;
+
+		ret = dpni_set_congestion_notification(dpni, CMD_PRI_LOW,
+						       priv->token,
+						       DPNI_QUEUE_TX,
+						       tc_id,
+						       &cong_notif_cfg);
+		if (ret) {
+			PMD_INIT_LOG(ERR,
+			   "Error in setting tx congestion notification: = %d",
+			   -ret);
+			return -ret;
+		}
+	}
 	dev->data->tx_queues[tx_queue_id] = dpaa2_q;
 	return 0;
 }
@@ -513,11 +556,21 @@ dpaa2_dev_stop(struct rte_eth_dev *dev)
 static void
 dpaa2_dev_close(struct rte_eth_dev *dev)
 {
+	struct rte_eth_dev_data *data = dev->data;
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
 	struct fsl_mc_io *dpni = (struct fsl_mc_io *)priv->hw;
-	int ret;
+	int i, ret;
+	struct dpaa2_queue *dpaa2_q;
 
 	PMD_INIT_FUNC_TRACE();
+
+	for (i = 0; i < data->nb_tx_queues; i++) {
+		dpaa2_q = (struct dpaa2_queue *)data->tx_queues[i];
+		if (!dpaa2_q->cscn) {
+			rte_free(dpaa2_q->cscn);
+			dpaa2_q->cscn = NULL;
+		}
+	}
 
 	/* Clean the device first */
 	ret = dpni_reset(dpni, CMD_PRI_LOW, priv->token);
@@ -831,6 +884,9 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 	priv->max_mac_filters = attr.mac_filter_entries;
 	priv->max_vlan_filters = attr.vlan_filter_entries;
 	priv->flags = 0;
+
+	priv->flags |= DPAA2_TX_CGR_SUPPORT;
+	PMD_INIT_LOG(INFO, "Enable the tx congestion control support");
 
 	/* Allocate memory for hardware structure for queues */
 	ret = dpaa2_alloc_rx_tx_queues(eth_dev);

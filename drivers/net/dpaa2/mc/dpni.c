@@ -626,6 +626,54 @@ int dpni_set_tx_confirmation_mode(struct fsl_mc_io	*mc_io,
 	return mc_send_command(mc_io, &cmd);
 }
 
+int dpni_set_congestion_notification(
+			struct fsl_mc_io	*mc_io,
+			uint32_t		cmd_flags,
+			uint16_t		token,
+			enum dpni_queue_type qtype,
+			uint8_t		tc_id,
+			const struct dpni_congestion_notification_cfg *cfg)
+{
+	struct mc_command cmd = { 0 };
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(
+			DPNI_CMDID_SET_CONGESTION_NOTIFICATION,
+			cmd_flags,
+			token);
+	DPNI_CMD_SET_CONGESTION_NOTIFICATION(cmd, qtype, tc_id, cfg);
+
+	/* send command to mc*/
+	return mc_send_command(mc_io, &cmd);
+}
+
+int dpni_get_congestion_notification(struct fsl_mc_io	*mc_io,
+				     uint32_t		cmd_flags,
+					   uint16_t		token,
+				     enum dpni_queue_type qtype,
+					   uint8_t		tc_id,
+				struct dpni_congestion_notification_cfg *cfg)
+{
+	struct mc_command cmd = { 0 };
+	int err;
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(
+			DPNI_CMDID_GET_CONGESTION_NOTIFICATION,
+			cmd_flags,
+			token);
+	DPNI_CMD_GET_CONGESTION_NOTIFICATION(cmd, qtype, tc_id);
+
+	/* send command to mc*/
+	err = mc_send_command(mc_io, &cmd);
+	if (err)
+		return err;
+
+	DPNI_RSP_GET_CONGESTION_NOTIFICATION(cmd, cfg);
+
+	return 0;
+}
+
 int dpni_get_api_version(struct fsl_mc_io *mc_io,
 			 uint32_t cmd_flags,
 			   uint16_t *major_ver,
