@@ -69,8 +69,9 @@ RTE_DEFINE_PER_LCORE(struct dpaa2_io_portal_t, _dpaa2_io);
 
 struct swp_active_dqs rte_global_active_dqs_list[NUM_MAX_SWP];
 
-TAILQ_HEAD(dpio_device_list, dpaa2_dpio_dev);
-static struct dpio_device_list *dpio_dev_list; /*!< DPIO device list */
+TAILQ_HEAD(dpio_dev_list, dpaa2_dpio_dev);
+static struct dpio_dev_list dpio_dev_list
+	= TAILQ_HEAD_INITIALIZER(dpio_dev_list); /*!< DPIO device list */
 static uint32_t io_space_count;
 
 /*Stashing Macros default for LS208x*/
@@ -214,7 +215,7 @@ static inline struct dpaa2_dpio_dev *dpaa2_get_qbman_swp(void)
 	int ret;
 
 	/* Get DPIO dev handle from list using index */
-	TAILQ_FOREACH(dpio_dev, dpio_dev_list, next) {
+	TAILQ_FOREACH(dpio_dev, &dpio_dev_list, next) {
 		if (dpio_dev && rte_atomic16_test_and_set(&dpio_dev->ref_count))
 			break;
 	}
@@ -336,18 +337,8 @@ dpaa2_create_dpio_device(struct fslmc_vfio_device *vdev,
 		return -1;
 	}
 
-	if (!dpio_dev_list) {
-		dpio_dev_list = malloc(sizeof(struct dpio_device_list));
-		if (!dpio_dev_list) {
-			PMD_INIT_LOG(ERR, "Memory alloc failed in DPIO list\n");
-			return -1;
-		}
-
-		/* Initialize the DPIO List */
-		TAILQ_INIT(dpio_dev_list);
-	}
-
-	dpio_dev = malloc(sizeof(struct dpaa2_dpio_dev));
+	dpio_dev = rte_malloc(NULL, sizeof(struct dpaa2_dpio_dev),
+			      RTE_CACHE_LINE_SIZE);
 	if (!dpio_dev) {
 		PMD_INIT_LOG(ERR, "Memory allocation failed for DPIO Device\n");
 		return -1;
@@ -364,7 +355,7 @@ dpaa2_create_dpio_device(struct fslmc_vfio_device *vdev,
 	reg_info.index = 0;
 	if (ioctl(dpio_dev->vfio_fd, VFIO_DEVICE_GET_REGION_INFO, &reg_info)) {
 		PMD_INIT_LOG(ERR, "vfio: error getting region info\n");
-		free(dpio_dev);
+		rte_free(dpio_dev);
 		return -1;
 	}
 
@@ -381,14 +372,14 @@ dpaa2_create_dpio_device(struct fslmc_vfio_device *vdev,
 	if (vfio_dmamap_mem_region(dpio_dev->qbman_portal_ce_paddr,
 				   reg_info.offset, reg_info.size)) {
 		PMD_INIT_LOG(ERR, "DMAMAP for Portal CE area failed.\n");
-		free(dpio_dev);
+		rte_free(dpio_dev);
 		return -1;
 	}
 
 	reg_info.index = 1;
 	if (ioctl(dpio_dev->vfio_fd, VFIO_DEVICE_GET_REGION_INFO, &reg_info)) {
 		PMD_INIT_LOG(ERR, "vfio: error getting region info\n");
-		free(dpio_dev);
+		rte_free(dpio_dev);
 		return -1;
 	}
 
@@ -403,13 +394,14 @@ dpaa2_create_dpio_device(struct fslmc_vfio_device *vdev,
 		PMD_INIT_LOG(ERR,
 			     "Fail to configure the dpio qbman portal for %d\n",
 			     dpio_dev->hw_id);
-		free(dpio_dev);
+		rte_free(dpio_dev);
 		return -1;
 	}
 
 	io_space_count++;
 	dpio_dev->index = io_space_count;
-	TAILQ_INSERT_HEAD(dpio_dev_list, dpio_dev, next);
+	TAILQ_INSERT_TAIL(&dpio_dev_list, dpio_dev, next);
+	PMD_INIT_LOG(DEBUG, "DPAA2:Added [dpio-%d]", object_id);
 
 	return 0;
 }
