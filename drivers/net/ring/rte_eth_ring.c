@@ -230,7 +230,7 @@ eth_mac_addr_add(struct rte_eth_dev *dev __rte_unused,
 	uint32_t index __rte_unused,
 	uint32_t vmdq __rte_unused)
 {
-	return -ENOTSUP;
+	return 0;
 }
 
 static void
