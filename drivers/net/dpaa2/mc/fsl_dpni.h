@@ -854,6 +854,51 @@ int dpni_get_primary_mac_addr(struct fsl_mc_io	*mc_io,
 			      uint16_t		token,
 			      uint8_t		mac_addr[6]);
 
+/**
+ * dpni_add_mac_addr() - Add MAC address filter
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPNI object
+ * @mac_addr:	MAC address to add
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dpni_add_mac_addr(struct fsl_mc_io	*mc_io,
+		      uint32_t		cmd_flags,
+		      uint16_t		token,
+		      const uint8_t	mac_addr[6]);
+
+/**
+ * dpni_remove_mac_addr() - Remove MAC address filter
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPNI object
+ * @mac_addr:	MAC address to remove
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dpni_remove_mac_addr(struct fsl_mc_io	*mc_io,
+			 uint32_t		cmd_flags,
+			 uint16_t		token,
+			 const uint8_t		mac_addr[6]);
+
+/**
+ * dpni_clear_mac_filters() - Clear all unicast and/or multicast MAC filters
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPNI object
+ * @unicast:	Set to '1' to clear unicast addresses
+ * @multicast:	Set to '1' to clear multicast addresses
+ *
+ * The primary MAC address is not cleared by this operation.
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dpni_clear_mac_filters(struct fsl_mc_io	*mc_io,
+			   uint32_t		cmd_flags,
+			   uint16_t		token,
+			   int			unicast,
+			   int			multicast);
 
 /**
  * dpni_get_port_mac_addr() - Retrieve MAC address associated to the physical

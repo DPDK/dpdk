@@ -69,6 +69,9 @@
 #define DPNI_CMDID_GET_UNICAST_PROMISC                 ((0x223 << 4) | (0x1))
 #define DPNI_CMDID_SET_PRIM_MAC                        ((0x224 << 4) | (0x1))
 #define DPNI_CMDID_GET_PRIM_MAC                        ((0x225 << 4) | (0x1))
+#define DPNI_CMDID_ADD_MAC_ADDR                        ((0x226 << 4) | (0x1))
+#define DPNI_CMDID_REMOVE_MAC_ADDR                     ((0x227 << 4) | (0x1))
+#define DPNI_CMDID_CLR_MAC_FILTERS                     ((0x228 << 4) | (0x1))
 
 #define DPNI_CMDID_SET_RX_TC_DIST                      ((0x235 << 4) | (0x1))
 
@@ -271,6 +274,45 @@ do { \
 	MC_RSP_OP(cmd, 0, 40, 8,  uint8_t,  mac_addr[2]); \
 	MC_RSP_OP(cmd, 0, 48, 8,  uint8_t,  mac_addr[1]); \
 	MC_RSP_OP(cmd, 0, 56, 8,  uint8_t,  mac_addr[0]); \
+} while (0)
+
+#define DPNI_RSP_GET_PORT_MAC_ADDR(cmd, mac_addr) \
+do { \
+	MC_RSP_OP(cmd, 0, 16, 8,  uint8_t,  mac_addr[5]); \
+	MC_RSP_OP(cmd, 0, 24, 8,  uint8_t,  mac_addr[4]); \
+	MC_RSP_OP(cmd, 0, 32, 8,  uint8_t,  mac_addr[3]); \
+	MC_RSP_OP(cmd, 0, 40, 8,  uint8_t,  mac_addr[2]); \
+	MC_RSP_OP(cmd, 0, 48, 8,  uint8_t,  mac_addr[1]); \
+	MC_RSP_OP(cmd, 0, 56, 8,  uint8_t,  mac_addr[0]); \
+} while (0)
+
+/*                cmd, param, offset, width, type, arg_name */
+#define DPNI_CMD_ADD_MAC_ADDR(cmd, mac_addr) \
+do { \
+	MC_CMD_OP(cmd, 0, 16, 8,  uint8_t,  mac_addr[5]); \
+	MC_CMD_OP(cmd, 0, 24, 8,  uint8_t,  mac_addr[4]); \
+	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  mac_addr[3]); \
+	MC_CMD_OP(cmd, 0, 40, 8,  uint8_t,  mac_addr[2]); \
+	MC_CMD_OP(cmd, 0, 48, 8,  uint8_t,  mac_addr[1]); \
+	MC_CMD_OP(cmd, 0, 56, 8,  uint8_t,  mac_addr[0]); \
+} while (0)
+
+/*                cmd, param, offset, width, type, arg_name */
+#define DPNI_CMD_REMOVE_MAC_ADDR(cmd, mac_addr) \
+do { \
+	MC_CMD_OP(cmd, 0, 16, 8,  uint8_t,  mac_addr[5]); \
+	MC_CMD_OP(cmd, 0, 24, 8,  uint8_t,  mac_addr[4]); \
+	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  mac_addr[3]); \
+	MC_CMD_OP(cmd, 0, 40, 8,  uint8_t,  mac_addr[2]); \
+	MC_CMD_OP(cmd, 0, 48, 8,  uint8_t,  mac_addr[1]); \
+	MC_CMD_OP(cmd, 0, 56, 8,  uint8_t,  mac_addr[0]); \
+} while (0)
+
+/*                cmd, param, offset, width, type, arg_name */
+#define DPNI_CMD_CLEAR_MAC_FILTERS(cmd, unicast, multicast) \
+do { \
+	MC_CMD_OP(cmd, 0, 0,  1,  int,      unicast); \
+	MC_CMD_OP(cmd, 0, 1,  1,  int,      multicast); \
 } while (0)
 
 

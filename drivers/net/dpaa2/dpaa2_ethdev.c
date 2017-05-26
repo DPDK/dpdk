@@ -672,6 +672,78 @@ dpaa2_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	return 0;
 }
 
+static int
+dpaa2_dev_add_mac_addr(struct rte_eth_dev *dev,
+		       struct ether_addr *addr,
+		       __rte_unused uint32_t index,
+		       __rte_unused uint32_t pool)
+{
+	int ret;
+	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+	struct fsl_mc_io *dpni = (struct fsl_mc_io *)priv->hw;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (dpni == NULL) {
+		RTE_LOG(ERR, PMD, "dpni is NULL");
+		return -1;
+	}
+
+	ret = dpni_add_mac_addr(dpni, CMD_PRI_LOW,
+				priv->token, addr->addr_bytes);
+	if (ret)
+		RTE_LOG(ERR, PMD, "error: Adding the MAC ADDR failed:"
+			" err = %d", ret);
+	return 0;
+}
+
+static void
+dpaa2_dev_remove_mac_addr(struct rte_eth_dev *dev,
+			  uint32_t index)
+{
+	int ret;
+	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+	struct fsl_mc_io *dpni = (struct fsl_mc_io *)priv->hw;
+	struct rte_eth_dev_data *data = dev->data;
+	struct ether_addr *macaddr;
+
+	PMD_INIT_FUNC_TRACE();
+
+	macaddr = &data->mac_addrs[index];
+
+	if (dpni == NULL) {
+		RTE_LOG(ERR, PMD, "dpni is NULL");
+		return;
+	}
+
+	ret = dpni_remove_mac_addr(dpni, CMD_PRI_LOW,
+				   priv->token, macaddr->addr_bytes);
+	if (ret)
+		RTE_LOG(ERR, PMD, "error: Removing the MAC ADDR failed:"
+			" err = %d", ret);
+}
+
+static void
+dpaa2_dev_set_mac_addr(struct rte_eth_dev *dev,
+		       struct ether_addr *addr)
+{
+	int ret;
+	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+	struct fsl_mc_io *dpni = (struct fsl_mc_io *)priv->hw;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (dpni == NULL) {
+		RTE_LOG(ERR, PMD, "dpni is NULL");
+		return;
+	}
+
+	ret = dpni_set_primary_mac_addr(dpni, CMD_PRI_LOW,
+					priv->token, addr->addr_bytes);
+
+	if (ret)
+		RTE_LOG(ERR, PMD, "error: Setting the MAC ADDR failed %d", ret);
+}
 static
 void dpaa2_dev_stats_get(struct rte_eth_dev *dev,
 			 struct rte_eth_stats *stats)
@@ -720,7 +792,11 @@ void dpaa2_dev_stats_get(struct rte_eth_dev *dev,
 	if (retcode)
 		goto err;
 
-	stats->ierrors = value.page_2.ingress_discarded_frames;
+	/* Ingress drop frame count due to configured rules */
+	stats->ierrors = value.page_2.ingress_filtered_frames;
+	/* Ingress drop frame count due to error */
+	stats->ierrors += value.page_2.ingress_discarded_frames;
+
 	stats->oerrors = value.page_2.egress_discarded_frames;
 	stats->imissed = value.page_2.ingress_nobuffer_discards;
 
@@ -822,6 +898,9 @@ static struct eth_dev_ops dpaa2_ethdev_ops = {
 	.rx_queue_release  = dpaa2_dev_rx_queue_release,
 	.tx_queue_setup    = dpaa2_dev_tx_queue_setup,
 	.tx_queue_release  = dpaa2_dev_tx_queue_release,
+	.mac_addr_add         = dpaa2_dev_add_mac_addr,
+	.mac_addr_remove      = dpaa2_dev_remove_mac_addr,
+	.mac_addr_set         = dpaa2_dev_set_mac_addr,
 };
 
 static int

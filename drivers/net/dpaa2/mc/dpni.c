@@ -591,6 +591,82 @@ int dpni_get_primary_mac_addr(struct fsl_mc_io *mc_io,
 	return 0;
 }
 
+int dpni_add_mac_addr(struct fsl_mc_io *mc_io,
+		      uint32_t cmd_flags,
+		      uint16_t token,
+		      const uint8_t mac_addr[6])
+{
+	struct mc_command cmd = { 0 };
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPNI_CMDID_ADD_MAC_ADDR,
+					  cmd_flags,
+					  token);
+	DPNI_CMD_ADD_MAC_ADDR(cmd, mac_addr);
+
+	/* send command to mc*/
+	return mc_send_command(mc_io, &cmd);
+}
+
+int dpni_remove_mac_addr(struct fsl_mc_io *mc_io,
+			 uint32_t cmd_flags,
+			 uint16_t token,
+			 const uint8_t mac_addr[6])
+{
+	struct mc_command cmd = { 0 };
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPNI_CMDID_REMOVE_MAC_ADDR,
+					  cmd_flags,
+					  token);
+	DPNI_CMD_REMOVE_MAC_ADDR(cmd, mac_addr);
+
+	/* send command to mc*/
+	return mc_send_command(mc_io, &cmd);
+}
+
+int dpni_clear_mac_filters(struct fsl_mc_io *mc_io,
+			   uint32_t cmd_flags,
+			   uint16_t token,
+			   int unicast,
+			   int multicast)
+{
+	struct mc_command cmd = { 0 };
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPNI_CMDID_CLR_MAC_FILTERS,
+					  cmd_flags,
+					  token);
+	DPNI_CMD_CLEAR_MAC_FILTERS(cmd, unicast, multicast);
+
+	/* send command to mc*/
+	return mc_send_command(mc_io, &cmd);
+}
+
+int dpni_get_port_mac_addr(struct fsl_mc_io *mc_io,
+			   uint32_t cmd_flags,
+			   uint16_t token,
+			   uint8_t mac_addr[6])
+{
+	struct mc_command cmd = { 0 };
+	int err;
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPNI_CMDID_GET_PORT_MAC_ADDR,
+					  cmd_flags,
+					  token);
+
+	/* send command to mc*/
+	err = mc_send_command(mc_io, &cmd);
+	if (err)
+		return err;
+
+	/* retrieve response parameters */
+	DPNI_RSP_GET_PORT_MAC_ADDR(cmd, mac_addr);
+
+	return 0;
+}
+
 int dpni_set_rx_tc_dist(struct fsl_mc_io *mc_io,
 			uint32_t cmd_flags,
 			uint16_t token,
