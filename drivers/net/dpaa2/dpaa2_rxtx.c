@@ -242,17 +242,18 @@ eth_copy_mbuf_to_fd(struct rte_mbuf *mbuf,
 }
 
 uint16_t
-dpaa2_dev_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
+dpaa2_dev_prefetch_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 {
-	/* Function is responsible to receive frames for a given device and VQ*/
+	/* Function receive frames for a given device and VQ*/
 	struct dpaa2_queue *dpaa2_q = (struct dpaa2_queue *)queue;
 	struct qbman_result *dq_storage;
 	uint32_t fqid = dpaa2_q->fqid;
 	int ret, num_rx = 0;
 	uint8_t is_last = 0, status;
 	struct qbman_swp *swp;
-	const struct qbman_fd *fd;
+	const struct qbman_fd *fd[DPAA2_DQRR_RING_SIZE];
 	struct qbman_pull_desc pulldesc;
+	struct queue_storage_info_t *q_storage = dpaa2_q->q_storage;
 	struct rte_eth_dev *dev = dpaa2_q->dev;
 
 	if (unlikely(!DPAA2_PER_LCORE_DPIO)) {
@@ -263,44 +264,51 @@ dpaa2_dev_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		}
 	}
 	swp = DPAA2_PER_LCORE_PORTAL;
-	dq_storage = dpaa2_q->q_storage->dq_storage[0];
-
-	qbman_pull_desc_clear(&pulldesc);
-	qbman_pull_desc_set_numframes(&pulldesc,
-				      (nb_pkts > DPAA2_DQRR_RING_SIZE) ?
-				       DPAA2_DQRR_RING_SIZE : nb_pkts);
-	qbman_pull_desc_set_fq(&pulldesc, fqid);
-	/* todo optimization - we can have dq_storage_phys available*/
-	qbman_pull_desc_set_storage(&pulldesc, dq_storage,
+	if (!q_storage->active_dqs) {
+		q_storage->toggle = 0;
+		dq_storage = q_storage->dq_storage[q_storage->toggle];
+		qbman_pull_desc_clear(&pulldesc);
+		qbman_pull_desc_set_numframes(&pulldesc,
+					      (nb_pkts > DPAA2_DQRR_RING_SIZE) ?
+					       DPAA2_DQRR_RING_SIZE : nb_pkts);
+		qbman_pull_desc_set_fq(&pulldesc, fqid);
+		qbman_pull_desc_set_storage(&pulldesc, dq_storage,
 			(dma_addr_t)(DPAA2_VADDR_TO_IOVA(dq_storage)), 1);
-
-	/*Issue a volatile dequeue command. */
-	while (1) {
-		if (qbman_swp_pull(swp, &pulldesc)) {
-			PMD_RX_LOG(ERR, "VDQ command is not issued."
-				   "QBMAN is busy\n");
-			/* Portal was busy, try again */
-			continue;
+		if (check_swp_active_dqs(DPAA2_PER_LCORE_DPIO->index)) {
+			while (!qbman_check_command_complete(swp,
+			       get_swp_active_dqs(DPAA2_PER_LCORE_DPIO->index)))
+				;
+			clear_swp_active_dqs(DPAA2_PER_LCORE_DPIO->index);
 		}
-		break;
-	};
-
-	/* Receive the packets till Last Dequeue entry is found with
-	 * respect to the above issues PULL command.
+		while (1) {
+			if (qbman_swp_pull(swp, &pulldesc)) {
+				PMD_RX_LOG(WARNING, "VDQ command is not issued."
+					   "QBMAN is busy\n");
+				/* Portal was busy, try again */
+				continue;
+			}
+			break;
+		}
+		q_storage->active_dqs = dq_storage;
+		q_storage->active_dpio_id = DPAA2_PER_LCORE_DPIO->index;
+		set_swp_active_dqs(DPAA2_PER_LCORE_DPIO->index, dq_storage);
+	}
+	dq_storage = q_storage->active_dqs;
+	/* Check if the previous issued command is completed.
+	 * Also seems like the SWP is shared between the Ethernet Driver
+	 * and the SEC driver.
 	 */
+	while (!qbman_check_command_complete(swp, dq_storage))
+		;
+	if (dq_storage == get_swp_active_dqs(q_storage->active_dpio_id))
+		clear_swp_active_dqs(q_storage->active_dpio_id);
 	while (!is_last) {
-		struct rte_mbuf *mbuf;
-		/*Check if the previous issued command is completed.
-		 * Also seems like the SWP is shared between the
-		 * Ethernet Driver and the SEC driver.
-		 */
-		while (!qbman_check_command_complete(swp, dq_storage))
-			;
 		/* Loop until the dq_storage is updated with
 		 * new token by QBMAN
 		 */
 		while (!qbman_result_has_new_result(swp, dq_storage))
 			;
+		rte_prefetch0((void *)((uint64_t)(dq_storage + 1)));
 		/* Check whether Last Pull command is Expired and
 		 * setting Condition for Loop termination
 		 */
@@ -311,27 +319,50 @@ dpaa2_dev_rx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 			if (unlikely((status & QBMAN_DQ_STAT_VALIDFRAME) == 0))
 				continue;
 		}
+		fd[num_rx] = qbman_result_DQ_fd(dq_storage);
 
-		fd = qbman_result_DQ_fd(dq_storage);
-		mbuf = (struct rte_mbuf *)DPAA2_IOVA_TO_VADDR(
-		   DPAA2_GET_FD_ADDR(fd)
-		   - rte_dpaa2_bpid_info[DPAA2_GET_FD_BPID(fd)].meta_data_size);
-		/* Prefeth mbuf */
-		rte_prefetch0(mbuf);
 		/* Prefetch Annotation address for the parse results */
-		rte_prefetch0((void *)((uint64_t)DPAA2_GET_FD_ADDR(fd)
-						+ DPAA2_FD_PTA_SIZE + 16));
+		rte_prefetch0((void *)((uint64_t)DPAA2_GET_FD_ADDR(fd[num_rx])
+				+ DPAA2_FD_PTA_SIZE + 16));
 
-		bufs[num_rx] = eth_fd_to_mbuf(fd);
+		bufs[num_rx] = eth_fd_to_mbuf(fd[num_rx]);
 		bufs[num_rx]->port = dev->data->port_id;
+		if (dev->data->dev_conf.rxmode.hw_vlan_strip)
+			rte_vlan_strip(bufs[num_rx]);
 
-		num_rx++;
 		dq_storage++;
-	} /* End of Packet Rx loop */
+		num_rx++;
+	}
+
+	if (check_swp_active_dqs(DPAA2_PER_LCORE_DPIO->index)) {
+		while (!qbman_check_command_complete(swp,
+		       get_swp_active_dqs(DPAA2_PER_LCORE_DPIO->index)))
+			;
+		clear_swp_active_dqs(DPAA2_PER_LCORE_DPIO->index);
+	}
+	q_storage->toggle ^= 1;
+	dq_storage = q_storage->dq_storage[q_storage->toggle];
+	qbman_pull_desc_clear(&pulldesc);
+	qbman_pull_desc_set_numframes(&pulldesc, DPAA2_DQRR_RING_SIZE);
+	qbman_pull_desc_set_fq(&pulldesc, fqid);
+	qbman_pull_desc_set_storage(&pulldesc, dq_storage,
+			(dma_addr_t)(DPAA2_VADDR_TO_IOVA(dq_storage)), 1);
+	/* Issue a volatile dequeue command. */
+	while (1) {
+		if (qbman_swp_pull(swp, &pulldesc)) {
+			PMD_RX_LOG(WARNING, "VDQ command is not issued."
+				   "QBMAN is busy\n");
+			continue;
+		}
+		break;
+	}
+	q_storage->active_dqs = dq_storage;
+	q_storage->active_dpio_id = DPAA2_PER_LCORE_DPIO->index;
+	set_swp_active_dqs(DPAA2_PER_LCORE_DPIO->index, dq_storage);
 
 	dpaa2_q->rx_pkts += num_rx;
 
-	/*Return the total number of packets received to DPAA2 app*/
+	/* Return the total number of packets received to DPAA2 app */
 	return num_rx;
 }
 
