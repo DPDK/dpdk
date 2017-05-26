@@ -284,7 +284,7 @@ dpaa2_dev_rx_queue_setup(struct rte_eth_dev *dev,
 		cfg.flc.value &= 0xFFFFFFFFFFFFFFC0;
 		/* 00 00 00 - last 6 bit represent annotation, context stashing,
 		 * data stashing setting 01 01 00 (0x14) to enable
-		 * 1 line annotation, 1 line context
+		 * 1 line data, 1 line annotation
 		 */
 		cfg.flc.value |= 0x14;
 	}

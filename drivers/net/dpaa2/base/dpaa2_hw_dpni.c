@@ -306,15 +306,20 @@ dpaa2_attach_bp_list(struct dpaa2_dev_priv *priv,
 	 */
 
 	/* ... rx buffer layout ... */
-	tot_size = DPAA2_HW_BUF_RESERVE + RTE_PKTMBUF_HEADROOM;
-	tot_size = RTE_ALIGN_CEIL(tot_size,
-				  DPAA2_PACKET_LAYOUT_ALIGN);
+	tot_size = RTE_PKTMBUF_HEADROOM;
+	tot_size = RTE_ALIGN_CEIL(tot_size, DPAA2_PACKET_LAYOUT_ALIGN);
 
 	memset(&layout, 0, sizeof(struct dpni_buffer_layout));
-	layout.options = DPNI_BUF_LAYOUT_OPT_DATA_HEAD_ROOM;
+	layout.options = DPNI_BUF_LAYOUT_OPT_DATA_HEAD_ROOM |
+			 DPNI_BUF_LAYOUT_OPT_FRAME_STATUS |
+			 DPNI_BUF_LAYOUT_OPT_PARSER_RESULT |
+			 DPNI_BUF_LAYOUT_OPT_PRIVATE_DATA_SIZE;
 
-	layout.data_head_room =
-		tot_size - DPAA2_FD_PTA_SIZE - DPAA2_MBUF_HW_ANNOTATION;
+	layout.pass_frame_status = 1;
+	layout.private_data_size = DPAA2_FD_PTA_SIZE;
+	layout.pass_parser_result = 1;
+	layout.data_head_room = tot_size - DPAA2_FD_PTA_SIZE -
+				DPAA2_MBUF_HW_ANNOTATION;
 	retcode = dpni_set_buffer_layout(dpni, CMD_PRI_LOW, priv->token,
 					 DPNI_QUEUE_RX, &layout);
 	if (retcode) {
