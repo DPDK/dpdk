@@ -65,6 +65,8 @@
 #define DPNI_CMDID_SET_MAX_FRAME_LENGTH                ((0x216 << 4) | (0x1))
 #define DPNI_CMDID_GET_MAX_FRAME_LENGTH                ((0x217 << 4) | (0x1))
 
+#define DPNI_CMDID_SET_MCAST_PROMISC                   ((0x220 << 4) | (0x1))
+#define DPNI_CMDID_GET_MCAST_PROMISC                   ((0x221 << 4) | (0x1))
 #define DPNI_CMDID_SET_UNICAST_PROMISC                 ((0x222 << 4) | (0x1))
 #define DPNI_CMDID_GET_UNICAST_PROMISC                 ((0x223 << 4) | (0x1))
 #define DPNI_CMDID_SET_PRIM_MAC                        ((0x224 << 4) | (0x1))
@@ -245,6 +247,14 @@ do { \
 /*                cmd, param, offset, width, type, arg_name */
 #define DPNI_RSP_GET_MAX_FRAME_LENGTH(cmd, max_frame_length) \
 	MC_RSP_OP(cmd, 0, 0,  16, uint16_t, max_frame_length)
+
+/*                cmd, param, offset, width, type, arg_name */
+#define DPNI_CMD_SET_MULTICAST_PROMISC(cmd, en) \
+	MC_CMD_OP(cmd, 0, 0,  1,  int,      en)
+
+/*                cmd, param, offset, width, type, arg_name */
+#define DPNI_RSP_GET_MULTICAST_PROMISC(cmd, en) \
+	MC_RSP_OP(cmd, 0, 0,  1,  int,	    en)
 
 /*                cmd, param, offset, width, type, arg_name */
 #define DPNI_CMD_SET_UNICAST_PROMISC(cmd, en) \

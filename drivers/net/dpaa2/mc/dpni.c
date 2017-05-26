@@ -509,6 +509,47 @@ int dpni_get_max_frame_length(struct fsl_mc_io *mc_io,
 	return 0;
 }
 
+int dpni_set_multicast_promisc(struct fsl_mc_io *mc_io,
+			       uint32_t cmd_flags,
+			       uint16_t token,
+			       int en)
+{
+	struct mc_command cmd = { 0 };
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPNI_CMDID_SET_MCAST_PROMISC,
+					  cmd_flags,
+					  token);
+	DPNI_CMD_SET_MULTICAST_PROMISC(cmd, en);
+
+	/* send command to mc*/
+	return mc_send_command(mc_io, &cmd);
+}
+
+int dpni_get_multicast_promisc(struct fsl_mc_io *mc_io,
+			       uint32_t cmd_flags,
+			       uint16_t token,
+			       int *en)
+{
+	struct mc_command cmd = { 0 };
+	int err;
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPNI_CMDID_GET_MCAST_PROMISC,
+					  cmd_flags,
+					  token);
+
+	/* send command to mc*/
+	err = mc_send_command(mc_io, &cmd);
+	if (err)
+		return err;
+
+	/* retrieve response parameters */
+	DPNI_RSP_GET_MULTICAST_PROMISC(cmd, *en);
+
+	return 0;
+}
+
 int dpni_set_unicast_promisc(struct fsl_mc_io *mc_io,
 			     uint32_t cmd_flags,
 			     uint16_t token,

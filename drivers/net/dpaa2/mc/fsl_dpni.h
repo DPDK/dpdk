@@ -797,6 +797,33 @@ int dpni_get_max_frame_length(struct fsl_mc_io	*mc_io,
 			      uint16_t		token,
 			      uint16_t		*max_frame_length);
 
+/**
+ * dpni_set_multicast_promisc() - Enable/disable multicast promiscuous mode
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPNI object
+ * @en:		Set to '1' to enable; '0' to disable
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dpni_set_multicast_promisc(struct fsl_mc_io	*mc_io,
+			       uint32_t		cmd_flags,
+			       uint16_t		token,
+			       int		en);
+
+/**
+ * dpni_get_multicast_promisc() - Get multicast promiscuous mode
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPNI object
+ * @en:		Returns '1' if enabled; '0' otherwise
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dpni_get_multicast_promisc(struct fsl_mc_io	*mc_io,
+			       uint32_t		cmd_flags,
+			       uint16_t		token,
+			       int		*en);
 
 /**
  * dpni_set_unicast_promisc() - Enable/disable unicast promiscuous mode

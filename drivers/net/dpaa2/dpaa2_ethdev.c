@@ -617,7 +617,11 @@ dpaa2_dev_promiscuous_enable(
 
 	ret = dpni_set_unicast_promisc(dpni, CMD_PRI_LOW, priv->token, true);
 	if (ret < 0)
-		RTE_LOG(ERR, PMD, "Unable to enable promiscuous mode %d", ret);
+		RTE_LOG(ERR, PMD, "Unable to enable U promisc mode %d", ret);
+
+	ret = dpni_set_multicast_promisc(dpni, CMD_PRI_LOW, priv->token, true);
+	if (ret < 0)
+		RTE_LOG(ERR, PMD, "Unable to enable M promisc mode %d", ret);
 }
 
 static void
@@ -637,7 +641,58 @@ dpaa2_dev_promiscuous_disable(
 
 	ret = dpni_set_unicast_promisc(dpni, CMD_PRI_LOW, priv->token, false);
 	if (ret < 0)
-		RTE_LOG(ERR, PMD, "Unable to disable promiscuous mode %d", ret);
+		RTE_LOG(ERR, PMD, "Unable to disable U promisc mode %d", ret);
+
+	if (dev->data->all_multicast == 0) {
+		ret = dpni_set_multicast_promisc(dpni, CMD_PRI_LOW,
+						 priv->token, false);
+		if (ret < 0)
+			RTE_LOG(ERR, PMD, "Unable to disable M promisc mode %d",
+				ret);
+	}
+}
+
+static void
+dpaa2_dev_allmulticast_enable(
+		struct rte_eth_dev *dev)
+{
+	int ret;
+	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+	struct fsl_mc_io *dpni = (struct fsl_mc_io *)priv->hw;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (dpni == NULL) {
+		RTE_LOG(ERR, PMD, "dpni is NULL");
+		return;
+	}
+
+	ret = dpni_set_multicast_promisc(dpni, CMD_PRI_LOW, priv->token, true);
+	if (ret < 0)
+		RTE_LOG(ERR, PMD, "Unable to enable multicast mode %d", ret);
+}
+
+static void
+dpaa2_dev_allmulticast_disable(struct rte_eth_dev *dev)
+{
+	int ret;
+	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+	struct fsl_mc_io *dpni = (struct fsl_mc_io *)priv->hw;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (dpni == NULL) {
+		RTE_LOG(ERR, PMD, "dpni is NULL");
+		return;
+	}
+
+	/* must remain on for all promiscuous */
+	if (dev->data->promiscuous == 1)
+		return;
+
+	ret = dpni_set_multicast_promisc(dpni, CMD_PRI_LOW, priv->token, false);
+	if (ret < 0)
+		RTE_LOG(ERR, PMD, "Unable to disable multicast mode %d", ret);
 }
 
 static int
@@ -888,6 +943,8 @@ static struct eth_dev_ops dpaa2_ethdev_ops = {
 	.dev_close	      = dpaa2_dev_close,
 	.promiscuous_enable   = dpaa2_dev_promiscuous_enable,
 	.promiscuous_disable  = dpaa2_dev_promiscuous_disable,
+	.allmulticast_enable  = dpaa2_dev_allmulticast_enable,
+	.allmulticast_disable = dpaa2_dev_allmulticast_disable,
 	.link_update	   = dpaa2_dev_link_update,
 	.stats_get	       = dpaa2_dev_stats_get,
 	.stats_reset	   = dpaa2_dev_stats_reset,
