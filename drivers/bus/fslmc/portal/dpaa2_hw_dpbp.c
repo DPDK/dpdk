@@ -97,7 +97,7 @@ dpaa2_create_dpbp_device(
 
 	TAILQ_INSERT_TAIL(&dpbp_dev_list, dpbp_node, next);
 
-	PMD_INIT_LOG(DEBUG, "Buffer pool resource initialized %d", dpbp_id);
+	PMD_INIT_LOG(DEBUG, "DPAA2: Added [dpbp-%d]", dpbp_id);
 
 	return 0;
 }

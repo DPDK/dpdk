@@ -91,9 +91,9 @@ static int vfio_connect_container(struct fslmc_vfio_group *vfio_group)
 		container = &vfio_containers[i];
 		if (!ioctl(vfio_group->fd, VFIO_GROUP_SET_CONTAINER,
 			   &container->fd)) {
-			FSLMC_VFIO_LOG(INFO, "Container pre-exists with"
-				    " FD[0x%x] for this group",
-				    container->fd);
+			FSLMC_VFIO_LOG(INFO,
+			    "Container pre-exists with FD[0x%x] for this group",
+			    container->fd);
 			vfio_group->container = container;
 			return 0;
 		}
@@ -132,7 +132,6 @@ static int vfio_connect_container(struct fslmc_vfio_group *vfio_group)
 	for (i = 0; i < VFIO_MAX_CONTAINERS; i++) {
 		if (vfio_containers[i].used)
 			continue;
-		FSLMC_VFIO_LOG(DEBUG, "Unused container at index %d", i);
 		container = &vfio_containers[i];
 	}
 	if (!container) {
@@ -245,16 +244,14 @@ int rte_fslmc_vfio_dmamap(void)
 
 		FSLMC_VFIO_LOG(DEBUG, "-->Initial SHM Virtual ADDR %llX",
 			     dma_map.vaddr);
-		FSLMC_VFIO_LOG(DEBUG, "-----> DMA size 0x%llX\n", dma_map.size);
+		FSLMC_VFIO_LOG(DEBUG, "-----> DMA size 0x%llX", dma_map.size);
 		ret = ioctl(group->container->fd, VFIO_IOMMU_MAP_DMA,
 			    &dma_map);
 		if (ret) {
-			FSLMC_VFIO_LOG(ERR, "VFIO_IOMMU_MAP_DMA API"
-				       "(errno = %d)", errno);
+			FSLMC_VFIO_LOG(ERR, "VFIO_IOMMU_MAP_DMA API(errno = %d)",
+				       errno);
 			return ret;
 		}
-		FSLMC_VFIO_LOG(DEBUG, "-----> dma_map.vaddr = 0x%llX",
-			     dma_map.vaddr);
 	}
 
 	/* TODO - This is a W.A. as VFIO currently does not add the mapping of
@@ -277,8 +274,8 @@ static int64_t vfio_map_mcp_obj(struct fslmc_vfio_group *group, char *mcp_obj)
 	/* getting the mcp object's fd*/
 	mc_fd = ioctl(group->fd, VFIO_GROUP_GET_DEVICE_FD, mcp_obj);
 	if (mc_fd < 0) {
-		FSLMC_VFIO_LOG(ERR, "error in VFIO get device %s fd from group"
-			    " %d", mcp_obj, group->fd);
+		FSLMC_VFIO_LOG(ERR, "error in VFIO get dev %s fd from group %d",
+			       mcp_obj, group->fd);
 		return v_addr;
 	}
 
@@ -297,7 +294,7 @@ static int64_t vfio_map_mcp_obj(struct fslmc_vfio_group *group, char *mcp_obj)
 	}
 
 	FSLMC_VFIO_LOG(DEBUG, "region offset = %llx  , region size = %llx",
-		     reg_info.offset, reg_info.size);
+		       reg_info.offset, reg_info.size);
 
 	v_addr = (uint64_t)mmap(NULL, reg_info.size,
 		PROT_WRITE | PROT_READ, MAP_SHARED,
@@ -372,8 +369,8 @@ int fslmc_vfio_process_group(void)
 
 	/* if already done once */
 	if (process_once) {
-		FSLMC_VFIO_LOG(DEBUG, "Already scanned once - re-scan "
-			    "not supported");
+		FSLMC_VFIO_LOG(DEBUG,
+			       "Already scanned once - re-scan not supported");
 		return 0;
 	}
 	process_once = 0;
@@ -397,8 +394,8 @@ int fslmc_vfio_process_group(void)
 					free(mcp_obj);
 				mcp_obj = malloc(sizeof(dir->d_name));
 				if (!mcp_obj) {
-					FSLMC_VFIO_LOG(ERR, "mcp obj:Unable to"
-						    " allocate memory");
+					FSLMC_VFIO_LOG(ERR,
+						       "mcp obj:alloc failed");
 					closedir(d);
 					return -ENOMEM;
 				}
@@ -441,8 +438,6 @@ int fslmc_vfio_process_group(void)
 		goto FAILURE;
 	}
 
-	FSLMC_VFIO_LOG(DEBUG, "DPAA2 MC has VIR_ADD = %ld", v_addr);
-
 	rte_mcp_ptr_list[0] = (void *)v_addr;
 
 	d = opendir(path);
@@ -452,7 +447,6 @@ int fslmc_vfio_process_group(void)
 	}
 
 	i = 0;
-	FSLMC_VFIO_LOG(DEBUG, "DPAA2 - Parsing devices:");
 	/* Parsing each object and initiating them*/
 	while ((dir = readdir(d)) != NULL) {
 		if (dir->d_type != DT_LNK)
@@ -469,14 +463,13 @@ int fslmc_vfio_process_group(void)
 		object_type = strtok(dir->d_name, ".");
 		temp_obj = strtok(NULL, ".");
 		sscanf(temp_obj, "%d", &object_id);
-		FSLMC_VFIO_LOG(DEBUG, " - %s ", dev_name);
 
 		/* getting the device fd*/
 		dev_fd = ioctl(group->fd, VFIO_GROUP_GET_DEVICE_FD, dev_name);
 		if (dev_fd < 0) {
-			FSLMC_VFIO_LOG(ERR, "VFIO_GROUP_GET_DEVICE_FD error"
-				    " Device fd: %s, Group: %d",
-				    dev_name, group->fd);
+			FSLMC_VFIO_LOG(ERR,
+				       "GET_DEVICE_FD error fd: %s, Group: %d",
+				       dev_name, group->fd);
 			free(dev_name);
 			goto FAILURE;
 		}
@@ -505,7 +498,7 @@ int fslmc_vfio_process_group(void)
 			dev->dev_type = (strcmp(object_type, "dpseci")) ?
 				DPAA2_MC_DPNI_DEVID : DPAA2_MC_DPSECI_DEVID;
 
-			FSLMC_VFIO_LOG(DEBUG, "DPAA2: Added [%s-%d]\n",
+			FSLMC_VFIO_LOG(DEBUG, "DPAA2: Added [%s-%d]",
 				      object_type, object_id);
 
 			fslmc_bus_add_device(dev);
@@ -529,7 +522,7 @@ int fslmc_vfio_process_group(void)
 	if (ret)
 		FSLMC_VFIO_LOG(DEBUG, "Error in affining qbman swp %d", ret);
 
-	FSLMC_VFIO_LOG(DEBUG, "DPAA2: Added dpbp_count = %d dpio_count=%d\n",
+	FSLMC_VFIO_LOG(DEBUG, "DPAA2: Added dpbp_count = %d dpio_count=%d",
 		      dpbp_count, dpio_count);
 	return 0;
 

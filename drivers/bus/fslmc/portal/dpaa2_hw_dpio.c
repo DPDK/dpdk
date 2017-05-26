@@ -151,8 +151,6 @@ configure_dpio_qbman_swp(struct dpaa2_dpio_dev *dpio_dev)
 	}
 
 	PMD_INIT_LOG(DEBUG, "Qbman Portal ID %d", attr.qbman_portal_id);
-	PMD_INIT_LOG(DEBUG, "Portal CE adr 0x%lX", attr.qbman_portal_ce_offset);
-	PMD_INIT_LOG(DEBUG, "Portal CI adr 0x%lX", attr.qbman_portal_ci_offset);
 
 	/* Configure & setup SW portal */
 	p_des.block = NULL;
@@ -169,8 +167,6 @@ configure_dpio_qbman_swp(struct dpaa2_dpio_dev *dpio_dev)
 		free(dpio_dev->dpio);
 		return -1;
 	}
-
-	PMD_INIT_LOG(DEBUG, "QBMan SW Portal 0x%p\n", dpio_dev->sw_portal);
 
 	return 0;
 }
@@ -359,7 +355,6 @@ dpaa2_create_dpio_device(struct fslmc_vfio_device *vdev,
 		return -1;
 	}
 
-	PMD_DRV_LOG(INFO, "\t Aloocated DPIO [%p]", dpio_dev);
 	dpio_dev->dpio = NULL;
 	dpio_dev->hw_id = object_id;
 	dpio_dev->vfio_fd = vdev->fd;
@@ -374,8 +369,6 @@ dpaa2_create_dpio_device(struct fslmc_vfio_device *vdev,
 		return -1;
 	}
 
-	PMD_DRV_LOG(DEBUG, "\t  Region Offset = %llx", reg_info.offset);
-	PMD_DRV_LOG(DEBUG, "\t  Region Size = %llx", reg_info.size);
 	dpio_dev->ce_size = reg_info.size;
 	dpio_dev->qbman_portal_ce_paddr = (uint64_t)mmap(NULL, reg_info.size,
 				PROT_WRITE | PROT_READ, MAP_SHARED,
@@ -398,8 +391,6 @@ dpaa2_create_dpio_device(struct fslmc_vfio_device *vdev,
 		return -1;
 	}
 
-	PMD_DRV_LOG(DEBUG, "\t  Region Offset = %llx", reg_info.offset);
-	PMD_DRV_LOG(DEBUG, "\t  Region Size = %llx", reg_info.size);
 	dpio_dev->ci_size = reg_info.size;
 	dpio_dev->qbman_portal_ci_paddr = (uint64_t)mmap(NULL, reg_info.size,
 				PROT_WRITE | PROT_READ, MAP_SHARED,
@@ -416,7 +407,7 @@ dpaa2_create_dpio_device(struct fslmc_vfio_device *vdev,
 	io_space_count++;
 	dpio_dev->index = io_space_count;
 	TAILQ_INSERT_TAIL(&dpio_dev_list, dpio_dev, next);
-	PMD_INIT_LOG(DEBUG, "DPAA2:Added [dpio-%d]", object_id);
+	PMD_INIT_LOG(DEBUG, "DPAA2: Added [dpio-%d]", object_id);
 
 	return 0;
 }
