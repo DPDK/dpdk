@@ -50,7 +50,7 @@
 #include <dpaa2_hw_pvt.h>
 #include <dpaa2_hw_mempool.h>
 #include <dpaa2_hw_dpio.h>
-
+#include <mc/fsl_dpmng.h>
 #include "dpaa2_ethdev.h"
 
 static struct rte_dpaa2_driver rte_dpaa2_pmd;
@@ -159,6 +159,39 @@ dpaa2_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 			RTE_LOG(ERR, PMD, "Unable to set vlan filter ret = %d",
 				ret);
 	}
+}
+
+static int
+dpaa2_fw_version_get(struct rte_eth_dev *dev,
+		     char *fw_version,
+		     size_t fw_size)
+{
+	int ret;
+	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+	struct fsl_mc_io *dpni = priv->hw;
+	struct mc_soc_version mc_plat_info = {0};
+	struct mc_version mc_ver_info = {0};
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (mc_get_soc_version(dpni, CMD_PRI_LOW, &mc_plat_info))
+		RTE_LOG(WARNING, PMD, "\tmc_get_soc_version failed\n");
+
+	if (mc_get_version(dpni, CMD_PRI_LOW, &mc_ver_info))
+		RTE_LOG(WARNING, PMD, "\tmc_get_version failed\n");
+
+	ret = snprintf(fw_version, fw_size,
+		       "%x-%d.%d.%d",
+		       mc_plat_info.svr,
+		       mc_ver_info.major,
+		       mc_ver_info.minor,
+		       mc_ver_info.revision);
+
+	ret += 1; /* add the size of '\0' */
+	if (fw_size < (uint32_t)ret)
+		return ret;
+	else
+		return 0;
 }
 
 static void
@@ -1279,6 +1312,7 @@ static struct eth_dev_ops dpaa2_ethdev_ops = {
 	.link_update	   = dpaa2_dev_link_update,
 	.stats_get	       = dpaa2_dev_stats_get,
 	.stats_reset	   = dpaa2_dev_stats_reset,
+	.fw_version_get	   = dpaa2_fw_version_get,
 	.dev_infos_get	   = dpaa2_dev_info_get,
 	.dev_supported_ptypes_get = dpaa2_supported_ptypes_get,
 	.mtu_set           = dpaa2_dev_mtu_set,
