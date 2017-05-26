@@ -973,6 +973,18 @@ eth_link_update(struct rte_eth_dev *dev __rte_unused,
 	return 0;
 }
 
+static uint32_t
+eth_rx_queue_count(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	struct vhost_queue *vq;
+
+	vq = dev->data->rx_queues[rx_queue_id];
+	if (vq == NULL)
+		return 0;
+
+	return rte_vhost_rx_queue_count(vq->vid, vq->virtqueue_id);
+}
+
 static const struct eth_dev_ops ops = {
 	.dev_start = eth_dev_start,
 	.dev_stop = eth_dev_stop,
@@ -984,6 +996,7 @@ static const struct eth_dev_ops ops = {
 	.rx_queue_release = eth_queue_release,
 	.tx_queue_release = eth_queue_release,
 	.tx_done_cleanup = eth_tx_done_cleanup,
+	.rx_queue_count = eth_rx_queue_count,
 	.link_update = eth_link_update,
 	.stats_get = eth_stats_get,
 	.stats_reset = eth_stats_reset,

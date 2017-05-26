@@ -432,6 +432,18 @@ int rte_vhost_get_mem_table(int vid, struct rte_vhost_memory **mem);
 int rte_vhost_get_vhost_vring(int vid, uint16_t vring_idx,
 			      struct rte_vhost_vring *vring);
 
+/**
+ * Get vhost RX queue avail count.
+ *
+ * @param vid
+ *  vhost device ID
+ * @param qid
+ *  virtio queue index in mq case
+ * @return
+ *  num of desc available
+ */
+uint32_t rte_vhost_rx_queue_count(int vid, uint16_t qid);
+
 #ifdef __cplusplus
 }
 #endif

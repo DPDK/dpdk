@@ -45,3 +45,10 @@ DPDK_17.05 {
 	rte_vhost_log_write;
 
 } DPDK_16.07;
+
+DPDK_17.08 {
+	global:
+
+	rte_vhost_rx_queue_count;
+
+} DPDK_17.05;
