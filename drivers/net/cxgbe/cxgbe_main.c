@@ -414,6 +414,36 @@ static void print_port_info(struct adapter *adap)
 	}
 }
 
+static void configure_pcie_ext_tag(struct adapter *adapter)
+{
+	u16 v;
+	int pos = t4_os_find_pci_capability(adapter, PCI_CAP_ID_EXP);
+
+	if (!pos)
+		return;
+
+	if (pos > 0) {
+		t4_os_pci_read_cfg2(adapter, pos + PCI_EXP_DEVCTL, &v);
+		v |= PCI_EXP_DEVCTL_EXT_TAG;
+		t4_os_pci_write_cfg2(adapter, pos + PCI_EXP_DEVCTL, v);
+		if (is_t6(adapter->params.chip)) {
+			t4_set_reg_field(adapter, A_PCIE_CFG2,
+					 V_T6_TOTMAXTAG(M_T6_TOTMAXTAG),
+					 V_T6_TOTMAXTAG(7));
+			t4_set_reg_field(adapter, A_PCIE_CMD_CFG,
+					 V_T6_MINTAG(M_T6_MINTAG),
+					 V_T6_MINTAG(8));
+		} else {
+			t4_set_reg_field(adapter, A_PCIE_CFG2,
+					 V_TOTMAXTAG(M_TOTMAXTAG),
+					 V_TOTMAXTAG(3));
+			t4_set_reg_field(adapter, A_PCIE_CMD_CFG,
+					 V_MINTAG(M_MINTAG),
+					 V_MINTAG(8));
+		}
+	}
+}
+
 /*
  * Tweak configuration based on system architecture, etc.  Most of these have
  * defaults assigned to them by Firmware Configuration Files (if we're using
@@ -799,6 +829,7 @@ static int adap_init0(struct adapter *adap)
 	}
 	t4_init_sge_params(adap);
 	t4_init_tp_params(adap);
+	configure_pcie_ext_tag(adap);
 
 	adap->params.drv_memwin = MEMWIN_NIC;
 	adap->flags |= FW_OK;

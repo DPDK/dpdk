@@ -462,6 +462,7 @@ static inline void t4_write_reg64(struct adapter *adapter, u32 reg_addr,
 #define PCI_CAP_LIST_NEXT       1       /* Next capability in the list */
 #define PCI_EXP_DEVCTL          0x0008  /* Device control */
 #define PCI_EXP_DEVCTL2         40      /* Device Control 2 */
+#define PCI_EXP_DEVCTL_EXT_TAG  0x0100  /* Extended Tag Field Enable */
 #define PCI_EXP_DEVCTL_PAYLOAD  0x00E0  /* Max payload */
 #define PCI_CAP_ID_VPD          0x03    /* Vital Product Data */
 #define PCI_VPD_ADDR            2       /* Address to access (15 bits!) */

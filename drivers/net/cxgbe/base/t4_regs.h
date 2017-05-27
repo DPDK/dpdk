@@ -420,6 +420,26 @@
 #define A_PCIE_FW 0x30b8
 #define A_PCIE_FW_PF 0x30bc
 
+#define A_PCIE_CFG2 0x3018
+
+#define S_TOTMAXTAG    0
+#define M_TOTMAXTAG    0x3U
+#define V_TOTMAXTAG(x) ((x) << S_TOTMAXTAG)
+
+#define S_T6_TOTMAXTAG    0
+#define M_T6_TOTMAXTAG    0x7U
+#define V_T6_TOTMAXTAG(x) ((x) << S_T6_TOTMAXTAG)
+
+#define A_PCIE_CMD_CFG	0x5980
+
+#define S_MINTAG	0
+#define M_MINTAG	0xffU
+#define V_MINTAG(x)	((x) << S_MINTAG)
+
+#define S_T6_MINTAG	0
+#define M_T6_MINTAG	0xffU
+#define V_T6_MINTAG(x)	((x) << S_T6_MINTAG)
+
 /* registers for module CIM */
 #define CIM_BASE_ADDR 0x7b00
 
