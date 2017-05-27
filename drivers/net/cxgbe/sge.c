@@ -771,7 +771,7 @@ static u64 hwcsum(enum chip_type chip, const struct rte_mbuf *m)
 	}
 
 	if (likely(csum_type >= TX_CSUM_TCPIP)) {
-		int hdr_len = V_TXPKT_IPHDR_LEN(m->l3_len);
+		u64 hdr_len = V_TXPKT_IPHDR_LEN(m->l3_len);
 		int eth_hdr_len = m->l2_len;
 
 		if (CHELSIO_CHIP_VERSION(chip) <= CHELSIO_T5)
@@ -1185,9 +1185,15 @@ out_free:
 		else
 			lso->len = htonl(V_LSO_T5_XFER_SIZE(m->pkt_len));
 		cpl = (void *)(lso + 1);
-		cntrl = V_TXPKT_CSUM_TYPE(v6 ? TX_CSUM_TCPIP6 : TX_CSUM_TCPIP) |
-			V_TXPKT_IPHDR_LEN(l3hdr_len) |
-			V_TXPKT_ETHHDR_LEN(eth_xtra_len);
+
+		if (CHELSIO_CHIP_VERSION(adap->params.chip) <= CHELSIO_T5)
+			cntrl = V_TXPKT_ETHHDR_LEN(eth_xtra_len);
+		else
+			cntrl = V_T6_TXPKT_ETHHDR_LEN(eth_xtra_len);
+
+		cntrl |= V_TXPKT_CSUM_TYPE(v6 ? TX_CSUM_TCPIP6 :
+						TX_CSUM_TCPIP) |
+			 V_TXPKT_IPHDR_LEN(l3hdr_len);
 		txq->stats.tso++;
 		txq->stats.tx_cso += m->tso_segsz;
 	}
