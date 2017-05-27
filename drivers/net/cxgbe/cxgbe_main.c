@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2014-2016 Chelsio Communications.
+ *   Copyright(c) 2014-2017 Chelsio Communications.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -1073,10 +1073,20 @@ void cxgbe_close(struct adapter *adapter)
 int cxgbe_probe(struct adapter *adapter)
 {
 	struct port_info *pi;
+	int chip;
 	int func, i;
 	int err = 0;
+	u32 whoami;
 
-	func = G_SOURCEPF(t4_read_reg(adapter, A_PL_WHOAMI));
+	whoami = t4_read_reg(adapter, A_PL_WHOAMI);
+	chip = t4_get_chip_type(adapter,
+			CHELSIO_PCI_ID_VER(adapter->pdev->id.device_id));
+	if (chip < 0)
+		return chip;
+
+	func = CHELSIO_CHIP_VERSION(chip) <= CHELSIO_T5 ?
+	       G_SOURCEPF(whoami) : G_T6_SOURCEPF(whoami);
+
 	adapter->mbox = func;
 	adapter->pf = func;
 

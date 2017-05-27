@@ -47,6 +47,10 @@ New Features
   and inner Ethernet, VLAN, IPv4, IPv6, UDP and TCP pattern items with QUEUE,
   MARK, FLAG and VOID actions for ingress traffic.
 
+* **Added support for Chelsio T6 family of adapters**
+
+  CXGBE PMD updated to run Chelsio T6 family of adapters.
+
 
 Resolved Issues
 ---------------

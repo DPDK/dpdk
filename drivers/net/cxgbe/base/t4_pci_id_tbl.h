@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2014-2015 Chelsio Communications.
+ *   Copyright(c) 2014-2017 Chelsio Communications.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -144,6 +144,19 @@ CH_PCI_DEVICE_ID_TABLE_DEFINE_BEGIN
 	CH_PCI_ID_TABLE_FENTRY(0x5090), /* Custom T540-CR */
 	CH_PCI_ID_TABLE_FENTRY(0x5091), /* Custom T522-CR */
 	CH_PCI_ID_TABLE_FENTRY(0x5092), /* Custom T520-CR */
+
+	/* T6 adapter */
+	CH_PCI_ID_TABLE_FENTRY(0x6001), /* T6225-CR */
+	CH_PCI_ID_TABLE_FENTRY(0x6002), /* T6225-SO-CR */
+	CH_PCI_ID_TABLE_FENTRY(0x6003), /* T6425-CR */
+	CH_PCI_ID_TABLE_FENTRY(0x6005), /* T6225-OCP */
+	CH_PCI_ID_TABLE_FENTRY(0x6007), /* T62100-LP-CR	*/
+	CH_PCI_ID_TABLE_FENTRY(0x6008), /* T62100-SO-CR	*/
+	CH_PCI_ID_TABLE_FENTRY(0x600d), /* T62100-CR */
+	CH_PCI_ID_TABLE_FENTRY(0x6011), /* T6225-LL-CR */
+	CH_PCI_ID_TABLE_FENTRY(0x6014), /* T61100-OCP-SO */
+	CH_PCI_ID_TABLE_FENTRY(0x6080), /* Custom T6225-CR SFP28 */
+	CH_PCI_ID_TABLE_FENTRY(0x6081), /* Custom T62100-CR */
 CH_PCI_DEVICE_ID_TABLE_DEFINE_END;
 
 #endif /* CH_PCI_DEVICE_ID_TABLE_DEFINE_BEGIN */

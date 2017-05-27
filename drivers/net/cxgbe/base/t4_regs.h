@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2014-2015 Chelsio Communications.
+ *   Copyright(c) 2014-2017 Chelsio Communications.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -762,6 +762,11 @@
 #define M_SOURCEPF    0x7U
 #define V_SOURCEPF(x) ((x) << S_SOURCEPF)
 #define G_SOURCEPF(x) (((x) >> S_SOURCEPF) & M_SOURCEPF)
+
+#define S_T6_SOURCEPF    9
+#define M_T6_SOURCEPF    0x7U
+#define V_T6_SOURCEPF(x) ((x) << S_T6_SOURCEPF)
+#define G_T6_SOURCEPF(x) (((x) >> S_T6_SOURCEPF) & M_T6_SOURCEPF)
 
 #define A_PL_PF_INT_ENABLE 0x3c4
 

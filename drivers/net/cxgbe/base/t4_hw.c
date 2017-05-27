@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2014-2016 Chelsio Communications.
+ *   Copyright(c) 2014-2017 Chelsio Communications.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -2044,7 +2044,9 @@ int t4_flash_cfg_addr(struct adapter *adapter)
 void t4_intr_enable(struct adapter *adapter)
 {
 	u32 val = 0;
-	u32 pf = G_SOURCEPF(t4_read_reg(adapter, A_PL_WHOAMI));
+	u32 whoami = t4_read_reg(adapter, A_PL_WHOAMI);
+	u32 pf = CHELSIO_CHIP_VERSION(adapter->params.chip) <= CHELSIO_T5 ?
+		 G_SOURCEPF(whoami) : G_T6_SOURCEPF(whoami);
 
 	if (CHELSIO_CHIP_VERSION(adapter->params.chip) <= CHELSIO_T5)
 		val = F_ERR_DROPPED_DB | F_ERR_EGR_CTXT_PRIO | F_DBFIFO_HP_INT;
@@ -2069,7 +2071,9 @@ void t4_intr_enable(struct adapter *adapter)
  */
 void t4_intr_disable(struct adapter *adapter)
 {
-	u32 pf = G_SOURCEPF(t4_read_reg(adapter, A_PL_WHOAMI));
+	u32 whoami = t4_read_reg(adapter, A_PL_WHOAMI);
+	u32 pf = CHELSIO_CHIP_VERSION(adapter->params.chip) <= CHELSIO_T5 ?
+		 G_SOURCEPF(whoami) : G_T6_SOURCEPF(whoami);
 
 	t4_write_reg(adapter, MYPF_REG(A_PL_PF_INT_ENABLE), 0);
 	t4_set_reg_field(adapter, A_PL_INT_MAP0, 1 << pf, 0);
@@ -3370,6 +3374,33 @@ static void set_pcie_completion_timeout(struct adapter *adapter,
 }
 
 /**
+ * t4_get_chip_type - Determine chip type from device ID
+ * @adap: the adapter
+ * @ver: adapter version
+ */
+int t4_get_chip_type(struct adapter *adap, int ver)
+{
+	enum chip_type chip = 0;
+	u32 pl_rev = G_REV(t4_read_reg(adap, A_PL_REV));
+
+	/* Retrieve adapter's device ID */
+	switch (ver) {
+	case CHELSIO_T5:
+		chip |= CHELSIO_CHIP_CODE(CHELSIO_T5, pl_rev);
+		break;
+	case CHELSIO_T6:
+		chip |= CHELSIO_CHIP_CODE(CHELSIO_T6, pl_rev);
+		break;
+	default:
+		dev_err(adap, "Device %d is not supported\n",
+			adap->params.pci.device_id);
+		return -EINVAL;
+	}
+
+	return chip;
+}
+
+/**
  * t4_prep_adapter - prepare SW and HW for operation
  * @adapter: the adapter
  *
@@ -3405,6 +3436,15 @@ int t4_prep_adapter(struct adapter *adapter)
 		adapter->params.arch.mps_rplc_size = 128;
 		adapter->params.arch.nchan = NCHAN;
 		adapter->params.arch.vfcount = 128;
+		break;
+	case CHELSIO_T6:
+		adapter->params.chip |= CHELSIO_CHIP_CODE(CHELSIO_T6, pl_rev);
+		adapter->params.arch.sge_fl_db = 0;
+		adapter->params.arch.mps_tcam_size =
+						NUM_MPS_T5_CLS_SRAM_L_INSTANCES;
+		adapter->params.arch.mps_rplc_size = 256;
+		adapter->params.arch.nchan = 2;
+		adapter->params.arch.vfcount = 256;
 		break;
 	default:
 		dev_err(adapter, "%s: Device %d is not supported\n",

@@ -1,5 +1,5 @@
 ..  BSD LICENSE
-    Copyright 2015 Chelsio Communications.
+    Copyright 2015-2017 Chelsio Communications.
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -32,8 +32,8 @@ CXGBE Poll Mode Driver
 ======================
 
 The CXGBE PMD (**librte_pmd_cxgbe**) provides poll mode driver support
-for **Chelsio T5** 10/40 Gbps family of adapters. CXGBE PMD has support
-for the latest Linux and FreeBSD operating systems.
+for **Chelsio Terminator** 10/25/40/100 Gbps family of adapters. CXGBE PMD
+has support for the latest Linux and FreeBSD operating systems.
 
 More information can be found at `Chelsio Communications Official Website
 <http://www.chelsio.com>`_.
@@ -55,9 +55,10 @@ CXGBE PMD has support for:
 Limitations
 -----------
 
-The Chelsio T5 devices provide two/four ports but expose a single PCI bus
-address, thus, librte_pmd_cxgbe registers itself as a
-PCI driver that allocates one Ethernet device per detected port.
+The Chelsio Terminator series of devices provide two/four ports but
+expose a single PCI bus address, thus, librte_pmd_cxgbe registers
+itself as a PCI driver that allocates one Ethernet device per detected
+port.
 
 For this reason, one cannot whitelist/blacklist a single port without
 whitelisting/blacklisting the other ports on the same device.
@@ -70,10 +71,16 @@ Supported Chelsio T5 NICs
 - 40G NICs: T580-CR, T580-LP-CR, T580-SO-CR
 - Other T5 NICs: T522-CR
 
+Supported Chelsio T6 NICs
+-------------------------
+
+- 25G NICs: T6425-CR, T6225-CR, T6225-LL-CR, T6225-SO-CR
+- 100G NICs: T62100-CR, T62100-LP-CR, T62100-SO-CR
+
 Prerequisites
 -------------
 
-- Requires firmware version **1.13.32.0** and higher. Visit
+- Requires firmware version **1.16.43.0** and higher. Visit
   `Chelsio Download Center <http://service.chelsio.com>`_ to get latest firmware
   bundled with the latest Chelsio Unified Wire package.
 
@@ -197,12 +204,12 @@ Unified Wire package for Linux operating system are as follows:
 
    .. code-block:: console
 
-      firmware-version: 1.13.32.0, TP 0.1.4.8
+      firmware-version: 1.16.43.0, TP 0.1.4.9
 
 Running testpmd
 ~~~~~~~~~~~~~~~
 
-This section demonstrates how to launch **testpmd** with Chelsio T5
+This section demonstrates how to launch **testpmd** with Chelsio
 devices managed by librte_pmd_cxgbe in Linux operating system.
 
 #. Load the kernel module:
@@ -226,7 +233,7 @@ devices managed by librte_pmd_cxgbe in Linux operating system.
 
    .. note::
 
-      Both the interfaces of a Chelsio T5 2-port adapter are bound to the
+      Both the interfaces of a Chelsio 2-port adapter are bound to the
       same PCI bus address.
 
 #. Unload the kernel module:
@@ -243,7 +250,7 @@ devices managed by librte_pmd_cxgbe in Linux operating system.
 
    .. note::
 
-      Currently, CXGBE PMD only supports the binding of PF4 for Chelsio T5 NICs.
+      Currently, CXGBE PMD only supports the binding of PF4 for Chelsio NICs.
 
    Example output:
 
@@ -255,7 +262,7 @@ devices managed by librte_pmd_cxgbe in Linux operating system.
       EAL:   PCI memory mapped at 0x7fd7c0200000
       EAL:   PCI memory mapped at 0x7fd77cdfd000
       EAL:   PCI memory mapped at 0x7fd7c10b7000
-      PMD: rte_cxgbe_pmd: fw: 1.13.32.0, TP: 0.1.4.8
+      PMD: rte_cxgbe_pmd: fw: 1.16.43.0, TP: 0.1.4.9
       PMD: rte_cxgbe_pmd: Coming up as MASTER: Initializing adapter
       Interactive-mode selected
       Configuring Port 0 (socket 0)
@@ -339,12 +346,12 @@ Unified Wire package for FreeBSD operating system are as follows:
 
    .. code-block:: console
 
-      dev.t5nex.0.firmware_version: 1.13.32.0
+      dev.t5nex.0.firmware_version: 1.16.43.0
 
 Running testpmd
 ~~~~~~~~~~~~~~~
 
-This section demonstrates how to launch **testpmd** with Chelsio T5
+This section demonstrates how to launch **testpmd** with Chelsio
 devices managed by librte_pmd_cxgbe in FreeBSD operating system.
 
 #. Change to DPDK source directory where the target has been compiled in
@@ -413,7 +420,7 @@ devices managed by librte_pmd_cxgbe in FreeBSD operating system.
 
    .. note::
 
-      Both the interfaces of a Chelsio T5 2-port adapter are bound to the
+      Both the interfaces of a Chelsio 2-port adapter are bound to the
       same PCI bus address.
 
 #. Unload the kernel module:
@@ -433,7 +440,7 @@ devices managed by librte_pmd_cxgbe in FreeBSD operating system.
 
    .. note::
 
-      Currently, CXGBE PMD only supports the binding of PF4 for Chelsio T5 NICs.
+      Currently, CXGBE PMD only supports the binding of PF4 for Chelsio NICs.
 
 #. Load nic_uio kernel driver:
 
@@ -457,7 +464,7 @@ devices managed by librte_pmd_cxgbe in FreeBSD operating system.
       EAL:   PCI memory mapped at 0x8007ec000
       EAL:   PCI memory mapped at 0x842800000
       EAL:   PCI memory mapped at 0x80086c000
-      PMD: rte_cxgbe_pmd: fw: 1.13.32.0, TP: 0.1.4.8
+      PMD: rte_cxgbe_pmd: fw: 1.16.43.0, TP: 0.1.4.9
       PMD: rte_cxgbe_pmd: Coming up as MASTER: Initializing adapter
       Interactive-mode selected
       Configuring Port 0 (socket 0)
