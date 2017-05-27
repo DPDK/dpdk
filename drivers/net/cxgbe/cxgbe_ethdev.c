@@ -657,8 +657,6 @@ static void cxgbe_dev_stats_get(struct rte_eth_dev *eth_dev,
 	cxgbe_stats_get(pi, &ps);
 
 	/* RX Stats */
-	eth_stats->ipackets = ps.rx_frames;
-	eth_stats->ibytes   = ps.rx_octets;
 	eth_stats->imissed  = ps.rx_ovflow0 + ps.rx_ovflow1 +
 			      ps.rx_ovflow2 + ps.rx_ovflow3 +
 			      ps.rx_trunc0 + ps.rx_trunc1 +
@@ -678,6 +676,8 @@ static void cxgbe_dev_stats_get(struct rte_eth_dev *eth_dev,
 
 		eth_stats->q_ipackets[i] = rxq->stats.pkts;
 		eth_stats->q_ibytes[i] = rxq->stats.rx_bytes;
+		eth_stats->ipackets += eth_stats->q_ipackets[i];
+		eth_stats->ibytes += eth_stats->q_ibytes[i];
 	}
 
 	for (i = 0; i < pi->n_tx_qsets; i++) {
