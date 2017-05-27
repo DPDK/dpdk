@@ -2844,21 +2844,90 @@ const char *t4_get_port_type_description(enum fw_port_type port_type)
 /**
  * t4_get_mps_bg_map - return the buffer groups associated with a port
  * @adap: the adapter
- * @idx: the port index
+ * @pidx: the port index
  *
  * Returns a bitmap indicating which MPS buffer groups are associated
  * with the given port.  Bit i is set if buffer group i is used by the
  * port.
  */
-unsigned int t4_get_mps_bg_map(struct adapter *adap, int idx)
+unsigned int t4_get_mps_bg_map(struct adapter *adap, unsigned int pidx)
 {
-	u32 n = G_NUMPORTS(t4_read_reg(adap, A_MPS_CMN_CTL));
+	unsigned int chip_version = CHELSIO_CHIP_VERSION(adap->params.chip);
+	unsigned int nports = 1 << G_NUMPORTS(t4_read_reg(adap,
+							  A_MPS_CMN_CTL));
 
-	if (n == 0)
-		return idx == 0 ? 0xf : 0;
-	if (n == 1)
-		return idx < 2 ? (3 << (2 * idx)) : 0;
-	return 1 << idx;
+	if (pidx >= nports) {
+		dev_warn(adap, "MPS Port Index %d >= Nports %d\n",
+			 pidx, nports);
+		return 0;
+	}
+
+	switch (chip_version) {
+	case CHELSIO_T4:
+	case CHELSIO_T5:
+		switch (nports) {
+		case 1: return 0xf;
+		case 2: return 3 << (2 * pidx);
+		case 4: return 1 << pidx;
+		}
+		break;
+
+	case CHELSIO_T6:
+		switch (nports) {
+		case 2: return 1 << (2 * pidx);
+		}
+		break;
+	}
+
+	dev_err(adap, "Need MPS Buffer Group Map for Chip %0x, Nports %d\n",
+		chip_version, nports);
+	return 0;
+}
+
+/**
+ * t4_get_tp_ch_map - return TP ingress channels associated with a port
+ * @adapter: the adapter
+ * @pidx: the port index
+ *
+ * Returns a bitmap indicating which TP Ingress Channels are associated with
+ * a given Port.  Bit i is set if TP Ingress Channel i is used by the Port.
+ */
+unsigned int t4_get_tp_ch_map(struct adapter *adapter, unsigned int pidx)
+{
+	unsigned int chip_version = CHELSIO_CHIP_VERSION(adapter->params.chip);
+	unsigned int nports = 1 << G_NUMPORTS(t4_read_reg(adapter,
+							  A_MPS_CMN_CTL));
+
+	if (pidx >= nports) {
+		dev_warn(adap, "TP Port Index %d >= Nports %d\n",
+			 pidx, nports);
+		return 0;
+	}
+
+	switch (chip_version) {
+	case CHELSIO_T4:
+	case CHELSIO_T5:
+		/* Note that this happens to be the same values as the MPS
+		 * Buffer Group Map for these Chips.  But we replicate the code
+		 * here because they're really separate concepts.
+		 */
+		switch (nports) {
+		case 1: return 0xf;
+		case 2: return 3 << (2 * pidx);
+		case 4: return 1 << pidx;
+		}
+		break;
+
+	case CHELSIO_T6:
+		switch (nports) {
+		case 2: return 1 << pidx;
+		}
+		break;
+	}
+
+	dev_err(adapter, "Need TP Channel Map for Chip %0x, Nports %d\n",
+		chip_version, nports);
+	return 0;
 }
 
 /**

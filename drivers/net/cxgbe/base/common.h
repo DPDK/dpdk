@@ -384,7 +384,8 @@ int t4_get_vpd_params(struct adapter *adapter, struct vpd_params *p);
 int t4_read_flash(struct adapter *adapter, unsigned int addr,
 		  unsigned int nwords, u32 *data, int byte_oriented);
 int t4_flash_cfg_addr(struct adapter *adapter);
-unsigned int t4_get_mps_bg_map(struct adapter *adapter, int idx);
+unsigned int t4_get_mps_bg_map(struct adapter *adapter, unsigned int pidx);
+unsigned int t4_get_tp_ch_map(struct adapter *adapter, unsigned int pidx);
 const char *t4_get_port_type_description(enum fw_port_type port_type);
 void t4_get_port_stats(struct adapter *adap, int idx, struct port_stats *p);
 void t4_get_port_stats_offset(struct adapter *adap, int idx,

@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2014-2016 Chelsio Communications.
+ *   Copyright(c) 2014-2017 Chelsio Communications.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -617,7 +617,7 @@ static int cxgbe_dev_rx_queue_setup(struct rte_eth_dev *eth_dev,
 
 	err = t4_sge_alloc_rxq(adapter, &rxq->rspq, false, eth_dev, msi_idx,
 			       &rxq->fl, t4_ethrx_handler,
-			       t4_get_mps_bg_map(adapter, pi->tx_chan), mp,
+			       t4_get_tp_ch_map(adapter, pi->tx_chan), mp,
 			       queue_idx, socket_id);
 
 	dev_debug(adapter, "%s: err = %d; port_id = %d; cntxt_id = %u\n",
