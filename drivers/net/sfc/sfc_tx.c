@@ -503,7 +503,7 @@ sfc_tx_qstop(struct sfc_adapter *sa, unsigned int sw_index)
 	     (retry_count < SFC_TX_QFLUSH_ATTEMPTS);
 	     ++retry_count) {
 		if (efx_tx_qflush(txq->common) != 0) {
-			txq->state |= SFC_TXQ_FLUSHING;
+			txq->state |= SFC_TXQ_FLUSH_FAILED;
 			break;
 		}
 
