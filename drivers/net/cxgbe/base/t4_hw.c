@@ -3358,6 +3358,49 @@ int t4_fw_restart(struct adapter *adap, unsigned int mbox, int reset)
 }
 
 /**
+ * t4_fl_pkt_align - return the fl packet alignment
+ * @adap: the adapter
+ *
+ * T4 has a single field to specify the packing and padding boundary.
+ * T5 onwards has separate fields for this and hence the alignment for
+ * next packet offset is maximum of these two.
+ */
+int t4_fl_pkt_align(struct adapter *adap)
+{
+	u32 sge_control, sge_control2;
+	unsigned int ingpadboundary, ingpackboundary, fl_align, ingpad_shift;
+
+	sge_control = t4_read_reg(adap, A_SGE_CONTROL);
+
+	/* T4 uses a single control field to specify both the PCIe Padding and
+	 * Packing Boundary.  T5 introduced the ability to specify these
+	 * separately.  The actual Ingress Packet Data alignment boundary
+	 * within Packed Buffer Mode is the maximum of these two
+	 * specifications.
+	 */
+	if (CHELSIO_CHIP_VERSION(adap->params.chip) <= CHELSIO_T5)
+		ingpad_shift = X_INGPADBOUNDARY_SHIFT;
+	else
+		ingpad_shift = X_T6_INGPADBOUNDARY_SHIFT;
+
+	ingpadboundary = 1 << (G_INGPADBOUNDARY(sge_control) + ingpad_shift);
+
+	fl_align = ingpadboundary;
+	if (!is_t4(adap->params.chip)) {
+		sge_control2 = t4_read_reg(adap, A_SGE_CONTROL2);
+		ingpackboundary = G_INGPACKBOUNDARY(sge_control2);
+		if (ingpackboundary == X_INGPACKBOUNDARY_16B)
+			ingpackboundary = 16;
+		else
+			ingpackboundary = 1 << (ingpackboundary +
+					X_INGPACKBOUNDARY_SHIFT);
+
+		fl_align = max(ingpadboundary, ingpackboundary);
+	}
+	return fl_align;
+}
+
+/**
  * t4_fixup_host_params_compat - fix up host-dependent parameters
  * @adap: the adapter
  * @page_size: the host's Base Page Size
@@ -3402,6 +3445,10 @@ int t4_fixup_host_params_compat(struct adapter *adap,
 						  X_INGPADBOUNDARY_SHIFT) |
 				V_EGRSTATUSPAGESIZE(stat_len != 64));
 	else {
+		unsigned int pack_align;
+		unsigned int ingpad, ingpack;
+		unsigned int pcie_cap;
+
 		/*
 		 * T5 introduced the separation of the Free List Padding and
 		 * Packing Boundaries.  Thus, we can select a smaller Padding
@@ -3415,11 +3462,33 @@ int t4_fixup_host_params_compat(struct adapter *adap,
 		 * Size (the minimum unit of transfer to/from Memory).  If we
 		 * have a Padding Boundary which is smaller than the Memory
 		 * Line Size, that'll involve a Read-Modify-Write cycle on the
-		 * Memory Controller which is never good.  For T5 the smallest
-		 * Padding Boundary which we can select is 32 bytes which is
-		 * larger than any known Memory Controller Line Size so we'll
-		 * use that.
+		 * Memory Controller which is never good.
 		 */
+
+		/* We want the Packing Boundary to be based on the Cache Line
+		 * Size in order to help avoid False Sharing performance
+		 * issues between CPUs, etc.  We also want the Packing
+		 * Boundary to incorporate the PCI-E Maximum Payload Size.  We
+		 * get best performance when the Packing Boundary is a
+		 * multiple of the Maximum Payload Size.
+		 */
+		pack_align = fl_align;
+		pcie_cap = t4_os_find_pci_capability(adap, PCI_CAP_ID_EXP);
+		if (pcie_cap) {
+			unsigned int mps, mps_log;
+			u16 devctl;
+
+			/* The PCIe Device Control Maximum Payload Size field
+			 * [bits 7:5] encodes sizes as powers of 2 starting at
+			 * 128 bytes.
+			 */
+			t4_os_pci_read_cfg2(adap, pcie_cap + PCI_EXP_DEVCTL,
+					    &devctl);
+			mps_log = ((devctl & PCI_EXP_DEVCTL_PAYLOAD) >> 5) + 7;
+			mps = 1 << mps_log;
+			if (mps > pack_align)
+				pack_align = mps;
+		}
 
 		/*
 		 * N.B. T5 has a different interpretation of the "0" value for
@@ -3429,19 +3498,36 @@ int t4_fixup_host_params_compat(struct adapter *adap,
 		 * on the other hand, if we wanted 32 bytes, the best we can
 		 * really do is 64 bytes ...
 		 */
-		if (fl_align <= 32) {
+		if (pack_align <= 16) {
+			ingpack = X_INGPACKBOUNDARY_16B;
+			fl_align = 16;
+		} else if (pack_align == 32) {
+			ingpack = X_INGPACKBOUNDARY_64B;
 			fl_align = 64;
-			fl_align_log = 6;
+		} else {
+			unsigned int pack_align_log = cxgbe_fls(pack_align) - 1;
+
+			ingpack = pack_align_log - X_INGPACKBOUNDARY_SHIFT;
+			fl_align = pack_align;
 		}
+
+		/* Use the smallest Ingress Padding which isn't smaller than
+		 * the Memory Controller Read/Write Size.  We'll take that as
+		 * being 8 bytes since we don't know of any system with a
+		 * wider Memory Controller Bus Width.
+		 */
+		if (is_t5(adap->params.chip))
+			ingpad = X_INGPADBOUNDARY_32B;
+		else
+			ingpad = X_T6_INGPADBOUNDARY_8B;
 		t4_set_reg_field(adap, A_SGE_CONTROL,
 				 V_INGPADBOUNDARY(M_INGPADBOUNDARY) |
 				 F_EGRSTATUSPAGESIZE,
-				 V_INGPADBOUNDARY(X_INGPCIEBOUNDARY_32B) |
+				 V_INGPADBOUNDARY(ingpad) |
 				 V_EGRSTATUSPAGESIZE(stat_len != 64));
 		t4_set_reg_field(adap, A_SGE_CONTROL2,
 				 V_INGPACKBOUNDARY(M_INGPACKBOUNDARY),
-				 V_INGPACKBOUNDARY(fl_align_log -
-						   X_INGPACKBOUNDARY_SHIFT));
+				 V_INGPACKBOUNDARY(ingpack));
 	}
 
 	/*

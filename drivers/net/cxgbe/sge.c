@@ -420,7 +420,9 @@ static unsigned int refill_fl_usembufs(struct adapter *adap, struct sge_fl *q,
 		mbuf->nb_segs = 1;
 		mbuf->port = rxq->rspq.port_id;
 
-		mapping = (dma_addr_t)(mbuf->buf_physaddr + mbuf->data_off);
+		mapping = (dma_addr_t)RTE_ALIGN(mbuf->buf_physaddr +
+						mbuf->data_off,
+						adap->sge.fl_align);
 		mapping |= buf_size_idx;
 		*d++ = cpu_to_be64(mapping);
 		set_rx_sw_desc(sd, mbuf, mapping);
@@ -1684,8 +1686,7 @@ int t4_sge_alloc_rxq(struct adapter *adap, struct sge_rspq *iq, bool fwevtq,
 	if (fl) {
 		struct sge_eth_rxq *rxq = container_of(fl, struct sge_eth_rxq,
 						       fl);
-		enum chip_type chip = (enum chip_type)CHELSIO_CHIP_VERSION(
-				adap->params.chip);
+		unsigned int chip_ver = CHELSIO_CHIP_VERSION(adap->params.chip);
 
 		/*
 		 * Allocate the ring for the hardware free list (with space
@@ -1731,9 +1732,12 @@ int t4_sge_alloc_rxq(struct adapter *adap, struct sge_rspq *iq, bool fwevtq,
 		 * Hence maximum allowed burst size will be 448 bytes.
 		 */
 		c.fl0dcaen_to_fl0cidxfthresh =
-			htons(V_FW_IQ_CMD_FL0FBMIN(X_FETCHBURSTMIN_128B) |
-			      V_FW_IQ_CMD_FL0FBMAX((chip <= CHELSIO_T5) ?
-			      X_FETCHBURSTMAX_512B : X_FETCHBURSTMAX_256B));
+			htons(V_FW_IQ_CMD_FL0FBMIN(chip_ver <= CHELSIO_T5 ?
+						   X_FETCHBURSTMIN_128B :
+						   X_FETCHBURSTMIN_64B) |
+			      V_FW_IQ_CMD_FL0FBMAX(chip_ver <= CHELSIO_T5 ?
+						   X_FETCHBURSTMAX_512B :
+						   X_FETCHBURSTMAX_256B));
 		c.fl0size = htons(flsz);
 		c.fl0addr = cpu_to_be64(fl->addr);
 	}
@@ -2189,8 +2193,7 @@ static int t4_sge_init_soft(struct adapter *adap)
 int t4_sge_init(struct adapter *adap)
 {
 	struct sge *s = &adap->sge;
-	u32 sge_control, sge_control2, sge_conm_ctrl;
-	unsigned int ingpadboundary, ingpackboundary;
+	u32 sge_control, sge_conm_ctrl;
 	int ret, egress_threshold;
 
 	/*
@@ -2200,34 +2203,7 @@ int t4_sge_init(struct adapter *adap)
 	sge_control = t4_read_reg(adap, A_SGE_CONTROL);
 	s->pktshift = G_PKTSHIFT(sge_control);
 	s->stat_len = (sge_control & F_EGRSTATUSPAGESIZE) ? 128 : 64;
-
-	/*
-	 * T4 uses a single control field to specify both the PCIe Padding and
-	 * Packing Boundary.  T5 introduced the ability to specify these
-	 * separately.  The actual Ingress Packet Data alignment boundary
-	 * within Packed Buffer Mode is the maximum of these two
-	 * specifications.
-	 */
-	ingpadboundary = 1 << (G_INGPADBOUNDARY(sge_control) +
-			 X_INGPADBOUNDARY_SHIFT);
-	s->fl_align = ingpadboundary;
-
-	if (!is_t4(adap->params.chip) && !adap->use_unpacked_mode) {
-		/*
-		 * T5 has a weird interpretation of one of the PCIe Packing
-		 * Boundary values.  No idea why ...
-		 */
-		sge_control2 = t4_read_reg(adap, A_SGE_CONTROL2);
-		ingpackboundary = G_INGPACKBOUNDARY(sge_control2);
-		if (ingpackboundary == X_INGPACKBOUNDARY_16B)
-			ingpackboundary = 16;
-		else
-			ingpackboundary = 1 << (ingpackboundary +
-					  X_INGPACKBOUNDARY_SHIFT);
-
-		s->fl_align = max(ingpadboundary, ingpackboundary);
-	}
-
+	s->fl_align = t4_fl_pkt_align(adap);
 	ret = t4_sge_init_soft(adap);
 	if (ret < 0) {
 		dev_err(adap, "%s: t4_sge_init_soft failed, error %d\n",

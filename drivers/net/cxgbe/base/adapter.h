@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2014-2016 Chelsio Communications.
+ *   Copyright(c) 2014-2017 Chelsio Communications.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -459,7 +459,9 @@ static inline void t4_write_reg64(struct adapter *adapter, u32 reg_addr,
 #define PCI_CAP_ID_EXP          0x10    /* PCI Express */
 #define PCI_CAP_LIST_ID         0       /* Capability ID */
 #define PCI_CAP_LIST_NEXT       1       /* Next capability in the list */
+#define PCI_EXP_DEVCTL          0x0008  /* Device control */
 #define PCI_EXP_DEVCTL2         40      /* Device Control 2 */
+#define PCI_EXP_DEVCTL_PAYLOAD  0x00E0  /* Max payload */
 #define PCI_CAP_ID_VPD          0x03    /* Vital Product Data */
 #define PCI_VPD_ADDR            2       /* Address to access (15 bits!) */
 #define PCI_VPD_ADDR_F          0x8000  /* Write 0, 1 indicates completion */

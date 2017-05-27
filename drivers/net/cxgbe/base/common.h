@@ -282,6 +282,7 @@ int t4_fw_bye(struct adapter *adap, unsigned int mbox);
 int t4_fw_reset(struct adapter *adap, unsigned int mbox, int reset);
 int t4_fw_halt(struct adapter *adap, unsigned int mbox, int reset);
 int t4_fw_restart(struct adapter *adap, unsigned int mbox, int reset);
+int t4_fl_pkt_align(struct adapter *adap);
 int t4_fixup_host_params_compat(struct adapter *adap, unsigned int page_size,
 				unsigned int cache_line_size,
 				enum chip_type chip_compat);
