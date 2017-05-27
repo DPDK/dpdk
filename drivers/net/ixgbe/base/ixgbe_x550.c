@@ -86,6 +86,10 @@ s32 ixgbe_init_ops_X550(struct ixgbe_hw *hw)
 	/* Manageability interface */
 	mac->ops.set_fw_drv_ver = ixgbe_set_fw_drv_ver_x550;
 	switch (hw->device_id) {
+	case IXGBE_DEV_ID_X550EM_X_1G_T:
+		hw->mac.ops.led_on = NULL;
+		hw->mac.ops.led_off = NULL;
+		break;
 	case IXGBE_DEV_ID_X550EM_X_10G_T:
 	case IXGBE_DEV_ID_X550EM_A_10G_T:
 		hw->mac.ops.led_on = ixgbe_led_on_t_X550em;
@@ -957,6 +961,7 @@ s32 ixgbe_init_ops_X550EM_x(struct ixgbe_hw *hw)
 	if (hw->device_id == IXGBE_DEV_ID_X550EM_X_1G_T) {
 		mac->ops.setup_fc = NULL;
 		mac->ops.setup_eee = NULL;
+		mac->ops.init_led_link_act = NULL;
 	}
 
 	return ret_val;
@@ -2425,6 +2430,7 @@ s32 ixgbe_init_phy_ops_X550em(struct ixgbe_hw *hw)
 	case ixgbe_phy_ext_1g_t:
 		/* link is managed by FW */
 		phy->ops.setup_link = NULL;
+		phy->ops.reset = NULL;
 		break;
 	case ixgbe_phy_x550em_xfi:
 		/* link is managed by HW */
