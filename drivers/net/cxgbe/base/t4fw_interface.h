@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2014-2015 Chelsio Communications.
+ *   Copyright(c) 2014-2017 Chelsio Communications.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -1061,7 +1061,7 @@ struct fw_vi_stats_cmd {
 enum fw_port_cap {
 	FW_PORT_CAP_SPEED_100M		= 0x0001,
 	FW_PORT_CAP_SPEED_1G		= 0x0002,
-	FW_PORT_CAP_SPEED_2_5G		= 0x0004,
+	FW_PORT_CAP_SPEED_25G		= 0x0004,
 	FW_PORT_CAP_SPEED_10G		= 0x0008,
 	FW_PORT_CAP_SPEED_40G		= 0x0010,
 	FW_PORT_CAP_SPEED_100G		= 0x0020,
@@ -1076,6 +1076,12 @@ enum fw_port_cap {
 	FW_PORT_CAP_802_3_PAUSE		= 0x4000,
 	FW_PORT_CAP_802_3_ASM_DIR	= 0x8000,
 };
+
+#define S_FW_PORT_CAP_SPEED     0
+#define M_FW_PORT_CAP_SPEED     0x3f
+#define V_FW_PORT_CAP_SPEED(x)  ((x) << S_FW_PORT_CAP_SPEED)
+#define G_FW_PORT_CAP_SPEED(x) \
+	(((x) >> S_FW_PORT_CAP_SPEED) & M_FW_PORT_CAP_SPEED)
 
 enum fw_port_mdi {
 	FW_PORT_CAP_MDI_AUTO,
@@ -1279,6 +1285,14 @@ enum fw_port_type {
 	FW_PORT_TYPE_QSFP	= 14, /* No, 4, Yes, No, No, No, 40G */
 	FW_PORT_TYPE_BP40_BA	= 15,
 	/* No, 4, No, No, Yes, Yes, 40G/10G/1G, BP ANGE */
+	FW_PORT_TYPE_KR4_100G   = 16,   /* No, 4, 100G*/
+	FW_PORT_TYPE_CR4_QSFP   = 17,   /* No, 4, 100G*/
+	FW_PORT_TYPE_CR4_CFP4   = 18,   /* No, 4, 100G*/
+	FW_PORT_TYPE_CR_QSFP    = 19,   /* No, 1, 25G*/
+	FW_PORT_TYPE_CR_CFP4    = 20,   /* No, 1, 25G*/
+	FW_PORT_TYPE_CR2_QSFP   = 21,   /* No, 2, 50G*/
+	FW_PORT_TYPE_CR2_CFP4   = 22,   /* No, 2, 50G*/
+	FW_PORT_TYPE_SFP28      = 23,   /* No, 1, 25G*/
 
 	FW_PORT_TYPE_NONE = M_FW_PORT_CMD_PTYPE
 };

@@ -2522,9 +2522,8 @@ int t4_get_tp_version(struct adapter *adapter, u32 *vers)
 			     1, vers, 0);
 }
 
-#define ADVERT_MASK (FW_PORT_CAP_SPEED_100M | FW_PORT_CAP_SPEED_1G |\
-		FW_PORT_CAP_SPEED_10G | FW_PORT_CAP_SPEED_40G | \
-		FW_PORT_CAP_SPEED_100G | FW_PORT_CAP_ANEG)
+#define ADVERT_MASK (V_FW_PORT_CAP_SPEED(M_FW_PORT_CAP_SPEED) | \
+		     FW_PORT_CAP_ANEG)
 
 /**
  * t4_link_l1cfg - apply link configuration to MAC/PHY
@@ -2669,6 +2668,12 @@ const char *t4_get_port_type_description(enum fw_port_type port_type)
 		"QSA",
 		"QSFP",
 		"BP40_BA",
+		"KR4_100G",
+		"CR4_QSFP",
+		"CR_QSFP",
+		"CR2_QSFP",
+		"SFP28",
+		"KR_SFP28",
 	};
 
 	if (port_type < ARRAY_SIZE(port_type_description))
@@ -3745,7 +3750,7 @@ int t4_handle_fw_rpl(struct adapter *adap, const __be64 *rpl)
 
 	if (opcode == FW_PORT_CMD && action == FW_PORT_ACTION_GET_PORT_INFO) {
 		/* link/module state change message */
-		int speed = 0, fc = 0, i;
+		unsigned int speed = 0, fc = 0, i;
 		int chan = G_FW_PORT_CMD_PORTID(be32_to_cpu(p->op_to_portid));
 		struct port_info *pi = NULL;
 		struct link_config *lc;
@@ -3763,8 +3768,12 @@ int t4_handle_fw_rpl(struct adapter *adap, const __be64 *rpl)
 			speed = ETH_SPEED_NUM_1G;
 		else if (stat & V_FW_PORT_CMD_LSPEED(FW_PORT_CAP_SPEED_10G))
 			speed = ETH_SPEED_NUM_10G;
+		else if (stat & V_FW_PORT_CMD_LSPEED(FW_PORT_CAP_SPEED_25G))
+			speed = ETH_SPEED_NUM_25G;
 		else if (stat & V_FW_PORT_CMD_LSPEED(FW_PORT_CAP_SPEED_40G))
 			speed = ETH_SPEED_NUM_40G;
+		else if (stat & V_FW_PORT_CMD_LSPEED(FW_PORT_CAP_SPEED_100G))
+			speed = ETH_SPEED_NUM_100G;
 
 		for_each_port(adap, i) {
 			pi = adap2pinfo(adap, i);

@@ -206,9 +206,12 @@ static inline bool is_x_1g_port(const struct link_config *lc)
 
 static inline bool is_x_10g_port(const struct link_config *lc)
 {
-	return ((lc->supported & FW_PORT_CAP_SPEED_10G) != 0 ||
-		(lc->supported & FW_PORT_CAP_SPEED_40G) != 0 ||
-		(lc->supported & FW_PORT_CAP_SPEED_100G) != 0);
+	unsigned int speeds, high_speeds;
+
+	speeds = V_FW_PORT_CAP_SPEED(G_FW_PORT_CAP_SPEED(lc->supported));
+	high_speeds = speeds & ~(FW_PORT_CAP_SPEED_100M | FW_PORT_CAP_SPEED_1G);
+
+	return high_speeds != 0;
 }
 
 inline void init_rspq(struct adapter *adap, struct sge_rspq *q,
@@ -374,13 +377,17 @@ static void print_port_info(struct adapter *adap)
 		char *bufp = buf;
 
 		if (pi->link_cfg.supported & FW_PORT_CAP_SPEED_100M)
-			bufp += sprintf(bufp, "100/");
+			bufp += sprintf(bufp, "100M/");
 		if (pi->link_cfg.supported & FW_PORT_CAP_SPEED_1G)
-			bufp += sprintf(bufp, "1000/");
+			bufp += sprintf(bufp, "1G/");
 		if (pi->link_cfg.supported & FW_PORT_CAP_SPEED_10G)
 			bufp += sprintf(bufp, "10G/");
+		if (pi->link_cfg.supported & FW_PORT_CAP_SPEED_25G)
+			bufp += sprintf(bufp, "25G/");
 		if (pi->link_cfg.supported & FW_PORT_CAP_SPEED_40G)
 			bufp += sprintf(bufp, "40G/");
+		if (pi->link_cfg.supported & FW_PORT_CAP_SPEED_100G)
+			bufp += sprintf(bufp, "100G/");
 		if (bufp != buf)
 			--bufp;
 		sprintf(bufp, "BASE-%s",
@@ -829,10 +836,10 @@ void t4_os_portmod_changed(const struct adapter *adap, int port_id)
 		dev_info(adap, "Port%d: %s port module inserted\n", pi->port_id,
 			 mod_str[pi->mod_type]);
 	else if (pi->mod_type == FW_PORT_MOD_TYPE_NOTSUPPORTED)
-		dev_info(adap, "Port%d: unsupported optical port module inserted\n",
+		dev_info(adap, "Port%d: unsupported port module inserted\n",
 			 pi->port_id);
 	else if (pi->mod_type == FW_PORT_MOD_TYPE_UNKNOWN)
-		dev_info(adap, "Port%d: unknown port module inserted, forcing TWINAX\n",
+		dev_info(adap, "Port%d: unknown port module inserted\n",
 			 pi->port_id);
 	else if (pi->mod_type == FW_PORT_MOD_TYPE_ERROR)
 		dev_info(adap, "Port%d: transceiver module error\n",
