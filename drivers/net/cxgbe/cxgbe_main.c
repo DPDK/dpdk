@@ -662,26 +662,6 @@ static int adap_init0(struct adapter *adap)
 	}
 
 	/*
-	 * Find out what ports are available to us.  Note that we need to do
-	 * this before calling adap_init0_no_config() since it needs nports
-	 * and portvec ...
-	 */
-	v = V_FW_PARAMS_MNEM(FW_PARAMS_MNEM_DEV) |
-	    V_FW_PARAMS_PARAM_X(FW_PARAMS_PARAM_DEV_PORTVEC);
-	ret = t4_query_params(adap, adap->mbox, adap->pf, 0, 1, &v, &port_vec);
-	if (ret < 0) {
-		dev_err(adap, "%s: failure in t4_queury_params; error = %d\n",
-			__func__, ret);
-		goto bye;
-	}
-
-	adap->params.nports = hweight32(port_vec);
-	adap->params.portvec = port_vec;
-
-	dev_debug(adap, "%s: adap->params.nports = %u\n", __func__,
-		  adap->params.nports);
-
-	/*
 	 * If the firmware is initialized already (and we're not forcing a
 	 * master initialization), note that we're living with existing
 	 * adapter parameters.  Otherwise, it's time to try initializing the
@@ -704,6 +684,22 @@ static int adap_init0(struct adapter *adap)
 		dev_err(adap, "could not initialize adapter, error %d\n", -ret);
 		goto bye;
 	}
+
+	/* Find out what ports are available to us. */
+	v = V_FW_PARAMS_MNEM(FW_PARAMS_MNEM_DEV) |
+	    V_FW_PARAMS_PARAM_X(FW_PARAMS_PARAM_DEV_PORTVEC);
+	ret = t4_query_params(adap, adap->mbox, adap->pf, 0, 1, &v, &port_vec);
+	if (ret < 0) {
+		dev_err(adap, "%s: failure in t4_query_params; error = %d\n",
+			__func__, ret);
+		goto bye;
+	}
+
+	adap->params.nports = hweight32(port_vec);
+	adap->params.portvec = port_vec;
+
+	dev_debug(adap, "%s: adap->params.nports = %u\n", __func__,
+		  adap->params.nports);
 
 	/*
 	 * Give the SGE code a chance to pull in anything that it needs ...
