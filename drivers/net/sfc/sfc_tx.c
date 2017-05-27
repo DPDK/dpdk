@@ -479,6 +479,7 @@ sfc_tx_qstop(struct sfc_adapter *sa, unsigned int sw_index)
 	struct sfc_txq *txq;
 	unsigned int retry_count;
 	unsigned int wait_count;
+	int rc;
 
 	sfc_log_init(sa, "TxQ = %u", sw_index);
 
@@ -502,8 +503,10 @@ sfc_tx_qstop(struct sfc_adapter *sa, unsigned int sw_index)
 	     ((txq->state & SFC_TXQ_FLUSHED) == 0) &&
 	     (retry_count < SFC_TX_QFLUSH_ATTEMPTS);
 	     ++retry_count) {
-		if (efx_tx_qflush(txq->common) != 0) {
-			txq->state |= SFC_TXQ_FLUSH_FAILED;
+		rc = efx_tx_qflush(txq->common);
+		if (rc != 0) {
+			txq->state |= (rc == EALREADY) ?
+				SFC_TXQ_FLUSHED : SFC_TXQ_FLUSH_FAILED;
 			break;
 		}
 
