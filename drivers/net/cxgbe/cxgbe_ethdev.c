@@ -339,6 +339,8 @@ static int cxgbe_dev_start(struct rte_eth_dev *eth_dev)
 			goto out;
 	}
 
+	cxgbe_enable_rx_queues(pi);
+
 	err = setup_rss(pi);
 	if (err)
 		goto out;

@@ -984,33 +984,22 @@ int setup_rss(struct port_info *pi)
 /*
  * Enable NAPI scheduling and interrupt generation for all Rx queues.
  */
-static void enable_rx(struct adapter *adap)
+static void enable_rx(struct adapter *adap, struct sge_rspq *q)
 {
-	struct sge *s = &adap->sge;
-	struct sge_rspq *q = &s->fw_evtq;
-	int i, j;
-
 	/* 0-increment GTS to start the timer and enable interrupts */
 	t4_write_reg(adap, MYPF_REG(A_SGE_PF_GTS),
 		     V_SEINTARM(q->intr_params) |
 		     V_INGRESSQID(q->cntxt_id));
+}
 
-	for_each_port(adap, i) {
-		const struct port_info *pi = &adap->port[i];
-		struct rte_eth_dev *eth_dev = pi->eth_dev;
+void cxgbe_enable_rx_queues(struct port_info *pi)
+{
+	struct adapter *adap = pi->adapter;
+	struct sge *s = &adap->sge;
+	unsigned int i;
 
-		for (j = 0; j < eth_dev->data->nb_rx_queues; j++) {
-			q = eth_dev->data->rx_queues[j];
-
-			/*
-			 * 0-increment GTS to start the timer and enable
-			 * interrupts
-			 */
-			t4_write_reg(adap, MYPF_REG(A_SGE_PF_GTS),
-				     V_SEINTARM(q->intr_params) |
-				     V_INGRESSQID(q->cntxt_id));
-		}
-	}
+	for (i = 0; i < pi->n_rx_qsets; i++)
+		enable_rx(adap, &s->ethrxq[pi->first_qset + i].rspq);
 }
 
 /**
@@ -1023,7 +1012,7 @@ static void enable_rx(struct adapter *adap)
  */
 int cxgbe_up(struct adapter *adap)
 {
-	enable_rx(adap);
+	enable_rx(adap, &adap->sge.fw_evtq);
 	t4_sge_tx_monitor_start(adap);
 	t4_intr_enable(adap);
 	adap->flags |= FULL_INIT_DONE;

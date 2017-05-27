@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2014-2015 Chelsio Communications.
+ *   Copyright(c) 2014-2017 Chelsio Communications.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -59,5 +59,6 @@ int setup_sge_fwevtq(struct adapter *adapter);
 void cfg_queues(struct rte_eth_dev *eth_dev);
 int cfg_queue_count(struct rte_eth_dev *eth_dev);
 int setup_rss(struct port_info *pi);
+void cxgbe_enable_rx_queues(struct port_info *pi);
 
 #endif /* _CXGBE_H_ */
