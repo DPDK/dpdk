@@ -683,6 +683,10 @@ static void write_sgl(struct rte_mbuf *mbuf, struct sge_txq *q,
 #define Q_IDXDIFF(q, idx) IDXDIFF((q)->pidx, (q)->idx, (q)->size)
 #define R_IDXDIFF(q, idx) IDXDIFF((q)->cidx, (q)->idx, (q)->size)
 
+#define PIDXDIFF(head, tail, wrap) \
+	((tail) >= (head) ? (tail) - (head) : (wrap) - (head) + (tail))
+#define P_IDXDIFF(q, idx) PIDXDIFF((q)->cidx, idx, (q)->size)
+
 /**
  * ring_tx_db - ring a Tx queue's doorbell
  * @adap: the adapter
@@ -1461,74 +1465,101 @@ static int process_responses(struct sge_rspq *q, int budget,
 		rsp_type = G_RSPD_TYPE(rc->u.type_gen);
 
 		if (likely(rsp_type == X_RSPD_TYPE_FLBUF)) {
-			const struct rx_sw_desc *rsd =
-						&rxq->fl.sdesc[rxq->fl.cidx];
-			const struct rss_header *rss_hdr =
-						(const void *)q->cur_desc;
-			const struct cpl_rx_pkt *cpl =
-						(const void *)&q->cur_desc[1];
-			struct rte_mbuf *pkt, *npkt;
-			u32 len, bufsz;
-			bool csum_ok;
-			u16 err_vec;
+			unsigned int stat_pidx;
+			int stat_pidx_diff;
 
-			len = ntohl(rc->pldbuflen_qid);
-			BUG_ON(!(len & F_RSPD_NEWBUF));
-			pkt = rsd->buf;
-			npkt = pkt;
-			len = G_RSPD_LEN(len);
-			pkt->pkt_len = len;
+			stat_pidx = ntohs(q->stat->pidx);
+			stat_pidx_diff = P_IDXDIFF(q, stat_pidx);
+			while (stat_pidx_diff && budget_left) {
+				const struct rx_sw_desc *rsd =
+					&rxq->fl.sdesc[rxq->fl.cidx];
+				const struct rss_header *rss_hdr =
+					(const void *)q->cur_desc;
+				const struct cpl_rx_pkt *cpl =
+					(const void *)&q->cur_desc[1];
+				struct rte_mbuf *pkt, *npkt;
+				u32 len, bufsz;
+				bool csum_ok;
+				u16 err_vec;
 
-			/* Compressed error vector is enabled for
-			 * T6 only
-			 */
-			if (q->adapter->params.tp.rx_pkt_encap)
-				err_vec = G_T6_COMPR_RXERR_VEC(
-						ntohs(cpl->err_vec));
-			else
-				err_vec = ntohs(cpl->err_vec);
-			csum_ok = cpl->csum_calc && !err_vec;
+				rc = (const struct rsp_ctrl *)
+				     ((const char *)q->cur_desc +
+				      (q->iqe_len - sizeof(*rc)));
 
-			/* Chain mbufs into len if necessary */
-			while (len) {
-				struct rte_mbuf *new_pkt = rsd->buf;
+				rsp_type = G_RSPD_TYPE(rc->u.type_gen);
+				if (unlikely(rsp_type != X_RSPD_TYPE_FLBUF))
+					break;
 
-				bufsz = min(get_buf_size(q->adapter, rsd), len);
-				new_pkt->data_len = bufsz;
-				unmap_rx_buf(&rxq->fl);
-				len -= bufsz;
-				npkt->next = new_pkt;
-				npkt = new_pkt;
-				pkt->nb_segs++;
-				rsd = &rxq->fl.sdesc[rxq->fl.cidx];
+				len = ntohl(rc->pldbuflen_qid);
+				BUG_ON(!(len & F_RSPD_NEWBUF));
+				pkt = rsd->buf;
+				npkt = pkt;
+				len = G_RSPD_LEN(len);
+				pkt->pkt_len = len;
+
+				/* Compressed error vector is enabled for
+				 * T6 only
+				 */
+				if (q->adapter->params.tp.rx_pkt_encap)
+					err_vec = G_T6_COMPR_RXERR_VEC(
+							ntohs(cpl->err_vec));
+				else
+					err_vec = ntohs(cpl->err_vec);
+				csum_ok = cpl->csum_calc && !err_vec;
+
+				/* Chain mbufs into len if necessary */
+				while (len) {
+					struct rte_mbuf *new_pkt = rsd->buf;
+
+					bufsz = min(get_buf_size(q->adapter,
+								 rsd), len);
+					new_pkt->data_len = bufsz;
+					unmap_rx_buf(&rxq->fl);
+					len -= bufsz;
+					npkt->next = new_pkt;
+					npkt = new_pkt;
+					pkt->nb_segs++;
+					rsd = &rxq->fl.sdesc[rxq->fl.cidx];
+				}
+				npkt->next = NULL;
+				pkt->nb_segs--;
+
+				if (cpl->l2info & htonl(F_RXF_IP)) {
+					pkt->packet_type = RTE_PTYPE_L3_IPV4;
+					if (unlikely(!csum_ok))
+						pkt->ol_flags |=
+							PKT_RX_IP_CKSUM_BAD;
+
+					if ((cpl->l2info &
+					     htonl(F_RXF_UDP | F_RXF_TCP)) &&
+					    !csum_ok)
+						pkt->ol_flags |=
+							PKT_RX_L4_CKSUM_BAD;
+				} else if (cpl->l2info & htonl(F_RXF_IP6)) {
+					pkt->packet_type = RTE_PTYPE_L3_IPV6;
+				}
+
+				if (!rss_hdr->filter_tid &&
+				    rss_hdr->hash_type) {
+					pkt->ol_flags |= PKT_RX_RSS_HASH;
+					pkt->hash.rss =
+						ntohl(rss_hdr->hash_val);
+				}
+
+				if (cpl->vlan_ex) {
+					pkt->ol_flags |= PKT_RX_VLAN_PKT;
+					pkt->vlan_tci = ntohs(cpl->vlan);
+				}
+
+				rxq->stats.pkts++;
+				rxq->stats.rx_bytes += pkt->pkt_len;
+				rx_pkts[budget - budget_left] = pkt;
+
+				rspq_next(q);
+				budget_left--;
+				stat_pidx_diff--;
 			}
-			npkt->next = NULL;
-			pkt->nb_segs--;
-
-			if (cpl->l2info & htonl(F_RXF_IP)) {
-				pkt->packet_type = RTE_PTYPE_L3_IPV4;
-				if (unlikely(!csum_ok))
-					pkt->ol_flags |= PKT_RX_IP_CKSUM_BAD;
-
-				if ((cpl->l2info &
-				     htonl(F_RXF_UDP | F_RXF_TCP)) && !csum_ok)
-					pkt->ol_flags |= PKT_RX_L4_CKSUM_BAD;
-			} else if (cpl->l2info & htonl(F_RXF_IP6)) {
-				pkt->packet_type = RTE_PTYPE_L3_IPV6;
-			}
-
-			if (!rss_hdr->filter_tid && rss_hdr->hash_type) {
-				pkt->ol_flags |= PKT_RX_RSS_HASH;
-				pkt->hash.rss = ntohl(rss_hdr->hash_val);
-			}
-
-			if (cpl->vlan_ex) {
-				pkt->ol_flags |= PKT_RX_VLAN_PKT;
-				pkt->vlan_tci = ntohs(cpl->vlan);
-			}
-			rxq->stats.pkts++;
-			rxq->stats.rx_bytes += pkt->pkt_len;
-			rx_pkts[budget - budget_left] = pkt;
+			continue;
 		} else if (likely(rsp_type == X_RSPD_TYPE_CPL)) {
 			ret = q->handler(q, q->cur_desc, NULL);
 		} else {
