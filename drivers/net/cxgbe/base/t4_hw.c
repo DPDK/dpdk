@@ -57,7 +57,8 @@
 #include "t4_regs_values.h"
 #include "t4fw_interface.h"
 
-static void init_link_config(struct link_config *lc, unsigned int caps);
+static void init_link_config(struct link_config *lc, unsigned int pcaps,
+			     unsigned int acaps);
 
 /**
  * t4_read_mtu_tbl - returns the values in the HW path MTU table
@@ -2542,13 +2543,23 @@ int t4_link_l1cfg(struct adapter *adap, unsigned int mbox, unsigned int port,
 		  struct link_config *lc)
 {
 	struct fw_port_cmd c;
-	unsigned int fc = 0, mdi = V_FW_PORT_CAP_MDI(FW_PORT_CAP_MDI_AUTO);
+	unsigned int mdi = V_FW_PORT_CAP_MDI(FW_PORT_CAP_MDI_AUTO);
+	unsigned int fc, fec;
 
 	lc->link_ok = 0;
+	fc = 0;
 	if (lc->requested_fc & PAUSE_RX)
 		fc |= FW_PORT_CAP_FC_RX;
 	if (lc->requested_fc & PAUSE_TX)
 		fc |= FW_PORT_CAP_FC_TX;
+
+	fec = 0;
+	if (lc->requested_fec & FEC_RS)
+		fec |= FW_PORT_CAP_FEC_RS;
+	if (lc->requested_fec & FEC_BASER_RS)
+		fec |= FW_PORT_CAP_FEC_BASER_RS;
+	if (lc->requested_fec & FEC_RESERVED)
+		fec |= FW_PORT_CAP_FEC_RESERVED;
 
 	memset(&c, 0, sizeof(c));
 	c.op_to_portid = cpu_to_be32(V_FW_CMD_OP(FW_PORT_CMD) |
@@ -2560,13 +2571,16 @@ int t4_link_l1cfg(struct adapter *adap, unsigned int mbox, unsigned int port,
 
 	if (!(lc->supported & FW_PORT_CAP_ANEG)) {
 		c.u.l1cfg.rcap = cpu_to_be32((lc->supported & ADVERT_MASK) |
-					     fc);
-		lc->fc = lc->requested_fc & (PAUSE_RX | PAUSE_TX);
+					     fc | fec);
+		lc->fc = lc->requested_fc & ~PAUSE_AUTONEG;
+		lc->fec = lc->requested_fec;
 	} else if (lc->autoneg == AUTONEG_DISABLE) {
-		c.u.l1cfg.rcap = cpu_to_be32(lc->requested_speed | fc | mdi);
-		lc->fc = lc->requested_fc & (PAUSE_RX | PAUSE_TX);
+		c.u.l1cfg.rcap = cpu_to_be32(lc->requested_speed | fc |
+					     fec | mdi);
+		lc->fc = lc->requested_fc & ~PAUSE_AUTONEG;
+		lc->fec = lc->requested_fec;
 	} else {
-		c.u.l1cfg.rcap = cpu_to_be32(lc->advertising | fc | mdi);
+		c.u.l1cfg.rcap = cpu_to_be32(lc->advertising | fc | fec | mdi);
 	}
 
 	return t4_wr_mbox(adap, mbox, &c, sizeof(c), NULL);
@@ -3831,19 +3845,37 @@ void t4_reset_link_config(struct adapter *adap, int idx)
 /**
  * init_link_config - initialize a link's SW state
  * @lc: structure holding the link state
- * @caps: link capabilities
+ * @pcaps: link Port Capabilities
+ * @acaps: link current Advertised Port Capabilities
  *
  * Initializes the SW state maintained for each link, including the link's
  * capabilities and default speed/flow-control/autonegotiation settings.
  */
-static void init_link_config(struct link_config *lc,
-			     unsigned int caps)
+static void init_link_config(struct link_config *lc, unsigned int pcaps,
+			     unsigned int acaps)
 {
-	lc->supported = caps;
+	unsigned int fec;
+
+	lc->supported = pcaps;
 	lc->requested_speed = 0;
 	lc->speed = 0;
 	lc->requested_fc = 0;
 	lc->fc = 0;
+
+	/**
+	 * For Forward Error Control, we default to whatever the Firmware
+	 * tells us the Link is currently advertising.
+	 */
+	fec = 0;
+	if (acaps & FW_PORT_CAP_FEC_RS)
+		fec |= FEC_RS;
+	if (acaps & FW_PORT_CAP_FEC_BASER_RS)
+		fec |= FEC_BASER_RS;
+	if (acaps & FW_PORT_CAP_FEC_RESERVED)
+		fec |= FEC_RESERVED;
+	lc->requested_fec = fec;
+	lc->fec = fec;
+
 	if (lc->supported & FW_PORT_CAP_ANEG) {
 		lc->advertising = lc->supported & ADVERT_MASK;
 		lc->autoneg = AUTONEG_ENABLE;
@@ -4399,7 +4431,8 @@ int t4_port_init(struct adapter *adap, int mbox, int pf, int vf)
 		p->port_type = G_FW_PORT_CMD_PTYPE(ret);
 		p->mod_type = FW_PORT_MOD_TYPE_NA;
 
-		init_link_config(&p->link_cfg, be16_to_cpu(c.u.info.pcap));
+		init_link_config(&p->link_cfg, be16_to_cpu(c.u.info.pcap),
+				 be16_to_cpu(c.u.info.acap));
 		j++;
 	}
 	return 0;
