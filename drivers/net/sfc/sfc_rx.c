@@ -529,6 +529,7 @@ sfc_rx_qflush(struct sfc_adapter *sa, unsigned int sw_index)
 	struct sfc_rxq *rxq;
 	unsigned int retry_count;
 	unsigned int wait_count;
+	int rc;
 
 	rxq = sa->rxq_info[sw_index].rxq;
 	SFC_ASSERT(rxq->state & SFC_RXQ_STARTED);
@@ -541,8 +542,10 @@ sfc_rx_qflush(struct sfc_adapter *sa, unsigned int sw_index)
 	     ((rxq->state & SFC_RXQ_FLUSHED) == 0) &&
 	     (retry_count < SFC_RX_QFLUSH_ATTEMPTS);
 	     ++retry_count) {
-		if (efx_rx_qflush(rxq->common) != 0) {
-			rxq->state |= SFC_RXQ_FLUSH_FAILED;
+		rc = efx_rx_qflush(rxq->common);
+		if (rc != 0) {
+			rxq->state |= (rc == EALREADY) ?
+				SFC_RXQ_FLUSHED : SFC_RXQ_FLUSH_FAILED;
 			break;
 		}
 		rxq->state &= ~SFC_RXQ_FLUSH_FAILED;
