@@ -51,6 +51,11 @@ New Features
 
   CXGBE PMD updated to run Chelsio T6 family of adapters.
 
+* **Added latency and performance improvements for cxgbe**
+
+  TX and RX path reworked to improve performance.  Also reduced latency
+  for slow traffic.
+
 
 Resolved Issues
 ---------------

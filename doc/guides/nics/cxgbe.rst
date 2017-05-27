@@ -130,6 +130,10 @@ enabling debugging options may affect system performance.
 
   Toggle display of receiving data path run-time check messages.
 
+- ``CONFIG_RTE_LIBRTE_CXGBE_TPUT`` (default **y**)
+
+  Toggle behaviour to prefer Throughput or Latency.
+
 .. _driver-compilation:
 
 Driver compilation and testing

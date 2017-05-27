@@ -82,7 +82,7 @@
 /*
  * Ingress Context field values
  */
-#define X_UPDATEDELIVERY_INTERRUPT	1
+#define X_UPDATEDELIVERY_STATUS_PAGE	2
 
 #define X_RSPD_TYPE_FLBUF		0
 #define X_RSPD_TYPE_CPL			1

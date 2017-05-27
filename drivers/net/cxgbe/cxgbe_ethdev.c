@@ -104,7 +104,8 @@ static uint16_t cxgbe_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		pkts_remain = nb_pkts - total_sent;
 
 		for (pkts_sent = 0; pkts_sent < pkts_remain; pkts_sent++) {
-			ret = t4_eth_xmit(txq, tx_pkts[total_sent + pkts_sent]);
+			ret = t4_eth_xmit(txq, tx_pkts[total_sent + pkts_sent],
+					  nb_pkts);
 			if (ret < 0)
 				break;
 		}

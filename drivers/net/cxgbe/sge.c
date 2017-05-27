@@ -848,7 +848,7 @@ static inline void ship_tx_pkt_coalesce_wr(struct adapter *adap,
 
 	/* fill the pkts WR header */
 	wr = (void *)&q->desc[q->pidx];
-	wr->op_pkd = htonl(V_FW_WR_OP(FW_ETH_TX_PKTS_WR));
+	wr->op_pkd = htonl(V_FW_WR_OP(FW_ETH_TX_PKTS2_WR));
 
 	wr_mid = V_FW_WR_LEN16(DIV_ROUND_UP(q->coalesce.flits, 2));
 	ndesc = flits_to_desc(q->coalesce.flits);
@@ -971,7 +971,7 @@ static inline int tx_do_packet_coalesce(struct sge_eth_txq *txq,
 					struct rte_mbuf *mbuf,
 					int flits, struct adapter *adap,
 					const struct port_info *pi,
-					dma_addr_t *addr)
+					dma_addr_t *addr, uint16_t nb_pkts)
 {
 	u64 cntrl, *end;
 	struct sge_txq *q = &txq->q;
@@ -980,6 +980,10 @@ static inline int tx_do_packet_coalesce(struct sge_eth_txq *txq,
 	struct cpl_tx_pkt_core *cpl;
 	struct tx_sw_desc *sd;
 	unsigned int idx = q->coalesce.idx, len = mbuf->pkt_len;
+
+#ifdef RTE_LIBRTE_CXGBE_TPUT
+	RTE_SET_USED(nb_pkts);
+#endif
 
 	if (q->coalesce.type == 0) {
 		mc = (struct ulp_txpkt *)q->coalesce.ptr;
@@ -1050,7 +1054,11 @@ static inline int tx_do_packet_coalesce(struct sge_eth_txq *txq,
 	sd->coalesce.idx = (idx & 1) + 1;
 
 	/* send the coaelsced work request if max reached */
-	if (++q->coalesce.idx == ETH_COALESCE_PKT_NUM)
+	if (++q->coalesce.idx == ETH_COALESCE_PKT_NUM
+#ifndef RTE_LIBRTE_CXGBE_TPUT
+	    || q->coalesce.idx >= nb_pkts
+#endif
+	    )
 		ship_tx_pkt_coalesce_wr(adap, txq);
 	return 0;
 }
@@ -1062,7 +1070,8 @@ static inline int tx_do_packet_coalesce(struct sge_eth_txq *txq,
  *
  * Add a packet to an SGE Ethernet Tx queue.  Runs with softirqs disabled.
  */
-int t4_eth_xmit(struct sge_eth_txq *txq, struct rte_mbuf *mbuf)
+int t4_eth_xmit(struct sge_eth_txq *txq, struct rte_mbuf *mbuf,
+		uint16_t nb_pkts)
 {
 	const struct port_info *pi;
 	struct cpl_tx_pkt_lso_core *lso;
@@ -1116,7 +1125,7 @@ out_free:
 			}
 			rte_prefetch0((volatile void *)addr);
 			return tx_do_packet_coalesce(txq, mbuf, cflits, adap,
-						     pi, addr);
+						     pi, addr, nb_pkts);
 		} else {
 			return -EBUSY;
 		}
@@ -1398,20 +1407,6 @@ int t4_ethrx_handler(struct sge_rspq *q, const __be64 *rsp,
 	return 0;
 }
 
-/**
- * is_new_response - check if a response is newly written
- * @r: the response descriptor
- * @q: the response queue
- *
- * Returns true if a response descriptor contains a yet unprocessed
- * response.
- */
-static inline bool is_new_response(const struct rsp_ctrl *r,
-				   const struct sge_rspq *q)
-{
-	return (r->u.type_gen >> S_RSPD_GEN) == q->gen;
-}
-
 #define CXGB4_MSG_AN ((void *)1)
 
 /**
@@ -1453,11 +1448,11 @@ static int process_responses(struct sge_rspq *q, int budget,
 	struct sge_eth_rxq *rxq = container_of(q, struct sge_eth_rxq, rspq);
 
 	while (likely(budget_left)) {
+		if (q->cidx == ntohs(q->stat->pidx))
+			break;
+
 		rc = (const struct rsp_ctrl *)
 		     ((const char *)q->cur_desc + (q->iqe_len - sizeof(*rc)));
-
-		if (!is_new_response(rc, q))
-			break;
 
 		/*
 		 * Ensure response has been read
@@ -1548,35 +1543,6 @@ static int process_responses(struct sge_rspq *q, int budget,
 
 		rspq_next(q);
 		budget_left--;
-
-		if (R_IDXDIFF(q, gts_idx) >= 64) {
-			unsigned int cidx_inc = R_IDXDIFF(q, gts_idx);
-			unsigned int params;
-			u32 val;
-
-			if (fl_cap(&rxq->fl) - rxq->fl.avail >= 64)
-				__refill_fl(q->adapter, &rxq->fl);
-			params = V_QINTR_TIMER_IDX(X_TIMERREG_UPDATE_CIDX);
-			q->next_intr_params = params;
-			val = V_CIDXINC(cidx_inc) | V_SEINTARM(params);
-
-			if (unlikely(!q->bar2_addr))
-				t4_write_reg(q->adapter, MYPF_REG(A_SGE_PF_GTS),
-					     val |
-					     V_INGRESSQID((u32)q->cntxt_id));
-			else {
-				writel(val | V_INGRESSQID(q->bar2_qid),
-				       (void *)((uintptr_t)q->bar2_addr +
-				       SGE_UDB_GTS));
-				/*
-				 * This Write memory Barrier will force the
-				 * write to the User Doorbell area to be
-				 * flushed.
-				 */
-				wmb();
-			}
-			q->gts_idx = q->cidx;
-		}
 	}
 
 	/*
@@ -1594,10 +1560,38 @@ static int process_responses(struct sge_rspq *q, int budget,
 int cxgbe_poll(struct sge_rspq *q, struct rte_mbuf **rx_pkts,
 	       unsigned int budget, unsigned int *work_done)
 {
-	int err = 0;
+	struct sge_eth_rxq *rxq = container_of(q, struct sge_eth_rxq, rspq);
+	unsigned int cidx_inc;
+	unsigned int params;
+	u32 val;
 
 	*work_done = process_responses(q, budget, rx_pkts);
-	return err;
+
+	if (*work_done) {
+		cidx_inc = R_IDXDIFF(q, gts_idx);
+
+		if (q->offset >= 0 && fl_cap(&rxq->fl) - rxq->fl.avail >= 64)
+			__refill_fl(q->adapter, &rxq->fl);
+
+		params = q->intr_params;
+		q->next_intr_params = params;
+		val = V_CIDXINC(cidx_inc) | V_SEINTARM(params);
+
+		if (unlikely(!q->bar2_addr)) {
+			t4_write_reg(q->adapter, MYPF_REG(A_SGE_PF_GTS),
+				     val | V_INGRESSQID((u32)q->cntxt_id));
+		} else {
+			writel(val | V_INGRESSQID(q->bar2_qid),
+			       (void *)((uintptr_t)q->bar2_addr + SGE_UDB_GTS));
+			/* This Write memory Barrier will force the
+			 * write to the User Doorbell area to be
+			 * flushed.
+			 */
+			wmb();
+		}
+		q->gts_idx = q->cidx;
+	}
+	return 0;
 }
 
 /**
@@ -1687,18 +1681,20 @@ int t4_sge_alloc_rxq(struct adapter *adap, struct sge_rspq *iq, bool fwevtq,
 		      V_FW_IQ_CMD_IQASYNCH(fwevtq) |
 		      V_FW_IQ_CMD_VIID(pi->viid) |
 		      V_FW_IQ_CMD_IQANDST(intr_idx < 0) |
-		      V_FW_IQ_CMD_IQANUD(X_UPDATEDELIVERY_INTERRUPT) |
+		      V_FW_IQ_CMD_IQANUD(X_UPDATEDELIVERY_STATUS_PAGE) |
 		      V_FW_IQ_CMD_IQANDSTINDEX(intr_idx >= 0 ? intr_idx :
 							       -intr_idx - 1));
 	c.iqdroprss_to_iqesize =
-		htons(V_FW_IQ_CMD_IQPCIECH(pi->tx_chan) |
+		htons(V_FW_IQ_CMD_IQPCIECH(cong > 0 ? cxgbe_ffs(cong) - 1 :
+						      pi->tx_chan) |
 		      F_FW_IQ_CMD_IQGTSMODE |
 		      V_FW_IQ_CMD_IQINTCNTTHRESH(iq->pktcnt_idx) |
 		      V_FW_IQ_CMD_IQESIZE(ilog2(iq->iqe_len) - 4));
 	c.iqsize = htons(iq->size);
 	c.iqaddr = cpu_to_be64(iq->phys_addr);
 	if (cong >= 0)
-		c.iqns_to_fl0congen = htonl(F_FW_IQ_CMD_IQFLINTCONGEN);
+		c.iqns_to_fl0congen = htonl(F_FW_IQ_CMD_IQFLINTCONGEN |
+					    F_FW_IQ_CMD_IQRO);
 
 	if (fl) {
 		struct sge_eth_rxq *rxq = container_of(fl, struct sge_eth_rxq,
@@ -1773,6 +1769,7 @@ int t4_sge_alloc_rxq(struct adapter *adap, struct sge_rspq *iq, bool fwevtq,
 	iq->bar2_addr = bar2_address(adap, iq->cntxt_id, T4_BAR2_QTYPE_INGRESS,
 				     &iq->bar2_qid);
 	iq->size--;                           /* subtract status entry */
+	iq->stat = (void *)&iq->desc[iq->size * 8];
 	iq->eth_dev = eth_dev;
 	iq->handler = hnd;
 	iq->port_id = pi->port_id;

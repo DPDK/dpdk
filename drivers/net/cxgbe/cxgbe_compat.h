@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2014-2015 Chelsio Communications.
+ *   Copyright(c) 2014-2017 Chelsio Communications.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -224,6 +224,15 @@ static inline uint8_t hweight32(uint32_t word32)
 static inline int cxgbe_fls(int x)
 {
 	return x ? sizeof(x) * 8 - __builtin_clz(x) : 0;
+}
+
+/**
+ * cxgbe_ffs - find first bit set
+ * @x: the word to search
+ */
+static inline int cxgbe_ffs(int x)
+{
+	return x ? __builtin_ffs(x) : 0;
 }
 
 static inline unsigned long ilog2(unsigned long n)

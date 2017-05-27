@@ -148,6 +148,7 @@ struct sge_rspq {                   /* state for an SGE response queue */
 
 	void __iomem *bar2_addr;    /* address of BAR2 Queue registers */
 	unsigned int bar2_qid;      /* Queue ID for BAR2 Queue registers */
+	struct sge_qstat *stat;
 
 	unsigned int cidx;          /* consumer index */
 	unsigned int gts_idx;	    /* last gts write sent */
@@ -708,7 +709,8 @@ void reclaim_completed_tx(struct sge_txq *q);
 void t4_free_sge_resources(struct adapter *adap);
 void t4_sge_tx_monitor_start(struct adapter *adap);
 void t4_sge_tx_monitor_stop(struct adapter *adap);
-int t4_eth_xmit(struct sge_eth_txq *txq, struct rte_mbuf *mbuf);
+int t4_eth_xmit(struct sge_eth_txq *txq, struct rte_mbuf *mbuf,
+		uint16_t nb_pkts);
 int t4_ethrx_handler(struct sge_rspq *q, const __be64 *rsp,
 		     const struct pkt_gl *gl);
 int t4_sge_init(struct adapter *adap);

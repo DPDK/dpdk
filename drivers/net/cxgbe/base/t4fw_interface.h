@@ -84,6 +84,7 @@ enum fw_memtype {
 enum fw_wr_opcodes {
 	FW_ETH_TX_PKT_WR	= 0x08,
 	FW_ETH_TX_PKTS_WR	= 0x09,
+	FW_ETH_TX_PKTS2_WR      = 0x78,
 };
 
 /*
@@ -590,6 +591,13 @@ struct fw_iq_cmd {
 #define V_FW_IQ_CMD_IQESIZE(x)	((x) << S_FW_IQ_CMD_IQESIZE)
 #define G_FW_IQ_CMD_IQESIZE(x)	\
 	(((x) >> S_FW_IQ_CMD_IQESIZE) & M_FW_IQ_CMD_IQESIZE)
+
+#define S_FW_IQ_CMD_IQRO                30
+#define M_FW_IQ_CMD_IQRO                0x1
+#define V_FW_IQ_CMD_IQRO(x)             ((x) << S_FW_IQ_CMD_IQRO)
+#define G_FW_IQ_CMD_IQRO(x)             \
+	(((x) >> S_FW_IQ_CMD_IQRO) & M_FW_IQ_CMD_IQRO)
+#define F_FW_IQ_CMD_IQRO                V_FW_IQ_CMD_IQRO(1U)
 
 #define S_FW_IQ_CMD_IQFLINTCONGEN	27
 #define M_FW_IQ_CMD_IQFLINTCONGEN	0x1

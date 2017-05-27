@@ -301,7 +301,7 @@ void cfg_queues(struct rte_eth_dev *eth_dev)
 		for (i = 0; i < ARRAY_SIZE(s->ethrxq); i++) {
 			struct sge_eth_rxq *r = &s->ethrxq[i];
 
-			init_rspq(adap, &r->rspq, 0, 0, 1024, 64);
+			init_rspq(adap, &r->rspq, 5, 32, 1024, 64);
 			r->usembufs = 1;
 			r->fl.size = (r->usembufs ? 1024 : 72);
 		}
@@ -444,6 +444,9 @@ static int adap_init0_tweaks(struct adapter *adapter)
 	t4_set_reg_field(adapter, A_SGE_FLM_CFG,
 			 V_CREDITCNT(M_CREDITCNT) | M_CREDITCNTPACKING,
 			 V_CREDITCNT(3) | V_CREDITCNTPACKING(1));
+
+	t4_set_reg_field(adapter, A_SGE_INGRESS_RX_THRESHOLD,
+			 V_THRESHOLD_3(M_THRESHOLD_3), V_THRESHOLD_3(32U));
 
 	t4_set_reg_field(adapter, A_SGE_CONTROL2, V_IDMAARBROUNDROBIN(1U),
 			 V_IDMAARBROUNDROBIN(1U));
