@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2014-2015 Chelsio Communications.
+ *   Copyright(c) 2014-2017 Chelsio Communications.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -261,6 +261,20 @@ struct cpl_rx_pkt {
 #define S_RXF_IP6    25
 #define V_RXF_IP6(x) ((x) << S_RXF_IP6)
 #define F_RXF_IP6    V_RXF_IP6(1U)
+
+/* rx_pkt.err_vec fields */
+/* In T6, rx_pkt.err_vec indicates
+ * RxError Error vector (16b) or
+ * Encapsulating header length (8b),
+ * Outer encapsulation type (2b) and
+ * compressed error vector (6b) if CRxPktEnc is
+ * enabled in TP_OUT_CONFIG
+ */
+#define S_T6_COMPR_RXERR_VEC    0
+#define M_T6_COMPR_RXERR_VEC    0x3F
+#define V_T6_COMPR_RXERR_VEC(x) ((x) << S_T6_COMPR_RXERR_VEC)
+#define G_T6_COMPR_RXERR_VEC(x) \
+	(((x) >> S_T6_COMPR_RXERR_VEC) & M_T6_COMPR_RXERR_VEC)
 
 /* cpl_fw*.type values */
 enum {

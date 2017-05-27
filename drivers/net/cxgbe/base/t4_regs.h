@@ -443,6 +443,12 @@
 #define F_UPCRST    V_UPCRST(1U)
 
 /* registers for module TP */
+#define A_TP_OUT_CONFIG 0x7d04
+
+#define S_CRXPKTENC    3
+#define V_CRXPKTENC(x) ((x) << S_CRXPKTENC)
+#define F_CRXPKTENC    V_CRXPKTENC(1U)
+
 #define TP_BASE_ADDR 0x7d00
 
 #define A_TP_TIMER_RESOLUTION 0x7d90

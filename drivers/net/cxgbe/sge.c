@@ -1352,10 +1352,16 @@ int t4_ethrx_handler(struct sge_rspq *q, const __be64 *rsp,
 	const struct rss_header *rss_hdr;
 	bool csum_ok;
 	struct sge_eth_rxq *rxq = container_of(q, struct sge_eth_rxq, rspq);
+	u16 err_vec;
 
 	rss_hdr = (const void *)rsp;
 	pkt = (const void *)&rsp[1];
-	csum_ok = pkt->csum_calc && !pkt->err_vec;
+	/* Compressed error vector is enabled for T6 only */
+	if (q->adapter->params.tp.rx_pkt_encap)
+		err_vec = G_T6_COMPR_RXERR_VEC(ntohs(pkt->err_vec));
+	else
+		err_vec = ntohs(pkt->err_vec);
+	csum_ok = pkt->csum_calc && !err_vec;
 
 	mbuf = t4_pktgl_to_mbuf(si);
 	if (unlikely(!mbuf)) {
@@ -1466,9 +1472,10 @@ static int process_responses(struct sge_rspq *q, int budget,
 						(const void *)q->cur_desc;
 			const struct cpl_rx_pkt *cpl =
 						(const void *)&q->cur_desc[1];
-			bool csum_ok = cpl->csum_calc && !cpl->err_vec;
 			struct rte_mbuf *pkt, *npkt;
 			u32 len, bufsz;
+			bool csum_ok;
+			u16 err_vec;
 
 			len = ntohl(rc->pldbuflen_qid);
 			BUG_ON(!(len & F_RSPD_NEWBUF));
@@ -1476,6 +1483,16 @@ static int process_responses(struct sge_rspq *q, int budget,
 			npkt = pkt;
 			len = G_RSPD_LEN(len);
 			pkt->pkt_len = len;
+
+			/* Compressed error vector is enabled for
+			 * T6 only
+			 */
+			if (q->adapter->params.tp.rx_pkt_encap)
+				err_vec = G_T6_COMPR_RXERR_VEC(
+						ntohs(cpl->err_vec));
+			else
+				err_vec = ntohs(cpl->err_vec);
+			csum_ok = cpl->csum_calc && !err_vec;
 
 			/* Chain mbufs into len if necessary */
 			while (len) {

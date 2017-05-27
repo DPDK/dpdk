@@ -4594,6 +4594,14 @@ int t4_init_tp_params(struct adapter *adap)
 			 &adap->params.tp.ingress_config, 1,
 			 A_TP_INGRESS_CONFIG);
 
+	/* For T6, cache the adapter's compressed error vector
+	 * and passing outer header info for encapsulated packets.
+	 */
+	if (CHELSIO_CHIP_VERSION(adap->params.chip) > CHELSIO_T5) {
+		v = t4_read_reg(adap, A_TP_OUT_CONFIG);
+		adap->params.tp.rx_pkt_encap = (v & F_CRXPKTENC) ? 1 : 0;
+	}
+
 	/*
 	 * Now that we have TP_VLAN_PRI_MAP cached, we can calculate the field
 	 * shift positions of several elements of the Compressed Filter Tuple
