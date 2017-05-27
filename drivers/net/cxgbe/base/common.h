@@ -216,7 +216,9 @@ struct adapter_params {
 	unsigned int sf_nsec;             /* # of flash sectors */
 
 	unsigned int fw_vers;
+	unsigned int bs_vers;
 	unsigned int tp_vers;
+	unsigned int er_vers;
 
 	unsigned short mtus[NMTUS];
 	unsigned short a_wnd[NCCTRL_WIN];
@@ -390,8 +392,8 @@ void t4_get_port_stats_offset(struct adapter *adap, int idx,
 			      struct port_stats *offset);
 void t4_clr_port_stats(struct adapter *adap, int idx);
 void t4_reset_link_config(struct adapter *adap, int idx);
-int t4_get_fw_version(struct adapter *adapter, u32 *vers);
-int t4_get_tp_version(struct adapter *adapter, u32 *vers);
+int t4_get_version_info(struct adapter *adapter);
+void t4_dump_version_info(struct adapter *adapter);
 int t4_get_flash_params(struct adapter *adapter);
 int t4_get_chip_type(struct adapter *adap, int ver);
 int t4_prep_adapter(struct adapter *adapter);

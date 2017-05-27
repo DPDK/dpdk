@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2014-2016 Chelsio Communications.
+ *   Copyright(c) 2014-2017 Chelsio Communications.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -124,12 +124,28 @@ struct rsp_ctrl {
 
 enum {
 	/*
+	 * Various Expansion-ROM boot images, etc.
+	 */
+	FLASH_EXP_ROM_START_SEC = 0,
+	FLASH_EXP_ROM_NSECS = 6,
+	FLASH_EXP_ROM_START = FLASH_START(FLASH_EXP_ROM_START_SEC),
+	FLASH_EXP_ROM_MAX_SIZE = FLASH_MAX_SIZE(FLASH_EXP_ROM_NSECS),
+
+	/*
 	 * Location of firmware image in FLASH.
 	 */
 	FLASH_FW_START_SEC = 8,
 	FLASH_FW_NSECS = 16,
 	FLASH_FW_START = FLASH_START(FLASH_FW_START_SEC),
 	FLASH_FW_MAX_SIZE = FLASH_MAX_SIZE(FLASH_FW_NSECS),
+
+	/*
+	 * Location of bootstrap firmware image in FLASH.
+	 */
+	FLASH_FWBOOTSTRAP_START_SEC = 27,
+	FLASH_FWBOOTSTRAP_NSECS = 1,
+	FLASH_FWBOOTSTRAP_START = FLASH_START(FLASH_FWBOOTSTRAP_START_SEC),
+	FLASH_FWBOOTSTRAP_MAX_SIZE = FLASH_MAX_SIZE(FLASH_FWBOOTSTRAP_NSECS),
 
 	/*
 	 * Location of Firmware Configuration File in FLASH.

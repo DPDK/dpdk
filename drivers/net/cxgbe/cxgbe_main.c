@@ -366,6 +366,17 @@ static int init_rss(struct adapter *adap)
 	return 0;
 }
 
+/**
+ * Dump basic information about the adapter.
+ */
+static void print_adapter_info(struct adapter *adap)
+{
+	/**
+	 * Hardware/Firmware/etc. Version/Revision IDs.
+	 */
+	t4_dump_version_info(adap);
+}
+
 static void print_port_info(struct adapter *adap)
 {
 	int i;
@@ -648,18 +659,7 @@ static int adap_init0(struct adapter *adap)
 		state = (enum dev_state)((unsigned)state & ~DEV_STATE_INIT);
 	}
 
-	t4_get_fw_version(adap, &adap->params.fw_vers);
-	t4_get_tp_version(adap, &adap->params.tp_vers);
-
-	dev_info(adap, "fw: %u.%u.%u.%u, TP: %u.%u.%u.%u\n",
-		 G_FW_HDR_FW_VER_MAJOR(adap->params.fw_vers),
-		 G_FW_HDR_FW_VER_MINOR(adap->params.fw_vers),
-		 G_FW_HDR_FW_VER_MICRO(adap->params.fw_vers),
-		 G_FW_HDR_FW_VER_BUILD(adap->params.fw_vers),
-		 G_FW_HDR_FW_VER_MAJOR(adap->params.tp_vers),
-		 G_FW_HDR_FW_VER_MINOR(adap->params.tp_vers),
-		 G_FW_HDR_FW_VER_MICRO(adap->params.tp_vers),
-		 G_FW_HDR_FW_VER_BUILD(adap->params.tp_vers));
+	t4_get_version_info(adap);
 
 	ret = t4_get_core_clock(adap, &adap->params.vpd);
 	if (ret < 0) {
@@ -1206,6 +1206,7 @@ allocate_mac:
 
 	cfg_queues(adapter->eth_dev);
 
+	print_adapter_info(adapter);
 	print_port_info(adapter);
 
 	err = init_rss(adapter);

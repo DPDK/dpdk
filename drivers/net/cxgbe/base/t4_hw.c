@@ -2497,16 +2497,67 @@ int t4_read_flash(struct adapter *adapter, unsigned int addr,
 }
 
 /**
+ * t4_get_exprom_version - return the Expansion ROM version (if any)
+ * @adapter: the adapter
+ * @vers: where to place the version
+ *
+ * Reads the Expansion ROM header from FLASH and returns the version
+ * number (if present) through the @vers return value pointer.  We return
+ * this in the Firmware Version Format since it's convenient.  Return
+ * 0 on success, -ENOENT if no Expansion ROM is present.
+ */
+static int t4_get_exprom_version(struct adapter *adapter, u32 *vers)
+{
+	struct exprom_header {
+		unsigned char hdr_arr[16];      /* must start with 0x55aa */
+		unsigned char hdr_ver[4];       /* Expansion ROM version */
+	} *hdr;
+	u32 exprom_header_buf[DIV_ROUND_UP(sizeof(struct exprom_header),
+					   sizeof(u32))];
+	int ret;
+
+	ret = t4_read_flash(adapter, FLASH_EXP_ROM_START,
+			    ARRAY_SIZE(exprom_header_buf),
+			    exprom_header_buf, 0);
+	if (ret)
+		return ret;
+
+	hdr = (struct exprom_header *)exprom_header_buf;
+	if (hdr->hdr_arr[0] != 0x55 || hdr->hdr_arr[1] != 0xaa)
+		return -ENOENT;
+
+	*vers = (V_FW_HDR_FW_VER_MAJOR(hdr->hdr_ver[0]) |
+		 V_FW_HDR_FW_VER_MINOR(hdr->hdr_ver[1]) |
+		 V_FW_HDR_FW_VER_MICRO(hdr->hdr_ver[2]) |
+		 V_FW_HDR_FW_VER_BUILD(hdr->hdr_ver[3]));
+	return 0;
+}
+
+/**
  * t4_get_fw_version - read the firmware version
  * @adapter: the adapter
  * @vers: where to place the version
  *
  * Reads the FW version from flash.
  */
-int t4_get_fw_version(struct adapter *adapter, u32 *vers)
+static int t4_get_fw_version(struct adapter *adapter, u32 *vers)
 {
 	return t4_read_flash(adapter, FLASH_FW_START +
 			     offsetof(struct fw_hdr, fw_ver), 1, vers, 0);
+}
+
+/**
+ *     t4_get_bs_version - read the firmware bootstrap version
+ *     @adapter: the adapter
+ *     @vers: where to place the version
+ *
+ *     Reads the FW Bootstrap version from flash.
+ */
+static int t4_get_bs_version(struct adapter *adapter, u32 *vers)
+{
+	return t4_read_flash(adapter, FLASH_FWBOOTSTRAP_START +
+			     offsetof(struct fw_hdr, fw_ver), 1,
+			     vers, 0);
 }
 
 /**
@@ -2516,11 +2567,106 @@ int t4_get_fw_version(struct adapter *adapter, u32 *vers)
  *
  * Reads the TP microcode version from flash.
  */
-int t4_get_tp_version(struct adapter *adapter, u32 *vers)
+static int t4_get_tp_version(struct adapter *adapter, u32 *vers)
 {
 	return t4_read_flash(adapter, FLASH_FW_START +
 			     offsetof(struct fw_hdr, tp_microcode_ver),
 			     1, vers, 0);
+}
+
+/**
+ * t4_get_version_info - extract various chip/firmware version information
+ * @adapter: the adapter
+ *
+ * Reads various chip/firmware version numbers and stores them into the
+ * adapter Adapter Parameters structure.  If any of the efforts fails
+ * the first failure will be returned, but all of the version numbers
+ * will be read.
+ */
+int t4_get_version_info(struct adapter *adapter)
+{
+	int ret = 0;
+
+#define FIRST_RET(__getvinfo) \
+	do { \
+		int __ret = __getvinfo; \
+		if (__ret && !ret) \
+			ret = __ret; \
+	} while (0)
+
+	FIRST_RET(t4_get_fw_version(adapter, &adapter->params.fw_vers));
+	FIRST_RET(t4_get_bs_version(adapter, &adapter->params.bs_vers));
+	FIRST_RET(t4_get_tp_version(adapter, &adapter->params.tp_vers));
+	FIRST_RET(t4_get_exprom_version(adapter, &adapter->params.er_vers));
+
+#undef FIRST_RET
+
+	return ret;
+}
+
+/**
+ * t4_dump_version_info - dump all of the adapter configuration IDs
+ * @adapter: the adapter
+ *
+ * Dumps all of the various bits of adapter configuration version/revision
+ * IDs information.  This is typically called at some point after
+ * t4_get_version_info() has been called.
+ */
+void t4_dump_version_info(struct adapter *adapter)
+{
+	/**
+	 * Device information.
+	 */
+	dev_info(adapter, "Chelsio rev %d\n",
+		 CHELSIO_CHIP_RELEASE(adapter->params.chip));
+
+	/**
+	 * Firmware Version.
+	 */
+	if (!adapter->params.fw_vers)
+		dev_warn(adapter, "No firmware loaded\n");
+	else
+		dev_info(adapter, "Firmware version: %u.%u.%u.%u\n",
+			 G_FW_HDR_FW_VER_MAJOR(adapter->params.fw_vers),
+			 G_FW_HDR_FW_VER_MINOR(adapter->params.fw_vers),
+			 G_FW_HDR_FW_VER_MICRO(adapter->params.fw_vers),
+			 G_FW_HDR_FW_VER_BUILD(adapter->params.fw_vers));
+
+	/**
+	 * Bootstrap Firmware Version.
+	 */
+	if (!adapter->params.bs_vers)
+		dev_warn(adapter, "No bootstrap loaded\n");
+	else
+		dev_info(adapter, "Bootstrap version: %u.%u.%u.%u\n",
+			 G_FW_HDR_FW_VER_MAJOR(adapter->params.bs_vers),
+			 G_FW_HDR_FW_VER_MINOR(adapter->params.bs_vers),
+			 G_FW_HDR_FW_VER_MICRO(adapter->params.bs_vers),
+			 G_FW_HDR_FW_VER_BUILD(adapter->params.bs_vers));
+
+	/**
+	 * TP Microcode Version.
+	 */
+	if (!adapter->params.tp_vers)
+		dev_warn(adapter, "No TP Microcode loaded\n");
+	else
+		dev_info(adapter, "TP Microcode version: %u.%u.%u.%u\n",
+			 G_FW_HDR_FW_VER_MAJOR(adapter->params.tp_vers),
+			 G_FW_HDR_FW_VER_MINOR(adapter->params.tp_vers),
+			 G_FW_HDR_FW_VER_MICRO(adapter->params.tp_vers),
+			 G_FW_HDR_FW_VER_BUILD(adapter->params.tp_vers));
+
+	/**
+	 * Expansion ROM version.
+	 */
+	if (!adapter->params.er_vers)
+		dev_info(adapter, "No Expansion ROM loaded\n");
+	else
+		dev_info(adapter, "Expansion ROM version: %u.%u.%u.%u\n",
+			 G_FW_HDR_FW_VER_MAJOR(adapter->params.er_vers),
+			 G_FW_HDR_FW_VER_MINOR(adapter->params.er_vers),
+			 G_FW_HDR_FW_VER_MICRO(adapter->params.er_vers),
+			 G_FW_HDR_FW_VER_BUILD(adapter->params.er_vers));
 }
 
 #define ADVERT_MASK (V_FW_PORT_CAP_SPEED(M_FW_PORT_CAP_SPEED) | \
