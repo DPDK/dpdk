@@ -172,7 +172,7 @@ mbox_wait_response(struct mbox *m, struct octeontx_mbox_hdr *hdr,
 
 error:
 	ssovf_log_err("Failed to send mbox(%d/%d) coproc=%d msg=%d ret=(%d,%d)",
-			m->tag_own, rx_hdr.tag, hdr->msg, hdr->coproc, res,
+			m->tag_own, rx_hdr.tag, hdr->coproc, hdr->msg, res,
 			hdr->res_code);
 	return res;
 }
