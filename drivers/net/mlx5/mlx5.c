@@ -789,6 +789,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		eth_dev->device->driver = &mlx5_driver.driver;
 		priv->dev = eth_dev;
 		eth_dev->dev_ops = &mlx5_dev_ops;
+		TAILQ_INIT(&priv->flows);
 
 		/* Bring Ethernet device up. */
 		DEBUG("forcing Ethernet interface up");

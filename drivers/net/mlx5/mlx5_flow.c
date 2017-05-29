@@ -91,7 +91,7 @@ mlx5_flow_create_vxlan(const struct rte_flow_item *item,
 		       void *data);
 
 struct rte_flow {
-	LIST_ENTRY(rte_flow) next; /**< Pointer to the next flow structure. */
+	TAILQ_ENTRY(rte_flow) next; /**< Pointer to the next flow structure. */
 	struct ibv_exp_flow_attr *ibv_attr; /**< Pointer to Verbs attributes. */
 	struct ibv_exp_rwq_ind_table *ind_table; /**< Indirection table. */
 	struct ibv_qp *qp; /**< Verbs queue pair. */
@@ -1230,7 +1230,7 @@ mlx5_flow_create(struct rte_eth_dev *dev,
 	priv_lock(priv);
 	flow = priv_flow_create(priv, attr, items, actions, error);
 	if (flow) {
-		LIST_INSERT_HEAD(&priv->flows, flow, next);
+		TAILQ_INSERT_TAIL(&priv->flows, flow, next);
 		DEBUG("Flow created %p", (void *)flow);
 	}
 	priv_unlock(priv);
@@ -1249,8 +1249,7 @@ static void
 priv_flow_destroy(struct priv *priv,
 		  struct rte_flow *flow)
 {
-	(void)priv;
-	LIST_REMOVE(flow, next);
+	TAILQ_REMOVE(&priv->flows, flow, next);
 	if (flow->ibv_flow)
 		claim_zero(ibv_exp_destroy_flow(flow->ibv_flow));
 	if (flow->drop)
@@ -1275,9 +1274,9 @@ priv_flow_destroy(struct priv *priv,
 		 */
 		for (queue_n = 0; queue_n < flow->rxqs_n; ++queue_n) {
 			rxq = flow->rxqs[queue_n];
-			for (tmp = LIST_FIRST(&priv->flows);
+			for (tmp = TAILQ_FIRST(&priv->flows);
 			     tmp;
-			     tmp = LIST_NEXT(tmp, next)) {
+			     tmp = TAILQ_NEXT(tmp, next)) {
 				uint32_t tqueue_n;
 
 				if (tmp->drop)
@@ -1330,10 +1329,10 @@ mlx5_flow_destroy(struct rte_eth_dev *dev,
 static void
 priv_flow_flush(struct priv *priv)
 {
-	while (!LIST_EMPTY(&priv->flows)) {
+	while (!TAILQ_EMPTY(&priv->flows)) {
 		struct rte_flow *flow;
 
-		flow = LIST_FIRST(&priv->flows);
+		flow = TAILQ_FIRST(&priv->flows);
 		priv_flow_destroy(priv, flow);
 	}
 }
@@ -1494,9 +1493,7 @@ priv_flow_stop(struct priv *priv)
 {
 	struct rte_flow *flow;
 
-	for (flow = LIST_FIRST(&priv->flows);
-	     flow;
-	     flow = LIST_NEXT(flow, next)) {
+	TAILQ_FOREACH_REVERSE(flow, &priv->flows, mlx5_flows, next) {
 		claim_zero(ibv_exp_destroy_flow(flow->ibv_flow));
 		flow->ibv_flow = NULL;
 		if (flow->mark) {
@@ -1528,9 +1525,7 @@ priv_flow_start(struct priv *priv)
 	ret = priv_flow_create_drop_queue(priv);
 	if (ret)
 		return -1;
-	for (flow = LIST_FIRST(&priv->flows);
-	     flow;
-	     flow = LIST_NEXT(flow, next)) {
+	TAILQ_FOREACH(flow, &priv->flows, next) {
 		struct ibv_qp *qp;
 
 		if (flow->drop)
@@ -1570,9 +1565,9 @@ priv_flow_rxq_in_use(struct priv *priv, struct rxq *rxq)
 {
 	struct rte_flow *flow;
 
-	for (flow = LIST_FIRST(&priv->flows);
+	for (flow = TAILQ_FIRST(&priv->flows);
 	     flow;
-	     flow = LIST_NEXT(flow, next)) {
+	     flow = TAILQ_NEXT(flow, next)) {
 		unsigned int n;
 
 		if (flow->drop)
