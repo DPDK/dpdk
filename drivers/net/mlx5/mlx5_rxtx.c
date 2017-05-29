@@ -2048,9 +2048,7 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		DATA_LEN(rep) = DATA_LEN(seg);
 		PKT_LEN(rep) = PKT_LEN(seg);
 		SET_DATA_OFF(rep, DATA_OFF(seg));
-		NB_SEGS(rep) = NB_SEGS(seg);
 		PORT(rep) = PORT(seg);
-		NEXT(rep) = NULL;
 		(*rxq->elts)[idx] = rep;
 		/*
 		 * Fill NIC descriptor with the new buffer.  The lkey and size
