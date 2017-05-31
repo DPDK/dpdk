@@ -1101,55 +1101,61 @@ i40e_flow_parse_fdir_action(struct rte_eth_dev *dev,
 	const struct rte_flow_action_mark *mark_spec;
 	uint32_t index = 0;
 
-	/* Check if the first non-void action is QUEUE or DROP. */
+	/* Check if the first non-void action is QUEUE or DROP or PASSTHRU. */
 	NEXT_ITEM_OF_ACTION(act, actions, index);
-	if (act->type != RTE_FLOW_ACTION_TYPE_QUEUE &&
-	    act->type != RTE_FLOW_ACTION_TYPE_DROP) {
-		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
-				   act, "Invalid action.");
-		return -rte_errno;
-	}
-
-	act_q = (const struct rte_flow_action_queue *)act->conf;
-	filter->action.flex_off = 0;
-	if (act->type == RTE_FLOW_ACTION_TYPE_QUEUE)
-		filter->action.behavior = RTE_ETH_FDIR_ACCEPT;
-	else
-		filter->action.behavior = RTE_ETH_FDIR_REJECT;
-
-	filter->action.report_status = RTE_ETH_FDIR_REPORT_ID;
-	filter->action.rx_queue = act_q->index;
-
-	if (filter->action.rx_queue >= pf->dev_data->nb_rx_queues) {
-		rte_flow_error_set(error, EINVAL,
-				   RTE_FLOW_ERROR_TYPE_ACTION, act,
-				   "Invalid queue ID for FDIR.");
-		return -rte_errno;
-	}
-
-	/* Check if the next non-void item is MARK or END. */
-	index++;
-	NEXT_ITEM_OF_ACTION(act, actions, index);
-	if (act->type != RTE_FLOW_ACTION_TYPE_MARK &&
-	    act->type != RTE_FLOW_ACTION_TYPE_END) {
-		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
-				   act, "Invalid action.");
-		return -rte_errno;
-	}
-
-	if (act->type == RTE_FLOW_ACTION_TYPE_MARK) {
-		mark_spec = (const struct rte_flow_action_mark *)act->conf;
-		filter->soft_id = mark_spec->id;
-
-		/* Check if the next non-void item is END */
-		index++;
-		NEXT_ITEM_OF_ACTION(act, actions, index);
-		if (act->type != RTE_FLOW_ACTION_TYPE_END) {
+	switch (act->type) {
+	case RTE_FLOW_ACTION_TYPE_QUEUE:
+		act_q = (const struct rte_flow_action_queue *)act->conf;
+		filter->action.rx_queue = act_q->index;
+		if (filter->action.rx_queue >= pf->dev_data->nb_rx_queues) {
 			rte_flow_error_set(error, EINVAL,
-					   RTE_FLOW_ERROR_TYPE_ACTION,
-					   act, "Invalid action.");
+					   RTE_FLOW_ERROR_TYPE_ACTION, act,
+					   "Invalid queue ID for FDIR.");
 			return -rte_errno;
 		}
+		filter->action.behavior = RTE_ETH_FDIR_ACCEPT;
+		break;
+	case RTE_FLOW_ACTION_TYPE_DROP:
+		filter->action.behavior = RTE_ETH_FDIR_REJECT;
+		break;
+	case RTE_FLOW_ACTION_TYPE_PASSTHRU:
+		filter->action.behavior = RTE_ETH_FDIR_PASSTHRU;
+		break;
+	default:
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ACTION, act,
+				   "Invalid action.");
+		return -rte_errno;
+	}
+
+	/* Check if the next non-void item is MARK or FLAG or END. */
+	index++;
+	NEXT_ITEM_OF_ACTION(act, actions, index);
+	switch (act->type) {
+	case RTE_FLOW_ACTION_TYPE_MARK:
+		mark_spec = (const struct rte_flow_action_mark *)act->conf;
+		filter->action.report_status = RTE_ETH_FDIR_REPORT_ID;
+		filter->soft_id = mark_spec->id;
+		break;
+	case RTE_FLOW_ACTION_TYPE_FLAG:
+		filter->action.report_status = RTE_ETH_FDIR_NO_REPORT_STATUS;
+		break;
+	case RTE_FLOW_ACTION_TYPE_END:
+		return 0;
+	default:
+		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ACTION,
+				   act, "Invalid action.");
+		return -rte_errno;
+	}
+
+	/* Check if the next non-void item is END */
+	index++;
+	NEXT_ITEM_OF_ACTION(act, actions, index);
+	if (act->type != RTE_FLOW_ACTION_TYPE_END) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ACTION,
+				   act, "Invalid action.");
+		return -rte_errno;
 	}
 
 	return 0;
