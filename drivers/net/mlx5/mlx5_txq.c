@@ -117,7 +117,7 @@ txq_free_elts(struct txq_ctrl *txq_ctrl)
 		struct rte_mbuf *elt = (*elts)[elts_tail];
 
 		assert(elt != NULL);
-		rte_pktmbuf_free(elt);
+		rte_pktmbuf_free_seg(elt);
 #ifndef NDEBUG
 		/* Poisoning. */
 		memset(&(*elts)[elts_tail],
