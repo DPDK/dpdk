@@ -2402,9 +2402,11 @@ eth_igb_rx_init(struct rte_eth_dev *dev)
 
 	/* Enable both L3/L4 rx checksum offload */
 	if (dev->data->dev_conf.rxmode.hw_ip_checksum)
-		rxcsum |= (E1000_RXCSUM_IPOFL  | E1000_RXCSUM_TUOFL);
+		rxcsum |= (E1000_RXCSUM_IPOFL | E1000_RXCSUM_TUOFL |
+				E1000_RXCSUM_CRCOFL);
 	else
-		rxcsum &= ~(E1000_RXCSUM_IPOFL | E1000_RXCSUM_TUOFL);
+		rxcsum &= ~(E1000_RXCSUM_IPOFL | E1000_RXCSUM_TUOFL |
+				E1000_RXCSUM_CRCOFL);
 	E1000_WRITE_REG(hw, E1000_RXCSUM, rxcsum);
 
 	/* Setup the Receive Control Register. */
