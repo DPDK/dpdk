@@ -34,7 +34,7 @@
 #ifndef _IXGBE_BYPASS_H_
 #define _IXGBE_BYPASS_H_
 
-#ifdef RTE_NIC_BYPASS
+#ifdef RTE_LIBRTE_IXGBE_BYPASS
 
 struct ixgbe_bypass_mac_ops {
 	s32 (*bypass_rw)(struct ixgbe_hw *hw, u32 cmd, u32 *status);
@@ -63,6 +63,6 @@ s32 ixgbe_bypass_wd_reset(struct rte_eth_dev *dev);
 s32 ixgbe_bypass_init_shared_code(struct ixgbe_hw *hw);
 s32 ixgbe_bypass_init_hw(struct ixgbe_hw *hw);
 
-#endif /* RTE_NIC_BYPASS */
+#endif /* RTE_LIBRTE_IXGBE_BYPASS */
 
 #endif /*  _IXGBE_BYPASS_H_ */

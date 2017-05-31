@@ -34,7 +34,7 @@
 #ifndef _IXGBE_BYPASS_DEFINES_H_
 #define _IXGBE_BYPASS_DEFINES_H_
 
-#ifdef RTE_NIC_BYPASS
+#ifdef RTE_LIBRTE_IXGBE_BYPASS
 
 #define msleep(x)             rte_delay_us(x*1000)
 #define usleep_range(min, max) rte_delay_us(min)
@@ -155,6 +155,6 @@ enum ixgbe_state_t {
 
 #define IXGBE_BYPASS_FW_WRITE_FAILURE	-35
 
-#endif /* RTE_NIC_BYPASS */
+#endif /* RTE_LIBRTE_IXGBE_BYPASS */
 
 #endif /* _IXGBE_BYPASS_DEFINES_H_ */

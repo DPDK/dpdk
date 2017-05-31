@@ -36,6 +36,7 @@
 #include <rte_ethdev.h>
 #include "ixgbe_ethdev.h"
 #include "ixgbe_bypass_api.h"
+#include "rte_pmd_ixgbe.h"
 
 #define	BYPASS_STATUS_OFF_MASK	3
 
@@ -284,7 +285,7 @@ ixgbe_bypass_wd_timeout_store(struct rte_eth_dev *dev, u32 timeout)
 	FUNC_PTR_OR_ERR_RET(adapter->bps.ops.bypass_set, -ENOTSUP);
 
 	/* disable the timer with timeout of zero */
-	if (timeout == RTE_BYPASS_TMT_OFF) {
+	if (timeout == RTE_PMD_IXGBE_BYPASS_TMT_OFF) {
 		status = 0x0;   /* WDG enable off */
 		mask = BYPASS_WDT_ENABLE_M;
 	} else {
@@ -355,7 +356,7 @@ ixgbe_bypass_wd_timeout_show(struct rte_eth_dev *dev, u32 *wd_timeout)
 
 	wdg = by_ctl & BYPASS_WDT_ENABLE_M;
 	if (!wdg)
-		*wd_timeout = RTE_BYPASS_TMT_OFF;
+		*wd_timeout = RTE_PMD_IXGBE_BYPASS_TMT_OFF;
 	else
 		*wd_timeout = (by_ctl >> BYPASS_WDT_TIME_SHIFT) &
 			BYPASS_WDT_MASK;

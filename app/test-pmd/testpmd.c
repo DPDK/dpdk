@@ -73,6 +73,9 @@
 #include <rte_ethdev.h>
 #include <rte_dev.h>
 #include <rte_string_fns.h>
+#ifdef RTE_LIBRTE_IXGBE_PMD
+#include <rte_pmd_ixgbe.h>
+#endif
 #ifdef RTE_LIBRTE_PMD_XENVIRT
 #include <rte_eth_xenvirt.h>
 #endif
@@ -295,12 +298,12 @@ uint32_t event_print_mask = (UINT32_C(1) << RTE_ETH_EVENT_UNKNOWN) |
 /*
  * NIC bypass mode configuration options.
  */
-#ifdef RTE_NIC_BYPASS
 
+#ifdef RTE_LIBRTE_IXGBE_BYPASS
 /* The NIC bypass watchdog timeout. */
-uint32_t bypass_timeout = RTE_BYPASS_TMT_OFF;
-
+uint32_t bypass_timeout = RTE_PMD_IXGBE_BYPASS_TMT_OFF;
 #endif
+
 
 #ifdef RTE_LIBRTE_LATENCY_STATS
 
@@ -2012,8 +2015,8 @@ init_port_config(void)
 		rte_eth_macaddr_get(pid, &port->eth_addr);
 
 		map_port_queue_stats_mapping_registers(pid, port);
-#ifdef RTE_NIC_BYPASS
-		rte_eth_dev_bypass_init(pid);
+#ifdef RTE_LIBRTE_IXGBE_BYPASS
+		rte_pmd_ixgbe_bypass_init(pid);
 #endif
 
 		if (lsc_interrupt &&

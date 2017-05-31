@@ -34,7 +34,7 @@
 #ifndef _IXGBE_BYPASS_API_H_
 #define _IXGBE_BYPASS_API_H_
 
-#ifdef RTE_NIC_BYPASS
+#ifdef RTE_LIBRTE_IXGBE_BYPASS
 
 #include "ixgbe_bypass_defines.h"
 /**
@@ -295,6 +295,6 @@ static s32 ixgbe_bypass_rd_eep_generic(struct ixgbe_hw *hw, u32 addr, u8 *value)
 	return 0;
 }
 
-#endif /* RTE_NIC_BYPASS */
+#endif /* RTE_LIBRTE_IXGBE_BYPASS */
 
 #endif /* _IXGBE_BYPASS_API_H_ */

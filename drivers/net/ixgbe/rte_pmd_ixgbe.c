@@ -908,3 +908,136 @@ rte_pmd_ixgbe_set_tc_bw_alloc(uint8_t port,
 
 	return 0;
 }
+
+#ifdef RTE_LIBRTE_IXGBE_BYPASS
+int
+rte_pmd_ixgbe_bypass_init(uint8_t port_id)
+{
+	struct rte_eth_dev *dev;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+
+	dev = &rte_eth_devices[port_id];
+	if (!is_ixgbe_supported(dev))
+		return -ENOTSUP;
+
+	ixgbe_bypass_init(dev);
+	return 0;
+}
+
+int
+rte_pmd_ixgbe_bypass_state_show(uint8_t port_id, uint32_t *state)
+{
+	struct rte_eth_dev *dev;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+
+	dev = &rte_eth_devices[port_id];
+	if (!is_ixgbe_supported(dev))
+		return -ENOTSUP;
+
+	return ixgbe_bypass_state_show(dev, state);
+}
+
+int
+rte_pmd_ixgbe_bypass_state_set(uint8_t port_id, uint32_t *new_state)
+{
+	struct rte_eth_dev *dev;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+
+	dev = &rte_eth_devices[port_id];
+	if (!is_ixgbe_supported(dev))
+		return -ENOTSUP;
+
+	return ixgbe_bypass_state_store(dev, new_state);
+}
+
+int
+rte_pmd_ixgbe_bypass_event_show(uint8_t port_id,
+				uint32_t event,
+				uint32_t *state)
+{
+	struct rte_eth_dev *dev;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+
+	dev = &rte_eth_devices[port_id];
+	if (!is_ixgbe_supported(dev))
+		return -ENOTSUP;
+
+	return ixgbe_bypass_event_show(dev, event, state);
+}
+
+int
+rte_pmd_ixgbe_bypass_event_store(uint8_t port_id,
+				 uint32_t event,
+				 uint32_t state)
+{
+	struct rte_eth_dev *dev;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+
+	dev = &rte_eth_devices[port_id];
+	if (!is_ixgbe_supported(dev))
+		return -ENOTSUP;
+
+	return ixgbe_bypass_event_store(dev, event, state);
+}
+
+int
+rte_pmd_ixgbe_bypass_wd_timeout_store(uint8_t port_id, uint32_t timeout)
+{
+	struct rte_eth_dev *dev;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+
+	dev = &rte_eth_devices[port_id];
+	if (!is_ixgbe_supported(dev))
+		return -ENOTSUP;
+
+	return ixgbe_bypass_wd_timeout_store(dev, timeout);
+}
+
+int
+rte_pmd_ixgbe_bypass_ver_show(uint8_t port_id, uint32_t *ver)
+{
+	struct rte_eth_dev *dev;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+
+	dev = &rte_eth_devices[port_id];
+	if (!is_ixgbe_supported(dev))
+		return -ENOTSUP;
+
+	return ixgbe_bypass_ver_show(dev, ver);
+}
+
+int
+rte_pmd_ixgbe_bypass_wd_timeout_show(uint8_t port_id, uint32_t *wd_timeout)
+{
+	struct rte_eth_dev *dev;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+
+	dev = &rte_eth_devices[port_id];
+	if (!is_ixgbe_supported(dev))
+		return -ENOTSUP;
+
+	return ixgbe_bypass_wd_timeout_show(dev, wd_timeout);
+}
+
+int
+rte_pmd_ixgbe_bypass_wd_reset(uint8_t port_id)
+{
+	struct rte_eth_dev *dev;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+
+	dev = &rte_eth_devices[port_id];
+	if (!is_ixgbe_supported(dev))
+		return -ENOTSUP;
+
+	return ixgbe_bypass_wd_reset(dev);
+}
+#endif

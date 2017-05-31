@@ -38,29 +38,6 @@ Deprecation Notices
   ``_rte_eth_dev_callback_process``. In 17.08 the function will return an ``int``
   instead of ``void`` and a fourth parameter ``void *ret_param`` will be added.
 
-* ethdev: for 17.08 it is planned to deprecate the following nine rte_eth_dev_*
-  functions and move them into the ixgbe PMD:
-
-  ``rte_eth_dev_bypass_init``, ``rte_eth_dev_bypass_state_set``,
-  ``rte_eth_dev_bypass_state_show``, ``rte_eth_dev_bypass_event_store``,
-  ``rte_eth_dev_bypass_event_show``, ``rte_eth_dev_wd_timeout_store``,
-  ``rte_eth_dev_bypass_wd_timeout_show``, ``rte_eth_dev_bypass_ver_show``,
-  ``rte_eth_dev_bypass_wd_reset``.
-
-  The following fields will be removed from ``struct eth_dev_ops``:
-
-  ``bypass_init_t``, ``bypass_state_set_t``, ``bypass_state_show_t``,
-  ``bypass_event_set_t``, ``bypass_event_show_t``, ``bypass_wd_timeout_set_t``,
-  ``bypass_wd_timeout_show_t``, ``bypass_ver_show_t``, ``bypass_wd_reset_t``.
-
-  The functions will be renamed to the following, and moved to the ``ixgbe`` PMD:
-
-  ``rte_pmd_ixgbe_bypass_init``, ``rte_pmd_ixgbe_bypass_state_set``,
-  ``rte_pmd_ixgbe_bypass_state_show``, ``rte_pmd_ixgbe_bypass_event_set``,
-  ``rte_pmd_ixgbe_bypass_event_show``, ``rte_pmd_ixgbe_bypass_wd_timeout_set``,
-  ``rte_pmd_ixgbe_bypass_wd_timeout_show``, ``rte_pmd_ixgbe_bypass_ver_show``,
-  ``rte_pmd_ixgbe_bypass_wd_reset``.
-
 * The mbuf flags PKT_RX_VLAN_PKT and PKT_RX_QINQ_PKT are deprecated and
   are respectively replaced by PKT_RX_VLAN_STRIPPED and
   PKT_RX_QINQ_STRIPPED, that are better described. The old flags and

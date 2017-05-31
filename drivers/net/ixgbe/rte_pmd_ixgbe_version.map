@@ -38,3 +38,17 @@ DPDK_17.05 {
 	rte_pmd_ixgbe_ping_vf;
 	rte_pmd_ixgbe_set_tc_bw_alloc;
 } DPDK_17.02;
+
+DPDK_17.08 {
+	global:
+
+	rte_pmd_ixgbe_bypass_event_show;
+	rte_pmd_ixgbe_bypass_event_store;
+	rte_pmd_ixgbe_bypass_init;
+	rte_pmd_ixgbe_bypass_state_set;
+	rte_pmd_ixgbe_bypass_state_show;
+	rte_pmd_ixgbe_bypass_ver_show;
+	rte_pmd_ixgbe_bypass_wd_reset;
+	rte_pmd_ixgbe_bypass_wd_timeout_show;
+	rte_pmd_ixgbe_bypass_wd_timeout_store;
+} DPDK_17.05;

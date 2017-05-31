@@ -427,6 +427,177 @@ int rte_pmd_ixgbe_set_tc_bw_alloc(uint8_t port,
 				  uint8_t tc_num,
 				  uint8_t *bw_weight);
 
+
+/**
+ * Initialize bypass logic. This function needs to be called before
+ * executing any other bypass API.
+ *
+ * @param port
+ *   The port identifier of the Ethernet device.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if hardware doesn't support.
+ *   - (-EINVAL) if bad parameter.
+ */
+int rte_pmd_ixgbe_bypass_init(uint8_t port);
+
+/**
+ * Return bypass state.
+ *
+ * @param port
+ *   The port identifier of the Ethernet device.
+ * @param state
+ *   The return bypass state.
+ *   - (1) Normal mode
+ *   - (2) Bypass mode
+ *   - (3) Isolate mode
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if hardware doesn't support.
+ *   - (-EINVAL) if bad parameter.
+ */
+int rte_pmd_ixgbe_bypass_state_show(uint8_t port, uint32_t *state);
+
+/**
+ * Set bypass state
+ *
+ * @param port
+ *   The port identifier of the Ethernet device.
+ * @param new_state
+ *   The current bypass state.
+ *   - (1) Normal mode
+ *   - (2) Bypass mode
+ *   - (3) Isolate mode
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if hardware doesn't support.
+ *   - (-EINVAL) if bad parameter.
+ */
+int rte_pmd_ixgbe_bypass_state_set(uint8_t port, uint32_t *new_state);
+
+/**
+ * Return bypass state when given event occurs.
+ *
+ * @param port
+ *   The port identifier of the Ethernet device.
+ * @param event
+ *   The bypass event
+ *   - (1) Main power on (power button is pushed)
+ *   - (2) Auxiliary power on (power supply is being plugged)
+ *   - (3) Main power off (system shutdown and power supply is left plugged in)
+ *   - (4) Auxiliary power off (power supply is being unplugged)
+ *   - (5) Display or set the watchdog timer
+ * @param state
+ *   The bypass state when given event occurred.
+ *   - (1) Normal mode
+ *   - (2) Bypass mode
+ *   - (3) Isolate mode
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if hardware doesn't support.
+ *   - (-EINVAL) if bad parameter.
+ */
+int rte_pmd_ixgbe_bypass_event_show(uint8_t port,
+				    uint32_t event,
+				    uint32_t *state);
+
+/**
+ * Set bypass state when given event occurs.
+ *
+ * @param port
+ *   The port identifier of the Ethernet device.
+ * @param event
+ *   The bypass event
+ *   - (1) Main power on (power button is pushed)
+ *   - (2) Auxiliary power on (power supply is being plugged)
+ *   - (3) Main power off (system shutdown and power supply is left plugged in)
+ *   - (4) Auxiliary power off (power supply is being unplugged)
+ *   - (5) Display or set the watchdog timer
+ * @param state
+ *   The assigned state when given event occurs.
+ *   - (1) Normal mode
+ *   - (2) Bypass mode
+ *   - (3) Isolate mode
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if hardware doesn't support.
+ *   - (-EINVAL) if bad parameter.
+ */
+int rte_pmd_ixgbe_bypass_event_store(uint8_t port,
+				     uint32_t event,
+				     uint32_t state);
+
+/**
+ * Set bypass watchdog timeout count.
+ *
+ * @param port
+ *   The port identifier of the Ethernet device.
+ * @param timeout
+ *   The timeout to be set.
+ *   - (0) 0 seconds (timer is off)
+ *   - (1) 1.5 seconds
+ *   - (2) 2 seconds
+ *   - (3) 3 seconds
+ *   - (4) 4 seconds
+ *   - (5) 8 seconds
+ *   - (6) 16 seconds
+ *   - (7) 32 seconds
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if hardware doesn't support.
+ *   - (-EINVAL) if bad parameter.
+ */
+int rte_pmd_ixgbe_bypass_wd_timeout_store(uint8_t port, uint32_t timeout);
+
+/**
+ * Get bypass firmware version.
+ *
+ * @param port
+ *   The port identifier of the Ethernet device.
+ * @param ver
+ *   The firmware version
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if hardware doesn't support.
+ *   - (-EINVAL) if bad parameter.
+ */
+int rte_pmd_ixgbe_bypass_ver_show(uint8_t port, uint32_t *ver);
+
+/**
+ * Return bypass watchdog timeout in seconds
+ *
+ * @param port
+ *   The port identifier of the Ethernet device.
+ * @param wd_timeout
+ *   The return watchdog timeout. "0" represents timer expired
+ *   - (0) 0 seconds (timer is off)
+ *   - (1) 1.5 seconds
+ *   - (2) 2 seconds
+ *   - (3) 3 seconds
+ *   - (4) 4 seconds
+ *   - (5) 8 seconds
+ *   - (6) 16 seconds
+ *   - (7) 32 seconds
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if hardware doesn't support.
+ *   - (-EINVAL) if bad parameter.
+ */
+int rte_pmd_ixgbe_bypass_wd_timeout_show(uint8_t port, uint32_t *wd_timeout);
+
+/**
+ * Reset bypass watchdog timer
+ *
+ * @param port
+ *   The port identifier of the Ethernet device.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if hardware doesn't support.
+ *   - (-EINVAL) if bad parameter.
+ */
+int rte_pmd_ixgbe_bypass_wd_reset(uint8_t port);
+
+
 /**
  * Response sent back to ixgbe driver from user app after callback
  */
@@ -446,4 +617,48 @@ struct rte_pmd_ixgbe_mb_event_param {
 	uint16_t retval;   /**< return value */
 	void *msg;         /**< pointer to message */
 };
+enum {
+	RTE_PMD_IXGBE_BYPASS_MODE_NONE,
+	RTE_PMD_IXGBE_BYPASS_MODE_NORMAL,
+	RTE_PMD_IXGBE_BYPASS_MODE_BYPASS,
+	RTE_PMD_IXGBE_BYPASS_MODE_ISOLATE,
+	RTE_PMD_IXGBE_BYPASS_MODE_NUM,
+};
+
+#define RTE_PMD_IXGBE_BYPASS_MODE_VALID(x)        \
+	((x) > RTE_PMD_IXGBE_BYPASS_MODE_NONE &&  \
+	(x) < RTE_PMD_IXGBE_BYPASS_MODE_NUM)
+
+enum {
+	RTE_PMD_IXGBE_BYPASS_EVENT_NONE,
+	RTE_PMD_IXGBE_BYPASS_EVENT_START,
+	RTE_PMD_IXGBE_BYPASS_EVENT_OS_ON = RTE_PMD_IXGBE_BYPASS_EVENT_START,
+	RTE_PMD_IXGBE_BYPASS_EVENT_POWER_ON,
+	RTE_PMD_IXGBE_BYPASS_EVENT_OS_OFF,
+	RTE_PMD_IXGBE_BYPASS_EVENT_POWER_OFF,
+	RTE_PMD_IXGBE_BYPASS_EVENT_TIMEOUT,
+	RTE_PMD_IXGBE_BYPASS_EVENT_NUM
+};
+
+#define RTE_PMD_IXGBE_BYPASS_EVENT_VALID(x)       \
+	((x) > RTE_PMD_IXGBE_BYPASS_EVENT_NONE && \
+	(x) < RTE_PMD_IXGBE_BYPASS_MODE_NUM)
+
+enum {
+	RTE_PMD_IXGBE_BYPASS_TMT_OFF,     /* timeout disabled. */
+	RTE_PMD_IXGBE_BYPASS_TMT_1_5_SEC, /* timeout for 1.5 seconds */
+	RTE_PMD_IXGBE_BYPASS_TMT_2_SEC,   /* timeout for 2 seconds */
+	RTE_PMD_IXGBE_BYPASS_TMT_3_SEC,   /* timeout for 3 seconds */
+	RTE_PMD_IXGBE_BYPASS_TMT_4_SEC,   /* timeout for 4 seconds */
+	RTE_PMD_IXGBE_BYPASS_TMT_8_SEC,   /* timeout for 8 seconds */
+	RTE_PMD_IXGBE_BYPASS_TMT_16_SEC,  /* timeout for 16 seconds */
+	RTE_PMD_IXGBE_BYPASS_TMT_32_SEC,  /* timeout for 32 seconds */
+	RTE_PMD_IXGBE_BYPASS_TMT_NUM
+};
+
+#define RTE_PMD_IXGBE_BYPASS_TMT_VALID(x)       \
+	((x) == RTE_PMD_IXGBE_BYPASS_TMT_OFF || \
+	((x) > RTE_PMD_IXGBE_BYPASS_TMT_OFF &&  \
+	(x) < RTE_PMD_IXGBE_BYPASS_TMT_NUM))
+
 #endif /* _PMD_IXGBE_H_ */
