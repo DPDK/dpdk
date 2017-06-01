@@ -94,6 +94,9 @@
 #ifdef RTE_LIBRTE_I40E_PMD
 #include <rte_pmd_i40e.h>
 #endif
+#ifdef RTE_LIBRTE_BNXT_PMD
+#include <rte_pmd_bnxt.h>
+#endif
 #include "testpmd.h"
 
 static struct cmdline *testpmd_cl;
@@ -11417,6 +11420,10 @@ cmd_set_tx_loopback_parsed(
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_i40e_set_tx_loopback(res->port_id, is_on);
 #endif
+#ifdef RTE_LIBRTE_BNXT_PMD
+	if (ret == -ENOTSUP)
+		ret = rte_pmd_bnxt_set_tx_loopback(res->port_id, is_on);
+#endif
 
 	switch (ret) {
 	case 0:
@@ -11449,7 +11456,6 @@ cmdline_parse_inst_t cmd_set_tx_loopback = {
 	},
 };
 
-#ifdef RTE_LIBRTE_IXGBE_PMD
 /* all queues drop enable configuration */
 
 /* Common result structure for all queues drop enable */
@@ -11495,13 +11501,20 @@ cmd_set_all_queues_drop_en_parsed(
 	__attribute__((unused)) void *data)
 {
 	struct cmd_all_queues_drop_en_result *res = parsed_result;
-	int ret = 0;
+	int ret = -ENOTSUP;
 	int is_on = (strcmp(res->on_off, "on") == 0) ? 1 : 0;
 
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
 
-	ret = rte_pmd_ixgbe_set_all_queues_drop_en(res->port_id, is_on);
+#ifdef RTE_LIBRTE_IXGBE_PMD
+	if (ret == -ENOTSUP)
+		ret = rte_pmd_ixgbe_set_all_queues_drop_en(res->port_id, is_on);
+#endif
+#ifdef RTE_LIBRTE_BNXT_PMD
+	if (ret == -ENOTSUP)
+		ret = rte_pmd_bnxt_set_all_queues_drop_en(res->port_id, is_on);
+#endif
 	switch (ret) {
 	case 0:
 		break;
@@ -11534,6 +11547,7 @@ cmdline_parse_inst_t cmd_set_all_queues_drop_en = {
 	},
 };
 
+#ifdef RTE_LIBRTE_IXGBE_PMD
 /* vf split drop enable configuration */
 
 /* Common result structure for vf split drop enable */
@@ -11686,6 +11700,11 @@ cmd_set_vf_mac_addr_parsed(
 #ifdef RTE_LIBRTE_I40E_PMD
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_i40e_set_vf_mac_addr(res->port_id, res->vf_id,
+				&res->mac_addr);
+#endif
+#ifdef RTE_LIBRTE_BNXT_PMD
+	if (ret == -ENOTSUP)
+		ret = rte_pmd_bnxt_set_vf_mac_addr(res->port_id, res->vf_id,
 				&res->mac_addr);
 #endif
 

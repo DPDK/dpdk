@@ -1,4 +1,9 @@
-DPDK_16.04 {
+DPDK_17.08 {
+	global:
+
+	rte_pmd_bnxt_set_all_queues_drop_en;
+	rte_pmd_bnxt_set_tx_loopback;
+	rte_pmd_bnxt_set_vf_mac_addr;
 
 	local: *;
 };

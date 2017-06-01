@@ -142,6 +142,7 @@ static const struct rte_pci_id bnxt_pci_id_map[] = {
 	ETH_RSS_NONFRAG_IPV6_UDP)
 
 static void bnxt_vlan_offload_set_op(struct rte_eth_dev *dev, int mask);
+
 /***********************/
 
 /*
@@ -1935,6 +1936,20 @@ static struct rte_pci_driver bnxt_rte_pmd = {
 	.probe = bnxt_pci_probe,
 	.remove = bnxt_pci_remove,
 };
+
+static bool
+is_device_supported(struct rte_eth_dev *dev, struct rte_pci_driver *drv)
+{
+	if (strcmp(dev->data->drv_name, drv->driver.name))
+		return false;
+
+	return true;
+}
+
+bool is_bnxt_supported(struct rte_eth_dev *dev)
+{
+	return is_device_supported(dev, &bnxt_rte_pmd);
+}
 
 RTE_PMD_REGISTER_PCI(net_bnxt, bnxt_rte_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_bnxt, bnxt_pci_id_map);

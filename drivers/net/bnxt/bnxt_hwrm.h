@@ -120,6 +120,7 @@ int bnxt_hwrm_allocate_pf_only(struct bnxt *bp);
 int bnxt_hwrm_allocate_vfs(struct bnxt *bp, int num_vfs);
 int bnxt_hwrm_func_vf_mac(struct bnxt *bp, uint16_t vf,
 			  const uint8_t *mac_addr);
+int bnxt_hwrm_pf_evb_mode(struct bnxt *bp);
 int bnxt_hwrm_func_qcfg_vf_default_mac(struct bnxt *bp, uint16_t vf,
 				       struct ether_addr *mac);
 int bnxt_hwrm_tunnel_dst_port_alloc(struct bnxt *bp, uint16_t port,
@@ -132,4 +133,7 @@ int bnxt_hwrm_port_qstats(struct bnxt *bp);
 int bnxt_hwrm_port_clr_stats(struct bnxt *bp);
 int bnxt_hwrm_port_led_cfg(struct bnxt *bp, bool led_on);
 int bnxt_hwrm_port_led_qcaps(struct bnxt *bp);
+int bnxt_hwrm_func_vf_vnic_query_and_config(struct bnxt *bp, uint16_t vf,
+	void (*vnic_cb)(struct bnxt_vnic_info *, void *), void *cbdata,
+	int (*hwrm_cb)(struct bnxt *bp, struct bnxt_vnic_info *vnic));
 #endif

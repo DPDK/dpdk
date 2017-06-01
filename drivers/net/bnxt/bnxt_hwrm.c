@@ -2168,6 +2168,24 @@ error_free:
 	return rc;
 }
 
+int bnxt_hwrm_pf_evb_mode(struct bnxt *bp)
+{
+	struct hwrm_func_cfg_input req = {0};
+	struct hwrm_func_cfg_output *resp = bp->hwrm_cmd_resp_addr;
+	int rc;
+
+	HWRM_PREP(req, FUNC_CFG, -1, resp);
+
+	req.fid = rte_cpu_to_le_16(0xffff);
+	req.enables = rte_cpu_to_le_32(HWRM_FUNC_CFG_INPUT_ENABLES_EVB_MODE);
+	req.evb_mode = bp->pf.evb_mode;
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+	HWRM_CHECK_RESULT;
+
+	return rc;
+}
+
 int bnxt_hwrm_tunnel_dst_port_alloc(struct bnxt *bp, uint16_t port,
 				uint8_t tunnel_type)
 {
@@ -2520,6 +2538,94 @@ int bnxt_hwrm_port_led_cfg(struct bnxt *bp, bool led_on)
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 	HWRM_CHECK_RESULT;
+
+	return rc;
+}
+
+static int bnxt_hwrm_func_vf_vnic_query(struct bnxt *bp, uint16_t vf,
+					uint16_t *vnic_ids)
+{
+	struct hwrm_func_vf_vnic_ids_query_input req = {0};
+	struct hwrm_func_vf_vnic_ids_query_output *resp =
+						bp->hwrm_cmd_resp_addr;
+	int rc;
+
+	/* First query all VNIC ids */
+	HWRM_PREP(req, FUNC_VF_VNIC_IDS_QUERY, -1, resp_vf_vnic_ids);
+
+	req.vf_id = rte_cpu_to_le_16(bp->pf.first_vf_id + vf);
+	req.max_vnic_id_cnt = rte_cpu_to_le_32(bp->pf.total_vnics);
+	req.vnic_id_tbl_addr = rte_cpu_to_le_64(rte_mem_virt2phy(vnic_ids));
+
+	if (req.vnic_id_tbl_addr == 0) {
+		RTE_LOG(ERR, PMD,
+		"unable to map VNIC ID table address to physical memory\n");
+		return -ENOMEM;
+	}
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+	if (rc) {
+		RTE_LOG(ERR, PMD, "hwrm_func_vf_vnic_query failed rc:%d\n", rc);
+		return -1;
+	} else if (resp->error_code) {
+		rc = rte_le_to_cpu_16(resp->error_code);
+		RTE_LOG(ERR, PMD, "hwrm_func_vf_vnic_query error %d\n", rc);
+		return -1;
+	}
+
+	return rte_le_to_cpu_32(resp->vnic_id_cnt);
+}
+
+/*
+ * This function queries the VNIC IDs  for a specified VF. It then calls
+ * the vnic_cb to update the necessary field in vnic_info with cbdata.
+ * Then it calls the hwrm_cb function to program this new vnic configuration.
+ */
+int bnxt_hwrm_func_vf_vnic_query_and_config(struct bnxt *bp, uint16_t vf,
+	void (*vnic_cb)(struct bnxt_vnic_info *, void *), void *cbdata,
+	int (*hwrm_cb)(struct bnxt *bp, struct bnxt_vnic_info *vnic))
+{
+	struct bnxt_vnic_info vnic;
+	int rc = 0;
+	int i, num_vnic_ids;
+	uint16_t *vnic_ids;
+	size_t vnic_id_sz;
+	size_t sz;
+
+	/* First query all VNIC ids */
+	vnic_id_sz = bp->pf.total_vnics * sizeof(*vnic_ids);
+	vnic_ids = rte_malloc("bnxt_hwrm_vf_vnic_ids_query", vnic_id_sz,
+			RTE_CACHE_LINE_SIZE);
+	if (vnic_ids == NULL) {
+		rc = -ENOMEM;
+		return rc;
+	}
+	for (sz = 0; sz < vnic_id_sz; sz += getpagesize())
+		rte_mem_lock_page(((char *)vnic_ids) + sz);
+
+	num_vnic_ids = bnxt_hwrm_func_vf_vnic_query(bp, vf, vnic_ids);
+
+	if (num_vnic_ids < 0)
+		return num_vnic_ids;
+
+	/* Retrieve VNIC, update bd_stall then update */
+
+	for (i = 0; i < num_vnic_ids; i++) {
+		memset(&vnic, 0, sizeof(struct bnxt_vnic_info));
+		vnic.fw_vnic_id = rte_le_to_cpu_16(vnic_ids[i]);
+		rc = bnxt_hwrm_vnic_qcfg(bp, &vnic, bp->pf.first_vf_id + vf);
+		if (rc)
+			break;
+		if (vnic.mru == 4)	/* Indicates unallocated */
+			continue;
+
+		vnic_cb(&vnic, cbdata);
+
+		rc = hwrm_cb(bp, &vnic);
+		if (rc)
+			break;
+	}
+
+	rte_free(vnic_ids);
 
 	return rc;
 }
