@@ -189,6 +189,7 @@ struct ixgbe_fdir_rule {
 	uint32_t fdirflags; /* drop or forward */
 	uint32_t soft_id; /* an unique value for this rule */
 	uint8_t queue; /* assigned rx queue */
+	uint8_t flex_bytes_offset;
 };
 
 struct ixgbe_hw_fdir_info {
@@ -621,6 +622,8 @@ void ixgbe_filterlist_flush(void);
  */
 int ixgbe_fdir_configure(struct rte_eth_dev *dev);
 int ixgbe_fdir_set_input_mask(struct rte_eth_dev *dev);
+int ixgbe_fdir_set_flexbytes_offset(struct rte_eth_dev *dev,
+				    uint16_t offset);
 int ixgbe_fdir_filter_program(struct rte_eth_dev *dev,
 			      struct ixgbe_fdir_rule *rule,
 			      bool del, bool update);

@@ -302,7 +302,7 @@ fdir_set_input_mask_82599(struct rte_eth_dev *dev)
 	 * mask VM pool and DIPv6 since there are currently not supported
 	 * mask FLEX byte, it will be set in flex_conf
 	 */
-	uint32_t fdirm = IXGBE_FDIRM_POOL | IXGBE_FDIRM_DIPv6 | IXGBE_FDIRM_FLEX;
+	uint32_t fdirm = IXGBE_FDIRM_POOL | IXGBE_FDIRM_DIPv6;
 	uint32_t fdirtcpm;  /* TCP source and destination port masks. */
 	uint32_t fdiripv6m; /* IPv6 source and destination masks. */
 	volatile uint32_t *reg;
@@ -332,6 +332,10 @@ fdir_set_input_mask_82599(struct rte_eth_dev *dev)
 		PMD_INIT_LOG(ERR, "invalid vlan_tci_mask");
 		return -EINVAL;
 	}
+
+	/* flex byte mask */
+	if (info->mask.flex_bytes_mask == 0)
+		fdirm |= IXGBE_FDIRM_FLEX;
 
 	IXGBE_WRITE_REG(hw, IXGBE_FDIRM, fdirm);
 
@@ -531,6 +535,31 @@ ixgbe_fdir_set_input_mask(struct rte_eth_dev *dev)
 
 	PMD_DRV_LOG(ERR, "Not supported fdir mode - %d!", mode);
 	return -ENOTSUP;
+}
+
+int
+ixgbe_fdir_set_flexbytes_offset(struct rte_eth_dev *dev,
+				uint16_t offset)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t fdirctrl;
+	int i;
+
+	fdirctrl = IXGBE_READ_REG(hw, IXGBE_FDIRCTRL);
+
+	fdirctrl &= ~IXGBE_FDIRCTRL_FLEX_MASK;
+	fdirctrl |= ((offset >> 1) /* convert to word offset */
+		<< IXGBE_FDIRCTRL_FLEX_SHIFT);
+
+	IXGBE_WRITE_REG(hw, IXGBE_FDIRCTRL, fdirctrl);
+	IXGBE_WRITE_FLUSH(hw);
+	for (i = 0; i < IXGBE_FDIR_INIT_DONE_POLL; i++) {
+		if (IXGBE_READ_REG(hw, IXGBE_FDIRCTRL) &
+			IXGBE_FDIRCTRL_INIT_DONE)
+			break;
+		msec_delay(1);
+	}
+	return 0;
 }
 
 static int
