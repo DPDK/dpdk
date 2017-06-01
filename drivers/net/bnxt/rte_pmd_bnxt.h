@@ -92,6 +92,26 @@ int
 rte_pmd_bnxt_set_vf_vlan_stripq(uint8_t port, uint16_t vf, uint8_t on);
 
 /**
+ * Enable/Disable vf vlan insert
+ *
+ * @param port
+ *    The port identifier of the Ethernet device.
+ * @param vf
+ *    ID specifying VF.
+ * @param vlan_id
+ *    0 - Disable VF's vlan insert.
+ *    n - Enable; n is inserted as the vlan id.
+ *
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port* invalid.
+ *   - (-EINVAL) if bad parameter.
+ */
+int
+rte_pmd_bnxt_set_vf_vlan_insert(uint8_t port, uint16_t vf,
+		uint16_t vlan_id);
+
+/**
  * Enable/Disable hardware VF VLAN filtering by an Ethernet device of
  * received VLAN packets tagged with a given VLAN Tag Identifier.
  *

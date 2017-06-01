@@ -11349,6 +11349,11 @@ cmd_set_vf_vlan_insert_parsed(
 		ret = rte_pmd_i40e_set_vf_vlan_insert(res->port_id, res->vf_id,
 			res->vlan_id);
 #endif
+#ifdef RTE_LIBRTE_BNXT_PMD
+	if (ret == -ENOTSUP)
+		ret = rte_pmd_bnxt_set_vf_vlan_insert(res->port_id, res->vf_id,
+			res->vlan_id);
+#endif
 
 	switch (ret) {
 	case 0:

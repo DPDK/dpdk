@@ -103,8 +103,8 @@ struct bnxt_child_vf_info {
 	uint32_t		func_cfg_flags;
 	uint32_t		l2_rx_mask;
 	uint16_t		fid;
-	uint16_t		dflt_vlan;
 	uint16_t		max_tx_rate;
+	uint16_t		dflt_vlan;
 	uint16_t		vlan_count;
 	uint8_t			mac_spoof_en;
 	uint8_t			vlan_spoof_en;

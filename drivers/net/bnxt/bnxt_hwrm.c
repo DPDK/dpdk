@@ -2069,6 +2069,27 @@ static void reserve_resources_from_vf(struct bnxt *bp,
 	bp->max_ring_grps -= rte_le_to_cpu_16(resp->max_hw_ring_grps);
 }
 
+int bnxt_hwrm_func_qcfg_current_vf_vlan(struct bnxt *bp, int vf)
+{
+	struct hwrm_func_qcfg_input req = {0};
+	struct hwrm_func_qcfg_output *resp = bp->hwrm_cmd_resp_addr;
+	int rc;
+
+	/* Check for zero MAC address */
+	HWRM_PREP(req, FUNC_QCFG, -1, resp);
+	req.fid = rte_cpu_to_le_16(bp->pf.vf_info[vf].fid);
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+	if (rc) {
+		RTE_LOG(ERR, PMD, "hwrm_func_qcfg failed rc:%d\n", rc);
+		return -1;
+	} else if (resp->error_code) {
+		rc = rte_le_to_cpu_16(resp->error_code);
+		RTE_LOG(ERR, PMD, "hwrm_func_qcfg error %d\n", rc);
+		return -1;
+	}
+	return rte_le_to_cpu_16(resp->vlan);
+}
+
 static int update_pf_resource_max(struct bnxt *bp)
 {
 	struct hwrm_func_qcfg_input req = {0};
@@ -2417,6 +2438,24 @@ int bnxt_hwrm_func_bw_cfg(struct bnxt *bp, uint16_t vf,
 	req.enables |= rte_cpu_to_le_32(enables);
 	req.flags = rte_cpu_to_le_32(bp->pf.vf_info[vf].func_cfg_flags);
 	req.max_bw = rte_cpu_to_le_32(max_bw);
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+	HWRM_CHECK_RESULT;
+
+	return rc;
+}
+
+int bnxt_hwrm_set_vf_vlan(struct bnxt *bp, int vf)
+{
+	struct hwrm_func_cfg_input req = {0};
+	struct hwrm_func_cfg_output *resp = bp->hwrm_cmd_resp_addr;
+	int rc = 0;
+
+	HWRM_PREP(req, FUNC_CFG, -1, resp);
+	req.flags = rte_cpu_to_le_32(bp->pf.vf_info[vf].func_cfg_flags);
+	req.fid = rte_cpu_to_le_16(bp->pf.vf_info[vf].fid);
+	req.enables |= rte_cpu_to_le_32(HWRM_FUNC_CFG_INPUT_ENABLES_DFLT_VLAN);
+	req.dflt_vlan = rte_cpu_to_le_16(bp->pf.vf_info[vf].dflt_vlan);
+
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 	HWRM_CHECK_RESULT;
 

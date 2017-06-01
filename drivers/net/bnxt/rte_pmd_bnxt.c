@@ -644,3 +644,41 @@ int rte_pmd_bnxt_mac_addr_add(uint8_t port, struct ether_addr *addr,
 exit:
 	return rc;
 }
+
+int
+rte_pmd_bnxt_set_vf_vlan_insert(uint8_t port, uint16_t vf,
+		uint16_t vlan_id)
+{
+	struct rte_eth_dev *dev;
+	struct rte_eth_dev_info dev_info;
+	struct bnxt *bp;
+	int rc;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+	if (!is_bnxt_supported(dev))
+		return -ENOTSUP;
+
+	rte_eth_dev_info_get(port, &dev_info);
+	bp = (struct bnxt *)dev->data->dev_private;
+
+	if (vf >= dev_info.max_vfs)
+		return -EINVAL;
+
+	if (!BNXT_PF(bp)) {
+		RTE_LOG(ERR, PMD,
+			"Attempt to set VF %d vlan insert on non-PF port %d!\n",
+			vf, port);
+		return -ENOTSUP;
+	}
+
+	bp->pf.vf_info[vf].dflt_vlan = vlan_id;
+	if (bnxt_hwrm_func_qcfg_current_vf_vlan(bp, vf) ==
+	    bp->pf.vf_info[vf].dflt_vlan)
+		return 0;
+
+	rc = bnxt_hwrm_set_vf_vlan(bp, vf);
+
+	return rc;
+}
