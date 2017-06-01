@@ -548,6 +548,50 @@ test_single_directed_packet(struct test *t)
 	return 0;
 }
 
+static int
+test_directed_forward_credits(struct test *t)
+{
+	uint32_t i;
+	int32_t err;
+
+	if (init(t, 1, 1) < 0 ||
+			create_ports(t, 1) < 0 ||
+			create_directed_qids(t, 1, t->port) < 0)
+		return -1;
+
+	if (rte_event_dev_start(evdev) < 0) {
+		printf("%d: Error with start call\n", __LINE__);
+		return -1;
+	}
+
+	struct rte_event ev = {
+			.op = RTE_EVENT_OP_NEW,
+			.queue_id = 0,
+	};
+
+	for (i = 0; i < 1000; i++) {
+		err = rte_event_enqueue_burst(evdev, 0, &ev, 1);
+		if (err < 0) {
+			printf("%d: error failed to enqueue\n", __LINE__);
+			return -1;
+		}
+		rte_event_schedule(evdev);
+
+		uint32_t deq_pkts;
+		deq_pkts = rte_event_dequeue_burst(evdev, 0, &ev, 1, 0);
+		if (deq_pkts != 1) {
+			printf("%d: error failed to deq\n", __LINE__);
+			return -1;
+		}
+
+		/* re-write event to be a forward, and continue looping it */
+		ev.op = RTE_EVENT_OP_FORWARD;
+	}
+
+	cleanup(t);
+	return 0;
+}
+
 
 static int
 test_priority_directed(struct test *t)
@@ -3040,11 +3084,16 @@ test_sw_eventdev(void)
 		}
 	}
 	t->mbuf_pool = eventdev_func_mempool;
-
 	printf("*** Running Single Directed Packet test...\n");
 	ret = test_single_directed_packet(t);
 	if (ret != 0) {
 		printf("ERROR - Single Directed Packet test FAILED.\n");
+		return ret;
+	}
+	printf("*** Running Directed Forward Credit test...\n");
+	ret = test_directed_forward_credits(t);
+	if (ret != 0) {
+		printf("ERROR - Directed Forward Credit test FAILED.\n");
 		return ret;
 	}
 	printf("*** Running Single Load Balanced Packet test...\n");

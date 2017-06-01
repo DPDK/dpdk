@@ -87,6 +87,7 @@ sw_event_enqueue_burst(void *port, const struct rte_event ev[], uint16_t num)
 			return 0;
 	}
 
+	uint32_t forwards = 0;
 	for (i = 0; i < num; i++) {
 		int op = ev[i].op;
 		int outstanding = p->outstanding_releases > 0;
@@ -95,6 +96,7 @@ sw_event_enqueue_burst(void *port, const struct rte_event ev[], uint16_t num)
 		p->inflight_credits -= (op == RTE_EVENT_OP_NEW);
 		p->inflight_credits += (op == RTE_EVENT_OP_RELEASE) *
 					outstanding;
+		forwards += (op == RTE_EVENT_OP_FORWARD);
 
 		new_ops[i] = sw_qe_flag_map[op];
 		new_ops[i] &= ~(invalid_qid << QE_FLAG_VALID_SHIFT);
@@ -112,6 +114,9 @@ sw_event_enqueue_burst(void *port, const struct rte_event ev[], uint16_t num)
 			p->inflight_credits++;
 		}
 	}
+
+	/* handle directed port forward credits */
+	p->inflight_credits -= forwards * p->is_directed;
 
 	/* returns number of events actually enqueued */
 	uint32_t enq = qe_ring_enqueue_burst_with_ops(p->rx_worker_ring, ev, i,
