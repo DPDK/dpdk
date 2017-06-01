@@ -141,6 +141,7 @@ static const struct rte_pci_id bnxt_pci_id_map[] = {
 	ETH_RSS_NONFRAG_IPV6_TCP |	\
 	ETH_RSS_NONFRAG_IPV6_UDP)
 
+static void bnxt_vlan_offload_set_op(struct rte_eth_dev *dev, int mask);
 /***********************/
 
 /*
@@ -487,6 +488,7 @@ static int bnxt_dev_lsc_intr_setup(struct rte_eth_dev *eth_dev)
 static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 {
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
+	int vlan_mask = 0;
 	int rc;
 
 	bp->dev_stopped = 0;
@@ -496,6 +498,13 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 		goto error;
 
 	bnxt_link_update_op(eth_dev, 0);
+
+	if (eth_dev->data->dev_conf.rxmode.hw_vlan_filter)
+		vlan_mask |= ETH_VLAN_FILTER_MASK;
+	if (eth_dev->data->dev_conf.rxmode.hw_vlan_strip)
+		vlan_mask |= ETH_VLAN_STRIP_MASK;
+	bnxt_vlan_offload_set_op(eth_dev, vlan_mask);
+
 	return 0;
 
 error:
@@ -1091,6 +1100,196 @@ bnxt_udp_tunnel_port_del_op(struct rte_eth_dev *eth_dev,
 	return rc;
 }
 
+static int bnxt_del_vlan_filter(struct bnxt *bp, uint16_t vlan_id)
+{
+	struct bnxt_filter_info *filter, *temp_filter, *new_filter;
+	struct bnxt_vnic_info *vnic;
+	unsigned int i;
+	int rc = 0;
+	uint32_t chk = HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_OVLAN;
+
+	/* Cycle through all VNICs */
+	for (i = 0; i < bp->nr_vnics; i++) {
+		/*
+		 * For each VNIC and each associated filter(s)
+		 * if VLAN exists && VLAN matches vlan_id
+		 *      remove the MAC+VLAN filter
+		 *      add a new MAC only filter
+		 * else
+		 *      VLAN filter doesn't exist, just skip and continue
+		 */
+		STAILQ_FOREACH(vnic, &bp->ff_pool[i], next) {
+			filter = STAILQ_FIRST(&vnic->filter);
+			while (filter) {
+				temp_filter = STAILQ_NEXT(filter, next);
+
+				if (filter->enables & chk &&
+				    filter->l2_ovlan == vlan_id) {
+					/* Must delete the filter */
+					STAILQ_REMOVE(&vnic->filter, filter,
+						      bnxt_filter_info, next);
+					bnxt_hwrm_clear_filter(bp, filter);
+					STAILQ_INSERT_TAIL(
+							&bp->free_filter_list,
+							filter, next);
+
+					/*
+					 * Need to examine to see if the MAC
+					 * filter already existed or not before
+					 * allocating a new one
+					 */
+
+					new_filter = bnxt_alloc_filter(bp);
+					if (!new_filter) {
+						RTE_LOG(ERR, PMD,
+							"MAC/VLAN filter alloc failed\n");
+						rc = -ENOMEM;
+						goto exit;
+					}
+					STAILQ_INSERT_TAIL(&vnic->filter,
+							   new_filter, next);
+					/* Inherit MAC from previous filter */
+					new_filter->mac_index =
+							filter->mac_index;
+					memcpy(new_filter->l2_addr,
+					       filter->l2_addr, ETHER_ADDR_LEN);
+					/* MAC only filter */
+					rc = bnxt_hwrm_set_filter(bp,
+							vnic,
+							new_filter);
+					if (rc)
+						goto exit;
+					RTE_LOG(INFO, PMD,
+						"Del Vlan filter for %d\n",
+						vlan_id);
+				}
+				filter = temp_filter;
+			}
+		}
+	}
+exit:
+	return rc;
+}
+
+static int bnxt_add_vlan_filter(struct bnxt *bp, uint16_t vlan_id)
+{
+	struct bnxt_filter_info *filter, *temp_filter, *new_filter;
+	struct bnxt_vnic_info *vnic;
+	unsigned int i;
+	int rc = 0;
+	uint32_t en = HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_OVLAN |
+		HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_OVLAN_MASK;
+	uint32_t chk = HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_OVLAN;
+
+	/* Cycle through all VNICs */
+	for (i = 0; i < bp->nr_vnics; i++) {
+		/*
+		 * For each VNIC and each associated filter(s)
+		 * if VLAN exists:
+		 *   if VLAN matches vlan_id
+		 *      VLAN filter already exists, just skip and continue
+		 *   else
+		 *      add a new MAC+VLAN filter
+		 * else
+		 *   Remove the old MAC only filter
+		 *    Add a new MAC+VLAN filter
+		 */
+		STAILQ_FOREACH(vnic, &bp->ff_pool[i], next) {
+			filter = STAILQ_FIRST(&vnic->filter);
+			while (filter) {
+				temp_filter = STAILQ_NEXT(filter, next);
+
+				if (filter->enables & chk) {
+					if (filter->l2_ovlan == vlan_id)
+						goto cont;
+				} else {
+					/* Must delete the MAC filter */
+					STAILQ_REMOVE(&vnic->filter, filter,
+						      bnxt_filter_info, next);
+					bnxt_hwrm_clear_filter(bp, filter);
+					filter->l2_ovlan = 0;
+					STAILQ_INSERT_TAIL(
+							&bp->free_filter_list,
+							filter, next);
+				}
+				new_filter = bnxt_alloc_filter(bp);
+				if (!new_filter) {
+					RTE_LOG(ERR, PMD,
+						"MAC/VLAN filter alloc failed\n");
+					rc = -ENOMEM;
+					goto exit;
+				}
+				STAILQ_INSERT_TAIL(&vnic->filter, new_filter,
+						   next);
+				/* Inherit MAC from the previous filter */
+				new_filter->mac_index = filter->mac_index;
+				memcpy(new_filter->l2_addr, filter->l2_addr,
+				       ETHER_ADDR_LEN);
+				/* MAC + VLAN ID filter */
+				new_filter->l2_ovlan = vlan_id;
+				new_filter->l2_ovlan_mask = 0xF000;
+				new_filter->enables |= en;
+				rc = bnxt_hwrm_set_filter(bp, vnic,
+							  new_filter);
+				if (rc)
+					goto exit;
+				RTE_LOG(INFO, PMD,
+					"Added Vlan filter for %d\n", vlan_id);
+cont:
+				filter = temp_filter;
+			}
+		}
+	}
+exit:
+	return rc;
+}
+
+static int bnxt_vlan_filter_set_op(struct rte_eth_dev *eth_dev,
+				   uint16_t vlan_id, int on)
+{
+	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
+
+	/* These operations apply to ALL existing MAC/VLAN filters */
+	if (on)
+		return bnxt_add_vlan_filter(bp, vlan_id);
+	else
+		return bnxt_del_vlan_filter(bp, vlan_id);
+}
+
+static void
+bnxt_vlan_offload_set_op(struct rte_eth_dev *dev, int mask)
+{
+	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
+	unsigned int i;
+
+	if (mask & ETH_VLAN_FILTER_MASK) {
+		if (!dev->data->dev_conf.rxmode.hw_vlan_filter) {
+			/* Remove any VLAN filters programmed */
+			for (i = 0; i < 4095; i++)
+				bnxt_del_vlan_filter(bp, i);
+		}
+		RTE_LOG(INFO, PMD, "VLAN Filtering: %d\n",
+			dev->data->dev_conf.rxmode.hw_vlan_filter);
+	}
+
+	if (mask & ETH_VLAN_STRIP_MASK) {
+		/* Enable or disable VLAN stripping */
+		for (i = 0; i < bp->nr_vnics; i++) {
+			struct bnxt_vnic_info *vnic = &bp->vnic_info[i];
+			if (dev->data->dev_conf.rxmode.hw_vlan_strip)
+				vnic->vlan_strip = true;
+			else
+				vnic->vlan_strip = false;
+			bnxt_hwrm_vnic_cfg(bp, vnic);
+		}
+		RTE_LOG(INFO, PMD, "VLAN Strip Offload: %d\n",
+			dev->data->dev_conf.rxmode.hw_vlan_strip);
+	}
+
+	if (mask & ETH_VLAN_EXTEND_MASK)
+		RTE_LOG(ERR, PMD, "Extend VLAN Not supported\n");
+}
+
 /*
  * Initialization
  */
@@ -1124,6 +1323,8 @@ static const struct eth_dev_ops bnxt_dev_ops = {
 	.flow_ctrl_set = bnxt_flow_ctrl_set_op,
 	.udp_tunnel_port_add  = bnxt_udp_tunnel_port_add_op,
 	.udp_tunnel_port_del  = bnxt_udp_tunnel_port_del_op,
+	.vlan_filter_set = bnxt_vlan_filter_set_op,
+	.vlan_offload_set = bnxt_vlan_offload_set_op,
 	.xstats_get = bnxt_dev_xstats_get_op,
 	.xstats_get_names = bnxt_dev_xstats_get_names_op,
 	.xstats_reset = bnxt_dev_xstats_reset_op,
