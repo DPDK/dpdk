@@ -130,6 +130,7 @@ struct bnxt {
 	uint32_t		flags;
 #define BNXT_FLAG_REGISTERED	(1 << 0)
 #define BNXT_FLAG_VF		(1 << 1)
+#define BNXT_FLAG_PORT_STATS	(1 << 2)
 #define BNXT_PF(bp)		(!((bp)->flags & BNXT_FLAG_VF))
 #define BNXT_VF(bp)		((bp)->flags & BNXT_FLAG_VF)
 #define BNXT_NPAR_ENABLED(bp)	((bp)->port_partition_type)
@@ -138,10 +139,16 @@ struct bnxt {
 	unsigned int		rx_nr_rings;
 	unsigned int		rx_cp_nr_rings;
 	struct bnxt_rx_queue **rx_queues;
+	const void		*rx_mem_zone;
+	struct rx_port_stats    *hw_rx_port_stats;
+	phys_addr_t		hw_rx_port_stats_map;
 
 	unsigned int		tx_nr_rings;
 	unsigned int		tx_cp_nr_rings;
 	struct bnxt_tx_queue **tx_queues;
+	const void		*tx_mem_zone;
+	struct tx_port_stats    *hw_tx_port_stats;
+	phys_addr_t		hw_tx_port_stats_map;
 
 	/* Default completion ring */
 	struct bnxt_cp_ring_info	*def_cp_ring;

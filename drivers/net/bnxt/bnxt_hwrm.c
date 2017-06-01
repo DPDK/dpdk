@@ -2246,3 +2246,39 @@ int bnxt_hwrm_exec_fwd_resp(struct bnxt *bp, uint16_t target_id,
 
 	return rc;
 }
+
+int bnxt_hwrm_port_qstats(struct bnxt *bp)
+{
+	struct hwrm_port_qstats_input req = {0};
+	struct hwrm_port_qstats_output *resp = bp->hwrm_cmd_resp_addr;
+	struct bnxt_pf_info *pf = &bp->pf;
+	int rc;
+
+	if (!(bp->flags & BNXT_FLAG_PORT_STATS))
+		return 0;
+
+	HWRM_PREP(req, PORT_QSTATS, -1, resp);
+	req.port_id = rte_cpu_to_le_16(pf->port_id);
+	req.tx_stat_host_addr = rte_cpu_to_le_64(bp->hw_tx_port_stats_map);
+	req.rx_stat_host_addr = rte_cpu_to_le_64(bp->hw_rx_port_stats_map);
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+	HWRM_CHECK_RESULT;
+	return rc;
+}
+
+int bnxt_hwrm_port_clr_stats(struct bnxt *bp)
+{
+	struct hwrm_port_clr_stats_input req = {0};
+	struct hwrm_port_clr_stats_output *resp = bp->hwrm_cmd_resp_addr;
+	struct bnxt_pf_info *pf = &bp->pf;
+	int rc;
+
+	if (!(bp->flags & BNXT_FLAG_PORT_STATS))
+		return 0;
+
+	HWRM_PREP(req, PORT_CLR_STATS, -1, resp);
+	req.port_id = rte_cpu_to_le_16(pf->port_id);
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+	HWRM_CHECK_RESULT;
+	return rc;
+}

@@ -40,5 +40,15 @@ void bnxt_free_stats(struct bnxt *bp);
 void bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 			   struct rte_eth_stats *bnxt_stats);
 void bnxt_stats_reset_op(struct rte_eth_dev *eth_dev);
+int bnxt_dev_xstats_get_names_op(__rte_unused struct rte_eth_dev *eth_dev,
+	struct rte_eth_xstat_name *xstats_names,
+	__rte_unused unsigned int limit);
+int bnxt_dev_xstats_get_op(struct rte_eth_dev *eth_dev,
+			   struct rte_eth_xstat *xstats, unsigned int n);
+void bnxt_dev_xstats_reset_op(struct rte_eth_dev *eth_dev);
 
+struct bnxt_xstats_name_off {
+	char name[RTE_ETH_XSTATS_NAME_SIZE];
+	uint64_t offset;
+};
 #endif

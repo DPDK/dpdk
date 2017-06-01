@@ -533,6 +533,7 @@ static void bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 		eth_dev->data->dev_link.link_status = 0;
 	}
 	bnxt_set_hwrm_link_config(bp, false);
+	bnxt_hwrm_port_clr_stats(bp);
 	bnxt_shutdown_nic(bp);
 	bp->dev_stopped = 1;
 }
@@ -1123,6 +1124,9 @@ static const struct eth_dev_ops bnxt_dev_ops = {
 	.flow_ctrl_set = bnxt_flow_ctrl_set_op,
 	.udp_tunnel_port_add  = bnxt_udp_tunnel_port_add_op,
 	.udp_tunnel_port_del  = bnxt_udp_tunnel_port_del_op,
+	.xstats_get = bnxt_dev_xstats_get_op,
+	.xstats_get_names = bnxt_dev_xstats_get_names_op,
+	.xstats_reset = bnxt_dev_xstats_reset_op,
 };
 
 static bool bnxt_vf_pciid(uint16_t id)
@@ -1182,7 +1186,11 @@ static int
 bnxt_dev_init(struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+	char mz_name[RTE_MEMZONE_NAMESIZE];
+	const struct rte_memzone *mz = NULL;
 	static int version_printed;
+	uint32_t total_alloc_len;
+	phys_addr_t mz_phys_addr;
 	struct bnxt *bp;
 	int rc;
 
@@ -1207,6 +1215,80 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 	eth_dev->dev_ops = &bnxt_dev_ops;
 	eth_dev->rx_pkt_burst = &bnxt_recv_pkts;
 	eth_dev->tx_pkt_burst = &bnxt_xmit_pkts;
+
+	if (BNXT_PF(bp) && pci_dev->id.device_id != BROADCOM_DEV_ID_NS2) {
+		snprintf(mz_name, RTE_MEMZONE_NAMESIZE,
+			 "bnxt_%04x:%02x:%02x:%02x-%s", pci_dev->addr.domain,
+			 pci_dev->addr.bus, pci_dev->addr.devid,
+			 pci_dev->addr.function, "rx_port_stats");
+		mz_name[RTE_MEMZONE_NAMESIZE - 1] = 0;
+		mz = rte_memzone_lookup(mz_name);
+		total_alloc_len = RTE_CACHE_LINE_ROUNDUP(
+				sizeof(struct rx_port_stats) + 512);
+		if (!mz) {
+			mz = rte_memzone_reserve(mz_name, total_alloc_len,
+						 SOCKET_ID_ANY,
+						 RTE_MEMZONE_2MB |
+						 RTE_MEMZONE_SIZE_HINT_ONLY);
+			if (mz == NULL)
+				return -ENOMEM;
+		}
+		memset(mz->addr, 0, mz->len);
+		mz_phys_addr = mz->phys_addr;
+		if ((unsigned long)mz->addr == mz_phys_addr) {
+			RTE_LOG(WARNING, PMD,
+				"Memzone physical address same as virtual.\n");
+			RTE_LOG(WARNING, PMD,
+				"Using rte_mem_virt2phy()\n");
+			mz_phys_addr = rte_mem_virt2phy(mz->addr);
+			if (mz_phys_addr == 0) {
+				RTE_LOG(ERR, PMD,
+				"unable to map address to physical memory\n");
+				return -ENOMEM;
+			}
+		}
+
+		bp->rx_mem_zone = (const void *)mz;
+		bp->hw_rx_port_stats = mz->addr;
+		bp->hw_rx_port_stats_map = mz_phys_addr;
+
+		snprintf(mz_name, RTE_MEMZONE_NAMESIZE,
+			 "bnxt_%04x:%02x:%02x:%02x-%s", pci_dev->addr.domain,
+			 pci_dev->addr.bus, pci_dev->addr.devid,
+			 pci_dev->addr.function, "tx_port_stats");
+		mz_name[RTE_MEMZONE_NAMESIZE - 1] = 0;
+		mz = rte_memzone_lookup(mz_name);
+		total_alloc_len = RTE_CACHE_LINE_ROUNDUP(
+				sizeof(struct tx_port_stats) + 512);
+		if (!mz) {
+			mz = rte_memzone_reserve(mz_name, total_alloc_len,
+						 SOCKET_ID_ANY,
+						 RTE_MEMZONE_2MB |
+						 RTE_MEMZONE_SIZE_HINT_ONLY);
+			if (mz == NULL)
+				return -ENOMEM;
+		}
+		memset(mz->addr, 0, mz->len);
+		mz_phys_addr = mz->phys_addr;
+		if ((unsigned long)mz->addr == mz_phys_addr) {
+			RTE_LOG(WARNING, PMD,
+				"Memzone physical address same as virtual.\n");
+			RTE_LOG(WARNING, PMD,
+				"Using rte_mem_virt2phy()\n");
+			mz_phys_addr = rte_mem_virt2phy(mz->addr);
+			if (mz_phys_addr == 0) {
+				RTE_LOG(ERR, PMD,
+				"unable to map address to physical memory\n");
+				return -ENOMEM;
+			}
+		}
+
+		bp->tx_mem_zone = (const void *)mz;
+		bp->hw_tx_port_stats = mz->addr;
+		bp->hw_tx_port_stats_map = mz_phys_addr;
+
+		bp->flags |= BNXT_FLAG_PORT_STATS;
+	}
 
 	rc = bnxt_alloc_hwrm_resources(bp);
 	if (rc) {
@@ -1366,6 +1448,8 @@ bnxt_dev_uninit(struct rte_eth_dev *eth_dev) {
 	}
 	rc = bnxt_hwrm_func_driver_unregister(bp, 0);
 	bnxt_free_hwrm_resources(bp);
+	rte_memzone_free((const struct rte_memzone *)bp->tx_mem_zone);
+	rte_memzone_free((const struct rte_memzone *)bp->rx_mem_zone);
 	if (bp->dev_stopped == 0)
 		bnxt_dev_close_op(eth_dev);
 	if (bp->pf.vf_info)

@@ -119,5 +119,6 @@ int bnxt_hwrm_tunnel_dst_port_alloc(struct bnxt *bp, uint16_t port,
 int bnxt_hwrm_tunnel_dst_port_free(struct bnxt *bp, uint16_t port,
 				uint8_t tunnel_type);
 void bnxt_free_tunnel_ports(struct bnxt *bp);
-
+int bnxt_hwrm_port_qstats(struct bnxt *bp);
+int bnxt_hwrm_port_clr_stats(struct bnxt *bp);
 #endif
