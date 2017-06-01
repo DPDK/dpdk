@@ -2639,6 +2639,8 @@ ixgbe_flow_destroy(struct rte_eth_dev *dev,
 	struct ixgbe_eth_l2_tunnel_conf_ele *l2_tn_filter_ptr;
 	struct ixgbe_fdir_rule_ele *fdir_rule_ptr;
 	struct ixgbe_flow_mem *ixgbe_flow_mem_ptr;
+	struct ixgbe_hw_fdir_info *fdir_info =
+		IXGBE_DEV_PRIVATE_TO_FDIR_INFO(dev->data->dev_private);
 
 	switch (filter_type) {
 	case RTE_ETH_FILTER_NTUPLE:
@@ -2691,6 +2693,8 @@ ixgbe_flow_destroy(struct rte_eth_dev *dev,
 			TAILQ_REMOVE(&filter_fdir_list,
 				fdir_rule_ptr, entries);
 			rte_free(fdir_rule_ptr);
+			if (TAILQ_EMPTY(&filter_fdir_list))
+				fdir_info->mask_added = false;
 		}
 		break;
 	case RTE_ETH_FILTER_L2_TUNNEL:
