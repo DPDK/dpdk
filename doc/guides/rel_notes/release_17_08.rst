@@ -56,6 +56,16 @@ New Features
   TX and RX path reworked to improve performance.  Also reduced latency
   for slow traffic.
 
+* **Updated bnxt PMD.**
+
+  Major enhancements include:
+  * Support MTU modification.
+  * Support LRO.
+  * Support VLAN filter and strip functionality.
+  * Other enhancements to add support for more dev_ops.
+  * Add PMD specific APIs mainly to control VF from PF.
+  * Update HWRM version to 1.7.7
+
 
 Resolved Issues
 ---------------
