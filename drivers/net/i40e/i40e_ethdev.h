@@ -639,6 +639,11 @@ struct i40e_pf {
 
 	struct i40e_hw_port_stats stats_offset;
 	struct i40e_hw_port_stats stats;
+	/* internal packet byte count, it should be excluded from the total */
+	uint64_t internal_rx_bytes;
+	uint64_t internal_tx_bytes;
+	uint64_t internal_rx_bytes_offset;
+	uint64_t internal_tx_bytes_offset;
 	bool offset_loaded;
 
 	struct rte_eth_dev_data *dev_data; /* Pointer to the device data */
