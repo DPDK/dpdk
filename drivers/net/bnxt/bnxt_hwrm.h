@@ -95,6 +95,8 @@ int bnxt_hwrm_vnic_rss_cfg(struct bnxt *bp,
 			   struct bnxt_vnic_info *vnic);
 int bnxt_hwrm_vnic_plcmode_cfg(struct bnxt *bp,
 				struct bnxt_vnic_info *vnic);
+int bnxt_hwrm_vnic_tpa_cfg(struct bnxt *bp,
+			   struct bnxt_vnic_info *vnic, bool enable);
 
 int bnxt_alloc_all_hwrm_stat_ctxs(struct bnxt *bp);
 int bnxt_clear_all_hwrm_stat_ctxs(struct bnxt *bp);

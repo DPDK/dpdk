@@ -31,6 +31,7 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <rte_bitmap.h>
 #include <rte_memzone.h>
 #include <unistd.h>
 
@@ -137,11 +138,23 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 		RTE_CACHE_LINE_ROUNDUP(rx_ring_info->rx_ring_struct->ring_size *
 		sizeof(struct rx_prod_pkt_bd)) : 0;
 
-	int total_alloc_len = rx_ring_start + rx_ring_len;
-	int ag_ring_start = 0;
+	int ag_ring_start = rx_ring_start + rx_ring_len;
+	int ag_ring_len = rx_ring_len * AGG_RING_SIZE_FACTOR;
 
-	ag_ring_start = rx_ring_start + rx_ring_len;
-	total_alloc_len = ag_ring_start + rx_ring_len * AGG_RING_SIZE_FACTOR;
+	int ag_bitmap_start = ag_ring_start + ag_ring_len;
+	int ag_bitmap_len =  rx_ring_info ?
+		RTE_CACHE_LINE_ROUNDUP(rte_bitmap_get_memory_footprint(
+			rx_ring_info->rx_ring_struct->ring_size *
+			AGG_RING_SIZE_FACTOR)) : 0;
+
+	int tpa_info_start = ag_bitmap_start + ag_bitmap_len;
+	int tpa_info_len = rx_ring_info ?
+		RTE_CACHE_LINE_ROUNDUP(BNXT_TPA_MAX *
+				       sizeof(struct bnxt_tpa_info)) : 0;
+
+	int total_alloc_len = tpa_info_start;
+	if (bp->eth_dev->data->dev_conf.rxmode.enable_lro)
+		total_alloc_len += tpa_info_len;
 
 	snprintf(mz_name, RTE_MEMZONE_NAMESIZE,
 		 "bnxt_%04x:%02x:%02x:%02x-%04x_%s", pdev->addr.domain,
@@ -230,6 +243,17 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 			rx_ring_info->ag_buf_ring =
 			    (struct bnxt_sw_rx_bd *)rx_ring->vmem;
 		}
+
+		rx_ring_info->ag_bitmap =
+		    rte_bitmap_init(rx_ring_info->rx_ring_struct->ring_size *
+				    AGG_RING_SIZE_FACTOR, (uint8_t *)mz->addr +
+				    ag_bitmap_start, ag_bitmap_len);
+
+		/* TPA info */
+		if (bp->eth_dev->data->dev_conf.rxmode.enable_lro)
+			rx_ring_info->tpa_info =
+				((struct bnxt_tpa_info *)((char *)mz->addr +
+							  tpa_info_start));
 	}
 
 	cp_ring->bd = ((char *)mz->addr + cp_ring_start);

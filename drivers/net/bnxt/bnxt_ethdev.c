@@ -286,6 +286,13 @@ static int bnxt_init_chip(struct bnxt *bp)
 				goto err_out;
 			}
 		}
+
+		bnxt_hwrm_vnic_plcmode_cfg(bp, vnic);
+
+		if (bp->eth_dev->data->dev_conf.rxmode.enable_lro)
+			bnxt_hwrm_vnic_tpa_cfg(bp, vnic, 1);
+		else
+			bnxt_hwrm_vnic_tpa_cfg(bp, vnic, 0);
 	}
 	rc = bnxt_hwrm_cfa_l2_set_rx_mask(bp, &bp->vnic_info[0]);
 	if (rc) {

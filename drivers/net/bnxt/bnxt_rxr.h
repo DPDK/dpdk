@@ -37,6 +37,39 @@
 #define B_RX_DB(db, prod)						\
 		(*(uint32_t *)db = (DB_KEY_RX | prod))
 
+#define BNXT_TPA_L4_SIZE(x)	\
+	{ \
+		typeof(x) hdr_info = (x); \
+		(((hdr_info) & 0xf8000000) ? ((hdr_info) >> 27) : 32) \
+	}
+
+#define BNXT_TPA_INNER_L3_OFF(hdr_info)	\
+	(((hdr_info) >> 18) & 0x1ff)
+
+#define BNXT_TPA_INNER_L2_OFF(hdr_info)	\
+	(((hdr_info) >> 9) & 0x1ff)
+
+#define BNXT_TPA_OUTER_L3_OFF(hdr_info)	\
+	((hdr_info) & 0x1ff)
+
+enum pkt_hash_types {
+	PKT_HASH_TYPE_NONE,	/* Undefined type */
+	PKT_HASH_TYPE_L2,	/* Input: src_MAC, dest_MAC */
+	PKT_HASH_TYPE_L3,	/* Input: src_IP, dst_IP */
+	PKT_HASH_TYPE_L4,	/* Input: src_IP, dst_IP, src_port, dst_port */
+};
+
+struct bnxt_tpa_info {
+	struct rte_mbuf		*mbuf;
+	uint16_t			len;
+	unsigned short		gso_type;
+	uint32_t			flags2;
+	uint32_t			metadata;
+	enum pkt_hash_types	hash_type;
+	uint32_t			rss_hash;
+	uint32_t			hdr_info;
+};
+
 struct bnxt_sw_rx_bd {
 	struct rte_mbuf		*mbuf; /* data associated with RX descriptor */
 };
@@ -57,6 +90,13 @@ struct bnxt_rx_ring_info {
 
 	struct bnxt_ring	*rx_ring_struct;
 	struct bnxt_ring	*ag_ring_struct;
+
+	/*
+	 * To deal with out of order return from TPA, use free buffer indicator
+	 */
+	struct rte_bitmap	*ag_bitmap;
+
+	struct bnxt_tpa_info *tpa_info;
 };
 
 uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
