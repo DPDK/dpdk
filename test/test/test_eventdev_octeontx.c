@@ -194,6 +194,11 @@ _eventdev_setup(int mode)
 	TEST_ASSERT_SUCCESS(ret, "Failed to configure eventdev");
 
 	if (mode == TEST_EVENTDEV_SETUP_PRIORITY) {
+		if (rte_event_queue_count(evdev) > 8) {
+			printf("test expects the unique priority per queue\n");
+			return -ENOTSUP;
+		}
+
 		/* Configure event queues(0 to n) with
 		 * RTE_EVENT_DEV_PRIORITY_HIGHEST to
 		 * RTE_EVENT_DEV_PRIORITY_LOWEST
