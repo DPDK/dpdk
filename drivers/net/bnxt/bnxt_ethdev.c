@@ -1356,6 +1356,25 @@ allmulti:
 	return bnxt_hwrm_cfa_l2_set_rx_mask(bp, vnic);
 }
 
+static int
+bnxt_fw_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size)
+{
+	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
+	uint8_t fw_major = (bp->fw_ver >> 24) & 0xff;
+	uint8_t fw_minor = (bp->fw_ver >> 16) & 0xff;
+	uint8_t fw_updt = (bp->fw_ver >> 8) & 0xff;
+	int ret;
+
+	ret = snprintf(fw_version, fw_size, "%d.%d.%d",
+			fw_major, fw_minor, fw_updt);
+
+	ret += 1; /* add the size of '\0' */
+	if (fw_size < (uint32_t)ret)
+		return ret;
+	else
+		return 0;
+}
+
 /*
  * Initialization
  */
@@ -1395,6 +1414,7 @@ static const struct eth_dev_ops bnxt_dev_ops = {
 	.xstats_get = bnxt_dev_xstats_get_op,
 	.xstats_get_names = bnxt_dev_xstats_get_names_op,
 	.xstats_reset = bnxt_dev_xstats_reset_op,
+	.fw_version_get = bnxt_fw_version_get,
 	.set_mc_addr_list = bnxt_dev_set_mc_addr_list_op,
 };
 
