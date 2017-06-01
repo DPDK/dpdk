@@ -47,6 +47,42 @@
 
 #define BNXT_MAX_MTU		9500
 #define VLAN_TAG_SIZE		4
+#define BNXT_MAX_LED		4
+
+struct bnxt_led_info {
+	uint8_t      led_id;
+	uint8_t      led_type;
+	uint8_t      led_group_id;
+	uint8_t      unused;
+	uint16_t  led_state_caps;
+#define BNXT_LED_ALT_BLINK_CAP(x)       ((x) &  \
+	rte_cpu_to_le_16(HWRM_PORT_LED_QCFG_OUTPUT_LED0_STATE_BLINKALT))
+
+	uint16_t  led_color_caps;
+};
+
+struct bnxt_led_cfg {
+	uint8_t led_id;
+	uint8_t led_state;
+	uint8_t led_color;
+	uint8_t unused;
+	uint16_t led_blink_on;
+	uint16_t led_blink_off;
+	uint8_t led_group_id;
+	uint8_t rsvd;
+};
+
+#define BNXT_LED_DFLT_ENA                               \
+	(HWRM_PORT_LED_CFG_INPUT_ENABLES_LED0_ID |             \
+	 HWRM_PORT_LED_CFG_INPUT_ENABLES_LED0_STATE |          \
+	 HWRM_PORT_LED_CFG_INPUT_ENABLES_LED0_BLINK_ON |       \
+	 HWRM_PORT_LED_CFG_INPUT_ENABLES_LED0_BLINK_OFF |      \
+	 HWRM_PORT_LED_CFG_INPUT_ENABLES_LED0_GROUP_ID)
+
+#define BNXT_LED_DFLT_ENA_SHIFT		6
+
+#define BNXT_LED_DFLT_ENABLES(x)                        \
+	rte_cpu_to_le_32(BNXT_LED_DFLT_ENA << (BNXT_LED_DFLT_ENA_SHIFT * (x)))
 
 enum bnxt_hw_context {
 	HW_CONTEXT_NONE     = 0,
@@ -205,6 +241,9 @@ struct bnxt {
 	uint16_t		geneve_fw_dst_port_id;
 	uint32_t		fw_ver;
 	rte_atomic64_t		rx_mbuf_alloc_fail;
+
+	struct bnxt_led_info	leds[BNXT_MAX_LED];
+	uint8_t			num_leds;
 };
 
 /*

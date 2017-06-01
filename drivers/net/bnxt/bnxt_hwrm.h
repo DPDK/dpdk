@@ -130,4 +130,6 @@ void bnxt_free_tunnel_ports(struct bnxt *bp);
 int bnxt_hwrm_set_default_vlan(struct bnxt *bp, int vf, uint8_t is_vf);
 int bnxt_hwrm_port_qstats(struct bnxt *bp);
 int bnxt_hwrm_port_clr_stats(struct bnxt *bp);
+int bnxt_hwrm_port_led_cfg(struct bnxt *bp, bool led_on);
+int bnxt_hwrm_port_led_qcaps(struct bnxt *bp);
 #endif

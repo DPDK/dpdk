@@ -2453,3 +2453,73 @@ int bnxt_hwrm_port_clr_stats(struct bnxt *bp)
 	HWRM_CHECK_RESULT;
 	return rc;
 }
+
+int bnxt_hwrm_port_led_qcaps(struct bnxt *bp)
+{
+	struct hwrm_port_led_qcaps_output *resp = bp->hwrm_cmd_resp_addr;
+	struct hwrm_port_led_qcaps_input req = {0};
+	int rc;
+
+	if (BNXT_VF(bp))
+		return 0;
+
+	HWRM_PREP(req, PORT_LED_QCAPS, -1, resp);
+	req.port_id = bp->pf.port_id;
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+	HWRM_CHECK_RESULT;
+
+	if (resp->num_leds > 0 && resp->num_leds < BNXT_MAX_LED) {
+		unsigned int i;
+
+		bp->num_leds = resp->num_leds;
+		memcpy(bp->leds, &resp->led0_id,
+			sizeof(bp->leds[0]) * bp->num_leds);
+		for (i = 0; i < bp->num_leds; i++) {
+			struct bnxt_led_info *led = &bp->leds[i];
+
+			uint16_t caps = led->led_state_caps;
+
+			if (!led->led_group_id ||
+				!BNXT_LED_ALT_BLINK_CAP(caps)) {
+				bp->num_leds = 0;
+				break;
+			}
+		}
+	}
+	return rc;
+}
+
+int bnxt_hwrm_port_led_cfg(struct bnxt *bp, bool led_on)
+{
+	struct hwrm_port_led_cfg_output *resp = bp->hwrm_cmd_resp_addr;
+	struct hwrm_port_led_cfg_input req = {0};
+	struct bnxt_led_cfg *led_cfg;
+	uint8_t led_state = HWRM_PORT_LED_QCFG_OUTPUT_LED0_STATE_DEFAULT;
+	uint16_t duration = 0;
+	int rc, i;
+
+	if (!bp->num_leds || BNXT_VF(bp))
+		return -EOPNOTSUPP;
+
+	HWRM_PREP(req, PORT_LED_CFG, -1, resp);
+	if (led_on) {
+		led_state = HWRM_PORT_LED_CFG_INPUT_LED0_STATE_BLINKALT;
+		duration = rte_cpu_to_le_16(500);
+	}
+	req.port_id = bp->pf.port_id;
+	req.num_leds = bp->num_leds;
+	led_cfg = (struct bnxt_led_cfg *)&req.led0_id;
+	for (i = 0; i < bp->num_leds; i++, led_cfg++) {
+		req.enables |= BNXT_LED_DFLT_ENABLES(i);
+		led_cfg->led_id = bp->leds[i].led_id;
+		led_cfg->led_state = led_state;
+		led_cfg->led_blink_on = duration;
+		led_cfg->led_blink_off = duration;
+		led_cfg->led_group_id = bp->leds[i].led_group_id;
+	}
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+	HWRM_CHECK_RESULT;
+
+	return rc;
+}

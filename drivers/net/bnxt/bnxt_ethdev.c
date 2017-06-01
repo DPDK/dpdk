@@ -1497,6 +1497,22 @@ bnxt_vlan_pvid_set_op(struct rte_eth_dev *dev, uint16_t pvid, int on)
 	return rc;
 }
 
+static int
+bnxt_dev_led_on_op(struct rte_eth_dev *dev)
+{
+	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
+
+	return bnxt_hwrm_port_led_cfg(bp, true);
+}
+
+static int
+bnxt_dev_led_off_op(struct rte_eth_dev *dev)
+{
+	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
+
+	return bnxt_hwrm_port_led_cfg(bp, false);
+}
+
 /*
  * Initialization
  */
@@ -1542,6 +1558,8 @@ static const struct eth_dev_ops bnxt_dev_ops = {
 	.set_mc_addr_list = bnxt_dev_set_mc_addr_list_op,
 	.rxq_info_get = bnxt_rxq_info_get_op,
 	.txq_info_get = bnxt_txq_info_get_op,
+	.dev_led_on = bnxt_dev_led_on_op,
+	.dev_led_off = bnxt_dev_led_off_op,
 };
 
 static bool bnxt_vf_pciid(uint16_t id)
@@ -1814,6 +1832,8 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 			}
 		}
 	}
+
+	bnxt_hwrm_port_led_qcaps(bp);
 
 	rc = bnxt_setup_int(bp);
 	if (rc)

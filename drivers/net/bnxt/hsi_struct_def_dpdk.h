@@ -5743,6 +5743,983 @@ struct hwrm_port_clr_stats_output {
 	 */
 } __attribute__((packed));
 
+/* hwrm_port_led_cfg */
+/*
+ * Description: This function is used to configure LEDs on a given port. Each
+ * port has individual set of LEDs associated with it. These LEDs are used for
+ * speed/link configuration as well as activity indicator configuration. Up to
+ * three LEDs can be configured, one for activity and two for speeds.
+ */
+/* Input	(64 bytes) */
+struct hwrm_port_led_cfg_input {
+	uint16_t req_type;
+	/*
+	 * This value indicates what type of request this is. The format
+	 * for the rest of the command is determined by this field.
+	 */
+	uint16_t cmpl_ring;
+	/*
+	 * This value indicates the what completion ring the request
+	 * will be optionally completed on. If the value is -1, then no
+	 * CR completion will be generated. Any other value must be a
+	 * valid CR ring_id value for this function.
+	 */
+	uint16_t seq_id;
+	/* This value indicates the command sequence number. */
+	uint16_t target_id;
+	/*
+	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function
+	 * ids 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF
+	 * - HWRM
+	 */
+	uint64_t resp_addr;
+	/*
+	 * This is the host address where the response will be written
+	 * when the request is complete. This area must be 16B aligned
+	 * and must be cleared to zero before the request is made.
+	 */
+	uint32_t enables;
+	/* This bit must be '1' for the led0_id field to be configured. */
+	#define HWRM_PORT_LED_CFG_INPUT_ENABLES_LED0_ID	UINT32_C(0x1)
+	/* This bit must be '1' for the led0_state field to be configured. */
+	#define HWRM_PORT_LED_CFG_INPUT_ENABLES_LED0_STATE	UINT32_C(0x2)
+	/* This bit must be '1' for the led0_color field to be configured. */
+	#define HWRM_PORT_LED_CFG_INPUT_ENABLES_LED0_COLOR	UINT32_C(0x4)
+	/*
+	 * This bit must be '1' for the led0_blink_on field to be
+	 * configured.
+	 */
+	#define HWRM_PORT_LED_CFG_INPUT_ENABLES_LED0_BLINK_ON	UINT32_C(0x8)
+	/*
+	 * This bit must be '1' for the led0_blink_off field to be
+	 * configured.
+	 */
+	#define HWRM_PORT_LED_CFG_INPUT_ENABLES_LED0_BLINK_OFF UINT32_C(0x10)
+	/*
+	 * This bit must be '1' for the led0_group_id field to be
+	 * configured.
+	 */
+	#define HWRM_PORT_LED_CFG_INPUT_ENABLES_LED0_GROUP_ID UINT32_C(0x20)
+	/* This bit must be '1' for the led1_id field to be configured. */
+	#define HWRM_PORT_LED_CFG_INPUT_ENABLES_LED1_ID	UINT32_C(0x40)
+	/* This bit must be '1' for the led1_state field to be configured. */
+	#define HWRM_PORT_LED_CFG_INPUT_ENABLES_LED1_STATE	UINT32_C(0x80)
+	/* This bit must be '1' for the led1_color field to be configured. */
+	#define HWRM_PORT_LED_CFG_INPUT_ENABLES_LED1_COLOR	UINT32_C(0x100)
+	/*
+	 * This bit must be '1' for the led1_blink_on field to be
+	 * configured.
+	 */
+	#define HWRM_PORT_LED_CFG_INPUT_ENABLES_LED1_BLINK_ON UINT32_C(0x200)
+	/*
+	 * This bit must be '1' for the led1_blink_off field to be
+	 * configured.
+	 */
+	#define HWRM_PORT_LED_CFG_INPUT_ENABLES_LED1_BLINK_OFF UINT32_C(0x400)
+	/*
+	 * This bit must be '1' for the led1_group_id field to be
+	 * configured.
+	 */
+	#define HWRM_PORT_LED_CFG_INPUT_ENABLES_LED1_GROUP_ID UINT32_C(0x800)
+	/* This bit must be '1' for the led2_id field to be configured. */
+	#define HWRM_PORT_LED_CFG_INPUT_ENABLES_LED2_ID	UINT32_C(0x1000)
+	/* This bit must be '1' for the led2_state field to be configured. */
+	#define HWRM_PORT_LED_CFG_INPUT_ENABLES_LED2_STATE	UINT32_C(0x2000)
+	/* This bit must be '1' for the led2_color field to be configured. */
+	#define HWRM_PORT_LED_CFG_INPUT_ENABLES_LED2_COLOR	UINT32_C(0x4000)
+	/*
+	 * This bit must be '1' for the led2_blink_on field to be
+	 * configured.
+	 */
+	#define HWRM_PORT_LED_CFG_INPUT_ENABLES_LED2_BLINK_ON UINT32_C(0x8000)
+	/*
+	 * This bit must be '1' for the led2_blink_off field to be
+	 * configured.
+	 */
+	#define HWRM_PORT_LED_CFG_INPUT_ENABLES_LED2_BLINK_OFF UINT32_C(0x10000)
+	/*
+	 * This bit must be '1' for the led2_group_id field to be
+	 * configured.
+	 */
+	#define HWRM_PORT_LED_CFG_INPUT_ENABLES_LED2_GROUP_ID UINT32_C(0x20000)
+	/* This bit must be '1' for the led3_id field to be configured. */
+	#define HWRM_PORT_LED_CFG_INPUT_ENABLES_LED3_ID	UINT32_C(0x40000)
+	/* This bit must be '1' for the led3_state field to be configured. */
+	#define HWRM_PORT_LED_CFG_INPUT_ENABLES_LED3_STATE  UINT32_C(0x80000)
+	/* This bit must be '1' for the led3_color field to be configured. */
+	#define HWRM_PORT_LED_CFG_INPUT_ENABLES_LED3_COLOR  UINT32_C(0x100000)
+	/*
+	 * This bit must be '1' for the led3_blink_on field to be
+	 * configured.
+	 */
+	#define HWRM_PORT_LED_CFG_INPUT_ENABLES_LED3_BLINK_ON UINT32_C(0x200000)
+	/*
+	 * This bit must be '1' for the led3_blink_off field to be
+	 * configured.
+	 */
+	#define HWRM_PORT_LED_CFG_INPUT_ENABLES_LED3_BLINK_OFF	\
+		UINT32_C(0x400000)
+	/*
+	 * This bit must be '1' for the led3_group_id field to be
+	 * configured.
+	 */
+	#define HWRM_PORT_LED_CFG_INPUT_ENABLES_LED3_GROUP_ID UINT32_C(0x800000)
+	uint16_t port_id;
+	/* Port ID of port whose LEDs are configured. */
+	uint8_t num_leds;
+	/*
+	 * The number of LEDs that are being configured. Up to 4 LEDs
+	 * can be configured with this command.
+	 */
+	uint8_t rsvd;
+	/* Reserved field. */
+	uint8_t led0_id;
+	/* An identifier for the LED #0. */
+	uint8_t led0_state;
+	/* The requested state of the LED #0. */
+	/* Default state of the LED */
+	#define HWRM_PORT_LED_CFG_INPUT_LED0_STATE_DEFAULT	UINT32_C(0x0)
+	/* Off */
+	#define HWRM_PORT_LED_CFG_INPUT_LED0_STATE_OFF	UINT32_C(0x1)
+	/* On */
+	#define HWRM_PORT_LED_CFG_INPUT_LED0_STATE_ON	UINT32_C(0x2)
+	/* Blink */
+	#define HWRM_PORT_LED_CFG_INPUT_LED0_STATE_BLINK	UINT32_C(0x3)
+	/* Blink Alternately */
+	#define HWRM_PORT_LED_CFG_INPUT_LED0_STATE_BLINKALT	UINT32_C(0x4)
+	uint8_t led0_color;
+	/* The requested color of LED #0. */
+	/* Default */
+	#define HWRM_PORT_LED_CFG_INPUT_LED0_COLOR_DEFAULT	UINT32_C(0x0)
+	/* Amber */
+	#define HWRM_PORT_LED_CFG_INPUT_LED0_COLOR_AMBER	UINT32_C(0x1)
+	/* Green */
+	#define HWRM_PORT_LED_CFG_INPUT_LED0_COLOR_GREEN	UINT32_C(0x2)
+	/* Green or Amber */
+	#define HWRM_PORT_LED_CFG_INPUT_LED0_COLOR_GREENAMBER	UINT32_C(0x3)
+	uint8_t unused_0;
+	uint16_t led0_blink_on;
+	/*
+	 * If the LED #0 state is "blink" or "blinkalt", then this field
+	 * represents the requested time in milliseconds to keep LED on
+	 * between cycles.
+	 */
+	uint16_t led0_blink_off;
+	/*
+	 * If the LED #0 state is "blink" or "blinkalt", then this field
+	 * represents the requested time in milliseconds to keep LED off
+	 * between cycles.
+	 */
+	uint8_t led0_group_id;
+	/*
+	 * An identifier for the group of LEDs that LED #0 belongs to.
+	 * If set to 0, then the LED #0 shall not be grouped and shall
+	 * be treated as an individual resource. For all other non-zero
+	 * values of this field, LED #0 shall be grouped together with
+	 * the LEDs with the same group ID value.
+	 */
+	uint8_t rsvd0;
+	/* Reserved field. */
+	uint8_t led1_id;
+	/* An identifier for the LED #1. */
+	uint8_t led1_state;
+	/* The requested state of the LED #1. */
+	/* Default state of the LED */
+	#define HWRM_PORT_LED_CFG_INPUT_LED1_STATE_DEFAULT	UINT32_C(0x0)
+	/* Off */
+	#define HWRM_PORT_LED_CFG_INPUT_LED1_STATE_OFF	UINT32_C(0x1)
+	/* On */
+	#define HWRM_PORT_LED_CFG_INPUT_LED1_STATE_ON	UINT32_C(0x2)
+	/* Blink */
+	#define HWRM_PORT_LED_CFG_INPUT_LED1_STATE_BLINK	UINT32_C(0x3)
+	/* Blink Alternately */
+	#define HWRM_PORT_LED_CFG_INPUT_LED1_STATE_BLINKALT	UINT32_C(0x4)
+	uint8_t led1_color;
+	/* The requested color of LED #1. */
+	/* Default */
+	#define HWRM_PORT_LED_CFG_INPUT_LED1_COLOR_DEFAULT	UINT32_C(0x0)
+	/* Amber */
+	#define HWRM_PORT_LED_CFG_INPUT_LED1_COLOR_AMBER	UINT32_C(0x1)
+	/* Green */
+	#define HWRM_PORT_LED_CFG_INPUT_LED1_COLOR_GREEN	UINT32_C(0x2)
+	/* Green or Amber */
+	#define HWRM_PORT_LED_CFG_INPUT_LED1_COLOR_GREENAMBER	UINT32_C(0x3)
+	uint8_t unused_1;
+	uint16_t led1_blink_on;
+	/*
+	 * If the LED #1 state is "blink" or "blinkalt", then this field
+	 * represents the requested time in milliseconds to keep LED on
+	 * between cycles.
+	 */
+	uint16_t led1_blink_off;
+	/*
+	 * If the LED #1 state is "blink" or "blinkalt", then this field
+	 * represents the requested time in milliseconds to keep LED off
+	 * between cycles.
+	 */
+	uint8_t led1_group_id;
+	/*
+	 * An identifier for the group of LEDs that LED #1 belongs to.
+	 * If set to 0, then the LED #1 shall not be grouped and shall
+	 * be treated as an individual resource. For all other non-zero
+	 * values of this field, LED #1 shall be grouped together with
+	 * the LEDs with the same group ID value.
+	 */
+	uint8_t rsvd1;
+	/* Reserved field. */
+	uint8_t led2_id;
+	/* An identifier for the LED #2. */
+	uint8_t led2_state;
+	/* The requested state of the LED #2. */
+	/* Default state of the LED */
+	#define HWRM_PORT_LED_CFG_INPUT_LED2_STATE_DEFAULT	UINT32_C(0x0)
+	/* Off */
+	#define HWRM_PORT_LED_CFG_INPUT_LED2_STATE_OFF	UINT32_C(0x1)
+	/* On */
+	#define HWRM_PORT_LED_CFG_INPUT_LED2_STATE_ON	UINT32_C(0x2)
+	/* Blink */
+	#define HWRM_PORT_LED_CFG_INPUT_LED2_STATE_BLINK	UINT32_C(0x3)
+	/* Blink Alternately */
+	#define HWRM_PORT_LED_CFG_INPUT_LED2_STATE_BLINKALT	UINT32_C(0x4)
+	uint8_t led2_color;
+	/* The requested color of LED #2. */
+	/* Default */
+	#define HWRM_PORT_LED_CFG_INPUT_LED2_COLOR_DEFAULT	UINT32_C(0x0)
+	/* Amber */
+	#define HWRM_PORT_LED_CFG_INPUT_LED2_COLOR_AMBER	UINT32_C(0x1)
+	/* Green */
+	#define HWRM_PORT_LED_CFG_INPUT_LED2_COLOR_GREEN	UINT32_C(0x2)
+	/* Green or Amber */
+	#define HWRM_PORT_LED_CFG_INPUT_LED2_COLOR_GREENAMBER	UINT32_C(0x3)
+	uint8_t unused_2;
+	uint16_t led2_blink_on;
+	/*
+	 * If the LED #2 state is "blink" or "blinkalt", then this field
+	 * represents the requested time in milliseconds to keep LED on
+	 * between cycles.
+	 */
+	uint16_t led2_blink_off;
+	/*
+	 * If the LED #2 state is "blink" or "blinkalt", then this field
+	 * represents the requested time in milliseconds to keep LED off
+	 * between cycles.
+	 */
+	uint8_t led2_group_id;
+	/*
+	 * An identifier for the group of LEDs that LED #2 belongs to.
+	 * If set to 0, then the LED #2 shall not be grouped and shall
+	 * be treated as an individual resource. For all other non-zero
+	 * values of this field, LED #2 shall be grouped together with
+	 * the LEDs with the same group ID value.
+	 */
+	uint8_t rsvd2;
+	/* Reserved field. */
+	uint8_t led3_id;
+	/* An identifier for the LED #3. */
+	uint8_t led3_state;
+	/* The requested state of the LED #3. */
+	/* Default state of the LED */
+	#define HWRM_PORT_LED_CFG_INPUT_LED3_STATE_DEFAULT	UINT32_C(0x0)
+	/* Off */
+	#define HWRM_PORT_LED_CFG_INPUT_LED3_STATE_OFF	UINT32_C(0x1)
+	/* On */
+	#define HWRM_PORT_LED_CFG_INPUT_LED3_STATE_ON	UINT32_C(0x2)
+	/* Blink */
+	#define HWRM_PORT_LED_CFG_INPUT_LED3_STATE_BLINK	UINT32_C(0x3)
+	/* Blink Alternately */
+	#define HWRM_PORT_LED_CFG_INPUT_LED3_STATE_BLINKALT	UINT32_C(0x4)
+	uint8_t led3_color;
+	/* The requested color of LED #3. */
+	/* Default */
+	#define HWRM_PORT_LED_CFG_INPUT_LED3_COLOR_DEFAULT	UINT32_C(0x0)
+	/* Amber */
+	#define HWRM_PORT_LED_CFG_INPUT_LED3_COLOR_AMBER	UINT32_C(0x1)
+	/* Green */
+	#define HWRM_PORT_LED_CFG_INPUT_LED3_COLOR_GREEN	UINT32_C(0x2)
+	/* Green or Amber */
+	#define HWRM_PORT_LED_CFG_INPUT_LED3_COLOR_GREENAMBER	UINT32_C(0x3)
+	uint8_t unused_3;
+	uint16_t led3_blink_on;
+	/*
+	 * If the LED #3 state is "blink" or "blinkalt", then this field
+	 * represents the requested time in milliseconds to keep LED on
+	 * between cycles.
+	 */
+	uint16_t led3_blink_off;
+	/*
+	 * If the LED #3 state is "blink" or "blinkalt", then this field
+	 * represents the requested time in milliseconds to keep LED off
+	 * between cycles.
+	 */
+	uint8_t led3_group_id;
+	/*
+	 * An identifier for the group of LEDs that LED #3 belongs to.
+	 * If set to 0, then the LED #3 shall not be grouped and shall
+	 * be treated as an individual resource. For all other non-zero
+	 * values of this field, LED #3 shall be grouped together with
+	 * the LEDs with the same group ID value.
+	 */
+	uint8_t rsvd3;
+	/* Reserved field. */
+} __attribute__((packed));
+
+/* Output	(16 bytes) */
+struct hwrm_port_led_cfg_output {
+	uint16_t error_code;
+	/*
+	 * Pass/Fail or error type Note: receiver to verify the in
+	 * parameters, and fail the call with an error when appropriate
+	 */
+	uint16_t req_type;
+	/* This field returns the type of original request. */
+	uint16_t seq_id;
+	/* This field provides original sequence number of the command. */
+	uint16_t resp_len;
+	/*
+	 * This field is the length of the response in bytes. The last
+	 * byte of the response is a valid flag that will read as '1'
+	 * when the command has been completely written to memory.
+	 */
+	uint32_t unused_0;
+	uint8_t unused_1;
+	uint8_t unused_2;
+	uint8_t unused_3;
+	uint8_t valid;
+	/*
+	 * This field is used in Output records to indicate that the
+	 * output is completely written to RAM. This field should be
+	 * read as '1' to indicate that the output has been completely
+	 * written. When writing a command completion or response to an
+	 * internal processor, the order of writes has to be such that
+	 * this field is written last.
+	 */
+} __attribute__((packed));
+
+/* hwrm_port_led_qcfg */
+/*
+ * Description: This function is used to query configuration of LEDs on a given
+ * port. Each port has individual set of LEDs associated with it. These LEDs are
+ * used for speed/link configuration as well as activity indicator
+ * configuration. Up to three LEDs can be configured, one for activity and two
+ * for speeds.
+ */
+/* Input	(24 bytes) */
+struct hwrm_port_led_qcfg_input {
+	uint16_t req_type;
+	/*
+	 * This value indicates what type of request this is. The format
+	 * for the rest of the command is determined by this field.
+	 */
+	uint16_t cmpl_ring;
+	/*
+	 * This value indicates the what completion ring the request
+	 * will be optionally completed on. If the value is -1, then no
+	 * CR completion will be generated. Any other value must be a
+	 * valid CR ring_id value for this function.
+	 */
+	uint16_t seq_id;
+	/* This value indicates the command sequence number. */
+	uint16_t target_id;
+	/*
+	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function
+	 * ids 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF
+	 * - HWRM
+	 */
+	uint64_t resp_addr;
+	/*
+	 * This is the host address where the response will be written
+	 * when the request is complete. This area must be 16B aligned
+	 * and must be cleared to zero before the request is made.
+	 */
+	uint16_t port_id;
+	/* Port ID of port whose LED configuration is being queried. */
+	uint16_t unused_0[3];
+} __attribute__((packed));
+
+/* Output	(56 bytes) */
+struct hwrm_port_led_qcfg_output {
+	uint16_t error_code;
+	/*
+	 * Pass/Fail or error type Note: receiver to verify the in
+	 * parameters, and fail the call with an error when appropriate
+	 */
+	uint16_t req_type;
+	/* This field returns the type of original request. */
+	uint16_t seq_id;
+	/* This field provides original sequence number of the command. */
+	uint16_t resp_len;
+	/*
+	 * This field is the length of the response in bytes. The last
+	 * byte of the response is a valid flag that will read as '1'
+	 * when the command has been completely written to memory.
+	 */
+	uint8_t num_leds;
+	/*
+	 * The number of LEDs that are configured on this port. Up to 4
+	 * LEDs can be returned in the response.
+	 */
+	uint8_t led0_id;
+	/* An identifier for the LED #0. */
+	uint8_t led0_type;
+	/* The type of LED #0. */
+	/* Speed LED */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED0_TYPE_SPEED	UINT32_C(0x0)
+	/* Activity LED */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED0_TYPE_ACTIVITY	UINT32_C(0x1)
+	/* Invalid */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED0_TYPE_INVALID	UINT32_C(0xff)
+	uint8_t led0_state;
+	/* The current state of the LED #0. */
+	/* Default state of the LED */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED0_STATE_DEFAULT	UINT32_C(0x0)
+	/* Off */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED0_STATE_OFF	UINT32_C(0x1)
+	/* On */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED0_STATE_ON	UINT32_C(0x2)
+	/* Blink */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED0_STATE_BLINK	UINT32_C(0x3)
+	/* Blink Alternately */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED0_STATE_BLINKALT	UINT32_C(0x4)
+	uint8_t led0_color;
+	/* The color of LED #0. */
+	/* Default */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED0_COLOR_DEFAULT	UINT32_C(0x0)
+	/* Amber */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED0_COLOR_AMBER	UINT32_C(0x1)
+	/* Green */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED0_COLOR_GREEN	UINT32_C(0x2)
+	/* Green or Amber */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED0_COLOR_GREENAMBER	UINT32_C(0x3)
+	uint8_t unused_0;
+	uint16_t led0_blink_on;
+	/*
+	 * If the LED #0 state is "blink" or "blinkalt", then this field
+	 * represents the requested time in milliseconds to keep LED on
+	 * between cycles.
+	 */
+	uint16_t led0_blink_off;
+	/*
+	 * If the LED #0 state is "blink" or "blinkalt", then this field
+	 * represents the requested time in milliseconds to keep LED off
+	 * between cycles.
+	 */
+	uint8_t led0_group_id;
+	/*
+	 * An identifier for the group of LEDs that LED #0 belongs to.
+	 * If set to 0, then the LED #0 is not grouped. For all other
+	 * non-zero values of this field, LED #0 is grouped together
+	 * with the LEDs with the same group ID value.
+	 */
+	uint8_t led1_id;
+	/* An identifier for the LED #1. */
+	uint8_t led1_type;
+	/* The type of LED #1. */
+	/* Speed LED */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED1_TYPE_SPEED	UINT32_C(0x0)
+	/* Activity LED */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED1_TYPE_ACTIVITY	UINT32_C(0x1)
+	/* Invalid */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED1_TYPE_INVALID	UINT32_C(0xff)
+	uint8_t led1_state;
+	/* The current state of the LED #1. */
+	/* Default state of the LED */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED1_STATE_DEFAULT	UINT32_C(0x0)
+	/* Off */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED1_STATE_OFF	UINT32_C(0x1)
+	/* On */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED1_STATE_ON	UINT32_C(0x2)
+	/* Blink */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED1_STATE_BLINK	UINT32_C(0x3)
+	/* Blink Alternately */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED1_STATE_BLINKALT	UINT32_C(0x4)
+	uint8_t led1_color;
+	/* The color of LED #1. */
+	/* Default */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED1_COLOR_DEFAULT	UINT32_C(0x0)
+	/* Amber */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED1_COLOR_AMBER	UINT32_C(0x1)
+	/* Green */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED1_COLOR_GREEN	UINT32_C(0x2)
+	/* Green or Amber */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED1_COLOR_GREENAMBER	UINT32_C(0x3)
+	uint8_t unused_1;
+	uint16_t led1_blink_on;
+	/*
+	 * If the LED #1 state is "blink" or "blinkalt", then this field
+	 * represents the requested time in milliseconds to keep LED on
+	 * between cycles.
+	 */
+	uint16_t led1_blink_off;
+	/*
+	 * If the LED #1 state is "blink" or "blinkalt", then this field
+	 * represents the requested time in milliseconds to keep LED off
+	 * between cycles.
+	 */
+	uint8_t led1_group_id;
+	/*
+	 * An identifier for the group of LEDs that LED #1 belongs to.
+	 * If set to 0, then the LED #1 is not grouped. For all other
+	 * non-zero values of this field, LED #1 is grouped together
+	 * with the LEDs with the same group ID value.
+	 */
+	uint8_t led2_id;
+	/* An identifier for the LED #2. */
+	uint8_t led2_type;
+	/* The type of LED #2. */
+	/* Speed LED */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED2_TYPE_SPEED	UINT32_C(0x0)
+	/* Activity LED */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED2_TYPE_ACTIVITY	UINT32_C(0x1)
+	/* Invalid */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED2_TYPE_INVALID	UINT32_C(0xff)
+	uint8_t led2_state;
+	/* The current state of the LED #2. */
+	/* Default state of the LED */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED2_STATE_DEFAULT	UINT32_C(0x0)
+	/* Off */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED2_STATE_OFF	UINT32_C(0x1)
+	/* On */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED2_STATE_ON	UINT32_C(0x2)
+	/* Blink */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED2_STATE_BLINK	UINT32_C(0x3)
+	/* Blink Alternately */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED2_STATE_BLINKALT	UINT32_C(0x4)
+	uint8_t led2_color;
+	/* The color of LED #2. */
+	/* Default */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED2_COLOR_DEFAULT	UINT32_C(0x0)
+	/* Amber */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED2_COLOR_AMBER	UINT32_C(0x1)
+	/* Green */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED2_COLOR_GREEN	UINT32_C(0x2)
+	/* Green or Amber */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED2_COLOR_GREENAMBER	UINT32_C(0x3)
+	uint8_t unused_2;
+	uint16_t led2_blink_on;
+	/*
+	 * If the LED #2 state is "blink" or "blinkalt", then this field
+	 * represents the requested time in milliseconds to keep LED on
+	 * between cycles.
+	 */
+	uint16_t led2_blink_off;
+	/*
+	 * If the LED #2 state is "blink" or "blinkalt", then this field
+	 * represents the requested time in milliseconds to keep LED off
+	 * between cycles.
+	 */
+	uint8_t led2_group_id;
+	/*
+	 * An identifier for the group of LEDs that LED #2 belongs to.
+	 * If set to 0, then the LED #2 is not grouped. For all other
+	 * non-zero values of this field, LED #2 is grouped together
+	 * with the LEDs with the same group ID value.
+	 */
+	uint8_t led3_id;
+	/* An identifier for the LED #3. */
+	uint8_t led3_type;
+	/* The type of LED #3. */
+	/* Speed LED */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED3_TYPE_SPEED	UINT32_C(0x0)
+	/* Activity LED */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED3_TYPE_ACTIVITY	UINT32_C(0x1)
+	/* Invalid */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED3_TYPE_INVALID	UINT32_C(0xff)
+	uint8_t led3_state;
+	/* The current state of the LED #3. */
+	/* Default state of the LED */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED3_STATE_DEFAULT	UINT32_C(0x0)
+	/* Off */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED3_STATE_OFF	UINT32_C(0x1)
+	/* On */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED3_STATE_ON	UINT32_C(0x2)
+	/* Blink */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED3_STATE_BLINK	UINT32_C(0x3)
+	/* Blink Alternately */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED3_STATE_BLINKALT	UINT32_C(0x4)
+	uint8_t led3_color;
+	/* The color of LED #3. */
+	/* Default */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED3_COLOR_DEFAULT	UINT32_C(0x0)
+	/* Amber */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED3_COLOR_AMBER	UINT32_C(0x1)
+	/* Green */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED3_COLOR_GREEN	UINT32_C(0x2)
+	/* Green or Amber */
+	#define HWRM_PORT_LED_QCFG_OUTPUT_LED3_COLOR_GREENAMBER	UINT32_C(0x3)
+	uint8_t unused_3;
+	uint16_t led3_blink_on;
+	/*
+	 * If the LED #3 state is "blink" or "blinkalt", then this field
+	 * represents the requested time in milliseconds to keep LED on
+	 * between cycles.
+	 */
+	uint16_t led3_blink_off;
+	/*
+	 * If the LED #3 state is "blink" or "blinkalt", then this field
+	 * represents the requested time in milliseconds to keep LED off
+	 * between cycles.
+	 */
+	uint8_t led3_group_id;
+	/*
+	 * An identifier for the group of LEDs that LED #3 belongs to.
+	 * If set to 0, then the LED #3 is not grouped. For all other
+	 * non-zero values of this field, LED #3 is grouped together
+	 * with the LEDs with the same group ID value.
+	 */
+	uint8_t unused_4;
+	uint16_t unused_5;
+	uint8_t unused_6;
+	uint8_t unused_7;
+	uint8_t unused_8;
+	uint8_t valid;
+	/*
+	 * This field is used in Output records to indicate that the
+	 * output is completely written to RAM. This field should be
+	 * read as '1' to indicate that the output has been completely
+	 * written. When writing a command completion or response to an
+	 * internal processor, the order of writes has to be such that
+	 * this field is written last.
+	 */
+} __attribute__((packed));
+
+/* hwrm_port_led_qcaps */
+/*
+ * Description: This function is used to query capabilities of LEDs on a given
+ * port. Each port has individual set of LEDs associated with it. These LEDs are
+ * used for speed/link configuration as well as activity indicator
+ * configuration.
+ */
+/* Input	(24 bytes) */
+struct hwrm_port_led_qcaps_input {
+	uint16_t req_type;
+	/*
+	 * This value indicates what type of request this is. The format
+	 * for the rest of the command is determined by this field.
+	 */
+	uint16_t cmpl_ring;
+	/*
+	 * This value indicates the what completion ring the request
+	 * will be optionally completed on. If the value is -1, then no
+	 * CR completion will be generated. Any other value must be a
+	 * valid CR ring_id value for this function.
+	 */
+	uint16_t seq_id;
+	/* This value indicates the command sequence number. */
+	uint16_t target_id;
+	/*
+	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function
+	 * ids 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF
+	 * - HWRM
+	 */
+	uint64_t resp_addr;
+	/*
+	 * This is the host address where the response will be written
+	 * when the request is complete. This area must be 16B aligned
+	 * and must be cleared to zero before the request is made.
+	 */
+	uint16_t port_id;
+	/* Port ID of port whose LED configuration is being queried. */
+	uint16_t unused_0[3];
+} __attribute__((packed));
+
+/* Output	(48 bytes) */
+struct hwrm_port_led_qcaps_output {
+	uint16_t error_code;
+	/*
+	 * Pass/Fail or error type Note: receiver to verify the in
+	 * parameters, and fail the call with an error when appropriate
+	 */
+	uint16_t req_type;
+	/* This field returns the type of original request. */
+	uint16_t seq_id;
+	/* This field provides original sequence number of the command. */
+	uint16_t resp_len;
+	/*
+	 * This field is the length of the response in bytes. The last
+	 * byte of the response is a valid flag that will read as '1'
+	 * when the command has been completely written to memory.
+	 */
+	uint8_t num_leds;
+	/*
+	 * The number of LEDs that are configured on this port. Up to 4
+	 * LEDs can be returned in the response.
+	 */
+	uint8_t unused_0[3];
+	/* Reserved for future use. */
+	uint8_t led0_id;
+	/* An identifier for the LED #0. */
+	uint8_t led0_type;
+	/* The type of LED #0. */
+	/* Speed LED */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED0_TYPE_SPEED	UINT32_C(0x0)
+	/* Activity LED */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED0_TYPE_ACTIVITY	UINT32_C(0x1)
+	/* Invalid */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED0_TYPE_INVALID	UINT32_C(0xff)
+	uint8_t led0_group_id;
+	/*
+	 * An identifier for the group of LEDs that LED #0 belongs to.
+	 * If set to 0, then the LED #0 cannot be grouped. For all other
+	 * non-zero values of this field, LED #0 is grouped together
+	 * with the LEDs with the same group ID value.
+	 */
+	uint8_t unused_1;
+	uint16_t led0_state_caps;
+	/* The states supported by LED #0. */
+	/*
+	 * If set to 1, this LED is enabled. If set to 0, this LED is
+	 * disabled.
+	 */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED0_STATE_CAPS_ENABLED UINT32_C(0x1)
+	/*
+	 * If set to 1, off state is supported on this LED. If set to 0,
+	 * off state is not supported on this LED.
+	 */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED0_STATE_CAPS_OFF_SUPPORTED  \
+		UINT32_C(0x2)
+	/*
+	 * If set to 1, on state is supported on this LED. If set to 0,
+	 * on state is not supported on this LED.
+	 */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED0_STATE_CAPS_ON_SUPPORTED   \
+		UINT32_C(0x4)
+	/*
+	 * If set to 1, blink state is supported on this LED. If set to
+	 * 0, blink state is not supported on this LED.
+	 */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED0_STATE_CAPS_BLINK_SUPPORTED \
+		UINT32_C(0x8)
+	/*
+	 * If set to 1, blink_alt state is supported on this LED. If set
+	 * to 0, blink_alt state is not supported on this LED.
+	 */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED0_STATE_CAPS_BLINK_ALT_SUPPORTED \
+		UINT32_C(0x10)
+	uint16_t led0_color_caps;
+	/* The colors supported by LED #0. */
+	/* reserved */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED0_COLOR_CAPS_RSVD	UINT32_C(0x1)
+	/*
+	 * If set to 1, Amber color is supported on this LED. If set to
+	 * 0, Amber color is not supported on this LED.
+	 */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED0_COLOR_CAPS_AMBER_SUPPORTED \
+		UINT32_C(0x2)
+	/*
+	 * If set to 1, Green color is supported on this LED. If set to
+	 * 0, Green color is not supported on this LED.
+	 */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED0_COLOR_CAPS_GREEN_SUPPORTED \
+		UINT32_C(0x4)
+	uint8_t led1_id;
+	/* An identifier for the LED #1. */
+	uint8_t led1_type;
+	/* The type of LED #1. */
+	/* Speed LED */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED1_TYPE_SPEED	UINT32_C(0x0)
+	/* Activity LED */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED1_TYPE_ACTIVITY	UINT32_C(0x1)
+	/* Invalid */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED1_TYPE_INVALID	UINT32_C(0xff)
+	uint8_t led1_group_id;
+	/*
+	 * An identifier for the group of LEDs that LED #1 belongs to.
+	 * If set to 0, then the LED #0 cannot be grouped. For all other
+	 * non-zero values of this field, LED #0 is grouped together
+	 * with the LEDs with the same group ID value.
+	 */
+	uint8_t unused_2;
+	uint16_t led1_state_caps;
+	/* The states supported by LED #1. */
+	/*
+	 * If set to 1, this LED is enabled. If set to 0, this LED is
+	 * disabled.
+	 */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED1_STATE_CAPS_ENABLED UINT32_C(0x1)
+	/*
+	 * If set to 1, off state is supported on this LED. If set to 0,
+	 * off state is not supported on this LED.
+	 */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED1_STATE_CAPS_OFF_SUPPORTED  \
+		UINT32_C(0x2)
+	/*
+	 * If set to 1, on state is supported on this LED. If set to 0,
+	 * on state is not supported on this LED.
+	 */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED1_STATE_CAPS_ON_SUPPORTED   \
+		UINT32_C(0x4)
+	/*
+	 * If set to 1, blink state is supported on this LED. If set to
+	 * 0, blink state is not supported on this LED.
+	 */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED1_STATE_CAPS_BLINK_SUPPORTED \
+		UINT32_C(0x8)
+	/*
+	 * If set to 1, blink_alt state is supported on this LED. If set
+	 * to 0, blink_alt state is not supported on this LED.
+	 */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED1_STATE_CAPS_BLINK_ALT_SUPPORTED \
+		UINT32_C(0x10)
+	uint16_t led1_color_caps;
+	/* The colors supported by LED #1. */
+	/* reserved */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED1_COLOR_CAPS_RSVD	UINT32_C(0x1)
+	/*
+	 * If set to 1, Amber color is supported on this LED. If set to
+	 * 0, Amber color is not supported on this LED.
+	 */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED1_COLOR_CAPS_AMBER_SUPPORTED \
+		UINT32_C(0x2)
+	/*
+	 * If set to 1, Green color is supported on this LED. If set to
+	 * 0, Green color is not supported on this LED.
+	 */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED1_COLOR_CAPS_GREEN_SUPPORTED \
+		UINT32_C(0x4)
+	uint8_t led2_id;
+	/* An identifier for the LED #2. */
+	uint8_t led2_type;
+	/* The type of LED #2. */
+	/* Speed LED */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED2_TYPE_SPEED	UINT32_C(0x0)
+	/* Activity LED */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED2_TYPE_ACTIVITY	UINT32_C(0x1)
+	/* Invalid */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED2_TYPE_INVALID	UINT32_C(0xff)
+	uint8_t led2_group_id;
+	/*
+	 * An identifier for the group of LEDs that LED #0 belongs to.
+	 * If set to 0, then the LED #0 cannot be grouped. For all other
+	 * non-zero values of this field, LED #0 is grouped together
+	 * with the LEDs with the same group ID value.
+	 */
+	uint8_t unused_3;
+	uint16_t led2_state_caps;
+	/* The states supported by LED #2. */
+	/*
+	 * If set to 1, this LED is enabled. If set to 0, this LED is
+	 * disabled.
+	 */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED2_STATE_CAPS_ENABLED UINT32_C(0x1)
+	/*
+	 * If set to 1, off state is supported on this LED. If set to 0,
+	 * off state is not supported on this LED.
+	 */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED2_STATE_CAPS_OFF_SUPPORTED  \
+		UINT32_C(0x2)
+	/*
+	 * If set to 1, on state is supported on this LED. If set to 0,
+	 * on state is not supported on this LED.
+	 */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED2_STATE_CAPS_ON_SUPPORTED   \
+		UINT32_C(0x4)
+	/*
+	 * If set to 1, blink state is supported on this LED. If set to
+	 * 0, blink state is not supported on this LED.
+	 */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED2_STATE_CAPS_BLINK_SUPPORTED \
+		UINT32_C(0x8)
+	/*
+	 * If set to 1, blink_alt state is supported on this LED. If set
+	 * to 0, blink_alt state is not supported on this LED.
+	 */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED2_STATE_CAPS_BLINK_ALT_SUPPORTED \
+		UINT32_C(0x10)
+	uint16_t led2_color_caps;
+	/* The colors supported by LED #2. */
+	/* reserved */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED2_COLOR_CAPS_RSVD	UINT32_C(0x1)
+	/*
+	 * If set to 1, Amber color is supported on this LED. If set to
+	 * 0, Amber color is not supported on this LED.
+	 */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED2_COLOR_CAPS_AMBER_SUPPORTED \
+		UINT32_C(0x2)
+	/*
+	 * If set to 1, Green color is supported on this LED. If set to
+	 * 0, Green color is not supported on this LED.
+	 */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED2_COLOR_CAPS_GREEN_SUPPORTED \
+		UINT32_C(0x4)
+	uint8_t led3_id;
+	/* An identifier for the LED #3. */
+	uint8_t led3_type;
+	/* The type of LED #3. */
+	/* Speed LED */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED3_TYPE_SPEED	UINT32_C(0x0)
+	/* Activity LED */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED3_TYPE_ACTIVITY	UINT32_C(0x1)
+	/* Invalid */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED3_TYPE_INVALID	UINT32_C(0xff)
+	uint8_t led3_group_id;
+	/*
+	 * An identifier for the group of LEDs that LED #3 belongs to.
+	 * If set to 0, then the LED #0 cannot be grouped. For all other
+	 * non-zero values of this field, LED #0 is grouped together
+	 * with the LEDs with the same group ID value.
+	 */
+	uint8_t unused_4;
+	uint16_t led3_state_caps;
+	/* The states supported by LED #3. */
+	/*
+	 * If set to 1, this LED is enabled. If set to 0, this LED is
+	 * disabled.
+	 */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED3_STATE_CAPS_ENABLED UINT32_C(0x1)
+	/*
+	 * If set to 1, off state is supported on this LED. If set to 0,
+	 * off state is not supported on this LED.
+	 */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED3_STATE_CAPS_OFF_SUPPORTED  \
+		UINT32_C(0x2)
+	/*
+	 * If set to 1, on state is supported on this LED. If set to 0,
+	 * on state is not supported on this LED.
+	 */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED3_STATE_CAPS_ON_SUPPORTED   \
+		UINT32_C(0x4)
+	/*
+	 * If set to 1, blink state is supported on this LED. If set to
+	 * 0, blink state is not supported on this LED.
+	 */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED3_STATE_CAPS_BLINK_SUPPORTED \
+		UINT32_C(0x8)
+	/*
+	 * If set to 1, blink_alt state is supported on this LED. If set
+	 * to 0, blink_alt state is not supported on this LED.
+	 */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED3_STATE_CAPS_BLINK_ALT_SUPPORTED \
+		UINT32_C(0x10)
+	uint16_t led3_color_caps;
+	/* The colors supported by LED #3. */
+	/* reserved */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED3_COLOR_CAPS_RSVD	UINT32_C(0x1)
+	/*
+	 * If set to 1, Amber color is supported on this LED. If set to
+	 * 0, Amber color is not supported on this LED.
+	 */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED3_COLOR_CAPS_AMBER_SUPPORTED \
+		UINT32_C(0x2)
+	/*
+	 * If set to 1, Green color is supported on this LED. If set to
+	 * 0, Green color is not supported on this LED.
+	 */
+	#define HWRM_PORT_LED_QCAPS_OUTPUT_LED3_COLOR_CAPS_GREEN_SUPPORTED \
+		UINT32_C(0x4)
+	uint8_t unused_5;
+	uint8_t unused_6;
+	uint8_t unused_7;
+	uint8_t valid;
+	/*
+	 * This field is used in Output records to indicate that the
+	 * output is completely written to RAM. This field should be
+	 * read as '1' to indicate that the output has been completely
+	 * written. When writing a command completion or response to an
+	 * internal processor, the order of writes has to be such that
+	 * this field is written last.
+	 */
+} __attribute__((packed));
+
 /* hwrm_queue_qportcfg */
 /*
  * Description: This function is called by a driver to query queue configuration
