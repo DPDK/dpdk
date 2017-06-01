@@ -49,7 +49,7 @@ int bnxt_hwrm_cfa_l2_set_rx_mask(struct bnxt *bp, struct bnxt_vnic_info *vnic);
 int bnxt_hwrm_clear_filter(struct bnxt *bp,
 			   struct bnxt_filter_info *filter);
 int bnxt_hwrm_set_filter(struct bnxt *bp,
-			 struct bnxt_vnic_info *vnic,
+			 uint16_t dst_id,
 			 struct bnxt_filter_info *filter);
 int bnxt_hwrm_exec_fwd_resp(struct bnxt *bp, uint16_t target_id,
 			    void *encaped, size_t ec_size);

@@ -170,7 +170,8 @@ int bnxt_alloc_vnic_attributes(struct bnxt *bp)
 	char mz_name[RTE_MEMZONE_NAMESIZE];
 	uint32_t entry_length = RTE_CACHE_LINE_ROUNDUP(
 				HW_HASH_INDEX_SIZE * sizeof(*vnic->rss_table) +
-				HW_HASH_KEY_SIZE);
+				HW_HASH_KEY_SIZE +
+				BNXT_MAX_MC_ADDRS * ETHER_ADDR_LEN);
 	uint16_t max_vnics;
 	int i;
 	phys_addr_t mz_phys_addr;
@@ -218,6 +219,10 @@ int bnxt_alloc_vnic_attributes(struct bnxt *bp)
 
 		vnic->rss_hash_key_dma_addr = vnic->rss_table_dma_addr +
 			     HW_HASH_INDEX_SIZE * sizeof(*vnic->rss_table);
+		vnic->mc_list = (void *)((char *)vnic->rss_hash_key +
+				HW_HASH_KEY_SIZE);
+		vnic->mc_list_dma_addr = vnic->rss_hash_key_dma_addr +
+				HW_HASH_KEY_SIZE;
 	}
 
 	return 0;
