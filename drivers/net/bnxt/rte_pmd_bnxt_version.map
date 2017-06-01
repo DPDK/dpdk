@@ -1,6 +1,7 @@
 DPDK_17.08 {
 	global:
 
+	rte_pmd_bnxt_get_vf_rx_status;
 	rte_pmd_bnxt_get_vf_stats;
 	rte_pmd_bnxt_get_vf_tx_drop_count;
 	rte_pmd_bnxt_reset_vf_stats;

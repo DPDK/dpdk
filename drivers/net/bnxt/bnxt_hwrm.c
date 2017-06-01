@@ -2626,6 +2626,30 @@ int bnxt_hwrm_port_led_cfg(struct bnxt *bp, bool led_on)
 	return rc;
 }
 
+static void bnxt_vnic_count(struct bnxt_vnic_info *vnic, void *cbdata)
+{
+	uint32_t *count = cbdata;
+
+	if (vnic->func_default)
+		*count = *count + 1;
+}
+
+static int bnxt_vnic_count_hwrm_stub(struct bnxt *bp __rte_unused,
+				     struct bnxt_vnic_info *vnic __rte_unused)
+{
+	return 0;
+}
+
+int bnxt_vf_default_vnic_count(struct bnxt *bp, uint16_t vf)
+{
+	uint32_t count = 0;
+
+	bnxt_hwrm_func_vf_vnic_query_and_config(bp, vf, bnxt_vnic_count,
+	    &count, bnxt_vnic_count_hwrm_stub);
+
+	return count;
+}
+
 static int bnxt_hwrm_func_vf_vnic_query(struct bnxt *bp, uint16_t vf,
 					uint16_t *vnic_ids)
 {
