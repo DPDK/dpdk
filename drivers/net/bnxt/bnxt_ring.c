@@ -115,8 +115,15 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 	int rx_vmem_len = rx_ring_info ?
 		RTE_CACHE_LINE_ROUNDUP(rx_ring_info->
 						rx_ring_struct->vmem_size) : 0;
+	int ag_vmem_start = 0;
+	int ag_vmem_len = 0;
+	int cp_ring_start =  0;
 
-	int cp_ring_start = rx_vmem_start + rx_vmem_len;
+	ag_vmem_start = rx_vmem_start + rx_vmem_len;
+	ag_vmem_len = rx_ring_info ? RTE_CACHE_LINE_ROUNDUP(
+				rx_ring_info->ag_ring_struct->vmem_size) : 0;
+	cp_ring_start = ag_vmem_start + ag_vmem_len;
+
 	int cp_ring_len = RTE_CACHE_LINE_ROUNDUP(cp_ring->ring_size *
 						 sizeof(struct cmpl_base));
 
@@ -131,6 +138,10 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 		sizeof(struct rx_prod_pkt_bd)) : 0;
 
 	int total_alloc_len = rx_ring_start + rx_ring_len;
+	int ag_ring_start = 0;
+
+	ag_ring_start = rx_ring_start + rx_ring_len;
+	total_alloc_len = ag_ring_start + rx_ring_len * AGG_RING_SIZE_FACTOR;
 
 	snprintf(mz_name, RTE_MEMZONE_NAMESIZE,
 		 "bnxt_%04x:%02x:%02x:%02x-%04x_%s", pdev->addr.domain,
@@ -201,6 +212,24 @@ int bnxt_alloc_rings(struct bnxt *bp, uint16_t qidx,
 			rx_ring_info->rx_buf_ring =
 			    (struct bnxt_sw_rx_bd *)rx_ring->vmem;
 		}
+
+		rx_ring = rx_ring_info->ag_ring_struct;
+
+		rx_ring->bd = ((char *)mz->addr + ag_ring_start);
+		rx_ring_info->ag_desc_ring =
+		    (struct rx_prod_pkt_bd *)rx_ring->bd;
+		rx_ring->bd_dma = mz->phys_addr + ag_ring_start;
+		rx_ring_info->ag_desc_mapping = rx_ring->bd_dma;
+		rx_ring->mem_zone = (const void *)mz;
+
+		if (!rx_ring->bd)
+			return -ENOMEM;
+		if (rx_ring->vmem_size) {
+			rx_ring->vmem =
+			    (void **)((char *)mz->addr + ag_vmem_start);
+			rx_ring_info->ag_buf_ring =
+			    (struct bnxt_sw_rx_bd *)rx_ring->vmem;
+		}
 	}
 
 	cp_ring->bd = ((char *)mz->addr + cp_ring_start);
@@ -239,35 +268,64 @@ int bnxt_alloc_hwrm_rings(struct bnxt *bp)
 		struct bnxt_rx_ring_info *rxr = rxq->rx_ring;
 		struct bnxt_ring *ring = rxr->rx_ring_struct;
 		unsigned int idx = i + 1;
+		unsigned int map_idx = idx + bp->rx_cp_nr_rings;
+
+		bp->grp_info[i].fw_stats_ctx = cpr->hw_stats_ctx_id;
 
 		/* Rx cmpl */
 		rc = bnxt_hwrm_ring_alloc(bp, cp_ring,
 					HWRM_RING_ALLOC_INPUT_RING_TYPE_L2_CMPL,
-					idx, HWRM_NA_SIGNATURE);
+					idx, HWRM_NA_SIGNATURE,
+					HWRM_NA_SIGNATURE);
 		if (rc)
 			goto err_out;
 		cpr->cp_doorbell = (char *)pci_dev->mem_resource[2].addr +
 		    idx * 0x80;
-		bp->grp_info[idx].cp_fw_ring_id = cp_ring->fw_ring_id;
+		bp->grp_info[i].cp_fw_ring_id = cp_ring->fw_ring_id;
 		B_CP_DIS_DB(cpr, cpr->cp_raw_cons);
 
 		/* Rx ring */
 		rc = bnxt_hwrm_ring_alloc(bp, ring,
 					HWRM_RING_ALLOC_INPUT_RING_TYPE_RX,
-					idx, cpr->hw_stats_ctx_id);
+					idx, cpr->hw_stats_ctx_id,
+					cp_ring->fw_ring_id);
 		if (rc)
 			goto err_out;
 		rxr->rx_prod = 0;
 		rxr->rx_doorbell = (char *)pci_dev->mem_resource[2].addr +
 		    idx * 0x80;
-		bp->grp_info[idx].rx_fw_ring_id = ring->fw_ring_id;
+		bp->grp_info[i].rx_fw_ring_id = ring->fw_ring_id;
 		B_RX_DB(rxr->rx_doorbell, rxr->rx_prod);
+
+		ring = rxr->ag_ring_struct;
+		/* Agg ring */
+		if (ring == NULL)
+			RTE_LOG(ERR, PMD, "Alloc AGG Ring is NULL!\n");
+
+		rc = bnxt_hwrm_ring_alloc(bp, ring,
+				HWRM_RING_ALLOC_INPUT_RING_TYPE_RX,
+				map_idx, HWRM_NA_SIGNATURE,
+				cp_ring->fw_ring_id);
+		if (rc)
+			goto err_out;
+		RTE_LOG(DEBUG, PMD, "Alloc AGG Done!\n");
+		rxr->ag_prod = 0;
+		rxr->ag_doorbell =
+		    (char *)pci_dev->mem_resource[2].addr +
+		    map_idx * 0x80;
+		bp->grp_info[i].ag_fw_ring_id = ring->fw_ring_id;
+		B_RX_DB(rxr->ag_doorbell, rxr->ag_prod);
+
+		rxq->rx_buf_use_size = BNXT_MAX_MTU + ETHER_HDR_LEN +
+					ETHER_CRC_LEN + (2 * VLAN_TAG_SIZE);
 		if (bnxt_init_one_rx_ring(rxq)) {
 			RTE_LOG(ERR, PMD, "bnxt_init_one_rx_ring failed!\n");
 			bnxt_rx_queue_release_op(rxq);
 			return -ENOMEM;
 		}
 		B_RX_DB(rxr->rx_doorbell, rxr->rx_prod);
+		B_RX_DB(rxr->ag_doorbell, rxr->ag_prod);
+		rxq->index = idx;
 	}
 
 	for (i = 0; i < bp->tx_cp_nr_rings; i++) {
@@ -276,29 +334,34 @@ int bnxt_alloc_hwrm_rings(struct bnxt *bp)
 		struct bnxt_ring *cp_ring = cpr->cp_ring_struct;
 		struct bnxt_tx_ring_info *txr = txq->tx_ring;
 		struct bnxt_ring *ring = txr->tx_ring_struct;
-		unsigned int idx = 1 + bp->rx_cp_nr_rings + i;
+		unsigned int idx = i + 1 + bp->rx_cp_nr_rings;
+
+		/* Account for AGG Rings. AGG ring cnt = Rx Cmpl ring cnt */
+		idx += bp->rx_cp_nr_rings;
 
 		/* Tx cmpl */
 		rc = bnxt_hwrm_ring_alloc(bp, cp_ring,
 					HWRM_RING_ALLOC_INPUT_RING_TYPE_L2_CMPL,
-					idx, HWRM_NA_SIGNATURE);
+					idx, HWRM_NA_SIGNATURE,
+					HWRM_NA_SIGNATURE);
 		if (rc)
 			goto err_out;
 
 		cpr->cp_doorbell = (char *)pci_dev->mem_resource[2].addr +
 		    idx * 0x80;
-		bp->grp_info[idx].cp_fw_ring_id = cp_ring->fw_ring_id;
 		B_CP_DIS_DB(cpr, cpr->cp_raw_cons);
 
 		/* Tx ring */
 		rc = bnxt_hwrm_ring_alloc(bp, ring,
 					HWRM_RING_ALLOC_INPUT_RING_TYPE_TX,
-					idx, cpr->hw_stats_ctx_id);
+					idx, cpr->hw_stats_ctx_id,
+					cp_ring->fw_ring_id);
 		if (rc)
 			goto err_out;
 
 		txr->tx_doorbell = (char *)pci_dev->mem_resource[2].addr +
 		    idx * 0x80;
+		txq->index = idx;
 	}
 
 err_out:

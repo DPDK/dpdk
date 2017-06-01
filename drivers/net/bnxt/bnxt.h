@@ -45,7 +45,7 @@
 
 #include "bnxt_cpr.h"
 
-#define BNXT_MAX_MTU		9000
+#define BNXT_MAX_MTU		9500
 #define VLAN_TAG_SIZE		4
 
 enum bnxt_hw_context {
@@ -131,6 +131,7 @@ struct bnxt {
 #define BNXT_FLAG_REGISTERED	(1 << 0)
 #define BNXT_FLAG_VF		(1 << 1)
 #define BNXT_FLAG_PORT_STATS	(1 << 2)
+#define BNXT_FLAG_JUMBO		(1 << 3)
 #define BNXT_PF(bp)		(!((bp)->flags & BNXT_FLAG_VF))
 #define BNXT_VF(bp)		((bp)->flags & BNXT_FLAG_VF)
 #define BNXT_NPAR_ENABLED(bp)	((bp)->port_partition_type)
@@ -233,4 +234,5 @@ struct rte_pmd_bnxt_mb_event_param {
 int bnxt_link_update_op(struct rte_eth_dev *eth_dev, int wait_to_complete);
 int bnxt_rcv_msg_from_vf(struct bnxt *bp, uint16_t vf_id, void *msg);
 
+#define RX_PROD_AGG_BD_TYPE_RX_PROD_AGG		0x6
 #endif

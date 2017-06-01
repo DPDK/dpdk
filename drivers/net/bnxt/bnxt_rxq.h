@@ -52,6 +52,7 @@ struct bnxt_rx_queue {
 	uint8_t			crc_len; /* 0 if CRC stripped, 4 otherwise */
 
 	struct bnxt		*bp;
+	int			index;
 	struct bnxt_vnic_info	*vnic;
 
 	uint32_t			rx_buf_size;

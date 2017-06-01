@@ -70,7 +70,7 @@ int bnxt_hwrm_queue_qportcfg(struct bnxt *bp);
 int bnxt_hwrm_ring_alloc(struct bnxt *bp,
 			 struct bnxt_ring *ring,
 			 uint32_t ring_type, uint32_t map_index,
-			 uint32_t stats_ctx_id);
+			 uint32_t stats_ctx_id, uint32_t cmpl_ring_id);
 int bnxt_hwrm_ring_free(struct bnxt *bp,
 			struct bnxt_ring *ring, uint32_t ring_type);
 int bnxt_hwrm_ring_grp_alloc(struct bnxt *bp, unsigned int idx);
@@ -93,6 +93,8 @@ int bnxt_hwrm_vnic_ctx_free(struct bnxt *bp, struct bnxt_vnic_info *vnic);
 int bnxt_hwrm_vnic_free(struct bnxt *bp, struct bnxt_vnic_info *vnic);
 int bnxt_hwrm_vnic_rss_cfg(struct bnxt *bp,
 			   struct bnxt_vnic_info *vnic);
+int bnxt_hwrm_vnic_plcmode_cfg(struct bnxt *bp,
+				struct bnxt_vnic_info *vnic);
 
 int bnxt_alloc_all_hwrm_stat_ctxs(struct bnxt *bp);
 int bnxt_clear_all_hwrm_stat_ctxs(struct bnxt *bp);

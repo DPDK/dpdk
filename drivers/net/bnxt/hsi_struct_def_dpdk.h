@@ -7252,7 +7252,6 @@ struct hwrm_vnic_tpa_cfg_output {
 	 */
 } __attribute__((packed));
 
-
 /* hwrm_ring_alloc */
 /*
  * Description: This command allocates and does basic preparation for a ring.

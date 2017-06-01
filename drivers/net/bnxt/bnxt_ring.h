@@ -58,6 +58,7 @@
 #define DEFAULT_TX_RING_SIZE	256
 
 #define MAX_TPA		128
+#define AGG_RING_SIZE_FACTOR 2
 
 /* These assume 4k pages */
 #define MAX_RX_DESC_CNT (8 * 1024)
@@ -65,6 +66,7 @@
 #define MAX_CP_DESC_CNT (16 * 1024)
 
 #define INVALID_HW_RING_ID      ((uint16_t)-1)
+#define INVALID_STATS_CTX_ID		((uint16_t)-1)
 
 struct bnxt_ring {
 	void			*bd;

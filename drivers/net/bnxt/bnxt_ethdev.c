@@ -199,6 +199,14 @@ static int bnxt_init_chip(struct bnxt *bp)
 	struct rte_eth_link new;
 	int rc;
 
+	if (bp->eth_dev->data->mtu > ETHER_MTU) {
+		bp->eth_dev->data->dev_conf.rxmode.jumbo_frame = 1;
+		bp->flags |= BNXT_FLAG_JUMBO;
+	} else {
+		bp->eth_dev->data->dev_conf.rxmode.jumbo_frame = 0;
+		bp->flags &= ~BNXT_FLAG_JUMBO;
+	}
+
 	rc = bnxt_alloc_all_hwrm_stat_ctxs(bp);
 	if (rc) {
 		RTE_LOG(ERR, PMD, "HWRM stat ctx alloc failure rc: %x\n", rc);
@@ -1375,6 +1383,56 @@ bnxt_fw_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size)
 		return 0;
 }
 
+static int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
+{
+	struct bnxt *bp = eth_dev->data->dev_private;
+	struct rte_eth_dev_info dev_info;
+	uint32_t max_dev_mtu;
+	uint32_t rc = 0;
+	uint32_t i;
+
+	bnxt_dev_info_get_op(eth_dev, &dev_info);
+	max_dev_mtu = dev_info.max_rx_pktlen -
+		      ETHER_HDR_LEN - ETHER_CRC_LEN - VLAN_TAG_SIZE * 2;
+
+	if (new_mtu < ETHER_MIN_MTU || new_mtu > max_dev_mtu) {
+		RTE_LOG(ERR, PMD, "MTU requested must be within (%d, %d)\n",
+			ETHER_MIN_MTU, max_dev_mtu);
+		return -EINVAL;
+	}
+
+
+	if (new_mtu > ETHER_MTU) {
+		bp->flags |= BNXT_FLAG_JUMBO;
+		eth_dev->data->dev_conf.rxmode.jumbo_frame = 1;
+	} else {
+		eth_dev->data->dev_conf.rxmode.jumbo_frame = 0;
+		bp->flags &= ~BNXT_FLAG_JUMBO;
+	}
+
+	eth_dev->data->dev_conf.rxmode.max_rx_pkt_len =
+		new_mtu + ETHER_HDR_LEN + ETHER_CRC_LEN + VLAN_TAG_SIZE * 2;
+
+	eth_dev->data->mtu = new_mtu;
+	RTE_LOG(INFO, PMD, "New MTU is %d\n", eth_dev->data->mtu);
+
+	for (i = 0; i < bp->nr_vnics; i++) {
+		struct bnxt_vnic_info *vnic = &bp->vnic_info[i];
+
+		vnic->mru = bp->eth_dev->data->mtu + ETHER_HDR_LEN +
+					ETHER_CRC_LEN + VLAN_TAG_SIZE * 2;
+		rc = bnxt_hwrm_vnic_cfg(bp, vnic);
+		if (rc)
+			break;
+
+		rc = bnxt_hwrm_vnic_plcmode_cfg(bp, vnic);
+		if (rc)
+			return rc;
+	}
+
+	return rc;
+}
+
 /*
  * Initialization
  */
@@ -1410,6 +1468,7 @@ static const struct eth_dev_ops bnxt_dev_ops = {
 	.udp_tunnel_port_del  = bnxt_udp_tunnel_port_del_op,
 	.vlan_filter_set = bnxt_vlan_filter_set_op,
 	.vlan_offload_set = bnxt_vlan_offload_set_op,
+	.mtu_set = bnxt_mtu_set_op,
 	.mac_addr_set = bnxt_set_default_mac_addr_op,
 	.xstats_get = bnxt_dev_xstats_get_op,
 	.xstats_get_names = bnxt_dev_xstats_get_names_op,

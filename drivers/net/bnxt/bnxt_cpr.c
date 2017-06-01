@@ -159,7 +159,8 @@ int bnxt_alloc_def_cp_ring(struct bnxt *bp)
 
 	rc = bnxt_hwrm_ring_alloc(bp, cp_ring,
 				  HWRM_RING_ALLOC_INPUT_RING_TYPE_L2_CMPL,
-				  0, HWRM_NA_SIGNATURE);
+				  0, HWRM_NA_SIGNATURE,
+				  HWRM_NA_SIGNATURE);
 	if (rc)
 		goto err_out;
 	cpr->cp_doorbell = bp->pdev->mem_resource[2].addr;

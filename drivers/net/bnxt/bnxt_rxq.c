@@ -84,9 +84,8 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 
 		vnic->func_default = true;
 		vnic->ff_pool_idx = 0;
-		vnic->start_grp_id = 1;
-		vnic->end_grp_id = vnic->start_grp_id +
-				   bp->rx_cp_nr_rings - 1;
+		vnic->start_grp_id = 0;
+		vnic->end_grp_id = vnic->start_grp_id;
 		filter = bnxt_alloc_filter(bp);
 		if (!filter) {
 			RTE_LOG(ERR, PMD, "L2 filter alloc failed\n");
@@ -126,8 +125,8 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 			pools = ETH_64_POOLS;
 		}
 		nb_q_per_grp = bp->rx_cp_nr_rings / pools;
-		start_grp_id = 1;
-		end_grp_id = start_grp_id + nb_q_per_grp - 1;
+		start_grp_id = 0;
+		end_grp_id = nb_q_per_grp;
 
 		ring_idx = 0;
 		for (i = 0; i < pools; i++) {
@@ -188,9 +187,8 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 
 	vnic->func_default = true;
 	vnic->ff_pool_idx = 0;
-	vnic->start_grp_id = 1;
-	vnic->end_grp_id = vnic->start_grp_id +
-			   bp->rx_cp_nr_rings - 1;
+	vnic->start_grp_id = 0;
+	vnic->end_grp_id = bp->rx_cp_nr_rings;
 	filter = bnxt_alloc_filter(bp);
 	if (!filter) {
 		RTE_LOG(ERR, PMD, "L2 filter alloc failed\n");
@@ -228,6 +226,16 @@ static void bnxt_rx_queue_release_mbufs(struct bnxt_rx_queue *rxq)
 				}
 			}
 		}
+		/* Free up mbufs in Agg ring */
+		sw_ring = rxq->rx_ring->ag_buf_ring;
+		if (sw_ring) {
+			for (i = 0; i < rxq->nb_rx_desc; i++) {
+				if (sw_ring[i].mbuf) {
+					rte_pktmbuf_free_seg(sw_ring[i].mbuf);
+					sw_ring[i].mbuf = NULL;
+				}
+			}
+		}
 	}
 }
 
@@ -251,6 +259,8 @@ void bnxt_rx_queue_release_op(void *rx_queue)
 
 		/* Free RX ring hardware descriptors */
 		bnxt_free_ring(rxq->rx_ring->rx_ring_struct);
+		/* Free RX Agg ring hardware descriptors */
+		bnxt_free_ring(rxq->rx_ring->ag_ring_struct);
 
 		/* Free RX completion ring hardware descriptors */
 		bnxt_free_ring(rxq->cp_ring->cp_ring_struct);
@@ -294,6 +304,9 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 	rxq->mb_pool = mp;
 	rxq->nb_rx_desc = nb_desc;
 	rxq->rx_free_thresh = rx_conf->rx_free_thresh;
+
+	RTE_LOG(DEBUG, PMD, "RX Buf size is %d\n", rxq->rx_buf_use_size);
+	RTE_LOG(DEBUG, PMD, "RX Buf MTU %d\n", eth_dev->data->mtu);
 
 	rc = bnxt_init_rx_ring_struct(rxq, socket_id);
 	if (rc)

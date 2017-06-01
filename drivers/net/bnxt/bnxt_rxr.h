@@ -43,14 +43,20 @@ struct bnxt_sw_rx_bd {
 
 struct bnxt_rx_ring_info {
 	uint16_t		rx_prod;
+	uint16_t		ag_prod;
 	void			*rx_doorbell;
+	void			*ag_doorbell;
 
 	struct rx_prod_pkt_bd	*rx_desc_ring;
+	struct rx_prod_pkt_bd	*ag_desc_ring;
 	struct bnxt_sw_rx_bd	*rx_buf_ring; /* sw ring */
+	struct bnxt_sw_rx_bd	*ag_buf_ring; /* sw ring */
 
 	phys_addr_t		rx_desc_mapping;
+	phys_addr_t		ag_desc_mapping;
 
 	struct bnxt_ring	*rx_ring_struct;
+	struct bnxt_ring	*ag_ring_struct;
 };
 
 uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
