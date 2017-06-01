@@ -68,6 +68,7 @@ struct bnxt_filter_info {
 };
 
 struct bnxt_filter_info *bnxt_alloc_filter(struct bnxt *bp);
+struct bnxt_filter_info *bnxt_alloc_vf_filter(struct bnxt *bp, uint16_t vf);
 void bnxt_init_filters(struct bnxt *bp);
 void bnxt_free_all_filters(struct bnxt *bp);
 void bnxt_free_filter_mem(struct bnxt *bp);

@@ -68,6 +68,22 @@ struct bnxt_filter_info *bnxt_alloc_filter(struct bnxt *bp)
 	return filter;
 }
 
+struct bnxt_filter_info *bnxt_alloc_vf_filter(struct bnxt *bp, uint16_t vf)
+{
+	struct bnxt_filter_info *filter;
+
+	filter = rte_zmalloc("bnxt_vf_filter_info", sizeof(*filter), 0);
+	if (!filter) {
+		RTE_LOG(ERR, PMD, "Failed to alloc memory for VF %hu filters\n",
+			vf);
+		return NULL;
+	}
+
+	filter->fw_l2_filter_id = UINT64_MAX;
+	STAILQ_INSERT_TAIL(&bp->pf.vf_info[vf].filter, filter, next);
+	return filter;
+}
+
 void bnxt_init_filters(struct bnxt *bp)
 {
 	struct bnxt_filter_info *filter;
@@ -100,6 +116,12 @@ void bnxt_free_all_filters(struct bnxt *bp)
 				filter = temp_filter;
 			}
 			STAILQ_INIT(&vnic->filter);
+		}
+	}
+
+	for (i = 0; i < bp->pf.max_vfs; i++) {
+		STAILQ_FOREACH(filter, &bp->pf.vf_info[i].filter, next) {
+			bnxt_hwrm_clear_filter(bp, filter);
 		}
 	}
 }

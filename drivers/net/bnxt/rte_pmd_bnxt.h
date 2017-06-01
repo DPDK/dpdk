@@ -250,4 +250,22 @@ int rte_pmd_bnxt_get_vf_rx_status(uint8_t port, uint16_t vf_id);
  */
 int rte_pmd_bnxt_get_vf_tx_drop_count(uint8_t port, uint16_t vf_id,
 				      uint64_t *count);
+
+/**
+ * Programs the MAC address for the function specified
+ *
+ * @param port
+ *    The port identifier of the Ethernet device.
+ * @param mac_addr
+ *    The MAC address to be programmed in the filter.
+ * @param vf_id
+ *    VF on which to get.
+ * @return
+ *   - Positive Non-zero value - Error code from HWRM
+ *   - (-EINVAL) invalid vf_id specified.
+ *   - (-ENOTSUP) Ethernet device is not a PF
+ *   - (-ENOMEM) on an allocation failure
+ */
+int rte_pmd_bnxt_mac_addr_add(uint8_t port, struct ether_addr *mac_addr,
+				uint32_t vf_id);
 #endif /* _PMD_BNXT_H_ */
