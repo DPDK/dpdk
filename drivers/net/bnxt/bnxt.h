@@ -188,6 +188,12 @@ struct bnxt {
 	struct bnxt_pf_info		pf;
 	uint8_t			port_partition_type;
 	uint8_t			dev_stopped;
+	uint8_t			vxlan_port_cnt;
+	uint8_t			geneve_port_cnt;
+	uint16_t		vxlan_port;
+	uint16_t		geneve_port;
+	uint16_t		vxlan_fw_dst_port_id;
+	uint16_t		geneve_fw_dst_port_id;
 	uint32_t		fw_ver;
 };
 

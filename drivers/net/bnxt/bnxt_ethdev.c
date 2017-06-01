@@ -363,7 +363,12 @@ static void bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 	dev_info->tx_offload_capa = DEV_TX_OFFLOAD_IPV4_CKSUM |
 					DEV_TX_OFFLOAD_TCP_CKSUM |
 					DEV_TX_OFFLOAD_UDP_CKSUM |
-					DEV_TX_OFFLOAD_TCP_TSO;
+					DEV_TX_OFFLOAD_TCP_TSO |
+					DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM |
+					DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
+					DEV_TX_OFFLOAD_GRE_TNL_TSO |
+					DEV_TX_OFFLOAD_IPIP_TNL_TSO |
+					DEV_TX_OFFLOAD_GENEVE_TNL_TSO;
 
 	/* *INDENT-OFF* */
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
@@ -975,6 +980,116 @@ static int bnxt_flow_ctrl_set_op(struct rte_eth_dev *dev,
 	return bnxt_set_hwrm_link_config(bp, true);
 }
 
+/* Add UDP tunneling port */
+static int
+bnxt_udp_tunnel_port_add_op(struct rte_eth_dev *eth_dev,
+			 struct rte_eth_udp_tunnel *udp_tunnel)
+{
+	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
+	uint16_t tunnel_type = 0;
+	int rc = 0;
+
+	switch (udp_tunnel->prot_type) {
+	case RTE_TUNNEL_TYPE_VXLAN:
+		if (bp->vxlan_port_cnt) {
+			RTE_LOG(ERR, PMD, "Tunnel Port %d already programmed\n",
+				udp_tunnel->udp_port);
+			if (bp->vxlan_port != udp_tunnel->udp_port) {
+				RTE_LOG(ERR, PMD, "Only one port allowed\n");
+				return -ENOSPC;
+			}
+			bp->vxlan_port_cnt++;
+			return 0;
+		}
+		tunnel_type =
+			HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_VXLAN;
+		bp->vxlan_port_cnt++;
+		break;
+	case RTE_TUNNEL_TYPE_GENEVE:
+		if (bp->geneve_port_cnt) {
+			RTE_LOG(ERR, PMD, "Tunnel Port %d already programmed\n",
+				udp_tunnel->udp_port);
+			if (bp->geneve_port != udp_tunnel->udp_port) {
+				RTE_LOG(ERR, PMD, "Only one port allowed\n");
+				return -ENOSPC;
+			}
+			bp->geneve_port_cnt++;
+			return 0;
+		}
+		tunnel_type =
+			HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_GENEVE;
+		bp->geneve_port_cnt++;
+		break;
+	default:
+		RTE_LOG(ERR, PMD, "Tunnel type is not supported\n");
+		return -ENOTSUP;
+	}
+	rc = bnxt_hwrm_tunnel_dst_port_alloc(bp, udp_tunnel->udp_port,
+					     tunnel_type);
+	return rc;
+}
+
+static int
+bnxt_udp_tunnel_port_del_op(struct rte_eth_dev *eth_dev,
+			 struct rte_eth_udp_tunnel *udp_tunnel)
+{
+	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
+	uint16_t tunnel_type = 0;
+	uint16_t port = 0;
+	int rc = 0;
+
+	switch (udp_tunnel->prot_type) {
+	case RTE_TUNNEL_TYPE_VXLAN:
+		if (!bp->vxlan_port_cnt) {
+			RTE_LOG(ERR, PMD, "No Tunnel port configured yet\n");
+			return -EINVAL;
+		}
+		if (bp->vxlan_port != udp_tunnel->udp_port) {
+			RTE_LOG(ERR, PMD, "Req Port: %d. Configured port: %d\n",
+				udp_tunnel->udp_port, bp->vxlan_port);
+			return -EINVAL;
+		}
+		if (--bp->vxlan_port_cnt)
+			return 0;
+
+		tunnel_type =
+			HWRM_TUNNEL_DST_PORT_FREE_INPUT_TUNNEL_TYPE_VXLAN;
+		port = bp->vxlan_fw_dst_port_id;
+		break;
+	case RTE_TUNNEL_TYPE_GENEVE:
+		if (!bp->geneve_port_cnt) {
+			RTE_LOG(ERR, PMD, "No Tunnel port configured yet\n");
+			return -EINVAL;
+		}
+		if (bp->geneve_port != udp_tunnel->udp_port) {
+			RTE_LOG(ERR, PMD, "Req Port: %d. Configured port: %d\n",
+				udp_tunnel->udp_port, bp->geneve_port);
+			return -EINVAL;
+		}
+		if (--bp->geneve_port_cnt)
+			return 0;
+
+		tunnel_type =
+			HWRM_TUNNEL_DST_PORT_FREE_INPUT_TUNNEL_TYPE_GENEVE;
+		port = bp->geneve_fw_dst_port_id;
+		break;
+	default:
+		RTE_LOG(ERR, PMD, "Tunnel type is not supported\n");
+		return -ENOTSUP;
+	}
+
+	rc = bnxt_hwrm_tunnel_dst_port_free(bp, port, tunnel_type);
+	if (!rc) {
+		if (tunnel_type ==
+		    HWRM_TUNNEL_DST_PORT_FREE_INPUT_TUNNEL_TYPE_VXLAN)
+			bp->vxlan_port = 0;
+		if (tunnel_type ==
+		    HWRM_TUNNEL_DST_PORT_FREE_INPUT_TUNNEL_TYPE_GENEVE)
+			bp->geneve_port = 0;
+	}
+	return rc;
+}
+
 /*
  * Initialization
  */
@@ -1006,6 +1121,8 @@ static const struct eth_dev_ops bnxt_dev_ops = {
 	.mac_addr_remove = bnxt_mac_addr_remove_op,
 	.flow_ctrl_get = bnxt_flow_ctrl_get_op,
 	.flow_ctrl_set = bnxt_flow_ctrl_set_op,
+	.udp_tunnel_port_add  = bnxt_udp_tunnel_port_add_op,
+	.udp_tunnel_port_del  = bnxt_udp_tunnel_port_del_op,
 };
 
 static bool bnxt_vf_pciid(uint16_t id)

@@ -1426,6 +1426,18 @@ int bnxt_set_hwrm_vnic_filters(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	return rc;
 }
 
+void bnxt_free_tunnel_ports(struct bnxt *bp)
+{
+	if (bp->vxlan_port_cnt)
+		bnxt_hwrm_tunnel_dst_port_free(bp, bp->vxlan_fw_dst_port_id,
+			HWRM_TUNNEL_DST_PORT_FREE_INPUT_TUNNEL_TYPE_VXLAN);
+	bp->vxlan_port = 0;
+	if (bp->geneve_port_cnt)
+		bnxt_hwrm_tunnel_dst_port_free(bp, bp->geneve_fw_dst_port_id,
+			HWRM_TUNNEL_DST_PORT_FREE_INPUT_TUNNEL_TYPE_GENEVE);
+	bp->geneve_port = 0;
+}
+
 void bnxt_free_all_hwrm_resources(struct bnxt *bp)
 {
 	struct bnxt_vnic_info *vnic;
@@ -1451,6 +1463,7 @@ void bnxt_free_all_hwrm_resources(struct bnxt *bp)
 	bnxt_free_all_hwrm_rings(bp);
 	bnxt_free_all_hwrm_ring_grps(bp);
 	bnxt_free_all_hwrm_stat_ctxs(bp);
+	bnxt_free_tunnel_ports(bp);
 }
 
 static uint16_t bnxt_parse_eth_link_duplex(uint32_t conf_link_speed)
@@ -2051,6 +2064,49 @@ error_free:
 	return rc;
 }
 
+int bnxt_hwrm_tunnel_dst_port_alloc(struct bnxt *bp, uint16_t port,
+				uint8_t tunnel_type)
+{
+	struct hwrm_tunnel_dst_port_alloc_input req = {0};
+	struct hwrm_tunnel_dst_port_alloc_output *resp = bp->hwrm_cmd_resp_addr;
+	int rc = 0;
+
+	HWRM_PREP(req, TUNNEL_DST_PORT_ALLOC, -1, resp);
+	req.tunnel_type = tunnel_type;
+	req.tunnel_dst_port_val = port;
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+	HWRM_CHECK_RESULT;
+
+	switch (tunnel_type) {
+	case HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_VXLAN:
+		bp->vxlan_fw_dst_port_id = resp->tunnel_dst_port_id;
+		bp->vxlan_port = port;
+		break;
+	case HWRM_TUNNEL_DST_PORT_ALLOC_INPUT_TUNNEL_TYPE_GENEVE:
+		bp->geneve_fw_dst_port_id = resp->tunnel_dst_port_id;
+		bp->geneve_port = port;
+		break;
+	default:
+		break;
+	}
+	return rc;
+}
+
+int bnxt_hwrm_tunnel_dst_port_free(struct bnxt *bp, uint16_t port,
+				uint8_t tunnel_type)
+{
+	struct hwrm_tunnel_dst_port_free_input req = {0};
+	struct hwrm_tunnel_dst_port_free_output *resp = bp->hwrm_cmd_resp_addr;
+	int rc = 0;
+
+	HWRM_PREP(req, TUNNEL_DST_PORT_FREE, -1, resp);
+	req.tunnel_type = tunnel_type;
+	req.tunnel_dst_port_id = rte_cpu_to_be_16(port);
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+	HWRM_CHECK_RESULT;
+
+	return rc;
+}
 
 int bnxt_hwrm_func_buf_rgtr(struct bnxt *bp)
 {

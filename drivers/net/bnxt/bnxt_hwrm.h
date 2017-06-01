@@ -114,5 +114,10 @@ int bnxt_hwrm_func_vf_mac(struct bnxt *bp, uint16_t vf,
 			  const uint8_t *mac_addr);
 int bnxt_hwrm_func_qcfg_vf_default_mac(struct bnxt *bp, uint16_t vf,
 				       struct ether_addr *mac);
+int bnxt_hwrm_tunnel_dst_port_alloc(struct bnxt *bp, uint16_t port,
+				uint8_t tunnel_type);
+int bnxt_hwrm_tunnel_dst_port_free(struct bnxt *bp, uint16_t port,
+				uint8_t tunnel_type);
+void bnxt_free_tunnel_ports(struct bnxt *bp);
 
 #endif
