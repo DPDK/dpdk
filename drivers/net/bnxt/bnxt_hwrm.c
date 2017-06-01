@@ -489,8 +489,15 @@ int bnxt_hwrm_ver_get(struct bnxt *bp)
 			rc = -ENOMEM;
 			goto error;
 		}
+		rte_mem_lock_page(bp->hwrm_cmd_resp_addr);
 		bp->hwrm_cmd_resp_dma_addr =
-			rte_malloc_virt2phy(bp->hwrm_cmd_resp_addr);
+			rte_mem_virt2phy(bp->hwrm_cmd_resp_addr);
+		if (bp->hwrm_cmd_resp_dma_addr == 0) {
+			RTE_LOG(ERR, PMD,
+			"Unable to map response buffer to physical memory.\n");
+			rc = -ENOMEM;
+			goto error;
+		}
 		bp->max_resp_len = max_resp_len;
 	}
 
@@ -1363,10 +1370,16 @@ int bnxt_alloc_hwrm_resources(struct bnxt *bp)
 	bp->max_req_len = HWRM_MAX_REQ_LEN;
 	bp->max_resp_len = HWRM_MAX_RESP_LEN;
 	bp->hwrm_cmd_resp_addr = rte_malloc(type, bp->max_resp_len, 0);
+	rte_mem_lock_page(bp->hwrm_cmd_resp_addr);
 	if (bp->hwrm_cmd_resp_addr == NULL)
 		return -ENOMEM;
 	bp->hwrm_cmd_resp_dma_addr =
-		rte_malloc_virt2phy(bp->hwrm_cmd_resp_addr);
+		rte_mem_virt2phy(bp->hwrm_cmd_resp_addr);
+	if (bp->hwrm_cmd_resp_dma_addr == 0) {
+		RTE_LOG(ERR, PMD,
+			"unable to map response address to physical memory\n");
+		return -ENOMEM;
+	}
 	rte_spinlock_init(&bp->hwrm_lock);
 
 	return 0;
