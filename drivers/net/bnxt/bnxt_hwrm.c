@@ -2256,6 +2256,37 @@ int bnxt_hwrm_vf_func_cfg_def_cp(struct bnxt *bp)
 	return rc;
 }
 
+int bnxt_hwrm_set_default_vlan(struct bnxt *bp, int vf, uint8_t is_vf)
+{
+	struct hwrm_func_cfg_input req = {0};
+	struct hwrm_func_cfg_output *resp = bp->hwrm_cmd_resp_addr;
+	uint16_t dflt_vlan, fid;
+	uint32_t func_cfg_flags;
+	int rc = 0;
+
+	HWRM_PREP(req, FUNC_CFG, -1, resp);
+
+	if (is_vf) {
+		dflt_vlan = bp->pf.vf_info[vf].dflt_vlan;
+		fid = bp->pf.vf_info[vf].fid;
+		func_cfg_flags = bp->pf.vf_info[vf].func_cfg_flags;
+	} else {
+		fid = rte_cpu_to_le_16(0xffff);
+		func_cfg_flags = bp->pf.func_cfg_flags;
+		dflt_vlan = bp->vlan;
+	}
+
+	req.flags = rte_cpu_to_le_32(func_cfg_flags);
+	req.fid = rte_cpu_to_le_16(fid);
+	req.enables |= rte_cpu_to_le_32(HWRM_FUNC_CFG_INPUT_ENABLES_DFLT_VLAN);
+	req.dflt_vlan = rte_cpu_to_le_16(dflt_vlan);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+	HWRM_CHECK_RESULT;
+
+	return rc;
+}
+
 int bnxt_hwrm_reject_fwd_resp(struct bnxt *bp, uint16_t target_id,
 			      void *encaped, size_t ec_size)
 {

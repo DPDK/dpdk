@@ -1477,6 +1477,26 @@ static int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
 	return rc;
 }
 
+static int
+bnxt_vlan_pvid_set_op(struct rte_eth_dev *dev, uint16_t pvid, int on)
+{
+	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
+	uint16_t vlan = bp->vlan;
+	int rc;
+
+	if (BNXT_NPAR_PF(bp) || BNXT_VF(bp)) {
+		RTE_LOG(ERR, PMD,
+			"PVID cannot be modified for this function\n");
+		return -ENOTSUP;
+	}
+	bp->vlan = on ? pvid : 0;
+
+	rc = bnxt_hwrm_set_default_vlan(bp, 0, 0);
+	if (rc)
+		bp->vlan = vlan;
+	return rc;
+}
+
 /*
  * Initialization
  */
@@ -1512,6 +1532,7 @@ static const struct eth_dev_ops bnxt_dev_ops = {
 	.udp_tunnel_port_del  = bnxt_udp_tunnel_port_del_op,
 	.vlan_filter_set = bnxt_vlan_filter_set_op,
 	.vlan_offload_set = bnxt_vlan_offload_set_op,
+	.vlan_pvid_set = bnxt_vlan_pvid_set_op,
 	.mtu_set = bnxt_mtu_set_op,
 	.mac_addr_set = bnxt_set_default_mac_addr_op,
 	.xstats_get = bnxt_dev_xstats_get_op,
