@@ -33,6 +33,8 @@
 
 #include <unistd.h>
 
+#include <unistd.h>
+
 #include <rte_byteorder.h>
 #include <rte_common.h>
 #include <rte_cycles.h>
@@ -282,24 +284,6 @@ int bnxt_hwrm_set_filter(struct bnxt *bp,
 	HWRM_CHECK_RESULT;
 
 	filter->fw_l2_filter_id = rte_le_to_cpu_64(resp->l2_filter_id);
-
-	return rc;
-}
-
-int bnxt_hwrm_exec_fwd_resp(struct bnxt *bp, void *fwd_cmd)
-{
-	int rc;
-	struct hwrm_exec_fwd_resp_input req = {.req_type = 0 };
-	struct hwrm_exec_fwd_resp_output *resp = bp->hwrm_cmd_resp_addr;
-
-	HWRM_PREP(req, EXEC_FWD_RESP, -1, resp);
-
-	memcpy(req.encap_request, fwd_cmd,
-	       sizeof(req.encap_request));
-
-	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
-
-	HWRM_CHECK_RESULT;
 
 	return rc;
 }
@@ -905,12 +889,71 @@ int bnxt_hwrm_vnic_alloc(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	return rc;
 }
 
+static int bnxt_hwrm_vnic_plcmodes_qcfg(struct bnxt *bp,
+					struct bnxt_vnic_info *vnic,
+					struct bnxt_plcmodes_cfg *pmode)
+{
+	int rc = 0;
+	struct hwrm_vnic_plcmodes_qcfg_input req = {.req_type = 0 };
+	struct hwrm_vnic_plcmodes_qcfg_output *resp = bp->hwrm_cmd_resp_addr;
+
+	HWRM_PREP(req, VNIC_PLCMODES_QCFG, -1, resp);
+
+	req.vnic_id = rte_cpu_to_le_32(vnic->fw_vnic_id);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+
+	HWRM_CHECK_RESULT;
+
+	pmode->flags = rte_le_to_cpu_32(resp->flags);
+	/* dflt_vnic bit doesn't exist in the _cfg command */
+	pmode->flags &= ~(HWRM_VNIC_PLCMODES_QCFG_OUTPUT_FLAGS_DFLT_VNIC);
+	pmode->jumbo_thresh = rte_le_to_cpu_16(resp->jumbo_thresh);
+	pmode->hds_offset = rte_le_to_cpu_16(resp->hds_offset);
+	pmode->hds_threshold = rte_le_to_cpu_16(resp->hds_threshold);
+
+	return rc;
+}
+
+static int bnxt_hwrm_vnic_plcmodes_cfg(struct bnxt *bp,
+				       struct bnxt_vnic_info *vnic,
+				       struct bnxt_plcmodes_cfg *pmode)
+{
+	int rc = 0;
+	struct hwrm_vnic_plcmodes_cfg_input req = {.req_type = 0 };
+	struct hwrm_vnic_plcmodes_cfg_output *resp = bp->hwrm_cmd_resp_addr;
+
+	HWRM_PREP(req, VNIC_PLCMODES_CFG, -1, resp);
+
+	req.vnic_id = rte_cpu_to_le_32(vnic->fw_vnic_id);
+	req.flags = rte_cpu_to_le_32(pmode->flags);
+	req.jumbo_thresh = rte_cpu_to_le_16(pmode->jumbo_thresh);
+	req.hds_offset = rte_cpu_to_le_16(pmode->hds_offset);
+	req.hds_threshold = rte_cpu_to_le_16(pmode->hds_threshold);
+	req.enables = rte_cpu_to_le_32(
+	    HWRM_VNIC_PLCMODES_CFG_INPUT_ENABLES_HDS_THRESHOLD_VALID |
+	    HWRM_VNIC_PLCMODES_CFG_INPUT_ENABLES_HDS_OFFSET_VALID |
+	    HWRM_VNIC_PLCMODES_CFG_INPUT_ENABLES_JUMBO_THRESH_VALID
+	);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+
+	HWRM_CHECK_RESULT;
+
+	return rc;
+}
+
 int bnxt_hwrm_vnic_cfg(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 {
 	int rc = 0;
 	struct hwrm_vnic_cfg_input req = {.req_type = 0 };
 	struct hwrm_vnic_cfg_output *resp = bp->hwrm_cmd_resp_addr;
 	uint32_t ctx_enable_flag = HWRM_VNIC_CFG_INPUT_ENABLES_RSS_RULE;
+	struct bnxt_plcmodes_cfg pmodes;
+
+	rc = bnxt_hwrm_vnic_plcmodes_qcfg(bp, vnic, &pmodes);
+	if (rc)
+		return rc;
 
 	HWRM_PREP(req, VNIC_CFG, -1, resp);
 
@@ -953,6 +996,8 @@ int bnxt_hwrm_vnic_cfg(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 
 	HWRM_CHECK_RESULT;
+
+	rc = bnxt_hwrm_vnic_plcmodes_cfg(bp, vnic, &pmodes);
 
 	return rc;
 }
@@ -1773,6 +1818,25 @@ static void populate_vf_func_cfg_req(struct bnxt *bp,
 						 (num_vfs + 1));
 }
 
+static void add_random_mac_if_needed(struct bnxt *bp,
+				     struct hwrm_func_cfg_input *cfg_req,
+				     int vf)
+{
+	struct ether_addr mac;
+
+	if (bnxt_hwrm_func_qcfg_vf_default_mac(bp, vf, &mac))
+		return;
+
+	if (memcmp(mac.addr_bytes, "\x00\x00\x00\x00\x00", 6) == 0) {
+		cfg_req->enables |=
+		rte_cpu_to_le_32(HWRM_FUNC_CFG_INPUT_ENABLES_DFLT_MAC_ADDR);
+		eth_random_addr(cfg_req->dflt_mac_addr);
+		bp->pf.vf_info[vf].random_mac = true;
+	} else {
+		memcpy(cfg_req->dflt_mac_addr, mac.addr_bytes, ETHER_ADDR_LEN);
+	}
+}
+
 static void reserve_resources_from_vf(struct bnxt *bp,
 				      struct hwrm_func_cfg_input *cfg_req,
 				      int vf)
@@ -1914,6 +1978,8 @@ int bnxt_hwrm_allocate_vfs(struct bnxt *bp, int num_vfs)
 
 	bp->pf.active_vfs = 0;
 	for (i = 0; i < num_vfs; i++) {
+		add_random_mac_if_needed(bp, &req, i);
+
 		HWRM_PREP(req, FUNC_CFG, -1, resp);
 		req.flags = rte_cpu_to_le_32(bp->pf.vf_info[i].func_cfg_flags);
 		req.fid = rte_cpu_to_le_16(bp->pf.vf_info[i].fid);
@@ -2019,6 +2085,23 @@ int bnxt_hwrm_func_cfg_def_cp(struct bnxt *bp)
 	return rc;
 }
 
+int bnxt_hwrm_vf_func_cfg_def_cp(struct bnxt *bp)
+{
+	struct hwrm_func_vf_cfg_output *resp = bp->hwrm_cmd_resp_addr;
+	struct hwrm_func_vf_cfg_input req = {0};
+	int rc;
+
+	HWRM_PREP(req, FUNC_VF_CFG, -1, resp);
+	req.enables = rte_cpu_to_le_32(
+			HWRM_FUNC_CFG_INPUT_ENABLES_ASYNC_EVENT_CR);
+	req.async_event_cr = rte_cpu_to_le_16(
+			bp->def_cp_ring->cp_ring_struct->fw_ring_id);
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+	HWRM_CHECK_RESULT;
+
+	return rc;
+}
+
 int bnxt_hwrm_reject_fwd_resp(struct bnxt *bp, uint16_t target_id,
 			      void *encaped, size_t ec_size)
 {
@@ -2030,6 +2113,45 @@ int bnxt_hwrm_reject_fwd_resp(struct bnxt *bp, uint16_t target_id,
 		return -1;
 
 	HWRM_PREP(req, REJECT_FWD_RESP, -1, resp);
+
+	req.encap_resp_target_id = rte_cpu_to_le_16(target_id);
+	memcpy(req.encap_request, encaped, ec_size);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+
+	HWRM_CHECK_RESULT;
+
+	return rc;
+}
+
+int bnxt_hwrm_func_qcfg_vf_default_mac(struct bnxt *bp, uint16_t vf,
+				       struct ether_addr *mac)
+{
+	struct hwrm_func_qcfg_input req = {0};
+	struct hwrm_func_qcfg_output *resp = bp->hwrm_cmd_resp_addr;
+	int rc;
+
+	HWRM_PREP(req, FUNC_QCFG, -1, resp);
+	req.fid = rte_cpu_to_le_16(bp->pf.vf_info[vf].fid);
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+
+	HWRM_CHECK_RESULT;
+
+	memcpy(mac->addr_bytes, resp->mac_address, ETHER_ADDR_LEN);
+	return rc;
+}
+
+int bnxt_hwrm_exec_fwd_resp(struct bnxt *bp, uint16_t target_id,
+			    void *encaped, size_t ec_size)
+{
+	int rc = 0;
+	struct hwrm_exec_fwd_resp_input req = {.req_type = 0};
+	struct hwrm_exec_fwd_resp_output *resp = bp->hwrm_cmd_resp_addr;
+
+	if (ec_size > sizeof(req.encap_request))
+		return -1;
+
+	HWRM_PREP(req, EXEC_FWD_RESP, -1, resp);
 
 	req.encap_resp_target_id = rte_cpu_to_le_16(target_id);
 	memcpy(req.encap_request, encaped, ec_size);

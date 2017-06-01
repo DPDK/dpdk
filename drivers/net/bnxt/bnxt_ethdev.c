@@ -228,28 +228,31 @@ static int bnxt_init_chip(struct bnxt *bp)
 
 		rc = bnxt_hwrm_vnic_alloc(bp, vnic);
 		if (rc) {
-			RTE_LOG(ERR, PMD, "HWRM vnic alloc failure rc: %x\n",
-				rc);
+			RTE_LOG(ERR, PMD, "HWRM vnic %d alloc failure rc: %x\n",
+				i, rc);
 			goto err_out;
 		}
 
 		rc = bnxt_hwrm_vnic_ctx_alloc(bp, vnic);
 		if (rc) {
 			RTE_LOG(ERR, PMD,
-				"HWRM vnic ctx alloc failure rc: %x\n", rc);
+				"HWRM vnic %d ctx alloc failure rc: %x\n",
+				i, rc);
 			goto err_out;
 		}
 
 		rc = bnxt_hwrm_vnic_cfg(bp, vnic);
 		if (rc) {
-			RTE_LOG(ERR, PMD, "HWRM vnic cfg failure rc: %x\n", rc);
+			RTE_LOG(ERR, PMD, "HWRM vnic %d cfg failure rc: %x\n",
+				i, rc);
 			goto err_out;
 		}
 
 		rc = bnxt_set_hwrm_vnic_filters(bp, vnic);
 		if (rc) {
-			RTE_LOG(ERR, PMD, "HWRM vnic filter failure rc: %x\n",
-				rc);
+			RTE_LOG(ERR, PMD,
+				"HWRM vnic %d filter failure rc: %x\n",
+				i, rc);
 			goto err_out;
 		}
 		if (vnic->rss_table && vnic->hash_type) {
@@ -269,8 +272,8 @@ static int bnxt_init_chip(struct bnxt *bp)
 			rc = bnxt_hwrm_vnic_rss_cfg(bp, vnic);
 			if (rc) {
 				RTE_LOG(ERR, PMD,
-					"HWRM vnic set RSS failure rc: %x\n",
-					rc);
+					"HWRM vnic %d set RSS failure rc: %x\n",
+					i, rc);
 				goto err_out;
 			}
 		}
@@ -638,7 +641,7 @@ int bnxt_link_update_op(struct rte_eth_dev *eth_dev, int wait_to_complete)
 			new.link_speed = ETH_LINK_SPEED_100M;
 			new.link_duplex = ETH_LINK_FULL_DUPLEX;
 			RTE_LOG(ERR, PMD,
-				"Failed to retrieve link rc = 0x%x!", rc);
+				"Failed to retrieve link rc = 0x%x!\n", rc);
 			goto out;
 		}
 		rte_delay_ms(BNXT_LINK_WAIT_INTERVAL);
@@ -1010,7 +1013,8 @@ static bool bnxt_vf_pciid(uint16_t id)
 	if (id == BROADCOM_DEV_ID_57304_VF ||
 	    id == BROADCOM_DEV_ID_57406_VF ||
 	    id == BROADCOM_DEV_ID_5731X_VF ||
-	    id == BROADCOM_DEV_ID_5741X_VF)
+	    id == BROADCOM_DEV_ID_5741X_VF ||
+	    id == BROADCOM_DEV_ID_57414_VF)
 		return true;
 	return false;
 }
@@ -1066,7 +1070,7 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 	int rc;
 
 	if (version_printed++ == 0)
-		RTE_LOG(INFO, PMD, "%s", bnxt_version);
+		RTE_LOG(INFO, PMD, "%s\n", bnxt_version);
 
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
 	eth_dev->data->dev_flags |= RTE_ETH_DEV_DETACHABLE;
@@ -1204,6 +1208,10 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 		goto error_free_int;
 
 	rc = bnxt_request_int(bp);
+	if (rc)
+		goto error_free_int;
+
+	rc = bnxt_alloc_def_cp_ring(bp);
 	if (rc)
 		goto error_free_int;
 

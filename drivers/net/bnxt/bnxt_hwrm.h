@@ -51,7 +51,8 @@ int bnxt_hwrm_clear_filter(struct bnxt *bp,
 int bnxt_hwrm_set_filter(struct bnxt *bp,
 			 struct bnxt_vnic_info *vnic,
 			 struct bnxt_filter_info *filter);
-int bnxt_hwrm_exec_fwd_resp(struct bnxt *bp, void *fwd_cmd);
+int bnxt_hwrm_exec_fwd_resp(struct bnxt *bp, uint16_t target_id,
+			    void *encaped, size_t ec_size);
 int bnxt_hwrm_reject_fwd_resp(struct bnxt *bp, uint16_t target_id,
 			      void *encaped, size_t ec_size);
 
@@ -62,6 +63,7 @@ int bnxt_hwrm_func_qcaps(struct bnxt *bp);
 int bnxt_hwrm_func_reset(struct bnxt *bp);
 int bnxt_hwrm_func_driver_unregister(struct bnxt *bp, uint32_t flags);
 int bnxt_hwrm_func_cfg_def_cp(struct bnxt *bp);
+int bnxt_hwrm_vf_func_cfg_def_cp(struct bnxt *bp);
 
 int bnxt_hwrm_queue_qportcfg(struct bnxt *bp);
 

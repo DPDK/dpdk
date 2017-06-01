@@ -126,7 +126,7 @@ void bnxt_free_filter_mem(struct bnxt *bp)
 				       "HWRM filter cannot be freed rc = %d\n",
 					rc);
 		}
-		filter->fw_l2_filter_id = -1;
+		filter->fw_l2_filter_id = UINT64_MAX;
 	}
 	STAILQ_INIT(&bp->free_filter_list);
 
