@@ -204,6 +204,7 @@ struct bnxt {
 	uint16_t		vxlan_fw_dst_port_id;
 	uint16_t		geneve_fw_dst_port_id;
 	uint32_t		fw_ver;
+	rte_atomic64_t		rx_mbuf_alloc_fail;
 };
 
 /*

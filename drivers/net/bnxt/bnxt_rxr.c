@@ -68,8 +68,10 @@ static inline int bnxt_alloc_rx_data(struct bnxt_rx_queue *rxq,
 	struct rte_mbuf *data;
 
 	data = __bnxt_alloc_rx_data(rxq->mb_pool);
-	if (!data)
+	if (!data) {
+		rte_atomic64_inc(&rxq->bp->rx_mbuf_alloc_fail);
 		return -ENOMEM;
+	}
 
 	rx_buf->mbuf = data;
 
@@ -87,8 +89,10 @@ static inline int bnxt_alloc_ag_data(struct bnxt_rx_queue *rxq,
 	struct rte_mbuf *data;
 
 	data = __bnxt_alloc_rx_data(rxq->mb_pool);
-	if (!data)
+	if (!data) {
+		rte_atomic64_inc(&rxq->bp->rx_mbuf_alloc_fail);
 		return -ENOMEM;
+	}
 
 	if (rxbd == NULL)
 		RTE_LOG(ERR, PMD, "Jumbo Frame. rxbd is NULL\n");
@@ -319,8 +323,10 @@ static inline struct rte_mbuf *bnxt_tpa_end(
 
 	struct rte_mbuf *new_data = __bnxt_alloc_rx_data(rxq->mb_pool);
 	RTE_ASSERT(new_data != NULL);
-	if (!new_data)
+	if (!new_data) {
+		rte_atomic64_inc(&rxq->bp->rx_mbuf_alloc_fail);
 		return NULL;
+	}
 	tpa_info->mbuf = new_data;
 
 	return mbuf;
@@ -676,8 +682,10 @@ int bnxt_init_one_rx_ring(struct bnxt_rx_queue *rxq)
 		for (i = 0; i < BNXT_TPA_MAX; i++) {
 			rxr->tpa_info[i].mbuf =
 				__bnxt_alloc_rx_data(rxq->mb_pool);
-			if (!rxr->tpa_info[i].mbuf)
+			if (!rxr->tpa_info[i].mbuf) {
+				rte_atomic64_inc(&rxq->bp->rx_mbuf_alloc_fail);
 				return -ENOMEM;
+			}
 		}
 	}
 	RTE_LOG(DEBUG, PMD, "%s TPA alloc Done!\n", __func__);

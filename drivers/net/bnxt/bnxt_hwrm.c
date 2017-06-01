@@ -821,13 +821,12 @@ int bnxt_hwrm_stat_clear(struct bnxt *bp, struct bnxt_cp_ring_info *cpr)
 	struct hwrm_stat_ctx_clr_stats_input req = {.req_type = 0 };
 	struct hwrm_stat_ctx_clr_stats_output *resp = bp->hwrm_cmd_resp_addr;
 
-	HWRM_PREP(req, STAT_CTX_CLR_STATS, -1, resp);
-
 	if (cpr->hw_stats_ctx_id == (uint32_t)HWRM_NA_SIGNATURE)
 		return rc;
 
+	HWRM_PREP(req, STAT_CTX_CLR_STATS, -1, resp);
+
 	req.stat_ctx_id = rte_cpu_to_le_16(cpr->hw_stats_ctx_id);
-	req.seq_id = rte_cpu_to_le_16(bp->hwrm_cmd_seq++);
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 
@@ -845,9 +844,8 @@ int bnxt_hwrm_stat_ctx_alloc(struct bnxt *bp, struct bnxt_cp_ring_info *cpr,
 
 	HWRM_PREP(req, STAT_CTX_ALLOC, -1, resp);
 
-	req.update_period_ms = rte_cpu_to_le_32(1000);
+	req.update_period_ms = rte_cpu_to_le_32(0);
 
-	req.seq_id = rte_cpu_to_le_16(bp->hwrm_cmd_seq++);
 	req.stats_dma_addr =
 	    rte_cpu_to_le_64(cpr->hw_stats_map);
 
@@ -870,7 +868,6 @@ int bnxt_hwrm_stat_ctx_free(struct bnxt *bp, struct bnxt_cp_ring_info *cpr,
 	HWRM_PREP(req, STAT_CTX_FREE, -1, resp);
 
 	req.stat_ctx_id = rte_cpu_to_le_16(cpr->hw_stats_ctx_id);
-	req.seq_id = rte_cpu_to_le_16(bp->hwrm_cmd_seq++);
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 
@@ -1223,6 +1220,43 @@ int bnxt_hwrm_func_vf_mac(struct bnxt *bp, uint16_t vf, const uint8_t *mac_addr)
 	HWRM_CHECK_RESULT;
 
 	bp->pf.vf_info[vf].random_mac = false;
+
+	return rc;
+}
+
+int bnxt_hwrm_func_qstats(struct bnxt *bp, uint16_t fid,
+			  struct rte_eth_stats *stats)
+{
+	int rc = 0;
+	struct hwrm_func_qstats_input req = {.req_type = 0};
+	struct hwrm_func_qstats_output *resp = bp->hwrm_cmd_resp_addr;
+
+	HWRM_PREP(req, FUNC_QSTATS, -1, resp);
+
+	req.fid = rte_cpu_to_le_16(fid);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+
+	HWRM_CHECK_RESULT;
+
+	stats->ipackets = rte_le_to_cpu_64(resp->rx_ucast_pkts);
+	stats->ipackets += rte_le_to_cpu_64(resp->rx_mcast_pkts);
+	stats->ipackets += rte_le_to_cpu_64(resp->rx_bcast_pkts);
+	stats->ibytes = rte_le_to_cpu_64(resp->rx_ucast_bytes);
+	stats->ibytes += rte_le_to_cpu_64(resp->rx_mcast_bytes);
+	stats->ibytes += rte_le_to_cpu_64(resp->rx_bcast_bytes);
+
+	stats->opackets = rte_le_to_cpu_64(resp->tx_ucast_pkts);
+	stats->opackets += rte_le_to_cpu_64(resp->tx_mcast_pkts);
+	stats->opackets += rte_le_to_cpu_64(resp->tx_bcast_pkts);
+	stats->obytes = rte_le_to_cpu_64(resp->tx_ucast_bytes);
+	stats->obytes += rte_le_to_cpu_64(resp->tx_mcast_bytes);
+	stats->obytes += rte_le_to_cpu_64(resp->tx_bcast_bytes);
+
+	stats->ierrors = rte_le_to_cpu_64(resp->rx_err_pkts);
+	stats->oerrors = rte_le_to_cpu_64(resp->tx_err_pkts);
+
+	stats->imissed = rte_le_to_cpu_64(resp->rx_drop_pkts);
 
 	return rc;
 }
@@ -2344,6 +2378,42 @@ int bnxt_hwrm_exec_fwd_resp(struct bnxt *bp, uint16_t target_id,
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 
 	HWRM_CHECK_RESULT;
+
+	return rc;
+}
+
+int bnxt_hwrm_ctx_qstats(struct bnxt *bp, uint32_t cid, int idx,
+			 struct rte_eth_stats *stats)
+{
+	int rc = 0;
+	struct hwrm_stat_ctx_query_input req = {.req_type = 0};
+	struct hwrm_stat_ctx_query_output *resp = bp->hwrm_cmd_resp_addr;
+
+	HWRM_PREP(req, STAT_CTX_QUERY, -1, resp);
+
+	req.stat_ctx_id = rte_cpu_to_le_32(cid);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+
+	HWRM_CHECK_RESULT;
+
+	stats->q_ipackets[idx] = rte_le_to_cpu_64(resp->rx_ucast_pkts);
+	stats->q_ipackets[idx] += rte_le_to_cpu_64(resp->rx_mcast_pkts);
+	stats->q_ipackets[idx] += rte_le_to_cpu_64(resp->rx_bcast_pkts);
+	stats->q_ibytes[idx] = rte_le_to_cpu_64(resp->rx_ucast_bytes);
+	stats->q_ibytes[idx] += rte_le_to_cpu_64(resp->rx_mcast_bytes);
+	stats->q_ibytes[idx] += rte_le_to_cpu_64(resp->rx_bcast_bytes);
+
+	stats->q_opackets[idx] = rte_le_to_cpu_64(resp->tx_ucast_pkts);
+	stats->q_opackets[idx] += rte_le_to_cpu_64(resp->tx_mcast_pkts);
+	stats->q_opackets[idx] += rte_le_to_cpu_64(resp->tx_bcast_pkts);
+	stats->q_obytes[idx] = rte_le_to_cpu_64(resp->tx_ucast_bytes);
+	stats->q_obytes[idx] += rte_le_to_cpu_64(resp->tx_mcast_bytes);
+	stats->q_obytes[idx] += rte_le_to_cpu_64(resp->tx_bcast_bytes);
+
+	stats->q_errors[idx] = rte_le_to_cpu_64(resp->rx_err_pkts);
+	stats->q_errors[idx] += rte_le_to_cpu_64(resp->tx_err_pkts);
+	stats->q_errors[idx] += rte_le_to_cpu_64(resp->rx_drop_pkts);
 
 	return rc;
 }

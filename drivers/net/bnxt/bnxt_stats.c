@@ -196,64 +196,18 @@ void bnxt_stats_get_op(struct rte_eth_dev *eth_dev,
 	for (i = 0; i < bp->rx_cp_nr_rings; i++) {
 		struct bnxt_rx_queue *rxq = bp->rx_queues[i];
 		struct bnxt_cp_ring_info *cpr = rxq->cp_ring;
-		struct ctx_hw_stats64 *hw_stats =
-		    (struct ctx_hw_stats64 *)cpr->hw_stats;
 
-		bnxt_stats->q_ipackets[i] +=
-		    rte_le_to_cpu_64(hw_stats->rx_ucast_pkts);
-		bnxt_stats->q_ipackets[i] +=
-		    rte_le_to_cpu_64(hw_stats->rx_mcast_pkts);
-		bnxt_stats->q_ipackets[i] +=
-		    rte_le_to_cpu_64(hw_stats->rx_bcast_pkts);
-
-		bnxt_stats->q_ibytes[i] +=
-		    rte_le_to_cpu_64(hw_stats->rx_ucast_bytes);
-		bnxt_stats->q_ibytes[i] +=
-		    rte_le_to_cpu_64(hw_stats->rx_mcast_bytes);
-		bnxt_stats->q_ibytes[i] +=
-		    rte_le_to_cpu_64(hw_stats->rx_bcast_bytes);
-
-		/*
-		 * TBD: No clear mapping to this... we don't seem
-		 * to have a stat specifically for dropped due to
-		 * insufficient mbufs.
-		 */
-		bnxt_stats->q_errors[i] = 0;
-
-		/* These get replaced once the *_QSTATS commands work */
-		bnxt_stats->ipackets += bnxt_stats->q_ipackets[i];
-		bnxt_stats->ibytes += bnxt_stats->q_ibytes[i];
-		bnxt_stats->imissed += bnxt_stats->q_errors[i];
-		bnxt_stats->ierrors +=
-				rte_le_to_cpu_64(hw_stats->rx_discard_pkts);
+		bnxt_hwrm_ctx_qstats(bp, cpr->hw_stats_ctx_id, i, bnxt_stats);
 	}
 
 	for (i = 0; i < bp->tx_cp_nr_rings; i++) {
 		struct bnxt_tx_queue *txq = bp->tx_queues[i];
 		struct bnxt_cp_ring_info *cpr = txq->cp_ring;
-		struct ctx_hw_stats64 *hw_stats =
-		    (struct ctx_hw_stats64 *)cpr->hw_stats;
 
-		bnxt_stats->q_opackets[i] +=
-		    rte_le_to_cpu_64(hw_stats->tx_ucast_pkts);
-		bnxt_stats->q_opackets[i] +=
-		    rte_le_to_cpu_64(hw_stats->tx_mcast_pkts);
-		bnxt_stats->q_opackets[i] +=
-		    rte_le_to_cpu_64(hw_stats->tx_bcast_pkts);
-
-		bnxt_stats->q_obytes[i] +=
-		    rte_le_to_cpu_64(hw_stats->tx_ucast_bytes);
-		bnxt_stats->q_obytes[i] +=
-		    rte_le_to_cpu_64(hw_stats->tx_mcast_bytes);
-		bnxt_stats->q_obytes[i] +=
-		    rte_le_to_cpu_64(hw_stats->tx_bcast_bytes);
-
-		/* These get replaced once the *_QSTATS commands work */
-		bnxt_stats->opackets += bnxt_stats->q_opackets[i];
-		bnxt_stats->obytes +=  bnxt_stats->q_obytes[i];
-		bnxt_stats->oerrors += rte_le_to_cpu_64(hw_stats->tx_drop_pkts);
-		bnxt_stats->oerrors += rte_le_to_cpu_64(hw_stats->tx_discard_pkts);
+		bnxt_hwrm_ctx_qstats(bp, cpr->hw_stats_ctx_id, i, bnxt_stats);
 	}
+	bnxt_hwrm_func_qstats(bp, 0xffff, bnxt_stats);
+	bnxt_stats->rx_nombuf = rte_atomic64_read(&bp->rx_mbuf_alloc_fail);
 }
 
 void bnxt_stats_reset_op(struct rte_eth_dev *eth_dev)
@@ -261,6 +215,7 @@ void bnxt_stats_reset_op(struct rte_eth_dev *eth_dev)
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
 
 	bnxt_clear_all_hwrm_stat_ctxs(bp);
+	rte_atomic64_clear(&bp->rx_mbuf_alloc_fail);
 }
 
 int bnxt_dev_xstats_get_op(struct rte_eth_dev *eth_dev,
