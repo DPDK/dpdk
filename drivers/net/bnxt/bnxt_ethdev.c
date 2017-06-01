@@ -1390,6 +1390,43 @@ bnxt_fw_version_get(struct rte_eth_dev *dev, char *fw_version, size_t fw_size)
 		return 0;
 }
 
+static void
+bnxt_rxq_info_get_op(struct rte_eth_dev *dev, uint16_t queue_id,
+	struct rte_eth_rxq_info *qinfo)
+{
+	struct bnxt_rx_queue *rxq;
+
+	rxq = dev->data->rx_queues[queue_id];
+
+	qinfo->mp = rxq->mb_pool;
+	qinfo->scattered_rx = dev->data->scattered_rx;
+	qinfo->nb_desc = rxq->nb_rx_desc;
+
+	qinfo->conf.rx_free_thresh = rxq->rx_free_thresh;
+	qinfo->conf.rx_drop_en = 0;
+	qinfo->conf.rx_deferred_start = 0;
+}
+
+static void
+bnxt_txq_info_get_op(struct rte_eth_dev *dev, uint16_t queue_id,
+	struct rte_eth_txq_info *qinfo)
+{
+	struct bnxt_tx_queue *txq;
+
+	txq = dev->data->tx_queues[queue_id];
+
+	qinfo->nb_desc = txq->nb_tx_desc;
+
+	qinfo->conf.tx_thresh.pthresh = txq->pthresh;
+	qinfo->conf.tx_thresh.hthresh = txq->hthresh;
+	qinfo->conf.tx_thresh.wthresh = txq->wthresh;
+
+	qinfo->conf.tx_free_thresh = txq->tx_free_thresh;
+	qinfo->conf.tx_rs_thresh = 0;
+	qinfo->conf.txq_flags = txq->txq_flags;
+	qinfo->conf.tx_deferred_start = txq->tx_deferred_start;
+}
+
 static int bnxt_mtu_set_op(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
 {
 	struct bnxt *bp = eth_dev->data->dev_private;
@@ -1482,6 +1519,8 @@ static const struct eth_dev_ops bnxt_dev_ops = {
 	.xstats_reset = bnxt_dev_xstats_reset_op,
 	.fw_version_get = bnxt_fw_version_get,
 	.set_mc_addr_list = bnxt_dev_set_mc_addr_list_op,
+	.rxq_info_get = bnxt_rxq_info_get_op,
+	.txq_info_get = bnxt_txq_info_get_op,
 };
 
 static bool bnxt_vf_pciid(uint16_t id)
