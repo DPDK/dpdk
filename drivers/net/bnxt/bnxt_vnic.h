@@ -42,8 +42,7 @@ struct bnxt_vnic_info {
 	uint8_t		ff_pool_idx;
 
 	uint16_t	fw_vnic_id; /* returned by Chimp during alloc */
-	uint16_t	fw_rss_cos_lb_ctx;
-	uint16_t	ctx_is_rss_cos_lb;
+	uint16_t	rss_rule;
 #define MAX_NUM_TRAFFIC_CLASSES		8
 #define MAX_NUM_RSS_QUEUES_PER_VNIC	16
 #define MAX_QUEUES_PER_VNIC	(MAX_NUM_RSS_QUEUES_PER_VNIC + \
@@ -51,6 +50,8 @@ struct bnxt_vnic_info {
 	uint16_t	start_grp_id;
 	uint16_t	end_grp_id;
 	uint16_t	fw_grp_ids[MAX_QUEUES_PER_VNIC];
+	uint16_t	dflt_ring_grp;
+	uint16_t	mru;
 	uint16_t	hash_type;
 	phys_addr_t	rss_table_dma_addr;
 	uint16_t	*rss_table;
@@ -60,8 +61,14 @@ struct bnxt_vnic_info {
 #define BNXT_VNIC_INFO_PROMISC			(1 << 0)
 #define BNXT_VNIC_INFO_ALLMULTI			(1 << 1)
 
+	uint16_t	cos_rule;
+	uint16_t	lb_rule;
 	bool		vlan_strip;
 	bool		func_default;
+	bool		bd_stall;
+	bool		roce_dual;
+	bool		roce_only;
+	bool		rss_dflt_cr;
 
 	STAILQ_HEAD(, bnxt_filter_info)	filter;
 };

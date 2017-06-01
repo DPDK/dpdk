@@ -69,21 +69,14 @@ void bnxt_init_vnics(struct bnxt *bp)
 	uint16_t max_vnics;
 	int i, j;
 
-	if (BNXT_PF(bp)) {
-		struct bnxt_pf_info *pf = &bp->pf;
-
-		max_vnics = pf->max_vnics;
-	} else {
-		struct bnxt_vf_info *vf = &bp->vf;
-
-		max_vnics = vf->max_vnics;
-	}
+	max_vnics = bp->max_vnics;
 	STAILQ_INIT(&bp->free_vnic_list);
 	for (i = 0; i < max_vnics; i++) {
 		vnic = &bp->vnic_info[i];
 		vnic->fw_vnic_id = (uint16_t)HWRM_NA_SIGNATURE;
-		vnic->fw_rss_cos_lb_ctx = (uint16_t)HWRM_NA_SIGNATURE;
-		vnic->ctx_is_rss_cos_lb = HW_CONTEXT_NONE;
+		vnic->rss_rule = (uint16_t)HWRM_NA_SIGNATURE;
+		vnic->cos_rule = (uint16_t)HWRM_NA_SIGNATURE;
+		vnic->lb_rule = (uint16_t)HWRM_NA_SIGNATURE;
 
 		for (j = 0; j < MAX_QUEUES_PER_VNIC; j++)
 			vnic->fw_grp_ids[j] = (uint16_t)HWRM_NA_SIGNATURE;
@@ -181,15 +174,7 @@ int bnxt_alloc_vnic_attributes(struct bnxt *bp)
 	uint16_t max_vnics;
 	int i;
 
-	if (BNXT_PF(bp)) {
-		struct bnxt_pf_info *pf = &bp->pf;
-
-		max_vnics = pf->max_vnics;
-	} else {
-		struct bnxt_vf_info *vf = &bp->vf;
-
-		max_vnics = vf->max_vnics;
-	}
+	max_vnics = bp->max_vnics;
 	snprintf(mz_name, RTE_MEMZONE_NAMESIZE,
 		 "bnxt_%04x:%02x:%02x:%02x_vnicattr", pdev->addr.domain,
 		 pdev->addr.bus, pdev->addr.devid, pdev->addr.function);
@@ -232,15 +217,7 @@ void bnxt_free_vnic_mem(struct bnxt *bp)
 	if (bp->vnic_info == NULL)
 		return;
 
-	if (BNXT_PF(bp)) {
-		struct bnxt_pf_info *pf = &bp->pf;
-
-		max_vnics = pf->max_vnics;
-	} else {
-		struct bnxt_vf_info *vf = &bp->vf;
-
-		max_vnics = vf->max_vnics;
-	}
+	max_vnics = bp->max_vnics;
 	for (i = 0; i < max_vnics; i++) {
 		vnic = &bp->vnic_info[i];
 		if (vnic->fw_vnic_id != (uint16_t)HWRM_NA_SIGNATURE) {
@@ -258,15 +235,7 @@ int bnxt_alloc_vnic_mem(struct bnxt *bp)
 	struct bnxt_vnic_info *vnic_mem;
 	uint16_t max_vnics;
 
-	if (BNXT_PF(bp)) {
-		struct bnxt_pf_info *pf = &bp->pf;
-
-		max_vnics = pf->max_vnics;
-	} else {
-		struct bnxt_vf_info *vf = &bp->vf;
-
-		max_vnics = vf->max_vnics;
-	}
+	max_vnics = bp->max_vnics;
 	/* Allocate memory for VNIC pool and filter pool */
 	vnic_mem = rte_zmalloc("bnxt_vnic_info",
 			       max_vnics * sizeof(struct bnxt_vnic_info), 0);

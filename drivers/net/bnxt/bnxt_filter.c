@@ -73,15 +73,7 @@ void bnxt_init_filters(struct bnxt *bp)
 	struct bnxt_filter_info *filter;
 	int i, max_filters;
 
-	if (BNXT_PF(bp)) {
-		struct bnxt_pf_info *pf = &bp->pf;
-
-		max_filters = pf->max_l2_ctx;
-	} else {
-		struct bnxt_vf_info *vf = &bp->vf;
-
-		max_filters = vf->max_l2_ctx;
-	}
+	max_filters = bp->max_l2_ctx;
 	STAILQ_INIT(&bp->free_filter_list);
 	for (i = 0; i < max_filters; i++) {
 		filter = &bp->filter_info[i];
@@ -122,15 +114,7 @@ void bnxt_free_filter_mem(struct bnxt *bp)
 		return;
 
 	/* Ensure that all filters are freed */
-	if (BNXT_PF(bp)) {
-		struct bnxt_pf_info *pf = &bp->pf;
-
-		max_filters = pf->max_l2_ctx;
-	} else {
-		struct bnxt_vf_info *vf = &bp->vf;
-
-		max_filters = vf->max_l2_ctx;
-	}
+	max_filters = bp->max_l2_ctx;
 	for (i = 0; i < max_filters; i++) {
 		filter = &bp->filter_info[i];
 		if (filter->fw_l2_filter_id != ((uint64_t)-1)) {
@@ -155,15 +139,7 @@ int bnxt_alloc_filter_mem(struct bnxt *bp)
 	struct bnxt_filter_info *filter_mem;
 	uint16_t max_filters;
 
-	if (BNXT_PF(bp)) {
-		struct bnxt_pf_info *pf = &bp->pf;
-
-		max_filters = pf->max_l2_ctx;
-	} else {
-		struct bnxt_vf_info *vf = &bp->vf;
-
-		max_filters = vf->max_l2_ctx;
-	}
+	max_filters = bp->max_l2_ctx;
 	/* Allocate memory for VNIC pool and filter pool */
 	filter_mem = rte_zmalloc("bnxt_filter_info",
 				 max_filters * sizeof(struct bnxt_filter_info),

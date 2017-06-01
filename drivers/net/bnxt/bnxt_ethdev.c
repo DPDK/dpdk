@@ -345,18 +345,12 @@ static void bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 	dev_info->max_hash_mac_addrs = 0;
 
 	/* PF/VF specifics */
-	if (BNXT_PF(bp)) {
-		dev_info->max_rx_queues = bp->pf.max_rx_rings;
-		dev_info->max_tx_queues = bp->pf.max_tx_rings;
-		dev_info->max_vfs = bp->pf.active_vfs;
-		dev_info->reta_size = bp->pf.max_rsscos_ctx;
-		max_vnics = bp->pf.max_vnics;
-	} else {
-		dev_info->max_rx_queues = bp->vf.max_rx_rings;
-		dev_info->max_tx_queues = bp->vf.max_tx_rings;
-		dev_info->reta_size = bp->vf.max_rsscos_ctx;
-		max_vnics = bp->vf.max_vnics;
-	}
+	if (BNXT_PF(bp))
+		dev_info->max_vfs = bp->pdev->max_vfs;
+	dev_info->max_rx_queues = bp->max_rx_rings;
+	dev_info->max_tx_queues = bp->max_tx_rings;
+	dev_info->reta_size = bp->max_rsscos_ctx;
+	max_vnics = bp->max_vnics;
 
 	/* Fast path specifics */
 	dev_info->min_rx_bufsize = 1;
@@ -488,41 +482,18 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 	int rc;
 
 	bp->dev_stopped = 0;
-	rc = bnxt_hwrm_func_reset(bp);
-	if (rc) {
-		RTE_LOG(ERR, PMD, "hwrm chip reset failure rc: %x\n", rc);
-		rc = -1;
-		goto error;
-	}
-
-	rc = bnxt_setup_int(bp);
-	if (rc)
-		goto error;
-
-	rc = bnxt_alloc_mem(bp);
-	if (rc)
-		goto error;
-
-	rc = bnxt_request_int(bp);
-	if (rc)
-		goto error;
 
 	rc = bnxt_init_nic(bp);
 	if (rc)
 		goto error;
-
-	bnxt_enable_int(bp);
 
 	bnxt_link_update_op(eth_dev, 0);
 	return 0;
 
 error:
 	bnxt_shutdown_nic(bp);
-	bnxt_disable_int(bp);
-	bnxt_free_int(bp);
 	bnxt_free_tx_mbufs(bp);
 	bnxt_free_rx_mbufs(bp);
-	bnxt_free_mem(bp);
 	return rc;
 }
 
@@ -554,8 +525,6 @@ static void bnxt_dev_stop_op(struct rte_eth_dev *eth_dev)
 		eth_dev->data->dev_link.link_status = 0;
 	}
 	bnxt_set_hwrm_link_config(bp, false);
-	bnxt_disable_int(bp);
-	bnxt_free_int(bp);
 	bnxt_shutdown_nic(bp);
 	bp->dev_stopped = 1;
 }
@@ -1082,6 +1051,12 @@ init_err_disable:
 
 static int bnxt_dev_uninit(struct rte_eth_dev *eth_dev);
 
+#define ALLOW_FUNC(x)	\
+	{ \
+		typeof(x) arg = (x); \
+		bp->pf.vf_req_fwd[((arg) >> 5)] &= \
+		~rte_cpu_to_le_32(1 << ((arg) & 0x1f)); \
+	}
 static int
 bnxt_dev_init(struct rte_eth_dev *eth_dev)
 {
@@ -1097,6 +1072,7 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 	eth_dev->data->dev_flags |= RTE_ETH_DEV_DETACHABLE;
 
 	bp = eth_dev->data->dev_private;
+	bp->dev_stopped = 1;
 
 	if (bnxt_vf_pciid(pci_dev->id.device_id))
 		bp->flags |= BNXT_FLAG_VF;
@@ -1130,6 +1106,11 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 		RTE_LOG(ERR, PMD, "hwrm query capability failure rc: %x\n", rc);
 		goto error_free;
 	}
+	if (bp->max_tx_rings == 0) {
+		RTE_LOG(ERR, PMD, "No TX rings available!\n");
+		rc = -EBUSY;
+		goto error_free;
+	}
 	eth_dev->data->mac_addrs = rte_zmalloc("bnxt_mac_addr_tbl",
 					ETHER_ADDR_LEN * MAX_NUM_MAC_ADDR, 0);
 	if (eth_dev->data->mac_addrs == NULL) {
@@ -1140,10 +1121,7 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 		goto error_free;
 	}
 	/* Copy the permanent MAC from the qcap response address now. */
-	if (BNXT_PF(bp))
-		memcpy(bp->mac_addr, bp->pf.mac_addr, sizeof(bp->mac_addr));
-	else
-		memcpy(bp->mac_addr, bp->vf.mac_addr, sizeof(bp->mac_addr));
+	memcpy(bp->mac_addr, bp->dflt_mac_addr, sizeof(bp->mac_addr));
 	memcpy(&eth_dev->data->mac_addrs[0], bp->mac_addr, ETHER_ADDR_LEN);
 	bp->grp_info = rte_zmalloc("bnxt_grp_info",
 				sizeof(*bp->grp_info) * bp->max_ring_grps, 0);
@@ -1155,8 +1133,29 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 		goto error_free;
 	}
 
-	rc = bnxt_hwrm_func_driver_register(bp, 0,
-					    bp->pf.vf_req_fwd);
+	/* Forward all requests if firmware is new enough */
+	if (((bp->fw_ver >= ((20 << 24) | (6 << 16) | (100 << 8))) &&
+	    (bp->fw_ver < ((20 << 24) | (7 << 16)))) ||
+	    ((bp->fw_ver >= ((20 << 24) | (8 << 16))))) {
+		memset(bp->pf.vf_req_fwd, 0xff, sizeof(bp->pf.vf_req_fwd));
+	} else {
+		RTE_LOG(WARNING, PMD,
+			"Firmware too old for VF mailbox functionality\n");
+		memset(bp->pf.vf_req_fwd, 0, sizeof(bp->pf.vf_req_fwd));
+	}
+
+	/*
+	 * The following are used for driver cleanup.  If we disallow these,
+	 * VF drivers can't clean up cleanly.
+	 */
+	ALLOW_FUNC(HWRM_FUNC_DRV_UNRGTR);
+	ALLOW_FUNC(HWRM_VNIC_FREE);
+	ALLOW_FUNC(HWRM_RING_FREE);
+	ALLOW_FUNC(HWRM_RING_GRP_FREE);
+	ALLOW_FUNC(HWRM_VNIC_RSS_COS_LB_CTX_FREE);
+	ALLOW_FUNC(HWRM_CFA_L2_FILTER_FREE);
+	ALLOW_FUNC(HWRM_STAT_CTX_FREE);
+	rc = bnxt_hwrm_func_driver_register(bp);
 	if (rc) {
 		RTE_LOG(ERR, PMD,
 			"Failed to register driver");
@@ -1169,10 +1168,55 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 		pci_dev->mem_resource[0].phys_addr,
 		pci_dev->mem_resource[0].addr);
 
-	bp->dev_stopped = 0;
+	rc = bnxt_hwrm_func_reset(bp);
+	if (rc) {
+		RTE_LOG(ERR, PMD, "hwrm chip reset failure rc: %x\n", rc);
+		rc = -1;
+		goto error_free;
+	}
+
+	if (BNXT_PF(bp)) {
+		//if (bp->pf.active_vfs) {
+			// TODO: Deallocate VF resources?
+		//}
+		if (bp->pdev->max_vfs) {
+			rc = bnxt_hwrm_allocate_vfs(bp, bp->pdev->max_vfs);
+			if (rc) {
+				RTE_LOG(ERR, PMD, "Failed to allocate VFs\n");
+				goto error_free;
+			}
+		} else {
+			rc = bnxt_hwrm_allocate_pf_only(bp);
+			if (rc) {
+				RTE_LOG(ERR, PMD,
+					"Failed to allocate PF resources\n");
+				goto error_free;
+			}
+		}
+	}
+
+	rc = bnxt_setup_int(bp);
+	if (rc)
+		goto error_free;
+
+	rc = bnxt_alloc_mem(bp);
+	if (rc)
+		goto error_free_int;
+
+	rc = bnxt_request_int(bp);
+	if (rc)
+		goto error_free_int;
+
+	bnxt_enable_int(bp);
 
 	return 0;
 
+error_free_int:
+	bnxt_disable_int(bp);
+	bnxt_free_def_cp_ring(bp);
+	bnxt_hwrm_func_buf_unrgtr(bp);
+	bnxt_free_int(bp);
+	bnxt_free_mem(bp);
 error_free:
 	bnxt_dev_uninit(eth_dev);
 error:
@@ -1184,6 +1228,9 @@ bnxt_dev_uninit(struct rte_eth_dev *eth_dev) {
 	struct bnxt *bp = eth_dev->data->dev_private;
 	int rc;
 
+	bnxt_disable_int(bp);
+	bnxt_free_int(bp);
+	bnxt_free_mem(bp);
 	if (eth_dev->data->mac_addrs != NULL) {
 		rte_free(eth_dev->data->mac_addrs);
 		eth_dev->data->mac_addrs = NULL;
@@ -1196,11 +1243,31 @@ bnxt_dev_uninit(struct rte_eth_dev *eth_dev) {
 	bnxt_free_hwrm_resources(bp);
 	if (bp->dev_stopped == 0)
 		bnxt_dev_close_op(eth_dev);
+	if (bp->pf.vf_info)
+		rte_free(bp->pf.vf_info);
 	eth_dev->dev_ops = NULL;
 	eth_dev->rx_pkt_burst = NULL;
 	eth_dev->tx_pkt_burst = NULL;
 
 	return rc;
+}
+
+int bnxt_rcv_msg_from_vf(struct bnxt *bp, uint16_t vf_id, void *msg)
+{
+	struct rte_pmd_bnxt_mb_event_param cb_param;
+
+	cb_param.retval = RTE_PMD_BNXT_MB_EVENT_PROCEED;
+	cb_param.vf_id = vf_id;
+	cb_param.msg = msg;
+
+	_rte_eth_dev_callback_process(bp->eth_dev, RTE_ETH_EVENT_VF_MBOX,
+			&cb_param);
+
+	/* Default to approve */
+	if (cb_param.retval == RTE_PMD_BNXT_MB_EVENT_PROCEED)
+		cb_param.retval = RTE_PMD_BNXT_MB_EVENT_NOOP_ACK;
+
+	return cb_param.retval == RTE_PMD_BNXT_MB_EVENT_NOOP_ACK ? true : false;
 }
 
 static int bnxt_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,

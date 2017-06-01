@@ -35,6 +35,7 @@
 #define _BNXT_H_
 
 #include <inttypes.h>
+#include <stdbool.h>
 #include <sys/queue.h>
 
 #include <rte_ethdev.h>
@@ -54,17 +55,19 @@ enum bnxt_hw_context {
 	HW_CONTEXT_IS_LB    = 3,
 };
 
-struct bnxt_vf_info {
-	uint16_t		fw_fid;
-	uint8_t			mac_addr[ETHER_ADDR_LEN];
-	uint16_t		max_rsscos_ctx;
-	uint16_t		max_cp_rings;
-	uint16_t		max_tx_rings;
-	uint16_t		max_rx_rings;
-	uint16_t		max_l2_ctx;
-	uint16_t		max_vnics;
-	uint16_t		vlan;
-	struct bnxt_pf_info	*pf;
+struct bnxt_vlan_table_entry {
+	uint16_t		tpid;
+	uint16_t		vid;
+} __attribute__((packed));
+
+struct bnxt_child_vf_info {
+	void			*req_buf;
+	struct bnxt_vlan_table_entry	*vlan_table;
+	STAILQ_HEAD(, bnxt_filter_info)	filter;
+	uint32_t		func_cfg_flags;
+	uint32_t		l2_rx_mask;
+	uint16_t		fid;
+	bool			random_mac;
 };
 
 struct bnxt_pf_info {
@@ -73,22 +76,20 @@ struct bnxt_pf_info {
 #define BNXT_FIRST_VF_FID	128
 #define BNXT_PF_RINGS_USED(bp)	bnxt_get_num_queues(bp)
 #define BNXT_PF_RINGS_AVAIL(bp)	(bp->pf.max_cp_rings - BNXT_PF_RINGS_USED(bp))
-	uint32_t		fw_fid;
 	uint8_t			port_id;
-	uint8_t			mac_addr[ETHER_ADDR_LEN];
-	uint16_t		max_rsscos_ctx;
-	uint16_t		max_cp_rings;
-	uint16_t		max_tx_rings;
-	uint16_t		max_rx_rings;
-	uint16_t		max_l2_ctx;
-	uint16_t		max_vnics;
 	uint16_t		first_vf_id;
 	uint16_t		active_vfs;
 	uint16_t		max_vfs;
+	uint32_t		func_cfg_flags;
 	void			*vf_req_buf;
 	phys_addr_t		vf_req_buf_dma_addr;
 	uint32_t		vf_req_fwd[8];
-	struct bnxt_vf_info	*vf;
+	uint16_t		total_vnics;
+	struct bnxt_child_vf_info	*vf_info;
+#define BNXT_EVB_MODE_NONE	0
+#define BNXT_EVB_MODE_VEB	1
+#define BNXT_EVB_MODE_VEPA	2
+	uint8_t			evb_mode;
 };
 
 /* Max wait time is 10 * 100ms = 1s */
@@ -174,12 +175,49 @@ struct bnxt {
 	struct bnxt_link_info	link_info;
 	struct bnxt_cos_queue_info	cos_queue[BNXT_COS_QUEUE_COUNT];
 
+	uint16_t		fw_fid;
+	uint8_t			dflt_mac_addr[ETHER_ADDR_LEN];
+	uint16_t		max_rsscos_ctx;
+	uint16_t		max_cp_rings;
+	uint16_t		max_tx_rings;
+	uint16_t		max_rx_rings;
+	uint16_t		max_l2_ctx;
+	uint16_t		max_vnics;
+	uint16_t		max_stat_ctx;
+	uint16_t		vlan;
 	struct bnxt_pf_info		pf;
-	struct bnxt_vf_info		vf;
 	uint8_t			port_partition_type;
 	uint8_t			dev_stopped;
+	uint32_t		fw_ver;
+};
+
+/*
+ * Response sent back to the caller after callback
+ */
+enum rte_pmd_bnxt_mb_event_rsp {
+	RTE_PMD_BNXT_MB_EVENT_NOOP_ACK,  /**< skip mbox request and ACK */
+	RTE_PMD_BNXT_MB_EVENT_NOOP_NACK, /**< skip mbox request and NACK */
+	RTE_PMD_BNXT_MB_EVENT_PROCEED,  /**< proceed with mbox request  */
+	RTE_PMD_BNXT_MB_EVENT_MAX       /**< max value of this enum */
+};
+
+/* mailbox message types */
+#define BNXT_VF_RESET			0x01 /* VF requests reset */
+#define BNXT_VF_SET_MAC_ADDR	0x02 /* VF requests PF to set MAC addr */
+#define BNXT_VF_SET_VLAN		0x03 /* VF requests PF to set VLAN */
+#define BNXT_VF_SET_MTU			0x04 /* VF requests PF to set MTU */
+#define BNXT_VF_SET_MRU			0x05 /* VF requests PF to set MRU */
+
+/*
+ * Data sent to the caller when the callback is executed.
+ */
+struct rte_pmd_bnxt_mb_event_param {
+	uint16_t vf_id;	/* Virtual Function number */
+	int	retval;	/* return value */
+	void	*msg;	/* pointer to message */
 };
 
 int bnxt_link_update_op(struct rte_eth_dev *eth_dev, int wait_to_complete);
+int bnxt_rcv_msg_from_vf(struct bnxt *bp, uint16_t vf_id, void *msg);
 
 #endif
