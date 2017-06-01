@@ -459,3 +459,86 @@ int rte_pmd_bnxt_set_vf_vlan_filter(uint8_t port, uint16_t vlan,
 
 	return rc;
 }
+
+int rte_pmd_bnxt_get_vf_stats(uint8_t port,
+			      uint16_t vf_id,
+			      struct rte_eth_stats *stats)
+{
+	struct rte_eth_dev *dev;
+	struct rte_eth_dev_info dev_info;
+	struct bnxt *bp;
+
+	dev = &rte_eth_devices[port];
+	if (!is_bnxt_supported(dev))
+		return -ENOTSUP;
+
+	rte_eth_dev_info_get(port, &dev_info);
+	bp = (struct bnxt *)dev->data->dev_private;
+
+	if (vf_id >= dev_info.max_vfs)
+		return -EINVAL;
+
+	if (!BNXT_PF(bp)) {
+		RTE_LOG(ERR, PMD,
+			"Attempt to get VF %d stats on non-PF port %d!\n",
+			vf_id, port);
+		return -ENOTSUP;
+	}
+
+	return bnxt_hwrm_func_qstats(bp, bp->pf.first_vf_id + vf_id, stats);
+}
+
+int rte_pmd_bnxt_reset_vf_stats(uint8_t port,
+				uint16_t vf_id)
+{
+	struct rte_eth_dev *dev;
+	struct rte_eth_dev_info dev_info;
+	struct bnxt *bp;
+
+	dev = &rte_eth_devices[port];
+	if (!is_bnxt_supported(dev))
+		return -ENOTSUP;
+
+	rte_eth_dev_info_get(port, &dev_info);
+	bp = (struct bnxt *)dev->data->dev_private;
+
+	if (vf_id >= dev_info.max_vfs)
+		return -EINVAL;
+
+	if (!BNXT_PF(bp)) {
+		RTE_LOG(ERR, PMD,
+			"Attempt to reset VF %d stats on non-PF port %d!\n",
+			vf_id, port);
+		return -ENOTSUP;
+	}
+
+	return bnxt_hwrm_func_clr_stats(bp, bp->pf.first_vf_id + vf_id);
+}
+
+int rte_pmd_bnxt_get_vf_tx_drop_count(uint8_t port, uint16_t vf_id,
+				      uint64_t *count)
+{
+	struct rte_eth_dev *dev;
+	struct rte_eth_dev_info dev_info;
+	struct bnxt *bp;
+
+	dev = &rte_eth_devices[port];
+	if (!is_bnxt_supported(dev))
+		return -ENOTSUP;
+
+	rte_eth_dev_info_get(port, &dev_info);
+	bp = (struct bnxt *)dev->data->dev_private;
+
+	if (vf_id >= dev_info.max_vfs)
+		return -EINVAL;
+
+	if (!BNXT_PF(bp)) {
+		RTE_LOG(ERR, PMD,
+			"Attempt to query VF %d TX drops on non-PF port %d!\n",
+			vf_id, port);
+		return -ENOTSUP;
+	}
+
+	return bnxt_hwrm_func_qstats_tx_drop(bp, bp->pf.first_vf_id + vf_id,
+					     count);
+}

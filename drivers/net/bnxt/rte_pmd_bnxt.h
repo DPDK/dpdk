@@ -165,6 +165,41 @@ int rte_pmd_bnxt_set_vf_rate_limit(uint8_t port, uint16_t vf,
 				uint16_t tx_rate, uint64_t q_msk);
 
 /**
+ * Get VF's statistics
+ *
+ * @param port
+ *    The port identifier of the Ethernet device.
+ * @param vf_id
+ *    VF on which to get.
+ * @param stats
+ *    A pointer to a structure of type *rte_eth_stats* to be filled with
+ *    the values of device counters supported statistics:
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port* invalid.
+ *   - (-EINVAL) if bad parameter.
+ */
+
+int rte_pmd_bnxt_get_vf_stats(uint8_t port,
+			      uint16_t vf_id,
+			      struct rte_eth_stats *stats);
+
+/**
+ * Clear VF's statistics
+ *
+ * @param port
+ *    The port identifier of the Ethernet device.
+ * @param vf_id
+ *    VF on which to get.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port* invalid.
+ *   - (-EINVAL) if bad parameter.
+ */
+int rte_pmd_bnxt_reset_vf_stats(uint8_t port,
+				uint16_t vf_id);
+
+/**
  * Enable/Disable VF VLAN anti spoof
  *
  * @param port
@@ -181,4 +216,21 @@ int rte_pmd_bnxt_set_vf_rate_limit(uint8_t port, uint16_t vf,
  *   - (-EINVAL) if bad parameter.
  */
 int rte_pmd_bnxt_set_vf_vlan_anti_spoof(uint8_t port, uint16_t vf, uint8_t on);
+
+/**
+ * Queries the TX drop counter for the function
+ *
+ * @param port
+ *    The port identifier of the Ethernet device.
+ * @param vf_id
+ *    VF on which to get.
+ * @param count
+ *    Pointer to a uint64_t that will be populated with the counter value.
+ * @return
+ *   - Positive Non-zero value - Error code from HWRM
+ *   - (-EINVAL) invalid vf_id specified.
+ *   - (-ENOTSUP) Ethernet device is not a PF
+ */
+int rte_pmd_bnxt_get_vf_tx_drop_count(uint8_t port, uint16_t vf_id,
+				      uint64_t *count);
 #endif /* _PMD_BNXT_H_ */

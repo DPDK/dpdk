@@ -13094,9 +13094,16 @@ cmd_show_vf_stats_parsed(
 	memset(&stats, 0, sizeof(stats));
 
 #ifdef RTE_LIBRTE_I40E_PMD
-	ret = rte_pmd_i40e_get_vf_stats(res->port_id,
-					res->vf_id,
-					&stats);
+	if (ret == -ENOTSUP)
+		ret = rte_pmd_i40e_get_vf_stats(res->port_id,
+						res->vf_id,
+						&stats);
+#endif
+#ifdef RTE_LIBRTE_BNXT_PMD
+	if (ret == -ENOTSUP)
+		ret = rte_pmd_bnxt_get_vf_stats(res->port_id,
+						res->vf_id,
+						&stats);
 #endif
 
 	switch (ret) {
@@ -13192,8 +13199,14 @@ cmd_clear_vf_stats_parsed(
 		return;
 
 #ifdef RTE_LIBRTE_I40E_PMD
-	ret = rte_pmd_i40e_reset_vf_stats(res->port_id,
-					  res->vf_id);
+	if (ret == -ENOTSUP)
+		ret = rte_pmd_i40e_reset_vf_stats(res->port_id,
+						  res->vf_id);
+#endif
+#ifdef RTE_LIBRTE_BNXT_PMD
+	if (ret == -ENOTSUP)
+		ret = rte_pmd_bnxt_reset_vf_stats(res->port_id,
+						  res->vf_id);
 #endif
 
 	switch (ret) {

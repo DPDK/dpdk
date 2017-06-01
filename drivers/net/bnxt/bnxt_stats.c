@@ -165,6 +165,49 @@ static const struct bnxt_xstats_name_off bnxt_tx_stats_strings[] = {
 				tx_bytes)},
 };
 
+static const struct bnxt_xstats_name_off bnxt_func_stats_strings[] = {
+	{"tx_ucast_pkts", offsetof(struct hwrm_func_qstats_output,
+				tx_ucast_pkts)},
+	{"tx_mcast_pkts", offsetof(struct hwrm_func_qstats_output,
+				tx_mcast_pkts)},
+	{"tx_bcast_pkts", offsetof(struct hwrm_func_qstats_output,
+				tx_bcast_pkts)},
+	{"tx_err_pkts", offsetof(struct hwrm_func_qstats_output,
+				tx_err_pkts)},
+	{"tx_drop_pkts", offsetof(struct hwrm_func_qstats_output,
+				tx_drop_pkts)},
+	{"tx_ucast_bytes", offsetof(struct hwrm_func_qstats_output,
+				tx_ucast_bytes)},
+	{"tx_mcast_bytes", offsetof(struct hwrm_func_qstats_output,
+				tx_mcast_bytes)},
+	{"tx_bcast_bytes", offsetof(struct hwrm_func_qstats_output,
+				tx_bcast_bytes)},
+	{"rx_ucast_pkts", offsetof(struct hwrm_func_qstats_output,
+				rx_ucast_pkts)},
+	{"rx_mcast_pkts", offsetof(struct hwrm_func_qstats_output,
+				rx_mcast_pkts)},
+	{"rx_bcast_pkts", offsetof(struct hwrm_func_qstats_output,
+				rx_bcast_pkts)},
+	{"rx_err_pkts", offsetof(struct hwrm_func_qstats_output,
+				rx_err_pkts)},
+	{"rx_drop_pkts", offsetof(struct hwrm_func_qstats_output,
+				rx_drop_pkts)},
+	{"rx_ucast_bytes", offsetof(struct hwrm_func_qstats_output,
+				rx_ucast_bytes)},
+	{"rx_mcast_bytes", offsetof(struct hwrm_func_qstats_output,
+				rx_mcast_bytes)},
+	{"rx_bcast_bytes", offsetof(struct hwrm_func_qstats_output,
+				rx_bcast_bytes)},
+	{"rx_agg_pkts", offsetof(struct hwrm_func_qstats_output,
+				rx_agg_pkts)},
+	{"rx_agg_bytes", offsetof(struct hwrm_func_qstats_output,
+				rx_agg_bytes)},
+	{"rx_agg_events", offsetof(struct hwrm_func_qstats_output,
+				rx_agg_events)},
+	{"rx_agg_aborts", offsetof(struct hwrm_func_qstats_output,
+				rx_agg_aborts)},
+};
+
 /*
  * Statistics functions
  */
@@ -224,6 +267,7 @@ int bnxt_dev_xstats_get_op(struct rte_eth_dev *eth_dev,
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
 
 	unsigned int count, i;
+	uint64_t tx_drop_pkts;
 
 	if (!(bp->flags & BNXT_FLAG_PORT_STATS)) {
 		RTE_LOG(ERR, PMD, "xstats not supported for VF\n");
@@ -231,9 +275,10 @@ int bnxt_dev_xstats_get_op(struct rte_eth_dev *eth_dev,
 	}
 
 	bnxt_hwrm_port_qstats(bp);
+	bnxt_hwrm_func_qstats_tx_drop(bp, 0xffff, &tx_drop_pkts);
 
 	count = RTE_DIM(bnxt_rx_stats_strings) +
-		RTE_DIM(bnxt_tx_stats_strings);
+		RTE_DIM(bnxt_tx_stats_strings) + 1; /* For tx_drop_pkts */
 
 	if (n < count)
 		return count;
@@ -255,6 +300,10 @@ int bnxt_dev_xstats_get_op(struct rte_eth_dev *eth_dev,
 		count++;
 	}
 
+	/* The Tx drop pkts aka the Anti spoof coounter */
+	xstats[count].value = rte_le_to_cpu_64(tx_drop_pkts);
+	count++;
+
 	return count;
 }
 
@@ -262,8 +311,9 @@ int bnxt_dev_xstats_get_names_op(__rte_unused struct rte_eth_dev *eth_dev,
 	struct rte_eth_xstat_name *xstats_names,
 	__rte_unused unsigned int limit)
 {
+	/* Account for the Tx drop pkts aka the Anti spoof counter */
 	const unsigned int stat_cnt = RTE_DIM(bnxt_rx_stats_strings) +
-				RTE_DIM(bnxt_tx_stats_strings);
+				RTE_DIM(bnxt_tx_stats_strings) + 1;
 	unsigned int i, count;
 
 	if (xstats_names != NULL) {
@@ -284,6 +334,12 @@ int bnxt_dev_xstats_get_names_op(__rte_unused struct rte_eth_dev *eth_dev,
 				bnxt_tx_stats_strings[i].name);
 			count++;
 		}
+
+		snprintf(xstats_names[count].name,
+				sizeof(xstats_names[count].name),
+				"%s",
+				bnxt_func_stats_strings[4].name);
+		count++;
 	}
 	return stat_cnt;
 }
