@@ -68,6 +68,9 @@
 #ifdef RTE_LIBRTE_IXGBE_PMD
 #include <rte_pmd_ixgbe.h>
 #endif
+#ifdef RTE_LIBRTE_BNXT_PMD
+#include <rte_pmd_bnxt.h>
+#endif
 
 #include "testpmd.h"
 
@@ -3026,20 +3029,27 @@ set_queue_rate_limit(portid_t port_id, uint16_t queue_idx, uint16_t rate)
 	return diag;
 }
 
-#ifdef RTE_LIBRTE_IXGBE_PMD
 int
 set_vf_rate_limit(portid_t port_id, uint16_t vf, uint16_t rate, uint64_t q_msk)
 {
-	int diag;
+	int diag = -ENOTSUP;
 
-	diag = rte_pmd_ixgbe_set_vf_rate_limit(port_id, vf, rate, q_msk);
+#ifdef RTE_LIBRTE_IXGBE_PMD
+	if (diag == -ENOTSUP)
+		diag = rte_pmd_ixgbe_set_vf_rate_limit(port_id, vf, rate,
+						       q_msk);
+#endif
+#ifdef RTE_LIBRTE_BNXT_PMD
+	if (diag == -ENOTSUP)
+		diag = rte_pmd_bnxt_set_vf_rate_limit(port_id, vf, rate, q_msk);
+#endif
 	if (diag == 0)
 		return diag;
-	printf("rte_pmd_ixgbe_set_vf_rate_limit for port_id=%d failed diag=%d\n",
+
+	printf("set_vf_rate_limit for port_id=%d failed diag=%d\n",
 		port_id, diag);
 	return diag;
 }
-#endif
 
 /*
  * Functions to manage the set of filtered Multicast MAC addresses.

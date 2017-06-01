@@ -6979,6 +6979,11 @@ cmd_vf_rx_vlan_filter_parsed(void *parsed_result,
 		ret = rte_pmd_i40e_set_vf_vlan_filter(res->port_id,
 				res->vlan_id, res->vf_mask, is_add);
 #endif
+#ifdef RTE_LIBRTE_BNXT_PMD
+	if (ret == -ENOTSUP)
+		ret = rte_pmd_bnxt_set_vf_vlan_filter(res->port_id,
+				res->vlan_id, res->vf_mask, is_add);
+#endif
 
 	switch (ret) {
 	case 0:
@@ -7104,7 +7109,6 @@ cmdline_parse_inst_t cmd_queue_rate_limit = {
 	},
 };
 
-#ifdef RTE_LIBRTE_IXGBE_PMD
 /* *** SET RATE LIMIT FOR A VF OF A PORT *** */
 struct cmd_vf_rate_limit_result {
 	cmdline_fixed_string_t set;
@@ -7183,7 +7187,6 @@ cmdline_parse_inst_t cmd_vf_rate_limit = {
 		NULL,
 	},
 };
-#endif
 
 /* *** ADD TUNNEL FILTER OF A PORT *** */
 struct cmd_tunnel_filter_result {
@@ -11030,6 +11033,11 @@ cmd_set_vf_vlan_anti_spoof_parsed(
 		ret = rte_pmd_i40e_set_vf_vlan_anti_spoof(res->port_id,
 				res->vf_id, is_on);
 #endif
+#ifdef RTE_LIBRTE_BNXT_PMD
+	if (ret == -ENOTSUP)
+		ret = rte_pmd_bnxt_set_vf_vlan_anti_spoof(res->port_id,
+				res->vf_id, is_on);
+#endif
 
 	switch (ret) {
 	case 0:
@@ -11131,6 +11139,11 @@ cmd_set_vf_mac_anti_spoof_parsed(
 		ret = rte_pmd_i40e_set_vf_mac_anti_spoof(res->port_id,
 			res->vf_id, is_on);
 #endif
+#ifdef RTE_LIBRTE_BNXT_PMD
+	if (ret == -ENOTSUP)
+		ret = rte_pmd_bnxt_set_vf_mac_anti_spoof(res->port_id,
+			res->vf_id, is_on);
+#endif
 
 	switch (ret) {
 	case 0:
@@ -11230,6 +11243,11 @@ cmd_set_vf_vlan_stripq_parsed(
 #ifdef RTE_LIBRTE_I40E_PMD
 	if (ret == -ENOTSUP)
 		ret = rte_pmd_i40e_set_vf_vlan_stripq(res->port_id,
+			res->vf_id, is_on);
+#endif
+#ifdef RTE_LIBRTE_BNXT_PMD
+	if (ret == -ENOTSUP)
+		ret = rte_pmd_bnxt_set_vf_vlan_stripq(res->port_id,
 			res->vf_id, is_on);
 #endif
 
@@ -13765,8 +13783,8 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_set_macsec_sa,
 	(cmdline_parse_inst_t *)&cmd_set_vf_rxmode,
 	(cmdline_parse_inst_t *)&cmd_set_vf_traffic,
-	(cmdline_parse_inst_t *)&cmd_vf_rate_limit,
 #endif
+	(cmdline_parse_inst_t *)&cmd_vf_rate_limit,
 	(cmdline_parse_inst_t *)&cmd_vf_rxvlan_filter,
 	(cmdline_parse_inst_t *)&cmd_set_vf_mac_addr,
 	(cmdline_parse_inst_t *)&cmd_set_vf_promisc,

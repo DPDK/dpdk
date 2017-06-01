@@ -37,6 +37,24 @@
 #include <rte_ethdev.h>
 
 /**
+ * Enable/Disable VF MAC anti spoof
+ *
+ * @param port
+ *    The port identifier of the Ethernet device.
+ * @param vf
+ *   VF id.
+ * @param on
+ *    1 - Enable VF MAC anti spoof.
+ *    0 - Disable VF MAC anti spoof.
+ *
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port* invalid.
+ *   - (-EINVAL) if bad parameter.
+ */
+int rte_pmd_bnxt_set_vf_mac_anti_spoof(uint8_t port, uint16_t vf, uint8_t on);
+
+/**
  * Set the VF MAC address.
  *
  * @param port
@@ -52,6 +70,48 @@
  */
 int rte_pmd_bnxt_set_vf_mac_addr(uint8_t port, uint16_t vf,
 		struct ether_addr *mac_addr);
+
+/**
+ * Enable/Disable vf vlan strip for all queues in a pool
+ *
+ * @param port
+ *    The port identifier of the Ethernet device.
+ * @param vf
+ *    ID specifying VF.
+ * @param on
+ *    1 - Enable VF's vlan strip on RX queues.
+ *    0 - Disable VF's vlan strip on RX queues.
+ *
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if hardware doesn't support this feature.
+ *   - (-ENODEV) if *port* invalid.
+ *   - (-EINVAL) if bad parameter.
+ */
+int
+rte_pmd_bnxt_set_vf_vlan_stripq(uint8_t port, uint16_t vf, uint8_t on);
+
+/**
+ * Enable/Disable hardware VF VLAN filtering by an Ethernet device of
+ * received VLAN packets tagged with a given VLAN Tag Identifier.
+ *
+ * @param port
+ *   The port identifier of the Ethernet device.
+ * @param vlan
+ *   The VLAN Tag Identifier whose filtering must be enabled or disabled.
+ * @param vf_mask
+ *    Bitmap listing which VFs participate in the VLAN filtering.
+ * @param vlan_on
+ *    1 - Enable VFs VLAN filtering.
+ *    0 - Disable VFs VLAN filtering.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENOTSUP) if hardware doesn't support.
+ *   - (-ENODEV) if *port_id* invalid.
+ *   - (-EINVAL) if bad parameter.
+ */
+int rte_pmd_bnxt_set_vf_vlan_filter(uint8_t port, uint16_t vlan,
+				    uint64_t vf_mask, uint8_t vlan_on);
 
 /**
  * Enable/Disable tx loopback
@@ -84,4 +144,41 @@ int rte_pmd_bnxt_set_tx_loopback(uint8_t port, uint8_t on);
  *   - (-EINVAL) if bad parameter.
  */
 int rte_pmd_bnxt_set_all_queues_drop_en(uint8_t port, uint8_t on);
+
+/**
+ * Set the VF rate limit.
+ *
+ * @param port
+ *   The port identifier of the Ethernet device.
+ * @param vf
+ *   VF id.
+ * @param tx_rate
+ *   Tx rate for the VF
+ * @param q_msk
+ *   Mask of the Tx queue
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port* invalid.
+ *   - (-EINVAL) if *vf* or *mac_addr* is invalid.
+ */
+int rte_pmd_bnxt_set_vf_rate_limit(uint8_t port, uint16_t vf,
+				uint16_t tx_rate, uint64_t q_msk);
+
+/**
+ * Enable/Disable VF VLAN anti spoof
+ *
+ * @param port
+ *    The port identifier of the Ethernet device.
+ * @param vf
+ *   VF id.
+ * @param on
+ *    1 - Enable VF VLAN anti spoof.
+ *    0 - Disable VF VLAN anti spoof.
+ *
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port* invalid.
+ *   - (-EINVAL) if bad parameter.
+ */
+int rte_pmd_bnxt_set_vf_vlan_anti_spoof(uint8_t port, uint16_t vf, uint8_t on);
 #endif /* _PMD_BNXT_H_ */

@@ -63,6 +63,8 @@ struct bnxt_filter_info {
 	uint32_t		vni;
 	uint8_t			pri_hint;
 	uint64_t		l2_filter_id_hint;
+	uint32_t		src_id;
+	uint8_t			src_type;
 };
 
 struct bnxt_filter_info *bnxt_alloc_filter(struct bnxt *bp);

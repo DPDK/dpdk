@@ -213,7 +213,10 @@ int bnxt_hwrm_cfa_l2_clear_rx_mask(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	return rc;
 }
 
-int bnxt_hwrm_cfa_l2_set_rx_mask(struct bnxt *bp, struct bnxt_vnic_info *vnic)
+int bnxt_hwrm_cfa_l2_set_rx_mask(struct bnxt *bp,
+				 struct bnxt_vnic_info *vnic,
+				 uint16_t vlan_count,
+				 struct bnxt_vlan_table_entry *vlan_table)
 {
 	int rc = 0;
 	struct hwrm_cfa_l2_set_rx_mask_input req = {.req_type = 0 };
@@ -237,6 +240,12 @@ int bnxt_hwrm_cfa_l2_set_rx_mask(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	}
 	req.mask = rte_cpu_to_le_32(HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_BCAST |
 				    mask);
+	if (vlan_count && vlan_table) {
+		mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_VLANONLY;
+		req.vlan_tag_tbl_addr = rte_cpu_to_le_16(
+			 rte_mem_virt2phy(vlan_table));
+		req.num_vlan_tags = rte_cpu_to_le_32((uint32_t)vlan_count);
+	}
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 
@@ -296,6 +305,10 @@ int bnxt_hwrm_set_filter(struct bnxt *bp,
 	if (enables &
 	    HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_OVLAN_MASK)
 		req.l2_ovlan_mask = filter->l2_ovlan_mask;
+	if (enables & HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_SRC_ID)
+		req.src_id = rte_cpu_to_le_32(filter->src_id);
+	if (enables & HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_SRC_TYPE)
+		req.src_type = filter->src_type;
 
 	req.enables = rte_cpu_to_le_32(enables);
 
@@ -2230,6 +2243,21 @@ int bnxt_hwrm_tunnel_dst_port_free(struct bnxt *bp, uint16_t port,
 	return rc;
 }
 
+int bnxt_hwrm_func_cfg_vf_set_flags(struct bnxt *bp, uint16_t vf)
+{
+	struct hwrm_func_cfg_output *resp = bp->hwrm_cmd_resp_addr;
+	struct hwrm_func_cfg_input req = {0};
+	int rc;
+
+	HWRM_PREP(req, FUNC_CFG, -1, resp);
+	req.fid = rte_cpu_to_le_16(bp->pf.vf_info[vf].fid);
+	req.flags = rte_cpu_to_le_32(bp->pf.vf_info[vf].func_cfg_flags);
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+	HWRM_CHECK_RESULT;
+
+	return rc;
+}
+
 int bnxt_hwrm_func_buf_rgtr(struct bnxt *bp)
 {
 	int rc = 0;
@@ -2333,6 +2361,24 @@ int bnxt_hwrm_set_default_vlan(struct bnxt *bp, int vf, uint8_t is_vf)
 	req.enables |= rte_cpu_to_le_32(HWRM_FUNC_CFG_INPUT_ENABLES_DFLT_VLAN);
 	req.dflt_vlan = rte_cpu_to_le_16(dflt_vlan);
 
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+	HWRM_CHECK_RESULT;
+
+	return rc;
+}
+
+int bnxt_hwrm_func_bw_cfg(struct bnxt *bp, uint16_t vf,
+			uint16_t max_bw, uint16_t enables)
+{
+	struct hwrm_func_cfg_output *resp = bp->hwrm_cmd_resp_addr;
+	struct hwrm_func_cfg_input req = {0};
+	int rc;
+
+	HWRM_PREP(req, FUNC_CFG, -1, resp);
+	req.fid = rte_cpu_to_le_16(bp->pf.vf_info[vf].fid);
+	req.enables |= rte_cpu_to_le_32(enables);
+	req.flags = rte_cpu_to_le_32(bp->pf.vf_info[vf].func_cfg_flags);
+	req.max_bw = rte_cpu_to_le_32(max_bw);
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 	HWRM_CHECK_RESULT;
 
@@ -2628,4 +2674,73 @@ int bnxt_hwrm_func_vf_vnic_query_and_config(struct bnxt *bp, uint16_t vf,
 	rte_free(vnic_ids);
 
 	return rc;
+}
+
+int bnxt_hwrm_func_cfg_vf_set_vlan_anti_spoof(struct bnxt *bp, uint16_t vf,
+					      bool on)
+{
+	struct hwrm_func_cfg_output *resp = bp->hwrm_cmd_resp_addr;
+	struct hwrm_func_cfg_input req = {0};
+	int rc;
+
+	HWRM_PREP(req, FUNC_CFG, -1, resp);
+	req.fid = rte_cpu_to_le_16(bp->pf.vf_info[vf].fid);
+	req.enables |= rte_cpu_to_le_32(
+			HWRM_FUNC_CFG_INPUT_ENABLES_VLAN_ANTISPOOF_MODE);
+	req.vlan_antispoof_mode = on ?
+		HWRM_FUNC_CFG_INPUT_VLAN_ANTISPOOF_MODE_VALIDATE_VLAN :
+		HWRM_FUNC_CFG_INPUT_VLAN_ANTISPOOF_MODE_NOCHECK;
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+	HWRM_CHECK_RESULT;
+
+	return rc;
+}
+
+int bnxt_hwrm_func_qcfg_vf_dflt_vnic_id(struct bnxt *bp, int vf)
+{
+	struct bnxt_vnic_info vnic;
+	uint16_t *vnic_ids;
+	size_t vnic_id_sz;
+	int num_vnic_ids, i;
+	size_t sz;
+	int rc;
+
+	vnic_id_sz = bp->pf.total_vnics * sizeof(*vnic_ids);
+	vnic_ids = rte_malloc("bnxt_hwrm_vf_vnic_ids_query", vnic_id_sz,
+			RTE_CACHE_LINE_SIZE);
+	if (vnic_ids == NULL) {
+		rc = -ENOMEM;
+		return rc;
+	}
+
+	for (sz = 0; sz < vnic_id_sz; sz += getpagesize())
+		rte_mem_lock_page(((char *)vnic_ids) + sz);
+
+	rc = bnxt_hwrm_func_vf_vnic_query(bp, vf, vnic_ids);
+	if (rc <= 0)
+		goto exit;
+	num_vnic_ids = rc;
+
+	/*
+	 * Loop through to find the default VNIC ID.
+	 * TODO: The easier way would be to obtain the resp->dflt_vnic_id
+	 * by sending the hwrm_func_qcfg command to the firmware.
+	 */
+	for (i = 0; i < num_vnic_ids; i++) {
+		memset(&vnic, 0, sizeof(struct bnxt_vnic_info));
+		vnic.fw_vnic_id = rte_le_to_cpu_16(vnic_ids[i]);
+		rc = bnxt_hwrm_vnic_qcfg(bp, &vnic,
+					bp->pf.first_vf_id + vf);
+		if (rc)
+			goto exit;
+		if (vnic.func_default) {
+			rte_free(vnic_ids);
+			return vnic.fw_vnic_id;
+		}
+	}
+	/* Could not find a default VNIC. */
+	RTE_LOG(ERR, PMD, "No default VNIC\n");
+exit:
+	rte_free(vnic_ids);
+	return -1;
 }

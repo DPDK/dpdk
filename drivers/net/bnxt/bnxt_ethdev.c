@@ -295,7 +295,7 @@ static int bnxt_init_chip(struct bnxt *bp)
 		else
 			bnxt_hwrm_vnic_tpa_cfg(bp, vnic, 0);
 	}
-	rc = bnxt_hwrm_cfa_l2_set_rx_mask(bp, &bp->vnic_info[0]);
+	rc = bnxt_hwrm_cfa_l2_set_rx_mask(bp, &bp->vnic_info[0], 0, NULL);
 	if (rc) {
 		RTE_LOG(ERR, PMD,
 			"HWRM cfa l2 rx mask failure rc: %x\n", rc);
@@ -703,7 +703,7 @@ static void bnxt_promiscuous_enable_op(struct rte_eth_dev *eth_dev)
 	vnic = &bp->vnic_info[0];
 
 	vnic->flags |= BNXT_VNIC_INFO_PROMISC;
-	bnxt_hwrm_cfa_l2_set_rx_mask(bp, vnic);
+	bnxt_hwrm_cfa_l2_set_rx_mask(bp, vnic, 0, NULL);
 }
 
 static void bnxt_promiscuous_disable_op(struct rte_eth_dev *eth_dev)
@@ -717,7 +717,7 @@ static void bnxt_promiscuous_disable_op(struct rte_eth_dev *eth_dev)
 	vnic = &bp->vnic_info[0];
 
 	vnic->flags &= ~BNXT_VNIC_INFO_PROMISC;
-	bnxt_hwrm_cfa_l2_set_rx_mask(bp, vnic);
+	bnxt_hwrm_cfa_l2_set_rx_mask(bp, vnic, 0, NULL);
 }
 
 static void bnxt_allmulticast_enable_op(struct rte_eth_dev *eth_dev)
@@ -731,7 +731,7 @@ static void bnxt_allmulticast_enable_op(struct rte_eth_dev *eth_dev)
 	vnic = &bp->vnic_info[0];
 
 	vnic->flags |= BNXT_VNIC_INFO_ALLMULTI;
-	bnxt_hwrm_cfa_l2_set_rx_mask(bp, vnic);
+	bnxt_hwrm_cfa_l2_set_rx_mask(bp, vnic, 0, NULL);
 }
 
 static void bnxt_allmulticast_disable_op(struct rte_eth_dev *eth_dev)
@@ -745,7 +745,7 @@ static void bnxt_allmulticast_disable_op(struct rte_eth_dev *eth_dev)
 	vnic = &bp->vnic_info[0];
 
 	vnic->flags &= ~BNXT_VNIC_INFO_ALLMULTI;
-	bnxt_hwrm_cfa_l2_set_rx_mask(bp, vnic);
+	bnxt_hwrm_cfa_l2_set_rx_mask(bp, vnic, 0, NULL);
 }
 
 static int bnxt_reta_update_op(struct rte_eth_dev *eth_dev,
@@ -1369,7 +1369,7 @@ bnxt_dev_set_mc_addr_list_op(struct rte_eth_dev *eth_dev,
 	vnic->mc_addr_cnt = i;
 
 allmulti:
-	return bnxt_hwrm_cfa_l2_set_rx_mask(bp, vnic);
+	return bnxt_hwrm_cfa_l2_set_rx_mask(bp, vnic, 0, NULL);
 }
 
 static int
