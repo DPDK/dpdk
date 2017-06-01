@@ -139,7 +139,7 @@ static int bnxt_hwrm_send_message_locked(struct bnxt *bp, void *msg,
 	}
 
 	if (i >= HWRM_CMD_TIMEOUT) {
-		RTE_LOG(ERR, PMD, "Error sending msg %x\n",
+		RTE_LOG(ERR, PMD, "Error sending msg 0x%04x\n",
 			req->req_type);
 		goto err_ret;
 	}
@@ -176,7 +176,22 @@ static int bnxt_hwrm_send_message(struct bnxt *bp, void *msg, uint32_t msg_len)
 		} \
 		if (resp->error_code) { \
 			rc = rte_le_to_cpu_16(resp->error_code); \
-			RTE_LOG(ERR, PMD, "%s error %d\n", __func__, rc); \
+			if (resp->resp_len >= 16) { \
+				struct hwrm_err_output *tmp_hwrm_err_op = \
+							(void *)resp; \
+				RTE_LOG(ERR, PMD, \
+					"%s error %d:%d:%08x:%04x\n", \
+					__func__, \
+					rc, tmp_hwrm_err_op->cmd_err, \
+					rte_le_to_cpu_32(\
+						tmp_hwrm_err_op->opaque_0), \
+					rte_le_to_cpu_16(\
+						tmp_hwrm_err_op->opaque_1)); \
+			} \
+			else { \
+				RTE_LOG(ERR, PMD, \
+					"%s error %d\n", __func__, rc); \
+			} \
 			return rc; \
 		} \
 	}
