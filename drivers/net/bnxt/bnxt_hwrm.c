@@ -229,23 +229,29 @@ int bnxt_hwrm_cfa_l2_set_rx_mask(struct bnxt *bp,
 	/* FIXME add multicast flag, when multicast adding options is supported
 	 * by ethtool.
 	 */
+	if (vnic->flags & BNXT_VNIC_INFO_BCAST)
+		mask = HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_BCAST;
+	if (vnic->flags & BNXT_VNIC_INFO_UNTAGGED)
+		mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_VLAN_NONVLAN;
 	if (vnic->flags & BNXT_VNIC_INFO_PROMISC)
-		mask = HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_PROMISCUOUS;
+		mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_PROMISCUOUS;
 	if (vnic->flags & BNXT_VNIC_INFO_ALLMULTI)
 		mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_ALL_MCAST;
+	if (vnic->flags & BNXT_VNIC_INFO_MCAST)
+		mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_MCAST;
 	if (vnic->mc_addr_cnt) {
 		mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_MCAST;
 		req.num_mc_entries = rte_cpu_to_le_32(vnic->mc_addr_cnt);
 		req.mc_tbl_addr = rte_cpu_to_le_64(vnic->mc_list_dma_addr);
 	}
-	req.mask = rte_cpu_to_le_32(HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_BCAST |
-				    mask);
 	if (vlan_count && vlan_table) {
 		mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_VLANONLY;
 		req.vlan_tag_tbl_addr = rte_cpu_to_le_16(
 			 rte_mem_virt2phy(vlan_table));
 		req.num_vlan_tags = rte_cpu_to_le_32((uint32_t)vlan_count);
 	}
+	req.mask = rte_cpu_to_le_32(HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_BCAST |
+				    mask);
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 
@@ -2315,6 +2321,18 @@ int bnxt_hwrm_func_cfg_vf_set_flags(struct bnxt *bp, uint16_t vf)
 	HWRM_CHECK_RESULT;
 
 	return rc;
+}
+
+void vf_vnic_set_rxmask_cb(struct bnxt_vnic_info *vnic, void *flagp)
+{
+	uint32_t *flag = flagp;
+
+	vnic->flags = *flag;
+}
+
+int bnxt_set_rx_mask_no_vlan(struct bnxt *bp, struct bnxt_vnic_info *vnic)
+{
+	return bnxt_hwrm_cfa_l2_set_rx_mask(bp, vnic, 0, NULL);
 }
 
 int bnxt_hwrm_func_buf_rgtr(struct bnxt *bp)

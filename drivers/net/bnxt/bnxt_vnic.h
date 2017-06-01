@@ -64,6 +64,11 @@ struct bnxt_vnic_info {
 	uint32_t	flags;
 #define BNXT_VNIC_INFO_PROMISC			(1 << 0)
 #define BNXT_VNIC_INFO_ALLMULTI			(1 << 1)
+#define BNXT_VNIC_INFO_BCAST			(1 << 2)
+#define BNXT_VNIC_INFO_UCAST			(1 << 3)
+#define BNXT_VNIC_INFO_MCAST			(1 << 4)
+#define BNXT_VNIC_INFO_TAGGED			(1 << 5)
+#define BNXT_VNIC_INFO_UNTAGGED			(1 << 6)
 
 	uint16_t	cos_rule;
 	uint16_t	lb_rule;

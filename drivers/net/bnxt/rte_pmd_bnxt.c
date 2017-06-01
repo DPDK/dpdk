@@ -377,6 +377,60 @@ rte_pmd_bnxt_set_vf_vlan_stripq(uint8_t port, uint16_t vf, uint8_t on)
 	return rc;
 }
 
+int rte_pmd_bnxt_set_vf_rxmode(uint8_t port, uint16_t vf,
+				uint16_t rx_mask, uint8_t on)
+{
+	struct rte_eth_dev *dev;
+	struct rte_eth_dev_info dev_info;
+	uint16_t flag = 0;
+	struct bnxt *bp;
+	int rc;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+	if (!is_bnxt_supported(dev))
+		return -ENOTSUP;
+
+	rte_eth_dev_info_get(port, &dev_info);
+	bp = (struct bnxt *)dev->data->dev_private;
+
+	if (!bp->pf.vf_info)
+		return -EINVAL;
+
+	if (vf >= bp->pdev->max_vfs)
+		return -EINVAL;
+
+	if (rx_mask & (ETH_VMDQ_ACCEPT_UNTAG | ETH_VMDQ_ACCEPT_HASH_MC)) {
+		RTE_LOG(ERR, PMD, "Currently cannot toggle this setting\n");
+		return -ENOTSUP;
+	}
+
+	if (rx_mask & ETH_VMDQ_ACCEPT_HASH_UC && !on) {
+		RTE_LOG(ERR, PMD, "Currently cannot disable UC Rx\n");
+		return -ENOTSUP;
+	}
+
+	if (rx_mask & ETH_VMDQ_ACCEPT_BROADCAST)
+		flag |= BNXT_VNIC_INFO_BCAST;
+	if (rx_mask & ETH_VMDQ_ACCEPT_MULTICAST)
+		flag |= BNXT_VNIC_INFO_ALLMULTI;
+
+	if (on)
+		bp->pf.vf_info[vf].l2_rx_mask |= flag;
+	else
+		bp->pf.vf_info[vf].l2_rx_mask &= ~flag;
+
+	rc = bnxt_hwrm_func_vf_vnic_query_and_config(bp, vf,
+					vf_vnic_set_rxmask_cb,
+					&bp->pf.vf_info[vf].l2_rx_mask,
+					bnxt_set_rx_mask_no_vlan);
+	if (rc)
+		RTE_LOG(ERR, PMD, "bnxt_hwrm_func_vf_vnic_set_rxmask failed\n");
+
+	return rc;
+}
+
 int rte_pmd_bnxt_set_vf_vlan_filter(uint8_t port, uint16_t vlan,
 				    uint64_t vf_mask, uint8_t vlan_on)
 {

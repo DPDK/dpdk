@@ -6817,7 +6817,7 @@ cmd_set_vf_rxmode_parsed(void *parsed_result,
 		       __attribute__((unused)) struct cmdline *cl,
 		       __attribute__((unused)) void *data)
 {
-	int ret;
+	int ret = -ENOTSUP;
 	uint16_t rx_mode = 0;
 	struct cmd_set_vf_rxmode *res = parsed_result;
 
@@ -6833,7 +6833,16 @@ cmd_set_vf_rxmode_parsed(void *parsed_result,
 			rx_mode |= ETH_VMDQ_ACCEPT_MULTICAST;
 	}
 
-	ret = rte_pmd_ixgbe_set_vf_rxmode(res->port_id, res->vf_id, rx_mode, (uint8_t)is_on);
+#ifdef RTE_LIBRTE_IXGBE_PMD
+	if (ret == -ENOTSUP)
+		ret = rte_pmd_ixgbe_set_vf_rxmode(res->port_id, res->vf_id,
+						  rx_mode, (uint8_t)is_on);
+#endif
+#ifdef RTE_LIBRTE_BNXT_PMD
+	if (ret == -ENOTSUP)
+		ret = rte_pmd_bnxt_set_vf_rxmode(res->port_id, res->vf_id,
+						 rx_mode, (uint8_t)is_on);
+#endif
 	if (ret < 0)
 		printf("bad VF receive mode parameter, return code = %d \n",
 		ret);
@@ -13799,9 +13808,9 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_set_macsec_offload_off,
 	(cmdline_parse_inst_t *)&cmd_set_macsec_sc,
 	(cmdline_parse_inst_t *)&cmd_set_macsec_sa,
-	(cmdline_parse_inst_t *)&cmd_set_vf_rxmode,
 	(cmdline_parse_inst_t *)&cmd_set_vf_traffic,
 #endif
+	(cmdline_parse_inst_t *)&cmd_set_vf_rxmode,
 	(cmdline_parse_inst_t *)&cmd_vf_rate_limit,
 	(cmdline_parse_inst_t *)&cmd_vf_rxvlan_filter,
 	(cmdline_parse_inst_t *)&cmd_set_vf_mac_addr,

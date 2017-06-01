@@ -11,6 +11,7 @@ DPDK_17.08 {
 	rte_pmd_bnxt_set_vf_mac_addr;
 	rte_pmd_bnxt_set_vf_mac_anti_spoof;
 	rte_pmd_bnxt_set_vf_rate_limit;
+	rte_pmd_bnxt_set_vf_rxmode;
 	rte_pmd_bnxt_set_vf_vlan_anti_spoof;
 	rte_pmd_bnxt_set_vf_vlan_filter;
 	rte_pmd_bnxt_set_vf_vlan_insert;
