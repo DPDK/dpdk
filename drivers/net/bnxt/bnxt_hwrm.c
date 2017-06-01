@@ -511,7 +511,7 @@ static int bnxt_hwrm_port_phy_cfg(struct bnxt *bp, struct bnxt_link_info *conf)
 		req.enables = rte_cpu_to_le_32(enables);
 	} else {
 		req.flags =
-		rte_cpu_to_le_32(HWRM_PORT_PHY_CFG_INPUT_FLAGS_FORCE_LINK_DOWN);
+		rte_cpu_to_le_32(HWRM_PORT_PHY_CFG_INPUT_FLAGS_FORCE_LINK_DWN);
 		RTE_LOG(INFO, PMD, "Force Link Down\n");
 	}
 
@@ -618,7 +618,7 @@ int bnxt_hwrm_ring_alloc(struct bnxt *bp,
 		req.enables = rte_cpu_to_le_32(rte_le_to_cpu_32(req.enables) |
 			HWRM_RING_ALLOC_INPUT_ENABLES_STAT_CTX_ID_VALID);
 		break;
-	case HWRM_RING_ALLOC_INPUT_RING_TYPE_CMPL:
+	case HWRM_RING_ALLOC_INPUT_RING_TYPE_L2_CMPL:
 		req.ring_type = ring_type;
 		/*
 		 * TODO: Some HWRM versions crash with
@@ -639,7 +639,7 @@ int bnxt_hwrm_ring_alloc(struct bnxt *bp,
 		if (rc == 0 && resp->error_code)
 			rc = rte_le_to_cpu_16(resp->error_code);
 		switch (ring_type) {
-		case HWRM_RING_FREE_INPUT_RING_TYPE_CMPL:
+		case HWRM_RING_FREE_INPUT_RING_TYPE_L2_CMPL:
 			RTE_LOG(ERR, PMD,
 				"hwrm_ring_alloc cp failed. rc:%d\n", rc);
 			return rc;
@@ -680,7 +680,7 @@ int bnxt_hwrm_ring_free(struct bnxt *bp,
 			rc = rte_le_to_cpu_16(resp->error_code);
 
 		switch (ring_type) {
-		case HWRM_RING_FREE_INPUT_RING_TYPE_CMPL:
+		case HWRM_RING_FREE_INPUT_RING_TYPE_L2_CMPL:
 			RTE_LOG(ERR, PMD, "hwrm_ring_free cp failed. rc:%d\n",
 				rc);
 			return rc;
@@ -1063,7 +1063,7 @@ static void bnxt_free_cp_ring(struct bnxt *bp,
 	struct bnxt_ring *cp_ring = cpr->cp_ring_struct;
 
 	bnxt_hwrm_ring_free(bp, cp_ring,
-			HWRM_RING_FREE_INPUT_RING_TYPE_CMPL);
+			HWRM_RING_FREE_INPUT_RING_TYPE_L2_CMPL);
 	cp_ring->fw_ring_id = INVALID_HW_RING_ID;
 	bp->grp_info[idx].cp_fw_ring_id = INVALID_HW_RING_ID;
 	memset(cpr->cp_desc_ring, 0, cpr->cp_ring_struct->ring_size *
