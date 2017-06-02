@@ -199,9 +199,11 @@ l3fwd_lpm_send_packets(int nb_rx, struct rte_mbuf **pkts_burst,
 	case 3:
 		dst_port[j] = lpm_get_dst_port(qconf, pkts_burst[j], portid);
 		j++;
+		/* fall-through */
 	case 2:
 		dst_port[j] = lpm_get_dst_port(qconf, pkts_burst[j], portid);
 		j++;
+		/* fall-through */
 	case 1:
 		dst_port[j] = lpm_get_dst_port(qconf, pkts_burst[j], portid);
 		j++;

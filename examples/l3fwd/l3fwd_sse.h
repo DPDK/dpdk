@@ -349,12 +349,15 @@ send_packetsx4(struct lcore_conf *qconf, uint8_t port, struct rte_mbuf *m[],
 	case 0:
 		qconf->tx_mbufs[port].m_table[len + j] = m[j];
 		j++;
+		/* fall-through */
 	case 3:
 		qconf->tx_mbufs[port].m_table[len + j] = m[j];
 		j++;
+		/* fall-through */
 	case 2:
 		qconf->tx_mbufs[port].m_table[len + j] = m[j];
 		j++;
+		/* fall-through */
 	case 1:
 		qconf->tx_mbufs[port].m_table[len + j] = m[j];
 		j++;
@@ -376,12 +379,15 @@ send_packetsx4(struct lcore_conf *qconf, uint8_t port, struct rte_mbuf *m[],
 		case 0:
 			qconf->tx_mbufs[port].m_table[j] = m[n + j];
 			j++;
+			/* fall-through */
 		case 3:
 			qconf->tx_mbufs[port].m_table[j] = m[n + j];
 			j++;
+			/* fall-through */
 		case 2:
 			qconf->tx_mbufs[port].m_table[j] = m[n + j];
 			j++;
+			/* fall-through */
 		case 1:
 			qconf->tx_mbufs[port].m_table[j] = m[n + j];
 			j++;
@@ -464,10 +470,12 @@ send_packets_multi(struct lcore_conf *qconf, struct rte_mbuf **pkts_burst,
 		process_packet(pkts_burst[j], dst_port + j);
 		GROUP_PORT_STEP(dlp, dst_port, lp, pnum, j);
 		j++;
+		/* fall-through */
 	case 2:
 		process_packet(pkts_burst[j], dst_port + j);
 		GROUP_PORT_STEP(dlp, dst_port, lp, pnum, j);
 		j++;
+		/* fall-through */
 	case 1:
 		process_packet(pkts_burst[j], dst_port + j);
 		GROUP_PORT_STEP(dlp, dst_port, lp, pnum, j);
