@@ -801,7 +801,7 @@ rte_ring_dequeue_bulk(struct rte_ring *r, void **obj_table, unsigned int n,
 static __rte_always_inline int
 rte_ring_mc_dequeue(struct rte_ring *r, void **obj_p)
 {
-	return rte_ring_mc_dequeue_bulk(r, obj_p, 1, NULL)  ? 0 : -ENOBUFS;
+	return rte_ring_mc_dequeue_bulk(r, obj_p, 1, NULL)  ? 0 : -ENOENT;
 }
 
 /**
@@ -819,7 +819,7 @@ rte_ring_mc_dequeue(struct rte_ring *r, void **obj_p)
 static __rte_always_inline int
 rte_ring_sc_dequeue(struct rte_ring *r, void **obj_p)
 {
-	return rte_ring_sc_dequeue_bulk(r, obj_p, 1, NULL) ? 0 : -ENOBUFS;
+	return rte_ring_sc_dequeue_bulk(r, obj_p, 1, NULL) ? 0 : -ENOENT;
 }
 
 /**
