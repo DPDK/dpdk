@@ -170,6 +170,7 @@ ssovf_info_get(struct rte_eventdev *dev, struct rte_event_dev_info *dev_info)
 {
 	struct ssovf_evdev *edev = ssovf_pmd_priv(dev);
 
+	dev_info->driver_name = RTE_STR(EVENTDEV_NAME_OCTEONTX_PMD);
 	dev_info->min_dequeue_timeout_ns = edev->min_deq_timeout_ns;
 	dev_info->max_dequeue_timeout_ns = edev->max_deq_timeout_ns;
 	dev_info->max_event_queues = edev->max_event_queues;
