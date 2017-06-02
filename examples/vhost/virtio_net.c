@@ -350,6 +350,9 @@ vs_dequeue_pkts(struct vhost_dev *dev, uint16_t queue_id,
 	count = RTE_MIN(count, MAX_PKT_BURST);
 	count = RTE_MIN(count, free_entries);
 
+	if (unlikely(count == 0))
+		return 0;
+
 	/*
 	 * Retrieve all of the head indexes first and pre-update used entries
 	 * to avoid caching issues.
@@ -385,8 +388,6 @@ vs_dequeue_pkts(struct vhost_dev *dev, uint16_t queue_id,
 		}
 
 	}
-	if (!i)
-		return 0;
 
 	queue->last_avail_idx += i;
 	queue->last_used_idx += i;
