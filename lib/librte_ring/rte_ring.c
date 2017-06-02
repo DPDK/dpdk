@@ -189,7 +189,8 @@ rte_ring_create(const char *name, unsigned count, int socket_id,
 	/* reserve a memory zone for this ring. If we can't get rte_config or
 	 * we are secondary process, the memzone_reserve function will set
 	 * rte_errno for us appropriately - hence no check in this this function */
-	mz = rte_memzone_reserve(mz_name, ring_size, socket_id, mz_flags);
+	mz = rte_memzone_reserve_aligned(mz_name, ring_size, socket_id,
+					 mz_flags, __alignof__(*r));
 	if (mz != NULL) {
 		r = mz->addr;
 		/* no need to check return value here, we already checked the
