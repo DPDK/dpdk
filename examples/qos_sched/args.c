@@ -245,6 +245,7 @@ app_parse_flow_conf(const char *conf_str)
 	struct flow_conf *pconf;
 	uint64_t mask;
 
+	memset(vals, 0, sizeof(vals));
 	ret = app_parse_opt_vals(conf_str, ',', 6, vals);
 	if (ret < 4 || ret > 5)
 		return ret;
