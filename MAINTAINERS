@@ -424,7 +424,7 @@ F: doc/guides/nics/vmxnet3.rst
 F: doc/guides/nics/features/vmxnet3.ini
 
 Vhost-user
-M: Yuanhan Liu <yuanhan.liu@linux.intel.com>
+M: Yuanhan Liu <yliu@fridaylinux.org>
 M: Maxime Coquelin <maxime.coquelin@redhat.com>
 T: git://dpdk.org/next/dpdk-next-virtio
 F: lib/librte_vhost/
@@ -434,14 +434,14 @@ F: doc/guides/sample_app_ug/vhost.rst
 
 Vhost PMD
 M: Tetsuya Mukawa <mtetsuyah@gmail.com>
-M: Yuanhan Liu <yuanhan.liu@linux.intel.com>
+M: Yuanhan Liu <yliu@fridaylinux.org>
 M: Maxime Coquelin <maxime.coquelin@redhat.com>
 T: git://dpdk.org/next/dpdk-next-virtio
 F: drivers/net/vhost/
 F: doc/guides/nics/features/vhost.ini
 
 Virtio PMD
-M: Yuanhan Liu <yuanhan.liu@linux.intel.com>
+M: Yuanhan Liu <yliu@fridaylinux.org>
 M: Maxime Coquelin <maxime.coquelin@redhat.com>
 T: git://dpdk.org/next/dpdk-next-virtio
 F: drivers/net/virtio/
