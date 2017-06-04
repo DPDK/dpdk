@@ -123,19 +123,21 @@ static int
 contigmem_load()
 {
 	char index_string[8], description[32];
-	int  i;
+	int  i, error = 0;
 
 	if (contigmem_num_buffers > RTE_CONTIGMEM_MAX_NUM_BUFS) {
 		printf("%d buffers requested is greater than %d allowed\n",
 				contigmem_num_buffers, RTE_CONTIGMEM_MAX_NUM_BUFS);
-		return EINVAL;
+		error = EINVAL;
+		goto error;
 	}
 
 	if (contigmem_buffer_size < PAGE_SIZE ||
 			(contigmem_buffer_size & (contigmem_buffer_size - 1)) != 0) {
 		printf("buffer size 0x%lx is not greater than PAGE_SIZE and "
 				"power of two\n", contigmem_buffer_size);
-		return EINVAL;
+		error = EINVAL;
+		goto error;
 	}
 
 	for (i = 0; i < contigmem_num_buffers; i++) {
@@ -145,7 +147,8 @@ contigmem_load()
 
 		if (contigmem_buffers[i] == NULL) {
 			printf("contigmalloc failed for buffer %d\n", i);
-			return ENOMEM;
+			error = ENOMEM;
+			goto error;
 		}
 
 		printf("%2u: virt=%p phys=%p\n", i, contigmem_buffers[i],
@@ -165,6 +168,14 @@ contigmem_load()
 			GID_WHEEL, 0600, "contigmem");
 
 	return 0;
+
+error:
+	for (i = 0; i < contigmem_num_buffers; i++)
+		if (contigmem_buffers[i] != NULL)
+			contigfree(contigmem_buffers[i], contigmem_buffer_size,
+					M_CONTIGMEM);
+
+	return error;
 }
 
 static int
