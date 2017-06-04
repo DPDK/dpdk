@@ -53,7 +53,11 @@
 #include "mlx5_prm.h"
 
 /* Number of Work Queue necessary for the DROP queue. */
+#ifndef HAVE_VERBS_IBV_EXP_FLOW_SPEC_ACTION_DROP
 #define MLX5_DROP_WQ_N 4
+#else
+#define MLX5_DROP_WQ_N 1
+#endif
 
 static int
 mlx5_flow_create_eth(const struct rte_flow_item *item,
@@ -576,6 +580,10 @@ priv_flow_validate(struct priv *priv,
 	}
 	if (action->mark && !flow->ibv_attr && !action->drop)
 		flow->offset += sizeof(struct ibv_exp_flow_spec_action_tag);
+#ifdef HAVE_VERBS_IBV_EXP_FLOW_SPEC_ACTION_DROP
+	if (!flow->ibv_attr && action->drop)
+		flow->offset += sizeof(struct ibv_exp_flow_spec_action_drop);
+#endif
 	if (!action->queue && !action->drop) {
 		rte_flow_error_set(error, ENOTSUP, RTE_FLOW_ERROR_TYPE_HANDLE,
 				   NULL, "no valid action");
@@ -993,6 +1001,10 @@ priv_flow_create_action_queue_drop(struct priv *priv,
 				   struct rte_flow_error *error)
 {
 	struct rte_flow *rte_flow;
+#ifdef HAVE_VERBS_IBV_EXP_FLOW_SPEC_ACTION_DROP
+	struct ibv_exp_flow_spec_action_drop *drop;
+	unsigned int size = sizeof(struct ibv_exp_flow_spec_action_drop);
+#endif
 
 	assert(priv->pd);
 	assert(priv->ctx);
@@ -1003,8 +1015,17 @@ priv_flow_create_action_queue_drop(struct priv *priv,
 		return NULL;
 	}
 	rte_flow->drop = 1;
-	rte_flow->ibv_attr = flow->ibv_attr;
 	rte_flow->qp = priv->flow_drop_queue->qp;
+#ifdef HAVE_VERBS_IBV_EXP_FLOW_SPEC_ACTION_DROP
+	drop = (void *)((uintptr_t)flow->ibv_attr + flow->offset);
+	*drop = (struct ibv_exp_flow_spec_action_drop){
+			.type = IBV_EXP_FLOW_SPEC_ACTION_DROP,
+			.size = size,
+	};
+	++flow->ibv_attr->num_of_specs;
+	flow->offset += sizeof(struct ibv_exp_flow_spec_action_drop);
+#endif
+	rte_flow->ibv_attr = flow->ibv_attr;
 	if (!priv->started)
 		return rte_flow;
 	rte_flow->ibv_flow = ibv_exp_create_flow(rte_flow->qp,

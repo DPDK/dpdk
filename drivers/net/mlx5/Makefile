@@ -101,6 +101,11 @@ mlx5_autoconf.h.new: FORCE
 mlx5_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 	$Q $(RM) -f -- '$@'
 	$Q sh -- '$<' '$@' \
+		HAVE_VERBS_IBV_EXP_FLOW_SPEC_ACTION_DROP \
+		infiniband/verbs_exp.h \
+		enum IBV_EXP_FLOW_SPEC_ACTION_DROP \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
 		HAVE_VERBS_IBV_EXP_CQ_COMPRESSED_CQE \
 		infiniband/verbs_exp.h \
 		enum IBV_EXP_CQ_COMPRESSED_CQE \
