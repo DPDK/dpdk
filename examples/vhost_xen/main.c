@@ -48,6 +48,7 @@
 #include <rte_ethdev.h>
 #include <rte_log.h>
 #include <rte_string_fns.h>
+#include <rte_pause.h>
 
 #include "main.h"
 #include "virtio-net.h"

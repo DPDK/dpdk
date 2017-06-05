@@ -67,6 +67,7 @@
 #include <rte_jobstats.h>
 #include <rte_timer.h>
 #include <rte_alarm.h>
+#include <rte_pause.h>
 
 #define RTE_LOGTYPE_L2FWD RTE_LOGTYPE_USER1
 

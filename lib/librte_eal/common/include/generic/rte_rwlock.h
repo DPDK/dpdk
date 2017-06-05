@@ -52,6 +52,7 @@ extern "C" {
 
 #include <rte_common.h>
 #include <rte_atomic.h>
+#include <rte_pause.h>
 
 /**
  * The rte_rwlock_t type.

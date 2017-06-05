@@ -47,8 +47,9 @@
 #include <rte_debug.h>
 #include <rte_ethdev.h>
 #include <rte_cycles.h>
-
 #include <rte_eventdev.h>
+#include <rte_pause.h>
+
 #include "test.h"
 
 #define MAX_PORTS 16

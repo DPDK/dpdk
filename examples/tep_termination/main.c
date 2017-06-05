@@ -50,6 +50,7 @@
 #include <rte_string_fns.h>
 #include <rte_malloc.h>
 #include <rte_vhost.h>
+#include <rte_pause.h>
 
 #include "main.h"
 #include "vxlan.h"

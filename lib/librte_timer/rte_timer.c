@@ -51,6 +51,7 @@
 #include <rte_branch_prediction.h>
 #include <rte_spinlock.h>
 #include <rte_random.h>
+#include <rte_pause.h>
 
 #include "rte_timer.h"
 

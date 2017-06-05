@@ -73,6 +73,7 @@
 #include <rte_tcp.h>
 #include <rte_udp.h>
 #include <rte_string_fns.h>
+#include <rte_pause.h>
 
 #include <cmdline_parse.h>
 #include <cmdline_parse_etheraddr.h>

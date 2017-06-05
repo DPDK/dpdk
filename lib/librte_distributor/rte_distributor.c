@@ -42,6 +42,8 @@
 #include <rte_string_fns.h>
 #include <rte_eal_memconfig.h>
 #include <rte_compat.h>
+#include <rte_pause.h>
+
 #include "rte_distributor_private.h"
 #include "rte_distributor.h"
 #include "rte_distributor_v20.h"

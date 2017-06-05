@@ -38,6 +38,7 @@ extern "C" {
 #endif
 
 #include <rte_common.h>
+#include <rte_pause.h>
 #include "generic/rte_spinlock.h"
 
 /* Fixme: Use intrinsics to implement the spinlock on Power architecture */

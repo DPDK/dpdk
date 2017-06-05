@@ -42,6 +42,7 @@
 #include <rte_lcore.h>
 #include <rte_random.h>
 #include <rte_malloc.h>
+#include <rte_pause.h>
 
 #define MAX_ITERATIONS 1000000
 

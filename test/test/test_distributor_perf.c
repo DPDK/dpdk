@@ -40,6 +40,7 @@
 #include <rte_common.h>
 #include <rte_mbuf.h>
 #include <rte_distributor.h>
+#include <rte_pause.h>
 
 #define ITER_POWER_CL 25 /* log 2 of how many iterations  for Cache Line test */
 #define ITER_POWER 21 /* log 2 of how many iterations we do when timing. */

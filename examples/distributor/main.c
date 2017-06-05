@@ -43,6 +43,7 @@
 #include <rte_debug.h>
 #include <rte_prefetch.h>
 #include <rte_distributor.h>
+#include <rte_pause.h>
 
 #define RX_RING_SIZE 512
 #define TX_RING_SIZE 512

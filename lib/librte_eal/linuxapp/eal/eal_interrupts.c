@@ -64,6 +64,7 @@
 #include <rte_malloc.h>
 #include <rte_errno.h>
 #include <rte_spinlock.h>
+#include <rte_pause.h>
 
 #include "eal_private.h"
 #include "eal_vfio.h"

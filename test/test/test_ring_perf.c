@@ -37,6 +37,7 @@
 #include <rte_ring.h>
 #include <rte_cycles.h>
 #include <rte_launch.h>
+#include <rte_pause.h>
 
 #include "test.h"
 

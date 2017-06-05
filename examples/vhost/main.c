@@ -52,6 +52,7 @@
 #include <rte_vhost.h>
 #include <rte_ip.h>
 #include <rte_tcp.h>
+#include <rte_pause.h>
 
 #include "main.h"
 

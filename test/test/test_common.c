@@ -35,6 +35,7 @@
 #include <string.h>
 #include <rte_common.h>
 #include <rte_hexdump.h>
+#include <rte_pause.h>
 
 #include "test.h"
 
