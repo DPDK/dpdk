@@ -130,6 +130,26 @@ ip_frag_free(struct ip_frag_pkt *fp, struct rte_ip_frag_death_row *dr)
 	dr->cnt = k;
 }
 
+/* delete fragment's mbufs immediately instead of using death row */
+static inline void
+ip_frag_free_immediate(struct ip_frag_pkt *fp)
+{
+	uint32_t i;
+
+	for (i = 0; i < fp->last_idx; i++) {
+		if (fp->frags[i].mb != NULL) {
+			IP_FRAG_LOG(DEBUG, "%s:%d\n"
+			    "mbuf: %p, tms: %" PRIu64", key: <%" PRIx64 ", %#x>\n",
+			    __func__, __LINE__, fp->frags[i].mb, fp->start,
+			    fp->key.src_dst[0], fp->key.id);
+			rte_pktmbuf_free(fp->frags[i].mb);
+			fp->frags[i].mb = NULL;
+		}
+	}
+
+	fp->last_idx = 0;
+}
+
 /* if key is empty, mark key as in use */
 static inline void
 ip_frag_inuse(struct rte_ip_frag_tbl *tbl, const struct  ip_frag_pkt *fp)
