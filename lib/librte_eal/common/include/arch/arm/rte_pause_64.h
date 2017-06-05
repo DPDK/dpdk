@@ -30,21 +30,23 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _RTE_PAUSE_ARM_H_
-#define _RTE_PAUSE_ARM_H_
+#ifndef _RTE_PAUSE_ARM64_H_
+#define _RTE_PAUSE_ARM64_H_
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#ifdef RTE_ARCH_64
-#include <rte_pause_64.h>
-#else
-#include <rte_pause_32.h>
-#endif
+#include <rte_common.h>
+#include "generic/rte_pause.h"
+
+static inline void rte_pause(void)
+{
+	asm volatile("yield" ::: "memory");
+}
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _RTE_PAUSE_ARM_H_ */
+#endif /* _RTE_PAUSE_ARM64_H_ */
