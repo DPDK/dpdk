@@ -4436,7 +4436,9 @@ igb_add_del_ntuple_filter(struct rte_eth_dev *dev,
 		break;
 	case RTE_2TUPLE_FLAGS:
 	case (RTE_2TUPLE_FLAGS | RTE_NTUPLE_FLAGS_TCP_FLAG):
-		if (hw->mac.type != e1000_82580 && hw->mac.type != e1000_i350)
+		if (hw->mac.type != e1000_82580 && hw->mac.type != e1000_i350 &&
+			hw->mac.type != e1000_i210 &&
+			hw->mac.type != e1000_i211)
 			return -ENOTSUP;
 		if (add)
 			ret = igb_add_2tuple_filter(dev, ntuple_filter);
