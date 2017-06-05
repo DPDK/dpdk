@@ -2329,6 +2329,10 @@ i40e_update_vsi_stats(struct i40e_vsi *vsi)
 	i40e_stat_update_48(hw, I40E_GLV_BPRCH(idx), I40E_GLV_BPRCL(idx),
 			    vsi->offset_loaded, &oes->rx_broadcast,
 			    &nes->rx_broadcast);
+	/* exclude CRC bytes */
+	nes->rx_bytes -= (nes->rx_unicast + nes->rx_multicast +
+		nes->rx_broadcast) * ETHER_CRC_LEN;
+
 	i40e_stat_update_32(hw, I40E_GLV_RDPC(idx), vsi->offset_loaded,
 			    &oes->rx_discards, &nes->rx_discards);
 	/* GLV_REPC not supported */
@@ -2348,6 +2352,9 @@ i40e_update_vsi_stats(struct i40e_vsi *vsi)
 	i40e_stat_update_48(hw, I40E_GLV_BPTCH(idx), I40E_GLV_BPTCL(idx),
 			    vsi->offset_loaded,  &oes->tx_broadcast,
 			    &nes->tx_broadcast);
+	/* exclude CRC bytes */
+	nes->tx_bytes -= (nes->tx_unicast + nes->tx_multicast +
+		nes->tx_broadcast) * ETHER_CRC_LEN;
 	/* GLV_TDPC not supported */
 	i40e_stat_update_32(hw, I40E_GLV_TEPC(idx), vsi->offset_loaded,
 			    &oes->tx_errors, &nes->tx_errors);
