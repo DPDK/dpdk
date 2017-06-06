@@ -38,6 +38,9 @@ else
   include $(RTE_SDK)/mk/rte.vars.mk
 endif
 
+# allow exec-env specific targets
+-include $(RTE_SDK)/mk/exec-env/$(RTE_EXEC_ENV)/rte.custom.mk
+
 buildtools: | lib
 drivers: | lib buildtools
 app: | lib buildtools drivers
