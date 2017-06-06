@@ -36,6 +36,7 @@
 #include <rte_cycles.h>
 #include <rte_malloc.h>
 #include <rte_alarm.h>
+#include <rte_ether.h>
 
 #include "lio_logs.h"
 #include "lio_23xx_vf.h"
@@ -1367,7 +1368,8 @@ lio_sync_link_state_check(void *eth_dev)
 static int
 lio_dev_start(struct rte_eth_dev *eth_dev)
 {
-	uint16_t mtu = eth_dev->data->dev_conf.rxmode.max_rx_pkt_len;
+	uint16_t mtu;
+	uint32_t frame_len = eth_dev->data->dev_conf.rxmode.max_rx_pkt_len;
 	struct lio_device *lio_dev = LIO_DEV(eth_dev);
 	uint16_t timeout = LIO_MAX_CMD_TIMEOUT;
 	int ret = 0;
@@ -1405,11 +1407,28 @@ lio_dev_start(struct rte_eth_dev *eth_dev)
 		goto dev_mtu_check_error;
 	}
 
+	if (eth_dev->data->dev_conf.rxmode.jumbo_frame == 1) {
+		if (frame_len <= ETHER_MAX_LEN ||
+		    frame_len > LIO_MAX_RX_PKTLEN) {
+			lio_dev_err(lio_dev, "max packet length should be >= %d and < %d when jumbo frame is enabled\n",
+				    ETHER_MAX_LEN, LIO_MAX_RX_PKTLEN);
+			ret = -EINVAL;
+			goto dev_mtu_check_error;
+		}
+		mtu = (uint16_t)(frame_len - ETHER_HDR_LEN - ETHER_CRC_LEN);
+	} else {
+		/* default MTU */
+		mtu = ETHER_MTU;
+		eth_dev->data->dev_conf.rxmode.max_rx_pkt_len = ETHER_MAX_LEN;
+	}
+
 	if (lio_dev->linfo.link.s.mtu != mtu) {
 		ret = lio_dev_validate_vf_mtu(eth_dev, mtu);
 		if (ret)
 			goto dev_mtu_check_error;
 	}
+
+	eth_dev->data->mtu = mtu;
 
 	return 0;
 
