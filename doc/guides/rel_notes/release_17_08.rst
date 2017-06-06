@@ -66,6 +66,11 @@ New Features
   * Add PMD specific APIs mainly to control VF from PF.
   * Update HWRM version to 1.7.7
 
+* **Added support for Rx interrupts on mlx4 driver.**
+
+  Rx queues can be armed with an interrupt which will trigger on the
+  next packet arrival.
+
 
 Resolved Issues
 ---------------

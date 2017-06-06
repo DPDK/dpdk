@@ -75,6 +75,7 @@
 #include <rte_memory.h>
 #include <rte_flow.h>
 #include <rte_kvargs.h>
+#include <rte_interrupts.h>
 
 /* Generated configuration header. */
 #include "mlx4_autoconf.h"
@@ -126,6 +127,24 @@ const char *pmd_mlx4_init_params[] = {
 	MLX4_PMD_PORT_KVARG,
 	NULL,
 };
+
+static int
+mlx4_rx_intr_enable(struct rte_eth_dev *dev, uint16_t idx);
+
+static int
+mlx4_rx_intr_disable(struct rte_eth_dev *dev, uint16_t idx);
+
+static int
+priv_intr_efd_enable(struct priv *priv);
+
+static void
+priv_intr_efd_disable(struct priv *priv);
+
+static int
+priv_create_intr_vec(struct priv *priv);
+
+static void
+priv_destroy_intr_vec(struct priv *priv);
 
 /**
  * Check if running as a secondary process.
@@ -2756,6 +2775,8 @@ rxq_cleanup(struct rxq *rxq)
 	}
 	if (rxq->cq != NULL)
 		claim_zero(ibv_destroy_cq(rxq->cq));
+	if (rxq->channel != NULL)
+		claim_zero(ibv_destroy_comp_channel(rxq->channel));
 	if (rxq->rd != NULL) {
 		struct ibv_exp_destroy_res_domain_attr attr = {
 			.comp_mask = 0,
@@ -3696,11 +3717,22 @@ skip_mr:
 		      (void *)dev, strerror(ret));
 		goto error;
 	}
+	if (dev->data->dev_conf.intr_conf.rxq) {
+		tmpl.channel = ibv_create_comp_channel(priv->ctx);
+		if (tmpl.channel == NULL) {
+			dev->data->dev_conf.intr_conf.rxq = 0;
+			ret = ENOMEM;
+			ERROR("%p: Comp Channel creation failure: %s",
+			      (void *)dev, strerror(ret));
+			goto error;
+		}
+	}
 	attr.cq = (struct ibv_exp_cq_init_attr){
 		.comp_mask = IBV_EXP_CQ_INIT_ATTR_RES_DOMAIN,
 		.res_domain = tmpl.rd,
 	};
-	tmpl.cq = ibv_exp_create_cq(priv->ctx, desc, NULL, NULL, 0, &attr.cq);
+	tmpl.cq = ibv_exp_create_cq(priv->ctx, desc, NULL, tmpl.channel, 0,
+				    &attr.cq);
 	if (tmpl.cq == NULL) {
 		ret = ENOMEM;
 		ERROR("%p: CQ creation failure: %s",
@@ -4005,6 +4037,11 @@ mlx4_dev_start(struct rte_eth_dev *dev)
 		     (void *)dev);
 		goto err;
 	}
+	if (dev->data->dev_conf.intr_conf.rxq) {
+		ret = priv_intr_efd_enable(priv);
+		if (!ret)
+			ret = priv_create_intr_vec(priv);
+	}
 	ret = mlx4_priv_flow_start(priv);
 	if (ret) {
 		ERROR("%p: flow start failed: %s",
@@ -4197,6 +4234,10 @@ mlx4_dev_close(struct rte_eth_dev *dev)
 		assert(priv->ctx == NULL);
 	priv_dev_removal_interrupt_handler_uninstall(priv, dev);
 	priv_dev_link_interrupt_handler_uninstall(priv, dev);
+	if (priv->dev->data->dev_conf.intr_conf.rxq) {
+		priv_destroy_intr_vec(priv);
+		priv_intr_efd_disable(priv);
+	}
 	priv_unlock(priv);
 	memset(priv, 0, sizeof(*priv));
 }
@@ -5157,6 +5198,8 @@ static const struct eth_dev_ops mlx4_dev_ops = {
 	.mac_addr_set = mlx4_mac_addr_set,
 	.mtu_set = mlx4_dev_set_mtu,
 	.filter_ctrl = mlx4_dev_filter_ctrl,
+	.rx_queue_intr_enable = mlx4_rx_intr_enable,
+	.rx_queue_intr_disable = mlx4_rx_intr_disable,
 };
 
 /**
@@ -5589,6 +5632,168 @@ priv_dev_removal_interrupt_handler_install(struct priv *priv,
 		priv->intr_conf.rmv = 1;
 	}
 	return 0;
+}
+
+/**
+ * Fill epoll fd list for rxq interrupts.
+ *
+ * @param priv
+ *   Poinetr to private structure.
+ *
+ * @return
+ *   0 on success, negative on failure.
+ */
+static int
+priv_intr_efd_enable(struct priv *priv)
+{
+	unsigned int i;
+	unsigned int rxqs_n = priv->rxqs_n;
+	unsigned int n = RTE_MIN(rxqs_n, (uint32_t)RTE_MAX_RXTX_INTR_VEC_ID);
+	struct rte_intr_handle *intr_handle = priv->dev->intr_handle;
+
+	if (n == 0)
+		return 0;
+	if (n < rxqs_n) {
+		WARN("rxqs num is larger than EAL max interrupt vector "
+		     "%u > %u unable to supprt rxq interrupts",
+		     rxqs_n, (uint32_t)RTE_MAX_RXTX_INTR_VEC_ID);
+		return -EINVAL;
+	}
+	intr_handle->type = RTE_INTR_HANDLE_EXT;
+	for (i = 0; i != n; ++i) {
+		struct rxq *rxq = (*priv->rxqs)[i];
+		int fd = rxq->channel->fd;
+		int flags;
+		int rc;
+
+		flags = fcntl(fd, F_GETFL);
+		rc = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+		if (rc < 0) {
+			WARN("failed to change rxq interrupt file "
+			     "descriptor %d for queue index %d", fd, i);
+			return rc;
+		}
+		intr_handle->efds[i] = fd;
+	}
+	intr_handle->nb_efd = n;
+	return 0;
+}
+
+/**
+ * Clean epoll fd list for rxq interrupts.
+ *
+ * @param priv
+ *   Ponter to private structure.
+ */
+static void
+priv_intr_efd_disable(struct priv *priv)
+{
+	struct rte_intr_handle *intr_handle = priv->dev->intr_handle;
+
+	rte_intr_free_epoll_fd(intr_handle);
+}
+
+/**
+ * Create and init interrupt vector array.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ *
+ * @return
+ *   0 on success, negative on failure.
+ */
+static int
+priv_create_intr_vec(struct priv *priv)
+{
+	unsigned int rxqs_n = priv->rxqs_n;
+	unsigned int i;
+	struct rte_intr_handle *intr_handle = priv->dev->intr_handle;
+
+	if (rxqs_n == 0)
+		return 0;
+	intr_handle->intr_vec = (int *)
+		rte_malloc("intr_vec", rxqs_n * sizeof(int), 0);
+	if (intr_handle->intr_vec == NULL) {
+		WARN("Failed to allocate memory for intr_vec "
+		     "rxq interrupt will not be supported");
+		return -ENOMEM;
+	}
+	for (i = 0; i != rxqs_n; ++i) {
+		/* 1:1 mapping between rxq and interrupt. */
+		intr_handle->intr_vec[i] = RTE_INTR_VEC_RXTX_OFFSET + i;
+	}
+	return 0;
+}
+
+/**
+ * Destroy init interrupt vector array.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ */
+static void
+priv_destroy_intr_vec(struct priv *priv)
+{
+	struct rte_intr_handle *intr_handle = priv->dev->intr_handle;
+
+	rte_free(intr_handle->intr_vec);
+}
+
+/**
+ * DPDK callback for rx queue interrupt enable.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param idx
+ *   RX queue index.
+ *
+ * @return
+ *   0 on success, negative on failure.
+ */
+static int
+mlx4_rx_intr_enable(struct rte_eth_dev *dev, uint16_t idx)
+{
+	struct priv *priv = dev->data->dev_private;
+	struct rxq *rxq = (*priv->rxqs)[idx];
+	struct ibv_cq *cq = rxq->cq;
+	int ret = 0;
+
+	ret = ibv_req_notify_cq(cq, 0);
+	if (ret)
+		WARN("unable to arm interrupt on rx queue %d", idx);
+	return -ret;
+}
+
+/**
+ * DPDK callback for rx queue interrupt disable.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param idx
+ *   RX queue index.
+ *
+ * @return
+ *   0 on success, negative on failure.
+ */
+static int
+mlx4_rx_intr_disable(struct rte_eth_dev *dev, uint16_t idx)
+{
+	struct priv *priv = dev->data->dev_private;
+	struct rxq *rxq = (*priv->rxqs)[idx];
+	struct ibv_cq *cq = rxq->cq;
+	struct ibv_cq *ev_cq;
+	void *ev_ctx;
+	int ret = 0;
+
+	ret = ibv_get_cq_event(cq->channel, &ev_cq, &ev_ctx);
+	if (ret || ev_cq != cq)
+		ret = -1;
+	else
+		ibv_ack_cq_events(cq, 1);
+	if (ret)
+		WARN("unable to disable interrupt on rx queue %d",
+		     idx);
+	return ret;
 }
 
 /**

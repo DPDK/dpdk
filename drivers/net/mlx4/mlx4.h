@@ -226,6 +226,7 @@ struct rxq {
 	struct ibv_qp *qp; /* Queue Pair. */
 	struct ibv_exp_qp_burst_family *if_qp; /* QP burst interface. */
 	struct ibv_exp_cq_family *if_cq; /* CQ interface. */
+	struct ibv_comp_channel *channel;
 	/*
 	 * Each VLAN ID requires a separate flow steering rule.
 	 */
