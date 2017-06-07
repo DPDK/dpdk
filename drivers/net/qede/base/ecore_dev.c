@@ -3718,7 +3718,7 @@ static void ecore_chain_free_pbl(struct ecore_dev *p_dev,
 	if (!p_chain->b_external_pbl)
 		OSAL_DMA_FREE_COHERENT(p_dev, p_chain->pbl_sp.p_virt_table,
 				       p_chain->pbl_sp.p_phys_table, pbl_size);
- out:
+out:
 	OSAL_VFREE(p_dev, p_chain->pbl.pp_virt_addr_tbl);
 }
 
@@ -3994,92 +3994,182 @@ enum _ecore_status_t ecore_fw_rss_eng(struct ecore_hwfn *p_hwfn,
 	return ECORE_SUCCESS;
 }
 
-enum _ecore_status_t ecore_llh_add_mac_filter(struct ecore_hwfn *p_hwfn,
-					      struct ecore_ptt *p_ptt,
-					      u8 *p_filter)
+static enum _ecore_status_t
+ecore_llh_add_mac_filter_bb_ah(struct ecore_hwfn *p_hwfn,
+			       struct ecore_ptt *p_ptt, u32 high, u32 low,
+			       u32 *p_entry_num)
 {
-	u32 high, low, en;
+	u32 en;
 	int i;
+
+	/* Find a free entry and utilize it */
+	for (i = 0; i < NIG_REG_LLH_FUNC_FILTER_EN_SIZE; i++) {
+		en = ecore_rd(p_hwfn, p_ptt,
+			      NIG_REG_LLH_FUNC_FILTER_EN_BB_K2 +
+			      i * sizeof(u32));
+		if (en)
+			continue;
+		ecore_wr(p_hwfn, p_ptt,
+			 NIG_REG_LLH_FUNC_FILTER_VALUE_BB_K2 +
+			 2 * i * sizeof(u32), low);
+		ecore_wr(p_hwfn, p_ptt,
+			 NIG_REG_LLH_FUNC_FILTER_VALUE_BB_K2 +
+			 (2 * i + 1) * sizeof(u32), high);
+		ecore_wr(p_hwfn, p_ptt,
+			 NIG_REG_LLH_FUNC_FILTER_MODE_BB_K2 +
+			 i * sizeof(u32), 0);
+		ecore_wr(p_hwfn, p_ptt,
+			 NIG_REG_LLH_FUNC_FILTER_PROTOCOL_TYPE_BB_K2 +
+			 i * sizeof(u32), 0);
+		ecore_wr(p_hwfn, p_ptt,
+			 NIG_REG_LLH_FUNC_FILTER_EN_BB_K2 +
+			 i * sizeof(u32), 1);
+		break;
+	}
+
+	if (i >= NIG_REG_LLH_FUNC_FILTER_EN_SIZE)
+		return ECORE_NORESOURCES;
+
+	*p_entry_num = i;
+
+	return ECORE_SUCCESS;
+}
+
+enum _ecore_status_t ecore_llh_add_mac_filter(struct ecore_hwfn *p_hwfn,
+					  struct ecore_ptt *p_ptt, u8 *p_filter)
+{
+	u32 high, low, entry_num;
+	enum _ecore_status_t rc;
 
 	if (!(IS_MF_SI(p_hwfn) || IS_MF_DEFAULT(p_hwfn)))
 		return ECORE_SUCCESS;
 
 	high = p_filter[1] | (p_filter[0] << 8);
 	low = p_filter[5] | (p_filter[4] << 8) |
-	    (p_filter[3] << 16) | (p_filter[2] << 24);
+	      (p_filter[3] << 16) | (p_filter[2] << 24);
 
-	/* Find a free entry and utilize it */
-	for (i = 0; i < NIG_REG_LLH_FUNC_FILTER_EN_SIZE; i++) {
-		en = ecore_rd(p_hwfn, p_ptt,
-			      NIG_REG_LLH_FUNC_FILTER_EN + i * sizeof(u32));
-		if (en)
-			continue;
-		ecore_wr(p_hwfn, p_ptt,
-			 NIG_REG_LLH_FUNC_FILTER_VALUE +
-			 2 * i * sizeof(u32), low);
-		ecore_wr(p_hwfn, p_ptt,
-			 NIG_REG_LLH_FUNC_FILTER_VALUE +
-			 (2 * i + 1) * sizeof(u32), high);
-		ecore_wr(p_hwfn, p_ptt,
-			 NIG_REG_LLH_FUNC_FILTER_MODE + i * sizeof(u32), 0);
-		ecore_wr(p_hwfn, p_ptt,
-			 NIG_REG_LLH_FUNC_FILTER_PROTOCOL_TYPE +
-			 i * sizeof(u32), 0);
-		ecore_wr(p_hwfn, p_ptt,
-			 NIG_REG_LLH_FUNC_FILTER_EN + i * sizeof(u32), 1);
-		break;
-	}
-	if (i >= NIG_REG_LLH_FUNC_FILTER_EN_SIZE) {
+	if (ECORE_IS_BB(p_hwfn->p_dev) || ECORE_IS_AH(p_hwfn->p_dev))
+		rc = ecore_llh_add_mac_filter_bb_ah(p_hwfn, p_ptt, high, low,
+						    &entry_num);
+	if (rc != ECORE_SUCCESS) {
 		DP_NOTICE(p_hwfn, false,
 			  "Failed to find an empty LLH filter to utilize\n");
-		return ECORE_INVAL;
+		return rc;
 	}
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_HW,
-		   "MAC: %x:%x:%x:%x:%x:%x is added at %d\n",
-		   p_filter[0], p_filter[1], p_filter[2],
-		   p_filter[3], p_filter[4], p_filter[5], i);
+		   "MAC: %02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx is added at %d\n",
+		   p_filter[0], p_filter[1], p_filter[2], p_filter[3],
+		   p_filter[4], p_filter[5], entry_num);
+
+	return ECORE_SUCCESS;
+}
+
+static enum _ecore_status_t
+ecore_llh_remove_mac_filter_bb_ah(struct ecore_hwfn *p_hwfn,
+				  struct ecore_ptt *p_ptt, u32 high, u32 low,
+				  u32 *p_entry_num)
+{
+	int i;
+
+	/* Find the entry and clean it */
+	for (i = 0; i < NIG_REG_LLH_FUNC_FILTER_EN_SIZE; i++) {
+		if (ecore_rd(p_hwfn, p_ptt,
+			     NIG_REG_LLH_FUNC_FILTER_VALUE_BB_K2 +
+			     2 * i * sizeof(u32)) != low)
+			continue;
+		if (ecore_rd(p_hwfn, p_ptt,
+			     NIG_REG_LLH_FUNC_FILTER_VALUE_BB_K2 +
+			     (2 * i + 1) * sizeof(u32)) != high)
+			continue;
+
+		ecore_wr(p_hwfn, p_ptt,
+			 NIG_REG_LLH_FUNC_FILTER_EN_BB_K2 + i * sizeof(u32), 0);
+		ecore_wr(p_hwfn, p_ptt,
+			 NIG_REG_LLH_FUNC_FILTER_VALUE_BB_K2 +
+			 2 * i * sizeof(u32), 0);
+		ecore_wr(p_hwfn, p_ptt,
+			 NIG_REG_LLH_FUNC_FILTER_VALUE_BB_K2 +
+			 (2 * i + 1) * sizeof(u32), 0);
+		break;
+	}
+
+	if (i >= NIG_REG_LLH_FUNC_FILTER_EN_SIZE)
+		return ECORE_INVAL;
+
+	*p_entry_num = i;
 
 	return ECORE_SUCCESS;
 }
 
 void ecore_llh_remove_mac_filter(struct ecore_hwfn *p_hwfn,
-				 struct ecore_ptt *p_ptt, u8 *p_filter)
+			     struct ecore_ptt *p_ptt, u8 *p_filter)
 {
-	u32 high, low;
-	int i;
+	u32 high, low, entry_num;
+	enum _ecore_status_t rc;
 
 	if (!(IS_MF_SI(p_hwfn) || IS_MF_DEFAULT(p_hwfn)))
 		return;
 
 	high = p_filter[1] | (p_filter[0] << 8);
 	low = p_filter[5] | (p_filter[4] << 8) |
-	    (p_filter[3] << 16) | (p_filter[2] << 24);
+	      (p_filter[3] << 16) | (p_filter[2] << 24);
 
-	/* Find the entry and clean it */
-	for (i = 0; i < NIG_REG_LLH_FUNC_FILTER_EN_SIZE; i++) {
-		if (ecore_rd(p_hwfn, p_ptt,
-			     NIG_REG_LLH_FUNC_FILTER_VALUE +
-			     2 * i * sizeof(u32)) != low)
-			continue;
-		if (ecore_rd(p_hwfn, p_ptt,
-			     NIG_REG_LLH_FUNC_FILTER_VALUE +
-			     (2 * i + 1) * sizeof(u32)) != high)
-			continue;
-
-		ecore_wr(p_hwfn, p_ptt,
-			 NIG_REG_LLH_FUNC_FILTER_EN + i * sizeof(u32), 0);
-		ecore_wr(p_hwfn, p_ptt,
-			 NIG_REG_LLH_FUNC_FILTER_VALUE +
-			 2 * i * sizeof(u32), 0);
-		ecore_wr(p_hwfn, p_ptt,
-			 NIG_REG_LLH_FUNC_FILTER_VALUE +
-			 (2 * i + 1) * sizeof(u32), 0);
-		break;
-	}
-	if (i >= NIG_REG_LLH_FUNC_FILTER_EN_SIZE)
+	if (ECORE_IS_BB(p_hwfn->p_dev) || ECORE_IS_AH(p_hwfn->p_dev))
+		rc = ecore_llh_remove_mac_filter_bb_ah(p_hwfn, p_ptt, high,
+						       low, &entry_num);
+	if (rc != ECORE_SUCCESS) {
 		DP_NOTICE(p_hwfn, false,
 			  "Tried to remove a non-configured filter\n");
+		return;
+	}
+
+
+	DP_VERBOSE(p_hwfn, ECORE_MSG_HW,
+		   "MAC: %02hhx:%02hhx:%02hhx:%02hhx:%02hhx:%02hhx was removed from %d\n",
+		   p_filter[0], p_filter[1], p_filter[2], p_filter[3],
+		   p_filter[4], p_filter[5], entry_num);
+}
+
+static enum _ecore_status_t
+ecore_llh_add_protocol_filter_bb_ah(struct ecore_hwfn *p_hwfn,
+				    struct ecore_ptt *p_ptt,
+				    enum ecore_llh_port_filter_type_t type,
+				    u32 high, u32 low, u32 *p_entry_num)
+{
+	u32 en;
+	int i;
+
+	/* Find a free entry and utilize it */
+	for (i = 0; i < NIG_REG_LLH_FUNC_FILTER_EN_SIZE; i++) {
+		en = ecore_rd(p_hwfn, p_ptt,
+			      NIG_REG_LLH_FUNC_FILTER_EN_BB_K2 +
+			      i * sizeof(u32));
+		if (en)
+			continue;
+		ecore_wr(p_hwfn, p_ptt,
+			 NIG_REG_LLH_FUNC_FILTER_VALUE_BB_K2 +
+			 2 * i * sizeof(u32), low);
+		ecore_wr(p_hwfn, p_ptt,
+			 NIG_REG_LLH_FUNC_FILTER_VALUE_BB_K2 +
+			 (2 * i + 1) * sizeof(u32), high);
+		ecore_wr(p_hwfn, p_ptt,
+			 NIG_REG_LLH_FUNC_FILTER_MODE_BB_K2 +
+			 i * sizeof(u32), 1);
+		ecore_wr(p_hwfn, p_ptt,
+			 NIG_REG_LLH_FUNC_FILTER_PROTOCOL_TYPE_BB_K2 +
+			 i * sizeof(u32), 1 << type);
+		ecore_wr(p_hwfn, p_ptt,
+			 NIG_REG_LLH_FUNC_FILTER_EN_BB_K2 + i * sizeof(u32), 1);
+		break;
+	}
+
+	if (i >= NIG_REG_LLH_FUNC_FILTER_EN_SIZE)
+		return ECORE_NORESOURCES;
+
+	*p_entry_num = i;
+
+	return ECORE_SUCCESS;
 }
 
 enum _ecore_status_t
@@ -4089,14 +4179,15 @@ ecore_llh_add_protocol_filter(struct ecore_hwfn *p_hwfn,
 			      u16 dest_port,
 			      enum ecore_llh_port_filter_type_t type)
 {
-	u32 high, low, en;
-	int i;
+	u32 high, low, entry_num;
+	enum _ecore_status_t rc;
 
 	if (!(IS_MF_SI(p_hwfn) || IS_MF_DEFAULT(p_hwfn)))
 		return ECORE_SUCCESS;
 
 	high = 0;
 	low = 0;
+
 	switch (type) {
 	case ECORE_LLH_FILTER_ETHERTYPE:
 		high = source_port_or_eth_type;
@@ -4118,67 +4209,109 @@ ecore_llh_add_protocol_filter(struct ecore_hwfn *p_hwfn,
 			  "Non valid LLH protocol filter type %d\n", type);
 		return ECORE_INVAL;
 	}
-	/* Find a free entry and utilize it */
-	for (i = 0; i < NIG_REG_LLH_FUNC_FILTER_EN_SIZE; i++) {
-		en = ecore_rd(p_hwfn, p_ptt,
-			      NIG_REG_LLH_FUNC_FILTER_EN + i * sizeof(u32));
-		if (en)
-			continue;
-		ecore_wr(p_hwfn, p_ptt,
-			 NIG_REG_LLH_FUNC_FILTER_VALUE +
-			 2 * i * sizeof(u32), low);
-		ecore_wr(p_hwfn, p_ptt,
-			 NIG_REG_LLH_FUNC_FILTER_VALUE +
-			 (2 * i + 1) * sizeof(u32), high);
-		ecore_wr(p_hwfn, p_ptt,
-			 NIG_REG_LLH_FUNC_FILTER_MODE + i * sizeof(u32), 1);
-		ecore_wr(p_hwfn, p_ptt,
-			 NIG_REG_LLH_FUNC_FILTER_PROTOCOL_TYPE +
-			 i * sizeof(u32), 1 << type);
-		ecore_wr(p_hwfn, p_ptt,
-			 NIG_REG_LLH_FUNC_FILTER_EN + i * sizeof(u32), 1);
-		break;
-	}
-	if (i >= NIG_REG_LLH_FUNC_FILTER_EN_SIZE) {
+
+	if (ECORE_IS_BB(p_hwfn->p_dev) || ECORE_IS_AH(p_hwfn->p_dev))
+		rc = ecore_llh_add_protocol_filter_bb_ah(p_hwfn, p_ptt, type,
+							 high, low, &entry_num);
+	if (rc != ECORE_SUCCESS) {
 		DP_NOTICE(p_hwfn, false,
 			  "Failed to find an empty LLH filter to utilize\n");
-		return ECORE_NORESOURCES;
+		return rc;
 	}
 	switch (type) {
 	case ECORE_LLH_FILTER_ETHERTYPE:
 		DP_VERBOSE(p_hwfn, ECORE_MSG_HW,
 			   "ETH type %x is added at %d\n",
-			   source_port_or_eth_type, i);
+			   source_port_or_eth_type, entry_num);
 		break;
 	case ECORE_LLH_FILTER_TCP_SRC_PORT:
 		DP_VERBOSE(p_hwfn, ECORE_MSG_HW,
 			   "TCP src port %x is added at %d\n",
-			   source_port_or_eth_type, i);
+			   source_port_or_eth_type, entry_num);
 		break;
 	case ECORE_LLH_FILTER_UDP_SRC_PORT:
 		DP_VERBOSE(p_hwfn, ECORE_MSG_HW,
 			   "UDP src port %x is added at %d\n",
-			   source_port_or_eth_type, i);
+			   source_port_or_eth_type, entry_num);
 		break;
 	case ECORE_LLH_FILTER_TCP_DEST_PORT:
 		DP_VERBOSE(p_hwfn, ECORE_MSG_HW,
-			   "TCP dst port %x is added at %d\n", dest_port, i);
+			   "TCP dst port %x is added at %d\n", dest_port,
+			   entry_num);
 		break;
 	case ECORE_LLH_FILTER_UDP_DEST_PORT:
 		DP_VERBOSE(p_hwfn, ECORE_MSG_HW,
-			   "UDP dst port %x is added at %d\n", dest_port, i);
+			   "UDP dst port %x is added at %d\n", dest_port,
+			   entry_num);
 		break;
 	case ECORE_LLH_FILTER_TCP_SRC_AND_DEST_PORT:
 		DP_VERBOSE(p_hwfn, ECORE_MSG_HW,
 			   "TCP src/dst ports %x/%x are added at %d\n",
-			   source_port_or_eth_type, dest_port, i);
+			   source_port_or_eth_type, dest_port, entry_num);
 		break;
 	case ECORE_LLH_FILTER_UDP_SRC_AND_DEST_PORT:
 		DP_VERBOSE(p_hwfn, ECORE_MSG_HW,
 			   "UDP src/dst ports %x/%x are added at %d\n",
-			   source_port_or_eth_type, dest_port, i);
+			   source_port_or_eth_type, dest_port, entry_num);
 		break;
 	}
+
+	return ECORE_SUCCESS;
+}
+
+static enum _ecore_status_t
+ecore_llh_remove_protocol_filter_bb_ah(struct ecore_hwfn *p_hwfn,
+				       struct ecore_ptt *p_ptt,
+				       enum ecore_llh_port_filter_type_t type,
+				       u32 high, u32 low, u32 *p_entry_num)
+{
+	int i;
+
+	/* Find the entry and clean it */
+	for (i = 0; i < NIG_REG_LLH_FUNC_FILTER_EN_SIZE; i++) {
+		if (!ecore_rd(p_hwfn, p_ptt,
+			      NIG_REG_LLH_FUNC_FILTER_EN_BB_K2 +
+			      i * sizeof(u32)))
+			continue;
+		if (!ecore_rd(p_hwfn, p_ptt,
+			      NIG_REG_LLH_FUNC_FILTER_MODE_BB_K2 +
+			      i * sizeof(u32)))
+			continue;
+		if (!(ecore_rd(p_hwfn, p_ptt,
+			       NIG_REG_LLH_FUNC_FILTER_PROTOCOL_TYPE_BB_K2 +
+			       i * sizeof(u32)) & (1 << type)))
+			continue;
+		if (ecore_rd(p_hwfn, p_ptt,
+			     NIG_REG_LLH_FUNC_FILTER_VALUE_BB_K2 +
+			     2 * i * sizeof(u32)) != low)
+			continue;
+		if (ecore_rd(p_hwfn, p_ptt,
+			     NIG_REG_LLH_FUNC_FILTER_VALUE_BB_K2 +
+			     (2 * i + 1) * sizeof(u32)) != high)
+			continue;
+
+		ecore_wr(p_hwfn, p_ptt,
+			 NIG_REG_LLH_FUNC_FILTER_EN_BB_K2 + i * sizeof(u32), 0);
+		ecore_wr(p_hwfn, p_ptt,
+			 NIG_REG_LLH_FUNC_FILTER_MODE_BB_K2 +
+			 i * sizeof(u32), 0);
+		ecore_wr(p_hwfn, p_ptt,
+			 NIG_REG_LLH_FUNC_FILTER_PROTOCOL_TYPE_BB_K2 +
+			 i * sizeof(u32), 0);
+		ecore_wr(p_hwfn, p_ptt,
+			 NIG_REG_LLH_FUNC_FILTER_VALUE_BB_K2 +
+			 2 * i * sizeof(u32), 0);
+		ecore_wr(p_hwfn, p_ptt,
+			 NIG_REG_LLH_FUNC_FILTER_VALUE_BB_K2 +
+			 (2 * i + 1) * sizeof(u32), 0);
+		break;
+	}
+
+	if (i >= NIG_REG_LLH_FUNC_FILTER_EN_SIZE)
+		return ECORE_INVAL;
+
+	*p_entry_num = i;
+
 	return ECORE_SUCCESS;
 }
 
@@ -4189,14 +4322,15 @@ ecore_llh_remove_protocol_filter(struct ecore_hwfn *p_hwfn,
 				 u16 dest_port,
 				 enum ecore_llh_port_filter_type_t type)
 {
-	u32 high, low;
-	int i;
+	u32 high, low, entry_num;
+	enum _ecore_status_t rc;
 
 	if (!(IS_MF_SI(p_hwfn) || IS_MF_DEFAULT(p_hwfn)))
 		return;
 
 	high = 0;
 	low = 0;
+
 	switch (type) {
 	case ECORE_LLH_FILTER_ETHERTYPE:
 		high = source_port_or_eth_type;
@@ -4219,49 +4353,24 @@ ecore_llh_remove_protocol_filter(struct ecore_hwfn *p_hwfn,
 		return;
 	}
 
-	for (i = 0; i < NIG_REG_LLH_FUNC_FILTER_EN_SIZE; i++) {
-		if (!ecore_rd(p_hwfn, p_ptt,
-			      NIG_REG_LLH_FUNC_FILTER_EN + i * sizeof(u32)))
-			continue;
-		if (!ecore_rd(p_hwfn, p_ptt,
-			      NIG_REG_LLH_FUNC_FILTER_MODE + i * sizeof(u32)))
-			continue;
-		if (!(ecore_rd(p_hwfn, p_ptt,
-			       NIG_REG_LLH_FUNC_FILTER_PROTOCOL_TYPE +
-			       i * sizeof(u32)) & (1 << type)))
-			continue;
-		if (ecore_rd(p_hwfn, p_ptt,
-			     NIG_REG_LLH_FUNC_FILTER_VALUE +
-			     2 * i * sizeof(u32)) != low)
-			continue;
-		if (ecore_rd(p_hwfn, p_ptt,
-			     NIG_REG_LLH_FUNC_FILTER_VALUE +
-			     (2 * i + 1) * sizeof(u32)) != high)
-			continue;
-
-		ecore_wr(p_hwfn, p_ptt,
-			 NIG_REG_LLH_FUNC_FILTER_EN + i * sizeof(u32), 0);
-		ecore_wr(p_hwfn, p_ptt,
-			 NIG_REG_LLH_FUNC_FILTER_MODE + i * sizeof(u32), 0);
-		ecore_wr(p_hwfn, p_ptt,
-			 NIG_REG_LLH_FUNC_FILTER_PROTOCOL_TYPE +
-			 i * sizeof(u32), 0);
-		ecore_wr(p_hwfn, p_ptt,
-			 NIG_REG_LLH_FUNC_FILTER_VALUE +
-			 2 * i * sizeof(u32), 0);
-		ecore_wr(p_hwfn, p_ptt,
-			 NIG_REG_LLH_FUNC_FILTER_VALUE +
-			 (2 * i + 1) * sizeof(u32), 0);
-		break;
+	if (ECORE_IS_BB(p_hwfn->p_dev) || ECORE_IS_AH(p_hwfn->p_dev))
+		rc = ecore_llh_remove_protocol_filter_bb_ah(p_hwfn, p_ptt, type,
+							    high, low,
+							    &entry_num);
+	if (rc != ECORE_SUCCESS) {
+		DP_NOTICE(p_hwfn, false,
+			  "Tried to remove a non-configured filter [type %d, source_port_or_eth_type 0x%x, dest_port 0x%x]\n",
+			  type, source_port_or_eth_type, dest_port);
+		return;
 	}
 
-	if (i >= NIG_REG_LLH_FUNC_FILTER_EN_SIZE)
-		DP_NOTICE(p_hwfn, false,
-			  "Tried to remove a non-configured filter\n");
+	DP_VERBOSE(p_hwfn, ECORE_MSG_HW,
+		   "Protocol filter [type %d, source_port_or_eth_type 0x%x, dest_port 0x%x] was removed from %d\n",
+		   type, source_port_or_eth_type, dest_port, entry_num);
 }
 
-void ecore_llh_clear_all_filters(struct ecore_hwfn *p_hwfn,
-				 struct ecore_ptt *p_ptt)
+static void ecore_llh_clear_all_filters_bb_ah(struct ecore_hwfn *p_hwfn,
+					      struct ecore_ptt *p_ptt)
 {
 	int i;
 
@@ -4270,14 +4379,25 @@ void ecore_llh_clear_all_filters(struct ecore_hwfn *p_hwfn,
 
 	for (i = 0; i < NIG_REG_LLH_FUNC_FILTER_EN_SIZE; i++) {
 		ecore_wr(p_hwfn, p_ptt,
-			 NIG_REG_LLH_FUNC_FILTER_EN + i * sizeof(u32), 0);
+			 NIG_REG_LLH_FUNC_FILTER_EN_BB_K2  +
+			 i * sizeof(u32), 0);
 		ecore_wr(p_hwfn, p_ptt,
-			 NIG_REG_LLH_FUNC_FILTER_VALUE +
+			 NIG_REG_LLH_FUNC_FILTER_VALUE_BB_K2 +
 			 2 * i * sizeof(u32), 0);
 		ecore_wr(p_hwfn, p_ptt,
-			 NIG_REG_LLH_FUNC_FILTER_VALUE +
+			 NIG_REG_LLH_FUNC_FILTER_VALUE_BB_K2 +
 			 (2 * i + 1) * sizeof(u32), 0);
 	}
+}
+
+void ecore_llh_clear_all_filters(struct ecore_hwfn *p_hwfn,
+			     struct ecore_ptt *p_ptt)
+{
+	if (!(IS_MF_SI(p_hwfn) || IS_MF_DEFAULT(p_hwfn)))
+		return;
+
+	if (ECORE_IS_BB(p_hwfn->p_dev) || ECORE_IS_AH(p_hwfn->p_dev))
+		ecore_llh_clear_all_filters_bb_ah(p_hwfn, p_ptt);
 }
 
 enum _ecore_status_t
@@ -4396,7 +4516,7 @@ enum _ecore_status_t ecore_set_rxq_coalesce(struct ecore_hwfn *p_hwfn,
 	if (rc != ECORE_SUCCESS)
 		goto out;
 
- out:
+out:
 	return rc;
 }
 
@@ -4434,7 +4554,7 @@ enum _ecore_status_t ecore_set_txq_coalesce(struct ecore_hwfn *p_hwfn,
 
 	rc = ecore_set_coalesce(p_hwfn, p_ptt, address, &eth_qzone,
 				sizeof(struct xstorm_eth_queue_zone), timeset);
- out:
+out:
 	return rc;
 }
 

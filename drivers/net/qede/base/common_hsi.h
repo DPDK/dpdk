@@ -97,8 +97,8 @@
 
 
 #define FW_MAJOR_VERSION		8
-#define FW_MINOR_VERSION		18
-#define FW_REVISION_VERSION		9
+#define FW_MINOR_VERSION		20
+#define FW_REVISION_VERSION		0
 #define FW_ENGINEERING_VERSION	0
 
 /***********************/
@@ -913,24 +913,25 @@ struct db_l2_dpm_data {
 	__le16 bd_prod /* bd producer value to update */;
 	__le32 params;
 /* Size in QWORD-s of the DPM burst */
-#define DB_L2_DPM_DATA_SIZE_MASK       0x3F
-#define DB_L2_DPM_DATA_SIZE_SHIFT      0
+#define DB_L2_DPM_DATA_SIZE_MASK        0x3F
+#define DB_L2_DPM_DATA_SIZE_SHIFT       0
 /* Type of DPM transaction (DPM_L2_INLINE or DPM_L2_BD) (use enum db_dpm_type)
  */
-#define DB_L2_DPM_DATA_DPM_TYPE_MASK   0x3
-#define DB_L2_DPM_DATA_DPM_TYPE_SHIFT  6
-#define DB_L2_DPM_DATA_NUM_BDS_MASK    0xFF /* number of BD-s */
-#define DB_L2_DPM_DATA_NUM_BDS_SHIFT   8
+#define DB_L2_DPM_DATA_DPM_TYPE_MASK    0x3
+#define DB_L2_DPM_DATA_DPM_TYPE_SHIFT   6
+#define DB_L2_DPM_DATA_NUM_BDS_MASK     0xFF /* number of BD-s */
+#define DB_L2_DPM_DATA_NUM_BDS_SHIFT    8
 /* size of the packet to be transmitted in bytes */
-#define DB_L2_DPM_DATA_PKT_SIZE_MASK   0x7FF
-#define DB_L2_DPM_DATA_PKT_SIZE_SHIFT  16
-#define DB_L2_DPM_DATA_RESERVED0_MASK  0x1
-#define DB_L2_DPM_DATA_RESERVED0_SHIFT 27
+#define DB_L2_DPM_DATA_PKT_SIZE_MASK    0x7FF
+#define DB_L2_DPM_DATA_PKT_SIZE_SHIFT   16
+#define DB_L2_DPM_DATA_RESERVED0_MASK   0x1
+#define DB_L2_DPM_DATA_RESERVED0_SHIFT  27
 /* In DPM_L2_BD mode: the number of SGE-s */
-#define DB_L2_DPM_DATA_SGE_NUM_MASK    0x7
-#define DB_L2_DPM_DATA_SGE_NUM_SHIFT   28
-#define DB_L2_DPM_DATA_RESERVED1_MASK  0x1
-#define DB_L2_DPM_DATA_RESERVED1_SHIFT 31
+#define DB_L2_DPM_DATA_SGE_NUM_MASK     0x7
+#define DB_L2_DPM_DATA_SGE_NUM_SHIFT    28
+/* Flag indicating whether to enable GFS search */
+#define DB_L2_DPM_DATA_RESERVED1_MASK   0x1
+#define DB_L2_DPM_DATA_RESERVED1_SHIFT  31
 };
 
 /*
@@ -989,26 +990,29 @@ struct db_pwm_addr {
 struct db_rdma_dpm_params {
 	__le32 params;
 /* Size in QWORD-s of the DPM burst */
-#define DB_RDMA_DPM_PARAMS_SIZE_MASK            0x3F
-#define DB_RDMA_DPM_PARAMS_SIZE_SHIFT           0
+#define DB_RDMA_DPM_PARAMS_SIZE_MASK                0x3F
+#define DB_RDMA_DPM_PARAMS_SIZE_SHIFT               0
 /* Type of DPM transacation (DPM_RDMA) (use enum db_dpm_type) */
-#define DB_RDMA_DPM_PARAMS_DPM_TYPE_MASK        0x3
-#define DB_RDMA_DPM_PARAMS_DPM_TYPE_SHIFT       6
+#define DB_RDMA_DPM_PARAMS_DPM_TYPE_MASK            0x3
+#define DB_RDMA_DPM_PARAMS_DPM_TYPE_SHIFT           6
 /* opcode for RDMA operation */
-#define DB_RDMA_DPM_PARAMS_OPCODE_MASK          0xFF
-#define DB_RDMA_DPM_PARAMS_OPCODE_SHIFT         8
+#define DB_RDMA_DPM_PARAMS_OPCODE_MASK              0xFF
+#define DB_RDMA_DPM_PARAMS_OPCODE_SHIFT             8
 /* the size of the WQE payload in bytes */
-#define DB_RDMA_DPM_PARAMS_WQE_SIZE_MASK        0x7FF
-#define DB_RDMA_DPM_PARAMS_WQE_SIZE_SHIFT       16
-#define DB_RDMA_DPM_PARAMS_RESERVED0_MASK       0x1
-#define DB_RDMA_DPM_PARAMS_RESERVED0_SHIFT      27
+#define DB_RDMA_DPM_PARAMS_WQE_SIZE_MASK            0x7FF
+#define DB_RDMA_DPM_PARAMS_WQE_SIZE_SHIFT           16
+#define DB_RDMA_DPM_PARAMS_RESERVED0_MASK           0x1
+#define DB_RDMA_DPM_PARAMS_RESERVED0_SHIFT          27
 /* RoCE completion flag */
-#define DB_RDMA_DPM_PARAMS_COMPLETION_FLG_MASK  0x1
-#define DB_RDMA_DPM_PARAMS_COMPLETION_FLG_SHIFT 28
-#define DB_RDMA_DPM_PARAMS_S_FLG_MASK           0x1 /* RoCE S flag */
-#define DB_RDMA_DPM_PARAMS_S_FLG_SHIFT          29
-#define DB_RDMA_DPM_PARAMS_RESERVED1_MASK       0x3
-#define DB_RDMA_DPM_PARAMS_RESERVED1_SHIFT      30
+#define DB_RDMA_DPM_PARAMS_COMPLETION_FLG_MASK      0x1
+#define DB_RDMA_DPM_PARAMS_COMPLETION_FLG_SHIFT     28
+#define DB_RDMA_DPM_PARAMS_S_FLG_MASK               0x1 /* RoCE S flag */
+#define DB_RDMA_DPM_PARAMS_S_FLG_SHIFT              29
+#define DB_RDMA_DPM_PARAMS_RESERVED1_MASK           0x3
+#define DB_RDMA_DPM_PARAMS_RESERVED1_SHIFT          30
+/* Connection type is iWARP */
+#define DB_RDMA_DPM_PARAMS_CONN_TYPE_IS_IWARP_MASK  0x1
+#define DB_RDMA_DPM_PARAMS_CONN_TYPE_IS_IWARP_SHIFT 31
 };
 
 /*

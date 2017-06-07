@@ -421,6 +421,9 @@ void qede_get_mcp_proto_stats(struct ecore_dev *, enum ecore_mcp_protocol_type,
 	qede_get_mcp_proto_stats(dev, type, stats)
 
 #define	OSAL_SLOWPATH_IRQ_REQ(p_hwfn) (0)
+#define OSAL_CRC32(crc, buf, length) 0
+#define OSAL_CRC8_POPULATE(table, polynomial) nothing
+#define OSAL_CRC8(table, pdata, nbytes, crc) 0
 #define OSAL_MFW_TLV_REQ(p_hwfn) (0)
 #define OSAL_MFW_FILL_TLV_DATA(type, buf, data) (0)
 #define OSAL_PF_VALIDATE_MODIFY_TUNN_CONFIG(p_hwfn, mask, b_update, tunn) 0

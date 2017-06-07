@@ -27,7 +27,7 @@ static const struct iro iro_arr[49] = {
 /* USTORM_COMMON_QUEUE_CONS_OFFSET(queue_zone_id) */
 	{     0x84,      0x8,      0x0,      0x0,      0x2},
 /* XSTORM_INTEG_TEST_DATA_OFFSET */
-	{   0x4bc0,      0x0,      0x0,      0x0,     0x78},
+	{   0x4c40,      0x0,      0x0,      0x0,     0x78},
 /* YSTORM_INTEG_TEST_DATA_OFFSET */
 	{   0x3df0,      0x0,      0x0,      0x0,     0x78},
 /* PSTORM_INTEG_TEST_DATA_OFFSET */
@@ -37,13 +37,13 @@ static const struct iro iro_arr[49] = {
 /* MSTORM_INTEG_TEST_DATA_OFFSET */
 	{   0x4990,      0x0,      0x0,      0x0,     0x78},
 /* USTORM_INTEG_TEST_DATA_OFFSET */
-	{   0x7e48,      0x0,      0x0,      0x0,     0x78},
+	{   0x7f48,      0x0,      0x0,      0x0,     0x78},
 /* TSTORM_LL2_RX_PRODS_OFFSET(core_rx_queue_id) */
 	{    0xa28,      0x8,      0x0,      0x0,      0x8},
 /* CORE_LL2_TSTORM_PER_QUEUE_STAT_OFFSET(core_rx_queue_id) */
 	{   0x61f8,     0x10,      0x0,      0x0,     0x10},
 /* CORE_LL2_USTORM_PER_QUEUE_STAT_OFFSET(core_rx_queue_id) */
-	{   0xb820,     0x30,      0x0,      0x0,     0x30},
+	{   0xbd20,     0x30,      0x0,      0x0,     0x30},
 /* CORE_LL2_PSTORM_PER_QUEUE_STAT_OFFSET(core_tx_stats_id) */
 	{   0x95b8,     0x30,      0x0,      0x0,     0x30},
 /* MSTORM_QUEUE_STAT_OFFSET(stat_counter_id) */
@@ -57,9 +57,9 @@ static const struct iro iro_arr[49] = {
 /* MSTORM_ETH_PF_STAT_OFFSET(pf_id) */
 	{   0x4ba0,     0x80,      0x0,      0x0,     0x20},
 /* USTORM_QUEUE_STAT_OFFSET(stat_counter_id) */
-	{   0x8050,     0x40,      0x0,      0x0,     0x30},
+	{   0x8150,     0x40,      0x0,      0x0,     0x30},
 /* USTORM_ETH_PF_STAT_OFFSET(pf_id) */
-	{   0xe770,     0x60,      0x0,      0x0,     0x60},
+	{   0xec70,     0x60,      0x0,      0x0,     0x60},
 /* PSTORM_QUEUE_STAT_OFFSET(stat_counter_id) */
 	{   0x2b48,     0x80,      0x0,      0x0,     0x38},
 /* PSTORM_ETH_PF_STAT_OFFSET(pf_id) */
@@ -89,7 +89,7 @@ static const struct iro iro_arr[49] = {
 /* MSTORM_ISCSI_RX_STATS_OFFSET(pf_id) */
 	{  0x12988,     0x10,      0x0,      0x0,      0x8},
 /* USTORM_ISCSI_RX_STATS_OFFSET(pf_id) */
-	{  0x11aa0,     0x38,      0x0,      0x0,     0x18},
+	{  0x11fa0,     0x38,      0x0,      0x0,     0x18},
 /* XSTORM_ISCSI_TX_STATS_OFFSET(pf_id) */
 	{   0xa8c0,     0x38,      0x0,      0x0,     0x10},
 /* YSTORM_ISCSI_TX_STATS_OFFSET(pf_id) */

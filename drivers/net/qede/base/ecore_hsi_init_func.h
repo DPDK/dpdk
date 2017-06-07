@@ -15,6 +15,10 @@
 /* Number of VLAN priorities */
 #define NUM_OF_VLAN_PRIORITIES			8
 
+/* Size of CRC8 lookup table */
+#ifndef LINUX_REMOVE
+#define CRC8_TABLE_SIZE					256
+#endif
 
 /*
  * BRB RAM init requirements

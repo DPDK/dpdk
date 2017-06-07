@@ -424,48 +424,54 @@ void ecore_enable_context_validation(struct ecore_hwfn *p_hwfn,
 				     struct ecore_ptt *p_ptt);
 /**
  * @brief ecore_calc_session_ctx_validation - Calcualte validation byte for
- *                                            session context.
+ * session context.
  *
- *
- * @param p_ctx_mem           -  pointer to context memory.
- * @param ctx_size            -  context size.
- * @param ctx_type            -  context type.
- * @param cid                 -  context cid.
+ * @param p_ctx_mem -	pointer to context memory.
+ * @param ctx_size -	context size.
+ * @param ctx_type -	context type.
+ * @param cid -		context cid.
  */
-void ecore_calc_session_ctx_validation(void *p_ctx_mem, u16 ctx_size,
-				       u8 ctx_type, u32 cid);
+void ecore_calc_session_ctx_validation(struct ecore_hwfn *p_hwfn,
+				       void *p_ctx_mem,
+				       u16 ctx_size,
+				       u8 ctx_type,
+				       u32 cid);
 /**
  * @brief ecore_calc_task_ctx_validation - Calcualte validation byte for task
- *                                         context.
+ * context.
  *
- *
- * @param p_ctx_mem           -  pointer to context memory.
- * @param ctx_size            -  context size.
- * @param ctx_type            -  context type.
- * @param tid                 -  context tid.
+ * @param p_hwfn -		    HW device data
+ * @param p_ctx_mem -	pointer to context memory.
+ * @param ctx_size -	context size.
+ * @param ctx_type -	context type.
+ * @param tid -		    context tid.
  */
-void ecore_calc_task_ctx_validation(void *p_ctx_mem, u16 ctx_size,
-				    u8 ctx_type, u32 tid);
+void ecore_calc_task_ctx_validation(struct ecore_hwfn *p_hwfn,
+				    void *p_ctx_mem,
+				    u16 ctx_size,
+				    u8 ctx_type,
+				    u32 tid);
 /**
  * @brief ecore_memset_session_ctx - Memset session context to 0 while
- *                                   preserving validation bytes.
+ * preserving validation bytes.
  *
- *
- * @param p_ctx_mem           -  pointer to context memory.
- * @param ctx_size            -  size to initialzie.
- * @param ctx_type            -  context type.
+ * @param p_hwfn -		  HW device data
+ * @param p_ctx_mem - pointer to context memory.
+ * @param ctx_size -  size to initialzie.
+ * @param ctx_type -  context type.
  */
-void ecore_memset_session_ctx(void *p_ctx_mem, u32 ctx_size,
+void ecore_memset_session_ctx(void *p_ctx_mem,
+			      u32 ctx_size,
 			      u8 ctx_type);
 /**
- * @brief ecore_memset_task_ctx - Memset session context to 0 while preserving
- *                                validation bytes.
+ * @brief ecore_memset_task_ctx - Memset task context to 0 while preserving
+ * validation bytes.
  *
- *
- * @param p_ctx_mem           -  pointer to context memory.
- * @param ctx_size            -  size to initialzie.
- * @param ctx_type            -  context type.
+ * @param p_ctx_mem - pointer to context memory.
+ * @param ctx_size -  size to initialzie.
+ * @param ctx_type -  context type.
  */
-void ecore_memset_task_ctx(void *p_ctx_mem, u32 ctx_size,
+void ecore_memset_task_ctx(void *p_ctx_mem,
+			   u32 ctx_size,
 			   u8 ctx_type);
 #endif

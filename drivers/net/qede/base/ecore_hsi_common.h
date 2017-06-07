@@ -856,7 +856,8 @@ struct core_rx_gsi_offload_cqe {
 	__le16 vlan /* 802.1q VLAN tag */;
 	__le32 src_mac_addrhi /* hi 4 bytes source mac address */;
 	__le16 src_mac_addrlo /* lo 2 bytes of source mac address */;
-	u8 reserved1[2];
+/* These are the lower 16 bit of QP id in RoCE BTH header */
+	__le16 qp_id;
 	__le32 gid_dst[4] /* Gid destination address */;
 };
 
@@ -998,11 +999,9 @@ struct core_tx_bd {
  */
 #define CORE_TX_BD_L4_HDR_OFFSET_W_MASK  0x3FFF
 #define CORE_TX_BD_L4_HDR_OFFSET_W_SHIFT 0
-/* Packet destination - Network, LB (use enum core_tx_dest) */
-#define CORE_TX_BD_TX_DST_MASK           0x1
+/* Packet destination - Network, Loopback or Drop (use enum core_tx_dest) */
+#define CORE_TX_BD_TX_DST_MASK           0x3
 #define CORE_TX_BD_TX_DST_SHIFT          14
-#define CORE_TX_BD_RESERVED_MASK         0x1
-#define CORE_TX_BD_RESERVED_SHIFT        15
 };
 
 
@@ -1011,8 +1010,10 @@ struct core_tx_bd {
  * Light L2 TX Destination
  */
 enum core_tx_dest {
-	CORE_TX_DEST_NW /* Light L2 TX Destination to the Network */,
-	CORE_TX_DEST_LB /* Light L2 TX Destination to the Loopback */,
+	CORE_TX_DEST_NW /* TX Destination to the Network */,
+	CORE_TX_DEST_LB /* TX Destination to the Loopback */,
+	CORE_TX_DEST_RESERVED,
+	CORE_TX_DEST_DROP /* TX Drop */,
 	MAX_CORE_TX_DEST
 };
 
@@ -1337,20 +1338,14 @@ struct pf_start_tunnel_config {
  * FW will use a default port
  */
 	u8 set_geneve_udp_port_flg;
-	u8 tx_enable_vxlan /* If set, enable VXLAN tunnel in TX path. */;
-/* If set, enable l2 GENEVE tunnel in TX path. */
-	u8 tx_enable_l2geneve;
-/* If set, enable IP GENEVE tunnel in TX path. */
-	u8 tx_enable_ipgeneve;
-	u8 tx_enable_l2gre /* If set, enable l2 GRE tunnel in TX path. */;
-	u8 tx_enable_ipgre /* If set, enable IP GRE tunnel in TX path. */;
-	u8 tunnel_clss_vxlan /* Classification scheme for VXLAN tunnel. */;
-/* Classification scheme for l2 GENEVE tunnel. */
+	u8 tunnel_clss_vxlan /* Rx classification scheme for VXLAN tunnel. */;
+/* Rx classification scheme for l2 GENEVE tunnel. */
 	u8 tunnel_clss_l2geneve;
-/* Classification scheme for ip GENEVE tunnel. */
+/* Rx classification scheme for ip GENEVE tunnel. */
 	u8 tunnel_clss_ipgeneve;
-	u8 tunnel_clss_l2gre /* Classification scheme for l2 GRE tunnel. */;
-	u8 tunnel_clss_ipgre /* Classification scheme for ip GRE tunnel. */;
+	u8 tunnel_clss_l2gre /* Rx classification scheme for l2 GRE tunnel. */;
+	u8 tunnel_clss_ipgre /* Rx classification scheme for ip GRE tunnel. */;
+	u8 reserved;
 /* VXLAN tunnel UDP destination port. Valid if set_vxlan_udp_port_flg=1 */
 	__le16 vxlan_udp_port;
 /* GENEVE tunnel UDP destination port. Valid if set_geneve_udp_port_flg=1 */
@@ -1366,6 +1361,7 @@ struct pf_start_ramrod_data {
 	struct regpair consolid_q_pbl_addr;
 /* tunnel configuration. */
 	struct pf_start_tunnel_config tunnel_config;
+	__le32 reserved;
 	__le16 event_ring_sb_id /* Status block ID */;
 /* All VfIds owned by Pf will be from baseVfId till baseVfId+numVfs */
 	u8 base_vf_id;
@@ -1425,19 +1421,10 @@ struct pf_update_tunnel_config {
  * unicast outer MAC in NPAR mode.
  */
 	u8 update_rx_def_non_ucast_clss;
-/* Update TX per PF tunnel classification scheme. used by pf update. */
-	u8 update_tx_pf_clss;
 /* Update VXLAN tunnel UDP destination port. */
 	u8 set_vxlan_udp_port_flg;
 /* Update GENEVE tunnel UDP destination port. */
 	u8 set_geneve_udp_port_flg;
-	u8 tx_enable_vxlan /* If set, enable VXLAN tunnel in TX path. */;
-/* If set, enable l2 GENEVE tunnel in TX path. */
-	u8 tx_enable_l2geneve;
-/* If set, enable IP GENEVE tunnel in TX path. */
-	u8 tx_enable_ipgeneve;
-	u8 tx_enable_l2gre /* If set, enable l2 GRE tunnel in TX path. */;
-	u8 tx_enable_ipgre /* If set, enable IP GRE tunnel in TX path. */;
 	u8 tunnel_clss_vxlan /* Classification scheme for VXLAN tunnel. */;
 /* Classification scheme for l2 GENEVE tunnel. */
 	u8 tunnel_clss_l2geneve;
@@ -1447,7 +1434,7 @@ struct pf_update_tunnel_config {
 	u8 tunnel_clss_ipgre /* Classification scheme for ip GRE tunnel. */;
 	__le16 vxlan_udp_port /* VXLAN tunnel UDP destination port. */;
 	__le16 geneve_udp_port /* GENEVE tunnel UDP destination port. */;
-	__le16 reserved[2];
+	__le16 reserved;
 };
 
 /*

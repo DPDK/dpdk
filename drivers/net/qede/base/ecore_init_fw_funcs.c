@@ -1590,7 +1590,8 @@ void ecore_set_rfs_mode_enable(struct ecore_hwfn *p_hwfn,
 
 	/* Filters are per PF!! */
 	SET_FIELD(camLine.cam_line_mapped.camline,
-		  GFT_CAM_LINE_MAPPED_PF_ID_MASK, 1);
+		  GFT_CAM_LINE_MAPPED_PF_ID_MASK,
+		  GFT_CAM_LINE_MAPPED_PF_ID_MASK_MASK);
 	SET_FIELD(camLine.cam_line_mapped.camline,
 		  GFT_CAM_LINE_MAPPED_PF_ID, pf_id);
 
@@ -1644,8 +1645,9 @@ void ecore_set_rfs_mode_enable(struct ecore_hwfn *p_hwfn,
 			 i * REG_SIZE, *(ramLinePointer + i));
 
 	/* Set default profile so that no filter match will happen */
-	ramLine.lo = 0xffff;
-	ramLine.hi = 0xffff;
+	ramLine.lo = 0xffffffff;
+	ramLine.hi = 0x3ff;
+
 	for (i = 0; i < RAM_LINE_SIZE / REG_SIZE; i++)
 		ecore_wr(p_hwfn, p_ptt, PRS_REG_GFT_PROFILE_MASK_RAM +
 			 RAM_LINE_SIZE * PRS_GFT_CAM_LINES_NO_MATCH +
@@ -1722,40 +1724,30 @@ u32 ecore_get_mstorm_eth_vf_prods_offset(struct ecore_hwfn *p_hwfn,
 	return offset;
 }
 
-/* Calculate CRC8 of first 4 bytes in buf */
-static u8 ecore_calc_crc8(const u8 *buf)
-{
-	u32 i, j, crc = 0xff << 8;
+#ifndef LINUX_REMOVE
+#define CRC8_INIT_VALUE 0xFF
+#define CRC8_TABLE_SIZE 256
+#endif
+static u8 cdu_crc8_table[CRC8_TABLE_SIZE];
 
-	/* CRC-8 polynomial */
-	#define POLY 0x1070
-
-	for (j = 0; j < 4; j++, buf++) {
-		crc ^= (*buf << 8);
-		for (i = 0; i < 8; i++) {
-			if (crc & 0x8000)
-				crc ^= (POLY << 3);
-
-			 crc <<= 1;
-		}
-	}
-
-	return (u8)(crc >> 8);
-}
-
-/* Calculate and return CDU validation byte per conneciton type / region /
+/* Calculate and return CDU validation byte per connection type / region /
  * cid
  */
-static u8 ecore_calc_cdu_validation_byte(u8 conn_type, u8 region,
-					 u32 cid)
+static u8 ecore_calc_cdu_validation_byte(struct ecore_hwfn *p_hwfn,
+					 u8 conn_type,
+					 u8 region, u32 cid)
 {
 	const u8 validation_cfg = CDU_VALIDATION_DEFAULT_CFG;
+
+	static u8 crc8_table_valid;	/*automatically initialized to 0*/
 	u8 crc, validation_byte = 0;
 	u32 validation_string = 0;
-	const u8 *data_to_crc_rev;
-	u8 data_to_crc[4];
+	u32 data_to_crc;
 
-	data_to_crc_rev = (const u8 *)&validation_string;
+	if (crc8_table_valid == 0) {
+		OSAL_CRC8_POPULATE(cdu_crc8_table, 0x07);
+		crc8_table_valid = 1;
+	}
 
 	/*
 	 * The CRC is calculated on the String-to-compress:
@@ -1772,13 +1764,22 @@ static u8 ecore_calc_cdu_validation_byte(u8 conn_type, u8 region,
 	if ((validation_cfg >> CDU_CONTEXT_VALIDATION_CFG_USE_TYPE) & 1)
 		validation_string |= (conn_type & 0xF);
 
-	/* Convert to big-endian (ntoh())*/
-	data_to_crc[0] = data_to_crc_rev[3];
-	data_to_crc[1] = data_to_crc_rev[2];
-	data_to_crc[2] = data_to_crc_rev[1];
-	data_to_crc[3] = data_to_crc_rev[0];
+	/* Convert to big-endian and calculate CRC8*/
+	data_to_crc = OSAL_BE32_TO_CPU(validation_string);
 
-	crc = ecore_calc_crc8(data_to_crc);
+	crc = OSAL_CRC8(cdu_crc8_table, (u8 *)&data_to_crc, sizeof(data_to_crc),
+			CRC8_INIT_VALUE);
+
+	/* The validation byte [7:0] is composed:
+	 * for type A validation
+	 * [7]		= active configuration bit
+	 * [6:0]	= crc[6:0]
+	 *
+	 * for type B validation
+	 * [7]		= active configuration bit
+	 * [6:3]	= connection_type[3:0]
+	 * [2:0]	= crc[2:0]
+	 */
 
 	validation_byte |= ((validation_cfg >>
 			     CDU_CONTEXT_VALIDATION_CFG_USE_ACTIVE) & 1) << 7;
@@ -1793,8 +1794,9 @@ static u8 ecore_calc_cdu_validation_byte(u8 conn_type, u8 region,
 }
 
 /* Calcualte and set validation bytes for session context */
-void ecore_calc_session_ctx_validation(void *p_ctx_mem, u16 ctx_size,
-				       u8 ctx_type, u32 cid)
+void ecore_calc_session_ctx_validation(struct ecore_hwfn *p_hwfn,
+				       void *p_ctx_mem,
+				       u16 ctx_size, u8 ctx_type, u32 cid)
 {
 	u8 *x_val_ptr, *t_val_ptr, *u_val_ptr, *p_ctx;
 
@@ -1805,14 +1807,14 @@ void ecore_calc_session_ctx_validation(void *p_ctx_mem, u16 ctx_size,
 
 	OSAL_MEMSET(p_ctx, 0, ctx_size);
 
-	*x_val_ptr = ecore_calc_cdu_validation_byte(ctx_type, 3, cid);
-	*t_val_ptr = ecore_calc_cdu_validation_byte(ctx_type, 4, cid);
-	*u_val_ptr = ecore_calc_cdu_validation_byte(ctx_type, 5, cid);
+	*x_val_ptr = ecore_calc_cdu_validation_byte(p_hwfn, ctx_type, 3, cid);
+	*t_val_ptr = ecore_calc_cdu_validation_byte(p_hwfn, ctx_type, 4, cid);
+	*u_val_ptr = ecore_calc_cdu_validation_byte(p_hwfn, ctx_type, 5, cid);
 }
 
 /* Calcualte and set validation bytes for task context */
-void ecore_calc_task_ctx_validation(void *p_ctx_mem, u16 ctx_size,
-				    u8 ctx_type, u32 tid)
+void ecore_calc_task_ctx_validation(struct ecore_hwfn *p_hwfn, void *p_ctx_mem,
+				    u16 ctx_size, u8 ctx_type, u32 tid)
 {
 	u8 *p_ctx, *region1_val_ptr;
 
@@ -1821,7 +1823,8 @@ void ecore_calc_task_ctx_validation(void *p_ctx_mem, u16 ctx_size,
 
 	OSAL_MEMSET(p_ctx, 0, ctx_size);
 
-	*region1_val_ptr = ecore_calc_cdu_validation_byte(ctx_type, 1, tid);
+	*region1_val_ptr = ecore_calc_cdu_validation_byte(p_hwfn, ctx_type,
+								1, tid);
 }
 
 /* Memset session context to 0 while preserving validation bytes */
@@ -1847,8 +1850,7 @@ void ecore_memset_session_ctx(void *p_ctx_mem, u32 ctx_size, u8 ctx_type)
 }
 
 /* Memset task context to 0 while preserving validation bytes */
-void ecore_memset_task_ctx(void *p_ctx_mem, const u32 ctx_size,
-			   const u8 ctx_type)
+void ecore_memset_task_ctx(void *p_ctx_mem, u32 ctx_size, u8 ctx_type)
 {
 	u8 *p_ctx, *region1_val_ptr;
 	u8 region1_val;

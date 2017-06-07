@@ -165,23 +165,19 @@ static void ecore_set_tunn_ports(struct ecore_tunnel_info *p_tun,
 }
 
 static void
-__ecore_set_ramrod_tunnel_param(u8 *p_tunn_cls, u8 *p_enable_tx_clas,
+__ecore_set_ramrod_tunnel_param(u8 *p_tunn_cls,
 				struct ecore_tunn_update_type *tun_type)
 {
 	*p_tunn_cls = tun_type->tun_cls;
-
-	if (tun_type->b_mode_enabled)
-		*p_enable_tx_clas = 1;
 }
 
 static void
-ecore_set_ramrod_tunnel_param(u8 *p_tunn_cls, u8 *p_enable_tx_clas,
+ecore_set_ramrod_tunnel_param(u8 *p_tunn_cls,
 			      struct ecore_tunn_update_type *tun_type,
 			      u8 *p_update_port, __le16 *p_port,
 			      struct ecore_tunn_update_udp_port *p_udp_port)
 {
-	__ecore_set_ramrod_tunnel_param(p_tunn_cls, p_enable_tx_clas,
-					tun_type);
+	__ecore_set_ramrod_tunnel_param(p_tunn_cls, tun_type);
 	if (p_udp_port->b_update_port) {
 		*p_update_port = 1;
 		*p_port = OSAL_CPU_TO_LE16(p_udp_port->port);
@@ -200,33 +196,27 @@ ecore_tunn_set_pf_update_params(struct ecore_hwfn		*p_hwfn,
 	ecore_set_tunn_ports(p_tun, p_src);
 
 	ecore_set_ramrod_tunnel_param(&p_tunn_cfg->tunnel_clss_vxlan,
-				      &p_tunn_cfg->tx_enable_vxlan,
 				      &p_tun->vxlan,
 				      &p_tunn_cfg->set_vxlan_udp_port_flg,
 				      &p_tunn_cfg->vxlan_udp_port,
 				      &p_tun->vxlan_port);
 
 	ecore_set_ramrod_tunnel_param(&p_tunn_cfg->tunnel_clss_l2geneve,
-				      &p_tunn_cfg->tx_enable_l2geneve,
 				      &p_tun->l2_geneve,
 				      &p_tunn_cfg->set_geneve_udp_port_flg,
 				      &p_tunn_cfg->geneve_udp_port,
 				      &p_tun->geneve_port);
 
 	__ecore_set_ramrod_tunnel_param(&p_tunn_cfg->tunnel_clss_ipgeneve,
-					&p_tunn_cfg->tx_enable_ipgeneve,
 					&p_tun->ip_geneve);
 
 	__ecore_set_ramrod_tunnel_param(&p_tunn_cfg->tunnel_clss_l2gre,
-					&p_tunn_cfg->tx_enable_l2gre,
 					&p_tun->l2_gre);
 
 	__ecore_set_ramrod_tunnel_param(&p_tunn_cfg->tunnel_clss_ipgre,
-					&p_tunn_cfg->tx_enable_ipgre,
 					&p_tun->ip_gre);
 
 	p_tunn_cfg->update_rx_pf_clss = p_tun->b_update_rx_cls;
-	p_tunn_cfg->update_tx_pf_clss = p_tun->b_update_tx_cls;
 }
 
 static void ecore_set_hw_tunn_mode(struct ecore_hwfn *p_hwfn,
@@ -282,29 +272,24 @@ ecore_tunn_set_pf_start_params(struct ecore_hwfn *p_hwfn,
 	ecore_set_tunn_ports(p_tun, p_src);
 
 	ecore_set_ramrod_tunnel_param(&p_tunn_cfg->tunnel_clss_vxlan,
-				      &p_tunn_cfg->tx_enable_vxlan,
 				      &p_tun->vxlan,
 				      &p_tunn_cfg->set_vxlan_udp_port_flg,
 				      &p_tunn_cfg->vxlan_udp_port,
 				      &p_tun->vxlan_port);
 
 	ecore_set_ramrod_tunnel_param(&p_tunn_cfg->tunnel_clss_l2geneve,
-				      &p_tunn_cfg->tx_enable_l2geneve,
 				      &p_tun->l2_geneve,
 				      &p_tunn_cfg->set_geneve_udp_port_flg,
 				      &p_tunn_cfg->geneve_udp_port,
 				      &p_tun->geneve_port);
 
 	__ecore_set_ramrod_tunnel_param(&p_tunn_cfg->tunnel_clss_ipgeneve,
-					&p_tunn_cfg->tx_enable_ipgeneve,
 					&p_tun->ip_geneve);
 
 	__ecore_set_ramrod_tunnel_param(&p_tunn_cfg->tunnel_clss_l2gre,
-					&p_tunn_cfg->tx_enable_l2gre,
 					&p_tun->l2_gre);
 
 	__ecore_set_ramrod_tunnel_param(&p_tunn_cfg->tunnel_clss_ipgre,
-					&p_tunn_cfg->tx_enable_ipgre,
 					&p_tun->ip_gre);
 }
 
@@ -345,7 +330,7 @@ enum _ecore_status_t ecore_sp_pf_start(struct ecore_hwfn *p_hwfn,
 
 	/* For easier debugging */
 	p_ramrod->dont_log_ramrods = 0;
-	p_ramrod->log_type_mask = OSAL_CPU_TO_LE16(0xf);
+	p_ramrod->log_type_mask = OSAL_CPU_TO_LE16(0x8f);
 
 	switch (mode) {
 	case ECORE_MF_DEFAULT:

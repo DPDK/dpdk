@@ -79,6 +79,10 @@
 
 /* Maximum number of buffers, used for RX packet placement */
 #define ETH_RX_MAX_BUFF_PER_PKT             5
+/* Minimum number of free BDs in RX ring, that guarantee receiving of at least
+ * one RX packet.
+ */
+#define ETH_RX_BD_THRESHOLD                12
 
 /* num of MAC/VLAN filters */
 #define ETH_NUM_MAC_FILTERS                 512
