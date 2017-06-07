@@ -32,9 +32,9 @@
 #
 # exec-env:
 #
-#   - define EXECENV_CFLAGS variable (overriden by cmdline)
-#   - define EXECENV_LDFLAGS variable (overriden by cmdline)
-#   - define EXECENV_ASFLAGS variable (overriden by cmdline)
+#   - define EXECENV_CFLAGS variable (overridden by cmdline)
+#   - define EXECENV_LDFLAGS variable (overridden by cmdline)
+#   - define EXECENV_ASFLAGS variable (overridden by cmdline)
 #   - may override any previously defined variable
 #
 # examples for RTE_EXEC_ENV: linuxapp, bsdapp

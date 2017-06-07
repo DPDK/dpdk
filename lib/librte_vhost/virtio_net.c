@@ -233,7 +233,7 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vring_desc *descs,
 /**
  * This function adds buffers to the virtio devices RX virtqueue. Buffers can
  * be received from the physical port or from another virtio device. A packet
- * count is returned to indicate the number of packets that are succesfully
+ * count is returned to indicate the number of packets that are successfully
  * added to the RX queue. This function works when the mbuf is scattered, but
  * it doesn't support the mergeable feature.
  */

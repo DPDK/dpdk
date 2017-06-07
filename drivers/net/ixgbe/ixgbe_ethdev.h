@@ -72,7 +72,7 @@
 #endif
 #define IXGBE_HWSTRIP_BITMAP_SIZE (IXGBE_MAX_RX_QUEUE_NUM / (sizeof(uint32_t) * NBBY))
 
-/* EITR Inteval is in 2048ns uinits for 1G and 10G link */
+/* EITR Interval is in 2048ns uinits for 1G and 10G link */
 #define IXGBE_EITR_INTERVAL_UNIT_NS	2048
 #define IXGBE_EITR_ITR_INT_SHIFT       3
 #define IXGBE_EITR_INTERVAL_US(us) \

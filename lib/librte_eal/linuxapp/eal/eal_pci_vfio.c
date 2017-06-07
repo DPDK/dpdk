@@ -214,7 +214,7 @@ pci_vfio_setup_interrupts(struct rte_pci_device *dev, int vfio_dev_fd)
 	intr_idx = VFIO_PCI_NUM_IRQS;
 
 	/* get interrupt type from internal config (MSI-X by default, can be
-	 * overriden from the command line
+	 * overridden from the command line
 	 */
 	switch (internal_config.vfio_intr_mode) {
 	case RTE_INTR_MODE_MSIX:

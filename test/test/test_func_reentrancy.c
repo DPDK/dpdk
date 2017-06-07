@@ -138,7 +138,7 @@ ring_create_lookup(__attribute__((unused)) void *arg)
 			return -1;
 	}
 
-	/* verify all ring created sucessful */
+	/* verify all ring created successful */
 	for (i = 0; i < MAX_ITER_TIMES; i++) {
 		snprintf(ring_name, sizeof(ring_name), "fr_test_%d_%d", lcore_self, i);
 		if (rte_ring_lookup(ring_name) == NULL)
@@ -192,7 +192,7 @@ mempool_create_lookup(__attribute__((unused)) void *arg)
 			return -1;
 	}
 
-	/* verify all ring created sucessful */
+	/* verify all ring created successful */
 	for (i = 0; i < MAX_ITER_TIMES; i++) {
 		snprintf(mempool_name, sizeof(mempool_name), "fr_test_%d_%d", lcore_self, i);
 		if (rte_mempool_lookup(mempool_name) == NULL)

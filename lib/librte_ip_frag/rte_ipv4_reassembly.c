@@ -118,7 +118,7 @@ ipv4_frag_reassemble(struct ip_frag_pkt *fp)
  *   Pointer to the IPV4 header inside the fragment.
  * @return
  *   Pointer to mbuf for reassebled packet, or NULL if:
- *   - an error occured.
+ *   - an error occurred.
  *   - not all fragments of the packet are collected yet.
  */
 struct rte_mbuf *

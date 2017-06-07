@@ -405,7 +405,7 @@ enum I40E_VF_STATE {
 struct i40e_pf_vf {
 	struct i40e_pf *pf;
 	struct i40e_vsi *vsi;
-	enum I40E_VF_STATE state; /* The number of queue pairs availiable */
+	enum I40E_VF_STATE state; /* The number of queue pairs available */
 	uint16_t vf_idx; /* VF index in pf->vfs */
 	uint16_t lan_nb_qps; /* Actual queues allocated */
 	uint16_t reset_cnt; /* Total vf reset times */

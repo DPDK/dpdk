@@ -388,7 +388,7 @@ static unsigned int refill_fl_usembufs(struct adapter *adap, struct sge_fl *q,
 	struct rte_pktmbuf_pool_private *mbp_priv;
 	u8 jumbo_en = rxq->rspq.eth_dev->data->dev_conf.rxmode.jumbo_frame;
 
-	/* Use jumbo mtu buffers iff mbuf data room size can fit jumbo data. */
+	/* Use jumbo mtu buffers if mbuf data room size can fit jumbo data. */
 	mbp_priv = rte_mempool_get_priv(rxq->rspq.mb_pool);
 	if (jumbo_en &&
 	    ((mbp_priv->mbuf_data_room_size - RTE_PKTMBUF_HEADROOM) >= 9000))
@@ -593,7 +593,7 @@ static inline unsigned int calc_tx_flits(const struct rte_mbuf *m)
 	 * Write Header (incorporated as part of the cpl_tx_pkt_lso and
 	 * cpl_tx_pkt structures), followed by either a TX Packet Write CPL
 	 * message or, if we're doing a Large Send Offload, an LSO CPL message
-	 * with an embeded TX Packet Write CPL message.
+	 * with an embedded TX Packet Write CPL message.
 	 */
 	flits = sgl_len(m->nb_segs);
 	if (m->tso_segsz)

@@ -64,7 +64,7 @@ rte_ethtool_get_drvinfo(uint8_t port_id, struct ethtool_drvinfo *drvinfo)
 		printf("firmware version get error: (%s)\n", strerror(-ret));
 	else if (ret > 0)
 		printf("Insufficient fw version buffer size, "
-		       "the minimun size should be %d\n", ret);
+		       "the minimum size should be %d\n", ret);
 
 	memset(&dev_info, 0, sizeof(dev_info));
 	rte_eth_dev_info_get(port_id, &dev_info);

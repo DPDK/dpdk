@@ -32,15 +32,15 @@
 #
 # arch:
 #
-#   - define ARCH variable (overriden by cmdline or by previous
+#   - define ARCH variable (overridden by cmdline or by previous
 #     optional define in machine .mk)
-#   - define CROSS variable (overriden by cmdline or previous define
+#   - define CROSS variable (overridden by cmdline or previous define
 #     in machine .mk)
-#   - define CPU_CFLAGS variable (overriden by cmdline or previous
+#   - define CPU_CFLAGS variable (overridden by cmdline or previous
 #     define in machine .mk)
-#   - define CPU_LDFLAGS variable (overriden by cmdline or previous
+#   - define CPU_LDFLAGS variable (overridden by cmdline or previous
 #     define in machine .mk)
-#   - define CPU_ASFLAGS variable (overriden by cmdline or previous
+#   - define CPU_ASFLAGS variable (overridden by cmdline or previous
 #     define in machine .mk)
 #   - may override any previously defined variable
 #

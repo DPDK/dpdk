@@ -293,7 +293,7 @@ err:
 }
 
 /*
- * This function maps grant node of vring or mbuf pool to a continous virtual address space,
+ * This function maps grant node of vring or mbuf pool to a continuous virtual address space,
  * and returns mapped address, pfn array, index array
  * @param gntnode
  *  Pointer to grant node
@@ -460,7 +460,7 @@ cleanup_mempool(struct xen_mempool *mempool)
 
 /*
  * process mempool node idx#_mempool_gref, idx = 0, 1, 2...
- * untill we encounter a node that doesn't exist.
+ * until we encounter a node that doesn't exist.
  */
 int
 parse_mempoolnode(struct xen_guest *guest)

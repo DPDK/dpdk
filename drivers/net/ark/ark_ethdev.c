@@ -636,7 +636,7 @@ eth_ark_dev_stop(struct rte_eth_dev *dev)
 	}
 
 	/* Stop DDM */
-	/* Wait up to 0.1 second.  each stop is upto 1000 * 10 useconds */
+	/* Wait up to 0.1 second.  each stop is up to 1000 * 10 useconds */
 	for (i = 0; i < 10; i++) {
 		status = ark_ddm_stop(ark->ddm.v, 1);
 		if (status == 0)

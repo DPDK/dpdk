@@ -821,7 +821,7 @@ test_mode4_rx(void)
 		TEST_ASSERT(cnt[0] == expected_pkts_cnt / 2 &&
 			cnt[1] == expected_pkts_cnt / 2,
 			"Expected %u packets with the same MAC and %u with different but "
-			"got %u with the same and %u with diffrent MAC",
+			"got %u with the same and %u with different MAC",
 			expected_pkts_cnt / 2, expected_pkts_cnt / 2, cnt[1], cnt[0]);
 	} else if (retval > 0)
 		free_pkts(pkts, retval);
@@ -925,7 +925,7 @@ test_mode4_rx(void)
 				break;
 		}
 
-		TEST_ASSERT(j < 5, "Failed to agregate slave after link up");
+		TEST_ASSERT(j < 5, "Failed to aggregate slave after link up");
 	}
 
 	remove_slaves_and_stop_bonded_device();
@@ -1263,7 +1263,7 @@ test_mode4_expired(void)
 			retval = bond_handshake_reply(slave);
 			TEST_ASSERT(retval >= 0, "Handshake failed");
 
-			/* Remove replay for slave that supose to be expired. */
+			/* Remove replay for slave that suppose to be expired. */
 			if (slave == exp_slave) {
 				while (rte_ring_count(slave->rx_queue) > 0) {
 					void *pkt = NULL;

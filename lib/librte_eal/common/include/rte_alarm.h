@@ -91,7 +91,7 @@ int rte_eal_alarm_set(uint64_t us, rte_eal_alarm_callback cb, void *cb_arg);
  *      the number of canceled alarm callback functions
  *    - value greater or equal 0 and rte_errno set to EINPROGRESS, at least one
  *      alarm could not be canceled because cancellation was requested from alarm
- *      callback context. Returned value is the number of succesfuly canceled
+ *      callback context. Returned value is the number of successfully canceled
  *      alarm callbacks
  *    -  0 and rte_errno set to ENOENT - no alarm found
  *    - -1 and rte_errno set to EINVAL - invalid parameter (NULL callback)

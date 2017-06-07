@@ -392,7 +392,7 @@ static void eth_event_callback(uint8_t port_id,
 static int all_ports_started(void);
 
 /*
- * Helper function to check if socket is allready discovered.
+ * Helper function to check if socket is already discovered.
  * If yes, return positive value. If not, return zero.
  */
 int

@@ -1020,7 +1020,7 @@ main(int argc, char **argv)
 
 		if (check_ptype(portid) == 0) {
 			rte_eth_add_rx_callback(portid, 0, cb_parse_ptype, NULL);
-			printf("Add Rx callback funciton to detect L3 packet type by SW :"
+			printf("Add Rx callback function to detect L3 packet type by SW :"
 				" port = %d\n", portid);
 		}
 	}

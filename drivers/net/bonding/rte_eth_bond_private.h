@@ -184,7 +184,7 @@ extern const struct eth_dev_ops default_dev_ops;
 int
 check_for_bonded_ethdev(const struct rte_eth_dev *eth_dev);
 
-/* Search given slave array to find possition of given id.
+/* Search given slave array to find position of given id.
  * Return slave pos or slaves_count if not found. */
 static inline uint8_t
 find_slave_by_id(uint8_t *slaves, uint8_t slaves_count, uint8_t slave_id) {

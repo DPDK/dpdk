@@ -1108,7 +1108,7 @@ static inline u32 _kc_netif_msg_init(int debug_value, int default_msg_enable_bit
 #define pci_register_driver pci_module_init
 
 /*
- * Most of the dma compat code is copied/modifed from the 2.4.37
+ * Most of the dma compat code is copied/modified from the 2.4.37
  * /include/linux/libata-compat.h header file
  */
 /* These definitions mirror those in pci.h, so they can be used

@@ -150,14 +150,14 @@ TAG2="$TAG2 ($HASH2)"
 ABICHECK=`which abi-compliance-checker 2>/dev/null`
 if [ $? -ne 0 ]
 then
-	log "INFO" "Cant find abi-compliance-checker utility"
+	log "INFO" "Can't find abi-compliance-checker utility"
 	cleanup_and_exit 1
 fi
 
 ABIDUMP=`which abi-dumper 2>/dev/null`
 if [ $? -ne 0 ]
 then
-	log "INFO" "Cant find abi-dumper utility"
+	log "INFO" "Can't find abi-dumper utility"
 	cleanup_and_exit 1
 fi
 

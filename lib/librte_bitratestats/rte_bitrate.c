@@ -112,7 +112,7 @@ rte_stats_bitrate_calc(struct rte_stats_bitrates *bitrate_data,
 		port_data->peak_ibits = cnt_bits;
 	delta = cnt_bits;
 	delta -= port_data->ewma_ibits;
-	/* The +-50 fixes integer rounding during divison */
+	/* The +-50 fixes integer rounding during division */
 	if (delta > 0)
 		delta = (delta * alpha_percent + 50) / 100;
 	else

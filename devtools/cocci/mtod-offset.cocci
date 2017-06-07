@@ -55,7 +55,7 @@ expression M, O1, O2;
 
 
 //
-// Cleanup rules.  Fold in double casts, remove unnecessary paranthesis, etc.
+// Cleanup rules.  Fold in double casts, remove unnecessary parenthesis, etc.
 //
 @disable paren@
 expression M, O;

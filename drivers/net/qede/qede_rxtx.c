@@ -1478,7 +1478,7 @@ qede_xmit_prep_pkts(__rte_unused void *p_txq, struct rte_mbuf **tx_pkts,
 			break;
 		}
 #endif
-		/* TBD: pseudo csum calcuation required iff
+		/* TBD: pseudo csum calcuation required if
 		 * ETH_TX_DATA_2ND_BD_L4_PSEUDO_CSUM_MODE not set?
 		 */
 		ret = rte_net_intel_cksum_prepare(m);
@@ -1651,7 +1651,7 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				1 << ETH_TX_1ST_BD_FLAGS_L4_CSUM_SHIFT;
 
 		if (ipv6_ext_flg) {
-			/* TBD: check pseudo csum iff tx_prepare not called? */
+			/* TBD: check pseudo csum if tx_prepare not called? */
 			bd2_bf1 |= ETH_L4_PSEUDO_CSUM_ZERO_LENGTH <<
 				ETH_TX_DATA_2ND_BD_L4_PSEUDO_CSUM_MODE_SHIFT;
 		}

@@ -45,7 +45,7 @@
 #define CIRBUF_STR_HEAD " HEAD"
 #define CIRBUF_STR_TAIL "TAIL"
 
-/* miscelaneous tests - they make bullseye happy */
+/* miscellaneous tests - they make bullseye happy */
 static int
 test_cirbuf_string_misc(void)
 {

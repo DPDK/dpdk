@@ -288,7 +288,7 @@ void *qbman_swp_mc_result(struct qbman_swp *p)
 	qbman_cena_invalidate_prefetch(&p->sys,
 				       QBMAN_CENA_SWP_RR(p->mc.valid_bit));
 	ret = qbman_cena_read(&p->sys, QBMAN_CENA_SWP_RR(p->mc.valid_bit));
-	/* Remove the valid-bit - command completed iff the rest is non-zero */
+	/* Remove the valid-bit - command completed if the rest is non-zero */
 	verb = ret[0] & ~QB_VALID_BIT;
 	if (!verb)
 		return NULL;
@@ -769,7 +769,7 @@ const struct qbman_result *qbman_swp_dqrr_next(struct qbman_swp *s)
 		 */
 		uint32_t dqpi = qbman_cinh_read(&s->sys, QBMAN_CINH_SWP_DQPI);
 		uint32_t pi = qb_attr_code_decode(&code_dqpi_pi, &dqpi);
-		/* there are new entries iff pi != next_idx */
+		/* there are new entries if pi != next_idx */
 		if (pi == s->dqrr.next_idx)
 			return NULL;
 		/* if next_idx is/was the last ring index, and 'pi' is

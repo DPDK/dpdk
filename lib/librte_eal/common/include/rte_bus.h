@@ -58,7 +58,7 @@ TAILQ_HEAD(rte_bus_list, rte_bus);
 
 /**
  * Bus specific scan for devices attached on the bus.
- * For each bus object, the scan would be reponsible for finding devices and
+ * For each bus object, the scan would be responsible for finding devices and
  * adding them to its private device list.
  *
  * A bus should mandatorily implement this method.

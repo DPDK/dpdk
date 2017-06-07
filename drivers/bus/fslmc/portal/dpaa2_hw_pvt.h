@@ -250,7 +250,7 @@ static phys_addr_t dpaa2_mem_vtop(uint64_t vaddr)
 /**
  * When we are using Physical addresses as IO Virtual Addresses,
  * Need to call conversion routines dpaa2_mem_vtop & dpaa2_mem_ptov
- * whereever required.
+ * wherever required.
  * These routines are called with help of below MACRO's
  */
 

@@ -173,7 +173,7 @@ int lthread_mutex_lock(struct lthread_mutex *m)
 	return 0;
 }
 
-/* try to lock a mutex but dont block */
+/* try to lock a mutex but don't block */
 int lthread_mutex_trylock(struct lthread_mutex *m)
 {
 	struct lthread *lt = THIS_LTHREAD;

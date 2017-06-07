@@ -74,7 +74,7 @@
 /* Maximun number of capability elements */
 #define I40E_MAX_CAP_ELE_NUM       128
 
-/* Wait count and inteval */
+/* Wait count and interval */
 #define I40E_CHK_Q_ENA_COUNT       1000
 #define I40E_CHK_Q_ENA_INTERVAL_US 1000
 
@@ -5734,16 +5734,16 @@ i40e_dev_handle_vfr_event(struct rte_eth_dev *dev)
 		index = abs_vf_id / I40E_UINT32_BIT_SIZE;
 		offset = abs_vf_id % I40E_UINT32_BIT_SIZE;
 		val = I40E_READ_REG(hw, I40E_GLGEN_VFLRSTAT(index));
-		/* VFR event occured */
+		/* VFR event occurred */
 		if (val & (0x1 << offset)) {
 			int ret;
 
 			/* Clear the event first */
 			I40E_WRITE_REG(hw, I40E_GLGEN_VFLRSTAT(index),
 							(0x1 << offset));
-			PMD_DRV_LOG(INFO, "VF %u reset occured", abs_vf_id);
+			PMD_DRV_LOG(INFO, "VF %u reset occurred", abs_vf_id);
 			/**
-			 * Only notify a VF reset event occured,
+			 * Only notify a VF reset event occurred,
 			 * don't trigger another SW reset
 			 */
 			ret = i40e_pf_host_vf_reset(&pf->vfs[i], 0);
@@ -7460,7 +7460,7 @@ i40e_pf_config_rss(struct i40e_pf *pf)
 
 	/*
 	 * If both VMDQ and RSS enabled, not all of PF queues are configured.
-	 * It's necessary to calulate the actual PF queues that are configured.
+	 * It's necessary to calculate the actual PF queues that are configured.
 	 */
 	if (pf->dev_data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_VMDQ_FLAG)
 		num = i40e_pf_calc_configured_queues_num(pf);

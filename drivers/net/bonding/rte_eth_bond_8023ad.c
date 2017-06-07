@@ -905,7 +905,7 @@ bond_mode_8023ad_activate_slave(struct rte_eth_dev *bond_dev, uint8_t slave_id)
 			32 : RTE_MEMPOOL_CACHE_MAX_SIZE,
 		0, element_size, socket_id);
 
-	/* Any memory allocation failure in initalization is critical because
+	/* Any memory allocation failure in initialization is critical because
 	 * resources can't be free, so reinitialization is impossible. */
 	if (port->mbuf_pool == NULL) {
 		rte_panic("Slave %u: Failed to create memory pool '%s': %s\n",

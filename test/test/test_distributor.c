@@ -112,7 +112,7 @@ handle_work(void *arg)
 /* do basic sanity testing of the distributor. This test tests the following:
  * - send 32 packets through distributor with the same tag and ensure they
  *   all go to the one worker
- * - send 32 packets throught the distributor with two different tags and
+ * - send 32 packets through the distributor with two different tags and
  *   verify that they go equally to two different workers.
  * - send 32 packets with different tags through the distributors and
  *   just verify we get all packets back.

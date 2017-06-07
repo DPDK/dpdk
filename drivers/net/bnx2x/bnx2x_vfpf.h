@@ -282,7 +282,7 @@ struct bnx2x_vf_bulletin {
 	uint16_t version;
 	uint16_t length;
 
-	uint64_t valid_bitmap;	/* bitmap indicating wich fields
+	uint64_t valid_bitmap;	/* bitmap indicating which fields
 					 * hold valid values
 					 */
 

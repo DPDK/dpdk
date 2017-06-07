@@ -1604,7 +1604,7 @@ processx4_step3(struct rte_mbuf *pkt[FWDSTEP], uint16_t dst_port[FWDSTEP])
  * Suppose we have array of destionation ports:
  * dst_port[] = {a, b, c, d,, e, ... }
  * dp1 should contain: <a, b, c, d>, dp2: <b, c, d, e>.
- * We doing 4 comparisions at once and the result is 4 bit mask.
+ * We doing 4 comparisons at once and the result is 4 bit mask.
  * This mask is used as an index into prebuild array of pnum values.
  */
 static inline uint16_t *

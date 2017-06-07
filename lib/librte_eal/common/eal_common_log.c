@@ -173,13 +173,13 @@ rte_log_set_level_regexp(const char *pattern, uint32_t level)
 	return 0;
 }
 
-/* get the current loglevel for the message beeing processed */
+/* get the current loglevel for the message being processed */
 int rte_log_cur_msg_loglevel(void)
 {
 	return RTE_PER_LCORE(log_cur_msg).loglevel;
 }
 
-/* get the current logtype for the message beeing processed */
+/* get the current logtype for the message being processed */
 int rte_log_cur_msg_logtype(void)
 {
 	return RTE_PER_LCORE(log_cur_msg).logtype;

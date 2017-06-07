@@ -409,7 +409,7 @@ test_interrupt(void)
 
 	printf("Check unknown valid interrupt full path\n");
 	if (test_interrupt_full_path_check(TEST_INTERRUPT_HANDLE_VALID) < 0) {
-		printf("failure occured during checking unknown valid "
+		printf("failure occurred during checking unknown valid "
 						"interrupt full path\n");
 		goto out;
 	}
@@ -417,7 +417,7 @@ test_interrupt(void)
 	printf("Check valid UIO interrupt full path\n");
 	if (test_interrupt_full_path_check(TEST_INTERRUPT_HANDLE_VALID_UIO)
 									< 0) {
-		printf("failure occured during checking valid UIO interrupt "
+		printf("failure occurred during checking valid UIO interrupt "
 								"full path\n");
 		goto out;
 	}
@@ -425,7 +425,7 @@ test_interrupt(void)
 	printf("Check valid alarm interrupt full path\n");
 	if (test_interrupt_full_path_check(TEST_INTERRUPT_HANDLE_VALID_ALARM)
 									< 0) {
-		printf("failure occured during checking valid alarm "
+		printf("failure occurred during checking valid alarm "
 						"interrupt full path\n");
 		goto out;
 	}

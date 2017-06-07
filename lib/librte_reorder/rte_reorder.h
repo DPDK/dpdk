@@ -147,7 +147,7 @@ rte_reorder_free(struct rte_reorder_buffer *b);
  *   -1 on error
  *   On error case, rte_errno will be set appropriately:
  *    - ENOSPC - Cannot move existing mbufs from reorder buffer to accommodate
- *      ealry mbuf, but it can be accomodated by performing drain and then insert.
+ *      ealry mbuf, but it can be accommodated by performing drain and then insert.
  *    - ERANGE - Too early or late mbuf which is vastly out of range of expected
  *      window should be ingnored without any handling.
  */

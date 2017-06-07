@@ -486,7 +486,7 @@ static int parse_kvlist (const char *key __rte_unused, const char *value, void *
 	ret = -EINVAL;
 
 	if (!name) {
-		RTE_LOG(WARNING, PMD, "command line paramter is empty for ring pmd!\n");
+		RTE_LOG(WARNING, PMD, "command line parameter is empty for ring pmd!\n");
 		goto out;
 	}
 

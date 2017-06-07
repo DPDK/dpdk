@@ -1608,7 +1608,7 @@ i40e_dev_rx_queue_stop(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		rxq = dev->data->rx_queues[rx_queue_id];
 
 		/*
-		* rx_queue_id is queue id aplication refers to, while
+		* rx_queue_id is queue id application refers to, while
 		* rxq->reg_idx is the real queue index.
 		*/
 		err = i40e_switch_rx_queue(hw, rxq->reg_idx, FALSE);
@@ -1639,7 +1639,7 @@ i40e_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 		txq = dev->data->tx_queues[tx_queue_id];
 
 		/*
-		* tx_queue_id is queue id aplication refers to, while
+		* tx_queue_id is queue id application refers to, while
 		* rxq->reg_idx is the real queue index.
 		*/
 		err = i40e_switch_tx_queue(hw, txq->reg_idx, TRUE);
@@ -1664,7 +1664,7 @@ i40e_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t tx_queue_id)
 		txq = dev->data->tx_queues[tx_queue_id];
 
 		/*
-		* tx_queue_id is queue id aplication refers to, while
+		* tx_queue_id is queue id application refers to, while
 		* txq->reg_idx is the real queue index.
 		*/
 		err = i40e_switch_tx_queue(hw, txq->reg_idx, FALSE);

@@ -259,7 +259,7 @@ boolean parameters value.
 
 - ``debug_init`` [bool] (default **n**)
 
-  Enable extra logging during device intialization and startup.
+  Enable extra logging during device initialization and startup.
 
 - ``mcdi_logging`` [bool] (default **n**)
 

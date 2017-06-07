@@ -1455,7 +1455,7 @@ rte_pmd_tap_probe(struct rte_vdev_device *dev)
 	memset(remote_iface, 0, RTE_ETH_NAME_MAX_LEN);
 
 	if (params && (params[0] != '\0')) {
-		RTE_LOG(DEBUG, PMD, "paramaters (%s)\n", params);
+		RTE_LOG(DEBUG, PMD, "parameters (%s)\n", params);
 
 		kvlist = rte_kvargs_parse(params, valid_arguments);
 		if (kvlist) {

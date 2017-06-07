@@ -2499,7 +2499,7 @@ struct shmem2_region {
 	 * SHMEM_EEE_XXX_ADV definitions (where XXX is replaced by speed).
 	 * bit 28 when 1'b1 EEE was requested.
 	 * bit 29 when 1'b1 tx lpi was requested.
-	 * bit 30 when 1'b1 EEE was negotiated. Tx lpi will be asserted iff
+	 * bit 30 when 1'b1 EEE was negotiated. Tx lpi will be asserted if
 	 * 30:29 are 2'b11.
 	 * bit 31 when 1'b0 bits 15:0 contain a PORT_FEAT_CFG_EEE_ define as
 	 * value. When 1'b1 those bits contains a value times 16 microseconds.
@@ -3911,7 +3911,7 @@ struct client_init_rx_data
 	uint16_t bd_pause_thr_high /* number of remaining bds above which, we send un-pause message */;
 	uint16_t sge_pause_thr_low /* number of remaining sges under which, we send pause message */;
 	uint16_t sge_pause_thr_high /* number of remaining sges above which, we send un-pause message */;
-	uint16_t rx_cos_mask /* the bits that will be set on pfc/ safc paket whith will be genratet when this ring is full. for regular flow control set this to 1 */;
+	uint16_t rx_cos_mask /* the bits that will be set on pfc/ safc paket with will be genratet when this ring is full. for regular flow control set this to 1 */;
 	uint16_t silent_vlan_value /* The vlan to compare, in case, silent vlan is set */;
 	uint16_t silent_vlan_mask /* The vlan mask, in case, silent vlan is set */;
 	uint32_t reserved6[2];
@@ -4903,7 +4903,7 @@ enum eth_tx_vlan_type
  */
 enum eth_vlan_filter_mode
 {
-	ETH_VLAN_FILTER_ANY_VLAN /* Dont filter by vlan */,
+	ETH_VLAN_FILTER_ANY_VLAN /* Don't filter by vlan */,
 	ETH_VLAN_FILTER_SPECIFIC_VLAN /* Only the vlan_id is allowed */,
 	ETH_VLAN_FILTER_CLASSIFY /* Vlan will be added to CAM for classification */,
 	MAX_ETH_VLAN_FILTER_MODE};
@@ -4937,7 +4937,7 @@ struct mac_configuration_entry
 #define MAC_CONFIGURATION_ENTRY_RDMA_MAC_SHIFT 1
 #define MAC_CONFIGURATION_ENTRY_VLAN_FILTERING_MODE (0x3<<2) /* BitField flags	 (use enum eth_vlan_filter_mode) */
 #define MAC_CONFIGURATION_ENTRY_VLAN_FILTERING_MODE_SHIFT 2
-#define MAC_CONFIGURATION_ENTRY_OVERRIDE_VLAN_REMOVAL (0x1<<4) /* BitField flags	BitField flags  0 - cant remove vlan 1 - can remove vlan. relevant only to everest1 */
+#define MAC_CONFIGURATION_ENTRY_OVERRIDE_VLAN_REMOVAL (0x1<<4) /* BitField flags	BitField flags  0 - can't remove vlan 1 - can remove vlan. relevant only to everest1 */
 #define MAC_CONFIGURATION_ENTRY_OVERRIDE_VLAN_REMOVAL_SHIFT 4
 #define MAC_CONFIGURATION_ENTRY_BROADCAST (0x1<<5) /* BitField flags	BitField flags   0 - not broadcast 1 - broadcast. relevant only to everest1 */
 #define MAC_CONFIGURATION_ENTRY_BROADCAST_SHIFT 5
@@ -5024,7 +5024,7 @@ struct tstorm_eth_function_common_config
 #define TSTORM_ETH_FUNCTION_COMMON_CONFIG_RSS_IPV6_TCP_CAPABILITY_SHIFT 3
 #define TSTORM_ETH_FUNCTION_COMMON_CONFIG_RSS_MODE (0x7<<4) /* BitField config_flagsGeneral configuration flags	RSS mode of operation (use enum eth_rss_mode) */
 #define TSTORM_ETH_FUNCTION_COMMON_CONFIG_RSS_MODE_SHIFT 4
-#define TSTORM_ETH_FUNCTION_COMMON_CONFIG_VLAN_FILTERING_ENABLE (0x1<<7) /* BitField config_flagsGeneral configuration flags	0 - Dont filter by vlan, 1 - Filter according to the vlans specificied in mac_filter_config */
+#define TSTORM_ETH_FUNCTION_COMMON_CONFIG_VLAN_FILTERING_ENABLE (0x1<<7) /* BitField config_flagsGeneral configuration flags	0 - Don't filter by vlan, 1 - Filter according to the vlans specificied in mac_filter_config */
 #define TSTORM_ETH_FUNCTION_COMMON_CONFIG_VLAN_FILTERING_ENABLE_SHIFT 7
 #define __TSTORM_ETH_FUNCTION_COMMON_CONFIG_RESERVED0 (0xFF<<8) /* BitField config_flagsGeneral configuration flags	 */
 #define __TSTORM_ETH_FUNCTION_COMMON_CONFIG_RESERVED0_SHIFT 8
@@ -5634,7 +5634,7 @@ struct flow_control_configuration
 struct function_start_data
 {
 	uint8_t function_mode /* the function mode */;
-	uint8_t allow_npar_tx_switching /* If set, inter-pf tx switching is allowed in Switch Independant function mode. (E2/E3 Only) */;
+	uint8_t allow_npar_tx_switching /* If set, inter-pf tx switching is allowed in Switch Independent function mode. (E2/E3 Only) */;
 	uint16_t sd_vlan_tag /* value of Vlan in case of switch depended multi-function mode */;
 	uint16_t vif_id /* value of VIF id in case of NIV multi-function mode */;
 	uint8_t path_id;

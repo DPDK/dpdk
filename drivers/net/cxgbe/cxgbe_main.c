@@ -626,7 +626,7 @@ static int adap_init0_config(struct adapter *adapter, int reset)
 	/*
 	 * Return successfully and note that we're operating with parameters
 	 * not supplied by the driver, rather than from hard-wired
-	 * initialization constants burried in the driver.
+	 * initialization constants buried in the driver.
 	 */
 	dev_info(adapter,
 		 "Successfully configured using Firmware Configuration File \"%s\", version %#x, computed checksum %#x\n",

@@ -183,7 +183,7 @@ timer_set_running_state(struct rte_timer *tim)
 			return -1;
 
 		/* here, we know that timer is stopped or pending,
-		 * mark it atomically as beeing configured */
+		 * mark it atomically as being configured */
 		status.state = RTE_TIMER_RUNNING;
 		status.owner = (int16_t)lcore_id;
 		success = rte_atomic32_cmpset(&tim->status.u32,

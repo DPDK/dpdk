@@ -39,7 +39,7 @@
  * When a symol is exported from a library to provide an API, it also provides a
  * calling convention (ABI) that is embodied in its name, return type,
  * arguments, etc.  On occasion that function may need to change to accommodate
- * new functionality, behavior, etc.  When that occurs, it is desireable to
+ * new functionality, behavior, etc.  When that occurs, it is desirable to
  * allow for backwards compatibility for a time with older binaries that are
  * dynamically linked to the dpdk.  To support that, the __vsym and
  * VERSION_SYMBOL macros are created.  They, in conjunction with the

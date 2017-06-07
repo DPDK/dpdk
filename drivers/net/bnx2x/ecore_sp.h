@@ -1116,10 +1116,10 @@ struct ecore_config_rss_params {
 	/* RSS hash values */
 	uint32_t		rss_key[10];
 
-	/* valid only iff ECORE_RSS_UPDATE_TOE is set */
+	/* valid only if ECORE_RSS_UPDATE_TOE is set */
 	uint16_t		toe_rss_bitmap;
 
-	/* valid iff ECORE_RSS_TUNNELING is set */
+	/* valid if ECORE_RSS_TUNNELING is set */
 	uint16_t		tunnel_value;
 	uint16_t		tunnel_mask;
 };
@@ -1286,14 +1286,14 @@ struct rxq_pause_params {
 	uint16_t		bd_th_hi;
 	uint16_t		rcq_th_lo;
 	uint16_t		rcq_th_hi;
-	uint16_t		sge_th_lo; /* valid iff ECORE_Q_FLG_TPA */
-	uint16_t		sge_th_hi; /* valid iff ECORE_Q_FLG_TPA */
+	uint16_t		sge_th_lo; /* valid if ECORE_Q_FLG_TPA */
+	uint16_t		sge_th_hi; /* valid if ECORE_Q_FLG_TPA */
 	uint16_t		pri_map;
 };
 
 /* general */
 struct ecore_general_setup_params {
-	/* valid iff ECORE_Q_FLG_STATS */
+	/* valid if ECORE_Q_FLG_STATS */
 	uint8_t		stat_id;
 
 	uint8_t		spcl_id;
@@ -1312,19 +1312,19 @@ struct ecore_rxq_setup_params {
 	uint8_t		fw_sb_id;
 	uint8_t		cl_qzone_id;
 
-	/* valid iff ECORE_Q_FLG_TPA */
+	/* valid if ECORE_Q_FLG_TPA */
 	uint16_t		tpa_agg_sz;
 	uint8_t		max_tpa_queues;
 	uint8_t		rss_engine_id;
 
-	/* valid iff ECORE_Q_FLG_MCAST */
+	/* valid if ECORE_Q_FLG_MCAST */
 	uint8_t		mcast_engine_id;
 
 	uint8_t		cache_line_log;
 
 	uint8_t		sb_cq_index;
 
-	/* valid iff BXN2X_Q_FLG_SILENT_VLAN_REM */
+	/* valid if BXN2X_Q_FLG_SILENT_VLAN_REM */
 	uint16_t silent_removal_value;
 	uint16_t silent_removal_mask;
 };
@@ -1335,12 +1335,12 @@ struct ecore_txq_setup_params {
 
 	uint8_t		fw_sb_id;
 	uint8_t		sb_cq_index;
-	uint8_t		cos;		/* valid iff ECORE_Q_FLG_COS */
+	uint8_t		cos;		/* valid if ECORE_Q_FLG_COS */
 	uint16_t		traffic_type;
 	/* equals to the leading rss client id, used for TX classification*/
 	uint8_t		tss_leading_cl_id;
 
-	/* valid iff ECORE_Q_FLG_DEF_VLAN */
+	/* valid if ECORE_Q_FLG_DEF_VLAN */
 	uint16_t		default_vlan;
 };
 
@@ -1733,7 +1733,7 @@ void ecore_init_mcast_obj(struct bnx2x_softc *sc,
  * the current command will be enqueued to the tail of the
  * pending commands list.
  *
- * Return: 0 is operation was successfull and there are no pending completions,
+ * Return: 0 is operation was successful and there are no pending completions,
  *         negative if there were errors, positive if there are pending
  *         completions.
  */

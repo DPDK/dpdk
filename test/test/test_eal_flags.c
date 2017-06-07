@@ -824,7 +824,7 @@ test_dom0_misc_flags(void)
 
 	/* check that some general flags don't prevent things from working.
 	 * All cases, apart from the first, app should run.
-	 * No futher testing of output done.
+	 * No further testing of output done.
 	 */
 	/* sanity check - failure with invalid option */
 	const char *argv0[] = {prgname, prefix, mp_flag, "-c", "1", "--invalid-opt"};
@@ -932,7 +932,7 @@ test_misc_flags(void)
 
 	/* check that some general flags don't prevent things from working.
 	 * All cases, apart from the first, app should run.
-	 * No futher testing of output done.
+	 * No further testing of output done.
 	 */
 	/* sanity check - failure with invalid option */
 	const char *argv0[] = {prgname, prefix, mp_flag, "-c", "1", "--invalid-opt"};

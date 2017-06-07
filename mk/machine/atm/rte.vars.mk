@@ -32,16 +32,16 @@
 #
 # machine:
 #
-#   - can define ARCH variable (overriden by cmdline value)
-#   - can define CROSS variable (overriden by cmdline value)
-#   - define MACHINE_CFLAGS variable (overriden by cmdline value)
-#   - define MACHINE_LDFLAGS variable (overriden by cmdline value)
-#   - define MACHINE_ASFLAGS variable (overriden by cmdline value)
-#   - can define CPU_CFLAGS variable (overriden by cmdline value) that
+#   - can define ARCH variable (overridden by cmdline value)
+#   - can define CROSS variable (overridden by cmdline value)
+#   - define MACHINE_CFLAGS variable (overridden by cmdline value)
+#   - define MACHINE_LDFLAGS variable (overridden by cmdline value)
+#   - define MACHINE_ASFLAGS variable (overridden by cmdline value)
+#   - can define CPU_CFLAGS variable (overridden by cmdline value) that
 #     overrides the one defined in arch.
-#   - can define CPU_LDFLAGS variable (overriden by cmdline value) that
+#   - can define CPU_LDFLAGS variable (overridden by cmdline value) that
 #     overrides the one defined in arch.
-#   - can define CPU_ASFLAGS variable (overriden by cmdline value) that
+#   - can define CPU_ASFLAGS variable (overridden by cmdline value) that
 #     overrides the one defined in arch.
 #   - may override any previously defined variable
 #

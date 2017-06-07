@@ -738,7 +738,7 @@ err_return:
 	return -1;
 }
 
-/* Check if memory is avilable on a specific socket */
+/* Check if memory is available on a specific socket */
 static int
 is_mem_on_socket(int32_t socket)
 {

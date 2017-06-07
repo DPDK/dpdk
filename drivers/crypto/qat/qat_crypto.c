@@ -757,7 +757,7 @@ qat_pmd_enqueue_op_burst(void *qp, struct rte_crypto_op **ops,
 			tmp_qp->stats.enqueue_err_count++;
 			/*
 			 * This message cannot be enqueued,
-			 * decrease number of ops that wasnt sent
+			 * decrease number of ops that wasn't sent
 			 */
 			rte_atomic16_sub(&tmp_qp->inflights16,
 					nb_ops_possible - nb_ops_sent);

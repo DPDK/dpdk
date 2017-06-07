@@ -365,7 +365,7 @@ int rte_ethtool_net_vlan_rx_kill_vid(uint8_t port_id, uint16_t vid);
 int rte_ethtool_net_set_rx_mode(uint8_t port_id);
 
 /**
- * Getting ring paramaters for Ethernet device.
+ * Getting ring parameters for Ethernet device.
  *
  * @param port_id
  *   The port identifier of the Ethernet device.
@@ -384,7 +384,7 @@ int rte_ethtool_get_ringparam(uint8_t port_id,
 	struct ethtool_ringparam *ring_param);
 
 /**
- * Setting ring paramaters for Ethernet device.
+ * Setting ring parameters for Ethernet device.
  *
  * @param port_id
  *   The port identifier of the Ethernet device.

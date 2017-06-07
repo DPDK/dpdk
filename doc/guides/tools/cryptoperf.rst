@@ -308,9 +308,9 @@ Test Vector File
 The test vector file is a text file contain information about test vectors.
 The file is made of the sections. The first section doesn't have header.
 It contain global information used in each test variant vectors -
-typicaly information about plaintext, ciphertext, cipher key, aut key,
+typically information about plaintext, ciphertext, cipher key, aut key,
 initial vector. All other sections begin header.
-The sections contain particular information typicaly digest.
+The sections contain particular information typically digest.
 
 **Format of the file:**
 
@@ -362,7 +362,7 @@ Examples
 
 Call application for performance throughput test of single Aesni MB PMD
 for cipher encryption aes-cbc and auth generation sha1-hmac,
-one milion operations, burst size 32, packet size 64::
+one million operations, burst size 32, packet size 64::
 
    dpdk-test-crypto-perf -l 6-7 --vdev crypto_aesni_mb_pmd -w 0000:00:00.0 --
    --ptest throughput --devtype crypto_aesni_mb --optype cipher-then-auth

@@ -2294,7 +2294,7 @@ rte_eth_xstats_get_names_by_id(uint8_t port_id,
  * @param port_id
  *   The port identifier of the Ethernet device.
  * @param ids
- *   A pointer to an ids array passed by application. This tells wich
+ *   A pointer to an ids array passed by application. This tells which
  *   statistics values function should retrieve. This parameter
  *   can be set to NULL if n is 0. In this case function will retrieve
  *   all avalible statistics.

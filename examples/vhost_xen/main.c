@@ -534,7 +534,7 @@ gpa_to_vva(struct virtio_net *dev, uint64_t guest_pa)
 /*
  * This function adds buffers to the virtio devices RX virtqueue. Buffers can
  * be received from the physical port or from another virtio device. A packet
- * count is returned to indicate the number of packets that were succesfully
+ * count is returned to indicate the number of packets that were successfully
  * added to the RX queue.
  */
 static __rte_always_inline uint32_t

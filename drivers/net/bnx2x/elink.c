@@ -2702,7 +2702,7 @@ static elink_status_t elink_eee_initial_config(struct elink_params *params,
 {
 	vars->eee_status |= ((uint32_t) mode) << SHMEM_EEE_SUPPORTED_SHIFT;
 
-	/* Propogate params' bits --> vars (for migration exposure) */
+	/* Propagate params' bits --> vars (for migration exposure) */
 	if (params->eee_mode & ELINK_EEE_MODE_ENABLE_LPI)
 		vars->eee_status |= SHMEM_EEE_LPI_REQUESTED_BIT;
 	else
@@ -3450,7 +3450,7 @@ static void elink_warpcore_enable_AN_KR(struct elink_phy *phy,
 		{MDIO_WC_DEVAD, MDIO_WC_REG_CL72_USERB0_CL72_TX_FIR_TAP, 0},
 	};
 	PMD_DRV_LOG(DEBUG, "Enable Auto Negotiation for KR");
-	/* Set to default registers that may be overriden by 10G force */
+	/* Set to default registers that may be overridden by 10G force */
 	for (i = 0; i < ARRAY_SIZE(reg_set); i++)
 		elink_cl45_write(sc, phy, reg_set[i].devad, reg_set[i].reg,
 				 reg_set[i].val);
@@ -4363,14 +4363,14 @@ static void elink_sync_link(struct elink_params *params,
 		switch (vars->link_status & LINK_STATUS_SPEED_AND_DUPLEX_MASK) {
 		case ELINK_LINK_10THD:
 			vars->duplex = DUPLEX_HALF;
-			/* Fall thru */
+			/* Fall through */
 		case ELINK_LINK_10TFD:
 			vars->line_speed = ELINK_SPEED_10;
 			break;
 
 		case ELINK_LINK_100TXHD:
 			vars->duplex = DUPLEX_HALF;
-			/* Fall thru */
+			/* Fall through */
 		case ELINK_LINK_100T4:
 		case ELINK_LINK_100TXFD:
 			vars->line_speed = ELINK_SPEED_100;
@@ -4378,14 +4378,14 @@ static void elink_sync_link(struct elink_params *params,
 
 		case ELINK_LINK_1000THD:
 			vars->duplex = DUPLEX_HALF;
-			/* Fall thru */
+			/* Fall through */
 		case ELINK_LINK_1000TFD:
 			vars->line_speed = ELINK_SPEED_1000;
 			break;
 
 		case ELINK_LINK_2500THD:
 			vars->duplex = DUPLEX_HALF;
-			/* Fall thru */
+			/* Fall through */
 		case ELINK_LINK_2500TFD:
 			vars->line_speed = ELINK_SPEED_2500;
 			break;
@@ -6341,7 +6341,7 @@ elink_status_t elink_link_update(struct elink_params * params,
 				 * hence its link is expected to be down
 				 * - SECOND_PHY means that first phy should not be able
 				 * to link up by itself (using configuration)
-				 * - DEFAULT should be overriden during initialiazation
+				 * - DEFAULT should be overridden during initialization
 				 */
 				PMD_DRV_LOG(DEBUG, "Invalid link indication"
 					    "mpc=0x%x. DISABLING LINK !!!",
@@ -12680,7 +12680,7 @@ static void elink_check_over_curr(struct elink_params *params,
 		vars->phy_flags &= ~PHY_OVER_CURRENT_FLAG;
 }
 
-/* Returns 0 if no change occured since last check; 1 otherwise. */
+/* Returns 0 if no change occurred since last check; 1 otherwise. */
 static uint8_t elink_analyze_link_error(struct elink_params *params,
 					struct elink_vars *vars,
 					uint32_t status, uint32_t phy_flag,

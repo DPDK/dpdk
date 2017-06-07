@@ -793,8 +793,8 @@ bond_ethdev_tx_burst_alb(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	uint16_t slave_bufs_pkts[RTE_MAX_ETHPORTS + 1] = { 0 };
 
 	/*
-	 * We create separate transmit buffers for update packets as they wont be
-	 * counted in num_tx_total.
+	 * We create separate transmit buffers for update packets as they won't
+	 * be counted in num_tx_total.
 	 */
 	struct rte_mbuf *update_bufs[RTE_MAX_ETHPORTS][ALB_HASH_TABLE_SIZE];
 	uint16_t update_bufs_pkts[RTE_MAX_ETHPORTS] = { 0 };

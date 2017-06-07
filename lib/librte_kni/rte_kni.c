@@ -119,7 +119,7 @@ struct rte_kni_memzone_pool {
 
 	uint32_t max_ifaces;                /**< Max. num of KNI ifaces */
 	struct rte_kni_memzone_slot *slots;        /**< Pool slots */
-	rte_spinlock_t mutex;               /**< alloc/relase mutex */
+	rte_spinlock_t mutex;               /**< alloc/release mutex */
 
 	/* Free memzone slots linked-list */
 	struct rte_kni_memzone_slot *free;         /**< First empty slot */

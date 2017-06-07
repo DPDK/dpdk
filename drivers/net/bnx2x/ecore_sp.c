@@ -2676,7 +2676,7 @@ static void ecore_mcast_hdl_del(struct bnx2x_softc *sc,
  * @cmd:
  * @start_cnt:	first line in the ramrod data that may be used
  *
- * This function is called iff there is enough place for the current command in
+ * This function is called if there is enough place for the current command in
  * the ramrod data.
  * Returns number of lines filled in the ramrod data in total.
  */
@@ -2834,7 +2834,7 @@ static int ecore_mcast_setup_e2(struct bnx2x_softc *sc,
 	if (ECORE_LIST_IS_EMPTY(&o->pending_cmds_head))
 		o->clear_sched(o);
 
-	/* The below may be TRUE iff there was enough room in ramrod
+	/* The below may be TRUE if there was enough room in ramrod
 	 * data for all pending commands and for the current
 	 * command. Otherwise the current command would have been added
 	 * to the pending commands and p->mcast_list_len would have been

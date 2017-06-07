@@ -550,7 +550,7 @@ static void cmd_help_parsed(__attribute__((unused)) void *parsed_result,
 {
 	cmdline_printf(cl,
 			"ALB - link bonding mode 6 example\n"
-			"send IP	- sends one ARPrequest thru bonding for IP.\n"
+			"send IP	- sends one ARPrequest through bonding for IP.\n"
 			"start		- starts listening ARPs.\n"
 			"stop		- stops lcore_main.\n"
 			"show		- shows some bond info: ex. active slaves etc.\n"

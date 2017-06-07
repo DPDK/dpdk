@@ -168,7 +168,7 @@ mbuf_to_slot(struct rte_mbuf *mbuf, struct netmap_ring *r, uint32_t index)
 /**
  * Given a Netmap ring and a slot index for that ring, construct a dpdk mbuf
  * from the data held in the buffer associated with the slot.
- * Allocation/deallocation of the dpdk mbuf are the responsability of the
+ * Allocation/deallocation of the dpdk mbuf are the responsibility of the
  * caller.
  * Note that mbuf chains are not supported.
  */

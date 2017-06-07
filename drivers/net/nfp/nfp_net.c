@@ -1173,7 +1173,7 @@ nfp_net_rx_queue_count(struct rte_eth_dev *dev, uint16_t queue_idx)
 	 * Other PMDs are just checking the DD bit in intervals of 4
 	 * descriptors and counting all four if the first has the DD
 	 * bit on. Of course, this is not accurate but can be good for
-	 * perfomance. But ideally that should be done in descriptors
+	 * performance. But ideally that should be done in descriptors
 	 * chunks belonging to the same cache line
 	 */
 

@@ -264,7 +264,7 @@ int main(int argc, char **argv)
 	uint32_t id_core;
 	uint32_t cnt_ports;
 
-	/* Init runtime enviornment */
+	/* Init runtime environment */
 	cnt_args_parsed = rte_eal_init(argc, argv);
 	if (cnt_args_parsed < 0)
 		rte_exit(EXIT_FAILURE, "rte_eal_init(): Failed");

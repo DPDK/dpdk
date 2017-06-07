@@ -32,10 +32,10 @@
 #
 # toolchain:
 #
-#   - define CC, LD, AR, AS, ... (overriden by cmdline value)
-#   - define TOOLCHAIN_CFLAGS variable (overriden by cmdline value)
-#   - define TOOLCHAIN_LDFLAGS variable (overriden by cmdline value)
-#   - define TOOLCHAIN_ASFLAGS variable (overriden by cmdline value)
+#   - define CC, LD, AR, AS, ... (overridden by cmdline value)
+#   - define TOOLCHAIN_CFLAGS variable (overridden by cmdline value)
+#   - define TOOLCHAIN_LDFLAGS variable (overridden by cmdline value)
+#   - define TOOLCHAIN_ASFLAGS variable (overridden by cmdline value)
 #
 
 # Warning: we do not use CROSS environment variable as icc is mainly a

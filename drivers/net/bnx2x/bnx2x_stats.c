@@ -1371,9 +1371,9 @@ bnx2x_prep_fw_stats_req(struct bnx2x_softc *sc)
     cur_query_entry = &sc->fw_stats_req->query[BNX2X_PORT_QUERY_IDX];
 
     cur_query_entry->kind = STATS_TYPE_PORT;
-    /* For port query index is a DONT CARE */
+    /* For port query index is a DON'T CARE */
     cur_query_entry->index = SC_PORT(sc);
-    /* For port query funcID is a DONT CARE */
+    /* For port query funcID is a DON'T CARE */
     cur_query_entry->funcID = htole16(SC_FUNC(sc));
     cur_query_entry->address.hi = htole32(U64_HI(cur_data_offset));
     cur_query_entry->address.lo = htole32(U64_LO(cur_data_offset));
@@ -1385,7 +1385,7 @@ bnx2x_prep_fw_stats_req(struct bnx2x_softc *sc)
     cur_query_entry = &sc->fw_stats_req->query[BNX2X_PF_QUERY_IDX];
 
     cur_query_entry->kind = STATS_TYPE_PF;
-    /* For PF query index is a DONT CARE */
+    /* For PF query index is a DON'T CARE */
     cur_query_entry->index = SC_PORT(sc);
     cur_query_entry->funcID = htole16(SC_FUNC(sc));
     cur_query_entry->address.hi = htole32(U64_HI(cur_data_offset));
@@ -1450,7 +1450,7 @@ void bnx2x_memset_stats(struct bnx2x_softc *sc)
 	if (sc->port.pmf && sc->port.port_stx)
 		bnx2x_port_stats_base_init(sc);
 
-	/* mark the end of statistics initializiation */
+	/* mark the end of statistics initialization */
 	sc->stats_init = false;
 }
 
@@ -1536,7 +1536,7 @@ bnx2x_stats_init(struct bnx2x_softc *sc)
 		bnx2x_port_stats_base_init(sc);
 	}
 
-	/* mark the end of statistics initializiation */
+	/* mark the end of statistics initialization */
 	sc->stats_init = FALSE;
 }
 

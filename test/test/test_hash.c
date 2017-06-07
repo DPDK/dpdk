@@ -1030,7 +1030,7 @@ static int test_hash_creation_with_bad_parameters(void)
 	handle = rte_hash_create(NULL);
 	if (handle != NULL) {
 		rte_hash_free(handle);
-		printf("Impossible creating hash sucessfully without any parameter\n");
+		printf("Impossible creating hash successfully without any parameter\n");
 		return -1;
 	}
 
@@ -1040,7 +1040,7 @@ static int test_hash_creation_with_bad_parameters(void)
 	handle = rte_hash_create(&params);
 	if (handle != NULL) {
 		rte_hash_free(handle);
-		printf("Impossible creating hash sucessfully with entries in parameter exceeded\n");
+		printf("Impossible creating hash successfully with entries in parameter exceeded\n");
 		return -1;
 	}
 
@@ -1050,7 +1050,7 @@ static int test_hash_creation_with_bad_parameters(void)
 	handle = rte_hash_create(&params);
 	if (handle != NULL) {
 		rte_hash_free(handle);
-		printf("Impossible creating hash sucessfully if entries less than bucket_entries in parameter\n");
+		printf("Impossible creating hash successfully if entries less than bucket_entries in parameter\n");
 		return -1;
 	}
 
@@ -1060,7 +1060,7 @@ static int test_hash_creation_with_bad_parameters(void)
 	handle = rte_hash_create(&params);
 	if (handle != NULL) {
 		rte_hash_free(handle);
-		printf("Impossible creating hash sucessfully if key_len in parameter is zero\n");
+		printf("Impossible creating hash successfully if key_len in parameter is zero\n");
 		return -1;
 	}
 
@@ -1070,7 +1070,7 @@ static int test_hash_creation_with_bad_parameters(void)
 	handle = rte_hash_create(&params);
 	if (handle != NULL) {
 		rte_hash_free(handle);
-		printf("Impossible creating hash sucessfully with invalid socket\n");
+		printf("Impossible creating hash successfully with invalid socket\n");
 		return -1;
 	}
 

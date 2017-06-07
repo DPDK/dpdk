@@ -96,7 +96,7 @@ ifeq ($(RTE_TOOLCHAIN),)
 $(error RTE_TOOLCHAIN is not defined)
 endif
 
-# can be overriden by make command line or exported environment variable
+# can be overridden by make command line or exported environment variable
 RTE_KERNELDIR ?= /lib/modules/$(shell uname -r)/build
 
 export RTE_TARGET

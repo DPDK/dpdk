@@ -202,7 +202,7 @@ test_spinlock_perf(void)
 
 /*
  * Use rte_spinlock_trylock() to trylock a spinlock object,
- * If it could not lock the object sucessfully, it would
+ * If it could not lock the object successfully, it would
  * return immediately and the variable of "count" would be
  * increased by one per times. the value of "count" could be
  * checked as the result later.

@@ -120,7 +120,7 @@ int flib_register_slave_exit_notify(unsigned slave_id,
 /**
  * Assign a lcore ID to non-slave thread.  Non-slave thread refers to thread that
  * not created by function rte_eal_remote_launch or rte_eal_mp_remote_launch.
- * These threads can either bind lcore or float among differnt lcores.
+ * These threads can either bind lcore or float among different lcores.
  * This lcore ID will be unique in multi-thread or multi-process DPDK running
  * environment, then it can benefit from using the cache mechanism provided in
  * mempool library.

@@ -569,7 +569,7 @@ __rte_hash_add_key_with_hash(const struct rte_hash *h, const void *key,
 				k->pdata = data;
 				/*
 				 * Return index where key is stored,
-				 * substracting the first dummy index
+				 * subtracting the first dummy index
 				 */
 				return prim_bkt->key_idx[i] - 1;
 			}
@@ -589,7 +589,7 @@ __rte_hash_add_key_with_hash(const struct rte_hash *h, const void *key,
 				k->pdata = data;
 				/*
 				 * Return index where key is stored,
-				 * substracting the first dummy index
+				 * subtracting the first dummy index
 				 */
 				return sec_bkt->key_idx[i] - 1;
 			}
@@ -730,7 +730,7 @@ __rte_hash_lookup_with_hash(const struct rte_hash *h, const void *key,
 					*data = k->pdata;
 				/*
 				 * Return index where key is stored,
-				 * substracting the first dummy index
+				 * subtracting the first dummy index
 				 */
 				return bkt->key_idx[i] - 1;
 			}
@@ -753,7 +753,7 @@ __rte_hash_lookup_with_hash(const struct rte_hash *h, const void *key,
 					*data = k->pdata;
 				/*
 				 * Return index where key is stored,
-				 * substracting the first dummy index
+				 * subtracting the first dummy index
 				 */
 				return bkt->key_idx[i] - 1;
 			}
@@ -847,7 +847,7 @@ __rte_hash_del_key_with_hash(const struct rte_hash *h, const void *key,
 
 				/*
 				 * Return index where key is stored,
-				 * substracting the first dummy index
+				 * subtracting the first dummy index
 				 */
 				ret = bkt->key_idx[i] - 1;
 				bkt->key_idx[i] = EMPTY_SLOT;
@@ -872,7 +872,7 @@ __rte_hash_del_key_with_hash(const struct rte_hash *h, const void *key,
 
 				/*
 				 * Return index where key is stored,
-				 * substracting the first dummy index
+				 * subtracting the first dummy index
 				 */
 				ret = bkt->key_idx[i] - 1;
 				bkt->key_idx[i] = EMPTY_SLOT;

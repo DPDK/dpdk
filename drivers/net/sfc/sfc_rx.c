@@ -292,7 +292,7 @@ sfc_efx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		if (desc_flags & EFX_PKT_CONT) {
 			/* The packet is scattered, more fragments to come */
 			scatter_pkt = m;
-			/* Futher fragments have no prefix */
+			/* Further fragments have no prefix */
 			prefix_size = 0;
 			continue;
 		}

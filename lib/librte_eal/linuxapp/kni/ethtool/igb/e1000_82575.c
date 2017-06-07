@@ -1357,7 +1357,7 @@ static s32 e1000_get_pcs_speed_and_duplex_82575(struct e1000_hw *hw,
  *  @hw: pointer to the HW structure
  *
  *  In the case of serdes shut down sfp and PCS on driver unload
- *  when management pass thru is not enabled.
+ *  when management pass through is not enabled.
  **/
 void e1000_shutdown_serdes_link_82575(struct e1000_hw *hw)
 {

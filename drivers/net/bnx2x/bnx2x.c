@@ -887,7 +887,7 @@ storm_memset_eq_prod(struct bnx2x_softc *sc, uint16_t eq_prod, uint16_t pfid)
 /*
  * Post a slowpath command.
  *
- * A slowpath command is used to propogate a configuration change through
+ * A slowpath command is used to propagate a configuration change through
  * the controller in a controlled manner, allowing each STORM processor and
  * other H/W blocks to phase in the change.  The commands sent on the
  * slowpath are referred to as ramrods.  Depending on the ramrod used the
@@ -2002,7 +2002,7 @@ bnx2x_nic_unload(struct bnx2x_softc *sc, uint32_t unload_mode, uint8_t keep_link
 
 	/*
 	 * Nothing to do during unload if previous bnx2x_nic_load()
-	 * did not completed succesfully - all resourses are released.
+	 * did not completed successfully - all resourses are released.
 	 */
 	if ((sc->state == BNX2X_STATE_CLOSED) || (sc->state == BNX2X_STATE_ERROR)) {
 		return 0;
@@ -3931,7 +3931,7 @@ static void bnx2x_attn_int_deasserted2(struct bnx2x_softc *sc, uint32_t attn)
 			mask1 = REG_RD(sc, PXP2_REG_PXP2_INT_MASK_1);
 			val0 = REG_RD(sc, PXP2_REG_PXP2_INT_STS_0);
 			/*
-			 * If the olny PXP2_EOP_ERROR_BIT is set in
+			 * If the only PXP2_EOP_ERROR_BIT is set in
 			 * STS0 and STS1 - clear it
 			 *
 			 * probably we lose additional attentions between
@@ -5910,7 +5910,7 @@ static void bnx2x_set_234_gates(struct bnx2x_softc *sc, uint8_t close)
 			       (val | HC_CONFIG_0_REG_BLOCK_DISABLE_0));
 
 	} else {
-/* Prevent incomming interrupts in IGU */
+/* Prevent incoming interrupts in IGU */
 		val = REG_RD(sc, IGU_REG_BLOCK_CONFIGURATION);
 
 		if (close)

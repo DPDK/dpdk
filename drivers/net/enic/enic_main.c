@@ -1225,7 +1225,7 @@ int enic_set_mtu(struct enic *enic, uint16_t new_mtu)
 		}
 	}
 
-	/* replace Rx funciton with a no-op to avoid getting stale pkts */
+	/* replace Rx function with a no-op to avoid getting stale pkts */
 	eth_dev->rx_pkt_burst = enic_dummy_recv_pkts;
 	rte_mb();
 
