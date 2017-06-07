@@ -1512,12 +1512,23 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	uint8_t nbds;
 	bool ipv6_ext_flg;
 	bool lso_flg;
-	bool tunn_flg;
+	__rte_unused bool tunn_flg;
 	struct eth_tx_1st_bd *bd1;
 	struct eth_tx_2nd_bd *bd2;
 	struct eth_tx_3rd_bd *bd3;
 	uint64_t tx_ol_flags;
 	uint16_t hdr_size;
+	/* BD1 */
+	uint16_t bd1_bf;
+	uint8_t bd1_bd_flags_bf;
+	uint16_t vlan;
+	/* BD2 */
+	uint16_t bd2_bf1;
+	uint16_t bd2_bf2;
+	/* BD3 */
+	uint16_t mss;
+	uint16_t bd3_bf;
+
 
 	if (unlikely(txq->nb_tx_avail < txq->tx_free_thresh)) {
 		PMD_TX_LOG(DEBUG, txq, "send=%u avail=%u free_thresh=%u",
@@ -1533,10 +1544,17 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		tunn_flg = false;
 		lso_flg = false;
 		nbds = 0;
+		vlan = 0;
 		bd1 = NULL;
 		bd2 = NULL;
 		bd3 = NULL;
 		hdr_size = 0;
+		bd1_bf = 0;
+		bd1_bd_flags_bf = 0;
+		bd2_bf1 = 0;
+		bd2_bf2 = 0;
+		mss = 0;
+		bd3_bf = 0;
 
 		mbuf = *tx_pkts++;
 		assert(mbuf);
@@ -1546,36 +1564,96 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			break;
 
 		tx_ol_flags = mbuf->ol_flags;
+		bd1_bd_flags_bf |= 1 << ETH_TX_1ST_BD_FLAGS_START_BD_SHIFT;
 
 #define RTE_ETH_IS_IPV6_HDR_EXT(ptype) ((ptype) & RTE_PTYPE_L3_IPV6_EXT)
-		if (RTE_ETH_IS_IPV6_HDR_EXT(mbuf->packet_type))
+		if (RTE_ETH_IS_IPV6_HDR_EXT(mbuf->packet_type)) {
 			ipv6_ext_flg = true;
+			if (unlikely(txq->nb_tx_avail <
+					ETH_TX_MIN_BDS_PER_IPV6_WITH_EXT_PKT))
+				break;
+		}
 
-		if (RTE_ETH_IS_TUNNEL_PKT(mbuf->packet_type))
+		if (RTE_ETH_IS_TUNNEL_PKT(mbuf->packet_type)) {
+			if (ipv6_ext_flg) {
+				if (unlikely(txq->nb_tx_avail <
+				    ETH_TX_MIN_BDS_PER_TUNN_IPV6_WITH_EXT_PKT))
+					break;
+			}
 			tunn_flg = true;
+			/* First indicate its a tunnel pkt */
+			bd1_bf |= ETH_TX_DATA_1ST_BD_TUNN_FLAG_MASK <<
+				  ETH_TX_DATA_1ST_BD_TUNN_FLAG_SHIFT;
+			/* Legacy FW had flipped behavior in regard to this bit
+			 * i.e. it needed to set to prevent FW from touching
+			 * encapsulated packets when it didn't need to.
+			 */
+			if (unlikely(txq->is_legacy)) {
+				bd1_bf ^= 1 <<
+					ETH_TX_DATA_1ST_BD_TUNN_FLAG_SHIFT;
+			}
+			/* Outer IP checksum offload */
+			if (tx_ol_flags & PKT_TX_OUTER_IP_CKSUM) {
+				bd1_bd_flags_bf |=
+					ETH_TX_1ST_BD_FLAGS_TUNN_IP_CSUM_MASK <<
+					ETH_TX_1ST_BD_FLAGS_TUNN_IP_CSUM_SHIFT;
+			}
+			/* Outer UDP checksum offload */
+			bd1_bd_flags_bf |=
+				ETH_TX_1ST_BD_FLAGS_TUNN_L4_CSUM_MASK <<
+				ETH_TX_1ST_BD_FLAGS_TUNN_L4_CSUM_SHIFT;
+		}
 
-		if (tx_ol_flags & PKT_TX_TCP_SEG)
+		if (tx_ol_flags & PKT_TX_TCP_SEG) {
 			lso_flg = true;
-
-		if (lso_flg) {
 			if (unlikely(txq->nb_tx_avail <
 						ETH_TX_MIN_BDS_PER_LSO_PKT))
 				break;
+			/* For LSO, packet header and payload must reside on
+			 * buffers pointed by different BDs. Using BD1 for HDR
+			 * and BD2 onwards for data.
+			 */
+			hdr_size = mbuf->l2_len + mbuf->l3_len + mbuf->l4_len;
+			bd1_bd_flags_bf |= 1 << ETH_TX_1ST_BD_FLAGS_LSO_SHIFT;
+			bd1_bd_flags_bf |=
+					1 << ETH_TX_1ST_BD_FLAGS_IP_CSUM_SHIFT;
+			/* PKT_TX_TCP_SEG implies PKT_TX_TCP_CKSUM */
+			bd1_bd_flags_bf |=
+					1 << ETH_TX_1ST_BD_FLAGS_L4_CSUM_SHIFT;
+			mss = rte_cpu_to_le_16(mbuf->tso_segsz);
+			/* Using one header BD */
+			bd3_bf |= rte_cpu_to_le_16(1 <<
+					ETH_TX_DATA_3RD_BD_HDR_NBD_SHIFT);
 		} else {
 			if (unlikely(txq->nb_tx_avail <
 					ETH_TX_MIN_BDS_PER_NON_LSO_PKT))
 				break;
+			bd1_bf |=
+			       (mbuf->pkt_len & ETH_TX_DATA_1ST_BD_PKT_LEN_MASK)
+				<< ETH_TX_DATA_1ST_BD_PKT_LEN_SHIFT;
 		}
 
-		if (tunn_flg && ipv6_ext_flg) {
-			if (unlikely(txq->nb_tx_avail <
-				ETH_TX_MIN_BDS_PER_TUNN_IPV6_WITH_EXT_PKT))
-				break;
+		/* Descriptor based VLAN insertion */
+		if (tx_ol_flags & (PKT_TX_VLAN_PKT | PKT_TX_QINQ_PKT)) {
+			vlan = rte_cpu_to_le_16(mbuf->vlan_tci);
+			bd1_bd_flags_bf |=
+			    1 << ETH_TX_1ST_BD_FLAGS_VLAN_INSERTION_SHIFT;
 		}
+
+		/* Offload the IP checksum in the hardware */
+		if (tx_ol_flags & PKT_TX_IP_CKSUM)
+			bd1_bd_flags_bf |=
+				1 << ETH_TX_1ST_BD_FLAGS_IP_CSUM_SHIFT;
+
+		/* L4 checksum offload (tcp or udp) */
+		if (tx_ol_flags & (PKT_TX_TCP_CKSUM | PKT_TX_UDP_CKSUM))
+			bd1_bd_flags_bf |=
+				1 << ETH_TX_1ST_BD_FLAGS_L4_CSUM_SHIFT;
+
 		if (ipv6_ext_flg) {
-			if (unlikely(txq->nb_tx_avail <
-					ETH_TX_MIN_BDS_PER_IPV6_WITH_EXT_PKT))
-				break;
+			/* TBD: check pseudo csum iff tx_prepare not called? */
+			bd2_bf1 |= ETH_L4_PSEUDO_CSUM_ZERO_LENGTH <<
+				ETH_TX_DATA_2ND_BD_L4_PSEUDO_CSUM_MODE_SHIFT;
 		}
 
 		/* Fill the entry in the SW ring and the BDs in the FW ring */
@@ -1587,108 +1665,36 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		memset(bd1, 0, sizeof(struct eth_tx_1st_bd));
 		nbds++;
 
-		bd1->data.bd_flags.bitfields |=
-			1 << ETH_TX_1ST_BD_FLAGS_START_BD_SHIFT;
-		/* FW 8.10.x specific change */
-		if (!lso_flg) {
-			bd1->data.bitfields |=
-			(mbuf->pkt_len & ETH_TX_DATA_1ST_BD_PKT_LEN_MASK)
-				<< ETH_TX_DATA_1ST_BD_PKT_LEN_SHIFT;
-			/* Map MBUF linear data for DMA and set in the BD1 */
-			QEDE_BD_SET_ADDR_LEN(bd1, rte_mbuf_data_dma_addr(mbuf),
-					     mbuf->data_len);
-		} else {
-			/* For LSO, packet header and payload must reside on
-			 * buffers pointed by different BDs. Using BD1 for HDR
-			 * and BD2 onwards for data.
-			 */
-			hdr_size = mbuf->l2_len + mbuf->l3_len + mbuf->l4_len;
-			QEDE_BD_SET_ADDR_LEN(bd1, rte_mbuf_data_dma_addr(mbuf),
-					     hdr_size);
-		}
+		/* Map MBUF linear data for DMA and set in the BD1 */
+		QEDE_BD_SET_ADDR_LEN(bd1, rte_mbuf_data_dma_addr(mbuf),
+					mbuf->data_len);
+		bd1->data.bitfields = bd1_bf;
+		bd1->data.bd_flags.bitfields = bd1_bd_flags_bf;
+		bd1->data.vlan = vlan;
 
-		if (tunn_flg) {
-			/* First indicate its a tunnel pkt */
-			bd1->data.bitfields |=
-				ETH_TX_DATA_1ST_BD_TUNN_FLAG_MASK <<
-				ETH_TX_DATA_1ST_BD_TUNN_FLAG_SHIFT;
-
-			/* Legacy FW had flipped behavior in regard to this bit
-			 * i.e. it needed to set to prevent FW from touching
-			 * encapsulated packets when it didn't need to.
-			 */
-			if (unlikely(txq->is_legacy))
-				bd1->data.bitfields ^=
-					1 << ETH_TX_DATA_1ST_BD_TUNN_FLAG_SHIFT;
-
-			/* Outer IP checksum offload */
-			if (tx_ol_flags & PKT_TX_OUTER_IP_CKSUM) {
-				bd1->data.bd_flags.bitfields |=
-					ETH_TX_1ST_BD_FLAGS_TUNN_IP_CSUM_MASK <<
-					ETH_TX_1ST_BD_FLAGS_TUNN_IP_CSUM_SHIFT;
-			}
-
-			/* Outer UDP checksum offload */
-			bd1->data.bd_flags.bitfields |=
-				ETH_TX_1ST_BD_FLAGS_TUNN_L4_CSUM_MASK <<
-				ETH_TX_1ST_BD_FLAGS_TUNN_L4_CSUM_SHIFT;
-		}
-
-		/* Descriptor based VLAN insertion */
-		if (tx_ol_flags & (PKT_TX_VLAN_PKT | PKT_TX_QINQ_PKT)) {
-			bd1->data.vlan = rte_cpu_to_le_16(mbuf->vlan_tci);
-			bd1->data.bd_flags.bitfields |=
-			    1 << ETH_TX_1ST_BD_FLAGS_VLAN_INSERTION_SHIFT;
-		}
-
-		if (lso_flg)
-			bd1->data.bd_flags.bitfields |=
-				1 << ETH_TX_1ST_BD_FLAGS_LSO_SHIFT;
-
-		/* Offload the IP checksum in the hardware */
-		if ((lso_flg) || (tx_ol_flags & PKT_TX_IP_CKSUM))
-			bd1->data.bd_flags.bitfields |=
-			    1 << ETH_TX_1ST_BD_FLAGS_IP_CSUM_SHIFT;
-
-		/* L4 checksum offload (tcp or udp) */
-		if ((lso_flg) || (tx_ol_flags & (PKT_TX_TCP_CKSUM |
-						PKT_TX_UDP_CKSUM)))
-			/* PKT_TX_TCP_SEG implies PKT_TX_TCP_CKSUM */
-			bd1->data.bd_flags.bitfields |=
-			    1 << ETH_TX_1ST_BD_FLAGS_L4_CSUM_SHIFT;
-
-		/* BD2 */
 		if (lso_flg || ipv6_ext_flg) {
 			bd2 = (struct eth_tx_2nd_bd *)ecore_chain_produce
 							(&txq->tx_pbl);
 			memset(bd2, 0, sizeof(struct eth_tx_2nd_bd));
 			nbds++;
-			QEDE_BD_SET_ADDR_LEN(bd2,
-					    (hdr_size +
-					    rte_mbuf_data_dma_addr(mbuf)),
-					    mbuf->data_len - hdr_size);
-			/* TBD: check pseudo csum iff tx_prepare not called? */
-			if (ipv6_ext_flg) {
-				bd2->data.bitfields1 |=
-				ETH_L4_PSEUDO_CSUM_ZERO_LENGTH <<
-				ETH_TX_DATA_2ND_BD_L4_PSEUDO_CSUM_MODE_SHIFT;
-			}
-		}
 
-		/* BD3 */
-		if (lso_flg || ipv6_ext_flg) {
+			/* BD1 */
+			QEDE_BD_SET_ADDR_LEN(bd1, rte_mbuf_data_dma_addr(mbuf),
+					     hdr_size);
+			/* BD2 */
+			QEDE_BD_SET_ADDR_LEN(bd2, (hdr_size +
+					     rte_mbuf_data_dma_addr(mbuf)),
+					     mbuf->data_len - hdr_size);
+			bd2->data.bitfields1 = bd2_bf1;
+			bd2->data.bitfields2 = bd2_bf2;
+
+			/* BD3 */
 			bd3 = (struct eth_tx_3rd_bd *)ecore_chain_produce
 							(&txq->tx_pbl);
 			memset(bd3, 0, sizeof(struct eth_tx_3rd_bd));
 			nbds++;
-			if (lso_flg) {
-				bd3->data.lso_mss =
-					rte_cpu_to_le_16(mbuf->tso_segsz);
-				/* Using one header BD */
-				bd3->data.bitfields |=
-					rte_cpu_to_le_16(1 <<
-					ETH_TX_DATA_3RD_BD_HDR_NBD_SHIFT);
-			}
+			bd3->data.bitfields = bd3_bf;
+			bd3->data.lso_mss = mss;
 		}
 
 		/* Handle fragmented MBUF */
