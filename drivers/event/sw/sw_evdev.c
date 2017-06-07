@@ -90,7 +90,8 @@ sw_port_link(struct rte_eventdev *dev, void *port, const uint8_t queues[],
 		} else if (q->type == RTE_SCHED_TYPE_ORDERED) {
 			p->num_ordered_qids++;
 			p->num_qids_mapped++;
-		} else if (q->type == RTE_SCHED_TYPE_ATOMIC) {
+		} else if (q->type == RTE_SCHED_TYPE_ATOMIC ||
+				q->type == RTE_SCHED_TYPE_PARALLEL) {
 			p->num_qids_mapped++;
 		}
 
