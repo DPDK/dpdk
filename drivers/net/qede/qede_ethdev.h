@@ -41,8 +41,6 @@
 
 #include "qede_logs.h"
 #include "qede_if.h"
-#include "qede_eth_if.h"
-
 #include "qede_rxtx.h"
 
 #define qede_stringify1(x...)		#x
@@ -73,12 +71,8 @@
 					(edev)->dev_info.num_tc)
 
 #define QEDE_QUEUE_CNT(qdev) ((qdev)->num_queues)
-#define QEDE_RSS_COUNT(qdev) ((qdev)->num_queues - (qdev)->fp_num_tx)
-#define QEDE_TSS_COUNT(qdev) (((qdev)->num_queues - (qdev)->fp_num_rx) * \
-					(qdev)->num_tc)
-
-#define QEDE_FASTPATH_TX        (1 << 0)
-#define QEDE_FASTPATH_RX        (1 << 1)
+#define QEDE_RSS_COUNT(qdev) ((qdev)->num_rx_queues)
+#define QEDE_TSS_COUNT(qdev) ((qdev)->num_tx_queues)
 
 #define QEDE_DUPLEX_FULL	1
 #define QEDE_DUPLEX_HALF	2
@@ -138,12 +132,12 @@ extern char fw_file[];
 /* Maximum number of flowdir filters */
 #define QEDE_RFS_MAX_FLTR		(256)
 
-/* Port/function states */
-enum qede_dev_state {
-	QEDE_DEV_INIT, /* Init the chip and Slowpath */
-	QEDE_DEV_CONFIG, /* Create Vport/Fastpath resources */
-	QEDE_DEV_START, /* Start RX/TX queues, enable traffic */
-	QEDE_DEV_STOP, /* Deactivate vport and stop traffic */
+#define QEDE_MAX_MCAST_FILTERS		(64)
+
+enum qed_filter_rx_mode_type {
+	QED_FILTER_RX_MODE_TYPE_REGULAR,
+	QED_FILTER_RX_MODE_TYPE_MULTI_PROMISC,
+	QED_FILTER_RX_MODE_TYPE_PROMISC,
 };
 
 struct qede_vlan_entry {
@@ -183,12 +177,10 @@ struct qede_fdir_info {
  */
 struct qede_dev {
 	struct ecore_dev edev;
-	uint8_t protocol;
 	const struct qed_eth_ops *ops;
 	struct qed_dev_eth_info dev_info;
 	struct ecore_sb_info *sb_array;
 	struct qede_fastpath *fp_array;
-	uint8_t num_tc;
 	uint16_t mtu;
 	uint16_t new_mtu;
 	bool rss_enable;
@@ -197,10 +189,8 @@ struct qede_dev {
 	uint64_t rss_hf;
 	uint8_t rss_key_len;
 	bool enable_lro;
-	uint16_t num_queues;
-	uint8_t fp_num_tx;
-	uint8_t fp_num_rx;
-	enum qede_dev_state state;
+	uint8_t num_rx_queues;
+	uint8_t num_tx_queues;
 	SLIST_HEAD(vlan_list_head, qede_vlan_entry)vlan_list_head;
 	uint16_t configured_vlans;
 	bool accept_any_vlan;

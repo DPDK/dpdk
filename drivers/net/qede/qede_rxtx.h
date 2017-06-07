@@ -77,10 +77,10 @@
 
 #define QEDE_TXQ_FLAGS		((uint32_t)ETH_TXQ_FLAGS_NOMULTSEGS)
 
-#define MAX_NUM_TC		8
-
-#define for_each_queue(i) for (i = 0; i < qdev->num_queues; i++)
-
+#define for_each_rss(i)		for (i = 0; i < qdev->num_rx_queues; i++)
+#define for_each_tss(i)		for (i = 0; i < qdev->num_tx_queues; i++)
+#define QEDE_RXTX_MAX(qdev) \
+	(RTE_MAX(QEDE_RSS_COUNT(qdev), QEDE_TSS_COUNT(qdev)))
 
 /* Macros for non-tunnel packet types lkup table */
 #define QEDE_PKT_TYPE_UNKNOWN				0x0
@@ -164,6 +164,7 @@ struct qede_rx_queue {
 	uint16_t *hw_cons_ptr;
 	void OSAL_IOMEM *hw_rxq_prod_addr;
 	struct qede_rx_entry *sw_rx_ring;
+	struct ecore_sb_info *sb_info;
 	uint16_t sw_rx_cons;
 	uint16_t sw_rx_prod;
 	uint16_t nb_rx_desc;
@@ -212,13 +213,9 @@ struct qede_tx_queue {
 };
 
 struct qede_fastpath {
-	struct qede_dev *qdev;
-	u8 type;
-	uint8_t id;
 	struct ecore_sb_info *sb_info;
 	struct qede_rx_queue *rxq;
-	struct qede_tx_queue *txqs[MAX_NUM_TC];
-	char name[80];
+	struct qede_tx_queue *txq;
 };
 
 /*
@@ -239,16 +236,6 @@ void qede_rx_queue_release(void *rx_queue);
 
 void qede_tx_queue_release(void *tx_queue);
 
-int qede_dev_start(struct rte_eth_dev *eth_dev);
-
-void qede_dev_stop(struct rte_eth_dev *eth_dev);
-
-int qede_reset_fp_rings(struct qede_dev *qdev);
-
-void qede_free_fp_arrays(struct qede_dev *qdev);
-
-void qede_free_mem_load(struct rte_eth_dev *eth_dev);
-
 uint16_t qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts,
 			uint16_t nb_pkts);
 
@@ -261,6 +248,10 @@ uint16_t qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts,
 uint16_t qede_rxtx_pkts_dummy(void *p_rxq,
 			      struct rte_mbuf **pkts,
 			      uint16_t nb_pkts);
+
+int qede_start_queues(struct rte_eth_dev *eth_dev);
+
+void qede_stop_queues(struct rte_eth_dev *eth_dev);
 
 /* Fastpath resource alloc/dealloc helpers */
 int qede_alloc_fp_resc(struct qede_dev *qdev);

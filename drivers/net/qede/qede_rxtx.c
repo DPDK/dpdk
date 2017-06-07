@@ -37,64 +37,20 @@ static inline int qede_alloc_rx_buffer(struct qede_rx_queue *rxq)
 	return 0;
 }
 
-static void qede_rx_queue_release_mbufs(struct qede_rx_queue *rxq)
-{
-	uint16_t i;
-
-	if (rxq->sw_rx_ring != NULL) {
-		for (i = 0; i < rxq->nb_rx_desc; i++) {
-			if (rxq->sw_rx_ring[i].mbuf != NULL) {
-				rte_pktmbuf_free(rxq->sw_rx_ring[i].mbuf);
-				rxq->sw_rx_ring[i].mbuf = NULL;
-			}
-		}
-	}
-}
-
-void qede_rx_queue_release(void *rx_queue)
-{
-	struct qede_rx_queue *rxq = rx_queue;
-
-	if (rxq != NULL) {
-		qede_rx_queue_release_mbufs(rxq);
-		rte_free(rxq->sw_rx_ring);
-		rxq->sw_rx_ring = NULL;
-		rte_free(rxq);
-		rxq = NULL;
-	}
-}
-
-static void qede_tx_queue_release_mbufs(struct qede_tx_queue *txq)
-{
-	unsigned int i;
-
-	PMD_TX_LOG(DEBUG, txq, "releasing %u mbufs", txq->nb_tx_desc);
-
-	if (txq->sw_tx_ring) {
-		for (i = 0; i < txq->nb_tx_desc; i++) {
-			if (txq->sw_tx_ring[i].mbuf) {
-				rte_pktmbuf_free(txq->sw_tx_ring[i].mbuf);
-				txq->sw_tx_ring[i].mbuf = NULL;
-			}
-		}
-	}
-}
-
 int
 qede_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		    uint16_t nb_desc, unsigned int socket_id,
 		    __rte_unused const struct rte_eth_rxconf *rx_conf,
 		    struct rte_mempool *mp)
 {
-	struct qede_dev *qdev = dev->data->dev_private;
-	struct ecore_dev *edev = &qdev->edev;
+	struct qede_dev *qdev = QEDE_INIT_QDEV(dev);
+	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
 	struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
 	struct qede_rx_queue *rxq;
 	uint16_t max_rx_pkt_len;
 	uint16_t bufsz;
 	size_t size;
 	int rc;
-	int i;
 
 	PMD_INIT_FUNC_TRACE(edev);
 
@@ -157,7 +113,6 @@ qede_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 			  "Unable to alloc memory for sw_rx_ring on socket %u\n",
 			  socket_id);
 		rte_free(rxq);
-		rxq = NULL;
 		return -ENOMEM;
 	}
 
@@ -176,9 +131,7 @@ qede_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 			  "Unable to alloc memory for rxbd ring on socket %u\n",
 			  socket_id);
 		rte_free(rxq->sw_rx_ring);
-		rxq->sw_rx_ring = NULL;
 		rte_free(rxq);
-		rxq = NULL;
 		return -ENOMEM;
 	}
 
@@ -198,45 +151,87 @@ qede_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 			  socket_id);
 		/* TBD: Freeing RX BD ring */
 		rte_free(rxq->sw_rx_ring);
-		rxq->sw_rx_ring = NULL;
 		rte_free(rxq);
 		return -ENOMEM;
 	}
 
-	/* Allocate buffers for the Rx ring */
-	for (i = 0; i < rxq->nb_rx_desc; i++) {
-		rc = qede_alloc_rx_buffer(rxq);
-		if (rc) {
-			DP_NOTICE(edev, false,
-				  "RX buffer allocation failed at idx=%d\n", i);
-			goto err4;
-		}
-	}
-
 	dev->data->rx_queues[queue_idx] = rxq;
+	qdev->fp_array[queue_idx].rxq = rxq;
 
 	DP_INFO(edev, "rxq %d num_desc %u rx_buf_size=%u socket %u\n",
 		  queue_idx, nb_desc, qdev->mtu, socket_id);
 
 	return 0;
-err4:
-	qede_rx_queue_release(rxq);
-	return -ENOMEM;
 }
 
-void qede_tx_queue_release(void *tx_queue)
+static void
+qede_rx_queue_reset(__rte_unused struct qede_dev *qdev,
+		    struct qede_rx_queue *rxq)
 {
-	struct qede_tx_queue *txq = tx_queue;
+	DP_INFO(&qdev->edev, "Reset RX queue %u\n", rxq->queue_id);
+	ecore_chain_reset(&rxq->rx_bd_ring);
+	ecore_chain_reset(&rxq->rx_comp_ring);
+	rxq->sw_rx_prod = 0;
+	rxq->sw_rx_cons = 0;
+	*rxq->hw_cons_ptr = 0;
+}
 
-	if (txq != NULL) {
-		qede_tx_queue_release_mbufs(txq);
-		if (txq->sw_tx_ring) {
-			rte_free(txq->sw_tx_ring);
-			txq->sw_tx_ring = NULL;
+static void qede_rx_queue_release_mbufs(struct qede_rx_queue *rxq)
+{
+	uint16_t i;
+
+	if (rxq->sw_rx_ring) {
+		for (i = 0; i < rxq->nb_rx_desc; i++) {
+			if (rxq->sw_rx_ring[i].mbuf) {
+				rte_pktmbuf_free(rxq->sw_rx_ring[i].mbuf);
+				rxq->sw_rx_ring[i].mbuf = NULL;
+			}
 		}
-		rte_free(txq);
 	}
-	txq = NULL;
+}
+
+void qede_rx_queue_release(void *rx_queue)
+{
+	struct qede_rx_queue *rxq = rx_queue;
+
+	if (rxq) {
+		qede_rx_queue_release_mbufs(rxq);
+		rte_free(rxq->sw_rx_ring);
+		rte_free(rxq);
+	}
+}
+
+/* Stops a given RX queue in the HW */
+static int qede_rx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
+{
+	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
+	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
+	struct ecore_hwfn *p_hwfn;
+	struct qede_rx_queue *rxq;
+	int hwfn_index;
+	int rc;
+
+	if (rx_queue_id < eth_dev->data->nb_rx_queues) {
+		rxq = eth_dev->data->rx_queues[rx_queue_id];
+		hwfn_index = rx_queue_id % edev->num_hwfns;
+		p_hwfn = &edev->hwfns[hwfn_index];
+		rc = ecore_eth_rx_queue_stop(p_hwfn, rxq->handle,
+				true, false);
+		if (rc != ECORE_SUCCESS) {
+			DP_ERR(edev, "RX queue %u stop fails\n", rx_queue_id);
+			return -1;
+		}
+		qede_rx_queue_release_mbufs(rxq);
+		qede_rx_queue_reset(qdev, rxq);
+		eth_dev->data->rx_queue_state[rx_queue_id] =
+			RTE_ETH_QUEUE_STATE_STOPPED;
+		DP_INFO(edev, "RX queue %u stopped\n", rx_queue_id);
+	} else {
+		DP_ERR(edev, "RX queue %u is not in range\n", rx_queue_id);
+		rc = -EINVAL;
+	}
+
+	return rc;
 }
 
 int
@@ -318,6 +313,7 @@ qede_tx_queue_setup(struct rte_eth_dev *dev,
 	    (txq->nb_tx_desc - QEDE_DEFAULT_TX_FREE_THRESH);
 
 	dev->data->tx_queues[queue_idx] = txq;
+	qdev->fp_array[queue_idx].txq = txq;
 
 	DP_INFO(edev,
 		  "txq %u num_desc %u tx_free_thresh %u socket %u\n",
@@ -326,71 +322,40 @@ qede_tx_queue_setup(struct rte_eth_dev *dev,
 	return 0;
 }
 
-/* This function inits fp content and resets the SB, RXQ and TXQ arrays */
-static void qede_init_fp(struct qede_dev *qdev)
+static void
+qede_tx_queue_reset(__rte_unused struct qede_dev *qdev,
+		    struct qede_tx_queue *txq)
 {
-	struct qede_fastpath *fp;
-	uint8_t i;
-	int fp_rx = qdev->fp_num_rx;
+	DP_INFO(&qdev->edev, "Reset TX queue %u\n", txq->queue_id);
+	ecore_chain_reset(&txq->tx_pbl);
+	txq->sw_tx_cons = 0;
+	txq->sw_tx_prod = 0;
+	*txq->hw_cons_ptr = 0;
+}
 
-	memset((void *)qdev->fp_array, 0, (QEDE_QUEUE_CNT(qdev) *
-					   sizeof(*qdev->fp_array)));
-	memset((void *)qdev->sb_array, 0, (QEDE_QUEUE_CNT(qdev) *
-					   sizeof(*qdev->sb_array)));
-	for_each_queue(i) {
-		fp = &qdev->fp_array[i];
-		if (fp_rx) {
-			fp->type = QEDE_FASTPATH_RX;
-			fp_rx--;
-		} else{
-			fp->type = QEDE_FASTPATH_TX;
+static void qede_tx_queue_release_mbufs(struct qede_tx_queue *txq)
+{
+	uint16_t i;
+
+	if (txq->sw_tx_ring) {
+		for (i = 0; i < txq->nb_tx_desc; i++) {
+			if (txq->sw_tx_ring[i].mbuf) {
+				rte_pktmbuf_free(txq->sw_tx_ring[i].mbuf);
+				txq->sw_tx_ring[i].mbuf = NULL;
+			}
 		}
-		fp->qdev = qdev;
-		fp->id = i;
-		fp->sb_info = &qdev->sb_array[i];
-		snprintf(fp->name, sizeof(fp->name), "%s-fp-%d", "qdev", i);
-	}
-
-}
-
-void qede_free_fp_arrays(struct qede_dev *qdev)
-{
-	/* It asseumes qede_free_mem_load() is called before */
-	if (qdev->fp_array != NULL) {
-		rte_free(qdev->fp_array);
-		qdev->fp_array = NULL;
-	}
-
-	if (qdev->sb_array != NULL) {
-		rte_free(qdev->sb_array);
-		qdev->sb_array = NULL;
 	}
 }
 
-static int qede_alloc_fp_array(struct qede_dev *qdev)
+void qede_tx_queue_release(void *tx_queue)
 {
-	struct ecore_dev *edev = &qdev->edev;
+	struct qede_tx_queue *txq = tx_queue;
 
-	qdev->fp_array = rte_calloc("fp", QEDE_QUEUE_CNT(qdev),
-				    sizeof(*qdev->fp_array),
-				    RTE_CACHE_LINE_SIZE);
-
-	if (!qdev->fp_array) {
-		DP_ERR(edev, "fp array allocation failed\n");
-		return -ENOMEM;
+	if (txq) {
+		qede_tx_queue_release_mbufs(txq);
+		rte_free(txq->sw_tx_ring);
+		rte_free(txq);
 	}
-
-	qdev->sb_array = rte_calloc("sb", QEDE_QUEUE_CNT(qdev),
-				    sizeof(*qdev->sb_array),
-				    RTE_CACHE_LINE_SIZE);
-
-	if (!qdev->sb_array) {
-		DP_ERR(edev, "sb array allocation failed\n");
-		rte_free(qdev->fp_array);
-		return -ENOMEM;
-	}
-
-	return 0;
 }
 
 /* This function allocates fast-path status block memory */
@@ -410,9 +375,8 @@ qede_alloc_mem_sb(struct qede_dev *qdev, struct ecore_sb_info *sb_info,
 		return -ENOMEM;
 	}
 
-	rc = qdev->ops->common->sb_init(edev, sb_info,
-					sb_virt, sb_phys, sb_id,
-					QED_SB_TYPE_L2_QUEUE);
+	rc = qdev->ops->common->sb_init(edev, sb_info, sb_virt,
+					sb_phys, sb_id);
 	if (rc) {
 		DP_ERR(edev, "Status block initialization failed\n");
 		/* TBD: No dma_free_coherent possible */
@@ -427,9 +391,7 @@ int qede_alloc_fp_resc(struct qede_dev *qdev)
 	struct ecore_dev *edev = &qdev->edev;
 	struct qede_fastpath *fp;
 	uint32_t num_sbs;
-	uint16_t i;
 	uint16_t sb_idx;
-	int rc;
 
 	if (IS_VF(edev))
 		ecore_vf_get_num_sbs(ECORE_LEADING_HWFN(edev), &num_sbs);
@@ -442,25 +404,31 @@ int qede_alloc_fp_resc(struct qede_dev *qdev)
 		return -EINVAL;
 	}
 
-	if (qdev->fp_array)
-		qede_free_fp_arrays(qdev);
+	qdev->fp_array = rte_calloc("fp", QEDE_RXTX_MAX(qdev),
+				sizeof(*qdev->fp_array), RTE_CACHE_LINE_SIZE);
 
-	rc = qede_alloc_fp_array(qdev);
-	if (rc != 0)
-		return rc;
+	if (!qdev->fp_array) {
+		DP_ERR(edev, "fp array allocation failed\n");
+		return -ENOMEM;
+	}
 
-	qede_init_fp(qdev);
+	memset((void *)qdev->fp_array, 0, QEDE_RXTX_MAX(qdev) *
+			sizeof(*qdev->fp_array));
 
-	for (i = 0; i < QEDE_QUEUE_CNT(qdev); i++) {
-		fp = &qdev->fp_array[i];
-		if (IS_VF(edev))
-			sb_idx = i % num_sbs;
-		else
-			sb_idx = i;
-		if (qede_alloc_mem_sb(qdev, fp->sb_info, sb_idx)) {
-			qede_free_fp_arrays(qdev);
-			return -ENOMEM;
+	for (sb_idx = 0; sb_idx < QEDE_RXTX_MAX(qdev); sb_idx++) {
+		fp = &qdev->fp_array[sb_idx];
+		fp->sb_info = rte_calloc("sb", 1, sizeof(struct ecore_sb_info),
+				RTE_CACHE_LINE_SIZE);
+		if (!fp->sb_info) {
+			DP_ERR(edev, "FP sb_info allocation fails\n");
+			return -1;
 		}
+		if (qede_alloc_mem_sb(qdev, fp->sb_info, sb_idx)) {
+			DP_ERR(edev, "FP status block allocation fails\n");
+			return -1;
+		}
+		DP_INFO(edev, "sb_info idx 0x%x initialized\n",
+				fp->sb_info->igu_sb_id);
 	}
 
 	return 0;
@@ -469,9 +437,23 @@ int qede_alloc_fp_resc(struct qede_dev *qdev)
 void qede_dealloc_fp_resc(struct rte_eth_dev *eth_dev)
 {
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
+	__rte_unused struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
+	struct qede_fastpath *fp;
+	uint16_t sb_idx;
 
-	qede_free_mem_load(eth_dev);
-	qede_free_fp_arrays(qdev);
+	PMD_INIT_FUNC_TRACE(edev);
+
+	for (sb_idx = 0; sb_idx < QEDE_RXTX_MAX(qdev); sb_idx++) {
+		fp = &qdev->fp_array[sb_idx];
+		DP_INFO(edev, "Free sb_info index 0x%x\n",
+				fp->sb_info->igu_sb_id);
+		if (fp->sb_info)
+			rte_free(fp->sb_info);
+		fp->sb_info = NULL;
+	}
+	if (qdev->fp_array)
+		rte_free(qdev->fp_array);
+	qdev->fp_array = NULL;
 }
 
 static inline void
@@ -506,105 +488,297 @@ qede_update_rx_prod(__rte_unused struct qede_dev *edev,
 	PMD_RX_LOG(DEBUG, rxq, "bd_prod %u  cqe_prod %u", bd_prod, cqe_prod);
 }
 
-static int qede_start_queues(struct rte_eth_dev *eth_dev)
+/* Starts a given RX queue in HW */
+static int
+qede_rx_queue_start(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 {
-	struct qede_dev *qdev = eth_dev->data->dev_private;
-	struct ecore_dev *edev = &qdev->edev;
-	struct ecore_queue_start_common_params q_params;
-	struct qede_tx_queue *txq;
+	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
+	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
+	struct ecore_queue_start_common_params params;
+	struct ecore_rxq_start_ret_params ret_params;
+	struct qede_rx_queue *rxq;
 	struct qede_fastpath *fp;
+	struct ecore_hwfn *p_hwfn;
 	dma_addr_t p_phys_table;
-	int txq_index;
 	uint16_t page_cnt;
-	int rc, tc, i;
+	uint16_t j;
+	int hwfn_index;
+	int rc;
 
-	for_each_queue(i) {
-		fp = &qdev->fp_array[i];
-		if (fp->type & QEDE_FASTPATH_RX) {
-			struct ecore_rxq_start_ret_params ret_params;
-
-			p_phys_table =
-			    ecore_chain_get_pbl_phys(&fp->rxq->rx_comp_ring);
-			page_cnt =
-			    ecore_chain_get_page_cnt(&fp->rxq->rx_comp_ring);
-
-			memset(&ret_params, 0, sizeof(ret_params));
-			memset(&q_params, 0, sizeof(q_params));
-			q_params.queue_id = i;
-			q_params.vport_id = 0;
-			q_params.sb = fp->sb_info->igu_sb_id;
-			q_params.sb_idx = RX_PI;
-
-			ecore_sb_ack(fp->sb_info, IGU_INT_DISABLE, 0);
-
-			rc = qdev->ops->q_rx_start(edev, i, &q_params,
-					   fp->rxq->rx_buf_size,
-					   fp->rxq->rx_bd_ring.p_phys_addr,
-					   p_phys_table,
-					   page_cnt,
-					   &ret_params);
+	if (rx_queue_id < eth_dev->data->nb_rx_queues) {
+		fp = &qdev->fp_array[rx_queue_id];
+		rxq = eth_dev->data->rx_queues[rx_queue_id];
+		/* Allocate buffers for the Rx ring */
+		for (j = 0; j < rxq->nb_rx_desc; j++) {
+			rc = qede_alloc_rx_buffer(rxq);
 			if (rc) {
-				DP_ERR(edev, "Start rxq #%d failed %d\n",
-				       fp->rxq->queue_id, rc);
-				return rc;
+				DP_ERR(edev, "RX buffer allocation failed"
+						" for rxq = %u\n", rx_queue_id);
+				return -ENOMEM;
 			}
-
-			/* Use the return parameters */
-			fp->rxq->hw_rxq_prod_addr = ret_params.p_prod;
-			fp->rxq->handle = ret_params.p_handle;
-
-			fp->rxq->hw_cons_ptr =
-					&fp->sb_info->sb_virt->pi_array[RX_PI];
-
-			qede_update_rx_prod(qdev, fp->rxq);
 		}
-
-		if (!(fp->type & QEDE_FASTPATH_TX))
-			continue;
-		for (tc = 0; tc < qdev->num_tc; tc++) {
-			struct ecore_txq_start_ret_params ret_params;
-
-			txq = fp->txqs[tc];
-			txq_index = tc * QEDE_RSS_COUNT(qdev) + i;
-
-			p_phys_table = ecore_chain_get_pbl_phys(&txq->tx_pbl);
-			page_cnt = ecore_chain_get_page_cnt(&txq->tx_pbl);
-
-			memset(&q_params, 0, sizeof(q_params));
-			memset(&ret_params, 0, sizeof(ret_params));
-			q_params.queue_id = txq->queue_id;
-			q_params.vport_id = 0;
-			q_params.sb = fp->sb_info->igu_sb_id;
-			q_params.sb_idx = TX_PI(tc);
-
-			rc = qdev->ops->q_tx_start(edev, i, &q_params,
-						   p_phys_table,
-						   page_cnt, /* **pp_doorbell */
-						   &ret_params);
-			if (rc) {
-				DP_ERR(edev, "Start txq %u failed %d\n",
-				       txq_index, rc);
-				return rc;
-			}
-
-			txq->doorbell_addr = ret_params.p_doorbell;
-			txq->handle = ret_params.p_handle;
-
-			txq->hw_cons_ptr =
-			    &fp->sb_info->sb_virt->pi_array[TX_PI(tc)];
-			SET_FIELD(txq->tx_db.data.params,
-				  ETH_DB_DATA_DEST, DB_DEST_XCM);
-			SET_FIELD(txq->tx_db.data.params, ETH_DB_DATA_AGG_CMD,
-				  DB_AGG_CMD_SET);
-			SET_FIELD(txq->tx_db.data.params,
-				  ETH_DB_DATA_AGG_VAL_SEL,
-				  DQ_XCM_ETH_TX_BD_PROD_CMD);
-
-			txq->tx_db.data.agg_flags = DQ_XCM_ETH_DQ_CF_CMD;
+		/* disable interrupts */
+		ecore_sb_ack(fp->sb_info, IGU_INT_DISABLE, 0);
+		/* Prepare ramrod */
+		memset(&params, 0, sizeof(params));
+		params.queue_id = rx_queue_id;
+		params.vport_id = 0;
+		params.sb = fp->sb_info->igu_sb_id;
+		DP_INFO(edev, "rxq %u igu_sb_id 0x%x\n",
+				fp->rxq->queue_id, fp->sb_info->igu_sb_id);
+		params.sb_idx = RX_PI;
+		hwfn_index = rx_queue_id % edev->num_hwfns;
+		p_hwfn = &edev->hwfns[hwfn_index];
+		p_phys_table = ecore_chain_get_pbl_phys(&fp->rxq->rx_comp_ring);
+		page_cnt = ecore_chain_get_page_cnt(&fp->rxq->rx_comp_ring);
+		memset(&ret_params, 0, sizeof(ret_params));
+		rc = ecore_eth_rx_queue_start(p_hwfn,
+				p_hwfn->hw_info.opaque_fid,
+				&params, fp->rxq->rx_buf_size,
+				fp->rxq->rx_bd_ring.p_phys_addr,
+				p_phys_table, page_cnt,
+				&ret_params);
+		if (rc) {
+			DP_ERR(edev, "RX queue %u could not be started, rc = %d\n",
+					rx_queue_id, rc);
+			return -1;
 		}
+		/* Update with the returned parameters */
+		fp->rxq->hw_rxq_prod_addr = ret_params.p_prod;
+		fp->rxq->handle = ret_params.p_handle;
+
+		fp->rxq->hw_cons_ptr = &fp->sb_info->sb_virt->pi_array[RX_PI];
+		qede_update_rx_prod(qdev, fp->rxq);
+		eth_dev->data->rx_queue_state[rx_queue_id] =
+			RTE_ETH_QUEUE_STATE_STARTED;
+		DP_INFO(edev, "RX queue %u started\n", rx_queue_id);
+	} else {
+		DP_ERR(edev, "RX queue %u is not in range\n", rx_queue_id);
+		rc = -EINVAL;
 	}
 
+	return rc;
+}
+
+static int
+qede_tx_queue_start(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id)
+{
+	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
+	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
+	struct ecore_queue_start_common_params params;
+	struct ecore_txq_start_ret_params ret_params;
+	struct ecore_hwfn *p_hwfn;
+	dma_addr_t p_phys_table;
+	struct qede_tx_queue *txq;
+	struct qede_fastpath *fp;
+	uint16_t page_cnt;
+	int hwfn_index;
+	int rc;
+
+	if (tx_queue_id < eth_dev->data->nb_tx_queues) {
+		txq = eth_dev->data->tx_queues[tx_queue_id];
+		fp = &qdev->fp_array[tx_queue_id];
+		memset(&params, 0, sizeof(params));
+		params.queue_id = tx_queue_id;
+		params.vport_id = 0;
+		params.sb = fp->sb_info->igu_sb_id;
+		DP_INFO(edev, "txq %u igu_sb_id 0x%x\n",
+				fp->txq->queue_id, fp->sb_info->igu_sb_id);
+		params.sb_idx = TX_PI(0); /* tc = 0 */
+		p_phys_table = ecore_chain_get_pbl_phys(&txq->tx_pbl);
+		page_cnt = ecore_chain_get_page_cnt(&txq->tx_pbl);
+		hwfn_index = tx_queue_id % edev->num_hwfns;
+		p_hwfn = &edev->hwfns[hwfn_index];
+		if (qdev->dev_info.is_legacy)
+			fp->txq->is_legacy = true;
+		rc = ecore_eth_tx_queue_start(p_hwfn,
+				p_hwfn->hw_info.opaque_fid,
+				&params, 0 /* tc */,
+				p_phys_table, page_cnt,
+				&ret_params);
+		if (rc != ECORE_SUCCESS) {
+			DP_ERR(edev, "TX queue %u couldn't be started, rc=%d\n",
+					tx_queue_id, rc);
+			return -1;
+		}
+		txq->doorbell_addr = ret_params.p_doorbell;
+		txq->handle = ret_params.p_handle;
+
+		txq->hw_cons_ptr = &fp->sb_info->sb_virt->pi_array[TX_PI(0)];
+		SET_FIELD(txq->tx_db.data.params, ETH_DB_DATA_DEST,
+				DB_DEST_XCM);
+		SET_FIELD(txq->tx_db.data.params, ETH_DB_DATA_AGG_CMD,
+				DB_AGG_CMD_SET);
+		SET_FIELD(txq->tx_db.data.params,
+				ETH_DB_DATA_AGG_VAL_SEL,
+				DQ_XCM_ETH_TX_BD_PROD_CMD);
+		txq->tx_db.data.agg_flags = DQ_XCM_ETH_DQ_CF_CMD;
+		eth_dev->data->tx_queue_state[tx_queue_id] =
+			RTE_ETH_QUEUE_STATE_STARTED;
+		DP_INFO(edev, "TX queue %u started\n", tx_queue_id);
+	} else {
+		DP_ERR(edev, "TX queue %u is not in range\n", tx_queue_id);
+		rc = -EINVAL;
+	}
+
+	return rc;
+}
+
+static inline void
+qede_free_tx_pkt(struct qede_tx_queue *txq)
+{
+	struct rte_mbuf *mbuf;
+	uint16_t nb_segs;
+	uint16_t idx;
+
+	idx = TX_CONS(txq);
+	mbuf = txq->sw_tx_ring[idx].mbuf;
+	if (mbuf) {
+		nb_segs = mbuf->nb_segs;
+		PMD_TX_LOG(DEBUG, txq, "nb_segs to free %u\n", nb_segs);
+		while (nb_segs) {
+			/* It's like consuming rxbuf in recv() */
+			ecore_chain_consume(&txq->tx_pbl);
+			txq->nb_tx_avail++;
+			nb_segs--;
+		}
+		rte_pktmbuf_free(mbuf);
+		txq->sw_tx_ring[idx].mbuf = NULL;
+		txq->sw_tx_cons++;
+		PMD_TX_LOG(DEBUG, txq, "Freed tx packet\n");
+	} else {
+		ecore_chain_consume(&txq->tx_pbl);
+		txq->nb_tx_avail++;
+	}
+}
+
+static inline void
+qede_process_tx_compl(__rte_unused struct ecore_dev *edev,
+		      struct qede_tx_queue *txq)
+{
+	uint16_t hw_bd_cons;
+#ifdef RTE_LIBRTE_QEDE_DEBUG_TX
+	uint16_t sw_tx_cons;
+#endif
+
+	rte_compiler_barrier();
+	hw_bd_cons = rte_le_to_cpu_16(*txq->hw_cons_ptr);
+#ifdef RTE_LIBRTE_QEDE_DEBUG_TX
+	sw_tx_cons = ecore_chain_get_cons_idx(&txq->tx_pbl);
+	PMD_TX_LOG(DEBUG, txq, "Tx Completions = %u\n",
+		   abs(hw_bd_cons - sw_tx_cons));
+#endif
+	while (hw_bd_cons !=  ecore_chain_get_cons_idx(&txq->tx_pbl))
+		qede_free_tx_pkt(txq);
+}
+
+
+static int qede_drain_txq(struct qede_dev *qdev,
+			  struct qede_tx_queue *txq, bool allow_drain)
+{
+	struct ecore_dev *edev = &qdev->edev;
+	int rc, cnt = 1000;
+
+	while (txq->sw_tx_cons != txq->sw_tx_prod) {
+		qede_process_tx_compl(edev, txq);
+		if (!cnt) {
+			if (allow_drain) {
+				DP_ERR(edev, "Tx queue[%u] is stuck,"
+					  "requesting MCP to drain\n",
+					  txq->queue_id);
+				rc = qdev->ops->common->drain(edev);
+				if (rc)
+					return rc;
+				return qede_drain_txq(qdev, txq, false);
+			}
+			DP_ERR(edev, "Timeout waiting for tx queue[%d]:"
+				  "PROD=%d, CONS=%d\n",
+				  txq->queue_id, txq->sw_tx_prod,
+				  txq->sw_tx_cons);
+			return -1;
+		}
+		cnt--;
+		DELAY(1000);
+		rte_compiler_barrier();
+	}
+
+	/* FW finished processing, wait for HW to transmit all tx packets */
+	DELAY(2000);
+
 	return 0;
+}
+
+
+/* Stops a given TX queue in the HW */
+static int qede_tx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id)
+{
+	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
+	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
+	struct ecore_hwfn *p_hwfn;
+	struct qede_tx_queue *txq;
+	int hwfn_index;
+	int rc;
+
+	if (tx_queue_id < eth_dev->data->nb_tx_queues) {
+		txq = eth_dev->data->tx_queues[tx_queue_id];
+		/* Drain txq */
+		if (qede_drain_txq(qdev, txq, true))
+			return -1; /* For the lack of retcodes */
+		/* Stop txq */
+		hwfn_index = tx_queue_id % edev->num_hwfns;
+		p_hwfn = &edev->hwfns[hwfn_index];
+		rc = ecore_eth_tx_queue_stop(p_hwfn, txq->handle);
+		if (rc != ECORE_SUCCESS) {
+			DP_ERR(edev, "TX queue %u stop fails\n", tx_queue_id);
+			return -1;
+		}
+		qede_tx_queue_release_mbufs(txq);
+		qede_tx_queue_reset(qdev, txq);
+		eth_dev->data->tx_queue_state[tx_queue_id] =
+			RTE_ETH_QUEUE_STATE_STOPPED;
+		DP_INFO(edev, "TX queue %u stopped\n", tx_queue_id);
+	} else {
+		DP_ERR(edev, "TX queue %u is not in range\n", tx_queue_id);
+		rc = -EINVAL;
+	}
+
+	return rc;
+}
+
+int qede_start_queues(struct rte_eth_dev *eth_dev)
+{
+	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
+	uint8_t id;
+	int rc;
+
+	for_each_rss(id) {
+		rc = qede_rx_queue_start(eth_dev, id);
+		if (rc != ECORE_SUCCESS)
+			return -1;
+	}
+
+	for_each_tss(id) {
+		rc = qede_tx_queue_start(eth_dev, id);
+		if (rc != ECORE_SUCCESS)
+			return -1;
+	}
+
+	return rc;
+}
+
+void qede_stop_queues(struct rte_eth_dev *eth_dev)
+{
+	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
+	uint8_t id;
+
+	/* Stopping RX/TX queues */
+	for_each_tss(id) {
+		qede_tx_queue_stop(eth_dev, id);
+	}
+
+	for_each_rss(id) {
+		qede_rx_queue_stop(eth_dev, id);
+	}
 }
 
 static bool qede_tunn_exist(uint16_t flag)
@@ -901,7 +1075,6 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	struct qede_rx_queue *rxq = p_rxq;
 	struct qede_dev *qdev = rxq->qdev;
 	struct ecore_dev *edev = &qdev->edev;
-	struct qede_fastpath *fp = &qdev->fp_array[rxq->queue_id];
 	uint16_t hw_comp_cons, sw_comp_cons, sw_rx_index;
 	uint16_t rx_pkt = 0;
 	union eth_rx_cqe *cqe;
@@ -987,7 +1160,8 @@ qede_recv_pkts(void *p_rxq, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 			goto tpa_end;
 		case ETH_RX_CQE_TYPE_SLOW_PATH:
 			PMD_RX_LOG(INFO, rxq, "Got unexpected slowpath CQE\n");
-			qdev->ops->eth_cqe_completion(edev, fp->id,
+			ecore_eth_cqe_completion(
+				&edev->hwfns[rxq->queue_id % edev->num_hwfns],
 				(struct eth_slow_path_rx_cqe *)cqe);
 			/* fall-thru */
 		default:
@@ -1175,53 +1349,6 @@ next_cqe:
 	return rx_pkt;
 }
 
-static inline void
-qede_free_tx_pkt(struct qede_tx_queue *txq)
-{
-	struct rte_mbuf *mbuf;
-	uint16_t nb_segs;
-	uint16_t idx;
-
-	idx = TX_CONS(txq);
-	mbuf = txq->sw_tx_ring[idx].mbuf;
-	if (mbuf) {
-		nb_segs = mbuf->nb_segs;
-		PMD_TX_LOG(DEBUG, txq, "nb_segs to free %u\n", nb_segs);
-		while (nb_segs) {
-			/* It's like consuming rxbuf in recv() */
-			ecore_chain_consume(&txq->tx_pbl);
-			txq->nb_tx_avail++;
-			nb_segs--;
-		}
-		rte_pktmbuf_free(mbuf);
-		txq->sw_tx_ring[idx].mbuf = NULL;
-		txq->sw_tx_cons++;
-		PMD_TX_LOG(DEBUG, txq, "Freed tx packet\n");
-	} else {
-		ecore_chain_consume(&txq->tx_pbl);
-		txq->nb_tx_avail++;
-	}
-}
-
-static inline void
-qede_process_tx_compl(__rte_unused struct ecore_dev *edev,
-		      struct qede_tx_queue *txq)
-{
-	uint16_t hw_bd_cons;
-#ifdef RTE_LIBRTE_QEDE_DEBUG_TX
-	uint16_t sw_tx_cons;
-#endif
-
-	rte_compiler_barrier();
-	hw_bd_cons = rte_le_to_cpu_16(*txq->hw_cons_ptr);
-#ifdef RTE_LIBRTE_QEDE_DEBUG_TX
-	sw_tx_cons = ecore_chain_get_cons_idx(&txq->tx_pbl);
-	PMD_TX_LOG(DEBUG, txq, "Tx Completions = %u\n",
-		   abs(hw_bd_cons - sw_tx_cons));
-#endif
-	while (hw_bd_cons !=  ecore_chain_get_cons_idx(&txq->tx_pbl))
-		qede_free_tx_pkt(txq);
-}
 
 /* Populate scatter gather buffer descriptor fields */
 static inline uint8_t
@@ -1597,286 +1724,6 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		   nb_pkts, nb_pkt_sent, TX_PROD(txq), rte_lcore_id());
 
 	return nb_pkt_sent;
-}
-
-static void qede_init_fp_queue(struct rte_eth_dev *eth_dev)
-{
-	struct qede_dev *qdev = eth_dev->data->dev_private;
-	struct qede_fastpath *fp;
-	uint8_t i, txq_index, tc;
-	int rxq = 0, txq = 0;
-
-	for_each_queue(i) {
-		fp = &qdev->fp_array[i];
-		if (fp->type & QEDE_FASTPATH_RX) {
-			fp->rxq = eth_dev->data->rx_queues[i];
-			fp->rxq->queue_id = rxq++;
-		}
-
-		if (fp->type & QEDE_FASTPATH_TX) {
-			for (tc = 0; tc < qdev->num_tc; tc++) {
-				txq_index = tc * QEDE_TSS_COUNT(qdev) + txq;
-				fp->txqs[tc] =
-					eth_dev->data->tx_queues[txq_index];
-				fp->txqs[tc]->queue_id = txq_index;
-				if (qdev->dev_info.is_legacy)
-					fp->txqs[tc]->is_legacy = true;
-			}
-			txq++;
-		}
-	}
-}
-
-int qede_dev_start(struct rte_eth_dev *eth_dev)
-{
-	struct qede_dev *qdev = eth_dev->data->dev_private;
-	struct ecore_dev *edev = &qdev->edev;
-	int rc;
-
-	DP_INFO(edev, "Device state is %d\n", qdev->state);
-
-	if (qdev->state == QEDE_DEV_START) {
-		DP_INFO(edev, "Port is already started\n");
-		return 0;
-	}
-
-	if (qdev->state == QEDE_DEV_CONFIG)
-		qede_init_fp_queue(eth_dev);
-
-	/* Update MTU only if it has changed */
-	if (qdev->mtu != qdev->new_mtu) {
-		if (qede_update_mtu(eth_dev, qdev->new_mtu))
-			return -1;
-		qdev->mtu = qdev->new_mtu;
-		/* If MTU has changed then update TPA too */
-		if (qdev->enable_lro)
-			if (qede_enable_tpa(eth_dev, true))
-				return -1;
-	}
-
-	rc = qede_start_queues(eth_dev);
-	if (rc) {
-		DP_ERR(edev, "Failed to start queues\n");
-		/* TBD: free */
-		return rc;
-	}
-
-	/* Newer SR-IOV PF driver expects RX/TX queues to be started before
-	 * enabling RSS. Hence RSS configuration is deferred upto this point.
-	 * Also, we would like to retain similar behavior in PF case, so we
-	 * don't do PF/VF specific check here.
-	 */
-	if (eth_dev->data->dev_conf.rxmode.mq_mode  == ETH_MQ_RX_RSS)
-		if (qede_config_rss(eth_dev))
-			return -1;
-
-	/* Enable vport*/
-	if (qede_activate_vport(eth_dev, true))
-		return -1;
-
-	/* Bring-up the link */
-	qede_dev_set_link_state(eth_dev, true);
-
-	/* Start/resume traffic */
-	qdev->ops->fastpath_start(edev);
-
-	qdev->state = QEDE_DEV_START;
-
-	DP_INFO(edev, "dev_state is QEDE_DEV_START\n");
-
-	return 0;
-}
-
-static int qede_drain_txq(struct qede_dev *qdev,
-			  struct qede_tx_queue *txq, bool allow_drain)
-{
-	struct ecore_dev *edev = &qdev->edev;
-	int rc, cnt = 1000;
-
-	while (txq->sw_tx_cons != txq->sw_tx_prod) {
-		qede_process_tx_compl(edev, txq);
-		if (!cnt) {
-			if (allow_drain) {
-				DP_ERR(edev, "Tx queue[%u] is stuck,"
-					  "requesting MCP to drain\n",
-					  txq->queue_id);
-				rc = qdev->ops->common->drain(edev);
-				if (rc)
-					return rc;
-				return qede_drain_txq(qdev, txq, false);
-			}
-			DP_ERR(edev, "Timeout waiting for tx queue[%d]:"
-				  "PROD=%d, CONS=%d\n",
-				  txq->queue_id, txq->sw_tx_prod,
-				  txq->sw_tx_cons);
-			return -1;
-		}
-		cnt--;
-		DELAY(1000);
-		rte_compiler_barrier();
-	}
-
-	/* FW finished processing, wait for HW to transmit all tx packets */
-	DELAY(2000);
-
-	return 0;
-}
-
-static int qede_stop_queues(struct qede_dev *qdev)
-{
-	struct ecore_dev *edev = &qdev->edev;
-	struct qede_fastpath *fp;
-	int rc, tc, i;
-
-	DP_INFO(edev, "Flushing tx queues\n");
-
-	/* Flush Tx queues. If needed, request drain from MCP */
-	for_each_queue(i) {
-		fp = &qdev->fp_array[i];
-
-		if (fp->type & QEDE_FASTPATH_TX) {
-			for (tc = 0; tc < qdev->num_tc; tc++) {
-				struct qede_tx_queue *txq = fp->txqs[tc];
-
-				rc = qede_drain_txq(qdev, txq, true);
-				if (rc)
-					return rc;
-			}
-		}
-	}
-
-	/* Stop all Queues in reverse order */
-	for (i = QEDE_QUEUE_CNT(qdev) - 1; i >= 0; i--) {
-		fp = &qdev->fp_array[i];
-
-		/* Stop the Tx Queue(s) */
-		if (qdev->fp_array[i].type & QEDE_FASTPATH_TX) {
-			for (tc = 0; tc < qdev->num_tc; tc++) {
-				struct qede_tx_queue *txq = fp->txqs[tc];
-				DP_INFO(edev, "Stopping tx queues\n");
-				rc = qdev->ops->q_tx_stop(edev, i, txq->handle);
-				if (rc) {
-					DP_ERR(edev, "Failed to stop TXQ #%d\n",
-					       i);
-					return rc;
-				}
-			}
-		}
-
-		/* Stop the Rx Queue */
-		if (qdev->fp_array[i].type & QEDE_FASTPATH_RX) {
-			DP_INFO(edev, "Stopping rx queues\n");
-			rc = qdev->ops->q_rx_stop(edev, i, fp->rxq->handle);
-			if (rc) {
-				DP_ERR(edev, "Failed to stop RXQ #%d\n", i);
-				return rc;
-			}
-		}
-	}
-	qede_reset_fp_rings(qdev);
-
-	return 0;
-}
-
-int qede_reset_fp_rings(struct qede_dev *qdev)
-{
-	struct qede_fastpath *fp;
-	struct qede_tx_queue *txq;
-	uint8_t tc;
-	uint16_t id, i;
-
-	for_each_queue(id) {
-		fp = &qdev->fp_array[id];
-
-		if (fp->type & QEDE_FASTPATH_RX) {
-			DP_INFO(&qdev->edev,
-				"Reset FP chain for RSS %u\n", id);
-			qede_rx_queue_release_mbufs(fp->rxq);
-			ecore_chain_reset(&fp->rxq->rx_bd_ring);
-			ecore_chain_reset(&fp->rxq->rx_comp_ring);
-			fp->rxq->sw_rx_prod = 0;
-			fp->rxq->sw_rx_cons = 0;
-			*fp->rxq->hw_cons_ptr = 0;
-			for (i = 0; i < fp->rxq->nb_rx_desc; i++) {
-				if (qede_alloc_rx_buffer(fp->rxq)) {
-					DP_ERR(&qdev->edev,
-					       "RX buffer allocation failed\n");
-					return -ENOMEM;
-				}
-			}
-		}
-		if (fp->type & QEDE_FASTPATH_TX) {
-			for (tc = 0; tc < qdev->num_tc; tc++) {
-				txq = fp->txqs[tc];
-				qede_tx_queue_release_mbufs(txq);
-				ecore_chain_reset(&txq->tx_pbl);
-				txq->sw_tx_cons = 0;
-				txq->sw_tx_prod = 0;
-				*txq->hw_cons_ptr = 0;
-			}
-		}
-	}
-
-	return 0;
-}
-
-/* This function frees all memory of a single fp */
-void qede_free_mem_load(struct rte_eth_dev *eth_dev)
-{
-	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
-	struct qede_fastpath *fp;
-	uint16_t txq_idx;
-	uint8_t id;
-	uint8_t tc;
-
-	for_each_queue(id) {
-		fp = &qdev->fp_array[id];
-		if (fp->type & QEDE_FASTPATH_RX) {
-			if (!fp->rxq)
-				continue;
-			qede_rx_queue_release(fp->rxq);
-			eth_dev->data->rx_queues[id] = NULL;
-		} else {
-			for (tc = 0; tc < qdev->num_tc; tc++) {
-				if (!fp->txqs[tc])
-					continue;
-				txq_idx = fp->txqs[tc]->queue_id;
-				qede_tx_queue_release(fp->txqs[tc]);
-				eth_dev->data->tx_queues[txq_idx] = NULL;
-			}
-		}
-	}
-}
-
-void qede_dev_stop(struct rte_eth_dev *eth_dev)
-{
-	struct qede_dev *qdev = eth_dev->data->dev_private;
-	struct ecore_dev *edev = &qdev->edev;
-
-	DP_INFO(edev, "port %u\n", eth_dev->data->port_id);
-
-	if (qdev->state != QEDE_DEV_START) {
-		DP_INFO(edev, "Device not yet started\n");
-		return;
-	}
-
-	/* Disable vport */
-	if (qede_activate_vport(eth_dev, false))
-		return;
-
-	if (qede_stop_queues(qdev))
-		DP_ERR(edev, "Didn't succeed to close queues\n");
-
-	DP_INFO(edev, "Stopped queues\n");
-
-	qdev->ops->fastpath_stop(edev);
-
-	/* Bring the link down */
-	qede_dev_set_link_state(eth_dev, false);
-
-	qdev->state = QEDE_DEV_STOP;
-
-	DP_INFO(edev, "dev_state is QEDE_DEV_STOP\n");
 }
 
 uint16_t

@@ -40,16 +40,14 @@ static void qed_init_pci(struct ecore_dev *edev, struct rte_pci_device *pci_dev)
 
 static int
 qed_probe(struct ecore_dev *edev, struct rte_pci_device *pci_dev,
-	  enum qed_protocol protocol, uint32_t dp_module,
-	  uint8_t dp_level, bool is_vf)
+	  uint32_t dp_module, uint8_t dp_level, bool is_vf)
 {
 	struct ecore_hw_prepare_params hw_prepare_params;
-	struct qede_dev *qdev = (struct qede_dev *)edev;
 	int rc;
 
 	ecore_init_struct(edev);
 	edev->drv_type = DRV_ID_DRV_TYPE_LINUX;
-	qdev->protocol = protocol;
+	/* Protocol type is always fixed to PROTOCOL_ETH */
 
 	if (is_vf)
 		edev->b_is_vf = true;
@@ -460,22 +458,13 @@ static void qed_set_name(struct ecore_dev *edev, char name[NAME_SIZE])
 
 static uint32_t
 qed_sb_init(struct ecore_dev *edev, struct ecore_sb_info *sb_info,
-	    void *sb_virt_addr, dma_addr_t sb_phy_addr,
-	    uint16_t sb_id, enum qed_sb_type type)
+	    void *sb_virt_addr, dma_addr_t sb_phy_addr, uint16_t sb_id)
 {
 	struct ecore_hwfn *p_hwfn;
 	int hwfn_index;
 	uint16_t rel_sb_id;
-	uint8_t n_hwfns;
+	uint8_t n_hwfns = edev->num_hwfns;
 	uint32_t rc;
-
-	/* RoCE uses single engine and CMT uses two engines. When using both
-	 * we force only a single engine. Storage uses only engine 0 too.
-	 */
-	if (type == QED_SB_TYPE_L2_QUEUE)
-		n_hwfns = edev->num_hwfns;
-	else
-		n_hwfns = 1;
 
 	hwfn_index = sb_id % n_hwfns;
 	p_hwfn = &edev->hwfns[hwfn_index];
@@ -737,3 +726,13 @@ const struct qed_common_ops qed_common_ops_pass = {
 	INIT_STRUCT_FIELD(remove, &qed_remove),
 	INIT_STRUCT_FIELD(send_drv_state, &qed_send_drv_state),
 };
+
+const struct qed_eth_ops qed_eth_ops_pass = {
+	INIT_STRUCT_FIELD(common, &qed_common_ops_pass),
+	INIT_STRUCT_FIELD(fill_dev_info, &qed_fill_eth_dev_info),
+};
+
+const struct qed_eth_ops *qed_get_eth_ops(void)
+{
+	return &qed_eth_ops_pass;
+}
