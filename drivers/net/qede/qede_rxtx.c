@@ -1410,7 +1410,7 @@ print_tx_bd_info(struct qede_tx_queue *txq,
 
 	if (bd1)
 		PMD_TX_LOG(INFO, txq,
-			   "BD1: nbytes=%u nbds=%u bd_flags=04%x bf=%04x",
+			   "BD1: nbytes=%u nbds=%u bd_flags=%04x bf=%04x",
 			   rte_cpu_to_le_16(bd1->nbytes), bd1->data.nbds,
 			   bd1->data.bd_flags.bitfields,
 			   rte_cpu_to_le_16(bd1->data.bitfields));
@@ -1609,7 +1609,7 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		if (tunn_flg) {
 			/* First indicate its a tunnel pkt */
-			bd1->data.bd_flags.bitfields |=
+			bd1->data.bitfields |=
 				ETH_TX_DATA_1ST_BD_TUNN_FLAG_MASK <<
 				ETH_TX_DATA_1ST_BD_TUNN_FLAG_SHIFT;
 
