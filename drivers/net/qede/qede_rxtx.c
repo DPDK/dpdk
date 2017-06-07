@@ -506,42 +506,11 @@ qede_update_rx_prod(__rte_unused struct qede_dev *edev,
 	PMD_RX_LOG(DEBUG, rxq, "bd_prod %u  cqe_prod %u", bd_prod, cqe_prod);
 }
 
-static void
-qede_update_sge_tpa_params(struct ecore_sge_tpa_params *sge_tpa_params,
-			   uint16_t mtu, bool enable)
-{
-	/* Enable LRO in split mode */
-	sge_tpa_params->tpa_ipv4_en_flg = enable;
-	sge_tpa_params->tpa_ipv6_en_flg = enable;
-	sge_tpa_params->tpa_ipv4_tunn_en_flg = false;
-	sge_tpa_params->tpa_ipv6_tunn_en_flg = false;
-	/* set if tpa enable changes */
-	sge_tpa_params->update_tpa_en_flg = 1;
-	/* set if tpa parameters should be handled */
-	sge_tpa_params->update_tpa_param_flg = enable;
-
-	sge_tpa_params->max_buffers_per_cqe = 20;
-	/* Enable TPA in split mode. In this mode each TPA segment
-	 * starts on the new BD, so there is one BD per segment.
-	 */
-	sge_tpa_params->tpa_pkt_split_flg = 1;
-	sge_tpa_params->tpa_hdr_data_split_flg = 0;
-	sge_tpa_params->tpa_gro_consistent_flg = 0;
-	sge_tpa_params->tpa_max_aggs_num = ETH_TPA_MAX_AGGS_NUM;
-	sge_tpa_params->tpa_max_size = 0x7FFF;
-	sge_tpa_params->tpa_min_size_to_start = mtu / 2;
-	sge_tpa_params->tpa_min_size_to_cont = mtu / 2;
-}
-
-static int qede_start_queues(struct rte_eth_dev *eth_dev,
-			     __rte_unused bool clear_stats)
+static int qede_start_queues(struct rte_eth_dev *eth_dev)
 {
 	struct qede_dev *qdev = eth_dev->data->dev_private;
 	struct ecore_dev *edev = &qdev->edev;
 	struct ecore_queue_start_common_params q_params;
-	struct qed_dev_info *qed_info = &qdev->dev_info.common;
-	struct qed_update_vport_params vport_update_params;
-	struct ecore_sge_tpa_params tpa_params;
 	struct qede_tx_queue *txq;
 	struct qede_fastpath *fp;
 	dma_addr_t p_phys_table;
@@ -633,35 +602,6 @@ static int qede_start_queues(struct rte_eth_dev *eth_dev,
 
 			txq->tx_db.data.agg_flags = DQ_XCM_ETH_DQ_CF_CMD;
 		}
-	}
-
-	/* Prepare and send the vport enable */
-	memset(&vport_update_params, 0, sizeof(vport_update_params));
-	/* Update MTU via vport update */
-	vport_update_params.mtu = qdev->mtu;
-	vport_update_params.vport_id = 0;
-	vport_update_params.update_vport_active_flg = 1;
-	vport_update_params.vport_active_flg = 1;
-
-	/* @DPDK */
-	if (qed_info->mf_mode == MF_NPAR && qed_info->tx_switching) {
-		/* TBD: Check SRIOV enabled for VF */
-		vport_update_params.update_tx_switching_flg = 1;
-		vport_update_params.tx_switching_flg = 1;
-	}
-
-	/* TPA */
-	if (qdev->enable_lro) {
-		DP_INFO(edev, "Enabling LRO\n");
-		memset(&tpa_params, 0, sizeof(struct ecore_sge_tpa_params));
-		qede_update_sge_tpa_params(&tpa_params, qdev->mtu, true);
-		vport_update_params.sge_tpa_params = &tpa_params;
-	}
-
-	rc = qdev->ops->vport_update(edev, &vport_update_params);
-	if (rc) {
-		DP_ERR(edev, "Update V-PORT failed %d\n", rc);
-		return rc;
 	}
 
 	return 0;
@@ -1703,7 +1643,18 @@ int qede_dev_start(struct rte_eth_dev *eth_dev)
 	if (qdev->state == QEDE_DEV_CONFIG)
 		qede_init_fp_queue(eth_dev);
 
-	rc = qede_start_queues(eth_dev, true);
+	/* Update MTU only if it has changed */
+	if (qdev->mtu != qdev->new_mtu) {
+		if (qede_update_mtu(eth_dev, qdev->new_mtu))
+			return -1;
+		qdev->mtu = qdev->new_mtu;
+		/* If MTU has changed then update TPA too */
+		if (qdev->enable_lro)
+			if (qede_enable_tpa(eth_dev, true))
+				return -1;
+	}
+
+	rc = qede_start_queues(eth_dev);
 	if (rc) {
 		DP_ERR(edev, "Failed to start queues\n");
 		/* TBD: free */
@@ -1718,6 +1669,10 @@ int qede_dev_start(struct rte_eth_dev *eth_dev)
 	if (eth_dev->data->dev_conf.rxmode.mq_mode  == ETH_MQ_RX_RSS)
 		if (qede_config_rss(eth_dev))
 			return -1;
+
+	/* Enable vport*/
+	if (qede_activate_vport(eth_dev, true))
+		return -1;
 
 	/* Bring-up the link */
 	qede_dev_set_link_state(eth_dev, true);
@@ -1769,32 +1724,9 @@ static int qede_drain_txq(struct qede_dev *qdev,
 
 static int qede_stop_queues(struct qede_dev *qdev)
 {
-	struct qed_update_vport_params vport_update_params;
 	struct ecore_dev *edev = &qdev->edev;
-	struct ecore_sge_tpa_params tpa_params;
 	struct qede_fastpath *fp;
 	int rc, tc, i;
-
-	/* Disable the vport */
-	memset(&vport_update_params, 0, sizeof(vport_update_params));
-	vport_update_params.vport_id = 0;
-	vport_update_params.update_vport_active_flg = 1;
-	vport_update_params.vport_active_flg = 0;
-	vport_update_params.update_rss_flg = 0;
-	/* Disable TPA */
-	if (qdev->enable_lro) {
-		DP_INFO(edev, "Disabling LRO\n");
-		memset(&tpa_params, 0, sizeof(struct ecore_sge_tpa_params));
-		qede_update_sge_tpa_params(&tpa_params, qdev->mtu, false);
-		vport_update_params.sge_tpa_params = &tpa_params;
-	}
-
-	DP_INFO(edev, "Deactivate vport\n");
-	rc = qdev->ops->vport_update(edev, &vport_update_params);
-	if (rc) {
-		DP_ERR(edev, "Failed to update vport\n");
-		return rc;
-	}
 
 	DP_INFO(edev, "Flushing tx queues\n");
 
@@ -1927,6 +1859,10 @@ void qede_dev_stop(struct rte_eth_dev *eth_dev)
 		DP_INFO(edev, "Device not yet started\n");
 		return;
 	}
+
+	/* Disable vport */
+	if (qede_activate_vport(eth_dev, false))
+		return;
 
 	if (qede_stop_queues(qdev))
 		DP_ERR(edev, "Didn't succeed to close queues\n");

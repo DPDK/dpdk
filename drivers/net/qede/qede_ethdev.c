@@ -329,6 +329,178 @@ static void qede_print_adapter_info(struct qede_dev *qdev)
 }
 #endif
 
+static int
+qede_start_vport(struct qede_dev *qdev, uint16_t mtu)
+{
+	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
+	struct ecore_sp_vport_start_params params;
+	struct ecore_hwfn *p_hwfn;
+	int rc;
+	int i;
+
+	memset(&params, 0, sizeof(params));
+	params.vport_id = 0;
+	params.mtu = mtu;
+	/* @DPDK - Disable FW placement */
+	params.zero_placement_offset = 1;
+	for_each_hwfn(edev, i) {
+		p_hwfn = &edev->hwfns[i];
+		params.concrete_fid = p_hwfn->hw_info.concrete_fid;
+		params.opaque_fid = p_hwfn->hw_info.opaque_fid;
+		rc = ecore_sp_vport_start(p_hwfn, &params);
+		if (rc != ECORE_SUCCESS) {
+			DP_ERR(edev, "Start V-PORT failed %d\n", rc);
+			return rc;
+		}
+	}
+	ecore_reset_vport_stats(edev);
+	DP_INFO(edev, "VPORT started with MTU = %u\n", mtu);
+
+	return 0;
+}
+
+static int
+qede_stop_vport(struct ecore_dev *edev)
+{
+	struct ecore_hwfn *p_hwfn;
+	uint8_t vport_id;
+	int rc;
+	int i;
+
+	vport_id = 0;
+	for_each_hwfn(edev, i) {
+		p_hwfn = &edev->hwfns[i];
+		rc = ecore_sp_vport_stop(p_hwfn, p_hwfn->hw_info.opaque_fid,
+					 vport_id);
+		if (rc != ECORE_SUCCESS) {
+			DP_ERR(edev, "Stop V-PORT failed rc = %d\n", rc);
+			return rc;
+		}
+	}
+
+	return 0;
+}
+
+/* Activate or deactivate vport via vport-update */
+int qede_activate_vport(struct rte_eth_dev *eth_dev, bool flg)
+{
+	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
+	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
+	struct ecore_sp_vport_update_params params;
+	struct ecore_hwfn *p_hwfn;
+	uint8_t i;
+	int rc = -1;
+
+	memset(&params, 0, sizeof(struct ecore_sp_vport_update_params));
+	params.vport_id = 0;
+	params.update_vport_active_rx_flg = 1;
+	params.update_vport_active_tx_flg = 1;
+	params.vport_active_rx_flg = flg;
+	params.vport_active_tx_flg = flg;
+	for_each_hwfn(edev, i) {
+		p_hwfn = &edev->hwfns[i];
+		params.opaque_fid = p_hwfn->hw_info.opaque_fid;
+		rc = ecore_sp_vport_update(p_hwfn, &params,
+				ECORE_SPQ_MODE_EBLOCK, NULL);
+		if (rc != ECORE_SUCCESS) {
+			DP_ERR(edev, "Failed to update vport\n");
+			break;
+		}
+	}
+	DP_INFO(edev, "vport %s\n", flg ? "activated" : "deactivated");
+	return rc;
+}
+
+static void
+qede_update_sge_tpa_params(struct ecore_sge_tpa_params *sge_tpa_params,
+			   uint16_t mtu, bool enable)
+{
+	/* Enable LRO in split mode */
+	sge_tpa_params->tpa_ipv4_en_flg = enable;
+	sge_tpa_params->tpa_ipv6_en_flg = enable;
+	sge_tpa_params->tpa_ipv4_tunn_en_flg = false;
+	sge_tpa_params->tpa_ipv6_tunn_en_flg = false;
+	/* set if tpa enable changes */
+	sge_tpa_params->update_tpa_en_flg = 1;
+	/* set if tpa parameters should be handled */
+	sge_tpa_params->update_tpa_param_flg = enable;
+
+	sge_tpa_params->max_buffers_per_cqe = 20;
+	/* Enable TPA in split mode. In this mode each TPA segment
+	 * starts on the new BD, so there is one BD per segment.
+	 */
+	sge_tpa_params->tpa_pkt_split_flg = 1;
+	sge_tpa_params->tpa_hdr_data_split_flg = 0;
+	sge_tpa_params->tpa_gro_consistent_flg = 0;
+	sge_tpa_params->tpa_max_aggs_num = ETH_TPA_MAX_AGGS_NUM;
+	sge_tpa_params->tpa_max_size = 0x7FFF;
+	sge_tpa_params->tpa_min_size_to_start = mtu / 2;
+	sge_tpa_params->tpa_min_size_to_cont = mtu / 2;
+}
+
+/* Enable/disable LRO via vport-update */
+int qede_enable_tpa(struct rte_eth_dev *eth_dev, bool flg)
+{
+	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
+	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
+	struct ecore_sp_vport_update_params params;
+	struct ecore_sge_tpa_params tpa_params;
+	struct ecore_hwfn *p_hwfn;
+	int rc;
+	int i;
+
+	memset(&params, 0, sizeof(struct ecore_sp_vport_update_params));
+	memset(&tpa_params, 0, sizeof(struct ecore_sge_tpa_params));
+	qede_update_sge_tpa_params(&tpa_params, qdev->mtu, flg);
+	params.vport_id = 0;
+	params.sge_tpa_params = &tpa_params;
+	for_each_hwfn(edev, i) {
+		p_hwfn = &edev->hwfns[i];
+		params.opaque_fid = p_hwfn->hw_info.opaque_fid;
+		rc = ecore_sp_vport_update(p_hwfn, &params,
+				ECORE_SPQ_MODE_EBLOCK, NULL);
+		if (rc != ECORE_SUCCESS) {
+			DP_ERR(edev, "Failed to update LRO\n");
+			return -1;
+		}
+	}
+
+	DP_INFO(edev, "LRO is %s\n", flg ? "enabled" : "disabled");
+
+	return 0;
+}
+
+/* Update MTU via vport-update without doing port restart.
+ * The vport must be deactivated before calling this API.
+ */
+int qede_update_mtu(struct rte_eth_dev *eth_dev, uint16_t mtu)
+{
+	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
+	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
+	struct ecore_sp_vport_update_params params;
+	struct ecore_hwfn *p_hwfn;
+	int rc;
+	int i;
+
+	memset(&params, 0, sizeof(struct ecore_sp_vport_update_params));
+	params.vport_id = 0;
+	params.mtu = mtu;
+	params.vport_id = 0;
+	for_each_hwfn(edev, i) {
+		p_hwfn = &edev->hwfns[i];
+		params.opaque_fid = p_hwfn->hw_info.opaque_fid;
+		rc = ecore_sp_vport_update(p_hwfn, &params,
+				ECORE_SPQ_MODE_EBLOCK, NULL);
+		if (rc != ECORE_SUCCESS) {
+			DP_ERR(edev, "Failed to update MTU\n");
+			return -1;
+		}
+	}
+	DP_INFO(edev, "MTU updated to %u\n", mtu);
+
+	return 0;
+}
+
 static void qede_set_ucast_cmn_params(struct ecore_filter_ucast *ucast)
 {
 	memset(ucast, 0, sizeof(struct ecore_filter_ucast));
@@ -565,49 +737,57 @@ qede_mac_addr_set(struct rte_eth_dev *eth_dev, struct ether_addr *mac_addr)
 	qede_mac_addr_add(eth_dev, mac_addr, 0, 0);
 }
 
-static void qede_config_accept_any_vlan(struct qede_dev *qdev, bool action)
+static void qede_config_accept_any_vlan(struct qede_dev *qdev, bool flg)
 {
-	struct ecore_dev *edev = &qdev->edev;
-	struct qed_update_vport_params params = {
-		.vport_id = 0,
-		.accept_any_vlan = action,
-		.update_accept_any_vlan_flg = 1,
-	};
+	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
+	struct ecore_sp_vport_update_params params;
+	struct ecore_hwfn *p_hwfn;
+	uint8_t i;
 	int rc;
 
-	/* Proceed only if action actually needs to be performed */
-	if (qdev->accept_any_vlan == action)
-		return;
-
-	rc = qdev->ops->vport_update(edev, &params);
-	if (rc) {
-		DP_ERR(edev, "Failed to %s accept-any-vlan\n",
-		       action ? "enable" : "disable");
-	} else {
-		DP_INFO(edev, "%s accept-any-vlan\n",
-			action ? "enabled" : "disabled");
-		qdev->accept_any_vlan = action;
+	memset(&params, 0, sizeof(struct ecore_sp_vport_update_params));
+	params.vport_id = 0;
+	params.update_accept_any_vlan_flg = 1;
+	params.accept_any_vlan = flg;
+	for_each_hwfn(edev, i) {
+		p_hwfn = &edev->hwfns[i];
+		params.opaque_fid = p_hwfn->hw_info.opaque_fid;
+		rc = ecore_sp_vport_update(p_hwfn, &params,
+				ECORE_SPQ_MODE_EBLOCK, NULL);
+		if (rc != ECORE_SUCCESS) {
+			DP_ERR(edev, "Failed to configure accept-any-vlan\n");
+			return;
+		}
 	}
+
+	DP_INFO(edev, "%s accept-any-vlan\n", flg ? "enabled" : "disabled");
 }
 
-static int qede_vlan_stripping(struct rte_eth_dev *eth_dev, bool set_stripping)
+static int qede_vlan_stripping(struct rte_eth_dev *eth_dev, bool flg)
 {
-	struct qed_update_vport_params vport_update_params;
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
+	struct ecore_sp_vport_update_params params;
+	struct ecore_hwfn *p_hwfn;
+	uint8_t i;
 	int rc;
 
-	memset(&vport_update_params, 0, sizeof(vport_update_params));
-	vport_update_params.vport_id = 0;
-	vport_update_params.update_inner_vlan_removal_flg = 1;
-	vport_update_params.inner_vlan_removal_flg = set_stripping;
-	rc = qdev->ops->vport_update(edev, &vport_update_params);
-	if (rc) {
-		DP_ERR(edev, "Update V-PORT failed %d\n", rc);
-		return rc;
+	memset(&params, 0, sizeof(struct ecore_sp_vport_update_params));
+	params.vport_id = 0;
+	params.update_inner_vlan_removal_flg = 1;
+	params.inner_vlan_removal_flg = flg;
+	for_each_hwfn(edev, i) {
+		p_hwfn = &edev->hwfns[i];
+		params.opaque_fid = p_hwfn->hw_info.opaque_fid;
+		rc = ecore_sp_vport_update(p_hwfn, &params,
+				ECORE_SPQ_MODE_EBLOCK, NULL);
+		if (rc != ECORE_SUCCESS) {
+			DP_ERR(edev, "Failed to update vport\n");
+			return -1;
+		}
 	}
-	qdev->vlan_strip_flg = set_stripping;
 
+	DP_INFO(edev, "VLAN stripping %s\n", flg ? "enabled" : "disabled");
 	return 0;
 }
 
@@ -741,33 +921,6 @@ static void qede_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask)
 		mask, rxmode->hw_vlan_strip, rxmode->hw_vlan_filter);
 }
 
-static int qede_init_vport(struct qede_dev *qdev)
-{
-	struct ecore_dev *edev = &qdev->edev;
-	struct qed_start_vport_params start = {0};
-	int rc;
-
-	start.remove_inner_vlan = 1;
-	start.enable_lro = qdev->enable_lro;
-	start.mtu = ETHER_MTU + QEDE_ETH_OVERHEAD;
-	start.vport_id = 0;
-	start.drop_ttl0 = false;
-	start.clear_stats = 1;
-	start.handle_ptp_pkts = 0;
-
-	rc = qdev->ops->vport_start(edev, &start);
-	if (rc) {
-		DP_ERR(edev, "Start V-PORT failed %d\n", rc);
-		return rc;
-	}
-
-	DP_INFO(edev,
-		"Start vport ramrod passed, vport_id = %d, MTU = %u\n",
-		start.vport_id, ETHER_MTU);
-
-	return 0;
-}
-
 static void qede_prandom_bytes(uint32_t *buff)
 {
 	uint8_t i;
@@ -863,9 +1016,7 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 
 	/* Check for the port restart case */
 	if (qdev->state != QEDE_DEV_INIT) {
-		rc = qdev->ops->vport_stop(edev, 0);
-		if (rc != 0)
-			return rc;
+		qede_stop_vport(edev);
 		qede_dealloc_fp_resc(eth_dev);
 	}
 
@@ -880,17 +1031,24 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 	if (rc != 0)
 		return rc;
 
-	/* Issue VPORT-START with default config values to allow
-	 * other port configurations early on.
+	/* VF's MTU has to be set using vport-start where as
+	 * PF's MTU can be updated via vport-update.
 	 */
-	rc = qede_init_vport(qdev);
-	if (rc != 0)
-		return rc;
+	if (IS_VF(edev)) {
+		if (qede_start_vport(qdev, rxmode->max_rx_pkt_len))
+			return -1;
+	} else {
+		if (qede_update_mtu(eth_dev, rxmode->max_rx_pkt_len))
+			return -1;
+	}
+
+	qdev->mtu = rxmode->max_rx_pkt_len;
+	qdev->new_mtu = qdev->mtu;
 
 	if (!(rxmode->mq_mode == ETH_MQ_RX_RSS ||
 	    rxmode->mq_mode == ETH_MQ_RX_NONE)) {
 		DP_ERR(edev, "Unsupported RSS mode\n");
-		qdev->ops->vport_stop(edev, 0);
+		qede_stop_vport(edev);
 		qede_dealloc_fp_resc(eth_dev);
 		return -EINVAL;
 	}
@@ -898,7 +1056,7 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 	/* Flow director mode check */
 	rc = qede_check_fdir_support(eth_dev);
 	if (rc) {
-		qdev->ops->vport_stop(edev, 0);
+		qede_stop_vport(edev);
 		qede_dealloc_fp_resc(eth_dev);
 		return -EINVAL;
 	}
@@ -1106,7 +1264,6 @@ static void qede_dev_close(struct rte_eth_dev *eth_dev)
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
-	int rc;
 
 	PMD_INIT_FUNC_TRACE(edev);
 
@@ -1122,9 +1279,7 @@ static void qede_dev_close(struct rte_eth_dev *eth_dev)
 	else
 		DP_INFO(edev, "Device is already stopped\n");
 
-	rc = qdev->ops->vport_stop(edev, 0);
-	if (rc != 0)
-		DP_ERR(edev, "Failed to stop VPORT\n");
+	qede_stop_vport(edev);
 
 	qede_dealloc_fp_resc(eth_dev);
 
@@ -2322,6 +2477,11 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 	}
 
 	adapter->state = QEDE_DEV_INIT;
+	adapter->mtu = ETHER_MTU;
+	adapter->new_mtu = ETHER_MTU;
+	if (!is_vf)
+		if (qede_start_vport(adapter, adapter->mtu))
+			return -1;
 
 	DP_NOTICE(edev, false, "MAC address : %02x:%02x:%02x:%02x:%02x:%02x\n",
 		  adapter->primary_mac.addr_bytes[0],

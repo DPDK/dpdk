@@ -16,8 +16,6 @@ struct eth_slow_path_rx_cqe;
 
 #define INIT_STRUCT_FIELD(field, value) .field = value
 
-#define QED_ETH_INTERFACE_VERSION       609
-
 #define QEDE_MAX_MCAST_FILTERS		64
 
 enum qed_filter_rx_mode_type {
@@ -47,44 +45,11 @@ struct qed_dev_eth_info {
 	bool is_legacy;
 };
 
-struct qed_update_vport_params {
-	uint8_t vport_id;
-	uint8_t update_vport_active_flg;
-	uint8_t vport_active_flg;
-	uint8_t update_inner_vlan_removal_flg;
-	uint8_t inner_vlan_removal_flg;
-	uint8_t update_tx_switching_flg;
-	uint8_t tx_switching_flg;
-	uint8_t update_accept_any_vlan_flg;
-	uint8_t accept_any_vlan;
-	uint8_t update_rss_flg;
-	uint16_t mtu;
-	struct ecore_sge_tpa_params *sge_tpa_params;
-};
-
-struct qed_start_vport_params {
-	bool remove_inner_vlan;
-	bool handle_ptp_pkts;
-	bool enable_lro;
-	bool drop_ttl0;
-	uint8_t vport_id;
-	uint16_t mtu;
-	bool clear_stats;
-};
-
 struct qed_eth_ops {
 	const struct qed_common_ops *common;
 
 	int (*fill_dev_info)(struct ecore_dev *edev,
 			     struct qed_dev_eth_info *info);
-
-	int (*vport_start)(struct ecore_dev *edev,
-			   struct qed_start_vport_params *params);
-
-	int (*vport_stop)(struct ecore_dev *edev, uint8_t vport_id);
-
-	int (*vport_update)(struct ecore_dev *edev,
-			    struct qed_update_vport_params *params);
 
 	int (*q_rx_start)(struct ecore_dev *cdev,
 			  uint8_t rss_num,

@@ -9,112 +9,6 @@
 #include "qede_ethdev.h"
 
 static int
-qed_start_vport(struct ecore_dev *edev, struct qed_start_vport_params *p_params)
-{
-	int rc, i;
-
-	for_each_hwfn(edev, i) {
-		struct ecore_hwfn *p_hwfn = &edev->hwfns[i];
-		u8 tx_switching = 0;
-		struct ecore_sp_vport_start_params start = { 0 };
-
-		start.tpa_mode = p_params->enable_lro ? ECORE_TPA_MODE_RSC :
-				ECORE_TPA_MODE_NONE;
-		start.remove_inner_vlan = p_params->remove_inner_vlan;
-		start.tx_switching = tx_switching;
-		start.only_untagged = false;	/* untagged only */
-		start.drop_ttl0 = p_params->drop_ttl0;
-		start.concrete_fid = p_hwfn->hw_info.concrete_fid;
-		start.opaque_fid = p_hwfn->hw_info.opaque_fid;
-		start.concrete_fid = p_hwfn->hw_info.concrete_fid;
-		start.handle_ptp_pkts = p_params->handle_ptp_pkts;
-		start.vport_id = p_params->vport_id;
-		start.mtu = p_params->mtu;
-		/* @DPDK - Disable FW placement */
-		start.zero_placement_offset = 1;
-
-		rc = ecore_sp_vport_start(p_hwfn, &start);
-		if (rc) {
-			DP_ERR(edev, "Failed to start VPORT\n");
-			return rc;
-		}
-
-		DP_VERBOSE(edev, ECORE_MSG_SPQ,
-			   "Started V-PORT %d with MTU %d\n",
-			   p_params->vport_id, p_params->mtu);
-	}
-
-	ecore_reset_vport_stats(edev);
-
-	return 0;
-}
-
-static int qed_stop_vport(struct ecore_dev *edev, uint8_t vport_id)
-{
-	int rc, i;
-
-	for_each_hwfn(edev, i) {
-		struct ecore_hwfn *p_hwfn = &edev->hwfns[i];
-		rc = ecore_sp_vport_stop(p_hwfn,
-					 p_hwfn->hw_info.opaque_fid, vport_id);
-
-		if (rc) {
-			DP_ERR(edev, "Failed to stop VPORT\n");
-			return rc;
-		}
-	}
-
-	return 0;
-}
-
-static int
-qed_update_vport(struct ecore_dev *edev, struct qed_update_vport_params *params)
-{
-	struct ecore_sp_vport_update_params sp_params;
-	struct ecore_rss_params sp_rss_params;
-	int rc, i;
-
-	memset(&sp_params, 0, sizeof(sp_params));
-	memset(&sp_rss_params, 0, sizeof(sp_rss_params));
-
-	/* Translate protocol params into sp params */
-	sp_params.vport_id = params->vport_id;
-	sp_params.update_vport_active_rx_flg = params->update_vport_active_flg;
-	sp_params.update_vport_active_tx_flg = params->update_vport_active_flg;
-	sp_params.vport_active_rx_flg = params->vport_active_flg;
-	sp_params.vport_active_tx_flg = params->vport_active_flg;
-	sp_params.update_inner_vlan_removal_flg =
-	    params->update_inner_vlan_removal_flg;
-	sp_params.inner_vlan_removal_flg = params->inner_vlan_removal_flg;
-	sp_params.update_tx_switching_flg = params->update_tx_switching_flg;
-	sp_params.tx_switching_flg = params->tx_switching_flg;
-	sp_params.accept_any_vlan = params->accept_any_vlan;
-	sp_params.update_accept_any_vlan_flg =
-	    params->update_accept_any_vlan_flg;
-	sp_params.mtu = params->mtu;
-	sp_params.sge_tpa_params = params->sge_tpa_params;
-
-	for_each_hwfn(edev, i) {
-		struct ecore_hwfn *p_hwfn = &edev->hwfns[i];
-
-		sp_params.opaque_fid = p_hwfn->hw_info.opaque_fid;
-		rc = ecore_sp_vport_update(p_hwfn, &sp_params,
-					   ECORE_SPQ_MODE_EBLOCK, NULL);
-		if (rc) {
-			DP_ERR(edev, "Failed to update VPORT\n");
-			return rc;
-		}
-
-		DP_VERBOSE(edev, ECORE_MSG_SPQ,
-			   "Updated V-PORT %d: active_flag %d [update %d]\n",
-			   params->vport_id, params->vport_active_flg,
-			   params->update_vport_active_flg);
-	}
-
-	return 0;
-}
-
-static int
 qed_start_rxq(struct ecore_dev *edev,
 	      uint8_t rss_num,
 	      struct ecore_queue_start_common_params *p_params,
@@ -299,9 +193,6 @@ int qed_configure_filter_rx_mode(struct rte_eth_dev *eth_dev,
 static const struct qed_eth_ops qed_eth_ops_pass = {
 	INIT_STRUCT_FIELD(common, &qed_common_ops_pass),
 	INIT_STRUCT_FIELD(fill_dev_info, &qed_fill_eth_dev_info),
-	INIT_STRUCT_FIELD(vport_start, &qed_start_vport),
-	INIT_STRUCT_FIELD(vport_stop, &qed_stop_vport),
-	INIT_STRUCT_FIELD(vport_update, &qed_update_vport),
 	INIT_STRUCT_FIELD(q_rx_start, &qed_start_rxq),
 	INIT_STRUCT_FIELD(q_tx_start, &qed_start_txq),
 	INIT_STRUCT_FIELD(q_rx_stop, &qed_stop_rxq),

@@ -190,6 +190,7 @@ struct qede_dev {
 	struct qede_fastpath *fp_array;
 	uint8_t num_tc;
 	uint16_t mtu;
+	uint16_t new_mtu;
 	bool rss_enable;
 	struct rte_eth_rss_conf rss_conf;
 	uint16_t rss_ind_table[ECORE_RSS_IND_TABLE_SIZE];
@@ -247,5 +248,11 @@ uint16_t qede_fdir_construct_pkt(struct rte_eth_dev *eth_dev,
 				 struct ecore_arfs_config_params *params);
 
 void qede_fdir_dealloc_resc(struct rte_eth_dev *eth_dev);
+
+int qede_activate_vport(struct rte_eth_dev *eth_dev, bool flg);
+
+int qede_update_mtu(struct rte_eth_dev *eth_dev, uint16_t mtu);
+
+int qede_enable_tpa(struct rte_eth_dev *eth_dev, bool flg);
 
 #endif /* _QEDE_ETHDEV_H_ */
