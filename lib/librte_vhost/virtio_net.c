@@ -143,6 +143,15 @@ virtio_enqueue_offload(struct rte_mbuf *m_buf, struct virtio_net_hdr *net_hdr)
 		ASSIGN_UNLESS_EQUAL(net_hdr->flags, 0);
 	}
 
+	/* IP cksum verification cannot be bypassed, then calculate here */
+	if (m_buf->ol_flags & PKT_TX_IP_CKSUM) {
+		struct ipv4_hdr *ipv4_hdr;
+
+		ipv4_hdr = rte_pktmbuf_mtod_offset(m_buf, struct ipv4_hdr *,
+						   m_buf->l2_len);
+		ipv4_hdr->hdr_checksum = rte_ipv4_cksum(ipv4_hdr);
+	}
+
 	if (m_buf->ol_flags & PKT_TX_TCP_SEG) {
 		if (m_buf->ol_flags & PKT_TX_IPV4)
 			net_hdr->gso_type = VIRTIO_NET_HDR_GSO_TCPV4;
