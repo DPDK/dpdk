@@ -81,28 +81,6 @@ lio_droq_destroy_ring_buffers(struct lio_droq *droq)
 	lio_droq_reset_indices(droq);
 }
 
-static void *
-lio_recv_buffer_alloc(struct lio_device *lio_dev, int q_no)
-{
-	struct lio_droq *droq = lio_dev->droq[q_no];
-	struct rte_mempool *mpool = droq->mpool;
-	struct rte_mbuf *m;
-
-	m = rte_pktmbuf_alloc(mpool);
-	if (m == NULL) {
-		lio_dev_err(lio_dev, "Cannot allocate\n");
-		return NULL;
-	}
-
-	rte_mbuf_refcnt_set(m, 1);
-	m->next = NULL;
-	m->data_off = RTE_PKTMBUF_HEADROOM;
-	m->nb_segs = 1;
-	m->pool = mpool;
-
-	return m;
-}
-
 static int
 lio_droq_setup_ring_buffers(struct lio_device *lio_dev,
 			    struct lio_droq *droq)
@@ -112,7 +90,7 @@ lio_droq_setup_ring_buffers(struct lio_device *lio_dev,
 	void *buf;
 
 	for (i = 0; i < droq->max_count; i++) {
-		buf = lio_recv_buffer_alloc(lio_dev, droq->q_no);
+		buf = rte_pktmbuf_alloc(droq->mpool);
 		if (buf == NULL) {
 			lio_dev_err(lio_dev, "buffer alloc failed\n");
 			droq->stats.rx_alloc_failure++;
@@ -378,7 +356,6 @@ lio_droq_refill_pullup_descs(struct lio_droq *droq,
 
 /* lio_droq_refill
  *
- * @param lio_dev	- pointer to the lio device structure
  * @param droq		- droq in which descriptors require new buffers.
  *
  * Description:
@@ -394,7 +371,7 @@ lio_droq_refill_pullup_descs(struct lio_droq *droq,
  * This routine is called with droq->lock held.
  */
 static uint32_t
-lio_droq_refill(struct lio_device *lio_dev, struct lio_droq *droq)
+lio_droq_refill(struct lio_droq *droq)
 {
 	struct lio_droq_desc *desc_ring;
 	uint32_t desc_refilled = 0;
@@ -407,7 +384,7 @@ lio_droq_refill(struct lio_device *lio_dev, struct lio_droq *droq)
 		 * reuse the buffer, else allocate.
 		 */
 		if (droq->recv_buf_list[droq->refill_idx].buffer == NULL) {
-			buf = lio_recv_buffer_alloc(lio_dev, droq->q_no);
+			buf = rte_pktmbuf_alloc(droq->mpool);
 			/* If a buffer could not be allocated, no point in
 			 * continuing
 			 */
@@ -489,9 +466,6 @@ lio_droq_fast_process_packet(struct lio_device *lio_dev,
 			droq->refill_count++;
 
 			if (likely(nicbuf != NULL)) {
-				nicbuf->data_off = RTE_PKTMBUF_HEADROOM;
-				nicbuf->nb_segs = 1;
-				nicbuf->next = NULL;
 				/* We don't have a way to pass flags yet */
 				nicbuf->ol_flags = 0;
 				if (rh->r_dh.has_hash) {
@@ -545,9 +519,6 @@ lio_droq_fast_process_packet(struct lio_device *lio_dev,
 					if (!pkt_len)
 						first_buf = nicbuf;
 
-					nicbuf->data_off = RTE_PKTMBUF_HEADROOM;
-					nicbuf->nb_segs = 1;
-					nicbuf->next = NULL;
 					nicbuf->port = lio_dev->port_id;
 					/* We don't have a way to pass
 					 * flags yet
@@ -617,7 +588,7 @@ lio_droq_fast_process_packet(struct lio_device *lio_dev,
 	}
 
 	if (droq->refill_count >= droq->refill_threshold) {
-		int desc_refilled = lio_droq_refill(lio_dev, droq);
+		int desc_refilled = lio_droq_refill(droq);
 
 		/* Flush the droq descriptor data to memory to be sure
 		 * that when we update the credits the data in memory is

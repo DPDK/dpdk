@@ -94,7 +94,7 @@ struct lio_droq_stats {
 	/** Num of vxlan packets received; */
 	uint64_t rx_vxlan;
 
-	/** Num of failures of lio_recv_buffer_alloc() */
+	/** Num of failures of rte_pktmbuf_alloc() */
 	uint64_t rx_alloc_failure;
 
 };
