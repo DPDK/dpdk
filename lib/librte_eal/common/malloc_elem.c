@@ -314,17 +314,16 @@ malloc_elem_free(struct malloc_elem *elem)
 int
 malloc_elem_resize(struct malloc_elem *elem, size_t size)
 {
-	const size_t new_size = size + MALLOC_ELEM_OVERHEAD;
+	const size_t new_size = size + elem->pad + MALLOC_ELEM_OVERHEAD;
 	/* if we request a smaller size, then always return ok */
-	const size_t current_size = elem->size - elem->pad;
-	if (current_size >= new_size)
+	if (elem->size >= new_size)
 		return 0;
 
 	struct malloc_elem *next = RTE_PTR_ADD(elem, elem->size);
 	rte_spinlock_lock(&elem->heap->lock);
 	if (next ->state != ELEM_FREE)
 		goto err_return;
-	if (current_size + next->size < new_size)
+	if (elem->size + next->size < new_size)
 		goto err_return;
 
 	/* we now know the element fits, so remove from free list,
@@ -333,7 +332,7 @@ malloc_elem_resize(struct malloc_elem *elem, size_t size)
 	elem_free_list_remove(next);
 	join_elem(elem, next);
 
-	if (elem->size - new_size >= MIN_DATA_SIZE + MALLOC_ELEM_OVERHEAD){
+	if (elem->size - new_size >= MIN_DATA_SIZE + MALLOC_ELEM_OVERHEAD) {
 		/* now we have a big block together. Lets cut it down a bit, by splitting */
 		struct malloc_elem *split_pt = RTE_PTR_ADD(elem, new_size);
 		split_pt = RTE_PTR_ALIGN_CEIL(split_pt, RTE_CACHE_LINE_SIZE);
