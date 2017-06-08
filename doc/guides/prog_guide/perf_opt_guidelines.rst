@@ -38,7 +38,7 @@ Performance Optimization Guidelines
 Introduction
 ------------
 
-The following sections describe optimizations used in the DPDK and optimizations that should be considered for a new applications.
+The following sections describe optimizations used in DPDK and optimizations that should be considered for new applications.
 
 They also highlight the performance-impacting coding techniques that should,
 and should not be, used when developing an application using the DPDK.
