@@ -212,6 +212,8 @@ struct rte_pci_bus {
 #define RTE_PCI_DRV_INTR_LSC	0x0008
 /** Device driver supports device removal interrupt */
 #define RTE_PCI_DRV_INTR_RMV 0x0010
+/** Device driver needs to keep mapped resources if unsupported dev detected */
+#define RTE_PCI_DRV_KEEP_MAPPED_RES 0x0020
 
 /**
  * A structure describing a PCI mapping.
