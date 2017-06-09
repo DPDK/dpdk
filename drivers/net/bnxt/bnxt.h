@@ -250,32 +250,6 @@ struct bnxt {
 	uint8_t			num_leds;
 };
 
-/*
- * Response sent back to the caller after callback
- */
-enum rte_pmd_bnxt_mb_event_rsp {
-	RTE_PMD_BNXT_MB_EVENT_NOOP_ACK,  /**< skip mbox request and ACK */
-	RTE_PMD_BNXT_MB_EVENT_NOOP_NACK, /**< skip mbox request and NACK */
-	RTE_PMD_BNXT_MB_EVENT_PROCEED,  /**< proceed with mbox request  */
-	RTE_PMD_BNXT_MB_EVENT_MAX       /**< max value of this enum */
-};
-
-/* mailbox message types */
-#define BNXT_VF_RESET			0x01 /* VF requests reset */
-#define BNXT_VF_SET_MAC_ADDR	0x02 /* VF requests PF to set MAC addr */
-#define BNXT_VF_SET_VLAN		0x03 /* VF requests PF to set VLAN */
-#define BNXT_VF_SET_MTU			0x04 /* VF requests PF to set MTU */
-#define BNXT_VF_SET_MRU			0x05 /* VF requests PF to set MRU */
-
-/*
- * Data sent to the caller when the callback is executed.
- */
-struct rte_pmd_bnxt_mb_event_param {
-	uint16_t vf_id;	/* Virtual Function number */
-	int	retval;	/* return value */
-	void	*msg;	/* pointer to message */
-};
-
 int bnxt_link_update_op(struct rte_eth_dev *eth_dev, int wait_to_complete);
 int bnxt_rcv_msg_from_vf(struct bnxt *bp, uint16_t vf_id, void *msg);
 
