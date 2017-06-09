@@ -126,9 +126,9 @@ ssows_deq(void *port, struct rte_event *ev, uint64_t timeout_ticks)
 
 	RTE_SET_USED(timeout_ticks);
 
-	ssows_swtag_wait(ws);
 	if (ws->swtag_req) {
 		ws->swtag_req = 0;
+		ssows_swtag_wait(ws);
 		return 1;
 	} else {
 		return ssows_get_work(ws, ev);
@@ -142,9 +142,9 @@ ssows_deq_timeout(void *port, struct rte_event *ev, uint64_t timeout_ticks)
 	uint64_t iter;
 	uint16_t ret = 1;
 
-	ssows_swtag_wait(ws);
 	if (ws->swtag_req) {
 		ws->swtag_req = 0;
+		ssows_swtag_wait(ws);
 	} else {
 		ret = ssows_get_work(ws, ev);
 		for (iter = 1; iter < timeout_ticks && (ret == 0); iter++)
