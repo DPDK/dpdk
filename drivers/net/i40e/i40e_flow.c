@@ -1572,6 +1572,7 @@ static struct i40e_valid_pattern i40e_supported_patterns[] = {
 	/* Ethertype */
 	{ pattern_ethertype, i40e_flow_parse_ethertype_filter },
 	/* FDIR - support default flow type without flexible payload*/
+	{ pattern_ethertype, i40e_flow_parse_fdir_filter },
 	{ pattern_fdir_ipv4, i40e_flow_parse_fdir_filter },
 	{ pattern_fdir_ipv4_udp, i40e_flow_parse_fdir_filter },
 	{ pattern_fdir_ipv4_tcp, i40e_flow_parse_fdir_filter },
@@ -1817,10 +1818,10 @@ i40e_match_pattern(enum rte_flow_item_type *item_array,
 
 /* Find if there's parse filter function matched */
 static parse_filter_t
-i40e_find_parse_filter_func(struct rte_flow_item *pattern)
+i40e_find_parse_filter_func(struct rte_flow_item *pattern, uint32_t *idx)
 {
 	parse_filter_t parse_filter = NULL;
-	uint8_t i = 0;
+	uint8_t i = *idx;
 
 	for (; i < RTE_DIM(i40e_supported_patterns); i++) {
 		if (i40e_match_pattern(i40e_supported_patterns[i].items,
@@ -1829,6 +1830,8 @@ i40e_find_parse_filter_func(struct rte_flow_item *pattern)
 			break;
 		}
 	}
+
+	*idx = ++i;
 
 	return parse_filter;
 }
@@ -3770,7 +3773,8 @@ i40e_flow_validate(struct rte_eth_dev *dev,
 	parse_filter_t parse_filter;
 	uint32_t item_num = 0; /* non-void item number of pattern*/
 	uint32_t i = 0;
-	int ret;
+	bool flag = false;
+	int ret = I40E_NOT_SUPPORTED;
 
 	if (!pattern) {
 		rte_flow_error_set(error, EINVAL, RTE_FLOW_ERROR_TYPE_ITEM_NUM,
@@ -3812,16 +3816,21 @@ i40e_flow_validate(struct rte_eth_dev *dev,
 
 	i40e_pattern_skip_void_item(items, pattern);
 
-	/* Find if there's matched parse filter function */
-	parse_filter = i40e_find_parse_filter_func(items);
-	if (!parse_filter) {
-		rte_flow_error_set(error, EINVAL,
-				   RTE_FLOW_ERROR_TYPE_ITEM,
-				   pattern, "Unsupported pattern");
-		return -rte_errno;
-	}
-
-	ret = parse_filter(dev, attr, items, actions, error, &cons_filter);
+	i = 0;
+	do {
+		parse_filter = i40e_find_parse_filter_func(items, &i);
+		if (!parse_filter && !flag) {
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   pattern, "Unsupported pattern");
+			rte_free(items);
+			return -rte_errno;
+		}
+		if (parse_filter)
+			ret = parse_filter(dev, attr, items, actions,
+					   error, &cons_filter);
+		flag = true;
+	} while ((ret < 0) && (i < RTE_DIM(i40e_supported_patterns)));
 
 	rte_free(items);
 
