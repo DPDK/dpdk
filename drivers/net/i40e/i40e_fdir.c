@@ -83,21 +83,6 @@
 #define I40E_COUNTER_PF           2
 /* Statistic counter index for one pf */
 #define I40E_COUNTER_INDEX_FDIR(pf_id)   (0 + (pf_id) * I40E_COUNTER_PF)
-#define I40E_MAX_FLX_SOURCE_OFF           480
-#define I40E_FLX_OFFSET_IN_FIELD_VECTOR   50
-
-#define NONUSE_FLX_PIT_DEST_OFF 63
-#define NONUSE_FLX_PIT_FSIZE    1
-#define MK_FLX_PIT(src_offset, fsize, dst_offset) ( \
-	(((src_offset) << I40E_PRTQF_FLX_PIT_SOURCE_OFF_SHIFT) & \
-		I40E_PRTQF_FLX_PIT_SOURCE_OFF_MASK) | \
-	(((fsize) << I40E_PRTQF_FLX_PIT_FSIZE_SHIFT) & \
-			I40E_PRTQF_FLX_PIT_FSIZE_MASK) | \
-	((((dst_offset) == NONUSE_FLX_PIT_DEST_OFF ? \
-			NONUSE_FLX_PIT_DEST_OFF : \
-			((dst_offset) + I40E_FLX_OFFSET_IN_FIELD_VECTOR)) << \
-			I40E_PRTQF_FLX_PIT_DEST_OFF_SHIFT) & \
-			I40E_PRTQF_FLX_PIT_DEST_OFF_MASK))
 
 #define I40E_FDIR_FLOWS ( \
 	(1 << RTE_ETH_FLOW_FRAG_IPV4) | \
@@ -111,8 +96,6 @@
 	(1 << RTE_ETH_FLOW_NONFRAG_IPV6_SCTP) | \
 	(1 << RTE_ETH_FLOW_NONFRAG_IPV6_OTHER) | \
 	(1 << RTE_ETH_FLOW_L2_PAYLOAD))
-
-#define I40E_FLEX_WORD_MASK(off) (0x80 >> (off))
 
 static int i40e_fdir_filter_programming(struct i40e_pf *pf,
 			enum i40e_filter_pctype pctype,
@@ -380,8 +363,6 @@ i40e_init_flx_pld(struct i40e_pf *pf)
 		}
 	}
 }
-
-#define I40E_WORD(hi, lo) (uint16_t)((((hi) << 8) & 0xFF00) | ((lo) & 0xFF))
 
 #define I40E_VALIDATE_FLEX_PIT(flex_pit1, flex_pit2) do { \
 	if ((flex_pit2).src_offset < \

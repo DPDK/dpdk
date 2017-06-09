@@ -747,12 +747,191 @@ i40e_flow_parse_ethertype_filter(struct rte_eth_dev *dev,
 	return ret;
 }
 
+static int
+i40e_flow_check_raw_item(const struct rte_flow_item *item,
+			 const struct rte_flow_item_raw *raw_spec,
+			 struct rte_flow_error *error)
+{
+	if (!raw_spec->relative) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ITEM,
+				   item,
+				   "Relative should be 1.");
+		return -rte_errno;
+	}
+
+	if (raw_spec->offset % sizeof(uint16_t)) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ITEM,
+				   item,
+				   "Offset should be even.");
+		return -rte_errno;
+	}
+
+	if (raw_spec->search || raw_spec->limit) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ITEM,
+				   item,
+				   "search or limit is not supported.");
+		return -rte_errno;
+	}
+
+	if (raw_spec->offset < 0) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ITEM,
+				   item,
+				   "Offset should be non-negative.");
+		return -rte_errno;
+	}
+	return 0;
+}
+
+static int
+i40e_flow_store_flex_pit(struct i40e_pf *pf,
+			 struct i40e_fdir_flex_pit *flex_pit,
+			 enum i40e_flxpld_layer_idx layer_idx,
+			 uint8_t raw_id)
+{
+	uint8_t field_idx;
+
+	field_idx = layer_idx * I40E_MAX_FLXPLD_FIED + raw_id;
+	/* Check if the configuration is conflicted */
+	if (pf->fdir.flex_pit_flag[layer_idx] &&
+	    (pf->fdir.flex_set[field_idx].src_offset != flex_pit->src_offset ||
+	     pf->fdir.flex_set[field_idx].size != flex_pit->size ||
+	     pf->fdir.flex_set[field_idx].dst_offset != flex_pit->dst_offset))
+		return -1;
+
+	/* Check if the configuration exists. */
+	if (pf->fdir.flex_pit_flag[layer_idx] &&
+	    (pf->fdir.flex_set[field_idx].src_offset == flex_pit->src_offset &&
+	     pf->fdir.flex_set[field_idx].size == flex_pit->size &&
+	     pf->fdir.flex_set[field_idx].dst_offset == flex_pit->dst_offset))
+		return 1;
+
+	pf->fdir.flex_set[field_idx].src_offset =
+		flex_pit->src_offset;
+	pf->fdir.flex_set[field_idx].size =
+		flex_pit->size;
+	pf->fdir.flex_set[field_idx].dst_offset =
+		flex_pit->dst_offset;
+
+	return 0;
+}
+
+static int
+i40e_flow_store_flex_mask(struct i40e_pf *pf,
+			  enum i40e_filter_pctype pctype,
+			  uint8_t *mask)
+{
+	struct i40e_fdir_flex_mask flex_mask;
+	uint16_t mask_tmp;
+	uint8_t i, nb_bitmask = 0;
+
+	memset(&flex_mask, 0, sizeof(struct i40e_fdir_flex_mask));
+	for (i = 0; i < I40E_FDIR_MAX_FLEX_LEN; i += sizeof(uint16_t)) {
+		mask_tmp = I40E_WORD(mask[i], mask[i + 1]);
+		if (mask_tmp) {
+			flex_mask.word_mask |=
+				I40E_FLEX_WORD_MASK(i / sizeof(uint16_t));
+			if (mask_tmp != UINT16_MAX) {
+				flex_mask.bitmask[nb_bitmask].mask = ~mask_tmp;
+				flex_mask.bitmask[nb_bitmask].offset =
+					i / sizeof(uint16_t);
+				nb_bitmask++;
+				if (nb_bitmask > I40E_FDIR_BITMASK_NUM_WORD)
+					return -1;
+			}
+		}
+	}
+	flex_mask.nb_bitmask = nb_bitmask;
+
+	if (pf->fdir.flex_mask_flag[pctype] &&
+	    (memcmp(&flex_mask, &pf->fdir.flex_mask[pctype],
+		    sizeof(struct i40e_fdir_flex_mask))))
+		return -2;
+	else if (pf->fdir.flex_mask_flag[pctype] &&
+		 !(memcmp(&flex_mask, &pf->fdir.flex_mask[pctype],
+			  sizeof(struct i40e_fdir_flex_mask))))
+		return 1;
+
+	memcpy(&pf->fdir.flex_mask[pctype], &flex_mask,
+	       sizeof(struct i40e_fdir_flex_mask));
+	return 0;
+}
+
+static void
+i40e_flow_set_fdir_flex_pit(struct i40e_pf *pf,
+			    enum i40e_flxpld_layer_idx layer_idx,
+			    uint8_t raw_id)
+{
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	uint32_t flx_pit;
+	uint8_t field_idx;
+	uint16_t min_next_off = 0;  /* in words */
+	uint8_t i;
+
+	/* Set flex pit */
+	for (i = 0; i < raw_id; i++) {
+		field_idx = layer_idx * I40E_MAX_FLXPLD_FIED + i;
+		flx_pit = MK_FLX_PIT(pf->fdir.flex_set[field_idx].src_offset,
+				     pf->fdir.flex_set[field_idx].size,
+				     pf->fdir.flex_set[field_idx].dst_offset);
+
+		I40E_WRITE_REG(hw, I40E_PRTQF_FLX_PIT(field_idx), flx_pit);
+		min_next_off = pf->fdir.flex_set[field_idx].src_offset +
+			pf->fdir.flex_set[field_idx].size;
+	}
+
+	for (; i < I40E_MAX_FLXPLD_FIED; i++) {
+		/* set the non-used register obeying register's constrain */
+		field_idx = layer_idx * I40E_MAX_FLXPLD_FIED + i;
+		flx_pit = MK_FLX_PIT(min_next_off, NONUSE_FLX_PIT_FSIZE,
+				     NONUSE_FLX_PIT_DEST_OFF);
+		I40E_WRITE_REG(hw, I40E_PRTQF_FLX_PIT(field_idx), flx_pit);
+		min_next_off++;
+	}
+
+	pf->fdir.flex_pit_flag[layer_idx] = 1;
+}
+
+static void
+i40e_flow_set_fdir_flex_msk(struct i40e_pf *pf,
+			    enum i40e_filter_pctype pctype)
+{
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	struct i40e_fdir_flex_mask *flex_mask;
+	uint32_t flxinset, fd_mask;
+	uint8_t i;
+
+	/* Set flex mask */
+	flex_mask = &pf->fdir.flex_mask[pctype];
+	flxinset = (flex_mask->word_mask <<
+		    I40E_PRTQF_FD_FLXINSET_INSET_SHIFT) &
+		I40E_PRTQF_FD_FLXINSET_INSET_MASK;
+	i40e_write_rx_ctl(hw, I40E_PRTQF_FD_FLXINSET(pctype), flxinset);
+
+	for (i = 0; i < flex_mask->nb_bitmask; i++) {
+		fd_mask = (flex_mask->bitmask[i].mask <<
+			   I40E_PRTQF_FD_MSK_MASK_SHIFT) &
+			I40E_PRTQF_FD_MSK_MASK_MASK;
+		fd_mask |= ((flex_mask->bitmask[i].offset +
+			     I40E_FLX_OFFSET_IN_FIELD_VECTOR) <<
+			    I40E_PRTQF_FD_MSK_OFFSET_SHIFT) &
+			I40E_PRTQF_FD_MSK_OFFSET_MASK;
+		i40e_write_rx_ctl(hw, I40E_PRTQF_FD_MSK(pctype, i), fd_mask);
+	}
+
+	pf->fdir.flex_mask_flag[pctype] = 1;
+}
+
 /* 1. Last in item should be NULL as range is not supported.
- * 2. Supported flow type and input set: refer to array
+ * 2. Supported patterns: refer to array i40e_supported_patterns.
+ * 3. Supported flow type and input set: refer to array
  *    default_inset_table in i40e_ethdev.c.
- * 3. Mask of fields which need to be matched should be
+ * 4. Mask of fields which need to be matched should be
  *    filled with 1.
- * 4. Mask of fields which needn't to be matched should be
+ * 5. Mask of fields which needn't to be matched should be
  *    filled with 0.
  */
 static int
@@ -769,15 +948,31 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 	const struct rte_flow_item_tcp *tcp_spec, *tcp_mask;
 	const struct rte_flow_item_udp *udp_spec, *udp_mask;
 	const struct rte_flow_item_sctp *sctp_spec, *sctp_mask;
+	const struct rte_flow_item_raw *raw_spec, *raw_mask;
 	const struct rte_flow_item_vf *vf_spec;
+
 	uint32_t flow_type = RTE_ETH_FLOW_UNKNOWN;
 	enum i40e_filter_pctype pctype;
 	uint64_t input_set = I40E_INSET_NONE;
 	uint16_t flag_offset;
 	enum rte_flow_item_type item_type;
 	enum rte_flow_item_type l3 = RTE_FLOW_ITEM_TYPE_END;
-	uint32_t j;
+	uint32_t i, j;
+	enum i40e_flxpld_layer_idx layer_idx = I40E_FLXPLD_L2_IDX;
+	uint8_t raw_id = 0;
+	int32_t off_arr[I40E_MAX_FLXPLD_FIED];
+	uint16_t len_arr[I40E_MAX_FLXPLD_FIED];
+	struct i40e_fdir_flex_pit flex_pit;
+	uint8_t next_dst_off = 0;
+	uint8_t flex_mask[I40E_FDIR_MAX_FLEX_LEN];
+	uint16_t flex_size;
+	bool cfg_flex_pit = true;
+	bool cfg_flex_msk = true;
+	int ret;
 
+	memset(off_arr, 0, I40E_MAX_FLXPLD_FIED);
+	memset(len_arr, 0, I40E_MAX_FLXPLD_FIED);
+	memset(flex_mask, 0, I40E_FDIR_MAX_FLEX_LEN);
 	for (; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
 		if (item->last) {
 			rte_flow_error_set(error, EINVAL,
@@ -798,6 +993,9 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 						   "Invalid ETH spec/mask");
 				return -rte_errno;
 			}
+
+			layer_idx = I40E_FLXPLD_L2_IDX;
+
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV4:
 			l3 = RTE_FLOW_ITEM_TYPE_IPV4;
@@ -857,6 +1055,8 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 				ipv4_spec->hdr.src_addr;
 			filter->input.flow.ip4_flow.dst_ip =
 				ipv4_spec->hdr.dst_addr;
+
+			layer_idx = I40E_FLXPLD_L3_IDX;
 
 			break;
 		case RTE_FLOW_ITEM_TYPE_IPV6:
@@ -925,6 +1125,9 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 				flow_type = RTE_ETH_FLOW_FRAG_IPV6;
 			else
 				flow_type = RTE_ETH_FLOW_NONFRAG_IPV6_OTHER;
+
+			layer_idx = I40E_FLXPLD_L3_IDX;
+
 			break;
 		case RTE_FLOW_ITEM_TYPE_TCP:
 			tcp_spec = (const struct rte_flow_item_tcp *)item->spec;
@@ -981,6 +1184,9 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 				filter->input.flow.tcp6_flow.dst_port =
 					tcp_spec->hdr.dst_port;
 			}
+
+			layer_idx = I40E_FLXPLD_L4_IDX;
+
 			break;
 		case RTE_FLOW_ITEM_TYPE_UDP:
 			udp_spec = (const struct rte_flow_item_udp *)item->spec;
@@ -1034,6 +1240,9 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 				filter->input.flow.udp6_flow.dst_port =
 					udp_spec->hdr.dst_port;
 			}
+
+			layer_idx = I40E_FLXPLD_L4_IDX;
+
 			break;
 		case RTE_FLOW_ITEM_TYPE_SCTP:
 			sctp_spec =
@@ -1091,6 +1300,78 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 				filter->input.flow.sctp6_flow.verify_tag =
 					sctp_spec->hdr.tag;
 			}
+
+			layer_idx = I40E_FLXPLD_L4_IDX;
+
+			break;
+		case RTE_FLOW_ITEM_TYPE_RAW:
+			raw_spec = (const struct rte_flow_item_raw *)item->spec;
+			raw_mask = (const struct rte_flow_item_raw *)item->mask;
+
+			if (!raw_spec || !raw_mask) {
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "NULL RAW spec/mask");
+				return -rte_errno;
+			}
+
+			ret = i40e_flow_check_raw_item(item, raw_spec, error);
+			if (ret < 0)
+				return ret;
+
+			off_arr[raw_id] = raw_spec->offset;
+			len_arr[raw_id] = raw_spec->length;
+
+			flex_size = 0;
+			memset(&flex_pit, 0, sizeof(struct i40e_fdir_flex_pit));
+			flex_pit.size =
+				raw_spec->length / sizeof(uint16_t);
+			flex_pit.dst_offset =
+				next_dst_off / sizeof(uint16_t);
+
+			for (i = 0; i <= raw_id; i++) {
+				if (i == raw_id)
+					flex_pit.src_offset +=
+						raw_spec->offset /
+						sizeof(uint16_t);
+				else
+					flex_pit.src_offset +=
+						(off_arr[i] + len_arr[i]) /
+						sizeof(uint16_t);
+				flex_size += len_arr[i];
+			}
+			if (((flex_pit.src_offset + flex_pit.size) >=
+			     I40E_MAX_FLX_SOURCE_OFF / sizeof(uint16_t)) ||
+				flex_size > I40E_FDIR_MAX_FLEXLEN) {
+				rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item,
+					   "Exceeds maxmial payload limit.");
+				return -rte_errno;
+			}
+
+			/* Store flex pit to SW */
+			ret = i40e_flow_store_flex_pit(pf, &flex_pit,
+						       layer_idx, raw_id);
+			if (ret < 0) {
+				rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ITEM,
+				   item,
+				   "Conflict with the first flexible rule.");
+				return -rte_errno;
+			} else if (ret > 0)
+				cfg_flex_pit = false;
+
+			for (i = 0; i < raw_spec->length; i++) {
+				j = i + next_dst_off;
+				filter->input.flow_ext.flexbytes[j] =
+					raw_spec->pattern[i];
+				flex_mask[j] = raw_mask->pattern[i];
+			}
+
+			next_dst_off += raw_spec->length;
+			raw_id++;
 			break;
 		case RTE_FLOW_ITEM_TYPE_VF:
 			vf_spec = (const struct rte_flow_item_vf *)item->spec;
@@ -1125,6 +1406,29 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 		return -rte_errno;
 	}
 	filter->input.flow_type = flow_type;
+
+	/* Store flex mask to SW */
+	ret = i40e_flow_store_flex_mask(pf, pctype, flex_mask);
+	if (ret == -1) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ITEM,
+				   item,
+				   "Exceed maximal number of bitmasks");
+		return -rte_errno;
+	} else if (ret == -2) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ITEM,
+				   item,
+				   "Conflict with the first flexible rule");
+		return -rte_errno;
+	} else if (ret > 0)
+		cfg_flex_msk = false;
+
+	if (cfg_flex_pit)
+		i40e_flow_set_fdir_flex_pit(pf, layer_idx, raw_id);
+
+	if (cfg_flex_msk)
+		i40e_flow_set_fdir_flex_msk(pf, pctype);
 
 	return 0;
 }

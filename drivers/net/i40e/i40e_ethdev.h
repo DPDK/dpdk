@@ -431,6 +431,24 @@ struct i40e_vmdq_info {
 	struct i40e_vsi *vsi;
 };
 
+#define I40E_FDIR_MAX_FLEXLEN      16  /**< Max length of flexbytes. */
+#define I40E_MAX_FLX_SOURCE_OFF    480
+#define NONUSE_FLX_PIT_DEST_OFF 63
+#define NONUSE_FLX_PIT_FSIZE    1
+#define I40E_FLX_OFFSET_IN_FIELD_VECTOR   50
+#define MK_FLX_PIT(src_offset, fsize, dst_offset) ( \
+	(((src_offset) << I40E_PRTQF_FLX_PIT_SOURCE_OFF_SHIFT) & \
+		I40E_PRTQF_FLX_PIT_SOURCE_OFF_MASK) | \
+	(((fsize) << I40E_PRTQF_FLX_PIT_FSIZE_SHIFT) & \
+			I40E_PRTQF_FLX_PIT_FSIZE_MASK) | \
+	((((dst_offset) == NONUSE_FLX_PIT_DEST_OFF ? \
+			NONUSE_FLX_PIT_DEST_OFF : \
+			((dst_offset) + I40E_FLX_OFFSET_IN_FIELD_VECTOR)) << \
+			I40E_PRTQF_FLX_PIT_DEST_OFF_SHIFT) & \
+			I40E_PRTQF_FLX_PIT_DEST_OFF_MASK))
+#define I40E_WORD(hi, lo) (uint16_t)((((hi) << 8) & 0xFF00) | ((lo) & 0xFF))
+#define I40E_FLEX_WORD_MASK(off) (0x80 >> (off))
+
 /*
  * Structure to store flex pit for flow diretor.
  */
@@ -442,6 +460,7 @@ struct i40e_fdir_flex_pit {
 
 struct i40e_fdir_flex_mask {
 	uint8_t word_mask;  /**< Bit i enables word i of flexible payload */
+	uint8_t nb_bitmask;
 	struct {
 		uint8_t offset;
 		uint16_t mask;
@@ -479,6 +498,10 @@ struct i40e_fdir_info {
 	struct i40e_fdir_filter_list fdir_list;
 	struct i40e_fdir_filter **hash_map;
 	struct rte_hash *hash_table;
+
+	/* Mark if flex pit and mask is set */
+	bool flex_pit_flag[I40E_MAX_FLXPLD_LAYER];
+	bool flex_mask_flag[I40E_FILTER_PCTYPE_MAX];
 };
 
 /* Ethertype filter number HW supports */
