@@ -2171,7 +2171,8 @@ static int nicvf_eth_pci_remove(struct rte_pci_device *pci_dev)
 
 static struct rte_pci_driver rte_nicvf_pmd = {
 	.id_table = pci_id_nicvf_map,
-	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_KEEP_MAPPED_RES |
+			RTE_PCI_DRV_INTR_LSC,
 	.probe = nicvf_eth_pci_probe,
 	.remove = nicvf_eth_pci_remove,
 };
