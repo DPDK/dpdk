@@ -1171,10 +1171,6 @@ rte_event_pmd_release(struct rte_eventdev *eventdev)
 	if (eventdev == NULL)
 		return -EINVAL;
 
-	ret = rte_event_dev_close(eventdev->data->dev_id);
-	if (ret < 0)
-		return ret;
-
 	eventdev->attached = RTE_EVENTDEV_DETACHED;
 	eventdev_globals.nb_devs--;
 
@@ -1230,6 +1226,7 @@ rte_event_pmd_vdev_init(const char *name, size_t dev_private_size,
 int
 rte_event_pmd_vdev_uninit(const char *name)
 {
+	int ret;
 	struct rte_eventdev *eventdev;
 
 	if (name == NULL)
@@ -1238,6 +1235,10 @@ rte_event_pmd_vdev_uninit(const char *name)
 	eventdev = rte_event_pmd_get_named_dev(name);
 	if (eventdev == NULL)
 		return -ENODEV;
+
+	ret = rte_event_dev_close(eventdev->data->dev_id);
+	if (ret < 0)
+		return ret;
 
 	/* Free the event device */
 	rte_event_pmd_release(eventdev);
@@ -1293,11 +1294,7 @@ rte_event_pmd_pci_probe(struct rte_pci_driver *pci_drv,
 			(unsigned int) pci_dev->id.vendor_id,
 			(unsigned int) pci_dev->id.device_id);
 
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		rte_free(eventdev->data->dev_private);
-
-	eventdev->attached = RTE_EVENTDEV_DETACHED;
-	eventdev_globals.nb_devs--;
+	rte_event_pmd_release(eventdev);
 
 	return -ENXIO;
 }
@@ -1319,6 +1316,10 @@ rte_event_pmd_pci_remove(struct rte_pci_device *pci_dev,
 	eventdev = rte_event_pmd_get_named_dev(eventdev_name);
 	if (eventdev == NULL)
 		return -ENODEV;
+
+	ret = rte_event_dev_close(eventdev->data->dev_id);
+	if (ret < 0)
+		return ret;
 
 	/* Invoke PMD device un-init function */
 	if (devuninit)
