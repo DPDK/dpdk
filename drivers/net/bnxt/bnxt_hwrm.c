@@ -630,7 +630,7 @@ static int bnxt_hwrm_port_phy_qcfg(struct bnxt *bp,
 	HWRM_CHECK_RESULT;
 
 	link_info->phy_link_status = resp->link;
-	if (link_info->phy_link_status != HWRM_PORT_PHY_QCFG_OUTPUT_LINK_NO_LINK) {
+	if (link_info->phy_link_status == HWRM_PORT_PHY_QCFG_OUTPUT_LINK_LINK) {
 		link_info->link_up = 1;
 		link_info->link_speed = rte_le_to_cpu_16(resp->link_speed);
 	} else {
@@ -1831,7 +1831,7 @@ int bnxt_get_hwrm_link_config(struct bnxt *bp, struct rte_eth_link *link)
 		link->link_speed =
 			bnxt_parse_hw_link_speed(link_info->link_speed);
 	else
-		link->link_speed = ETH_LINK_SPEED_10M;
+		link->link_speed = ETH_SPEED_NUM_NONE;
 	link->link_duplex = bnxt_parse_hw_link_duplex(link_info->duplex);
 	link->link_status = link_info->link_up;
 	link->link_autoneg = link_info->auto_mode ==
