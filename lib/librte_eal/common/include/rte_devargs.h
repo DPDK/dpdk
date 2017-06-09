@@ -86,7 +86,7 @@ struct rte_devargs {
 		/** Used if type is RTE_DEVTYPE_VIRTUAL. */
 		struct {
 			/** Driver name. */
-			char drv_name[32];
+			char drv_name[RTE_DEV_NAME_MAX_LEN];
 		} virt;
 	};
 	/** Arguments string as given by user or "" for no argument. */

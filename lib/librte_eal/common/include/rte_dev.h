@@ -132,6 +132,8 @@ struct rte_driver {
 	const char *alias;              /**< Driver alias. */
 };
 
+#define RTE_DEV_NAME_MAX_LEN (32)
+
 /**
  * A structure describing a generic device.
  */
