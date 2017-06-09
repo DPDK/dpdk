@@ -46,11 +46,10 @@ extern "C" {
 
 #include <string.h>
 
-#include <rte_dev.h>
-#include <rte_pci.h>
-#include <rte_malloc.h>
-#include <rte_log.h>
 #include <rte_common.h>
+#include <rte_dev.h>
+#include <rte_log.h>
+#include <rte_malloc.h>
 
 #include "rte_eventdev.h"
 
@@ -524,24 +523,6 @@ rte_event_pmd_vdev_init(const char *name, size_t dev_private_size,
  */
 int
 rte_event_pmd_vdev_uninit(const char *name);
-
-typedef int (*eventdev_pmd_pci_callback_t)(struct rte_eventdev *dev);
-
-/**
- * Wrapper for use by pci drivers as a .probe function to attach to a event
- * interface.
- */
-int rte_event_pmd_pci_probe(struct rte_pci_driver *pci_drv,
-			    struct rte_pci_device *pci_dev,
-			    size_t private_data_size,
-			    eventdev_pmd_pci_callback_t devinit);
-
-/**
- * Wrapper for use by pci drivers as a .remove function to detach a event
- * interface.
- */
-int rte_event_pmd_pci_remove(struct rte_pci_device *pci_dev,
-			     eventdev_pmd_pci_callback_t devuninit);
 
 #ifdef __cplusplus
 }

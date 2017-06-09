@@ -43,10 +43,9 @@
 #include <rte_dev.h>
 #include <rte_eal.h>
 #include <rte_log.h>
+#include <rte_malloc.h>
 #include <rte_memory.h>
 #include <rte_memzone.h>
-#include <rte_malloc.h>
-#include <rte_pci.h>
 #include <rte_lcore.h>
 #include <rte_vdev.h>
 

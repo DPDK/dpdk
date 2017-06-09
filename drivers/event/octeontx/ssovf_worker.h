@@ -32,6 +32,7 @@
 
 
 #include <rte_common.h>
+#include <rte_branch_prediction.h>
 
 #include "ssovf_evdev.h"
 
