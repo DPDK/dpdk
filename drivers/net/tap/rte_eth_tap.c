@@ -843,7 +843,7 @@ tap_mac_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
 
 	if (is_zero_ether_addr(mac_addr)) {
 		RTE_LOG(ERR, PMD, "%s: can't set an empty MAC address\n",
-			dev->data->name);
+			dev->device->name);
 		return;
 	}
 	/* Check the actual current MAC address on the tap netdevice */
@@ -868,13 +868,13 @@ tap_mac_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
 		if (tap_flow_implicit_destroy(pmd, TAP_REMOTE_LOCAL_MAC) < 0) {
 			RTE_LOG(ERR, PMD,
 				"%s: Couldn't delete MAC redirection rule\n",
-				dev->data->name);
+				dev->device->name);
 			return;
 		}
 		if (tap_flow_implicit_create(pmd, TAP_REMOTE_LOCAL_MAC) < 0)
 			RTE_LOG(ERR, PMD,
 				"%s: Couldn't add MAC redirection rule\n",
-				dev->data->name);
+				dev->device->name);
 	}
 }
 
@@ -937,12 +937,12 @@ tap_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->trigger_seen = 1; /* force initial burst */
 	rxq->in_port = dev->data->port_id;
 	rxq->nb_rx_desc = nb_desc;
-	iovecs = rte_zmalloc_socket(dev->data->name, sizeof(*iovecs), 0,
+	iovecs = rte_zmalloc_socket(dev->device->name, sizeof(*iovecs), 0,
 				    socket_id);
 	if (!iovecs) {
 		RTE_LOG(WARNING, PMD,
 			"%s: Couldn't allocate %d RX descriptors\n",
-			dev->data->name, nb_desc);
+			dev->device->name, nb_desc);
 		return -ENOMEM;
 	}
 	rxq->iovecs = iovecs;
@@ -962,7 +962,7 @@ tap_rx_queue_setup(struct rte_eth_dev *dev,
 		if (!*tmp) {
 			RTE_LOG(WARNING, PMD,
 				"%s: couldn't allocate memory for queue %d\n",
-				dev->data->name, rx_queue_id);
+				dev->device->name, rx_queue_id);
 			ret = -ENOMEM;
 			goto error;
 		}

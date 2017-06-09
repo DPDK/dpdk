@@ -413,7 +413,7 @@ eth_rx_queue_setup(struct rte_eth_dev *dev,
 	if (data_size > buf_size) {
 		RTE_LOG(ERR, PMD,
 			"%s: %d bytes will not fit in mbuf (%d bytes)\n",
-			dev->data->name, data_size, buf_size);
+			dev->device->name, data_size, buf_size);
 		return -ENOMEM;
 	}
 

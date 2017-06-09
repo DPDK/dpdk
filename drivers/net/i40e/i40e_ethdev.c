@@ -919,7 +919,7 @@ i40e_init_ethtype_filter_list(struct rte_eth_dev *dev)
 	/* Initialize ethertype filter rule list and hash */
 	TAILQ_INIT(&ethertype_rule->ethertype_list);
 	snprintf(ethertype_hash_name, RTE_HASH_NAMESIZE,
-		 "ethertype_%s", dev->data->name);
+		 "ethertype_%s", dev->device->name);
 	ethertype_rule->hash_table = rte_hash_create(&ethertype_hash_params);
 	if (!ethertype_rule->hash_table) {
 		PMD_INIT_LOG(ERR, "Failed to create ethertype hash table!");
@@ -964,7 +964,7 @@ i40e_init_tunnel_filter_list(struct rte_eth_dev *dev)
 	/* Initialize tunnel filter rule list and hash */
 	TAILQ_INIT(&tunnel_rule->tunnel_list);
 	snprintf(tunnel_hash_name, RTE_HASH_NAMESIZE,
-		 "tunnel_%s", dev->data->name);
+		 "tunnel_%s", dev->device->name);
 	tunnel_rule->hash_table = rte_hash_create(&tunnel_hash_params);
 	if (!tunnel_rule->hash_table) {
 		PMD_INIT_LOG(ERR, "Failed to create tunnel hash table!");
@@ -1009,7 +1009,7 @@ i40e_init_fdir_filter_list(struct rte_eth_dev *dev)
 	/* Initialize flow director filter rule list and hash */
 	TAILQ_INIT(&fdir_info->fdir_list);
 	snprintf(fdir_hash_name, RTE_HASH_NAMESIZE,
-		 "fdir_%s", dev->data->name);
+		 "fdir_%s", dev->device->name);
 	fdir_info->hash_table = rte_hash_create(&fdir_hash_params);
 	if (!fdir_info->hash_table) {
 		PMD_INIT_LOG(ERR, "Failed to create fdir hash table!");

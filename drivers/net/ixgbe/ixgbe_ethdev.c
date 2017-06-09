@@ -1480,7 +1480,7 @@ static int ixgbe_fdir_filter_init(struct rte_eth_dev *eth_dev)
 
 	TAILQ_INIT(&fdir_info->fdir_list);
 	snprintf(fdir_hash_name, RTE_HASH_NAMESIZE,
-		 "fdir_%s", eth_dev->data->name);
+		 "fdir_%s", eth_dev->device->name);
 	fdir_info->hash_handle = rte_hash_create(&fdir_hash_params);
 	if (!fdir_info->hash_handle) {
 		PMD_INIT_LOG(ERR, "Failed to create fdir hash table!");
@@ -1516,7 +1516,7 @@ static int ixgbe_l2_tn_filter_init(struct rte_eth_dev *eth_dev)
 
 	TAILQ_INIT(&l2_tn_info->l2_tn_list);
 	snprintf(l2_tn_hash_name, RTE_HASH_NAMESIZE,
-		 "l2_tn_%s", eth_dev->data->name);
+		 "l2_tn_%s", eth_dev->device->name);
 	l2_tn_info->hash_handle = rte_hash_create(&l2_tn_hash_params);
 	if (!l2_tn_info->hash_handle) {
 		PMD_INIT_LOG(ERR, "Failed to create L2 TN hash table!");

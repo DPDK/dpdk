@@ -137,7 +137,7 @@ int bnxt_setup_int(struct bnxt *bp)
 		for (i = 0; i < total_vecs; i++) {
 			bp->irq_tbl[i].vector = i;
 			snprintf(bp->irq_tbl[i].name, len,
-				 "%s-%d", bp->eth_dev->data->name, i);
+				 "%s-%d", bp->eth_dev->device->name, i);
 			bp->irq_tbl[i].handler = bnxt_int_handler;
 		}
 	} else {

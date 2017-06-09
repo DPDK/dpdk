@@ -80,7 +80,8 @@ bond_mode_alb_enable(struct rte_eth_dev *bond_dev)
 		 * The value is chosen to be cache aligned.
 		 */
 		data_size = 256 + RTE_PKTMBUF_HEADROOM;
-		snprintf(mem_name, sizeof(mem_name), "%s_MODE6", bond_dev->data->name);
+		snprintf(mem_name, sizeof(mem_name), "%s_MODE6",
+				bond_dev->device->name);
 		internals->mode6.mempool = rte_pktmbuf_pool_create(mem_name,
 			512 * RTE_MAX_ETHPORTS,
 			RTE_MEMPOOL_CACHE_MAX_SIZE >= 32 ?
@@ -89,7 +90,7 @@ bond_mode_alb_enable(struct rte_eth_dev *bond_dev)
 
 		if (internals->mode6.mempool == NULL) {
 			RTE_LOG(ERR, PMD, "%s: Failed to initialize ALB mempool.\n",
-					bond_dev->data->name);
+					bond_dev->device->name);
 			goto mempool_alloc_error;
 		}
 	}

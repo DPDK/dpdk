@@ -145,7 +145,7 @@ eth_kni_start(struct rte_eth_dev *dev)
 	uint16_t port_id = dev->data->port_id;
 	struct rte_mempool *mb_pool;
 	struct rte_kni_conf conf;
-	const char *name = dev->data->name + 4; /* remove net_ */
+	const char *name = dev->device->name + 4; /* remove net_ */
 
 	snprintf(conf.name, RTE_KNI_NAMESIZE, "%s", name);
 	conf.force_bind = 0;

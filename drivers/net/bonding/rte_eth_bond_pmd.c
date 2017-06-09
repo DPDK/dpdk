@@ -1667,7 +1667,7 @@ bond_ethdev_close(struct rte_eth_dev *dev)
 	uint8_t bond_port_id = internals->port_id;
 	int skipped = 0;
 
-	RTE_LOG(INFO, EAL, "Closing bonded device %s\n", dev->data->name);
+	RTE_LOG(INFO, EAL, "Closing bonded device %s\n", dev->device->name);
 	while (internals->slave_count != skipped) {
 		uint8_t port_id = internals->slaves[skipped].port_id;
 
@@ -1676,7 +1676,7 @@ bond_ethdev_close(struct rte_eth_dev *dev)
 		if (rte_eth_bond_slave_remove(bond_port_id, port_id) != 0) {
 			RTE_LOG(ERR, EAL,
 				"Failed to remove port %d from bonded device "
-				"%s\n", port_id, dev->data->name);
+				"%s\n", port_id, dev->device->name);
 			skipped++;
 		}
 	}
@@ -2498,7 +2498,7 @@ bond_remove(struct rte_vdev_device *dev)
 static int
 bond_ethdev_configure(struct rte_eth_dev *dev)
 {
-	char *name = dev->data->name;
+	const char *name = dev->device->name;
 	struct bond_dev_private *internals = dev->data->dev_private;
 	struct rte_kvargs *kvlist = internals->kvlist;
 	int arg_count;
