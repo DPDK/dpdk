@@ -179,6 +179,7 @@ ssows_enq(void *port, const struct rte_event *ev)
 
 	switch (ev->op) {
 	case RTE_EVENT_OP_NEW:
+		rte_smp_wmb();
 		ssows_new_event(ws, ev);
 		break;
 	case RTE_EVENT_OP_FORWARD:
