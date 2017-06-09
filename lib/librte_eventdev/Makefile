@@ -47,6 +47,7 @@ SRCS-y += rte_eventdev.c
 SYMLINK-y-include += rte_eventdev.h
 SYMLINK-y-include += rte_eventdev_pmd.h
 SYMLINK-y-include += rte_eventdev_pmd_pci.h
+SYMLINK-y-include += rte_eventdev_pmd_vdev.h
 
 # versioning export map
 EXPORT_MAP := rte_eventdev_version.map

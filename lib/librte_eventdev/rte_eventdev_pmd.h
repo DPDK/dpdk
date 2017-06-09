@@ -495,35 +495,6 @@ rte_event_pmd_allocate(const char *name, int socket_id);
 int
 rte_event_pmd_release(struct rte_eventdev *eventdev);
 
-/**
- * Creates a new virtual event device and returns the pointer to that device.
- *
- * @param name
- *   PMD type name
- * @param dev_private_size
- *   Size of event PMDs private data
- * @param socket_id
- *   Socket to allocate resources on.
- *
- * @return
- *   - Eventdev pointer if device is successfully created.
- *   - NULL if device cannot be created.
- */
-struct rte_eventdev *
-rte_event_pmd_vdev_init(const char *name, size_t dev_private_size,
-		int socket_id);
-
-/**
- * Destroy the given virtual event device
- *
- * @param name
- *   PMD type name
- * @return
- *   - 0 on success, negative on error
- */
-int
-rte_event_pmd_vdev_uninit(const char *name);
-
 #ifdef __cplusplus
 }
 #endif

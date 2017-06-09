@@ -30,6 +30,8 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <inttypes.h>
+
 #include <rte_common.h>
 #include <rte_debug.h>
 #include <rte_dev.h>

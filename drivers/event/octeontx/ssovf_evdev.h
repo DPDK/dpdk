@@ -34,7 +34,7 @@
 #define __SSOVF_EVDEV_H__
 
 #include <rte_config.h>
-#include <rte_eventdev_pmd.h>
+#include <rte_eventdev_pmd_vdev.h>
 #include <rte_io.h>
 
 #include "rte_pmd_octeontx_ssovf.h"

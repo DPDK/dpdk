@@ -34,7 +34,7 @@
 #define _SW_EVDEV_H_
 
 #include <rte_eventdev.h>
-#include <rte_eventdev_pmd.h>
+#include <rte_eventdev_pmd_vdev.h>
 #include <rte_atomic.h>
 
 #define SW_DEFAULT_CREDIT_QUANTA 32
