@@ -164,23 +164,12 @@ static enum rte_flow_item_type pattern_ethertype[] = {
 
 /* Pattern matched flow director filter */
 static enum rte_flow_item_type pattern_fdir_ipv4[] = {
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static enum rte_flow_item_type pattern_fdir_ipv4_ext[] = {
 	RTE_FLOW_ITEM_TYPE_ETH,
 	RTE_FLOW_ITEM_TYPE_IPV4,
 	RTE_FLOW_ITEM_TYPE_END,
 };
 
 static enum rte_flow_item_type pattern_fdir_ipv4_udp[] = {
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_UDP,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static enum rte_flow_item_type pattern_fdir_ipv4_udp_ext[] = {
 	RTE_FLOW_ITEM_TYPE_ETH,
 	RTE_FLOW_ITEM_TYPE_IPV4,
 	RTE_FLOW_ITEM_TYPE_UDP,
@@ -188,12 +177,6 @@ static enum rte_flow_item_type pattern_fdir_ipv4_udp_ext[] = {
 };
 
 static enum rte_flow_item_type pattern_fdir_ipv4_tcp[] = {
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_TCP,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static enum rte_flow_item_type pattern_fdir_ipv4_tcp_ext[] = {
 	RTE_FLOW_ITEM_TYPE_ETH,
 	RTE_FLOW_ITEM_TYPE_IPV4,
 	RTE_FLOW_ITEM_TYPE_TCP,
@@ -201,12 +184,6 @@ static enum rte_flow_item_type pattern_fdir_ipv4_tcp_ext[] = {
 };
 
 static enum rte_flow_item_type pattern_fdir_ipv4_sctp[] = {
-	RTE_FLOW_ITEM_TYPE_IPV4,
-	RTE_FLOW_ITEM_TYPE_SCTP,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static enum rte_flow_item_type pattern_fdir_ipv4_sctp_ext[] = {
 	RTE_FLOW_ITEM_TYPE_ETH,
 	RTE_FLOW_ITEM_TYPE_IPV4,
 	RTE_FLOW_ITEM_TYPE_SCTP,
@@ -214,23 +191,12 @@ static enum rte_flow_item_type pattern_fdir_ipv4_sctp_ext[] = {
 };
 
 static enum rte_flow_item_type pattern_fdir_ipv6[] = {
-	RTE_FLOW_ITEM_TYPE_IPV6,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static enum rte_flow_item_type pattern_fdir_ipv6_ext[] = {
 	RTE_FLOW_ITEM_TYPE_ETH,
 	RTE_FLOW_ITEM_TYPE_IPV6,
 	RTE_FLOW_ITEM_TYPE_END,
 };
 
 static enum rte_flow_item_type pattern_fdir_ipv6_udp[] = {
-	RTE_FLOW_ITEM_TYPE_IPV6,
-	RTE_FLOW_ITEM_TYPE_UDP,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static enum rte_flow_item_type pattern_fdir_ipv6_udp_ext[] = {
 	RTE_FLOW_ITEM_TYPE_ETH,
 	RTE_FLOW_ITEM_TYPE_IPV6,
 	RTE_FLOW_ITEM_TYPE_UDP,
@@ -238,12 +204,6 @@ static enum rte_flow_item_type pattern_fdir_ipv6_udp_ext[] = {
 };
 
 static enum rte_flow_item_type pattern_fdir_ipv6_tcp[] = {
-	RTE_FLOW_ITEM_TYPE_IPV6,
-	RTE_FLOW_ITEM_TYPE_TCP,
-	RTE_FLOW_ITEM_TYPE_END,
-};
-
-static enum rte_flow_item_type pattern_fdir_ipv6_tcp_ext[] = {
 	RTE_FLOW_ITEM_TYPE_ETH,
 	RTE_FLOW_ITEM_TYPE_IPV6,
 	RTE_FLOW_ITEM_TYPE_TCP,
@@ -251,15 +211,1248 @@ static enum rte_flow_item_type pattern_fdir_ipv6_tcp_ext[] = {
 };
 
 static enum rte_flow_item_type pattern_fdir_ipv6_sctp[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
 	RTE_FLOW_ITEM_TYPE_IPV6,
 	RTE_FLOW_ITEM_TYPE_SCTP,
 	RTE_FLOW_ITEM_TYPE_END,
 };
 
-static enum rte_flow_item_type pattern_fdir_ipv6_sctp_ext[] = {
+static enum rte_flow_item_type pattern_fdir_ethertype_raw_1[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ethertype_raw_2[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ethertype_raw_3[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv4_raw_1[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv4_raw_2[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv4_raw_3[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv4_udp_raw_1[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_UDP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv4_udp_raw_2[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_UDP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv4_udp_raw_3[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_UDP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv4_tcp_raw_1[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_TCP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv4_tcp_raw_2[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_TCP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv4_tcp_raw_3[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_TCP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv4_sctp_raw_1[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_SCTP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv4_sctp_raw_2[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_SCTP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv4_sctp_raw_3[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_SCTP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv6_raw_1[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv6_raw_2[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv6_raw_3[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv6_udp_raw_1[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_UDP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv6_udp_raw_2[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_UDP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv6_udp_raw_3[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_UDP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv6_tcp_raw_1[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_TCP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv6_tcp_raw_2[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_TCP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv6_tcp_raw_3[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_TCP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv6_sctp_raw_1[] = {
 	RTE_FLOW_ITEM_TYPE_ETH,
 	RTE_FLOW_ITEM_TYPE_IPV6,
 	RTE_FLOW_ITEM_TYPE_SCTP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv6_sctp_raw_2[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_SCTP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv6_sctp_raw_3[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_SCTP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ethertype_vlan[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv4[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv4_udp[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_UDP,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv4_tcp[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_TCP,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv4_sctp[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_SCTP,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv6[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv6_udp[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_UDP,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv6_tcp[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_TCP,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv6_sctp[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_SCTP,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ethertype_vlan_raw_1[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ethertype_vlan_raw_2[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ethertype_vlan_raw_3[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv4_raw_1[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv4_raw_2[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv4_raw_3[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv4_udp_raw_1[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_UDP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv4_udp_raw_2[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_UDP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv4_udp_raw_3[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_UDP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv4_tcp_raw_1[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_TCP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv4_tcp_raw_2[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_TCP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv4_tcp_raw_3[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_TCP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv4_sctp_raw_1[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_SCTP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv4_sctp_raw_2[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_SCTP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv4_sctp_raw_3[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_SCTP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv6_raw_1[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv6_raw_2[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv6_raw_3[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv6_udp_raw_1[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_UDP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv6_udp_raw_2[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_UDP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv6_udp_raw_3[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_UDP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv6_tcp_raw_1[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_TCP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv6_tcp_raw_2[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_TCP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv6_tcp_raw_3[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_TCP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv6_sctp_raw_1[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_SCTP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv6_sctp_raw_2[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_SCTP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv6_sctp_raw_3[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_SCTP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv4_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv4_udp_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_UDP,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv4_tcp_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_TCP,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv4_sctp_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_SCTP,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv6_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv6_udp_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_UDP,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv6_tcp_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_TCP,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv6_sctp_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_SCTP,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ethertype_raw_1_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ethertype_raw_2_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ethertype_raw_3_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv4_raw_1_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv4_raw_2_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv4_raw_3_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv4_udp_raw_1_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_UDP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv4_udp_raw_2_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_UDP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv4_udp_raw_3_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_UDP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv4_tcp_raw_1_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_TCP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv4_tcp_raw_2_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_TCP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv4_tcp_raw_3_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_TCP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv4_sctp_raw_1_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_SCTP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv4_sctp_raw_2_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_SCTP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv4_sctp_raw_3_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_SCTP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv6_raw_1_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv6_raw_2_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv6_raw_3_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv6_udp_raw_1_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_UDP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv6_udp_raw_2_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_UDP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv6_udp_raw_3_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_UDP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv6_tcp_raw_1_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_TCP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv6_tcp_raw_2_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_TCP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv6_tcp_raw_3_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_TCP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv6_sctp_raw_1_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_SCTP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv6_sctp_raw_2_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_SCTP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ipv6_sctp_raw_3_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_SCTP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ethertype_vlan_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv4_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv4_udp_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_UDP,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv4_tcp_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_TCP,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv4_sctp_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_SCTP,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv6_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv6_udp_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_UDP,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv6_tcp_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_TCP,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv6_sctp_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_SCTP,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ethertype_vlan_raw_1_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ethertype_vlan_raw_2_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_ethertype_vlan_raw_3_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv4_raw_1_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv4_raw_2_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv4_raw_3_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv4_udp_raw_1_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_UDP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv4_udp_raw_2_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_UDP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv4_udp_raw_3_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_UDP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv4_tcp_raw_1_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_TCP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv4_tcp_raw_2_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_TCP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv4_tcp_raw_3_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_TCP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv4_sctp_raw_1_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_SCTP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv4_sctp_raw_2_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_SCTP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv4_sctp_raw_3_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV4,
+	RTE_FLOW_ITEM_TYPE_SCTP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv6_raw_1_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv6_raw_2_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv6_raw_3_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv6_udp_raw_1_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_UDP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv6_udp_raw_2_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_UDP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv6_udp_raw_3_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_UDP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv6_tcp_raw_1_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_TCP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv6_tcp_raw_2_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_TCP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv6_tcp_raw_3_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_TCP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv6_sctp_raw_1_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_SCTP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv6_sctp_raw_2_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_SCTP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
+	RTE_FLOW_ITEM_TYPE_END,
+};
+
+static enum rte_flow_item_type pattern_fdir_vlan_ipv6_sctp_raw_3_vf[] = {
+	RTE_FLOW_ITEM_TYPE_ETH,
+	RTE_FLOW_ITEM_TYPE_VLAN,
+	RTE_FLOW_ITEM_TYPE_IPV6,
+	RTE_FLOW_ITEM_TYPE_SCTP,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_RAW,
+	RTE_FLOW_ITEM_TYPE_VF,
 	RTE_FLOW_ITEM_TYPE_END,
 };
 
@@ -378,23 +1571,152 @@ static enum rte_flow_item_type pattern_qinq_1[] = {
 static struct i40e_valid_pattern i40e_supported_patterns[] = {
 	/* Ethertype */
 	{ pattern_ethertype, i40e_flow_parse_ethertype_filter },
-	/* FDIR */
+	/* FDIR - support default flow type without flexible payload*/
 	{ pattern_fdir_ipv4, i40e_flow_parse_fdir_filter },
-	{ pattern_fdir_ipv4_ext, i40e_flow_parse_fdir_filter },
 	{ pattern_fdir_ipv4_udp, i40e_flow_parse_fdir_filter },
-	{ pattern_fdir_ipv4_udp_ext, i40e_flow_parse_fdir_filter },
 	{ pattern_fdir_ipv4_tcp, i40e_flow_parse_fdir_filter },
-	{ pattern_fdir_ipv4_tcp_ext, i40e_flow_parse_fdir_filter },
 	{ pattern_fdir_ipv4_sctp, i40e_flow_parse_fdir_filter },
-	{ pattern_fdir_ipv4_sctp_ext, i40e_flow_parse_fdir_filter },
 	{ pattern_fdir_ipv6, i40e_flow_parse_fdir_filter },
-	{ pattern_fdir_ipv6_ext, i40e_flow_parse_fdir_filter },
 	{ pattern_fdir_ipv6_udp, i40e_flow_parse_fdir_filter },
-	{ pattern_fdir_ipv6_udp_ext, i40e_flow_parse_fdir_filter },
 	{ pattern_fdir_ipv6_tcp, i40e_flow_parse_fdir_filter },
-	{ pattern_fdir_ipv6_tcp_ext, i40e_flow_parse_fdir_filter },
 	{ pattern_fdir_ipv6_sctp, i40e_flow_parse_fdir_filter },
-	{ pattern_fdir_ipv6_sctp_ext, i40e_flow_parse_fdir_filter },
+	/* FDIR - support default flow type with flexible payload */
+	{ pattern_fdir_ethertype_raw_1, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ethertype_raw_2, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ethertype_raw_3, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv4_raw_1, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv4_raw_2, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv4_raw_3, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv4_udp_raw_1, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv4_udp_raw_2, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv4_udp_raw_3, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv4_tcp_raw_1, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv4_tcp_raw_2, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv4_tcp_raw_3, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv4_sctp_raw_1, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv4_sctp_raw_2, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv4_sctp_raw_3, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv6_raw_1, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv6_raw_2, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv6_raw_3, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv6_udp_raw_1, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv6_udp_raw_2, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv6_udp_raw_3, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv6_tcp_raw_1, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv6_tcp_raw_2, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv6_tcp_raw_3, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv6_sctp_raw_1, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv6_sctp_raw_2, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv6_sctp_raw_3, i40e_flow_parse_fdir_filter },
+	/* FDIR - support single vlan input set */
+	{ pattern_fdir_ethertype_vlan, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv4, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv4_udp, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv4_tcp, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv4_sctp, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv6, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv6_udp, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv6_tcp, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv6_sctp, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ethertype_vlan_raw_1, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ethertype_vlan_raw_2, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ethertype_vlan_raw_3, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv4_raw_1, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv4_raw_2, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv4_raw_3, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv4_udp_raw_1, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv4_udp_raw_2, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv4_udp_raw_3, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv4_tcp_raw_1, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv4_tcp_raw_2, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv4_tcp_raw_3, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv4_sctp_raw_1, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv4_sctp_raw_2, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv4_sctp_raw_3, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv6_raw_1, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv6_raw_2, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv6_raw_3, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv6_udp_raw_1, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv6_udp_raw_2, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv6_udp_raw_3, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv6_tcp_raw_1, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv6_tcp_raw_2, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv6_tcp_raw_3, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv6_sctp_raw_1, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv6_sctp_raw_2, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv6_sctp_raw_3, i40e_flow_parse_fdir_filter },
+	/* FDIR - support VF item */
+	{ pattern_fdir_ipv4_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv4_udp_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv4_tcp_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv4_sctp_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv6_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv6_udp_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv6_tcp_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv6_sctp_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ethertype_raw_1_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ethertype_raw_2_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ethertype_raw_3_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv4_raw_1_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv4_raw_2_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv4_raw_3_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv4_udp_raw_1_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv4_udp_raw_2_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv4_udp_raw_3_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv4_tcp_raw_1_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv4_tcp_raw_2_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv4_tcp_raw_3_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv4_sctp_raw_1_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv4_sctp_raw_2_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv4_sctp_raw_3_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv6_raw_1_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv6_raw_2_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv6_raw_3_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv6_udp_raw_1_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv6_udp_raw_2_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv6_udp_raw_3_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv6_tcp_raw_1_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv6_tcp_raw_2_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv6_tcp_raw_3_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv6_sctp_raw_1_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv6_sctp_raw_2_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ipv6_sctp_raw_3_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ethertype_vlan_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv4_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv4_udp_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv4_tcp_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv4_sctp_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv6_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv6_udp_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv6_tcp_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv6_sctp_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ethertype_vlan_raw_1_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ethertype_vlan_raw_2_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_ethertype_vlan_raw_3_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv4_raw_1_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv4_raw_2_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv4_raw_3_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv4_udp_raw_1_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv4_udp_raw_2_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv4_udp_raw_3_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv4_tcp_raw_1_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv4_tcp_raw_2_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv4_tcp_raw_3_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv4_sctp_raw_1_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv4_sctp_raw_2_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv4_sctp_raw_3_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv6_raw_1_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv6_raw_2_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv6_raw_3_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv6_udp_raw_1_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv6_udp_raw_2_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv6_udp_raw_3_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv6_tcp_raw_1_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv6_tcp_raw_2_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv6_tcp_raw_3_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv6_sctp_raw_1_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv6_sctp_raw_2_vf, i40e_flow_parse_fdir_filter },
+	{ pattern_fdir_vlan_ipv6_sctp_raw_3_vf, i40e_flow_parse_fdir_filter },
 	/* VXLAN */
 	{ pattern_vxlan_1, i40e_flow_parse_vxlan_filter },
 	{ pattern_vxlan_2, i40e_flow_parse_vxlan_filter },
