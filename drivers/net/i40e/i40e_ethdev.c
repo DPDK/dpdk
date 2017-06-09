@@ -8136,7 +8136,7 @@ i40e_get_valid_input_set(enum i40e_filter_pctype pctype,
 /**
  * Validate if the input set is allowed for a specific PCTYPE
  */
-static int
+int
 i40e_validate_input_set(enum i40e_filter_pctype pctype,
 		enum rte_filter_type filter, uint64_t inset)
 {
@@ -8311,7 +8311,7 @@ i40e_parse_input_set(uint64_t *inset,
  * Translate the input set from bit masks to register aware bit masks
  * and vice versa
  */
-static uint64_t
+uint64_t
 i40e_translate_input_set_reg(enum i40e_mac_type type, uint64_t input)
 {
 	uint64_t val = 0;
@@ -8396,7 +8396,7 @@ i40e_translate_input_set_reg(enum i40e_mac_type type, uint64_t input)
 	return val;
 }
 
-static int
+int
 i40e_generate_inset_mask_reg(uint64_t inset, uint32_t *mask, uint8_t nb_elem)
 {
 	uint8_t i, idx = 0;
@@ -8444,7 +8444,7 @@ i40e_generate_inset_mask_reg(uint64_t inset, uint32_t *mask, uint8_t nb_elem)
 	return idx;
 }
 
-static void
+void
 i40e_check_write_reg(struct i40e_hw *hw, uint32_t addr, uint32_t val)
 {
 	uint32_t reg = i40e_read_rx_ctl(hw, addr);

@@ -502,6 +502,8 @@ struct i40e_fdir_info {
 	/* Mark if flex pit and mask is set */
 	bool flex_pit_flag[I40E_MAX_FLXPLD_LAYER];
 	bool flex_mask_flag[I40E_FILTER_PCTYPE_MAX];
+
+	bool inset_flag[I40E_FILTER_PCTYPE_MAX]; /* Mark if input set is set */
 };
 
 /* Ethertype filter number HW supports */
@@ -919,6 +921,12 @@ int i40e_add_macvlan_filters(struct i40e_vsi *vsi,
 			     struct i40e_macvlan_filter *filter,
 			     int total);
 bool is_i40e_supported(struct rte_eth_dev *dev);
+int i40e_validate_input_set(enum i40e_filter_pctype pctype,
+			    enum rte_filter_type filter, uint64_t inset);
+int i40e_generate_inset_mask_reg(uint64_t inset, uint32_t *mask,
+				 uint8_t nb_elem);
+uint64_t i40e_translate_input_set_reg(enum i40e_mac_type type, uint64_t input);
+void i40e_check_write_reg(struct i40e_hw *hw, uint32_t addr, uint32_t val);
 
 /* I40E_DEV_PRIVATE_TO */
 #define I40E_DEV_PRIVATE_TO_PF(adapter) \

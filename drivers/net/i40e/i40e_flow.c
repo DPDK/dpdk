@@ -925,10 +925,63 @@ i40e_flow_set_fdir_flex_msk(struct i40e_pf *pf,
 	pf->fdir.flex_mask_flag[pctype] = 1;
 }
 
+static int
+i40e_flow_set_fdir_inset(struct i40e_pf *pf,
+			 enum i40e_filter_pctype pctype,
+			 uint64_t input_set)
+{
+	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
+	uint64_t inset_reg = 0;
+	uint32_t mask_reg[I40E_INSET_MASK_NUM_REG] = {0};
+	int i, num;
+
+	/* Check if the input set is valid */
+	if (i40e_validate_input_set(pctype, RTE_ETH_FILTER_FDIR,
+				    input_set) != 0) {
+		PMD_DRV_LOG(ERR, "Invalid input set");
+		return -EINVAL;
+	}
+
+	/* Check if the configuration is conflicted */
+	if (pf->fdir.inset_flag[pctype] &&
+	    memcmp(&pf->fdir.input_set[pctype], &input_set, sizeof(uint64_t)))
+		return -1;
+
+	if (pf->fdir.inset_flag[pctype] &&
+	    !memcmp(&pf->fdir.input_set[pctype], &input_set, sizeof(uint64_t)))
+		return 0;
+
+	num = i40e_generate_inset_mask_reg(input_set, mask_reg,
+					   I40E_INSET_MASK_NUM_REG);
+	if (num < 0)
+		return -EINVAL;
+
+	inset_reg |= i40e_translate_input_set_reg(hw->mac.type, input_set);
+
+	i40e_check_write_reg(hw, I40E_PRTQF_FD_INSET(pctype, 0),
+			     (uint32_t)(inset_reg & UINT32_MAX));
+	i40e_check_write_reg(hw, I40E_PRTQF_FD_INSET(pctype, 1),
+			     (uint32_t)((inset_reg >>
+					 I40E_32_BIT_WIDTH) & UINT32_MAX));
+
+	for (i = 0; i < num; i++)
+		i40e_check_write_reg(hw, I40E_GLQF_FD_MSK(i, pctype),
+				     mask_reg[i]);
+
+	/*clear unused mask registers of the pctype */
+	for (i = num; i < I40E_INSET_MASK_NUM_REG; i++)
+		i40e_check_write_reg(hw, I40E_GLQF_FD_MSK(i, pctype), 0);
+	I40E_WRITE_FLUSH(hw);
+
+	pf->fdir.input_set[pctype] = input_set;
+	pf->fdir.inset_flag[pctype] = 1;
+	return 0;
+}
+
 /* 1. Last in item should be NULL as range is not supported.
  * 2. Supported patterns: refer to array i40e_supported_patterns.
  * 3. Supported flow type and input set: refer to array
- *    default_inset_table in i40e_ethdev.c.
+ *    valid_fdir_inset_table in i40e_ethdev.c.
  * 4. Mask of fields which need to be matched should be
  *    filled with 1.
  * 5. Mask of fields which needn't to be matched should be
@@ -943,6 +996,7 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	const struct rte_flow_item *item = pattern;
 	const struct rte_flow_item_eth *eth_spec, *eth_mask;
+	const struct rte_flow_item_vlan *vlan_spec, *vlan_mask;
 	const struct rte_flow_item_ipv4 *ipv4_spec, *ipv4_mask;
 	const struct rte_flow_item_ipv6 *ipv6_spec, *ipv6_mask;
 	const struct rte_flow_item_tcp *tcp_spec, *tcp_mask;
@@ -954,10 +1008,13 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 	uint32_t flow_type = RTE_ETH_FLOW_UNKNOWN;
 	enum i40e_filter_pctype pctype;
 	uint64_t input_set = I40E_INSET_NONE;
-	uint16_t flag_offset;
+	uint16_t frag_off;
 	enum rte_flow_item_type item_type;
 	enum rte_flow_item_type l3 = RTE_FLOW_ITEM_TYPE_END;
 	uint32_t i, j;
+	uint8_t  ipv6_addr_mask[16] = {
+		0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+		0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 	enum i40e_flxpld_layer_idx layer_idx = I40E_FLXPLD_L2_IDX;
 	uint8_t raw_id = 0;
 	int32_t off_arr[I40E_MAX_FLXPLD_FIED];
@@ -968,11 +1025,14 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 	uint16_t flex_size;
 	bool cfg_flex_pit = true;
 	bool cfg_flex_msk = true;
+	uint16_t outer_tpid;
+	uint16_t ether_type;
 	int ret;
 
 	memset(off_arr, 0, I40E_MAX_FLXPLD_FIED);
 	memset(len_arr, 0, I40E_MAX_FLXPLD_FIED);
 	memset(flex_mask, 0, I40E_FDIR_MAX_FLEX_LEN);
+	outer_tpid = i40e_get_outer_vlan(dev);
 	for (; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
 		if (item->last) {
 			rte_flow_error_set(error, EINVAL,
@@ -986,14 +1046,56 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 		case RTE_FLOW_ITEM_TYPE_ETH:
 			eth_spec = (const struct rte_flow_item_eth *)item->spec;
 			eth_mask = (const struct rte_flow_item_eth *)item->mask;
-			if (eth_spec || eth_mask) {
-				rte_flow_error_set(error, EINVAL,
-						   RTE_FLOW_ERROR_TYPE_ITEM,
-						   item,
-						   "Invalid ETH spec/mask");
-				return -rte_errno;
+
+			if (eth_spec && eth_mask) {
+				if (!is_zero_ether_addr(&eth_mask->src) ||
+				    !is_zero_ether_addr(&eth_mask->dst)) {
+					rte_flow_error_set(error, EINVAL,
+						      RTE_FLOW_ERROR_TYPE_ITEM,
+						      item,
+						      "Invalid MAC_addr mask.");
+					return -rte_errno;
+				}
+
+				if ((eth_mask->type & UINT16_MAX) ==
+				    UINT16_MAX) {
+					input_set |= I40E_INSET_LAST_ETHER_TYPE;
+					filter->input.flow.l2_flow.ether_type =
+						eth_spec->type;
+				}
+
+				ether_type = rte_be_to_cpu_16(eth_spec->type);
+				if (ether_type == ETHER_TYPE_IPv4 ||
+				    ether_type == ETHER_TYPE_IPv6 ||
+				    ether_type == ETHER_TYPE_ARP ||
+				    ether_type == outer_tpid) {
+					rte_flow_error_set(error, EINVAL,
+						     RTE_FLOW_ERROR_TYPE_ITEM,
+						     item,
+						     "Unsupported ether_type.");
+					return -rte_errno;
+				}
 			}
 
+			flow_type = RTE_ETH_FLOW_L2_PAYLOAD;
+			layer_idx = I40E_FLXPLD_L2_IDX;
+
+			break;
+		case RTE_FLOW_ITEM_TYPE_VLAN:
+			vlan_spec =
+				(const struct rte_flow_item_vlan *)item->spec;
+			vlan_mask =
+				(const struct rte_flow_item_vlan *)item->mask;
+			if (vlan_spec && vlan_mask) {
+				if (vlan_mask->tci ==
+				    rte_cpu_to_be_16(I40E_TCI_MASK)) {
+					input_set |= I40E_INSET_VLAN_INNER;
+					filter->input.flow_ext.vlan_tci =
+						vlan_spec->tci;
+				}
+			}
+
+			flow_type = RTE_ETH_FLOW_L2_PAYLOAD;
 			layer_idx = I40E_FLXPLD_L2_IDX;
 
 			break;
@@ -1003,58 +1105,53 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 				(const struct rte_flow_item_ipv4 *)item->spec;
 			ipv4_mask =
 				(const struct rte_flow_item_ipv4 *)item->mask;
-			if (!ipv4_spec || !ipv4_mask) {
-				rte_flow_error_set(error, EINVAL,
-						   RTE_FLOW_ERROR_TYPE_ITEM,
-						   item,
-						   "NULL IPv4 spec/mask");
-				return -rte_errno;
-			}
 
-			/* Check IPv4 mask and update input set */
-			if (ipv4_mask->hdr.version_ihl ||
-			    ipv4_mask->hdr.total_length ||
-			    ipv4_mask->hdr.packet_id ||
-			    ipv4_mask->hdr.fragment_offset ||
-			    ipv4_mask->hdr.hdr_checksum) {
-				rte_flow_error_set(error, EINVAL,
+			if (ipv4_spec && ipv4_mask) {
+				/* Check IPv4 mask and update input set */
+				if (ipv4_mask->hdr.version_ihl ||
+				    ipv4_mask->hdr.total_length ||
+				    ipv4_mask->hdr.packet_id ||
+				    ipv4_mask->hdr.fragment_offset ||
+				    ipv4_mask->hdr.hdr_checksum) {
+					rte_flow_error_set(error, EINVAL,
 						   RTE_FLOW_ERROR_TYPE_ITEM,
 						   item,
 						   "Invalid IPv4 mask.");
-				return -rte_errno;
+					return -rte_errno;
+				}
+
+				if (ipv4_mask->hdr.src_addr == UINT32_MAX)
+					input_set |= I40E_INSET_IPV4_SRC;
+				if (ipv4_mask->hdr.dst_addr == UINT32_MAX)
+					input_set |= I40E_INSET_IPV4_DST;
+				if (ipv4_mask->hdr.type_of_service == UINT8_MAX)
+					input_set |= I40E_INSET_IPV4_TOS;
+				if (ipv4_mask->hdr.time_to_live == UINT8_MAX)
+					input_set |= I40E_INSET_IPV4_TTL;
+				if (ipv4_mask->hdr.next_proto_id == UINT8_MAX)
+					input_set |= I40E_INSET_IPV4_PROTO;
+
+				/* Get filter info */
+				flow_type = RTE_ETH_FLOW_NONFRAG_IPV4_OTHER;
+				/* Check if it is fragment. */
+				frag_off = ipv4_spec->hdr.fragment_offset;
+				frag_off = rte_be_to_cpu_16(frag_off);
+				if (frag_off & IPV4_HDR_OFFSET_MASK ||
+				    frag_off & IPV4_HDR_MF_FLAG)
+					flow_type = RTE_ETH_FLOW_FRAG_IPV4;
+
+				/* Get the filter info */
+				filter->input.flow.ip4_flow.proto =
+					ipv4_spec->hdr.next_proto_id;
+				filter->input.flow.ip4_flow.tos =
+					ipv4_spec->hdr.type_of_service;
+				filter->input.flow.ip4_flow.ttl =
+					ipv4_spec->hdr.time_to_live;
+				filter->input.flow.ip4_flow.src_ip =
+					ipv4_spec->hdr.src_addr;
+				filter->input.flow.ip4_flow.dst_ip =
+					ipv4_spec->hdr.dst_addr;
 			}
-
-			if (ipv4_mask->hdr.src_addr == UINT32_MAX)
-				input_set |= I40E_INSET_IPV4_SRC;
-			if (ipv4_mask->hdr.dst_addr == UINT32_MAX)
-				input_set |= I40E_INSET_IPV4_DST;
-			if (ipv4_mask->hdr.type_of_service == UINT8_MAX)
-				input_set |= I40E_INSET_IPV4_TOS;
-			if (ipv4_mask->hdr.time_to_live == UINT8_MAX)
-				input_set |= I40E_INSET_IPV4_TTL;
-			if (ipv4_mask->hdr.next_proto_id == UINT8_MAX)
-				input_set |= I40E_INSET_IPV4_PROTO;
-
-			/* Get filter info */
-			flow_type = RTE_ETH_FLOW_NONFRAG_IPV4_OTHER;
-			/* Check if it is fragment. */
-			flag_offset =
-			      rte_be_to_cpu_16(ipv4_spec->hdr.fragment_offset);
-			if (flag_offset & IPV4_HDR_OFFSET_MASK ||
-			    flag_offset & IPV4_HDR_MF_FLAG)
-				flow_type = RTE_ETH_FLOW_FRAG_IPV4;
-
-			/* Get the filter info */
-			filter->input.flow.ip4_flow.proto =
-				ipv4_spec->hdr.next_proto_id;
-			filter->input.flow.ip4_flow.tos =
-				ipv4_spec->hdr.type_of_service;
-			filter->input.flow.ip4_flow.ttl =
-				ipv4_spec->hdr.time_to_live;
-			filter->input.flow.ip4_flow.src_ip =
-				ipv4_spec->hdr.src_addr;
-			filter->input.flow.ip4_flow.dst_ip =
-				ipv4_spec->hdr.dst_addr;
 
 			layer_idx = I40E_FLXPLD_L3_IDX;
 
@@ -1065,66 +1162,58 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 				(const struct rte_flow_item_ipv6 *)item->spec;
 			ipv6_mask =
 				(const struct rte_flow_item_ipv6 *)item->mask;
-			if (!ipv6_spec || !ipv6_mask) {
-				rte_flow_error_set(error, EINVAL,
-						   RTE_FLOW_ERROR_TYPE_ITEM,
-						   item,
-						   "NULL IPv6 spec/mask");
-				return -rte_errno;
-			}
 
-			/* Check IPv6 mask and update input set */
-			if (ipv6_mask->hdr.payload_len) {
-				rte_flow_error_set(error, EINVAL,
-						   RTE_FLOW_ERROR_TYPE_ITEM,
-						   item,
-						   "Invalid IPv6 mask");
-				return -rte_errno;
-			}
-
-			/* SCR and DST address of IPv6 shouldn't be masked */
-			for (j = 0; j < RTE_DIM(ipv6_mask->hdr.src_addr); j++) {
-				if (ipv6_mask->hdr.src_addr[j] != UINT8_MAX ||
-				    ipv6_mask->hdr.dst_addr[j] != UINT8_MAX) {
+			if (ipv6_spec && ipv6_mask) {
+				/* Check IPv6 mask and update input set */
+				if (ipv6_mask->hdr.payload_len) {
 					rte_flow_error_set(error, EINVAL,
 						   RTE_FLOW_ERROR_TYPE_ITEM,
 						   item,
 						   "Invalid IPv6 mask");
 					return -rte_errno;
 				}
+
+				if (!memcmp(ipv6_mask->hdr.src_addr,
+					    ipv6_addr_mask,
+					    RTE_DIM(ipv6_mask->hdr.src_addr)))
+					input_set |= I40E_INSET_IPV6_SRC;
+				if (!memcmp(ipv6_mask->hdr.dst_addr,
+					    ipv6_addr_mask,
+					    RTE_DIM(ipv6_mask->hdr.dst_addr)))
+					input_set |= I40E_INSET_IPV6_DST;
+
+				if ((ipv6_mask->hdr.vtc_flow &
+				     rte_cpu_to_be_16(I40E_IPV6_TC_MASK))
+				    == rte_cpu_to_be_16(I40E_IPV6_TC_MASK))
+					input_set |= I40E_INSET_IPV6_TC;
+				if (ipv6_mask->hdr.proto == UINT8_MAX)
+					input_set |= I40E_INSET_IPV6_NEXT_HDR;
+				if (ipv6_mask->hdr.hop_limits == UINT8_MAX)
+					input_set |= I40E_INSET_IPV6_HOP_LIMIT;
+
+				/* Get filter info */
+				filter->input.flow.ipv6_flow.tc =
+					(uint8_t)(ipv6_spec->hdr.vtc_flow <<
+						  I40E_IPV4_TC_SHIFT);
+				filter->input.flow.ipv6_flow.proto =
+					ipv6_spec->hdr.proto;
+				filter->input.flow.ipv6_flow.hop_limits =
+					ipv6_spec->hdr.hop_limits;
+
+				rte_memcpy(filter->input.flow.ipv6_flow.src_ip,
+					   ipv6_spec->hdr.src_addr, 16);
+				rte_memcpy(filter->input.flow.ipv6_flow.dst_ip,
+					   ipv6_spec->hdr.dst_addr, 16);
+
+				/* Check if it is fragment. */
+				if (ipv6_spec->hdr.proto ==
+				    I40E_IPV6_FRAG_HEADER)
+					flow_type =
+						RTE_ETH_FLOW_FRAG_IPV6;
+				else
+					flow_type =
+						RTE_ETH_FLOW_NONFRAG_IPV6_OTHER;
 			}
-
-			input_set |= I40E_INSET_IPV6_SRC;
-			input_set |= I40E_INSET_IPV6_DST;
-
-			if ((ipv6_mask->hdr.vtc_flow &
-			     rte_cpu_to_be_16(I40E_IPV6_TC_MASK))
-			    == rte_cpu_to_be_16(I40E_IPV6_TC_MASK))
-				input_set |= I40E_INSET_IPV6_TC;
-			if (ipv6_mask->hdr.proto == UINT8_MAX)
-				input_set |= I40E_INSET_IPV6_NEXT_HDR;
-			if (ipv6_mask->hdr.hop_limits == UINT8_MAX)
-				input_set |= I40E_INSET_IPV6_HOP_LIMIT;
-
-			/* Get filter info */
-			filter->input.flow.ipv6_flow.tc =
-				(uint8_t)(ipv6_spec->hdr.vtc_flow <<
-					  I40E_IPV4_TC_SHIFT);
-			filter->input.flow.ipv6_flow.proto =
-				ipv6_spec->hdr.proto;
-			filter->input.flow.ipv6_flow.hop_limits =
-				ipv6_spec->hdr.hop_limits;
-
-			rte_memcpy(filter->input.flow.ipv6_flow.src_ip,
-				   ipv6_spec->hdr.src_addr, 16);
-			rte_memcpy(filter->input.flow.ipv6_flow.dst_ip,
-				   ipv6_spec->hdr.dst_addr, 16);
-
-			/* Check if it is fragment. */
-			if (ipv6_spec->hdr.proto == I40E_IPV6_FRAG_HEADER)
-				flow_type = RTE_ETH_FLOW_FRAG_IPV6;
-			else
-				flow_type = RTE_ETH_FLOW_NONFRAG_IPV6_OTHER;
 
 			layer_idx = I40E_FLXPLD_L3_IDX;
 
@@ -1132,57 +1221,47 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 		case RTE_FLOW_ITEM_TYPE_TCP:
 			tcp_spec = (const struct rte_flow_item_tcp *)item->spec;
 			tcp_mask = (const struct rte_flow_item_tcp *)item->mask;
-			if (!tcp_spec || !tcp_mask) {
-				rte_flow_error_set(error, EINVAL,
-						   RTE_FLOW_ERROR_TYPE_ITEM,
-						   item,
-						   "NULL TCP spec/mask");
-				return -rte_errno;
-			}
 
-			/* Check TCP mask and update input set */
-			if (tcp_mask->hdr.sent_seq ||
-			    tcp_mask->hdr.recv_ack ||
-			    tcp_mask->hdr.data_off ||
-			    tcp_mask->hdr.tcp_flags ||
-			    tcp_mask->hdr.rx_win ||
-			    tcp_mask->hdr.cksum ||
-			    tcp_mask->hdr.tcp_urp) {
-				rte_flow_error_set(error, EINVAL,
+			if (tcp_spec && tcp_mask) {
+				/* Check TCP mask and update input set */
+				if (tcp_mask->hdr.sent_seq ||
+				    tcp_mask->hdr.recv_ack ||
+				    tcp_mask->hdr.data_off ||
+				    tcp_mask->hdr.tcp_flags ||
+				    tcp_mask->hdr.rx_win ||
+				    tcp_mask->hdr.cksum ||
+				    tcp_mask->hdr.tcp_urp) {
+					rte_flow_error_set(error, EINVAL,
 						   RTE_FLOW_ERROR_TYPE_ITEM,
 						   item,
 						   "Invalid TCP mask");
-				return -rte_errno;
-			}
+					return -rte_errno;
+				}
 
-			if (tcp_mask->hdr.src_port != UINT16_MAX ||
-			    tcp_mask->hdr.dst_port != UINT16_MAX) {
-				rte_flow_error_set(error, EINVAL,
-						   RTE_FLOW_ERROR_TYPE_ITEM,
-						   item,
-						   "Invalid TCP mask");
-				return -rte_errno;
-			}
+				if (tcp_mask->hdr.src_port == UINT16_MAX)
+					input_set |= I40E_INSET_SRC_PORT;
+				if (tcp_mask->hdr.dst_port == UINT16_MAX)
+					input_set |= I40E_INSET_DST_PORT;
 
-			input_set |= I40E_INSET_SRC_PORT;
-			input_set |= I40E_INSET_DST_PORT;
+				/* Get filter info */
+				if (l3 == RTE_FLOW_ITEM_TYPE_IPV4)
+					flow_type =
+						RTE_ETH_FLOW_NONFRAG_IPV4_TCP;
+				else if (l3 == RTE_FLOW_ITEM_TYPE_IPV6)
+					flow_type =
+						RTE_ETH_FLOW_NONFRAG_IPV6_TCP;
 
-			/* Get filter info */
-			if (l3 == RTE_FLOW_ITEM_TYPE_IPV4)
-				flow_type = RTE_ETH_FLOW_NONFRAG_IPV4_TCP;
-			else if (l3 == RTE_FLOW_ITEM_TYPE_IPV6)
-				flow_type = RTE_ETH_FLOW_NONFRAG_IPV6_TCP;
-
-			if (l3 == RTE_FLOW_ITEM_TYPE_IPV4) {
-				filter->input.flow.tcp4_flow.src_port =
-					tcp_spec->hdr.src_port;
-				filter->input.flow.tcp4_flow.dst_port =
-					tcp_spec->hdr.dst_port;
-			} else if (l3 == RTE_FLOW_ITEM_TYPE_IPV6) {
-				filter->input.flow.tcp6_flow.src_port =
-					tcp_spec->hdr.src_port;
-				filter->input.flow.tcp6_flow.dst_port =
-					tcp_spec->hdr.dst_port;
+				if (l3 == RTE_FLOW_ITEM_TYPE_IPV4) {
+					filter->input.flow.tcp4_flow.src_port =
+						tcp_spec->hdr.src_port;
+					filter->input.flow.tcp4_flow.dst_port =
+						tcp_spec->hdr.dst_port;
+				} else if (l3 == RTE_FLOW_ITEM_TYPE_IPV6) {
+					filter->input.flow.tcp6_flow.src_port =
+						tcp_spec->hdr.src_port;
+					filter->input.flow.tcp6_flow.dst_port =
+						tcp_spec->hdr.dst_port;
+				}
 			}
 
 			layer_idx = I40E_FLXPLD_L4_IDX;
@@ -1191,54 +1270,42 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 		case RTE_FLOW_ITEM_TYPE_UDP:
 			udp_spec = (const struct rte_flow_item_udp *)item->spec;
 			udp_mask = (const struct rte_flow_item_udp *)item->mask;
-			if (!udp_spec || !udp_mask) {
-				rte_flow_error_set(error, EINVAL,
-						   RTE_FLOW_ERROR_TYPE_ITEM,
-						   item,
-						   "NULL UDP spec/mask");
-				return -rte_errno;
-			}
 
-			/* Check UDP mask and update input set*/
-			if (udp_mask->hdr.dgram_len ||
-			    udp_mask->hdr.dgram_cksum) {
-				rte_flow_error_set(error, EINVAL,
+			if (udp_spec && udp_mask) {
+				/* Check UDP mask and update input set*/
+				if (udp_mask->hdr.dgram_len ||
+				    udp_mask->hdr.dgram_cksum) {
+					rte_flow_error_set(error, EINVAL,
 						   RTE_FLOW_ERROR_TYPE_ITEM,
 						   item,
 						   "Invalid UDP mask");
-				return -rte_errno;
-			}
+					return -rte_errno;
+				}
 
-			if (udp_mask->hdr.src_port != UINT16_MAX ||
-			    udp_mask->hdr.dst_port != UINT16_MAX) {
-				rte_flow_error_set(error, EINVAL,
-						   RTE_FLOW_ERROR_TYPE_ITEM,
-						   item,
-						   "Invalid UDP mask");
-				return -rte_errno;
-			}
+				if (udp_mask->hdr.src_port == UINT16_MAX)
+					input_set |= I40E_INSET_SRC_PORT;
+				if (udp_mask->hdr.dst_port == UINT16_MAX)
+					input_set |= I40E_INSET_DST_PORT;
 
-			input_set |= I40E_INSET_SRC_PORT;
-			input_set |= I40E_INSET_DST_PORT;
+				/* Get filter info */
+				if (l3 == RTE_FLOW_ITEM_TYPE_IPV4)
+					flow_type =
+						RTE_ETH_FLOW_NONFRAG_IPV4_UDP;
+				else if (l3 == RTE_FLOW_ITEM_TYPE_IPV6)
+					flow_type =
+						RTE_ETH_FLOW_NONFRAG_IPV6_UDP;
 
-			/* Get filter info */
-			if (l3 == RTE_FLOW_ITEM_TYPE_IPV4)
-				flow_type =
-					RTE_ETH_FLOW_NONFRAG_IPV4_UDP;
-			else if (l3 == RTE_FLOW_ITEM_TYPE_IPV6)
-				flow_type =
-					RTE_ETH_FLOW_NONFRAG_IPV6_UDP;
-
-			if (l3 == RTE_FLOW_ITEM_TYPE_IPV4) {
-				filter->input.flow.udp4_flow.src_port =
-					udp_spec->hdr.src_port;
-				filter->input.flow.udp4_flow.dst_port =
-					udp_spec->hdr.dst_port;
-			} else if (l3 == RTE_FLOW_ITEM_TYPE_IPV6) {
-				filter->input.flow.udp6_flow.src_port =
-					udp_spec->hdr.src_port;
-				filter->input.flow.udp6_flow.dst_port =
-					udp_spec->hdr.dst_port;
+				if (l3 == RTE_FLOW_ITEM_TYPE_IPV4) {
+					filter->input.flow.udp4_flow.src_port =
+						udp_spec->hdr.src_port;
+					filter->input.flow.udp4_flow.dst_port =
+						udp_spec->hdr.dst_port;
+				} else if (l3 == RTE_FLOW_ITEM_TYPE_IPV6) {
+					filter->input.flow.udp6_flow.src_port =
+						udp_spec->hdr.src_port;
+					filter->input.flow.udp6_flow.dst_port =
+						udp_spec->hdr.dst_port;
+				}
 			}
 
 			layer_idx = I40E_FLXPLD_L4_IDX;
@@ -1249,56 +1316,47 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 				(const struct rte_flow_item_sctp *)item->spec;
 			sctp_mask =
 				(const struct rte_flow_item_sctp *)item->mask;
-			if (!sctp_spec || !sctp_mask) {
-				rte_flow_error_set(error, EINVAL,
-						   RTE_FLOW_ERROR_TYPE_ITEM,
-						   item,
-						   "NULL SCTP spec/mask");
-				return -rte_errno;
-			}
 
-			/* Check SCTP mask and update input set */
-			if (sctp_mask->hdr.cksum) {
-				rte_flow_error_set(error, EINVAL,
+			if (sctp_spec && sctp_mask) {
+				/* Check SCTP mask and update input set */
+				if (sctp_mask->hdr.cksum) {
+					rte_flow_error_set(error, EINVAL,
 						   RTE_FLOW_ERROR_TYPE_ITEM,
 						   item,
 						   "Invalid UDP mask");
-				return -rte_errno;
-			}
+					return -rte_errno;
+				}
 
-			if (sctp_mask->hdr.src_port != UINT16_MAX ||
-			    sctp_mask->hdr.dst_port != UINT16_MAX ||
-			    sctp_mask->hdr.tag != UINT32_MAX) {
-				rte_flow_error_set(error, EINVAL,
-						   RTE_FLOW_ERROR_TYPE_ITEM,
-						   item,
-						   "Invalid UDP mask");
-				return -rte_errno;
-			}
-			input_set |= I40E_INSET_SRC_PORT;
-			input_set |= I40E_INSET_DST_PORT;
-			input_set |= I40E_INSET_SCTP_VT;
+				if (sctp_mask->hdr.src_port == UINT16_MAX)
+					input_set |= I40E_INSET_SRC_PORT;
+				if (sctp_mask->hdr.dst_port == UINT16_MAX)
+					input_set |= I40E_INSET_DST_PORT;
+				if (sctp_mask->hdr.tag == UINT32_MAX)
+					input_set |= I40E_INSET_SCTP_VT;
 
-			/* Get filter info */
-			if (l3 == RTE_FLOW_ITEM_TYPE_IPV4)
-				flow_type = RTE_ETH_FLOW_NONFRAG_IPV4_SCTP;
-			else if (l3 == RTE_FLOW_ITEM_TYPE_IPV6)
-				flow_type = RTE_ETH_FLOW_NONFRAG_IPV6_SCTP;
+				/* Get filter info */
+				if (l3 == RTE_FLOW_ITEM_TYPE_IPV4)
+					flow_type =
+						RTE_ETH_FLOW_NONFRAG_IPV4_SCTP;
+				else if (l3 == RTE_FLOW_ITEM_TYPE_IPV6)
+					flow_type =
+						RTE_ETH_FLOW_NONFRAG_IPV6_SCTP;
 
-			if (l3 == RTE_FLOW_ITEM_TYPE_IPV4) {
-				filter->input.flow.sctp4_flow.src_port =
-					sctp_spec->hdr.src_port;
-				filter->input.flow.sctp4_flow.dst_port =
-					sctp_spec->hdr.dst_port;
-				filter->input.flow.sctp4_flow.verify_tag =
-					sctp_spec->hdr.tag;
-			} else if (l3 == RTE_FLOW_ITEM_TYPE_IPV6) {
-				filter->input.flow.sctp6_flow.src_port =
-					sctp_spec->hdr.src_port;
-				filter->input.flow.sctp6_flow.dst_port =
-					sctp_spec->hdr.dst_port;
-				filter->input.flow.sctp6_flow.verify_tag =
-					sctp_spec->hdr.tag;
+				if (l3 == RTE_FLOW_ITEM_TYPE_IPV4) {
+					filter->input.flow.sctp4_flow.src_port =
+						sctp_spec->hdr.src_port;
+					filter->input.flow.sctp4_flow.dst_port =
+						sctp_spec->hdr.dst_port;
+					filter->input.flow.sctp4_flow.verify_tag
+						= sctp_spec->hdr.tag;
+				} else if (l3 == RTE_FLOW_ITEM_TYPE_IPV6) {
+					filter->input.flow.sctp6_flow.src_port =
+						sctp_spec->hdr.src_port;
+					filter->input.flow.sctp6_flow.dst_port =
+						sctp_spec->hdr.dst_port;
+					filter->input.flow.sctp6_flow.verify_tag
+						= sctp_spec->hdr.tag;
+				}
 			}
 
 			layer_idx = I40E_FLXPLD_L4_IDX;
@@ -1399,12 +1457,19 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 		return -rte_errno;
 	}
 
-	if (input_set != i40e_get_default_input_set(pctype)) {
+	ret = i40e_flow_set_fdir_inset(pf, pctype, input_set);
+	if (ret == -1) {
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ITEM, item,
-				   "Invalid input set.");
+				   "Conflict with the first rule's input set.");
+		return -rte_errno;
+	} else if (ret == -EINVAL) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ITEM, item,
+				   "Invalid pattern mask.");
 		return -rte_errno;
 	}
+
 	filter->input.flow_type = flow_type;
 
 	/* Store flex mask to SW */
