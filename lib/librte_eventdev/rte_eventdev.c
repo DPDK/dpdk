@@ -45,7 +45,6 @@
 #include <rte_log.h>
 #include <rte_debug.h>
 #include <rte_dev.h>
-#include <rte_pci.h>
 #include <rte_memory.h>
 #include <rte_memcpy.h>
 #include <rte_memzone.h>
@@ -126,8 +125,6 @@ rte_event_dev_info_get(uint8_t dev_id, struct rte_event_dev_info *dev_info)
 	dev_info->dequeue_timeout_ns = dev->data->dev_conf.dequeue_timeout_ns;
 
 	dev_info->dev = dev->dev;
-	if (dev->driver)
-		dev_info->driver_name = dev->driver->pci_drv.driver.name;
 	return 0;
 }
 
@@ -1250,18 +1247,18 @@ rte_event_pmd_vdev_uninit(const char *name)
 
 int
 rte_event_pmd_pci_probe(struct rte_pci_driver *pci_drv,
-			struct rte_pci_device *pci_dev)
+			struct rte_pci_device *pci_dev,
+			size_t private_data_size,
+			eventdev_pmd_pci_callback_t devinit)
 {
-	struct rte_eventdev_driver *eventdrv;
 	struct rte_eventdev *eventdev;
 
 	char eventdev_name[RTE_EVENTDEV_NAME_MAX_LEN];
 
 	int retval;
 
-	eventdrv = (struct rte_eventdev_driver *)pci_drv;
-	if (eventdrv == NULL)
-		return -ENODEV;
+	if (devinit == NULL)
+		return -EINVAL;
 
 	rte_pci_device_name(&pci_dev->addr, eventdev_name,
 			sizeof(eventdev_name));
@@ -1275,7 +1272,7 @@ rte_event_pmd_pci_probe(struct rte_pci_driver *pci_drv,
 		eventdev->data->dev_private =
 				rte_zmalloc_socket(
 						"eventdev private structure",
-						eventdrv->dev_private_size,
+						private_data_size,
 						RTE_CACHE_LINE_SIZE,
 						rte_socket_id());
 
@@ -1285,10 +1282,9 @@ rte_event_pmd_pci_probe(struct rte_pci_driver *pci_drv,
 	}
 
 	eventdev->dev = &pci_dev->device;
-	eventdev->driver = eventdrv;
 
 	/* Invoke PMD device initialization function */
-	retval = (*eventdrv->eventdev_init)(eventdev);
+	retval = devinit(eventdev);
 	if (retval == 0)
 		return 0;
 
@@ -1307,12 +1303,12 @@ rte_event_pmd_pci_probe(struct rte_pci_driver *pci_drv,
 }
 
 int
-rte_event_pmd_pci_remove(struct rte_pci_device *pci_dev)
+rte_event_pmd_pci_remove(struct rte_pci_device *pci_dev,
+			 eventdev_pmd_pci_callback_t devuninit)
 {
-	const struct rte_eventdev_driver *eventdrv;
 	struct rte_eventdev *eventdev;
 	char eventdev_name[RTE_EVENTDEV_NAME_MAX_LEN];
-	int ret;
+	int ret = 0;
 
 	if (pci_dev == NULL)
 		return -EINVAL;
@@ -1324,22 +1320,16 @@ rte_event_pmd_pci_remove(struct rte_pci_device *pci_dev)
 	if (eventdev == NULL)
 		return -ENODEV;
 
-	eventdrv = (const struct rte_eventdev_driver *)pci_dev->driver;
-	if (eventdrv == NULL)
-		return -ENODEV;
-
 	/* Invoke PMD device un-init function */
-	if (*eventdrv->eventdev_uninit) {
-		ret = (*eventdrv->eventdev_uninit)(eventdev);
-		if (ret)
-			return ret;
-	}
+	if (devuninit)
+		ret = devuninit(eventdev);
+	if (ret)
+		return ret;
 
 	/* Free event device */
 	rte_event_pmd_release(eventdev);
 
 	eventdev->dev = NULL;
-	eventdev->driver = NULL;
 
 	return 0;
 }

@@ -427,18 +427,28 @@ static const struct rte_pci_id pci_id_skeleton_map[] = {
 	},
 };
 
-static struct rte_eventdev_driver pci_eventdev_skeleton_pmd = {
-	.pci_drv = {
-		.id_table = pci_id_skeleton_map,
-		.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
-		.probe = rte_event_pmd_pci_probe,
-		.remove = rte_event_pmd_pci_remove,
-	},
-	.eventdev_init = skeleton_eventdev_init,
-	.dev_private_size = sizeof(struct skeleton_eventdev),
+static int
+event_skeleton_pci_probe(struct rte_pci_driver *pci_drv,
+			 struct rte_pci_device *pci_dev)
+{
+	return rte_event_pmd_pci_probe(pci_drv, pci_dev,
+		sizeof(struct skeleton_eventdev), skeleton_eventdev_init);
+}
+
+static int
+event_skeleton_pci_remove(struct rte_pci_device *pci_dev)
+{
+	return rte_event_pmd_pci_remove(pci_dev, NULL);
+}
+
+static struct rte_pci_driver pci_eventdev_skeleton_pmd = {
+	.id_table = pci_id_skeleton_map,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
+	.probe = event_skeleton_pci_probe,
+	.remove = event_skeleton_pci_remove,
 };
 
-RTE_PMD_REGISTER_PCI(event_skeleton_pci, pci_eventdev_skeleton_pmd.pci_drv);
+RTE_PMD_REGISTER_PCI(event_skeleton_pci, pci_eventdev_skeleton_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(event_skeleton_pci, pci_id_skeleton_map);
 
 /* VDEV based event device */

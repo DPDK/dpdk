@@ -1063,8 +1063,6 @@ struct rte_eventdev {
 	/**< Functions exported by PMD */
 	struct rte_device *dev;
 	/**< Device info. supplied by probing */
-	const struct rte_eventdev_driver *driver;
-	/**< Driver for this device */
 
 	RTE_STD_C11
 	uint8_t attached : 1;

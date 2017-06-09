@@ -87,60 +87,6 @@ extern "C" {
 #define RTE_EVENTDEV_DETACHED  (0)
 #define RTE_EVENTDEV_ATTACHED  (1)
 
-/**
- * Initialisation function of a event driver invoked for each matching
- * event PCI device detected during the PCI probing phase.
- *
- * @param dev
- *   The dev pointer is the address of the *rte_eventdev* structure associated
- *   with the matching device and which has been [automatically] allocated in
- *   the *rte_event_devices* array.
- *
- * @return
- *   - 0: Success, the device is properly initialised by the driver.
- *        In particular, the driver MUST have set up the *dev_ops* pointer
- *        of the *dev* structure.
- *   - <0: Error code of the device initialisation failure.
- */
-typedef int (*eventdev_init_t)(struct rte_eventdev *dev);
-
-/**
- * Finalisation function of a driver invoked for each matching
- * PCI device detected during the PCI closing phase.
- *
- * @param dev
- *   The dev pointer is the address of the *rte_eventdev* structure associated
- *   with the matching device and which	has been [automatically] allocated in
- *   the *rte_event_devices* array.
- *
- * @return
- *   - 0: Success, the device is properly finalised by the driver.
- *        In particular, the driver MUST free the *dev_ops* pointer
- *        of the *dev* structure.
- *   - <0: Error code of the device initialisation failure.
- */
-typedef int (*eventdev_uninit_t)(struct rte_eventdev *dev);
-
-/**
- * The structure associated with a PMD driver.
- *
- * Each driver acts as a PCI driver and is represented by a generic
- * *event_driver* structure that holds:
- *
- * - An *rte_pci_driver* structure (which must be the first field).
- *
- * - The *eventdev_init* function invoked for each matching PCI device.
- *
- * - The size of the private data to allocate for each matching device.
- */
-struct rte_eventdev_driver {
-	struct rte_pci_driver pci_drv;	/**< The PMD is also a PCI driver. */
-	unsigned int dev_private_size;	/**< Size of device private data. */
-
-	eventdev_init_t eventdev_init;	/**< Device init function. */
-	eventdev_uninit_t eventdev_uninit; /**< Device uninit function. */
-};
-
 /** Global structure used for maintaining state of allocated event devices */
 struct rte_eventdev_global {
 	uint8_t nb_devs;	/**< Number of devices found */
@@ -579,18 +525,23 @@ rte_event_pmd_vdev_init(const char *name, size_t dev_private_size,
 int
 rte_event_pmd_vdev_uninit(const char *name);
 
+typedef int (*eventdev_pmd_pci_callback_t)(struct rte_eventdev *dev);
+
 /**
  * Wrapper for use by pci drivers as a .probe function to attach to a event
  * interface.
  */
 int rte_event_pmd_pci_probe(struct rte_pci_driver *pci_drv,
-			    struct rte_pci_device *pci_dev);
+			    struct rte_pci_device *pci_dev,
+			    size_t private_data_size,
+			    eventdev_pmd_pci_callback_t devinit);
 
 /**
  * Wrapper for use by pci drivers as a .remove function to detach a event
  * interface.
  */
-int rte_event_pmd_pci_remove(struct rte_pci_device *pci_dev);
+int rte_event_pmd_pci_remove(struct rte_pci_device *pci_dev,
+			     eventdev_pmd_pci_callback_t devuninit);
 
 #ifdef __cplusplus
 }
