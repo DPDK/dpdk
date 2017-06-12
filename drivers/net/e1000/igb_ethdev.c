@@ -757,6 +757,30 @@ igb_reset_swfw_lock(struct e1000_hw *hw)
 	return E1000_SUCCESS;
 }
 
+/* Remove all ntuple filters of the device */
+static int igb_ntuple_filter_uninit(struct rte_eth_dev *eth_dev)
+{
+	struct e1000_filter_info *filter_info =
+		E1000_DEV_PRIVATE_TO_FILTER_INFO(eth_dev->data->dev_private);
+	struct e1000_5tuple_filter *p_5tuple;
+	struct e1000_2tuple_filter *p_2tuple;
+
+	while ((p_5tuple = TAILQ_FIRST(&filter_info->fivetuple_list))) {
+		TAILQ_REMOVE(&filter_info->fivetuple_list,
+			p_5tuple, entries);
+			rte_free(p_5tuple);
+	}
+	filter_info->fivetuple_mask = 0;
+	while ((p_2tuple = TAILQ_FIRST(&filter_info->twotuple_list))) {
+		TAILQ_REMOVE(&filter_info->twotuple_list,
+			p_2tuple, entries);
+			rte_free(p_2tuple);
+	}
+	filter_info->twotuple_mask = 0;
+
+	return 0;
+}
+
 static int
 eth_igb_dev_init(struct rte_eth_dev *eth_dev)
 {
@@ -966,6 +990,9 @@ eth_igb_dev_uninit(struct rte_eth_dev *eth_dev)
 
 	/* clear the SYN filter info */
 	filter_info->syn_info = 0;
+
+	/* remove all ntuple filters of the device */
+	igb_ntuple_filter_uninit(eth_dev);
 
 	return 0;
 }
@@ -1474,8 +1501,6 @@ eth_igb_stop(struct rte_eth_dev *dev)
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_eth_link link;
 	struct e1000_flex_filter *p_flex;
-	struct e1000_5tuple_filter *p_5tuple, *p_5tuple_next;
-	struct e1000_2tuple_filter *p_2tuple, *p_2tuple_next;
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 
 	igb_intr_disable(hw);
@@ -1510,24 +1535,6 @@ eth_igb_stop(struct rte_eth_dev *dev)
 		rte_free(p_flex);
 	}
 	filter_info->flex_mask = 0;
-
-	/* Remove all ntuple filters of the device */
-	for (p_5tuple = TAILQ_FIRST(&filter_info->fivetuple_list);
-	     p_5tuple != NULL; p_5tuple = p_5tuple_next) {
-		p_5tuple_next = TAILQ_NEXT(p_5tuple, entries);
-		TAILQ_REMOVE(&filter_info->fivetuple_list,
-			     p_5tuple, entries);
-		rte_free(p_5tuple);
-	}
-	filter_info->fivetuple_mask = 0;
-	for (p_2tuple = TAILQ_FIRST(&filter_info->twotuple_list);
-	     p_2tuple != NULL; p_2tuple = p_2tuple_next) {
-		p_2tuple_next = TAILQ_NEXT(p_2tuple, entries);
-		TAILQ_REMOVE(&filter_info->twotuple_list,
-			     p_2tuple, entries);
-		rte_free(p_2tuple);
-	}
-	filter_info->twotuple_mask = 0;
 
 	if (!rte_intr_allow_others(intr_handle))
 		/* resume to the default handler */
@@ -3737,6 +3744,54 @@ igb_2tuple_filter_lookup(struct e1000_2tuple_filter_list *filter_list,
 	return NULL;
 }
 
+/* inject a igb 2tuple filter to HW */
+static inline void
+igb_inject_2uple_filter(struct rte_eth_dev *dev,
+			   struct e1000_2tuple_filter *filter)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t ttqf = E1000_TTQF_DISABLE_MASK;
+	uint32_t imir, imir_ext = E1000_IMIREXT_SIZE_BP;
+	int i;
+
+	i = filter->index;
+	imir = (uint32_t)(filter->filter_info.dst_port & E1000_IMIR_DSTPORT);
+	if (filter->filter_info.dst_port_mask == 1) /* 1b means not compare. */
+		imir |= E1000_IMIR_PORT_BP;
+	else
+		imir &= ~E1000_IMIR_PORT_BP;
+
+	imir |= filter->filter_info.priority << E1000_IMIR_PRIORITY_SHIFT;
+
+	ttqf |= E1000_TTQF_QUEUE_ENABLE;
+	ttqf |= (uint32_t)(filter->queue << E1000_TTQF_QUEUE_SHIFT);
+	ttqf |= (uint32_t)(filter->filter_info.proto &
+						E1000_TTQF_PROTOCOL_MASK);
+	if (filter->filter_info.proto_mask == 0)
+		ttqf &= ~E1000_TTQF_MASK_ENABLE;
+
+	/* tcp flags bits setting. */
+	if (filter->filter_info.tcp_flags & TCP_FLAG_ALL) {
+		if (filter->filter_info.tcp_flags & TCP_URG_FLAG)
+			imir_ext |= E1000_IMIREXT_CTRL_URG;
+		if (filter->filter_info.tcp_flags & TCP_ACK_FLAG)
+			imir_ext |= E1000_IMIREXT_CTRL_ACK;
+		if (filter->filter_info.tcp_flags & TCP_PSH_FLAG)
+			imir_ext |= E1000_IMIREXT_CTRL_PSH;
+		if (filter->filter_info.tcp_flags & TCP_RST_FLAG)
+			imir_ext |= E1000_IMIREXT_CTRL_RST;
+		if (filter->filter_info.tcp_flags & TCP_SYN_FLAG)
+			imir_ext |= E1000_IMIREXT_CTRL_SYN;
+		if (filter->filter_info.tcp_flags & TCP_FIN_FLAG)
+			imir_ext |= E1000_IMIREXT_CTRL_FIN;
+	} else {
+		imir_ext |= E1000_IMIREXT_CTRL_BP;
+	}
+	E1000_WRITE_REG(hw, E1000_IMIR(i), imir);
+	E1000_WRITE_REG(hw, E1000_TTQF(i), ttqf);
+	E1000_WRITE_REG(hw, E1000_IMIREXT(i), imir_ext);
+}
+
 /*
  * igb_add_2tuple_filter - add a 2tuple filter
  *
@@ -3752,12 +3807,9 @@ static int
 igb_add_2tuple_filter(struct rte_eth_dev *dev,
 			struct rte_eth_ntuple_filter *ntuple_filter)
 {
-	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct e1000_filter_info *filter_info =
 		E1000_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
 	struct e1000_2tuple_filter *filter;
-	uint32_t ttqf = E1000_TTQF_DISABLE_MASK;
-	uint32_t imir, imir_ext = E1000_IMIREXT_SIZE_BP;
 	int i, ret;
 
 	filter = rte_zmalloc("e1000_2tuple_filter",
@@ -3799,39 +3851,7 @@ igb_add_2tuple_filter(struct rte_eth_dev *dev,
 		return -ENOSYS;
 	}
 
-	imir = (uint32_t)(filter->filter_info.dst_port & E1000_IMIR_DSTPORT);
-	if (filter->filter_info.dst_port_mask == 1) /* 1b means not compare. */
-		imir |= E1000_IMIR_PORT_BP;
-	else
-		imir &= ~E1000_IMIR_PORT_BP;
-
-	imir |= filter->filter_info.priority << E1000_IMIR_PRIORITY_SHIFT;
-
-	ttqf |= E1000_TTQF_QUEUE_ENABLE;
-	ttqf |= (uint32_t)(filter->queue << E1000_TTQF_QUEUE_SHIFT);
-	ttqf |= (uint32_t)(filter->filter_info.proto & E1000_TTQF_PROTOCOL_MASK);
-	if (filter->filter_info.proto_mask == 0)
-		ttqf &= ~E1000_TTQF_MASK_ENABLE;
-
-	/* tcp flags bits setting. */
-	if (filter->filter_info.tcp_flags & TCP_FLAG_ALL) {
-		if (filter->filter_info.tcp_flags & TCP_URG_FLAG)
-			imir_ext |= E1000_IMIREXT_CTRL_URG;
-		if (filter->filter_info.tcp_flags & TCP_ACK_FLAG)
-			imir_ext |= E1000_IMIREXT_CTRL_ACK;
-		if (filter->filter_info.tcp_flags & TCP_PSH_FLAG)
-			imir_ext |= E1000_IMIREXT_CTRL_PSH;
-		if (filter->filter_info.tcp_flags & TCP_RST_FLAG)
-			imir_ext |= E1000_IMIREXT_CTRL_RST;
-		if (filter->filter_info.tcp_flags & TCP_SYN_FLAG)
-			imir_ext |= E1000_IMIREXT_CTRL_SYN;
-		if (filter->filter_info.tcp_flags & TCP_FIN_FLAG)
-			imir_ext |= E1000_IMIREXT_CTRL_FIN;
-	} else
-		imir_ext |= E1000_IMIREXT_CTRL_BP;
-	E1000_WRITE_REG(hw, E1000_IMIR(i), imir);
-	E1000_WRITE_REG(hw, E1000_TTQF(i), ttqf);
-	E1000_WRITE_REG(hw, E1000_IMIREXT(i), imir_ext);
+	igb_inject_2uple_filter(dev, filter);
 	return 0;
 }
 
@@ -4205,6 +4225,64 @@ igb_5tuple_filter_lookup_82576(struct e1000_5tuple_filter_list *filter_list,
 	return NULL;
 }
 
+/* inject a igb 5-tuple filter to HW */
+static inline void
+igb_inject_5tuple_filter_82576(struct rte_eth_dev *dev,
+			   struct e1000_5tuple_filter *filter)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t ftqf = E1000_FTQF_VF_BP | E1000_FTQF_MASK;
+	uint32_t spqf, imir, imir_ext = E1000_IMIREXT_SIZE_BP;
+	uint8_t i;
+
+	i = filter->index;
+	ftqf |= filter->filter_info.proto & E1000_FTQF_PROTOCOL_MASK;
+	if (filter->filter_info.src_ip_mask == 0) /* 0b means compare. */
+		ftqf &= ~E1000_FTQF_MASK_SOURCE_ADDR_BP;
+	if (filter->filter_info.dst_ip_mask == 0)
+		ftqf &= ~E1000_FTQF_MASK_DEST_ADDR_BP;
+	if (filter->filter_info.src_port_mask == 0)
+		ftqf &= ~E1000_FTQF_MASK_SOURCE_PORT_BP;
+	if (filter->filter_info.proto_mask == 0)
+		ftqf &= ~E1000_FTQF_MASK_PROTO_BP;
+	ftqf |= (filter->queue << E1000_FTQF_QUEUE_SHIFT) &
+		E1000_FTQF_QUEUE_MASK;
+	ftqf |= E1000_FTQF_QUEUE_ENABLE;
+	E1000_WRITE_REG(hw, E1000_FTQF(i), ftqf);
+	E1000_WRITE_REG(hw, E1000_DAQF(i), filter->filter_info.dst_ip);
+	E1000_WRITE_REG(hw, E1000_SAQF(i), filter->filter_info.src_ip);
+
+	spqf = filter->filter_info.src_port & E1000_SPQF_SRCPORT;
+	E1000_WRITE_REG(hw, E1000_SPQF(i), spqf);
+
+	imir = (uint32_t)(filter->filter_info.dst_port & E1000_IMIR_DSTPORT);
+	if (filter->filter_info.dst_port_mask == 1) /* 1b means not compare. */
+		imir |= E1000_IMIR_PORT_BP;
+	else
+		imir &= ~E1000_IMIR_PORT_BP;
+	imir |= filter->filter_info.priority << E1000_IMIR_PRIORITY_SHIFT;
+
+	/* tcp flags bits setting. */
+	if (filter->filter_info.tcp_flags & TCP_FLAG_ALL) {
+		if (filter->filter_info.tcp_flags & TCP_URG_FLAG)
+			imir_ext |= E1000_IMIREXT_CTRL_URG;
+		if (filter->filter_info.tcp_flags & TCP_ACK_FLAG)
+			imir_ext |= E1000_IMIREXT_CTRL_ACK;
+		if (filter->filter_info.tcp_flags & TCP_PSH_FLAG)
+			imir_ext |= E1000_IMIREXT_CTRL_PSH;
+		if (filter->filter_info.tcp_flags & TCP_RST_FLAG)
+			imir_ext |= E1000_IMIREXT_CTRL_RST;
+		if (filter->filter_info.tcp_flags & TCP_SYN_FLAG)
+			imir_ext |= E1000_IMIREXT_CTRL_SYN;
+		if (filter->filter_info.tcp_flags & TCP_FIN_FLAG)
+			imir_ext |= E1000_IMIREXT_CTRL_FIN;
+	} else {
+		imir_ext |= E1000_IMIREXT_CTRL_BP;
+	}
+	E1000_WRITE_REG(hw, E1000_IMIR(i), imir);
+	E1000_WRITE_REG(hw, E1000_IMIREXT(i), imir_ext);
+}
+
 /*
  * igb_add_5tuple_filter_82576 - add a 5tuple filter
  *
@@ -4220,12 +4298,9 @@ static int
 igb_add_5tuple_filter_82576(struct rte_eth_dev *dev,
 			struct rte_eth_ntuple_filter *ntuple_filter)
 {
-	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct e1000_filter_info *filter_info =
 		E1000_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
 	struct e1000_5tuple_filter *filter;
-	uint32_t ftqf = E1000_FTQF_VF_BP | E1000_FTQF_MASK;
-	uint32_t spqf, imir, imir_ext = E1000_IMIREXT_SIZE_BP;
 	uint8_t i;
 	int ret;
 
@@ -4269,50 +4344,7 @@ igb_add_5tuple_filter_82576(struct rte_eth_dev *dev,
 		return -ENOSYS;
 	}
 
-	ftqf |= filter->filter_info.proto & E1000_FTQF_PROTOCOL_MASK;
-	if (filter->filter_info.src_ip_mask == 0) /* 0b means compare. */
-		ftqf &= ~E1000_FTQF_MASK_SOURCE_ADDR_BP;
-	if (filter->filter_info.dst_ip_mask == 0)
-		ftqf &= ~E1000_FTQF_MASK_DEST_ADDR_BP;
-	if (filter->filter_info.src_port_mask == 0)
-		ftqf &= ~E1000_FTQF_MASK_SOURCE_PORT_BP;
-	if (filter->filter_info.proto_mask == 0)
-		ftqf &= ~E1000_FTQF_MASK_PROTO_BP;
-	ftqf |= (filter->queue << E1000_FTQF_QUEUE_SHIFT) &
-		E1000_FTQF_QUEUE_MASK;
-	ftqf |= E1000_FTQF_QUEUE_ENABLE;
-	E1000_WRITE_REG(hw, E1000_FTQF(i), ftqf);
-	E1000_WRITE_REG(hw, E1000_DAQF(i), filter->filter_info.dst_ip);
-	E1000_WRITE_REG(hw, E1000_SAQF(i), filter->filter_info.src_ip);
-
-	spqf = filter->filter_info.src_port & E1000_SPQF_SRCPORT;
-	E1000_WRITE_REG(hw, E1000_SPQF(i), spqf);
-
-	imir = (uint32_t)(filter->filter_info.dst_port & E1000_IMIR_DSTPORT);
-	if (filter->filter_info.dst_port_mask == 1) /* 1b means not compare. */
-		imir |= E1000_IMIR_PORT_BP;
-	else
-		imir &= ~E1000_IMIR_PORT_BP;
-	imir |= filter->filter_info.priority << E1000_IMIR_PRIORITY_SHIFT;
-
-	/* tcp flags bits setting. */
-	if (filter->filter_info.tcp_flags & TCP_FLAG_ALL) {
-		if (filter->filter_info.tcp_flags & TCP_URG_FLAG)
-			imir_ext |= E1000_IMIREXT_CTRL_URG;
-		if (filter->filter_info.tcp_flags & TCP_ACK_FLAG)
-			imir_ext |= E1000_IMIREXT_CTRL_ACK;
-		if (filter->filter_info.tcp_flags & TCP_PSH_FLAG)
-			imir_ext |= E1000_IMIREXT_CTRL_PSH;
-		if (filter->filter_info.tcp_flags & TCP_RST_FLAG)
-			imir_ext |= E1000_IMIREXT_CTRL_RST;
-		if (filter->filter_info.tcp_flags & TCP_SYN_FLAG)
-			imir_ext |= E1000_IMIREXT_CTRL_SYN;
-		if (filter->filter_info.tcp_flags & TCP_FIN_FLAG)
-			imir_ext |= E1000_IMIREXT_CTRL_FIN;
-	} else
-		imir_ext |= E1000_IMIREXT_CTRL_BP;
-	E1000_WRITE_REG(hw, E1000_IMIR(i), imir);
-	E1000_WRITE_REG(hw, E1000_IMIREXT(i), imir_ext);
+	igb_inject_5tuple_filter_82576(dev, filter);
 	return 0;
 }
 
@@ -5439,6 +5471,24 @@ eth_igb_configure_msix_intr(struct rte_eth_dev *dev)
 	E1000_WRITE_FLUSH(hw);
 }
 
+/* restore n-tuple filter */
+static inline void
+igb_ntuple_filter_restore(struct rte_eth_dev *dev)
+{
+	struct e1000_filter_info *filter_info =
+		E1000_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+	struct e1000_5tuple_filter *p_5tuple;
+	struct e1000_2tuple_filter *p_2tuple;
+
+	TAILQ_FOREACH(p_5tuple, &filter_info->fivetuple_list, entries) {
+		igb_inject_5tuple_filter_82576(dev, p_5tuple);
+	}
+
+	TAILQ_FOREACH(p_2tuple, &filter_info->twotuple_list, entries) {
+		igb_inject_2uple_filter(dev, p_2tuple);
+	}
+}
+
 /* restore SYN filter */
 static inline void
 igb_syn_filter_restore(struct rte_eth_dev *dev)
@@ -5460,6 +5510,7 @@ igb_syn_filter_restore(struct rte_eth_dev *dev)
 static int
 igb_filter_restore(struct rte_eth_dev *dev)
 {
+	igb_ntuple_filter_restore(dev);
 	igb_syn_filter_restore(dev);
 
 	return 0;
