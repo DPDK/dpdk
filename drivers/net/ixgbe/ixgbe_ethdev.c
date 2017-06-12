@@ -4659,7 +4659,7 @@ ixgbe_set_default_mac_addr(struct rte_eth_dev *dev, struct ether_addr *addr)
 static bool
 is_device_supported(struct rte_eth_dev *dev, struct rte_pci_driver *drv)
 {
-	if (strcmp(dev->data->drv_name, drv->driver.name))
+	if (strcmp(dev->device->driver->name, drv->driver.name))
 		return false;
 
 	return true;

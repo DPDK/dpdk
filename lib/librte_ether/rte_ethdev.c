@@ -752,13 +752,13 @@ rte_eth_dev_configure(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 	if ((dev_conf->intr_conf.lsc == 1) &&
 		(!(dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC))) {
 			RTE_PMD_DEBUG_TRACE("driver %s does not support lsc\n",
-					dev->data->drv_name);
+					dev->device->driver->name);
 			return -EINVAL;
 	}
 	if ((dev_conf->intr_conf.rmv == 1) &&
 	    (!(dev->data->dev_flags & RTE_ETH_DEV_INTR_RMV))) {
 		RTE_PMD_DEBUG_TRACE("driver %s does not support rmv\n",
-				    dev->data->drv_name);
+				    dev->device->driver->name);
 		return -EINVAL;
 	}
 
@@ -1899,7 +1899,7 @@ rte_eth_dev_info_get(uint8_t port_id, struct rte_eth_dev_info *dev_info)
 
 	RTE_FUNC_PTR_OR_RET(*dev->dev_ops->dev_infos_get);
 	(*dev->dev_ops->dev_infos_get)(dev, dev_info);
-	dev_info->driver_name = dev->data->drv_name;
+	dev_info->driver_name = dev->device->driver->name;
 	dev_info->nb_rx_queues = dev->data->nb_rx_queues;
 	dev_info->nb_tx_queues = dev->data->nb_tx_queues;
 }
@@ -2788,7 +2788,7 @@ rte_eth_dma_zone_reserve(const struct rte_eth_dev *dev, const char *ring_name,
 	const struct rte_memzone *mz;
 
 	snprintf(z_name, sizeof(z_name), "%s_%s_%d_%d",
-		 dev->data->drv_name, ring_name,
+		 dev->device->driver->name, ring_name,
 		 dev->data->port_id, queue_id);
 
 	mz = rte_memzone_lookup(z_name);

@@ -1220,7 +1220,6 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, char *tap_name,
 	data->dev_private = pmd;
 	data->dev_flags = RTE_ETH_DEV_DETACHABLE | RTE_ETH_DEV_INTR_LSC;
 	data->numa_node = numa_node;
-	data->drv_name = pmd_tap_drv.driver.name;
 
 	data->dev_link = pmd_link;
 	data->mac_addrs = &pmd->eth_addr;

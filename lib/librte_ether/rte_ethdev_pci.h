@@ -69,7 +69,6 @@ rte_eth_copy_pci_info(struct rte_eth_dev *eth_dev,
 
 	eth_dev->data->kdrv = pci_dev->kdrv;
 	eth_dev->data->numa_node = pci_dev->device.numa_node;
-	eth_dev->data->drv_name = pci_dev->driver->driver.name;
 }
 
 /**

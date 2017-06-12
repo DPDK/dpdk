@@ -1691,7 +1691,7 @@ int t4_sge_alloc_rxq(struct adapter *adap, struct sge_rspq *iq, bool fwevtq,
 	iq->size = cxgbe_roundup(iq->size, 16);
 
 	snprintf(z_name, sizeof(z_name), "%s_%s_%d_%d",
-		 eth_dev->data->drv_name,
+		 eth_dev->device->driver->name,
 		 fwevtq ? "fwq_ring" : "rx_ring",
 		 eth_dev->data->port_id, queue_id);
 	snprintf(z_name_sw, sizeof(z_name_sw), "%s_sw_ring", z_name);
@@ -1745,7 +1745,7 @@ int t4_sge_alloc_rxq(struct adapter *adap, struct sge_rspq *iq, bool fwevtq,
 		fl->size = cxgbe_roundup(fl->size, 8);
 
 		snprintf(z_name, sizeof(z_name), "%s_%s_%d_%d",
-			 eth_dev->data->drv_name,
+			 eth_dev->device->driver->name,
 			 fwevtq ? "fwq_ring" : "fl_ring",
 			 eth_dev->data->port_id, queue_id);
 		snprintf(z_name_sw, sizeof(z_name_sw), "%s_sw_ring", z_name);
@@ -1945,7 +1945,7 @@ int t4_sge_alloc_eth_txq(struct adapter *adap, struct sge_eth_txq *txq,
 	nentries = txq->q.size + s->stat_len / sizeof(struct tx_desc);
 
 	snprintf(z_name, sizeof(z_name), "%s_%s_%d_%d",
-		 eth_dev->data->drv_name, "tx_ring",
+		 eth_dev->device->driver->name, "tx_ring",
 		 eth_dev->data->port_id, queue_id);
 	snprintf(z_name_sw, sizeof(z_name_sw), "%s_sw_ring", z_name);
 

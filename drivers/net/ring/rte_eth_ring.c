@@ -354,7 +354,6 @@ do_eth_dev_ring_create(const char *name,
 	eth_dev->dev_ops = &ops;
 	data->dev_flags = RTE_ETH_DEV_DETACHABLE;
 	data->kdrv = RTE_KDRV_NONE;
-	data->drv_name = pmd_ring_drv.driver.name;
 	data->numa_node = numa_node;
 
 	/* finally assign rx and tx ops */
