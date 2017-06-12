@@ -781,6 +781,22 @@ static int igb_ntuple_filter_uninit(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
+/* Remove all flex filters of the device */
+static int igb_flex_filter_uninit(struct rte_eth_dev *eth_dev)
+{
+	struct e1000_filter_info *filter_info =
+		E1000_DEV_PRIVATE_TO_FILTER_INFO(eth_dev->data->dev_private);
+	struct e1000_flex_filter *p_flex;
+
+	while ((p_flex = TAILQ_FIRST(&filter_info->flex_list))) {
+		TAILQ_REMOVE(&filter_info->flex_list, p_flex, entries);
+		rte_free(p_flex);
+	}
+	filter_info->flex_mask = 0;
+
+	return 0;
+}
+
 static int
 eth_igb_dev_init(struct rte_eth_dev *eth_dev)
 {
@@ -998,6 +1014,9 @@ eth_igb_dev_uninit(struct rte_eth_dev *eth_dev)
 
 	/* remove all ntuple filters of the device */
 	igb_ntuple_filter_uninit(eth_dev);
+
+	/* remove all flex filters of the device */
+	igb_flex_filter_uninit(eth_dev);
 
 	return 0;
 }
@@ -1501,11 +1520,8 @@ static void
 eth_igb_stop(struct rte_eth_dev *dev)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct e1000_filter_info *filter_info =
-		E1000_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_eth_link link;
-	struct e1000_flex_filter *p_flex;
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 
 	igb_intr_disable(hw);
@@ -1533,13 +1549,6 @@ eth_igb_stop(struct rte_eth_dev *dev)
 	/* clear the recorded link status */
 	memset(&link, 0, sizeof(link));
 	rte_igb_dev_atomic_write_link_status(dev, &link);
-
-	/* Remove all flex filters of the device */
-	while ((p_flex = TAILQ_FIRST(&filter_info->flex_list))) {
-		TAILQ_REMOVE(&filter_info->flex_list, p_flex, entries);
-		rte_free(p_flex);
-	}
-	filter_info->flex_mask = 0;
 
 	if (!rte_intr_allow_others(intr_handle))
 		/* resume to the default handler */
@@ -3905,6 +3914,45 @@ igb_remove_2tuple_filter(struct rte_eth_dev *dev,
 	return 0;
 }
 
+/* inject a igb flex filter to HW */
+static inline void
+igb_inject_flex_filter(struct rte_eth_dev *dev,
+			   struct e1000_flex_filter *filter)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t wufc, queueing;
+	uint32_t reg_off;
+	uint8_t i, j = 0;
+
+	wufc = E1000_READ_REG(hw, E1000_WUFC);
+	if (filter->index < E1000_MAX_FHFT)
+		reg_off = E1000_FHFT(filter->index);
+	else
+		reg_off = E1000_FHFT_EXT(filter->index - E1000_MAX_FHFT);
+
+	E1000_WRITE_REG(hw, E1000_WUFC, wufc | E1000_WUFC_FLEX_HQ |
+			(E1000_WUFC_FLX0 << filter->index));
+	queueing = filter->filter_info.len |
+		(filter->queue << E1000_FHFT_QUEUEING_QUEUE_SHIFT) |
+		(filter->filter_info.priority <<
+			E1000_FHFT_QUEUEING_PRIO_SHIFT);
+	E1000_WRITE_REG(hw, reg_off + E1000_FHFT_QUEUEING_OFFSET,
+			queueing);
+
+	for (i = 0; i < E1000_FLEX_FILTERS_MASK_SIZE; i++) {
+		E1000_WRITE_REG(hw, reg_off,
+				filter->filter_info.dwords[j]);
+		reg_off += sizeof(uint32_t);
+		E1000_WRITE_REG(hw, reg_off,
+				filter->filter_info.dwords[++j]);
+		reg_off += sizeof(uint32_t);
+		E1000_WRITE_REG(hw, reg_off,
+			(uint32_t)filter->filter_info.mask[i]);
+		reg_off += sizeof(uint32_t) * 2;
+		++j;
+	}
+}
+
 static inline struct e1000_flex_filter *
 eth_igb_flex_filter_lookup(struct e1000_flex_filter_list *filter_list,
 			struct e1000_flex_filter_info *key)
@@ -3920,18 +3968,48 @@ eth_igb_flex_filter_lookup(struct e1000_flex_filter_list *filter_list,
 	return NULL;
 }
 
-static int
+/* remove a flex byte filter
+ * @param
+ * dev: Pointer to struct rte_eth_dev.
+ * filter: the pointer of the filter will be removed.
+ */
+static void
+igb_remove_flex_filter(struct rte_eth_dev *dev,
+			struct e1000_flex_filter *filter)
+{
+	struct e1000_filter_info *filter_info =
+		E1000_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t wufc, i;
+	uint32_t reg_off;
+
+	wufc = E1000_READ_REG(hw, E1000_WUFC);
+	if (filter->index < E1000_MAX_FHFT)
+		reg_off = E1000_FHFT(filter->index);
+	else
+		reg_off = E1000_FHFT_EXT(filter->index - E1000_MAX_FHFT);
+
+	for (i = 0; i < E1000_FHFT_SIZE_IN_DWD; i++)
+		E1000_WRITE_REG(hw, reg_off + i * sizeof(uint32_t), 0);
+
+	E1000_WRITE_REG(hw, E1000_WUFC, wufc &
+		(~(E1000_WUFC_FLX0 << filter->index)));
+
+	filter_info->flex_mask &= ~(1 << filter->index);
+	TAILQ_REMOVE(&filter_info->flex_list, filter, entries);
+	rte_free(filter);
+}
+
+int
 eth_igb_add_del_flex_filter(struct rte_eth_dev *dev,
 			struct rte_eth_flex_filter *filter,
 			bool add)
 {
-	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct e1000_filter_info *filter_info =
 		E1000_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
 	struct e1000_flex_filter *flex_filter, *it;
-	uint32_t wufc, queueing, mask;
-	uint32_t reg_off;
-	uint8_t shift, i, j = 0;
+	uint32_t mask;
+	uint8_t shift, i;
 
 	flex_filter = rte_zmalloc("e1000_flex_filter",
 			sizeof(struct e1000_flex_filter), 0);
@@ -3951,15 +4029,20 @@ eth_igb_add_del_flex_filter(struct rte_eth_dev *dev,
 		flex_filter->filter_info.mask[i] = mask;
 	}
 
-	wufc = E1000_READ_REG(hw, E1000_WUFC);
+	it = eth_igb_flex_filter_lookup(&filter_info->flex_list,
+				&flex_filter->filter_info);
+	if (it == NULL && !add) {
+		PMD_DRV_LOG(ERR, "filter doesn't exist.");
+		rte_free(flex_filter);
+		return -ENOENT;
+	}
+	if (it != NULL && add) {
+		PMD_DRV_LOG(ERR, "filter exists.");
+		rte_free(flex_filter);
+		return -EEXIST;
+	}
 
 	if (add) {
-		if (eth_igb_flex_filter_lookup(&filter_info->flex_list,
-				&flex_filter->filter_info) != NULL) {
-			PMD_DRV_LOG(ERR, "filter exists.");
-			rte_free(flex_filter);
-			return -EEXIST;
-		}
 		flex_filter->queue = filter->queue;
 		/*
 		 * look for an unused flex filter index
@@ -3981,52 +4064,10 @@ eth_igb_add_del_flex_filter(struct rte_eth_dev *dev,
 			return -ENOSYS;
 		}
 
-		if (flex_filter->index < E1000_MAX_FHFT)
-			reg_off = E1000_FHFT(flex_filter->index);
-		else
-			reg_off = E1000_FHFT_EXT(flex_filter->index - E1000_MAX_FHFT);
+		igb_inject_flex_filter(dev, flex_filter);
 
-		E1000_WRITE_REG(hw, E1000_WUFC, wufc | E1000_WUFC_FLEX_HQ |
-				(E1000_WUFC_FLX0 << flex_filter->index));
-		queueing = filter->len |
-			(filter->queue << E1000_FHFT_QUEUEING_QUEUE_SHIFT) |
-			(filter->priority << E1000_FHFT_QUEUEING_PRIO_SHIFT);
-		E1000_WRITE_REG(hw, reg_off + E1000_FHFT_QUEUEING_OFFSET,
-				queueing);
-		for (i = 0; i < E1000_FLEX_FILTERS_MASK_SIZE; i++) {
-			E1000_WRITE_REG(hw, reg_off,
-					flex_filter->filter_info.dwords[j]);
-			reg_off += sizeof(uint32_t);
-			E1000_WRITE_REG(hw, reg_off,
-					flex_filter->filter_info.dwords[++j]);
-			reg_off += sizeof(uint32_t);
-			E1000_WRITE_REG(hw, reg_off,
-				(uint32_t)flex_filter->filter_info.mask[i]);
-			reg_off += sizeof(uint32_t) * 2;
-			++j;
-		}
 	} else {
-		it = eth_igb_flex_filter_lookup(&filter_info->flex_list,
-				&flex_filter->filter_info);
-		if (it == NULL) {
-			PMD_DRV_LOG(ERR, "filter doesn't exist.");
-			rte_free(flex_filter);
-			return -ENOENT;
-		}
-
-		if (it->index < E1000_MAX_FHFT)
-			reg_off = E1000_FHFT(it->index);
-		else
-			reg_off = E1000_FHFT_EXT(it->index - E1000_MAX_FHFT);
-
-		for (i = 0; i < E1000_FHFT_SIZE_IN_DWD; i++)
-			E1000_WRITE_REG(hw, reg_off + i * sizeof(uint32_t), 0);
-		E1000_WRITE_REG(hw, E1000_WUFC, wufc &
-			(~(E1000_WUFC_FLX0 << it->index)));
-
-		filter_info->flex_mask &= ~(1 << it->index);
-		TAILQ_REMOVE(&filter_info->flex_list, it, entries);
-		rte_free(it);
+		igb_remove_flex_filter(dev, it);
 		rte_free(flex_filter);
 	}
 
@@ -5530,6 +5571,19 @@ igb_ethertype_filter_restore(struct rte_eth_dev *dev)
 	}
 }
 
+/* restore flex byte filter */
+static inline void
+igb_flex_filter_restore(struct rte_eth_dev *dev)
+{
+	struct e1000_filter_info *filter_info =
+		E1000_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+	struct e1000_flex_filter *flex_filter;
+
+	TAILQ_FOREACH(flex_filter, &filter_info->flex_list, entries) {
+		igb_inject_flex_filter(dev, flex_filter);
+	}
+}
+
 /* restore all types filter */
 static int
 igb_filter_restore(struct rte_eth_dev *dev)
@@ -5537,6 +5591,7 @@ igb_filter_restore(struct rte_eth_dev *dev)
 	igb_ntuple_filter_restore(dev);
 	igb_ethertype_filter_restore(dev);
 	igb_syn_filter_restore(dev);
+	igb_flex_filter_restore(dev);
 
 	return 0;
 }
