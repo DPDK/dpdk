@@ -126,9 +126,6 @@ szedata2_write32(uint32_t value, volatile void *addr)
 	rte_write32(rte_cpu_to_le_32(value), addr);
 }
 
-#define SZEDATA2_PCI_RESOURCE_PTR(rsc, offset, type) \
-	((type)(((uint8_t *)(rsc)->addr) + (offset)))
-
 enum szedata2_link_speed {
 	SZEDATA2_LINK_SPEED_DEFAULT = 0,
 	SZEDATA2_LINK_SPEED_10G,
@@ -325,66 +322,5 @@ obuf_disable(volatile struct szedata2_obuf *obuf)
 	szedata2_write32(szedata2_read32(&obuf->obuf_en) & ~0x1,
 			&obuf->obuf_en);
 }
-
-/*
- * Function takes value from IBUF status register. Values in IBUF and OBUF
- * should be same.
- *
- * @return Link speed constant.
- */
-static inline enum szedata2_link_speed
-get_link_speed(const volatile struct szedata2_ibuf *ibuf)
-{
-	uint32_t speed = (szedata2_read32(&ibuf->ibuf_st) & 0x70) >> 4;
-	switch (speed) {
-	case 0x03:
-		return SZEDATA2_LINK_SPEED_10G;
-	case 0x04:
-		return SZEDATA2_LINK_SPEED_40G;
-	case 0x05:
-		return SZEDATA2_LINK_SPEED_100G;
-	default:
-		return SZEDATA2_LINK_SPEED_DEFAULT;
-	}
-}
-
-/*
- * IBUFs and OBUFs can generally be located at different offsets in different
- * firmwares.
- * This part defines base offsets of IBUFs and OBUFs through various firmwares.
- * Currently one firmware type is supported.
- * Type of firmware is set through configuration option
- * CONFIG_RTE_LIBRTE_PMD_SZEDATA_AS.
- * Possible values are:
- * 0 - for firmwares:
- *     NIC_100G1_LR4
- *     HANIC_100G1_LR4
- *     HANIC_100G1_SR10
- */
-#if !defined(RTE_LIBRTE_PMD_SZEDATA2_AS)
-#error "RTE_LIBRTE_PMD_SZEDATA2_AS has to be defined"
-#elif RTE_LIBRTE_PMD_SZEDATA2_AS == 0
-
-/*
- * IBUF offset from the beginning of PCI resource address space.
- */
-#define SZEDATA2_IBUF_BASE_OFF 0x8000
-/*
- * Size of IBUF.
- */
-#define SZEDATA2_IBUF_SIZE 0x200
-
-/*
- * OBUF offset from the beginning of PCI resource address space.
- */
-#define SZEDATA2_OBUF_BASE_OFF 0x9000
-/*
- * Size of OBUF.
- */
-#define SZEDATA2_OBUF_SIZE 0x100
-
-#else
-#error "RTE_LIBRTE_PMD_SZEDATA2_AS has wrong value, see comments in config file"
-#endif
 
 #endif

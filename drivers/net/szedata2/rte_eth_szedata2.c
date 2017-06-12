@@ -53,6 +53,7 @@
 #include <rte_atomic.h>
 
 #include "rte_eth_szedata2.h"
+#include "szedata2_iobuf.h"
 
 #define RTE_ETH_SZEDATA2_MAX_RX_QUEUES 32
 #define RTE_ETH_SZEDATA2_MAX_TX_QUEUES 32
@@ -1140,6 +1141,33 @@ eth_dev_close(struct rte_eth_dev *dev)
 	dev->data->nb_tx_queues = 0;
 }
 
+/**
+ * Function takes value from first IBUF status register.
+ * Values in IBUF and OBUF should be same.
+ *
+ * @param internals
+ *     Pointer to device private structure.
+ * @return
+ *     Link speed constant.
+ */
+static inline enum szedata2_link_speed
+get_link_speed(const struct pmd_internals *internals)
+{
+	const volatile struct szedata2_ibuf *ibuf =
+		ibuf_ptr_by_index(internals->pci_rsc, 0);
+	uint32_t speed = (szedata2_read32(&ibuf->ibuf_st) & 0x70) >> 4;
+	switch (speed) {
+	case 0x03:
+		return SZEDATA2_LINK_SPEED_10G;
+	case 0x04:
+		return SZEDATA2_LINK_SPEED_40G;
+	case 0x05:
+		return SZEDATA2_LINK_SPEED_100G;
+	default:
+		return SZEDATA2_LINK_SPEED_DEFAULT;
+	}
+}
+
 static int
 eth_link_update(struct rte_eth_dev *dev,
 		int wait_to_complete __rte_unused)
@@ -1149,11 +1177,11 @@ eth_link_update(struct rte_eth_dev *dev,
 	struct rte_eth_link *dev_link = &dev->data->dev_link;
 	struct pmd_internals *internals = (struct pmd_internals *)
 		dev->data->dev_private;
-	const volatile struct szedata2_ibuf *ibuf = SZEDATA2_PCI_RESOURCE_PTR(
-			internals->pci_rsc, SZEDATA2_IBUF_BASE_OFF,
-			const volatile struct szedata2_ibuf *);
+	const volatile struct szedata2_ibuf *ibuf;
+	uint32_t i;
+	bool link_is_up = false;
 
-	switch (get_link_speed(ibuf)) {
+	switch (get_link_speed(internals)) {
 	case SZEDATA2_LINK_SPEED_10G:
 		link.link_speed = ETH_SPEED_NUM_10G;
 		break;
@@ -1171,8 +1199,19 @@ eth_link_update(struct rte_eth_dev *dev,
 	/* szedata2 uses only full duplex */
 	link.link_duplex = ETH_LINK_FULL_DUPLEX;
 
-	link.link_status = (ibuf_is_enabled(ibuf) &&
-			ibuf_is_link_up(ibuf)) ? ETH_LINK_UP : ETH_LINK_DOWN;
+	for (i = 0; i < szedata2_ibuf_count; i++) {
+		ibuf = ibuf_ptr_by_index(internals->pci_rsc, i);
+		/*
+		 * Link is considered up if at least one ibuf is enabled
+		 * and up.
+		 */
+		if (ibuf_is_enabled(ibuf) && ibuf_is_link_up(ibuf)) {
+			link_is_up = true;
+			break;
+		}
+	}
+
+	link.link_status = (link_is_up) ? ETH_LINK_UP : ETH_LINK_DOWN;
 
 	link.link_autoneg = ETH_LINK_SPEED_FIXED;
 
@@ -1187,15 +1226,12 @@ eth_dev_set_link_up(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *internals = (struct pmd_internals *)
 		dev->data->dev_private;
-	volatile struct szedata2_ibuf *ibuf = SZEDATA2_PCI_RESOURCE_PTR(
-			internals->pci_rsc, SZEDATA2_IBUF_BASE_OFF,
-			volatile struct szedata2_ibuf *);
-	volatile struct szedata2_obuf *obuf = SZEDATA2_PCI_RESOURCE_PTR(
-			internals->pci_rsc, SZEDATA2_OBUF_BASE_OFF,
-			volatile struct szedata2_obuf *);
+	uint32_t i;
 
-	ibuf_enable(ibuf);
-	obuf_enable(obuf);
+	for (i = 0; i < szedata2_ibuf_count; i++)
+		ibuf_enable(ibuf_ptr_by_index(internals->pci_rsc, i));
+	for (i = 0; i < szedata2_obuf_count; i++)
+		obuf_enable(obuf_ptr_by_index(internals->pci_rsc, i));
 	return 0;
 }
 
@@ -1204,15 +1240,12 @@ eth_dev_set_link_down(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *internals = (struct pmd_internals *)
 		dev->data->dev_private;
-	volatile struct szedata2_ibuf *ibuf = SZEDATA2_PCI_RESOURCE_PTR(
-			internals->pci_rsc, SZEDATA2_IBUF_BASE_OFF,
-			volatile struct szedata2_ibuf *);
-	volatile struct szedata2_obuf *obuf = SZEDATA2_PCI_RESOURCE_PTR(
-			internals->pci_rsc, SZEDATA2_OBUF_BASE_OFF,
-			volatile struct szedata2_obuf *);
+	uint32_t i;
 
-	ibuf_disable(ibuf);
-	obuf_disable(obuf);
+	for (i = 0; i < szedata2_ibuf_count; i++)
+		ibuf_disable(ibuf_ptr_by_index(internals->pci_rsc, i));
+	for (i = 0; i < szedata2_obuf_count; i++)
+		obuf_disable(obuf_ptr_by_index(internals->pci_rsc, i));
 	return 0;
 }
 
@@ -1292,10 +1325,12 @@ eth_promiscuous_enable(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *internals = (struct pmd_internals *)
 		dev->data->dev_private;
-	volatile struct szedata2_ibuf *ibuf = SZEDATA2_PCI_RESOURCE_PTR(
-			internals->pci_rsc, SZEDATA2_IBUF_BASE_OFF,
-			volatile struct szedata2_ibuf *);
-	ibuf_mac_mode_write(ibuf, SZEDATA2_MAC_CHMODE_PROMISC);
+	uint32_t i;
+
+	for (i = 0; i < szedata2_ibuf_count; i++) {
+		ibuf_mac_mode_write(ibuf_ptr_by_index(internals->pci_rsc, i),
+				SZEDATA2_MAC_CHMODE_PROMISC);
+	}
 }
 
 static void
@@ -1303,10 +1338,12 @@ eth_promiscuous_disable(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *internals = (struct pmd_internals *)
 		dev->data->dev_private;
-	volatile struct szedata2_ibuf *ibuf = SZEDATA2_PCI_RESOURCE_PTR(
-			internals->pci_rsc, SZEDATA2_IBUF_BASE_OFF,
-			volatile struct szedata2_ibuf *);
-	ibuf_mac_mode_write(ibuf, SZEDATA2_MAC_CHMODE_ONLY_VALID);
+	uint32_t i;
+
+	for (i = 0; i < szedata2_ibuf_count; i++) {
+		ibuf_mac_mode_write(ibuf_ptr_by_index(internals->pci_rsc, i),
+				SZEDATA2_MAC_CHMODE_ONLY_VALID);
+	}
 }
 
 static void
@@ -1314,10 +1351,12 @@ eth_allmulticast_enable(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *internals = (struct pmd_internals *)
 		dev->data->dev_private;
-	volatile struct szedata2_ibuf *ibuf = SZEDATA2_PCI_RESOURCE_PTR(
-			internals->pci_rsc, SZEDATA2_IBUF_BASE_OFF,
-			volatile struct szedata2_ibuf *);
-	ibuf_mac_mode_write(ibuf, SZEDATA2_MAC_CHMODE_ALL_MULTICAST);
+	uint32_t i;
+
+	for (i = 0; i < szedata2_ibuf_count; i++) {
+		ibuf_mac_mode_write(ibuf_ptr_by_index(internals->pci_rsc, i),
+				SZEDATA2_MAC_CHMODE_ALL_MULTICAST);
+	}
 }
 
 static void
@@ -1325,10 +1364,12 @@ eth_allmulticast_disable(struct rte_eth_dev *dev)
 {
 	struct pmd_internals *internals = (struct pmd_internals *)
 		dev->data->dev_private;
-	volatile struct szedata2_ibuf *ibuf = SZEDATA2_PCI_RESOURCE_PTR(
-			internals->pci_rsc, SZEDATA2_IBUF_BASE_OFF,
-			volatile struct szedata2_ibuf *);
-	ibuf_mac_mode_write(ibuf, SZEDATA2_MAC_CHMODE_ONLY_VALID);
+	uint32_t i;
+
+	for (i = 0; i < szedata2_ibuf_count; i++) {
+		ibuf_mac_mode_write(ibuf_ptr_by_index(internals->pci_rsc, i),
+				SZEDATA2_MAC_CHMODE_ONLY_VALID);
+	}
 }
 
 static const struct eth_dev_ops ops = {
