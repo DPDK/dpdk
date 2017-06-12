@@ -1447,10 +1447,96 @@ igb_flow_validate(__rte_unused struct rte_eth_dev *dev,
 	return ret;
 }
 
+/* Destroy a flow rule on igb. */
+static int
+igb_flow_destroy(struct rte_eth_dev *dev,
+		struct rte_flow *flow,
+		struct rte_flow_error *error)
+{
+	int ret;
+	struct rte_flow *pmd_flow = flow;
+	enum rte_filter_type filter_type = pmd_flow->filter_type;
+	struct igb_ntuple_filter_ele *ntuple_filter_ptr;
+	struct igb_ethertype_filter_ele *ethertype_filter_ptr;
+	struct igb_eth_syn_filter_ele *syn_filter_ptr;
+	struct igb_flex_filter_ele *flex_filter_ptr;
+	struct igb_flow_mem *igb_flow_mem_ptr;
+
+	switch (filter_type) {
+	case RTE_ETH_FILTER_NTUPLE:
+		ntuple_filter_ptr = (struct igb_ntuple_filter_ele *)
+					pmd_flow->rule;
+		ret = igb_add_del_ntuple_filter(dev,
+				&ntuple_filter_ptr->filter_info, FALSE);
+		if (!ret) {
+			TAILQ_REMOVE(&igb_filter_ntuple_list,
+			ntuple_filter_ptr, entries);
+			rte_free(ntuple_filter_ptr);
+		}
+		break;
+	case RTE_ETH_FILTER_ETHERTYPE:
+		ethertype_filter_ptr = (struct igb_ethertype_filter_ele *)
+					pmd_flow->rule;
+		ret = igb_add_del_ethertype_filter(dev,
+				&ethertype_filter_ptr->filter_info, FALSE);
+		if (!ret) {
+			TAILQ_REMOVE(&igb_filter_ethertype_list,
+				ethertype_filter_ptr, entries);
+			rte_free(ethertype_filter_ptr);
+		}
+		break;
+	case RTE_ETH_FILTER_SYN:
+		syn_filter_ptr = (struct igb_eth_syn_filter_ele *)
+				pmd_flow->rule;
+		ret = eth_igb_syn_filter_set(dev,
+				&syn_filter_ptr->filter_info, FALSE);
+		if (!ret) {
+			TAILQ_REMOVE(&igb_filter_syn_list,
+				syn_filter_ptr, entries);
+			rte_free(syn_filter_ptr);
+		}
+		break;
+	case RTE_ETH_FILTER_FLEXIBLE:
+		flex_filter_ptr = (struct igb_flex_filter_ele *)
+				pmd_flow->rule;
+		ret = eth_igb_add_del_flex_filter(dev,
+				&flex_filter_ptr->filter_info, FALSE);
+		if (!ret) {
+			TAILQ_REMOVE(&igb_filter_flex_list,
+				flex_filter_ptr, entries);
+			rte_free(flex_filter_ptr);
+		}
+		break;
+	default:
+		PMD_DRV_LOG(WARNING, "Filter type (%d) not supported",
+			    filter_type);
+		ret = -EINVAL;
+		break;
+	}
+
+	if (ret) {
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_HANDLE,
+				NULL, "Failed to destroy flow");
+		return ret;
+	}
+
+	TAILQ_FOREACH(igb_flow_mem_ptr, &igb_flow_list, entries) {
+		if (igb_flow_mem_ptr->flow == pmd_flow) {
+			TAILQ_REMOVE(&igb_flow_list,
+				igb_flow_mem_ptr, entries);
+			rte_free(igb_flow_mem_ptr);
+		}
+	}
+	rte_free(flow);
+
+	return ret;
+}
+
 const struct rte_flow_ops igb_flow_ops = {
 	igb_flow_validate,
 	igb_flow_create,
-	NULL,
+	igb_flow_destroy,
 	NULL,
 	NULL,
 };
