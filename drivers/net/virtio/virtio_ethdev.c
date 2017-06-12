@@ -424,7 +424,7 @@ virtio_init_queue(struct rte_eth_dev *dev, uint16_t vtpci_queue_idx)
 		}
 	}
 
-	memset(mz->addr, 0, sizeof(mz->len));
+	memset(mz->addr, 0, mz->len);
 
 	vq->vq_ring_mem = mz->phys_addr;
 	vq->vq_ring_virt_mem = mz->addr;
