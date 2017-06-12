@@ -37,6 +37,7 @@
 #include <stdbool.h>
 
 #include <rte_byteorder.h>
+#include <rte_io.h>
 
 /* PCI Vendor ID */
 #define PCI_VENDOR_ID_NETCOPE 0x1b26
@@ -113,82 +114,16 @@ struct szedata {
 	int                         numa_node;
 };
 
-/*
- * @return Byte from PCI resource at offset "offset".
- */
-static inline uint8_t
-pci_resource_read8(struct rte_mem_resource *rsc, uint32_t offset)
-{
-	return *((uint8_t *)((uint8_t *)rsc->addr + offset));
-}
-
-/*
- * @return Two bytes from PCI resource starting at offset "offset".
- */
-static inline uint16_t
-pci_resource_read16(struct rte_mem_resource *rsc, uint32_t offset)
-{
-	return rte_le_to_cpu_16(*((uint16_t *)((uint8_t *)rsc->addr +
-					       offset)));
-}
-
-/*
- * @return Four bytes from PCI resource starting at offset "offset".
- */
 static inline uint32_t
-pci_resource_read32(struct rte_mem_resource *rsc, uint32_t offset)
+szedata2_read32(const volatile void *addr)
 {
-	return rte_le_to_cpu_32(*((uint32_t *)((uint8_t *)rsc->addr +
-					       offset)));
+	return rte_le_to_cpu_32(rte_read32(addr));
 }
 
-/*
- * @return Eight bytes from PCI resource starting at offset "offset".
- */
-static inline uint64_t
-pci_resource_read64(struct rte_mem_resource *rsc, uint32_t offset)
-{
-	return rte_le_to_cpu_64(*((uint64_t *)((uint8_t *)rsc->addr +
-					       offset)));
-}
-
-/*
- * Write one byte to PCI resource address space at offset "offset".
- */
 static inline void
-pci_resource_write8(struct rte_mem_resource *rsc, uint32_t offset, uint8_t val)
+szedata2_write32(uint32_t value, volatile void *addr)
 {
-	*((uint8_t *)((uint8_t *)rsc->addr + offset)) = val;
-}
-
-/*
- * Write two bytes to PCI resource address space at offset "offset".
- */
-static inline void
-pci_resource_write16(struct rte_mem_resource *rsc, uint32_t offset,
-		     uint16_t val)
-{
-	*((uint16_t *)((uint8_t *)rsc->addr + offset)) = rte_cpu_to_le_16(val);
-}
-
-/*
- * Write four bytes to PCI resource address space at offset "offset".
- */
-static inline void
-pci_resource_write32(struct rte_mem_resource *rsc, uint32_t offset,
-		     uint32_t val)
-{
-	*((uint32_t *)((uint8_t *)rsc->addr + offset)) = rte_cpu_to_le_32(val);
-}
-
-/*
- * Write eight bytes to PCI resource address space at offset "offset".
- */
-static inline void
-pci_resource_write64(struct rte_mem_resource *rsc, uint32_t offset,
-		     uint64_t val)
-{
-	*((uint64_t *)((uint8_t *)rsc->addr + offset)) = rte_cpu_to_le_64(val);
+	rte_write32(rte_cpu_to_le_32(value), addr);
 }
 
 #define SZEDATA2_PCI_RESOURCE_PTR(rsc, offset, type) \
@@ -209,47 +144,54 @@ enum szedata2_mac_check_mode {
 };
 
 /*
+ * Maximum possible number of MAC addresses (limited by IBUF status
+ * register value MAC_COUNT which has 5 bits).
+ */
+#define SZEDATA2_IBUF_MAX_MAC_COUNT 32
+
+/*
  * Structure describes IBUF address space
  */
 struct szedata2_ibuf {
 	/** Total Received Frames Counter low part */
-	uint32_t trfcl;
+	uint32_t trfcl; /**< 0x00 */
 	/** Correct Frames Counter low part */
-	uint32_t cfcl;
+	uint32_t cfcl; /**< 0x04 */
 	/** Discarded Frames Counter low part */
-	uint32_t dfcl;
+	uint32_t dfcl; /**< 0x08 */
 	/** Counter of frames discarded due to buffer overflow low part */
-	uint32_t bodfcl;
+	uint32_t bodfcl; /**< 0x0C */
 	/** Total Received Frames Counter high part */
-	uint32_t trfch;
+	uint32_t trfch; /**< 0x10 */
 	/** Correct Frames Counter high part */
-	uint32_t cfch;
+	uint32_t cfch; /**< 0x14 */
 	/** Discarded Frames Counter high part */
-	uint32_t dfch;
+	uint32_t dfch; /**< 0x18 */
 	/** Counter of frames discarded due to buffer overflow high part */
-	uint32_t bodfch;
+	uint32_t bodfch; /**< 0x1C */
 	/** IBUF enable register */
-	uint32_t ibuf_en;
+	uint32_t ibuf_en; /**< 0x20 */
 	/** Error mask register */
-	uint32_t err_mask;
+	uint32_t err_mask; /**< 0x24 */
 	/** IBUF status register */
-	uint32_t ibuf_st;
+	uint32_t ibuf_st; /**< 0x28 */
 	/** IBUF command register */
-	uint32_t ibuf_cmd;
+	uint32_t ibuf_cmd; /**< 0x2C */
 	/** Minimum frame length allowed */
-	uint32_t mfla;
+	uint32_t mfla; /**< 0x30 */
 	/** Frame MTU */
-	uint32_t mtu;
+	uint32_t mtu; /**< 0x34 */
 	/** MAC address check mode */
-	uint32_t mac_chmode;
+	uint32_t mac_chmode; /**< 0x38 */
 	/** Octets Received OK Counter low part */
-	uint32_t orocl;
+	uint32_t orocl; /**< 0x3C */
 	/** Octets Received OK Counter high part */
-	uint32_t oroch;
+	uint32_t oroch; /**< 0x40 */
+	/** reserved */
+	uint8_t reserved[60]; /**< 0x4C */
+	/** IBUF memory for MAC addresses */
+	uint32_t mac_mem[2 * SZEDATA2_IBUF_MAX_MAC_COUNT]; /**< 0x80 */
 } __rte_packed;
-
-/* Offset of IBUF memory for MAC addresses */
-#define SZEDATA2_IBUF_MAC_MEM_OFF 0x80
 
 /*
  * @return
@@ -257,9 +199,9 @@ struct szedata2_ibuf {
  *     false if IBUF is disabled
  */
 static inline bool
-ibuf_is_enabled(volatile struct szedata2_ibuf *ibuf)
+ibuf_is_enabled(const volatile struct szedata2_ibuf *ibuf)
 {
-	return ((rte_le_to_cpu_32(ibuf->ibuf_en) & 0x1) != 0) ? true : false;
+	return ((szedata2_read32(&ibuf->ibuf_en) & 0x1) != 0) ? true : false;
 }
 
 /*
@@ -268,8 +210,7 @@ ibuf_is_enabled(volatile struct szedata2_ibuf *ibuf)
 static inline void
 ibuf_enable(volatile struct szedata2_ibuf *ibuf)
 {
-	ibuf->ibuf_en =
-		rte_cpu_to_le_32(rte_le_to_cpu_32(ibuf->ibuf_en) | 0x1);
+	szedata2_write32(szedata2_read32(&ibuf->ibuf_en) | 0x1, &ibuf->ibuf_en);
 }
 
 /*
@@ -278,8 +219,8 @@ ibuf_enable(volatile struct szedata2_ibuf *ibuf)
 static inline void
 ibuf_disable(volatile struct szedata2_ibuf *ibuf)
 {
-	ibuf->ibuf_en =
-		rte_cpu_to_le_32(rte_le_to_cpu_32(ibuf->ibuf_en) & ~0x1);
+	szedata2_write32(szedata2_read32(&ibuf->ibuf_en) & ~0x1,
+			&ibuf->ibuf_en);
 }
 
 /*
@@ -288,9 +229,9 @@ ibuf_disable(volatile struct szedata2_ibuf *ibuf)
  *     false if ibuf link is down
  */
 static inline bool
-ibuf_is_link_up(volatile struct szedata2_ibuf *ibuf)
+ibuf_is_link_up(const volatile struct szedata2_ibuf *ibuf)
 {
-	return ((rte_le_to_cpu_32(ibuf->ibuf_st) & 0x80) != 0) ? true : false;
+	return ((szedata2_read32(&ibuf->ibuf_st) & 0x80) != 0) ? true : false;
 }
 
 /*
@@ -298,9 +239,9 @@ ibuf_is_link_up(volatile struct szedata2_ibuf *ibuf)
  *     MAC address check mode
  */
 static inline enum szedata2_mac_check_mode
-ibuf_mac_mode_read(volatile struct szedata2_ibuf *ibuf)
+ibuf_mac_mode_read(const volatile struct szedata2_ibuf *ibuf)
 {
-	switch (rte_le_to_cpu_32(ibuf->mac_chmode) & 0x3) {
+	switch (szedata2_read32(&ibuf->mac_chmode) & 0x3) {
 	case 0x0:
 		return SZEDATA2_MAC_CHMODE_PROMISC;
 	case 0x1:
@@ -321,8 +262,8 @@ static inline void
 ibuf_mac_mode_write(volatile struct szedata2_ibuf *ibuf,
 		enum szedata2_mac_check_mode mode)
 {
-	ibuf->mac_chmode = rte_cpu_to_le_32(
-			(rte_le_to_cpu_32(ibuf->mac_chmode) & ~0x3) | mode);
+	szedata2_write32((szedata2_read32(&ibuf->mac_chmode) & ~0x3) | mode,
+			&ibuf->mac_chmode);
 }
 
 /*
@@ -330,29 +271,29 @@ ibuf_mac_mode_write(volatile struct szedata2_ibuf *ibuf,
  */
 struct szedata2_obuf {
 	/** Total Sent Frames Counter low part */
-	uint32_t tsfcl;
+	uint32_t tsfcl; /**< 0x00 */
 	/** Octets Sent Counter low part */
-	uint32_t oscl;
+	uint32_t oscl; /**< 0x04 */
 	/** Total Discarded Frames Counter low part */
-	uint32_t tdfcl;
+	uint32_t tdfcl; /**< 0x08 */
 	/** reserved */
-	uint32_t reserved1;
+	uint32_t reserved1; /**< 0x0C */
 	/** Total Sent Frames Counter high part */
-	uint32_t tsfch;
+	uint32_t tsfch; /**< 0x10 */
 	/** Octets Sent Counter high part */
-	uint32_t osch;
+	uint32_t osch; /**< 0x14 */
 	/** Total Discarded Frames Counter high part */
-	uint32_t tdfch;
+	uint32_t tdfch; /**< 0x18 */
 	/** reserved */
-	uint32_t reserved2;
+	uint32_t reserved2; /**< 0x1C */
 	/** OBUF enable register */
-	uint32_t obuf_en;
+	uint32_t obuf_en; /**< 0x20 */
 	/** reserved */
-	uint64_t reserved3;
+	uint64_t reserved3; /**< 0x24 */
 	/** OBUF control register */
-	uint32_t ctrl;
+	uint32_t ctrl; /**< 0x2C */
 	/** OBUF status register */
-	uint32_t obuf_st;
+	uint32_t obuf_st; /**< 0x30 */
 } __rte_packed;
 
 /*
@@ -361,9 +302,9 @@ struct szedata2_obuf {
  *     false if OBUF is disabled
  */
 static inline bool
-obuf_is_enabled(volatile struct szedata2_obuf *obuf)
+obuf_is_enabled(const volatile struct szedata2_obuf *obuf)
 {
-	return ((rte_le_to_cpu_32(obuf->obuf_en) & 0x1) != 0) ? true : false;
+	return ((szedata2_read32(&obuf->obuf_en) & 0x1) != 0) ? true : false;
 }
 
 /*
@@ -372,8 +313,7 @@ obuf_is_enabled(volatile struct szedata2_obuf *obuf)
 static inline void
 obuf_enable(volatile struct szedata2_obuf *obuf)
 {
-	obuf->obuf_en =
-		rte_cpu_to_le_32(rte_le_to_cpu_32(obuf->obuf_en) | 0x1);
+	szedata2_write32(szedata2_read32(&obuf->obuf_en) | 0x1, &obuf->obuf_en);
 }
 
 /*
@@ -382,8 +322,8 @@ obuf_enable(volatile struct szedata2_obuf *obuf)
 static inline void
 obuf_disable(volatile struct szedata2_obuf *obuf)
 {
-	obuf->obuf_en =
-		rte_cpu_to_le_32(rte_le_to_cpu_32(obuf->obuf_en) & ~0x1);
+	szedata2_write32(szedata2_read32(&obuf->obuf_en) & ~0x1,
+			&obuf->obuf_en);
 }
 
 /*
@@ -393,9 +333,9 @@ obuf_disable(volatile struct szedata2_obuf *obuf)
  * @return Link speed constant.
  */
 static inline enum szedata2_link_speed
-get_link_speed(volatile struct szedata2_ibuf *ibuf)
+get_link_speed(const volatile struct szedata2_ibuf *ibuf)
 {
-	uint32_t speed = (rte_le_to_cpu_32(ibuf->ibuf_st) & 0x70) >> 4;
+	uint32_t speed = (szedata2_read32(&ibuf->ibuf_st) & 0x70) >> 4;
 	switch (speed) {
 	case 0x03:
 		return SZEDATA2_LINK_SPEED_10G;

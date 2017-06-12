@@ -1149,9 +1149,9 @@ eth_link_update(struct rte_eth_dev *dev,
 	struct rte_eth_link *dev_link = &dev->data->dev_link;
 	struct pmd_internals *internals = (struct pmd_internals *)
 		dev->data->dev_private;
-	volatile struct szedata2_ibuf *ibuf = SZEDATA2_PCI_RESOURCE_PTR(
+	const volatile struct szedata2_ibuf *ibuf = SZEDATA2_PCI_RESOURCE_PTR(
 			internals->pci_rsc, SZEDATA2_IBUF_BASE_OFF,
-			volatile struct szedata2_ibuf *);
+			const volatile struct szedata2_ibuf *);
 
 	switch (get_link_speed(ibuf)) {
 	case SZEDATA2_LINK_SPEED_10G:
