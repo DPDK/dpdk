@@ -291,6 +291,7 @@ static void eth_igb_write_ivar(struct e1000_hw *hw, uint8_t msix_vector,
 static void eth_igb_configure_msix_intr(struct rte_eth_dev *dev);
 static void eth_igbvf_interrupt_handler(void *param);
 static void igbvf_mbx_process(struct rte_eth_dev *dev);
+static int igb_filter_restore(struct rte_eth_dev *dev);
 
 /*
  * Define VF Stats MACRO for Non "cleared on read" register
@@ -906,12 +907,13 @@ eth_igb_dev_init(struct rte_eth_dev *eth_dev)
 	/* enable support intr */
 	igb_intr_enable(eth_dev);
 
+	/* initialize filter info */
+	memset(filter_info, 0,
+	       sizeof(struct e1000_filter_info));
+
 	TAILQ_INIT(&filter_info->flex_list);
-	filter_info->flex_mask = 0;
 	TAILQ_INIT(&filter_info->twotuple_list);
-	filter_info->twotuple_mask = 0;
 	TAILQ_INIT(&filter_info->fivetuple_list);
-	filter_info->fivetuple_mask = 0;
 
 	return 0;
 
@@ -929,6 +931,8 @@ eth_igb_dev_uninit(struct rte_eth_dev *eth_dev)
 	struct e1000_hw *hw;
 	struct e1000_adapter *adapter =
 		E1000_DEV_PRIVATE(eth_dev->data->dev_private);
+	struct e1000_filter_info *filter_info =
+		E1000_DEV_PRIVATE_TO_FILTER_INFO(eth_dev->data->dev_private);
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -959,6 +963,9 @@ eth_igb_dev_uninit(struct rte_eth_dev *eth_dev)
 	rte_intr_disable(intr_handle);
 	rte_intr_callback_unregister(intr_handle,
 				     eth_igb_interrupt_handler, eth_dev);
+
+	/* clear the SYN filter info */
+	filter_info->syn_info = 0;
 
 	return 0;
 }
@@ -1437,6 +1444,9 @@ eth_igb_start(struct rte_eth_dev *dev)
 
 	/* resume enabled intr since hw reset */
 	igb_intr_enable(dev);
+
+	/* restore all types filter */
+	igb_filter_restore(dev);
 
 	PMD_INIT_LOG(DEBUG, "<<");
 
@@ -3562,6 +3572,8 @@ eth_igb_syn_filter_set(struct rte_eth_dev *dev,
 			bool add)
 {
 	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct e1000_filter_info *filter_info =
+		E1000_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
 	uint32_t synqf, rfctl;
 
 	if (filter->queue >= IGB_MAX_RX_QUEUE_NUM)
@@ -3589,6 +3601,7 @@ eth_igb_syn_filter_set(struct rte_eth_dev *dev,
 		synqf = 0;
 	}
 
+	filter_info->syn_info = synqf;
 	E1000_WRITE_REG(hw, E1000_SYNQF(0), synqf);
 	E1000_WRITE_FLUSH(hw);
 	return 0;
@@ -5424,6 +5437,32 @@ eth_igb_configure_msix_intr(struct rte_eth_dev *dev)
 	}
 
 	E1000_WRITE_FLUSH(hw);
+}
+
+/* restore SYN filter */
+static inline void
+igb_syn_filter_restore(struct rte_eth_dev *dev)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct e1000_filter_info *filter_info =
+		E1000_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+	uint32_t synqf;
+
+	synqf = filter_info->syn_info;
+
+	if (synqf & E1000_SYN_FILTER_ENABLE) {
+		E1000_WRITE_REG(hw, E1000_SYNQF(0), synqf);
+		E1000_WRITE_FLUSH(hw);
+	}
+}
+
+/* restore all types filter */
+static int
+igb_filter_restore(struct rte_eth_dev *dev)
+{
+	igb_syn_filter_restore(dev);
+
+	return 0;
 }
 
 RTE_PMD_REGISTER_PCI(net_e1000_igb, rte_igb_pmd);

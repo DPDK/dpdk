@@ -252,6 +252,8 @@ struct e1000_filter_info {
 	/* Bit mask for every used 2tuple filter */
 	uint8_t twotuple_mask;
 	struct e1000_2tuple_filter_list twotuple_list;
+	/* store the SYN filter info */
+	uint32_t syn_info;
 };
 
 /*
