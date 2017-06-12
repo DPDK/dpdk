@@ -1009,6 +1009,267 @@ igb_parse_syn_filter(struct rte_eth_dev *dev,
 }
 
 /**
+ * Parse the rule to see if it is a flex byte rule.
+ * And get the flex byte filter info BTW.
+ * pattern:
+ * The first not void item must be RAW.
+ * The second not void item can be RAW or END.
+ * The third not void item can be RAW or END.
+ * The last not void item must be END.
+ * action:
+ * The first not void action should be QUEUE.
+ * The next not void action should be END.
+ * pattern example:
+ * ITEM		Spec			Mask
+ * RAW		relative	0		0x1
+ *			offset	0		0xFFFFFFFF
+ *			pattern	{0x08, 0x06}		{0xFF, 0xFF}
+ * RAW		relative	1		0x1
+ *			offset	100		0xFFFFFFFF
+ *			pattern	{0x11, 0x22, 0x33}	{0xFF, 0xFF, 0xFF}
+ * END
+ * other members in mask and spec should set to 0x00.
+ * item->last should be NULL.
+ */
+static int
+cons_parse_flex_filter(const struct rte_flow_attr *attr,
+				const struct rte_flow_item pattern[],
+				const struct rte_flow_action actions[],
+				struct rte_eth_flex_filter *filter,
+				struct rte_flow_error *error)
+{
+	const struct rte_flow_item *item;
+	const struct rte_flow_action *act;
+	const struct rte_flow_item_raw *raw_spec;
+	const struct rte_flow_item_raw *raw_mask;
+	const struct rte_flow_action_queue *act_q;
+	uint32_t index, i, offset, total_offset = 0;
+	int32_t shift;
+
+	if (!pattern) {
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM_NUM,
+				NULL, "NULL pattern.");
+		return -rte_errno;
+	}
+
+	if (!actions) {
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ACTION_NUM,
+				NULL, "NULL action.");
+		return -rte_errno;
+	}
+
+	if (!attr) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ATTR,
+				   NULL, "NULL attribute.");
+		return -rte_errno;
+	}
+
+	/* parse pattern */
+	index = 0;
+
+item_loop:
+
+	/* the first not void item should be RAW */
+	NEXT_ITEM_OF_PATTERN(item, pattern, index);
+	if (item->type != RTE_FLOW_ITEM_TYPE_RAW) {
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item, "Not supported by flex filter");
+		return -rte_errno;
+	}
+		/*Not supported last point for range*/
+	if (item->last) {
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+			item, "Not supported last point for range");
+		return -rte_errno;
+	}
+
+	raw_spec = (const struct rte_flow_item_raw *)item->spec;
+	raw_mask = (const struct rte_flow_item_raw *)item->mask;
+
+	if (!raw_mask->length ||
+	    !raw_mask->relative) {
+		memset(filter, 0, sizeof(struct rte_eth_flex_filter));
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item, "Not supported by flex filter");
+		return -rte_errno;
+	}
+
+	if (raw_mask->offset)
+		offset = raw_spec->offset;
+	else
+		offset = 0;
+
+	for (index = 0; index < raw_spec->length; index++) {
+		if (raw_mask->pattern[index] != 0xFF) {
+			memset(filter, 0, sizeof(struct rte_eth_flex_filter));
+			rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ITEM,
+					item, "Not supported by flex filter");
+			return -rte_errno;
+		}
+	}
+
+	if ((raw_spec->length + offset + total_offset) >
+			RTE_FLEX_FILTER_MAXLEN) {
+		memset(filter, 0, sizeof(struct rte_eth_flex_filter));
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item, "Not supported by flex filter");
+		return -rte_errno;
+	}
+
+	if (raw_spec->relative == 0) {
+		for (index = 0; index < raw_spec->length; index++)
+			filter->bytes[index] = raw_spec->pattern[index];
+		index = offset / CHAR_BIT;
+	} else {
+		for (index = 0; index < raw_spec->length; index++)
+			filter->bytes[total_offset + index] =
+				raw_spec->pattern[index];
+		index = (total_offset + offset) / CHAR_BIT;
+	}
+
+	i = 0;
+
+	for (shift = offset % CHAR_BIT; shift < CHAR_BIT; shift++) {
+		filter->mask[index] |= (0x80 >> shift);
+		i++;
+		if (i == raw_spec->length)
+			break;
+		if (shift == (CHAR_BIT - 1)) {
+			index++;
+			shift = -1;
+		}
+	}
+
+	total_offset += offset + raw_spec->length;
+
+	/* check if the next not void item is RAW */
+	index++;
+	NEXT_ITEM_OF_PATTERN(item, pattern, index);
+	if (item->type != RTE_FLOW_ITEM_TYPE_RAW &&
+		item->type != RTE_FLOW_ITEM_TYPE_END) {
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item, "Not supported by flex filter");
+		return -rte_errno;
+	}
+
+	/* go back to parser */
+	if (item->type == RTE_FLOW_ITEM_TYPE_RAW) {
+		/* if the item is RAW, the content should be parse */
+		goto item_loop;
+	}
+
+	filter->len = RTE_ALIGN(total_offset, 8);
+
+	/* parse action */
+	index = 0;
+
+	/* check if the first not void action is QUEUE. */
+	NEXT_ITEM_OF_ACTION(act, actions, index);
+	if (act->type != RTE_FLOW_ACTION_TYPE_QUEUE) {
+		memset(filter, 0, sizeof(struct rte_eth_flex_filter));
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ACTION,
+				act, "Not supported action.");
+		return -rte_errno;
+	}
+
+	act_q = (const struct rte_flow_action_queue *)act->conf;
+	filter->queue = act_q->index;
+
+	/* check if the next not void item is END */
+	index++;
+	NEXT_ITEM_OF_ACTION(act, actions, index);
+	if (act->type != RTE_FLOW_ACTION_TYPE_END) {
+		memset(filter, 0, sizeof(struct rte_eth_flex_filter));
+		rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ACTION,
+				act, "Not supported action.");
+		return -rte_errno;
+	}
+
+	/* parse attr */
+	/* must be input direction */
+	if (!attr->ingress) {
+		memset(filter, 0, sizeof(struct rte_eth_flex_filter));
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ATTR_INGRESS,
+			attr, "Only support ingress.");
+		return -rte_errno;
+	}
+
+	/* not supported */
+	if (attr->egress) {
+		memset(filter, 0, sizeof(struct rte_eth_flex_filter));
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ATTR_EGRESS,
+			attr, "Not support egress.");
+		return -rte_errno;
+	}
+
+	if (attr->priority > 0xFFFF) {
+		memset(filter, 0, sizeof(struct rte_eth_flex_filter));
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
+				   attr, "Error priority.");
+		return -rte_errno;
+	}
+
+	filter->priority = (uint16_t)attr->priority;
+
+	return 0;
+}
+
+static int
+igb_parse_flex_filter(struct rte_eth_dev *dev,
+				 const struct rte_flow_attr *attr,
+			     const struct rte_flow_item pattern[],
+			     const struct rte_flow_action actions[],
+			     struct rte_eth_flex_filter *filter,
+			     struct rte_flow_error *error)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int ret;
+
+	MAC_TYPE_FILTER_SUP_EXT(hw->mac.type);
+
+	ret = cons_parse_flex_filter(attr, pattern,
+					actions, filter, error);
+
+	if (filter->queue >= IGB_MAX_RX_QUEUE_NUM) {
+		memset(filter, 0, sizeof(struct rte_eth_flex_filter));
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ITEM,
+			NULL, "queue number not supported by flex filter");
+		return -rte_errno;
+	}
+
+	if (filter->len == 0 || filter->len > E1000_MAX_FLEX_FILTER_LEN ||
+		filter->len % sizeof(uint64_t) != 0) {
+		PMD_DRV_LOG(ERR, "filter's length is out of range");
+		return -EINVAL;
+	}
+
+	if (filter->priority > E1000_MAX_FLEX_FILTER_PRI) {
+		PMD_DRV_LOG(ERR, "filter's priority is out of range");
+		return -EINVAL;
+	}
+
+	if (ret)
+		return ret;
+
+	return 0;
+}
+
+/**
  * Check if the flow rule is supported by igb.
  * It only checkes the format. Don't guarantee the rule can be programmed into
  * the HW. Because there can be no enough room for the rule.
@@ -1023,6 +1284,7 @@ igb_flow_validate(__rte_unused struct rte_eth_dev *dev,
 	struct rte_eth_ntuple_filter ntuple_filter;
 	struct rte_eth_ethertype_filter ethertype_filter;
 	struct rte_eth_syn_filter syn_filter;
+	struct rte_eth_flex_filter flex_filter;
 	int ret;
 
 	memset(&ntuple_filter, 0, sizeof(struct rte_eth_ntuple_filter));
@@ -1042,6 +1304,10 @@ igb_flow_validate(__rte_unused struct rte_eth_dev *dev,
 				actions, &syn_filter, error);
 	if (!ret)
 		return 0;
+
+	memset(&flex_filter, 0, sizeof(struct rte_eth_flex_filter));
+	ret = igb_parse_flex_filter(dev, attr, pattern,
+				actions, &flex_filter, error);
 
 	return ret;
 }

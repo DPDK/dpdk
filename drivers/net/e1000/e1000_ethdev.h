@@ -150,6 +150,12 @@
 		return -ENOTSUP;\
 } while (0)
 
+#define MAC_TYPE_FILTER_SUP_EXT(type)    do {\
+	if ((type) != e1000_82580 && (type) != e1000_i350 &&\
+		(type) != e1000_i210 && (type) != e1000_i211)\
+		return -ENOTSUP; \
+} while (0)
+
 /* structure for interrupt relative data */
 struct e1000_interrupt {
 	uint32_t flags;

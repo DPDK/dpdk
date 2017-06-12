@@ -3683,12 +3683,6 @@ eth_igb_syn_filter_handle(struct rte_eth_dev *dev,
 	return ret;
 }
 
-#define MAC_TYPE_FILTER_SUP_EXT(type)    do {\
-	if ((type) != e1000_82580 && (type) != e1000_i350 &&\
-		(type) != e1000_i210 && (type) != e1000_i211)\
-		return -ENOSYS; \
-} while (0)
-
 /* translate elements in struct rte_eth_ntuple_filter to struct e1000_2tuple_filter_info*/
 static inline int
 ntuple_filter_to_2tuple(struct rte_eth_ntuple_filter *filter,
