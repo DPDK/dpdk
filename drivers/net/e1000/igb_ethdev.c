@@ -213,9 +213,6 @@ static int eth_igb_rss_reta_query(struct rte_eth_dev *dev,
 				  struct rte_eth_rss_reta_entry64 *reta_conf,
 				  uint16_t reta_size);
 
-static int eth_igb_syn_filter_set(struct rte_eth_dev *dev,
-			struct rte_eth_syn_filter *filter,
-			bool add);
 static int eth_igb_syn_filter_get(struct rte_eth_dev *dev,
 			struct rte_eth_syn_filter *filter);
 static int eth_igb_syn_filter_handle(struct rte_eth_dev *dev,
@@ -225,9 +222,6 @@ static int igb_add_2tuple_filter(struct rte_eth_dev *dev,
 			struct rte_eth_ntuple_filter *ntuple_filter);
 static int igb_remove_2tuple_filter(struct rte_eth_dev *dev,
 			struct rte_eth_ntuple_filter *ntuple_filter);
-static int eth_igb_add_del_flex_filter(struct rte_eth_dev *dev,
-			struct rte_eth_flex_filter *filter,
-			bool add);
 static int eth_igb_get_flex_filter(struct rte_eth_dev *dev,
 			struct rte_eth_flex_filter *filter);
 static int eth_igb_flex_filter_handle(struct rte_eth_dev *dev,
@@ -237,17 +231,11 @@ static int igb_add_5tuple_filter_82576(struct rte_eth_dev *dev,
 			struct rte_eth_ntuple_filter *ntuple_filter);
 static int igb_remove_5tuple_filter_82576(struct rte_eth_dev *dev,
 			struct rte_eth_ntuple_filter *ntuple_filter);
-static int igb_add_del_ntuple_filter(struct rte_eth_dev *dev,
-			struct rte_eth_ntuple_filter *filter,
-			bool add);
 static int igb_get_ntuple_filter(struct rte_eth_dev *dev,
 			struct rte_eth_ntuple_filter *filter);
 static int igb_ntuple_filter_handle(struct rte_eth_dev *dev,
 				enum rte_filter_op filter_op,
 				void *arg);
-static int igb_add_del_ethertype_filter(struct rte_eth_dev *dev,
-			struct rte_eth_ethertype_filter *filter,
-			bool add);
 static int igb_ethertype_filter_handle(struct rte_eth_dev *dev,
 				enum rte_filter_op filter_op,
 				void *arg);
@@ -954,6 +942,12 @@ eth_igb_dev_init(struct rte_eth_dev *eth_dev)
 	TAILQ_INIT(&filter_info->flex_list);
 	TAILQ_INIT(&filter_info->twotuple_list);
 	TAILQ_INIT(&filter_info->fivetuple_list);
+
+	TAILQ_INIT(&igb_filter_ntuple_list);
+	TAILQ_INIT(&igb_filter_ethertype_list);
+	TAILQ_INIT(&igb_filter_syn_list);
+	TAILQ_INIT(&igb_filter_flex_list);
+	TAILQ_INIT(&igb_flow_list);
 
 	return 0;
 
@@ -3580,7 +3574,7 @@ eth_igb_rss_reta_query(struct rte_eth_dev *dev,
 	return 0;
 }
 
-static int
+int
 eth_igb_syn_filter_set(struct rte_eth_dev *dev,
 			struct rte_eth_syn_filter *filter,
 			bool add)
@@ -4492,7 +4486,7 @@ eth_igb_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
  *    - On success, zero.
  *    - On failure, a negative value.
  */
-static int
+int
 igb_add_del_ntuple_filter(struct rte_eth_dev *dev,
 			struct rte_eth_ntuple_filter *ntuple_filter,
 			bool add)

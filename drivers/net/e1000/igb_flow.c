@@ -1270,6 +1270,141 @@ igb_parse_flex_filter(struct rte_eth_dev *dev,
 }
 
 /**
+ * Create a flow rule.
+ * Theorically one rule can match more than one filters.
+ * We will let it use the filter which it hitt first.
+ * So, the sequence matters.
+ */
+static struct rte_flow *
+igb_flow_create(struct rte_eth_dev *dev,
+		  const struct rte_flow_attr *attr,
+		  const struct rte_flow_item pattern[],
+		  const struct rte_flow_action actions[],
+		  struct rte_flow_error *error)
+{
+	int ret;
+	struct rte_eth_ntuple_filter ntuple_filter;
+	struct rte_eth_ethertype_filter ethertype_filter;
+	struct rte_eth_syn_filter syn_filter;
+	struct rte_eth_flex_filter flex_filter;
+	struct rte_flow *flow = NULL;
+	struct igb_ntuple_filter_ele *ntuple_filter_ptr;
+	struct igb_ethertype_filter_ele *ethertype_filter_ptr;
+	struct igb_eth_syn_filter_ele *syn_filter_ptr;
+	struct igb_flex_filter_ele *flex_filter_ptr;
+	struct igb_flow_mem *igb_flow_mem_ptr;
+
+	flow = rte_zmalloc("igb_rte_flow", sizeof(struct rte_flow), 0);
+	if (!flow) {
+		PMD_DRV_LOG(ERR, "failed to allocate memory");
+		return (struct rte_flow *)flow;
+	}
+	igb_flow_mem_ptr = rte_zmalloc("igb_flow_mem",
+			sizeof(struct igb_flow_mem), 0);
+	if (!igb_flow_mem_ptr) {
+		PMD_DRV_LOG(ERR, "failed to allocate memory");
+		rte_free(flow);
+		return NULL;
+	}
+	igb_flow_mem_ptr->flow = flow;
+	igb_flow_mem_ptr->dev = dev;
+	TAILQ_INSERT_TAIL(&igb_flow_list,
+				igb_flow_mem_ptr, entries);
+
+	memset(&ntuple_filter, 0, sizeof(struct rte_eth_ntuple_filter));
+	ret = igb_parse_ntuple_filter(dev, attr, pattern,
+			actions, &ntuple_filter, error);
+	if (!ret) {
+		ret = igb_add_del_ntuple_filter(dev, &ntuple_filter, TRUE);
+		if (!ret) {
+			ntuple_filter_ptr = rte_zmalloc("igb_ntuple_filter",
+				sizeof(struct igb_ntuple_filter_ele), 0);
+			(void)rte_memcpy(&ntuple_filter_ptr->filter_info,
+				&ntuple_filter,
+				sizeof(struct rte_eth_ntuple_filter));
+			TAILQ_INSERT_TAIL(&igb_filter_ntuple_list,
+				ntuple_filter_ptr, entries);
+			flow->rule = ntuple_filter_ptr;
+			flow->filter_type = RTE_ETH_FILTER_NTUPLE;
+			return flow;
+		}
+		goto out;
+	}
+
+	memset(&ethertype_filter, 0, sizeof(struct rte_eth_ethertype_filter));
+	ret = igb_parse_ethertype_filter(dev, attr, pattern,
+				actions, &ethertype_filter, error);
+	if (!ret) {
+		ret = igb_add_del_ethertype_filter(dev,
+				&ethertype_filter, TRUE);
+		if (!ret) {
+			ethertype_filter_ptr = rte_zmalloc(
+				"igb_ethertype_filter",
+				sizeof(struct igb_ethertype_filter_ele), 0);
+			(void)rte_memcpy(&ethertype_filter_ptr->filter_info,
+				&ethertype_filter,
+				sizeof(struct rte_eth_ethertype_filter));
+			TAILQ_INSERT_TAIL(&igb_filter_ethertype_list,
+				ethertype_filter_ptr, entries);
+			flow->rule = ethertype_filter_ptr;
+			flow->filter_type = RTE_ETH_FILTER_ETHERTYPE;
+			return flow;
+		}
+		goto out;
+	}
+
+	memset(&syn_filter, 0, sizeof(struct rte_eth_syn_filter));
+	ret = igb_parse_syn_filter(dev, attr, pattern,
+				actions, &syn_filter, error);
+	if (!ret) {
+		ret = eth_igb_syn_filter_set(dev, &syn_filter, TRUE);
+		if (!ret) {
+			syn_filter_ptr = rte_zmalloc("igb_syn_filter",
+				sizeof(struct igb_eth_syn_filter_ele), 0);
+			(void)rte_memcpy(&syn_filter_ptr->filter_info,
+				&syn_filter,
+				sizeof(struct rte_eth_syn_filter));
+			TAILQ_INSERT_TAIL(&igb_filter_syn_list,
+				syn_filter_ptr,
+				entries);
+			flow->rule = syn_filter_ptr;
+			flow->filter_type = RTE_ETH_FILTER_SYN;
+			return flow;
+		}
+		goto out;
+	}
+
+	memset(&flex_filter, 0, sizeof(struct rte_eth_flex_filter));
+	ret = igb_parse_flex_filter(dev, attr, pattern,
+					actions, &flex_filter, error);
+	if (!ret) {
+		ret = eth_igb_add_del_flex_filter(dev, &flex_filter, TRUE);
+		if (!ret) {
+			flex_filter_ptr = rte_zmalloc("igb_flex_filter",
+				sizeof(struct igb_flex_filter_ele), 0);
+			(void)rte_memcpy(&flex_filter_ptr->filter_info,
+				&flex_filter,
+				sizeof(struct rte_eth_flex_filter));
+			TAILQ_INSERT_TAIL(&igb_filter_flex_list,
+				flex_filter_ptr, entries);
+			flow->rule = flex_filter_ptr;
+			flow->filter_type = RTE_ETH_FILTER_FLEXIBLE;
+			return flow;
+		}
+	}
+
+out:
+	TAILQ_REMOVE(&igb_flow_list,
+		igb_flow_mem_ptr, entries);
+	rte_flow_error_set(error, -ret,
+			   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+			   "Failed to create flow.");
+	rte_free(igb_flow_mem_ptr);
+	rte_free(flow);
+	return NULL;
+}
+
+/**
  * Check if the flow rule is supported by igb.
  * It only checkes the format. Don't guarantee the rule can be programmed into
  * the HW. Because there can be no enough room for the rule.
@@ -1314,7 +1449,7 @@ igb_flow_validate(__rte_unused struct rte_eth_dev *dev,
 
 const struct rte_flow_ops igb_flow_ops = {
 	igb_flow_validate,
-	NULL,
+	igb_flow_create,
 	NULL,
 	NULL,
 	NULL,
