@@ -45,10 +45,21 @@
 #define ETH_RING_NUMA_NODE_ACTION_ARG	"nodeaction"
 #define ETH_RING_ACTION_CREATE		"CREATE"
 #define ETH_RING_ACTION_ATTACH		"ATTACH"
+#define ETH_RING_INTERNAL_ARG		"internal"
 
 static const char *valid_arguments[] = {
 	ETH_RING_NUMA_NODE_ACTION_ARG,
+	ETH_RING_INTERNAL_ARG,
 	NULL
+};
+
+struct ring_internal_args {
+	struct rte_ring * const *rx_queues;
+	const unsigned int nb_rx_queues;
+	struct rte_ring * const *tx_queues;
+	const unsigned int nb_tx_queues;
+	const unsigned int numa_node;
+	void *addr; /* self addr for sanity check */
 };
 
 enum dev_action {
@@ -372,7 +383,18 @@ rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
 		const unsigned nb_tx_queues,
 		const unsigned numa_node)
 {
-	struct rte_eth_dev *eth_dev = NULL;
+	struct ring_internal_args args = {
+		.rx_queues = rx_queues,
+		.nb_rx_queues = nb_rx_queues,
+		.tx_queues = tx_queues,
+		.nb_tx_queues = nb_tx_queues,
+		.numa_node = numa_node,
+		.addr = &args,
+	};
+	char args_str[32] = { 0 };
+	char ring_name[32] = { 0 };
+	uint8_t port_id = RTE_MAX_ETHPORTS;
+	int ret;
 
 	/* do some parameter checking */
 	if (rx_queues == NULL && nb_rx_queues > 0) {
@@ -388,9 +410,18 @@ rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
 		return -1;
 	}
 
-	return do_eth_dev_ring_create(name, rx_queues, nb_rx_queues,
-			tx_queues, nb_tx_queues, numa_node, DEV_ATTACH,
-			&eth_dev);
+	snprintf(args_str, 32, "%s=%p", ETH_RING_INTERNAL_ARG, &args);
+	snprintf(ring_name, 32, "net_ring_%s", name);
+
+	ret = rte_vdev_init(ring_name, args_str);
+	if (ret) {
+		rte_errno = EINVAL;
+		return -1;
+	}
+
+	rte_eth_dev_get_port_by_name(ring_name, &port_id);
+
+	return port_id;
 }
 
 int
@@ -508,6 +539,23 @@ out:
 }
 
 static int
+parse_internal_args(const char *key __rte_unused, const char *value,
+		void *data)
+{
+	struct ring_internal_args **internal_args = data;
+	void *args;
+
+	sscanf(value, "%p", &args);
+
+	*internal_args = args;
+
+	if ((*internal_args)->addr != args)
+		return -1;
+
+	return 0;
+}
+
+static int
 rte_pmd_ring_probe(struct rte_vdev_device *dev)
 {
 	const char *name, *params;
@@ -515,6 +563,7 @@ rte_pmd_ring_probe(struct rte_vdev_device *dev)
 	int ret = 0;
 	struct node_action_list *info = NULL;
 	struct rte_eth_dev *eth_dev = NULL;
+	struct ring_internal_args *internal_args;
 
 	name = rte_vdev_device_name(dev);
 	params = rte_vdev_device_args(dev);
@@ -530,8 +579,7 @@ rte_pmd_ring_probe(struct rte_vdev_device *dev)
 			ret = eth_dev_ring_create(name, rte_socket_id(),
 						  DEV_ATTACH, &eth_dev);
 		}
-	}
-	else {
+	} else {
 		kvlist = rte_kvargs_parse(params, valid_arguments);
 
 		if (!kvlist) {
@@ -546,7 +594,30 @@ rte_pmd_ring_probe(struct rte_vdev_device *dev)
 				ret = eth_dev_ring_create(name, rte_socket_id(),
 							  DEV_ATTACH, &eth_dev);
 			}
+
+			if (eth_dev)
+				eth_dev->device = &dev->device;
+
 			return ret;
+		}
+
+		if (rte_kvargs_count(kvlist, ETH_RING_INTERNAL_ARG) == 1) {
+			ret = rte_kvargs_process(kvlist, ETH_RING_INTERNAL_ARG,
+						 parse_internal_args,
+						 &internal_args);
+			if (ret < 0)
+				goto out_free;
+
+			ret = do_eth_dev_ring_create(name,
+				internal_args->rx_queues,
+				internal_args->nb_rx_queues,
+				internal_args->tx_queues,
+				internal_args->nb_tx_queues,
+				internal_args->numa_node,
+				DEV_ATTACH,
+				&eth_dev);
+			if (ret >= 0)
+				ret = 0;
 		} else {
 			ret = rte_kvargs_count(kvlist, ETH_RING_NUMA_NODE_ACTION_ARG);
 			info = rte_zmalloc("struct node_action_list",
