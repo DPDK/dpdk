@@ -71,6 +71,10 @@ New Features
   Rx queues can be armed with an interrupt which will trigger on the
   next packet arrival.
 
+* **Updated szedata2 PMD.**
+
+  Added support for firmwares with multiple Ethernet ports per physical port.
+
 
 Resolved Issues
 ---------------

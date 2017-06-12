@@ -91,14 +91,34 @@ These configuration options can be modified before compilation in the
 
 *  ``CONFIG_RTE_LIBRTE_PMD_SZEDATA2_AS`` default value: **0**
 
-   This option defines type of firmware address space.
-   Currently supported value is:
+   This option defines type of firmware address space and must be set
+   according to the used card and mode.
+   Currently supported values are:
 
-   * **0** for firmwares:
+   * **0** - for cards (modes):
 
-      * NIC_100G1_LR4
-      * HANIC_100G1_LR4
-      * HANIC_100G1_SR10
+      * NFB-100G1 (100G1)
+
+   * **1** - for cards (modes):
+
+      * NFB-100G2Q (100G1)
+
+   * **2** - for cards (modes):
+
+      * NFB-40G2 (40G2)
+      * NFB-100G2C (100G2)
+      * NFB-100G2Q (40G2)
+
+   * **3** - for cards (modes):
+
+      * NFB-40G2 (10G8)
+      * NFB-100G2Q (10G8)
+
+   * **4** - for cards (modes):
+
+      * NFB-100G1 (10G10)
+
+   * **5** - for experimental firmwares and future use
 
 Using the SZEDATA2 PMD
 ----------------------

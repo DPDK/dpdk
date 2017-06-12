@@ -276,12 +276,8 @@ CONFIG_RTE_LIBRTE_SFC_EFX_DEBUG=n
 CONFIG_RTE_LIBRTE_PMD_SZEDATA2=n
 #
 # Defines firmware type address space.
-# RTE_LIBRTE_PMD_SZEDATA2_AS can be:
-# 0 - for firmwares:
-#         NIC_100G1_LR4
-#         HANIC_100G1_LR4
-#         HANIC_100G1_SR10
-# Other values raise compile time error
+# See documentation for supported values.
+# Other values raise compile time error.
 CONFIG_RTE_LIBRTE_PMD_SZEDATA2_AS=0
 
 #
