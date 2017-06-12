@@ -237,13 +237,19 @@ struct e1000_2tuple_filter {
 	uint16_t queue;       /* rx queue assigned to */
 };
 
+/* ethertype filter structure */
+struct igb_ethertype_filter {
+	uint16_t ethertype;
+	uint32_t etqf;
+};
+
 /*
- * Structure to store filters' info.
+ * Structure to store filters'info.
  */
 struct e1000_filter_info {
 	uint8_t ethertype_mask; /* Bit mask for every used ethertype filter */
 	/* store used ethertype filters*/
-	uint16_t ethertype_filters[E1000_MAX_ETQF_FILTERS];
+	struct igb_ethertype_filter ethertype_filters[E1000_MAX_ETQF_FILTERS];
 	uint8_t flex_mask;	/* Bit mask for every used flex filter */
 	struct e1000_flex_filter_list flex_list;
 	/* Bit mask for every used 5tuple filter */

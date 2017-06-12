@@ -991,6 +991,11 @@ eth_igb_dev_uninit(struct rte_eth_dev *eth_dev)
 	/* clear the SYN filter info */
 	filter_info->syn_info = 0;
 
+	/* clear the ethertype filters info */
+	filter_info->ethertype_mask = 0;
+	memset(filter_info->ethertype_filters, 0,
+		E1000_MAX_ETQF_FILTERS * sizeof(struct igb_ethertype_filter));
+
 	/* remove all ntuple filters of the device */
 	igb_ntuple_filter_uninit(eth_dev);
 
@@ -4625,7 +4630,7 @@ igb_ethertype_filter_lookup(struct e1000_filter_info *filter_info,
 	int i;
 
 	for (i = 0; i < E1000_MAX_ETQF_FILTERS; i++) {
-		if (filter_info->ethertype_filters[i] == ethertype &&
+		if (filter_info->ethertype_filters[i].ethertype == ethertype &&
 		    (filter_info->ethertype_mask & (1 << i)))
 			return i;
 	}
@@ -4634,33 +4639,35 @@ igb_ethertype_filter_lookup(struct e1000_filter_info *filter_info,
 
 static inline int
 igb_ethertype_filter_insert(struct e1000_filter_info *filter_info,
-			uint16_t ethertype)
+			uint16_t ethertype, uint32_t etqf)
 {
 	int i;
 
 	for (i = 0; i < E1000_MAX_ETQF_FILTERS; i++) {
 		if (!(filter_info->ethertype_mask & (1 << i))) {
 			filter_info->ethertype_mask |= 1 << i;
-			filter_info->ethertype_filters[i] = ethertype;
+			filter_info->ethertype_filters[i].ethertype = ethertype;
+			filter_info->ethertype_filters[i].etqf = etqf;
 			return i;
 		}
 	}
 	return -1;
 }
 
-static inline int
+static int
 igb_ethertype_filter_remove(struct e1000_filter_info *filter_info,
 			uint8_t idx)
 {
 	if (idx >= E1000_MAX_ETQF_FILTERS)
 		return -1;
 	filter_info->ethertype_mask &= ~(1 << idx);
-	filter_info->ethertype_filters[idx] = 0;
+	filter_info->ethertype_filters[idx].ethertype = 0;
+	filter_info->ethertype_filters[idx].etqf = 0;
 	return idx;
 }
 
 
-static int
+int
 igb_add_del_ethertype_filter(struct rte_eth_dev *dev,
 			struct rte_eth_ethertype_filter *filter,
 			bool add)
@@ -4700,16 +4707,15 @@ igb_add_del_ethertype_filter(struct rte_eth_dev *dev,
 	}
 
 	if (add) {
+		etqf |= E1000_ETQF_FILTER_ENABLE | E1000_ETQF_QUEUE_ENABLE;
+		etqf |= (uint32_t)(filter->ether_type & E1000_ETQF_ETHERTYPE);
+		etqf |= filter->queue << E1000_ETQF_QUEUE_SHIFT;
 		ret = igb_ethertype_filter_insert(filter_info,
-			filter->ether_type);
+				filter->ether_type, etqf);
 		if (ret < 0) {
 			PMD_DRV_LOG(ERR, "ethertype filters are full.");
 			return -ENOSYS;
 		}
-
-		etqf |= E1000_ETQF_FILTER_ENABLE | E1000_ETQF_QUEUE_ENABLE;
-		etqf |= (uint32_t)(filter->ether_type & E1000_ETQF_ETHERTYPE);
-		etqf |= filter->queue << E1000_ETQF_QUEUE_SHIFT;
 	} else {
 		ret = igb_ethertype_filter_remove(filter_info, (uint8_t)ret);
 		if (ret < 0)
@@ -5506,11 +5512,30 @@ igb_syn_filter_restore(struct rte_eth_dev *dev)
 	}
 }
 
+/* restore ethernet type filter */
+static inline void
+igb_ethertype_filter_restore(struct rte_eth_dev *dev)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct e1000_filter_info *filter_info =
+		E1000_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+	int i;
+
+	for (i = 0; i < E1000_MAX_ETQF_FILTERS; i++) {
+		if (filter_info->ethertype_mask & (1 << i)) {
+			E1000_WRITE_REG(hw, E1000_ETQF(i),
+				filter_info->ethertype_filters[i].etqf);
+			E1000_WRITE_FLUSH(hw);
+		}
+	}
+}
+
 /* restore all types filter */
 static int
 igb_filter_restore(struct rte_eth_dev *dev)
 {
 	igb_ntuple_filter_restore(dev);
+	igb_ethertype_filter_restore(dev);
 	igb_syn_filter_restore(dev);
 
 	return 0;
