@@ -3580,13 +3580,6 @@ eth_igb_rss_reta_query(struct rte_eth_dev *dev,
 	return 0;
 }
 
-#define MAC_TYPE_FILTER_SUP(type)    do {\
-	if ((type) != e1000_82580 && (type) != e1000_i350 &&\
-		(type) != e1000_82576 && (type) != e1000_i210 &&\
-		(type) != e1000_i211)\
-		return -ENOTSUP;\
-} while (0)
-
 static int
 eth_igb_syn_filter_set(struct rte_eth_dev *dev,
 			struct rte_eth_syn_filter *filter,
@@ -4851,7 +4844,7 @@ eth_igb_filter_ctrl(struct rte_eth_dev *dev,
 		     enum rte_filter_op filter_op,
 		     void *arg)
 {
-	int ret = -EINVAL;
+	int ret = 0;
 
 	switch (filter_type) {
 	case RTE_ETH_FILTER_NTUPLE:
@@ -4865,6 +4858,11 @@ eth_igb_filter_ctrl(struct rte_eth_dev *dev,
 		break;
 	case RTE_ETH_FILTER_FLEXIBLE:
 		ret = eth_igb_flex_filter_handle(dev, filter_op, arg);
+		break;
+	case RTE_ETH_FILTER_GENERIC:
+		if (filter_op != RTE_ETH_FILTER_GET)
+			return -EINVAL;
+		*(const void **)arg = &igb_flow_ops;
 		break;
 	default:
 		PMD_DRV_LOG(WARNING, "Filter type (%d) not supported",

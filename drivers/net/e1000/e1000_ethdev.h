@@ -143,6 +143,13 @@
 #define EM_TX_MAX_SEG      UINT8_MAX
 #define EM_TX_MAX_MTU_SEG  UINT8_MAX
 
+#define MAC_TYPE_FILTER_SUP(type)    do {\
+	if ((type) != e1000_82580 && (type) != e1000_i350 &&\
+		(type) != e1000_82576 && (type) != e1000_i210 &&\
+		(type) != e1000_i211)\
+		return -ENOTSUP;\
+} while (0)
+
 /* structure for interrupt relative data */
 struct e1000_interrupt {
 	uint32_t flags;
@@ -298,6 +305,8 @@ struct e1000_adapter {
 
 #define E1000_DEV_PRIVATE_TO_FILTER_INFO(adapter) \
 	(&((struct e1000_adapter *)adapter)->filter)
+
+extern const struct rte_flow_ops igb_flow_ops;
 
 /*
  * RX/TX IGB function prototypes
