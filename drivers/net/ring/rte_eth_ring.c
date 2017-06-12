@@ -263,7 +263,8 @@ static int
 do_eth_dev_ring_create(const char *name,
 		struct rte_ring * const rx_queues[], const unsigned nb_rx_queues,
 		struct rte_ring *const tx_queues[], const unsigned nb_tx_queues,
-		const unsigned numa_node, enum dev_action action)
+		const unsigned int numa_node, enum dev_action action,
+		struct rte_eth_dev **eth_dev_p)
 {
 	struct rte_eth_dev_data *data = NULL;
 	struct pmd_internals *internals = NULL;
@@ -349,6 +350,8 @@ do_eth_dev_ring_create(const char *name,
 	eth_dev->rx_pkt_burst = eth_ring_rx;
 	eth_dev->tx_pkt_burst = eth_ring_tx;
 
+	*eth_dev_p = eth_dev;
+
 	return data->port_id;
 
 error:
@@ -369,6 +372,8 @@ rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
 		const unsigned nb_tx_queues,
 		const unsigned numa_node)
 {
+	struct rte_eth_dev *eth_dev = NULL;
+
 	/* do some parameter checking */
 	if (rx_queues == NULL && nb_rx_queues > 0) {
 		rte_errno = EINVAL;
@@ -384,7 +389,8 @@ rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
 	}
 
 	return do_eth_dev_ring_create(name, rx_queues, nb_rx_queues,
-			tx_queues, nb_tx_queues, numa_node, DEV_ATTACH);
+			tx_queues, nb_tx_queues, numa_node, DEV_ATTACH,
+			&eth_dev);
 }
 
 int
@@ -396,7 +402,7 @@ rte_eth_from_ring(struct rte_ring *r)
 
 static int
 eth_dev_ring_create(const char *name, const unsigned numa_node,
-		enum dev_action action)
+		enum dev_action action, struct rte_eth_dev **eth_dev)
 {
 	/* rx and tx are so-called from point of view of first port.
 	 * They are inverted from the point of view of second port
@@ -418,7 +424,7 @@ eth_dev_ring_create(const char *name, const unsigned numa_node,
 	}
 
 	if (do_eth_dev_ring_create(name, rxtx, num_rings, rxtx, num_rings,
-		numa_node, action) < 0)
+		numa_node, action, eth_dev) < 0)
 		return -1;
 
 	return 0;
@@ -508,6 +514,7 @@ rte_pmd_ring_probe(struct rte_vdev_device *dev)
 	struct rte_kvargs *kvlist = NULL;
 	int ret = 0;
 	struct node_action_list *info = NULL;
+	struct rte_eth_dev *eth_dev = NULL;
 
 	name = rte_vdev_device_name(dev);
 	params = rte_vdev_device_args(dev);
@@ -515,12 +522,13 @@ rte_pmd_ring_probe(struct rte_vdev_device *dev)
 	RTE_LOG(INFO, PMD, "Initializing pmd_ring for %s\n", name);
 
 	if (params == NULL || params[0] == '\0') {
-		ret = eth_dev_ring_create(name, rte_socket_id(), DEV_CREATE);
+		ret = eth_dev_ring_create(name, rte_socket_id(), DEV_CREATE,
+				&eth_dev);
 		if (ret == -1) {
 			RTE_LOG(INFO, PMD,
 				"Attach to pmd_ring for %s\n", name);
 			ret = eth_dev_ring_create(name, rte_socket_id(),
-						  DEV_ATTACH);
+						  DEV_ATTACH, &eth_dev);
 		}
 	}
 	else {
@@ -530,13 +538,13 @@ rte_pmd_ring_probe(struct rte_vdev_device *dev)
 			RTE_LOG(INFO, PMD, "Ignoring unsupported parameters when creating"
 					" rings-backed ethernet device\n");
 			ret = eth_dev_ring_create(name, rte_socket_id(),
-						  DEV_CREATE);
+						  DEV_CREATE, &eth_dev);
 			if (ret == -1) {
 				RTE_LOG(INFO, PMD,
 					"Attach to pmd_ring for %s\n",
 					name);
 				ret = eth_dev_ring_create(name, rte_socket_id(),
-							  DEV_ATTACH);
+							  DEV_ATTACH, &eth_dev);
 			}
 			return ret;
 		} else {
@@ -560,7 +568,8 @@ rte_pmd_ring_probe(struct rte_vdev_device *dev)
 			for (info->count = 0; info->count < info->total; info->count++) {
 				ret = eth_dev_ring_create(info->list[info->count].name,
 							  info->list[info->count].node,
-							  info->list[info->count].action);
+							  info->list[info->count].action,
+							  &eth_dev);
 				if ((ret == -1) &&
 				    (info->list[info->count].action == DEV_CREATE)) {
 					RTE_LOG(INFO, PMD,
@@ -568,11 +577,15 @@ rte_pmd_ring_probe(struct rte_vdev_device *dev)
 						name);
 					ret = eth_dev_ring_create(name,
 							info->list[info->count].node,
-							DEV_ATTACH);
+							DEV_ATTACH,
+							&eth_dev);
 				}
 			}
 		}
 	}
+
+	if (eth_dev)
+		eth_dev->device = &dev->device;
 
 out_free:
 	rte_kvargs_free(kvlist);
