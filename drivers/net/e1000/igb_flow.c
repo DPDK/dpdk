@@ -1533,10 +1533,149 @@ igb_flow_destroy(struct rte_eth_dev *dev,
 	return ret;
 }
 
+/* remove all the n-tuple filters */
+static void
+igb_clear_all_ntuple_filter(struct rte_eth_dev *dev)
+{
+	struct e1000_filter_info *filter_info =
+		E1000_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+	struct e1000_5tuple_filter *p_5tuple;
+	struct e1000_2tuple_filter *p_2tuple;
+
+	while ((p_5tuple = TAILQ_FIRST(&filter_info->fivetuple_list)))
+		igb_delete_5tuple_filter_82576(dev, p_5tuple);
+
+	while ((p_2tuple = TAILQ_FIRST(&filter_info->twotuple_list)))
+		igb_delete_2tuple_filter(dev, p_2tuple);
+}
+
+/* remove all the ether type filters */
+static void
+igb_clear_all_ethertype_filter(struct rte_eth_dev *dev)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct e1000_filter_info *filter_info =
+		E1000_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+	int i;
+
+	for (i = 0; i < E1000_MAX_ETQF_FILTERS; i++) {
+		if (filter_info->ethertype_mask & (1 << i)) {
+			(void)igb_ethertype_filter_remove(filter_info,
+							    (uint8_t)i);
+			E1000_WRITE_REG(hw, E1000_ETQF(i), 0);
+			E1000_WRITE_FLUSH(hw);
+		}
+	}
+}
+
+/* remove the SYN filter */
+static void
+igb_clear_syn_filter(struct rte_eth_dev *dev)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct e1000_filter_info *filter_info =
+		E1000_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+
+	if (filter_info->syn_info & E1000_SYN_FILTER_ENABLE) {
+		filter_info->syn_info = 0;
+		E1000_WRITE_REG(hw, E1000_SYNQF(0), 0);
+		E1000_WRITE_FLUSH(hw);
+	}
+}
+
+/* remove all the flex filters */
+static void
+igb_clear_all_flex_filter(struct rte_eth_dev *dev)
+{
+	struct e1000_filter_info *filter_info =
+		E1000_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+	struct e1000_flex_filter *flex_filter;
+
+	while ((flex_filter = TAILQ_FIRST(&filter_info->flex_list)))
+		igb_remove_flex_filter(dev, flex_filter);
+}
+
+void
+igb_filterlist_flush(struct rte_eth_dev *dev)
+{
+	struct igb_ntuple_filter_ele *ntuple_filter_ptr;
+	struct igb_ethertype_filter_ele *ethertype_filter_ptr;
+	struct igb_eth_syn_filter_ele *syn_filter_ptr;
+	struct igb_flex_filter_ele *flex_filter_ptr;
+	struct igb_flow_mem *igb_flow_mem_ptr;
+	enum rte_filter_type filter_type;
+	struct rte_flow *pmd_flow;
+
+	TAILQ_FOREACH(igb_flow_mem_ptr, &igb_flow_list, entries) {
+		if (igb_flow_mem_ptr->dev == dev) {
+			pmd_flow = igb_flow_mem_ptr->flow;
+			filter_type = pmd_flow->filter_type;
+
+			switch (filter_type) {
+			case RTE_ETH_FILTER_NTUPLE:
+				ntuple_filter_ptr =
+				(struct igb_ntuple_filter_ele *)
+					pmd_flow->rule;
+				TAILQ_REMOVE(&igb_filter_ntuple_list,
+						ntuple_filter_ptr, entries);
+				rte_free(ntuple_filter_ptr);
+				break;
+			case RTE_ETH_FILTER_ETHERTYPE:
+				ethertype_filter_ptr =
+				(struct igb_ethertype_filter_ele *)
+					pmd_flow->rule;
+				TAILQ_REMOVE(&igb_filter_ethertype_list,
+						ethertype_filter_ptr, entries);
+				rte_free(ethertype_filter_ptr);
+				break;
+			case RTE_ETH_FILTER_SYN:
+				syn_filter_ptr =
+					(struct igb_eth_syn_filter_ele *)
+						pmd_flow->rule;
+				TAILQ_REMOVE(&igb_filter_syn_list,
+						syn_filter_ptr, entries);
+				rte_free(syn_filter_ptr);
+				break;
+			case RTE_ETH_FILTER_FLEXIBLE:
+				flex_filter_ptr =
+					(struct igb_flex_filter_ele *)
+						pmd_flow->rule;
+				TAILQ_REMOVE(&igb_filter_flex_list,
+						flex_filter_ptr, entries);
+				rte_free(flex_filter_ptr);
+				break;
+			default:
+				PMD_DRV_LOG(WARNING, "Filter type"
+					"(%d) not supported", filter_type);
+				break;
+			}
+			TAILQ_REMOVE(&igb_flow_list,
+				 igb_flow_mem_ptr,
+				 entries);
+			rte_free(igb_flow_mem_ptr->flow);
+			rte_free(igb_flow_mem_ptr);
+		}
+	}
+}
+
+/*  Destroy all flow rules associated with a port on igb. */
+static int
+igb_flow_flush(struct rte_eth_dev *dev,
+		__rte_unused struct rte_flow_error *error)
+{
+	igb_clear_all_ntuple_filter(dev);
+	igb_clear_all_ethertype_filter(dev);
+	igb_clear_syn_filter(dev);
+	igb_clear_all_flex_filter(dev);
+	igb_filterlist_flush(dev);
+
+	return 0;
+}
+
 const struct rte_flow_ops igb_flow_ops = {
 	igb_flow_validate,
 	igb_flow_create,
 	igb_flow_destroy,
-	NULL,
+	igb_flow_flush,
 	NULL,
 };

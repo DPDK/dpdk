@@ -1012,6 +1012,9 @@ eth_igb_dev_uninit(struct rte_eth_dev *eth_dev)
 	/* remove all flex filters of the device */
 	igb_flex_filter_uninit(eth_dev);
 
+	/* clear all the filters list */
+	igb_filterlist_flush(eth_dev);
+
 	return 0;
 }
 
@@ -3850,6 +3853,24 @@ igb_add_2tuple_filter(struct rte_eth_dev *dev,
 	return 0;
 }
 
+int
+igb_delete_2tuple_filter(struct rte_eth_dev *dev,
+			struct e1000_2tuple_filter *filter)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct e1000_filter_info *filter_info =
+		E1000_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+
+	filter_info->twotuple_mask &= ~(1 << filter->index);
+	TAILQ_REMOVE(&filter_info->twotuple_list, filter, entries);
+	rte_free(filter);
+
+	E1000_WRITE_REG(hw, E1000_TTQF(filter->index), E1000_TTQF_DISABLE_MASK);
+	E1000_WRITE_REG(hw, E1000_IMIR(filter->index), 0);
+	E1000_WRITE_REG(hw, E1000_IMIREXT(filter->index), 0);
+	return 0;
+}
+
 /*
  * igb_remove_2tuple_filter - remove a 2tuple filter
  *
@@ -3865,7 +3886,6 @@ static int
 igb_remove_2tuple_filter(struct rte_eth_dev *dev,
 			struct rte_eth_ntuple_filter *ntuple_filter)
 {
-	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct e1000_filter_info *filter_info =
 		E1000_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
 	struct e1000_2tuple_filter_info filter_2tuple;
@@ -3885,13 +3905,8 @@ igb_remove_2tuple_filter(struct rte_eth_dev *dev,
 		return -ENOENT;
 	}
 
-	filter_info->twotuple_mask &= ~(1 << filter->index);
-	TAILQ_REMOVE(&filter_info->twotuple_list, filter, entries);
-	rte_free(filter);
+	igb_delete_2tuple_filter(dev, filter);
 
-	E1000_WRITE_REG(hw, E1000_TTQF(filter->index), E1000_TTQF_DISABLE_MASK);
-	E1000_WRITE_REG(hw, E1000_IMIR(filter->index), 0);
-	E1000_WRITE_REG(hw, E1000_IMIREXT(filter->index), 0);
 	return 0;
 }
 
@@ -3954,7 +3969,7 @@ eth_igb_flex_filter_lookup(struct e1000_flex_filter_list *filter_list,
  * dev: Pointer to struct rte_eth_dev.
  * filter: the pointer of the filter will be removed.
  */
-static void
+void
 igb_remove_flex_filter(struct rte_eth_dev *dev,
 			struct e1000_flex_filter *filter)
 {
@@ -4375,6 +4390,28 @@ igb_add_5tuple_filter_82576(struct rte_eth_dev *dev,
 	return 0;
 }
 
+int
+igb_delete_5tuple_filter_82576(struct rte_eth_dev *dev,
+				struct e1000_5tuple_filter *filter)
+{
+	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct e1000_filter_info *filter_info =
+		E1000_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
+
+	filter_info->fivetuple_mask &= ~(1 << filter->index);
+	TAILQ_REMOVE(&filter_info->fivetuple_list, filter, entries);
+	rte_free(filter);
+
+	E1000_WRITE_REG(hw, E1000_FTQF(filter->index),
+			E1000_FTQF_VF_BP | E1000_FTQF_MASK);
+	E1000_WRITE_REG(hw, E1000_DAQF(filter->index), 0);
+	E1000_WRITE_REG(hw, E1000_SAQF(filter->index), 0);
+	E1000_WRITE_REG(hw, E1000_SPQF(filter->index), 0);
+	E1000_WRITE_REG(hw, E1000_IMIR(filter->index), 0);
+	E1000_WRITE_REG(hw, E1000_IMIREXT(filter->index), 0);
+	return 0;
+}
+
 /*
  * igb_remove_5tuple_filter_82576 - remove a 5tuple filter
  *
@@ -4390,7 +4427,6 @@ static int
 igb_remove_5tuple_filter_82576(struct rte_eth_dev *dev,
 				struct rte_eth_ntuple_filter *ntuple_filter)
 {
-	struct e1000_hw *hw = E1000_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct e1000_filter_info *filter_info =
 		E1000_DEV_PRIVATE_TO_FILTER_INFO(dev->data->dev_private);
 	struct e1000_5tuple_filter_info filter_5tuple;
@@ -4410,17 +4446,8 @@ igb_remove_5tuple_filter_82576(struct rte_eth_dev *dev,
 		return -ENOENT;
 	}
 
-	filter_info->fivetuple_mask &= ~(1 << filter->index);
-	TAILQ_REMOVE(&filter_info->fivetuple_list, filter, entries);
-	rte_free(filter);
+	igb_delete_5tuple_filter_82576(dev, filter);
 
-	E1000_WRITE_REG(hw, E1000_FTQF(filter->index),
-			E1000_FTQF_VF_BP | E1000_FTQF_MASK);
-	E1000_WRITE_REG(hw, E1000_DAQF(filter->index), 0);
-	E1000_WRITE_REG(hw, E1000_SAQF(filter->index), 0);
-	E1000_WRITE_REG(hw, E1000_SPQF(filter->index), 0);
-	E1000_WRITE_REG(hw, E1000_IMIR(filter->index), 0);
-	E1000_WRITE_REG(hw, E1000_IMIREXT(filter->index), 0);
 	return 0;
 }
 
@@ -4676,7 +4703,7 @@ igb_ethertype_filter_insert(struct e1000_filter_info *filter_info,
 	return -1;
 }
 
-static int
+int
 igb_ethertype_filter_remove(struct e1000_filter_info *filter_info,
 			uint8_t idx)
 {

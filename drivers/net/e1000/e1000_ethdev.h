@@ -479,6 +479,15 @@ void em_txq_info_get(struct rte_eth_dev *dev, uint16_t queue_id,
 
 void igb_pf_host_uninit(struct rte_eth_dev *dev);
 
+void igb_filterlist_flush(struct rte_eth_dev *dev);
+int igb_delete_5tuple_filter_82576(struct rte_eth_dev *dev,
+		struct e1000_5tuple_filter *filter);
+int igb_delete_2tuple_filter(struct rte_eth_dev *dev,
+		struct e1000_2tuple_filter *filter);
+void igb_remove_flex_filter(struct rte_eth_dev *dev,
+			struct e1000_flex_filter *filter);
+int igb_ethertype_filter_remove(struct e1000_filter_info *filter_info,
+	uint8_t idx);
 int igb_add_del_ntuple_filter(struct rte_eth_dev *dev,
 		struct rte_eth_ntuple_filter *ntuple_filter, bool add);
 int igb_add_del_ethertype_filter(struct rte_eth_dev *dev,
