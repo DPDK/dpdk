@@ -209,9 +209,9 @@ enum szedata2_mac_check_mode {
 };
 
 /*
- * Structure describes CGMII IBUF address space
+ * Structure describes IBUF address space
  */
-struct szedata2_cgmii_ibuf {
+struct szedata2_ibuf {
 	/** Total Received Frames Counter low part */
 	uint32_t trfcl;
 	/** Correct Frames Counter low part */
@@ -248,8 +248,8 @@ struct szedata2_cgmii_ibuf {
 	uint32_t oroch;
 } __rte_packed;
 
-/* Offset of CGMII IBUF memory for MAC addresses */
-#define SZEDATA2_CGMII_IBUF_MAC_MEM_OFF 0x80
+/* Offset of IBUF memory for MAC addresses */
+#define SZEDATA2_IBUF_MAC_MEM_OFF 0x80
 
 /*
  * @return
@@ -257,7 +257,7 @@ struct szedata2_cgmii_ibuf {
  *     false if IBUF is disabled
  */
 static inline bool
-cgmii_ibuf_is_enabled(volatile struct szedata2_cgmii_ibuf *ibuf)
+ibuf_is_enabled(volatile struct szedata2_ibuf *ibuf)
 {
 	return ((rte_le_to_cpu_32(ibuf->ibuf_en) & 0x1) != 0) ? true : false;
 }
@@ -266,7 +266,7 @@ cgmii_ibuf_is_enabled(volatile struct szedata2_cgmii_ibuf *ibuf)
  * Enables IBUF.
  */
 static inline void
-cgmii_ibuf_enable(volatile struct szedata2_cgmii_ibuf *ibuf)
+ibuf_enable(volatile struct szedata2_ibuf *ibuf)
 {
 	ibuf->ibuf_en =
 		rte_cpu_to_le_32(rte_le_to_cpu_32(ibuf->ibuf_en) | 0x1);
@@ -276,7 +276,7 @@ cgmii_ibuf_enable(volatile struct szedata2_cgmii_ibuf *ibuf)
  * Disables IBUF.
  */
 static inline void
-cgmii_ibuf_disable(volatile struct szedata2_cgmii_ibuf *ibuf)
+ibuf_disable(volatile struct szedata2_ibuf *ibuf)
 {
 	ibuf->ibuf_en =
 		rte_cpu_to_le_32(rte_le_to_cpu_32(ibuf->ibuf_en) & ~0x1);
@@ -288,7 +288,7 @@ cgmii_ibuf_disable(volatile struct szedata2_cgmii_ibuf *ibuf)
  *     false if ibuf link is down
  */
 static inline bool
-cgmii_ibuf_is_link_up(volatile struct szedata2_cgmii_ibuf *ibuf)
+ibuf_is_link_up(volatile struct szedata2_ibuf *ibuf)
 {
 	return ((rte_le_to_cpu_32(ibuf->ibuf_st) & 0x80) != 0) ? true : false;
 }
@@ -298,7 +298,7 @@ cgmii_ibuf_is_link_up(volatile struct szedata2_cgmii_ibuf *ibuf)
  *     MAC address check mode
  */
 static inline enum szedata2_mac_check_mode
-cgmii_ibuf_mac_mode_read(volatile struct szedata2_cgmii_ibuf *ibuf)
+ibuf_mac_mode_read(volatile struct szedata2_ibuf *ibuf)
 {
 	switch (rte_le_to_cpu_32(ibuf->mac_chmode) & 0x3) {
 	case 0x0:
@@ -318,7 +318,7 @@ cgmii_ibuf_mac_mode_read(volatile struct szedata2_cgmii_ibuf *ibuf)
  * Writes "mode" in MAC address check mode register.
  */
 static inline void
-cgmii_ibuf_mac_mode_write(volatile struct szedata2_cgmii_ibuf *ibuf,
+ibuf_mac_mode_write(volatile struct szedata2_ibuf *ibuf,
 		enum szedata2_mac_check_mode mode)
 {
 	ibuf->mac_chmode = rte_cpu_to_le_32(
@@ -326,9 +326,9 @@ cgmii_ibuf_mac_mode_write(volatile struct szedata2_cgmii_ibuf *ibuf,
 }
 
 /*
- * Structure describes CGMII OBUF address space
+ * Structure describes OBUF address space
  */
-struct szedata2_cgmii_obuf {
+struct szedata2_obuf {
 	/** Total Sent Frames Counter low part */
 	uint32_t tsfcl;
 	/** Octets Sent Counter low part */
@@ -361,7 +361,7 @@ struct szedata2_cgmii_obuf {
  *     false if OBUF is disabled
  */
 static inline bool
-cgmii_obuf_is_enabled(volatile struct szedata2_cgmii_obuf *obuf)
+obuf_is_enabled(volatile struct szedata2_obuf *obuf)
 {
 	return ((rte_le_to_cpu_32(obuf->obuf_en) & 0x1) != 0) ? true : false;
 }
@@ -370,7 +370,7 @@ cgmii_obuf_is_enabled(volatile struct szedata2_cgmii_obuf *obuf)
  * Enables OBUF.
  */
 static inline void
-cgmii_obuf_enable(volatile struct szedata2_cgmii_obuf *obuf)
+obuf_enable(volatile struct szedata2_obuf *obuf)
 {
 	obuf->obuf_en =
 		rte_cpu_to_le_32(rte_le_to_cpu_32(obuf->obuf_en) | 0x1);
@@ -380,7 +380,7 @@ cgmii_obuf_enable(volatile struct szedata2_cgmii_obuf *obuf)
  * Disables OBUF.
  */
 static inline void
-cgmii_obuf_disable(volatile struct szedata2_cgmii_obuf *obuf)
+obuf_disable(volatile struct szedata2_obuf *obuf)
 {
 	obuf->obuf_en =
 		rte_cpu_to_le_32(rte_le_to_cpu_32(obuf->obuf_en) & ~0x1);
@@ -393,7 +393,7 @@ cgmii_obuf_disable(volatile struct szedata2_cgmii_obuf *obuf)
  * @return Link speed constant.
  */
 static inline enum szedata2_link_speed
-cgmii_link_speed(volatile struct szedata2_cgmii_ibuf *ibuf)
+get_link_speed(volatile struct szedata2_ibuf *ibuf)
 {
 	uint32_t speed = (rte_le_to_cpu_32(ibuf->ibuf_st) & 0x70) >> 4;
 	switch (speed) {
@@ -426,22 +426,22 @@ cgmii_link_speed(volatile struct szedata2_cgmii_ibuf *ibuf)
 #elif RTE_LIBRTE_PMD_SZEDATA2_AS == 0
 
 /*
- * CGMII IBUF offset from the beginning of PCI resource address space.
+ * IBUF offset from the beginning of PCI resource address space.
  */
-#define SZEDATA2_CGMII_IBUF_BASE_OFF 0x8000
+#define SZEDATA2_IBUF_BASE_OFF 0x8000
 /*
- * Size of CGMII IBUF.
+ * Size of IBUF.
  */
-#define SZEDATA2_CGMII_IBUF_SIZE 0x200
+#define SZEDATA2_IBUF_SIZE 0x200
 
 /*
- * GCMII OBUF offset from the beginning of PCI resource address space.
+ * OBUF offset from the beginning of PCI resource address space.
  */
-#define SZEDATA2_CGMII_OBUF_BASE_OFF 0x9000
+#define SZEDATA2_OBUF_BASE_OFF 0x9000
 /*
- * Size of CGMII OBUF.
+ * Size of OBUF.
  */
-#define SZEDATA2_CGMII_OBUF_SIZE 0x100
+#define SZEDATA2_OBUF_SIZE 0x100
 
 #else
 #error "RTE_LIBRTE_PMD_SZEDATA2_AS has wrong value, see comments in config file"
