@@ -330,6 +330,26 @@ Supported NICs
 * Mellanox(R) ConnectX(R)-5 100G MCX556A-ECAT (2x100G)
 * Mellanox(R) ConnectX(R)-5 Ex EN 100G MCX516A-CDAT (2x100G)
 
+Known issues
+------------
+
+* **Flow pattern without any specific vlan will match for vlan packets as well.**
+
+  When VLAN spec is not specified in the pattern, the matching rule will be created with VLAN as a wild card.
+  Meaning, the flow rule::
+
+        flow create 0 ingress pattern eth / vlan vid is 3 / ipv4 / end ...
+
+  Will only match vlan packets with vid=3. and the flow rules::
+
+        flow create 0 ingress pattern eth / ipv4 / end ...
+
+  Or::
+
+        flow create 0 ingress pattern eth / vlan / ipv4 / end ...
+
+  Will match any ipv4 packet (VLAN included).
+
 Notes for testpmd
 -----------------
 
