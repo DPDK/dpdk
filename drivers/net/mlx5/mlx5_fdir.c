@@ -144,6 +144,7 @@ fdir_filter_to_flow_desc(const struct rte_eth_fdir_filter *fdir_filter,
 	case RTE_ETH_FLOW_NONFRAG_IPV4_TCP:
 		desc->src_port = fdir_filter->input.flow.udp4_flow.src_port;
 		desc->dst_port = fdir_filter->input.flow.udp4_flow.dst_port;
+		/* fallthrough */
 	case RTE_ETH_FLOW_NONFRAG_IPV4_OTHER:
 		desc->src_ip[0] = fdir_filter->input.flow.ip4_flow.src_ip;
 		desc->dst_ip[0] = fdir_filter->input.flow.ip4_flow.dst_ip;
