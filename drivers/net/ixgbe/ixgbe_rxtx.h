@@ -87,6 +87,10 @@
 #define IXGBE_PACKET_TYPE_MASK_TUNNEL       0XFF
 #define IXGBE_PACKET_TYPE_TUNNEL_BIT        0X1000
 
+#define IXGBE_PACKET_TYPE_MAX               0X80
+#define IXGBE_PACKET_TYPE_TN_MAX            0X100
+#define IXGBE_PACKET_TYPE_SHIFT             0X04
+
 /**
  * Structure associated with each descriptor of the RX ring of a RX queue.
  */
@@ -308,6 +312,9 @@ uint16_t ixgbe_recv_scattered_pkts_vec(void *rx_queue,
 int ixgbe_rx_vec_dev_conf_condition_check(struct rte_eth_dev *dev);
 int ixgbe_rxq_vec_setup(struct ixgbe_rx_queue *rxq);
 void ixgbe_rx_queue_release_mbufs_vec(struct ixgbe_rx_queue *rxq);
+
+extern const uint32_t ptype_table[IXGBE_PACKET_TYPE_MAX];
+extern const uint32_t ptype_table_tn[IXGBE_PACKET_TYPE_TN_MAX];
 
 #ifdef RTE_IXGBE_INC_VECTOR
 
