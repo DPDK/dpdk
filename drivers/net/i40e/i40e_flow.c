@@ -2354,8 +2354,8 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 	uint16_t ether_type;
 	int ret;
 
-	memset(off_arr, 0, I40E_MAX_FLXPLD_FIED);
-	memset(len_arr, 0, I40E_MAX_FLXPLD_FIED);
+	memset(off_arr, 0, sizeof(off_arr));
+	memset(len_arr, 0, sizeof(len_arr));
 	memset(flex_mask, 0, I40E_FDIR_MAX_FLEX_LEN);
 	outer_tpid = i40e_get_outer_vlan(dev);
 	for (; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
