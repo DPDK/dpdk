@@ -476,13 +476,13 @@ rte_hash_crc_set_alg(uint8_t alg)
 	case CRC32_SSE42_x64:
 		if (! rte_cpu_get_flag_enabled(RTE_CPUFLAG_EM64T))
 			alg = CRC32_SSE42;
-#if __GNUC__ >= 7
+#if __GNUC__ >= 7 && !defined(RTE_TOOLCHAIN_ICC)
 		__attribute__ ((fallthrough));
 #endif
 	case CRC32_SSE42:
 		if (! rte_cpu_get_flag_enabled(RTE_CPUFLAG_SSE4_2))
 			alg = CRC32_SW;
-#if __GNUC__ >= 7
+#if __GNUC__ >= 7 && !defined(RTE_TOOLCHAIN_ICC)
 		__attribute__ ((fallthrough));
 #endif
 #endif
