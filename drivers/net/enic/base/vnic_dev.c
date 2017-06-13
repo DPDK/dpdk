@@ -752,7 +752,7 @@ int vnic_dev_soft_reset_done(struct vnic_dev *vdev, int *done)
 
 int vnic_dev_get_mac_addr(struct vnic_dev *vdev, u8 *mac_addr)
 {
-	u64 a0, a1 = 0;
+	u64 a0 = 0, a1 = 0;
 	int wait = 1000;
 	int err, i;
 
@@ -1129,7 +1129,7 @@ int vnic_dev_set_mac_addr(struct vnic_dev *vdev, u8 *mac_addr)
 int vnic_dev_classifier(struct vnic_dev *vdev, u8 cmd, u16 *entry,
 	struct filter_v2 *data, struct filter_action_v2 *action_v2)
 {
-	u64 a0, a1;
+	u64 a0 = 0, a1 = 0;
 	int wait = 1000;
 	dma_addr_t tlv_pa;
 	int ret = -EINVAL;
