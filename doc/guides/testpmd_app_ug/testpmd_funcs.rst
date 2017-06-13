@@ -2613,6 +2613,10 @@ This section lists supported pattern items and their attributes, if any.
 
   - ``protocol {unsigned}``: protocol type.
 
+- ``fuzzy``: fuzzy pattern match, expect faster than default.
+
+  - ``thresh {unsigned}``: accuracy threshold.
+
 Actions list
 ^^^^^^^^^^^^
 

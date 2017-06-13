@@ -297,6 +297,18 @@ enum rte_flow_item_type {
 	 * See struct rte_flow_item_gre.
 	 */
 	RTE_FLOW_ITEM_TYPE_GRE,
+
+	/**
+	 * [META]
+	 *
+	 * Fuzzy pattern match, expect faster than default.
+	 *
+	 * This is for device that support fuzzy matching option.
+	 * Usually a fuzzy matching is fast but the cost is accuracy.
+	 *
+	 * See struct rte_flow_item_fuzzy.
+	 */
+	RTE_FLOW_ITEM_TYPE_FUZZY,
 };
 
 /**
@@ -691,6 +703,31 @@ struct rte_flow_item_gre {
 #ifndef __cplusplus
 static const struct rte_flow_item_gre rte_flow_item_gre_mask = {
 	.protocol = RTE_BE16(0xffff),
+};
+#endif
+
+/**
+ * RTE_FLOW_ITEM_TYPE_FUZZY
+ *
+ * Fuzzy pattern match, expect faster than default.
+ *
+ * This is for device that support fuzzy match option.
+ * Usually a fuzzy match is fast but the cost is accuracy.
+ * i.e. Signature Match only match pattern's hash value, but it is
+ * possible two different patterns have the same hash value.
+ *
+ * Matching accuracy level can be configure by threshold.
+ * Driver can divide the range of threshold and map to different
+ * accuracy levels that device support.
+ */
+struct rte_flow_item_fuzzy {
+	uint32_t thresh; /**< Accuracy threshold*/
+};
+
+/** Default mask for RTE_FLOW_ITEM_TYPE_FUZZY. */
+#ifndef __cplusplus
+static const struct rte_flow_item_fuzzy rte_flow_item_fuzzy_mask = {
+	.thresh = 0xffffffff,
 };
 #endif
 

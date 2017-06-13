@@ -946,6 +946,7 @@ static const struct {
 	MK_FLOW_ITEM(NVGRE, sizeof(struct rte_flow_item_nvgre)),
 	MK_FLOW_ITEM(MPLS, sizeof(struct rte_flow_item_mpls)),
 	MK_FLOW_ITEM(GRE, sizeof(struct rte_flow_item_gre)),
+	MK_FLOW_ITEM(FUZZY, sizeof(struct rte_flow_item_fuzzy)),
 };
 
 /** Compute storage space needed by item specification. */

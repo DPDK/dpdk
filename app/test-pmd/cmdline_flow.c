@@ -169,6 +169,8 @@ enum index {
 	ITEM_MPLS_LABEL,
 	ITEM_GRE,
 	ITEM_GRE_PROTO,
+	ITEM_FUZZY,
+	ITEM_FUZZY_THRESH,
 
 	/* Validate/create actions. */
 	ACTIONS,
@@ -449,6 +451,13 @@ static const enum index next_item[] = {
 	ITEM_NVGRE,
 	ITEM_MPLS,
 	ITEM_GRE,
+	ITEM_FUZZY,
+	ZERO,
+};
+
+static const enum index item_fuzzy[] = {
+	ITEM_FUZZY_THRESH,
+	ITEM_NEXT,
 	ZERO,
 };
 
@@ -1398,6 +1407,22 @@ static const struct token token_list[] = {
 		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_gre,
 					     protocol)),
 	},
+	[ITEM_FUZZY] = {
+		.name = "fuzzy",
+		.help = "fuzzy pattern match, expect faster than default",
+		.priv = PRIV_ITEM(FUZZY,
+				sizeof(struct rte_flow_item_fuzzy)),
+		.next = NEXT(item_fuzzy),
+		.call = parse_vc,
+	},
+	[ITEM_FUZZY_THRESH] = {
+		.name = "thresh",
+		.help = "match accuracy threshold",
+		.next = NEXT(item_fuzzy, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_fuzzy,
+					thresh)),
+	},
+
 	/* Validate/create actions. */
 	[ACTIONS] = {
 		.name = "actions",
