@@ -41,6 +41,16 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **Added support for generic flow API (rte_flow) on igb NIC.**
+
+  This API provides a generic means to configure hardware to match specific
+  ingress or egress traffic, alter its behavior and query related counters
+  according to any number of user-defined rules.
+
+  * Generic flow API support for Ethernet, IPv4, UDP, TCP and
+    RAW pattern items with QUEUE actions. There are four
+    type of filter support for this feature on igb.
+
 * **Added Generic Flow API support to enic.**
 
   Flow API support for outer Ethernet, VLAN, IPv4, IPv6, UDP, TCP, SCTP, VxLAN
