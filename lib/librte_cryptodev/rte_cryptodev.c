@@ -781,8 +781,8 @@ rte_cryptodev_stop(uint8_t dev_id)
 		return;
 	}
 
-	dev->data->dev_started = 0;
 	(*dev->dev_ops->dev_stop)(dev);
+	dev->data->dev_started = 0;
 }
 
 int
