@@ -504,7 +504,14 @@ main(int argc, char **argv)
 				ctx[cdev_id], lcore_id);
 			i++;
 		}
-		rte_eal_mp_wait_lcore();
+		i = 0;
+		RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+
+			if (i == nb_cryptodevs)
+				break;
+			rte_eal_wait_lcore(lcore_id);
+			i++;
+		}
 
 		/* Get next size from range or list */
 		if (opts.inc_buffer_size != 0)
