@@ -6209,6 +6209,15 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 
 		eth_dev->device->driver = &mlx4_driver.driver;
 
+		/*
+		 * Copy and override interrupt handle to prevent it from
+		 * being shared between all ethdev instances of a given PCI
+		 * device. This is required to properly handle Rx interrupts
+		 * on all ports.
+		 */
+		priv->intr_handle_dev = *eth_dev->intr_handle;
+		eth_dev->intr_handle = &priv->intr_handle_dev;
+
 		priv->dev = eth_dev;
 		eth_dev->dev_ops = &mlx4_dev_ops;
 

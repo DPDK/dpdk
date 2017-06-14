@@ -345,6 +345,7 @@ struct priv {
 	unsigned int txqs_n; /* TX queues array size. */
 	struct rxq *(*rxqs)[]; /* RX queues. */
 	struct txq *(*txqs)[]; /* TX queues. */
+	struct rte_intr_handle intr_handle_dev; /* Device interrupt handler. */
 	struct rte_intr_handle intr_handle; /* Interrupt handler. */
 	struct rte_flow_drop *flow_drop_queue; /* Flow drop queue. */
 	LIST_HEAD(mlx4_flows, rte_flow) flows;
