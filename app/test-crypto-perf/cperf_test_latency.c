@@ -579,6 +579,7 @@ cperf_latency_test_destructor(void *arg)
 	if (ctx == NULL)
 		return;
 
-	cperf_latency_test_free(ctx, ctx->options->pool_sz);
+	rte_cryptodev_stop(ctx->dev_id);
 
+	cperf_latency_test_free(ctx, ctx->options->pool_sz);
 }
