@@ -5640,7 +5640,7 @@ priv_dev_removal_interrupt_handler_install(struct priv *priv,
  * Fill epoll fd list for rxq interrupts.
  *
  * @param priv
- *   Poinetr to private structure.
+ *   Pointer to private structure.
  *
  * @return
  *   0 on success, negative on failure.
@@ -5685,7 +5685,7 @@ priv_intr_efd_enable(struct priv *priv)
  * Clean epoll fd list for rxq interrupts.
  *
  * @param priv
- *   Ponter to private structure.
+ *   Pointer to private structure.
  */
 static void
 priv_intr_efd_disable(struct priv *priv)
