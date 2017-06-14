@@ -1448,7 +1448,7 @@ mlx5_rx_intr_enable(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 	ret = ibv_req_notify_cq(cq, 0);
 	if (ret)
 		WARN("unable to arm interrupt on rx queue %d", rx_queue_id);
-	return ret;
+	return -ret;
 }
 
 /**
