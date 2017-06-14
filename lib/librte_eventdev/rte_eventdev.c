@@ -426,8 +426,9 @@ rte_event_dev_configure(uint8_t dev_id,
 					dev_id);
 		return -EINVAL;
 	}
-	if (dev_conf->nb_event_port_dequeue_depth >
-			 info.max_event_port_dequeue_depth) {
+	if ((info.event_dev_cap & RTE_EVENT_DEV_CAP_BURST_MODE) &&
+		 (dev_conf->nb_event_port_dequeue_depth >
+			 info.max_event_port_dequeue_depth)) {
 		RTE_EDEV_LOG_ERR("dev%d nb_dq_depth=%d > max_dq_depth=%d",
 		dev_id, dev_conf->nb_event_port_dequeue_depth,
 		info.max_event_port_dequeue_depth);
@@ -440,8 +441,9 @@ rte_event_dev_configure(uint8_t dev_id,
 					dev_id);
 		return -EINVAL;
 	}
-	if (dev_conf->nb_event_port_enqueue_depth >
-			 info.max_event_port_enqueue_depth) {
+	if ((info.event_dev_cap & RTE_EVENT_DEV_CAP_BURST_MODE) &&
+		(dev_conf->nb_event_port_enqueue_depth >
+			 info.max_event_port_enqueue_depth)) {
 		RTE_EDEV_LOG_ERR("dev%d nb_enq_depth=%d > max_enq_depth=%d",
 		dev_id, dev_conf->nb_event_port_enqueue_depth,
 		info.max_event_port_enqueue_depth);

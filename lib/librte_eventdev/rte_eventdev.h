@@ -274,6 +274,14 @@ struct rte_mbuf; /* we just use mbuf pointers; no need to include rte_mbuf.h */
  *
  * @see RTE_EVENT_QUEUE_CFG_* values
  */
+#define RTE_EVENT_DEV_CAP_BURST_MODE          (1ULL << 4)
+/**< Event device is capable of operating in burst mode for enqueue(forward,
+ * release) and dequeue operation. If this capability is not set, application
+ * still uses the rte_event_dequeue_burst() and rte_event_enqueue_burst() but
+ * PMD accepts only one event at a time.
+ *
+ * @see rte_event_dequeue_burst() rte_event_enqueue_burst()
+ */
 
 /* Event device priority levels */
 #define RTE_EVENT_DEV_PRIORITY_HIGHEST   0
@@ -433,14 +441,16 @@ struct rte_event_dev_config {
 	/**< Maximum number of events can be dequeued at a time from an
 	 * event port by this device.
 	 * This value cannot exceed the *max_event_port_dequeue_depth*
-	 * which previously provided in rte_event_dev_info_get()
+	 * which previously provided in rte_event_dev_info_get().
+	 * Ignored when device is not RTE_EVENT_DEV_CAP_BURST_MODE capable.
 	 * @see rte_event_port_setup()
 	 */
 	uint32_t nb_event_port_enqueue_depth;
 	/**< Maximum number of events can be enqueued at a time from an
 	 * event port by this device.
 	 * This value cannot exceed the *max_event_port_enqueue_depth*
-	 * which previously provided in rte_event_dev_info_get()
+	 * which previously provided in rte_event_dev_info_get().
+	 * Ignored when device is not RTE_EVENT_DEV_CAP_BURST_MODE capable.
 	 * @see rte_event_port_setup()
 	 */
 	uint32_t event_dev_cfg;
@@ -642,12 +652,14 @@ struct rte_event_port_conf {
 	uint16_t dequeue_depth;
 	/**< Configure number of bulk dequeues for this event port.
 	 * This value cannot exceed the *nb_event_port_dequeue_depth*
-	 * which previously supplied to rte_event_dev_configure()
+	 * which previously supplied to rte_event_dev_configure().
+	 * Ignored when device is not RTE_EVENT_DEV_CAP_BURST_MODE capable.
 	 */
 	uint16_t enqueue_depth;
 	/**< Configure number of bulk enqueues for this event port.
 	 * This value cannot exceed the *nb_event_port_enqueue_depth*
-	 * which previously supplied to rte_event_dev_configure()
+	 * which previously supplied to rte_event_dev_configure().
+	 * Ignored when device is not RTE_EVENT_DEV_CAP_BURST_MODE capable.
 	 */
 };
 
