@@ -1421,6 +1421,8 @@ priv_destroy_intr_vec(struct priv *priv)
 	rte_free(intr_handle->intr_vec);
 }
 
+#ifdef HAVE_UPDATE_CQ_CI
+
 /**
  * DPDK callback for rx queue interrupt enable.
  *
@@ -1435,7 +1437,6 @@ priv_destroy_intr_vec(struct priv *priv)
 int
 mlx5_rx_intr_enable(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
-#ifdef HAVE_UPDATE_CQ_CI
 	struct priv *priv = mlx5_get_priv(dev);
 	struct rxq *rxq = (*priv->rxqs)[rx_queue_id];
 	struct rxq_ctrl *rxq_ctrl = container_of(rxq, struct rxq_ctrl, rxq);
@@ -1445,11 +1446,6 @@ mlx5_rx_intr_enable(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 
 	ibv_mlx5_exp_update_cq_ci(cq, ci);
 	ret = ibv_req_notify_cq(cq, 0);
-#else
-	int ret = -1;
-	(void)dev;
-	(void)rx_queue_id;
-#endif
 	if (ret)
 		WARN("unable to arm interrupt on rx queue %d", rx_queue_id);
 	return ret;
@@ -1469,7 +1465,6 @@ mlx5_rx_intr_enable(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 int
 mlx5_rx_intr_disable(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
-#ifdef HAVE_UPDATE_CQ_CI
 	struct priv *priv = mlx5_get_priv(dev);
 	struct rxq *rxq = (*priv->rxqs)[rx_queue_id];
 	struct rxq_ctrl *rxq_ctrl = container_of(rxq, struct rxq_ctrl, rxq);
@@ -1483,13 +1478,10 @@ mlx5_rx_intr_disable(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 		ret = -1;
 	else
 		ibv_ack_cq_events(cq, 1);
-#else
-	int ret = -1;
-	(void)dev;
-	(void)rx_queue_id;
-#endif
 	if (ret)
 		WARN("unable to disable interrupt on rx queue %d",
 		     rx_queue_id);
 	return ret;
 }
+
+#endif /* HAVE_UPDATE_CQ_CI */

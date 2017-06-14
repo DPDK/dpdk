@@ -311,8 +311,10 @@ int priv_intr_efd_enable(struct priv *priv);
 void priv_intr_efd_disable(struct priv *priv);
 int priv_create_intr_vec(struct priv *priv);
 void priv_destroy_intr_vec(struct priv *priv);
+#ifdef HAVE_UPDATE_CQ_CI
 int mlx5_rx_intr_enable(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 int mlx5_rx_intr_disable(struct rte_eth_dev *dev, uint16_t rx_queue_id);
+#endif /* HAVE_UPDATE_CQ_CI */
 
 /* mlx5_txq.c */
 
