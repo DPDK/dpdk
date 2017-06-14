@@ -2264,7 +2264,8 @@ Flow rules management
 ---------------------
 
 Control of the generic flow API (*rte_flow*) is fully exposed through the
-``flow`` command (validation, creation, destruction and queries).
+``flow`` command (validation, creation, destruction, queries and operation
+modes).
 
 Considering *rte_flow* overlaps with all `Filter Functions`_, using both
 features simultaneously may cause undefined side-effects and is therefore
@@ -2317,6 +2318,10 @@ following sections.
   identifiers::
 
    flow list {port_id} [group {group_id}] [...]
+
+- Restrict ingress traffic to the defined flow rules::
+
+   flow isolate {port_id} {boolean}
 
 Validating flow rules
 ~~~~~~~~~~~~~~~~~~~~~
@@ -2894,6 +2899,46 @@ Output can be limited to specific groups::
    7       63      0       i-      ETH IPV6 UDP VXLAN => MARK QUEUE
    testpmd>
 
+Toggling isolated mode
+~~~~~~~~~~~~~~~~~~~~~~
+
+``flow isolate`` can be used to tell the underlying PMD that ingress traffic
+must only be injected from the defined flow rules; that no default traffic
+is expected outside those rules and the driver is free to assign more
+resources to handle them. It is bound to ``rte_flow_isolate()``::
+
+ flow isolate {port_id} {boolean}
+
+If successful, enabling or disabling isolated mode shows either::
+
+ Ingress traffic on port [...]
+    is now restricted to the defined flow rules
+
+Or::
+
+ Ingress traffic on port [...]
+    is not restricted anymore to the defined flow rules
+
+Otherwise, in case of error::
+
+   Caught error type [...] ([...]): [...]
+
+Mainly due to its side effects, PMDs supporting this mode may not have the
+ability to toggle it more than once without reinitializing affected ports
+first (e.g. by exiting testpmd).
+
+Enabling isolated mode::
+
+ testpmd> flow isolate 0 true
+ Ingress traffic on port 0 is now restricted to the defined flow rules
+ testpmd>
+
+Disabling isolated mode::
+
+ testpmd> flow isolate 0 false
+ Ingress traffic on port 0 is not restricted anymore to the defined flow rules
+ testpmd>
+
 Sample QinQ flow rules
 ~~~~~~~~~~~~~~~~~~~~~~
 
@@ -2942,4 +2987,3 @@ Validate and create a QinQ rule on port 0 to steer traffic to a queue on the hos
    ID      Group   Prio    Attr    Rule
    0       0       0       i-      ETH VLAN VLAN=>VF QUEUE
    1       0       0       i-      ETH VLAN VLAN=>PF QUEUE
-

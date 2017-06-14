@@ -120,6 +120,11 @@ struct rte_flow_ops {
 		 enum rte_flow_action_type,
 		 void *,
 		 struct rte_flow_error *);
+	/** See rte_flow_isolate(). */
+	int (*isolate)
+		(struct rte_eth_dev *,
+		 int,
+		 struct rte_flow_error *);
 };
 
 /**

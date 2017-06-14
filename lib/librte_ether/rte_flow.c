@@ -157,3 +157,21 @@ rte_flow_query(uint8_t port_id,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				   NULL, rte_strerror(ENOSYS));
 }
+
+/* Restrict ingress traffic to the defined flow rules. */
+int
+rte_flow_isolate(uint8_t port_id,
+		 int set,
+		 struct rte_flow_error *error)
+{
+	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
+	const struct rte_flow_ops *ops = rte_flow_ops_get(port_id, error);
+
+	if (!ops)
+		return -rte_errno;
+	if (likely(!!ops->isolate))
+		return ops->isolate(dev, set, error);
+	return -rte_flow_error_set(error, ENOSYS,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL, rte_strerror(ENOSYS));
+}

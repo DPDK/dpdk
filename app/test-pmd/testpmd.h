@@ -543,6 +543,7 @@ int port_flow_flush(portid_t port_id);
 int port_flow_query(portid_t port_id, uint32_t rule,
 		    enum rte_flow_action_type action);
 void port_flow_list(portid_t port_id, uint32_t n, const uint32_t *group);
+int port_flow_isolate(portid_t port_id, int set);
 
 void rx_ring_desc_display(portid_t port_id, queueid_t rxq_id, uint16_t rxd_id);
 void tx_ring_desc_display(portid_t port_id, queueid_t txq_id, uint16_t txd_id);

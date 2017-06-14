@@ -1191,6 +1191,50 @@ rte_flow_query(uint8_t port_id,
 	       void *data,
 	       struct rte_flow_error *error);
 
+/**
+ * Restrict ingress traffic to the defined flow rules.
+ *
+ * Isolated mode guarantees that all ingress traffic comes from defined flow
+ * rules only (current and future).
+ *
+ * Besides making ingress more deterministic, it allows PMDs to safely reuse
+ * resources otherwise assigned to handle the remaining traffic, such as
+ * global RSS configuration settings, VLAN filters, MAC address entries,
+ * legacy filter API rules and so on in order to expand the set of possible
+ * flow rule types.
+ *
+ * Calling this function as soon as possible after device initialization,
+ * ideally before the first call to rte_eth_dev_configure(), is recommended
+ * to avoid possible failures due to conflicting settings.
+ *
+ * Once effective, leaving isolated mode may not be possible depending on
+ * PMD implementation.
+ *
+ * Additionally, the following functionality has no effect on the underlying
+ * port and may return errors such as ENOTSUP ("not supported"):
+ *
+ * - Toggling promiscuous mode.
+ * - Toggling allmulticast mode.
+ * - Configuring MAC addresses.
+ * - Configuring multicast addresses.
+ * - Configuring VLAN filters.
+ * - Configuring Rx filters through the legacy API (e.g. FDIR).
+ * - Configuring global RSS settings.
+ *
+ * @param port_id
+ *   Port identifier of Ethernet device.
+ * @param set
+ *   Nonzero to enter isolated mode, attempt to leave it otherwise.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. PMDs initialize this
+ *   structure in case of error only.
+ *
+ * @return
+ *   0 on success, a negative errno value otherwise and rte_errno is set.
+ */
+int
+rte_flow_isolate(uint8_t port_id, int set, struct rte_flow_error *error);
+
 #ifdef __cplusplus
 }
 #endif

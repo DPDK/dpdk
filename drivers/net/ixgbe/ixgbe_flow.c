@@ -2897,9 +2897,8 @@ ixgbe_flow_flush(struct rte_eth_dev *dev,
 }
 
 const struct rte_flow_ops ixgbe_flow_ops = {
-	ixgbe_flow_validate,
-	ixgbe_flow_create,
-	ixgbe_flow_destroy,
-	ixgbe_flow_flush,
-	NULL,
+	.validate = ixgbe_flow_validate,
+	.create = ixgbe_flow_create,
+	.destroy = ixgbe_flow_destroy,
+	.flush = ixgbe_flow_flush,
 };

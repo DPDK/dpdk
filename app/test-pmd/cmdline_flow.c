@@ -80,6 +80,7 @@ enum index {
 	FLUSH,
 	QUERY,
 	LIST,
+	ISOLATE,
 
 	/* Destroy arguments. */
 	DESTROY_RULE,
@@ -366,6 +367,9 @@ struct buffer {
 			uint32_t *group;
 			uint32_t group_n;
 		} list; /**< List arguments. */
+		struct {
+			int set;
+		} isolate; /**< Isolated mode arguments. */
 	} args; /**< Command arguments. */
 };
 
@@ -651,6 +655,9 @@ static int parse_action(struct context *, const struct token *,
 static int parse_list(struct context *, const struct token *,
 		      const char *, unsigned int,
 		      void *, unsigned int);
+static int parse_isolate(struct context *, const struct token *,
+			 const char *, unsigned int,
+			 void *, unsigned int);
 static int parse_int(struct context *, const struct token *,
 		     const char *, unsigned int,
 		     void *, unsigned int);
@@ -797,7 +804,8 @@ static const struct token token_list[] = {
 			      DESTROY,
 			      FLUSH,
 			      LIST,
-			      QUERY)),
+			      QUERY,
+			      ISOLATE)),
 		.call = parse_init,
 	},
 	/* Sub-level commands. */
@@ -846,6 +854,15 @@ static const struct token token_list[] = {
 		.next = NEXT(next_list_attr, NEXT_ENTRY(PORT_ID)),
 		.args = ARGS(ARGS_ENTRY(struct buffer, port)),
 		.call = parse_list,
+	},
+	[ISOLATE] = {
+		.name = "isolate",
+		.help = "restrict ingress traffic to the defined flow rules",
+		.next = NEXT(NEXT_ENTRY(BOOLEAN),
+			     NEXT_ENTRY(PORT_ID)),
+		.args = ARGS(ARGS_ENTRY(struct buffer, args.isolate.set),
+			     ARGS_ENTRY(struct buffer, port)),
+		.call = parse_isolate,
 	},
 	/* Destroy arguments. */
 	[DESTROY_RULE] = {
@@ -2096,6 +2113,33 @@ parse_list(struct context *ctx, const struct token *token,
 	return len;
 }
 
+/** Parse tokens for isolate command. */
+static int
+parse_isolate(struct context *ctx, const struct token *token,
+	      const char *str, unsigned int len,
+	      void *buf, unsigned int size)
+{
+	struct buffer *out = buf;
+
+	/* Token name must match. */
+	if (parse_default(ctx, token, str, len, NULL, 0) < 0)
+		return -1;
+	/* Nothing else to do if there is no buffer. */
+	if (!out)
+		return len;
+	if (!out->command) {
+		if (ctx->curr != ISOLATE)
+			return -1;
+		if (sizeof(*out) > size)
+			return -1;
+		out->command = ctx->curr;
+		ctx->objdata = 0;
+		ctx->object = out;
+		ctx->objmask = NULL;
+	}
+	return len;
+}
+
 /**
  * Parse signed/unsigned integers 8 to 64-bit long.
  *
@@ -2794,6 +2838,9 @@ cmd_flow_parsed(const struct buffer *in)
 	case LIST:
 		port_flow_list(in->port, in->args.list.group_n,
 			       in->args.list.group);
+		break;
+	case ISOLATE:
+		port_flow_isolate(in->port, in->args.isolate.set);
 		break;
 	default:
 		break;

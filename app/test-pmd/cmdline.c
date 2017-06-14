@@ -906,6 +906,10 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"flow list {port_id} [group {group_id}] [...]\n"
 			"    List existing flow rules sorted by priority,"
 			" filtered by group identifiers.\n\n"
+
+			"flow isolate {port_id} {boolean}\n"
+			"    Restrict ingress traffic to the defined"
+			" flow rules\n\n"
 		);
 	}
 }

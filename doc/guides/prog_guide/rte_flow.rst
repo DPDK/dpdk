@@ -1517,6 +1517,73 @@ Return values:
 
 - 0 on success, a negative errno value otherwise and ``rte_errno`` is set.
 
+Isolated mode
+-------------
+
+The general expectation for ingress traffic is that flow rules process it
+first; the remaining unmatched or pass-through traffic usually ends up in a
+queue (with or without RSS, locally or in some sub-device instance)
+depending on the global configuration settings of a port.
+
+While fine from a compatibility standpoint, this approach makes drivers more
+complex as they have to check for possible side effects outside of this API
+when creating or destroying flow rules. It results in a more limited set of
+available rule types due to the way device resources are assigned (e.g. no
+support for the RSS action even on capable hardware).
+
+Given that nonspecific traffic can be handled by flow rules as well,
+isolated mode is a means for applications to tell a driver that ingress on
+the underlying port must be injected from the defined flow rules only; that
+no default traffic is expected outside those rules.
+
+This has the following benefits:
+
+- Applications get finer-grained control over the kind of traffic they want
+  to receive (no traffic by default).
+
+- More importantly they control at what point nonspecific traffic is handled
+  relative to other flow rules, by adjusting priority levels.
+
+- Drivers can assign more hardware resources to flow rules and expand the
+  set of supported rule types.
+
+Because toggling isolated mode may cause profound changes to the ingress
+processing path of a driver, it may not be possible to leave it once
+entered. Likewise, existing flow rules or global configuration settings may
+prevent a driver from entering isolated mode.
+
+Applications relying on this mode are therefore encouraged to toggle it as
+soon as possible after device initialization, ideally before the first call
+to ``rte_eth_dev_configure()`` to avoid possible failures due to conflicting
+settings.
+
+Once effective, the following functionality has no effect on the underlying
+port and may return errors such as ``ENOTSUP`` ("not supported"):
+
+- Toggling promiscuous mode.
+- Toggling allmulticast mode.
+- Configuring MAC addresses.
+- Configuring multicast addresses.
+- Configuring VLAN filters.
+- Configuring Rx filters through the legacy API (e.g. FDIR).
+- Configuring global RSS settings.
+
+.. code-block:: c
+
+   int
+   rte_flow_isolate(uint8_t port_id, int set, struct rte_flow_error *error);
+
+Arguments:
+
+- ``port_id``: port identifier of Ethernet device.
+- ``set``: nonzero to enter isolated mode, attempt to leave it otherwise.
+- ``error``: perform verbose error reporting if not NULL. PMDs initialize
+  this structure in case of error only.
+
+Return values:
+
+- 0 on success, a negative errno value otherwise and ``rte_errno`` is set.
+
 Verbose error reporting
 -----------------------
 

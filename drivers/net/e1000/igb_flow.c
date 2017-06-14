@@ -1673,9 +1673,8 @@ igb_flow_flush(struct rte_eth_dev *dev,
 }
 
 const struct rte_flow_ops igb_flow_ops = {
-	igb_flow_validate,
-	igb_flow_create,
-	igb_flow_destroy,
-	igb_flow_flush,
-	NULL,
+	.validate = igb_flow_validate,
+	.create = igb_flow_create,
+	.destroy = igb_flow_destroy,
+	.flush = igb_flow_flush,
 };

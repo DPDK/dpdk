@@ -1411,6 +1411,22 @@ port_flow_list(portid_t port_id, uint32_t n, const uint32_t group[n])
 	}
 }
 
+/** Restrict ingress traffic to the defined flow rules. */
+int
+port_flow_isolate(portid_t port_id, int set)
+{
+	struct rte_flow_error error;
+
+	/* Poisoning to make sure PMDs update it in case of error. */
+	memset(&error, 0x66, sizeof(error));
+	if (rte_flow_isolate(port_id, set, &error))
+		return port_flow_complain(&error);
+	printf("Ingress traffic on port %u is %s to the defined flow rules\n",
+	       port_id,
+	       set ? "now restricted" : "not restricted anymore");
+	return 0;
+}
+
 /*
  * RX/TX ring descriptors display functions.
  */
