@@ -1420,3 +1420,76 @@ priv_destroy_intr_vec(struct priv *priv)
 
 	rte_free(intr_handle->intr_vec);
 }
+
+/**
+ * DPDK callback for rx queue interrupt enable.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param rx_queue_id
+ *   RX queue number.
+ *
+ * @return
+ *   0 on success, negative on failure.
+ */
+int
+mlx5_rx_intr_enable(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+#ifdef HAVE_UPDATE_CQ_CI
+	struct priv *priv = mlx5_get_priv(dev);
+	struct rxq *rxq = (*priv->rxqs)[rx_queue_id];
+	struct rxq_ctrl *rxq_ctrl = container_of(rxq, struct rxq_ctrl, rxq);
+	struct ibv_cq *cq = rxq_ctrl->cq;
+	uint16_t ci = rxq->cq_ci;
+	int ret = 0;
+
+	ibv_mlx5_exp_update_cq_ci(cq, ci);
+	ret = ibv_req_notify_cq(cq, 0);
+#else
+	int ret = -1;
+	(void)dev;
+	(void)rx_queue_id;
+#endif
+	if (ret)
+		WARN("unable to arm interrupt on rx queue %d", rx_queue_id);
+	return ret;
+}
+
+/**
+ * DPDK callback for rx queue interrupt disable.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param rx_queue_id
+ *   RX queue number.
+ *
+ * @return
+ *   0 on success, negative on failure.
+ */
+int
+mlx5_rx_intr_disable(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+#ifdef HAVE_UPDATE_CQ_CI
+	struct priv *priv = mlx5_get_priv(dev);
+	struct rxq *rxq = (*priv->rxqs)[rx_queue_id];
+	struct rxq_ctrl *rxq_ctrl = container_of(rxq, struct rxq_ctrl, rxq);
+	struct ibv_cq *cq = rxq_ctrl->cq;
+	struct ibv_cq *ev_cq;
+	void *ev_ctx;
+	int ret = 0;
+
+	ret = ibv_get_cq_event(cq->channel, &ev_cq, &ev_ctx);
+	if (ret || ev_cq != cq)
+		ret = -1;
+	else
+		ibv_ack_cq_events(cq, 1);
+#else
+	int ret = -1;
+	(void)dev;
+	(void)rx_queue_id;
+#endif
+	if (ret)
+		WARN("unable to disable interrupt on rx queue %d",
+		     rx_queue_id);
+	return ret;
+}

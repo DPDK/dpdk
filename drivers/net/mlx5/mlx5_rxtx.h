@@ -298,10 +298,6 @@ int priv_create_hash_rxqs(struct priv *);
 void priv_destroy_hash_rxqs(struct priv *);
 int priv_allow_flow_type(struct priv *, enum hash_rxq_flow_type);
 int priv_rehash_flows(struct priv *);
-int priv_intr_efd_enable(struct priv *priv);
-void priv_intr_efd_disable(struct priv *priv);
-int priv_create_intr_vec(struct priv *priv);
-void priv_destroy_intr_vec(struct priv *priv);
 void rxq_cleanup(struct rxq_ctrl *);
 int rxq_rehash(struct rte_eth_dev *, struct rxq_ctrl *);
 int rxq_ctrl_setup(struct rte_eth_dev *, struct rxq_ctrl *, uint16_t,
@@ -311,6 +307,12 @@ int mlx5_rx_queue_setup(struct rte_eth_dev *, uint16_t, uint16_t, unsigned int,
 			const struct rte_eth_rxconf *, struct rte_mempool *);
 void mlx5_rx_queue_release(void *);
 uint16_t mlx5_rx_burst_secondary_setup(void *, struct rte_mbuf **, uint16_t);
+int priv_intr_efd_enable(struct priv *priv);
+void priv_intr_efd_disable(struct priv *priv);
+int priv_create_intr_vec(struct priv *priv);
+void priv_destroy_intr_vec(struct priv *priv);
+int mlx5_rx_intr_enable(struct rte_eth_dev *dev, uint16_t rx_queue_id);
+int mlx5_rx_intr_disable(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 
 /* mlx5_txq.c */
 
@@ -333,8 +335,6 @@ uint16_t removed_tx_burst(void *, struct rte_mbuf **, uint16_t);
 uint16_t removed_rx_burst(void *, struct rte_mbuf **, uint16_t);
 int mlx5_rx_descriptor_status(void *, uint16_t);
 int mlx5_tx_descriptor_status(void *, uint16_t);
-int mlx5_rx_intr_enable(struct rte_eth_dev *dev, uint16_t rx_queue_id);
-int mlx5_rx_intr_disable(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 
 /* mlx5_mr.c */
 
