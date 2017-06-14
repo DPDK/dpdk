@@ -307,10 +307,8 @@ int mlx5_rx_queue_setup(struct rte_eth_dev *, uint16_t, uint16_t, unsigned int,
 			const struct rte_eth_rxconf *, struct rte_mempool *);
 void mlx5_rx_queue_release(void *);
 uint16_t mlx5_rx_burst_secondary_setup(void *, struct rte_mbuf **, uint16_t);
-int priv_intr_efd_enable(struct priv *priv);
-void priv_intr_efd_disable(struct priv *priv);
-int priv_create_intr_vec(struct priv *priv);
-void priv_destroy_intr_vec(struct priv *priv);
+int priv_rx_intr_vec_enable(struct priv *priv);
+void priv_rx_intr_vec_disable(struct priv *priv);
 #ifdef HAVE_UPDATE_CQ_CI
 int mlx5_rx_intr_enable(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 int mlx5_rx_intr_disable(struct rte_eth_dev *dev, uint16_t rx_queue_id);
