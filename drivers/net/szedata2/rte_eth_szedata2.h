@@ -38,6 +38,8 @@
 
 #include <libsze2.h>
 
+#include <rte_common.h>
+
 /* PCI Vendor ID */
 #define PCI_VENDOR_ID_NETCOPE 0x1b26
 
@@ -58,7 +60,7 @@
  * Round 'what' to the nearest larger (or equal) multiple of '8'
  * (szedata2 packet is aligned to 8 bytes)
  */
-#define RTE_SZE2_ALIGN8(what) (((what) + ((8) - 1)) & (~((8) - 1)))
+#define RTE_SZE2_ALIGN8(what) RTE_ALIGN(what, 8)
 
 /*! main handle structure */
 struct szedata {
