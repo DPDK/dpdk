@@ -734,7 +734,7 @@ vmxnet3_setup_driver_shared(struct rte_eth_dev *dev)
 	vmxnet3_dev_vlan_offload_set(dev,
 				     ETH_VLAN_STRIP_MASK | ETH_VLAN_FILTER_MASK);
 
-	vmxnet3_write_mac(hw, hw->perm_addr);
+	vmxnet3_write_mac(hw, dev->data->mac_addrs->addr_bytes);
 
 	return VMXNET3_SUCCESS;
 }
