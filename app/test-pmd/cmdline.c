@@ -281,18 +281,15 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"set tx loopback (port_id) (on|off)\n"
 			"    Enable or disable tx loopback.\n\n"
 
-#ifdef RTE_LIBRTE_IXGBE_PMD
 			"set all queues drop (port_id) (on|off)\n"
 			"    Set drop enable bit for all queues.\n\n"
 
 			"set vf split drop (port_id) (vf_id) (on|off)\n"
 			"    Set split drop enable bit for a VF from the PF.\n\n"
-#endif
 
 			"set vf mac antispoof (port_id) (vf_id) (on|off).\n"
 			"    Set MAC antispoof for a VF from the PF.\n\n"
 
-#ifdef RTE_LIBRTE_IXGBE_PMD
 			"set macsec offload (port_id) on encrypt (on|off) replay-protect (on|off)\n"
 			"    Enable MACsec offload.\n\n"
 
@@ -304,7 +301,6 @@ static void cmd_help_long_parsed(void *parsed_result,
 
 			"set macsec sa (tx|rx) (port_id) (idx) (an) (pn) (key)\n"
 			"    Configure MACsec secure association (SA).\n\n"
-#endif
 
 			"set vf broadcast (port_id) (vf_id) (on|off)\n"
 			"    Set VF broadcast for a VF from the PF.\n\n"
@@ -6742,7 +6738,6 @@ cmdline_parse_inst_t cmd_set_vf_macvlan_filter = {
 	},
 };
 
-#ifdef RTE_LIBRTE_IXGBE_PMD
 /* *** CONFIGURE VF TRAFFIC CONTROL *** */
 struct cmd_set_vf_traffic {
 	cmdline_fixed_string_t set;
@@ -6803,7 +6798,6 @@ cmdline_parse_inst_t cmd_set_vf_traffic = {
 		NULL,
 	},
 };
-#endif /* RTE_LIBRTE_IXGBE_PMD */
 
 /* *** CONFIGURE VF RECEIVE MODE *** */
 struct cmd_set_vf_rxmode {
@@ -11583,7 +11577,6 @@ cmdline_parse_inst_t cmd_set_all_queues_drop_en = {
 	},
 };
 
-#ifdef RTE_LIBRTE_IXGBE_PMD
 /* vf split drop enable configuration */
 
 /* Common result structure for vf split drop enable */
@@ -11634,14 +11627,16 @@ cmd_set_vf_split_drop_en_parsed(
 	__attribute__((unused)) void *data)
 {
 	struct cmd_vf_split_drop_en_result *res = parsed_result;
-	int ret;
+	int ret = -ENOTSUP;
 	int is_on = (strcmp(res->on_off, "on") == 0) ? 1 : 0;
 
 	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
 		return;
 
+#ifdef RTE_LIBRTE_IXGBE_PMD
 	ret = rte_pmd_ixgbe_set_vf_split_drop_en(res->port_id, res->vf_id,
 			is_on);
+#endif
 	switch (ret) {
 	case 0:
 		break;
@@ -11650,6 +11645,9 @@ cmd_set_vf_split_drop_en_parsed(
 		break;
 	case -ENODEV:
 		printf("invalid port_id %d\n", res->port_id);
+		break;
+	case -ENOTSUP:
+		printf("not supported on port %d\n", res->port_id);
 		break;
 	default:
 		printf("programming error: (%s)\n", strerror(-ret));
@@ -11671,7 +11669,6 @@ cmdline_parse_inst_t cmd_set_vf_split_drop_en = {
 		NULL,
 	},
 };
-#endif
 
 /* vf mac address configuration */
 
@@ -11777,7 +11774,6 @@ cmdline_parse_inst_t cmd_set_vf_mac_addr = {
 	},
 };
 
-#ifdef RTE_LIBRTE_IXGBE_PMD
 /* MACsec configuration */
 
 /* Common result structure for MACsec offload enable */
@@ -11838,7 +11834,7 @@ cmd_set_macsec_offload_on_parsed(
 	__attribute__((unused)) void *data)
 {
 	struct cmd_macsec_offload_on_result *res = parsed_result;
-	int ret;
+	int ret = -ENOTSUP;
 	portid_t port_id = res->port_id;
 	int en = (strcmp(res->en_on_off, "on") == 0) ? 1 : 0;
 	int rp = (strcmp(res->rp_on_off, "on") == 0) ? 1 : 0;
@@ -11847,13 +11843,20 @@ cmd_set_macsec_offload_on_parsed(
 		return;
 
 	ports[port_id].tx_ol_flags |= TESTPMD_TX_OFFLOAD_MACSEC;
+#ifdef RTE_LIBRTE_IXGBE_PMD
 	ret = rte_pmd_ixgbe_macsec_enable(port_id, en, rp);
+#endif
+	RTE_SET_USED(en);
+	RTE_SET_USED(rp);
 
 	switch (ret) {
 	case 0:
 		break;
 	case -ENODEV:
 		printf("invalid port_id %d\n", port_id);
+		break;
+	case -ENOTSUP:
+		printf("not supported on port %d\n", port_id);
 		break;
 	default:
 		printf("programming error: (%s)\n", strerror(-ret));
@@ -11917,20 +11920,25 @@ cmd_set_macsec_offload_off_parsed(
 	__attribute__((unused)) void *data)
 {
 	struct cmd_macsec_offload_off_result *res = parsed_result;
-	int ret;
+	int ret = -ENOTSUP;
 	portid_t port_id = res->port_id;
 
 	if (port_id_is_invalid(port_id, ENABLED_WARN))
 		return;
 
 	ports[port_id].tx_ol_flags &= ~TESTPMD_TX_OFFLOAD_MACSEC;
+#ifdef RTE_LIBRTE_IXGBE_PMD
 	ret = rte_pmd_ixgbe_macsec_disable(port_id);
+#endif
 
 	switch (ret) {
 	case 0:
 		break;
 	case -ENODEV:
 		printf("invalid port_id %d\n", port_id);
+		break;
+	case -ENOTSUP:
+		printf("not supported on port %d\n", port_id);
 		break;
 	default:
 		printf("programming error: (%s)\n", strerror(-ret));
@@ -11999,19 +12007,26 @@ cmd_set_macsec_sc_parsed(
 	__attribute__((unused)) void *data)
 {
 	struct cmd_macsec_sc_result *res = parsed_result;
-	int ret;
+	int ret = -ENOTSUP;
 	int is_tx = (strcmp(res->tx_rx, "tx") == 0) ? 1 : 0;
 
+#ifdef RTE_LIBRTE_IXGBE_PMD
 	ret = is_tx ?
 		rte_pmd_ixgbe_macsec_config_txsc(res->port_id,
 				res->mac.addr_bytes) :
 		rte_pmd_ixgbe_macsec_config_rxsc(res->port_id,
 				res->mac.addr_bytes, res->pi);
+#endif
+	RTE_SET_USED(is_tx);
+
 	switch (ret) {
 	case 0:
 		break;
 	case -ENODEV:
 		printf("invalid port_id %d\n", res->port_id);
+		break;
+	case -ENOTSUP:
+		printf("not supported on port %d\n", res->port_id);
 		break;
 	default:
 		printf("programming error: (%s)\n", strerror(-ret));
@@ -12092,7 +12107,7 @@ cmd_set_macsec_sa_parsed(
 	__attribute__((unused)) void *data)
 {
 	struct cmd_macsec_sa_result *res = parsed_result;
-	int ret;
+	int ret = -ENOTSUP;
 	int is_tx = (strcmp(res->tx_rx, "tx") == 0) ? 1 : 0;
 	uint8_t key[16] = { 0 };
 	uint8_t xdgt0;
@@ -12114,11 +12129,16 @@ cmd_set_macsec_sa_parsed(
 		key[i] = (uint8_t) ((xdgt0 * 16) + xdgt1);
 	}
 
+#ifdef RTE_LIBRTE_IXGBE_PMD
 	ret = is_tx ?
 		rte_pmd_ixgbe_macsec_select_txsa(res->port_id,
 			res->idx, res->an, res->pn, key) :
 		rte_pmd_ixgbe_macsec_select_rxsa(res->port_id,
 			res->idx, res->an, res->pn, key);
+#endif
+	RTE_SET_USED(is_tx);
+	RTE_SET_USED(key);
+
 	switch (ret) {
 	case 0:
 		break;
@@ -12127,6 +12147,9 @@ cmd_set_macsec_sa_parsed(
 		break;
 	case -ENODEV:
 		printf("invalid port_id %d\n", res->port_id);
+		break;
+	case -ENOTSUP:
+		printf("not supported on port %d\n", res->port_id);
 		break;
 	default:
 		printf("programming error: (%s)\n", strerror(-ret));
@@ -12150,7 +12173,6 @@ cmdline_parse_inst_t cmd_set_macsec_sa = {
 		NULL,
 	},
 };
-#endif
 
 /* VF unicast promiscuous mode configuration */
 
@@ -13805,7 +13827,6 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_set_vf_vlan_stripq,
 	(cmdline_parse_inst_t *)&cmd_set_vf_vlan_insert,
 	(cmdline_parse_inst_t *)&cmd_set_tx_loopback,
-#ifdef RTE_LIBRTE_IXGBE_PMD
 	(cmdline_parse_inst_t *)&cmd_set_all_queues_drop_en,
 	(cmdline_parse_inst_t *)&cmd_set_vf_split_drop_en,
 	(cmdline_parse_inst_t *)&cmd_set_macsec_offload_on,
@@ -13813,7 +13834,6 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_set_macsec_sc,
 	(cmdline_parse_inst_t *)&cmd_set_macsec_sa,
 	(cmdline_parse_inst_t *)&cmd_set_vf_traffic,
-#endif
 	(cmdline_parse_inst_t *)&cmd_set_vf_rxmode,
 	(cmdline_parse_inst_t *)&cmd_vf_rate_limit,
 	(cmdline_parse_inst_t *)&cmd_vf_rxvlan_filter,
