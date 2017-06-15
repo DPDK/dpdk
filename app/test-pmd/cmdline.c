@@ -6803,6 +6803,7 @@ cmdline_parse_inst_t cmd_set_vf_traffic = {
 		NULL,
 	},
 };
+#endif /* RTE_LIBRTE_IXGBE_PMD */
 
 /* *** CONFIGURE VF RECEIVE MODE *** */
 struct cmd_set_vf_rxmode {
@@ -6894,7 +6895,6 @@ cmdline_parse_inst_t cmd_set_vf_rxmode = {
 		NULL,
 	},
 };
-#endif
 
 /* *** ADD MAC ADDRESS FILTER FOR A VF OF A PORT *** */
 struct cmd_vf_mac_addr_result {
