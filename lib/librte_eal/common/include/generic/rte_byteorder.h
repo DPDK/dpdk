@@ -76,6 +76,20 @@
 #endif
 
 /*
+ * The following types should be used when handling values according to a
+ * specific byte ordering, which may differ from that of the host CPU.
+ *
+ * Libraries, public APIs and applications are encouraged to use them for
+ * documentation purposes.
+ */
+typedef uint16_t rte_be16_t; /**< 16-bit big-endian value. */
+typedef uint32_t rte_be32_t; /**< 32-bit big-endian value. */
+typedef uint64_t rte_be64_t; /**< 64-bit big-endian value. */
+typedef uint16_t rte_le16_t; /**< 16-bit little-endian value. */
+typedef uint32_t rte_le32_t; /**< 32-bit little-endian value. */
+typedef uint64_t rte_le64_t; /**< 64-bit little-endian value. */
+
+/*
  * An internal function to swap bytes in a 16-bit value.
  *
  * It is used by rte_bswap16() when the value is constant. Do not use
@@ -143,65 +157,65 @@ static uint64_t rte_bswap64(uint64_t x);
 /**
  * Convert a 16-bit value from CPU order to little endian.
  */
-static uint16_t rte_cpu_to_le_16(uint16_t x);
+static rte_le16_t rte_cpu_to_le_16(uint16_t x);
 
 /**
  * Convert a 32-bit value from CPU order to little endian.
  */
-static uint32_t rte_cpu_to_le_32(uint32_t x);
+static rte_le32_t rte_cpu_to_le_32(uint32_t x);
 
 /**
  * Convert a 64-bit value from CPU order to little endian.
  */
-static uint64_t rte_cpu_to_le_64(uint64_t x);
+static rte_le64_t rte_cpu_to_le_64(uint64_t x);
 
 
 /**
  * Convert a 16-bit value from CPU order to big endian.
  */
-static uint16_t rte_cpu_to_be_16(uint16_t x);
+static rte_be16_t rte_cpu_to_be_16(uint16_t x);
 
 /**
  * Convert a 32-bit value from CPU order to big endian.
  */
-static uint32_t rte_cpu_to_be_32(uint32_t x);
+static rte_be32_t rte_cpu_to_be_32(uint32_t x);
 
 /**
  * Convert a 64-bit value from CPU order to big endian.
  */
-static uint64_t rte_cpu_to_be_64(uint64_t x);
+static rte_be64_t rte_cpu_to_be_64(uint64_t x);
 
 
 /**
  * Convert a 16-bit value from little endian to CPU order.
  */
-static uint16_t rte_le_to_cpu_16(uint16_t x);
+static uint16_t rte_le_to_cpu_16(rte_le16_t x);
 
 /**
  * Convert a 32-bit value from little endian to CPU order.
  */
-static uint32_t rte_le_to_cpu_32(uint32_t x);
+static uint32_t rte_le_to_cpu_32(rte_le32_t x);
 
 /**
  * Convert a 64-bit value from little endian to CPU order.
  */
-static uint64_t rte_le_to_cpu_64(uint64_t x);
+static uint64_t rte_le_to_cpu_64(rte_le64_t x);
 
 
 /**
  * Convert a 16-bit value from big endian to CPU order.
  */
-static uint16_t rte_be_to_cpu_16(uint16_t x);
+static uint16_t rte_be_to_cpu_16(rte_be16_t x);
 
 /**
  * Convert a 32-bit value from big endian to CPU order.
  */
-static uint32_t rte_be_to_cpu_32(uint32_t x);
+static uint32_t rte_be_to_cpu_32(rte_be32_t x);
 
 /**
  * Convert a 64-bit value from big endian to CPU order.
  */
-static uint64_t rte_be_to_cpu_64(uint64_t x);
+static uint64_t rte_be_to_cpu_64(rte_be64_t x);
 
 #endif /* __DOXYGEN__ */
 
