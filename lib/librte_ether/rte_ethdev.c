@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2017 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -129,6 +129,7 @@ struct rte_eth_dev_callback {
 	TAILQ_ENTRY(rte_eth_dev_callback) next; /**< Callbacks list */
 	rte_eth_dev_cb_fn cb_fn;                /**< Callback address */
 	void *cb_arg;                           /**< Parameter for callback */
+	void *ret_param;                        /**< Return parameter */
 	enum rte_eth_event_type event;          /**< Interrupt event type */
 	uint32_t active;                        /**< Callback is executing */
 };
@@ -2717,12 +2718,13 @@ rte_eth_dev_callback_unregister(uint8_t port_id,
 	return ret;
 }
 
-void
+int
 _rte_eth_dev_callback_process(struct rte_eth_dev *dev,
-	enum rte_eth_event_type event, void *cb_arg)
+	enum rte_eth_event_type event, void *cb_arg, void *ret_param)
 {
 	struct rte_eth_dev_callback *cb_lst;
 	struct rte_eth_dev_callback dev_cb;
+	int rc = 0;
 
 	rte_spinlock_lock(&rte_eth_dev_cb_lock);
 	TAILQ_FOREACH(cb_lst, &(dev->link_intr_cbs), next) {
@@ -2732,14 +2734,17 @@ _rte_eth_dev_callback_process(struct rte_eth_dev *dev,
 		cb_lst->active = 1;
 		if (cb_arg != NULL)
 			dev_cb.cb_arg = cb_arg;
+		if (ret_param != NULL)
+			dev_cb.ret_param = ret_param;
 
 		rte_spinlock_unlock(&rte_eth_dev_cb_lock);
-		dev_cb.cb_fn(dev->data->port_id, dev_cb.event,
-						dev_cb.cb_arg);
+		rc = dev_cb.cb_fn(dev->data->port_id, dev_cb.event,
+				dev_cb.cb_arg, dev_cb.ret_param);
 		rte_spinlock_lock(&rte_eth_dev_cb_lock);
 		cb_lst->active = 0;
 	}
 	rte_spinlock_unlock(&rte_eth_dev_cb_lock);
+	return rc;
 }
 
 int

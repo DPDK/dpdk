@@ -1173,15 +1173,19 @@ test_adding_slave_after_bonded_device_started(void)
 int test_lsc_interrupt_count;
 
 
-static void
+static int
 test_bonding_lsc_event_callback(uint8_t port_id __rte_unused,
-		enum rte_eth_event_type type  __rte_unused, void *param __rte_unused)
+		enum rte_eth_event_type type  __rte_unused,
+		void *param __rte_unused,
+		void *ret_param __rte_unused)
 {
 	pthread_mutex_lock(&mutex);
 	test_lsc_interrupt_count++;
 
 	pthread_cond_signal(&cvar);
 	pthread_mutex_unlock(&mutex);
+
+	return 0;
 }
 
 static inline int

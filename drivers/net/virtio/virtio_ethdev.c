@@ -1229,7 +1229,8 @@ virtio_interrupt_handler(void *param)
 	if (isr & VIRTIO_PCI_ISR_CONFIG) {
 		if (virtio_dev_link_update(dev, 0) == 0)
 			_rte_eth_dev_callback_process(dev,
-						      RTE_ETH_EVENT_INTR_LSC, NULL);
+						      RTE_ETH_EVENT_INTR_LSC,
+						      NULL, NULL);
 	}
 
 }

@@ -1670,7 +1670,7 @@ eth_em_interrupt_handler(void *param)
 
 	eth_em_interrupt_get_status(dev);
 	eth_em_interrupt_action(dev, dev->intr_handle);
-	_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL);
+	_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL, NULL);
 }
 
 static int

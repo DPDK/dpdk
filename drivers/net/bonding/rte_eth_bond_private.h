@@ -260,9 +260,9 @@ void
 bond_ethdev_primary_set(struct bond_dev_private *internals,
 		uint8_t slave_port_id);
 
-void
+int
 bond_ethdev_lsc_event_callback(uint8_t port_id, enum rte_eth_event_type type,
-		void *param);
+		void *param, void *ret_param);
 
 int
 bond_ethdev_parse_slave_port_kvarg(const char *key,

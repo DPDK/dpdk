@@ -607,7 +607,8 @@ new_device(int vid)
 
 	RTE_LOG(INFO, PMD, "New connection established\n");
 
-	_rte_eth_dev_callback_process(eth_dev, RTE_ETH_EVENT_INTR_LSC, NULL);
+	_rte_eth_dev_callback_process(eth_dev, RTE_ETH_EVENT_INTR_LSC,
+				      NULL, NULL);
 
 	return 0;
 }
@@ -661,7 +662,8 @@ destroy_device(int vid)
 
 	RTE_LOG(INFO, PMD, "Connection closed\n");
 
-	_rte_eth_dev_callback_process(eth_dev, RTE_ETH_EVENT_INTR_LSC, NULL);
+	_rte_eth_dev_callback_process(eth_dev, RTE_ETH_EVENT_INTR_LSC,
+				      NULL, NULL);
 }
 
 static int
@@ -690,7 +692,8 @@ vring_state_changed(int vid, uint16_t vring, int enable)
 	RTE_LOG(INFO, PMD, "vring%u is %s\n",
 			vring, enable ? "enabled" : "disabled");
 
-	_rte_eth_dev_callback_process(eth_dev, RTE_ETH_EVENT_QUEUE_STATE, NULL);
+	_rte_eth_dev_callback_process(eth_dev, RTE_ETH_EVENT_QUEUE_STATE,
+				      NULL, NULL);
 
 	return 0;
 }

@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2017 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -3337,8 +3337,8 @@ enum rte_eth_event_type {
 	RTE_ETH_EVENT_MAX       /**< max value of this enum */
 };
 
-typedef void (*rte_eth_dev_cb_fn)(uint8_t port_id, \
-		enum rte_eth_event_type event, void *cb_arg);
+typedef int (*rte_eth_dev_cb_fn)(uint8_t port_id,
+		enum rte_eth_event_type event, void *cb_arg, void *ret_param);
 /**< user application callback to be registered for interrupts */
 
 
@@ -3354,11 +3354,6 @@ typedef void (*rte_eth_dev_cb_fn)(uint8_t port_id, \
  *  User supplied callback function to be called.
  * @param cb_arg
  *  Pointer to the parameters for the registered callback.
- *
- *  The user data is overwritten in the case of RTE_ETH_EVENT_VF_MBOX.
- *	This even occurs when a message from the VF is received by the PF.
- *	The user data is overwritten with struct rte_pmd_ixgbe_mb_event_param.
- *	This struct is defined in rte_pmd_ixgbe.h.
  *
  * @return
  *  - On success, zero.
@@ -3399,15 +3394,17 @@ int rte_eth_dev_callback_unregister(uint8_t port_id,
  * @param event
  *  Eth device interrupt event type.
  * @param cb_arg
- *  Update callback parameter to pass data back to user application.
+ *  callback parameter.
+ * @param ret_param
+ *  To pass data back to user application.
  *  This allows the user application to decide if a particular function
  *  is permitted or not.
  *
  * @return
- *  void
+ *  int
  */
-void _rte_eth_dev_callback_process(struct rte_eth_dev *dev,
-				enum rte_eth_event_type event, void *cb_arg);
+int _rte_eth_dev_callback_process(struct rte_eth_dev *dev,
+		enum rte_eth_event_type event, void *cb_arg, void *ret_param);
 
 /**
  * When there is no rx packet coming in Rx Queue for a long time, we can

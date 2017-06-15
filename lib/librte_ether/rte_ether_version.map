@@ -1,7 +1,6 @@
 DPDK_2.2 {
 	global:
 
-	_rte_eth_dev_callback_process;
 	rte_eth_add_rx_callback;
 	rte_eth_add_tx_callback;
 	rte_eth_allmulticast_disable;
@@ -152,6 +151,7 @@ DPDK_17.05 {
 DPDK_17.08 {
 	global:
 
+	_rte_eth_dev_callback_process;
 	rte_flow_isolate;
 
 } DPDK_17.05;

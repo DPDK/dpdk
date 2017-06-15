@@ -1231,7 +1231,7 @@ i40e_pf_host_handle_vf_msg(struct rte_eth_dev *dev,
 	struct i40e_pf_vf *vf;
 	/* AdminQ will pass absolute VF id, transfer to internal vf id */
 	uint16_t vf_id = abs_vf_id - hw->func_caps.vf_base_id;
-	struct rte_pmd_i40e_mb_event_param cb_param;
+	struct rte_pmd_i40e_mb_event_param ret_param;
 	bool b_op = TRUE;
 
 	if (vf_id > pf->vf_num - 1 || !pf->vfs) {
@@ -1251,22 +1251,23 @@ i40e_pf_host_handle_vf_msg(struct rte_eth_dev *dev,
 	 * initialise structure to send to user application
 	 * will return response from user in retval field
 	 */
-	cb_param.retval = RTE_PMD_I40E_MB_EVENT_PROCEED;
-	cb_param.vfid = vf_id;
-	cb_param.msg_type = opcode;
-	cb_param.msg = (void *)msg;
-	cb_param.msglen = msglen;
+	ret_param.retval = RTE_PMD_I40E_MB_EVENT_PROCEED;
+	ret_param.vfid = vf_id;
+	ret_param.msg_type = opcode;
+	ret_param.msg = (void *)msg;
+	ret_param.msglen = msglen;
 
 	/**
 	 * Ask user application if we're allowed to perform those functions.
-	 * If we get cb_param.retval == RTE_PMD_I40E_MB_EVENT_PROCEED,
+	 * If we get ret_param.retval == RTE_PMD_I40E_MB_EVENT_PROCEED,
 	 * then business as usual.
 	 * If RTE_PMD_I40E_MB_EVENT_NOOP_ACK or RTE_PMD_I40E_MB_EVENT_NOOP_NACK,
 	 * do nothing and send not_supported to VF. As PF must send a response
 	 * to VF and ACK/NACK is not defined.
 	 */
-	_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_VF_MBOX, &cb_param);
-	if (cb_param.retval != RTE_PMD_I40E_MB_EVENT_PROCEED) {
+	_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_VF_MBOX,
+				      NULL, &ret_param);
+	if (ret_param.retval != RTE_PMD_I40E_MB_EVENT_PROCEED) {
 		PMD_DRV_LOG(WARNING, "VF to PF message(%d) is not permitted!",
 			    opcode);
 		b_op = FALSE;

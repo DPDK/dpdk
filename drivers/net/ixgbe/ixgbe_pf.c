@@ -683,7 +683,7 @@ ixgbe_rcv_msg_from_vf(struct rte_eth_dev *dev, uint16_t vf)
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct ixgbe_vf_info *vfinfo =
 		*IXGBE_DEV_PRIVATE_TO_P_VFDATA(dev->data->dev_private);
-	struct rte_pmd_ixgbe_mb_event_param cb_param;
+	struct rte_pmd_ixgbe_mb_event_param ret_param;
 
 	retval = ixgbe_read_mbx(hw, msgbuf, mbx_size, vf);
 	if (retval) {
@@ -702,10 +702,10 @@ ixgbe_rcv_msg_from_vf(struct rte_eth_dev *dev, uint16_t vf)
 	 * initialise structure to send to user application
 	 * will return response from user in retval field
 	 */
-	cb_param.retval = RTE_PMD_IXGBE_MB_EVENT_PROCEED;
-	cb_param.vfid = vf;
-	cb_param.msg_type = msgbuf[0] & 0xFFFF;
-	cb_param.msg = (void *)msgbuf;
+	ret_param.retval = RTE_PMD_IXGBE_MB_EVENT_PROCEED;
+	ret_param.vfid = vf;
+	ret_param.msg_type = msgbuf[0] & 0xFFFF;
+	ret_param.msg = (void *)msgbuf;
 
 	/* perform VF reset */
 	if (msgbuf[0] == IXGBE_VF_RESET) {
@@ -714,20 +714,22 @@ ixgbe_rcv_msg_from_vf(struct rte_eth_dev *dev, uint16_t vf)
 		vfinfo[vf].clear_to_send = true;
 
 		/* notify application about VF reset */
-		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_VF_MBOX, &cb_param);
+		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_VF_MBOX,
+					      NULL, &ret_param);
 		return ret;
 	}
 
 	/**
 	 * ask user application if we allowed to perform those functions
-	 * if we get cb_param.retval == RTE_PMD_IXGBE_MB_EVENT_PROCEED
+	 * if we get ret_param.retval == RTE_PMD_IXGBE_MB_EVENT_PROCEED
 	 * then business as usual,
 	 * if 0, do nothing and send ACK to VF
-	 * if cb_param.retval > 1, do nothing and send NAK to VF
+	 * if ret_param.retval > 1, do nothing and send NAK to VF
 	 */
-	_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_VF_MBOX, &cb_param);
+	_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_VF_MBOX,
+				      NULL, &ret_param);
 
-	retval = cb_param.retval;
+	retval = ret_param.retval;
 
 	/* check & process VF to PF mailbox message */
 	switch ((msgbuf[0] & 0xFFFF)) {

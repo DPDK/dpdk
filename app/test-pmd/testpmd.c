@@ -381,9 +381,9 @@ uint8_t bitrate_enabled;
 /* Forward function declarations */
 static void map_port_queue_stats_mapping_registers(uint8_t pi, struct rte_port *port);
 static void check_all_ports_link_status(uint32_t port_mask);
-static void eth_event_callback(uint8_t port_id,
-			       enum rte_eth_event_type type,
-			       void *param);
+static int eth_event_callback(uint8_t port_id,
+			      enum rte_eth_event_type type,
+			      void *param, void *ret_param);
 
 /*
  * Check if all the ports are started.
@@ -1829,8 +1829,9 @@ rmv_event_callback(void *arg)
 }
 
 /* This function is used by the interrupt thread */
-static void
-eth_event_callback(uint8_t port_id, enum rte_eth_event_type type, void *param)
+static int
+eth_event_callback(uint8_t port_id, enum rte_eth_event_type type, void *param,
+		  void *ret_param)
 {
 	static const char * const event_desc[] = {
 		[RTE_ETH_EVENT_UNKNOWN] = "Unknown",
@@ -1844,6 +1845,7 @@ eth_event_callback(uint8_t port_id, enum rte_eth_event_type type, void *param)
 	};
 
 	RTE_SET_USED(param);
+	RTE_SET_USED(ret_param);
 
 	if (type >= RTE_ETH_EVENT_MAX) {
 		fprintf(stderr, "\nPort %" PRIu8 ": %s called upon invalid event %d\n",
@@ -1864,6 +1866,7 @@ eth_event_callback(uint8_t port_id, enum rte_eth_event_type type, void *param)
 	default:
 		break;
 	}
+	return 0;
 }
 
 static int

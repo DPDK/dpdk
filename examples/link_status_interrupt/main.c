@@ -469,14 +469,16 @@ lsi_parse_args(int argc, char **argv)
  *  Pointer to(address of) the parameters.
  *
  * @return
- *  void.
+ *  int.
  */
-static void
-lsi_event_callback(uint8_t port_id, enum rte_eth_event_type type, void *param)
+static int
+lsi_event_callback(uint8_t port_id, enum rte_eth_event_type type, void *param,
+		    void *ret_param)
 {
 	struct rte_eth_link link;
 
 	RTE_SET_USED(param);
+	RTE_SET_USED(ret_param);
 
 	printf("\n\nIn registered callback...\n");
 	printf("Event type: %s\n", type == RTE_ETH_EVENT_INTR_LSC ? "LSC interrupt" : "unknown event");
@@ -488,6 +490,8 @@ lsi_event_callback(uint8_t port_id, enum rte_eth_event_type type, void *param)
 				("full-duplex") : ("half-duplex"));
 	} else
 		printf("Port %d Link Down\n\n", port_id);
+
+	return 0;
 }
 
 /* Check the link status of all ports in up to 9s, and print them finally */

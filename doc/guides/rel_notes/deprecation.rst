@@ -34,10 +34,6 @@ Deprecation Notices
 * The struct ``rte_pci_driver`` is planned to be removed from
   ``rte_cryptodev_driver`` and ``rte_eventdev_driver`` in 17.08.
 
-* ethdev: An API change is planned for 17.08 for the function
-  ``_rte_eth_dev_callback_process``. In 17.08 the function will return an ``int``
-  instead of ``void`` and a fourth parameter ``void *ret_param`` will be added.
-
 * The mbuf flags PKT_RX_VLAN_PKT and PKT_RX_QINQ_PKT are deprecated and
   are respectively replaced by PKT_RX_VLAN_STRIPPED and
   PKT_RX_QINQ_STRIPPED, that are better described. The old flags and

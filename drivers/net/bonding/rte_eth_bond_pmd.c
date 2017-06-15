@@ -1438,7 +1438,8 @@ slave_configure(struct rte_eth_dev *bonded_eth_dev,
 	if (slave_eth_dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC) {
 		slave_eth_dev->dev_ops->link_update(slave_eth_dev, 0);
 		bond_ethdev_lsc_event_callback(slave_eth_dev->data->port_id,
-			RTE_ETH_EVENT_INTR_LSC, &bonded_eth_dev->data->port_id);
+			RTE_ETH_EVENT_INTR_LSC, &bonded_eth_dev->data->port_id,
+			NULL);
 	}
 
 	return 0;
@@ -1849,7 +1850,8 @@ bond_ethdev_slave_link_status_change_monitor(void *cb_arg)
 
 				bond_ethdev_lsc_event_callback(internals->slaves[i].port_id,
 						RTE_ETH_EVENT_INTR_LSC,
-						&bonded_ethdev->data->port_id);
+						&bonded_ethdev->data->port_id,
+						NULL);
 			}
 		}
 		rte_spinlock_unlock(&internals->lock);
@@ -1995,35 +1997,36 @@ bond_ethdev_delayed_lsc_propagation(void *arg)
 		return;
 
 	_rte_eth_dev_callback_process((struct rte_eth_dev *)arg,
-			RTE_ETH_EVENT_INTR_LSC, NULL);
+			RTE_ETH_EVENT_INTR_LSC, NULL, NULL);
 }
 
-void
+int
 bond_ethdev_lsc_event_callback(uint8_t port_id, enum rte_eth_event_type type,
-		void *param)
+		void *param, void *ret_param __rte_unused)
 {
 	struct rte_eth_dev *bonded_eth_dev, *slave_eth_dev;
 	struct bond_dev_private *internals;
 	struct rte_eth_link link;
+	int rc = -1;
 
 	int i, valid_slave = 0;
 	uint8_t active_pos;
 	uint8_t lsc_flag = 0;
 
 	if (type != RTE_ETH_EVENT_INTR_LSC || param == NULL)
-		return;
+		return rc;
 
 	bonded_eth_dev = &rte_eth_devices[*(uint8_t *)param];
 	slave_eth_dev = &rte_eth_devices[port_id];
 
 	if (check_for_bonded_ethdev(bonded_eth_dev))
-		return;
+		return rc;
 
 	internals = bonded_eth_dev->data->dev_private;
 
 	/* If the device isn't started don't handle interrupts */
 	if (!bonded_eth_dev->data->dev_started)
-		return;
+		return rc;
 
 	/* verify that port_id is a valid slave of bonded port */
 	for (i = 0; i < internals->slave_count; i++) {
@@ -2034,7 +2037,7 @@ bond_ethdev_lsc_event_callback(uint8_t port_id, enum rte_eth_event_type type,
 	}
 
 	if (!valid_slave)
-		return;
+		return rc;
 
 	/* Search for port in active port list */
 	active_pos = find_slave_by_id(internals->active_slaves,
@@ -2043,7 +2046,7 @@ bond_ethdev_lsc_event_callback(uint8_t port_id, enum rte_eth_event_type type,
 	rte_eth_link_get_nowait(port_id, &link);
 	if (link.link_status) {
 		if (active_pos < internals->active_slave_count)
-			return;
+			return rc;
 
 		/* if no active slave ports then set this port to be primary port */
 		if (internals->active_slave_count < 1) {
@@ -2065,7 +2068,7 @@ bond_ethdev_lsc_event_callback(uint8_t port_id, enum rte_eth_event_type type,
 				RTE_LOG(ERR, PMD,
 					"port %u invalid speed/duplex\n",
 					port_id);
-				return;
+				return rc;
 			}
 		}
 
@@ -2077,7 +2080,7 @@ bond_ethdev_lsc_event_callback(uint8_t port_id, enum rte_eth_event_type type,
 			bond_ethdev_primary_set(internals, port_id);
 	} else {
 		if (active_pos == internals->active_slave_count)
-			return;
+			return rc;
 
 		/* Remove from active slave list */
 		deactivate_slave(bonded_eth_dev, port_id);
@@ -2116,7 +2119,8 @@ bond_ethdev_lsc_event_callback(uint8_t port_id, enum rte_eth_event_type type,
 						(void *)bonded_eth_dev);
 			else
 				_rte_eth_dev_callback_process(bonded_eth_dev,
-						RTE_ETH_EVENT_INTR_LSC, NULL);
+						RTE_ETH_EVENT_INTR_LSC,
+						NULL, NULL);
 
 		} else {
 			if (internals->link_down_delay_ms > 0)
@@ -2125,9 +2129,11 @@ bond_ethdev_lsc_event_callback(uint8_t port_id, enum rte_eth_event_type type,
 						(void *)bonded_eth_dev);
 			else
 				_rte_eth_dev_callback_process(bonded_eth_dev,
-						RTE_ETH_EVENT_INTR_LSC, NULL);
+						RTE_ETH_EVENT_INTR_LSC,
+						NULL, NULL);
 		}
 	}
+	return 0;
 }
 
 static int
