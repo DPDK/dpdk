@@ -4564,7 +4564,7 @@ static void cmd_add_bonding_slave_parsed(void *parsed_result,
 	portid_t master_port_id = res->port_id;
 	portid_t slave_port_id = res->slave_id;
 
-	/* Set the primary slave for a bonded device. */
+	/* add the slave for a bonded device. */
 	if (0 != rte_eth_bond_slave_add(master_port_id, slave_port_id)) {
 		printf("\t Failed to add slave %d to master port = %d.\n",
 				slave_port_id, master_port_id);
@@ -4622,7 +4622,7 @@ static void cmd_remove_bonding_slave_parsed(void *parsed_result,
 	portid_t master_port_id = res->port_id;
 	portid_t slave_port_id = res->slave_id;
 
-	/* Set the primary slave for a bonded device. */
+	/* remove the slave from a bonded device. */
 	if (0 != rte_eth_bond_slave_remove(master_port_id, slave_port_id)) {
 		printf("\t Failed to remove slave %d from master port = %d.\n",
 				slave_port_id, master_port_id);
