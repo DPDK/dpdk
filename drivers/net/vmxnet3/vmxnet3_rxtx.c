@@ -800,6 +800,12 @@ vmxnet3_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 				   (int)(rcd - (struct Vmxnet3_RxCompDesc *)
 					 rxq->comp_ring.base), rcd->rxdIdx);
 			rte_pktmbuf_free_seg(rxm);
+			if (rxq->start_seg) {
+				struct rte_mbuf *start = rxq->start_seg;
+
+				rxq->start_seg = NULL;
+				rte_pktmbuf_free(start);
+			}
 			goto rcd_done;
 		}
 
