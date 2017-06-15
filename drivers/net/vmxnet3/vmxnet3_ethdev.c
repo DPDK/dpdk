@@ -83,6 +83,8 @@ static void vmxnet3_dev_promiscuous_enable(struct rte_eth_dev *dev);
 static void vmxnet3_dev_promiscuous_disable(struct rte_eth_dev *dev);
 static void vmxnet3_dev_allmulticast_enable(struct rte_eth_dev *dev);
 static void vmxnet3_dev_allmulticast_disable(struct rte_eth_dev *dev);
+static int __vmxnet3_dev_link_update(struct rte_eth_dev *dev,
+				     int wait_to_complete);
 static int vmxnet3_dev_link_update(struct rte_eth_dev *dev,
 				   int wait_to_complete);
 static void vmxnet3_hw_stats_save(struct vmxnet3_hw *hw);
@@ -102,10 +104,8 @@ static int vmxnet3_dev_vlan_filter_set(struct rte_eth_dev *dev,
 static void vmxnet3_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask);
 static void vmxnet3_mac_addr_set(struct rte_eth_dev *dev,
 				 struct ether_addr *mac_addr);
+static void vmxnet3_interrupt_handler(void *param);
 
-#if PROCESS_SYS_EVENTS == 1
-static void vmxnet3_process_events(struct vmxnet3_hw *);
-#endif
 /*
  * The set of PCI devices this driver supports
  */
@@ -250,8 +250,20 @@ vmxnet3_disable_intr(struct vmxnet3_hw *hw)
 	PMD_INIT_FUNC_TRACE();
 
 	hw->shared->devRead.intrConf.intrCtrl |= VMXNET3_IC_DISABLE_ALL;
-	for (i = 0; i < VMXNET3_MAX_INTRS; i++)
+	for (i = 0; i < hw->num_intrs; i++)
 		VMXNET3_WRITE_BAR0_REG(hw, VMXNET3_REG_IMR + i * 8, 1);
+}
+
+static void
+vmxnet3_enable_intr(struct vmxnet3_hw *hw)
+{
+	int i;
+
+	PMD_INIT_FUNC_TRACE();
+
+	hw->shared->devRead.intrConf.intrCtrl &= ~VMXNET3_IC_DISABLE_ALL;
+	for (i = 0; i < hw->num_intrs; i++)
+		VMXNET3_WRITE_BAR0_REG(hw, VMXNET3_REG_IMR + i * 8, 0);
 }
 
 /*
@@ -425,7 +437,7 @@ static int eth_vmxnet3_pci_remove(struct rte_pci_device *pci_dev)
 
 static struct rte_pci_driver rte_vmxnet3_pmd = {
 	.id_table = pci_id_vmxnet3_map,
-	.drv_flags = RTE_PCI_DRV_NEED_MAPPING,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
 	.probe = eth_vmxnet3_pci_probe,
 	.remove = eth_vmxnet3_pci_remove,
 };
@@ -648,11 +660,11 @@ vmxnet3_setup_driver_shared(struct rte_eth_dev *dev)
 
 	/*
 	 * Set number of interrupts to 1
-	 * PMD disables all the interrupts but this is MUST to activate device
-	 * It needs at least one interrupt for link events to handle
-	 * So we'll disable it later after device activation if needed
+	 * PMD by default disables all the interrupts but this is MUST
+	 * to activate device. It needs at least one interrupt for
+	 * link events to handle
 	 */
-	devRead->intrConf.numIntrs = 1;
+	hw->num_intrs = devRead->intrConf.numIntrs = 1;
 	devRead->intrConf.intrCtrl |= VMXNET3_IC_DISABLE_ALL;
 
 	for (i = 0; i < hw->num_tx_queues; i++) {
@@ -747,6 +759,20 @@ vmxnet3_dev_start(struct rte_eth_dev *dev)
 	if (ret != VMXNET3_SUCCESS)
 		return ret;
 
+	/* check if lsc interrupt feature is enabled */
+	if (dev->data->dev_conf.intr_conf.lsc) {
+		struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(dev->device);
+
+		/* Setup interrupt callback  */
+		rte_intr_callback_register(&pci_dev->intr_handle,
+					   vmxnet3_interrupt_handler, dev);
+
+		if (rte_intr_enable(&pci_dev->intr_handle) < 0) {
+			PMD_INIT_LOG(ERR, "interrupt enable failed");
+			return -EIO;
+		}
+	}
+
 	/* Exchange shared data with device */
 	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_DSAL,
 			       VMXNET3_GET_ADDR_LO(hw->sharedPA));
@@ -794,14 +820,19 @@ vmxnet3_dev_start(struct rte_eth_dev *dev)
 	/* Setting proper Rx Mode and issue Rx Mode Update command */
 	vmxnet3_dev_set_rxmode(hw, VMXNET3_RXM_UCAST | VMXNET3_RXM_BCAST, 1);
 
-	/*
-	 * Don't need to handle events for now
-	 */
-#if PROCESS_SYS_EVENTS == 1
-	events = VMXNET3_READ_BAR1_REG(hw, VMXNET3_REG_ECR);
-	PMD_INIT_LOG(DEBUG, "Reading events: 0x%X", events);
-	vmxnet3_process_events(hw);
-#endif
+	if (dev->data->dev_conf.intr_conf.lsc) {
+		vmxnet3_enable_intr(hw);
+
+		/*
+		 * Update link state from device since this won't be
+		 * done upon starting with lsc in use. This is done
+		 * only after enabling interrupts to avoid any race
+		 * where the link state could change without an
+		 * interrupt being fired.
+		 */
+		__vmxnet3_dev_link_update(dev, 0);
+	}
+
 	return VMXNET3_SUCCESS;
 }
 
@@ -823,6 +854,15 @@ vmxnet3_dev_stop(struct rte_eth_dev *dev)
 
 	/* disable interrupts */
 	vmxnet3_disable_intr(hw);
+
+	if (dev->data->dev_conf.intr_conf.lsc) {
+		struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(dev->device);
+
+		rte_intr_disable(&pci_dev->intr_handle);
+
+		rte_intr_callback_unregister(&pci_dev->intr_handle,
+					     vmxnet3_interrupt_handler, dev);
+	}
 
 	/* quiesce the device first */
 	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_CMD, VMXNET3_CMD_QUIESCE_DEV);
@@ -1110,16 +1150,12 @@ vmxnet3_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
 
 /* return 0 means link status changed, -1 means not changed */
 static int
-vmxnet3_dev_link_update(struct rte_eth_dev *dev,
-			__rte_unused int wait_to_complete)
+__vmxnet3_dev_link_update(struct rte_eth_dev *dev,
+			  __rte_unused int wait_to_complete)
 {
 	struct vmxnet3_hw *hw = dev->data->dev_private;
 	struct rte_eth_link old = { 0 }, link;
 	uint32_t ret;
-
-	/* Link status doesn't change for stopped dev */
-	if (dev->data->dev_started == 0)
-		return -1;
 
 	memset(&link, 0, sizeof(link));
 	vmxnet3_dev_atomic_read_link_status(dev, &old);
@@ -1137,6 +1173,16 @@ vmxnet3_dev_link_update(struct rte_eth_dev *dev,
 	vmxnet3_dev_atomic_write_link_status(dev, &link);
 
 	return (old.link_status == link.link_status) ? -1 : 0;
+}
+
+static int
+vmxnet3_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
+{
+	/* Link status doesn't change for stopped dev */
+	if (dev->data->dev_started == 0)
+		return -1;
+
+	return __vmxnet3_dev_link_update(dev, wait_to_complete);
 }
 
 /* Updating rxmode through Vmxnet3_DriverShared structure in adapter */
@@ -1255,10 +1301,10 @@ vmxnet3_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	}
 }
 
-#if PROCESS_SYS_EVENTS == 1
 static void
-vmxnet3_process_events(struct vmxnet3_hw *hw)
+vmxnet3_process_events(struct rte_eth_dev *dev)
 {
+	struct vmxnet3_hw *hw = dev->data->dev_private;
 	uint32_t events = hw->shared->ecr;
 
 	if (!events) {
@@ -1273,10 +1319,15 @@ vmxnet3_process_events(struct vmxnet3_hw *hw)
 	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_ECR, events);
 
 	/* Check if link state has changed */
-	if (events & VMXNET3_ECR_LINK)
+	if (events & VMXNET3_ECR_LINK) {
 		PMD_INIT_LOG(ERR,
 			     "Process events in %s(): VMXNET3_ECR_LINK event",
 			     __func__);
+		if (vmxnet3_dev_link_update(dev, 0) == 0)
+			_rte_eth_dev_callback_process(dev,
+						      RTE_ETH_EVENT_INTR_LSC,
+						      NULL, NULL);
+	}
 
 	/* Check if there is an error on xmit/recv queues */
 	if (events & (VMXNET3_ECR_TQERR | VMXNET3_ECR_RQERR)) {
@@ -1301,7 +1352,18 @@ vmxnet3_process_events(struct vmxnet3_hw *hw)
 	if (events & VMXNET3_ECR_DEBUG)
 		PMD_INIT_LOG(ERR, "Debug event generated by device.");
 }
-#endif
+
+static void
+vmxnet3_interrupt_handler(void *param)
+{
+	struct rte_eth_dev *dev = param;
+	struct rte_pci_device *pci_dev = RTE_DEV_TO_PCI(dev->device);
+
+	vmxnet3_process_events(dev);
+
+	if (rte_intr_enable(&pci_dev->intr_handle) < 0)
+		PMD_DRV_LOG(ERR, "interrupt enable failed");
+}
 
 RTE_PMD_REGISTER_PCI(net_vmxnet3, rte_vmxnet3_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(net_vmxnet3, pci_id_vmxnet3_map);

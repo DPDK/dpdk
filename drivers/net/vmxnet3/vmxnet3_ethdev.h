@@ -106,6 +106,8 @@ struct vmxnet3_hw {
 	uint16_t txdata_desc_size; /* tx data ring buffer size */
 	uint16_t rxdata_desc_size; /* rx data ring buffer size */
 
+	uint8_t num_intrs;
+
 	Vmxnet3_TxQueueDesc   *tqd_start;	/* start address of all tx queue desc */
 	Vmxnet3_RxQueueDesc   *rqd_start;	/* start address of all rx queue desc */
 
