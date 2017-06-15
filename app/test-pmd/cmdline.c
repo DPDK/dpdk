@@ -3928,7 +3928,7 @@ cmd_set_bypass_mode_parsed(void *parsed_result,
 	portid_t port_id = res->port_id;
 	int32_t rc = -EINVAL;
 
-#ifdef RTE_LIBRTE_IXGBE_BYPASS
+#if defined RTE_LIBRTE_IXGBE_PMD && defined RTE_LIBRTE_IXGBE_BYPASS
 	uint32_t bypass_mode = RTE_PMD_IXGBE_BYPASS_MODE_NORMAL;
 
 	if (!strcmp(res->value, "bypass"))
@@ -3996,7 +3996,7 @@ cmd_set_bypass_event_parsed(void *parsed_result,
 	struct cmd_set_bypass_event_result *res = parsed_result;
 	portid_t port_id = res->port_id;
 
-#ifdef RTE_LIBRTE_IXGBE_BYPASS
+#if defined RTE_LIBRTE_IXGBE_PMD && defined RTE_LIBRTE_IXGBE_BYPASS
 	uint32_t bypass_event = RTE_PMD_IXGBE_BYPASS_EVENT_NONE;
 	uint32_t bypass_mode = RTE_PMD_IXGBE_BYPASS_MODE_NORMAL;
 
@@ -4101,7 +4101,7 @@ cmd_set_bypass_timeout_parsed(void *parsed_result,
 {
 	__rte_unused struct cmd_set_bypass_timeout_result *res = parsed_result;
 
-#ifdef RTE_LIBRTE_IXGBE_BYPASS
+#if defined RTE_LIBRTE_IXGBE_PMD && defined RTE_LIBRTE_IXGBE_BYPASS
 	if (!strcmp(res->value, "1.5"))
 		bypass_timeout = RTE_PMD_IXGBE_BYPASS_TMT_1_5_SEC;
 	else if (!strcmp(res->value, "2"))
@@ -4164,7 +4164,7 @@ cmd_show_bypass_config_parsed(void *parsed_result,
 	struct cmd_show_bypass_config_result *res = parsed_result;
 	portid_t port_id = res->port_id;
 	int rc = -EINVAL;
-#ifdef RTE_LIBRTE_IXGBE_BYPASS
+#if defined RTE_LIBRTE_IXGBE_PMD && defined RTE_LIBRTE_IXGBE_BYPASS
 	uint32_t event_mode;
 	uint32_t bypass_mode;
 	uint32_t timeout = bypass_timeout;
