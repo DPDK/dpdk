@@ -35,7 +35,9 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <unistd.h>
 #include <inttypes.h>
+#include <sys/mman.h>
 #include <sys/queue.h>
 
 #include <rte_memory.h>
@@ -133,6 +135,16 @@ rte_eal_memdevice_init(void)
 	config->mem_config->nrank = internal_config.force_nrank;
 
 	return 0;
+}
+
+/* Lock page in physical memory and prevent from swapping. */
+int
+rte_mem_lock_page(const void *virt)
+{
+	unsigned long virtual = (unsigned long)virt;
+	int page_size = getpagesize();
+	unsigned long aligned = (virtual & ~(page_size - 1));
+	return mlock((void *)aligned, page_size);
 }
 
 /* init memory subsystem */

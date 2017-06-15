@@ -118,16 +118,6 @@ test_phys_addrs_available(void)
 	}
 }
 
-/* Lock page in physical memory and prevent from swapping. */
-int
-rte_mem_lock_page(const void *virt)
-{
-	unsigned long virtual = (unsigned long)virt;
-	int page_size = getpagesize();
-	unsigned long aligned = (virtual & ~ (page_size - 1));
-	return mlock((void*)aligned, page_size);
-}
-
 /*
  * Get physical address of any mapped virtual address in the current process.
  */
