@@ -88,6 +88,11 @@ static int vmxnet3_dev_link_update(struct rte_eth_dev *dev,
 static void vmxnet3_hw_stats_save(struct vmxnet3_hw *hw);
 static void vmxnet3_dev_stats_get(struct rte_eth_dev *dev,
 				  struct rte_eth_stats *stats);
+static int vmxnet3_dev_xstats_get_names(struct rte_eth_dev *dev,
+					struct rte_eth_xstat_name *xstats,
+					unsigned int n);
+static int vmxnet3_dev_xstats_get(struct rte_eth_dev *dev,
+				  struct rte_eth_xstat *xstats, unsigned int n);
 static void vmxnet3_dev_info_get(struct rte_eth_dev *dev,
 				 struct rte_eth_dev_info *dev_info);
 static const uint32_t *
@@ -122,6 +127,8 @@ static const struct eth_dev_ops vmxnet3_eth_dev_ops = {
 	.allmulticast_disable = vmxnet3_dev_allmulticast_disable,
 	.link_update          = vmxnet3_dev_link_update,
 	.stats_get            = vmxnet3_dev_stats_get,
+	.xstats_get_names     = vmxnet3_dev_xstats_get_names,
+	.xstats_get           = vmxnet3_dev_xstats_get,
 	.mac_addr_set         = vmxnet3_mac_addr_set,
 	.dev_infos_get        = vmxnet3_dev_info_get,
 	.dev_supported_ptypes_get = vmxnet3_dev_supported_ptypes_get,
@@ -131,6 +138,27 @@ static const struct eth_dev_ops vmxnet3_eth_dev_ops = {
 	.rx_queue_release     = vmxnet3_dev_rx_queue_release,
 	.tx_queue_setup       = vmxnet3_dev_tx_queue_setup,
 	.tx_queue_release     = vmxnet3_dev_tx_queue_release,
+};
+
+struct vmxnet3_xstats_name_off {
+	char name[RTE_ETH_XSTATS_NAME_SIZE];
+	unsigned int offset;
+};
+
+/* tx_qX_ is prepended to the name string here */
+static const struct vmxnet3_xstats_name_off vmxnet3_txq_stat_strings[] = {
+	{"drop_total",         offsetof(struct vmxnet3_txq_stats, drop_total)},
+	{"drop_too_many_segs", offsetof(struct vmxnet3_txq_stats, drop_too_many_segs)},
+	{"drop_tso",           offsetof(struct vmxnet3_txq_stats, drop_tso)},
+	{"tx_ring_full",       offsetof(struct vmxnet3_txq_stats, tx_ring_full)},
+};
+
+/* rx_qX_ is prepended to the name string here */
+static const struct vmxnet3_xstats_name_off vmxnet3_rxq_stat_strings[] = {
+	{"drop_total",           offsetof(struct vmxnet3_rxq_stats, drop_total)},
+	{"drop_err",             offsetof(struct vmxnet3_rxq_stats, drop_err)},
+	{"drop_fcs",             offsetof(struct vmxnet3_rxq_stats, drop_fcs)},
+	{"rx_buf_alloc_failure", offsetof(struct vmxnet3_rxq_stats, rx_buf_alloc_failure)},
 };
 
 static const struct rte_memzone *
@@ -880,6 +908,91 @@ vmxnet3_hw_stats_save(struct vmxnet3_hw *hw)
 		vmxnet3_hw_tx_stats_get(hw, i, &hw->saved_tx_stats[i]);
 	for (i = 0; i < hw->num_rx_queues; i++)
 		vmxnet3_hw_rx_stats_get(hw, i, &hw->saved_rx_stats[i]);
+}
+
+static int
+vmxnet3_dev_xstats_get_names(struct rte_eth_dev *dev,
+			     struct rte_eth_xstat_name *xstats_names,
+			     unsigned int n)
+{
+	unsigned int i, t, count = 0;
+	unsigned int nstats =
+		dev->data->nb_tx_queues * RTE_DIM(vmxnet3_txq_stat_strings) +
+		dev->data->nb_rx_queues * RTE_DIM(vmxnet3_rxq_stat_strings);
+
+	if (!xstats_names || n < nstats)
+		return nstats;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		if (!dev->data->rx_queues[i])
+			continue;
+
+		for (t = 0; t < RTE_DIM(vmxnet3_rxq_stat_strings); t++) {
+			snprintf(xstats_names[count].name,
+				 sizeof(xstats_names[count].name),
+				 "rx_q%u_%s", i,
+				 vmxnet3_rxq_stat_strings[t].name);
+			count++;
+		}
+	}
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		if (!dev->data->tx_queues[i])
+			continue;
+
+		for (t = 0; t < RTE_DIM(vmxnet3_txq_stat_strings); t++) {
+			snprintf(xstats_names[count].name,
+				 sizeof(xstats_names[count].name),
+				 "tx_q%u_%s", i,
+				 vmxnet3_txq_stat_strings[t].name);
+			count++;
+		}
+	}
+
+	return count;
+}
+
+static int
+vmxnet3_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
+		       unsigned int n)
+{
+	unsigned int i, t, count = 0;
+	unsigned int nstats =
+		dev->data->nb_tx_queues * RTE_DIM(vmxnet3_txq_stat_strings) +
+		dev->data->nb_rx_queues * RTE_DIM(vmxnet3_rxq_stat_strings);
+
+	if (n < nstats)
+		return nstats;
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		struct vmxnet3_rx_queue *rxq = dev->data->rx_queues[i];
+
+		if (rxq == NULL)
+			continue;
+
+		for (t = 0; t < RTE_DIM(vmxnet3_rxq_stat_strings); t++) {
+			xstats[count].value = *(uint64_t *)(((char *)&rxq->stats) +
+				vmxnet3_rxq_stat_strings[t].offset);
+			xstats[count].id = count;
+			count++;
+		}
+	}
+
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		struct vmxnet3_tx_queue *txq = dev->data->tx_queues[i];
+
+		if (txq == NULL)
+			continue;
+
+		for (t = 0; t < RTE_DIM(vmxnet3_txq_stat_strings); t++) {
+			xstats[count].value = *(uint64_t *)(((char *)&txq->stats) +
+				vmxnet3_txq_stat_strings[t].offset);
+			xstats[count].id = count;
+			count++;
+		}
+	}
+
+	return count;
 }
 
 static void
