@@ -1142,11 +1142,8 @@ eth_i40e_dev_init(struct rte_eth_dev *dev)
 	config_floating_veb(dev);
 	/* Clear PXE mode */
 	i40e_clear_pxe_mode(hw);
-	ret = i40e_dev_sync_phy_type(hw);
-	if (ret) {
-		PMD_INIT_LOG(ERR, "Failed to sync phy type: %d", ret);
-		goto err_sync_phy_type;
-	}
+	i40e_dev_sync_phy_type(hw);
+
 	/*
 	 * On X710, performance number is far from the expectation on recent
 	 * firmware versions. The fix for this issue may not be integrated in
@@ -1331,7 +1328,6 @@ err_msix_pool_init:
 err_qp_pool_init:
 err_parameter_init:
 err_get_capabilities:
-err_sync_phy_type:
 	(void)i40e_shutdown_adminq(hw);
 
 	return ret;
@@ -1470,8 +1466,13 @@ i40e_dev_configure(struct rte_eth_dev *dev)
 	struct i40e_adapter *ad =
 		I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	enum rte_eth_rx_mq_mode mq_mode = dev->data->dev_conf.rxmode.mq_mode;
 	int i, ret;
+
+	ret = i40e_dev_sync_phy_type(hw);
+	if (ret)
+		return ret;
 
 	/* Initialize to TRUE. If any of Rx queues doesn't meet the
 	 * bulk allocation or vector Rx preconditions we will reset it.
@@ -9176,8 +9177,11 @@ i40e_dev_sync_phy_type(struct i40e_hw *hw)
 	status = i40e_aq_get_phy_capabilities(hw, false, true, &phy_ab,
 					      NULL);
 
-	if (status)
+	if (status) {
+		PMD_INIT_LOG(WARNING, "Failed to sync phy type: status=%d",
+			status);
 		return ret;
+	}
 
 	return 0;
 }
