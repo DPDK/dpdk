@@ -429,7 +429,7 @@ static const struct rte_flow_item_raw rte_flow_item_raw_mask = {
 struct rte_flow_item_eth {
 	struct ether_addr dst; /**< Destination MAC. */
 	struct ether_addr src; /**< Source MAC. */
-	uint16_t type; /**< EtherType. */
+	rte_be16_t type; /**< EtherType. */
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_ETH. */
@@ -437,7 +437,7 @@ struct rte_flow_item_eth {
 static const struct rte_flow_item_eth rte_flow_item_eth_mask = {
 	.dst.addr_bytes = "\xff\xff\xff\xff\xff\xff",
 	.src.addr_bytes = "\xff\xff\xff\xff\xff\xff",
-	.type = 0x0000,
+	.type = RTE_BE16(0x0000),
 };
 #endif
 
@@ -450,15 +450,15 @@ static const struct rte_flow_item_eth rte_flow_item_eth_mask = {
  * RTE_FLOW_ITEM_TYPE_VLAN.
  */
 struct rte_flow_item_vlan {
-	uint16_t tpid; /**< Tag protocol identifier. */
-	uint16_t tci; /**< Tag control information. */
+	rte_be16_t tpid; /**< Tag protocol identifier. */
+	rte_be16_t tci; /**< Tag control information. */
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_VLAN. */
 #ifndef __cplusplus
 static const struct rte_flow_item_vlan rte_flow_item_vlan_mask = {
-	.tpid = 0x0000,
-	.tci = 0xffff,
+	.tpid = RTE_BE16(0x0000),
+	.tci = RTE_BE16(0xffff),
 };
 #endif
 
@@ -477,8 +477,8 @@ struct rte_flow_item_ipv4 {
 #ifndef __cplusplus
 static const struct rte_flow_item_ipv4 rte_flow_item_ipv4_mask = {
 	.hdr = {
-		.src_addr = 0xffffffff,
-		.dst_addr = 0xffffffff,
+		.src_addr = RTE_BE32(0xffffffff),
+		.dst_addr = RTE_BE32(0xffffffff),
 	},
 };
 #endif
@@ -540,8 +540,8 @@ struct rte_flow_item_udp {
 #ifndef __cplusplus
 static const struct rte_flow_item_udp rte_flow_item_udp_mask = {
 	.hdr = {
-		.src_port = 0xffff,
-		.dst_port = 0xffff,
+		.src_port = RTE_BE16(0xffff),
+		.dst_port = RTE_BE16(0xffff),
 	},
 };
 #endif
@@ -559,8 +559,8 @@ struct rte_flow_item_tcp {
 #ifndef __cplusplus
 static const struct rte_flow_item_tcp rte_flow_item_tcp_mask = {
 	.hdr = {
-		.src_port = 0xffff,
-		.dst_port = 0xffff,
+		.src_port = RTE_BE16(0xffff),
+		.dst_port = RTE_BE16(0xffff),
 	},
 };
 #endif
@@ -578,8 +578,8 @@ struct rte_flow_item_sctp {
 #ifndef __cplusplus
 static const struct rte_flow_item_sctp rte_flow_item_sctp_mask = {
 	.hdr = {
-		.src_port = 0xffff,
-		.dst_port = 0xffff,
+		.src_port = RTE_BE16(0xffff),
+		.dst_port = RTE_BE16(0xffff),
 	},
 };
 #endif
@@ -609,14 +609,14 @@ static const struct rte_flow_item_vxlan rte_flow_item_vxlan_mask = {
  * Matches a E-tag header.
  */
 struct rte_flow_item_e_tag {
-	uint16_t tpid; /**< Tag protocol identifier (0x893F). */
+	rte_be16_t tpid; /**< Tag protocol identifier (0x893F). */
 	/**
 	 * E-Tag control information (E-TCI).
 	 * E-PCP (3b), E-DEI (1b), ingress E-CID base (12b).
 	 */
-	uint16_t epcp_edei_in_ecid_b;
+	rte_be16_t epcp_edei_in_ecid_b;
 	/** Reserved (2b), GRP (2b), E-CID base (12b). */
-	uint16_t rsvd_grp_ecid_b;
+	rte_be16_t rsvd_grp_ecid_b;
 	uint8_t in_ecid_e; /**< Ingress E-CID ext. */
 	uint8_t ecid_e; /**< E-CID ext. */
 };
@@ -624,13 +624,7 @@ struct rte_flow_item_e_tag {
 /** Default mask for RTE_FLOW_ITEM_TYPE_E_TAG. */
 #ifndef __cplusplus
 static const struct rte_flow_item_e_tag rte_flow_item_e_tag_mask = {
-#if RTE_BYTE_ORDER == RTE_BIG_ENDIAN
-	.rsvd_grp_ecid_b = 0x3fff,
-#elif RTE_BYTE_ORDER == RTE_LITTLE_ENDIAN
-	.rsvd_grp_ecid_b = 0xff3f,
-#else
-#error Unsupported endianness.
-#endif
+	.rsvd_grp_ecid_b = RTE_BE16(0x3fff),
 };
 #endif
 
@@ -646,8 +640,8 @@ struct rte_flow_item_nvgre {
 	 *
 	 * c_k_s_rsvd0_ver must have value 0x2000 according to RFC 7637.
 	 */
-	uint16_t c_k_s_rsvd0_ver;
-	uint16_t protocol; /**< Protocol type (0x6558). */
+	rte_be16_t c_k_s_rsvd0_ver;
+	rte_be16_t protocol; /**< Protocol type (0x6558). */
 	uint8_t tni[3]; /**< Virtual subnet ID. */
 	uint8_t flow_id; /**< Flow ID. */
 };
@@ -689,14 +683,14 @@ struct rte_flow_item_gre {
 	 * Checksum (1b), reserved 0 (12b), version (3b).
 	 * Refer to RFC 2784.
 	 */
-	uint16_t c_rsvd0_ver;
-	uint16_t protocol; /**< Protocol type. */
+	rte_be16_t c_rsvd0_ver;
+	rte_be16_t protocol; /**< Protocol type. */
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_GRE. */
 #ifndef __cplusplus
 static const struct rte_flow_item_gre rte_flow_item_gre_mask = {
-	.protocol = 0xffff,
+	.protocol = RTE_BE16(0xffff),
 };
 #endif
 
