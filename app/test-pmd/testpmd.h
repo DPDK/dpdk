@@ -299,6 +299,7 @@ extern uint16_t nb_rx_queue_stats_mappings;
 extern uint16_t verbose_level; /**< Drives messages being displayed, if any. */
 extern uint8_t  interactive;
 extern uint8_t  auto_start;
+extern uint8_t  tx_first;
 extern char cmdline_filename[PATH_MAX]; /**< offline commands file */
 extern uint8_t  numa_support; /**< set by "--numa" parameter */
 extern uint16_t port_topology; /**< set by "--port-topology" parameter */

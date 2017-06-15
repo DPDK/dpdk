@@ -98,6 +98,7 @@ uint16_t verbose_level = 0; /**< Silent by default. */
 /* use master core for command line ? */
 uint8_t interactive = 0;
 uint8_t auto_start = 0;
+uint8_t tx_first;
 char cmdline_filename[PATH_MAX] = {0};
 
 /*
@@ -2297,6 +2298,9 @@ main(int argc, char** argv)
 	if (argc > 1)
 		launch_args_parse(argc, argv);
 
+	if (tx_first && interactive)
+		rte_exit(EXIT_FAILURE, "--tx-first cannot be used on "
+				"interactive mode.\n");
 	if (!nb_rxq && !nb_txq)
 		printf("Warning: Either rx or tx queues should be non-zero\n");
 
@@ -2356,7 +2360,7 @@ main(int argc, char** argv)
 		int rc;
 
 		printf("No commandline core given, start packet forwarding\n");
-		start_packet_forwarding(0);
+		start_packet_forwarding(tx_first);
 		printf("Press enter to exit\n");
 		rc = read(0, &c, 1);
 		pmd_test_exit();
