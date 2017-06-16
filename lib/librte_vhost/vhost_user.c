@@ -168,8 +168,12 @@ vhost_user_set_features(struct virtio_net *dev, uint64_t features)
 	uint64_t vhost_features = 0;
 
 	rte_vhost_driver_get_features(dev->ifname, &vhost_features);
-	if (features & ~vhost_features)
+	if (features & ~vhost_features) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"(%d) received invalid negotiated features.\n",
+			dev->vid);
 		return -1;
+	}
 
 	if ((dev->flags & VIRTIO_DEV_RUNNING) && dev->features != features) {
 		if (dev->notify_ops->features_changed)
