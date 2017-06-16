@@ -380,6 +380,13 @@ For example::
    testpmd> read txd 0 0 4
         0x00000001 - 0x24C3C440 / 0x000F0000 - 0x2330003C
 
+ddp get list
+~~~~~~~~~~~~
+
+Get loaded dynamic device personalization (DDP) package info list::
+
+   testpmd> ddp get list (port_id)
+
 show vf stats
 ~~~~~~~~~~~~~
 
@@ -1210,6 +1217,13 @@ Add an E-tag forwarding filter on a port::
 
 Delete an E-tag forwarding filter on a port::
    testpmd> E-tag set filter del e-tag-id (value) port (port_id)
+
+ddp add
+~~~~~~~
+
+Load a dynamic device personalization (DDP) package::
+
+   testpmd> ddp add (port_id) (package_path)
 
 ptype mapping
 ~~~~~~~~~~~~~
