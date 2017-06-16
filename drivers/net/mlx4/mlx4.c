@@ -5343,6 +5343,7 @@ priv_dev_status_handler(struct priv *priv, struct rte_eth_dev *dev,
 {
 	struct ibv_async_event event;
 	int port_change = 0;
+	struct rte_eth_link *link = &dev->data->dev_link;
 	int ret = 0;
 
 	*events = 0;
@@ -5364,22 +5365,20 @@ priv_dev_status_handler(struct priv *priv, struct rte_eth_dev *dev,
 			      event.event_type, event.element.port_num);
 		ibv_ack_async_event(&event);
 	}
-
-	if (port_change ^ priv->pending_alarm) {
-		struct rte_eth_link *link = &dev->data->dev_link;
-
-		priv->pending_alarm = 0;
-		mlx4_link_update(dev, 0);
-		if (((link->link_speed == 0) && link->link_status) ||
-		    ((link->link_speed != 0) && !link->link_status)) {
+	if (!port_change)
+		return ret;
+	mlx4_link_update(dev, 0);
+	if (((link->link_speed == 0) && link->link_status) ||
+	    ((link->link_speed != 0) && !link->link_status)) {
+		if (!priv->pending_alarm) {
 			/* Inconsistent status, check again later. */
 			priv->pending_alarm = 1;
 			rte_eal_alarm_set(MLX4_ALARM_TIMEOUT_US,
 					  mlx4_dev_link_status_handler,
 					  dev);
-		} else {
-			*events |= (1 << RTE_ETH_EVENT_INTR_LSC);
 		}
+	} else {
+		*events |= (1 << RTE_ETH_EVENT_INTR_LSC);
 	}
 	return ret;
 }
@@ -5400,6 +5399,7 @@ mlx4_dev_link_status_handler(void *arg)
 
 	priv_lock(priv);
 	assert(priv->pending_alarm == 1);
+	priv->pending_alarm = 0;
 	ret = priv_dev_status_handler(priv, dev, &events);
 	priv_unlock(priv);
 	if (ret > 0 && events & (1 << RTE_ETH_EVENT_INTR_LSC))
