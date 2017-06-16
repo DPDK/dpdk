@@ -1468,7 +1468,7 @@ rte_pmd_i40e_set_tc_strict_prio(uint8_t port, uint8_t tc_map)
 	return ret;
 }
 
-#define I40E_PROFILE_INFO_SIZE 48
+#define I40E_PROFILE_INFO_SIZE sizeof(struct rte_pmd_i40e_profile_info)
 #define I40E_MAX_PROFILE_NUM 16
 
 static void
@@ -1519,9 +1519,6 @@ i40e_add_rm_profile_info(struct i40e_hw *hw, uint8_t *profile_info_sec)
 
 	return status;
 }
-
-#define I40E_PROFILE_INFO_SIZE 48
-#define I40E_MAX_PROFILE_NUM 16
 
 /* Check if the profile info exists */
 static int
@@ -1680,6 +1677,164 @@ rte_pmd_i40e_process_ddp_package(uint8_t port, uint8_t *buff,
 
 	rte_free(profile_info_sec);
 	return status;
+}
+
+int rte_pmd_i40e_get_ddp_info(uint8_t *pkg_buff, uint32_t pkg_size,
+	uint8_t *info_buff, uint32_t info_size,
+	enum rte_pmd_i40e_package_info type)
+{
+	uint32_t ret_size;
+	struct i40e_package_header *pkg_hdr;
+	struct i40e_generic_seg_header *i40e_seg_hdr;
+	struct i40e_generic_seg_header *note_seg_hdr;
+	struct i40e_generic_seg_header *metadata_seg_hdr;
+
+	if (!info_buff) {
+		PMD_DRV_LOG(ERR, "Output info buff is invalid.");
+		return -EINVAL;
+	}
+
+	if (!pkg_buff || pkg_size < (sizeof(struct i40e_package_header) +
+		sizeof(struct i40e_metadata_segment) +
+		sizeof(uint32_t) * 2)) {
+		PMD_DRV_LOG(ERR, "Package buff is invalid.");
+		return -EINVAL;
+	}
+
+	pkg_hdr = (struct i40e_package_header *)pkg_buff;
+	if (pkg_hdr->segment_count < 2) {
+		PMD_DRV_LOG(ERR, "Segment_count should be 2 at least.");
+		return -EINVAL;
+	}
+
+	/* Find metadata segment */
+	metadata_seg_hdr = i40e_find_segment_in_package(SEGMENT_TYPE_METADATA,
+		pkg_hdr);
+
+	/* Find global notes segment */
+	note_seg_hdr = i40e_find_segment_in_package(SEGMENT_TYPE_NOTES,
+		pkg_hdr);
+
+	/* Find i40e profile segment */
+	i40e_seg_hdr = i40e_find_segment_in_package(SEGMENT_TYPE_I40E, pkg_hdr);
+
+	/* get global header info */
+	if (type == RTE_PMD_I40E_PKG_INFO_GLOBAL_HEADER) {
+		struct rte_pmd_i40e_profile_info *info =
+			(struct rte_pmd_i40e_profile_info *)info_buff;
+
+		if (info_size < sizeof(struct rte_pmd_i40e_profile_info)) {
+			PMD_DRV_LOG(ERR, "Output info buff size is invalid.");
+			return -EINVAL;
+		}
+
+		if (!metadata_seg_hdr) {
+			PMD_DRV_LOG(ERR, "Failed to find metadata segment header");
+			return -EINVAL;
+		}
+
+		memset(info, 0, sizeof(struct rte_pmd_i40e_profile_info));
+		info->owner = RTE_PMD_I40E_DDP_OWNER_UNKNOWN;
+		info->track_id =
+			((struct i40e_metadata_segment *)metadata_seg_hdr)->track_id;
+
+		memcpy(info->name,
+			((struct i40e_metadata_segment *)metadata_seg_hdr)->name,
+			I40E_DDP_NAME_SIZE);
+		memcpy(&info->version,
+			&((struct i40e_metadata_segment *)metadata_seg_hdr)->version,
+			sizeof(struct i40e_ddp_version));
+		return I40E_SUCCESS;
+	}
+
+	/* get global note size */
+	if (type == RTE_PMD_I40E_PKG_INFO_GLOBAL_NOTES_SIZE) {
+		if (info_size < sizeof(uint32_t)) {
+			PMD_DRV_LOG(ERR, "Invalid information buffer size");
+			return -EINVAL;
+		}
+		if (note_seg_hdr == NULL)
+			ret_size = 0;
+		else
+			ret_size = note_seg_hdr->size;
+		*(uint32_t *)info_buff = ret_size;
+		return I40E_SUCCESS;
+	}
+
+	/* get global note */
+	if (type == RTE_PMD_I40E_PKG_INFO_GLOBAL_NOTES) {
+		if (note_seg_hdr == NULL)
+			return -ENOTSUP;
+		if (info_size < note_seg_hdr->size) {
+			PMD_DRV_LOG(ERR, "Information buffer size is too small");
+			return -EINVAL;
+		}
+		memcpy(info_buff, &note_seg_hdr[1], note_seg_hdr->size);
+		return I40E_SUCCESS;
+	}
+
+	/* get i40e segment header info */
+	if (type == RTE_PMD_I40E_PKG_INFO_HEADER) {
+		struct rte_pmd_i40e_profile_info *info =
+			(struct rte_pmd_i40e_profile_info *)info_buff;
+
+		if (info_size < sizeof(struct rte_pmd_i40e_profile_info)) {
+			PMD_DRV_LOG(ERR, "Output info buff size is invalid.");
+			return -EINVAL;
+		}
+
+		if (!metadata_seg_hdr) {
+			PMD_DRV_LOG(ERR, "Failed to find metadata segment header");
+			return -EINVAL;
+		}
+
+		if (!i40e_seg_hdr) {
+			PMD_DRV_LOG(ERR, "Failed to find i40e segment header");
+			return -EINVAL;
+		}
+
+		memset(info, 0, sizeof(struct rte_pmd_i40e_profile_info));
+		info->owner = RTE_PMD_I40E_DDP_OWNER_UNKNOWN;
+		info->track_id =
+			((struct i40e_metadata_segment *)metadata_seg_hdr)->track_id;
+
+		memcpy(info->name,
+			((struct i40e_profile_segment *)i40e_seg_hdr)->name,
+			I40E_DDP_NAME_SIZE);
+		memcpy(&info->version,
+			&((struct i40e_profile_segment *)i40e_seg_hdr)->version,
+			sizeof(struct i40e_ddp_version));
+		return I40E_SUCCESS;
+	}
+
+	/* get number of devices */
+	if (type == RTE_PMD_I40E_PKG_INFO_DEVID_NUM) {
+		if (info_size < sizeof(uint32_t)) {
+			PMD_DRV_LOG(ERR, "Invalid information buffer size");
+			return -EINVAL;
+		}
+		*(uint32_t *)info_buff =
+			((struct i40e_profile_segment *)i40e_seg_hdr)->device_table_count;
+		return I40E_SUCCESS;
+	}
+
+	/* get list of devices */
+	if (type == RTE_PMD_I40E_PKG_INFO_DEVID_LIST) {
+		uint32_t dev_num;
+		dev_num =
+			((struct i40e_profile_segment *)i40e_seg_hdr)->device_table_count;
+		if (info_size < sizeof(struct rte_pmd_i40e_ddp_device_id) * dev_num) {
+			PMD_DRV_LOG(ERR, "Invalid information buffer size");
+			return -EINVAL;
+		}
+		memcpy(info_buff,
+			((struct i40e_profile_segment *)i40e_seg_hdr)->device_table,
+			sizeof(struct rte_pmd_i40e_ddp_device_id) * dev_num);
+		return I40E_SUCCESS;
+	}
+
+	PMD_DRV_LOG(ERR, "Info type %u is invalid.", type);
+	return -EINVAL;
 }
 
 int
