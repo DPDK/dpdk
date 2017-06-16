@@ -221,6 +221,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"ddp get list (port_id)\n"
 			"    Get ddp profile info list\n\n"
 
+			"ddp get info (profile_path)\n"
+			"    Get ddp profile information.\n\n"
+
 			"show vf stats (port_id) (vf_id)\n"
 			"    Display a VF's statistics.\n\n"
 
@@ -12996,6 +12999,133 @@ cmdline_parse_inst_t cmd_ddp_add = {
 	},
 };
 
+/* Get dynamic device personalization profile info */
+struct cmd_ddp_info_result {
+	cmdline_fixed_string_t ddp;
+	cmdline_fixed_string_t get;
+	cmdline_fixed_string_t info;
+	char filepath[];
+};
+
+cmdline_parse_token_string_t cmd_ddp_info_ddp =
+	TOKEN_STRING_INITIALIZER(struct cmd_ddp_info_result, ddp, "ddp");
+cmdline_parse_token_string_t cmd_ddp_info_get =
+	TOKEN_STRING_INITIALIZER(struct cmd_ddp_info_result, get, "get");
+cmdline_parse_token_string_t cmd_ddp_info_info =
+	TOKEN_STRING_INITIALIZER(struct cmd_ddp_info_result, info, "info");
+cmdline_parse_token_string_t cmd_ddp_info_filepath =
+	TOKEN_STRING_INITIALIZER(struct cmd_ddp_info_result, filepath, NULL);
+
+static void
+cmd_ddp_info_parsed(
+	void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	__attribute__((unused)) void *data)
+{
+	struct cmd_ddp_info_result *res = parsed_result;
+	uint8_t *pkg;
+	uint32_t pkg_size;
+	int ret = -ENOTSUP;
+#ifdef RTE_LIBRTE_I40E_PMD
+	uint32_t i;
+	uint8_t *buff;
+	uint32_t buff_size;
+	struct rte_pmd_i40e_profile_info info;
+	uint32_t dev_num;
+	struct rte_pmd_i40e_ddp_device_id *devs;
+#endif
+
+	pkg = open_ddp_package_file(res->filepath, &pkg_size);
+	if (!pkg)
+		return;
+
+#ifdef RTE_LIBRTE_I40E_PMD
+	ret = rte_pmd_i40e_get_ddp_info(pkg, pkg_size,
+				(uint8_t *)&info, sizeof(info),
+				RTE_PMD_I40E_PKG_INFO_GLOBAL_HEADER);
+	if (!ret) {
+		printf("Global Track id:       0x%x\n", info.track_id);
+		printf("Global Version:        %d.%d.%d.%d\n",
+			info.version.major,
+			info.version.minor,
+			info.version.update,
+			info.version.draft);
+		printf("Global Package name:   %s\n\n", info.name);
+	}
+
+	ret = rte_pmd_i40e_get_ddp_info(pkg, pkg_size,
+				(uint8_t *)&info, sizeof(info),
+				RTE_PMD_I40E_PKG_INFO_HEADER);
+	if (!ret) {
+		printf("i40e Profile Track id: 0x%x\n", info.track_id);
+		printf("i40e Profile Version:  %d.%d.%d.%d\n",
+			info.version.major,
+			info.version.minor,
+			info.version.update,
+			info.version.draft);
+		printf("i40e Profile name:     %s\n\n", info.name);
+	}
+
+	ret = rte_pmd_i40e_get_ddp_info(pkg, pkg_size,
+				(uint8_t *)&buff_size, sizeof(buff_size),
+				RTE_PMD_I40E_PKG_INFO_GLOBAL_NOTES_SIZE);
+	if (!ret && buff_size) {
+		buff = (uint8_t *)malloc(buff_size);
+		if (buff) {
+			ret = rte_pmd_i40e_get_ddp_info(pkg, pkg_size,
+						buff, buff_size,
+						RTE_PMD_I40E_PKG_INFO_GLOBAL_NOTES);
+			if (!ret)
+				printf("Package Notes:\n%s\n\n", buff);
+			free(buff);
+		}
+	}
+
+	ret = rte_pmd_i40e_get_ddp_info(pkg, pkg_size,
+				(uint8_t *)&dev_num, sizeof(dev_num),
+				RTE_PMD_I40E_PKG_INFO_DEVID_NUM);
+	if (!ret && dev_num) {
+		devs = (struct rte_pmd_i40e_ddp_device_id *)malloc(dev_num *
+			sizeof(struct rte_pmd_i40e_ddp_device_id));
+		if (devs) {
+			ret = rte_pmd_i40e_get_ddp_info(pkg, pkg_size,
+						(uint8_t *)devs, dev_num *
+						sizeof(struct rte_pmd_i40e_ddp_device_id),
+						RTE_PMD_I40E_PKG_INFO_DEVID_LIST);
+			if (!ret) {
+				printf("List of supported devices:\n");
+				for (i = 0; i < dev_num; i++) {
+					printf("  %04X:%04X %04X:%04X\n",
+						devs[i].vendor_dev_id >> 16,
+						devs[i].vendor_dev_id & 0xFFFF,
+						devs[i].sub_vendor_dev_id >> 16,
+						devs[i].sub_vendor_dev_id & 0xFFFF);
+				}
+				printf("\n");
+			}
+			free(devs);
+		}
+	}
+	ret = 0;
+#endif
+	if (ret == -ENOTSUP)
+		printf("Function not supported in PMD driver\n");
+	close_ddp_package_file(pkg);
+}
+
+cmdline_parse_inst_t cmd_ddp_get_info = {
+	.f = cmd_ddp_info_parsed,
+	.data = NULL,
+	.help_str = "ddp get info <profile_path>",
+	.tokens = {
+		(void *)&cmd_ddp_info_ddp,
+		(void *)&cmd_ddp_info_get,
+		(void *)&cmd_ddp_info_info,
+		(void *)&cmd_ddp_info_filepath,
+		NULL,
+	},
+};
+
 /* Get dynamic device personalization profile info list*/
 #define PROFILE_INFO_SIZE 48
 #define MAX_PROFILE_NUM 16
@@ -13849,6 +13979,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_tc_min_bw,
 	(cmdline_parse_inst_t *)&cmd_ddp_add,
 	(cmdline_parse_inst_t *)&cmd_ddp_get_list,
+	(cmdline_parse_inst_t *)&cmd_ddp_get_info,
 	(cmdline_parse_inst_t *)&cmd_show_vf_stats,
 	(cmdline_parse_inst_t *)&cmd_clear_vf_stats,
 	(cmdline_parse_inst_t *)&cmd_ptype_mapping_get,

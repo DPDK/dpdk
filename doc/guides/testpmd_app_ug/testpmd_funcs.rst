@@ -387,6 +387,13 @@ Get loaded dynamic device personalization (DDP) package info list::
 
    testpmd> ddp get list (port_id)
 
+ddp get info
+~~~~~~~~~~~~
+
+Display information about dynamic device personalization (DDP) profile::
+
+   testpmd> ddp get info (profile_patch)
+
 show vf stats
 ~~~~~~~~~~~~~
 
