@@ -117,7 +117,7 @@ Typically, to run the IPv4 Multicast sample application, issue the following com
 
 In this command:
 
-*   The -c option enables cores 0, 1, 2 and 3
+*   The -l option enables cores 0, 1, 2 and 3
 
 *   The -n option specifies 3 memory channels
 
