@@ -1034,7 +1034,7 @@ add_depth_big_v1604(struct rte_lpm *lpm, uint32_t ip_masked, uint8_t depth,
 		 */
 
 		struct rte_lpm_tbl_entry new_tbl24_entry = {
-			.group_idx = (uint8_t)tbl8_group_index,
+			.group_idx = tbl8_group_index,
 			.valid = VALID,
 			.valid_group = 1,
 			.depth = 0,
@@ -1080,7 +1080,7 @@ add_depth_big_v1604(struct rte_lpm *lpm, uint32_t ip_masked, uint8_t depth,
 		 */
 
 		struct rte_lpm_tbl_entry new_tbl24_entry = {
-				.group_idx = (uint8_t)tbl8_group_index,
+				.group_idx = tbl8_group_index,
 				.valid = VALID,
 				.valid_group = 1,
 				.depth = 0,
