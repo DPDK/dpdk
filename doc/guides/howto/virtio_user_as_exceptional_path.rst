@@ -54,7 +54,7 @@ solution is very promising in:
 *   Performance
 
     similar to KNI, this solution would use one or more kthreads to
-    send/receive packets from user space DPDK applications, which has little
+    send/receive packets to/from user space DPDK applications, which has little
     impact on user space polling thread (except that it might enter into kernel
     space to wake up those kthreads if necessary).
 
@@ -94,7 +94,7 @@ compiling the kernel and those kernel modules should be inserted.
 
     This is used to negotiate VIRTIO_NET_F_GUEST_TSO4 and
     VIRTIO_NET_F_GUEST_TSO6 feature so that large packets from kernel can be
-    transmitted DPDK application and further TSOed by physical NIC.
+    transmitted to DPDK application and further TSOed by physical NIC.
 
 * ``--enable-rx-cksum``
 
