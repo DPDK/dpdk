@@ -35,8 +35,8 @@ Enabling Additional Functionality
 
 .. _High_Precision_Event_Timer:
 
-High Precision Event Timer HPET) Functionality
-----------------------------------------------
+High Precision Event Timer (HPET) Functionality
+-----------------------------------------------
 
 BIOS Support
 ~~~~~~~~~~~~
