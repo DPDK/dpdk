@@ -527,6 +527,7 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		uint16_t ehdr;
 		uint8_t cs_flags = 0;
 		uint64_t tso = 0;
+		uint16_t tso_segsz = 0;
 #ifdef MLX5_PMD_SOFT_COUNTERS
 		uint32_t total_length = 0;
 #endif
@@ -622,6 +623,7 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 
 				tso_header_sz = buf->l2_len + vlan_sz +
 						buf->l3_len + buf->l4_len;
+				tso_segsz = buf->tso_segsz;
 
 				if (is_tunneled	&& txq->tunnel_en) {
 					tso_header_sz += buf->outer_l2_len +
@@ -821,7 +823,7 @@ next_pkt:
 			};
 			wqe->eseg = (rte_v128u32_t){
 				0,
-				cs_flags | (htons(buf->tso_segsz) << 16),
+				cs_flags | (htons(tso_segsz) << 16),
 				0,
 				(ehdr << 16) | htons(tso_header_sz),
 			};
