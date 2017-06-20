@@ -387,7 +387,7 @@ crc32c_2words(uint64_t data, uint32_t init_val)
 	return crc;
 }
 
-#if defined(RTE_ARCH_I686) || defined(RTE_ARCH_X86_64)
+#if defined(RTE_ARCH_X86)
 static inline uint32_t
 crc32c_sse42_u8(uint8_t data, uint32_t init_val)
 {
@@ -471,26 +471,12 @@ static uint8_t crc32_alg = CRC32_SW;
 static inline void
 rte_hash_crc_set_alg(uint8_t alg)
 {
-	switch (alg) {
-#if defined(RTE_ARCH_I686) || defined(RTE_ARCH_X86_64)
-	case CRC32_SSE42_x64:
-		if (! rte_cpu_get_flag_enabled(RTE_CPUFLAG_EM64T))
-			alg = CRC32_SSE42;
-#if __GNUC__ >= 7 && !defined(RTE_TOOLCHAIN_ICC)
-		__attribute__ ((fallthrough));
+#if defined(RTE_ARCH_X86)
+	if (alg == CRC32_SSE42_x64 &&
+			!rte_cpu_get_flag_enabled(RTE_CPUFLAG_EM64T))
+		alg = CRC32_SSE42;
 #endif
-	case CRC32_SSE42:
-		if (! rte_cpu_get_flag_enabled(RTE_CPUFLAG_SSE4_2))
-			alg = CRC32_SW;
-#if __GNUC__ >= 7 && !defined(RTE_TOOLCHAIN_ICC)
-		__attribute__ ((fallthrough));
-#endif
-#endif
-	case CRC32_SW:
-		crc32_alg = alg;
-	default:
-		break;
-	}
+	crc32_alg = alg;
 }
 
 /* Setting the best available algorithm */
@@ -515,7 +501,7 @@ rte_hash_crc_init_alg(void)
 static inline uint32_t
 rte_hash_crc_1byte(uint8_t data, uint32_t init_val)
 {
-#if defined RTE_ARCH_I686 || defined RTE_ARCH_X86_64
+#if defined RTE_ARCH_X86
 	if (likely(crc32_alg & CRC32_SSE42))
 		return crc32c_sse42_u8(data, init_val);
 #endif
@@ -538,7 +524,7 @@ rte_hash_crc_1byte(uint8_t data, uint32_t init_val)
 static inline uint32_t
 rte_hash_crc_2byte(uint16_t data, uint32_t init_val)
 {
-#if defined RTE_ARCH_I686 || defined RTE_ARCH_X86_64
+#if defined RTE_ARCH_X86
 	if (likely(crc32_alg & CRC32_SSE42))
 		return crc32c_sse42_u16(data, init_val);
 #endif
@@ -561,7 +547,7 @@ rte_hash_crc_2byte(uint16_t data, uint32_t init_val)
 static inline uint32_t
 rte_hash_crc_4byte(uint32_t data, uint32_t init_val)
 {
-#if defined RTE_ARCH_I686 || defined RTE_ARCH_X86_64
+#if defined RTE_ARCH_X86
 	if (likely(crc32_alg & CRC32_SSE42))
 		return crc32c_sse42_u32(data, init_val);
 #endif
@@ -589,7 +575,7 @@ rte_hash_crc_8byte(uint64_t data, uint32_t init_val)
 		return crc32c_sse42_u64(data, init_val);
 #endif
 
-#if defined RTE_ARCH_I686 || defined RTE_ARCH_X86_64
+#if defined RTE_ARCH_X86
 	if (likely(crc32_alg & CRC32_SSE42))
 		return crc32c_sse42_u64_mimic(data, init_val);
 #endif

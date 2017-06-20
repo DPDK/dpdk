@@ -37,15 +37,9 @@ rte_hash_k16_cmp_eq(const void *key1, const void *key2, size_t key_len __rte_unu
 {
 	const __m128i k1 = _mm_loadu_si128((const __m128i *) key1);
 	const __m128i k2 = _mm_loadu_si128((const __m128i *) key2);
-#ifdef RTE_MACHINE_CPUFLAG_SSE4_1
 	const __m128i x = _mm_xor_si128(k1, k2);
 
 	return !_mm_test_all_zeros(x, x);
-#else
-	const __m128i x = _mm_cmpeq_epi32(k1, k2);
-
-	return _mm_movemask_epi8(x) != 0xffff;
-#endif
 }
 
 static int

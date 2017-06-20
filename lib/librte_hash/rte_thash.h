@@ -56,11 +56,11 @@ extern "C" {
 #include <rte_ip.h>
 #include <rte_common.h>
 
-#if defined(__SSE3__) || defined(RTE_MACHINE_CPUFLAG_NEON)
+#if defined(RTE_ARCH_X86) || defined(RTE_MACHINE_CPUFLAG_NEON)
 #include <rte_vect.h>
 #endif
 
-#ifdef __SSE3__
+#ifdef RTE_ARCH_X86
 /* Byte swap mask used for converting IPv6 address
  * 4-byte chunks to CPU byte order
  */
@@ -134,7 +134,7 @@ struct rte_ipv6_tuple {
 union rte_thash_tuple {
 	struct rte_ipv4_tuple	v4;
 	struct rte_ipv6_tuple	v6;
-#ifdef __SSE3__
+#ifdef RTE_ARCH_X86
 } __attribute__((aligned(XMM_SIZE)));
 #else
 };
@@ -169,7 +169,7 @@ rte_convert_rss_key(const uint32_t *orig, uint32_t *targ, int len)
 static inline void
 rte_thash_load_v6_addrs(const struct ipv6_hdr *orig, union rte_thash_tuple *targ)
 {
-#ifdef __SSE3__
+#ifdef RTE_ARCH_X86
 	__m128i ipv6 = _mm_loadu_si128((const __m128i *)orig->src_addr);
 	*(__m128i *)targ->v6.src_addr =
 			_mm_shuffle_epi8(ipv6, rte_thash_ipv6_bswap_mask);
