@@ -104,7 +104,7 @@ static struct ipv6_l3fwd_lpm_route ipv6_l3fwd_lpm_route_array[] = {
 struct rte_lpm *ipv4_l3fwd_lpm_lookup_struct[NB_SOCKETS];
 struct rte_lpm6 *ipv6_l3fwd_lpm_lookup_struct[NB_SOCKETS];
 
-#if defined(__SSE4_1__)
+#if defined(RTE_ARCH_X86)
 #include "l3fwd_lpm_sse.h"
 #else
 #include "l3fwd_lpm.h"
@@ -178,13 +178,13 @@ lpm_main_loop(__attribute__((unused)) void *dummy)
 			if (nb_rx == 0)
 				continue;
 
-#if defined(__SSE4_1__)
+#if defined(RTE_ARCH_X86)
 			l3fwd_lpm_send_packets(nb_rx, pkts_burst,
 						portid, qconf);
 #else
 			l3fwd_lpm_no_opt_send_packets(nb_rx, pkts_burst,
 							portid, qconf);
-#endif /* __SSE_4_1__ */
+#endif /* X86 */
 		}
 	}
 
