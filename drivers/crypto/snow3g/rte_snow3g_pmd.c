@@ -549,19 +549,11 @@ cryptodev_snow3g_create(const char *name,
 {
 	struct rte_cryptodev *dev;
 	struct snow3g_private *internals;
-	uint64_t cpu_flags = 0;
+	uint64_t cpu_flags = RTE_CRYPTODEV_FF_CPU_SSE;
 
 	if (init_params->name[0] == '\0')
 		snprintf(init_params->name, sizeof(init_params->name),
 				"%s", name);
-
-	/* Check CPU for supported vector instruction set */
-	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_SSE4_1))
-		cpu_flags |= RTE_CRYPTODEV_FF_CPU_SSE;
-	else {
-		SNOW3G_LOG_ERR("Vector instructions are not supported by CPU");
-		return -EFAULT;
-	}
 
 	dev = rte_cryptodev_vdev_pmd_init(init_params->name,
 			sizeof(struct snow3g_private), init_params->socket_id,
