@@ -47,11 +47,7 @@ extern "C" {
 #endif
 
 #ifndef RTE_TABLE_HASH_LRU_STRATEGY
-#ifdef __SSE4_2__
 #define RTE_TABLE_HASH_LRU_STRATEGY                        2
-#else /* if no SSE, use simple scalar version */
-#define RTE_TABLE_HASH_LRU_STRATEGY                        1
-#endif
 #endif
 
 #if RTE_TABLE_HASH_LRU_STRATEGY == 2
