@@ -41,7 +41,7 @@
 ICC_MAJOR_VERSION = $(shell icc -dumpversion | cut -f1 -d.)
 
 ifeq ($(shell test $(ICC_MAJOR_VERSION) -lt 12 && echo 1), 1)
-	MACHINE_CFLAGS = -xSSE3
+	MACHINE_CFLAGS = -xSSE4.2
 $(warning You are not using ICC 12.x or higher. This is neither supported, nor tested.)
 
 else

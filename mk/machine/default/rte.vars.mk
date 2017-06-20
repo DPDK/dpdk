@@ -55,4 +55,4 @@
 # CPU_LDFLAGS =
 # CPU_ASFLAGS =
 
-MACHINE_CFLAGS += -march=core2
+MACHINE_CFLAGS += -march=corei7

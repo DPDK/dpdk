@@ -63,8 +63,5 @@ MACHINE_CFLAGS = -march=native
 # so, set the compilation target to be a corei7, minimum target with SSE4.2.
 SSE42_SUPPORT=$(shell $(CC) -march=native -dM -E - </dev/null | grep SSE4_2)
 ifeq ($(SSE42_SUPPORT),)
-  CPU_SSE42_SUPPORT = $(shell grep SSE4\.2 /var/run/dmesg.boot 2>/dev/null)
-  ifneq ($(CPU_SSE42_SUPPORT),)
     MACHINE_CFLAGS = -march=corei7
-  endif
 endif
