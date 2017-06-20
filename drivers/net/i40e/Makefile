@@ -110,11 +110,6 @@ SRCS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += i40e_fdir.c
 SRCS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += i40e_flow.c
 SRCS-$(CONFIG_RTE_LIBRTE_I40E_PMD) += rte_pmd_i40e.c
 
-# vector PMD driver needs SSE4.1 support
-ifeq ($(findstring RTE_MACHINE_CPUFLAG_SSE4_1,$(CFLAGS)),)
-CFLAGS_i40e_rxtx_vec_sse.o += -msse4.1
-endif
-
 # install this header file
 SYMLINK-$(CONFIG_RTE_LIBRTE_I40E_PMD)-include := rte_pmd_i40e.h
 

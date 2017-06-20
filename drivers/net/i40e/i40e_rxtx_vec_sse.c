@@ -651,11 +651,5 @@ i40e_txq_vec_setup(struct i40e_tx_queue __rte_unused *txq)
 int __attribute__((cold))
 i40e_rx_vec_dev_conf_condition_check(struct rte_eth_dev *dev)
 {
-#ifndef RTE_LIBRTE_IEEE1588
-	/* need SSE4.1 support */
-	if (!rte_cpu_get_flag_enabled(RTE_CPUFLAG_SSE4_1))
-		return -1;
-#endif
-
 	return i40e_rx_vec_dev_conf_condition_check_default(dev);
 }
