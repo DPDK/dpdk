@@ -39,9 +39,7 @@
 #include <rte_common.h>
 #include <rte_net_crc.h>
 
-#if defined(RTE_ARCH_X86_64)				\
-	&& defined(RTE_MACHINE_CPUFLAG_SSE4_2)		\
-	&& defined(RTE_MACHINE_CPUFLAG_PCLMULQDQ)
+#if defined(RTE_ARCH_X86_64) && defined(RTE_MACHINE_CPUFLAG_PCLMULQDQ)
 #define X86_64_SSE42_PCLMULQDQ     1
 #endif
 
