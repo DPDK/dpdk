@@ -34,9 +34,7 @@
 #include <stddef.h>
 
 #include <rte_jhash.h>
-#ifdef RTE_MACHINE_CPUFLAG_SSE4_2
 #include <rte_hash_crc.h>
-#endif /* RTE_MACHINE_CPUFLAG_SSE4_2 */
 
 #include "ip_frag_common.h"
 
@@ -94,14 +92,14 @@ ipv4_frag_hash(const struct ip_frag_key *key, uint32_t *v1, uint32_t *v2)
 
 	p = (const uint32_t *)&key->src_dst;
 
-#ifdef RTE_MACHINE_CPUFLAG_SSE4_2
+#ifdef RTE_ARCH_X86
 	v = rte_hash_crc_4byte(p[0], PRIME_VALUE);
 	v = rte_hash_crc_4byte(p[1], v);
 	v = rte_hash_crc_4byte(key->id, v);
 #else
 
 	v = rte_jhash_3words(p[0], p[1], key->id, PRIME_VALUE);
-#endif /* RTE_MACHINE_CPUFLAG_SSE4_2 */
+#endif /* RTE_ARCH_X86 */
 
 	*v1 =  v;
 	*v2 = (v << 7) + (v >> 14);
@@ -115,7 +113,7 @@ ipv6_frag_hash(const struct ip_frag_key *key, uint32_t *v1, uint32_t *v2)
 
 	p = (const uint32_t *) &key->src_dst;
 
-#ifdef RTE_MACHINE_CPUFLAG_SSE4_2
+#ifdef RTE_ARCH_X86
 	v = rte_hash_crc_4byte(p[0], PRIME_VALUE);
 	v = rte_hash_crc_4byte(p[1], v);
 	v = rte_hash_crc_4byte(p[2], v);
@@ -130,7 +128,7 @@ ipv6_frag_hash(const struct ip_frag_key *key, uint32_t *v1, uint32_t *v2)
 	v = rte_jhash_3words(p[0], p[1], p[2], PRIME_VALUE);
 	v = rte_jhash_3words(p[3], p[4], p[5], v);
 	v = rte_jhash_3words(p[6], p[7], key->id, v);
-#endif /* RTE_MACHINE_CPUFLAG_SSE4_2 */
+#endif /* RTE_ARCH_X86 */
 
 	*v1 =  v;
 	*v2 = (v << 7) + (v >> 14);
