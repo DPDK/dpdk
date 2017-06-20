@@ -40,17 +40,11 @@ extern "C" {
 
 #include "generic/rte_pause.h"
 
-#ifdef __SSE2__
 #include <emmintrin.h>
 static inline void rte_pause(void)
 {
 	_mm_pause();
 }
-#else
-static inline void rte_pause(void)
-{
-}
-#endif
 
 #ifdef __cplusplus
 }
