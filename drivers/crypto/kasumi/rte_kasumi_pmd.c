@@ -567,12 +567,8 @@ cryptodev_kasumi_create(const char *name,
 	/* Check CPU for supported vector instruction set */
 	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX))
 		cpu_flags |= RTE_CRYPTODEV_FF_CPU_AVX;
-	else if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_SSE4_1))
+	else
 		cpu_flags |= RTE_CRYPTODEV_FF_CPU_SSE;
-	else {
-		KASUMI_LOG_ERR("Vector instructions are not supported by CPU");
-		return -EFAULT;
-	}
 
 	dev = rte_cryptodev_vdev_pmd_init(init_params->name,
 			sizeof(struct kasumi_private), init_params->socket_id,
