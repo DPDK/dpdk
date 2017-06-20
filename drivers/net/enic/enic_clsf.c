@@ -57,7 +57,7 @@
 #include "vnic_intr.h"
 #include "vnic_nic.h"
 
-#ifdef RTE_MACHINE_CPUFLAG_SSE4_2
+#ifdef RTE_ARCH_X86
 #include <rte_hash_crc.h>
 #define DEFAULT_HASH_FUNC       rte_hash_crc
 #else
