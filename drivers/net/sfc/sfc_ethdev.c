@@ -361,8 +361,13 @@ sfc_dev_filter_set(struct rte_eth_dev *dev, enum sfc_dev_filter_mode mode,
 	if (*toggle != enabled) {
 		*toggle = enabled;
 
-		if ((sa->state == SFC_ADAPTER_STARTED) &&
-		    (sfc_set_rx_mode(sa) != 0)) {
+		if (port->isolated) {
+			sfc_warn(sa, "isolated mode is active on the port");
+			sfc_warn(sa, "the change is to be applied on the next "
+				     "start provided that isolated mode is "
+				     "disabled prior the next start");
+		} else if ((sa->state == SFC_ADAPTER_STARTED) &&
+			   (sfc_set_rx_mode(sa) != 0)) {
 			*toggle = !(enabled);
 			sfc_warn(sa, "Failed to %s %s mode",
 				 ((enabled) ? "enable" : "disable"), desc);
@@ -826,9 +831,16 @@ sfc_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
 {
 	struct sfc_adapter *sa = dev->data->dev_private;
 	const efx_nic_cfg_t *encp = efx_nic_cfg_get(sa->nic);
+	struct sfc_port *port = &sa->port;
 	int rc;
 
 	sfc_adapter_lock(sa);
+
+	if (port->isolated) {
+		sfc_err(sa, "isolated mode is active on the port");
+		sfc_err(sa, "will not set MAC address");
+		goto unlock;
+	}
 
 	if (sa->state != SFC_ADAPTER_STARTED) {
 		sfc_info(sa, "the port is not started");
@@ -883,6 +895,12 @@ sfc_set_mc_addr_list(struct rte_eth_dev *dev, struct ether_addr *mc_addr_set,
 	uint8_t *mc_addrs = port->mcast_addrs;
 	int rc;
 	unsigned int i;
+
+	if (port->isolated) {
+		sfc_err(sa, "isolated mode is active on the port");
+		sfc_err(sa, "will not set multicast address list");
+		return -ENOTSUP;
+	}
 
 	if (mc_addrs == NULL)
 		return -ENOBUFS;
@@ -1091,8 +1109,9 @@ sfc_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 			  struct rte_eth_rss_conf *rss_conf)
 {
 	struct sfc_adapter *sa = dev->data->dev_private;
+	struct sfc_port *port = &sa->port;
 
-	if (sa->rss_support != EFX_RX_SCALE_EXCLUSIVE)
+	if ((sa->rss_support != EFX_RX_SCALE_EXCLUSIVE) || port->isolated)
 		return -ENOTSUP;
 
 	if (sa->rss_channels == 0)
@@ -1121,8 +1140,12 @@ sfc_dev_rss_hash_update(struct rte_eth_dev *dev,
 			struct rte_eth_rss_conf *rss_conf)
 {
 	struct sfc_adapter *sa = dev->data->dev_private;
+	struct sfc_port *port = &sa->port;
 	unsigned int efx_hash_types;
 	int rc = 0;
+
+	if (port->isolated)
+		return -ENOTSUP;
 
 	if (sa->rss_support != EFX_RX_SCALE_EXCLUSIVE) {
 		sfc_err(sa, "RSS is not available");
@@ -1188,9 +1211,10 @@ sfc_dev_rss_reta_query(struct rte_eth_dev *dev,
 		       uint16_t reta_size)
 {
 	struct sfc_adapter *sa = dev->data->dev_private;
+	struct sfc_port *port = &sa->port;
 	int entry;
 
-	if (sa->rss_support != EFX_RX_SCALE_EXCLUSIVE)
+	if ((sa->rss_support != EFX_RX_SCALE_EXCLUSIVE) || port->isolated)
 		return -ENOTSUP;
 
 	if (sa->rss_channels == 0)
@@ -1220,10 +1244,14 @@ sfc_dev_rss_reta_update(struct rte_eth_dev *dev,
 			uint16_t reta_size)
 {
 	struct sfc_adapter *sa = dev->data->dev_private;
+	struct sfc_port *port = &sa->port;
 	unsigned int *rss_tbl_new;
 	uint16_t entry;
 	int rc;
 
+
+	if (port->isolated)
+		return -ENOTSUP;
 
 	if (sa->rss_support != EFX_RX_SCALE_EXCLUSIVE) {
 		sfc_err(sa, "RSS is not available");

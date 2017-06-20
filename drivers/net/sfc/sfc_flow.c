@@ -1112,12 +1112,35 @@ sfc_flow_flush(struct rte_eth_dev *dev,
 	return -ret;
 }
 
+static int
+sfc_flow_isolate(struct rte_eth_dev *dev, int enable,
+		 struct rte_flow_error *error)
+{
+	struct sfc_adapter *sa = dev->data->dev_private;
+	struct sfc_port *port = &sa->port;
+	int ret = 0;
+
+	sfc_adapter_lock(sa);
+	if (sa->state != SFC_ADAPTER_INITIALIZED) {
+		rte_flow_error_set(error, EBUSY,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL, "please close the port first");
+		ret = -rte_errno;
+	} else {
+		port->isolated = (enable) ? B_TRUE : B_FALSE;
+	}
+	sfc_adapter_unlock(sa);
+
+	return ret;
+}
+
 const struct rte_flow_ops sfc_flow_ops = {
 	.validate = sfc_flow_validate,
 	.create = sfc_flow_create,
 	.destroy = sfc_flow_destroy,
 	.flush = sfc_flow_flush,
 	.query = NULL,
+	.isolate = sfc_flow_isolate,
 };
 
 void

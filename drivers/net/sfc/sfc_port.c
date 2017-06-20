@@ -186,26 +186,29 @@ sfc_port_start(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_mac_pdu_set;
 
-	sfc_log_init(sa, "set MAC address");
-	rc = efx_mac_addr_set(sa->nic,
-			      sa->eth_dev->data->mac_addrs[0].addr_bytes);
-	if (rc != 0)
-		goto fail_mac_addr_set;
+	if (!port->isolated) {
+		struct ether_addr *mac_addrs = sa->eth_dev->data->mac_addrs;
 
-	sfc_log_init(sa, "set MAC filters");
-	port->promisc = (sa->eth_dev->data->promiscuous != 0) ?
-			B_TRUE : B_FALSE;
-	port->allmulti = (sa->eth_dev->data->all_multicast != 0) ?
-			 B_TRUE : B_FALSE;
-	rc = sfc_set_rx_mode(sa);
-	if (rc != 0)
-		goto fail_mac_filter_set;
+		sfc_log_init(sa, "set MAC address");
+		rc = efx_mac_addr_set(sa->nic, mac_addrs[0].addr_bytes);
+		if (rc != 0)
+			goto fail_mac_addr_set;
 
-	sfc_log_init(sa, "set multicast address list");
-	rc = efx_mac_multicast_list_set(sa->nic, port->mcast_addrs,
-					port->nb_mcast_addrs);
-	if (rc != 0)
-		goto fail_mcast_address_list_set;
+		sfc_log_init(sa, "set MAC filters");
+		port->promisc = (sa->eth_dev->data->promiscuous != 0) ?
+				B_TRUE : B_FALSE;
+		port->allmulti = (sa->eth_dev->data->all_multicast != 0) ?
+				 B_TRUE : B_FALSE;
+		rc = sfc_set_rx_mode(sa);
+		if (rc != 0)
+			goto fail_mac_filter_set;
+
+		sfc_log_init(sa, "set multicast address list");
+		rc = efx_mac_multicast_list_set(sa->nic, port->mcast_addrs,
+						port->nb_mcast_addrs);
+		if (rc != 0)
+			goto fail_mcast_address_list_set;
+	}
 
 	if (port->mac_stats_reset_pending) {
 		rc = sfc_port_reset_mac_stats(sa);

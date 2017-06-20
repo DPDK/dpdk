@@ -150,6 +150,11 @@ struct sfc_port {
 	boolean_t			flow_ctrl_autoneg;
 	size_t				pdu;
 
+	/*
+	 * Flow API isolated mode overrides promisc and allmulti settings;
+	 * they won't be applied if isolated mode is active
+	 */
+	boolean_t			isolated;
 	boolean_t			promisc;
 	boolean_t			allmulti;
 

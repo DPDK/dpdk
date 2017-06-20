@@ -630,6 +630,7 @@ retry:
 int
 sfc_rx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 {
+	struct sfc_port *port = &sa->port;
 	struct sfc_rxq_info *rxq_info;
 	struct sfc_rxq *rxq;
 	struct sfc_evq *evq;
@@ -664,7 +665,7 @@ sfc_rx_qstart(struct sfc_adapter *sa, unsigned int sw_index)
 
 	rxq->state |= SFC_RXQ_STARTED;
 
-	if (sw_index == 0) {
+	if ((sw_index == 0) && !port->isolated) {
 		rc = sfc_rx_default_rxq_set_filter(sa, rxq);
 		if (rc != 0)
 			goto fail_mac_filter_default_rxq_set;
