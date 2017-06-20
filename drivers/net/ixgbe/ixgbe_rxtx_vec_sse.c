@@ -216,25 +216,10 @@ desc_to_olflags_v(__m128i descs[4], __m128i mbuf_init, uint8_t vlan_flags,
 	 * appropriate flags means that we have to do a shift and blend for
 	 * each mbuf before we do the write.
 	 */
-#ifdef RTE_MACHINE_CPUFLAG_SSE4_2
-
 	rearm0 = _mm_blend_epi16(mbuf_init, _mm_slli_si128(vtag1, 8), 0x10);
 	rearm1 = _mm_blend_epi16(mbuf_init, _mm_slli_si128(vtag1, 6), 0x10);
 	rearm2 = _mm_blend_epi16(mbuf_init, _mm_slli_si128(vtag1, 4), 0x10);
 	rearm3 = _mm_blend_epi16(mbuf_init, _mm_slli_si128(vtag1, 2), 0x10);
-
-#else
-	rearm0 = _mm_slli_si128(vtag1, 14);
-	rearm1 = _mm_slli_si128(vtag1, 12);
-	rearm2 = _mm_slli_si128(vtag1, 10);
-	rearm3 = _mm_slli_si128(vtag1, 8);
-
-	rearm0 = _mm_or_si128(mbuf_init, _mm_srli_epi64(rearm0, 48));
-	rearm1 = _mm_or_si128(mbuf_init, _mm_srli_epi64(rearm1, 48));
-	rearm2 = _mm_or_si128(mbuf_init, _mm_srli_epi64(rearm2, 48));
-	rearm3 = _mm_or_si128(mbuf_init, _mm_srli_epi64(rearm3, 48));
-
-#endif /* RTE_MACHINE_CPUFLAG_SSE4_2 */
 
 	/* write the rearm data and the olflags in one write */
 	RTE_BUILD_BUG_ON(offsetof(struct rte_mbuf, ol_flags) !=
