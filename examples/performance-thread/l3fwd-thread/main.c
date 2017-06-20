@@ -158,11 +158,7 @@ cb_parse_ptype(__rte_unused uint8_t port, __rte_unused uint16_t queue,
  *  When set to one, optimized forwarding path is enabled.
  *  Note that LPM optimisation path uses SSE4.1 instructions.
  */
-#if ((APP_LOOKUP_METHOD == APP_LOOKUP_LPM) && !defined(__SSE4_1__))
-#define ENABLE_MULTI_BUFFER_OPTIMIZE	0
-#else
 #define ENABLE_MULTI_BUFFER_OPTIMIZE	1
-#endif
 
 #if (APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH)
 #include <rte_hash.h>
@@ -363,13 +359,8 @@ static struct rte_mempool *pktmbuf_pool[NB_SOCKETS];
 
 #if (APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH)
 
-#ifdef RTE_MACHINE_CPUFLAG_SSE4_2
 #include <rte_hash_crc.h>
 #define DEFAULT_HASH_FUNC       rte_hash_crc
-#else
-#include <rte_jhash.h>
-#define DEFAULT_HASH_FUNC       rte_jhash
-#endif
 
 struct ipv4_5tuple {
 	uint32_t ip_dst;
@@ -486,17 +477,10 @@ ipv4_hash_crc(const void *data, __rte_unused uint32_t data_len,
 	t = k->proto;
 	p = (const uint32_t *)&k->port_src;
 
-#ifdef RTE_MACHINE_CPUFLAG_SSE4_2
 	init_val = rte_hash_crc_4byte(t, init_val);
 	init_val = rte_hash_crc_4byte(k->ip_src, init_val);
 	init_val = rte_hash_crc_4byte(k->ip_dst, init_val);
 	init_val = rte_hash_crc_4byte(*p, init_val);
-#else /* RTE_MACHINE_CPUFLAG_SSE4_2 */
-	init_val = rte_jhash_1word(t, init_val);
-	init_val = rte_jhash_1word(k->ip_src, init_val);
-	init_val = rte_jhash_1word(k->ip_dst, init_val);
-	init_val = rte_jhash_1word(*p, init_val);
-#endif /* RTE_MACHINE_CPUFLAG_SSE4_2 */
 	return init_val;
 }
 
@@ -507,16 +491,13 @@ ipv6_hash_crc(const void *data, __rte_unused uint32_t data_len,
 	const union ipv6_5tuple_host *k;
 	uint32_t t;
 	const uint32_t *p;
-#ifdef RTE_MACHINE_CPUFLAG_SSE4_2
 	const uint32_t *ip_src0, *ip_src1, *ip_src2, *ip_src3;
 	const uint32_t *ip_dst0, *ip_dst1, *ip_dst2, *ip_dst3;
-#endif /* RTE_MACHINE_CPUFLAG_SSE4_2 */
 
 	k = data;
 	t = k->proto;
 	p = (const uint32_t *)&k->port_src;
 
-#ifdef RTE_MACHINE_CPUFLAG_SSE4_2
 	ip_src0 = (const uint32_t *) k->ip_src;
 	ip_src1 = (const uint32_t *)(k->ip_src + 4);
 	ip_src2 = (const uint32_t *)(k->ip_src + 8);
@@ -535,12 +516,6 @@ ipv6_hash_crc(const void *data, __rte_unused uint32_t data_len,
 	init_val = rte_hash_crc_4byte(*ip_dst2, init_val);
 	init_val = rte_hash_crc_4byte(*ip_dst3, init_val);
 	init_val = rte_hash_crc_4byte(*p, init_val);
-#else /* RTE_MACHINE_CPUFLAG_SSE4_2 */
-	init_val = rte_jhash_1word(t, init_val);
-	init_val = rte_jhash(k->ip_src, sizeof(uint8_t) * IPV6_ADDR_LEN, init_val);
-	init_val = rte_jhash(k->ip_dst, sizeof(uint8_t) * IPV6_ADDR_LEN, init_val);
-	init_val = rte_jhash_1word(*p, init_val);
-#endif /* RTE_MACHINE_CPUFLAG_SSE4_2 */
 	return init_val;
 }
 
