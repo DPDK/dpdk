@@ -129,6 +129,7 @@ skeleton_eventdev_info_get(struct rte_eventdev *dev,
 	dev_info->max_event_port_enqueue_depth = 16;
 	dev_info->max_num_events = (1ULL << 20);
 	dev_info->event_dev_cap = RTE_EVENT_DEV_CAP_QUEUE_QOS |
+					RTE_EVENT_DEV_CAP_BURST_MODE |
 					RTE_EVENT_DEV_CAP_EVENT_QOS;
 }
 
