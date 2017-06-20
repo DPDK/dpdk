@@ -688,12 +688,8 @@ cryptodev_aesni_mb_create(const char *name,
 		vector_mode = RTE_AESNI_MB_AVX2;
 	else if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX))
 		vector_mode = RTE_AESNI_MB_AVX;
-	else if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_SSE4_1))
+	else
 		vector_mode = RTE_AESNI_MB_SSE;
-	else {
-		MB_LOG_ERR("Vector instructions are not supported by CPU");
-		return -EFAULT;
-	}
 
 	dev = rte_cryptodev_vdev_pmd_init(init_params->name,
 			sizeof(struct aesni_mb_private), init_params->socket_id,
