@@ -1481,8 +1481,7 @@ static struct rte_cryptodev_ops crypto_ops = {
 };
 
 static int
-dpaa2_sec_uninit(const struct rte_cryptodev_driver *crypto_drv __rte_unused,
-		 struct rte_cryptodev *dev)
+dpaa2_sec_uninit(const struct rte_cryptodev *dev)
 {
 	PMD_INIT_LOG(INFO, "Closing DPAA2_SEC device %s on numa socket %u\n",
 		     dev->data->name, rte_socket_id());
@@ -1571,7 +1570,7 @@ init_error:
 }
 
 static int
-cryptodev_dpaa2_sec_probe(struct rte_dpaa2_driver *dpaa2_drv,
+cryptodev_dpaa2_sec_probe(struct rte_dpaa2_driver *dpaa2_drv __rte_unused,
 			  struct rte_dpaa2_device *dpaa2_dev)
 {
 	struct rte_cryptodev *cryptodev;
@@ -1599,7 +1598,6 @@ cryptodev_dpaa2_sec_probe(struct rte_dpaa2_driver *dpaa2_drv,
 
 	dpaa2_dev->cryptodev = cryptodev;
 	cryptodev->device = &dpaa2_dev->device;
-	cryptodev->driver = (struct rte_cryptodev_driver *)dpaa2_drv;
 
 	/* init user callbacks */
 	TAILQ_INIT(&(cryptodev->link_intr_cbs));
@@ -1627,7 +1625,7 @@ cryptodev_dpaa2_sec_remove(struct rte_dpaa2_device *dpaa2_dev)
 	if (cryptodev == NULL)
 		return -ENODEV;
 
-	ret = dpaa2_sec_uninit(NULL, cryptodev);
+	ret = dpaa2_sec_uninit(cryptodev);
 	if (ret)
 		return ret;
 
@@ -1638,7 +1636,6 @@ cryptodev_dpaa2_sec_remove(struct rte_dpaa2_device *dpaa2_dev)
 		rte_free(cryptodev->data->dev_private);
 
 	cryptodev->device = NULL;
-	cryptodev->driver = NULL;
 	cryptodev->data = NULL;
 
 	return 0;
