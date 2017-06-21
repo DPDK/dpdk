@@ -1144,8 +1144,7 @@ rte_cryptodev_info_get(uint8_t dev_id, struct rte_cryptodev_info *dev_info)
 	(*dev->dev_ops->dev_infos_get)(dev, dev_info);
 
 	dev_info->pci_dev = RTE_DEV_TO_PCI(dev->device);
-	if (dev->driver)
-		dev_info->driver_name = dev->driver->pci_drv.driver.name;
+	dev_info->driver_name = dev->device->driver->name;
 }
 
 
