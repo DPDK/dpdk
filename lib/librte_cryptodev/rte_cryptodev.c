@@ -233,22 +233,6 @@ rte_crypto_auth_operation_strings[] = {
 		[RTE_CRYPTO_AUTH_OP_GENERATE]	= "generate"
 };
 
-static uint8_t
-number_of_sockets(void)
-{
-	int sockets = 0;
-	int i;
-	const struct rte_memseg *ms = rte_eal_get_physmem_layout();
-
-	for (i = 0; ((i < RTE_MAX_MEMSEG) && (ms[i].addr != NULL)); i++) {
-		if (sockets < ms[i].socket_id)
-			sockets = ms[i].socket_id;
-	}
-
-	/* Number of sockets = maximum socket_id + 1 */
-	return ++sockets;
-}
-
 /** Parse integer from integer argument */
 static int
 parse_integer_arg(const char *key __rte_unused,
@@ -325,12 +309,6 @@ rte_cryptodev_parse_vdev_init_params(struct rte_crypto_vdev_init_params *params,
 					params);
 		if (ret < 0)
 			goto free_kvlist;
-
-		if (params->socket_id >= number_of_sockets()) {
-			CDEV_LOG_ERR("Invalid socket id specified to create "
-				"the virtual crypto device on");
-			goto free_kvlist;
-		}
 	}
 
 free_kvlist:
