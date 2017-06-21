@@ -232,9 +232,6 @@ mac_address_get(struct rte_eth_dev *eth_dev, struct ether_addr *dst_mac_addr);
 int
 mac_address_slaves_update(struct rte_eth_dev *bonded_eth_dev);
 
-uint8_t
-number_of_sockets(void);
-
 int
 bond_ethdev_mode_set(struct rte_eth_dev *eth_dev, int mode);
 

@@ -204,8 +204,8 @@ bond_ethdev_parse_socket_id_kvarg(const char *key __rte_unused,
 	if (*endptr != 0 || errno != 0)
 		return -1;
 
-	/* validate mode value */
-	if (socket_id >= 0 && socket_id < number_of_sockets()) {
+	/* validate socket id value */
+	if (socket_id >= 0) {
 		*(uint8_t *)extra_args = (uint8_t)socket_id;
 		return 0;
 	}

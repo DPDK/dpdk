@@ -143,22 +143,6 @@ deactivate_slave(struct rte_eth_dev *eth_dev, uint8_t port_id)
 	}
 }
 
-uint8_t
-number_of_sockets(void)
-{
-	int sockets = 0;
-	int i;
-	const struct rte_memseg *ms = rte_eal_get_physmem_layout();
-
-	for (i = 0; ((i < RTE_MAX_MEMSEG) && (ms[i].addr != NULL)); i++) {
-		if (sockets < ms[i].socket_id)
-			sockets = ms[i].socket_id;
-	}
-
-	/* Number of sockets = maximum socket_id + 1 */
-	return ++sockets;
-}
-
 int
 rte_eth_bond_create(const char *name, uint8_t mode, uint8_t socket_id)
 {

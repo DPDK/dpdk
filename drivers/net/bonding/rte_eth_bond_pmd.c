@@ -2272,12 +2272,6 @@ bond_alloc(struct rte_vdev_device *dev, uint8_t mode)
 	 * and internal (private) data
 	 */
 
-	if (socket_id >= number_of_sockets()) {
-		RTE_BOND_LOG(ERR,
-				"Invalid socket id specified to create bonded device on.");
-		goto err;
-	}
-
 	/* reserve an ethdev entry */
 	eth_dev = rte_eth_vdev_allocate(dev, sizeof(*internals));
 	if (eth_dev == NULL) {
