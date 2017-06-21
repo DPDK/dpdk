@@ -464,9 +464,10 @@ extern uint8_t
 rte_cryptodev_count_devtype(enum rte_cryptodev_type type);
 
 /**
- * Get number and identifiers of attached crypto device.
+ * Get number and identifiers of attached crypto devices that
+ * use the same crypto driver.
  *
- * @param	dev_name	device name.
+ * @param	driver_name	driver name.
  * @param	devices		output devices identifiers.
  * @param	nb_devices	maximal number of devices.
  *
@@ -474,7 +475,7 @@ rte_cryptodev_count_devtype(enum rte_cryptodev_type type);
  *   Returns number of attached crypto device.
  */
 uint8_t
-rte_cryptodev_devices_get(const char *dev_name, uint8_t *devices,
+rte_cryptodev_devices_get(const char *driver_name, uint8_t *devices,
 		uint8_t nb_devices);
 /*
  * Return the NUMA socket to which a device is connected

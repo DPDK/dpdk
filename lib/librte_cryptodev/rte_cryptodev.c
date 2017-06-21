@@ -501,7 +501,7 @@ rte_cryptodev_count_devtype(enum rte_cryptodev_type type)
 }
 
 uint8_t
-rte_cryptodev_devices_get(const char *dev_name, uint8_t *devices,
+rte_cryptodev_devices_get(const char *driver_name, uint8_t *devices,
 	uint8_t nb_devices)
 {
 	uint8_t i, count = 0;
@@ -516,10 +516,10 @@ rte_cryptodev_devices_get(const char *dev_name, uint8_t *devices,
 
 			if (drv)
 				cmp = strncmp(drv->pci_drv.driver.name,
-						dev_name, strlen(dev_name));
+					driver_name, strlen(driver_name));
 			else
 				cmp = strncmp(devs[i].data->name,
-						dev_name, strlen(dev_name));
+					driver_name, strlen(driver_name));
 
 			if (cmp == 0)
 				devices[count++] = devs[i].data->dev_id;
