@@ -541,9 +541,12 @@ rte_cryptodev_pmd_release_device(struct rte_cryptodev *cryptodev)
 	if (cryptodev == NULL)
 		return -EINVAL;
 
-	ret = rte_cryptodev_close(cryptodev->data->dev_id);
-	if (ret < 0)
-		return ret;
+	/* Close device only if device operations have been set */
+	if (cryptodev->dev_ops) {
+		ret = rte_cryptodev_close(cryptodev->data->dev_id);
+		if (ret < 0)
+			return ret;
+	}
 
 	cryptodev->attached = RTE_CRYPTODEV_DETACHED;
 	cryptodev_globals.nb_devs--;
@@ -604,8 +607,8 @@ rte_cryptodev_pci_probe(struct rte_pci_driver *pci_drv,
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
 		rte_free(cryptodev->data->dev_private);
 
-	cryptodev->attached = RTE_CRYPTODEV_DETACHED;
-	cryptodev_globals.nb_devs--;
+	/* free crypto device */
+	rte_cryptodev_pmd_release_device(cryptodev);
 
 	return -ENXIO;
 }
