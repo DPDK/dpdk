@@ -521,9 +521,11 @@ rte_event_dev_configure(uint8_t dev_id,
 struct rte_event_queue_conf {
 	uint32_t nb_atomic_flows;
 	/**< The maximum number of active flows this queue can track at any
-	 * given time. The value must be in the range of
-	 * [1 - nb_event_queue_flows)] which previously provided in
-	 * rte_event_dev_info_get().
+	 * given time. If the queue is configured for atomic scheduling (by
+	 * applying the RTE_EVENT_QUEUE_CFG_ALL_TYPES or
+	 * RTE_EVENT_QUEUE_CFG_ATOMIC_ONLY flags to event_queue_cfg), then the
+	 * value must be in the range of [1, nb_event_queue_flows], which was
+	 * previously provided in rte_event_dev_configure().
 	 */
 	uint32_t nb_atomic_order_sequences;
 	/**< The maximum number of outstanding events waiting to be
@@ -533,8 +535,11 @@ struct rte_event_queue_conf {
 	 * scheduler cannot schedule the events from this queue and invalid
 	 * event will be returned from dequeue until one or more entries are
 	 * freed up/released.
-	 * The value must be in the range of [1 - nb_event_queue_flows)]
-	 * which previously supplied to rte_event_dev_configure().
+	 * If the queue is configured for ordered scheduling (by applying the
+	 * RTE_EVENT_QUEUE_CFG_ALL_TYPES or RTE_EVENT_QUEUE_CFG_ORDERED_ONLY
+	 * flags to event_queue_cfg), then the value must be in the range of
+	 * [1, nb_event_queue_flows], which was previously supplied to
+	 * rte_event_dev_configure().
 	 */
 	uint32_t event_queue_cfg; /**< Queue cfg flags(EVENT_QUEUE_CFG_) */
 	uint8_t priority;
