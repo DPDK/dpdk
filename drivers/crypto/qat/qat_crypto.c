@@ -1240,8 +1240,8 @@ int qat_dev_close(struct rte_cryptodev *dev)
 	return 0;
 }
 
-void qat_dev_info_get(__rte_unused struct rte_cryptodev *dev,
-				struct rte_cryptodev_info *info)
+void qat_dev_info_get(struct rte_cryptodev *dev,
+			struct rte_cryptodev_info *info)
 {
 	struct qat_pmd_private *internals = dev->data->dev_private;
 
@@ -1254,6 +1254,7 @@ void qat_dev_info_get(__rte_unused struct rte_cryptodev *dev,
 		info->capabilities = internals->qat_dev_capabilities;
 		info->sym.max_nb_sessions = internals->max_nb_sessions;
 		info->dev_type = RTE_CRYPTODEV_QAT_SYM_PMD;
+		info->pci_dev = RTE_DEV_TO_PCI(dev->device);
 	}
 }
 
