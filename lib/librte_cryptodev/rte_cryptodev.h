@@ -694,8 +694,6 @@ struct rte_cryptodev {
 	enqueue_pkt_burst_t enqueue_burst;
 	/**< Pointer to PMD transmit function. */
 
-	const struct rte_cryptodev_driver *driver;
-	/**< Driver for this device */
 	struct rte_cryptodev_data *data;
 	/**< Pointer to device data */
 	struct rte_cryptodev_ops *dev_ops;

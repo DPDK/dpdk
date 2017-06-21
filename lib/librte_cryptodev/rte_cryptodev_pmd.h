@@ -47,7 +47,6 @@ extern "C" {
 #include <string.h>
 
 #include <rte_dev.h>
-#include <rte_pci.h>
 #include <rte_malloc.h>
 #include <rte_mbuf.h>
 #include <rte_mempool.h>
@@ -67,69 +66,6 @@ struct rte_cryptodev_session {
 
 	__extension__ char _private[0];
 };
-
-struct rte_cryptodev_driver;
-
-/**
- * Initialisation function of a crypto driver invoked for each matching
- * crypto PCI device detected during the PCI probing phase.
- *
- * @param	drv	The pointer to the [matching] crypto driver structure
- *			supplied by the PMD when it registered itself.
- * @param	dev	The dev pointer is the address of the *rte_cryptodev*
- *			structure associated with the matching device and which
- *			has been [automatically] allocated in the
- *			*rte_crypto_devices* array.
- *
- * @return
- *   - 0: Success, the device is properly initialised by the driver.
- *        In particular, the driver MUST have set up the *dev_ops* pointer
- *        of the *dev* structure.
- *   - <0: Error code of the device initialisation failure.
- */
-typedef int (*cryptodev_init_t)(struct rte_cryptodev_driver *drv,
-		struct rte_cryptodev *dev);
-
-/**
- * Finalisation function of a driver invoked for each matching
- * PCI device detected during the PCI closing phase.
- *
- * @param	drv	The pointer to the [matching] driver structure supplied
- *			by the PMD when it registered itself.
- * @param	dev	The dev pointer is the address of the *rte_cryptodev*
- *			structure associated with the matching device and which
- *			has been [automatically] allocated in the
- *			*rte_crypto_devices* array.
- *
- *  * @return
- *   - 0: Success, the device is properly finalised by the driver.
- *        In particular, the driver MUST free the *dev_ops* pointer
- *        of the *dev* structure.
- *   - <0: Error code of the device initialisation failure.
- */
-typedef int (*cryptodev_uninit_t)(const struct rte_cryptodev_driver  *drv,
-				struct rte_cryptodev *dev);
-
-/**
- * The structure associated with a PMD driver.
- *
- * Each driver acts as a PCI driver and is represented by a generic
- * *crypto_driver* structure that holds:
- *
- * - An *rte_pci_driver* structure (which must be the first field).
- *
- * - The *cryptodev_init* function invoked for each matching PCI device.
- *
- * - The size of the private data to allocate for each matching device.
- */
-struct rte_cryptodev_driver {
-	struct rte_pci_driver pci_drv;	/**< The PMD is also a PCI driver. */
-	unsigned dev_private_size;	/**< Size of device private data. */
-
-	cryptodev_init_t cryptodev_init;	/**< Device init function. */
-	cryptodev_uninit_t cryptodev_uninit;	/**< Device uninit function. */
-};
-
 
 /** Global structure used for maintaining state of allocated crypto devices */
 struct rte_cryptodev_global {
