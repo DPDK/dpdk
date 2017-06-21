@@ -36,6 +36,7 @@
 #include <rte_malloc.h>
 #include <rte_memzone.h>
 #include <rte_cryptodev_pmd.h>
+#include <rte_pci.h>
 #include <rte_atomic.h>
 #include <rte_prefetch.h>
 
@@ -205,7 +206,7 @@ int qat_crypto_sym_qp_setup(struct rte_cryptodev *dev, uint16_t queue_pair_id,
 	adf_configure_queues(qp);
 	adf_queue_arb_enable(&qp->tx_q, qp->mmap_bar_addr);
 	snprintf(op_cookie_pool_name, RTE_RING_NAMESIZE, "%s_qp_op_%d_%hu",
-		dev->driver->pci_drv.driver.name, dev->data->dev_id,
+		pci_dev->driver->driver.name, dev->data->dev_id,
 		queue_pair_id);
 
 	qp->op_cookie_pool = rte_mempool_lookup(op_cookie_pool_name);
@@ -355,11 +356,13 @@ qat_queue_create(struct rte_cryptodev *dev, struct qat_queue *queue,
 		return -EINVAL;
 	}
 
+	pci_dev = RTE_DEV_TO_PCI(dev->device);
+
 	/*
 	 * Allocate a memzone for the queue - create a unique name.
 	 */
 	snprintf(queue->memz_name, sizeof(queue->memz_name), "%s_%s_%d_%d_%d",
-		dev->driver->pci_drv.driver.name, "qp_mem", dev->data->dev_id,
+		pci_dev->driver->driver.name, "qp_mem", dev->data->dev_id,
 		queue->hw_bundle_number, queue->hw_queue_number);
 	qp_mz = queue_dma_zone_reserve(queue->memz_name, queue_size_bytes,
 			socket_id);
@@ -408,7 +411,6 @@ qat_queue_create(struct rte_cryptodev *dev, struct qat_queue *queue,
 
 	queue_base = BUILD_RING_BASE_ADDR(queue->base_phys_addr,
 					queue->queue_size);
-	pci_dev = RTE_DEV_TO_PCI(dev->device);
 
 	io_addr = pci_dev->mem_resource[0].addr;
 
