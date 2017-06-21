@@ -49,6 +49,7 @@ extern "C" {
 #include "rte_crypto.h"
 #include "rte_dev.h"
 #include <rte_common.h>
+#include <rte_vdev.h>
 
 #define CRYPTODEV_NAME_NULL_PMD		crypto_null
 /**< Null crypto PMD device name */

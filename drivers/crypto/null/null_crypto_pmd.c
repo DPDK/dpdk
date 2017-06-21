@@ -166,6 +166,7 @@ static int cryptodev_null_remove(const char *name);
 /** Create crypto device */
 static int
 cryptodev_null_create(const char *name,
+		struct rte_vdev_device *vdev,
 		struct rte_crypto_vdev_init_params *init_params)
 {
 	struct rte_cryptodev *dev;
@@ -177,7 +178,8 @@ cryptodev_null_create(const char *name,
 
 	dev = rte_cryptodev_pmd_virtual_dev_init(init_params->name,
 			sizeof(struct null_crypto_private),
-			init_params->socket_id);
+			init_params->socket_id,
+			vdev);
 	if (dev == NULL) {
 		NULL_CRYPTO_LOG_ERR("failed to create cryptodev vdev");
 		goto init_error;
@@ -235,7 +237,7 @@ cryptodev_null_probe(struct rte_vdev_device *dev)
 	RTE_LOG(INFO, PMD, "  Max number of sessions = %d\n",
 			init_params.max_nb_sessions);
 
-	return cryptodev_null_create(name, &init_params);
+	return cryptodev_null_create(name, dev, &init_params);
 }
 
 /** Uninitialise null crypto device */

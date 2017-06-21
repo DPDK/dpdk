@@ -808,7 +808,8 @@ cryptodev_armv8_crypto_create(const char *name,
 
 	dev = rte_cryptodev_pmd_virtual_dev_init(init_params->name,
 				sizeof(struct armv8_crypto_private),
-				init_params->socket_id);
+				init_params->socket_id,
+				vdev);
 	if (dev == NULL) {
 		ARMV8_CRYPTO_LOG_ERR("failed to create cryptodev vdev");
 		goto init_error;

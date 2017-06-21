@@ -450,7 +450,8 @@ aesni_gcm_create(const char *name,
 	}
 
 	dev = rte_cryptodev_pmd_virtual_dev_init(init_params->name,
-			sizeof(struct aesni_gcm_private), init_params->socket_id);
+			sizeof(struct aesni_gcm_private), init_params->socket_id,
+			vdev);
 	if (dev == NULL) {
 		GCM_LOG_ERR("failed to create cryptodev vdev");
 		goto init_error;

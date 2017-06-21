@@ -462,6 +462,7 @@ rte_cryptodev_pmd_allocate(const char *name, int socket_id);
  * @param	name			PMD type name
  * @param	dev_private_size	Size of crypto PMDs private data
  * @param	socket_id		Socket to allocate resources on.
+ * @param	vdev			Pointer to virtual device structure.
  *
  * @return
  *   - Cryptodev pointer if device is successfully created.
@@ -469,7 +470,7 @@ rte_cryptodev_pmd_allocate(const char *name, int socket_id);
  */
 struct rte_cryptodev *
 rte_cryptodev_pmd_virtual_dev_init(const char *name, size_t dev_private_size,
-		int socket_id);
+		int socket_id, struct rte_vdev_device *vdev);
 
 
 /**

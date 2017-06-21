@@ -651,7 +651,7 @@ rte_cryptodev_pmd_release_device(struct rte_cryptodev *cryptodev)
 
 struct rte_cryptodev *
 rte_cryptodev_pmd_virtual_dev_init(const char *name, size_t dev_private_size,
-		int socket_id)
+		int socket_id, struct rte_vdev_device *vdev)
 {
 	struct rte_cryptodev *cryptodev;
 
@@ -672,6 +672,8 @@ rte_cryptodev_pmd_virtual_dev_init(const char *name, size_t dev_private_size,
 			rte_panic("Cannot allocate memzone for private device"
 					" data");
 	}
+
+	cryptodev->device = &vdev->device;
 
 	/* initialise user call-back tail queue */
 	TAILQ_INIT(&(cryptodev->link_intr_cbs));

@@ -463,7 +463,8 @@ cryptodev_zuc_create(const char *name,
 	}
 
 	dev = rte_cryptodev_pmd_virtual_dev_init(init_params->name,
-			sizeof(struct zuc_private), init_params->socket_id);
+			sizeof(struct zuc_private), init_params->socket_id,
+			vdev);
 	if (dev == NULL) {
 		ZUC_LOG_ERR("failed to create cryptodev vdev");
 		goto init_error;

@@ -563,7 +563,8 @@ cryptodev_snow3g_create(const char *name,
 	}
 
 	dev = rte_cryptodev_pmd_virtual_dev_init(init_params->name,
-			sizeof(struct snow3g_private), init_params->socket_id);
+			sizeof(struct snow3g_private), init_params->socket_id,
+			vdev);
 	if (dev == NULL) {
 		SNOW3G_LOG_ERR("failed to create cryptodev vdev");
 		goto init_error;

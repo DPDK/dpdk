@@ -89,7 +89,8 @@ const struct scheduler_parse_map scheduler_ordering_map[] = {
 
 static int
 cryptodev_scheduler_create(const char *name,
-	struct scheduler_init_params *init_params)
+		struct rte_vdev_device *vdev,
+		struct scheduler_init_params *init_params)
 {
 	struct rte_cryptodev *dev;
 	struct scheduler_ctx *sched_ctx;
@@ -103,7 +104,8 @@ cryptodev_scheduler_create(const char *name,
 
 	dev = rte_cryptodev_pmd_virtual_dev_init(init_params->def_p.name,
 			sizeof(struct scheduler_ctx),
-			init_params->def_p.socket_id);
+			init_params->def_p.socket_id,
+			vdev);
 	if (dev == NULL) {
 		CS_LOG_ERR("driver %s: failed to create cryptodev vdev",
 			name);
@@ -417,6 +419,7 @@ cryptodev_scheduler_probe(struct rte_vdev_device *vdev)
 			init_params.def_p.name);
 
 	return cryptodev_scheduler_create(name,
+					vdev,
 					&init_params);
 }
 

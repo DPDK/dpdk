@@ -1277,7 +1277,8 @@ cryptodev_openssl_create(const char *name,
 
 	dev = rte_cryptodev_pmd_virtual_dev_init(init_params->name,
 			sizeof(struct openssl_private),
-			init_params->socket_id);
+			init_params->socket_id,
+			vdev);
 	if (dev == NULL) {
 		OPENSSL_LOG_ERR("failed to create cryptodev vdev");
 		goto init_error;
