@@ -70,6 +70,8 @@ DPDK_17.05 {
 DPDK_17.08 {
 	global:
 
+	rte_cryptodev_pci_generic_probe;
+	rte_cryptodev_pci_generic_remove;
 	rte_cryptodev_vdev_parse_init_params;
 	rte_cryptodev_vdev_pmd_init;
 
