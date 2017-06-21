@@ -47,7 +47,6 @@
 #include <rte_debug.h>
 #include <rte_dev.h>
 #include <rte_interrupts.h>
-#include <rte_pci.h>
 #include <rte_memory.h>
 #include <rte_memcpy.h>
 #include <rte_memzone.h>
@@ -550,108 +549,6 @@ rte_cryptodev_pmd_release_device(struct rte_cryptodev *cryptodev)
 
 	cryptodev->attached = RTE_CRYPTODEV_DETACHED;
 	cryptodev_globals.nb_devs--;
-	return 0;
-}
-
-int
-rte_cryptodev_pci_probe(struct rte_pci_driver *pci_drv,
-			struct rte_pci_device *pci_dev)
-{
-	struct rte_cryptodev_driver *cryptodrv;
-	struct rte_cryptodev *cryptodev;
-
-	char cryptodev_name[RTE_CRYPTODEV_NAME_MAX_LEN];
-
-	int retval;
-
-	cryptodrv = (struct rte_cryptodev_driver *)pci_drv;
-	if (cryptodrv == NULL)
-		return -ENODEV;
-
-	rte_pci_device_name(&pci_dev->addr, cryptodev_name,
-			sizeof(cryptodev_name));
-
-	cryptodev = rte_cryptodev_pmd_allocate(cryptodev_name, rte_socket_id());
-	if (cryptodev == NULL)
-		return -ENOMEM;
-
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-		cryptodev->data->dev_private =
-				rte_zmalloc_socket(
-						"cryptodev private structure",
-						cryptodrv->dev_private_size,
-						RTE_CACHE_LINE_SIZE,
-						rte_socket_id());
-
-		if (cryptodev->data->dev_private == NULL)
-			rte_panic("Cannot allocate memzone for private "
-					"device data");
-	}
-
-	cryptodev->device = &pci_dev->device;
-	cryptodev->driver = cryptodrv;
-
-	/* init user callbacks */
-	TAILQ_INIT(&(cryptodev->link_intr_cbs));
-
-	/* Invoke PMD device initialization function */
-	retval = (*cryptodrv->cryptodev_init)(cryptodrv, cryptodev);
-	if (retval == 0)
-		return 0;
-
-	CDEV_LOG_ERR("driver %s: crypto_dev_init(vendor_id=0x%x device_id=0x%x)"
-			" failed", pci_drv->driver.name,
-			(unsigned) pci_dev->id.vendor_id,
-			(unsigned) pci_dev->id.device_id);
-
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		rte_free(cryptodev->data->dev_private);
-
-	/* free crypto device */
-	rte_cryptodev_pmd_release_device(cryptodev);
-
-	return -ENXIO;
-}
-
-int
-rte_cryptodev_pci_remove(struct rte_pci_device *pci_dev)
-{
-	const struct rte_cryptodev_driver *cryptodrv;
-	struct rte_cryptodev *cryptodev;
-	char cryptodev_name[RTE_CRYPTODEV_NAME_MAX_LEN];
-	int ret;
-
-	if (pci_dev == NULL)
-		return -EINVAL;
-
-	rte_pci_device_name(&pci_dev->addr, cryptodev_name,
-			sizeof(cryptodev_name));
-
-	cryptodev = rte_cryptodev_pmd_get_named_dev(cryptodev_name);
-	if (cryptodev == NULL)
-		return -ENODEV;
-
-	cryptodrv = (const struct rte_cryptodev_driver *)pci_dev->driver;
-	if (cryptodrv == NULL)
-		return -ENODEV;
-
-	/* Invoke PMD device uninit function */
-	if (*cryptodrv->cryptodev_uninit) {
-		ret = (*cryptodrv->cryptodev_uninit)(cryptodrv, cryptodev);
-		if (ret)
-			return ret;
-	}
-
-	/* free crypto device */
-	rte_cryptodev_pmd_release_device(cryptodev);
-
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY)
-		rte_free(cryptodev->data->dev_private);
-
-	cryptodev->device = NULL;
-	cryptodev->driver = NULL;
-	cryptodev->data = NULL;
-
 	return 0;
 }
 

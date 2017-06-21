@@ -31,14 +31,6 @@ DPDK_16.04 {
 	local: *;
 };
 
-DPDK_16.11 {
-	global:
-
-	rte_cryptodev_pci_probe;
-	rte_cryptodev_pci_remove;
-
-} DPDK_16.04;
-
 DPDK_17.02 {
 	global:
 
@@ -55,7 +47,7 @@ DPDK_17.02 {
 	rte_crypto_cipher_algorithm_strings;
 	rte_crypto_cipher_operation_strings;
 
-} DPDK_16.11;
+} DPDK_16.04;
 
 DPDK_17.05 {
 	global:
