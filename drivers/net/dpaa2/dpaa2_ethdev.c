@@ -1406,9 +1406,6 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 	priv->max_vlan_filters = attr.vlan_filter_entries;
 	priv->flags = 0;
 
-	priv->flags |= DPAA2_TX_CGR_SUPPORT;
-	PMD_INIT_LOG(INFO, "Enable the tx congestion control support");
-
 	/* Allocate memory for hardware structure for queues */
 	ret = dpaa2_alloc_rx_tx_queues(eth_dev);
 	if (ret) {
