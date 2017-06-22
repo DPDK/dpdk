@@ -1533,7 +1533,7 @@ dpaa2_dev_uninit(struct rte_eth_dev *eth_dev)
 }
 
 static int
-rte_dpaa2_probe(struct rte_dpaa2_driver *dpaa2_drv __rte_unused,
+rte_dpaa2_probe(struct rte_dpaa2_driver *dpaa2_drv,
 		struct rte_dpaa2_device *dpaa2_dev)
 {
 	struct rte_eth_dev *eth_dev;
@@ -1560,6 +1560,8 @@ rte_dpaa2_probe(struct rte_dpaa2_driver *dpaa2_drv __rte_unused,
 		}
 	}
 	eth_dev->device = &dpaa2_dev->device;
+	eth_dev->device->driver = &dpaa2_drv->driver;
+
 	dpaa2_dev->eth_dev = eth_dev;
 	eth_dev->data->rx_mbuf_alloc_failed = 0;
 
