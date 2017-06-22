@@ -64,15 +64,7 @@ struct wireless_test_data {
 
 	struct {
 		unsigned len;
-	} validCipherOffsetLenInBits;
-
-	struct {
-		unsigned len;
 	} validAuthLenInBits;
-
-	struct {
-		unsigned len;
-	} validAuthOffsetLenInBits;
 
 	struct {
 		uint8_t data[64];
@@ -122,9 +114,6 @@ static struct wireless_test_data zuc_test_case_cipher_193b = {
 	},
 	.validCipherLenInBits = {
 		.len = 193
-	},
-	.validCipherOffsetLenInBits = {
-		.len = 128
 	}
 };
 
@@ -184,9 +173,6 @@ static struct wireless_test_data zuc_test_case_cipher_800b = {
 	},
 	.validCipherLenInBits = {
 		.len = 800
-	},
-	.validCipherOffsetLenInBits = {
-		.len = 128
 	}
 };
 
@@ -270,10 +256,7 @@ static struct wireless_test_data zuc_test_case_cipher_1570b = {
 	},
 	.validCipherLenInBits = {
 		.len = 1570
-	},
-	.validCipherOffsetLenInBits = {
-		.len = 128
-	},
+	}
 };
 
 static struct wireless_test_data zuc_test_case_cipher_2798b = {
@@ -394,9 +377,6 @@ static struct wireless_test_data zuc_test_case_cipher_2798b = {
 	},
 	.validCipherLenInBits = {
 		.len = 2798
-	},
-	.validCipherOffsetLenInBits = {
-		.len = 128
 	}
 };
 
@@ -556,9 +536,6 @@ static struct wireless_test_data zuc_test_case_cipher_4019b = {
 	},
 	.validCipherLenInBits = {
 		.len = 4019
-	},
-	.validCipherOffsetLenInBits = {
-		.len = 128
 	}
 };
 
@@ -601,9 +578,6 @@ static struct wireless_test_data zuc_test_case_cipher_200b_auth_200b = {
 	.validCipherLenInBits = {
 		.len = 200
 	},
-	.validCipherOffsetLenInBits = {
-		.len = 128
-	},
 	.aad = {
 		.data = {
 			0xFA, 0x55, 0x6B, 0x26, 0x1C, 0x00, 0x00, 0x00,
@@ -617,9 +591,6 @@ static struct wireless_test_data zuc_test_case_cipher_200b_auth_200b = {
 	},
 	.validAuthLenInBits = {
 		.len = 200
-	},
-	.validAuthOffsetLenInBits = {
-		.len = 128
 	}
 };
 
@@ -680,9 +651,6 @@ static struct wireless_test_data zuc_test_case_cipher_800b_auth_120b = {
 	.validCipherLenInBits = {
 		.len = 800
 	},
-	.validCipherOffsetLenInBits = {
-		.len = 128
-	},
 	.aad = {
 		.data = {
 			0xFA, 0x55, 0x6B, 0x26, 0x1C, 0x00, 0x00, 0x00,
@@ -696,9 +664,6 @@ static struct wireless_test_data zuc_test_case_cipher_800b_auth_120b = {
 	},
 	.validAuthLenInBits = {
 		.len = 120
-	},
-	.validAuthOffsetLenInBits = {
-		.len = 128
 	}
 };
 
@@ -723,9 +688,6 @@ struct wireless_test_data zuc_test_case_auth_1b = {
 	},
 	.validAuthLenInBits = {
 		.len = 1
-	},
-	.validAuthOffsetLenInBits = {
-		.len = 128
 	},
 	.digest = {
 		.data = {0xC8, 0xA9, 0x59, 0x5E},
@@ -757,9 +719,6 @@ struct wireless_test_data zuc_test_case_auth_90b = {
 	},
 	.validAuthLenInBits = {
 		.len = 90
-	},
-	.validAuthOffsetLenInBits = {
-		.len = 128
 	},
 	.digest = {
 		.data = {0x67, 0x19, 0xA0, 0x88},
@@ -799,9 +758,6 @@ struct wireless_test_data zuc_test_case_auth_577b = {
 	},
 	.validAuthLenInBits = {
 		.len = 577
-	},
-	.validAuthOffsetLenInBits = {
-		.len = 128
 	},
 	.digest = {
 		.data = {0xFA, 0xE8, 0xFF, 0x0B},
@@ -864,9 +820,6 @@ struct wireless_test_data zuc_test_case_auth_2079b = {
 	},
 	.validAuthLenInBits = {
 		.len = 2079
-	},
-	.validAuthOffsetLenInBits = {
-		.len = 128
 	},
 	.digest = {
 		.data = {0x00, 0x4A, 0xC4, 0xD6},
@@ -986,9 +939,6 @@ struct wireless_test_data zuc_test_auth_5670b = {
 	.validAuthLenInBits = {
 		.len = 5670
 	},
-	.validAuthOffsetLenInBits = {
-		.len = 128
-	},
 	.digest = {
 		.data = {0x0C, 0xA1, 0x27, 0x92},
 		.len  = 4
@@ -1010,9 +960,6 @@ static struct wireless_test_data zuc_test_case_auth_128b = {
 	},
 	.validAuthLenInBits = {
 		.len = 8
-	},
-	.validAuthOffsetLenInBits = {
-		.len = 128
 	},
 	.digest = {
 		.data = { 0x39, 0x0a, 0x91, 0xb7 },
@@ -1076,9 +1023,6 @@ static struct wireless_test_data zuc_test_case_auth_2080b = {
 	.validAuthLenInBits = {
 		.len = 2080
 	},
-	.validAuthOffsetLenInBits = {
-		.len = 128
-	},
 	.digest = {
 		.data = {0x03, 0x95, 0x32, 0xe1},
 		.len  = 4
@@ -1117,9 +1061,6 @@ static struct wireless_test_data zuc_test_case_auth_584b = {
 	},
 	.validAuthLenInBits = {
 		.len = 584
-	},
-	.validAuthOffsetLenInBits = {
-		.len = 128
 	},
 	.digest = {
 		.data = {0x24, 0xa8, 0x42, 0xb3},

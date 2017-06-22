@@ -64,15 +64,7 @@ struct snow3g_test_data {
 
 	struct {
 		unsigned len;
-	} validCipherOffsetLenInBits;
-
-	struct {
-		unsigned len;
 	} validAuthLenInBits;
-
-	struct {
-		unsigned len;
-	} validAuthOffsetLenInBits;
 
 	struct {
 		uint8_t data[64];
@@ -141,9 +133,6 @@ struct snow3g_test_data snow3g_test_case_1 = {
 	.validCipherLenInBits = {
 		.len = 800
 	},
-	.validCipherOffsetLenInBits = {
-		.len = 128
-	},
 	.aad = {
 		.data = {
 			 0x72, 0xA4, 0xF2, 0x0F, 0x64, 0x00, 0x00, 0x00,
@@ -200,9 +189,6 @@ struct snow3g_test_data snow3g_test_case_2 = {
 	.validCipherLenInBits = {
 		.len = 512
 	},
-	.validCipherOffsetLenInBits = {
-		.len = 128
-	},
 	.aad = {
 		.data = {
 			 0xE2, 0x8B, 0xCF, 0x7B, 0xC0, 0x00, 0x00, 0x00,
@@ -247,9 +233,6 @@ struct snow3g_test_data snow3g_test_case_3 = {
 	.validCipherLenInBits = {
 		.len = 120
 	},
-	.validCipherOffsetLenInBits = {
-		.len = 128
-	},
 	.aad = {
 		.data = {
 			0xFA, 0x55, 0x6B, 0x26, 0x1C, 0x00, 0x00, 0x00,
@@ -263,9 +246,6 @@ struct snow3g_test_data snow3g_test_case_3 = {
 	},
 	.validAuthLenInBits = {
 		.len = 120
-	},
-	.validAuthOffsetLenInBits = {
-		.len = 128
 	}
 };
 
@@ -307,9 +287,6 @@ struct snow3g_test_data snow3g_test_case_4 = {
 	},
 	.validCipherLenInBits = {
 		.len = 256
-	},
-	.validCipherOffsetLenInBits = {
-		.len = 128
 	}
 };
 
@@ -371,9 +348,6 @@ struct snow3g_test_data snow3g_test_case_5 = {
 	.validCipherLenInBits = {
 		.len = 840
 	},
-	.validCipherOffsetLenInBits = {
-		.len = 128
-	}
 };
 struct snow3g_test_data snow3g_test_case_6 = {
 	.key = {
@@ -429,15 +403,9 @@ struct snow3g_test_data snow3g_test_case_6 = {
 	.validCipherLenInBits = {
 		.len = 384
 	},
-	.validCipherOffsetLenInBits = {
-		.len = 128
-	},
 	.validAuthLenInBits = {
 		.len = 384
 	},
-	.validAuthOffsetLenInBits = {
-		.len = 128
-	}
 };
 
 #endif /* TEST_CRYPTODEV_SNOW3G_TEST_VECTORS_H_ */

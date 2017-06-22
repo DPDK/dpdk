@@ -54,10 +54,6 @@ struct snow3g_hash_test_data {
 	} validAuthLenInBits;
 
 	struct {
-		unsigned len;
-	} validAuthOffsetLenInBits;
-
-	struct {
 		uint8_t data[64];
 		unsigned len;
 	} digest;
@@ -92,9 +88,6 @@ struct snow3g_hash_test_data snow3g_hash_test_case_1 = {
 	.validAuthLenInBits = {
 		.len = 384
 		},
-	.validAuthOffsetLenInBits = {
-		.len = 128
-	},
 	.digest = {
 		.data = {0x38, 0xB5, 0x54, 0xC0 },
 		.len  = 4
@@ -139,9 +132,6 @@ struct snow3g_hash_test_data snow3g_hash_test_case_2 = {
 	},
 	.validAuthLenInBits = {
 		.len = 1000
-	},
-	.validAuthOffsetLenInBits = {
-		.len = 128
 	},
 	.digest = {
 		.data = {0x06, 0x17, 0x45, 0xAE},
@@ -429,9 +419,6 @@ struct snow3g_hash_test_data snow3g_hash_test_case_3 = {
 	.validAuthLenInBits = {
 		.len = 16448
 	},
-	.validAuthOffsetLenInBits = {
-		.len = 128
-	},
 	.digest = {
 		.data = {0x17, 0x9F, 0x2F, 0xA6},
 		.len  = 4
@@ -464,9 +451,6 @@ struct snow3g_hash_test_data snow3g_hash_test_case_4 = {
 	.validAuthLenInBits = {
 		.len = 189
 		},
-	.validAuthOffsetLenInBits = {
-		.len = 128
-	},
 	.digest = {
 		.data = {0x2B, 0xCE, 0x18, 0x20},
 		.len  = 4
@@ -500,9 +484,6 @@ struct snow3g_hash_test_data snow3g_hash_test_case_5 = {
 	.validAuthLenInBits = {
 		.len = 254
 		},
-	.validAuthOffsetLenInBits = {
-		.len = 128
-	},
 	.digest = {
 		.data = {0xFC, 0x7B, 0x18, 0xBD},
 		.len  = 4
@@ -537,9 +518,6 @@ struct snow3g_hash_test_data snow3g_hash_test_case_6 = {
 	.validAuthLenInBits = {
 		.len = 319
 		},
-	.validAuthOffsetLenInBits = {
-		.len = 128
-	},
 	.digest = {
 		.data = {0x02, 0xF1, 0xFA, 0xAF},
 		.len  = 4

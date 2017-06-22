@@ -68,18 +68,10 @@ struct kasumi_test_data {
 		unsigned len;
 	} validCipherLenInBits;
 
-	struct {
-		unsigned len;
-	} validCipherOffsetLenInBits;
-
 	/* Actual length of data to be hashed */
 	struct {
 		unsigned len;
 	} validAuthLenInBits;
-
-	struct {
-		unsigned len;
-	} validAuthOffsetLenInBits;
 
 	struct {
 		uint8_t data[64];
@@ -140,10 +132,7 @@ struct kasumi_test_data kasumi_test_case_1 = {
 	},
 	.validCipherLenInBits = {
 		.len = 798
-	},
-	.validCipherOffsetLenInBits = {
-		.len = 64
-	},
+	}
 };
 
 struct kasumi_test_data kasumi_test_case_2 = {
@@ -188,9 +177,6 @@ struct kasumi_test_data kasumi_test_case_2 = {
 	},
 	.validCipherLenInBits = {
 		.len = 510
-	},
-	.validCipherOffsetLenInBits = {
-		.len = 64
 	}
 };
 
@@ -234,14 +220,8 @@ struct kasumi_test_data kasumi_test_case_3 = {
 	.validCipherLenInBits = {
 		.len = 120
 	},
-	.validCipherOffsetLenInBits = {
-		.len = 64
-	},
 	.validAuthLenInBits = {
 		.len = 120
-	},
-	.validAuthOffsetLenInBits = {
-		.len = 64
 	},
 	.digest = {
 		.data = {0x87, 0x5F, 0xE4, 0x89},
@@ -283,9 +263,6 @@ struct kasumi_test_data kasumi_test_case_4 = {
 	},
 	.validCipherLenInBits = {
 		.len = 253
-	},
-	.validCipherOffsetLenInBits = {
-		.len = 64
 	}
 };
 
@@ -343,10 +320,7 @@ struct kasumi_test_data kasumi_test_case_5 = {
 	},
 	.validCipherLenInBits = {
 		.len = 837
-	},
-	.validCipherOffsetLenInBits = {
-		.len = 64
-	},
+	}
 };
 
 struct kasumi_test_data kasumi_test_case_6 = {
@@ -389,14 +363,8 @@ struct kasumi_test_data kasumi_test_case_6 = {
 	.validCipherLenInBits = {
 		.len = 120
 	},
-	.validCipherOffsetLenInBits = {
-		.len = 64
-	},
 	.validAuthLenInBits = {
 		.len = 120
-	},
-	.validAuthOffsetLenInBits = {
-		.len = 64
 	},
 	.digest = {
 		.data = {0x0F, 0xD2, 0xAA, 0xB5},

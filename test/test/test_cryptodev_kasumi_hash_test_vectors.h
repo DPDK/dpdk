@@ -58,10 +58,6 @@ struct kasumi_hash_test_data {
 	} validAuthLenInBits;
 
 	struct {
-		unsigned len;
-	} validAuthOffsetLenInBits;
-
-	struct {
 		uint8_t data[64];
 		unsigned len;
 	} digest;
@@ -91,9 +87,6 @@ struct kasumi_hash_test_data kasumi_hash_test_case_1 = {
 	},
 	.validAuthLenInBits = {
 		.len = 189
-	},
-	.validAuthOffsetLenInBits = {
-		.len = 64
 	},
 	.digest = {
 		.data = {0xF6, 0x3B, 0xD7, 0x2C},
@@ -126,9 +119,6 @@ struct kasumi_hash_test_data kasumi_hash_test_case_2 = {
 	},
 	.validAuthLenInBits = {
 		.len = 254
-	},
-	.validAuthOffsetLenInBits = {
-		.len = 64
 	},
 	.digest = {
 		.data = {0xA9, 0xDA, 0xF1, 0xFF},
@@ -163,9 +153,6 @@ struct kasumi_hash_test_data kasumi_hash_test_case_3 = {
 	},
 	.validAuthLenInBits = {
 		.len = 319
-	},
-	.validAuthOffsetLenInBits = {
-		.len = 64
 	},
 	.digest = {
 		.data = {0x15, 0x37, 0xD3, 0x16},
@@ -202,9 +189,6 @@ struct kasumi_hash_test_data kasumi_hash_test_case_4 = {
 	.validAuthLenInBits = {
 		.len = 384
 		},
-	.validAuthOffsetLenInBits = {
-		.len = 64
-	},
 	.digest = {
 		.data = {0xDD, 0x7D, 0xFA, 0xDD },
 		.len  = 4
@@ -249,9 +233,6 @@ struct kasumi_hash_test_data kasumi_hash_test_case_5 = {
 	.validAuthLenInBits = {
 		.len = 1000
 	},
-	.validAuthOffsetLenInBits = {
-		.len = 64
-	},
 	.digest = {
 		.data = {0xC3, 0x83, 0x83, 0x9D},
 		.len  = 4
@@ -293,9 +274,6 @@ struct kasumi_hash_test_data kasumi_hash_test_case_6 = {
 	.validAuthLenInBits = {
 		.len = 768
 	},
-	.validAuthOffsetLenInBits = {
-		.len = 64
-	},
 	.digest = {
 		.data = {0x95, 0xAE, 0x41, 0xBA},
 		.len  = 4
@@ -325,9 +303,6 @@ struct kasumi_hash_test_data kasumi_hash_test_case_7 = {
 	},
 	.validAuthLenInBits = {
 		.len = 120
-	},
-	.validAuthOffsetLenInBits = {
-		.len = 64
 	},
 	.digest = {
 		.data = {0x87, 0x5F, 0xE4, 0x89},

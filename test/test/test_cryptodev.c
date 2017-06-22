@@ -2180,10 +2180,9 @@ create_wireless_cipher_hash_operation(const struct wireless_test_data *tdata,
 	const uint8_t *iv = tdata->iv.data;
 	const uint8_t iv_len = tdata->iv.len;
 	const unsigned int cipher_len = tdata->validCipherLenInBits.len;
-	const unsigned int cipher_offset =
-		tdata->validCipherOffsetLenInBits.len;
+	const unsigned int cipher_offset = tdata->iv.len << 3;
 	const unsigned int auth_len = tdata->validAuthLenInBits.len;
-	const unsigned int auth_offset = tdata->validAuthOffsetLenInBits.len;
+	const unsigned int auth_offset = tdata->aad.len << 3;
 
 	unsigned int iv_pad_len = 0;
 	unsigned int aad_buffer_len;
@@ -2506,7 +2505,7 @@ test_snow3g_authentication(const struct snow3g_hash_test_data *tdata)
 			plaintext_pad_len, RTE_CRYPTO_AUTH_OP_GENERATE,
 			RTE_CRYPTO_AUTH_SNOW3G_UIA2,
 			tdata->validAuthLenInBits.len,
-			tdata->validAuthOffsetLenInBits.len);
+			(tdata->aad.len << 3));
 	if (retval < 0)
 		return retval;
 
@@ -2568,7 +2567,7 @@ test_snow3g_authentication_verify(const struct snow3g_hash_test_data *tdata)
 			RTE_CRYPTO_AUTH_OP_VERIFY,
 			RTE_CRYPTO_AUTH_SNOW3G_UIA2,
 			tdata->validAuthLenInBits.len,
-			tdata->validAuthOffsetLenInBits.len);
+			(tdata->aad.len << 3));
 	if (retval < 0)
 		return retval;
 
@@ -2628,7 +2627,7 @@ test_kasumi_authentication(const struct kasumi_hash_test_data *tdata)
 			plaintext_pad_len, RTE_CRYPTO_AUTH_OP_GENERATE,
 			RTE_CRYPTO_AUTH_KASUMI_F9,
 			tdata->validAuthLenInBits.len,
-			tdata->validAuthOffsetLenInBits.len);
+			(tdata->aad.len << 3));
 	if (retval < 0)
 		return retval;
 
@@ -2690,7 +2689,7 @@ test_kasumi_authentication_verify(const struct kasumi_hash_test_data *tdata)
 			RTE_CRYPTO_AUTH_OP_VERIFY,
 			RTE_CRYPTO_AUTH_KASUMI_F9,
 			tdata->validAuthLenInBits.len,
-			tdata->validAuthOffsetLenInBits.len);
+			(tdata->aad.len << 3));
 	if (retval < 0)
 		return retval;
 
@@ -2887,7 +2886,7 @@ test_kasumi_encryption(const struct kasumi_test_data *tdata)
 	/* Create KASUMI operation */
 	retval = create_wireless_algo_cipher_operation(tdata->iv.data, tdata->iv.len,
 					tdata->plaintext.len,
-					tdata->validCipherOffsetLenInBits.len,
+					(tdata->iv.len << 3),
 					RTE_CRYPTO_CIPHER_KASUMI_F8);
 	if (retval < 0)
 		return retval;
@@ -2961,7 +2960,7 @@ test_kasumi_encryption_sgl(const struct kasumi_test_data *tdata)
 	retval = create_wireless_algo_cipher_operation(tdata->iv.data,
 					tdata->iv.len,
 					tdata->plaintext.len,
-					tdata->validCipherOffsetLenInBits.len,
+					(tdata->iv.len << 3),
 					RTE_CRYPTO_CIPHER_KASUMI_F8);
 	if (retval < 0)
 		return retval;
@@ -3032,7 +3031,7 @@ test_kasumi_encryption_oop(const struct kasumi_test_data *tdata)
 	retval = create_wireless_algo_cipher_operation_oop(tdata->iv.data,
 					tdata->iv.len,
 					tdata->plaintext.len,
-					tdata->validCipherOffsetLenInBits.len,
+					(tdata->iv.len << 3),
 					RTE_CRYPTO_CIPHER_KASUMI_F8);
 	if (retval < 0)
 		return retval;
@@ -3107,7 +3106,7 @@ test_kasumi_encryption_oop_sgl(const struct kasumi_test_data *tdata)
 	retval = create_wireless_algo_cipher_operation_oop(tdata->iv.data,
 					tdata->iv.len,
 					tdata->plaintext.len,
-					tdata->validCipherOffsetLenInBits.len,
+					(tdata->iv.len << 3),
 					RTE_CRYPTO_CIPHER_KASUMI_F8);
 	if (retval < 0)
 		return retval;
@@ -3175,7 +3174,7 @@ test_kasumi_decryption_oop(const struct kasumi_test_data *tdata)
 	retval = create_wireless_algo_cipher_operation_oop(tdata->iv.data,
 					tdata->iv.len,
 					tdata->ciphertext.len,
-					tdata->validCipherOffsetLenInBits.len,
+					(tdata->iv.len << 3),
 					RTE_CRYPTO_CIPHER_KASUMI_F8);
 	if (retval < 0)
 		return retval;
@@ -3241,7 +3240,7 @@ test_kasumi_decryption(const struct kasumi_test_data *tdata)
 	retval = create_wireless_algo_cipher_operation(tdata->iv.data,
 					tdata->iv.len,
 					tdata->ciphertext.len,
-					tdata->validCipherOffsetLenInBits.len,
+					(tdata->iv.len << 3),
 					RTE_CRYPTO_CIPHER_KASUMI_F8);
 	if (retval < 0)
 		return retval;
@@ -3306,7 +3305,7 @@ test_snow3g_encryption(const struct snow3g_test_data *tdata)
 	/* Create SNOW 3G operation */
 	retval = create_wireless_algo_cipher_operation(tdata->iv.data, tdata->iv.len,
 					tdata->validCipherLenInBits.len,
-					tdata->validCipherOffsetLenInBits.len,
+					(tdata->iv.len << 3),
 					RTE_CRYPTO_CIPHER_SNOW3G_UEA2);
 	if (retval < 0)
 		return retval;
@@ -3380,7 +3379,7 @@ test_snow3g_encryption_oop(const struct snow3g_test_data *tdata)
 	retval = create_wireless_algo_cipher_operation_oop(tdata->iv.data,
 					tdata->iv.len,
 					tdata->validCipherLenInBits.len,
-					tdata->validCipherOffsetLenInBits.len,
+					(tdata->iv.len << 3),
 					RTE_CRYPTO_CIPHER_SNOW3G_UEA2);
 	if (retval < 0)
 		return retval;
@@ -3457,7 +3456,7 @@ test_snow3g_encryption_oop_sgl(const struct snow3g_test_data *tdata)
 	retval = create_wireless_algo_cipher_operation_oop(tdata->iv.data,
 					tdata->iv.len,
 					tdata->validCipherLenInBits.len,
-					tdata->validCipherOffsetLenInBits.len,
+					(tdata->iv.len << 3),
 					RTE_CRYPTO_CIPHER_SNOW3G_UEA2);
 	if (retval < 0)
 		return retval;
@@ -3560,7 +3559,7 @@ test_snow3g_encryption_offset_oop(const struct snow3g_test_data *tdata)
 	retval = create_wireless_algo_cipher_operation_oop(tdata->iv.data,
 					tdata->iv.len,
 					tdata->validCipherLenInBits.len,
-					tdata->validCipherOffsetLenInBits.len +
+					(tdata->iv.len << 3) +
 					extra_offset,
 					RTE_CRYPTO_CIPHER_SNOW3G_UEA2);
 	if (retval < 0)
@@ -3639,7 +3638,7 @@ static int test_snow3g_decryption(const struct snow3g_test_data *tdata)
 	/* Create SNOW 3G operation */
 	retval = create_wireless_algo_cipher_operation(tdata->iv.data, tdata->iv.len,
 					tdata->validCipherLenInBits.len,
-					tdata->validCipherOffsetLenInBits.len,
+					(tdata->iv.len << 3),
 					RTE_CRYPTO_CIPHER_SNOW3G_UEA2);
 	if (retval < 0)
 		return retval;
@@ -3713,7 +3712,7 @@ static int test_snow3g_decryption_oop(const struct snow3g_test_data *tdata)
 	retval = create_wireless_algo_cipher_operation_oop(tdata->iv.data,
 					tdata->iv.len,
 					tdata->validCipherLenInBits.len,
-					tdata->validCipherOffsetLenInBits.len,
+					(tdata->iv.len << 3),
 					RTE_CRYPTO_CIPHER_SNOW3G_UEA2);
 	if (retval < 0)
 		return retval;
@@ -3872,9 +3871,9 @@ test_snow3g_cipher_auth(const struct snow3g_test_data *tdata)
 			RTE_CRYPTO_CIPHER_SNOW3G_UEA2,
 			tdata->iv.data, tdata->iv.len,
 			tdata->validCipherLenInBits.len,
-			tdata->validCipherOffsetLenInBits.len,
+			(tdata->iv.len << 3),
 			tdata->validAuthLenInBits.len,
-			tdata->validAuthOffsetLenInBits.len
+			(tdata->aad.len << 3)
 			);
 	if (retval < 0)
 		return retval;
@@ -3954,9 +3953,9 @@ test_snow3g_auth_cipher(const struct snow3g_test_data *tdata)
 		tdata->aad.data, tdata->aad.len,
 		plaintext_pad_len,
 		tdata->validCipherLenInBits.len,
-		tdata->validCipherOffsetLenInBits.len,
+		(tdata->iv.len << 3),
 		tdata->validAuthLenInBits.len,
-		tdata->validAuthOffsetLenInBits.len,
+		(tdata->aad.len << 3),
 		RTE_CRYPTO_AUTH_SNOW3G_UIA2,
 		RTE_CRYPTO_CIPHER_SNOW3G_UEA2
 	);
@@ -4039,9 +4038,9 @@ test_kasumi_auth_cipher(const struct kasumi_test_data *tdata)
 				tdata->aad.data, tdata->aad.len,
 				plaintext_pad_len,
 				tdata->validCipherLenInBits.len,
-				tdata->validCipherOffsetLenInBits.len,
+				(tdata->iv.len << 3),
 				tdata->validAuthLenInBits.len,
-				tdata->validAuthOffsetLenInBits.len,
+				(tdata->aad.len << 3),
 				RTE_CRYPTO_AUTH_KASUMI_F9,
 				RTE_CRYPTO_CIPHER_KASUMI_F8
 				);
@@ -4126,9 +4125,9 @@ test_kasumi_cipher_auth(const struct kasumi_test_data *tdata)
 				RTE_CRYPTO_CIPHER_KASUMI_F8,
 				tdata->iv.data, tdata->iv.len,
 				tdata->validCipherLenInBits.len,
-				tdata->validCipherOffsetLenInBits.len,
+				(tdata->iv.len << 3),
 				tdata->validAuthLenInBits.len,
-				tdata->validAuthOffsetLenInBits.len
+				(tdata->aad.len << 3)
 				);
 	if (retval < 0)
 		return retval;
@@ -4210,7 +4209,7 @@ test_zuc_encryption(const struct wireless_test_data *tdata)
 	/* Create ZUC operation */
 	retval = create_wireless_algo_cipher_operation(tdata->iv.data, tdata->iv.len,
 					tdata->plaintext.len,
-					tdata->validCipherOffsetLenInBits.len,
+					(tdata->iv.len << 3),
 					RTE_CRYPTO_CIPHER_ZUC_EEA3);
 	if (retval < 0)
 		return retval;
@@ -4295,7 +4294,7 @@ test_zuc_encryption_sgl(const struct wireless_test_data *tdata)
 	/* Create ZUC operation */
 	retval = create_wireless_algo_cipher_operation(tdata->iv.data,
 			tdata->iv.len, tdata->plaintext.len,
-			tdata->validCipherOffsetLenInBits.len,
+			(tdata->iv.len << 3),
 			RTE_CRYPTO_CIPHER_ZUC_EEA3);
 	if (retval < 0)
 		return retval;
@@ -4375,7 +4374,7 @@ test_zuc_authentication(const struct wireless_test_data *tdata)
 			plaintext_pad_len, RTE_CRYPTO_AUTH_OP_GENERATE,
 			RTE_CRYPTO_AUTH_ZUC_EIA3,
 			tdata->validAuthLenInBits.len,
-			tdata->validAuthOffsetLenInBits.len);
+			(tdata->aad.len << 3));
 	if (retval < 0)
 		return retval;
 
