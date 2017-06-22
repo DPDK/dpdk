@@ -842,7 +842,8 @@ l2fwd_crypto_usage(const char *prgname)
 		" (0 to disable, 10 default, 86400 maximum)\n"
 
 		"  --cdev_type HW / SW / ANY\n"
-		"  --chain HASH_CIPHER / CIPHER_HASH\n"
+		"  --chain HASH_CIPHER / CIPHER_HASH / CIPHER_ONLY /"
+		" HASH_ONLY\n"
 
 		"  --cipher_algo ALGO\n"
 		"  --cipher_op ENCRYPT / DECRYPT\n"
