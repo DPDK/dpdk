@@ -300,7 +300,7 @@ rte_dpaa2_mbuf_alloc_bulk(struct rte_mempool *pool,
 			/* Releasing all buffers allocated */
 			rte_dpaa2_mbuf_release(pool, obj_table, bpid,
 					   bp_info->meta_data_size, n);
-			return ret;
+			return -ENOBUFS;
 		}
 		/* assigning mbuf from the acquired objects */
 		for (i = 0; (i < ret) && bufs[i]; i++) {
