@@ -135,7 +135,7 @@ where,
 
 *   auth_algo: select the authentication algorithm (default is sha1-hmac)
 
-*   cipher_op: select the authentication operation to perform: GENERATE or VERIFY
+*   auth_op: select the authentication operation to perform: GENERATE or VERIFY
 
     (default is GENERATE)
 
