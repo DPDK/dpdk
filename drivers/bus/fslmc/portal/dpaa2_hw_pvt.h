@@ -156,6 +156,19 @@ struct qbman_fle {
 	uint32_t reserved[3]; /* Not used currently */
 };
 
+struct qbman_sge {
+	uint32_t addr_lo;
+	uint32_t addr_hi;
+	uint32_t length;
+	uint32_t fin_bpid_offset;
+};
+
+/* There are three types of frames: Single, Scatter Gather and Frame Lists */
+enum qbman_fd_format {
+	qbman_fd_single = 0,
+	qbman_fd_list,
+	qbman_fd_sg
+};
 /*Macros to define operations on FD*/
 #define DPAA2_SET_FD_ADDR(fd, addr) do {			\
 	fd->simple.addr_lo = lower_32_bits((uint64_t)(addr));	\
@@ -185,7 +198,7 @@ struct qbman_fle {
 #define DPAA2_SET_FLE_OFFSET(fle, offset) \
 	((fle)->fin_bpid_offset |= (uint32_t)(offset) << 16)
 #define DPAA2_SET_FLE_BPID(fle, bpid) ((fle)->fin_bpid_offset |= (uint64_t)bpid)
-#define DPAA2_GET_FLE_BPID(fle, bpid) (fle->fin_bpid_offset & 0x000000ff)
+#define DPAA2_GET_FLE_BPID(fle) ((fle)->fin_bpid_offset & 0x000000ff)
 #define DPAA2_SET_FLE_FIN(fle)	(fle->fin_bpid_offset |= (uint64_t)1 << 31)
 #define DPAA2_SET_FLE_IVP(fle)   (((fle)->fin_bpid_offset |= 0x00004000))
 #define DPAA2_SET_FD_COMPOUND_FMT(fd)	\
@@ -197,6 +210,7 @@ struct qbman_fle {
 #define DPAA2_GET_FD_BPID(fd)	(((fd)->simple.bpid_offset & 0x00003FFF))
 #define DPAA2_GET_FD_IVP(fd)   ((fd->simple.bpid_offset & 0x00004000) >> 14)
 #define DPAA2_GET_FD_OFFSET(fd)	(((fd)->simple.bpid_offset & 0x0FFF0000) >> 16)
+#define DPAA2_GET_FLE_OFFSET(fle) (((fle)->fin_bpid_offset & 0x0FFF0000) >> 16)
 #define DPAA2_SET_FLE_SG_EXT(fle) (fle->fin_bpid_offset |= (uint64_t)1 << 29)
 #define DPAA2_IS_SET_FLE_SG_EXT(fle)	\
 	((fle->fin_bpid_offset & ((uint64_t)1 << 29)) ? 1 : 0)
@@ -206,6 +220,17 @@ struct qbman_fle {
 
 #define DPAA2_ASAL_VAL (DPAA2_MBUF_HW_ANNOTATION / 64)
 
+#define DPAA2_FD_SET_FORMAT(fd, format)	do {				\
+		(fd)->simple.bpid_offset &= 0xCFFFFFFF;			\
+		(fd)->simple.bpid_offset |= (uint32_t)format << 28;	\
+} while (0)
+#define DPAA2_FD_GET_FORMAT(fd)	(((fd)->simple.bpid_offset >> 28) & 0x3)
+
+#define DPAA2_SG_SET_FINAL(sg, fin)	do {				\
+		(sg)->fin_bpid_offset &= 0x7FFFFFFF;			\
+		(sg)->fin_bpid_offset |= (uint32_t)fin << 31;		\
+} while (0)
+#define DPAA2_SG_IS_FINAL(sg) (!!((sg)->fin_bpid_offset >> 31))
 /* Only Enqueue Error responses will be
  * pushed on FQID_ERR of Enqueue FQ
  */
