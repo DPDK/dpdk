@@ -448,6 +448,7 @@ struct i40e_vmdq_info {
 			I40E_PRTQF_FLX_PIT_DEST_OFF_MASK))
 #define I40E_WORD(hi, lo) (uint16_t)((((hi) << 8) & 0xFF00) | ((lo) & 0xFF))
 #define I40E_FLEX_WORD_MASK(off) (0x80 >> (off))
+#define I40E_FDIR_IPv6_TC_OFFSET	20
 
 /*
  * Structure to store flex pit for flow diretor.

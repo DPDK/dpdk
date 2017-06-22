@@ -52,8 +52,7 @@
 #include "base/i40e_prototype.h"
 #include "i40e_ethdev.h"
 
-#define I40E_IPV4_TC_SHIFT	4
-#define I40E_IPV6_TC_MASK	(0x00FF << I40E_IPV4_TC_SHIFT)
+#define I40E_IPV6_TC_MASK	(0xFF << I40E_FDIR_IPv6_TC_OFFSET)
 #define I40E_IPV6_FRAG_HEADER	44
 #define I40E_TENANT_ARRAY_NUM	3
 #define I40E_TCI_MASK		0xFFFF
@@ -2352,6 +2351,7 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 	bool cfg_flex_msk = true;
 	uint16_t outer_tpid;
 	uint16_t ether_type;
+	uint32_t vtc_flow_cpu;
 	int ret;
 
 	memset(off_arr, 0, sizeof(off_arr));
@@ -2508,8 +2508,8 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 					input_set |= I40E_INSET_IPV6_DST;
 
 				if ((ipv6_mask->hdr.vtc_flow &
-				     rte_cpu_to_be_16(I40E_IPV6_TC_MASK))
-				    == rte_cpu_to_be_16(I40E_IPV6_TC_MASK))
+				     rte_cpu_to_be_32(I40E_IPV6_TC_MASK))
+				    == rte_cpu_to_be_32(I40E_IPV6_TC_MASK))
 					input_set |= I40E_INSET_IPV6_TC;
 				if (ipv6_mask->hdr.proto == UINT8_MAX)
 					input_set |= I40E_INSET_IPV6_NEXT_HDR;
@@ -2517,9 +2517,11 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 					input_set |= I40E_INSET_IPV6_HOP_LIMIT;
 
 				/* Get filter info */
+				vtc_flow_cpu =
+				      rte_be_to_cpu_32(ipv6_spec->hdr.vtc_flow);
 				filter->input.flow.ipv6_flow.tc =
-					(uint8_t)(ipv6_spec->hdr.vtc_flow <<
-						  I40E_IPV4_TC_SHIFT);
+					(uint8_t)(vtc_flow_cpu >>
+						  I40E_FDIR_IPv6_TC_OFFSET);
 				filter->input.flow.ipv6_flow.proto =
 					ipv6_spec->hdr.proto;
 				filter->input.flow.ipv6_flow.hop_limits =
