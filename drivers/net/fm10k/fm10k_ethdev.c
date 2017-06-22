@@ -84,6 +84,7 @@ static void fm10k_rx_queue_release(void *queue);
 static void fm10k_set_rx_function(struct rte_eth_dev *dev);
 static void fm10k_set_tx_function(struct rte_eth_dev *dev);
 static int fm10k_check_ftag(struct rte_devargs *devargs);
+static int fm10k_link_update(struct rte_eth_dev *dev, int wait_to_complete);
 
 struct fm10k_xstats_name_off {
 	char name[RTE_ETH_XSTATS_NAME_SIZE];
@@ -1165,6 +1166,8 @@ fm10k_dev_start(struct rte_eth_dev *dev)
 	/* Update default vlan when not in VMDQ mode */
 	if (!(dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_VMDQ_FLAG))
 		fm10k_vlan_filter_set(dev, hw->mac.default_vid, true);
+
+	fm10k_link_update(dev, 0);
 
 	return 0;
 }
