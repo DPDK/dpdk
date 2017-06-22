@@ -2898,10 +2898,8 @@ test_perf_create_armv8_session(uint8_t dev_id, enum chain_mode chain,
 	}
 }
 
-#define AES_BLOCK_SIZE 16
 #define AES_CIPHER_IV_LENGTH 16
 #define AES_GCM_AAD_LENGTH 16
-#define TRIPLE_DES_BLOCK_SIZE 8
 #define TRIPLE_DES_CIPHER_IV_LENGTH 8
 
 static struct rte_mbuf *
@@ -2988,11 +2986,11 @@ test_perf_set_crypto_op_aes_gcm(struct rte_crypto_op *op, struct rte_mbuf *m,
 	op->sym->cipher.iv.length = AES_CIPHER_IV_LENGTH;
 
 	/* Data lengths/offsets Parameters */
-	op->sym->auth.data.offset = AES_BLOCK_SIZE;
-	op->sym->auth.data.length = data_len - AES_BLOCK_SIZE;
+	op->sym->auth.data.offset = 0;
+	op->sym->auth.data.length = data_len;
 
-	op->sym->cipher.data.offset = AES_BLOCK_SIZE;
-	op->sym->cipher.data.length = data_len - AES_BLOCK_SIZE;
+	op->sym->cipher.data.offset = 0;
+	op->sym->cipher.data.length = data_len;
 
 	op->sym->m_src = m;
 
@@ -3122,8 +3120,8 @@ test_perf_set_crypto_op_3des(struct rte_crypto_op *op, struct rte_mbuf *m,
 	op->sym->auth.data.offset = 0;
 	op->sym->auth.data.length = data_len;
 
-	op->sym->cipher.data.offset = TRIPLE_DES_BLOCK_SIZE;
-	op->sym->cipher.data.length = data_len - TRIPLE_DES_BLOCK_SIZE;
+	op->sym->cipher.data.offset = 0;
+	op->sym->cipher.data.length = data_len;
 
 	op->sym->m_src = m;
 
