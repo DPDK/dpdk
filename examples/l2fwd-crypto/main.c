@@ -1263,7 +1263,7 @@ display_auth_info(struct l2fwd_crypto_options *options)
 {
 	printf("\n---- Authentication information ---\n");
 	printf("Algorithm: %s\n",
-		rte_crypto_auth_algorithm_strings[options->auth_xform.cipher.algo]);
+		rte_crypto_auth_algorithm_strings[options->auth_xform.auth.algo]);
 	rte_hexdump(stdout, "Auth key:",
 			options->auth_xform.auth.key.data,
 			options->auth_xform.auth.key.length);
