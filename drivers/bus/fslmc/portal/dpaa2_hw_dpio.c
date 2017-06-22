@@ -437,8 +437,7 @@ dpaa2_alloc_dq_storage(struct queue_storage_info_t *q_storage)
 	}
 	return 0;
 fail:
-	i -= 1;
-	while (i >= 0)
+	while (--i >= 0)
 		rte_free(q_storage->dq_storage[i]);
 
 	return -1;
