@@ -2634,6 +2634,11 @@ static uint8_t aes_iv[] = {
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
+static uint8_t aes_gcm_aad[] = {
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+};
+
 static uint8_t triple_des_key[] = {
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 		0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -2895,7 +2900,7 @@ test_perf_create_armv8_session(uint8_t dev_id, enum chain_mode chain,
 
 #define AES_BLOCK_SIZE 16
 #define AES_CIPHER_IV_LENGTH 16
-
+#define AES_GCM_AAD_LENGTH 16
 #define TRIPLE_DES_BLOCK_SIZE 8
 #define TRIPLE_DES_CIPHER_IV_LENGTH 8
 
@@ -2939,8 +2944,6 @@ test_perf_set_crypto_op_aes(struct rte_crypto_op *op, struct rte_mbuf *m,
 		op->sym->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(m,
 				AES_CIPHER_IV_LENGTH + data_len);
 		op->sym->auth.digest.length = digest_len;
-		op->sym->auth.aad.data = aes_iv;
-		op->sym->auth.aad.length = AES_CIPHER_IV_LENGTH;
 		op->sym->auth.data.offset = AES_CIPHER_IV_LENGTH;
 		op->sym->auth.data.length = data_len;
 	}
@@ -2977,8 +2980,8 @@ test_perf_set_crypto_op_aes_gcm(struct rte_crypto_op *op, struct rte_mbuf *m,
 	op->sym->auth.digest.phys_addr =
 				rte_pktmbuf_mtophys_offset(m, data_len);
 	op->sym->auth.digest.length = digest_len;
-	op->sym->auth.aad.data = aes_iv;
-	op->sym->auth.aad.length = AES_CIPHER_IV_LENGTH;
+	op->sym->auth.aad.data = aes_gcm_aad;
+	op->sym->auth.aad.length = AES_GCM_AAD_LENGTH;
 
 	/* Cipher Parameters */
 	op->sym->cipher.iv.data = aes_iv;
@@ -3110,8 +3113,6 @@ test_perf_set_crypto_op_3des(struct rte_crypto_op *op, struct rte_mbuf *m,
 	op->sym->auth.digest.phys_addr =
 				rte_pktmbuf_mtophys_offset(m, data_len);
 	op->sym->auth.digest.length = digest_len;
-	op->sym->auth.aad.data = triple_des_iv;
-	op->sym->auth.aad.length = TRIPLE_DES_CIPHER_IV_LENGTH;
 
 	/* Cipher Parameters */
 	op->sym->cipher.iv.data = triple_des_iv;
