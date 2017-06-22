@@ -166,7 +166,7 @@ rte_hw_mbuf_free_pool(struct rte_mempool *mp)
 		while (temp) {
 			if (temp == bp) {
 				prev->next = temp->next;
-				free(bp);
+				rte_free(bp);
 				break;
 			}
 			prev = temp;
