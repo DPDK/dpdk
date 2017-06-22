@@ -84,7 +84,6 @@ struct dpaa2_dev_priv {
 
 	struct dpaa2_bp_list *bp_list; /**<Attached buffer pool list */
 	uint32_t options;
-	uint16_t num_dist_per_tc[MAX_TCS];
 	uint8_t max_mac_filters;
 	uint8_t max_vlan_filters;
 	uint8_t num_tc;

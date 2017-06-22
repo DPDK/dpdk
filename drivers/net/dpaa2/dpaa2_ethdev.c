@@ -273,8 +273,7 @@ dpaa2_alloc_rx_tx_queues(struct rte_eth_dev *dev)
 	}
 
 	vq_id = 0;
-	for (dist_idx = 0; dist_idx < priv->num_dist_per_tc[DPAA2_DEF_TC];
-	     dist_idx++) {
+	for (dist_idx = 0; dist_idx < priv->nb_rx_queues; dist_idx++) {
 		mcq = (struct dpaa2_queue *)priv->rx_vq[vq_id];
 		mcq->tc_index = DPAA2_DEF_TC;
 		mcq->flow_id = dist_idx;
@@ -384,8 +383,8 @@ dpaa2_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	dpaa2_q = (struct dpaa2_queue *)priv->rx_vq[rx_queue_id];
 	dpaa2_q->mb_pool = mb_pool; /**< mbuf pool to populate RX ring. */
 
-	/*Get the tc id and flow id from given VQ id*/
-	flow_id = rx_queue_id % priv->num_dist_per_tc[dpaa2_q->tc_index];
+	/*Get the flow id from given VQ id*/
+	flow_id = rx_queue_id % priv->nb_rx_queues;
 	memset(&cfg, 0, sizeof(struct dpni_queue));
 
 	options = options | DPNI_QUEUE_OPT_USER_CTX;
@@ -458,13 +457,8 @@ dpaa2_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	memset(&tx_conf_cfg, 0, sizeof(struct dpni_queue));
 	memset(&tx_flow_cfg, 0, sizeof(struct dpni_queue));
 
-	if (priv->num_tc == 1) {
-		tc_id = 0;
-		flow_id = tx_queue_id % priv->num_dist_per_tc[tc_id];
-	} else {
-		tc_id = tx_queue_id;
-		flow_id = 0;
-	}
+	tc_id = tx_queue_id;
+	flow_id = 0;
 
 	ret = dpni_set_queue(dpni, CMD_PRI_LOW, priv->token, DPNI_QUEUE_TX,
 			     tc_id, flow_id, options, &tx_flow_cfg);
@@ -1338,7 +1332,7 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 	struct dpni_attr attr;
 	struct dpaa2_dev_priv *priv = eth_dev->data->dev_private;
 	struct dpni_buffer_layout layout;
-	int i, ret, hw_id;
+	int ret, hw_id;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -1384,22 +1378,20 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 	}
 
 	priv->num_tc = attr.num_tcs;
-	for (i = 0; i < attr.num_tcs; i++) {
-		priv->num_dist_per_tc[i] = attr.num_queues;
-		break;
-	}
 
-	/* Distribution is per Tc only,
-	 * so choosing RX queues from default TC only
+	/* Resetting the "num_rx_vqueues" to equal number of queues in first TC
+	 * as only one TC is supported on Rx Side. Once Multiple TCs will be
+	 * in use for Rx processing then this will be changed or removed.
 	 */
-	priv->nb_rx_queues = priv->num_dist_per_tc[DPAA2_DEF_TC];
+	priv->nb_rx_queues = attr.num_queues;
 
-	if (attr.num_tcs == 1)
-		priv->nb_tx_queues = attr.num_queues;
-	else
-		priv->nb_tx_queues = attr.num_tcs;
+	/* TODO:Using hard coded value for number of TX queues due to dependency
+	 * in MC.
+	 */
+	priv->nb_tx_queues = 8;
 
-	PMD_INIT_LOG(DEBUG, "num_tc %d", priv->num_tc);
+	PMD_INIT_LOG(DEBUG, "num TC - RX %d", priv->num_tc);
+	PMD_INIT_LOG(DEBUG, "nb_tx_queues %d", priv->nb_tx_queues);
 	PMD_INIT_LOG(DEBUG, "nb_rx_queues %d", priv->nb_rx_queues);
 
 	priv->hw = dpni_dev;
