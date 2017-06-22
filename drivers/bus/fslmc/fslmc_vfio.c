@@ -214,17 +214,18 @@ int rte_fslmc_vfio_dmamap(void)
 
 	if (is_dma_done)
 		return 0;
-	is_dma_done = 1;
+
+	memseg = rte_eal_get_physmem_layout();
+	if (memseg == NULL) {
+		FSLMC_VFIO_LOG(ERR, "Cannot get physical layout.");
+		return -ENODEV;
+	}
 
 	for (i = 0; i < RTE_MAX_MEMSEG; i++) {
-		memseg = rte_eal_get_physmem_layout();
-		if (memseg == NULL) {
-			FSLMC_VFIO_LOG(ERR, "Cannot get physical layout.");
-			return -ENODEV;
-		}
-
-		if (memseg[i].addr == NULL && memseg[i].len == 0)
+		if (memseg[i].addr == NULL && memseg[i].len == 0) {
+			FSLMC_VFIO_LOG(DEBUG, "Total %d segments found.", i);
 			break;
+		}
 
 		dma_map.size = memseg[i].len;
 		dma_map.vaddr = memseg[i].addr_64;
@@ -254,11 +255,19 @@ int rte_fslmc_vfio_dmamap(void)
 		}
 	}
 
+	/* Verifying that at least single segment is available */
+	if (i <= 0) {
+		FSLMC_VFIO_LOG(ERR, "No Segments found for VFIO Mapping");
+		return -1;
+	}
+
 	/* TODO - This is a W.A. as VFIO currently does not add the mapping of
 	 * the interrupt region to SMMU. This should be removed once the
 	 * support is added in the Kernel.
 	 */
 	vfio_map_irq_region(group);
+
+	is_dma_done = 1;
 
 	return 0;
 }
