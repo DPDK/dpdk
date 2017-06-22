@@ -47,19 +47,18 @@
 /*default tc to be used for ,congestion, distribution etc configuration. */
 #define DPAA2_DEF_TC		0
 
-/* Threshold for a queue to *Enter* Congestion state.
- * It is set to 32KB
+/* Threshold for a Tx queue to *Enter* Congestion state.
  */
-#define CONG_ENTER_TX_THRESHOLD   (32 * 1024)
+#define CONG_ENTER_TX_THRESHOLD   512
 
 /* Threshold for a queue to *Exit* Congestion state.
  */
-#define CONG_EXIT_TX_THRESHOLD    (24 * 1024)
+#define CONG_EXIT_TX_THRESHOLD    480
 
 /* RX queue tail drop threshold
  * currently considering 32 KB packets
  */
-#define CONG_THRESHOLD_RX_Q  (32 * 1024)
+#define CONG_THRESHOLD_RX_Q  (64 * 1024)
 
 /* Size of the input SMMU mapped memory required by MC */
 #define DIST_PARAM_IOVA_SIZE 256

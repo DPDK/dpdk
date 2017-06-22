@@ -492,8 +492,7 @@ dpaa2_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	if (priv->flags & DPAA2_TX_CGR_SUPPORT) {
 		struct dpni_congestion_notification_cfg cong_notif_cfg;
 
-		cong_notif_cfg.units = DPNI_CONGESTION_UNIT_BYTES;
-		/* Notify about congestion when the queue size is 32 KB */
+		cong_notif_cfg.units = DPNI_CONGESTION_UNIT_FRAMES;
 		cong_notif_cfg.threshold_entry = CONG_ENTER_TX_THRESHOLD;
 		/* Notify that the queue is not congested when the data in
 		 * the queue is below this thershold.
