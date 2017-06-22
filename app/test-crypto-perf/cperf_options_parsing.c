@@ -312,7 +312,7 @@ parse_buffer_sz(struct cperf_options *opts, const char *arg)
 					&opts->min_buffer_size,
 					&opts->max_buffer_size);
 		if (ret < 0) {
-			RTE_LOG(ERR, USER1, "failed to parse burst size/s\n");
+			RTE_LOG(ERR, USER1, "failed to parse buffer size/s\n");
 			return -1;
 		}
 		opts->buffer_size_count = ret;
