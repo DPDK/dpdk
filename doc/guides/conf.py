@@ -47,11 +47,17 @@ except:
     # Python 3.
     import configparser
 
+try:
+    import sphinx_rtd_theme
+
+    html_theme = "sphinx_rtd_theme"
+    html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+except:
+    print('Install the sphinx ReadTheDocs theme for improved html documentation '
+          'layout: pip install sphinx_rtd_theme')
+    pass
 
 project = 'Data Plane Development Kit'
-
-if LooseVersion(sphinx_version) >= LooseVersion('1.3.1'):
-    html_theme = "sphinx_rtd_theme"
 html_logo = '../logo/DPDK_logo_vertical_rev_small.png'
 latex_logo = '../logo/DPDK_logo_horizontal_tag.png'
 html_add_permalinks = ""
