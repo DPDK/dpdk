@@ -162,7 +162,7 @@ install-sdk:
 install-doc:
 ifneq ($(wildcard $O/doc/html),)
 	$(Q)$(call rte_mkdir, $(DESTDIR)$(docdir))
-	$(Q)tar -cf -      -C $O/doc html --exclude 'html/guides/.*' | \
+	$(Q)tar -cf -      -C $O/doc --exclude 'html/guides/.*' html | \
 	    tar -xf -      -C $(DESTDIR)$(docdir) --strip-components=1 \
 		--keep-newer-files
 endif
