@@ -388,7 +388,7 @@ virtio_user_eth_dev_free(struct rte_eth_dev *eth_dev)
 }
 
 /* Dev initialization routine. Invoked once for each virtio vdev at
- * EAL init time, see rte_eal_dev_init().
+ * EAL init time, see rte_bus_probe().
  * Returns 0 on success.
  */
 static int
