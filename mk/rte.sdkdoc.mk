@@ -73,7 +73,7 @@ api-html: $(API_EXAMPLES)
 	$(Q)mkdir -p $(RTE_OUTPUT)/doc/html
 	$(Q)(cat $(RTE_SDK)/doc/api/doxy-api.conf     && \
 	    printf 'PROJECT_NUMBER = '                && \
-	                      $(MAKE) -rR showversion && \
+	                     $(MAKE) -rRs showversion && \
 	    echo INPUT           += $(API_EXAMPLES)   && \
 	    echo OUTPUT_DIRECTORY = $(RTE_OUTPUT)/doc && \
 	    echo HTML_OUTPUT      = html/api          && \
