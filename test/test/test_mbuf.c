@@ -82,13 +82,8 @@
 
 #define MAKE_STRING(x)          # x
 
-static struct rte_mempool *pktmbuf_pool = NULL;
-static struct rte_mempool *pktmbuf_pool2 = NULL;
-
 #ifdef RTE_MBUF_REFCNT_ATOMIC
 
-static struct rte_mempool *refcnt_pool = NULL;
-static struct rte_ring *refcnt_mbuf_ring = NULL;
 static volatile uint32_t refcnt_stop_slaves;
 static unsigned refcnt_lcore[RTE_MAX_LCORE];
 
@@ -144,7 +139,7 @@ static unsigned refcnt_lcore[RTE_MAX_LCORE];
  * test data manipulation in mbuf with non-ascii data
  */
 static int
-test_pktmbuf_with_non_ascii_data(void)
+test_pktmbuf_with_non_ascii_data(struct rte_mempool *pktmbuf_pool)
 {
 	struct rte_mbuf *m = NULL;
 	char *data;
@@ -182,7 +177,7 @@ fail:
  * test data manipulation in mbuf
  */
 static int
-test_one_pktmbuf(void)
+test_one_pktmbuf(struct rte_mempool *pktmbuf_pool)
 {
 	struct rte_mbuf *m = NULL;
 	char *data, *data2, *hdr;
@@ -328,7 +323,7 @@ fail:
 }
 
 static int
-testclone_testupdate_testdetach(void)
+testclone_testupdate_testdetach(struct rte_mempool *pktmbuf_pool)
 {
 	struct rte_mbuf *m = NULL;
 	struct rte_mbuf *clone = NULL;
@@ -432,7 +427,8 @@ fail:
 }
 
 static int
-test_attach_from_different_pool(void)
+test_attach_from_different_pool(struct rte_mempool *pktmbuf_pool,
+				struct rte_mempool *pktmbuf_pool2)
 {
 	struct rte_mbuf *m = NULL;
 	struct rte_mbuf *clone = NULL;
@@ -542,7 +538,7 @@ fail:
  * test allocation and free of mbufs
  */
 static int
-test_pktmbuf_pool(void)
+test_pktmbuf_pool(struct rte_mempool *pktmbuf_pool)
 {
 	unsigned i;
 	struct rte_mbuf *m[NB_MBUF];
@@ -583,7 +579,7 @@ test_pktmbuf_pool(void)
  * test that the pointer to the data on a packet mbuf is set properly
  */
 static int
-test_pktmbuf_pool_ptr(void)
+test_pktmbuf_pool_ptr(struct rte_mempool *pktmbuf_pool)
 {
 	unsigned i;
 	struct rte_mbuf *m[NB_MBUF];
@@ -636,7 +632,7 @@ test_pktmbuf_pool_ptr(void)
 }
 
 static int
-test_pktmbuf_free_segment(void)
+test_pktmbuf_free_segment(struct rte_mempool *pktmbuf_pool)
 {
 	unsigned i;
 	struct rte_mbuf *m[NB_MBUF];
@@ -680,10 +676,11 @@ test_pktmbuf_free_segment(void)
 #ifdef RTE_MBUF_REFCNT_ATOMIC
 
 static int
-test_refcnt_slave(__attribute__((unused)) void *arg)
+test_refcnt_slave(void *arg)
 {
 	unsigned lcore, free;
 	void *mp = 0;
+	struct rte_ring *refcnt_mbuf_ring = arg;
 
 	lcore = rte_lcore_id();
 	printf("%s started at lcore %u\n", __func__, lcore);
@@ -704,7 +701,9 @@ test_refcnt_slave(__attribute__((unused)) void *arg)
 }
 
 static void
-test_refcnt_iter(unsigned lcore, unsigned iter)
+test_refcnt_iter(unsigned int lcore, unsigned int iter,
+		 struct rte_mempool *refcnt_pool,
+		 struct rte_ring *refcnt_mbuf_ring)
 {
 	uint16_t ref;
 	unsigned i, n, tref, wn;
@@ -760,7 +759,8 @@ test_refcnt_iter(unsigned lcore, unsigned iter)
 }
 
 static int
-test_refcnt_master(void)
+test_refcnt_master(struct rte_mempool *refcnt_pool,
+		   struct rte_ring *refcnt_mbuf_ring)
 {
 	unsigned i, lcore;
 
@@ -768,7 +768,7 @@ test_refcnt_master(void)
 	printf("%s started at lcore %u\n", __func__, lcore);
 
 	for (i = 0; i != REFCNT_MAX_ITER; i++)
-		test_refcnt_iter(lcore, i);
+		test_refcnt_iter(lcore, i, refcnt_pool, refcnt_mbuf_ring);
 
 	refcnt_stop_slaves = 1;
 	rte_wmb();
@@ -783,9 +783,10 @@ static int
 test_refcnt_mbuf(void)
 {
 #ifdef RTE_MBUF_REFCNT_ATOMIC
-
 	unsigned lnum, master, slave, tref;
-
+	int ret = -1;
+	struct rte_mempool *refcnt_pool = NULL;
+	struct rte_ring *refcnt_mbuf_ring = NULL;
 
 	if ((lnum = rte_lcore_count()) == 1) {
 		printf("skipping %s, number of lcores: %u is not enough\n",
@@ -797,31 +798,31 @@ test_refcnt_mbuf(void)
 
 	/* create refcnt pool & ring if they don't exist */
 
-	if (refcnt_pool == NULL &&
-			(refcnt_pool = rte_pktmbuf_pool_create(
-				MAKE_STRING(refcnt_pool),
-				REFCNT_MBUF_NUM, 0, 0, 0,
-				SOCKET_ID_ANY)) == NULL) {
+	refcnt_pool = rte_pktmbuf_pool_create(MAKE_STRING(refcnt_pool),
+					      REFCNT_MBUF_NUM, 0, 0, 0,
+					      SOCKET_ID_ANY);
+	if (refcnt_pool == NULL) {
 		printf("%s: cannot allocate " MAKE_STRING(refcnt_pool) "\n",
 		    __func__);
 		return -1;
 	}
 
-	if (refcnt_mbuf_ring == NULL &&
-			(refcnt_mbuf_ring = rte_ring_create("refcnt_mbuf_ring",
+	refcnt_mbuf_ring = rte_ring_create("refcnt_mbuf_ring",
 			rte_align32pow2(REFCNT_RING_SIZE), SOCKET_ID_ANY,
-			RING_F_SP_ENQ)) == NULL) {
+					RING_F_SP_ENQ);
+	if (refcnt_mbuf_ring == NULL) {
 		printf("%s: cannot allocate " MAKE_STRING(refcnt_mbuf_ring)
 		    "\n", __func__);
-		return -1;
+		goto err;
 	}
 
 	refcnt_stop_slaves = 0;
 	memset(refcnt_lcore, 0, sizeof (refcnt_lcore));
 
-	rte_eal_mp_remote_launch(test_refcnt_slave, NULL, SKIP_MASTER);
+	rte_eal_mp_remote_launch(test_refcnt_slave, refcnt_mbuf_ring,
+				 SKIP_MASTER);
 
-	test_refcnt_master();
+	test_refcnt_master(refcnt_pool, refcnt_mbuf_ring);
 
 	rte_eal_mp_wait_lcore();
 
@@ -839,8 +840,15 @@ test_refcnt_mbuf(void)
 	rte_mempool_dump(stdout, refcnt_pool);
 	rte_ring_dump(stdout, refcnt_mbuf_ring);
 
-#endif
+	ret = 0;
+
+err:
+	rte_mempool_free(refcnt_pool);
+	rte_ring_free(refcnt_mbuf_ring);
+	return ret;
+#else
 	return 0;
+#endif
 }
 
 #include <unistd.h>
@@ -870,7 +878,7 @@ verify_mbuf_check_panics(struct rte_mbuf *buf)
 }
 
 static int
-test_failing_mbuf_sanity_check(void)
+test_failing_mbuf_sanity_check(struct rte_mempool *pktmbuf_pool)
 {
 	struct rte_mbuf *buf;
 	struct rte_mbuf badbuf;
@@ -931,7 +939,9 @@ test_failing_mbuf_sanity_check(void)
 }
 
 static int
-test_mbuf_linearize(int pkt_len, int nb_segs) {
+test_mbuf_linearize(struct rte_mempool *pktmbuf_pool, int pkt_len,
+		    int nb_segs)
+{
 
 	struct rte_mbuf *m = NULL, *mbuf = NULL;
 	uint8_t *data;
@@ -1022,7 +1032,7 @@ fail:
 }
 
 static int
-test_mbuf_linearize_check(void)
+test_mbuf_linearize_check(struct rte_mempool *pktmbuf_pool)
 {
 	struct test_mbuf_array {
 		int size;
@@ -1039,7 +1049,7 @@ test_mbuf_linearize_check(void)
 	printf("Test mbuf linearize API\n");
 
 	for (i = 0; i < RTE_DIM(mbuf_array); i++)
-		if (test_mbuf_linearize(mbuf_array[i].size,
+		if (test_mbuf_linearize(pktmbuf_pool, mbuf_array[i].size,
 				mbuf_array[i].nb_segs)) {
 			printf("Test failed for %d, %d\n", mbuf_array[i].size,
 					mbuf_array[i].nb_segs);
@@ -1052,53 +1062,54 @@ test_mbuf_linearize_check(void)
 static int
 test_mbuf(void)
 {
+	int ret = -1;
+	struct rte_mempool *pktmbuf_pool = NULL;
+	struct rte_mempool *pktmbuf_pool2 = NULL;
+
+
 	RTE_BUILD_BUG_ON(sizeof(struct rte_mbuf) != RTE_CACHE_LINE_MIN_SIZE * 2);
 
 	/* create pktmbuf pool if it does not exist */
-	if (pktmbuf_pool == NULL) {
-		pktmbuf_pool = rte_pktmbuf_pool_create("test_pktmbuf_pool",
+	pktmbuf_pool = rte_pktmbuf_pool_create("test_pktmbuf_pool",
 			NB_MBUF, 32, 0, MBUF_DATA_SIZE, SOCKET_ID_ANY);
-	}
 
 	if (pktmbuf_pool == NULL) {
 		printf("cannot allocate mbuf pool\n");
-		return -1;
+		goto err;
 	}
 
 	/* create a specific pktmbuf pool with a priv_size != 0 and no data
 	 * room size */
-	if (pktmbuf_pool2 == NULL) {
-		pktmbuf_pool2 = rte_pktmbuf_pool_create("test_pktmbuf_pool2",
+	pktmbuf_pool2 = rte_pktmbuf_pool_create("test_pktmbuf_pool2",
 			NB_MBUF, 32, MBUF2_PRIV_SIZE, 0, SOCKET_ID_ANY);
-	}
 
 	if (pktmbuf_pool2 == NULL) {
 		printf("cannot allocate mbuf pool\n");
-		return -1;
+		goto err;
 	}
 
 	/* test multiple mbuf alloc */
-	if (test_pktmbuf_pool() < 0) {
+	if (test_pktmbuf_pool(pktmbuf_pool) < 0) {
 		printf("test_mbuf_pool() failed\n");
-		return -1;
+		goto err;
 	}
 
 	/* do it another time to check that all mbufs were freed */
-	if (test_pktmbuf_pool() < 0) {
+	if (test_pktmbuf_pool(pktmbuf_pool) < 0) {
 		printf("test_mbuf_pool() failed (2)\n");
-		return -1;
+		goto err;
 	}
 
 	/* test that the pointer to the data on a packet mbuf is set properly */
-	if (test_pktmbuf_pool_ptr() < 0) {
+	if (test_pktmbuf_pool_ptr(pktmbuf_pool) < 0) {
 		printf("test_pktmbuf_pool_ptr() failed\n");
-		return -1;
+		goto err;
 	}
 
 	/* test data manipulation in mbuf */
-	if (test_one_pktmbuf() < 0) {
+	if (test_one_pktmbuf(pktmbuf_pool) < 0) {
 		printf("test_one_mbuf() failed\n");
-		return -1;
+		goto err;
 	}
 
 
@@ -1106,47 +1117,52 @@ test_mbuf(void)
 	 * do it another time, to check that allocation reinitialize
 	 * the mbuf correctly
 	 */
-	if (test_one_pktmbuf() < 0) {
+	if (test_one_pktmbuf(pktmbuf_pool) < 0) {
 		printf("test_one_mbuf() failed (2)\n");
-		return -1;
+		goto err;
 	}
 
-	if (test_pktmbuf_with_non_ascii_data() < 0) {
+	if (test_pktmbuf_with_non_ascii_data(pktmbuf_pool) < 0) {
 		printf("test_pktmbuf_with_non_ascii_data() failed\n");
-		return -1;
+		goto err;
 	}
 
 	/* test free pktmbuf segment one by one */
-	if (test_pktmbuf_free_segment() < 0) {
+	if (test_pktmbuf_free_segment(pktmbuf_pool) < 0) {
 		printf("test_pktmbuf_free_segment() failed.\n");
-		return -1;
+		goto err;
 	}
 
-	if (testclone_testupdate_testdetach()<0){
+	if (testclone_testupdate_testdetach(pktmbuf_pool) < 0) {
 		printf("testclone_and_testupdate() failed \n");
-		return -1;
+		goto err;
 	}
 
-	if (test_attach_from_different_pool() < 0) {
+	if (test_attach_from_different_pool(pktmbuf_pool, pktmbuf_pool2) < 0) {
 		printf("test_attach_from_different_pool() failed\n");
-		return -1;
+		goto err;
 	}
 
 	if (test_refcnt_mbuf()<0){
 		printf("test_refcnt_mbuf() failed \n");
-		return -1;
+		goto err;
 	}
 
-	if (test_failing_mbuf_sanity_check() < 0) {
+	if (test_failing_mbuf_sanity_check(pktmbuf_pool) < 0) {
 		printf("test_failing_mbuf_sanity_check() failed\n");
-		return -1;
+		goto err;
 	}
 
-	if (test_mbuf_linearize_check() < 0) {
+	if (test_mbuf_linearize_check(pktmbuf_pool) < 0) {
 		printf("test_mbuf_linearize_check() failed\n");
-		return -1;
+		goto err;
 	}
-	return 0;
+	ret = 0;
+
+err:
+	rte_mempool_free(pktmbuf_pool);
+	rte_mempool_free(pktmbuf_pool2);
+	return ret;
 }
 
 REGISTER_TEST_COMMAND(mbuf_autotest, test_mbuf);
