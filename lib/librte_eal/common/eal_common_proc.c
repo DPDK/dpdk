@@ -46,10 +46,10 @@ rte_eal_primary_proc_alive(const char *config_file_path)
 	if (config_file_path)
 		config_fd = open(config_file_path, O_RDONLY);
 	else {
-		char default_path[PATH_MAX+1];
-		snprintf(default_path, PATH_MAX, RUNTIME_CONFIG_FMT,
-			 default_config_dir, "rte");
-		config_fd = open(default_path, O_RDONLY);
+		const char *path;
+
+		path = eal_runtime_config_path();
+		config_fd = open(path, O_RDONLY);
 	}
 	if (config_fd < 0)
 		return 0;
