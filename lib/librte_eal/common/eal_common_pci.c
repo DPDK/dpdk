@@ -183,12 +183,9 @@ rte_pci_probe_one_driver(struct rte_pci_driver *dr,
 	loc = &dev->addr;
 
 	/* The device is not blacklisted; Check if driver supports it */
-	if (!rte_pci_match(dr, dev)) {
+	if (!rte_pci_match(dr, dev))
 		/* Match of device and driver failed */
-		RTE_LOG(DEBUG, EAL, "Driver (%s) doesn't match the device\n",
-			dr->driver.name);
 		return 1;
-	}
 
 	RTE_LOG(INFO, EAL, "PCI device "PCI_PRI_FMT" on NUMA socket %i\n",
 			loc->domain, loc->bus, loc->devid, loc->function,
