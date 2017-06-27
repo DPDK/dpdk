@@ -59,7 +59,7 @@ enum rte_pmd_i40e_mb_event_rsp {
  */
 struct rte_pmd_i40e_mb_event_param {
 	uint16_t vfid;     /**< Virtual Function number */
-	uint16_t msg_type; /**< VF to PF message type, see i40e_virtchnl_ops */
+	uint16_t msg_type; /**< VF to PF message type, see virtchnl_ops */
 	uint16_t retval;   /**< return value */
 	void *msg;         /**< pointer to message */
 	uint16_t msglen;   /**< length of the message */

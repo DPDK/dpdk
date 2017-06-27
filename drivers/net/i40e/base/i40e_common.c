@@ -34,7 +34,7 @@ POSSIBILITY OF SUCH DAMAGE.
 #include "i40e_type.h"
 #include "i40e_adminq.h"
 #include "i40e_prototype.h"
-#include "i40e_virtchnl.h"
+#include "virtchnl.h"
 
 
 /**
@@ -5523,7 +5523,7 @@ enum i40e_status_code i40e_aq_add_rem_control_packet_filter(struct i40e_hw *hw,
 	}
 
 	if (mac_addr)
-		i40e_memcpy(cmd->mac, mac_addr, I40E_ETH_LENGTH_OF_ADDRESS,
+		i40e_memcpy(cmd->mac, mac_addr, ETH_ALEN,
 			    I40E_NONDMA_TO_NONDMA);
 
 	cmd->etype = CPU_TO_LE16(ethtype);
@@ -6879,7 +6879,7 @@ do_retry:
  * completion before returning.
  **/
 enum i40e_status_code i40e_aq_send_msg_to_pf(struct i40e_hw *hw,
-				enum i40e_virtchnl_ops v_opcode,
+				enum virtchnl_ops v_opcode,
 				enum i40e_status_code v_retval,
 				u8 *msg, u16 msglen,
 				struct i40e_asq_cmd_details *cmd_details)
@@ -6918,9 +6918,9 @@ enum i40e_status_code i40e_aq_send_msg_to_pf(struct i40e_hw *hw,
  * with appropriate information.
  **/
 void i40e_vf_parse_hw_config(struct i40e_hw *hw,
-			     struct i40e_virtchnl_vf_resource *msg)
+			     struct virtchnl_vf_resource *msg)
 {
-	struct i40e_virtchnl_vsi_resource *vsi_res;
+	struct virtchnl_vsi_resource *vsi_res;
 	int i;
 
 	vsi_res = &msg->vsi_res[0];
@@ -6930,19 +6930,17 @@ void i40e_vf_parse_hw_config(struct i40e_hw *hw,
 	hw->dev_caps.num_tx_qp = msg->num_queue_pairs;
 	hw->dev_caps.num_msix_vectors_vf = msg->max_vectors;
 	hw->dev_caps.dcb = msg->vf_offload_flags &
-			   I40E_VIRTCHNL_VF_OFFLOAD_L2;
-	hw->dev_caps.fcoe = (msg->vf_offload_flags &
-			     I40E_VIRTCHNL_VF_OFFLOAD_FCOE) ? 1 : 0;
+			   VIRTCHNL_VF_OFFLOAD_L2;
 	hw->dev_caps.iwarp = (msg->vf_offload_flags &
-			      I40E_VIRTCHNL_VF_OFFLOAD_IWARP) ? 1 : 0;
+			      VIRTCHNL_VF_OFFLOAD_IWARP) ? 1 : 0;
 	for (i = 0; i < msg->num_vsis; i++) {
-		if (vsi_res->vsi_type == I40E_VSI_SRIOV) {
+		if (vsi_res->vsi_type == VIRTCHNL_VSI_SRIOV) {
 			i40e_memcpy(hw->mac.perm_addr,
 				    vsi_res->default_mac_addr,
-				    I40E_ETH_LENGTH_OF_ADDRESS,
+				    ETH_ALEN,
 				    I40E_NONDMA_TO_NONDMA);
 			i40e_memcpy(hw->mac.addr, vsi_res->default_mac_addr,
-				    I40E_ETH_LENGTH_OF_ADDRESS,
+				    ETH_ALEN,
 				    I40E_NONDMA_TO_NONDMA);
 		}
 		vsi_res++;
@@ -6959,7 +6957,7 @@ void i40e_vf_parse_hw_config(struct i40e_hw *hw,
  **/
 enum i40e_status_code i40e_vf_reset(struct i40e_hw *hw)
 {
-	return i40e_aq_send_msg_to_pf(hw, I40E_VIRTCHNL_OP_RESET_VF,
+	return i40e_aq_send_msg_to_pf(hw, VIRTCHNL_OP_RESET_VF,
 				      I40E_SUCCESS, NULL, 0, NULL);
 }
 #endif /* VF_DRIVER */

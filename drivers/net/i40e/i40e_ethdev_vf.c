@@ -77,7 +77,7 @@
 #define MAX_RESET_WAIT_CNT     20
 
 struct i40evf_arq_msg_info {
-	enum i40e_virtchnl_ops ops;
+	enum virtchnl_ops ops;
 	enum i40e_status_code result;
 	uint16_t buf_len;
 	uint16_t msg_len;
@@ -85,7 +85,7 @@ struct i40evf_arq_msg_info {
 };
 
 struct vf_cmd_info {
-	enum i40e_virtchnl_ops ops;
+	enum virtchnl_ops ops;
 	uint8_t *in_args;
 	uint32_t in_args_size;
 	uint8_t *out_buffer;
@@ -244,7 +244,7 @@ i40evf_read_pfmsg(struct rte_eth_dev *dev, struct i40evf_arq_msg_info *data)
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct i40e_arq_event_info event;
-	enum i40e_virtchnl_ops opcode;
+	enum virtchnl_ops opcode;
 	enum i40e_status_code retval;
 	int ret;
 	enum i40evf_aq_result result = I40EVF_MSG_NON;
@@ -259,16 +259,16 @@ i40evf_read_pfmsg(struct rte_eth_dev *dev, struct i40evf_arq_msg_info *data)
 		return result;
 	}
 
-	opcode = (enum i40e_virtchnl_ops)rte_le_to_cpu_32(event.desc.cookie_high);
+	opcode = (enum virtchnl_ops)rte_le_to_cpu_32(event.desc.cookie_high);
 	retval = (enum i40e_status_code)rte_le_to_cpu_32(event.desc.cookie_low);
 	/* pf sys event */
-	if (opcode == I40E_VIRTCHNL_OP_EVENT) {
-		struct i40e_virtchnl_pf_event *vpe =
-			(struct i40e_virtchnl_pf_event *)event.msg_buf;
+	if (opcode == VIRTCHNL_OP_EVENT) {
+		struct virtchnl_pf_event *vpe =
+			(struct virtchnl_pf_event *)event.msg_buf;
 
 		result = I40EVF_MSG_SYS;
 		switch (vpe->event) {
-		case I40E_VIRTCHNL_EVENT_LINK_CHANGE:
+		case VIRTCHNL_EVENT_LINK_CHANGE:
 			vf->link_up =
 				vpe->event_data.link_event.link_status;
 			vf->link_speed =
@@ -277,12 +277,12 @@ i40evf_read_pfmsg(struct rte_eth_dev *dev, struct i40evf_arq_msg_info *data)
 			PMD_DRV_LOG(INFO, "Link status update:%s",
 				    vf->link_up ? "up" : "down");
 			break;
-		case I40E_VIRTCHNL_EVENT_RESET_IMPENDING:
+		case VIRTCHNL_EVENT_RESET_IMPENDING:
 			vf->vf_reset = true;
 			vf->pend_msg |= PFMSG_RESET_IMPENDING;
 			PMD_DRV_LOG(INFO, "vf is reseting");
 			break;
-		case I40E_VIRTCHNL_EVENT_PF_DRIVER_CLOSE:
+		case VIRTCHNL_EVENT_PF_DRIVER_CLOSE:
 			vf->dev_closed = true;
 			vf->pend_msg |= PFMSG_DRIVER_CLOSE;
 			PMD_DRV_LOG(INFO, "PF driver closed");
@@ -312,17 +312,17 @@ static inline void
 _clear_cmd(struct i40e_vf *vf)
 {
 	rte_wmb();
-	vf->pend_cmd = I40E_VIRTCHNL_OP_UNKNOWN;
+	vf->pend_cmd = VIRTCHNL_OP_UNKNOWN;
 }
 
 /*
  * Check there is pending cmd in execution. If none, set new command.
  */
 static inline int
-_atomic_set_cmd(struct i40e_vf *vf, enum i40e_virtchnl_ops ops)
+_atomic_set_cmd(struct i40e_vf *vf, enum virtchnl_ops ops)
 {
 	int ret = rte_atomic32_cmpset(&vf->pend_cmd,
-			I40E_VIRTCHNL_OP_UNKNOWN, ops);
+			VIRTCHNL_OP_UNKNOWN, ops);
 
 	if (!ret)
 		PMD_DRV_LOG(ERR, "There is incomplete cmd %d", vf->pend_cmd);
@@ -347,7 +347,7 @@ i40evf_execute_vf_cmd(struct rte_eth_dev *dev, struct vf_cmd_info *args)
 
 	info.msg = args->out_buffer;
 	info.buf_len = args->out_size;
-	info.ops = I40E_VIRTCHNL_OP_UNKNOWN;
+	info.ops = VIRTCHNL_OP_UNKNOWN;
 	info.result = I40E_SUCCESS;
 
 	err = i40e_aq_send_msg_to_pf(hw, args->ops, I40E_SUCCESS,
@@ -359,12 +359,12 @@ i40evf_execute_vf_cmd(struct rte_eth_dev *dev, struct vf_cmd_info *args)
 	}
 
 	switch (args->ops) {
-	case I40E_VIRTCHNL_OP_RESET_VF:
+	case VIRTCHNL_OP_RESET_VF:
 		/*no need to process in this function */
 		err = 0;
 		break;
-	case I40E_VIRTCHNL_OP_VERSION:
-	case I40E_VIRTCHNL_OP_GET_VF_RESOURCES:
+	case VIRTCHNL_OP_VERSION:
+	case VIRTCHNL_OP_GET_VF_RESOURCES:
 		/* for init adminq commands, need to poll the response */
 		err = -1;
 		do {
@@ -385,7 +385,7 @@ i40evf_execute_vf_cmd(struct rte_eth_dev *dev, struct vf_cmd_info *args)
 		/* for other adminq in running time, waiting the cmd done flag */
 		err = -1;
 		do {
-			if (vf->pend_cmd == I40E_VIRTCHNL_OP_UNKNOWN) {
+			if (vf->pend_cmd == VIRTCHNL_OP_UNKNOWN) {
 				err = 0;
 				break;
 			}
@@ -404,15 +404,15 @@ i40evf_execute_vf_cmd(struct rte_eth_dev *dev, struct vf_cmd_info *args)
 static int
 i40evf_check_api_version(struct rte_eth_dev *dev)
 {
-	struct i40e_virtchnl_version_info version, *pver;
+	struct virtchnl_version_info version, *pver;
 	int err;
 	struct vf_cmd_info args;
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 
-	version.major = I40E_VIRTCHNL_VERSION_MAJOR;
-	version.minor = I40E_VIRTCHNL_VERSION_MINOR;
+	version.major = VIRTCHNL_VERSION_MAJOR;
+	version.minor = VIRTCHNL_VERSION_MINOR;
 
-	args.ops = I40E_VIRTCHNL_OP_VERSION;
+	args.ops = VIRTCHNL_OP_VERSION;
 	args.in_args = (uint8_t *)&version;
 	args.in_args_size = sizeof(version);
 	args.out_buffer = vf->aq_resp;
@@ -424,19 +424,19 @@ i40evf_check_api_version(struct rte_eth_dev *dev)
 		return err;
 	}
 
-	pver = (struct i40e_virtchnl_version_info *)args.out_buffer;
+	pver = (struct virtchnl_version_info *)args.out_buffer;
 	vf->version_major = pver->major;
 	vf->version_minor = pver->minor;
 	if (vf->version_major == I40E_DPDK_VERSION_MAJOR)
 		PMD_DRV_LOG(INFO, "Peer is DPDK PF host");
-	else if ((vf->version_major == I40E_VIRTCHNL_VERSION_MAJOR) &&
-		(vf->version_minor <= I40E_VIRTCHNL_VERSION_MINOR))
+	else if ((vf->version_major == VIRTCHNL_VERSION_MAJOR) &&
+		(vf->version_minor <= VIRTCHNL_VERSION_MINOR))
 		PMD_DRV_LOG(INFO, "Peer is Linux PF host");
 	else {
 		PMD_INIT_LOG(ERR, "PF/VF API version mismatch:(%u.%u)-(%u.%u)",
 					vf->version_major, vf->version_minor,
-						I40E_VIRTCHNL_VERSION_MAJOR,
-						I40E_VIRTCHNL_VERSION_MINOR);
+						VIRTCHNL_VERSION_MAJOR,
+						VIRTCHNL_VERSION_MINOR);
 		return -1;
 	}
 
@@ -452,15 +452,15 @@ i40evf_get_vf_resource(struct rte_eth_dev *dev)
 	struct vf_cmd_info args;
 	uint32_t caps, len;
 
-	args.ops = I40E_VIRTCHNL_OP_GET_VF_RESOURCES;
+	args.ops = VIRTCHNL_OP_GET_VF_RESOURCES;
 	args.out_buffer = vf->aq_resp;
 	args.out_size = I40E_AQ_BUF_SZ;
 	if (PF_IS_V11(vf)) {
-		caps = I40E_VIRTCHNL_VF_OFFLOAD_L2 |
-		       I40E_VIRTCHNL_VF_OFFLOAD_RSS_AQ |
-		       I40E_VIRTCHNL_VF_OFFLOAD_RSS_REG |
-		       I40E_VIRTCHNL_VF_OFFLOAD_VLAN |
-		       I40E_VIRTCHNL_VF_OFFLOAD_RX_POLLING;
+		caps = VIRTCHNL_VF_OFFLOAD_L2 |
+		       VIRTCHNL_VF_OFFLOAD_RSS_AQ |
+		       VIRTCHNL_VF_OFFLOAD_RSS_REG |
+		       VIRTCHNL_VF_OFFLOAD_VLAN |
+		       VIRTCHNL_VF_OFFLOAD_RX_POLLING;
 		args.in_args = (uint8_t *)&caps;
 		args.in_args_size = sizeof(caps);
 	} else {
@@ -474,8 +474,8 @@ i40evf_get_vf_resource(struct rte_eth_dev *dev)
 		return err;
 	}
 
-	len =  sizeof(struct i40e_virtchnl_vf_resource) +
-		I40E_MAX_VF_VSI * sizeof(struct i40e_virtchnl_vsi_resource);
+	len =  sizeof(struct virtchnl_vf_resource) +
+		I40E_MAX_VF_VSI * sizeof(struct virtchnl_vsi_resource);
 
 	(void)rte_memcpy(vf->vf_res, args.out_buffer,
 			RTE_MIN(args.out_size, len));
@@ -492,18 +492,18 @@ i40evf_config_promisc(struct rte_eth_dev *dev,
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	int err;
 	struct vf_cmd_info args;
-	struct i40e_virtchnl_promisc_info promisc;
+	struct virtchnl_promisc_info promisc;
 
 	promisc.flags = 0;
 	promisc.vsi_id = vf->vsi_res->vsi_id;
 
 	if (enable_unicast)
-		promisc.flags |= I40E_FLAG_VF_UNICAST_PROMISC;
+		promisc.flags |= FLAG_VF_UNICAST_PROMISC;
 
 	if (enable_multicast)
-		promisc.flags |= I40E_FLAG_VF_MULTICAST_PROMISC;
+		promisc.flags |= FLAG_VF_MULTICAST_PROMISC;
 
-	args.ops = I40E_VIRTCHNL_OP_CONFIG_PROMISCUOUS_MODE;
+	args.ops = VIRTCHNL_OP_CONFIG_PROMISCUOUS_MODE;
 	args.in_args = (uint8_t *)&promisc;
 	args.in_args_size = sizeof(promisc);
 	args.out_buffer = vf->aq_resp;
@@ -525,12 +525,12 @@ i40evf_config_vlan_offload(struct rte_eth_dev *dev,
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	int err;
 	struct vf_cmd_info args;
-	struct i40e_virtchnl_vlan_offload_info offload;
+	struct virtchnl_vlan_offload_info offload;
 
 	offload.vsi_id = vf->vsi_res->vsi_id;
 	offload.enable_vlan_strip = enable_vlan_strip;
 
-	args.ops = (enum i40e_virtchnl_ops)I40E_VIRTCHNL_OP_CFG_VLAN_OFFLOAD;
+	args.ops = (enum virtchnl_ops)I40E_VIRTCHNL_OP_CFG_VLAN_OFFLOAD;
 	args.in_args = (uint8_t *)&offload;
 	args.in_args_size = sizeof(offload);
 	args.out_buffer = vf->aq_resp;
@@ -550,7 +550,7 @@ i40evf_config_vlan_pvid(struct rte_eth_dev *dev,
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	int err;
 	struct vf_cmd_info args;
-	struct i40e_virtchnl_pvid_info tpid_info;
+	struct virtchnl_pvid_info tpid_info;
 
 	if (info == NULL) {
 		PMD_DRV_LOG(ERR, "invalid parameters");
@@ -561,7 +561,7 @@ i40evf_config_vlan_pvid(struct rte_eth_dev *dev,
 	tpid_info.vsi_id = vf->vsi_res->vsi_id;
 	(void)rte_memcpy(&tpid_info.info, info, sizeof(*info));
 
-	args.ops = (enum i40e_virtchnl_ops)I40E_VIRTCHNL_OP_CFG_VLAN_PVID;
+	args.ops = (enum virtchnl_ops)I40E_VIRTCHNL_OP_CFG_VLAN_PVID;
 	args.in_args = (uint8_t *)&tpid_info;
 	args.in_args_size = sizeof(tpid_info);
 	args.out_buffer = vf->aq_resp;
@@ -575,7 +575,7 @@ i40evf_config_vlan_pvid(struct rte_eth_dev *dev,
 }
 
 static void
-i40evf_fill_virtchnl_vsi_txq_info(struct i40e_virtchnl_txq_info *txq_info,
+i40evf_fill_virtchnl_vsi_txq_info(struct virtchnl_txq_info *txq_info,
 				  uint16_t vsi_id,
 				  uint16_t queue_id,
 				  uint16_t nb_txq,
@@ -590,7 +590,7 @@ i40evf_fill_virtchnl_vsi_txq_info(struct i40e_virtchnl_txq_info *txq_info,
 }
 
 static void
-i40evf_fill_virtchnl_vsi_rxq_info(struct i40e_virtchnl_rxq_info *rxq_info,
+i40evf_fill_virtchnl_vsi_rxq_info(struct virtchnl_rxq_info *rxq_info,
 				  uint16_t vsi_id,
 				  uint16_t queue_id,
 				  uint16_t nb_rxq,
@@ -618,8 +618,8 @@ i40evf_configure_vsi_queues(struct rte_eth_dev *dev)
 		(struct i40e_rx_queue **)dev->data->rx_queues;
 	struct i40e_tx_queue **txq =
 		(struct i40e_tx_queue **)dev->data->tx_queues;
-	struct i40e_virtchnl_vsi_queue_config_info *vc_vqci;
-	struct i40e_virtchnl_queue_pair_info *vc_qpi;
+	struct virtchnl_vsi_queue_config_info *vc_vqci;
+	struct virtchnl_queue_pair_info *vc_qpi;
 	struct vf_cmd_info args;
 	uint16_t i, nb_qp = vf->num_queue_pairs;
 	const uint32_t size =
@@ -628,7 +628,7 @@ i40evf_configure_vsi_queues(struct rte_eth_dev *dev)
 	int ret;
 
 	memset(buff, 0, sizeof(buff));
-	vc_vqci = (struct i40e_virtchnl_vsi_queue_config_info *)buff;
+	vc_vqci = (struct virtchnl_vsi_queue_config_info *)buff;
 	vc_vqci->vsi_id = vf->vsi_res->vsi_id;
 	vc_vqci->num_queue_pairs = nb_qp;
 
@@ -640,7 +640,7 @@ i40evf_configure_vsi_queues(struct rte_eth_dev *dev)
 					vf->max_pkt_len, rxq[i]);
 	}
 	memset(&args, 0, sizeof(args));
-	args.ops = I40E_VIRTCHNL_OP_CONFIG_VSI_QUEUES;
+	args.ops = VIRTCHNL_OP_CONFIG_VSI_QUEUES;
 	args.in_args = (uint8_t *)vc_vqci;
 	args.in_args_size = size;
 	args.out_buffer = vf->aq_resp;
@@ -648,7 +648,7 @@ i40evf_configure_vsi_queues(struct rte_eth_dev *dev)
 	ret = i40evf_execute_vf_cmd(dev, &args);
 	if (ret)
 		PMD_DRV_LOG(ERR, "Failed to execute command of "
-			"I40E_VIRTCHNL_OP_CONFIG_VSI_QUEUES");
+			"VIRTCHNL_OP_CONFIG_VSI_QUEUES");
 
 	return ret;
 }
@@ -662,8 +662,8 @@ i40evf_configure_vsi_queues_ext(struct rte_eth_dev *dev)
 		(struct i40e_rx_queue **)dev->data->rx_queues;
 	struct i40e_tx_queue **txq =
 		(struct i40e_tx_queue **)dev->data->tx_queues;
-	struct i40e_virtchnl_vsi_queue_config_ext_info *vc_vqcei;
-	struct i40e_virtchnl_queue_pair_ext_info *vc_qpei;
+	struct virtchnl_vsi_queue_config_ext_info *vc_vqcei;
+	struct virtchnl_queue_pair_ext_info *vc_qpei;
 	struct vf_cmd_info args;
 	uint16_t i, nb_qp = vf->num_queue_pairs;
 	const uint32_t size =
@@ -672,7 +672,7 @@ i40evf_configure_vsi_queues_ext(struct rte_eth_dev *dev)
 	int ret;
 
 	memset(buff, 0, sizeof(buff));
-	vc_vqcei = (struct i40e_virtchnl_vsi_queue_config_ext_info *)buff;
+	vc_vqcei = (struct virtchnl_vsi_queue_config_ext_info *)buff;
 	vc_vqcei->vsi_id = vf->vsi_res->vsi_id;
 	vc_vqcei->num_queue_pairs = nb_qp;
 	vc_qpei = vc_vqcei->qpair;
@@ -693,7 +693,7 @@ i40evf_configure_vsi_queues_ext(struct rte_eth_dev *dev)
 	}
 	memset(&args, 0, sizeof(args));
 	args.ops =
-		(enum i40e_virtchnl_ops)I40E_VIRTCHNL_OP_CONFIG_VSI_QUEUES_EXT;
+		(enum virtchnl_ops)VIRTCHNL_OP_CONFIG_VSI_QUEUES_EXT;
 	args.in_args = (uint8_t *)vc_vqcei;
 	args.in_args_size = size;
 	args.out_buffer = vf->aq_resp;
@@ -701,7 +701,7 @@ i40evf_configure_vsi_queues_ext(struct rte_eth_dev *dev)
 	ret = i40evf_execute_vf_cmd(dev, &args);
 	if (ret)
 		PMD_DRV_LOG(ERR, "Failed to execute command of "
-			"I40E_VIRTCHNL_OP_CONFIG_VSI_QUEUES_EXT");
+			"VIRTCHNL_OP_CONFIG_VSI_QUEUES_EXT");
 
 	return ret;
 }
@@ -724,9 +724,9 @@ i40evf_config_irq_map(struct rte_eth_dev *dev)
 {
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct vf_cmd_info args;
-	uint8_t cmd_buffer[sizeof(struct i40e_virtchnl_irq_map_info) + \
-		sizeof(struct i40e_virtchnl_vector_map)];
-	struct i40e_virtchnl_irq_map_info *map_info;
+	uint8_t cmd_buffer[sizeof(struct virtchnl_irq_map_info) + \
+		sizeof(struct virtchnl_vector_map)];
+	struct virtchnl_irq_map_info *map_info;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	uint32_t vector_id;
@@ -741,7 +741,7 @@ i40evf_config_irq_map(struct rte_eth_dev *dev)
 		vector_id = I40E_MISC_VEC_ID;
 	}
 
-	map_info = (struct i40e_virtchnl_irq_map_info *)cmd_buffer;
+	map_info = (struct virtchnl_irq_map_info *)cmd_buffer;
 	map_info->num_vectors = 1;
 	map_info->vecmap[0].rxitr_idx = I40E_ITR_INDEX_DEFAULT;
 	map_info->vecmap[0].vsi_id = vf->vsi_res->vsi_id;
@@ -756,7 +756,7 @@ i40evf_config_irq_map(struct rte_eth_dev *dev)
 			intr_handle->intr_vec[i] = vector_id;
 	}
 
-	args.ops = I40E_VIRTCHNL_OP_CONFIG_IRQ_MAP;
+	args.ops = VIRTCHNL_OP_CONFIG_IRQ_MAP;
 	args.in_args = (u8 *)cmd_buffer;
 	args.in_args_size = sizeof(cmd_buffer);
 	args.out_buffer = vf->aq_resp;
@@ -773,7 +773,7 @@ i40evf_switch_queue(struct rte_eth_dev *dev, bool isrx, uint16_t qid,
 				bool on)
 {
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
-	struct i40e_virtchnl_queue_select queue_select;
+	struct virtchnl_queue_select queue_select;
 	int err;
 	struct vf_cmd_info args;
 	memset(&queue_select, 0, sizeof(queue_select));
@@ -785,9 +785,9 @@ i40evf_switch_queue(struct rte_eth_dev *dev, bool isrx, uint16_t qid,
 		queue_select.tx_queues |= 1 << qid;
 
 	if (on)
-		args.ops = I40E_VIRTCHNL_OP_ENABLE_QUEUES;
+		args.ops = VIRTCHNL_OP_ENABLE_QUEUES;
 	else
-		args.ops = I40E_VIRTCHNL_OP_DISABLE_QUEUES;
+		args.ops = VIRTCHNL_OP_DISABLE_QUEUES;
 	args.in_args = (u8 *)&queue_select;
 	args.in_args_size = sizeof(queue_select);
 	args.out_buffer = vf->aq_resp;
@@ -861,10 +861,10 @@ i40evf_add_mac_addr(struct rte_eth_dev *dev,
 		    __rte_unused uint32_t index,
 		    __rte_unused uint32_t pool)
 {
-	struct i40e_virtchnl_ether_addr_list *list;
+	struct virtchnl_ether_addr_list *list;
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
-	uint8_t cmd_buffer[sizeof(struct i40e_virtchnl_ether_addr_list) + \
-			sizeof(struct i40e_virtchnl_ether_addr)];
+	uint8_t cmd_buffer[sizeof(struct virtchnl_ether_addr_list) + \
+			sizeof(struct virtchnl_ether_addr)];
 	int err;
 	struct vf_cmd_info args;
 
@@ -876,13 +876,13 @@ i40evf_add_mac_addr(struct rte_eth_dev *dev,
 		return I40E_ERR_INVALID_MAC_ADDR;
 	}
 
-	list = (struct i40e_virtchnl_ether_addr_list *)cmd_buffer;
+	list = (struct virtchnl_ether_addr_list *)cmd_buffer;
 	list->vsi_id = vf->vsi_res->vsi_id;
 	list->num_elements = 1;
 	(void)rte_memcpy(list->list[0].addr, addr->addr_bytes,
 					sizeof(addr->addr_bytes));
 
-	args.ops = I40E_VIRTCHNL_OP_ADD_ETHER_ADDRESS;
+	args.ops = VIRTCHNL_OP_ADD_ETH_ADDR;
 	args.in_args = cmd_buffer;
 	args.in_args_size = sizeof(cmd_buffer);
 	args.out_buffer = vf->aq_resp;
@@ -899,10 +899,10 @@ static void
 i40evf_del_mac_addr_by_addr(struct rte_eth_dev *dev,
 			    struct ether_addr *addr)
 {
-	struct i40e_virtchnl_ether_addr_list *list;
+	struct virtchnl_ether_addr_list *list;
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
-	uint8_t cmd_buffer[sizeof(struct i40e_virtchnl_ether_addr_list) + \
-			sizeof(struct i40e_virtchnl_ether_addr)];
+	uint8_t cmd_buffer[sizeof(struct virtchnl_ether_addr_list) + \
+			sizeof(struct virtchnl_ether_addr)];
 	int err;
 	struct vf_cmd_info args;
 
@@ -914,13 +914,13 @@ i40evf_del_mac_addr_by_addr(struct rte_eth_dev *dev,
 		return;
 	}
 
-	list = (struct i40e_virtchnl_ether_addr_list *)cmd_buffer;
+	list = (struct virtchnl_ether_addr_list *)cmd_buffer;
 	list->vsi_id = vf->vsi_res->vsi_id;
 	list->num_elements = 1;
 	(void)rte_memcpy(list->list[0].addr, addr->addr_bytes,
 			sizeof(addr->addr_bytes));
 
-	args.ops = I40E_VIRTCHNL_OP_DEL_ETHER_ADDRESS;
+	args.ops = VIRTCHNL_OP_DEL_ETH_ADDR;
 	args.in_args = cmd_buffer;
 	args.in_args_size = sizeof(cmd_buffer);
 	args.out_buffer = vf->aq_resp;
@@ -947,13 +947,13 @@ static int
 i40evf_update_stats(struct rte_eth_dev *dev, struct i40e_eth_stats **pstats)
 {
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
-	struct i40e_virtchnl_queue_select q_stats;
+	struct virtchnl_queue_select q_stats;
 	int err;
 	struct vf_cmd_info args;
 
 	memset(&q_stats, 0, sizeof(q_stats));
 	q_stats.vsi_id = vf->vsi_res->vsi_id;
-	args.ops = I40E_VIRTCHNL_OP_GET_STATS;
+	args.ops = VIRTCHNL_OP_GET_STATS;
 	args.in_args = (u8 *)&q_stats;
 	args.in_args_size = sizeof(q_stats);
 	args.out_buffer = vf->aq_resp;
@@ -1050,18 +1050,18 @@ static int
 i40evf_add_vlan(struct rte_eth_dev *dev, uint16_t vlanid)
 {
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
-	struct i40e_virtchnl_vlan_filter_list *vlan_list;
-	uint8_t cmd_buffer[sizeof(struct i40e_virtchnl_vlan_filter_list) +
+	struct virtchnl_vlan_filter_list *vlan_list;
+	uint8_t cmd_buffer[sizeof(struct virtchnl_vlan_filter_list) +
 							sizeof(uint16_t)];
 	int err;
 	struct vf_cmd_info args;
 
-	vlan_list = (struct i40e_virtchnl_vlan_filter_list *)cmd_buffer;
+	vlan_list = (struct virtchnl_vlan_filter_list *)cmd_buffer;
 	vlan_list->vsi_id = vf->vsi_res->vsi_id;
 	vlan_list->num_elements = 1;
 	vlan_list->vlan_id[0] = vlanid;
 
-	args.ops = I40E_VIRTCHNL_OP_ADD_VLAN;
+	args.ops = VIRTCHNL_OP_ADD_VLAN;
 	args.in_args = (u8 *)&cmd_buffer;
 	args.in_args_size = sizeof(cmd_buffer);
 	args.out_buffer = vf->aq_resp;
@@ -1077,18 +1077,18 @@ static int
 i40evf_del_vlan(struct rte_eth_dev *dev, uint16_t vlanid)
 {
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
-	struct i40e_virtchnl_vlan_filter_list *vlan_list;
-	uint8_t cmd_buffer[sizeof(struct i40e_virtchnl_vlan_filter_list) +
+	struct virtchnl_vlan_filter_list *vlan_list;
+	uint8_t cmd_buffer[sizeof(struct virtchnl_vlan_filter_list) +
 							sizeof(uint16_t)];
 	int err;
 	struct vf_cmd_info args;
 
-	vlan_list = (struct i40e_virtchnl_vlan_filter_list *)cmd_buffer;
+	vlan_list = (struct virtchnl_vlan_filter_list *)cmd_buffer;
 	vlan_list->vsi_id = vf->vsi_res->vsi_id;
 	vlan_list->num_elements = 1;
 	vlan_list->vlan_id[0] = vlanid;
 
-	args.ops = I40E_VIRTCHNL_OP_DEL_VLAN;
+	args.ops = VIRTCHNL_OP_DEL_VLAN;
 	args.in_args = (u8 *)&cmd_buffer;
 	args.in_args_size = sizeof(cmd_buffer);
 	args.out_buffer = vf->aq_resp;
@@ -1178,7 +1178,7 @@ i40evf_reset_vf(struct i40e_hw *hw)
 		reset = rd32(hw, I40E_VFGEN_RSTAT) &
 			I40E_VFGEN_RSTAT_VFR_STATE_MASK;
 		reset = reset >> I40E_VFGEN_RSTAT_VFR_STATE_SHIFT;
-		if (I40E_VFR_COMPLETED == reset || I40E_VFR_VFACTIVE == reset)
+		if (VIRTCHNL_VFR_COMPLETED == reset || VIRTCHNL_VFR_VFACTIVE == reset)
 			break;
 		else
 			rte_delay_ms(50);
@@ -1242,8 +1242,8 @@ i40evf_init_vf(struct rte_eth_dev *dev)
 		PMD_INIT_LOG(ERR, "check_api version failed");
 		goto err_aq;
 	}
-	bufsz = sizeof(struct i40e_virtchnl_vf_resource) +
-		(I40E_MAX_VF_VSI * sizeof(struct i40e_virtchnl_vsi_resource));
+	bufsz = sizeof(struct virtchnl_vf_resource) +
+		(I40E_MAX_VF_VSI * sizeof(struct virtchnl_vsi_resource));
 	vf->vf_res = rte_zmalloc("vf_res", bufsz, 0);
 	if (!vf->vf_res) {
 		PMD_INIT_LOG(ERR, "unable to allocate vf_res memory");
@@ -1257,7 +1257,7 @@ i40evf_init_vf(struct rte_eth_dev *dev)
 
 	/* got VF config message back from PF, now we can parse it */
 	for (i = 0; i < vf->vf_res->num_vsis; i++) {
-		if (vf->vf_res->vsi_res[i].vsi_type == I40E_VSI_SRIOV)
+		if (vf->vf_res->vsi_res[i].vsi_type == VIRTCHNL_VSI_SRIOV)
 			vf->vsi_res = &vf->vf_res->vsi_res[i];
 	}
 
@@ -1269,7 +1269,7 @@ i40evf_init_vf(struct rte_eth_dev *dev)
 	if (hw->mac.type == I40E_MAC_X722_VF)
 		vf->flags = I40E_FLAG_RSS_AQ_CAPABLE;
 	vf->vsi.vsi_id = vf->vsi_res->vsi_id;
-	vf->vsi.type = vf->vsi_res->vsi_type;
+	vf->vsi.type = (enum i40e_vsi_type)vf->vsi_res->vsi_type;
 	vf->vsi.nb_qps = vf->vsi_res->num_queue_pairs;
 	vf->vsi.adapter = I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 
@@ -1321,22 +1321,22 @@ static void
 i40evf_handle_pf_event(struct rte_eth_dev *dev, uint8_t *msg,
 		__rte_unused uint16_t msglen)
 {
-	struct i40e_virtchnl_pf_event *pf_msg =
-			(struct i40e_virtchnl_pf_event *)msg;
+	struct virtchnl_pf_event *pf_msg =
+			(struct virtchnl_pf_event *)msg;
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 
 	switch (pf_msg->event) {
-	case I40E_VIRTCHNL_EVENT_RESET_IMPENDING:
+	case VIRTCHNL_EVENT_RESET_IMPENDING:
 		PMD_DRV_LOG(DEBUG, "VIRTCHNL_EVENT_RESET_IMPENDING event");
 		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_RESET,
 					      NULL, NULL);
 		break;
-	case I40E_VIRTCHNL_EVENT_LINK_CHANGE:
+	case VIRTCHNL_EVENT_LINK_CHANGE:
 		PMD_DRV_LOG(DEBUG, "VIRTCHNL_EVENT_LINK_CHANGE event");
 		vf->link_up = pf_msg->event_data.link_event.link_status;
 		vf->link_speed = pf_msg->event_data.link_event.link_speed;
 		break;
-	case I40E_VIRTCHNL_EVENT_PF_DRIVER_CLOSE:
+	case VIRTCHNL_EVENT_PF_DRIVER_CLOSE:
 		PMD_DRV_LOG(DEBUG, "VIRTCHNL_EVENT_PF_DRIVER_CLOSE event");
 		break;
 	default:
@@ -1352,7 +1352,7 @@ i40evf_handle_aq_msg(struct rte_eth_dev *dev)
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct i40e_arq_event_info info;
 	uint16_t pending, aq_opc;
-	enum i40e_virtchnl_ops msg_opc;
+	enum virtchnl_ops msg_opc;
 	enum i40e_status_code msg_ret;
 	int ret;
 
@@ -1377,13 +1377,13 @@ i40evf_handle_aq_msg(struct rte_eth_dev *dev)
 		 * cookie_high of struct i40e_aq_desc, while return error code
 		 * are stored in cookie_low, Which is done by
 		 * i40e_aq_send_msg_to_vf in PF driver.*/
-		msg_opc = (enum i40e_virtchnl_ops)rte_le_to_cpu_32(
+		msg_opc = (enum virtchnl_ops)rte_le_to_cpu_32(
 						  info.desc.cookie_high);
 		msg_ret = (enum i40e_status_code)rte_le_to_cpu_32(
 						  info.desc.cookie_low);
 		switch (aq_opc) {
 		case i40e_aqc_opc_send_msg_to_vf:
-			if (msg_opc == I40E_VIRTCHNL_OP_EVENT)
+			if (msg_opc == VIRTCHNL_OP_EVENT)
 				/* process event*/
 				i40evf_handle_pf_event(dev, info.msg_buf,
 						       info.msg_len);
@@ -1592,8 +1592,8 @@ i40evf_dev_configure(struct rte_eth_dev *dev)
 	 */
 	if (!conf->rxmode.hw_strip_crc) {
 		vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
-		if ((vf->version_major == I40E_VIRTCHNL_VERSION_MAJOR) &&
-		    (vf->version_minor <= I40E_VIRTCHNL_VERSION_MINOR)) {
+		if ((vf->version_major == VIRTCHNL_VERSION_MAJOR) &&
+		    (vf->version_minor <= VIRTCHNL_VERSION_MINOR)) {
 			/* Peer is running non-DPDK PF driver. */
 			PMD_INIT_LOG(ERR, "VF can't disable HW CRC Strip");
 			return -EINVAL;
@@ -2001,7 +2001,7 @@ i40evf_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
 static void
 i40evf_add_del_all_mac_addr(struct rte_eth_dev *dev, bool add)
 {
-	struct i40e_virtchnl_ether_addr_list *list;
+	struct virtchnl_ether_addr_list *list;
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	int err, i, j;
 	int next_begin = 0;
@@ -2012,11 +2012,11 @@ i40evf_add_del_all_mac_addr(struct rte_eth_dev *dev, bool add)
 
 	do {
 		j = 0;
-		len = sizeof(struct i40e_virtchnl_ether_addr_list);
+		len = sizeof(struct virtchnl_ether_addr_list);
 		for (i = begin; i < I40E_NUM_MACADDR_MAX; i++, next_begin++) {
 			if (is_zero_ether_addr(&dev->data->mac_addrs[i]))
 				continue;
-			len += sizeof(struct i40e_virtchnl_ether_addr);
+			len += sizeof(struct virtchnl_ether_addr);
 			if (len >= I40E_AQ_BUF_SZ) {
 				next_begin = i + 1;
 				break;
@@ -2043,8 +2043,8 @@ i40evf_add_del_all_mac_addr(struct rte_eth_dev *dev, bool add)
 		}
 		list->vsi_id = vf->vsi_res->vsi_id;
 		list->num_elements = j;
-		args.ops = add ? I40E_VIRTCHNL_OP_ADD_ETHER_ADDRESS :
-			   I40E_VIRTCHNL_OP_DEL_ETHER_ADDRESS;
+		args.ops = add ? VIRTCHNL_OP_ADD_ETH_ADDR :
+			   VIRTCHNL_OP_DEL_ETH_ADDR;
 		args.in_args = (uint8_t *)list;
 		args.in_args_size = len;
 		args.out_buffer = vf->aq_resp;

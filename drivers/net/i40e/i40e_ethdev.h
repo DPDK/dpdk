@@ -102,7 +102,7 @@
 
 /* Linux PF host with virtchnl version 1.1 */
 #define PF_IS_V11(vf) \
-	(((vf)->version_major == I40E_VIRTCHNL_VERSION_MAJOR) && \
+	(((vf)->version_major == VIRTCHNL_VERSION_MAJOR) && \
 	((vf)->version_minor == 1))
 
 /* index flex payload per layer */
@@ -768,7 +768,7 @@ struct i40e_vf {
 	/* Event from pf */
 	bool dev_closed;
 	bool link_up;
-	enum i40e_aq_link_speed link_speed;
+	enum virtchnl_link_speed link_speed;
 	bool vf_reset;
 	volatile uint32_t pend_cmd; /* pending command not finished yet */
 	int32_t cmd_retval; /* return value of the cmd response from PF */
@@ -776,8 +776,8 @@ struct i40e_vf {
 	uint8_t *aq_resp; /* buffer to store the adminq response from PF */
 
 	/* VSI info */
-	struct i40e_virtchnl_vf_resource *vf_res; /* All VSIs */
-	struct i40e_virtchnl_vsi_resource *vsi_res; /* LAN VSI */
+	struct virtchnl_vf_resource *vf_res; /* All VSIs */
+	struct virtchnl_vsi_resource *vsi_res; /* LAN VSI */
 	struct i40e_vsi vsi;
 	uint64_t flags;
 };

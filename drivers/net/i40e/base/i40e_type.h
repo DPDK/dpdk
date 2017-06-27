@@ -92,7 +92,9 @@ POSSIBILITY OF SUCH DAMAGE.
 struct i40e_hw;
 typedef void (*I40E_ADMINQ_CALLBACK)(struct i40e_hw *, struct i40e_aq_desc *);
 
-#define I40E_ETH_LENGTH_OF_ADDRESS	6
+#ifndef ETH_ALEN
+#define ETH_ALEN	6
+#endif
 /* Data type manipulation macros. */
 #define I40E_HI_DWORD(x)	((u32)((((x) >> 16) >> 16) & 0xFFFFFFFF))
 #define I40E_LO_DWORD(x)	((u32)((x) & 0xFFFFFFFF))
@@ -439,10 +441,10 @@ struct i40e_hw_capabilities {
 
 struct i40e_mac_info {
 	enum i40e_mac_type type;
-	u8 addr[I40E_ETH_LENGTH_OF_ADDRESS];
-	u8 perm_addr[I40E_ETH_LENGTH_OF_ADDRESS];
-	u8 san_addr[I40E_ETH_LENGTH_OF_ADDRESS];
-	u8 port_addr[I40E_ETH_LENGTH_OF_ADDRESS];
+	u8 addr[ETH_ALEN];
+	u8 perm_addr[ETH_ALEN];
+	u8 san_addr[ETH_ALEN];
+	u8 port_addr[ETH_ALEN];
 	u16 max_fcoeq;
 };
 
