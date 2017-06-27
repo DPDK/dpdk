@@ -131,8 +131,7 @@ rte_pktmbuf_init(struct rte_mempool *mp,
 	RTE_ASSERT(mp->elt_size >= mbuf_size);
 	RTE_ASSERT(buf_len <= UINT16_MAX);
 
-	memset(m, 0, mp->elt_size);
-
+	memset(m, 0, mbuf_size);
 	/* start of buffer is after mbuf structure and priv data */
 	m->priv_size = priv_size;
 	m->buf_addr = (char *)m + mbuf_size;
