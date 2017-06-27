@@ -408,6 +408,7 @@ const char *rte_get_tx_ol_flag_name(uint64_t mask)
 	case PKT_TX_TUNNEL_GRE: return "PKT_TX_TUNNEL_GRE";
 	case PKT_TX_TUNNEL_IPIP: return "PKT_TX_TUNNEL_IPIP";
 	case PKT_TX_TUNNEL_GENEVE: return "PKT_TX_TUNNEL_GENEVE";
+	case PKT_TX_TUNNEL_MPLSINUDP: return "PKT_TX_TUNNEL_MPLSINUDP";
 	case PKT_TX_MACSEC: return "PKT_TX_MACSEC";
 	default: return NULL;
 	}
@@ -438,6 +439,8 @@ rte_get_tx_ol_flag_list(uint64_t mask, char *buf, size_t buflen)
 		{ PKT_TX_TUNNEL_IPIP, PKT_TX_TUNNEL_MASK,
 		  "PKT_TX_TUNNEL_NONE" },
 		{ PKT_TX_TUNNEL_GENEVE, PKT_TX_TUNNEL_MASK,
+		  "PKT_TX_TUNNEL_NONE" },
+		{ PKT_TX_TUNNEL_MPLSINUDP, PKT_TX_TUNNEL_MASK,
 		  "PKT_TX_TUNNEL_NONE" },
 		{ PKT_TX_MACSEC, PKT_TX_MACSEC, NULL },
 	};

@@ -208,6 +208,8 @@ extern "C" {
 #define PKT_TX_TUNNEL_GRE     (0x2ULL << 45)
 #define PKT_TX_TUNNEL_IPIP    (0x3ULL << 45)
 #define PKT_TX_TUNNEL_GENEVE  (0x4ULL << 45)
+/**< TX packet with MPLS-in-UDP RFC 7510 header. */
+#define PKT_TX_TUNNEL_MPLSINUDP (0x5ULL << 45)
 /* add new TX TUNNEL type here */
 #define PKT_TX_TUNNEL_MASK    (0xFULL << 45)
 
