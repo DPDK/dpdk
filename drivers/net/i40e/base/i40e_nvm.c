@@ -749,12 +749,18 @@ enum i40e_status_code i40e_validate_nvm_checksum(struct i40e_hw *hw,
 
 	DEBUGFUNC("i40e_validate_nvm_checksum");
 
-	if (hw->flags & I40E_HW_FLAG_AQ_SRCTL_ACCESS_ENABLE)
-		ret_code = i40e_acquire_nvm(hw, I40E_RESOURCE_READ);
+	/* acquire_nvm provides exclusive NVM lock to synchronize access across
+	 * PFs. X710 uses i40e_read_nvm_word_srctl which polls for done bit
+	 * twice (first time to be able to write address to I40E_GLNVM_SRCTL
+	 * register, second to read data from I40E_GLNVM_SRDATA. One PF can see
+	 * done bit and try to write address, while another one will interpret
+	 * it as a good time to read data. It will cause invalid data to be
+	 * read.
+	 */
+	ret_code = i40e_acquire_nvm(hw, I40E_RESOURCE_READ);
 	if (!ret_code) {
 		ret_code = i40e_calc_nvm_checksum(hw, &checksum_local);
-		if (hw->flags & I40E_HW_FLAG_AQ_SRCTL_ACCESS_ENABLE)
-			i40e_release_nvm(hw);
+	i40e_release_nvm(hw);
 		if (ret_code != I40E_SUCCESS)
 			goto i40e_validate_nvm_checksum_exit;
 	} else {
