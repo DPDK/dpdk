@@ -37,6 +37,7 @@
 #include <rte_dev.h>
 #include <rte_cryptodev.h>
 #include <rte_cryptodev_pmd.h>
+#include <rte_cryptodev_vdev.h>
 #include <rte_reorder.h>
 
 #include "scheduler_pmd_private.h"

@@ -101,18 +101,6 @@ struct rte_cryptodev_callback {
 	uint32_t active;			/**< Callback is executing */
 };
 
-#define RTE_CRYPTODEV_VDEV_NAME				("name")
-#define RTE_CRYPTODEV_VDEV_MAX_NB_QP_ARG		("max_nb_queue_pairs")
-#define RTE_CRYPTODEV_VDEV_MAX_NB_SESS_ARG		("max_nb_sessions")
-#define RTE_CRYPTODEV_VDEV_SOCKET_ID			("socket_id")
-
-static const char *cryptodev_vdev_valid_params[] = {
-	RTE_CRYPTODEV_VDEV_NAME,
-	RTE_CRYPTODEV_VDEV_MAX_NB_QP_ARG,
-	RTE_CRYPTODEV_VDEV_MAX_NB_SESS_ARG,
-	RTE_CRYPTODEV_VDEV_SOCKET_ID
-};
-
 /**
  * The crypto cipher algorithm strings identifiers.
  * It could be used in application command line.
@@ -232,89 +220,6 @@ rte_crypto_auth_operation_strings[] = {
 		[RTE_CRYPTO_AUTH_OP_VERIFY]	= "verify",
 		[RTE_CRYPTO_AUTH_OP_GENERATE]	= "generate"
 };
-
-/** Parse integer from integer argument */
-static int
-parse_integer_arg(const char *key __rte_unused,
-		const char *value, void *extra_args)
-{
-	int *i = extra_args;
-
-	*i = atoi(value);
-	if (*i < 0) {
-		CDEV_LOG_ERR("Argument has to be positive.");
-		return -1;
-	}
-
-	return 0;
-}
-
-/** Parse name */
-static int
-parse_name_arg(const char *key __rte_unused,
-		const char *value, void *extra_args)
-{
-	struct rte_crypto_vdev_init_params *params = extra_args;
-
-	if (strlen(value) >= RTE_CRYPTODEV_NAME_MAX_LEN - 1) {
-		CDEV_LOG_ERR("Invalid name %s, should be less than "
-				"%u bytes", value,
-				RTE_CRYPTODEV_NAME_MAX_LEN - 1);
-		return -1;
-	}
-
-	strncpy(params->name, value, RTE_CRYPTODEV_NAME_MAX_LEN);
-
-	return 0;
-}
-
-int
-rte_cryptodev_parse_vdev_init_params(struct rte_crypto_vdev_init_params *params,
-		const char *input_args)
-{
-	struct rte_kvargs *kvlist = NULL;
-	int ret = 0;
-
-	if (params == NULL)
-		return -EINVAL;
-
-	if (input_args) {
-		kvlist = rte_kvargs_parse(input_args,
-				cryptodev_vdev_valid_params);
-		if (kvlist == NULL)
-			return -1;
-
-		ret = rte_kvargs_process(kvlist,
-					RTE_CRYPTODEV_VDEV_MAX_NB_QP_ARG,
-					&parse_integer_arg,
-					&params->max_nb_queue_pairs);
-		if (ret < 0)
-			goto free_kvlist;
-
-		ret = rte_kvargs_process(kvlist,
-					RTE_CRYPTODEV_VDEV_MAX_NB_SESS_ARG,
-					&parse_integer_arg,
-					&params->max_nb_sessions);
-		if (ret < 0)
-			goto free_kvlist;
-
-		ret = rte_kvargs_process(kvlist, RTE_CRYPTODEV_VDEV_SOCKET_ID,
-					&parse_integer_arg,
-					&params->socket_id);
-		if (ret < 0)
-			goto free_kvlist;
-
-		ret = rte_kvargs_process(kvlist, RTE_CRYPTODEV_VDEV_NAME,
-					&parse_name_arg,
-					params);
-		if (ret < 0)
-			goto free_kvlist;
-	}
-
-free_kvlist:
-	rte_kvargs_free(kvlist);
-	return ret;
-}
 
 const struct rte_cryptodev_symmetric_capability *
 rte_cryptodev_sym_capability_get(uint8_t dev_id,
@@ -643,38 +548,6 @@ rte_cryptodev_pmd_release_device(struct rte_cryptodev *cryptodev)
 	cryptodev->attached = RTE_CRYPTODEV_DETACHED;
 	cryptodev_globals.nb_devs--;
 	return 0;
-}
-
-struct rte_cryptodev *
-rte_cryptodev_pmd_virtual_dev_init(const char *name, size_t dev_private_size,
-		int socket_id, struct rte_vdev_device *vdev)
-{
-	struct rte_cryptodev *cryptodev;
-
-	/* allocate device structure */
-	cryptodev = rte_cryptodev_pmd_allocate(name, socket_id);
-	if (cryptodev == NULL)
-		return NULL;
-
-	/* allocate private device structure */
-	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
-		cryptodev->data->dev_private =
-				rte_zmalloc_socket("cryptodev device private",
-						dev_private_size,
-						RTE_CACHE_LINE_SIZE,
-						socket_id);
-
-		if (cryptodev->data->dev_private == NULL)
-			rte_panic("Cannot allocate memzone for private device"
-					" data");
-	}
-
-	cryptodev->device = &vdev->device;
-
-	/* initialise user call-back tail queue */
-	TAILQ_INIT(&(cryptodev->link_intr_cbs));
-
-	return cryptodev;
 }
 
 int

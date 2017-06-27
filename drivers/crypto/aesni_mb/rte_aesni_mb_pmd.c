@@ -34,6 +34,7 @@
 #include <rte_hexdump.h>
 #include <rte_cryptodev.h>
 #include <rte_cryptodev_pmd.h>
+#include <rte_cryptodev_vdev.h>
 #include <rte_vdev.h>
 #include <rte_malloc.h>
 #include <rte_cpuflags.h>
@@ -698,7 +699,7 @@ cryptodev_aesni_mb_create(const char *name,
 		return -EFAULT;
 	}
 
-	dev = rte_cryptodev_pmd_virtual_dev_init(init_params->name,
+	dev = rte_cryptodev_vdev_pmd_init(init_params->name,
 			sizeof(struct aesni_mb_private), init_params->socket_id,
 			vdev);
 	if (dev == NULL) {
@@ -766,7 +767,7 @@ cryptodev_aesni_mb_probe(struct rte_vdev_device *vdev)
 	if (name == NULL)
 		return -EINVAL;
 	input_args = rte_vdev_device_args(vdev);
-	rte_cryptodev_parse_vdev_init_params(&init_params, input_args);
+	rte_cryptodev_vdev_parse_init_params(&init_params, input_args);
 
 	RTE_LOG(INFO, PMD, "Initialising %s on NUMA node %d\n", name,
 			init_params.socket_id);

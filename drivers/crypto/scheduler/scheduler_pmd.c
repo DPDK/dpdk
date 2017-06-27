@@ -33,6 +33,7 @@
 #include <rte_hexdump.h>
 #include <rte_cryptodev.h>
 #include <rte_cryptodev_pmd.h>
+#include <rte_cryptodev_vdev.h>
 #include <rte_vdev.h>
 #include <rte_malloc.h>
 #include <rte_cpuflags.h>
@@ -102,7 +103,7 @@ cryptodev_scheduler_create(const char *name,
 				sizeof(init_params->def_p.name),
 				"%s", name);
 
-	dev = rte_cryptodev_pmd_virtual_dev_init(init_params->def_p.name,
+	dev = rte_cryptodev_vdev_pmd_init(init_params->def_p.name,
 			sizeof(struct scheduler_ctx),
 			init_params->def_p.socket_id,
 			vdev);

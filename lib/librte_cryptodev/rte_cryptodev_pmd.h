@@ -456,24 +456,6 @@ struct rte_cryptodev *
 rte_cryptodev_pmd_allocate(const char *name, int socket_id);
 
 /**
- * Creates a new virtual crypto device and returns the pointer
- * to that device.
- *
- * @param	name			PMD type name
- * @param	dev_private_size	Size of crypto PMDs private data
- * @param	socket_id		Socket to allocate resources on.
- * @param	vdev			Pointer to virtual device structure.
- *
- * @return
- *   - Cryptodev pointer if device is successfully created.
- *   - NULL if device cannot be created.
- */
-struct rte_cryptodev *
-rte_cryptodev_pmd_virtual_dev_init(const char *name, size_t dev_private_size,
-		int socket_id, struct rte_vdev_device *vdev);
-
-
-/**
  * Function for internal use by dummy drivers primarily, e.g. ring-based
  * driver.
  * Release the specified cryptodev device.

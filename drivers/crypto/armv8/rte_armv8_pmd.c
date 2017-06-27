@@ -36,6 +36,7 @@
 #include <rte_hexdump.h>
 #include <rte_cryptodev.h>
 #include <rte_cryptodev_pmd.h>
+#include <rte_cryptodev_vdev.h>
 #include <rte_vdev.h>
 #include <rte_malloc.h>
 #include <rte_cpuflags.h>
@@ -806,7 +807,7 @@ cryptodev_armv8_crypto_create(const char *name,
 		snprintf(init_params->name, sizeof(init_params->name),
 				"%s", name);
 
-	dev = rte_cryptodev_pmd_virtual_dev_init(init_params->name,
+	dev = rte_cryptodev_vdev_pmd_init(init_params->name,
 				sizeof(struct armv8_crypto_private),
 				init_params->socket_id,
 				vdev);
@@ -861,7 +862,7 @@ cryptodev_armv8_crypto_init(struct rte_vdev_device *vdev)
 	if (name == NULL)
 		return -EINVAL;
 	input_args = rte_vdev_device_args(vdev);
-	rte_cryptodev_parse_vdev_init_params(&init_params, input_args);
+	rte_cryptodev_vdev_parse_init_params(&init_params, input_args);
 
 	RTE_LOG(INFO, PMD, "Initialising %s on NUMA node %d\n", name,
 			init_params.socket_id);

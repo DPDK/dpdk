@@ -386,35 +386,6 @@ struct rte_cryptodev_stats {
 
 #define RTE_CRYPTODEV_NAME_MAX_LEN	(64)
 /**< Max length of name of crypto PMD */
-#define RTE_CRYPTODEV_VDEV_DEFAULT_MAX_NB_QUEUE_PAIRS	8
-#define RTE_CRYPTODEV_VDEV_DEFAULT_MAX_NB_SESSIONS	2048
-
-/**
- * @internal
- * Initialisation parameters for virtual crypto devices
- */
-struct rte_crypto_vdev_init_params {
-	unsigned max_nb_queue_pairs;
-	unsigned max_nb_sessions;
-	uint8_t socket_id;
-	char name[RTE_CRYPTODEV_NAME_MAX_LEN];
-};
-
-/**
- * Parse virtual device initialisation parameters input arguments
- * @internal
- *
- * @params	params		Initialisation parameters with defaults set.
- * @params	input_args	Command line arguments
- *
- * @return
- * 0 on successful parse
- * <0 on failure to parse
- */
-int
-rte_cryptodev_parse_vdev_init_params(
-		struct rte_crypto_vdev_init_params *params,
-		const char *input_args);
 
 /**
  * Create a virtual crypto device

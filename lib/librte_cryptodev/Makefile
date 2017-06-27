@@ -41,13 +41,14 @@ CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 
 # library source files
-SRCS-y += rte_cryptodev.c
+SRCS-y += rte_cryptodev.c rte_cryptodev_pmd.c
 
 # export include files
 SYMLINK-y-include += rte_crypto.h
 SYMLINK-y-include += rte_crypto_sym.h
 SYMLINK-y-include += rte_cryptodev.h
 SYMLINK-y-include += rte_cryptodev_pmd.h
+SYMLINK-y-include += rte_cryptodev_vdev.h
 
 # versioning export map
 EXPORT_MAP := rte_cryptodev_version.map

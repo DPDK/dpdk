@@ -33,6 +33,7 @@
 #include <rte_common.h>
 #include <rte_config.h>
 #include <rte_cryptodev_pmd.h>
+#include <rte_cryptodev_vdev.h>
 #include <rte_vdev.h>
 #include <rte_malloc.h>
 
@@ -176,7 +177,7 @@ cryptodev_null_create(const char *name,
 		snprintf(init_params->name, sizeof(init_params->name),
 				"%s", name);
 
-	dev = rte_cryptodev_pmd_virtual_dev_init(init_params->name,
+	dev = rte_cryptodev_vdev_pmd_init(init_params->name,
 			sizeof(struct null_crypto_private),
 			init_params->socket_id,
 			vdev);

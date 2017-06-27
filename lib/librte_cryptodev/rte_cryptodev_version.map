@@ -15,7 +15,6 @@ DPDK_16.04 {
 	rte_cryptodev_pmd_allocate;
 	rte_cryptodev_pmd_callback_process;
 	rte_cryptodev_pmd_release_device;
-	rte_cryptodev_pmd_virtual_dev_init;
 	rte_cryptodev_sym_session_create;
 	rte_cryptodev_sym_session_free;
 	rte_cryptodev_socket_id;
@@ -32,20 +31,13 @@ DPDK_16.04 {
 	local: *;
 };
 
-DPDK_16.07 {
-	global:
-
-	rte_cryptodev_parse_vdev_init_params;
-
-} DPDK_16.04;
-
 DPDK_16.11 {
 	global:
 
 	rte_cryptodev_pci_probe;
 	rte_cryptodev_pci_remove;
 
-} DPDK_16.07;
+} DPDK_16.04;
 
 DPDK_17.02 {
 	global:
@@ -74,3 +66,11 @@ DPDK_17.05 {
 	rte_cryptodev_queue_pair_detach_sym_session;
 
 } DPDK_17.02;
+
+DPDK_17.08 {
+	global:
+
+	rte_cryptodev_vdev_parse_init_params;
+	rte_cryptodev_vdev_pmd_init;
+
+} DPDK_17.05;
