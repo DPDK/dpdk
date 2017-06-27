@@ -2695,7 +2695,11 @@ enum i40e_status_code i40e_aq_set_switch_config(struct i40e_hw *hw,
 					  i40e_aqc_opc_set_switch_config);
 	scfg->flags = CPU_TO_LE16(flags);
 	scfg->valid_flags = CPU_TO_LE16(valid_flags);
-
+	if (hw->flags & I40E_HW_FLAG_802_1AD_CAPABLE) {
+		scfg->switch_tag = CPU_TO_LE16(hw->switch_tag);
+		scfg->first_tag = CPU_TO_LE16(hw->first_tag);
+		scfg->second_tag = CPU_TO_LE16(hw->second_tag);
+	}
 	status = i40e_asq_send_command(hw, &desc, NULL, 0, cmd_details);
 
 	return status;
