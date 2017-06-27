@@ -52,14 +52,10 @@ static struct vdev_device_list vdev_device_list =
 struct vdev_driver_list vdev_driver_list =
 	TAILQ_HEAD_INITIALIZER(vdev_driver_list);
 
-static void rte_vdev_bus_register(void);
-
 /* register a driver */
 void
 rte_vdev_register(struct rte_vdev_driver *driver)
 {
-	rte_vdev_bus_register();
-
 	TAILQ_INSERT_TAIL(&vdev_driver_list, driver, next);
 }
 
@@ -343,16 +339,4 @@ static struct rte_bus rte_vdev_bus = {
 	.probe = vdev_probe,
 };
 
-RTE_INIT(rte_vdev_bus_register);
-
-static void rte_vdev_bus_register(void)
-{
-	static int registered;
-
-	if (registered)
-		return;
-
-	registered = 1;
-	rte_vdev_bus.name = RTE_STR(virtual);
-	rte_bus_register(&rte_vdev_bus);
-}
+RTE_REGISTER_BUS(VIRTUAL_BUS_NAME, rte_vdev_bus);

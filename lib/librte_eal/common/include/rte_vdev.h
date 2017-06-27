@@ -41,6 +41,8 @@ extern "C" {
 #include <rte_dev.h>
 #include <rte_devargs.h>
 
+#define VIRTUAL_BUS_NAME "virtual"
+
 struct rte_vdev_device {
 	TAILQ_ENTRY(rte_vdev_device) next;      /**< Next attached vdev */
 	struct rte_device device;               /**< Inherit core device */
