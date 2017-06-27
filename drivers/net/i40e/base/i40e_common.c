@@ -1382,6 +1382,8 @@ enum i40e_status_code i40e_pf_reset(struct i40e_hw *hw)
 	 * we don't need to do the PF Reset
 	 */
 	if (!cnt) {
+		u32 reg2 = 0;
+
 		reg = rd32(hw, I40E_PFGEN_CTRL);
 		wr32(hw, I40E_PFGEN_CTRL,
 		     (reg | I40E_PFGEN_CTRL_PFSWR_MASK));
@@ -1389,6 +1391,12 @@ enum i40e_status_code i40e_pf_reset(struct i40e_hw *hw)
 			reg = rd32(hw, I40E_PFGEN_CTRL);
 			if (!(reg & I40E_PFGEN_CTRL_PFSWR_MASK))
 				break;
+			reg2 = rd32(hw, I40E_GLGEN_RSTAT);
+			if (reg2 & I40E_GLGEN_RSTAT_DEVSTATE_MASK) {
+				DEBUGOUT("Core reset upcoming.\n");
+				DEBUGOUT1("I40E_GLGEN_RSTAT = 0x%x\n", reg2);
+				return I40E_ERR_NOT_READY;
+			}
 			i40e_msec_delay(1);
 		}
 		if (reg & I40E_PFGEN_CTRL_PFSWR_MASK) {
