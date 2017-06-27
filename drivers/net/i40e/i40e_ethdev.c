@@ -2974,71 +2974,93 @@ i40e_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 }
 
 static int
-i40e_vlan_tpid_set(struct rte_eth_dev *dev,
-		   enum rte_vlan_type vlan_type,
-		   uint16_t tpid)
+i40e_vlan_tpid_set_by_registers(struct rte_eth_dev *dev,
+				enum rte_vlan_type vlan_type,
+				uint16_t tpid, int qinq)
 {
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	uint64_t reg_r = 0, reg_w = 0;
-	uint16_t reg_id = 0;
-	int ret = 0;
-	int qinq = dev->data->dev_conf.rxmode.hw_vlan_extend;
+	uint64_t reg_r = 0;
+	uint64_t reg_w = 0;
+	uint16_t reg_id = 3;
+	int ret;
 
-	switch (vlan_type) {
-	case ETH_VLAN_TYPE_OUTER:
-		if (qinq)
+	if (qinq) {
+		if (vlan_type == ETH_VLAN_TYPE_OUTER)
 			reg_id = 2;
-		else
-			reg_id = 3;
-		break;
-	case ETH_VLAN_TYPE_INNER:
-		if (qinq)
-			reg_id = 3;
-		else {
-			ret = -EINVAL;
-			PMD_DRV_LOG(ERR,
-				"Unsupported vlan type in single vlan.");
-			return ret;
-		}
-		break;
-	default:
-		ret = -EINVAL;
-		PMD_DRV_LOG(ERR, "Unsupported vlan type %d", vlan_type);
-		return ret;
 	}
+
 	ret = i40e_aq_debug_read_register(hw, I40E_GL_SWT_L2TAGCTRL(reg_id),
 					  &reg_r, NULL);
 	if (ret != I40E_SUCCESS) {
 		PMD_DRV_LOG(ERR,
 			   "Fail to debug read from I40E_GL_SWT_L2TAGCTRL[%d]",
 			   reg_id);
-		ret = -EIO;
-		return ret;
+		return -EIO;
 	}
 	PMD_DRV_LOG(DEBUG,
-		"Debug read from I40E_GL_SWT_L2TAGCTRL[%d]: 0x%08"PRIx64,
-		reg_id, reg_r);
+		    "Debug read from I40E_GL_SWT_L2TAGCTRL[%d]: 0x%08"PRIx64,
+		    reg_id, reg_r);
 
 	reg_w = reg_r & (~(I40E_GL_SWT_L2TAGCTRL_ETHERTYPE_MASK));
 	reg_w |= ((uint64_t)tpid << I40E_GL_SWT_L2TAGCTRL_ETHERTYPE_SHIFT);
 	if (reg_r == reg_w) {
-		ret = 0;
 		PMD_DRV_LOG(DEBUG, "No need to write");
-		return ret;
+		return 0;
 	}
 
 	ret = i40e_aq_debug_write_register(hw, I40E_GL_SWT_L2TAGCTRL(reg_id),
 					   reg_w, NULL);
 	if (ret != I40E_SUCCESS) {
-		ret = -EIO;
 		PMD_DRV_LOG(ERR,
-			"Fail to debug write to I40E_GL_SWT_L2TAGCTRL[%d]",
-			reg_id);
-		return ret;
+			    "Fail to debug write to I40E_GL_SWT_L2TAGCTRL[%d]",
+			    reg_id);
+		return -EIO;
 	}
 	PMD_DRV_LOG(DEBUG,
-		"Debug write 0x%08"PRIx64" to I40E_GL_SWT_L2TAGCTRL[%d]",
-		reg_w, reg_id);
+		    "Debug write 0x%08"PRIx64" to I40E_GL_SWT_L2TAGCTRL[%d]",
+		    reg_w, reg_id);
+
+	return 0;
+}
+
+static int
+i40e_vlan_tpid_set(struct rte_eth_dev *dev,
+		   enum rte_vlan_type vlan_type,
+		   uint16_t tpid)
+{
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int qinq = dev->data->dev_conf.rxmode.hw_vlan_extend;
+	int ret = 0;
+
+	if ((vlan_type != ETH_VLAN_TYPE_INNER &&
+	     vlan_type != ETH_VLAN_TYPE_OUTER) ||
+	    (!qinq && vlan_type == ETH_VLAN_TYPE_INNER)) {
+		PMD_DRV_LOG(ERR,
+			    "Unsupported vlan type.");
+		return -EINVAL;
+	}
+	/* 802.1ad frames ability is added in NVM API 1.7*/
+	if (hw->flags & I40E_HW_FLAG_802_1AD_CAPABLE) {
+		if (qinq) {
+			if (vlan_type == ETH_VLAN_TYPE_OUTER)
+				hw->first_tag = rte_cpu_to_le_16(tpid);
+			else if (vlan_type == ETH_VLAN_TYPE_INNER)
+				hw->second_tag = rte_cpu_to_le_16(tpid);
+		} else {
+			if (vlan_type == ETH_VLAN_TYPE_OUTER)
+				hw->second_tag = rte_cpu_to_le_16(tpid);
+		}
+		ret = i40e_aq_set_switch_config(hw, 0, 0, NULL);
+		if (ret != I40E_SUCCESS) {
+			PMD_DRV_LOG(ERR,
+				    "Set switch config failed aq_err: %d",
+				    hw->aq.asq_last_status);
+			ret = -EIO;
+		}
+	} else
+		/* If NVM API < 1.7, keep the register setting */
+		ret = i40e_vlan_tpid_set_by_registers(dev, vlan_type,
+						      tpid, qinq);
 
 	return ret;
 }
@@ -3067,7 +3089,7 @@ i40e_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 	if (mask & ETH_VLAN_EXTEND_MASK) {
 		if (dev->data->dev_conf.rxmode.hw_vlan_extend) {
 			i40e_vsi_config_double_vlan(vsi, TRUE);
-			/* Set global registers with default ether type value */
+			/* Set global registers with default ethertype. */
 			i40e_vlan_tpid_set(dev, ETH_VLAN_TYPE_OUTER,
 					   ETHER_TYPE_VLAN);
 			i40e_vlan_tpid_set(dev, ETH_VLAN_TYPE_INNER,
