@@ -1692,8 +1692,9 @@ enum i40e_status_code i40e_aq_get_phy_capabilities(struct i40e_hw *hw,
 		status = I40E_ERR_UNKNOWN_PHY;
 
 	if (report_init) {
-		if (hw->aq.api_maj_ver == I40E_FW_API_VERSION_MAJOR &&
-		    hw->aq.api_min_ver >= 7) {
+		if (hw->mac.type ==  I40E_MAC_XL710 &&
+		    hw->aq.api_maj_ver == I40E_FW_API_VERSION_MAJOR &&
+		    hw->aq.api_min_ver >= I40E_MINOR_VER_GET_LINK_INFO_XL710) {
 			status = i40e_aq_get_link_info(hw, true, NULL, NULL);
 		} else {
 			hw->phy.phy_types = LE32_TO_CPU(abilities->phy_type);
