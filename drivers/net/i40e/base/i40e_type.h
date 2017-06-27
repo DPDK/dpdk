@@ -701,6 +701,7 @@ struct i40e_hw {
 
 #define I40E_HW_FLAG_AQ_SRCTL_ACCESS_ENABLE BIT_ULL(0)
 #define I40E_HW_FLAG_802_1AD_CAPABLE        BIT_ULL(1)
+#define I40E_HW_FLAG_AQ_PHY_ACCESS_CAPABLE  BIT_ULL(2)
 	u64 flags;
 
 	/* Used in set switch config AQ command */
