@@ -603,7 +603,7 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"E-tag set filter del e-tag-id (value) port (port_id)\n"
 			"    Delete an E-tag forwarding filter on a port\n\n"
 
-			"ddp add (port_id) (profile_path)\n"
+			"ddp add (port_id) (profile_path[,output_path])\n"
 			"    Load a profile package on a port\n\n"
 
 			"ptype mapping get (port_id) (valid_only)\n"
@@ -12955,6 +12955,9 @@ cmd_ddp_add_parsed(
 	struct cmd_ddp_add_result *res = parsed_result;
 	uint8_t *buff;
 	uint32_t size;
+	char *filepath;
+	char *file_fld[2];
+	int file_num;
 	int ret = -ENOTSUP;
 
 	if (res->port_id > nb_ports) {
@@ -12967,9 +12970,18 @@ cmd_ddp_add_parsed(
 		return;
 	}
 
-	buff = open_ddp_package_file(res->filepath, &size);
-	if (!buff)
+	filepath = strdup(res->filepath);
+	if (filepath == NULL) {
+		printf("Failed to allocate memory\n");
 		return;
+	}
+	file_num = rte_strsplit(filepath, strlen(filepath), file_fld, 2, ',');
+
+	buff = open_ddp_package_file(file_fld[0], &size);
+	if (!buff) {
+		free((void *)filepath);
+		return;
+	}
 
 #ifdef RTE_LIBRTE_I40E_PMD
 	if (ret == -ENOTSUP)
@@ -12978,18 +12990,21 @@ cmd_ddp_add_parsed(
 					       RTE_PMD_I40E_PKG_OP_WR_ADD);
 #endif
 
-	if (ret < 0)
-		printf("Failed to load profile.\n");
-	else if (ret > 0)
+	if (ret == -EEXIST)
 		printf("Profile has already existed.\n");
+	else if (ret < 0)
+		printf("Failed to load profile.\n");
+	else if (file_num == 2)
+		save_ddp_package_file(file_fld[1], buff, size);
 
 	close_ddp_package_file(buff);
+	free((void *)filepath);
 }
 
 cmdline_parse_inst_t cmd_ddp_add = {
 	.f = cmd_ddp_add_parsed,
 	.data = NULL,
-	.help_str = "ddp add <port_id> <profile_path>",
+	.help_str = "ddp add <port_id> <profile_path[,output_path]>",
 	.tokens = {
 		(void *)&cmd_ddp_add_ddp,
 		(void *)&cmd_ddp_add_add,

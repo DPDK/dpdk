@@ -635,6 +635,7 @@ void mcast_addr_remove(uint8_t port_id, struct ether_addr *mc_addr);
 void port_dcb_info_display(uint8_t port_id);
 
 uint8_t *open_ddp_package_file(const char *file_path, uint32_t *size);
+int save_ddp_package_file(const char *file_path, uint8_t *buf, uint32_t size);
 int close_ddp_package_file(uint8_t *buf);
 
 enum print_warning {

@@ -1230,7 +1230,7 @@ ddp add
 
 Load a dynamic device personalization (DDP) package::
 
-   testpmd> ddp add (port_id) (package_path)
+   testpmd> ddp add (port_id) (package_path[,output_path])
 
 ptype mapping
 ~~~~~~~~~~~~~

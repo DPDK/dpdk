@@ -3310,6 +3310,27 @@ open_ddp_package_file(const char *file_path, uint32_t *size)
 }
 
 int
+save_ddp_package_file(const char *file_path, uint8_t *buf, uint32_t size)
+{
+	FILE *fh = fopen(file_path, "wb");
+
+	if (fh == NULL) {
+		printf("%s: Failed to open %s\n", __func__, file_path);
+		return -1;
+	}
+
+	if (fwrite(buf, 1, size, fh) != size) {
+		fclose(fh);
+		printf("%s: File write operation failed\n", __func__);
+		return -1;
+	}
+
+	fclose(fh);
+
+	return 0;
+}
+
+int
 close_ddp_package_file(uint8_t *buf)
 {
 	if (buf) {
