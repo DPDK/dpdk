@@ -37,6 +37,7 @@
 #include <sys/queue.h>
 #include <sys/uio.h>
 #include <inttypes.h>
+#include <net/if.h>
 
 #include <linux/if_tun.h>
 
@@ -83,6 +84,7 @@ struct pmd_internals {
 	char name[RTE_ETH_NAME_MAX_LEN];  /* Internal Tap device name */
 	uint16_t nb_queues;               /* Number of queues supported */
 	struct ether_addr eth_addr;       /* Mac address of the device port */
+	struct ifreq remote_initial_flags;   /* Remote netdevice flags on init */
 	int remote_if_index;              /* remote netdevice IF_INDEX */
 	int if_index;                     /* IF_INDEX for the port */
 	int ioctl_sock;                   /* socket for ioctl calls */
