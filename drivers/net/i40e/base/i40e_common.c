@@ -1692,8 +1692,14 @@ enum i40e_status_code i40e_aq_get_phy_capabilities(struct i40e_hw *hw,
 		status = I40E_ERR_UNKNOWN_PHY;
 
 	if (report_init) {
-		hw->phy.phy_types = LE32_TO_CPU(abilities->phy_type);
-		hw->phy.phy_types |= ((u64)abilities->phy_type_ext << 32);
+		if (hw->aq.api_maj_ver == I40E_FW_API_VERSION_MAJOR &&
+		    hw->aq.api_min_ver >= 7) {
+			status = i40e_aq_get_link_info(hw, true, NULL, NULL);
+		} else {
+			hw->phy.phy_types = LE32_TO_CPU(abilities->phy_type);
+			hw->phy.phy_types |=
+					((u64)abilities->phy_type_ext << 32);
+		}
 	}
 
 	return status;
@@ -1955,7 +1961,7 @@ enum i40e_status_code i40e_aq_get_link_info(struct i40e_hw *hw,
 	hw_link_info->fec_info = resp->config & (I40E_AQ_CONFIG_FEC_KR_ENA |
 						 I40E_AQ_CONFIG_FEC_RS_ENA);
 	hw_link_info->ext_info = resp->ext_info;
-	hw_link_info->loopback = resp->loopback;
+	hw_link_info->loopback = resp->loopback & I40E_AQ_LOOPBACK_MASK;
 	hw_link_info->max_frame_size = LE16_TO_CPU(resp->max_frame_size);
 	hw_link_info->pacing = resp->config & I40E_AQ_CONFIG_PACING_MASK;
 
@@ -1985,6 +1991,12 @@ enum i40e_status_code i40e_aq_get_link_info(struct i40e_hw *hw,
 	    (hw->aq.fw_maj_ver < 4 || (hw->aq.fw_maj_ver == 4 &&
 	     hw->aq.fw_min_ver < 40)) && hw_link_info->phy_type == 0xE)
 		hw_link_info->phy_type = I40E_PHY_TYPE_10GBASE_SFPP_CU;
+
+	if (hw->aq.api_maj_ver == I40E_FW_API_VERSION_MAJOR &&
+	    hw->aq.api_min_ver >= 7) {
+		hw->phy.phy_types = LE32_TO_CPU(*(__le32 *)resp->link_type);
+		hw->phy.phy_types |= ((u64)resp->link_type_ext << 32);
+	}
 
 	/* save link status information */
 	if (link)

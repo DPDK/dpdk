@@ -1831,6 +1831,8 @@ enum i40e_aq_phy_type {
 	I40E_PHY_TYPE_10GBASE_CR1_CU		= 0xB,
 	I40E_PHY_TYPE_10GBASE_AOC		= 0xC,
 	I40E_PHY_TYPE_40GBASE_AOC		= 0xD,
+	I40E_PHY_TYPE_UNRECOGNIZED		= 0xE,
+	I40E_PHY_TYPE_UNSUPPORTED		= 0xF,
 	I40E_PHY_TYPE_100BASE_TX		= 0x11,
 	I40E_PHY_TYPE_1000BASE_T		= 0x12,
 	I40E_PHY_TYPE_10GBASE_T			= 0x13,
@@ -1851,7 +1853,9 @@ enum i40e_aq_phy_type {
 	I40E_PHY_TYPE_25GBASE_LR		= 0x22,
 	I40E_PHY_TYPE_25GBASE_AOC		= 0x23,
 	I40E_PHY_TYPE_25GBASE_ACC		= 0x24,
-	I40E_PHY_TYPE_MAX
+	I40E_PHY_TYPE_MAX,
+	I40E_PHY_TYPE_EMPTY			= 0xFE,
+	I40E_PHY_TYPE_DEFAULT			= 0xFF,
 };
 
 #define I40E_LINK_SPEED_100MB_SHIFT	0x1
@@ -2039,19 +2043,31 @@ struct i40e_aqc_get_link_status {
 #define I40E_AQ_25G_SERDES_UCODE_ERR	0X04
 #define I40E_AQ_25G_NIMB_UCODE_ERR	0X05
 	u8	loopback; /* use defines from i40e_aqc_set_lb_mode */
+/* Since firmware API 1.7 loopback field keeps power class info as well */
+#define I40E_AQ_LOOPBACK_MASK		0x07
+#define I40E_AQ_PWR_CLASS_SHIFT_LB	6
+#define I40E_AQ_PWR_CLASS_MASK_LB	(0x03 << I40E_AQ_PWR_CLASS_SHIFT_LB)
 	__le16	max_frame_size;
 	u8	config;
 #define I40E_AQ_CONFIG_FEC_KR_ENA	0x01
 #define I40E_AQ_CONFIG_FEC_RS_ENA	0x02
 #define I40E_AQ_CONFIG_CRC_ENA		0x04
 #define I40E_AQ_CONFIG_PACING_MASK	0x78
-	u8	power_desc;
+	union {
+		struct {
+			u8	power_desc;
 #define I40E_AQ_LINK_POWER_CLASS_1	0x00
 #define I40E_AQ_LINK_POWER_CLASS_2	0x01
 #define I40E_AQ_LINK_POWER_CLASS_3	0x02
 #define I40E_AQ_LINK_POWER_CLASS_4	0x03
 #define I40E_AQ_PWR_CLASS_MASK		0x03
-	u8	reserved[4];
+			u8	reserved[4];
+		};
+		struct {
+			u8	link_type[4];
+			u8	link_type_ext;
+		};
+	};
 };
 
 I40E_CHECK_CMD_LENGTH(i40e_aqc_get_link_status);
