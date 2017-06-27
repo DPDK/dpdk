@@ -1445,7 +1445,9 @@ qede_xmit_prep_pkts(__rte_unused void *p_txq, struct rte_mbuf **tx_pkts,
 	uint64_t ol_flags;
 	struct rte_mbuf *m;
 	uint16_t i;
+#ifdef RTE_LIBRTE_ETHDEV_DEBUG
 	int ret;
+#endif
 
 	for (i = 0; i < nb_pkts; i++) {
 		m = tx_pkts[i];
@@ -1478,14 +1480,6 @@ qede_xmit_prep_pkts(__rte_unused void *p_txq, struct rte_mbuf **tx_pkts,
 			break;
 		}
 #endif
-		/* TBD: pseudo csum calcuation required if
-		 * ETH_TX_DATA_2ND_BD_L4_PSEUDO_CSUM_MODE not set?
-		 */
-		ret = rte_net_intel_cksum_prepare(m);
-		if (ret != 0) {
-			rte_errno = ret;
-			break;
-		}
 	}
 
 #ifdef RTE_LIBRTE_QEDE_DEBUG_TX
@@ -1495,6 +1489,27 @@ qede_xmit_prep_pkts(__rte_unused void *p_txq, struct rte_mbuf **tx_pkts,
 #endif
 	return i;
 }
+
+#define MPLSINUDP_HDR_SIZE			(12)
+
+#ifdef RTE_LIBRTE_QEDE_DEBUG_TX
+static inline void
+qede_mpls_tunn_tx_sanity_check(struct rte_mbuf *mbuf,
+			       struct qede_tx_queue *txq)
+{
+	if (((mbuf->outer_l2_len + mbuf->outer_l3_len) / 2) > 0xff)
+		PMD_TX_LOG(ERR, txq, "tunn_l4_hdr_start_offset overflow\n");
+	if (((mbuf->outer_l2_len + mbuf->outer_l3_len +
+		MPLSINUDP_HDR_SIZE) / 2) > 0xff)
+		PMD_TX_LOG(ERR, txq, "tunn_hdr_size overflow\n");
+	if (((mbuf->l2_len - MPLSINUDP_HDR_SIZE) / 2) >
+		ETH_TX_DATA_2ND_BD_TUNN_INNER_L2_HDR_SIZE_W_MASK)
+		PMD_TX_LOG(ERR, txq, "inner_l2_hdr_size overflow\n");
+	if (((mbuf->l2_len - MPLSINUDP_HDR_SIZE + mbuf->l3_len) / 2) >
+		ETH_TX_DATA_2ND_BD_L4_HDR_START_OFFSET_W_MASK)
+		PMD_TX_LOG(ERR, txq, "inner_l2_hdr_size overflow\n");
+}
+#endif
 
 uint16_t
 qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
@@ -1510,9 +1525,10 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	uint16_t nb_frags;
 	uint16_t nb_pkt_sent = 0;
 	uint8_t nbds;
-	bool ipv6_ext_flg;
 	bool lso_flg;
+	bool mplsoudp_flg;
 	__rte_unused bool tunn_flg;
+	bool tunn_ipv6_ext_flg;
 	struct eth_tx_1st_bd *bd1;
 	struct eth_tx_2nd_bd *bd2;
 	struct eth_tx_3rd_bd *bd3;
@@ -1529,6 +1545,10 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	uint16_t mss;
 	uint16_t bd3_bf;
 
+	uint8_t tunn_l4_hdr_start_offset;
+	uint8_t tunn_hdr_size;
+	uint8_t inner_l2_hdr_size;
+	uint16_t inner_l4_hdr_offset;
 
 	if (unlikely(txq->nb_tx_avail < txq->tx_free_thresh)) {
 		PMD_TX_LOG(DEBUG, txq, "send=%u avail=%u free_thresh=%u",
@@ -1540,7 +1560,6 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 	bd_prod = rte_cpu_to_le_16(ecore_chain_get_prod_idx(&txq->tx_pbl));
 	while (nb_tx_pkts--) {
 		/* Init flags/values */
-		ipv6_ext_flg = false;
 		tunn_flg = false;
 		lso_flg = false;
 		nbds = 0;
@@ -1555,6 +1574,10 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		bd2_bf2 = 0;
 		mss = 0;
 		bd3_bf = 0;
+		mplsoudp_flg = false;
+		tunn_ipv6_ext_flg = false;
+		tunn_hdr_size = 0;
+		tunn_l4_hdr_start_offset = 0;
 
 		mbuf = *tx_pkts++;
 		assert(mbuf);
@@ -1566,20 +1589,18 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		tx_ol_flags = mbuf->ol_flags;
 		bd1_bd_flags_bf |= 1 << ETH_TX_1ST_BD_FLAGS_START_BD_SHIFT;
 
-#define RTE_ETH_IS_IPV6_HDR_EXT(ptype) ((ptype) & RTE_PTYPE_L3_IPV6_EXT)
-		if (RTE_ETH_IS_IPV6_HDR_EXT(mbuf->packet_type)) {
-			ipv6_ext_flg = true;
+		/* TX prepare would have already checked supported tunnel Tx
+		 * offloads. Don't rely on pkt_type marked by Rx, instead use
+		 * tx_ol_flags to decide.
+		 */
+		if (((tx_ol_flags & PKT_TX_TUNNEL_MASK) ==
+						PKT_TX_TUNNEL_VXLAN) ||
+		    ((tx_ol_flags & PKT_TX_TUNNEL_MASK) ==
+						PKT_TX_TUNNEL_MPLSINUDP)) {
+			/* Check against max which is Tunnel IPv6 + ext */
 			if (unlikely(txq->nb_tx_avail <
-					ETH_TX_MIN_BDS_PER_IPV6_WITH_EXT_PKT))
-				break;
-		}
-
-		if (RTE_ETH_IS_TUNNEL_PKT(mbuf->packet_type)) {
-			if (ipv6_ext_flg) {
-				if (unlikely(txq->nb_tx_avail <
-				    ETH_TX_MIN_BDS_PER_TUNN_IPV6_WITH_EXT_PKT))
+				ETH_TX_MIN_BDS_PER_TUNN_IPV6_WITH_EXT_PKT))
 					break;
-			}
 			tunn_flg = true;
 			/* First indicate its a tunnel pkt */
 			bd1_bf |= ETH_TX_DATA_1ST_BD_TUNN_FLAG_MASK <<
@@ -1592,17 +1613,89 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				bd1_bf ^= 1 <<
 					ETH_TX_DATA_1ST_BD_TUNN_FLAG_SHIFT;
 			}
+
 			/* Outer IP checksum offload */
-			if (tx_ol_flags & PKT_TX_OUTER_IP_CKSUM) {
+			if (tx_ol_flags & (PKT_TX_OUTER_IP_CKSUM |
+					   PKT_TX_OUTER_IPV4)) {
 				bd1_bd_flags_bf |=
 					ETH_TX_1ST_BD_FLAGS_TUNN_IP_CSUM_MASK <<
 					ETH_TX_1ST_BD_FLAGS_TUNN_IP_CSUM_SHIFT;
 			}
-			/* Outer UDP checksum offload */
-			bd1_bd_flags_bf |=
-				ETH_TX_1ST_BD_FLAGS_TUNN_L4_CSUM_MASK <<
-				ETH_TX_1ST_BD_FLAGS_TUNN_L4_CSUM_SHIFT;
-		}
+
+			/**
+			 * Currently, only inner checksum offload in MPLS-in-UDP
+			 * tunnel with one MPLS label is supported. Both outer
+			 * and inner layers  lengths need to be provided in
+			 * mbuf.
+			 */
+			if ((tx_ol_flags & PKT_TX_TUNNEL_MASK) ==
+						PKT_TX_TUNNEL_MPLSINUDP) {
+				mplsoudp_flg = true;
+#ifdef RTE_LIBRTE_QEDE_DEBUG_TX
+				qede_mpls_tunn_tx_sanity_check(mbuf, txq);
+#endif
+				/* Outer L4 offset in two byte words */
+				tunn_l4_hdr_start_offset =
+				  (mbuf->outer_l2_len + mbuf->outer_l3_len) / 2;
+				/* Tunnel header size in two byte words */
+				tunn_hdr_size = (mbuf->outer_l2_len +
+						mbuf->outer_l3_len +
+						MPLSINUDP_HDR_SIZE) / 2;
+				/* Inner L2 header size in two byte words */
+				inner_l2_hdr_size = (mbuf->l2_len -
+						MPLSINUDP_HDR_SIZE) / 2;
+				/* Inner L4 header offset from the beggining
+				 * of inner packet in two byte words
+				 */
+				inner_l4_hdr_offset = (mbuf->l2_len -
+					MPLSINUDP_HDR_SIZE + mbuf->l3_len) / 2;
+
+				/* TODO: There's no DPDK flag to request outer
+				 * L4 checksum offload, so we don't do it.
+				 * bd1_bd_flags_bf |=
+				 *      ETH_TX_1ST_BD_FLAGS_TUNN_L4_CSUM_MASK <<
+				 *      ETH_TX_1ST_BD_FLAGS_TUNN_L4_CSUM_SHIFT;
+				 */
+				/* Inner L2 size and address type */
+				bd2_bf1 |= (inner_l2_hdr_size &
+					ETH_TX_DATA_2ND_BD_TUNN_INNER_L2_HDR_SIZE_W_MASK) <<
+					ETH_TX_DATA_2ND_BD_TUNN_INNER_L2_HDR_SIZE_W_SHIFT;
+				bd2_bf1 |= (UNICAST_ADDRESS &
+					ETH_TX_DATA_2ND_BD_TUNN_INNER_ETH_TYPE_MASK) <<
+					ETH_TX_DATA_2ND_BD_TUNN_INNER_ETH_TYPE_SHIFT;
+				/* Treated as IPv6+Ext */
+				bd2_bf1 |=
+				    1 << ETH_TX_DATA_2ND_BD_TUNN_IPV6_EXT_SHIFT;
+
+				/* Mark inner IPv6 if present */
+				if (tx_ol_flags & PKT_TX_IPV6)
+					bd2_bf1 |=
+						1 << ETH_TX_DATA_2ND_BD_TUNN_INNER_IPV6_SHIFT;
+
+				/* Inner L4 offsets */
+				if ((tx_ol_flags & (PKT_TX_IPV4 | PKT_TX_IPV6)) &&
+				     (tx_ol_flags & (PKT_TX_UDP_CKSUM |
+							PKT_TX_TCP_CKSUM))) {
+					/* Determines if BD3 is needed */
+					tunn_ipv6_ext_flg = true;
+					if ((tx_ol_flags & PKT_TX_L4_MASK) ==
+							PKT_TX_UDP_CKSUM) {
+						bd2_bf1 |=
+							1 << ETH_TX_DATA_2ND_BD_L4_UDP_SHIFT;
+					}
+
+					/* TODO other pseudo checksum modes are
+					 * not supported
+					 */
+					bd2_bf1 |=
+					ETH_L4_PSEUDO_CSUM_CORRECT_LENGTH <<
+					ETH_TX_DATA_2ND_BD_L4_PSEUDO_CSUM_MODE_SHIFT;
+					bd2_bf2 |= (inner_l4_hdr_offset &
+						ETH_TX_DATA_2ND_BD_L4_HDR_START_OFFSET_W_MASK) <<
+						ETH_TX_DATA_2ND_BD_L4_HDR_START_OFFSET_W_SHIFT;
+				}
+			} /* End MPLSoUDP */
+		} /* End Tunnel handling */
 
 		if (tx_ol_flags & PKT_TX_TCP_SEG) {
 			lso_flg = true;
@@ -1646,14 +1739,10 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				1 << ETH_TX_1ST_BD_FLAGS_IP_CSUM_SHIFT;
 
 		/* L4 checksum offload (tcp or udp) */
-		if (tx_ol_flags & (PKT_TX_TCP_CKSUM | PKT_TX_UDP_CKSUM))
+		if ((tx_ol_flags & (PKT_TX_IPV4 | PKT_TX_IPV6)) &&
+		    (tx_ol_flags & (PKT_TX_UDP_CKSUM | PKT_TX_TCP_CKSUM))) {
 			bd1_bd_flags_bf |=
 				1 << ETH_TX_1ST_BD_FLAGS_L4_CSUM_SHIFT;
-
-		if (ipv6_ext_flg) {
-			/* TBD: check pseudo csum if tx_prepare not called? */
-			bd2_bf1 |= ETH_L4_PSEUDO_CSUM_ZERO_LENGTH <<
-				ETH_TX_DATA_2ND_BD_L4_PSEUDO_CSUM_MODE_SHIFT;
 		}
 
 		/* Fill the entry in the SW ring and the BDs in the FW ring */
@@ -1667,12 +1756,12 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 		/* Map MBUF linear data for DMA and set in the BD1 */
 		QEDE_BD_SET_ADDR_LEN(bd1, rte_mbuf_data_dma_addr(mbuf),
-					mbuf->data_len);
-		bd1->data.bitfields = bd1_bf;
+				     mbuf->data_len);
+		bd1->data.bitfields = rte_cpu_to_le_16(bd1_bf);
 		bd1->data.bd_flags.bitfields = bd1_bd_flags_bf;
 		bd1->data.vlan = vlan;
 
-		if (lso_flg || ipv6_ext_flg) {
+		if (lso_flg || mplsoudp_flg) {
 			bd2 = (struct eth_tx_2nd_bd *)ecore_chain_produce
 							(&txq->tx_pbl);
 			memset(bd2, 0, sizeof(struct eth_tx_2nd_bd));
@@ -1685,16 +1774,30 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 			QEDE_BD_SET_ADDR_LEN(bd2, (hdr_size +
 					     rte_mbuf_data_dma_addr(mbuf)),
 					     mbuf->data_len - hdr_size);
-			bd2->data.bitfields1 = bd2_bf1;
-			bd2->data.bitfields2 = bd2_bf2;
-
+			bd2->data.bitfields1 = rte_cpu_to_le_16(bd2_bf1);
+			if (mplsoudp_flg) {
+				bd2->data.bitfields2 =
+					rte_cpu_to_le_16(bd2_bf2);
+				/* Outer L3 size */
+				bd2->data.tunn_ip_size =
+					rte_cpu_to_le_16(mbuf->outer_l3_len);
+			}
 			/* BD3 */
-			bd3 = (struct eth_tx_3rd_bd *)ecore_chain_produce
-							(&txq->tx_pbl);
-			memset(bd3, 0, sizeof(struct eth_tx_3rd_bd));
-			nbds++;
-			bd3->data.bitfields = bd3_bf;
-			bd3->data.lso_mss = mss;
+			if (lso_flg || (mplsoudp_flg && tunn_ipv6_ext_flg)) {
+				bd3 = (struct eth_tx_3rd_bd *)
+					ecore_chain_produce(&txq->tx_pbl);
+				memset(bd3, 0, sizeof(struct eth_tx_3rd_bd));
+				nbds++;
+				bd3->data.bitfields = rte_cpu_to_le_16(bd3_bf);
+				if (lso_flg)
+					bd3->data.lso_mss = mss;
+				if (mplsoudp_flg) {
+					bd3->data.tunn_l4_hdr_start_offset_w =
+						tunn_l4_hdr_start_offset;
+					bd3->data.tunn_hdr_size_w =
+						tunn_hdr_size;
+				}
+			}
 		}
 
 		/* Handle fragmented MBUF */
@@ -1709,8 +1812,7 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		    rte_cpu_to_le_16(ecore_chain_get_prod_idx(&txq->tx_pbl));
 #ifdef RTE_LIBRTE_QEDE_DEBUG_TX
 		print_tx_bd_info(txq, bd1, bd2, bd3, tx_ol_flags);
-		PMD_TX_LOG(INFO, txq, "lso=%d tunn=%d ipv6_ext=%d\n",
-			   lso_flg, tunn_flg, ipv6_ext_flg);
+		PMD_TX_LOG(INFO, txq, "lso=%d tunn=%d", lso_flg, tunn_flg);
 #endif
 		nb_pkt_sent++;
 		txq->xmit_pkts++;
