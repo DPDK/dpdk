@@ -7370,11 +7370,6 @@ i40e_write_profile(struct i40e_hw *hw, struct i40e_profile_segment *profile,
 	u32 offset = 0, info = 0;
 	u32 i;
 
-	if (!track_id) {
-		i40e_debug(hw, I40E_DEBUG_PACKAGE, "Track_id can't be 0.");
-		return I40E_NOT_SUPPORTED;
-	}
-
 	dev_cnt = profile->device_table_count;
 
 	for (i = 0; i < dev_cnt; i++) {
@@ -7449,6 +7444,6 @@ i40e_add_pinfo_to_list(struct i40e_hw *hw,
 	memcpy(pinfo->name, profile->name, I40E_DDP_NAME_SIZE);
 
 	status = i40e_aq_write_ddp(hw, (void *)sec, sec->data_end,
-				track_id, &offset, &info, NULL);
+				   track_id, &offset, &info, NULL);
 	return status;
 }
