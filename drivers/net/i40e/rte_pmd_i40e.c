@@ -1554,11 +1554,7 @@ i40e_check_profile_info(uint8_t port, uint8_t *profile_info_sec)
 			     sizeof(struct i40e_profile_section_header));
 	for (i = 0; i < p_list->p_count; i++) {
 		p = &p_list->p_info[i];
-		if ((pinfo->track_id == p->track_id) &&
-		    !memcmp(&pinfo->version, &p->version,
-			    sizeof(struct i40e_ddp_version)) &&
-		    !memcmp(&pinfo->name, &p->name,
-			    I40E_DDP_NAME_SIZE)) {
+		if (pinfo->track_id == p->track_id) {
 			PMD_DRV_LOG(INFO, "Profile exists.");
 			rte_free(buff);
 			return 1;
@@ -1583,6 +1579,13 @@ rte_pmd_i40e_process_ddp_package(uint8_t port, uint8_t *buff,
 	uint8_t *profile_info_sec;
 	int is_exist;
 	enum i40e_status_code status = I40E_SUCCESS;
+
+	if (op != RTE_PMD_I40E_PKG_OP_WR_ADD &&
+		op != RTE_PMD_I40E_PKG_OP_WR_ONLY &&
+		op != RTE_PMD_I40E_PKG_OP_WR_DEL) {
+		PMD_DRV_LOG(ERR, "Operation not supported.");
+		return -ENOTSUP;
+	}
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
 
@@ -1620,6 +1623,10 @@ rte_pmd_i40e_process_ddp_package(uint8_t port, uint8_t *buff,
 		return -EINVAL;
 	}
 	track_id = ((struct i40e_metadata_segment *)metadata_seg_hdr)->track_id;
+	if (track_id == I40E_DDP_TRACKID_INVALID) {
+		PMD_DRV_LOG(ERR, "Invalid track_id");
+		return -EINVAL;
+	}
 
 	/* Find profile segment */
 	profile_seg_hdr = i40e_find_segment_in_package(SEGMENT_TYPE_I40E,
@@ -1639,40 +1646,67 @@ rte_pmd_i40e_process_ddp_package(uint8_t port, uint8_t *buff,
 		return -EINVAL;
 	}
 
+	/* Check if the profile already loaded */
+	i40e_generate_profile_info_sec(
+		((struct i40e_profile_segment *)profile_seg_hdr)->name,
+		&((struct i40e_profile_segment *)profile_seg_hdr)->version,
+		track_id, profile_info_sec,
+		op == RTE_PMD_I40E_PKG_OP_WR_ADD);
+	is_exist = i40e_check_profile_info(port, profile_info_sec);
+	if (is_exist < 0) {
+		PMD_DRV_LOG(ERR, "Failed to check profile.");
+		rte_free(profile_info_sec);
+		return -EINVAL;
+	}
+
 	if (op == RTE_PMD_I40E_PKG_OP_WR_ADD) {
-		/* Check if the profile exists */
-		i40e_generate_profile_info_sec(
-		     ((struct i40e_profile_segment *)profile_seg_hdr)->name,
-		     &((struct i40e_profile_segment *)profile_seg_hdr)->version,
-		     track_id, profile_info_sec, 1);
-		is_exist = i40e_check_profile_info(port, profile_info_sec);
-		if (is_exist > 0) {
+		if (is_exist) {
 			PMD_DRV_LOG(ERR, "Profile already exists.");
 			rte_free(profile_info_sec);
-			return 1;
-		} else if (is_exist < 0) {
-			PMD_DRV_LOG(ERR, "Failed to check profile.");
-			rte_free(profile_info_sec);
-			return -EINVAL;
+			return -EEXIST;
 		}
+	} else if (op == RTE_PMD_I40E_PKG_OP_WR_DEL) {
+		if (!is_exist) {
+			PMD_DRV_LOG(ERR, "Profile does not exist.");
+			rte_free(profile_info_sec);
+			return -EACCES;
+		}
+	}
 
-		/* Write profile to HW */
-		status = i40e_write_profile(
-				hw,
-				(struct i40e_profile_segment *)profile_seg_hdr,
-				track_id);
+	if (op == RTE_PMD_I40E_PKG_OP_WR_DEL) {
+		status = i40e_rollback_profile(
+			hw,
+			(struct i40e_profile_segment *)profile_seg_hdr,
+			track_id);
 		if (status) {
-			PMD_DRV_LOG(ERR, "Failed to write profile.");
+			PMD_DRV_LOG(ERR, "Failed to write profile for delete.");
 			rte_free(profile_info_sec);
 			return status;
 		}
-
-		/* Add profile info to info list */
-		status = i40e_add_rm_profile_info(hw, profile_info_sec);
-		if (status)
-			PMD_DRV_LOG(ERR, "Failed to add profile info.");
 	} else {
-		PMD_DRV_LOG(ERR, "Operation not supported.");
+		status = i40e_write_profile(
+			hw,
+			(struct i40e_profile_segment *)profile_seg_hdr,
+			track_id);
+		if (status) {
+			if (op == RTE_PMD_I40E_PKG_OP_WR_ADD)
+				PMD_DRV_LOG(ERR, "Failed to write profile for add.");
+			else
+				PMD_DRV_LOG(ERR, "Failed to write profile.");
+			rte_free(profile_info_sec);
+			return status;
+		}
+	}
+
+	if (track_id && (op != RTE_PMD_I40E_PKG_OP_WR_ONLY)) {
+		/* Modify loaded profiles info list */
+		status = i40e_add_rm_profile_info(hw, profile_info_sec);
+		if (status) {
+			if (op == RTE_PMD_I40E_PKG_OP_WR_ADD)
+				PMD_DRV_LOG(ERR, "Failed to add profile to info list.");
+			else
+				PMD_DRV_LOG(ERR, "Failed to delete profile from info list.");
+		}
 	}
 
 	rte_free(profile_info_sec);

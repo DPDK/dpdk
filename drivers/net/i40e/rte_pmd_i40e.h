@@ -71,6 +71,8 @@ struct rte_pmd_i40e_mb_event_param {
 enum rte_pmd_i40e_package_op {
 	RTE_PMD_I40E_PKG_OP_UNDEFINED = 0,
 	RTE_PMD_I40E_PKG_OP_WR_ADD,   /**< load package and add to info list */
+	RTE_PMD_I40E_PKG_OP_WR_DEL, /**< load package and delete from info list */
+	RTE_PMD_I40E_PKG_OP_WR_ONLY, /**< load package without modifying info list */
 	RTE_PMD_I40E_PKG_OP_MAX = 32
 };
 
@@ -517,7 +519,9 @@ int rte_pmd_i40e_set_tc_strict_prio(uint8_t port, uint8_t tc_map);
  *   - (0) if successful.
  *   - (-ENODEV) if *port* invalid.
  *   - (-EINVAL) if bad parameter.
- *   - (1) if profile exists.
+ *   - (-EEXIST) if profile exists.
+ *   - (-EACCES) if profile does not exist.
+ *   - (-ENOTSUP) if operation not supported.
  */
 int rte_pmd_i40e_process_ddp_package(uint8_t port, uint8_t *buff,
 				     uint32_t size,
