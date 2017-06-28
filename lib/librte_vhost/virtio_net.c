@@ -615,9 +615,11 @@ static inline bool
 virtio_net_with_host_offload(struct virtio_net *dev)
 {
 	if (dev->features &
-			(VIRTIO_NET_F_CSUM | VIRTIO_NET_F_HOST_ECN |
-			 VIRTIO_NET_F_HOST_TSO4 | VIRTIO_NET_F_HOST_TSO6 |
-			 VIRTIO_NET_F_HOST_UFO))
+			((1ULL << VIRTIO_NET_F_CSUM) |
+			 (1ULL << VIRTIO_NET_F_HOST_ECN) |
+			 (1ULL << VIRTIO_NET_F_HOST_TSO4) |
+			 (1ULL << VIRTIO_NET_F_HOST_TSO6) |
+			 (1ULL << VIRTIO_NET_F_HOST_UFO)))
 		return true;
 
 	return false;
