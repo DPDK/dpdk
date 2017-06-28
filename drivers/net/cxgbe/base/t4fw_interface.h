@@ -1293,15 +1293,12 @@ enum fw_port_type {
 	FW_PORT_TYPE_QSFP	= 14, /* No, 4, Yes, No, No, No, 40G */
 	FW_PORT_TYPE_BP40_BA	= 15,
 	/* No, 4, No, No, Yes, Yes, 40G/10G/1G, BP ANGE */
-	FW_PORT_TYPE_KR4_100G   = 16,   /* No, 4, 100G*/
-	FW_PORT_TYPE_CR4_QSFP   = 17,   /* No, 4, 100G*/
-	FW_PORT_TYPE_CR4_CFP4   = 18,   /* No, 4, 100G*/
-	FW_PORT_TYPE_CR_QSFP    = 19,   /* No, 1, 25G*/
-	FW_PORT_TYPE_CR_CFP4    = 20,   /* No, 1, 25G*/
-	FW_PORT_TYPE_CR2_QSFP   = 21,   /* No, 2, 50G*/
-	FW_PORT_TYPE_CR2_CFP4   = 22,   /* No, 2, 50G*/
-	FW_PORT_TYPE_SFP28      = 23,   /* No, 1, 25G*/
-
+	FW_PORT_TYPE_KR4_100G	= 16, /* No, 4, 100G/40G/25G, Backplane */
+	FW_PORT_TYPE_CR4_QSFP	= 17, /* No, 4, 100G/40G/25G */
+	FW_PORT_TYPE_CR_QSFP	= 18, /* No, 1, 25G Spider cable */
+	FW_PORT_TYPE_CR2_QSFP	= 19, /* No, 2, 50G */
+	FW_PORT_TYPE_SFP28	= 20, /* No, 1, 25G/10G/1G */
+	FW_PORT_TYPE_KR_SFP28	= 21, /* No, 1, 25G/10G/1G using Backplane */
 	FW_PORT_TYPE_NONE = M_FW_PORT_CMD_PTYPE
 };
 
