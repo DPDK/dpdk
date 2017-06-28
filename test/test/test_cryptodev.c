@@ -3580,8 +3580,7 @@ test_snow3g_encryption_offset_oop(const struct snow3g_test_data *tdata)
 	rte_hexdump(stdout, "ciphertext:", ciphertext, plaintext_len);
 #endif
 
-	expected_ciphertext_shifted = rte_malloc(NULL,
-			ceil_byte_length(plaintext_len + extra_offset), 0);
+	expected_ciphertext_shifted = rte_malloc(NULL, plaintext_len, 8);
 
 	TEST_ASSERT_NOT_NULL(expected_ciphertext_shifted,
 			"failed to reserve memory for ciphertext shifted\n");
