@@ -842,7 +842,7 @@ eth_ark_dev_stats_reset(struct rte_eth_dev *dev)
 		(struct ark_adapter *)dev->data->dev_private;
 
 	for (i = 0; i < dev->data->nb_tx_queues; i++)
-		eth_tx_queue_stats_reset(dev->data->rx_queues[i]);
+		eth_tx_queue_stats_reset(dev->data->tx_queues[i]);
 	for (i = 0; i < dev->data->nb_rx_queues; i++)
 		eth_rx_queue_stats_reset(dev->data->rx_queues[i]);
 	if (ark->user_ext.stats_reset)
