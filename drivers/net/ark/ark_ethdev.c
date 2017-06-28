@@ -77,6 +77,7 @@ static int eth_ark_macaddr_add(struct rte_eth_dev *dev,
 			       uint32_t pool);
 static void eth_ark_macaddr_remove(struct rte_eth_dev *dev,
 				   uint32_t index);
+static int  eth_ark_set_mtu(struct rte_eth_dev *dev, uint16_t size);
 
 /*
  * The packet generator is a functional block used to generate packet
@@ -179,6 +180,8 @@ static const struct eth_dev_ops ark_eth_dev_ops = {
 	.mac_addr_add = eth_ark_macaddr_add,
 	.mac_addr_remove = eth_ark_macaddr_remove,
 	.mac_addr_set = eth_ark_set_default_mac_addr,
+
+	.mtu_set = eth_ark_set_mtu,
 };
 
 static int
@@ -256,6 +259,10 @@ check_for_ext(struct ark_adapter *ark)
 		(void (*)(struct rte_eth_dev *, struct ether_addr *,
 			  void *))
 		dlsym(ark->d_handle, "mac_addr_set");
+	ark->user_ext.set_mtu =
+		(int (*)(struct rte_eth_dev *, uint16_t,
+			  void *))
+		dlsym(ark->d_handle, "set_mtu");
 
 	return found;
 }
@@ -884,6 +891,19 @@ eth_ark_set_default_mac_addr(struct rte_eth_dev *dev,
 	if (ark->user_ext.mac_addr_set)
 		ark->user_ext.mac_addr_set(dev, mac_addr,
 			   ark->user_data[dev->data->port_id]);
+}
+
+static int
+eth_ark_set_mtu(struct rte_eth_dev *dev, uint16_t  size)
+{
+	struct ark_adapter *ark =
+		(struct ark_adapter *)dev->data->dev_private;
+
+	if (ark->user_ext.set_mtu)
+		return ark->user_ext.set_mtu(dev, size,
+			     ark->user_data[dev->data->port_id]);
+
+	return -ENOTSUP;
 }
 
 static inline int

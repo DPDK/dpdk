@@ -112,4 +112,8 @@ void mac_addr_set(struct rte_eth_dev *dev,
 		  struct ether_addr *mac_addr,
 		  void *user_data);
 
+int set_mtu(struct rte_eth_dev *dev,
+	    uint16_t size,
+	    void *user_data);
+
 #endif

@@ -106,6 +106,7 @@ struct ark_user_ext {
 						 void *);
 	void (*mac_addr_remove)(struct rte_eth_dev *, uint32_t, void *);
 	void (*mac_addr_set)(struct rte_eth_dev *, struct ether_addr *, void *);
+	int (*set_mtu)(struct rte_eth_dev *, uint16_t, void *);
 };
 
 struct ark_adapter {
