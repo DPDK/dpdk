@@ -262,6 +262,8 @@ static int eth_ixgbevf_dev_init(struct rte_eth_dev *eth_dev);
 static int eth_ixgbevf_dev_uninit(struct rte_eth_dev *eth_dev);
 static int  ixgbevf_dev_configure(struct rte_eth_dev *dev);
 static int  ixgbevf_dev_start(struct rte_eth_dev *dev);
+static int ixgbevf_dev_link_update(struct rte_eth_dev *dev,
+				   int wait_to_complete);
 static void ixgbevf_dev_stop(struct rte_eth_dev *dev);
 static void ixgbevf_dev_close(struct rte_eth_dev *dev);
 static void ixgbevf_intr_disable(struct ixgbe_hw *hw);
@@ -607,7 +609,7 @@ static const struct eth_dev_ops ixgbevf_eth_dev_ops = {
 	.dev_configure        = ixgbevf_dev_configure,
 	.dev_start            = ixgbevf_dev_start,
 	.dev_stop             = ixgbevf_dev_stop,
-	.link_update          = ixgbe_dev_link_update,
+	.link_update          = ixgbevf_dev_link_update,
 	.stats_get            = ixgbevf_dev_stats_get,
 	.xstats_get           = ixgbevf_dev_xstats_get,
 	.stats_reset          = ixgbevf_dev_stats_reset,
@@ -3771,9 +3773,116 @@ ixgbevf_dev_info_get(struct rte_eth_dev *dev,
 	dev_info->tx_desc_lim = tx_desc_lim;
 }
 
+static int
+ixgbevf_check_link(struct ixgbe_hw *hw, ixgbe_link_speed *speed,
+		   int *link_up, int wait_to_complete)
+{
+	/**
+	 * for a quick link status checking, wait_to_compelet == 0,
+	 * skip PF link status checking
+	 */
+	bool no_pflink_check = wait_to_complete == 0;
+	struct ixgbe_mbx_info *mbx = &hw->mbx;
+	struct ixgbe_mac_info *mac = &hw->mac;
+	uint32_t links_reg, in_msg;
+	int ret_val = 0;
+
+	/* If we were hit with a reset drop the link */
+	if (!mbx->ops.check_for_rst(hw, 0) || !mbx->timeout)
+		mac->get_link_status = true;
+
+	if (!mac->get_link_status)
+		goto out;
+
+	/* if link status is down no point in checking to see if pf is up */
+	links_reg = IXGBE_READ_REG(hw, IXGBE_VFLINKS);
+	if (!(links_reg & IXGBE_LINKS_UP))
+		goto out;
+
+	/* for SFP+ modules and DA cables on 82599 it can take up to 500usecs
+	 * before the link status is correct
+	 */
+	if (mac->type == ixgbe_mac_82599_vf) {
+		int i;
+
+		for (i = 0; i < 5; i++) {
+			rte_delay_us(100);
+			links_reg = IXGBE_READ_REG(hw, IXGBE_VFLINKS);
+
+			if (!(links_reg & IXGBE_LINKS_UP))
+				goto out;
+		}
+	}
+
+	switch (links_reg & IXGBE_LINKS_SPEED_82599) {
+	case IXGBE_LINKS_SPEED_10G_82599:
+		*speed = IXGBE_LINK_SPEED_10GB_FULL;
+		if (hw->mac.type >= ixgbe_mac_X550) {
+			if (links_reg & IXGBE_LINKS_SPEED_NON_STD)
+				*speed = IXGBE_LINK_SPEED_2_5GB_FULL;
+		}
+		break;
+	case IXGBE_LINKS_SPEED_1G_82599:
+		*speed = IXGBE_LINK_SPEED_1GB_FULL;
+		break;
+	case IXGBE_LINKS_SPEED_100_82599:
+		*speed = IXGBE_LINK_SPEED_100_FULL;
+		if (hw->mac.type == ixgbe_mac_X550) {
+			if (links_reg & IXGBE_LINKS_SPEED_NON_STD)
+				*speed = IXGBE_LINK_SPEED_5GB_FULL;
+		}
+		break;
+	case IXGBE_LINKS_SPEED_10_X550EM_A:
+		*speed = IXGBE_LINK_SPEED_UNKNOWN;
+		/* Since Reserved in older MAC's */
+		if (hw->mac.type >= ixgbe_mac_X550)
+			*speed = IXGBE_LINK_SPEED_10_FULL;
+		break;
+	default:
+		*speed = IXGBE_LINK_SPEED_UNKNOWN;
+	}
+
+	if (no_pflink_check) {
+		if (*speed == IXGBE_LINK_SPEED_UNKNOWN)
+			mac->get_link_status = true;
+		else
+			mac->get_link_status = false;
+
+		goto out;
+	}
+	/* if the read failed it could just be a mailbox collision, best wait
+	 * until we are called again and don't report an error
+	 */
+	if (mbx->ops.read(hw, &in_msg, 1, 0))
+		goto out;
+
+	if (!(in_msg & IXGBE_VT_MSGTYPE_CTS)) {
+		/* msg is not CTS and is NACK we must have lost CTS status */
+		if (in_msg & IXGBE_VT_MSGTYPE_NACK)
+			ret_val = -1;
+		goto out;
+	}
+
+	/* the pf is talking, if we timed out in the past we reinit */
+	if (!mbx->timeout) {
+		ret_val = -1;
+		goto out;
+	}
+
+	/* if we passed all the tests above then the link is up and we no
+	 * longer need to check for link
+	 */
+	mac->get_link_status = false;
+
+out:
+	*link_up = !mac->get_link_status;
+	return ret_val;
+}
+
 /* return 0 means link status changed, -1 means not changed */
 static int
-ixgbe_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
+ixgbe_dev_link_update_share(struct rte_eth_dev *dev,
+			    int wait_to_complete, int vf)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct rte_eth_link link, old;
@@ -3783,6 +3892,7 @@ ixgbe_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 	int link_up;
 	int diag;
 	u32 speed = 0;
+	int wait = 1;
 	bool autoneg = false;
 
 	link.link_status = ETH_LINK_DOWN;
@@ -3803,9 +3913,12 @@ ixgbe_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 
 	/* check if it needs to wait to complete, if lsc interrupt is enabled */
 	if (wait_to_complete == 0 || dev->data->dev_conf.intr_conf.lsc != 0)
-		diag = ixgbe_check_link(hw, &link_speed, &link_up, 0);
+		wait = 0;
+
+	if (vf)
+		diag = ixgbevf_check_link(hw, &link_speed, &link_up, wait);
 	else
-		diag = ixgbe_check_link(hw, &link_speed, &link_up, 1);
+		diag = ixgbe_check_link(hw, &link_speed, &link_up, wait);
 
 	if (diag != 0) {
 		link.link_speed = ETH_SPEED_NUM_100M;
@@ -3852,6 +3965,18 @@ ixgbe_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 		return -1;
 
 	return 0;
+}
+
+static int
+ixgbe_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
+{
+	return ixgbe_dev_link_update_share(dev, wait_to_complete, 0);
+}
+
+static int
+ixgbevf_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete)
+{
+	return ixgbe_dev_link_update_share(dev, wait_to_complete, 1);
 }
 
 static void
