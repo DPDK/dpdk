@@ -1232,6 +1232,13 @@ Load a dynamic device personalization (DDP) package::
 
    testpmd> ddp add (port_id) (package_path[,output_path])
 
+ddp del
+~~~~~~~
+
+Delete a dynamic device personalization package::
+
+   testpmd> ddp del (port_id) (package_path)
+
 ptype mapping
 ~~~~~~~~~~~~~
 
