@@ -654,7 +654,7 @@ bandwidth_left(uint8_t port_id, uint64_t load, uint8_t update_idx,
 {
 	struct rte_eth_link link_status;
 
-	rte_eth_link_get(port_id, &link_status);
+	rte_eth_link_get_nowait(port_id, &link_status);
 	uint64_t link_bwg = link_status.link_speed * 1000000ULL / 8;
 	if (link_bwg == 0)
 		return;

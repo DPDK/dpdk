@@ -758,7 +758,7 @@ bond_mode_8023ad_periodic_cb(void *arg)
 		uint16_t key;
 
 		slave_id = internals->active_slaves[i];
-		rte_eth_link_get(slave_id, &link_info);
+		rte_eth_link_get_nowait(slave_id, &link_info);
 		rte_eth_macaddr_get(slave_id, &slave_addr);
 
 		if (link_info.link_status != 0) {
