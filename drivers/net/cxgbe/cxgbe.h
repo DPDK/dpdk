@@ -47,6 +47,7 @@
 #define CXGBE_MAX_RX_PKTLEN (9000 + ETHER_HDR_LEN + ETHER_CRC_LEN) /* max pkt */
 
 int cxgbe_probe(struct adapter *adapter);
+void cxgbe_get_speed_caps(struct port_info *pi, u32 *speed_caps);
 int cxgbe_up(struct adapter *adap);
 int cxgbe_down(struct port_info *pi);
 void cxgbe_close(struct adapter *adapter);

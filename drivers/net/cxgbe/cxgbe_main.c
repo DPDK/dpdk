@@ -1034,6 +1034,110 @@ void cxgbe_enable_rx_queues(struct port_info *pi)
 }
 
 /**
+ * fw_caps_to_speed_caps - translate Firmware Port Caps to Speed Caps.
+ * @port_type: Firmware Port Type
+ * @fw_caps: Firmware Port Capabilities
+ * @speed_caps: Device Info Speed Capabilities
+ *
+ * Translate a Firmware Port Capabilities specification to Device Info
+ * Speed Capabilities.
+ */
+static void fw_caps_to_speed_caps(enum fw_port_type port_type,
+				  unsigned int fw_caps,
+				  u32 *speed_caps)
+{
+#define SET_SPEED(__speed_name) \
+	do { \
+		*speed_caps |= ETH_LINK_ ## __speed_name; \
+	} while (0)
+
+#define FW_CAPS_TO_SPEED(__fw_name) \
+	do { \
+		if (fw_caps & FW_PORT_CAP_ ## __fw_name) \
+			SET_SPEED(__fw_name); \
+	} while (0)
+
+	switch (port_type) {
+	case FW_PORT_TYPE_BT_SGMII:
+	case FW_PORT_TYPE_BT_XFI:
+	case FW_PORT_TYPE_BT_XAUI:
+		FW_CAPS_TO_SPEED(SPEED_100M);
+		FW_CAPS_TO_SPEED(SPEED_1G);
+		FW_CAPS_TO_SPEED(SPEED_10G);
+		break;
+
+	case FW_PORT_TYPE_KX4:
+	case FW_PORT_TYPE_KX:
+	case FW_PORT_TYPE_FIBER_XFI:
+	case FW_PORT_TYPE_FIBER_XAUI:
+	case FW_PORT_TYPE_SFP:
+	case FW_PORT_TYPE_QSFP_10G:
+	case FW_PORT_TYPE_QSA:
+		FW_CAPS_TO_SPEED(SPEED_1G);
+		FW_CAPS_TO_SPEED(SPEED_10G);
+		break;
+
+	case FW_PORT_TYPE_KR:
+		SET_SPEED(SPEED_10G);
+		break;
+
+	case FW_PORT_TYPE_BP_AP:
+	case FW_PORT_TYPE_BP4_AP:
+		SET_SPEED(SPEED_1G);
+		SET_SPEED(SPEED_10G);
+		break;
+
+	case FW_PORT_TYPE_BP40_BA:
+	case FW_PORT_TYPE_QSFP:
+		SET_SPEED(SPEED_40G);
+		break;
+
+	case FW_PORT_TYPE_CR_QSFP:
+	case FW_PORT_TYPE_SFP28:
+	case FW_PORT_TYPE_KR_SFP28:
+		FW_CAPS_TO_SPEED(SPEED_1G);
+		FW_CAPS_TO_SPEED(SPEED_10G);
+		FW_CAPS_TO_SPEED(SPEED_25G);
+		break;
+
+	case FW_PORT_TYPE_CR2_QSFP:
+		SET_SPEED(SPEED_50G);
+		break;
+
+	case FW_PORT_TYPE_KR4_100G:
+	case FW_PORT_TYPE_CR4_QSFP:
+		FW_CAPS_TO_SPEED(SPEED_25G);
+		FW_CAPS_TO_SPEED(SPEED_40G);
+		FW_CAPS_TO_SPEED(SPEED_100G);
+		break;
+
+	default:
+		break;
+	}
+
+#undef FW_CAPS_TO_SPEED
+#undef SET_SPEED
+}
+
+/**
+ * cxgbe_get_speed_caps - Fetch supported speed capabilities
+ * @pi: Underlying port's info
+ * @speed_caps: Device Info speed capabilities
+ *
+ * Fetch supported speed capabilities of the underlying port.
+ */
+void cxgbe_get_speed_caps(struct port_info *pi, u32 *speed_caps)
+{
+	*speed_caps = 0;
+
+	fw_caps_to_speed_caps(pi->port_type, pi->link_cfg.supported,
+			      speed_caps);
+
+	if (!(pi->link_cfg.supported & FW_PORT_CAP_ANEG))
+		*speed_caps |= ETH_LINK_SPEED_FIXED;
+}
+
+/**
  * cxgb_up - enable the adapter
  * @adap: adapter being enabled
  *
