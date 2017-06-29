@@ -51,12 +51,15 @@ static int i40e_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 			 uint32_t weight, uint32_t level_id,
 			 struct rte_tm_node_params *params,
 			 struct rte_tm_error *error);
+static int i40e_node_delete(struct rte_eth_dev *dev, uint32_t node_id,
+			    struct rte_tm_error *error);
 
 const struct rte_tm_ops i40e_tm_ops = {
 	.capabilities_get = i40e_tm_capabilities_get,
 	.shaper_profile_add = i40e_shaper_profile_add,
 	.shaper_profile_delete = i40e_shaper_profile_del,
 	.node_add = i40e_node_add,
+	.node_delete = i40e_node_delete,
 };
 
 int
@@ -612,6 +615,69 @@ i40e_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 
 	/* increase the reference counter of the shaper profile */
 	shaper_profile->reference_count++;
+
+	return 0;
+}
+
+static int
+i40e_node_delete(struct rte_eth_dev *dev, uint32_t node_id,
+		 struct rte_tm_error *error)
+{
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	enum i40e_tm_node_type node_type = I40E_TM_NODE_TYPE_MAX;
+	struct i40e_tm_node *tm_node;
+
+	if (!error)
+		return -EINVAL;
+
+	/* if already committed */
+	if (pf->tm_conf.committed) {
+		error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
+		error->message = "already committed";
+		return -EINVAL;
+	}
+
+	if (node_id == RTE_TM_NODE_ID_NULL) {
+		error->type = RTE_TM_ERROR_TYPE_NODE_ID;
+		error->message = "invalid node id";
+		return -EINVAL;
+	}
+
+	/* check if the node id exists */
+	tm_node = i40e_tm_node_search(dev, node_id, &node_type);
+	if (!tm_node) {
+		error->type = RTE_TM_ERROR_TYPE_NODE_ID;
+		error->message = "no such node";
+		return -EINVAL;
+	}
+
+	/* the node should have no child */
+	if (tm_node->reference_count) {
+		error->type = RTE_TM_ERROR_TYPE_NODE_ID;
+		error->message =
+			"cannot delete a node which has children";
+		return -EINVAL;
+	}
+
+	/* root node */
+	if (node_type == I40E_TM_NODE_TYPE_PORT) {
+		tm_node->shaper_profile->reference_count--;
+		rte_free(tm_node);
+		pf->tm_conf.root = NULL;
+		return 0;
+	}
+
+	/* TC or queue node */
+	tm_node->shaper_profile->reference_count--;
+	tm_node->parent->reference_count--;
+	if (node_type == I40E_TM_NODE_TYPE_TC) {
+		TAILQ_REMOVE(&pf->tm_conf.tc_list, tm_node, node);
+		pf->tm_conf.nb_tc_node--;
+	} else {
+		TAILQ_REMOVE(&pf->tm_conf.queue_list, tm_node, node);
+		pf->tm_conf.nb_queue_node--;
+	}
+	rte_free(tm_node);
 
 	return 0;
 }
