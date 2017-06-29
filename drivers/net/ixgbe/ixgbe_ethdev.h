@@ -40,6 +40,7 @@
 #include <rte_time.h>
 #include <rte_hash.h>
 #include <rte_pci.h>
+#include <rte_tm_driver.h>
 
 /* need update link, bit flag */
 #define IXGBE_FLAG_NEED_LINK_UPDATE (uint32_t)(1 << 0)
@@ -672,6 +673,7 @@ int ixgbe_vt_check(struct ixgbe_hw *hw);
 int ixgbe_set_vf_rate_limit(struct rte_eth_dev *dev, uint16_t vf,
 			    uint16_t tx_rate, uint64_t q_msk);
 bool is_ixgbe_supported(struct rte_eth_dev *dev);
+int ixgbe_tm_ops_get(struct rte_eth_dev *dev, void *ops);
 
 static inline int
 ixgbe_ethertype_filter_lookup(struct ixgbe_filter_info *filter_info,

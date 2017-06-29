@@ -599,6 +599,7 @@ static const struct eth_dev_ops ixgbe_eth_dev_ops = {
 	.l2_tunnel_offload_set   = ixgbe_dev_l2_tunnel_offload_set,
 	.udp_tunnel_port_add  = ixgbe_dev_udp_tunnel_port_add,
 	.udp_tunnel_port_del  = ixgbe_dev_udp_tunnel_port_del,
+	.tm_ops_get           = ixgbe_tm_ops_get,
 };
 
 /*
