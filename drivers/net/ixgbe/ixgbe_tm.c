@@ -58,6 +58,10 @@ static int ixgbe_level_capabilities_get(struct rte_eth_dev *dev,
 					uint32_t level_id,
 					struct rte_tm_level_capabilities *cap,
 					struct rte_tm_error *error);
+static int ixgbe_node_capabilities_get(struct rte_eth_dev *dev,
+				       uint32_t node_id,
+				       struct rte_tm_node_capabilities *cap,
+				       struct rte_tm_error *error);
 
 const struct rte_tm_ops ixgbe_tm_ops = {
 	.capabilities_get = ixgbe_tm_capabilities_get,
@@ -67,6 +71,7 @@ const struct rte_tm_ops ixgbe_tm_ops = {
 	.node_delete = ixgbe_node_delete,
 	.node_type_get = ixgbe_node_type_get,
 	.level_capabilities_get = ixgbe_level_capabilities_get,
+	.node_capabilities_get = ixgbe_node_capabilities_get,
 };
 
 int
@@ -910,6 +915,62 @@ ixgbe_level_capabilities_get(struct rte_eth_dev *dev,
 	cap->leaf.cman_wred_context_private_supported = true;
 	cap->leaf.cman_wred_context_shared_n_max = 0;
 	cap->leaf.stats_mask = 0;
+
+	return 0;
+}
+
+static int
+ixgbe_node_capabilities_get(struct rte_eth_dev *dev,
+			    uint32_t node_id,
+			    struct rte_tm_node_capabilities *cap,
+			    struct rte_tm_error *error)
+{
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	enum ixgbe_tm_node_type node_type = IXGBE_TM_NODE_TYPE_MAX;
+	struct ixgbe_tm_node *tm_node;
+
+	if (!cap || !error)
+		return -EINVAL;
+
+	if (node_id == RTE_TM_NODE_ID_NULL) {
+		error->type = RTE_TM_ERROR_TYPE_NODE_ID;
+		error->message = "invalid node id";
+		return -EINVAL;
+	}
+
+	/* check if the node id exists */
+	tm_node = ixgbe_tm_node_search(dev, node_id, &node_type);
+	if (!tm_node) {
+		error->type = RTE_TM_ERROR_TYPE_NODE_ID;
+		error->message = "no such node";
+		return -EINVAL;
+	}
+
+	cap->shaper_private_supported = true;
+	cap->shaper_private_dual_rate_supported = false;
+	cap->shaper_private_rate_min = 0;
+	/* 10Gbps -> 1.25GBps */
+	cap->shaper_private_rate_max = 1250000000ull;
+	cap->shaper_shared_n_max = 0;
+
+	if (node_type == IXGBE_TM_NODE_TYPE_QUEUE) {
+		cap->leaf.cman_head_drop_supported = false;
+		cap->leaf.cman_wred_context_private_supported = true;
+		cap->leaf.cman_wred_context_shared_n_max = 0;
+	} else {
+		if (node_type == IXGBE_TM_NODE_TYPE_PORT)
+			cap->nonleaf.sched_n_children_max =
+				IXGBE_DCB_MAX_TRAFFIC_CLASS;
+		else
+			cap->nonleaf.sched_n_children_max =
+				hw->mac.max_tx_queues;
+		cap->nonleaf.sched_sp_n_priorities_max = 1;
+		cap->nonleaf.sched_wfq_n_children_per_group_max = 0;
+		cap->nonleaf.sched_wfq_n_groups_max = 0;
+		cap->nonleaf.sched_wfq_weight_max = 1;
+	}
+
+	cap->stats_mask = 0;
 
 	return 0;
 }
