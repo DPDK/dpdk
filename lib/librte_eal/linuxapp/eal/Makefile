@@ -50,6 +50,9 @@ LDLIBS += -ldl
 LDLIBS += -lpthread
 LDLIBS += -lgcc_s
 LDLIBS += -lrt
+ifeq ($(CONFIG_RTE_EAL_NUMA_AWARE_HUGEPAGES),y)
+LDLIBS += -lnuma
+endif
 
 # specific to linuxapp exec-env
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) := eal.c

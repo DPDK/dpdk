@@ -41,7 +41,7 @@ default_path=$PATH
 # - DPDK_DEP_ISAL_CRYPTO (y/[n])
 # - DPDK_DEP_LDFLAGS
 # - DPDK_DEP_MOFED (y/[n])
-# - DPDK_DEP_NUMA (y/[n])
+# - DPDK_DEP_NUMA ([y]/n)
 # - DPDK_DEP_PCAP (y/[n])
 # - DPDK_DEP_SSL (y/[n])
 # - DPDK_DEP_SZE (y/[n])
@@ -163,8 +163,8 @@ config () # <directory> <target> <options>
 		sed -ri 's,(TEST_PMD_RECORD_.*=)n,\1y,' $1/.config )
 
 		# Automatic configuration
-		test "$DPDK_DEP_NUMA" != y || \
-		sed -ri               's,(NUMA=)n,\1y,' $1/.config
+		test "$DPDK_DEP_NUMA" != n || \
+		sed -ri             's,(NUMA.*=)y,\1n,' $1/.config
 		sed -ri    's,(LIBRTE_IEEE1588=)n,\1y,' $1/.config
 		sed -ri             's,(BYPASS=)n,\1y,' $1/.config
 		test "$DPDK_DEP_ARCHIVE" != y || \

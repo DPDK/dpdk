@@ -54,6 +54,10 @@
 #include <sys/time.h>
 #include <signal.h>
 #include <setjmp.h>
+#ifdef RTE_EAL_NUMA_AWARE_HUGEPAGES
+#include <numa.h>
+#include <numaif.h>
+#endif
 
 #include <rte_log.h>
 #include <rte_memory.h>
@@ -348,6 +352,14 @@ static int huge_wrap_sigsetjmp(void)
 	return sigsetjmp(huge_jmpenv, 1);
 }
 
+#ifdef RTE_EAL_NUMA_AWARE_HUGEPAGES
+/* Callback for numa library. */
+void numa_error(char *where)
+{
+	RTE_LOG(ERR, EAL, "%s failed: %s\n", where, strerror(errno));
+}
+#endif
+
 /*
  * Mmap all hugepages of hugepage table: it first open a file in
  * hugetlbfs, then mmap() hugepage_sz data in it. If orig is set, the
@@ -356,17 +368,77 @@ static int huge_wrap_sigsetjmp(void)
  * map continguous physical blocks in contiguous virtual blocks.
  */
 static unsigned
-map_all_hugepages(struct hugepage_file *hugepg_tbl,
-		struct hugepage_info *hpi, int orig)
+map_all_hugepages(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi,
+		  uint64_t *essential_memory __rte_unused, int orig)
 {
 	int fd;
 	unsigned i;
 	void *virtaddr;
 	void *vma_addr = NULL;
 	size_t vma_len = 0;
+#ifdef RTE_EAL_NUMA_AWARE_HUGEPAGES
+	int node_id = -1;
+	int essential_prev = 0;
+	int oldpolicy;
+	struct bitmask *oldmask = numa_allocate_nodemask();
+	bool have_numa = true;
+	unsigned long maxnode = 0;
+
+	/* Check if kernel supports NUMA. */
+	if (numa_available() != 0) {
+		RTE_LOG(DEBUG, EAL, "NUMA is not supported.\n");
+		have_numa = false;
+	}
+
+	if (orig && have_numa) {
+		RTE_LOG(DEBUG, EAL, "Trying to obtain current memory policy.\n");
+		if (get_mempolicy(&oldpolicy, oldmask->maskp,
+				  oldmask->size + 1, 0, 0) < 0) {
+			RTE_LOG(ERR, EAL,
+				"Failed to get current mempolicy: %s. "
+				"Assuming MPOL_DEFAULT.\n", strerror(errno));
+			oldpolicy = MPOL_DEFAULT;
+		}
+		for (i = 0; i < RTE_MAX_NUMA_NODES; i++)
+			if (internal_config.socket_mem[i])
+				maxnode = i + 1;
+	}
+#endif
 
 	for (i = 0; i < hpi->num_pages[0]; i++) {
 		uint64_t hugepage_sz = hpi->hugepage_sz;
+
+#ifdef RTE_EAL_NUMA_AWARE_HUGEPAGES
+		if (maxnode) {
+			unsigned int j;
+
+			for (j = 0; j < maxnode; j++)
+				if (essential_memory[j])
+					break;
+
+			if (j == maxnode) {
+				node_id = (node_id + 1) % maxnode;
+				while (!internal_config.socket_mem[node_id]) {
+					node_id++;
+					node_id %= maxnode;
+				}
+				essential_prev = 0;
+			} else {
+				node_id = j;
+				essential_prev = essential_memory[j];
+
+				if (essential_memory[j] < hugepage_sz)
+					essential_memory[j] = 0;
+				else
+					essential_memory[j] -= hugepage_sz;
+			}
+
+			RTE_LOG(DEBUG, EAL,
+				"Setting policy MPOL_PREFERRED for socket %d\n",
+				node_id);
+			numa_set_preferred(node_id);
+		}
+#endif
 
 		if (orig) {
 			hugepg_tbl[i].file_id = i;
@@ -422,7 +494,7 @@ map_all_hugepages(struct hugepage_file *hugepg_tbl,
 		if (fd < 0) {
 			RTE_LOG(DEBUG, EAL, "%s(): open failed: %s\n", __func__,
 					strerror(errno));
-			return i;
+			goto out;
 		}
 
 		/* map the segment, and populate page tables,
@@ -433,7 +505,7 @@ map_all_hugepages(struct hugepage_file *hugepg_tbl,
 			RTE_LOG(DEBUG, EAL, "%s(): mmap failed: %s\n", __func__,
 					strerror(errno));
 			close(fd);
-			return i;
+			goto out;
 		}
 
 		if (orig) {
@@ -458,7 +530,12 @@ map_all_hugepages(struct hugepage_file *hugepg_tbl,
 				munmap(virtaddr, hugepage_sz);
 				close(fd);
 				unlink(hugepg_tbl[i].filepath);
-				return i;
+#ifdef RTE_EAL_NUMA_AWARE_HUGEPAGES
+				if (maxnode)
+					essential_memory[node_id] =
+						essential_prev;
+#endif
+				goto out;
 			}
 			*(int *)virtaddr = 0;
 		}
@@ -469,7 +546,7 @@ map_all_hugepages(struct hugepage_file *hugepg_tbl,
 			RTE_LOG(DEBUG, EAL, "%s(): Locking file failed:%s \n",
 				__func__, strerror(errno));
 			close(fd);
-			return i;
+			goto out;
 		}
 
 		close(fd);
@@ -478,6 +555,22 @@ map_all_hugepages(struct hugepage_file *hugepg_tbl,
 		vma_len -= hugepage_sz;
 	}
 
+out:
+#ifdef RTE_EAL_NUMA_AWARE_HUGEPAGES
+	if (maxnode) {
+		RTE_LOG(DEBUG, EAL,
+			"Restoring previous memory policy: %d\n", oldpolicy);
+		if (oldpolicy == MPOL_DEFAULT) {
+			numa_set_localalloc();
+		} else if (set_mempolicy(oldpolicy, oldmask->maskp,
+					 oldmask->size + 1) < 0) {
+			RTE_LOG(ERR, EAL, "Failed to restore mempolicy: %s\n",
+				strerror(errno));
+			numa_set_localalloc();
+		}
+	}
+	numa_free_cpumask(oldmask);
+#endif
 	return i;
 }
 
@@ -562,6 +655,11 @@ find_numasocket(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi)
 			if (hugepg_tbl[i].orig_va == va) {
 				hugepg_tbl[i].socket_id = socket_id;
 				hp_count++;
+#ifdef RTE_EAL_NUMA_AWARE_HUGEPAGES
+				RTE_LOG(DEBUG, EAL,
+					"Hugepage %s is on socket %d\n",
+					hugepg_tbl[i].filepath, socket_id);
+#endif
 			}
 		}
 	}
@@ -1000,6 +1098,11 @@ rte_eal_hugepage_init(void)
 
 	huge_register_sigbus();
 
+	/* make a copy of socket_mem, needed for balanced allocation. */
+	for (i = 0; i < RTE_MAX_NUMA_NODES; i++)
+		memory[i] = internal_config.socket_mem[i];
+
+
 	/* map all hugepages and sort them */
 	for (i = 0; i < (int)internal_config.num_hugepage_sizes; i ++){
 		unsigned pages_old, pages_new;
@@ -1017,7 +1120,8 @@ rte_eal_hugepage_init(void)
 
 		/* map all hugepages available */
 		pages_old = hpi->num_pages[0];
-		pages_new = map_all_hugepages(&tmp_hp[hp_offset], hpi, 1);
+		pages_new = map_all_hugepages(&tmp_hp[hp_offset], hpi,
+					      memory, 1);
 		if (pages_new < pages_old) {
 			RTE_LOG(DEBUG, EAL,
 				"%d not %d hugepages of size %u MB allocated\n",
@@ -1060,7 +1164,7 @@ rte_eal_hugepage_init(void)
 		      sizeof(struct hugepage_file), cmp_physaddr);
 
 		/* remap all hugepages */
-		if (map_all_hugepages(&tmp_hp[hp_offset], hpi, 0) !=
+		if (map_all_hugepages(&tmp_hp[hp_offset], hpi, NULL, 0) !=
 		    hpi->num_pages[0]) {
 			RTE_LOG(ERR, EAL, "Failed to remap %u MB pages\n",
 					(unsigned)(hpi->hugepage_sz / 0x100000));
