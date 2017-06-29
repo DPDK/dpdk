@@ -52,6 +52,8 @@ static int ixgbe_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 			  struct rte_tm_error *error);
 static int ixgbe_node_delete(struct rte_eth_dev *dev, uint32_t node_id,
 			     struct rte_tm_error *error);
+static int ixgbe_node_type_get(struct rte_eth_dev *dev, uint32_t node_id,
+			       int *is_leaf, struct rte_tm_error *error);
 
 const struct rte_tm_ops ixgbe_tm_ops = {
 	.capabilities_get = ixgbe_tm_capabilities_get,
@@ -59,6 +61,7 @@ const struct rte_tm_ops ixgbe_tm_ops = {
 	.shaper_profile_delete = ixgbe_shaper_profile_del,
 	.node_add = ixgbe_node_add,
 	.node_delete = ixgbe_node_delete,
+	.node_type_get = ixgbe_node_type_get,
 };
 
 int
@@ -801,6 +804,38 @@ ixgbe_node_delete(struct rte_eth_dev *dev, uint32_t node_id,
 		tm_conf->nb_queue_node--;
 	}
 	rte_free(tm_node);
+
+	return 0;
+}
+
+static int
+ixgbe_node_type_get(struct rte_eth_dev *dev, uint32_t node_id,
+		    int *is_leaf, struct rte_tm_error *error)
+{
+	enum ixgbe_tm_node_type node_type = IXGBE_TM_NODE_TYPE_MAX;
+	struct ixgbe_tm_node *tm_node;
+
+	if (!is_leaf || !error)
+		return -EINVAL;
+
+	if (node_id == RTE_TM_NODE_ID_NULL) {
+		error->type = RTE_TM_ERROR_TYPE_NODE_ID;
+		error->message = "invalid node id";
+		return -EINVAL;
+	}
+
+	/* check if the node id exists */
+	tm_node = ixgbe_tm_node_search(dev, node_id, &node_type);
+	if (!tm_node) {
+		error->type = RTE_TM_ERROR_TYPE_NODE_ID;
+		error->message = "no such node";
+		return -EINVAL;
+	}
+
+	if (node_type == IXGBE_TM_NODE_TYPE_QUEUE)
+		*is_leaf = true;
+	else
+		*is_leaf = false;
 
 	return 0;
 }
