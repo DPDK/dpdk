@@ -626,6 +626,7 @@ dpaa2_eventdev_create(const char *name)
 	eventdev->enqueue       = dpaa2_eventdev_enqueue;
 	eventdev->enqueue_burst = dpaa2_eventdev_enqueue_burst;
 	eventdev->enqueue_new_burst = dpaa2_eventdev_enqueue_burst;
+	eventdev->enqueue_forward_burst = dpaa2_eventdev_enqueue_burst;
 	eventdev->dequeue       = dpaa2_eventdev_dequeue;
 	eventdev->dequeue_burst = dpaa2_eventdev_dequeue_burst;
 

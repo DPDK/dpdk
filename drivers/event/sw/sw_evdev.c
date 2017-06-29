@@ -797,6 +797,7 @@ sw_probe(struct rte_vdev_device *vdev)
 	dev->enqueue = sw_event_enqueue;
 	dev->enqueue_burst = sw_event_enqueue_burst;
 	dev->enqueue_new_burst = sw_event_enqueue_burst;
+	dev->enqueue_forward_burst = sw_event_enqueue_burst;
 	dev->dequeue = sw_event_dequeue;
 	dev->dequeue_burst = sw_event_dequeue_burst;
 	dev->schedule = sw_event_schedule;
