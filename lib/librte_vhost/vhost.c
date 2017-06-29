@@ -272,7 +272,7 @@ rte_vhost_get_mtu(int vid, uint16_t *mtu)
 	if (!(dev->flags & VIRTIO_DEV_READY))
 		return -EAGAIN;
 
-	if (!(dev->features & VIRTIO_NET_F_MTU))
+	if (!(dev->features & (1ULL << VIRTIO_NET_F_MTU)))
 		return -ENOTSUP;
 
 	*mtu = dev->mtu;
