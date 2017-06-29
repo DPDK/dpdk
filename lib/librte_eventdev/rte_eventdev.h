@@ -1103,6 +1103,34 @@ rte_event_schedule(uint8_t dev_id)
 		(*dev->schedule)(dev);
 }
 
+static __rte_always_inline uint16_t
+__rte_event_enqueue_burst(uint8_t dev_id, uint8_t port_id,
+			const struct rte_event ev[], uint16_t nb_events,
+			const event_enqueue_burst_t fn)
+{
+	const struct rte_eventdev *dev = &rte_eventdevs[dev_id];
+
+#ifdef RTE_LIBRTE_EVENTDEV_DEBUG
+	if (dev_id >= RTE_EVENT_MAX_DEVS || !rte_eventdevs[dev_id].attached) {
+		rte_errno = -EINVAL;
+		return 0;
+	}
+
+	if (port_id >= dev->data->nb_ports) {
+		rte_errno = -EINVAL;
+		return 0;
+	}
+#endif
+	/*
+	 * Allow zero cost non burst mode routine invocation if application
+	 * requests nb_events as const one
+	 */
+	if (nb_events == 1)
+		return (*dev->enqueue)(dev->data->ports[port_id], ev);
+	else
+		return fn(dev->data->ports[port_id], ev, nb_events);
+}
+
 /**
  * Enqueue a burst of events objects or an event object supplied in *rte_event*
  * structure on an  event device designated by its *dev_id* through the event
@@ -1146,30 +1174,10 @@ static inline uint16_t
 rte_event_enqueue_burst(uint8_t dev_id, uint8_t port_id,
 			const struct rte_event ev[], uint16_t nb_events)
 {
-	struct rte_eventdev *dev = &rte_eventdevs[dev_id];
+	const struct rte_eventdev *dev = &rte_eventdevs[dev_id];
 
-#ifdef RTE_LIBRTE_EVENTDEV_DEBUG
-	if (dev_id >= RTE_EVENT_MAX_DEVS || !rte_eventdevs[dev_id].attached) {
-		rte_errno = -EINVAL;
-		return 0;
-	}
-
-	if (port_id >= dev->data->nb_ports) {
-		rte_errno = -EINVAL;
-		return 0;
-	}
-#endif
-
-	/*
-	 * Allow zero cost non burst mode routine invocation if application
-	 * requests nb_events as const one
-	 */
-	if (nb_events == 1)
-		return (*dev->enqueue)(
-			dev->data->ports[port_id], ev);
-	else
-		return (*dev->enqueue_burst)(
-			dev->data->ports[port_id], ev, nb_events);
+	return __rte_event_enqueue_burst(dev_id, port_id, ev, nb_events,
+			dev->enqueue_burst);
 }
 
 /**
