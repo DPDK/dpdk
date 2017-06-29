@@ -50,12 +50,15 @@ static int ixgbe_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 			  uint32_t weight, uint32_t level_id,
 			  struct rte_tm_node_params *params,
 			  struct rte_tm_error *error);
+static int ixgbe_node_delete(struct rte_eth_dev *dev, uint32_t node_id,
+			     struct rte_tm_error *error);
 
 const struct rte_tm_ops ixgbe_tm_ops = {
 	.capabilities_get = ixgbe_tm_capabilities_get,
 	.shaper_profile_add = ixgbe_shaper_profile_add,
 	.shaper_profile_delete = ixgbe_shaper_profile_del,
 	.node_add = ixgbe_node_add,
+	.node_delete = ixgbe_node_delete,
 };
 
 int
@@ -734,6 +737,70 @@ ixgbe_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 
 	/* increase the reference counter of the shaper profile */
 	shaper_profile->reference_count++;
+
+	return 0;
+}
+
+static int
+ixgbe_node_delete(struct rte_eth_dev *dev, uint32_t node_id,
+		  struct rte_tm_error *error)
+{
+	struct ixgbe_tm_conf *tm_conf =
+		IXGBE_DEV_PRIVATE_TO_TM_CONF(dev->data->dev_private);
+	enum ixgbe_tm_node_type node_type = IXGBE_TM_NODE_TYPE_MAX;
+	struct ixgbe_tm_node *tm_node;
+
+	if (!error)
+		return -EINVAL;
+
+	/* if already committed */
+	if (tm_conf->committed) {
+		error->type = RTE_TM_ERROR_TYPE_UNSPECIFIED;
+		error->message = "already committed";
+		return -EINVAL;
+	}
+
+	if (node_id == RTE_TM_NODE_ID_NULL) {
+		error->type = RTE_TM_ERROR_TYPE_NODE_ID;
+		error->message = "invalid node id";
+		return -EINVAL;
+	}
+
+	/* check the if the node id exists */
+	tm_node = ixgbe_tm_node_search(dev, node_id, &node_type);
+	if (!tm_node) {
+		error->type = RTE_TM_ERROR_TYPE_NODE_ID;
+		error->message = "no such node";
+		return -EINVAL;
+	}
+
+	/* the node should have no child */
+	if (tm_node->reference_count) {
+		error->type = RTE_TM_ERROR_TYPE_NODE_ID;
+		error->message =
+			"cannot delete a node which has children";
+		return -EINVAL;
+	}
+
+	/* root node */
+	if (node_type == IXGBE_TM_NODE_TYPE_PORT) {
+		tm_node->shaper_profile->reference_count--;
+		rte_free(tm_node);
+		tm_conf->root = NULL;
+		return 0;
+	}
+
+	/* TC or queue node */
+	tm_node->shaper_profile->reference_count--;
+	tm_node->parent->reference_count--;
+	if (node_type == IXGBE_TM_NODE_TYPE_TC) {
+		TAILQ_REMOVE(&tm_conf->tc_list, tm_node, node);
+		tm_conf->nb_tc_node--;
+	} else {
+		TAILQ_REMOVE(&tm_conf->queue_list, tm_node, node);
+		tm_conf->nb_queue_node--;
+	}
+	rte_free(tm_node);
 
 	return 0;
 }
