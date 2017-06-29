@@ -42,10 +42,14 @@ static int ixgbe_shaper_profile_add(struct rte_eth_dev *dev,
 				    uint32_t shaper_profile_id,
 				    struct rte_tm_shaper_params *profile,
 				    struct rte_tm_error *error);
+static int ixgbe_shaper_profile_del(struct rte_eth_dev *dev,
+				    uint32_t shaper_profile_id,
+				    struct rte_tm_error *error);
 
 const struct rte_tm_ops ixgbe_tm_ops = {
 	.capabilities_get = ixgbe_tm_capabilities_get,
 	.shaper_profile_add = ixgbe_shaper_profile_add,
+	.shaper_profile_delete = ixgbe_shaper_profile_del,
 };
 
 int
@@ -261,6 +265,39 @@ ixgbe_shaper_profile_add(struct rte_eth_dev *dev,
 			 sizeof(struct rte_tm_shaper_params));
 	TAILQ_INSERT_TAIL(&tm_conf->shaper_profile_list,
 			  shaper_profile, node);
+
+	return 0;
+}
+
+static int
+ixgbe_shaper_profile_del(struct rte_eth_dev *dev,
+			 uint32_t shaper_profile_id,
+			 struct rte_tm_error *error)
+{
+	struct ixgbe_tm_conf *tm_conf =
+		IXGBE_DEV_PRIVATE_TO_TM_CONF(dev->data->dev_private);
+	struct ixgbe_tm_shaper_profile *shaper_profile;
+
+	if (!error)
+		return -EINVAL;
+
+	shaper_profile = ixgbe_shaper_profile_search(dev, shaper_profile_id);
+
+	if (!shaper_profile) {
+		error->type = RTE_TM_ERROR_TYPE_SHAPER_PROFILE_ID;
+		error->message = "profile ID not exist";
+		return -EINVAL;
+	}
+
+	/* don't delete a profile if it's used by one or several nodes */
+	if (shaper_profile->reference_count) {
+		error->type = RTE_TM_ERROR_TYPE_SHAPER_PROFILE;
+		error->message = "profile in use";
+		return -EINVAL;
+	}
+
+	TAILQ_REMOVE(&tm_conf->shaper_profile_list, shaper_profile, node);
+	rte_free(shaper_profile);
 
 	return 0;
 }
