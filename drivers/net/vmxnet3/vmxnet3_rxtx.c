@@ -593,24 +593,40 @@ static inline void
 vmxnet3_renew_desc(vmxnet3_rx_queue_t *rxq, uint8_t ring_id,
 		   struct rte_mbuf *mbuf)
 {
-	uint32_t val = 0;
+	uint32_t val;
 	struct vmxnet3_cmd_ring *ring = &rxq->cmd_ring[ring_id];
 	struct Vmxnet3_RxDesc *rxd =
 		(struct Vmxnet3_RxDesc *)(ring->base + ring->next2fill);
 	vmxnet3_buf_info_t *buf_info = &ring->buf_info[ring->next2fill];
 
-	if (ring_id == 0)
-		val = VMXNET3_RXD_BTYPE_HEAD;
-	else
-		val = VMXNET3_RXD_BTYPE_BODY;
+	if (ring_id == 0) {
+		/* Usually: One HEAD type buf per packet
+		 * val = (ring->next2fill % rxq->hw->bufs_per_pkt) ?
+		 * VMXNET3_RXD_BTYPE_BODY : VMXNET3_RXD_BTYPE_HEAD;
+		 */
 
+		/* We use single packet buffer so all heads here */
+		val = VMXNET3_RXD_BTYPE_HEAD;
+	} else {
+		/* All BODY type buffers for 2nd ring */
+		val = VMXNET3_RXD_BTYPE_BODY;
+	}
+
+	/*
+	 * Load mbuf pointer into buf_info[ring_size]
+	 * buf_info structure is equivalent to cookie for virtio-virtqueue
+	 */
 	buf_info->m = mbuf;
 	buf_info->len = (uint16_t)(mbuf->buf_len - RTE_PKTMBUF_HEADROOM);
 	buf_info->bufPA = rte_mbuf_data_dma_addr_default(mbuf);
 
+	/* Load Rx Descriptor with the buffer's GPA */
 	rxd->addr = buf_info->bufPA;
+
+	/* After this point rxd->addr MUST not be NULL */
 	rxd->btype = val;
 	rxd->len = buf_info->len;
+	/* Flip gen bit at the end to change ownership */
 	rxd->gen = ring->gen;
 
 	vmxnet3_cmd_ring_adv_next2fill(ring);
@@ -629,28 +645,11 @@ static int
 vmxnet3_post_rx_bufs(vmxnet3_rx_queue_t *rxq, uint8_t ring_id)
 {
 	int err = 0;
-	uint32_t i = 0, val = 0;
+	uint32_t i = 0;
 	struct vmxnet3_cmd_ring *ring = &rxq->cmd_ring[ring_id];
 
-	if (ring_id == 0) {
-		/* Usually: One HEAD type buf per packet
-		 * val = (ring->next2fill % rxq->hw->bufs_per_pkt) ?
-		 * VMXNET3_RXD_BTYPE_BODY : VMXNET3_RXD_BTYPE_HEAD;
-		 */
-
-		/* We use single packet buffer so all heads here */
-		val = VMXNET3_RXD_BTYPE_HEAD;
-	} else {
-		/* All BODY type buffers for 2nd ring */
-		val = VMXNET3_RXD_BTYPE_BODY;
-	}
-
 	while (vmxnet3_cmd_ring_desc_avail(ring) > 0) {
-		struct Vmxnet3_RxDesc *rxd;
 		struct rte_mbuf *mbuf;
-		vmxnet3_buf_info_t *buf_info = &ring->buf_info[ring->next2fill];
-
-		rxd = (struct Vmxnet3_RxDesc *)(ring->base + ring->next2fill);
 
 		/* Allocate blank mbuf for the current Rx Descriptor */
 		mbuf = rte_mbuf_raw_alloc(rxq->mp);
@@ -661,25 +660,7 @@ vmxnet3_post_rx_bufs(vmxnet3_rx_queue_t *rxq, uint8_t ring_id)
 			break;
 		}
 
-		/*
-		 * Load mbuf pointer into buf_info[ring_size]
-		 * buf_info structure is equivalent to cookie for virtio-virtqueue
-		 */
-		buf_info->m = mbuf;
-		buf_info->len = (uint16_t)(mbuf->buf_len -
-					   RTE_PKTMBUF_HEADROOM);
-		buf_info->bufPA = rte_mbuf_data_dma_addr_default(mbuf);
-
-		/* Load Rx Descriptor with the buffer's GPA */
-		rxd->addr = buf_info->bufPA;
-
-		/* After this point rxd->addr MUST not be NULL */
-		rxd->btype = val;
-		rxd->len = buf_info->len;
-		/* Flip gen bit at the end to change ownership */
-		rxd->gen = ring->gen;
-
-		vmxnet3_cmd_ring_adv_next2fill(ring);
+		vmxnet3_renew_desc(rxq, ring_id, mbuf);
 		i++;
 	}
 
