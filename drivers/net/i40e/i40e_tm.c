@@ -63,6 +63,9 @@ static int i40e_node_capabilities_get(struct rte_eth_dev *dev,
 				      uint32_t node_id,
 				      struct rte_tm_node_capabilities *cap,
 				      struct rte_tm_error *error);
+static int i40e_hierarchy_commit(struct rte_eth_dev *dev,
+				 int clear_on_fail,
+				 struct rte_tm_error *error);
 
 const struct rte_tm_ops i40e_tm_ops = {
 	.capabilities_get = i40e_tm_capabilities_get,
@@ -73,6 +76,7 @@ const struct rte_tm_ops i40e_tm_ops = {
 	.node_type_get = i40e_node_type_get,
 	.level_capabilities_get = i40e_level_capabilities_get,
 	.node_capabilities_get = i40e_node_capabilities_get,
+	.hierarchy_commit = i40e_hierarchy_commit,
 };
 
 int
@@ -850,4 +854,125 @@ i40e_node_capabilities_get(struct rte_eth_dev *dev,
 	cap->stats_mask = 0;
 
 	return 0;
+}
+
+static int
+i40e_hierarchy_commit(struct rte_eth_dev *dev,
+		      int clear_on_fail,
+		      struct rte_tm_error *error)
+{
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct i40e_tm_node_list *tc_list = &pf->tm_conf.tc_list;
+	struct i40e_tm_node_list *queue_list = &pf->tm_conf.queue_list;
+	struct i40e_tm_node *tm_node;
+	struct i40e_vsi *vsi;
+	struct i40e_hw *hw;
+	struct i40e_aqc_configure_vsi_ets_sla_bw_data tc_bw;
+	uint64_t bw;
+	uint8_t tc_map;
+	int ret;
+	int i;
+
+	if (!error)
+		return -EINVAL;
+
+	/* check the setting */
+	if (!pf->tm_conf.root)
+		goto done;
+
+	vsi = pf->main_vsi;
+	hw = I40E_VSI_TO_HW(vsi);
+
+	/**
+	 * Don't support bandwidth control for port and TCs in parallel.
+	 * If the port has a max bandwidth, the TCs should have none.
+	 */
+	/* port */
+	bw = pf->tm_conf.root->shaper_profile->profile.peak.rate;
+	if (bw) {
+		/* check if any TC has a max bandwidth */
+		TAILQ_FOREACH(tm_node, tc_list, node) {
+			if (tm_node->shaper_profile->profile.peak.rate) {
+				error->type = RTE_TM_ERROR_TYPE_SHAPER_PROFILE;
+				error->message = "no port and TC max bandwidth"
+						 " in parallel";
+				goto fail_clear;
+			}
+		}
+
+		/* interpret Bps to 50Mbps */
+		bw = bw * 8 / 1000 / 1000 / I40E_QOS_BW_GRANULARITY;
+
+		/* set the max bandwidth */
+		ret = i40e_aq_config_vsi_bw_limit(hw, vsi->seid,
+						  (uint16_t)bw, 0, NULL);
+		if (ret) {
+			error->type = RTE_TM_ERROR_TYPE_SHAPER_PROFILE;
+			error->message = "fail to set port max bandwidth";
+			goto fail_clear;
+		}
+
+		goto done;
+	}
+
+	/* TC */
+	memset(&tc_bw, 0, sizeof(tc_bw));
+	tc_bw.tc_valid_bits = vsi->enabled_tc;
+	tc_map = vsi->enabled_tc;
+	TAILQ_FOREACH(tm_node, tc_list, node) {
+		if (!tm_node->reference_count) {
+			error->type = RTE_TM_ERROR_TYPE_NODE_PARAMS;
+			error->message = "TC without queue assigned";
+			goto fail_clear;
+		}
+
+		i = 0;
+		while (i < I40E_MAX_TRAFFIC_CLASS && !(tc_map & BIT_ULL(i)))
+			i++;
+		if (i >= I40E_MAX_TRAFFIC_CLASS) {
+			error->type = RTE_TM_ERROR_TYPE_NODE_PARAMS;
+			error->message = "cannot find the TC";
+			goto fail_clear;
+		}
+		tc_map &= ~BIT_ULL(i);
+
+		bw = tm_node->shaper_profile->profile.peak.rate;
+		if (!bw)
+			continue;
+
+		/* interpret Bps to 50Mbps */
+		bw = bw * 8 / 1000 / 1000 / I40E_QOS_BW_GRANULARITY;
+
+		tc_bw.tc_bw_credits[i] = rte_cpu_to_le_16((uint16_t)bw);
+	}
+
+	TAILQ_FOREACH(tm_node, queue_list, node) {
+		bw = tm_node->shaper_profile->profile.peak.rate;
+		if (bw) {
+			error->type = RTE_TM_ERROR_TYPE_NODE_PARAMS;
+			error->message = "not support queue QoS";
+			goto fail_clear;
+		}
+	}
+
+	ret = i40e_aq_config_vsi_ets_sla_bw_limit(hw, vsi->seid, &tc_bw, NULL);
+	if (ret) {
+		error->type = RTE_TM_ERROR_TYPE_SHAPER_PROFILE;
+		error->message = "fail to set TC max bandwidth";
+		goto fail_clear;
+	}
+
+	goto done;
+
+done:
+	pf->tm_conf.committed = true;
+	return 0;
+
+fail_clear:
+	/* clear all the traffic manager configuration */
+	if (clear_on_fail) {
+		i40e_tm_conf_uninit(dev);
+		i40e_tm_conf_init(dev);
+	}
+	return -EINVAL;
 }

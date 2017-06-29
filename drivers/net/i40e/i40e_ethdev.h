@@ -252,6 +252,15 @@ enum i40e_flxpld_layer_idx {
 	I40E_INSET_FLEX_PAYLOAD_W5 | I40E_INSET_FLEX_PAYLOAD_W6 | \
 	I40E_INSET_FLEX_PAYLOAD_W7 | I40E_INSET_FLEX_PAYLOAD_W8)
 
+/* The max bandwidth of i40e is 40Gbps. */
+#define I40E_QOS_BW_MAX 40000
+/* The bandwidth should be the multiple of 50Mbps. */
+#define I40E_QOS_BW_GRANULARITY 50
+/* The min bandwidth weight is 1. */
+#define I40E_QOS_BW_WEIGHT_MIN 1
+/* The max bandwidth weight is 127. */
+#define I40E_QOS_BW_WEIGHT_MAX 127
+
 /**
  * The overhead from MTU to max frame size.
  * Considering QinQ packet, the VLAN tag needs to be counted twice.

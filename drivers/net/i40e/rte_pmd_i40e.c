@@ -40,15 +40,6 @@
 #include "i40e_rxtx.h"
 #include "rte_pmd_i40e.h"
 
-/* The max bandwidth of i40e is 40Gbps. */
-#define I40E_QOS_BW_MAX 40000
-/* The bandwidth should be the multiple of 50Mbps. */
-#define I40E_QOS_BW_GRANULARITY 50
-/* The min bandwidth weight is 1. */
-#define I40E_QOS_BW_WEIGHT_MIN 1
-/* The max bandwidth weight is 127. */
-#define I40E_QOS_BW_WEIGHT_MAX 127
-
 int
 rte_pmd_i40e_ping_vfs(uint8_t port, uint16_t vf)
 {
