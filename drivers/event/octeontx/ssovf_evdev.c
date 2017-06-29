@@ -159,7 +159,7 @@ ssovf_fastpath_fns_set(struct rte_eventdev *dev)
 	dev->enqueue       = ssows_enq;
 	dev->enqueue_burst = ssows_enq_burst;
 	dev->enqueue_new_burst = ssows_enq_new_burst;
-	dev->enqueue_forward_burst = ssows_enq_burst;
+	dev->enqueue_forward_burst = ssows_enq_fwd_burst;
 	dev->dequeue       = ssows_deq;
 	dev->dequeue_burst = ssows_deq_burst;
 

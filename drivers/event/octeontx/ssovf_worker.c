@@ -213,6 +213,18 @@ ssows_enq_new_burst(void *port, const struct rte_event ev[], uint16_t nb_events)
 
 	return nb_events;
 }
+
+uint16_t __hot
+ssows_enq_fwd_burst(void *port, const struct rte_event ev[], uint16_t nb_events)
+{
+	struct ssows *ws = port;
+	RTE_SET_USED(nb_events);
+
+	ssows_forward_event(ws,  ev);
+
+	return 1;
+}
+
 void
 ssows_flush_events(struct ssows *ws, uint8_t queue_id)
 {
