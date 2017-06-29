@@ -59,6 +59,10 @@ static int i40e_level_capabilities_get(struct rte_eth_dev *dev,
 				       uint32_t level_id,
 				       struct rte_tm_level_capabilities *cap,
 				       struct rte_tm_error *error);
+static int i40e_node_capabilities_get(struct rte_eth_dev *dev,
+				      uint32_t node_id,
+				      struct rte_tm_node_capabilities *cap,
+				      struct rte_tm_error *error);
 
 const struct rte_tm_ops i40e_tm_ops = {
 	.capabilities_get = i40e_tm_capabilities_get,
@@ -68,6 +72,7 @@ const struct rte_tm_ops i40e_tm_ops = {
 	.node_delete = i40e_node_delete,
 	.node_type_get = i40e_node_type_get,
 	.level_capabilities_get = i40e_level_capabilities_get,
+	.node_capabilities_get = i40e_node_capabilities_get,
 };
 
 int
@@ -787,6 +792,62 @@ i40e_level_capabilities_get(struct rte_eth_dev *dev,
 	cap->leaf.cman_wred_context_private_supported = true;
 	cap->leaf.cman_wred_context_shared_n_max = 0;
 	cap->leaf.stats_mask = 0;
+
+	return 0;
+}
+
+static int
+i40e_node_capabilities_get(struct rte_eth_dev *dev,
+			   uint32_t node_id,
+			   struct rte_tm_node_capabilities *cap,
+			   struct rte_tm_error *error)
+{
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	enum i40e_tm_node_type node_type;
+	struct i40e_tm_node *tm_node;
+
+	if (!cap || !error)
+		return -EINVAL;
+
+	if (node_id == RTE_TM_NODE_ID_NULL) {
+		error->type = RTE_TM_ERROR_TYPE_NODE_ID;
+		error->message = "invalid node id";
+		return -EINVAL;
+	}
+
+	/* check if the node id exists */
+	tm_node = i40e_tm_node_search(dev, node_id, &node_type);
+	if (!tm_node) {
+		error->type = RTE_TM_ERROR_TYPE_NODE_ID;
+		error->message = "no such node";
+		return -EINVAL;
+	}
+
+	cap->shaper_private_supported = true;
+	cap->shaper_private_dual_rate_supported = false;
+	cap->shaper_private_rate_min = 0;
+	/* 40Gbps -> 5GBps */
+	cap->shaper_private_rate_max = 5000000000ull;
+	cap->shaper_shared_n_max = 0;
+
+	if (node_type == I40E_TM_NODE_TYPE_QUEUE) {
+		cap->leaf.cman_head_drop_supported = false;
+		cap->leaf.cman_wred_context_private_supported = true;
+		cap->leaf.cman_wred_context_shared_n_max = 0;
+	} else {
+		if (node_type == I40E_TM_NODE_TYPE_PORT)
+			cap->nonleaf.sched_n_children_max =
+				I40E_MAX_TRAFFIC_CLASS;
+		else
+			cap->nonleaf.sched_n_children_max =
+				hw->func_caps.num_tx_qp;
+		cap->nonleaf.sched_sp_n_priorities_max = 1;
+		cap->nonleaf.sched_wfq_n_children_per_group_max = 0;
+		cap->nonleaf.sched_wfq_n_groups_max = 0;
+		cap->nonleaf.sched_wfq_weight_max = 1;
+	}
+
+	cap->stats_mask = 0;
 
 	return 0;
 }
