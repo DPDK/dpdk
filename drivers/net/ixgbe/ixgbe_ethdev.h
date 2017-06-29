@@ -742,6 +742,8 @@ bool is_ixgbe_supported(struct rte_eth_dev *dev);
 int ixgbe_tm_ops_get(struct rte_eth_dev *dev, void *ops);
 void ixgbe_tm_conf_init(struct rte_eth_dev *dev);
 void ixgbe_tm_conf_uninit(struct rte_eth_dev *dev);
+int ixgbe_set_queue_rate_limit(struct rte_eth_dev *dev, uint16_t queue_idx,
+			       uint16_t tx_rate);
 
 static inline int
 ixgbe_ethertype_filter_lookup(struct ixgbe_filter_info *filter_info,

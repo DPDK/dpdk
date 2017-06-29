@@ -304,9 +304,6 @@ static void ixgbe_set_ivar_map(struct ixgbe_hw *hw, int8_t direction,
 			       uint8_t queue, uint8_t msix_vector);
 static void ixgbe_configure_msix(struct rte_eth_dev *dev);
 
-static int ixgbe_set_queue_rate_limit(struct rte_eth_dev *dev,
-		uint16_t queue_idx, uint16_t tx_rate);
-
 static int ixgbevf_add_mac_addr(struct rte_eth_dev *dev,
 				struct ether_addr *mac_addr,
 				uint32_t index, uint32_t pool);
@@ -2503,6 +2500,8 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 	int status;
 	uint16_t vf, idx;
 	uint32_t *link_speeds;
+	struct ixgbe_tm_conf *tm_conf =
+		IXGBE_DEV_PRIVATE_TO_TM_CONF(dev->data->dev_private);
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -2692,6 +2691,11 @@ skip_link_setup:
 	ixgbe_enable_intr(dev);
 	ixgbe_l2_tunnel_conf(dev);
 	ixgbe_filter_restore(dev);
+
+	if (!tm_conf->committed)
+		PMD_DRV_LOG(WARNING,
+			    "please call hierarchy_commit() "
+			    "before starting the port");
 
 	return 0;
 
@@ -5733,8 +5737,9 @@ ixgbe_configure_msix(struct rte_eth_dev *dev)
 	IXGBE_WRITE_REG(hw, IXGBE_EIAC, mask);
 }
 
-static int ixgbe_set_queue_rate_limit(struct rte_eth_dev *dev,
-	uint16_t queue_idx, uint16_t tx_rate)
+int
+ixgbe_set_queue_rate_limit(struct rte_eth_dev *dev,
+			   uint16_t queue_idx, uint16_t tx_rate)
 {
 	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint32_t rf_dec, rf_int;
