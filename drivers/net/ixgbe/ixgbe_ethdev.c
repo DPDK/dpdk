@@ -1351,6 +1351,9 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev)
 	/* initialize bandwidth configuration info */
 	memset(bw_conf, 0, sizeof(struct ixgbe_bw_conf));
 
+	/* initialize Traffic Manager configuration */
+	ixgbe_tm_conf_init(eth_dev);
+
 	return 0;
 }
 
@@ -1403,6 +1406,9 @@ eth_ixgbe_dev_uninit(struct rte_eth_dev *eth_dev)
 
 	/* clear all the filters list */
 	ixgbe_filterlist_flush();
+
+	/* Remove all Traffic Manager configuration */
+	ixgbe_tm_conf_uninit(eth_dev);
 
 	return 0;
 }

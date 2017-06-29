@@ -31,14 +31,21 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <rte_malloc.h>
+
 #include "ixgbe_ethdev.h"
 
 static int ixgbe_tm_capabilities_get(struct rte_eth_dev *dev,
 				     struct rte_tm_capabilities *cap,
 				     struct rte_tm_error *error);
+static int ixgbe_shaper_profile_add(struct rte_eth_dev *dev,
+				    uint32_t shaper_profile_id,
+				    struct rte_tm_shaper_params *profile,
+				    struct rte_tm_error *error);
 
 const struct rte_tm_ops ixgbe_tm_ops = {
 	.capabilities_get = ixgbe_tm_capabilities_get,
+	.shaper_profile_add = ixgbe_shaper_profile_add,
 };
 
 int
@@ -51,6 +58,32 @@ ixgbe_tm_ops_get(struct rte_eth_dev *dev __rte_unused,
 	*(const void **)arg = &ixgbe_tm_ops;
 
 	return 0;
+}
+
+void
+ixgbe_tm_conf_init(struct rte_eth_dev *dev)
+{
+	struct ixgbe_tm_conf *tm_conf =
+		IXGBE_DEV_PRIVATE_TO_TM_CONF(dev->data->dev_private);
+
+	/* initialize shaper profile list */
+	TAILQ_INIT(&tm_conf->shaper_profile_list);
+}
+
+void
+ixgbe_tm_conf_uninit(struct rte_eth_dev *dev)
+{
+	struct ixgbe_tm_conf *tm_conf =
+		IXGBE_DEV_PRIVATE_TO_TM_CONF(dev->data->dev_private);
+	struct ixgbe_tm_shaper_profile *shaper_profile;
+
+	/* Remove all shaper profiles */
+	while ((shaper_profile =
+	       TAILQ_FIRST(&tm_conf->shaper_profile_list))) {
+		TAILQ_REMOVE(&tm_conf->shaper_profile_list,
+			     shaper_profile, node);
+		rte_free(shaper_profile);
+	}
 }
 
 static inline uint8_t
@@ -138,6 +171,96 @@ ixgbe_tm_capabilities_get(struct rte_eth_dev *dev,
 	cap->cman_wred_context_shared_n_nodes_per_context_max = 0;
 	cap->cman_wred_context_shared_n_contexts_per_node_max = 0;
 	cap->stats_mask = 0;
+
+	return 0;
+}
+
+static inline struct ixgbe_tm_shaper_profile *
+ixgbe_shaper_profile_search(struct rte_eth_dev *dev,
+			    uint32_t shaper_profile_id)
+{
+	struct ixgbe_tm_conf *tm_conf =
+		IXGBE_DEV_PRIVATE_TO_TM_CONF(dev->data->dev_private);
+	struct ixgbe_shaper_profile_list *shaper_profile_list =
+		&tm_conf->shaper_profile_list;
+	struct ixgbe_tm_shaper_profile *shaper_profile;
+
+	TAILQ_FOREACH(shaper_profile, shaper_profile_list, node) {
+		if (shaper_profile_id == shaper_profile->shaper_profile_id)
+			return shaper_profile;
+	}
+
+	return NULL;
+}
+
+static int
+ixgbe_shaper_profile_param_check(struct rte_tm_shaper_params *profile,
+				 struct rte_tm_error *error)
+{
+	/* min rate not supported */
+	if (profile->committed.rate) {
+		error->type = RTE_TM_ERROR_TYPE_SHAPER_PROFILE_COMMITTED_RATE;
+		error->message = "committed rate not supported";
+		return -EINVAL;
+	}
+	/* min bucket size not supported */
+	if (profile->committed.size) {
+		error->type = RTE_TM_ERROR_TYPE_SHAPER_PROFILE_COMMITTED_SIZE;
+		error->message = "committed bucket size not supported";
+		return -EINVAL;
+	}
+	/* max bucket size not supported */
+	if (profile->peak.size) {
+		error->type = RTE_TM_ERROR_TYPE_SHAPER_PROFILE_PEAK_SIZE;
+		error->message = "peak bucket size not supported";
+		return -EINVAL;
+	}
+	/* length adjustment not supported */
+	if (profile->pkt_length_adjust) {
+		error->type = RTE_TM_ERROR_TYPE_SHAPER_PROFILE_PKT_ADJUST_LEN;
+		error->message = "packet length adjustment not supported";
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+static int
+ixgbe_shaper_profile_add(struct rte_eth_dev *dev,
+			 uint32_t shaper_profile_id,
+			 struct rte_tm_shaper_params *profile,
+			 struct rte_tm_error *error)
+{
+	struct ixgbe_tm_conf *tm_conf =
+		IXGBE_DEV_PRIVATE_TO_TM_CONF(dev->data->dev_private);
+	struct ixgbe_tm_shaper_profile *shaper_profile;
+	int ret;
+
+	if (!profile || !error)
+		return -EINVAL;
+
+	ret = ixgbe_shaper_profile_param_check(profile, error);
+	if (ret)
+		return ret;
+
+	shaper_profile = ixgbe_shaper_profile_search(dev, shaper_profile_id);
+
+	if (shaper_profile) {
+		error->type = RTE_TM_ERROR_TYPE_SHAPER_PROFILE_ID;
+		error->message = "profile ID exist";
+		return -EINVAL;
+	}
+
+	shaper_profile = rte_zmalloc("ixgbe_tm_shaper_profile",
+				     sizeof(struct ixgbe_tm_shaper_profile),
+				     0);
+	if (!shaper_profile)
+		return -ENOMEM;
+	shaper_profile->shaper_profile_id = shaper_profile_id;
+	(void)rte_memcpy(&shaper_profile->profile, profile,
+			 sizeof(struct rte_tm_shaper_params));
+	TAILQ_INSERT_TAIL(&tm_conf->shaper_profile_list,
+			  shaper_profile, node);
 
 	return 0;
 }

@@ -437,6 +437,21 @@ struct ixgbe_bw_conf {
 	uint8_t tc_num; /* Number of TCs. */
 };
 
+/* Struct to store Traffic Manager shaper profile. */
+struct ixgbe_tm_shaper_profile {
+	TAILQ_ENTRY(ixgbe_tm_shaper_profile) node;
+	uint32_t shaper_profile_id;
+	uint32_t reference_count;
+	struct rte_tm_shaper_params profile;
+};
+
+TAILQ_HEAD(ixgbe_shaper_profile_list, ixgbe_tm_shaper_profile);
+
+/* The configuration of Traffic Manager */
+struct ixgbe_tm_conf {
+	struct ixgbe_shaper_profile_list shaper_profile_list;
+};
+
 /*
  * Structure to store private data for each driver instance (for each port).
  */
@@ -465,6 +480,7 @@ struct ixgbe_adapter {
 	struct rte_timecounter      systime_tc;
 	struct rte_timecounter      rx_tstamp_tc;
 	struct rte_timecounter      tx_tstamp_tc;
+ 	struct ixgbe_tm_conf        tm_conf;
 };
 
 #define IXGBE_DEV_PRIVATE_TO_HW(adapter)\
@@ -511,6 +527,9 @@ struct ixgbe_adapter {
 
 #define IXGBE_DEV_PRIVATE_TO_BW_CONF(adapter) \
 	(&((struct ixgbe_adapter *)adapter)->bw_conf)
+
+#define IXGBE_DEV_PRIVATE_TO_TM_CONF(adapter) \
+	(&((struct ixgbe_adapter *)adapter)->tm_conf)
 
 /*
  * RX/TX function prototypes
@@ -674,6 +693,8 @@ int ixgbe_set_vf_rate_limit(struct rte_eth_dev *dev, uint16_t vf,
 			    uint16_t tx_rate, uint64_t q_msk);
 bool is_ixgbe_supported(struct rte_eth_dev *dev);
 int ixgbe_tm_ops_get(struct rte_eth_dev *dev, void *ops);
+void ixgbe_tm_conf_init(struct rte_eth_dev *dev);
+void ixgbe_tm_conf_uninit(struct rte_eth_dev *dev);
 
 static inline int
 ixgbe_ethertype_filter_lookup(struct ixgbe_filter_info *filter_info,
