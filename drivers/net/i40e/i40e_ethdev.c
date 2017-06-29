@@ -2093,6 +2093,9 @@ i40e_dev_stop(struct rte_eth_dev *dev)
 		rte_free(intr_handle->intr_vec);
 		intr_handle->intr_vec = NULL;
 	}
+
+	/* reset hierarchy commit */
+	pf->tm_conf.committed = false;
 }
 
 static void
