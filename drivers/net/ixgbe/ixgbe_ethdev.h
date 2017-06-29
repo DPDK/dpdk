@@ -447,9 +447,56 @@ struct ixgbe_tm_shaper_profile {
 
 TAILQ_HEAD(ixgbe_shaper_profile_list, ixgbe_tm_shaper_profile);
 
+/* node type of Traffic Manager */
+enum ixgbe_tm_node_type {
+	IXGBE_TM_NODE_TYPE_PORT,
+	IXGBE_TM_NODE_TYPE_TC,
+	IXGBE_TM_NODE_TYPE_QUEUE,
+	IXGBE_TM_NODE_TYPE_MAX,
+};
+
+/* Struct to store Traffic Manager node configuration. */
+struct ixgbe_tm_node {
+	TAILQ_ENTRY(ixgbe_tm_node) node;
+	uint32_t id;
+	uint32_t priority;
+	uint32_t weight;
+	uint32_t reference_count;
+	uint16_t no;
+	struct ixgbe_tm_node *parent;
+	struct ixgbe_tm_shaper_profile *shaper_profile;
+	struct rte_tm_node_params params;
+};
+
+TAILQ_HEAD(ixgbe_tm_node_list, ixgbe_tm_node);
+
 /* The configuration of Traffic Manager */
 struct ixgbe_tm_conf {
 	struct ixgbe_shaper_profile_list shaper_profile_list;
+	struct ixgbe_tm_node *root; /* root node - port */
+	struct ixgbe_tm_node_list tc_list; /* node list for all the TCs */
+	struct ixgbe_tm_node_list queue_list; /* node list for all the queues */
+	/**
+	 * The number of added TC nodes.
+	 * It should be no more than the TC number of this port.
+	 */
+	uint32_t nb_tc_node;
+	/**
+	 * The number of added queue nodes.
+	 * It should be no more than the queue number of this port.
+	 */
+	uint32_t nb_queue_node;
+	/**
+	 * This flag is used to check if APP can change the TM node
+	 * configuration.
+	 * When it's true, means the configuration is applied to HW,
+	 * APP should not change the configuration.
+	 * As we don't support on-the-fly configuration, when starting
+	 * the port, APP should call the hierarchy_commit API to set this
+	 * flag to true. When stopping the port, this flag should be set
+	 * to false.
+	 */
+	bool committed;
 };
 
 /*

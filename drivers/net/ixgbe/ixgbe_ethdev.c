@@ -2715,6 +2715,8 @@ ixgbe_dev_stop(struct rte_eth_dev *dev)
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	int vf;
+	struct ixgbe_tm_conf *tm_conf =
+		IXGBE_DEV_PRIVATE_TO_TM_CONF(dev->data->dev_private);
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -2761,6 +2763,9 @@ ixgbe_dev_stop(struct rte_eth_dev *dev)
 		rte_free(intr_handle->intr_vec);
 		intr_handle->intr_vec = NULL;
 	}
+
+	/* reset hierarchy commit */
+	tm_conf->committed = false;
 }
 
 /*
