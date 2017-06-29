@@ -1296,6 +1296,9 @@ eth_i40e_dev_init(struct rte_eth_dev *dev)
 	/* initialize mirror rule list */
 	TAILQ_INIT(&pf->mirror_list);
 
+	/* initialize Traffic Manager configuration */
+	i40e_tm_conf_init(dev);
+
 	ret = i40e_init_ethtype_filter_list(dev);
 	if (ret < 0)
 		goto err_init_ethtype_filter_list;
@@ -1457,6 +1460,9 @@ eth_i40e_dev_uninit(struct rte_eth_dev *dev)
 		TAILQ_REMOVE(&pf->flow_list, p_flow, node);
 		rte_free(p_flow);
 	}
+
+	/* Remove all Traffic Manager configuration */
+	i40e_tm_conf_uninit(dev);
 
 	return 0;
 }

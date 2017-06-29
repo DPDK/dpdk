@@ -652,6 +652,21 @@ struct rte_flow {
 
 TAILQ_HEAD(i40e_flow_list, rte_flow);
 
+/* Struct to store Traffic Manager shaper profile. */
+struct i40e_tm_shaper_profile {
+	TAILQ_ENTRY(i40e_tm_shaper_profile) node;
+	uint32_t shaper_profile_id;
+	uint32_t reference_count;
+	struct rte_tm_shaper_params profile;
+};
+
+TAILQ_HEAD(i40e_shaper_profile_list, i40e_tm_shaper_profile);
+
+/* Struct to store all the Traffic Manager configuration. */
+struct i40e_tm_conf {
+	struct i40e_shaper_profile_list shaper_profile_list;
+};
+
 /*
  * Structure to store private data specific for PF instance.
  */
@@ -715,6 +730,7 @@ struct i40e_pf {
 	struct i40e_flow_list flow_list;
 	bool mpls_replace_flag;  /* 1 - MPLS filter replace is done */
 	bool qinq_replace_flag;  /* QINQ filter replace is done */
+	struct i40e_tm_conf tm_conf;
 };
 
 enum pending_msg {
@@ -930,6 +946,8 @@ uint64_t i40e_translate_input_set_reg(enum i40e_mac_type type, uint64_t input);
 void i40e_check_write_reg(struct i40e_hw *hw, uint32_t addr, uint32_t val);
 
 int i40e_tm_ops_get(struct rte_eth_dev *dev, void *ops);
+void i40e_tm_conf_init(struct rte_eth_dev *dev);
+void i40e_tm_conf_uninit(struct rte_eth_dev *dev);
 
 #define I40E_DEV_TO_PCI(eth_dev) \
 	RTE_DEV_TO_PCI((eth_dev)->device)
