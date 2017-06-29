@@ -1147,7 +1147,7 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
 			ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_GALOIS_64) {
 		if (op->sym->cipher.iv.length == 12) {
 			/*
-			 * For GCM a 12 bit IV is allowed,
+			 * For GCM a 12 byte IV is allowed,
 			 * but we need to inform the f/w
 			 */
 			ICP_QAT_FW_LA_GCM_IV_LEN_FLAG_SET(
