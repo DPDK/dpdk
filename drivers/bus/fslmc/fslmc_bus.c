@@ -32,6 +32,7 @@
 
 #include <string.h>
 #include <dirent.h>
+#include <stdbool.h>
 
 #include <rte_log.h>
 #include <rte_bus.h>
@@ -105,6 +106,27 @@ rte_fslmc_probe(void)
 	return ret;
 }
 
+static struct rte_device *
+rte_fslmc_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
+		      const void *data)
+{
+	struct rte_dpaa2_device *dev;
+	bool start_found = !start;
+
+	TAILQ_FOREACH(dev, &rte_fslmc_bus.device_list, next) {
+		if (!start_found) {
+			if (&dev->device == start)
+				start_found = 1;
+			continue;
+		}
+
+		if (cmp(&dev->device, data) == 0)
+			return &dev->device;
+	}
+
+	return NULL;
+}
+
 /*register a fslmc bus based dpaa2 driver */
 void
 rte_fslmc_driver_register(struct rte_dpaa2_driver *driver)
@@ -133,6 +155,7 @@ struct rte_fslmc_bus rte_fslmc_bus = {
 	.bus = {
 		.scan = rte_fslmc_scan,
 		.probe = rte_fslmc_probe,
+		.find_device = rte_fslmc_find_device,
 	},
 	.device_list = TAILQ_HEAD_INITIALIZER(rte_fslmc_bus.device_list),
 	.driver_list = TAILQ_HEAD_INITIALIZER(rte_fslmc_bus.driver_list),
