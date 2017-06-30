@@ -203,5 +203,6 @@ DPDK_17.08 {
 	global:
 
 	rte_bus_find;
+	rte_bus_find_by_device;
 
 } DPDK_17.05;

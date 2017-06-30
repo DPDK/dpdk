@@ -165,3 +165,26 @@ rte_bus_find(const struct rte_bus *start, rte_bus_cmp_t cmp,
 	}
 	return bus;
 }
+
+static int
+cmp_rte_device(const struct rte_device *dev1, const void *_dev2)
+{
+	const struct rte_device *dev2 = _dev2;
+
+	return dev1 != dev2;
+}
+
+static int
+bus_find_device(const struct rte_bus *bus, const void *_dev)
+{
+	struct rte_device *dev;
+
+	dev = bus->find_device(NULL, cmp_rte_device, _dev);
+	return dev == NULL;
+}
+
+struct rte_bus *
+rte_bus_find_by_device(const struct rte_device *dev)
+{
+	return rte_bus_find(NULL, bus_find_device, (const void *)dev);
+}
