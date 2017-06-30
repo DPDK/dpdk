@@ -191,6 +191,27 @@ int rte_eal_dev_attach(const char *name, const char *devargs);
  */
 int rte_eal_dev_detach(const char *name);
 
+/**
+ * Device comparison function.
+ *
+ * This type of function is used to compare an rte_device with arbitrary
+ * data.
+ *
+ * @param dev
+ *   Device handle.
+ *
+ * @param data
+ *   Data to compare against. The type of this parameter is determined by
+ *   the kind of comparison performed by the function.
+ *
+ * @return
+ *   0 if the device matches the data.
+ *   !0 if the device does not match.
+ *   <0 if ordering is possible and the device is lower than the data.
+ *   >0 if ordering is possible and the device is greater than the data.
+ */
+typedef int (*rte_dev_cmp_t)(const struct rte_device *dev, const void *data);
+
 #define RTE_PMD_EXPORT_NAME_ARRAY(n, idx) n##idx[]
 
 #define RTE_PMD_EXPORT_NAME(name, idx) \

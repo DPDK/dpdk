@@ -82,6 +82,32 @@ typedef int (*rte_bus_scan_t)(void);
 typedef int (*rte_bus_probe_t)(void);
 
 /**
+ * Device iterator to find a device on a bus.
+ *
+ * This function returns an rte_device if one of those held by the bus
+ * matches the data passed as parameter.
+ *
+ * If the comparison function returns zero this function should stop iterating
+ * over any more devices. To continue a search the device of a previous search
+ * can be passed via the start parameter.
+ *
+ * @param cmp
+ *	Comparison function.
+ *
+ * @param data
+ *	Data to compare each device against.
+ *
+ * @param start
+ *	starting point for the iteration
+ *
+ * @return
+ *	The first device matching the data, NULL if none exists.
+ */
+typedef struct rte_device *
+(*rte_bus_find_device_t)(const struct rte_device *start, rte_dev_cmp_t cmp,
+			 const void *data);
+
+/**
  * A structure describing a generic bus.
  */
 struct rte_bus {
@@ -89,6 +115,7 @@ struct rte_bus {
 	const char *name;            /**< Name of the bus */
 	rte_bus_scan_t scan;         /**< Scan for devices attached to bus */
 	rte_bus_probe_t probe;       /**< Probe devices on bus */
+	rte_bus_find_device_t find_device; /**< Find a device on the bus */
 };
 
 /**
