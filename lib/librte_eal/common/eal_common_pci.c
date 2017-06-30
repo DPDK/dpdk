@@ -47,6 +47,7 @@
 #include <rte_pci.h>
 #include <rte_per_lcore.h>
 #include <rte_memory.h>
+#include <rte_memcpy.h>
 #include <rte_memzone.h>
 #include <rte_eal.h>
 #include <rte_string_fns.h>
@@ -505,11 +506,44 @@ pci_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
 	return NULL;
 }
 
+static int
+pci_plug(struct rte_device *dev, const char *devargs __rte_unused)
+{
+	struct rte_pci_device *pdev;
+	struct rte_pci_addr *addr;
+
+	addr = &RTE_DEV_TO_PCI(dev)->addr;
+
+	/* Find the current device holding this address in the bus. */
+	FOREACH_DEVICE_ON_PCIBUS(pdev) {
+		if (rte_eal_compare_pci_addr(&pdev->addr, addr) == 0)
+			return rte_pci_probe_one(addr);
+	}
+
+	rte_errno = ENODEV;
+	return -1;
+}
+
+static int
+pci_unplug(struct rte_device *dev)
+{
+	struct rte_pci_device *pdev;
+
+	pdev = RTE_DEV_TO_PCI(dev);
+	if (rte_pci_detach(&pdev->addr) != 0) {
+		rte_errno = ENODEV;
+		return -1;
+	}
+	return 0;
+}
+
 struct rte_pci_bus rte_pci_bus = {
 	.bus = {
 		.scan = rte_pci_scan,
 		.probe = rte_pci_probe,
 		.find_device = pci_find_device,
+		.plug = pci_plug,
+		.unplug = pci_unplug,
 	},
 	.device_list = TAILQ_HEAD_INITIALIZER(rte_pci_bus.device_list),
 	.driver_list = TAILQ_HEAD_INITIALIZER(rte_pci_bus.driver_list),
