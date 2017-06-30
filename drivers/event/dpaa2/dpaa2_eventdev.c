@@ -49,6 +49,7 @@
 #include <rte_lcore.h>
 #include <rte_log.h>
 #include <rte_malloc.h>
+#include <rte_memcpy.h>
 #include <rte_memory.h>
 #include <rte_memzone.h>
 #include <rte_pci.h>
@@ -74,11 +75,85 @@ static uint16_t
 dpaa2_eventdev_enqueue_burst(void *port, const struct rte_event ev[],
 			     uint16_t nb_events)
 {
-	RTE_SET_USED(port);
-	RTE_SET_USED(ev);
-	RTE_SET_USED(nb_events);
+	struct rte_eventdev *ev_dev =
+			((struct dpaa2_io_portal_t *)port)->eventdev;
+	struct dpaa2_eventdev *priv = ev_dev->data->dev_private;
+	uint32_t queue_id = ev[0].queue_id;
+	struct evq_info_t *evq_info = &priv->evq_info[queue_id];
+	uint32_t fqid;
+	struct qbman_swp *swp;
+	struct qbman_fd fd_arr[MAX_TX_RING_SLOTS];
+	uint32_t loop, frames_to_send;
+	struct qbman_eq_desc eqdesc[MAX_TX_RING_SLOTS];
+	uint16_t num_tx = 0;
+	int ret;
 
-	return 0;
+	RTE_SET_USED(port);
+
+	if (unlikely(!DPAA2_PER_LCORE_DPIO)) {
+		ret = dpaa2_affine_qbman_swp();
+		if (ret) {
+			PMD_DRV_LOG(ERR, PMD, "Failure in affining portal\n");
+			return 0;
+		}
+	}
+
+	swp = DPAA2_PER_LCORE_PORTAL;
+
+	while (nb_events) {
+		frames_to_send = (nb_events >> 3) ?
+			MAX_TX_RING_SLOTS : nb_events;
+
+		for (loop = 0; loop < frames_to_send; loop++) {
+			const struct rte_event *event = &ev[num_tx + loop];
+
+			if (event->sched_type != RTE_SCHED_TYPE_ATOMIC)
+				fqid = evq_info->dpci->queue[
+					DPAA2_EVENT_DPCI_PARALLEL_QUEUE].fqid;
+			else
+				fqid = evq_info->dpci->queue[
+					DPAA2_EVENT_DPCI_ATOMIC_QUEUE].fqid;
+
+			/* Prepare enqueue descriptor */
+			qbman_eq_desc_clear(&eqdesc[loop]);
+			qbman_eq_desc_set_fq(&eqdesc[loop], fqid);
+			qbman_eq_desc_set_no_orp(&eqdesc[loop], 0);
+			qbman_eq_desc_set_response(&eqdesc[loop], 0, 0);
+
+			if (event->impl_opaque) {
+				uint8_t dqrr_index = event->impl_opaque - 1;
+
+				qbman_eq_desc_set_dca(&eqdesc[loop], 1,
+						      dqrr_index, 0);
+				DPAA2_PER_LCORE_DPIO->dqrr_size--;
+				DPAA2_PER_LCORE_DPIO->dqrr_held &=
+					~(1 << dqrr_index);
+			}
+
+			memset(&fd_arr[loop], 0, sizeof(struct qbman_fd));
+
+			/*
+			 * todo - need to align with hw context data
+			 * to avoid copy
+			 */
+			struct rte_event *ev_temp = rte_malloc(NULL,
+				sizeof(struct rte_event), 0);
+			rte_memcpy(ev_temp, event, sizeof(struct rte_event));
+			DPAA2_SET_FD_ADDR((&fd_arr[loop]), ev_temp);
+			DPAA2_SET_FD_LEN((&fd_arr[loop]),
+					 sizeof(struct rte_event));
+		}
+		loop = 0;
+		while (loop < frames_to_send) {
+			loop += qbman_swp_enqueue_multiple_eqdesc(swp,
+					&eqdesc[loop], &fd_arr[loop],
+					frames_to_send - loop);
+		}
+		num_tx += frames_to_send;
+		nb_events -= frames_to_send;
+	}
+
+	return num_tx;
 }
 
 static uint16_t
@@ -87,16 +162,91 @@ dpaa2_eventdev_enqueue(void *port, const struct rte_event *ev)
 	return dpaa2_eventdev_enqueue_burst(port, ev, 1);
 }
 
+static void dpaa2_eventdev_process_parallel(struct qbman_swp *swp,
+					    const struct qbman_fd *fd,
+					    const struct qbman_result *dq,
+					    struct rte_event *ev)
+{
+	struct rte_event *ev_temp =
+		(struct rte_event *)DPAA2_GET_FD_ADDR(fd);
+	rte_memcpy(ev, ev_temp, sizeof(struct rte_event));
+	rte_free(ev_temp);
+
+	qbman_swp_dqrr_consume(swp, dq);
+}
+
+static void dpaa2_eventdev_process_atomic(struct qbman_swp *swp,
+					  const struct qbman_fd *fd,
+					  const struct qbman_result *dq,
+					  struct rte_event *ev)
+{
+	struct rte_event *ev_temp =
+		(struct rte_event *)DPAA2_GET_FD_ADDR(fd);
+	uint8_t dqrr_index = qbman_get_dqrr_idx(dq);
+
+	RTE_SET_USED(swp);
+
+	rte_memcpy(ev, ev_temp, sizeof(struct rte_event));
+	rte_free(ev_temp);
+	ev->impl_opaque = dqrr_index + 1;
+	DPAA2_PER_LCORE_DPIO->dqrr_size++;
+	DPAA2_PER_LCORE_DPIO->dqrr_held |= 1 << dqrr_index;
+}
+
 static uint16_t
 dpaa2_eventdev_dequeue_burst(void *port, struct rte_event ev[],
 			     uint16_t nb_events, uint64_t timeout_ticks)
 {
+	const struct qbman_result *dq;
+	struct qbman_swp *swp;
+	const struct qbman_fd *fd;
+	struct dpaa2_queue *rxq;
+	int num_pkts = 0, ret, i = 0;
+
 	RTE_SET_USED(port);
-	RTE_SET_USED(ev);
-	RTE_SET_USED(nb_events);
 	RTE_SET_USED(timeout_ticks);
 
-	return 0;
+	if (unlikely(!DPAA2_PER_LCORE_DPIO)) {
+		ret = dpaa2_affine_qbman_swp();
+		if (ret) {
+			PMD_DRV_LOG(ERR, PMD, "Failure in affining portal\n");
+			return 0;
+		}
+	}
+
+	swp = DPAA2_PER_LCORE_PORTAL;
+
+	/* Check if there are atomic contexts to be released */
+	while (DPAA2_PER_LCORE_DPIO->dqrr_size) {
+		if (DPAA2_PER_LCORE_DPIO->dqrr_held & (1 << i)) {
+			dq = qbman_get_dqrr_from_idx(swp, i);
+			qbman_swp_dqrr_consume(swp, dq);
+			DPAA2_PER_LCORE_DPIO->dqrr_size--;
+		}
+		i++;
+	}
+	DPAA2_PER_LCORE_DPIO->dqrr_held = 0;
+
+	do {
+		dq = qbman_swp_dqrr_next(swp);
+		if (!dq)
+			return 0;
+
+		fd = qbman_result_DQ_fd(dq);
+
+		rxq = (struct dpaa2_queue *)qbman_result_DQ_fqd_ctx(dq);
+		if (rxq) {
+			rxq->cb(swp, fd, dq, &ev[num_pkts]);
+		} else {
+			qbman_swp_dqrr_consume(swp, dq);
+			PMD_DRV_LOG(ERR, PMD, "Null Return VQ received\n");
+			return 0;
+		}
+
+		num_pkts++;
+	} while (num_pkts < nb_events);
+
+	return num_pkts;
 }
 
 static uint16_t
@@ -397,10 +547,16 @@ dpaa2_eventdev_setup_dpci(struct dpaa2_dpci_dev *dpci_dev,
 	int ret, i;
 
 	/*Do settings to get the frame on a DPCON object*/
-	rx_queue_cfg.options = DPCI_QUEUE_OPT_DEST;
+	rx_queue_cfg.options = DPCI_QUEUE_OPT_DEST |
+		  DPCI_QUEUE_OPT_USER_CTX;
 	rx_queue_cfg.dest_cfg.dest_type = DPCI_DEST_DPCON;
 	rx_queue_cfg.dest_cfg.dest_id = dpcon_dev->dpcon_id;
 	rx_queue_cfg.dest_cfg.priority = DPAA2_EVENT_DEFAULT_DPCI_PRIO;
+
+	dpci_dev->queue[DPAA2_EVENT_DPCI_PARALLEL_QUEUE].cb =
+		dpaa2_eventdev_process_parallel;
+	dpci_dev->queue[DPAA2_EVENT_DPCI_ATOMIC_QUEUE].cb =
+		dpaa2_eventdev_process_atomic;
 
 	for (i = 0 ; i < DPAA2_EVENT_DPCI_MAX_QUEUES; i++) {
 		rx_queue_cfg.user_ctx = (uint64_t)(&dpci_dev->queue[i]);
