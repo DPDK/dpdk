@@ -970,6 +970,8 @@ int bnxt_hwrm_vnic_alloc(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 				ETHER_CRC_LEN + VLAN_TAG_SIZE;
 	HWRM_PREP(req, VNIC_ALLOC, -1, resp);
 
+	if (vnic->func_default)
+		req.flags = HWRM_VNIC_ALLOC_INPUT_FLAGS_DEFAULT;
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 
 	HWRM_CHECK_RESULT;
