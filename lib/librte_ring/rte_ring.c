@@ -140,8 +140,22 @@ rte_ring_init(struct rte_ring *r, const char *name, unsigned count,
 	r->flags = flags;
 	r->prod.single = (flags & RING_F_SP_ENQ) ? __IS_SP : __IS_MP;
 	r->cons.single = (flags & RING_F_SC_DEQ) ? __IS_SC : __IS_MC;
-	r->size = count;
-	r->mask = count - 1;
+
+	if (flags & RING_F_EXACT_SZ) {
+		r->size = rte_align32pow2(count + 1);
+		r->mask = r->size - 1;
+		r->capacity = count;
+	} else {
+		if ((!POWEROF2(count)) || (count > RTE_RING_SZ_MASK)) {
+			RTE_LOG(ERR, RING,
+				"Requested size is invalid, must be power of 2, and not exceed the size limit %u\n",
+				RTE_RING_SZ_MASK);
+			return -EINVAL;
+		}
+		r->size = count;
+		r->mask = count - 1;
+		r->capacity = r->mask;
+	}
 	r->prod.head = r->cons.head = 0;
 	r->prod.tail = r->cons.tail = 0;
 
@@ -160,9 +174,14 @@ rte_ring_create(const char *name, unsigned count, int socket_id,
 	ssize_t ring_size;
 	int mz_flags = 0;
 	struct rte_ring_list* ring_list = NULL;
+	const unsigned int requested_count = count;
 	int ret;
 
 	ring_list = RTE_TAILQ_CAST(rte_ring_tailq.head, rte_ring_list);
+
+	/* for an exact size ring, round up from count to a power of two */
+	if (flags & RING_F_EXACT_SZ)
+		count = rte_align32pow2(count + 1);
 
 	ring_size = rte_ring_get_memsize(count);
 	if (ring_size < 0) {
@@ -195,7 +214,7 @@ rte_ring_create(const char *name, unsigned count, int socket_id,
 		r = mz->addr;
 		/* no need to check return value here, we already checked the
 		 * arguments above */
-		rte_ring_init(r, name, count, flags);
+		rte_ring_init(r, name, requested_count, flags);
 
 		te->data = (void *) r;
 		r->memzone = mz;
@@ -263,6 +282,7 @@ rte_ring_dump(FILE *f, const struct rte_ring *r)
 	fprintf(f, "ring <%s>@%p\n", r->name, r);
 	fprintf(f, "  flags=%x\n", r->flags);
 	fprintf(f, "  size=%"PRIu32"\n", r->size);
+	fprintf(f, "  capacity=%"PRIu32"\n", r->capacity);
 	fprintf(f, "  ct=%"PRIu32"\n", r->cons.tail);
 	fprintf(f, "  ch=%"PRIu32"\n", r->cons.head);
 	fprintf(f, "  pt=%"PRIu32"\n", r->prod.tail);

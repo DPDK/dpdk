@@ -154,6 +154,7 @@ struct rte_ring {
 			/**< Memzone, if any, containing the rte_ring */
 	uint32_t size;           /**< Size of ring. */
 	uint32_t mask;           /**< Mask (size-1) of ring. */
+	uint32_t capacity;       /**< Usable size of ring */
 
 	/** Ring producer status. */
 	struct rte_ring_headtail prod __rte_aligned(PROD_ALIGN);
@@ -164,6 +165,15 @@ struct rte_ring {
 
 #define RING_F_SP_ENQ 0x0001 /**< The default enqueue is "single-producer". */
 #define RING_F_SC_DEQ 0x0002 /**< The default dequeue is "single-consumer". */
+/**
+ * Ring is to hold exactly requested number of entries.
+ * Without this flag set, the ring size requested must be a power of 2, and the
+ * usable space will be that size - 1. With the flag, the requested size will
+ * be rounded up to the next power of two, but the usable space will be exactly
+ * that requested. Worst case, if a power-of-2 size is requested, half the
+ * ring space will be wasted.
+ */
+#define RING_F_EXACT_SZ 0x0004
 #define RTE_RING_SZ_MASK  (unsigned)(0x0fffffff) /**< Ring size mask */
 
 /* @internal defines for passing to the enqueue dequeue worker functions */
@@ -390,7 +400,7 @@ __rte_ring_move_prod_head(struct rte_ring *r, int is_sp,
 		uint32_t *old_head, uint32_t *new_head,
 		uint32_t *free_entries)
 {
-	const uint32_t mask = r->mask;
+	const uint32_t capacity = r->capacity;
 	unsigned int max = n;
 	int success;
 
@@ -400,11 +410,13 @@ __rte_ring_move_prod_head(struct rte_ring *r, int is_sp,
 
 		*old_head = r->prod.head;
 		const uint32_t cons_tail = r->cons.tail;
-		/* The subtraction is done between two unsigned 32bits value
+		/*
+		 *  The subtraction is done between two unsigned 32bits value
 		 * (the result is always modulo 32 bits even if we have
 		 * *old_head > cons_tail). So 'free_entries' is always between 0
-		 * and size(ring)-1. */
-		*free_entries = (mask + cons_tail - *old_head);
+		 * and capacity (which is < size).
+		 */
+		*free_entries = (capacity + cons_tail - *old_head);
 
 		/* check that we have enough room in ring */
 		if (unlikely(n > *free_entries))
@@ -846,6 +858,37 @@ rte_ring_dequeue(struct rte_ring *r, void **obj_p)
 }
 
 /**
+ * Return the number of entries in a ring.
+ *
+ * @param r
+ *   A pointer to the ring structure.
+ * @return
+ *   The number of entries in the ring.
+ */
+static inline unsigned
+rte_ring_count(const struct rte_ring *r)
+{
+	uint32_t prod_tail = r->prod.tail;
+	uint32_t cons_tail = r->cons.tail;
+	uint32_t count = (prod_tail - cons_tail) & r->mask;
+	return (count > r->capacity) ? r->capacity : count;
+}
+
+/**
+ * Return the number of free entries in a ring.
+ *
+ * @param r
+ *   A pointer to the ring structure.
+ * @return
+ *   The number of free entries in the ring.
+ */
+static inline unsigned
+rte_ring_free_count(const struct rte_ring *r)
+{
+	return r->capacity - rte_ring_count(r);
+}
+
+/**
  * Test if a ring is full.
  *
  * @param r
@@ -857,9 +900,7 @@ rte_ring_dequeue(struct rte_ring *r, void **obj_p)
 static inline int
 rte_ring_full(const struct rte_ring *r)
 {
-	uint32_t prod_tail = r->prod.tail;
-	uint32_t cons_tail = r->cons.tail;
-	return ((cons_tail - prod_tail - 1) & r->mask) == 0;
+	return rte_ring_free_count(r) == 0;
 }
 
 /**
@@ -874,41 +915,7 @@ rte_ring_full(const struct rte_ring *r)
 static inline int
 rte_ring_empty(const struct rte_ring *r)
 {
-	uint32_t prod_tail = r->prod.tail;
-	uint32_t cons_tail = r->cons.tail;
-	return !!(cons_tail == prod_tail);
-}
-
-/**
- * Return the number of entries in a ring.
- *
- * @param r
- *   A pointer to the ring structure.
- * @return
- *   The number of entries in the ring.
- */
-static inline unsigned
-rte_ring_count(const struct rte_ring *r)
-{
-	uint32_t prod_tail = r->prod.tail;
-	uint32_t cons_tail = r->cons.tail;
-	return (prod_tail - cons_tail) & r->mask;
-}
-
-/**
- * Return the number of free entries in a ring.
- *
- * @param r
- *   A pointer to the ring structure.
- * @return
- *   The number of free entries in the ring.
- */
-static inline unsigned
-rte_ring_free_count(const struct rte_ring *r)
-{
-	uint32_t prod_tail = r->prod.tail;
-	uint32_t cons_tail = r->cons.tail;
-	return (cons_tail - prod_tail - 1) & r->mask;
+	return rte_ring_count(r) == 0;
 }
 
 /**
@@ -917,12 +924,28 @@ rte_ring_free_count(const struct rte_ring *r)
  * @param r
  *   A pointer to the ring structure.
  * @return
- *   The number of elements which can be stored in the ring.
+ *   The size of the data store used by the ring.
+ *   NOTE: this is not the same as the usable space in the ring. To query that
+ *   use ``rte_ring_get_capacity()``.
  */
 static inline unsigned int
 rte_ring_get_size(const struct rte_ring *r)
 {
 	return r->size;
+}
+
+/**
+ * Return the number of elements which can be stored in the ring.
+ *
+ * @param r
+ *   A pointer to the ring structure.
+ * @return
+ *   The usable size of the ring.
+ */
+static inline unsigned int
+rte_ring_get_capacity(const struct rte_ring *r)
+{
+	return r->capacity;
 }
 
 /**
