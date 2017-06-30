@@ -1463,7 +1463,7 @@ int qbman_swp_CDAN_set_context_enable(struct qbman_swp *s, uint16_t channelid,
 				  1, ctx);
 }
 
-uint8_t qbman_get_dqrr_idx(struct qbman_result *dqrr)
+uint8_t qbman_get_dqrr_idx(const struct qbman_result *dqrr)
 {
 	return QBMAN_IDX_FROM_DQRR(dqrr);
 }

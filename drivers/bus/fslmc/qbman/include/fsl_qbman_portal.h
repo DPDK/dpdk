@@ -349,7 +349,7 @@ void qbman_swp_dqrr_consume(struct qbman_swp *s, const struct qbman_result *dq);
  *
  * Return dqrr index.
  */
-uint8_t qbman_get_dqrr_idx(struct qbman_result *dqrr);
+uint8_t qbman_get_dqrr_idx(const struct qbman_result *dqrr);
 
 /**
  * qbman_get_dqrr_from_idx() - Use index to get the dqrr entry from the
