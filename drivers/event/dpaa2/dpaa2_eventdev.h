@@ -34,6 +34,7 @@
 #define __DPAA2_EVENTDEV_H__
 
 #include <rte_eventdev_pmd.h>
+#include <rte_eventdev_pmd_vdev.h>
 #include <rte_atomic.h>
 #include <mc/fsl_dpcon.h>
 #include <mc/fsl_mc_sys.h>
@@ -52,6 +53,16 @@
 #define PMD_DRV_ERR(fmt, args...) \
 	RTE_LOG(ERR, PMD, "%s(): " fmt "\n", __func__, ## args)
 
+#define DPAA2_EVENT_DEFAULT_DPCI_PRIO 0
+
+#define DPAA2_EVENT_MAX_QUEUES			16
+
+enum {
+	DPAA2_EVENT_DPCI_PARALLEL_QUEUE,
+	DPAA2_EVENT_DPCI_ATOMIC_QUEUE,
+	DPAA2_EVENT_DPCI_MAX_QUEUES
+};
+
 struct dpaa2_dpcon_dev {
 	TAILQ_ENTRY(dpaa2_dpcon_dev) next;
 	struct fsl_mc_io dpcon;
@@ -61,6 +72,18 @@ struct dpaa2_dpcon_dev {
 	uint16_t qbman_ch_id;
 	uint8_t num_priorities;
 	uint8_t channel_index;
+};
+
+struct evq_info_t {
+	/* DPcon device */
+	struct dpaa2_dpcon_dev *dpcon;
+	/* Attached DPCI device */
+	struct dpaa2_dpci_dev *dpci;
+};
+
+struct dpaa2_eventdev {
+	struct evq_info_t evq_info[DPAA2_EVENT_MAX_QUEUES];
+	uint8_t max_event_queues;
 };
 
 struct dpaa2_dpcon_dev *rte_dpaa2_alloc_dpcon_dev(void);
