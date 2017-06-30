@@ -582,6 +582,7 @@ NXP DPAA2 eventdev
 M: Hemant Agrawal <hemant.agrawal@nxp.com>
 M: Nipun Gupta <nipun.gupta@nxp.com>
 F: drivers/event/dpaa2/
+F: doc/guides/eventdevs/dpaa2.rst
 
 Software Eventdev PMD
 M: Harry van Haaren <harry.van.haaren@intel.com>
