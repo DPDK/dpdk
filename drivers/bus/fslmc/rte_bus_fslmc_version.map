@@ -53,6 +53,8 @@ DPDK_17.05 {
 DPDK_17.08 {
 	global:
 
+	dpaa2_io_portal;
+	dpaa2_get_qbman_swp;
 	dpci_set_rx_queue;
 	dpcon_open;
 	dpcon_get_attributes;
