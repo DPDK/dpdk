@@ -396,8 +396,8 @@ cperf_throughput_test_runner(void *test_ctx)
 				 * the crypto operation will change the data and cause
 				 * failures.
 				 */
-				for (i = 0; i < ops_deqd; i++)
-					rte_crypto_op_free(ops_processed[i]);
+				rte_mempool_put_bulk(ctx->crypto_op_pool,
+						(void **)ops_processed, ops_deqd);
 
 				ops_deqd_total += ops_deqd;
 			} else {
@@ -426,8 +426,8 @@ cperf_throughput_test_runner(void *test_ctx)
 			if (ops_deqd == 0)
 				ops_deqd_failed++;
 			else {
-				for (i = 0; i < ops_deqd; i++)
-					rte_crypto_op_free(ops_processed[i]);
+				rte_mempool_put_bulk(ctx->crypto_op_pool,
+						(void **)ops_processed, ops_deqd);
 
 				ops_deqd_total += ops_deqd;
 			}

@@ -393,8 +393,10 @@ cperf_latency_test_runner(void *arg)
 			tsc_end = rte_rdtsc_precise();
 
 			/* Free memory for not enqueued operations */
-			for (i = ops_enqd; i < burst_size; i++)
-				rte_crypto_op_free(ops[i]);
+			if (ops_enqd != burst_size)
+				rte_mempool_put_bulk(ctx->crypto_op_pool,
+						(void **)&ops_processed[ops_enqd],
+						burst_size - ops_enqd);
 
 			for (i = 0; i < ops_enqd; i++) {
 				ctx->res[tsc_idx].tsc_start = tsc_start;
@@ -414,9 +416,9 @@ cperf_latency_test_runner(void *arg)
 							(ops_processed[i]->opaque_data);
 					pres->status = ops_processed[i]->status;
 					pres->tsc_end = tsc_end;
-
-					rte_crypto_op_free(ops_processed[i]);
 				}
+				rte_mempool_put_bulk(ctx->crypto_op_pool,
+						(void **)ops_processed, ops_deqd);
 
 				deqd_tot += ops_deqd;
 				deqd_max = max(ops_deqd, deqd_max);
@@ -450,9 +452,9 @@ cperf_latency_test_runner(void *arg)
 							(ops_processed[i]->opaque_data);
 					pres->status = ops_processed[i]->status;
 					pres->tsc_end = tsc_end;
-
-					rte_crypto_op_free(ops_processed[i]);
 				}
+				rte_mempool_put_bulk(ctx->crypto_op_pool,
+						(void **)ops_processed, ops_deqd);
 
 				deqd_tot += ops_deqd;
 				deqd_max = max(ops_deqd, deqd_max);
