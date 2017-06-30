@@ -202,3 +202,11 @@ DPDK_17.08 {
 	rte_bus_find_by_name;
 
 } DPDK_17.05;
+
+EXPERIMENTAL {
+	global:
+
+	rte_eal_hotplug_add;
+	rte_eal_hotplug_remove;
+
+} DPDK_17.08;

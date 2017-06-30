@@ -192,6 +192,40 @@ int rte_eal_dev_attach(const char *name, const char *devargs);
 int rte_eal_dev_detach(const char *name);
 
 /**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Hotplug add a given device to a specific bus.
+ *
+ * @param busname
+ *   The bus name the device is added to.
+ * @param devname
+ *   The device name. Based on this device name, eal will identify a driver
+ *   capable of handling it and pass it to the driver probing function.
+ * @param devargs
+ *   Device arguments to be passed to the driver.
+ * @return
+ *   0 on success, negative on error.
+ */
+int rte_eal_hotplug_add(const char *busname, const char *devname,
+			const char *devargs);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
+ * Hotplug remove a given device from a specific bus.
+ *
+ * @param busname
+ *   The bus name the device is removed from.
+ * @param devname
+ *   The device name being removed.
+ * @return
+ *   0 on success, negative on error.
+ */
+int rte_eal_hotplug_remove(const char *busname, const char *devname);
+
+/**
  * Device comparison function.
  *
  * This type of function is used to compare an rte_device with arbitrary

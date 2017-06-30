@@ -37,6 +37,7 @@
 #include <inttypes.h>
 #include <sys/queue.h>
 
+#include <rte_bus.h>
 #include <rte_dev.h>
 #include <rte_devargs.h>
 #include <rte_debug.h>
@@ -44,6 +45,25 @@
 #include <rte_log.h>
 
 #include "eal_private.h"
+
+static int cmp_detached_dev_name(const struct rte_device *dev,
+	const void *_name)
+{
+	const char *name = _name;
+
+	/* skip attached devices */
+	if (dev->driver != NULL)
+		return 1;
+
+	return strcmp(dev->name, name);
+}
+
+static int cmp_dev_name(const struct rte_device *dev, const void *_name)
+{
+	const char *name = _name;
+
+	return strcmp(dev->name, name);
+}
 
 int rte_eal_dev_attach(const char *name, const char *devargs)
 {
@@ -91,4 +111,72 @@ int rte_eal_dev_detach(const char *name)
 err:
 	RTE_LOG(ERR, EAL, "Driver cannot detach the device (%s)\n", name);
 	return -EINVAL;
+}
+
+int rte_eal_hotplug_add(const char *busname, const char *devname,
+			const char *devargs)
+{
+	struct rte_bus *bus;
+	struct rte_device *dev;
+	int ret;
+
+	bus = rte_bus_find_by_name(busname);
+	if (bus == NULL) {
+		RTE_LOG(ERR, EAL, "Cannot find bus (%s)\n", busname);
+		return -ENOENT;
+	}
+
+	if (bus->plug == NULL) {
+		RTE_LOG(ERR, EAL, "Function plug not supported by bus (%s)\n",
+			bus->name);
+		return -ENOTSUP;
+	}
+
+	ret = bus->scan();
+	if (ret)
+		return ret;
+
+	dev = bus->find_device(NULL, cmp_detached_dev_name, devname);
+	if (dev == NULL) {
+		RTE_LOG(ERR, EAL, "Cannot find unplugged device (%s)\n",
+			devname);
+		return -EINVAL;
+	}
+
+	ret = bus->plug(dev, devargs);
+	if (ret)
+		RTE_LOG(ERR, EAL, "Driver cannot attach the device (%s)\n",
+			dev->name);
+	return ret;
+}
+
+int rte_eal_hotplug_remove(const char *busname, const char *devname)
+{
+	struct rte_bus *bus;
+	struct rte_device *dev;
+	int ret;
+
+	bus = rte_bus_find_by_name(busname);
+	if (bus == NULL) {
+		RTE_LOG(ERR, EAL, "Cannot find bus (%s)\n", busname);
+		return -ENOENT;
+	}
+
+	if (bus->unplug == NULL) {
+		RTE_LOG(ERR, EAL, "Function unplug not supported by bus (%s)\n",
+			bus->name);
+		return -ENOTSUP;
+	}
+
+	dev = bus->find_device(NULL, cmp_dev_name, devname);
+	if (dev == NULL) {
+		RTE_LOG(ERR, EAL, "Cannot find plugged device (%s)\n", devname);
+		return -EINVAL;
+	}
+
+	ret = bus->unplug(dev);
+	if (ret)
+		RTE_LOG(ERR, EAL, "Driver cannot detach the device (%s)\n",
+			dev->name);
+	return ret;
 }
