@@ -79,6 +79,8 @@
 #define DPAA2_HW_BUF_RESERVE	0
 #define DPAA2_PACKET_LAYOUT_ALIGN	64 /*changing from 256 */
 
+#define DPAA2_DPCI_MAX_QUEUES 2
+
 struct dpaa2_dpio_dev {
 	TAILQ_ENTRY(dpaa2_dpio_dev) next;
 		/**< Pointer to Next device instance */
@@ -141,6 +143,16 @@ struct swp_active_dqs {
 #define NUM_MAX_SWP 64
 
 extern struct swp_active_dqs rte_global_active_dqs_list[NUM_MAX_SWP];
+
+struct dpaa2_dpci_dev {
+	TAILQ_ENTRY(dpaa2_dpci_dev) next;
+		/**< Pointer to Next device instance */
+	struct fsl_mc_io dpci;  /** handle to DPCI portal object */
+	uint16_t token;
+	rte_atomic16_t in_use;
+	uint32_t dpci_id; /*HW ID for DPCI object */
+	struct dpaa2_queue queue[DPAA2_DPCI_MAX_QUEUES];
+};
 
 /*! Global MCP list */
 extern void *(*rte_mcp_ptr_list);
@@ -342,5 +354,8 @@ void set_swp_active_dqs(uint16_t dpio_index, struct qbman_result *dqs)
 }
 struct dpaa2_dpbp_dev *dpaa2_alloc_dpbp_dev(void);
 void dpaa2_free_dpbp_dev(struct dpaa2_dpbp_dev *dpbp);
+
+struct dpaa2_dpci_dev *rte_dpaa2_alloc_dpci_dev(void);
+void rte_dpaa2_free_dpci_dev(struct dpaa2_dpci_dev *dpci);
 
 #endif
