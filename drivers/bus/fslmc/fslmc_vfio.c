@@ -80,6 +80,17 @@ static uint32_t *msi_intr_vaddr;
 void *(*rte_mcp_ptr_list);
 static uint32_t mcp_id;
 static int is_dma_done;
+static struct rte_fslmc_object_list fslmc_obj_list =
+	TAILQ_HEAD_INITIALIZER(fslmc_obj_list);
+
+/*register a fslmc bus based dpaa2 driver */
+void
+rte_fslmc_object_register(struct rte_dpaa2_object *object)
+{
+	RTE_VERIFY(object);
+
+	TAILQ_INSERT_TAIL(&fslmc_obj_list, object, next);
+}
 
 static int vfio_connect_container(struct fslmc_vfio_group *vfio_group)
 {

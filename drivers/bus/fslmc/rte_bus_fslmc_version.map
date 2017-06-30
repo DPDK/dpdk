@@ -56,6 +56,7 @@ DPDK_17.08 {
 	mc_get_soc_version;
 	mc_get_version;
 	qbman_result_SCN_state_in_mem;
+	rte_fslmc_object_register;
 	rte_global_active_dqs_list;
 
 } DPDK_17.05;
