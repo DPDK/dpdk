@@ -162,6 +162,32 @@ dpaa2_eventdev_enqueue(void *port, const struct rte_event *ev)
 	return dpaa2_eventdev_enqueue_burst(port, ev, 1);
 }
 
+static void dpaa2_eventdev_dequeue_wait(uint64_t timeout_ticks)
+{
+	struct epoll_event epoll_ev;
+	int ret, i = 0;
+
+	qbman_swp_interrupt_clear_status(DPAA2_PER_LCORE_PORTAL,
+					 QBMAN_SWP_INTERRUPT_DQRI);
+
+RETRY:
+	ret = epoll_wait(DPAA2_PER_LCORE_DPIO->epoll_fd,
+			 &epoll_ev, 1, timeout_ticks);
+	if (ret < 1) {
+		/* sometimes due to some spurious interrupts epoll_wait fails
+		 * with errno EINTR. so here we are retrying epoll_wait in such
+		 * case to avoid the problem.
+		 */
+		if (errno == EINTR) {
+			PMD_DRV_LOG(DEBUG, PMD, "epoll_wait fails\n");
+			if (i++ > 10)
+				PMD_DRV_LOG(DEBUG, PMD,
+					    "Dequeue burst Failed\n");
+		goto RETRY;
+		}
+	}
+}
+
 static void dpaa2_eventdev_process_parallel(struct qbman_swp *swp,
 					    const struct qbman_fd *fd,
 					    const struct qbman_result *dq,
@@ -204,7 +230,6 @@ dpaa2_eventdev_dequeue_burst(void *port, struct rte_event ev[],
 	int num_pkts = 0, ret, i = 0;
 
 	RTE_SET_USED(port);
-	RTE_SET_USED(timeout_ticks);
 
 	if (unlikely(!DPAA2_PER_LCORE_DPIO)) {
 		ret = dpaa2_affine_qbman_swp();
@@ -229,8 +254,14 @@ dpaa2_eventdev_dequeue_burst(void *port, struct rte_event ev[],
 
 	do {
 		dq = qbman_swp_dqrr_next(swp);
-		if (!dq)
-			return 0;
+		if (!dq) {
+			if (!num_pkts && timeout_ticks) {
+				dpaa2_eventdev_dequeue_wait(timeout_ticks);
+				timeout_ticks = 0;
+				continue;
+			}
+			return num_pkts;
+		}
 
 		fd = qbman_result_DQ_fd(dq);
 
