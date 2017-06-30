@@ -628,6 +628,8 @@ static int bnxt_hwrm_port_phy_cfg(struct bnxt *bp, struct bnxt_link_info *conf)
 	struct hwrm_port_phy_cfg_input req = {0};
 	struct hwrm_port_phy_cfg_output *resp = bp->hwrm_cmd_resp_addr;
 	uint32_t enables = 0;
+	uint32_t link_speed_mask =
+		HWRM_PORT_PHY_CFG_INPUT_ENABLES_AUTO_LINK_SPEED_MASK;
 
 	HWRM_PREP(req, PORT_PHY_CFG, -1, resp);
 
@@ -639,14 +641,20 @@ static int bnxt_hwrm_port_phy_cfg(struct bnxt *bp, struct bnxt_link_info *conf)
 		 * any auto mode, even "none".
 		 */
 		if (!conf->link_speed) {
-			req.auto_mode |= conf->auto_mode;
-			enables = HWRM_PORT_PHY_CFG_INPUT_ENABLES_AUTO_MODE;
-			req.auto_link_speed_mask = conf->auto_link_speed_mask;
-			enables |=
-			   HWRM_PORT_PHY_CFG_INPUT_ENABLES_AUTO_LINK_SPEED_MASK;
-			req.auto_link_speed = bp->link_info.auto_link_speed;
-			enables |=
+			req.auto_mode = conf->auto_mode;
+			enables |= HWRM_PORT_PHY_CFG_INPUT_ENABLES_AUTO_MODE;
+			if (conf->auto_mode ==
+			    HWRM_PORT_PHY_CFG_INPUT_AUTO_MODE_SPEED_MASK) {
+				req.auto_link_speed_mask =
+					conf->auto_link_speed_mask;
+				enables |= link_speed_mask;
+			}
+			if (bp->link_info.auto_link_speed) {
+				req.auto_link_speed =
+					bp->link_info.auto_link_speed;
+				enables |=
 				HWRM_PORT_PHY_CFG_INPUT_ENABLES_AUTO_LINK_SPEED;
+			}
 		}
 		req.auto_duplex = conf->duplex;
 		enables |= HWRM_PORT_PHY_CFG_INPUT_ENABLES_AUTO_DUPLEX;
