@@ -35,6 +35,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <sys/queue.h>
 
 #include <rte_eal.h>
@@ -334,9 +335,29 @@ vdev_probe(void)
 	return 0;
 }
 
+static struct rte_device *
+vdev_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
+		 const void *data)
+{
+	struct rte_vdev_device *dev;
+	bool start_found = !start;
+
+	TAILQ_FOREACH(dev, &vdev_device_list, next) {
+		if (start_found == 0) {
+			if (&dev->device == start)
+				start_found = 1;
+			continue;
+		}
+		if (cmp(&dev->device, data) == 0)
+			return &dev->device;
+	}
+	return NULL;
+}
+
 static struct rte_bus rte_vdev_bus = {
 	.scan = vdev_scan,
 	.probe = vdev_probe,
+	.find_device = vdev_find_device,
 };
 
 RTE_REGISTER_BUS(VIRTUAL_BUS_NAME, rte_vdev_bus);
