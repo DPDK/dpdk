@@ -770,6 +770,77 @@ fail_test:
 }
 
 static int
+test_ring_with_exact_size(void)
+{
+	struct rte_ring *std_ring = NULL, *exact_sz_ring = NULL;
+	void *ptr_array[16];
+	static const unsigned int ring_sz = RTE_DIM(ptr_array);
+	unsigned int i;
+	int ret = -1;
+
+	std_ring = rte_ring_create("std", ring_sz, rte_socket_id(),
+			RING_F_SP_ENQ | RING_F_SC_DEQ);
+	if (std_ring == NULL) {
+		printf("%s: error, can't create std ring\n", __func__);
+		goto end;
+	}
+	exact_sz_ring = rte_ring_create("exact sz", ring_sz, rte_socket_id(),
+			RING_F_SP_ENQ | RING_F_SC_DEQ | RING_F_EXACT_SZ);
+	if (exact_sz_ring == NULL) {
+		printf("%s: error, can't create exact size ring\n", __func__);
+		goto end;
+	}
+
+	/*
+	 * Check that the exact size ring is bigger than the standard ring
+	 */
+	if (rte_ring_get_size(std_ring) >= rte_ring_get_size(exact_sz_ring)) {
+		printf("%s: error, std ring (size: %u) is not smaller than exact size one (size %u)\n",
+				__func__,
+				rte_ring_get_size(std_ring),
+				rte_ring_get_size(exact_sz_ring));
+		goto end;
+	}
+	/*
+	 * check that the exact_sz_ring can hold one more element than the
+	 * standard ring. (16 vs 15 elements)
+	 */
+	for (i = 0; i < ring_sz - 1; i++) {
+		rte_ring_enqueue(std_ring, NULL);
+		rte_ring_enqueue(exact_sz_ring, NULL);
+	}
+	if (rte_ring_enqueue(std_ring, NULL) != -ENOBUFS) {
+		printf("%s: error, unexpected successful enqueue\n", __func__);
+		goto end;
+	}
+	if (rte_ring_enqueue(exact_sz_ring, NULL) == -ENOBUFS) {
+		printf("%s: error, enqueue failed\n", __func__);
+		goto end;
+	}
+
+	/* check that dequeue returns the expected number of elements */
+	if (rte_ring_dequeue_burst(exact_sz_ring, ptr_array,
+			RTE_DIM(ptr_array), NULL) != ring_sz) {
+		printf("%s: error, failed to dequeue expected nb of elements\n",
+				__func__);
+		goto end;
+	}
+
+	/* check that the capacity function returns expected value */
+	if (rte_ring_get_capacity(exact_sz_ring) != ring_sz) {
+		printf("%s: error, incorrect ring capacity reported\n",
+				__func__);
+		goto end;
+	}
+
+	ret = 0; /* all ok if we get here */
+end:
+	rte_ring_free(std_ring);
+	rte_ring_free(exact_sz_ring);
+	return ret;
+}
+
+static int
 test_ring(void)
 {
 	/* some more basic operations */
@@ -818,6 +889,9 @@ test_ring(void)
 
 	/* test of creation ring with an used name */
 	if (test_ring_creation_with_an_used_name() < 0)
+		return -1;
+
+	if (test_ring_with_exact_size() < 0)
 		return -1;
 
 	/* dump the ring status */
