@@ -109,6 +109,7 @@ struct bnxt_child_vf_info {
 	uint8_t			mac_spoof_en;
 	uint8_t			vlan_spoof_en;
 	bool			random_mac;
+	bool			persist_stats;
 };
 
 struct bnxt_pf_info {

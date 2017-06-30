@@ -333,4 +333,22 @@ int rte_pmd_bnxt_get_vf_tx_drop_count(uint8_t port, uint16_t vf_id,
  */
 int rte_pmd_bnxt_mac_addr_add(uint8_t port, struct ether_addr *mac_addr,
 				uint32_t vf_id);
+
+/**
+ * Enable/Disable VF statistics retention
+ *
+ * @param port
+ *    The port identifier of the Ethernet device.
+ * @param vf
+ *   VF id.
+ * @param on
+ *    1 - Prevent VF statistics from automatically resetting
+ *    0 - Allow VF statistics to automatically reset
+ *
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port* invalid.
+ *   - (-EINVAL) if bad parameter.
+ */
+int rte_pmd_bnxt_set_vf_persist_stats(uint8_t port, uint16_t vf, uint8_t on);
 #endif /* _PMD_BNXT_H_ */

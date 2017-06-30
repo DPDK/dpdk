@@ -16,6 +16,7 @@ DPDK_17.08 {
 	rte_pmd_bnxt_set_vf_vlan_filter;
 	rte_pmd_bnxt_set_vf_vlan_insert;
 	rte_pmd_bnxt_set_vf_vlan_stripq;
+	rte_pmd_bnxt_set_vf_persist_stats;
 
 	local: *;
 };

@@ -274,6 +274,8 @@ int rte_pmd_bnxt_set_vf_mac_anti_spoof(uint8_t port, uint16_t vf, uint8_t on)
 		return 0;
 
 	func_flags = bp->pf.vf_info[vf].func_cfg_flags;
+	func_flags &= ~(HWRM_FUNC_CFG_INPUT_FLAGS_SRC_MAC_ADDR_CHECK_ENABLE |
+	    HWRM_FUNC_CFG_INPUT_FLAGS_SRC_MAC_ADDR_CHECK_DISABLE);
 
 	if (on)
 		func_flags |=
@@ -282,11 +284,11 @@ int rte_pmd_bnxt_set_vf_mac_anti_spoof(uint8_t port, uint16_t vf, uint8_t on)
 		func_flags |=
 			HWRM_FUNC_CFG_INPUT_FLAGS_SRC_MAC_ADDR_CHECK_DISABLE;
 
-	bp->pf.vf_info[vf].func_cfg_flags = func_flags;
-
-	rc = bnxt_hwrm_func_cfg_vf_set_flags(bp, vf);
-	if (!rc)
+	rc = bnxt_hwrm_func_cfg_vf_set_flags(bp, vf, func_flags);
+	if (!rc) {
 		bp->pf.vf_info[vf].mac_spoof_en = on;
+		bp->pf.vf_info[vf].func_cfg_flags = func_flags;
+	}
 
 	return rc;
 }
@@ -751,6 +753,55 @@ rte_pmd_bnxt_set_vf_vlan_insert(uint8_t port, uint16_t vf,
 		return 0;
 
 	rc = bnxt_hwrm_set_vf_vlan(bp, vf);
+
+	return rc;
+}
+
+int rte_pmd_bnxt_set_vf_persist_stats(uint8_t port, uint16_t vf, uint8_t on)
+{
+	struct rte_eth_dev_info dev_info;
+	struct rte_eth_dev *dev;
+	uint32_t func_flags;
+	struct bnxt *bp;
+	int rc;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	if (on > 1)
+		return -EINVAL;
+
+	dev = &rte_eth_devices[port];
+	rte_eth_dev_info_get(port, &dev_info);
+	bp = (struct bnxt *)dev->data->dev_private;
+
+	if (!BNXT_PF(bp)) {
+		RTE_LOG(ERR, PMD,
+			"Attempt to set persist stats on non-PF port %d!\n",
+			port);
+		return -EINVAL;
+	}
+
+	if (vf >= dev_info.max_vfs)
+		return -EINVAL;
+
+	/* Prev setting same as new setting. */
+	if (on == bp->pf.vf_info[vf].persist_stats)
+		return 0;
+
+	func_flags = bp->pf.vf_info[vf].func_cfg_flags;
+
+	if (on)
+		func_flags |=
+			HWRM_FUNC_CFG_INPUT_FLAGS_NO_AUTOCLEAR_STATISTIC;
+	else
+		func_flags &=
+			~HWRM_FUNC_CFG_INPUT_FLAGS_NO_AUTOCLEAR_STATISTIC;
+
+	rc = bnxt_hwrm_func_cfg_vf_set_flags(bp, vf, func_flags);
+	if (!rc) {
+		bp->pf.vf_info[vf].persist_stats = on;
+		bp->pf.vf_info[vf].func_cfg_flags = func_flags;
+	}
 
 	return rc;
 }
