@@ -267,7 +267,7 @@ cperf_verify_test_constructor(uint8_t dev_id, uint16_t qp_id,
 			dev_id);
 
 	ctx->crypto_op_pool = rte_crypto_op_pool_create(pool_name,
-			RTE_CRYPTO_OP_TYPE_SYMMETRIC, options->pool_sz, 0, 0,
+			RTE_CRYPTO_OP_TYPE_SYMMETRIC, options->pool_sz, 512, 0,
 			rte_socket_id());
 	if (ctx->crypto_op_pool == NULL)
 		goto err;
