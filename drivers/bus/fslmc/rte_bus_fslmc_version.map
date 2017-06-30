@@ -69,6 +69,7 @@ DPDK_17.08 {
 	qbman_result_SCN_state_in_mem;
 	qbman_swp_dqrr_consume;
 	qbman_swp_dqrr_next;
+	qbman_swp_enqueue_multiple_eqdesc;
 	qbman_swp_push_set;
 	rte_dpaa2_alloc_dpci_dev;
 	rte_fslmc_object_register;
