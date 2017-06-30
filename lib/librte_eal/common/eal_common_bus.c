@@ -50,6 +50,7 @@ rte_bus_register(struct rte_bus *bus)
 	/* A bus should mandatorily have the scan implemented */
 	RTE_VERIFY(bus->scan);
 	RTE_VERIFY(bus->probe);
+	RTE_VERIFY(bus->find_device);
 
 	TAILQ_INSERT_TAIL(&rte_bus_list, bus, next);
 	RTE_LOG(DEBUG, EAL, "Registered [%s] bus.\n", bus->name);
