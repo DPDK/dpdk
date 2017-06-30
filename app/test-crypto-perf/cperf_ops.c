@@ -151,14 +151,13 @@ cperf_set_ops_auth(struct rte_crypto_op **ops,
 			if (options->out_of_place) {
 				buf =  bufs_out[i];
 			} else {
-				buf =  bufs_in[i];
-
-				tbuf = buf;
+				tbuf =  bufs_in[i];
 				while ((tbuf->next != NULL) &&
 						(offset >= tbuf->data_len)) {
 					offset -= tbuf->data_len;
 					tbuf = tbuf->next;
 				}
+				buf = tbuf;
 			}
 
 			sym_op->auth.digest.data = rte_pktmbuf_mtod_offset(buf,
@@ -230,14 +229,13 @@ cperf_set_ops_cipher_auth(struct rte_crypto_op **ops,
 			if (options->out_of_place) {
 				buf =  bufs_out[i];
 			} else {
-				buf =  bufs_in[i];
-
-				tbuf = buf;
+				tbuf =  bufs_in[i];
 				while ((tbuf->next != NULL) &&
 						(offset >= tbuf->data_len)) {
 					offset -= tbuf->data_len;
 					tbuf = tbuf->next;
 				}
+				buf = tbuf;
 			}
 
 			sym_op->auth.digest.data = rte_pktmbuf_mtod_offset(buf,
@@ -308,14 +306,13 @@ cperf_set_ops_aead(struct rte_crypto_op **ops,
 			if (options->out_of_place) {
 				buf =  bufs_out[i];
 			} else {
-				buf =  bufs_in[i];
-
-				tbuf = buf;
+				tbuf =  bufs_in[i];
 				while ((tbuf->next != NULL) &&
 						(offset >= tbuf->data_len)) {
 					offset -= tbuf->data_len;
 					tbuf = tbuf->next;
 				}
+				buf = tbuf;
 			}
 
 			sym_op->auth.digest.data = rte_pktmbuf_mtod_offset(buf,
