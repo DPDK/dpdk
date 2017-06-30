@@ -198,7 +198,7 @@ rte_cryptodev_scheduler_slave_attach(uint8_t scheduler_id, uint8_t slave_id)
 		return -ENOTSUP;
 	}
 
-	if (dev->dev_type != RTE_CRYPTODEV_SCHEDULER_PMD) {
+	if (dev->driver_id != cryptodev_driver_id) {
 		CS_LOG_ERR("Operation not supported");
 		return -ENOTSUP;
 	}
@@ -226,12 +226,12 @@ rte_cryptodev_scheduler_slave_attach(uint8_t scheduler_id, uint8_t slave_id)
 	rte_cryptodev_info_get(slave_id, &dev_info);
 
 	slave->dev_id = slave_id;
-	slave->dev_type = dev_info.dev_type;
+	slave->driver_id = dev_info.driver_id;
 	sched_ctx->nb_slaves++;
 
 	if (update_scheduler_capability(sched_ctx) < 0) {
 		slave->dev_id = 0;
-		slave->dev_type = 0;
+		slave->driver_id = 0;
 		sched_ctx->nb_slaves--;
 
 		CS_LOG_ERR("capabilities update failed");
@@ -257,7 +257,7 @@ rte_cryptodev_scheduler_slave_detach(uint8_t scheduler_id, uint8_t slave_id)
 		return -ENOTSUP;
 	}
 
-	if (dev->dev_type != RTE_CRYPTODEV_SCHEDULER_PMD) {
+	if (dev->driver_id != cryptodev_driver_id) {
 		CS_LOG_ERR("Operation not supported");
 		return -ENOTSUP;
 	}
@@ -314,7 +314,7 @@ rte_cryptodev_scheduler_mode_set(uint8_t scheduler_id,
 		return -ENOTSUP;
 	}
 
-	if (dev->dev_type != RTE_CRYPTODEV_SCHEDULER_PMD) {
+	if (dev->driver_id != cryptodev_driver_id) {
 		CS_LOG_ERR("Operation not supported");
 		return -ENOTSUP;
 	}
@@ -370,7 +370,7 @@ rte_cryptodev_scheduler_mode_get(uint8_t scheduler_id)
 		return -ENOTSUP;
 	}
 
-	if (dev->dev_type != RTE_CRYPTODEV_SCHEDULER_PMD) {
+	if (dev->driver_id != cryptodev_driver_id) {
 		CS_LOG_ERR("Operation not supported");
 		return -ENOTSUP;
 	}
@@ -392,7 +392,7 @@ rte_cryptodev_scheduler_ordering_set(uint8_t scheduler_id,
 		return -ENOTSUP;
 	}
 
-	if (dev->dev_type != RTE_CRYPTODEV_SCHEDULER_PMD) {
+	if (dev->driver_id != cryptodev_driver_id) {
 		CS_LOG_ERR("Operation not supported");
 		return -ENOTSUP;
 	}
@@ -420,7 +420,7 @@ rte_cryptodev_scheduler_ordering_get(uint8_t scheduler_id)
 		return -ENOTSUP;
 	}
 
-	if (dev->dev_type != RTE_CRYPTODEV_SCHEDULER_PMD) {
+	if (dev->driver_id != cryptodev_driver_id) {
 		CS_LOG_ERR("Operation not supported");
 		return -ENOTSUP;
 	}
@@ -442,7 +442,7 @@ rte_cryptodev_scheduler_load_user_scheduler(uint8_t scheduler_id,
 		return -ENOTSUP;
 	}
 
-	if (dev->dev_type != RTE_CRYPTODEV_SCHEDULER_PMD) {
+	if (dev->driver_id != cryptodev_driver_id) {
 		CS_LOG_ERR("Operation not supported");
 		return -ENOTSUP;
 	}
@@ -499,7 +499,7 @@ rte_cryptodev_scheduler_slaves_get(uint8_t scheduler_id, uint8_t *slaves)
 		return -ENOTSUP;
 	}
 
-	if (dev->dev_type != RTE_CRYPTODEV_SCHEDULER_PMD) {
+	if (dev->driver_id != cryptodev_driver_id) {
 		CS_LOG_ERR("Operation not supported");
 		return -ENOTSUP;
 	}
@@ -567,7 +567,7 @@ rte_cryptodev_scheduler_option_get(uint8_t scheduler_id,
 		return -EINVAL;
 	}
 
-	if (dev->dev_type != RTE_CRYPTODEV_SCHEDULER_PMD) {
+	if (dev->driver_id != cryptodev_driver_id) {
 		CS_LOG_ERR("Operation not supported");
 		return -ENOTSUP;
 	}

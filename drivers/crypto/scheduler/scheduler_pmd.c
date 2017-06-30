@@ -42,6 +42,8 @@
 #include "rte_cryptodev_scheduler.h"
 #include "scheduler_pmd_private.h"
 
+uint8_t cryptodev_driver_id;
+
 struct scheduler_init_params {
 	struct rte_crypto_vdev_init_params def_p;
 	uint32_t nb_slaves;
@@ -113,7 +115,7 @@ cryptodev_scheduler_create(const char *name,
 		return -EFAULT;
 	}
 
-	dev->dev_type = RTE_CRYPTODEV_SCHEDULER_PMD;
+	dev->driver_id = cryptodev_driver_id;
 	dev->dev_ops = rte_crypto_scheduler_pmd_ops;
 
 	sched_ctx = dev->data->dev_private;
@@ -436,3 +438,5 @@ RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_SCHEDULER_PMD,
 	"max_nb_sessions=<int> "
 	"socket_id=<int> "
 	"slave=<name>");
+RTE_PMD_REGISTER_CRYPTO_DRIVER(cryptodev_scheduler_pmd_drv,
+		cryptodev_driver_id);

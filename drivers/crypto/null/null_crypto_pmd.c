@@ -39,6 +39,8 @@
 
 #include "null_crypto_pmd_private.h"
 
+static uint8_t cryptodev_driver_id;
+
 /** verify and set session parameters */
 int
 null_crypto_set_session_parameters(
@@ -97,7 +99,8 @@ get_session(struct null_crypto_qp *qp, struct rte_crypto_op *op)
 
 	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
 		if (unlikely(sym_op->session == NULL ||
-			     sym_op->session->dev_type != RTE_CRYPTODEV_NULL_PMD))
+				sym_op->session->driver_id !=
+					cryptodev_driver_id))
 			return NULL;
 
 		sess = (struct null_crypto_session *)sym_op->session->_private;
@@ -187,7 +190,7 @@ cryptodev_null_create(const char *name,
 		goto init_error;
 	}
 
-	dev->dev_type = RTE_CRYPTODEV_NULL_PMD;
+	dev->driver_id = cryptodev_driver_id;
 	dev->dev_ops = null_crypto_pmd_ops;
 
 	/* register rx/tx burst functions for data path */
@@ -272,3 +275,4 @@ RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_NULL_PMD,
 	"max_nb_queue_pairs=<int> "
 	"max_nb_sessions=<int> "
 	"socket_id=<int>");
+RTE_PMD_REGISTER_CRYPTO_DRIVER(cryptodev_null_pmd_drv, cryptodev_driver_id);

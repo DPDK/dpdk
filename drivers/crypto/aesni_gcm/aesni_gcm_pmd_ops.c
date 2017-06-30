@@ -167,7 +167,7 @@ aesni_gcm_pmd_info_get(struct rte_cryptodev *dev,
 	struct aesni_gcm_private *internals = dev->data->dev_private;
 
 	if (dev_info != NULL) {
-		dev_info->dev_type = dev->dev_type;
+		dev_info->driver_id = dev->driver_id;
 		dev_info->feature_flags = dev->feature_flags;
 		dev_info->capabilities = aesni_gcm_pmd_capabilities;
 

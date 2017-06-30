@@ -45,6 +45,8 @@
 
 #include "rte_armv8_pmd_private.h"
 
+static uint8_t cryptodev_driver_id;
+
 static int cryptodev_armv8_crypto_uninit(struct rte_vdev_device *vdev);
 
 /**
@@ -554,8 +556,8 @@ get_session(struct armv8_crypto_qp *qp, struct rte_crypto_op *op)
 	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
 		/* get existing session */
 		if (likely(op->sym->session != NULL &&
-				op->sym->session->dev_type ==
-				RTE_CRYPTODEV_ARMV8_PMD)) {
+				op->sym->session->driver_id ==
+				cryptodev_driver_id)) {
 			sess = (struct armv8_crypto_session *)
 				op->sym->session->_private;
 		}
@@ -818,7 +820,7 @@ cryptodev_armv8_crypto_create(const char *name,
 		goto init_error;
 	}
 
-	dev->dev_type = RTE_CRYPTODEV_ARMV8_PMD;
+	dev->driver_id = cryptodev_driver_id;
 	dev->dev_ops = rte_armv8_crypto_pmd_ops;
 
 	/* register rx/tx burst functions for data path */
@@ -908,3 +910,4 @@ RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_ARMV8_PMD,
 	"max_nb_queue_pairs=<int> "
 	"max_nb_sessions=<int> "
 	"socket_id=<int>");
+RTE_PMD_REGISTER_CRYPTO_DRIVER(armv8_crypto_drv, cryptodev_driver_id);

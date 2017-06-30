@@ -60,7 +60,7 @@ struct rte_cryptodev_session {
 	RTE_STD_C11
 	struct {
 		uint8_t dev_id;
-		enum rte_cryptodev_type type;
+		uint8_t driver_id;
 		struct rte_mempool *mp;
 	} __rte_aligned(8);
 

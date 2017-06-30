@@ -45,6 +45,8 @@
 
 #define DES_BLOCK_SIZE 8
 
+static uint8_t cryptodev_driver_id;
+
 static int cryptodev_openssl_remove(struct rte_vdev_device *vdev);
 
 /*----------------------------------------------------------------------------*/
@@ -557,8 +559,8 @@ get_session(struct openssl_qp *qp, struct rte_crypto_op *op)
 	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
 		/* get existing session */
 		if (likely(op->sym->session != NULL &&
-				op->sym->session->dev_type ==
-				RTE_CRYPTODEV_OPENSSL_PMD))
+				op->sym->session->driver_id ==
+				cryptodev_driver_id))
 			sess = (struct openssl_session *)
 				op->sym->session->_private;
 	} else  {
@@ -1404,7 +1406,7 @@ cryptodev_openssl_create(const char *name,
 		goto init_error;
 	}
 
-	dev->dev_type = RTE_CRYPTODEV_OPENSSL_PMD;
+	dev->driver_id = cryptodev_driver_id;
 	dev->dev_ops = rte_openssl_pmd_ops;
 
 	/* register rx/tx burst functions for data path */
@@ -1493,3 +1495,4 @@ RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_OPENSSL_PMD,
 	"max_nb_queue_pairs=<int> "
 	"max_nb_sessions=<int> "
 	"socket_id=<int>");
+RTE_PMD_REGISTER_CRYPTO_DRIVER(cryptodev_openssl_pmd_drv, cryptodev_driver_id);

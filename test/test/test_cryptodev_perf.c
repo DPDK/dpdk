@@ -204,23 +204,35 @@ static const char *chain_mode_name(enum chain_mode mode)
 	}
 }
 
-static const char *pmd_name(enum rte_cryptodev_type pmd)
+static const char *pmd_name(uint8_t driver_id)
 {
-	switch (pmd) {
-	case RTE_CRYPTODEV_NULL_PMD: return RTE_STR(CRYPTODEV_NAME_NULL_PMD); break;
-	case RTE_CRYPTODEV_AESNI_GCM_PMD:
+	uint8_t null_pmd = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_NULL_PMD));
+	uint8_t dpaa2_pmd = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_DPAA2_SEC_PMD));
+	uint8_t snow3g_pmd = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_SNOW3G_PMD));
+	uint8_t aesni_gcm_pmd = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD));
+	uint8_t aesni_mb_pmd = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD));
+	uint8_t qat_pmd = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD));
+
+	if (driver_id == null_pmd)
+		return RTE_STR(CRYPTODEV_NAME_NULL_PMD);
+	else if (driver_id == aesni_gcm_pmd)
 		return RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD);
-	case RTE_CRYPTODEV_AESNI_MB_PMD:
+	else if (driver_id == aesni_mb_pmd)
 		return RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD);
-	case RTE_CRYPTODEV_QAT_SYM_PMD:
+	else if (driver_id == qat_pmd)
 		return RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD);
-	case RTE_CRYPTODEV_SNOW3G_PMD:
+	else if (driver_id == snow3g_pmd)
 		return RTE_STR(CRYPTODEV_NAME_SNOW3G_PMD);
-	case RTE_CRYPTODEV_DPAA2_SEC_PMD:
+	else if (driver_id == dpaa2_pmd)
 		return RTE_STR(CRYPTODEV_NAME_DPAA2_SEC_PMD);
-	default:
+	else
 		return "";
-	}
 }
 
 static struct rte_mbuf *
@@ -245,7 +257,7 @@ setup_test_string(struct rte_mempool *mpool,
 
 static struct crypto_testsuite_params testsuite_params = { NULL };
 static struct crypto_unittest_params unittest_params;
-static enum rte_cryptodev_type gbl_cryptodev_perftest_devtype;
+static int gbl_driver_id;
 
 static int
 testsuite_setup(void)
@@ -283,13 +295,11 @@ testsuite_setup(void)
 		}
 
 	/* Create an AESNI MB device if required */
-	if (gbl_cryptodev_perftest_devtype == RTE_CRYPTODEV_AESNI_MB_PMD) {
-#ifndef RTE_LIBRTE_PMD_AESNI_MB
-		RTE_LOG(ERR, USER1, "CONFIG_RTE_LIBRTE_PMD_AESNI_MB must be"
-			" enabled in config file to run this testsuite.\n");
-		return TEST_FAILED;
-#endif
-		nb_devs = rte_cryptodev_count_devtype(RTE_CRYPTODEV_AESNI_MB_PMD);
+	if (gbl_driver_id == rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD))) {
+		nb_devs = rte_cryptodev_device_count_by_driver(
+				rte_cryptodev_driver_id_get(
+				RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD)));
 		if (nb_devs < 1) {
 			ret = rte_vdev_init(
 				RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD), NULL);
@@ -301,13 +311,11 @@ testsuite_setup(void)
 	}
 
 	/* Create an AESNI GCM device if required */
-	if (gbl_cryptodev_perftest_devtype == RTE_CRYPTODEV_AESNI_GCM_PMD) {
-#ifndef RTE_LIBRTE_PMD_AESNI_GCM
-		RTE_LOG(ERR, USER1, "CONFIG_RTE_LIBRTE_PMD_AESNI_GCM must be"
-			" enabled in config file to run this testsuite.\n");
-		return TEST_FAILED;
-#endif
-		nb_devs = rte_cryptodev_count_devtype(RTE_CRYPTODEV_AESNI_GCM_PMD);
+	if (gbl_driver_id == rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD))) {
+		nb_devs = rte_cryptodev_device_count_by_driver(
+				rte_cryptodev_driver_id_get(
+				RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD)));
 		if (nb_devs < 1) {
 			ret = rte_vdev_init(
 				RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD), NULL);
@@ -319,13 +327,11 @@ testsuite_setup(void)
 	}
 
 	/* Create a SNOW3G device if required */
-	if (gbl_cryptodev_perftest_devtype == RTE_CRYPTODEV_SNOW3G_PMD) {
-#ifndef RTE_LIBRTE_PMD_SNOW3G
-		RTE_LOG(ERR, USER1, "CONFIG_RTE_LIBRTE_PMD_SNOW3G must be"
-			" enabled in config file to run this testsuite.\n");
-		return TEST_FAILED;
-#endif
-		nb_devs = rte_cryptodev_count_devtype(RTE_CRYPTODEV_SNOW3G_PMD);
+	if (gbl_driver_id == rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_SNOW3G_PMD))) {
+		nb_devs = rte_cryptodev_device_count_by_driver(
+				rte_cryptodev_driver_id_get(
+				RTE_STR(CRYPTODEV_NAME_SNOW3G_PMD)));
 		if (nb_devs < 1) {
 			ret = rte_vdev_init(
 				RTE_STR(CRYPTODEV_NAME_SNOW3G_PMD), NULL);
@@ -337,14 +343,11 @@ testsuite_setup(void)
 	}
 
 	/* Create an OPENSSL device if required */
-	if (gbl_cryptodev_perftest_devtype == RTE_CRYPTODEV_OPENSSL_PMD) {
-#ifndef RTE_LIBRTE_PMD_OPENSSL
-		RTE_LOG(ERR, USER1, "CONFIG_RTE_LIBRTE_PMD_OPENSSL must be"
-			" enabled in config file to run this testsuite.\n");
-		return TEST_FAILED;
-#endif
-		nb_devs = rte_cryptodev_count_devtype(
-				RTE_CRYPTODEV_OPENSSL_PMD);
+	if (gbl_driver_id == rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD))) {
+		nb_devs = rte_cryptodev_device_count_by_driver(
+				rte_cryptodev_driver_id_get(
+				RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD)));
 		if (nb_devs < 1) {
 			ret = rte_vdev_init(
 				RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD),
@@ -357,14 +360,11 @@ testsuite_setup(void)
 	}
 
 	/* Create an ARMv8 device if required */
-	if (gbl_cryptodev_perftest_devtype == RTE_CRYPTODEV_ARMV8_PMD) {
-#ifndef RTE_LIBRTE_PMD_ARMV8_CRYPTO
-		RTE_LOG(ERR, USER1, "CONFIG_RTE_LIBRTE_PMD_ARMV8_CRYPTO must be"
-			" enabled in config file to run this testsuite.\n");
-		return TEST_FAILED;
-#endif
-		nb_devs = rte_cryptodev_count_devtype(
-				RTE_CRYPTODEV_ARMV8_PMD);
+	if (gbl_driver_id == rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_ARMV8_PMD))) {
+		nb_devs = rte_cryptodev_device_count_by_driver(
+				rte_cryptodev_driver_id_get(
+				RTE_STR(CRYPTODEV_NAME_ARMV8_PMD)));
 		if (nb_devs < 1) {
 			ret = rte_vdev_init(
 				RTE_STR(CRYPTODEV_NAME_ARMV8_PMD),
@@ -376,14 +376,6 @@ testsuite_setup(void)
 		}
 	}
 
-#ifndef RTE_LIBRTE_PMD_QAT
-	if (gbl_cryptodev_perftest_devtype == RTE_CRYPTODEV_QAT_SYM_PMD) {
-		RTE_LOG(ERR, USER1, "CONFIG_RTE_LIBRTE_PMD_QAT must be enabled "
-				"in config file to run this testsuite.\n");
-		return TEST_FAILED;
-	}
-#endif
-
 	nb_devs = rte_cryptodev_count();
 	if (nb_devs < 1) {
 		RTE_LOG(ERR, USER1, "No crypto devices found?\n");
@@ -393,7 +385,7 @@ testsuite_setup(void)
 	/* Search for the first valid */
 	for (i = 0; i < nb_devs; i++) {
 		rte_cryptodev_info_get(i, &info);
-		if (info.dev_type == gbl_cryptodev_perftest_devtype) {
+		if (info.driver_id == (uint8_t) gbl_driver_id) {
 			ts_params->dev_id = i;
 			valid_dev_id = 1;
 			break;
@@ -2046,8 +2038,9 @@ test_perf_crypto_qp_vary_burst_size(uint16_t dev_num)
 		}
 
 		while (num_received != num_to_submit) {
-			if (gbl_cryptodev_perftest_devtype ==
-					RTE_CRYPTODEV_AESNI_MB_PMD)
+			if (gbl_driver_id ==
+					rte_cryptodev_driver_id_get(
+					RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD)))
 				rte_cryptodev_enqueue_burst(dev_num, 0,
 						NULL, 0);
 
@@ -2118,7 +2111,7 @@ test_perf_snow3G_optimise_cyclecount(struct perf_test_params *pparams)
 	if (pparams->chain == AEAD)
 		printf("\nOn %s dev%u qp%u, %s, aead algo:%s, "
 			"Packet Size %u bytes",
-			pmd_name(gbl_cryptodev_perftest_devtype),
+			pmd_name(gbl_driver_id),
 			ts_params->dev_id, 0,
 			chain_mode_name(pparams->chain),
 			rte_crypto_aead_algorithm_strings[pparams->aead_algo],
@@ -2126,7 +2119,7 @@ test_perf_snow3G_optimise_cyclecount(struct perf_test_params *pparams)
 	else
 		printf("\nOn %s dev%u qp%u, %s, cipher algo:%s, auth_algo:%s, "
 			"Packet Size %u bytes",
-			pmd_name(gbl_cryptodev_perftest_devtype),
+			pmd_name(gbl_driver_id),
 			ts_params->dev_id, 0,
 			chain_mode_name(pparams->chain),
 			rte_crypto_cipher_algorithm_strings[pparams->cipher_algo],
@@ -2170,8 +2163,9 @@ test_perf_snow3G_optimise_cyclecount(struct perf_test_params *pparams)
 		}
 
 		while (num_ops_received != num_to_submit) {
-			if (gbl_cryptodev_perftest_devtype ==
-					RTE_CRYPTODEV_AESNI_MB_PMD)
+			if (gbl_driver_id ==
+					rte_cryptodev_driver_id_get(
+					RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD)))
 				rte_cryptodev_enqueue_burst(ts_params->dev_id, 0,
 						NULL, 0);
 			start_cycles = rte_rdtsc_precise();
@@ -2322,7 +2316,7 @@ test_perf_openssl_optimise_cyclecount(struct perf_test_params *pparams)
 	if (pparams->chain == AEAD)
 		printf("\nOn %s dev%u qp%u, %s, aead_algo:%s, "
 			"key length:%u, Packet Size %u bytes",
-			pmd_name(gbl_cryptodev_perftest_devtype),
+			pmd_name(gbl_driver_id),
 			ts_params->dev_id, 0,
 			chain_mode_name(pparams->chain),
 			rte_crypto_aead_algorithm_strings[pparams->aead_algo],
@@ -2331,7 +2325,7 @@ test_perf_openssl_optimise_cyclecount(struct perf_test_params *pparams)
 	else
 		printf("\nOn %s dev%u qp%u, %s, cipher algo:%s, auth_algo:%s, "
 			"key length:%u, Packet Size %u bytes",
-			pmd_name(gbl_cryptodev_perftest_devtype),
+			pmd_name(gbl_driver_id),
 			ts_params->dev_id, 0,
 			chain_mode_name(pparams->chain),
 			rte_crypto_cipher_algorithm_strings[pparams->cipher_algo],
@@ -2464,7 +2458,7 @@ test_perf_armv8_optimise_cyclecount(struct perf_test_params *pparams)
 
 	printf("\nOn %s dev%u qp%u, %s, cipher algo:%s, cipher key length:%u, "
 			"auth_algo:%s, Packet Size %u bytes",
-			pmd_name(gbl_cryptodev_perftest_devtype),
+			pmd_name(gbl_driver_id),
 			ts_params->dev_id, 0,
 			chain_mode_name(pparams->chain),
 			rte_crypto_cipher_algorithm_strings[pparams->cipher_algo],
@@ -3399,7 +3393,8 @@ test_perf_snow3g(uint8_t dev_id, uint16_t queue_id,
 	double cycles_B = cycles_buff / pparams->buf_size;
 	double throughput = (ops_s * pparams->buf_size * 8) / 1000000;
 
-	if (gbl_cryptodev_perftest_devtype == RTE_CRYPTODEV_QAT_SYM_PMD) {
+	if (gbl_driver_id == rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD))) {
 		/* Cycle count misleading on HW devices for this test, so don't print */
 		printf("%4u\t%6.2f\t%10.2f\t n/a \t\t n/a "
 			"\t\t n/a \t\t%8"PRIu64"\t%8"PRIu64,
@@ -3837,7 +3832,7 @@ test_perf_snow3G_vary_pkt_size(void)
 				params_set[i].auth_algo;
 			printf("\nOn %s dev%u qp%u, %s, "
 				"cipher algo:%s, auth algo:%s, burst_size: %d ops",
-				pmd_name(gbl_cryptodev_perftest_devtype),
+				pmd_name(gbl_driver_id),
 				testsuite_params.dev_id, 0,
 				chain_mode_name(params_set[i].chain),
 				rte_crypto_cipher_algorithm_strings[cipher_algo],
@@ -4683,7 +4678,15 @@ static struct unit_test_suite cryptodev_armv8_testsuite  = {
 static int
 perftest_aesni_gcm_cryptodev(void)
 {
-	gbl_cryptodev_perftest_devtype = RTE_CRYPTODEV_AESNI_GCM_PMD;
+	gbl_driver_id = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD));
+
+	if (gbl_driver_id == -1) {
+		RTE_LOG(ERR, USER1, "AESNI GCM PMD must be loaded. Check if "
+				"CONFIG_RTE_LIBRTE_PMD_AESNI_GCM is enabled "
+				"in config file to run this testsuite.\n");
+		return TEST_FAILED;
+	}
 
 	return unit_test_suite_runner(&cryptodev_gcm_testsuite);
 }
@@ -4691,7 +4694,15 @@ perftest_aesni_gcm_cryptodev(void)
 static int
 perftest_aesni_mb_cryptodev(void /*argv __rte_unused, int argc __rte_unused*/)
 {
-	gbl_cryptodev_perftest_devtype = RTE_CRYPTODEV_AESNI_MB_PMD;
+	gbl_driver_id = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD));
+
+	if (gbl_driver_id == -1) {
+		RTE_LOG(ERR, USER1, "AESNI MB PMD must be loaded. Check if "
+				"CONFIG_RTE_LIBRTE_PMD_AESNI_MB is enabled "
+				"in config file to run this testsuite.\n");
+		return TEST_FAILED;
+	}
 
 	return unit_test_suite_runner(&cryptodev_aes_testsuite);
 }
@@ -4699,7 +4710,15 @@ perftest_aesni_mb_cryptodev(void /*argv __rte_unused, int argc __rte_unused*/)
 static int
 perftest_qat_cryptodev(void /*argv __rte_unused, int argc __rte_unused*/)
 {
-	gbl_cryptodev_perftest_devtype = RTE_CRYPTODEV_QAT_SYM_PMD;
+	gbl_driver_id = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD));
+
+	if (gbl_driver_id == -1) {
+		RTE_LOG(ERR, USER1, "QAT PMD must be loaded. Check if "
+				"CONFIG_RTE_LIBRTE_PMD_QAT is enabled "
+				"in config file to run this testsuite.\n");
+		return TEST_FAILED;
+	}
 
 	return unit_test_suite_runner(&cryptodev_testsuite);
 }
@@ -4707,7 +4726,15 @@ perftest_qat_cryptodev(void /*argv __rte_unused, int argc __rte_unused*/)
 static int
 perftest_sw_snow3g_cryptodev(void /*argv __rte_unused, int argc __rte_unused*/)
 {
-	gbl_cryptodev_perftest_devtype = RTE_CRYPTODEV_SNOW3G_PMD;
+	gbl_driver_id = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_SNOW3G_PMD));
+
+	if (gbl_driver_id == -1) {
+		RTE_LOG(ERR, USER1, "SNOW3G PMD must be loaded. Check if "
+				"CONFIG_RTE_LIBRTE_PMD_SNOW3G is enabled "
+				"in config file to run this testsuite.\n");
+		return TEST_FAILED;
+	}
 
 	return unit_test_suite_runner(&cryptodev_snow3g_testsuite);
 }
@@ -4715,7 +4742,15 @@ perftest_sw_snow3g_cryptodev(void /*argv __rte_unused, int argc __rte_unused*/)
 static int
 perftest_qat_snow3g_cryptodev(void /*argv __rte_unused, int argc __rte_unused*/)
 {
-	gbl_cryptodev_perftest_devtype = RTE_CRYPTODEV_QAT_SYM_PMD;
+	gbl_driver_id = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD));
+
+	if (gbl_driver_id == -1) {
+		RTE_LOG(ERR, USER1, "QAT PMD must be loaded. Check if "
+				"CONFIG_RTE_LIBRTE_PMD_QAT is enabled "
+				"in config file to run this testsuite.\n");
+		return TEST_FAILED;
+	}
 
 	return unit_test_suite_runner(&cryptodev_snow3g_testsuite);
 }
@@ -4723,7 +4758,15 @@ perftest_qat_snow3g_cryptodev(void /*argv __rte_unused, int argc __rte_unused*/)
 static int
 perftest_openssl_cryptodev(void /*argv __rte_unused, int argc __rte_unused*/)
 {
-	gbl_cryptodev_perftest_devtype = RTE_CRYPTODEV_OPENSSL_PMD;
+	gbl_driver_id = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD));
+
+	if (gbl_driver_id == -1) {
+		RTE_LOG(ERR, USER1, "OpenSSL PMD must be loaded. Check if "
+				"CONFIG_RTE_LIBRTE_PMD_OPENSSL is enabled "
+				"in config file to run this testsuite.\n");
+		return TEST_FAILED;
+	}
 
 	return unit_test_suite_runner(&cryptodev_openssl_testsuite);
 }
@@ -4731,7 +4774,15 @@ perftest_openssl_cryptodev(void /*argv __rte_unused, int argc __rte_unused*/)
 static int
 perftest_qat_continual_cryptodev(void)
 {
-	gbl_cryptodev_perftest_devtype = RTE_CRYPTODEV_QAT_SYM_PMD;
+	gbl_driver_id = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD));
+
+	if (gbl_driver_id == -1) {
+		RTE_LOG(ERR, USER1, "QAT PMD must be loaded. Check if "
+				"CONFIG_RTE_LIBRTE_PMD_QAT is enabled "
+				"in config file to run this testsuite.\n");
+		return TEST_FAILED;
+	}
 
 	return unit_test_suite_runner(&cryptodev_qat_continual_testsuite);
 }
@@ -4739,7 +4790,15 @@ perftest_qat_continual_cryptodev(void)
 static int
 perftest_sw_armv8_cryptodev(void /*argv __rte_unused, int argc __rte_unused*/)
 {
-	gbl_cryptodev_perftest_devtype = RTE_CRYPTODEV_ARMV8_PMD;
+	gbl_driver_id = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_ARMV8_PMD));
+
+	if (gbl_driver_id == -1) {
+		RTE_LOG(ERR, USER1, "ARMV8 PMD must be loaded. Check if "
+				"CONFIG_RTE_LIBRTE_PMD_ARMV8 is enabled "
+				"in config file to run this testsuite.\n");
+		return TEST_FAILED;
+	}
 
 	return unit_test_suite_runner(&cryptodev_armv8_testsuite);
 }
@@ -4747,7 +4806,15 @@ perftest_sw_armv8_cryptodev(void /*argv __rte_unused, int argc __rte_unused*/)
 static int
 perftest_dpaa2_sec_cryptodev(void)
 {
-	gbl_cryptodev_perftest_devtype = RTE_CRYPTODEV_DPAA2_SEC_PMD;
+	gbl_driver_id = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_DPAA2_SEC_PMD));
+
+	if (gbl_driver_id == -1) {
+		RTE_LOG(ERR, USER1, "DPAA2 SEC PMD must be loaded. Check if "
+				"CONFIG_RTE_LIBRTE_PMD_DPAA2_SEC is enabled "
+				"in config file to run this testsuite.\n");
+		return TEST_FAILED;
+	}
 
 	return unit_test_suite_runner(&cryptodev_dpaa2_sec_testsuite);
 }

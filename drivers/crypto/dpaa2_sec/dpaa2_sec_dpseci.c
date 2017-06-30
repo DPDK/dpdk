@@ -76,6 +76,8 @@
 
 enum rta_sec_era rta_sec_era = RTA_SEC_ERA_8;
 
+static uint8_t cryptodev_driver_id;
+
 static inline int
 build_authenc_gcm_fd(dpaa2_sec_session *sess,
 		     struct rte_crypto_op *op,
@@ -1689,7 +1691,7 @@ dpaa2_sec_dev_infos_get(struct rte_cryptodev *dev,
 		info->feature_flags = dev->feature_flags;
 		info->capabilities = dpaa2_sec_capabilities;
 		info->sym.max_nb_sessions = internals->max_nb_sessions;
-		info->dev_type = RTE_CRYPTODEV_DPAA2_SEC_PMD;
+		info->driver_id = cryptodev_driver_id;
 	}
 }
 
@@ -1819,7 +1821,7 @@ dpaa2_sec_dev_init(struct rte_cryptodev *cryptodev)
 	}
 	hw_id = dpaa2_dev->object_id;
 
-	cryptodev->dev_type = RTE_CRYPTODEV_DPAA2_SEC_PMD;
+	cryptodev->driver_id = cryptodev_driver_id;
 	cryptodev->dev_ops = &crypto_ops;
 
 	cryptodev->enqueue_burst = dpaa2_sec_enqueue_burst;
@@ -1977,3 +1979,4 @@ static struct rte_dpaa2_driver rte_dpaa2_sec_driver = {
 };
 
 RTE_PMD_REGISTER_DPAA2(CRYPTODEV_NAME_DPAA2_SEC_PMD, rte_dpaa2_sec_driver);
+RTE_PMD_REGISTER_CRYPTO_DRIVER(rte_dpaa2_sec_driver, cryptodev_driver_id);

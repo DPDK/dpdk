@@ -47,6 +47,8 @@
 #define SNOW3G_MAX_BURST 8
 #define BYTE_LEN 8
 
+static uint8_t cryptodev_driver_id;
+
 /** Get xform chain order. */
 static enum snow3g_operation
 snow3g_get_mode(const struct rte_crypto_sym_xform *xform)
@@ -164,8 +166,8 @@ snow3g_get_session(struct snow3g_qp *qp, struct rte_crypto_op *op)
 	struct snow3g_session *sess;
 
 	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
-		if (unlikely(op->sym->session->dev_type !=
-				RTE_CRYPTODEV_SNOW3G_PMD))
+		if (unlikely(op->sym->session->driver_id !=
+				cryptodev_driver_id))
 			return NULL;
 
 		sess = (struct snow3g_session *)op->sym->session->_private;
@@ -562,7 +564,7 @@ cryptodev_snow3g_create(const char *name,
 		goto init_error;
 	}
 
-	dev->dev_type = RTE_CRYPTODEV_SNOW3G_PMD;
+	dev->driver_id = cryptodev_driver_id;
 	dev->dev_ops = rte_snow3g_pmd_ops;
 
 	/* Register RX/TX burst functions for data path. */
@@ -646,3 +648,4 @@ RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_SNOW3G_PMD,
 	"max_nb_queue_pairs=<int> "
 	"max_nb_sessions=<int> "
 	"socket_id=<int>");
+RTE_PMD_REGISTER_CRYPTO_DRIVER(cryptodev_snow3g_pmd_drv, cryptodev_driver_id);

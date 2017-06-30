@@ -43,6 +43,7 @@
 
 #include "aesni_gcm_pmd_private.h"
 
+static uint8_t cryptodev_driver_id;
 
 /** Parse crypto xform chain and set private session parameters */
 int
@@ -154,8 +155,8 @@ aesni_gcm_get_session(struct aesni_gcm_qp *qp, struct rte_crypto_op *op)
 	struct rte_crypto_sym_op *sym_op = op->sym;
 
 	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
-		if (unlikely(sym_op->session->dev_type
-					!= RTE_CRYPTODEV_AESNI_GCM_PMD))
+		if (unlikely(sym_op->session->driver_id !=
+				cryptodev_driver_id))
 			return sess;
 
 		sess = (struct aesni_gcm_session *)sym_op->session->_private;
@@ -521,7 +522,7 @@ aesni_gcm_create(const char *name,
 		goto init_error;
 	}
 
-	dev->dev_type = RTE_CRYPTODEV_AESNI_GCM_PMD;
+	dev->driver_id = cryptodev_driver_id;
 	dev->dev_ops = rte_aesni_gcm_pmd_ops;
 
 	/* register rx/tx burst functions for data path */
@@ -620,3 +621,4 @@ RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_AESNI_GCM_PMD,
 	"max_nb_queue_pairs=<int> "
 	"max_nb_sessions=<int> "
 	"socket_id=<int>");
+RTE_PMD_REGISTER_CRYPTO_DRIVER(aesni_gcm_pmd_drv, cryptodev_driver_id);

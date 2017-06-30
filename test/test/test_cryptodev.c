@@ -61,7 +61,7 @@
 #include "test_cryptodev_gcm_test_vectors.h"
 #include "test_cryptodev_hmac_test_vectors.h"
 
-static enum rte_cryptodev_type gbl_cryptodev_type;
+static int gbl_driver_id;
 
 struct crypto_testsuite_params {
 	struct rte_mempool *mbuf_pool;
@@ -213,14 +213,11 @@ testsuite_setup(void)
 	}
 
 	/* Create an AESNI MB device if required */
-	if (gbl_cryptodev_type == RTE_CRYPTODEV_AESNI_MB_PMD) {
-#ifndef RTE_LIBRTE_PMD_AESNI_MB
-		RTE_LOG(ERR, USER1, "CONFIG_RTE_LIBRTE_PMD_AESNI_MB must be"
-			" enabled in config file to run this testsuite.\n");
-		return TEST_FAILED;
-#endif
-		nb_devs = rte_cryptodev_count_devtype(
-				RTE_CRYPTODEV_AESNI_MB_PMD);
+	if (gbl_driver_id == rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD))) {
+		nb_devs = rte_cryptodev_device_count_by_driver(
+				rte_cryptodev_driver_id_get(
+				RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD)));
 		if (nb_devs < 1) {
 			ret = rte_vdev_init(
 				RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD), NULL);
@@ -233,14 +230,11 @@ testsuite_setup(void)
 	}
 
 	/* Create an AESNI GCM device if required */
-	if (gbl_cryptodev_type == RTE_CRYPTODEV_AESNI_GCM_PMD) {
-#ifndef RTE_LIBRTE_PMD_AESNI_GCM
-		RTE_LOG(ERR, USER1, "CONFIG_RTE_LIBRTE_PMD_AESNI_GCM must be"
-			" enabled in config file to run this testsuite.\n");
-		return TEST_FAILED;
-#endif
-		nb_devs = rte_cryptodev_count_devtype(
-				RTE_CRYPTODEV_AESNI_GCM_PMD);
+	if (gbl_driver_id == rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD))) {
+		nb_devs = rte_cryptodev_device_count_by_driver(
+				rte_cryptodev_driver_id_get(
+				RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD)));
 		if (nb_devs < 1) {
 			TEST_ASSERT_SUCCESS(rte_vdev_init(
 				RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD), NULL),
@@ -251,13 +245,11 @@ testsuite_setup(void)
 	}
 
 	/* Create a SNOW 3G device if required */
-	if (gbl_cryptodev_type == RTE_CRYPTODEV_SNOW3G_PMD) {
-#ifndef RTE_LIBRTE_PMD_SNOW3G
-		RTE_LOG(ERR, USER1, "CONFIG_RTE_LIBRTE_PMD_SNOW3G must be"
-			" enabled in config file to run this testsuite.\n");
-		return TEST_FAILED;
-#endif
-		nb_devs = rte_cryptodev_count_devtype(RTE_CRYPTODEV_SNOW3G_PMD);
+	if (gbl_driver_id == rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_SNOW3G_PMD))) {
+		nb_devs = rte_cryptodev_device_count_by_driver(
+				rte_cryptodev_driver_id_get(
+				RTE_STR(CRYPTODEV_NAME_SNOW3G_PMD)));
 		if (nb_devs < 1) {
 			TEST_ASSERT_SUCCESS(rte_vdev_init(
 				RTE_STR(CRYPTODEV_NAME_SNOW3G_PMD), NULL),
@@ -268,13 +260,11 @@ testsuite_setup(void)
 	}
 
 	/* Create a KASUMI device if required */
-	if (gbl_cryptodev_type == RTE_CRYPTODEV_KASUMI_PMD) {
-#ifndef RTE_LIBRTE_PMD_KASUMI
-		RTE_LOG(ERR, USER1, "CONFIG_RTE_LIBRTE_PMD_KASUMI must be"
-			" enabled in config file to run this testsuite.\n");
-		return TEST_FAILED;
-#endif
-		nb_devs = rte_cryptodev_count_devtype(RTE_CRYPTODEV_KASUMI_PMD);
+	if (gbl_driver_id == rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_KASUMI_PMD))) {
+		nb_devs = rte_cryptodev_device_count_by_driver(
+				rte_cryptodev_driver_id_get(
+				RTE_STR(CRYPTODEV_NAME_KASUMI_PMD)));
 		if (nb_devs < 1) {
 			TEST_ASSERT_SUCCESS(rte_vdev_init(
 				RTE_STR(CRYPTODEV_NAME_KASUMI_PMD), NULL),
@@ -285,13 +275,11 @@ testsuite_setup(void)
 	}
 
 	/* Create a ZUC device if required */
-	if (gbl_cryptodev_type == RTE_CRYPTODEV_ZUC_PMD) {
-#ifndef RTE_LIBRTE_PMD_ZUC
-		RTE_LOG(ERR, USER1, "CONFIG_RTE_LIBRTE_PMD_ZUC must be"
-			" enabled in config file to run this testsuite.\n");
-		return TEST_FAILED;
-#endif
-		nb_devs = rte_cryptodev_count_devtype(RTE_CRYPTODEV_ZUC_PMD);
+	if (gbl_driver_id == rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_ZUC_PMD))) {
+		nb_devs = rte_cryptodev_device_count_by_driver(
+				rte_cryptodev_driver_id_get(
+				RTE_STR(CRYPTODEV_NAME_ZUC_PMD)));
 		if (nb_devs < 1) {
 			TEST_ASSERT_SUCCESS(rte_vdev_init(
 				RTE_STR(CRYPTODEV_NAME_ZUC_PMD), NULL),
@@ -302,14 +290,11 @@ testsuite_setup(void)
 	}
 
 	/* Create a NULL device if required */
-	if (gbl_cryptodev_type == RTE_CRYPTODEV_NULL_PMD) {
-#ifndef RTE_LIBRTE_PMD_NULL_CRYPTO
-		RTE_LOG(ERR, USER1, "CONFIG_RTE_LIBRTE_PMD_NULL_CRYPTO must be"
-			" enabled in config file to run this testsuite.\n");
-		return TEST_FAILED;
-#endif
-		nb_devs = rte_cryptodev_count_devtype(
-				RTE_CRYPTODEV_NULL_PMD);
+	if (gbl_driver_id == rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_NULL_PMD))) {
+		nb_devs = rte_cryptodev_device_count_by_driver(
+				rte_cryptodev_driver_id_get(
+				RTE_STR(CRYPTODEV_NAME_NULL_PMD)));
 		if (nb_devs < 1) {
 			ret = rte_vdev_init(
 				RTE_STR(CRYPTODEV_NAME_NULL_PMD), NULL);
@@ -322,14 +307,11 @@ testsuite_setup(void)
 	}
 
 	/* Create an OPENSSL device if required */
-	if (gbl_cryptodev_type == RTE_CRYPTODEV_OPENSSL_PMD) {
-#ifndef RTE_LIBRTE_PMD_OPENSSL
-		RTE_LOG(ERR, USER1, "CONFIG_RTE_LIBRTE_PMD_OPENSSL must be"
-			" enabled in config file to run this testsuite.\n");
-		return TEST_FAILED;
-#endif
-		nb_devs = rte_cryptodev_count_devtype(
-				RTE_CRYPTODEV_OPENSSL_PMD);
+	if (gbl_driver_id == rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD))) {
+		nb_devs = rte_cryptodev_device_count_by_driver(
+				rte_cryptodev_driver_id_get(
+				RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD)));
 		if (nb_devs < 1) {
 			ret = rte_vdev_init(
 				RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD),
@@ -342,14 +324,11 @@ testsuite_setup(void)
 	}
 
 	/* Create a ARMv8 device if required */
-	if (gbl_cryptodev_type == RTE_CRYPTODEV_ARMV8_PMD) {
-#ifndef RTE_LIBRTE_PMD_ARMV8_CRYPTO
-		RTE_LOG(ERR, USER1, "CONFIG_RTE_LIBRTE_PMD_ARMV8_CRYPTO must be"
-			" enabled in config file to run this testsuite.\n");
-		return TEST_FAILED;
-#endif
-		nb_devs = rte_cryptodev_count_devtype(
-				RTE_CRYPTODEV_ARMV8_PMD);
+	if (gbl_driver_id == rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_ARMV8_PMD))) {
+		nb_devs = rte_cryptodev_device_count_by_driver(
+				rte_cryptodev_driver_id_get(
+				RTE_STR(CRYPTODEV_NAME_ARMV8_PMD)));
 		if (nb_devs < 1) {
 			ret = rte_vdev_init(
 				RTE_STR(CRYPTODEV_NAME_ARMV8_PMD),
@@ -362,15 +341,12 @@ testsuite_setup(void)
 	}
 
 #ifdef RTE_LIBRTE_PMD_CRYPTO_SCHEDULER
-	if (gbl_cryptodev_type == RTE_CRYPTODEV_SCHEDULER_PMD) {
+	if (gbl_driver_id == rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_SCHEDULER_PMD))) {
 
-#ifndef RTE_LIBRTE_PMD_AESNI_MB
-		RTE_LOG(ERR, USER1, "CONFIG_RTE_LIBRTE_PMD_AESNI_MB must be"
-			" enabled in config file to run this testsuite.\n");
-		return TEST_FAILED;
-#endif
-		nb_devs = rte_cryptodev_count_devtype(
-				RTE_CRYPTODEV_SCHEDULER_PMD);
+		nb_devs = rte_cryptodev_device_count_by_driver(
+				rte_cryptodev_driver_id_get(
+				RTE_STR(CRYPTODEV_NAME_SCHEDULER_PMD)));
 		if (nb_devs < 1) {
 			ret = rte_vdev_init(
 				RTE_STR(CRYPTODEV_NAME_SCHEDULER_PMD),
@@ -384,14 +360,6 @@ testsuite_setup(void)
 	}
 #endif /* RTE_LIBRTE_PMD_CRYPTO_SCHEDULER */
 
-#ifndef RTE_LIBRTE_PMD_QAT
-	if (gbl_cryptodev_type == RTE_CRYPTODEV_QAT_SYM_PMD) {
-		RTE_LOG(ERR, USER1, "CONFIG_RTE_LIBRTE_PMD_QAT must be enabled "
-				"in config file to run this testsuite.\n");
-		return TEST_FAILED;
-	}
-#endif
-
 	nb_devs = rte_cryptodev_count();
 	if (nb_devs < 1) {
 		RTE_LOG(ERR, USER1, "No crypto devices found?\n");
@@ -401,7 +369,7 @@ testsuite_setup(void)
 	/* Create list of valid crypto devs */
 	for (i = 0; i < nb_devs; i++) {
 		rte_cryptodev_info_get(i, &info);
-		if (info.dev_type == gbl_cryptodev_type)
+		if (info.driver_id == gbl_driver_id)
 			ts_params->valid_devs[ts_params->valid_dev_count++] = i;
 	}
 
@@ -1341,7 +1309,8 @@ test_AES_CBC_HMAC_SHA1_encrypt_digest(void)
 
 	TEST_ASSERT_BUFFERS_ARE_EQUAL(digest,
 			catch_22_quote_2_512_bytes_AES_CBC_HMAC_SHA1_digest,
-			gbl_cryptodev_type == RTE_CRYPTODEV_AESNI_MB_PMD ?
+			gbl_driver_id == rte_cryptodev_driver_id_get(
+					RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD)) ?
 					TRUNCATED_DIGEST_BYTE_LENGTH_SHA1 :
 					DIGEST_BYTE_LENGTH_SHA1,
 			"Generated digest data not as expected");
@@ -1502,7 +1471,8 @@ test_AES_cipheronly_mb_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool, ts_params->valid_devs[0],
-		RTE_CRYPTODEV_AESNI_MB_PMD,
+		rte_cryptodev_driver_id_get(
+		RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD)),
 		BLKCIPHER_AES_CIPHERONLY_TYPE);
 
 	TEST_ASSERT_EQUAL(status, 0, "Test failed");
@@ -1518,7 +1488,8 @@ test_AES_docsis_mb_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool, ts_params->valid_devs[0],
-		RTE_CRYPTODEV_AESNI_MB_PMD,
+		rte_cryptodev_driver_id_get(
+		RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD)),
 		BLKCIPHER_AES_DOCSIS_TYPE);
 
 	TEST_ASSERT_EQUAL(status, 0, "Test failed");
@@ -1534,7 +1505,8 @@ test_AES_docsis_qat_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool, ts_params->valid_devs[0],
-		RTE_CRYPTODEV_QAT_SYM_PMD,
+		rte_cryptodev_driver_id_get(
+		RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD)),
 		BLKCIPHER_AES_DOCSIS_TYPE);
 
 	TEST_ASSERT_EQUAL(status, 0, "Test failed");
@@ -1550,7 +1522,8 @@ test_DES_docsis_qat_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool, ts_params->valid_devs[0],
-		RTE_CRYPTODEV_QAT_SYM_PMD,
+		rte_cryptodev_driver_id_get(
+		RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD)),
 		BLKCIPHER_DES_DOCSIS_TYPE);
 
 	TEST_ASSERT_EQUAL(status, 0, "Test failed");
@@ -1566,7 +1539,8 @@ test_authonly_mb_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool, ts_params->valid_devs[0],
-		RTE_CRYPTODEV_AESNI_MB_PMD,
+		rte_cryptodev_driver_id_get(
+		RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD)),
 		BLKCIPHER_AUTHONLY_TYPE);
 
 	TEST_ASSERT_EQUAL(status, 0, "Test failed");
@@ -1582,7 +1556,8 @@ test_AES_chain_mb_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool, ts_params->valid_devs[0],
-		RTE_CRYPTODEV_AESNI_MB_PMD,
+		rte_cryptodev_driver_id_get(
+		RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD)),
 		BLKCIPHER_AES_CHAIN_TYPE);
 
 	TEST_ASSERT_EQUAL(status, 0, "Test failed");
@@ -1600,7 +1575,8 @@ test_AES_cipheronly_scheduler_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool, ts_params->valid_devs[0],
-		RTE_CRYPTODEV_SCHEDULER_PMD,
+		rte_cryptodev_driver_id_get(
+		RTE_STR(CRYPTODEV_NAME_SCHEDULER_PMD)),
 		BLKCIPHER_AES_CIPHERONLY_TYPE);
 
 	TEST_ASSERT_EQUAL(status, 0, "Test failed");
@@ -1616,7 +1592,8 @@ test_AES_chain_scheduler_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool, ts_params->valid_devs[0],
-		RTE_CRYPTODEV_SCHEDULER_PMD,
+		rte_cryptodev_driver_id_get(
+		RTE_STR(CRYPTODEV_NAME_SCHEDULER_PMD)),
 		BLKCIPHER_AES_CHAIN_TYPE);
 
 	TEST_ASSERT_EQUAL(status, 0, "Test failed");
@@ -1632,7 +1609,8 @@ test_authonly_scheduler_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool, ts_params->valid_devs[0],
-		RTE_CRYPTODEV_SCHEDULER_PMD,
+		rte_cryptodev_driver_id_get(
+		RTE_STR(CRYPTODEV_NAME_SCHEDULER_PMD)),
 		BLKCIPHER_AUTHONLY_TYPE);
 
 	TEST_ASSERT_EQUAL(status, 0, "Test failed");
@@ -1650,7 +1628,8 @@ test_AES_chain_openssl_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool, ts_params->valid_devs[0],
-		RTE_CRYPTODEV_OPENSSL_PMD,
+		rte_cryptodev_driver_id_get(
+		RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD)),
 		BLKCIPHER_AES_CHAIN_TYPE);
 
 	TEST_ASSERT_EQUAL(status, 0, "Test failed");
@@ -1666,7 +1645,8 @@ test_AES_cipheronly_openssl_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool, ts_params->valid_devs[0],
-		RTE_CRYPTODEV_OPENSSL_PMD,
+		rte_cryptodev_driver_id_get(
+		RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD)),
 		BLKCIPHER_AES_CIPHERONLY_TYPE);
 
 	TEST_ASSERT_EQUAL(status, 0, "Test failed");
@@ -1682,7 +1662,8 @@ test_AES_chain_qat_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool, ts_params->valid_devs[0],
-		RTE_CRYPTODEV_QAT_SYM_PMD,
+		rte_cryptodev_driver_id_get(
+		RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD)),
 		BLKCIPHER_AES_CHAIN_TYPE);
 
 	TEST_ASSERT_EQUAL(status, 0, "Test failed");
@@ -1698,7 +1679,8 @@ test_AES_cipheronly_qat_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool, ts_params->valid_devs[0],
-		RTE_CRYPTODEV_QAT_SYM_PMD,
+		rte_cryptodev_driver_id_get(
+		RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD)),
 		BLKCIPHER_AES_CIPHERONLY_TYPE);
 
 	TEST_ASSERT_EQUAL(status, 0, "Test failed");
@@ -1714,7 +1696,8 @@ test_AES_chain_dpaa2_sec_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool, ts_params->valid_devs[0],
-		RTE_CRYPTODEV_DPAA2_SEC_PMD,
+		rte_cryptodev_driver_id_get(
+		RTE_STR(CRYPTODEV_NAME_DPAA2_SEC_PMD)),
 		BLKCIPHER_AES_CHAIN_TYPE);
 
 	TEST_ASSERT_EQUAL(status, 0, "Test failed");
@@ -1730,7 +1713,8 @@ test_AES_cipheronly_dpaa2_sec_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool, ts_params->valid_devs[0],
-		RTE_CRYPTODEV_DPAA2_SEC_PMD,
+		rte_cryptodev_driver_id_get(
+		RTE_STR(CRYPTODEV_NAME_DPAA2_SEC_PMD)),
 		BLKCIPHER_AES_CIPHERONLY_TYPE);
 
 	TEST_ASSERT_EQUAL(status, 0, "Test failed");
@@ -1746,7 +1730,8 @@ test_authonly_dpaa2_sec_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool, ts_params->valid_devs[0],
-		RTE_CRYPTODEV_DPAA2_SEC_PMD,
+		rte_cryptodev_driver_id_get(
+		RTE_STR(RTE_CRYPTODEV_DPAA2_SEC_PMD)),
 		BLKCIPHER_AUTHONLY_TYPE);
 
 	TEST_ASSERT_EQUAL(status, 0, "Test failed");
@@ -1762,7 +1747,8 @@ test_authonly_openssl_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool, ts_params->valid_devs[0],
-		RTE_CRYPTODEV_OPENSSL_PMD,
+		rte_cryptodev_driver_id_get(
+		RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD)),
 		BLKCIPHER_AUTHONLY_TYPE);
 
 	TEST_ASSERT_EQUAL(status, 0, "Test failed");
@@ -1778,7 +1764,8 @@ test_AES_chain_armv8_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool, ts_params->valid_devs[0],
-		RTE_CRYPTODEV_ARMV8_PMD,
+		rte_cryptodev_driver_id_get(
+		RTE_STR(CRYPTODEV_NAME_ARMV8_PMD)),
 		BLKCIPHER_AES_CHAIN_TYPE);
 
 	TEST_ASSERT_EQUAL(status, 0, "Test failed");
@@ -4524,7 +4511,8 @@ test_3DES_chain_qat_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool, ts_params->valid_devs[0],
-		RTE_CRYPTODEV_QAT_SYM_PMD,
+		rte_cryptodev_driver_id_get(
+		RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD)),
 		BLKCIPHER_3DES_CHAIN_TYPE);
 
 	TEST_ASSERT_EQUAL(status, 0, "Test failed");
@@ -4540,7 +4528,8 @@ test_DES_cipheronly_qat_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool, ts_params->valid_devs[0],
-		RTE_CRYPTODEV_QAT_SYM_PMD,
+		rte_cryptodev_driver_id_get(
+		RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD)),
 		BLKCIPHER_DES_CIPHERONLY_TYPE);
 
 	TEST_ASSERT_EQUAL(status, 0, "Test failed");
@@ -4556,7 +4545,8 @@ test_DES_docsis_openssl_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool, ts_params->valid_devs[0],
-		RTE_CRYPTODEV_OPENSSL_PMD,
+		rte_cryptodev_driver_id_get(
+		RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD)),
 		BLKCIPHER_DES_DOCSIS_TYPE);
 
 	TEST_ASSERT_EQUAL(status, 0, "Test failed");
@@ -4572,7 +4562,8 @@ test_3DES_chain_dpaa2_sec_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool, ts_params->valid_devs[0],
-		RTE_CRYPTODEV_DPAA2_SEC_PMD,
+		rte_cryptodev_driver_id_get(
+		RTE_STR(CRYPTODEV_NAME_DPAA2_SEC_PMD)),
 		BLKCIPHER_3DES_CHAIN_TYPE);
 
 	TEST_ASSERT_EQUAL(status, 0, "Test failed");
@@ -4588,7 +4579,8 @@ test_3DES_cipheronly_dpaa2_sec_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool, ts_params->valid_devs[0],
-		RTE_CRYPTODEV_DPAA2_SEC_PMD,
+		rte_cryptodev_driver_id_get(
+		RTE_STR(CRYPTODEV_NAME_DPAA2_SEC_PMD)),
 		BLKCIPHER_3DES_CIPHERONLY_TYPE);
 
 	TEST_ASSERT_EQUAL(status, 0, "Test failed");
@@ -4604,7 +4596,8 @@ test_3DES_cipheronly_qat_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool, ts_params->valid_devs[0],
-		RTE_CRYPTODEV_QAT_SYM_PMD,
+		rte_cryptodev_driver_id_get(
+		RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD)),
 		BLKCIPHER_3DES_CIPHERONLY_TYPE);
 
 	TEST_ASSERT_EQUAL(status, 0, "Test failed");
@@ -4620,7 +4613,8 @@ test_3DES_chain_openssl_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool, ts_params->valid_devs[0],
-		RTE_CRYPTODEV_OPENSSL_PMD,
+		rte_cryptodev_driver_id_get(
+		RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD)),
 		BLKCIPHER_3DES_CHAIN_TYPE);
 
 	TEST_ASSERT_EQUAL(status, 0, "Test failed");
@@ -4636,7 +4630,8 @@ test_3DES_cipheronly_openssl_all(void)
 
 	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
 		ts_params->op_mpool, ts_params->valid_devs[0],
-		RTE_CRYPTODEV_OPENSSL_PMD,
+		rte_cryptodev_driver_id_get(
+		RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD)),
 		BLKCIPHER_3DES_CIPHERONLY_TYPE);
 
 	TEST_ASSERT_EQUAL(status, 0, "Test failed");
@@ -7661,8 +7656,9 @@ test_scheduler_attach_slave_op(void)
 	char vdev_name[32];
 
 	/* create 2 AESNI_MB if necessary */
-	nb_devs = rte_cryptodev_count_devtype(
-			RTE_CRYPTODEV_AESNI_MB_PMD);
+	nb_devs = rte_cryptodev_device_count_by_driver(
+			rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD)));
 	if (nb_devs < 2) {
 		for (i = nb_devs; i < 2; i++) {
 			snprintf(vdev_name, sizeof(vdev_name), "%s_%u",
@@ -7683,7 +7679,8 @@ test_scheduler_attach_slave_op(void)
 		struct rte_cryptodev_info info;
 
 		rte_cryptodev_info_get(i, &info);
-		if (info.dev_type != RTE_CRYPTODEV_AESNI_MB_PMD)
+		if (info.driver_id != rte_cryptodev_driver_id_get(
+				RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD)))
 			continue;
 
 		ret = rte_cryptodev_scheduler_slave_attach(sched_id,
@@ -8683,14 +8680,31 @@ static struct unit_test_suite cryptodev_armv8_testsuite  = {
 static int
 test_cryptodev_qat(void /*argv __rte_unused, int argc __rte_unused*/)
 {
-	gbl_cryptodev_type = RTE_CRYPTODEV_QAT_SYM_PMD;
+	gbl_driver_id =	rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD));
+
+	if (gbl_driver_id == -1) {
+		RTE_LOG(ERR, USER1, "QAT PMD must be loaded. Check if "
+				"CONFIG_RTE_LIBRTE_PMD_QAT is enabled "
+				"in config file to run this testsuite.\n");
+		return TEST_FAILED;
+	}
+
 	return unit_test_suite_runner(&cryptodev_qat_testsuite);
 }
 
 static int
 test_cryptodev_aesni_mb(void /*argv __rte_unused, int argc __rte_unused*/)
 {
-	gbl_cryptodev_type = RTE_CRYPTODEV_AESNI_MB_PMD;
+	gbl_driver_id =	rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD));
+
+	if (gbl_driver_id == -1) {
+		RTE_LOG(ERR, USER1, "AESNI MB PMD must be loaded. Check if "
+				"CONFIG_RTE_LIBRTE_PMD_AESNI_MB is enabled "
+				"in config file to run this testsuite.\n");
+		return TEST_FAILED;
+	}
 
 	return unit_test_suite_runner(&cryptodev_aesni_mb_testsuite);
 }
@@ -8698,7 +8712,15 @@ test_cryptodev_aesni_mb(void /*argv __rte_unused, int argc __rte_unused*/)
 static int
 test_cryptodev_openssl(void)
 {
-	gbl_cryptodev_type = RTE_CRYPTODEV_OPENSSL_PMD;
+	gbl_driver_id = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD));
+
+	if (gbl_driver_id == -1) {
+		RTE_LOG(ERR, USER1, "AESNI MB PMD must be loaded. Check if "
+				"CONFIG_RTE_LIBRTE_PMD_AESNI_MB is enabled "
+				"in config file to run this testsuite.\n");
+		return TEST_FAILED;
+	}
 
 	return unit_test_suite_runner(&cryptodev_openssl_testsuite);
 }
@@ -8706,7 +8728,15 @@ test_cryptodev_openssl(void)
 static int
 test_cryptodev_aesni_gcm(void)
 {
-	gbl_cryptodev_type = RTE_CRYPTODEV_AESNI_GCM_PMD;
+	gbl_driver_id = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_AESNI_GCM_PMD));
+
+	if (gbl_driver_id == -1) {
+		RTE_LOG(ERR, USER1, "AESNI GCM PMD must be loaded. Check if "
+				"CONFIG_RTE_LIBRTE_PMD_AESNI_GCM is enabled "
+				"in config file to run this testsuite.\n");
+		return TEST_FAILED;
+	}
 
 	return unit_test_suite_runner(&cryptodev_aesni_gcm_testsuite);
 }
@@ -8714,7 +8744,15 @@ test_cryptodev_aesni_gcm(void)
 static int
 test_cryptodev_null(void)
 {
-	gbl_cryptodev_type = RTE_CRYPTODEV_NULL_PMD;
+	gbl_driver_id = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_NULL_PMD));
+
+	if (gbl_driver_id == -1) {
+		RTE_LOG(ERR, USER1, "NULL PMD must be loaded. Check if "
+				"CONFIG_RTE_LIBRTE_PMD_NULL is enabled "
+				"in config file to run this testsuite.\n");
+		return TEST_FAILED;
+	}
 
 	return unit_test_suite_runner(&cryptodev_null_testsuite);
 }
@@ -8722,7 +8760,15 @@ test_cryptodev_null(void)
 static int
 test_cryptodev_sw_snow3g(void /*argv __rte_unused, int argc __rte_unused*/)
 {
-	gbl_cryptodev_type = RTE_CRYPTODEV_SNOW3G_PMD;
+	gbl_driver_id = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_SNOW3G_PMD));
+
+	if (gbl_driver_id == -1) {
+		RTE_LOG(ERR, USER1, "SNOW3G PMD must be loaded. Check if "
+				"CONFIG_RTE_LIBRTE_PMD_SNOW3G is enabled "
+				"in config file to run this testsuite.\n");
+		return TEST_FAILED;
+	}
 
 	return unit_test_suite_runner(&cryptodev_sw_snow3g_testsuite);
 }
@@ -8730,7 +8776,15 @@ test_cryptodev_sw_snow3g(void /*argv __rte_unused, int argc __rte_unused*/)
 static int
 test_cryptodev_sw_kasumi(void /*argv __rte_unused, int argc __rte_unused*/)
 {
-	gbl_cryptodev_type = RTE_CRYPTODEV_KASUMI_PMD;
+	gbl_driver_id = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_KASUMI_PMD));
+
+	if (gbl_driver_id == -1) {
+		RTE_LOG(ERR, USER1, "ZUC PMD must be loaded. Check if "
+				"CONFIG_RTE_LIBRTE_PMD_KASUMI is enabled "
+				"in config file to run this testsuite.\n");
+		return TEST_FAILED;
+	}
 
 	return unit_test_suite_runner(&cryptodev_sw_kasumi_testsuite);
 }
@@ -8738,7 +8792,15 @@ test_cryptodev_sw_kasumi(void /*argv __rte_unused, int argc __rte_unused*/)
 static int
 test_cryptodev_sw_zuc(void /*argv __rte_unused, int argc __rte_unused*/)
 {
-	gbl_cryptodev_type = RTE_CRYPTODEV_ZUC_PMD;
+	gbl_driver_id = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_ZUC_PMD));
+
+	if (gbl_driver_id == -1) {
+		RTE_LOG(ERR, USER1, "ZUC PMD must be loaded. Check if "
+				"CONFIG_RTE_LIBRTE_PMD_ZUC is enabled "
+				"in config file to run this testsuite.\n");
+		return TEST_FAILED;
+	}
 
 	return unit_test_suite_runner(&cryptodev_sw_zuc_testsuite);
 }
@@ -8746,7 +8808,15 @@ test_cryptodev_sw_zuc(void /*argv __rte_unused, int argc __rte_unused*/)
 static int
 test_cryptodev_armv8(void)
 {
-	gbl_cryptodev_type = RTE_CRYPTODEV_ARMV8_PMD;
+	gbl_driver_id = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_ARMV8_PMD));
+
+	if (gbl_driver_id == -1) {
+		RTE_LOG(ERR, USER1, "ARMV8 PMD must be loaded. Check if "
+				"CONFIG_RTE_LIBRTE_PMD_ARMV8 is enabled "
+				"in config file to run this testsuite.\n");
+		return TEST_FAILED;
+	}
 
 	return unit_test_suite_runner(&cryptodev_armv8_testsuite);
 }
@@ -8756,7 +8826,22 @@ test_cryptodev_armv8(void)
 static int
 test_cryptodev_scheduler(void /*argv __rte_unused, int argc __rte_unused*/)
 {
-	gbl_cryptodev_type = RTE_CRYPTODEV_SCHEDULER_PMD;
+	gbl_driver_id =	rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_SCHEDULER_PMD));
+
+	if (gbl_driver_id == -1) {
+		RTE_LOG(ERR, USER1, "SCHEDULER PMD must be loaded. Check if "
+				"CONFIG_RTE_LIBRTE_PMD_SCHEDULER is enabled "
+				"in config file to run this testsuite.\n");
+		return TEST_FAILED;
+	}
+
+	if (rte_cryptodev_driver_id_get(
+				RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD)) == -1) {
+		RTE_LOG(ERR, USER1, "CONFIG_RTE_LIBRTE_PMD_AESNI_MB must be"
+			" enabled in config file to run this testsuite.\n");
+		return TEST_FAILED;
+}
 	return unit_test_suite_runner(&cryptodev_scheduler_testsuite);
 }
 
@@ -8767,7 +8852,16 @@ REGISTER_TEST_COMMAND(cryptodev_scheduler_autotest, test_cryptodev_scheduler);
 static int
 test_cryptodev_dpaa2_sec(void /*argv __rte_unused, int argc __rte_unused*/)
 {
-	gbl_cryptodev_type = RTE_CRYPTODEV_DPAA2_SEC_PMD;
+	gbl_driver_id =	rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_DPAA2_SEC_PMD));
+
+	if (gbl_driver_id == -1) {
+		RTE_LOG(ERR, USER1, "DPAA2 SEC PMD must be loaded. Check if "
+				"CONFIG_RTE_LIBRTE_PMD_DPAA2_SEC is enabled "
+				"in config file to run this testsuite.\n");
+		return TEST_FAILED;
+	}
+
 	return unit_test_suite_runner(&cryptodev_dpaa2_sec_testsuite);
 }
 

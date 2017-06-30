@@ -85,6 +85,8 @@ struct qat_pmd_private {
 	const struct rte_cryptodev_capabilities *qat_dev_capabilities;
 };
 
+extern uint8_t cryptodev_qat_driver_id;
+
 int qat_dev_config(struct rte_cryptodev *dev,
 		struct rte_cryptodev_config *config);
 int qat_dev_start(struct rte_cryptodev *dev);

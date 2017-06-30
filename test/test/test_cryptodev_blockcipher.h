@@ -126,7 +126,7 @@ int
 test_blockcipher_all_tests(struct rte_mempool *mbuf_pool,
 	struct rte_mempool *op_mpool,
 	uint8_t dev_id,
-	enum rte_cryptodev_type cryptodev_type,
+	int driver_id,
 	enum blockcipher_test_type test_type);
 
 #endif /* TEST_CRYPTODEV_BLOCKCIPHER_H_ */

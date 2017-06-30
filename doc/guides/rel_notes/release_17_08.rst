@@ -113,6 +113,7 @@ New Features
   * Added AEAD algorithm specific functions and structures, so it is not
     necessary to use a combination of cipher and authentication
     structures anymore.
+  * Added helper functions for crypto device driver identification.
 
 * **Updated dpaa2_sec crypto PMD.**
 
@@ -201,6 +202,15 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* **Reworked rte_cryptodev library.**
+
+  The rte_cryptodev library has been reworked and updated. The following changes
+  have been made to it:
+
+  * The crypto device type enumeration has been removed from cryptodev library.
+  * The function ``rte_crypto_count_devtype()`` has been removed, and replaced
+    by the new function ``rte_crypto_count_by_driver()``.
+
 
 ABI Changes
 -----------
@@ -230,6 +240,10 @@ ABI Changes
   * Changed field size of AAD length from uint32_t to uint16_t.
   * Changed field size of digest length from uint32_t to uint16_t.
   * Removed AAD length.
+
+* Replaced ``dev_type`` enumeration with uint8_t ``driver_id`` in
+  ``rte_cryptodev_info``, ``rte_cryptodev`` and ``rte_cryptodev_sym_session``
+  structures.
 
 
 Shared Library Versions

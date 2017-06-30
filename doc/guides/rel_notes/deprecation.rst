@@ -57,21 +57,9 @@ Deprecation Notices
 * cryptodev: All PMD names definitions will be moved to the individual PMDs
   in 17.08.
 
-* cryptodev: The following changes will be done in in 17.08:
-
-  - the device type enumeration ``rte_cryptodev_type`` will be removed
-  - the following structures will be changed: ``rte_cryptodev_session``,
-    ``rte_cryptodev_sym_session``, ``rte_cryptodev_info``, ``rte_cryptodev``
-  - the function ``rte_cryptodev_count_devtype`` will be replaced by
-    ``rte_cryptodev_device_count_by_driver``
-
 * cryptodev: API changes are planned for 17.08 for the sessions management
   to make it agnostic to the underlying devices, removing coupling with
   crypto PMDs, so a single session can be used on multiple devices.
-
-  - ``struct rte_cryptodev_sym_session``, dev_id, dev_type will be removed,
-    _private field changed to the indirect array of private data pointers of
-    all supported devices
 
   An API of followed functions will be changed to allow operate on multiple
   devices with one session:

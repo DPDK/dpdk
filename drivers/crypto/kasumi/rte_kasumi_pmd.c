@@ -48,6 +48,8 @@
 #define KASUMI_MAX_BURST 4
 #define BYTE_LEN 8
 
+static uint8_t cryptodev_driver_id;
+
 /** Get xform chain order. */
 static enum kasumi_operation
 kasumi_get_mode(const struct rte_crypto_sym_xform *xform)
@@ -164,8 +166,8 @@ kasumi_get_session(struct kasumi_qp *qp, struct rte_crypto_op *op)
 	struct kasumi_session *sess;
 
 	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
-		if (unlikely(op->sym->session->dev_type !=
-				RTE_CRYPTODEV_KASUMI_PMD))
+		if (unlikely(op->sym->session->driver_id !=
+				cryptodev_driver_id))
 			return NULL;
 
 		sess = (struct kasumi_session *)op->sym->session->_private;
@@ -580,7 +582,7 @@ cryptodev_kasumi_create(const char *name,
 		goto init_error;
 	}
 
-	dev->dev_type = RTE_CRYPTODEV_KASUMI_PMD;
+	dev->driver_id = cryptodev_driver_id;
 	dev->dev_ops = rte_kasumi_pmd_ops;
 
 	/* Register RX/TX burst functions for data path. */
@@ -664,3 +666,4 @@ RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_KASUMI_PMD,
 	"max_nb_queue_pairs=<int> "
 	"max_nb_sessions=<int> "
 	"socket_id=<int>");
+RTE_PMD_REGISTER_CRYPTO_DRIVER(cryptodev_kasumi_pmd_drv, cryptodev_driver_id);

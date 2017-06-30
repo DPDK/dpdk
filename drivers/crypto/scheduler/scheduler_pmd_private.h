@@ -63,7 +63,7 @@ struct scheduler_slave {
 	uint16_t qp_id;
 	uint32_t nb_inflight_cops;
 
-	enum rte_cryptodev_type dev_type;
+	uint8_t driver_id;
 };
 
 struct scheduler_ctx {
@@ -104,6 +104,8 @@ struct scheduler_session {
 	struct rte_cryptodev_sym_session *sessions[
 			RTE_CRYPTODEV_SCHEDULER_MAX_NB_SLAVES];
 };
+
+extern uint8_t cryptodev_driver_id;
 
 static __rte_always_inline uint16_t
 get_max_enqueue_order_count(struct rte_ring *order_ring, uint16_t nb_ops)

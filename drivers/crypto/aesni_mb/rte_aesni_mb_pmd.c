@@ -41,6 +41,8 @@
 
 #include "rte_aesni_mb_pmd_private.h"
 
+static uint8_t cryptodev_driver_id;
+
 typedef void (*hash_one_block_t)(const void *data, void *digest);
 typedef void (*aes_keyexp_t)(const void *key, void *enc_exp_keys, void *dec_exp_keys);
 
@@ -353,8 +355,8 @@ get_session(struct aesni_mb_qp *qp, struct rte_crypto_op *op)
 	struct aesni_mb_session *sess = NULL;
 
 	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
-		if (unlikely(op->sym->session->dev_type !=
-				RTE_CRYPTODEV_AESNI_MB_PMD)) {
+		if (unlikely(op->sym->session->driver_id !=
+				cryptodev_driver_id)) {
 			return NULL;
 		}
 
@@ -707,7 +709,7 @@ cryptodev_aesni_mb_create(const char *name,
 		goto init_error;
 	}
 
-	dev->dev_type = RTE_CRYPTODEV_AESNI_MB_PMD;
+	dev->driver_id = cryptodev_driver_id;
 	dev->dev_ops = rte_aesni_mb_pmd_ops;
 
 	/* register rx/tx burst functions for data path */
@@ -808,3 +810,4 @@ RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_AESNI_MB_PMD,
 	"max_nb_queue_pairs=<int> "
 	"max_nb_sessions=<int> "
 	"socket_id=<int>");
+RTE_PMD_REGISTER_CRYPTO_DRIVER(cryptodev_aesni_mb_pmd_drv, cryptodev_driver_id);

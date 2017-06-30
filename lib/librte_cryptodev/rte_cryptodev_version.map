@@ -6,7 +6,6 @@ DPDK_16.04 {
 	rte_cryptodev_callback_unregister;
 	rte_cryptodev_close;
 	rte_cryptodev_count;
-	rte_cryptodev_count_devtype;
 	rte_cryptodev_configure;
 	rte_cryptodev_create_vdev;
 	rte_cryptodev_get_dev_id;
@@ -62,6 +61,10 @@ DPDK_17.05 {
 DPDK_17.08 {
 	global:
 
+	rte_cryptodev_allocate_driver;
+	rte_cryptodev_device_count_by_driver;
+	rte_cryptodev_driver_id_get;
+	rte_cryptodev_driver_name_get;
 	rte_cryptodev_get_aead_algo_enum;
 	rte_cryptodev_pci_generic_probe;
 	rte_cryptodev_pci_generic_remove;

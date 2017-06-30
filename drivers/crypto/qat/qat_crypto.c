@@ -1072,7 +1072,8 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
 		return -EINVAL;
 	}
 
-	if (unlikely(op->sym->session->dev_type != RTE_CRYPTODEV_QAT_SYM_PMD)) {
+	if (unlikely(op->sym->session->driver_id !=
+			cryptodev_qat_driver_id)) {
 		PMD_DRV_LOG(ERR, "Session was not created for this device");
 		return -EINVAL;
 	}
@@ -1433,7 +1434,7 @@ void qat_dev_info_get(struct rte_cryptodev *dev,
 		info->feature_flags = dev->feature_flags;
 		info->capabilities = internals->qat_dev_capabilities;
 		info->sym.max_nb_sessions = internals->max_nb_sessions;
-		info->dev_type = RTE_CRYPTODEV_QAT_SYM_PMD;
+		info->driver_id = cryptodev_qat_driver_id;
 		info->pci_dev = RTE_DEV_TO_PCI(dev->device);
 	}
 }

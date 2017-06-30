@@ -46,6 +46,8 @@
 #define ZUC_MAX_BURST 8
 #define BYTE_LEN 8
 
+static uint8_t cryptodev_driver_id;
+
 /** Get xform chain order. */
 static enum zuc_operation
 zuc_get_mode(const struct rte_crypto_sym_xform *xform)
@@ -163,8 +165,8 @@ zuc_get_session(struct zuc_qp *qp, struct rte_crypto_op *op)
 	struct zuc_session *sess;
 
 	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
-		if (unlikely(op->sym->session->dev_type !=
-				RTE_CRYPTODEV_ZUC_PMD))
+		if (unlikely(op->sym->session->driver_id !=
+				cryptodev_driver_id))
 			return NULL;
 
 		sess = (struct zuc_session *)op->sym->session->_private;
@@ -468,7 +470,7 @@ cryptodev_zuc_create(const char *name,
 		goto init_error;
 	}
 
-	dev->dev_type = RTE_CRYPTODEV_ZUC_PMD;
+	dev->driver_id = cryptodev_driver_id;
 	dev->dev_ops = rte_zuc_pmd_ops;
 
 	/* Register RX/TX burst functions for data path. */
@@ -551,3 +553,4 @@ RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_ZUC_PMD,
 	"max_nb_queue_pairs=<int> "
 	"max_nb_sessions=<int> "
 	"socket_id=<int>");
+RTE_PMD_REGISTER_CRYPTO_DRIVER(cryptodev_zuc_pmd_drv, cryptodev_driver_id);

@@ -40,6 +40,8 @@
 #include "qat_crypto.h"
 #include "qat_logs.h"
 
+uint8_t cryptodev_qat_driver_id;
+
 static const struct rte_cryptodev_capabilities qat_cpm16_capabilities[] = {
 	QAT_BASE_CPM16_SYM_CAPABILITIES,
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
@@ -106,7 +108,7 @@ crypto_qat_dev_init(struct rte_cryptodev *cryptodev)
 		RTE_DEV_TO_PCI(cryptodev->device)->addr.devid,
 		RTE_DEV_TO_PCI(cryptodev->device)->addr.function);
 
-	cryptodev->dev_type = RTE_CRYPTODEV_QAT_SYM_PMD;
+	cryptodev->driver_id = cryptodev_qat_driver_id;
 	cryptodev->dev_ops = &crypto_qat_ops;
 
 	cryptodev->enqueue_burst = qat_pmd_enqueue_op_burst;
@@ -168,4 +170,4 @@ static struct rte_pci_driver rte_qat_pmd = {
 
 RTE_PMD_REGISTER_PCI(CRYPTODEV_NAME_QAT_SYM_PMD, rte_qat_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(CRYPTODEV_NAME_QAT_SYM_PMD, pci_id_qat_map);
-
+RTE_PMD_REGISTER_CRYPTO_DRIVER(rte_qat_pmd, cryptodev_qat_driver_id);

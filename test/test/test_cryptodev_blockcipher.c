@@ -54,7 +54,7 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 	struct rte_mempool *mbuf_pool,
 	struct rte_mempool *op_mpool,
 	uint8_t dev_id,
-	enum rte_cryptodev_type cryptodev_type,
+	int driver_id,
 	char *test_msg)
 {
 	struct rte_mbuf *ibuf = NULL;
@@ -80,6 +80,19 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 	uint8_t tmp_src_buf[MBUF_SIZE];
 	uint8_t tmp_dst_buf[MBUF_SIZE];
 
+	int openssl_pmd = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD));
+	int scheduler_pmd = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_SCHEDULER_PMD));
+	int armv8_pmd = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_ARMV8_PMD));
+	int aesni_mb_pmd = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD));
+	int qat_pmd = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD));
+	int dpaa2_sec_pmd = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_DPAA2_SEC_PMD));
+
 	int nb_segs = 1;
 
 	if (t->feature_mask & BLOCKCIPHER_TEST_FEATURE_SG) {
@@ -100,18 +113,15 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 		memcpy(auth_key, tdata->auth_key.data,
 			tdata->auth_key.len);
 
-	switch (cryptodev_type) {
-	case RTE_CRYPTODEV_DPAA2_SEC_PMD:
-	case RTE_CRYPTODEV_QAT_SYM_PMD:
-	case RTE_CRYPTODEV_OPENSSL_PMD:
-	case RTE_CRYPTODEV_ARMV8_PMD: /* Fall through */
+	if (driver_id == dpaa2_sec_pmd ||
+			driver_id == qat_pmd ||
+			driver_id == openssl_pmd ||
+			driver_id == armv8_pmd) { /* Fall through */
 		digest_len = tdata->digest.len;
-		break;
-	case RTE_CRYPTODEV_AESNI_MB_PMD:
-	case RTE_CRYPTODEV_SCHEDULER_PMD:
+	} else if (driver_id == aesni_mb_pmd ||
+			driver_id == scheduler_pmd) {
 		digest_len = tdata->digest.truncated_len;
-		break;
-	default:
+	} else {
 		snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN,
 			"line %u FAILED: %s",
 			__LINE__, "Unsupported PMD type");
@@ -575,7 +585,7 @@ int
 test_blockcipher_all_tests(struct rte_mempool *mbuf_pool,
 	struct rte_mempool *op_mpool,
 	uint8_t dev_id,
-	enum rte_cryptodev_type cryptodev_type,
+	int driver_id,
 	enum blockcipher_test_type test_type)
 {
 	int status, overall_status = TEST_SUCCESS;
@@ -584,6 +594,19 @@ test_blockcipher_all_tests(struct rte_mempool *mbuf_pool,
 	uint32_t n_test_cases = 0;
 	uint32_t target_pmd_mask = 0;
 	const struct blockcipher_test_case *tcs = NULL;
+
+	int openssl_pmd = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD));
+	int dpaa2_pmd = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_DPAA2_SEC_PMD));
+	int scheduler_pmd = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_SCHEDULER_PMD));
+	int armv8_pmd = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_ARMV8_PMD));
+	int aesni_mb_pmd = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD));
+	int qat_pmd = rte_cryptodev_driver_id_get(
+			RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD));
 
 	switch (test_type) {
 	case BLKCIPHER_AES_CHAIN_TYPE:
@@ -630,29 +653,20 @@ test_blockcipher_all_tests(struct rte_mempool *mbuf_pool,
 		break;
 	}
 
-	switch (cryptodev_type) {
-	case RTE_CRYPTODEV_AESNI_MB_PMD:
+	if (driver_id == aesni_mb_pmd)
 		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_MB;
-		break;
-	case RTE_CRYPTODEV_QAT_SYM_PMD:
+	else if (driver_id == qat_pmd)
 		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_QAT;
-		break;
-	case RTE_CRYPTODEV_OPENSSL_PMD:
+	else if (driver_id == openssl_pmd)
 		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL;
-		break;
-	case RTE_CRYPTODEV_ARMV8_PMD:
+	else if (driver_id == armv8_pmd)
 		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_ARMV8;
-		break;
-	case RTE_CRYPTODEV_SCHEDULER_PMD:
+	else if (driver_id == scheduler_pmd)
 		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_SCHEDULER;
-		break;
-	case RTE_CRYPTODEV_DPAA2_SEC_PMD:
+	else if (driver_id == dpaa2_pmd)
 		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_DPAA2_SEC;
-		break;
-	default:
+	else
 		TEST_ASSERT(0, "Unrecognized cryptodev type");
-		break;
-	}
 
 	for (i = 0; i < n_test_cases; i++) {
 		const struct blockcipher_test_case *tc = &tcs[i];
@@ -661,7 +675,7 @@ test_blockcipher_all_tests(struct rte_mempool *mbuf_pool,
 			continue;
 
 		status = test_blockcipher_one_case(tc, mbuf_pool, op_mpool,
-			dev_id, cryptodev_type, test_msg);
+			dev_id, driver_id, test_msg);
 
 		printf("  %u) TestCase %s %s\n", test_index ++,
 			tc->test_descr, test_msg);

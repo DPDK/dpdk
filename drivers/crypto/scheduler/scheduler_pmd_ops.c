@@ -369,7 +369,7 @@ scheduler_pmd_info_get(struct rte_cryptodev *dev,
 				max_nb_sessions;
 	}
 
-	dev_info->dev_type = dev->dev_type;
+	dev_info->driver_id = dev->driver_id;
 	dev_info->feature_flags = dev->feature_flags;
 	dev_info->capabilities = sched_ctx->capabilities;
 	dev_info->max_nb_queue_pairs = sched_ctx->max_nb_queue_pairs;

@@ -533,7 +533,7 @@ openssl_pmd_info_get(struct rte_cryptodev *dev,
 	struct openssl_private *internals = dev->data->dev_private;
 
 	if (dev_info != NULL) {
-		dev_info->dev_type = dev->dev_type;
+		dev_info->driver_id = dev->driver_id;
 		dev_info->feature_flags = dev->feature_flags;
 		dev_info->capabilities = openssl_pmd_capabilities;
 		dev_info->max_nb_queue_pairs = internals->max_nb_qpairs;

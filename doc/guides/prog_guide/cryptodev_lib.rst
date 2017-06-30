@@ -293,7 +293,7 @@ relevant information for the device.
 
     struct rte_cryptodev_info {
         const char *driver_name;
-        enum rte_cryptodev_type dev_type;
+        uint8_t driver_id;
         struct rte_pci_device *pci_dev;
 
         uint64_t feature_flags;
@@ -452,7 +452,8 @@ functions for the configuration of the session parameters and freeing function
 so the PMD can managed the memory on destruction of a session.
 
 **Note**: Sessions created on a particular device can only be used on Crypto
-devices of the same type, and if you try to use a session on a device different
+devices of the same type - the same driver id used by this devices,
+and if you try to use a session on a device different
 to that on which it was created then the Crypto operation will fail.
 
 ``rte_cryptodev_sym_session_create()`` is used to create a symmetric session on
