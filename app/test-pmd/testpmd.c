@@ -1824,7 +1824,7 @@ rmv_event_callback(void *arg)
 	else if (da->type == RTE_DEVTYPE_WHITELISTED_PCI)
 		rte_pci_device_name(&da->pci.addr, name, sizeof(name));
 	printf("removing device %s\n", name);
-	rte_eal_dev_detach(name);
+	rte_eal_dev_detach(dev->device);
 	dev->state = RTE_ETH_DEV_UNUSED;
 }
 

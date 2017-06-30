@@ -90,27 +90,33 @@ err:
 	return -EINVAL;
 }
 
-int rte_eal_dev_detach(const char *name)
+int rte_eal_dev_detach(struct rte_device *dev)
 {
-	struct rte_pci_addr addr;
+	struct rte_bus *bus;
+	int ret;
 
-	if (name == NULL) {
+	if (dev == NULL) {
 		RTE_LOG(ERR, EAL, "Invalid device provided.\n");
 		return -EINVAL;
 	}
 
-	if (eal_parse_pci_DomBDF(name, &addr) == 0) {
-		if (rte_pci_detach(&addr) < 0)
-			goto err;
-	} else {
-		if (rte_vdev_uninit(name))
-			goto err;
+	bus = rte_bus_find_by_device(dev);
+	if (bus == NULL) {
+		RTE_LOG(ERR, EAL, "Cannot find bus for device (%s)\n",
+			dev->name);
+		return -EINVAL;
 	}
-	return 0;
 
-err:
-	RTE_LOG(ERR, EAL, "Driver cannot detach the device (%s)\n", name);
-	return -EINVAL;
+	if (bus->unplug == NULL) {
+		RTE_LOG(ERR, EAL, "Bus function not supported\n");
+		return -ENOTSUP;
+	}
+
+	ret = bus->unplug(dev);
+	if (ret)
+		RTE_LOG(ERR, EAL, "Driver cannot detach the device (%s)\n",
+			dev->name);
+	return ret;
 }
 
 int rte_eal_hotplug_add(const char *busname, const char *devname,

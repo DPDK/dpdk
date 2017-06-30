@@ -183,13 +183,12 @@ int rte_eal_dev_attach(const char *name, const char *devargs);
 /**
  * Detach a device from its driver.
  *
- * @param name
- *   Same description as for rte_eal_dev_attach().
- *   Here, eal will call the driver detaching function.
+ * @param dev
+ *   A pointer to a rte_device structure.
  * @return
  *   0 on success, negative on error.
  */
-int rte_eal_dev_detach(const char *name);
+int rte_eal_dev_detach(struct rte_device *dev);
 
 /**
  * @warning

@@ -440,7 +440,8 @@ rte_eth_dev_detach(uint8_t port_id, char *name)
 
 	snprintf(name, sizeof(rte_eth_devices[port_id].data->name),
 		 "%s", rte_eth_devices[port_id].data->name);
-	ret = rte_eal_dev_detach(name);
+
+	ret = rte_eal_dev_detach(rte_eth_devices[port_id].device);
 	if (ret < 0)
 		goto err;
 
