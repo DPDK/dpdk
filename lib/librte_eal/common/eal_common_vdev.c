@@ -39,11 +39,13 @@
 #include <sys/queue.h>
 
 #include <rte_eal.h>
+#include <rte_dev.h>
 #include <rte_bus.h>
 #include <rte_vdev.h>
 #include <rte_common.h>
 #include <rte_devargs.h>
 #include <rte_memory.h>
+#include <rte_errno.h>
 
 /** Double linked list of virtual device drivers. */
 TAILQ_HEAD(vdev_device_list, rte_vdev_device);
@@ -354,10 +356,22 @@ vdev_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
 	return NULL;
 }
 
+static int
+vdev_unplug(struct rte_device *dev)
+{
+	/*
+	 * The virtual bus doesn't support 'unattached' devices so this is
+	 * actually equal to hotplugging removal of it.
+	 */
+	return rte_vdev_uninit(dev->name);
+}
+
 static struct rte_bus rte_vdev_bus = {
 	.scan = vdev_scan,
 	.probe = vdev_probe,
 	.find_device = vdev_find_device,
+	/* .plug = NULL, see comment on vdev_unplug */
+	.unplug = vdev_unplug,
 };
 
 RTE_REGISTER_BUS(VIRTUAL_BUS_NAME, rte_vdev_bus);
