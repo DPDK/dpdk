@@ -106,6 +106,30 @@ static int bnxt_hwrm_send_message_locked(struct bnxt *bp, void *msg,
 	uint32_t *data = msg;
 	uint8_t *bar;
 	uint8_t *valid;
+	uint16_t max_req_len = bp->max_req_len;
+	struct hwrm_short_input short_input = { 0 };
+
+	if (bp->flags & BNXT_FLAG_SHORT_CMD) {
+		void *short_cmd_req = bp->hwrm_short_cmd_req_addr;
+
+		memset(short_cmd_req, 0, bp->max_req_len);
+		memcpy(short_cmd_req, req, msg_len);
+
+		short_input.req_type = rte_cpu_to_le_16(req->req_type);
+		short_input.signature = rte_cpu_to_le_16(
+					HWRM_SHORT_REQ_SIGNATURE_SHORT_CMD);
+		short_input.size = rte_cpu_to_le_16(msg_len);
+		short_input.req_addr =
+			rte_cpu_to_le_64(bp->hwrm_short_cmd_req_dma_addr);
+
+		data = (uint32_t *)&short_input;
+		msg_len = sizeof(short_input);
+
+		/* Sync memory write before updating doorbell */
+		rte_wmb();
+
+		max_req_len = BNXT_HWRM_SHORT_REQ_LEN;
+	}
 
 	/* Write request msg to hwrm channel */
 	for (i = 0; i < msg_len; i += 4) {
@@ -115,7 +139,7 @@ static int bnxt_hwrm_send_message_locked(struct bnxt *bp, void *msg,
 	}
 
 	/* Zero the rest of the request space */
-	for (; i < bp->max_req_len; i += 4) {
+	for (; i < max_req_len; i += 4) {
 		bar = (uint8_t *)bp->bar0 + i;
 		rte_write32(0, bar);
 	}
@@ -457,7 +481,9 @@ int bnxt_hwrm_ver_get(struct bnxt *bp)
 	uint32_t fw_version;
 	uint16_t max_resp_len;
 	char type[RTE_MEMZONE_NAMESIZE];
+	uint32_t dev_caps_cfg;
 
+	bp->max_req_len = HWRM_MAX_REQ_LEN;
 	HWRM_PREP(req, VER_GET, -1, resp);
 
 	req.hwrm_intf_maj = HWRM_VERSION_MAJOR;
@@ -514,8 +540,10 @@ int bnxt_hwrm_ver_get(struct bnxt *bp)
 		RTE_LOG(ERR, PMD, "Unsupported request length\n");
 		rc = -EINVAL;
 	}
-	bp->max_req_len = resp->max_req_win_len;
+	bp->max_req_len = rte_le_to_cpu_16(resp->max_req_win_len);
 	max_resp_len = resp->max_resp_len;
+	dev_caps_cfg = rte_le_to_cpu_32(resp->dev_caps_cfg);
+
 	if (bp->max_resp_len != max_resp_len) {
 		sprintf(type, "bnxt_hwrm_%04x:%02x:%02x:%02x",
 			bp->pdev->addr.domain, bp->pdev->addr.bus,
@@ -538,6 +566,34 @@ int bnxt_hwrm_ver_get(struct bnxt *bp)
 			goto error;
 		}
 		bp->max_resp_len = max_resp_len;
+	}
+
+	if ((dev_caps_cfg &
+		HWRM_VER_GET_OUTPUT_DEV_CAPS_CFG_SHORT_CMD_SUPPORTED) &&
+	    (dev_caps_cfg &
+	     HWRM_VER_GET_OUTPUT_DEV_CAPS_CFG_SHORT_CMD_INPUTUIRED)) {
+		RTE_LOG(DEBUG, PMD, "Short command supported\n");
+
+		rte_free(bp->hwrm_short_cmd_req_addr);
+
+		bp->hwrm_short_cmd_req_addr = rte_malloc(type,
+							bp->max_req_len, 0);
+		if (bp->hwrm_short_cmd_req_addr == NULL) {
+			rc = -ENOMEM;
+			goto error;
+		}
+		rte_mem_lock_page(bp->hwrm_short_cmd_req_addr);
+		bp->hwrm_short_cmd_req_dma_addr =
+			rte_mem_virt2phy(bp->hwrm_short_cmd_req_addr);
+		if (bp->hwrm_short_cmd_req_dma_addr == 0) {
+			rte_free(bp->hwrm_short_cmd_req_addr);
+			RTE_LOG(ERR, PMD,
+				"Unable to map buffer to physical memory.\n");
+			rc = -ENOMEM;
+			goto error;
+		}
+
+		bp->flags |= BNXT_FLAG_SHORT_CMD;
 	}
 
 error:
@@ -1529,8 +1585,11 @@ void bnxt_free_hwrm_resources(struct bnxt *bp)
 {
 	/* Release memzone */
 	rte_free(bp->hwrm_cmd_resp_addr);
+	rte_free(bp->hwrm_short_cmd_req_addr);
 	bp->hwrm_cmd_resp_addr = NULL;
+	bp->hwrm_short_cmd_req_addr = NULL;
 	bp->hwrm_cmd_resp_dma_addr = 0;
+	bp->hwrm_short_cmd_req_dma_addr = 0;
 }
 
 int bnxt_alloc_hwrm_resources(struct bnxt *bp)
@@ -1540,7 +1599,6 @@ int bnxt_alloc_hwrm_resources(struct bnxt *bp)
 
 	sprintf(type, "bnxt_hwrm_%04x:%02x:%02x:%02x", pdev->addr.domain,
 		pdev->addr.bus, pdev->addr.devid, pdev->addr.function);
-	bp->max_req_len = HWRM_MAX_REQ_LEN;
 	bp->max_resp_len = HWRM_MAX_RESP_LEN;
 	bp->hwrm_cmd_resp_addr = rte_malloc(type, bp->max_resp_len, 0);
 	rte_mem_lock_page(bp->hwrm_cmd_resp_addr);

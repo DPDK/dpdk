@@ -60,6 +60,7 @@ static const char bnxt_version[] =
 
 #define PCI_VENDOR_ID_BROADCOM 0x14E4
 
+#define BROADCOM_DEV_ID_STRATUS_NIC_VF 0x1609
 #define BROADCOM_DEV_ID_STRATUS_NIC 0x1614
 #define BROADCOM_DEV_ID_57414_VF 0x16c1
 #define BROADCOM_DEV_ID_57301 0x16c8
@@ -96,6 +97,8 @@ static const char bnxt_version[] =
 #define BROADCOM_DEV_ID_57416_MF 0x16ee
 
 static const struct rte_pci_id bnxt_pci_id_map[] = {
+	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_BROADCOM,
+			 BROADCOM_DEV_ID_STRATUS_NIC_VF) },
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_BROADCOM, BROADCOM_DEV_ID_STRATUS_NIC) },
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_BROADCOM, BROADCOM_DEV_ID_57414_VF) },
 	{ RTE_PCI_DEVICE(PCI_VENDOR_ID_BROADCOM, BROADCOM_DEV_ID_57301) },
@@ -1569,7 +1572,8 @@ static bool bnxt_vf_pciid(uint16_t id)
 	    id == BROADCOM_DEV_ID_57406_VF ||
 	    id == BROADCOM_DEV_ID_5731X_VF ||
 	    id == BROADCOM_DEV_ID_5741X_VF ||
-	    id == BROADCOM_DEV_ID_57414_VF)
+	    id == BROADCOM_DEV_ID_57414_VF ||
+	    id == BROADCOM_DEV_ID_STRATUS_NIC_VF)
 		return true;
 	return false;
 }

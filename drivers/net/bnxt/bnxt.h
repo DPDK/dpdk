@@ -162,6 +162,7 @@ struct bnxt_cos_queue_info {
 	uint8_t	profile;
 };
 
+#define BNXT_HWRM_SHORT_REQ_LEN		sizeof(struct hwrm_short_input)
 struct bnxt {
 	void				*bar0;
 
@@ -173,6 +174,7 @@ struct bnxt {
 #define BNXT_FLAG_VF		(1 << 1)
 #define BNXT_FLAG_PORT_STATS	(1 << 2)
 #define BNXT_FLAG_JUMBO		(1 << 3)
+#define BNXT_FLAG_SHORT_CMD	(1 << 4)
 #define BNXT_PF(bp)		(!((bp)->flags & BNXT_FLAG_VF))
 #define BNXT_VF(bp)		((bp)->flags & BNXT_FLAG_VF)
 #define BNXT_NPAR_ENABLED(bp)	((bp)->port_partition_type)
@@ -217,6 +219,8 @@ struct bnxt {
 	uint16_t			hwrm_cmd_seq;
 	void				*hwrm_cmd_resp_addr;
 	phys_addr_t			hwrm_cmd_resp_dma_addr;
+	void				*hwrm_short_cmd_req_addr;
+	phys_addr_t			hwrm_short_cmd_req_dma_addr;
 	rte_spinlock_t			hwrm_lock;
 	uint16_t			max_req_len;
 	uint16_t			max_resp_len;

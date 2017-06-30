@@ -10300,6 +10300,16 @@ struct output {
 	 */
 } __attribute__((packed));
 
+/* Short Command Structure (16 bytes) */
+struct hwrm_short_input {
+	uint16_t req_type;
+	uint16_t signature;
+	#define HWRM_SHORT_REQ_SIGNATURE_SHORT_CMD	(UINT32_C(0x4321))
+	uint16_t unused_0;
+	uint16_t size;
+	uint64_t req_addr;
+} __attribute__((packed));
+
 #define HWRM_GET_HWRM_ERROR_CODE(arg) \
 	{ \
 		typeof(arg) x = (arg); \
