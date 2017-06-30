@@ -368,6 +368,40 @@ fslmc_bus_add_device(struct rte_dpaa2_device *dev)
 	}
 }
 
+#define IRQ_SET_BUF_LEN  (sizeof(struct vfio_irq_set) + sizeof(int))
+
+int rte_dpaa2_intr_enable(struct rte_intr_handle *intr_handle,
+			  uint32_t index)
+{
+	struct vfio_irq_set *irq_set;
+	char irq_set_buf[IRQ_SET_BUF_LEN];
+	int *fd_ptr, fd, ret;
+
+	/* Prepare vfio_irq_set structure and SET the IRQ in VFIO */
+	/* Give the eventfd to VFIO */
+	fd = eventfd(0, 0);
+	irq_set = (struct vfio_irq_set *)irq_set_buf;
+	irq_set->argsz = sizeof(irq_set_buf);
+	irq_set->count = 1;
+	irq_set->flags = VFIO_IRQ_SET_DATA_EVENTFD |
+			 VFIO_IRQ_SET_ACTION_TRIGGER;
+	irq_set->index = index;
+	irq_set->start = 0;
+	fd_ptr = (int *)&irq_set->data;
+	*fd_ptr = fd;
+
+	ret = ioctl(intr_handle->vfio_dev_fd, VFIO_DEVICE_SET_IRQS, irq_set);
+	if (ret < 0) {
+		FSLMC_VFIO_LOG(ERR, "Unable to set IRQ in VFIO, ret: %d\n",
+			       ret);
+		return -1;
+	}
+
+	/* Set the FD and update the flags */
+	intr_handle->fd = fd;
+	return 0;
+}
+
 /* Following function shall fetch total available list of MC devices
  * from VFIO container & populate private list of devices and other
  * data structures

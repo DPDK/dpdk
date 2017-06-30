@@ -90,6 +90,9 @@ int vfio_dmamap_mem_region(
 	uint64_t iova,
 	uint64_t size);
 
+int rte_dpaa2_intr_enable(struct rte_intr_handle *intr_handle,
+			  uint32_t index);
+
 int fslmc_vfio_setup_group(void);
 int fslmc_vfio_process_group(void);
 int rte_fslmc_vfio_dmamap(void);
