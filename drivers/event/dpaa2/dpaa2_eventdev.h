@@ -56,6 +56,17 @@
 #define DPAA2_EVENT_DEFAULT_DPCI_PRIO 0
 
 #define DPAA2_EVENT_MAX_QUEUES			16
+#define DPAA2_EVENT_MIN_DEQUEUE_TIMEOUT		1
+#define DPAA2_EVENT_MAX_DEQUEUE_TIMEOUT		(UINT32_MAX - 1)
+#define DPAA2_EVENT_MAX_QUEUE_FLOWS		2048
+#define DPAA2_EVENT_MAX_QUEUE_PRIORITY_LEVELS	8
+#define DPAA2_EVENT_MAX_EVENT_PRIORITY_LEVELS	0
+#define DPAA2_EVENT_MAX_PORT_DEQUEUE_DEPTH	8
+#define DPAA2_EVENT_MAX_PORT_ENQUEUE_DEPTH	8
+#define DPAA2_EVENT_MAX_NUM_EVENTS		(INT32_MAX - 1)
+
+#define DPAA2_EVENT_QUEUE_ATOMIC_FLOWS		2048
+#define DPAA2_EVENT_QUEUE_ORDER_SEQUENCES	2048
 
 enum {
 	DPAA2_EVENT_DPCI_PARALLEL_QUEUE,
@@ -79,11 +90,22 @@ struct evq_info_t {
 	struct dpaa2_dpcon_dev *dpcon;
 	/* Attached DPCI device */
 	struct dpaa2_dpci_dev *dpci;
+	/* Configuration provided by the user */
+	uint32_t event_queue_cfg;
+	uint8_t link;
 };
 
 struct dpaa2_eventdev {
 	struct evq_info_t evq_info[DPAA2_EVENT_MAX_QUEUES];
+	uint32_t dequeue_timeout_ns;
 	uint8_t max_event_queues;
+	uint8_t nb_event_queues;
+	uint8_t nb_event_ports;
+	uint8_t resvd_1;
+	uint32_t nb_event_queue_flows;
+	uint32_t nb_event_port_dequeue_depth;
+	uint32_t nb_event_port_enqueue_depth;
+	uint32_t event_dev_cfg;
 };
 
 struct dpaa2_dpcon_dev *rte_dpaa2_alloc_dpcon_dev(void);

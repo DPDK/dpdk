@@ -106,7 +106,288 @@ dpaa2_eventdev_dequeue(void *port, struct rte_event *ev,
 	return dpaa2_eventdev_dequeue_burst(port, ev, 1, timeout_ticks);
 }
 
-static const struct rte_eventdev_ops dpaa2_eventdev_ops;
+static void
+dpaa2_eventdev_info_get(struct rte_eventdev *dev,
+			struct rte_event_dev_info *dev_info)
+{
+	struct dpaa2_eventdev *priv = dev->data->dev_private;
+
+	PMD_DRV_FUNC_TRACE();
+
+	RTE_SET_USED(dev);
+
+	memset(dev_info, 0, sizeof(struct rte_event_dev_info));
+	dev_info->min_dequeue_timeout_ns =
+		DPAA2_EVENT_MIN_DEQUEUE_TIMEOUT;
+	dev_info->max_dequeue_timeout_ns =
+		DPAA2_EVENT_MAX_DEQUEUE_TIMEOUT;
+	dev_info->dequeue_timeout_ns =
+		DPAA2_EVENT_MIN_DEQUEUE_TIMEOUT;
+	dev_info->max_event_queues = priv->max_event_queues;
+	dev_info->max_event_queue_flows =
+		DPAA2_EVENT_MAX_QUEUE_FLOWS;
+	dev_info->max_event_queue_priority_levels =
+		DPAA2_EVENT_MAX_QUEUE_PRIORITY_LEVELS;
+	dev_info->max_event_priority_levels =
+		DPAA2_EVENT_MAX_EVENT_PRIORITY_LEVELS;
+	dev_info->max_event_ports = RTE_MAX_LCORE;
+	dev_info->max_event_port_dequeue_depth =
+		DPAA2_EVENT_MAX_PORT_DEQUEUE_DEPTH;
+	dev_info->max_event_port_enqueue_depth =
+		DPAA2_EVENT_MAX_PORT_ENQUEUE_DEPTH;
+	dev_info->max_num_events = DPAA2_EVENT_MAX_NUM_EVENTS;
+	dev_info->event_dev_cap = RTE_EVENT_DEV_CAP_DISTRIBUTED_SCHED;
+}
+
+static int
+dpaa2_eventdev_configure(const struct rte_eventdev *dev)
+{
+	struct dpaa2_eventdev *priv = dev->data->dev_private;
+	struct rte_event_dev_config *conf = &dev->data->dev_conf;
+
+	PMD_DRV_FUNC_TRACE();
+
+	priv->dequeue_timeout_ns = conf->dequeue_timeout_ns;
+	priv->nb_event_queues = conf->nb_event_queues;
+	priv->nb_event_ports = conf->nb_event_ports;
+	priv->nb_event_queue_flows = conf->nb_event_queue_flows;
+	priv->nb_event_port_dequeue_depth = conf->nb_event_port_dequeue_depth;
+	priv->nb_event_port_enqueue_depth = conf->nb_event_port_enqueue_depth;
+	priv->event_dev_cfg = conf->event_dev_cfg;
+
+	PMD_DRV_LOG(DEBUG, "Configured eventdev devid=%d", dev->data->dev_id);
+	return 0;
+}
+
+static int
+dpaa2_eventdev_start(struct rte_eventdev *dev)
+{
+	PMD_DRV_FUNC_TRACE();
+
+	RTE_SET_USED(dev);
+
+	return 0;
+}
+
+static void
+dpaa2_eventdev_stop(struct rte_eventdev *dev)
+{
+	PMD_DRV_FUNC_TRACE();
+
+	RTE_SET_USED(dev);
+}
+
+static int
+dpaa2_eventdev_close(struct rte_eventdev *dev)
+{
+	PMD_DRV_FUNC_TRACE();
+
+	RTE_SET_USED(dev);
+
+	return 0;
+}
+
+static void
+dpaa2_eventdev_queue_def_conf(struct rte_eventdev *dev, uint8_t queue_id,
+			      struct rte_event_queue_conf *queue_conf)
+{
+	PMD_DRV_FUNC_TRACE();
+
+	RTE_SET_USED(dev);
+	RTE_SET_USED(queue_id);
+	RTE_SET_USED(queue_conf);
+
+	queue_conf->nb_atomic_flows = DPAA2_EVENT_QUEUE_ATOMIC_FLOWS;
+	queue_conf->event_queue_cfg = RTE_EVENT_QUEUE_CFG_ATOMIC_ONLY |
+				      RTE_EVENT_QUEUE_CFG_PARALLEL_ONLY;
+	queue_conf->priority = RTE_EVENT_DEV_PRIORITY_NORMAL;
+}
+
+static void
+dpaa2_eventdev_queue_release(struct rte_eventdev *dev, uint8_t queue_id)
+{
+	PMD_DRV_FUNC_TRACE();
+
+	RTE_SET_USED(dev);
+	RTE_SET_USED(queue_id);
+}
+
+static int
+dpaa2_eventdev_queue_setup(struct rte_eventdev *dev, uint8_t queue_id,
+			   const struct rte_event_queue_conf *queue_conf)
+{
+	struct dpaa2_eventdev *priv = dev->data->dev_private;
+	struct evq_info_t *evq_info =
+		&priv->evq_info[queue_id];
+
+	PMD_DRV_FUNC_TRACE();
+
+	evq_info->event_queue_cfg = queue_conf->event_queue_cfg;
+
+	return 0;
+}
+
+static void
+dpaa2_eventdev_port_def_conf(struct rte_eventdev *dev, uint8_t port_id,
+			     struct rte_event_port_conf *port_conf)
+{
+	PMD_DRV_FUNC_TRACE();
+
+	RTE_SET_USED(dev);
+	RTE_SET_USED(port_id);
+	RTE_SET_USED(port_conf);
+
+	port_conf->new_event_threshold =
+		DPAA2_EVENT_MAX_NUM_EVENTS;
+	port_conf->dequeue_depth =
+		DPAA2_EVENT_MAX_PORT_DEQUEUE_DEPTH;
+	port_conf->enqueue_depth =
+		DPAA2_EVENT_MAX_PORT_ENQUEUE_DEPTH;
+}
+
+static void
+dpaa2_eventdev_port_release(void *port)
+{
+	PMD_DRV_FUNC_TRACE();
+
+	RTE_SET_USED(port);
+}
+
+static int
+dpaa2_eventdev_port_setup(struct rte_eventdev *dev, uint8_t port_id,
+			  const struct rte_event_port_conf *port_conf)
+{
+	PMD_DRV_FUNC_TRACE();
+
+	RTE_SET_USED(port_conf);
+
+	if (!dpaa2_io_portal[port_id].dpio_dev) {
+		dpaa2_io_portal[port_id].dpio_dev =
+				dpaa2_get_qbman_swp(port_id);
+		rte_atomic16_inc(&dpaa2_io_portal[port_id].dpio_dev->ref_count);
+		if (!dpaa2_io_portal[port_id].dpio_dev)
+			return -1;
+	}
+
+	dpaa2_io_portal[port_id].eventdev = dev;
+	dev->data->ports[port_id] = &dpaa2_io_portal[port_id];
+	return 0;
+}
+
+static int
+dpaa2_eventdev_port_unlink(struct rte_eventdev *dev, void *port,
+			   uint8_t queues[], uint16_t nb_unlinks)
+{
+	struct dpaa2_eventdev *priv = dev->data->dev_private;
+	struct dpaa2_io_portal_t *dpaa2_portal = port;
+	struct evq_info_t *evq_info;
+	int i;
+
+	PMD_DRV_FUNC_TRACE();
+
+	for (i = 0; i < nb_unlinks; i++) {
+		evq_info = &priv->evq_info[queues[i]];
+		qbman_swp_push_set(dpaa2_portal->dpio_dev->sw_portal,
+				   evq_info->dpcon->channel_index, 0);
+		dpio_remove_static_dequeue_channel(dpaa2_portal->dpio_dev->dpio,
+					0, dpaa2_portal->dpio_dev->token,
+			evq_info->dpcon->dpcon_id);
+		evq_info->link = 0;
+	}
+
+	return (int)nb_unlinks;
+}
+
+static int
+dpaa2_eventdev_port_link(struct rte_eventdev *dev, void *port,
+			 const uint8_t queues[], const uint8_t priorities[],
+			uint16_t nb_links)
+{
+	struct dpaa2_eventdev *priv = dev->data->dev_private;
+	struct dpaa2_io_portal_t *dpaa2_portal = port;
+	struct evq_info_t *evq_info;
+	uint8_t channel_index;
+	int ret, i, n;
+
+	PMD_DRV_FUNC_TRACE();
+
+	for (i = 0; i < nb_links; i++) {
+		evq_info = &priv->evq_info[queues[i]];
+		if (evq_info->link)
+			continue;
+
+		ret = dpio_add_static_dequeue_channel(
+			dpaa2_portal->dpio_dev->dpio,
+			CMD_PRI_LOW, dpaa2_portal->dpio_dev->token,
+			evq_info->dpcon->dpcon_id, &channel_index);
+		if (ret < 0) {
+			PMD_DRV_ERR("Static dequeue cfg failed with ret: %d\n",
+				    ret);
+			goto err;
+		}
+
+		qbman_swp_push_set(dpaa2_portal->dpio_dev->sw_portal,
+				   channel_index, 1);
+		evq_info->dpcon->channel_index = channel_index;
+		evq_info->link = 1;
+	}
+
+	RTE_SET_USED(priorities);
+
+	return (int)nb_links;
+err:
+	for (n = 0; n < i; n++) {
+		evq_info = &priv->evq_info[queues[n]];
+		qbman_swp_push_set(dpaa2_portal->dpio_dev->sw_portal,
+				   evq_info->dpcon->channel_index, 0);
+		dpio_remove_static_dequeue_channel(dpaa2_portal->dpio_dev->dpio,
+					0, dpaa2_portal->dpio_dev->token,
+			evq_info->dpcon->dpcon_id);
+		evq_info->link = 0;
+	}
+	return ret;
+}
+
+static int
+dpaa2_eventdev_timeout_ticks(struct rte_eventdev *dev, uint64_t ns,
+			     uint64_t *timeout_ticks)
+{
+	uint32_t scale = 1;
+
+	PMD_DRV_FUNC_TRACE();
+
+	RTE_SET_USED(dev);
+	*timeout_ticks = ns * scale;
+
+	return 0;
+}
+
+static void
+dpaa2_eventdev_dump(struct rte_eventdev *dev, FILE *f)
+{
+	PMD_DRV_FUNC_TRACE();
+
+	RTE_SET_USED(dev);
+	RTE_SET_USED(f);
+}
+
+static const struct rte_eventdev_ops dpaa2_eventdev_ops = {
+	.dev_infos_get    = dpaa2_eventdev_info_get,
+	.dev_configure    = dpaa2_eventdev_configure,
+	.dev_start        = dpaa2_eventdev_start,
+	.dev_stop         = dpaa2_eventdev_stop,
+	.dev_close        = dpaa2_eventdev_close,
+	.queue_def_conf   = dpaa2_eventdev_queue_def_conf,
+	.queue_setup      = dpaa2_eventdev_queue_setup,
+	.queue_release    = dpaa2_eventdev_queue_release,
+	.port_def_conf    = dpaa2_eventdev_port_def_conf,
+	.port_setup       = dpaa2_eventdev_port_setup,
+	.port_release     = dpaa2_eventdev_port_release,
+	.port_link        = dpaa2_eventdev_port_link,
+	.port_unlink      = dpaa2_eventdev_port_unlink,
+	.timeout_ticks    = dpaa2_eventdev_timeout_ticks,
+	.dump             = dpaa2_eventdev_dump
+};
 
 static int
 dpaa2_eventdev_setup_dpci(struct dpaa2_dpci_dev *dpci_dev,
