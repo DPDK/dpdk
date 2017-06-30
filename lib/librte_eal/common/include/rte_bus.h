@@ -108,6 +108,36 @@ typedef struct rte_device *
 			 const void *data);
 
 /**
+ * Implementation specific probe function which is responsible for linking
+ * devices on that bus with applicable drivers.
+ *
+ * @param dev
+ *	Device pointer that was returned by a previous call to find_device.
+ *
+ * @param devargs
+ *	Device declaration.
+ *
+ * @return
+ *	0 on success.
+ *	!0 on error.
+ */
+typedef int (*rte_bus_plug_t)(struct rte_device *dev,
+			      const char *devargs);
+
+/**
+ * Implementation specific remove function which is responsible for unlinking
+ * devices on that bus from assigned driver.
+ *
+ * @param dev
+ *	Device pointer that was returned by a previous call to find_device.
+ *
+ * @return
+ *	0 on success.
+ *	!0 on error.
+ */
+typedef int (*rte_bus_unplug_t)(struct rte_device *dev);
+
+/**
  * A structure describing a generic bus.
  */
 struct rte_bus {
@@ -116,6 +146,8 @@ struct rte_bus {
 	rte_bus_scan_t scan;         /**< Scan for devices attached to bus */
 	rte_bus_probe_t probe;       /**< Probe devices on bus */
 	rte_bus_find_device_t find_device; /**< Find a device on the bus */
+	rte_bus_plug_t plug;         /**< Probe single device for drivers */
+	rte_bus_unplug_t unplug;     /**< Remove single device from driver */
 };
 
 /**
