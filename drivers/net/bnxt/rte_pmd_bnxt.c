@@ -316,7 +316,7 @@ int rte_pmd_bnxt_set_vf_vlan_anti_spoof(uint8_t port, uint16_t vf, uint8_t on)
 
 	if (!BNXT_PF(bp)) {
 		RTE_LOG(ERR, PMD,
-			"Attempt to set mac spoof on non-PF port %d!\n", port);
+			"Attempt to set VLAN spoof on non-PF port %d!\n", port);
 		return -EINVAL;
 	}
 
