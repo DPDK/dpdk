@@ -42,12 +42,14 @@ CFLAGS += $(WERROR_FLAGS)
 
 # library source files
 SRCS-y += rte_eventdev.c
+SRCS-y += rte_event_ring.c
 
 # export include files
 SYMLINK-y-include += rte_eventdev.h
 SYMLINK-y-include += rte_eventdev_pmd.h
 SYMLINK-y-include += rte_eventdev_pmd_pci.h
 SYMLINK-y-include += rte_eventdev_pmd_vdev.h
+SYMLINK-y-include += rte_event_ring.h
 
 # versioning export map
 EXPORT_MAP := rte_eventdev_version.map

@@ -42,3 +42,12 @@ DPDK_17.05 {
 
 	local: *;
 };
+
+DPDK_17.08 {
+	global:
+
+	rte_event_ring_create;
+	rte_event_ring_free;
+	rte_event_ring_init;
+	rte_event_ring_lookup;
+} DPDK_17.05;
