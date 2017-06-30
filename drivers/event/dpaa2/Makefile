@@ -38,7 +38,14 @@ LIB = librte_pmd_dpaa2_event.a
 
 CFLAGS += $(WERROR_FLAGS)
 
+CFLAGS += -I$(RTE_SDK)/drivers/bus/fslmc
+CFLAGS += -I$(RTE_SDK)/drivers/bus/fslmc/qbman/include
+CFLAGS += -I$(RTE_SDK)/drivers/bus/fslmc/mc
+CFLAGS += -I$(RTE_SDK)/drivers/bus/fslmc/portal
+CFLAGS += -I$(RTE_SDK)/drivers/mempool/dpaa2
 CFLAGS += -I$(RTE_SDK)/drivers/event/dpaa2
+CFLAGS += -I$(RTE_SDK)/lib/librte_eal/linuxapp/eal
+
 # versioning export map
 EXPORT_MAP := rte_pmd_dpaa2_event_version.map
 
@@ -47,6 +54,7 @@ LIBABIVER := 1
 #
 # all source are stored in SRCS-y
 #
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_DPAA2_EVENTDEV) += dpaa2_hw_dpcon.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_DPAA2_EVENTDEV) += dpaa2_eventdev.c
 
 include $(RTE_SDK)/mk/rte.lib.mk

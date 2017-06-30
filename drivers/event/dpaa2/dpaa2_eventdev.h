@@ -34,6 +34,10 @@
 #define __DPAA2_EVENTDEV_H__
 
 #include <rte_eventdev_pmd.h>
+#include <rte_atomic.h>
+#include <mc/fsl_dpcon.h>
+#include <mc/fsl_mc_sys.h>
+
 #define EVENTDEV_NAME_DPAA2_PMD		event_dpaa2
 
 #ifdef RTE_LIBRTE_PMD_DPAA2_EVENTDEV_DEBUG
@@ -47,5 +51,19 @@
 
 #define PMD_DRV_ERR(fmt, args...) \
 	RTE_LOG(ERR, PMD, "%s(): " fmt "\n", __func__, ## args)
+
+struct dpaa2_dpcon_dev {
+	TAILQ_ENTRY(dpaa2_dpcon_dev) next;
+	struct fsl_mc_io dpcon;
+	uint16_t token;
+	rte_atomic16_t in_use;
+	uint32_t dpcon_id;
+	uint16_t qbman_ch_id;
+	uint8_t num_priorities;
+	uint8_t channel_index;
+};
+
+struct dpaa2_dpcon_dev *rte_dpaa2_alloc_dpcon_dev(void);
+void rte_dpaa2_free_dpcon_dev(struct dpaa2_dpcon_dev *dpcon);
 
 #endif /* __DPAA2_EVENTDEV_H__ */
