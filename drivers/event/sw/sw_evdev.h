@@ -190,9 +190,9 @@ struct sw_port {
 	int16_t num_ordered_qids;
 
 	/** Ring and buffer for pulling events from workers for scheduling */
-	struct qe_ring *rx_worker_ring __rte_cache_aligned;
+	struct rte_event_ring *rx_worker_ring __rte_cache_aligned;
 	/** Ring and buffer for pushing packets to workers after scheduling */
-	struct qe_ring *cq_worker_ring;
+	struct rte_event_ring *cq_worker_ring;
 
 	/* hole */
 

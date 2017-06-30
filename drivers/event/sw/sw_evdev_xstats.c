@@ -30,9 +30,9 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <rte_event_ring.h>
 #include "sw_evdev.h"
 #include "iq_ring.h"
-#include "event_ring.h"
 
 enum xstats_type {
 	/* common stats */
@@ -105,10 +105,10 @@ get_port_stat(const struct sw_evdev *sw, uint16_t obj_idx,
 	case calls: return p->total_polls;
 	case credits: return p->inflight_credits;
 	case poll_return: return p->zero_polls;
-	case rx_used: return qe_ring_count(p->rx_worker_ring);
-	case rx_free: return qe_ring_free_count(p->rx_worker_ring);
-	case tx_used: return qe_ring_count(p->cq_worker_ring);
-	case tx_free: return qe_ring_free_count(p->cq_worker_ring);
+	case rx_used: return rte_event_ring_count(p->rx_worker_ring);
+	case rx_free: return rte_event_ring_free_count(p->rx_worker_ring);
+	case tx_used: return rte_event_ring_count(p->cq_worker_ring);
+	case tx_free: return rte_event_ring_free_count(p->cq_worker_ring);
 	default: return -1;
 	}
 }
@@ -318,8 +318,9 @@ sw_xstats_init(struct sw_evdev *sw)
 					port, port_stats[i]);
 		}
 
-		for (bkt = 0; bkt < (sw->ports[port].cq_worker_ring->size >>
-				SW_DEQ_STAT_BUCKET_SHIFT) + 1; bkt++) {
+		for (bkt = 0; bkt < (rte_event_ring_get_capacity(
+				sw->ports[port].cq_worker_ring) >>
+					SW_DEQ_STAT_BUCKET_SHIFT) + 1; bkt++) {
 			for (i = 0; i < RTE_DIM(port_bucket_stats); i++) {
 				sw->xstats[stat] = (struct sw_xstats_entry){
 					.fn = get_port_bucket_stat,

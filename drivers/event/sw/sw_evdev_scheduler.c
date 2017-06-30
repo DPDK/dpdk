@@ -32,9 +32,9 @@
 
 #include <rte_ring.h>
 #include <rte_hash_crc.h>
+#include <rte_event_ring.h>
 #include "sw_evdev.h"
 #include "iq_ring.h"
-#include "event_ring.h"
 
 #define SW_IQS_MASK (SW_IQS_MAX-1)
 
@@ -123,8 +123,8 @@ sw_schedule_atomic_to_cq(struct sw_evdev *sw, struct sw_qid * const qid,
 
 		/* if we just filled in the last slot, flush the buffer */
 		if (sw->cq_ring_space[cq] == 0) {
-			struct qe_ring *worker = p->cq_worker_ring;
-			qe_ring_enqueue_burst(worker, p->cq_buf,
+			struct rte_event_ring *worker = p->cq_worker_ring;
+			rte_event_ring_enqueue_burst(worker, p->cq_buf,
 					p->cq_buf_count,
 					&sw->cq_ring_space[cq]);
 			p->cq_buf_count = 0;
@@ -171,7 +171,8 @@ sw_schedule_parallel_to_cq(struct sw_evdev *sw, struct sw_qid * const qid,
 			cq = qid->cq_map[cq_idx];
 			if (++cq_idx == qid->cq_num_mapped_cqs)
 				cq_idx = 0;
-		} while (qe_ring_free_count(sw->ports[cq].cq_worker_ring) == 0 ||
+		} while (rte_event_ring_free_count(
+				sw->ports[cq].cq_worker_ring) == 0 ||
 				sw->ports[cq].inflights == SW_PORT_HIST_LIST);
 
 		struct sw_port *p = &sw->ports[cq];
@@ -367,10 +368,10 @@ static __rte_always_inline void
 sw_refill_pp_buf(struct sw_evdev *sw, struct sw_port *port)
 {
 	RTE_SET_USED(sw);
-	struct qe_ring *worker = port->rx_worker_ring;
+	struct rte_event_ring *worker = port->rx_worker_ring;
 	port->pp_buf_start = 0;
-	port->pp_buf_count = qe_ring_dequeue_burst(worker, port->pp_buf,
-			RTE_DIM(port->pp_buf));
+	port->pp_buf_count = rte_event_ring_dequeue_burst(worker, port->pp_buf,
+			RTE_DIM(port->pp_buf), NULL);
 }
 
 static __rte_always_inline uint32_t
@@ -586,8 +587,8 @@ sw_event_schedule(struct rte_eventdev *dev)
 	 * worker cores: aka, do the ring transfers batched.
 	 */
 	for (i = 0; i < sw->port_count; i++) {
-		struct qe_ring *worker = sw->ports[i].cq_worker_ring;
-		qe_ring_enqueue_burst(worker, sw->ports[i].cq_buf,
+		struct rte_event_ring *worker = sw->ports[i].cq_worker_ring;
+		rte_event_ring_enqueue_burst(worker, sw->ports[i].cq_buf,
 				sw->ports[i].cq_buf_count,
 				&sw->cq_ring_space[i]);
 		sw->ports[i].cq_buf_count = 0;

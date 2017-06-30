@@ -38,10 +38,10 @@
 #include <rte_kvargs.h>
 #include <rte_ring.h>
 #include <rte_errno.h>
+#include <rte_event_ring.h>
 
 #include "sw_evdev.h"
 #include "iq_ring.h"
-#include "event_ring.h"
 
 #define EVENTDEV_NAME_SW_PMD event_sw
 #define NUMA_NODE_ARG "numa_node"
@@ -140,7 +140,7 @@ sw_port_setup(struct rte_eventdev *dev, uint8_t port_id,
 {
 	struct sw_evdev *sw = sw_pmd_priv(dev);
 	struct sw_port *p = &sw->ports[port_id];
-	char buf[QE_RING_NAMESIZE];
+	char buf[RTE_RING_NAMESIZE];
 	unsigned int i;
 
 	struct rte_event_dev_info info;
@@ -161,10 +161,19 @@ sw_port_setup(struct rte_eventdev *dev, uint8_t port_id,
 	p->id = port_id;
 	p->sw = sw;
 
-	snprintf(buf, sizeof(buf), "sw%d_%s", dev->data->dev_id,
-			"rx_worker_ring");
-	p->rx_worker_ring = qe_ring_create(buf, MAX_SW_PROD_Q_DEPTH,
-			dev->data->socket_id);
+	/* check to see if rings exists - port_setup() can be called multiple
+	 * times legally (assuming device is stopped). If ring exists, free it
+	 * to so it gets re-created with the correct size
+	 */
+	snprintf(buf, sizeof(buf), "sw%d_p%u_%s", dev->data->dev_id,
+			port_id, "rx_worker_ring");
+	struct rte_event_ring *existing_ring = rte_event_ring_lookup(buf);
+	if (existing_ring)
+		rte_event_ring_free(existing_ring);
+
+	p->rx_worker_ring = rte_event_ring_create(buf, MAX_SW_PROD_Q_DEPTH,
+			dev->data->socket_id,
+			RING_F_SP_ENQ | RING_F_SC_DEQ | RING_F_EXACT_SZ);
 	if (p->rx_worker_ring == NULL) {
 		SW_LOG_ERR("Error creating RX worker ring for port %d\n",
 				port_id);
@@ -173,12 +182,18 @@ sw_port_setup(struct rte_eventdev *dev, uint8_t port_id,
 
 	p->inflight_max = conf->new_event_threshold;
 
-	snprintf(buf, sizeof(buf), "sw%d_%s", dev->data->dev_id,
-			"cq_worker_ring");
-	p->cq_worker_ring = qe_ring_create(buf, conf->dequeue_depth,
-			dev->data->socket_id);
+	/* check if ring exists, same as rx_worker above */
+	snprintf(buf, sizeof(buf), "sw%d_p%u, %s", dev->data->dev_id,
+			port_id, "cq_worker_ring");
+	existing_ring = rte_event_ring_lookup(buf);
+	if (existing_ring)
+		rte_event_ring_free(existing_ring);
+
+	p->cq_worker_ring = rte_event_ring_create(buf, conf->dequeue_depth,
+			dev->data->socket_id,
+			RING_F_SP_ENQ | RING_F_SC_DEQ | RING_F_EXACT_SZ);
 	if (p->cq_worker_ring == NULL) {
-		qe_ring_destroy(p->rx_worker_ring);
+		rte_event_ring_free(p->rx_worker_ring);
 		SW_LOG_ERR("Error creating CQ worker ring for port %d\n",
 				port_id);
 		return -1;
@@ -204,8 +219,8 @@ sw_port_release(void *port)
 	if (p == NULL)
 		return;
 
-	qe_ring_destroy(p->rx_worker_ring);
-	qe_ring_destroy(p->cq_worker_ring);
+	rte_event_ring_free(p->rx_worker_ring);
+	rte_event_ring_free(p->cq_worker_ring);
 	memset(p, 0, sizeof(*p));
 }
 
@@ -512,8 +527,9 @@ sw_dump(struct rte_eventdev *dev, FILE *f)
 		fprintf(f, "\n");
 
 		if (p->rx_worker_ring) {
-			uint64_t used = qe_ring_count(p->rx_worker_ring);
-			uint64_t space = qe_ring_free_count(p->rx_worker_ring);
+			uint64_t used = rte_event_ring_count(p->rx_worker_ring);
+			uint64_t space = rte_event_ring_free_count(
+					p->rx_worker_ring);
 			const char *col = (space == 0) ? COL_RED : COL_RESET;
 			fprintf(f, "\t%srx ring used: %4"PRIu64"\tfree: %4"
 					PRIu64 COL_RESET"\n", col, used, space);
@@ -521,8 +537,9 @@ sw_dump(struct rte_eventdev *dev, FILE *f)
 			fprintf(f, "\trx ring not initialized.\n");
 
 		if (p->cq_worker_ring) {
-			uint64_t used = qe_ring_count(p->cq_worker_ring);
-			uint64_t space = qe_ring_free_count(p->cq_worker_ring);
+			uint64_t used = rte_event_ring_count(p->cq_worker_ring);
+			uint64_t space = rte_event_ring_free_count(
+					p->cq_worker_ring);
 			const char *col = (space == 0) ? COL_RED : COL_RESET;
 			fprintf(f, "\t%scq ring used: %4"PRIu64"\tfree: %4"
 					PRIu64 COL_RESET"\n", col, used, space);

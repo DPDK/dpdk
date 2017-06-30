@@ -32,9 +32,9 @@
 
 #include <rte_atomic.h>
 #include <rte_cycles.h>
+#include <rte_event_ring.h>
 
 #include "sw_evdev.h"
-#include "event_ring.h"
 
 #define PORT_ENQUEUE_MAX_BURST_SIZE 64
 
@@ -52,11 +52,29 @@ sw_event_release(struct sw_port *p, uint8_t index)
 	ev.op = sw_qe_flag_map[RTE_EVENT_OP_RELEASE];
 
 	uint16_t free_count;
-	qe_ring_enqueue_burst(p->rx_worker_ring, &ev, 1, &free_count);
+	rte_event_ring_enqueue_burst(p->rx_worker_ring, &ev, 1, &free_count);
 
 	/* each release returns one credit */
 	p->outstanding_releases--;
 	p->inflight_credits++;
+}
+
+/*
+ * special-case of rte_event_ring enqueue, with overriding the ops member on
+ * the events that get written to the ring.
+ */
+static inline unsigned int
+enqueue_burst_with_ops(struct rte_event_ring *r, const struct rte_event *events,
+		unsigned int n, uint8_t *ops)
+{
+	struct rte_event tmp_evs[PORT_ENQUEUE_MAX_BURST_SIZE];
+	unsigned int i;
+
+	memcpy(tmp_evs, events, n * sizeof(events[0]));
+	for (i = 0; i < n; i++)
+		tmp_evs[i].op = ops[i];
+
+	return rte_event_ring_enqueue_burst(r, tmp_evs, n, NULL);
 }
 
 uint16_t
@@ -119,7 +137,7 @@ sw_event_enqueue_burst(void *port, const struct rte_event ev[], uint16_t num)
 	p->inflight_credits -= forwards * p->is_directed;
 
 	/* returns number of events actually enqueued */
-	uint32_t enq = qe_ring_enqueue_burst_with_ops(p->rx_worker_ring, ev, i,
+	uint32_t enq = enqueue_burst_with_ops(p->rx_worker_ring, ev, i,
 					     new_ops);
 	if (p->outstanding_releases == 0 && p->last_dequeue_burst_sz != 0) {
 		uint64_t burst_ticks = rte_get_timer_cycles() -
@@ -146,7 +164,7 @@ sw_event_dequeue_burst(void *port, struct rte_event *ev, uint16_t num,
 	RTE_SET_USED(wait);
 	struct sw_port *p = (void *)port;
 	struct sw_evdev *sw = (void *)p->sw;
-	struct qe_ring *ring = p->cq_worker_ring;
+	struct rte_event_ring *ring = p->cq_worker_ring;
 	uint32_t credit_update_quanta = sw->credit_update_quanta;
 
 	/* check that all previous dequeues have been released */
@@ -158,7 +176,7 @@ sw_event_dequeue_burst(void *port, struct rte_event *ev, uint16_t num,
 	}
 
 	/* returns number of events actually dequeued */
-	uint16_t ndeq = qe_ring_dequeue_burst(ring, ev, num);
+	uint16_t ndeq = rte_event_ring_dequeue_burst(ring, ev, num, NULL);
 	if (unlikely(ndeq == 0)) {
 		p->outstanding_releases = 0;
 		p->zero_polls++;
