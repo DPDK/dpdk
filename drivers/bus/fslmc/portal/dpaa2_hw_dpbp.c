@@ -57,9 +57,10 @@ TAILQ_HEAD(dpbp_dev_list, dpaa2_dpbp_dev);
 static struct dpbp_dev_list dpbp_dev_list
 	= TAILQ_HEAD_INITIALIZER(dpbp_dev_list); /*!< DPBP device list */
 
-int
-dpaa2_create_dpbp_device(
-		int dpbp_id)
+static int
+dpaa2_create_dpbp_device(struct fslmc_vfio_device *vdev __rte_unused,
+			 struct vfio_device_info *obj_info __rte_unused,
+			 int dpbp_id)
 {
 	struct dpaa2_dpbp_dev *dpbp_node;
 	int ret;
@@ -127,3 +128,10 @@ void dpaa2_free_dpbp_dev(struct dpaa2_dpbp_dev *dpbp)
 		}
 	}
 }
+
+static struct rte_dpaa2_object rte_dpaa2_dpbp_obj = {
+	.object_id = DPAA2_MC_DPBP_DEVID,
+	.create = dpaa2_create_dpbp_device,
+};
+
+RTE_PMD_REGISTER_DPAA2_OBJECT(dpbp, rte_dpaa2_dpbp_obj);

@@ -334,10 +334,10 @@ dpaa2_affine_qbman_swp_sec(void)
 	}
 }
 
-int
+static int
 dpaa2_create_dpio_device(struct fslmc_vfio_device *vdev,
 			 struct vfio_device_info *obj_info,
-		int object_id)
+			 int object_id)
 {
 	struct dpaa2_dpio_dev *dpio_dev;
 	struct vfio_region_info reg_info = { .argsz = sizeof(reg_info)};
@@ -442,3 +442,10 @@ fail:
 
 	return -1;
 }
+
+static struct rte_dpaa2_object rte_dpaa2_dpio_obj = {
+	.object_id = DPAA2_MC_DPIO_DEVID,
+	.create = dpaa2_create_dpio_device,
+};
+
+RTE_PMD_REGISTER_DPAA2_OBJECT(dpio, rte_dpaa2_dpio_obj);

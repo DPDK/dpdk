@@ -39,6 +39,8 @@
 #define DPAA2_VENDOR_ID		0x1957
 #define DPAA2_MC_DPNI_DEVID	7
 #define DPAA2_MC_DPSECI_DEVID	3
+#define DPAA2_MC_DPIO_DEVID	9
+#define DPAA2_MC_DPBP_DEVID	10
 
 #define VFIO_MAX_GRP 1
 
@@ -89,13 +91,6 @@ int vfio_dmamap_mem_region(
 int fslmc_vfio_setup_group(void);
 int fslmc_vfio_process_group(void);
 int rte_fslmc_vfio_dmamap(void);
-
-/* create dpio device */
-int dpaa2_create_dpio_device(struct fslmc_vfio_device *vdev,
-			     struct vfio_device_info *obj_info,
-			     int object_id);
-
-int dpaa2_create_dpbp_device(int dpbp_id);
 
 /**
  * Register a DPAA2 MC Object driver.
