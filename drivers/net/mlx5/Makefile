@@ -52,7 +52,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_MLX5_PMD) += mlx5_flow.c
 
 # Basic CFLAGS.
 CFLAGS += -O3
-CFLAGS += -std=gnu99 -Wall -Wextra
+CFLAGS += -std=c11 -Wall -Wextra
 CFLAGS += -g
 CFLAGS += -I.
 CFLAGS += -D_BSD_SOURCE

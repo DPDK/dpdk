@@ -240,7 +240,7 @@ struct hash_rxq {
 };
 
 /* TX queue descriptor. */
-RTE_STD_C11
+__extension__
 struct txq {
 	uint16_t elts_head; /* Current index in (*elts)[]. */
 	uint16_t elts_tail; /* First element awaiting completion. */
