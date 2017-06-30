@@ -124,6 +124,36 @@ uint32_t qbman_swp_interrupt_read_status(struct qbman_swp *p);
 void qbman_swp_interrupt_clear_status(struct qbman_swp *p, uint32_t mask);
 
 /**
+ * qbman_swp_dqrr_thrshld_read_status() - Get the data in software portal
+ * DQRR interrupt threshold register.
+ * @p: the given software portal object.
+ */
+uint32_t qbman_swp_dqrr_thrshld_read_status(struct qbman_swp *p);
+
+/**
+ * qbman_swp_dqrr_thrshld_write() - Set the data in software portal
+ * DQRR interrupt threshold register.
+ * @p: the given software portal object.
+ * @mask: The value to set in SWP_DQRR_ITR register.
+ */
+void qbman_swp_dqrr_thrshld_write(struct qbman_swp *p, uint32_t mask);
+
+/**
+ * qbman_swp_intr_timeout_read_status() - Get the data in software portal
+ * Interrupt Time-Out period register.
+ * @p: the given software portal object.
+ */
+uint32_t qbman_swp_intr_timeout_read_status(struct qbman_swp *p);
+
+/**
+ * qbman_swp_intr_timeout_write() - Set the data in software portal
+ * Interrupt Time-Out period register.
+ * @p: the given software portal object.
+ * @mask: The value to set in SWP_ITPR register.
+ */
+void qbman_swp_intr_timeout_write(struct qbman_swp *p, uint32_t mask);
+
+/**
  * qbman_swp_interrupt_get_trigger() - Get the data in software portal
  * interrupt enable register.
  * @p: the given software portal object.

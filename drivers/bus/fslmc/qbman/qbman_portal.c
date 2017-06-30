@@ -44,6 +44,8 @@
 #define QBMAN_CINH_SWP_IER     0xe40
 #define QBMAN_CINH_SWP_ISDR    0xe80
 #define QBMAN_CINH_SWP_IIR     0xec0
+#define QBMAN_CINH_SWP_DQRR_ITR    0xa80
+#define QBMAN_CINH_SWP_ITPR    0xf40
 
 /* CENA register offsets */
 #define QBMAN_CENA_SWP_EQCR(n) (0x000 + ((uint32_t)(n) << 6))
@@ -216,6 +218,26 @@ uint32_t qbman_swp_interrupt_read_status(struct qbman_swp *p)
 void qbman_swp_interrupt_clear_status(struct qbman_swp *p, uint32_t mask)
 {
 	qbman_cinh_write(&p->sys, QBMAN_CINH_SWP_ISR, mask);
+}
+
+uint32_t qbman_swp_dqrr_thrshld_read_status(struct qbman_swp *p)
+{
+	return qbman_cinh_read(&p->sys, QBMAN_CINH_SWP_DQRR_ITR);
+}
+
+void qbman_swp_dqrr_thrshld_write(struct qbman_swp *p, uint32_t mask)
+{
+	qbman_cinh_write(&p->sys, QBMAN_CINH_SWP_DQRR_ITR, mask);
+}
+
+uint32_t qbman_swp_intr_timeout_read_status(struct qbman_swp *p)
+{
+	return qbman_cinh_read(&p->sys, QBMAN_CINH_SWP_ITPR);
+}
+
+void qbman_swp_intr_timeout_write(struct qbman_swp *p, uint32_t mask)
+{
+	qbman_cinh_write(&p->sys, QBMAN_CINH_SWP_ITPR, mask);
 }
 
 uint32_t qbman_swp_interrupt_get_trigger(struct qbman_swp *p)

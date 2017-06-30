@@ -46,6 +46,8 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <sys/syscall.h>
+#include <sys/epoll.h>
+#include<sys/eventfd.h>
 
 #include <rte_mbuf.h>
 #include <rte_ethdev.h>
@@ -104,6 +106,95 @@ dpaa2_core_cluster_sdest(int cpu_id)
 		x = 3;
 
 	return dpaa2_core_cluster_base + x;
+}
+
+static void dpaa2_affine_dpio_intr_to_respective_core(int32_t dpio_id)
+{
+#define STRING_LEN	28
+#define COMMAND_LEN	50
+	uint32_t cpu_mask = 1;
+	int ret;
+	size_t len = 0;
+	char *temp = NULL, *token = NULL;
+	char string[STRING_LEN], command[COMMAND_LEN];
+	FILE *file;
+
+	snprintf(string, STRING_LEN, "dpio.%d", dpio_id);
+	file = fopen("/proc/interrupts", "r");
+	if (!file) {
+		PMD_DRV_LOG(WARN, "Failed to open /proc/interrupts file\n");
+		return;
+	}
+	while (getline(&temp, &len, file) != -1) {
+		if ((strstr(temp, string)) != NULL) {
+			token = strtok(temp, ":");
+			break;
+		}
+	}
+
+	if (!token) {
+		PMD_DRV_LOG(WARN, "Failed to get interrupt id for dpio.%d\n",
+			    dpio_id);
+		if (temp)
+			free(temp);
+		fclose(file);
+		return;
+	}
+
+	cpu_mask = cpu_mask << rte_lcore_id();
+	snprintf(command, COMMAND_LEN, "echo %X > /proc/irq/%s/smp_affinity",
+		 cpu_mask, token);
+	ret = system(command);
+	if (ret < 0)
+		PMD_DRV_LOG(WARN,
+			"Failed to affine interrupts on respective core\n");
+	else
+		PMD_DRV_LOG(WARN, " %s command is executed\n", command);
+
+	free(temp);
+	fclose(file);
+}
+
+static int dpaa2_dpio_intr_init(struct dpaa2_dpio_dev *dpio_dev)
+{
+	struct epoll_event epoll_ev;
+	int eventfd, dpio_epoll_fd, ret;
+	int threshold = 0x3, timeout = 0xFF;
+
+	dpio_epoll_fd = epoll_create(1);
+	ret = rte_dpaa2_intr_enable(&dpio_dev->intr_handle, 0);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Interrupt registeration failed\n");
+		return -1;
+	}
+
+	if (getenv("DPAA2_PORTAL_INTR_THRESHOLD"))
+		threshold = atoi(getenv("DPAA2_PORTAL_INTR_THRESHOLD"));
+
+	if (getenv("DPAA2_PORTAL_INTR_TIMEOUT"))
+		sscanf(getenv("DPAA2_PORTAL_INTR_TIMEOUT"), "%x", &timeout);
+
+	qbman_swp_interrupt_set_trigger(dpio_dev->sw_portal,
+					QBMAN_SWP_INTERRUPT_DQRI);
+	qbman_swp_interrupt_clear_status(dpio_dev->sw_portal, 0xffffffff);
+	qbman_swp_interrupt_set_inhibit(dpio_dev->sw_portal, 0);
+	qbman_swp_dqrr_thrshld_write(dpio_dev->sw_portal, threshold);
+	qbman_swp_intr_timeout_write(dpio_dev->sw_portal, timeout);
+
+	eventfd = dpio_dev->intr_handle.fd;
+	epoll_ev.events = EPOLLIN | EPOLLPRI | EPOLLET;
+	epoll_ev.data.fd = eventfd;
+
+	ret = epoll_ctl(dpio_epoll_fd, EPOLL_CTL_ADD, eventfd, &epoll_ev);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "epoll_ctl failed\n");
+		return -1;
+	}
+	dpio_dev->epoll_fd = dpio_epoll_fd;
+
+	dpaa2_affine_dpio_intr_to_respective_core(dpio_dev->hw_id);
+
+	return 0;
 }
 
 static int
@@ -212,6 +303,11 @@ dpaa2_configure_stashing(struct dpaa2_dpio_dev *dpio_dev, int cpu_id)
 					    dpio_dev->token, sdest);
 	if (ret) {
 		PMD_DRV_LOG(ERR, "%d ERROR in SDEST\n",  ret);
+		return -1;
+	}
+
+	if (dpaa2_dpio_intr_init(dpio_dev)) {
+		PMD_DRV_LOG(ERR, "Interrupt registration failed for dpio\n");
 		return -1;
 	}
 
@@ -339,6 +435,7 @@ dpaa2_create_dpio_device(struct fslmc_vfio_device *vdev,
 {
 	struct dpaa2_dpio_dev *dpio_dev;
 	struct vfio_region_info reg_info = { .argsz = sizeof(reg_info)};
+	int vfio_dev_fd;
 
 	if (obj_info->num_regions < NUM_DPIO_REGIONS) {
 		PMD_INIT_LOG(ERR, "ERROR, Not sufficient number "
@@ -355,13 +452,14 @@ dpaa2_create_dpio_device(struct fslmc_vfio_device *vdev,
 
 	dpio_dev->dpio = NULL;
 	dpio_dev->hw_id = object_id;
-	dpio_dev->vfio_fd = vdev->fd;
+	dpio_dev->intr_handle.vfio_dev_fd = vdev->fd;
 	rte_atomic16_init(&dpio_dev->ref_count);
 	/* Using single portal  for all devices */
 	dpio_dev->mc_portal = rte_mcp_ptr_list[MC_PORTAL_INDEX];
 
 	reg_info.index = 0;
-	if (ioctl(dpio_dev->vfio_fd, VFIO_DEVICE_GET_REGION_INFO, &reg_info)) {
+	vfio_dev_fd = dpio_dev->intr_handle.vfio_dev_fd;
+	if (ioctl(vfio_dev_fd, VFIO_DEVICE_GET_REGION_INFO, &reg_info)) {
 		PMD_INIT_LOG(ERR, "vfio: error getting region info\n");
 		rte_free(dpio_dev);
 		return -1;
@@ -370,7 +468,7 @@ dpaa2_create_dpio_device(struct fslmc_vfio_device *vdev,
 	dpio_dev->ce_size = reg_info.size;
 	dpio_dev->qbman_portal_ce_paddr = (uint64_t)mmap(NULL, reg_info.size,
 				PROT_WRITE | PROT_READ, MAP_SHARED,
-				dpio_dev->vfio_fd, reg_info.offset);
+				vfio_dev_fd, reg_info.offset);
 
 	/* Create Mapping for QBMan Cache Enabled area. This is a fix for
 	 * SMMU fault for DQRR statshing transaction.
@@ -383,7 +481,7 @@ dpaa2_create_dpio_device(struct fslmc_vfio_device *vdev,
 	}
 
 	reg_info.index = 1;
-	if (ioctl(dpio_dev->vfio_fd, VFIO_DEVICE_GET_REGION_INFO, &reg_info)) {
+	if (ioctl(vfio_dev_fd, VFIO_DEVICE_GET_REGION_INFO, &reg_info)) {
 		PMD_INIT_LOG(ERR, "vfio: error getting region info\n");
 		rte_free(dpio_dev);
 		return -1;
@@ -392,7 +490,7 @@ dpaa2_create_dpio_device(struct fslmc_vfio_device *vdev,
 	dpio_dev->ci_size = reg_info.size;
 	dpio_dev->qbman_portal_ci_paddr = (uint64_t)mmap(NULL, reg_info.size,
 				PROT_WRITE | PROT_READ, MAP_SHARED,
-				dpio_dev->vfio_fd, reg_info.offset);
+				vfio_dev_fd, reg_info.offset);
 
 	if (configure_dpio_qbman_swp(dpio_dev)) {
 		PMD_INIT_LOG(ERR,
