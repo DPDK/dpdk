@@ -188,3 +188,17 @@ rte_bus_find_by_device(const struct rte_device *dev)
 {
 	return rte_bus_find(NULL, bus_find_device, (const void *)dev);
 }
+
+static int
+cmp_bus_name(const struct rte_bus *bus, const void *_name)
+{
+	const char *name = _name;
+
+	return strcmp(bus->name, name);
+}
+
+struct rte_bus *
+rte_bus_find_by_name(const char *busname)
+{
+	return rte_bus_find(NULL, cmp_bus_name, (const void *)busname);
+}
