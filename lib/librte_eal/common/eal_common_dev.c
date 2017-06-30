@@ -67,27 +67,26 @@ static int cmp_dev_name(const struct rte_device *dev, const void *_name)
 
 int rte_eal_dev_attach(const char *name, const char *devargs)
 {
-	struct rte_pci_addr addr;
+	int ret;
 
 	if (name == NULL || devargs == NULL) {
 		RTE_LOG(ERR, EAL, "Invalid device or arguments provided\n");
 		return -EINVAL;
 	}
 
-	if (eal_parse_pci_DomBDF(name, &addr) == 0) {
-		if (rte_pci_probe_one(&addr) < 0)
-			goto err;
+	ret = rte_eal_hotplug_add("PCI", name, devargs);
+	if (ret && ret != -EINVAL)
+		return ret;
 
-	} else {
-		if (rte_vdev_init(name, devargs))
-			goto err;
-	}
-
-	return 0;
-
-err:
-	RTE_LOG(ERR, EAL, "Driver cannot attach the device (%s)\n", name);
-	return -EINVAL;
+	/*
+	 * If we haven't found a bus device the user meant to "hotplug" a
+	 * virtual device instead.
+	 */
+	ret = rte_vdev_init(name, devargs);
+	if (ret)
+		RTE_LOG(ERR, EAL, "Driver cannot attach the device (%s)\n",
+			name);
+	return ret;
 }
 
 int rte_eal_dev_detach(struct rte_device *dev)
