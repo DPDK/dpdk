@@ -57,7 +57,15 @@ DPDK_17.08 {
 	dpcon_get_attributes;
 	mc_get_soc_version;
 	mc_get_version;
+	qbman_eq_desc_set_dca;
+	qbman_get_dqrr_from_idx;
+	qbman_get_dqrr_idx;
+	qbman_result_DQ_fqd_ctx;
 	qbman_result_SCN_state_in_mem;
+	qbman_swp_dqrr_consume;
+	qbman_swp_dqrr_next;
+	qbman_swp_push_set;
+	rte_dpaa2_alloc_dpci_dev;
 	rte_fslmc_object_register;
 	rte_global_active_dqs_list;
 
