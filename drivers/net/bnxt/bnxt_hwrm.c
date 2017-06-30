@@ -2740,12 +2740,12 @@ int bnxt_hwrm_port_led_cfg(struct bnxt *bp, bool led_on)
 	return rc;
 }
 
-static void bnxt_vnic_count(struct bnxt_vnic_info *vnic, void *cbdata)
+static void
+bnxt_vnic_count(struct bnxt_vnic_info *vnic __rte_unused, void *cbdata)
 {
 	uint32_t *count = cbdata;
 
-	if (vnic->func_default)
-		*count = *count + 1;
+	*count = *count + 1;
 }
 
 static int bnxt_vnic_count_hwrm_stub(struct bnxt *bp __rte_unused,
@@ -2754,7 +2754,7 @@ static int bnxt_vnic_count_hwrm_stub(struct bnxt *bp __rte_unused,
 	return 0;
 }
 
-int bnxt_vf_default_vnic_count(struct bnxt *bp, uint16_t vf)
+int bnxt_vf_vnic_count(struct bnxt *bp, uint16_t vf)
 {
 	uint32_t count = 0;
 
@@ -2837,7 +2837,7 @@ int bnxt_hwrm_func_vf_vnic_query_and_config(struct bnxt *bp, uint16_t vf,
 		rc = bnxt_hwrm_vnic_qcfg(bp, &vnic, bp->pf.first_vf_id + vf);
 		if (rc)
 			break;
-		if (vnic.mru == 4)	/* Indicates unallocated */
+		if (vnic.mru <= 4)	/* Indicates unallocated */
 			continue;
 
 		vnic_cb(&vnic, cbdata);

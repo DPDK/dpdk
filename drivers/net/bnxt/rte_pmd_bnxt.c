@@ -610,7 +610,7 @@ int rte_pmd_bnxt_get_vf_rx_status(uint8_t port, uint16_t vf_id)
 		return -ENOTSUP;
 	}
 
-	return bnxt_vf_default_vnic_count(bp, vf_id);
+	return bnxt_vf_vnic_count(bp, vf_id);
 }
 
 int rte_pmd_bnxt_get_vf_tx_drop_count(uint8_t port, uint16_t vf_id,
