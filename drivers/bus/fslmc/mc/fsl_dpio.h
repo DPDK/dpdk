@@ -230,6 +230,36 @@ int dpio_get_stashing_destination(struct fsl_mc_io	*mc_io,
 				  uint8_t		*sdest);
 
 /**
+ * dpio_add_static_dequeue_channel() - Add a static dequeue channel.
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPIO object
+ * @dpcon_id:	DPCON object ID
+ * @channel_index: Returned channel index to be used in qbman API
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dpio_add_static_dequeue_channel(struct fsl_mc_io	*mc_io,
+				    uint32_t		cmd_flags,
+				    uint16_t		token,
+				    int			dpcon_id,
+				    uint8_t		*channel_index);
+
+/**
+ * dpio_remove_static_dequeue_channel() - Remove a static dequeue channel.
+ * @mc_io:	Pointer to MC portal's I/O object
+ * @cmd_flags:	Command flags; one or more of 'MC_CMD_FLAG_'
+ * @token:	Token of DPIO object
+ * @dpcon_id:	DPCON object ID
+ *
+ * Return:	'0' on Success; Error code otherwise.
+ */
+int dpio_remove_static_dequeue_channel(struct fsl_mc_io	*mc_io,
+				       uint32_t		cmd_flags,
+				       uint16_t		token,
+				       int		dpcon_id);
+
+/**
  * struct dpio_attr - Structure representing DPIO attributes
  * @id: DPIO object ID
  * @qbman_portal_ce_offset: offset of the software portal cache-enabled area

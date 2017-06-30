@@ -42,6 +42,7 @@ struct dpaa2_io_portal_t {
 	struct dpaa2_dpio_dev *sec_dpio_dev;
 	uint64_t net_tid;
 	uint64_t sec_tid;
+	void *eventdev;
 };
 
 /*! Global per thread DPIO portal */

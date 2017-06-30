@@ -58,6 +58,8 @@ DPDK_17.08 {
 	dpci_set_rx_queue;
 	dpcon_open;
 	dpcon_get_attributes;
+	dpio_add_static_dequeue_channel;
+	dpio_remove_static_dequeue_channel;
 	mc_get_soc_version;
 	mc_get_version;
 	qbman_eq_desc_set_dca;

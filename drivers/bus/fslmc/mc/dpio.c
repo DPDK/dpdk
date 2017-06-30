@@ -257,6 +257,50 @@ int dpio_get_stashing_destination(struct fsl_mc_io *mc_io,
 	return 0;
 }
 
+int dpio_add_static_dequeue_channel(struct fsl_mc_io *mc_io,
+				    uint32_t cmd_flags,
+				    uint16_t token,
+				    int dpcon_id,
+				    uint8_t *channel_index)
+{
+	struct mc_command cmd = { 0 };
+	int err;
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(DPIO_CMDID_ADD_STATIC_DEQUEUE_CHANNEL,
+					  cmd_flags,
+					  token);
+	DPIO_CMD_ADD_STATIC_DEQUEUE_CHANNEL(cmd, dpcon_id);
+
+	/* send command to mc*/
+	err = mc_send_command(mc_io, &cmd);
+	if (err)
+		return err;
+
+	/* retrieve response parameters */
+	DPIO_RSP_ADD_STATIC_DEQUEUE_CHANNEL(cmd, *channel_index);
+
+	return 0;
+}
+
+int dpio_remove_static_dequeue_channel(struct fsl_mc_io *mc_io,
+				       uint32_t cmd_flags,
+				       uint16_t token,
+				       int dpcon_id)
+{
+	struct mc_command cmd = { 0 };
+
+	/* prepare command */
+	cmd.header = mc_encode_cmd_header(
+				DPIO_CMDID_REMOVE_STATIC_DEQUEUE_CHANNEL,
+				cmd_flags,
+				token);
+	DPIO_CMD_REMOVE_STATIC_DEQUEUE_CHANNEL(cmd, dpcon_id);
+
+	/* send command to mc*/
+	return mc_send_command(mc_io, &cmd);
+}
+
 int dpio_get_api_version(struct fsl_mc_io *mc_io,
 			 uint32_t cmd_flags,
 			   uint16_t *major_ver,
