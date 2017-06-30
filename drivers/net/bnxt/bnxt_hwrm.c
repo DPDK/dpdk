@@ -1787,12 +1787,16 @@ static int bnxt_valid_link_speed(uint32_t link_speed, uint8_t port_id)
 	return 0;
 }
 
-static uint16_t bnxt_parse_eth_link_speed_mask(uint32_t link_speed)
+static uint16_t
+bnxt_parse_eth_link_speed_mask(struct bnxt *bp, uint32_t link_speed)
 {
 	uint16_t ret = 0;
 
-	if (link_speed == ETH_LINK_SPEED_AUTONEG)
+	if (link_speed == ETH_LINK_SPEED_AUTONEG) {
+		if (bp->link_info.support_speeds)
+			return bp->link_info.support_speeds;
 		link_speed = BNXT_SUPPORTED_SPEEDS;
+	}
 
 	if (link_speed & ETH_LINK_SPEED_100M)
 		ret |= HWRM_PORT_PHY_CFG_INPUT_AUTO_LINK_SPEED_MASK_100MB;
@@ -1926,7 +1930,8 @@ int bnxt_set_hwrm_link_config(struct bnxt *bp, bool link_up)
 		link_req.auto_mode =
 				HWRM_PORT_PHY_CFG_INPUT_AUTO_MODE_SPEED_MASK;
 		link_req.auto_link_speed_mask =
-			bnxt_parse_eth_link_speed_mask(dev_conf->link_speeds);
+			bnxt_parse_eth_link_speed_mask(bp,
+						       dev_conf->link_speeds);
 	} else {
 		link_req.phy_flags |= HWRM_PORT_PHY_CFG_INPUT_FLAGS_FORCE;
 		link_req.link_speed = speed;
