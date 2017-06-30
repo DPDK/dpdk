@@ -141,6 +141,48 @@ int rte_bus_probe(void);
 void rte_bus_dump(FILE *f);
 
 /**
+ * Bus comparison function.
+ *
+ * @param bus
+ *	Bus under test.
+ *
+ * @param data
+ *	Data to compare against.
+ *
+ * @return
+ *	0 if the bus matches the data.
+ *	!0 if the bus does not match.
+ *	<0 if ordering is possible and the bus is lower than the data.
+ *	>0 if ordering is possible and the bus is greater than the data.
+ */
+typedef int (*rte_bus_cmp_t)(const struct rte_bus *bus, const void *data);
+
+/**
+ * Bus iterator to find a particular bus.
+ *
+ * This function compares each registered bus to find one that matches
+ * the data passed as parameter.
+ *
+ * If the comparison function returns zero this function will stop iterating
+ * over any more buses. To continue a search the bus of a previous search can
+ * be passed via the start parameter.
+ *
+ * @param start
+ *	Starting point for the iteration.
+ *
+ * @param cmp
+ *	Comparison function.
+ *
+ * @param data
+ *	 Data to pass to comparison function.
+ *
+ * @return
+ *	 A pointer to a rte_bus structure or NULL in case no bus matches
+ */
+struct rte_bus *rte_bus_find(const struct rte_bus *start, rte_bus_cmp_t cmp,
+			     const void *data);
+
+/**
  * Helper for Bus registration.
  * The constructor has higher priority than PMD constructors.
  */

@@ -193,3 +193,10 @@ DPDK_17.05 {
 	vfio_get_group_no;
 
 } DPDK_17.02;
+
+DPDK_17.08 {
+	global:
+
+	rte_bus_find;
+
+} DPDK_17.05;
