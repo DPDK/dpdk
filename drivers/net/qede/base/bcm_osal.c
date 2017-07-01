@@ -255,3 +255,35 @@ qede_get_mcp_proto_stats(struct ecore_dev *edev,
 		       type);
 	}
 }
+
+void
+qede_hw_err_notify(struct ecore_hwfn *p_hwfn, enum ecore_hw_err_type err_type)
+{
+	char err_str[64];
+
+	switch (err_type) {
+	case ECORE_HW_ERR_FAN_FAIL:
+		strcpy(err_str, "Fan Failure");
+		break;
+	case ECORE_HW_ERR_MFW_RESP_FAIL:
+		strcpy(err_str, "MFW Response Failure");
+		break;
+	case ECORE_HW_ERR_HW_ATTN:
+		strcpy(err_str, "HW Attention");
+		break;
+	case ECORE_HW_ERR_DMAE_FAIL:
+		strcpy(err_str, "DMAE Failure");
+		break;
+	case ECORE_HW_ERR_RAMROD_FAIL:
+		strcpy(err_str, "Ramrod Failure");
+		break;
+	case ECORE_HW_ERR_FW_ASSERT:
+		strcpy(err_str, "FW Assertion");
+		break;
+	default:
+		strcpy(err_str, "Unknown");
+	}
+
+	DP_ERR(p_hwfn, "HW error occurred [%s]\n", err_str);
+	ecore_int_attn_clr_enable(p_hwfn->p_dev, true);
+}

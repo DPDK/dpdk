@@ -27,6 +27,7 @@ struct ecore_vf_acquire_sw_info;
 struct vf_pf_resc_request;
 enum ecore_mcp_protocol_type;
 union ecore_mcp_protocol_stats;
+enum ecore_hw_err_type;
 
 void qed_link_update(struct ecore_hwfn *hwfn);
 
@@ -350,6 +351,8 @@ u32 qede_unzip_data(struct ecore_hwfn *p_hwfn, u32 input_len,
 		   u8 *input_buf, u32 max_size, u8 *unzip_buf);
 void qede_vf_fill_driver_data(struct ecore_hwfn *, struct vf_pf_resc_request *,
 			      struct ecore_vf_acquire_sw_info *);
+void qede_hw_err_notify(struct ecore_hwfn *p_hwfn,
+			enum ecore_hw_err_type err_type);
 #define OSAL_VF_FILL_ACQUIRE_RESC_REQ(_dev_p, _resc_req, _os_info) \
 	qede_vf_fill_driver_data(_dev_p, _resc_req, _os_info)
 
@@ -358,7 +361,8 @@ void qede_vf_fill_driver_data(struct ecore_hwfn *, struct vf_pf_resc_request *,
 
 /* TODO: */
 #define OSAL_SCHEDULE_RECOVERY_HANDLER(hwfn) nothing
-#define OSAL_HW_ERROR_OCCURRED(hwfn, err_type) nothing
+#define OSAL_HW_ERROR_OCCURRED(hwfn, err_type) \
+	qede_hw_err_notify(hwfn, err_type)
 
 #define OSAL_NVM_IS_ACCESS_ENABLED(hwfn) (1)
 #define OSAL_NUM_ACTIVE_CPU()	0

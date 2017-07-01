@@ -842,7 +842,7 @@ ecore_int_deassertion_aeu_bit(struct ecore_hwfn *p_hwfn,
 		u32 mask = ~bitmask;
 		val = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt, aeu_en_reg);
 		ecore_wr(p_hwfn, p_hwfn->p_dpc_ptt, aeu_en_reg, (val & mask));
-		DP_INFO(p_hwfn, "`%s' - Disabled future attentions\n",
+		DP_ERR(p_hwfn, "`%s' - Disabled future attentions\n",
 			p_bit_name);
 	}
 
