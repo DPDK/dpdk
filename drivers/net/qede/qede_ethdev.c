@@ -1121,8 +1121,10 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 	/* Sanity checks and throw warnings */
 	if (rxmode->enable_scatter)
 		eth_dev->data->scattered_rx = 1;
+
 	if (!rxmode->hw_strip_crc)
 		DP_INFO(edev, "L2 CRC stripping is always enabled in hw\n");
+
 	if (!rxmode->hw_ip_checksum)
 		DP_INFO(edev, "IP/UDP/TCP checksum offload is always enabled "
 				"in hw\n");
@@ -2163,6 +2165,8 @@ static int qede_vxlan_tunn_config(struct rte_eth_dev *eth_dev,
 	uint16_t filter_type;
 	int rc, i;
 
+	PMD_INIT_FUNC_TRACE(edev);
+
 	filter_type = conf->filter_type | qdev->vxlan_filter_type;
 	/* First determine if the given filter classification is supported */
 	qede_get_ecore_tunn_params(filter_type, &type, &clss, str);
@@ -2605,6 +2609,13 @@ static int qede_eth_dev_init(struct rte_eth_dev *eth_dev)
 
 static int qede_dev_common_uninit(struct rte_eth_dev *eth_dev)
 {
+#ifdef RTE_LIBRTE_QEDE_DEBUG_INIT
+	struct qede_dev *qdev = eth_dev->data->dev_private;
+	struct ecore_dev *edev = &qdev->edev;
+
+	PMD_INIT_FUNC_TRACE(edev);
+#endif
+
 	/* only uninitialize in the primary process */
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;

@@ -82,6 +82,7 @@ qede_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	rxq->nb_rx_desc = nb_desc;
 	rxq->queue_id = queue_idx;
 	rxq->port_id = dev->data->port_id;
+
 	max_rx_pkt_len = (uint16_t)rxmode->max_rx_pkt_len;
 	qdev->mtu = max_rx_pkt_len;
 
@@ -94,6 +95,7 @@ qede_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 			dev->data->scattered_rx = 1;
 		}
 	}
+
 	if (dev->data->scattered_rx)
 		rxq->rx_buf_size = bufsz + QEDE_ETH_OVERHEAD;
 	else
@@ -704,7 +706,6 @@ qede_process_tx_compl(__rte_unused struct ecore_dev *edev,
 		qede_free_tx_pkt(txq);
 }
 
-
 static int qede_drain_txq(struct qede_dev *qdev,
 			  struct qede_tx_queue *txq, bool allow_drain)
 {
@@ -739,7 +740,6 @@ static int qede_drain_txq(struct qede_dev *qdev,
 
 	return 0;
 }
-
 
 /* Stops a given TX queue in the HW */
 static int qede_tx_queue_stop(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id)
@@ -1083,7 +1083,7 @@ qede_process_sg_pkts(void *p_rxq,  struct rte_mbuf *rx_mb,
 							pkt_len;
 		if (unlikely(!cur_size)) {
 			PMD_RX_LOG(ERR, rxq, "Length is 0 while %u BDs"
-				   " left for mapping jumbo", num_segs);
+				   " left for mapping jumbo\n", num_segs);
 			qede_recycle_rx_bd_ring(rxq, qdev, num_segs);
 			return -EINVAL;
 		}
