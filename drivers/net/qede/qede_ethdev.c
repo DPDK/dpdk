@@ -571,6 +571,7 @@ qede_ucast_filter(struct rte_eth_dev *eth_dev, struct ecore_filter_ucast *ucast,
 		SLIST_FOREACH(tmp, &qdev->uc_list_head, list) {
 			if ((memcmp(mac_addr, &tmp->mac,
 				    ETHER_ADDR_LEN) == 0) &&
+			     ucast->vni == tmp->vni &&
 			     ucast->vlan == tmp->vlan) {
 				DP_ERR(edev, "Unicast MAC is already added"
 				       " with vlan = %u, vni = %u\n",
