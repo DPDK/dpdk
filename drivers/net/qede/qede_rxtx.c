@@ -149,7 +149,7 @@ qede_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 		DP_NOTICE(edev, false,
 			  "Unable to alloc memory for cqe ring on socket %u\n",
 			  socket_id);
-		/* TBD: Freeing RX BD ring */
+		qdev->ops->common->chain_free(edev, &rxq->rx_bd_ring);
 		rte_free(rxq->sw_rx_ring);
 		rte_free(rxq);
 		return -ENOMEM;
@@ -300,6 +300,7 @@ qede_tx_queue_setup(struct rte_eth_dev *dev,
 		DP_ERR(edev,
 		       "Unable to allocate memory for txbd ring on socket %u",
 		       socket_id);
+		qdev->ops->common->chain_free(edev, &txq->tx_pbl);
 		qede_tx_queue_release(txq);
 		return -ENOMEM;
 	}
@@ -363,23 +364,23 @@ static int
 qede_alloc_mem_sb(struct qede_dev *qdev, struct ecore_sb_info *sb_info,
 		  uint16_t sb_id)
 {
-	struct ecore_dev *edev = &qdev->edev;
+	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
 	struct status_block *sb_virt;
 	dma_addr_t sb_phys;
 	int rc;
 
-	sb_virt = OSAL_DMA_ALLOC_COHERENT(edev, &sb_phys, sizeof(*sb_virt));
-
+	sb_virt = OSAL_DMA_ALLOC_COHERENT(edev, &sb_phys,
+					  sizeof(struct status_block));
 	if (!sb_virt) {
 		DP_ERR(edev, "Status block allocation failed\n");
 		return -ENOMEM;
 	}
-
 	rc = qdev->ops->common->sb_init(edev, sb_info, sb_virt,
 					sb_phys, sb_id);
 	if (rc) {
 		DP_ERR(edev, "Status block initialization failed\n");
-		/* TBD: No dma_free_coherent possible */
+		OSAL_DMA_FREE_COHERENT(edev, sb_virt, sb_phys,
+				       sizeof(struct status_block));
 		return rc;
 	}
 
@@ -437,9 +438,12 @@ int qede_alloc_fp_resc(struct qede_dev *qdev)
 void qede_dealloc_fp_resc(struct rte_eth_dev *eth_dev)
 {
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
-	__rte_unused struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
+	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
 	struct qede_fastpath *fp;
+	struct qede_rx_queue *rxq;
+	struct qede_tx_queue *txq;
 	uint16_t sb_idx;
+	uint8_t i;
 
 	PMD_INIT_FUNC_TRACE(edev);
 
@@ -447,10 +451,38 @@ void qede_dealloc_fp_resc(struct rte_eth_dev *eth_dev)
 		fp = &qdev->fp_array[sb_idx];
 		DP_INFO(edev, "Free sb_info index 0x%x\n",
 				fp->sb_info->igu_sb_id);
-		if (fp->sb_info)
+		if (fp->sb_info) {
+			OSAL_DMA_FREE_COHERENT(edev, fp->sb_info->sb_virt,
+				fp->sb_info->sb_phys,
+				sizeof(struct status_block));
 			rte_free(fp->sb_info);
-		fp->sb_info = NULL;
+			fp->sb_info = NULL;
+		}
 	}
+
+	/* Free packet buffers and ring memories */
+	for (i = 0; i < eth_dev->data->nb_rx_queues; i++) {
+		if (eth_dev->data->rx_queues[i]) {
+			qede_rx_queue_release(eth_dev->data->rx_queues[i]);
+			rxq = eth_dev->data->rx_queues[i];
+			qdev->ops->common->chain_free(edev,
+						      &rxq->rx_bd_ring);
+			qdev->ops->common->chain_free(edev,
+						      &rxq->rx_comp_ring);
+			eth_dev->data->rx_queues[i] = NULL;
+		}
+	}
+
+	for (i = 0; i < eth_dev->data->nb_tx_queues; i++) {
+		if (eth_dev->data->tx_queues[i]) {
+			txq = eth_dev->data->tx_queues[i];
+			qede_tx_queue_release(eth_dev->data->tx_queues[i]);
+			qdev->ops->common->chain_free(edev,
+						      &txq->tx_pbl);
+			eth_dev->data->tx_queues[i] = NULL;
+		}
+	}
+
 	if (qdev->fp_array)
 		rte_free(qdev->fp_array);
 	qdev->fp_array = NULL;

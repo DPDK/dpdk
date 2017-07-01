@@ -1143,7 +1143,7 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 	 * again and the fastpath pointers will be reinitialized there.
 	 */
 	if (qdev->num_tx_queues != eth_dev->data->nb_tx_queues ||
-			qdev->num_rx_queues != eth_dev->data->nb_rx_queues) {
+	    qdev->num_rx_queues != eth_dev->data->nb_rx_queues) {
 		qede_dealloc_fp_resc(eth_dev);
 		/* Proceed with updated queue count */
 		qdev->num_tx_queues = eth_dev->data->nb_tx_queues;
@@ -1373,7 +1373,6 @@ static void qede_dev_close(struct rte_eth_dev *eth_dev)
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
-	uint8_t i;
 
 	PMD_INIT_FUNC_TRACE(edev);
 
@@ -1389,12 +1388,6 @@ static void qede_dev_close(struct rte_eth_dev *eth_dev)
 	qede_fdir_dealloc_resc(eth_dev);
 	qede_dealloc_fp_resc(eth_dev);
 
-	for (i = 0; i < eth_dev->data->nb_rx_queues; i++)
-		if (eth_dev->data->rx_queues[i])
-			eth_dev->data->rx_queues[i] = NULL;
-	for (i = 0; i < eth_dev->data->nb_tx_queues; i++)
-		if (eth_dev->data->tx_queues[i])
-			eth_dev->data->tx_queues[i] = NULL;
 	eth_dev->data->nb_rx_queues = 0;
 	eth_dev->data->nb_tx_queues = 0;
 

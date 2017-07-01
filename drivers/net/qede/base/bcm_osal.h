@@ -107,14 +107,16 @@ void *osal_dma_alloc_coherent(struct ecore_dev *, dma_addr_t *, size_t);
 void *osal_dma_alloc_coherent_aligned(struct ecore_dev *, dma_addr_t *,
 				      size_t, int);
 
+void osal_dma_free_mem(struct ecore_dev *edev, dma_addr_t phys);
+
 #define OSAL_DMA_ALLOC_COHERENT(dev, phys, size) \
 	osal_dma_alloc_coherent(dev, phys, size)
 
 #define OSAL_DMA_ALLOC_COHERENT_ALIGNED(dev, phys, size, align) \
 	osal_dma_alloc_coherent_aligned(dev, phys, size, align)
 
-/* TODO: */
-#define OSAL_DMA_FREE_COHERENT(dev, virt, phys, size) nothing
+#define OSAL_DMA_FREE_COHERENT(dev, virt, phys, size) \
+	osal_dma_free_mem(dev, phys)
 
 /* HW reads/writes */
 
