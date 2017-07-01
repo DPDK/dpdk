@@ -111,9 +111,8 @@ qede_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 	rxq->sw_rx_ring = rte_zmalloc_socket("sw_rx_ring", size,
 					     RTE_CACHE_LINE_SIZE, socket_id);
 	if (!rxq->sw_rx_ring) {
-		DP_NOTICE(edev, false,
-			  "Unable to alloc memory for sw_rx_ring on socket %u\n",
-			  socket_id);
+		DP_ERR(edev, "Memory allocation fails for sw_rx_ring on"
+		       " socket %u\n", socket_id);
 		rte_free(rxq);
 		return -ENOMEM;
 	}
@@ -129,9 +128,8 @@ qede_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 					    NULL);
 
 	if (rc != ECORE_SUCCESS) {
-		DP_NOTICE(edev, false,
-			  "Unable to alloc memory for rxbd ring on socket %u\n",
-			  socket_id);
+		DP_ERR(edev, "Memory allocation fails for RX BD ring"
+		       " on socket %u\n", socket_id);
 		rte_free(rxq->sw_rx_ring);
 		rte_free(rxq);
 		return -ENOMEM;
@@ -148,9 +146,8 @@ qede_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 					    NULL);
 
 	if (rc != ECORE_SUCCESS) {
-		DP_NOTICE(edev, false,
-			  "Unable to alloc memory for cqe ring on socket %u\n",
-			  socket_id);
+		DP_ERR(edev, "Memory allocation fails for RX CQE ring"
+		       " on socket %u\n", socket_id);
 		qdev->ops->common->chain_free(edev, &rxq->rx_bd_ring);
 		rte_free(rxq->sw_rx_ring);
 		rte_free(rxq);

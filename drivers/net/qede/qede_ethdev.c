@@ -2434,8 +2434,7 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 	eth_dev->tx_pkt_prepare = qede_xmit_prep_pkts;
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
-		DP_NOTICE(edev, false,
-			  "Skipping device init from secondary process\n");
+		DP_ERR(edev, "Skipping device init from secondary process\n");
 		return 0;
 	}
 
@@ -2558,8 +2557,7 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 				ether_addr_copy(&eth_dev->data->mac_addrs[0],
 						&adapter->primary_mac);
 			} else {
-				DP_NOTICE(edev, false,
-					  "No VF macaddr assigned\n");
+				DP_ERR(edev, "No VF macaddr assigned\n");
 			}
 		}
 	}
@@ -2584,13 +2582,13 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 		if (qede_start_vport(adapter, adapter->mtu))
 			return -1;
 
-	DP_NOTICE(edev, false, "MAC address : %02x:%02x:%02x:%02x:%02x:%02x\n",
-		  adapter->primary_mac.addr_bytes[0],
-		  adapter->primary_mac.addr_bytes[1],
-		  adapter->primary_mac.addr_bytes[2],
-		  adapter->primary_mac.addr_bytes[3],
-		  adapter->primary_mac.addr_bytes[4],
-		  adapter->primary_mac.addr_bytes[5]);
+	DP_INFO(edev, "MAC address : %02x:%02x:%02x:%02x:%02x:%02x\n",
+		adapter->primary_mac.addr_bytes[0],
+		adapter->primary_mac.addr_bytes[1],
+		adapter->primary_mac.addr_bytes[2],
+		adapter->primary_mac.addr_bytes[3],
+		adapter->primary_mac.addr_bytes[4],
+		adapter->primary_mac.addr_bytes[5]);
 
 	DP_INFO(edev, "Device initialized\n");
 

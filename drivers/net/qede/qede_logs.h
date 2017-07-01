@@ -16,16 +16,21 @@
 		(p_dev)->name ? (p_dev)->name : "", \
 		##__VA_ARGS__)
 
-#ifdef RTE_LIBRTE_QEDE_DEBUG_INFO
 #define DP_NOTICE(p_dev, is_assert, fmt, ...) \
-	rte_log(RTE_LOG_NOTICE, RTE_LOGTYPE_PMD,\
-		"[QEDE PMD: (%s)]%s:" fmt, \
-		(p_dev)->name ? (p_dev)->name : "", \
-		 __func__, \
-		##__VA_ARGS__)
-#else
-#define DP_NOTICE(p_dev, fmt, ...) do { } while (0)
-#endif
+do { \
+	if (is_assert) \
+		rte_log(RTE_LOG_ERR, RTE_LOGTYPE_PMD,\
+			"[QEDE PMD: (%s)]%s:" fmt, \
+			(p_dev)->name ? (p_dev)->name : "", \
+			 __func__, \
+			##__VA_ARGS__); \
+	else \
+		rte_log(RTE_LOG_NOTICE, RTE_LOGTYPE_PMD,\
+			"[QEDE PMD: (%s)]%s:" fmt, \
+			(p_dev)->name ? (p_dev)->name : "", \
+			 __func__, \
+			##__VA_ARGS__); \
+} while (0)
 
 #ifdef RTE_LIBRTE_QEDE_DEBUG_INFO
 #define DP_INFO(p_dev, fmt, ...) \

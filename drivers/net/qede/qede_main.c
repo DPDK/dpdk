@@ -130,12 +130,12 @@ static int qed_load_firmware_data(struct ecore_dev *edev)
 
 	fd = open(fw_file, O_RDONLY);
 	if (fd < 0) {
-		DP_NOTICE(edev, false, "Can't open firmware file\n");
+		DP_ERR(edev, "Can't open firmware file\n");
 		return -ENOENT;
 	}
 
 	if (fstat(fd, &st) < 0) {
-		DP_NOTICE(edev, false, "Can't stat firmware file\n");
+		DP_ERR(edev, "Can't stat firmware file\n");
 		close(fd);
 		return -1;
 	}
@@ -143,20 +143,20 @@ static int qed_load_firmware_data(struct ecore_dev *edev)
 	edev->firmware = rte_zmalloc("qede_fw", st.st_size,
 				    RTE_CACHE_LINE_SIZE);
 	if (!edev->firmware) {
-		DP_NOTICE(edev, false, "Can't allocate memory for firmware\n");
+		DP_ERR(edev, "Can't allocate memory for firmware\n");
 		close(fd);
 		return -ENOMEM;
 	}
 
 	if (read(fd, edev->firmware, st.st_size) != st.st_size) {
-		DP_NOTICE(edev, false, "Can't read firmware data\n");
+		DP_ERR(edev, "Can't read firmware data\n");
 		close(fd);
 		return -1;
 	}
 
 	edev->fw_len = st.st_size;
 	if (edev->fw_len < 104) {
-		DP_NOTICE(edev, false, "Invalid fw size: %" PRIu64 "\n",
+		DP_ERR(edev, "Invalid fw size: %" PRIu64 "\n",
 			  edev->fw_len);
 		close(fd);
 		return -EINVAL;
@@ -260,8 +260,7 @@ static int qed_slowpath_start(struct ecore_dev *edev,
 		/* Allocate stream for unzipping */
 		rc = qed_alloc_stream_mem(edev);
 		if (rc) {
-			DP_NOTICE(edev, true,
-			"Failed to allocate stream memory\n");
+			DP_ERR(edev, "Failed to allocate stream memory\n");
 			goto err1;
 		}
 	}
@@ -301,8 +300,7 @@ static int qed_slowpath_start(struct ecore_dev *edev,
 		rc = ecore_mcp_send_drv_version(hwfn, hwfn->p_main_ptt,
 						&drv_version);
 		if (rc) {
-			DP_NOTICE(edev, true,
-				  "Failed sending drv version command\n");
+			DP_ERR(edev, "Failed sending drv version command\n");
 			goto err3;
 		}
 	}
@@ -606,7 +604,7 @@ static int qed_drain(struct ecore_dev *edev)
 		hwfn = &edev->hwfns[i];
 		ptt = ecore_ptt_acquire(hwfn);
 		if (!ptt) {
-			DP_NOTICE(hwfn, true, "Failed to drain NIG; No PTT\n");
+			DP_ERR(hwfn, "Failed to drain NIG; No PTT\n");
 			return -EBUSY;
 		}
 		rc = ecore_mcp_drain(hwfn, ptt);
@@ -699,7 +697,7 @@ static int qed_get_sb_info(struct ecore_dev *edev, struct ecore_sb_info *sb,
 
 	ptt = ecore_ptt_acquire(hwfn);
 	if (!ptt) {
-		DP_NOTICE(hwfn, true, "Can't acquire PTT\n");
+		DP_ERR(hwfn, "Can't acquire PTT\n");
 		return -EAGAIN;
 	}
 
