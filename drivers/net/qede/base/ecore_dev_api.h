@@ -186,6 +186,9 @@ struct ecore_hw_prepare_params {
 	/* The OS Epoch time in seconds */
 	u32 epoch;
 
+	/* Allow the MFW to collect a crash dump */
+	bool allow_mdump;
+
 	/* Allow prepare to pass even if some initializations are failing.
 	 * If set, the `p_prepare_res' field would be set with the return,
 	 * and might allow probe to pass even if there are certain issues.

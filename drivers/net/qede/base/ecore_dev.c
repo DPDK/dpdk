@@ -3565,6 +3565,7 @@ enum _ecore_status_t ecore_hw_prepare(struct ecore_dev *p_dev,
 	enum _ecore_status_t rc;
 
 	p_dev->chk_reg_fifo = p_params->chk_reg_fifo;
+	p_dev->allow_mdump = p_params->allow_mdump;
 
 	if (p_params->b_relaxed_probe)
 		p_params->p_relaxed_res = ECORE_HW_PREPARE_SUCCESS;

@@ -1556,10 +1556,9 @@ static void ecore_mcp_handle_critical_error(struct ecore_hwfn *p_hwfn,
 	DP_NOTICE(p_hwfn, false,
 		  "Received a critical error notification from the MFW!\n");
 
-	if (p_hwfn->p_dev->mdump_en) {
+	if (p_hwfn->p_dev->allow_mdump) {
 		DP_NOTICE(p_hwfn, false,
 			  "Not acknowledging the notification to allow the MFW crash dump\n");
-		p_hwfn->p_dev->mdump_en = false;
 		return;
 	}
 
