@@ -1189,13 +1189,13 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 
 /* Info about HW descriptor ring limitations */
 static const struct rte_eth_desc_lim qede_rx_desc_lim = {
-	.nb_max = NUM_RX_BDS_MAX,
+	.nb_max = 0x8000, /* 32K */
 	.nb_min = 128,
 	.nb_align = 128 /* lowest common multiple */
 };
 
 static const struct rte_eth_desc_lim qede_tx_desc_lim = {
-	.nb_max = NUM_TX_BDS_MAX,
+	.nb_max = 0x8000, /* 32K */
 	.nb_min = 256,
 	.nb_align = 256,
 	.nb_seg_max = ETH_TX_MAX_BDS_PER_LSO_PACKET,
