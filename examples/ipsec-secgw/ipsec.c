@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2016 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2016-2017 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -140,7 +140,6 @@ ipsec_enqueue(ipsec_xform_fn xform_func, struct ipsec_ctx *ipsec_ctx,
 		priv->cop.status = RTE_CRYPTO_OP_STATUS_NOT_PROCESSED;
 
 		rte_prefetch0(&priv->sym_cop);
-		priv->cop.sym = &priv->sym_cop;
 
 		if ((unlikely(sa->crypto_session == NULL)) &&
 				create_session(ipsec_ctx, sa)) {

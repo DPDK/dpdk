@@ -124,7 +124,7 @@ struct rte_crypto_op {
 
 	RTE_STD_C11
 	union {
-		struct rte_crypto_sym_op *sym;
+		struct rte_crypto_sym_op sym[0];
 		/**< Symmetric operation parameters */
 	}; /**< operation specific parameters */
 } __rte_cache_aligned;
@@ -144,12 +144,6 @@ __rte_crypto_op_reset(struct rte_crypto_op *op, enum rte_crypto_op_type type)
 
 	switch (type) {
 	case RTE_CRYPTO_OP_TYPE_SYMMETRIC:
-		/** Symmetric operation structure starts after the end of the
-		 * rte_crypto_op structure.
-		 */
-		op->sym = (struct rte_crypto_sym_op *)(op + 1);
-		op->type = type;
-
 		__rte_crypto_sym_op_reset(op->sym);
 		break;
 	default:

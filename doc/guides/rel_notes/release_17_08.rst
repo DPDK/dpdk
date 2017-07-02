@@ -99,6 +99,7 @@ New Features
   * Enumerations ``rte_crypto_op_status`` and ``rte_crypto_op_type``
     have been modified to be uint8_t values.
   * Removed the field ``opaque_data``.
+  * Pointer to ``rte_crypto_sym_op`` has been replaced with a zero length array.
 
 
 Resolved Issues
