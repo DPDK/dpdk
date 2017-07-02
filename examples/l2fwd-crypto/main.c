@@ -489,9 +489,7 @@ l2fwd_simple_crypto_enqueue(struct rte_mbuf *m,
 		/* Copy IV at the end of the crypto operation */
 		rte_memcpy(iv_ptr, cparams->iv.data, cparams->iv.length);
 
-		op->sym->cipher.iv.data = iv_ptr;
-		op->sym->cipher.iv.phys_addr =
-				rte_crypto_op_ctophys_offset(op, IV_OFFSET);
+		op->sym->cipher.iv.offset = IV_OFFSET;
 		op->sym->cipher.iv.length = cparams->iv.length;
 
 		/* For wireless algorithms, offset/length must be in bits */
@@ -700,7 +698,6 @@ l2fwd_main_loop(struct l2fwd_crypto_options *options)
 		if (port_cparams[i].do_cipher) {
 			port_cparams[i].iv.data = options->iv.data;
 			port_cparams[i].iv.length = options->iv.length;
-			port_cparams[i].iv.phys_addr = options->iv.phys_addr;
 			if (!options->iv_param)
 				generate_random_key(port_cparams[i].iv.data,
 						port_cparams[i].iv.length);

@@ -174,7 +174,7 @@ process_snow3g_cipher_op(struct rte_crypto_op **ops,
 	unsigned i;
 	uint8_t processed_ops = 0;
 	uint8_t *src[SNOW3G_MAX_BURST], *dst[SNOW3G_MAX_BURST];
-	uint8_t *IV[SNOW3G_MAX_BURST];
+	uint8_t *iv[SNOW3G_MAX_BURST];
 	uint32_t num_bytes[SNOW3G_MAX_BURST];
 
 	for (i = 0; i < num_ops; i++) {
@@ -192,13 +192,14 @@ process_snow3g_cipher_op(struct rte_crypto_op **ops,
 				(ops[i]->sym->cipher.data.offset >> 3) :
 			rte_pktmbuf_mtod(ops[i]->sym->m_src, uint8_t *) +
 				(ops[i]->sym->cipher.data.offset >> 3);
-		IV[i] = ops[i]->sym->cipher.iv.data;
+		iv[i] = rte_crypto_op_ctod_offset(ops[i], uint8_t *,
+				ops[i]->sym->cipher.iv.offset);
 		num_bytes[i] = ops[i]->sym->cipher.data.length >> 3;
 
 		processed_ops++;
 	}
 
-	sso_snow3g_f8_n_buffer(&session->pKeySched_cipher, IV, src, dst,
+	sso_snow3g_f8_n_buffer(&session->pKeySched_cipher, iv, src, dst,
 			num_bytes, processed_ops);
 
 	return processed_ops;
@@ -210,7 +211,7 @@ process_snow3g_cipher_op_bit(struct rte_crypto_op *op,
 		struct snow3g_session *session)
 {
 	uint8_t *src, *dst;
-	uint8_t *IV;
+	uint8_t *iv;
 	uint32_t length_in_bits, offset_in_bits;
 
 	/* Sanity checks. */
@@ -228,10 +229,11 @@ process_snow3g_cipher_op_bit(struct rte_crypto_op *op,
 		return 0;
 	}
 	dst = rte_pktmbuf_mtod(op->sym->m_dst, uint8_t *);
-	IV = op->sym->cipher.iv.data;
+	iv = rte_crypto_op_ctod_offset(op, uint8_t *,
+				op->sym->cipher.iv.offset);
 	length_in_bits = op->sym->cipher.data.length;
 
-	sso_snow3g_f8_1_buffer_bit(&session->pKeySched_cipher, IV,
+	sso_snow3g_f8_1_buffer_bit(&session->pKeySched_cipher, iv,
 			src, dst, length_in_bits, offset_in_bits);
 
 	return 1;

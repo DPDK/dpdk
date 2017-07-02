@@ -471,7 +471,8 @@ set_mb_job_params(JOB_AES_HMAC *job, struct aesni_mb_qp *qp,
 			get_truncated_digest_byte_length(job->hash_alg);
 
 	/* Set IV parameters */
-	job->iv = op->sym->cipher.iv.data;
+	job->iv = rte_crypto_op_ctod_offset(op, uint8_t *,
+			op->sym->cipher.iv.offset);
 	job->iv_len_in_bytes = op->sym->cipher.iv.length;
 
 	/* Data  Parameter */

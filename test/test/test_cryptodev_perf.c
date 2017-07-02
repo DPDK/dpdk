@@ -1981,15 +1981,11 @@ test_perf_crypto_qp_vary_burst_size(uint16_t dev_num)
 		op->sym->auth.data.offset = 0;
 		op->sym->auth.data.length = data_params[0].length;
 
-
-		op->sym->cipher.iv.data = rte_crypto_op_ctod_offset(op,
-				uint8_t *, IV_OFFSET);
-		op->sym->cipher.iv.phys_addr = rte_crypto_op_ctophys_offset(op,
-				IV_OFFSET);
+		op->sym->cipher.iv.offset = IV_OFFSET;
 		op->sym->cipher.iv.length = CIPHER_IV_LENGTH_AES_CBC;
 
-		rte_memcpy(op->sym->cipher.iv.data, aes_cbc_128_iv,
-				CIPHER_IV_LENGTH_AES_CBC);
+		rte_memcpy(rte_crypto_op_ctod_offset(op, uint8_t *, IV_OFFSET),
+				aes_cbc_128_iv, CIPHER_IV_LENGTH_AES_CBC);
 
 		op->sym->cipher.data.offset = 0;
 		op->sym->cipher.data.length = data_params[0].length;
@@ -2898,13 +2894,10 @@ test_perf_set_crypto_op_aes(struct rte_crypto_op *op, struct rte_mbuf *m,
 
 
 	/* Cipher Parameters */
-	op->sym->cipher.iv.data = rte_crypto_op_ctod_offset(op,
-			uint8_t *, IV_OFFSET);
-	op->sym->cipher.iv.phys_addr = rte_crypto_op_ctophys_offset(op,
-			IV_OFFSET);
+	op->sym->cipher.iv.offset = IV_OFFSET;
 	op->sym->cipher.iv.length = AES_CIPHER_IV_LENGTH;
-
-	rte_memcpy(op->sym->cipher.iv.data, aes_iv, AES_CIPHER_IV_LENGTH);
+	rte_memcpy(rte_crypto_op_ctod_offset(op, uint8_t *, IV_OFFSET),
+			aes_iv, AES_CIPHER_IV_LENGTH);
 
 	op->sym->cipher.data.offset = 0;
 	op->sym->cipher.data.length = data_len;
@@ -2934,12 +2927,10 @@ test_perf_set_crypto_op_aes_gcm(struct rte_crypto_op *op, struct rte_mbuf *m,
 	op->sym->auth.aad.length = AES_GCM_AAD_LENGTH;
 
 	/* Cipher Parameters */
-	op->sym->cipher.iv.data = rte_crypto_op_ctod_offset(op,
-			uint8_t *, IV_OFFSET);
-	op->sym->cipher.iv.phys_addr = rte_crypto_op_ctophys_offset(op,
-			IV_OFFSET);
+	op->sym->cipher.iv.offset = IV_OFFSET;
 	op->sym->cipher.iv.length = AES_CIPHER_IV_LENGTH;
-	rte_memcpy(op->sym->cipher.iv.data, aes_iv, AES_CIPHER_IV_LENGTH);
+	rte_memcpy(rte_crypto_op_ctod_offset(op, uint8_t *, IV_OFFSET),
+			aes_iv, AES_CIPHER_IV_LENGTH);
 
 	/* Data lengths/offsets Parameters */
 	op->sym->auth.data.offset = 0;
@@ -2980,9 +2971,7 @@ test_perf_set_crypto_op_snow3g(struct rte_crypto_op *op, struct rte_mbuf *m,
 	op->sym->auth.aad.length = SNOW3G_CIPHER_IV_LENGTH;
 
 	/* Cipher Parameters */
-	op->sym->cipher.iv.data = iv_ptr;
-	op->sym->cipher.iv.phys_addr = rte_crypto_op_ctophys_offset(op,
-			IV_OFFSET);
+	op->sym->cipher.iv.offset = IV_OFFSET;
 	op->sym->cipher.iv.length = SNOW3G_CIPHER_IV_LENGTH;
 
 	/* Data lengths/offsets Parameters */
@@ -3009,12 +2998,10 @@ test_perf_set_crypto_op_snow3g_cipher(struct rte_crypto_op *op,
 	}
 
 	/* Cipher Parameters */
-	op->sym->cipher.iv.data = rte_crypto_op_ctod_offset(op,
-			uint8_t *, IV_OFFSET);
-	op->sym->cipher.iv.phys_addr = rte_crypto_op_ctophys_offset(op,
-			IV_OFFSET);
+	op->sym->cipher.iv.offset = IV_OFFSET;
 	op->sym->cipher.iv.length = SNOW3G_CIPHER_IV_LENGTH;
-	rte_memcpy(op->sym->cipher.iv.data, snow3g_iv, SNOW3G_CIPHER_IV_LENGTH);
+	rte_memcpy(rte_crypto_op_ctod_offset(op, uint8_t *, IV_OFFSET),
+			snow3g_iv, SNOW3G_CIPHER_IV_LENGTH);
 
 	op->sym->cipher.data.offset = 0;
 	op->sym->cipher.data.length = data_len << 3;
@@ -3082,13 +3069,10 @@ test_perf_set_crypto_op_3des(struct rte_crypto_op *op, struct rte_mbuf *m,
 	op->sym->auth.digest.length = digest_len;
 
 	/* Cipher Parameters */
-	op->sym->cipher.iv.data = rte_crypto_op_ctod_offset(op,
-			uint8_t *, IV_OFFSET);
-	op->sym->cipher.iv.phys_addr = rte_crypto_op_ctophys_offset(op,
-			IV_OFFSET);
+	op->sym->cipher.iv.offset = IV_OFFSET;
 	op->sym->cipher.iv.length = TRIPLE_DES_CIPHER_IV_LENGTH;
-	rte_memcpy(op->sym->cipher.iv.data, triple_des_iv,
-			TRIPLE_DES_CIPHER_IV_LENGTH);
+	rte_memcpy(rte_crypto_op_ctod_offset(op, uint8_t *, IV_OFFSET),
+			triple_des_iv, TRIPLE_DES_CIPHER_IV_LENGTH);
 
 	/* Data lengths/offsets Parameters */
 	op->sym->auth.data.offset = 0;
@@ -4183,6 +4167,9 @@ perf_gcm_set_crypto_op(struct rte_crypto_op *op, struct rte_mbuf *m,
 		struct crypto_params *m_hlp,
 		struct perf_test_params *params)
 {
+	uint8_t *iv_ptr = rte_crypto_op_ctod_offset(op,
+			uint8_t *, IV_OFFSET);
+
 	if (rte_crypto_op_attach_sym_session(op, sess) != 0) {
 		rte_crypto_op_free(op);
 		return NULL;
@@ -4203,14 +4190,11 @@ perf_gcm_set_crypto_op(struct rte_crypto_op *op, struct rte_mbuf *m,
 	rte_memcpy(op->sym->auth.aad.data, params->symmetric_op->aad_data,
 		       params->symmetric_op->aad_len);
 
-	op->sym->cipher.iv.data = rte_crypto_op_ctod_offset(op,
-			uint8_t *, IV_OFFSET);
-	op->sym->cipher.iv.phys_addr = rte_crypto_op_ctophys_offset(op,
-			IV_OFFSET);
-	rte_memcpy(op->sym->cipher.iv.data, params->symmetric_op->iv_data,
+	op->sym->cipher.iv.offset = IV_OFFSET;
+	rte_memcpy(iv_ptr, params->symmetric_op->iv_data,
 		       params->symmetric_op->iv_len);
 	if (params->symmetric_op->iv_len == 12)
-		op->sym->cipher.iv.data[15] = 1;
+		iv_ptr[15] = 1;
 
 	op->sym->cipher.iv.length = params->symmetric_op->iv_len;
 

@@ -464,8 +464,10 @@ struct rte_crypto_sym_op {
 		} data; /**< Data offsets and length for ciphering */
 
 		struct {
-			uint8_t *data;
-			/**< Initialisation Vector or Counter.
+			uint16_t offset;
+			/**< Starting point for Initialisation Vector or Counter,
+			 * specified as number of bytes from start of crypto
+			 * operation.
 			 *
 			 * - For block ciphers in CBC or F8 mode, or for KASUMI
 			 * in F8 mode, or for SNOW 3G in UEA2 mode, this is the
@@ -491,7 +493,6 @@ struct rte_crypto_sym_op {
 			 * For optimum performance, the data pointed to SHOULD
 			 * be 8-byte aligned.
 			 */
-			phys_addr_t phys_addr;
 			uint16_t length;
 			/**< Length of valid IV data.
 			 *

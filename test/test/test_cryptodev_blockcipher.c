@@ -291,12 +291,10 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 
 		sym_op->cipher.data.offset = 0;
 		sym_op->cipher.data.length = tdata->ciphertext.len;
-		sym_op->cipher.iv.data = rte_crypto_op_ctod_offset(op,
-						uint8_t *, IV_OFFSET);
-		sym_op->cipher.iv.phys_addr = rte_crypto_op_ctophys_offset(op,
-						IV_OFFSET);
+		sym_op->cipher.iv.offset = IV_OFFSET;
 		sym_op->cipher.iv.length = tdata->iv.len;
-		rte_memcpy(sym_op->cipher.iv.data, tdata->iv.data,
+		rte_memcpy(rte_crypto_op_ctod_offset(op, uint8_t *, IV_OFFSET),
+				tdata->iv.data,
 				tdata->iv.len);
 	}
 

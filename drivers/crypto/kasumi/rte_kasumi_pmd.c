@@ -174,7 +174,8 @@ process_kasumi_cipher_op(struct rte_crypto_op **ops,
 	unsigned i;
 	uint8_t processed_ops = 0;
 	uint8_t *src[num_ops], *dst[num_ops];
-	uint64_t IV[num_ops];
+	uint8_t *iv_ptr;
+	uint64_t iv[num_ops];
 	uint32_t num_bytes[num_ops];
 
 	for (i = 0; i < num_ops; i++) {
@@ -192,14 +193,16 @@ process_kasumi_cipher_op(struct rte_crypto_op **ops,
 				(ops[i]->sym->cipher.data.offset >> 3) :
 			rte_pktmbuf_mtod(ops[i]->sym->m_src, uint8_t *) +
 				(ops[i]->sym->cipher.data.offset >> 3);
-		IV[i] = *((uint64_t *)(ops[i]->sym->cipher.iv.data));
+		iv_ptr = rte_crypto_op_ctod_offset(ops[i], uint8_t *,
+				ops[i]->sym->cipher.iv.offset);
+		iv[i] = *((uint64_t *)(iv_ptr));
 		num_bytes[i] = ops[i]->sym->cipher.data.length >> 3;
 
 		processed_ops++;
 	}
 
 	if (processed_ops != 0)
-		sso_kasumi_f8_n_buffer(&session->pKeySched_cipher, IV,
+		sso_kasumi_f8_n_buffer(&session->pKeySched_cipher, iv,
 			src, dst, num_bytes, processed_ops);
 
 	return processed_ops;
@@ -211,7 +214,8 @@ process_kasumi_cipher_op_bit(struct rte_crypto_op *op,
 		struct kasumi_session *session)
 {
 	uint8_t *src, *dst;
-	uint64_t IV;
+	uint8_t *iv_ptr;
+	uint64_t iv;
 	uint32_t length_in_bits, offset_in_bits;
 
 	/* Sanity checks. */
@@ -229,10 +233,12 @@ process_kasumi_cipher_op_bit(struct rte_crypto_op *op,
 		return 0;
 	}
 	dst = rte_pktmbuf_mtod(op->sym->m_dst, uint8_t *);
-	IV = *((uint64_t *)(op->sym->cipher.iv.data));
+	iv_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
+			op->sym->cipher.iv.offset);
+	iv = *((uint64_t *)(iv_ptr));
 	length_in_bits = op->sym->cipher.data.length;
 
-	sso_kasumi_f8_1_buffer_bit(&session->pKeySched_cipher, IV,
+	sso_kasumi_f8_1_buffer_bit(&session->pKeySched_cipher, iv,
 			src, dst, length_in_bits, offset_in_bits);
 
 	return 1;
@@ -250,7 +256,7 @@ process_kasumi_hash_op(struct rte_crypto_op **ops,
 	uint32_t length_in_bits;
 	uint32_t num_bytes;
 	uint32_t shift_bits;
-	uint64_t IV;
+	uint64_t iv;
 	uint8_t direction;
 
 	for (i = 0; i < num_ops; i++) {
@@ -278,7 +284,7 @@ process_kasumi_hash_op(struct rte_crypto_op **ops,
 		src = rte_pktmbuf_mtod(ops[i]->sym->m_src, uint8_t *) +
 				(ops[i]->sym->auth.data.offset >> 3);
 		/* IV from AAD */
-		IV = *((uint64_t *)(ops[i]->sym->auth.aad.data));
+		iv = *((uint64_t *)(ops[i]->sym->auth.aad.data));
 		/* Direction from next bit after end of message */
 		num_bytes = (length_in_bits >> 3) + 1;
 		shift_bits = (BYTE_LEN - 1 - length_in_bits) % BYTE_LEN;
@@ -289,7 +295,7 @@ process_kasumi_hash_op(struct rte_crypto_op **ops,
 					ops[i]->sym->auth.digest.length);
 
 			sso_kasumi_f9_1_buffer_user(&session->pKeySched_hash,
-					IV, src,
+					iv, src,
 					length_in_bits,	dst, direction);
 			/* Verify digest. */
 			if (memcmp(dst, ops[i]->sym->auth.digest.data,
@@ -303,7 +309,7 @@ process_kasumi_hash_op(struct rte_crypto_op **ops,
 			dst = ops[i]->sym->auth.digest.data;
 
 			sso_kasumi_f9_1_buffer_user(&session->pKeySched_hash,
-					IV, src,
+					iv, src,
 					length_in_bits, dst, direction);
 		}
 		processed_ops++;

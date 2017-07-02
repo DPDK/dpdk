@@ -537,8 +537,7 @@ chain.
             } data;   /**< Data offsets and length for ciphering */
 
             struct {
-                uint8_t *data;
-                phys_addr_t phys_addr;
+                uint16_t offset;
                 uint16_t length;
             } iv;     /**< Initialisation vector parameters */
         } cipher;

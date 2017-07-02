@@ -923,7 +923,8 @@ process_openssl_combined_op
 		return;
 	}
 
-	iv = op->sym->cipher.iv.data;
+	iv = rte_crypto_op_ctod_offset(op, uint8_t *,
+			op->sym->cipher.iv.offset);
 	ivlen = op->sym->cipher.iv.length;
 	aad = op->sym->auth.aad.data;
 	aadlen = op->sym->auth.aad.length;
@@ -987,7 +988,8 @@ process_openssl_cipher_op
 	dst = rte_pktmbuf_mtod_offset(mbuf_dst, uint8_t *,
 			op->sym->cipher.data.offset);
 
-	iv = op->sym->cipher.iv.data;
+	iv = rte_crypto_op_ctod_offset(op, uint8_t *,
+			op->sym->cipher.iv.offset);
 
 	if (sess->cipher.mode == OPENSSL_CIPHER_LIB)
 		if (sess->cipher.direction == RTE_CRYPTO_CIPHER_OP_ENCRYPT)
@@ -1028,7 +1030,8 @@ process_openssl_docsis_bpi_op(struct rte_crypto_op *op,
 	dst = rte_pktmbuf_mtod_offset(mbuf_dst, uint8_t *,
 			op->sym->cipher.data.offset);
 
-	iv = op->sym->cipher.iv.data;
+	iv = rte_crypto_op_ctod_offset(op, uint8_t *,
+			op->sym->cipher.iv.offset);
 
 	block_size = DES_BLOCK_SIZE;
 
@@ -1086,7 +1089,8 @@ process_openssl_docsis_bpi_op(struct rte_crypto_op *op,
 						dst, iv,
 						last_block_len, sess->cipher.bpi_ctx);
 				/* Prepare parameters for CBC mode op */
-				iv = op->sym->cipher.iv.data;
+				iv = rte_crypto_op_ctod_offset(op, uint8_t *,
+						op->sym->cipher.iv.offset);
 				dst += last_block_len - srclen;
 				srclen -= last_block_len;
 			}

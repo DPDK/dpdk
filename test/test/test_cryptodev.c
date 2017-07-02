@@ -1312,13 +1312,11 @@ test_AES_CBC_HMAC_SHA1_encrypt_digest(void)
 	sym_op->auth.data.length = QUOTE_512_BYTES;
 
 	/* Set crypto operation cipher parameters */
-	sym_op->cipher.iv.data = rte_crypto_op_ctod_offset(ut_params->op,
-						uint8_t *, IV_OFFSET);
-	sym_op->cipher.iv.phys_addr = rte_crypto_op_ctophys_offset(ut_params->op,
-						IV_OFFSET);
+	sym_op->cipher.iv.offset = IV_OFFSET;
 	sym_op->cipher.iv.length = CIPHER_IV_LENGTH_AES_CBC;
 
-	rte_memcpy(sym_op->cipher.iv.data, aes_cbc_iv, CIPHER_IV_LENGTH_AES_CBC);
+	rte_memcpy(rte_crypto_op_ctod_offset(ut_params->op, uint8_t *, IV_OFFSET),
+			aes_cbc_iv, CIPHER_IV_LENGTH_AES_CBC);
 
 	sym_op->cipher.data.offset = 0;
 	sym_op->cipher.data.length = QUOTE_512_BYTES;
@@ -1465,13 +1463,11 @@ test_AES_CBC_HMAC_SHA512_decrypt_perform(struct rte_cryptodev_sym_session *sess,
 	sym_op->auth.data.offset = 0;
 	sym_op->auth.data.length = QUOTE_512_BYTES;
 
-	sym_op->cipher.iv.data = rte_crypto_op_ctod_offset(ut_params->op,
-						uint8_t *, IV_OFFSET);
-	sym_op->cipher.iv.phys_addr = rte_crypto_op_ctophys_offset(ut_params->op,
-						IV_OFFSET);
+	sym_op->cipher.iv.offset = IV_OFFSET;
 	sym_op->cipher.iv.length = CIPHER_IV_LENGTH_AES_CBC;
 
-	rte_memcpy(sym_op->cipher.iv.data, iv, CIPHER_IV_LENGTH_AES_CBC);
+	rte_memcpy(rte_crypto_op_ctod_offset(ut_params->op, uint8_t *, IV_OFFSET),
+			iv, CIPHER_IV_LENGTH_AES_CBC);
 
 	sym_op->cipher.data.offset = 0;
 	sym_op->cipher.data.length = QUOTE_512_BYTES;
@@ -1861,13 +1857,11 @@ create_wireless_algo_cipher_operation(const uint8_t *iv, uint8_t iv_len,
 	sym_op->m_src = ut_params->ibuf;
 
 	/* iv */
-	sym_op->cipher.iv.data = rte_crypto_op_ctod_offset(ut_params->op,
-						uint8_t *, IV_OFFSET);
-	sym_op->cipher.iv.phys_addr = rte_crypto_op_ctophys_offset(ut_params->op,
-						IV_OFFSET);
+	sym_op->cipher.iv.offset = IV_OFFSET;
 	sym_op->cipher.iv.length = iv_len;
 
-	rte_memcpy(sym_op->cipher.iv.data, iv, iv_len);
+	rte_memcpy(rte_crypto_op_ctod_offset(ut_params->op, uint8_t *, IV_OFFSET),
+			iv, iv_len);
 	sym_op->cipher.data.length = cipher_len;
 	sym_op->cipher.data.offset = cipher_offset;
 	return 0;
@@ -1897,13 +1891,11 @@ create_wireless_algo_cipher_operation_oop(const uint8_t *iv, uint8_t iv_len,
 	sym_op->m_dst = ut_params->obuf;
 
 	/* iv */
-	sym_op->cipher.iv.data = rte_crypto_op_ctod_offset(ut_params->op,
-						uint8_t *, IV_OFFSET);
-	sym_op->cipher.iv.phys_addr = rte_crypto_op_ctophys_offset(ut_params->op,
-						IV_OFFSET);
+	sym_op->cipher.iv.offset = IV_OFFSET;
 	sym_op->cipher.iv.length = iv_len;
 
-	rte_memcpy(sym_op->cipher.iv.data, iv, iv_len);
+	rte_memcpy(rte_crypto_op_ctod_offset(ut_params->op, uint8_t *, IV_OFFSET),
+			iv, iv_len);
 	sym_op->cipher.data.length = cipher_len;
 	sym_op->cipher.data.offset = cipher_offset;
 	return 0;
@@ -2220,13 +2212,11 @@ create_wireless_cipher_hash_operation(const struct wireless_test_data *tdata,
 	TEST_HEXDUMP(stdout, "aad:", sym_op->auth.aad.data, aad_len);
 
 	/* iv */
-	sym_op->cipher.iv.data = rte_crypto_op_ctod_offset(ut_params->op,
-						uint8_t *, IV_OFFSET);
-	sym_op->cipher.iv.phys_addr = rte_crypto_op_ctophys_offset(ut_params->op,
-						IV_OFFSET);
+	sym_op->cipher.iv.offset = IV_OFFSET;
 	sym_op->cipher.iv.length = iv_len;
 
-	rte_memcpy(sym_op->cipher.iv.data, iv, iv_len);
+	rte_memcpy(rte_crypto_op_ctod_offset(ut_params->op, uint8_t *, IV_OFFSET),
+			iv, iv_len);
 	sym_op->cipher.data.length = cipher_len;
 	sym_op->cipher.data.offset = cipher_offset + auth_offset;
 	sym_op->auth.data.length = auth_len;
@@ -2317,13 +2307,11 @@ create_wireless_algo_cipher_hash_operation(const uint8_t *auth_tag,
 	TEST_HEXDUMP(stdout, "aad:", sym_op->auth.aad.data, aad_len);
 
 	/* iv */
-	sym_op->cipher.iv.data = rte_crypto_op_ctod_offset(ut_params->op,
-						uint8_t *, IV_OFFSET);
-	sym_op->cipher.iv.phys_addr = rte_crypto_op_ctophys_offset(ut_params->op,
-						IV_OFFSET);
+	sym_op->cipher.iv.offset = IV_OFFSET;
 	sym_op->cipher.iv.length = iv_len;
 
-	rte_memcpy(sym_op->cipher.iv.data, iv, iv_len);
+	rte_memcpy(rte_crypto_op_ctod_offset(ut_params->op, uint8_t *, IV_OFFSET),
+			iv, iv_len);
 	sym_op->cipher.data.length = cipher_len;
 	sym_op->cipher.data.offset = cipher_offset + auth_offset;
 	sym_op->auth.data.length = auth_len;
@@ -2402,14 +2390,11 @@ create_wireless_algo_auth_cipher_operation(const unsigned auth_tag_len,
 			sym_op->auth.aad.data, aad_len);
 
 	/* iv */
-	sym_op->cipher.iv.data = rte_crypto_op_ctod_offset(ut_params->op,
-						uint8_t *, IV_OFFSET);
-	sym_op->cipher.iv.phys_addr = rte_crypto_op_ctophys_offset(ut_params->op,
-						IV_OFFSET);
+	sym_op->cipher.iv.offset = IV_OFFSET;
 	sym_op->cipher.iv.length = iv_len;
 
-	rte_memcpy(sym_op->cipher.iv.data, iv, iv_len);
-
+	rte_memcpy(rte_crypto_op_ctod_offset(ut_params->op, uint8_t *, IV_OFFSET),
+			iv, iv_len);
 	sym_op->cipher.data.length = cipher_len;
 	sym_op->cipher.data.offset = auth_offset + cipher_offset;
 
@@ -4855,14 +4840,13 @@ create_gcm_operation(enum rte_crypto_cipher_operation op,
 		sym_op->auth.aad.length);
 
 	/* Append IV at the end of the crypto operation*/
-	sym_op->cipher.iv.data = rte_crypto_op_ctod_offset(ut_params->op,
-						uint8_t *, IV_OFFSET);
-	sym_op->cipher.iv.phys_addr = rte_crypto_op_ctophys_offset(ut_params->op,
-						IV_OFFSET);
+	uint8_t *iv_ptr = rte_crypto_op_ctod_offset(ut_params->op,
+			uint8_t *, IV_OFFSET);
+	sym_op->cipher.iv.offset = IV_OFFSET;
 	sym_op->cipher.iv.length = tdata->iv.len;
 
-	rte_memcpy(sym_op->cipher.iv.data, tdata->iv.data, tdata->iv.len);
-	TEST_HEXDUMP(stdout, "iv:", sym_op->cipher.iv.data,
+	rte_memcpy(iv_ptr, tdata->iv.data, tdata->iv.len);
+	TEST_HEXDUMP(stdout, "iv:", iv_ptr,
 		sym_op->cipher.iv.length);
 
 	/* Append plaintext/ciphertext */
@@ -6430,15 +6414,15 @@ create_gmac_operation(enum rte_crypto_auth_operation op,
 				sym_op->auth.digest.length);
 	}
 
-	sym_op->cipher.iv.data = rte_crypto_op_ctod_offset(ut_params->op,
-						uint8_t *, IV_OFFSET);
-	sym_op->cipher.iv.phys_addr = rte_crypto_op_ctophys_offset(ut_params->op,
-						IV_OFFSET);
+	uint8_t *iv_ptr = rte_crypto_op_ctod_offset(ut_params->op,
+			uint8_t *, IV_OFFSET);
+
+	sym_op->cipher.iv.offset = IV_OFFSET;
 	sym_op->cipher.iv.length = tdata->iv.len;
 
-	rte_memcpy(sym_op->cipher.iv.data, tdata->iv.data, tdata->iv.len);
+	rte_memcpy(iv_ptr, tdata->iv.data, tdata->iv.len);
 
-	TEST_HEXDUMP(stdout, "iv:", sym_op->cipher.iv.data, tdata->iv.len);
+	TEST_HEXDUMP(stdout, "iv:", iv_ptr, tdata->iv.len);
 
 	sym_op->cipher.data.length = 0;
 	sym_op->cipher.data.offset = 0;
@@ -6976,13 +6960,11 @@ create_auth_GMAC_operation(struct crypto_testsuite_params *ts_params,
 			sym_op->auth.digest.data,
 			sym_op->auth.digest.length);
 
-	sym_op->cipher.iv.data = rte_crypto_op_ctod_offset(ut_params->op,
-						uint8_t *, IV_OFFSET);
-	sym_op->cipher.iv.phys_addr = rte_crypto_op_ctophys_offset(ut_params->op,
-						IV_OFFSET);
+	sym_op->cipher.iv.offset = IV_OFFSET;
 	sym_op->cipher.iv.length = reference->iv.len;
 
-	rte_memcpy(sym_op->cipher.iv.data, reference->iv.data, reference->iv.len);
+	rte_memcpy(rte_crypto_op_ctod_offset(ut_params->op, uint8_t *, IV_OFFSET),
+			reference->iv.data, reference->iv.len);
 
 	sym_op->cipher.data.length = 0;
 	sym_op->cipher.data.offset = 0;
@@ -7035,13 +7017,11 @@ create_cipher_auth_operation(struct crypto_testsuite_params *ts_params,
 			sym_op->auth.digest.data,
 			sym_op->auth.digest.length);
 
-	sym_op->cipher.iv.data = rte_crypto_op_ctod_offset(ut_params->op,
-						uint8_t *, IV_OFFSET);
-	sym_op->cipher.iv.phys_addr = rte_crypto_op_ctophys_offset(ut_params->op,
-						IV_OFFSET);
+	sym_op->cipher.iv.offset = IV_OFFSET;
 	sym_op->cipher.iv.length = reference->iv.len;
 
-	rte_memcpy(sym_op->cipher.iv.data, reference->iv.data, reference->iv.len);
+	rte_memcpy(rte_crypto_op_ctod_offset(ut_params->op, uint8_t *, IV_OFFSET),
+			reference->iv.data, reference->iv.len);
 
 	sym_op->cipher.data.length = reference->ciphertext.len;
 	sym_op->cipher.data.offset = 0;
@@ -7285,13 +7265,12 @@ create_gcm_operation_SGL(enum rte_crypto_cipher_operation op,
 				sym_op->auth.digest.length);
 	}
 
-	sym_op->cipher.iv.data = rte_crypto_op_ctod_offset(ut_params->op,
-						uint8_t *, IV_OFFSET);
-	sym_op->cipher.iv.phys_addr = rte_crypto_op_ctophys_offset(ut_params->op,
-						IV_OFFSET);
+	uint8_t *iv_ptr = rte_crypto_op_ctod_offset(ut_params->op,
+			uint8_t *, IV_OFFSET);
+	sym_op->cipher.iv.offset = IV_OFFSET;
 	sym_op->cipher.iv.length = iv_len;
 
-	rte_memcpy(sym_op->cipher.iv.data, tdata->iv.data, iv_len);
+	rte_memcpy(iv_ptr, tdata->iv.data, iv_len);
 
 	sym_op->auth.aad.data = (uint8_t *)rte_pktmbuf_prepend(
 			ut_params->ibuf, aad_len);
@@ -7304,7 +7283,7 @@ create_gcm_operation_SGL(enum rte_crypto_cipher_operation op,
 	memset(sym_op->auth.aad.data, 0, aad_len);
 	rte_memcpy(sym_op->auth.aad.data, tdata->aad.data, aad_len);
 
-	TEST_HEXDUMP(stdout, "iv:", sym_op->cipher.iv.data, iv_len);
+	TEST_HEXDUMP(stdout, "iv:", iv_ptr, iv_len);
 	TEST_HEXDUMP(stdout, "aad:",
 			sym_op->auth.aad.data, aad_len);
 

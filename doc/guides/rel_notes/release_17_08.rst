@@ -90,6 +90,8 @@ New Features
   The crypto operation (``rte_crypto_sym_op``) has been reorganized as follows:
 
   * Removed field ``rte_crypto_sym_op_sess_type``.
+  * Replaced pointer and physical address of IV with offset from the start
+    of the crypto operation.
 
 * **Reorganized the crypto operation structure.**
 

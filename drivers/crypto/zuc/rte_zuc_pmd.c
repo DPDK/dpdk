@@ -173,7 +173,7 @@ process_zuc_cipher_op(struct rte_crypto_op **ops,
 	unsigned i;
 	uint8_t processed_ops = 0;
 	uint8_t *src[ZUC_MAX_BURST], *dst[ZUC_MAX_BURST];
-	uint8_t *IV[ZUC_MAX_BURST];
+	uint8_t *iv[ZUC_MAX_BURST];
 	uint32_t num_bytes[ZUC_MAX_BURST];
 	uint8_t *cipher_keys[ZUC_MAX_BURST];
 
@@ -213,7 +213,8 @@ process_zuc_cipher_op(struct rte_crypto_op **ops,
 				(ops[i]->sym->cipher.data.offset >> 3) :
 			rte_pktmbuf_mtod(ops[i]->sym->m_src, uint8_t *) +
 				(ops[i]->sym->cipher.data.offset >> 3);
-		IV[i] = ops[i]->sym->cipher.iv.data;
+		iv[i] = rte_crypto_op_ctod_offset(ops[i], uint8_t *,
+				ops[i]->sym->cipher.iv.offset);
 		num_bytes[i] = ops[i]->sym->cipher.data.length >> 3;
 
 		cipher_keys[i] = session->pKey_cipher;
@@ -221,7 +222,7 @@ process_zuc_cipher_op(struct rte_crypto_op **ops,
 		processed_ops++;
 	}
 
-	sso_zuc_eea3_n_buffer(cipher_keys, IV, src, dst,
+	sso_zuc_eea3_n_buffer(cipher_keys, iv, src, dst,
 			num_bytes, processed_ops);
 
 	return processed_ops;

@@ -104,9 +104,7 @@ esp_inbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 	case RTE_CRYPTO_CIPHER_AES_CBC:
 		/* Copy IV at the end of crypto operation */
 		rte_memcpy(iv_ptr, iv, sa->iv_len);
-		sym_cop->cipher.iv.data = iv_ptr;
-		sym_cop->cipher.iv.phys_addr =
-				rte_crypto_op_ctophys_offset(cop, IV_OFFSET);
+		sym_cop->cipher.iv.offset = IV_OFFSET;
 		sym_cop->cipher.iv.length = sa->iv_len;
 		break;
 	case RTE_CRYPTO_CIPHER_AES_CTR:
@@ -115,9 +113,7 @@ esp_inbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 		icb->salt = sa->salt;
 		memcpy(&icb->iv, iv, 8);
 		icb->cnt = rte_cpu_to_be_32(1);
-		sym_cop->cipher.iv.data = iv_ptr;
-		sym_cop->cipher.iv.phys_addr =
-				rte_crypto_op_ctophys_offset(cop, IV_OFFSET);
+		sym_cop->cipher.iv.offset = IV_OFFSET;
 		sym_cop->cipher.iv.length = 16;
 		break;
 	default:
@@ -348,15 +344,11 @@ esp_outbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 	padding[pad_len - 2] = pad_len - 2;
 	padding[pad_len - 1] = nlp;
 
-	uint8_t *iv_ptr = rte_crypto_op_ctod_offset(cop,
-				uint8_t *, IV_OFFSET);
 	struct cnt_blk *icb = get_cnt_blk(m);
 	icb->salt = sa->salt;
 	icb->iv = sa->seq;
 	icb->cnt = rte_cpu_to_be_32(1);
-	sym_cop->cipher.iv.data = iv_ptr;
-	sym_cop->cipher.iv.phys_addr =
-			rte_crypto_op_ctophys_offset(cop, IV_OFFSET);
+	sym_cop->cipher.iv.offset = IV_OFFSET;
 	sym_cop->cipher.iv.length = 16;
 
 	uint8_t *aad;

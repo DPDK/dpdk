@@ -106,10 +106,7 @@ cperf_set_ops_cipher(struct rte_crypto_op **ops,
 		sym_op->m_dst = bufs_out[i];
 
 		/* cipher parameters */
-		sym_op->cipher.iv.data = rte_crypto_op_ctod_offset(ops[i],
-							uint8_t *, iv_offset);
-		sym_op->cipher.iv.phys_addr = rte_crypto_op_ctophys_offset(ops[i],
-							iv_offset);
+		sym_op->cipher.iv.offset = iv_offset;
 		sym_op->cipher.iv.length = test_vector->iv.length;
 
 		if (options->cipher_algo == RTE_CRYPTO_CIPHER_SNOW3G_UEA2 ||
@@ -123,11 +120,13 @@ cperf_set_ops_cipher(struct rte_crypto_op **ops,
 	}
 
 	if (options->test == CPERF_TEST_TYPE_VERIFY) {
-		for (i = 0; i < nb_ops; i++)
-			memcpy(ops[i]->sym->cipher.iv.data,
-				test_vector->iv.data,
-				test_vector->iv.length);
-	}
+		for (i = 0; i < nb_ops; i++) {
+			uint8_t *iv_ptr = rte_crypto_op_ctod_offset(ops[i],
+					uint8_t *, iv_offset);
+
+			memcpy(iv_ptr, test_vector->iv.data,
+					test_vector->iv.length);
+	}	}
 
 	return 0;
 }
@@ -216,10 +215,7 @@ cperf_set_ops_cipher_auth(struct rte_crypto_op **ops,
 		sym_op->m_dst = bufs_out[i];
 
 		/* cipher parameters */
-		sym_op->cipher.iv.data = rte_crypto_op_ctod_offset(ops[i],
-							uint8_t *, iv_offset);
-		sym_op->cipher.iv.phys_addr = rte_crypto_op_ctophys_offset(ops[i],
-							iv_offset);
+		sym_op->cipher.iv.offset = iv_offset;
 		sym_op->cipher.iv.length = test_vector->iv.length;
 
 		if (options->cipher_algo == RTE_CRYPTO_CIPHER_SNOW3G_UEA2 ||
@@ -275,10 +271,13 @@ cperf_set_ops_cipher_auth(struct rte_crypto_op **ops,
 	}
 
 	if (options->test == CPERF_TEST_TYPE_VERIFY) {
-		for (i = 0; i < nb_ops; i++)
-			memcpy(ops[i]->sym->cipher.iv.data,
-				test_vector->iv.data,
-				test_vector->iv.length);
+		for (i = 0; i < nb_ops; i++) {
+			uint8_t *iv_ptr = rte_crypto_op_ctod_offset(ops[i],
+					uint8_t *, iv_offset);
+
+			memcpy(iv_ptr, test_vector->iv.data,
+					test_vector->iv.length);
+		}
 	}
 
 	return 0;
@@ -303,10 +302,7 @@ cperf_set_ops_aead(struct rte_crypto_op **ops,
 		sym_op->m_dst = bufs_out[i];
 
 		/* cipher parameters */
-		sym_op->cipher.iv.data = rte_crypto_op_ctod_offset(ops[i],
-							uint8_t *, iv_offset);
-		sym_op->cipher.iv.phys_addr = rte_crypto_op_ctophys_offset(ops[i],
-							iv_offset);
+		sym_op->cipher.iv.offset = iv_offset;
 		sym_op->cipher.iv.length = test_vector->iv.length;
 
 		sym_op->cipher.data.length = options->test_buffer_size;
@@ -354,10 +350,13 @@ cperf_set_ops_aead(struct rte_crypto_op **ops,
 	}
 
 	if (options->test == CPERF_TEST_TYPE_VERIFY) {
-		for (i = 0; i < nb_ops; i++)
-			memcpy(ops[i]->sym->cipher.iv.data,
-				test_vector->iv.data,
-				test_vector->iv.length);
+		for (i = 0; i < nb_ops; i++) {
+			uint8_t *iv_ptr = rte_crypto_op_ctod_offset(ops[i],
+					uint8_t *, iv_offset);
+
+			memcpy(iv_ptr, test_vector->iv.data,
+					test_vector->iv.length);
+		}
 	}
 
 	return 0;

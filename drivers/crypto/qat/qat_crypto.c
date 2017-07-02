@@ -642,7 +642,8 @@ qat_bpicipher_preprocess(struct qat_session *ctx,
 			iv = last_block - block_len;
 		else
 			/* runt block, i.e. less than one full block */
-			iv = sym_op->cipher.iv.data;
+			iv = rte_crypto_op_ctod_offset(op, uint8_t *,
+					sym_op->cipher.iv.offset);
 
 #ifdef RTE_LIBRTE_PMD_QAT_DEBUG_TX
 		rte_hexdump(stdout, "BPI: src before pre-process:", last_block,
@@ -697,7 +698,8 @@ qat_bpicipher_postprocess(struct qat_session *ctx,
 			iv = dst - block_len;
 		else
 			/* runt block, i.e. less than one full block */
-			iv = sym_op->cipher.iv.data;
+			iv = rte_crypto_op_ctod_offset(op, uint8_t *,
+					sym_op->cipher.iv.offset);
 
 #ifdef RTE_LIBRTE_PMD_QAT_DEBUG_RX
 		rte_hexdump(stdout, "BPI: src before post-process:", last_block,
@@ -898,6 +900,7 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
 	uint32_t min_ofs = 0;
 	uint64_t src_buf_start = 0, dst_buf_start = 0;
 	uint8_t do_sgl = 0;
+	uint8_t *iv_ptr;
 
 
 #ifdef RTE_LIBRTE_PMD_QAT_DEBUG_TX
@@ -971,6 +974,8 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
 			cipher_ofs = op->sym->cipher.data.offset;
 		}
 
+		iv_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
+					op->sym->cipher.iv.offset);
 		/* copy IV into request if it fits */
 		/*
 		 * If IV length is zero do not copy anything but still
@@ -981,14 +986,15 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
 			if (op->sym->cipher.iv.length <=
 					sizeof(cipher_param->u.cipher_IV_array)) {
 				rte_memcpy(cipher_param->u.cipher_IV_array,
-						op->sym->cipher.iv.data,
+						iv_ptr,
 						op->sym->cipher.iv.length);
 			} else {
 				ICP_QAT_FW_LA_CIPH_IV_FLD_FLAG_SET(
 						qat_req->comn_hdr.serv_specif_flags,
 						ICP_QAT_FW_CIPH_IV_64BIT_PTR);
 				cipher_param->u.s.cipher_IV_ptr =
-						op->sym->cipher.iv.phys_addr;
+						rte_crypto_op_ctophys_offset(op,
+							op->sym->cipher.iv.offset);
 			}
 		}
 		min_ofs = cipher_ofs;
@@ -1179,12 +1185,16 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
 	rte_hexdump(stdout, "src_data:",
 			rte_pktmbuf_mtod(op->sym->m_src, uint8_t*),
 			rte_pktmbuf_data_len(op->sym->m_src));
-	rte_hexdump(stdout, "iv:", op->sym->cipher.iv.data,
-			op->sym->cipher.iv.length);
-	rte_hexdump(stdout, "digest:", op->sym->auth.digest.data,
-			op->sym->auth.digest.length);
-	rte_hexdump(stdout, "aad:", op->sym->auth.aad.data,
-			op->sym->auth.aad.length);
+	if (do_cipher)
+		rte_hexdump(stdout, "iv:", iv_ptr,
+				op->sym->cipher.iv.length);
+
+	if (do_auth) {
+		rte_hexdump(stdout, "digest:", op->sym->auth.digest.data,
+				op->sym->auth.digest.length);
+		rte_hexdump(stdout, "aad:", op->sym->auth.aad.data,
+				op->sym->auth.aad.length);
+	}
 #endif
 	return 0;
 }

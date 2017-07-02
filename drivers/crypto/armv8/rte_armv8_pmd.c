@@ -654,7 +654,8 @@ process_armv8_chained_op
 		return;
 	}
 
-	arg.cipher.iv = op->sym->cipher.iv.data;
+	arg.cipher.iv = rte_crypto_op_ctod_offset(op, uint8_t *,
+					op->sym->cipher.iv.offset);
 	arg.cipher.key = sess->cipher.key.data;
 	/* Acquire combined mode function */
 	crypto_func = sess->crypto_func;

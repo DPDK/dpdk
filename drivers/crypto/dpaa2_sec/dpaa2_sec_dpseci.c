@@ -87,6 +87,8 @@ build_authenc_fd(dpaa2_sec_session *sess,
 	int icv_len = sym_op->auth.digest.length;
 	uint8_t *old_icv;
 	uint32_t mem_len = (7 * sizeof(struct qbman_fle)) + icv_len;
+	uint8_t *iv_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
+			op->sym->cipher.iv.offset);
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -178,7 +180,7 @@ build_authenc_fd(dpaa2_sec_session *sess,
 			 sym_op->auth.digest.length);
 
 	/* Configure Input SGE for Encap/Decap */
-	DPAA2_SET_FLE_ADDR(sge, DPAA2_VADDR_TO_IOVA(sym_op->cipher.iv.data));
+	DPAA2_SET_FLE_ADDR(sge, DPAA2_VADDR_TO_IOVA(iv_ptr));
 	sge->length = sym_op->cipher.iv.length;
 	sge++;
 
@@ -307,6 +309,8 @@ build_cipher_fd(dpaa2_sec_session *sess, struct rte_crypto_op *op,
 	uint32_t mem_len = (5 * sizeof(struct qbman_fle));
 	struct sec_flow_context *flc;
 	struct ctxt_priv *priv = sess->ctxt;
+	uint8_t *iv_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
+			op->sym->cipher.iv.offset);
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -369,7 +373,7 @@ build_cipher_fd(dpaa2_sec_session *sess, struct rte_crypto_op *op,
 
 	DPAA2_SET_FLE_SG_EXT(fle);
 
-	DPAA2_SET_FLE_ADDR(sge, DPAA2_VADDR_TO_IOVA(sym_op->cipher.iv.data));
+	DPAA2_SET_FLE_ADDR(sge, DPAA2_VADDR_TO_IOVA(iv_ptr));
 	sge->length = sym_op->cipher.iv.length;
 
 	sge++;

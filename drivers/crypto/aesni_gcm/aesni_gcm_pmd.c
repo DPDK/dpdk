@@ -180,12 +180,14 @@ aesni_gcm_get_session(struct aesni_gcm_qp *qp, struct rte_crypto_op *op)
  *
  */
 static int
-process_gcm_crypto_op(struct rte_crypto_sym_op *op,
+process_gcm_crypto_op(struct rte_crypto_op *op,
 		struct aesni_gcm_session *session)
 {
 	uint8_t *src, *dst;
-	struct rte_mbuf *m_src = op->m_src;
-	uint32_t offset = op->cipher.data.offset;
+	uint8_t *iv_ptr;
+	struct rte_crypto_sym_op *sym_op = op->sym;
+	struct rte_mbuf *m_src = sym_op->m_src;
+	uint32_t offset = sym_op->cipher.data.offset;
 	uint32_t part_len, total_len, data_len;
 
 	RTE_ASSERT(m_src != NULL);
@@ -198,46 +200,48 @@ process_gcm_crypto_op(struct rte_crypto_sym_op *op,
 	}
 
 	data_len = m_src->data_len - offset;
-	part_len = (data_len < op->cipher.data.length) ? data_len :
-			op->cipher.data.length;
+	part_len = (data_len < sym_op->cipher.data.length) ? data_len :
+			sym_op->cipher.data.length;
 
 	/* Destination buffer is required when segmented source buffer */
-	RTE_ASSERT((part_len == op->cipher.data.length) ||
-			((part_len != op->cipher.data.length) &&
-					(op->m_dst != NULL)));
+	RTE_ASSERT((part_len == sym_op->cipher.data.length) ||
+			((part_len != sym_op->cipher.data.length) &&
+					(sym_op->m_dst != NULL)));
 	/* Segmented destination buffer is not supported */
-	RTE_ASSERT((op->m_dst == NULL) ||
-			((op->m_dst != NULL) &&
-					rte_pktmbuf_is_contiguous(op->m_dst)));
+	RTE_ASSERT((sym_op->m_dst == NULL) ||
+			((sym_op->m_dst != NULL) &&
+					rte_pktmbuf_is_contiguous(sym_op->m_dst)));
 
 
-	dst = op->m_dst ?
-			rte_pktmbuf_mtod_offset(op->m_dst, uint8_t *,
-					op->cipher.data.offset) :
-			rte_pktmbuf_mtod_offset(op->m_src, uint8_t *,
-					op->cipher.data.offset);
+	dst = sym_op->m_dst ?
+			rte_pktmbuf_mtod_offset(sym_op->m_dst, uint8_t *,
+					sym_op->cipher.data.offset) :
+			rte_pktmbuf_mtod_offset(sym_op->m_src, uint8_t *,
+					sym_op->cipher.data.offset);
 
 	src = rte_pktmbuf_mtod_offset(m_src, uint8_t *, offset);
 
 	/* sanity checks */
-	if (op->cipher.iv.length != 16 && op->cipher.iv.length != 12 &&
-			op->cipher.iv.length != 0) {
+	if (sym_op->cipher.iv.length != 16 && sym_op->cipher.iv.length != 12 &&
+			sym_op->cipher.iv.length != 0) {
 		GCM_LOG_ERR("iv");
 		return -1;
 	}
 
+	iv_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
+				sym_op->cipher.iv.offset);
 	/*
 	 * GCM working in 12B IV mode => 16B pre-counter block we need
 	 * to set BE LSB to 1, driver expects that 16B is allocated
 	 */
-	if (op->cipher.iv.length == 12) {
-		uint32_t *iv_padd = (uint32_t *)&op->cipher.iv.data[12];
+	if (sym_op->cipher.iv.length == 12) {
+		uint32_t *iv_padd = (uint32_t *)&(iv_ptr[12]);
 		*iv_padd = rte_bswap32(1);
 	}
 
-	if (op->auth.digest.length != 16 &&
-			op->auth.digest.length != 12 &&
-			op->auth.digest.length != 8) {
+	if (sym_op->auth.digest.length != 16 &&
+			sym_op->auth.digest.length != 12 &&
+			sym_op->auth.digest.length != 8) {
 		GCM_LOG_ERR("digest");
 		return -1;
 	}
@@ -245,13 +249,13 @@ process_gcm_crypto_op(struct rte_crypto_sym_op *op,
 	if (session->op == AESNI_GCM_OP_AUTHENTICATED_ENCRYPTION) {
 
 		aesni_gcm_enc[session->key].init(&session->gdata,
-				op->cipher.iv.data,
-				op->auth.aad.data,
-				(uint64_t)op->auth.aad.length);
+				iv_ptr,
+				sym_op->auth.aad.data,
+				(uint64_t)sym_op->auth.aad.length);
 
 		aesni_gcm_enc[session->key].update(&session->gdata, dst, src,
 				(uint64_t)part_len);
-		total_len = op->cipher.data.length - part_len;
+		total_len = sym_op->cipher.data.length - part_len;
 
 		while (total_len) {
 			dst += part_len;
@@ -270,12 +274,12 @@ process_gcm_crypto_op(struct rte_crypto_sym_op *op,
 		}
 
 		aesni_gcm_enc[session->key].finalize(&session->gdata,
-				op->auth.digest.data,
-				(uint64_t)op->auth.digest.length);
+				sym_op->auth.digest.data,
+				(uint64_t)sym_op->auth.digest.length);
 	} else { /* session->op == AESNI_GCM_OP_AUTHENTICATED_DECRYPTION */
-		uint8_t *auth_tag = (uint8_t *)rte_pktmbuf_append(op->m_dst ?
-				op->m_dst : op->m_src,
-				op->auth.digest.length);
+		uint8_t *auth_tag = (uint8_t *)rte_pktmbuf_append(sym_op->m_dst ?
+				sym_op->m_dst : sym_op->m_src,
+				sym_op->auth.digest.length);
 
 		if (!auth_tag) {
 			GCM_LOG_ERR("auth_tag");
@@ -283,13 +287,13 @@ process_gcm_crypto_op(struct rte_crypto_sym_op *op,
 		}
 
 		aesni_gcm_dec[session->key].init(&session->gdata,
-				op->cipher.iv.data,
-				op->auth.aad.data,
-				(uint64_t)op->auth.aad.length);
+				iv_ptr,
+				sym_op->auth.aad.data,
+				(uint64_t)sym_op->auth.aad.length);
 
 		aesni_gcm_dec[session->key].update(&session->gdata, dst, src,
 				(uint64_t)part_len);
-		total_len = op->cipher.data.length - part_len;
+		total_len = sym_op->cipher.data.length - part_len;
 
 		while (total_len) {
 			dst += part_len;
@@ -309,7 +313,7 @@ process_gcm_crypto_op(struct rte_crypto_sym_op *op,
 
 		aesni_gcm_dec[session->key].finalize(&session->gdata,
 				auth_tag,
-				(uint64_t)op->auth.digest.length);
+				(uint64_t)sym_op->auth.digest.length);
 	}
 
 	return 0;
@@ -401,7 +405,7 @@ aesni_gcm_pmd_dequeue_burst(void *queue_pair,
 			break;
 		}
 
-		retval = process_gcm_crypto_op(ops[i]->sym, sess);
+		retval = process_gcm_crypto_op(ops[i], sess);
 		if (retval < 0) {
 			ops[i]->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 			qp->qp_stats.dequeue_err_count++;
