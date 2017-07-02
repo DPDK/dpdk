@@ -103,6 +103,7 @@ struct ipsec_sa {
 	struct rte_cryptodev_sym_session *crypto_session;
 	enum rte_crypto_cipher_algorithm cipher_algo;
 	enum rte_crypto_auth_algorithm auth_algo;
+	enum rte_crypto_aead_algorithm aead_algo;
 	uint16_t digest_len;
 	uint16_t iv_len;
 	uint16_t block_size;

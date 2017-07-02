@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2016 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2016-2017 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -68,6 +68,17 @@ struct supported_auth_algo {
 	uint8_t key_not_req;
 };
 
+struct supported_aead_algo {
+	const char *keyword;
+	enum rte_crypto_aead_algorithm algo;
+	uint16_t iv_len;
+	uint16_t block_size;
+	uint16_t digest_len;
+	uint16_t key_len;
+	uint8_t aad_len;
+};
+
+
 const struct supported_cipher_algo cipher_algos[] = {
 	{
 		.keyword = "null",
@@ -128,6 +139,8 @@ const struct supported_auth_algo auth_algos[] = {
 	}
 };
 
+const struct supported_aead_algo aead_algos[] = { { } };
+
 struct ipsec_sa sa_out[IPSEC_SA_MAX_ENTRIES];
 uint32_t nb_sa_out;
 
@@ -160,6 +173,22 @@ find_match_auth_algo(const char *auth_keyword)
 			&auth_algos[i];
 
 		if (strcmp(auth_keyword, algo->keyword) == 0)
+			return algo;
+	}
+
+	return NULL;
+}
+
+static const struct supported_aead_algo *
+find_match_aead_algo(const char *aead_keyword)
+{
+	size_t i;
+
+	for (i = 0; i < RTE_DIM(aead_algos); i++) {
+		const struct supported_aead_algo *algo =
+			&aead_algos[i];
+
+		if (strcmp(aead_keyword, algo->keyword) == 0)
 			return algo;
 	}
 
@@ -210,6 +239,7 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 	uint32_t *ri /*rule index*/;
 	uint32_t cipher_algo_p = 0;
 	uint32_t auth_algo_p = 0;
+	uint32_t aead_algo_p = 0;
 	uint32_t src_p = 0;
 	uint32_t dst_p = 0;
 	uint32_t mode_p = 0;
@@ -386,6 +416,61 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 			continue;
 		}
 
+		if (strcmp(tokens[ti], "aead_algo") == 0) {
+			const struct supported_aead_algo *algo;
+			uint32_t key_len;
+
+			APP_CHECK_PRESENCE(aead_algo_p, tokens[ti],
+				status);
+			if (status->status < 0)
+				return;
+
+			INCREMENT_TOKEN_INDEX(ti, n_tokens, status);
+			if (status->status < 0)
+				return;
+
+			algo = find_match_aead_algo(tokens[ti]);
+
+			APP_CHECK(algo != NULL, status, "unrecognized "
+				"input \"%s\"", tokens[ti]);
+
+			rule->aead_algo = algo->algo;
+			rule->cipher_key_len = algo->key_len;
+			rule->digest_len = algo->digest_len;
+			rule->aad_len = algo->key_len;
+			rule->block_size = algo->block_size;
+			rule->iv_len = algo->iv_len;
+
+			INCREMENT_TOKEN_INDEX(ti, n_tokens, status);
+			if (status->status < 0)
+				return;
+
+			APP_CHECK(strcmp(tokens[ti], "aead_key") == 0,
+				status, "unrecognized input \"%s\", "
+				"expect \"aead_key\"", tokens[ti]);
+			if (status->status < 0)
+				return;
+
+			INCREMENT_TOKEN_INDEX(ti, n_tokens, status);
+			if (status->status < 0)
+				return;
+
+			key_len = parse_key_string(tokens[ti],
+				rule->cipher_key);
+			APP_CHECK(key_len == rule->cipher_key_len, status,
+				"unrecognized input \"%s\"", tokens[ti]);
+			if (status->status < 0)
+				return;
+
+			key_len -= 4;
+			rule->cipher_key_len = key_len;
+			memcpy(&rule->salt,
+				&rule->cipher_key[key_len], 4);
+
+			aead_algo_p = 1;
+			continue;
+		}
+
 		if (strcmp(tokens[ti], "src") == 0) {
 			APP_CHECK_PRESENCE(src_p, tokens[ti], status);
 			if (status->status < 0)
@@ -477,13 +562,25 @@ parse_sa_tokens(char **tokens, uint32_t n_tokens,
 		return;
 	}
 
-	APP_CHECK(cipher_algo_p == 1, status, "missing cipher options");
-	if (status->status < 0)
-		return;
+	if (aead_algo_p) {
+		APP_CHECK(cipher_algo_p == 0, status,
+				"AEAD used, no need for cipher options");
+		if (status->status < 0)
+			return;
 
-	APP_CHECK(auth_algo_p == 1, status, "missing auth options");
-	if (status->status < 0)
-		return;
+		APP_CHECK(auth_algo_p == 0, status,
+				"AEAD used, no need for auth options");
+		if (status->status < 0)
+			return;
+	} else {
+		APP_CHECK(cipher_algo_p == 1, status, "missing cipher or AEAD options");
+		if (status->status < 0)
+			return;
+
+		APP_CHECK(auth_algo_p == 1, status, "missing auth or AEAD options");
+		if (status->status < 0)
+			return;
+	}
 
 	APP_CHECK(mode_p == 1, status, "missing mode option");
 	if (status->status < 0)
@@ -510,6 +607,13 @@ print_one_sa_rule(const struct ipsec_sa *sa, int inbound)
 	for (i = 0; i < RTE_DIM(auth_algos); i++) {
 		if (auth_algos[i].algo == sa->auth_algo) {
 			printf("%s ", auth_algos[i].keyword);
+			break;
+		}
+	}
+
+	for (i = 0; i < RTE_DIM(aead_algos); i++) {
+		if (aead_algos[i].algo == sa->aead_algo) {
+			printf("%s ", aead_algos[i].keyword);
 			break;
 		}
 	}

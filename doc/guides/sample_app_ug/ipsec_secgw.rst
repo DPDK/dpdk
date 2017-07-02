@@ -1,5 +1,5 @@
 ..  BSD LICENSE
-    Copyright(c) 2016 Intel Corporation. All rights reserved.
+    Copyright(c) 2016-2017 Intel Corporation. All rights reserved.
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -412,7 +412,7 @@ where each options means:
 
  * Cipher algorithm
 
- * Optional: No
+ * Optional: Yes, unless <aead_algo> is not used
 
  * Available options:
 
@@ -427,7 +427,8 @@ where each options means:
 
  * Cipher key, NOT available when 'null' algorithm is used
 
- * Optional: No, must followed by <cipher_algo> option
+ * Optional: Yes, unless <aead_algo> is not used.
+   Must be followed by <cipher_algo> option
 
  * Syntax: Hexadecimal bytes (0x0-0xFF) concatenate by colon symbol ':'.
    The number of bytes should be as same as the specified cipher algorithm
@@ -440,7 +441,7 @@ where each options means:
 
  * Authentication algorithm
 
- * Optional: No
+ * Optional: Yes, unless <aead_algo> is not used
 
  * Available options:
 
@@ -453,13 +454,36 @@ where each options means:
  * Authentication key, NOT available when 'null' or 'aes-128-gcm' algorithm
    is used.
 
- * Optional: No, must followed by <auth_algo> option
+ * Optional: Yes, unless <aead_algo> is not used.
+   Must be followed by <auth_algo> option
 
  * Syntax: Hexadecimal bytes (0x0-0xFF) concatenate by colon symbol ':'.
    The number of bytes should be as same as the specified authentication
    algorithm key size.
 
    For example: *auth_key A1:B2:C3:D4:A1:B2:C3:D4:A1:B2:C3:D4:A1:B2:C3:D4:
+   A1:B2:C3:D4*
+
+``<aead_algo>``
+
+ * AEAD algorithm
+
+ * Optional: Yes, unless <cipher_algo> and <auth_algo> are not used
+
+ * Syntax: *cipher_algo <your algorithm>*
+
+``<aead_key>``
+
+ * Cipher key, NOT available when 'null' algorithm is used
+
+ * Optional: Yes, unless <cipher_algo> and <auth_algo> are not used.
+   Must be followed by <aead_algo> option
+
+ * Syntax: Hexadecimal bytes (0x0-0xFF) concatenate by colon symbol ':'.
+   The number of bytes should be as same as the specified AEAD algorithm
+   key size.
+
+   For example: *aead_key A1:B2:C3:D4:A1:B2:C3:D4:A1:B2:C3:D4:
    A1:B2:C3:D4*
 
 ``<mode>``
