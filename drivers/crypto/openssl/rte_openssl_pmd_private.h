@@ -165,6 +165,8 @@ struct openssl_session {
 
 		uint16_t aad_length;
 		/**< AAD length */
+		uint16_t digest_length;
+		/**< digest length */
 	} auth;
 
 } __rte_cache_aligned;

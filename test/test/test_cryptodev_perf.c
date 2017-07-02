@@ -168,20 +168,19 @@ static struct rte_mbuf *
 test_perf_create_pktmbuf(struct rte_mempool *mpool, unsigned buf_sz);
 static inline struct rte_crypto_op *
 test_perf_set_crypto_op_snow3g(struct rte_crypto_op *op, struct rte_mbuf *m,
-		struct rte_cryptodev_sym_session *sess, unsigned data_len,
-		unsigned digest_len);
+		struct rte_cryptodev_sym_session *sess, unsigned int data_len);
 static inline struct rte_crypto_op *
 test_perf_set_crypto_op_aes(struct rte_crypto_op *op, struct rte_mbuf *m,
 		struct rte_cryptodev_sym_session *sess, unsigned int data_len,
-		unsigned int digest_len, enum chain_mode chain);
+		enum chain_mode chain);
 static inline struct rte_crypto_op *
 test_perf_set_crypto_op_aes_gcm(struct rte_crypto_op *op, struct rte_mbuf *m,
 		struct rte_cryptodev_sym_session *sess, unsigned int data_len,
-		unsigned int digest_len, enum chain_mode chain __rte_unused);
+		enum chain_mode chain __rte_unused);
 static inline struct rte_crypto_op *
 test_perf_set_crypto_op_3des(struct rte_crypto_op *op, struct rte_mbuf *m,
 		struct rte_cryptodev_sym_session *sess, unsigned int data_len,
-		unsigned int digest_len, enum chain_mode chain __rte_unused);
+		enum chain_mode chain __rte_unused);
 static uint32_t get_auth_digest_length(enum rte_crypto_auth_algorithm algo);
 
 
@@ -1979,7 +1978,6 @@ test_perf_crypto_qp_vary_burst_size(uint16_t dev_num)
 		op->sym->auth.digest.data = ut_params->digest;
 		op->sym->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(m,
 				data_params[0].length);
-		op->sym->auth.digest.length = DIGEST_BYTE_LENGTH_SHA256;
 
 		op->sym->auth.data.offset = 0;
 		op->sym->auth.data.length = data_params[0].length;
@@ -2102,8 +2100,7 @@ test_perf_snow3G_optimise_cyclecount(struct perf_test_params *pparams)
 						RTE_CRYPTO_OP_TYPE_SYMMETRIC);
 		TEST_ASSERT_NOT_NULL(op, "Failed to allocate op");
 
-		op = test_perf_set_crypto_op_snow3g(op, m, sess, pparams->buf_size,
-					get_auth_digest_length(pparams->auth_algo));
+		op = test_perf_set_crypto_op_snow3g(op, m, sess, pparams->buf_size);
 		TEST_ASSERT_NOT_NULL(op, "Failed to attach op to session");
 
 		c_ops[i] = op;
@@ -2252,10 +2249,8 @@ test_perf_openssl_optimise_cyclecount(struct perf_test_params *pparams)
 	static struct rte_crypto_op *(*test_perf_set_crypto_op)
 			(struct rte_crypto_op *, struct rte_mbuf *,
 					struct rte_cryptodev_sym_session *,
-					unsigned int, unsigned int,
+					unsigned int,
 					enum chain_mode);
-
-	unsigned int digest_length = get_auth_digest_length(pparams->auth_algo);
 
 	if (rte_cryptodev_count() == 0) {
 		printf("\nNo crypto devices found. Is PMD build configured?\n");
@@ -2298,7 +2293,7 @@ test_perf_openssl_optimise_cyclecount(struct perf_test_params *pparams)
 		}
 
 		op = test_perf_set_crypto_op(op, m, sess, pparams->buf_size,
-				digest_length, pparams->chain);
+				pparams->chain);
 		TEST_ASSERT_NOT_NULL(op, "Failed to attach op to session");
 
 		c_ops[i] = op;
@@ -2407,8 +2402,6 @@ test_perf_armv8_optimise_cyclecount(struct perf_test_params *pparams)
 
 	static struct rte_cryptodev_sym_session *sess;
 
-	unsigned int digest_length = get_auth_digest_length(pparams->auth_algo);
-
 	if (rte_cryptodev_count() == 0) {
 		printf("\nNo crypto devices found. Is PMD build configured?\n");
 		return TEST_FAILED;
@@ -2433,7 +2426,7 @@ test_perf_armv8_optimise_cyclecount(struct perf_test_params *pparams)
 		TEST_ASSERT_NOT_NULL(op, "Failed to allocate op");
 
 		op = test_perf_set_crypto_op_aes(op, m, sess, pparams->buf_size,
-				digest_length, pparams->chain);
+				pparams->chain);
 		TEST_ASSERT_NOT_NULL(op, "Failed to attach op to session");
 
 		c_ops[i] = op;
@@ -2875,7 +2868,7 @@ test_perf_create_pktmbuf(struct rte_mempool *mpool, unsigned buf_sz)
 static inline struct rte_crypto_op *
 test_perf_set_crypto_op_aes(struct rte_crypto_op *op, struct rte_mbuf *m,
 		struct rte_cryptodev_sym_session *sess, unsigned int data_len,
-		unsigned int digest_len, enum chain_mode chain)
+		enum chain_mode chain)
 {
 	if (rte_crypto_op_attach_sym_session(op, sess) != 0) {
 		rte_crypto_op_free(op);
@@ -2886,7 +2879,6 @@ test_perf_set_crypto_op_aes(struct rte_crypto_op *op, struct rte_mbuf *m,
 	if (chain == CIPHER_ONLY) {
 		op->sym->auth.digest.data = NULL;
 		op->sym->auth.digest.phys_addr = 0;
-		op->sym->auth.digest.length = 0;
 		op->sym->auth.aad.data = NULL;
 		op->sym->auth.data.offset = 0;
 		op->sym->auth.data.length = 0;
@@ -2895,7 +2887,6 @@ test_perf_set_crypto_op_aes(struct rte_crypto_op *op, struct rte_mbuf *m,
 				 uint8_t *, data_len);
 		op->sym->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(m,
 				data_len);
-		op->sym->auth.digest.length = digest_len;
 		op->sym->auth.data.offset = 0;
 		op->sym->auth.data.length = data_len;
 	}
@@ -2917,7 +2908,7 @@ test_perf_set_crypto_op_aes(struct rte_crypto_op *op, struct rte_mbuf *m,
 static inline struct rte_crypto_op *
 test_perf_set_crypto_op_aes_gcm(struct rte_crypto_op *op, struct rte_mbuf *m,
 		struct rte_cryptodev_sym_session *sess, unsigned int data_len,
-		unsigned int digest_len, enum chain_mode chain __rte_unused)
+		enum chain_mode chain __rte_unused)
 {
 	if (rte_crypto_op_attach_sym_session(op, sess) != 0) {
 		rte_crypto_op_free(op);
@@ -2929,7 +2920,6 @@ test_perf_set_crypto_op_aes_gcm(struct rte_crypto_op *op, struct rte_mbuf *m,
 					(m->data_off + data_len);
 	op->sym->auth.digest.phys_addr =
 				rte_pktmbuf_mtophys_offset(m, data_len);
-	op->sym->auth.digest.length = digest_len;
 	op->sym->auth.aad.data = aes_gcm_aad;
 
 	/* Copy IV at the end of the crypto operation */
@@ -2950,8 +2940,7 @@ test_perf_set_crypto_op_aes_gcm(struct rte_crypto_op *op, struct rte_mbuf *m,
 
 static inline struct rte_crypto_op *
 test_perf_set_crypto_op_snow3g(struct rte_crypto_op *op, struct rte_mbuf *m,
-		struct rte_cryptodev_sym_session *sess, unsigned data_len,
-		unsigned digest_len)
+		struct rte_cryptodev_sym_session *sess, unsigned int data_len)
 {
 	uint8_t *iv_ptr = rte_crypto_op_ctod_offset(op,
 			uint8_t *, IV_OFFSET);
@@ -2968,7 +2957,6 @@ test_perf_set_crypto_op_snow3g(struct rte_crypto_op *op, struct rte_mbuf *m,
 						(m->data_off + data_len);
 	op->sym->auth.digest.phys_addr =
 				rte_pktmbuf_mtophys_offset(m, data_len);
-	op->sym->auth.digest.length = digest_len;
 
 	/* Data lengths/offsets Parameters */
 	op->sym->auth.data.offset = 0;
@@ -3015,8 +3003,7 @@ static inline struct rte_crypto_op *
 test_perf_set_crypto_op_snow3g_hash(struct rte_crypto_op *op,
 		struct rte_mbuf *m,
 		struct rte_cryptodev_sym_session *sess,
-		unsigned data_len,
-		unsigned digest_len)
+		unsigned int data_len)
 {
 	uint8_t *iv_ptr = rte_crypto_op_ctod_offset(op,
 			uint8_t *, IV_OFFSET);
@@ -3036,7 +3023,6 @@ test_perf_set_crypto_op_snow3g_hash(struct rte_crypto_op *op,
 	op->sym->auth.digest.phys_addr =
 				rte_pktmbuf_mtophys_offset(m, data_len +
 					SNOW3G_CIPHER_IV_LENGTH);
-	op->sym->auth.digest.length = digest_len;
 
 	/* Data lengths/offsets Parameters */
 	op->sym->auth.data.offset = 0;
@@ -3051,7 +3037,7 @@ test_perf_set_crypto_op_snow3g_hash(struct rte_crypto_op *op,
 static inline struct rte_crypto_op *
 test_perf_set_crypto_op_3des(struct rte_crypto_op *op, struct rte_mbuf *m,
 		struct rte_cryptodev_sym_session *sess, unsigned int data_len,
-		unsigned int digest_len, enum chain_mode chain __rte_unused)
+		enum chain_mode chain __rte_unused)
 {
 	if (rte_crypto_op_attach_sym_session(op, sess) != 0) {
 		rte_crypto_op_free(op);
@@ -3063,7 +3049,6 @@ test_perf_set_crypto_op_3des(struct rte_crypto_op *op, struct rte_mbuf *m,
 					(m->data_off + data_len);
 	op->sym->auth.digest.phys_addr =
 				rte_pktmbuf_mtophys_offset(m, data_len);
-	op->sym->auth.digest.length = digest_len;
 
 	/* Copy IV at the end of the crypto operation */
 	rte_memcpy(rte_crypto_op_ctod_offset(op, uint8_t *, IV_OFFSET),
@@ -3156,7 +3141,7 @@ test_perf_aes_sha(uint8_t dev_id, uint16_t queue_id,
 				ops[i] = test_perf_set_crypto_op_aes(ops[i],
 					mbufs[i + (pparams->burst_size *
 						(j % NUM_MBUF_SETS))],
-					sess, pparams->buf_size, digest_length,
+					sess, pparams->buf_size,
 					pparams->chain);
 
 			/* enqueue burst */
@@ -3298,7 +3283,7 @@ test_perf_snow3g(uint8_t dev_id, uint16_t queue_id,
 					mbufs[i +
 					  (pparams->burst_size * (j % NUM_MBUF_SETS))],
 					sess,
-					pparams->buf_size, digest_length);
+					pparams->buf_size);
 				else if (pparams->chain == CIPHER_ONLY)
 					ops[i+op_offset] =
 					test_perf_set_crypto_op_snow3g_cipher(ops[i+op_offset],
@@ -3394,8 +3379,6 @@ test_perf_openssl(uint8_t dev_id, uint16_t queue_id,
 	uint64_t processed = 0, failed_polls = 0, retries = 0;
 	uint64_t tsc_start = 0, tsc_end = 0;
 
-	unsigned int digest_length = get_auth_digest_length(pparams->auth_algo);
-
 	struct rte_crypto_op *ops[pparams->burst_size];
 	struct rte_crypto_op *proc_ops[pparams->burst_size];
 
@@ -3408,7 +3391,7 @@ test_perf_openssl(uint8_t dev_id, uint16_t queue_id,
 	static struct rte_crypto_op *(*test_perf_set_crypto_op)
 			(struct rte_crypto_op *, struct rte_mbuf *,
 					struct rte_cryptodev_sym_session *,
-					unsigned int, unsigned int,
+					unsigned int,
 					enum chain_mode);
 
 	switch (pparams->cipher_algo) {
@@ -3470,7 +3453,7 @@ test_perf_openssl(uint8_t dev_id, uint16_t queue_id,
 				ops[i] = test_perf_set_crypto_op(ops[i],
 					mbufs[i + (pparams->burst_size *
 						(j % NUM_MBUF_SETS))],
-					sess, pparams->buf_size, digest_length,
+					sess, pparams->buf_size,
 					pparams->chain);
 
 			/* enqueue burst */
@@ -3548,8 +3531,6 @@ test_perf_armv8(uint8_t dev_id, uint16_t queue_id,
 	uint64_t processed = 0, failed_polls = 0, retries = 0;
 	uint64_t tsc_start = 0, tsc_end = 0;
 
-	unsigned int digest_length = get_auth_digest_length(pparams->auth_algo);
-
 	struct rte_crypto_op *ops[pparams->burst_size];
 	struct rte_crypto_op *proc_ops[pparams->burst_size];
 
@@ -3604,7 +3585,7 @@ test_perf_armv8(uint8_t dev_id, uint16_t queue_id,
 				ops[i] = test_perf_set_crypto_op_aes(ops[i],
 					mbufs[i + (pparams->burst_size *
 						(j % NUM_MBUF_SETS))], sess,
-					pparams->buf_size, digest_length,
+					pparams->buf_size,
 					pparams->chain);
 
 			/* enqueue burst */
@@ -4179,7 +4160,6 @@ perf_gcm_set_crypto_op(struct rte_crypto_op *op, struct rte_mbuf *m,
 					  params->session_attrs->aad_len +
 					  params->symmetric_op->p_len);
 
-	op->sym->auth.digest.length = params->symmetric_op->t_len;
 
 	op->sym->auth.aad.data = m_hlp->aad;
 	op->sym->auth.aad.phys_addr = rte_pktmbuf_mtophys(m);

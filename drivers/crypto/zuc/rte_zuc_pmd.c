@@ -131,6 +131,12 @@ zuc_set_session_parameters(struct zuc_session *sess,
 		/* Only ZUC EIA3 supported */
 		if (auth_xform->auth.algo != RTE_CRYPTO_AUTH_ZUC_EIA3)
 			return -EINVAL;
+
+		if (auth_xform->auth.digest_length != ZUC_DIGEST_LENGTH) {
+			ZUC_LOG_ERR("Wrong digest length");
+			return -EINVAL;
+		}
+
 		sess->auth_op = auth_xform->auth.op;
 
 		if (auth_xform->auth.iv.length != ZUC_IV_KEY_LENGTH) {
@@ -249,12 +255,6 @@ process_zuc_hash_op(struct rte_crypto_op **ops,
 	uint8_t *iv;
 
 	for (i = 0; i < num_ops; i++) {
-		if (unlikely(ops[i]->sym->auth.digest.length != ZUC_DIGEST_LENGTH)) {
-			ops[i]->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
-			ZUC_LOG_ERR("digest");
-			break;
-		}
-
 		/* Data must be byte aligned */
 		if ((ops[i]->sym->auth.data.offset % BYTE_LEN) != 0) {
 			ops[i]->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
@@ -271,19 +271,19 @@ process_zuc_hash_op(struct rte_crypto_op **ops,
 
 		if (session->auth_op == RTE_CRYPTO_AUTH_OP_VERIFY) {
 			dst = (uint32_t *)rte_pktmbuf_append(ops[i]->sym->m_src,
-					ops[i]->sym->auth.digest.length);
+					ZUC_DIGEST_LENGTH);
 
 			sso_zuc_eia3_1_buffer(session->pKey_hash,
 					iv, src,
 					length_in_bits,	dst);
 			/* Verify digest. */
 			if (memcmp(dst, ops[i]->sym->auth.digest.data,
-					ops[i]->sym->auth.digest.length) != 0)
+					ZUC_DIGEST_LENGTH) != 0)
 				ops[i]->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
 
 			/* Trim area used for digest from mbuf. */
 			rte_pktmbuf_trim(ops[i]->sym->m_src,
-					ops[i]->sym->auth.digest.length);
+					ZUC_DIGEST_LENGTH);
 		} else  {
 			dst = (uint32_t *)ops[i]->sym->auth.digest.data;
 

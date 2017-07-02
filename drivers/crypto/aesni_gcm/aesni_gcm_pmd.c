@@ -78,6 +78,7 @@ aesni_gcm_set_session_parameters(struct aesni_gcm_session *sess,
 {
 	const struct rte_crypto_sym_xform *auth_xform;
 	const struct rte_crypto_sym_xform *cipher_xform;
+	uint16_t digest_length;
 
 	if (xform->next == NULL || xform->next->next != NULL) {
 		GCM_LOG_ERR("Two and only two chained xform required");
@@ -128,6 +129,8 @@ aesni_gcm_set_session_parameters(struct aesni_gcm_session *sess,
 		return -EINVAL;
 	}
 
+	digest_length = auth_xform->auth.digest_length;
+
 	/* Check key length and calculate GCM pre-compute. */
 	switch (cipher_xform->cipher.key.length) {
 	case 16:
@@ -146,6 +149,14 @@ aesni_gcm_set_session_parameters(struct aesni_gcm_session *sess,
 	}
 
 	sess->aad_length = auth_xform->auth.add_auth_data_length;
+	/* Digest check */
+	if (digest_length != 16 &&
+			digest_length != 12 &&
+			digest_length != 8) {
+		GCM_LOG_ERR("digest");
+		return -EINVAL;
+	}
+	sess->digest_length = digest_length;
 
 	return 0;
 }
@@ -245,13 +256,6 @@ process_gcm_crypto_op(struct rte_crypto_op *op,
 		*iv_padd = rte_bswap32(1);
 	}
 
-	if (sym_op->auth.digest.length != 16 &&
-			sym_op->auth.digest.length != 12 &&
-			sym_op->auth.digest.length != 8) {
-		GCM_LOG_ERR("digest");
-		return -1;
-	}
-
 	if (session->op == AESNI_GCM_OP_AUTHENTICATED_ENCRYPTION) {
 
 		aesni_gcm_enc[session->key].init(&session->gdata,
@@ -281,11 +285,11 @@ process_gcm_crypto_op(struct rte_crypto_op *op,
 
 		aesni_gcm_enc[session->key].finalize(&session->gdata,
 				sym_op->auth.digest.data,
-				(uint64_t)sym_op->auth.digest.length);
+				(uint64_t)session->digest_length);
 	} else { /* session->op == AESNI_GCM_OP_AUTHENTICATED_DECRYPTION */
 		uint8_t *auth_tag = (uint8_t *)rte_pktmbuf_append(sym_op->m_dst ?
 				sym_op->m_dst : sym_op->m_src,
-				sym_op->auth.digest.length);
+				session->digest_length);
 
 		if (!auth_tag) {
 			GCM_LOG_ERR("auth_tag");
@@ -319,7 +323,7 @@ process_gcm_crypto_op(struct rte_crypto_op *op,
 
 		aesni_gcm_dec[session->key].finalize(&session->gdata,
 				auth_tag,
-				(uint64_t)sym_op->auth.digest.length);
+				(uint64_t)session->digest_length);
 	}
 
 	return 0;
@@ -349,21 +353,21 @@ post_process_gcm_crypto_op(struct rte_crypto_op *op)
 	if (session->op == AESNI_GCM_OP_AUTHENTICATED_DECRYPTION) {
 
 		uint8_t *tag = rte_pktmbuf_mtod_offset(m, uint8_t *,
-				m->data_len - op->sym->auth.digest.length);
+				m->data_len - session->digest_length);
 
 #ifdef RTE_LIBRTE_PMD_AESNI_GCM_DEBUG
 		rte_hexdump(stdout, "auth tag (orig):",
-				op->sym->auth.digest.data, op->sym->auth.digest.length);
+				op->sym->auth.digest.data, session->digest_length);
 		rte_hexdump(stdout, "auth tag (calc):",
-				tag, op->sym->auth.digest.length);
+				tag, session->digest_length);
 #endif
 
 		if (memcmp(tag, op->sym->auth.digest.data,
-				op->sym->auth.digest.length) != 0)
+				session->digest_length) != 0)
 			op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
 
 		/* trim area used for digest from mbuf */
-		rte_pktmbuf_trim(m, op->sym->auth.digest.length);
+		rte_pktmbuf_trim(m, session->digest_length);
 	}
 }
 

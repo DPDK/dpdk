@@ -199,6 +199,8 @@ struct armv8_crypto_session {
 				/**< HMAC key (max supported length)*/
 			} hmac;
 		};
+		uint16_t digest_length;
+		/* Digest length */
 	} auth;
 
 } __rte_cache_aligned;

@@ -140,7 +140,6 @@ esp_inbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 			rte_pktmbuf_pkt_len(m) - sa->digest_len);
 	sym_cop->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(m,
 			rte_pktmbuf_pkt_len(m) - sa->digest_len);
-	sym_cop->auth.digest.length = sa->digest_len;
 
 	return 0;
 }
@@ -368,7 +367,6 @@ esp_outbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 			rte_pktmbuf_pkt_len(m) - sa->digest_len);
 	sym_cop->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(m,
 			rte_pktmbuf_pkt_len(m) - sa->digest_len);
-	sym_cop->auth.digest.length = sa->digest_len;
 
 	return 0;
 }

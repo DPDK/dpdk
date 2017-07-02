@@ -606,6 +606,7 @@ qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev,
 				auth_xform->op))
 			goto error_out;
 	}
+	session->digest_length = auth_xform->digest_length;
 	return session;
 
 error_out:
@@ -1200,7 +1201,7 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
 						ctx->auth_iv.length);
 		}
 		rte_hexdump(stdout, "digest:", op->sym->auth.digest.data,
-				op->sym->auth.digest.length);
+				ctx->digest_length);
 		rte_hexdump(stdout, "aad:", op->sym->auth.aad.data,
 				ctx->aad_len);
 	}

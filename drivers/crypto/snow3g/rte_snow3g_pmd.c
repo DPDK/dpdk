@@ -132,6 +132,12 @@ snow3g_set_session_parameters(struct snow3g_session *sess,
 		/* Only SNOW 3G UIA2 supported */
 		if (auth_xform->auth.algo != RTE_CRYPTO_AUTH_SNOW3G_UIA2)
 			return -EINVAL;
+
+		if (auth_xform->auth.digest_length != SNOW3G_DIGEST_LENGTH) {
+			SNOW3G_LOG_ERR("Wrong digest length");
+			return -EINVAL;
+		}
+
 		sess->auth_op = auth_xform->auth.op;
 
 		if (auth_xform->auth.iv.length != SNOW3G_IV_LENGTH) {
@@ -252,12 +258,6 @@ process_snow3g_hash_op(struct rte_crypto_op **ops,
 	uint8_t *iv;
 
 	for (i = 0; i < num_ops; i++) {
-		if (unlikely(ops[i]->sym->auth.digest.length != SNOW3G_DIGEST_LENGTH)) {
-			ops[i]->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
-			SNOW3G_LOG_ERR("digest");
-			break;
-		}
-
 		/* Data must be byte aligned */
 		if ((ops[i]->sym->auth.data.offset % BYTE_LEN) != 0) {
 			ops[i]->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
@@ -274,19 +274,19 @@ process_snow3g_hash_op(struct rte_crypto_op **ops,
 
 		if (session->auth_op == RTE_CRYPTO_AUTH_OP_VERIFY) {
 			dst = (uint8_t *)rte_pktmbuf_append(ops[i]->sym->m_src,
-					ops[i]->sym->auth.digest.length);
+					SNOW3G_DIGEST_LENGTH);
 
 			sso_snow3g_f9_1_buffer(&session->pKeySched_hash,
 					iv, src,
 					length_in_bits,	dst);
 			/* Verify digest. */
 			if (memcmp(dst, ops[i]->sym->auth.digest.data,
-					ops[i]->sym->auth.digest.length) != 0)
+					SNOW3G_DIGEST_LENGTH) != 0)
 				ops[i]->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
 
 			/* Trim area used for digest from mbuf. */
 			rte_pktmbuf_trim(ops[i]->sym->m_src,
-					ops[i]->sym->auth.digest.length);
+					SNOW3G_DIGEST_LENGTH);
 		} else  {
 			dst = ops[i]->sym->auth.digest.data;
 

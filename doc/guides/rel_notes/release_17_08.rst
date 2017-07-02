@@ -94,6 +94,7 @@ New Features
     of the crypto operation.
   * Moved length and offset of cipher IV to ``rte_crypto_cipher_xform``.
   * Removed Additional Authentication Data (AAD) length.
+  * Removed digest length.
 
 * **Reorganized the crypto operation structure.**
 
@@ -201,6 +202,7 @@ ABI Changes
 
   * Added authentication IV length and offset parameters.
   * Changed field size of AAD length from uint32_t to uint16_t.
+  * Changed field size of digest length from uint32_t to uint16_t.
 
 
 Shared Library Versions

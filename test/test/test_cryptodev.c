@@ -1308,7 +1308,6 @@ test_AES_CBC_HMAC_SHA1_encrypt_digest(void)
 	sym_op->auth.digest.data = ut_params->digest;
 	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
 			ut_params->ibuf, QUOTE_512_BYTES);
-	sym_op->auth.digest.length = DIGEST_BYTE_LENGTH_SHA1;
 
 	sym_op->auth.data.offset = 0;
 	sym_op->auth.data.length = QUOTE_512_BYTES;
@@ -1460,7 +1459,6 @@ test_AES_CBC_HMAC_SHA512_decrypt_perform(struct rte_cryptodev_sym_session *sess,
 	sym_op->auth.digest.data = ut_params->digest;
 	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
 			ut_params->ibuf, QUOTE_512_BYTES);
-	sym_op->auth.digest.length = DIGEST_BYTE_LENGTH_SHA512;
 
 	sym_op->auth.data.offset = 0;
 	sym_op->auth.data.length = QUOTE_512_BYTES;
@@ -2103,7 +2101,6 @@ create_wireless_algo_hash_operation(const uint8_t *auth_tag,
 	ut_params->digest = sym_op->auth.digest.data;
 	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
 			ut_params->ibuf, data_pad_len);
-	sym_op->auth.digest.length = auth_tag_len;
 	if (op == RTE_CRYPTO_AUTH_OP_GENERATE)
 		memset(sym_op->auth.digest.data, 0, auth_tag_len);
 	else
@@ -2111,7 +2108,7 @@ create_wireless_algo_hash_operation(const uint8_t *auth_tag,
 
 	TEST_HEXDUMP(stdout, "digest:",
 		sym_op->auth.digest.data,
-		sym_op->auth.digest.length);
+		auth_tag_len);
 
 	sym_op->auth.data.length = auth_len;
 	sym_op->auth.data.offset = auth_offset;
@@ -2160,7 +2157,6 @@ create_wireless_cipher_hash_operation(const struct wireless_test_data *tdata,
 	ut_params->digest = sym_op->auth.digest.data;
 	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
 			ut_params->ibuf, data_pad_len);
-	sym_op->auth.digest.length = auth_tag_len;
 	if (op == RTE_CRYPTO_AUTH_OP_GENERATE)
 		memset(sym_op->auth.digest.data, 0, auth_tag_len);
 	else
@@ -2168,7 +2164,7 @@ create_wireless_cipher_hash_operation(const struct wireless_test_data *tdata,
 
 	TEST_HEXDUMP(stdout, "digest:",
 		sym_op->auth.digest.data,
-		sym_op->auth.digest.length);
+		auth_tag_len);
 
 	/* Copy cipher and auth IVs at the end of the crypto operation */
 	uint8_t *iv_ptr = rte_crypto_op_ctod_offset(ut_params->op, uint8_t *,
@@ -2228,7 +2224,6 @@ create_wireless_algo_cipher_hash_operation(const uint8_t *auth_tag,
 	ut_params->digest = sym_op->auth.digest.data;
 	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
 			ut_params->ibuf, data_pad_len);
-	sym_op->auth.digest.length = auth_tag_len;
 	if (op == RTE_CRYPTO_AUTH_OP_GENERATE)
 		memset(sym_op->auth.digest.data, 0, auth_tag_len);
 	else
@@ -2236,7 +2231,7 @@ create_wireless_algo_cipher_hash_operation(const uint8_t *auth_tag,
 
 	TEST_HEXDUMP(stdout, "digest:",
 		sym_op->auth.digest.data,
-		sym_op->auth.digest.length);
+		auth_tag_len);
 
 	/* Copy cipher and auth IVs at the end of the crypto operation */
 	uint8_t *iv_ptr = rte_crypto_op_ctod_offset(ut_params->op, uint8_t *,
@@ -2287,13 +2282,12 @@ create_wireless_algo_auth_cipher_operation(unsigned int auth_tag_len,
 
 	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
 			ut_params->ibuf, data_pad_len);
-	sym_op->auth.digest.length = auth_tag_len;
 
 	memset(sym_op->auth.digest.data, 0, auth_tag_len);
 
 	TEST_HEXDUMP(stdout, "digest:",
 			sym_op->auth.digest.data,
-			sym_op->auth.digest.length);
+			auth_tag_len);
 
 	/* Copy cipher and auth IVs at the end of the crypto operation */
 	uint8_t *iv_ptr = rte_crypto_op_ctod_offset(ut_params->op, uint8_t *,
@@ -4825,7 +4819,6 @@ create_gcm_operation(enum rte_crypto_cipher_operation op,
 						ut_params->ibuf,
 						plaintext_pad_len +
 						aad_pad_len);
-		sym_op->auth.digest.length = tdata->auth_tag.len;
 	} else {
 		sym_op->auth.digest.data = (uint8_t *)rte_pktmbuf_append(
 				ut_params->ibuf, tdata->auth_tag.len);
@@ -4834,13 +4827,12 @@ create_gcm_operation(enum rte_crypto_cipher_operation op,
 		sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
 				ut_params->ibuf,
 				plaintext_pad_len + aad_pad_len);
-		sym_op->auth.digest.length = tdata->auth_tag.len;
 
 		rte_memcpy(sym_op->auth.digest.data, tdata->auth_tag.data,
 			tdata->auth_tag.len);
 		TEST_HEXDUMP(stdout, "digest:",
 			sym_op->auth.digest.data,
-			sym_op->auth.digest.length);
+			tdata->auth_tag.len);
 	}
 
 	sym_op->cipher.data.length = tdata->plaintext.len;
@@ -5615,7 +5607,6 @@ static int MD5_HMAC_create_op(struct crypto_unittest_params *ut_params,
 			"no room to append digest");
 	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
 			ut_params->ibuf, plaintext_pad_len);
-	sym_op->auth.digest.length = MD5_DIGEST_LEN;
 
 	if (ut_params->auth_xform.auth.op == RTE_CRYPTO_AUTH_OP_VERIFY) {
 		rte_memcpy(sym_op->auth.digest.data, test_case->auth_tag.data,
@@ -6326,14 +6317,13 @@ create_gmac_operation(enum rte_crypto_auth_operation op,
 
 	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
 			ut_params->ibuf, aad_pad_len);
-	sym_op->auth.digest.length = tdata->gmac_tag.len;
 
 	if (op == RTE_CRYPTO_AUTH_OP_VERIFY) {
 		rte_memcpy(sym_op->auth.digest.data, tdata->gmac_tag.data,
 				tdata->gmac_tag.len);
 		TEST_HEXDUMP(stdout, "digest:",
 				sym_op->auth.digest.data,
-				sym_op->auth.digest.length);
+				tdata->gmac_tag.len);
 	}
 
 	uint8_t *iv_ptr = rte_crypto_op_ctod_offset(ut_params->op,
@@ -6811,7 +6801,6 @@ create_auth_operation(struct crypto_testsuite_params *ts_params,
 
 	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
 			ut_params->ibuf, reference->plaintext.len);
-	sym_op->auth.digest.length = reference->digest.len;
 
 	if (auth_generate)
 		memset(sym_op->auth.digest.data, 0, reference->digest.len);
@@ -6822,7 +6811,7 @@ create_auth_operation(struct crypto_testsuite_params *ts_params,
 
 	TEST_HEXDUMP(stdout, "digest:",
 			sym_op->auth.digest.data,
-			sym_op->auth.digest.length);
+			reference->digest.len);
 
 	sym_op->auth.data.length = reference->plaintext.len;
 	sym_op->auth.data.offset = 0;
@@ -6869,7 +6858,6 @@ create_auth_GMAC_operation(struct crypto_testsuite_params *ts_params,
 
 	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
 			ut_params->ibuf, reference->ciphertext.len);
-	sym_op->auth.digest.length = reference->digest.len;
 
 	if (auth_generate)
 		memset(sym_op->auth.digest.data, 0, reference->digest.len);
@@ -6880,7 +6868,7 @@ create_auth_GMAC_operation(struct crypto_testsuite_params *ts_params,
 
 	TEST_HEXDUMP(stdout, "digest:",
 			sym_op->auth.digest.data,
-			sym_op->auth.digest.length);
+			reference->digest.len);
 
 	rte_memcpy(rte_crypto_op_ctod_offset(ut_params->op, uint8_t *, IV_OFFSET),
 			reference->iv.data, reference->iv.len);
@@ -6923,7 +6911,6 @@ create_cipher_auth_operation(struct crypto_testsuite_params *ts_params,
 
 	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
 			ut_params->ibuf, reference->ciphertext.len);
-	sym_op->auth.digest.length = reference->digest.len;
 
 	if (auth_generate)
 		memset(sym_op->auth.digest.data, 0, reference->digest.len);
@@ -6934,7 +6921,7 @@ create_cipher_auth_operation(struct crypto_testsuite_params *ts_params,
 
 	TEST_HEXDUMP(stdout, "digest:",
 			sym_op->auth.digest.data,
-			sym_op->auth.digest.length);
+			reference->digest.len);
 
 	rte_memcpy(rte_crypto_op_ctod_offset(ut_params->op, uint8_t *, IV_OFFSET),
 			reference->iv.data, reference->iv.len);
@@ -7171,14 +7158,13 @@ create_gcm_operation_SGL(enum rte_crypto_cipher_operation op,
 			"no room to append digest");
 
 	sym_op->auth.digest.phys_addr = digest_phys;
-	sym_op->auth.digest.length = auth_tag_len;
 
 	if (op == RTE_CRYPTO_CIPHER_OP_DECRYPT) {
 		rte_memcpy(sym_op->auth.digest.data, tdata->auth_tag.data,
 				auth_tag_len);
 		TEST_HEXDUMP(stdout, "digest:",
 				sym_op->auth.digest.data,
-				sym_op->auth.digest.length);
+				auth_tag_len);
 	}
 
 	uint8_t *iv_ptr = rte_crypto_op_ctod_offset(ut_params->op,

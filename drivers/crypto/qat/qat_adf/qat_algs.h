@@ -135,6 +135,7 @@ struct qat_session {
 		uint16_t offset;
 		uint16_t length;
 	} auth_iv;
+	uint16_t digest_length;
 	rte_spinlock_t lock;	/* protects this struct */
 };
 

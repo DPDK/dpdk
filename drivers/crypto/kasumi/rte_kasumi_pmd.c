@@ -132,6 +132,12 @@ kasumi_set_session_parameters(struct kasumi_session *sess,
 		/* Only KASUMI F9 supported */
 		if (auth_xform->auth.algo != RTE_CRYPTO_AUTH_KASUMI_F9)
 			return -EINVAL;
+
+		if (auth_xform->auth.digest_length != KASUMI_DIGEST_LENGTH) {
+			KASUMI_LOG_ERR("Wrong digest length");
+			return -EINVAL;
+		}
+
 		sess->auth_op = auth_xform->auth.op;
 
 		sess->auth_iv_offset = auth_xform->auth.iv.offset;
@@ -261,12 +267,6 @@ process_kasumi_hash_op(struct rte_crypto_op **ops,
 	uint8_t direction;
 
 	for (i = 0; i < num_ops; i++) {
-		if (unlikely(ops[i]->sym->auth.digest.length != KASUMI_DIGEST_LENGTH)) {
-			ops[i]->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
-			KASUMI_LOG_ERR("digest");
-			break;
-		}
-
 		/* Data must be byte aligned */
 		if ((ops[i]->sym->auth.data.offset % BYTE_LEN) != 0) {
 			ops[i]->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
@@ -288,19 +288,19 @@ process_kasumi_hash_op(struct rte_crypto_op **ops,
 
 		if (session->auth_op == RTE_CRYPTO_AUTH_OP_VERIFY) {
 			dst = (uint8_t *)rte_pktmbuf_append(ops[i]->sym->m_src,
-					ops[i]->sym->auth.digest.length);
+					KASUMI_DIGEST_LENGTH);
 
 			sso_kasumi_f9_1_buffer_user(&session->pKeySched_hash,
 					iv, src,
 					length_in_bits,	dst, direction);
 			/* Verify digest. */
 			if (memcmp(dst, ops[i]->sym->auth.digest.data,
-					ops[i]->sym->auth.digest.length) != 0)
+					KASUMI_DIGEST_LENGTH) != 0)
 				ops[i]->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
 
 			/* Trim area used for digest from mbuf. */
 			rte_pktmbuf_trim(ops[i]->sym->m_src,
-					ops[i]->sym->auth.digest.length);
+					KASUMI_DIGEST_LENGTH);
 		} else  {
 			dst = ops[i]->sym->auth.digest.data;
 

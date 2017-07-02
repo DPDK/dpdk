@@ -354,7 +354,7 @@ struct rte_crypto_auth_xform {
 	 * (for example RFC 2104, FIPS 198a).
 	 */
 
-	uint32_t digest_length;
+	uint16_t digest_length;
 	/**< Length of the digest to be returned. If the verify option is set,
 	 * this specifies the length of the digest to be compared for the
 	 * session.
@@ -604,10 +604,6 @@ struct rte_crypto_sym_op {
 			 */
 			phys_addr_t phys_addr;
 			/**< Physical address of digest */
-			uint16_t length;
-			/**< Length of digest. This must be the same value as
-			 * @ref rte_crypto_auth_xform.digest_length.
-			 */
 		} digest; /**< Digest parameters */
 
 		struct {

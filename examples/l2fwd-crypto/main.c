@@ -481,7 +481,6 @@ l2fwd_simple_crypto_enqueue(struct rte_mbuf *m,
 
 		op->sym->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(m,
 				rte_pktmbuf_pkt_len(m) - cparams->digest_length);
-		op->sym->auth.digest.length = cparams->digest_length;
 
 		/* For wireless algorithms, offset/length must be in bits */
 		if (cparams->auth_algo == RTE_CRYPTO_AUTH_SNOW3G_UIA2 ||

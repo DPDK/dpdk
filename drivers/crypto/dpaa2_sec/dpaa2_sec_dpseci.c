@@ -84,7 +84,7 @@ build_authenc_fd(dpaa2_sec_session *sess,
 	struct sec_flow_context *flc;
 	uint32_t auth_only_len = sym_op->auth.data.length -
 				sym_op->cipher.data.length;
-	int icv_len = sym_op->auth.digest.length;
+	int icv_len = sess->digest_length;
 	uint8_t *old_icv;
 	uint32_t mem_len = (7 * sizeof(struct qbman_fle)) + icv_len;
 	uint8_t *iv_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
@@ -135,7 +135,7 @@ build_authenc_fd(dpaa2_sec_session *sess,
 		   "cipher_off: 0x%x/length %d, iv-len=%d data_off: 0x%x\n",
 		   sym_op->auth.data.offset,
 		   sym_op->auth.data.length,
-		   sym_op->auth.digest.length,
+		   sess->digest_length,
 		   sym_op->cipher.data.offset,
 		   sym_op->cipher.data.length,
 		   sess->iv.length,
@@ -161,7 +161,7 @@ build_authenc_fd(dpaa2_sec_session *sess,
 		sge++;
 		DPAA2_SET_FLE_ADDR(sge,
 				DPAA2_VADDR_TO_IOVA(sym_op->auth.digest.data));
-		sge->length = sym_op->auth.digest.length;
+		sge->length = sess->digest_length;
 		DPAA2_SET_FD_LEN(fd, (sym_op->auth.data.length +
 					sess->iv.length));
 	}
@@ -177,7 +177,7 @@ build_authenc_fd(dpaa2_sec_session *sess,
 	fle->length = (sess->dir == DIR_ENC) ?
 			(sym_op->auth.data.length + sess->iv.length) :
 			(sym_op->auth.data.length + sess->iv.length +
-			 sym_op->auth.digest.length);
+			 sess->digest_length);
 
 	/* Configure Input SGE for Encap/Decap */
 	DPAA2_SET_FLE_ADDR(sge, DPAA2_VADDR_TO_IOVA(iv_ptr));
@@ -192,12 +192,12 @@ build_authenc_fd(dpaa2_sec_session *sess,
 		sge++;
 		old_icv = (uint8_t *)(sge + 1);
 		memcpy(old_icv,	sym_op->auth.digest.data,
-		       sym_op->auth.digest.length);
-		memset(sym_op->auth.digest.data, 0, sym_op->auth.digest.length);
+		       sess->digest_length);
+		memset(sym_op->auth.digest.data, 0, sess->digest_length);
 		DPAA2_SET_FLE_ADDR(sge, DPAA2_VADDR_TO_IOVA(old_icv));
-		sge->length = sym_op->auth.digest.length;
+		sge->length = sess->digest_length;
 		DPAA2_SET_FD_LEN(fd, (sym_op->auth.data.length +
-				 sym_op->auth.digest.length +
+				 sess->digest_length +
 				 sess->iv.length));
 	}
 	DPAA2_SET_FLE_FIN(sge);
@@ -217,7 +217,7 @@ build_auth_fd(dpaa2_sec_session *sess, struct rte_crypto_op *op,
 	uint32_t mem_len = (sess->dir == DIR_ENC) ?
 			   (3 * sizeof(struct qbman_fle)) :
 			   (5 * sizeof(struct qbman_fle) +
-			    sym_op->auth.digest.length);
+			    sess->digest_length);
 	struct sec_flow_context *flc;
 	struct ctxt_priv *priv = sess->ctxt;
 	uint8_t *old_digest;
@@ -251,7 +251,7 @@ build_auth_fd(dpaa2_sec_session *sess, struct rte_crypto_op *op,
 	DPAA2_SET_FD_FLC(fd, DPAA2_VADDR_TO_IOVA(flc));
 
 	DPAA2_SET_FLE_ADDR(fle, DPAA2_VADDR_TO_IOVA(sym_op->auth.digest.data));
-	fle->length = sym_op->auth.digest.length;
+	fle->length = sess->digest_length;
 
 	DPAA2_SET_FD_ADDR(fd, DPAA2_VADDR_TO_IOVA(fle));
 	DPAA2_SET_FD_COMPOUND_FMT(fd);
@@ -282,17 +282,17 @@ build_auth_fd(dpaa2_sec_session *sess, struct rte_crypto_op *op,
 				     sym_op->m_src->data_off);
 
 		DPAA2_SET_FD_LEN(fd, sym_op->auth.data.length +
-				 sym_op->auth.digest.length);
+				 sess->digest_length);
 		sge->length = sym_op->auth.data.length;
 		sge++;
 		old_digest = (uint8_t *)(sge + 1);
 		rte_memcpy(old_digest, sym_op->auth.digest.data,
-			   sym_op->auth.digest.length);
-		memset(sym_op->auth.digest.data, 0, sym_op->auth.digest.length);
+			   sess->digest_length);
+		memset(sym_op->auth.digest.data, 0, sess->digest_length);
 		DPAA2_SET_FLE_ADDR(sge, DPAA2_VADDR_TO_IOVA(old_digest));
-		sge->length = sym_op->auth.digest.length;
+		sge->length = sess->digest_length;
 		fle->length = sym_op->auth.data.length +
-				sym_op->auth.digest.length;
+				sess->digest_length;
 		DPAA2_SET_FLE_FIN(sge);
 	}
 	DPAA2_SET_FLE_FIN(fle);
@@ -912,6 +912,8 @@ dpaa2_sec_auth_init(struct rte_cryptodev *dev,
 	authdata.key_enc_flags = 0;
 	authdata.key_type = RTA_DATA_IMM;
 
+	session->digest_length = xform->auth.digest_length;
+
 	switch (xform->auth.algo) {
 	case RTE_CRYPTO_AUTH_SHA1_HMAC:
 		authdata.algtype = OP_ALG_ALGSEL_SHA1;
@@ -1063,6 +1065,8 @@ dpaa2_sec_aead_init(struct rte_cryptodev *dev,
 	authdata.keylen = session->auth_key.length;
 	authdata.key_enc_flags = 0;
 	authdata.key_type = RTA_DATA_IMM;
+
+	session->digest_length = auth_xform->digest_length;
 
 	switch (auth_xform->algo) {
 	case RTE_CRYPTO_AUTH_SHA1_HMAC:

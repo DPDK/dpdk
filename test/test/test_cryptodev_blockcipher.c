@@ -325,7 +325,6 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 
 		sym_op->auth.data.offset = 0;
 		sym_op->auth.data.length = tdata->ciphertext.len;
-		sym_op->auth.digest.length = digest_len;
 	}
 
 	/* create session for sessioned op */
@@ -475,7 +474,7 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 						sym_op->auth.data.offset;
 			changed_len = sym_op->auth.data.length;
 			if (t->op_mask & BLOCKCIPHER_TEST_OP_AUTH_GEN)
-				changed_len += sym_op->auth.digest.length;
+				changed_len += digest_len;
 		} else {
 			/* cipher-only */
 			head_unchanged_len = rte_pktmbuf_headroom(mbuf) +
@@ -517,7 +516,7 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 		}
 
 		if (t->op_mask & BLOCKCIPHER_TEST_OP_AUTH_GEN)
-			changed_len += sym_op->auth.digest.length;
+			changed_len += digest_len;
 
 		if (t->op_mask & BLOCKCIPHER_TEST_OP_AUTH_VERIFY) {
 			/* white-box test: PMDs use some of the

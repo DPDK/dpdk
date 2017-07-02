@@ -191,6 +191,7 @@ typedef struct dpaa2_sec_session_entry {
 		uint16_t length; /**< IV length in bytes */
 		uint16_t offset; /**< IV offset in bytes */
 	} iv;
+	uint16_t digest_length;
 	uint8_t status;
 	union {
 		struct dpaa2_sec_cipher_ctxt cipher_ctxt;

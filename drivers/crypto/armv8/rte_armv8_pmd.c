@@ -452,6 +452,9 @@ armv8_crypto_set_session_chained_parameters(struct armv8_crypto_session *sess,
 		return -EINVAL;
 	}
 
+	/* Set the digest length */
+	sess->auth.digest_length = auth_xform->auth.digest_length;
+
 	/* Verify supported key lengths and extract proper algorithm */
 	switch (cipher_xform->cipher.key.length << 3) {
 	case 128:
@@ -649,7 +652,7 @@ process_armv8_chained_op
 		}
 	} else {
 		adst = (uint8_t *)rte_pktmbuf_append(m_asrc,
-				op->sym->auth.digest.length);
+				sess->auth.digest_length);
 	}
 
 	arg.cipher.iv = rte_crypto_op_ctod_offset(op, uint8_t *,
@@ -667,12 +670,12 @@ process_armv8_chained_op
 	op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
 	if (sess->auth.operation == RTE_CRYPTO_AUTH_OP_VERIFY) {
 		if (memcmp(adst, op->sym->auth.digest.data,
-				op->sym->auth.digest.length) != 0) {
+				sess->auth.digest_length) != 0) {
 			op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
 		}
 		/* Trim area used for digest from mbuf. */
 		rte_pktmbuf_trim(m_asrc,
-				op->sym->auth.digest.length);
+				sess->auth.digest_length);
 	}
 }
 
