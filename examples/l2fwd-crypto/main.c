@@ -1556,7 +1556,8 @@ check_all_ports_link_status(uint8_t port_num, uint32_t port_mask)
 
 /* Check if device has to be HW/SW or any */
 static int
-check_type(struct l2fwd_crypto_options *options, struct rte_cryptodev_info *dev_info)
+check_type(const struct l2fwd_crypto_options *options,
+		const struct rte_cryptodev_info *dev_info)
 {
 	if (options->type == CDEV_TYPE_HW &&
 			(dev_info->feature_flags & RTE_CRYPTODEV_FF_HW_ACCELERATED))
@@ -1568,6 +1569,74 @@ check_type(struct l2fwd_crypto_options *options, struct rte_cryptodev_info *dev_
 		return 0;
 
 	return -1;
+}
+
+static const struct rte_cryptodev_capabilities *
+check_device_support_cipher_algo(const struct l2fwd_crypto_options *options,
+		const struct rte_cryptodev_info *dev_info,
+		uint8_t cdev_id)
+{
+	unsigned int i = 0;
+	const struct rte_cryptodev_capabilities *cap = &dev_info->capabilities[0];
+	enum rte_crypto_cipher_algorithm cap_cipher_algo;
+	enum rte_crypto_cipher_algorithm opt_cipher_algo =
+					options->cipher_xform.cipher.algo;
+
+	while (cap->op != RTE_CRYPTO_OP_TYPE_UNDEFINED) {
+		cap_cipher_algo = cap->sym.cipher.algo;
+		if (cap->sym.xform_type == RTE_CRYPTO_SYM_XFORM_CIPHER) {
+			if (cap_cipher_algo == opt_cipher_algo) {
+				if (check_type(options, dev_info) == 0)
+					break;
+			}
+		}
+		cap = &dev_info->capabilities[++i];
+	}
+
+	if (cap->op == RTE_CRYPTO_OP_TYPE_UNDEFINED) {
+		printf("Algorithm %s not supported by cryptodev %u"
+			" or device not of preferred type (%s)\n",
+			rte_crypto_cipher_algorithm_strings[opt_cipher_algo],
+			cdev_id,
+			options->string_type);
+		return NULL;
+	}
+
+	return cap;
+}
+
+static const struct rte_cryptodev_capabilities *
+check_device_support_auth_algo(const struct l2fwd_crypto_options *options,
+		const struct rte_cryptodev_info *dev_info,
+		uint8_t cdev_id)
+{
+	unsigned int i = 0;
+	const struct rte_cryptodev_capabilities *cap = &dev_info->capabilities[0];
+	enum rte_crypto_auth_algorithm cap_auth_algo;
+	enum rte_crypto_auth_algorithm opt_auth_algo =
+					options->auth_xform.auth.algo;
+
+	while (cap->op != RTE_CRYPTO_OP_TYPE_UNDEFINED) {
+		cap_auth_algo = cap->sym.auth.algo;
+		if (cap->sym.xform_type == RTE_CRYPTO_SYM_XFORM_AUTH) {
+			if (cap_auth_algo == opt_auth_algo) {
+				if (check_type(options, dev_info) == 0)
+					break;
+			}
+		}
+		cap = &dev_info->capabilities[++i];
+	}
+
+	if (cap->op == RTE_CRYPTO_OP_TYPE_UNDEFINED) {
+		printf("Algorithm %s not supported by cryptodev %u"
+			" or device not of preferred type (%s)\n",
+			rte_crypto_auth_algorithm_strings[opt_auth_algo],
+			cdev_id,
+			options->string_type);
+		return NULL;
+	}
+
+	return cap;
 }
 
 /* Check if the device is enabled by cryptodev_mask */
@@ -1647,12 +1716,8 @@ static int
 initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 		uint8_t *enabled_cdevs)
 {
-	unsigned i, cdev_id, cdev_count, enabled_cdev_count = 0;
+	unsigned int cdev_id, cdev_count, enabled_cdev_count = 0;
 	const struct rte_cryptodev_capabilities *cap;
-	enum rte_crypto_auth_algorithm cap_auth_algo;
-	enum rte_crypto_auth_algorithm opt_auth_algo;
-	enum rte_crypto_cipher_algorithm cap_cipher_algo;
-	enum rte_crypto_cipher_algorithm opt_cipher_algo;
 	int retval;
 
 	cdev_count = rte_cryptodev_count();
@@ -1685,29 +1750,10 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 				options->xform_chain == L2FWD_CRYPTO_HASH_CIPHER ||
 				options->xform_chain == L2FWD_CRYPTO_CIPHER_ONLY) {
 			/* Check if device supports cipher algo */
-			i = 0;
-			opt_cipher_algo = options->cipher_xform.cipher.algo;
-			cap = &dev_info.capabilities[i];
-			while (cap->op != RTE_CRYPTO_OP_TYPE_UNDEFINED) {
-				cap_cipher_algo = cap->sym.cipher.algo;
-				if (cap->sym.xform_type ==
-						RTE_CRYPTO_SYM_XFORM_CIPHER) {
-					if (cap_cipher_algo == opt_cipher_algo) {
-						if (check_type(options, &dev_info) == 0)
-							break;
-					}
-				}
-				cap = &dev_info.capabilities[++i];
-			}
-
-			if (cap->op == RTE_CRYPTO_OP_TYPE_UNDEFINED) {
-				printf("Algorithm %s not supported by cryptodev %u"
-					" or device not of preferred type (%s)\n",
-					rte_crypto_cipher_algorithm_strings[opt_cipher_algo],
-					cdev_id,
-					options->string_type);
+			cap = check_device_support_cipher_algo(options, &dev_info,
+							cdev_id);
+			if (cap == NULL)
 				continue;
-			}
 
 			options->block_size = cap->sym.cipher.block_size;
 
@@ -1762,27 +1808,10 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 				options->xform_chain == L2FWD_CRYPTO_HASH_CIPHER ||
 				options->xform_chain == L2FWD_CRYPTO_HASH_ONLY) {
 			/* Check if device supports auth algo */
-			i = 0;
-			opt_auth_algo = options->auth_xform.auth.algo;
-			cap = &dev_info.capabilities[i];
-			while (cap->op != RTE_CRYPTO_OP_TYPE_UNDEFINED) {
-				cap_auth_algo = cap->sym.auth.algo;
-				if ((cap->sym.xform_type == RTE_CRYPTO_SYM_XFORM_AUTH) &&
-						(cap_auth_algo == opt_auth_algo) &&
-						(check_type(options, &dev_info) == 0)) {
-					break;
-				}
-				cap = &dev_info.capabilities[++i];
-			}
-
-			if (cap->op == RTE_CRYPTO_OP_TYPE_UNDEFINED) {
-				printf("Algorithm %s not supported by cryptodev %u"
-					" or device not of preferred type (%s)\n",
-					rte_crypto_auth_algorithm_strings[opt_auth_algo],
-					cdev_id,
-					options->string_type);
+			cap = check_device_support_auth_algo(options, &dev_info,
+							cdev_id);
+			if (cap == NULL)
 				continue;
-			}
 
 			check_iv_param(&cap->sym.auth.iv_size,
 					options->auth_iv_param,
