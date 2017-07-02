@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2015-2016 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2015-2017 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -88,6 +88,10 @@ enum cdev_type {
 #define MAX_KEY_SIZE 128
 #define MAX_PKT_BURST 32
 #define BURST_TX_DRAIN_US 100 /* TX drain every ~100us */
+
+#define MAXIMUM_IV_LENGTH	16
+#define IV_OFFSET		(sizeof(struct rte_crypto_op) + \
+				sizeof(struct rte_crypto_sym_op))
 
 /*
  * Configurable number of RX/TX ring descriptors
@@ -480,8 +484,14 @@ l2fwd_simple_crypto_enqueue(struct rte_mbuf *m,
 	}
 
 	if (cparams->do_cipher) {
-		op->sym->cipher.iv.data = cparams->iv.data;
-		op->sym->cipher.iv.phys_addr = cparams->iv.phys_addr;
+		uint8_t *iv_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
+							IV_OFFSET);
+		/* Copy IV at the end of the crypto operation */
+		rte_memcpy(iv_ptr, cparams->iv.data, cparams->iv.length);
+
+		op->sym->cipher.iv.data = iv_ptr;
+		op->sym->cipher.iv.phys_addr =
+				rte_crypto_op_ctophys_offset(op, IV_OFFSET);
 		op->sym->cipher.iv.length = cparams->iv.length;
 
 		/* For wireless algorithms, offset/length must be in bits */
@@ -1950,7 +1960,6 @@ reserve_key_memory(struct l2fwd_crypto_options *options)
 	options->iv.data = rte_malloc("iv", MAX_KEY_SIZE, 0);
 	if (options->iv.data == NULL)
 		rte_exit(EXIT_FAILURE, "Failed to allocate memory for IV");
-	options->iv.phys_addr = rte_malloc_virt2phy(options->iv.data);
 
 	options->aad.data = rte_malloc("aad", MAX_KEY_SIZE, 0);
 	if (options->aad.data == NULL)
@@ -1993,7 +2002,7 @@ main(int argc, char **argv)
 
 	/* create crypto op pool */
 	l2fwd_crypto_op_pool = rte_crypto_op_pool_create("crypto_op_pool",
-			RTE_CRYPTO_OP_TYPE_SYMMETRIC, NB_MBUF, 128, 0,
+			RTE_CRYPTO_OP_TYPE_SYMMETRIC, NB_MBUF, 128, MAXIMUM_IV_LENGTH,
 			rte_socket_id());
 	if (l2fwd_crypto_op_pool == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot create crypto op pool\n");
