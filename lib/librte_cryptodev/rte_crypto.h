@@ -127,7 +127,7 @@ struct rte_crypto_op {
 		struct rte_crypto_sym_op sym[0];
 		/**< Symmetric operation parameters */
 	}; /**< operation specific parameters */
-} __rte_cache_aligned;
+};
 
 /**
  * Reset the fields of a crypto operation to their default values.

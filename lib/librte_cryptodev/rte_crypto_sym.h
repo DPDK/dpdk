@@ -640,7 +640,7 @@ struct rte_crypto_sym_op {
 		} aad;
 		/**< Additional authentication parameters */
 	} auth;
-} __rte_cache_aligned;
+};
 
 
 /**
