@@ -1,5 +1,5 @@
 ..  BSD LICENSE
-    Copyright(c) 2015 Intel Corporation. All rights reserved.
+    Copyright(c) 2015-2017 Intel Corporation. All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following conditions
@@ -76,8 +76,8 @@ Installation
 To build DPDK with the AESNI_MB_PMD the user is required to download the multi-buffer
 library from `here <https://github.com/01org/intel-ipsec-mb>`_
 and compile it on their user system before building DPDK.
-The latest version of the library supported by this PMD is v0.45, which
-can be downloaded in `<https://github.com/01org/intel-ipsec-mb/archive/v0.45.zip>`_.
+The latest version of the library supported by this PMD is v0.46, which
+can be downloaded in `<https://github.com/01org/intel-ipsec-mb/archive/v0.46.zip>`_.
 
 .. code-block:: console
 
@@ -95,7 +95,7 @@ and the Multi-Buffer library version supported by them:
    =============  ============================
    2.2 - 16.11    0.43 - 0.44
    17.02          0.44
-   17.05          0.45
+   17.05+         0.45+
    =============  ============================
 
 
@@ -131,3 +131,16 @@ Example:
 .. code-block:: console
 
     ./l2fwd-crypto -l 6 -n 4 --vdev="crypto_aesni_mb,socket_id=1,max_nb_sessions=128"
+
+Extra notes
+-----------
+
+For AES Counter mode (AES-CTR), the library supports two different sizes for Initialization
+Vector (IV):
+
+* 12 bytes: used mainly for IPSec, as it requires 12 bytes from the user, which internally
+  are appended the counter block (4 bytes), which is set to 1 for the first block
+  (no padding required from the user)
+
+* 16 bytes: when passing 16 bytes, the library will take them and use the last 4 bytes
+  as the initial counter block for the first block.

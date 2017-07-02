@@ -227,9 +227,9 @@ static const struct rte_cryptodev_capabilities aesni_mb_pmd_capabilities[] = {
 					.increment = 8
 				},
 				.iv_size = {
-					.min = 16,
+					.min = 12,
 					.max = 16,
-					.increment = 0
+					.increment = 4
 				}
 			}, }
 		}, }
