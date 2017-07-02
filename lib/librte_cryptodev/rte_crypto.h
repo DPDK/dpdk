@@ -122,9 +122,6 @@ struct rte_crypto_op {
 	phys_addr_t phys_addr;
 	/**< physical address of crypto operation */
 
-	void *opaque_data;
-	/**< Opaque pointer for user data */
-
 	RTE_STD_C11
 	union {
 		struct rte_crypto_sym_op *sym;
@@ -158,8 +155,6 @@ __rte_crypto_op_reset(struct rte_crypto_op *op, enum rte_crypto_op_type type)
 	default:
 		break;
 	}
-
-	op->opaque_data = NULL;
 }
 
 /**

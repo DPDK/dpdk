@@ -363,8 +363,7 @@ The operation structure includes the operation type, the operation status
 and the session type (session-based/less), a reference to the operation
 specific data, which can vary in size and content depending on the operation
 being provisioned. It also contains the source mempool for the operation,
-if it allocate from a mempool. Finally an opaque pointer for user specific
-data is provided.
+if it allocated from a mempool.
 
 If Crypto operations are allocated from a Crypto operation mempool, see next
 section, there is also the ability to allocate private memory with the

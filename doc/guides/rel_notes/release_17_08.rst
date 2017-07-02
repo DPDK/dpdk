@@ -98,6 +98,7 @@ New Features
   * Added field ``rte_crypto_op_sess_type``.
   * Enumerations ``rte_crypto_op_status`` and ``rte_crypto_op_type``
     have been modified to be uint8_t values.
+  * Removed the field ``opaque_data``.
 
 
 Resolved Issues
