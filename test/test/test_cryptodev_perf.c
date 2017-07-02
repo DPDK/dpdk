@@ -2704,10 +2704,12 @@ test_perf_create_snow3g_session(uint8_t dev_id, enum chain_mode chain,
 	auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_GENERATE;
 	auth_xform.auth.algo = auth_algo;
 
-	auth_xform.auth.add_auth_data_length = SNOW3G_CIPHER_IV_LENGTH;
 	auth_xform.auth.key.data = snow3g_hash_key;
 	auth_xform.auth.key.length =  get_auth_key_max_length(auth_algo);
 	auth_xform.auth.digest_length = get_auth_digest_length(auth_algo);
+	/* Auth IV will be after cipher IV */
+	auth_xform.auth.iv.offset = IV_OFFSET + SNOW3G_CIPHER_IV_LENGTH;
+	auth_xform.auth.iv.length = SNOW3G_CIPHER_IV_LENGTH;
 
 	switch (chain) {
 	case CIPHER_HASH:
@@ -2969,10 +2971,6 @@ test_perf_set_crypto_op_snow3g(struct rte_crypto_op *op, struct rte_mbuf *m,
 	op->sym->auth.digest.phys_addr =
 				rte_pktmbuf_mtophys_offset(m, data_len);
 	op->sym->auth.digest.length = digest_len;
-	op->sym->auth.aad.data = iv_ptr;
-	op->sym->auth.aad.phys_addr = rte_crypto_op_ctophys_offset(op,
-			IV_OFFSET);
-	op->sym->auth.aad.length = SNOW3G_CIPHER_IV_LENGTH;
 
 	/* Data lengths/offsets Parameters */
 	op->sym->auth.data.offset = 0;
@@ -3017,10 +3015,15 @@ test_perf_set_crypto_op_snow3g_hash(struct rte_crypto_op *op,
 		unsigned data_len,
 		unsigned digest_len)
 {
+	uint8_t *iv_ptr = rte_crypto_op_ctod_offset(op,
+			uint8_t *, IV_OFFSET);
+
 	if (rte_crypto_op_attach_sym_session(op, sess) != 0) {
 		rte_crypto_op_free(op);
 		return NULL;
 	}
+
+	rte_memcpy(iv_ptr, snow3g_iv, SNOW3G_CIPHER_IV_LENGTH);
 
 	/* Authentication Parameters */
 
@@ -3031,13 +3034,6 @@ test_perf_set_crypto_op_snow3g_hash(struct rte_crypto_op *op,
 				rte_pktmbuf_mtophys_offset(m, data_len +
 					SNOW3G_CIPHER_IV_LENGTH);
 	op->sym->auth.digest.length = digest_len;
-	op->sym->auth.aad.data = rte_crypto_op_ctod_offset(op,
-			uint8_t *, IV_OFFSET);
-	op->sym->auth.aad.phys_addr = rte_crypto_op_ctophys_offset(op,
-			IV_OFFSET);
-	op->sym->auth.aad.length = SNOW3G_CIPHER_IV_LENGTH;
-	rte_memcpy(op->sym->auth.aad.data, snow3g_iv,
-			SNOW3G_CIPHER_IV_LENGTH);
 
 	/* Data lengths/offsets Parameters */
 	op->sym->auth.data.offset = 0;

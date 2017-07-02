@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2016 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2016-2017 Intel Corporation. All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -91,7 +91,8 @@ struct snow3g_session {
 	enum rte_crypto_auth_operation auth_op;
 	sso_snow3g_key_schedule_t pKeySched_cipher;
 	sso_snow3g_key_schedule_t pKeySched_hash;
-	uint16_t iv_offset;
+	uint16_t cipher_iv_offset;
+	uint16_t auth_iv_offset;
 } __rte_cache_aligned;
 
 

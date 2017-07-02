@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2016 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2016-2017 Intel Corporation. All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -42,7 +42,7 @@ struct snow3g_hash_test_data {
 	struct {
 		uint8_t data[64];
 		unsigned len;
-	} aad;
+	} auth_iv;
 
 	struct {
 		uint8_t data[2056];
@@ -67,7 +67,7 @@ struct snow3g_hash_test_data snow3g_hash_test_case_1 = {
 		},
 	.len = 16
 	},
-	.aad = {
+	.auth_iv = {
 		.data = {
 			0x14, 0x79, 0x3E, 0x41, 0x03, 0x97, 0xE8, 0xFD,
 			0x94, 0x79, 0x3E, 0x41, 0x03, 0x97, 0x68, 0xFD
@@ -102,7 +102,7 @@ struct snow3g_hash_test_data snow3g_hash_test_case_2 = {
 		},
 	.len = 16
 	},
-	.aad = {
+	.auth_iv = {
 		.data = {
 			0x29, 0x6F, 0x39, 0x3C, 0x6B, 0x22, 0x77, 0x37,
 			0xA9, 0x6F, 0x39, 0x3C, 0x6B, 0x22, 0xF7, 0x37
@@ -147,7 +147,7 @@ struct snow3g_hash_test_data snow3g_hash_test_case_3 = {
 		},
 	.len = 16
 	},
-	.aad = {
+	.auth_iv = {
 		.data = {
 			0x29, 0x6F, 0x39, 0x3C, 0x6B, 0x22, 0x77, 0x37,
 			0xA9, 0x6F, 0x39, 0x3C, 0x6B, 0x22, 0xF7, 0x37
@@ -433,7 +433,7 @@ struct snow3g_hash_test_data snow3g_hash_test_case_4 = {
 		},
 	.len = 16
 	},
-	.aad = {
+	.auth_iv = {
 		.data = {
 			0x38, 0xA6, 0xF0, 0x56, 0x05, 0xD2, 0xEC, 0x49,
 			0x38, 0xA6, 0xF0, 0x56, 0x05, 0xD2, 0xEC, 0x49,
@@ -465,7 +465,7 @@ struct snow3g_hash_test_data snow3g_hash_test_case_5 = {
 		},
 		.len = 16
 	},
-	.aad = {
+	.auth_iv = {
 		.data = {
 			0x3E, 0xDC, 0x87, 0xE2, 0xA4, 0xF2, 0xD8, 0xE2,
 			0xBE, 0xDC, 0x87, 0xE2, 0xA4, 0xF2, 0x58, 0xE2
@@ -498,7 +498,7 @@ struct snow3g_hash_test_data snow3g_hash_test_case_6 = {
 		},
 		.len = 16
 	},
-	.aad = {
+	.auth_iv = {
 		.data = {
 			0x36, 0xAF, 0x61, 0x44, 0x98, 0x38, 0xF0, 0x3A,
 			0xB6, 0xAF, 0x61, 0x44, 0x98, 0x38, 0x70, 0x3A

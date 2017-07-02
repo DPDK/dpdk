@@ -56,12 +56,12 @@ static const struct rte_cryptodev_capabilities snow3g_pmd_capabilities[] = {
 					.max = 4,
 					.increment = 0
 				},
-				.aad_size = {
+				.iv_size = {
 					.min = 16,
 					.max = 16,
 					.increment = 0
 				},
-				.iv_size = { 0 },
+				.aad_size = { 0 }
 			}, }
 		}, }
 	},

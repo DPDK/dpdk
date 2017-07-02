@@ -17,7 +17,7 @@
  *  qat-linux@intel.com
  *
  *  BSD LICENSE
- *  Copyright(c) 2015-2016 Intel Corporation.
+ *  Copyright(c) 2015-2017 Intel Corporation.
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions
  *  are met:
@@ -837,8 +837,7 @@ int qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
 				0, ICP_QAT_HW_SNOW_3G_UEA2_IV_SZ);
 		cdesc->cd_cur_ptr += sizeof(struct icp_qat_hw_cipher_config) +
 				authkeylen + ICP_QAT_HW_SNOW_3G_UEA2_IV_SZ;
-		auth_param->hash_state_sz =
-				RTE_ALIGN_CEIL(add_auth_data_length, 16) >> 3;
+		auth_param->hash_state_sz = ICP_QAT_HW_SNOW_3G_UEA2_IV_SZ >> 3;
 		break;
 	case ICP_QAT_HW_AUTH_ALGO_ZUC_3G_128_EIA3:
 		hash->auth_config.config =
@@ -854,8 +853,7 @@ int qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
 		memcpy(cdesc->cd_cur_ptr + state1_size, authkey, authkeylen);
 		cdesc->cd_cur_ptr += state1_size + state2_size
 			+ ICP_QAT_HW_ZUC_3G_EEA3_IV_SZ;
-		auth_param->hash_state_sz =
-				RTE_ALIGN_CEIL(add_auth_data_length, 16) >> 3;
+		auth_param->hash_state_sz = ICP_QAT_HW_ZUC_3G_EEA3_IV_SZ >> 3;
 
 		break;
 	case ICP_QAT_HW_AUTH_ALGO_MD5:

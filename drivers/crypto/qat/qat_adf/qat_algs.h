@@ -17,7 +17,7 @@
  *  qat-linux@intel.com
  *
  *  BSD LICENSE
- *  Copyright(c) 2015-2016 Intel Corporation.
+ *  Copyright(c) 2015-2017 Intel Corporation.
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions
  *  are met:
@@ -130,7 +130,11 @@ struct qat_session {
 	struct {
 		uint16_t offset;
 		uint16_t length;
-	} iv;
+	} cipher_iv;
+	struct {
+		uint16_t offset;
+		uint16_t length;
+	} auth_iv;
 	rte_spinlock_t lock;	/* protects this struct */
 };
 

@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2016 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2016-2017 Intel Corporation. All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -92,7 +92,8 @@ struct kasumi_session {
 	sso_kasumi_key_sched_t pKeySched_hash;
 	enum kasumi_operation op;
 	enum rte_crypto_auth_operation auth_op;
-	uint16_t iv_offset;
+	uint16_t cipher_iv_offset;
+	uint16_t auth_iv_offset;
 } __rte_cache_aligned;
 
 

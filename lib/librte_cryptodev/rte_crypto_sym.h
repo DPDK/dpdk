@@ -373,9 +373,6 @@ struct rte_crypto_auth_xform {
 	 * This field must be specified when the hash algorithm is one of the
 	 * following:
 	 *
-	 * - For SNOW 3G (@ref RTE_CRYPTO_AUTH_SNOW3G_UIA2), this is the
-	 *   length of the IV (which should be 16).
-	 *
 	 * - For GCM (@ref RTE_CRYPTO_AUTH_AES_GCM).  In this case, this is
 	 *   the length of the Additional Authenticated Data (called A, in NIST
 	 *   SP800-38D).
@@ -617,9 +614,7 @@ struct rte_crypto_sym_op {
 			uint8_t *data;
 			/**< Pointer to Additional Authenticated Data (AAD)
 			 * needed for authenticated cipher mechanisms (CCM and
-			 * GCM), and to the IV for SNOW 3G authentication
-			 * (@ref RTE_CRYPTO_AUTH_SNOW3G_UIA2). For other
-			 * authentication mechanisms this pointer is ignored.
+			 * GCM).
 			 *
 			 * The length of the data pointed to by this field is
 			 * set up for the session in the @ref

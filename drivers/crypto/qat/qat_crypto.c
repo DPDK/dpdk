@@ -298,8 +298,8 @@ qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
 	/* Get cipher xform from crypto xform chain */
 	cipher_xform = qat_get_cipher_xform(xform);
 
-	session->iv.offset = cipher_xform->iv.offset;
-	session->iv.length = cipher_xform->iv.length;
+	session->cipher_iv.offset = cipher_xform->iv.offset;
+	session->cipher_iv.length = cipher_xform->iv.length;
 
 	switch (cipher_xform->algo) {
 	case RTE_CRYPTO_CIPHER_AES_CBC:
@@ -584,6 +584,9 @@ qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev,
 	}
 	cipher_xform = qat_get_cipher_xform(xform);
 
+	session->auth_iv.offset = auth_xform->iv.offset;
+	session->auth_iv.length = auth_xform->iv.length;
+
 	if ((session->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_GALOIS_128) ||
 			(session->qat_hash_alg ==
 				ICP_QAT_HW_AUTH_ALGO_GALOIS_64))  {
@@ -646,7 +649,7 @@ qat_bpicipher_preprocess(struct qat_session *ctx,
 		else
 			/* runt block, i.e. less than one full block */
 			iv = rte_crypto_op_ctod_offset(op, uint8_t *,
-					ctx->iv.offset);
+					ctx->cipher_iv.offset);
 
 #ifdef RTE_LIBRTE_PMD_QAT_DEBUG_TX
 		rte_hexdump(stdout, "BPI: src before pre-process:", last_block,
@@ -702,7 +705,7 @@ qat_bpicipher_postprocess(struct qat_session *ctx,
 		else
 			/* runt block, i.e. less than one full block */
 			iv = rte_crypto_op_ctod_offset(op, uint8_t *,
-					ctx->iv.offset);
+					ctx->cipher_iv.offset);
 
 #ifdef RTE_LIBRTE_PMD_QAT_DEBUG_RX
 		rte_hexdump(stdout, "BPI: src before post-process:", last_block,
@@ -903,8 +906,7 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
 	uint32_t min_ofs = 0;
 	uint64_t src_buf_start = 0, dst_buf_start = 0;
 	uint8_t do_sgl = 0;
-	uint8_t *iv_ptr;
-
+	uint8_t *cipher_iv_ptr = NULL;
 
 #ifdef RTE_LIBRTE_PMD_QAT_DEBUG_TX
 	if (unlikely(op->type != RTE_CRYPTO_OP_TYPE_SYMMETRIC)) {
@@ -977,21 +979,21 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
 			cipher_ofs = op->sym->cipher.data.offset;
 		}
 
-		iv_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
-					ctx->iv.offset);
+		cipher_iv_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
+					ctx->cipher_iv.offset);
 		/* copy IV into request if it fits */
-		if (ctx->iv.length <=
+		if (ctx->cipher_iv.length <=
 				sizeof(cipher_param->u.cipher_IV_array)) {
 			rte_memcpy(cipher_param->u.cipher_IV_array,
-					iv_ptr,
-					ctx->iv.length);
+					cipher_iv_ptr,
+					ctx->cipher_iv.length);
 		} else {
 			ICP_QAT_FW_LA_CIPH_IV_FLD_FLAG_SET(
 					qat_req->comn_hdr.serv_specif_flags,
 					ICP_QAT_FW_CIPH_IV_64BIT_PTR);
 			cipher_param->u.s.cipher_IV_ptr =
 					rte_crypto_op_ctophys_offset(op,
-						ctx->iv.offset);
+						ctx->cipher_iv.offset);
 		}
 		min_ofs = cipher_ofs;
 	}
@@ -1022,7 +1024,10 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
 					auth_len = auth_len + auth_ofs + 1;
 					auth_ofs = 0;
 				}
-			}
+			} else
+				auth_param->u1.aad_adr =
+					rte_crypto_op_ctophys_offset(op,
+							ctx->auth_iv.offset);
 
 		} else if (ctx->qat_hash_alg ==
 					ICP_QAT_HW_AUTH_ALGO_GALOIS_128 ||
@@ -1030,15 +1035,16 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
 					ICP_QAT_HW_AUTH_ALGO_GALOIS_64) {
 			auth_ofs = op->sym->cipher.data.offset;
 			auth_len = op->sym->cipher.data.length;
+
+			auth_param->u1.aad_adr = op->sym->auth.aad.phys_addr;
 		} else {
 			auth_ofs = op->sym->auth.data.offset;
 			auth_len = op->sym->auth.data.length;
+
 		}
 		min_ofs = auth_ofs;
 
 		auth_param->auth_res_addr = op->sym->auth.digest.phys_addr;
-
-		auth_param->u1.aad_adr = op->sym->auth.aad.phys_addr;
 
 	}
 
@@ -1147,7 +1153,7 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
 
 	if (ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_GALOIS_128 ||
 			ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_GALOIS_64) {
-		if (ctx->iv.length == 12) {
+		if (ctx->cipher_iv.length == 12) {
 			/*
 			 * For GCM a 12 byte IV is allowed,
 			 * but we need to inform the f/w
@@ -1182,10 +1188,17 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
 			rte_pktmbuf_mtod(op->sym->m_src, uint8_t*),
 			rte_pktmbuf_data_len(op->sym->m_src));
 	if (do_cipher)
-		rte_hexdump(stdout, "iv:", iv_ptr,
-				ctx->iv.length);
+		rte_hexdump(stdout, "cipher iv:", cipher_iv_ptr,
+				ctx->cipher_iv.length);
 
 	if (do_auth) {
+		if (ctx->auth_iv.length) {
+			uint8_t *auth_iv_ptr = rte_crypto_op_ctod_offset(op,
+							uint8_t *,
+							ctx->auth_iv.offset);
+			rte_hexdump(stdout, "auth iv:", auth_iv_ptr,
+						ctx->auth_iv.length);
+		}
 		rte_hexdump(stdout, "digest:", op->sym->auth.digest.data,
 				op->sym->auth.digest.length);
 		rte_hexdump(stdout, "aad:", op->sym->auth.aad.data,

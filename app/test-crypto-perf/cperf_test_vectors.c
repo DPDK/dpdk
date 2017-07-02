@@ -488,12 +488,6 @@ cperf_test_vector_get_dummy(struct cperf_options *options)
 			t_vec->auth_key.data = NULL;
 			aad_alloc = 1;
 			break;
-		case RTE_CRYPTO_AUTH_SNOW3G_UIA2:
-		case RTE_CRYPTO_AUTH_KASUMI_F9:
-		case RTE_CRYPTO_AUTH_ZUC_EIA3:
-			t_vec->auth_key.data = auth_key;
-			aad_alloc = 1;
-			break;
 		case RTE_CRYPTO_AUTH_AES_GMAC:
 			/* auth key should be the same as cipher key */
 			t_vec->auth_key.data = cipher_key;

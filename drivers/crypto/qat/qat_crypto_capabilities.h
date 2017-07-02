@@ -258,12 +258,12 @@
 					.max = 4,			\
 					.increment = 0			\
 				},					\
-				.aad_size = {				\
+				.iv_size = {				\
 					.min = 16,			\
 					.max = 16,			\
 					.increment = 0			\
 				},					\
-				.iv_size = { 0 }			\
+				.aad_size = { 0 }			\
 			}, }						\
 		}, }							\
 	},								\
@@ -446,12 +446,12 @@
 					.max = 4,			\
 					.increment = 0			\
 				},					\
-				.aad_size = {				\
+				.iv_size = {				\
 					.min = 8,			\
 					.max = 8,			\
 					.increment = 0			\
 				},					\
-				.iv_size = { 0 }			\
+				.aad_size = { 0 }			\
 			}, }						\
 		}, }							\
 	},								\
@@ -574,12 +574,12 @@
 					.max = 4,			\
 					.increment = 0			\
 				},					\
-				.aad_size = {				\
+				.iv_size = {				\
 					.min = 16,			\
 					.max = 16,			\
 					.increment = 0			\
 				},					\
-				.iv_size = { 0 }			\
+				.aad_size = { 0 }			\
 			}, }						\
 		}, }							\
 	}

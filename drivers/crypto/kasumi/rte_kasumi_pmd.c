@@ -117,7 +117,7 @@ kasumi_set_session_parameters(struct kasumi_session *sess,
 		if (cipher_xform->cipher.algo != RTE_CRYPTO_CIPHER_KASUMI_F8)
 			return -EINVAL;
 
-		sess->iv_offset = cipher_xform->cipher.iv.offset;
+		sess->cipher_iv_offset = cipher_xform->cipher.iv.offset;
 		if (cipher_xform->cipher.iv.length != KASUMI_IV_LENGTH) {
 			KASUMI_LOG_ERR("Wrong IV length");
 			return -EINVAL;
@@ -133,6 +133,13 @@ kasumi_set_session_parameters(struct kasumi_session *sess,
 		if (auth_xform->auth.algo != RTE_CRYPTO_AUTH_KASUMI_F9)
 			return -EINVAL;
 		sess->auth_op = auth_xform->auth.op;
+
+		sess->auth_iv_offset = auth_xform->auth.iv.offset;
+		if (auth_xform->auth.iv.length != KASUMI_IV_LENGTH) {
+			KASUMI_LOG_ERR("Wrong IV length");
+			return -EINVAL;
+		}
+
 		/* Initialize key */
 		sso_kasumi_init_f9_key_sched(auth_xform->auth.key.data,
 				&sess->pKeySched_hash);
@@ -194,7 +201,7 @@ process_kasumi_cipher_op(struct rte_crypto_op **ops,
 			rte_pktmbuf_mtod(ops[i]->sym->m_src, uint8_t *) +
 				(ops[i]->sym->cipher.data.offset >> 3);
 		iv_ptr = rte_crypto_op_ctod_offset(ops[i], uint8_t *,
-				session->iv_offset);
+				session->cipher_iv_offset);
 		iv[i] = *((uint64_t *)(iv_ptr));
 		num_bytes[i] = ops[i]->sym->cipher.data.length >> 3;
 
@@ -227,7 +234,7 @@ process_kasumi_cipher_op_bit(struct rte_crypto_op *op,
 	}
 	dst = rte_pktmbuf_mtod(op->sym->m_dst, uint8_t *);
 	iv_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
-			session->iv_offset);
+			session->cipher_iv_offset);
 	iv = *((uint64_t *)(iv_ptr));
 	length_in_bits = op->sym->cipher.data.length;
 
@@ -246,6 +253,7 @@ process_kasumi_hash_op(struct rte_crypto_op **ops,
 	unsigned i;
 	uint8_t processed_ops = 0;
 	uint8_t *src, *dst;
+	uint8_t *iv_ptr;
 	uint32_t length_in_bits;
 	uint32_t num_bytes;
 	uint32_t shift_bits;
@@ -253,12 +261,6 @@ process_kasumi_hash_op(struct rte_crypto_op **ops,
 	uint8_t direction;
 
 	for (i = 0; i < num_ops; i++) {
-		if (unlikely(ops[i]->sym->auth.aad.length != KASUMI_IV_LENGTH)) {
-			ops[i]->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
-			KASUMI_LOG_ERR("aad");
-			break;
-		}
-
 		if (unlikely(ops[i]->sym->auth.digest.length != KASUMI_DIGEST_LENGTH)) {
 			ops[i]->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 			KASUMI_LOG_ERR("digest");
@@ -276,8 +278,9 @@ process_kasumi_hash_op(struct rte_crypto_op **ops,
 
 		src = rte_pktmbuf_mtod(ops[i]->sym->m_src, uint8_t *) +
 				(ops[i]->sym->auth.data.offset >> 3);
-		/* IV from AAD */
-		iv = *((uint64_t *)(ops[i]->sym->auth.aad.data));
+		iv_ptr = rte_crypto_op_ctod_offset(ops[i], uint8_t *,
+				session->auth_iv_offset);
+		iv = *((uint64_t *)(iv_ptr));
 		/* Direction from next bit after end of message */
 		num_bytes = (length_in_bits >> 3) + 1;
 		shift_bits = (BYTE_LEN - 1 - length_in_bits) % BYTE_LEN;

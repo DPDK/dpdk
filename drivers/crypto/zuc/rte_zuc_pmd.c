@@ -120,7 +120,7 @@ zuc_set_session_parameters(struct zuc_session *sess,
 			ZUC_LOG_ERR("Wrong IV length");
 			return -EINVAL;
 		}
-		sess->iv_offset = cipher_xform->cipher.iv.offset;
+		sess->cipher_iv_offset = cipher_xform->cipher.iv.offset;
 
 		/* Copy the key */
 		memcpy(sess->pKey_cipher, cipher_xform->cipher.key.data,
@@ -132,6 +132,13 @@ zuc_set_session_parameters(struct zuc_session *sess,
 		if (auth_xform->auth.algo != RTE_CRYPTO_AUTH_ZUC_EIA3)
 			return -EINVAL;
 		sess->auth_op = auth_xform->auth.op;
+
+		if (auth_xform->auth.iv.length != ZUC_IV_KEY_LENGTH) {
+			ZUC_LOG_ERR("Wrong IV length");
+			return -EINVAL;
+		}
+		sess->auth_iv_offset = auth_xform->auth.iv.offset;
+
 		/* Copy the key */
 		memcpy(sess->pKey_hash, auth_xform->auth.key.data,
 				ZUC_IV_KEY_LENGTH);
@@ -214,7 +221,7 @@ process_zuc_cipher_op(struct rte_crypto_op **ops,
 			rte_pktmbuf_mtod(ops[i]->sym->m_src, uint8_t *) +
 				(ops[i]->sym->cipher.data.offset >> 3);
 		iv[i] = rte_crypto_op_ctod_offset(ops[i], uint8_t *,
-				session->iv_offset);
+				session->cipher_iv_offset);
 		num_bytes[i] = ops[i]->sym->cipher.data.length >> 3;
 
 		cipher_keys[i] = session->pKey_cipher;
@@ -239,14 +246,9 @@ process_zuc_hash_op(struct rte_crypto_op **ops,
 	uint8_t *src;
 	uint32_t *dst;
 	uint32_t length_in_bits;
+	uint8_t *iv;
 
 	for (i = 0; i < num_ops; i++) {
-		if (unlikely(ops[i]->sym->auth.aad.length != ZUC_IV_KEY_LENGTH)) {
-			ops[i]->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
-			ZUC_LOG_ERR("aad");
-			break;
-		}
-
 		if (unlikely(ops[i]->sym->auth.digest.length != ZUC_DIGEST_LENGTH)) {
 			ops[i]->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
 			ZUC_LOG_ERR("digest");
@@ -264,13 +266,15 @@ process_zuc_hash_op(struct rte_crypto_op **ops,
 
 		src = rte_pktmbuf_mtod(ops[i]->sym->m_src, uint8_t *) +
 				(ops[i]->sym->auth.data.offset >> 3);
+		iv = rte_crypto_op_ctod_offset(ops[i], uint8_t *,
+				session->auth_iv_offset);
 
 		if (session->auth_op == RTE_CRYPTO_AUTH_OP_VERIFY) {
 			dst = (uint32_t *)rte_pktmbuf_append(ops[i]->sym->m_src,
 					ops[i]->sym->auth.digest.length);
 
 			sso_zuc_eia3_1_buffer(session->pKey_hash,
-					ops[i]->sym->auth.aad.data, src,
+					iv, src,
 					length_in_bits,	dst);
 			/* Verify digest. */
 			if (memcmp(dst, ops[i]->sym->auth.digest.data,
@@ -284,7 +288,7 @@ process_zuc_hash_op(struct rte_crypto_op **ops,
 			dst = (uint32_t *)ops[i]->sym->auth.digest.data;
 
 			sso_zuc_eia3_1_buffer(session->pKey_hash,
-					ops[i]->sym->auth.aad.data, src,
+					iv, src,
 					length_in_bits, dst);
 		}
 		processed_ops++;

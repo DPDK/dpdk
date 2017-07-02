@@ -1775,7 +1775,7 @@ test_AES_chain_armv8_all(void)
 static int
 create_wireless_algo_hash_session(uint8_t dev_id,
 	const uint8_t *key, const uint8_t key_len,
-	const uint8_t aad_len, const uint8_t auth_len,
+	const uint8_t iv_len, const uint8_t auth_len,
 	enum rte_crypto_auth_operation op,
 	enum rte_crypto_auth_algorithm algo)
 {
@@ -1796,7 +1796,8 @@ create_wireless_algo_hash_session(uint8_t dev_id,
 	ut_params->auth_xform.auth.key.length = key_len;
 	ut_params->auth_xform.auth.key.data = hash_key;
 	ut_params->auth_xform.auth.digest_length = auth_len;
-	ut_params->auth_xform.auth.add_auth_data_length = aad_len;
+	ut_params->auth_xform.auth.iv.offset = IV_OFFSET;
+	ut_params->auth_xform.auth.iv.length = iv_len;
 	ut_params->sess = rte_cryptodev_sym_session_create(dev_id,
 				&ut_params->auth_xform);
 	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
@@ -1904,9 +1905,9 @@ create_wireless_algo_cipher_auth_session(uint8_t dev_id,
 		enum rte_crypto_auth_operation auth_op,
 		enum rte_crypto_auth_algorithm auth_algo,
 		enum rte_crypto_cipher_algorithm cipher_algo,
-		const uint8_t *key, const uint8_t key_len,
-		const uint8_t aad_len, const uint8_t auth_len,
-		uint8_t iv_len)
+		const uint8_t *key, uint8_t key_len,
+		uint8_t auth_iv_len, uint8_t auth_len,
+		uint8_t cipher_iv_len)
 
 {
 	uint8_t cipher_auth_key[key_len];
@@ -1925,7 +1926,9 @@ create_wireless_algo_cipher_auth_session(uint8_t dev_id,
 	/* Hash key = cipher key */
 	ut_params->auth_xform.auth.key.data = cipher_auth_key;
 	ut_params->auth_xform.auth.digest_length = auth_len;
-	ut_params->auth_xform.auth.add_auth_data_length = aad_len;
+	/* Auth IV will be after cipher IV */
+	ut_params->auth_xform.auth.iv.offset = IV_OFFSET + cipher_iv_len;
+	ut_params->auth_xform.auth.iv.length = auth_iv_len;
 
 	/* Setup Cipher Parameters */
 	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
@@ -1936,7 +1939,7 @@ create_wireless_algo_cipher_auth_session(uint8_t dev_id,
 	ut_params->cipher_xform.cipher.key.data = cipher_auth_key;
 	ut_params->cipher_xform.cipher.key.length = key_len;
 	ut_params->cipher_xform.cipher.iv.offset = IV_OFFSET;
-	ut_params->cipher_xform.cipher.iv.length = iv_len;
+	ut_params->cipher_xform.cipher.iv.length = cipher_iv_len;
 
 	TEST_HEXDUMP(stdout, "key:", key, key_len);
 
@@ -1961,9 +1964,9 @@ create_wireless_cipher_auth_session(uint8_t dev_id,
 
 	struct crypto_unittest_params *ut_params = &unittest_params;
 	const uint8_t *key = tdata->key.data;
-	const uint8_t aad_len = tdata->aad.len;
 	const uint8_t auth_len = tdata->digest.len;
-	uint8_t iv_len = tdata->iv.len;
+	uint8_t cipher_iv_len = tdata->cipher_iv.len;
+	uint8_t auth_iv_len = tdata->auth_iv.len;
 
 	memcpy(cipher_auth_key, key, key_len);
 
@@ -1977,7 +1980,9 @@ create_wireless_cipher_auth_session(uint8_t dev_id,
 	/* Hash key = cipher key */
 	ut_params->auth_xform.auth.key.data = cipher_auth_key;
 	ut_params->auth_xform.auth.digest_length = auth_len;
-	ut_params->auth_xform.auth.add_auth_data_length = aad_len;
+	/* Auth IV will be after cipher IV */
+	ut_params->auth_xform.auth.iv.offset = IV_OFFSET + cipher_iv_len;
+	ut_params->auth_xform.auth.iv.length = auth_iv_len;
 
 	/* Setup Cipher Parameters */
 	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
@@ -1988,7 +1993,7 @@ create_wireless_cipher_auth_session(uint8_t dev_id,
 	ut_params->cipher_xform.cipher.key.data = cipher_auth_key;
 	ut_params->cipher_xform.cipher.key.length = key_len;
 	ut_params->cipher_xform.cipher.iv.offset = IV_OFFSET;
-	ut_params->cipher_xform.cipher.iv.length = iv_len;
+	ut_params->cipher_xform.cipher.iv.length = cipher_iv_len;
 
 
 	TEST_HEXDUMP(stdout, "key:", key, key_len);
@@ -2018,8 +2023,8 @@ create_wireless_algo_auth_cipher_session(uint8_t dev_id,
 		enum rte_crypto_auth_algorithm auth_algo,
 		enum rte_crypto_cipher_algorithm cipher_algo,
 		const uint8_t *key, const uint8_t key_len,
-		const uint8_t aad_len, const uint8_t auth_len,
-		uint8_t iv_len)
+		uint8_t auth_iv_len, uint8_t auth_len,
+		uint8_t cipher_iv_len)
 {
 	uint8_t auth_cipher_key[key_len];
 
@@ -2035,7 +2040,9 @@ create_wireless_algo_auth_cipher_session(uint8_t dev_id,
 	ut_params->auth_xform.auth.key.length = key_len;
 	ut_params->auth_xform.auth.key.data = auth_cipher_key;
 	ut_params->auth_xform.auth.digest_length = auth_len;
-	ut_params->auth_xform.auth.add_auth_data_length = aad_len;
+	/* Auth IV will be after cipher IV */
+	ut_params->auth_xform.auth.iv.offset = IV_OFFSET + cipher_iv_len;
+	ut_params->auth_xform.auth.iv.length = auth_iv_len;
 
 	/* Setup Cipher Parameters */
 	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
@@ -2045,7 +2052,7 @@ create_wireless_algo_auth_cipher_session(uint8_t dev_id,
 	ut_params->cipher_xform.cipher.key.data = auth_cipher_key;
 	ut_params->cipher_xform.cipher.key.length = key_len;
 	ut_params->cipher_xform.cipher.iv.offset = IV_OFFSET;
-	ut_params->cipher_xform.cipher.iv.length = iv_len;
+	ut_params->cipher_xform.cipher.iv.length = cipher_iv_len;
 
 	TEST_HEXDUMP(stdout, "key:", key, key_len);
 
@@ -2060,18 +2067,15 @@ create_wireless_algo_auth_cipher_session(uint8_t dev_id,
 
 static int
 create_wireless_algo_hash_operation(const uint8_t *auth_tag,
-		const unsigned auth_tag_len,
-		const uint8_t *aad, const unsigned aad_len,
-		unsigned data_pad_len,
+		unsigned int auth_tag_len,
+		const uint8_t *iv, unsigned int iv_len,
+		unsigned int data_pad_len,
 		enum rte_crypto_auth_operation op,
-		enum rte_crypto_auth_algorithm algo,
-		const unsigned auth_len, const unsigned auth_offset)
+		unsigned int auth_len, unsigned int auth_offset)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 
 	struct crypto_unittest_params *ut_params = &unittest_params;
-
-	unsigned aad_buffer_len;
 
 	/* Generate Crypto op data structure */
 	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
@@ -2087,32 +2091,9 @@ create_wireless_algo_hash_operation(const uint8_t *auth_tag,
 	/* set crypto operation source mbuf */
 	sym_op->m_src = ut_params->ibuf;
 
-	/* aad */
-	/*
-	* Always allocate the aad up to the block size.
-	* The cryptodev API calls out -
-	*  - the array must be big enough to hold the AAD, plus any
-	*   space to round this up to the nearest multiple of the
-	*   block size (8 bytes for KASUMI and 16 bytes for SNOW 3G).
-	*/
-	if (algo == RTE_CRYPTO_AUTH_KASUMI_F9)
-		aad_buffer_len = ALIGN_POW2_ROUNDUP(aad_len, 8);
-	else
-		aad_buffer_len = ALIGN_POW2_ROUNDUP(aad_len, 16);
-	sym_op->auth.aad.data = (uint8_t *)rte_pktmbuf_prepend(
-			ut_params->ibuf, aad_buffer_len);
-	TEST_ASSERT_NOT_NULL(sym_op->auth.aad.data,
-					"no room to prepend aad");
-	sym_op->auth.aad.phys_addr = rte_pktmbuf_mtophys(
-			ut_params->ibuf);
-	sym_op->auth.aad.length = aad_len;
-
-	memset(sym_op->auth.aad.data, 0, aad_buffer_len);
-	rte_memcpy(sym_op->auth.aad.data, aad, aad_len);
-
-	TEST_HEXDUMP(stdout, "aad:",
-			sym_op->auth.aad.data, aad_len);
-
+	/* iv */
+	rte_memcpy(rte_crypto_op_ctod_offset(ut_params->op, uint8_t *, IV_OFFSET),
+			iv, iv_len);
 	/* digest */
 	sym_op->auth.digest.data = (uint8_t *)rte_pktmbuf_append(
 					ut_params->ibuf, auth_tag_len);
@@ -2121,7 +2102,7 @@ create_wireless_algo_hash_operation(const uint8_t *auth_tag,
 				"no room to append auth tag");
 	ut_params->digest = sym_op->auth.digest.data;
 	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
-			ut_params->ibuf, data_pad_len + aad_len);
+			ut_params->ibuf, data_pad_len);
 	sym_op->auth.digest.length = auth_tag_len;
 	if (op == RTE_CRYPTO_AUTH_OP_GENERATE)
 		memset(sym_op->auth.digest.data, 0, auth_tag_len);
@@ -2140,27 +2121,22 @@ create_wireless_algo_hash_operation(const uint8_t *auth_tag,
 
 static int
 create_wireless_cipher_hash_operation(const struct wireless_test_data *tdata,
-	enum rte_crypto_auth_operation op,
-	enum rte_crypto_auth_algorithm auth_algo)
+	enum rte_crypto_auth_operation op)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
 
 	const uint8_t *auth_tag = tdata->digest.data;
 	const unsigned int auth_tag_len = tdata->digest.len;
-	const uint8_t *aad = tdata->aad.data;
-	const uint8_t aad_len = tdata->aad.len;
 	unsigned int plaintext_len = ceil_byte_length(tdata->plaintext.len);
 	unsigned int data_pad_len = RTE_ALIGN_CEIL(plaintext_len, 16);
 
-	const uint8_t *iv = tdata->iv.data;
-	const uint8_t iv_len = tdata->iv.len;
+	const uint8_t *cipher_iv = tdata->cipher_iv.data;
+	const uint8_t cipher_iv_len = tdata->cipher_iv.len;
+	const uint8_t *auth_iv = tdata->auth_iv.data;
+	const uint8_t auth_iv_len = tdata->auth_iv.len;
 	const unsigned int cipher_len = tdata->validCipherLenInBits.len;
-	const unsigned int cipher_offset = 0;
 	const unsigned int auth_len = tdata->validAuthLenInBits.len;
-	const unsigned int auth_offset = tdata->aad.len << 3;
-
-	unsigned int aad_buffer_len;
 
 	/* Generate Crypto op data structure */
 	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
@@ -2194,37 +2170,17 @@ create_wireless_cipher_hash_operation(const struct wireless_test_data *tdata,
 		sym_op->auth.digest.data,
 		sym_op->auth.digest.length);
 
-	/* aad */
-	/*
-	* Always allocate the aad up to the block size.
-	* The cryptodev API calls out -
-	*  - the array must be big enough to hold the AAD, plus any
-	*   space to round this up to the nearest multiple of the
-	*   block size (8 bytes for KASUMI and 16 bytes for SNOW 3G).
-	*/
-	if (auth_algo == RTE_CRYPTO_AUTH_KASUMI_F9)
-		aad_buffer_len = ALIGN_POW2_ROUNDUP(aad_len, 8);
-	else
-		aad_buffer_len = ALIGN_POW2_ROUNDUP(aad_len, 16);
-	sym_op->auth.aad.data =
-		(uint8_t *)rte_pktmbuf_prepend(
-			ut_params->ibuf, aad_buffer_len);
-	TEST_ASSERT_NOT_NULL(sym_op->auth.aad.data,
-			"no room to prepend aad");
-	sym_op->auth.aad.phys_addr = rte_pktmbuf_mtophys(
-			ut_params->ibuf);
-	sym_op->auth.aad.length = aad_len;
-	memset(sym_op->auth.aad.data, 0, aad_buffer_len);
-	rte_memcpy(sym_op->auth.aad.data, aad, aad_len);
-	TEST_HEXDUMP(stdout, "aad:", sym_op->auth.aad.data, aad_len);
+	/* Copy cipher and auth IVs at the end of the crypto operation */
+	uint8_t *iv_ptr = rte_crypto_op_ctod_offset(ut_params->op, uint8_t *,
+						IV_OFFSET);
+	rte_memcpy(iv_ptr, cipher_iv, cipher_iv_len);
+	iv_ptr += cipher_iv_len;
+	rte_memcpy(iv_ptr, auth_iv, auth_iv_len);
 
-	/* iv */
-	rte_memcpy(rte_crypto_op_ctod_offset(ut_params->op, uint8_t *, IV_OFFSET),
-			iv, iv_len);
 	sym_op->cipher.data.length = cipher_len;
-	sym_op->cipher.data.offset = cipher_offset + auth_offset;
+	sym_op->cipher.data.offset = 0;
 	sym_op->auth.data.length = auth_len;
-	sym_op->auth.data.offset = auth_offset + cipher_offset;
+	sym_op->auth.data.offset = 0;
 
 	return 0;
 }
@@ -2234,25 +2190,21 @@ create_zuc_cipher_hash_generate_operation(
 		const struct wireless_test_data *tdata)
 {
 	return create_wireless_cipher_hash_operation(tdata,
-		RTE_CRYPTO_AUTH_OP_GENERATE,
-		RTE_CRYPTO_AUTH_ZUC_EIA3);
+		RTE_CRYPTO_AUTH_OP_GENERATE);
 }
 
 static int
 create_wireless_algo_cipher_hash_operation(const uint8_t *auth_tag,
 		const unsigned auth_tag_len,
-		const uint8_t *aad, const uint8_t aad_len,
+		const uint8_t *auth_iv, uint8_t auth_iv_len,
 		unsigned data_pad_len,
 		enum rte_crypto_auth_operation op,
-		enum rte_crypto_auth_algorithm auth_algo,
-		const uint8_t *iv, const uint8_t iv_len,
+		const uint8_t *cipher_iv, uint8_t cipher_iv_len,
 		const unsigned cipher_len, const unsigned cipher_offset,
 		const unsigned auth_len, const unsigned auth_offset)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
-
-	unsigned aad_buffer_len;
 
 	/* Generate Crypto op data structure */
 	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
@@ -2286,33 +2238,13 @@ create_wireless_algo_cipher_hash_operation(const uint8_t *auth_tag,
 		sym_op->auth.digest.data,
 		sym_op->auth.digest.length);
 
-	/* aad */
-	/*
-	* Always allocate the aad up to the block size.
-	* The cryptodev API calls out -
-	*  - the array must be big enough to hold the AAD, plus any
-	*   space to round this up to the nearest multiple of the
-	*   block size (8 bytes for KASUMI and 16 bytes for SNOW 3G).
-	*/
-	if (auth_algo == RTE_CRYPTO_AUTH_KASUMI_F9)
-		aad_buffer_len = ALIGN_POW2_ROUNDUP(aad_len, 8);
-	else
-		aad_buffer_len = ALIGN_POW2_ROUNDUP(aad_len, 16);
-	sym_op->auth.aad.data =
-		(uint8_t *)rte_pktmbuf_prepend(
-			ut_params->ibuf, aad_buffer_len);
-	TEST_ASSERT_NOT_NULL(sym_op->auth.aad.data,
-			"no room to prepend aad");
-	sym_op->auth.aad.phys_addr = rte_pktmbuf_mtophys(
-			ut_params->ibuf);
-	sym_op->auth.aad.length = aad_len;
-	memset(sym_op->auth.aad.data, 0, aad_buffer_len);
-	rte_memcpy(sym_op->auth.aad.data, aad, aad_len);
-	TEST_HEXDUMP(stdout, "aad:", sym_op->auth.aad.data, aad_len);
+	/* Copy cipher and auth IVs at the end of the crypto operation */
+	uint8_t *iv_ptr = rte_crypto_op_ctod_offset(ut_params->op, uint8_t *,
+						IV_OFFSET);
+	rte_memcpy(iv_ptr, cipher_iv, cipher_iv_len);
+	iv_ptr += cipher_iv_len;
+	rte_memcpy(iv_ptr, auth_iv, auth_iv_len);
 
-	/* iv */
-	rte_memcpy(rte_crypto_op_ctod_offset(ut_params->op, uint8_t *, IV_OFFSET),
-			iv, iv_len);
 	sym_op->cipher.data.length = cipher_len;
 	sym_op->cipher.data.offset = cipher_offset + auth_offset;
 	sym_op->auth.data.length = auth_len;
@@ -2322,18 +2254,15 @@ create_wireless_algo_cipher_hash_operation(const uint8_t *auth_tag,
 }
 
 static int
-create_wireless_algo_auth_cipher_operation(const unsigned auth_tag_len,
-		const uint8_t *iv, const uint8_t iv_len,
-		const uint8_t *aad, const uint8_t aad_len,
-		unsigned data_pad_len,
-		const unsigned cipher_len, const unsigned cipher_offset,
-		const unsigned auth_len, const unsigned auth_offset,
-		enum rte_crypto_auth_algorithm auth_algo)
+create_wireless_algo_auth_cipher_operation(unsigned int auth_tag_len,
+		const uint8_t *cipher_iv, uint8_t cipher_iv_len,
+		const uint8_t *auth_iv, uint8_t auth_iv_len,
+		unsigned int data_pad_len,
+		unsigned int cipher_len, unsigned int cipher_offset,
+		unsigned int auth_len, unsigned int auth_offset)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
-
-	unsigned aad_buffer_len = 0;
 
 	/* Generate Crypto op data structure */
 	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
@@ -2366,33 +2295,13 @@ create_wireless_algo_auth_cipher_operation(const unsigned auth_tag_len,
 			sym_op->auth.digest.data,
 			sym_op->auth.digest.length);
 
-	/* aad */
-	/*
-	* Always allocate the aad up to the block size.
-	* The cryptodev API calls out -
-	*  - the array must be big enough to hold the AAD, plus any
-	*   space to round this up to the nearest multiple of the
-	*   block size (8 bytes for KASUMI 16 bytes).
-	*/
-	if (auth_algo == RTE_CRYPTO_AUTH_KASUMI_F9)
-		aad_buffer_len = ALIGN_POW2_ROUNDUP(aad_len, 8);
-	else
-		aad_buffer_len = ALIGN_POW2_ROUNDUP(aad_len, 16);
-	sym_op->auth.aad.data = (uint8_t *)rte_pktmbuf_prepend(
-	ut_params->ibuf, aad_buffer_len);
-	TEST_ASSERT_NOT_NULL(sym_op->auth.aad.data,
-				"no room to prepend aad");
-	sym_op->auth.aad.phys_addr = rte_pktmbuf_mtophys(
-				ut_params->ibuf);
-	sym_op->auth.aad.length = aad_len;
-	memset(sym_op->auth.aad.data, 0, aad_buffer_len);
-	rte_memcpy(sym_op->auth.aad.data, aad, aad_len);
-	TEST_HEXDUMP(stdout, "aad:",
-			sym_op->auth.aad.data, aad_len);
+	/* Copy cipher and auth IVs at the end of the crypto operation */
+	uint8_t *iv_ptr = rte_crypto_op_ctod_offset(ut_params->op, uint8_t *,
+						IV_OFFSET);
+	rte_memcpy(iv_ptr, cipher_iv, cipher_iv_len);
+	iv_ptr += cipher_iv_len;
+	rte_memcpy(iv_ptr, auth_iv, auth_iv_len);
 
-	/* iv */
-	rte_memcpy(rte_crypto_op_ctod_offset(ut_params->op, uint8_t *, IV_OFFSET),
-			iv, iv_len);
 	sym_op->cipher.data.length = cipher_len;
 	sym_op->cipher.data.offset = auth_offset + cipher_offset;
 
@@ -2416,7 +2325,7 @@ test_snow3g_authentication(const struct snow3g_hash_test_data *tdata)
 	/* Create SNOW 3G session */
 	retval = create_wireless_algo_hash_session(ts_params->valid_devs[0],
 			tdata->key.data, tdata->key.len,
-			tdata->aad.len, tdata->digest.len,
+			tdata->auth_iv.len, tdata->digest.len,
 			RTE_CRYPTO_AUTH_OP_GENERATE,
 			RTE_CRYPTO_AUTH_SNOW3G_UIA2);
 	if (retval < 0)
@@ -2438,11 +2347,10 @@ test_snow3g_authentication(const struct snow3g_hash_test_data *tdata)
 
 	/* Create SNOW 3G operation */
 	retval = create_wireless_algo_hash_operation(NULL, tdata->digest.len,
-			tdata->aad.data, tdata->aad.len,
+			tdata->auth_iv.data, tdata->auth_iv.len,
 			plaintext_pad_len, RTE_CRYPTO_AUTH_OP_GENERATE,
-			RTE_CRYPTO_AUTH_SNOW3G_UIA2,
 			tdata->validAuthLenInBits.len,
-			(tdata->aad.len << 3));
+			0);
 	if (retval < 0)
 		return retval;
 
@@ -2451,7 +2359,7 @@ test_snow3g_authentication(const struct snow3g_hash_test_data *tdata)
 	ut_params->obuf = ut_params->op->sym->m_src;
 	TEST_ASSERT_NOT_NULL(ut_params->op, "failed to retrieve obuf");
 	ut_params->digest = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
-			+ plaintext_pad_len + tdata->aad.len;
+			+ plaintext_pad_len;
 
 	/* Validate obuf */
 	TEST_ASSERT_BUFFERS_ARE_EQUAL(
@@ -2477,7 +2385,7 @@ test_snow3g_authentication_verify(const struct snow3g_hash_test_data *tdata)
 	/* Create SNOW 3G session */
 	retval = create_wireless_algo_hash_session(ts_params->valid_devs[0],
 				tdata->key.data, tdata->key.len,
-				tdata->aad.len, tdata->digest.len,
+				tdata->auth_iv.len, tdata->digest.len,
 				RTE_CRYPTO_AUTH_OP_VERIFY,
 				RTE_CRYPTO_AUTH_SNOW3G_UIA2);
 	if (retval < 0)
@@ -2499,12 +2407,11 @@ test_snow3g_authentication_verify(const struct snow3g_hash_test_data *tdata)
 	/* Create SNOW 3G operation */
 	retval = create_wireless_algo_hash_operation(tdata->digest.data,
 			tdata->digest.len,
-			tdata->aad.data, tdata->aad.len,
+			tdata->auth_iv.data, tdata->auth_iv.len,
 			plaintext_pad_len,
 			RTE_CRYPTO_AUTH_OP_VERIFY,
-			RTE_CRYPTO_AUTH_SNOW3G_UIA2,
 			tdata->validAuthLenInBits.len,
-			(tdata->aad.len << 3));
+			0);
 	if (retval < 0)
 		return retval;
 
@@ -2513,7 +2420,7 @@ test_snow3g_authentication_verify(const struct snow3g_hash_test_data *tdata)
 	TEST_ASSERT_NOT_NULL(ut_params->op, "failed to retrieve obuf");
 	ut_params->obuf = ut_params->op->sym->m_src;
 	ut_params->digest = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
-				+ plaintext_pad_len + tdata->aad.len;
+				+ plaintext_pad_len;
 
 	/* Validate obuf */
 	if (ut_params->op->status == RTE_CRYPTO_OP_STATUS_SUCCESS)
@@ -2538,7 +2445,7 @@ test_kasumi_authentication(const struct kasumi_hash_test_data *tdata)
 	/* Create KASUMI session */
 	retval = create_wireless_algo_hash_session(ts_params->valid_devs[0],
 			tdata->key.data, tdata->key.len,
-			tdata->aad.len, tdata->digest.len,
+			tdata->auth_iv.len, tdata->digest.len,
 			RTE_CRYPTO_AUTH_OP_GENERATE,
 			RTE_CRYPTO_AUTH_KASUMI_F9);
 	if (retval < 0)
@@ -2560,11 +2467,10 @@ test_kasumi_authentication(const struct kasumi_hash_test_data *tdata)
 
 	/* Create KASUMI operation */
 	retval = create_wireless_algo_hash_operation(NULL, tdata->digest.len,
-			tdata->aad.data, tdata->aad.len,
+			tdata->auth_iv.data, tdata->auth_iv.len,
 			plaintext_pad_len, RTE_CRYPTO_AUTH_OP_GENERATE,
-			RTE_CRYPTO_AUTH_KASUMI_F9,
 			tdata->validAuthLenInBits.len,
-			(tdata->aad.len << 3));
+			0);
 	if (retval < 0)
 		return retval;
 
@@ -2573,7 +2479,7 @@ test_kasumi_authentication(const struct kasumi_hash_test_data *tdata)
 	ut_params->obuf = ut_params->op->sym->m_src;
 	TEST_ASSERT_NOT_NULL(ut_params->op, "failed to retrieve obuf");
 	ut_params->digest = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
-			+ plaintext_pad_len + ALIGN_POW2_ROUNDUP(tdata->aad.len, 8);
+			+ plaintext_pad_len;
 
 	/* Validate obuf */
 	TEST_ASSERT_BUFFERS_ARE_EQUAL(
@@ -2599,7 +2505,7 @@ test_kasumi_authentication_verify(const struct kasumi_hash_test_data *tdata)
 	/* Create KASUMI session */
 	retval = create_wireless_algo_hash_session(ts_params->valid_devs[0],
 				tdata->key.data, tdata->key.len,
-				tdata->aad.len, tdata->digest.len,
+				tdata->auth_iv.len, tdata->digest.len,
 				RTE_CRYPTO_AUTH_OP_VERIFY,
 				RTE_CRYPTO_AUTH_KASUMI_F9);
 	if (retval < 0)
@@ -2621,12 +2527,11 @@ test_kasumi_authentication_verify(const struct kasumi_hash_test_data *tdata)
 	/* Create KASUMI operation */
 	retval = create_wireless_algo_hash_operation(tdata->digest.data,
 			tdata->digest.len,
-			tdata->aad.data, tdata->aad.len,
+			tdata->auth_iv.data, tdata->auth_iv.len,
 			plaintext_pad_len,
 			RTE_CRYPTO_AUTH_OP_VERIFY,
-			RTE_CRYPTO_AUTH_KASUMI_F9,
 			tdata->validAuthLenInBits.len,
-			(tdata->aad.len << 3));
+			0);
 	if (retval < 0)
 		return retval;
 
@@ -2635,7 +2540,7 @@ test_kasumi_authentication_verify(const struct kasumi_hash_test_data *tdata)
 	TEST_ASSERT_NOT_NULL(ut_params->op, "failed to retrieve obuf");
 	ut_params->obuf = ut_params->op->sym->m_src;
 	ut_params->digest = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
-				+ plaintext_pad_len + tdata->aad.len;
+				+ plaintext_pad_len;
 
 	/* Validate obuf */
 	if (ut_params->op->status == RTE_CRYPTO_OP_STATUS_SUCCESS)
@@ -2801,7 +2706,7 @@ test_kasumi_encryption(const struct kasumi_test_data *tdata)
 					RTE_CRYPTO_CIPHER_OP_ENCRYPT,
 					RTE_CRYPTO_CIPHER_KASUMI_F8,
 					tdata->key.data, tdata->key.len,
-					tdata->iv.len);
+					tdata->cipher_iv.len);
 	if (retval < 0)
 		return retval;
 
@@ -2822,7 +2727,8 @@ test_kasumi_encryption(const struct kasumi_test_data *tdata)
 	TEST_HEXDUMP(stdout, "plaintext:", plaintext, plaintext_len);
 
 	/* Create KASUMI operation */
-	retval = create_wireless_algo_cipher_operation(tdata->iv.data, tdata->iv.len,
+	retval = create_wireless_algo_cipher_operation(tdata->cipher_iv.data,
+					tdata->cipher_iv.len,
 					tdata->plaintext.len,
 					0);
 	if (retval < 0)
@@ -2877,7 +2783,7 @@ test_kasumi_encryption_sgl(const struct kasumi_test_data *tdata)
 					RTE_CRYPTO_CIPHER_OP_ENCRYPT,
 					RTE_CRYPTO_CIPHER_KASUMI_F8,
 					tdata->key.data, tdata->key.len,
-					tdata->iv.len);
+					tdata->cipher_iv.len);
 	if (retval < 0)
 		return retval;
 
@@ -2894,8 +2800,8 @@ test_kasumi_encryption_sgl(const struct kasumi_test_data *tdata)
 	pktmbuf_write(ut_params->ibuf, 0, plaintext_len, tdata->plaintext.data);
 
 	/* Create KASUMI operation */
-	retval = create_wireless_algo_cipher_operation(tdata->iv.data,
-					tdata->iv.len,
+	retval = create_wireless_algo_cipher_operation(tdata->cipher_iv.data,
+					tdata->cipher_iv.len,
 					tdata->plaintext.len,
 					0);
 	if (retval < 0)
@@ -2942,7 +2848,7 @@ test_kasumi_encryption_oop(const struct kasumi_test_data *tdata)
 					RTE_CRYPTO_CIPHER_OP_ENCRYPT,
 					RTE_CRYPTO_CIPHER_KASUMI_F8,
 					tdata->key.data, tdata->key.len,
-					tdata->iv.len);
+					tdata->cipher_iv.len);
 	if (retval < 0)
 		return retval;
 
@@ -2965,8 +2871,8 @@ test_kasumi_encryption_oop(const struct kasumi_test_data *tdata)
 	TEST_HEXDUMP(stdout, "plaintext:", plaintext, plaintext_len);
 
 	/* Create KASUMI operation */
-	retval = create_wireless_algo_cipher_operation_oop(tdata->iv.data,
-					tdata->iv.len,
+	retval = create_wireless_algo_cipher_operation_oop(tdata->cipher_iv.data,
+					tdata->cipher_iv.len,
 					tdata->plaintext.len,
 					0);
 	if (retval < 0)
@@ -3020,7 +2926,7 @@ test_kasumi_encryption_oop_sgl(const struct kasumi_test_data *tdata)
 					RTE_CRYPTO_CIPHER_OP_ENCRYPT,
 					RTE_CRYPTO_CIPHER_KASUMI_F8,
 					tdata->key.data, tdata->key.len,
-					tdata->iv.len);
+					tdata->cipher_iv.len);
 	if (retval < 0)
 		return retval;
 
@@ -3039,8 +2945,8 @@ test_kasumi_encryption_oop_sgl(const struct kasumi_test_data *tdata)
 	pktmbuf_write(ut_params->ibuf, 0, plaintext_len, tdata->plaintext.data);
 
 	/* Create KASUMI operation */
-	retval = create_wireless_algo_cipher_operation_oop(tdata->iv.data,
-					tdata->iv.len,
+	retval = create_wireless_algo_cipher_operation_oop(tdata->cipher_iv.data,
+					tdata->cipher_iv.len,
 					tdata->plaintext.len,
 					0);
 	if (retval < 0)
@@ -3084,7 +2990,7 @@ test_kasumi_decryption_oop(const struct kasumi_test_data *tdata)
 					RTE_CRYPTO_CIPHER_OP_DECRYPT,
 					RTE_CRYPTO_CIPHER_KASUMI_F8,
 					tdata->key.data, tdata->key.len,
-					tdata->iv.len);
+					tdata->cipher_iv.len);
 	if (retval < 0)
 		return retval;
 
@@ -3107,8 +3013,8 @@ test_kasumi_decryption_oop(const struct kasumi_test_data *tdata)
 	TEST_HEXDUMP(stdout, "ciphertext:", ciphertext, ciphertext_len);
 
 	/* Create KASUMI operation */
-	retval = create_wireless_algo_cipher_operation_oop(tdata->iv.data,
-					tdata->iv.len,
+	retval = create_wireless_algo_cipher_operation_oop(tdata->cipher_iv.data,
+					tdata->cipher_iv.len,
 					tdata->ciphertext.len,
 					0);
 	if (retval < 0)
@@ -3151,7 +3057,7 @@ test_kasumi_decryption(const struct kasumi_test_data *tdata)
 					RTE_CRYPTO_CIPHER_OP_DECRYPT,
 					RTE_CRYPTO_CIPHER_KASUMI_F8,
 					tdata->key.data, tdata->key.len,
-					tdata->iv.len);
+					tdata->cipher_iv.len);
 	if (retval < 0)
 		return retval;
 
@@ -3172,8 +3078,8 @@ test_kasumi_decryption(const struct kasumi_test_data *tdata)
 	TEST_HEXDUMP(stdout, "ciphertext:", ciphertext, ciphertext_len);
 
 	/* Create KASUMI operation */
-	retval = create_wireless_algo_cipher_operation(tdata->iv.data,
-					tdata->iv.len,
+	retval = create_wireless_algo_cipher_operation(tdata->cipher_iv.data,
+					tdata->cipher_iv.len,
 					tdata->ciphertext.len,
 					0);
 	if (retval < 0)
@@ -3216,7 +3122,7 @@ test_snow3g_encryption(const struct snow3g_test_data *tdata)
 					RTE_CRYPTO_CIPHER_OP_ENCRYPT,
 					RTE_CRYPTO_CIPHER_SNOW3G_UEA2,
 					tdata->key.data, tdata->key.len,
-					tdata->iv.len);
+					tdata->cipher_iv.len);
 	if (retval < 0)
 		return retval;
 
@@ -3237,7 +3143,8 @@ test_snow3g_encryption(const struct snow3g_test_data *tdata)
 	TEST_HEXDUMP(stdout, "plaintext:", plaintext, plaintext_len);
 
 	/* Create SNOW 3G operation */
-	retval = create_wireless_algo_cipher_operation(tdata->iv.data, tdata->iv.len,
+	retval = create_wireless_algo_cipher_operation(tdata->cipher_iv.data,
+					tdata->cipher_iv.len,
 					tdata->validCipherLenInBits.len,
 					0);
 	if (retval < 0)
@@ -3281,7 +3188,7 @@ test_snow3g_encryption_oop(const struct snow3g_test_data *tdata)
 					RTE_CRYPTO_CIPHER_OP_ENCRYPT,
 					RTE_CRYPTO_CIPHER_SNOW3G_UEA2,
 					tdata->key.data, tdata->key.len,
-					tdata->iv.len);
+					tdata->cipher_iv.len);
 	if (retval < 0)
 		return retval;
 
@@ -3309,8 +3216,8 @@ test_snow3g_encryption_oop(const struct snow3g_test_data *tdata)
 	TEST_HEXDUMP(stdout, "plaintext:", plaintext, plaintext_len);
 
 	/* Create SNOW 3G operation */
-	retval = create_wireless_algo_cipher_operation_oop(tdata->iv.data,
-					tdata->iv.len,
+	retval = create_wireless_algo_cipher_operation_oop(tdata->cipher_iv.data,
+					tdata->cipher_iv.len,
 					tdata->validCipherLenInBits.len,
 					0);
 	if (retval < 0)
@@ -3363,7 +3270,7 @@ test_snow3g_encryption_oop_sgl(const struct snow3g_test_data *tdata)
 					RTE_CRYPTO_CIPHER_OP_ENCRYPT,
 					RTE_CRYPTO_CIPHER_SNOW3G_UEA2,
 					tdata->key.data, tdata->key.len,
-					tdata->iv.len);
+					tdata->cipher_iv.len);
 	if (retval < 0)
 		return retval;
 
@@ -3385,8 +3292,8 @@ test_snow3g_encryption_oop_sgl(const struct snow3g_test_data *tdata)
 	pktmbuf_write(ut_params->ibuf, 0, plaintext_len, tdata->plaintext.data);
 
 	/* Create SNOW 3G operation */
-	retval = create_wireless_algo_cipher_operation_oop(tdata->iv.data,
-					tdata->iv.len,
+	retval = create_wireless_algo_cipher_operation_oop(tdata->cipher_iv.data,
+					tdata->cipher_iv.len,
 					tdata->validCipherLenInBits.len,
 					0);
 	if (retval < 0)
@@ -3453,7 +3360,7 @@ test_snow3g_encryption_offset_oop(const struct snow3g_test_data *tdata)
 					RTE_CRYPTO_CIPHER_OP_ENCRYPT,
 					RTE_CRYPTO_CIPHER_SNOW3G_UEA2,
 					tdata->key.data, tdata->key.len,
-					tdata->iv.len);
+					tdata->cipher_iv.len);
 	if (retval < 0)
 		return retval;
 
@@ -3488,8 +3395,8 @@ test_snow3g_encryption_offset_oop(const struct snow3g_test_data *tdata)
 	rte_hexdump(stdout, "plaintext:", plaintext, tdata->plaintext.len);
 #endif
 	/* Create SNOW 3G operation */
-	retval = create_wireless_algo_cipher_operation_oop(tdata->iv.data,
-					tdata->iv.len,
+	retval = create_wireless_algo_cipher_operation_oop(tdata->cipher_iv.data,
+					tdata->cipher_iv.len,
 					tdata->validCipherLenInBits.len,
 					extra_offset);
 	if (retval < 0)
@@ -3544,7 +3451,7 @@ static int test_snow3g_decryption(const struct snow3g_test_data *tdata)
 					RTE_CRYPTO_CIPHER_OP_DECRYPT,
 					RTE_CRYPTO_CIPHER_SNOW3G_UEA2,
 					tdata->key.data, tdata->key.len,
-					tdata->iv.len);
+					tdata->cipher_iv.len);
 	if (retval < 0)
 		return retval;
 
@@ -3565,7 +3472,8 @@ static int test_snow3g_decryption(const struct snow3g_test_data *tdata)
 	TEST_HEXDUMP(stdout, "ciphertext:", ciphertext, ciphertext_len);
 
 	/* Create SNOW 3G operation */
-	retval = create_wireless_algo_cipher_operation(tdata->iv.data, tdata->iv.len,
+	retval = create_wireless_algo_cipher_operation(tdata->cipher_iv.data,
+					tdata->cipher_iv.len,
 					tdata->validCipherLenInBits.len,
 					0);
 	if (retval < 0)
@@ -3606,7 +3514,7 @@ static int test_snow3g_decryption_oop(const struct snow3g_test_data *tdata)
 					RTE_CRYPTO_CIPHER_OP_DECRYPT,
 					RTE_CRYPTO_CIPHER_SNOW3G_UEA2,
 					tdata->key.data, tdata->key.len,
-					tdata->iv.len);
+					tdata->cipher_iv.len);
 	if (retval < 0)
 		return retval;
 
@@ -3637,8 +3545,8 @@ static int test_snow3g_decryption_oop(const struct snow3g_test_data *tdata)
 	TEST_HEXDUMP(stdout, "ciphertext:", ciphertext, ciphertext_len);
 
 	/* Create SNOW 3G operation */
-	retval = create_wireless_algo_cipher_operation_oop(tdata->iv.data,
-					tdata->iv.len,
+	retval = create_wireless_algo_cipher_operation_oop(tdata->cipher_iv.data,
+					tdata->cipher_iv.len,
 					tdata->validCipherLenInBits.len,
 					0);
 	if (retval < 0)
@@ -3725,8 +3633,7 @@ test_zuc_cipher_auth(const struct wireless_test_data *tdata)
 	TEST_ASSERT_NOT_NULL(ut_params->op, "failed to retrieve obuf");
 	ut_params->obuf = ut_params->op->sym->m_src;
 	if (ut_params->obuf)
-		ciphertext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
-				+ tdata->aad.len;
+		ciphertext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *);
 	else
 		ciphertext = plaintext;
 
@@ -3739,7 +3646,7 @@ test_zuc_cipher_auth(const struct wireless_test_data *tdata)
 			"ZUC Ciphertext data not as expected");
 
 	ut_params->digest = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
-	    + plaintext_pad_len + tdata->aad.len;
+	    + plaintext_pad_len;
 
 	/* Validate obuf */
 	TEST_ASSERT_BUFFERS_ARE_EQUAL(
@@ -3769,8 +3676,8 @@ test_snow3g_cipher_auth(const struct snow3g_test_data *tdata)
 			RTE_CRYPTO_AUTH_SNOW3G_UIA2,
 			RTE_CRYPTO_CIPHER_SNOW3G_UEA2,
 			tdata->key.data, tdata->key.len,
-			tdata->aad.len, tdata->digest.len,
-			tdata->iv.len);
+			tdata->auth_iv.len, tdata->digest.len,
+			tdata->cipher_iv.len);
 	if (retval < 0)
 		return retval;
 	ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
@@ -3791,15 +3698,14 @@ test_snow3g_cipher_auth(const struct snow3g_test_data *tdata)
 
 	/* Create SNOW 3G operation */
 	retval = create_wireless_algo_cipher_hash_operation(tdata->digest.data,
-			tdata->digest.len, tdata->aad.data,
-			tdata->aad.len, /*tdata->plaintext.len,*/
+			tdata->digest.len, tdata->auth_iv.data,
+			tdata->auth_iv.len,
 			plaintext_pad_len, RTE_CRYPTO_AUTH_OP_GENERATE,
-			RTE_CRYPTO_AUTH_SNOW3G_UIA2,
-			tdata->iv.data, tdata->iv.len,
+			tdata->cipher_iv.data, tdata->cipher_iv.len,
 			tdata->validCipherLenInBits.len,
 			0,
 			tdata->validAuthLenInBits.len,
-			(tdata->aad.len << 3)
+			0
 			);
 	if (retval < 0)
 		return retval;
@@ -3809,8 +3715,7 @@ test_snow3g_cipher_auth(const struct snow3g_test_data *tdata)
 	TEST_ASSERT_NOT_NULL(ut_params->op, "failed to retrieve obuf");
 	ut_params->obuf = ut_params->op->sym->m_src;
 	if (ut_params->obuf)
-		ciphertext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
-					+ tdata->aad.len;
+		ciphertext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *);
 	else
 		ciphertext = plaintext;
 
@@ -3823,7 +3728,7 @@ test_snow3g_cipher_auth(const struct snow3g_test_data *tdata)
 			"SNOW 3G Ciphertext data not as expected");
 
 	ut_params->digest = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
-	    + plaintext_pad_len + tdata->aad.len;
+	    + plaintext_pad_len;
 
 	/* Validate obuf */
 	TEST_ASSERT_BUFFERS_ARE_EQUAL(
@@ -3852,8 +3757,8 @@ test_snow3g_auth_cipher(const struct snow3g_test_data *tdata)
 			RTE_CRYPTO_AUTH_SNOW3G_UIA2,
 			RTE_CRYPTO_CIPHER_SNOW3G_UEA2,
 			tdata->key.data, tdata->key.len,
-			tdata->aad.len, tdata->digest.len,
-			tdata->iv.len);
+			tdata->auth_iv.len, tdata->digest.len,
+			tdata->cipher_iv.len);
 	if (retval < 0)
 		return retval;
 
@@ -3876,15 +3781,13 @@ test_snow3g_auth_cipher(const struct snow3g_test_data *tdata)
 	/* Create SNOW 3G operation */
 	retval = create_wireless_algo_auth_cipher_operation(
 		tdata->digest.len,
-		tdata->iv.data, tdata->iv.len,
-		tdata->aad.data, tdata->aad.len,
+		tdata->cipher_iv.data, tdata->cipher_iv.len,
+		tdata->auth_iv.data, tdata->auth_iv.len,
 		plaintext_pad_len,
 		tdata->validCipherLenInBits.len,
 		0,
 		tdata->validAuthLenInBits.len,
-		(tdata->aad.len << 3),
-		RTE_CRYPTO_AUTH_SNOW3G_UIA2
-	);
+		0);
 
 	if (retval < 0)
 		return retval;
@@ -3894,13 +3797,12 @@ test_snow3g_auth_cipher(const struct snow3g_test_data *tdata)
 	TEST_ASSERT_NOT_NULL(ut_params->op, "failed to retrieve obuf");
 	ut_params->obuf = ut_params->op->sym->m_src;
 	if (ut_params->obuf)
-		ciphertext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
-				+ tdata->aad.len;
+		ciphertext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *);
 	else
 		ciphertext = plaintext;
 
 	ut_params->digest = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
-			+ plaintext_pad_len + tdata->aad.len;
+			+ plaintext_pad_len;
 	TEST_HEXDUMP(stdout, "ciphertext:", ciphertext, plaintext_len);
 
 	/* Validate obuf */
@@ -3939,8 +3841,8 @@ test_kasumi_auth_cipher(const struct kasumi_test_data *tdata)
 			RTE_CRYPTO_AUTH_KASUMI_F9,
 			RTE_CRYPTO_CIPHER_KASUMI_F8,
 			tdata->key.data, tdata->key.len,
-			tdata->aad.len, tdata->digest.len,
-			tdata->iv.len);
+			tdata->auth_iv.len, tdata->digest.len,
+			tdata->cipher_iv.len);
 	if (retval < 0)
 		return retval;
 	ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
@@ -3961,14 +3863,13 @@ test_kasumi_auth_cipher(const struct kasumi_test_data *tdata)
 
 	/* Create KASUMI operation */
 	retval = create_wireless_algo_auth_cipher_operation(tdata->digest.len,
-				tdata->iv.data, tdata->iv.len,
-				tdata->aad.data, tdata->aad.len,
+				tdata->cipher_iv.data, tdata->cipher_iv.len,
+				tdata->auth_iv.data, tdata->auth_iv.len,
 				plaintext_pad_len,
 				tdata->validCipherLenInBits.len,
 				0,
 				tdata->validAuthLenInBits.len,
-				(tdata->aad.len << 3),
-				RTE_CRYPTO_AUTH_KASUMI_F9
+				0
 				);
 
 	if (retval < 0)
@@ -3979,8 +3880,7 @@ test_kasumi_auth_cipher(const struct kasumi_test_data *tdata)
 	TEST_ASSERT_NOT_NULL(ut_params->op, "failed to retrieve obuf");
 	ut_params->obuf = ut_params->op->sym->m_src;
 	if (ut_params->obuf)
-		ciphertext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
-				+ tdata->aad.len;
+		ciphertext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *);
 	else
 		ciphertext = plaintext;
 
@@ -3991,7 +3891,7 @@ test_kasumi_auth_cipher(const struct kasumi_test_data *tdata)
 			tdata->validCipherLenInBits.len,
 			"KASUMI Ciphertext data not as expected");
 	ut_params->digest = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
-	    + plaintext_pad_len + tdata->aad.len;
+	    + plaintext_pad_len;
 
 	/* Validate obuf */
 	TEST_ASSERT_BUFFERS_ARE_EQUAL(
@@ -4022,8 +3922,8 @@ test_kasumi_cipher_auth(const struct kasumi_test_data *tdata)
 			RTE_CRYPTO_AUTH_KASUMI_F9,
 			RTE_CRYPTO_CIPHER_KASUMI_F8,
 			tdata->key.data, tdata->key.len,
-			tdata->aad.len, tdata->digest.len,
-			tdata->iv.len);
+			tdata->auth_iv.len, tdata->digest.len,
+			tdata->cipher_iv.len);
 	if (retval < 0)
 		return retval;
 
@@ -4045,15 +3945,14 @@ test_kasumi_cipher_auth(const struct kasumi_test_data *tdata)
 
 	/* Create KASUMI operation */
 	retval = create_wireless_algo_cipher_hash_operation(tdata->digest.data,
-				tdata->digest.len, tdata->aad.data,
-				tdata->aad.len,
+				tdata->digest.len, tdata->auth_iv.data,
+				tdata->auth_iv.len,
 				plaintext_pad_len, RTE_CRYPTO_AUTH_OP_GENERATE,
-				RTE_CRYPTO_AUTH_KASUMI_F9,
-				tdata->iv.data, tdata->iv.len,
+				tdata->cipher_iv.data, tdata->cipher_iv.len,
 				tdata->validCipherLenInBits.len,
 				0,
 				tdata->validAuthLenInBits.len,
-				(tdata->aad.len << 3)
+				0
 				);
 	if (retval < 0)
 		return retval;
@@ -4063,13 +3962,12 @@ test_kasumi_cipher_auth(const struct kasumi_test_data *tdata)
 	TEST_ASSERT_NOT_NULL(ut_params->op, "failed to retrieve obuf");
 	ut_params->obuf = ut_params->op->sym->m_src;
 	if (ut_params->obuf)
-		ciphertext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
-				+ tdata->aad.len;
+		ciphertext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *);
 	else
 		ciphertext = plaintext;
 
 	ut_params->digest = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
-			+ plaintext_pad_len + tdata->aad.len;
+			+ plaintext_pad_len;
 
 	/* Validate obuf */
 	TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(
@@ -4113,7 +4011,7 @@ test_zuc_encryption(const struct wireless_test_data *tdata)
 					RTE_CRYPTO_CIPHER_OP_ENCRYPT,
 					RTE_CRYPTO_CIPHER_ZUC_EEA3,
 					tdata->key.data, tdata->key.len,
-					tdata->iv.len);
+					tdata->cipher_iv.len);
 	if (retval < 0)
 		return retval;
 
@@ -4134,7 +4032,8 @@ test_zuc_encryption(const struct wireless_test_data *tdata)
 	TEST_HEXDUMP(stdout, "plaintext:", plaintext, plaintext_len);
 
 	/* Create ZUC operation */
-	retval = create_wireless_algo_cipher_operation(tdata->iv.data, tdata->iv.len,
+	retval = create_wireless_algo_cipher_operation(tdata->cipher_iv.data,
+					tdata->cipher_iv.len,
 					tdata->plaintext.len,
 					0);
 	if (retval < 0)
@@ -4209,7 +4108,7 @@ test_zuc_encryption_sgl(const struct wireless_test_data *tdata)
 			RTE_CRYPTO_CIPHER_OP_ENCRYPT,
 			RTE_CRYPTO_CIPHER_ZUC_EEA3,
 			tdata->key.data, tdata->key.len,
-			tdata->iv.len);
+			tdata->cipher_iv.len);
 	if (retval < 0)
 		return retval;
 
@@ -4218,8 +4117,8 @@ test_zuc_encryption_sgl(const struct wireless_test_data *tdata)
 	pktmbuf_write(ut_params->ibuf, 0, plaintext_len, tdata->plaintext.data);
 
 	/* Create ZUC operation */
-	retval = create_wireless_algo_cipher_operation(tdata->iv.data,
-			tdata->iv.len, tdata->plaintext.len,
+	retval = create_wireless_algo_cipher_operation(tdata->cipher_iv.data,
+			tdata->cipher_iv.len, tdata->plaintext.len,
 			0);
 	if (retval < 0)
 		return retval;
@@ -4273,7 +4172,7 @@ test_zuc_authentication(const struct wireless_test_data *tdata)
 	/* Create ZUC session */
 	retval = create_wireless_algo_hash_session(ts_params->valid_devs[0],
 			tdata->key.data, tdata->key.len,
-			tdata->aad.len, tdata->digest.len,
+			tdata->auth_iv.len, tdata->digest.len,
 			RTE_CRYPTO_AUTH_OP_GENERATE,
 			RTE_CRYPTO_AUTH_ZUC_EIA3);
 	if (retval < 0)
@@ -4295,11 +4194,10 @@ test_zuc_authentication(const struct wireless_test_data *tdata)
 
 	/* Create ZUC operation */
 	retval = create_wireless_algo_hash_operation(NULL, tdata->digest.len,
-			tdata->aad.data, tdata->aad.len,
+			tdata->auth_iv.data, tdata->auth_iv.len,
 			plaintext_pad_len, RTE_CRYPTO_AUTH_OP_GENERATE,
-			RTE_CRYPTO_AUTH_ZUC_EIA3,
 			tdata->validAuthLenInBits.len,
-			(tdata->aad.len << 3));
+			0);
 	if (retval < 0)
 		return retval;
 
@@ -4308,7 +4206,7 @@ test_zuc_authentication(const struct wireless_test_data *tdata)
 	ut_params->obuf = ut_params->op->sym->m_src;
 	TEST_ASSERT_NOT_NULL(ut_params->op, "failed to retrieve obuf");
 	ut_params->digest = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
-			+ plaintext_pad_len + ALIGN_POW2_ROUNDUP(tdata->aad.len, 8);
+			+ plaintext_pad_len;
 
 	/* Validate obuf */
 	TEST_ASSERT_BUFFERS_ARE_EQUAL(
