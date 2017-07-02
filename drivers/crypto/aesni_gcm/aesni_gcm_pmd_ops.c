@@ -56,12 +56,12 @@ static const struct rte_cryptodev_capabilities aesni_gcm_pmd_capabilities[] = {
 					.max = 16,
 					.increment = 4
 				},
-				.aad_size = {
-					.min = 0,
-					.max = 65535,
-					.increment = 1
-				},
-				.iv_size = { 0 }
+				.aad_size = { 0 },
+				.iv_size = {
+					.min = 12,
+					.max = 12,
+					.increment = 0
+				}
 			}, }
 		}, }
 	},

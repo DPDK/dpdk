@@ -407,12 +407,11 @@ static const struct rte_cryptodev_capabilities openssl_pmd_capabilities[] = {
 					.max = 16,
 					.increment = 0
 				},
-				.aad_size = {
-					.min = 8,
-					.max = 65532,
+				.iv_size = {
+					.min = 12,
+					.max = 16,
 					.increment = 4
-				},
-				.iv_size = { 0 }
+				}
 			}, }
 		}, }
 	},

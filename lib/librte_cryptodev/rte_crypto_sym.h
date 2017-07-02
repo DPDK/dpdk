@@ -84,11 +84,10 @@ enum rte_crypto_cipher_algorithm {
 	/**< AES algorithm in F8 mode */
 	RTE_CRYPTO_CIPHER_AES_GCM,
 	/**< AES algorithm in GCM mode. When this cipher algorithm is used the
-	 * *RTE_CRYPTO_AUTH_AES_GCM* or *RTE_CRYPTO_AUTH_AES_GMAC* element
-	 * of the *rte_crypto_auth_algorithm* enum MUST be used to set up
-	 * the related *rte_crypto_auth_setup_data* structure in the session
-	 * context or in the op_params of the crypto operation structure
-	 * in the case of a session-less crypto operation.
+	 * *RTE_CRYPTO_AUTH_AES_GCM* element of the *rte_crypto_auth_algorithm*
+	 * enum MUST be used to set up the related *rte_crypto_auth_setup_data*
+	 * structure in the session context or in the op_params of the crypto
+	 * operation structure in the case of a session-less crypto operation.
 	 */
 	RTE_CRYPTO_CIPHER_AES_XTS,
 	/**< AES algorithm in XTS mode */
@@ -268,13 +267,7 @@ enum rte_crypto_auth_algorithm {
 	 * op_params parameter MUST be set for a session-less crypto operation.
 	 */
 	RTE_CRYPTO_AUTH_AES_GMAC,
-	/**< AES GMAC algorithm. When this hash algorithm
-	* is used, the RTE_CRYPTO_CIPHER_AES_GCM element of the
-	* rte_crypto_cipher_algorithm enum MUST be used to set up the related
-	* rte_crypto_cipher_setup_data structure in the session context,  or
-	* the corresponding parameter in the crypto operation data structures
-	* op_params parameter MUST be set for a session-less crypto operation.
-	*/
+	/**< AES GMAC algorithm. */
 	RTE_CRYPTO_AUTH_AES_XCBC_MAC,
 	/**< AES XCBC algorithm. */
 
@@ -384,11 +377,6 @@ struct rte_crypto_auth_xform {
 	 *   block B0 and the encoded length.  The maximum permitted value in
 	 *   this case is 222 bytes.
 	 *
-	 * @note
-	 *  For AES-GMAC (@ref RTE_CRYPTO_AUTH_AES_GMAC) mode of operation
-	 *  this field is not used and should be set to 0. Instead the length
-	 *  of the AAD data is specified in additional authentication data
-	 *  length field of the rte_crypto_sym_op_data structure
 	 */
 
 	struct {
@@ -522,10 +510,6 @@ struct rte_crypto_sym_op {
 			  * values.
 			  *
 			  * @note
-			  * For AES-GMAC @ref RTE_CRYPTO_AUTH_AES_GMAC, this
-			  * field should be set to 0.
-			  *
-			  * @note
 			  * For SNOW 3G @ RTE_CRYPTO_AUTH_SNOW3G_UEA2,
 			  * KASUMI @ RTE_CRYPTO_CIPHER_KASUMI_F8
 			  * and ZUC @ RTE_CRYPTO_CIPHER_ZUC_EEA3,
@@ -547,11 +531,6 @@ struct rte_crypto_sym_op {
 			  * ignored. The field @ref aad field
 			  * should be set instead.
 			  *
-			  * @note For AES-GMAC (@ref RTE_CRYPTO_AUTH_AES_GMAC)
-			  * mode of operation, this field is set to 0. aad data
-			  * pointer of rte_crypto_sym_op_data structure is
-			  * used instead
-			  *
 			  * @note
 			  * For SNOW 3G @ RTE_CRYPTO_AUTH_SNOW3G_UIA2,
 			  * KASUMI @ RTE_CRYPTO_AUTH_KASUMI_F9
@@ -567,11 +546,6 @@ struct rte_crypto_sym_op {
 			  * For CCM and GCM modes of operation, this field is
 			  * ignored. The field @ref aad field should be set
 			  * instead.
-			  *
-			  * @note
-			  * For AES-GMAC @ref RTE_CRYPTO_AUTH_AES_GMAC mode
-			  * of operation, this field is set to 0.
-			  * Auth.aad.length is used instead.
 			  *
 			  * @note
 			  * For SNOW 3G @ RTE_CRYPTO_AUTH_SNOW3G_UIA2,
@@ -644,9 +618,6 @@ struct rte_crypto_sym_op {
 			 * any space to round this up to the nearest multiple
 			 * of the block size (16 bytes).
 			 *
-			 * @note
-			 * For AES-GMAC (@ref RTE_CRYPTO_AUTH_AES_GMAC) mode of
-			 * operation, this field is used to pass plaintext.
 			 */
 			phys_addr_t phys_addr;	/**< physical address */
 		} aad;

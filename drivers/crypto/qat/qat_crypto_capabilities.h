@@ -232,12 +232,11 @@
 					.max = 16,			\
 					.increment = 4			\
 				},					\
-				.aad_size = {				\
-					.min = 1,			\
-					.max = 65535,			\
-					.increment = 1			\
-				},					\
-				.iv_size = { 0 }			\
+				.iv_size = {				\
+					.min = 12,			\
+					.max = 12,			\
+					.increment = 0			\
+				}					\
 			}, }						\
 		}, }							\
 	},								\

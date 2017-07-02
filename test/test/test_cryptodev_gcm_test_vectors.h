@@ -92,11 +92,6 @@ struct gmac_test_data {
 	struct {
 		uint8_t *data;
 		unsigned len;
-	} aad;
-
-	struct {
-		uint8_t *data;
-		unsigned len;
 	} plaintext;
 
 	struct {
@@ -1484,13 +1479,9 @@ static const struct gmac_test_data gmac_test_case_1 = {
 			0xde, 0xca, 0xf8, 0x88 },
 		.len = 12
 	},
-	.aad = {
+	.plaintext = {
 		.data = gmac_plaintext,
 		.len = 160
-	},
-	.plaintext = {
-		.data = NULL,
-		.len = 0
 	},
 	.gmac_tag = {
 		.data = {
@@ -1516,13 +1507,9 @@ static const struct gmac_test_data gmac_test_case_2 = {
 		    0x55, 0x61, 0xf0, 0x43, 0x15, },
 		.len = 12
 	},
-	.aad = {
+	.plaintext = {
 		.data = gmac_plaintext,
 		.len = 80
-	},
-	.plaintext = {
-		.data = NULL,
-		.len = 0
 	},
 	.gmac_tag = {
 		.data = {
@@ -1550,13 +1537,9 @@ static const struct gmac_test_data gmac_test_case_3 = {
 		},
 		.len = 12
 	},
-	.aad = {
+	.plaintext = {
 		.data = gmac_plaintext,
 		.len = 65
-	},
-	.plaintext = {
-		.data = NULL,
-		.len = 0
 	},
 	.gmac_tag = {
 		.data = {
@@ -2214,13 +2197,9 @@ static const struct gmac_test_data gmac_test_case_4 = {
 		},
 		.len = 12
 	},
-	.aad = {
+	.plaintext = {
 		.data = gmac_plaintext,
 		.len = GMAC_LARGE_PLAINTEXT_LENGTH
-	},
-	.plaintext = {
-		.data = NULL,
-		.len = 0
 	},
 	.gmac_tag = {
 		.data = {

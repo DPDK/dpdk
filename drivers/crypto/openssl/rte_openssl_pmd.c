@@ -330,12 +330,40 @@ openssl_set_session_auth_parameters(struct openssl_session *sess,
 
 	/* Select auth algo */
 	switch (xform->auth.algo) {
-	case RTE_CRYPTO_AUTH_AES_GMAC:
 	case RTE_CRYPTO_AUTH_AES_GCM:
-		/* Check additional condition for AES_GMAC/GCM */
+		/* Check additional condition for AES_GCM */
 		if (sess->cipher.algo != RTE_CRYPTO_CIPHER_AES_GCM)
 			return -EINVAL;
 		sess->chain_order = OPENSSL_CHAIN_COMBINED;
+		break;
+	case RTE_CRYPTO_AUTH_AES_GMAC:
+		sess->chain_order = OPENSSL_CHAIN_COMBINED;
+
+		/* Set IV parameters */
+		sess->iv.offset = xform->auth.iv.offset;
+		sess->iv.length = xform->auth.iv.length;
+
+		/*
+		 * OpenSSL requires GMAC to be a GCM operation
+		 * with no cipher data length
+		 */
+		sess->cipher.mode = OPENSSL_CIPHER_LIB;
+		if (sess->auth.operation == RTE_CRYPTO_AUTH_OP_GENERATE)
+			sess->cipher.direction = RTE_CRYPTO_CIPHER_OP_ENCRYPT;
+		else
+			sess->cipher.direction = RTE_CRYPTO_CIPHER_OP_DECRYPT;
+
+		sess->cipher.key.length = xform->auth.key.length;
+		sess->cipher.ctx = EVP_CIPHER_CTX_new();
+
+		if (get_cipher_algo(RTE_CRYPTO_CIPHER_AES_GCM,
+				sess->cipher.key.length,
+				&sess->cipher.evp_algo) != 0)
+			return -EINVAL;
+
+		get_cipher_key(xform->auth.key.data, xform->auth.key.length,
+			sess->cipher.key.data);
+
 		break;
 
 	case RTE_CRYPTO_AUTH_MD5:
@@ -923,6 +951,7 @@ process_openssl_combined_op
 	/* cipher */
 	uint8_t *dst = NULL, *iv, *tag, *aad;
 	int srclen, ivlen, aadlen, status = -1;
+	uint32_t offset;
 
 	/*
 	 * Segmented destination buffer is not supported for
@@ -936,32 +965,37 @@ process_openssl_combined_op
 	iv = rte_crypto_op_ctod_offset(op, uint8_t *,
 			sess->iv.offset);
 	ivlen = sess->iv.length;
-	aad = op->sym->auth.aad.data;
-	aadlen = sess->auth.aad_length;
-
 	tag = op->sym->auth.digest.data;
 	if (tag == NULL)
 		tag = rte_pktmbuf_mtod_offset(mbuf_dst, uint8_t *,
 				op->sym->cipher.data.offset +
 				op->sym->cipher.data.length);
 
-	if (sess->auth.algo == RTE_CRYPTO_AUTH_AES_GMAC)
+	if (sess->auth.algo == RTE_CRYPTO_AUTH_AES_GMAC) {
 		srclen = 0;
-	else {
+		offset = op->sym->auth.data.offset;
+		aadlen = op->sym->auth.data.length;
+		aad = rte_pktmbuf_mtod_offset(mbuf_src, uint8_t *,
+				op->sym->auth.data.offset);
+
+	} else {
 		srclen = op->sym->cipher.data.length;
 		dst = rte_pktmbuf_mtod_offset(mbuf_dst, uint8_t *,
 				op->sym->cipher.data.offset);
+		offset = op->sym->cipher.data.offset;
+		aad = op->sym->auth.aad.data;
+		aadlen = sess->auth.aad_length;
 	}
 
 	if (sess->cipher.direction == RTE_CRYPTO_CIPHER_OP_ENCRYPT)
 		status = process_openssl_auth_encryption_gcm(
-				mbuf_src, op->sym->cipher.data.offset, srclen,
+				mbuf_src, offset, srclen,
 				aad, aadlen, iv, ivlen, sess->cipher.key.data,
 				dst, tag, sess->cipher.ctx,
 				sess->cipher.evp_algo);
 	else
 		status = process_openssl_auth_decryption_gcm(
-				mbuf_src, op->sym->cipher.data.offset, srclen,
+				mbuf_src, offset, srclen,
 				aad, aadlen, iv, ivlen, sess->cipher.key.data,
 				dst, tag, sess->cipher.ctx,
 				sess->cipher.evp_algo);

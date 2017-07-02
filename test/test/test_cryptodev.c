@@ -6282,17 +6282,7 @@ create_gmac_operation(enum rte_crypto_auth_operation op,
 	struct crypto_unittest_params *ut_params = &unittest_params;
 	struct rte_crypto_sym_op *sym_op;
 
-	unsigned aad_pad_len;
-
-	aad_pad_len = RTE_ALIGN_CEIL(tdata->aad.len, 16);
-
-	/*
-	 * Runtime generate the large plain text instead of use hard code
-	 * plain text vector. It is done to avoid create huge source file
-	 * with the test vector.
-	 */
-	if (tdata->aad.len == GMAC_LARGE_PLAINTEXT_LENGTH)
-		generate_gmac_large_plaintext(tdata->aad.data);
+	uint32_t plaintext_pad_len = RTE_ALIGN_CEIL(tdata->plaintext.len, 16);
 
 	/* Generate Crypto op data structure */
 	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
@@ -6301,14 +6291,6 @@ create_gmac_operation(enum rte_crypto_auth_operation op,
 			"Failed to allocate symmetric crypto operation struct");
 
 	sym_op = ut_params->op->sym;
-	sym_op->auth.aad.data = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
-			aad_pad_len);
-	TEST_ASSERT_NOT_NULL(sym_op->auth.aad.data,
-			"no room to append aad");
-
-	sym_op->auth.aad.phys_addr =
-			rte_pktmbuf_mtophys(ut_params->ibuf);
-	memcpy(sym_op->auth.aad.data, tdata->aad.data, tdata->aad.len);
 
 	sym_op->auth.digest.data = (uint8_t *)rte_pktmbuf_append(
 			ut_params->ibuf, tdata->gmac_tag.len);
@@ -6316,7 +6298,7 @@ create_gmac_operation(enum rte_crypto_auth_operation op,
 			"no room to append digest");
 
 	sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
-			ut_params->ibuf, aad_pad_len);
+			ut_params->ibuf, plaintext_pad_len);
 
 	if (op == RTE_CRYPTO_AUTH_OP_VERIFY) {
 		rte_memcpy(sym_op->auth.digest.data, tdata->gmac_tag.data,
@@ -6337,31 +6319,20 @@ create_gmac_operation(enum rte_crypto_auth_operation op,
 	sym_op->cipher.data.offset = 0;
 
 	sym_op->auth.data.offset = 0;
-	sym_op->auth.data.length = 0;
+	sym_op->auth.data.length = tdata->plaintext.len;
 
 	return 0;
 }
 
 static int create_gmac_session(uint8_t dev_id,
-		enum rte_crypto_cipher_operation op,
 		const struct gmac_test_data *tdata,
 		enum rte_crypto_auth_operation auth_op)
 {
-	uint8_t cipher_key[tdata->key.len];
+	uint8_t auth_key[tdata->key.len];
 
 	struct crypto_unittest_params *ut_params = &unittest_params;
 
-	memcpy(cipher_key, tdata->key.data, tdata->key.len);
-
-	/* For GMAC we setup cipher parameters */
-	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
-	ut_params->cipher_xform.next = NULL;
-	ut_params->cipher_xform.cipher.algo = RTE_CRYPTO_CIPHER_AES_GCM;
-	ut_params->cipher_xform.cipher.op = op;
-	ut_params->cipher_xform.cipher.key.data = cipher_key;
-	ut_params->cipher_xform.cipher.key.length = tdata->key.len;
-	ut_params->cipher_xform.cipher.iv.offset = IV_OFFSET;
-	ut_params->cipher_xform.cipher.iv.length = tdata->iv.len;
+	memcpy(auth_key, tdata->key.data, tdata->key.len);
 
 	ut_params->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
 	ut_params->auth_xform.next = NULL;
@@ -6369,14 +6340,15 @@ static int create_gmac_session(uint8_t dev_id,
 	ut_params->auth_xform.auth.algo = RTE_CRYPTO_AUTH_AES_GMAC;
 	ut_params->auth_xform.auth.op = auth_op;
 	ut_params->auth_xform.auth.digest_length = tdata->gmac_tag.len;
-	ut_params->auth_xform.auth.add_auth_data_length = tdata->aad.len;
-	ut_params->auth_xform.auth.key.length = 0;
-	ut_params->auth_xform.auth.key.data = NULL;
+	ut_params->auth_xform.auth.add_auth_data_length = 0;
+	ut_params->auth_xform.auth.key.length = tdata->key.len;
+	ut_params->auth_xform.auth.key.data = auth_key;
+	ut_params->auth_xform.auth.iv.offset = IV_OFFSET;
+	ut_params->auth_xform.auth.iv.length = tdata->iv.len;
 
-	ut_params->cipher_xform.next = &ut_params->auth_xform;
 
 	ut_params->sess = rte_cryptodev_sym_session_create(dev_id,
-			&ut_params->cipher_xform);
+			&ut_params->auth_xform);
 
 	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
 
@@ -6391,20 +6363,19 @@ test_AES_GMAC_authentication(const struct gmac_test_data *tdata)
 
 	int retval;
 
-	uint8_t *auth_tag, *p;
-	uint16_t aad_pad_len;
+	uint8_t *auth_tag, *plaintext;
+	uint16_t plaintext_pad_len;
 
 	TEST_ASSERT_NOT_EQUAL(tdata->gmac_tag.len, 0,
 			      "No GMAC length in the source data");
 
 	retval = create_gmac_session(ts_params->valid_devs[0],
-			RTE_CRYPTO_CIPHER_OP_ENCRYPT,
 			tdata, RTE_CRYPTO_AUTH_OP_GENERATE);
 
 	if (retval < 0)
 		return retval;
 
-	if (tdata->aad.len > MBUF_SIZE)
+	if (tdata->plaintext.len > MBUF_SIZE)
 		ut_params->ibuf = rte_pktmbuf_alloc(ts_params->large_mbuf_pool);
 	else
 		ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
@@ -6414,9 +6385,22 @@ test_AES_GMAC_authentication(const struct gmac_test_data *tdata)
 	memset(rte_pktmbuf_mtod(ut_params->ibuf, uint8_t *), 0,
 			rte_pktmbuf_tailroom(ut_params->ibuf));
 
-	aad_pad_len = RTE_ALIGN_CEIL(tdata->aad.len, 16);
+	plaintext_pad_len = RTE_ALIGN_CEIL(tdata->plaintext.len, 16);
+	/*
+	 * Runtime generate the large plain text instead of use hard code
+	 * plain text vector. It is done to avoid create huge source file
+	 * with the test vector.
+	 */
+	if (tdata->plaintext.len == GMAC_LARGE_PLAINTEXT_LENGTH)
+		generate_gmac_large_plaintext(tdata->plaintext.data);
 
-	p = rte_pktmbuf_mtod(ut_params->ibuf, uint8_t *);
+	plaintext = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
+				plaintext_pad_len);
+	TEST_ASSERT_NOT_NULL(plaintext, "no room to append plaintext");
+
+	memcpy(plaintext, tdata->plaintext.data, tdata->plaintext.len);
+	TEST_HEXDUMP(stdout, "plaintext:", plaintext,
+			tdata->plaintext.len);
 
 	retval = create_gmac_operation(RTE_CRYPTO_AUTH_OP_GENERATE,
 			tdata);
@@ -6436,9 +6420,9 @@ test_AES_GMAC_authentication(const struct gmac_test_data *tdata)
 
 	if (ut_params->op->sym->m_dst) {
 		auth_tag = rte_pktmbuf_mtod_offset(ut_params->op->sym->m_dst,
-				uint8_t *, aad_pad_len);
+				uint8_t *, plaintext_pad_len);
 	} else {
-		auth_tag = p + aad_pad_len;
+		auth_tag = plaintext + plaintext_pad_len;
 	}
 
 	TEST_HEXDUMP(stdout, "auth tag:", auth_tag, tdata->gmac_tag.len);
@@ -6482,18 +6466,19 @@ test_AES_GMAC_authentication_verify(const struct gmac_test_data *tdata)
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
 	int retval;
+	uint32_t plaintext_pad_len;
+	uint8_t *plaintext;
 
 	TEST_ASSERT_NOT_EQUAL(tdata->gmac_tag.len, 0,
 			      "No GMAC length in the source data");
 
 	retval = create_gmac_session(ts_params->valid_devs[0],
-			RTE_CRYPTO_CIPHER_OP_DECRYPT,
 			tdata, RTE_CRYPTO_AUTH_OP_VERIFY);
 
 	if (retval < 0)
 		return retval;
 
-	if (tdata->aad.len > MBUF_SIZE)
+	if (tdata->plaintext.len > MBUF_SIZE)
 		ut_params->ibuf = rte_pktmbuf_alloc(ts_params->large_mbuf_pool);
 	else
 		ut_params->ibuf = rte_pktmbuf_alloc(ts_params->mbuf_pool);
@@ -6502,6 +6487,24 @@ test_AES_GMAC_authentication_verify(const struct gmac_test_data *tdata)
 
 	memset(rte_pktmbuf_mtod(ut_params->ibuf, uint8_t *), 0,
 			rte_pktmbuf_tailroom(ut_params->ibuf));
+
+	plaintext_pad_len = RTE_ALIGN_CEIL(tdata->plaintext.len, 16);
+
+	/*
+	 * Runtime generate the large plain text instead of use hard code
+	 * plain text vector. It is done to avoid create huge source file
+	 * with the test vector.
+	 */
+	if (tdata->plaintext.len == GMAC_LARGE_PLAINTEXT_LENGTH)
+		generate_gmac_large_plaintext(tdata->plaintext.data);
+
+	plaintext = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
+				plaintext_pad_len);
+	TEST_ASSERT_NOT_NULL(plaintext, "no room to append plaintext");
+
+	memcpy(plaintext, tdata->plaintext.data, tdata->plaintext.len);
+	TEST_HEXDUMP(stdout, "plaintext:", plaintext,
+			tdata->plaintext.len);
 
 	retval = create_gmac_operation(RTE_CRYPTO_AUTH_OP_VERIFY,
 			tdata);
@@ -6616,8 +6619,7 @@ hmac_sha1_test_crypto_vector = {
 static const struct test_crypto_vector
 aes128_gmac_test_vector = {
 	.auth_algo = RTE_CRYPTO_AUTH_AES_GMAC,
-	.crypto_algo = RTE_CRYPTO_CIPHER_AES_GCM,
-	.aad = {
+	.plaintext = {
 		.data = plaintext_hash,
 		.len = 512
 	},
@@ -6628,7 +6630,7 @@ aes128_gmac_test_vector = {
 		},
 		.len = 12
 	},
-	.cipher_key = {
+	.auth_key = {
 		.data = {
 			0x42, 0x1A, 0x7D, 0x3D, 0xF5, 0x82, 0x80, 0xF1,
 			0xF1, 0x35, 0x5C, 0x3B, 0xDD, 0x9A, 0x65, 0xBA
@@ -6746,22 +6748,28 @@ create_auth_cipher_session(struct crypto_unittest_params *ut_params,
 	/* Setup Authentication Parameters */
 	ut_params->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
 	ut_params->auth_xform.auth.op = auth_op;
-	ut_params->auth_xform.next = &ut_params->cipher_xform;
 	ut_params->auth_xform.auth.algo = reference->auth_algo;
 	ut_params->auth_xform.auth.key.length = reference->auth_key.len;
 	ut_params->auth_xform.auth.key.data = auth_key;
 	ut_params->auth_xform.auth.digest_length = reference->digest.len;
-	ut_params->auth_xform.auth.add_auth_data_length = reference->aad.len;
 
-	/* Setup Cipher Parameters */
-	ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
-	ut_params->cipher_xform.next = NULL;
-	ut_params->cipher_xform.cipher.algo = reference->crypto_algo;
-	ut_params->cipher_xform.cipher.op = cipher_op;
-	ut_params->cipher_xform.cipher.key.data = cipher_key;
-	ut_params->cipher_xform.cipher.key.length = reference->cipher_key.len;
-	ut_params->cipher_xform.cipher.iv.offset = IV_OFFSET;
-	ut_params->cipher_xform.cipher.iv.length = reference->iv.len;
+	if (reference->auth_algo == RTE_CRYPTO_AUTH_AES_GMAC) {
+		ut_params->auth_xform.auth.iv.offset = IV_OFFSET;
+		ut_params->auth_xform.auth.iv.length = reference->iv.len;
+	} else {
+		ut_params->auth_xform.next = &ut_params->cipher_xform;
+		ut_params->auth_xform.auth.add_auth_data_length = reference->aad.len;
+
+		/* Setup Cipher Parameters */
+		ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+		ut_params->cipher_xform.next = NULL;
+		ut_params->cipher_xform.cipher.algo = reference->crypto_algo;
+		ut_params->cipher_xform.cipher.op = cipher_op;
+		ut_params->cipher_xform.cipher.key.data = cipher_key;
+		ut_params->cipher_xform.cipher.key.length = reference->cipher_key.len;
+		ut_params->cipher_xform.cipher.iv.offset = IV_OFFSET;
+		ut_params->cipher_xform.cipher.iv.length = reference->iv.len;
+	}
 
 	/* Create Crypto session*/
 	ut_params->sess = rte_cryptodev_sym_session_create(dev_id,
@@ -6839,16 +6847,6 @@ create_auth_GMAC_operation(struct crypto_testsuite_params *ts_params,
 	/* set crypto operation source mbuf */
 	sym_op->m_src = ut_params->ibuf;
 
-	/* aad */
-	sym_op->auth.aad.data = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
-			reference->aad.len);
-	TEST_ASSERT_NOT_NULL(sym_op->auth.aad.data, "no room to append AAD");
-	memcpy(sym_op->auth.aad.data, reference->aad.data, reference->aad.len);
-
-	TEST_HEXDUMP(stdout, "AAD:", sym_op->auth.aad.data, reference->aad.len);
-
-	sym_op->auth.aad.phys_addr = rte_pktmbuf_mtophys(ut_params->ibuf);
-
 	/* digest */
 	sym_op->auth.digest.data = (uint8_t *)rte_pktmbuf_append(
 			ut_params->ibuf, reference->digest.len);
@@ -6876,7 +6874,7 @@ create_auth_GMAC_operation(struct crypto_testsuite_params *ts_params,
 	sym_op->cipher.data.length = 0;
 	sym_op->cipher.data.offset = 0;
 
-	sym_op->auth.data.length = 0;
+	sym_op->auth.data.length = reference->plaintext.len;
 	sym_op->auth.data.offset = 0;
 
 	return 0;
@@ -7026,6 +7024,7 @@ test_authentication_verify_GMAC_fail_when_corruption(
 		unsigned int data_corrupted)
 {
 	int retval;
+	uint8_t *plaintext;
 
 	/* Create session */
 	retval = create_auth_cipher_session(ut_params,
@@ -7044,6 +7043,13 @@ test_authentication_verify_GMAC_fail_when_corruption(
 	memset(rte_pktmbuf_mtod(ut_params->ibuf, uint8_t *), 0,
 			rte_pktmbuf_tailroom(ut_params->ibuf));
 
+	plaintext = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
+			reference->plaintext.len);
+	TEST_ASSERT_NOT_NULL(plaintext, "no room to append plaintext");
+	memcpy(plaintext, reference->plaintext.data, reference->plaintext.len);
+
+	TEST_HEXDUMP(stdout, "plaintext:", plaintext, reference->plaintext.len);
+
 	/* Create operation */
 	retval = create_auth_verify_GMAC_operation(ts_params,
 			ut_params,
@@ -7053,10 +7059,9 @@ test_authentication_verify_GMAC_fail_when_corruption(
 		return retval;
 
 	if (data_corrupted)
-		data_corruption(ut_params->op->sym->auth.aad.data);
+		data_corruption(plaintext);
 	else
-		tag_corruption(ut_params->op->sym->auth.aad.data,
-				reference->aad.len);
+		tag_corruption(plaintext, reference->aad.len);
 
 	ut_params->op = process_crypto_request(ts_params->valid_devs[0],
 			ut_params->op);
