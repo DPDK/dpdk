@@ -119,6 +119,38 @@ extern const char **rte_cyptodev_names;
 #define CDEV_PMD_TRACE(...) (void)0
 #endif
 
+
+
+/**
+ * A macro that points to an offset from the start
+ * of the crypto operation structure (rte_crypto_op)
+ *
+ * The returned pointer is cast to type t.
+ *
+ * @param c
+ *   The crypto operation.
+ * @param o
+ *   The offset from the start of the crypto operation.
+ * @param t
+ *   The type to cast the result into.
+ */
+#define rte_crypto_op_ctod_offset(c, t, o)	\
+	((t)((char *)(c) + (o)))
+
+/**
+ * A macro that returns the physical address that points
+ * to an offset from the start of the crypto operation
+ * (rte_crypto_op)
+ *
+ * @param c
+ *   The crypto operation.
+ * @param o
+ *   The offset from the start of the crypto operation
+ *   to calculate address from.
+ */
+#define rte_crypto_op_ctophys_offset(c, o)	\
+	(phys_addr_t)((c)->phys_addr + (o))
+
 /**
  * Crypto parameters range description
  */
