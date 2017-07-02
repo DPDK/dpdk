@@ -117,6 +117,10 @@ qat_crypto_sym_configure_session(struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform, void *session_private);
 
 struct qat_session *
+qat_crypto_sym_configure_session_aead(struct rte_crypto_sym_xform *xform,
+				struct qat_session *session_private);
+
+struct qat_session *
 qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev,
 				struct rte_crypto_sym_xform *xform,
 				struct qat_session *session_private);

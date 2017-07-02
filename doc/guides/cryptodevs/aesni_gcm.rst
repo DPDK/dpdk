@@ -40,14 +40,14 @@ Features
 
 AESNI GCM PMD has support for:
 
-Cipher algorithms:
-
-* RTE_CRYPTO_CIPHER_AES_GCM
-
 Authentication algorithms:
 
-* RTE_CRYPTO_AUTH_AES_GCM
 * RTE_CRYPTO_AUTH_AES_GMAC
+
+AEAD algorithms:
+
+* RTE_CRYPTO_AEAD_AES_GCM
+
 
 Installation
 ------------

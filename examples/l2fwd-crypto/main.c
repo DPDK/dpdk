@@ -1428,6 +1428,9 @@ l2fwd_crypto_default_options(struct l2fwd_crypto_options *options)
 	options->aead_iv_random_size = -1;
 	options->aead_iv.length = 0;
 
+	options->auth_xform.aead.algo = RTE_CRYPTO_AEAD_AES_GCM;
+	options->auth_xform.aead.op = RTE_CRYPTO_AEAD_OP_ENCRYPT;
+
 	options->aad_param = 0;
 	options->aad_random_size = -1;
 	options->aad.length = 0;

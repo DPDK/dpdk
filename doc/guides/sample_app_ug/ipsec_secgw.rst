@@ -419,7 +419,6 @@ where each options means:
    * *null*: NULL algorithm
    * *aes-128-cbc*: AES-CBC 128-bit algorithm
    * *aes-128-ctr*: AES-CTR 128-bit algorithm
-   * *aes-128-gcm*: AES-GCM 128-bit algorithm
 
  * Syntax: *cipher_algo <your algorithm>*
 
@@ -447,7 +446,6 @@ where each options means:
 
     * *null*: NULL algorithm
     * *sha1-hmac*: HMAC SHA1 algorithm
-    * *aes-128-gcm*: AES-GCM 128-bit algorithm
 
 ``<auth_key>``
 
@@ -469,6 +467,10 @@ where each options means:
  * AEAD algorithm
 
  * Optional: Yes, unless <cipher_algo> and <auth_algo> are not used
+
+ * Available options:
+
+   * *aes-128-gcm*: AES-GCM 128-bit algorithm
 
  * Syntax: *cipher_algo <your algorithm>*
 
@@ -539,9 +541,8 @@ Example SA rules:
     src 1111:1111:1111:1111:1111:1111:1111:5555 \
     dst 2222:2222:2222:2222:2222:2222:2222:5555
 
-    sa in 105 cipher_algo aes-128-gcm \
-    cipher_key de:ad:be:ef:de:ad:be:ef:de:ad:be:ef:de:ad:be:ef:de:ad:be:ef \
-    auth_algo aes-128-gcm \
+    sa in 105 aead_algo aes-128-gcm \
+    aead_key de:ad:be:ef:de:ad:be:ef:de:ad:be:ef:de:ad:be:ef:de:ad:be:ef \
     mode ipv4-tunnel src 172.16.2.5 dst 172.16.1.5
 
 Routing rule syntax

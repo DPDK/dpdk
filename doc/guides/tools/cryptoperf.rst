@@ -223,10 +223,8 @@ The following are the appication command-line options:
            3des-ecb
            3des-ctr
            aes-cbc
-           aes-ccm
            aes-ctr
            aes-ecb
-           aes-gcm
            aes-f8
            aes-xts
            arc4
@@ -257,9 +255,7 @@ The following are the appication command-line options:
 
            3des-cbc
            aes-cbc-mac
-           aes-ccm
            aes-cmac
-           aes-gcm
            aes-gmac
            aes-xcbc-mac
            md5

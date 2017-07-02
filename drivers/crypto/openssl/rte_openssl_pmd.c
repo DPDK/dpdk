@@ -89,6 +89,8 @@ openssl_get_chain_order(const struct rte_crypto_sym_xform *xform)
 			else if (xform->next->type == RTE_CRYPTO_SYM_XFORM_AUTH)
 				res =  OPENSSL_CHAIN_CIPHER_AUTH;
 		}
+		if (xform->type == RTE_CRYPTO_SYM_XFORM_AEAD)
+			res = OPENSSL_CHAIN_COMBINED;
 	}
 
 	return res;
@@ -184,21 +186,6 @@ get_cipher_algo(enum rte_crypto_cipher_algorithm sess_algo, size_t keylen,
 				res = -EINVAL;
 			}
 			break;
-		case RTE_CRYPTO_CIPHER_AES_GCM:
-			switch (keylen) {
-			case 16:
-				*algo = EVP_aes_128_gcm();
-				break;
-			case 24:
-				*algo = EVP_aes_192_gcm();
-				break;
-			case 32:
-				*algo = EVP_aes_256_gcm();
-				break;
-			default:
-				res = -EINVAL;
-			}
-			break;
 		default:
 			res = -EINVAL;
 			break;
@@ -254,6 +241,41 @@ get_auth_algo(enum rte_crypto_auth_algorithm sessalgo,
 	return res;
 }
 
+/** Get adequate openssl function for input cipher algorithm */
+static uint8_t
+get_aead_algo(enum rte_crypto_aead_algorithm sess_algo, size_t keylen,
+		const EVP_CIPHER **algo)
+{
+	int res = 0;
+
+	if (algo != NULL) {
+		switch (sess_algo) {
+		case RTE_CRYPTO_AEAD_AES_GCM:
+			switch (keylen) {
+			case 16:
+				*algo = EVP_aes_128_gcm();
+				break;
+			case 24:
+				*algo = EVP_aes_192_gcm();
+				break;
+			case 32:
+				*algo = EVP_aes_256_gcm();
+				break;
+			default:
+				res = -EINVAL;
+			}
+			break;
+		default:
+			res = -EINVAL;
+			break;
+		}
+	} else {
+		res = -EINVAL;
+	}
+
+	return res;
+}
+
 /** Set session cipher parameters */
 static int
 openssl_set_session_cipher_parameters(struct openssl_session *sess,
@@ -273,7 +295,6 @@ openssl_set_session_cipher_parameters(struct openssl_session *sess,
 	case RTE_CRYPTO_CIPHER_3DES_CBC:
 	case RTE_CRYPTO_CIPHER_AES_CBC:
 	case RTE_CRYPTO_CIPHER_AES_CTR:
-	case RTE_CRYPTO_CIPHER_AES_GCM:
 		sess->cipher.mode = OPENSSL_CIPHER_LIB;
 		sess->cipher.algo = xform->cipher.algo;
 		sess->cipher.ctx = EVP_CIPHER_CTX_new();
@@ -330,12 +351,6 @@ openssl_set_session_auth_parameters(struct openssl_session *sess,
 
 	/* Select auth algo */
 	switch (xform->auth.algo) {
-	case RTE_CRYPTO_AUTH_AES_GCM:
-		/* Check additional condition for AES_GCM */
-		if (sess->cipher.algo != RTE_CRYPTO_CIPHER_AES_GCM)
-			return -EINVAL;
-		sess->chain_order = OPENSSL_CHAIN_COMBINED;
-		break;
 	case RTE_CRYPTO_AUTH_AES_GMAC:
 		sess->chain_order = OPENSSL_CHAIN_COMBINED;
 
@@ -356,7 +371,7 @@ openssl_set_session_auth_parameters(struct openssl_session *sess,
 		sess->cipher.key.length = xform->auth.key.length;
 		sess->cipher.ctx = EVP_CIPHER_CTX_new();
 
-		if (get_cipher_algo(RTE_CRYPTO_CIPHER_AES_GCM,
+		if (get_aead_algo(RTE_CRYPTO_AEAD_AES_GCM,
 				sess->cipher.key.length,
 				&sess->cipher.evp_algo) != 0)
 			return -EINVAL;
@@ -404,6 +419,50 @@ openssl_set_session_auth_parameters(struct openssl_session *sess,
 	return 0;
 }
 
+/* Set session AEAD parameters */
+static int
+openssl_set_session_aead_parameters(struct openssl_session *sess,
+		const struct rte_crypto_sym_xform *xform)
+{
+	/* Select cipher direction */
+	sess->cipher.direction = xform->cipher.op;
+	/* Select cipher key */
+	sess->cipher.key.length = xform->aead.key.length;
+
+	/* Set IV parameters */
+	sess->iv.offset = xform->aead.iv.offset;
+	sess->iv.length = xform->aead.iv.length;
+
+	/* Select auth generate/verify */
+	sess->auth.operation = xform->auth.op;
+	sess->auth.algo = xform->auth.algo;
+
+	/* Select auth algo */
+	switch (xform->aead.algo) {
+	case RTE_CRYPTO_AEAD_AES_GCM:
+		sess->cipher.mode = OPENSSL_CIPHER_LIB;
+		sess->aead_algo = xform->aead.algo;
+		sess->cipher.ctx = EVP_CIPHER_CTX_new();
+
+		if (get_aead_algo(sess->aead_algo, sess->cipher.key.length,
+				&sess->cipher.evp_algo) != 0)
+			return -EINVAL;
+
+		get_cipher_key(xform->cipher.key.data, sess->cipher.key.length,
+			sess->cipher.key.data);
+
+		sess->chain_order = OPENSSL_CHAIN_COMBINED;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	sess->auth.aad_length = xform->aead.add_auth_data_length;
+	sess->auth.digest_length = xform->aead.digest_length;
+
+	return 0;
+}
+
 /** Parse crypto xform chain and set private session parameters */
 int
 openssl_set_session_parameters(struct openssl_session *sess,
@@ -411,6 +470,7 @@ openssl_set_session_parameters(struct openssl_session *sess,
 {
 	const struct rte_crypto_sym_xform *cipher_xform = NULL;
 	const struct rte_crypto_sym_xform *auth_xform = NULL;
+	const struct rte_crypto_sym_xform *aead_xform = NULL;
 
 	sess->chain_order = openssl_get_chain_order(xform);
 	switch (sess->chain_order) {
@@ -427,6 +487,9 @@ openssl_set_session_parameters(struct openssl_session *sess,
 	case OPENSSL_CHAIN_AUTH_CIPHER:
 		auth_xform = xform;
 		cipher_xform = xform->next;
+		break;
+	case OPENSSL_CHAIN_COMBINED:
+		aead_xform = xform;
 		break;
 	default:
 		return -EINVAL;
@@ -447,6 +510,14 @@ openssl_set_session_parameters(struct openssl_session *sess,
 
 	if (auth_xform) {
 		if (openssl_set_session_auth_parameters(sess, auth_xform)) {
+			OPENSSL_LOG_ERR(
+				"Invalid/unsupported auth parameters");
+			return -EINVAL;
+		}
+	}
+
+	if (aead_xform) {
+		if (openssl_set_session_aead_parameters(sess, aead_xform)) {
 			OPENSSL_LOG_ERR(
 				"Invalid/unsupported auth parameters");
 			return -EINVAL;
@@ -965,26 +1036,27 @@ process_openssl_combined_op
 	iv = rte_crypto_op_ctod_offset(op, uint8_t *,
 			sess->iv.offset);
 	ivlen = sess->iv.length;
-	tag = op->sym->auth.digest.data;
-	if (tag == NULL)
-		tag = rte_pktmbuf_mtod_offset(mbuf_dst, uint8_t *,
-				op->sym->cipher.data.offset +
-				op->sym->cipher.data.length);
-
 	if (sess->auth.algo == RTE_CRYPTO_AUTH_AES_GMAC) {
 		srclen = 0;
 		offset = op->sym->auth.data.offset;
 		aadlen = op->sym->auth.data.length;
 		aad = rte_pktmbuf_mtod_offset(mbuf_src, uint8_t *,
 				op->sym->auth.data.offset);
-
+		tag = op->sym->auth.digest.data;
+		if (tag == NULL)
+			tag = rte_pktmbuf_mtod_offset(mbuf_dst, uint8_t *,
+				offset + aadlen);
 	} else {
-		srclen = op->sym->cipher.data.length;
+		srclen = op->sym->aead.data.length;
 		dst = rte_pktmbuf_mtod_offset(mbuf_dst, uint8_t *,
-				op->sym->cipher.data.offset);
-		offset = op->sym->cipher.data.offset;
-		aad = op->sym->auth.aad.data;
+				op->sym->aead.data.offset);
+		offset = op->sym->aead.data.offset;
+		aad = op->sym->aead.aad.data;
 		aadlen = sess->auth.aad_length;
+		tag = op->sym->aead.digest.data;
+		if (tag == NULL)
+			tag = rte_pktmbuf_mtod_offset(mbuf_dst, uint8_t *,
+				offset + srclen);
 	}
 
 	if (sess->cipher.direction == RTE_CRYPTO_CIPHER_OP_ENCRYPT)

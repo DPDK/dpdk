@@ -817,8 +817,6 @@ dpaa2_sec_cipher_init(struct rte_cryptodev *dev,
 		break;
 	case RTE_CRYPTO_CIPHER_AES_CTR:
 	case RTE_CRYPTO_CIPHER_3DES_CTR:
-	case RTE_CRYPTO_CIPHER_AES_GCM:
-	case RTE_CRYPTO_CIPHER_AES_CCM:
 	case RTE_CRYPTO_CIPHER_AES_ECB:
 	case RTE_CRYPTO_CIPHER_3DES_ECB:
 	case RTE_CRYPTO_CIPHER_AES_XTS:
@@ -946,7 +944,6 @@ dpaa2_sec_auth_init(struct rte_cryptodev *dev,
 		session->auth_alg = RTE_CRYPTO_AUTH_SHA224_HMAC;
 		break;
 	case RTE_CRYPTO_AUTH_AES_XCBC_MAC:
-	case RTE_CRYPTO_AUTH_AES_GCM:
 	case RTE_CRYPTO_AUTH_SNOW3G_UIA2:
 	case RTE_CRYPTO_AUTH_NULL:
 	case RTE_CRYPTO_AUTH_SHA1:
@@ -955,7 +952,6 @@ dpaa2_sec_auth_init(struct rte_cryptodev *dev,
 	case RTE_CRYPTO_AUTH_SHA224:
 	case RTE_CRYPTO_AUTH_SHA384:
 	case RTE_CRYPTO_AUTH_MD5:
-	case RTE_CRYPTO_AUTH_AES_CCM:
 	case RTE_CRYPTO_AUTH_AES_GMAC:
 	case RTE_CRYPTO_AUTH_KASUMI_F9:
 	case RTE_CRYPTO_AUTH_AES_CMAC:
@@ -1100,7 +1096,6 @@ dpaa2_sec_aead_init(struct rte_cryptodev *dev,
 		session->auth_alg = RTE_CRYPTO_AUTH_SHA512_HMAC;
 		break;
 	case RTE_CRYPTO_AUTH_AES_XCBC_MAC:
-	case RTE_CRYPTO_AUTH_AES_GCM:
 	case RTE_CRYPTO_AUTH_SNOW3G_UIA2:
 	case RTE_CRYPTO_AUTH_NULL:
 	case RTE_CRYPTO_AUTH_SHA1:
@@ -1109,7 +1104,6 @@ dpaa2_sec_aead_init(struct rte_cryptodev *dev,
 	case RTE_CRYPTO_AUTH_SHA224:
 	case RTE_CRYPTO_AUTH_SHA384:
 	case RTE_CRYPTO_AUTH_MD5:
-	case RTE_CRYPTO_AUTH_AES_CCM:
 	case RTE_CRYPTO_AUTH_AES_GMAC:
 	case RTE_CRYPTO_AUTH_KASUMI_F9:
 	case RTE_CRYPTO_AUTH_AES_CMAC:
@@ -1141,13 +1135,11 @@ dpaa2_sec_aead_init(struct rte_cryptodev *dev,
 		session->cipher_alg = RTE_CRYPTO_CIPHER_3DES_CBC;
 		ctxt->iv.length = TDES_CBC_IV_LEN;
 		break;
-	case RTE_CRYPTO_CIPHER_AES_GCM:
 	case RTE_CRYPTO_CIPHER_SNOW3G_UEA2:
 	case RTE_CRYPTO_CIPHER_NULL:
 	case RTE_CRYPTO_CIPHER_3DES_ECB:
 	case RTE_CRYPTO_CIPHER_AES_ECB:
 	case RTE_CRYPTO_CIPHER_AES_CTR:
-	case RTE_CRYPTO_CIPHER_AES_CCM:
 	case RTE_CRYPTO_CIPHER_KASUMI_F8:
 		RTE_LOG(ERR, PMD, "Crypto: Unsupported Cipher alg %u",
 			cipher_xform->algo);

@@ -48,7 +48,6 @@ Supported cipher algorithms:
 * ``RTE_CRYPTO_CIPHER_AES_CBC``
 * ``RTE_CRYPTO_CIPHER_AES_CTR``
 * ``RTE_CRYPTO_CIPHER_3DES_CTR``
-* ``RTE_CRYPTO_CIPHER_AES_GCM``
 * ``RTE_CRYPTO_CIPHER_DES_DOCSISBPI``
 
 Supported authentication algorithms:
@@ -65,6 +64,9 @@ Supported authentication algorithms:
 * ``RTE_CRYPTO_AUTH_SHA256_HMAC``
 * ``RTE_CRYPTO_AUTH_SHA384_HMAC``
 * ``RTE_CRYPTO_AUTH_SHA512_HMAC``
+
+Supported AEAD algorithms:
+* ``RTE_CRYPTO_AEAD_AES_GCM``
 
 
 Installation

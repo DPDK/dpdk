@@ -111,11 +111,9 @@ rte_crypto_cipher_algorithm_strings[] = {
 	[RTE_CRYPTO_CIPHER_3DES_CTR]	= "3des-ctr",
 
 	[RTE_CRYPTO_CIPHER_AES_CBC]	= "aes-cbc",
-	[RTE_CRYPTO_CIPHER_AES_CCM]	= "aes-ccm",
 	[RTE_CRYPTO_CIPHER_AES_CTR]	= "aes-ctr",
 	[RTE_CRYPTO_CIPHER_AES_DOCSISBPI]	= "aes-docsisbpi",
 	[RTE_CRYPTO_CIPHER_AES_ECB]	= "aes-ecb",
-	[RTE_CRYPTO_CIPHER_AES_GCM]	= "aes-gcm",
 	[RTE_CRYPTO_CIPHER_AES_F8]	= "aes-f8",
 	[RTE_CRYPTO_CIPHER_AES_XTS]	= "aes-xts",
 
@@ -148,9 +146,7 @@ rte_crypto_cipher_operation_strings[] = {
 const char *
 rte_crypto_auth_algorithm_strings[] = {
 	[RTE_CRYPTO_AUTH_AES_CBC_MAC]	= "aes-cbc-mac",
-	[RTE_CRYPTO_AUTH_AES_CCM]	= "aes-ccm",
 	[RTE_CRYPTO_AUTH_AES_CMAC]	= "aes-cmac",
-	[RTE_CRYPTO_AUTH_AES_GCM]	= "aes-gcm",
 	[RTE_CRYPTO_AUTH_AES_GMAC]	= "aes-gmac",
 	[RTE_CRYPTO_AUTH_AES_XCBC_MAC]	= "aes-xcbc-mac",
 

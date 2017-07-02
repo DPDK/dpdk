@@ -113,6 +113,10 @@ struct openssl_session {
 		uint16_t offset;
 	} iv;
 	/**< IV parameters */
+
+	enum rte_crypto_aead_algorithm aead_algo;
+	/**< AEAD algorithm */
+
 	/** Cipher Parameters */
 	struct {
 		enum rte_crypto_cipher_operation direction;

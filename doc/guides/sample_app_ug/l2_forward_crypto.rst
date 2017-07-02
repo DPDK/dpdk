@@ -156,7 +156,7 @@ where,
 
     Note that if --auth_iv is used, this will be ignored.
 
-*   aead_algo: select the AEAD algorithm
+*   aead_algo: select the AEAD algorithm (default is aes-gcm)
 
 *   aead_op: select the AEAD operation to perform: ENCRYPT or DECRYPT
 

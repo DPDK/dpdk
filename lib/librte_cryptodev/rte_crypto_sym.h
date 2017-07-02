@@ -68,27 +68,12 @@ enum rte_crypto_cipher_algorithm {
 
 	RTE_CRYPTO_CIPHER_AES_CBC,
 	/**< AES algorithm in CBC mode */
-	RTE_CRYPTO_CIPHER_AES_CCM,
-	/**< AES algorithm in CCM mode. When this cipher algorithm is used the
-	 * *RTE_CRYPTO_AUTH_AES_CCM* element of the
-	 * *rte_crypto_hash_algorithm* enum MUST be used to set up the related
-	 * *rte_crypto_auth_xform* structure in the session context or in
-	 * the op_params of the crypto operation structure in the case of a
-	 * session-less crypto operation
-	 */
 	RTE_CRYPTO_CIPHER_AES_CTR,
 	/**< AES algorithm in Counter mode */
 	RTE_CRYPTO_CIPHER_AES_ECB,
 	/**< AES algorithm in ECB mode */
 	RTE_CRYPTO_CIPHER_AES_F8,
 	/**< AES algorithm in F8 mode */
-	RTE_CRYPTO_CIPHER_AES_GCM,
-	/**< AES algorithm in GCM mode. When this cipher algorithm is used the
-	 * *RTE_CRYPTO_AUTH_AES_GCM* element of the *rte_crypto_auth_algorithm*
-	 * enum MUST be used to set up the related *rte_crypto_auth_setup_data*
-	 * structure in the session context or in the op_params of the crypto
-	 * operation structure in the case of a session-less crypto operation.
-	 */
 	RTE_CRYPTO_CIPHER_AES_XTS,
 	/**< AES algorithm in XTS mode */
 
@@ -247,25 +232,8 @@ enum rte_crypto_auth_algorithm {
 
 	RTE_CRYPTO_AUTH_AES_CBC_MAC,
 	/**< AES-CBC-MAC algorithm. Only 128-bit keys are supported. */
-	RTE_CRYPTO_AUTH_AES_CCM,
-	/**< AES algorithm in CCM mode. This is an authenticated cipher. When
-	 * this hash algorithm is used, the *RTE_CRYPTO_CIPHER_AES_CCM*
-	 * element of the *rte_crypto_cipher_algorithm* enum MUST be used to
-	 * set up the related rte_crypto_cipher_setup_data structure in the
-	 * session context or the corresponding parameter in the crypto
-	 * operation data structures op_params parameter MUST be set for a
-	 * session-less crypto operation.
-	 */
 	RTE_CRYPTO_AUTH_AES_CMAC,
 	/**< AES CMAC algorithm. */
-	RTE_CRYPTO_AUTH_AES_GCM,
-	/**< AES algorithm in GCM mode. When this hash algorithm
-	 * is used, the RTE_CRYPTO_CIPHER_AES_GCM element of the
-	 * rte_crypto_cipher_algorithm enum MUST be used to set up the related
-	 * rte_crypto_cipher_setup_data structure in the session context, or
-	 * the corresponding parameter in the crypto operation data structures
-	 * op_params parameter MUST be set for a session-less crypto operation.
-	 */
 	RTE_CRYPTO_AUTH_AES_GMAC,
 	/**< AES GMAC algorithm. */
 	RTE_CRYPTO_AUTH_AES_XCBC_MAC,
@@ -362,20 +330,6 @@ struct rte_crypto_auth_xform {
 	/**< The length of the additional authenticated data (AAD) in bytes.
 	 * The maximum permitted value is 65535 (2^16 - 1) bytes, unless
 	 * otherwise specified below.
-	 *
-	 * This field must be specified when the hash algorithm is one of the
-	 * following:
-	 *
-	 * - For GCM (@ref RTE_CRYPTO_AUTH_AES_GCM).  In this case, this is
-	 *   the length of the Additional Authenticated Data (called A, in NIST
-	 *   SP800-38D).
-	 *
-	 * - For CCM (@ref RTE_CRYPTO_AUTH_AES_CCM).  In this case, this is
-	 *   the length of the associated data (called A, in NIST SP800-38C).
-	 *   Note that this does NOT include the length of any padding, or the
-	 *   18 bytes reserved at the start of the above field to store the
-	 *   block B0 and the encoded length.  The maximum permitted value in
-	 *   this case is 222 bytes.
 	 *
 	 */
 
@@ -658,15 +612,6 @@ struct rte_crypto_sym_op {
 					  * also the same as the result length.
 					  *
 					  * @note
-					  * In the case of CCM
-					  * @ref RTE_CRYPTO_AUTH_AES_CCM, this value
-					  * should not include the length of the padding
-					  * or the length of the MAC; the driver will
-					  * compute the actual number of bytes over
-					  * which the encryption will occur, which will
-					  * include these values.
-					  *
-					  * @note
 					  * For SNOW 3G @ RTE_CRYPTO_AUTH_SNOW3G_UEA2,
 					  * KASUMI @ RTE_CRYPTO_CIPHER_KASUMI_F8
 					  * and ZUC @ RTE_CRYPTO_CIPHER_ZUC_EEA3,
@@ -683,12 +628,6 @@ struct rte_crypto_sym_op {
 					  * packet in source buffer.
 					  *
 					  * @note
-					  * For CCM and GCM modes of operation,
-					  * this field is ignored.
-					  * The field @ref aad field should be set
-					  * instead.
-					  *
-					  * @note
 					  * For SNOW 3G @ RTE_CRYPTO_AUTH_SNOW3G_UIA2,
 					  * KASUMI @ RTE_CRYPTO_AUTH_KASUMI_F9
 					  * and ZUC @ RTE_CRYPTO_AUTH_ZUC_EIA3,
@@ -697,11 +636,6 @@ struct rte_crypto_sym_op {
 					uint32_t length;
 					 /**< The message length, in bytes, of the source
 					  * buffer that the hash will be computed on.
-					  *
-					  * @note
-					  * For CCM and GCM modes of operation,
-					  * this field is ignored. The field @ref aad
-					  * field should be set instead.
 					  *
 					  * @note
 					  * For SNOW 3G @ RTE_CRYPTO_AUTH_SNOW3G_UIA2,
@@ -732,9 +666,6 @@ struct rte_crypto_sym_op {
 					 * For digest generation, the digest result
 					 * will overwrite any data at this location.
 					 *
-					 * @note
-					 * For GCM (@ref RTE_CRYPTO_AUTH_AES_GCM), for
-					 * "digest result" read "authentication tag T".
 					 */
 					phys_addr_t phys_addr;
 					/**< Physical address of digest */
@@ -753,37 +684,6 @@ struct rte_crypto_sym_op {
 					 * function call.
 					 * This length must not exceed 65535 (2^16-1)
 					 * bytes.
-					 *
-					 * Specifically for CCM
-					 * (@ref RTE_CRYPTO_AUTH_AES_CCM),
-					 * the caller should setup this field as follows:
-					 *
-					 * - the nonce should be written starting at
-					 * an offset of one byte into the array,
-					 * leaving room for the implementation to
-					 * write in the flags to the first byte.
-					 *
-					 * - the additional authentication data
-					 * itself should be written starting at
-					 * an offset of 18 bytes into the array,
-					 * leaving room for the length encoding in
-					 * the first two bytes of the second block.
-					 *
-					 * - the array should be big enough to hold
-					 * the above fields, plus any padding to
-					 * round this up to the nearest multiple of
-					 * the block size (16 bytes).
-					 * Padding will be added by the implementation.
-					 *
-					 * Finally, for GCM
-					 * (@ref RTE_CRYPTO_AUTH_AES_GCM), the
-					 * caller should setup this field as follows:
-					 *
-					 * - the AAD is written in starting at byte 0
-					 * - the array must be big enough to hold
-					 * the AAD, plus any space to round this up to
-					 * the nearest multiple of the block size
-					 * (16 bytes).
 					 *
 					 */
 					phys_addr_t phys_addr;	/**< physical address */

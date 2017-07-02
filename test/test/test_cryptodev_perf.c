@@ -65,7 +65,8 @@ enum chain_mode {
 	CIPHER_HASH,
 	HASH_CIPHER,
 	CIPHER_ONLY,
-	HASH_ONLY
+	HASH_ONLY,
+	AEAD
 };
 
 
@@ -86,6 +87,7 @@ struct symmetric_op {
 struct symmetric_session_attrs {
 	enum rte_crypto_cipher_operation cipher;
 	enum rte_crypto_auth_operation auth;
+	enum rte_crypto_aead_operation aead;
 
 	enum rte_crypto_cipher_algorithm cipher_algorithm;
 	const uint8_t *key_cipher_data;
@@ -94,6 +96,10 @@ struct symmetric_session_attrs {
 	enum rte_crypto_auth_algorithm auth_algorithm;
 	const uint8_t *key_auth_data;
 	uint32_t key_auth_len;
+
+	enum rte_crypto_aead_algorithm aead_algorithm;
+	const uint8_t *key_aead_data;
+	uint32_t key_aead_len;
 
 	const uint8_t *iv_data;
 	uint16_t iv_len;
@@ -124,8 +130,9 @@ struct perf_test_params {
 	enum chain_mode chain;
 
 	enum rte_crypto_cipher_algorithm cipher_algo;
-	unsigned cipher_key_length;
+	unsigned int key_length;
 	enum rte_crypto_auth_algorithm auth_algo;
+	enum rte_crypto_aead_algorithm aead_algo;
 
 	struct symmetric_session_attrs *session_attrs;
 
@@ -157,7 +164,8 @@ static struct rte_cryptodev_sym_session *
 test_perf_create_openssl_session(uint8_t dev_id, enum chain_mode chain,
 		enum rte_crypto_cipher_algorithm cipher_algo,
 		unsigned int cipher_key_len,
-		enum rte_crypto_auth_algorithm auth_algo);
+		enum rte_crypto_auth_algorithm auth_algo,
+		enum rte_crypto_aead_algorithm aead_algo);
 static struct rte_cryptodev_sym_session *
 test_perf_create_armv8_session(uint8_t dev_id, enum chain_mode chain,
 		enum rte_crypto_cipher_algorithm cipher_algo,
@@ -191,6 +199,7 @@ static const char *chain_mode_name(enum chain_mode mode)
 	case HASH_CIPHER: return "hash_cipher"; break;
 	case CIPHER_ONLY: return "cipher_only"; break;
 	case HASH_ONLY: return "hash_only"; break;
+	case AEAD: return "aead"; break;
 	default: return ""; break;
 	}
 }
@@ -2085,7 +2094,7 @@ test_perf_snow3G_optimise_cyclecount(struct perf_test_params *pparams)
 	/* Create Crypto session*/
 	sess = test_perf_create_snow3g_session(ts_params->dev_id,
 			pparams->chain, pparams->cipher_algo,
-			pparams->cipher_key_length, pparams->auth_algo);
+			pparams->key_length, pparams->auth_algo);
 	TEST_ASSERT_NOT_NULL(sess, "Session creation failed");
 
 	/* Generate Crypto op data structure(s)*/
@@ -2106,7 +2115,16 @@ test_perf_snow3G_optimise_cyclecount(struct perf_test_params *pparams)
 		c_ops[i] = op;
 	}
 
-	printf("\nOn %s dev%u qp%u, %s, cipher algo:%s, auth_algo:%s, "
+	if (pparams->chain == AEAD)
+		printf("\nOn %s dev%u qp%u, %s, aead algo:%s, "
+			"Packet Size %u bytes",
+			pmd_name(gbl_cryptodev_perftest_devtype),
+			ts_params->dev_id, 0,
+			chain_mode_name(pparams->chain),
+			rte_crypto_aead_algorithm_strings[pparams->aead_algo],
+			pparams->buf_size);
+	else
+		printf("\nOn %s dev%u qp%u, %s, cipher algo:%s, auth_algo:%s, "
 			"Packet Size %u bytes",
 			pmd_name(gbl_cryptodev_perftest_devtype),
 			ts_params->dev_id, 0,
@@ -2196,14 +2214,14 @@ test_perf_snow3G_vary_burst_size(void)
 			{
 					.chain = CIPHER_ONLY,
 					.cipher_algo  = RTE_CRYPTO_CIPHER_SNOW3G_UEA2,
-					.cipher_key_length = 16,
+					.key_length = 16,
 					.auth_algo  = RTE_CRYPTO_AUTH_NULL,
 			},
 			{
 					.chain = HASH_ONLY,
 					.cipher_algo = RTE_CRYPTO_CIPHER_NULL,
 					.auth_algo  = RTE_CRYPTO_AUTH_SNOW3G_UIA2,
-					.cipher_key_length = 16
+					.key_length = 16
 			},
 	};
 
@@ -2260,7 +2278,8 @@ test_perf_openssl_optimise_cyclecount(struct perf_test_params *pparams)
 	/* Create Crypto session*/
 	sess = test_perf_create_openssl_session(ts_params->dev_id,
 			pparams->chain, pparams->cipher_algo,
-			pparams->cipher_key_length, pparams->auth_algo);
+			pparams->key_length, pparams->auth_algo,
+			pparams->aead_algo);
 	TEST_ASSERT_NOT_NULL(sess, "Session creation failed");
 
 	/* Generate Crypto op data structure(s)*/
@@ -2275,21 +2294,22 @@ test_perf_openssl_optimise_cyclecount(struct perf_test_params *pparams)
 						RTE_CRYPTO_OP_TYPE_SYMMETRIC);
 		TEST_ASSERT_NOT_NULL(op, "Failed to allocate op");
 
-		switch (pparams->cipher_algo) {
-		case RTE_CRYPTO_CIPHER_3DES_CBC:
-		case RTE_CRYPTO_CIPHER_3DES_CTR:
-			test_perf_set_crypto_op = test_perf_set_crypto_op_3des;
-			break;
-		case RTE_CRYPTO_CIPHER_AES_CBC:
-		case RTE_CRYPTO_CIPHER_AES_CTR:
-			test_perf_set_crypto_op = test_perf_set_crypto_op_aes;
-			break;
-		case RTE_CRYPTO_CIPHER_AES_GCM:
+		if (pparams->chain == AEAD)
 			test_perf_set_crypto_op =
 						test_perf_set_crypto_op_aes_gcm;
-			break;
-		default:
-			return TEST_FAILED;
+		else {
+			switch (pparams->cipher_algo) {
+			case RTE_CRYPTO_CIPHER_3DES_CBC:
+			case RTE_CRYPTO_CIPHER_3DES_CTR:
+				test_perf_set_crypto_op = test_perf_set_crypto_op_3des;
+				break;
+			case RTE_CRYPTO_CIPHER_AES_CBC:
+			case RTE_CRYPTO_CIPHER_AES_CTR:
+				test_perf_set_crypto_op = test_perf_set_crypto_op_aes;
+				break;
+			default:
+				return TEST_FAILED;
+			}
 		}
 
 		op = test_perf_set_crypto_op(op, m, sess, pparams->buf_size,
@@ -2299,14 +2319,24 @@ test_perf_openssl_optimise_cyclecount(struct perf_test_params *pparams)
 		c_ops[i] = op;
 	}
 
-	printf("\nOn %s dev%u qp%u, %s, cipher algo:%s, cipher key length:%u, "
-			"auth_algo:%s, Packet Size %u bytes",
+	if (pparams->chain == AEAD)
+		printf("\nOn %s dev%u qp%u, %s, aead_algo:%s, "
+			"key length:%u, Packet Size %u bytes",
+			pmd_name(gbl_cryptodev_perftest_devtype),
+			ts_params->dev_id, 0,
+			chain_mode_name(pparams->chain),
+			rte_crypto_aead_algorithm_strings[pparams->aead_algo],
+			pparams->key_length,
+			pparams->buf_size);
+	else
+		printf("\nOn %s dev%u qp%u, %s, cipher algo:%s, auth_algo:%s, "
+			"key length:%u, Packet Size %u bytes",
 			pmd_name(gbl_cryptodev_perftest_devtype),
 			ts_params->dev_id, 0,
 			chain_mode_name(pparams->chain),
 			rte_crypto_cipher_algorithm_strings[pparams->cipher_algo],
-			pparams->cipher_key_length,
 			rte_crypto_auth_algorithm_strings[pparams->auth_algo],
+			pparams->key_length,
 			pparams->buf_size);
 	printf("\nOps Tx\tOps Rx\tOps/burst  ");
 	printf("Retries  EmptyPolls\tIACycles/CyOp\tIACycles/Burst\t"
@@ -2410,7 +2440,7 @@ test_perf_armv8_optimise_cyclecount(struct perf_test_params *pparams)
 	/* Create Crypto session*/
 	sess = test_perf_create_armv8_session(ts_params->dev_id,
 			pparams->chain, pparams->cipher_algo,
-			pparams->cipher_key_length, pparams->auth_algo);
+			pparams->key_length, pparams->auth_algo);
 	TEST_ASSERT_NOT_NULL(sess, "Session creation failed");
 
 	/* Generate Crypto op data structure(s)*/
@@ -2438,7 +2468,7 @@ test_perf_armv8_optimise_cyclecount(struct perf_test_params *pparams)
 			ts_params->dev_id, 0,
 			chain_mode_name(pparams->chain),
 			rte_crypto_cipher_algorithm_strings[pparams->cipher_algo],
-			pparams->cipher_key_length,
+			pparams->key_length,
 			rte_crypto_auth_algorithm_strings[pparams->auth_algo],
 			pparams->buf_size);
 	printf("\nOps Tx\tOps Rx\tOps/burst  ");
@@ -2532,8 +2562,6 @@ static uint32_t get_auth_key_max_length(enum rte_crypto_auth_algorithm algo)
 		return 128;
 	case RTE_CRYPTO_AUTH_SHA512_HMAC:
 		return 128;
-	case RTE_CRYPTO_AUTH_AES_GCM:
-		return 0;
 	default:
 		return 0;
 	}
@@ -2554,7 +2582,15 @@ static uint32_t get_auth_digest_length(enum rte_crypto_auth_algorithm algo)
 		return TRUNCATED_DIGEST_BYTE_LENGTH_SHA384;
 	case RTE_CRYPTO_AUTH_SHA512_HMAC:
 		return TRUNCATED_DIGEST_BYTE_LENGTH_SHA512;
-	case RTE_CRYPTO_AUTH_AES_GCM:
+	default:
+		return 0;
+	}
+}
+
+static uint32_t get_aead_digest_length(enum rte_crypto_aead_algorithm algo)
+{
+	switch (algo) {
+	case RTE_CRYPTO_AEAD_AES_GCM:
 		return DIGEST_BYTE_LENGTH_AES_GCM;
 	default:
 		return 0;
@@ -2732,55 +2768,73 @@ test_perf_create_snow3g_session(uint8_t dev_id, enum chain_mode chain,
 static struct rte_cryptodev_sym_session *
 test_perf_create_openssl_session(uint8_t dev_id, enum chain_mode chain,
 		enum rte_crypto_cipher_algorithm cipher_algo,
-		unsigned int cipher_key_len,
-		enum rte_crypto_auth_algorithm auth_algo)
+		unsigned int key_len,
+		enum rte_crypto_auth_algorithm auth_algo,
+		enum rte_crypto_aead_algorithm aead_algo)
 {
 	struct rte_crypto_sym_xform cipher_xform = { 0 };
 	struct rte_crypto_sym_xform auth_xform = { 0 };
+	struct rte_crypto_sym_xform aead_xform = { 0 };
 
-	/* Setup Cipher Parameters */
-	cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
-	cipher_xform.cipher.algo = cipher_algo;
-	cipher_xform.cipher.iv.offset = IV_OFFSET;
-	cipher_xform.cipher.op = RTE_CRYPTO_CIPHER_OP_ENCRYPT;
+	if (chain == CIPHER_HASH || chain == HASH_CIPHER) {
+		/* Setup Cipher Parameters */
+		cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
+		cipher_xform.cipher.algo = cipher_algo;
+		cipher_xform.cipher.iv.offset = IV_OFFSET;
+		cipher_xform.cipher.op = RTE_CRYPTO_CIPHER_OP_ENCRYPT;
 
-	switch (cipher_algo) {
-	case RTE_CRYPTO_CIPHER_3DES_CBC:
-	case RTE_CRYPTO_CIPHER_3DES_CTR:
-		cipher_xform.cipher.key.data = triple_des_key;
-		cipher_xform.cipher.iv.length = TRIPLE_DES_CIPHER_IV_LENGTH;
-		break;
-	case RTE_CRYPTO_CIPHER_AES_CBC:
-	case RTE_CRYPTO_CIPHER_AES_CTR:
-	case RTE_CRYPTO_CIPHER_AES_GCM:
-		cipher_xform.cipher.key.data = aes_key;
-		cipher_xform.cipher.iv.length = AES_CIPHER_IV_LENGTH;
-		break;
-	default:
-		return NULL;
+		switch (cipher_algo) {
+		case RTE_CRYPTO_CIPHER_3DES_CBC:
+		case RTE_CRYPTO_CIPHER_3DES_CTR:
+			cipher_xform.cipher.key.data = triple_des_key;
+			cipher_xform.cipher.iv.length = TRIPLE_DES_CIPHER_IV_LENGTH;
+			break;
+		case RTE_CRYPTO_CIPHER_AES_CBC:
+		case RTE_CRYPTO_CIPHER_AES_CTR:
+			cipher_xform.cipher.key.data = aes_key;
+			cipher_xform.cipher.iv.length = AES_CIPHER_IV_LENGTH;
+			break;
+		default:
+			return NULL;
+		}
+
+		cipher_xform.cipher.key.length = key_len;
+
+		/* Setup Auth Parameters */
+		auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
+		auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_GENERATE;
+		auth_xform.auth.algo = auth_algo;
+
+		switch (auth_algo) {
+		case RTE_CRYPTO_AUTH_SHA1_HMAC:
+			auth_xform.auth.key.data = hmac_sha_key;
+			break;
+		default:
+			return NULL;
+		}
+
+		auth_xform.auth.key.length =  get_auth_key_max_length(auth_algo);
+		auth_xform.auth.digest_length = get_auth_digest_length(auth_algo);
+	} else if (chain == AEAD) {
+		/* Setup AEAD Parameters */
+		aead_xform.type = RTE_CRYPTO_SYM_XFORM_AEAD;
+		aead_xform.aead.op = RTE_CRYPTO_AEAD_OP_ENCRYPT;
+		aead_xform.aead.algo = aead_algo;
+		aead_xform.aead.iv.offset = IV_OFFSET;
+
+		switch (aead_algo) {
+		case RTE_CRYPTO_AEAD_AES_GCM:
+			aead_xform.aead.key.data = aes_key;
+			aead_xform.aead.iv.length = AES_CIPHER_IV_LENGTH;
+			aead_xform.aead.add_auth_data_length = AES_GCM_AAD_LENGTH;
+			aead_xform.aead.digest_length = get_aead_digest_length(aead_algo);
+			break;
+		default:
+			return NULL;
+		}
+
+		aead_xform.aead.key.length = key_len;
 	}
-
-	cipher_xform.cipher.key.length = cipher_key_len;
-
-	/* Setup Auth Parameters */
-	auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
-	auth_xform.auth.op = RTE_CRYPTO_AUTH_OP_GENERATE;
-	auth_xform.auth.algo = auth_algo;
-
-	switch (auth_algo) {
-	case RTE_CRYPTO_AUTH_SHA1_HMAC:
-		auth_xform.auth.key.data = hmac_sha_key;
-		break;
-	case RTE_CRYPTO_AUTH_AES_GCM:
-		auth_xform.auth.key.data = NULL;
-		auth_xform.auth.add_auth_data_length = AES_GCM_AAD_LENGTH;
-		break;
-	default:
-		return NULL;
-	}
-
-	auth_xform.auth.key.length =  get_auth_key_max_length(auth_algo);
-	auth_xform.auth.digest_length = get_auth_digest_length(auth_algo);
 
 	switch (chain) {
 	case CIPHER_HASH:
@@ -2793,6 +2847,9 @@ test_perf_create_openssl_session(uint8_t dev_id, enum chain_mode chain,
 		cipher_xform.next = NULL;
 		/* Create Crypto session*/
 		return rte_cryptodev_sym_session_create(dev_id,	&auth_xform);
+	case AEAD:
+		/* Create Crypto session*/
+		return rte_cryptodev_sym_session_create(dev_id,	&aead_xform);
 	default:
 		return NULL;
 	}
@@ -2916,22 +2973,19 @@ test_perf_set_crypto_op_aes_gcm(struct rte_crypto_op *op, struct rte_mbuf *m,
 	}
 
 	/* Authentication Parameters */
-	op->sym->auth.digest.data = (uint8_t *)m->buf_addr +
+	op->sym->aead.digest.data = (uint8_t *)m->buf_addr +
 					(m->data_off + data_len);
-	op->sym->auth.digest.phys_addr =
+	op->sym->aead.digest.phys_addr =
 				rte_pktmbuf_mtophys_offset(m, data_len);
-	op->sym->auth.aad.data = aes_gcm_aad;
+	op->sym->aead.aad.data = aes_gcm_aad;
 
 	/* Copy IV at the end of the crypto operation */
 	rte_memcpy(rte_crypto_op_ctod_offset(op, uint8_t *, IV_OFFSET),
 			aes_iv, AES_CIPHER_IV_LENGTH);
 
 	/* Data lengths/offsets Parameters */
-	op->sym->auth.data.offset = 0;
-	op->sym->auth.data.length = data_len;
-
-	op->sym->cipher.data.offset = 0;
-	op->sym->cipher.data.length = data_len;
+	op->sym->aead.data.offset = 0;
+	op->sym->aead.data.length = data_len;
 
 	op->sym->m_src = m;
 
@@ -3102,7 +3156,7 @@ test_perf_aes_sha(uint8_t dev_id, uint16_t queue_id,
 	/* Create Crypto session*/
 	sess = test_perf_create_aes_sha_session(ts_params->dev_id,
 			pparams->chain, pparams->cipher_algo,
-			pparams->cipher_key_length, pparams->auth_algo);
+			pparams->key_length, pparams->auth_algo);
 	TEST_ASSERT_NOT_NULL(sess, "Session creation failed");
 
 	/* Generate a burst of crypto operations */
@@ -3235,7 +3289,7 @@ test_perf_snow3g(uint8_t dev_id, uint16_t queue_id,
 	/* Create Crypto session*/
 	sess = test_perf_create_snow3g_session(ts_params->dev_id,
 			pparams->chain, pparams->cipher_algo,
-			pparams->cipher_key_length, pparams->auth_algo);
+			pparams->key_length, pparams->auth_algo);
 	TEST_ASSERT_NOT_NULL(sess, "Session creation failed");
 
 	/* Generate a burst of crypto operations */
@@ -3394,20 +3448,22 @@ test_perf_openssl(uint8_t dev_id, uint16_t queue_id,
 					unsigned int,
 					enum chain_mode);
 
-	switch (pparams->cipher_algo) {
-	case RTE_CRYPTO_CIPHER_3DES_CBC:
-	case RTE_CRYPTO_CIPHER_3DES_CTR:
-		test_perf_set_crypto_op = test_perf_set_crypto_op_3des;
-		break;
-	case RTE_CRYPTO_CIPHER_AES_CBC:
-	case RTE_CRYPTO_CIPHER_AES_CTR:
-		test_perf_set_crypto_op = test_perf_set_crypto_op_aes;
-		break;
-	case RTE_CRYPTO_CIPHER_AES_GCM:
-		test_perf_set_crypto_op = test_perf_set_crypto_op_aes_gcm;
-		break;
-	default:
-		return TEST_FAILED;
+	if (pparams->chain == AEAD)
+		test_perf_set_crypto_op =
+					test_perf_set_crypto_op_aes_gcm;
+	else {
+		switch (pparams->cipher_algo) {
+		case RTE_CRYPTO_CIPHER_3DES_CBC:
+		case RTE_CRYPTO_CIPHER_3DES_CTR:
+			test_perf_set_crypto_op = test_perf_set_crypto_op_3des;
+			break;
+		case RTE_CRYPTO_CIPHER_AES_CBC:
+		case RTE_CRYPTO_CIPHER_AES_CTR:
+			test_perf_set_crypto_op = test_perf_set_crypto_op_aes;
+			break;
+		default:
+			return TEST_FAILED;
+		}
 	}
 
 	if (rte_cryptodev_count() == 0) {
@@ -3418,7 +3474,8 @@ test_perf_openssl(uint8_t dev_id, uint16_t queue_id,
 	/* Create Crypto session*/
 	sess = test_perf_create_openssl_session(ts_params->dev_id,
 			pparams->chain, pparams->cipher_algo,
-			pparams->cipher_key_length, pparams->auth_algo);
+			pparams->key_length, pparams->auth_algo,
+			pparams->aead_algo);
 	TEST_ASSERT_NOT_NULL(sess, "Session creation failed");
 
 	/* Generate a burst of crypto operations */
@@ -3548,7 +3605,7 @@ test_perf_armv8(uint8_t dev_id, uint16_t queue_id,
 	/* Create Crypto session*/
 	sess = test_perf_create_armv8_session(ts_params->dev_id,
 			pparams->chain, pparams->cipher_algo,
-			pparams->cipher_key_length, pparams->auth_algo);
+			pparams->key_length, pparams->auth_algo);
 	TEST_ASSERT_NOT_NULL(sess, "Session creation failed");
 
 	/* Generate a burst of crypto operations */
@@ -3674,48 +3731,48 @@ test_perf_aes_cbc_encrypt_digest_vary_pkt_size(void)
 		{
 			.chain = CIPHER_ONLY,
 			.cipher_algo  = RTE_CRYPTO_CIPHER_AES_CBC,
-			.cipher_key_length = 16,
+			.key_length = 16,
 			.auth_algo = RTE_CRYPTO_AUTH_NULL
 		},
 		{
 			.chain = CIPHER_HASH,
 			.cipher_algo  = RTE_CRYPTO_CIPHER_AES_CBC,
-			.cipher_key_length = 16,
+			.key_length = 16,
 			.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC
 		},
 		{
 			.chain = CIPHER_HASH,
 
 			.cipher_algo  = RTE_CRYPTO_CIPHER_AES_CBC,
-			.cipher_key_length = 16,
+			.key_length = 16,
 			.auth_algo = RTE_CRYPTO_AUTH_SHA256_HMAC
 		},
 		{
 			.chain = CIPHER_HASH,
 
 			.cipher_algo  = RTE_CRYPTO_CIPHER_AES_CBC,
-			.cipher_key_length = 16,
+			.key_length = 16,
 			.auth_algo = RTE_CRYPTO_AUTH_SHA512_HMAC
 		},
 		{
 			.chain = CIPHER_HASH,
 
 			.cipher_algo  = RTE_CRYPTO_CIPHER_AES_CBC,
-			.cipher_key_length = 32,
+			.key_length = 32,
 			.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC
 		},
 		{
 			.chain = CIPHER_HASH,
 
 			.cipher_algo  = RTE_CRYPTO_CIPHER_AES_CBC,
-			.cipher_key_length = 32,
+			.key_length = 32,
 			.auth_algo = RTE_CRYPTO_AUTH_SHA256_HMAC
 		},
 		{
 			.chain = CIPHER_HASH,
 
 			.cipher_algo  = RTE_CRYPTO_CIPHER_AES_CBC,
-			.cipher_key_length = 32,
+			.key_length = 32,
 			.auth_algo = RTE_CRYPTO_AUTH_SHA512_HMAC
 		},
 	};
@@ -3729,7 +3786,7 @@ test_perf_aes_cbc_encrypt_digest_vary_pkt_size(void)
 			chain_mode_name(params_set[i].chain),
 			rte_crypto_cipher_algorithm_strings[params_set[i].cipher_algo],
 			rte_crypto_auth_algorithm_strings[params_set[i].auth_algo],
-			params_set[i].cipher_key_length,
+			params_set[i].key_length,
 			burst_size);
 		printf("\nBuffer Size(B)\tOPS(M)\tThroughput(Gbps)\t"
 			"Retries\tEmptyPolls\n");
@@ -3755,14 +3812,14 @@ test_perf_snow3G_vary_pkt_size(void)
 		{
 			.chain = CIPHER_ONLY,
 			.cipher_algo  = RTE_CRYPTO_CIPHER_SNOW3G_UEA2,
-			.cipher_key_length = 16,
+			.key_length = 16,
 			.auth_algo  = RTE_CRYPTO_AUTH_NULL,
 		},
 		{
 			.chain = HASH_ONLY,
 			.cipher_algo = RTE_CRYPTO_CIPHER_NULL,
 			.auth_algo  = RTE_CRYPTO_AUTH_SNOW3G_UIA2,
-			.cipher_key_length = 16
+			.key_length = 16
 		},
 	};
 
@@ -3817,63 +3874,77 @@ test_perf_openssl_vary_pkt_size(void)
 			.chain = CIPHER_HASH,
 
 			.cipher_algo  = RTE_CRYPTO_CIPHER_3DES_CBC,
-			.cipher_key_length = 16,
+			.key_length = 16,
 			.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC
 		},
 		{
 			.chain = CIPHER_HASH,
 
 			.cipher_algo  = RTE_CRYPTO_CIPHER_3DES_CBC,
-			.cipher_key_length = 24,
+			.key_length = 24,
 			.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC
 		},
 		{
 			.chain = CIPHER_HASH,
 
 			.cipher_algo  = RTE_CRYPTO_CIPHER_AES_CTR,
-			.cipher_key_length = 16,
+			.key_length = 16,
 			.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC
 		},
 		{
 			.chain = CIPHER_HASH,
 
 			.cipher_algo  = RTE_CRYPTO_CIPHER_AES_CTR,
-			.cipher_key_length = 32,
+			.key_length = 32,
 			.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC
 		},
 		{
 			.chain = CIPHER_HASH,
 
 			.cipher_algo  = RTE_CRYPTO_CIPHER_3DES_CTR,
-			.cipher_key_length = 16,
+			.key_length = 16,
 			.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC
 		},
 		{
 			.chain = CIPHER_HASH,
 
 			.cipher_algo  = RTE_CRYPTO_CIPHER_3DES_CTR,
-			.cipher_key_length = 24,
+			.key_length = 24,
 			.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC
 		},
 		{
-			.chain = CIPHER_HASH,
+			.chain = AEAD,
 
-			.cipher_algo  = RTE_CRYPTO_CIPHER_AES_GCM,
-			.cipher_key_length = 16,
-			.auth_algo = RTE_CRYPTO_AUTH_AES_GCM
+			.aead_algo  = RTE_CRYPTO_AEAD_AES_GCM,
+			.key_length = 16,
 		},
 	};
 
 	for (i = 0; i < RTE_DIM(params_set); i++) {
 		params_set[i].total_operations = total_operations;
 		params_set[i].burst_size = burst_size;
-		printf("\n%s. cipher algo: %s auth algo: %s cipher key size=%u."
-			" burst_size: %d ops\n",
-			chain_mode_name(params_set[i].chain),
-			rte_crypto_cipher_algorithm_strings[params_set[i].cipher_algo],
-			rte_crypto_auth_algorithm_strings[params_set[i].auth_algo],
-			params_set[i].cipher_key_length,
-			burst_size);
+		if (params_set[i].chain == AEAD) {
+			enum rte_crypto_aead_algorithm aead_algo =
+				params_set[i].aead_algo;
+			printf("\n%s. aead algo: %s  key size=%u."
+				" burst_size: %d ops\n",
+				chain_mode_name(params_set[i].chain),
+				rte_crypto_aead_algorithm_strings[aead_algo],
+				params_set[i].key_length,
+				burst_size);
+		} else {
+			enum rte_crypto_cipher_algorithm cipher_algo =
+				params_set[i].cipher_algo;
+			enum rte_crypto_auth_algorithm auth_algo =
+				params_set[i].auth_algo;
+			printf("\n%s. cipher algo: %s auth algo: %s key size=%u."
+				" burst_size: %d ops\n",
+				chain_mode_name(params_set[i].chain),
+				rte_crypto_cipher_algorithm_strings[cipher_algo],
+				rte_crypto_auth_algorithm_strings[auth_algo],
+				params_set[i].key_length,
+				burst_size);
+		}
 		printf("\nBuffer Size(B)\tOPS(M)\tThroughput(Gbps)\tRetries\t"
 				"EmptyPolls\n");
 		for (j = 0; j < RTE_DIM(buf_lengths); j++) {
@@ -3898,50 +3969,49 @@ test_perf_openssl_vary_burst_size(void)
 			.chain = CIPHER_HASH,
 
 			.cipher_algo  = RTE_CRYPTO_CIPHER_3DES_CBC,
-			.cipher_key_length = 16,
+			.key_length = 16,
 			.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC
 		},
 		{
 			.chain = CIPHER_HASH,
 
 			.cipher_algo  = RTE_CRYPTO_CIPHER_3DES_CBC,
-			.cipher_key_length = 24,
+			.key_length = 24,
 			.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC
 		},
 		{
 			.chain = CIPHER_HASH,
 
 			.cipher_algo  = RTE_CRYPTO_CIPHER_AES_CTR,
-			.cipher_key_length = 16,
+			.key_length = 16,
 			.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC
 		},
 		{
 			.chain = CIPHER_HASH,
 
 			.cipher_algo  = RTE_CRYPTO_CIPHER_AES_CTR,
-			.cipher_key_length = 32,
+			.key_length = 32,
 			.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC
 		},
 		{
 			.chain = CIPHER_HASH,
 
 			.cipher_algo  = RTE_CRYPTO_CIPHER_3DES_CTR,
-			.cipher_key_length = 16,
+			.key_length = 16,
 			.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC
 		},
 		{
 			.chain = CIPHER_HASH,
 
 			.cipher_algo  = RTE_CRYPTO_CIPHER_3DES_CTR,
-			.cipher_key_length = 24,
+			.key_length = 24,
 			.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC
 		},
 		{
-			.chain = CIPHER_HASH,
+			.chain = AEAD,
 
-			.cipher_algo  = RTE_CRYPTO_CIPHER_AES_GCM,
-			.cipher_key_length = 16,
-			.auth_algo = RTE_CRYPTO_AUTH_AES_GCM
+			.aead_algo  = RTE_CRYPTO_AEAD_AES_GCM,
+			.key_length = 16,
 		},
 	};
 
@@ -3978,28 +4048,28 @@ test_perf_armv8_vary_pkt_size(void)
 			.chain = CIPHER_HASH,
 
 			.cipher_algo  = RTE_CRYPTO_CIPHER_AES_CBC,
-			.cipher_key_length = 16,
+			.key_length = 16,
 			.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC
 		},
 		{
 			.chain = HASH_CIPHER,
 
 			.cipher_algo  = RTE_CRYPTO_CIPHER_AES_CBC,
-			.cipher_key_length = 16,
+			.key_length = 16,
 			.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC
 		},
 		{
 			.chain = CIPHER_HASH,
 
 			.cipher_algo  = RTE_CRYPTO_CIPHER_AES_CBC,
-			.cipher_key_length = 16,
+			.key_length = 16,
 			.auth_algo = RTE_CRYPTO_AUTH_SHA256_HMAC
 		},
 		{
 			.chain = HASH_CIPHER,
 
 			.cipher_algo  = RTE_CRYPTO_CIPHER_AES_CBC,
-			.cipher_key_length = 16,
+			.key_length = 16,
 			.auth_algo = RTE_CRYPTO_AUTH_SHA256_HMAC
 		},
 	};
@@ -4012,7 +4082,7 @@ test_perf_armv8_vary_pkt_size(void)
 			chain_mode_name(params_set[i].chain),
 			rte_crypto_cipher_algorithm_strings[params_set[i].cipher_algo],
 			rte_crypto_auth_algorithm_strings[params_set[i].auth_algo],
-			params_set[i].cipher_key_length,
+			params_set[i].key_length,
 			burst_size);
 		printf("\nBuffer Size(B)\tOPS(M)\tThroughput(Gbps)\tRetries\t"
 				"EmptyPolls\n");
@@ -4038,28 +4108,28 @@ test_perf_armv8_vary_burst_size(void)
 			.chain = CIPHER_HASH,
 
 			.cipher_algo  = RTE_CRYPTO_CIPHER_AES_CBC,
-			.cipher_key_length = 16,
+			.key_length = 16,
 			.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC
 		},
 		{
 			.chain = HASH_CIPHER,
 
 			.cipher_algo  = RTE_CRYPTO_CIPHER_AES_CBC,
-			.cipher_key_length = 16,
+			.key_length = 16,
 			.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC
 		},
 		{
 			.chain = CIPHER_HASH,
 
 			.cipher_algo  = RTE_CRYPTO_CIPHER_AES_CBC,
-			.cipher_key_length = 16,
+			.key_length = 16,
 			.auth_algo = RTE_CRYPTO_AUTH_SHA256_HMAC
 		},
 		{
 			.chain = HASH_CIPHER,
 
 			.cipher_algo  = RTE_CRYPTO_CIPHER_AES_CBC,
-			.cipher_key_length = 16,
+			.key_length = 16,
 			.auth_algo = RTE_CRYPTO_AUTH_SHA256_HMAC
 		},
 	};
@@ -4094,48 +4164,26 @@ static struct rte_cryptodev_sym_session *
 test_perf_create_session(uint8_t dev_id, struct perf_test_params *pparams)
 {
 	static struct rte_cryptodev_sym_session *sess;
-	struct rte_crypto_sym_xform cipher_xform = { 0 };
-	struct rte_crypto_sym_xform auth_xform = { 0 };
+	struct rte_crypto_sym_xform aead_xform = { 0 };
 
-	uint8_t cipher_key[pparams->session_attrs->key_cipher_len];
-	uint8_t auth_key[pparams->session_attrs->key_auth_len];
+	uint8_t aead_key[pparams->session_attrs->key_aead_len];
 
-	memcpy(cipher_key, pparams->session_attrs->key_cipher_data,
-		 pparams->session_attrs->key_cipher_len);
-	memcpy(auth_key, pparams->session_attrs->key_auth_data,
-		 pparams->session_attrs->key_auth_len);
+	memcpy(aead_key, pparams->session_attrs->key_aead_data,
+		 pparams->session_attrs->key_aead_len);
 
-	cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
-	cipher_xform.next = NULL;
+	aead_xform.type = RTE_CRYPTO_SYM_XFORM_AEAD;
+	aead_xform.next = NULL;
 
-	cipher_xform.cipher.algo = pparams->session_attrs->cipher_algorithm;
-	cipher_xform.cipher.op = pparams->session_attrs->cipher;
-	cipher_xform.cipher.key.data = cipher_key;
-	cipher_xform.cipher.key.length = pparams->session_attrs->key_cipher_len;
-	cipher_xform.cipher.iv.length = pparams->session_attrs->iv_len;
-	cipher_xform.cipher.iv.offset = IV_OFFSET;
+	aead_xform.aead.algo = pparams->session_attrs->aead_algorithm;
+	aead_xform.aead.op = pparams->session_attrs->aead;
+	aead_xform.aead.key.data = aead_key;
+	aead_xform.aead.key.length = pparams->session_attrs->key_aead_len;
+	aead_xform.aead.iv.length = pparams->session_attrs->iv_len;
+	aead_xform.aead.iv.offset = IV_OFFSET;
+	aead_xform.aead.add_auth_data_length = pparams->session_attrs->aad_len;
+	aead_xform.aead.digest_length = pparams->session_attrs->digest_len;
 
-	auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
-	auth_xform.next = NULL;
-
-	auth_xform.auth.op = pparams->session_attrs->auth;
-	auth_xform.auth.algo = pparams->session_attrs->auth_algorithm;
-
-	auth_xform.auth.add_auth_data_length = pparams->session_attrs->aad_len;
-	auth_xform.auth.digest_length = pparams->session_attrs->digest_len;
-	auth_xform.auth.key.length = pparams->session_attrs->key_auth_len;
-
-
-	cipher_xform.cipher.op = RTE_CRYPTO_CIPHER_OP_ENCRYPT;
-	if (cipher_xform.cipher.op == RTE_CRYPTO_CIPHER_OP_ENCRYPT) {
-		cipher_xform.next = &auth_xform;
-		sess = rte_cryptodev_sym_session_create(dev_id,
-				&cipher_xform);
-	} else {
-		auth_xform.next = &cipher_xform;
-		sess = rte_cryptodev_sym_session_create(dev_id,
-				&auth_xform);
-	}
+	sess = rte_cryptodev_sym_session_create(dev_id,	&aead_xform);
 
 	return sess;
 }
@@ -4154,17 +4202,17 @@ perf_gcm_set_crypto_op(struct rte_crypto_op *op, struct rte_mbuf *m,
 		return NULL;
 	}
 
-	op->sym->auth.digest.data = m_hlp->digest;
-	op->sym->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
+	op->sym->aead.digest.data = m_hlp->digest;
+	op->sym->aead.digest.phys_addr = rte_pktmbuf_mtophys_offset(
 					  m,
 					  params->session_attrs->aad_len +
 					  params->symmetric_op->p_len);
 
 
-	op->sym->auth.aad.data = m_hlp->aad;
-	op->sym->auth.aad.phys_addr = rte_pktmbuf_mtophys(m);
+	op->sym->aead.aad.data = m_hlp->aad;
+	op->sym->aead.aad.phys_addr = rte_pktmbuf_mtophys(m);
 
-	rte_memcpy(op->sym->auth.aad.data, params->symmetric_op->aad_data,
+	rte_memcpy(op->sym->aead.aad.data, params->symmetric_op->aad_data,
 		       params->session_attrs->aad_len);
 
 	rte_memcpy(iv_ptr, params->session_attrs->iv_data,
@@ -4172,13 +4220,9 @@ perf_gcm_set_crypto_op(struct rte_crypto_op *op, struct rte_mbuf *m,
 	if (params->session_attrs->iv_len == 12)
 		iv_ptr[15] = 1;
 
-	op->sym->auth.data.offset =
+	op->sym->aead.data.offset =
 			params->session_attrs->aad_len;
-	op->sym->auth.data.length = params->symmetric_op->p_len;
-
-	op->sym->cipher.data.offset =
-			params->session_attrs->aad_len;
-	op->sym->cipher.data.length = params->symmetric_op->p_len;
+	op->sym->aead.data.length = params->symmetric_op->p_len;
 
 	op->sym->m_src = m;
 
@@ -4392,20 +4436,14 @@ test_perf_AES_GCM(int continual_buf_len, int continual_size)
 
 		gcm_test = gcm_tests[i];
 
-		session_attrs[i].cipher =
-				RTE_CRYPTO_CIPHER_OP_ENCRYPT;
-		session_attrs[i].cipher_algorithm =
-				RTE_CRYPTO_CIPHER_AES_GCM;
-		session_attrs[i].key_cipher_data =
+		session_attrs[i].aead =
+				RTE_CRYPTO_AEAD_OP_ENCRYPT;
+		session_attrs[i].aead_algorithm =
+				RTE_CRYPTO_AEAD_AES_GCM;
+		session_attrs[i].key_aead_data =
 				gcm_test->key.data;
-		session_attrs[i].key_cipher_len =
+		session_attrs[i].key_aead_len =
 				gcm_test->key.len;
-		session_attrs[i].auth_algorithm =
-				RTE_CRYPTO_AUTH_AES_GCM;
-		session_attrs[i].auth =
-			RTE_CRYPTO_AUTH_OP_GENERATE;
-		session_attrs[i].key_auth_data = NULL;
-		session_attrs[i].key_auth_len = 0;
 		session_attrs[i].aad_len = gcm_test->aad.len;
 		session_attrs[i].digest_len =
 				gcm_test->auth_tag.len;
@@ -4420,7 +4458,7 @@ test_perf_AES_GCM(int continual_buf_len, int continual_size)
 		ops_set[i].t_data = gcm_test->auth_tags[i].data;
 		ops_set[i].t_len = gcm_test->auth_tags[i].len;
 
-		params_set[i].chain = CIPHER_HASH;
+		params_set[i].chain = AEAD;
 		params_set[i].session_attrs = &session_attrs[i];
 		params_set[i].symmetric_op = &ops_set[i];
 		if (continual_buf_len)
@@ -4522,7 +4560,7 @@ test_perf_continual_performance_test(void)
 		.chain = CIPHER_HASH,
 
 		.cipher_algo  = RTE_CRYPTO_CIPHER_AES_CBC,
-		.cipher_key_length = 16,
+		.key_length = 16,
 		.auth_algo = RTE_CRYPTO_AUTH_SHA1_HMAC
 	};
 
@@ -4532,7 +4570,7 @@ test_perf_continual_performance_test(void)
 			chain_mode_name(params_set.chain),
 			rte_crypto_cipher_algorithm_strings[params_set.cipher_algo],
 			rte_crypto_auth_algorithm_strings[params_set.auth_algo],
-			params_set.cipher_key_length,
+			params_set.key_length,
 			burst_size);
 		printf("\nBuffer Size(B)\tOPS(M)\tThroughput(Gbps)\t"
 				"Retries\tEmptyPolls\n");

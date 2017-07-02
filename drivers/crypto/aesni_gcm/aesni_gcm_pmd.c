@@ -77,13 +77,13 @@ aesni_gcm_set_session_parameters(struct aesni_gcm_session *sess,
 		const struct rte_crypto_sym_xform *xform)
 {
 	const struct rte_crypto_sym_xform *auth_xform;
-	const struct rte_crypto_sym_xform *cipher_xform;
+	const struct rte_crypto_sym_xform *aead_xform;
 	uint16_t digest_length;
 	uint8_t key_length;
 	uint8_t *key;
 
 	/* AES-GMAC */
-	if (xform->next == NULL) {
+	if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH) {
 		auth_xform = xform;
 		if (auth_xform->auth.algo != RTE_CRYPTO_AUTH_AES_GMAC) {
 			GCM_LOG_ERR("Only AES GMAC is supported as an "
@@ -102,51 +102,38 @@ aesni_gcm_set_session_parameters(struct aesni_gcm_session *sess,
 
 		key_length = auth_xform->auth.key.length;
 		key = auth_xform->auth.key.data;
-	/* AES-GCM */
-	} else {
-		if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER &&
-				xform->next->type == RTE_CRYPTO_SYM_XFORM_AUTH) {
-			auth_xform = xform->next;
-			cipher_xform = xform;
-		} else if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH &&
-				xform->next->type == RTE_CRYPTO_SYM_XFORM_CIPHER) {
-			auth_xform = xform;
-			cipher_xform = xform->next;
-		} else {
-			GCM_LOG_ERR("Cipher and auth xform required "
-					"when using AES GCM");
-			return -EINVAL;
-		}
+		digest_length = auth_xform->auth.digest_length;
 
-		if (!(cipher_xform->cipher.algo == RTE_CRYPTO_CIPHER_AES_GCM &&
-				(auth_xform->auth.algo == RTE_CRYPTO_AUTH_AES_GCM))) {
+	/* AES-GCM */
+	} else if (xform->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
+		aead_xform = xform;
+
+		if (aead_xform->aead.algo != RTE_CRYPTO_AEAD_AES_GCM) {
 			GCM_LOG_ERR("The only combined operation "
 						"supported is AES GCM");
 			return -EINVAL;
 		}
 
 		/* Set IV parameters */
-		sess->iv.offset = cipher_xform->cipher.iv.offset;
-		sess->iv.length = cipher_xform->cipher.iv.length;
+		sess->iv.offset = aead_xform->aead.iv.offset;
+		sess->iv.length = aead_xform->aead.iv.length;
 
 		/* Select Crypto operation */
-		if (cipher_xform->cipher.op == RTE_CRYPTO_CIPHER_OP_ENCRYPT &&
-				auth_xform->auth.op == RTE_CRYPTO_AUTH_OP_GENERATE)
+		if (aead_xform->aead.op == RTE_CRYPTO_AEAD_OP_ENCRYPT)
 			sess->op = AESNI_GCM_OP_AUTHENTICATED_ENCRYPTION;
-		else if (cipher_xform->cipher.op == RTE_CRYPTO_CIPHER_OP_DECRYPT &&
-				auth_xform->auth.op == RTE_CRYPTO_AUTH_OP_VERIFY)
+		else
 			sess->op = AESNI_GCM_OP_AUTHENTICATED_DECRYPTION;
-		else {
-			GCM_LOG_ERR("Cipher/Auth operations: Encrypt/Generate or"
-					" Decrypt/Verify are valid only");
-			return -EINVAL;
-		}
 
-		key_length = cipher_xform->auth.key.length;
-		key = cipher_xform->auth.key.data;
+		key_length = aead_xform->aead.key.length;
+		key = aead_xform->aead.key.data;
 
-		sess->aad_length = auth_xform->auth.add_auth_data_length;
+		sess->aad_length = aead_xform->aead.add_auth_data_length;
+		digest_length = aead_xform->aead.digest_length;
+	} else {
+		GCM_LOG_ERR("Wrong xform type, has to be AEAD or authentication");
+		return -EINVAL;
 	}
+
 
 	/* IV check */
 	if (sess->iv.length != 16 && sess->iv.length != 12 &&
@@ -154,8 +141,6 @@ aesni_gcm_set_session_parameters(struct aesni_gcm_session *sess,
 		GCM_LOG_ERR("Wrong IV length");
 		return -EINVAL;
 	}
-
-	digest_length = auth_xform->auth.digest_length;
 
 	/* Check key length and calculate GCM pre-compute. */
 	switch (key_length) {
@@ -170,7 +155,7 @@ aesni_gcm_set_session_parameters(struct aesni_gcm_session *sess,
 
 		break;
 	default:
-		GCM_LOG_ERR("Unsupported cipher/auth key length");
+		GCM_LOG_ERR("Unsupported key length");
 		return -EINVAL;
 	}
 
@@ -241,9 +226,9 @@ process_gcm_crypto_op(struct rte_crypto_op *op,
 
 	if (session->op == AESNI_GCM_OP_AUTHENTICATED_ENCRYPTION ||
 			session->op == AESNI_GCM_OP_AUTHENTICATED_DECRYPTION) {
-		offset = sym_op->cipher.data.offset;
+		offset = sym_op->aead.data.offset;
 		data_offset = offset;
-		data_length = sym_op->cipher.data.length;
+		data_length = sym_op->aead.data.length;
 	} else {
 		offset = sym_op->auth.data.offset;
 		data_offset = offset;
@@ -296,7 +281,7 @@ process_gcm_crypto_op(struct rte_crypto_op *op,
 
 		aesni_gcm_enc[session->key].init(&session->gdata,
 				iv_ptr,
-				sym_op->auth.aad.data,
+				sym_op->aead.aad.data,
 				(uint64_t)session->aad_length);
 
 		aesni_gcm_enc[session->key].update(&session->gdata, dst, src,
@@ -320,7 +305,7 @@ process_gcm_crypto_op(struct rte_crypto_op *op,
 		}
 
 		aesni_gcm_enc[session->key].finalize(&session->gdata,
-				sym_op->auth.digest.data,
+				sym_op->aead.digest.data,
 				(uint64_t)session->digest_length);
 	} else if (session->op == AESNI_GCM_OP_AUTHENTICATED_DECRYPTION) {
 		uint8_t *auth_tag = (uint8_t *)rte_pktmbuf_append(sym_op->m_dst ?
@@ -334,7 +319,7 @@ process_gcm_crypto_op(struct rte_crypto_op *op,
 
 		aesni_gcm_dec[session->key].init(&session->gdata,
 				iv_ptr,
-				sym_op->auth.aad.data,
+				sym_op->aead.aad.data,
 				(uint64_t)session->aad_length);
 
 		aesni_gcm_dec[session->key].update(&session->gdata, dst, src,
@@ -414,19 +399,24 @@ post_process_gcm_crypto_op(struct rte_crypto_op *op)
 	/* Verify digest if required */
 	if (session->op == AESNI_GCM_OP_AUTHENTICATED_DECRYPTION ||
 			session->op == AESNI_GMAC_OP_VERIFY) {
+		uint8_t *digest;
 
 		uint8_t *tag = rte_pktmbuf_mtod_offset(m, uint8_t *,
 				m->data_len - session->digest_length);
 
+		if (session->op == AESNI_GMAC_OP_VERIFY)
+			digest = op->sym->auth.digest.data;
+		else
+			digest = op->sym->aead.digest.data;
+
 #ifdef RTE_LIBRTE_PMD_AESNI_GCM_DEBUG
 		rte_hexdump(stdout, "auth tag (orig):",
-				op->sym->auth.digest.data, session->digest_length);
+				digest, session->digest_length);
 		rte_hexdump(stdout, "auth tag (calc):",
 				tag, session->digest_length);
 #endif
 
-		if (memcmp(tag, op->sym->auth.digest.data,
-				session->digest_length) != 0)
+		if (memcmp(tag, digest,	session->digest_length) != 0)
 			op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
 
 		/* trim area used for digest from mbuf */
