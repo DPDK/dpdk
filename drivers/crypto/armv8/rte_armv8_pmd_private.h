@@ -159,8 +159,11 @@ struct armv8_crypto_session {
 		/**< cipher operation direction */
 		enum rte_crypto_cipher_algorithm algo;
 		/**< cipher algorithm */
-		int iv_len;
-		/**< IV length */
+		struct {
+			uint16_t length;
+			uint16_t offset;
+		} iv;
+		/**< IV parameters */
 
 		struct {
 			uint8_t data[256];

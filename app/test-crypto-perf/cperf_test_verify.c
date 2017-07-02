@@ -199,7 +199,11 @@ cperf_verify_test_constructor(uint8_t dev_id, uint16_t qp_id,
 	ctx->options = options;
 	ctx->test_vector = test_vector;
 
-	ctx->sess = op_fns->sess_create(dev_id, options, test_vector);
+	/* IV goes at the end of the cryptop operation */
+	uint16_t iv_offset = sizeof(struct rte_crypto_op) +
+		sizeof(struct rte_crypto_sym_op);
+
+	ctx->sess = op_fns->sess_create(dev_id, options, test_vector, iv_offset);
 	if (ctx->sess == NULL)
 		goto err;
 

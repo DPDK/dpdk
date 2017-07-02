@@ -139,6 +139,11 @@ struct l2fwd_key {
 	phys_addr_t phys_addr;
 };
 
+struct l2fwd_iv {
+	uint8_t *data;
+	uint16_t length;
+};
+
 /** l2fwd crypto application command line options */
 struct l2fwd_crypto_options {
 	unsigned portmask;
@@ -155,8 +160,8 @@ struct l2fwd_crypto_options {
 	unsigned ckey_param;
 	int ckey_random_size;
 
-	struct l2fwd_key iv;
-	unsigned iv_param;
+	struct l2fwd_iv iv;
+	unsigned int iv_param;
 	int iv_random_size;
 
 	struct rte_crypto_sym_xform auth_xform;
@@ -183,7 +188,7 @@ struct l2fwd_crypto_params {
 	unsigned digest_length;
 	unsigned block_size;
 
-	struct l2fwd_key iv;
+	struct l2fwd_iv iv;
 	struct l2fwd_key aad;
 	struct rte_cryptodev_sym_session *session;
 
@@ -489,9 +494,6 @@ l2fwd_simple_crypto_enqueue(struct rte_mbuf *m,
 		/* Copy IV at the end of the crypto operation */
 		rte_memcpy(iv_ptr, cparams->iv.data, cparams->iv.length);
 
-		op->sym->cipher.iv.offset = IV_OFFSET;
-		op->sym->cipher.iv.length = cparams->iv.length;
-
 		/* For wireless algorithms, offset/length must be in bits */
 		if (cparams->cipher_algo == RTE_CRYPTO_CIPHER_SNOW3G_UEA2 ||
 				cparams->cipher_algo == RTE_CRYPTO_CIPHER_KASUMI_F8 ||
@@ -703,6 +705,9 @@ l2fwd_main_loop(struct l2fwd_crypto_options *options)
 						port_cparams[i].iv.length);
 
 			port_cparams[i].cipher_algo = options->cipher_xform.cipher.algo;
+			/* Set IV parameters */
+			options->cipher_xform.cipher.iv.offset = IV_OFFSET;
+			options->cipher_xform.cipher.iv.length = options->iv.length;
 		}
 
 		port_cparams[i].session = initialize_crypto_session(options,
@@ -1547,6 +1552,46 @@ check_supported_size(uint16_t length, uint16_t min, uint16_t max,
 
 	return -1;
 }
+
+static int
+check_iv_param(const struct rte_crypto_param_range *iv_range_size,
+		unsigned int iv_param, int iv_random_size,
+		uint16_t *iv_length)
+{
+	/*
+	 * Check if length of provided IV is supported
+	 * by the algorithm chosen.
+	 */
+	if (iv_param) {
+		if (check_supported_size(*iv_length,
+				iv_range_size->min,
+				iv_range_size->max,
+				iv_range_size->increment)
+					!= 0) {
+			printf("Unsupported IV length\n");
+			return -1;
+		}
+	/*
+	 * Check if length of IV to be randomly generated
+	 * is supported by the algorithm chosen.
+	 */
+	} else if (iv_random_size != -1) {
+		if (check_supported_size(iv_random_size,
+				iv_range_size->min,
+				iv_range_size->max,
+				iv_range_size->increment)
+					!= 0) {
+			printf("Unsupported IV length\n");
+			return -1;
+		}
+		*iv_length = iv_random_size;
+	/* No size provided, use minimum size. */
+	} else
+		*iv_length = iv_range_size->min;
+
+	return 0;
+}
+
 static int
 initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 		uint8_t *enabled_cdevs)
@@ -1614,36 +1659,9 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 			}
 
 			options->block_size = cap->sym.cipher.block_size;
-			/*
-			 * Check if length of provided IV is supported
-			 * by the algorithm chosen.
-			 */
-			if (options->iv_param) {
-				if (check_supported_size(options->iv.length,
-						cap->sym.cipher.iv_size.min,
-						cap->sym.cipher.iv_size.max,
-						cap->sym.cipher.iv_size.increment)
-							!= 0) {
-					printf("Unsupported IV length\n");
-					return -1;
-				}
-			/*
-			 * Check if length of IV to be randomly generated
-			 * is supported by the algorithm chosen.
-			 */
-			} else if (options->iv_random_size != -1) {
-				if (check_supported_size(options->iv_random_size,
-						cap->sym.cipher.iv_size.min,
-						cap->sym.cipher.iv_size.max,
-						cap->sym.cipher.iv_size.increment)
-							!= 0) {
-					printf("Unsupported IV length\n");
-					return -1;
-				}
-				options->iv.length = options->iv_random_size;
-			/* No size provided, use minimum size. */
-			} else
-				options->iv.length = cap->sym.cipher.iv_size.min;
+
+			check_iv_param(&cap->sym.cipher.iv_size, options->iv_param,
+					options->iv_random_size, &options->iv.length);
 
 			/*
 			 * Check if length of provided cipher key is supported

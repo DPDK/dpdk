@@ -264,6 +264,10 @@ openssl_set_session_cipher_parameters(struct openssl_session *sess,
 	/* Select cipher key */
 	sess->cipher.key.length = xform->cipher.key.length;
 
+	/* Set IV parameters */
+	sess->iv.offset = xform->cipher.iv.offset;
+	sess->iv.length = xform->cipher.iv.length;
+
 	/* Select cipher algo */
 	switch (xform->cipher.algo) {
 	case RTE_CRYPTO_CIPHER_3DES_CBC:
@@ -396,6 +400,9 @@ openssl_set_session_parameters(struct openssl_session *sess,
 	default:
 		return -EINVAL;
 	}
+
+	/* Default IV length = 0 */
+	sess->iv.length = 0;
 
 	/* cipher_xform must be check before auth_xform */
 	if (cipher_xform) {
@@ -924,8 +931,8 @@ process_openssl_combined_op
 	}
 
 	iv = rte_crypto_op_ctod_offset(op, uint8_t *,
-			op->sym->cipher.iv.offset);
-	ivlen = op->sym->cipher.iv.length;
+			sess->iv.offset);
+	ivlen = sess->iv.length;
 	aad = op->sym->auth.aad.data;
 	aadlen = op->sym->auth.aad.length;
 
@@ -989,7 +996,7 @@ process_openssl_cipher_op
 			op->sym->cipher.data.offset);
 
 	iv = rte_crypto_op_ctod_offset(op, uint8_t *,
-			op->sym->cipher.iv.offset);
+			sess->iv.offset);
 
 	if (sess->cipher.mode == OPENSSL_CIPHER_LIB)
 		if (sess->cipher.direction == RTE_CRYPTO_CIPHER_OP_ENCRYPT)
@@ -1031,7 +1038,7 @@ process_openssl_docsis_bpi_op(struct rte_crypto_op *op,
 			op->sym->cipher.data.offset);
 
 	iv = rte_crypto_op_ctod_offset(op, uint8_t *,
-			op->sym->cipher.iv.offset);
+			sess->iv.offset);
 
 	block_size = DES_BLOCK_SIZE;
 
@@ -1090,7 +1097,7 @@ process_openssl_docsis_bpi_op(struct rte_crypto_op *op,
 						last_block_len, sess->cipher.bpi_ctx);
 				/* Prepare parameters for CBC mode op */
 				iv = rte_crypto_op_ctod_offset(op, uint8_t *,
-						op->sym->cipher.iv.offset);
+						sess->iv.offset);
 				dst += last_block_len - srclen;
 				srclen -= last_block_len;
 			}

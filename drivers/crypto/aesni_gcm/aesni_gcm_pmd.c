@@ -104,6 +104,17 @@ aesni_gcm_set_session_parameters(struct aesni_gcm_session *sess,
 		return -EINVAL;
 	}
 
+	/* Set IV parameters */
+	sess->iv.offset = cipher_xform->cipher.iv.offset;
+	sess->iv.length = cipher_xform->cipher.iv.length;
+
+	/* IV check */
+	if (sess->iv.length != 16 && sess->iv.length != 12 &&
+			sess->iv.length != 0) {
+		GCM_LOG_ERR("Wrong IV length");
+		return -EINVAL;
+	}
+
 	/* Select Crypto operation */
 	if (cipher_xform->cipher.op == RTE_CRYPTO_CIPHER_OP_ENCRYPT &&
 			auth_xform->auth.op == RTE_CRYPTO_AUTH_OP_GENERATE)
@@ -221,20 +232,13 @@ process_gcm_crypto_op(struct rte_crypto_op *op,
 
 	src = rte_pktmbuf_mtod_offset(m_src, uint8_t *, offset);
 
-	/* sanity checks */
-	if (sym_op->cipher.iv.length != 16 && sym_op->cipher.iv.length != 12 &&
-			sym_op->cipher.iv.length != 0) {
-		GCM_LOG_ERR("iv");
-		return -1;
-	}
-
 	iv_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
-				sym_op->cipher.iv.offset);
+				session->iv.offset);
 	/*
 	 * GCM working in 12B IV mode => 16B pre-counter block we need
 	 * to set BE LSB to 1, driver expects that 16B is allocated
 	 */
-	if (sym_op->cipher.iv.length == 12) {
+	if (session->iv.length == 12) {
 		uint32_t *iv_padd = (uint32_t *)&(iv_ptr[12]);
 		*iv_padd = rte_bswap32(1);
 	}

@@ -92,6 +92,7 @@ New Features
   * Removed field ``rte_crypto_sym_op_sess_type``.
   * Replaced pointer and physical address of IV with offset from the start
     of the crypto operation.
+  * Moved length and offset of cipher IV to ``rte_crypto_cipher_xform``.
 
 * **Reorganized the crypto operation structure.**
 
@@ -190,6 +191,10 @@ ABI Changes
 
   Some fields have been modified in the ``rte_crypto_op`` and ``rte_crypto_sym_op``
   structures, as described in the `New Features`_ section.
+
+* **Reorganized the ``rte_crypto_sym_cipher_xform`` structure.**
+
+  * Added cipher IV length and offset parameters.
 
 
 Shared Library Versions

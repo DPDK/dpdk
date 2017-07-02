@@ -48,6 +48,9 @@
 
 #define MAX_DIGEST_SIZE 32 /* Bytes -- 256 bits */
 
+#define IV_OFFSET		(sizeof(struct rte_crypto_op) + \
+				sizeof(struct rte_crypto_sym_op))
+
 #define uint32_t_to_char(ip, a, b, c, d) do {\
 		*a = (uint8_t)(ip >> 24 & 0xff);\
 		*b = (uint8_t)(ip >> 16 & 0xff);\

@@ -43,6 +43,8 @@
 #include "test_cryptodev.h"
 #include "test_cryptodev_gcm_test_vectors.h"
 
+#define AES_CIPHER_IV_LENGTH 16
+#define TRIPLE_DES_CIPHER_IV_LENGTH 8
 
 #define PERF_NUM_OPS_INFLIGHT		(128)
 #define DEFAULT_NUM_REQS_TO_SUBMIT	(10000000)
@@ -67,9 +69,6 @@ enum chain_mode {
 
 
 struct symmetric_op {
-	const uint8_t *iv_data;
-	uint32_t iv_len;
-
 	const uint8_t *aad_data;
 	uint32_t aad_len;
 
@@ -96,6 +95,8 @@ struct symmetric_session_attrs {
 	const uint8_t *key_auth_data;
 	uint32_t key_auth_len;
 
+	const uint8_t *iv_data;
+	uint16_t iv_len;
 	uint32_t digest_len;
 };
 
@@ -1933,7 +1934,8 @@ test_perf_crypto_qp_vary_burst_size(uint16_t dev_num)
 	ut_params->cipher_xform.cipher.op = RTE_CRYPTO_CIPHER_OP_DECRYPT;
 	ut_params->cipher_xform.cipher.key.data = aes_cbc_128_key;
 	ut_params->cipher_xform.cipher.key.length = CIPHER_IV_LENGTH_AES_CBC;
-
+	ut_params->cipher_xform.cipher.iv.offset = IV_OFFSET;
+	ut_params->cipher_xform.cipher.iv.length = CIPHER_IV_LENGTH_AES_CBC;
 
 	/* Setup HMAC Parameters */
 	ut_params->auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
@@ -1980,9 +1982,6 @@ test_perf_crypto_qp_vary_burst_size(uint16_t dev_num)
 
 		op->sym->auth.data.offset = 0;
 		op->sym->auth.data.length = data_params[0].length;
-
-		op->sym->cipher.iv.offset = IV_OFFSET;
-		op->sym->cipher.iv.length = CIPHER_IV_LENGTH_AES_CBC;
 
 		rte_memcpy(rte_crypto_op_ctod_offset(op, uint8_t *, IV_OFFSET),
 				aes_cbc_128_iv, CIPHER_IV_LENGTH_AES_CBC);
@@ -2646,6 +2645,8 @@ test_perf_create_aes_sha_session(uint8_t dev_id, enum chain_mode chain,
 
 	cipher_xform.cipher.key.data = aes_key;
 	cipher_xform.cipher.key.length = cipher_key_len;
+	cipher_xform.cipher.iv.offset = IV_OFFSET;
+	cipher_xform.cipher.iv.length = AES_CIPHER_IV_LENGTH;
 	if (chain != CIPHER_ONLY) {
 		/* Setup HMAC Parameters */
 		auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
@@ -2694,6 +2695,9 @@ test_perf_create_snow3g_session(uint8_t dev_id, enum chain_mode chain,
 
 	cipher_xform.cipher.key.data = snow3g_cipher_key;
 	cipher_xform.cipher.key.length = cipher_key_len;
+	cipher_xform.cipher.iv.offset = IV_OFFSET;
+	cipher_xform.cipher.iv.length = SNOW3G_CIPHER_IV_LENGTH;
+
 
 	/* Setup HMAC Parameters */
 	auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
@@ -2741,17 +2745,20 @@ test_perf_create_openssl_session(uint8_t dev_id, enum chain_mode chain,
 	/* Setup Cipher Parameters */
 	cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 	cipher_xform.cipher.algo = cipher_algo;
+	cipher_xform.cipher.iv.offset = IV_OFFSET;
 	cipher_xform.cipher.op = RTE_CRYPTO_CIPHER_OP_ENCRYPT;
 
 	switch (cipher_algo) {
 	case RTE_CRYPTO_CIPHER_3DES_CBC:
 	case RTE_CRYPTO_CIPHER_3DES_CTR:
 		cipher_xform.cipher.key.data = triple_des_key;
+		cipher_xform.cipher.iv.length = TRIPLE_DES_CIPHER_IV_LENGTH;
 		break;
 	case RTE_CRYPTO_CIPHER_AES_CBC:
 	case RTE_CRYPTO_CIPHER_AES_CTR:
 	case RTE_CRYPTO_CIPHER_AES_GCM:
 		cipher_xform.cipher.key.data = aes_key;
+		cipher_xform.cipher.iv.length = AES_CIPHER_IV_LENGTH;
 		break;
 	default:
 		return NULL;
@@ -2816,6 +2823,8 @@ test_perf_create_armv8_session(uint8_t dev_id, enum chain_mode chain,
 	}
 
 	cipher_xform.cipher.key.length = cipher_key_len;
+	cipher_xform.cipher.iv.offset = IV_OFFSET;
+	cipher_xform.cipher.iv.length = AES_CIPHER_IV_LENGTH;
 
 	/* Setup Auth Parameters */
 	auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
@@ -2844,9 +2853,7 @@ test_perf_create_armv8_session(uint8_t dev_id, enum chain_mode chain,
 	}
 }
 
-#define AES_CIPHER_IV_LENGTH 16
 #define AES_GCM_AAD_LENGTH 16
-#define TRIPLE_DES_CIPHER_IV_LENGTH 8
 
 static struct rte_mbuf *
 test_perf_create_pktmbuf(struct rte_mempool *mpool, unsigned buf_sz)
@@ -2893,12 +2900,11 @@ test_perf_set_crypto_op_aes(struct rte_crypto_op *op, struct rte_mbuf *m,
 	}
 
 
-	/* Cipher Parameters */
-	op->sym->cipher.iv.offset = IV_OFFSET;
-	op->sym->cipher.iv.length = AES_CIPHER_IV_LENGTH;
+	/* Copy the IV at the end of the crypto operation */
 	rte_memcpy(rte_crypto_op_ctod_offset(op, uint8_t *, IV_OFFSET),
 			aes_iv, AES_CIPHER_IV_LENGTH);
 
+	/* Cipher Parameters */
 	op->sym->cipher.data.offset = 0;
 	op->sym->cipher.data.length = data_len;
 
@@ -2926,9 +2932,7 @@ test_perf_set_crypto_op_aes_gcm(struct rte_crypto_op *op, struct rte_mbuf *m,
 	op->sym->auth.aad.data = aes_gcm_aad;
 	op->sym->auth.aad.length = AES_GCM_AAD_LENGTH;
 
-	/* Cipher Parameters */
-	op->sym->cipher.iv.offset = IV_OFFSET;
-	op->sym->cipher.iv.length = AES_CIPHER_IV_LENGTH;
+	/* Copy IV at the end of the crypto operation */
 	rte_memcpy(rte_crypto_op_ctod_offset(op, uint8_t *, IV_OFFSET),
 			aes_iv, AES_CIPHER_IV_LENGTH);
 
@@ -2970,10 +2974,6 @@ test_perf_set_crypto_op_snow3g(struct rte_crypto_op *op, struct rte_mbuf *m,
 			IV_OFFSET);
 	op->sym->auth.aad.length = SNOW3G_CIPHER_IV_LENGTH;
 
-	/* Cipher Parameters */
-	op->sym->cipher.iv.offset = IV_OFFSET;
-	op->sym->cipher.iv.length = SNOW3G_CIPHER_IV_LENGTH;
-
 	/* Data lengths/offsets Parameters */
 	op->sym->auth.data.offset = 0;
 	op->sym->auth.data.length = data_len << 3;
@@ -2997,9 +2997,7 @@ test_perf_set_crypto_op_snow3g_cipher(struct rte_crypto_op *op,
 		return NULL;
 	}
 
-	/* Cipher Parameters */
-	op->sym->cipher.iv.offset = IV_OFFSET;
-	op->sym->cipher.iv.length = SNOW3G_CIPHER_IV_LENGTH;
+	/* Copy IV at the end of the crypto operation */
 	rte_memcpy(rte_crypto_op_ctod_offset(op, uint8_t *, IV_OFFSET),
 			snow3g_iv, SNOW3G_CIPHER_IV_LENGTH);
 
@@ -3068,9 +3066,7 @@ test_perf_set_crypto_op_3des(struct rte_crypto_op *op, struct rte_mbuf *m,
 				rte_pktmbuf_mtophys_offset(m, data_len);
 	op->sym->auth.digest.length = digest_len;
 
-	/* Cipher Parameters */
-	op->sym->cipher.iv.offset = IV_OFFSET;
-	op->sym->cipher.iv.length = TRIPLE_DES_CIPHER_IV_LENGTH;
+	/* Copy IV at the end of the crypto operation */
 	rte_memcpy(rte_crypto_op_ctod_offset(op, uint8_t *, IV_OFFSET),
 			triple_des_iv, TRIPLE_DES_CIPHER_IV_LENGTH);
 
@@ -4136,6 +4132,8 @@ test_perf_create_session(uint8_t dev_id, struct perf_test_params *pparams)
 	cipher_xform.cipher.op = pparams->session_attrs->cipher;
 	cipher_xform.cipher.key.data = cipher_key;
 	cipher_xform.cipher.key.length = pparams->session_attrs->key_cipher_len;
+	cipher_xform.cipher.iv.length = pparams->session_attrs->iv_len;
+	cipher_xform.cipher.iv.offset = IV_OFFSET;
 
 	auth_xform.type = RTE_CRYPTO_SYM_XFORM_AUTH;
 	auth_xform.next = NULL;
@@ -4190,13 +4188,10 @@ perf_gcm_set_crypto_op(struct rte_crypto_op *op, struct rte_mbuf *m,
 	rte_memcpy(op->sym->auth.aad.data, params->symmetric_op->aad_data,
 		       params->symmetric_op->aad_len);
 
-	op->sym->cipher.iv.offset = IV_OFFSET;
-	rte_memcpy(iv_ptr, params->symmetric_op->iv_data,
-		       params->symmetric_op->iv_len);
-	if (params->symmetric_op->iv_len == 12)
+	rte_memcpy(iv_ptr, params->session_attrs->iv_data,
+		       params->session_attrs->iv_len);
+	if (params->session_attrs->iv_len == 12)
 		iv_ptr[15] = 1;
-
-	op->sym->cipher.iv.length = params->symmetric_op->iv_len;
 
 	op->sym->auth.data.offset =
 			params->symmetric_op->aad_len;
@@ -4434,11 +4429,11 @@ test_perf_AES_GCM(int continual_buf_len, int continual_size)
 		session_attrs[i].key_auth_len = 0;
 		session_attrs[i].digest_len =
 				gcm_test->auth_tag.len;
+		session_attrs[i].iv_len = gcm_test->iv.len;
+		session_attrs[i].iv_data = gcm_test->iv.data;
 
 		ops_set[i].aad_data = gcm_test->aad.data;
 		ops_set[i].aad_len = gcm_test->aad.len;
-		ops_set[i].iv_data = gcm_test->iv.data;
-		ops_set[i].iv_len = gcm_test->iv.len;
 		ops_set[i].p_data = gcm_test->plaintext.data;
 		ops_set[i].p_len = buf_lengths[i];
 		ops_set[i].c_data = gcm_test->ciphertext.data;

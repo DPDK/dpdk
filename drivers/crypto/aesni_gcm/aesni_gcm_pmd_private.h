@@ -90,6 +90,11 @@ enum aesni_gcm_key {
 
 /** AESNI GCM private session structure */
 struct aesni_gcm_session {
+	struct {
+		uint16_t length;
+		uint16_t offset;
+	} iv;
+	/**< IV parameters */
 	enum aesni_gcm_operation op;
 	/**< GCM operation type */
 	enum aesni_gcm_key key;

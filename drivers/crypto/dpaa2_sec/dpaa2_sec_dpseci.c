@@ -88,7 +88,7 @@ build_authenc_fd(dpaa2_sec_session *sess,
 	uint8_t *old_icv;
 	uint32_t mem_len = (7 * sizeof(struct qbman_fle)) + icv_len;
 	uint8_t *iv_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
-			op->sym->cipher.iv.offset);
+			sess->iv.offset);
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -138,7 +138,7 @@ build_authenc_fd(dpaa2_sec_session *sess,
 		   sym_op->auth.digest.length,
 		   sym_op->cipher.data.offset,
 		   sym_op->cipher.data.length,
-		   sym_op->cipher.iv.length,
+		   sess->iv.length,
 		   sym_op->m_src->data_off);
 
 	/* Configure Output FLE with Scatter/Gather Entry */
@@ -163,7 +163,7 @@ build_authenc_fd(dpaa2_sec_session *sess,
 				DPAA2_VADDR_TO_IOVA(sym_op->auth.digest.data));
 		sge->length = sym_op->auth.digest.length;
 		DPAA2_SET_FD_LEN(fd, (sym_op->auth.data.length +
-					sym_op->cipher.iv.length));
+					sess->iv.length));
 	}
 	DPAA2_SET_FLE_FIN(sge);
 
@@ -175,13 +175,13 @@ build_authenc_fd(dpaa2_sec_session *sess,
 	DPAA2_SET_FLE_SG_EXT(fle);
 	DPAA2_SET_FLE_FIN(fle);
 	fle->length = (sess->dir == DIR_ENC) ?
-			(sym_op->auth.data.length + sym_op->cipher.iv.length) :
-			(sym_op->auth.data.length + sym_op->cipher.iv.length +
+			(sym_op->auth.data.length + sess->iv.length) :
+			(sym_op->auth.data.length + sess->iv.length +
 			 sym_op->auth.digest.length);
 
 	/* Configure Input SGE for Encap/Decap */
 	DPAA2_SET_FLE_ADDR(sge, DPAA2_VADDR_TO_IOVA(iv_ptr));
-	sge->length = sym_op->cipher.iv.length;
+	sge->length = sess->iv.length;
 	sge++;
 
 	DPAA2_SET_FLE_ADDR(sge, DPAA2_MBUF_VADDR_TO_IOVA(sym_op->m_src));
@@ -198,7 +198,7 @@ build_authenc_fd(dpaa2_sec_session *sess,
 		sge->length = sym_op->auth.digest.length;
 		DPAA2_SET_FD_LEN(fd, (sym_op->auth.data.length +
 				 sym_op->auth.digest.length +
-				 sym_op->cipher.iv.length));
+				 sess->iv.length));
 	}
 	DPAA2_SET_FLE_FIN(sge);
 	if (auth_only_len) {
@@ -310,7 +310,7 @@ build_cipher_fd(dpaa2_sec_session *sess, struct rte_crypto_op *op,
 	struct sec_flow_context *flc;
 	struct ctxt_priv *priv = sess->ctxt;
 	uint8_t *iv_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
-			op->sym->cipher.iv.offset);
+			sess->iv.offset);
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -347,21 +347,21 @@ build_cipher_fd(dpaa2_sec_session *sess, struct rte_crypto_op *op,
 	flc = &priv->flc_desc[0].flc;
 	DPAA2_SET_FD_ADDR(fd, DPAA2_VADDR_TO_IOVA(fle));
 	DPAA2_SET_FD_LEN(fd, sym_op->cipher.data.length +
-			 sym_op->cipher.iv.length);
+			 sess->iv.length);
 	DPAA2_SET_FD_COMPOUND_FMT(fd);
 	DPAA2_SET_FD_FLC(fd, DPAA2_VADDR_TO_IOVA(flc));
 
 	PMD_TX_LOG(DEBUG, "cipher_off: 0x%x/length %d,ivlen=%d data_off: 0x%x",
 		   sym_op->cipher.data.offset,
 		   sym_op->cipher.data.length,
-		   sym_op->cipher.iv.length,
+		   sess->iv.length,
 		   sym_op->m_src->data_off);
 
 	DPAA2_SET_FLE_ADDR(fle, DPAA2_MBUF_VADDR_TO_IOVA(sym_op->m_src));
 	DPAA2_SET_FLE_OFFSET(fle, sym_op->cipher.data.offset +
 			     sym_op->m_src->data_off);
 
-	fle->length = sym_op->cipher.data.length + sym_op->cipher.iv.length;
+	fle->length = sym_op->cipher.data.length + sess->iv.length;
 
 	PMD_TX_LOG(DEBUG, "1 - flc = %p, fle = %p FLEaddr = %x-%x, length %d",
 		   flc, fle, fle->addr_hi, fle->addr_lo, fle->length);
@@ -369,12 +369,12 @@ build_cipher_fd(dpaa2_sec_session *sess, struct rte_crypto_op *op,
 	fle++;
 
 	DPAA2_SET_FLE_ADDR(fle, DPAA2_VADDR_TO_IOVA(sge));
-	fle->length = sym_op->cipher.data.length + sym_op->cipher.iv.length;
+	fle->length = sym_op->cipher.data.length + sess->iv.length;
 
 	DPAA2_SET_FLE_SG_EXT(fle);
 
 	DPAA2_SET_FLE_ADDR(sge, DPAA2_VADDR_TO_IOVA(iv_ptr));
-	sge->length = sym_op->cipher.iv.length;
+	sge->length = sess->iv.length;
 
 	sge++;
 	DPAA2_SET_FLE_ADDR(sge, DPAA2_MBUF_VADDR_TO_IOVA(sym_op->m_src));
@@ -798,6 +798,10 @@ dpaa2_sec_cipher_init(struct rte_cryptodev *dev,
 	cipherdata.key_enc_flags = 0;
 	cipherdata.key_type = RTA_DATA_IMM;
 
+	/* Set IV parameters */
+	session->iv.offset = xform->cipher.iv.offset;
+	session->iv.length = xform->cipher.iv.length;
+
 	switch (xform->cipher.algo) {
 	case RTE_CRYPTO_CIPHER_AES_CBC:
 		cipherdata.algtype = OP_ALG_ALGSEL_AES;
@@ -1016,6 +1020,11 @@ dpaa2_sec_aead_init(struct rte_cryptodev *dev,
 			(cipher_xform->op == RTE_CRYPTO_CIPHER_OP_ENCRYPT) ?
 			DPAA2_SEC_HASH_CIPHER : DPAA2_SEC_CIPHER_HASH;
 	}
+
+	/* Set IV parameters */
+	session->iv.offset = cipher_xform->iv.offset;
+	session->iv.length = cipher_xform->iv.length;
+
 	/* For SEC AEAD only one descriptor is required */
 	priv = (struct ctxt_priv *)rte_zmalloc(NULL,
 			sizeof(struct ctxt_priv) + sizeof(struct sec_flc_desc),
@@ -1216,6 +1225,10 @@ dpaa2_sec_session_configure(struct rte_cryptodev *dev,
 		RTE_LOG(ERR, PMD, "invalid session struct");
 		return NULL;
 	}
+
+	/* Default IV length = 0 */
+	session->iv.length = 0;
+
 	/* Cipher Only */
 	if (xform->type == RTE_CRYPTO_SYM_XFORM_CIPHER && xform->next == NULL) {
 		session->ctxt_type = DPAA2_SEC_CIPHER;

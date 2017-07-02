@@ -187,6 +187,10 @@ typedef struct dpaa2_sec_session_entry {
 		uint8_t *data;	/**< pointer to key data */
 		size_t length;	/**< key length in bytes */
 	} auth_key;
+	struct {
+		uint16_t length; /**< IV length in bytes */
+		uint16_t offset; /**< IV offset in bytes */
+	} iv;
 	uint8_t status;
 	union {
 		struct dpaa2_sec_cipher_ctxt cipher_ctxt;
@@ -275,8 +279,8 @@ static const struct rte_cryptodev_capabilities dpaa2_sec_capabilities[] = {
 						.min = 32,
 						.max = 32,
 						.increment = 0
-					},
-					.aad_size = { 0 }
+				},
+				.aad_size = { 0 }
 				}, }
 			}, }
 		},

@@ -92,6 +92,7 @@ struct kasumi_session {
 	sso_kasumi_key_sched_t pKeySched_hash;
 	enum kasumi_operation op;
 	enum rte_crypto_auth_operation auth_op;
+	uint16_t iv_offset;
 } __rte_cache_aligned;
 
 

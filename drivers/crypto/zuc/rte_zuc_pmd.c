@@ -115,6 +115,13 @@ zuc_set_session_parameters(struct zuc_session *sess,
 		/* Only ZUC EEA3 supported */
 		if (cipher_xform->cipher.algo != RTE_CRYPTO_CIPHER_ZUC_EEA3)
 			return -EINVAL;
+
+		if (cipher_xform->cipher.iv.length != ZUC_IV_KEY_LENGTH) {
+			ZUC_LOG_ERR("Wrong IV length");
+			return -EINVAL;
+		}
+		sess->iv_offset = cipher_xform->cipher.iv.offset;
+
 		/* Copy the key */
 		memcpy(sess->pKey_cipher, cipher_xform->cipher.key.data,
 				ZUC_IV_KEY_LENGTH);
@@ -178,13 +185,6 @@ process_zuc_cipher_op(struct rte_crypto_op **ops,
 	uint8_t *cipher_keys[ZUC_MAX_BURST];
 
 	for (i = 0; i < num_ops; i++) {
-		/* Sanity checks. */
-		if (unlikely(ops[i]->sym->cipher.iv.length != ZUC_IV_KEY_LENGTH)) {
-			ops[i]->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
-			ZUC_LOG_ERR("iv");
-			break;
-		}
-
 		if (((ops[i]->sym->cipher.data.length % BYTE_LEN) != 0)
 				|| ((ops[i]->sym->cipher.data.offset
 					% BYTE_LEN) != 0)) {
@@ -214,7 +214,7 @@ process_zuc_cipher_op(struct rte_crypto_op **ops,
 			rte_pktmbuf_mtod(ops[i]->sym->m_src, uint8_t *) +
 				(ops[i]->sym->cipher.data.offset >> 3);
 		iv[i] = rte_crypto_op_ctod_offset(ops[i], uint8_t *,
-				ops[i]->sym->cipher.iv.offset);
+				session->iv_offset);
 		num_bytes[i] = ops[i]->sym->cipher.data.length >> 3;
 
 		cipher_keys[i] = session->pKey_cipher;

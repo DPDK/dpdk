@@ -589,6 +589,7 @@ sa_add_rules(struct sa_ctx *sa_ctx, const struct ipsec_sa entries[],
 {
 	struct ipsec_sa *sa;
 	uint32_t i, idx;
+	uint16_t iv_length;
 
 	for (i = 0; i < nb_entries; i++) {
 		idx = SPI2IDX(entries[i].spi);
@@ -607,6 +608,21 @@ sa_add_rules(struct sa_ctx *sa_ctx, const struct ipsec_sa entries[],
 			sa->dst.ip.ip4 = rte_cpu_to_be_32(sa->dst.ip.ip4);
 		}
 
+		switch (sa->cipher_algo) {
+		case RTE_CRYPTO_CIPHER_NULL:
+		case RTE_CRYPTO_CIPHER_AES_CBC:
+			iv_length = sa->iv_len;
+			break;
+		case RTE_CRYPTO_CIPHER_AES_CTR:
+		case RTE_CRYPTO_CIPHER_AES_GCM:
+			iv_length = 16;
+			break;
+		default:
+			RTE_LOG(ERR, IPSEC_ESP, "unsupported cipher algorithm %u\n",
+					sa->cipher_algo);
+			return -EINVAL;
+		}
+
 		if (inbound) {
 			sa_ctx->xf[idx].b.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 			sa_ctx->xf[idx].b.cipher.algo = sa->cipher_algo;
@@ -615,6 +631,8 @@ sa_add_rules(struct sa_ctx *sa_ctx, const struct ipsec_sa entries[],
 				sa->cipher_key_len;
 			sa_ctx->xf[idx].b.cipher.op =
 				RTE_CRYPTO_CIPHER_OP_DECRYPT;
+			sa_ctx->xf[idx].b.cipher.iv.offset = IV_OFFSET;
+			sa_ctx->xf[idx].b.cipher.iv.length = iv_length;
 			sa_ctx->xf[idx].b.next = NULL;
 
 			sa_ctx->xf[idx].a.type = RTE_CRYPTO_SYM_XFORM_AUTH;
@@ -637,6 +655,8 @@ sa_add_rules(struct sa_ctx *sa_ctx, const struct ipsec_sa entries[],
 				sa->cipher_key_len;
 			sa_ctx->xf[idx].a.cipher.op =
 				RTE_CRYPTO_CIPHER_OP_ENCRYPT;
+			sa_ctx->xf[idx].a.cipher.iv.offset = IV_OFFSET;
+			sa_ctx->xf[idx].a.cipher.iv.length = iv_length;
 			sa_ctx->xf[idx].a.next = NULL;
 
 			sa_ctx->xf[idx].b.type = RTE_CRYPTO_SYM_XFORM_AUTH;

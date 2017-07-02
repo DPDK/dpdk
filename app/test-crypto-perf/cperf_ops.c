@@ -106,9 +106,6 @@ cperf_set_ops_cipher(struct rte_crypto_op **ops,
 		sym_op->m_dst = bufs_out[i];
 
 		/* cipher parameters */
-		sym_op->cipher.iv.offset = iv_offset;
-		sym_op->cipher.iv.length = test_vector->iv.length;
-
 		if (options->cipher_algo == RTE_CRYPTO_CIPHER_SNOW3G_UEA2 ||
 				options->cipher_algo == RTE_CRYPTO_CIPHER_KASUMI_F8 ||
 				options->cipher_algo == RTE_CRYPTO_CIPHER_ZUC_EEA3)
@@ -215,9 +212,6 @@ cperf_set_ops_cipher_auth(struct rte_crypto_op **ops,
 		sym_op->m_dst = bufs_out[i];
 
 		/* cipher parameters */
-		sym_op->cipher.iv.offset = iv_offset;
-		sym_op->cipher.iv.length = test_vector->iv.length;
-
 		if (options->cipher_algo == RTE_CRYPTO_CIPHER_SNOW3G_UEA2 ||
 				options->cipher_algo == RTE_CRYPTO_CIPHER_KASUMI_F8 ||
 				options->cipher_algo == RTE_CRYPTO_CIPHER_ZUC_EEA3)
@@ -302,9 +296,6 @@ cperf_set_ops_aead(struct rte_crypto_op **ops,
 		sym_op->m_dst = bufs_out[i];
 
 		/* cipher parameters */
-		sym_op->cipher.iv.offset = iv_offset;
-		sym_op->cipher.iv.length = test_vector->iv.length;
-
 		sym_op->cipher.data.length = options->test_buffer_size;
 		sym_op->cipher.data.offset =
 				RTE_ALIGN_CEIL(options->auth_aad_sz, 16);
@@ -365,7 +356,8 @@ cperf_set_ops_aead(struct rte_crypto_op **ops,
 static struct rte_cryptodev_sym_session *
 cperf_create_session(uint8_t dev_id,
 	const struct cperf_options *options,
-	const struct cperf_test_vector *test_vector)
+	const struct cperf_test_vector *test_vector,
+	uint16_t iv_offset)
 {
 	struct rte_crypto_sym_xform cipher_xform;
 	struct rte_crypto_sym_xform auth_xform;
@@ -379,6 +371,7 @@ cperf_create_session(uint8_t dev_id,
 		cipher_xform.next = NULL;
 		cipher_xform.cipher.algo = options->cipher_algo;
 		cipher_xform.cipher.op = options->cipher_op;
+		cipher_xform.cipher.iv.offset = iv_offset;
 
 		/* cipher different than null */
 		if (options->cipher_algo != RTE_CRYPTO_CIPHER_NULL) {
@@ -386,9 +379,12 @@ cperf_create_session(uint8_t dev_id,
 					test_vector->cipher_key.data;
 			cipher_xform.cipher.key.length =
 					test_vector->cipher_key.length;
+			cipher_xform.cipher.iv.length = test_vector->iv.length;
+
 		} else {
 			cipher_xform.cipher.key.data = NULL;
 			cipher_xform.cipher.key.length = 0;
+			cipher_xform.cipher.iv.length = 0;
 		}
 		/* create crypto session */
 		sess = rte_cryptodev_sym_session_create(dev_id,	&cipher_xform);
@@ -432,6 +428,7 @@ cperf_create_session(uint8_t dev_id,
 		cipher_xform.next = NULL;
 		cipher_xform.cipher.algo = options->cipher_algo;
 		cipher_xform.cipher.op = options->cipher_op;
+		cipher_xform.cipher.iv.offset = iv_offset;
 
 		/* cipher different than null */
 		if (options->cipher_algo != RTE_CRYPTO_CIPHER_NULL) {
@@ -439,9 +436,11 @@ cperf_create_session(uint8_t dev_id,
 					test_vector->cipher_key.data;
 			cipher_xform.cipher.key.length =
 					test_vector->cipher_key.length;
+			cipher_xform.cipher.iv.length = test_vector->iv.length;
 		} else {
 			cipher_xform.cipher.key.data = NULL;
 			cipher_xform.cipher.key.length = 0;
+			cipher_xform.cipher.iv.length = 0;
 		}
 
 		/*

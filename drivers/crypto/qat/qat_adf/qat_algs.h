@@ -127,6 +127,10 @@ struct qat_session {
 	struct icp_qat_fw_la_bulk_req fw_req;
 	uint8_t aad_len;
 	struct qat_crypto_instance *inst;
+	struct {
+		uint16_t offset;
+		uint16_t length;
+	} iv;
 	rte_spinlock_t lock;	/* protects this struct */
 };
 

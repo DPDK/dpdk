@@ -167,6 +167,11 @@ struct aesni_mb_qp {
 /** AES-NI multi-buffer private session structure */
 struct aesni_mb_session {
 	JOB_CHAIN_ORDER chain_order;
+	struct {
+		uint16_t length;
+		uint16_t offset;
+	} iv;
+	/**< IV parameters */
 
 	/** Cipher Parameters */
 	struct {

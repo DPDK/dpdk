@@ -535,11 +535,6 @@ chain.
                 uint32_t offset;
                 uint32_t length;
             } data;   /**< Data offsets and length for ciphering */
-
-            struct {
-                uint16_t offset;
-                uint16_t length;
-            } iv;     /**< Initialisation vector parameters */
         } cipher;
 
         struct {

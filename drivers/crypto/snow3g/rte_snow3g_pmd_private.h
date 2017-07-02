@@ -91,6 +91,7 @@ struct snow3g_session {
 	enum rte_crypto_auth_operation auth_op;
 	sso_snow3g_key_schedule_t pKeySched_cipher;
 	sso_snow3g_key_schedule_t pKeySched_hash;
+	uint16_t iv_offset;
 } __rte_cache_aligned;
 
 

@@ -92,6 +92,7 @@ struct zuc_session {
 	enum rte_crypto_auth_operation auth_op;
 	uint8_t pKey_cipher[ZUC_IV_KEY_LENGTH];
 	uint8_t pKey_hash[ZUC_IV_KEY_LENGTH];
+	uint16_t iv_offset;
 } __rte_cache_aligned;
 
 

@@ -50,9 +50,6 @@
 #include "esp.h"
 #include "ipip.h"
 
-#define IV_OFFSET		(sizeof(struct rte_crypto_op) + \
-				sizeof(struct rte_crypto_sym_op))
-
 int
 esp_inbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 		struct rte_crypto_op *cop)
@@ -104,8 +101,6 @@ esp_inbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 	case RTE_CRYPTO_CIPHER_AES_CBC:
 		/* Copy IV at the end of crypto operation */
 		rte_memcpy(iv_ptr, iv, sa->iv_len);
-		sym_cop->cipher.iv.offset = IV_OFFSET;
-		sym_cop->cipher.iv.length = sa->iv_len;
 		break;
 	case RTE_CRYPTO_CIPHER_AES_CTR:
 	case RTE_CRYPTO_CIPHER_AES_GCM:
@@ -113,8 +108,6 @@ esp_inbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 		icb->salt = sa->salt;
 		memcpy(&icb->iv, iv, 8);
 		icb->cnt = rte_cpu_to_be_32(1);
-		sym_cop->cipher.iv.offset = IV_OFFSET;
-		sym_cop->cipher.iv.length = 16;
 		break;
 	default:
 		RTE_LOG(ERR, IPSEC_ESP, "unsupported cipher algorithm %u\n",
@@ -348,8 +341,6 @@ esp_outbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 	icb->salt = sa->salt;
 	icb->iv = sa->seq;
 	icb->cnt = rte_cpu_to_be_32(1);
-	sym_cop->cipher.iv.offset = IV_OFFSET;
-	sym_cop->cipher.iv.length = 16;
 
 	uint8_t *aad;
 

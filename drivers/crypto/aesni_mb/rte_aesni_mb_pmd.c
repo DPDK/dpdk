@@ -246,6 +246,10 @@ aesni_mb_set_session_cipher_parameters(const struct aesni_mb_op_fns *mb_ops,
 		return -1;
 	}
 
+	/* Set IV parameters */
+	sess->iv.offset = xform->cipher.iv.offset;
+	sess->iv.length = xform->cipher.iv.length;
+
 	/* Expanded cipher keys */
 	(*aes_keyexp_fn)(xform->cipher.key.data,
 			sess->cipher.expanded_aes_keys.encode,
@@ -299,6 +303,9 @@ aesni_mb_set_session_parameters(const struct aesni_mb_op_fns *mb_ops,
 		MB_LOG_ERR("Unsupported operation chain order parameter");
 		return -1;
 	}
+
+	/* Default IV length = 0 */
+	sess->iv.length = 0;
 
 	if (aesni_mb_set_session_auth_parameters(mb_ops, sess, auth_xform)) {
 		MB_LOG_ERR("Invalid/unsupported authentication parameters");
@@ -472,8 +479,8 @@ set_mb_job_params(JOB_AES_HMAC *job, struct aesni_mb_qp *qp,
 
 	/* Set IV parameters */
 	job->iv = rte_crypto_op_ctod_offset(op, uint8_t *,
-			op->sym->cipher.iv.offset);
-	job->iv_len_in_bytes = op->sym->cipher.iv.length;
+			session->iv.offset);
+	job->iv_len_in_bytes = session->iv.length;
 
 	/* Data  Parameter */
 	job->src = rte_pktmbuf_mtod(m_src, uint8_t *);

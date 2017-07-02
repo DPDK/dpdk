@@ -108,6 +108,11 @@ struct openssl_session {
 	enum openssl_chain_order chain_order;
 	/**< chain order mode */
 
+	struct {
+		uint16_t length;
+		uint16_t offset;
+	} iv;
+	/**< IV parameters */
 	/** Cipher Parameters */
 	struct {
 		enum rte_crypto_cipher_operation direction;

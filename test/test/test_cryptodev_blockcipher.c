@@ -288,11 +288,11 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 				RTE_CRYPTO_CIPHER_OP_DECRYPT;
 		cipher_xform->cipher.key.data = cipher_key;
 		cipher_xform->cipher.key.length = tdata->cipher_key.len;
+		cipher_xform->cipher.iv.offset = IV_OFFSET;
+		cipher_xform->cipher.iv.length = tdata->iv.len;
 
 		sym_op->cipher.data.offset = 0;
 		sym_op->cipher.data.length = tdata->ciphertext.len;
-		sym_op->cipher.iv.offset = IV_OFFSET;
-		sym_op->cipher.iv.length = tdata->iv.len;
 		rte_memcpy(rte_crypto_op_ctod_offset(op, uint8_t *, IV_OFFSET),
 				tdata->iv.data,
 				tdata->iv.len);

@@ -190,6 +190,55 @@ struct rte_crypto_cipher_xform {
 	 *  - Each key can be either 128 bits (16 bytes) or 256 bits (32 bytes).
 	 *  - Both keys must have the same size.
 	 **/
+	struct {
+		uint16_t offset;
+		/**< Starting point for Initialisation Vector or Counter,
+		 * specified as number of bytes from start of crypto
+		 * operation (rte_crypto_op).
+		 *
+		 * - For block ciphers in CBC or F8 mode, or for KASUMI
+		 * in F8 mode, or for SNOW 3G in UEA2 mode, this is the
+		 * Initialisation Vector (IV) value.
+		 *
+		 * - For block ciphers in CTR mode, this is the counter.
+		 *
+		 * - For GCM mode, this is either the IV (if the length
+		 * is 96 bits) or J0 (for other sizes), where J0 is as
+		 * defined by NIST SP800-38D. Regardless of the IV
+		 * length, a full 16 bytes needs to be allocated.
+		 *
+		 * - For CCM mode, the first byte is reserved, and the
+		 * nonce should be written starting at &iv[1] (to allow
+		 * space for the implementation to write in the flags
+		 * in the first byte). Note that a full 16 bytes should
+		 * be allocated, even though the length field will
+		 * have a value less than this.
+		 *
+		 * - For AES-XTS, this is the 128bit tweak, i, from
+		 * IEEE Std 1619-2007.
+		 *
+		 * For optimum performance, the data pointed to SHOULD
+		 * be 8-byte aligned.
+		 */
+		uint16_t length;
+		/**< Length of valid IV data.
+		 *
+		 * - For block ciphers in CBC or F8 mode, or for KASUMI
+		 * in F8 mode, or for SNOW 3G in UEA2 mode, this is the
+		 * length of the IV (which must be the same as the
+		 * block length of the cipher).
+		 *
+		 * - For block ciphers in CTR mode, this is the length
+		 * of the counter (which must be the same as the block
+		 * length of the cipher).
+		 *
+		 * - For GCM mode, this is either 12 (for 96-bit IVs)
+		 * or 16, in which case data points to J0.
+		 *
+		 * - For CCM mode, this is the length of the nonce,
+		 * which can be in the range 7 to 13 inclusive.
+		 */
+	} iv;	/**< Initialisation vector parameters */
 };
 
 /** Symmetric Authentication / Hash Algorithms */
@@ -463,55 +512,6 @@ struct rte_crypto_sym_op {
 			  */
 		} data; /**< Data offsets and length for ciphering */
 
-		struct {
-			uint16_t offset;
-			/**< Starting point for Initialisation Vector or Counter,
-			 * specified as number of bytes from start of crypto
-			 * operation.
-			 *
-			 * - For block ciphers in CBC or F8 mode, or for KASUMI
-			 * in F8 mode, or for SNOW 3G in UEA2 mode, this is the
-			 * Initialisation Vector (IV) value.
-			 *
-			 * - For block ciphers in CTR mode, this is the counter.
-			 *
-			 * - For GCM mode, this is either the IV (if the length
-			 * is 96 bits) or J0 (for other sizes), where J0 is as
-			 * defined by NIST SP800-38D. Regardless of the IV
-			 * length, a full 16 bytes needs to be allocated.
-			 *
-			 * - For CCM mode, the first byte is reserved, and the
-			 * nonce should be written starting at &iv[1] (to allow
-			 * space for the implementation to write in the flags
-			 * in the first byte). Note that a full 16 bytes should
-			 * be allocated, even though the length field will
-			 * have a value less than this.
-			 *
-			 * - For AES-XTS, this is the 128bit tweak, i, from
-			 * IEEE Std 1619-2007.
-			 *
-			 * For optimum performance, the data pointed to SHOULD
-			 * be 8-byte aligned.
-			 */
-			uint16_t length;
-			/**< Length of valid IV data.
-			 *
-			 * - For block ciphers in CBC or F8 mode, or for KASUMI
-			 * in F8 mode, or for SNOW 3G in UEA2 mode, this is the
-			 * length of the IV (which must be the same as the
-			 * block length of the cipher).
-			 *
-			 * - For block ciphers in CTR mode, this is the length
-			 * of the counter (which must be the same as the block
-			 * length of the cipher).
-			 *
-			 * - For GCM mode, this is either 12 (for 96-bit IVs)
-			 * or 16, in which case data points to J0.
-			 *
-			 * - For CCM mode, this is the length of the nonce,
-			 * which can be in the range 7 to 13 inclusive.
-			 */
-		} iv;	/**< Initialisation vector parameters */
 	} cipher;
 
 	struct {

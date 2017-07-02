@@ -432,7 +432,7 @@ armv8_crypto_set_session_chained_parameters(struct armv8_crypto_session *sess,
 	case RTE_CRYPTO_CIPHER_AES_CBC:
 		sess->cipher.algo = calg;
 		/* IV len is always 16 bytes (block size) for AES CBC */
-		sess->cipher.iv_len = 16;
+		sess->cipher.iv.length = 16;
 		break;
 	default:
 		return -EINVAL;
@@ -522,6 +522,9 @@ armv8_crypto_set_session_parameters(struct armv8_crypto_session *sess,
 		is_chained_op = false;
 		return -EINVAL;
 	}
+
+	/* Set IV offset */
+	sess->cipher.iv.offset = cipher_xform->cipher.iv.offset;
 
 	if (is_chained_op) {
 		ret = armv8_crypto_set_session_chained_parameters(sess,
@@ -649,13 +652,8 @@ process_armv8_chained_op
 				op->sym->auth.digest.length);
 	}
 
-	if (unlikely(op->sym->cipher.iv.length != sess->cipher.iv_len)) {
-		op->status = RTE_CRYPTO_OP_STATUS_INVALID_ARGS;
-		return;
-	}
-
 	arg.cipher.iv = rte_crypto_op_ctod_offset(op, uint8_t *,
-					op->sym->cipher.iv.offset);
+					sess->cipher.iv.offset);
 	arg.cipher.key = sess->cipher.key.data;
 	/* Acquire combined mode function */
 	crypto_func = sess->crypto_func;
