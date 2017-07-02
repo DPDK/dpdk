@@ -1175,7 +1175,7 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
 			cipher_param->cipher_length = 0;
 			cipher_param->cipher_offset = 0;
 			auth_param->u1.aad_adr = 0;
-			auth_param->auth_len = op->sym->auth.aad.length;
+			auth_param->auth_len = ctx->aad_len;
 			auth_param->auth_off = op->sym->auth.data.offset;
 			auth_param->u2.aad_sz = 0;
 		}
@@ -1202,7 +1202,7 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
 		rte_hexdump(stdout, "digest:", op->sym->auth.digest.data,
 				op->sym->auth.digest.length);
 		rte_hexdump(stdout, "aad:", op->sym->auth.aad.data,
-				op->sym->auth.aad.length);
+				ctx->aad_len);
 	}
 #endif
 	return 0;

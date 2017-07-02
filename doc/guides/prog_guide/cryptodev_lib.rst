@@ -553,7 +553,6 @@ chain.
             struct {
                 uint8_t *data;
                 phys_addr_t phys_addr;
-                uint16_t length;
             } aad;    /**< Additional authentication parameters */
         } auth;
     }

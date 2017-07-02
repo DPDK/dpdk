@@ -817,6 +817,7 @@ int qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
 					ICP_QAT_HW_GALOIS_128_STATE1_SZ +
 					ICP_QAT_HW_GALOIS_H_SZ);
 		*aad_len = rte_bswap32(add_auth_data_length);
+		cdesc->aad_len = add_auth_data_length;
 		break;
 	case ICP_QAT_HW_AUTH_ALGO_SNOW_3G_UIA2:
 		qat_proto_flag = QAT_CRYPTO_PROTO_FLAG_SNOW3G;

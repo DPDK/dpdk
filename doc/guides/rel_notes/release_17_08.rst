@@ -93,6 +93,7 @@ New Features
   * Replaced pointer and physical address of IV with offset from the start
     of the crypto operation.
   * Moved length and offset of cipher IV to ``rte_crypto_cipher_xform``.
+  * Removed Additional Authentication Data (AAD) length.
 
 * **Reorganized the crypto operation structure.**
 
@@ -199,6 +200,7 @@ ABI Changes
 * **Reorganized the ``rte_crypto_sym_auth_xform`` structure.**
 
   * Added authentication IV length and offset parameters.
+  * Changed field size of AAD length from uint32_t to uint16_t.
 
 
 Shared Library Versions

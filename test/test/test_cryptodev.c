@@ -4638,7 +4638,7 @@ test_3DES_cipheronly_openssl_all(void)
 static int
 create_gcm_session(uint8_t dev_id, enum rte_crypto_cipher_operation op,
 		const uint8_t *key, const uint8_t key_len,
-		const uint8_t aad_len, const uint8_t auth_len,
+		const uint16_t aad_len, const uint8_t auth_len,
 		uint8_t iv_len,
 		enum rte_crypto_auth_operation auth_op)
 {
@@ -4752,12 +4752,11 @@ create_gcm_operation(enum rte_crypto_cipher_operation op,
 	TEST_ASSERT_NOT_NULL(sym_op->auth.aad.data,
 			"no room to append aad");
 
-	sym_op->auth.aad.length = tdata->aad.len;
 	sym_op->auth.aad.phys_addr =
 			rte_pktmbuf_mtophys(ut_params->ibuf);
 	memcpy(sym_op->auth.aad.data, tdata->aad.data, tdata->aad.len);
 	TEST_HEXDUMP(stdout, "aad:", sym_op->auth.aad.data,
-		sym_op->auth.aad.length);
+		tdata->aad.len);
 
 	/* Append IV at the end of the crypto operation*/
 	uint8_t *iv_ptr = rte_crypto_op_ctod_offset(ut_params->op,
@@ -6316,7 +6315,6 @@ create_gmac_operation(enum rte_crypto_auth_operation op,
 	TEST_ASSERT_NOT_NULL(sym_op->auth.aad.data,
 			"no room to append aad");
 
-	sym_op->auth.aad.length = tdata->aad.len;
 	sym_op->auth.aad.phys_addr =
 			rte_pktmbuf_mtophys(ut_params->ibuf);
 	memcpy(sym_op->auth.aad.data, tdata->aad.data, tdata->aad.len);
@@ -6381,7 +6379,7 @@ static int create_gmac_session(uint8_t dev_id,
 	ut_params->auth_xform.auth.algo = RTE_CRYPTO_AUTH_AES_GMAC;
 	ut_params->auth_xform.auth.op = auth_op;
 	ut_params->auth_xform.auth.digest_length = tdata->gmac_tag.len;
-	ut_params->auth_xform.auth.add_auth_data_length = 0;
+	ut_params->auth_xform.auth.add_auth_data_length = tdata->aad.len;
 	ut_params->auth_xform.auth.key.length = 0;
 	ut_params->auth_xform.auth.key.data = NULL;
 
@@ -6861,7 +6859,6 @@ create_auth_GMAC_operation(struct crypto_testsuite_params *ts_params,
 	TEST_HEXDUMP(stdout, "AAD:", sym_op->auth.aad.data, reference->aad.len);
 
 	sym_op->auth.aad.phys_addr = rte_pktmbuf_mtophys(ut_params->ibuf);
-	sym_op->auth.aad.length = reference->aad.len;
 
 	/* digest */
 	sym_op->auth.digest.data = (uint8_t *)rte_pktmbuf_append(
@@ -7195,7 +7192,6 @@ create_gcm_operation_SGL(enum rte_crypto_cipher_operation op,
 			"no room to prepend aad");
 	sym_op->auth.aad.phys_addr = rte_pktmbuf_mtophys(
 			ut_params->ibuf);
-	sym_op->auth.aad.length = aad_len;
 
 	memset(sym_op->auth.aad.data, 0, aad_len);
 	rte_memcpy(sym_op->auth.aad.data, tdata->aad.data, aad_len);

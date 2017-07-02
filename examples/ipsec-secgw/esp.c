@@ -129,7 +129,6 @@ esp_inbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 		sym_cop->auth.aad.data = aad;
 		sym_cop->auth.aad.phys_addr = rte_pktmbuf_mtophys_offset(m,
 				aad - rte_pktmbuf_mtod(m, uint8_t *));
-		sym_cop->auth.aad.length = 8;
 		break;
 	default:
 		RTE_LOG(ERR, IPSEC_ESP, "unsupported auth algorithm %u\n",
@@ -358,7 +357,6 @@ esp_outbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 		sym_cop->auth.aad.data = aad;
 		sym_cop->auth.aad.phys_addr = rte_pktmbuf_mtophys_offset(m,
 				aad - rte_pktmbuf_mtod(m, uint8_t *));
-		sym_cop->auth.aad.length = 8;
 		break;
 	default:
 		RTE_LOG(ERR, IPSEC_ESP, "unsupported auth algorithm %u\n",

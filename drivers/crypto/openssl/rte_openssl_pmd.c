@@ -370,6 +370,8 @@ openssl_set_session_auth_parameters(struct openssl_session *sess,
 		return -EINVAL;
 	}
 
+	sess->auth.aad_length = xform->auth.add_auth_data_length;
+
 	return 0;
 }
 
@@ -934,7 +936,7 @@ process_openssl_combined_op
 			sess->iv.offset);
 	ivlen = sess->iv.length;
 	aad = op->sym->auth.aad.data;
-	aadlen = op->sym->auth.aad.length;
+	aadlen = sess->auth.aad_length;
 
 	tag = op->sym->auth.digest.data;
 	if (tag == NULL)

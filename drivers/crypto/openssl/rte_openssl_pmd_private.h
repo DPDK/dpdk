@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2016 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2016-2017 Intel Corporation. All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -162,6 +162,9 @@ struct openssl_session {
 				/**< pointer to EVP context structure */
 			} hmac;
 		};
+
+		uint16_t aad_length;
+		/**< AAD length */
 	} auth;
 
 } __rte_cache_aligned;

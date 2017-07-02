@@ -145,6 +145,8 @@ aesni_gcm_set_session_parameters(struct aesni_gcm_session *sess,
 		return -EINVAL;
 	}
 
+	sess->aad_length = auth_xform->auth.add_auth_data_length;
+
 	return 0;
 }
 
@@ -255,7 +257,7 @@ process_gcm_crypto_op(struct rte_crypto_op *op,
 		aesni_gcm_enc[session->key].init(&session->gdata,
 				iv_ptr,
 				sym_op->auth.aad.data,
-				(uint64_t)sym_op->auth.aad.length);
+				(uint64_t)session->aad_length);
 
 		aesni_gcm_enc[session->key].update(&session->gdata, dst, src,
 				(uint64_t)part_len);
@@ -293,7 +295,7 @@ process_gcm_crypto_op(struct rte_crypto_op *op,
 		aesni_gcm_dec[session->key].init(&session->gdata,
 				iv_ptr,
 				sym_op->auth.aad.data,
-				(uint64_t)sym_op->auth.aad.length);
+				(uint64_t)session->aad_length);
 
 		aesni_gcm_dec[session->key].update(&session->gdata, dst, src,
 				(uint64_t)part_len);

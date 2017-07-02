@@ -45,6 +45,7 @@
 
 #define AES_CIPHER_IV_LENGTH 16
 #define TRIPLE_DES_CIPHER_IV_LENGTH 8
+#define AES_GCM_AAD_LENGTH 16
 
 #define PERF_NUM_OPS_INFLIGHT		(128)
 #define DEFAULT_NUM_REQS_TO_SUBMIT	(10000000)
@@ -70,7 +71,6 @@ enum chain_mode {
 
 struct symmetric_op {
 	const uint8_t *aad_data;
-	uint32_t aad_len;
 
 	const uint8_t *p_data;
 	uint32_t p_len;
@@ -97,6 +97,7 @@ struct symmetric_session_attrs {
 
 	const uint8_t *iv_data;
 	uint16_t iv_len;
+	uint16_t aad_len;
 	uint32_t digest_len;
 };
 
@@ -2779,6 +2780,7 @@ test_perf_create_openssl_session(uint8_t dev_id, enum chain_mode chain,
 		break;
 	case RTE_CRYPTO_AUTH_AES_GCM:
 		auth_xform.auth.key.data = NULL;
+		auth_xform.auth.add_auth_data_length = AES_GCM_AAD_LENGTH;
 		break;
 	default:
 		return NULL;
@@ -2855,8 +2857,6 @@ test_perf_create_armv8_session(uint8_t dev_id, enum chain_mode chain,
 	}
 }
 
-#define AES_GCM_AAD_LENGTH 16
-
 static struct rte_mbuf *
 test_perf_create_pktmbuf(struct rte_mempool *mpool, unsigned buf_sz)
 {
@@ -2888,7 +2888,6 @@ test_perf_set_crypto_op_aes(struct rte_crypto_op *op, struct rte_mbuf *m,
 		op->sym->auth.digest.phys_addr = 0;
 		op->sym->auth.digest.length = 0;
 		op->sym->auth.aad.data = NULL;
-		op->sym->auth.aad.length = 0;
 		op->sym->auth.data.offset = 0;
 		op->sym->auth.data.length = 0;
 	} else {
@@ -2932,7 +2931,6 @@ test_perf_set_crypto_op_aes_gcm(struct rte_crypto_op *op, struct rte_mbuf *m,
 				rte_pktmbuf_mtophys_offset(m, data_len);
 	op->sym->auth.digest.length = digest_len;
 	op->sym->auth.aad.data = aes_gcm_aad;
-	op->sym->auth.aad.length = AES_GCM_AAD_LENGTH;
 
 	/* Copy IV at the end of the crypto operation */
 	rte_memcpy(rte_crypto_op_ctod_offset(op, uint8_t *, IV_OFFSET),
@@ -2999,8 +2997,13 @@ test_perf_set_crypto_op_snow3g_cipher(struct rte_crypto_op *op,
 	rte_memcpy(rte_crypto_op_ctod_offset(op, uint8_t *, IV_OFFSET),
 			snow3g_iv, SNOW3G_CIPHER_IV_LENGTH);
 
+	/* Cipher Parameters */
 	op->sym->cipher.data.offset = 0;
 	op->sym->cipher.data.length = data_len << 3;
+
+	rte_memcpy(rte_crypto_op_ctod_offset(op, uint8_t *, IV_OFFSET),
+			snow3g_iv,
+			SNOW3G_CIPHER_IV_LENGTH);
 
 	op->sym->m_src = m;
 
@@ -4137,6 +4140,7 @@ test_perf_create_session(uint8_t dev_id, struct perf_test_params *pparams)
 	auth_xform.auth.op = pparams->session_attrs->auth;
 	auth_xform.auth.algo = pparams->session_attrs->auth_algorithm;
 
+	auth_xform.auth.add_auth_data_length = pparams->session_attrs->aad_len;
 	auth_xform.auth.digest_length = pparams->session_attrs->digest_len;
 	auth_xform.auth.key.length = pparams->session_attrs->key_auth_len;
 
@@ -4172,17 +4176,16 @@ perf_gcm_set_crypto_op(struct rte_crypto_op *op, struct rte_mbuf *m,
 	op->sym->auth.digest.data = m_hlp->digest;
 	op->sym->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
 					  m,
-					  params->symmetric_op->aad_len +
+					  params->session_attrs->aad_len +
 					  params->symmetric_op->p_len);
 
 	op->sym->auth.digest.length = params->symmetric_op->t_len;
 
 	op->sym->auth.aad.data = m_hlp->aad;
-	op->sym->auth.aad.length = params->symmetric_op->aad_len;
 	op->sym->auth.aad.phys_addr = rte_pktmbuf_mtophys(m);
 
 	rte_memcpy(op->sym->auth.aad.data, params->symmetric_op->aad_data,
-		       params->symmetric_op->aad_len);
+		       params->session_attrs->aad_len);
 
 	rte_memcpy(iv_ptr, params->session_attrs->iv_data,
 		       params->session_attrs->iv_len);
@@ -4190,11 +4193,11 @@ perf_gcm_set_crypto_op(struct rte_crypto_op *op, struct rte_mbuf *m,
 		iv_ptr[15] = 1;
 
 	op->sym->auth.data.offset =
-			params->symmetric_op->aad_len;
+			params->session_attrs->aad_len;
 	op->sym->auth.data.length = params->symmetric_op->p_len;
 
 	op->sym->cipher.data.offset =
-			params->symmetric_op->aad_len;
+			params->session_attrs->aad_len;
 	op->sym->cipher.data.length = params->symmetric_op->p_len;
 
 	op->sym->m_src = m;
@@ -4208,7 +4211,7 @@ test_perf_create_pktmbuf_fill(struct rte_mempool *mpool,
 		unsigned buf_sz, struct crypto_params *m_hlp)
 {
 	struct rte_mbuf *m = rte_pktmbuf_alloc(mpool);
-	uint16_t aad_len = params->symmetric_op->aad_len;
+	uint16_t aad_len = params->session_attrs->aad_len;
 	uint16_t digest_size = params->symmetric_op->t_len;
 	char *p;
 
@@ -4344,14 +4347,14 @@ perf_AES_GCM(uint8_t dev_id, uint16_t queue_id,
 				TEST_ASSERT_BUFFERS_ARE_EQUAL(
 					pparams->symmetric_op->c_data,
 					pkt +
-					pparams->symmetric_op->aad_len,
+					pparams->session_attrs->aad_len,
 					pparams->symmetric_op->c_len,
 					"GCM Ciphertext data not as expected");
 
 				TEST_ASSERT_BUFFERS_ARE_EQUAL(
 					pparams->symmetric_op->t_data,
 					pkt +
-					pparams->symmetric_op->aad_len +
+					pparams->session_attrs->aad_len +
 					pparams->symmetric_op->c_len,
 					pparams->symmetric_op->t_len,
 					"GCM MAC data not as expected");
@@ -4423,13 +4426,13 @@ test_perf_AES_GCM(int continual_buf_len, int continual_size)
 			RTE_CRYPTO_AUTH_OP_GENERATE;
 		session_attrs[i].key_auth_data = NULL;
 		session_attrs[i].key_auth_len = 0;
+		session_attrs[i].aad_len = gcm_test->aad.len;
 		session_attrs[i].digest_len =
 				gcm_test->auth_tag.len;
 		session_attrs[i].iv_len = gcm_test->iv.len;
 		session_attrs[i].iv_data = gcm_test->iv.data;
 
 		ops_set[i].aad_data = gcm_test->aad.data;
-		ops_set[i].aad_len = gcm_test->aad.len;
 		ops_set[i].p_data = gcm_test->plaintext.data;
 		ops_set[i].p_len = buf_lengths[i];
 		ops_set[i].c_data = gcm_test->ciphertext.data;

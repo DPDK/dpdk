@@ -186,7 +186,6 @@ cperf_set_ops_auth(struct rte_crypto_op **ops,
 			sym_op->auth.digest.length = options->auth_digest_sz;
 			sym_op->auth.aad.phys_addr = test_vector->aad.phys_addr;
 			sym_op->auth.aad.data = test_vector->aad.data;
-			sym_op->auth.aad.length = options->auth_aad_sz;
 
 		}
 
@@ -272,7 +271,6 @@ cperf_set_ops_cipher_auth(struct rte_crypto_op **ops,
 			sym_op->auth.digest.length = options->auth_digest_sz;
 			sym_op->auth.aad.phys_addr = test_vector->aad.phys_addr;
 			sym_op->auth.aad.data = test_vector->aad.data;
-			sym_op->auth.aad.length = options->auth_aad_sz;
 		}
 
 		if (options->auth_algo == RTE_CRYPTO_AUTH_SNOW3G_UIA2 ||
@@ -333,7 +331,6 @@ cperf_set_ops_aead(struct rte_crypto_op **ops,
 
 		sym_op->auth.aad.data = rte_pktmbuf_mtod(bufs_in[i], uint8_t *);
 		sym_op->auth.aad.phys_addr = rte_pktmbuf_mtophys(bufs_in[i]);
-		sym_op->auth.aad.length = options->auth_aad_sz;
 
 		/* authentication parameters */
 		if (options->auth_op == RTE_CRYPTO_AUTH_OP_VERIFY) {

@@ -497,11 +497,9 @@ l2fwd_simple_crypto_enqueue(struct rte_mbuf *m,
 		if (cparams->aad.length) {
 			op->sym->auth.aad.data = cparams->aad.data;
 			op->sym->auth.aad.phys_addr = cparams->aad.phys_addr;
-			op->sym->auth.aad.length = cparams->aad.length;
 		} else {
 			op->sym->auth.aad.data = NULL;
 			op->sym->auth.aad.phys_addr = 0;
-			op->sym->auth.aad.length = 0;
 		}
 	}
 
@@ -709,8 +707,6 @@ l2fwd_main_loop(struct l2fwd_crypto_options *options)
 					options->auth_xform.auth.digest_length;
 			if (options->auth_xform.auth.add_auth_data_length) {
 				port_cparams[i].aad.data = options->aad.data;
-				port_cparams[i].aad.length =
-					options->auth_xform.auth.add_auth_data_length;
 				port_cparams[i].aad.phys_addr = options->aad.phys_addr;
 				if (!options->aad_param)
 					generate_random_key(port_cparams[i].aad.data,

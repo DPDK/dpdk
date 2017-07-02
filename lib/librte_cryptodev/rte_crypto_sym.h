@@ -365,7 +365,7 @@ struct rte_crypto_auth_xform {
 	 * the result shall be truncated.
 	 */
 
-	uint32_t add_auth_data_length;
+	uint16_t add_auth_data_length;
 	/**< The length of the additional authenticated data (AAD) in bytes.
 	 * The maximum permitted value is 65535 (2^16 - 1) bytes, unless
 	 * otherwise specified below.
@@ -653,10 +653,6 @@ struct rte_crypto_sym_op {
 			 * operation, this field is used to pass plaintext.
 			 */
 			phys_addr_t phys_addr;	/**< physical address */
-			uint16_t length;
-			/**< Length of additional authenticated data (AAD)
-			 * in bytes
-			 */
 		} aad;
 		/**< Additional authentication parameters */
 	} auth;
