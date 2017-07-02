@@ -422,7 +422,6 @@ cperf_create_session(uint8_t dev_id,
 					test_vector->auth_iv.length;
 		} else {
 			auth_xform.auth.digest_length = 0;
-			auth_xform.auth.add_auth_data_length = 0;
 			auth_xform.auth.key.length = 0;
 			auth_xform.auth.key.data = NULL;
 			auth_xform.auth.iv.length = 0;
@@ -475,7 +474,6 @@ cperf_create_session(uint8_t dev_id,
 					test_vector->auth_key.data;
 		} else {
 			auth_xform.auth.digest_length = 0;
-			auth_xform.auth.add_auth_data_length = 0;
 			auth_xform.auth.key.length = 0;
 			auth_xform.auth.key.data = NULL;
 			auth_xform.auth.iv.length = 0;

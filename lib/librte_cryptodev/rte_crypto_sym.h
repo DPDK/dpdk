@@ -326,13 +326,6 @@ struct rte_crypto_auth_xform {
 	 * the result shall be truncated.
 	 */
 
-	uint16_t add_auth_data_length;
-	/**< The length of the additional authenticated data (AAD) in bytes.
-	 * The maximum permitted value is 65535 (2^16 - 1) bytes, unless
-	 * otherwise specified below.
-	 *
-	 */
-
 	struct {
 		uint16_t offset;
 		/**< Starting point for Initialisation Vector or Counter,
@@ -670,25 +663,6 @@ struct rte_crypto_sym_op {
 					phys_addr_t phys_addr;
 					/**< Physical address of digest */
 				} digest; /**< Digest parameters */
-
-				struct {
-					uint8_t *data;
-					/**< Pointer to Additional Authenticated
-					 * Data (AAD) needed for authenticated cipher
-					 * mechanisms (CCM and GCM).
-					 *
-					 * The length of the data pointed to by this
-					 * field is set up for the session in the @ref
-					 * rte_crypto_auth_xform structure as part of
-					 * the @ref rte_cryptodev_sym_session_create
-					 * function call.
-					 * This length must not exceed 65535 (2^16-1)
-					 * bytes.
-					 *
-					 */
-					phys_addr_t phys_addr;	/**< physical address */
-				} aad;
-				/**< Additional authentication parameters */
 			} auth;
 		};
 	};

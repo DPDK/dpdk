@@ -2936,7 +2936,6 @@ test_perf_set_crypto_op_aes(struct rte_crypto_op *op, struct rte_mbuf *m,
 	if (chain == CIPHER_ONLY) {
 		op->sym->auth.digest.data = NULL;
 		op->sym->auth.digest.phys_addr = 0;
-		op->sym->auth.aad.data = NULL;
 		op->sym->auth.data.offset = 0;
 		op->sym->auth.data.length = 0;
 	} else {

@@ -413,7 +413,6 @@ openssl_set_session_auth_parameters(struct openssl_session *sess,
 		return -EINVAL;
 	}
 
-	sess->auth.aad_length = xform->auth.add_auth_data_length;
 	sess->auth.digest_length = xform->auth.digest_length;
 
 	return 0;

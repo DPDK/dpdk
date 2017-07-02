@@ -5531,7 +5531,6 @@ static int MD5_HMAC_create_session(struct crypto_testsuite_params *ts_params,
 	ut_params->auth_xform.auth.algo = RTE_CRYPTO_AUTH_MD5_HMAC;
 
 	ut_params->auth_xform.auth.digest_length = MD5_DIGEST_LEN;
-	ut_params->auth_xform.auth.add_auth_data_length = 0;
 	ut_params->auth_xform.auth.key.length = test_case->key.len;
 	ut_params->auth_xform.auth.key.data = key;
 
@@ -6304,7 +6303,6 @@ static int create_gmac_session(uint8_t dev_id,
 	ut_params->auth_xform.auth.algo = RTE_CRYPTO_AUTH_AES_GMAC;
 	ut_params->auth_xform.auth.op = auth_op;
 	ut_params->auth_xform.auth.digest_length = tdata->gmac_tag.len;
-	ut_params->auth_xform.auth.add_auth_data_length = 0;
 	ut_params->auth_xform.auth.key.length = tdata->key.len;
 	ut_params->auth_xform.auth.key.data = auth_key;
 	ut_params->auth_xform.auth.iv.offset = IV_OFFSET;
@@ -6684,7 +6682,6 @@ create_auth_session(struct crypto_unittest_params *ut_params,
 	ut_params->auth_xform.auth.key.length = reference->auth_key.len;
 	ut_params->auth_xform.auth.key.data = auth_key;
 	ut_params->auth_xform.auth.digest_length = reference->digest.len;
-	ut_params->auth_xform.auth.add_auth_data_length = reference->aad.len;
 
 	/* Create Crypto session*/
 	ut_params->sess = rte_cryptodev_sym_session_create(dev_id,
@@ -6722,7 +6719,6 @@ create_auth_cipher_session(struct crypto_unittest_params *ut_params,
 		ut_params->auth_xform.auth.iv.length = reference->iv.len;
 	} else {
 		ut_params->auth_xform.next = &ut_params->cipher_xform;
-		ut_params->auth_xform.auth.add_auth_data_length = reference->aad.len;
 
 		/* Setup Cipher Parameters */
 		ut_params->cipher_xform.type = RTE_CRYPTO_SYM_XFORM_CIPHER;

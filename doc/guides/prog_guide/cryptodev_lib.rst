@@ -567,12 +567,6 @@ chain.
                         uint8_t *data;
                         phys_addr_t phys_addr;
                     } digest; /**< Digest parameters */
-
-                    struct {
-                        uint8_t *data;
-                        phys_addr_t phys_addr;
-                    } aad;
-                    /**< Additional authentication parameters */
                 } auth;
             };
         };
