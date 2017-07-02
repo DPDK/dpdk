@@ -110,7 +110,9 @@ where,
 
 *   chain: select the operation chaining to perform: Cipher->Hash (CIPHER_HASH),
 
-    Hash->Cipher (HASH_CIPHER), Cipher (CIPHER_ONLY), Hash(HASH_ONLY)
+    Hash->Cipher (HASH_CIPHER), Cipher (CIPHER_ONLY), Hash (HASH_ONLY)
+
+    or AEAD (AEAD)
 
     (default is Cipher->Hash)
 
@@ -153,6 +155,26 @@ where,
 *   auth_iv_random_size: set the size of the auth IV, which will be generated randomly.
 
     Note that if --auth_iv is used, this will be ignored.
+
+*   aead_algo: select the AEAD algorithm
+
+*   aead_op: select the AEAD operation to perform: ENCRYPT or DECRYPT
+
+    (default is ENCRYPT)
+
+*   aead_key: set the AEAD key to be used. Bytes has to be separated with ":"
+
+*   aead_key_random_size: set the size of the AEAD key,
+
+    which will be generated randomly.
+
+    Note that if --aead_key is used, this will be ignored.
+
+*   aead_iv: set the AEAD IV to be used. Bytes has to be separated with ":"
+
+*   aead_iv_random_size: set the size of the AEAD IV, which will be generated randomly.
+
+    Note that if --aead_iv is used, this will be ignored.
 
 *   aad: set the AAD to be used. Bytes has to be separated with ":"
 
