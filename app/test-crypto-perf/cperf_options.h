@@ -28,6 +28,7 @@
 #define CPERF_AUTH_ALGO		("auth-algo")
 #define CPERF_AUTH_OP		("auth-op")
 #define CPERF_AUTH_KEY_SZ	("auth-key-sz")
+#define CPERF_AUTH_IV_SZ	("auth-iv-sz")
 #define CPERF_AUTH_DIGEST_SZ	("auth-digest-sz")
 #define CPERF_AUTH_AAD_SZ	("auth-aad-sz")
 #define CPERF_CSV		("csv-friendly")
@@ -76,6 +77,7 @@ struct cperf_options {
 	enum rte_crypto_auth_operation auth_op;
 
 	uint16_t auth_key_sz;
+	uint16_t auth_iv_sz;
 	uint16_t auth_digest_sz;
 	uint16_t auth_aad_sz;
 

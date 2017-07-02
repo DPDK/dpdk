@@ -86,9 +86,10 @@ The application requires a number of command line options:
     ./build/l2fwd-crypto [EAL options] -- [-p PORTMASK] [-q NQ] [-s] [-T PERIOD] /
     [--cdev_type HW/SW/ANY] [--chain HASH_CIPHER/CIPHER_HASH/CIPHER_ONLY/HASH_ONLY] /
     [--cipher_algo ALGO] [--cipher_op ENCRYPT/DECRYPT] [--cipher_key KEY] /
-    [--cipher_key_random_size SIZE] [--iv IV] [--iv_random_size SIZE] /
+    [--cipher_key_random_size SIZE] [--cipher_iv IV] [--cipher_iv_random_size SIZE] /
     [--auth_algo ALGO] [--auth_op GENERATE/VERIFY] [--auth_key KEY] /
-    [--auth_key_random_size SIZE] [--aad AAD] [--aad_random_size SIZE] /
+    [--auth_key_random_size SIZE] [--auth_iv IV] [--auth_iv_random_size SIZE] /
+    [--aad AAD] [--aad_random_size SIZE] /
     [--digest size SIZE] [--sessionless] [--cryptodev_mask MASK]
 
 where,
@@ -127,11 +128,11 @@ where,
 
     Note that if --cipher_key is used, this will be ignored.
 
-*   iv: set the IV to be used. Bytes has to be separated with ":"
+*   cipher_iv: set the cipher IV to be used. Bytes has to be separated with ":"
 
-*   iv_random_size: set the size of the IV, which will be generated randomly.
+*   cipher_iv_random_size: set the size of the cipher IV, which will be generated randomly.
 
-    Note that if --iv is used, this will be ignored.
+    Note that if --cipher_iv is used, this will be ignored.
 
 *   auth_algo: select the authentication algorithm (default is sha1-hmac)
 
@@ -146,6 +147,12 @@ where,
     which will be generated randomly.
 
     Note that if --auth_key is used, this will be ignored.
+
+*   auth_iv: set the auth IV to be used. Bytes has to be separated with ":"
+
+*   auth_iv_random_size: set the size of the auth IV, which will be generated randomly.
+
+    Note that if --auth_iv is used, this will be ignored.
 
 *   aad: set the AAD to be used. Bytes has to be separated with ":"
 

@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2015-2016 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2015-2017 Intel Corporation. All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -57,7 +57,8 @@ static const struct rte_cryptodev_capabilities aesni_mb_pmd_capabilities[] = {
 					.max = 12,
 					.increment = 0
 				},
-				.aad_size = { 0 }
+				.aad_size = { 0 },
+				.iv_size = { 0 }
 			}, }
 		}, }
 	},
@@ -78,7 +79,8 @@ static const struct rte_cryptodev_capabilities aesni_mb_pmd_capabilities[] = {
 					.max = 12,
 					.increment = 0
 				},
-				.aad_size = { 0 }
+				.aad_size = { 0 },
+				.iv_size = { 0 }
 			}, }
 		}, }
 	},
@@ -99,7 +101,8 @@ static const struct rte_cryptodev_capabilities aesni_mb_pmd_capabilities[] = {
 					.max = 14,
 					.increment = 0
 				},
-				.aad_size = { 0 }
+				.aad_size = { 0 },
+				.iv_size = { 0 }
 			}, }
 		}, }
 	},
@@ -120,7 +123,8 @@ static const struct rte_cryptodev_capabilities aesni_mb_pmd_capabilities[] = {
 					.max = 16,
 					.increment = 0
 				},
-				.aad_size = { 0 }
+				.aad_size = { 0 },
+				.iv_size = { 0 }
 			}, }
 		}, }
 	},
@@ -141,7 +145,8 @@ static const struct rte_cryptodev_capabilities aesni_mb_pmd_capabilities[] = {
 					.max = 24,
 					.increment = 0
 				},
-				.aad_size = { 0 }
+				.aad_size = { 0 },
+				.iv_size = { 0 }
 			}, }
 		}, }
 	},
@@ -162,7 +167,8 @@ static const struct rte_cryptodev_capabilities aesni_mb_pmd_capabilities[] = {
 					.max = 32,
 					.increment = 0
 				},
-				.aad_size = { 0 }
+				.aad_size = { 0 },
+				.iv_size = { 0 }
 			}, }
 		}, }
 	},
@@ -183,7 +189,8 @@ static const struct rte_cryptodev_capabilities aesni_mb_pmd_capabilities[] = {
 					.max = 12,
 					.increment = 0
 				},
-				.aad_size = { 0 }
+				.aad_size = { 0 },
+				.iv_size = { 0 }
 			}, }
 		}, }
 	},

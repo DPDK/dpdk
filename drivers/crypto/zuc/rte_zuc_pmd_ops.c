@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2016 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2016-2017 Intel Corporation. All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -60,7 +60,8 @@ static const struct rte_cryptodev_capabilities zuc_pmd_capabilities[] = {
 					.min = 16,
 					.max = 16,
 					.increment = 0
-				}
+				},
+				.iv_size = { 0 }
 			}, }
 		}, }
 	},

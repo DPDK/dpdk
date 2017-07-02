@@ -59,7 +59,8 @@ static const struct rte_cryptodev_capabilities
 						.max = 20,
 						.increment = 0
 					},
-					.aad_size = { 0 }
+					.aad_size = { 0 },
+					.iv_size = { 0 }
 				}, }
 			}, }
 	},
@@ -80,7 +81,8 @@ static const struct rte_cryptodev_capabilities
 						.max = 32,
 						.increment = 0
 					},
-					.aad_size = { 0 }
+					.aad_size = { 0 },
+					.iv_size = { 0 }
 				}, }
 			}, }
 	},

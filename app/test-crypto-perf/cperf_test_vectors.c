@@ -441,32 +441,34 @@ cperf_test_vector_get_dummy(struct cperf_options *options)
 			t_vec->cipher_key.length = 0;
 			t_vec->ciphertext.data = plaintext;
 			t_vec->cipher_key.data = NULL;
-			t_vec->iv.data = NULL;
+			t_vec->cipher_iv.data = NULL;
 		} else {
 			t_vec->cipher_key.length = options->cipher_key_sz;
 			t_vec->ciphertext.data = ciphertext;
 			t_vec->cipher_key.data = cipher_key;
-			t_vec->iv.data = rte_malloc(NULL, options->cipher_iv_sz,
+			t_vec->cipher_iv.data = rte_malloc(NULL, options->cipher_iv_sz,
 					16);
-			if (t_vec->iv.data == NULL) {
+			if (t_vec->cipher_iv.data == NULL) {
 				rte_free(t_vec);
 				return NULL;
 			}
-			memcpy(t_vec->iv.data, iv, options->cipher_iv_sz);
+			memcpy(t_vec->cipher_iv.data, iv, options->cipher_iv_sz);
 		}
 		t_vec->ciphertext.length = options->max_buffer_size;
+
 		/* Set IV parameters */
-		t_vec->iv.data = rte_malloc(NULL, options->cipher_iv_sz,
-					16);
-		if (options->cipher_iv_sz && t_vec->iv.data == NULL) {
+		t_vec->cipher_iv.data = rte_malloc(NULL, options->cipher_iv_sz,
+				16);
+		if (options->cipher_iv_sz && t_vec->cipher_iv.data == NULL) {
 			rte_free(t_vec);
 			return NULL;
 		}
-		memcpy(t_vec->iv.data, iv, options->cipher_iv_sz);
-		t_vec->iv.length = options->cipher_iv_sz;
+		memcpy(t_vec->cipher_iv.data, iv, options->cipher_iv_sz);
+		t_vec->cipher_iv.length = options->cipher_iv_sz;
 
 		t_vec->data.cipher_offset = 0;
 		t_vec->data.cipher_length = options->max_buffer_size;
+
 	}
 
 	if (options->op_type ==	CPERF_AUTH_ONLY ||
@@ -508,7 +510,7 @@ cperf_test_vector_get_dummy(struct cperf_options *options)
 					options->auth_aad_sz, 16);
 			if (t_vec->aad.data == NULL) {
 				if (options->op_type !=	CPERF_AUTH_ONLY)
-					rte_free(t_vec->iv.data);
+					rte_free(t_vec->cipher_iv.data);
 				rte_free(t_vec);
 				return NULL;
 			}
@@ -517,13 +519,26 @@ cperf_test_vector_get_dummy(struct cperf_options *options)
 			t_vec->aad.data = NULL;
 		}
 
+		/* Set IV parameters */
+		t_vec->auth_iv.data = rte_malloc(NULL, options->auth_iv_sz,
+				16);
+		if (options->auth_iv_sz && t_vec->auth_iv.data == NULL) {
+			if (options->op_type != CPERF_AUTH_ONLY)
+				rte_free(t_vec->cipher_iv.data);
+			rte_free(t_vec);
+			return NULL;
+		}
+		memcpy(t_vec->auth_iv.data, iv, options->auth_iv_sz);
+		t_vec->auth_iv.length = options->auth_iv_sz;
+
 		t_vec->aad.phys_addr = rte_malloc_virt2phy(t_vec->aad.data);
 		t_vec->aad.length = options->auth_aad_sz;
 		t_vec->digest.data = rte_malloc(NULL, options->auth_digest_sz,
 				16);
 		if (t_vec->digest.data == NULL) {
 			if (options->op_type !=	CPERF_AUTH_ONLY)
-				rte_free(t_vec->iv.data);
+				rte_free(t_vec->cipher_iv.data);
+			rte_free(t_vec->auth_iv.data);
 			rte_free(t_vec->aad.data);
 			rte_free(t_vec);
 			return NULL;

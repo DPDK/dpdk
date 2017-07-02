@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2016 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2016-2017 Intel Corporation. All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -57,7 +57,8 @@ static const struct rte_cryptodev_capabilities openssl_pmd_capabilities[] = {
 					.max = 16,
 					.increment = 0
 				},
-				.aad_size = { 0 }
+				.aad_size = { 0 },
+				.iv_size = { 0 }
 			}, }
 		}, }
 	},
@@ -78,7 +79,8 @@ static const struct rte_cryptodev_capabilities openssl_pmd_capabilities[] = {
 					.max = 16,
 					.increment = 0
 				},
-				.aad_size = { 0 }
+				.aad_size = { 0 },
+				.iv_size = { 0 }
 			}, }
 		}, }
 	},
@@ -99,7 +101,8 @@ static const struct rte_cryptodev_capabilities openssl_pmd_capabilities[] = {
 					.max = 20,
 					.increment = 0
 				},
-				.aad_size = { 0 }
+				.aad_size = { 0 },
+				.iv_size = { 0 }
 			}, }
 		}, }
 	},
@@ -120,7 +123,8 @@ static const struct rte_cryptodev_capabilities openssl_pmd_capabilities[] = {
 					.max = 20,
 					.increment = 0
 				},
-				.aad_size = { 0 }
+				.aad_size = { 0 },
+				.iv_size = { 0 }
 			}, }
 		}, }
 	},
@@ -141,7 +145,8 @@ static const struct rte_cryptodev_capabilities openssl_pmd_capabilities[] = {
 					.max = 28,
 					.increment = 0
 				},
-				.aad_size = { 0 }
+				.aad_size = { 0 },
+				.iv_size = { 0 }
 			}, }
 		}, }
 	},
@@ -162,7 +167,8 @@ static const struct rte_cryptodev_capabilities openssl_pmd_capabilities[] = {
 					.max = 28,
 					.increment = 0
 				},
-				.aad_size = { 0 }
+				.aad_size = { 0 },
+				.iv_size = { 0 }
 			}, }
 		}, }
 	},
@@ -183,31 +189,33 @@ static const struct rte_cryptodev_capabilities openssl_pmd_capabilities[] = {
 					.max = 32,
 					.increment = 0
 				},
-				.aad_size = { 0 }
+				.aad_size = { 0 },
+				.iv_size = { 0 }
 			}, }
 		}, }
 	},
 	{	/* SHA256 */
-			.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
-			{.sym = {
-				.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
-				{.auth = {
-					.algo = RTE_CRYPTO_AUTH_SHA256,
-					.block_size = 64,
-					.key_size = {
-						.min = 0,
-						.max = 0,
-						.increment = 0
-					},
-					.digest_size = {
-						.min = 32,
-						.max = 32,
-						.increment = 0
-					},
-					.aad_size = { 0 }
-				}, }
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,
+			{.auth = {
+				.algo = RTE_CRYPTO_AUTH_SHA256,
+				.block_size = 64,
+				.key_size = {
+					.min = 0,
+					.max = 0,
+					.increment = 0
+				},
+				.digest_size = {
+					.min = 32,
+					.max = 32,
+					.increment = 0
+				},
+				.aad_size = { 0 },
+				.iv_size = { 0 }
 			}, }
-		},
+		}, }
+	},
 	{	/* SHA384 HMAC */
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
 		{.sym = {
@@ -225,7 +233,8 @@ static const struct rte_cryptodev_capabilities openssl_pmd_capabilities[] = {
 					.max = 48,
 					.increment = 0
 				},
-				.aad_size = { 0 }
+				.aad_size = { 0 },
+				.iv_size = { 0 }
 			}, }
 		}, }
 	},
@@ -246,7 +255,8 @@ static const struct rte_cryptodev_capabilities openssl_pmd_capabilities[] = {
 					.max = 48,
 					.increment = 0
 				},
-				.aad_size = { 0 }
+				.aad_size = { 0 },
+				.iv_size = { 0 }
 			}, }
 		}, }
 	},
@@ -267,7 +277,8 @@ static const struct rte_cryptodev_capabilities openssl_pmd_capabilities[] = {
 					.max = 64,
 					.increment = 0
 				},
-				.aad_size = { 0 }
+				.aad_size = { 0 },
+				.iv_size = { 0 }
 			}, }
 		}, }
 	},
@@ -288,7 +299,8 @@ static const struct rte_cryptodev_capabilities openssl_pmd_capabilities[] = {
 					.max = 64,
 					.increment = 0
 				},
-				.aad_size = { 0 }
+				.aad_size = { 0 },
+				.iv_size = { 0 }
 			}, }
 		}, }
 	},
@@ -353,7 +365,8 @@ static const struct rte_cryptodev_capabilities openssl_pmd_capabilities[] = {
 					.min = 0,
 					.max = 65535,
 					.increment = 1
-				}
+				},
+				.iv_size = { 0 }
 			}, }
 		}, }
 	},
@@ -398,7 +411,8 @@ static const struct rte_cryptodev_capabilities openssl_pmd_capabilities[] = {
 					.min = 8,
 					.max = 65532,
 					.increment = 4
-				}
+				},
+				.iv_size = { 0 }
 			}, }
 		}, }
 	},

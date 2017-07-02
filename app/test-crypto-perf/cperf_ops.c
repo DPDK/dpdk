@@ -121,9 +121,11 @@ cperf_set_ops_cipher(struct rte_crypto_op **ops,
 			uint8_t *iv_ptr = rte_crypto_op_ctod_offset(ops[i],
 					uint8_t *, iv_offset);
 
-			memcpy(iv_ptr, test_vector->iv.data,
-					test_vector->iv.length);
-	}	}
+			memcpy(iv_ptr, test_vector->cipher_iv.data,
+					test_vector->cipher_iv.length);
+
+		}
+	}
 
 	return 0;
 }
@@ -134,7 +136,7 @@ cperf_set_ops_auth(struct rte_crypto_op **ops,
 		uint16_t nb_ops, struct rte_cryptodev_sym_session *sess,
 		const struct cperf_options *options,
 		const struct cperf_test_vector *test_vector,
-		uint16_t iv_offset __rte_unused)
+		uint16_t iv_offset)
 {
 	uint16_t i;
 
@@ -145,6 +147,14 @@ cperf_set_ops_auth(struct rte_crypto_op **ops,
 
 		sym_op->m_src = bufs_in[i];
 		sym_op->m_dst = bufs_out[i];
+
+		if (test_vector->auth_iv.length) {
+			uint8_t *iv_ptr = rte_crypto_op_ctod_offset(ops[i],
+								uint8_t *,
+								iv_offset);
+			memcpy(iv_ptr, test_vector->auth_iv.data,
+					test_vector->auth_iv.length);
+		}
 
 		/* authentication parameters */
 		if (options->auth_op == RTE_CRYPTO_AUTH_OP_VERIFY) {
@@ -190,6 +200,17 @@ cperf_set_ops_auth(struct rte_crypto_op **ops,
 		sym_op->auth.data.offset = 0;
 	}
 
+	if (options->test == CPERF_TEST_TYPE_VERIFY) {
+		if (test_vector->auth_iv.length) {
+			for (i = 0; i < nb_ops; i++) {
+				uint8_t *iv_ptr = rte_crypto_op_ctod_offset(ops[i],
+						uint8_t *, iv_offset);
+
+				memcpy(iv_ptr, test_vector->auth_iv.data,
+						test_vector->auth_iv.length);
+			}
+		}
+	}
 	return 0;
 }
 
@@ -269,9 +290,19 @@ cperf_set_ops_cipher_auth(struct rte_crypto_op **ops,
 			uint8_t *iv_ptr = rte_crypto_op_ctod_offset(ops[i],
 					uint8_t *, iv_offset);
 
-			memcpy(iv_ptr, test_vector->iv.data,
-					test_vector->iv.length);
+			memcpy(iv_ptr, test_vector->cipher_iv.data,
+					test_vector->cipher_iv.length);
+			if (test_vector->auth_iv.length) {
+				/*
+				 * Copy IV after the crypto operation and
+				 * the cipher IV
+				 */
+				iv_ptr += test_vector->cipher_iv.length;
+				memcpy(iv_ptr, test_vector->auth_iv.data,
+						test_vector->auth_iv.length);
+			}
 		}
+
 	}
 
 	return 0;
@@ -345,8 +376,8 @@ cperf_set_ops_aead(struct rte_crypto_op **ops,
 			uint8_t *iv_ptr = rte_crypto_op_ctod_offset(ops[i],
 					uint8_t *, iv_offset);
 
-			memcpy(iv_ptr, test_vector->iv.data,
-					test_vector->iv.length);
+			memcpy(iv_ptr, test_vector->cipher_iv.data,
+					test_vector->cipher_iv.length);
 		}
 	}
 
@@ -379,8 +410,8 @@ cperf_create_session(uint8_t dev_id,
 					test_vector->cipher_key.data;
 			cipher_xform.cipher.key.length =
 					test_vector->cipher_key.length;
-			cipher_xform.cipher.iv.length = test_vector->iv.length;
-
+			cipher_xform.cipher.iv.length =
+					test_vector->cipher_iv.length;
 		} else {
 			cipher_xform.cipher.key.data = NULL;
 			cipher_xform.cipher.key.length = 0;
@@ -406,11 +437,14 @@ cperf_create_session(uint8_t dev_id,
 			auth_xform.auth.key.length =
 					test_vector->auth_key.length;
 			auth_xform.auth.key.data = test_vector->auth_key.data;
+			auth_xform.auth.iv.length =
+					test_vector->auth_iv.length;
 		} else {
 			auth_xform.auth.digest_length = 0;
 			auth_xform.auth.add_auth_data_length = 0;
 			auth_xform.auth.key.length = 0;
 			auth_xform.auth.key.data = NULL;
+			auth_xform.auth.iv.length = 0;
 		}
 		/* create crypto session */
 		sess =  rte_cryptodev_sym_session_create(dev_id, &auth_xform);
@@ -436,7 +470,8 @@ cperf_create_session(uint8_t dev_id,
 					test_vector->cipher_key.data;
 			cipher_xform.cipher.key.length =
 					test_vector->cipher_key.length;
-			cipher_xform.cipher.iv.length = test_vector->iv.length;
+			cipher_xform.cipher.iv.length =
+					test_vector->cipher_iv.length;
 		} else {
 			cipher_xform.cipher.key.data = NULL;
 			cipher_xform.cipher.key.length = 0;
@@ -461,17 +496,21 @@ cperf_create_session(uint8_t dev_id,
 				options->auth_algo == RTE_CRYPTO_AUTH_AES_GCM) {
 				auth_xform.auth.key.length = 0;
 				auth_xform.auth.key.data = NULL;
+				auth_xform.auth.iv.length = 0;
 			} else { /* auth options for others */
 				auth_xform.auth.key.length =
 					test_vector->auth_key.length;
 				auth_xform.auth.key.data =
 						test_vector->auth_key.data;
+				auth_xform.auth.iv.length =
+						test_vector->auth_iv.length;
 			}
 		} else {
 			auth_xform.auth.digest_length = 0;
 			auth_xform.auth.add_auth_data_length = 0;
 			auth_xform.auth.key.length = 0;
 			auth_xform.auth.key.data = NULL;
+			auth_xform.auth.iv.length = 0;
 		}
 
 		/* create crypto session for aes gcm */

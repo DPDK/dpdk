@@ -196,6 +196,10 @@ ABI Changes
 
   * Added cipher IV length and offset parameters.
 
+* **Reorganized the ``rte_crypto_sym_auth_xform`` structure.**
+
+  * Added authentication IV length and offset parameters.
+
 
 Shared Library Versions
 -----------------------

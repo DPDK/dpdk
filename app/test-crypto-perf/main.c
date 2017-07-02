@@ -1,3 +1,35 @@
+/*-
+ *   BSD LICENSE
+ *
+ *   Copyright(c) 2016-2017 Intel Corporation. All rights reserved.
+ *
+ *   Redistribution and use in source and binary forms, with or without
+ *   modification, are permitted provided that the following conditions
+ *   are met:
+ *
+ *     * Redistributions of source code must retain the above copyright
+ *       notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in
+ *       the documentation and/or other materials provided with the
+ *       distribution.
+ *     * Neither the name of Intel Corporation nor the names of its
+ *       contributors may be used to endorse or promote products derived
+ *       from this software without specific prior written permission.
+ *
+ *   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *   "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *   LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ *   A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *   OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *   SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ *   LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ *   DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ *   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
 #include <stdio.h>
 #include <unistd.h>
 
@@ -138,7 +170,8 @@ cperf_verify_devices_capabilities(struct cperf_options *opts,
 					capability,
 					opts->auth_key_sz,
 					opts->auth_digest_sz,
-					opts->auth_aad_sz);
+					opts->auth_aad_sz,
+					opts->auth_iv_sz);
 			if (ret != 0)
 				return ret;
 		}
@@ -185,9 +218,9 @@ cperf_check_test_vector(struct cperf_options *opts,
 				return -1;
 			if (test_vec->ciphertext.length < opts->max_buffer_size)
 				return -1;
-			if (test_vec->iv.data == NULL)
+			if (test_vec->cipher_iv.data == NULL)
 				return -1;
-			if (test_vec->iv.length != opts->cipher_iv_sz)
+			if (test_vec->cipher_iv.length != opts->cipher_iv_sz)
 				return -1;
 			if (test_vec->cipher_key.data == NULL)
 				return -1;
@@ -203,6 +236,11 @@ cperf_check_test_vector(struct cperf_options *opts,
 			if (test_vec->auth_key.data == NULL)
 				return -1;
 			if (test_vec->auth_key.length != opts->auth_key_sz)
+				return -1;
+			if (test_vec->auth_iv.length != opts->auth_iv_sz)
+				return -1;
+			/* Auth IV is only required for some algorithms */
+			if (opts->auth_iv_sz && test_vec->auth_iv.data == NULL)
 				return -1;
 			if (test_vec->digest.data == NULL)
 				return -1;
@@ -226,9 +264,9 @@ cperf_check_test_vector(struct cperf_options *opts,
 				return -1;
 			if (test_vec->ciphertext.length < opts->max_buffer_size)
 				return -1;
-			if (test_vec->iv.data == NULL)
+			if (test_vec->cipher_iv.data == NULL)
 				return -1;
-			if (test_vec->iv.length != opts->cipher_iv_sz)
+			if (test_vec->cipher_iv.length != opts->cipher_iv_sz)
 				return -1;
 			if (test_vec->cipher_key.data == NULL)
 				return -1;
@@ -239,6 +277,11 @@ cperf_check_test_vector(struct cperf_options *opts,
 			if (test_vec->auth_key.data == NULL)
 				return -1;
 			if (test_vec->auth_key.length != opts->auth_key_sz)
+				return -1;
+			if (test_vec->auth_iv.length != opts->auth_iv_sz)
+				return -1;
+			/* Auth IV is only required for some algorithms */
+			if (opts->auth_iv_sz && test_vec->auth_iv.data == NULL)
 				return -1;
 			if (test_vec->digest.data == NULL)
 				return -1;
@@ -253,6 +296,10 @@ cperf_check_test_vector(struct cperf_options *opts,
 		if (test_vec->ciphertext.data == NULL)
 			return -1;
 		if (test_vec->ciphertext.length < opts->max_buffer_size)
+			return -1;
+		if (test_vec->cipher_iv.data == NULL)
+			return -1;
+		if (test_vec->cipher_iv.length != opts->cipher_iv_sz)
 			return -1;
 		if (test_vec->aad.data == NULL)
 			return -1;

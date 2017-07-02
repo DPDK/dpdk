@@ -285,7 +285,9 @@ cperf_latency_test_constructor(uint8_t dev_id, uint16_t qp_id,
 	snprintf(pool_name, sizeof(pool_name), "cperf_op_pool_cdev_%d",
 			dev_id);
 
-	uint16_t priv_size = sizeof(struct priv_op_data) + test_vector->iv.length;
+	uint16_t priv_size = sizeof(struct priv_op_data) +
+			test_vector->cipher_iv.length +
+			test_vector->auth_iv.length;
 	ctx->crypto_op_pool = rte_crypto_op_pool_create(pool_name,
 			RTE_CRYPTO_OP_TYPE_SYMMETRIC, options->pool_sz,
 			512, priv_size, rte_socket_id());

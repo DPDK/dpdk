@@ -46,7 +46,8 @@ free_test_vector(struct cperf_test_vector *vector, struct cperf_options *opts)
 	if (vector == NULL || opts == NULL)
 		return -1;
 
-	rte_free(vector->iv.data);
+	rte_free(vector->cipher_iv.data);
+	rte_free(vector->auth_iv.data);
 	rte_free(vector->aad.data);
 	rte_free(vector->digest.data);
 
@@ -115,15 +116,28 @@ show_test_vector(struct cperf_test_vector *test_vector)
 		printf("\n");
 	}
 
-	if (test_vector->iv.data) {
-		printf("\niv =\n");
-		for (i = 0; i < test_vector->iv.length; ++i) {
+	if (test_vector->cipher_iv.data) {
+		printf("\ncipher_iv =\n");
+		for (i = 0; i < test_vector->cipher_iv.length; ++i) {
 			if ((i % wrap == 0) && (i != 0))
 				printf("\n");
-			if (i == (uint32_t)(test_vector->iv.length - 1))
-				printf("0x%02x", test_vector->iv.data[i]);
+			if (i == (uint32_t)(test_vector->cipher_iv.length - 1))
+				printf("0x%02x", test_vector->cipher_iv.data[i]);
 			else
-				printf("0x%02x, ", test_vector->iv.data[i]);
+				printf("0x%02x, ", test_vector->cipher_iv.data[i]);
+		}
+		printf("\n");
+	}
+
+	if (test_vector->auth_iv.data) {
+		printf("\nauth_iv =\n");
+		for (i = 0; i < test_vector->auth_iv.length; ++i) {
+			if ((i % wrap == 0) && (i != 0))
+				printf("\n");
+			if (i == (uint32_t)(test_vector->auth_iv.length - 1))
+				printf("0x%02x", test_vector->auth_iv.data[i]);
+			else
+				printf("0x%02x, ", test_vector->auth_iv.data[i]);
 		}
 		printf("\n");
 	}
@@ -331,18 +345,32 @@ parse_entry(char *entry, struct cperf_test_vector *vector,
 			vector->auth_key.length = opts->auth_key_sz;
 		}
 
-	} else if (strstr(key_token, "iv")) {
-		rte_free(vector->iv.data);
-		vector->iv.data = data;
+	} else if (strstr(key_token, "cipher_iv")) {
+		rte_free(vector->cipher_iv.data);
+		vector->cipher_iv.data = data;
 		if (tc_found)
-			vector->iv.length = data_length;
+			vector->cipher_iv.length = data_length;
 		else {
 			if (opts->cipher_iv_sz > data_length) {
-				printf("Global iv shorter than "
+				printf("Global cipher iv shorter than "
 					"cipher_iv_sz\n");
 				return -1;
 			}
-			vector->iv.length = opts->cipher_iv_sz;
+			vector->cipher_iv.length = opts->cipher_iv_sz;
+		}
+
+	} else if (strstr(key_token, "auth_iv")) {
+		rte_free(vector->auth_iv.data);
+		vector->auth_iv.data = data;
+		if (tc_found)
+			vector->auth_iv.length = data_length;
+		else {
+			if (opts->auth_iv_sz > data_length) {
+				printf("Global auth iv shorter than "
+					"auth_iv_sz\n");
+				return -1;
+			}
+			vector->auth_iv.length = opts->auth_iv_sz;
 		}
 
 	} else if (strstr(key_token, "ciphertext")) {

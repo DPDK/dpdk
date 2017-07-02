@@ -393,6 +393,30 @@ struct rte_crypto_auth_xform {
 	 *  of the AAD data is specified in additional authentication data
 	 *  length field of the rte_crypto_sym_op_data structure
 	 */
+
+	struct {
+		uint16_t offset;
+		/**< Starting point for Initialisation Vector or Counter,
+		 * specified as number of bytes from start of crypto
+		 * operation (rte_crypto_op).
+		 *
+		 * - For KASUMI in F9 mode, SNOW 3G in UIA2 mode,
+		 *   for ZUC in EIA3 mode and for AES-GMAC, this is the
+		 *   authentication Initialisation Vector (IV) value.
+		 *
+		 *
+		 * For optimum performance, the data pointed to SHOULD
+		 * be 8-byte aligned.
+		 */
+		uint16_t length;
+		/**< Length of valid IV data.
+		 *
+		 * - For KASUMI in F9 mode, SNOW3G in UIA2 mode, for
+		 *   ZUC in EIA3 mode and for AES-GMAC, this is the length
+		 *   of the IV.
+		 *
+		 */
+	} iv;	/**< Initialisation vector parameters */
 };
 
 /** Crypto transformation types */

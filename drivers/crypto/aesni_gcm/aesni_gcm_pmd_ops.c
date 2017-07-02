@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2016 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2016-2017 Intel Corporation. All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -60,7 +60,8 @@ static const struct rte_cryptodev_capabilities aesni_gcm_pmd_capabilities[] = {
 					.min = 0,
 					.max = 65535,
 					.increment = 1
-				}
+				},
+				.iv_size = { 0 }
 			}, }
 		}, }
 	},
@@ -85,7 +86,8 @@ static const struct rte_cryptodev_capabilities aesni_gcm_pmd_capabilities[] = {
 					.min = 0,
 					.max = 65535,
 					.increment = 1
-				}
+				},
+				.iv_size = { 0 }
 			}, }
 		}, }
 	},

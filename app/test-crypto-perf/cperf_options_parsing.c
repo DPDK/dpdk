@@ -549,6 +549,12 @@ parse_auth_digest_sz(struct cperf_options *opts, const char *arg)
 }
 
 static int
+parse_auth_iv_sz(struct cperf_options *opts, const char *arg)
+{
+	return parse_uint16_t(&opts->auth_iv_sz, arg);
+}
+
+static int
 parse_auth_aad_sz(struct cperf_options *opts, const char *arg)
 {
 	return parse_uint16_t(&opts->auth_aad_sz, arg);
@@ -651,6 +657,7 @@ cperf_options_default(struct cperf_options *opts)
 
 	opts->auth_key_sz = 64;
 	opts->auth_digest_sz = 12;
+	opts->auth_iv_sz = 0;
 	opts->auth_aad_sz = 0;
 }
 
@@ -678,6 +685,7 @@ cperf_opts_parse_long(int opt_idx, struct cperf_options *opts)
 		{ CPERF_AUTH_ALGO,	parse_auth_algo },
 		{ CPERF_AUTH_OP,	parse_auth_op },
 		{ CPERF_AUTH_KEY_SZ,	parse_auth_key_sz },
+		{ CPERF_AUTH_IV_SZ,	parse_auth_iv_sz },
 		{ CPERF_AUTH_DIGEST_SZ,	parse_auth_digest_sz },
 		{ CPERF_AUTH_AAD_SZ,	parse_auth_aad_sz },
 		{ CPERF_CSV,	parse_csv_friendly},
@@ -914,6 +922,7 @@ cperf_options_dump(struct cperf_options *opts)
 		printf("# auth operation: %s\n",
 			rte_crypto_auth_operation_strings[opts->auth_op]);
 		printf("# auth key size: %u\n", opts->auth_key_sz);
+		printf("# auth iv size: %u\n", opts->auth_iv_sz);
 		printf("# auth digest size: %u\n", opts->auth_digest_sz);
 		printf("# auth aad size: %u\n", opts->auth_aad_sz);
 		printf("#\n");

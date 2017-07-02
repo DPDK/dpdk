@@ -52,7 +52,8 @@
 					.max = 20,			\
 					.increment = 0			\
 				},					\
-				.aad_size = { 0 }			\
+				.aad_size = { 0 },			\
+				.iv_size = { 0 }			\
 			}, }						\
 		}, }							\
 	},								\
@@ -73,7 +74,8 @@
 					.max = 28,			\
 					.increment = 0			\
 				},					\
-				.aad_size = { 0 }			\
+				.aad_size = { 0 },			\
+				.iv_size = { 0 }			\
 			}, }						\
 		}, }							\
 	},								\
@@ -94,7 +96,8 @@
 					.max = 32,			\
 					.increment = 0			\
 				},					\
-				.aad_size = { 0 }			\
+				.aad_size = { 0 },			\
+				.iv_size = { 0 }			\
 			}, }						\
 		}, }							\
 	},								\
@@ -114,8 +117,9 @@
 					.min = 48,			\
 					.max = 48,			\
 					.increment = 0			\
-					},				\
-				.aad_size = { 0 }			\
+				},					\
+				.aad_size = { 0 },			\
+				.iv_size = { 0 }			\
 			}, }						\
 		}, }							\
 	},								\
@@ -136,7 +140,8 @@
 					.max = 64,			\
 					.increment = 0			\
 				},					\
-				.aad_size = { 0 }			\
+				.aad_size = { 0 },			\
+				.iv_size = { 0 }			\
 			}, }						\
 		}, }							\
 	},								\
@@ -157,7 +162,8 @@
 					.max = 16,			\
 					.increment = 0			\
 				},					\
-				.aad_size = { 0 }			\
+				.aad_size = { 0 },			\
+				.iv_size = { 0 }			\
 			}, }						\
 		}, }							\
 	},								\
@@ -178,7 +184,8 @@
 					.max = 16,			\
 					.increment = 0			\
 				},					\
-				.aad_size = { 0 }			\
+				.aad_size = { 0 },			\
+				.iv_size = { 0 }			\
 			}, }						\
 		}, }							\
 	},								\
@@ -203,7 +210,8 @@
 					.min = 0,			\
 					.max = 240,			\
 					.increment = 1			\
-				}					\
+				},					\
+				.iv_size = { 0 }			\
 			}, }						\
 		}, }							\
 	},								\
@@ -228,7 +236,8 @@
 					.min = 1,			\
 					.max = 65535,			\
 					.increment = 1			\
-				}					\
+				},					\
+				.iv_size = { 0 }			\
 			}, }						\
 		}, }							\
 	},								\
@@ -253,7 +262,8 @@
 					.min = 16,			\
 					.max = 16,			\
 					.increment = 0			\
-				}					\
+				},					\
+				.iv_size = { 0 }			\
 			}, }						\
 		}, }							\
 	},								\
@@ -374,7 +384,8 @@
 					.max = 0,			\
 					.increment = 0			\
 				},					\
-				.aad_size = { 0 }			\
+				.aad_size = { 0 },			\
+				.iv_size = { 0 }			\
 			}, },						\
 		}, },							\
 	},								\
@@ -439,7 +450,8 @@
 					.min = 8,			\
 					.max = 8,			\
 					.increment = 0			\
-				}					\
+				},					\
+				.iv_size = { 0 }			\
 			}, }						\
 		}, }							\
 	},								\
@@ -566,7 +578,8 @@
 					.min = 16,			\
 					.max = 16,			\
 					.increment = 0			\
-				}					\
+				},					\
+				.iv_size = { 0 }			\
 			}, }						\
 		}, }							\
 	}

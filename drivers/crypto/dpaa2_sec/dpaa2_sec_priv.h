@@ -217,7 +217,8 @@ static const struct rte_cryptodev_capabilities dpaa2_sec_capabilities[] = {
 					.max = 16,
 					.increment = 0
 				},
-				.aad_size = { 0 }
+				.aad_size = { 0 },
+				.iv_size = { 0 }
 			}, }
 		}, }
 	},
@@ -238,7 +239,8 @@ static const struct rte_cryptodev_capabilities dpaa2_sec_capabilities[] = {
 					.max = 20,
 					.increment = 0
 				},
-				.aad_size = { 0 }
+				.aad_size = { 0 },
+				.iv_size = { 0 }
 			}, }
 		}, }
 	},
@@ -259,7 +261,8 @@ static const struct rte_cryptodev_capabilities dpaa2_sec_capabilities[] = {
 					.max = 28,
 					.increment = 0
 				},
-				.aad_size = { 0 }
+				.aad_size = { 0 },
+				.iv_size = { 0 }
 			}, }
 		}, }
 	},
@@ -280,7 +283,8 @@ static const struct rte_cryptodev_capabilities dpaa2_sec_capabilities[] = {
 						.max = 32,
 						.increment = 0
 				},
-				.aad_size = { 0 }
+				.aad_size = { 0 },
+				.iv_size = { 0 }
 				}, }
 			}, }
 		},
@@ -301,7 +305,8 @@ static const struct rte_cryptodev_capabilities dpaa2_sec_capabilities[] = {
 					.max = 48,
 					.increment = 0
 				},
-				.aad_size = { 0 }
+				.aad_size = { 0 },
+				.iv_size = { 0 }
 			}, }
 		}, }
 	},
@@ -322,7 +327,8 @@ static const struct rte_cryptodev_capabilities dpaa2_sec_capabilities[] = {
 					.max = 64,
 					.increment = 0
 				},
-				.aad_size = { 0 }
+				.aad_size = { 0 },
+				.iv_size = { 0 }
 			}, }
 		}, }
 	},
