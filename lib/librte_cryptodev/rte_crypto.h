@@ -102,19 +102,20 @@ enum rte_crypto_op_sess_type {
  * rte_cryptodev_enqueue_burst() / rte_cryptodev_dequeue_burst() .
  */
 struct rte_crypto_op {
-	enum rte_crypto_op_type type;
+	uint8_t type;
 	/**< operation type */
-
-	enum rte_crypto_op_status status;
+	uint8_t status;
 	/**<
 	 * operation status - this is reset to
 	 * RTE_CRYPTO_OP_STATUS_NOT_PROCESSED on allocation from mempool and
 	 * will be set to RTE_CRYPTO_OP_STATUS_SUCCESS after crypto operation
 	 * is successfully processed by a crypto PMD
 	 */
-	enum rte_crypto_op_sess_type  sess_type;
+	uint8_t sess_type;
 	/**< operation session type */
 
+	uint8_t reserved[5];
+	/**< Reserved bytes to fill 64 bits for future additions */
 	struct rte_mempool *mempool;
 	/**< crypto operation mempool which operation is allocated from */
 

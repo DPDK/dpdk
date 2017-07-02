@@ -96,6 +96,8 @@ New Features
   The crypto operation (``rte_crypto_op``) has been reorganized as follows:
 
   * Added field ``rte_crypto_op_sess_type``.
+  * Enumerations ``rte_crypto_op_status`` and ``rte_crypto_op_type``
+    have been modified to be uint8_t values.
 
 
 Resolved Issues
