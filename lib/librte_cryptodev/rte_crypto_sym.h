@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2016 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2016-2017 Intel Corporation. All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -376,17 +376,6 @@ struct rte_crypto_sym_xform {
 	};
 };
 
-/**
- * Crypto operation session type. This is used to specify whether a crypto
- * operation has session structure attached for immutable parameters or if all
- * operation information is included in the operation data structure.
- */
-enum rte_crypto_sym_op_sess_type {
-	RTE_CRYPTO_SYM_OP_WITH_SESSION,	/**< Session based crypto operation */
-	RTE_CRYPTO_SYM_OP_SESSIONLESS	/**< Session-less crypto operation */
-};
-
-
 struct rte_cryptodev_sym_session;
 
 /**
@@ -422,8 +411,6 @@ struct rte_cryptodev_sym_session;
 struct rte_crypto_sym_op {
 	struct rte_mbuf *m_src;	/**< source mbuf */
 	struct rte_mbuf *m_dst;	/**< destination mbuf */
-
-	enum rte_crypto_sym_op_sess_type sess_type;
 
 	RTE_STD_C11
 	union {
@@ -665,8 +652,6 @@ static inline void
 __rte_crypto_sym_op_reset(struct rte_crypto_sym_op *op)
 {
 	memset(op, 0, sizeof(*op));
-
-	op->sess_type = RTE_CRYPTO_SYM_OP_SESSIONLESS;
 }
 
 
@@ -708,7 +693,6 @@ __rte_crypto_sym_op_attach_sym_session(struct rte_crypto_sym_op *sym_op,
 		struct rte_cryptodev_sym_session *sess)
 {
 	sym_op->session = sess;
-	sym_op->sess_type = RTE_CRYPTO_SYM_OP_WITH_SESSION;
 
 	return 0;
 }

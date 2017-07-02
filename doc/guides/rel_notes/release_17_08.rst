@@ -85,6 +85,18 @@ New Features
 
   Added support for firmwares with multiple Ethernet ports per physical port.
 
+* **Reorganized the symmetric crypto operation structure.**
+
+  The crypto operation (``rte_crypto_sym_op``) has been reorganized as follows:
+
+  * Removed field ``rte_crypto_sym_op_sess_type``.
+
+* **Reorganized the crypto operation structure.**
+
+  The crypto operation (``rte_crypto_op``) has been reorganized as follows:
+
+  * Added field ``rte_crypto_op_sess_type``.
+
 
 Resolved Issues
 ---------------
@@ -168,6 +180,10 @@ ABI Changes
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* **Reorganized the crypto operation structures.**
+
+  Some fields have been modified in the ``rte_crypto_op`` and ``rte_crypto_sym_op``
+  structures, as described in the `New Features`_ section.
 
 
 Shared Library Versions
@@ -192,7 +208,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_bitratestats.so.1
      librte_cfgfile.so.2
      librte_cmdline.so.2
-     librte_cryptodev.so.2
+   + librte_cryptodev.so.3
      librte_distributor.so.1
      librte_eal.so.4
      librte_ethdev.so.6

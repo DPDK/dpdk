@@ -5556,8 +5556,8 @@ test_AES_GCM_authenticated_encryption_sessionless(
 
 	ut_params->op->sym->m_src = ut_params->ibuf;
 
-	TEST_ASSERT_EQUAL(ut_params->op->sym->sess_type,
-			RTE_CRYPTO_SYM_OP_SESSIONLESS,
+	TEST_ASSERT_EQUAL(ut_params->op->sess_type,
+			RTE_CRYPTO_OP_SESSIONLESS,
 			"crypto op session type not sessionless");
 
 	/* Process crypto operation */
@@ -5636,8 +5636,8 @@ test_AES_GCM_authenticated_decryption_sessionless(
 
 	ut_params->op->sym->m_src = ut_params->ibuf;
 
-	TEST_ASSERT_EQUAL(ut_params->op->sym->sess_type,
-			RTE_CRYPTO_SYM_OP_SESSIONLESS,
+	TEST_ASSERT_EQUAL(ut_params->op->sess_type,
+			RTE_CRYPTO_OP_SESSIONLESS,
 			"crypto op session type not sessionless");
 
 	/* Process crypto operation */

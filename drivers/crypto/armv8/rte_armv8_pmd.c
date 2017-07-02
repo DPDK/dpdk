@@ -545,7 +545,7 @@ get_session(struct armv8_crypto_qp *qp, struct rte_crypto_op *op)
 {
 	struct armv8_crypto_session *sess = NULL;
 
-	if (op->sym->sess_type == RTE_CRYPTO_SYM_OP_WITH_SESSION) {
+	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
 		/* get existing session */
 		if (likely(op->sym->session != NULL &&
 				op->sym->session->dev_type ==
@@ -700,7 +700,7 @@ process_op(const struct armv8_crypto_qp *qp, struct rte_crypto_op *op,
 	}
 
 	/* Free session if a session-less crypto op */
-	if (op->sym->sess_type == RTE_CRYPTO_SYM_OP_SESSIONLESS) {
+	if (op->sess_type == RTE_CRYPTO_OP_SESSIONLESS) {
 		memset(sess, 0, sizeof(struct armv8_crypto_session));
 		rte_mempool_put(qp->sess_mp, op->sym->session);
 		op->sym->session = NULL;

@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2016 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2016-2017 Intel Corporation. All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -142,7 +142,7 @@ zuc_get_session(struct zuc_qp *qp, struct rte_crypto_op *op)
 {
 	struct zuc_session *sess;
 
-	if (op->sym->sess_type == RTE_CRYPTO_SYM_OP_WITH_SESSION) {
+	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
 		if (unlikely(op->sym->session->dev_type !=
 				RTE_CRYPTODEV_ZUC_PMD))
 			return NULL;
@@ -333,7 +333,7 @@ process_ops(struct rte_crypto_op **ops, struct zuc_session *session,
 		if (ops[i]->status == RTE_CRYPTO_OP_STATUS_NOT_PROCESSED)
 			ops[i]->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
 		/* Free session if a session-less crypto op. */
-		if (ops[i]->sym->sess_type == RTE_CRYPTO_SYM_OP_SESSIONLESS) {
+		if (ops[i]->sess_type == RTE_CRYPTO_OP_SESSIONLESS) {
 			rte_mempool_put(qp->sess_mp, ops[i]->sym->session);
 			ops[i]->sym->session = NULL;
 		}

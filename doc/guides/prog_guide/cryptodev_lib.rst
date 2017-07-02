@@ -1,5 +1,5 @@
 ..  BSD LICENSE
-    Copyright(c) 2016 Intel Corporation. All rights reserved.
+    Copyright(c) 2016-2017 Intel Corporation. All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following conditions
@@ -359,11 +359,12 @@ Crypto operation to be processed on a particular Crypto device poll mode driver.
 
 .. figure:: img/crypto_op.*
 
-The operation structure includes the operation type and the operation status,
-a reference to the operation specific data, which can vary in size and content
-depending on the operation being provisioned. It also contains the source
-mempool for the operation, if it allocate from a mempool. Finally an
-opaque pointer for user specific data is provided.
+The operation structure includes the operation type, the operation status
+and the session type (session-based/less), a reference to the operation
+specific data, which can vary in size and content depending on the operation
+being provisioned. It also contains the source mempool for the operation,
+if it allocate from a mempool. Finally an opaque pointer for user specific
+data is provided.
 
 If Crypto operations are allocated from a Crypto operation mempool, see next
 section, there is also the ability to allocate private memory with the
@@ -512,9 +513,9 @@ buffer. It is used for either cipher, authentication, AEAD and chained
 operations.
 
 As a minimum the symmetric operation must have a source data buffer (``m_src``),
-the session type (session-based/less), a valid session (or transform chain if in
-session-less mode) and the minimum authentication/ cipher parameters required
-depending on the type of operation specified in the session or the transform
+a valid session (or transform chain if in session-less mode) and the minimum
+authentication/ cipher parameters required depending on the type of operation
+specified in the session or the transform
 chain.
 
 .. code-block:: c
@@ -522,8 +523,6 @@ chain.
     struct rte_crypto_sym_op {
         struct rte_mbuf *m_src;
         struct rte_mbuf *m_dst;
-
-        enum rte_crypto_sym_op_sess_type type;
 
         union {
             struct rte_cryptodev_sym_session *session;

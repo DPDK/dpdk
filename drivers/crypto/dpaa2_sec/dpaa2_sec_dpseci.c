@@ -437,7 +437,7 @@ dpaa2_sec_enqueue_burst(void *qp, struct rte_crypto_op **ops,
 	if (unlikely(nb_ops == 0))
 		return 0;
 
-	if (ops[0]->sym->sess_type != RTE_CRYPTO_SYM_OP_WITH_SESSION) {
+	if (ops[0]->sess_type != RTE_CRYPTO_OP_WITH_SESSION) {
 		RTE_LOG(ERR, PMD, "sessionless crypto op not supported\n");
 		return 0;
 	}

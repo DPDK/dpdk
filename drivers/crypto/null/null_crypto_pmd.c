@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2016 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2016-2017 Intel Corporation. All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -90,16 +90,17 @@ process_op(const struct null_crypto_qp *qp, struct rte_crypto_op *op,
 }
 
 static struct null_crypto_session *
-get_session(struct null_crypto_qp *qp, struct rte_crypto_sym_op *op)
+get_session(struct null_crypto_qp *qp, struct rte_crypto_op *op)
 {
 	struct null_crypto_session *sess;
+	struct rte_crypto_sym_op *sym_op = op->sym;
 
-	if (op->sess_type == RTE_CRYPTO_SYM_OP_WITH_SESSION) {
-		if (unlikely(op->session == NULL ||
-			     op->session->dev_type != RTE_CRYPTODEV_NULL_PMD))
+	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
+		if (unlikely(sym_op->session == NULL ||
+			     sym_op->session->dev_type != RTE_CRYPTODEV_NULL_PMD))
 			return NULL;
 
-		sess = (struct null_crypto_session *)op->session->_private;
+		sess = (struct null_crypto_session *)sym_op->session->_private;
 	} else  {
 		struct rte_cryptodev_session *c_sess = NULL;
 
@@ -108,7 +109,7 @@ get_session(struct null_crypto_qp *qp, struct rte_crypto_sym_op *op)
 
 		sess = (struct null_crypto_session *)c_sess->_private;
 
-		if (null_crypto_set_session_parameters(sess, op->xform)	!= 0)
+		if (null_crypto_set_session_parameters(sess, sym_op->xform) != 0)
 			return NULL;
 	}
 
@@ -126,7 +127,7 @@ null_crypto_pmd_enqueue_burst(void *queue_pair, struct rte_crypto_op **ops,
 	int i, retval;
 
 	for (i = 0; i < nb_ops; i++) {
-		sess = get_session(qp, ops[i]->sym);
+		sess = get_session(qp, ops[i]);
 		if (unlikely(sess == NULL))
 			goto enqueue_err;
 
