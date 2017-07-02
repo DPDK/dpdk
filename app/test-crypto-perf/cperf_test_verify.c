@@ -266,9 +266,10 @@ cperf_verify_test_constructor(uint8_t dev_id, uint16_t qp_id,
 	snprintf(pool_name, sizeof(pool_name), "cperf_op_pool_cdev_%d",
 			dev_id);
 
+	uint16_t priv_size = test_vector->iv.length;
 	ctx->crypto_op_pool = rte_crypto_op_pool_create(pool_name,
-			RTE_CRYPTO_OP_TYPE_SYMMETRIC, options->pool_sz, 512, 0,
-			rte_socket_id());
+			RTE_CRYPTO_OP_TYPE_SYMMETRIC, options->pool_sz,
+			512, priv_size, rte_socket_id());
 	if (ctx->crypto_op_pool == NULL)
 		goto err;
 
@@ -417,6 +418,9 @@ cperf_verify_test_runner(void *test_ctx)
 		printf("\n# Running verify test on device: %u, lcore: %u\n",
 			ctx->dev_id, lcore);
 
+	uint16_t iv_offset = sizeof(struct rte_crypto_op) +
+		sizeof(struct rte_crypto_sym_op);
+
 	while (ops_enqd_total < ctx->options->total_ops) {
 
 		uint16_t burst_size = ((ops_enqd_total + ctx->options->max_burst_size)
@@ -438,7 +442,7 @@ cperf_verify_test_runner(void *test_ctx)
 		(ctx->populate_ops)(ops, &ctx->mbufs_in[m_idx],
 				&ctx->mbufs_out[m_idx],
 				ops_needed, ctx->sess, ctx->options,
-				ctx->test_vector);
+				ctx->test_vector, iv_offset);
 
 #ifdef CPERF_LINEARIZATION_ENABLE
 		if (linearize) {

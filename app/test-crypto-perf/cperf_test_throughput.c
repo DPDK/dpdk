@@ -262,9 +262,11 @@ cperf_throughput_test_constructor(uint8_t dev_id, uint16_t qp_id,
 	snprintf(pool_name, sizeof(pool_name), "cperf_op_pool_cdev_%d",
 			dev_id);
 
+	uint16_t priv_size = test_vector->iv.length;
+
 	ctx->crypto_op_pool = rte_crypto_op_pool_create(pool_name,
-			RTE_CRYPTO_OP_TYPE_SYMMETRIC, options->pool_sz, 512, 0,
-			rte_socket_id());
+			RTE_CRYPTO_OP_TYPE_SYMMETRIC, options->pool_sz,
+			512, priv_size, rte_socket_id());
 	if (ctx->crypto_op_pool == NULL)
 		goto err;
 
@@ -315,6 +317,9 @@ cperf_throughput_test_runner(void *test_ctx)
 	else
 		test_burst_size = ctx->options->burst_size_list[0];
 
+	uint16_t iv_offset = sizeof(struct rte_crypto_op) +
+		sizeof(struct rte_crypto_sym_op);
+
 	while (test_burst_size <= ctx->options->max_burst_size) {
 		uint64_t ops_enqd = 0, ops_enqd_total = 0, ops_enqd_failed = 0;
 		uint64_t ops_deqd = 0, ops_deqd_total = 0, ops_deqd_failed = 0;
@@ -346,7 +351,7 @@ cperf_throughput_test_runner(void *test_ctx)
 			(ctx->populate_ops)(ops, &ctx->mbufs_in[m_idx],
 					&ctx->mbufs_out[m_idx],
 					ops_needed, ctx->sess, ctx->options,
-					ctx->test_vector);
+					ctx->test_vector, iv_offset);
 
 			/**
 			 * When ops_needed is smaller than ops_enqd, the

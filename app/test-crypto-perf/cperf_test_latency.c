@@ -280,7 +280,7 @@ cperf_latency_test_constructor(uint8_t dev_id, uint16_t qp_id,
 	snprintf(pool_name, sizeof(pool_name), "cperf_op_pool_cdev_%d",
 			dev_id);
 
-	uint16_t priv_size = sizeof(struct priv_op_data);
+	uint16_t priv_size = sizeof(struct priv_op_data) + test_vector->iv.length;
 	ctx->crypto_op_pool = rte_crypto_op_pool_create(pool_name,
 			RTE_CRYPTO_OP_TYPE_SYMMETRIC, options->pool_sz,
 			512, priv_size, rte_socket_id());
@@ -355,6 +355,10 @@ cperf_latency_test_runner(void *arg)
 	else
 		test_burst_size = ctx->options->burst_size_list[0];
 
+	uint16_t iv_offset = sizeof(struct rte_crypto_op) +
+		sizeof(struct rte_crypto_sym_op) +
+		sizeof(struct cperf_op_result *);
+
 	while (test_burst_size <= ctx->options->max_burst_size) {
 		uint64_t ops_enqd = 0, ops_deqd = 0;
 		uint64_t m_idx = 0, b_idx = 0;
@@ -383,7 +387,7 @@ cperf_latency_test_runner(void *arg)
 			(ctx->populate_ops)(ops, &ctx->mbufs_in[m_idx],
 					&ctx->mbufs_out[m_idx],
 					burst_size, ctx->sess, ctx->options,
-					ctx->test_vector);
+					ctx->test_vector, iv_offset);
 
 			tsc_start = rte_rdtsc_precise();
 

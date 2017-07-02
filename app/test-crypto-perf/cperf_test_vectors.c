@@ -423,7 +423,6 @@ cperf_test_vector_get_dummy(struct cperf_options *options)
 			memcpy(t_vec->iv.data, iv, options->cipher_iv_sz);
 		}
 		t_vec->ciphertext.length = options->max_buffer_size;
-		t_vec->iv.phys_addr = rte_malloc_virt2phy(t_vec->iv.data);
 		t_vec->iv.length = options->cipher_iv_sz;
 		t_vec->data.cipher_offset = 0;
 		t_vec->data.cipher_length = options->max_buffer_size;
