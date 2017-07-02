@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2016 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2016-2017 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -50,6 +50,9 @@
 #include "esp.h"
 #include "ipip.h"
 
+#define IV_OFFSET		(sizeof(struct rte_crypto_op) + \
+				sizeof(struct rte_crypto_sym_op))
+
 int
 esp_inbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 		struct rte_crypto_op *cop)
@@ -93,13 +96,17 @@ esp_inbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 	struct cnt_blk *icb;
 	uint8_t *aad;
 	uint8_t *iv = RTE_PTR_ADD(ip4, ip_hdr_len + sizeof(struct esp_hdr));
+	uint8_t *iv_ptr = rte_crypto_op_ctod_offset(cop,
+				uint8_t *, IV_OFFSET);
 
 	switch (sa->cipher_algo) {
 	case RTE_CRYPTO_CIPHER_NULL:
 	case RTE_CRYPTO_CIPHER_AES_CBC:
-		sym_cop->cipher.iv.data = iv;
-		sym_cop->cipher.iv.phys_addr = rte_pktmbuf_mtophys_offset(m,
-				 ip_hdr_len + sizeof(struct esp_hdr));
+		/* Copy IV at the end of crypto operation */
+		rte_memcpy(iv_ptr, iv, sa->iv_len);
+		sym_cop->cipher.iv.data = iv_ptr;
+		sym_cop->cipher.iv.phys_addr =
+				rte_crypto_op_ctophys_offset(cop, IV_OFFSET);
 		sym_cop->cipher.iv.length = sa->iv_len;
 		break;
 	case RTE_CRYPTO_CIPHER_AES_CTR:
@@ -108,9 +115,9 @@ esp_inbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 		icb->salt = sa->salt;
 		memcpy(&icb->iv, iv, 8);
 		icb->cnt = rte_cpu_to_be_32(1);
-		sym_cop->cipher.iv.data = (uint8_t *)icb;
-		sym_cop->cipher.iv.phys_addr = rte_pktmbuf_mtophys_offset(m,
-			 (uint8_t *)icb - rte_pktmbuf_mtod(m, uint8_t *));
+		sym_cop->cipher.iv.data = iv_ptr;
+		sym_cop->cipher.iv.phys_addr =
+				rte_crypto_op_ctophys_offset(cop, IV_OFFSET);
 		sym_cop->cipher.iv.length = 16;
 		break;
 	default:
@@ -341,13 +348,15 @@ esp_outbound(struct rte_mbuf *m, struct ipsec_sa *sa,
 	padding[pad_len - 2] = pad_len - 2;
 	padding[pad_len - 1] = nlp;
 
+	uint8_t *iv_ptr = rte_crypto_op_ctod_offset(cop,
+				uint8_t *, IV_OFFSET);
 	struct cnt_blk *icb = get_cnt_blk(m);
 	icb->salt = sa->salt;
 	icb->iv = sa->seq;
 	icb->cnt = rte_cpu_to_be_32(1);
-	sym_cop->cipher.iv.data = (uint8_t *)icb;
-	sym_cop->cipher.iv.phys_addr = rte_pktmbuf_mtophys_offset(m,
-			 (uint8_t *)icb - rte_pktmbuf_mtod(m, uint8_t *));
+	sym_cop->cipher.iv.data = iv_ptr;
+	sym_cop->cipher.iv.phys_addr =
+			rte_crypto_op_ctophys_offset(cop, IV_OFFSET);
 	sym_cop->cipher.iv.length = 16;
 
 	uint8_t *aad;

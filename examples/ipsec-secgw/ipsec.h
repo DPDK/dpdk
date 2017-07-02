@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2016 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2016-2017 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -118,10 +118,10 @@ struct ipsec_sa {
 } __rte_cache_aligned;
 
 struct ipsec_mbuf_metadata {
-	uint8_t buf[32];
 	struct ipsec_sa *sa;
 	struct rte_crypto_op cop;
 	struct rte_crypto_sym_op sym_cop;
+	uint8_t buf[32];
 } __rte_cache_aligned;
 
 struct cdev_qp {
