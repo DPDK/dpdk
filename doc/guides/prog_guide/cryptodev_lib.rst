@@ -188,8 +188,9 @@ the device having hardware acceleration or supporting symmetric Crypto
 operations,
 
 The capabilities mechanism defines the individual algorithms/functions which
-the device supports, such as a specific symmetric Crypto cipher or
-authentication operation.
+the device supports, such as a specific symmetric Crypto cipher,
+authentication operation or Authenticated Encryption with Associated Data
+(AEAD) operation.
 
 
 Device Features
@@ -477,9 +478,8 @@ operations such as cipher encrypt and authentication generate, the next pointer
 allows transform to be chained together. Crypto devices which support chaining
 must publish the chaining of symmetric Crypto operations feature flag.
 
-Currently there are two transforms types cipher and authentication, to specify
-an AEAD operation it is required to chain a cipher and an authentication
-transform together. Also it is important to note that the order in which the
+Currently there are three transforms types cipher, authentication and AEAD.
+Also it is important to note that the order in which the
 transforms are passed indicates the order of the chaining.
 
 .. code-block:: c
@@ -494,6 +494,8 @@ transforms are passed indicates the order of the chaining.
             /**< Authentication / hash xform */
             struct rte_crypto_cipher_xform cipher;
             /**< Cipher xform */
+            struct rte_crypto_aead_xform aead;
+            /**< AEAD xform */
         };
     };
 
@@ -514,7 +516,7 @@ operations.
 
 As a minimum the symmetric operation must have a source data buffer (``m_src``),
 a valid session (or transform chain if in session-less mode) and the minimum
-authentication/ cipher parameters required depending on the type of operation
+authentication/ cipher/ AEAD parameters required depending on the type of operation
 specified in the session or the transform
 chain.
 

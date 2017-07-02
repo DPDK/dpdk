@@ -62,9 +62,13 @@ DPDK_17.05 {
 DPDK_17.08 {
 	global:
 
+	rte_cryptodev_get_aead_algo_enum;
 	rte_cryptodev_pci_generic_probe;
 	rte_cryptodev_pci_generic_remove;
+	rte_cryptodev_sym_capability_check_aead;
 	rte_cryptodev_vdev_parse_init_params;
 	rte_cryptodev_vdev_pmd_init;
+	rte_crypto_aead_algorithm_strings;
+	rte_crypto_aead_operation_strings;
 
 } DPDK_17.05;

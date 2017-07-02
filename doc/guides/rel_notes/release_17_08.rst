@@ -106,6 +106,12 @@ New Features
   * Removed the field ``opaque_data``.
   * Pointer to ``rte_crypto_sym_op`` has been replaced with a zero length array.
 
+* **Updated cryptodev library.**
+
+  * Added AEAD algorithm specific functions and structures, so it is not
+    necessary to use a combination of cipher and authentication
+    structures anymore.
+
 
 Resolved Issues
 ---------------

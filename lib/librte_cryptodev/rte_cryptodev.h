@@ -170,7 +170,7 @@ struct rte_crypto_param_range {
  */
 struct rte_cryptodev_symmetric_capability {
 	enum rte_crypto_sym_xform_type xform_type;
-	/**< Transform type : Authentication / Cipher */
+	/**< Transform type : Authentication / Cipher / AEAD */
 	RTE_STD_C11
 	union {
 		struct {
@@ -199,6 +199,20 @@ struct rte_cryptodev_symmetric_capability {
 			/**< Initialisation vector data size range */
 		} cipher;
 		/**< Symmetric Cipher transform capabilities */
+		struct {
+			enum rte_crypto_aead_algorithm algo;
+			/**< AEAD algorithm */
+			uint16_t block_size;
+			/**< algorithm block size */
+			struct rte_crypto_param_range key_size;
+			/**< AEAD key size range */
+			struct rte_crypto_param_range digest_size;
+			/**< digest size range */
+			struct rte_crypto_param_range aad_size;
+			/**< Additional authentication data size range */
+			struct rte_crypto_param_range iv_size;
+			/**< Initialisation vector data size range */
+		} aead;
 	};
 };
 
@@ -220,6 +234,7 @@ struct rte_cryptodev_sym_capability_idx {
 	union {
 		enum rte_crypto_cipher_algorithm cipher;
 		enum rte_crypto_auth_algorithm auth;
+		enum rte_crypto_aead_algorithm aead;
 	} algo;
 };
 
@@ -275,6 +290,26 @@ rte_cryptodev_sym_capability_check_auth(
 		uint16_t iv_size);
 
 /**
+ * Check if key, digest, AAD and initial vector sizes are supported
+ * in crypto AEAD capability
+ *
+ * @param	capability	Description of the symmetric crypto capability.
+ * @param	key_size	AEAD key size.
+ * @param	digest_size	AEAD digest size.
+ * @param	aad_size	AEAD AAD size.
+ * @param	iv_size		AEAD IV size.
+ *
+ * @return
+ *   - Return 0 if the parameters are in range of the capability.
+ *   - Return -1 if the parameters are out of range of the capability.
+ */
+int
+rte_cryptodev_sym_capability_check_aead(
+		const struct rte_cryptodev_symmetric_capability *capability,
+		uint16_t key_size, uint16_t digest_size, uint16_t aad_size,
+		uint16_t iv_size);
+
+/**
  * Provide the cipher algorithm enum, given an algorithm string
  *
  * @param	algo_enum	A pointer to the cipher algorithm
@@ -302,6 +337,21 @@ rte_cryptodev_get_cipher_algo_enum(enum rte_crypto_cipher_algorithm *algo_enum,
  */
 int
 rte_cryptodev_get_auth_algo_enum(enum rte_crypto_auth_algorithm *algo_enum,
+		const char *algo_string);
+
+/**
+ * Provide the AEAD algorithm enum, given an algorithm string
+ *
+ * @param	algo_enum	A pointer to the AEAD algorithm
+ *				enum to be filled
+ * @param	algo_string	AEAD algorithm string
+ *
+ * @return
+ * - Return -1 if string is not valid
+ * - Return 0 is the string is valid
+ */
+int
+rte_cryptodev_get_aead_algo_enum(enum rte_crypto_aead_algorithm *algo_enum,
 		const char *algo_string);
 
 /** Macro used at end of crypto PMD list */

@@ -404,11 +404,87 @@ struct rte_crypto_auth_xform {
 	} iv;	/**< Initialisation vector parameters */
 };
 
+
+/** Symmetric AEAD Algorithms */
+enum rte_crypto_aead_algorithm {
+	RTE_CRYPTO_AEAD_AES_CCM = 1,
+	/**< AES algorithm in CCM mode. */
+	RTE_CRYPTO_AEAD_AES_GCM,
+	/**< AES algorithm in GCM mode. */
+	RTE_CRYPTO_AEAD_LIST_END
+};
+
+/** AEAD algorithm name strings */
+extern const char *
+rte_crypto_aead_algorithm_strings[];
+
+/** Symmetric AEAD Operations */
+enum rte_crypto_aead_operation {
+	RTE_CRYPTO_AEAD_OP_ENCRYPT,
+	/**< Encrypt and generate digest */
+	RTE_CRYPTO_AEAD_OP_DECRYPT
+	/**< Verify digest and decrypt */
+};
+
+/** Authentication operation name strings */
+extern const char *
+rte_crypto_aead_operation_strings[];
+
+struct rte_crypto_aead_xform {
+	enum rte_crypto_aead_operation op;
+	/**< AEAD operation type */
+	enum rte_crypto_aead_algorithm algo;
+	/**< AEAD algorithm selection */
+
+	struct {
+		uint8_t *data;  /**< pointer to key data */
+		size_t length;   /**< key length in bytes */
+	} key;
+
+	struct {
+		uint16_t offset;
+		/**< Starting point for Initialisation Vector or Counter,
+		 * specified as number of bytes from start of crypto
+		 * operation (rte_crypto_op).
+		 *
+		 * - For GCM mode, this is either the IV (if the length
+		 * is 96 bits) or J0 (for other sizes), where J0 is as
+		 * defined by NIST SP800-38D. Regardless of the IV
+		 * length, a full 16 bytes needs to be allocated.
+		 *
+		 * - For CCM mode, the first byte is reserved, and the
+		 * nonce should be written starting at &iv[1] (to allow
+		 * space for the implementation to write in the flags
+		 * in the first byte). Note that a full 16 bytes should
+		 * be allocated, even though the length field will
+		 * have a value less than this.
+		 *
+		 * For optimum performance, the data pointed to SHOULD
+		 * be 8-byte aligned.
+		 */
+		uint16_t length;
+		/**< Length of valid IV data.
+		 *
+		 * - For GCM mode, this is either 12 (for 96-bit IVs)
+		 * or 16, in which case data points to J0.
+		 *
+		 * - For CCM mode, this is the length of the nonce,
+		 * which can be in the range 7 to 13 inclusive.
+		 */
+	} iv;	/**< Initialisation vector parameters */
+
+	uint32_t digest_length;
+
+	uint16_t add_auth_data_length;
+	/**< The length of the additional authenticated data (AAD) in bytes. */
+};
+
 /** Crypto transformation types */
 enum rte_crypto_sym_xform_type {
 	RTE_CRYPTO_SYM_XFORM_NOT_SPECIFIED = 0,	/**< No xform specified */
 	RTE_CRYPTO_SYM_XFORM_AUTH,		/**< Authentication xform */
-	RTE_CRYPTO_SYM_XFORM_CIPHER		/**< Cipher xform  */
+	RTE_CRYPTO_SYM_XFORM_CIPHER,		/**< Cipher xform  */
+	RTE_CRYPTO_SYM_XFORM_AEAD		/**< AEAD xform  */
 };
 
 /**
@@ -431,6 +507,8 @@ struct rte_crypto_sym_xform {
 		/**< Authentication / hash xform */
 		struct rte_crypto_cipher_xform cipher;
 		/**< Cipher xform */
+		struct rte_crypto_aead_xform aead;
+		/**< AEAD xform */
 	};
 };
 

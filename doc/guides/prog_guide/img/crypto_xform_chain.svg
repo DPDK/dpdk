@@ -69,7 +69,9 @@
 						class="st3">auth</tspan><tspan class="st3">_</tspan><tspan class="st3">xform  </tspan><tspan x="16.02"
 						dy="1.425em" class="st4">struct </tspan><tspan class="st3">rte</tspan><tspan class="st3">_</tspan><tspan
 						class="st3">crypto</tspan><tspan class="st3">_</tspan><tspan class="st3">cipher</tspan><tspan class="st3">_</tspan><tspan
-						class="st3">xform</tspan></text>		</g>
+						class="st3">xform</tspan><tspan x="18.76" dy="1.425em" class="st4">struct </tspan><tspan
+                                                class="st3">rte</tspan><tspan class="st3">_</tspan><tspan class="st3">crypto</tspan><tspan class="st3">_</tspan><tspan
+                                                class="st3">aead</tspan><tspan class="st3">_</tspan><tspan class="st3">xform</tspan></text>		</g>
 		<g id="shape11-38" transform="translate(10.6711,-238.133)">
 			<title>Rounded Rectangle.26</title>
 			<desc>next transform (struct rte_crypto_sym_xform *)</desc>
@@ -116,7 +118,9 @@
 						class="st3">auth</tspan><tspan class="st3">_</tspan><tspan class="st3">xform  </tspan><tspan x="16.02"
 						dy="1.425em" class="st4">struct </tspan><tspan class="st3">rte</tspan><tspan class="st3">_</tspan><tspan
 						class="st3">crypto</tspan><tspan class="st3">_</tspan><tspan class="st3">cipher</tspan><tspan class="st3">_</tspan><tspan
-						class="st3">xform</tspan></text>		</g>
+						class="st3">xform</tspan><tspan x="18.76" dy="1.425em" class="st4">struct </tspan><tspan
+                                                class="st3">rte</tspan><tspan class="st3">_</tspan><tspan class="st3">crypto</tspan><tspan class="st3">_</tspan><tspan
+                                                class="st3">aead</tspan><tspan class="st3">_</tspan><tspan class="st3">xform</tspan></text>		</g>
 		<g id="shape15-102" transform="translate(209.592,-163.865)">
 			<title>Rounded Rectangle.32</title>
 			<desc>next transform (struct rte_crypto_sym_xform *)</desc>

@@ -176,6 +176,26 @@ rte_crypto_auth_algorithm_strings[] = {
 	[RTE_CRYPTO_AUTH_ZUC_EIA3]	= "zuc-eia3"
 };
 
+/**
+ * The crypto AEAD algorithm strings identifiers.
+ * It could be used in application command line.
+ */
+const char *
+rte_crypto_aead_algorithm_strings[] = {
+	[RTE_CRYPTO_AEAD_AES_CCM]	= "aes-ccm",
+	[RTE_CRYPTO_AEAD_AES_GCM]	= "aes-gcm",
+};
+
+/**
+ * The crypto AEAD operation strings identifiers.
+ * It could be used in application command line.
+ */
+const char *
+rte_crypto_aead_operation_strings[] = {
+	[RTE_CRYPTO_AEAD_OP_ENCRYPT]	= "encrypt",
+	[RTE_CRYPTO_AEAD_OP_DECRYPT]	= "decrypt"
+};
+
 int
 rte_cryptodev_get_cipher_algo_enum(enum rte_crypto_cipher_algorithm *algo_enum,
 		const char *algo_string)
@@ -202,6 +222,23 @@ rte_cryptodev_get_auth_algo_enum(enum rte_crypto_auth_algorithm *algo_enum,
 	for (i = 1; i < RTE_DIM(rte_crypto_auth_algorithm_strings); i++) {
 		if (strcmp(algo_string, rte_crypto_auth_algorithm_strings[i]) == 0) {
 			*algo_enum = (enum rte_crypto_auth_algorithm) i;
+			return 0;
+		}
+	}
+
+	/* Invalid string */
+	return -1;
+}
+
+int
+rte_cryptodev_get_aead_algo_enum(enum rte_crypto_aead_algorithm *algo_enum,
+		const char *algo_string)
+{
+	unsigned int i;
+
+	for (i = 1; i < RTE_DIM(rte_crypto_aead_algorithm_strings); i++) {
+		if (strcmp(algo_string, rte_crypto_aead_algorithm_strings[i]) == 0) {
+			*algo_enum = (enum rte_crypto_aead_algorithm) i;
 			return 0;
 		}
 	}
@@ -244,6 +281,10 @@ rte_cryptodev_sym_capability_get(uint8_t dev_id,
 
 		if (idx->type == RTE_CRYPTO_SYM_XFORM_CIPHER &&
 			capability->sym.cipher.algo == idx->algo.cipher)
+			return &capability->sym;
+
+		if (idx->type == RTE_CRYPTO_SYM_XFORM_AEAD &&
+				capability->sym.aead.algo == idx->algo.aead)
 			return &capability->sym;
 	}
 
@@ -290,6 +331,26 @@ rte_cryptodev_sym_capability_check_auth(
 	return 0;
 }
 
+int
+rte_cryptodev_sym_capability_check_aead(
+		const struct rte_cryptodev_symmetric_capability *capability,
+		uint16_t key_size, uint16_t digest_size, uint16_t aad_size,
+		uint16_t iv_size)
+{
+	if (param_range_check(key_size, capability->aead.key_size))
+		return -1;
+
+	if (param_range_check(digest_size, capability->aead.digest_size))
+		return -1;
+
+	if (param_range_check(aad_size, capability->aead.aad_size))
+		return -1;
+
+	if (param_range_check(iv_size, capability->aead.iv_size))
+		return -1;
+
+	return 0;
+}
 
 const char *
 rte_cryptodev_get_feature_name(uint64_t flag)
