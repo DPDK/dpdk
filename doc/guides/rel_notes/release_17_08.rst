@@ -95,6 +95,7 @@ New Features
   * Moved length and offset of cipher IV to ``rte_crypto_cipher_xform``.
   * Removed Additional Authentication Data (AAD) length.
   * Removed digest length.
+  * Added ``aead`` structure, containing parameters for AEAD algorithms.
 
 * **Reorganized the crypto operation structure.**
 

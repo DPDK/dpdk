@@ -431,7 +431,6 @@ operations, as well as also supporting AEAD operations.
 
 
 Session and Session Management
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Session are used in symmetric cryptographic processing to store the immutable
 data defined in a cryptographic transform which is used in the operation
@@ -464,9 +463,6 @@ operation and its parameters. See the section below for details on transforms.
 
    struct rte_cryptodev_sym_session * rte_cryptodev_sym_session_create(
           uint8_t dev_id, struct rte_crypto_sym_xform *xform);
-
-**Note**: For AEAD operations the algorithm selected for authentication and
-ciphering must aligned, eg AES_GCM.
 
 
 Transforms and Transform Chaining
@@ -533,30 +529,54 @@ chain.
             /**< Session-less API Crypto operation parameters */
         };
 
-        struct {
+        union {
             struct {
-                uint32_t offset;
-                uint32_t length;
-            } data;   /**< Data offsets and length for ciphering */
-        } cipher;
+                struct {
+                    uint32_t offset;
+                    uint32_t length;
+                } data; /**< Data offsets and length for AEAD */
 
-        struct {
-            struct {
-                uint32_t offset;
-                uint32_t length;
-            } data;   /**< Data offsets and length for authentication */
+                struct {
+                    uint8_t *data;
+                    phys_addr_t phys_addr;
+                } digest; /**< Digest parameters */
+
+                struct {
+                    uint8_t *data;
+                    phys_addr_t phys_addr;
+                } aad;
+                /**< Additional authentication parameters */
+            } aead;
 
             struct {
-                uint8_t *data;
-                phys_addr_t phys_addr;
-            } digest; /**< Digest parameters */
+                struct {
+                    struct {
+                        uint32_t offset;
+                        uint32_t length;
+                    } data; /**< Data offsets and length for ciphering */
+                } cipher;
 
-            struct {
-                uint8_t *data;
-                phys_addr_t phys_addr;
-            } aad;    /**< Additional authentication parameters */
-        } auth;
-    }
+                struct {
+                    struct {
+                        uint32_t offset;
+                        uint32_t length;
+                    } data;
+                    /**< Data offsets and length for authentication */
+
+                    struct {
+                        uint8_t *data;
+                        phys_addr_t phys_addr;
+                    } digest; /**< Digest parameters */
+
+                    struct {
+                        uint8_t *data;
+                        phys_addr_t phys_addr;
+                    } aad;
+                    /**< Additional authentication parameters */
+                } auth;
+            };
+        };
+    };
 
 
 Asymmetric Cryptography
