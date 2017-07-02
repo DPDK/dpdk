@@ -54,12 +54,22 @@ struct cperf_test_vector {
 	struct {
 		uint8_t *data;
 		uint16_t length;
+	} aead_key;
+
+	struct {
+		uint8_t *data;
+		uint16_t length;
 	} cipher_iv;
 
 	struct {
 		uint8_t *data;
 		uint16_t length;
 	} auth_iv;
+
+	struct {
+		uint8_t *data;
+		uint16_t length;
+	} aead_iv;
 
 	struct {
 		uint8_t *data;
@@ -83,6 +93,8 @@ struct cperf_test_vector {
 		uint32_t auth_length;
 		uint32_t cipher_offset;
 		uint32_t cipher_length;
+		uint32_t aead_offset;
+		uint32_t aead_length;
 	} data;
 };
 

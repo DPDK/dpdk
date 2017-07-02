@@ -394,12 +394,12 @@ parse_entry(char *entry, struct cperf_test_vector *vector,
 		if (tc_found)
 			vector->aad.length = data_length;
 		else {
-			if (opts->auth_aad_sz > data_length) {
+			if (opts->aead_aad_sz > data_length) {
 				printf("Global aad shorter than "
-					"auth_aad_sz\n");
+					"aead_aad_sz\n");
 				return -1;
 			}
-			vector->aad.length = opts->auth_aad_sz;
+			vector->aad.length = opts->aead_aad_sz;
 		}
 
 	} else if (strstr(key_token, "digest")) {
@@ -410,12 +410,12 @@ parse_entry(char *entry, struct cperf_test_vector *vector,
 		if (tc_found)
 			vector->digest.length = data_length;
 		else {
-			if (opts->auth_digest_sz > data_length) {
+			if (opts->digest_sz > data_length) {
 				printf("Global digest shorter than "
-					"auth_digest_sz\n");
+					"digest_sz\n");
 				return -1;
 			}
-			vector->digest.length = opts->auth_digest_sz;
+			vector->digest.length = opts->digest_sz;
 		}
 	} else {
 		printf("Not valid key: '%s'\n", trim_space(key_token));

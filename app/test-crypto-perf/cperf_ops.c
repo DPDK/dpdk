@@ -182,8 +182,6 @@ cperf_set_ops_auth(struct rte_crypto_op **ops,
 					uint8_t *, offset);
 			sym_op->auth.digest.phys_addr =
 					rte_pktmbuf_mtophys_offset(buf,	offset);
-			sym_op->auth.aad.phys_addr = test_vector->aad.phys_addr;
-			sym_op->auth.aad.data = test_vector->aad.data;
 
 		}
 
@@ -265,8 +263,6 @@ cperf_set_ops_cipher_auth(struct rte_crypto_op **ops,
 					uint8_t *, offset);
 			sym_op->auth.digest.phys_addr =
 					rte_pktmbuf_mtophys_offset(buf,	offset);
-			sym_op->auth.aad.phys_addr = test_vector->aad.phys_addr;
-			sym_op->auth.aad.data = test_vector->aad.data;
 		}
 
 		if (options->auth_algo == RTE_CRYPTO_AUTH_SNOW3G_UIA2 ||
@@ -320,23 +316,22 @@ cperf_set_ops_aead(struct rte_crypto_op **ops,
 		sym_op->m_src = bufs_in[i];
 		sym_op->m_dst = bufs_out[i];
 
-		/* cipher parameters */
-		sym_op->cipher.data.length = options->test_buffer_size;
-		sym_op->cipher.data.offset =
-				RTE_ALIGN_CEIL(options->auth_aad_sz, 16);
+		/* AEAD parameters */
+		sym_op->aead.data.length = options->test_buffer_size;
+		sym_op->aead.data.offset =
+				RTE_ALIGN_CEIL(options->aead_aad_sz, 16);
 
-		sym_op->auth.aad.data = rte_pktmbuf_mtod(bufs_in[i], uint8_t *);
-		sym_op->auth.aad.phys_addr = rte_pktmbuf_mtophys(bufs_in[i]);
+		sym_op->aead.aad.data = rte_pktmbuf_mtod(bufs_in[i], uint8_t *);
+		sym_op->aead.aad.phys_addr = rte_pktmbuf_mtophys(bufs_in[i]);
 
-		/* authentication parameters */
-		if (options->auth_op == RTE_CRYPTO_AUTH_OP_VERIFY) {
-			sym_op->auth.digest.data = test_vector->digest.data;
-			sym_op->auth.digest.phys_addr =
+		if (options->aead_op == RTE_CRYPTO_AEAD_OP_DECRYPT) {
+			sym_op->aead.digest.data = test_vector->digest.data;
+			sym_op->aead.digest.phys_addr =
 					test_vector->digest.phys_addr;
 		} else {
 
-			uint32_t offset = sym_op->cipher.data.length +
-						sym_op->cipher.data.offset;
+			uint32_t offset = sym_op->aead.data.length +
+						sym_op->aead.data.offset;
 			struct rte_mbuf *buf, *tbuf;
 
 			if (options->out_of_place) {
@@ -351,14 +346,11 @@ cperf_set_ops_aead(struct rte_crypto_op **ops,
 				buf = tbuf;
 			}
 
-			sym_op->auth.digest.data = rte_pktmbuf_mtod_offset(buf,
+			sym_op->aead.digest.data = rte_pktmbuf_mtod_offset(buf,
 					uint8_t *, offset);
-			sym_op->auth.digest.phys_addr =
+			sym_op->aead.digest.phys_addr =
 					rte_pktmbuf_mtophys_offset(buf,	offset);
 		}
-
-		sym_op->auth.data.length = options->test_buffer_size;
-		sym_op->auth.data.offset = options->auth_aad_sz;
 	}
 
 	if (options->test == CPERF_TEST_TYPE_VERIFY) {
@@ -366,8 +358,8 @@ cperf_set_ops_aead(struct rte_crypto_op **ops,
 			uint8_t *iv_ptr = rte_crypto_op_ctod_offset(ops[i],
 					uint8_t *, iv_offset);
 
-			memcpy(iv_ptr, test_vector->cipher_iv.data,
-					test_vector->cipher_iv.length);
+			memcpy(iv_ptr, test_vector->aead_iv.data,
+					test_vector->aead_iv.length);
 		}
 	}
 
@@ -382,6 +374,7 @@ cperf_create_session(uint8_t dev_id,
 {
 	struct rte_crypto_sym_xform cipher_xform;
 	struct rte_crypto_sym_xform auth_xform;
+	struct rte_crypto_sym_xform aead_xform;
 	struct rte_cryptodev_sym_session *sess = NULL;
 
 	/*
@@ -421,9 +414,7 @@ cperf_create_session(uint8_t dev_id,
 		/* auth different than null */
 		if (options->auth_algo != RTE_CRYPTO_AUTH_NULL) {
 			auth_xform.auth.digest_length =
-					options->auth_digest_sz;
-			auth_xform.auth.add_auth_data_length =
-					options->auth_aad_sz;
+					options->digest_sz;
 			auth_xform.auth.key.length =
 					test_vector->auth_key.length;
 			auth_xform.auth.key.data = test_vector->auth_key.data;
@@ -442,9 +433,7 @@ cperf_create_session(uint8_t dev_id,
 	 * cipher and auth
 	 */
 	} else if (options->op_type == CPERF_CIPHER_THEN_AUTH
-			|| options->op_type == CPERF_AUTH_THEN_CIPHER
-			|| options->op_type == CPERF_AEAD) {
-
+			|| options->op_type == CPERF_AUTH_THEN_CIPHER) {
 		/*
 		 * cipher
 		 */
@@ -478,23 +467,12 @@ cperf_create_session(uint8_t dev_id,
 
 		/* auth different than null */
 		if (options->auth_algo != RTE_CRYPTO_AUTH_NULL) {
-			auth_xform.auth.digest_length = options->auth_digest_sz;
-			auth_xform.auth.add_auth_data_length =
-					options->auth_aad_sz;
-			/* auth options for aes gcm */
-			if (options->cipher_algo == RTE_CRYPTO_CIPHER_AES_GCM &&
-				options->auth_algo == RTE_CRYPTO_AUTH_AES_GCM) {
-				auth_xform.auth.key.length = 0;
-				auth_xform.auth.key.data = NULL;
-				auth_xform.auth.iv.length = 0;
-			} else { /* auth options for others */
-				auth_xform.auth.key.length =
+			auth_xform.auth.digest_length = options->digest_sz;
+			auth_xform.auth.iv.length = test_vector->auth_iv.length;
+			auth_xform.auth.key.length =
 					test_vector->auth_key.length;
-				auth_xform.auth.key.data =
-						test_vector->auth_key.data;
-				auth_xform.auth.iv.length =
-						test_vector->auth_iv.length;
-			}
+			auth_xform.auth.key.data =
+					test_vector->auth_key.data;
 		} else {
 			auth_xform.auth.digest_length = 0;
 			auth_xform.auth.add_auth_data_length = 0;
@@ -503,35 +481,39 @@ cperf_create_session(uint8_t dev_id,
 			auth_xform.auth.iv.length = 0;
 		}
 
-		/* create crypto session for aes gcm */
-		if (options->cipher_algo == RTE_CRYPTO_CIPHER_AES_GCM) {
-			if (options->cipher_op ==
-					RTE_CRYPTO_CIPHER_OP_ENCRYPT) {
-				cipher_xform.next = &auth_xform;
-				/* create crypto session */
-				sess = rte_cryptodev_sym_session_create(dev_id,
-					&cipher_xform);
-			} else { /* decrypt */
-				auth_xform.next = &cipher_xform;
-				/* create crypto session */
-				sess = rte_cryptodev_sym_session_create(dev_id,
-					&auth_xform);
-			}
-		} else { /* create crypto session for other */
-			/* cipher then auth */
-			if (options->op_type == CPERF_CIPHER_THEN_AUTH) {
-				cipher_xform.next = &auth_xform;
-				/* create crypto session */
-				sess = rte_cryptodev_sym_session_create(dev_id,
+		/* cipher then auth */
+		if (options->op_type == CPERF_CIPHER_THEN_AUTH) {
+			cipher_xform.next = &auth_xform;
+			/* create crypto session */
+			sess = rte_cryptodev_sym_session_create(dev_id,
 						&cipher_xform);
-			} else { /* auth then cipher */
-				auth_xform.next = &cipher_xform;
-				/* create crypto session */
-				sess = rte_cryptodev_sym_session_create(dev_id,
-						&auth_xform);
-			}
+		} else { /* auth then cipher */
+			auth_xform.next = &cipher_xform;
+			/* create crypto session */
+			sess = rte_cryptodev_sym_session_create(dev_id,
+					&auth_xform);
 		}
+	} else { /* options->op_type == CPERF_AEAD */
+		aead_xform.type = RTE_CRYPTO_SYM_XFORM_AEAD;
+		aead_xform.next = NULL;
+		aead_xform.aead.algo = options->aead_algo;
+		aead_xform.aead.op = options->aead_op;
+		aead_xform.aead.iv.offset = iv_offset;
+
+		aead_xform.aead.key.data =
+					test_vector->aead_key.data;
+		aead_xform.aead.key.length =
+					test_vector->aead_key.length;
+		aead_xform.aead.iv.length = test_vector->aead_iv.length;
+
+		aead_xform.aead.digest_length = options->digest_sz;
+		aead_xform.aead.add_auth_data_length =
+					options->aead_aad_sz;
+
+		/* Create crypto session */
+		sess = rte_cryptodev_sym_session_create(dev_id, &aead_xform);
 	}
+
 	return sess;
 }
 
@@ -543,14 +525,14 @@ cperf_get_op_functions(const struct cperf_options *options,
 
 	op_fns->sess_create = cperf_create_session;
 
-	if (options->op_type == CPERF_AEAD
-			|| options->op_type == CPERF_AUTH_THEN_CIPHER
+	if (options->op_type == CPERF_AEAD) {
+		op_fns->populate_ops = cperf_set_ops_aead;
+		return 0;
+	}
+
+	if (options->op_type == CPERF_AUTH_THEN_CIPHER
 			|| options->op_type == CPERF_CIPHER_THEN_AUTH) {
-		if (options->cipher_algo == RTE_CRYPTO_CIPHER_AES_GCM &&
-				options->auth_algo == RTE_CRYPTO_AUTH_AES_GCM)
-			op_fns->populate_ops = cperf_set_ops_aead;
-		else
-			op_fns->populate_ops = cperf_set_ops_cipher_auth;
+		op_fns->populate_ops = cperf_set_ops_cipher_auth;
 		return 0;
 	}
 	if (options->op_type == CPERF_AUTH_ONLY) {

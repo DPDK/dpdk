@@ -294,13 +294,37 @@ The following are the appication command-line options:
 
         Set the size of auth iv.
 
-* ``--auth-digest-sz <n>``
+* ``--aead-algo <name>``
 
-        Set the size of authentication digest.
+        Set AEAD algorithm name, where ``name`` is one
+        of the following::
 
-* ``--auth-aad-sz <n>``
+           aes-ccm
+           aes-gcm
 
-        Set the size of authentication aad.
+* ``--aead-op <mode>``
+
+        Set AEAD operation mode, where ``mode`` is one of
+        the following::
+
+           encrypt
+           decrypt
+
+* ``--aead-key-sz <n>``
+
+        Set the size of AEAD key.
+
+* ``--aead-iv-sz <n>``
+
+        Set the size of AEAD iv.
+
+* ``--aead-aad-sz <n>``
+
+        Set the size of AEAD aad.
+
+* ``--digest-sz <n>``
+
+        Set the size of digest.
 
 * ``--csv-friendly``
 
@@ -375,7 +399,7 @@ one million operations, burst size 32, packet size 64::
    dpdk-test-crypto-perf -l 6-7 --vdev crypto_aesni_mb_pmd -w 0000:00:00.0 --
    --ptest throughput --devtype crypto_aesni_mb --optype cipher-then-auth
    --cipher-algo aes-cbc --cipher-op encrypt --cipher-key-sz 16 --auth-algo
-   sha1-hmac --auth-op generate --auth-key-sz 64 --auth-digest-sz 12
+   sha1-hmac --auth-op generate --auth-key-sz 64 --digest-sz 12
    --total-ops 10000000 --burst-sz 32 --buffer-sz 64
 
 Call application for performance latency test of two Aesni MB PMD executed
@@ -393,10 +417,9 @@ in silent mode, test vector provide in file "test_aes_gcm.data"
 with packet verification::
 
    dpdk-test-crypto-perf -l 4-7 --vdev crypto_openssl -w 0000:00:00.0 --
-   --devtype crypto_openssl --cipher-algo aes-gcm --cipher-key-sz 16
-   --cipher-iv-sz 16 --cipher-op encrypt --auth-algo aes-gcm --auth-key-sz 16
-   --auth-digest-sz 16 --auth-aad-sz 16 --auth-op generate --optype aead
-   --silent --ptest verify --total-ops 10
+   --devtype crypto_openssl --aead-algo aes-gcm --aead-key-sz 16
+   --aead-iv-sz 16 --aead-op encrypt --aead-aad-sz 16 --digest-sz 16
+   --optype aead --silent --ptest verify --total-ops 10
    --test-file test_aes_gcm.data
 
 Test vector file for cipher algorithm aes cbc 256 with authorization sha::

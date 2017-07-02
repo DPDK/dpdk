@@ -29,8 +29,15 @@
 #define CPERF_AUTH_OP		("auth-op")
 #define CPERF_AUTH_KEY_SZ	("auth-key-sz")
 #define CPERF_AUTH_IV_SZ	("auth-iv-sz")
-#define CPERF_AUTH_DIGEST_SZ	("auth-digest-sz")
-#define CPERF_AUTH_AAD_SZ	("auth-aad-sz")
+
+#define CPERF_AEAD_ALGO		("aead-algo")
+#define CPERF_AEAD_OP		("aead-op")
+#define CPERF_AEAD_KEY_SZ	("aead-key-sz")
+#define CPERF_AEAD_IV_SZ	("aead-iv-sz")
+#define CPERF_AEAD_AAD_SZ	("aead-aad-sz")
+
+#define CPERF_DIGEST_SZ		("digest-sz")
+
 #define CPERF_CSV		("csv-friendly")
 
 #define MAX_LIST 32
@@ -78,8 +85,15 @@ struct cperf_options {
 
 	uint16_t auth_key_sz;
 	uint16_t auth_iv_sz;
-	uint16_t auth_digest_sz;
-	uint16_t auth_aad_sz;
+
+	enum rte_crypto_aead_algorithm aead_algo;
+	enum rte_crypto_aead_operation aead_op;
+
+	uint16_t aead_key_sz;
+	uint16_t aead_iv_sz;
+	uint16_t aead_aad_sz;
+
+	uint16_t digest_sz;
 
 	char device_type[RTE_CRYPTODEV_NAME_LEN];
 	enum cperf_op_type op_type;

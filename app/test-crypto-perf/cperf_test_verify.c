@@ -155,14 +155,14 @@ cperf_mbuf_create(struct rte_mempool *mempool,
 
 	if (options->op_type != CPERF_CIPHER_ONLY) {
 		mbuf_data = (uint8_t *)rte_pktmbuf_append(mbuf,
-				options->auth_digest_sz);
+				options->digest_sz);
 		if (mbuf_data == NULL)
 			goto error;
 	}
 
 	if (options->op_type == CPERF_AEAD) {
 		uint8_t *aead = (uint8_t *)rte_pktmbuf_prepend(mbuf,
-			RTE_ALIGN_CEIL(options->auth_aad_sz, 16));
+			RTE_ALIGN_CEIL(options->aead_aad_sz, 16));
 
 		if (aead == NULL)
 			goto error;
@@ -216,7 +216,7 @@ cperf_verify_test_constructor(uint8_t dev_id, uint16_t qp_id,
 			RTE_CACHE_LINE_ROUNDUP(
 				(options->max_buffer_size / options->segments_nb) +
 				(options->max_buffer_size % options->segments_nb) +
-					options->auth_digest_sz),
+					options->digest_sz),
 			rte_socket_id());
 
 	if (ctx->pkt_mbuf_pool_in == NULL)
@@ -244,7 +244,7 @@ cperf_verify_test_constructor(uint8_t dev_id, uint16_t qp_id,
 				RTE_PKTMBUF_HEADROOM +
 				RTE_CACHE_LINE_ROUNDUP(
 					options->max_buffer_size +
-					options->auth_digest_sz),
+					options->digest_sz),
 				rte_socket_id());
 
 		if (ctx->pkt_mbuf_pool_out == NULL)
@@ -379,7 +379,7 @@ cperf_verify_op(struct rte_crypto_op *op,
 		if (options->auth_op == RTE_CRYPTO_AUTH_OP_GENERATE)
 			res += memcmp(data + auth_offset,
 					vector->digest.data,
-					options->auth_digest_sz);
+					options->digest_sz);
 	}
 
 	return !!res;

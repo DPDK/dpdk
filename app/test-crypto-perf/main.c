@@ -155,8 +155,7 @@ cperf_verify_devices_capabilities(struct cperf_options *opts,
 
 		if (opts->op_type == CPERF_AUTH_ONLY ||
 				opts->op_type == CPERF_CIPHER_THEN_AUTH ||
-				opts->op_type == CPERF_AUTH_THEN_CIPHER ||
-				opts->op_type == CPERF_AEAD)  {
+				opts->op_type == CPERF_AUTH_THEN_CIPHER) {
 
 			cap_idx.type = RTE_CRYPTO_SYM_XFORM_AUTH;
 			cap_idx.algo.auth = opts->auth_algo;
@@ -169,8 +168,8 @@ cperf_verify_devices_capabilities(struct cperf_options *opts,
 			ret = rte_cryptodev_sym_capability_check_auth(
 					capability,
 					opts->auth_key_sz,
-					opts->auth_digest_sz,
-					opts->auth_aad_sz,
+					opts->digest_sz,
+					0,
 					opts->auth_iv_sz);
 			if (ret != 0)
 				return ret;
@@ -178,8 +177,7 @@ cperf_verify_devices_capabilities(struct cperf_options *opts,
 
 		if (opts->op_type == CPERF_CIPHER_ONLY ||
 				opts->op_type == CPERF_CIPHER_THEN_AUTH ||
-				opts->op_type == CPERF_AUTH_THEN_CIPHER ||
-				opts->op_type == CPERF_AEAD) {
+				opts->op_type == CPERF_AUTH_THEN_CIPHER) {
 
 			cap_idx.type = RTE_CRYPTO_SYM_XFORM_CIPHER;
 			cap_idx.algo.cipher = opts->cipher_algo;
@@ -193,6 +191,26 @@ cperf_verify_devices_capabilities(struct cperf_options *opts,
 					capability,
 					opts->cipher_key_sz,
 					opts->cipher_iv_sz);
+			if (ret != 0)
+				return ret;
+		}
+
+		if (opts->op_type == CPERF_AEAD) {
+
+			cap_idx.type = RTE_CRYPTO_SYM_XFORM_AEAD;
+			cap_idx.algo.aead = opts->aead_algo;
+
+			capability = rte_cryptodev_sym_capability_get(cdev_id,
+					&cap_idx);
+			if (capability == NULL)
+				return -1;
+
+			ret = rte_cryptodev_sym_capability_check_aead(
+					capability,
+					opts->aead_key_sz,
+					opts->digest_sz,
+					opts->aead_aad_sz,
+					opts->aead_iv_sz);
 			if (ret != 0)
 				return ret;
 		}
@@ -244,7 +262,7 @@ cperf_check_test_vector(struct cperf_options *opts,
 				return -1;
 			if (test_vec->digest.data == NULL)
 				return -1;
-			if (test_vec->digest.length < opts->auth_digest_sz)
+			if (test_vec->digest.length < opts->digest_sz)
 				return -1;
 		}
 
@@ -285,7 +303,7 @@ cperf_check_test_vector(struct cperf_options *opts,
 				return -1;
 			if (test_vec->digest.data == NULL)
 				return -1;
-			if (test_vec->digest.length < opts->auth_digest_sz)
+			if (test_vec->digest.length < opts->digest_sz)
 				return -1;
 		}
 	} else if (opts->op_type == CPERF_AEAD) {
@@ -297,17 +315,17 @@ cperf_check_test_vector(struct cperf_options *opts,
 			return -1;
 		if (test_vec->ciphertext.length < opts->max_buffer_size)
 			return -1;
-		if (test_vec->cipher_iv.data == NULL)
+		if (test_vec->aead_iv.data == NULL)
 			return -1;
-		if (test_vec->cipher_iv.length != opts->cipher_iv_sz)
+		if (test_vec->aead_iv.length != opts->aead_iv_sz)
 			return -1;
 		if (test_vec->aad.data == NULL)
 			return -1;
-		if (test_vec->aad.length != opts->auth_aad_sz)
+		if (test_vec->aad.length != opts->aead_aad_sz)
 			return -1;
 		if (test_vec->digest.data == NULL)
 			return -1;
-		if (test_vec->digest.length < opts->auth_digest_sz)
+		if (test_vec->digest.length < opts->digest_sz)
 			return -1;
 	}
 	return 0;

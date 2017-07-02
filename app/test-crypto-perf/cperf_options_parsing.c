@@ -543,9 +543,9 @@ parse_auth_key_sz(struct cperf_options *opts, const char *arg)
 }
 
 static int
-parse_auth_digest_sz(struct cperf_options *opts, const char *arg)
+parse_digest_sz(struct cperf_options *opts, const char *arg)
 {
-	return parse_uint16_t(&opts->auth_digest_sz, arg);
+	return parse_uint16_t(&opts->digest_sz, arg);
 }
 
 static int
@@ -555,9 +555,64 @@ parse_auth_iv_sz(struct cperf_options *opts, const char *arg)
 }
 
 static int
-parse_auth_aad_sz(struct cperf_options *opts, const char *arg)
+parse_aead_algo(struct cperf_options *opts, const char *arg)
 {
-	return parse_uint16_t(&opts->auth_aad_sz, arg);
+	enum rte_crypto_aead_algorithm aead_algo;
+
+	if (rte_cryptodev_get_aead_algo_enum(&aead_algo, arg) < 0) {
+		RTE_LOG(ERR, USER1, "Invalid AEAD algorithm specified\n");
+		return -1;
+	}
+
+	opts->aead_algo = aead_algo;
+
+	return 0;
+}
+
+static int
+parse_aead_op(struct cperf_options *opts, const char *arg)
+{
+	struct name_id_map aead_op_namemap[] = {
+		{
+			rte_crypto_aead_operation_strings
+			[RTE_CRYPTO_AEAD_OP_ENCRYPT],
+			RTE_CRYPTO_AEAD_OP_ENCRYPT },
+		{
+			rte_crypto_aead_operation_strings
+			[RTE_CRYPTO_AEAD_OP_DECRYPT],
+			RTE_CRYPTO_AEAD_OP_DECRYPT
+		}
+	};
+
+	int id = get_str_key_id_mapping(aead_op_namemap,
+			RTE_DIM(aead_op_namemap), arg);
+	if (id < 0) {
+		RTE_LOG(ERR, USER1, "invalid AEAD operation specified"
+				"\n");
+		return -1;
+	}
+
+	opts->aead_op = (enum rte_crypto_aead_operation)id;
+
+	return 0;
+}
+
+static int
+parse_aead_key_sz(struct cperf_options *opts, const char *arg)
+{
+	return parse_uint16_t(&opts->aead_key_sz, arg);
+}
+
+static int
+parse_aead_iv_sz(struct cperf_options *opts, const char *arg)
+{
+	return parse_uint16_t(&opts->aead_iv_sz, arg);
+}
+
+static int
+parse_aead_aad_sz(struct cperf_options *opts, const char *arg)
+{
+	return parse_uint16_t(&opts->aead_aad_sz, arg);
 }
 
 static int
@@ -606,8 +661,17 @@ static struct option lgopts[] = {
 	{ CPERF_AUTH_OP, required_argument, 0, 0 },
 
 	{ CPERF_AUTH_KEY_SZ, required_argument, 0, 0 },
-	{ CPERF_AUTH_DIGEST_SZ, required_argument, 0, 0 },
-	{ CPERF_AUTH_AAD_SZ, required_argument, 0, 0 },
+	{ CPERF_AUTH_IV_SZ, required_argument, 0, 0 },
+
+	{ CPERF_AEAD_ALGO, required_argument, 0, 0 },
+	{ CPERF_AEAD_OP, required_argument, 0, 0 },
+
+	{ CPERF_AEAD_KEY_SZ, required_argument, 0, 0 },
+	{ CPERF_AEAD_AAD_SZ, required_argument, 0, 0 },
+	{ CPERF_AEAD_IV_SZ, required_argument, 0, 0 },
+
+	{ CPERF_DIGEST_SZ, required_argument, 0, 0 },
+
 	{ CPERF_CSV, no_argument, 0, 0},
 
 	{ NULL, 0, 0, 0 }
@@ -656,9 +720,13 @@ cperf_options_default(struct cperf_options *opts)
 	opts->auth_op = RTE_CRYPTO_AUTH_OP_GENERATE;
 
 	opts->auth_key_sz = 64;
-	opts->auth_digest_sz = 12;
 	opts->auth_iv_sz = 0;
-	opts->auth_aad_sz = 0;
+
+	opts->aead_key_sz = 0;
+	opts->aead_iv_sz = 0;
+	opts->aead_aad_sz = 0;
+
+	opts->digest_sz = 12;
 }
 
 static int
@@ -686,9 +754,13 @@ cperf_opts_parse_long(int opt_idx, struct cperf_options *opts)
 		{ CPERF_AUTH_OP,	parse_auth_op },
 		{ CPERF_AUTH_KEY_SZ,	parse_auth_key_sz },
 		{ CPERF_AUTH_IV_SZ,	parse_auth_iv_sz },
-		{ CPERF_AUTH_DIGEST_SZ,	parse_auth_digest_sz },
-		{ CPERF_AUTH_AAD_SZ,	parse_auth_aad_sz },
-		{ CPERF_CSV,	parse_csv_friendly},
+		{ CPERF_AEAD_ALGO,	parse_aead_algo },
+		{ CPERF_AEAD_OP,	parse_aead_op },
+		{ CPERF_AEAD_KEY_SZ,	parse_aead_key_sz },
+		{ CPERF_AEAD_IV_SZ,	parse_aead_iv_sz },
+		{ CPERF_AEAD_AAD_SZ,	parse_aead_aad_sz },
+		{ CPERF_DIGEST_SZ,	parse_digest_sz },
+		{ CPERF_CSV,		parse_csv_friendly},
 	};
 	unsigned int i;
 
@@ -725,11 +797,56 @@ cperf_options_parse(struct cperf_options *options, int argc, char **argv)
 	return 0;
 }
 
-int
-cperf_options_check(struct cperf_options *options)
+static int
+check_cipher_buffer_length(struct cperf_options *options)
 {
 	uint32_t buffer_size, buffer_size_idx = 0;
 
+	if (options->cipher_algo == RTE_CRYPTO_CIPHER_AES_CBC ||
+			options->cipher_algo == RTE_CRYPTO_CIPHER_AES_ECB) {
+		if (options->inc_buffer_size != 0)
+			buffer_size = options->min_buffer_size;
+		else
+			buffer_size = options->buffer_size_list[0];
+
+		while (buffer_size <= options->max_buffer_size) {
+			if ((buffer_size % AES_BLOCK_SIZE) != 0) {
+				RTE_LOG(ERR, USER1, "Some of the buffer sizes are "
+					"not suitable for the algorithm selected\n");
+				return -EINVAL;
+			}
+
+			if (options->inc_buffer_size != 0)
+				buffer_size += options->inc_buffer_size;
+			else {
+				if (++buffer_size_idx == options->buffer_size_count)
+					break;
+				buffer_size = options->buffer_size_list[buffer_size_idx];
+			}
+
+		}
+	}
+
+	if (options->cipher_algo == RTE_CRYPTO_CIPHER_DES_CBC ||
+			options->cipher_algo == RTE_CRYPTO_CIPHER_3DES_CBC ||
+			options->cipher_algo == RTE_CRYPTO_CIPHER_3DES_ECB) {
+		for (buffer_size = options->min_buffer_size;
+				buffer_size < options->max_buffer_size;
+				buffer_size += options->inc_buffer_size) {
+			if ((buffer_size % DES_BLOCK_SIZE) != 0) {
+				RTE_LOG(ERR, USER1, "Some of the buffer sizes are "
+					"not suitable for the algorithm selected\n");
+				return -EINVAL;
+			}
+		}
+	}
+
+	return 0;
+}
+
+int
+cperf_options_check(struct cperf_options *options)
+{
 	if (options->segments_nb > options->min_buffer_size) {
 		RTE_LOG(ERR, USER1,
 				"Segments number greater than buffer size.\n");
@@ -803,67 +920,13 @@ cperf_options_check(struct cperf_options *options)
 					" options: decrypt and verify.\n");
 			return -EINVAL;
 		}
-	} else if (options->op_type == CPERF_AEAD) {
-		if (!(options->cipher_op == RTE_CRYPTO_CIPHER_OP_ENCRYPT &&
-				options->auth_op ==
-				RTE_CRYPTO_AUTH_OP_GENERATE) &&
-				!(options->cipher_op ==
-				RTE_CRYPTO_CIPHER_OP_DECRYPT &&
-				options->auth_op ==
-				RTE_CRYPTO_AUTH_OP_VERIFY)) {
-			RTE_LOG(ERR, USER1, "Use together options: encrypt and"
-					" generate or decrypt and verify.\n");
+	}
+
+	if (options->op_type == CPERF_CIPHER_ONLY ||
+			options->op_type == CPERF_CIPHER_THEN_AUTH ||
+			options->op_type == CPERF_AUTH_THEN_CIPHER) {
+		if (check_cipher_buffer_length(options) < 0)
 			return -EINVAL;
-		}
-	}
-
-	if (options->cipher_algo == RTE_CRYPTO_CIPHER_AES_GCM ||
-			options->cipher_algo == RTE_CRYPTO_CIPHER_AES_CCM ||
-			options->auth_algo == RTE_CRYPTO_AUTH_AES_GCM ||
-			options->auth_algo == RTE_CRYPTO_AUTH_AES_CCM) {
-		if (options->op_type != CPERF_AEAD) {
-			RTE_LOG(ERR, USER1, "Use --optype aead\n");
-			return -EINVAL;
-		}
-	}
-
-	if (options->cipher_algo == RTE_CRYPTO_CIPHER_AES_CBC ||
-			options->cipher_algo == RTE_CRYPTO_CIPHER_AES_ECB) {
-		if (options->inc_buffer_size != 0)
-			buffer_size = options->min_buffer_size;
-		else
-			buffer_size = options->buffer_size_list[0];
-
-		while (buffer_size <= options->max_buffer_size) {
-			if ((buffer_size % AES_BLOCK_SIZE) != 0) {
-				RTE_LOG(ERR, USER1, "Some of the buffer sizes are "
-					"not suitable for the algorithm selected\n");
-				return -EINVAL;
-			}
-
-			if (options->inc_buffer_size != 0)
-				buffer_size += options->inc_buffer_size;
-			else {
-				if (++buffer_size_idx == options->buffer_size_count)
-					break;
-				buffer_size = options->buffer_size_list[buffer_size_idx];
-			}
-
-		}
-	}
-
-	if (options->cipher_algo == RTE_CRYPTO_CIPHER_DES_CBC ||
-			options->cipher_algo == RTE_CRYPTO_CIPHER_3DES_CBC ||
-			options->cipher_algo == RTE_CRYPTO_CIPHER_3DES_ECB) {
-		for (buffer_size = options->min_buffer_size;
-				buffer_size < options->max_buffer_size;
-				buffer_size += options->inc_buffer_size) {
-			if ((buffer_size % DES_BLOCK_SIZE) != 0) {
-				RTE_LOG(ERR, USER1, "Some of the buffer sizes are "
-					"not suitable for the algorithm selected\n");
-				return -EINVAL;
-			}
-		}
 	}
 
 	return 0;
@@ -914,29 +977,38 @@ cperf_options_dump(struct cperf_options *opts)
 
 	if (opts->op_type == CPERF_AUTH_ONLY ||
 			opts->op_type == CPERF_CIPHER_THEN_AUTH ||
-			opts->op_type == CPERF_AUTH_THEN_CIPHER ||
-			opts->op_type == CPERF_AEAD) {
+			opts->op_type == CPERF_AUTH_THEN_CIPHER) {
 		printf("# auth algorithm: %s\n",
 			rte_crypto_auth_algorithm_strings[opts->auth_algo]);
 		printf("# auth operation: %s\n",
 			rte_crypto_auth_operation_strings[opts->auth_op]);
 		printf("# auth key size: %u\n", opts->auth_key_sz);
 		printf("# auth iv size: %u\n", opts->auth_iv_sz);
-		printf("# auth digest size: %u\n", opts->auth_digest_sz);
-		printf("# auth aad size: %u\n", opts->auth_aad_sz);
+		printf("# auth digest size: %u\n", opts->digest_sz);
 		printf("#\n");
 	}
 
 	if (opts->op_type == CPERF_CIPHER_ONLY ||
 			opts->op_type == CPERF_CIPHER_THEN_AUTH ||
-			opts->op_type == CPERF_AUTH_THEN_CIPHER ||
-			opts->op_type == CPERF_AEAD) {
+			opts->op_type == CPERF_AUTH_THEN_CIPHER) {
 		printf("# cipher algorithm: %s\n",
 			rte_crypto_cipher_algorithm_strings[opts->cipher_algo]);
 		printf("# cipher operation: %s\n",
 			rte_crypto_cipher_operation_strings[opts->cipher_op]);
 		printf("# cipher key size: %u\n", opts->cipher_key_sz);
 		printf("# cipher iv size: %u\n", opts->cipher_iv_sz);
+		printf("#\n");
+	}
+
+	if (opts->op_type == CPERF_AEAD) {
+		printf("# aead algorithm: %s\n",
+			rte_crypto_aead_algorithm_strings[opts->aead_algo]);
+		printf("# aead operation: %s\n",
+			rte_crypto_aead_operation_strings[opts->aead_op]);
+		printf("# aead key size: %u\n", opts->aead_key_sz);
+		printf("# aead iv size: %u\n", opts->aead_iv_sz);
+		printf("# aead digest size: %u\n", opts->digest_sz);
+		printf("# aead aad size: %u\n", opts->aead_aad_sz);
 		printf("#\n");
 	}
 }

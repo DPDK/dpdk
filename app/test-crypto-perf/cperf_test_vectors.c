@@ -417,6 +417,13 @@ uint8_t auth_key[] = {
 	0x78, 0x79, 0x7A, 0x7B, 0x7C, 0x7D, 0x7E, 0x7F
 };
 
+/* AEAD key */
+uint8_t aead_key[] = {
+	0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B,
+	0x0C, 0x0D, 0x0E, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
+	0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F
+};
+
 /* Digests */
 uint8_t digest[2048] = { 0x00 };
 
@@ -435,8 +442,7 @@ cperf_test_vector_get_dummy(struct cperf_options *options)
 
 	if (options->op_type ==	CPERF_CIPHER_ONLY ||
 			options->op_type == CPERF_CIPHER_THEN_AUTH ||
-			options->op_type == CPERF_AUTH_THEN_CIPHER ||
-			options->op_type == CPERF_AEAD) {
+			options->op_type == CPERF_AUTH_THEN_CIPHER) {
 		if (options->cipher_algo == RTE_CRYPTO_CIPHER_NULL) {
 			t_vec->cipher_key.length = 0;
 			t_vec->ciphertext.data = plaintext;
@@ -473,40 +479,32 @@ cperf_test_vector_get_dummy(struct cperf_options *options)
 
 	if (options->op_type ==	CPERF_AUTH_ONLY ||
 			options->op_type == CPERF_CIPHER_THEN_AUTH ||
-			options->op_type == CPERF_AUTH_THEN_CIPHER ||
-			options->op_type == CPERF_AEAD) {
-		uint8_t aad_alloc = 0;
-
-		t_vec->auth_key.length = options->auth_key_sz;
-
-		switch (options->auth_algo) {
-		case RTE_CRYPTO_AUTH_NULL:
+			options->op_type == CPERF_AUTH_THEN_CIPHER) {
+		if (options->auth_algo == RTE_CRYPTO_AUTH_NULL) {
+			t_vec->auth_key.length = 0;
 			t_vec->auth_key.data = NULL;
-			aad_alloc = 0;
-			break;
-		case RTE_CRYPTO_AUTH_AES_GCM:
-			t_vec->auth_key.data = NULL;
-			aad_alloc = 1;
-			break;
-		default:
+			t_vec->digest.data = NULL;
+			t_vec->digest.length = 0;
+		} else {
+			t_vec->auth_key.length = options->auth_key_sz;
 			t_vec->auth_key.data = auth_key;
-			aad_alloc = 0;
-			break;
-		}
 
-		if (aad_alloc && options->auth_aad_sz) {
-			t_vec->aad.data = rte_malloc(NULL,
-					options->auth_aad_sz, 16);
-			if (t_vec->aad.data == NULL) {
-				if (options->op_type !=	CPERF_AUTH_ONLY)
-					rte_free(t_vec->cipher_iv.data);
+			t_vec->digest.data = rte_malloc(NULL,
+					options->digest_sz,
+					16);
+			if (t_vec->digest.data == NULL) {
+				rte_free(t_vec->cipher_iv.data);
 				rte_free(t_vec);
 				return NULL;
 			}
-			memcpy(t_vec->aad.data, aad, options->auth_aad_sz);
-		} else {
-			t_vec->aad.data = NULL;
+			t_vec->digest.phys_addr =
+				rte_malloc_virt2phy(t_vec->digest.data);
+			t_vec->digest.length = options->digest_sz;
+			memcpy(t_vec->digest.data, digest,
+					options->digest_sz);
 		}
+		t_vec->data.auth_offset = 0;
+		t_vec->data.auth_length = options->max_buffer_size;
 
 		/* Set IV parameters */
 		t_vec->auth_iv.data = rte_malloc(NULL, options->auth_iv_sz,
@@ -519,26 +517,52 @@ cperf_test_vector_get_dummy(struct cperf_options *options)
 		}
 		memcpy(t_vec->auth_iv.data, iv, options->auth_iv_sz);
 		t_vec->auth_iv.length = options->auth_iv_sz;
+	}
 
-		t_vec->aad.phys_addr = rte_malloc_virt2phy(t_vec->aad.data);
-		t_vec->aad.length = options->auth_aad_sz;
-		t_vec->digest.data = rte_malloc(NULL, options->auth_digest_sz,
-				16);
+	if (options->op_type == CPERF_AEAD) {
+		t_vec->aead_key.length = options->aead_key_sz;
+		t_vec->aead_key.data = aead_key;
+
+		if (options->aead_aad_sz) {
+			t_vec->aad.data = rte_malloc(NULL,
+					options->aead_aad_sz, 16);
+			if (t_vec->aad.data == NULL) {
+				rte_free(t_vec);
+				return NULL;
+			}
+			memcpy(t_vec->aad.data, aad, options->aead_aad_sz);
+			t_vec->aad.phys_addr = rte_malloc_virt2phy(t_vec->aad.data);
+			t_vec->aad.length = options->aead_aad_sz;
+		} else {
+			t_vec->aad.data = NULL;
+			t_vec->aad.length = 0;
+		}
+
+		t_vec->digest.data = rte_malloc(NULL, options->digest_sz,
+						16);
 		if (t_vec->digest.data == NULL) {
-			if (options->op_type !=	CPERF_AUTH_ONLY)
-				rte_free(t_vec->cipher_iv.data);
-			rte_free(t_vec->auth_iv.data);
 			rte_free(t_vec->aad.data);
 			rte_free(t_vec);
 			return NULL;
 		}
 		t_vec->digest.phys_addr =
 				rte_malloc_virt2phy(t_vec->digest.data);
-		t_vec->digest.length = options->auth_digest_sz;
-		memcpy(t_vec->digest.data, digest, options->auth_digest_sz);
-		t_vec->data.auth_offset = 0;
-		t_vec->data.auth_length = options->max_buffer_size;
-	}
+		t_vec->digest.length = options->digest_sz;
+		memcpy(t_vec->digest.data, digest, options->digest_sz);
+		t_vec->data.aead_offset = 0;
+		t_vec->data.aead_length = options->max_buffer_size;
 
+		/* Set IV parameters */
+		t_vec->aead_iv.data = rte_malloc(NULL, options->aead_iv_sz,
+				16);
+		if (options->aead_iv_sz && t_vec->aead_iv.data == NULL) {
+			rte_free(t_vec->aad.data);
+			rte_free(t_vec->digest.data);
+			rte_free(t_vec);
+			return NULL;
+		}
+		memcpy(t_vec->aead_iv.data, iv, options->aead_iv_sz);
+		t_vec->aead_iv.length = options->aead_iv_sz;
+	}
 	return t_vec;
 }
