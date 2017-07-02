@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2015-2016 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2015-2017 Intel Corporation. All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -70,6 +70,12 @@
 #define TRUNCATED_DIGEST_BYTE_LENGTH_SHA256		(16)
 #define TRUNCATED_DIGEST_BYTE_LENGTH_SHA384		(24)
 #define TRUNCATED_DIGEST_BYTE_LENGTH_SHA512		(32)
+
+#define MAXIMUM_IV_LENGTH				(16)
+
+#define IV_OFFSET			(sizeof(struct rte_crypto_op) + \
+		sizeof(struct rte_crypto_sym_op) + DEFAULT_NUM_XFORMS * \
+		sizeof(struct rte_crypto_sym_xform))
 
 /**
  * Write (spread) data from buffer to mbuf data

@@ -203,7 +203,8 @@ testsuite_setup(void)
 			RTE_CRYPTO_OP_TYPE_SYMMETRIC,
 			NUM_MBUFS, MBUF_CACHE_SIZE,
 			DEFAULT_NUM_XFORMS *
-			sizeof(struct rte_crypto_sym_xform),
+			sizeof(struct rte_crypto_sym_xform) +
+			MAXIMUM_IV_LENGTH,
 			rte_socket_id());
 	if (ts_params->op_mpool == NULL) {
 		RTE_LOG(ERR, USER1, "Can't create CRYPTO_OP_POOL\n");
@@ -1307,19 +1308,19 @@ test_AES_CBC_HMAC_SHA1_encrypt_digest(void)
 			ut_params->ibuf, QUOTE_512_BYTES);
 	sym_op->auth.digest.length = DIGEST_BYTE_LENGTH_SHA1;
 
-	sym_op->auth.data.offset = CIPHER_IV_LENGTH_AES_CBC;
+	sym_op->auth.data.offset = 0;
 	sym_op->auth.data.length = QUOTE_512_BYTES;
 
 	/* Set crypto operation cipher parameters */
-	sym_op->cipher.iv.data = (uint8_t *)rte_pktmbuf_prepend(ut_params->ibuf,
-			CIPHER_IV_LENGTH_AES_CBC);
-	sym_op->cipher.iv.phys_addr = rte_pktmbuf_mtophys(ut_params->ibuf);
+	sym_op->cipher.iv.data = rte_crypto_op_ctod_offset(ut_params->op,
+						uint8_t *, IV_OFFSET);
+	sym_op->cipher.iv.phys_addr = rte_crypto_op_ctophys_offset(ut_params->op,
+						IV_OFFSET);
 	sym_op->cipher.iv.length = CIPHER_IV_LENGTH_AES_CBC;
 
-	rte_memcpy(sym_op->cipher.iv.data, aes_cbc_iv,
-			CIPHER_IV_LENGTH_AES_CBC);
+	rte_memcpy(sym_op->cipher.iv.data, aes_cbc_iv, CIPHER_IV_LENGTH_AES_CBC);
 
-	sym_op->cipher.data.offset = CIPHER_IV_LENGTH_AES_CBC;
+	sym_op->cipher.data.offset = 0;
 	sym_op->cipher.data.length = QUOTE_512_BYTES;
 
 	/* Process crypto operation */
@@ -1330,8 +1331,8 @@ test_AES_CBC_HMAC_SHA1_encrypt_digest(void)
 			"crypto op processing failed");
 
 	/* Validate obuf */
-	uint8_t *ciphertext = rte_pktmbuf_mtod_offset(ut_params->op->sym->m_src,
-			uint8_t *, CIPHER_IV_LENGTH_AES_CBC);
+	uint8_t *ciphertext = rte_pktmbuf_mtod(ut_params->op->sym->m_src,
+			uint8_t *);
 
 	TEST_ASSERT_BUFFERS_ARE_EQUAL(ciphertext,
 			catch_22_quote_2_512_bytes_AES_CBC_ciphertext,
@@ -1461,19 +1462,18 @@ test_AES_CBC_HMAC_SHA512_decrypt_perform(struct rte_cryptodev_sym_session *sess,
 			ut_params->ibuf, QUOTE_512_BYTES);
 	sym_op->auth.digest.length = DIGEST_BYTE_LENGTH_SHA512;
 
-	sym_op->auth.data.offset = CIPHER_IV_LENGTH_AES_CBC;
+	sym_op->auth.data.offset = 0;
 	sym_op->auth.data.length = QUOTE_512_BYTES;
 
-	sym_op->cipher.iv.data = (uint8_t *)rte_pktmbuf_prepend(
-			ut_params->ibuf, CIPHER_IV_LENGTH_AES_CBC);
-	sym_op->cipher.iv.phys_addr = rte_pktmbuf_mtophys_offset(
-			ut_params->ibuf, 0);
+	sym_op->cipher.iv.data = rte_crypto_op_ctod_offset(ut_params->op,
+						uint8_t *, IV_OFFSET);
+	sym_op->cipher.iv.phys_addr = rte_crypto_op_ctophys_offset(ut_params->op,
+						IV_OFFSET);
 	sym_op->cipher.iv.length = CIPHER_IV_LENGTH_AES_CBC;
 
-	rte_memcpy(sym_op->cipher.iv.data, iv,
-			CIPHER_IV_LENGTH_AES_CBC);
+	rte_memcpy(sym_op->cipher.iv.data, iv, CIPHER_IV_LENGTH_AES_CBC);
 
-	sym_op->cipher.data.offset = CIPHER_IV_LENGTH_AES_CBC;
+	sym_op->cipher.data.offset = 0;
 	sym_op->cipher.data.length = QUOTE_512_BYTES;
 
 	/* Process crypto operation */
@@ -1487,8 +1487,8 @@ test_AES_CBC_HMAC_SHA512_decrypt_perform(struct rte_cryptodev_sym_session *sess,
 
 	/* Validate obuf */
 	TEST_ASSERT_BUFFERS_ARE_EQUAL(
-			rte_pktmbuf_mtod(ut_params->obuf, uint8_t *) +
-			CIPHER_IV_LENGTH_AES_CBC, catch_22_quote,
+			rte_pktmbuf_mtod(ut_params->obuf, uint8_t *),
+			catch_22_quote,
 			QUOTE_512_BYTES,
 			"Plaintext data not as expected");
 
@@ -1839,14 +1839,12 @@ create_wireless_algo_cipher_session(uint8_t dev_id,
 }
 
 static int
-create_wireless_algo_cipher_operation(const uint8_t *iv, const unsigned iv_len,
-			const unsigned cipher_len,
-			const unsigned cipher_offset,
-			enum rte_crypto_cipher_algorithm algo)
+create_wireless_algo_cipher_operation(const uint8_t *iv, uint8_t iv_len,
+			unsigned int cipher_len,
+			unsigned int cipher_offset)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
-	unsigned iv_pad_len = 0;
 
 	/* Generate Crypto op data structure */
 	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
@@ -1863,19 +1861,11 @@ create_wireless_algo_cipher_operation(const uint8_t *iv, const unsigned iv_len,
 	sym_op->m_src = ut_params->ibuf;
 
 	/* iv */
-	if (algo == RTE_CRYPTO_CIPHER_KASUMI_F8)
-		iv_pad_len = RTE_ALIGN_CEIL(iv_len, 8);
-	else
-		iv_pad_len = RTE_ALIGN_CEIL(iv_len, 16);
-
-	sym_op->cipher.iv.data = (uint8_t *)rte_pktmbuf_prepend(ut_params->ibuf
-			, iv_pad_len);
-
-	TEST_ASSERT_NOT_NULL(sym_op->cipher.iv.data, "no room to prepend iv");
-
-	memset(sym_op->cipher.iv.data, 0, iv_pad_len);
-	sym_op->cipher.iv.phys_addr = rte_pktmbuf_mtophys(ut_params->ibuf);
-	sym_op->cipher.iv.length = iv_pad_len;
+	sym_op->cipher.iv.data = rte_crypto_op_ctod_offset(ut_params->op,
+						uint8_t *, IV_OFFSET);
+	sym_op->cipher.iv.phys_addr = rte_crypto_op_ctophys_offset(ut_params->op,
+						IV_OFFSET);
+	sym_op->cipher.iv.length = iv_len;
 
 	rte_memcpy(sym_op->cipher.iv.data, iv, iv_len);
 	sym_op->cipher.data.length = cipher_len;
@@ -1884,14 +1874,12 @@ create_wireless_algo_cipher_operation(const uint8_t *iv, const unsigned iv_len,
 }
 
 static int
-create_wireless_algo_cipher_operation_oop(const uint8_t *iv, const uint8_t iv_len,
-			const unsigned cipher_len,
-			const unsigned cipher_offset,
-			enum rte_crypto_cipher_algorithm algo)
+create_wireless_algo_cipher_operation_oop(const uint8_t *iv, uint8_t iv_len,
+			unsigned int cipher_len,
+			unsigned int cipher_offset)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
-	unsigned iv_pad_len = 0;
 
 	/* Generate Crypto op data structure */
 	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
@@ -1909,22 +1897,11 @@ create_wireless_algo_cipher_operation_oop(const uint8_t *iv, const uint8_t iv_le
 	sym_op->m_dst = ut_params->obuf;
 
 	/* iv */
-	if (algo == RTE_CRYPTO_CIPHER_KASUMI_F8)
-		iv_pad_len = RTE_ALIGN_CEIL(iv_len, 8);
-	else
-		iv_pad_len = RTE_ALIGN_CEIL(iv_len, 16);
-	sym_op->cipher.iv.data = (uint8_t *)rte_pktmbuf_prepend(ut_params->ibuf,
-					iv_pad_len);
-
-	TEST_ASSERT_NOT_NULL(sym_op->cipher.iv.data, "no room to prepend iv");
-
-	/* For OOP operation both buffers must have the same size */
-	if (ut_params->obuf)
-		rte_pktmbuf_prepend(ut_params->obuf, iv_pad_len);
-
-	memset(sym_op->cipher.iv.data, 0, iv_pad_len);
-	sym_op->cipher.iv.phys_addr = rte_pktmbuf_mtophys(ut_params->ibuf);
-	sym_op->cipher.iv.length = iv_pad_len;
+	sym_op->cipher.iv.data = rte_crypto_op_ctod_offset(ut_params->op,
+						uint8_t *, IV_OFFSET);
+	sym_op->cipher.iv.phys_addr = rte_crypto_op_ctophys_offset(ut_params->op,
+						IV_OFFSET);
+	sym_op->cipher.iv.length = iv_len;
 
 	rte_memcpy(sym_op->cipher.iv.data, iv, iv_len);
 	sym_op->cipher.data.length = cipher_len;
@@ -2165,8 +2142,7 @@ create_wireless_algo_hash_operation(const uint8_t *auth_tag,
 static int
 create_wireless_cipher_hash_operation(const struct wireless_test_data *tdata,
 	enum rte_crypto_auth_operation op,
-	enum rte_crypto_auth_algorithm auth_algo,
-	enum rte_crypto_cipher_algorithm cipher_algo)
+	enum rte_crypto_auth_algorithm auth_algo)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
@@ -2181,11 +2157,10 @@ create_wireless_cipher_hash_operation(const struct wireless_test_data *tdata,
 	const uint8_t *iv = tdata->iv.data;
 	const uint8_t iv_len = tdata->iv.len;
 	const unsigned int cipher_len = tdata->validCipherLenInBits.len;
-	const unsigned int cipher_offset = tdata->iv.len << 3;
+	const unsigned int cipher_offset = 0;
 	const unsigned int auth_len = tdata->validAuthLenInBits.len;
 	const unsigned int auth_offset = tdata->aad.len << 3;
 
-	unsigned int iv_pad_len = 0;
 	unsigned int aad_buffer_len;
 
 	/* Generate Crypto op data structure */
@@ -2245,17 +2220,12 @@ create_wireless_cipher_hash_operation(const struct wireless_test_data *tdata,
 	TEST_HEXDUMP(stdout, "aad:", sym_op->auth.aad.data, aad_len);
 
 	/* iv */
-	if (cipher_algo == RTE_CRYPTO_CIPHER_KASUMI_F8)
-		iv_pad_len = RTE_ALIGN_CEIL(iv_len, 8);
-	else
-		iv_pad_len = RTE_ALIGN_CEIL(iv_len, 16);
-	sym_op->cipher.iv.data = (uint8_t *)rte_pktmbuf_prepend(
-		ut_params->ibuf, iv_pad_len);
+	sym_op->cipher.iv.data = rte_crypto_op_ctod_offset(ut_params->op,
+						uint8_t *, IV_OFFSET);
+	sym_op->cipher.iv.phys_addr = rte_crypto_op_ctophys_offset(ut_params->op,
+						IV_OFFSET);
+	sym_op->cipher.iv.length = iv_len;
 
-	TEST_ASSERT_NOT_NULL(sym_op->cipher.iv.data, "no room to prepend iv");
-	memset(sym_op->cipher.iv.data, 0, iv_pad_len);
-	sym_op->cipher.iv.phys_addr = rte_pktmbuf_mtophys(ut_params->ibuf);
-	sym_op->cipher.iv.length = iv_pad_len;
 	rte_memcpy(sym_op->cipher.iv.data, iv, iv_len);
 	sym_op->cipher.data.length = cipher_len;
 	sym_op->cipher.data.offset = cipher_offset + auth_offset;
@@ -2271,8 +2241,7 @@ create_zuc_cipher_hash_generate_operation(
 {
 	return create_wireless_cipher_hash_operation(tdata,
 		RTE_CRYPTO_AUTH_OP_GENERATE,
-		RTE_CRYPTO_AUTH_ZUC_EIA3,
-		RTE_CRYPTO_CIPHER_ZUC_EEA3);
+		RTE_CRYPTO_AUTH_ZUC_EIA3);
 }
 
 static int
@@ -2282,7 +2251,6 @@ create_wireless_algo_cipher_hash_operation(const uint8_t *auth_tag,
 		unsigned data_pad_len,
 		enum rte_crypto_auth_operation op,
 		enum rte_crypto_auth_algorithm auth_algo,
-		enum rte_crypto_cipher_algorithm cipher_algo,
 		const uint8_t *iv, const uint8_t iv_len,
 		const unsigned cipher_len, const unsigned cipher_offset,
 		const unsigned auth_len, const unsigned auth_offset)
@@ -2290,7 +2258,6 @@ create_wireless_algo_cipher_hash_operation(const uint8_t *auth_tag,
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
 
-	unsigned iv_pad_len = 0;
 	unsigned aad_buffer_len;
 
 	/* Generate Crypto op data structure */
@@ -2350,17 +2317,12 @@ create_wireless_algo_cipher_hash_operation(const uint8_t *auth_tag,
 	TEST_HEXDUMP(stdout, "aad:", sym_op->auth.aad.data, aad_len);
 
 	/* iv */
-	if (cipher_algo == RTE_CRYPTO_CIPHER_KASUMI_F8)
-		iv_pad_len = RTE_ALIGN_CEIL(iv_len, 8);
-	else
-		iv_pad_len = RTE_ALIGN_CEIL(iv_len, 16);
-	sym_op->cipher.iv.data = (uint8_t *)rte_pktmbuf_prepend(
-		ut_params->ibuf, iv_pad_len);
+	sym_op->cipher.iv.data = rte_crypto_op_ctod_offset(ut_params->op,
+						uint8_t *, IV_OFFSET);
+	sym_op->cipher.iv.phys_addr = rte_crypto_op_ctophys_offset(ut_params->op,
+						IV_OFFSET);
+	sym_op->cipher.iv.length = iv_len;
 
-	TEST_ASSERT_NOT_NULL(sym_op->cipher.iv.data, "no room to prepend iv");
-	memset(sym_op->cipher.iv.data, 0, iv_pad_len);
-	sym_op->cipher.iv.phys_addr = rte_pktmbuf_mtophys(ut_params->ibuf);
-	sym_op->cipher.iv.length = iv_pad_len;
 	rte_memcpy(sym_op->cipher.iv.data, iv, iv_len);
 	sym_op->cipher.data.length = cipher_len;
 	sym_op->cipher.data.offset = cipher_offset + auth_offset;
@@ -2377,13 +2339,11 @@ create_wireless_algo_auth_cipher_operation(const unsigned auth_tag_len,
 		unsigned data_pad_len,
 		const unsigned cipher_len, const unsigned cipher_offset,
 		const unsigned auth_len, const unsigned auth_offset,
-		enum rte_crypto_auth_algorithm auth_algo,
-		enum rte_crypto_cipher_algorithm cipher_algo)
+		enum rte_crypto_auth_algorithm auth_algo)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
 
-	unsigned iv_pad_len = 0;
 	unsigned aad_buffer_len = 0;
 
 	/* Generate Crypto op data structure */
@@ -2442,18 +2402,11 @@ create_wireless_algo_auth_cipher_operation(const unsigned auth_tag_len,
 			sym_op->auth.aad.data, aad_len);
 
 	/* iv */
-	if (cipher_algo == RTE_CRYPTO_CIPHER_KASUMI_F8)
-		iv_pad_len = RTE_ALIGN_CEIL(iv_len, 8);
-	else
-		iv_pad_len = RTE_ALIGN_CEIL(iv_len, 16);
-
-	sym_op->cipher.iv.data = (uint8_t *)rte_pktmbuf_prepend(
-		ut_params->ibuf, iv_pad_len);
-	TEST_ASSERT_NOT_NULL(sym_op->cipher.iv.data, "no room to prepend iv");
-
-	memset(sym_op->cipher.iv.data, 0, iv_pad_len);
-	sym_op->cipher.iv.phys_addr = rte_pktmbuf_mtophys(ut_params->ibuf);
-	sym_op->cipher.iv.length = iv_pad_len;
+	sym_op->cipher.iv.data = rte_crypto_op_ctod_offset(ut_params->op,
+						uint8_t *, IV_OFFSET);
+	sym_op->cipher.iv.phys_addr = rte_crypto_op_ctophys_offset(ut_params->op,
+						IV_OFFSET);
+	sym_op->cipher.iv.length = iv_len;
 
 	rte_memcpy(sym_op->cipher.iv.data, iv, iv_len);
 
@@ -2887,8 +2840,7 @@ test_kasumi_encryption(const struct kasumi_test_data *tdata)
 	/* Create KASUMI operation */
 	retval = create_wireless_algo_cipher_operation(tdata->iv.data, tdata->iv.len,
 					tdata->plaintext.len,
-					(tdata->iv.len << 3),
-					RTE_CRYPTO_CIPHER_KASUMI_F8);
+					0);
 	if (retval < 0)
 		return retval;
 
@@ -2898,8 +2850,7 @@ test_kasumi_encryption(const struct kasumi_test_data *tdata)
 
 	ut_params->obuf = ut_params->op->sym->m_dst;
 	if (ut_params->obuf)
-		ciphertext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
-				+ tdata->iv.len;
+		ciphertext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *);
 	else
 		ciphertext = plaintext;
 
@@ -2961,8 +2912,7 @@ test_kasumi_encryption_sgl(const struct kasumi_test_data *tdata)
 	retval = create_wireless_algo_cipher_operation(tdata->iv.data,
 					tdata->iv.len,
 					tdata->plaintext.len,
-					(tdata->iv.len << 3),
-					RTE_CRYPTO_CIPHER_KASUMI_F8);
+					0);
 	if (retval < 0)
 		return retval;
 
@@ -2973,10 +2923,10 @@ test_kasumi_encryption_sgl(const struct kasumi_test_data *tdata)
 	ut_params->obuf = ut_params->op->sym->m_dst;
 
 	if (ut_params->obuf)
-		ciphertext = rte_pktmbuf_read(ut_params->obuf, tdata->iv.len,
+		ciphertext = rte_pktmbuf_read(ut_params->obuf, 0,
 				plaintext_len, buffer);
 	else
-		ciphertext = rte_pktmbuf_read(ut_params->ibuf, tdata->iv.len,
+		ciphertext = rte_pktmbuf_read(ut_params->ibuf, 0,
 				plaintext_len, buffer);
 
 	/* Validate obuf */
@@ -3032,8 +2982,7 @@ test_kasumi_encryption_oop(const struct kasumi_test_data *tdata)
 	retval = create_wireless_algo_cipher_operation_oop(tdata->iv.data,
 					tdata->iv.len,
 					tdata->plaintext.len,
-					(tdata->iv.len << 3),
-					RTE_CRYPTO_CIPHER_KASUMI_F8);
+					0);
 	if (retval < 0)
 		return retval;
 
@@ -3043,8 +2992,7 @@ test_kasumi_encryption_oop(const struct kasumi_test_data *tdata)
 
 	ut_params->obuf = ut_params->op->sym->m_dst;
 	if (ut_params->obuf)
-		ciphertext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
-				+ tdata->iv.len;
+		ciphertext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *);
 	else
 		ciphertext = plaintext;
 
@@ -3107,8 +3055,7 @@ test_kasumi_encryption_oop_sgl(const struct kasumi_test_data *tdata)
 	retval = create_wireless_algo_cipher_operation_oop(tdata->iv.data,
 					tdata->iv.len,
 					tdata->plaintext.len,
-					(tdata->iv.len << 3),
-					RTE_CRYPTO_CIPHER_KASUMI_F8);
+					0);
 	if (retval < 0)
 		return retval;
 
@@ -3118,10 +3065,10 @@ test_kasumi_encryption_oop_sgl(const struct kasumi_test_data *tdata)
 
 	ut_params->obuf = ut_params->op->sym->m_dst;
 	if (ut_params->obuf)
-		ciphertext = rte_pktmbuf_read(ut_params->obuf, tdata->iv.len,
+		ciphertext = rte_pktmbuf_read(ut_params->obuf, 0,
 				plaintext_pad_len, buffer);
 	else
-		ciphertext = rte_pktmbuf_read(ut_params->ibuf, tdata->iv.len,
+		ciphertext = rte_pktmbuf_read(ut_params->ibuf, 0,
 				plaintext_pad_len, buffer);
 
 	/* Validate obuf */
@@ -3175,8 +3122,7 @@ test_kasumi_decryption_oop(const struct kasumi_test_data *tdata)
 	retval = create_wireless_algo_cipher_operation_oop(tdata->iv.data,
 					tdata->iv.len,
 					tdata->ciphertext.len,
-					(tdata->iv.len << 3),
-					RTE_CRYPTO_CIPHER_KASUMI_F8);
+					0);
 	if (retval < 0)
 		return retval;
 
@@ -3186,8 +3132,7 @@ test_kasumi_decryption_oop(const struct kasumi_test_data *tdata)
 
 	ut_params->obuf = ut_params->op->sym->m_dst;
 	if (ut_params->obuf)
-		plaintext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
-				+ tdata->iv.len;
+		plaintext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *);
 	else
 		plaintext = ciphertext;
 
@@ -3241,8 +3186,7 @@ test_kasumi_decryption(const struct kasumi_test_data *tdata)
 	retval = create_wireless_algo_cipher_operation(tdata->iv.data,
 					tdata->iv.len,
 					tdata->ciphertext.len,
-					(tdata->iv.len << 3),
-					RTE_CRYPTO_CIPHER_KASUMI_F8);
+					0);
 	if (retval < 0)
 		return retval;
 
@@ -3252,8 +3196,7 @@ test_kasumi_decryption(const struct kasumi_test_data *tdata)
 
 	ut_params->obuf = ut_params->op->sym->m_dst;
 	if (ut_params->obuf)
-		plaintext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
-				+ tdata->iv.len;
+		plaintext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *);
 	else
 		plaintext = ciphertext;
 
@@ -3306,8 +3249,7 @@ test_snow3g_encryption(const struct snow3g_test_data *tdata)
 	/* Create SNOW 3G operation */
 	retval = create_wireless_algo_cipher_operation(tdata->iv.data, tdata->iv.len,
 					tdata->validCipherLenInBits.len,
-					(tdata->iv.len << 3),
-					RTE_CRYPTO_CIPHER_SNOW3G_UEA2);
+					0);
 	if (retval < 0)
 		return retval;
 
@@ -3317,8 +3259,7 @@ test_snow3g_encryption(const struct snow3g_test_data *tdata)
 
 	ut_params->obuf = ut_params->op->sym->m_dst;
 	if (ut_params->obuf)
-		ciphertext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
-				+ tdata->iv.len;
+		ciphertext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *);
 	else
 		ciphertext = plaintext;
 
@@ -3380,8 +3321,7 @@ test_snow3g_encryption_oop(const struct snow3g_test_data *tdata)
 	retval = create_wireless_algo_cipher_operation_oop(tdata->iv.data,
 					tdata->iv.len,
 					tdata->validCipherLenInBits.len,
-					(tdata->iv.len << 3),
-					RTE_CRYPTO_CIPHER_SNOW3G_UEA2);
+					0);
 	if (retval < 0)
 		return retval;
 
@@ -3391,8 +3331,7 @@ test_snow3g_encryption_oop(const struct snow3g_test_data *tdata)
 
 	ut_params->obuf = ut_params->op->sym->m_dst;
 	if (ut_params->obuf)
-		ciphertext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
-				+ tdata->iv.len;
+		ciphertext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *);
 	else
 		ciphertext = plaintext;
 
@@ -3457,8 +3396,7 @@ test_snow3g_encryption_oop_sgl(const struct snow3g_test_data *tdata)
 	retval = create_wireless_algo_cipher_operation_oop(tdata->iv.data,
 					tdata->iv.len,
 					tdata->validCipherLenInBits.len,
-					(tdata->iv.len << 3),
-					RTE_CRYPTO_CIPHER_SNOW3G_UEA2);
+					0);
 	if (retval < 0)
 		return retval;
 
@@ -3468,10 +3406,10 @@ test_snow3g_encryption_oop_sgl(const struct snow3g_test_data *tdata)
 
 	ut_params->obuf = ut_params->op->sym->m_dst;
 	if (ut_params->obuf)
-		ciphertext = rte_pktmbuf_read(ut_params->obuf, tdata->iv.len,
+		ciphertext = rte_pktmbuf_read(ut_params->obuf, 0,
 				plaintext_len, buffer);
 	else
-		ciphertext = rte_pktmbuf_read(ut_params->ibuf, tdata->iv.len,
+		ciphertext = rte_pktmbuf_read(ut_params->ibuf, 0,
 				plaintext_len, buffer);
 
 	TEST_HEXDUMP(stdout, "ciphertext:", ciphertext, plaintext_len);
@@ -3560,9 +3498,7 @@ test_snow3g_encryption_offset_oop(const struct snow3g_test_data *tdata)
 	retval = create_wireless_algo_cipher_operation_oop(tdata->iv.data,
 					tdata->iv.len,
 					tdata->validCipherLenInBits.len,
-					(tdata->iv.len << 3) +
-					extra_offset,
-					RTE_CRYPTO_CIPHER_SNOW3G_UEA2);
+					extra_offset);
 	if (retval < 0)
 		return retval;
 
@@ -3572,8 +3508,7 @@ test_snow3g_encryption_offset_oop(const struct snow3g_test_data *tdata)
 
 	ut_params->obuf = ut_params->op->sym->m_dst;
 	if (ut_params->obuf)
-		ciphertext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
-				+ tdata->iv.len;
+		ciphertext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *);
 	else
 		ciphertext = plaintext;
 
@@ -3638,8 +3573,7 @@ static int test_snow3g_decryption(const struct snow3g_test_data *tdata)
 	/* Create SNOW 3G operation */
 	retval = create_wireless_algo_cipher_operation(tdata->iv.data, tdata->iv.len,
 					tdata->validCipherLenInBits.len,
-					(tdata->iv.len << 3),
-					RTE_CRYPTO_CIPHER_SNOW3G_UEA2);
+					0);
 	if (retval < 0)
 		return retval;
 
@@ -3648,8 +3582,7 @@ static int test_snow3g_decryption(const struct snow3g_test_data *tdata)
 	TEST_ASSERT_NOT_NULL(ut_params->op, "failed to retrieve obuf");
 	ut_params->obuf = ut_params->op->sym->m_dst;
 	if (ut_params->obuf)
-		plaintext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
-				+ tdata->iv.len;
+		plaintext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *);
 	else
 		plaintext = ciphertext;
 
@@ -3712,8 +3645,7 @@ static int test_snow3g_decryption_oop(const struct snow3g_test_data *tdata)
 	retval = create_wireless_algo_cipher_operation_oop(tdata->iv.data,
 					tdata->iv.len,
 					tdata->validCipherLenInBits.len,
-					(tdata->iv.len << 3),
-					RTE_CRYPTO_CIPHER_SNOW3G_UEA2);
+					0);
 	if (retval < 0)
 		return retval;
 
@@ -3722,8 +3654,7 @@ static int test_snow3g_decryption_oop(const struct snow3g_test_data *tdata)
 	TEST_ASSERT_NOT_NULL(ut_params->op, "failed to retrieve obuf");
 	ut_params->obuf = ut_params->op->sym->m_dst;
 	if (ut_params->obuf)
-		plaintext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
-				+ tdata->iv.len;
+		plaintext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *);
 	else
 		plaintext = ciphertext;
 
@@ -3800,7 +3731,7 @@ test_zuc_cipher_auth(const struct wireless_test_data *tdata)
 	ut_params->obuf = ut_params->op->sym->m_src;
 	if (ut_params->obuf)
 		ciphertext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
-				+ tdata->iv.len + tdata->aad.len;
+				+ tdata->aad.len;
 	else
 		ciphertext = plaintext;
 
@@ -3813,7 +3744,7 @@ test_zuc_cipher_auth(const struct wireless_test_data *tdata)
 			"ZUC Ciphertext data not as expected");
 
 	ut_params->digest = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
-	    + plaintext_pad_len + tdata->aad.len + tdata->iv.len;
+	    + plaintext_pad_len + tdata->aad.len;
 
 	/* Validate obuf */
 	TEST_ASSERT_BUFFERS_ARE_EQUAL(
@@ -3868,10 +3799,9 @@ test_snow3g_cipher_auth(const struct snow3g_test_data *tdata)
 			tdata->aad.len, /*tdata->plaintext.len,*/
 			plaintext_pad_len, RTE_CRYPTO_AUTH_OP_GENERATE,
 			RTE_CRYPTO_AUTH_SNOW3G_UIA2,
-			RTE_CRYPTO_CIPHER_SNOW3G_UEA2,
 			tdata->iv.data, tdata->iv.len,
 			tdata->validCipherLenInBits.len,
-			(tdata->iv.len << 3),
+			0,
 			tdata->validAuthLenInBits.len,
 			(tdata->aad.len << 3)
 			);
@@ -3884,7 +3814,7 @@ test_snow3g_cipher_auth(const struct snow3g_test_data *tdata)
 	ut_params->obuf = ut_params->op->sym->m_src;
 	if (ut_params->obuf)
 		ciphertext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
-				+ tdata->iv.len + tdata->aad.len;
+					+ tdata->aad.len;
 	else
 		ciphertext = plaintext;
 
@@ -3897,7 +3827,7 @@ test_snow3g_cipher_auth(const struct snow3g_test_data *tdata)
 			"SNOW 3G Ciphertext data not as expected");
 
 	ut_params->digest = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
-	    + plaintext_pad_len + tdata->aad.len + tdata->iv.len;
+	    + plaintext_pad_len + tdata->aad.len;
 
 	/* Validate obuf */
 	TEST_ASSERT_BUFFERS_ARE_EQUAL(
@@ -3953,11 +3883,10 @@ test_snow3g_auth_cipher(const struct snow3g_test_data *tdata)
 		tdata->aad.data, tdata->aad.len,
 		plaintext_pad_len,
 		tdata->validCipherLenInBits.len,
-		(tdata->iv.len << 3),
+		0,
 		tdata->validAuthLenInBits.len,
 		(tdata->aad.len << 3),
-		RTE_CRYPTO_AUTH_SNOW3G_UIA2,
-		RTE_CRYPTO_CIPHER_SNOW3G_UEA2
+		RTE_CRYPTO_AUTH_SNOW3G_UIA2
 	);
 
 	if (retval < 0)
@@ -3969,12 +3898,12 @@ test_snow3g_auth_cipher(const struct snow3g_test_data *tdata)
 	ut_params->obuf = ut_params->op->sym->m_src;
 	if (ut_params->obuf)
 		ciphertext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
-				+ tdata->aad.len + tdata->iv.len;
+				+ tdata->aad.len;
 	else
 		ciphertext = plaintext;
 
 	ut_params->digest = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
-			+ plaintext_pad_len + tdata->aad.len + tdata->iv.len;
+			+ plaintext_pad_len + tdata->aad.len;
 	TEST_HEXDUMP(stdout, "ciphertext:", ciphertext, plaintext_len);
 
 	/* Validate obuf */
@@ -4038,11 +3967,10 @@ test_kasumi_auth_cipher(const struct kasumi_test_data *tdata)
 				tdata->aad.data, tdata->aad.len,
 				plaintext_pad_len,
 				tdata->validCipherLenInBits.len,
-				(tdata->iv.len << 3),
+				0,
 				tdata->validAuthLenInBits.len,
 				(tdata->aad.len << 3),
-				RTE_CRYPTO_AUTH_KASUMI_F9,
-				RTE_CRYPTO_CIPHER_KASUMI_F8
+				RTE_CRYPTO_AUTH_KASUMI_F9
 				);
 
 	if (retval < 0)
@@ -4054,7 +3982,7 @@ test_kasumi_auth_cipher(const struct kasumi_test_data *tdata)
 	ut_params->obuf = ut_params->op->sym->m_src;
 	if (ut_params->obuf)
 		ciphertext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
-				+ tdata->iv.len + tdata->aad.len;
+				+ tdata->aad.len;
 	else
 		ciphertext = plaintext;
 
@@ -4065,7 +3993,7 @@ test_kasumi_auth_cipher(const struct kasumi_test_data *tdata)
 			tdata->validCipherLenInBits.len,
 			"KASUMI Ciphertext data not as expected");
 	ut_params->digest = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
-	    + plaintext_pad_len + tdata->aad.len + tdata->iv.len;
+	    + plaintext_pad_len + tdata->aad.len;
 
 	/* Validate obuf */
 	TEST_ASSERT_BUFFERS_ARE_EQUAL(
@@ -4122,10 +4050,9 @@ test_kasumi_cipher_auth(const struct kasumi_test_data *tdata)
 				tdata->aad.len,
 				plaintext_pad_len, RTE_CRYPTO_AUTH_OP_GENERATE,
 				RTE_CRYPTO_AUTH_KASUMI_F9,
-				RTE_CRYPTO_CIPHER_KASUMI_F8,
 				tdata->iv.data, tdata->iv.len,
 				tdata->validCipherLenInBits.len,
-				(tdata->iv.len << 3),
+				0,
 				tdata->validAuthLenInBits.len,
 				(tdata->aad.len << 3)
 				);
@@ -4138,12 +4065,12 @@ test_kasumi_cipher_auth(const struct kasumi_test_data *tdata)
 	ut_params->obuf = ut_params->op->sym->m_src;
 	if (ut_params->obuf)
 		ciphertext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
-				+ tdata->aad.len + tdata->iv.len;
+				+ tdata->aad.len;
 	else
 		ciphertext = plaintext;
 
 	ut_params->digest = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
-			+ plaintext_pad_len + tdata->aad.len + tdata->iv.len;
+			+ plaintext_pad_len + tdata->aad.len;
 
 	/* Validate obuf */
 	TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(
@@ -4209,8 +4136,7 @@ test_zuc_encryption(const struct wireless_test_data *tdata)
 	/* Create ZUC operation */
 	retval = create_wireless_algo_cipher_operation(tdata->iv.data, tdata->iv.len,
 					tdata->plaintext.len,
-					(tdata->iv.len << 3),
-					RTE_CRYPTO_CIPHER_ZUC_EEA3);
+					0);
 	if (retval < 0)
 		return retval;
 
@@ -4220,8 +4146,7 @@ test_zuc_encryption(const struct wireless_test_data *tdata)
 
 	ut_params->obuf = ut_params->op->sym->m_dst;
 	if (ut_params->obuf)
-		ciphertext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
-				+ tdata->iv.len;
+		ciphertext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *);
 	else
 		ciphertext = plaintext;
 
@@ -4294,8 +4219,7 @@ test_zuc_encryption_sgl(const struct wireless_test_data *tdata)
 	/* Create ZUC operation */
 	retval = create_wireless_algo_cipher_operation(tdata->iv.data,
 			tdata->iv.len, tdata->plaintext.len,
-			(tdata->iv.len << 3),
-			RTE_CRYPTO_CIPHER_ZUC_EEA3);
+			0);
 	if (retval < 0)
 		return retval;
 
@@ -4306,10 +4230,10 @@ test_zuc_encryption_sgl(const struct wireless_test_data *tdata)
 	ut_params->obuf = ut_params->op->sym->m_dst;
 	if (ut_params->obuf)
 		ciphertext = rte_pktmbuf_read(ut_params->obuf,
-			tdata->iv.len, plaintext_len, ciphertext_buffer);
+			0, plaintext_len, ciphertext_buffer);
 	else
 		ciphertext = rte_pktmbuf_read(ut_params->ibuf,
-			tdata->iv.len, plaintext_len, ciphertext_buffer);
+			0, plaintext_len, ciphertext_buffer);
 
 	/* Validate obuf */
 	TEST_HEXDUMP(stdout, "ciphertext:", ciphertext, plaintext_len);
@@ -4906,7 +4830,7 @@ create_gcm_operation(enum rte_crypto_cipher_operation op,
 	struct crypto_unittest_params *ut_params = &unittest_params;
 
 	uint8_t *plaintext, *ciphertext;
-	unsigned int iv_pad_len, aad_pad_len, plaintext_pad_len;
+	unsigned int aad_pad_len, plaintext_pad_len;
 
 	/* Generate Crypto op data structure */
 	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
@@ -4930,14 +4854,11 @@ create_gcm_operation(enum rte_crypto_cipher_operation op,
 	TEST_HEXDUMP(stdout, "aad:", sym_op->auth.aad.data,
 		sym_op->auth.aad.length);
 
-	/* Prepend iv */
-	iv_pad_len = RTE_ALIGN_CEIL(tdata->iv.len, 16);
-	sym_op->cipher.iv.data = (uint8_t *)rte_pktmbuf_prepend(
-			ut_params->ibuf, iv_pad_len);
-	TEST_ASSERT_NOT_NULL(sym_op->cipher.iv.data, "no room to prepend iv");
-
-	memset(sym_op->cipher.iv.data, 0, iv_pad_len);
-	sym_op->cipher.iv.phys_addr = rte_pktmbuf_mtophys(ut_params->ibuf);
+	/* Append IV at the end of the crypto operation*/
+	sym_op->cipher.iv.data = rte_crypto_op_ctod_offset(ut_params->op,
+						uint8_t *, IV_OFFSET);
+	sym_op->cipher.iv.phys_addr = rte_crypto_op_ctophys_offset(ut_params->op,
+						IV_OFFSET);
 	sym_op->cipher.iv.length = tdata->iv.len;
 
 	rte_memcpy(sym_op->cipher.iv.data, tdata->iv.data, tdata->iv.len);
@@ -4958,12 +4879,11 @@ create_gcm_operation(enum rte_crypto_cipher_operation op,
 		if (ut_params->obuf) {
 			ciphertext = (uint8_t *)rte_pktmbuf_append(
 					ut_params->obuf,
-					plaintext_pad_len + aad_pad_len +
-					iv_pad_len);
+					plaintext_pad_len + aad_pad_len);
 			TEST_ASSERT_NOT_NULL(ciphertext,
 					"no room to append ciphertext");
 
-			memset(ciphertext + aad_pad_len + iv_pad_len, 0,
+			memset(ciphertext + aad_pad_len, 0,
 					tdata->ciphertext.len);
 		}
 	} else {
@@ -4981,12 +4901,11 @@ create_gcm_operation(enum rte_crypto_cipher_operation op,
 		if (ut_params->obuf) {
 			plaintext = (uint8_t *)rte_pktmbuf_append(
 					ut_params->obuf,
-					plaintext_pad_len + aad_pad_len +
-					iv_pad_len);
+					plaintext_pad_len + aad_pad_len);
 			TEST_ASSERT_NOT_NULL(plaintext,
 					"no room to append plaintext");
 
-			memset(plaintext + aad_pad_len + iv_pad_len, 0,
+			memset(plaintext + aad_pad_len, 0,
 					tdata->plaintext.len);
 		}
 	}
@@ -5004,7 +4923,7 @@ create_gcm_operation(enum rte_crypto_cipher_operation op,
 				ut_params->obuf ? ut_params->obuf :
 						ut_params->ibuf,
 						plaintext_pad_len +
-						aad_pad_len + iv_pad_len);
+						aad_pad_len);
 		sym_op->auth.digest.length = tdata->auth_tag.len;
 	} else {
 		sym_op->auth.digest.data = (uint8_t *)rte_pktmbuf_append(
@@ -5013,7 +4932,7 @@ create_gcm_operation(enum rte_crypto_cipher_operation op,
 				"no room to append digest");
 		sym_op->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(
 				ut_params->ibuf,
-				plaintext_pad_len + aad_pad_len + iv_pad_len);
+				plaintext_pad_len + aad_pad_len);
 		sym_op->auth.digest.length = tdata->auth_tag.len;
 
 		rte_memcpy(sym_op->auth.digest.data, tdata->auth_tag.data,
@@ -5024,10 +4943,10 @@ create_gcm_operation(enum rte_crypto_cipher_operation op,
 	}
 
 	sym_op->cipher.data.length = tdata->plaintext.len;
-	sym_op->cipher.data.offset = aad_pad_len + iv_pad_len;
+	sym_op->cipher.data.offset = aad_pad_len;
 
 	sym_op->auth.data.length = tdata->plaintext.len;
-	sym_op->auth.data.offset = aad_pad_len + iv_pad_len;
+	sym_op->auth.data.offset = aad_pad_len;
 
 	return 0;
 }
@@ -6465,10 +6384,8 @@ create_gmac_operation(enum rte_crypto_auth_operation op,
 	struct crypto_unittest_params *ut_params = &unittest_params;
 	struct rte_crypto_sym_op *sym_op;
 
-	unsigned iv_pad_len;
 	unsigned aad_pad_len;
 
-	iv_pad_len = RTE_ALIGN_CEIL(tdata->iv.len, 16);
 	aad_pad_len = RTE_ALIGN_CEIL(tdata->aad.len, 16);
 
 	/*
@@ -6513,17 +6430,15 @@ create_gmac_operation(enum rte_crypto_auth_operation op,
 				sym_op->auth.digest.length);
 	}
 
-	sym_op->cipher.iv.data = (uint8_t *)rte_pktmbuf_prepend(
-			ut_params->ibuf, iv_pad_len);
-	TEST_ASSERT_NOT_NULL(sym_op->cipher.iv.data, "no room to prepend iv");
-
-	memset(sym_op->cipher.iv.data, 0, iv_pad_len);
-	sym_op->cipher.iv.phys_addr = rte_pktmbuf_mtophys(ut_params->ibuf);
+	sym_op->cipher.iv.data = rte_crypto_op_ctod_offset(ut_params->op,
+						uint8_t *, IV_OFFSET);
+	sym_op->cipher.iv.phys_addr = rte_crypto_op_ctophys_offset(ut_params->op,
+						IV_OFFSET);
 	sym_op->cipher.iv.length = tdata->iv.len;
 
 	rte_memcpy(sym_op->cipher.iv.data, tdata->iv.data, tdata->iv.len);
 
-	TEST_HEXDUMP(stdout, "iv:", sym_op->cipher.iv.data, iv_pad_len);
+	TEST_HEXDUMP(stdout, "iv:", sym_op->cipher.iv.data, tdata->iv.len);
 
 	sym_op->cipher.data.length = 0;
 	sym_op->cipher.data.offset = 0;
@@ -7061,14 +6976,13 @@ create_auth_GMAC_operation(struct crypto_testsuite_params *ts_params,
 			sym_op->auth.digest.data,
 			sym_op->auth.digest.length);
 
-	sym_op->cipher.iv.data = (uint8_t *)rte_pktmbuf_prepend(
-		ut_params->ibuf, reference->iv.len);
-	TEST_ASSERT_NOT_NULL(sym_op->cipher.iv.data, "no room to prepend iv");
-
-	sym_op->cipher.iv.phys_addr = rte_pktmbuf_mtophys(ut_params->ibuf);
+	sym_op->cipher.iv.data = rte_crypto_op_ctod_offset(ut_params->op,
+						uint8_t *, IV_OFFSET);
+	sym_op->cipher.iv.phys_addr = rte_crypto_op_ctophys_offset(ut_params->op,
+						IV_OFFSET);
 	sym_op->cipher.iv.length = reference->iv.len;
 
-	memcpy(sym_op->cipher.iv.data, reference->iv.data, reference->iv.len);
+	rte_memcpy(sym_op->cipher.iv.data, reference->iv.data, reference->iv.len);
 
 	sym_op->cipher.data.length = 0;
 	sym_op->cipher.data.offset = 0;
@@ -7121,20 +7035,19 @@ create_cipher_auth_operation(struct crypto_testsuite_params *ts_params,
 			sym_op->auth.digest.data,
 			sym_op->auth.digest.length);
 
-	sym_op->cipher.iv.data = (uint8_t *)rte_pktmbuf_prepend(
-		ut_params->ibuf, reference->iv.len);
-	TEST_ASSERT_NOT_NULL(sym_op->cipher.iv.data, "no room to prepend iv");
-
-	sym_op->cipher.iv.phys_addr = rte_pktmbuf_mtophys(ut_params->ibuf);
+	sym_op->cipher.iv.data = rte_crypto_op_ctod_offset(ut_params->op,
+						uint8_t *, IV_OFFSET);
+	sym_op->cipher.iv.phys_addr = rte_crypto_op_ctophys_offset(ut_params->op,
+						IV_OFFSET);
 	sym_op->cipher.iv.length = reference->iv.len;
 
-	memcpy(sym_op->cipher.iv.data, reference->iv.data, reference->iv.len);
+	rte_memcpy(sym_op->cipher.iv.data, reference->iv.data, reference->iv.len);
 
 	sym_op->cipher.data.length = reference->ciphertext.len;
-	sym_op->cipher.data.offset = reference->iv.len;
+	sym_op->cipher.data.offset = 0;
 
 	sym_op->auth.data.length = reference->ciphertext.len;
-	sym_op->auth.data.offset = reference->iv.len;
+	sym_op->auth.data.offset = 0;
 
 	return 0;
 }
@@ -7348,8 +7261,6 @@ create_gcm_operation_SGL(enum rte_crypto_cipher_operation op,
 	const unsigned int iv_len = tdata->iv.len;
 	const unsigned int aad_len = tdata->aad.len;
 
-	unsigned int iv_pad_len = 0;
-
 	/* Generate Crypto op data structure */
 	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
 			RTE_CRYPTO_OP_TYPE_SYMMETRIC);
@@ -7374,19 +7285,13 @@ create_gcm_operation_SGL(enum rte_crypto_cipher_operation op,
 				sym_op->auth.digest.length);
 	}
 
-	iv_pad_len = RTE_ALIGN_CEIL(iv_len, 16);
-
-	sym_op->cipher.iv.data = (uint8_t *)rte_pktmbuf_prepend(
-			ut_params->ibuf, iv_pad_len);
-
-	TEST_ASSERT_NOT_NULL(sym_op->cipher.iv.data,
-			"no room to prepend iv");
-
-	memset(sym_op->cipher.iv.data, 0, iv_pad_len);
-	sym_op->cipher.iv.phys_addr = rte_pktmbuf_mtophys(ut_params->ibuf);
+	sym_op->cipher.iv.data = rte_crypto_op_ctod_offset(ut_params->op,
+						uint8_t *, IV_OFFSET);
+	sym_op->cipher.iv.phys_addr = rte_crypto_op_ctophys_offset(ut_params->op,
+						IV_OFFSET);
 	sym_op->cipher.iv.length = iv_len;
 
-	rte_memcpy(sym_op->cipher.iv.data, tdata->iv.data, iv_pad_len);
+	rte_memcpy(sym_op->cipher.iv.data, tdata->iv.data, iv_len);
 
 	sym_op->auth.aad.data = (uint8_t *)rte_pktmbuf_prepend(
 			ut_params->ibuf, aad_len);
@@ -7399,14 +7304,14 @@ create_gcm_operation_SGL(enum rte_crypto_cipher_operation op,
 	memset(sym_op->auth.aad.data, 0, aad_len);
 	rte_memcpy(sym_op->auth.aad.data, tdata->aad.data, aad_len);
 
-	TEST_HEXDUMP(stdout, "iv:", sym_op->cipher.iv.data, iv_pad_len);
+	TEST_HEXDUMP(stdout, "iv:", sym_op->cipher.iv.data, iv_len);
 	TEST_HEXDUMP(stdout, "aad:",
 			sym_op->auth.aad.data, aad_len);
 
 	sym_op->cipher.data.length = tdata->plaintext.len;
-	sym_op->cipher.data.offset = aad_len + iv_pad_len;
+	sym_op->cipher.data.offset = aad_len;
 
-	sym_op->auth.data.offset = aad_len + iv_pad_len;
+	sym_op->auth.data.offset = aad_len;
 	sym_op->auth.data.length = tdata->plaintext.len;
 
 	return 0;
@@ -7440,8 +7345,7 @@ test_AES_GCM_authenticated_encryption_SGL(const struct gcm_test_data *tdata,
 	int ecx = 0;
 	void *digest_mem = NULL;
 
-	uint32_t prepend_len = ALIGN_POW2_ROUNDUP(tdata->iv.len, 16)
-			+ tdata->aad.len;
+	uint32_t prepend_len = tdata->aad.len;
 
 	if (tdata->plaintext.len % fragsz != 0) {
 		if (tdata->plaintext.len / fragsz + 1 > SGL_MAX_NO)

@@ -119,8 +119,6 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 	}
 
 	/* preparing data */
-	if (t->op_mask & BLOCKCIPHER_TEST_OP_CIPHER)
-		buf_len += tdata->iv.len;
 	if (t->op_mask & BLOCKCIPHER_TEST_OP_AUTH)
 		buf_len += digest_len;
 
@@ -146,10 +144,6 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 		pktmbuf_write(ibuf, 0, tdata->ciphertext.len,
 				tdata->ciphertext.data);
 
-	if (t->op_mask & BLOCKCIPHER_TEST_OP_CIPHER) {
-		rte_memcpy(rte_pktmbuf_prepend(ibuf, tdata->iv.len),
-				tdata->iv.data, tdata->iv.len);
-	}
 	buf_p = rte_pktmbuf_append(ibuf, digest_len);
 	if (t->op_mask & BLOCKCIPHER_TEST_OP_AUTH_VERIFY)
 		rte_memcpy(buf_p, tdata->digest.data, digest_len);
@@ -295,23 +289,19 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 		cipher_xform->cipher.key.data = cipher_key;
 		cipher_xform->cipher.key.length = tdata->cipher_key.len;
 
-		sym_op->cipher.data.offset = tdata->iv.len;
+		sym_op->cipher.data.offset = 0;
 		sym_op->cipher.data.length = tdata->ciphertext.len;
-		sym_op->cipher.iv.data = rte_pktmbuf_mtod(sym_op->m_src,
-			uint8_t *);
+		sym_op->cipher.iv.data = rte_crypto_op_ctod_offset(op,
+						uint8_t *, IV_OFFSET);
+		sym_op->cipher.iv.phys_addr = rte_crypto_op_ctophys_offset(op,
+						IV_OFFSET);
 		sym_op->cipher.iv.length = tdata->iv.len;
-		sym_op->cipher.iv.phys_addr = rte_pktmbuf_mtophys(
-			sym_op->m_src);
+		rte_memcpy(sym_op->cipher.iv.data, tdata->iv.data,
+				tdata->iv.len);
 	}
 
 	if (t->op_mask & BLOCKCIPHER_TEST_OP_AUTH) {
-		uint32_t auth_data_offset = 0;
 		uint32_t digest_offset = tdata->ciphertext.len;
-
-		if (t->op_mask & BLOCKCIPHER_TEST_OP_CIPHER) {
-			digest_offset += tdata->iv.len;
-			auth_data_offset += tdata->iv.len;
-		}
 
 		auth_xform->type = RTE_CRYPTO_SYM_XFORM_AUTH;
 		auth_xform->auth.algo = tdata->auth_algo;
@@ -335,7 +325,7 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 					digest_offset);
 		}
 
-		sym_op->auth.data.offset = auth_data_offset;
+		sym_op->auth.data.offset = 0;
 		sym_op->auth.data.length = tdata->ciphertext.len;
 		sym_op->auth.digest.length = digest_len;
 	}
@@ -422,7 +412,7 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 			compare_len = tdata->plaintext.len;
 		}
 
-		if (memcmp(rte_pktmbuf_read(iobuf, tdata->iv.len, compare_len,
+		if (memcmp(rte_pktmbuf_read(iobuf, 0, compare_len,
 				buffer), compare_ref, compare_len)) {
 			snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN, "line %u "
 				"FAILED: %s", __LINE__,
@@ -433,13 +423,7 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 	}
 
 	if (t->op_mask & BLOCKCIPHER_TEST_OP_AUTH_GEN) {
-		uint8_t *auth_res;
-
-		if (t->op_mask & BLOCKCIPHER_TEST_OP_CIPHER)
-			auth_res = pktmbuf_mtod_offset(iobuf,
-					tdata->iv.len + tdata->ciphertext.len);
-		else
-			auth_res = pktmbuf_mtod_offset(iobuf,
+		uint8_t *auth_res = pktmbuf_mtod_offset(iobuf,
 					tdata->ciphertext.len);
 
 		if (memcmp(auth_res, tdata->digest.data, digest_len)) {
