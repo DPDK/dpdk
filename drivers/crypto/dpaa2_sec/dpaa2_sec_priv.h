@@ -137,6 +137,7 @@ enum dpaa2_sec_op_type {
 	DPAA2_SEC_NONE,  /*!< No Cipher operations*/
 	DPAA2_SEC_CIPHER,/*!< CIPHER operations */
 	DPAA2_SEC_AUTH,  /*!< Authentication Operations */
+	DPAA2_SEC_AEAD,  /*!< AEAD (AES-GCM/CCM) type operations */
 	DPAA2_SEC_CIPHER_HASH,  /*!< Authenticated Encryption with
 				 * associated data
 				 */
@@ -149,30 +150,9 @@ enum dpaa2_sec_op_type {
 	DPAA2_SEC_MAX
 };
 
-struct dpaa2_sec_cipher_ctxt {
-	struct {
-		uint8_t *data;
-		uint16_t length;
-	} iv;	/**< Initialisation vector parameters */
-	uint8_t *init_counter;  /*!< Set initial counter for CTR mode */
-};
-
-struct dpaa2_sec_auth_ctxt {
-	uint8_t trunc_len;              /*!< Length for output ICV, should
-					 * be 0 if no truncation required
-					 */
-};
-
 struct dpaa2_sec_aead_ctxt {
-	struct {
-		uint8_t *data;
-		uint16_t length;
-	} iv;	/**< Initialisation vector parameters */
 	uint16_t auth_only_len; /*!< Length of data for Auth only */
 	uint8_t auth_cipher_text;       /**< Authenticate/cipher ordering */
-	uint8_t trunc_len;              /*!< Length for output ICV, should
-					 * be 0 if no truncation required
-					 */
 };
 
 typedef struct dpaa2_sec_session_entry {
@@ -181,14 +161,22 @@ typedef struct dpaa2_sec_session_entry {
 	uint8_t dir;         /*!< Operation Direction */
 	enum rte_crypto_cipher_algorithm cipher_alg; /*!< Cipher Algorithm*/
 	enum rte_crypto_auth_algorithm auth_alg; /*!< Authentication Algorithm*/
-	struct {
-		uint8_t *data;	/**< pointer to key data */
-		size_t length;	/**< key length in bytes */
-	} cipher_key;
-	struct {
-		uint8_t *data;	/**< pointer to key data */
-		size_t length;	/**< key length in bytes */
-	} auth_key;
+	union {
+		struct {
+			uint8_t *data;	/**< pointer to key data */
+			size_t length;	/**< key length in bytes */
+		} aead_key;
+		struct {
+			struct {
+				uint8_t *data;	/**< pointer to key data */
+				size_t length;	/**< key length in bytes */
+			} cipher_key;
+			struct {
+				uint8_t *data;	/**< pointer to key data */
+				size_t length;	/**< key length in bytes */
+			} auth_key;
+		};
+	};
 	struct {
 		uint16_t length; /**< IV length in bytes */
 		uint16_t offset; /**< IV offset in bytes */
@@ -196,8 +184,6 @@ typedef struct dpaa2_sec_session_entry {
 	uint16_t digest_length;
 	uint8_t status;
 	union {
-		struct dpaa2_sec_cipher_ctxt cipher_ctxt;
-		struct dpaa2_sec_auth_ctxt auth_ctxt;
 		struct dpaa2_sec_aead_ctxt aead_ctxt;
 	} ext_params;
 } dpaa2_sec_session;
@@ -335,6 +321,36 @@ static const struct rte_cryptodev_capabilities dpaa2_sec_capabilities[] = {
 			}, }
 		}, }
 	},
+	{	/* AES GCM */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_AEAD,
+			{.aead = {
+				.algo = RTE_CRYPTO_AEAD_AES_GCM,
+				.block_size = 16,
+				.key_size = {
+					.min = 16,
+					.max = 32,
+					.increment = 8
+				},
+				.digest_size = {
+					.min = 8,
+					.max = 16,
+					.increment = 4
+				},
+				.aad_size = {
+					.min = 0,
+					.max = 240,
+					.increment = 1
+				},
+				.iv_size = {
+					.min = 12,
+					.max = 12,
+					.increment = 0
+				},
+			}, }
+		}, }
+	},
 	{	/* AES CBC */
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
 		{.sym = {
@@ -352,6 +368,26 @@ static const struct rte_cryptodev_capabilities dpaa2_sec_capabilities[] = {
 					.max = 16,
 					.increment = 0
 				}
+			}, }
+		}, }
+	},
+	{	/* AES CTR */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_CIPHER,
+			{.cipher = {
+				.algo = RTE_CRYPTO_CIPHER_AES_CTR,
+				.block_size = 16,
+				.key_size = {
+					.min = 16,
+					.max = 32,
+					.increment = 8
+				},
+				.iv_size = {
+					.min = 16,
+					.max = 16,
+					.increment = 0
+				},
 			}, }
 		}, }
 	},

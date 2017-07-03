@@ -114,6 +114,10 @@ New Features
     necessary to use a combination of cipher and authentication
     structures anymore.
 
+* **Updated dpaa2_sec crypto PMD.**
+
+  Added support for AES-GCM and AES-CTR
+
 
 Resolved Issues
 ---------------

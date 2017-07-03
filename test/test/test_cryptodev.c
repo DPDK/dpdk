@@ -1739,6 +1739,22 @@ test_AES_cipheronly_dpaa2_sec_all(void)
 }
 
 static int
+test_authonly_dpaa2_sec_all(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	int status;
+
+	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
+		ts_params->op_mpool, ts_params->valid_devs[0],
+		RTE_CRYPTODEV_DPAA2_SEC_PMD,
+		BLKCIPHER_AUTHONLY_TYPE);
+
+	TEST_ASSERT_EQUAL(status, 0, "Test failed");
+
+	return TEST_SUCCESS;
+}
+
+static int
 test_authonly_openssl_all(void)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
@@ -8281,28 +8297,84 @@ static struct unit_test_suite cryptodev_dpaa2_sec_testsuite  = {
 	.teardown = testsuite_teardown,
 	.unit_test_cases = {
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			     test_device_configure_invalid_dev_id),
+			test_device_configure_invalid_dev_id),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			     test_multi_session),
+			test_multi_session),
 
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			     test_AES_chain_dpaa2_sec_all),
+			test_AES_chain_dpaa2_sec_all),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			     test_3DES_chain_dpaa2_sec_all),
+			test_3DES_chain_dpaa2_sec_all),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			     test_AES_cipheronly_dpaa2_sec_all),
+			test_AES_cipheronly_dpaa2_sec_all),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			     test_3DES_cipheronly_dpaa2_sec_all),
+			test_3DES_cipheronly_dpaa2_sec_all),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_authonly_dpaa2_sec_all),
 
-		/** HMAC_MD5 Authentication */
+		/** AES GCM Authenticated Encryption */
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			     test_MD5_HMAC_generate_case_1),
+			test_mb_AES_GCM_authenticated_encryption_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			     test_MD5_HMAC_verify_case_1),
+			test_mb_AES_GCM_authenticated_encryption_test_case_2),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			     test_MD5_HMAC_generate_case_2),
+			test_mb_AES_GCM_authenticated_encryption_test_case_3),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			     test_MD5_HMAC_verify_case_2),
+			test_mb_AES_GCM_authenticated_encryption_test_case_4),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_mb_AES_GCM_authenticated_encryption_test_case_5),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_mb_AES_GCM_authenticated_encryption_test_case_6),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_mb_AES_GCM_authenticated_encryption_test_case_7),
+
+		/** AES GCM Authenticated Decryption */
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_mb_AES_GCM_authenticated_decryption_test_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_mb_AES_GCM_authenticated_decryption_test_case_2),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_mb_AES_GCM_authenticated_decryption_test_case_3),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_mb_AES_GCM_authenticated_decryption_test_case_4),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_mb_AES_GCM_authenticated_decryption_test_case_5),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_mb_AES_GCM_authenticated_decryption_test_case_6),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_mb_AES_GCM_authenticated_decryption_test_case_7),
+
+		/** AES GCM Authenticated Encryption 256 bits key */
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_mb_AES_GCM_auth_encryption_test_case_256_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_mb_AES_GCM_auth_encryption_test_case_256_2),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_mb_AES_GCM_auth_encryption_test_case_256_3),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_mb_AES_GCM_auth_encryption_test_case_256_4),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_mb_AES_GCM_auth_encryption_test_case_256_5),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_mb_AES_GCM_auth_encryption_test_case_256_6),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_mb_AES_GCM_auth_encryption_test_case_256_7),
+
+		/** AES GCM Authenticated Decryption 256 bits key */
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_mb_AES_GCM_auth_decryption_test_case_256_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_mb_AES_GCM_auth_decryption_test_case_256_2),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_mb_AES_GCM_auth_decryption_test_case_256_3),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_mb_AES_GCM_auth_decryption_test_case_256_4),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_mb_AES_GCM_auth_decryption_test_case_256_5),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_mb_AES_GCM_auth_decryption_test_case_256_6),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_mb_AES_GCM_auth_decryption_test_case_256_7),
 
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}

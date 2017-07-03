@@ -126,7 +126,7 @@ fits in the DPAA2 Bus model
 Features
 --------
 
-The DPAA2 PMD has support for:
+The DPAA2_SEC PMD has support for:
 
 Cipher algorithms:
 
@@ -134,6 +134,9 @@ Cipher algorithms:
 * ``RTE_CRYPTO_CIPHER_AES128_CBC``
 * ``RTE_CRYPTO_CIPHER_AES192_CBC``
 * ``RTE_CRYPTO_CIPHER_AES256_CBC``
+* ``RTE_CRYPTO_CIPHER_AES128_CTR``
+* ``RTE_CRYPTO_CIPHER_AES192_CTR``
+* ``RTE_CRYPTO_CIPHER_AES256_CTR``
 
 Hash algorithms:
 
@@ -143,6 +146,10 @@ Hash algorithms:
 * ``RTE_CRYPTO_AUTH_SHA384_HMAC``
 * ``RTE_CRYPTO_AUTH_SHA512_HMAC``
 * ``RTE_CRYPTO_AUTH_MD5_HMAC``
+
+AEAD algorithms:
+
+* ``RTE_CRYPTO_AEAD_AES_GCM``
 
 Supported DPAA2 SoCs
 --------------------

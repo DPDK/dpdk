@@ -101,6 +101,7 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 			tdata->auth_key.len);
 
 	switch (cryptodev_type) {
+	case RTE_CRYPTODEV_DPAA2_SEC_PMD:
 	case RTE_CRYPTODEV_QAT_SYM_PMD:
 	case RTE_CRYPTODEV_OPENSSL_PMD:
 	case RTE_CRYPTODEV_ARMV8_PMD: /* Fall through */
