@@ -159,6 +159,10 @@ cnstr_shdsc_snow_f9(uint32_t *descbuf, bool ps, bool swap,
  * @ps: if 36/40bit addressing is desired, this parameter must be true
  * @swap: must be true when core endianness doesn't match SEC endianness
  * @cipherdata: pointer to block cipher transform definitions
+ *              Valid algorithm values one of OP_ALG_ALGSEL_* {DES, 3DES, AES}
+ *              Valid modes for:
+ *                  AES: OP_ALG_AAI_* {CBC, CTR}
+ *                  DES, 3DES: OP_ALG_AAI_CBC
  * @iv: IV data; if NULL, "ivlen" bytes from the input frame will be read as IV
  * @ivlen: IV length
  * @dir: DIR_ENC/DIR_DEC
@@ -172,8 +176,10 @@ cnstr_shdsc_blkcipher(uint32_t *descbuf, bool ps, bool swap,
 {
 	struct program prg;
 	struct program *p = &prg;
-	const bool is_aes_dec = (dir == DIR_DEC) &&
-				(cipherdata->algtype == OP_ALG_ALGSEL_AES);
+	uint32_t iv_off = 0;
+	const bool need_dk = (dir == DIR_DEC) &&
+			     (cipherdata->algtype == OP_ALG_ALGSEL_AES) &&
+			     (cipherdata->algmode == OP_ALG_AAI_CBC);
 	LABEL(keyjmp);
 	LABEL(skipdk);
 	REFERENCE(pkeyjmp);
@@ -191,7 +197,7 @@ cnstr_shdsc_blkcipher(uint32_t *descbuf, bool ps, bool swap,
 	KEY(p, KEY1, cipherdata->key_enc_flags, cipherdata->key,
 	    cipherdata->keylen, INLINE_KEY(cipherdata));
 
-	if (is_aes_dec) {
+	if (need_dk) {
 		ALG_OPERATION(p, cipherdata->algtype, cipherdata->algmode,
 			      OP_ALG_AS_INITFINAL, ICV_CHECK_DISABLE, dir);
 
@@ -199,7 +205,7 @@ cnstr_shdsc_blkcipher(uint32_t *descbuf, bool ps, bool swap,
 	}
 	SET_LABEL(p, keyjmp);
 
-	if (is_aes_dec) {
+	if (need_dk) {
 		ALG_OPERATION(p, OP_ALG_ALGSEL_AES, cipherdata->algmode |
 			      OP_ALG_AAI_DK, OP_ALG_AS_INITFINAL,
 			      ICV_CHECK_DISABLE, dir);
@@ -209,12 +215,15 @@ cnstr_shdsc_blkcipher(uint32_t *descbuf, bool ps, bool swap,
 			      OP_ALG_AS_INITFINAL, ICV_CHECK_DISABLE, dir);
 	}
 
+	if (cipherdata->algmode == OP_ALG_AAI_CTR)
+		iv_off = 16;
+
 	if (iv)
 		/* IV load, convert size */
-		LOAD(p, (uintptr_t)iv, CONTEXT1, 0, ivlen, IMMED | COPY);
+		LOAD(p, (uintptr_t)iv, CONTEXT1, iv_off, ivlen, IMMED | COPY);
 	else
 		/* IV is present first before the actual message */
-		SEQLOAD(p, CONTEXT1, 0, ivlen, 0);
+		SEQLOAD(p, CONTEXT1, iv_off, ivlen, 0);
 
 	MATHB(p, SEQINSZ, SUB, MATH2, VSEQINSZ, 4, 0);
 	MATHB(p, SEQINSZ, SUB, MATH2, VSEQOUTSZ, 4, 0);
@@ -224,7 +233,7 @@ cnstr_shdsc_blkcipher(uint32_t *descbuf, bool ps, bool swap,
 	SEQFIFOSTORE(p, MSG, 0, 0, VLF);
 
 	PATCH_JUMP(p, pkeyjmp, keyjmp);
-	if (is_aes_dec)
+	if (need_dk)
 		PATCH_JUMP(p, pskipdk, skipdk);
 
 	return PROGRAM_FINALIZE(p);
