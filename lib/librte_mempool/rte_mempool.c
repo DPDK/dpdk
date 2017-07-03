@@ -476,7 +476,7 @@ rte_mempool_populate_virt(struct rte_mempool *mp, char *addr,
 		/* required for xen_dom0 to get the machine address */
 		paddr = rte_mem_phy2mch(-1, paddr);
 
-		if (paddr == RTE_BAD_PHYS_ADDR) {
+		if (paddr == RTE_BAD_PHYS_ADDR && rte_eal_has_hugepages()) {
 			ret = -EINVAL;
 			goto fail;
 		}

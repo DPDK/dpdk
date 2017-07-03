@@ -112,6 +112,13 @@ test_phys_addrs_available(void)
 	if (rte_xen_dom0_supported())
 		return;
 
+	if (!rte_eal_has_hugepages()) {
+		RTE_LOG(ERR, EAL,
+			"Started without hugepages support, physical addresses not available\n");
+		phys_addrs_available = false;
+		return;
+	}
+
 	physaddr = rte_mem_virt2phy(&tmp);
 	if (physaddr == RTE_BAD_PHYS_ADDR) {
 		RTE_LOG(ERR, EAL,
@@ -1054,7 +1061,7 @@ rte_eal_hugepage_init(void)
 					strerror(errno));
 			return -1;
 		}
-		mcfg->memseg[0].phys_addr = (phys_addr_t)(uintptr_t)addr;
+		mcfg->memseg[0].phys_addr = RTE_BAD_PHYS_ADDR;
 		mcfg->memseg[0].addr = addr;
 		mcfg->memseg[0].hugepage_sz = RTE_PGSIZE_4K;
 		mcfg->memseg[0].len = internal_config.memory;
