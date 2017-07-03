@@ -133,6 +133,12 @@ rte_eth_dev_pci_release(struct rte_eth_dev *eth_dev)
 
 	eth_dev->data->dev_private = NULL;
 
+	/*
+	 * Secondary process will check the name to attach.
+	 * Clear this field to avoid attaching a released ports.
+	 */
+	eth_dev->data->name[0] = '\0';
+
 	eth_dev->device = NULL;
 	eth_dev->intr_handle = NULL;
 }
