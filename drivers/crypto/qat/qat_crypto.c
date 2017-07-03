@@ -785,7 +785,8 @@ qat_bpicipher_preprocess(struct qat_session *ctx,
 {
 	uint8_t block_len = qat_cipher_get_block_size(ctx->qat_cipher_alg);
 	struct rte_crypto_sym_op *sym_op = op->sym;
-	uint8_t last_block_len = sym_op->cipher.data.length % block_len;
+	uint8_t last_block_len = block_len > 0 ?
+			sym_op->cipher.data.length % block_len : 0;
 
 	if (last_block_len &&
 			ctx->qat_dir == ICP_QAT_HW_CIPHER_DECRYPT) {
@@ -839,7 +840,8 @@ qat_bpicipher_postprocess(struct qat_session *ctx,
 {
 	uint8_t block_len = qat_cipher_get_block_size(ctx->qat_cipher_alg);
 	struct rte_crypto_sym_op *sym_op = op->sym;
-	uint8_t last_block_len = sym_op->cipher.data.length % block_len;
+	uint8_t last_block_len = block_len > 0 ?
+			sym_op->cipher.data.length % block_len : 0;
 
 	if (last_block_len > 0 &&
 			ctx->qat_dir == ICP_QAT_HW_CIPHER_ENCRYPT) {
