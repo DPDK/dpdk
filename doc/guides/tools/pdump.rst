@@ -38,6 +38,12 @@ a DPDK secondary process and is capable of enabling packet capture on dpdk ports
    .. Note::
       * The ``dpdk-pdump`` tool can only be used in conjunction with a primary
         application which has the packet capture framework initialized already.
+        In dpdk, only the ``testpmd`` is modified to initialize packet capture
+        framework, other applications remain untouched. So, if the ``dpdk-pdump``
+        tool has to be used with any application other than the testpmd, user
+        needs to explicitly modify that application to call packet capture
+        framework initialization code. Refer ``app/test-pmd/testpmd.c``
+        code to see how this is done.
 
       * The ``dpdk-pdump`` tool depends on libpcap based PMD which is disabled
         by default in the build configuration files,
