@@ -195,6 +195,13 @@ enum qbman_fd_format {
 	fle->addr_lo = lower_32_bits((uint64_t)addr);     \
 	fle->addr_hi = upper_32_bits((uint64_t)addr);	  \
 } while (0)
+#define DPAA2_GET_FLE_CTXT(fle)					\
+	(uint64_t)((((uint64_t)((fle)->reserved[1])) << 32) + \
+			(fle)->reserved[0])
+#define DPAA2_FLE_SAVE_CTXT(fle, addr) do { \
+	fle->reserved[0] = lower_32_bits((uint64_t)addr);     \
+	fle->reserved[1] = upper_32_bits((uint64_t)addr);	  \
+} while (0)
 #define DPAA2_SET_FLE_OFFSET(fle, offset) \
 	((fle)->fin_bpid_offset |= (uint32_t)(offset) << 16)
 #define DPAA2_SET_FLE_BPID(fle, bpid) ((fle)->fin_bpid_offset |= (uint64_t)bpid)
