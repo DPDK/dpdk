@@ -49,7 +49,7 @@ static const struct rte_cryptodev_capabilities aesni_gcm_pmd_capabilities[] = {
 				.key_size = {
 					.min = 16,
 					.max = 32,
-					.increment = 16
+					.increment = 8
 				},
 				.digest_size = {
 					.min = 8,
@@ -75,7 +75,7 @@ static const struct rte_cryptodev_capabilities aesni_gcm_pmd_capabilities[] = {
 				.key_size = {
 					.min = 16,
 					.max = 32,
-					.increment = 16
+					.increment = 8
 				},
 				.digest_size = {
 					.min = 8,
@@ -233,6 +233,7 @@ aesni_gcm_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 		 int socket_id)
 {
 	struct aesni_gcm_qp *qp = NULL;
+	struct aesni_gcm_private *internals = dev->data->dev_private;
 
 	/* Free memory prior to re-allocation if needed. */
 	if (dev->data->queue_pairs[qp_id] != NULL)
@@ -249,6 +250,8 @@ aesni_gcm_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 
 	if (aesni_gcm_pmd_qp_set_unique_name(dev, qp))
 		goto qp_setup_cleanup;
+
+	qp->ops = (const struct aesni_gcm_ops *)gcm_ops[internals->vector_mode];
 
 	qp->processed_pkts = aesni_gcm_pmd_qp_create_processed_pkts_ring(qp,
 			qp_conf->nb_descriptors, socket_id);
@@ -300,15 +303,18 @@ aesni_gcm_pmd_session_get_size(struct rte_cryptodev *dev __rte_unused)
 
 /** Configure a aesni gcm session from a crypto xform chain */
 static void *
-aesni_gcm_pmd_session_configure(struct rte_cryptodev *dev __rte_unused,
+aesni_gcm_pmd_session_configure(struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform,	void *sess)
 {
+	struct aesni_gcm_private *internals = dev->data->dev_private;
+
 	if (unlikely(sess == NULL)) {
 		GCM_LOG_ERR("invalid session struct");
 		return NULL;
 	}
 
-	if (aesni_gcm_set_session_parameters(sess, xform) != 0) {
+	if (aesni_gcm_set_session_parameters(gcm_ops[internals->vector_mode],
+			sess, xform) != 0) {
 		GCM_LOG_ERR("failed configure session parameters");
 		return NULL;
 	}

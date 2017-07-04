@@ -1,6 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2016 Intel Corporation. All rights reserved.
+#   Copyright(c) 2016-2017 Intel Corporation. All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
 #   modification, are permitted provided that the following conditions
@@ -31,6 +31,9 @@
 include $(RTE_SDK)/mk/rte.vars.mk
 
 ifneq ($(MAKECMDGOALS),clean)
+ifeq ($(AESNI_MULTI_BUFFER_LIB_PATH),)
+$(error "Please define AESNI_MULTI_BUFFER_LIB_PATH environment variable")
+endif
 endif
 
 # library name
@@ -47,7 +50,9 @@ LIBABIVER := 1
 EXPORT_MAP := rte_pmd_aesni_gcm_version.map
 
 # external library dependencies
-LDLIBS += -lisal_crypto
+CFLAGS += -I$(AESNI_MULTI_BUFFER_LIB_PATH)
+CFLAGS += -I$(AESNI_MULTI_BUFFER_LIB_PATH)/include
+LDLIBS += -L$(AESNI_MULTI_BUFFER_LIB_PATH) -lIPSec_MB
 
 # library source files
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_AESNI_GCM) += aesni_gcm_pmd.c

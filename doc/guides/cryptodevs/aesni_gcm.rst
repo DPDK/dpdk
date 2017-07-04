@@ -1,5 +1,5 @@
 ..  BSD LICENSE
-    Copyright(c) 2016 Intel Corporation. All rights reserved.
+    Copyright(c) 2016-2017 Intel Corporation. All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following conditions
@@ -32,8 +32,8 @@ AES-NI GCM Crypto Poll Mode Driver
 
 
 The AES-NI GCM PMD (**librte_pmd_aesni_gcm**) provides poll mode crypto driver
-support for utilizing Intel ISA-L crypto library, which provides operation acceleration
-through the AES-NI instruction sets for AES-GCM authenticated cipher algorithm.
+support for utilizing Intel multi buffer library (see AES-NI Multi-buffer PMD documentation
+to learn more about it, including installation).
 
 Features
 --------
@@ -49,19 +49,51 @@ AEAD algorithms:
 * RTE_CRYPTO_AEAD_AES_GCM
 
 
+Limitations
+-----------
+
+* Chained mbufs are supported but only out-of-place (destination mbuf must be contiguous).
+* Cipher only is not supported.
+
+
 Installation
 ------------
 
-To build DPDK with the AESNI_GCM_PMD the user is required to install
-the ``libisal_crypto`` library in the build environment.
-For download and more details please visit `<https://github.com/01org/isa-l_crypto>`_.
+To build DPDK with the AESNI_GCM_PMD the user is required to download the multi-buffer
+library from `here <https://github.com/01org/intel-ipsec-mb>`_
+and compile it on their user system before building DPDK.
+The latest version of the library supported by this PMD is v0.46, which
+can be downloaded in `<https://github.com/01org/intel-ipsec-mb/archive/v0.46.zip>`_.
+
+.. code-block:: console
+
+	make
+
+As a reference, the following table shows a mapping between the past DPDK versions
+and the external crypto libraries supported by them:
+
+.. _table_aesni_gcm_versions:
+
+.. table:: DPDK and external crypto library version compatibility
+
+   =============  ================================
+   DPDK version   Crypto library version
+   =============  ================================
+   16.04 - 16.11  Multi-buffer library 0.43 - 0.44
+   17.02 - 17.05  ISA-L Crypto v2.18
+   17.08+         Multi-buffer library 0.46+
+   =============  ================================
+
 
 Initialization
 --------------
 
 In order to enable this virtual crypto PMD, user must:
 
-* Install the ISA-L crypto library (explained in Installation section).
+* Export the environmental variable AESNI_MULTI_BUFFER_LIB_PATH with the path where
+  the library was extracted.
+
+* Build the multi buffer library (explained in Installation section).
 
 * Set CONFIG_RTE_LIBRTE_PMD_AESNI_GCM=y in config/common_base.
 
@@ -85,10 +117,3 @@ Example:
 .. code-block:: console
 
     ./l2fwd-crypto -l 6 -n 4 --vdev="crypto_aesni_gcm,socket_id=1,max_nb_sessions=128"
-
-Limitations
------------
-
-* Chained mbufs are supported but only out-of-place (destination mbuf must be contiguous).
-* Hash only is not supported.
-* Cipher only is not supported.
