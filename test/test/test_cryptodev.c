@@ -4831,7 +4831,7 @@ create_gcm_operation(enum rte_crypto_aead_operation op,
 }
 
 static int
-test_mb_AES_GCM_authenticated_encryption(const struct gcm_test_data *tdata)
+test_AES_GCM_authenticated_encryption(const struct gcm_test_data *tdata)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
@@ -4913,103 +4913,103 @@ test_mb_AES_GCM_authenticated_encryption(const struct gcm_test_data *tdata)
 }
 
 static int
-test_mb_AES_GCM_authenticated_encryption_test_case_1(void)
+test_AES_GCM_authenticated_encryption_test_case_1(void)
 {
-	return test_mb_AES_GCM_authenticated_encryption(&gcm_test_case_1);
+	return test_AES_GCM_authenticated_encryption(&gcm_test_case_1);
 }
 
 static int
-test_mb_AES_GCM_authenticated_encryption_test_case_2(void)
+test_AES_GCM_authenticated_encryption_test_case_2(void)
 {
-	return test_mb_AES_GCM_authenticated_encryption(&gcm_test_case_2);
+	return test_AES_GCM_authenticated_encryption(&gcm_test_case_2);
 }
 
 static int
-test_mb_AES_GCM_authenticated_encryption_test_case_3(void)
+test_AES_GCM_authenticated_encryption_test_case_3(void)
 {
-	return test_mb_AES_GCM_authenticated_encryption(&gcm_test_case_3);
+	return test_AES_GCM_authenticated_encryption(&gcm_test_case_3);
 }
 
 static int
-test_mb_AES_GCM_authenticated_encryption_test_case_4(void)
+test_AES_GCM_authenticated_encryption_test_case_4(void)
 {
-	return test_mb_AES_GCM_authenticated_encryption(&gcm_test_case_4);
+	return test_AES_GCM_authenticated_encryption(&gcm_test_case_4);
 }
 
 static int
-test_mb_AES_GCM_authenticated_encryption_test_case_5(void)
+test_AES_GCM_authenticated_encryption_test_case_5(void)
 {
-	return test_mb_AES_GCM_authenticated_encryption(&gcm_test_case_5);
+	return test_AES_GCM_authenticated_encryption(&gcm_test_case_5);
 }
 
 static int
-test_mb_AES_GCM_authenticated_encryption_test_case_6(void)
+test_AES_GCM_authenticated_encryption_test_case_6(void)
 {
-	return test_mb_AES_GCM_authenticated_encryption(&gcm_test_case_6);
+	return test_AES_GCM_authenticated_encryption(&gcm_test_case_6);
 }
 
 static int
-test_mb_AES_GCM_authenticated_encryption_test_case_7(void)
+test_AES_GCM_authenticated_encryption_test_case_7(void)
 {
-	return test_mb_AES_GCM_authenticated_encryption(&gcm_test_case_7);
+	return test_AES_GCM_authenticated_encryption(&gcm_test_case_7);
 }
 
 static int
-test_mb_AES_GCM_auth_encryption_test_case_256_1(void)
+test_AES_GCM_auth_encryption_test_case_256_1(void)
 {
-	return test_mb_AES_GCM_authenticated_encryption(&gcm_test_case_256_1);
+	return test_AES_GCM_authenticated_encryption(&gcm_test_case_256_1);
 }
 
 static int
-test_mb_AES_GCM_auth_encryption_test_case_256_2(void)
+test_AES_GCM_auth_encryption_test_case_256_2(void)
 {
-	return test_mb_AES_GCM_authenticated_encryption(&gcm_test_case_256_2);
+	return test_AES_GCM_authenticated_encryption(&gcm_test_case_256_2);
 }
 
 static int
-test_mb_AES_GCM_auth_encryption_test_case_256_3(void)
+test_AES_GCM_auth_encryption_test_case_256_3(void)
 {
-	return test_mb_AES_GCM_authenticated_encryption(&gcm_test_case_256_3);
+	return test_AES_GCM_authenticated_encryption(&gcm_test_case_256_3);
 }
 
 static int
-test_mb_AES_GCM_auth_encryption_test_case_256_4(void)
+test_AES_GCM_auth_encryption_test_case_256_4(void)
 {
-	return test_mb_AES_GCM_authenticated_encryption(&gcm_test_case_256_4);
+	return test_AES_GCM_authenticated_encryption(&gcm_test_case_256_4);
 }
 
 static int
-test_mb_AES_GCM_auth_encryption_test_case_256_5(void)
+test_AES_GCM_auth_encryption_test_case_256_5(void)
 {
-	return test_mb_AES_GCM_authenticated_encryption(&gcm_test_case_256_5);
+	return test_AES_GCM_authenticated_encryption(&gcm_test_case_256_5);
 }
 
 static int
-test_mb_AES_GCM_auth_encryption_test_case_256_6(void)
+test_AES_GCM_auth_encryption_test_case_256_6(void)
 {
-	return test_mb_AES_GCM_authenticated_encryption(&gcm_test_case_256_6);
+	return test_AES_GCM_authenticated_encryption(&gcm_test_case_256_6);
 }
 
 static int
-test_mb_AES_GCM_auth_encryption_test_case_256_7(void)
+test_AES_GCM_auth_encryption_test_case_256_7(void)
 {
-	return test_mb_AES_GCM_authenticated_encryption(&gcm_test_case_256_7);
+	return test_AES_GCM_authenticated_encryption(&gcm_test_case_256_7);
 }
 
 static int
-test_mb_AES_GCM_auth_encryption_test_case_aad_1(void)
+test_AES_GCM_auth_encryption_test_case_aad_1(void)
 {
-	return test_mb_AES_GCM_authenticated_encryption(&gcm_test_case_aad_1);
+	return test_AES_GCM_authenticated_encryption(&gcm_test_case_aad_1);
 }
 
 static int
-test_mb_AES_GCM_auth_encryption_test_case_aad_2(void)
+test_AES_GCM_auth_encryption_test_case_aad_2(void)
 {
-	return test_mb_AES_GCM_authenticated_encryption(&gcm_test_case_aad_2);
+	return test_AES_GCM_authenticated_encryption(&gcm_test_case_aad_2);
 }
 
 static int
-test_mb_AES_GCM_authenticated_decryption(const struct gcm_test_data *tdata)
+test_AES_GCM_authenticated_decryption(const struct gcm_test_data *tdata)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct crypto_unittest_params *ut_params = &unittest_params;
@@ -5079,99 +5079,99 @@ test_mb_AES_GCM_authenticated_decryption(const struct gcm_test_data *tdata)
 }
 
 static int
-test_mb_AES_GCM_authenticated_decryption_test_case_1(void)
+test_AES_GCM_authenticated_decryption_test_case_1(void)
 {
-	return test_mb_AES_GCM_authenticated_decryption(&gcm_test_case_1);
+	return test_AES_GCM_authenticated_decryption(&gcm_test_case_1);
 }
 
 static int
-test_mb_AES_GCM_authenticated_decryption_test_case_2(void)
+test_AES_GCM_authenticated_decryption_test_case_2(void)
 {
-	return test_mb_AES_GCM_authenticated_decryption(&gcm_test_case_2);
+	return test_AES_GCM_authenticated_decryption(&gcm_test_case_2);
 }
 
 static int
-test_mb_AES_GCM_authenticated_decryption_test_case_3(void)
+test_AES_GCM_authenticated_decryption_test_case_3(void)
 {
-	return test_mb_AES_GCM_authenticated_decryption(&gcm_test_case_3);
+	return test_AES_GCM_authenticated_decryption(&gcm_test_case_3);
 }
 
 static int
-test_mb_AES_GCM_authenticated_decryption_test_case_4(void)
+test_AES_GCM_authenticated_decryption_test_case_4(void)
 {
-	return test_mb_AES_GCM_authenticated_decryption(&gcm_test_case_4);
+	return test_AES_GCM_authenticated_decryption(&gcm_test_case_4);
 }
 
 static int
-test_mb_AES_GCM_authenticated_decryption_test_case_5(void)
+test_AES_GCM_authenticated_decryption_test_case_5(void)
 {
-	return test_mb_AES_GCM_authenticated_decryption(&gcm_test_case_5);
+	return test_AES_GCM_authenticated_decryption(&gcm_test_case_5);
 }
 
 static int
-test_mb_AES_GCM_authenticated_decryption_test_case_6(void)
+test_AES_GCM_authenticated_decryption_test_case_6(void)
 {
-	return test_mb_AES_GCM_authenticated_decryption(&gcm_test_case_6);
+	return test_AES_GCM_authenticated_decryption(&gcm_test_case_6);
 }
 
 static int
-test_mb_AES_GCM_authenticated_decryption_test_case_7(void)
+test_AES_GCM_authenticated_decryption_test_case_7(void)
 {
-	return test_mb_AES_GCM_authenticated_decryption(&gcm_test_case_7);
+	return test_AES_GCM_authenticated_decryption(&gcm_test_case_7);
 }
 
 static int
-test_mb_AES_GCM_auth_decryption_test_case_256_1(void)
+test_AES_GCM_auth_decryption_test_case_256_1(void)
 {
-	return test_mb_AES_GCM_authenticated_decryption(&gcm_test_case_256_1);
+	return test_AES_GCM_authenticated_decryption(&gcm_test_case_256_1);
 }
 
 static int
-test_mb_AES_GCM_auth_decryption_test_case_256_2(void)
+test_AES_GCM_auth_decryption_test_case_256_2(void)
 {
-	return test_mb_AES_GCM_authenticated_decryption(&gcm_test_case_256_2);
+	return test_AES_GCM_authenticated_decryption(&gcm_test_case_256_2);
 }
 
 static int
-test_mb_AES_GCM_auth_decryption_test_case_256_3(void)
+test_AES_GCM_auth_decryption_test_case_256_3(void)
 {
-	return test_mb_AES_GCM_authenticated_decryption(&gcm_test_case_256_3);
+	return test_AES_GCM_authenticated_decryption(&gcm_test_case_256_3);
 }
 
 static int
-test_mb_AES_GCM_auth_decryption_test_case_256_4(void)
+test_AES_GCM_auth_decryption_test_case_256_4(void)
 {
-	return test_mb_AES_GCM_authenticated_decryption(&gcm_test_case_256_4);
+	return test_AES_GCM_authenticated_decryption(&gcm_test_case_256_4);
 }
 
 static int
-test_mb_AES_GCM_auth_decryption_test_case_256_5(void)
+test_AES_GCM_auth_decryption_test_case_256_5(void)
 {
-	return test_mb_AES_GCM_authenticated_decryption(&gcm_test_case_256_5);
+	return test_AES_GCM_authenticated_decryption(&gcm_test_case_256_5);
 }
 
 static int
-test_mb_AES_GCM_auth_decryption_test_case_256_6(void)
+test_AES_GCM_auth_decryption_test_case_256_6(void)
 {
-	return test_mb_AES_GCM_authenticated_decryption(&gcm_test_case_256_6);
+	return test_AES_GCM_authenticated_decryption(&gcm_test_case_256_6);
 }
 
 static int
-test_mb_AES_GCM_auth_decryption_test_case_256_7(void)
+test_AES_GCM_auth_decryption_test_case_256_7(void)
 {
-	return test_mb_AES_GCM_authenticated_decryption(&gcm_test_case_256_7);
+	return test_AES_GCM_authenticated_decryption(&gcm_test_case_256_7);
 }
 
 static int
-test_mb_AES_GCM_auth_decryption_test_case_aad_1(void)
+test_AES_GCM_auth_decryption_test_case_aad_1(void)
 {
-	return test_mb_AES_GCM_authenticated_decryption(&gcm_test_case_aad_1);
+	return test_AES_GCM_authenticated_decryption(&gcm_test_case_aad_1);
 }
 
 static int
-test_mb_AES_GCM_auth_decryption_test_case_aad_2(void)
+test_AES_GCM_auth_decryption_test_case_aad_2(void)
 {
-	return test_mb_AES_GCM_authenticated_decryption(&gcm_test_case_aad_2);
+	return test_AES_GCM_authenticated_decryption(&gcm_test_case_aad_2);
 }
 
 static int
@@ -5246,7 +5246,7 @@ test_AES_GCM_authenticated_encryption_oop(const struct gcm_test_data *tdata)
 }
 
 static int
-test_mb_AES_GCM_authenticated_encryption_oop(void)
+test_AES_GCM_authenticated_encryption_oop_test_case_1(void)
 {
 	return test_AES_GCM_authenticated_encryption_oop(&gcm_test_case_5);
 }
@@ -5314,7 +5314,7 @@ test_AES_GCM_authenticated_decryption_oop(const struct gcm_test_data *tdata)
 }
 
 static int
-test_mb_AES_GCM_authenticated_decryption_oop(void)
+test_AES_GCM_authenticated_decryption_oop_test_case_1(void)
 {
 	return test_AES_GCM_authenticated_decryption_oop(&gcm_test_case_5);
 }
@@ -5394,7 +5394,7 @@ test_AES_GCM_authenticated_encryption_sessionless(
 }
 
 static int
-test_mb_AES_GCM_authenticated_encryption_sessionless(void)
+test_AES_GCM_authenticated_encryption_sessionless_test_case_1(void)
 {
 	return test_AES_GCM_authenticated_encryption_sessionless(
 			&gcm_test_case_5);
@@ -5466,7 +5466,7 @@ test_AES_GCM_authenticated_decryption_sessionless(
 }
 
 static int
-test_mb_AES_GCM_authenticated_decryption_sessionless(void)
+test_AES_GCM_authenticated_decryption_sessionless_test_case_1(void)
 {
 	return test_AES_GCM_authenticated_decryption_sessionless(
 			&gcm_test_case_5);
@@ -7723,35 +7723,35 @@ static struct unit_test_suite cryptodev_qat_testsuite  = {
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_AES_GCM_auth_encrypt_SGL_out_of_place_1500B_2000B),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_encryption_test_case_1),
+			test_AES_GCM_authenticated_encryption_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_encryption_test_case_2),
+			test_AES_GCM_authenticated_encryption_test_case_2),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_encryption_test_case_3),
+			test_AES_GCM_authenticated_encryption_test_case_3),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_encryption_test_case_4),
+			test_AES_GCM_authenticated_encryption_test_case_4),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_encryption_test_case_5),
+			test_AES_GCM_authenticated_encryption_test_case_5),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_encryption_test_case_6),
+			test_AES_GCM_authenticated_encryption_test_case_6),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_encryption_test_case_7),
+			test_AES_GCM_authenticated_encryption_test_case_7),
 
 		/** AES GCM Authenticated Decryption */
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_decryption_test_case_1),
+			test_AES_GCM_authenticated_decryption_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_decryption_test_case_2),
+			test_AES_GCM_authenticated_decryption_test_case_2),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_decryption_test_case_3),
+			test_AES_GCM_authenticated_decryption_test_case_3),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_decryption_test_case_4),
+			test_AES_GCM_authenticated_decryption_test_case_4),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_decryption_test_case_5),
+			test_AES_GCM_authenticated_decryption_test_case_5),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_decryption_test_case_6),
+			test_AES_GCM_authenticated_decryption_test_case_6),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_decryption_test_case_7),
+			test_AES_GCM_authenticated_decryption_test_case_7),
 
 		/** AES GMAC Authentication */
 		TEST_CASE_ST(ut_setup, ut_teardown,
@@ -7926,35 +7926,35 @@ static struct unit_test_suite cryptodev_openssl_testsuite  = {
 
 		/** AES GCM Authenticated Encryption */
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_encryption_test_case_1),
+			test_AES_GCM_authenticated_encryption_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_encryption_test_case_2),
+			test_AES_GCM_authenticated_encryption_test_case_2),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_encryption_test_case_3),
+			test_AES_GCM_authenticated_encryption_test_case_3),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_encryption_test_case_4),
+			test_AES_GCM_authenticated_encryption_test_case_4),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_encryption_test_case_5),
+			test_AES_GCM_authenticated_encryption_test_case_5),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_encryption_test_case_6),
+			test_AES_GCM_authenticated_encryption_test_case_6),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_encryption_test_case_7),
+			test_AES_GCM_authenticated_encryption_test_case_7),
 
 		/** AES GCM Authenticated Decryption */
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_decryption_test_case_1),
+			test_AES_GCM_authenticated_decryption_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_decryption_test_case_2),
+			test_AES_GCM_authenticated_decryption_test_case_2),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_decryption_test_case_3),
+			test_AES_GCM_authenticated_decryption_test_case_3),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_decryption_test_case_4),
+			test_AES_GCM_authenticated_decryption_test_case_4),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_decryption_test_case_5),
+			test_AES_GCM_authenticated_decryption_test_case_5),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_decryption_test_case_6),
+			test_AES_GCM_authenticated_decryption_test_case_6),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_decryption_test_case_7),
+			test_AES_GCM_authenticated_decryption_test_case_7),
 
 		/** AES GMAC Authentication */
 		TEST_CASE_ST(ut_setup, ut_teardown,
@@ -8003,79 +8003,79 @@ static struct unit_test_suite cryptodev_aesni_gcm_testsuite  = {
 	.unit_test_cases = {
 		/** AES GCM Authenticated Encryption */
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_encryption_test_case_1),
+			test_AES_GCM_authenticated_encryption_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_encryption_test_case_2),
+			test_AES_GCM_authenticated_encryption_test_case_2),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_encryption_test_case_3),
+			test_AES_GCM_authenticated_encryption_test_case_3),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_encryption_test_case_4),
+			test_AES_GCM_authenticated_encryption_test_case_4),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_encryption_test_case_5),
+			test_AES_GCM_authenticated_encryption_test_case_5),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_encryption_test_case_6),
+			test_AES_GCM_authenticated_encryption_test_case_6),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_encryption_test_case_7),
+			test_AES_GCM_authenticated_encryption_test_case_7),
 
 		/** AES GCM Authenticated Decryption */
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_decryption_test_case_1),
+			test_AES_GCM_authenticated_decryption_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_decryption_test_case_2),
+			test_AES_GCM_authenticated_decryption_test_case_2),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_decryption_test_case_3),
+			test_AES_GCM_authenticated_decryption_test_case_3),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_decryption_test_case_4),
+			test_AES_GCM_authenticated_decryption_test_case_4),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_decryption_test_case_5),
+			test_AES_GCM_authenticated_decryption_test_case_5),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_decryption_test_case_6),
+			test_AES_GCM_authenticated_decryption_test_case_6),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_decryption_test_case_7),
+			test_AES_GCM_authenticated_decryption_test_case_7),
 
 		/** AES GCM Authenticated Encryption 256 bits key */
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_auth_encryption_test_case_256_1),
+			test_AES_GCM_auth_encryption_test_case_256_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_auth_encryption_test_case_256_2),
+			test_AES_GCM_auth_encryption_test_case_256_2),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_auth_encryption_test_case_256_3),
+			test_AES_GCM_auth_encryption_test_case_256_3),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_auth_encryption_test_case_256_4),
+			test_AES_GCM_auth_encryption_test_case_256_4),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_auth_encryption_test_case_256_5),
+			test_AES_GCM_auth_encryption_test_case_256_5),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_auth_encryption_test_case_256_6),
+			test_AES_GCM_auth_encryption_test_case_256_6),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_auth_encryption_test_case_256_7),
+			test_AES_GCM_auth_encryption_test_case_256_7),
 
 		/** AES GCM Authenticated Decryption 256 bits key */
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_auth_decryption_test_case_256_1),
+			test_AES_GCM_auth_decryption_test_case_256_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_auth_decryption_test_case_256_2),
+			test_AES_GCM_auth_decryption_test_case_256_2),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_auth_decryption_test_case_256_3),
+			test_AES_GCM_auth_decryption_test_case_256_3),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_auth_decryption_test_case_256_4),
+			test_AES_GCM_auth_decryption_test_case_256_4),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_auth_decryption_test_case_256_5),
+			test_AES_GCM_auth_decryption_test_case_256_5),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_auth_decryption_test_case_256_6),
+			test_AES_GCM_auth_decryption_test_case_256_6),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_auth_decryption_test_case_256_7),
+			test_AES_GCM_auth_decryption_test_case_256_7),
 
 		/** AES GCM Authenticated Encryption big aad size */
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_auth_encryption_test_case_aad_1),
+			test_AES_GCM_auth_encryption_test_case_aad_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_auth_encryption_test_case_aad_2),
+			test_AES_GCM_auth_encryption_test_case_aad_2),
 
 		/** AES GCM Authenticated Decryption big aad size */
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_auth_decryption_test_case_aad_1),
+			test_AES_GCM_auth_decryption_test_case_aad_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_auth_decryption_test_case_aad_2),
+			test_AES_GCM_auth_decryption_test_case_aad_2),
 
 		/** AES GMAC Authentication */
 		TEST_CASE_ST(ut_setup, ut_teardown,
@@ -8099,15 +8099,15 @@ static struct unit_test_suite cryptodev_aesni_gcm_testsuite  = {
 
 		/** Out of place tests */
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_encryption_oop),
+			test_AES_GCM_authenticated_encryption_oop_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_decryption_oop),
+			test_AES_GCM_authenticated_decryption_oop_test_case_1),
 
 		/** Session-less tests */
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_encryption_sessionless),
+			test_AES_GCM_authenticated_encryption_sessionless_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_decryption_sessionless),
+			test_AES_GCM_authenticated_decryption_sessionless_test_case_1),
 
 		/** Scatter-Gather */
 		TEST_CASE_ST(ut_setup, ut_teardown,
@@ -8314,67 +8314,67 @@ static struct unit_test_suite cryptodev_dpaa2_sec_testsuite  = {
 
 		/** AES GCM Authenticated Encryption */
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_encryption_test_case_1),
+			test_AES_GCM_authenticated_encryption_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_encryption_test_case_2),
+			test_AES_GCM_authenticated_encryption_test_case_2),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_encryption_test_case_3),
+			test_AES_GCM_authenticated_encryption_test_case_3),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_encryption_test_case_4),
+			test_AES_GCM_authenticated_encryption_test_case_4),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_encryption_test_case_5),
+			test_AES_GCM_authenticated_encryption_test_case_5),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_encryption_test_case_6),
+			test_AES_GCM_authenticated_encryption_test_case_6),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_encryption_test_case_7),
+			test_AES_GCM_authenticated_encryption_test_case_7),
 
 		/** AES GCM Authenticated Decryption */
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_decryption_test_case_1),
+			test_AES_GCM_authenticated_decryption_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_decryption_test_case_2),
+			test_AES_GCM_authenticated_decryption_test_case_2),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_decryption_test_case_3),
+			test_AES_GCM_authenticated_decryption_test_case_3),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_decryption_test_case_4),
+			test_AES_GCM_authenticated_decryption_test_case_4),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_decryption_test_case_5),
+			test_AES_GCM_authenticated_decryption_test_case_5),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_decryption_test_case_6),
+			test_AES_GCM_authenticated_decryption_test_case_6),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_authenticated_decryption_test_case_7),
+			test_AES_GCM_authenticated_decryption_test_case_7),
 
 		/** AES GCM Authenticated Encryption 256 bits key */
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_auth_encryption_test_case_256_1),
+			test_AES_GCM_auth_encryption_test_case_256_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_auth_encryption_test_case_256_2),
+			test_AES_GCM_auth_encryption_test_case_256_2),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_auth_encryption_test_case_256_3),
+			test_AES_GCM_auth_encryption_test_case_256_3),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_auth_encryption_test_case_256_4),
+			test_AES_GCM_auth_encryption_test_case_256_4),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_auth_encryption_test_case_256_5),
+			test_AES_GCM_auth_encryption_test_case_256_5),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_auth_encryption_test_case_256_6),
+			test_AES_GCM_auth_encryption_test_case_256_6),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_auth_encryption_test_case_256_7),
+			test_AES_GCM_auth_encryption_test_case_256_7),
 
 		/** AES GCM Authenticated Decryption 256 bits key */
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_auth_decryption_test_case_256_1),
+			test_AES_GCM_auth_decryption_test_case_256_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_auth_decryption_test_case_256_2),
+			test_AES_GCM_auth_decryption_test_case_256_2),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_auth_decryption_test_case_256_3),
+			test_AES_GCM_auth_decryption_test_case_256_3),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_auth_decryption_test_case_256_4),
+			test_AES_GCM_auth_decryption_test_case_256_4),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_auth_decryption_test_case_256_5),
+			test_AES_GCM_auth_decryption_test_case_256_5),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_auth_decryption_test_case_256_6),
+			test_AES_GCM_auth_decryption_test_case_256_6),
 		TEST_CASE_ST(ut_setup, ut_teardown,
-			test_mb_AES_GCM_auth_decryption_test_case_256_7),
+			test_AES_GCM_auth_decryption_test_case_256_7),
 
 		TEST_CASES_END() /**< NULL terminate unit test array */
 	}
