@@ -40,5 +40,6 @@ CFLAGS += $(WERROR_FLAGS)
 #
 SRCS-y := evt_main.c
 SRCS-y += evt_test.c
+SRCS-y += parser.c
 
 include $(RTE_SDK)/mk/rte.app.mk
