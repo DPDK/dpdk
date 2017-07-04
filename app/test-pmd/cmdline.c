@@ -87,6 +87,7 @@
 #include <cmdline.h>
 #ifdef RTE_LIBRTE_PMD_BOND
 #include <rte_eth_bond.h>
+#include <rte_eth_bond_8023ad.h>
 #endif
 #ifdef RTE_LIBRTE_IXGBE_PMD
 #include <rte_pmd_ixgbe.h>
@@ -575,6 +576,10 @@ static void cmd_help_long_parsed(void *parsed_result,
 
 			"set bonding mon_period (port_id) (value)\n"
 			"	Set the bonding link status monitoring polling period in ms.\n\n"
+
+			"set bonding lacp dedicated_queues <port_id> (enable|disable)\n"
+			"	Enable/disable dedicated queues for LACP control traffic.\n\n"
+
 #endif
 			"set link-up port (port_id)\n"
 			"	Set link up for a port.\n\n"
@@ -4300,6 +4305,85 @@ cmdline_parse_inst_t cmd_set_bonding_mode = {
 				(void *) &cmd_setbonding_mode_value,
 				(void *) &cmd_setbonding_mode_port,
 				NULL
+		}
+};
+
+/* *** SET BONDING SLOW_QUEUE SW/HW *** */
+struct cmd_set_bonding_lacp_dedicated_queues_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t bonding;
+	cmdline_fixed_string_t lacp;
+	cmdline_fixed_string_t dedicated_queues;
+	uint8_t port_id;
+	cmdline_fixed_string_t mode;
+};
+
+static void cmd_set_bonding_lacp_dedicated_queues_parsed(void *parsed_result,
+		__attribute__((unused))  struct cmdline *cl,
+		__attribute__((unused)) void *data)
+{
+	struct cmd_set_bonding_lacp_dedicated_queues_result *res = parsed_result;
+	portid_t port_id = res->port_id;
+	struct rte_port *port;
+
+	port = &ports[port_id];
+
+	/** Check if the port is not started **/
+	if (port->port_status != RTE_PORT_STOPPED) {
+		printf("Please stop port %d first\n", port_id);
+		return;
+	}
+
+	if (!strcmp(res->mode, "enable")) {
+		if (rte_eth_bond_8023ad_dedicated_queues_enable(port_id) == 0)
+			printf("Dedicate queues for LACP control packets"
+					" enabled\n");
+		else
+			printf("Enabling dedicate queues for LACP control "
+					"packets on port %d failed\n", port_id);
+	} else if (!strcmp(res->mode, "disable")) {
+		if (rte_eth_bond_8023ad_dedicated_queues_disable(port_id) == 0)
+			printf("Dedicated queues for LACP control packets "
+					"disabled\n");
+		else
+			printf("Disabling dedicated queues for LACP control "
+					"traffic on port %d failed\n", port_id);
+	}
+}
+
+cmdline_parse_token_string_t cmd_setbonding_lacp_dedicated_queues_set =
+TOKEN_STRING_INITIALIZER(struct cmd_set_bonding_lacp_dedicated_queues_result,
+		set, "set");
+cmdline_parse_token_string_t cmd_setbonding_lacp_dedicated_queues_bonding =
+TOKEN_STRING_INITIALIZER(struct cmd_set_bonding_lacp_dedicated_queues_result,
+		bonding, "bonding");
+cmdline_parse_token_string_t cmd_setbonding_lacp_dedicated_queues_lacp =
+TOKEN_STRING_INITIALIZER(struct cmd_set_bonding_lacp_dedicated_queues_result,
+		lacp, "lacp");
+cmdline_parse_token_string_t cmd_setbonding_lacp_dedicated_queues_dedicated_queues =
+TOKEN_STRING_INITIALIZER(struct cmd_set_bonding_lacp_dedicated_queues_result,
+		dedicated_queues, "dedicated_queues");
+cmdline_parse_token_num_t cmd_setbonding_lacp_dedicated_queues_port_id =
+TOKEN_NUM_INITIALIZER(struct cmd_set_bonding_lacp_dedicated_queues_result,
+		port_id, UINT8);
+cmdline_parse_token_string_t cmd_setbonding_lacp_dedicated_queues_mode =
+TOKEN_STRING_INITIALIZER(struct cmd_set_bonding_lacp_dedicated_queues_result,
+		mode, "enable#disable");
+
+cmdline_parse_inst_t cmd_set_lacp_dedicated_queues = {
+		.f = cmd_set_bonding_lacp_dedicated_queues_parsed,
+		.help_str = "set bonding lacp dedicated_queues <port_id> "
+			"enable|disable: "
+			"Enable/disable dedicated queues for LACP control traffic for port_id",
+		.data = NULL,
+		.tokens = {
+			(void *)&cmd_setbonding_lacp_dedicated_queues_set,
+			(void *)&cmd_setbonding_lacp_dedicated_queues_bonding,
+			(void *)&cmd_setbonding_lacp_dedicated_queues_lacp,
+			(void *)&cmd_setbonding_lacp_dedicated_queues_dedicated_queues,
+			(void *)&cmd_setbonding_lacp_dedicated_queues_port_id,
+			(void *)&cmd_setbonding_lacp_dedicated_queues_mode,
+			NULL
 		}
 };
 
@@ -13934,6 +14018,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *) &cmd_set_bond_mac_addr,
 	(cmdline_parse_inst_t *) &cmd_set_balance_xmit_policy,
 	(cmdline_parse_inst_t *) &cmd_set_bond_mon_period,
+	(cmdline_parse_inst_t *) &cmd_set_lacp_dedicated_queues,
 #endif
 	(cmdline_parse_inst_t *)&cmd_vlan_offload,
 	(cmdline_parse_inst_t *)&cmd_vlan_tpid,

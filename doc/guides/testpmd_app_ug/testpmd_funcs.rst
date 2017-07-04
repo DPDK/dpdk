@@ -1766,6 +1766,15 @@ For example, to set the link status monitoring polling period of bonded device (
    testpmd> set bonding mon_period 5 150
 
 
+set bonding lacp dedicated_queue
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Enable dedicated tx/rx queues on bonding devices slaves to handle LACP control plane traffic
+when in mode 4 (link-aggregration-802.3ad)
+
+   testpmd> set bonding lacp dedicated_queues (port_id) (enable|disable)
+
+
 show bonding config
 ~~~~~~~~~~~~~~~~~~~
 
