@@ -233,4 +233,66 @@ Example command to run order queue test:
                 --test=order_queue --plcores 1 --wlcores 2,3
 
 
+ORDER_ATQ Test
+~~~~~~~~~~~~~~
+
+This test verifies the same aspects of ``order_queue`` test, the difference is
+the number of queues used, this test operates on a single ``all types queue(atq)``
+instead of two different queues for ordered and atomic.
+
+.. _table_eventdev_order_atq_test:
+
+.. table:: Order all types queue test eventdev configuration.
+
+   +---+--------------+----------------+------------------------+
+   | # | Items        | Value          | Comments               |
+   |   |              |                |                        |
+   +===+==============+================+========================+
+   | 1 | nb_queues    | 1              | q0(all types queue)    |
+   |   |              |                |                        |
+   +---+--------------+----------------+------------------------+
+   | 2 | nb_producers | 1              |                        |
+   |   |              |                |                        |
+   +---+--------------+----------------+------------------------+
+   | 3 | nb_workers   | >= 1           |                        |
+   |   |              |                |                        |
+   +---+--------------+----------------+------------------------+
+   | 4 | nb_ports     | nb_workers +   | Workers use port 0 to  |
+   |   |              | 1              | port n-1.Producer uses |
+   |   |              |                | port n.                |
+   +---+--------------+----------------+------------------------+
+
+.. _figure_eventdev_order_atq_test:
+
+.. figure:: img/eventdev_order_atq_test.*
+
+   order all types queue test operation.
+
+Application options
+^^^^^^^^^^^^^^^^^^^
+
+Supported application command line options are following::
+
+   --verbose
+   --dev
+   --test
+   --socket_id
+   --pool_sz
+   --plcores
+   --wlcores
+   --nb_flows
+   --nb_pkts
+   --worker_deq_depth
+
+Example
+^^^^^^^
+
+Example command to run order ``all types queue`` test:
+
+.. code-block:: console
+
+   sudo build/app/dpdk-test-eventdev --vdev=event_octeontx -- \
+                        --test=order_atq --plcores 1 --wlcores 2,3
+
+
 
