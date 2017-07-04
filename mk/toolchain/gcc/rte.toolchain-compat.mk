@@ -60,6 +60,7 @@ else
 #
 	ifeq ($(shell test $(GCC_VERSION) -le 49 && echo 1), 1)
 		MACHINE_CFLAGS := $(patsubst -march=armv8-a+crc,-march=armv8-a+crc -D__ARM_FEATURE_CRC32=1,$(MACHINE_CFLAGS))
+		MACHINE_CFLAGS := $(patsubst -march=armv8-a+crc+crypto,-march=armv8-a+crc+crypto -D__ARM_FEATURE_CRC32=1,$(MACHINE_CFLAGS))
 	endif
 	ifeq ($(shell test $(GCC_VERSION) -le 47 && echo 1), 1)
 		MACHINE_CFLAGS := $(patsubst -march=core-avx-i,-march=corei7-avx,$(MACHINE_CFLAGS))
