@@ -41,10 +41,14 @@
 
 #if defined(RTE_ARCH_X86_64) && defined(RTE_MACHINE_CPUFLAG_PCLMULQDQ)
 #define X86_64_SSE42_PCLMULQDQ     1
+#elif defined(RTE_ARCH_ARM64) && defined(RTE_MACHINE_CPUFLAG_PMULL)
+#define ARM64_NEON_PMULL           1
 #endif
 
 #ifdef X86_64_SSE42_PCLMULQDQ
 #include <net_crc_sse.h>
+#elif defined ARM64_NEON_PMULL
+#include <net_crc_neon.h>
 #endif
 
 /* crc tables */
@@ -71,6 +75,11 @@ static rte_net_crc_handler handlers_scalar[] = {
 static rte_net_crc_handler handlers_sse42[] = {
 	[RTE_NET_CRC16_CCITT] = rte_crc16_ccitt_sse42_handler,
 	[RTE_NET_CRC32_ETH] = rte_crc32_eth_sse42_handler,
+};
+#elif defined ARM64_NEON_PMULL
+static rte_net_crc_handler handlers_neon[] = {
+	[RTE_NET_CRC16_CCITT] = rte_crc16_ccitt_neon_handler,
+	[RTE_NET_CRC32_ETH] = rte_crc32_eth_neon_handler,
 };
 #endif
 
@@ -160,14 +169,21 @@ void
 rte_net_crc_set_alg(enum rte_net_crc_alg alg)
 {
 	switch (alg) {
-	case RTE_NET_CRC_SSE42:
 #ifdef X86_64_SSE42_PCLMULQDQ
+	case RTE_NET_CRC_SSE42:
 		handlers = handlers_sse42;
-#else
-		alg = RTE_NET_CRC_SCALAR;
-#endif
 		break;
+#elif defined ARM64_NEON_PMULL
+		/* fall-through */
+	case RTE_NET_CRC_NEON:
+		if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_PMULL)) {
+			handlers = handlers_neon;
+			break;
+		}
+#endif
+		/* fall-through */
 	case RTE_NET_CRC_SCALAR:
+		/* fall-through */
 	default:
 		handlers = handlers_scalar;
 		break;
@@ -197,8 +213,13 @@ rte_net_crc_init(void)
 	rte_net_crc_scalar_init();
 
 #ifdef X86_64_SSE42_PCLMULQDQ
-		alg = RTE_NET_CRC_SSE42;
-		rte_net_crc_sse42_init();
+	alg = RTE_NET_CRC_SSE42;
+	rte_net_crc_sse42_init();
+#elif defined ARM64_NEON_PMULL
+	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_PMULL)) {
+		alg = RTE_NET_CRC_NEON;
+		rte_net_crc_neon_init();
+	}
 #endif
 
 	rte_net_crc_set_alg(alg);

@@ -178,6 +178,15 @@ test_crc(void)
 		return ret;
 	}
 
+	/* set CRC neon mode */
+	rte_net_crc_set_alg(RTE_NET_CRC_NEON);
+
+	ret = test_crc_calc();
+	if (ret < 0) {
+		printf("test crc (arm64 neon pmull): failed (%d)\n", ret);
+		return ret;
+	}
+
 	return 0;
 }
 
