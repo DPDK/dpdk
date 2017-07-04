@@ -207,6 +207,7 @@ typedef uint64_t dma_addr_t;
 		snprintf(z_name, sizeof(z_name),			\
 				"ena_alloc_%d", ena_alloc_cnt++);	\
 		mz = rte_memzone_reserve(z_name, size, node, 0); \
+		memset(mz->addr, 0, size);				\
 		virt = mz->addr;					\
 		phys = mz->phys_addr;					\
 	} while (0)
@@ -219,6 +220,7 @@ typedef uint64_t dma_addr_t;
 		snprintf(z_name, sizeof(z_name),			\
 				"ena_alloc_%d", ena_alloc_cnt++);	\
 		mz = rte_memzone_reserve(z_name, size, node, 0); \
+		memset(mz->addr, 0, size);				\
 		virt = mz->addr;					\
 	} while (0)
 
