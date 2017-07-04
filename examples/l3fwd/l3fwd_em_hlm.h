@@ -43,148 +43,65 @@
 #include "l3fwd_em_hlm_neon.h"
 #endif
 
+#ifdef RTE_ARCH_ARM64
+#define EM_HASH_LOOKUP_COUNT 16
+#else
+#define EM_HASH_LOOKUP_COUNT 8
+#endif
+
+
 static __rte_always_inline void
-em_get_dst_port_ipv4x8(struct lcore_conf *qconf, struct rte_mbuf *m[8],
-		uint8_t portid, uint16_t dst_port[8])
+em_get_dst_port_ipv4xN(struct lcore_conf *qconf, struct rte_mbuf *m[],
+		uint8_t portid, uint16_t dst_port[])
 {
-	int32_t ret[8];
-	union ipv4_5tuple_host key[8];
+	int i;
+	int32_t ret[EM_HASH_LOOKUP_COUNT];
+	union ipv4_5tuple_host key[EM_HASH_LOOKUP_COUNT];
+	const void *key_array[EM_HASH_LOOKUP_COUNT];
 
-	get_ipv4_5tuple(m[0], mask0.x, &key[0]);
-	get_ipv4_5tuple(m[1], mask0.x, &key[1]);
-	get_ipv4_5tuple(m[2], mask0.x, &key[2]);
-	get_ipv4_5tuple(m[3], mask0.x, &key[3]);
-	get_ipv4_5tuple(m[4], mask0.x, &key[4]);
-	get_ipv4_5tuple(m[5], mask0.x, &key[5]);
-	get_ipv4_5tuple(m[6], mask0.x, &key[6]);
-	get_ipv4_5tuple(m[7], mask0.x, &key[7]);
+	for (i = 0; i < EM_HASH_LOOKUP_COUNT; i++) {
+		get_ipv4_5tuple(m[i], mask0.x, &key[i]);
+		key_array[i] = &key[i];
+	}
 
-	const void *key_array[8] = {&key[0], &key[1], &key[2], &key[3],
-				&key[4], &key[5], &key[6], &key[7]};
+	rte_hash_lookup_bulk(qconf->ipv4_lookup_struct, &key_array[0],
+			     EM_HASH_LOOKUP_COUNT, ret);
 
-	rte_hash_lookup_bulk(qconf->ipv4_lookup_struct, &key_array[0], 8, ret);
+	for (i = 0; i < EM_HASH_LOOKUP_COUNT; i++) {
+		dst_port[i] = (uint8_t) ((ret[i] < 0) ?
+				portid : ipv4_l3fwd_out_if[ret[i]]);
 
-	dst_port[0] = (uint8_t) ((ret[0] < 0) ?
-			portid : ipv4_l3fwd_out_if[ret[0]]);
-	dst_port[1] = (uint8_t) ((ret[1] < 0) ?
-			portid : ipv4_l3fwd_out_if[ret[1]]);
-	dst_port[2] = (uint8_t) ((ret[2] < 0) ?
-			portid : ipv4_l3fwd_out_if[ret[2]]);
-	dst_port[3] = (uint8_t) ((ret[3] < 0) ?
-			portid : ipv4_l3fwd_out_if[ret[3]]);
-	dst_port[4] = (uint8_t) ((ret[4] < 0) ?
-			portid : ipv4_l3fwd_out_if[ret[4]]);
-	dst_port[5] = (uint8_t) ((ret[5] < 0) ?
-			portid : ipv4_l3fwd_out_if[ret[5]]);
-	dst_port[6] = (uint8_t) ((ret[6] < 0) ?
-			portid : ipv4_l3fwd_out_if[ret[6]]);
-	dst_port[7] = (uint8_t) ((ret[7] < 0) ?
-			portid : ipv4_l3fwd_out_if[ret[7]]);
-
-	if (dst_port[0] >= RTE_MAX_ETHPORTS ||
-			(enabled_port_mask & 1 << dst_port[0]) == 0)
-		dst_port[0] = portid;
-
-	if (dst_port[1] >= RTE_MAX_ETHPORTS ||
-			(enabled_port_mask & 1 << dst_port[1]) == 0)
-		dst_port[1] = portid;
-
-	if (dst_port[2] >= RTE_MAX_ETHPORTS ||
-			(enabled_port_mask & 1 << dst_port[2]) == 0)
-		dst_port[2] = portid;
-
-	if (dst_port[3] >= RTE_MAX_ETHPORTS ||
-			(enabled_port_mask & 1 << dst_port[3]) == 0)
-		dst_port[3] = portid;
-
-	if (dst_port[4] >= RTE_MAX_ETHPORTS ||
-			(enabled_port_mask & 1 << dst_port[4]) == 0)
-		dst_port[4] = portid;
-
-	if (dst_port[5] >= RTE_MAX_ETHPORTS ||
-			(enabled_port_mask & 1 << dst_port[5]) == 0)
-		dst_port[5] = portid;
-
-	if (dst_port[6] >= RTE_MAX_ETHPORTS ||
-			(enabled_port_mask & 1 << dst_port[6]) == 0)
-		dst_port[6] = portid;
-
-	if (dst_port[7] >= RTE_MAX_ETHPORTS ||
-			(enabled_port_mask & 1 << dst_port[7]) == 0)
-		dst_port[7] = portid;
-
+		if (dst_port[i] >= RTE_MAX_ETHPORTS ||
+				(enabled_port_mask & 1 << dst_port[i]) == 0)
+			dst_port[i] = portid;
+	}
 }
 
 static __rte_always_inline void
-em_get_dst_port_ipv6x8(struct lcore_conf *qconf, struct rte_mbuf *m[8],
-		uint8_t portid, uint16_t dst_port[8])
+em_get_dst_port_ipv6xN(struct lcore_conf *qconf, struct rte_mbuf *m[],
+		uint8_t portid, uint16_t dst_port[])
 {
-	int32_t ret[8];
-	union ipv6_5tuple_host key[8];
+	int i;
+	int32_t ret[EM_HASH_LOOKUP_COUNT];
+	union ipv6_5tuple_host key[EM_HASH_LOOKUP_COUNT];
+	const void *key_array[EM_HASH_LOOKUP_COUNT];
 
-	get_ipv6_5tuple(m[0], mask1.x, mask2.x, &key[0]);
-	get_ipv6_5tuple(m[1], mask1.x, mask2.x, &key[1]);
-	get_ipv6_5tuple(m[2], mask1.x, mask2.x, &key[2]);
-	get_ipv6_5tuple(m[3], mask1.x, mask2.x, &key[3]);
-	get_ipv6_5tuple(m[4], mask1.x, mask2.x, &key[4]);
-	get_ipv6_5tuple(m[5], mask1.x, mask2.x, &key[5]);
-	get_ipv6_5tuple(m[6], mask1.x, mask2.x, &key[6]);
-	get_ipv6_5tuple(m[7], mask1.x, mask2.x, &key[7]);
+	for (i = 0; i < EM_HASH_LOOKUP_COUNT; i++) {
+		get_ipv6_5tuple(m[i], mask1.x, mask2.x, &key[i]);
+		key_array[i] = &key[i];
+	}
 
-	const void *key_array[8] = {&key[0], &key[1], &key[2], &key[3],
-			&key[4], &key[5], &key[6], &key[7]};
+	rte_hash_lookup_bulk(qconf->ipv6_lookup_struct, &key_array[0],
+			     EM_HASH_LOOKUP_COUNT, ret);
 
-	rte_hash_lookup_bulk(qconf->ipv6_lookup_struct, &key_array[0], 8, ret);
+	for (i = 0; i < EM_HASH_LOOKUP_COUNT; i++) {
+		dst_port[i] = (uint8_t) ((ret[i] < 0) ?
+				portid : ipv6_l3fwd_out_if[ret[i]]);
 
-	dst_port[0] = (uint8_t) ((ret[0] < 0) ?
-			portid : ipv6_l3fwd_out_if[ret[0]]);
-	dst_port[1] = (uint8_t) ((ret[1] < 0) ?
-			portid : ipv6_l3fwd_out_if[ret[1]]);
-	dst_port[2] = (uint8_t) ((ret[2] < 0) ?
-			portid : ipv6_l3fwd_out_if[ret[2]]);
-	dst_port[3] = (uint8_t) ((ret[3] < 0) ?
-			portid : ipv6_l3fwd_out_if[ret[3]]);
-	dst_port[4] = (uint8_t) ((ret[4] < 0) ?
-			portid : ipv6_l3fwd_out_if[ret[4]]);
-	dst_port[5] = (uint8_t) ((ret[5] < 0) ?
-			portid : ipv6_l3fwd_out_if[ret[5]]);
-	dst_port[6] = (uint8_t) ((ret[6] < 0) ?
-			portid : ipv6_l3fwd_out_if[ret[6]]);
-	dst_port[7] = (uint8_t) ((ret[7] < 0) ?
-			portid : ipv6_l3fwd_out_if[ret[7]]);
-
-	if (dst_port[0] >= RTE_MAX_ETHPORTS ||
-			(enabled_port_mask & 1 << dst_port[0]) == 0)
-		dst_port[0] = portid;
-
-	if (dst_port[1] >= RTE_MAX_ETHPORTS ||
-			(enabled_port_mask & 1 << dst_port[1]) == 0)
-		dst_port[1] = portid;
-
-	if (dst_port[2] >= RTE_MAX_ETHPORTS ||
-			(enabled_port_mask & 1 << dst_port[2]) == 0)
-		dst_port[2] = portid;
-
-	if (dst_port[3] >= RTE_MAX_ETHPORTS ||
-			(enabled_port_mask & 1 << dst_port[3]) == 0)
-		dst_port[3] = portid;
-
-	if (dst_port[4] >= RTE_MAX_ETHPORTS ||
-			(enabled_port_mask & 1 << dst_port[4]) == 0)
-		dst_port[4] = portid;
-
-	if (dst_port[5] >= RTE_MAX_ETHPORTS ||
-			(enabled_port_mask & 1 << dst_port[5]) == 0)
-		dst_port[5] = portid;
-
-	if (dst_port[6] >= RTE_MAX_ETHPORTS ||
-			(enabled_port_mask & 1 << dst_port[6]) == 0)
-		dst_port[6] = portid;
-
-	if (dst_port[7] >= RTE_MAX_ETHPORTS ||
-			(enabled_port_mask & 1 << dst_port[7]) == 0)
-		dst_port[7] = portid;
-
+		if (dst_port[i] >= RTE_MAX_ETHPORTS ||
+				(enabled_port_mask & 1 << dst_port[i]) == 0)
+			dst_port[i] = portid;
+	}
 }
 
 static __rte_always_inline uint16_t
@@ -247,64 +164,48 @@ l3fwd_em_send_packets(int nb_rx, struct rte_mbuf **pkts_burst,
 	uint16_t dst_port[MAX_PKT_BURST];
 
 	/*
-	 * Send nb_rx - nb_rx%8 packets
-	 * in groups of 8.
+	 * Send nb_rx - nb_rx % EM_HASH_LOOKUP_COUNT packets
+	 * in groups of EM_HASH_LOOKUP_COUNT.
 	 */
-	int32_t n = RTE_ALIGN_FLOOR(nb_rx, 8);
+	int32_t n = RTE_ALIGN_FLOOR(nb_rx, EM_HASH_LOOKUP_COUNT);
 
-	for (j = 0; j < 8 && j < nb_rx; j++) {
+	for (j = 0; j < EM_HASH_LOOKUP_COUNT && j < nb_rx; j++) {
 		rte_prefetch0(rte_pktmbuf_mtod(pkts_burst[j],
 					       struct ether_hdr *) + 1);
 	}
 
-	for (j = 0; j < n; j += 8) {
+	for (j = 0; j < n; j += EM_HASH_LOOKUP_COUNT) {
 
-		uint32_t pkt_type =
-			pkts_burst[j]->packet_type &
-			pkts_burst[j+1]->packet_type &
-			pkts_burst[j+2]->packet_type &
-			pkts_burst[j+3]->packet_type &
-			pkts_burst[j+4]->packet_type &
-			pkts_burst[j+5]->packet_type &
-			pkts_burst[j+6]->packet_type &
-			pkts_burst[j+7]->packet_type;
+		uint32_t pkt_type = RTE_PTYPE_L3_MASK |
+				    RTE_PTYPE_L4_TCP | RTE_PTYPE_L4_UDP;
+		uint32_t l3_type, tcp_or_udp;
 
-		uint32_t l3_type = pkt_type & RTE_PTYPE_L3_MASK;
-		uint32_t tcp_or_udp = pkt_type &
-			(RTE_PTYPE_L4_TCP | RTE_PTYPE_L4_UDP);
+		for (i = 0; i < EM_HASH_LOOKUP_COUNT; i++)
+			pkt_type &= pkts_burst[j + i]->packet_type;
 
-		for (i = 0, pos = j + 8; i < 8 && pos < nb_rx; i++, pos++) {
+		l3_type = pkt_type & RTE_PTYPE_L3_MASK;
+		tcp_or_udp = pkt_type & (RTE_PTYPE_L4_TCP | RTE_PTYPE_L4_UDP);
+
+		for (i = 0, pos = j + EM_HASH_LOOKUP_COUNT;
+		     i < EM_HASH_LOOKUP_COUNT && pos < nb_rx; i++, pos++) {
 			rte_prefetch0(rte_pktmbuf_mtod(pkts_burst[pos],
 						       struct ether_hdr *) + 1);
 		}
 
 		if (tcp_or_udp && (l3_type == RTE_PTYPE_L3_IPV4)) {
 
-			em_get_dst_port_ipv4x8(qconf, &pkts_burst[j], portid,
+			em_get_dst_port_ipv4xN(qconf, &pkts_burst[j], portid,
 					       &dst_port[j]);
 
 		} else if (tcp_or_udp && (l3_type == RTE_PTYPE_L3_IPV6)) {
 
-			em_get_dst_port_ipv6x8(qconf, &pkts_burst[j], portid,
+			em_get_dst_port_ipv6xN(qconf, &pkts_burst[j], portid,
 					       &dst_port[j]);
 
 		} else {
-			dst_port[j]   = em_get_dst_port(qconf, pkts_burst[j],
-							portid);
-			dst_port[j+1] = em_get_dst_port(qconf, pkts_burst[j+1],
-							portid);
-			dst_port[j+2] = em_get_dst_port(qconf, pkts_burst[j+2],
-							portid);
-			dst_port[j+3] = em_get_dst_port(qconf, pkts_burst[j+3],
-							portid);
-			dst_port[j+4] = em_get_dst_port(qconf, pkts_burst[j+4],
-							portid);
-			dst_port[j+5] = em_get_dst_port(qconf, pkts_burst[j+5],
-							portid);
-			dst_port[j+6] = em_get_dst_port(qconf, pkts_burst[j+6],
-							portid);
-			dst_port[j+7] = em_get_dst_port(qconf, pkts_burst[j+7],
-							portid);
+			for (i = 0; i < EM_HASH_LOOKUP_COUNT; i++)
+				dst_port[j + i] = em_get_dst_port(qconf,
+						pkts_burst[j + i], portid);
 		}
 	}
 
