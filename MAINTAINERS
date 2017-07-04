@@ -799,6 +799,7 @@ F: doc/guides/tools/cryptoperf.rst
 Eventdev test application
 M: Jerin Jacob <jerin.jacob@caviumnetworks.com>
 F: app/test-eventdev/
+F: doc/guides/tools/testeventdev.rst
 
 Procinfo tool
 M: Maryam Tahhan <maryam.tahhan@intel.com>

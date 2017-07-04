@@ -40,4 +40,4 @@ DPDK Tools User Guides
     pmdinfo
     devbind
     cryptoperf
-
+    testeventdev
