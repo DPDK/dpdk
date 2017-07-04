@@ -206,4 +206,59 @@ order_opt_dump(struct evt_options *opt)
 	evt_dump("nb_evdev_ports", "%d", order_nb_event_ports(opt));
 }
 
+int
+order_event_dev_port_setup(struct evt_test *test, struct evt_options *opt,
+				uint8_t nb_workers, uint8_t nb_queues)
+{
+	int ret;
+	uint8_t port;
+	struct test_order *t = evt_test_priv(test);
 
+	/* port configuration */
+	const struct rte_event_port_conf wkr_p_conf = {
+			.dequeue_depth = opt->wkr_deq_dep,
+			.enqueue_depth = 64,
+			.new_event_threshold = 4096,
+	};
+
+	/* setup one port per worker, linking to all queues */
+	for (port = 0; port < nb_workers; port++) {
+		struct worker_data *w = &t->worker[port];
+
+		w->dev_id = opt->dev_id;
+		w->port_id = port;
+		w->t = t;
+
+		ret = rte_event_port_setup(opt->dev_id, port, &wkr_p_conf);
+		if (ret) {
+			evt_err("failed to setup port %d", port);
+			return ret;
+		}
+
+		ret = rte_event_port_link(opt->dev_id, port, NULL, NULL, 0);
+		if (ret != nb_queues) {
+			evt_err("failed to link all queues to port %d", port);
+			return -EINVAL;
+		}
+	}
+	/* port for producer, no links */
+	const struct rte_event_port_conf prod_conf = {
+			.dequeue_depth = 8,
+			.enqueue_depth = 32,
+			.new_event_threshold = 1200,
+	};
+	struct prod_data *p = &t->prod;
+
+	p->dev_id = opt->dev_id;
+	p->port_id = port; /* last port */
+	p->queue_id = 0;
+	p->t = t;
+
+	ret = rte_event_port_setup(opt->dev_id, port, &prod_conf);
+	if (ret) {
+		evt_err("failed to setup producer port %d", port);
+		return ret;
+	}
+
+	return ret;
+}

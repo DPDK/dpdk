@@ -94,6 +94,8 @@ int order_test_result(struct evt_test *test, struct evt_options *opt);
 int order_opt_check(struct evt_options *opt);
 int order_test_setup(struct evt_test *test, struct evt_options *opt);
 int order_mempool_setup(struct evt_test *test, struct evt_options *opt);
+int order_event_dev_port_setup(struct evt_test *test, struct evt_options *opt,
+				uint8_t nb_workers, uint8_t nb_queues);
 void order_test_destroy(struct evt_test *test, struct evt_options *opt);
 void order_opt_dump(struct evt_options *opt);
 void order_mempool_destroy(struct evt_test *test, struct evt_options *opt);
