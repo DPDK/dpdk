@@ -41,6 +41,141 @@ perf_queue_nb_event_queues(struct evt_options *opt)
 	return evt_nr_active_lcores(opt->plcores) * opt->nb_stages;
 }
 
+static inline __attribute__((always_inline)) void
+mark_fwd_latency(struct rte_event *const ev,
+		const uint8_t nb_stages)
+{
+	if (unlikely((ev->queue_id % nb_stages) == 0)) {
+		struct perf_elt *const m = ev->event_ptr;
+
+		m->timestamp = rte_get_timer_cycles();
+	}
+}
+
+static inline __attribute__((always_inline)) void
+fwd_event(struct rte_event *const ev, uint8_t *const sched_type_list,
+		const uint8_t nb_stages)
+{
+	ev->queue_id++;
+	ev->sched_type = sched_type_list[ev->queue_id % nb_stages];
+	ev->op = RTE_EVENT_OP_FORWARD;
+	ev->event_type = RTE_EVENT_TYPE_CPU;
+}
+
+static int
+perf_queue_worker(void *arg, const int enable_fwd_latency)
+{
+	PERF_WORKER_INIT;
+	struct rte_event ev;
+
+	while (t->done == false) {
+		uint16_t event = rte_event_dequeue_burst(dev, port, &ev, 1, 0);
+
+		if (!event) {
+			rte_pause();
+			continue;
+		}
+		if (enable_fwd_latency)
+		/* first q in pipeline, mark timestamp to compute fwd latency */
+			mark_fwd_latency(&ev, nb_stages);
+
+		/* last stage in pipeline */
+		if (unlikely((ev.queue_id % nb_stages) == laststage)) {
+			if (enable_fwd_latency)
+				cnt = perf_process_last_stage_latency(pool,
+					&ev, w, bufs, sz, cnt);
+			else
+				cnt = perf_process_last_stage(pool,
+					&ev, w, bufs, sz, cnt);
+		} else {
+			fwd_event(&ev, sched_type_list, nb_stages);
+			while (rte_event_enqueue_burst(dev, port, &ev, 1) != 1)
+				rte_pause();
+		}
+	}
+	return 0;
+}
+
+static int
+perf_queue_worker_burst(void *arg, const int enable_fwd_latency)
+{
+	PERF_WORKER_INIT;
+	uint16_t i;
+	/* +1 to avoid prefetch out of array check */
+	struct rte_event ev[BURST_SIZE + 1];
+
+	while (t->done == false) {
+		uint16_t const nb_rx = rte_event_dequeue_burst(dev, port, ev,
+				BURST_SIZE, 0);
+
+		if (!nb_rx) {
+			rte_pause();
+			continue;
+		}
+
+		for (i = 0; i < nb_rx; i++) {
+			if (enable_fwd_latency) {
+				rte_prefetch0(ev[i+1].event_ptr);
+				/* first queue in pipeline.
+				 * mark time stamp to compute fwd latency
+				 */
+				mark_fwd_latency(&ev[i], nb_stages);
+			}
+			/* last stage in pipeline */
+			if (unlikely((ev[i].queue_id % nb_stages) ==
+						 laststage)) {
+				if (enable_fwd_latency)
+					cnt = perf_process_last_stage_latency(
+						pool, &ev[i], w, bufs, sz, cnt);
+				else
+					cnt = perf_process_last_stage(pool,
+						&ev[i], w, bufs, sz, cnt);
+
+				ev[i].op = RTE_EVENT_OP_RELEASE;
+			} else {
+				fwd_event(&ev[i], sched_type_list, nb_stages);
+			}
+		}
+
+		uint16_t enq;
+
+		enq = rte_event_enqueue_burst(dev, port, ev, nb_rx);
+		while (enq < nb_rx) {
+			enq += rte_event_enqueue_burst(dev, port,
+							ev + enq, nb_rx - enq);
+		}
+	}
+	return 0;
+}
+
+static int
+worker_wrapper(void *arg)
+{
+	struct worker_data *w  = arg;
+	struct evt_options *opt = w->t->opt;
+
+	const bool burst = evt_has_burst_mode(w->dev_id);
+	const int fwd_latency = opt->fwd_latency;
+
+	/* allow compiler to optimize */
+	if (!burst && !fwd_latency)
+		return perf_queue_worker(arg, 0);
+	else if (!burst && fwd_latency)
+		return perf_queue_worker(arg, 1);
+	else if (burst && !fwd_latency)
+		return perf_queue_worker_burst(arg, 0);
+	else if (burst && fwd_latency)
+		return perf_queue_worker_burst(arg, 1);
+
+	rte_panic("invalid worker\n");
+}
+
+static int
+perf_queue_launch_lcores(struct evt_test *test, struct evt_options *opt)
+{
+	return perf_launch_lcores(test, opt, worker_wrapper);
+}
+
 static int
 perf_queue_eventdev_setup(struct evt_test *test, struct evt_options *opt)
 {
@@ -143,6 +278,7 @@ static const struct evt_test_ops perf_queue =  {
 	.test_setup         = perf_test_setup,
 	.mempool_setup      = perf_mempool_setup,
 	.eventdev_setup     = perf_queue_eventdev_setup,
+	.launch_lcores      = perf_queue_launch_lcores,
 	.eventdev_destroy   = perf_eventdev_destroy,
 	.mempool_destroy    = perf_mempool_destroy,
 	.test_result        = perf_test_result,

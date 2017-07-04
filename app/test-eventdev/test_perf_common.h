@@ -86,6 +86,66 @@ struct perf_elt {
 	uint64_t timestamp;
 } __rte_cache_aligned;
 
+#define BURST_SIZE 16
+
+#define PERF_WORKER_INIT\
+	struct worker_data *w  = arg;\
+	struct test_perf *t = w->t;\
+	struct evt_options *opt = t->opt;\
+	const uint8_t dev = w->dev_id;\
+	const uint8_t port = w->port_id;\
+	uint8_t *const sched_type_list = &t->sched_type_list[0];\
+	struct rte_mempool *const pool = t->pool;\
+	const uint8_t nb_stages = t->opt->nb_stages;\
+	const uint8_t laststage = nb_stages - 1;\
+	uint8_t cnt = 0;\
+	void *bufs[16] __rte_cache_aligned;\
+	int const sz = RTE_DIM(bufs);\
+	if (opt->verbose_level > 1)\
+		printf("%s(): lcore %d dev_id %d port=%d\n", __func__,\
+				rte_lcore_id(), dev, port)
+
+static inline __attribute__((always_inline)) int
+perf_process_last_stage(struct rte_mempool *const pool,
+		struct rte_event *const ev, struct worker_data *const w,
+		void *bufs[], int const buf_sz, uint8_t count)
+{
+	bufs[count++] = ev->event_ptr;
+	w->processed_pkts++;
+	rte_smp_wmb();
+
+	if (unlikely(count == buf_sz)) {
+		count = 0;
+		rte_mempool_put_bulk(pool, bufs, buf_sz);
+	}
+	return count;
+}
+
+static inline __attribute__((always_inline)) uint8_t
+perf_process_last_stage_latency(struct rte_mempool *const pool,
+		struct rte_event *const ev, struct worker_data *const w,
+		void *bufs[], int const buf_sz, uint8_t count)
+{
+	uint64_t latency;
+	struct perf_elt *const m = ev->event_ptr;
+
+	bufs[count++] = ev->event_ptr;
+	w->processed_pkts++;
+
+	if (unlikely(count == buf_sz)) {
+		count = 0;
+		latency = rte_get_timer_cycles() - m->timestamp;
+		rte_mempool_put_bulk(pool, bufs, buf_sz);
+	} else {
+		latency = rte_get_timer_cycles() - m->timestamp;
+	}
+
+	w->latency += latency;
+	rte_smp_wmb();
+	return count;
+}
+
+
 static inline int
 perf_nb_event_ports(struct evt_options *opt)
 {
