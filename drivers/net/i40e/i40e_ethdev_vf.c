@@ -517,30 +517,46 @@ i40evf_config_promisc(struct rte_eth_dev *dev,
 	return err;
 }
 
-/* Configure vlan and double vlan offload. Use flag to specify which part to configure */
 static int
-i40evf_config_vlan_offload(struct rte_eth_dev *dev,
-				bool enable_vlan_strip)
+i40evf_enable_vlan_strip(struct rte_eth_dev *dev)
 {
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
-	int err;
 	struct vf_cmd_info args;
-	struct virtchnl_vlan_offload_info offload;
+	int ret;
 
-	offload.vsi_id = vf->vsi_res->vsi_id;
-	offload.enable_vlan_strip = enable_vlan_strip;
-
-	args.ops = (enum virtchnl_ops)I40E_VIRTCHNL_OP_CFG_VLAN_OFFLOAD;
-	args.in_args = (uint8_t *)&offload;
-	args.in_args_size = sizeof(offload);
+	memset(&args, 0, sizeof(args));
+	args.ops = VIRTCHNL_OP_ENABLE_VLAN_STRIPPING;
+	args.in_args = NULL;
+	args.in_args_size = 0;
 	args.out_buffer = vf->aq_resp;
 	args.out_size = I40E_AQ_BUF_SZ;
+	ret = i40evf_execute_vf_cmd(dev, &args);
+	if (ret)
+		PMD_DRV_LOG(ERR, "Failed to execute command of "
+			    "VIRTCHNL_OP_ENABLE_VLAN_STRIPPING");
 
-	err = i40evf_execute_vf_cmd(dev, &args);
-	if (err)
-		PMD_DRV_LOG(ERR, "fail to execute command CFG_VLAN_OFFLOAD");
+	return ret;
+}
 
-	return err;
+static int
+i40evf_disable_vlan_strip(struct rte_eth_dev *dev)
+{
+	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	struct vf_cmd_info args;
+	int ret;
+
+	memset(&args, 0, sizeof(args));
+	args.ops = VIRTCHNL_OP_DISABLE_VLAN_STRIPPING;
+	args.in_args = NULL;
+	args.in_args_size = 0;
+	args.out_buffer = vf->aq_resp;
+	args.out_size = I40E_AQ_BUF_SZ;
+	ret = i40evf_execute_vf_cmd(dev, &args);
+	if (ret)
+		PMD_DRV_LOG(ERR, "Failed to execute command of "
+			    "VIRTCHNL_OP_DISABLE_VLAN_STRIPPING");
+
+	return ret;
 }
 
 static int
@@ -1621,22 +1637,15 @@ i40evf_init_vlan(struct rte_eth_dev *dev)
 static void
 i40evf_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 {
-	bool enable_vlan_strip = 0;
 	struct rte_eth_conf *dev_conf = &dev->data->dev_conf;
-	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 
-	/* Linux pf host doesn't support vlan offload yet */
-	if (vf->version_major == I40E_DPDK_VERSION_MAJOR) {
-		/* Vlan stripping setting */
-		if (mask & ETH_VLAN_STRIP_MASK) {
-			/* Enable or disable VLAN stripping */
-			if (dev_conf->rxmode.hw_vlan_strip)
-				enable_vlan_strip = 1;
-			else
-				enable_vlan_strip = 0;
-
-			i40evf_config_vlan_offload(dev, enable_vlan_strip);
-		}
+	/* Vlan stripping setting */
+	if (mask & ETH_VLAN_STRIP_MASK) {
+		/* Enable or disable VLAN stripping */
+		if (dev_conf->rxmode.hw_vlan_strip)
+			i40evf_enable_vlan_strip(dev);
+		else
+			i40evf_disable_vlan_strip(dev);
 	}
 }
 

@@ -1113,37 +1113,47 @@ i40e_pf_host_process_cmd_get_stats(struct i40e_pf_vf *vf, bool b_op)
 }
 
 static int
-i40e_pf_host_process_cmd_cfg_vlan_offload(
-					struct i40e_pf_vf *vf,
-					uint8_t *msg,
-					uint16_t msglen,
-					bool b_op)
+i40e_pf_host_process_cmd_enable_vlan_strip(struct i40e_pf_vf *vf, bool b_op)
 {
 	int ret = I40E_SUCCESS;
-	struct virtchnl_vlan_offload_info *offload =
-			(struct virtchnl_vlan_offload_info *)msg;
 
 	if (!b_op) {
 		i40e_pf_host_send_msg_to_vf(
 			vf,
-			I40E_VIRTCHNL_OP_CFG_VLAN_OFFLOAD,
+			VIRTCHNL_OP_ENABLE_VLAN_STRIPPING,
 			I40E_NOT_SUPPORTED, NULL, 0);
 		return ret;
 	}
 
-	if (msg == NULL || msglen != sizeof(*offload)) {
-		ret = I40E_ERR_PARAM;
-		goto send_msg;
+	ret = i40e_vsi_config_vlan_stripping(vf->vsi, TRUE);
+	if (ret != 0)
+		PMD_DRV_LOG(ERR, "Failed to enable vlan stripping");
+
+	i40e_pf_host_send_msg_to_vf(vf, VIRTCHNL_OP_ENABLE_VLAN_STRIPPING,
+				    ret, NULL, 0);
+
+	return ret;
+}
+
+static int
+i40e_pf_host_process_cmd_disable_vlan_strip(struct i40e_pf_vf *vf, bool b_op)
+{
+	int ret = I40E_SUCCESS;
+
+	if (!b_op) {
+		i40e_pf_host_send_msg_to_vf(
+			vf,
+			VIRTCHNL_OP_DISABLE_VLAN_STRIPPING,
+			I40E_NOT_SUPPORTED, NULL, 0);
+		return ret;
 	}
 
-	ret = i40e_vsi_config_vlan_stripping(vf->vsi,
-						!!offload->enable_vlan_strip);
+	ret = i40e_vsi_config_vlan_stripping(vf->vsi, FALSE);
 	if (ret != 0)
-		PMD_DRV_LOG(ERR, "Failed to configure vlan stripping");
+		PMD_DRV_LOG(ERR, "Failed to disable vlan stripping");
 
-send_msg:
-	i40e_pf_host_send_msg_to_vf(vf, I40E_VIRTCHNL_OP_CFG_VLAN_OFFLOAD,
-					ret, NULL, 0);
+	i40e_pf_host_send_msg_to_vf(vf, VIRTCHNL_OP_DISABLE_VLAN_STRIPPING,
+				    ret, NULL, 0);
 
 	return ret;
 }
@@ -1342,10 +1352,13 @@ i40e_pf_host_handle_vf_msg(struct rte_eth_dev *dev,
 		PMD_DRV_LOG(INFO, "OP_GET_STATS received");
 		i40e_pf_host_process_cmd_get_stats(vf, b_op);
 		break;
-	case I40E_VIRTCHNL_OP_CFG_VLAN_OFFLOAD:
-		PMD_DRV_LOG(INFO, "OP_CFG_VLAN_OFFLOAD received");
-		i40e_pf_host_process_cmd_cfg_vlan_offload(vf, msg,
-							  msglen, b_op);
+	case VIRTCHNL_OP_ENABLE_VLAN_STRIPPING:
+		PMD_DRV_LOG(INFO, "OP_ENABLE_VLAN_STRIPPING received");
+		i40e_pf_host_process_cmd_enable_vlan_strip(vf, b_op);
+		break;
+	case VIRTCHNL_OP_DISABLE_VLAN_STRIPPING:
+		PMD_DRV_LOG(INFO, "OP_DISABLE_VLAN_STRIPPING received");
+		i40e_pf_host_process_cmd_disable_vlan_strip(vf, b_op);
 		break;
 	case I40E_VIRTCHNL_OP_CFG_VLAN_PVID:
 		PMD_DRV_LOG(INFO, "OP_CFG_VLAN_PVID received");

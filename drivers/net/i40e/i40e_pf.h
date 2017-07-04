@@ -54,9 +54,8 @@ enum virtchnl_ops_dpdk {
 	 * Keep some gap between Linux PF commands and
 	 * DPDK PF extended commands.
 	 */
-	I40E_VIRTCHNL_OP_CFG_VLAN_OFFLOAD = VIRTCHNL_OP_VERSION +
-						I40E_DPDK_OFFSET,
-	I40E_VIRTCHNL_OP_CFG_VLAN_PVID,
+	I40E_VIRTCHNL_OP_CFG_VLAN_PVID = VIRTCHNL_OP_VERSION +
+					 I40E_DPDK_OFFSET,
 	VIRTCHNL_OP_CONFIG_VSI_QUEUES_EXT,
 };
 
