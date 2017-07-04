@@ -79,6 +79,15 @@ vqtbl1q_u8(uint8x16_t a, uint8x16_t b)
 }
 #endif
 
+#if defined(RTE_TOOLCHAIN_GCC) && (GCC_VERSION < 70000)
+static inline uint32x4_t
+vcopyq_laneq_u32(uint32x4_t a, const int lane_a,
+		 uint32x4_t b, const int lane_b)
+{
+	return vsetq_lane_u32(vgetq_lane_u32(b, lane_b), a, lane_a);
+}
+#endif
+
 #if defined(RTE_ARCH_ARM64)
 #if defined(RTE_TOOLCHAIN_GCC) && (GCC_VERSION < 70000)
 /* NEON intrinsic vreinterpretq_u64_p128() is supported since GCC version 7 */
