@@ -39,6 +39,8 @@ MKFILE_PATH=$(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
 ifeq ($(CONFIG_RTE_ARCH_X86_64),y)
 ARCH_PATH += $(MKFILE_PATH)/arch/x86
+else ifeq ($(CONFIG_RTE_ARCH_ARM64),y)
+ARCH_PATH += $(MKFILE_PATH)/arch/arm64
 endif
 
 VPATH := $(MKFILE_PATH) $(ARCH_PATH)

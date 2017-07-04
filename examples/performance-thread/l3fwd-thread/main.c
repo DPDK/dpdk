@@ -222,7 +222,7 @@ static uint16_t nb_txd = RTE_TEST_TX_DESC_DEFAULT;
 static uint64_t dest_eth_addr[RTE_MAX_ETHPORTS];
 static struct ether_addr ports_eth_addr[RTE_MAX_ETHPORTS];
 
-static __m128i val_eth[RTE_MAX_ETHPORTS];
+static xmm_t val_eth[RTE_MAX_ETHPORTS];
 
 /* replace first 12B of the ethernet header. */
 #define	MASK_ETH 0x3f
