@@ -63,4 +63,106 @@ struct evt_options {
 
 void evt_options_default(struct evt_options *opt);
 
+/* options check helpers */
+static inline bool
+evt_lcores_has_overlap(bool lcores[], int lcore)
+{
+	if (lcores[lcore] == true) {
+		evt_err("lcore overlaps at %d", lcore);
+		return true;
+	}
+
+	return false;
+}
+
+static inline bool
+evt_lcores_has_overlap_multi(bool lcoresx[], bool lcoresy[])
+{
+	int i;
+
+	for (i = 0; i < RTE_MAX_LCORE; i++) {
+		if (lcoresx[i] && lcoresy[i]) {
+			evt_err("lcores overlaps at %d", i);
+			return true;
+		}
+	}
+	return false;
+}
+
+static inline bool
+evt_has_active_lcore(bool lcores[])
+{
+	int i;
+
+	for (i = 0; i < RTE_MAX_LCORE; i++)
+		if (lcores[i])
+			return true;
+	return false;
+}
+
+static inline int
+evt_nr_active_lcores(bool lcores[])
+{
+	int i;
+	int c = 0;
+
+	for (i = 0; i < RTE_MAX_LCORE; i++)
+		if (lcores[i])
+			c++;
+	return c;
+}
+
+static inline int
+evt_get_first_active_lcore(bool lcores[])
+{
+	int i;
+
+	for (i = 0; i < RTE_MAX_LCORE; i++)
+		if (lcores[i])
+			return i;
+	return -1;
+}
+
+static inline bool
+evt_has_disabled_lcore(bool lcores[])
+{
+	int i;
+
+	for (i = 0; i < RTE_MAX_LCORE; i++)
+		if ((lcores[i] == true) && !(rte_lcore_is_enabled(i)))
+			return true;
+	return false;
+}
+
+static inline bool
+evt_has_invalid_stage(struct evt_options *opt)
+{
+	if (!opt->nb_stages) {
+		evt_err("need minimum one stage, check --stlist");
+		return true;
+	}
+	if (opt->nb_stages > EVT_MAX_STAGES) {
+		evt_err("requested changes are beyond EVT_MAX_STAGES=%d",
+			EVT_MAX_STAGES);
+		return true;
+	}
+	return false;
+}
+
+static inline bool
+evt_has_invalid_sched_type(struct evt_options *opt)
+{
+	int i;
+
+	for (i = 0; i < opt->nb_stages; i++) {
+		if (opt->sched_type_list[i] > RTE_SCHED_TYPE_PARALLEL) {
+			evt_err("invalid sched_type %d at %d",
+				opt->sched_type_list[i], i);
+			return true;
+		}
+	}
+	return false;
+}
+
+
 #endif /* _EVT_OPTIONS_ */
