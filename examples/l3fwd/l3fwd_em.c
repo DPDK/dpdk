@@ -332,7 +332,7 @@ em_get_ipv6_dst_port(void *ipv6_hdr,  uint8_t portid, void *lookup_struct)
 #if defined(NO_HASH_MULTI_LOOKUP)
 #include "l3fwd_em_sse.h"
 #else
-#include "l3fwd_em_hlm_sse.h"
+#include "l3fwd_em_hlm.h"
 #endif
 #else
 #include "l3fwd_em.h"
