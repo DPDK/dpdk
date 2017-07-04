@@ -43,3 +43,11 @@ DPDK_16.07 {
 	rte_eth_bond_8023ad_setup;
 
 } DPDK_16.04;
+
+DPDK_17.08 {
+	global:
+
+	rte_eth_bond_8023ad_dedicated_queues_enable;
+	rte_eth_bond_8023ad_dedicated_queues_disable;
+
+} DPDK_16.07;

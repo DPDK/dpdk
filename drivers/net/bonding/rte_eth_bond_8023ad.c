@@ -632,16 +632,29 @@ tx_machine(struct bond_dev_private *internals, uint8_t slave_id)
 	lacpdu->tlv_type_terminator = TLV_TYPE_TERMINATOR_INFORMATION;
 	lacpdu->terminator_length = 0;
 
-	if (rte_ring_enqueue(port->tx_ring, lacp_pkt) == -ENOBUFS) {
-		/* If TX ring full, drop packet and free message. Retransmission
-		 * will happen in next function call. */
-		rte_pktmbuf_free(lacp_pkt);
-		set_warning_flags(port, WRN_TX_QUEUE_FULL);
-		return;
+	MODE4_DEBUG("Sending LACP frame\n");
+	BOND_PRINT_LACP(lacpdu);
+
+	if (internals->mode4.dedicated_queues.enabled == 0) {
+		int retval = rte_ring_enqueue(port->tx_ring, lacp_pkt);
+		if (retval != 0) {
+			/* If TX ring full, drop packet and free message.
+			   Retransmission will happen in next function call. */
+			rte_pktmbuf_free(lacp_pkt);
+			set_warning_flags(port, WRN_TX_QUEUE_FULL);
+			return;
+		}
+	} else {
+		uint16_t pkts_sent = rte_eth_tx_burst(slave_id,
+				internals->mode4.dedicated_queues.tx_qid,
+				&lacp_pkt, 1);
+		if (pkts_sent != 1) {
+			rte_pktmbuf_free(lacp_pkt);
+			set_warning_flags(port, WRN_TX_QUEUE_FULL);
+			return;
+		}
 	}
 
-	MODE4_DEBUG("sending LACP frame\n");
-	BOND_PRINT_LACP(lacpdu);
 
 	timer_set(&port->tx_machine_timer, internals->mode4.tx_period_timeout);
 	SM_FLAG_CLR(port, NTT);
@@ -741,6 +754,22 @@ link_speed_key(uint16_t speed) {
 }
 
 static void
+rx_machine_update(struct bond_dev_private *internals, uint8_t slave_id,
+		struct rte_mbuf *lacp_pkt) {
+	struct lacpdu_header *lacp;
+
+	if (lacp_pkt != NULL) {
+		lacp = rte_pktmbuf_mtod(lacp_pkt, struct lacpdu_header *);
+		RTE_ASSERT(lacp->lacpdu.subtype == SLOW_SUBTYPE_LACP);
+
+		/* This is LACP frame so pass it to rx_machine */
+		rx_machine(internals, slave_id, &lacp->lacpdu);
+		rte_pktmbuf_free(lacp_pkt);
+	} else
+		rx_machine(internals, slave_id, NULL);
+}
+
+static void
 bond_mode_8023ad_periodic_cb(void *arg)
 {
 	struct rte_eth_dev *bond_dev = arg;
@@ -748,8 +777,8 @@ bond_mode_8023ad_periodic_cb(void *arg)
 	struct port *port;
 	struct rte_eth_link link_info;
 	struct ether_addr slave_addr;
+	struct rte_mbuf *lacp_pkt = NULL;
 
-	void *pkt = NULL;
 	uint8_t i, slave_id;
 
 
@@ -809,20 +838,28 @@ bond_mode_8023ad_periodic_cb(void *arg)
 
 		SM_FLAG_SET(port, LACP_ENABLED);
 
-		/* Find LACP packet to this port. Do not check subtype, it is done in
-		 * function that queued packet */
-		if (rte_ring_dequeue(port->rx_ring, &pkt) == 0) {
-			struct rte_mbuf *lacp_pkt = pkt;
-			struct lacpdu_header *lacp;
+		if (internals->mode4.dedicated_queues.enabled == 0) {
+			/* Find LACP packet to this port. Do not check subtype,
+			 * it is done in function that queued packet
+			 */
+			int retval = rte_ring_dequeue(port->rx_ring,
+					(void **)&lacp_pkt);
 
-			lacp = rte_pktmbuf_mtod(lacp_pkt, struct lacpdu_header *);
-			RTE_ASSERT(lacp->lacpdu.subtype == SLOW_SUBTYPE_LACP);
+			if (retval != 0)
+				lacp_pkt = NULL;
 
-			/* This is LACP frame so pass it to rx_machine */
-			rx_machine(internals, slave_id, &lacp->lacpdu);
-			rte_pktmbuf_free(lacp_pkt);
-		} else
-			rx_machine(internals, slave_id, NULL);
+			rx_machine_update(internals, slave_id, lacp_pkt);
+		} else {
+			uint16_t rx_count = rte_eth_rx_burst(slave_id,
+					internals->mode4.dedicated_queues.rx_qid,
+					&lacp_pkt, 1);
+
+			if (rx_count == 1)
+				bond_mode_8023ad_handle_slow_pkt(internals,
+						slave_id, lacp_pkt);
+			else
+				rx_machine_update(internals, slave_id, NULL);
+		}
 
 		periodic_machine(internals, slave_id);
 		mux_machine(internals, slave_id);
@@ -1067,6 +1104,10 @@ bond_mode_8023ad_conf_assign(struct mode8023ad_private *mode4,
 	mode4->tx_period_timeout = conf->tx_period_ms * ms_ticks;
 	mode4->rx_marker_timeout = conf->rx_marker_period_ms * ms_ticks;
 	mode4->update_timeout_us = conf->update_timeout_ms * 1000;
+
+	mode4->dedicated_queues.enabled = 0;
+	mode4->dedicated_queues.rx_qid = UINT16_MAX;
+	mode4->dedicated_queues.tx_qid = UINT16_MAX;
 }
 
 static void
@@ -1191,18 +1232,36 @@ bond_mode_8023ad_handle_slow_pkt(struct bond_dev_private *internals,
 		m_hdr->marker.tlv_type_marker = MARKER_TLV_TYPE_RESP;
 		rte_eth_macaddr_get(slave_id, &m_hdr->eth_hdr.s_addr);
 
-		if (unlikely(rte_ring_enqueue(port->tx_ring, pkt) == -ENOBUFS)) {
-			/* reset timer */
-			port->rx_marker_timer = 0;
-			wrn = WRN_TX_QUEUE_FULL;
-			goto free_out;
+		if (internals->mode4.dedicated_queues.enabled == 0) {
+			int retval = rte_ring_enqueue(port->tx_ring, pkt);
+			if (retval != 0) {
+				/* reset timer */
+				port->rx_marker_timer = 0;
+				wrn = WRN_TX_QUEUE_FULL;
+				goto free_out;
+			}
+		} else {
+			/* Send packet directly to the slow queue */
+			uint16_t tx_count = rte_eth_tx_burst(slave_id,
+					internals->mode4.dedicated_queues.tx_qid,
+					&pkt, 1);
+			if (tx_count != 1) {
+				/* reset timer */
+				port->rx_marker_timer = 0;
+				wrn = WRN_TX_QUEUE_FULL;
+				goto free_out;
+			}
 		}
 	} else if (likely(subtype == SLOW_SUBTYPE_LACP)) {
-		if (unlikely(rte_ring_enqueue(port->rx_ring, pkt) == -ENOBUFS)) {
-			/* If RX fing full free lacpdu message and drop packet */
-			wrn = WRN_RX_QUEUE_FULL;
-			goto free_out;
-		}
+		if (internals->mode4.dedicated_queues.enabled == 0) {
+			int retval = rte_ring_enqueue(port->rx_ring, pkt);
+			if (retval != 0) {
+				/* If RX fing full free lacpdu message and drop packet */
+				wrn = WRN_RX_QUEUE_FULL;
+				goto free_out;
+			}
+		} else
+			rx_machine_update(internals, slave_id, pkt);
 	} else {
 		wrn = WRN_UNKNOWN_SLOW_TYPE;
 		goto free_out;
@@ -1506,4 +1565,50 @@ bond_mode_8023ad_ext_periodic_cb(void *arg)
 
 	rte_eal_alarm_set(internals->mode4.update_timeout_us,
 			bond_mode_8023ad_ext_periodic_cb, arg);
+}
+
+int
+rte_eth_bond_8023ad_dedicated_queues_enable(uint8_t port)
+{
+	int retval = 0;
+	struct rte_eth_dev *dev = &rte_eth_devices[port];
+	struct bond_dev_private *internals = (struct bond_dev_private *)
+		dev->data->dev_private;
+
+	if (check_for_bonded_ethdev(dev) != 0)
+		return -1;
+
+	if (bond_8023ad_slow_pkt_hw_filter_supported(port) != 0)
+		return -1;
+
+	/* Device must be stopped to set up slow queue */
+	if (dev->data->dev_started)
+		return -1;
+
+	internals->mode4.dedicated_queues.enabled = 1;
+
+	bond_ethdev_mode_set(dev, internals->mode);
+	return retval;
+}
+
+int
+rte_eth_bond_8023ad_dedicated_queues_disable(uint8_t port)
+{
+	int retval = 0;
+	struct rte_eth_dev *dev = &rte_eth_devices[port];
+	struct bond_dev_private *internals = (struct bond_dev_private *)
+		dev->data->dev_private;
+
+	if (check_for_bonded_ethdev(dev) != 0)
+		return -1;
+
+	/* Device must be stopped to set up slow queue */
+	if (dev->data->dev_started)
+		return -1;
+
+	internals->mode4.dedicated_queues.enabled = 0;
+
+	bond_ethdev_mode_set(dev, internals->mode);
+
+	return retval;
 }

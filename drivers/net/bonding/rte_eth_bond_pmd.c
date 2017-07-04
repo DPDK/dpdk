@@ -133,6 +133,254 @@ is_lacp_packets(uint16_t ethertype, uint8_t subtype, uint16_t vlan_tci)
 		(subtype == SLOW_SUBTYPE_MARKER || subtype == SLOW_SUBTYPE_LACP));
 }
 
+/*****************************************************************************
+ * Flow director's setup for mode 4 optimization
+ */
+
+static struct rte_flow_item_eth flow_item_eth_type_8023ad = {
+	.dst.addr_bytes = { 0 },
+	.src.addr_bytes = { 0 },
+	.type = RTE_BE16(ETHER_TYPE_SLOW),
+};
+
+static struct rte_flow_item_eth flow_item_eth_mask_type_8023ad = {
+	.dst.addr_bytes = { 0 },
+	.src.addr_bytes = { 0 },
+	.type = 0xFFFF,
+};
+
+static struct rte_flow_item flow_item_8023ad[] = {
+	{
+		.type = RTE_FLOW_ITEM_TYPE_ETH,
+		.spec = &flow_item_eth_type_8023ad,
+		.last = NULL,
+		.mask = &flow_item_eth_mask_type_8023ad,
+	},
+	{
+		.type = RTE_FLOW_ITEM_TYPE_END,
+		.spec = NULL,
+		.last = NULL,
+		.mask = NULL,
+	}
+};
+
+const struct rte_flow_attr flow_attr_8023ad = {
+	.group = 0,
+	.priority = 0,
+	.ingress = 1,
+	.egress = 0,
+	.reserved = 0,
+};
+
+int
+bond_ethdev_8023ad_flow_verify(struct rte_eth_dev *bond_dev,
+		uint8_t slave_port) {
+	struct rte_flow_error error;
+	struct bond_dev_private *internals = (struct bond_dev_private *)
+			(bond_dev->data->dev_private);
+
+	struct rte_flow_action_queue lacp_queue_conf = {
+		.index = internals->mode4.dedicated_queues.rx_qid,
+	};
+
+	const struct rte_flow_action actions[] = {
+		{
+			.type = RTE_FLOW_ACTION_TYPE_QUEUE,
+			.conf = &lacp_queue_conf
+		},
+		{
+			.type = RTE_FLOW_ACTION_TYPE_END,
+		}
+	};
+
+	int ret = rte_flow_validate(slave_port, &flow_attr_8023ad,
+			flow_item_8023ad, actions, &error);
+	if (ret < 0)
+		return -1;
+
+	return 0;
+}
+
+int
+bond_8023ad_slow_pkt_hw_filter_supported(uint8_t port_id) {
+	struct rte_eth_dev *bond_dev = &rte_eth_devices[port_id];
+	struct bond_dev_private *internals = (struct bond_dev_private *)
+			(bond_dev->data->dev_private);
+	struct rte_eth_dev_info bond_info, slave_info;
+	uint8_t idx;
+
+	/* Verify if all slaves in bonding supports flow director and */
+	if (internals->slave_count > 0) {
+		rte_eth_dev_info_get(bond_dev->data->port_id, &bond_info);
+
+		internals->mode4.dedicated_queues.rx_qid = bond_info.nb_rx_queues;
+		internals->mode4.dedicated_queues.tx_qid = bond_info.nb_tx_queues;
+
+		for (idx = 0; idx < internals->slave_count; idx++) {
+			rte_eth_dev_info_get(internals->slaves[idx].port_id,
+					&slave_info);
+
+			if (bond_ethdev_8023ad_flow_verify(bond_dev,
+					internals->slaves[idx].port_id) != 0)
+				return -1;
+		}
+	}
+
+	return 0;
+}
+
+int
+bond_ethdev_8023ad_flow_set(struct rte_eth_dev *bond_dev, uint8_t slave_port) {
+
+	struct rte_flow_error error;
+	struct bond_dev_private *internals = (struct bond_dev_private *)
+			(bond_dev->data->dev_private);
+
+	struct rte_flow_action_queue lacp_queue_conf = {
+		.index = internals->mode4.dedicated_queues.rx_qid,
+	};
+
+	const struct rte_flow_action actions[] = {
+		{
+			.type = RTE_FLOW_ACTION_TYPE_QUEUE,
+			.conf = &lacp_queue_conf
+		},
+		{
+			.type = RTE_FLOW_ACTION_TYPE_END,
+		}
+	};
+
+	internals->mode4.dedicated_queues.flow[slave_port] = rte_flow_create(slave_port,
+			&flow_attr_8023ad, flow_item_8023ad, actions, &error);
+	if (internals->mode4.dedicated_queues.flow[slave_port] == NULL) {
+		RTE_BOND_LOG(ERR, "bond_ethdev_8023ad_flow_set: %s "
+				"(slave_port=%d queue_id=%d)",
+				error.message, slave_port,
+				internals->mode4.dedicated_queues.rx_qid);
+		return -1;
+	}
+
+	return 0;
+}
+
+static uint16_t
+bond_ethdev_rx_burst_8023ad_fast_queue(void *queue, struct rte_mbuf **bufs,
+		uint16_t nb_pkts)
+{
+	struct bond_rx_queue *bd_rx_q = (struct bond_rx_queue *)queue;
+	struct bond_dev_private *internals = bd_rx_q->dev_private;
+	uint16_t num_rx_total = 0;	/* Total number of received packets */
+	uint8_t slaves[RTE_MAX_ETHPORTS];
+	uint8_t slave_count;
+
+	uint8_t i, idx;
+
+	/* Copy slave list to protect against slave up/down changes during tx
+	 * bursting */
+	slave_count = internals->active_slave_count;
+	memcpy(slaves, internals->active_slaves,
+			sizeof(internals->active_slaves[0]) * slave_count);
+
+	for (i = 0, idx = internals->active_slave;
+			i < slave_count && num_rx_total < nb_pkts; i++, idx++) {
+		idx = idx % slave_count;
+
+		/* Read packets from this slave */
+		num_rx_total += rte_eth_rx_burst(slaves[idx], bd_rx_q->queue_id,
+				&bufs[num_rx_total], nb_pkts - num_rx_total);
+	}
+
+	internals->active_slave = idx;
+
+	return num_rx_total;
+}
+
+static uint16_t
+bond_ethdev_tx_burst_8023ad_fast_queue(void *queue, struct rte_mbuf **bufs,
+		uint16_t nb_pkts)
+{
+	struct bond_dev_private *internals;
+	struct bond_tx_queue *bd_tx_q;
+
+	uint8_t num_of_slaves;
+	uint8_t slaves[RTE_MAX_ETHPORTS];
+	 /* positions in slaves, not ID */
+	uint8_t distributing_offsets[RTE_MAX_ETHPORTS];
+	uint8_t distributing_count;
+
+	uint16_t num_tx_slave, num_tx_total = 0, num_tx_fail_total = 0;
+	uint16_t i, op_slave_idx;
+
+	struct rte_mbuf *slave_bufs[RTE_MAX_ETHPORTS][nb_pkts];
+
+	/* Total amount of packets in slave_bufs */
+	uint16_t slave_nb_pkts[RTE_MAX_ETHPORTS] = { 0 };
+	/* Slow packets placed in each slave */
+
+	if (unlikely(nb_pkts == 0))
+		return 0;
+
+	bd_tx_q = (struct bond_tx_queue *)queue;
+	internals = bd_tx_q->dev_private;
+
+	/* Copy slave list to protect against slave up/down changes during tx
+	 * bursting */
+	num_of_slaves = internals->active_slave_count;
+	if (num_of_slaves < 1)
+		return num_tx_total;
+
+	memcpy(slaves, internals->active_slaves, sizeof(slaves[0]) *
+			num_of_slaves);
+
+	distributing_count = 0;
+	for (i = 0; i < num_of_slaves; i++) {
+		struct port *port = &mode_8023ad_ports[slaves[i]];
+		if (ACTOR_STATE(port, DISTRIBUTING))
+			distributing_offsets[distributing_count++] = i;
+	}
+
+	if (likely(distributing_count > 0)) {
+		/* Populate slaves mbuf with the packets which are to be sent */
+		for (i = 0; i < nb_pkts; i++) {
+			/* Select output slave using hash based on xmit policy */
+			op_slave_idx = internals->xmit_hash(bufs[i],
+					distributing_count);
+
+			/* Populate slave mbuf arrays with mbufs for that slave.
+			 * Use only slaves that are currently distributing.
+			 */
+			uint8_t slave_offset =
+					distributing_offsets[op_slave_idx];
+			slave_bufs[slave_offset][slave_nb_pkts[slave_offset]] =
+					bufs[i];
+			slave_nb_pkts[slave_offset]++;
+		}
+	}
+
+	/* Send packet burst on each slave device */
+	for (i = 0; i < num_of_slaves; i++) {
+		if (slave_nb_pkts[i] == 0)
+			continue;
+
+		num_tx_slave = rte_eth_tx_burst(slaves[i], bd_tx_q->queue_id,
+				slave_bufs[i], slave_nb_pkts[i]);
+
+		num_tx_total += num_tx_slave;
+		num_tx_fail_total += slave_nb_pkts[i] - num_tx_slave;
+
+		/* If tx burst fails move packets to end of bufs */
+		if (unlikely(num_tx_slave < slave_nb_pkts[i])) {
+			uint16_t j = nb_pkts - num_tx_fail_total;
+			for ( ; num_tx_slave < slave_nb_pkts[i]; j++,
+					num_tx_slave++)
+				bufs[j] = slave_bufs[i][num_tx_slave];
+		}
+	}
+
+	return num_tx_total;
+}
+
+
 static uint16_t
 bond_ethdev_rx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 		uint16_t nb_pkts)
@@ -1302,11 +1550,19 @@ bond_ethdev_mode_set(struct rte_eth_dev *eth_dev, int mode)
 		if (bond_mode_8023ad_enable(eth_dev) != 0)
 			return -1;
 
-		eth_dev->rx_pkt_burst = bond_ethdev_rx_burst_8023ad;
-		eth_dev->tx_pkt_burst = bond_ethdev_tx_burst_8023ad;
-		RTE_LOG(WARNING, PMD,
-				"Using mode 4, it is necessary to do TX burst and RX burst "
-				"at least every 100ms.\n");
+		if (internals->mode4.dedicated_queues.enabled == 0) {
+			eth_dev->rx_pkt_burst = bond_ethdev_rx_burst_8023ad;
+			eth_dev->tx_pkt_burst = bond_ethdev_tx_burst_8023ad;
+			RTE_LOG(WARNING, PMD,
+				"Using mode 4, it is necessary to do TX burst "
+				"and RX burst at least every 100ms.\n");
+		} else {
+			/* Use flow director's optimization */
+			eth_dev->rx_pkt_burst =
+					bond_ethdev_rx_burst_8023ad_fast_queue;
+			eth_dev->tx_pkt_burst =
+					bond_ethdev_tx_burst_8023ad_fast_queue;
+		}
 		break;
 	case BONDING_MODE_TLB:
 		eth_dev->tx_pkt_burst = bond_ethdev_tx_burst_tlb;
@@ -1328,15 +1584,81 @@ bond_ethdev_mode_set(struct rte_eth_dev *eth_dev, int mode)
 	return 0;
 }
 
+
+static int
+slave_configure_slow_queue(struct rte_eth_dev *bonded_eth_dev,
+		struct rte_eth_dev *slave_eth_dev)
+{
+	int errval = 0;
+	struct bond_dev_private *internals = (struct bond_dev_private *)
+		bonded_eth_dev->data->dev_private;
+	struct port *port = &mode_8023ad_ports[slave_eth_dev->data->port_id];
+
+	if (port->slow_pool == NULL) {
+		char mem_name[256];
+		int slave_id = slave_eth_dev->data->port_id;
+
+		snprintf(mem_name, RTE_DIM(mem_name), "slave_port%u_slow_pool",
+				slave_id);
+		port->slow_pool = rte_pktmbuf_pool_create(mem_name, 8191,
+			250, 0, RTE_MBUF_DEFAULT_BUF_SIZE,
+			slave_eth_dev->data->numa_node);
+
+		/* Any memory allocation failure in initialization is critical because
+		 * resources can't be free, so reinitialization is impossible. */
+		if (port->slow_pool == NULL) {
+			rte_panic("Slave %u: Failed to create memory pool '%s': %s\n",
+				slave_id, mem_name, rte_strerror(rte_errno));
+		}
+	}
+
+	if (internals->mode4.dedicated_queues.enabled == 1) {
+		/* Configure slow Rx queue */
+
+		errval = rte_eth_rx_queue_setup(slave_eth_dev->data->port_id,
+				internals->mode4.dedicated_queues.rx_qid, 128,
+				rte_eth_dev_socket_id(slave_eth_dev->data->port_id),
+				NULL, port->slow_pool);
+		if (errval != 0) {
+			RTE_BOND_LOG(ERR,
+					"rte_eth_rx_queue_setup: port=%d queue_id %d, err (%d)",
+					slave_eth_dev->data->port_id,
+					internals->mode4.dedicated_queues.rx_qid,
+					errval);
+			return errval;
+		}
+
+		errval = rte_eth_tx_queue_setup(slave_eth_dev->data->port_id,
+				internals->mode4.dedicated_queues.tx_qid, 512,
+				rte_eth_dev_socket_id(slave_eth_dev->data->port_id),
+				NULL);
+		if (errval != 0) {
+			RTE_BOND_LOG(ERR,
+				"rte_eth_tx_queue_setup: port=%d queue_id %d, err (%d)",
+				slave_eth_dev->data->port_id,
+				internals->mode4.dedicated_queues.tx_qid,
+				errval);
+			return errval;
+		}
+	}
+	return 0;
+}
+
 int
 slave_configure(struct rte_eth_dev *bonded_eth_dev,
 		struct rte_eth_dev *slave_eth_dev)
 {
 	struct bond_rx_queue *bd_rx_q;
 	struct bond_tx_queue *bd_tx_q;
+	uint16_t nb_rx_queues;
+	uint16_t nb_tx_queues;
 
 	int errval;
 	uint16_t q_id;
+	struct rte_flow_error flow_error;
+
+	struct bond_dev_private *internals = (struct bond_dev_private *)
+		bonded_eth_dev->data->dev_private;
 
 	/* Stop slave */
 	rte_eth_dev_stop(slave_eth_dev->data->port_id);
@@ -1366,10 +1688,19 @@ slave_configure(struct rte_eth_dev *bonded_eth_dev,
 	slave_eth_dev->data->dev_conf.rxmode.hw_vlan_filter =
 			bonded_eth_dev->data->dev_conf.rxmode.hw_vlan_filter;
 
+	nb_rx_queues = bonded_eth_dev->data->nb_rx_queues;
+	nb_tx_queues = bonded_eth_dev->data->nb_tx_queues;
+
+	if (internals->mode == BONDING_MODE_8023AD) {
+		if (internals->mode4.dedicated_queues.enabled == 1) {
+			nb_rx_queues++;
+			nb_tx_queues++;
+		}
+	}
+
 	/* Configure device */
 	errval = rte_eth_dev_configure(slave_eth_dev->data->port_id,
-			bonded_eth_dev->data->nb_rx_queues,
-			bonded_eth_dev->data->nb_tx_queues,
+			nb_rx_queues, nb_tx_queues,
 			&(slave_eth_dev->data->dev_conf));
 	if (errval != 0) {
 		RTE_BOND_LOG(ERR, "Cannot configure slave device: port %u , err (%d)",
@@ -1403,10 +1734,33 @@ slave_configure(struct rte_eth_dev *bonded_eth_dev,
 				&bd_tx_q->tx_conf);
 		if (errval != 0) {
 			RTE_BOND_LOG(ERR,
-					"rte_eth_tx_queue_setup: port=%d queue_id %d, err (%d)",
-					slave_eth_dev->data->port_id, q_id, errval);
+				"rte_eth_tx_queue_setup: port=%d queue_id %d, err (%d)",
+				slave_eth_dev->data->port_id, q_id, errval);
 			return errval;
 		}
+	}
+
+	if (internals->mode == BONDING_MODE_8023AD &&
+			internals->mode4.dedicated_queues.enabled == 1) {
+		if (slave_configure_slow_queue(bonded_eth_dev, slave_eth_dev)
+				!= 0)
+			return errval;
+
+		if (bond_ethdev_8023ad_flow_verify(bonded_eth_dev,
+				slave_eth_dev->data->port_id) != 0) {
+			RTE_BOND_LOG(ERR,
+				"rte_eth_tx_queue_setup: port=%d queue_id %d, err (%d)",
+				slave_eth_dev->data->port_id, q_id, errval);
+			return -1;
+		}
+
+		if (internals->mode4.dedicated_queues.flow[slave_eth_dev->data->port_id] != NULL)
+			rte_flow_destroy(slave_eth_dev->data->port_id,
+					internals->mode4.dedicated_queues.flow[slave_eth_dev->data->port_id],
+					&flow_error);
+
+		bond_ethdev_8023ad_flow_set(bonded_eth_dev,
+				slave_eth_dev->data->port_id);
 	}
 
 	/* Start device */
@@ -1567,13 +1921,25 @@ bond_ethdev_start(struct rte_eth_dev *eth_dev)
 	if (internals->promiscuous_en)
 		bond_ethdev_promiscuous_enable(eth_dev);
 
+	if (internals->mode == BONDING_MODE_8023AD) {
+		if (internals->mode4.dedicated_queues.enabled == 1) {
+			internals->mode4.dedicated_queues.rx_qid =
+					eth_dev->data->nb_rx_queues;
+			internals->mode4.dedicated_queues.tx_qid =
+					eth_dev->data->nb_tx_queues;
+		}
+	}
+
+
 	/* Reconfigure each slave device if starting bonded device */
 	for (i = 0; i < internals->slave_count; i++) {
-		if (slave_configure(eth_dev,
-				&(rte_eth_devices[internals->slaves[i].port_id])) != 0) {
+		struct rte_eth_dev *slave_ethdev =
+				&(rte_eth_devices[internals->slaves[i].port_id]);
+		if (slave_configure(eth_dev, slave_ethdev) != 0) {
 			RTE_BOND_LOG(ERR,
-					"bonded port (%d) failed to reconfigure slave device (%d)",
-					eth_dev->data->port_id, internals->slaves[i].port_id);
+				"bonded port (%d) failed to reconfigure slave device (%d)",
+				eth_dev->data->port_id,
+				internals->slaves[i].port_id);
 			return -1;
 		}
 		/* We will need to poll for link status if any slave doesn't
@@ -1698,21 +2064,21 @@ static void
 bond_ethdev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 {
 	struct bond_dev_private *internals = dev->data->dev_private;
+
 	uint16_t max_nb_rx_queues = UINT16_MAX;
 	uint16_t max_nb_tx_queues = UINT16_MAX;
 
 	dev_info->max_mac_addrs = 1;
 
-	dev_info->max_rx_pktlen = internals->candidate_max_rx_pktlen
-				  ? internals->candidate_max_rx_pktlen
-				  : ETHER_MAX_JUMBO_FRAME_LEN;
+	dev_info->max_rx_pktlen = internals->candidate_max_rx_pktlen ?
+			internals->candidate_max_rx_pktlen :
+			ETHER_MAX_JUMBO_FRAME_LEN;
 
+	/* Max number of tx/rx queues that the bonded device can support is the
+	 * minimum values of the bonded slaves, as all slaves must be capable
+	 * of supporting the same number of tx/rx queues.
+	 */
 	if (internals->slave_count > 0) {
-		/* Max number of tx/rx queues that the bonded device can
-		 * support is the minimum values of the bonded slaves, as
-		 * all slaves must be capable of supporting the same number
-		 * of tx/rx queues.
-		 */
 		struct rte_eth_dev_info slave_info;
 		uint8_t idx;
 
@@ -1730,6 +2096,16 @@ bond_ethdev_info(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	dev_info->max_rx_queues = max_nb_rx_queues;
 	dev_info->max_tx_queues = max_nb_tx_queues;
+
+	/**
+	 * If dedicated hw queues enabled for link bonding device in LACP mode
+	 * then we need to reduce the maximum number of data path queues by 1.
+	 */
+	if (internals->mode == BONDING_MODE_8023AD &&
+		internals->mode4.dedicated_queues.enabled == 1) {
+		dev_info->max_rx_queues--;
+		dev_info->max_tx_queues--;
+	}
 
 	dev_info->min_rx_bufsize = 0;
 

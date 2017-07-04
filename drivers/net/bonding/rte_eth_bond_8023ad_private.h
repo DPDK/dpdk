@@ -39,6 +39,7 @@
 #include <rte_ether.h>
 #include <rte_byteorder.h>
 #include <rte_atomic.h>
+#include <rte_flow.h>
 
 #include "rte_eth_bond_8023ad.h"
 
@@ -162,6 +163,9 @@ struct port {
 
 	uint64_t warning_timer;
 	volatile uint16_t warnings_to_show;
+
+	/** Memory pool used to allocate slow queues */
+	struct rte_mempool *slow_pool;
 };
 
 struct mode8023ad_private {
@@ -175,6 +179,19 @@ struct mode8023ad_private {
 	uint64_t update_timeout_us;
 	rte_eth_bond_8023ad_ext_slowrx_fn slowrx_cb;
 	uint8_t external_sm;
+
+	/**
+	 * Configuration of dedicated hardware queues for control plane
+	 * traffic
+	 */
+	struct {
+		uint8_t enabled;
+
+		struct rte_flow *flow[RTE_MAX_ETHPORTS];
+
+		uint16_t rx_qid;
+		uint16_t tx_qid;
+	} dedicated_queues;
 };
 
 /**
@@ -294,5 +311,15 @@ bond_mode_8023ad_deactivate_slave(struct rte_eth_dev *dev, uint8_t slave_pos);
  */
 void
 bond_mode_8023ad_mac_address_update(struct rte_eth_dev *bond_dev);
+
+int
+bond_ethdev_8023ad_flow_verify(struct rte_eth_dev *bond_dev,
+		uint8_t slave_port);
+
+int
+bond_ethdev_8023ad_flow_set(struct rte_eth_dev *bond_dev, uint8_t slave_port);
+
+int
+bond_8023ad_slow_pkt_hw_filter_supported(uint8_t port_id);
 
 #endif /* RTE_ETH_BOND_8023AD_H_ */

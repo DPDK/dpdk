@@ -302,4 +302,46 @@ int
 rte_eth_bond_8023ad_ext_slowtx(uint8_t port_id, uint8_t slave_id,
 		struct rte_mbuf *lacp_pkt);
 
+/**
+ * Enable dedicated hw queues for 802.3ad control plane traffic on on slaves
+ *
+ * This function creates an additional tx and rx queue on each slave for
+ * dedicated 802.3ad control plane traffic . A flow filtering rule is
+ * programmed on each slave to redirect all LACP slow packets to that rx queue
+ * for processing in the LACP state machine, this removes the need to filter
+ * these packets in the bonded devices data path. The additional tx queue is
+ * used to enable the LACP state machine to enqueue LACP packets directly to
+ * slave hw independently of the bonded devices data path.
+ *
+ * To use this feature all slaves must support the programming of the flow
+ * filter rule required for rx and have enough queues that one rx and tx queue
+ * can be reserved for the LACP state machines control packets.
+ *
+ * Bonding port must be stopped to change this configuration.
+ *
+ * @param port_id      Bonding device id
+ *
+ * @return
+ *   0 on success, negative value otherwise.
+ */
+int
+rte_eth_bond_8023ad_dedicated_queues_enable(uint8_t port_id);
+
+/**
+ * Disable slow queue on slaves
+ *
+ * This function disables hardware slow packet filter.
+ *
+ * Bonding port must be stopped to change this configuration.
+ *
+ * @see rte_eth_bond_8023ad_slow_pkt_hw_filter_enable
+ *
+ * @param port_id      Bonding device id
+ * @return
+ *   0 on success, negative value otherwise.
+ *
+ */
+int
+rte_eth_bond_8023ad_dedicated_queues_disable(uint8_t port_id);
+
 #endif /* RTE_ETH_BOND_8023AD_H_ */
