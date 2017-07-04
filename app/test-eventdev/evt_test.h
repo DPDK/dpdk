@@ -94,4 +94,32 @@ struct evt_test {
 	struct evt_test_ops ops;
 };
 
+struct evt_test_entry {
+	struct evt_test test;
+
+	STAILQ_ENTRY(evt_test_entry) next;
+};
+
+void evt_test_register(struct evt_test_entry *test);
+void evt_test_dump_names(void);
+
+#define EVT_TEST_REGISTER(nm)                         \
+static struct evt_test_entry _evt_test_entry_ ##nm;   \
+RTE_INIT(evt_test_ ##nm);                             \
+static void evt_test_ ##nm(void)                      \
+{                                                     \
+	_evt_test_entry_ ##nm.test.name = RTE_STR(nm);\
+	memcpy(&_evt_test_entry_ ##nm.test.ops, &nm,  \
+			sizeof(struct evt_test_ops)); \
+	evt_test_register(&_evt_test_entry_ ##nm);    \
+}
+
+struct evt_test *evt_test_get(const char *name);
+
+static inline void *
+evt_test_priv(struct evt_test *test)
+{
+	return test->test_priv;
+}
+
 #endif /*  _EVT_TEST_ */
