@@ -295,4 +295,91 @@ Example command to run order ``all types queue`` test:
                         --test=order_atq --plcores 1 --wlcores 2,3
 
 
+PERF_QUEUE Test
+~~~~~~~~~~~~~~~
+
+This is a performance test case that aims at testing the following:
+
+#. Measure the number of events can be processed in a second.
+#. Measure the latency to forward an event.
+
+.. _table_eventdev_perf_queue_test:
+
+.. table:: Perf queue test eventdev configuration.
+
+   +---+--------------+----------------+-----------------------------------------+
+   | # | Items        | Value          | Comments                                |
+   |   |              |                |                                         |
+   +===+==============+================+=========================================+
+   | 1 | nb_queues    | nb_producers * | Queues will be configured based on the  |
+   |   |              | nb_stages      | user requested sched type list(--stlist)|
+   +---+--------------+----------------+-----------------------------------------+
+   | 2 | nb_producers | >= 1           | Selected through --plcores command line |
+   |   |              |                | argument.                               |
+   +---+--------------+----------------+-----------------------------------------+
+   | 3 | nb_workers   | >= 1           | Selected through --wlcores command line |
+   |   |              |                | argument                                |
+   +---+--------------+----------------+-----------------------------------------+
+   | 4 | nb_ports     | nb_workers +   | Workers use port 0 to port n-1.         |
+   |   |              | nb_producers   | Producers use port n to port p          |
+   +---+--------------+----------------+-----------------------------------------+
+
+.. _figure_eventdev_perf_queue_test:
+
+.. figure:: img/eventdev_perf_queue_test.*
+
+   perf queue test operation.
+
+The perf queue test configures the eventdev with Q queues and P ports, where
+Q and P is a function of the number of workers, the number of producers and
+number of stages as mentioned in :numref:`table_eventdev_perf_queue_test`.
+
+The user can choose the number of workers, the number of producers and number of
+stages through the ``--wlcores``, ``--plcores`` and the ``--stlist`` application
+command line arguments respectively.
+
+The producer(s) injects the events to eventdev based the first stage sched type
+list requested by the user through ``--stlist`` the command line argument.
+
+Based on the number of stages to process(selected through ``--stlist``),
+The application forwards the event to next upstream queue and terminates when it
+reaches the last stage in the pipeline. On event termination, application
+increments the number events processed and print periodically in one second
+to get the number of events processed in one second.
+
+When ``--fwd_latency`` command line option selected, the application inserts
+the timestamp in the event on the first stage and then on termination, it
+updates the number of cycles to forward a packet. The application uses this
+value to compute the average latency to a forward packet.
+
+Application options
+^^^^^^^^^^^^^^^^^^^
+
+Supported application command line options are following::
+
+        --verbose
+        --dev
+        --test
+        --socket_id
+        --pool_sz
+        --slcore (Valid when eventdev is not RTE_EVENT_DEV_CAP_DISTRIBUTED_SCHED capable)
+        --plcores
+        --wlcores
+        --stlist
+        --nb_flows
+        --nb_pkts
+        --worker_deq_depth
+        --fwd_latency
+        --queue_priority
+
+Example
+^^^^^^^
+
+Example command to run perf queue test:
+
+.. code-block:: console
+
+   sudo build/app/dpdk-test-eventdev --vdev=event_sw0 -- \
+        --test=perf_queue --slcore=1 --plcores=2 --wlcore=3 --stlist=p --nb_pkts=0
+
 
