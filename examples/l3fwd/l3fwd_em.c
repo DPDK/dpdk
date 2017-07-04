@@ -328,7 +328,7 @@ em_get_ipv6_dst_port(void *ipv6_hdr,  uint8_t portid, void *lookup_struct)
 	return (uint8_t)((ret < 0) ? portid : ipv6_l3fwd_out_if[ret]);
 }
 
-#if defined(RTE_ARCH_X86)
+#if defined RTE_ARCH_X86 || defined RTE_MACHINE_CPUFLAG_NEON
 #if defined(NO_HASH_MULTI_LOOKUP)
 #include "l3fwd_em_sequential.h"
 #else
@@ -709,7 +709,7 @@ em_main_loop(__attribute__((unused)) void *dummy)
 			if (nb_rx == 0)
 				continue;
 
-#if defined(RTE_ARCH_X86)
+#if defined RTE_ARCH_X86 || defined RTE_MACHINE_CPUFLAG_NEON
 			l3fwd_em_send_packets(nb_rx, pkts_burst,
 							portid, qconf);
 #else

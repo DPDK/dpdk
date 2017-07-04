@@ -189,6 +189,8 @@ lpm_get_dst_port_with_ipv4(const struct lcore_conf *qconf, struct rte_mbuf *pkt,
 
 #if defined(RTE_ARCH_X86)
 #include "l3fwd_lpm_sse.h"
+#elif defined RTE_MACHINE_CPUFLAG_NEON
+#include "l3fwd_lpm_neon.h"
 #else
 #include "l3fwd_lpm.h"
 #endif
@@ -261,7 +263,7 @@ lpm_main_loop(__attribute__((unused)) void *dummy)
 			if (nb_rx == 0)
 				continue;
 
-#if defined(RTE_ARCH_X86)
+#if defined RTE_ARCH_X86 || defined RTE_MACHINE_CPUFLAG_NEON
 			l3fwd_lpm_send_packets(nb_rx, pkts_burst,
 						portid, qconf);
 #else

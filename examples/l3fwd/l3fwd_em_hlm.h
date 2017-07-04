@@ -35,8 +35,13 @@
 #ifndef __L3FWD_EM_HLM_H__
 #define __L3FWD_EM_HLM_H__
 
+#if defined RTE_ARCH_X86
 #include "l3fwd_sse.h"
 #include "l3fwd_em_hlm_sse.h"
+#elif defined RTE_MACHINE_CPUFLAG_NEON
+#include "l3fwd_neon.h"
+#include "l3fwd_em_hlm_neon.h"
+#endif
 
 static __rte_always_inline void
 em_get_dst_port_ipv4x8(struct lcore_conf *qconf, struct rte_mbuf *m[8],
@@ -238,7 +243,7 @@ static inline void
 l3fwd_em_send_packets(int nb_rx, struct rte_mbuf **pkts_burst,
 		uint8_t portid, struct lcore_conf *qconf)
 {
-	int32_t j;
+	int32_t i, j, pos;
 	uint16_t dst_port[MAX_PKT_BURST];
 
 	/*
@@ -246,6 +251,11 @@ l3fwd_em_send_packets(int nb_rx, struct rte_mbuf **pkts_burst,
 	 * in groups of 8.
 	 */
 	int32_t n = RTE_ALIGN_FLOOR(nb_rx, 8);
+
+	for (j = 0; j < 8 && j < nb_rx; j++) {
+		rte_prefetch0(rte_pktmbuf_mtod(pkts_burst[j],
+					       struct ether_hdr *) + 1);
+	}
 
 	for (j = 0; j < n; j += 8) {
 
@@ -262,6 +272,11 @@ l3fwd_em_send_packets(int nb_rx, struct rte_mbuf **pkts_burst,
 		uint32_t l3_type = pkt_type & RTE_PTYPE_L3_MASK;
 		uint32_t tcp_or_udp = pkt_type &
 			(RTE_PTYPE_L4_TCP | RTE_PTYPE_L4_UDP);
+
+		for (i = 0, pos = j + 8; i < 8 && pos < nb_rx; i++, pos++) {
+			rte_prefetch0(rte_pktmbuf_mtod(pkts_burst[pos],
+						       struct ether_hdr *) + 1);
+		}
 
 		if (tcp_or_udp && (l3_type == RTE_PTYPE_L3_IPV4)) {
 
