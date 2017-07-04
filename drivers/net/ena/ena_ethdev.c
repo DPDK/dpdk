@@ -689,11 +689,10 @@ static void ena_rx_queue_release_bufs(struct ena_ring *ring)
 
 static void ena_tx_queue_release_bufs(struct ena_ring *ring)
 {
-	unsigned int ring_mask = ring->ring_size - 1;
+	unsigned int i;
 
-	while (ring->next_to_clean != ring->next_to_use) {
-		struct ena_tx_buffer *tx_buf =
-			&ring->tx_buffer_info[ring->next_to_clean & ring_mask];
+	for (i = 0; i < ring->ring_size; ++i) {
+		struct ena_tx_buffer *tx_buf = &ring->tx_buffer_info[i];
 
 		if (tx_buf->mbuf)
 			rte_pktmbuf_free(tx_buf->mbuf);
@@ -1772,6 +1771,7 @@ static uint16_t eth_ena_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 		/* Free whole mbuf chain  */
 		mbuf = tx_info->mbuf;
 		rte_pktmbuf_free(mbuf);
+		tx_info->mbuf = NULL;
 
 		/* Put back descriptor to the ring for reuse */
 		tx_ring->empty_tx_reqs[next_to_clean & ring_mask] = req_id;
