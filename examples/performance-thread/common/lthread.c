@@ -76,6 +76,7 @@
 
 #include <rte_log.h>
 #include <ctx.h>
+#include <stack.h>
 
 #include "lthread_api.h"
 #include "lthread.h"
@@ -190,19 +191,11 @@ _lthread_init(struct lthread *lt,
  */
 void _lthread_set_stack(struct lthread *lt, void *stack, size_t stack_size)
 {
-	char *stack_top = (char *)stack + stack_size;
-	void **s = (void **)stack_top;
-
 	/* set stack */
 	lt->stack = stack;
 	lt->stack_size = stack_size;
 
-	/* set initial context */
-	s[-3] = NULL;
-	s[-2] = (void *)lt;
-	lt->ctx.rsp = (void *)(stack_top - (4 * sizeof(void *)));
-	lt->ctx.rbp = (void *)(stack_top - (3 * sizeof(void *)));
-	lt->ctx.rip = (void *)_lthread_exec;
+	arch_set_stack(lt, _lthread_exec);
 }
 
 /*

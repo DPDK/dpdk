@@ -37,8 +37,12 @@
 
 MKFILE_PATH=$(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
-VPATH := $(MKFILE_PATH) $(MKFILE_PATH)/arch/x86
+ifeq ($(CONFIG_RTE_ARCH_X86_64),y)
+ARCH_PATH += $(MKFILE_PATH)/arch/x86
+endif
+
+VPATH := $(MKFILE_PATH) $(ARCH_PATH)
 
 SRCS-y += lthread.c lthread_sched.c lthread_cond.c lthread_tls.c lthread_mutex.c lthread_diag.c ctx.c
 
-INCLUDES += -I$(MKFILE_PATH) -I$(MKFILE_PATH)/arch/x86/
+INCLUDES += -I$(MKFILE_PATH) -I$(ARCH_PATH)
