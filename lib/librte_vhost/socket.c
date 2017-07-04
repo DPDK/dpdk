@@ -613,6 +613,12 @@ rte_vhost_driver_register(const char *path, uint64_t flags)
 		goto out;
 	memset(vsocket, 0, sizeof(struct vhost_user_socket));
 	vsocket->path = strdup(path);
+	if (vsocket->path == NULL) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"error: failed to copy socket path string\n");
+		free(vsocket);
+		goto out;
+	}
 	TAILQ_INIT(&vsocket->conn_list);
 	pthread_mutex_init(&vsocket->conn_mutex, NULL);
 	vsocket->dequeue_zero_copy = flags & RTE_VHOST_USER_DEQUEUE_ZERO_COPY;
