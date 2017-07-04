@@ -383,3 +383,79 @@ Example command to run perf queue test:
         --test=perf_queue --slcore=1 --plcores=2 --wlcore=3 --stlist=p --nb_pkts=0
 
 
+PERF_ATQ Test
+~~~~~~~~~~~~~~~
+
+This is a performance test case that aims at testing the following with
+``all types queue`` eventdev scheme.
+
+#. Measure the number of events can be processed in a second.
+#. Measure the latency to forward an event.
+
+.. _table_eventdev_perf_atq_test:
+
+.. table:: Perf all types queue test eventdev configuration.
+
+   +---+--------------+----------------+-----------------------------------------+
+   | # | Items        | Value          | Comments                                |
+   |   |              |                |                                         |
+   +===+==============+================+=========================================+
+   | 1 | nb_queues    | nb_producers   | Queues will be configured based on the  |
+   |   |              |                | user requested sched type list(--stlist)|
+   +---+--------------+----------------+-----------------------------------------+
+   | 2 | nb_producers | >= 1           | Selected through --plcores command line |
+   |   |              |                | argument.                               |
+   +---+--------------+----------------+-----------------------------------------+
+   | 3 | nb_workers   | >= 1           | Selected through --wlcores command line |
+   |   |              |                | argument                                |
+   +---+--------------+----------------+-----------------------------------------+
+   | 4 | nb_ports     | nb_workers +   | Workers use port 0 to port n-1.         |
+   |   |              | nb_producers   | Producers use port n to port p          |
+   +---+--------------+----------------+-----------------------------------------+
+
+.. _figure_eventdev_perf_atq_test:
+
+.. figure:: img/eventdev_perf_atq_test.*
+
+   perf all types queue test operation.
+
+
+The ``all types queues(atq)`` perf test configures the eventdev with Q queues
+and P ports, where Q and P is a function of the number of workers and number of
+producers as mentioned in :numref:`table_eventdev_perf_atq_test`.
+
+
+The atq queue test functions as same as ``perf_queue`` test. The difference
+is, It uses, ``all type queue scheme`` instead of separate queues for each
+stage and thus reduces the number of queues required to realize the use case
+and enables flow pinning as the event does not move to the next queue.
+
+
+Application options
+^^^^^^^^^^^^^^^^^^^
+
+Supported application command line options are following::
+
+        --verbose
+        --dev
+        --test
+        --socket_id
+        --pool_sz
+        --slcore (Valid when eventdev is not RTE_EVENT_DEV_CAP_DISTRIBUTED_SCHED capable)
+        --plcores
+        --wlcores
+        --stlist
+        --nb_flows
+        --nb_pkts
+        --worker_deq_depth
+        --fwd_latency
+
+Example
+^^^^^^^
+
+Example command to run perf ``all types queue`` test:
+
+.. code-block:: console
+
+   sudo build/app/dpdk-test-eventdev --vdev=event_octeontx -- \
+                --test=perf_atq --plcores=2 --wlcore=3 --stlist=p --nb_pkts=0
