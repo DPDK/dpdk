@@ -44,6 +44,23 @@
 
 #define EVT_BOOL_FMT(x)          ((x) ? "true" : "false")
 
+#define EVT_VERBOSE              ("verbose")
+#define EVT_DEVICE               ("dev")
+#define EVT_TEST                 ("test")
+#define EVT_SCHED_LCORE          ("slcore")
+#define EVT_PROD_LCORES          ("plcores")
+#define EVT_WORK_LCORES          ("wlcores")
+#define EVT_NB_FLOWS             ("nb_flows")
+#define EVT_SOCKET_ID            ("socket_id")
+#define EVT_POOL_SZ              ("pool_sz")
+#define EVT_WKR_DEQ_DEP          ("worker_deq_depth")
+#define EVT_NB_PKTS              ("nb_pkts")
+#define EVT_NB_STAGES            ("nb_stages")
+#define EVT_SCHED_TYPE_LIST      ("stlist")
+#define EVT_FWD_LATENCY          ("fwd_latency")
+#define EVT_QUEUE_PRIORITY       ("queue_priority")
+#define EVT_HELP                 ("help")
+
 struct evt_options {
 #define EVT_TEST_NAME_MAX_LEN     32
 	char test_name[EVT_TEST_NAME_MAX_LEN];
@@ -64,6 +81,7 @@ struct evt_options {
 };
 
 void evt_options_default(struct evt_options *opt);
+int evt_options_parse(struct evt_options *opt, int argc, char **argv);
 void evt_options_dump(struct evt_options *opt);
 
 /* options check helpers */

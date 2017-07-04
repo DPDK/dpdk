@@ -57,6 +57,266 @@ evt_options_default(struct evt_options *opt)
 	opt->nb_pkts = (1ULL << 26); /* do ~64M packets */
 }
 
+typedef int (*option_parser_t)(struct evt_options *opt,
+		const char *arg);
+
+struct long_opt_parser {
+	const char *lgopt_name;
+	option_parser_t parser_fn;
+};
+
+static int
+evt_parse_nb_flows(struct evt_options *opt, const char *arg)
+{
+	int ret;
+
+	ret = parser_read_uint32(&(opt->nb_flows), arg);
+
+	return ret;
+}
+
+static int
+evt_parse_dev_id(struct evt_options *opt, const char *arg)
+{
+	int ret;
+
+	ret = parser_read_uint8(&(opt->dev_id), arg);
+
+	return ret;
+}
+
+static int
+evt_parse_verbose(struct evt_options *opt, const char *arg __rte_unused)
+{
+	opt->verbose_level = atoi(arg);
+	return 0;
+}
+
+static int
+evt_parse_fwd_latency(struct evt_options *opt, const char *arg __rte_unused)
+{
+	opt->fwd_latency = 1;
+	return 0;
+}
+
+static int
+evt_parse_queue_priority(struct evt_options *opt, const char *arg __rte_unused)
+{
+	opt->q_priority = 1;
+	return 0;
+}
+
+static int
+evt_parse_test_name(struct evt_options *opt, const char *arg)
+{
+	strcpy(opt->test_name, arg);
+	return 0;
+}
+
+static int
+evt_parse_slcore(struct evt_options *opt, const char *arg)
+{
+	opt->slcore = atoi(arg);
+	return 0;
+}
+
+static int
+evt_parse_socket_id(struct evt_options *opt, const char *arg)
+{
+	opt->socket_id = atoi(arg);
+	return 0;
+}
+
+static int
+evt_parse_wkr_deq_dep(struct evt_options *opt, const char *arg)
+{
+	int ret;
+
+	ret = parser_read_uint16(&(opt->wkr_deq_dep), arg);
+	return ret;
+}
+
+static int
+evt_parse_nb_pkts(struct evt_options *opt, const char *arg)
+{
+	int ret;
+
+	ret = parser_read_uint64(&(opt->nb_pkts), arg);
+
+	return ret;
+}
+
+static int
+evt_parse_pool_sz(struct evt_options *opt, const char *arg)
+{
+	opt->pool_sz = atoi(arg);
+
+	return 0;
+}
+
+static int
+evt_parse_plcores(struct evt_options *opt, const char *corelist)
+{
+	int ret;
+
+	ret = parse_lcores_list(opt->plcores, corelist);
+	if (ret == -E2BIG)
+		evt_err("duplicate lcores in plcores");
+
+	return ret;
+}
+
+static int
+evt_parse_work_lcores(struct evt_options *opt, const char *corelist)
+{
+	int ret;
+
+	ret = parse_lcores_list(opt->wlcores, corelist);
+	if (ret == -E2BIG)
+		evt_err("duplicate lcores in wlcores");
+
+	return ret;
+}
+
+static void
+usage(char *program)
+{
+	printf("usage : %s [EAL options] -- [application options]\n", program);
+	printf("application options:\n");
+	printf("\t--verbose          : verbose level\n"
+		"\t--dev              : device id of the event device\n"
+		"\t--test             : name of the test application to run\n"
+		"\t--socket_id        : socket_id of application resources\n"
+		"\t--pool_sz          : pool size of the mempool\n"
+		"\t--slcore           : lcore id of the scheduler\n"
+		"\t--plcores          : list of lcore ids for producers\n"
+		"\t--wlcores          : list of lcore ids for workers\n"
+		"\t--stlist           : list of scheduled types of the stages\n"
+		"\t--nb_flows         : number of flows to produce\n"
+		"\t--nb_pkts          : number of packets to produce\n"
+		"\t--worker_deq_depth : dequeue depth of the worker\n"
+		"\t--fwd_latency      : perform fwd_latency measurement\n"
+		"\t--queue_priority   : enable queue priority\n"
+		);
+	printf("available tests:\n");
+	evt_test_dump_names();
+}
+
+static int
+evt_parse_sched_type_list(struct evt_options *opt, const char *arg)
+{
+	char c;
+	int i = 0, j = -1;
+
+	for (i = 0; i < EVT_MAX_STAGES; i++)
+		opt->sched_type_list[i] = (uint8_t)-1;
+
+	i = 0;
+
+	do {
+		c = arg[++j];
+
+		switch (c) {
+		case 'o':
+		case 'O':
+			opt->sched_type_list[i++] = RTE_SCHED_TYPE_ORDERED;
+			break;
+		case 'a':
+		case 'A':
+			opt->sched_type_list[i++] = RTE_SCHED_TYPE_ATOMIC;
+			break;
+		case 'p':
+		case 'P':
+			opt->sched_type_list[i++] = RTE_SCHED_TYPE_PARALLEL;
+			break;
+		case ',':
+			break;
+		default:
+			if (c != '\0') {
+				evt_err("invalid sched_type %c", c);
+				return -EINVAL;
+			}
+		}
+	} while (c != '\0');
+
+	opt->nb_stages = i;
+	return 0;
+}
+
+static struct option lgopts[] = {
+	{ EVT_NB_FLOWS,         1, 0, 0 },
+	{ EVT_DEVICE,           1, 0, 0 },
+	{ EVT_VERBOSE,          1, 0, 0 },
+	{ EVT_TEST,             1, 0, 0 },
+	{ EVT_PROD_LCORES,      1, 0, 0 },
+	{ EVT_WORK_LCORES,      1, 0, 0 },
+	{ EVT_SOCKET_ID,        1, 0, 0 },
+	{ EVT_POOL_SZ,          1, 0, 0 },
+	{ EVT_NB_PKTS,          1, 0, 0 },
+	{ EVT_WKR_DEQ_DEP,      1, 0, 0 },
+	{ EVT_SCHED_LCORE,      1, 0, 0 },
+	{ EVT_SCHED_TYPE_LIST,  1, 0, 0 },
+	{ EVT_FWD_LATENCY,      0, 0, 0 },
+	{ EVT_QUEUE_PRIORITY,   0, 0, 0 },
+	{ EVT_HELP,             0, 0, 0 },
+	{ NULL,                 0, 0, 0 }
+};
+
+static int
+evt_opts_parse_long(int opt_idx, struct evt_options *opt)
+{
+	unsigned int i;
+
+	struct long_opt_parser parsermap[] = {
+		{ EVT_NB_FLOWS, evt_parse_nb_flows},
+		{ EVT_DEVICE, evt_parse_dev_id},
+		{ EVT_VERBOSE, evt_parse_verbose},
+		{ EVT_TEST, evt_parse_test_name},
+		{ EVT_PROD_LCORES, evt_parse_plcores},
+		{ EVT_WORK_LCORES, evt_parse_work_lcores},
+		{ EVT_SOCKET_ID, evt_parse_socket_id},
+		{ EVT_POOL_SZ, evt_parse_pool_sz},
+		{ EVT_NB_PKTS, evt_parse_nb_pkts},
+		{ EVT_WKR_DEQ_DEP, evt_parse_wkr_deq_dep},
+		{ EVT_SCHED_LCORE, evt_parse_slcore},
+		{ EVT_SCHED_TYPE_LIST, evt_parse_sched_type_list},
+		{ EVT_FWD_LATENCY, evt_parse_fwd_latency},
+		{ EVT_QUEUE_PRIORITY, evt_parse_queue_priority},
+	};
+
+	for (i = 0; i < RTE_DIM(parsermap); i++) {
+		if (strncmp(lgopts[opt_idx].name, parsermap[i].lgopt_name,
+				strlen(parsermap[i].lgopt_name)) == 0)
+			return parsermap[i].parser_fn(opt, optarg);
+	}
+
+	return -EINVAL;
+}
+
+int
+evt_options_parse(struct evt_options *opt, int argc, char **argv)
+{
+	int opts, retval, opt_idx;
+
+	while ((opts = getopt_long(argc, argv, "", lgopts, &opt_idx)) != EOF) {
+		switch (opts) {
+		case 0: /* long options */
+			if (!strcmp(lgopts[opt_idx].name, "help")) {
+				usage(argv[0]);
+				exit(EXIT_SUCCESS);
+			}
+
+			retval = evt_opts_parse_long(opt_idx, opt);
+			if (retval != 0)
+				return retval;
+			break;
+		default:
+			return -EINVAL;
+		}
+	}
+	return 0;
+}
+
 void
 evt_options_dump(struct evt_options *opt)
 {
