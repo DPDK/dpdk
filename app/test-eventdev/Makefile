@@ -44,5 +44,6 @@ SRCS-y += evt_test.c
 SRCS-y += parser.c
 
 SRCS-y += test_order_common.c
+SRCS-y += test_order_queue.c
 
 include $(RTE_SDK)/mk/rte.app.mk
