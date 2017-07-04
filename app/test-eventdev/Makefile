@@ -39,6 +39,7 @@ CFLAGS += $(WERROR_FLAGS)
 # all source are stored in SRCS-y
 #
 SRCS-y := evt_main.c
+SRCS-y += evt_options.c
 SRCS-y += evt_test.c
 SRCS-y += parser.c
 
