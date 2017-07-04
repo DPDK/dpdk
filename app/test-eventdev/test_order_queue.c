@@ -37,6 +37,105 @@
 
 /* See http://dpdk.org/doc/guides/tools/testeventdev.html for test details */
 
+static inline __attribute__((always_inline)) void
+order_queue_process_stage_0(struct rte_event *const ev)
+{
+	ev->queue_id = 1; /* q1 atomic queue */
+	ev->op = RTE_EVENT_OP_FORWARD;
+	ev->sched_type = RTE_SCHED_TYPE_ATOMIC;
+	ev->event_type = RTE_EVENT_TYPE_CPU;
+}
+
+static int
+order_queue_worker(void *arg)
+{
+	ORDER_WORKER_INIT;
+	struct rte_event ev;
+
+	while (t->err == false) {
+		uint16_t event = rte_event_dequeue_burst(dev_id, port,
+					&ev, 1, 0);
+		if (!event) {
+			if (rte_atomic64_read(outstand_pkts) <= 0)
+				break;
+			rte_pause();
+			continue;
+		}
+
+		if (ev.queue_id == 0) { /* from ordered queue */
+			order_queue_process_stage_0(&ev);
+			while (rte_event_enqueue_burst(dev_id, port, &ev, 1)
+					!= 1)
+				rte_pause();
+		} else if (ev.queue_id == 1) { /* from atomic queue */
+			order_process_stage_1(t, &ev, nb_flows,
+					expected_flow_seq, outstand_pkts);
+		} else {
+			order_process_stage_invalid(t, &ev);
+		}
+	}
+	return 0;
+}
+
+static int
+order_queue_worker_burst(void *arg)
+{
+	ORDER_WORKER_INIT;
+	struct rte_event ev[BURST_SIZE];
+	uint16_t i;
+
+	while (t->err == false) {
+		uint16_t const nb_rx = rte_event_dequeue_burst(dev_id, port, ev,
+				BURST_SIZE, 0);
+
+		if (nb_rx == 0) {
+			if (rte_atomic64_read(outstand_pkts) <= 0)
+				break;
+			rte_pause();
+			continue;
+		}
+
+		for (i = 0; i < nb_rx; i++) {
+			if (ev[i].queue_id == 0) { /* from ordered queue */
+				order_queue_process_stage_0(&ev[i]);
+			} else if (ev[i].queue_id == 1) {/* from atomic queue */
+				order_process_stage_1(t, &ev[i], nb_flows,
+					expected_flow_seq, outstand_pkts);
+				ev[i].op = RTE_EVENT_OP_RELEASE;
+			} else {
+				order_process_stage_invalid(t, &ev[i]);
+			}
+		}
+
+		uint16_t enq;
+
+		enq = rte_event_enqueue_burst(dev_id, port, ev, nb_rx);
+		while (enq < nb_rx) {
+			enq += rte_event_enqueue_burst(dev_id, port,
+							ev + enq, nb_rx - enq);
+		}
+	}
+	return 0;
+}
+
+static int
+worker_wrapper(void *arg)
+{
+	struct worker_data *w  = arg;
+	const bool burst = evt_has_burst_mode(w->dev_id);
+
+	if (burst)
+		return order_queue_worker_burst(arg);
+	else
+		return order_queue_worker(arg);
+}
+
+static int
+order_queue_launch_lcores(struct evt_test *test, struct evt_options *opt)
+{
+	return order_launch_lcores(test, opt, worker_wrapper);
+}
+
 #define NB_QUEUES 2
 static int
 order_queue_eventdev_setup(struct evt_test *test, struct evt_options *opt)
@@ -133,6 +232,7 @@ static const struct evt_test_ops order_queue =  {
 	.test_setup         = order_test_setup,
 	.mempool_setup      = order_mempool_setup,
 	.eventdev_setup     = order_queue_eventdev_setup,
+	.launch_lcores      = order_queue_launch_lcores,
 	.eventdev_destroy   = order_eventdev_destroy,
 	.mempool_destroy    = order_mempool_destroy,
 	.test_result        = order_test_result,
