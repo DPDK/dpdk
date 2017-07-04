@@ -445,13 +445,22 @@ vhost_user_reconnect_init(void)
 {
 	int ret;
 
-	pthread_mutex_init(&reconn_list.mutex, NULL);
+	ret = pthread_mutex_init(&reconn_list.mutex, NULL);
+	if (ret < 0) {
+		RTE_LOG(ERR, VHOST_CONFIG, "failed to initialize mutex");
+		return ret;
+	}
 	TAILQ_INIT(&reconn_list.head);
 
 	ret = pthread_create(&reconn_tid, NULL,
 			     vhost_user_client_reconnect, NULL);
-	if (ret < 0)
+	if (ret < 0) {
 		RTE_LOG(ERR, VHOST_CONFIG, "failed to create reconnect thread");
+		if (pthread_mutex_destroy(&reconn_list.mutex)) {
+			RTE_LOG(ERR, VHOST_CONFIG,
+				"failed to destroy reconnect mutex");
+		}
+	}
 
 	return ret;
 }
