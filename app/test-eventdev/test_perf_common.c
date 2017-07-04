@@ -41,6 +41,203 @@ perf_test_result(struct evt_test *test, struct evt_options *opt)
 	return t->result;
 }
 
+static inline int
+perf_producer(void *arg)
+{
+	struct prod_data *p  = arg;
+	struct test_perf *t = p->t;
+	struct evt_options *opt = t->opt;
+	const uint8_t dev_id = p->dev_id;
+	const uint8_t port = p->port_id;
+	struct rte_mempool *pool = t->pool;
+	const uint64_t nb_pkts = t->nb_pkts;
+	const uint32_t nb_flows = t->nb_flows;
+	uint32_t flow_counter = 0;
+	uint64_t count = 0;
+	struct perf_elt *m;
+	struct rte_event ev;
+
+	if (opt->verbose_level > 1)
+		printf("%s(): lcore %d dev_id %d port=%d queue %d\n", __func__,
+				rte_lcore_id(), dev_id, port, p->queue_id);
+
+	ev.event = 0;
+	ev.op = RTE_EVENT_OP_NEW;
+	ev.queue_id = p->queue_id;
+	ev.sched_type = t->opt->sched_type_list[0];
+	ev.priority = RTE_EVENT_DEV_PRIORITY_NORMAL;
+	ev.event_type =  RTE_EVENT_TYPE_CPU;
+	ev.sub_event_type = 0; /* stage 0 */
+
+	while (count < nb_pkts && t->done == false) {
+		if (rte_mempool_get(pool, (void **)&m) < 0)
+			continue;
+
+		ev.flow_id = flow_counter++ % nb_flows;
+		ev.event_ptr = m;
+		m->timestamp = rte_get_timer_cycles();
+		while (rte_event_enqueue_burst(dev_id, port, &ev, 1) != 1) {
+			if (t->done)
+				break;
+			rte_pause();
+			m->timestamp = rte_get_timer_cycles();
+		}
+		count++;
+	}
+
+	return 0;
+}
+
+static inline int
+scheduler(void *arg)
+{
+	struct test_perf *t = arg;
+	const uint8_t dev_id = t->opt->dev_id;
+
+	while (t->done == false)
+		rte_event_schedule(dev_id);
+
+	return 0;
+}
+
+static inline uint64_t
+processed_pkts(struct test_perf *t)
+{
+	uint8_t i;
+	uint64_t total = 0;
+
+	rte_smp_rmb();
+	for (i = 0; i < t->nb_workers; i++)
+		total += t->worker[i].processed_pkts;
+
+	return total;
+}
+
+static inline uint64_t
+total_latency(struct test_perf *t)
+{
+	uint8_t i;
+	uint64_t total = 0;
+
+	rte_smp_rmb();
+	for (i = 0; i < t->nb_workers; i++)
+		total += t->worker[i].latency;
+
+	return total;
+}
+
+
+int
+perf_launch_lcores(struct evt_test *test, struct evt_options *opt,
+		int (*worker)(void *))
+{
+	int ret, lcore_id;
+	struct test_perf *t = evt_test_priv(test);
+
+	int port_idx = 0;
+	/* launch workers */
+	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+		if (!(opt->wlcores[lcore_id]))
+			continue;
+
+		ret = rte_eal_remote_launch(worker,
+				 &t->worker[port_idx], lcore_id);
+		if (ret) {
+			evt_err("failed to launch worker %d", lcore_id);
+			return ret;
+		}
+		port_idx++;
+	}
+
+	/* launch producers */
+	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+		if (!(opt->plcores[lcore_id]))
+			continue;
+
+		ret = rte_eal_remote_launch(perf_producer, &t->prod[port_idx],
+					 lcore_id);
+		if (ret) {
+			evt_err("failed to launch perf_producer %d", lcore_id);
+			return ret;
+		}
+		port_idx++;
+	}
+
+	/* launch scheduler */
+	if (!evt_has_distributed_sched(opt->dev_id)) {
+		ret = rte_eal_remote_launch(scheduler, t, opt->slcore);
+		if (ret) {
+			evt_err("failed to launch sched %d", opt->slcore);
+			return ret;
+		}
+	}
+
+	const uint64_t total_pkts = opt->nb_pkts *
+			evt_nr_active_lcores(opt->plcores);
+
+	uint64_t dead_lock_cycles = rte_get_timer_cycles();
+	int64_t dead_lock_remaining  =  total_pkts;
+	const uint64_t dead_lock_sample = rte_get_timer_hz() * 5;
+
+	uint64_t perf_cycles = rte_get_timer_cycles();
+	int64_t perf_remaining  = total_pkts;
+	const uint64_t perf_sample = rte_get_timer_hz();
+
+	static float total_mpps;
+	static uint64_t samples;
+
+	const uint64_t freq_mhz = rte_get_timer_hz() / 1000000;
+	int64_t remaining = t->outstand_pkts - processed_pkts(t);
+
+	while (t->done == false) {
+		const uint64_t new_cycles = rte_get_timer_cycles();
+
+		if ((new_cycles - perf_cycles) > perf_sample) {
+			const uint64_t latency = total_latency(t);
+			const uint64_t pkts = processed_pkts(t);
+
+			remaining = t->outstand_pkts - pkts;
+			float mpps = (float)(perf_remaining-remaining)/1000000;
+
+			perf_remaining = remaining;
+			perf_cycles = new_cycles;
+			total_mpps += mpps;
+			++samples;
+			if (opt->fwd_latency) {
+				printf(CLGRN"\r%.3f mpps avg %.3f mpps [avg fwd latency %.3f us] "CLNRM,
+					mpps, total_mpps/samples,
+					(float)(latency/pkts)/freq_mhz);
+			} else {
+				printf(CLGRN"\r%.3f mpps avg %.3f mpps"CLNRM,
+					mpps, total_mpps/samples);
+			}
+			fflush(stdout);
+
+			if (remaining <= 0) {
+				t->done = true;
+				t->result = EVT_TEST_SUCCESS;
+				rte_smp_wmb();
+				break;
+			}
+		}
+
+		if (new_cycles - dead_lock_cycles > dead_lock_sample) {
+			remaining = t->outstand_pkts - processed_pkts(t);
+			if (dead_lock_remaining == remaining) {
+				rte_event_dev_dump(opt->dev_id, stdout);
+				evt_err("No schedules for seconds, deadlock");
+				t->done = true;
+				rte_smp_wmb();
+				break;
+			}
+			dead_lock_remaining = remaining;
+			dead_lock_cycles = new_cycles;
+		}
+	}
+	printf("\n");
+	return 0;
+}
+
 int
 perf_event_dev_port_setup(struct evt_test *test, struct evt_options *opt,
 				uint8_t stride, uint8_t nb_queues)
@@ -195,6 +392,8 @@ perf_opt_check(struct evt_options *opt, uint64_t nb_queues)
 		evt_info("enabled queue priority for latency measurement");
 		opt->q_priority = 1;
 	}
+	if (opt->nb_pkts == 0)
+		opt->nb_pkts = INT64_MAX/evt_nr_active_lcores(opt->plcores);
 
 	return 0;
 }
