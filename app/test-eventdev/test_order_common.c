@@ -41,6 +41,57 @@ order_test_result(struct evt_test *test, struct evt_options *opt)
 	return t->result;
 }
 
+static inline int
+order_producer(void *arg)
+{
+	struct prod_data *p  = arg;
+	struct test_order *t = p->t;
+	struct evt_options *opt = t->opt;
+	const uint8_t dev_id = p->dev_id;
+	const uint8_t port = p->port_id;
+	struct rte_mempool *pool = t->pool;
+	const uint64_t nb_pkts = t->nb_pkts;
+	uint32_t *producer_flow_seq = t->producer_flow_seq;
+	const uint32_t nb_flows = t->nb_flows;
+	uint64_t count = 0;
+	struct rte_mbuf *m;
+	struct rte_event ev;
+
+	if (opt->verbose_level > 1)
+		printf("%s(): lcore %d dev_id %d port=%d queue=%d\n",
+			 __func__, rte_lcore_id(), dev_id, port, p->queue_id);
+
+	ev.event = 0;
+	ev.op = RTE_EVENT_OP_NEW;
+	ev.queue_id = p->queue_id;
+	ev.sched_type = RTE_SCHED_TYPE_ORDERED;
+	ev.priority = RTE_EVENT_DEV_PRIORITY_NORMAL;
+	ev.event_type =  RTE_EVENT_TYPE_CPU;
+	ev.sub_event_type = 0; /* stage 0 */
+
+	while (count < nb_pkts && t->err == false) {
+		m = rte_pktmbuf_alloc(pool);
+		if (m == NULL)
+			continue;
+
+		const uint32_t flow = (uintptr_t)m % nb_flows;
+		/* Maintain seq number per flow */
+		m->seqn = producer_flow_seq[flow]++;
+
+		ev.flow_id = flow;
+		ev.mbuf = m;
+
+		while (rte_event_enqueue_burst(dev_id, port, &ev, 1) != 1) {
+			if (t->err)
+				break;
+			rte_pause();
+		}
+
+		count++;
+	}
+	return 0;
+}
+
 int
 order_opt_check(struct evt_options *opt)
 {
@@ -204,6 +255,71 @@ order_opt_dump(struct evt_options *opt)
 	evt_dump("nb_wrker_lcores", "%d", evt_nr_active_lcores(opt->wlcores));
 	evt_dump_worker_lcores(opt);
 	evt_dump("nb_evdev_ports", "%d", order_nb_event_ports(opt));
+}
+
+int
+order_launch_lcores(struct evt_test *test, struct evt_options *opt,
+			int (*worker)(void *))
+{
+	int ret, lcore_id;
+	struct test_order *t = evt_test_priv(test);
+
+	int wkr_idx = 0;
+	/* launch workers */
+	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
+		if (!(opt->wlcores[lcore_id]))
+			continue;
+
+		ret = rte_eal_remote_launch(worker, &t->worker[wkr_idx],
+					 lcore_id);
+		if (ret) {
+			evt_err("failed to launch worker %d", lcore_id);
+			return ret;
+		}
+		wkr_idx++;
+	}
+
+	/* launch producer */
+	int plcore = evt_get_first_active_lcore(opt->plcores);
+
+	ret = rte_eal_remote_launch(order_producer, &t->prod, plcore);
+	if (ret) {
+		evt_err("failed to launch order_producer %d", plcore);
+		return ret;
+	}
+
+	uint64_t cycles = rte_get_timer_cycles();
+	int64_t old_remaining  = -1;
+
+	while (t->err == false) {
+
+		rte_event_schedule(opt->dev_id);
+
+		uint64_t new_cycles = rte_get_timer_cycles();
+		int64_t remaining = rte_atomic64_read(&t->outstand_pkts);
+
+		if (remaining <= 0) {
+			t->result = EVT_TEST_SUCCESS;
+			break;
+		}
+
+		if (new_cycles - cycles > rte_get_timer_hz() * 1) {
+			printf(CLGRN"\r%"PRId64""CLNRM, remaining);
+			fflush(stdout);
+			if (old_remaining == remaining) {
+				rte_event_dev_dump(opt->dev_id, stdout);
+				evt_err("No schedules for seconds, deadlock");
+				t->err = true;
+				rte_smp_wmb();
+				break;
+			}
+			old_remaining = remaining;
+			cycles = new_cycles;
+		}
+	}
+	printf("\r");
+
+	return 0;
 }
 
 int
