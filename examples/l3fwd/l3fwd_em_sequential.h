@@ -31,8 +31,8 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __L3FWD_EM_SSE_H__
-#define __L3FWD_EM_SSE_H__
+#ifndef __L3FWD_EM_SEQUENTIAL_H__
+#define __L3FWD_EM_SEQUENTIAL_H__
 
 /**
  * @file
@@ -109,4 +109,4 @@ l3fwd_em_send_packets(int nb_rx, struct rte_mbuf **pkts_burst,
 
 	send_packets_multi(qconf, pkts_burst, dst_port, nb_rx);
 }
-#endif /* __L3FWD_EM_SSE_H__ */
+#endif /* __L3FWD_EM_SEQUENTIAL_H__ */

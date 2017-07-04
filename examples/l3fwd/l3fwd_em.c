@@ -330,7 +330,7 @@ em_get_ipv6_dst_port(void *ipv6_hdr,  uint8_t portid, void *lookup_struct)
 
 #if defined(RTE_ARCH_X86)
 #if defined(NO_HASH_MULTI_LOOKUP)
-#include "l3fwd_em_sse.h"
+#include "l3fwd_em_sequential.h"
 #else
 #include "l3fwd_em_hlm.h"
 #endif
