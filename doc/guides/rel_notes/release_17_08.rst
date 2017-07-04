@@ -153,6 +153,14 @@ New Features
   Added a multicore based distribution mode, which distributes the enqueued
   crypto operations among several slaves, running on different logical cores.
 
+* **Added dpdk-test-eventdev test application.**
+
+  The dpdk-test-eventdev tool is a Data Plane Development Kit (DPDK) application
+  that allows exercising various eventdev use cases.
+  This application has a generic framework to add new eventdev based test cases
+  to verify functionality and measure the performance parameters of DPDK
+  eventdev devices.
+
 
 Resolved Issues
 ---------------

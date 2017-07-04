@@ -734,3 +734,8 @@ CONFIG_RTE_TEST_PMD_RECORD_BURST_STATS=n
 # Compile the crypto performance application
 #
 CONFIG_RTE_APP_CRYPTO_PERF=y
+
+#
+# Compile the eventdev application
+#
+CONFIG_RTE_APP_EVENTDEV=y

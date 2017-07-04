@@ -796,6 +796,10 @@ M: Declan Doherty <declan.doherty@intel.com>
 F: app/test-crypto-perf/
 F: doc/guides/tools/cryptoperf.rst
 
+Eventdev test application
+M: Jerin Jacob <jerin.jacob@caviumnetworks.com>
+F: app/test-eventdev/
+
 Procinfo tool
 M: Maryam Tahhan <maryam.tahhan@intel.com>
 M: Reshma Pattan <reshma.pattan@intel.com>

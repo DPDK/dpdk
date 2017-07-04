@@ -1,7 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2010-2014 Intel Corporation. All rights reserved.
-#   All rights reserved.
+#   Copyright(c) 2017 Cavium. All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
 #   modification, are permitted provided that the following conditions
@@ -13,7 +12,7 @@
 #       notice, this list of conditions and the following disclaimer in
 #       the documentation and/or other materials provided with the
 #       distribution.
-#     * Neither the name of Intel Corporation nor the names of its
+#     * Neither the name of Cavium nor the names of its
 #       contributors may be used to endorse or promote products derived
 #       from this software without specific prior written permission.
 #
@@ -31,16 +30,14 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-DIRS-$(CONFIG_RTE_TEST_PMD) += test-pmd
-DIRS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += proc_info
-DIRS-$(CONFIG_RTE_LIBRTE_PDUMP) += pdump
+APP = dpdk-test-eventdev
 
-ifeq ($(CONFIG_RTE_LIBRTE_CRYPTODEV),y)
-DIRS-$(CONFIG_RTE_APP_CRYPTO_PERF) += test-crypto-perf
-endif
+CFLAGS += -O3
+CFLAGS += $(WERROR_FLAGS)
 
-ifeq ($(CONFIG_RTE_LIBRTE_EVENTDEV),y)
-DIRS-$(CONFIG_RTE_APP_EVENTDEV) += test-eventdev
-endif
+#
+# all source are stored in SRCS-y
+#
+SRCS-y := evt_main.c
 
-include $(RTE_SDK)/mk/rte.subdir.mk
+include $(RTE_SDK)/mk/rte.app.mk
