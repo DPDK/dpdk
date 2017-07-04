@@ -42,6 +42,71 @@ perf_test_result(struct evt_test *test, struct evt_options *opt)
 }
 
 int
+perf_event_dev_port_setup(struct evt_test *test, struct evt_options *opt,
+				uint8_t stride, uint8_t nb_queues)
+{
+	struct test_perf *t = evt_test_priv(test);
+	uint8_t port, prod;
+	int ret = -1;
+
+	/* port configuration */
+	const struct rte_event_port_conf wkr_p_conf = {
+			.dequeue_depth = opt->wkr_deq_dep,
+			.enqueue_depth = 64,
+			.new_event_threshold = 4096,
+	};
+
+	/* setup one port per worker, linking to all queues */
+	for (port = 0; port < evt_nr_active_lcores(opt->wlcores);
+				port++) {
+		struct worker_data *w = &t->worker[port];
+
+		w->dev_id = opt->dev_id;
+		w->port_id = port;
+		w->t = t;
+		w->processed_pkts = 0;
+		w->latency = 0;
+
+		ret = rte_event_port_setup(opt->dev_id, port, &wkr_p_conf);
+		if (ret) {
+			evt_err("failed to setup port %d", port);
+			return ret;
+		}
+
+		ret = rte_event_port_link(opt->dev_id, port, NULL, NULL, 0);
+		if (ret != nb_queues) {
+			evt_err("failed to link all queues to port %d", port);
+			return -EINVAL;
+		}
+	}
+
+	/* port for producers, no links */
+	const struct rte_event_port_conf prod_conf = {
+			.dequeue_depth = 8,
+			.enqueue_depth = 32,
+			.new_event_threshold = 1200,
+	};
+	prod = 0;
+	for ( ; port < perf_nb_event_ports(opt); port++) {
+		struct prod_data *p = &t->prod[port];
+
+		p->dev_id = opt->dev_id;
+		p->port_id = port;
+		p->queue_id = prod * stride;
+		p->t = t;
+
+		ret = rte_event_port_setup(opt->dev_id, port, &prod_conf);
+		if (ret) {
+			evt_err("failed to setup port %d", port);
+			return ret;
+		}
+		prod++;
+	}
+
+	return ret;
+}
+
+int
 perf_opt_check(struct evt_options *opt, uint64_t nb_queues)
 {
 	unsigned int lcores;
