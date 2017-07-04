@@ -47,4 +47,6 @@ SRCS-y += test_order_common.c
 SRCS-y += test_order_queue.c
 SRCS-y += test_order_atq.c
 
+SRCS-y += test_perf_common.c
+
 include $(RTE_SDK)/mk/rte.app.mk
