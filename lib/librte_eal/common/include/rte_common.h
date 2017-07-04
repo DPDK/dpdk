@@ -66,6 +66,12 @@ extern "C" {
 #define RTE_STD_C11
 #endif
 
+/** Define GCC_VERSION **/
+#ifdef RTE_TOOLCHAIN_GCC
+#define GCC_VERSION (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 +	\
+		__GNUC_PATCHLEVEL__)
+#endif
+
 #ifdef RTE_ARCH_STRICT_ALIGN
 typedef uint64_t unaligned_uint64_t __attribute__ ((aligned(1)));
 typedef uint32_t unaligned_uint32_t __attribute__ ((aligned(1)));

@@ -40,19 +40,13 @@ extern "C" {
 
 #include <stdint.h>
 
-#ifdef __INTEL_COMPILER
-#define GCC_VERSION (0)
-#else
-#define GCC_VERSION (__GNUC__ * 10000+__GNUC_MINOR__*100 + __GNUC_PATCHLEVEL__)
-#endif
-
 #ifndef RTE_TABLE_HASH_LRU_STRATEGY
 #define RTE_TABLE_HASH_LRU_STRATEGY                        2
 #endif
 
 #if RTE_TABLE_HASH_LRU_STRATEGY == 2
 
-#if GCC_VERSION > 40306
+#if defined(RTE_TOOLCHAIN_GCC) && (GCC_VERSION > 40306)
 #include <x86intrin.h>
 #else
 #include <emmintrin.h>
@@ -96,7 +90,7 @@ do {									\
 
 #elif RTE_TABLE_HASH_LRU_STRATEGY == 3
 
-#if GCC_VERSION > 40306
+#if defined(RTE_TOOLCHAIN_GCC) && (GCC_VERSION > 40306)
 #include <x86intrin.h>
 #else
 #include <emmintrin.h>
