@@ -180,6 +180,13 @@ bond_ethdev_rx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 
 		/* Handle slow protocol packets. */
 		while (j < num_rx_total) {
+
+			/* If packet is not pure L2 and is known, skip it */
+			if ((bufs[j]->packet_type & ~RTE_PTYPE_L2_ETHER) != 0) {
+				j++;
+				continue;
+			}
+
 			if (j + 3 < num_rx_total)
 				rte_prefetch0(rte_pktmbuf_mtod(bufs[j + 3], void *));
 
@@ -187,7 +194,7 @@ bond_ethdev_rx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 			subtype = ((struct slow_protocol_frame *)hdr)->slow_protocol.subtype;
 
 			/* Remove packet from array if it is slow packet or slave is not
-			 * in collecting state or bondign interface is not in promiscus
+			 * in collecting state or bonding interface is not in promiscuous
 			 * mode and packet address does not match. */
 			if (unlikely(is_lacp_packets(hdr->ether_type, subtype, bufs[j]->vlan_tci) ||
 				!collecting || (!promisc &&
