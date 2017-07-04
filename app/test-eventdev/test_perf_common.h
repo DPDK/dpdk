@@ -82,7 +82,15 @@ struct test_perf {
 	uint8_t sched_type_list[EVT_MAX_STAGES] __rte_cache_aligned;
 } __rte_cache_aligned;
 
+struct perf_elt {
+	uint64_t timestamp;
+} __rte_cache_aligned;
+
+int perf_test_result(struct evt_test *test, struct evt_options *opt);
 int perf_test_setup(struct evt_test *test, struct evt_options *opt);
+int perf_mempool_setup(struct evt_test *test, struct evt_options *opt);
 void perf_test_destroy(struct evt_test *test, struct evt_options *opt);
+void perf_eventdev_destroy(struct evt_test *test, struct evt_options *opt);
+void perf_mempool_destroy(struct evt_test *test, struct evt_options *opt);
 
 #endif /* _TEST_PERF_COMMON_ */

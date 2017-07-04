@@ -32,6 +32,59 @@
 
 #include "test_perf_common.h"
 
+int
+perf_test_result(struct evt_test *test, struct evt_options *opt)
+{
+	RTE_SET_USED(opt);
+	struct test_perf *t = evt_test_priv(test);
+
+	return t->result;
+}
+
+void
+perf_eventdev_destroy(struct evt_test *test, struct evt_options *opt)
+{
+	RTE_SET_USED(test);
+
+	rte_event_dev_stop(opt->dev_id);
+	rte_event_dev_close(opt->dev_id);
+}
+
+static inline void
+perf_elt_init(struct rte_mempool *mp, void *arg __rte_unused,
+	    void *obj, unsigned i __rte_unused)
+{
+	memset(obj, 0, mp->elt_size);
+}
+
+int
+perf_mempool_setup(struct evt_test *test, struct evt_options *opt)
+{
+	struct test_perf *t = evt_test_priv(test);
+
+	t->pool = rte_mempool_create(test->name, /* mempool name */
+				opt->pool_sz, /* number of elements*/
+				sizeof(struct perf_elt), /* element size*/
+				512, /* cache size*/
+				0, NULL, NULL,
+				perf_elt_init, /* obj constructor */
+				NULL, opt->socket_id, 0); /* flags */
+	if (t->pool == NULL) {
+		evt_err("failed to create mempool");
+		return -ENOMEM;
+	}
+
+	return 0;
+}
+
+void
+perf_mempool_destroy(struct evt_test *test, struct evt_options *opt)
+{
+	RTE_SET_USED(opt);
+	struct test_perf *t = evt_test_priv(test);
+
+	rte_mempool_free(t->pool);
+}
 
 int
 perf_test_setup(struct evt_test *test, struct evt_options *opt)
