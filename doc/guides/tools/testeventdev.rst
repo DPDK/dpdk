@@ -150,3 +150,87 @@ The following are the application command-line options:
 
         Enable queue priority.
 
+
+Eventdev Tests
+--------------
+
+ORDER_QUEUE Test
+~~~~~~~~~~~~~~~~
+
+This is a functional test case that aims at testing the following:
+
+#. Verify the ingress order maintenance.
+#. Verify the exclusive(atomic) access to given atomic flow per eventdev port.
+
+.. _table_eventdev_order_queue_test:
+
+.. table:: Order queue test eventdev configuration.
+
+   +---+--------------+----------------+------------------------+
+   | # | Items        | Value          | Comments               |
+   |   |              |                |                        |
+   +===+==============+================+========================+
+   | 1 | nb_queues    | 2              | q0(ordered), q1(atomic)|
+   |   |              |                |                        |
+   +---+--------------+----------------+------------------------+
+   | 2 | nb_producers | 1              |                        |
+   |   |              |                |                        |
+   +---+--------------+----------------+------------------------+
+   | 3 | nb_workers   | >= 1           |                        |
+   |   |              |                |                        |
+   +---+--------------+----------------+------------------------+
+   | 4 | nb_ports     | nb_workers +   | Workers use port 0 to  |
+   |   |              | 1              | port n-1. Producer uses|
+   |   |              |                | port n                 |
+   +---+--------------+----------------+------------------------+
+
+.. _figure_eventdev_order_queue_test:
+
+.. figure:: img/eventdev_order_queue_test.*
+
+   order queue test operation.
+
+The order queue test configures the eventdev with two queues and an event
+producer to inject the events to q0(ordered) queue. Both q0(ordered) and
+q1(atomic) are linked to all the workers.
+
+The event producer maintains a sequence number per flow and injects the events
+to the ordered queue. The worker receives the events from ordered queue and
+forwards to atomic queue. Since the events from an ordered queue can be
+processed in parallel on the different workers, the ingress order of events
+might have changed on the downstream atomic queue enqueue. On enqueue to the
+atomic queue, the eventdev PMD driver reorders the event to the original
+ingress order(i.e producer ingress order).
+
+When the event is dequeued from the atomic queue by the worker, this test
+verifies the expected sequence number of associated event per flow by comparing
+the free running expected sequence number per flow.
+
+Application options
+^^^^^^^^^^^^^^^^^^^
+
+Supported application command line options are following::
+
+   --verbose
+   --dev
+   --test
+   --socket_id
+   --pool_sz
+   --plcores
+   --wlcores
+   --nb_flows
+   --nb_pkts
+   --worker_deq_depth
+
+Example
+^^^^^^^
+
+Example command to run order queue test:
+
+.. code-block:: console
+
+   sudo build/app/dpdk-test-eventdev --vdev=event_sw0 -- \
+                --test=order_queue --plcores 1 --wlcores 2,3
+
+
+

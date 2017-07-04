@@ -800,6 +800,7 @@ Eventdev test application
 M: Jerin Jacob <jerin.jacob@caviumnetworks.com>
 F: app/test-eventdev/
 F: doc/guides/tools/testeventdev.rst
+F: doc/guides/tools/img/eventdev_*
 
 Procinfo tool
 M: Maryam Tahhan <maryam.tahhan@intel.com>
