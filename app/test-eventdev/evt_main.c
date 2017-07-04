@@ -34,6 +34,7 @@
 #include <unistd.h>
 #include <signal.h>
 
+#include <rte_atomic.h>
 #include <rte_debug.h>
 #include <rte_eal.h>
 #include <rte_eventdev.h>
@@ -44,6 +45,35 @@
 struct evt_options opt;
 struct evt_test *test;
 
+static void
+signal_handler(int signum)
+{
+	if (signum == SIGINT || signum == SIGTERM) {
+		printf("\nSignal %d received, preparing to exit...\n",
+				signum);
+		/* request all lcores to exit from the main loop */
+		*(int *)test->test_priv = true;
+		rte_wmb();
+
+		rte_eal_mp_wait_lcore();
+
+		if (test->ops.eventdev_destroy)
+			test->ops.eventdev_destroy(test, &opt);
+
+		if (test->ops.ethdev_destroy)
+			test->ops.ethdev_destroy(test, &opt);
+
+		if (test->ops.mempool_destroy)
+			test->ops.mempool_destroy(test, &opt);
+
+		if (test->ops.test_destroy)
+			test->ops.test_destroy(test, &opt);
+
+		/* exit with the expected status */
+		signal(signum, SIG_DFL);
+		kill(getpid(), signum);
+	}
+}
 
 static inline void
 evt_options_dump_all(struct evt_test *test, struct evt_options *opts)
@@ -58,6 +88,9 @@ main(int argc, char **argv)
 {
 	uint8_t evdevs;
 	int ret;
+
+	signal(SIGINT, signal_handler);
+	signal(SIGTERM, signal_handler);
 
 	ret = rte_eal_init(argc, argv);
 	if (ret < 0)
