@@ -84,7 +84,19 @@ struct test_order {
 	struct evt_options *opt;
 } __rte_cache_aligned;
 
+static inline int
+order_nb_event_ports(struct evt_options *opt)
+{
+	return evt_nr_active_lcores(opt->wlcores) + 1 /* producer */;
+}
+
+int order_test_result(struct evt_test *test, struct evt_options *opt);
+int order_opt_check(struct evt_options *opt);
 int order_test_setup(struct evt_test *test, struct evt_options *opt);
+int order_mempool_setup(struct evt_test *test, struct evt_options *opt);
 void order_test_destroy(struct evt_test *test, struct evt_options *opt);
+void order_opt_dump(struct evt_options *opt);
+void order_mempool_destroy(struct evt_test *test, struct evt_options *opt);
+void order_eventdev_destroy(struct evt_test *test, struct evt_options *opt);
 
 #endif /* _TEST_ORDER_COMMON_ */

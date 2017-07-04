@@ -33,6 +33,77 @@
 #include "test_order_common.h"
 
 int
+order_test_result(struct evt_test *test, struct evt_options *opt)
+{
+	RTE_SET_USED(opt);
+	struct test_order *t = evt_test_priv(test);
+
+	return t->result;
+}
+
+int
+order_opt_check(struct evt_options *opt)
+{
+	/* 1 producer + N workers + 1 master */
+	if (rte_lcore_count() < 3) {
+		evt_err("test need minimum 3 lcores");
+		return -1;
+	}
+
+	/* Validate worker lcores */
+	if (evt_lcores_has_overlap(opt->wlcores, rte_get_master_lcore())) {
+		evt_err("worker lcores overlaps with master lcore");
+		return -1;
+	}
+
+	if (evt_nr_active_lcores(opt->plcores) == 0) {
+		evt_err("missing the producer lcore");
+		return -1;
+	}
+
+	if (evt_nr_active_lcores(opt->plcores) != 1) {
+		evt_err("only one producer lcore must be selected");
+		return -1;
+	}
+
+	int plcore = evt_get_first_active_lcore(opt->plcores);
+
+	if (plcore < 0) {
+		evt_err("failed to find active producer");
+		return plcore;
+	}
+
+	if (evt_lcores_has_overlap(opt->wlcores, plcore)) {
+		evt_err("worker lcores overlaps producer lcore");
+		return -1;
+	}
+	if (evt_has_disabled_lcore(opt->wlcores)) {
+		evt_err("one or more workers lcores are not enabled");
+		return -1;
+	}
+	if (!evt_has_active_lcore(opt->wlcores)) {
+		evt_err("minimum one worker is required");
+		return -1;
+	}
+
+	/* Validate producer lcore */
+	if (plcore == (int)rte_get_master_lcore()) {
+		evt_err("producer lcore and master lcore should be different");
+		return -1;
+	}
+	if (!rte_lcore_is_enabled(plcore)) {
+		evt_err("producer lcore is not enabled");
+		return -1;
+	}
+
+	/* Fixups */
+	if (opt->nb_pkts == 0)
+		opt->nb_pkts = INT64_MAX;
+
+	return 0;
+}
+
+int
 order_test_setup(struct evt_test *test, struct evt_options *opt)
 {
 	void *test_order;
@@ -90,3 +161,49 @@ order_test_destroy(struct evt_test *test, struct evt_options *opt)
 	rte_free(t->producer_flow_seq);
 	rte_free(test->test_priv);
 }
+
+int
+order_mempool_setup(struct evt_test *test, struct evt_options *opt)
+{
+	struct test_order *t = evt_test_priv(test);
+
+	t->pool  = rte_pktmbuf_pool_create(test->name, opt->pool_sz,
+					256 /* Cache */, 0,
+					512, /* Use very small mbufs */
+					opt->socket_id);
+	if (t->pool == NULL) {
+		evt_err("failed to create mempool");
+		return -ENOMEM;
+	}
+
+	return 0;
+}
+
+void
+order_mempool_destroy(struct evt_test *test, struct evt_options *opt)
+{
+	RTE_SET_USED(opt);
+	struct test_order *t = evt_test_priv(test);
+
+	rte_mempool_free(t->pool);
+}
+
+void
+order_eventdev_destroy(struct evt_test *test, struct evt_options *opt)
+{
+	RTE_SET_USED(test);
+
+	rte_event_dev_stop(opt->dev_id);
+	rte_event_dev_close(opt->dev_id);
+}
+
+void
+order_opt_dump(struct evt_options *opt)
+{
+	evt_dump_producer_lcores(opt);
+	evt_dump("nb_wrker_lcores", "%d", evt_nr_active_lcores(opt->wlcores));
+	evt_dump_worker_lcores(opt);
+	evt_dump("nb_evdev_ports", "%d", order_nb_event_ports(opt));
+}
+
+
