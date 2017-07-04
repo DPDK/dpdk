@@ -56,3 +56,26 @@ evt_options_default(struct evt_options *opt)
 	opt->wkr_deq_dep = 16;
 	opt->nb_pkts = (1ULL << 26); /* do ~64M packets */
 }
+
+void
+evt_options_dump(struct evt_options *opt)
+{
+	int lcore_id;
+	struct rte_event_dev_info dev_info;
+
+	rte_event_dev_info_get(opt->dev_id, &dev_info);
+	evt_dump("driver", "%s", dev_info.driver_name);
+	evt_dump("test", "%s", opt->test_name);
+	evt_dump("dev", "%d", opt->dev_id);
+	evt_dump("verbose_level", "%d", opt->verbose_level);
+	evt_dump("socket_id", "%d", opt->socket_id);
+	evt_dump("pool_sz", "%d", opt->pool_sz);
+	evt_dump("master lcore", "%d", rte_get_master_lcore());
+	evt_dump("nb_pkts", "%"PRIu64, opt->nb_pkts);
+	evt_dump_begin("available lcores");
+	RTE_LCORE_FOREACH(lcore_id)
+		printf("%d ", lcore_id);
+	evt_dump_end;
+	evt_dump_nb_flows(opt);
+	evt_dump_worker_dequeue_depth(opt);
+}

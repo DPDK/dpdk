@@ -42,6 +42,8 @@
 
 #include "evt_common.h"
 
+#define EVT_BOOL_FMT(x)          ((x) ? "true" : "false")
+
 struct evt_options {
 #define EVT_TEST_NAME_MAX_LEN     32
 	char test_name[EVT_TEST_NAME_MAX_LEN];
@@ -62,6 +64,7 @@ struct evt_options {
 };
 
 void evt_options_default(struct evt_options *opt);
+void evt_options_dump(struct evt_options *opt);
 
 /* options check helpers */
 static inline bool
@@ -164,5 +167,93 @@ evt_has_invalid_sched_type(struct evt_options *opt)
 	return false;
 }
 
+/* option dump helpers */
+static inline void
+evt_dump_worker_lcores(struct evt_options *opt)
+{
+	int c;
+
+	evt_dump_begin("worker lcores");
+	for  (c = 0; c < RTE_MAX_LCORE; c++) {
+		if (opt->wlcores[c])
+			printf("%d ", c);
+	}
+	evt_dump_end;
+}
+
+static inline void
+evt_dump_producer_lcores(struct evt_options *opt)
+{
+	int c;
+
+	evt_dump_begin("producer lcores");
+	for  (c = 0; c < RTE_MAX_LCORE; c++) {
+		if (opt->plcores[c])
+			printf("%d ", c);
+	}
+	evt_dump_end;
+}
+
+static inline void
+evt_dump_nb_flows(struct evt_options *opt)
+{
+	evt_dump("nb_flows", "%d", opt->nb_flows);
+}
+
+static inline void
+evt_dump_scheduler_lcore(struct evt_options *opt)
+{
+	evt_dump("scheduler lcore", "%d", opt->slcore);
+}
+
+static inline void
+evt_dump_worker_dequeue_depth(struct evt_options *opt)
+{
+	evt_dump("worker deq depth", "%d", opt->wkr_deq_dep);
+}
+
+static inline void
+evt_dump_nb_stages(struct evt_options *opt)
+{
+	evt_dump("nb_stages", "%d", opt->nb_stages);
+}
+
+static inline void
+evt_dump_fwd_latency(struct evt_options *opt)
+{
+	evt_dump("fwd_latency", "%s", EVT_BOOL_FMT(opt->fwd_latency));
+}
+
+static inline void
+evt_dump_queue_priority(struct evt_options *opt)
+{
+	evt_dump("queue_priority", "%s", EVT_BOOL_FMT(opt->q_priority));
+}
+
+static inline const char*
+evt_sched_type_2_str(uint8_t sched_type)
+{
+
+	if (sched_type == RTE_SCHED_TYPE_ORDERED)
+		return "O";
+	else if (sched_type == RTE_SCHED_TYPE_ATOMIC)
+		return "A";
+	else if (sched_type == RTE_SCHED_TYPE_PARALLEL)
+		return "P";
+	else
+		return "I";
+}
+
+static inline void
+evt_dump_sched_type_list(struct evt_options *opt)
+{
+	int i;
+
+	evt_dump_begin("sched_type_list");
+	for (i = 0; i < opt->nb_stages; i++)
+		printf("%s ", evt_sched_type_2_str(opt->sched_type_list[i]));
+
+	evt_dump_end;
+}
 
 #endif /* _EVT_OPTIONS_ */
