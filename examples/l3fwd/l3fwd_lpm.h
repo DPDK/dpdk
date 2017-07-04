@@ -34,37 +34,13 @@
 #ifndef __L3FWD_LPM_H__
 #define __L3FWD_LPM_H__
 
-static inline uint8_t
-lpm_get_ipv4_dst_port(void *ipv4_hdr,  uint8_t portid, void *lookup_struct)
-{
-	uint32_t next_hop;
-	struct rte_lpm *ipv4_l3fwd_lookup_struct =
-		(struct rte_lpm *)lookup_struct;
-
-	return (uint8_t) ((rte_lpm_lookup(ipv4_l3fwd_lookup_struct,
-		rte_be_to_cpu_32(((struct ipv4_hdr *)ipv4_hdr)->dst_addr),
-		&next_hop) == 0) ? next_hop : portid);
-}
-
-static inline uint8_t
-lpm_get_ipv6_dst_port(void *ipv6_hdr,  uint8_t portid, void *lookup_struct)
-{
-	uint32_t next_hop;
-	struct rte_lpm6 *ipv6_l3fwd_lookup_struct =
-		(struct rte_lpm6 *)lookup_struct;
-
-	return (uint8_t) ((rte_lpm6_lookup(ipv6_l3fwd_lookup_struct,
-			((struct ipv6_hdr *)ipv6_hdr)->dst_addr,
-			&next_hop) == 0) ?  next_hop : portid);
-}
-
 static __rte_always_inline void
 l3fwd_lpm_simple_forward(struct rte_mbuf *m, uint8_t portid,
 		struct lcore_conf *qconf)
 {
 	struct ether_hdr *eth_hdr;
 	struct ipv4_hdr *ipv4_hdr;
-	uint8_t dst_port;
+	uint16_t dst_port;
 
 	eth_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
 
