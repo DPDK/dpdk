@@ -108,6 +108,13 @@ New Features
   * Removed the field ``opaque_data``.
   * Pointer to ``rte_crypto_sym_op`` has been replaced with a zero length array.
 
+* **Reorganized the crypto symmetric session structure.**
+
+  The crypto symmetric session structure (``rte_cryptodev_sym_session``) has
+  been reorganized as follows:
+
+  * ``dev_id`` field has been removed.
+
 * **Updated cryptodev library.**
 
   * Added AEAD algorithm specific functions and structures, so it is not
@@ -242,6 +249,11 @@ ABI Changes
   Some fields have been modified in the ``rte_crypto_op`` and ``rte_crypto_sym_op``
   structures, as described in the `New Features`_ section.
 
+* **Reorganized the crypto symmetric session structure.**
+
+  Some fields have been modified in the ``rte_cryptodev_sym_session``
+  structure, as described in the `New Features`_ section.
+
 * **Reorganized the ``rte_crypto_sym_cipher_xform`` structure.**
 
   * Added cipher IV length and offset parameters.
@@ -254,8 +266,7 @@ ABI Changes
   * Removed AAD length.
 
 * Replaced ``dev_type`` enumeration with uint8_t ``driver_id`` in
-  ``rte_cryptodev_info``, ``rte_cryptodev`` and ``rte_cryptodev_sym_session``
-  structures.
+  ``rte_cryptodev_info`` and  ``rte_cryptodev`` structures.
 
 * Removed ``session_mp`` from ``rte_cryptodev_config``.
 

@@ -1087,7 +1087,6 @@ rte_cryptodev_sym_session_init(struct rte_mempool *mp,
 {
 	memset(sess, 0, mp->elt_size);
 
-	sess->dev_id = dev->data->dev_id;
 	sess->driver_id = dev->driver_id;
 	sess->mp = mp;
 

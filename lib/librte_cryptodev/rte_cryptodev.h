@@ -884,8 +884,6 @@ rte_cryptodev_enqueue_burst(uint8_t dev_id, uint16_t qp_id,
 struct rte_cryptodev_sym_session {
 	RTE_STD_C11
 	struct {
-		uint8_t dev_id;
-		/**< Device Id */
 		uint8_t driver_id;
 		/** Crypto driver identifier session created on */
 		struct rte_mempool *mp;
