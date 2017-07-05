@@ -219,6 +219,7 @@ struct rxq_elt {
 
 /* RX queue descriptor. */
 struct rxq {
+	LIST_ENTRY(rxq) next; /* Used by parent queue only */
 	struct priv *priv; /* Back pointer to private data. */
 	struct rte_mempool *mp; /* Memory Pool for allocations. */
 	struct ibv_mr *mr; /* Memory Region (for mp). */
@@ -247,6 +248,10 @@ struct rxq {
 	struct mlx4_rxq_stats stats; /* RX queue counters. */
 	unsigned int socket; /* CPU socket ID for allocations. */
 	struct ibv_exp_res_domain *rd; /* Resource Domain. */
+	struct {
+		uint16_t queues_n;
+		uint16_t queues[RTE_MAX_QUEUES_PER_PORT];
+	} rss;
 };
 
 /* TX element. */
@@ -341,7 +346,6 @@ struct priv {
 #endif
 	unsigned int max_rss_tbl_sz; /* Maximum number of RSS queues. */
 	/* RX/TX queues. */
-	struct rxq rxq_parent; /* Parent queue when RSS is enabled. */
 	unsigned int rxqs_n; /* RX queues array size. */
 	unsigned int txqs_n; /* TX queues array size. */
 	struct rxq *(*rxqs)[]; /* RX queues. */
@@ -351,10 +355,21 @@ struct priv {
 	struct rte_flow_drop *flow_drop_queue; /* Flow drop queue. */
 	LIST_HEAD(mlx4_flows, rte_flow) flows;
 	struct rte_intr_conf intr_conf; /* Active interrupt configuration. */
+	LIST_HEAD(mlx4_parents, rxq) parents;
 	rte_spinlock_t lock; /* Lock for control functions. */
 };
 
 void priv_lock(struct priv *priv);
 void priv_unlock(struct priv *priv);
+
+int
+rxq_create_qp(struct rxq *rxq,
+	      uint16_t desc,
+	      int inactive,
+	      int children_n,
+	      struct rxq *rxq_parent);
+
+void
+rxq_parent_cleanup(struct rxq *parent);
 
 #endif /* RTE_PMD_MLX4_H_ */

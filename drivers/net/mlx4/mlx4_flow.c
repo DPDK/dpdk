@@ -831,8 +831,23 @@ priv_flow_create_action_queue(struct priv *priv,
 	if (action->drop) {
 		qp = priv->flow_drop_queue->qp;
 	} else {
+		int ret;
 		struct rxq *rxq = (*priv->rxqs)[action->queue_id];
 
+		if (!rxq->qp) {
+			assert(priv->isolated);
+			ret = rxq_create_qp(rxq, rxq->elts_n,
+					    0, 0, NULL);
+			if (ret) {
+				rte_flow_error_set(
+					error,
+					ENOMEM,
+					RTE_FLOW_ERROR_TYPE_HANDLE,
+					NULL,
+					"flow rule creation failure");
+				goto error;
+			}
+		}
 		qp = rxq->qp;
 		rte_flow->qp = qp;
 	}
