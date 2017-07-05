@@ -3002,6 +3002,13 @@ mlx4_rx_burst_sp(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			NB_SEGS(rep) = 0x2a;
 			PORT(rep) = 0x2a;
 			rep->ol_flags = -1;
+			/*
+			 * Clear special flags in mbuf to avoid
+			 * crashing while freeing.
+			 */
+			rep->ol_flags &=
+				~(uint64_t)(IND_ATTACHED_MBUF |
+					    CTRL_MBUF_FLAG);
 #endif
 			assert(rep->buf_len == seg->buf_len);
 			/* Reconfigure sge to use rep instead of seg. */
