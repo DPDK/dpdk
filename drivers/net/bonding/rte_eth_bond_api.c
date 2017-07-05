@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2010-2016 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2010-2017 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -63,13 +63,18 @@ valid_bonded_port_id(uint8_t port_id)
 }
 
 int
-valid_slave_port_id(uint8_t port_id)
+valid_slave_port_id(uint8_t port_id, uint8_t mode)
 {
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -1);
 
 	/* Verify that port_id refers to a non bonded port */
-	if (check_for_bonded_ethdev(&rte_eth_devices[port_id]) == 0)
+	if (check_for_bonded_ethdev(&rte_eth_devices[port_id]) == 0 &&
+			mode == BONDING_MODE_8023AD) {
+		RTE_BOND_LOG(ERR, "Cannot add slave to bonded device in 802.3ad"
+				" mode as slave is also a bonded device, only "
+				"physical devices can be support in this mode.");
 		return -1;
+	}
 
 	return 0;
 }
@@ -235,11 +240,11 @@ __eth_bond_slave_add_lock_free(uint8_t bonded_port_id, uint8_t slave_port_id)
 	struct rte_eth_link link_props;
 	struct rte_eth_dev_info dev_info;
 
-	if (valid_slave_port_id(slave_port_id) != 0)
-		return -1;
-
 	bonded_eth_dev = &rte_eth_devices[bonded_port_id];
 	internals = bonded_eth_dev->data->dev_private;
+
+	if (valid_slave_port_id(slave_port_id, internals->mode) != 0)
+		return -1;
 
 	slave_eth_dev = &rte_eth_devices[slave_port_id];
 	if (slave_eth_dev->data->dev_flags & RTE_ETH_DEV_BONDED_SLAVE) {
@@ -389,11 +394,11 @@ __eth_bond_slave_remove_lock_free(uint8_t bonded_port_id, uint8_t slave_port_id)
 	struct rte_eth_dev *slave_eth_dev;
 	int i, slave_idx;
 
-	if (valid_slave_port_id(slave_port_id) != 0)
-		return -1;
-
 	bonded_eth_dev = &rte_eth_devices[bonded_port_id];
 	internals = bonded_eth_dev->data->dev_private;
+
+	if (valid_slave_port_id(slave_port_id, internals->mode) < 0)
+		return -1;
 
 	/* first remove from active slave list */
 	slave_idx = find_slave_by_id(internals->active_slaves,
@@ -509,13 +514,14 @@ rte_eth_bond_primary_set(uint8_t bonded_port_id, uint8_t slave_port_id)
 {
 	struct bond_dev_private *internals;
 
+	internals =  rte_eth_devices[bonded_port_id].data->dev_private;
+
 	if (valid_bonded_port_id(bonded_port_id) != 0)
 		return -1;
 
-	if (valid_slave_port_id(slave_port_id) != 0)
+	if (valid_slave_port_id(slave_port_id, internals->mode) != 0)
 		return -1;
 
-	internals =  rte_eth_devices[bonded_port_id].data->dev_private;
 
 	internals->user_defined_primary_port = 1;
 	internals->primary_port = slave_port_id;

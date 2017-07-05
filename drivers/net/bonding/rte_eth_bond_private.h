@@ -204,7 +204,7 @@ int
 valid_bonded_port_id(uint8_t port_id);
 
 int
-valid_slave_port_id(uint8_t port_id);
+valid_slave_port_id(uint8_t port_id, uint8_t mode);
 
 void
 deactivate_slave(struct rte_eth_dev *eth_dev, uint8_t port_id);
