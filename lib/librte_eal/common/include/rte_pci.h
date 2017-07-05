@@ -63,7 +63,7 @@ const char *pci_get_sysfs_path(void);
 
 /** Formatting string for PCI device identifier: Ex: 0000:00:01.0 */
 #define PCI_PRI_FMT "%.4" PRIx16 ":%.2" PRIx8 ":%.2" PRIx8 ".%" PRIx8
-#define PCI_PRI_STR_SIZE sizeof("XXXX:XX:XX.X")
+#define PCI_PRI_STR_SIZE sizeof("XXXXXXXX:XX:XX.X")
 
 /** Short formatting string, without domain, for PCI device: Ex: 00:01.0 */
 #define PCI_SHORT_PRI_FMT "%.2" PRIx8 ":%.2" PRIx8 ".%" PRIx8
@@ -112,7 +112,7 @@ struct rte_pci_id {
  * A structure describing the location of a PCI device.
  */
 struct rte_pci_addr {
-	uint16_t domain;                /**< Device domain */
+	uint32_t domain;                /**< Device domain */
 	uint8_t bus;                    /**< Device bus */
 	uint8_t devid;                  /**< Device ID */
 	uint8_t function;               /**< Device function. */
@@ -346,10 +346,10 @@ rte_eal_compare_pci_addr(const struct rte_pci_addr *addr,
 	if ((addr == NULL) || (addr2 == NULL))
 		return -1;
 
-	dev_addr = (addr->domain << 24) | (addr->bus << 16) |
-				(addr->devid << 8) | addr->function;
-	dev_addr2 = (addr2->domain << 24) | (addr2->bus << 16) |
-				(addr2->devid << 8) | addr2->function;
+	dev_addr = ((uint64_t)addr->domain << 24) |
+		(addr->bus << 16) | (addr->devid << 8) | addr->function;
+	dev_addr2 = ((uint64_t)addr2->domain << 24) |
+		(addr2->bus << 16) | (addr2->devid << 8) | addr2->function;
 
 	if (dev_addr > dev_addr2)
 		return 1;

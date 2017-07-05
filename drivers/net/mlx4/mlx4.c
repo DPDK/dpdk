@@ -5239,7 +5239,7 @@ mlx4_ibv_device_to_pci_addr(const struct ibv_device *device,
 		/* Extract information. */
 		if (sscanf(line,
 			   "PCI_SLOT_NAME="
-			   "%" SCNx16 ":%" SCNx8 ":%" SCNx8 ".%" SCNx8 "\n",
+			   "%" SCNx32 ":%" SCNx8 ":%" SCNx8 ".%" SCNx8 "\n",
 			   &pci_addr->domain,
 			   &pci_addr->bus,
 			   &pci_addr->devid,
