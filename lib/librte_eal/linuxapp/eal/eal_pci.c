@@ -430,10 +430,10 @@ parse_pci_addr_format(const char *buf, int bufsize, struct rte_pci_addr *addr)
 
 	/* now convert to int values */
 	errno = 0;
-	addr->domain = (uint16_t)strtoul(splitaddr.domain, NULL, 16);
-	addr->bus = (uint8_t)strtoul(splitaddr.bus, NULL, 16);
-	addr->devid = (uint8_t)strtoul(splitaddr.devid, NULL, 16);
-	addr->function = (uint8_t)strtoul(splitaddr.function, NULL, 10);
+	addr->domain = strtoul(splitaddr.domain, NULL, 16);
+	addr->bus = strtoul(splitaddr.bus, NULL, 16);
+	addr->devid = strtoul(splitaddr.devid, NULL, 16);
+	addr->function = strtoul(splitaddr.function, NULL, 10);
 	if (errno != 0)
 		goto error;
 
