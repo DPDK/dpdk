@@ -73,11 +73,11 @@
 #define MAX_PKT_BURST           (32)
 #define DEF_PKT_BURST           (16)
 
-#define BONDED_DEV_NAME         ("unit_test_mode4_bond_dev")
+#define BONDED_DEV_NAME         ("ut_mode4_bond_dev")
 
-#define SLAVE_DEV_NAME_FMT      ("unit_test_mode4_slave_%d")
-#define SLAVE_RX_QUEUE_FMT      ("unit_test_mode4_slave_%d_rx")
-#define SLAVE_TX_QUEUE_FMT      ("unit_test_mode4_slave_%d_tx")
+#define SLAVE_DEV_NAME_FMT      ("ut_mode4_slave_%d")
+#define SLAVE_RX_QUEUE_FMT      ("ut_mode4_slave_%d_rx")
+#define SLAVE_TX_QUEUE_FMT      ("ut_mode4_slave_%d_tx")
 
 #define INVALID_SOCKET_ID       (-1)
 #define INVALID_PORT_ID         (0xFF)
