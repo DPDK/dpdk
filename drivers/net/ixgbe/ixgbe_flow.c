@@ -1333,12 +1333,13 @@ static inline uint8_t signature_match(const struct rte_flow_item pattern[])
  * Parse the rule to see if it is a IP or MAC VLAN flow director rule.
  * And get the flow director filter info BTW.
  * UDP/TCP/SCTP PATTERN:
- * The first not void item can be ETH or IPV4.
- * The second not void item must be IPV4 if the first one is ETH.
+ * The first not void item can be ETH or IPV4 or IPV6
+ * The second not void item must be IPV4 or IPV6 if the first one is ETH.
  * The next not void item could be UDP or TCP or SCTP (optional)
  * The next not void item could be RAW (for flexbyte, optional)
  * The next not void item must be END.
- * A Fuzzy Match pattern can appear at any place before END (optional)
+ * A Fuzzy Match pattern can appear at any place before END.
+ * Fuzzy Match is optional for IPV4 but is required for IPV6
  * MAC VLAN PATTERN:
  * The first not void item must be ETH.
  * The second not void item must be MAC VLAN.
@@ -1386,6 +1387,8 @@ ixgbe_parse_fdir_filter_normal(const struct rte_flow_attr *attr,
 	const struct rte_flow_item_eth *eth_mask;
 	const struct rte_flow_item_ipv4 *ipv4_spec;
 	const struct rte_flow_item_ipv4 *ipv4_mask;
+	const struct rte_flow_item_ipv6 *ipv6_spec;
+	const struct rte_flow_item_ipv6 *ipv6_mask;
 	const struct rte_flow_item_tcp *tcp_spec;
 	const struct rte_flow_item_tcp *tcp_mask;
 	const struct rte_flow_item_udp *udp_spec;
@@ -1397,7 +1400,7 @@ ixgbe_parse_fdir_filter_normal(const struct rte_flow_attr *attr,
 	const struct rte_flow_item_raw *raw_mask;
 	const struct rte_flow_item_raw *raw_spec;
 
-	uint32_t j;
+	uint8_t j;
 
 	if (!pattern) {
 		rte_flow_error_set(error, EINVAL,
@@ -1436,6 +1439,7 @@ ixgbe_parse_fdir_filter_normal(const struct rte_flow_attr *attr,
 	item = next_no_fuzzy_pattern(pattern, NULL);
 	if (item->type != RTE_FLOW_ITEM_TYPE_ETH &&
 	    item->type != RTE_FLOW_ITEM_TYPE_IPV4 &&
+	    item->type != RTE_FLOW_ITEM_TYPE_IPV6 &&
 	    item->type != RTE_FLOW_ITEM_TYPE_TCP &&
 	    item->type != RTE_FLOW_ITEM_TYPE_UDP &&
 	    item->type != RTE_FLOW_ITEM_TYPE_SCTP) {
@@ -1588,7 +1592,7 @@ ixgbe_parse_fdir_filter_normal(const struct rte_flow_attr *attr,
 		}
 	}
 
-	/* Get the IP info. */
+	/* Get the IPV4 info. */
 	if (item->type == RTE_FLOW_ITEM_TYPE_IPV4) {
 		/**
 		 * Set the flow type even if there's no content
@@ -1662,14 +1666,106 @@ ixgbe_parse_fdir_filter_normal(const struct rte_flow_attr *attr,
 		}
 	}
 
+	/* Get the IPV6 info. */
+	if (item->type == RTE_FLOW_ITEM_TYPE_IPV6) {
+		/**
+		 * Set the flow type even if there's no content
+		 * as we must have a flow type.
+		 */
+		rule->ixgbe_fdir.formatted.flow_type =
+			IXGBE_ATR_FLOW_TYPE_IPV6;
+
+		/**
+		 * 1. must signature match
+		 * 2. not support last
+		 * 3. mask must not null
+		 */
+		if (rule->mode != RTE_FDIR_MODE_SIGNATURE ||
+		    item->last ||
+		    !item->mask) {
+			memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				item, "Not supported last point for range");
+			return -rte_errno;
+		}
+
+		rule->b_mask = TRUE;
+		ipv6_mask =
+			(const struct rte_flow_item_ipv6 *)item->mask;
+		if (ipv6_mask->hdr.vtc_flow ||
+		    ipv6_mask->hdr.payload_len ||
+		    ipv6_mask->hdr.proto ||
+		    ipv6_mask->hdr.hop_limits) {
+			memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item, "Not supported by fdir filter");
+			return -rte_errno;
+		}
+
+		/* check src addr mask */
+		for (j = 0; j < 16; j++) {
+			if (ipv6_mask->hdr.src_addr[j] == UINT8_MAX) {
+				rule->mask.src_ipv6_mask |= 1 << j;
+			} else if (ipv6_mask->hdr.src_addr[j] != 0) {
+				memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
+				rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ITEM,
+					item, "Not supported by fdir filter");
+				return -rte_errno;
+			}
+		}
+
+		/* check dst addr mask */
+		for (j = 0; j < 16; j++) {
+			if (ipv6_mask->hdr.dst_addr[j] == UINT8_MAX) {
+				rule->mask.dst_ipv6_mask |= 1 << j;
+			} else if (ipv6_mask->hdr.dst_addr[j] != 0) {
+				memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
+				rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ITEM,
+					item, "Not supported by fdir filter");
+				return -rte_errno;
+			}
+		}
+
+		if (item->spec) {
+			rule->b_spec = TRUE;
+			ipv6_spec =
+				(const struct rte_flow_item_ipv6 *)item->spec;
+			rte_memcpy(rule->ixgbe_fdir.formatted.src_ip,
+				   ipv6_spec->hdr.src_addr, 16);
+			rte_memcpy(rule->ixgbe_fdir.formatted.dst_ip,
+				   ipv6_spec->hdr.dst_addr, 16);
+		}
+
+		/**
+		 * Check if the next not void item is
+		 * TCP or UDP or SCTP or END.
+		 */
+		item = next_no_fuzzy_pattern(pattern, item);
+		if (item->type != RTE_FLOW_ITEM_TYPE_TCP &&
+		    item->type != RTE_FLOW_ITEM_TYPE_UDP &&
+		    item->type != RTE_FLOW_ITEM_TYPE_SCTP &&
+		    item->type != RTE_FLOW_ITEM_TYPE_END &&
+		    item->type != RTE_FLOW_ITEM_TYPE_RAW) {
+			memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ITEM,
+				item, "Not supported by fdir filter");
+			return -rte_errno;
+		}
+	}
+
 	/* Get the TCP info. */
 	if (item->type == RTE_FLOW_ITEM_TYPE_TCP) {
 		/**
 		 * Set the flow type even if there's no content
 		 * as we must have a flow type.
 		 */
-		rule->ixgbe_fdir.formatted.flow_type =
-			IXGBE_ATR_FLOW_TYPE_TCPV4;
+		rule->ixgbe_fdir.formatted.flow_type |=
+			IXGBE_ATR_L4TYPE_TCP;
 		/*Not supported last point for range*/
 		if (item->last) {
 			rte_flow_error_set(error, EINVAL,
@@ -1733,8 +1829,8 @@ ixgbe_parse_fdir_filter_normal(const struct rte_flow_attr *attr,
 		 * Set the flow type even if there's no content
 		 * as we must have a flow type.
 		 */
-		rule->ixgbe_fdir.formatted.flow_type =
-			IXGBE_ATR_FLOW_TYPE_UDPV4;
+		rule->ixgbe_fdir.formatted.flow_type |=
+			IXGBE_ATR_L4TYPE_UDP;
 		/*Not supported last point for range*/
 		if (item->last) {
 			rte_flow_error_set(error, EINVAL,
@@ -1793,8 +1889,8 @@ ixgbe_parse_fdir_filter_normal(const struct rte_flow_attr *attr,
 		 * Set the flow type even if there's no content
 		 * as we must have a flow type.
 		 */
-		rule->ixgbe_fdir.formatted.flow_type =
-			IXGBE_ATR_FLOW_TYPE_SCTPV4;
+		rule->ixgbe_fdir.formatted.flow_type |=
+			IXGBE_ATR_L4TYPE_SCTP;
 		/*Not supported last point for range*/
 		if (item->last) {
 			rte_flow_error_set(error, EINVAL,
