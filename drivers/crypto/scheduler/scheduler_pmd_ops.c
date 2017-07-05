@@ -101,8 +101,7 @@ scheduler_pmd_config(struct rte_cryptodev *dev,
 	for (i = 0; i < sched_ctx->nb_slaves; i++) {
 		uint8_t slave_dev_id = sched_ctx->slaves[i].dev_id;
 
-		ret = rte_cryptodev_configure(slave_dev_id, config,
-				dev->data->session_pool);
+		ret = rte_cryptodev_configure(slave_dev_id, config);
 		if (ret < 0)
 			break;
 	}
@@ -400,7 +399,8 @@ scheduler_pmd_qp_release(struct rte_cryptodev *dev, uint16_t qp_id)
 /** Setup a queue pair */
 static int
 scheduler_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
-	const struct rte_cryptodev_qp_conf *qp_conf, int socket_id)
+	const struct rte_cryptodev_qp_conf *qp_conf, int socket_id,
+	struct rte_mempool *session_pool)
 {
 	struct scheduler_ctx *sched_ctx = dev->data->dev_private;
 	struct scheduler_qp_ctx *qp_ctx;
@@ -422,8 +422,13 @@ scheduler_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	for (i = 0; i < sched_ctx->nb_slaves; i++) {
 		uint8_t slave_id = sched_ctx->slaves[i].dev_id;
 
+		/*
+		 * All slaves will share the same session mempool
+		 * for session-less operations, so the objects
+		 * must be big enough for all the drivers used.
+		 */
 		ret = rte_cryptodev_queue_pair_setup(slave_id, qp_id,
-				qp_conf, socket_id);
+				qp_conf, socket_id, session_pool);
 		if (ret < 0)
 			return ret;
 	}

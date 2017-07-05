@@ -747,8 +747,7 @@ rte_cryptodev_queue_pair_stop(uint8_t dev_id, uint16_t queue_pair_id)
 }
 
 int
-rte_cryptodev_configure(uint8_t dev_id, struct rte_cryptodev_config *config,
-		struct rte_mempool *session_pool)
+rte_cryptodev_configure(uint8_t dev_id, struct rte_cryptodev_config *config)
 {
 	struct rte_cryptodev *dev;
 	int diag;
@@ -767,8 +766,6 @@ rte_cryptodev_configure(uint8_t dev_id, struct rte_cryptodev_config *config,
 	}
 
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_configure, -ENOTSUP);
-
-	dev->data->session_pool = session_pool;
 
 	/* Setup new number of queue pairs and reconfigure device. */
 	diag = rte_cryptodev_queue_pairs_config(dev, config->nb_queue_pairs,
@@ -881,7 +878,9 @@ rte_cryptodev_close(uint8_t dev_id)
 
 int
 rte_cryptodev_queue_pair_setup(uint8_t dev_id, uint16_t queue_pair_id,
-		const struct rte_cryptodev_qp_conf *qp_conf, int socket_id)
+		const struct rte_cryptodev_qp_conf *qp_conf, int socket_id,
+		struct rte_mempool *session_pool)
+
 {
 	struct rte_cryptodev *dev;
 
@@ -905,7 +904,7 @@ rte_cryptodev_queue_pair_setup(uint8_t dev_id, uint16_t queue_pair_id,
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->queue_pair_setup, -ENOTSUP);
 
 	return (*dev->dev_ops->queue_pair_setup)(dev, queue_pair_id, qp_conf,
-			socket_id);
+			socket_id, session_pool);
 }
 
 

@@ -1299,15 +1299,15 @@ cryptodevs_init(void)
 			socket_ctx[dev_conf.socket_id].session_pool = sess_mp;
 		}
 
-		if (rte_cryptodev_configure(cdev_id, &dev_conf,
-				socket_ctx[dev_conf.socket_id].session_pool))
+		if (rte_cryptodev_configure(cdev_id, &dev_conf))
 			rte_panic("Failed to initialize cryptodev %u\n",
 					cdev_id);
 
 		qp_conf.nb_descriptors = CDEV_QUEUE_DESC;
 		for (qp = 0; qp < dev_conf.nb_queue_pairs; qp++)
 			if (rte_cryptodev_queue_pair_setup(cdev_id, qp,
-						&qp_conf, dev_conf.socket_id))
+					&qp_conf, dev_conf.socket_id,
+					socket_ctx[dev_conf.socket_id].session_pool))
 				rte_panic("Failed to setup queue %u for "
 						"cdev_id %u\n",	0, cdev_id);
 

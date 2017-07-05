@@ -525,15 +525,13 @@ struct rte_cryptodev_config {
  *
  * @param	dev_id		The identifier of the device to configure.
  * @param	config		The crypto device configuration structure.
- * @param	session_pool	Pointer to device session mempool
  *
  * @return
  *   - 0: Success, device configured.
  *   - <0: Error code returned by the driver configuration function.
  */
 extern int
-rte_cryptodev_configure(uint8_t dev_id, struct rte_cryptodev_config *config,
-		struct rte_mempool *session_pool);
+rte_cryptodev_configure(uint8_t dev_id, struct rte_cryptodev_config *config);
 
 /**
  * Start an device.
@@ -592,6 +590,8 @@ rte_cryptodev_close(uint8_t dev_id);
  *				*SOCKET_ID_ANY* if there is no NUMA constraint
  *				for the DMA memory allocated for the receive
  *				queue pair.
+ * @param	session_pool	Pointer to device session mempool, used
+ *				for session-less operations.
  *
  * @return
  *   - 0: Success, queue pair correctly set up.
@@ -599,7 +599,8 @@ rte_cryptodev_close(uint8_t dev_id);
  */
 extern int
 rte_cryptodev_queue_pair_setup(uint8_t dev_id, uint16_t queue_pair_id,
-		const struct rte_cryptodev_qp_conf *qp_conf, int socket_id);
+		const struct rte_cryptodev_qp_conf *qp_conf, int socket_id,
+		struct rte_mempool *session_pool);
 
 /**
  * Start a specified queue pair of a device. It is used

@@ -221,7 +221,7 @@ zuc_pmd_qp_create_processed_ops_ring(struct zuc_qp *qp,
 static int
 zuc_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 		const struct rte_cryptodev_qp_conf *qp_conf,
-		 int socket_id)
+		int socket_id, struct rte_mempool *session_pool)
 {
 	struct zuc_qp *qp = NULL;
 
@@ -246,7 +246,7 @@ zuc_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 	if (qp->processed_ops == NULL)
 		goto qp_setup_cleanup;
 
-	qp->sess_mp = dev->data->session_pool;
+	qp->sess_mp = session_pool;
 
 	memset(&qp->qp_stats, 0, sizeof(qp->qp_stats));
 

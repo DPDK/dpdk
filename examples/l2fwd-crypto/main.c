@@ -2232,8 +2232,7 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 						cap->sym.auth.digest_size.min;
 		}
 
-		retval = rte_cryptodev_configure(cdev_id, &conf,
-				session_pool_socket[socket_id]);
+		retval = rte_cryptodev_configure(cdev_id, &conf);
 		if (retval < 0) {
 			printf("Failed to configure cryptodev %u", cdev_id);
 			return -1;
@@ -2242,7 +2241,7 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 		qp_conf.nb_descriptors = 2048;
 
 		retval = rte_cryptodev_queue_pair_setup(cdev_id, 0, &qp_conf,
-				socket_id);
+				socket_id, session_pool_socket[socket_id]);
 		if (retval < 0) {
 			printf("Failed to setup queue pair %u on cryptodev %u",
 					0, cdev_id);

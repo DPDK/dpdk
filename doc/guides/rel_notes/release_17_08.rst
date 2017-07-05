@@ -240,6 +240,7 @@ API Changes
   * Modified parameters of ``rte_cryptodev_sym_session_create()``, to accept
     ``mempool``, instead of ``device id`` and ``rte_crypto_sym_xform``.
   * Remove ``device id`` parameter from ``rte_cryptodev_sym_session_free()``.
+  * Added new field ``session_pool`` to ``rte_cryptodev_queue_pair_setup()``.
 
 
 ABI Changes

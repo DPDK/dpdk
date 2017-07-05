@@ -134,7 +134,7 @@ queue_dma_zone_reserve(const char *queue_name, uint32_t queue_size,
 
 int qat_crypto_sym_qp_setup(struct rte_cryptodev *dev, uint16_t queue_pair_id,
 	const struct rte_cryptodev_qp_conf *qp_conf,
-	int socket_id)
+	int socket_id, struct rte_mempool *session_pool __rte_unused)
 {
 	struct qat_qp *qp;
 	struct rte_pci_device *pci_dev;

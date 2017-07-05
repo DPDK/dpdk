@@ -103,7 +103,8 @@ void qat_crypto_sym_stats_get(struct rte_cryptodev *dev,
 void qat_crypto_sym_stats_reset(struct rte_cryptodev *dev);
 
 int qat_crypto_sym_qp_setup(struct rte_cryptodev *dev, uint16_t queue_pair_id,
-	const struct rte_cryptodev_qp_conf *rx_conf, int socket_id);
+	const struct rte_cryptodev_qp_conf *rx_conf, int socket_id,
+	struct rte_mempool *session_pool);
 int qat_crypto_sym_qp_release(struct rte_cryptodev *dev,
 	uint16_t queue_pair_id);
 

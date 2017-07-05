@@ -404,7 +404,7 @@ testsuite_setup(void)
 			"session mempool allocation failed");
 
 	TEST_ASSERT_SUCCESS(rte_cryptodev_configure(dev_id,
-			&ts_params->conf, ts_params->session_mpool),
+			&ts_params->conf),
 			"Failed to configure cryptodev %u with %u qps",
 			dev_id, ts_params->conf.nb_queue_pairs);
 
@@ -413,7 +413,8 @@ testsuite_setup(void)
 	for (qp_id = 0; qp_id < info.max_nb_queue_pairs; qp_id++) {
 		TEST_ASSERT_SUCCESS(rte_cryptodev_queue_pair_setup(
 			dev_id, qp_id, &ts_params->qp_conf,
-			rte_cryptodev_socket_id(dev_id)),
+			rte_cryptodev_socket_id(dev_id),
+			ts_params->session_mpool),
 			"Failed to setup queue pair %u on cryptodev %u",
 			qp_id, dev_id);
 	}
@@ -458,7 +459,7 @@ ut_setup(void)
 	ts_params->conf.socket_id = SOCKET_ID_ANY;
 
 	TEST_ASSERT_SUCCESS(rte_cryptodev_configure(ts_params->valid_devs[0],
-			&ts_params->conf, ts_params->session_mpool),
+			&ts_params->conf),
 			"Failed to configure cryptodev %u",
 			ts_params->valid_devs[0]);
 
@@ -466,7 +467,8 @@ ut_setup(void)
 		TEST_ASSERT_SUCCESS(rte_cryptodev_queue_pair_setup(
 			ts_params->valid_devs[0], qp_id,
 			&ts_params->qp_conf,
-			rte_cryptodev_socket_id(ts_params->valid_devs[0])),
+			rte_cryptodev_socket_id(ts_params->valid_devs[0]),
+			ts_params->session_mpool),
 			"Failed to setup queue pair %u on cryptodev %u",
 			qp_id, ts_params->valid_devs[0]);
 	}
@@ -542,23 +544,20 @@ test_device_configure_invalid_dev_id(void)
 	/* Stop the device in case it's started so it can be configured */
 	rte_cryptodev_stop(ts_params->valid_devs[dev_id]);
 
-	TEST_ASSERT_SUCCESS(rte_cryptodev_configure(dev_id, &ts_params->conf,
-				ts_params->session_mpool),
+	TEST_ASSERT_SUCCESS(rte_cryptodev_configure(dev_id, &ts_params->conf),
 			"Failed test for rte_cryptodev_configure: "
 			"invalid dev_num %u", dev_id);
 
 	/* invalid dev_id values */
 	dev_id = num_devs;
 
-	TEST_ASSERT_FAIL(rte_cryptodev_configure(dev_id, &ts_params->conf,
-				ts_params->session_mpool),
+	TEST_ASSERT_FAIL(rte_cryptodev_configure(dev_id, &ts_params->conf),
 			"Failed test for rte_cryptodev_configure: "
 			"invalid dev_num %u", dev_id);
 
 	dev_id = 0xff;
 
-	TEST_ASSERT_FAIL(rte_cryptodev_configure(dev_id, &ts_params->conf,
-				ts_params->session_mpool),
+	TEST_ASSERT_FAIL(rte_cryptodev_configure(dev_id, &ts_params->conf),
 			"Failed test for rte_cryptodev_configure:"
 			"invalid dev_num %u", dev_id);
 
@@ -578,7 +577,7 @@ test_device_configure_invalid_queue_pair_ids(void)
 	ts_params->conf.nb_queue_pairs = 1;
 
 	TEST_ASSERT_SUCCESS(rte_cryptodev_configure(ts_params->valid_devs[0],
-			&ts_params->conf, ts_params->session_mpool),
+			&ts_params->conf),
 			"Failed to configure cryptodev: dev_id %u, qp_id %u",
 			ts_params->valid_devs[0], ts_params->conf.nb_queue_pairs);
 
@@ -587,7 +586,7 @@ test_device_configure_invalid_queue_pair_ids(void)
 	ts_params->conf.nb_queue_pairs = MAX_NUM_QPS_PER_QAT_DEVICE;
 
 	TEST_ASSERT_SUCCESS(rte_cryptodev_configure(ts_params->valid_devs[0],
-			&ts_params->conf, ts_params->session_mpool),
+			&ts_params->conf),
 			"Failed to configure cryptodev: dev_id %u, qp_id %u",
 			ts_params->valid_devs[0],
 			ts_params->conf.nb_queue_pairs);
@@ -597,7 +596,7 @@ test_device_configure_invalid_queue_pair_ids(void)
 	ts_params->conf.nb_queue_pairs = 0;
 
 	TEST_ASSERT_FAIL(rte_cryptodev_configure(ts_params->valid_devs[0],
-			&ts_params->conf, ts_params->session_mpool),
+			&ts_params->conf),
 			"Failed test for rte_cryptodev_configure, dev_id %u,"
 			" invalid qps: %u",
 			ts_params->valid_devs[0],
@@ -608,7 +607,7 @@ test_device_configure_invalid_queue_pair_ids(void)
 	ts_params->conf.nb_queue_pairs = UINT16_MAX;
 
 	TEST_ASSERT_FAIL(rte_cryptodev_configure(ts_params->valid_devs[0],
-			&ts_params->conf, ts_params->session_mpool),
+			&ts_params->conf),
 			"Failed test for rte_cryptodev_configure, dev_id %u,"
 			" invalid qps: %u",
 			ts_params->valid_devs[0],
@@ -619,7 +618,7 @@ test_device_configure_invalid_queue_pair_ids(void)
 	ts_params->conf.nb_queue_pairs = MAX_NUM_QPS_PER_QAT_DEVICE + 1;
 
 	TEST_ASSERT_FAIL(rte_cryptodev_configure(ts_params->valid_devs[0],
-			&ts_params->conf, ts_params->session_mpool),
+			&ts_params->conf),
 			"Failed test for rte_cryptodev_configure, dev_id %u,"
 			" invalid qps: %u",
 			ts_params->valid_devs[0],
@@ -649,7 +648,7 @@ test_queue_pair_descriptor_setup(void)
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
 
 	TEST_ASSERT_SUCCESS(rte_cryptodev_configure(ts_params->valid_devs[0],
-			&ts_params->conf, ts_params->session_mpool),
+			&ts_params->conf),
 			"Failed to configure cryptodev %u",
 			ts_params->valid_devs[0]);
 
@@ -663,7 +662,8 @@ test_queue_pair_descriptor_setup(void)
 		TEST_ASSERT_SUCCESS(rte_cryptodev_queue_pair_setup(
 				ts_params->valid_devs[0], qp_id, &qp_conf,
 				rte_cryptodev_socket_id(
-						ts_params->valid_devs[0])),
+						ts_params->valid_devs[0]),
+				ts_params->session_mpool),
 				"Failed test for "
 				"rte_cryptodev_queue_pair_setup: num_inflights "
 				"%u on qp %u on cryptodev %u",
@@ -677,7 +677,8 @@ test_queue_pair_descriptor_setup(void)
 		TEST_ASSERT_SUCCESS(rte_cryptodev_queue_pair_setup(
 				ts_params->valid_devs[0], qp_id, &qp_conf,
 				rte_cryptodev_socket_id(
-						ts_params->valid_devs[0])),
+						ts_params->valid_devs[0]),
+				ts_params->session_mpool),
 				"Failed test for"
 				" rte_cryptodev_queue_pair_setup: num_inflights"
 				" %u on qp %u on cryptodev %u",
@@ -691,7 +692,8 @@ test_queue_pair_descriptor_setup(void)
 		TEST_ASSERT_SUCCESS(rte_cryptodev_queue_pair_setup(
 				ts_params->valid_devs[0], qp_id, &qp_conf,
 				rte_cryptodev_socket_id(
-						ts_params->valid_devs[0])),
+						ts_params->valid_devs[0]),
+				ts_params->session_mpool),
 				"Failed test for "
 				"rte_cryptodev_queue_pair_setup: num_inflights"
 				" %u on qp %u on cryptodev %u",
@@ -706,7 +708,8 @@ test_queue_pair_descriptor_setup(void)
 		TEST_ASSERT_FAIL(rte_cryptodev_queue_pair_setup(
 				ts_params->valid_devs[0], qp_id, &qp_conf,
 				rte_cryptodev_socket_id(
-						ts_params->valid_devs[0])),
+						ts_params->valid_devs[0]),
+				ts_params->session_mpool),
 				"Unexpectedly passed test for "
 				"rte_cryptodev_queue_pair_setup:"
 				"num_inflights %u on qp %u on cryptodev %u",
@@ -721,7 +724,8 @@ test_queue_pair_descriptor_setup(void)
 		TEST_ASSERT_FAIL(rte_cryptodev_queue_pair_setup(
 				ts_params->valid_devs[0], qp_id, &qp_conf,
 				rte_cryptodev_socket_id(
-						ts_params->valid_devs[0])),
+						ts_params->valid_devs[0]),
+				ts_params->session_mpool),
 				"Unexpectedly passed test for "
 				"rte_cryptodev_queue_pair_setup:"
 				"num_inflights %u on qp %u on cryptodev %u",
@@ -735,7 +739,8 @@ test_queue_pair_descriptor_setup(void)
 		TEST_ASSERT_SUCCESS(rte_cryptodev_queue_pair_setup(
 				ts_params->valid_devs[0], qp_id, &qp_conf,
 				rte_cryptodev_socket_id(
-						ts_params->valid_devs[0])),
+						ts_params->valid_devs[0]),
+				ts_params->session_mpool),
 				"Failed test for"
 				" rte_cryptodev_queue_pair_setup:"
 				"num_inflights %u on qp %u on cryptodev %u",
@@ -750,7 +755,8 @@ test_queue_pair_descriptor_setup(void)
 		TEST_ASSERT_FAIL(rte_cryptodev_queue_pair_setup(
 				ts_params->valid_devs[0], qp_id, &qp_conf,
 				rte_cryptodev_socket_id(
-						ts_params->valid_devs[0])),
+						ts_params->valid_devs[0]),
+				ts_params->session_mpool),
 				"Unexpectedly passed test for "
 				"rte_cryptodev_queue_pair_setup:"
 				"num_inflights %u on qp %u on cryptodev %u",
@@ -766,7 +772,8 @@ test_queue_pair_descriptor_setup(void)
 	TEST_ASSERT_FAIL(rte_cryptodev_queue_pair_setup(
 			ts_params->valid_devs[0],
 			qp_id, &qp_conf,
-			rte_cryptodev_socket_id(ts_params->valid_devs[0])),
+			rte_cryptodev_socket_id(ts_params->valid_devs[0]),
+			ts_params->session_mpool),
 			"Failed test for rte_cryptodev_queue_pair_setup:"
 			"invalid qp %u on cryptodev %u",
 			qp_id, ts_params->valid_devs[0]);
@@ -776,7 +783,8 @@ test_queue_pair_descriptor_setup(void)
 	TEST_ASSERT_FAIL(rte_cryptodev_queue_pair_setup(
 			ts_params->valid_devs[0],
 			qp_id, &qp_conf,
-			rte_cryptodev_socket_id(ts_params->valid_devs[0])),
+			rte_cryptodev_socket_id(ts_params->valid_devs[0]),
+			ts_params->session_mpool),
 			"Failed test for rte_cryptodev_queue_pair_setup:"
 			"invalid qp %u on cryptodev %u",
 			qp_id, ts_params->valid_devs[0]);

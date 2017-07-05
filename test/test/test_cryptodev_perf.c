@@ -423,7 +423,7 @@ testsuite_setup(void)
 			"session mempool allocation failed");
 
 	TEST_ASSERT_SUCCESS(rte_cryptodev_configure(ts_params->dev_id,
-			&ts_params->conf, ts_params->sess_mp),
+			&ts_params->conf),
 			"Failed to configure cryptodev %u",
 			ts_params->dev_id);
 
@@ -433,7 +433,8 @@ testsuite_setup(void)
 		TEST_ASSERT_SUCCESS(rte_cryptodev_queue_pair_setup(
 			ts_params->dev_id, qp_id,
 				&ts_params->qp_conf,
-				rte_cryptodev_socket_id(ts_params->dev_id)),
+				rte_cryptodev_socket_id(ts_params->dev_id),
+				ts_params->sess_mp),
 				"Failed to setup queue pair %u on cryptodev %u",
 				qp_id, ts_params->dev_id);
 	}
