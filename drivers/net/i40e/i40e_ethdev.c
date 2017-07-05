@@ -2391,14 +2391,35 @@ i40e_read_stats_registers(struct i40e_pf *pf, struct i40e_hw *hw)
 	i40e_stat_update_48(hw, I40E_GLV_GORCH(hw->port),
 			I40E_GLV_GORCL(hw->port),
 			pf->offset_loaded,
-			&pf->internal_rx_bytes_offset,
-			&pf->internal_rx_bytes);
+			&pf->internal_stats_offset.rx_bytes,
+			&pf->internal_stats.rx_bytes);
 
 	i40e_stat_update_48(hw, I40E_GLV_GOTCH(hw->port),
 			I40E_GLV_GOTCL(hw->port),
 			pf->offset_loaded,
-			&pf->internal_tx_bytes_offset,
-			&pf->internal_tx_bytes);
+			&pf->internal_stats_offset.tx_bytes,
+			&pf->internal_stats.tx_bytes);
+	/* Get total internal rx packet count */
+	i40e_stat_update_48(hw, I40E_GLV_UPRCH(hw->port),
+			    I40E_GLV_UPRCL(hw->port),
+			    pf->offset_loaded,
+			    &pf->internal_stats_offset.rx_unicast,
+			    &pf->internal_stats.rx_unicast);
+	i40e_stat_update_48(hw, I40E_GLV_MPRCH(hw->port),
+			    I40E_GLV_MPRCL(hw->port),
+			    pf->offset_loaded,
+			    &pf->internal_stats_offset.rx_multicast,
+			    &pf->internal_stats.rx_multicast);
+	i40e_stat_update_48(hw, I40E_GLV_BPRCH(hw->port),
+			    I40E_GLV_BPRCL(hw->port),
+			    pf->offset_loaded,
+			    &pf->internal_stats_offset.rx_broadcast,
+			    &pf->internal_stats.rx_broadcast);
+
+	/* exclude CRC size */
+	pf->internal_stats.rx_bytes -= (pf->internal_stats.rx_unicast +
+		pf->internal_stats.rx_multicast +
+		pf->internal_stats.rx_broadcast) * ETHER_CRC_LEN;
 
 	/* Get statistics of struct i40e_eth_stats */
 	i40e_stat_update_48(hw, I40E_GLPRT_GORCH(hw->port),
@@ -2421,7 +2442,17 @@ i40e_read_stats_registers(struct i40e_pf *pf, struct i40e_hw *hw)
 	 * so subtract ETHER_CRC_LEN from the byte counter for each rx packet.
 	 */
 	ns->eth.rx_bytes -= (ns->eth.rx_unicast + ns->eth.rx_multicast +
-		ns->eth.rx_broadcast) * ETHER_CRC_LEN + pf->internal_rx_bytes;
+		ns->eth.rx_broadcast) * ETHER_CRC_LEN;
+
+	/* Workaround: it is possible I40E_GLV_GORCH[H/L] is updated before
+	 * I40E_GLPRT_GORCH[H/L], so there is a small window that cause negtive
+	 * value.
+	 */
+	if (ns->eth.rx_bytes < pf->internal_stats.rx_bytes)
+		ns->eth.rx_bytes = 0;
+	/* exlude internal rx bytes */
+	else
+		ns->eth.rx_bytes -= pf->internal_stats.rx_bytes;
 
 	i40e_stat_update_32(hw, I40E_GLPRT_RDPC(hw->port),
 			    pf->offset_loaded, &os->eth.rx_discards,
@@ -2449,7 +2480,14 @@ i40e_read_stats_registers(struct i40e_pf *pf, struct i40e_hw *hw)
 			    pf->offset_loaded, &os->eth.tx_broadcast,
 			    &ns->eth.tx_broadcast);
 	ns->eth.tx_bytes -= (ns->eth.tx_unicast + ns->eth.tx_multicast +
-		ns->eth.tx_broadcast) * ETHER_CRC_LEN + pf->internal_tx_bytes;
+		ns->eth.tx_broadcast) * ETHER_CRC_LEN;
+
+	/* exclude internal tx bytes */
+	if (ns->eth.tx_bytes < pf->internal_stats.tx_bytes)
+		ns->eth.tx_bytes = 0;
+	else
+		ns->eth.tx_bytes -= pf->internal_stats.tx_bytes;
+
 	/* GLPRT_TEPC not supported */
 
 	/* additional port specific stats */
@@ -5241,10 +5279,8 @@ i40e_pf_setup(struct i40e_pf *pf)
 	pf->offset_loaded = FALSE;
 	memset(&pf->stats, 0, sizeof(struct i40e_hw_port_stats));
 	memset(&pf->stats_offset, 0, sizeof(struct i40e_hw_port_stats));
-	pf->internal_rx_bytes = 0;
-	pf->internal_tx_bytes = 0;
-	pf->internal_rx_bytes_offset = 0;
-	pf->internal_tx_bytes_offset = 0;
+	memset(&pf->internal_stats, 0, sizeof(struct i40e_eth_stats));
+	memset(&pf->internal_stats_offset, 0, sizeof(struct i40e_eth_stats));
 
 	ret = i40e_pf_get_switch_config(pf);
 	if (ret != I40E_SUCCESS) {
