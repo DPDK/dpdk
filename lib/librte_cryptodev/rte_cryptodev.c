@@ -1091,13 +1091,9 @@ rte_cryptodev_pmd_callback_process(struct rte_cryptodev *dev,
 
 static void
 rte_cryptodev_sym_session_init(struct rte_mempool *mp,
-		void *opaque_arg,
-		void *_sess,
-		__rte_unused unsigned i)
+		const struct rte_cryptodev *dev,
+		struct rte_cryptodev_sym_session *sess)
 {
-	struct rte_cryptodev_sym_session *sess = _sess;
-	struct rte_cryptodev *dev = opaque_arg;
-
 	memset(sess, 0, mp->elt_size);
 
 	sess->dev_id = dev->data->dev_id;
@@ -1154,8 +1150,7 @@ rte_cryptodev_sym_session_pool_create(struct rte_cryptodev *dev,
 				0, /* private data size */
 				NULL, /* obj initialization constructor */
 				NULL, /* obj initialization constructor arg */
-				rte_cryptodev_sym_session_init,
-				/**< obj constructor*/
+				NULL, /**< obj constructor*/
 				dev, /* obj constructor arg */
 				socket_id, /* socket id */
 				0); /* flags */
@@ -1193,6 +1188,8 @@ rte_cryptodev_sym_session_create(uint8_t dev_id,
 
 	sess = _sess;
 
+	rte_cryptodev_sym_session_init(dev->data->session_pool, dev,
+					sess);
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->session_configure, NULL);
 	if (dev->dev_ops->session_configure(dev, xform, sess->_private) ==
 			NULL) {
