@@ -267,20 +267,6 @@ typedef unsigned (*cryptodev_sym_get_session_private_size_t)(
 		struct rte_cryptodev *dev);
 
 /**
- * Initialize a Crypto session on a device.
- *
- * @param	dev		Crypto device pointer
- * @param	xform		Single or chain of crypto xforms
- * @param	priv_sess	Pointer to cryptodev's private session structure
- *
- * @return
- *  - Returns private session structure on success.
- *  - Returns NULL on failure.
- */
-typedef void (*cryptodev_sym_initialize_session_t)(struct rte_mempool *mempool,
-		void *session_private);
-
-/**
  * Configure a Crypto session on a device.
  *
  * @param	dev		Crypto device pointer
@@ -359,8 +345,6 @@ struct rte_cryptodev_ops {
 
 	cryptodev_sym_get_session_private_size_t session_get_size;
 	/**< Return private session. */
-	cryptodev_sym_initialize_session_t session_initialize;
-	/**< Initialization function for private session data */
 	cryptodev_sym_configure_session_t session_configure;
 	/**< Configure a Crypto session. */
 	cryptodev_sym_free_session_t session_clear;

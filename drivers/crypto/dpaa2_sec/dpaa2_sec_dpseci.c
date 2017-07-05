@@ -908,13 +908,6 @@ dpaa2_sec_session_get_size(struct rte_cryptodev *dev __rte_unused)
 	return sizeof(dpaa2_sec_session);
 }
 
-static void
-dpaa2_sec_session_initialize(struct rte_mempool *mp __rte_unused,
-			     void *sess __rte_unused)
-{
-	PMD_INIT_FUNC_TRACE();
-}
-
 static int
 dpaa2_sec_cipher_init(struct rte_cryptodev *dev,
 		      struct rte_crypto_sym_xform *xform,
@@ -1821,7 +1814,6 @@ static struct rte_cryptodev_ops crypto_ops = {
 	.queue_pair_stop      = dpaa2_sec_queue_pair_stop,
 	.queue_pair_count     = dpaa2_sec_queue_pair_count,
 	.session_get_size     = dpaa2_sec_session_get_size,
-	.session_initialize   = dpaa2_sec_session_initialize,
 	.session_configure    = dpaa2_sec_session_configure,
 	.session_clear        = dpaa2_sec_session_clear,
 };
