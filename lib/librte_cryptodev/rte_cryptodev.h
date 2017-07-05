@@ -883,50 +883,80 @@ rte_cryptodev_enqueue_burst(uint8_t dev_id, uint16_t qp_id,
 /** Cryptodev symmetric crypto session */
 struct rte_cryptodev_sym_session {
 	RTE_STD_C11
-	__extension__ char _private[0];
+	__extension__ void *sess_private_data[0];
 	/**< Private session material */
 };
 
 
 /**
- * Initialise a session for symmetric cryptographic operations.
+ * Create symmetric crypto session header (generic with no private data)
  *
- * This function is used by the client to initialize immutable
- * parameters of symmetric cryptographic operation.
- * To perform the operation the rte_cryptodev_enqueue_burst function is
- * used.  Each mbuf should contain a reference to the session
- * pointer returned from this function contained within it's crypto_op if a
- * session-based operation is being provisioned. Memory to contain the session
- * information is allocated from within mempool managed by the cryptodev.
- *
- * The rte_cryptodev_session_free must be called to free allocated
- * memory when the session is no longer required.
- *
- * @param	dev_id		The device identifier.
- * @param	xform		Crypto transform chain.
-
- *
+ * @param   mempool    Symmetric session mempool to allocate session
+ *                     objects from
  * @return
- *  Pointer to the created session or NULL
+ *  - On success return pointer to sym-session
+ *  - On failure returns NULL
  */
-extern struct rte_cryptodev_sym_session *
-rte_cryptodev_sym_session_create(uint8_t dev_id,
-		struct rte_crypto_sym_xform *xform);
+struct rte_cryptodev_sym_session *
+rte_cryptodev_sym_session_create(struct rte_mempool *mempool);
 
 /**
- * Free the memory associated with a previously allocated session.
+ * Frees symmetric crypto session header, after checking that all
+ * the device private data has been freed, returning it
+ * to its original mempool.
  *
- * @param	dev_id		The device identifier.
- * @param	session		Session pointer previously allocated by
- *				*rte_cryptodev_sym_session_create*.
+ * @param   sess     Session header to be freed.
  *
  * @return
- *   NULL on successful freeing of session.
- *   Session pointer on failure to free session.
+ *  - 0 if successful.
+ *  - -EINVAL if session is NULL.
+ *  - -EBUSY if not all device private data has been freed.
  */
-extern struct rte_cryptodev_sym_session *
-rte_cryptodev_sym_session_free(uint8_t dev_id,
-		struct rte_cryptodev_sym_session *session);
+int
+rte_cryptodev_sym_session_free(struct rte_cryptodev_sym_session *sess);
+
+/**
+ * Fill out private data for the device id, based on its device type.
+ *
+ * @param   dev_id   ID of device that we want the session to be used on
+ * @param   sess     Session where the private data will be attached to
+ * @param   xforms   Symmetric crypto transform operations to apply on flow
+ *                   processed with this session
+ * @param   mempool  Mempool where the private data is allocated.
+ *
+ * @return
+ *  - On success, zero.
+ *  - On failure, a negative value.
+ */
+int
+rte_cryptodev_sym_session_init(uint8_t dev_id,
+			struct rte_cryptodev_sym_session *sess,
+			struct rte_crypto_sym_xform *xforms,
+			struct rte_mempool *mempool);
+
+/**
+ * Frees private data for the device id, based on its device type,
+ * returning it to its mempool.
+ *
+ * @param   dev_id   ID of device that uses the session.
+ * @param   sess     Session containing the reference to the private data
+ *
+ * @return
+ *  - 0 if successful.
+ *  - -EINVAL if device is invalid or session is NULL.
+ */
+int
+rte_cryptodev_sym_session_clear(uint8_t dev_id,
+			struct rte_cryptodev_sym_session *sess);
+
+/**
+ * Get the size of the header session, for all registered drivers.
+ *
+ * @return
+ *   Size of the header session.
+ */
+unsigned int
+rte_cryptodev_get_header_session_size(void);
 
 /**
  * Get the size of the private session data for a device.

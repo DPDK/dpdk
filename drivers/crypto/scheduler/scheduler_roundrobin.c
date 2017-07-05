@@ -52,47 +52,12 @@ schedule_enqueue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 	uint32_t slave_idx = rr_qp_ctx->last_enq_slave_idx;
 	struct scheduler_slave *slave = &rr_qp_ctx->slaves[slave_idx];
 	uint16_t i, processed_ops;
-	struct rte_cryptodev_sym_session *sessions[nb_ops];
-	struct scheduler_session *sess0, *sess1, *sess2, *sess3;
 
 	if (unlikely(nb_ops == 0))
 		return 0;
 
 	for (i = 0; i < nb_ops && i < 4; i++)
 		rte_prefetch0(ops[i]->sym->session);
-
-	for (i = 0; (i < (nb_ops - 8)) && (nb_ops > 8); i += 4) {
-		sess0 = (struct scheduler_session *)
-				ops[i]->sym->session->_private;
-		sess1 = (struct scheduler_session *)
-				ops[i+1]->sym->session->_private;
-		sess2 = (struct scheduler_session *)
-				ops[i+2]->sym->session->_private;
-		sess3 = (struct scheduler_session *)
-				ops[i+3]->sym->session->_private;
-
-		sessions[i] = ops[i]->sym->session;
-		sessions[i + 1] = ops[i + 1]->sym->session;
-		sessions[i + 2] = ops[i + 2]->sym->session;
-		sessions[i + 3] = ops[i + 3]->sym->session;
-
-		ops[i]->sym->session = sess0->sessions[slave_idx];
-		ops[i + 1]->sym->session = sess1->sessions[slave_idx];
-		ops[i + 2]->sym->session = sess2->sessions[slave_idx];
-		ops[i + 3]->sym->session = sess3->sessions[slave_idx];
-
-		rte_prefetch0(ops[i + 4]->sym->session);
-		rte_prefetch0(ops[i + 5]->sym->session);
-		rte_prefetch0(ops[i + 6]->sym->session);
-		rte_prefetch0(ops[i + 7]->sym->session);
-	}
-
-	for (; i < nb_ops; i++) {
-		sess0 = (struct scheduler_session *)
-				ops[i]->sym->session->_private;
-		sessions[i] = ops[i]->sym->session;
-		ops[i]->sym->session = sess0->sessions[slave_idx];
-	}
 
 	processed_ops = rte_cryptodev_enqueue_burst(slave->dev_id,
 			slave->qp_id, ops, nb_ops);
@@ -101,12 +66,6 @@ schedule_enqueue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 
 	rr_qp_ctx->last_enq_slave_idx += 1;
 	rr_qp_ctx->last_enq_slave_idx %= rr_qp_ctx->nb_slaves;
-
-	/* recover session if enqueue is failed */
-	if (unlikely(processed_ops < nb_ops)) {
-		for (i = processed_ops; i < nb_ops; i++)
-			ops[i]->sym->session = sessions[i];
-	}
 
 	return processed_ops;
 }

@@ -354,24 +354,37 @@ get_session(struct aesni_mb_qp *qp, struct rte_crypto_op *op)
 {
 	struct aesni_mb_session *sess = NULL;
 
-	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION)
-		sess = (struct aesni_mb_session *)op->sym->session->_private;
-	else  {
+	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
+		if (likely(op->sym->session != NULL))
+			sess = (struct aesni_mb_session *)
+					get_session_private_data(
+					op->sym->session,
+					cryptodev_driver_id);
+	} else {
 		void *_sess = NULL;
+		void *_sess_private_data = NULL;
 
 		if (rte_mempool_get(qp->sess_mp, (void **)&_sess))
 			return NULL;
 
-		sess = (struct aesni_mb_session *)
-			((struct rte_cryptodev_sym_session *)_sess)->_private;
+		if (rte_mempool_get(qp->sess_mp, (void **)&_sess_private_data))
+			return NULL;
+
+		sess = (struct aesni_mb_session *)_sess_private_data;
 
 		if (unlikely(aesni_mb_set_session_parameters(qp->op_fns,
 				sess, op->sym->xform) != 0)) {
 			rte_mempool_put(qp->sess_mp, _sess);
+			rte_mempool_put(qp->sess_mp, _sess_private_data);
 			sess = NULL;
 		}
 		op->sym->session = (struct rte_cryptodev_sym_session *)_sess;
+		set_session_private_data(op->sym->session, cryptodev_driver_id,
+			_sess_private_data);
 	}
+
+	if (unlikely(sess == NULL))
+		op->status = RTE_CRYPTO_OP_STATUS_INVALID_SESSION;
 
 	return sess;
 }
@@ -512,19 +525,21 @@ verify_digest(JOB_AES_HMAC *job, struct rte_crypto_op *op) {
 /**
  * Process a completed job and return rte_mbuf which job processed
  *
+ * @param qp		Queue Pair to process
  * @param job	JOB_AES_HMAC job to process
  *
  * @return
- * - Returns processed mbuf which is trimmed of output digest used in
- * verification of supplied digest in the case of a HASH_CIPHER operation
+ * - Returns processed crypto operation which mbuf is trimmed of output digest
+ *   used in verification of supplied digest.
  * - Returns NULL on invalid job
  */
 static inline struct rte_crypto_op *
 post_process_mb_job(struct aesni_mb_qp *qp, JOB_AES_HMAC *job)
 {
 	struct rte_crypto_op *op = (struct rte_crypto_op *)job->user_data;
-
-	struct aesni_mb_session *sess;
+	struct aesni_mb_session *sess = get_session_private_data(
+							op->sym->session,
+							cryptodev_driver_id);
 
 	if (unlikely(op->status == RTE_CRYPTO_OP_STATUS_ENQUEUED)) {
 		switch (job->status) {
@@ -532,9 +547,6 @@ post_process_mb_job(struct aesni_mb_qp *qp, JOB_AES_HMAC *job)
 			op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
 
 			if (job->hash_alg != NULL_HASH) {
-				sess = (struct aesni_mb_session *)
-						op->sym->session->_private;
-
 				if (sess->auth.operation ==
 						RTE_CRYPTO_AUTH_OP_VERIFY)
 					verify_digest(job, op);
@@ -547,6 +559,10 @@ post_process_mb_job(struct aesni_mb_qp *qp, JOB_AES_HMAC *job)
 
 	/* Free session if a session-less crypto op */
 	if (op->sess_type == RTE_CRYPTO_OP_SESSIONLESS) {
+		memset(sess, 0, sizeof(struct aesni_mb_session));
+		memset(op->sym->session, 0,
+				rte_cryptodev_get_header_session_size());
+		rte_mempool_put(qp->sess_mp, sess);
 		rte_mempool_put(qp->sess_mp, op->sym->session);
 		op->sym->session = NULL;
 	}

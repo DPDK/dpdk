@@ -649,6 +649,9 @@ static struct rte_cryptodev_sym_session *
 initialize_crypto_session(struct l2fwd_crypto_options *options, uint8_t cdev_id)
 {
 	struct rte_crypto_sym_xform *first_xform;
+	struct rte_cryptodev_sym_session *session;
+	uint8_t socket_id = rte_cryptodev_socket_id(cdev_id);
+	struct rte_mempool *sess_mp = session_pool_socket[socket_id];
 
 	if (options->xform_chain == L2FWD_CRYPTO_AEAD) {
 		first_xform = &options->aead_xform;
@@ -664,7 +667,16 @@ initialize_crypto_session(struct l2fwd_crypto_options *options, uint8_t cdev_id)
 		first_xform = &options->auth_xform;
 	}
 
-	return rte_cryptodev_sym_session_create(cdev_id, first_xform);
+	session = rte_cryptodev_sym_session_create(sess_mp);
+
+	if (session == NULL)
+		return NULL;
+
+	if (rte_cryptodev_sym_session_init(cdev_id, session,
+				first_xform, sess_mp) < 0)
+		return NULL;
+
+	return session;
 }
 
 static void
@@ -1935,8 +1947,7 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 	}
 
 	for (cdev_id = 0; cdev_id < cdev_count; cdev_id++) {
-		sess_sz = sizeof(struct rte_cryptodev_sym_session) +
-			rte_cryptodev_get_private_session_size(cdev_id);
+		sess_sz = rte_cryptodev_get_private_session_size(cdev_id);
 		if (sess_sz > max_sess_sz)
 			max_sess_sz = sess_sz;
 	}

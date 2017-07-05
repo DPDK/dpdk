@@ -162,22 +162,39 @@ zuc_set_session_parameters(struct zuc_session *sess,
 static struct zuc_session *
 zuc_get_session(struct zuc_qp *qp, struct rte_crypto_op *op)
 {
-	struct zuc_session *sess;
+	struct zuc_session *sess = NULL;
 
 	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
-		sess = (struct zuc_session *)op->sym->session->_private;
-	} else  {
-		struct rte_cryptodev_sym_session *c_sess = NULL;
+		if (likely(op->sym->session != NULL))
+			sess = (struct zuc_session *)get_session_private_data(
+					op->sym->session,
+					cryptodev_driver_id);
+	} else {
+		void *_sess = NULL;
+		void *_sess_private_data = NULL;
 
-		if (rte_mempool_get(qp->sess_mp, (void **)&c_sess))
+		if (rte_mempool_get(qp->sess_mp, (void **)&_sess))
 			return NULL;
 
-		sess = (struct zuc_session *)c_sess->_private;
+		if (rte_mempool_get(qp->sess_mp, (void **)&_sess_private_data))
+			return NULL;
+
+		sess = (struct zuc_session *)_sess_private_data;
 
 		if (unlikely(zuc_set_session_parameters(sess,
-				op->sym->xform) != 0))
-			return NULL;
+				op->sym->xform) != 0)) {
+			rte_mempool_put(qp->sess_mp, _sess);
+			rte_mempool_put(qp->sess_mp, _sess_private_data);
+			sess = NULL;
+		}
+		op->sym->session = (struct rte_cryptodev_sym_session *)_sess;
+		set_session_private_data(op->sym->session, cryptodev_driver_id,
+			_sess_private_data);
 	}
+
+	if (unlikely(sess == NULL))
+		op->status = RTE_CRYPTO_OP_STATUS_INVALID_SESSION;
+
 
 	return sess;
 }
@@ -337,6 +354,10 @@ process_ops(struct rte_crypto_op **ops, struct zuc_session *session,
 			ops[i]->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
 		/* Free session if a session-less crypto op. */
 		if (ops[i]->sess_type == RTE_CRYPTO_OP_SESSIONLESS) {
+			memset(session, 0, sizeof(struct zuc_session));
+			memset(ops[i]->sym->session, 0,
+					rte_cryptodev_get_header_session_size());
+			rte_mempool_put(qp->sess_mp, session);
 			rte_mempool_put(qp->sess_mp, ops[i]->sym->session);
 			ops[i]->sym->session = NULL;
 		}

@@ -84,6 +84,14 @@ process_op(const struct null_crypto_qp *qp, struct rte_crypto_op *op,
 	/* set status as successful by default */
 	op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
 
+	/* Free session if a session-less crypto op. */
+	if (op->sess_type == RTE_CRYPTO_OP_SESSIONLESS) {
+		memset(op->sym->session, 0,
+				sizeof(struct null_crypto_session));
+		rte_cryptodev_sym_session_free(op->sym->session);
+		op->sym->session = NULL;
+	}
+
 	/*
 	 * if crypto session and operation are valid just enqueue the packet
 	 * in the processed ring
@@ -94,24 +102,35 @@ process_op(const struct null_crypto_qp *qp, struct rte_crypto_op *op,
 static struct null_crypto_session *
 get_session(struct null_crypto_qp *qp, struct rte_crypto_op *op)
 {
-	struct null_crypto_session *sess;
+	struct null_crypto_session *sess = NULL;
 	struct rte_crypto_sym_op *sym_op = op->sym;
 
 	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
-		if (unlikely(sym_op->session == NULL))
+		if (likely(sym_op->session != NULL))
+			sess = (struct null_crypto_session *)
+					get_session_private_data(
+					sym_op->session, cryptodev_driver_id);
+	} else {
+		void *_sess = NULL;
+		void *_sess_private_data = NULL;
+
+		if (rte_mempool_get(qp->sess_mp, (void **)&_sess))
 			return NULL;
 
-		sess = (struct null_crypto_session *)sym_op->session->_private;
-	} else  {
-		struct rte_cryptodev_sym_session *c_sess = NULL;
-
-		if (rte_mempool_get(qp->sess_mp, (void **)&c_sess))
+		if (rte_mempool_get(qp->sess_mp, (void **)&_sess_private_data))
 			return NULL;
 
-		sess = (struct null_crypto_session *)c_sess->_private;
+		sess = (struct null_crypto_session *)_sess_private_data;
 
-		if (null_crypto_set_session_parameters(sess, sym_op->xform) != 0)
-			return NULL;
+		if (unlikely(null_crypto_set_session_parameters(sess,
+				sym_op->xform) != 0)) {
+			rte_mempool_put(qp->sess_mp, _sess);
+			rte_mempool_put(qp->sess_mp, _sess_private_data);
+			sess = NULL;
+		}
+		sym_op->session = (struct rte_cryptodev_sym_session *)_sess;
+		set_session_private_data(sym_op->session, cryptodev_driver_id,
+			_sess_private_data);
 	}
 
 	return sess;

@@ -116,6 +116,8 @@ New Features
   * ``dev_id`` field has been removed.
   * ``driver_id`` field has been removed.
   * Mempool pointer ``mp`` has been removed.
+  * Replaced ``private`` marker with array of pointers to private data sessions
+    ``sess_private_data``.
 
 * **Updated cryptodev library.**
 
@@ -123,6 +125,10 @@ New Features
     necessary to use a combination of cipher and authentication
     structures anymore.
   * Added helper functions for crypto device driver identification.
+  * Added support for multi-device sessions, so a single session can be
+    used in multiple drivers.
+  * Added functions to initialize and free individual driver private data
+    with a same session.
 
 * **Updated dpaa2_sec crypto PMD.**
 
@@ -231,6 +237,9 @@ API Changes
   * ``rte_cryptodev_queue_pair_attach_sym_session()`` and
     ``rte_cryptodev_queue_pair_dettach_sym_session()`` functions require
     the new parameter ``device id``.
+  * Modified parameters of ``rte_cryptodev_sym_session_create()``, to accept
+    ``mempool``, instead of ``device id`` and ``rte_crypto_sym_xform``.
+  * Remove ``device id`` parameter from ``rte_cryptodev_sym_session_free()``.
 
 
 ABI Changes

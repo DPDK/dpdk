@@ -560,23 +560,31 @@ get_session(struct openssl_qp *qp, struct rte_crypto_op *op)
 		/* get existing session */
 		if (likely(op->sym->session != NULL))
 			sess = (struct openssl_session *)
-				op->sym->session->_private;
-	} else  {
+					get_session_private_data(
+					op->sym->session,
+					cryptodev_driver_id);
+	} else {
 		/* provide internal session */
 		void *_sess = NULL;
+		void *_sess_private_data = NULL;
 
-		if (!rte_mempool_get(qp->sess_mp, (void **)&_sess)) {
-			sess = (struct openssl_session *)
-				((struct rte_cryptodev_sym_session *)_sess)
-				->_private;
+		if (rte_mempool_get(qp->sess_mp, (void **)&_sess))
+			return NULL;
 
-			if (unlikely(openssl_set_session_parameters(
-					sess, op->sym->xform) != 0)) {
-				rte_mempool_put(qp->sess_mp, _sess);
-				sess = NULL;
-			} else
-				op->sym->session = _sess;
+		if (rte_mempool_get(qp->sess_mp, (void **)&_sess_private_data))
+			return NULL;
+
+		sess = (struct openssl_session *)_sess_private_data;
+
+		if (unlikely(openssl_set_session_parameters(sess,
+				op->sym->xform) != 0)) {
+			rte_mempool_put(qp->sess_mp, _sess);
+			rte_mempool_put(qp->sess_mp, _sess_private_data);
+			sess = NULL;
 		}
+		op->sym->session = (struct rte_cryptodev_sym_session *)_sess;
+		set_session_private_data(op->sym->session, cryptodev_driver_id,
+			_sess_private_data);
 	}
 
 	if (sess == NULL)
@@ -1318,6 +1326,9 @@ process_op(const struct openssl_qp *qp, struct rte_crypto_op *op,
 	if (op->sess_type == RTE_CRYPTO_OP_SESSIONLESS) {
 		openssl_reset_session(sess);
 		memset(sess, 0, sizeof(struct openssl_session));
+		memset(op->sym->session, 0,
+				rte_cryptodev_get_header_session_size());
+		rte_mempool_put(qp->sess_mp, sess);
 		rte_mempool_put(qp->sess_mp, op->sym->session);
 		op->sym->session = NULL;
 	}

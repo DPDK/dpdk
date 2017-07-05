@@ -44,7 +44,10 @@
 
 
 void *
-cperf_verify_test_constructor(uint8_t dev_id, uint16_t qp_id,
+cperf_verify_test_constructor(
+		struct rte_mempool *sess_mp,
+		uint8_t dev_id,
+		uint16_t qp_id,
 		const struct cperf_options *options,
 		const struct cperf_test_vector *test_vector,
 		const struct cperf_op_fns *ops_fn);

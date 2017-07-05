@@ -155,22 +155,37 @@ aesni_gcm_get_session(struct aesni_gcm_qp *qp, struct rte_crypto_op *op)
 	struct rte_crypto_sym_op *sym_op = op->sym;
 
 	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
-		sess = (struct aesni_gcm_session *)sym_op->session->_private;
+		if (likely(sym_op->session != NULL))
+			sess = (struct aesni_gcm_session *)
+					get_session_private_data(
+					sym_op->session,
+					cryptodev_driver_id);
 	} else  {
 		void *_sess;
+		void *_sess_private_data = NULL;
 
-		if (rte_mempool_get(qp->sess_mp, &_sess))
-			return sess;
+		if (rte_mempool_get(qp->sess_mp, (void **)&_sess))
+			return NULL;
 
-		sess = (struct aesni_gcm_session *)
-			((struct rte_cryptodev_sym_session *)_sess)->_private;
+		if (rte_mempool_get(qp->sess_mp, (void **)&_sess_private_data))
+			return NULL;
 
-		if (unlikely(aesni_gcm_set_session_parameters(qp->ops, sess,
-				sym_op->xform) != 0)) {
+		sess = (struct aesni_gcm_session *)_sess_private_data;
+
+		if (unlikely(aesni_gcm_set_session_parameters(qp->ops,
+				sess, sym_op->xform) != 0)) {
 			rte_mempool_put(qp->sess_mp, _sess);
+			rte_mempool_put(qp->sess_mp, _sess_private_data);
 			sess = NULL;
 		}
+		sym_op->session = (struct rte_cryptodev_sym_session *)_sess;
+		set_session_private_data(sym_op->session, cryptodev_driver_id,
+			_sess_private_data);
 	}
+
+	if (unlikely(sess == NULL))
+		op->status = RTE_CRYPTO_OP_STATUS_INVALID_SESSION;
+
 	return sess;
 }
 
@@ -370,12 +385,10 @@ process_gcm_crypto_op(struct aesni_gcm_qp *qp, struct rte_crypto_op *op,
  * - Returns NULL on invalid job
  */
 static void
-post_process_gcm_crypto_op(struct rte_crypto_op *op)
+post_process_gcm_crypto_op(struct rte_crypto_op *op,
+		struct aesni_gcm_session *session)
 {
 	struct rte_mbuf *m = op->sym->m_dst ? op->sym->m_dst : op->sym->m_src;
-
-	struct aesni_gcm_session *session =
-		(struct aesni_gcm_session *)op->sym->session->_private;
 
 	op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
 
@@ -411,6 +424,7 @@ post_process_gcm_crypto_op(struct rte_crypto_op *op)
  * Process a completed GCM request
  *
  * @param qp		Queue Pair to process
+ * @param op		Crypto operation
  * @param job		JOB_AES_HMAC job
  *
  * @return
@@ -418,12 +432,17 @@ post_process_gcm_crypto_op(struct rte_crypto_op *op)
  */
 static void
 handle_completed_gcm_crypto_op(struct aesni_gcm_qp *qp,
-		struct rte_crypto_op *op)
+		struct rte_crypto_op *op,
+		struct aesni_gcm_session *sess)
 {
-	post_process_gcm_crypto_op(op);
+	post_process_gcm_crypto_op(op, sess);
 
 	/* Free session if a session-less crypto op */
 	if (op->sess_type == RTE_CRYPTO_OP_SESSIONLESS) {
+		memset(sess, 0, sizeof(struct aesni_gcm_session));
+		memset(op->sym->session, 0,
+				rte_cryptodev_get_header_session_size());
+		rte_mempool_put(qp->sess_mp, sess);
 		rte_mempool_put(qp->sess_mp, op->sym->session);
 		op->sym->session = NULL;
 	}
@@ -458,7 +477,7 @@ aesni_gcm_pmd_dequeue_burst(void *queue_pair,
 			break;
 		}
 
-		handle_completed_gcm_crypto_op(qp, ops[i]);
+		handle_completed_gcm_crypto_op(qp, ops[i], sess);
 	}
 
 	qp->qp_stats.dequeued_count += i;

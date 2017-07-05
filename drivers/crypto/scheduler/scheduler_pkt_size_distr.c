@@ -67,7 +67,6 @@ schedule_enqueue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 	struct scheduler_qp_ctx *qp_ctx = qp;
 	struct psd_scheduler_qp_ctx *psd_qp_ctx = qp_ctx->private_qp_ctx;
 	struct rte_crypto_op *sched_ops[NB_PKT_SIZE_SLAVES][nb_ops];
-	struct scheduler_session *sess;
 	uint32_t in_flight_ops[NB_PKT_SIZE_SLAVES] = {
 			psd_qp_ctx->primary_slave.nb_inflight_cops,
 			psd_qp_ctx->secondary_slave.nb_inflight_cops
@@ -97,8 +96,6 @@ schedule_enqueue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 		rte_prefetch0(ops[i + 7]->sym);
 		rte_prefetch0(ops[i + 7]->sym->session);
 
-		sess = (struct scheduler_session *)
-				ops[i]->sym->session->_private;
 		/* job_len is initialized as cipher data length, once
 		 * it is 0, equals to auth data length
 		 */
@@ -118,11 +115,8 @@ schedule_enqueue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 		}
 
 		sched_ops[p_enq_op->slave_idx][p_enq_op->pos] = ops[i];
-		ops[i]->sym->session = sess->sessions[p_enq_op->slave_idx];
 		p_enq_op->pos++;
 
-		sess = (struct scheduler_session *)
-				ops[i+1]->sym->session->_private;
 		job_len = ops[i+1]->sym->cipher.data.length;
 		job_len += (ops[i+1]->sym->cipher.data.length == 0) *
 				ops[i+1]->sym->auth.data.length;
@@ -135,11 +129,8 @@ schedule_enqueue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 		}
 
 		sched_ops[p_enq_op->slave_idx][p_enq_op->pos] = ops[i+1];
-		ops[i+1]->sym->session = sess->sessions[p_enq_op->slave_idx];
 		p_enq_op->pos++;
 
-		sess = (struct scheduler_session *)
-				ops[i+2]->sym->session->_private;
 		job_len = ops[i+2]->sym->cipher.data.length;
 		job_len += (ops[i+2]->sym->cipher.data.length == 0) *
 				ops[i+2]->sym->auth.data.length;
@@ -152,11 +143,7 @@ schedule_enqueue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 		}
 
 		sched_ops[p_enq_op->slave_idx][p_enq_op->pos] = ops[i+2];
-		ops[i+2]->sym->session = sess->sessions[p_enq_op->slave_idx];
 		p_enq_op->pos++;
-
-		sess = (struct scheduler_session *)
-				ops[i+3]->sym->session->_private;
 
 		job_len = ops[i+3]->sym->cipher.data.length;
 		job_len += (ops[i+3]->sym->cipher.data.length == 0) *
@@ -170,14 +157,10 @@ schedule_enqueue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 		}
 
 		sched_ops[p_enq_op->slave_idx][p_enq_op->pos] = ops[i+3];
-		ops[i+3]->sym->session = sess->sessions[p_enq_op->slave_idx];
 		p_enq_op->pos++;
 	}
 
 	for (; i < nb_ops; i++) {
-		sess = (struct scheduler_session *)
-				ops[i]->sym->session->_private;
-
 		job_len = ops[i]->sym->cipher.data.length;
 		job_len += (ops[i]->sym->cipher.data.length == 0) *
 				ops[i]->sym->auth.data.length;
@@ -190,7 +173,6 @@ schedule_enqueue(void *qp, struct rte_crypto_op **ops, uint16_t nb_ops)
 		}
 
 		sched_ops[p_enq_op->slave_idx][p_enq_op->pos] = ops[i];
-		ops[i]->sym->session = sess->sessions[p_enq_op->slave_idx];
 		p_enq_op->pos++;
 	}
 

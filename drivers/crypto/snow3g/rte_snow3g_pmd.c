@@ -163,22 +163,40 @@ snow3g_set_session_parameters(struct snow3g_session *sess,
 static struct snow3g_session *
 snow3g_get_session(struct snow3g_qp *qp, struct rte_crypto_op *op)
 {
-	struct snow3g_session *sess;
+	struct snow3g_session *sess = NULL;
 
 	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
-		sess = (struct snow3g_session *)op->sym->session->_private;
-	} else  {
-		struct rte_cryptodev_sym_session *c_sess = NULL;
+		if (likely(op->sym->session != NULL))
+			sess = (struct snow3g_session *)
+					get_session_private_data(
+					op->sym->session,
+					cryptodev_driver_id);
+	} else {
+		void *_sess = NULL;
+		void *_sess_private_data = NULL;
 
-		if (rte_mempool_get(qp->sess_mp, (void **)&c_sess))
+		if (rte_mempool_get(qp->sess_mp, (void **)&_sess))
 			return NULL;
 
-		sess = (struct snow3g_session *)c_sess->_private;
+		if (rte_mempool_get(qp->sess_mp, (void **)&_sess_private_data))
+			return NULL;
+
+		sess = (struct snow3g_session *)_sess_private_data;
 
 		if (unlikely(snow3g_set_session_parameters(sess,
-				op->sym->xform) != 0))
-			return NULL;
+				op->sym->xform) != 0)) {
+			rte_mempool_put(qp->sess_mp, _sess);
+			rte_mempool_put(qp->sess_mp, _sess_private_data);
+			sess = NULL;
+		}
+		op->sym->session = (struct rte_cryptodev_sym_session *)_sess;
+		set_session_private_data(op->sym->session, cryptodev_driver_id,
+			_sess_private_data);
 	}
+
+	if (unlikely(sess == NULL))
+		op->status = RTE_CRYPTO_OP_STATUS_INVALID_SESSION;
+
 
 	return sess;
 }
@@ -355,6 +373,10 @@ process_ops(struct rte_crypto_op **ops, struct snow3g_session *session,
 			ops[i]->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
 		/* Free session if a session-less crypto op. */
 		if (ops[i]->sess_type == RTE_CRYPTO_OP_SESSIONLESS) {
+			memset(session, 0, sizeof(struct snow3g_session));
+			memset(ops[i]->sym->session, 0,
+					rte_cryptodev_get_header_session_size());
+			rte_mempool_put(qp->sess_mp, session);
 			rte_mempool_put(qp->sess_mp, ops[i]->sym->session);
 			ops[i]->sym->session = NULL;
 		}
@@ -407,7 +429,8 @@ process_op_bit(struct rte_crypto_op *op, struct snow3g_session *session,
 
 	/* Free session if a session-less crypto op. */
 	if (op->sess_type == RTE_CRYPTO_OP_SESSIONLESS) {
-		rte_mempool_put(qp->sess_mp, op->sym->session);
+		memset(op->sym->session, 0, sizeof(struct snow3g_session));
+		rte_cryptodev_sym_session_free(op->sym->session);
 		op->sym->session = NULL;
 	}
 

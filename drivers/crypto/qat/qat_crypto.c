@@ -216,23 +216,23 @@ static inline int
 qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
 		struct qat_crypto_op_cookie *qat_op_cookie);
 
-void qat_crypto_sym_clear_session(struct rte_cryptodev *dev,
-		void *session)
+void
+qat_crypto_sym_clear_session(struct rte_cryptodev *dev,
+		struct rte_cryptodev_sym_session *sess)
 {
-	struct qat_session *sess = session;
-	phys_addr_t cd_paddr;
-
 	PMD_INIT_FUNC_TRACE();
-	if (sess) {
-		if (sess->bpi_ctx) {
-			bpi_cipher_ctx_free(sess->bpi_ctx);
-			sess->bpi_ctx = NULL;
-		}
-		cd_paddr = sess->cd_paddr;
-		memset(sess, 0, qat_crypto_sym_get_session_private_size(dev));
-		sess->cd_paddr = cd_paddr;
-	} else
-		PMD_DRV_LOG(ERR, "NULL session");
+	uint8_t index = dev->driver_id;
+	void *sess_priv = get_session_private_data(sess, index);
+	struct qat_session *s = (struct qat_session *)sess_priv;
+
+	if (sess_priv) {
+		if (s->bpi_ctx)
+			bpi_cipher_ctx_free(s->bpi_ctx);
+		memset(s, 0, qat_crypto_sym_get_session_private_size(dev));
+		struct rte_mempool *sess_mp = rte_mempool_from_obj(sess_priv);
+		set_session_private_data(sess, index, NULL);
+		rte_mempool_put(sess_mp, sess_priv);
+	}
 }
 
 static int
@@ -450,15 +450,47 @@ error_out:
 	return NULL;
 }
 
-
-void *
+int
 qat_crypto_sym_configure_session(struct rte_cryptodev *dev,
+		struct rte_crypto_sym_xform *xform,
+		struct rte_cryptodev_sym_session *sess,
+		struct rte_mempool *mempool)
+{
+	void *sess_private_data;
+
+	if (rte_mempool_get(mempool, &sess_private_data)) {
+		CDEV_LOG_ERR(
+			"Couldn't get object from session mempool");
+		return -1;
+	}
+
+	if (qat_crypto_set_session_parameters(dev, xform, sess_private_data) != 0) {
+		PMD_DRV_LOG(ERR, "Crypto QAT PMD: failed to configure "
+				"session parameters");
+
+		/* Return session to mempool */
+		rte_mempool_put(mempool, sess_private_data);
+		return -1;
+	}
+
+	set_session_private_data(sess, dev->driver_id,
+		sess_private_data);
+
+	return 0;
+}
+
+int
+qat_crypto_set_session_parameters(struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform, void *session_private)
 {
 	struct qat_session *session = session_private;
 
 	int qat_cmd_id;
 	PMD_INIT_FUNC_TRACE();
+
+	/* Set context descriptor physical address */
+	session->cd_paddr = rte_mempool_virt2phy(NULL, session) +
+			offsetof(struct qat_session, cd);
 
 	/* Get requested QAT command id */
 	qat_cmd_id = qat_get_cmd_id(xform);
@@ -514,10 +546,10 @@ qat_crypto_sym_configure_session(struct rte_cryptodev *dev,
 		goto error_out;
 	}
 
-	return session;
+	return 0;
 
 error_out:
-	return NULL;
+	return -1;
 }
 
 struct qat_session *
@@ -946,7 +978,10 @@ qat_pmd_dequeue_op_burst(void *qp, struct rte_crypto_op **ops,
 			rx_op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
 		} else {
 			struct qat_session *sess = (struct qat_session *)
-						(rx_op->sym->session->_private);
+					get_session_private_data(
+					rx_op->sym->session,
+					cryptodev_qat_driver_id);
+
 			if (sess->bpi_ctx)
 				qat_bpicipher_postprocess(sess, rx_op);
 			rx_op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
@@ -1072,7 +1107,14 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
 		return -EINVAL;
 	}
 
-	ctx = (struct qat_session *)op->sym->session->_private;
+	ctx = (struct qat_session *)get_session_private_data(
+			op->sym->session, cryptodev_qat_driver_id);
+
+	if (unlikely(ctx == NULL)) {
+		PMD_DRV_LOG(ERR, "Session was not created for this device");
+		return -EINVAL;
+	}
+
 	qat_req = (struct icp_qat_fw_la_bulk_req *)out_msg;
 	rte_mov128((uint8_t *)qat_req, (const uint8_t *)&(ctx->fw_req));
 	qat_req->comn_mid.opaque_data = (uint64_t)(uintptr_t)op;
@@ -1369,17 +1411,6 @@ static inline uint32_t adf_modulo(uint32_t data, uint32_t shift)
 	uint32_t mult = div << shift;
 
 	return data - mult;
-}
-
-void qat_crypto_sym_session_init(struct rte_mempool *mp, void *sym_sess)
-{
-	struct rte_cryptodev_sym_session *sess = sym_sess;
-	struct qat_session *s = (void *)sess->_private;
-
-	PMD_INIT_FUNC_TRACE();
-	s->cd_paddr = rte_mempool_virt2phy(mp, sess) +
-		offsetof(struct qat_session, cd) +
-		offsetof(struct rte_cryptodev_sym_session, _private);
 }
 
 int qat_dev_config(__rte_unused struct rte_cryptodev *dev,

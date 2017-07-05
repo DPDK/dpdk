@@ -79,8 +79,10 @@ cperf_latency_test_free(struct cperf_latency_ctx *ctx, uint32_t mbuf_nb)
 	uint32_t i;
 
 	if (ctx) {
-		if (ctx->sess)
-			rte_cryptodev_sym_session_free(ctx->dev_id, ctx->sess);
+		if (ctx->sess) {
+			rte_cryptodev_sym_session_clear(ctx->dev_id, ctx->sess);
+			rte_cryptodev_sym_session_free(ctx->sess);
+		}
 
 		if (ctx->mbufs_in) {
 			for (i = 0; i < mbuf_nb; i++)
@@ -191,7 +193,8 @@ error:
 }
 
 void *
-cperf_latency_test_constructor(uint8_t dev_id, uint16_t qp_id,
+cperf_latency_test_constructor(struct rte_mempool *sess_mp,
+		uint8_t dev_id, uint16_t qp_id,
 		const struct cperf_options *options,
 		const struct cperf_test_vector *test_vector,
 		const struct cperf_op_fns *op_fns)
@@ -216,7 +219,8 @@ cperf_latency_test_constructor(uint8_t dev_id, uint16_t qp_id,
 		sizeof(struct rte_crypto_sym_op) +
 		sizeof(struct cperf_op_result *);
 
-	ctx->sess = op_fns->sess_create(dev_id, options, test_vector, iv_offset);
+	ctx->sess = op_fns->sess_create(sess_mp, dev_id, options, test_vector,
+			iv_offset);
 	if (ctx->sess == NULL)
 		goto err;
 

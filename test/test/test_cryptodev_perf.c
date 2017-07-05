@@ -108,6 +108,8 @@ struct symmetric_session_attrs {
 	uint32_t digest_len;
 };
 
+static struct rte_cryptodev_sym_session *test_crypto_session;
+
 #define ALIGN_POW2_ROUNDUP(num, align) \
 	(((num) + (align) - 1) & ~((align) - 1))
 
@@ -156,18 +158,18 @@ struct crypto_unittest_params {
 	uint8_t *digest;
 };
 
-static struct rte_cryptodev_sym_session *
+static int
 test_perf_create_snow3g_session(uint8_t dev_id, enum chain_mode chain,
 		enum rte_crypto_cipher_algorithm cipher_algo,
 		unsigned int cipher_key_len,
 		enum rte_crypto_auth_algorithm auth_algo);
-static struct rte_cryptodev_sym_session *
+static int
 test_perf_create_openssl_session(uint8_t dev_id, enum chain_mode chain,
 		enum rte_crypto_cipher_algorithm cipher_algo,
 		unsigned int cipher_key_len,
 		enum rte_crypto_auth_algorithm auth_algo,
 		enum rte_crypto_aead_algorithm aead_algo);
-static struct rte_cryptodev_sym_session *
+static int
 test_perf_create_armv8_session(uint8_t dev_id, enum chain_mode chain,
 		enum rte_crypto_cipher_algorithm cipher_algo,
 		unsigned int cipher_key_len,
@@ -487,9 +489,11 @@ ut_teardown(void)
 	unsigned i;
 
 	/* free crypto session structure */
-	if (ut_params->sess)
-		rte_cryptodev_sym_session_free(ts_params->dev_id,
+	if (ut_params->sess) {
+		rte_cryptodev_sym_session_clear(ts_params->dev_id,
 				ut_params->sess);
+		rte_cryptodev_sym_session_free(ut_params->sess);
+	}
 
 	/* free crypto operation structure */
 	if (ut_params->op)
@@ -1969,10 +1973,13 @@ test_perf_crypto_qp_vary_burst_size(uint16_t dev_num)
 	ut_params->auth_xform.auth.digest_length = DIGEST_BYTE_LENGTH_SHA256;
 
 	/* Create Crypto session*/
-	ut_params->sess = rte_cryptodev_sym_session_create(ts_params->dev_id,
-		&ut_params->cipher_xform);
 
-	TEST_ASSERT_NOT_NULL(ut_params->sess, "Session creation failed");
+	test_crypto_session = rte_cryptodev_sym_session_create(ts_params->sess_mp);
+
+	rte_cryptodev_sym_session_init(ts_params->dev_id, test_crypto_session,
+			&ut_params->cipher_xform, ts_params->sess_mp);
+
+	TEST_ASSERT_NOT_NULL(test_crypto_session, "Session creation failed");
 
 	/* Generate Crypto op data structure(s) */
 	for (i = 0; i < num_to_submit ; i++) {
@@ -1994,7 +2001,7 @@ test_perf_crypto_qp_vary_burst_size(uint16_t dev_num)
 				rte_crypto_op_alloc(ts_params->op_mpool,
 						RTE_CRYPTO_OP_TYPE_SYMMETRIC);
 
-		rte_crypto_op_attach_sym_session(op, ut_params->sess);
+		rte_crypto_op_attach_sym_session(op, test_crypto_session);
 
 		op->sym->auth.digest.data = ut_params->digest;
 		op->sym->auth.digest.phys_addr = rte_pktmbuf_mtophys_offset(m,
@@ -2105,9 +2112,12 @@ test_perf_snow3G_optimise_cyclecount(struct perf_test_params *pparams)
 	}
 
 	/* Create Crypto session*/
-	sess = test_perf_create_snow3g_session(ts_params->dev_id,
+	if (test_perf_create_snow3g_session(ts_params->dev_id,
 			pparams->chain, pparams->cipher_algo,
-			pparams->key_length, pparams->auth_algo);
+			pparams->key_length, pparams->auth_algo) == 0)
+		sess = test_crypto_session;
+	else
+		sess = NULL;
 	TEST_ASSERT_NOT_NULL(sess, "Session creation failed");
 
 	/* Generate Crypto op data structure(s)*/
@@ -2211,7 +2221,10 @@ test_perf_snow3G_optimise_cyclecount(struct perf_test_params *pparams)
 		rte_pktmbuf_free(c_ops[i]->sym->m_src);
 		rte_crypto_op_free(c_ops[i]);
 	}
-	rte_cryptodev_sym_session_free(ts_params->dev_id, sess);
+
+	rte_cryptodev_sym_session_clear(ts_params->dev_id,
+				sess);
+	rte_cryptodev_sym_session_free(sess);
 
 	return TEST_SUCCESS;
 }
@@ -2290,10 +2303,13 @@ test_perf_openssl_optimise_cyclecount(struct perf_test_params *pparams)
 	}
 
 	/* Create Crypto session*/
-	sess = test_perf_create_openssl_session(ts_params->dev_id,
+	if (test_perf_create_openssl_session(ts_params->dev_id,
 			pparams->chain, pparams->cipher_algo,
 			pparams->key_length, pparams->auth_algo,
-			pparams->aead_algo);
+			pparams->aead_algo) == 0)
+		sess = test_crypto_session;
+	else
+		sess = NULL;
 	TEST_ASSERT_NOT_NULL(sess, "Session creation failed");
 
 	/* Generate Crypto op data structure(s)*/
@@ -2425,7 +2441,9 @@ test_perf_openssl_optimise_cyclecount(struct perf_test_params *pparams)
 		rte_pktmbuf_free(c_ops[i]->sym->m_src);
 		rte_crypto_op_free(c_ops[i]);
 	}
-	rte_cryptodev_sym_session_free(ts_params->dev_id, sess);
+
+	rte_cryptodev_sym_session_clear(ts_params->dev_id, sess);
+	rte_cryptodev_sym_session_free(sess);
 
 	return TEST_SUCCESS;
 }
@@ -2452,10 +2470,12 @@ test_perf_armv8_optimise_cyclecount(struct perf_test_params *pparams)
 	}
 
 	/* Create Crypto session*/
-	sess = test_perf_create_armv8_session(ts_params->dev_id,
+	if (test_perf_create_armv8_session(ts_params->dev_id,
 			pparams->chain, pparams->cipher_algo,
-			pparams->key_length, pparams->auth_algo);
-	TEST_ASSERT_NOT_NULL(sess, "Session creation failed");
+			pparams->key_length, pparams->auth_algo) == 0)
+		sess = test_crypto_session;
+	else
+		sess = NULL;
 
 	/* Generate Crypto op data structure(s)*/
 	for (i = 0; i < num_to_submit ; i++) {
@@ -2672,12 +2692,13 @@ static uint8_t snow3g_hash_key[] = {
 		0x1E, 0x26, 0x98, 0xD2, 0xE2, 0x2A, 0xD5, 0x7E
 };
 
-static struct rte_cryptodev_sym_session *
+static int
 test_perf_create_aes_sha_session(uint8_t dev_id, enum chain_mode chain,
 		enum rte_crypto_cipher_algorithm cipher_algo,
 		unsigned cipher_key_len,
 		enum rte_crypto_auth_algorithm auth_algo)
 {
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct rte_crypto_sym_xform cipher_xform = { 0 };
 	struct rte_crypto_sym_xform auth_xform = { 0 };
 
@@ -2701,33 +2722,42 @@ test_perf_create_aes_sha_session(uint8_t dev_id, enum chain_mode chain,
 		auth_xform.auth.digest_length =
 					get_auth_digest_length(auth_algo);
 	}
+
+	test_crypto_session = rte_cryptodev_sym_session_create(ts_params->sess_mp);
 	switch (chain) {
 	case CIPHER_HASH:
 		cipher_xform.next = &auth_xform;
 		auth_xform.next = NULL;
 		/* Create Crypto session*/
-		return rte_cryptodev_sym_session_create(dev_id,	&cipher_xform);
+		return rte_cryptodev_sym_session_init(dev_id,
+				test_crypto_session, &cipher_xform,
+				ts_params->sess_mp);
 	case HASH_CIPHER:
 		auth_xform.next = &cipher_xform;
 		cipher_xform.next = NULL;
 		/* Create Crypto session*/
-		return rte_cryptodev_sym_session_create(dev_id,	&auth_xform);
+		return rte_cryptodev_sym_session_init(dev_id,
+				test_crypto_session, &auth_xform,
+				ts_params->sess_mp);
 	case CIPHER_ONLY:
 		cipher_xform.next = NULL;
 		/* Create Crypto session*/
-		return rte_cryptodev_sym_session_create(dev_id,	&cipher_xform);
+		return rte_cryptodev_sym_session_init(dev_id,
+				test_crypto_session, &cipher_xform,
+				ts_params->sess_mp);
 	default:
-		return NULL;
+		return -1;
 	}
 }
 
 #define SNOW3G_CIPHER_IV_LENGTH 16
 
-static struct rte_cryptodev_sym_session *
+static int
 test_perf_create_snow3g_session(uint8_t dev_id, enum chain_mode chain,
 		enum rte_crypto_cipher_algorithm cipher_algo, unsigned cipher_key_len,
 		enum rte_crypto_auth_algorithm auth_algo)
 {
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct rte_crypto_sym_xform cipher_xform = {0};
 	struct rte_crypto_sym_xform auth_xform = {0};
 
@@ -2755,37 +2785,47 @@ test_perf_create_snow3g_session(uint8_t dev_id, enum chain_mode chain,
 	auth_xform.auth.iv.offset = IV_OFFSET + SNOW3G_CIPHER_IV_LENGTH;
 	auth_xform.auth.iv.length = SNOW3G_CIPHER_IV_LENGTH;
 
+	test_crypto_session = rte_cryptodev_sym_session_create(ts_params->sess_mp);
 	switch (chain) {
 	case CIPHER_HASH:
 		cipher_xform.next = &auth_xform;
 		auth_xform.next = NULL;
 		/* Create Crypto session*/
-		return rte_cryptodev_sym_session_create(dev_id,	&cipher_xform);
+		return rte_cryptodev_sym_session_init(dev_id,
+				test_crypto_session, &cipher_xform,
+				ts_params->sess_mp);
 	case HASH_CIPHER:
 		auth_xform.next = &cipher_xform;
 		cipher_xform.next = NULL;
 		/* Create Crypto session*/
-		return rte_cryptodev_sym_session_create(dev_id,	&auth_xform);
+		return rte_cryptodev_sym_session_init(dev_id,
+				test_crypto_session, &auth_xform,
+				ts_params->sess_mp);
 	case CIPHER_ONLY:
 		cipher_xform.next = NULL;
 		/* Create Crypto session*/
-		return rte_cryptodev_sym_session_create(dev_id, &cipher_xform);
+		return rte_cryptodev_sym_session_init(dev_id,
+				test_crypto_session, &cipher_xform,
+				ts_params->sess_mp);
 	case HASH_ONLY:
 		auth_xform.next = NULL;
 		/* Create Crypto session */
-		return rte_cryptodev_sym_session_create(dev_id,	&auth_xform);
+		return rte_cryptodev_sym_session_init(dev_id,
+				test_crypto_session, &auth_xform,
+				ts_params->sess_mp);
 	default:
-		return NULL;
+		return -1;
 	}
 }
 
-static struct rte_cryptodev_sym_session *
+static int
 test_perf_create_openssl_session(uint8_t dev_id, enum chain_mode chain,
 		enum rte_crypto_cipher_algorithm cipher_algo,
 		unsigned int key_len,
 		enum rte_crypto_auth_algorithm auth_algo,
 		enum rte_crypto_aead_algorithm aead_algo)
 {
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct rte_crypto_sym_xform cipher_xform = { 0 };
 	struct rte_crypto_sym_xform auth_xform = { 0 };
 	struct rte_crypto_sym_xform aead_xform = { 0 };
@@ -2809,7 +2849,7 @@ test_perf_create_openssl_session(uint8_t dev_id, enum chain_mode chain,
 			cipher_xform.cipher.iv.length = AES_CIPHER_IV_LENGTH;
 			break;
 		default:
-			return NULL;
+			return -1;
 		}
 
 		cipher_xform.cipher.key.length = key_len;
@@ -2824,7 +2864,7 @@ test_perf_create_openssl_session(uint8_t dev_id, enum chain_mode chain,
 			auth_xform.auth.key.data = hmac_sha_key;
 			break;
 		default:
-			return NULL;
+			return -1;
 		}
 
 		auth_xform.auth.key.length =  get_auth_key_max_length(auth_algo);
@@ -2844,37 +2884,45 @@ test_perf_create_openssl_session(uint8_t dev_id, enum chain_mode chain,
 			aead_xform.aead.digest_length = get_aead_digest_length(aead_algo);
 			break;
 		default:
-			return NULL;
+			return -1;
 		}
 
 		aead_xform.aead.key.length = key_len;
 	}
 
+	test_crypto_session = rte_cryptodev_sym_session_create(ts_params->sess_mp);
 	switch (chain) {
 	case CIPHER_HASH:
 		cipher_xform.next = &auth_xform;
 		auth_xform.next = NULL;
 		/* Create Crypto session*/
-		return rte_cryptodev_sym_session_create(dev_id,	&cipher_xform);
+		return rte_cryptodev_sym_session_init(dev_id,
+				test_crypto_session, &cipher_xform,
+				ts_params->sess_mp);
 	case HASH_CIPHER:
 		auth_xform.next = &cipher_xform;
 		cipher_xform.next = NULL;
 		/* Create Crypto session*/
-		return rte_cryptodev_sym_session_create(dev_id,	&auth_xform);
+		return rte_cryptodev_sym_session_init(dev_id,
+				test_crypto_session, &auth_xform,
+				ts_params->sess_mp);
 	case AEAD:
 		/* Create Crypto session*/
-		return rte_cryptodev_sym_session_create(dev_id,	&aead_xform);
+		return rte_cryptodev_sym_session_init(dev_id,
+				test_crypto_session, &aead_xform,
+				ts_params->sess_mp);
 	default:
-		return NULL;
+		return -1;
 	}
 }
 
-static struct rte_cryptodev_sym_session *
+static int
 test_perf_create_armv8_session(uint8_t dev_id, enum chain_mode chain,
 		enum rte_crypto_cipher_algorithm cipher_algo,
 		unsigned int cipher_key_len,
 		enum rte_crypto_auth_algorithm auth_algo)
 {
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct rte_crypto_sym_xform cipher_xform = { 0 };
 	struct rte_crypto_sym_xform auth_xform = { 0 };
 
@@ -2887,7 +2935,7 @@ test_perf_create_armv8_session(uint8_t dev_id, enum chain_mode chain,
 		cipher_xform.cipher.key.data = aes_cbc_128_key;
 		break;
 	default:
-		return NULL;
+		return -1;
 	}
 
 	cipher_xform.cipher.key.length = cipher_key_len;
@@ -2901,6 +2949,8 @@ test_perf_create_armv8_session(uint8_t dev_id, enum chain_mode chain,
 
 	auth_xform.auth.digest_length = get_auth_digest_length(auth_algo);
 
+	rte_cryptodev_sym_session_create(ts_params->sess_mp);
+
 	switch (chain) {
 	case CIPHER_HASH:
 		cipher_xform.next = &auth_xform;
@@ -2908,16 +2958,20 @@ test_perf_create_armv8_session(uint8_t dev_id, enum chain_mode chain,
 		/* Encrypt and hash the result */
 		cipher_xform.cipher.op = RTE_CRYPTO_CIPHER_OP_ENCRYPT;
 		/* Create Crypto session*/
-		return rte_cryptodev_sym_session_create(dev_id,	&cipher_xform);
+		return rte_cryptodev_sym_session_init(dev_id,
+				test_crypto_session, &cipher_xform,
+				ts_params->sess_mp);
 	case HASH_CIPHER:
 		auth_xform.next = &cipher_xform;
 		cipher_xform.next = NULL;
 		/* Hash encrypted message and decrypt */
 		cipher_xform.cipher.op = RTE_CRYPTO_CIPHER_OP_DECRYPT;
 		/* Create Crypto session*/
-		return rte_cryptodev_sym_session_create(dev_id,	&auth_xform);
+		return rte_cryptodev_sym_session_init(dev_id,
+				test_crypto_session, &auth_xform,
+				ts_params->sess_mp);
 	default:
-		return NULL;
+		return -1;
 	}
 }
 
@@ -3167,9 +3221,12 @@ test_perf_aes_sha(uint8_t dev_id, uint16_t queue_id,
 	}
 
 	/* Create Crypto session*/
-	sess = test_perf_create_aes_sha_session(ts_params->dev_id,
+	if (test_perf_create_aes_sha_session(ts_params->dev_id,
 			pparams->chain, pparams->cipher_algo,
-			pparams->key_length, pparams->auth_algo);
+			pparams->key_length, pparams->auth_algo) == 0)
+		sess = test_crypto_session;
+	else
+		sess = NULL;
 	TEST_ASSERT_NOT_NULL(sess, "Session creation failed");
 
 	/* Generate a burst of crypto operations */
@@ -3264,7 +3321,9 @@ test_perf_aes_sha(uint8_t dev_id, uint16_t queue_id,
 
 	for (i = 0; i < pparams->burst_size * NUM_MBUF_SETS; i++)
 		rte_pktmbuf_free(mbufs[i]);
-	rte_cryptodev_sym_session_free(dev_id, sess);
+
+	rte_cryptodev_sym_session_clear(ts_params->dev_id, sess);
+	rte_cryptodev_sym_session_free(sess);
 
 	printf("\n");
 	return TEST_SUCCESS;
@@ -3300,9 +3359,12 @@ test_perf_snow3g(uint8_t dev_id, uint16_t queue_id,
 	}
 
 	/* Create Crypto session*/
-	sess = test_perf_create_snow3g_session(ts_params->dev_id,
+	if (test_perf_create_snow3g_session(ts_params->dev_id,
 			pparams->chain, pparams->cipher_algo,
-			pparams->key_length, pparams->auth_algo);
+			pparams->key_length, pparams->auth_algo) == 0)
+		sess = test_crypto_session;
+	else
+		sess = NULL;
 	TEST_ASSERT_NOT_NULL(sess, "Session creation failed");
 
 	/* Generate a burst of crypto operations */
@@ -3429,7 +3491,9 @@ test_perf_snow3g(uint8_t dev_id, uint16_t queue_id,
 
 	for (i = 0; i < pparams->burst_size * NUM_MBUF_SETS; i++)
 		rte_pktmbuf_free(mbufs[i]);
-	rte_cryptodev_sym_session_free(dev_id, sess);
+
+	rte_cryptodev_sym_session_clear(ts_params->dev_id, sess);
+	rte_cryptodev_sym_session_free(sess);
 
 	printf("\n");
 	return TEST_SUCCESS;
@@ -3486,10 +3550,13 @@ test_perf_openssl(uint8_t dev_id, uint16_t queue_id,
 	}
 
 	/* Create Crypto session*/
-	sess = test_perf_create_openssl_session(ts_params->dev_id,
+	if (test_perf_create_openssl_session(ts_params->dev_id,
 			pparams->chain, pparams->cipher_algo,
 			pparams->key_length, pparams->auth_algo,
-			pparams->aead_algo);
+			pparams->aead_algo) == 0)
+		sess = test_crypto_session;
+	else
+		sess = NULL;
 	TEST_ASSERT_NOT_NULL(sess, "Session creation failed");
 
 	/* Generate a burst of crypto operations */
@@ -3582,7 +3649,9 @@ test_perf_openssl(uint8_t dev_id, uint16_t queue_id,
 
 	for (i = 0; i < pparams->burst_size * NUM_MBUF_SETS; i++)
 		rte_pktmbuf_free(mbufs[i]);
-	rte_cryptodev_sym_session_free(dev_id, sess);
+
+	rte_cryptodev_sym_session_clear(ts_params->dev_id, sess);
+	rte_cryptodev_sym_session_free(sess);
 
 	printf("\n");
 	return TEST_SUCCESS;
@@ -3617,9 +3686,12 @@ test_perf_armv8(uint8_t dev_id, uint16_t queue_id,
 	}
 
 	/* Create Crypto session*/
-	sess = test_perf_create_armv8_session(ts_params->dev_id,
+	if (test_perf_create_armv8_session(ts_params->dev_id,
 			pparams->chain, pparams->cipher_algo,
-			pparams->key_length, pparams->auth_algo);
+			pparams->key_length, pparams->auth_algo) == 0)
+		sess = test_crypto_session;
+	else
+		sess = NULL;
 	TEST_ASSERT_NOT_NULL(sess, "Session creation failed");
 
 	/* Generate a burst of crypto operations */
@@ -4177,7 +4249,7 @@ test_perf_aes_cbc_vary_burst_size(void)
 static struct rte_cryptodev_sym_session *
 test_perf_create_session(uint8_t dev_id, struct perf_test_params *pparams)
 {
-	static struct rte_cryptodev_sym_session *sess;
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
 	struct rte_crypto_sym_xform aead_xform = { 0 };
 
 	uint8_t aead_key[pparams->session_attrs->key_aead_len];
@@ -4197,9 +4269,12 @@ test_perf_create_session(uint8_t dev_id, struct perf_test_params *pparams)
 	aead_xform.aead.add_auth_data_length = pparams->session_attrs->aad_len;
 	aead_xform.aead.digest_length = pparams->session_attrs->digest_len;
 
-	sess = rte_cryptodev_sym_session_create(dev_id,	&aead_xform);
+	test_crypto_session = rte_cryptodev_sym_session_create(ts_params->sess_mp);
 
-	return sess;
+	rte_cryptodev_sym_session_init(dev_id, test_crypto_session,
+				&aead_xform, ts_params->sess_mp);
+
+	return test_crypto_session;
 }
 
 static inline struct rte_crypto_op *
@@ -4418,7 +4493,9 @@ perf_AES_GCM(uint8_t dev_id, uint16_t queue_id,
 
 	for (i = 0; i < burst; i++)
 		rte_pktmbuf_free(mbufs[i]);
-	rte_cryptodev_sym_session_free(dev_id, sess);
+
+	rte_cryptodev_sym_session_clear(ts_params->dev_id, sess);
+	rte_cryptodev_sym_session_free(sess);
 
 	return 0;
 }

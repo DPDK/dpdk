@@ -125,6 +125,7 @@ struct blockcipher_test_data {
 int
 test_blockcipher_all_tests(struct rte_mempool *mbuf_pool,
 	struct rte_mempool *op_mpool,
+	struct rte_mempool *sess_mpool,
 	uint8_t dev_id,
 	int driver_id,
 	enum blockcipher_test_type test_type);

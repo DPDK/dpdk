@@ -299,33 +299,54 @@ null_crypto_pmd_session_get_size(struct rte_cryptodev *dev __rte_unused)
 }
 
 /** Configure a null crypto session from a crypto xform chain */
-static void *
+static int
 null_crypto_pmd_session_configure(struct rte_cryptodev *dev __rte_unused,
-		struct rte_crypto_sym_xform *xform, void *sess)
+		struct rte_crypto_sym_xform *xform,
+		struct rte_cryptodev_sym_session *sess,
+		struct rte_mempool *mp)
 {
-	int retval;
+	void *sess_private_data;
 
 	if (unlikely(sess == NULL)) {
 		NULL_CRYPTO_LOG_ERR("invalid session struct");
-		return NULL;
-	}
-	retval = null_crypto_set_session_parameters(
-			(struct null_crypto_session *)sess, xform);
-	if (retval != 0) {
-		NULL_CRYPTO_LOG_ERR("failed configure session parameters");
-		return NULL;
+		return -1;
 	}
 
-	return sess;
+	if (rte_mempool_get(mp, &sess_private_data)) {
+		CDEV_LOG_ERR(
+			"Couldn't get object from session mempool");
+		return -1;
+	}
+
+	if (null_crypto_set_session_parameters(sess_private_data, xform) != 0) {
+		NULL_CRYPTO_LOG_ERR("failed configure session parameters");
+
+		/* Return session to mempool */
+		rte_mempool_put(mp, sess_private_data);
+		return -1;
+	}
+
+	set_session_private_data(sess, dev->driver_id,
+		sess_private_data);
+
+	return 0;
 }
 
 /** Clear the memory of session so it doesn't leave key material behind */
 static void
-null_crypto_pmd_session_clear(struct rte_cryptodev *dev __rte_unused,
-		void *sess)
+null_crypto_pmd_session_clear(struct rte_cryptodev *dev,
+		struct rte_cryptodev_sym_session *sess)
 {
-	if (sess)
-		memset(sess, 0, sizeof(struct null_crypto_session));
+	uint8_t index = dev->driver_id;
+	void *sess_priv = get_session_private_data(sess, index);
+
+	/* Zero out the whole structure */
+	if (sess_priv) {
+		memset(sess_priv, 0, sizeof(struct null_crypto_session));
+		struct rte_mempool *sess_mp = rte_mempool_from_obj(sess_priv);
+		set_session_private_data(sess, index, NULL);
+		rte_mempool_put(sess_mp, sess_priv);
+	}
 }
 
 struct rte_cryptodev_ops pmd_ops = {

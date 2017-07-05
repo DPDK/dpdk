@@ -285,20 +285,25 @@ typedef void (*cryptodev_sym_initialize_session_t)(struct rte_mempool *mempool,
  * @param	dev		Crypto device pointer
  * @param	xform		Single or chain of crypto xforms
  * @param	priv_sess	Pointer to cryptodev's private session structure
+ * @param	mp		Mempool where the private session is allocated
  *
  * @return
- *  - Returns private session structure on success.
- *  - Returns NULL on failure.
+ *  - Returns 0 if private session structure have been created successfully.
+ *  - Returns -1 on failure.
  */
-typedef void * (*cryptodev_sym_configure_session_t)(struct rte_cryptodev *dev,
-		struct rte_crypto_sym_xform *xform, void *session_private);
+typedef int (*cryptodev_sym_configure_session_t)(struct rte_cryptodev *dev,
+		struct rte_crypto_sym_xform *xform,
+		struct rte_cryptodev_sym_session *session,
+		struct rte_mempool *mp);
 
 /**
- * Free Crypto session.
- * @param	session		Cryptodev session structure to free
+ * Free driver private session data.
+ *
+ * @param	dev		Crypto device pointer
+ * @param	sess		Cryptodev session structure
  */
 typedef void (*cryptodev_sym_free_session_t)(struct rte_cryptodev *dev,
-		void *session_private);
+		struct rte_cryptodev_sym_session *sess);
 
 /**
  * Optional API for drivers to attach sessions with queue pair.
@@ -412,6 +417,19 @@ void rte_cryptodev_pmd_callback_process(struct rte_cryptodev *dev,
  */
 int
 rte_cryptodev_pmd_create_dev_name(char *name, const char *dev_name_prefix);
+
+static inline void *
+get_session_private_data(const struct rte_cryptodev_sym_session *sess,
+		uint8_t driver_id) {
+	return sess->sess_private_data[driver_id];
+}
+
+static inline void
+set_session_private_data(struct rte_cryptodev_sym_session *sess,
+		uint8_t driver_id, void *private_data)
+{
+	sess->sess_private_data[driver_id] = private_data;
+}
 
 #ifdef __cplusplus
 }

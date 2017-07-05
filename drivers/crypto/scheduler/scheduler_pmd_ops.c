@@ -85,8 +85,10 @@ scheduler_attach_init_slave(struct rte_cryptodev *dev)
 /** Configure device */
 static int
 scheduler_pmd_config(struct rte_cryptodev *dev,
-		struct rte_cryptodev_config *config __rte_unused)
+		struct rte_cryptodev_config *config)
 {
+	struct scheduler_ctx *sched_ctx = dev->data->dev_private;
+	uint32_t i;
 	int ret;
 
 	/* although scheduler_attach_init_slave presents multiple times,
@@ -95,6 +97,15 @@ scheduler_pmd_config(struct rte_cryptodev *dev,
 	ret = scheduler_attach_init_slave(dev);
 	if (ret < 0)
 		return ret;
+
+	for (i = 0; i < sched_ctx->nb_slaves; i++) {
+		uint8_t slave_dev_id = sched_ctx->slaves[i].dev_id;
+
+		ret = rte_cryptodev_configure(slave_dev_id, config,
+				dev->data->session_pool);
+		if (ret < 0)
+			break;
+	}
 
 	return ret;
 }
@@ -474,37 +485,39 @@ scheduler_pmd_qp_count(struct rte_cryptodev *dev)
 static uint32_t
 scheduler_pmd_session_get_size(struct rte_cryptodev *dev __rte_unused)
 {
-	return sizeof(struct scheduler_session);
+	struct scheduler_ctx *sched_ctx = dev->data->dev_private;
+	uint8_t i = 0;
+	uint32_t max_priv_sess_size = 0;
+
+	/* Check what is the maximum private session size for all slaves */
+	for (i = 0; i < sched_ctx->nb_slaves; i++) {
+		uint8_t slave_dev_id = sched_ctx->slaves[i].dev_id;
+		struct rte_cryptodev *dev = &rte_cryptodevs[slave_dev_id];
+		uint32_t priv_sess_size = (*dev->dev_ops->session_get_size)(dev);
+
+		if (max_priv_sess_size < priv_sess_size)
+			max_priv_sess_size = priv_sess_size;
+	}
+
+	return max_priv_sess_size;
 }
 
 static int
-config_slave_sess(struct scheduler_ctx *sched_ctx,
-		struct rte_crypto_sym_xform *xform,
-		struct scheduler_session *sess,
-		uint32_t create)
+scheduler_pmd_session_configure(struct rte_cryptodev *dev,
+	struct rte_crypto_sym_xform *xform,
+	struct rte_cryptodev_sym_session *sess,
+	struct rte_mempool *mempool)
 {
+	struct scheduler_ctx *sched_ctx = dev->data->dev_private;
 	uint32_t i;
 
 	for (i = 0; i < sched_ctx->nb_slaves; i++) {
 		struct scheduler_slave *slave = &sched_ctx->slaves[i];
 
-		if (sess->sessions[i]) {
-			if (create)
-				continue;
-			/* !create */
-			sess->sessions[i] = rte_cryptodev_sym_session_free(
-					slave->dev_id, sess->sessions[i]);
-		} else {
-			if (!create)
-				continue;
-			/* create */
-			sess->sessions[i] =
-					rte_cryptodev_sym_session_create(
-							slave->dev_id, xform);
-			if (!sess->sessions[i]) {
-				config_slave_sess(sched_ctx, NULL, sess, 0);
-				return -1;
-			}
+		if (rte_cryptodev_sym_session_init(slave->dev_id, sess,
+					xform, mempool) < 0) {
+			CS_LOG_ERR("unabled to config sym session");
+			return -1;
 		}
 	}
 
@@ -514,27 +527,17 @@ config_slave_sess(struct scheduler_ctx *sched_ctx,
 /** Clear the memory of session so it doesn't leave key material behind */
 static void
 scheduler_pmd_session_clear(struct rte_cryptodev *dev,
-	void *sess)
+		struct rte_cryptodev_sym_session *sess)
 {
 	struct scheduler_ctx *sched_ctx = dev->data->dev_private;
+	uint32_t i;
 
-	config_slave_sess(sched_ctx, NULL, sess, 0);
+	/* Clear private data of slaves */
+	for (i = 0; i < sched_ctx->nb_slaves; i++) {
+		struct scheduler_slave *slave = &sched_ctx->slaves[i];
 
-	memset(sess, 0, sizeof(struct scheduler_session));
-}
-
-static void *
-scheduler_pmd_session_configure(struct rte_cryptodev *dev,
-	struct rte_crypto_sym_xform *xform, void *sess)
-{
-	struct scheduler_ctx *sched_ctx = dev->data->dev_private;
-
-	if (config_slave_sess(sched_ctx, xform, sess, 1) < 0) {
-		CS_LOG_ERR("unabled to config sym session");
-		return NULL;
+		rte_cryptodev_sym_session_clear(slave->dev_id, sess);
 	}
-
-	return sess;
 }
 
 struct rte_cryptodev_ops scheduler_pmd_ops = {

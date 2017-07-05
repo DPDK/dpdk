@@ -367,7 +367,8 @@ cperf_set_ops_aead(struct rte_crypto_op **ops,
 }
 
 static struct rte_cryptodev_sym_session *
-cperf_create_session(uint8_t dev_id,
+cperf_create_session(struct rte_mempool *sess_mp,
+	uint8_t dev_id,
 	const struct cperf_options *options,
 	const struct cperf_test_vector *test_vector,
 	uint16_t iv_offset)
@@ -377,6 +378,7 @@ cperf_create_session(uint8_t dev_id,
 	struct rte_crypto_sym_xform aead_xform;
 	struct rte_cryptodev_sym_session *sess = NULL;
 
+	sess = rte_cryptodev_sym_session_create(sess_mp);
 	/*
 	 * cipher only
 	 */
@@ -401,7 +403,8 @@ cperf_create_session(uint8_t dev_id,
 			cipher_xform.cipher.iv.length = 0;
 		}
 		/* create crypto session */
-		sess = rte_cryptodev_sym_session_create(dev_id,	&cipher_xform);
+		rte_cryptodev_sym_session_init(dev_id, sess, &cipher_xform,
+				sess_mp);
 	/*
 	 *  auth only
 	 */
@@ -427,7 +430,8 @@ cperf_create_session(uint8_t dev_id,
 			auth_xform.auth.iv.length = 0;
 		}
 		/* create crypto session */
-		sess =  rte_cryptodev_sym_session_create(dev_id, &auth_xform);
+		rte_cryptodev_sym_session_init(dev_id, sess, &auth_xform,
+				sess_mp);
 	/*
 	 * cipher and auth
 	 */
@@ -483,13 +487,13 @@ cperf_create_session(uint8_t dev_id,
 		if (options->op_type == CPERF_CIPHER_THEN_AUTH) {
 			cipher_xform.next = &auth_xform;
 			/* create crypto session */
-			sess = rte_cryptodev_sym_session_create(dev_id,
-						&cipher_xform);
+			rte_cryptodev_sym_session_init(dev_id,
+					sess, &cipher_xform, sess_mp);
 		} else { /* auth then cipher */
 			auth_xform.next = &cipher_xform;
 			/* create crypto session */
-			sess = rte_cryptodev_sym_session_create(dev_id,
-					&auth_xform);
+			rte_cryptodev_sym_session_init(dev_id,
+					sess, &auth_xform, sess_mp);
 		}
 	} else { /* options->op_type == CPERF_AEAD */
 		aead_xform.type = RTE_CRYPTO_SYM_XFORM_AEAD;
@@ -509,7 +513,8 @@ cperf_create_session(uint8_t dev_id,
 					options->aead_aad_sz;
 
 		/* Create crypto session */
-		sess = rte_cryptodev_sym_session_create(dev_id, &aead_xform);
+		rte_cryptodev_sym_session_init(dev_id,
+					sess, &aead_xform, sess_mp);
 	}
 
 	return sess;

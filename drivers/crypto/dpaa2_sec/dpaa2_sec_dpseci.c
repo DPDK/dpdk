@@ -619,7 +619,9 @@ dpaa2_sec_enqueue_burst(void *qp, struct rte_crypto_op **ops,
 			/*Clear the unused FD fields before sending*/
 			memset(&fd_arr[loop], 0, sizeof(struct qbman_fd));
 			sess = (dpaa2_sec_session *)
-				(*ops)->sym->session->_private;
+					get_session_private_data(
+					(*ops)->sym->session,
+					cryptodev_driver_id);
 			mb_pool = (*ops)->sym->m_src->pool;
 			bpid = mempool_to_bpid(mb_pool);
 			ret = build_sec_fd(sess, *ops, &fd_arr[loop], bpid);
@@ -1498,8 +1500,8 @@ error_out:
 	return -1;
 }
 
-static void *
-dpaa2_sec_session_configure(struct rte_cryptodev *dev,
+static int
+dpaa2_sec_set_session_parameters(struct rte_cryptodev *dev,
 			    struct rte_crypto_sym_xform *xform,	void *sess)
 {
 	dpaa2_sec_session *session = sess;
@@ -1508,7 +1510,7 @@ dpaa2_sec_session_configure(struct rte_cryptodev *dev,
 
 	if (unlikely(sess == NULL)) {
 		RTE_LOG(ERR, PMD, "invalid session struct");
-		return NULL;
+		return -1;
 	}
 
 	/* Default IV length = 0 */
@@ -1544,24 +1546,59 @@ dpaa2_sec_session_configure(struct rte_cryptodev *dev,
 
 	} else {
 		RTE_LOG(ERR, PMD, "Invalid crypto type");
-		return NULL;
+		return -1;
 	}
 
-	return session;
+	return 0;
+}
+
+static int
+dpaa2_sec_session_configure(struct rte_cryptodev *dev,
+		struct rte_crypto_sym_xform *xform,
+		struct rte_cryptodev_sym_session *sess,
+		struct rte_mempool *mempool)
+{
+	void *sess_private_data;
+
+	if (rte_mempool_get(mempool, &sess_private_data)) {
+		CDEV_LOG_ERR(
+			"Couldn't get object from session mempool");
+		return -1;
+	}
+
+	if (dpaa2_sec_set_session_parameters(dev, xform, sess_private_data) != 0) {
+		PMD_DRV_LOG(ERR, "DPAA2 PMD: failed to configure "
+				"session parameters");
+
+		/* Return session to mempool */
+		rte_mempool_put(mempool, sess_private_data);
+		return -1;
+	}
+
+	set_session_private_data(sess, dev->driver_id,
+		sess_private_data);
+
+	return 0;
 }
 
 /** Clear the memory of session so it doesn't leave key material behind */
 static void
-dpaa2_sec_session_clear(struct rte_cryptodev *dev __rte_unused, void *sess)
+dpaa2_sec_session_clear(struct rte_cryptodev *dev,
+		struct rte_cryptodev_sym_session *sess)
 {
 	PMD_INIT_FUNC_TRACE();
-	dpaa2_sec_session *s = (dpaa2_sec_session *)sess;
+	uint8_t index = dev->driver_id;
+	void *sess_priv = get_session_private_data(sess, index);
+	dpaa2_sec_session *s = (dpaa2_sec_session *)sess_priv;
 
-	if (s) {
+	if (sess_priv) {
 		rte_free(s->ctxt);
 		rte_free(s->cipher_key.data);
 		rte_free(s->auth_key.data);
 		memset(sess, 0, sizeof(dpaa2_sec_session));
+		struct rte_mempool *sess_mp = rte_mempool_from_obj(sess_priv);
+		set_session_private_data(sess, index, NULL);
+		rte_mempool_put(sess_mp, sess_priv);
 	}
 }
 

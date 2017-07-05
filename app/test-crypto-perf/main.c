@@ -107,12 +107,10 @@ cperf_initialize_cryptodev(struct cperf_options *opts, uint8_t *enabled_cdevs,
 	uint32_t max_sess_size = 0, sess_size;
 
 	for (cdev_id = 0; cdev_id < rte_cryptodev_count(); cdev_id++) {
-		sess_size = sizeof(struct rte_cryptodev_sym_session) +
-			rte_cryptodev_get_private_session_size(cdev_id);
+		sess_size = rte_cryptodev_get_private_session_size(cdev_id);
 		if (sess_size > max_sess_size)
 			max_sess_size = sess_size;
 	}
-
 
 	for (i = 0; i < enabled_cdev_count &&
 			i < RTE_CRYPTO_MAX_DEVS; i++) {
@@ -475,7 +473,10 @@ main(int argc, char **argv)
 
 		cdev_id = enabled_cdevs[i];
 
-		ctx[cdev_id] = cperf_testmap[opts.test].constructor(cdev_id, 0,
+		uint8_t socket_id = rte_cryptodev_socket_id(cdev_id);
+
+		ctx[cdev_id] = cperf_testmap[opts.test].constructor(
+				session_pool_socket[socket_id], cdev_id, 0,
 				&opts, t_vec, &op_fns);
 		if (ctx[cdev_id] == NULL) {
 			RTE_LOG(ERR, USER1, "Test run constructor failed\n");

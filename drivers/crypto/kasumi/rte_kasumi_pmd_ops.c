@@ -292,33 +292,54 @@ kasumi_pmd_session_get_size(struct rte_cryptodev *dev __rte_unused)
 }
 
 /** Configure a KASUMI session from a crypto xform chain */
-static void *
+static int
 kasumi_pmd_session_configure(struct rte_cryptodev *dev __rte_unused,
-		struct rte_crypto_sym_xform *xform,	void *sess)
+		struct rte_crypto_sym_xform *xform,
+		struct rte_cryptodev_sym_session *sess,
+		struct rte_mempool *mempool)
 {
+	void *sess_private_data;
+
 	if (unlikely(sess == NULL)) {
 		KASUMI_LOG_ERR("invalid session struct");
-		return NULL;
+		return -1;
 	}
 
-	if (kasumi_set_session_parameters(sess, xform) != 0) {
+	if (rte_mempool_get(mempool, &sess_private_data)) {
+		CDEV_LOG_ERR(
+			"Couldn't get object from session mempool");
+		return -1;
+	}
+
+	if (kasumi_set_session_parameters(sess_private_data, xform) != 0) {
 		KASUMI_LOG_ERR("failed configure session parameters");
-		return NULL;
+
+		/* Return session to mempool */
+		rte_mempool_put(mempool, sess_private_data);
+		return -1;
 	}
 
-	return sess;
+	set_session_private_data(sess, dev->driver_id,
+		sess_private_data);
+
+	return 0;
 }
 
 /** Clear the memory of session so it doesn't leave key material behind */
 static void
-kasumi_pmd_session_clear(struct rte_cryptodev *dev __rte_unused, void *sess)
+kasumi_pmd_session_clear(struct rte_cryptodev *dev,
+		struct rte_cryptodev_sym_session *sess)
 {
-	/*
-	 * Current just resetting the whole data structure, need to investigate
-	 * whether a more selective reset of key would be more performant
-	 */
-	if (sess)
-		memset(sess, 0, sizeof(struct kasumi_session));
+	uint8_t index = dev->driver_id;
+	void *sess_priv = get_session_private_data(sess, index);
+
+	/* Zero out the whole structure */
+	if (sess_priv) {
+		memset(sess_priv, 0, sizeof(struct kasumi_session));
+		struct rte_mempool *sess_mp = rte_mempool_from_obj(sess_priv);
+		set_session_private_data(sess, index, NULL);
+		rte_mempool_put(sess_mp, sess_priv);
+	}
 }
 
 struct rte_cryptodev_ops kasumi_pmd_ops = {

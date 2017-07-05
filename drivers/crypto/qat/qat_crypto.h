@@ -114,11 +114,15 @@ qat_pmd_session_mempool_create(struct rte_cryptodev *dev,
 extern unsigned
 qat_crypto_sym_get_session_private_size(struct rte_cryptodev *dev);
 
-extern void
-qat_crypto_sym_session_init(struct rte_mempool *mempool, void *priv_sess);
-
-extern void *
+extern int
 qat_crypto_sym_configure_session(struct rte_cryptodev *dev,
+		struct rte_crypto_sym_xform *xform,
+		struct rte_cryptodev_sym_session *sess,
+		struct rte_mempool *mempool);
+
+
+int
+qat_crypto_set_session_parameters(struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform, void *session_private);
 
 struct qat_session *
@@ -136,8 +140,8 @@ qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
 
 
 extern void
-qat_crypto_sym_clear_session(struct rte_cryptodev *dev, void *session);
-
+qat_crypto_sym_clear_session(struct rte_cryptodev *dev,
+		struct rte_cryptodev_sym_session *session);
 
 extern uint16_t
 qat_pmd_enqueue_op_burst(void *qp, struct rte_crypto_op **ops,

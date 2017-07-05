@@ -73,7 +73,6 @@ static struct rte_cryptodev_ops crypto_qat_ops = {
 		/* Crypto related operations */
 		.session_get_size	= qat_crypto_sym_get_session_private_size,
 		.session_configure	= qat_crypto_sym_configure_session,
-		.session_initialize	= qat_crypto_sym_session_init,
 		.session_clear		= qat_crypto_sym_clear_session
 };
 

@@ -41,7 +41,10 @@ struct cperf_options;
 struct cperf_test_vector;
 struct cperf_op_fns;
 
-typedef void  *(*cperf_constructor_t)(uint8_t dev_id, uint16_t qp_id,
+typedef void  *(*cperf_constructor_t)(
+		struct rte_mempool *sess_mp,
+		uint8_t dev_id,
+		uint16_t qp_id,
 		const struct cperf_options *options,
 		const struct cperf_test_vector *t_vec,
 		const struct cperf_op_fns *op_fns);

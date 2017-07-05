@@ -105,10 +105,6 @@ struct scheduler_qp_ctx {
 	uint32_t seqn;
 } __rte_cache_aligned;
 
-struct scheduler_session {
-	struct rte_cryptodev_sym_session *sessions[
-			RTE_CRYPTODEV_SCHEDULER_MAX_NB_SLAVES];
-};
 
 extern uint8_t cryptodev_driver_id;
 

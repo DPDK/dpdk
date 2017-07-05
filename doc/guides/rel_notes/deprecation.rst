@@ -54,17 +54,6 @@ Deprecation Notices
   Target release for removal of the legacy API will be defined once most
   PMDs have switched to rte_flow.
 
-* cryptodev: API changes are planned for 17.08 for the sessions management
-  to make it agnostic to the underlying devices, removing coupling with
-  crypto PMDs, so a single session can be used on multiple devices.
-
-  An API of followed functions will be changed to allow operate on multiple
-  devices with one session:
-
-  - ``rte_cryptodev_sym_session_create``
-  - ``rte_cryptodev_sym_session_free``
-  - ``rte_cryptodev_sym_session_pool_create``
-
 * librte_table: The ``key_mask`` parameter will be added to all the hash tables
   that currently do not have it, as well as to the hash compute function prototype.
   The non-"do-sig" versions of the hash tables will be removed

@@ -53,6 +53,7 @@ static int
 test_blockcipher_one_case(const struct blockcipher_test_case *t,
 	struct rte_mempool *mbuf_pool,
 	struct rte_mempool *op_mpool,
+	struct rte_mempool *sess_mpool,
 	uint8_t dev_id,
 	int driver_id,
 	char *test_msg)
@@ -65,8 +66,8 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 	struct rte_crypto_sym_xform *init_xform = NULL;
 	struct rte_crypto_sym_op *sym_op = NULL;
 	struct rte_crypto_op *op = NULL;
-	struct rte_cryptodev_sym_session *sess = NULL;
 	struct rte_cryptodev_info dev_info;
+	struct rte_cryptodev_sym_session *sess = NULL;
 
 	int status = TEST_SUCCESS;
 	const struct blockcipher_test_data *tdata = t->test_data;
@@ -340,8 +341,10 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 
 	/* create session for sessioned op */
 	if (!(t->feature_mask & BLOCKCIPHER_TEST_FEATURE_SESSIONLESS)) {
-		sess = rte_cryptodev_sym_session_create(dev_id,
-			init_xform);
+		sess = rte_cryptodev_sym_session_create(sess_mpool);
+
+		rte_cryptodev_sym_session_init(dev_id, sess, init_xform,
+				sess_mpool);
 		if (!sess) {
 			snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN, "line %u "
 				"FAILED: %s", __LINE__,
@@ -561,8 +564,10 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 
 error_exit:
 	if (!(t->feature_mask & BLOCKCIPHER_TEST_FEATURE_SESSIONLESS)) {
-		if (sess)
-			rte_cryptodev_sym_session_free(dev_id, sess);
+		if (sess) {
+			rte_cryptodev_sym_session_clear(dev_id, sess);
+			rte_cryptodev_sym_session_free(sess);
+		}
 		if (cipher_xform)
 			rte_free(cipher_xform);
 		if (auth_xform)
@@ -584,6 +589,7 @@ error_exit:
 int
 test_blockcipher_all_tests(struct rte_mempool *mbuf_pool,
 	struct rte_mempool *op_mpool,
+	struct rte_mempool *sess_mpool,
 	uint8_t dev_id,
 	int driver_id,
 	enum blockcipher_test_type test_type)
@@ -675,7 +681,7 @@ test_blockcipher_all_tests(struct rte_mempool *mbuf_pool,
 			continue;
 
 		status = test_blockcipher_one_case(tc, mbuf_pool, op_mpool,
-			dev_id, driver_id, test_msg);
+			sess_mpool, dev_id, driver_id, test_msg);
 
 		printf("  %u) TestCase %s %s\n", test_index ++,
 			tc->test_descr, test_msg);
