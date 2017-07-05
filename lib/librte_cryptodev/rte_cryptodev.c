@@ -1087,8 +1087,6 @@ rte_cryptodev_sym_session_init(struct rte_mempool *mp,
 {
 	memset(sess, 0, mp->elt_size);
 
-	sess->mp = mp;
-
 	if (dev->dev_ops->session_initialize)
 		(*dev->dev_ops->session_initialize)(mp, sess);
 }
@@ -1126,7 +1124,7 @@ rte_cryptodev_sym_session_create(uint8_t dev_id,
 				dev_id);
 
 		/* Return session to mempool */
-		rte_mempool_put(sess->mp, _sess);
+		rte_mempool_put(dev->data->session_pool, _sess);
 		return NULL;
 	}
 
@@ -1198,7 +1196,8 @@ rte_cryptodev_sym_session_free(uint8_t dev_id,
 	dev->dev_ops->session_clear(dev, (void *)sess->_private);
 
 	/* Return session to mempool */
-	rte_mempool_put(sess->mp, (void *)sess);
+	struct rte_mempool *mp = rte_mempool_from_obj(sess);
+	rte_mempool_put(mp, (void *)sess);
 
 	return NULL;
 }

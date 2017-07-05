@@ -115,6 +115,7 @@ New Features
 
   * ``dev_id`` field has been removed.
   * ``driver_id`` field has been removed.
+  * Mempool pointer ``mp`` has been removed.
 
 * **Updated cryptodev library.**
 

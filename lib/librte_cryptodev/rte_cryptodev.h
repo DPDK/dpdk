@@ -883,12 +883,6 @@ rte_cryptodev_enqueue_burst(uint8_t dev_id, uint16_t qp_id,
 /** Cryptodev symmetric crypto session */
 struct rte_cryptodev_sym_session {
 	RTE_STD_C11
-	struct {
-		struct rte_mempool *mp;
-		/**< Mempool session allocated from */
-	} __rte_aligned(8);
-	/**< Public symmetric session details */
-
 	__extension__ char _private[0];
 	/**< Private session material */
 };
