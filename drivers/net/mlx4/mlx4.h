@@ -372,4 +372,9 @@ rxq_create_qp(struct rxq *rxq,
 void
 rxq_parent_cleanup(struct rxq *parent);
 
+struct rxq *
+priv_parent_create(struct priv *priv,
+		   uint16_t queues[],
+		   uint16_t children_n);
+
 #endif /* RTE_PMD_MLX4_H_ */

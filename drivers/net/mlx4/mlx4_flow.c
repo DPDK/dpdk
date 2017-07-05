@@ -112,6 +112,7 @@ struct rte_flow_drop {
 static const enum rte_flow_action_type valid_actions[] = {
 	RTE_FLOW_ACTION_TYPE_DROP,
 	RTE_FLOW_ACTION_TYPE_QUEUE,
+	RTE_FLOW_ACTION_TYPE_RSS,
 	RTE_FLOW_ACTION_TYPE_END,
 };
 
@@ -672,6 +673,76 @@ priv_flow_validate(struct priv *priv,
 			if (!queue || (queue->index > (priv->rxqs_n - 1)))
 				goto exit_action_not_supported;
 			action.queue = 1;
+			action.queues_n = 1;
+			action.queues[0] = queue->index;
+		} else if (actions->type == RTE_FLOW_ACTION_TYPE_RSS) {
+			int i;
+			int ierr;
+			const struct rte_flow_action_rss *rss =
+				(const struct rte_flow_action_rss *)
+				actions->conf;
+
+			if (!priv->hw_rss) {
+				rte_flow_error_set(error, ENOTSUP,
+					   RTE_FLOW_ERROR_TYPE_ACTION,
+					   actions,
+					   "RSS cannot be used with "
+					   "the current configuration");
+				return -rte_errno;
+			}
+			if (!priv->isolated) {
+				rte_flow_error_set(error, ENOTSUP,
+					   RTE_FLOW_ERROR_TYPE_ACTION,
+					   actions,
+					   "RSS cannot be used without "
+					   "isolated mode");
+				return -rte_errno;
+			}
+			if (!rte_is_power_of_2(rss->num)) {
+				rte_flow_error_set(error, ENOTSUP,
+					   RTE_FLOW_ERROR_TYPE_ACTION,
+					   actions,
+					   "the number of queues "
+					   "should be power of two");
+				return -rte_errno;
+			}
+			if (priv->max_rss_tbl_sz < rss->num) {
+				rte_flow_error_set(error, ENOTSUP,
+					   RTE_FLOW_ERROR_TYPE_ACTION,
+					   actions,
+					   "the number of queues "
+					   "is too large");
+				return -rte_errno;
+			}
+			/* checking indexes array */
+			ierr = 0;
+			for (i = 0; i < rss->num; ++i) {
+				int j;
+				if (rss->queue[i] >= priv->rxqs_n)
+					ierr = 1;
+				/*
+				 * Prevent the user from specifying
+				 * the same queue twice in the RSS array.
+				 */
+				for (j = i + 1; j < rss->num && !ierr; ++j)
+					if (rss->queue[j] == rss->queue[i])
+						ierr = 1;
+				if (ierr) {
+					rte_flow_error_set(
+						error,
+						ENOTSUP,
+						RTE_FLOW_ERROR_TYPE_HANDLE,
+						NULL,
+						"RSS action only supports "
+						"unique queue indices "
+						"in a list");
+					return -rte_errno;
+				}
+			}
+			action.queue = 1;
+			action.queues_n = rss->num;
+			for (i = 0; i < rss->num; ++i)
+				action.queues[i] = rss->queue[i];
 		} else {
 			goto exit_action_not_supported;
 		}
@@ -797,6 +868,82 @@ err:
 }
 
 /**
+ * Get RSS parent rxq structure for given queues.
+ *
+ * Creates a new or returns an existed one.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ * @param queues
+ *   queues indices array, NULL in default RSS case.
+ * @param children_n
+ *   the size of queues array.
+ *
+ * @return
+ *   Pointer to a parent rxq structure, NULL on failure.
+ */
+static struct rxq *
+priv_parent_get(struct priv *priv,
+		uint16_t queues[],
+		uint16_t children_n,
+		struct rte_flow_error *error)
+{
+	unsigned int i;
+	struct rxq *parent;
+
+	for (parent = LIST_FIRST(&priv->parents);
+	     parent;
+	     parent = LIST_NEXT(parent, next)) {
+		unsigned int same = 0;
+		unsigned int overlap = 0;
+
+		/*
+		 * Find out whether an appropriate parent queue already exists
+		 * and can be reused, otherwise make sure there are no overlaps.
+		 */
+		for (i = 0; i < children_n; ++i) {
+			unsigned int j;
+
+			for (j = 0; j < parent->rss.queues_n; ++j) {
+				if (parent->rss.queues[j] != queues[i])
+					continue;
+				++overlap;
+				if (i == j)
+					++same;
+			}
+		}
+		if (same == children_n &&
+			children_n == parent->rss.queues_n)
+			return parent;
+		else if (overlap)
+			goto error;
+	}
+	/* Exclude the cases when some QPs were created without RSS */
+	for (i = 0; i < children_n; ++i) {
+		struct rxq *rxq = (*priv->rxqs)[queues[i]];
+		if (rxq->qp)
+			goto error;
+	}
+	parent = priv_parent_create(priv, queues, children_n);
+	if (!parent) {
+		rte_flow_error_set(error,
+				   ENOMEM, RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL, "flow rule creation failure");
+		return NULL;
+	}
+	return parent;
+
+error:
+	rte_flow_error_set(error,
+			   EEXIST,
+			   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+			   NULL,
+			   "sharing a queue between several"
+			   " RSS groups is not supported");
+	return NULL;
+}
+
+/**
  * Complete flow rule creation.
  *
  * @param priv
@@ -819,6 +966,7 @@ priv_flow_create_action_queue(struct priv *priv,
 {
 	struct ibv_qp *qp;
 	struct rte_flow *rte_flow;
+	struct rxq *rxq_parent = NULL;
 
 	assert(priv->pd);
 	assert(priv->ctx);
@@ -832,23 +980,38 @@ priv_flow_create_action_queue(struct priv *priv,
 		qp = priv->flow_drop_queue->qp;
 	} else {
 		int ret;
-		struct rxq *rxq = (*priv->rxqs)[action->queue_id];
+		unsigned int i;
+		struct rxq *rxq = NULL;
 
-		if (!rxq->qp) {
-			assert(priv->isolated);
-			ret = rxq_create_qp(rxq, rxq->elts_n,
-					    0, 0, NULL);
-			if (ret) {
-				rte_flow_error_set(
-					error,
-					ENOMEM,
-					RTE_FLOW_ERROR_TYPE_HANDLE,
-					NULL,
-					"flow rule creation failure");
+		if (action->queues_n > 1) {
+			rxq_parent = priv_parent_get(priv, action->queues,
+						     action->queues_n, error);
+			if (!rxq_parent)
 				goto error;
+		}
+		for (i = 0; i < action->queues_n; ++i) {
+			rxq = (*priv->rxqs)[action->queues[i]];
+			/*
+			 * In case of isolated mode we postpone
+			 * ibv receive queue creation till the first
+			 * rte_flow rule will be applied on that queue.
+			 */
+			if (!rxq->qp) {
+				assert(priv->isolated);
+				ret = rxq_create_qp(rxq, rxq->elts_n,
+						    0, 0, rxq_parent);
+				if (ret) {
+					rte_flow_error_set(
+						error,
+						ENOMEM,
+						RTE_FLOW_ERROR_TYPE_HANDLE,
+						NULL,
+						"flow rule creation failure");
+					goto error;
+				}
 			}
 		}
-		qp = rxq->qp;
+		qp = action->queues_n > 1 ? rxq_parent->qp : rxq->qp;
 		rte_flow->qp = qp;
 	}
 	rte_flow->ibv_attr = ibv_attr;
@@ -861,6 +1024,8 @@ priv_flow_create_action_queue(struct priv *priv,
 	return rte_flow;
 
 error:
+	if (rxq_parent)
+		rxq_parent_cleanup(rxq_parent);
 	rte_free(rte_flow);
 	return NULL;
 }
@@ -924,11 +1089,22 @@ priv_flow_create(struct priv *priv,
 			continue;
 		} else if (actions->type == RTE_FLOW_ACTION_TYPE_QUEUE) {
 			action.queue = 1;
-			action.queue_id =
+			action.queues_n = 1;
+			action.queues[0] =
 				((const struct rte_flow_action_queue *)
 				 actions->conf)->index;
 		} else if (actions->type == RTE_FLOW_ACTION_TYPE_DROP) {
 			action.drop = 1;
+		} else if (actions->type == RTE_FLOW_ACTION_TYPE_RSS) {
+			unsigned int i;
+			const struct rte_flow_action_rss *rss =
+				(const struct rte_flow_action_rss *)
+				 actions->conf;
+
+			action.queue = 1;
+			action.queues_n = rss->num;
+			for (i = 0; i < rss->num; ++i)
+				action.queues[i] = rss->queue[i];
 		} else {
 			rte_flow_error_set(error, ENOTSUP,
 					   RTE_FLOW_ERROR_TYPE_ACTION,

@@ -569,7 +569,7 @@ rxq_cleanup(struct rxq *rxq);
  * @return
  *   Pointer to a parent rxq structure, NULL on failure.
  */
-static struct rxq *
+struct rxq *
 priv_parent_create(struct priv *priv,
 		   uint16_t queues[],
 		   uint16_t children_n)
@@ -705,10 +705,8 @@ dev_configure(struct rte_eth_dev *dev)
 	priv->rss = 1;
 	tmp = priv->rxqs_n;
 	priv->rxqs_n = rxqs_n;
-	if (priv->isolated) {
-		priv->rss = 0;
+	if (priv->isolated)
 		return 0;
-	}
 	if (priv_parent_create(priv, NULL, priv->rxqs_n))
 		return 0;
 	/* Failure, rollback. */
