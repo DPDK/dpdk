@@ -637,6 +637,24 @@ struct rte_eth_vmdq_dcb_conf {
 	/**< Selects a queue in a pool */
 };
 
+/**
+ * A structure used to configure the VMDQ feature of an Ethernet port when
+ * not combined with the DCB feature.
+ *
+ * Using this feature, packets are routed to a pool of queues. By default,
+ * the pool selection is based on the MAC address, the vlan id in the
+ * vlan tag as specified in the pool_map array.
+ * Passing the ETH_VMDQ_ACCEPT_UNTAG in the rx_mode field allows pool
+ * selection using only the MAC address. MAC address to pool mapping is done
+ * using the rte_eth_dev_mac_addr_add function, with the pool parameter
+ * corresponding to the pool id.
+ *
+ * Queue selection within the selected pool will be done using RSS when
+ * it is enabled or revert to the first queue of the pool if not.
+ *
+ * A default pool may be used, if desired, to route all traffic which
+ * does not match the vlan filter rules or any pool MAC address.
+ */
 struct rte_eth_vmdq_rx_conf {
 	enum rte_eth_nb_pools nb_queue_pools; /**< VMDq only mode, 8 or 64 pools */
 	uint8_t enable_default_pool; /**< If non-zero, use a default pool */
