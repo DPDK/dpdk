@@ -132,8 +132,7 @@ struct bond_dev_private {
 	/**< Flag for whether MAC address is user defined or not */
 	uint8_t promiscuous_en;
 	/**< Enabled/disable promiscuous mode on bonding device */
-	uint8_t link_props_set;
-	/**< flag to denote if the link properties are set */
+
 
 	uint8_t link_status_polling_enabled;
 	uint32_t link_status_polling_interval_ms;
@@ -216,11 +215,8 @@ activate_slave(struct rte_eth_dev *eth_dev, uint8_t port_id);
 void
 link_properties_set(struct rte_eth_dev *bonded_eth_dev,
 		struct rte_eth_link *slave_dev_link);
-void
-link_properties_reset(struct rte_eth_dev *bonded_eth_dev);
-
 int
-link_properties_valid(struct rte_eth_link *bonded_dev_link,
+link_properties_valid(struct rte_eth_dev *bonded_eth_dev,
 		struct rte_eth_link *slave_dev_link);
 
 int

@@ -297,6 +297,9 @@ __eth_bond_slave_add_lock_free(uint8_t bonded_port_id, uint8_t slave_port_id)
 		internals->tx_offload_capa &= dev_info.tx_offload_capa;
 		internals->flow_type_rss_offloads &= dev_info.flow_type_rss_offloads;
 
+		link_properties_valid(bonded_eth_dev,
+				&slave_eth_dev->data->dev_link);
+
 		/* RETA size is GCD of all slaves RETA sizes, so, if all sizes will be
 		 * the power of 2, the lower one is GCD
 		 */
@@ -439,9 +442,6 @@ __eth_bond_slave_remove_lock_free(uint8_t bonded_port_id, uint8_t slave_port_id)
 	}
 
 	if (internals->active_slave_count < 1) {
-		/* reset device link properties as no slaves are active */
-		link_properties_reset(&rte_eth_devices[bonded_port_id]);
-
 		/* if no slaves are any longer attached to bonded device and MAC is not
 		 * user defined then clear MAC of bonded device as it will be reset
 		 * when a new slave is added */

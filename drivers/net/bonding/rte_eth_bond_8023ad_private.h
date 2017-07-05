@@ -180,6 +180,9 @@ struct mode8023ad_private {
 	rte_eth_bond_8023ad_ext_slowrx_fn slowrx_cb;
 	uint8_t external_sm;
 
+	struct rte_eth_link slave_link;
+	/***< slave link properties */
+
 	/**
 	 * Configuration of dedicated hardware queues for control plane
 	 * traffic

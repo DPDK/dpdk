@@ -1386,39 +1386,44 @@ bond_ethdev_tx_burst_broadcast(void *queue, struct rte_mbuf **bufs,
 }
 
 void
-link_properties_set(struct rte_eth_dev *bonded_eth_dev,
-		struct rte_eth_link *slave_dev_link)
+link_properties_set(struct rte_eth_dev *ethdev, struct rte_eth_link *slave_link)
 {
-	struct rte_eth_link *bonded_dev_link = &bonded_eth_dev->data->dev_link;
-	struct bond_dev_private *internals = bonded_eth_dev->data->dev_private;
+	struct bond_dev_private *bond_ctx = ethdev->data->dev_private;
 
-	if (slave_dev_link->link_status &&
-		bonded_eth_dev->data->dev_started) {
-		bonded_dev_link->link_duplex = slave_dev_link->link_duplex;
-		bonded_dev_link->link_speed = slave_dev_link->link_speed;
+	if (bond_ctx->mode == BONDING_MODE_8023AD) {
+		/**
+		 * If in mode 4 then save the link properties of the first
+		 * slave, all subsequent slaves must match these properties
+		 */
+		struct rte_eth_link *bond_link = &bond_ctx->mode4.slave_link;
 
-		internals->link_props_set = 1;
+		bond_link->link_autoneg = slave_link->link_autoneg;
+		bond_link->link_duplex = slave_link->link_duplex;
+		bond_link->link_speed = slave_link->link_speed;
+	} else {
+		/**
+		 * In any other mode the link properties are set to default
+		 * values of AUTONEG/DUPLEX
+		 */
+		ethdev->data->dev_link.link_autoneg = ETH_LINK_AUTONEG;
+		ethdev->data->dev_link.link_duplex = ETH_LINK_FULL_DUPLEX;
 	}
 }
 
-void
-link_properties_reset(struct rte_eth_dev *bonded_eth_dev)
-{
-	struct bond_dev_private *internals = bonded_eth_dev->data->dev_private;
-
-	memset(&(bonded_eth_dev->data->dev_link), 0,
-			sizeof(bonded_eth_dev->data->dev_link));
-
-	internals->link_props_set = 0;
-}
-
 int
-link_properties_valid(struct rte_eth_link *bonded_dev_link,
-		struct rte_eth_link *slave_dev_link)
+link_properties_valid(struct rte_eth_dev *ethdev,
+		struct rte_eth_link *slave_link)
 {
-	if (bonded_dev_link->link_duplex != slave_dev_link->link_duplex ||
-		bonded_dev_link->link_speed !=  slave_dev_link->link_speed)
-		return -1;
+	struct bond_dev_private *bond_ctx = ethdev->data->dev_private;
+
+	if (bond_ctx->mode == BONDING_MODE_8023AD) {
+		struct rte_eth_link *bond_link = &bond_ctx->mode4.slave_link;
+
+		if (bond_link->link_duplex != slave_link->link_duplex ||
+			bond_link->link_autoneg != slave_link->link_autoneg ||
+			bond_link->link_speed != slave_link->link_speed)
+			return -1;
+	}
 
 	return 0;
 }
@@ -2270,35 +2275,89 @@ bond_ethdev_slave_link_status_change_monitor(void *cb_arg)
 }
 
 static int
-bond_ethdev_link_update(struct rte_eth_dev *bonded_eth_dev,
-		int wait_to_complete)
+bond_ethdev_link_update(struct rte_eth_dev *ethdev, int wait_to_complete)
 {
-	struct bond_dev_private *internals = bonded_eth_dev->data->dev_private;
+	void (*link_update)(uint8_t port_id, struct rte_eth_link *eth_link);
 
-	if (!bonded_eth_dev->data->dev_started ||
-		internals->active_slave_count == 0) {
-		bonded_eth_dev->data->dev_link.link_status = ETH_LINK_DOWN;
+	struct bond_dev_private *bond_ctx;
+	struct rte_eth_link slave_link;
+
+	uint32_t idx;
+
+	bond_ctx = ethdev->data->dev_private;
+
+	ethdev->data->dev_link.link_speed = ETH_SPEED_NUM_NONE;
+
+	if (ethdev->data->dev_started == 0 ||
+			bond_ctx->active_slave_count == 0) {
+		ethdev->data->dev_link.link_status = ETH_LINK_DOWN;
 		return 0;
-	} else {
-		struct rte_eth_dev *slave_eth_dev;
-		int i, link_up = 0;
-
-		for (i = 0; i < internals->active_slave_count; i++) {
-			slave_eth_dev = &rte_eth_devices[internals->active_slaves[i]];
-
-			(*slave_eth_dev->dev_ops->link_update)(slave_eth_dev,
-					wait_to_complete);
-			if (slave_eth_dev->data->dev_link.link_status == ETH_LINK_UP) {
-				link_up = 1;
-				break;
-			}
-		}
-
-		bonded_eth_dev->data->dev_link.link_status = link_up;
 	}
+
+	ethdev->data->dev_link.link_status = ETH_LINK_UP;
+
+	if (wait_to_complete)
+		link_update = rte_eth_link_get;
+	else
+		link_update = rte_eth_link_get_nowait;
+
+	switch (bond_ctx->mode) {
+	case BONDING_MODE_BROADCAST:
+		/**
+		 * Setting link speed to UINT32_MAX to ensure we pick up the
+		 * value of the first active slave
+		 */
+		ethdev->data->dev_link.link_speed = UINT32_MAX;
+
+		/**
+		 * link speed is minimum value of all the slaves link speed as
+		 * packet loss will occur on this slave if transmission at rates
+		 * greater than this are attempted
+		 */
+		for (idx = 1; idx < bond_ctx->active_slave_count; idx++) {
+			link_update(bond_ctx->active_slaves[0],	&slave_link);
+
+			if (slave_link.link_speed <
+					ethdev->data->dev_link.link_speed)
+				ethdev->data->dev_link.link_speed =
+						slave_link.link_speed;
+		}
+		break;
+	case BONDING_MODE_ACTIVE_BACKUP:
+		/* Current primary slave */
+		link_update(bond_ctx->current_primary_port, &slave_link);
+
+		ethdev->data->dev_link.link_speed = slave_link.link_speed;
+		break;
+	case BONDING_MODE_8023AD:
+		ethdev->data->dev_link.link_autoneg =
+				bond_ctx->mode4.slave_link.link_autoneg;
+		ethdev->data->dev_link.link_duplex =
+				bond_ctx->mode4.slave_link.link_duplex;
+		/* fall through to update link speed */
+	case BONDING_MODE_ROUND_ROBIN:
+	case BONDING_MODE_BALANCE:
+	case BONDING_MODE_TLB:
+	case BONDING_MODE_ALB:
+	default:
+		/**
+		 * In theses mode the maximum theoretical link speed is the sum
+		 * of all the slaves
+		 */
+		ethdev->data->dev_link.link_speed = ETH_SPEED_NUM_NONE;
+
+		for (idx = 0; idx < bond_ctx->active_slave_count; idx++) {
+			link_update(bond_ctx->active_slaves[idx], &slave_link);
+
+			ethdev->data->dev_link.link_speed +=
+					slave_link.link_speed;
+		}
+	}
+
 
 	return 0;
 }
+
 
 static void
 bond_ethdev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
@@ -2410,7 +2469,7 @@ int
 bond_ethdev_lsc_event_callback(uint8_t port_id, enum rte_eth_event_type type,
 		void *param, void *ret_param __rte_unused)
 {
-	struct rte_eth_dev *bonded_eth_dev, *slave_eth_dev;
+	struct rte_eth_dev *bonded_eth_dev;
 	struct bond_dev_private *internals;
 	struct rte_eth_link link;
 	int rc = -1;
@@ -2423,7 +2482,6 @@ bond_ethdev_lsc_event_callback(uint8_t port_id, enum rte_eth_event_type type,
 		return rc;
 
 	bonded_eth_dev = &rte_eth_devices[*(uint8_t *)param];
-	slave_eth_dev = &rte_eth_devices[port_id];
 
 	if (check_for_bonded_ethdev(bonded_eth_dev))
 		return rc;
@@ -2462,20 +2520,6 @@ bond_ethdev_lsc_event_callback(uint8_t port_id, enum rte_eth_event_type type,
 			lsc_flag = 1;
 
 			mac_address_slaves_update(bonded_eth_dev);
-
-			/* Inherit eth dev link properties from first active slave */
-			link_properties_set(bonded_eth_dev,
-					&(slave_eth_dev->data->dev_link));
-		} else {
-			if (link_properties_valid(
-				&bonded_eth_dev->data->dev_link, &link) != 0) {
-				slave_eth_dev->data->dev_flags &=
-					(~RTE_ETH_DEV_BONDED_SLAVE);
-				RTE_LOG(ERR, PMD,
-					"port %u invalid speed/duplex\n",
-					port_id);
-				return rc;
-			}
 		}
 
 		activate_slave(bonded_eth_dev, port_id);
@@ -2491,15 +2535,6 @@ bond_ethdev_lsc_event_callback(uint8_t port_id, enum rte_eth_event_type type,
 		/* Remove from active slave list */
 		deactivate_slave(bonded_eth_dev, port_id);
 
-		/* No active slaves, change link status to down and reset other
-		 * link properties */
-		if (internals->active_slave_count < 1) {
-			lsc_flag = 1;
-			bonded_eth_dev->data->dev_link.link_status = ETH_LINK_DOWN;
-
-			link_properties_reset(bonded_eth_dev);
-		}
-
 		/* Update primary id, take first active slave from list or if none
 		 * available set to -1 */
 		if (port_id == internals->current_primary_port) {
@@ -2510,6 +2545,12 @@ bond_ethdev_lsc_event_callback(uint8_t port_id, enum rte_eth_event_type type,
 				internals->current_primary_port = internals->primary_port;
 		}
 	}
+
+	/**
+	 * Update bonded device link properties after any change to active
+	 * slaves
+	 */
+	bond_ethdev_link_update(bonded_eth_dev, 0);
 
 	if (lsc_flag) {
 		/* Cancel any possible outstanding interrupts if delays are enabled */
@@ -2714,7 +2755,6 @@ bond_alloc(struct rte_vdev_device *dev, uint8_t mode)
 	internals->balance_xmit_policy = BALANCE_XMIT_POLICY_LAYER2;
 	internals->xmit_hash = xmit_l2_hash;
 	internals->user_defined_mac = 0;
-	internals->link_props_set = 0;
 
 	internals->link_status_polling_enabled = 0;
 
