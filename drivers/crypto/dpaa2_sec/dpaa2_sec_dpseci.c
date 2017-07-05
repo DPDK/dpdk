@@ -1976,4 +1976,4 @@ static struct rte_dpaa2_driver rte_dpaa2_sec_driver = {
 	.remove = cryptodev_dpaa2_sec_remove,
 };
 
-RTE_PMD_REGISTER_DPAA2(dpaa2_sec_pmd, rte_dpaa2_sec_driver);
+RTE_PMD_REGISTER_DPAA2(CRYPTODEV_NAME_DPAA2_SEC_PMD, rte_dpaa2_sec_driver);

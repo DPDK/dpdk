@@ -71,7 +71,7 @@ extern "C" {
 /**< ARMv8 Crypto PMD device name */
 #define CRYPTODEV_NAME_SCHEDULER_PMD	crypto_scheduler
 /**< Scheduler Crypto PMD device name */
-#define CRYPTODEV_NAME_DPAA2_SEC_PMD	cryptodev_dpaa2_sec_pmd
+#define CRYPTODEV_NAME_DPAA2_SEC_PMD	crypto_dpaa2_sec
 /**< NXP DPAA2 - SEC PMD device name */
 
 /** Crypto device type */
