@@ -89,6 +89,8 @@ struct scheduler_ctx {
 
 	char name[RTE_CRYPTODEV_SCHEDULER_NAME_MAX_LEN];
 	char description[RTE_CRYPTODEV_SCHEDULER_DESC_MAX_LEN];
+	uint16_t wc_pool[RTE_CRYPTODEV_SCHEDULER_MAX_NB_WORKER_CORES];
+	uint16_t nb_wc;
 
 	char *init_slave_names[RTE_CRYPTODEV_SCHEDULER_MAX_NB_SLAVES];
 	int nb_init_slaves;
@@ -144,7 +146,8 @@ scheduler_order_drain(struct rte_ring *order_ring,
 
 	while (nb_ops_to_deq < nb_objs) {
 		SCHEDULER_GET_RING_OBJ(order_ring, nb_ops_to_deq, op);
-		if (op->status == RTE_CRYPTO_OP_STATUS_NOT_PROCESSED)
+		if (op->status == RTE_CRYPTO_OP_STATUS_NOT_PROCESSED ||
+					op->status == RTE_CRYPTO_OP_STATUS_ENQUEUED)
 			break;
 		nb_ops_to_deq++;
 	}

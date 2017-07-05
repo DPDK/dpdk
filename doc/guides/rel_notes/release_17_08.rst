@@ -133,6 +133,11 @@ New Features
 
   * 192-bit key.
 
+* **Updated the Cryptodev Scheduler PMD.**
+
+  Added a multicore based distribution mode, which distributes the enqueued
+  crypto operations among several slaves, running on different logical cores.
+
 
 Resolved Issues
 ---------------

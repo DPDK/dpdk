@@ -56,5 +56,6 @@ SRCS-$(CONFIG_RTE_LIBRTE_PMD_CRYPTO_SCHEDULER) += rte_cryptodev_scheduler.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_CRYPTO_SCHEDULER) += scheduler_roundrobin.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_CRYPTO_SCHEDULER) += scheduler_pkt_size_distr.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_CRYPTO_SCHEDULER) += scheduler_failover.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_CRYPTO_SCHEDULER) += scheduler_multicore.c
 
 include $(RTE_SDK)/mk/rte.lib.mk

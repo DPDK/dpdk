@@ -170,3 +170,28 @@ operation:
    crypto operation burst to the primary slave. When one or more crypto
    operations fail to be enqueued, then they will be enqueued to the secondary
    slave.
+
+*   **CDEV_SCHED_MODE_MULTICORE:**
+
+   *Initialization mode parameter*: **multi-core**
+
+   Multi-core mode, which distributes the workload with several (up to eight)
+   worker cores. The enqueued bursts are distributed among the worker cores in a
+   round-robin manner. If scheduler cannot enqueue entire burst to the same worker,
+   it will enqueue the remaining operations to the next available worker.
+   For pure small packet size (64 bytes) traffic however the multi-core mode is not
+   an optimal solution, as it doesn't give significant per-core performance improvement.
+   For mixed traffic (IMIX) the optimal number of worker cores is around 2-3.
+   For large packets (1.5 Kbytes) scheduler shows linear scaling in performance
+   up to eight cores.
+   Each worker uses its own slave cryptodev. Only software cryptodevs
+   are supported. Only the same type of cryptodevs should be used concurrently.
+
+   The multi-core mode uses one extra parameter:
+
+   * corelist: Semicolon-separated list of logical cores to be used as workers.
+     The number of worker cores should be equal to the number of slave cryptodevs.
+
+   Example:
+    ... --vdev "crypto_aesni_mb1,name=aesni_mb_1" --vdev "crypto_aesni_mb_pmd2,name=aesni_mb_2" \
+    --vdev "crypto_scheduler,slave=aesni_mb_1,slave=aesni_mb_2,mode=multi-core,corelist=23;24" ...
