@@ -75,7 +75,6 @@
 
 struct rte_crypto_xform;
 struct ipsec_xform;
-struct rte_cryptodev_session;
 struct rte_mbuf;
 
 struct ipsec_sa;

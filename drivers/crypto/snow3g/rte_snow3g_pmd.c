@@ -172,7 +172,7 @@ snow3g_get_session(struct snow3g_qp *qp, struct rte_crypto_op *op)
 
 		sess = (struct snow3g_session *)op->sym->session->_private;
 	} else  {
-		struct rte_cryptodev_session *c_sess = NULL;
+		struct rte_cryptodev_sym_session *c_sess = NULL;
 
 		if (rte_mempool_get(qp->sess_mp, (void **)&c_sess))
 			return NULL;

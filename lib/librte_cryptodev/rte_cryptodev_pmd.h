@@ -56,17 +56,6 @@ extern "C" {
 #include "rte_crypto.h"
 #include "rte_cryptodev.h"
 
-struct rte_cryptodev_session {
-	RTE_STD_C11
-	struct {
-		uint8_t dev_id;
-		uint8_t driver_id;
-		struct rte_mempool *mp;
-	} __rte_aligned(8);
-
-	__extension__ char _private[0];
-};
-
 /** Global structure used for maintaining state of allocated crypto devices */
 struct rte_cryptodev_global {
 	struct rte_cryptodev *devs;	/**< Device information array */
