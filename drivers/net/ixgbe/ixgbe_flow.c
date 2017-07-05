@@ -1268,6 +1268,67 @@ ixgbe_parse_fdir_act_attr(const struct rte_flow_attr *attr,
 	return 0;
 }
 
+/* search next no void pattern and skip fuzzy */
+static inline
+const struct rte_flow_item *next_no_fuzzy_pattern(
+		const struct rte_flow_item pattern[],
+		const struct rte_flow_item *cur)
+{
+	const struct rte_flow_item *next =
+		next_no_void_pattern(pattern, cur);
+	while (1) {
+		if (next->type != RTE_FLOW_ITEM_TYPE_FUZZY)
+			return next;
+		next = next_no_void_pattern(pattern, next);
+	}
+}
+
+static inline uint8_t signature_match(const struct rte_flow_item pattern[])
+{
+	const struct rte_flow_item_fuzzy *spec, *last, *mask;
+	const struct rte_flow_item *item;
+	uint32_t sh, lh, mh;
+	int i = 0;
+
+	while (1) {
+		item = pattern + i;
+		if (item->type == RTE_FLOW_ITEM_TYPE_END)
+			break;
+
+		if (item->type == RTE_FLOW_ITEM_TYPE_FUZZY) {
+			spec =
+			(const struct rte_flow_item_fuzzy *)item->spec;
+			last =
+			(const struct rte_flow_item_fuzzy *)item->last;
+			mask =
+			(const struct rte_flow_item_fuzzy *)item->mask;
+
+			if (!spec || !mask)
+				return 0;
+
+			sh = spec->thresh;
+
+			if (!last)
+				lh = sh;
+			else
+				lh = last->thresh;
+
+			mh = mask->thresh;
+			sh = sh & mh;
+			lh = lh & mh;
+
+			if (!sh || sh > lh)
+				return 0;
+
+			return 1;
+		}
+
+		i++;
+	}
+
+	return 0;
+}
+
 /**
  * Parse the rule to see if it is a IP or MAC VLAN flow director rule.
  * And get the flow director filter info BTW.
@@ -1277,6 +1338,7 @@ ixgbe_parse_fdir_act_attr(const struct rte_flow_attr *attr,
  * The next not void item could be UDP or TCP or SCTP (optional)
  * The next not void item could be RAW (for flexbyte, optional)
  * The next not void item must be END.
+ * A Fuzzy Match pattern can appear at any place before END (optional)
  * MAC VLAN PATTERN:
  * The first not void item must be ETH.
  * The second not void item must be MAC VLAN.
@@ -1371,7 +1433,7 @@ ixgbe_parse_fdir_filter_normal(const struct rte_flow_attr *attr,
 	 * The first not void item should be
 	 * MAC or IPv4 or TCP or UDP or SCTP.
 	 */
-	item = next_no_void_pattern(pattern, NULL);
+	item = next_no_fuzzy_pattern(pattern, NULL);
 	if (item->type != RTE_FLOW_ITEM_TYPE_ETH &&
 	    item->type != RTE_FLOW_ITEM_TYPE_IPV4 &&
 	    item->type != RTE_FLOW_ITEM_TYPE_TCP &&
@@ -1384,7 +1446,10 @@ ixgbe_parse_fdir_filter_normal(const struct rte_flow_attr *attr,
 		return -rte_errno;
 	}
 
-	rule->mode = RTE_FDIR_MODE_PERFECT;
+	if (signature_match(pattern))
+		rule->mode = RTE_FDIR_MODE_SIGNATURE;
+	else
+		rule->mode = RTE_FDIR_MODE_PERFECT;
 
 	/*Not supported last point for range*/
 	if (item->last) {
@@ -1421,20 +1486,22 @@ ixgbe_parse_fdir_filter_normal(const struct rte_flow_attr *attr,
 
 
 		if (item->mask) {
-			/* If ethernet has meaning, it means MAC VLAN mode. */
-			rule->mode = RTE_FDIR_MODE_PERFECT_MAC_VLAN;
 
 			rule->b_mask = TRUE;
 			eth_mask = (const struct rte_flow_item_eth *)item->mask;
 
 			/* Ether type should be masked. */
-			if (eth_mask->type) {
+			if (eth_mask->type ||
+			    rule->mode == RTE_FDIR_MODE_SIGNATURE) {
 				memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
 				rte_flow_error_set(error, EINVAL,
 					RTE_FLOW_ERROR_TYPE_ITEM,
 					item, "Not supported by fdir filter");
 				return -rte_errno;
 			}
+
+			/* If ethernet has meaning, it means MAC VLAN mode. */
+			rule->mode = RTE_FDIR_MODE_PERFECT_MAC_VLAN;
 
 			/**
 			 * src MAC address must be masked,
@@ -1464,7 +1531,7 @@ ixgbe_parse_fdir_filter_normal(const struct rte_flow_attr *attr,
 		 * Check if the next not void item is vlan or ipv4.
 		 * IPv6 is not supported.
 		 */
-		item = next_no_void_pattern(pattern, item);
+		item = next_no_fuzzy_pattern(pattern, item);
 		if (rule->mode == RTE_FDIR_MODE_PERFECT_MAC_VLAN) {
 			if (item->type != RTE_FLOW_ITEM_TYPE_VLAN) {
 				memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
@@ -1511,7 +1578,7 @@ ixgbe_parse_fdir_filter_normal(const struct rte_flow_attr *attr,
 		/* More than one tags are not supported. */
 
 		/* Next not void item must be END */
-		item = next_no_void_pattern(pattern, item);
+		item = next_no_fuzzy_pattern(pattern, item);
 		if (item->type != RTE_FLOW_ITEM_TYPE_END) {
 			memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
 			rte_flow_error_set(error, EINVAL,
@@ -1581,7 +1648,7 @@ ixgbe_parse_fdir_filter_normal(const struct rte_flow_attr *attr,
 		 * Check if the next not void item is
 		 * TCP or UDP or SCTP or END.
 		 */
-		item = next_no_void_pattern(pattern, item);
+		item = next_no_fuzzy_pattern(pattern, item);
 		if (item->type != RTE_FLOW_ITEM_TYPE_TCP &&
 		    item->type != RTE_FLOW_ITEM_TYPE_UDP &&
 		    item->type != RTE_FLOW_ITEM_TYPE_SCTP &&
@@ -1648,7 +1715,7 @@ ixgbe_parse_fdir_filter_normal(const struct rte_flow_attr *attr,
 				tcp_spec->hdr.dst_port;
 		}
 
-		item = next_no_void_pattern(pattern, item);
+		item = next_no_fuzzy_pattern(pattern, item);
 		if (item->type != RTE_FLOW_ITEM_TYPE_RAW &&
 		    item->type != RTE_FLOW_ITEM_TYPE_END) {
 			memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
@@ -1708,7 +1775,7 @@ ixgbe_parse_fdir_filter_normal(const struct rte_flow_attr *attr,
 				udp_spec->hdr.dst_port;
 		}
 
-		item = next_no_void_pattern(pattern, item);
+		item = next_no_fuzzy_pattern(pattern, item);
 		if (item->type != RTE_FLOW_ITEM_TYPE_RAW &&
 		    item->type != RTE_FLOW_ITEM_TYPE_END) {
 			memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
@@ -1770,7 +1837,7 @@ ixgbe_parse_fdir_filter_normal(const struct rte_flow_attr *attr,
 				sctp_spec->hdr.dst_port;
 		}
 
-		item = next_no_void_pattern(pattern, item);
+		item = next_no_fuzzy_pattern(pattern, item);
 		if (item->type != RTE_FLOW_ITEM_TYPE_RAW &&
 		    item->type != RTE_FLOW_ITEM_TYPE_END) {
 			memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
@@ -1854,7 +1921,7 @@ ixgbe_parse_fdir_filter_normal(const struct rte_flow_attr *attr,
 
 	if (item->type != RTE_FLOW_ITEM_TYPE_END) {
 		/* check if the next not void item is END */
-		item = next_no_void_pattern(pattern, item);
+		item = next_no_fuzzy_pattern(pattern, item);
 		if (item->type != RTE_FLOW_ITEM_TYPE_END) {
 			memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
 			rte_flow_error_set(error, EINVAL,
