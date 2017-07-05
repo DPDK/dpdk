@@ -942,6 +942,18 @@ rte_cryptodev_sym_session_free(uint8_t dev_id,
 		struct rte_cryptodev_sym_session *session);
 
 /**
+ * Get the size of the private session data for a device.
+ *
+ * @param	dev_id		The device identifier.
+ *
+ * @return
+ *   - Size of the private data, if successful
+ *   - 0 if device is invalid or does not have private session
+ */
+unsigned int
+rte_cryptodev_get_private_session_size(uint8_t dev_id);
+
+/**
  * Attach queue pair with sym session.
  *
  * @param	qp_id		Queue pair to which session will be attached.

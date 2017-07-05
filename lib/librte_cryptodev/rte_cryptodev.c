@@ -1278,6 +1278,26 @@ rte_cryptodev_sym_session_free(uint8_t dev_id,
 	return NULL;
 }
 
+unsigned int
+rte_cryptodev_get_private_session_size(uint8_t dev_id)
+{
+	struct rte_cryptodev *dev;
+	unsigned int priv_sess_size;
+
+	if (!rte_cryptodev_pmd_is_valid_dev(dev_id))
+		return 0;
+
+	dev = rte_cryptodev_pmd_get_dev(dev_id);
+
+	if (*dev->dev_ops->session_get_size == NULL)
+		return 0;
+
+	priv_sess_size = (*dev->dev_ops->session_get_size)(dev);
+
+	return priv_sess_size;
+
+}
+
 /** Initialise rte_crypto_op mempool element */
 static void
 rte_crypto_op_init(struct rte_mempool *mempool,
