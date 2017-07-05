@@ -335,6 +335,7 @@ struct priv {
 	unsigned int rss:1; /* RSS is enabled. */
 	unsigned int vf:1; /* This is a VF device. */
 	unsigned int pending_alarm:1; /* An alarm is pending. */
+	unsigned int isolated:1; /* Toggle isolated mode. */
 #ifdef INLINE_RECV
 	unsigned int inl_recv_size; /* Inline recv size */
 #endif

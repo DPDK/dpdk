@@ -957,6 +957,43 @@ mlx4_flow_create(struct rte_eth_dev *dev,
 }
 
 /**
+ * @see rte_flow_isolate()
+ *
+ * Must be done before calling dev_configure().
+ *
+ * @param dev
+ *   Pointer to the ethernet device structure.
+ * @param enable
+ *   Nonzero to enter isolated mode, attempt to leave it otherwise.
+ * @param[out] error
+ *   Perform verbose error reporting if not NULL. PMDs initialize this
+ *   structure in case of error only.
+ *
+ * @return
+ *   0 on success, a negative value on error.
+ */
+int
+mlx4_flow_isolate(struct rte_eth_dev *dev,
+		  int enable,
+		  struct rte_flow_error *error)
+{
+	struct priv *priv = dev->data->dev_private;
+
+	priv_lock(priv);
+	if (priv->rxqs) {
+		rte_flow_error_set(error, ENOTSUP,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+				   NULL, "isolated mode must be set"
+				   " before configuring the device");
+		priv_unlock(priv);
+		return -rte_errno;
+	}
+	priv->isolated = !!enable;
+	priv_unlock(priv);
+	return 0;
+}
+
+/**
  * Destroy a flow.
  *
  * @param priv

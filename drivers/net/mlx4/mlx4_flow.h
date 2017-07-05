@@ -90,6 +90,11 @@ struct mlx4_flow {
 	unsigned int offset; /**< Offset in bytes in the ibv_attr buffer. */
 };
 
+int
+mlx4_flow_isolate(struct rte_eth_dev *dev,
+		  int enable,
+		  struct rte_flow_error *error);
+
 struct mlx4_flow_action {
 	uint32_t drop:1; /**< Target is a drop queue. */
 	uint32_t queue:1; /**< Target is a receive queue. */
