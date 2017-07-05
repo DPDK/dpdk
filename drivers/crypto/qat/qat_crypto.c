@@ -1072,12 +1072,6 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
 		return -EINVAL;
 	}
 
-	if (unlikely(op->sym->session->driver_id !=
-			cryptodev_qat_driver_id)) {
-		PMD_DRV_LOG(ERR, "Session was not created for this device");
-		return -EINVAL;
-	}
-
 	ctx = (struct qat_session *)op->sym->session->_private;
 	qat_req = (struct icp_qat_fw_la_bulk_req *)out_msg;
 	rte_mov128((uint8_t *)qat_req, (const uint8_t *)&(ctx->fw_req));

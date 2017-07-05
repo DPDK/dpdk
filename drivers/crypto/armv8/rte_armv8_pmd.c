@@ -555,9 +555,7 @@ get_session(struct armv8_crypto_qp *qp, struct rte_crypto_op *op)
 
 	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
 		/* get existing session */
-		if (likely(op->sym->session != NULL &&
-				op->sym->session->driver_id ==
-				cryptodev_driver_id)) {
+		if (likely(op->sym->session != NULL)) {
 			sess = (struct armv8_crypto_session *)
 				op->sym->session->_private;
 		}

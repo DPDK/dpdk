@@ -155,10 +155,6 @@ aesni_gcm_get_session(struct aesni_gcm_qp *qp, struct rte_crypto_op *op)
 	struct rte_crypto_sym_op *sym_op = op->sym;
 
 	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
-		if (unlikely(sym_op->session->driver_id !=
-				cryptodev_driver_id))
-			return sess;
-
 		sess = (struct aesni_gcm_session *)sym_op->session->_private;
 	} else  {
 		void *_sess;

@@ -165,10 +165,6 @@ zuc_get_session(struct zuc_qp *qp, struct rte_crypto_op *op)
 	struct zuc_session *sess;
 
 	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
-		if (unlikely(op->sym->session->driver_id !=
-				cryptodev_driver_id))
-			return NULL;
-
 		sess = (struct zuc_session *)op->sym->session->_private;
 	} else  {
 		struct rte_cryptodev_sym_session *c_sess = NULL;

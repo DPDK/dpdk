@@ -354,14 +354,9 @@ get_session(struct aesni_mb_qp *qp, struct rte_crypto_op *op)
 {
 	struct aesni_mb_session *sess = NULL;
 
-	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION) {
-		if (unlikely(op->sym->session->driver_id !=
-				cryptodev_driver_id)) {
-			return NULL;
-		}
-
+	if (op->sess_type == RTE_CRYPTO_OP_WITH_SESSION)
 		sess = (struct aesni_mb_session *)op->sym->session->_private;
-	} else  {
+	else  {
 		void *_sess = NULL;
 
 		if (rte_mempool_get(qp->sess_mp, (void **)&_sess))

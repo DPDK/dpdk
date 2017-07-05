@@ -114,6 +114,7 @@ New Features
   been reorganized as follows:
 
   * ``dev_id`` field has been removed.
+  * ``driver_id`` field has been removed.
 
 * **Updated cryptodev library.**
 
