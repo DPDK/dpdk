@@ -43,6 +43,9 @@
 #include "cperf_test_latency.h"
 #include "cperf_test_verify.h"
 
+#define NUM_SESSIONS 2048
+#define SESS_MEMPOOL_CACHE_SIZE 64
+
 const char *cperf_test_type_strs[] = {
 	[CPERF_TEST_TYPE_THROUGHPUT] = "throughput",
 	[CPERF_TEST_TYPE_LATENCY] = "latency",
@@ -76,9 +79,11 @@ const struct cperf_test cperf_testmap[] = {
 };
 
 static int
-cperf_initialize_cryptodev(struct cperf_options *opts, uint8_t *enabled_cdevs)
+cperf_initialize_cryptodev(struct cperf_options *opts, uint8_t *enabled_cdevs,
+			struct rte_mempool *session_pool_socket[])
 {
-	uint8_t cdev_id, enabled_cdev_count = 0, nb_lcores;
+	uint8_t enabled_cdev_count = 0, nb_lcores, cdev_id;
+	unsigned int i;
 	int ret;
 
 	enabled_cdev_count = rte_cryptodev_devices_get(opts->device_type,
@@ -98,40 +103,76 @@ cperf_initialize_cryptodev(struct cperf_options *opts, uint8_t *enabled_cdevs)
 		return -EINVAL;
 	}
 
-	for (cdev_id = 0; cdev_id < enabled_cdev_count &&
-			cdev_id < RTE_CRYPTO_MAX_DEVS; cdev_id++) {
+	/* Create a mempool shared by all the devices */
+	uint32_t max_sess_size = 0, sess_size;
+
+	for (cdev_id = 0; cdev_id < rte_cryptodev_count(); cdev_id++) {
+		sess_size = sizeof(struct rte_cryptodev_sym_session) +
+			rte_cryptodev_get_private_session_size(cdev_id);
+		if (sess_size > max_sess_size)
+			max_sess_size = sess_size;
+	}
+
+
+	for (i = 0; i < enabled_cdev_count &&
+			i < RTE_CRYPTO_MAX_DEVS; i++) {
+		cdev_id = enabled_cdevs[i];
+		uint8_t socket_id = rte_cryptodev_socket_id(cdev_id);
 
 		struct rte_cryptodev_config conf = {
 				.nb_queue_pairs = 1,
-				.socket_id = SOCKET_ID_ANY,
-				.session_mp = {
-					.nb_objs = 2048,
-					.cache_size = 64
-				}
-			};
+				.socket_id = socket_id
+		};
+
 		struct rte_cryptodev_qp_conf qp_conf = {
 				.nb_descriptors = 2048
 		};
 
-		ret = rte_cryptodev_configure(enabled_cdevs[cdev_id], &conf);
+
+		if (session_pool_socket[socket_id] == NULL) {
+			char mp_name[RTE_MEMPOOL_NAMESIZE];
+			struct rte_mempool *sess_mp;
+
+			snprintf(mp_name, RTE_MEMPOOL_NAMESIZE,
+				"sess_mp_%u", socket_id);
+
+			sess_mp = rte_mempool_create(mp_name,
+						NUM_SESSIONS,
+						max_sess_size,
+						SESS_MEMPOOL_CACHE_SIZE,
+						0, NULL, NULL, NULL,
+						NULL, socket_id,
+						0);
+
+			if (sess_mp == NULL) {
+				printf("Cannot create session pool on socket %d\n",
+					socket_id);
+				return -ENOMEM;
+			}
+
+			printf("Allocated session pool on socket %d\n", socket_id);
+			session_pool_socket[socket_id] = sess_mp;
+		}
+
+		ret = rte_cryptodev_configure(cdev_id, &conf,
+				session_pool_socket[socket_id]);
 		if (ret < 0) {
-			printf("Failed to configure cryptodev %u",
-					enabled_cdevs[cdev_id]);
+			printf("Failed to configure cryptodev %u", cdev_id);
 			return -EINVAL;
 		}
 
-		ret = rte_cryptodev_queue_pair_setup(enabled_cdevs[cdev_id], 0,
-				&qp_conf, SOCKET_ID_ANY);
-			if (ret < 0) {
-				printf("Failed to setup queue pair %u on "
-					"cryptodev %u",	0, cdev_id);
-				return -EINVAL;
-			}
+		ret = rte_cryptodev_queue_pair_setup(cdev_id, 0, &qp_conf,
+				socket_id);
+		if (ret < 0) {
+			printf("Failed to setup queue pair %u on "
+				"cryptodev %u",	0, cdev_id);
+			return -EINVAL;
+		}
 
-		ret = rte_cryptodev_start(enabled_cdevs[cdev_id]);
+		ret = rte_cryptodev_start(cdev_id);
 		if (ret < 0) {
 			printf("Failed to start device %u: error %d\n",
-					enabled_cdevs[cdev_id], ret);
+					cdev_id, ret);
 			return -EPERM;
 		}
 	}
@@ -339,6 +380,7 @@ main(int argc, char **argv)
 	struct cperf_op_fns op_fns;
 
 	void *ctx[RTE_MAX_LCORE] = { };
+	struct rte_mempool *session_pool_socket[RTE_MAX_NUMA_NODES] = { 0 };
 
 	int nb_cryptodevs = 0;
 	uint8_t cdev_id, i;
@@ -374,7 +416,8 @@ main(int argc, char **argv)
 	if (!opts.silent)
 		cperf_options_dump(&opts);
 
-	nb_cryptodevs = cperf_initialize_cryptodev(&opts, enabled_cdevs);
+	nb_cryptodevs = cperf_initialize_cryptodev(&opts, enabled_cdevs,
+			session_pool_socket);
 	if (nb_cryptodevs < 1) {
 		RTE_LOG(ERR, USER1, "Failed to initialise requested crypto "
 				"device type\n");

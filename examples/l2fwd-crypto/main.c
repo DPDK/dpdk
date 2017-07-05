@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2015-2017 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2015-2016 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -88,6 +88,8 @@ enum cdev_type {
 #define MAX_KEY_SIZE 128
 #define MAX_PKT_BURST 32
 #define BURST_TX_DRAIN_US 100 /* TX drain every ~100us */
+#define MAX_SESSIONS 32
+#define SESSION_POOL_CACHE_SIZE 0
 
 #define MAXIMUM_IV_LENGTH	16
 #define IV_OFFSET		(sizeof(struct rte_crypto_op) + \
@@ -249,6 +251,7 @@ static const struct rte_eth_conf port_conf = {
 
 struct rte_mempool *l2fwd_pktmbuf_pool;
 struct rte_mempool *l2fwd_crypto_op_pool;
+struct rte_mempool *session_pool_socket[RTE_MAX_NUMA_NODES] = { 0 };
 
 /* Per-port statistics struct */
 struct l2fwd_port_statistics {
@@ -643,8 +646,7 @@ generate_random_key(uint8_t *key, unsigned length)
 }
 
 static struct rte_cryptodev_sym_session *
-initialize_crypto_session(struct l2fwd_crypto_options *options,
-		uint8_t cdev_id)
+initialize_crypto_session(struct l2fwd_crypto_options *options, uint8_t cdev_id)
 {
 	struct rte_crypto_sym_xform *first_xform;
 
@@ -662,7 +664,6 @@ initialize_crypto_session(struct l2fwd_crypto_options *options,
 		first_xform = &options->auth_xform;
 	}
 
-	/* Setup Cipher Parameters */
 	return rte_cryptodev_sym_session_create(cdev_id, first_xform);
 }
 
@@ -684,6 +685,7 @@ l2fwd_main_loop(struct l2fwd_crypto_options *options)
 			US_PER_S * BURST_TX_DRAIN_US;
 	struct l2fwd_crypto_params *cparams;
 	struct l2fwd_crypto_params port_cparams[qconf->nb_crypto_devs];
+	struct rte_cryptodev_sym_session *session;
 
 	if (qconf->nb_rx_ports == 0) {
 		RTE_LOG(INFO, L2FWD, "lcore %u has nothing to do\n", lcore_id);
@@ -786,11 +788,13 @@ l2fwd_main_loop(struct l2fwd_crypto_options *options)
 						options->cipher_iv.length;
 		}
 
-		port_cparams[i].session = initialize_crypto_session(options,
+		session = initialize_crypto_session(options,
 				port_cparams[i].dev_id);
+		if (session == NULL)
+			rte_exit(EXIT_FAILURE, "Failed to initialize crypto session\n");
 
-		if (port_cparams[i].session == NULL)
-			return;
+		port_cparams[i].session = session;
+
 		RTE_LOG(INFO, L2FWD, " -- lcoreid=%u cryptoid=%u\n", lcore_id,
 				port_cparams[i].dev_id);
 	}
@@ -1921,6 +1925,7 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 {
 	unsigned int cdev_id, cdev_count, enabled_cdev_count = 0;
 	const struct rte_cryptodev_capabilities *cap;
+	unsigned int sess_sz, max_sess_sz = 0;
 	int retval;
 
 	cdev_count = rte_cryptodev_count();
@@ -1929,24 +1934,57 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 		return -1;
 	}
 
+	for (cdev_id = 0; cdev_id < cdev_count; cdev_id++) {
+		sess_sz = sizeof(struct rte_cryptodev_sym_session) +
+			rte_cryptodev_get_private_session_size(cdev_id);
+		if (sess_sz > max_sess_sz)
+			max_sess_sz = sess_sz;
+	}
+
 	for (cdev_id = 0; cdev_id < cdev_count && enabled_cdev_count < nb_ports;
 			cdev_id++) {
 		struct rte_cryptodev_qp_conf qp_conf;
 		struct rte_cryptodev_info dev_info;
+		uint8_t socket_id = rte_cryptodev_socket_id(cdev_id);
 
 		struct rte_cryptodev_config conf = {
 			.nb_queue_pairs = 1,
-			.socket_id = SOCKET_ID_ANY,
-			.session_mp = {
-				.nb_objs = 2048,
-				.cache_size = 64
-			}
+			.socket_id = socket_id,
 		};
 
 		if (check_cryptodev_mask(options, (uint8_t)cdev_id))
 			continue;
 
 		rte_cryptodev_info_get(cdev_id, &dev_info);
+
+		if (session_pool_socket[socket_id] == NULL) {
+			char mp_name[RTE_MEMPOOL_NAMESIZE];
+			struct rte_mempool *sess_mp;
+
+			snprintf(mp_name, RTE_MEMPOOL_NAMESIZE,
+				"sess_mp_%u", socket_id);
+
+			/*
+			 * Create enough objects for session headers and
+			 * device private data
+			 */
+			sess_mp = rte_mempool_create(mp_name,
+						MAX_SESSIONS * 2,
+						max_sess_sz,
+						SESSION_POOL_CACHE_SIZE,
+						0, NULL, NULL, NULL,
+						NULL, socket_id,
+						0);
+
+			if (sess_mp == NULL) {
+				printf("Cannot create session pool on socket %d\n",
+					socket_id);
+				return -ENOMEM;
+			}
+
+			printf("Allocated session pool on socket %d\n", socket_id);
+			session_pool_socket[socket_id] = sess_mp;
+		}
 
 		/* Set AEAD parameters */
 		if (options->xform_chain == L2FWD_CRYPTO_AEAD) {
@@ -2183,7 +2221,8 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 						cap->sym.auth.digest_size.min;
 		}
 
-		retval = rte_cryptodev_configure(cdev_id, &conf);
+		retval = rte_cryptodev_configure(cdev_id, &conf,
+				session_pool_socket[socket_id]);
 		if (retval < 0) {
 			printf("Failed to configure cryptodev %u", cdev_id);
 			return -1;
@@ -2192,7 +2231,7 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 		qp_conf.nb_descriptors = 2048;
 
 		retval = rte_cryptodev_queue_pair_setup(cdev_id, 0, &qp_conf,
-				SOCKET_ID_ANY);
+				socket_id);
 		if (retval < 0) {
 			printf("Failed to setup queue pair %u on cryptodev %u",
 					0, cdev_id);

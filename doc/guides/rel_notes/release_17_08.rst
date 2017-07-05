@@ -217,6 +217,8 @@ API Changes
     by the new function ``rte_crypto_count_by_driver()``.
   * Moved crypto device driver names definitions to the particular PMDs.
     These names are not public anymore.
+  * ``rte_cryptodev_configure()`` does not create the session mempool
+    for the device anymore.
 
 
 ABI Changes
@@ -251,6 +253,8 @@ ABI Changes
 * Replaced ``dev_type`` enumeration with uint8_t ``driver_id`` in
   ``rte_cryptodev_info``, ``rte_cryptodev`` and ``rte_cryptodev_sym_session``
   structures.
+
+* Removed ``session_mp`` from ``rte_cryptodev_config``.
 
 
 Shared Library Versions

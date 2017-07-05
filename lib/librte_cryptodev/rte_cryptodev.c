@@ -744,12 +744,9 @@ rte_cryptodev_queue_pair_stop(uint8_t dev_id, uint16_t queue_pair_id)
 
 }
 
-static int
-rte_cryptodev_sym_session_pool_create(struct rte_cryptodev *dev,
-		unsigned nb_objs, unsigned obj_cache_size, int socket_id);
-
 int
-rte_cryptodev_configure(uint8_t dev_id, struct rte_cryptodev_config *config)
+rte_cryptodev_configure(uint8_t dev_id, struct rte_cryptodev_config *config,
+		struct rte_mempool *session_pool)
 {
 	struct rte_cryptodev *dev;
 	int diag;
@@ -769,6 +766,8 @@ rte_cryptodev_configure(uint8_t dev_id, struct rte_cryptodev_config *config)
 
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_configure, -ENOTSUP);
 
+	dev->data->session_pool = session_pool;
+
 	/* Setup new number of queue pairs and reconfigure device. */
 	diag = rte_cryptodev_queue_pairs_config(dev, config->nb_queue_pairs,
 			config->socket_id);
@@ -777,14 +776,6 @@ rte_cryptodev_configure(uint8_t dev_id, struct rte_cryptodev_config *config)
 				dev_id, diag);
 		return diag;
 	}
-
-	/* Setup Session mempool for device */
-	diag = rte_cryptodev_sym_session_pool_create(dev,
-			config->session_mp.nb_objs,
-			config->session_mp.cache_size,
-			config->socket_id);
-	if (diag != 0)
-		return diag;
 
 	return (*dev->dev_ops->dev_configure)(dev, config);
 }
@@ -1104,66 +1095,6 @@ rte_cryptodev_sym_session_init(struct rte_mempool *mp,
 		(*dev->dev_ops->session_initialize)(mp, sess);
 }
 
-static int
-rte_cryptodev_sym_session_pool_create(struct rte_cryptodev *dev,
-		unsigned nb_objs, unsigned obj_cache_size, int socket_id)
-{
-	char mp_name[RTE_CRYPTODEV_NAME_MAX_LEN];
-	unsigned priv_sess_size;
-
-	unsigned n = snprintf(mp_name, sizeof(mp_name), "cdev_%d_sess_mp",
-			dev->data->dev_id);
-	if (n > sizeof(mp_name)) {
-		CDEV_LOG_ERR("Unable to create unique name for session mempool");
-		return -ENOMEM;
-	}
-
-	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->session_get_size, -ENOTSUP);
-	priv_sess_size = (*dev->dev_ops->session_get_size)(dev);
-	if (priv_sess_size == 0) {
-		CDEV_LOG_ERR("%s returned and invalid private session size ",
-						dev->data->name);
-		return -ENOMEM;
-	}
-
-	unsigned elt_size = sizeof(struct rte_cryptodev_sym_session) +
-			priv_sess_size;
-
-	dev->data->session_pool = rte_mempool_lookup(mp_name);
-	if (dev->data->session_pool != NULL) {
-		if ((dev->data->session_pool->elt_size != elt_size) ||
-				(dev->data->session_pool->cache_size <
-				obj_cache_size) ||
-				(dev->data->session_pool->size < nb_objs)) {
-
-			CDEV_LOG_ERR("%s mempool already exists with different"
-					" initialization parameters", mp_name);
-			dev->data->session_pool = NULL;
-			return -ENOMEM;
-		}
-	} else {
-		dev->data->session_pool = rte_mempool_create(
-				mp_name, /* mempool name */
-				nb_objs, /* number of elements*/
-				elt_size, /* element size*/
-				obj_cache_size, /* Cache size*/
-				0, /* private data size */
-				NULL, /* obj initialization constructor */
-				NULL, /* obj initialization constructor arg */
-				NULL, /**< obj constructor*/
-				dev, /* obj constructor arg */
-				socket_id, /* socket id */
-				0); /* flags */
-
-		if (dev->data->session_pool == NULL) {
-			CDEV_LOG_ERR("%s mempool allocation failed", mp_name);
-			return -ENOMEM;
-		}
-	}
-
-	CDEV_LOG_DEBUG("%s mempool created!", mp_name);
-	return 0;
-}
 
 struct rte_cryptodev_sym_session *
 rte_cryptodev_sym_session_create(uint8_t dev_id,

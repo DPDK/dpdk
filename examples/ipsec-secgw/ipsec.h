@@ -143,6 +143,7 @@ struct ipsec_ctx {
 	uint16_t nb_qps;
 	uint16_t last_qp;
 	struct cdev_qp tbl[MAX_QP_PER_LCORE];
+	struct rte_mempool *session_pool;
 };
 
 struct cdev_key {
@@ -161,6 +162,7 @@ struct socket_ctx {
 	struct rt_ctx *rt_ip4;
 	struct rt_ctx *rt_ip6;
 	struct rte_mempool *mbuf_pool;
+	struct rte_mempool *session_pool;
 };
 
 struct cnt_blk {

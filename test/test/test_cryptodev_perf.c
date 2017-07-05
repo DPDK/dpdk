@@ -53,6 +53,7 @@
 struct crypto_testsuite_params {
 	struct rte_mempool *mbuf_mp;
 	struct rte_mempool *op_mpool;
+	struct rte_mempool *sess_mp;
 
 	uint16_t nb_queue_pairs;
 
@@ -404,10 +405,23 @@ testsuite_setup(void)
 
 	ts_params->conf.nb_queue_pairs = info.max_nb_queue_pairs;
 	ts_params->conf.socket_id = SOCKET_ID_ANY;
-	ts_params->conf.session_mp.nb_objs = info.sym.max_nb_sessions;
+
+	unsigned int session_size = sizeof(struct rte_cryptodev_sym_session) +
+		rte_cryptodev_get_private_session_size(ts_params->dev_id);
+
+	ts_params->sess_mp = rte_mempool_create(
+				"test_sess_mp_perf",
+				info.sym.max_nb_sessions,
+				session_size,
+				0, 0, NULL, NULL, NULL,
+				NULL, SOCKET_ID_ANY,
+				0);
+
+	TEST_ASSERT_NOT_NULL(ts_params->sess_mp,
+			"session mempool allocation failed");
 
 	TEST_ASSERT_SUCCESS(rte_cryptodev_configure(ts_params->dev_id,
-			&ts_params->conf),
+			&ts_params->conf, ts_params->sess_mp),
 			"Failed to configure cryptodev %u",
 			ts_params->dev_id);
 
@@ -436,6 +450,12 @@ testsuite_teardown(void)
 	if (ts_params->op_mpool != NULL)
 		RTE_LOG(DEBUG, USER1, "CRYPTO_PERF_OP POOL count %u\n",
 		rte_mempool_avail_count(ts_params->op_mpool));
+	/* Free session mempool */
+	if (ts_params->sess_mp != NULL) {
+		rte_mempool_free(ts_params->sess_mp);
+		ts_params->sess_mp = NULL;
+	}
+
 }
 
 static int

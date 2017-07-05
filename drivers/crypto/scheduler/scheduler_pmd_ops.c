@@ -85,10 +85,8 @@ scheduler_attach_init_slave(struct rte_cryptodev *dev)
 /** Configure device */
 static int
 scheduler_pmd_config(struct rte_cryptodev *dev,
-		struct rte_cryptodev_config *config)
+		struct rte_cryptodev_config *config __rte_unused)
 {
-	struct scheduler_ctx *sched_ctx = dev->data->dev_private;
-	uint32_t i;
 	int ret;
 
 	/* although scheduler_attach_init_slave presents multiple times,
@@ -97,14 +95,6 @@ scheduler_pmd_config(struct rte_cryptodev *dev,
 	ret = scheduler_attach_init_slave(dev);
 	if (ret < 0)
 		return ret;
-
-	for (i = 0; i < sched_ctx->nb_slaves; i++) {
-		uint8_t slave_dev_id = sched_ctx->slaves[i].dev_id;
-
-		ret = rte_cryptodev_configure(slave_dev_id, config);
-		if (ret < 0)
-			break;
-	}
 
 	return ret;
 }

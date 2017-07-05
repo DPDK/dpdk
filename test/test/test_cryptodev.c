@@ -67,6 +67,8 @@ struct crypto_testsuite_params {
 	struct rte_mempool *mbuf_pool;
 	struct rte_mempool *large_mbuf_pool;
 	struct rte_mempool *op_mpool;
+	struct rte_mempool *session_mpool;
+	struct rte_mempool *slave_session_mpool;
 	struct rte_cryptodev_config conf;
 	struct rte_cryptodev_qp_conf qp_conf;
 
@@ -384,10 +386,23 @@ testsuite_setup(void)
 
 	ts_params->conf.nb_queue_pairs = info.max_nb_queue_pairs;
 	ts_params->conf.socket_id = SOCKET_ID_ANY;
-	ts_params->conf.session_mp.nb_objs = info.sym.max_nb_sessions;
+
+	unsigned int session_size = sizeof(struct rte_cryptodev_sym_session) +
+		rte_cryptodev_get_private_session_size(dev_id);
+
+	ts_params->session_mpool = rte_mempool_create(
+				"test_sess_mp",
+				info.sym.max_nb_sessions,
+				session_size,
+				0, 0, NULL, NULL, NULL,
+				NULL, SOCKET_ID_ANY,
+				0);
+
+	TEST_ASSERT_NOT_NULL(ts_params->session_mpool,
+			"session mempool allocation failed");
 
 	TEST_ASSERT_SUCCESS(rte_cryptodev_configure(dev_id,
-			&ts_params->conf),
+			&ts_params->conf, ts_params->session_mpool),
 			"Failed to configure cryptodev %u with %u qps",
 			dev_id, ts_params->conf.nb_queue_pairs);
 
@@ -419,6 +434,16 @@ testsuite_teardown(void)
 		rte_mempool_avail_count(ts_params->op_mpool));
 	}
 
+	/* Free session mempools */
+	if (ts_params->session_mpool != NULL) {
+		rte_mempool_free(ts_params->session_mpool);
+		ts_params->session_mpool = NULL;
+	}
+
+	if (ts_params->slave_session_mpool != NULL) {
+		rte_mempool_free(ts_params->slave_session_mpool);
+		ts_params->slave_session_mpool = NULL;
+	}
 }
 
 static int
@@ -434,10 +459,9 @@ ut_setup(void)
 
 	/* Reconfigure device to default parameters */
 	ts_params->conf.socket_id = SOCKET_ID_ANY;
-	ts_params->conf.session_mp.nb_objs = DEFAULT_NUM_OPS_INFLIGHT;
 
 	TEST_ASSERT_SUCCESS(rte_cryptodev_configure(ts_params->valid_devs[0],
-			&ts_params->conf),
+			&ts_params->conf, ts_params->session_mpool),
 			"Failed to configure cryptodev %u",
 			ts_params->valid_devs[0]);
 
@@ -520,20 +544,23 @@ test_device_configure_invalid_dev_id(void)
 	/* Stop the device in case it's started so it can be configured */
 	rte_cryptodev_stop(ts_params->valid_devs[dev_id]);
 
-	TEST_ASSERT_SUCCESS(rte_cryptodev_configure(dev_id, &ts_params->conf),
+	TEST_ASSERT_SUCCESS(rte_cryptodev_configure(dev_id, &ts_params->conf,
+				ts_params->session_mpool),
 			"Failed test for rte_cryptodev_configure: "
 			"invalid dev_num %u", dev_id);
 
 	/* invalid dev_id values */
 	dev_id = num_devs;
 
-	TEST_ASSERT_FAIL(rte_cryptodev_configure(dev_id, &ts_params->conf),
+	TEST_ASSERT_FAIL(rte_cryptodev_configure(dev_id, &ts_params->conf,
+				ts_params->session_mpool),
 			"Failed test for rte_cryptodev_configure: "
 			"invalid dev_num %u", dev_id);
 
 	dev_id = 0xff;
 
-	TEST_ASSERT_FAIL(rte_cryptodev_configure(dev_id, &ts_params->conf),
+	TEST_ASSERT_FAIL(rte_cryptodev_configure(dev_id, &ts_params->conf,
+				ts_params->session_mpool),
 			"Failed test for rte_cryptodev_configure:"
 			"invalid dev_num %u", dev_id);
 
@@ -553,7 +580,7 @@ test_device_configure_invalid_queue_pair_ids(void)
 	ts_params->conf.nb_queue_pairs = 1;
 
 	TEST_ASSERT_SUCCESS(rte_cryptodev_configure(ts_params->valid_devs[0],
-			&ts_params->conf),
+			&ts_params->conf, ts_params->session_mpool),
 			"Failed to configure cryptodev: dev_id %u, qp_id %u",
 			ts_params->valid_devs[0], ts_params->conf.nb_queue_pairs);
 
@@ -562,16 +589,17 @@ test_device_configure_invalid_queue_pair_ids(void)
 	ts_params->conf.nb_queue_pairs = MAX_NUM_QPS_PER_QAT_DEVICE;
 
 	TEST_ASSERT_SUCCESS(rte_cryptodev_configure(ts_params->valid_devs[0],
-			&ts_params->conf),
+			&ts_params->conf, ts_params->session_mpool),
 			"Failed to configure cryptodev: dev_id %u, qp_id %u",
-			ts_params->valid_devs[0], ts_params->conf.nb_queue_pairs);
+			ts_params->valid_devs[0],
+			ts_params->conf.nb_queue_pairs);
 
 
 	/* invalid - zero queue pairs */
 	ts_params->conf.nb_queue_pairs = 0;
 
 	TEST_ASSERT_FAIL(rte_cryptodev_configure(ts_params->valid_devs[0],
-			&ts_params->conf),
+			&ts_params->conf, ts_params->session_mpool),
 			"Failed test for rte_cryptodev_configure, dev_id %u,"
 			" invalid qps: %u",
 			ts_params->valid_devs[0],
@@ -582,7 +610,7 @@ test_device_configure_invalid_queue_pair_ids(void)
 	ts_params->conf.nb_queue_pairs = UINT16_MAX;
 
 	TEST_ASSERT_FAIL(rte_cryptodev_configure(ts_params->valid_devs[0],
-			&ts_params->conf),
+			&ts_params->conf, ts_params->session_mpool),
 			"Failed test for rte_cryptodev_configure, dev_id %u,"
 			" invalid qps: %u",
 			ts_params->valid_devs[0],
@@ -593,7 +621,7 @@ test_device_configure_invalid_queue_pair_ids(void)
 	ts_params->conf.nb_queue_pairs = MAX_NUM_QPS_PER_QAT_DEVICE + 1;
 
 	TEST_ASSERT_FAIL(rte_cryptodev_configure(ts_params->valid_devs[0],
-			&ts_params->conf),
+			&ts_params->conf, ts_params->session_mpool),
 			"Failed test for rte_cryptodev_configure, dev_id %u,"
 			" invalid qps: %u",
 			ts_params->valid_devs[0],
@@ -622,12 +650,10 @@ test_queue_pair_descriptor_setup(void)
 
 	rte_cryptodev_info_get(ts_params->valid_devs[0], &dev_info);
 
-	ts_params->conf.session_mp.nb_objs = dev_info.sym.max_nb_sessions;
-
 	TEST_ASSERT_SUCCESS(rte_cryptodev_configure(ts_params->valid_devs[0],
-			&ts_params->conf), "Failed to configure cryptodev %u",
+			&ts_params->conf, ts_params->session_mpool),
+			"Failed to configure cryptodev %u",
 			ts_params->valid_devs[0]);
-
 
 	/*
 	 * Test various ring sizes on this device. memzones can't be
@@ -7682,6 +7708,31 @@ test_scheduler_attach_slave_op(void)
 		if (info.driver_id != rte_cryptodev_driver_id_get(
 				RTE_STR(CRYPTODEV_NAME_AESNI_MB_PMD)))
 			continue;
+
+		/*
+		 * Create a separate mempool for the slaves, as they need different
+		 * session size and then configure them to store the pointer
+		 * to this mempool
+		 */
+		unsigned int session_size = sizeof(struct rte_cryptodev_sym_session) +
+			rte_cryptodev_get_private_session_size(i);
+
+		if (ts_params->slave_session_mpool == NULL) {
+			ts_params->slave_session_mpool = rte_mempool_create(
+				"test_slave_sess_mp",
+				info.sym.max_nb_sessions,
+				session_size,
+				0, 0, NULL, NULL, NULL, NULL,
+				SOCKET_ID_ANY, 0);
+
+			TEST_ASSERT_NOT_NULL(ts_params->slave_session_mpool,
+					"session mempool allocation failed");
+		}
+
+		TEST_ASSERT_SUCCESS(rte_cryptodev_configure(i,
+				&ts_params->conf, ts_params->slave_session_mpool),
+				"Failed to configure cryptodev %u with %u qps",
+				i, ts_params->conf.nb_queue_pairs);
 
 		ret = rte_cryptodev_scheduler_slave_attach(sched_id,
 				(uint8_t)i);

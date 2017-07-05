@@ -514,11 +514,6 @@ struct rte_cryptodev_config {
 	int socket_id;			/**< Socket to allocate resources on */
 	uint16_t nb_queue_pairs;
 	/**< Number of queue pairs to configure on device */
-
-	struct {
-		uint32_t nb_objs;	/**< Number of objects in mempool */
-		uint32_t cache_size;	/**< l-core object cache size */
-	} session_mp;		/**< Session mempool configuration */
 };
 
 /**
@@ -530,13 +525,15 @@ struct rte_cryptodev_config {
  *
  * @param	dev_id		The identifier of the device to configure.
  * @param	config		The crypto device configuration structure.
+ * @param	session_pool	Pointer to device session mempool
  *
  * @return
  *   - 0: Success, device configured.
  *   - <0: Error code returned by the driver configuration function.
  */
 extern int
-rte_cryptodev_configure(uint8_t dev_id, struct rte_cryptodev_config *config);
+rte_cryptodev_configure(uint8_t dev_id, struct rte_cryptodev_config *config,
+		struct rte_mempool *session_pool);
 
 /**
  * Start an device.
