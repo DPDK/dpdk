@@ -65,12 +65,6 @@ Deprecation Notices
   - ``rte_cryptodev_sym_session_free``
   - ``rte_cryptodev_sym_session_pool_create``
 
-  While dev_id will not be stored in the ``struct rte_cryptodev_sym_session``,
-  directly, the change of followed API is required:
-
-  - ``rte_cryptodev_queue_pair_attach_sym_session``
-  - ``rte_cryptodev_queue_pair_detach_sym_session``
-
 * librte_table: The ``key_mask`` parameter will be added to all the hash tables
   that currently do not have it, as well as to the hash compute function prototype.
   The non-"do-sig" versions of the hash tables will be removed

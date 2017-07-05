@@ -953,7 +953,8 @@ rte_cryptodev_get_private_session_size(uint8_t dev_id);
 /**
  * Attach queue pair with sym session.
  *
- * @param	qp_id		Queue pair to which session will be attached.
+ * @param	dev_id		Device to which the session will be attached.
+ * @param	qp_id		Queue pair to which the session will be attached.
  * @param	session		Session pointer previously allocated by
  *				*rte_cryptodev_sym_session_create*.
  *
@@ -962,13 +963,14 @@ rte_cryptodev_get_private_session_size(uint8_t dev_id);
  *  - On failure, a negative value.
  */
 int
-rte_cryptodev_queue_pair_attach_sym_session(uint16_t qp_id,
+rte_cryptodev_queue_pair_attach_sym_session(uint8_t dev_id, uint16_t qp_id,
 		struct rte_cryptodev_sym_session *session);
 
 /**
  * Detach queue pair with sym session.
  *
- * @param	qp_id		Queue pair to which session is attached.
+ * @param	dev_id		Device to which the session is attached.
+ * @param	qp_id		Queue pair to which the session is attached.
  * @param	session		Session pointer previously allocated by
  *				*rte_cryptodev_sym_session_create*.
  *
@@ -977,7 +979,7 @@ rte_cryptodev_queue_pair_attach_sym_session(uint16_t qp_id,
  *  - On failure, a negative value.
  */
 int
-rte_cryptodev_queue_pair_detach_sym_session(uint16_t qp_id,
+rte_cryptodev_queue_pair_detach_sym_session(uint8_t dev_id, uint16_t qp_id,
 		struct rte_cryptodev_sym_session *session);
 
 /**

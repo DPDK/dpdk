@@ -77,6 +77,7 @@ create_session(struct ipsec_ctx *ipsec_ctx __rte_unused, struct ipsec_sa *sa)
 	rte_cryptodev_info_get(ipsec_ctx->tbl[cdev_id_qp].id, &cdev_info);
 	if (cdev_info.sym.max_nb_sessions_per_qp > 0) {
 		ret = rte_cryptodev_queue_pair_attach_sym_session(
+				ipsec_ctx->tbl[cdev_id_qp].id,
 				ipsec_ctx->tbl[cdev_id_qp].qp,
 				sa->crypto_session);
 		if (ret < 0) {

@@ -219,6 +219,9 @@ API Changes
     These names are not public anymore.
   * ``rte_cryptodev_configure()`` does not create the session mempool
     for the device anymore.
+  * ``rte_cryptodev_queue_pair_attach_sym_session()`` and
+    ``rte_cryptodev_queue_pair_dettach_sym_session()`` functions require
+    the new parameter ``device id``.
 
 
 ABI Changes
