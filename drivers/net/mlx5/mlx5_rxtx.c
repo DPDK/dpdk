@@ -264,6 +264,9 @@ txq_complete(struct txq *txq)
 	uint16_t cq_ci = txq->cq_ci;
 	volatile struct mlx5_cqe *cqe = NULL;
 	volatile struct mlx5_wqe_ctrl *ctrl;
+	struct rte_mbuf *m, *free[elts_n];
+	struct rte_mempool *pool = NULL;
+	unsigned int blk_n = 0;
 
 	do {
 		volatile struct mlx5_cqe *tmp;
@@ -296,21 +299,33 @@ txq_complete(struct txq *txq)
 	assert((elts_tail & elts_m) < (1 << txq->wqe_n));
 	/* Free buffers. */
 	while (elts_free != elts_tail) {
-		struct rte_mbuf *elt = (*txq->elts)[elts_free & elts_m];
-		struct rte_mbuf *elt_next =
-			(*txq->elts)[(elts_free + 1) & elts_m];
-
+		m = rte_pktmbuf_prefree_seg((*txq->elts)[elts_free++ & elts_m]);
+		if (likely(m != NULL)) {
+			if (likely(m->pool == pool)) {
+				free[blk_n++] = m;
+			} else {
+				if (likely(pool != NULL))
+					rte_mempool_put_bulk(pool,
+							     (void *)free,
+							     blk_n);
+				free[0] = m;
+				pool = m->pool;
+				blk_n = 1;
+			}
+		}
+	}
+	if (blk_n)
+		rte_mempool_put_bulk(pool, (void *)free, blk_n);
 #ifndef NDEBUG
-		/* Poisoning. */
+	elts_free = txq->elts_tail;
+	/* Poisoning. */
+	while (elts_free != elts_tail) {
 		memset(&(*txq->elts)[elts_free & elts_m],
 		       0x66,
 		       sizeof((*txq->elts)[elts_free & elts_m]));
-#endif
-		RTE_MBUF_PREFETCH_TO_FREE(elt_next);
-		/* Only one segment needs to be freed. */
-		rte_pktmbuf_free_seg(elt);
 		++elts_free;
 	}
+#endif
 	txq->cq_ci = cq_ci;
 	txq->elts_tail = elts_tail;
 	/* Update the consumer index. */
