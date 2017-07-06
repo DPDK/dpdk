@@ -77,7 +77,7 @@ static __rte_always_inline void
 txq_complete(struct txq *txq);
 
 static __rte_always_inline uint32_t
-txq_mp2mr(struct txq *txq, struct rte_mempool *mp);
+txq_mb2mr(struct txq *txq, struct rte_mbuf *mb);
 
 static __rte_always_inline void
 mlx5_tx_dbrec(struct txq *txq, volatile struct mlx5_wqe *wqe);
@@ -352,7 +352,7 @@ txq_mb2mp(struct rte_mbuf *buf)
 }
 
 /**
- * Get Memory Region (MR) <-> Memory Pool (MP) association from txq->mp2mr[].
+ * Get Memory Region (MR) <-> rte_mbuf association from txq->mp2mr[].
  * Add MP to txq->mp2mr[] if it's not registered yet. If mp2mr[] is full,
  * remove an entry first.
  *
@@ -365,27 +365,30 @@ txq_mb2mp(struct rte_mbuf *buf)
  *   mr->lkey on success, (uint32_t)-1 on failure.
  */
 static inline uint32_t
-txq_mp2mr(struct txq *txq, struct rte_mempool *mp)
+txq_mb2mr(struct txq *txq, struct rte_mbuf *mb)
 {
-	unsigned int i;
-	uint32_t lkey = (uint32_t)-1;
+	uint16_t i = txq->mr_cache_idx;
+	uintptr_t addr = rte_pktmbuf_mtod(mb, uintptr_t);
 
+	assert(i < RTE_DIM(txq->mp2mr));
+	if (likely(txq->mp2mr[i].start <= addr && txq->mp2mr[i].end >= addr))
+		return txq->mp2mr[i].lkey;
 	for (i = 0; (i != RTE_DIM(txq->mp2mr)); ++i) {
-		if (unlikely(txq->mp2mr[i].mp == NULL)) {
+		if (unlikely(txq->mp2mr[i].mr == NULL)) {
 			/* Unknown MP, add a new MR for it. */
 			break;
 		}
-		if (txq->mp2mr[i].mp == mp) {
+		if (txq->mp2mr[i].start <= addr &&
+		    txq->mp2mr[i].end >= addr) {
 			assert(txq->mp2mr[i].lkey != (uint32_t)-1);
 			assert(htonl(txq->mp2mr[i].mr->lkey) ==
 			       txq->mp2mr[i].lkey);
-			lkey = txq->mp2mr[i].lkey;
-			break;
+			txq->mr_cache_idx = i;
+			return txq->mp2mr[i].lkey;
 		}
 	}
-	if (unlikely(lkey == (uint32_t)-1))
-		lkey = txq_mp2mr_reg(txq, mp, i);
-	return lkey;
+	txq->mr_cache_idx = 0;
+	return txq_mp2mr_reg(txq, txq_mb2mp(mb), i);
 }
 
 /**
@@ -770,7 +773,7 @@ use_dseg:
 			naddr = htonll(addr);
 			*dseg = (rte_v128u32_t){
 				htonl(length),
-				txq_mp2mr(txq, txq_mb2mp(buf)),
+				txq_mb2mr(txq, buf),
 				naddr,
 				naddr >> 32,
 			};
@@ -809,7 +812,7 @@ next_seg:
 		naddr = htonll(rte_pktmbuf_mtod(buf, uintptr_t));
 		*dseg = (rte_v128u32_t){
 			htonl(length),
-			txq_mp2mr(txq, txq_mb2mp(buf)),
+			txq_mb2mr(txq, buf),
 			naddr,
 			naddr >> 32,
 		};
@@ -1051,7 +1054,7 @@ mlx5_tx_burst_mpw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			addr = rte_pktmbuf_mtod(buf, uintptr_t);
 			*dseg = (struct mlx5_wqe_data_seg){
 				.byte_count = htonl(DATA_LEN(buf)),
-				.lkey = txq_mp2mr(txq, txq_mb2mp(buf)),
+				.lkey = txq_mb2mr(txq, buf),
 				.addr = htonll(addr),
 			};
 #if defined(MLX5_PMD_SOFT_COUNTERS) || !defined(NDEBUG)
@@ -1297,7 +1300,7 @@ mlx5_tx_burst_mpw_inline(void *dpdk_txq, struct rte_mbuf **pkts,
 				addr = rte_pktmbuf_mtod(buf, uintptr_t);
 				*dseg = (struct mlx5_wqe_data_seg){
 					.byte_count = htonl(DATA_LEN(buf)),
-					.lkey = txq_mp2mr(txq, txq_mb2mp(buf)),
+					.lkey = txq_mb2mr(txq, buf),
 					.addr = htonll(addr),
 				};
 #if defined(MLX5_PMD_SOFT_COUNTERS) || !defined(NDEBUG)
@@ -1604,7 +1607,7 @@ mlx5_tx_burst_empw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				addr = rte_pktmbuf_mtod(buf, uintptr_t);
 				*dseg = (struct mlx5_wqe_data_seg){
 					.byte_count = htonl(DATA_LEN(buf)),
-					.lkey = txq_mp2mr(txq, txq_mb2mp(buf)),
+					.lkey = txq_mb2mr(txq, buf),
 					.addr = htonll(addr),
 				};
 #if defined(MLX5_PMD_SOFT_COUNTERS) || !defined(NDEBUG)
@@ -1687,7 +1690,7 @@ mlx5_tx_burst_empw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			naddr = htonll(addr);
 			*dseg = (rte_v128u32_t) {
 				htonl(length),
-				txq_mp2mr(txq, txq_mb2mp(buf)),
+				txq_mb2mr(txq, buf),
 				naddr,
 				naddr >> 32,
 			};

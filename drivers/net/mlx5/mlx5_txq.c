@@ -149,9 +149,8 @@ txq_cleanup(struct txq_ctrl *txq_ctrl)
 	if (txq_ctrl->cq != NULL)
 		claim_zero(ibv_destroy_cq(txq_ctrl->cq));
 	for (i = 0; (i != RTE_DIM(txq_ctrl->txq.mp2mr)); ++i) {
-		if (txq_ctrl->txq.mp2mr[i].mp == NULL)
+		if (txq_ctrl->txq.mp2mr[i].mr == NULL)
 			break;
-		assert(txq_ctrl->txq.mp2mr[i].mr != NULL);
 		claim_zero(ibv_dereg_mr(txq_ctrl->txq.mp2mr[i].mr));
 	}
 	memset(txq_ctrl, 0, sizeof(*txq_ctrl));

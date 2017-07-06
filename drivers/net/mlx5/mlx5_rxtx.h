@@ -267,10 +267,12 @@ struct txq {
 	volatile uint32_t *cq_db; /* Completion queue doorbell. */
 	volatile void *bf_reg; /* Blueflame register. */
 	struct {
-		const struct rte_mempool *mp; /* Cached Memory Pool. */
+		uintptr_t start; /* Start address of MR */
+		uintptr_t end; /* End address of MR */
 		struct ibv_mr *mr; /* Memory Region (for mp). */
 		uint32_t lkey; /* htonl(mr->lkey) */
 	} mp2mr[MLX5_PMD_TX_MP_CACHE]; /* MP to MR translation table. */
+	uint16_t mr_cache_idx; /* Index of last hit entry. */
 	struct rte_mbuf *(*elts)[]; /* TX elements. */
 	struct mlx5_txq_stats stats; /* TX queue counters. */
 } __rte_cache_aligned;

@@ -207,7 +207,8 @@ txq_mp2mr_reg(struct txq *txq, struct rte_mempool *mp, unsigned int idx)
 			 sizeof(txq_ctrl->txq.mp2mr[0])));
 	}
 	/* Store the new entry. */
-	txq_ctrl->txq.mp2mr[idx].mp = mp;
+	txq_ctrl->txq.mp2mr[idx].start = (uintptr_t)mr->addr;
+	txq_ctrl->txq.mp2mr[idx].end = (uintptr_t)mr->addr + mr->length;
 	txq_ctrl->txq.mp2mr[idx].mr = mr;
 	txq_ctrl->txq.mp2mr[idx].lkey = htonl(mr->lkey);
 	DEBUG("%p: new MR lkey for MP \"%s\" (%p): 0x%08" PRIu32,
@@ -265,18 +266,28 @@ txq_mp2mr_iter(struct rte_mempool *mp, void *arg)
 	struct txq_mp2mr_mbuf_check_data data = {
 		.ret = 0,
 	};
+	uintptr_t start;
+	uintptr_t end;
 	unsigned int i;
 
 	/* Register mempool only if the first element looks like a mbuf. */
 	if (rte_mempool_obj_iter(mp, txq_mp2mr_mbuf_check, &data) == 0 ||
 			data.ret == -1)
 		return;
+	if (mlx5_check_mempool(mp, &start, &end) != 0) {
+		ERROR("mempool %p: not virtually contiguous",
+		      (void *)mp);
+		return;
+	}
 	for (i = 0; (i != RTE_DIM(txq_ctrl->txq.mp2mr)); ++i) {
-		if (unlikely(txq_ctrl->txq.mp2mr[i].mp == NULL)) {
+		struct ibv_mr *mr = txq_ctrl->txq.mp2mr[i].mr;
+
+		if (unlikely(mr == NULL)) {
 			/* Unknown MP, add a new MR for it. */
 			break;
 		}
-		if (txq_ctrl->txq.mp2mr[i].mp == mp)
+		if (start >= (uintptr_t)mr->addr &&
+		    end <= (uintptr_t)mr->addr + mr->length)
 			return;
 	}
 	txq_mp2mr_reg(&txq_ctrl->txq, mp, i);
