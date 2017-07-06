@@ -82,6 +82,10 @@ Deprecation Notices
   changed from 8 bits to 16 bits in order to support more than 256 ports in
   DPDK. All APIs which have port_id parameter will be changed at the same time.
 
+* ethdev: An ABI change is planned for 17.11 for the structure rte_eth_dev_data.
+  The size of the unique name will increase RTE_ETH_NAME_MAX_LEN from 32 to
+  64 characters to allow using a globally unique identifier (GUID) in this field.
+
 * librte_table: The ``key_mask`` parameter will be added to all the hash tables
   that currently do not have it, as well as to the hash compute function prototype.
   The non-"do-sig" versions of the hash tables will be removed
