@@ -2374,6 +2374,7 @@ get_mac_addr_index(uint8_t port_id, const struct ether_addr *addr)
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
 	unsigned i;
 
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	rte_eth_dev_info_get(port_id, &dev_info);
 
 	for (i = 0; i < dev_info.max_mac_addrs; i++)
