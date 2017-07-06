@@ -723,7 +723,8 @@ mlx5_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 
 	};
 
-	if (dev->rx_pkt_burst == mlx5_rx_burst)
+	if (dev->rx_pkt_burst == mlx5_rx_burst ||
+	    dev->rx_pkt_burst == mlx5_rx_burst_vec)
 		return ptypes;
 	return NULL;
 }
@@ -1585,9 +1586,16 @@ priv_select_tx_function(struct priv *priv)
 	priv->dev->tx_pkt_burst = mlx5_tx_burst;
 	/* Select appropriate TX function. */
 	if (priv->mps == MLX5_MPW_ENHANCED) {
-		priv->dev->tx_pkt_burst =
-			mlx5_tx_burst_empw;
-		DEBUG("selected Enhanced MPW TX function");
+		if (priv_check_vec_tx_support(priv) > 0) {
+			if (priv_check_raw_vec_tx_support(priv) > 0)
+				priv->dev->tx_pkt_burst = mlx5_tx_burst_raw_vec;
+			else
+				priv->dev->tx_pkt_burst = mlx5_tx_burst_vec;
+			DEBUG("selected Enhanced MPW TX vectorized function");
+		} else {
+			priv->dev->tx_pkt_burst = mlx5_tx_burst_empw;
+			DEBUG("selected Enhanced MPW TX function");
+		}
 	} else if (priv->mps && priv->txq_inline) {
 		priv->dev->tx_pkt_burst = mlx5_tx_burst_mpw_inline;
 		DEBUG("selected MPW inline TX function");
@@ -1606,5 +1614,11 @@ priv_select_tx_function(struct priv *priv)
 void
 priv_select_rx_function(struct priv *priv)
 {
-	priv->dev->rx_pkt_burst = mlx5_rx_burst;
+	if (priv_check_vec_rx_support(priv) > 0) {
+		priv_prep_vec_rx_function(priv);
+		priv->dev->rx_pkt_burst = mlx5_rx_burst_vec;
+		DEBUG("selected RX vectorized function");
+	} else {
+		priv->dev->rx_pkt_burst = mlx5_rx_burst;
+	}
 }

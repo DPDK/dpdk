@@ -243,7 +243,7 @@ txq_ctrl_setup(struct rte_eth_dev *dev, struct txq_ctrl *txq_ctrl,
 		ERROR("MLX5_ENABLE_CQE_COMPRESSION must never be set");
 		goto error;
 	}
-	(void)conf; /* Thresholds configuration (ignored). */
+	tmpl.txq.flags = conf->txq_flags;
 	assert(desc > MLX5_TX_COMP_THRESH);
 	tmpl.txq.elts_n = log2above(desc);
 	if (priv->mps == MLX5_MPW_ENHANCED)

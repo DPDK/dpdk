@@ -634,6 +634,41 @@ priv_rehash_flows(struct priv *priv)
 }
 
 /**
+ * Unlike regular Rx function, vPMD Rx doesn't replace mbufs immediately when
+ * receiving packets. Instead it replaces later in bulk. In rxq->elts[], entries
+ * from rq_pi to rq_ci are owned by device but the rest is already delivered to
+ * application. In order not to reuse those mbufs by rxq_alloc_elts(), this
+ * function must be called to replace used mbufs.
+ *
+ * @param rxq
+ *   Pointer to RX queue structure.
+ *
+ * @return
+ *   0 on success, errno value on failure.
+ */
+static int
+rxq_trim_elts(struct rxq *rxq)
+{
+	const uint16_t q_n = (1 << rxq->elts_n);
+	const uint16_t q_mask = q_n - 1;
+	uint16_t used = q_n - (rxq->rq_ci - rxq->rq_pi);
+	uint16_t i;
+
+	if (!rxq->trim_elts)
+		return 0;
+	for (i = 0; i < used; ++i) {
+		struct rte_mbuf *buf;
+		buf = rte_pktmbuf_alloc(rxq->mp);
+		if (!buf)
+			return ENOMEM;
+		(*rxq->elts)[(rxq->rq_ci + i) & q_mask] = buf;
+	}
+	rxq->rq_pi = rxq->rq_ci;
+	rxq->trim_elts = 0;
+	return 0;
+}
+
+/**
  * Allocate RX queue elements.
  *
  * @param rxq_ctrl
@@ -800,6 +835,7 @@ rxq_rehash(struct rte_eth_dev *dev, struct rxq_ctrl *rxq_ctrl)
 		return err;
 	}
 	/* Snatch mbufs from original queue. */
+	claim_zero(rxq_trim_elts(&rxq_ctrl->rxq));
 	claim_zero(rxq_alloc_elts(rxq_ctrl, elts_n, rxq_ctrl->rxq.elts));
 	for (i = 0; i != elts_n; ++i) {
 		struct rte_mbuf *buf = (*rxq_ctrl->rxq.elts)[i];
@@ -860,6 +896,7 @@ rxq_setup(struct rxq_ctrl *tmpl)
 	tmpl->rxq.cqe_n = log2above(cq_info.cqe_cnt);
 	tmpl->rxq.cq_ci = 0;
 	tmpl->rxq.rq_ci = 0;
+	tmpl->rxq.rq_pi = 0;
 	tmpl->rxq.cq_db = cq_info.dbrec;
 	tmpl->rxq.wqes =
 		(volatile struct mlx5_wqe_data_seg (*)[])
@@ -993,7 +1030,12 @@ rxq_ctrl_setup(struct rte_eth_dev *dev, struct rxq_ctrl *rxq_ctrl,
 	if (priv->cqe_comp) {
 		attr.cq.comp_mask |= IBV_EXP_CQ_INIT_ATTR_FLAGS;
 		attr.cq.flags |= IBV_EXP_CQ_COMPRESSED_CQE;
-		cqe_n = (desc * 2) - 1; /* Double the number of CQEs. */
+		/*
+		 * For vectorized Rx, it must not be doubled in order to
+		 * make cq_ci and rq_ci aligned.
+		 */
+		if (rxq_check_vec_support(&tmpl.rxq) < 0)
+			cqe_n = (desc * 2) - 1; /* Double the number of CQEs. */
 	}
 	tmpl.cq = ibv_exp_create_cq(priv->ctx, cqe_n, NULL, tmpl.channel, 0,
 				    &attr.cq);
@@ -1103,7 +1145,9 @@ rxq_ctrl_setup(struct rte_eth_dev *dev, struct rxq_ctrl *rxq_ctrl,
 	if (rxq_ctrl->rxq.elts_n) {
 		assert(1 << rxq_ctrl->rxq.elts_n == desc);
 		assert(rxq_ctrl->rxq.elts != tmpl.rxq.elts);
-		ret = rxq_alloc_elts(&tmpl, desc, rxq_ctrl->rxq.elts);
+		ret = rxq_trim_elts(&rxq_ctrl->rxq);
+		if (!ret)
+			ret = rxq_alloc_elts(&tmpl, desc, rxq_ctrl->rxq.elts);
 	} else
 		ret = rxq_alloc_elts(&tmpl, desc, NULL);
 	if (ret) {
@@ -1165,6 +1209,7 @@ mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	struct priv *priv = dev->data->dev_private;
 	struct rxq *rxq = (*priv->rxqs)[idx];
 	struct rxq_ctrl *rxq_ctrl = container_of(rxq, struct rxq_ctrl, rxq);
+	const uint16_t desc_pad = MLX5_VPMD_DESCS_PER_LOOP; /* For vPMD. */
 	int ret;
 
 	if (mlx5_is_secondary())
@@ -1198,7 +1243,8 @@ mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		if (rxq_ctrl->rxq.elts_n != log2above(desc)) {
 			rxq_ctrl = rte_realloc(rxq_ctrl,
 					       sizeof(*rxq_ctrl) +
-					       desc * sizeof(struct rte_mbuf *),
+					       (desc + desc_pad) *
+						sizeof(struct rte_mbuf *),
 					       RTE_CACHE_LINE_SIZE);
 			if (!rxq_ctrl) {
 				ERROR("%p: unable to reallocate queue index %u",
@@ -1209,7 +1255,8 @@ mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		}
 	} else {
 		rxq_ctrl = rte_calloc_socket("RXQ", 1, sizeof(*rxq_ctrl) +
-					     desc * sizeof(struct rte_mbuf *),
+					     (desc + desc_pad) *
+					      sizeof(struct rte_mbuf *),
 					     0, socket);
 		if (rxq_ctrl == NULL) {
 			ERROR("%p: unable to allocate queue index %u",
