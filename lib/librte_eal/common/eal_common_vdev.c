@@ -342,12 +342,10 @@ vdev_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
 		 const void *data)
 {
 	struct rte_vdev_device *dev;
-	bool start_found = !start;
 
 	TAILQ_FOREACH(dev, &vdev_device_list, next) {
-		if (start_found == 0) {
-			if (&dev->device == start)
-				start_found = 1;
+		if (start && &dev->device == start) {
+			start = NULL;
 			continue;
 		}
 		if (cmp(&dev->device, data) == 0)

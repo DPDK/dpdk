@@ -491,12 +491,10 @@ pci_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
 		const void *data)
 {
 	struct rte_pci_device *dev;
-	bool start_found = !start;
 
 	FOREACH_DEVICE_ON_PCIBUS(dev) {
-		if (!start_found) {
-			if (&dev->device == start)
-				start_found = 1;
+		if (start && &dev->device == start) {
+			start = NULL; /* starting point found */
 			continue;
 		}
 		if (cmp(&dev->device, data) == 0)
