@@ -69,6 +69,7 @@ Sample Applications User Guides
     netmap_compatibility
     ip_pipeline
     test_pipeline
+    eventdev_pipeline_sw_pmd
     dist_app
     vm_power_management
     tep_termination

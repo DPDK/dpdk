@@ -590,6 +590,7 @@ F: drivers/event/sw/
 F: test/test/test_eventdev_sw.c
 F: doc/guides/eventdevs/sw.rst
 F: examples/eventdev_pipeline_sw_pmd/
+F: doc/guides/sample_app_ug/eventdev_pipeline_sw_pmd.rst
 
 
 Packet processing
