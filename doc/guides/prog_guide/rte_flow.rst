@@ -898,7 +898,7 @@ Matches a MPLS header.
 - Default ``mask`` matches label only.
 
 Item: ``GRE``
-^^^^^^^^^^^^^^
+^^^^^^^^^^^^^
 
 Matches a GRE header.
 
@@ -907,7 +907,7 @@ Matches a GRE header.
 - Default ``mask`` matches protocol only.
 
 Item: ``FUZZY``
-^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^
 
 Fuzzy pattern match, expect faster than default.
 
@@ -918,19 +918,22 @@ value, but it is possible two different patterns have the same hash value.
 Matching accuracy level can be configured by threshold. Driver can divide the
 range of threshold and map to different accuracy levels that device support.
 
+Threshold 0 means perfect match (no fuzziness), while threshold 0xffffffff
+means fuzziest match.
+
 .. _table_rte_flow_item_fuzzy:
 
 .. table:: FUZZY
 
    +----------+---------------+--------------------------------------------------+
    | Field    |   Subfield    | Value                                            |
-   +==========+===========+======================================================+
+   +==========+===============+==================================================+
    | ``spec`` | ``threshold`` | 0 as perfect match, 0xffffffff as fuzziest match |
    +----------+---------------+--------------------------------------------------+
    | ``last`` | ``threshold`` | upper range value                                |
-   +----------+-----------+------------------------------------------------------+
+   +----------+---------------+--------------------------------------------------+
    | ``mask`` | ``threshold`` | bit-mask apply to "spec" and "last"              |
-   +----------+-----------+------------------------------------------------------+
+   +----------+---------------+--------------------------------------------------+
 
 Usage example, fuzzy match a TCPv4 packets:
 

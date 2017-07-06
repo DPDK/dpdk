@@ -719,9 +719,12 @@ static const struct rte_flow_item_gre rte_flow_item_gre_mask = {
  * Matching accuracy level can be configure by threshold.
  * Driver can divide the range of threshold and map to different
  * accuracy levels that device support.
+ *
+ * Threshold 0 means perfect match (no fuzziness), while threshold
+ * 0xffffffff means fuzziest match.
  */
 struct rte_flow_item_fuzzy {
-	uint32_t thresh; /**< Accuracy threshold*/
+	uint32_t thresh; /**< Accuracy threshold. */
 };
 
 /** Default mask for RTE_FLOW_ITEM_TYPE_FUZZY. */
