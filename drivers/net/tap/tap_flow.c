@@ -1517,7 +1517,7 @@ int tap_flow_implicit_create(struct pmd_internals *pmd,
 
 	remote_flow = rte_malloc(__func__, sizeof(struct rte_flow), 0);
 	if (!remote_flow) {
-		RTE_LOG(ERR, PMD, "Cannot allocate memory for rte_flow");
+		RTE_LOG(ERR, PMD, "Cannot allocate memory for rte_flow\n");
 		goto fail;
 	}
 	msg = &remote_flow->msg;
@@ -1557,7 +1557,7 @@ int tap_flow_implicit_create(struct pmd_internals *pmd,
 	}
 	err = nl_send(pmd->nlsk_fd, &msg->nh);
 	if (err < 0) {
-		RTE_LOG(ERR, PMD, "Failure sending nl request");
+		RTE_LOG(ERR, PMD, "Failure sending nl request\n");
 		goto fail;
 	}
 	err = nl_recv_ack(pmd->nlsk_fd);
@@ -1653,7 +1653,7 @@ tap_dev_filter_ctrl(struct rte_eth_dev *dev,
 		*(const void **)arg = &tap_flow_ops;
 		return 0;
 	default:
-		RTE_LOG(ERR, PMD, "%p: filter type (%d) not supported",
+		RTE_LOG(ERR, PMD, "%p: filter type (%d) not supported\n",
 			(void *)dev, filter_type);
 	}
 	return -EINVAL;

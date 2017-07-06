@@ -145,7 +145,7 @@ tun_alloc(struct pmd_internals *pmd)
 
 	fd = open(TUN_TAP_DEV_PATH, O_RDWR);
 	if (fd < 0) {
-		RTE_LOG(ERR, PMD, "Unable to create TAP interface");
+		RTE_LOG(ERR, PMD, "Unable to create TAP interface\n");
 		goto error;
 	}
 
@@ -1275,7 +1275,7 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, char *tap_name,
 	if (!pmd->flower_support) {
 		if (remote_iface[0]) {
 			RTE_LOG(ERR, PMD,
-				"%s: kernel does not support TC rules, required for remote feature.",
+				"%s: kernel does not support TC rules, required for remote feature.\n",
 				pmd->name);
 			goto error_exit;
 		} else {
@@ -1296,22 +1296,22 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, char *tap_name,
 	 */
 	pmd->nlsk_fd = nl_init(0);
 	if (pmd->nlsk_fd == -1) {
-		RTE_LOG(WARNING, PMD, "%s: failed to create netlink socket.",
+		RTE_LOG(WARNING, PMD, "%s: failed to create netlink socket.\n",
 			pmd->name);
 		goto disable_rte_flow;
 	}
 	pmd->if_index = if_nametoindex(pmd->name);
 	if (!pmd->if_index) {
-		RTE_LOG(ERR, PMD, "%s: failed to get if_index.", pmd->name);
+		RTE_LOG(ERR, PMD, "%s: failed to get if_index.\n", pmd->name);
 		goto disable_rte_flow;
 	}
 	if (qdisc_create_multiq(pmd->nlsk_fd, pmd->if_index) < 0) {
-		RTE_LOG(ERR, PMD, "%s: failed to create multiq qdisc.",
+		RTE_LOG(ERR, PMD, "%s: failed to create multiq qdisc.\n",
 			pmd->name);
 		goto disable_rte_flow;
 	}
 	if (qdisc_create_ingress(pmd->nlsk_fd, pmd->if_index) < 0) {
-		RTE_LOG(ERR, PMD, "%s: failed to create ingress qdisc.",
+		RTE_LOG(ERR, PMD, "%s: failed to create ingress qdisc.\n",
 			pmd->name);
 		goto disable_rte_flow;
 	}
@@ -1320,7 +1320,7 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, char *tap_name,
 	if (strlen(remote_iface)) {
 		pmd->remote_if_index = if_nametoindex(remote_iface);
 		if (!pmd->remote_if_index) {
-			RTE_LOG(ERR, PMD, "%s: failed to get %s if_index.",
+			RTE_LOG(ERR, PMD, "%s: failed to get %s if_index.\n",
 				pmd->name, remote_iface);
 			goto error_remote;
 		}
@@ -1332,7 +1332,7 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, char *tap_name,
 
 		/* Replicate remote MAC address */
 		if (tap_ioctl(pmd, SIOCGIFHWADDR, &ifr, 0, REMOTE_ONLY) < 0) {
-			RTE_LOG(ERR, PMD, "%s: failed to get %s MAC address.",
+			RTE_LOG(ERR, PMD, "%s: failed to get %s MAC address.\n",
 				pmd->name, pmd->remote_iface);
 			goto error_remote;
 		}
@@ -1340,7 +1340,7 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, char *tap_name,
 			   ETHER_ADDR_LEN);
 		/* The desired MAC is already in ifreq after SIOCGIFHWADDR. */
 		if (tap_ioctl(pmd, SIOCSIFHWADDR, &ifr, 0, LOCAL_ONLY) < 0) {
-			RTE_LOG(ERR, PMD, "%s: failed to get %s MAC address.",
+			RTE_LOG(ERR, PMD, "%s: failed to get %s MAC address.\n",
 				pmd->name, remote_iface);
 			goto error_remote;
 		}
@@ -1353,7 +1353,7 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, char *tap_name,
 		qdisc_flush(pmd->nlsk_fd, pmd->remote_if_index);
 		if (qdisc_create_ingress(pmd->nlsk_fd,
 					 pmd->remote_if_index) < 0) {
-			RTE_LOG(ERR, PMD, "%s: failed to create ingress qdisc.",
+			RTE_LOG(ERR, PMD, "%s: failed to create ingress qdisc.\n",
 				pmd->remote_iface);
 			goto error_remote;
 		}
@@ -1363,7 +1363,7 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, char *tap_name,
 		    tap_flow_implicit_create(pmd, TAP_REMOTE_BROADCAST) < 0 ||
 		    tap_flow_implicit_create(pmd, TAP_REMOTE_BROADCASTV6) < 0) {
 			RTE_LOG(ERR, PMD,
-				"%s: failed to create implicit rules.",
+				"%s: failed to create implicit rules.\n",
 				pmd->name);
 			goto error_remote;
 		}
