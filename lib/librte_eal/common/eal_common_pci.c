@@ -300,7 +300,7 @@ pci_probe_all_drivers(struct rte_pci_device *dev)
 
 /*
  * Find the pci device specified by pci address, then invoke probe function of
- * the driver of the devive.
+ * the driver of the device.
  */
 int
 rte_pci_probe_one(const struct rte_pci_addr *addr)
