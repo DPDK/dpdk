@@ -448,7 +448,8 @@ nicvf_qsize_regbit(uint32_t len, uint32_t len_shift)
 {
 	int val;
 
-	val = ((uint32_t)log2(len) - len_shift);
+	val = nicvf_log2_u32(len) - len_shift;
+
 	assert(val >= NICVF_QSIZE_MIN_VAL);
 	assert(val <= NICVF_QSIZE_MAX_VAL);
 	return val;
@@ -801,7 +802,7 @@ nicvf_rss_reta_update(struct nicvf *nic, uint8_t *tbl, uint32_t max_count)
 		return NICVF_ERR_RSS_GET_SZ;
 
 	assert(rss->rss_size > 0);
-	rss->hash_bits = (uint8_t)log2(rss->rss_size);
+	rss->hash_bits = (uint8_t)nicvf_log2_u32(rss->rss_size);
 	for (idx = 0; idx < rss->rss_size && idx < max_count; idx++)
 		rss->ind_tbl[idx] = tbl[idx];
 
@@ -822,7 +823,8 @@ nicvf_rss_reta_query(struct nicvf *nic, uint8_t *tbl, uint32_t max_count)
 		return NICVF_ERR_RSS_GET_SZ;
 
 	assert(rss->rss_size > 0);
-	rss->hash_bits = (uint8_t)log2(rss->rss_size);
+	rss->hash_bits = (uint8_t)nicvf_log2_u32(rss->rss_size);
+
 	for (idx = 0; idx < rss->rss_size && idx < max_count; idx++)
 		tbl[idx] = rss->ind_tbl[idx];
 

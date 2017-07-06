@@ -59,6 +59,7 @@
 /* utils */
 #include <rte_common.h>
 #define nicvf_min(x, y) RTE_MIN(x, y)
+#define nicvf_log2_u32(x) rte_log2_u32(x)
 
 /* byte order */
 #include <rte_byteorder.h>
