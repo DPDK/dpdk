@@ -923,8 +923,6 @@ mlx5_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	struct priv *priv = dev->data->dev_private;
 	int ret = 0;
 	unsigned int i;
-	uint16_t (*rx_func)(void *, struct rte_mbuf **, uint16_t) =
-		mlx5_rx_burst;
 	unsigned int max_frame_len;
 	int rehash;
 	int restart = priv->started;
@@ -944,7 +942,7 @@ mlx5_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	/* Temporarily replace RX handler with a fake one, assuming it has not
 	 * been copied elsewhere. */
 	dev->rx_pkt_burst = removed_rx_burst;
-	/* Make sure everyone has left mlx5_rx_burst() and uses
+	/* Make sure everyone has left dev->rx_pkt_burst() and uses
 	 * removed_rx_burst() instead. */
 	rte_wmb();
 	usleep(1000);
@@ -1018,17 +1016,13 @@ recover:
 		/* Double fault, disable RX. */
 		break;
 	}
-	/*
-	 * Use a safe RX burst function in case of error, otherwise mimic
-	 * mlx5_dev_start().
-	 */
+	/* Mimic mlx5_dev_start(). */
 	if (ret) {
 		ERROR("unable to reconfigure RX queues, RX disabled");
-		rx_func = removed_rx_burst;
 	} else if (restart &&
-		 !rehash &&
-		 !priv_create_hash_rxqs(priv) &&
-		 !priv_rehash_flows(priv)) {
+		   !rehash &&
+		   !priv_create_hash_rxqs(priv) &&
+		   !priv_rehash_flows(priv)) {
 		if (dev->data->dev_conf.fdir_conf.mode == RTE_FDIR_MODE_NONE)
 			priv_fdir_enable(priv);
 		priv_dev_interrupt_handler_install(priv, dev);
@@ -1036,7 +1030,12 @@ recover:
 	priv->mtu = mtu;
 	/* Burst functions can now be called again. */
 	rte_wmb();
-	dev->rx_pkt_burst = rx_func;
+	/*
+	 * Use a safe RX burst function in case of error, otherwise select RX
+	 * burst function again.
+	 */
+	if (!ret)
+		priv_select_rx_function(priv);
 out:
 	priv_unlock(priv);
 	assert(ret >= 0);

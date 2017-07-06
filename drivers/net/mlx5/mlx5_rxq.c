@@ -1226,8 +1226,6 @@ mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		DEBUG("%p: adding RX queue %p to list",
 		      (void *)dev, (void *)rxq_ctrl);
 		(*priv->rxqs)[idx] = &rxq_ctrl->rxq;
-		/* Update receive callback. */
-		priv_select_rx_function(priv);
 	}
 	priv_unlock(priv);
 	return -ret;

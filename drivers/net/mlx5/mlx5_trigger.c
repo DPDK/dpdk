@@ -72,6 +72,9 @@ mlx5_dev_start(struct rte_eth_dev *dev)
 		priv_unlock(priv);
 		return 0;
 	}
+	/* Update Rx/Tx callback. */
+	priv_select_tx_function(priv);
+	priv_select_rx_function(priv);
 	DEBUG("%p: allocating and configuring hash RX queues", (void *)dev);
 	err = priv_create_hash_rxqs(priv);
 	if (!err)
