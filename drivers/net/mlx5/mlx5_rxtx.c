@@ -255,7 +255,8 @@ mlx5_copy_to_wq(void *dst, const void *src, size_t n,
 static inline void
 txq_complete(struct txq *txq)
 {
-	const unsigned int elts_n = 1 << txq->elts_n;
+	const uint16_t elts_n = 1 << txq->elts_n;
+	const uint16_t elts_m = elts_n - 1;
 	const unsigned int cqe_n = 1 << txq->cqe_n;
 	const unsigned int cqe_cnt = cqe_n - 1;
 	uint16_t elts_free = txq->elts_tail;
@@ -292,24 +293,23 @@ txq_complete(struct txq *txq)
 	ctrl = (volatile struct mlx5_wqe_ctrl *)
 		tx_mlx5_wqe(txq, txq->wqe_pi);
 	elts_tail = ctrl->ctrl3;
-	assert(elts_tail < (1 << txq->wqe_n));
+	assert((elts_tail & elts_m) < (1 << txq->wqe_n));
 	/* Free buffers. */
 	while (elts_free != elts_tail) {
-		struct rte_mbuf *elt = (*txq->elts)[elts_free];
-		unsigned int elts_free_next =
-			(elts_free + 1) & (elts_n - 1);
-		struct rte_mbuf *elt_next = (*txq->elts)[elts_free_next];
+		struct rte_mbuf *elt = (*txq->elts)[elts_free & elts_m];
+		struct rte_mbuf *elt_next =
+			(*txq->elts)[(elts_free + 1) & elts_m];
 
 #ifndef NDEBUG
 		/* Poisoning. */
-		memset(&(*txq->elts)[elts_free],
+		memset(&(*txq->elts)[elts_free & elts_m],
 		       0x66,
-		       sizeof((*txq->elts)[elts_free]));
+		       sizeof((*txq->elts)[elts_free & elts_m]));
 #endif
 		RTE_MBUF_PREFETCH_TO_FREE(elt_next);
 		/* Only one segment needs to be freed. */
 		rte_pktmbuf_free_seg(elt);
-		elts_free = elts_free_next;
+		++elts_free;
 	}
 	txq->cq_ci = cq_ci;
 	txq->elts_tail = elts_tail;
@@ -409,12 +409,10 @@ int
 mlx5_tx_descriptor_status(void *tx_queue, uint16_t offset)
 {
 	struct txq *txq = tx_queue;
-	const unsigned int elts_n = 1 << txq->elts_n;
-	const unsigned int elts_cnt = elts_n - 1;
-	unsigned int used;
+	uint16_t used;
 
 	txq_complete(txq);
-	used = (txq->elts_head - txq->elts_tail) & elts_cnt;
+	used = txq->elts_head - txq->elts_tail;
 	if (offset < used)
 		return RTE_ETH_TX_DESC_FULL;
 	return RTE_ETH_TX_DESC_DONE;
@@ -488,11 +486,12 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 {
 	struct txq *txq = (struct txq *)dpdk_txq;
 	uint16_t elts_head = txq->elts_head;
-	const unsigned int elts_n = 1 << txq->elts_n;
+	const uint16_t elts_n = 1 << txq->elts_n;
+	const uint16_t elts_m = elts_n - 1;
 	unsigned int i = 0;
 	unsigned int j = 0;
 	unsigned int k = 0;
-	unsigned int max;
+	uint16_t max_elts;
 	unsigned int max_inline = txq->max_inline;
 	const unsigned int inline_en = !!max_inline && txq->inline_en;
 	uint16_t max_wqe;
@@ -509,9 +508,7 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	rte_prefetch0(*pkts);
 	/* Start processing. */
 	txq_complete(txq);
-	max = (elts_n - (elts_head - txq->elts_tail));
-	if (max > elts_n)
-		max -= elts_n;
+	max_elts = (elts_n - (elts_head - txq->elts_tail));
 	max_wqe = (1u << txq->wqe_n) - (txq->wqe_ci - txq->wqe_pi);
 	if (unlikely(!max_wqe))
 		return 0;
@@ -540,9 +537,9 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		 * that one ring entry remains unused.
 		 */
 		assert(segs_n);
-		if (max < segs_n + 1)
+		if (max_elts < segs_n)
 			break;
-		max -= segs_n;
+		max_elts -= segs_n;
 		--segs_n;
 		if (unlikely(--max_wqe == 0))
 			break;
@@ -561,7 +558,7 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		if (length < (MLX5_WQE_DWORD_SIZE + 2))
 			break;
 		/* Update element. */
-		(*txq->elts)[elts_head] = buf;
+		(*txq->elts)[elts_head & elts_m] = buf;
 		/* Prefetch next buffer data. */
 		if (pkts_n - i > 1)
 			rte_prefetch0(
@@ -801,8 +798,7 @@ next_seg:
 			naddr,
 			naddr >> 32,
 		};
-		elts_head = (elts_head + 1) & (elts_n - 1);
-		(*txq->elts)[elts_head] = buf;
+		(*txq->elts)[++elts_head & elts_m] = buf;
 		++sg;
 		/* Advance counter only if all segs are successfully posted. */
 		if (sg < segs_n)
@@ -810,7 +806,7 @@ next_seg:
 		else
 			j += sg;
 next_pkt:
-		elts_head = (elts_head + 1) & (elts_n - 1);
+		++elts_head;
 		++pkts;
 		++i;
 		/* Initialize known and common part of the WQE structure. */
@@ -853,7 +849,7 @@ next_wqe:
 	/* Take a shortcut if nothing must be sent. */
 	if (unlikely((i + k) == 0))
 		return 0;
-	txq->elts_head = (txq->elts_head + i + j) & (elts_n - 1);
+	txq->elts_head += (i + j);
 	/* Check whether completion threshold has been reached. */
 	comp = txq->elts_comp + i + j + k;
 	if (comp >= MLX5_TX_COMP_THRESH) {
@@ -960,10 +956,11 @@ mlx5_tx_burst_mpw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 {
 	struct txq *txq = (struct txq *)dpdk_txq;
 	uint16_t elts_head = txq->elts_head;
-	const unsigned int elts_n = 1 << txq->elts_n;
+	const uint16_t elts_n = 1 << txq->elts_n;
+	const uint16_t elts_m = elts_n - 1;
 	unsigned int i = 0;
 	unsigned int j = 0;
-	unsigned int max;
+	uint16_t max_elts;
 	uint16_t max_wqe;
 	unsigned int comp;
 	struct mlx5_mpw mpw = {
@@ -977,15 +974,12 @@ mlx5_tx_burst_mpw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	rte_prefetch0(tx_mlx5_wqe(txq, txq->wqe_ci + 1));
 	/* Start processing. */
 	txq_complete(txq);
-	max = (elts_n - (elts_head - txq->elts_tail));
-	if (max > elts_n)
-		max -= elts_n;
+	max_elts = (elts_n - (elts_head - txq->elts_tail));
 	max_wqe = (1u << txq->wqe_n) - (txq->wqe_ci - txq->wqe_pi);
 	if (unlikely(!max_wqe))
 		return 0;
 	do {
 		struct rte_mbuf *buf = *(pkts++);
-		unsigned int elts_head_next;
 		uint32_t length;
 		unsigned int segs_n = buf->nb_segs;
 		uint32_t cs_flags = 0;
@@ -995,12 +989,12 @@ mlx5_tx_burst_mpw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		 * that one ring entry remains unused.
 		 */
 		assert(segs_n);
-		if (max < segs_n + 1)
+		if (max_elts < segs_n)
 			break;
 		/* Do not bother with large packets MPW cannot handle. */
 		if (segs_n > MLX5_MPW_DSEG_MAX)
 			break;
-		max -= segs_n;
+		max_elts -= segs_n;
 		--pkts_n;
 		/* Should we enable HW CKSUM offload */
 		if (buf->ol_flags &
@@ -1036,9 +1030,8 @@ mlx5_tx_burst_mpw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			volatile struct mlx5_wqe_data_seg *dseg;
 			uintptr_t addr;
 
-			elts_head_next = (elts_head + 1) & (elts_n - 1);
 			assert(buf);
-			(*txq->elts)[elts_head] = buf;
+			(*txq->elts)[elts_head++ & elts_m] = buf;
 			dseg = mpw.data.dseg[mpw.pkts_n];
 			addr = rte_pktmbuf_mtod(buf, uintptr_t);
 			*dseg = (struct mlx5_wqe_data_seg){
@@ -1046,7 +1039,6 @@ mlx5_tx_burst_mpw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				.lkey = txq_mp2mr(txq, txq_mb2mp(buf)),
 				.addr = htonll(addr),
 			};
-			elts_head = elts_head_next;
 #if defined(MLX5_PMD_SOFT_COUNTERS) || !defined(NDEBUG)
 			length += DATA_LEN(buf);
 #endif
@@ -1057,7 +1049,6 @@ mlx5_tx_burst_mpw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		assert(length == mpw.len);
 		if (mpw.pkts_n == MLX5_MPW_DSEG_MAX)
 			mlx5_mpw_close(txq, &mpw);
-		elts_head = elts_head_next;
 #ifdef MLX5_PMD_SOFT_COUNTERS
 		/* Increment sent bytes counter. */
 		txq->stats.obytes += length;
@@ -1175,10 +1166,11 @@ mlx5_tx_burst_mpw_inline(void *dpdk_txq, struct rte_mbuf **pkts,
 {
 	struct txq *txq = (struct txq *)dpdk_txq;
 	uint16_t elts_head = txq->elts_head;
-	const unsigned int elts_n = 1 << txq->elts_n;
+	const uint16_t elts_n = 1 << txq->elts_n;
+	const uint16_t elts_m = elts_n - 1;
 	unsigned int i = 0;
 	unsigned int j = 0;
-	unsigned int max;
+	uint16_t max_elts;
 	uint16_t max_wqe;
 	unsigned int comp;
 	unsigned int inline_room = txq->max_inline * RTE_CACHE_LINE_SIZE;
@@ -1205,12 +1197,9 @@ mlx5_tx_burst_mpw_inline(void *dpdk_txq, struct rte_mbuf **pkts,
 	rte_prefetch0(tx_mlx5_wqe(txq, txq->wqe_ci + 1));
 	/* Start processing. */
 	txq_complete(txq);
-	max = (elts_n - (elts_head - txq->elts_tail));
-	if (max > elts_n)
-		max -= elts_n;
+	max_elts = (elts_n - (elts_head - txq->elts_tail));
 	do {
 		struct rte_mbuf *buf = *(pkts++);
-		unsigned int elts_head_next;
 		uintptr_t addr;
 		uint32_t length;
 		unsigned int segs_n = buf->nb_segs;
@@ -1221,12 +1210,12 @@ mlx5_tx_burst_mpw_inline(void *dpdk_txq, struct rte_mbuf **pkts,
 		 * that one ring entry remains unused.
 		 */
 		assert(segs_n);
-		if (max < segs_n + 1)
+		if (max_elts < segs_n)
 			break;
 		/* Do not bother with large packets MPW cannot handle. */
 		if (segs_n > MLX5_MPW_DSEG_MAX)
 			break;
-		max -= segs_n;
+		max_elts -= segs_n;
 		--pkts_n;
 		/*
 		 * Compute max_wqe in case less WQE were consumed in previous
@@ -1287,10 +1276,8 @@ mlx5_tx_burst_mpw_inline(void *dpdk_txq, struct rte_mbuf **pkts,
 			do {
 				volatile struct mlx5_wqe_data_seg *dseg;
 
-				elts_head_next =
-					(elts_head + 1) & (elts_n - 1);
 				assert(buf);
-				(*txq->elts)[elts_head] = buf;
+				(*txq->elts)[elts_head++ & elts_m] = buf;
 				dseg = mpw.data.dseg[mpw.pkts_n];
 				addr = rte_pktmbuf_mtod(buf, uintptr_t);
 				*dseg = (struct mlx5_wqe_data_seg){
@@ -1298,7 +1285,6 @@ mlx5_tx_burst_mpw_inline(void *dpdk_txq, struct rte_mbuf **pkts,
 					.lkey = txq_mp2mr(txq, txq_mb2mp(buf)),
 					.addr = htonll(addr),
 				};
-				elts_head = elts_head_next;
 #if defined(MLX5_PMD_SOFT_COUNTERS) || !defined(NDEBUG)
 				length += DATA_LEN(buf);
 #endif
@@ -1315,9 +1301,8 @@ mlx5_tx_burst_mpw_inline(void *dpdk_txq, struct rte_mbuf **pkts,
 			assert(mpw.state == MLX5_MPW_INL_STATE_OPENED);
 			assert(length <= inline_room);
 			assert(length == DATA_LEN(buf));
-			elts_head_next = (elts_head + 1) & (elts_n - 1);
 			addr = rte_pktmbuf_mtod(buf, uintptr_t);
-			(*txq->elts)[elts_head] = buf;
+			(*txq->elts)[elts_head++ & elts_m] = buf;
 			/* Maximum number of bytes before wrapping. */
 			max = ((((uintptr_t)(txq->wqes)) +
 				(1 << txq->wqe_n) *
@@ -1354,7 +1339,6 @@ mlx5_tx_burst_mpw_inline(void *dpdk_txq, struct rte_mbuf **pkts,
 				inline_room -= length;
 			}
 		}
-		elts_head = elts_head_next;
 #ifdef MLX5_PMD_SOFT_COUNTERS
 		/* Increment sent bytes counter. */
 		txq->stats.obytes += length;
@@ -1476,10 +1460,11 @@ mlx5_tx_burst_empw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 {
 	struct txq *txq = (struct txq *)dpdk_txq;
 	uint16_t elts_head = txq->elts_head;
-	const unsigned int elts_n = 1 << txq->elts_n;
+	const uint16_t elts_n = 1 << txq->elts_n;
+	const uint16_t elts_m = elts_n - 1;
 	unsigned int i = 0;
 	unsigned int j = 0;
-	unsigned int max_elts;
+	uint16_t max_elts;
 	uint16_t max_wqe;
 	unsigned int max_inline = txq->max_inline * RTE_CACHE_LINE_SIZE;
 	unsigned int mpw_room = 0;
@@ -1494,8 +1479,6 @@ mlx5_tx_burst_empw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	/* Start processing. */
 	txq_complete(txq);
 	max_elts = (elts_n - (elts_head - txq->elts_tail));
-	if (max_elts > elts_n)
-		max_elts -= elts_n;
 	/* A CQE slot must always be available. */
 	assert((1u << txq->cqe_n) - (txq->cq_pi - txq->cq_ci));
 	max_wqe = (1u << txq->wqe_n) - (txq->wqe_ci - txq->wqe_pi);
@@ -1503,7 +1486,6 @@ mlx5_tx_burst_empw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		return 0;
 	do {
 		struct rte_mbuf *buf = *(pkts++);
-		unsigned int elts_head_next;
 		uintptr_t addr;
 		uint64_t naddr;
 		unsigned int n;
@@ -1517,7 +1499,7 @@ mlx5_tx_burst_empw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		 * that one ring entry remains unused.
 		 */
 		assert(segs_n);
-		if (max_elts - j < segs_n + 1)
+		if (max_elts - j < segs_n)
 			break;
 		/* Do not bother with large packets MPW cannot handle. */
 		if (segs_n > MLX5_MPW_DSEG_MAX)
@@ -1601,10 +1583,8 @@ mlx5_tx_burst_empw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			do {
 				volatile struct mlx5_wqe_data_seg *dseg;
 
-				elts_head_next =
-					(elts_head + 1) & (elts_n - 1);
 				assert(buf);
-				(*txq->elts)[elts_head] = buf;
+				(*txq->elts)[elts_head++ & elts_m] = buf;
 				dseg = mpw.data.dseg[mpw.pkts_n];
 				addr = rte_pktmbuf_mtod(buf, uintptr_t);
 				*dseg = (struct mlx5_wqe_data_seg){
@@ -1612,7 +1592,6 @@ mlx5_tx_burst_empw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 					.lkey = txq_mp2mr(txq, txq_mb2mp(buf)),
 					.addr = htonll(addr),
 				};
-				elts_head = elts_head_next;
 #if defined(MLX5_PMD_SOFT_COUNTERS) || !defined(NDEBUG)
 				length += DATA_LEN(buf);
 #endif
@@ -1663,7 +1642,6 @@ mlx5_tx_burst_empw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			/* No need to get completion as the entire packet is
 			 * copied to WQ. Free the buf right away.
 			 */
-			elts_head_next = elts_head;
 			rte_pktmbuf_free_seg(buf);
 			mpw_room -= (inl_pad + sizeof(inl_hdr) + length);
 			/* Add pad in the next packet if any. */
@@ -1686,8 +1664,7 @@ mlx5_tx_burst_empw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				dseg = (volatile void *)
 					((uintptr_t)mpw.data.raw +
 					 inl_pad);
-			elts_head_next = (elts_head + 1) & (elts_n - 1);
-			(*txq->elts)[elts_head] = buf;
+			(*txq->elts)[elts_head++ & elts_m] = buf;
 			addr = rte_pktmbuf_mtod(buf, uintptr_t);
 			for (n = 0; n * RTE_CACHE_LINE_SIZE < length; n++)
 				rte_prefetch2((void *)(addr +
@@ -1706,7 +1683,6 @@ mlx5_tx_burst_empw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			mpw_room -= (inl_pad + sizeof(*dseg));
 			inl_pad = 0;
 		}
-		elts_head = elts_head_next;
 #ifdef MLX5_PMD_SOFT_COUNTERS
 		/* Increment sent bytes counter. */
 		txq->stats.obytes += length;

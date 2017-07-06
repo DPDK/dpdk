@@ -103,9 +103,10 @@ txq_alloc_elts(struct txq_ctrl *txq_ctrl, unsigned int elts_n)
 static void
 txq_free_elts(struct txq_ctrl *txq_ctrl)
 {
-	unsigned int elts_n = 1 << txq_ctrl->txq.elts_n;
-	unsigned int elts_head = txq_ctrl->txq.elts_head;
-	unsigned int elts_tail = txq_ctrl->txq.elts_tail;
+	const uint16_t elts_n = 1 << txq_ctrl->txq.elts_n;
+	const uint16_t elts_m = elts_n - 1;
+	uint16_t elts_head = txq_ctrl->txq.elts_head;
+	uint16_t elts_tail = txq_ctrl->txq.elts_tail;
 	struct rte_mbuf *(*elts)[elts_n] = txq_ctrl->txq.elts;
 
 	DEBUG("%p: freeing WRs", (void *)txq_ctrl);
@@ -114,18 +115,17 @@ txq_free_elts(struct txq_ctrl *txq_ctrl)
 	txq_ctrl->txq.elts_comp = 0;
 
 	while (elts_tail != elts_head) {
-		struct rte_mbuf *elt = (*elts)[elts_tail];
+		struct rte_mbuf *elt = (*elts)[elts_tail & elts_m];
 
 		assert(elt != NULL);
 		rte_pktmbuf_free_seg(elt);
 #ifndef NDEBUG
 		/* Poisoning. */
-		memset(&(*elts)[elts_tail],
+		memset(&(*elts)[elts_tail & elts_m],
 		       0x77,
-		       sizeof((*elts)[elts_tail]));
+		       sizeof((*elts)[elts_tail & elts_m]));
 #endif
-		if (++elts_tail == elts_n)
-			elts_tail = 0;
+		++elts_tail;
 	}
 }
 
