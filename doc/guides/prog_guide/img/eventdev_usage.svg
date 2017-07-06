@@ -1,0 +1,994 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+
+<svg
+   xmlns:v="http://schemas.microsoft.com/visio/2003/SVGExtensions/"
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="683.12061"
+   height="184.672"
+   viewBox="0 0 546.49648 147.7376"
+   xml:space="preserve"
+   color-interpolation-filters="sRGB"
+   class="st9"
+   id="svg2"
+   version="1.1"
+   inkscape:version="0.48.4 r9939"
+   sodipodi:docname="eventdev_usage.svg"
+   style="font-size:12px;fill:none;stroke-linecap:square;stroke-miterlimit:3;overflow:visible"><metadata
+   id="metadata214"><rdf:RDF><cc:Work
+       rdf:about=""><dc:format>image/svg+xml</dc:format><dc:type
+         rdf:resource="http://purl.org/dc/dcmitype/StillImage" /></cc:Work></rdf:RDF></metadata><sodipodi:namedview
+   pagecolor="#ffffff"
+   bordercolor="#666666"
+   borderopacity="1"
+   objecttolerance="10"
+   gridtolerance="10"
+   guidetolerance="10"
+   inkscape:pageopacity="0"
+   inkscape:pageshadow="2"
+   inkscape:window-width="1920"
+   inkscape:window-height="1017"
+   id="namedview212"
+   showgrid="false"
+   fit-margin-top="2"
+   fit-margin-left="2"
+   fit-margin-right="2"
+   fit-margin-bottom="2"
+   inkscape:zoom="1.2339869"
+   inkscape:cx="501.15554"
+   inkscape:cy="164.17693"
+   inkscape:window-x="-8"
+   inkscape:window-y="406"
+   inkscape:window-maximized="1"
+   inkscape:current-layer="g17" />
+	<v:documentProperties
+   v:langID="1033"
+   v:viewMarkup="false">
+		<v:userDefs>
+			<v:ud
+   v:nameU="msvSubprocessMaster"
+   v:prompt=""
+   v:val="VT4(Rectangle)" />
+			<v:ud
+   v:nameU="msvNoAutoConnect"
+   v:val="VT0(1):26" />
+		</v:userDefs>
+	</v:documentProperties>
+
+	<style
+   type="text/css"
+   id="style4">
+
+		.st1 {visibility:visible}
+		.st2 {fill:#5b9bd5;fill-opacity:0.22;filter:url(#filter_2);stroke:#5b9bd5;stroke-opacity:0.22}
+		.st3 {fill:#5b9bd5;stroke:#c7c8c8;stroke-width:0.25}
+		.st4 {fill:#feffff;font-family:Calibri;font-size:0.833336em}
+		.st5 {font-size:1em}
+		.st6 {fill:#ffd965;stroke:#c7c8c8;stroke-width:0.25}
+		.st7 {marker-end:url(#mrkr4-33);stroke:#5b9bd5;stroke-linecap:round;stroke-linejoin:round;stroke-width:1}
+		.st8 {fill:#5b9bd5;fill-opacity:1;stroke:#5b9bd5;stroke-opacity:1;stroke-width:0.28409090909091}
+		.st9 {fill:none;fill-rule:evenodd;font-size:12px;overflow:visible;stroke-linecap:square;stroke-miterlimit:3}
+
+	</style>
+
+	<defs
+   id="Markers">
+		<g
+   id="lend4">
+			<path
+   d="M 2,1 0,0 2,-1 2,1"
+   style="stroke:none"
+   id="path8"
+   inkscape:connector-curvature="0" />
+		</g>
+		<marker
+   id="mrkr4-33"
+   class="st8"
+   v:arrowType="4"
+   v:arrowSize="2"
+   v:setback="7.04"
+   refX="-7.04"
+   orient="auto"
+   markerUnits="strokeWidth"
+   overflow="visible"
+   style="fill:#5b9bd5;fill-opacity:1;stroke:#5b9bd5;stroke-width:0.28409091;stroke-opacity:1;overflow:visible">
+			<use
+   xlink:href="#lend4"
+   transform="scale(-3.52,-3.52)"
+   id="use11"
+   x="0"
+   y="0"
+   width="3"
+   height="3" />
+		</marker>
+	<filter
+   id="filter_2-7"
+   color-interpolation-filters="sRGB"><feGaussianBlur
+     stdDeviation="2"
+     id="feGaussianBlur15-1" /></filter><marker
+   id="mrkr4-33-2"
+   class="st8"
+   v:arrowType="4"
+   v:arrowSize="2"
+   v:setback="7.04"
+   refX="-7.04"
+   orient="auto"
+   markerUnits="strokeWidth"
+   overflow="visible"
+   style="fill:#5b9bd5;fill-opacity:1;stroke:#5b9bd5;stroke-width:0.28409091;stroke-opacity:1;overflow:visible"><use
+     xlink:href="#lend4"
+     transform="scale(-3.52,-3.52)"
+     id="use11-3"
+     x="0"
+     y="0"
+     width="3"
+     height="3" /></marker><marker
+   id="mrkr4-33-6"
+   class="st8"
+   v:arrowType="4"
+   v:arrowSize="2"
+   v:setback="7.04"
+   refX="-7.04"
+   orient="auto"
+   markerUnits="strokeWidth"
+   overflow="visible"
+   style="fill:#5b9bd5;fill-opacity:1;stroke:#5b9bd5;stroke-width:0.28409091;stroke-opacity:1;overflow:visible"><use
+     xlink:href="#lend4"
+     transform="scale(-3.52,-3.52)"
+     id="use11-8"
+     x="0"
+     y="0"
+     width="3"
+     height="3" /></marker></defs>
+	<defs
+   id="Filters">
+		<filter
+   id="filter_2"
+   color-interpolation-filters="sRGB">
+			<feGaussianBlur
+   stdDeviation="2"
+   id="feGaussianBlur15" />
+		</filter>
+	</defs>
+	<g
+   v:mID="0"
+   v:index="1"
+   v:groupContext="foregroundPage"
+   id="g17"
+   transform="translate(-47.323579,-90.784072)">
+		<v:userDefs>
+			<v:ud
+   v:nameU="msvThemeOrder"
+   v:val="VT0(0):26" />
+		</v:userDefs>
+		<title
+   id="title19">Page-1</title>
+		<v:pageProperties
+   v:drawingScale="1"
+   v:pageScale="1"
+   v:drawingUnits="0"
+   v:shadowOffsetX="9"
+   v:shadowOffsetY="-9" />
+		<v:layer
+   v:name="Connector"
+   v:index="0" />
+		<g
+   id="shape1-1"
+   v:mID="1"
+   v:groupContext="shape"
+   transform="matrix(0.77644652,0,0,0.77644652,128.62352,-288.18843)">
+			<title
+   id="title22">Square</title>
+			<desc
+   id="desc24">Atomic Queue #1</desc>
+			<v:userDefs>
+				<v:ud
+   v:nameU="visVersion"
+   v:val="VT0(15):26" />
+			</v:userDefs>
+			<v:textBlock
+   v:margins="rect(4,4,4,4)" />
+			<v:textRect
+   cx="30.75"
+   cy="581.25"
+   width="61.5"
+   height="61.5" />
+			<g
+   id="shadow1-2"
+   v:groupContext="shadow"
+   v:shadowOffsetX="0.345598"
+   v:shadowOffsetY="-1.97279"
+   v:shadowType="1"
+   transform="translate(0.345598,1.97279)"
+   class="st1"
+   style="visibility:visible">
+				<rect
+   x="0"
+   y="550.5"
+   width="61.5"
+   height="61.5"
+   class="st2"
+   id="rect27"
+   style="fill:#5b9bd5;fill-opacity:0.22000002;stroke:#5b9bd5;stroke-opacity:0.22000002;filter:url(#filter_2)" />
+			</g>
+			<rect
+   x="0"
+   y="550.5"
+   width="61.5"
+   height="61.5"
+   class="st3"
+   id="rect29"
+   style="fill:#5b9bd5;stroke:#c7c8c8;stroke-width:0.25" />
+
+		</g>
+		<g
+   id="shape3-8"
+   v:mID="3"
+   v:groupContext="shape"
+   transform="matrix(0.77644652,0,0,0.77644652,297.37175,-288.18843)">
+			<title
+   id="title36">Square.3</title>
+			<desc
+   id="desc38">Atomic Queue #2</desc>
+			<v:userDefs>
+				<v:ud
+   v:nameU="visVersion"
+   v:val="VT0(15):26" />
+			</v:userDefs>
+			<v:textBlock
+   v:margins="rect(4,4,4,4)" />
+			<v:textRect
+   cx="30.75"
+   cy="581.25"
+   width="61.5"
+   height="61.5" />
+			<g
+   id="shadow3-9"
+   v:groupContext="shadow"
+   v:shadowOffsetX="0.345598"
+   v:shadowOffsetY="-1.97279"
+   v:shadowType="1"
+   transform="translate(0.345598,1.97279)"
+   class="st1"
+   style="visibility:visible">
+				<rect
+   x="0"
+   y="550.5"
+   width="61.5"
+   height="61.5"
+   class="st2"
+   id="rect41"
+   style="fill:#5b9bd5;fill-opacity:0.22000002;stroke:#5b9bd5;stroke-opacity:0.22000002;filter:url(#filter_2)" />
+			</g>
+			<rect
+   x="0"
+   y="550.5"
+   width="61.5"
+   height="61.5"
+   class="st3"
+   id="rect43"
+   style="fill:#5b9bd5;stroke:#c7c8c8;stroke-width:0.25" />
+
+		</g>
+		<g
+   id="shape4-15"
+   v:mID="4"
+   v:groupContext="shape"
+   transform="matrix(0.77644652,0,0,0.77644652,466.1192,-288.18843)">
+			<title
+   id="title50">Square.4</title>
+			<desc
+   id="desc52">Single Link Queue # 1</desc>
+			<v:userDefs>
+				<v:ud
+   v:nameU="visVersion"
+   v:val="VT0(15):26" />
+			</v:userDefs>
+			<v:textBlock
+   v:margins="rect(4,4,4,4)" />
+			<v:textRect
+   cx="30.75"
+   cy="581.25"
+   width="61.5"
+   height="61.5" />
+			<g
+   id="shadow4-16"
+   v:groupContext="shadow"
+   v:shadowOffsetX="0.345598"
+   v:shadowOffsetY="-1.97279"
+   v:shadowType="1"
+   transform="translate(0.345598,1.97279)"
+   class="st1"
+   style="visibility:visible">
+				<rect
+   x="0"
+   y="550.5"
+   width="61.5"
+   height="61.5"
+   class="st2"
+   id="rect55"
+   style="fill:#5b9bd5;fill-opacity:0.22000002;stroke:#5b9bd5;stroke-opacity:0.22000002;filter:url(#filter_2)" />
+			</g>
+			<rect
+   x="0"
+   y="550.5"
+   width="61.5"
+   height="61.5"
+   class="st3"
+   id="rect57"
+   style="fill:#5b9bd5;stroke:#c7c8c8;stroke-width:0.25" />
+
+		</g>
+		<g
+   id="shape5-22"
+   v:mID="5"
+   v:groupContext="shape"
+   transform="matrix(0.77644652,0,0,0.77644652,52.208527,-296.14701)">
+			<title
+   id="title64">Circle</title>
+			<desc
+   id="desc66">RX</desc>
+			<v:userDefs>
+				<v:ud
+   v:nameU="visVersion"
+   v:val="VT0(15):26" />
+			</v:userDefs>
+			<v:textBlock
+   v:margins="rect(4,4,4,4)" />
+			<v:textRect
+   cx="20.5"
+   cy="591.5"
+   width="35.88"
+   height="30.75" />
+			<g
+   id="shadow5-23"
+   v:groupContext="shadow"
+   v:shadowOffsetX="0.345598"
+   v:shadowOffsetY="-1.97279"
+   v:shadowType="1"
+   transform="translate(0.345598,1.97279)"
+   class="st1"
+   style="visibility:visible">
+				<path
+   d="m 0,591.5 a 20.5,20.5 0 0 1 41,0 20.5,20.5 0 1 1 -41,0 z"
+   class="st2"
+   id="path69"
+   inkscape:connector-curvature="0"
+   style="fill:#5b9bd5;fill-opacity:0.22000002;stroke:#5b9bd5;stroke-opacity:0.22000002;filter:url(#filter_2)" />
+			</g>
+			<path
+   d="m 0,591.5 a 20.5,20.5 0 0 1 41,0 20.5,20.5 0 1 1 -41,0 z"
+   class="st6"
+   id="path71"
+   inkscape:connector-curvature="0"
+   style="fill:#ffd965;stroke:#c7c8c8;stroke-width:0.25" />
+			<text
+   x="15.19"
+   y="594.5"
+   class="st4"
+   v:langID="1033"
+   id="text73"
+   style="fill:#feffff;font-family:Calibri"><v:paragraph
+   v:horizAlign="1" /><v:tabList />RX</text>
+
+		</g>
+		<g
+   id="shape6-28"
+   v:mID="6"
+   v:groupContext="shape"
+   v:layerMember="0"
+   transform="matrix(0.77644652,0,0,0.77644652,84.042834,-305.07614)">
+			<title
+   id="title76">Dynamic connector</title>
+			<path
+   d="m 0,603 50.38,0"
+   class="st7"
+   id="path78"
+   inkscape:connector-curvature="0"
+   style="stroke:#5b9bd5;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#mrkr4-33)" />
+		</g>
+		<g
+   id="shape7-34"
+   v:mID="7"
+   v:groupContext="shape"
+   transform="matrix(0.77644652,0,0,0.77644652,220.95621,-296.14701)">
+			<title
+   id="title81">Circle.7</title>
+			<desc
+   id="desc83">W ..</desc>
+			<v:userDefs>
+				<v:ud
+   v:nameU="visVersion"
+   v:val="VT0(15):26" />
+			</v:userDefs>
+			<v:textBlock
+   v:margins="rect(4,4,4,4)" />
+			<v:textRect
+   cx="20.5"
+   cy="591.5"
+   width="35.88"
+   height="30.75" />
+			<g
+   id="shadow7-35"
+   v:groupContext="shadow"
+   v:shadowOffsetX="0.345598"
+   v:shadowOffsetY="-1.97279"
+   v:shadowType="1"
+   transform="translate(0.345598,1.97279)"
+   class="st1"
+   style="visibility:visible">
+				<path
+   d="m 0,591.5 a 20.5,20.5 0 0 1 41,0 20.5,20.5 0 1 1 -41,0 z"
+   class="st2"
+   id="path86"
+   inkscape:connector-curvature="0"
+   style="fill:#5b9bd5;fill-opacity:0.22000002;stroke:#5b9bd5;stroke-opacity:0.22000002;filter:url(#filter_2)" />
+			</g>
+			<path
+   d="m 0,591.5 a 20.5,20.5 0 0 1 41,0 20.5,20.5 0 1 1 -41,0 z"
+   class="st6"
+   id="path88"
+   inkscape:connector-curvature="0"
+   style="fill:#ffd965;stroke:#c7c8c8;stroke-width:0.25" />
+			<text
+   x="12.4"
+   y="594.5"
+   class="st4"
+   v:langID="1033"
+   id="text90"
+   style="fill:#feffff;font-family:Calibri"><v:paragraph
+   v:horizAlign="1" /><v:tabList />W ..</text>
+
+		</g>
+		<g
+   id="shape9-40"
+   v:mID="9"
+   v:groupContext="shape"
+   transform="matrix(0.77644652,0,0,0.77644652,220.95621,-243.34865)">
+			<title
+   id="title93">Circle.9</title>
+			<desc
+   id="desc95">W N</desc>
+			<v:userDefs>
+				<v:ud
+   v:nameU="visVersion"
+   v:val="VT0(15):26" />
+			</v:userDefs>
+			<v:textBlock
+   v:margins="rect(4,4,4,4)" />
+			<v:textRect
+   cx="20.5"
+   cy="591.5"
+   width="35.88"
+   height="30.75" />
+			<g
+   id="shadow9-41"
+   v:groupContext="shadow"
+   v:shadowOffsetX="0.345598"
+   v:shadowOffsetY="-1.97279"
+   v:shadowType="1"
+   transform="translate(0.345598,1.97279)"
+   class="st1"
+   style="visibility:visible">
+				<path
+   d="m 0,591.5 a 20.5,20.5 0 0 1 41,0 20.5,20.5 0 1 1 -41,0 z"
+   class="st2"
+   id="path98"
+   inkscape:connector-curvature="0"
+   style="fill:#5b9bd5;fill-opacity:0.22000002;stroke:#5b9bd5;stroke-opacity:0.22000002;filter:url(#filter_2)" />
+			</g>
+			<path
+   d="m 0,591.5 a 20.5,20.5 0 0 1 41,0 20.5,20.5 0 1 1 -41,0 z"
+   class="st6"
+   id="path100"
+   inkscape:connector-curvature="0"
+   style="fill:#ffd965;stroke:#c7c8c8;stroke-width:0.25" />
+			<text
+   x="11.69"
+   y="594.5"
+   class="st4"
+   v:langID="1033"
+   id="text102"
+   style="fill:#feffff;font-family:Calibri"><v:paragraph
+   v:horizAlign="1" /><v:tabList />W N</text>
+
+		</g>
+		<g
+   id="shape10-46"
+   v:mID="10"
+   v:groupContext="shape"
+   transform="matrix(0.77644652,0,0,0.77644652,220.95621,-348.94537)">
+			<title
+   id="title105">Circle.10</title>
+			<desc
+   id="desc107">W 1</desc>
+			<v:userDefs>
+				<v:ud
+   v:nameU="visVersion"
+   v:val="VT0(15):26" />
+			</v:userDefs>
+			<v:textBlock
+   v:margins="rect(4,4,4,4)" />
+			<v:textRect
+   cx="20.5"
+   cy="591.5"
+   width="35.88"
+   height="30.75" />
+			<g
+   id="shadow10-47"
+   v:groupContext="shadow"
+   v:shadowOffsetX="0.345598"
+   v:shadowOffsetY="-1.97279"
+   v:shadowType="1"
+   transform="translate(0.345598,1.97279)"
+   class="st1"
+   style="visibility:visible">
+				<path
+   d="m 0,591.5 a 20.5,20.5 0 0 1 41,0 20.5,20.5 0 1 1 -41,0 z"
+   class="st2"
+   id="path110"
+   inkscape:connector-curvature="0"
+   style="fill:#5b9bd5;fill-opacity:0.22000002;stroke:#5b9bd5;stroke-opacity:0.22000002;filter:url(#filter_2)" />
+			</g>
+			<path
+   d="m 0,591.5 a 20.5,20.5 0 0 1 41,0 20.5,20.5 0 1 1 -41,0 z"
+   class="st6"
+   id="path112"
+   inkscape:connector-curvature="0"
+   style="fill:#ffd965;stroke:#c7c8c8;stroke-width:0.25" />
+			<text
+   x="12.39"
+   y="594.5"
+   class="st4"
+   v:langID="1033"
+   id="text114"
+   style="fill:#feffff;font-family:Calibri"><v:paragraph
+   v:horizAlign="1" /><v:tabList />W 1</text>
+
+		</g>
+		<g
+   id="shape11-52"
+   v:mID="11"
+   v:groupContext="shape"
+   v:layerMember="0"
+   transform="matrix(0.77644652,0,0,0.77644652,195.91581,-312.06416)">
+			<title
+   id="title117">Dynamic connector.11</title>
+			<path
+   d="m 0,612 0,-68 25.21,0"
+   class="st7"
+   id="path119"
+   inkscape:connector-curvature="0"
+   style="stroke:#5b9bd5;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#mrkr4-33)" />
+		</g>
+		<g
+   id="shape12-57"
+   v:mID="12"
+   v:groupContext="shape"
+   v:layerMember="0"
+   transform="matrix(0.77644652,0,0,0.77644652,176.37498,-305.07614)">
+			<title
+   id="title122">Dynamic connector.12</title>
+			<path
+   d="m 0,603 50.38,0"
+   class="st7"
+   id="path124"
+   inkscape:connector-curvature="0"
+   style="stroke:#5b9bd5;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#mrkr4-33)" />
+		</g>
+		<g
+   id="shape13-62"
+   v:mID="13"
+   v:groupContext="shape"
+   v:layerMember="0"
+   transform="matrix(0.77644652,0,0,0.77644652,176.37498,-312.06416)">
+			<title
+   id="title127">Dynamic connector.13</title>
+			<path
+   d="m 0,612 25.17,0 0,68 25.21,0"
+   class="st7"
+   id="path129"
+   inkscape:connector-curvature="0"
+   style="stroke:#5b9bd5;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#mrkr4-33)" />
+		</g>
+		<g
+   id="shape14-67"
+   v:mID="14"
+   v:groupContext="shape"
+   v:layerMember="0"
+   transform="matrix(0.77644652,0,0,0.77644652,252.79052,-259.2658)">
+			<title
+   id="title132">Dynamic connector.14</title>
+			<path
+   d="m 0,612 26.88,0 0,-68 23.5,0"
+   class="st7"
+   id="path134"
+   inkscape:connector-curvature="0"
+   style="stroke:#5b9bd5;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#mrkr4-33)" />
+		</g>
+		<g
+   id="shape15-72"
+   v:mID="15"
+   v:groupContext="shape"
+   v:layerMember="0"
+   transform="matrix(0.77644652,0,0,0.77644652,252.79052,-305.07614)">
+			<title
+   id="title137">Dynamic connector.15</title>
+			<path
+   d="m 0,603 50.38,0"
+   class="st7"
+   id="path139"
+   inkscape:connector-curvature="0"
+   style="stroke:#5b9bd5;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#mrkr4-33)" />
+		</g>
+		<g
+   id="shape19-77"
+   v:mID="19"
+   v:groupContext="shape"
+   transform="matrix(0.77644652,0,0,0.77644652,389.70366,-296.14701)">
+			<title
+   id="title142">Circle.19</title>
+			<desc
+   id="desc144">W ..</desc>
+			<v:userDefs>
+				<v:ud
+   v:nameU="visVersion"
+   v:val="VT0(15):26" />
+			</v:userDefs>
+			<v:textBlock
+   v:margins="rect(4,4,4,4)" />
+			<v:textRect
+   cx="20.5"
+   cy="591.5"
+   width="35.88"
+   height="30.75" />
+			<g
+   id="shadow19-78"
+   v:groupContext="shadow"
+   v:shadowOffsetX="0.345598"
+   v:shadowOffsetY="-1.97279"
+   v:shadowType="1"
+   transform="translate(0.345598,1.97279)"
+   class="st1"
+   style="visibility:visible">
+				<path
+   d="m 0,591.5 a 20.5,20.5 0 0 1 41,0 20.5,20.5 0 1 1 -41,0 z"
+   class="st2"
+   id="path147"
+   inkscape:connector-curvature="0"
+   style="fill:#5b9bd5;fill-opacity:0.22000002;stroke:#5b9bd5;stroke-opacity:0.22000002;filter:url(#filter_2)" />
+			</g>
+			<path
+   d="m 0,591.5 a 20.5,20.5 0 0 1 41,0 20.5,20.5 0 1 1 -41,0 z"
+   class="st6"
+   id="path149"
+   inkscape:connector-curvature="0"
+   style="fill:#ffd965;stroke:#c7c8c8;stroke-width:0.25" />
+			<text
+   x="12.4"
+   y="594.5"
+   class="st4"
+   v:langID="1033"
+   id="text151"
+   style="fill:#feffff;font-family:Calibri"><v:paragraph
+   v:horizAlign="1" /><v:tabList />W ..</text>
+
+		</g>
+		<g
+   id="shape20-83"
+   v:mID="20"
+   v:groupContext="shape"
+   transform="matrix(0.77644652,0,0,0.77644652,389.70366,-243.34865)">
+			<title
+   id="title154">Circle.20</title>
+			<desc
+   id="desc156">W N</desc>
+			<v:userDefs>
+				<v:ud
+   v:nameU="visVersion"
+   v:val="VT0(15):26" />
+			</v:userDefs>
+			<v:textBlock
+   v:margins="rect(4,4,4,4)" />
+			<v:textRect
+   cx="20.5"
+   cy="591.5"
+   width="35.88"
+   height="30.75" />
+			<g
+   id="shadow20-84"
+   v:groupContext="shadow"
+   v:shadowOffsetX="0.345598"
+   v:shadowOffsetY="-1.97279"
+   v:shadowType="1"
+   transform="translate(0.345598,1.97279)"
+   class="st1"
+   style="visibility:visible">
+				<path
+   d="m 0,591.5 a 20.5,20.5 0 0 1 41,0 20.5,20.5 0 1 1 -41,0 z"
+   class="st2"
+   id="path159"
+   inkscape:connector-curvature="0"
+   style="fill:#5b9bd5;fill-opacity:0.22000002;stroke:#5b9bd5;stroke-opacity:0.22000002;filter:url(#filter_2)" />
+			</g>
+			<path
+   d="m 0,591.5 a 20.5,20.5 0 0 1 41,0 20.5,20.5 0 1 1 -41,0 z"
+   class="st6"
+   id="path161"
+   inkscape:connector-curvature="0"
+   style="fill:#ffd965;stroke:#c7c8c8;stroke-width:0.25" />
+			<text
+   x="11.69"
+   y="594.5"
+   class="st4"
+   v:langID="1033"
+   id="text163"
+   style="fill:#feffff;font-family:Calibri"><v:paragraph
+   v:horizAlign="1" /><v:tabList />W N</text>
+
+		</g>
+		<g
+   id="shape21-89"
+   v:mID="21"
+   v:groupContext="shape"
+   transform="matrix(0.77644652,0,0,0.77644652,389.70366,-348.94537)">
+			<title
+   id="title166">Circle.21</title>
+			<desc
+   id="desc168">W 1</desc>
+			<v:userDefs>
+				<v:ud
+   v:nameU="visVersion"
+   v:val="VT0(15):26" />
+			</v:userDefs>
+			<v:textBlock
+   v:margins="rect(4,4,4,4)" />
+			<v:textRect
+   cx="20.5"
+   cy="591.5"
+   width="35.88"
+   height="30.75" />
+			<g
+   id="shadow21-90"
+   v:groupContext="shadow"
+   v:shadowOffsetX="0.345598"
+   v:shadowOffsetY="-1.97279"
+   v:shadowType="1"
+   transform="translate(0.345598,1.97279)"
+   class="st1"
+   style="visibility:visible">
+				<path
+   d="m 0,591.5 a 20.5,20.5 0 0 1 41,0 20.5,20.5 0 1 1 -41,0 z"
+   class="st2"
+   id="path171"
+   inkscape:connector-curvature="0"
+   style="fill:#5b9bd5;fill-opacity:0.22000002;stroke:#5b9bd5;stroke-opacity:0.22000002;filter:url(#filter_2)" />
+			</g>
+			<path
+   d="m 0,591.5 a 20.5,20.5 0 0 1 41,0 20.5,20.5 0 1 1 -41,0 z"
+   class="st6"
+   id="path173"
+   inkscape:connector-curvature="0"
+   style="fill:#ffd965;stroke:#c7c8c8;stroke-width:0.25" />
+			<text
+   x="12.39"
+   y="594.5"
+   class="st4"
+   v:langID="1033"
+   id="text175"
+   style="fill:#feffff;font-family:Calibri"><v:paragraph
+   v:horizAlign="1" /><v:tabList />W 1</text>
+
+		</g>
+		<g
+   id="shape28-95"
+   v:mID="28"
+   v:groupContext="shape"
+   v:layerMember="0"
+   transform="matrix(0.77644652,0,0,0.77644652,345.12321,-305.07614)">
+			<title
+   id="title178">Dynamic connector.28</title>
+			<path
+   d="m 0,603 50.38,0"
+   class="st7"
+   id="path180"
+   inkscape:connector-curvature="0"
+   style="stroke:#5b9bd5;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#mrkr4-33)" />
+		</g>
+		<g
+   id="shape29-100"
+   v:mID="29"
+   v:groupContext="shape"
+   v:layerMember="0"
+   transform="matrix(0.77644652,0,0,0.77644652,345.12321,-312.06416)">
+			<title
+   id="title183">Dynamic connector.29</title>
+			<path
+   d="m 0,612 28.33,0 0,-68 22.05,0"
+   class="st7"
+   id="path185"
+   inkscape:connector-curvature="0"
+   style="stroke:#5b9bd5;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#mrkr4-33)" />
+		</g>
+		<g
+   id="shape30-105"
+   v:mID="30"
+   v:groupContext="shape"
+   v:layerMember="0"
+   transform="matrix(0.77644652,0,0,0.77644652,345.12321,-312.06416)">
+			<title
+   id="title188">Dynamic connector.30</title>
+			<path
+   d="m 0,612 28.33,0 0,68 22.05,0"
+   class="st7"
+   id="path190"
+   inkscape:connector-curvature="0"
+   style="stroke:#5b9bd5;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#mrkr4-33)" />
+		</g>
+		<g
+   id="shape31-110"
+   v:mID="31"
+   v:groupContext="shape"
+   v:layerMember="0"
+   transform="matrix(0.77644652,0,0,0.77644652,421.53797,-259.2658)">
+			<title
+   id="title193">Dynamic connector.31</title>
+			<path
+   d="m 0,612 24.42,0 0,-68 25.96,0"
+   class="st7"
+   id="path195"
+   inkscape:connector-curvature="0"
+   style="stroke:#5b9bd5;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#mrkr4-33)" />
+		</g>
+		<g
+   id="shape32-115"
+   v:mID="32"
+   v:groupContext="shape"
+   v:layerMember="0"
+   transform="matrix(0.77644652,0,0,0.77644652,421.53797,-305.07614)">
+			<title
+   id="title198">Dynamic connector.32</title>
+			<path
+   d="m 0,603 50.38,0"
+   class="st7"
+   id="path200"
+   inkscape:connector-curvature="0"
+   style="stroke:#5b9bd5;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#mrkr4-33)" />
+		</g>
+		<g
+   id="shape33-120"
+   v:mID="33"
+   v:groupContext="shape"
+   v:layerMember="0"
+   transform="matrix(0.77644652,0,0,0.77644652,421.53797,-364.86253)">
+			<title
+   id="title203">Dynamic connector.33</title>
+			<path
+   d="m 0,612 24.42,0 0,68 25.96,0"
+   class="st7"
+   id="path205"
+   inkscape:connector-curvature="0"
+   style="stroke:#5b9bd5;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#mrkr4-33)" />
+		</g>
+		<g
+   id="shape34-125"
+   v:mID="34"
+   v:groupContext="shape"
+   v:layerMember="0"
+   transform="matrix(0.77644652,0,0,0.77644652,252.79052,-364.86253)">
+			<title
+   id="title208">Dynamic connector.34</title>
+			<path
+   d="m 0,612 26.88,0 0,68 23.5,0"
+   class="st7"
+   id="path210"
+   inkscape:connector-curvature="0"
+   style="stroke:#5b9bd5;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#mrkr4-33)" />
+		</g>
+	<text
+   xml:space="preserve"
+   style="font-size:24.84628868px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans"
+   x="153.38116"
+   y="165.90149"
+   id="text3106"
+   sodipodi:linespacing="125%"><tspan
+     sodipodi:role="line"
+     x="153.38116"
+     y="165.90149"
+     id="tspan3110"
+     style="font-size:8.69620132px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:center;line-height:125%;writing-mode:lr-tb;text-anchor:middle;fill:#ffffff;fill-opacity:1;font-family:Sans;-inkscape-font-specification:Sans">Atomic #1</tspan></text>
+<text
+   xml:space="preserve"
+   style="font-size:24.84628868px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;overflow:visible;font-family:Sans"
+   x="322.12939"
+   y="165.90149"
+   id="text3106-1"
+   sodipodi:linespacing="125%"><tspan
+     sodipodi:role="line"
+     x="322.12939"
+     y="165.90149"
+     id="tspan3110-4"
+     style="font-size:8.69620132px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:center;line-height:125%;writing-mode:lr-tb;text-anchor:middle;fill:#ffffff;fill-opacity:1;font-family:Sans;-inkscape-font-specification:Sans">Atomic #2</tspan></text>
+<text
+   xml:space="preserve"
+   style="font-size:24.84628868px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;overflow:visible;font-family:Sans"
+   x="491.82089"
+   y="172.79289"
+   id="text3106-0"
+   sodipodi:linespacing="125%"><tspan
+     sodipodi:role="line"
+     x="491.82089"
+     y="172.79289"
+     style="font-size:8.69620132px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:center;line-height:125%;writing-mode:lr-tb;text-anchor:middle;fill:#ffffff;fill-opacity:1;font-family:Sans;-inkscape-font-specification:Sans"
+     id="tspan3923" /></text>
+<text
+   xml:space="preserve"
+   style="font-size:24.84628868px;font-style:normal;font-weight:normal;line-height:125%;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;overflow:visible;font-family:Sans"
+   x="491.02899"
+   y="165.03951"
+   id="text3106-8-5"
+   sodipodi:linespacing="125%"><tspan
+     sodipodi:role="line"
+     x="491.02899"
+     y="165.03951"
+     id="tspan3110-2-1"
+     style="font-size:8.69620132px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:center;line-height:125%;writing-mode:lr-tb;text-anchor:middle;fill:#ffffff;fill-opacity:1;font-family:Sans;-inkscape-font-specification:Sans">Single Link</tspan></text>
+<g
+   style="font-size:12px;fill:none;stroke-linecap:square;stroke-miterlimit:3;overflow:visible"
+   id="shape5-22-1"
+   v:mID="5"
+   v:groupContext="shape"
+   transform="matrix(0.77644652,0,0,0.77644652,556.00223,-296.89447)"><title
+     id="title64-5">Circle</title><desc
+     id="desc66-2">RX</desc><v:userDefs><v:ud
+       v:nameU="visVersion"
+       v:val="VT0(15):26" /></v:userDefs><v:textBlock
+     v:margins="rect(4,4,4,4)" /><v:textRect
+     cx="20.5"
+     cy="591.5"
+     width="35.88"
+     height="30.75" /><g
+     id="shadow5-23-7"
+     v:groupContext="shadow"
+     v:shadowOffsetX="0.345598"
+     v:shadowOffsetY="-1.97279"
+     v:shadowType="1"
+     transform="translate(0.345598,1.97279)"
+     class="st1"
+     style="visibility:visible"><path
+       d="m 0,591.5 a 20.5,20.5 0 0 1 41,0 20.5,20.5 0 1 1 -41,0 z"
+       class="st2"
+       id="path69-6"
+       inkscape:connector-curvature="0"
+       style="fill:#5b9bd5;fill-opacity:0.22000002;stroke:#5b9bd5;stroke-opacity:0.22000002;filter:url(#filter_2-7)" /></g><path
+     d="m 0,591.5 a 20.5,20.5 0 0 1 41,0 20.5,20.5 0 1 1 -41,0 z"
+     class="st6"
+     id="path71-1"
+     inkscape:connector-curvature="0"
+     style="fill:#ffd965;stroke:#c7c8c8;stroke-width:0.25" /><text
+     x="11.06866"
+     y="596.56067"
+     class="st4"
+     v:langID="1033"
+     id="text73-4"
+     style="fill:#feffff;font-family:Calibri"> TX</text>
+</g><g
+   style="font-size:12px;fill:none;stroke-linecap:square;stroke-miterlimit:3;overflow:visible"
+   id="shape28-95-5"
+   v:mID="28"
+   v:groupContext="shape"
+   v:layerMember="0"
+   transform="matrix(0.77644652,0,0,0.77644652,512.00213,-305.42637)"><title
+     id="title178-7">Dynamic connector.28</title><path
+     d="m 0,603 50.38,0"
+     class="st7"
+     id="path180-6"
+     inkscape:connector-curvature="0"
+     style="stroke:#5b9bd5;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;marker-end:url(#mrkr4-33)" /></g></g>
+</svg>
