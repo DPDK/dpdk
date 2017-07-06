@@ -33,6 +33,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 #include <rte_common.h>
 #include <rte_hexdump.h>
 #include <rte_pause.h>
@@ -160,12 +161,32 @@ test_align(void)
 }
 
 static int
+test_log2(void)
+{
+	uint32_t i, base, compare;
+	const uint32_t max = 0x10000;
+	const uint32_t step = 1;
+
+	for (i = 0; i < max; i = i + step) {
+		base = (uint32_t)ceilf(log2((uint32_t)i));
+		compare = rte_log2_u32(i);
+		if (base != compare) {
+			printf("Wrong rte_log2_u32(%x) val %x, expected %x\n",
+				i, compare, base);
+			return TEST_FAILED;
+		}
+	}
+	return 0;
+}
+
+static int
 test_common(void)
 {
 	int ret = 0;
 	ret |= test_align();
 	ret |= test_macros(0);
 	ret |= test_misc();
+	ret |= test_log2();
 
 	return ret;
 }
