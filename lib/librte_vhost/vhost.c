@@ -40,6 +40,7 @@
 #include <numaif.h>
 #endif
 
+#include <rte_errno.h>
 #include <rte_ethdev.h>
 #include <rte_log.h>
 #include <rte_string_fns.h>
@@ -295,7 +296,8 @@ rte_vhost_get_numa_node(int vid)
 			    MPOL_F_NODE | MPOL_F_ADDR);
 	if (ret < 0) {
 		RTE_LOG(ERR, VHOST_CONFIG,
-			"(%d) failed to query numa node: %d\n", vid, ret);
+			"(%d) failed to query numa node: %s\n",
+			vid, rte_strerror(errno));
 		return -1;
 	}
 
