@@ -589,6 +589,7 @@ M: Harry van Haaren <harry.van.haaren@intel.com>
 F: drivers/event/sw/
 F: test/test/test_eventdev_sw.c
 F: doc/guides/eventdevs/sw.rst
+F: examples/eventdev_pipeline_sw_pmd/
 
 
 Packet processing
