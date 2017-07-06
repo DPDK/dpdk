@@ -494,7 +494,8 @@ static int parse_kvlist (const char *key __rte_unused, const char *value, void *
 
 	node = strchr(name, ':');
 	if (!node) {
-		RTE_LOG(WARNING, PMD, "could not parse node value from %s", name);
+		RTE_LOG(WARNING, PMD, "could not parse node value from %s\n",
+			name);
 		goto out;
 	}
 
@@ -503,7 +504,8 @@ static int parse_kvlist (const char *key __rte_unused, const char *value, void *
 
 	action = strchr(node, ':');
 	if (!action) {
-		RTE_LOG(WARNING, PMD, "could not action value from %s", node);
+		RTE_LOG(WARNING, PMD, "could not parse action value from %s\n",
+			node);
 		goto out;
 	}
 
