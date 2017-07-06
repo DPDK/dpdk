@@ -379,6 +379,7 @@ extern enum dcb_queue_mapping_mode dcb_q_mapping;
 extern uint16_t mbuf_data_size; /**< Mbuf data space size. */
 extern uint32_t param_total_num_mbufs;
 
+extern uint16_t stats_period;
 
 #ifdef RTE_LIBRTE_LATENCY_STATS
 extern uint8_t latencystats_enabled;

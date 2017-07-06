@@ -196,6 +196,11 @@ The commandline options are:
 
    This flag should be only used in non-interactive mode.
 
+*   ``--stats-period PERIOD``
+
+    Display statistics every PERIOD seconds, if interactive mode is disabled.
+    The default value is 0, which means that the statistics will not be displayed.
+
 *   ``--nb-cores=N``
 
     Set the number of forwarding cores,
