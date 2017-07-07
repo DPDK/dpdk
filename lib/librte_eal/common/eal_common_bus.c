@@ -92,7 +92,7 @@ rte_bus_probe(void)
 	struct rte_bus *bus, *vbus = NULL;
 
 	TAILQ_FOREACH(bus, &rte_bus_list, next) {
-		if (!strcmp(bus->name, "virtual")) {
+		if (!strcmp(bus->name, "vdev")) {
 			vbus = bus;
 			continue;
 		}

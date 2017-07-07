@@ -77,9 +77,6 @@ const char *pci_get_sysfs_path(void);
 /** Maximum number of PCI resources. */
 #define PCI_MAX_RESOURCE 6
 
-/** Name of PCI Bus */
-#define PCI_BUS_NAME "PCI"
-
 /* Forward declarations */
 struct rte_pci_device;
 struct rte_pci_driver;

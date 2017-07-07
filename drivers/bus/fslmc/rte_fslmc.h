@@ -56,9 +56,6 @@ extern "C" {
 #include <rte_dev.h>
 #include <rte_bus.h>
 
-/** Name of FSLMC Bus */
-#define FSLMC_BUS_NAME "FSLMC"
-
 struct rte_dpaa2_driver;
 
 /* DPAA2 Device and Driver lists for FSLMC bus */

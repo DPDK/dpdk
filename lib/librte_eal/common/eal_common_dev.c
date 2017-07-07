@@ -74,7 +74,7 @@ int rte_eal_dev_attach(const char *name, const char *devargs)
 		return -EINVAL;
 	}
 
-	ret = rte_eal_hotplug_add("PCI", name, devargs);
+	ret = rte_eal_hotplug_add("pci", name, devargs);
 	if (ret && ret != -EINVAL)
 		return ret;
 

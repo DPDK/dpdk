@@ -547,4 +547,4 @@ struct rte_pci_bus rte_pci_bus = {
 	.driver_list = TAILQ_HEAD_INITIALIZER(rte_pci_bus.driver_list),
 };
 
-RTE_REGISTER_BUS(PCI_BUS_NAME, rte_pci_bus.bus);
+RTE_REGISTER_BUS(pci, rte_pci_bus.bus);

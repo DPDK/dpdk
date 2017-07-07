@@ -372,4 +372,4 @@ static struct rte_bus rte_vdev_bus = {
 	.unplug = vdev_unplug,
 };
 
-RTE_REGISTER_BUS(VIRTUAL_BUS_NAME, rte_vdev_bus);
+RTE_REGISTER_BUS(vdev, rte_vdev_bus);
