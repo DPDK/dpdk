@@ -392,7 +392,7 @@ Call application for performance throughput test of single Aesni MB PMD
 for cipher encryption aes-cbc and auth generation sha1-hmac,
 one million operations, burst size 32, packet size 64::
 
-   dpdk-test-crypto-perf -l 6-7 --vdev crypto_aesni_mb_pmd -w 0000:00:00.0 --
+   dpdk-test-crypto-perf -l 6-7 --vdev crypto_aesni_mb -w 0000:00:00.0 --
    --ptest throughput --devtype crypto_aesni_mb --optype cipher-then-auth
    --cipher-algo aes-cbc --cipher-op encrypt --cipher-key-sz 16 --auth-algo
    sha1-hmac --auth-op generate --auth-key-sz 64 --digest-sz 12
@@ -401,8 +401,8 @@ one million operations, burst size 32, packet size 64::
 Call application for performance latency test of two Aesni MB PMD executed
 on two cores for cipher encryption aes-cbc, ten operations in silent mode::
 
-   dpdk-test-crypto-perf -l 4-7 --vdev crypto_aesni_mb_pmd1
-   --vdev crypto_aesni_mb_pmd2 -w 0000:00:00.0 -- --devtype crypto_aesni_mb
+   dpdk-test-crypto-perf -l 4-7 --vdev crypto_aesni_mb1
+   --vdev crypto_aesni_mb2 -w 0000:00:00.0 -- --devtype crypto_aesni_mb
    --cipher-algo aes-cbc --cipher-key-sz 16 --cipher-iv-sz 16
    --cipher-op encrypt --optype cipher-only --silent
    --ptest latency --total-ops 10

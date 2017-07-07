@@ -153,7 +153,7 @@ The mapping of lcores to port/queues is similar to other l3fwd applications.
 For example, given the following command line::
 
     ./build/ipsec-secgw -l 20,21 -n 4 --socket-mem 0,2048       \
-           --vdev "cryptodev_null_pmd" -- -p 0xf -P -u 0x3      \
+           --vdev "crypto_null" -- -p 0xf -P -u 0x3      \
            --config="(0,0,20),(1,0,20),(2,0,21),(3,0,21)"       \
            -f /path/to/config_file                              \
 
@@ -165,7 +165,7 @@ where each options means:
 
 *   The ``--socket-mem`` to use 2GB on socket 1.
 
-*   The ``--vdev "cryptodev_null_pmd"`` option creates virtual NULL cryptodev PMD.
+*   The ``--vdev "crypto_null"`` option creates virtual NULL cryptodev PMD.
 
 *   The ``-p`` option enables ports (detected) 0, 1, 2 and 3.
 
@@ -218,7 +218,7 @@ For example, something like the following command line:
 
     ./build/ipsec-secgw -l 20,21 -n 4 --socket-mem 0,2048 \
             -w 81:00.0 -w 81:00.1 -w 81:00.2 -w 81:00.3 \
-            --vdev "cryptodev_aesni_mb_pmd" --vdev "cryptodev_null_pmd" \
+            --vdev "crypto_aesni_mb" --vdev "crypto_null" \
 	    -- \
             -p 0xf -P -u 0x3 --config="(0,0,20),(1,0,20),(2,0,21),(3,0,21)" \
             -f sample.cfg

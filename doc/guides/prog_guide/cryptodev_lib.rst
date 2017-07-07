@@ -68,13 +68,13 @@ From the command line using the --vdev EAL option
 
 .. code-block:: console
 
-   --vdev  'cryptodev_aesni_mb_pmd0,max_nb_queue_pairs=2,max_nb_sessions=1024,socket_id=0'
+   --vdev  'crypto_aesni_mb0,max_nb_queue_pairs=2,max_nb_sessions=1024,socket_id=0'
 
 Our using the rte_vdev_init API within the application code.
 
 .. code-block:: c
 
-   rte_vdev_init("cryptodev_aesni_mb_pmd",
+   rte_vdev_init("crypto_aesni_mb",
                      "max_nb_queue_pairs=2,max_nb_sessions=1024,socket_id=0")
 
 All virtual Crypto devices support the following initialization parameters:

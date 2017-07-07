@@ -201,8 +201,8 @@ To run the application in linuxapp environment with 2 lcores, 2 ports and 2 cryp
 
 .. code-block:: console
 
-    $ ./build/l2fwd-crypto -l 0-1 -n 4 --vdev "cryptodev_aesni_mb_pmd" \
-    --vdev "cryptodev_aesni_mb_pmd" -- -p 0x3 --chain CIPHER_HASH \
+    $ ./build/l2fwd-crypto -l 0-1 -n 4 --vdev "crypto_aesni_mb0" \
+    --vdev "crypto_aesni_mb1" -- -p 0x3 --chain CIPHER_HASH \
     --cipher_op ENCRYPT --cipher_algo aes-cbc \
     --cipher_key 00:01:02:03:04:05:06:07:08:09:0a:0b:0c:0d:0e:0f \
     --auth_op GENERATE --auth_algo aes-xcbc-mac \
