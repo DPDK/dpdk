@@ -1266,6 +1266,46 @@ rte_flow_query(uint8_t port_id,
 int
 rte_flow_isolate(uint8_t port_id, int set, struct rte_flow_error *error);
 
+/**
+ * Generic flow representation.
+ *
+ * This form is sufficient to describe an rte_flow independently from any
+ * PMD implementation and allows for replayability and identification.
+ */
+struct rte_flow_desc {
+	size_t size; /**< Allocated space including data[]. */
+	struct rte_flow_attr attr; /**< Attributes. */
+	struct rte_flow_item *items; /**< Items. */
+	struct rte_flow_action *actions; /**< Actions. */
+	uint8_t data[]; /**< Storage for items/actions. */
+};
+
+/**
+ * Copy an rte_flow rule description.
+ *
+ * @param[in] fd
+ *   Flow rule description.
+ * @param[in] len
+ *   Total size of allocated data for the flow description.
+ * @param[in] attr
+ *   Flow rule attributes.
+ * @param[in] items
+ *   Pattern specification (list terminated by the END pattern item).
+ * @param[in] actions
+ *   Associated actions (list terminated by the END action).
+ *
+ * @return
+ *   If len is greater or equal to the size of the flow, the total size of the
+ *   flow description and its data.
+ *   If len is lower than the size of the flow, the number of bytes that would
+ *   have been written to desc had it been sufficient. Nothing is written.
+ */
+size_t
+rte_flow_copy(struct rte_flow_desc *fd, size_t len,
+	      const struct rte_flow_attr *attr,
+	      const struct rte_flow_item *items,
+	      const struct rte_flow_action *actions);
+
 #ifdef __cplusplus
 }
 #endif

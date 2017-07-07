@@ -152,6 +152,7 @@ DPDK_17.08 {
 	global:
 
 	_rte_eth_dev_callback_process;
+	rte_flow_copy;
 	rte_flow_isolate;
 
 } DPDK_17.05;
