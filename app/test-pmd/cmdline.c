@@ -2196,12 +2196,14 @@ cmd_showport_reta_parsed(void *parsed_result,
 	struct cmd_showport_reta *res = parsed_result;
 	struct rte_eth_rss_reta_entry64 reta_conf[8];
 	struct rte_eth_dev_info dev_info;
+	uint16_t max_reta_size;
 
 	memset(&dev_info, 0, sizeof(dev_info));
 	rte_eth_dev_info_get(res->port_id, &dev_info);
-	if (dev_info.reta_size == 0 || res->size > dev_info.reta_size ||
-				res->size > ETH_RSS_RETA_SIZE_512) {
-		printf("Invalid redirection table size: %u\n", res->size);
+	max_reta_size = RTE_MIN(dev_info.reta_size, ETH_RSS_RETA_SIZE_512);
+	if (res->size == 0 || res->size > max_reta_size) {
+		printf("Invalid redirection table size: %u (1-%u)\n",
+			res->size, max_reta_size);
 		return;
 	}
 
