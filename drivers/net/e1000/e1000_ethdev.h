@@ -34,6 +34,7 @@
 #ifndef _E1000_ETHDEV_H_
 #define _E1000_ETHDEV_H_
 #include <rte_time.h>
+#include <rte_pci.h>
 
 #define E1000_INTEL_VENDOR_ID 0x8086
 
