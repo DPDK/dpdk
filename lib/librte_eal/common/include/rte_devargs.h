@@ -119,6 +119,26 @@ int rte_eal_parse_devargs_str(const char *devargs_str,
 				char **drvname, char **drvargs);
 
 /**
+ * Parse a device string.
+ *
+ * Verify that a bus is capable of handling the device passed
+ * in argument. Store which bus will handle the device, its name
+ * and the eventual device parameters.
+ *
+ * @param dev
+ *   The device declaration string.
+ * @param da
+ *   The devargs structure holding the device information.
+ *
+ * @return
+ *   - 0 on success.
+ *   - Negative errno on error.
+ */
+int
+rte_eal_devargs_parse(const char *dev,
+		      struct rte_devargs *da);
+
+/**
  * Add a device to the user device list
  *
  * For PCI devices, the format of arguments string is "PCI_ADDR" or

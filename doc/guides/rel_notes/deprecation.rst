@@ -59,3 +59,8 @@ Deprecation Notices
   The non-"do-sig" versions of the hash tables will be removed
   (including the ``signature_offset`` parameter)
   and the "do-sig" versions renamed accordingly.
+
+* eal: the following function is deprecated starting from 17.08 and will
+  be removed in 17.11:
+
+  - ``rte_eal_parse_devargs_str``, replaced by ``rte_eal_devargs_parse``

@@ -206,6 +206,7 @@ DPDK_17.08 {
 EXPERIMENTAL {
 	global:
 
+	rte_eal_devargs_parse;
 	rte_eal_hotplug_add;
 	rte_eal_hotplug_remove;
 
