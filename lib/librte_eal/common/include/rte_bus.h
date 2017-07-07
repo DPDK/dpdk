@@ -158,6 +158,22 @@ typedef int (*rte_bus_unplug_t)(struct rte_device *dev);
 typedef int (*rte_bus_parse_t)(const char *name, void *addr);
 
 /**
+ * Bus scan policies
+ */
+enum rte_bus_scan_mode {
+	RTE_BUS_SCAN_UNDEFINED,
+	RTE_BUS_SCAN_WHITELIST,
+	RTE_BUS_SCAN_BLACKLIST,
+};
+
+/**
+ * A structure used to configure bus operations.
+ */
+struct rte_bus_conf {
+	enum rte_bus_scan_mode scan_mode; /**< Scan policy. */
+};
+
+/**
  * A structure describing a generic bus.
  */
 struct rte_bus {
@@ -169,6 +185,7 @@ struct rte_bus {
 	rte_bus_plug_t plug;         /**< Probe single device for drivers */
 	rte_bus_unplug_t unplug;     /**< Remove single device from driver */
 	rte_bus_parse_t parse;       /**< Parse a device name */
+	struct rte_bus_conf conf;    /**< Bus configuration */
 };
 
 /**
