@@ -78,12 +78,20 @@ rte_eal_parse_devargs_str(const char *devargs_str,
 	return 0;
 }
 
+static int
+bus_name_cmp(const struct rte_bus *bus, const void *name)
+{
+	return strncmp(bus->name, name, strlen(bus->name));
+}
+
 /* store a whitelist parameter for later parsing */
 int
 rte_eal_devargs_add(enum rte_devtype devtype, const char *devargs_str)
 {
 	struct rte_devargs *devargs = NULL;
-	char *buf = NULL;
+	struct rte_bus *bus = NULL;
+	char *dev = NULL;
+	const char *devname;
 	int ret;
 
 	/* use malloc instead of rte_malloc as it's called early at init */
@@ -94,34 +102,51 @@ rte_eal_devargs_add(enum rte_devtype devtype, const char *devargs_str)
 	memset(devargs, 0, sizeof(*devargs));
 	devargs->type = devtype;
 
-	if (rte_eal_parse_devargs_str(devargs_str, &buf, &devargs->args))
+	if (rte_eal_parse_devargs_str(devargs_str, &dev, &devargs->args))
 		goto fail;
+	devname = dev;
+	do {
+		bus = rte_bus_find(bus, bus_name_cmp, dev);
+		if (bus == NULL)
+			break;
+		devname = dev + strlen(bus->name) + 1;
+		if (rte_bus_find_by_device_name(devname) == bus)
+			break;
+		devname = dev;
+	} while (1);
+	if (bus == NULL) {
+		bus = rte_bus_find_by_device_name(devname);
+		if (bus == NULL) {
+			fprintf(stderr, "ERROR: failed to parse bus info from device declaration\n");
+			goto fail;
+		}
+	}
+	devargs->bus = bus;
 
 	switch (devargs->type) {
 	case RTE_DEVTYPE_WHITELISTED_PCI:
 	case RTE_DEVTYPE_BLACKLISTED_PCI:
 		/* try to parse pci identifier */
-		if (eal_parse_pci_BDF(buf, &devargs->pci.addr) != 0 &&
-		    eal_parse_pci_DomBDF(buf, &devargs->pci.addr) != 0)
+		if (bus->parse(devname, &devargs->pci.addr) != 0)
 			goto fail;
 
 		break;
 	case RTE_DEVTYPE_VIRTUAL:
 		/* save driver name */
 		ret = snprintf(devargs->virt.drv_name,
-			       sizeof(devargs->virt.drv_name), "%s", buf);
+			       sizeof(devargs->virt.drv_name), "%s", devname);
 		if (ret < 0 || ret >= (int)sizeof(devargs->virt.drv_name))
 			goto fail;
 
 		break;
 	}
 
-	free(buf);
+	free(dev);
 	TAILQ_INSERT_TAIL(&devargs_list, devargs, next);
 	return 0;
 
 fail:
-	free(buf);
+	free(dev);
 	if (devargs) {
 		free(devargs->args);
 		free(devargs);
