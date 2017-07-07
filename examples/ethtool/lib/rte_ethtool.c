@@ -36,6 +36,7 @@
 #include <rte_version.h>
 #include <rte_ethdev.h>
 #include <rte_ether.h>
+#include <rte_pci.h>
 #ifdef RTE_LIBRTE_IXGBE_PMD
 #include <rte_pmd_ixgbe.h>
 #endif
@@ -73,6 +74,7 @@ rte_ethtool_get_drvinfo(uint8_t port_id, struct ethtool_drvinfo *drvinfo)
 		dev_info.driver_name);
 	snprintf(drvinfo->version, sizeof(drvinfo->version), "%s",
 		rte_version());
+	/* TODO: replace bus_info by rte_devargs.name */
 	if (dev_info.pci_dev)
 		snprintf(drvinfo->bus_info, sizeof(drvinfo->bus_info),
 			"%04x:%02x:%02x.%x",
