@@ -33,6 +33,7 @@
 
 #include <rte_mbuf.h>
 #include <rte_ethdev.h>
+#include <rte_pci.h>
 #include <rte_malloc.h>
 #include <rte_memcpy.h>
 #include <rte_memory.h>
