@@ -102,6 +102,27 @@ static char *parse_driver_arg(const char *args)
 }
 
 static int
+vdev_parse(const char *name, void *addr)
+{
+	struct rte_vdev_driver **out = addr;
+	struct rte_vdev_driver *driver = NULL;
+
+	TAILQ_FOREACH(driver, &vdev_driver_list, next) {
+		if (strncmp(driver->driver.name, name,
+			    strlen(driver->driver.name)) == 0)
+			break;
+		if (driver->driver.alias &&
+		    strncmp(driver->driver.alias, name,
+			    strlen(driver->driver.alias)) == 0)
+			break;
+	}
+	if (driver != NULL &&
+	    addr != NULL)
+		*out = driver;
+	return driver == NULL;
+}
+
+static int
 vdev_probe_all_drivers(struct rte_vdev_device *dev)
 {
 	const char *name;
@@ -115,36 +136,14 @@ vdev_probe_all_drivers(struct rte_vdev_device *dev)
 	RTE_LOG(DEBUG, EAL, "Search driver %s to probe device %s\n", name,
 		rte_vdev_device_name(dev));
 
-	TAILQ_FOREACH(driver, &vdev_driver_list, next) {
-		/*
-		 * search a driver prefix in virtual device name.
-		 * For example, if the driver is pcap PMD, driver->name
-		 * will be "net_pcap", but "name" will be "net_pcapN".
-		 * So use strncmp to compare.
-		 */
-		if (!strncmp(driver->driver.name, name,
-			    strlen(driver->driver.name))) {
-			dev->device.driver = &driver->driver;
-			ret = driver->probe(dev);
-			if (ret)
-				dev->device.driver = NULL;
-			goto out;
-		}
+	if (vdev_parse(name, &driver)) {
+		ret = -1;
+		goto out;
 	}
-
-	/* Give new names precedence over aliases. */
-	TAILQ_FOREACH(driver, &vdev_driver_list, next) {
-		if (driver->driver.alias &&
-		    !strncmp(driver->driver.alias, name,
-			    strlen(driver->driver.alias))) {
-			dev->device.driver = &driver->driver;
-			ret = driver->probe(dev);
-			if (ret)
-				dev->device.driver = NULL;
-			break;
-		}
-	}
-
+	dev->device.driver = &driver->driver;
+	ret = driver->probe(dev);
+	if (ret)
+		dev->device.driver = NULL;
 out:
 	free(drv_name);
 	return ret;
@@ -370,6 +369,7 @@ static struct rte_bus rte_vdev_bus = {
 	.find_device = vdev_find_device,
 	/* .plug = NULL, see comment on vdev_unplug */
 	.unplug = vdev_unplug,
+	.parse = vdev_parse,
 };
 
 RTE_REGISTER_BUS(vdev, rte_vdev_bus);
