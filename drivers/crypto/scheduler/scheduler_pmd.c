@@ -325,7 +325,7 @@ parse_slave_arg(const char *key __rte_unused,
 {
 	struct scheduler_init_params *param = extra_args;
 
-	if (param->nb_slaves >= RTE_CRYPTODEV_SCHEDULER_MAX_NB_SLAVES - 1) {
+	if (param->nb_slaves >= RTE_CRYPTODEV_SCHEDULER_MAX_NB_SLAVES) {
 		CS_LOG_ERR("Too many slaves.\n");
 		return -ENOMEM;
 	}
