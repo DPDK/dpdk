@@ -77,6 +77,17 @@ vqtbl1q_u8(uint8x16_t a, uint8x16_t b)
 
 	return vld1q_u8(rte_ret.u8);
 }
+
+static inline uint16_t
+vaddvq_u16(uint16x8_t a)
+{
+	uint32x4_t m = vpaddlq_u16(a);
+	uint64x2_t n = vpaddlq_u32(m);
+	uint64x1_t o = vget_low_u64(n) + vget_high_u64(n);
+
+	return vget_lane_u32((uint32x2_t)o, 0);
+}
+
 #endif
 
 #if defined(RTE_TOOLCHAIN_GCC) && (GCC_VERSION < 70000)
