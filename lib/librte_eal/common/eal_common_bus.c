@@ -202,3 +202,24 @@ rte_bus_find_by_name(const char *busname)
 {
 	return rte_bus_find(NULL, cmp_bus_name, (const void *)busname);
 }
+
+static int
+bus_can_parse(const struct rte_bus *bus, const void *_name)
+{
+	const char *name = _name;
+
+	return !(bus->parse && bus->parse(name, NULL) == 0);
+}
+
+struct rte_bus *
+rte_bus_find_by_device_name(const char *str)
+{
+	char name[RTE_DEV_NAME_MAX_LEN];
+	char *c;
+
+	snprintf(name, sizeof(name), "%s", str);
+	c = strchr(name, ',');
+	if (c != NULL)
+		c[0] = '\0';
+	return rte_bus_find(NULL, bus_can_parse, name);
+}

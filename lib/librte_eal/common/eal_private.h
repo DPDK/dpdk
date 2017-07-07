@@ -338,4 +338,16 @@ int rte_eal_hugepage_attach(void);
  */
 bool rte_eal_using_phys_addrs(void);
 
+/**
+ * Find a bus capable of identifying a device.
+ *
+ * @param str
+ *   A device identifier (PCI address, virtual PMD name, ...).
+ *
+ * @return
+ *   A valid bus handle if found.
+ *   NULL if no bus is able to parse this device.
+ */
+struct rte_bus *rte_bus_find_by_device_name(const char *str);
+
 #endif /* _EAL_PRIVATE_H_ */
