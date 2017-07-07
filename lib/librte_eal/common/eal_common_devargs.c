@@ -126,14 +126,14 @@ rte_eal_devargs_add(enum rte_devtype devtype, const char *devargs_str)
 	ret = snprintf(devargs->name, sizeof(devargs->name), "%s", devname);
 	if (ret < 0 || ret >= (int)sizeof(devargs->name))
 		goto fail;
-	if (devargs->type == RTE_DEVTYPE_WHITELISTED_PCI) {
+	if (devargs->type == RTE_DEVTYPE_WHITELISTED) {
 		if (bus->conf.scan_mode == RTE_BUS_SCAN_UNDEFINED) {
 			bus->conf.scan_mode = RTE_BUS_SCAN_WHITELIST;
 		} else if (bus->conf.scan_mode == RTE_BUS_SCAN_BLACKLIST) {
 			fprintf(stderr, "ERROR: incompatible device type and bus scan mode\n");
 			goto fail;
 		}
-	} else if (devargs->type == RTE_DEVTYPE_BLACKLISTED_PCI) {
+	} else if (devargs->type == RTE_DEVTYPE_BLACKLISTED) {
 		if (bus->conf.scan_mode == RTE_BUS_SCAN_UNDEFINED) {
 			bus->conf.scan_mode = RTE_BUS_SCAN_BLACKLIST;
 		} else if (bus->conf.scan_mode == RTE_BUS_SCAN_WHITELIST) {

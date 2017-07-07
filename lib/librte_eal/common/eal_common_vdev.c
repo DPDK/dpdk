@@ -176,7 +176,6 @@ alloc_devargs(const char *name, const char *args)
 	if (!devargs)
 		return NULL;
 
-	devargs->type = RTE_DEVTYPE_VIRTUAL;
 	devargs->bus = rte_bus_find_by_name("vdev");
 	if (args)
 		devargs->args = strdup(args);
