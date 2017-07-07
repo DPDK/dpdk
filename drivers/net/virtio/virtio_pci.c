@@ -38,6 +38,7 @@
 #endif
 
 #include <rte_io.h>
+#include <rte_bus.h>
 
 #include "virtio_pci.h"
 #include "virtio_logs.h"
@@ -684,8 +685,8 @@ vtpci_init(struct rte_pci_device *dev, struct virtio_hw *hw)
 	if (rte_pci_ioport_map(dev, 0, VTPCI_IO(hw)) < 0) {
 		if (dev->kdrv == RTE_KDRV_UNKNOWN &&
 		    (!dev->device.devargs ||
-		     dev->device.devargs->type !=
-			RTE_DEVTYPE_WHITELISTED_PCI)) {
+		     dev->device.devargs->bus !=
+		     rte_bus_find_by_name("pci"))) {
 			PMD_INIT_LOG(INFO,
 				"skip kernel managed virtio device.");
 			return 1;
