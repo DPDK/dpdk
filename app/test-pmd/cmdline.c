@@ -2199,7 +2199,7 @@ cmd_showport_reta_parsed(void *parsed_result,
 
 	memset(&dev_info, 0, sizeof(dev_info));
 	rte_eth_dev_info_get(res->port_id, &dev_info);
-	if (dev_info.reta_size == 0 || res->size != dev_info.reta_size ||
+	if (dev_info.reta_size == 0 || res->size > dev_info.reta_size ||
 				res->size > ETH_RSS_RETA_SIZE_512) {
 		printf("Invalid redirection table size: %u\n", res->size);
 		return;
