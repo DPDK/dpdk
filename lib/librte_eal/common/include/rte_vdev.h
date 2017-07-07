@@ -50,7 +50,7 @@ static inline const char *
 rte_vdev_device_name(const struct rte_vdev_device *dev)
 {
 	if (dev && dev->device.devargs)
-		return dev->device.devargs->virt.drv_name;
+		return dev->device.devargs->name;
 	return NULL;
 }
 

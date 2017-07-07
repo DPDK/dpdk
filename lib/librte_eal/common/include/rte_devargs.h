@@ -50,7 +50,6 @@ extern "C" {
 
 #include <stdio.h>
 #include <sys/queue.h>
-#include <rte_pci.h>
 #include <rte_bus.h>
 
 /**
@@ -77,21 +76,10 @@ struct rte_devargs {
 	TAILQ_ENTRY(rte_devargs) next;
 	/** Type of device. */
 	enum rte_devtype type;
-	RTE_STD_C11
-	union {
-		/** Used if type is RTE_DEVTYPE_*_PCI. */
-		struct {
-			/** PCI location. */
-			struct rte_pci_addr addr;
-		} pci;
-		/** Used if type is RTE_DEVTYPE_VIRTUAL. */
-		struct {
-			/** Driver name. */
-			char drv_name[RTE_DEV_NAME_MAX_LEN];
-		} virt;
-	};
 	/** Bus handle for the device. */
 	struct rte_bus *bus;
+	/** Name of the device. */
+	char name[RTE_DEV_NAME_MAX_LEN];
 	/** Arguments string as given by user or "" for no argument. */
 	char *args;
 };

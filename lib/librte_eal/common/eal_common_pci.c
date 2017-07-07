@@ -74,12 +74,15 @@ const char *pci_get_sysfs_path(void)
 static struct rte_devargs *pci_devargs_lookup(struct rte_pci_device *dev)
 {
 	struct rte_devargs *devargs;
+	struct rte_pci_addr addr;
+	struct rte_bus *pbus;
 
+	pbus = rte_bus_find_by_name("pci");
 	TAILQ_FOREACH(devargs, &devargs_list, next) {
-		if (devargs->type != RTE_DEVTYPE_BLACKLISTED_PCI &&
-			devargs->type != RTE_DEVTYPE_WHITELISTED_PCI)
+		if (devargs->bus != pbus)
 			continue;
-		if (!rte_eal_compare_pci_addr(&dev->addr, &devargs->pci.addr))
+		devargs->bus->parse(devargs->name, &addr);
+		if (!rte_eal_compare_pci_addr(&dev->addr, &addr))
 			return devargs;
 	}
 	return NULL;

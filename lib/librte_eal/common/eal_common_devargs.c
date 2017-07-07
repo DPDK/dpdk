@@ -40,7 +40,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <rte_pci.h>
 #include <rte_devargs.h>
 #include "eal_private.h"
 
@@ -123,23 +122,10 @@ rte_eal_devargs_add(enum rte_devtype devtype, const char *devargs_str)
 	}
 	devargs->bus = bus;
 
-	switch (devargs->type) {
-	case RTE_DEVTYPE_WHITELISTED_PCI:
-	case RTE_DEVTYPE_BLACKLISTED_PCI:
-		/* try to parse pci identifier */
-		if (bus->parse(devname, &devargs->pci.addr) != 0)
-			goto fail;
-
-		break;
-	case RTE_DEVTYPE_VIRTUAL:
-		/* save driver name */
-		ret = snprintf(devargs->virt.drv_name,
-			       sizeof(devargs->virt.drv_name), "%s", devname);
-		if (ret < 0 || ret >= (int)sizeof(devargs->virt.drv_name))
-			goto fail;
-
-		break;
-	}
+	/* save device name. */
+	ret = snprintf(devargs->name, sizeof(devargs->name), "%s", devname);
+	if (ret < 0 || ret >= (int)sizeof(devargs->name))
+		goto fail;
 	if (devargs->type == RTE_DEVTYPE_WHITELISTED_PCI) {
 		if (bus->conf.scan_mode == RTE_BUS_SCAN_UNDEFINED) {
 			bus->conf.scan_mode = RTE_BUS_SCAN_WHITELIST;
@@ -191,27 +177,10 @@ rte_eal_devargs_dump(FILE *f)
 {
 	struct rte_devargs *devargs;
 
-	fprintf(f, "User device white list:\n");
+	fprintf(f, "User device list:\n");
 	TAILQ_FOREACH(devargs, &devargs_list, next) {
-		if (devargs->type == RTE_DEVTYPE_WHITELISTED_PCI)
-			fprintf(f, "  PCI whitelist " PCI_PRI_FMT " %s\n",
-			       devargs->pci.addr.domain,
-			       devargs->pci.addr.bus,
-			       devargs->pci.addr.devid,
-			       devargs->pci.addr.function,
-			       devargs->args);
-		else if (devargs->type == RTE_DEVTYPE_BLACKLISTED_PCI)
-			fprintf(f, "  PCI blacklist " PCI_PRI_FMT " %s\n",
-			       devargs->pci.addr.domain,
-			       devargs->pci.addr.bus,
-			       devargs->pci.addr.devid,
-			       devargs->pci.addr.function,
-			       devargs->args);
-		else if (devargs->type == RTE_DEVTYPE_VIRTUAL)
-			fprintf(f, "  VIRTUAL %s %s\n",
-			       devargs->virt.drv_name,
-			       devargs->args);
-		else
-			fprintf(f, "  UNKNOWN %s\n", devargs->args);
+		fprintf(f, "  [%s]: %s %s\n",
+			(devargs->bus ? devargs->bus->name : "??"),
+			devargs->name, devargs->args);
 	}
 }

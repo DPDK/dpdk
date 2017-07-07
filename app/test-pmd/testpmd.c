@@ -1810,21 +1810,14 @@ static void
 rmv_event_callback(void *arg)
 {
 	struct rte_eth_dev *dev;
-	struct rte_devargs *da;
-	char name[32] = "";
 	uint8_t port_id = (intptr_t)arg;
 
 	RTE_ETH_VALID_PORTID_OR_RET(port_id);
 	dev = &rte_eth_devices[port_id];
-	da = dev->device->devargs;
 
 	stop_port(port_id);
 	close_port(port_id);
-	if (da->type == RTE_DEVTYPE_VIRTUAL)
-		snprintf(name, sizeof(name), "%s", da->virt.drv_name);
-	else if (da->type == RTE_DEVTYPE_WHITELISTED_PCI)
-		rte_pci_device_name(&da->pci.addr, name, sizeof(name));
-	printf("removing device %s\n", name);
+	printf("removing device %s\n", dev->device->name);
 	rte_eal_dev_detach(dev->device);
 	dev->state = RTE_ETH_DEV_UNUSED;
 }

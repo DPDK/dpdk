@@ -90,8 +90,8 @@ test_devargs(void)
 	if (rte_eal_devargs_add(RTE_DEVTYPE_VIRTUAL, "net_ring1,k1=val,k2=val2") < 0)
 		goto fail;
 	devargs = TAILQ_FIRST(&devargs_list);
-	if (strncmp(devargs->virt.drv_name, "net_ring1",
-			sizeof(devargs->virt.drv_name)) != 0)
+	if (strncmp(devargs->name, "net_ring1",
+			sizeof(devargs->name)) != 0)
 		goto fail;
 	if (!devargs->args || strcmp(devargs->args, "k1=val,k2=val2") != 0)
 		goto fail;
@@ -101,10 +101,7 @@ test_devargs(void)
 	if (rte_eal_devargs_add(RTE_DEVTYPE_WHITELISTED_PCI, "04:00.1") < 0)
 		goto fail;
 	devargs = TAILQ_FIRST(&devargs_list);
-	if (devargs->pci.addr.domain != 0 ||
-		devargs->pci.addr.bus != 4 ||
-		devargs->pci.addr.devid != 0 ||
-		devargs->pci.addr.function != 1)
+	if (strcmp(devargs->name, "04:00.1") != 0)
 		goto fail;
 	if (!devargs->args || strcmp(devargs->args, "") != 0)
 		goto fail;
