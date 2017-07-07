@@ -51,7 +51,7 @@
 #define MIN_DATA_SIZE (RTE_CACHE_LINE_SIZE)
 
 /*
- * initialise a general malloc_elem header structure
+ * Initialize a general malloc_elem header structure
  */
 void
 malloc_elem_init(struct malloc_elem *elem,
@@ -69,7 +69,7 @@ malloc_elem_init(struct malloc_elem *elem,
 }
 
 /*
- * initialise a dummy malloc_elem header for the end-of-memseg marker
+ * Initialize a dummy malloc_elem header for the end-of-memseg marker
  */
 void
 malloc_elem_mkend(struct malloc_elem *elem, struct malloc_elem *prev)
@@ -228,7 +228,7 @@ malloc_elem_alloc(struct malloc_elem *elem, size_t size, unsigned align,
 		elem->pad = old_elem_size;
 
 		/* put a dummy header in padding, to point to real element header */
-		if (elem->pad > 0){ /* pad will be at least 64-bytes, as everything
+		if (elem->pad > 0) { /* pad will be at least 64-bytes, as everything
 		                     * is cache-line aligned */
 			new_elem->pad = elem->pad;
 			new_elem->state = ELEM_PAD;
