@@ -39,6 +39,7 @@
 #include "ixgbe_bypass.h"
 #include <rte_time.h>
 #include <rte_hash.h>
+#include <rte_pci.h>
 
 /* need update link, bit flag */
 #define IXGBE_FLAG_NEED_LINK_UPDATE (uint32_t)(1 << 0)
