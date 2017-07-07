@@ -140,6 +140,21 @@ rte_eal_devargs_add(enum rte_devtype devtype, const char *devargs_str)
 
 		break;
 	}
+	if (devargs->type == RTE_DEVTYPE_WHITELISTED_PCI) {
+		if (bus->conf.scan_mode == RTE_BUS_SCAN_UNDEFINED) {
+			bus->conf.scan_mode = RTE_BUS_SCAN_WHITELIST;
+		} else if (bus->conf.scan_mode == RTE_BUS_SCAN_BLACKLIST) {
+			fprintf(stderr, "ERROR: incompatible device type and bus scan mode\n");
+			goto fail;
+		}
+	} else if (devargs->type == RTE_DEVTYPE_BLACKLISTED_PCI) {
+		if (bus->conf.scan_mode == RTE_BUS_SCAN_UNDEFINED) {
+			bus->conf.scan_mode = RTE_BUS_SCAN_BLACKLIST;
+		} else if (bus->conf.scan_mode == RTE_BUS_SCAN_WHITELIST) {
+			fprintf(stderr, "ERROR: incompatible device type and bus scan mode\n");
+			goto fail;
+		}
+	}
 
 	free(dev);
 	TAILQ_INSERT_TAIL(&devargs_list, devargs, next);
