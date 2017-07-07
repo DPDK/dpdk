@@ -341,11 +341,11 @@ extern "C" {
  * Packet format:
  * <'ether type'=0x0800
  * | 'version'=4, 'protocol'=17
- * | 'destination port'=4798>
+ * | 'destination port'=4789>
  * or,
  * <'ether type'=0x86DD
  * | 'version'=6, 'next header'=17
- * | 'destination port'=4798>
+ * | 'destination port'=4789>
  */
 #define RTE_PTYPE_TUNNEL_VXLAN              0x00003000
 /**
