@@ -1664,8 +1664,13 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 
 	PMD_INIT_LOG(DEBUG, "configure");
 	req_features = VIRTIO_PMD_DEFAULT_GUEST_FEATURES;
-	if (rxmode->hw_ip_checksum)
-		req_features |= (1ULL << VIRTIO_NET_F_GUEST_CSUM);
+
+	/* Virtio does L4 checksum but not L3! */
+	if (rxmode->hw_ip_checksum) {
+		PMD_DRV_LOG(NOTICE,
+			    "virtio does not support IP checksum");
+		return -ENOTSUP;
+	}
 	if (rxmode->enable_lro)
 		req_features |=
 			(1ULL << VIRTIO_NET_F_GUEST_TSO4) |
@@ -1676,13 +1681,6 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 		ret = virtio_init_device(dev, req_features);
 		if (ret < 0)
 			return ret;
-	}
-
-	if (rxmode->hw_ip_checksum &&
-		!vtpci_with_feature(hw, VIRTIO_NET_F_GUEST_CSUM)) {
-		PMD_DRV_LOG(NOTICE,
-			"rx ip checksum not available on this host");
-		return -ENOTSUP;
 	}
 
 	if (rxmode->enable_lro &&
