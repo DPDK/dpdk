@@ -115,6 +115,18 @@ rte_pmd_debug_trace(const char *func_name, const char *fmt, ...)
 } while (0)
 
 /**
+ * Device driver.
+ */
+enum rte_kernel_driver {
+	RTE_KDRV_UNKNOWN = 0,
+	RTE_KDRV_IGB_UIO,
+	RTE_KDRV_VFIO,
+	RTE_KDRV_UIO_GENERIC,
+	RTE_KDRV_NIC_UIO,
+	RTE_KDRV_NONE,
+};
+
+/**
  * A generic memory resource representation.
  */
 struct rte_mem_resource {
