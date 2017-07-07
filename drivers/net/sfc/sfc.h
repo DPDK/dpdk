@@ -34,6 +34,7 @@
 
 #include <stdbool.h>
 
+#include <rte_pci.h>
 #include <rte_ethdev.h>
 #include <rte_kvargs.h>
 #include <rte_spinlock.h>
