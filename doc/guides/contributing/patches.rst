@@ -359,7 +359,7 @@ Examples of configs are::
    x86_64-native-linuxapp-gcc+next+shared
    x86_64-native-linuxapp-clang+shared
 
-The builds can be modifies via the following environmental variables:
+The builds can be modified via the following environmental variables:
 
 * ``DPDK_BUILD_TEST_CONFIGS`` (target1+option1+option2 target2)
 * ``DPDK_DEP_CFLAGS``
