@@ -72,9 +72,9 @@ Initialization
 
 To use the PMD in an application, user must:
 
-* Call rte_vdev_init("crpyto_scheduler") within the application.
+* Call rte_vdev_init("crypto_scheduler") within the application.
 
-* Use --vdev="crpyto_scheduler" in the EAL options, which will call
+* Use --vdev="crypto_scheduler" in the EAL options, which will call
   rte_vdev_init() internally.
 
 
@@ -106,7 +106,7 @@ Example:
 
 .. code-block:: console
 
-    ... --vdev "crypto_aesni_mb_pmd,name=aesni_mb_1" --vdev "crypto_aesni_mb_pmd,name=aesni_mb_2" --vdev "crypto_scheduler_pmd,slave=aesni_mb_1,slave=aesni_mb_2" ...
+    ... --vdev "crypto_aesni_mb0,name=aesni_mb_1" --vdev "crypto_aesni_mb1,name=aesni_mb_2" --vdev "crypto_scheduler,slave=aesni_mb_1,slave=aesni_mb_2" ...
 
 .. note::
 
