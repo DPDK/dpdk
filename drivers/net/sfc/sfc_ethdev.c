@@ -666,6 +666,85 @@ sfc_xstats_get_names(struct rte_eth_dev *dev,
 }
 
 static int
+sfc_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
+		     uint64_t *values, unsigned int n)
+{
+	struct sfc_adapter *sa = dev->data->dev_private;
+	struct sfc_port *port = &sa->port;
+	uint64_t *mac_stats;
+	unsigned int nb_supported = 0;
+	unsigned int nb_written = 0;
+	unsigned int i;
+	int ret;
+	int rc;
+
+	if (unlikely(values == NULL) ||
+	    unlikely((ids == NULL) && (n < port->mac_stats_nb_supported)))
+		return port->mac_stats_nb_supported;
+
+	rte_spinlock_lock(&port->mac_stats_lock);
+
+	rc = sfc_port_update_mac_stats(sa);
+	if (rc != 0) {
+		SFC_ASSERT(rc > 0);
+		ret = -rc;
+		goto unlock;
+	}
+
+	mac_stats = port->mac_stats_buf;
+
+	for (i = 0; (i < EFX_MAC_NSTATS) && (nb_written < n); ++i) {
+		if (!EFX_MAC_STAT_SUPPORTED(port->mac_stats_mask, i))
+			continue;
+
+		if ((ids == NULL) || (ids[nb_written] == nb_supported))
+			values[nb_written++] = mac_stats[i];
+
+		++nb_supported;
+	}
+
+	ret = nb_written;
+
+unlock:
+	rte_spinlock_unlock(&port->mac_stats_lock);
+
+	return ret;
+}
+
+static int
+sfc_xstats_get_names_by_id(struct rte_eth_dev *dev,
+			   struct rte_eth_xstat_name *xstats_names,
+			   const uint64_t *ids, unsigned int size)
+{
+	struct sfc_adapter *sa = dev->data->dev_private;
+	struct sfc_port *port = &sa->port;
+	unsigned int nb_supported = 0;
+	unsigned int nb_written = 0;
+	unsigned int i;
+
+	if (unlikely(xstats_names == NULL) ||
+	    unlikely((ids == NULL) && (size < port->mac_stats_nb_supported)))
+		return port->mac_stats_nb_supported;
+
+	for (i = 0; (i < EFX_MAC_NSTATS) && (nb_written < size); ++i) {
+		if (!EFX_MAC_STAT_SUPPORTED(port->mac_stats_mask, i))
+			continue;
+
+		if ((ids == NULL) || (ids[nb_written] == nb_supported)) {
+			char *name = xstats_names[nb_written++].name;
+
+			strncpy(name, efx_mac_stat_name(sa->nic, i),
+				sizeof(xstats_names[0].name));
+			name[sizeof(xstats_names[0].name) - 1] = '\0';
+		}
+
+		++nb_supported;
+	}
+
+	return nb_written;
+}
+
+static int
 sfc_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 {
 	struct sfc_adapter *sa = dev->data->dev_private;
@@ -1406,6 +1485,8 @@ static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.rxq_info_get			= sfc_rx_queue_info_get,
 	.txq_info_get			= sfc_tx_queue_info_get,
 	.fw_version_get			= sfc_fw_version_get,
+	.xstats_get_by_id		= sfc_xstats_get_by_id,
+	.xstats_get_names_by_id		= sfc_xstats_get_names_by_id,
 };
 
 /**

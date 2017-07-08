@@ -165,6 +165,7 @@ struct sfc_port {
 
 	rte_spinlock_t			mac_stats_lock;
 	uint64_t			*mac_stats_buf;
+	unsigned int			mac_stats_nb_supported;
 	efsys_mem_t			mac_stats_dma_mem;
 	boolean_t			mac_stats_reset_pending;
 	uint16_t			mac_stats_update_period_ms;

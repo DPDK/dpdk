@@ -151,6 +151,7 @@ sfc_port_start(struct sfc_adapter *sa)
 	uint32_t phy_adv_cap;
 	const uint32_t phy_pause_caps =
 		((1u << EFX_PHY_CAP_PAUSE) | (1u << EFX_PHY_CAP_ASYM));
+	unsigned int i;
 
 	sfc_log_init(sa, "entry");
 
@@ -221,6 +222,10 @@ sfc_port_start(struct sfc_adapter *sa)
 
 	efx_mac_stats_get_mask(sa->nic, port->mac_stats_mask,
 			       sizeof(port->mac_stats_mask));
+
+	for (i = 0, port->mac_stats_nb_supported = 0; i < EFX_MAC_NSTATS; ++i)
+		if (EFX_MAC_STAT_SUPPORTED(port->mac_stats_mask, i))
+			port->mac_stats_nb_supported++;
 
 	port->mac_stats_update_generation = 0;
 
