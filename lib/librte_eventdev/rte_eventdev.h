@@ -1,7 +1,7 @@
 /*
  *   BSD LICENSE
  *
- *   Copyright 2016 Cavium.
+ *   Copyright 2016 Cavium, Inc.
  *   Copyright 2016 Intel Corporation.
  *   Copyright 2016 NXP.
  *
@@ -15,7 +15,7 @@
  *       notice, this list of conditions and the following disclaimer in
  *       the documentation and/or other materials provided with the
  *       distribution.
- *     * Neither the name of Cavium nor the names of its
+ *     * Neither the name of Cavium, Inc nor the names of its
  *       contributors may be used to endorse or promote products derived
  *       from this software without specific prior written permission.
  *

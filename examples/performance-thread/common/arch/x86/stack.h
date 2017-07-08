@@ -2,7 +2,7 @@
  *   BSD LICENSE
  *
  *   Copyright(c) 2015 Intel Corporation. All rights reserved.
- *   Copyright(c) Cavium networks Ltd. 2017.
+ *   Copyright(c) Cavium, Inc. 2017.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without

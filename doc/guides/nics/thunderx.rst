@@ -1,5 +1,5 @@
 ..  BSD LICENSE
-    Copyright (C) Cavium networks Ltd. 2016.
+    Copyright (C) Cavium, Inc. 2016.
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -12,7 +12,7 @@
     notice, this list of conditions and the following disclaimer in
     the documentation and/or other materials provided with the
     distribution.
-    * Neither the name of Cavium networks nor the names of its
+    * Neither the name of Cavium, Inc nor the names of its
     contributors may be used to endorse or promote products derived
     from this software without specific prior written permission.
 
@@ -35,7 +35,7 @@ The ThunderX NICVF PMD (**librte_pmd_thunderx_nicvf**) provides poll mode driver
 support for the inbuilt NIC found in the **Cavium ThunderX** SoC family
 as well as their virtual functions (VF) in SR-IOV context.
 
-More information can be found at `Cavium Networks Official Website
+More information can be found at `Cavium, Inc Official Website
 <http://www.cavium.com/ThunderX_ARM_Processors.html>`_.
 
 Features

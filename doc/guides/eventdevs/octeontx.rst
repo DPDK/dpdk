@@ -1,5 +1,5 @@
 ..  BSD LICENSE
-    Copyright (C) Cavium networks Ltd. 2017.
+    Copyright (C) Cavium, Inc. 2017.
     All rights reserved.
 
     Redistribution and use in source and binary forms, with or without
@@ -12,7 +12,7 @@
     notice, this list of conditions and the following disclaimer in
     the documentation and/or other materials provided with the
     distribution.
-    * Neither the name of Cavium networks nor the names of its
+    * Neither the name of Cavium, Inc nor the names of its
     contributors may be used to endorse or promote products derived
     from this software without specific prior written permission.
 
@@ -35,7 +35,7 @@ The OCTEONTX SSOVF PMD (**librte_pmd_octeontx_ssovf**) provides poll mode
 eventdev driver support for the inbuilt event device found in the **Cavium OCTEONTX**
 SoC family as well as their virtual functions (VF) in SR-IOV context.
 
-More information can be found at `Cavium Networks Official Website
+More information can be found at `Cavium, Inc Official Website
 <http://www.cavium.com/OCTEON-TX_ARM_Processors.html>`_.
 
 Features
