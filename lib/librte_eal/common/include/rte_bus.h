@@ -230,10 +230,6 @@ int rte_bus_probe(void);
  *
  * @param f
  *	 A valid and open output stream handle
- *
- * @return
- *	 0 in case of success
- *	!0 in case there is error in opening the output stream
  */
 void rte_bus_dump(FILE *f);
 
