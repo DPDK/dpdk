@@ -245,6 +245,18 @@ sfc_port_start(struct sfc_adapter *sa)
 		}
 	}
 
+	if ((port->mac_stats_update_period_ms != 0) &&
+	    port->mac_stats_periodic_dma_supported) {
+		/*
+		 * Request an explicit MAC stats upload immediately to
+		 * preclude bogus figures readback if the user decides
+		 * to read stats before periodic DMA is really started
+		 */
+		rc = efx_mac_stats_upload(sa->nic, &port->mac_stats_dma_mem);
+		if (rc != 0)
+			goto fail_mac_stats_upload;
+	}
+
 	sfc_log_init(sa, "disable MAC drain");
 	rc = efx_mac_drain(sa->nic, B_FALSE);
 	if (rc != 0)
@@ -265,6 +277,7 @@ fail_mac_drain:
 	(void)efx_mac_stats_periodic(sa->nic, &port->mac_stats_dma_mem,
 				     0, B_FALSE);
 
+fail_mac_stats_upload:
 fail_mac_stats_periodic:
 fail_mcast_address_list_set:
 fail_mac_filter_set:
