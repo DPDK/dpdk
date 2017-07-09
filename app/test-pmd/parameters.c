@@ -215,6 +215,8 @@ usage(char* progname)
 	       "enable print of designated event or all of them.");
 	printf("  --mask-event <unknown|intr_lsc|queue_state|intr_reset|vf_mbox|macsec|intr_rmv|all>: "
 	       "disable print of designated event or all of them.");
+	printf("  --flow-isolate-all: "
+	       "requests flow API isolated mode on all ports at initialization time.");
 }
 
 #ifdef RTE_LIBRTE_CMDLINE
@@ -630,6 +632,7 @@ launch_args_parse(int argc, char** argv)
 		{ "tx-queue-stats-mapping",	1, 0, 0 },
 		{ "rx-queue-stats-mapping",	1, 0, 0 },
 		{ "no-flush-rx",	0, 0, 0 },
+		{ "flow-isolate-all",	        0, 0, 0 },
 		{ "txpkts",			1, 0, 0 },
 		{ "disable-link-check",		0, 0, 0 },
 		{ "no-lsc-interrupt",		0, 0, 0 },
@@ -1105,6 +1108,8 @@ launch_args_parse(int argc, char** argv)
 				lsc_interrupt = 0;
 			if (!strcmp(lgopts[opt_idx].name, "no-rmv-interrupt"))
 				rmv_interrupt = 0;
+			if (!strcmp(lgopts[opt_idx].name, "flow-isolate-all"))
+				flow_isolate_all = 1;
 			if (!strcmp(lgopts[opt_idx].name, "print-event"))
 				if (parse_event_printing_config(optarg, 1)) {
 					rte_exit(EXIT_FAILURE,

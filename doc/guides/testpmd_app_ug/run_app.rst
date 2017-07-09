@@ -500,3 +500,11 @@ The commandline options are:
 
     Disable printing the occurrence of the designated event. Using all will
     disable all of them.
+
+*   ``--flow-isolate-all``
+
+    Providing this parameter requests flow API isolated mode on all ports at
+    initialization time. It ensures all traffic is received through the
+    configured flow rules only (see flow command).
+
+    Ports that do not support this mode are automatically discarded.
