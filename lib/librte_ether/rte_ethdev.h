@@ -374,6 +374,14 @@ enum rte_vlan_type {
 };
 
 /**
+ * A structure used to describe a vlan filter.
+ * If the bit corresponding to a VID is set, such VID is on.
+ */
+struct rte_vlan_filter_conf {
+	uint64_t ids[64];
+};
+
+/**
  * A structure used to configure the Receive Side Scaling (RSS) feature
  * of an Ethernet port.
  * If not NULL, the *rss_key* pointer of the *rss_conf* structure points
@@ -1674,6 +1682,8 @@ struct rte_eth_dev_data {
 	uint32_t dev_flags; /**< Capabilities */
 	enum rte_kernel_driver kdrv;    /**< Kernel driver passthrough */
 	int numa_node;  /**< NUMA node connection */
+	struct rte_vlan_filter_conf vlan_filter_conf;
+	/**< VLAN filter configuration. */
 };
 
 /** Device supports hotplug detach */

@@ -1981,6 +1981,7 @@ int
 rte_eth_dev_vlan_filter(uint8_t port_id, uint16_t vlan_id, int on)
 {
 	struct rte_eth_dev *dev;
+	int ret;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	dev = &rte_eth_devices[port_id];
@@ -1996,7 +1997,23 @@ rte_eth_dev_vlan_filter(uint8_t port_id, uint16_t vlan_id, int on)
 	}
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->vlan_filter_set, -ENOTSUP);
 
-	return (*dev->dev_ops->vlan_filter_set)(dev, vlan_id, on);
+	ret = (*dev->dev_ops->vlan_filter_set)(dev, vlan_id, on);
+	if (ret == 0) {
+		struct rte_vlan_filter_conf *vfc;
+		int vidx;
+		int vbit;
+
+		vfc = &dev->data->vlan_filter_conf;
+		vidx = vlan_id / 64;
+		vbit = vlan_id % 64;
+
+		if (on)
+			vfc->ids[vidx] |= UINT64_C(1) << vbit;
+		else
+			vfc->ids[vidx] &= ~(UINT64_C(1) << vbit);
+	}
+
+	return ret;
 }
 
 int
