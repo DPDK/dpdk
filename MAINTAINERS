@@ -615,6 +615,10 @@ F: doc/guides/sample_app_ug/ip_frag.rst
 F: examples/ip_reassembly/
 F: doc/guides/sample_app_ug/ip_reassembly.rst
 
+Generic Receive Offload - EXPERIMENTAL
+M: Jiayu Hu <jiayu.hu@intel.com>
+F: lib/librte_gro/
+
 Distributor
 M: Bruce Richardson <bruce.richardson@intel.com>
 M: David Hunt <david.hunt@intel.com>

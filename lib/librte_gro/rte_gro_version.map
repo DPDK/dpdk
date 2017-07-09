@@ -1,0 +1,12 @@
+DPDK_17.08 {
+	global:
+
+	rte_gro_ctrl_create;
+	rte_gro_ctrl_destroy;
+	rte_gro_get_pkt_count;
+	rte_gro_reassemble;
+	rte_gro_reassemble_burst;
+	rte_gro_timeout_flush;
+
+	local: *;
+};
