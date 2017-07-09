@@ -41,6 +41,14 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **Added Generic Receive Offload API.**
+
+  Generic Receive Offload (GRO) API supports to reassemble TCP/IPv4
+  packets. GRO API assumes all inputted packets are with correct
+  checksums. GRO API doesn't update checksums for merged packets. If
+  inputted packets are IP fragmented, GRO API assumes they are complete
+  packets (i.e. with L4 headers).
+
 * **Added support for generic flow API (rte_flow) on igb NIC.**
 
   This API provides a generic means to configure hardware to match specific

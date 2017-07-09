@@ -43,6 +43,7 @@ LIBABIVER := 1
 
 # source files
 SRCS-$(CONFIG_RTE_LIBRTE_GRO) += rte_gro.c
+SRCS-$(CONFIG_RTE_LIBRTE_GRO) += gro_tcp4.c
 
 # install this header file
 SYMLINK-$(CONFIG_RTE_LIBRTE_GRO)-include += rte_gro.h
