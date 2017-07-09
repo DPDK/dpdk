@@ -71,6 +71,7 @@
 #ifdef RTE_LIBRTE_BNXT_PMD
 #include <rte_pmd_bnxt.h>
 #endif
+#include <rte_gro.h>
 
 #include "testpmd.h"
 
@@ -2413,6 +2414,41 @@ set_tx_pkt_segments(unsigned *seg_lengths, unsigned nb_segs)
 
 	tx_pkt_length  = tx_pkt_len;
 	tx_pkt_nb_segs = (uint8_t) nb_segs;
+}
+
+void
+setup_gro(const char *mode, uint8_t port_id)
+{
+	if (!rte_eth_dev_is_valid_port(port_id)) {
+		printf("invalid port id %u\n", port_id);
+		return;
+	}
+	if (test_done == 0) {
+		printf("Before enable/disable GRO,"
+				" please stop forwarding first\n");
+		return;
+	}
+	if (strcmp(mode, "on") == 0) {
+		if (gro_ports[port_id].enable) {
+			printf("port %u has enabled GRO\n", port_id);
+			return;
+		}
+		gro_ports[port_id].enable = 1;
+		gro_ports[port_id].param.gro_types = RTE_GRO_TCP_IPV4;
+
+		if (gro_ports[port_id].param.max_flow_num == 0)
+			gro_ports[port_id].param.max_flow_num =
+				GRO_DEFAULT_FLOW_NUM;
+		if (gro_ports[port_id].param.max_item_per_flow == 0)
+			gro_ports[port_id].param.max_item_per_flow =
+				GRO_DEFAULT_ITEM_NUM_PER_FLOW;
+	} else {
+		if (gro_ports[port_id].enable == 0) {
+			printf("port %u has disabled GRO\n", port_id);
+			return;
+		}
+		gro_ports[port_id].enable = 0;
+	}
 }
 
 char*

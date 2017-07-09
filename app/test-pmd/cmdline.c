@@ -76,6 +76,7 @@
 #include <rte_devargs.h>
 #include <rte_eth_ctrl.h>
 #include <rte_flow.h>
+#include <rte_gro.h>
 
 #include <cmdline_rdline.h>
 #include <cmdline_parse.h>
@@ -422,6 +423,14 @@ static void cmd_help_long_parsed(void *parsed_result,
 
 			"tso show (portid)"
 			"    Display the status of TCP Segmentation Offload.\n\n"
+
+			"gro (on|off) (port_id)"
+			"    Enable or disable Generic Receive Offload in io"
+			" forward engine.\n\n"
+
+			"gro set (max_flow_num) (max_item_num_per_flow) (port_id)\n"
+			"    Set max flow number and max packet number per-flow"
+			" for GRO.\n\n"
 
 			"set fwd (%s)\n"
 			"    Set packet forwarding mode.\n\n"
@@ -3834,6 +3843,120 @@ cmdline_parse_inst_t cmd_tunnel_tso_show = {
 		(void *)&cmd_tunnel_tso_set_tso,
 		(void *)&cmd_tunnel_tso_show_mode,
 		(void *)&cmd_tunnel_tso_set_portid,
+		NULL,
+	},
+};
+
+/* *** SET GRO FOR A PORT *** */
+struct cmd_gro_result {
+	cmdline_fixed_string_t cmd_keyword;
+	cmdline_fixed_string_t mode;
+	uint8_t port_id;
+};
+
+static void
+cmd_enable_gro_parsed(void *parsed_result,
+		__attribute__((unused)) struct cmdline *cl,
+		__attribute__((unused)) void *data)
+{
+	struct cmd_gro_result *res;
+
+	res = parsed_result;
+	setup_gro(res->mode, res->port_id);
+}
+
+cmdline_parse_token_string_t cmd_gro_keyword =
+	TOKEN_STRING_INITIALIZER(struct cmd_gro_result,
+			cmd_keyword, "gro");
+cmdline_parse_token_string_t cmd_gro_mode =
+	TOKEN_STRING_INITIALIZER(struct cmd_gro_result,
+			mode, "on#off");
+cmdline_parse_token_num_t cmd_gro_pid =
+	TOKEN_NUM_INITIALIZER(struct cmd_gro_result,
+			port_id, UINT8);
+
+cmdline_parse_inst_t cmd_enable_gro = {
+	.f = cmd_enable_gro_parsed,
+	.data = NULL,
+	.help_str = "gro (on|off) (port_id)",
+	.tokens = {
+		(void *)&cmd_gro_keyword,
+		(void *)&cmd_gro_mode,
+		(void *)&cmd_gro_pid,
+		NULL,
+	},
+};
+
+/* *** SET MAX FLOW NUMBER AND ITEM NUM PER FLOW FOR GRO *** */
+struct cmd_gro_set_result {
+	cmdline_fixed_string_t gro;
+	cmdline_fixed_string_t mode;
+	uint16_t flow_num;
+	uint16_t item_num_per_flow;
+	uint8_t port_id;
+};
+
+static void
+cmd_gro_set_parsed(void *parsed_result,
+		       __attribute__((unused)) struct cmdline *cl,
+		       __attribute__((unused)) void *data)
+{
+	struct cmd_gro_set_result *res = parsed_result;
+
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
+		return;
+	if (test_done == 0) {
+		printf("Before set GRO flow_num and item_num_per_flow,"
+				" please stop forwarding first\n");
+		return;
+	}
+
+	if (!strcmp(res->mode, "set")) {
+		if (res->flow_num == 0)
+			printf("Invalid flow number. Revert to default value:"
+					" %u.\n", GRO_DEFAULT_FLOW_NUM);
+		else
+			gro_ports[res->port_id].param.max_flow_num =
+				res->flow_num;
+
+		if (res->item_num_per_flow == 0)
+			printf("Invalid item number per-flow. Revert"
+					" to default value:%u.\n",
+					GRO_DEFAULT_ITEM_NUM_PER_FLOW);
+		else
+			gro_ports[res->port_id].param.max_item_per_flow =
+				res->item_num_per_flow;
+	}
+}
+
+cmdline_parse_token_string_t cmd_gro_set_gro =
+	TOKEN_STRING_INITIALIZER(struct cmd_gro_set_result,
+				gro, "gro");
+cmdline_parse_token_string_t cmd_gro_set_mode =
+	TOKEN_STRING_INITIALIZER(struct cmd_gro_set_result,
+				mode, "set");
+cmdline_parse_token_num_t cmd_gro_set_flow_num =
+	TOKEN_NUM_INITIALIZER(struct cmd_gro_set_result,
+				flow_num, UINT16);
+cmdline_parse_token_num_t cmd_gro_set_item_num_per_flow =
+	TOKEN_NUM_INITIALIZER(struct cmd_gro_set_result,
+				item_num_per_flow, UINT16);
+cmdline_parse_token_num_t cmd_gro_set_portid =
+	TOKEN_NUM_INITIALIZER(struct cmd_gro_set_result,
+				port_id, UINT8);
+
+cmdline_parse_inst_t cmd_gro_set = {
+	.f = cmd_gro_set_parsed,
+	.data = NULL,
+	.help_str = "gro set <max_flow_num> <max_item_num_per_flow> "
+		"<port_id>: set max flow number and max packet number per-flow "
+		"for GRO",
+	.tokens = {
+		(void *)&cmd_gro_set_gro,
+		(void *)&cmd_gro_set_mode,
+		(void *)&cmd_gro_set_flow_num,
+		(void *)&cmd_gro_set_item_num_per_flow,
+		(void *)&cmd_gro_set_portid,
 		NULL,
 	},
 };
@@ -14035,6 +14158,8 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_tso_show,
 	(cmdline_parse_inst_t *)&cmd_tunnel_tso_set,
 	(cmdline_parse_inst_t *)&cmd_tunnel_tso_show,
+	(cmdline_parse_inst_t *)&cmd_enable_gro,
+	(cmdline_parse_inst_t *)&cmd_gro_set,
 	(cmdline_parse_inst_t *)&cmd_link_flow_control_set,
 	(cmdline_parse_inst_t *)&cmd_link_flow_control_set_rx,
 	(cmdline_parse_inst_t *)&cmd_link_flow_control_set_tx,

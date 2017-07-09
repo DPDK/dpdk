@@ -90,6 +90,7 @@
 #ifdef RTE_LIBRTE_LATENCY_STATS
 #include <rte_latencystats.h>
 #endif
+#include <rte_gro.h>
 
 #include "testpmd.h"
 
@@ -378,6 +379,8 @@ struct rte_stats_bitrates *bitrate_data;
 lcoreid_t bitrate_lcore_id;
 uint8_t bitrate_enabled;
 #endif
+
+struct gro_status gro_ports[RTE_MAX_ETHPORTS];
 
 /* Forward function declarations */
 static void map_port_queue_stats_mapping_registers(uint8_t pi, struct rte_port *port);

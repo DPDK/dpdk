@@ -898,6 +898,40 @@ Display the status of TCP Segmentation Offload::
 
    testpmd> tso show (port_id)
 
+gro
+~~~
+
+Enable or disable GRO in ``csum`` forwarding engine::
+
+   testpmd> gro (on|off) (port_id)
+
+If enabled, the csum forwarding engine will perform GRO on the TCP/IPv4
+packets received from the given port.
+
+If disabled, packets received from the given port won't be performed
+GRO. By default, GRO is disabled for all ports.
+
+.. note::
+
+   When enable GRO for a port, TCP/IPv4 packets received from the port
+   will be performed GRO. After GRO, the merged packets are multi-segments.
+   But csum forwarding engine doesn't support to calculate TCP checksum
+   for multi-segment packets in SW. So please select TCP HW checksum
+   calculation for the port which GROed packets are transmitted to.
+
+gro set
+~~~~~~~
+
+Set max flow number and max packet number per-flow for GRO::
+
+   testpmd> gro set (max_flow_num) (max_item_num_per_flow) (port_id)
+
+The product of ``max_flow_num`` and ``max_item_num_per_flow`` is the max
+number of packets a GRO table can store.
+
+If current packet number is greater than or equal to the max value, GRO
+will stop processing incoming packets.
+
 mac_addr add
 ~~~~~~~~~~~~
 
