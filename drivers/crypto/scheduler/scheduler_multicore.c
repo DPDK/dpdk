@@ -280,10 +280,11 @@ scheduler_stop(struct rte_cryptodev *dev)
 {
 	struct scheduler_ctx *sched_ctx = dev->data->dev_private;
 	struct mc_scheduler_ctx *mc_ctx = sched_ctx->private_ctx;
+	uint16_t i;
 
 	mc_ctx->stop_signal = 1;
 
-	for (uint16_t i = 0; i < sched_ctx->nb_wc; i++)
+	for (i = 0; i < sched_ctx->nb_wc; i++)
 		rte_eal_wait_lcore(sched_ctx->wc_pool[i]);
 
 	return 0;
@@ -316,6 +317,7 @@ scheduler_create_private_ctx(struct rte_cryptodev *dev)
 {
 	struct scheduler_ctx *sched_ctx = dev->data->dev_private;
 	struct mc_scheduler_ctx *mc_ctx;
+	uint16_t i;
 
 	if (sched_ctx->private_ctx)
 		rte_free(sched_ctx->private_ctx);
@@ -328,7 +330,7 @@ scheduler_create_private_ctx(struct rte_cryptodev *dev)
 	}
 
 	mc_ctx->num_workers = sched_ctx->nb_wc;
-	for (uint16_t i = 0; i < sched_ctx->nb_wc; i++) {
+	for (i = 0; i < sched_ctx->nb_wc; i++) {
 		char r_name[16];
 
 		snprintf(r_name, sizeof(r_name), MC_SCHED_ENQ_RING_NAME_PREFIX "%u", i);
