@@ -83,9 +83,6 @@ extern "C" {
 /* maximum buffer size for parsed result */
 #define CMDLINE_PARSE_RESULT_BUFSIZE 8192
 
-/* maximum number of dynamic tokens */
-#define CMDLINE_PARSE_DYNAMIC_TOKENS 128
-
 /**
  * Stores a pointer to the ops struct, and the offset: the place to
  * write the parsed result in the destination structure.
@@ -137,20 +134,53 @@ struct cmdline;
  * When no tokens are defined (tokens[0] == NULL), they are retrieved
  * dynamically by calling f() as follows:
  *
- *  f((struct cmdline_token_hdr **)&token_hdr,
- *    NULL,
- *    (struct cmdline_token_hdr *[])tokens));
+ * @code
+ *
+ * f((struct cmdline_token_hdr **)&token_p,
+ *   NULL,
+ *   (struct cmdline_token_hdr **)&inst->tokens[num]);
+ *
+ * @endcode
  *
  * The address of the resulting token is expected at the location pointed by
  * the first argument. Can be set to NULL to end the list.
  *
  * The cmdline argument (struct cmdline *) is always NULL.
  *
- * The last argument points to the NULL-terminated list of dynamic tokens
- * defined so far. Since token_hdr points to an index of that list, the
- * current index can be derived as follows:
+ * The last argument points to the inst->tokens[] entry to retrieve, which
+ * is not necessarily inside allocated memory and should neither be read nor
+ * written. Its sole purpose is to deduce the token entry index of interest
+ * as described in the example below.
  *
- *  int index = token_hdr - &(*tokens)[0];
+ * Note about constraints:
+ *
+ * - Only the address of these tokens is dynamic, their storage should be
+ *   static like normal tokens.
+ * - Dynamic token lists that need to maintain an internal context (e.g. in
+ *   order to determine the next token) must store it statically also. This
+ *   context must be reinitialized when the first token is requested, that
+ *   is, when &inst->tokens[0] is provided as the third argument.
+ * - Dynamic token lists must be NULL-terminated to generate usable
+ *   commands.
+ *
+ * @code
+ *
+ * // Assuming first and third arguments are respectively named "token_p"
+ * // and "token":
+ *
+ * int index = token - inst->tokens;
+ *
+ * if (!index) {
+ *     [...] // Clean up internal context if any.
+ * }
+ * [...] // Then set up dyn_token according to index.
+ *
+ * if (no_more_tokens)
+ *     *token_p = NULL;
+ * else
+ *     *token_p = &dyn_token;
+ *
+ * @endcode
  */
 struct cmdline_inst {
 	/* f(parsed_struct, data) */
