@@ -925,6 +925,10 @@ struct rte_eth_conf {
 #define DEV_TX_OFFLOAD_IPIP_TNL_TSO     0x00000800    /**< Used for tunneling packet. */
 #define DEV_TX_OFFLOAD_GENEVE_TNL_TSO   0x00001000    /**< Used for tunneling packet. */
 #define DEV_TX_OFFLOAD_MACSEC_INSERT    0x00002000
+#define DEV_TX_OFFLOAD_MT_LOCKFREE      0x00004000
+/**< Multiple threads can invoke rte_eth_tx_burst() concurrently on the same
+ * tx queue without SW lock.
+ */
 
 struct rte_pci_device;
 
@@ -2964,6 +2968,10 @@ static inline int rte_eth_tx_descriptor_status(uint8_t port_id,
  * When the number of free TX descriptors drops below this threshold, the
  * rte_eth_tx_burst() function must [attempt to] free the *rte_mbuf*  buffers
  * of those packets whose transmission was effectively completed.
+ *
+ * If the PMD is DEV_TX_OFFLOAD_MT_LOCKFREE capable, multiple threads can
+ * invoke this function concurrently on the same tx queue without SW lock.
+ * @see rte_eth_dev_info_get, struct rte_eth_txconf::txq_flags
  *
  * @param port_id
  *   The port identifier of the Ethernet device.

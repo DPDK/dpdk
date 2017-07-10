@@ -84,7 +84,7 @@ Whenever needed and appropriate, asynchronous communication should be introduced
 
 Avoiding lock contention is a key issue in a multi-core environment.
 To address this issue, PMDs are designed to work with per-core private resources as much as possible.
-For example, a PMD maintains a separate transmit queue per-core, per-port.
+For example, a PMD maintains a separate transmit queue per-core, per-port, if the PMD is not ``DEV_TX_OFFLOAD_MT_LOCKFREE`` capable.
 In the same way, every receive queue of a port is assigned to and polled by a single logical core (lcore).
 
 To comply with Non-Uniform Memory Access (NUMA), memory management is designed to assign to each logical core
@@ -145,6 +145,16 @@ The run-to-completion model also performs better if packet or data manipulation 
 This is also true for the pipe-line model provided all logical cores used are located on the same processor.
 
 Multiple logical cores should never share receive or transmit queues for interfaces since this would require global locks and hinder performance.
+
+If the PMD is ``DEV_TX_OFFLOAD_MT_LOCKFREE`` capable, multiple threads can invoke ``rte_eth_tx_burst()``
+concurrently on the same tx queue without SW lock. This PMD feature found in some NICs and useful in the following use cases:
+
+*  Remove explicit spinlock in some applications where lcores are not mapped to Tx queues with 1:1 relation.
+
+*  In the eventdev use case, avoid dedicating a separate TX core for transmitting and thus
+   enables more scaling as all workers can send the packets.
+
+See `Hardware Offload`_ for ``DEV_TX_OFFLOAD_MT_LOCKFREE`` capability probing details.
 
 Device Identification and Configuration
 ---------------------------------------
@@ -290,7 +300,8 @@ Hardware Offload
 
 Depending on driver capabilities advertised by
 ``rte_eth_dev_info_get()``, the PMD may support hardware offloading
-feature like checksumming, TCP segmentation or VLAN insertion.
+feature like checksumming, TCP segmentation, VLAN insertion or
+lockfree multithreaded TX burst on the same TX queue.
 
 The support of these offload features implies the addition of dedicated
 status bit(s) and value field(s) into the rte_mbuf data structure, along
