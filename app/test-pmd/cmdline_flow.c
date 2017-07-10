@@ -1624,6 +1624,19 @@ arg_entry_bf_fill(void *dst, uintmax_t val, const struct arg *arg)
 	return len;
 }
 
+/** Compare a string with a partial one of a given length. */
+static int
+strcmp_partial(const char *full, const char *partial, size_t partial_len)
+{
+	int r = strncmp(full, partial, partial_len);
+
+	if (r)
+		return r;
+	if (strlen(full) <= partial_len)
+		return 0;
+	return full[partial_len];
+}
+
 /**
  * Parse a prefix length and generate a bit-mask.
  *
@@ -1706,7 +1719,7 @@ parse_default(struct context *ctx, const struct token *token,
 	(void)ctx;
 	(void)buf;
 	(void)size;
-	if (strncmp(str, token->name, len))
+	if (strcmp_partial(token->name, str, len))
 		return -1;
 	return len;
 }
@@ -1949,7 +1962,7 @@ parse_vc_action_rss_queue(struct context *ctx, const struct token *token,
 	if (ctx->curr != ACTION_RSS_QUEUE)
 		return -1;
 	i = ctx->objdata >> 16;
-	if (!strncmp(str, "end", len)) {
+	if (!strcmp_partial("end", str, len)) {
 		ctx->objdata &= 0xffff;
 		return len;
 	}
@@ -2084,7 +2097,7 @@ parse_action(struct context *ctx, const struct token *token,
 		const struct parse_action_priv *priv;
 
 		token = &token_list[next_action[i]];
-		if (strncmp(token->name, str, len))
+		if (strcmp_partial(token->name, str, len))
 			continue;
 		priv = token->priv;
 		if (!priv)
@@ -2451,7 +2464,7 @@ parse_boolean(struct context *ctx, const struct token *token,
 	if (!arg)
 		return -1;
 	for (i = 0; boolean_name[i]; ++i)
-		if (!strncmp(str, boolean_name[i], len))
+		if (!strcmp_partial(boolean_name[i], str, len))
 			break;
 	/* Process token as integer. */
 	if (boolean_name[i])
