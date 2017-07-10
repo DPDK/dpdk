@@ -669,6 +669,9 @@ rte_vhost_driver_register(const char *path, uint64_t flags)
 
 	vhost_user.vsockets[vhost_user.vsocket_cnt++] = vsocket;
 
+	pthread_mutex_unlock(&vhost_user.mutex);
+	return ret;
+
 out_mutex:
 	if (pthread_mutex_destroy(&vsocket->conn_mutex)) {
 		RTE_LOG(ERR, VHOST_CONFIG,
