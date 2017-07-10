@@ -238,6 +238,32 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* **Moved bypass functions from the rte_ethdev library to ixgbe PMD**
+
+  * The following rte_ethdev library functions were removed:
+
+    * ``rte_eth_dev_bypass_event_show``
+    * ``rte_eth_dev_bypass_event_store``
+    * ``rte_eth_dev_bypass_init``
+    * ``rte_eth_dev_bypass_state_set``
+    * ``rte_eth_dev_bypass_state_show``
+    * ``rte_eth_dev_bypass_ver_show``
+    * ``rte_eth_dev_bypass_wd_reset``
+    * ``rte_eth_dev_bypass_wd_timeout_show``
+    * ``rte_eth_dev_wd_timeout_store``
+
+  * The following ixgbe PMD functions were added:
+
+    * ``rte_pmd_ixgbe_bypass_event_show``
+    * ``rte_pmd_ixgbe_bypass_event_store``
+    * ``rte_pmd_ixgbe_bypass_init``
+    * ``rte_pmd_ixgbe_bypass_state_set``
+    * ``rte_pmd_ixgbe_bypass_state_show``
+    * ``rte_pmd_ixgbe_bypass_ver_show``
+    * ``rte_pmd_ixgbe_bypass_wd_reset``
+    * ``rte_pmd_ixgbe_bypass_wd_timeout_show``
+    * ``rte_pmd_ixgbe_bypass_wd_timeout_store``
+
 * **Reworked rte_cryptodev library.**
 
   The rte_cryptodev library has been reworked and updated. The following changes
