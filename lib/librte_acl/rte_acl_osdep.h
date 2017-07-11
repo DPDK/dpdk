@@ -74,7 +74,6 @@
 #include <rte_errno.h>
 #include <rte_string_fns.h>
 #include <rte_cpuflags.h>
-#include <rte_log.h>
 #include <rte_debug.h>
 
 #endif /* _RTE_ACL_OSDEP_H_ */

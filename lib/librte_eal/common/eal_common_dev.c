@@ -41,7 +41,6 @@
 #include <rte_dev.h>
 #include <rte_devargs.h>
 #include <rte_debug.h>
-#include <rte_devargs.h>
 #include <rte_log.h>
 
 #include "eal_private.h"

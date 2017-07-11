@@ -35,7 +35,6 @@
 #include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
-#include <errno.h>
 #include <sys/queue.h>
 
 #include <rte_log.h>

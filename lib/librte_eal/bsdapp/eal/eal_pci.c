@@ -41,7 +41,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <stdarg.h>
 #include <errno.h>
 #include <dirent.h>
 #include <limits.h>
@@ -52,7 +51,6 @@
 #include <dev/pci/pcireg.h>
 
 #if defined(RTE_ARCH_X86)
-#include <sys/types.h>
 #include <machine/cpufunc.h>
 #endif
 

@@ -46,7 +46,6 @@
 #include <stddef.h>
 #include <errno.h>
 #include <limits.h>
-#include <errno.h>
 #include <sys/mman.h>
 #include <sys/queue.h>
 #include <sys/stat.h>
@@ -74,7 +73,6 @@
 #include <rte_pci.h>
 #include <rte_dev.h>
 #include <rte_devargs.h>
-#include <rte_common.h>
 #include <rte_version.h>
 #include <rte_atomic.h>
 #include <malloc_heap.h>

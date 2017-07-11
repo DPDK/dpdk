@@ -34,8 +34,6 @@
 #ifndef _RTE_IO_H_
 #define _RTE_IO_H_
 
-#include <rte_atomic.h>
-
 /**
  * @file
  * I/O device memory operations

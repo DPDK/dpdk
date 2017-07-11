@@ -172,8 +172,6 @@ extern "C" {
 
 #include <stdint.h>
 
-#include <rte_dev.h>
-
 /* Use this macro to check if LRO API is supported */
 #define RTE_ETHDEV_HAS_LRO_SUPPORT
 

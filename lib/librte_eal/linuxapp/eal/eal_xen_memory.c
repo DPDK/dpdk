@@ -38,7 +38,6 @@
 #include <stdint.h>
 #include <inttypes.h>
 #include <string.h>
-#include <stdarg.h>
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -46,7 +45,6 @@
 #include <sys/file.h>
 #include <unistd.h>
 #include <limits.h>
-#include <errno.h>
 #include <sys/ioctl.h>
 #include <sys/time.h>
 

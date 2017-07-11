@@ -65,7 +65,6 @@
 #include <inttypes.h>
 #include <ctype.h>
 #include <string.h>
-#include <errno.h>
 #include <sys/types.h>
 #include <net/ethernet.h>
 

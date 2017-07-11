@@ -52,7 +52,6 @@
 #include <rte_errno.h>
 #include <rte_string_fns.h>
 #include <rte_cpuflags.h>
-#include <rte_log.h>
 #include <rte_rwlock.h>
 #include <rte_spinlock.h>
 #include <rte_ring.h>
