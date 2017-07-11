@@ -57,7 +57,6 @@ static const struct rte_cryptodev_capabilities aesni_mb_pmd_capabilities[] = {
 					.max = 12,
 					.increment = 0
 				},
-				.aad_size = { 0 },
 				.iv_size = { 0 }
 			}, }
 		}, }
@@ -79,7 +78,6 @@ static const struct rte_cryptodev_capabilities aesni_mb_pmd_capabilities[] = {
 					.max = 12,
 					.increment = 0
 				},
-				.aad_size = { 0 },
 				.iv_size = { 0 }
 			}, }
 		}, }
@@ -101,7 +99,6 @@ static const struct rte_cryptodev_capabilities aesni_mb_pmd_capabilities[] = {
 					.max = 14,
 					.increment = 0
 				},
-				.aad_size = { 0 },
 				.iv_size = { 0 }
 			}, }
 		}, }
@@ -123,7 +120,6 @@ static const struct rte_cryptodev_capabilities aesni_mb_pmd_capabilities[] = {
 					.max = 16,
 					.increment = 0
 				},
-				.aad_size = { 0 },
 				.iv_size = { 0 }
 			}, }
 		}, }
@@ -145,7 +141,6 @@ static const struct rte_cryptodev_capabilities aesni_mb_pmd_capabilities[] = {
 					.max = 24,
 					.increment = 0
 				},
-				.aad_size = { 0 },
 				.iv_size = { 0 }
 			}, }
 		}, }
@@ -167,7 +162,6 @@ static const struct rte_cryptodev_capabilities aesni_mb_pmd_capabilities[] = {
 					.max = 32,
 					.increment = 0
 				},
-				.aad_size = { 0 },
 				.iv_size = { 0 }
 			}, }
 		}, }
@@ -189,7 +183,6 @@ static const struct rte_cryptodev_capabilities aesni_mb_pmd_capabilities[] = {
 					.max = 12,
 					.increment = 0
 				},
-				.aad_size = { 0 },
 				.iv_size = { 0 }
 			}, }
 		}, }

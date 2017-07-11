@@ -238,7 +238,6 @@ rte_cryptodev_sym_capability_check_cipher(
  * @param	capability	Description of the symmetric crypto capability.
  * @param	key_size	Auth key size.
  * @param	digest_size	Auth digest size.
- * @param	aad_size	Auth aad size.
  * @param	iv_size		Auth initial vector size.
  *
  * @return
@@ -248,8 +247,7 @@ rte_cryptodev_sym_capability_check_cipher(
 int
 rte_cryptodev_sym_capability_check_auth(
 		const struct rte_cryptodev_symmetric_capability *capability,
-		uint16_t key_size, uint16_t digest_size, uint16_t aad_size,
-		uint16_t iv_size);
+		uint16_t key_size, uint16_t digest_size, uint16_t iv_size);
 
 /**
  * Check if key, digest, AAD and initial vector sizes are supported

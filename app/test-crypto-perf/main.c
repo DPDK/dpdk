@@ -208,7 +208,6 @@ cperf_verify_devices_capabilities(struct cperf_options *opts,
 					capability,
 					opts->auth_key_sz,
 					opts->digest_sz,
-					0,
 					opts->auth_iv_sz);
 			if (ret != 0)
 				return ret;

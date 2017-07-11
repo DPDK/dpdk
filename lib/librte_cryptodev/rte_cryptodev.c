@@ -311,16 +311,12 @@ rte_cryptodev_sym_capability_check_cipher(
 int
 rte_cryptodev_sym_capability_check_auth(
 		const struct rte_cryptodev_symmetric_capability *capability,
-		uint16_t key_size, uint16_t digest_size, uint16_t aad_size,
-		uint16_t iv_size)
+		uint16_t key_size, uint16_t digest_size, uint16_t iv_size)
 {
 	if (param_range_check(key_size, capability->auth.key_size))
 		return -1;
 
 	if (param_range_check(digest_size, capability->auth.digest_size))
-		return -1;
-
-	if (param_range_check(aad_size, capability->auth.aad_size))
 		return -1;
 
 	if (param_range_check(iv_size, capability->auth.iv_size))

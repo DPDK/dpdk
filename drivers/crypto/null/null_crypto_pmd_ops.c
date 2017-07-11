@@ -56,7 +56,6 @@ static const struct rte_cryptodev_capabilities null_crypto_pmd_capabilities[] = 
 					.max = 0,
 					.increment = 0
 				},
-				.aad_size = { 0 },
 				.iv_size = { 0 }
 			}, },
 		}, },

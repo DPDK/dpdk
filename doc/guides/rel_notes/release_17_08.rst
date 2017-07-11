@@ -291,6 +291,8 @@ API Changes
     ``mempool``, instead of ``device id`` and ``rte_crypto_sym_xform``.
   * Remove ``device id`` parameter from ``rte_cryptodev_sym_session_free()``.
   * Added new field ``session_pool`` to ``rte_cryptodev_queue_pair_setup()``.
+  * Removed ``aad_size`` parameter from ``rte_cryptodev_sym_capability_check_auth()``.
+  * Added ``iv_size`` parameter to ``rte_cryptodev_sym_capability_check_auth()``.
 
 
 ABI Changes
