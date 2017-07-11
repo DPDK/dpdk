@@ -551,10 +551,11 @@ int fslmc_vfio_process_group(void)
 			dev->dev_type = (strcmp(object_type, "dpseci")) ?
 				DPAA2_MC_DPNI_DEVID : DPAA2_MC_DPSECI_DEVID;
 
-			FSLMC_VFIO_LOG(DEBUG, "DPAA2: Added [%s-%d]",
-				      object_type, object_id);
+			sprintf(dev->name, "%s.%d", object_type, object_id);
+			dev->device.name = dev->name;
 
 			fslmc_bus_add_device(dev);
+			FSLMC_VFIO_LOG(DEBUG, "DPAA2: Added %s", dev->name);
 		} else {
 			/* Parse all other objects */
 			struct rte_dpaa2_object *object;

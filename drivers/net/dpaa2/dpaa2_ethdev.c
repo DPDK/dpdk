@@ -1531,13 +1531,9 @@ rte_dpaa2_probe(struct rte_dpaa2_driver *dpaa2_drv,
 		struct rte_dpaa2_device *dpaa2_dev)
 {
 	struct rte_eth_dev *eth_dev;
-	char ethdev_name[RTE_ETH_NAME_MAX_LEN];
-
 	int diag;
 
-	sprintf(ethdev_name, "dpni-%d", dpaa2_dev->object_id);
-
-	eth_dev = rte_eth_dev_allocate(ethdev_name);
+	eth_dev = rte_eth_dev_allocate(dpaa2_dev->device.name);
 	if (eth_dev == NULL)
 		return -ENOMEM;
 
