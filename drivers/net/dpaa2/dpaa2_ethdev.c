@@ -1255,6 +1255,7 @@ dpaa2_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 		 */
 		cfg.options |= DPNI_LINK_OPT_PAUSE;
 		cfg.options &= ~DPNI_LINK_OPT_ASYM_PAUSE;
+		break;
 	case RTE_FC_TX_PAUSE:
 		/* Enable RX flow control
 		 * OPT_PAUSE not set;
