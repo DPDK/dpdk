@@ -41,11 +41,7 @@
 #include <inttypes.h>
 #include <sys/queue.h>
 #include <errno.h>
-#include <stdarg.h>
-#include <inttypes.h>
 #include <string.h>
-#include <stdlib.h>
-#include <stdarg.h>
 #include <unistd.h>
 #include <sys/wait.h>
 #include <libgen.h>

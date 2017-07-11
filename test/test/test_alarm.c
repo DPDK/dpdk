@@ -37,7 +37,6 @@
 #include <rte_common.h>
 #include <rte_cycles.h>
 #include <rte_interrupts.h>
-#include <rte_common.h>
 #include <rte_atomic.h>
 #include <rte_alarm.h>
 

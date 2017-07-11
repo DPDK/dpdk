@@ -47,7 +47,6 @@
 #include "test_cryptodev_aes_test_vectors.h"
 #include "test_cryptodev_des_test_vectors.h"
 #include "test_cryptodev_hash_test_vectors.h"
-#include "test_cryptodev.h"
 
 static int
 test_blockcipher_one_case(const struct blockcipher_test_case *t,

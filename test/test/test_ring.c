@@ -54,7 +54,6 @@
 #include <rte_malloc.h>
 #include <rte_ring.h>
 #include <rte_random.h>
-#include <rte_common.h>
 #include <rte_errno.h>
 #include <rte_hexdump.h>
 

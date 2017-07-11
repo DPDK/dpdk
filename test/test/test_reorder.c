@@ -31,9 +31,7 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "test.h"
-#include "stdio.h"
-
+#include <stdio.h>
 #include <unistd.h>
 #include <string.h>
 
