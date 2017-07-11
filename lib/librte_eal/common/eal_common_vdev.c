@@ -47,6 +47,9 @@
 #include <rte_memory.h>
 #include <rte_errno.h>
 
+/* Forward declare to access virtual bus name */
+static struct rte_bus rte_vdev_bus;
+
 /** Double linked list of virtual device drivers. */
 TAILQ_HEAD(vdev_device_list, rte_vdev_device);
 
@@ -138,7 +141,7 @@ alloc_devargs(const char *name, const char *args)
 	if (!devargs)
 		return NULL;
 
-	devargs->bus = rte_bus_find_by_name("vdev");
+	devargs->bus = &rte_vdev_bus;
 	if (args)
 		devargs->args = strdup(args);
 
@@ -250,13 +253,11 @@ vdev_scan(void)
 {
 	struct rte_vdev_device *dev;
 	struct rte_devargs *devargs;
-	struct rte_bus *vbus;
 
 	/* for virtual devices we scan the devargs_list populated via cmdline */
-	vbus = rte_bus_find_by_name("vdev");
 	TAILQ_FOREACH(devargs, &devargs_list, next) {
 
-		if (devargs->bus != vbus)
+		if (devargs->bus != &rte_vdev_bus)
 			continue;
 
 		dev = find_vdev(devargs->name);
