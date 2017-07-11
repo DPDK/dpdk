@@ -56,10 +56,8 @@
 #include <rte_lcore.h>
 #include <rte_atomic.h>
 #include <rte_branch_prediction.h>
-#include <rte_memory.h>
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
-#include <rte_memcpy.h>
 #include <rte_interrupts.h>
 #include <rte_pci.h>
 #include <rte_ether.h>

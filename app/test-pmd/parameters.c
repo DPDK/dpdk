@@ -41,7 +41,6 @@
 #include <time.h>
 #include <fcntl.h>
 #include <sys/types.h>
-#include <errno.h>
 
 #include <sys/queue.h>
 #include <sys/stat.h>
