@@ -32,6 +32,13 @@ Deprecation Notices
 * eal: the support of Xen dom0 will be removed from EAL in 17.11; and with
   that, drivers/net/xenvirt and examples/vhost_xen will also be removed.
 
+* eal: An ABI change is planned for 17.11 to make DPDK aware of IOVA address
+  translation scheme.
+  Reference to phys address in EAL data-structure or functions may change to
+  IOVA address or more appropriate name.
+  The change will be only for the name.
+  Functional aspects of the API or data-structure will remain same.
+
 * The mbuf flags PKT_RX_VLAN_PKT and PKT_RX_QINQ_PKT are deprecated and
   are respectively replaced by PKT_RX_VLAN_STRIPPED and
   PKT_RX_QINQ_STRIPPED, that are better described. The old flags and
