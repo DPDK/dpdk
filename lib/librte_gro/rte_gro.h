@@ -33,36 +33,44 @@
 #ifndef _RTE_GRO_H_
 #define _RTE_GRO_H_
 
+/**
+ * @file
+ * Interface to GRO library
+ */
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/**< the max packets number that rte_gro_reassemble_burst()
+#define RTE_GRO_MAX_BURST_ITEM_NUM 128U
+/**< the max number of packets that rte_gro_reassemble_burst()
  * can process in each invocation.
  */
-#define RTE_GRO_MAX_BURST_ITEM_NUM 128U
-
-/**< max number of supported GRO types */
 #define RTE_GRO_TYPE_MAX_NUM 64
-/**< current supported GRO num */
+/**< the max number of supported GRO types */
 #define RTE_GRO_TYPE_SUPPORT_NUM 1
+/**< the number of currently supported GRO types */
 
-/**< TCP/IPv4 GRO flag */
 #define RTE_GRO_TCP_IPV4_INDEX 0
 #define RTE_GRO_TCP_IPV4 (1ULL << RTE_GRO_TCP_IPV4_INDEX)
+/**< TCP/IPv4 GRO flag */
 
+/**
+ * A structure which is used to create GRO context objects or tell
+ * rte_gro_reassemble_burst() what reassembly rules are demanded.
+ */
 struct rte_gro_param {
-	/**< desired GRO types */
 	uint64_t gro_types;
-	/**< max flow number */
+	/**< desired GRO types */
 	uint16_t max_flow_num;
-	/**< max packet number per flow */
+	/**< max flow number */
 	uint16_t max_item_per_flow;
+	/**< max packet number per flow */
+	uint16_t socket_id;
 	/**< socket index for allocating GRO related data structures,
 	 * like reassembly tables. When use rte_gro_reassemble_burst(),
 	 * applications don't need to set this value.
 	 */
-	uint16_t socket_id;
 };
 
 /**
@@ -105,7 +113,7 @@ void rte_gro_ctx_destroy(void *ctx);
  *
  * @param pkts
  *  a pointer array which points to the packets to reassemble. Besides,
- *  it keeps packet addresses for GROed packets.
+ *  it keeps mbuf addresses for the GROed packets.
  * @param nb_pkts
  *  the number of packets to reassemble.
  * @param param
@@ -176,7 +184,7 @@ uint16_t rte_gro_reassemble(struct rte_mbuf **pkts,
  *  specified by gro_types.
  * @param out
  *  a pointer array that is used to keep flushed timeout packets.
- * @param nb_out
+ * @param max_nb_out
  *  the element number of out. It's also the max number of timeout
  *  packets that can be flushed finally.
  *
