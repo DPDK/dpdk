@@ -122,7 +122,7 @@ static void dpaa2_affine_dpio_intr_to_respective_core(int32_t dpio_id)
 	snprintf(string, STRING_LEN, "dpio.%d", dpio_id);
 	file = fopen("/proc/interrupts", "r");
 	if (!file) {
-		PMD_DRV_LOG(WARN, "Failed to open /proc/interrupts file\n");
+		PMD_DRV_LOG(WARNING, "Failed to open /proc/interrupts file\n");
 		return;
 	}
 	while (getline(&temp, &len, file) != -1) {
@@ -133,7 +133,7 @@ static void dpaa2_affine_dpio_intr_to_respective_core(int32_t dpio_id)
 	}
 
 	if (!token) {
-		PMD_DRV_LOG(WARN, "Failed to get interrupt id for dpio.%d\n",
+		PMD_DRV_LOG(WARNING, "Failed to get interrupt id for dpio.%d\n",
 			    dpio_id);
 		if (temp)
 			free(temp);
@@ -146,10 +146,10 @@ static void dpaa2_affine_dpio_intr_to_respective_core(int32_t dpio_id)
 		 cpu_mask, token);
 	ret = system(command);
 	if (ret < 0)
-		PMD_DRV_LOG(WARN,
+		PMD_DRV_LOG(WARNING,
 			"Failed to affine interrupts on respective core\n");
 	else
-		PMD_DRV_LOG(WARN, " %s command is executed\n", command);
+		PMD_DRV_LOG(WARNING, " %s command is executed\n", command);
 
 	free(temp);
 	fclose(file);
