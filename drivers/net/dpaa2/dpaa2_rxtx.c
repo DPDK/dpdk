@@ -40,7 +40,6 @@
 #include <rte_memcpy.h>
 #include <rte_string_fns.h>
 #include <rte_dev.h>
-#include <rte_ethdev.h>
 
 #include <fslmc_logs.h>
 #include <fslmc_vfio.h>

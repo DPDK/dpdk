@@ -36,7 +36,6 @@
 #include <errno.h>
 #include <stdint.h>
 #include <string.h>
-#include <stdint.h>
 #include <sys/epoll.h>
 
 #include <rte_atomic.h>

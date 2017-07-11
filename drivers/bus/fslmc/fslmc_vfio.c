@@ -40,7 +40,6 @@
 #include <errno.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
-#include <sys/types.h>
 #include <sys/mman.h>
 #include <sys/vfs.h>
 #include <libgen.h>
@@ -55,7 +54,6 @@
 #include <rte_cycles.h>
 #include <rte_kvargs.h>
 #include <rte_dev.h>
-#include <rte_ethdev.h>
 #include <rte_bus.h>
 
 #include "rte_fslmc.h"
