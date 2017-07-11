@@ -669,7 +669,7 @@ sec_fd_to_mbuf(const struct qbman_fd *fd)
 
 	if (unlikely(DPAA2_GET_FD_IVP(fd))) {
 		/* TODO complete it. */
-		RTE_LOG(ERR, PMD, "error: Non inline buffer - WHAT to DO?");
+		RTE_LOG(ERR, PMD, "error: Non inline buffer - WHAT to DO?\n");
 		return NULL;
 	}
 	op = (struct rte_crypto_op *)DPAA2_IOVA_TO_VADDR(
@@ -731,8 +731,8 @@ dpaa2_sec_dequeue_burst(void *qp, struct rte_crypto_op **ops,
 	/*Issue a volatile dequeue command. */
 	while (1) {
 		if (qbman_swp_pull(swp, &pulldesc)) {
-			RTE_LOG(WARNING, PMD, "SEC VDQ command is not issued."
-				"QBMAN is busy\n");
+			RTE_LOG(WARNING, PMD,
+				"SEC VDQ command is not issued : QBMAN busy\n");
 			/* Portal was busy, try again */
 			continue;
 		}
@@ -926,7 +926,7 @@ dpaa2_sec_cipher_init(struct rte_cryptodev *dev,
 			sizeof(struct ctxt_priv) + sizeof(struct sec_flc_desc),
 			RTE_CACHE_LINE_SIZE);
 	if (priv == NULL) {
-		RTE_LOG(ERR, PMD, "No Memory for priv CTXT");
+		RTE_LOG(ERR, PMD, "No Memory for priv CTXT\n");
 		return -1;
 	}
 
@@ -937,7 +937,7 @@ dpaa2_sec_cipher_init(struct rte_cryptodev *dev,
 	session->cipher_key.data = rte_zmalloc(NULL, xform->cipher.key.length,
 			RTE_CACHE_LINE_SIZE);
 	if (session->cipher_key.data == NULL) {
-		RTE_LOG(ERR, PMD, "No Memory for cipher key");
+		RTE_LOG(ERR, PMD, "No Memory for cipher key\n");
 		rte_free(priv);
 		return -1;
 	}
@@ -980,7 +980,7 @@ dpaa2_sec_cipher_init(struct rte_cryptodev *dev,
 	case RTE_CRYPTO_CIPHER_SNOW3G_UEA2:
 	case RTE_CRYPTO_CIPHER_ZUC_EEA3:
 	case RTE_CRYPTO_CIPHER_NULL:
-		RTE_LOG(ERR, PMD, "Crypto: Unsupported Cipher alg %u",
+		RTE_LOG(ERR, PMD, "Crypto: Unsupported Cipher alg %u\n",
 			xform->cipher.algo);
 		goto error_out;
 	default:
@@ -1042,7 +1042,7 @@ dpaa2_sec_auth_init(struct rte_cryptodev *dev,
 			sizeof(struct sec_flc_desc),
 			RTE_CACHE_LINE_SIZE);
 	if (priv == NULL) {
-		RTE_LOG(ERR, PMD, "No Memory for priv CTXT");
+		RTE_LOG(ERR, PMD, "No Memory for priv CTXT\n");
 		return -1;
 	}
 
@@ -1052,7 +1052,7 @@ dpaa2_sec_auth_init(struct rte_cryptodev *dev,
 	session->auth_key.data = rte_zmalloc(NULL, xform->auth.key.length,
 			RTE_CACHE_LINE_SIZE);
 	if (session->auth_key.data == NULL) {
-		RTE_LOG(ERR, PMD, "No Memory for auth key");
+		RTE_LOG(ERR, PMD, "No Memory for auth key\n");
 		rte_free(priv);
 		return -1;
 	}
@@ -1112,7 +1112,7 @@ dpaa2_sec_auth_init(struct rte_cryptodev *dev,
 	case RTE_CRYPTO_AUTH_AES_CMAC:
 	case RTE_CRYPTO_AUTH_AES_CBC_MAC:
 	case RTE_CRYPTO_AUTH_ZUC_EIA3:
-		RTE_LOG(ERR, PMD, "Crypto: Unsupported auth alg %u",
+		RTE_LOG(ERR, PMD, "Crypto: Unsupported auth alg %u\n",
 			xform->auth.algo);
 		goto error_out;
 	default:
@@ -1174,7 +1174,7 @@ dpaa2_sec_aead_init(struct rte_cryptodev *dev,
 			sizeof(struct ctxt_priv) + sizeof(struct sec_flc_desc),
 			RTE_CACHE_LINE_SIZE);
 	if (priv == NULL) {
-		RTE_LOG(ERR, PMD, "No Memory for priv CTXT");
+		RTE_LOG(ERR, PMD, "No Memory for priv CTXT\n");
 		return -1;
 	}
 
@@ -1184,7 +1184,7 @@ dpaa2_sec_aead_init(struct rte_cryptodev *dev,
 	session->aead_key.data = rte_zmalloc(NULL, aead_xform->key.length,
 					       RTE_CACHE_LINE_SIZE);
 	if (session->aead_key.data == NULL && aead_xform->key.length > 0) {
-		RTE_LOG(ERR, PMD, "No Memory for aead key");
+		RTE_LOG(ERR, PMD, "No Memory for aead key\n");
 		rte_free(priv);
 		return -1;
 	}
@@ -1207,7 +1207,7 @@ dpaa2_sec_aead_init(struct rte_cryptodev *dev,
 		session->cipher_alg = RTE_CRYPTO_AEAD_AES_GCM;
 		break;
 	case RTE_CRYPTO_AEAD_AES_CCM:
-		RTE_LOG(ERR, PMD, "Crypto: Unsupported AEAD alg %u",
+		RTE_LOG(ERR, PMD, "Crypto: Unsupported AEAD alg %u\n",
 			aead_xform->algo);
 		goto error_out;
 	default:
@@ -1225,7 +1225,7 @@ dpaa2_sec_aead_init(struct rte_cryptodev *dev,
 			       &priv->flc_desc[0].desc[1], 1);
 
 	if (err < 0) {
-		PMD_DRV_LOG(ERR, "Crypto: Incorrect key lengths");
+		PMD_DRV_LOG(ERR, "Crypto: Incorrect key lengths\n");
 		goto error_out;
 	}
 	if (priv->flc_desc[0].desc[1] & 1) {
@@ -1308,7 +1308,7 @@ dpaa2_sec_aead_chain_init(struct rte_cryptodev *dev,
 			sizeof(struct ctxt_priv) + sizeof(struct sec_flc_desc),
 			RTE_CACHE_LINE_SIZE);
 	if (priv == NULL) {
-		RTE_LOG(ERR, PMD, "No Memory for priv CTXT");
+		RTE_LOG(ERR, PMD, "No Memory for priv CTXT\n");
 		return -1;
 	}
 
@@ -1318,7 +1318,7 @@ dpaa2_sec_aead_chain_init(struct rte_cryptodev *dev,
 	session->cipher_key.data = rte_zmalloc(NULL, cipher_xform->key.length,
 					       RTE_CACHE_LINE_SIZE);
 	if (session->cipher_key.data == NULL && cipher_xform->key.length > 0) {
-		RTE_LOG(ERR, PMD, "No Memory for cipher key");
+		RTE_LOG(ERR, PMD, "No Memory for cipher key\n");
 		rte_free(priv);
 		return -1;
 	}
@@ -1326,7 +1326,7 @@ dpaa2_sec_aead_chain_init(struct rte_cryptodev *dev,
 	session->auth_key.data = rte_zmalloc(NULL, auth_xform->key.length,
 					     RTE_CACHE_LINE_SIZE);
 	if (session->auth_key.data == NULL && auth_xform->key.length > 0) {
-		RTE_LOG(ERR, PMD, "No Memory for auth key");
+		RTE_LOG(ERR, PMD, "No Memory for auth key\n");
 		rte_free(session->cipher_key.data);
 		rte_free(priv);
 		return -1;
@@ -1389,7 +1389,7 @@ dpaa2_sec_aead_chain_init(struct rte_cryptodev *dev,
 	case RTE_CRYPTO_AUTH_AES_CMAC:
 	case RTE_CRYPTO_AUTH_AES_CBC_MAC:
 	case RTE_CRYPTO_AUTH_ZUC_EIA3:
-		RTE_LOG(ERR, PMD, "Crypto: Unsupported auth alg %u",
+		RTE_LOG(ERR, PMD, "Crypto: Unsupported auth alg %u\n",
 			auth_xform->algo);
 		goto error_out;
 	default:
@@ -1423,7 +1423,7 @@ dpaa2_sec_aead_chain_init(struct rte_cryptodev *dev,
 	case RTE_CRYPTO_CIPHER_3DES_ECB:
 	case RTE_CRYPTO_CIPHER_AES_ECB:
 	case RTE_CRYPTO_CIPHER_KASUMI_F8:
-		RTE_LOG(ERR, PMD, "Crypto: Unsupported Cipher alg %u",
+		RTE_LOG(ERR, PMD, "Crypto: Unsupported Cipher alg %u\n",
 			cipher_xform->algo);
 		goto error_out;
 	default:
@@ -1442,7 +1442,7 @@ dpaa2_sec_aead_chain_init(struct rte_cryptodev *dev,
 			       &priv->flc_desc[0].desc[2], 2);
 
 	if (err < 0) {
-		PMD_DRV_LOG(ERR, "Crypto: Incorrect key lengths");
+		PMD_DRV_LOG(ERR, "Crypto: Incorrect key lengths\n");
 		goto error_out;
 	}
 	if (priv->flc_desc[0].desc[2] & 1) {
@@ -1469,7 +1469,7 @@ dpaa2_sec_aead_chain_init(struct rte_cryptodev *dev,
 					      session->digest_length,
 					      session->dir);
 	} else {
-		RTE_LOG(ERR, PMD, "Hash before cipher not supported");
+		RTE_LOG(ERR, PMD, "Hash before cipher not supported\n");
 		goto error_out;
 	}
 
@@ -1503,7 +1503,7 @@ dpaa2_sec_set_session_parameters(struct rte_cryptodev *dev,
 	PMD_INIT_FUNC_TRACE();
 
 	if (unlikely(sess == NULL)) {
-		RTE_LOG(ERR, PMD, "invalid session struct");
+		RTE_LOG(ERR, PMD, "invalid session struct\n");
 		return -1;
 	}
 
@@ -1539,7 +1539,7 @@ dpaa2_sec_set_session_parameters(struct rte_cryptodev *dev,
 		dpaa2_sec_aead_init(dev, xform, session);
 
 	} else {
-		RTE_LOG(ERR, PMD, "Invalid crypto type");
+		RTE_LOG(ERR, PMD, "Invalid crypto type\n");
 		return -1;
 	}
 
@@ -1910,7 +1910,7 @@ dpaa2_sec_dev_init(struct rte_cryptodev *cryptodev)
 			NULL, NULL, NULL, NULL,
 			SOCKET_ID_ANY, 0);
 	if (!internals->fle_pool) {
-		RTE_LOG(ERR, PMD, "%s create failed", str);
+		RTE_LOG(ERR, PMD, "%s create failed\n", str);
 		goto init_error;
 	} else
 		RTE_LOG(INFO, PMD, "%s created: %p\n", str,

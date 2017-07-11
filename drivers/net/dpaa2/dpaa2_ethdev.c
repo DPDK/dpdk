@@ -121,7 +121,7 @@ dpaa2_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 	PMD_INIT_FUNC_TRACE();
 
 	if (dpni == NULL) {
-		RTE_LOG(ERR, PMD, "dpni is NULL");
+		RTE_LOG(ERR, PMD, "dpni is NULL\n");
 		return -1;
 	}
 
@@ -156,7 +156,7 @@ dpaa2_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 			ret = dpni_enable_vlan_filter(dpni, CMD_PRI_LOW,
 						      priv->token, false);
 		if (ret < 0)
-			RTE_LOG(ERR, PMD, "Unable to set vlan filter ret = %d",
+			RTE_LOG(ERR, PMD, "Unable to set vlan filter = %d\n",
 				ret);
 	}
 }
@@ -721,17 +721,17 @@ dpaa2_dev_promiscuous_enable(
 	PMD_INIT_FUNC_TRACE();
 
 	if (dpni == NULL) {
-		RTE_LOG(ERR, PMD, "dpni is NULL");
+		RTE_LOG(ERR, PMD, "dpni is NULL\n");
 		return;
 	}
 
 	ret = dpni_set_unicast_promisc(dpni, CMD_PRI_LOW, priv->token, true);
 	if (ret < 0)
-		RTE_LOG(ERR, PMD, "Unable to enable U promisc mode %d", ret);
+		RTE_LOG(ERR, PMD, "Unable to enable U promisc mode %d\n", ret);
 
 	ret = dpni_set_multicast_promisc(dpni, CMD_PRI_LOW, priv->token, true);
 	if (ret < 0)
-		RTE_LOG(ERR, PMD, "Unable to enable M promisc mode %d", ret);
+		RTE_LOG(ERR, PMD, "Unable to enable M promisc mode %d\n", ret);
 }
 
 static void
@@ -745,19 +745,20 @@ dpaa2_dev_promiscuous_disable(
 	PMD_INIT_FUNC_TRACE();
 
 	if (dpni == NULL) {
-		RTE_LOG(ERR, PMD, "dpni is NULL");
+		RTE_LOG(ERR, PMD, "dpni is NULL\n");
 		return;
 	}
 
 	ret = dpni_set_unicast_promisc(dpni, CMD_PRI_LOW, priv->token, false);
 	if (ret < 0)
-		RTE_LOG(ERR, PMD, "Unable to disable U promisc mode %d", ret);
+		RTE_LOG(ERR, PMD, "Unable to disable U promisc mode %d\n", ret);
 
 	if (dev->data->all_multicast == 0) {
 		ret = dpni_set_multicast_promisc(dpni, CMD_PRI_LOW,
 						 priv->token, false);
 		if (ret < 0)
-			RTE_LOG(ERR, PMD, "Unable to disable M promisc mode %d",
+			RTE_LOG(ERR, PMD,
+				"Unable to disable M promisc mode %d\n",
 				ret);
 	}
 }
@@ -773,13 +774,13 @@ dpaa2_dev_allmulticast_enable(
 	PMD_INIT_FUNC_TRACE();
 
 	if (dpni == NULL) {
-		RTE_LOG(ERR, PMD, "dpni is NULL");
+		RTE_LOG(ERR, PMD, "dpni is NULL\n");
 		return;
 	}
 
 	ret = dpni_set_multicast_promisc(dpni, CMD_PRI_LOW, priv->token, true);
 	if (ret < 0)
-		RTE_LOG(ERR, PMD, "Unable to enable multicast mode %d", ret);
+		RTE_LOG(ERR, PMD, "Unable to enable multicast mode %d\n", ret);
 }
 
 static void
@@ -792,7 +793,7 @@ dpaa2_dev_allmulticast_disable(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	if (dpni == NULL) {
-		RTE_LOG(ERR, PMD, "dpni is NULL");
+		RTE_LOG(ERR, PMD, "dpni is NULL\n");
 		return;
 	}
 
@@ -802,7 +803,7 @@ dpaa2_dev_allmulticast_disable(struct rte_eth_dev *dev)
 
 	ret = dpni_set_multicast_promisc(dpni, CMD_PRI_LOW, priv->token, false);
 	if (ret < 0)
-		RTE_LOG(ERR, PMD, "Unable to disable multicast mode %d", ret);
+		RTE_LOG(ERR, PMD, "Unable to disable multicast mode %d\n", ret);
 }
 
 static int
@@ -816,7 +817,7 @@ dpaa2_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 	PMD_INIT_FUNC_TRACE();
 
 	if (dpni == NULL) {
-		RTE_LOG(ERR, PMD, "dpni is NULL");
+		RTE_LOG(ERR, PMD, "dpni is NULL\n");
 		return -EINVAL;
 	}
 
@@ -855,15 +856,15 @@ dpaa2_dev_add_mac_addr(struct rte_eth_dev *dev,
 	PMD_INIT_FUNC_TRACE();
 
 	if (dpni == NULL) {
-		RTE_LOG(ERR, PMD, "dpni is NULL");
+		RTE_LOG(ERR, PMD, "dpni is NULL\n");
 		return -1;
 	}
 
 	ret = dpni_add_mac_addr(dpni, CMD_PRI_LOW,
 				priv->token, addr->addr_bytes);
 	if (ret)
-		RTE_LOG(ERR, PMD, "error: Adding the MAC ADDR failed:"
-			" err = %d", ret);
+		RTE_LOG(ERR, PMD,
+			"error: Adding the MAC ADDR failed: err = %d\n", ret);
 	return 0;
 }
 
@@ -882,15 +883,15 @@ dpaa2_dev_remove_mac_addr(struct rte_eth_dev *dev,
 	macaddr = &data->mac_addrs[index];
 
 	if (dpni == NULL) {
-		RTE_LOG(ERR, PMD, "dpni is NULL");
+		RTE_LOG(ERR, PMD, "dpni is NULL\n");
 		return;
 	}
 
 	ret = dpni_remove_mac_addr(dpni, CMD_PRI_LOW,
 				   priv->token, macaddr->addr_bytes);
 	if (ret)
-		RTE_LOG(ERR, PMD, "error: Removing the MAC ADDR failed:"
-			" err = %d", ret);
+		RTE_LOG(ERR, PMD,
+			"error: Removing the MAC ADDR failed: err = %d\n", ret);
 }
 
 static void
@@ -904,7 +905,7 @@ dpaa2_dev_set_mac_addr(struct rte_eth_dev *dev,
 	PMD_INIT_FUNC_TRACE();
 
 	if (dpni == NULL) {
-		RTE_LOG(ERR, PMD, "dpni is NULL");
+		RTE_LOG(ERR, PMD, "dpni is NULL\n");
 		return;
 	}
 
@@ -912,7 +913,8 @@ dpaa2_dev_set_mac_addr(struct rte_eth_dev *dev,
 					priv->token, addr->addr_bytes);
 
 	if (ret)
-		RTE_LOG(ERR, PMD, "error: Setting the MAC ADDR failed %d", ret);
+		RTE_LOG(ERR, PMD,
+			"error: Setting the MAC ADDR failed %d\n", ret);
 }
 static
 void dpaa2_dev_stats_get(struct rte_eth_dev *dev,
@@ -929,12 +931,12 @@ void dpaa2_dev_stats_get(struct rte_eth_dev *dev,
 	PMD_INIT_FUNC_TRACE();
 
 	if (!dpni) {
-		RTE_LOG(ERR, PMD, "dpni is NULL");
+		RTE_LOG(ERR, PMD, "dpni is NULL\n");
 		return;
 	}
 
 	if (!stats) {
-		RTE_LOG(ERR, PMD, "stats is NULL");
+		RTE_LOG(ERR, PMD, "stats is NULL\n");
 		return;
 	}
 
@@ -987,7 +989,7 @@ void dpaa2_dev_stats_reset(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	if (dpni == NULL) {
-		RTE_LOG(ERR, PMD, "dpni is NULL");
+		RTE_LOG(ERR, PMD, "dpni is NULL\n");
 		return;
 	}
 
@@ -1016,7 +1018,7 @@ dpaa2_dev_link_update(struct rte_eth_dev *dev,
 	PMD_INIT_FUNC_TRACE();
 
 	if (dpni == NULL) {
-		RTE_LOG(ERR, PMD, "error : dpni is NULL");
+		RTE_LOG(ERR, PMD, "dpni is NULL\n");
 		return 0;
 	}
 	memset(&old, 0, sizeof(old));
@@ -1024,7 +1026,7 @@ dpaa2_dev_link_update(struct rte_eth_dev *dev,
 
 	ret = dpni_get_link_state(dpni, CMD_PRI_LOW, priv->token, &state);
 	if (ret < 0) {
-		RTE_LOG(ERR, PMD, "error: dpni_get_link_state %d", ret);
+		RTE_LOG(ERR, PMD, "error: dpni_get_link_state %d\n", ret);
 		return -1;
 	}
 
@@ -1069,7 +1071,7 @@ dpaa2_dev_set_link_up(struct rte_eth_dev *dev)
 	dpni = (struct fsl_mc_io *)priv->hw;
 
 	if (dpni == NULL) {
-		RTE_LOG(ERR, PMD, "Device has not yet been configured");
+		RTE_LOG(ERR, PMD, "DPNI is NULL\n");
 		return ret;
 	}
 
@@ -1116,7 +1118,7 @@ dpaa2_dev_set_link_down(struct rte_eth_dev *dev)
 	dpni = (struct fsl_mc_io *)priv->hw;
 
 	if (dpni == NULL) {
-		RTE_LOG(ERR, PMD, "Device has not yet been configured");
+		RTE_LOG(ERR, PMD, "Device has not yet been configured\n");
 		return ret;
 	}
 
@@ -1170,13 +1172,13 @@ dpaa2_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	dpni = (struct fsl_mc_io *)priv->hw;
 
 	if (dpni == NULL || fc_conf == NULL) {
-		RTE_LOG(ERR, PMD, "device not configured");
+		RTE_LOG(ERR, PMD, "device not configured\n");
 		return ret;
 	}
 
 	ret = dpni_get_link_state(dpni, CMD_PRI_LOW, priv->token, &state);
 	if (ret) {
-		RTE_LOG(ERR, PMD, "error: dpni_get_link_state %d", ret);
+		RTE_LOG(ERR, PMD, "error: dpni_get_link_state %d\n", ret);
 		return ret;
 	}
 
@@ -1226,7 +1228,7 @@ dpaa2_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	dpni = (struct fsl_mc_io *)priv->hw;
 
 	if (dpni == NULL) {
-		RTE_LOG(ERR, PMD, "dpni is NULL");
+		RTE_LOG(ERR, PMD, "dpni is NULL\n");
 		return ret;
 	}
 
@@ -1236,7 +1238,7 @@ dpaa2_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	 */
 	ret = dpni_get_link_state(dpni, CMD_PRI_LOW, priv->token, &state);
 	if (ret) {
-		RTE_LOG(ERR, PMD, "Unable to get link state (err=%d)", ret);
+		RTE_LOG(ERR, PMD, "Unable to get link state (err=%d)\n", ret);
 		return -1;
 	}
 
@@ -1281,14 +1283,15 @@ dpaa2_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 		cfg.options &= ~DPNI_LINK_OPT_ASYM_PAUSE;
 		break;
 	default:
-		RTE_LOG(ERR, PMD, "Incorrect Flow control flag (%d)",
+		RTE_LOG(ERR, PMD, "Incorrect Flow control flag (%d)\n",
 			fc_conf->mode);
 		return -1;
 	}
 
 	ret = dpni_set_link_cfg(dpni, CMD_PRI_LOW, priv->token, &cfg);
 	if (ret)
-		RTE_LOG(ERR, PMD, "Unable to set Link configuration (err=%d)",
+		RTE_LOG(ERR, PMD,
+			"Unable to set Link configuration (err=%d)\n",
 			ret);
 
 	/* Enable link */

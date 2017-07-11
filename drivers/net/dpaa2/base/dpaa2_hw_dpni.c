@@ -91,8 +91,9 @@ dpaa2_setup_flow_dist(struct rte_eth_dev *eth_dev,
 				  &tc_cfg);
 	rte_free(p_params);
 	if (ret) {
-		RTE_LOG(ERR, PMD, "Setting distribution for Rx failed with"
-			" err code: %d\n", ret);
+		RTE_LOG(ERR, PMD,
+			"Setting distribution for Rx failed with err: %d\n",
+			ret);
 		return ret;
 	}
 
@@ -134,8 +135,9 @@ int dpaa2_remove_flow_dist(
 				  &tc_cfg);
 	rte_free(p_params);
 	if (ret) {
-		RTE_LOG(ERR, PMD, "Setting distribution for Rx failed with"
-			" err code: %d\n", ret);
+		RTE_LOG(ERR, PMD,
+			"Setting distribution for Rx failed with err: %d\n",
+			ret);
 		return ret;
 	}
 	return ret;
