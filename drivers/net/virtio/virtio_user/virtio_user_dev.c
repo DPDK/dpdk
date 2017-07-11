@@ -41,7 +41,6 @@
 #include <sys/eventfd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <unistd.h>
 
 #include "vhost.h"
 #include "virtio_user_dev.h"

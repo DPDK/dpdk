@@ -33,8 +33,6 @@
 
 #include <unistd.h>
 
-#include <unistd.h>
-
 #include <rte_byteorder.h>
 #include <rte_common.h>
 #include <rte_cycles.h>
