@@ -93,7 +93,7 @@ dpaa2_eventdev_enqueue_burst(void *port, const struct rte_event ev[],
 	if (unlikely(!DPAA2_PER_LCORE_DPIO)) {
 		ret = dpaa2_affine_qbman_swp();
 		if (ret) {
-			PMD_DRV_LOG(ERR, PMD, "Failure in affining portal\n");
+			PMD_DRV_LOG(ERR, "Failure in affining portal\n");
 			return 0;
 		}
 	}
@@ -179,10 +179,9 @@ RETRY:
 		 * case to avoid the problem.
 		 */
 		if (errno == EINTR) {
-			PMD_DRV_LOG(DEBUG, PMD, "epoll_wait fails\n");
+			PMD_DRV_LOG(DEBUG, "epoll_wait fails\n");
 			if (i++ > 10)
-				PMD_DRV_LOG(DEBUG, PMD,
-					    "Dequeue burst Failed\n");
+				PMD_DRV_LOG(DEBUG, "Dequeue burst Failed\n");
 		goto RETRY;
 		}
 	}
@@ -234,7 +233,7 @@ dpaa2_eventdev_dequeue_burst(void *port, struct rte_event ev[],
 	if (unlikely(!DPAA2_PER_LCORE_DPIO)) {
 		ret = dpaa2_affine_qbman_swp();
 		if (ret) {
-			PMD_DRV_LOG(ERR, PMD, "Failure in affining portal\n");
+			PMD_DRV_LOG(ERR, "Failure in affining portal\n");
 			return 0;
 		}
 	}
@@ -270,7 +269,7 @@ dpaa2_eventdev_dequeue_burst(void *port, struct rte_event ev[],
 			rxq->cb(swp, fd, dq, &ev[num_pkts]);
 		} else {
 			qbman_swp_dqrr_consume(swp, dq);
-			PMD_DRV_LOG(ERR, PMD, "Null Return VQ received\n");
+			PMD_DRV_LOG(ERR, "Null Return VQ received\n");
 			return 0;
 		}
 
@@ -596,7 +595,7 @@ dpaa2_eventdev_setup_dpci(struct dpaa2_dpci_dev *dpci_dev,
 					dpci_dev->token, i,
 					&rx_queue_cfg);
 		if (ret) {
-			PMD_DRV_LOG(ERR, PMD,
+			PMD_DRV_LOG(ERR,
 				    "set_rx_q failed with err code: %d", ret);
 			return ret;
 		}
@@ -652,7 +651,7 @@ dpaa2_eventdev_create(const char *name)
 
 		ret = dpaa2_eventdev_setup_dpci(dpci_dev, dpcon_dev);
 		if (ret) {
-			PMD_DRV_LOG(ERR, PMD,
+			PMD_DRV_LOG(ERR,
 				    "dpci setup failed with err code: %d", ret);
 			return ret;
 		}
@@ -670,7 +669,7 @@ dpaa2_eventdev_probe(struct rte_vdev_device *vdev)
 	const char *name;
 
 	name = rte_vdev_device_name(vdev);
-	PMD_DRV_LOG(INFO, PMD, "Initializing %s\n", name);
+	PMD_DRV_LOG(INFO, "Initializing %s", name);
 	return dpaa2_eventdev_create(name);
 }
 
