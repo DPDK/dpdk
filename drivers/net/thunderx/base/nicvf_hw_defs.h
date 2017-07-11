@@ -1084,7 +1084,8 @@ struct cq_cfg { union { struct {
 
 struct sq_cfg { union { struct {
 #if NICVF_BYTE_ORDER == NICVF_BIG_ENDIAN
-	uint64_t reserved_20_63:44;
+	uint64_t reserved_32_63:32;
+	uint64_t cq_limit:8;
 	uint64_t ena:1;
 	uint64_t reserved_18_18:1;
 	uint64_t reset:1;
@@ -1102,7 +1103,8 @@ struct sq_cfg { union { struct {
 	uint64_t reset:1;
 	uint64_t reserved_18_18:1;
 	uint64_t ena:1;
-	uint64_t reserved_20_63:44;
+	uint64_t cq_limit:8;
+	uint64_t reserved_32_63:32;
 #endif
 	};
 	uint64_t value;

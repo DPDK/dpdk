@@ -586,6 +586,7 @@ nicvf_qset_sq_config(struct nicvf *nic, uint16_t qidx, struct nicvf_txq *txq)
 	nicvf_queue_reg_write(nic, NIC_QSET_SQ_0_7_BASE, qidx, txq->phys);
 
 	/* Enable send queue  & set queue size */
+	sq_cfg.cq_limit = 0;
 	sq_cfg.ena = 1;
 	sq_cfg.reset = 0;
 	sq_cfg.ldwb = 0;
