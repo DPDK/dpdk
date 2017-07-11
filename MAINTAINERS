@@ -140,6 +140,7 @@ F: lib/librte_eal/common/include/rte_service.h
 F: lib/librte_eal/common/include/rte_service_component.h
 F: lib/librte_eal/common/rte_service.c
 F: doc/guides/prog_guide/service_cores.rst
+F: test/test/test_service_cores.c
 
 ARM v7
 M: Jan Viktorin <viktorin@rehivetech.com>
