@@ -113,7 +113,7 @@ rte_fslmc_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
 	struct rte_dpaa2_device *dev;
 
 	TAILQ_FOREACH(dev, &rte_fslmc_bus.device_list, next) {
-		if (start && &dev->device == start)
+		if (start && &dev->device == start) {
 			start = NULL;  /* starting point found */
 			continue;
 		}
