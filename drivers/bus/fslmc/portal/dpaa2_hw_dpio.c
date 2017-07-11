@@ -503,7 +503,7 @@ dpaa2_create_dpio_device(struct fslmc_vfio_device *vdev,
 	io_space_count++;
 	dpio_dev->index = io_space_count;
 	TAILQ_INSERT_TAIL(&dpio_dev_list, dpio_dev, next);
-	PMD_INIT_LOG(DEBUG, "DPAA2: Added [dpio-%d]", object_id);
+	PMD_INIT_LOG(DEBUG, "DPAA2: Added [dpio.%d]", object_id);
 
 	return 0;
 }

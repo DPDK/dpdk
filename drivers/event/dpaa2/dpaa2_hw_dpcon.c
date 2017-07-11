@@ -100,7 +100,7 @@ rte_dpaa2_create_dpcon_device(struct fslmc_vfio_device *vdev __rte_unused,
 
 	TAILQ_INSERT_TAIL(&dpcon_dev_list, dpcon_node, next);
 
-	PMD_DRV_LOG(DEBUG, "DPAA2: Added [dpcon-%d]", dpcon_id);
+	PMD_DRV_LOG(DEBUG, "DPAA2: Added [dpcon.%d]", dpcon_id);
 
 	return 0;
 }

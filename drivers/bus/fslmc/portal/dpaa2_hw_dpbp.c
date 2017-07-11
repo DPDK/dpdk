@@ -98,7 +98,7 @@ dpaa2_create_dpbp_device(struct fslmc_vfio_device *vdev __rte_unused,
 
 	TAILQ_INSERT_TAIL(&dpbp_dev_list, dpbp_node, next);
 
-	PMD_INIT_LOG(DEBUG, "DPAA2: Added [dpbp-%d]", dpbp_id);
+	PMD_INIT_LOG(DEBUG, "DPAA2: Added [dpbp.%d]", dpbp_id);
 
 	return 0;
 }
