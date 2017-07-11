@@ -394,7 +394,7 @@ rte_pci_scan(void)
 
 	close(fd);
 
-	RTE_LOG(ERR, EAL, "PCI scan found %u devices\n", dev_count);
+	RTE_LOG(DEBUG, EAL, "PCI scan found %u devices\n", dev_count);
 	return 0;
 
 error:
