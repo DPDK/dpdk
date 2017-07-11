@@ -39,6 +39,7 @@
 #include <rte_ring.h>
 #include <rte_errno.h>
 #include <rte_event_ring.h>
+#include <rte_service_component.h>
 
 #include "sw_evdev.h"
 #include "iq_ring.h"
@@ -614,6 +615,13 @@ sw_start(struct rte_eventdev *dev)
 {
 	unsigned int i, j;
 	struct sw_evdev *sw = sw_pmd_priv(dev);
+
+	/* check a service core is mapped to this service */
+	struct rte_service_spec *s = rte_service_get_by_name(sw->service_name);
+	if (!rte_service_is_running(s))
+		SW_LOG_ERR("Warning: No Service core enabled on service %s\n",
+				s->name);
+
 	/* check all ports are set up */
 	for (i = 0; i < sw->port_count; i++)
 		if (sw->ports[i].rx_worker_ring == NULL) {
@@ -713,6 +721,14 @@ set_credit_quanta(const char *key __rte_unused, const char *value, void *opaque)
 	*credit = atoi(value);
 	if (*credit < 0 || *credit >= 128)
 		return -1;
+	return 0;
+}
+
+
+static int32_t sw_sched_service_func(void *args)
+{
+	struct rte_eventdev *dev = args;
+	sw_event_schedule(dev);
 	return 0;
 }
 
@@ -828,6 +844,22 @@ sw_probe(struct rte_vdev_device *vdev)
 	/* copy values passed from vdev command line to instance */
 	sw->credit_update_quanta = credit_quanta;
 	sw->sched_quanta = sched_quanta;
+
+	/* register service with EAL */
+	struct rte_service_spec service;
+	memset(&service, 0, sizeof(struct rte_service_spec));
+	snprintf(service.name, sizeof(service.name), "%s_service", name);
+	snprintf(sw->service_name, sizeof(sw->service_name), "%s_service",
+			name);
+	service.socket_id = socket_id;
+	service.callback = sw_sched_service_func;
+	service.callback_userdata = (void *)dev;
+
+	int32_t ret = rte_service_register(&service);
+	if (ret) {
+		SW_LOG_ERR("service register() failed");
+		return -ENOEXEC;
+	}
 
 	return 0;
 }

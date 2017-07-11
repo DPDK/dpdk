@@ -32,7 +32,9 @@ Software Eventdev Poll Mode Driver
 
 The software eventdev is an implementation of the eventdev API, that provides a
 wide range of the eventdev features. The eventdev relies on a CPU core to
-perform event scheduling.
+perform event scheduling. This PMD can use the service core library to run the
+scheduling function, allowing an application to utilize the power of service
+cores to multiplex other work on the same core if required.
 
 
 Features

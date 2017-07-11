@@ -59,6 +59,7 @@
 
 #define EVENTDEV_NAME_SW_PMD event_sw
 #define SW_PMD_NAME RTE_STR(event_sw)
+#define SW_PMD_NAME_MAX 64
 
 #define SW_SCHED_TYPE_DIRECT (RTE_SCHED_TYPE_PARALLEL + 1)
 
@@ -276,6 +277,8 @@ struct sw_evdev {
 	/* store num stats and offset of the stats for each queue */
 	uint16_t xstats_count_per_qid[RTE_EVENT_MAX_QUEUES_PER_DEV];
 	uint16_t xstats_offset_for_qid[RTE_EVENT_MAX_QUEUES_PER_DEV];
+
+	char service_name[SW_PMD_NAME_MAX];
 };
 
 static inline struct sw_evdev *
