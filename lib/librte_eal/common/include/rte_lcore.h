@@ -73,6 +73,7 @@ struct lcore_config {
 	unsigned core_id;          /**< core number on socket for this lcore */
 	int core_index;            /**< relative index, starting from 0 */
 	rte_cpuset_t cpuset;       /**< cpu set which the lcore affinity to */
+	uint8_t core_role;         /**< role of core eg: OFF, RTE, SERVICE */
 };
 
 /**
@@ -175,7 +176,7 @@ rte_lcore_is_enabled(unsigned lcore_id)
 	struct rte_config *cfg = rte_eal_get_configuration();
 	if (lcore_id >= RTE_MAX_LCORE)
 		return 0;
-	return cfg->lcore_role[lcore_id] != ROLE_OFF;
+	return cfg->lcore_role[lcore_id] == ROLE_RTE;
 }
 
 /**

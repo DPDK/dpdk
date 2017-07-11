@@ -87,6 +87,7 @@ SRCS-$(CONFIG_RTE_EXEC_ENV_BSDAPP) += rte_malloc.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_BSDAPP) += malloc_elem.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_BSDAPP) += malloc_heap.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_BSDAPP) += rte_keepalive.c
+SRCS-$(CONFIG_RTE_EXEC_ENV_BSDAPP) += rte_service.c
 
 # from arch dir
 SRCS-$(CONFIG_RTE_EXEC_ENV_BSDAPP) += rte_cpuflags.c

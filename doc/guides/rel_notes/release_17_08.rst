@@ -41,6 +41,14 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **Added Service Core functionality.**
+
+  The service core functionality added to EAL allows DPDK to run services such
+  as SW PMDs on lcores without the application manually running them. The
+  service core infrastructure allows flexibility of running multiple services
+  on the same service lcore, and provides the application with powerful APIs to
+  configure the mapping from service lcores to services.
+
 * **Added Generic Receive Offload API.**
 
   Generic Receive Offload (GRO) API supports to reassemble TCP/IPv4

@@ -81,6 +81,7 @@ rte_eal_cpu_init(void)
 
 		/* By default, each detected core is enabled */
 		config->lcore_role[lcore_id] = ROLE_RTE;
+		lcore_config[lcore_id].core_role = ROLE_RTE;
 		lcore_config[lcore_id].core_id = eal_cpu_core_id(lcore_id);
 		lcore_config[lcore_id].socket_id = eal_cpu_socket_id(lcore_id);
 		if (lcore_config[lcore_id].socket_id >= RTE_MAX_NUMA_NODES) {

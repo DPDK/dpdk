@@ -183,7 +183,14 @@ eal_thread_loop(__attribute__((unused)) void *arg)
 		ret = lcore_config[lcore_id].f(fct_arg);
 		lcore_config[lcore_id].ret = ret;
 		rte_wmb();
-		lcore_config[lcore_id].state = FINISHED;
+
+		/* when a service core returns, it should go directly to WAIT
+		 * state, because the application will not lcore_wait() for it.
+		 */
+		if (lcore_config[lcore_id].core_role == ROLE_SERVICE)
+			lcore_config[lcore_id].state = WAIT;
+		else
+			lcore_config[lcore_id].state = FINISHED;
 	}
 
 	/* never reached */

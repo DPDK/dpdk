@@ -61,6 +61,7 @@ extern "C" {
 enum rte_lcore_role_t {
 	ROLE_RTE,
 	ROLE_OFF,
+	ROLE_SERVICE,
 };
 
 /**
@@ -80,6 +81,7 @@ enum rte_proc_type_t {
 struct rte_config {
 	uint32_t master_lcore;       /**< Id of the master lcore */
 	uint32_t lcore_count;        /**< Number of available logical cores. */
+	uint32_t service_lcore_count;/**< Number of available service cores. */
 	enum rte_lcore_role_t lcore_role[RTE_MAX_LCORE]; /**< State of cores. */
 
 	/** Primary or secondary configuration */
@@ -185,6 +187,8 @@ int rte_eal_iopl_init(void);
  *
  *     EPROTO indicates that the PCI bus is either not present, or is not
  *            readable by the eal.
+ *
+ *     ENOEXEC indicates that a service core failed to launch successfully.
  */
 int rte_eal_init(int argc, char **argv);
 

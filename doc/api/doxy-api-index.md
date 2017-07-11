@@ -86,6 +86,7 @@ There are many libraries, so their headers may be grouped by topics:
   [launch]             (@ref rte_launch.h),
   [lcore]              (@ref rte_lcore.h),
   [per-lcore]          (@ref rte_per_lcore.h),
+  [service cores]      (@ref rte_service.h),
   [power/freq]         (@ref rte_power.h)
 
 - **layers**:

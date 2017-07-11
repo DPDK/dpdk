@@ -209,5 +209,28 @@ EXPERIMENTAL {
 	rte_eal_devargs_parse;
 	rte_eal_hotplug_add;
 	rte_eal_hotplug_remove;
+	rte_service_disable_on_lcore;
+	rte_service_dump;
+	rte_service_enable_on_lcore;
+	rte_service_get_by_id;
+	rte_service_get_by_name;
+	rte_service_get_count;
+	rte_service_get_enabled_on_lcore;
+	rte_service_is_running;
+	rte_service_lcore_add;
+	rte_service_lcore_count;
+	rte_service_lcore_del;
+	rte_service_lcore_list;
+	rte_service_lcore_reset_all;
+	rte_service_lcore_start;
+	rte_service_lcore_stop;
+	rte_service_probe_capability;
+	rte_service_register;
+	rte_service_reset;
+	rte_service_set_stats_enable;
+	rte_service_start;
+	rte_service_start_with_defaults;
+	rte_service_stop;
+	rte_service_unregister;
 
 } DPDK_17.08;
