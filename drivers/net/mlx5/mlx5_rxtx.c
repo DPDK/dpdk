@@ -1556,7 +1556,7 @@ mlx5_rx_poll_len(struct rxq *rxq, volatile struct mlx5_cqe *cqe,
 	if (zip->ai) {
 		volatile struct mlx5_mini_cqe8 (*mc)[8] =
 			(volatile struct mlx5_mini_cqe8 (*)[8])
-			(uintptr_t)(&(*rxq->cqes)[zip->ca & cqe_cnt]);
+			(uintptr_t)(&(*rxq->cqes)[zip->ca & cqe_cnt].pkt_info);
 
 		len = ntohl((*mc)[zip->ai & 7].byte_cnt);
 		*rss_hash = ntohl((*mc)[zip->ai & 7].rx_hash_result);
@@ -1604,7 +1604,7 @@ mlx5_rx_poll_len(struct rxq *rxq, volatile struct mlx5_cqe *cqe,
 			volatile struct mlx5_mini_cqe8 (*mc)[8] =
 				(volatile struct mlx5_mini_cqe8 (*)[8])
 				(uintptr_t)(&(*rxq->cqes)[rxq->cq_ci &
-							  cqe_cnt]);
+							  cqe_cnt].pkt_info);
 
 			/* Fix endianness. */
 			zip->cqe_cnt = ntohl(cqe->byte_cnt);
