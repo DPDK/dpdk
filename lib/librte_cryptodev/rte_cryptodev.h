@@ -434,6 +434,8 @@ struct rte_cryptodev_stats {
 /**< Max length of name of crypto PMD */
 
 /**
+ * @deprecated
+ *
  * Create a virtual crypto device
  *
  * @param	name	Cryptodev PMD name of device to be created.
@@ -444,6 +446,7 @@ struct rte_cryptodev_stats {
  *   which will be between 0 and rte_cryptodev_count().
  * - In the case of a failure, returns -1.
  */
+__rte_deprecated
 extern int
 rte_cryptodev_create_vdev(const char *name, const char *args);
 
