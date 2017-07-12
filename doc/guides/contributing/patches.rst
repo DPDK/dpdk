@@ -207,18 +207,21 @@ Here are some guidelines for the body of a commit message:
 
 * The text of the commit message should be wrapped at 72 characters.
 
-* When fixing a regression, it is a good idea to reference the id of the commit which introduced the bug.
-  You can generate the required text using the following git alias::
+* When fixing a regression, it is required to reference the id of the commit
+  which introduced the bug, and put the original author of that commit on CC.
+  You can generate the required lines using the following git alias, which prints
+  the commit SHA and the author of the original code::
 
-     git config alias.fixline "log -1 --abbrev=12 --format='Fixes: %h (\"%s\")'"
+     git config alias.fixline "log -1 --abbrev=12 --format='Fixes: %h (\"%s\")%nCc: %ae'"
 
-  The ``Fixes:`` line can then be added to the commit message::
+  The output of ``git fixline <SHA>`` must then be added to the commit message::
 
-     doc: fix vhost sample parameter
+     doc: fix some parameter description
 
-     Update the docs to reflect removed dev-index.
+     Update the docs, fixing description of some parameter.
 
-     Fixes: 17b8320a3e11 ("vhost: remove index parameter")
+     Fixes: abcdefgh1234 ("doc: add some parameter")
+     Cc: author@example.com
 
      Signed-off-by: Alex Smith <alex.smith@example.com>
 
