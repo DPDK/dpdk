@@ -246,6 +246,12 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* **Modified the _rte_eth_dev_callback_process function in the ethdev library.**
+
+  The function ``_rte_eth_dev_callback_process()`` has been modified. The return
+  value has been changed from void to int and an extra parameter ``void *ret_param``
+  has been added.
+
 * **Moved bypass functions from the rte_ethdev library to ixgbe PMD**
 
   * The following rte_ethdev library functions were removed:
@@ -363,7 +369,7 @@ The libraries prepended with a plus sign were incremented in this version.
    + librte_cryptodev.so.3
      librte_distributor.so.1
      librte_eal.so.4
-     librte_ethdev.so.6
+   + librte_ethdev.so.7
    + librte_gro.so.1
      librte_hash.so.2
      librte_ip_frag.so.1
