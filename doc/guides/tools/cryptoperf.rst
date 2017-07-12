@@ -186,6 +186,9 @@ The following are the appication command-line options:
            crypto_snow3g
            crypto_kasumi
            crypto_zuc
+           crypto_dpaa2_sec
+           crypto_armv8
+           crypto_scheduler
 
 * ``--optype <name>``
 
