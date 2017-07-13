@@ -138,7 +138,7 @@ static int  eth_igb_flow_ctrl_get(struct rte_eth_dev *dev,
 				struct rte_eth_fc_conf *fc_conf);
 static int  eth_igb_flow_ctrl_set(struct rte_eth_dev *dev,
 				struct rte_eth_fc_conf *fc_conf);
-static int eth_igb_lsc_interrupt_setup(struct rte_eth_dev *dev);
+static int eth_igb_lsc_interrupt_setup(struct rte_eth_dev *dev, uint8_t on);
 static int eth_igb_rxq_interrupt_setup(struct rte_eth_dev *dev);
 static int eth_igb_interrupt_get_status(struct rte_eth_dev *dev);
 static int eth_igb_interrupt_action(struct rte_eth_dev *dev,
@@ -1472,7 +1472,9 @@ eth_igb_start(struct rte_eth_dev *dev)
 	if (rte_intr_allow_others(intr_handle)) {
 		/* check if lsc interrupt is enabled */
 		if (dev->data->dev_conf.intr_conf.lsc != 0)
-			eth_igb_lsc_interrupt_setup(dev);
+			eth_igb_lsc_interrupt_setup(dev, TRUE);
+		else
+			eth_igb_lsc_interrupt_setup(dev, FALSE);
 	} else {
 		rte_intr_callback_unregister(intr_handle,
 					     eth_igb_interrupt_handler,
@@ -2744,18 +2746,23 @@ eth_igb_vlan_offload_set(struct rte_eth_dev *dev, int mask)
  *
  * @param dev
  *  Pointer to struct rte_eth_dev.
+ * @param on
+ *  Enable or Disable
  *
  * @return
  *  - On success, zero.
  *  - On failure, a negative value.
  */
 static int
-eth_igb_lsc_interrupt_setup(struct rte_eth_dev *dev)
+eth_igb_lsc_interrupt_setup(struct rte_eth_dev *dev, uint8_t on)
 {
 	struct e1000_interrupt *intr =
 		E1000_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
 
-	intr->mask |= E1000_ICR_LSC;
+	if (on)
+		intr->mask |= E1000_ICR_LSC;
+	else
+		intr->mask &= ~E1000_ICR_LSC;
 
 	return 0;
 }
