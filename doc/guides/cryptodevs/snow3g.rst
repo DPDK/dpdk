@@ -69,6 +69,17 @@ on their system before building DPDK::
 
    make snow3G
 
+**Note**: When encrypting with SNOW3G UEA2, by default the library
+encrypts blocks of 4 bytes, regardless the number of bytes to
+be encrypted provided (which leads to a possible buffer overflow).
+To avoid this situation, it is necessary not to pass
+3GPP_SAFE_BUFFERS as a compilation flag.
+For this, in the Makefile of the library, make sure that this flag
+is commented out.::
+
+  #EXTRA_CFLAGS  += -D_3GPP_SAFE_BUFFERS
+
+
 Initialization
 --------------
 

@@ -70,6 +70,18 @@ on their system before building DPDK::
 
    make
 
+**Note**: When encrypting with KASUMI F8, by default the library
+encrypts full blocks of 8 bytes, regardless the number of bytes to
+be encrypted provided (which leads to a possible buffer overflow).
+To avoid this situation, it is necessary not to pass
+3GPP_SAFE_BUFFERS as a compilation flag.
+Also, this is required when using chained operations
+(cipher-then-auth/auth-then-cipher).
+For this, in the Makefile of the library, make sure that this flag
+is commented out::
+
+  #EXTRA_CFLAGS  += -D_3GPP_SAFE_BUFFERS
+
 **Note**: To build the PMD as a shared library, the libsso_kasumi
 library must be built as follows::
 
