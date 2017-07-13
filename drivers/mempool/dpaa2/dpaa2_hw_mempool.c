@@ -62,6 +62,7 @@ rte_hw_mbuf_create_pool(struct rte_mempool *mp)
 {
 	struct dpaa2_bp_list *bp_list;
 	struct dpaa2_dpbp_dev *avail_dpbp;
+	struct dpaa2_bp_info *bp_info;
 	struct dpbp_attr dpbp_attr;
 	uint32_t bpid;
 	int ret, p_ret;
@@ -126,7 +127,12 @@ rte_hw_mbuf_create_pool(struct rte_mempool *mp)
 	rte_dpaa2_bpid_info[bpid].bp_list = bp_list;
 	rte_dpaa2_bpid_info[bpid].bpid = bpid;
 
-	mp->pool_data = (void *)&rte_dpaa2_bpid_info[bpid];
+	bp_info = rte_malloc(NULL,
+			     sizeof(struct dpaa2_bp_info),
+			     RTE_CACHE_LINE_SIZE);
+	rte_memcpy(bp_info, (void *)&rte_dpaa2_bpid_info[bpid],
+		   sizeof(struct dpaa2_bp_info));
+	mp->pool_data = (void *)bp_info;
 
 	PMD_INIT_LOG(DEBUG, "BP List created for bpid =%d", dpbp_attr.bpid);
 
@@ -168,6 +174,7 @@ rte_hw_mbuf_free_pool(struct rte_mempool *mp)
 		}
 	}
 
+	rte_free(mp->pool_data);
 	dpaa2_free_dpbp_dev(dpbp_node);
 }
 
