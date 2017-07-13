@@ -587,7 +587,7 @@ handle_completed_jobs(struct aesni_mb_qp *qp, JOB_AES_HMAC *job,
 	struct rte_crypto_op *op = NULL;
 	unsigned processed_jobs = 0;
 
-	while (job != NULL && processed_jobs < nb_ops) {
+	while (job != NULL) {
 		op = post_process_mb_job(qp, job);
 
 		if (op) {
@@ -597,6 +597,8 @@ handle_completed_jobs(struct aesni_mb_qp *qp, JOB_AES_HMAC *job,
 			qp->stats.dequeue_err_count++;
 			break;
 		}
+		if (processed_jobs == nb_ops)
+			break;
 
 		job = (*qp->op_fns->job.get_completed_job)(&qp->mb_mgr);
 	}
