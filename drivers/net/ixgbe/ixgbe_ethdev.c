@@ -239,7 +239,7 @@ static int ixgbe_dev_rss_reta_query(struct rte_eth_dev *dev,
 			struct rte_eth_rss_reta_entry64 *reta_conf,
 			uint16_t reta_size);
 static void ixgbe_dev_link_status_print(struct rte_eth_dev *dev);
-static int ixgbe_dev_lsc_interrupt_setup(struct rte_eth_dev *dev);
+static int ixgbe_dev_lsc_interrupt_setup(struct rte_eth_dev *dev, uint8_t on);
 static int ixgbe_dev_macsec_interrupt_setup(struct rte_eth_dev *dev);
 static int ixgbe_dev_rxq_interrupt_setup(struct rte_eth_dev *dev);
 static int ixgbe_dev_interrupt_get_status(struct rte_eth_dev *dev);
@@ -2668,7 +2668,9 @@ skip_link_setup:
 	if (rte_intr_allow_others(intr_handle)) {
 		/* check if lsc interrupt is enabled */
 		if (dev->data->dev_conf.intr_conf.lsc != 0)
-			ixgbe_dev_lsc_interrupt_setup(dev);
+			ixgbe_dev_lsc_interrupt_setup(dev, TRUE);
+		else
+			ixgbe_dev_lsc_interrupt_setup(dev, FALSE);
 		ixgbe_dev_macsec_interrupt_setup(dev);
 	} else {
 		rte_intr_callback_unregister(intr_handle,
@@ -4051,19 +4053,24 @@ ixgbe_dev_allmulticast_disable(struct rte_eth_dev *dev)
  *
  * @param dev
  *  Pointer to struct rte_eth_dev.
+ * @param on
+ *  Enable or Disable.
  *
  * @return
  *  - On success, zero.
  *  - On failure, a negative value.
  */
 static int
-ixgbe_dev_lsc_interrupt_setup(struct rte_eth_dev *dev)
+ixgbe_dev_lsc_interrupt_setup(struct rte_eth_dev *dev, uint8_t on)
 {
 	struct ixgbe_interrupt *intr =
 		IXGBE_DEV_PRIVATE_TO_INTR(dev->data->dev_private);
 
 	ixgbe_dev_link_status_print(dev);
-	intr->mask |= IXGBE_EICR_LSC;
+	if (on)
+		intr->mask |= IXGBE_EICR_LSC;
+	else
+		intr->mask &= ~IXGBE_EICR_LSC;
 
 	return 0;
 }
