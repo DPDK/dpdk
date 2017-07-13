@@ -2016,7 +2016,7 @@ i40e_dev_start(struct rte_eth_dev *dev)
 		if (dev->data->dev_conf.intr_conf.lsc != 0)
 			PMD_INIT_LOG(INFO,
 				"lsc won't enable because of no intr multiplex");
-	} else if (dev->data->dev_conf.intr_conf.lsc != 0) {
+	} else {
 		ret = i40e_aq_set_phy_int_mask(hw,
 					       ~(I40E_AQ_EVENT_LINK_UPDOWN |
 					       I40E_AQ_EVENT_MODULE_QUAL_FAIL |
@@ -2024,7 +2024,7 @@ i40e_dev_start(struct rte_eth_dev *dev)
 		if (ret != I40E_SUCCESS)
 			PMD_DRV_LOG(WARNING, "Fail to set phy mask");
 
-		/* Call get_link_info aq commond to enable LSE */
+		/* Call get_link_info aq commond to enable/disable LSE */
 		i40e_dev_link_update(dev, 0);
 	}
 
