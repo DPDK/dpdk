@@ -2775,7 +2775,7 @@ balance_l23_tx_burst(uint8_t vlan_enabled, uint8_t ipv4,
 static int
 test_balance_l23_tx_burst_ipv4_toggle_ip_addr(void)
 {
-	return balance_l23_tx_burst(0, 1, 1, 0);
+	return balance_l23_tx_burst(0, 1, 0, 1);
 }
 
 static int
