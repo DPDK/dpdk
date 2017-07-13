@@ -101,6 +101,13 @@ vcopyq_laneq_u32(uint32x4_t a, const int lane_a,
 
 #if defined(RTE_ARCH_ARM64)
 #if defined(RTE_TOOLCHAIN_GCC) && (GCC_VERSION < 70000)
+
+#if (GCC_VERSION < 40900)
+typedef uint64_t poly64_t;
+typedef uint64x2_t poly64x2_t;
+typedef uint8_t poly128_t __attribute__((vector_size(16), aligned(16)));
+#endif
+
 /* NEON intrinsic vreinterpretq_u64_p128() is supported since GCC version 7 */
 static inline uint64x2_t
 vreinterpretq_u64_p128(poly128_t x)
