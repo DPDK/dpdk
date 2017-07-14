@@ -33,14 +33,13 @@ API {#index}
   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -->
 
-There are many libraries, so their headers may be grouped by topics:
+The public API headers are grouped by topics:
 
 - **device**:
   [dev]                (@ref rte_dev.h),
   [ethdev]             (@ref rte_ethdev.h),
   [ethctrl]            (@ref rte_eth_ctrl.h),
   [rte_flow]           (@ref rte_flow.h),
-  [rte_flow_driver]    (@ref rte_flow_driver.h),
   [rte_tm]             (@ref rte_tm.h),
   [cryptodev]          (@ref rte_cryptodev.h),
   [eventdev]           (@ref rte_eventdev.h),
