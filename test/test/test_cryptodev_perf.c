@@ -2950,7 +2950,7 @@ test_perf_create_armv8_session(uint8_t dev_id, enum chain_mode chain,
 
 	auth_xform.auth.digest_length = get_auth_digest_length(auth_algo);
 
-	rte_cryptodev_sym_session_create(ts_params->sess_mp);
+	test_crypto_session = rte_cryptodev_sym_session_create(ts_params->sess_mp);
 
 	switch (chain) {
 	case CIPHER_HASH:
