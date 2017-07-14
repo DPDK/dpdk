@@ -2353,9 +2353,9 @@ create_wireless_algo_cipher_hash_operation(const uint8_t *auth_tag,
 	rte_memcpy(iv_ptr, auth_iv, auth_iv_len);
 
 	sym_op->cipher.data.length = cipher_len;
-	sym_op->cipher.data.offset = cipher_offset + auth_offset;
+	sym_op->cipher.data.offset = cipher_offset;
 	sym_op->auth.data.length = auth_len;
-	sym_op->auth.data.offset = auth_offset + cipher_offset;
+	sym_op->auth.data.offset = auth_offset;
 
 	return 0;
 }
@@ -2409,10 +2409,10 @@ create_wireless_algo_auth_cipher_operation(unsigned int auth_tag_len,
 	rte_memcpy(iv_ptr, auth_iv, auth_iv_len);
 
 	sym_op->cipher.data.length = cipher_len;
-	sym_op->cipher.data.offset = auth_offset + cipher_offset;
+	sym_op->cipher.data.offset = cipher_offset;
 
 	sym_op->auth.data.length = auth_len;
-	sym_op->auth.data.offset = auth_offset + cipher_offset;
+	sym_op->auth.data.offset = auth_offset;
 
 	return 0;
 }
@@ -2551,7 +2551,7 @@ test_kasumi_authentication(const struct kasumi_hash_test_data *tdata)
 	/* Create KASUMI session */
 	retval = create_wireless_algo_hash_session(ts_params->valid_devs[0],
 			tdata->key.data, tdata->key.len,
-			tdata->auth_iv.len, tdata->digest.len,
+			0, tdata->digest.len,
 			RTE_CRYPTO_AUTH_OP_GENERATE,
 			RTE_CRYPTO_AUTH_KASUMI_F9);
 	if (retval < 0)
@@ -2573,9 +2573,9 @@ test_kasumi_authentication(const struct kasumi_hash_test_data *tdata)
 
 	/* Create KASUMI operation */
 	retval = create_wireless_algo_hash_operation(NULL, tdata->digest.len,
-			tdata->auth_iv.data, tdata->auth_iv.len,
+			NULL, 0,
 			plaintext_pad_len, RTE_CRYPTO_AUTH_OP_GENERATE,
-			tdata->validAuthLenInBits.len,
+			tdata->plaintext.len,
 			0);
 	if (retval < 0)
 		return retval;
@@ -2611,7 +2611,7 @@ test_kasumi_authentication_verify(const struct kasumi_hash_test_data *tdata)
 	/* Create KASUMI session */
 	retval = create_wireless_algo_hash_session(ts_params->valid_devs[0],
 				tdata->key.data, tdata->key.len,
-				tdata->auth_iv.len, tdata->digest.len,
+				0, tdata->digest.len,
 				RTE_CRYPTO_AUTH_OP_VERIFY,
 				RTE_CRYPTO_AUTH_KASUMI_F9);
 	if (retval < 0)
@@ -2633,10 +2633,10 @@ test_kasumi_authentication_verify(const struct kasumi_hash_test_data *tdata)
 	/* Create KASUMI operation */
 	retval = create_wireless_algo_hash_operation(tdata->digest.data,
 			tdata->digest.len,
-			tdata->auth_iv.data, tdata->auth_iv.len,
+			NULL, 0,
 			plaintext_pad_len,
 			RTE_CRYPTO_AUTH_OP_VERIFY,
-			tdata->validAuthLenInBits.len,
+			tdata->plaintext.len,
 			0);
 	if (retval < 0)
 		return retval;
@@ -2834,9 +2834,9 @@ test_kasumi_encryption(const struct kasumi_test_data *tdata)
 
 	/* Create KASUMI operation */
 	retval = create_wireless_algo_cipher_operation(tdata->cipher_iv.data,
-					tdata->cipher_iv.len,
-					tdata->plaintext.len,
-					0);
+				tdata->cipher_iv.len,
+				RTE_ALIGN_CEIL(tdata->validCipherLenInBits.len, 8),
+				tdata->validCipherOffsetInBits.len);
 	if (retval < 0)
 		return retval;
 
@@ -2848,14 +2848,16 @@ test_kasumi_encryption(const struct kasumi_test_data *tdata)
 	if (ut_params->obuf)
 		ciphertext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *);
 	else
-		ciphertext = plaintext;
+		ciphertext = plaintext + (tdata->validCipherOffsetInBits.len >> 3);
 
 	TEST_HEXDUMP(stdout, "ciphertext:", ciphertext, plaintext_len);
 
+	const uint8_t *reference_ciphertext = tdata->ciphertext.data +
+				(tdata->validCipherOffsetInBits.len >> 3);
 	/* Validate obuf */
 	TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(
 		ciphertext,
-		tdata->ciphertext.data,
+		reference_ciphertext,
 		tdata->validCipherLenInBits.len,
 		"KASUMI Ciphertext data not as expected");
 	return 0;
@@ -2907,9 +2909,9 @@ test_kasumi_encryption_sgl(const struct kasumi_test_data *tdata)
 
 	/* Create KASUMI operation */
 	retval = create_wireless_algo_cipher_operation(tdata->cipher_iv.data,
-					tdata->cipher_iv.len,
-					tdata->plaintext.len,
-					0);
+				tdata->cipher_iv.len,
+				RTE_ALIGN_CEIL(tdata->validCipherLenInBits.len, 8),
+				tdata->validCipherOffsetInBits.len);
 	if (retval < 0)
 		return retval;
 
@@ -2923,19 +2925,22 @@ test_kasumi_encryption_sgl(const struct kasumi_test_data *tdata)
 		ciphertext = rte_pktmbuf_read(ut_params->obuf, 0,
 				plaintext_len, buffer);
 	else
-		ciphertext = rte_pktmbuf_read(ut_params->ibuf, 0,
+		ciphertext = rte_pktmbuf_read(ut_params->ibuf,
+				tdata->validCipherOffsetInBits.len >> 3,
 				plaintext_len, buffer);
 
 	/* Validate obuf */
 	TEST_HEXDUMP(stdout, "ciphertext:", ciphertext, plaintext_len);
 
-		/* Validate obuf */
-		TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(
-			ciphertext,
-			tdata->ciphertext.data,
-			tdata->validCipherLenInBits.len,
-			"KASUMI Ciphertext data not as expected");
-		return 0;
+	const uint8_t *reference_ciphertext = tdata->ciphertext.data +
+				(tdata->validCipherOffsetInBits.len >> 3);
+	/* Validate obuf */
+	TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(
+		ciphertext,
+		reference_ciphertext,
+		tdata->validCipherLenInBits.len,
+		"KASUMI Ciphertext data not as expected");
+	return 0;
 }
 
 static int
@@ -2978,9 +2983,9 @@ test_kasumi_encryption_oop(const struct kasumi_test_data *tdata)
 
 	/* Create KASUMI operation */
 	retval = create_wireless_algo_cipher_operation_oop(tdata->cipher_iv.data,
-					tdata->cipher_iv.len,
-					tdata->plaintext.len,
-					0);
+				tdata->cipher_iv.len,
+				RTE_ALIGN_CEIL(tdata->validCipherLenInBits.len, 8),
+				tdata->validCipherOffsetInBits.len);
 	if (retval < 0)
 		return retval;
 
@@ -2992,14 +2997,16 @@ test_kasumi_encryption_oop(const struct kasumi_test_data *tdata)
 	if (ut_params->obuf)
 		ciphertext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *);
 	else
-		ciphertext = plaintext;
+		ciphertext = plaintext + (tdata->validCipherOffsetInBits.len >> 3);
 
 	TEST_HEXDUMP(stdout, "ciphertext:", ciphertext, plaintext_len);
 
+	const uint8_t *reference_ciphertext = tdata->ciphertext.data +
+				(tdata->validCipherOffsetInBits.len >> 3);
 	/* Validate obuf */
 	TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(
 		ciphertext,
-		tdata->ciphertext.data,
+		reference_ciphertext,
 		tdata->validCipherLenInBits.len,
 		"KASUMI Ciphertext data not as expected");
 	return 0;
@@ -3052,9 +3059,9 @@ test_kasumi_encryption_oop_sgl(const struct kasumi_test_data *tdata)
 
 	/* Create KASUMI operation */
 	retval = create_wireless_algo_cipher_operation_oop(tdata->cipher_iv.data,
-					tdata->cipher_iv.len,
-					tdata->plaintext.len,
-					0);
+				tdata->cipher_iv.len,
+				RTE_ALIGN_CEIL(tdata->validCipherLenInBits.len, 8),
+				tdata->validCipherOffsetInBits.len);
 	if (retval < 0)
 		return retval;
 
@@ -3067,13 +3074,16 @@ test_kasumi_encryption_oop_sgl(const struct kasumi_test_data *tdata)
 		ciphertext = rte_pktmbuf_read(ut_params->obuf, 0,
 				plaintext_pad_len, buffer);
 	else
-		ciphertext = rte_pktmbuf_read(ut_params->ibuf, 0,
+		ciphertext = rte_pktmbuf_read(ut_params->ibuf,
+				tdata->validCipherOffsetInBits.len >> 3,
 				plaintext_pad_len, buffer);
 
+	const uint8_t *reference_ciphertext = tdata->ciphertext.data +
+				(tdata->validCipherOffsetInBits.len >> 3);
 	/* Validate obuf */
 	TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(
 		ciphertext,
-		tdata->ciphertext.data,
+		reference_ciphertext,
 		tdata->validCipherLenInBits.len,
 		"KASUMI Ciphertext data not as expected");
 	return 0;
@@ -3120,9 +3130,9 @@ test_kasumi_decryption_oop(const struct kasumi_test_data *tdata)
 
 	/* Create KASUMI operation */
 	retval = create_wireless_algo_cipher_operation_oop(tdata->cipher_iv.data,
-					tdata->cipher_iv.len,
-					tdata->ciphertext.len,
-					0);
+				tdata->cipher_iv.len,
+				RTE_ALIGN_CEIL(tdata->validCipherLenInBits.len, 8),
+				tdata->validCipherOffsetInBits.len);
 	if (retval < 0)
 		return retval;
 
@@ -3134,14 +3144,16 @@ test_kasumi_decryption_oop(const struct kasumi_test_data *tdata)
 	if (ut_params->obuf)
 		plaintext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *);
 	else
-		plaintext = ciphertext;
+		plaintext = ciphertext + (tdata->validCipherOffsetInBits.len >> 3);
 
 	TEST_HEXDUMP(stdout, "plaintext:", plaintext, ciphertext_len);
 
+	const uint8_t *reference_plaintext = tdata->plaintext.data +
+				(tdata->validCipherOffsetInBits.len >> 3);
 	/* Validate obuf */
 	TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(
 		plaintext,
-		tdata->plaintext.data,
+		reference_plaintext,
 		tdata->validCipherLenInBits.len,
 		"KASUMI Plaintext data not as expected");
 	return 0;
@@ -3187,7 +3199,7 @@ test_kasumi_decryption(const struct kasumi_test_data *tdata)
 	retval = create_wireless_algo_cipher_operation(tdata->cipher_iv.data,
 					tdata->cipher_iv.len,
 					tdata->ciphertext.len,
-					0);
+					tdata->validCipherOffsetInBits.len);
 	if (retval < 0)
 		return retval;
 
@@ -3199,14 +3211,16 @@ test_kasumi_decryption(const struct kasumi_test_data *tdata)
 	if (ut_params->obuf)
 		plaintext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *);
 	else
-		plaintext = ciphertext;
+		plaintext = ciphertext + (tdata->validCipherOffsetInBits.len >> 3);
 
 	TEST_HEXDUMP(stdout, "plaintext:", plaintext, ciphertext_len);
 
+	const uint8_t *reference_plaintext = tdata->plaintext.data +
+				(tdata->validCipherOffsetInBits.len >> 3);
 	/* Validate obuf */
 	TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(
 		plaintext,
-		tdata->plaintext.data,
+		reference_plaintext,
 		tdata->validCipherLenInBits.len,
 		"KASUMI Plaintext data not as expected");
 	return 0;
@@ -3947,7 +3961,7 @@ test_kasumi_auth_cipher(const struct kasumi_test_data *tdata)
 			RTE_CRYPTO_AUTH_KASUMI_F9,
 			RTE_CRYPTO_CIPHER_KASUMI_F8,
 			tdata->key.data, tdata->key.len,
-			tdata->auth_iv.len, tdata->digest.len,
+			0, tdata->digest.len,
 			tdata->cipher_iv.len);
 	if (retval < 0)
 		return retval;
@@ -3970,10 +3984,10 @@ test_kasumi_auth_cipher(const struct kasumi_test_data *tdata)
 	/* Create KASUMI operation */
 	retval = create_wireless_algo_auth_cipher_operation(tdata->digest.len,
 				tdata->cipher_iv.data, tdata->cipher_iv.len,
-				tdata->auth_iv.data, tdata->auth_iv.len,
+				NULL, 0,
 				plaintext_pad_len,
 				tdata->validCipherLenInBits.len,
-				0,
+				tdata->validCipherOffsetInBits.len,
 				tdata->validAuthLenInBits.len,
 				0
 				);
@@ -3984,19 +3998,23 @@ test_kasumi_auth_cipher(const struct kasumi_test_data *tdata)
 	ut_params->op = process_crypto_request(ts_params->valid_devs[0],
 			ut_params->op);
 	TEST_ASSERT_NOT_NULL(ut_params->op, "failed to retrieve obuf");
-	ut_params->obuf = ut_params->op->sym->m_src;
-	if (ut_params->obuf)
-		ciphertext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *);
+	if (ut_params->op->sym->m_dst)
+		ut_params->obuf = ut_params->op->sym->m_dst;
 	else
-		ciphertext = plaintext;
+		ut_params->obuf = ut_params->op->sym->m_src;
 
+	ciphertext = rte_pktmbuf_mtod_offset(ut_params->obuf, uint8_t *,
+				tdata->validCipherOffsetInBits.len >> 3);
+
+	const uint8_t *reference_ciphertext = tdata->ciphertext.data +
+				(tdata->validCipherOffsetInBits.len >> 3);
 	/* Validate obuf */
 	TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(
 			ciphertext,
-			tdata->ciphertext.data,
+			reference_ciphertext,
 			tdata->validCipherLenInBits.len,
 			"KASUMI Ciphertext data not as expected");
-	ut_params->digest = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
+	ut_params->digest = rte_pktmbuf_mtod(ut_params->ibuf, uint8_t *)
 	    + plaintext_pad_len;
 
 	/* Validate obuf */
@@ -4028,7 +4046,7 @@ test_kasumi_cipher_auth(const struct kasumi_test_data *tdata)
 			RTE_CRYPTO_AUTH_KASUMI_F9,
 			RTE_CRYPTO_CIPHER_KASUMI_F8,
 			tdata->key.data, tdata->key.len,
-			tdata->auth_iv.len, tdata->digest.len,
+			0, tdata->digest.len,
 			tdata->cipher_iv.len);
 	if (retval < 0)
 		return retval;
@@ -4051,12 +4069,11 @@ test_kasumi_cipher_auth(const struct kasumi_test_data *tdata)
 
 	/* Create KASUMI operation */
 	retval = create_wireless_algo_cipher_hash_operation(tdata->digest.data,
-				tdata->digest.len, tdata->auth_iv.data,
-				tdata->auth_iv.len,
+				tdata->digest.len, NULL, 0,
 				plaintext_pad_len, RTE_CRYPTO_AUTH_OP_GENERATE,
 				tdata->cipher_iv.data, tdata->cipher_iv.len,
-				tdata->validCipherLenInBits.len,
-				0,
+				RTE_ALIGN_CEIL(tdata->validCipherLenInBits.len, 8),
+				tdata->validCipherOffsetInBits.len,
 				tdata->validAuthLenInBits.len,
 				0
 				);
@@ -4066,19 +4083,24 @@ test_kasumi_cipher_auth(const struct kasumi_test_data *tdata)
 	ut_params->op = process_crypto_request(ts_params->valid_devs[0],
 			ut_params->op);
 	TEST_ASSERT_NOT_NULL(ut_params->op, "failed to retrieve obuf");
-	ut_params->obuf = ut_params->op->sym->m_src;
-	if (ut_params->obuf)
-		ciphertext = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *);
+
+	if (ut_params->op->sym->m_dst)
+		ut_params->obuf = ut_params->op->sym->m_dst;
 	else
-		ciphertext = plaintext;
+		ut_params->obuf = ut_params->op->sym->m_src;
+
+	ciphertext = rte_pktmbuf_mtod_offset(ut_params->obuf, uint8_t *,
+				tdata->validCipherOffsetInBits.len >> 3);
 
 	ut_params->digest = rte_pktmbuf_mtod(ut_params->obuf, uint8_t *)
 			+ plaintext_pad_len;
 
+	const uint8_t *reference_ciphertext = tdata->ciphertext.data +
+				(tdata->validCipherOffsetInBits.len >> 3);
 	/* Validate obuf */
 	TEST_ASSERT_BUFFERS_ARE_EQUAL_BIT(
 		ciphertext,
-		tdata->ciphertext.data,
+		reference_ciphertext,
 		tdata->validCipherLenInBits.len,
 		"KASUMI Ciphertext data not as expected");
 
@@ -8206,10 +8228,31 @@ static struct unit_test_suite cryptodev_qat_testsuite  = {
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_null_auth_cipher_operation),
 
+		/** KASUMI tests */
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_kasumi_hash_generate_test_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_kasumi_hash_generate_test_case_2),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_kasumi_hash_generate_test_case_3),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_kasumi_hash_generate_test_case_4),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_kasumi_hash_generate_test_case_5),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_kasumi_hash_generate_test_case_6),
 
-		/** KASUMI tests */
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_kasumi_hash_verify_test_case_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_kasumi_hash_verify_test_case_2),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_kasumi_hash_verify_test_case_3),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_kasumi_hash_verify_test_case_4),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_kasumi_hash_verify_test_case_5),
+
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_kasumi_encryption_test_case_1),
 		TEST_CASE_ST(ut_setup, ut_teardown,

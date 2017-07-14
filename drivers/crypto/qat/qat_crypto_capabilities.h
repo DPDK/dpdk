@@ -421,11 +421,7 @@
 					.max = 4,			\
 					.increment = 0			\
 				},					\
-				.iv_size = {				\
-					.min = 8,			\
-					.max = 8,			\
-					.increment = 0			\
-				}					\
+				.iv_size = { 0 }			\
 			}, }						\
 		}, }							\
 	},								\

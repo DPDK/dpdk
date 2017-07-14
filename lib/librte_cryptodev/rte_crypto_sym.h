@@ -332,10 +332,12 @@ struct rte_crypto_auth_xform {
 		 * specified as number of bytes from start of crypto
 		 * operation (rte_crypto_op).
 		 *
-		 * - For KASUMI in F9 mode, SNOW 3G in UIA2 mode,
-		 *   for ZUC in EIA3 mode and for AES-GMAC, this is the
-		 *   authentication Initialisation Vector (IV) value.
+		 * - For SNOW 3G in UIA2 mode, for ZUC in EIA3 mode and
+		 *   for AES-GMAC, this is the authentication
+		 *   Initialisation Vector (IV) value.
 		 *
+		 * - For KASUMI in F9 mode and other authentication
+		 *   algorithms, this field is not used.
 		 *
 		 * For optimum performance, the data pointed to SHOULD
 		 * be 8-byte aligned.
@@ -343,9 +345,11 @@ struct rte_crypto_auth_xform {
 		uint16_t length;
 		/**< Length of valid IV data.
 		 *
-		 * - For KASUMI in F9 mode, SNOW3G in UIA2 mode, for
-		 *   ZUC in EIA3 mode and for AES-GMAC, this is the length
-		 *   of the IV.
+		 * - For SNOW3G in UIA2 mode, for ZUC in EIA3 mode and
+		 *   for AES-GMAC, this is the length of the IV.
+		 *
+		 * - For KASUMI in F9 mode and other authentication
+		 *   algorithms, this field is not used.
 		 *
 		 */
 	} iv;	/**< Initialisation vector parameters */
@@ -625,6 +629,11 @@ struct rte_crypto_sym_op {
 					  * KASUMI @ RTE_CRYPTO_AUTH_KASUMI_F9
 					  * and ZUC @ RTE_CRYPTO_AUTH_ZUC_EIA3,
 					  * this field should be in bits.
+					  *
+					  * @note
+					  * For KASUMI @ RTE_CRYPTO_AUTH_KASUMI_F9,
+					  * this offset should be such that
+					  * data to authenticate starts at COUNT.
 					  */
 					uint32_t length;
 					 /**< The message length, in bytes, of the source
@@ -635,6 +644,12 @@ struct rte_crypto_sym_op {
 					  * KASUMI @ RTE_CRYPTO_AUTH_KASUMI_F9
 					  * and ZUC @ RTE_CRYPTO_AUTH_ZUC_EIA3,
 					  * this field should be in bits.
+					  *
+					  * @note
+					  * For KASUMI @ RTE_CRYPTO_AUTH_KASUMI_F9,
+					  * the length should include the COUNT,
+					  * FRESH, message, direction bit and padding
+					  * (to be multiple of 8 bits).
 					  */
 				} data;
 				/**< Data offsets and length for authentication */

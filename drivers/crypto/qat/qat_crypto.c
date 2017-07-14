@@ -1195,18 +1195,7 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
 			auth_ofs = op->sym->auth.data.offset >> 3;
 			auth_len = op->sym->auth.data.length >> 3;
 
-			if (ctx->qat_hash_alg ==
-					ICP_QAT_HW_AUTH_ALGO_KASUMI_F9) {
-				if (do_cipher) {
-					auth_len = auth_len + auth_ofs + 1 -
-						ICP_QAT_HW_KASUMI_BLK_SZ;
-					auth_ofs = ICP_QAT_HW_KASUMI_BLK_SZ;
-				} else {
-					auth_len = auth_len + auth_ofs + 1;
-					auth_ofs = 0;
-				}
-			} else
-				auth_param->u1.aad_adr =
+			auth_param->u1.aad_adr =
 					rte_crypto_op_ctophys_offset(op,
 							ctx->auth_iv.offset);
 

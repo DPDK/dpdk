@@ -142,12 +142,6 @@ kasumi_set_session_parameters(struct kasumi_session *sess,
 
 		sess->auth_op = auth_xform->auth.op;
 
-		sess->auth_iv_offset = auth_xform->auth.iv.offset;
-		if (auth_xform->auth.iv.length != KASUMI_IV_LENGTH) {
-			KASUMI_LOG_ERR("Wrong IV length");
-			return -EINVAL;
-		}
-
 		/* Initialize key */
 		sso_kasumi_init_f9_key_sched(auth_xform->auth.key.data,
 				&sess->pKeySched_hash);
@@ -274,12 +268,8 @@ process_kasumi_hash_op(struct rte_crypto_op **ops,
 	unsigned i;
 	uint8_t processed_ops = 0;
 	uint8_t *src, *dst;
-	uint8_t *iv_ptr;
 	uint32_t length_in_bits;
 	uint32_t num_bytes;
-	uint32_t shift_bits;
-	uint64_t iv;
-	uint8_t direction;
 
 	for (i = 0; i < num_ops; i++) {
 		/* Data must be byte aligned */
@@ -293,21 +283,15 @@ process_kasumi_hash_op(struct rte_crypto_op **ops,
 
 		src = rte_pktmbuf_mtod(ops[i]->sym->m_src, uint8_t *) +
 				(ops[i]->sym->auth.data.offset >> 3);
-		iv_ptr = rte_crypto_op_ctod_offset(ops[i], uint8_t *,
-				session->auth_iv_offset);
-		iv = *((uint64_t *)(iv_ptr));
 		/* Direction from next bit after end of message */
-		num_bytes = (length_in_bits >> 3) + 1;
-		shift_bits = (BYTE_LEN - 1 - length_in_bits) % BYTE_LEN;
-		direction = (src[num_bytes - 1] >> shift_bits) & 0x01;
+		num_bytes = length_in_bits >> 3;
 
 		if (session->auth_op == RTE_CRYPTO_AUTH_OP_VERIFY) {
 			dst = (uint8_t *)rte_pktmbuf_append(ops[i]->sym->m_src,
 					KASUMI_DIGEST_LENGTH);
+			sso_kasumi_f9_1_buffer(&session->pKeySched_hash, src,
+					num_bytes, dst);
 
-			sso_kasumi_f9_1_buffer_user(&session->pKeySched_hash,
-					iv, src,
-					length_in_bits,	dst, direction);
 			/* Verify digest. */
 			if (memcmp(dst, ops[i]->sym->auth.digest.data,
 					KASUMI_DIGEST_LENGTH) != 0)
@@ -319,9 +303,8 @@ process_kasumi_hash_op(struct rte_crypto_op **ops,
 		} else  {
 			dst = ops[i]->sym->auth.digest.data;
 
-			sso_kasumi_f9_1_buffer_user(&session->pKeySched_hash,
-					iv, src,
-					length_in_bits, dst, direction);
+			sso_kasumi_f9_1_buffer(&session->pKeySched_hash, src,
+					num_bytes, dst);
 		}
 		processed_ops++;
 	}

@@ -96,7 +96,6 @@ struct kasumi_session {
 	enum kasumi_operation op;
 	enum rte_crypto_auth_operation auth_op;
 	uint16_t cipher_iv_offset;
-	uint16_t auth_iv_offset;
 } __rte_cache_aligned;
 
 

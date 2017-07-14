@@ -51,7 +51,7 @@ Limitations
 -----------
 
 * Chained mbufs are not supported.
-* KASUMI(F9) supported only if hash offset field is byte-aligned.
+* KASUMI(F9) supported only if hash offset and length field is byte-aligned.
 * In-place bit-level operations for KASUMI(F8) are not supported
   (if length and/or offset of data to be ciphered is not byte-aligned).
 
@@ -120,3 +120,20 @@ Example:
 .. code-block:: console
 
     ./l2fwd-crypto -l 6 -n 4 --vdev="crypto_kasumi,socket_id=1,max_nb_sessions=128"
+
+Extra notes on KASUMI F9
+------------------------
+
+When using KASUMI F9 authentication algorithm, the input buffer must be
+constructed according to the 3GPP KASUMI specifications (section 4.4, page 13):
+`<http://cryptome.org/3gpp/35201-900.pdf>`_.
+Input buffer has to have COUNT (4 bytes), FRESH (4 bytes), MESSAGE and DIRECTION (1 bit)
+concatenated. After the DIRECTION bit, a single '1' bit is appended, followed by
+between 0 and 7 '0' bits, so that the total length of the buffer is multiple of 8 bits.
+Note that the actual message can be any length, specified in bits.
+
+Once this buffer is passed this way, when creating the crypto operation,
+length of data to authenticate (op.sym.auth.data.length) must be the length
+of all the items described above, including the padding at the end.
+Also, offset of data to authenticate (op.sym.auth.data.offset)
+must be such that points at the start of the COUNT bytes.

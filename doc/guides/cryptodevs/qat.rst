@@ -86,7 +86,7 @@ Limitations
 
 * Only supports the session-oriented API implementation (session-less APIs are not supported).
 * SNOW 3G (UEA2), KASUMI (F8) and ZUC (EEA3) supported only if cipher length and offset fields are byte-multiple.
-* SNOW 3G (UIA2), KASUMI (F9) and ZUC (EIA3) supported only if hash length and offset fields are byte-multiple.
+* SNOW 3G (UIA2) and ZUC (EIA3) supported only if hash length and offset fields are byte-multiple.
 * No BSD support as BSD QAT kernel driver not available.
 * ZUC EEA3/EIA3 is not supported by dh895xcc devices
 * Maximum additional authenticated data (AAD) for GCM is 240 bytes long.
@@ -365,3 +365,21 @@ Another way to bind the VFs to the DPDK UIO driver is by using the
 
     cd to the top-level DPDK directory
     ./usertools/dpdk-devbind.py -b igb_uio 0000:03:01.1
+
+
+Extra notes on KASUMI F9
+------------------------
+
+When using KASUMI F9 authentication algorithm, the input buffer must be
+constructed according to the 3GPP KASUMI specifications (section 4.4, page 13):
+`<http://cryptome.org/3gpp/35201-900.pdf>`_.
+Input buffer has to have COUNT (4 bytes), FRESH (4 bytes), MESSAGE and DIRECTION (1 bit)
+concatenated. After the DIRECTION bit, a single '1' bit is appended, followed by
+between 0 and 7 '0' bits, so that the total length of the buffer is multiple of 8 bits.
+Note that the actual message can be any length, specified in bits.
+
+Once this buffer is passed this way, when creating the crypto operation,
+length of data to authenticate (op.sym.auth.data.length) must be the length
+of all the items described above, including the padding at the end.
+Also, offset of data to authenticate (op.sym.auth.data.offset)
+must be such that points at the start of the COUNT bytes.
