@@ -2846,7 +2846,10 @@ i40e_flow_parse_fdir_action(struct rte_eth_dev *dev,
 	case RTE_FLOW_ACTION_TYPE_QUEUE:
 		act_q = (const struct rte_flow_action_queue *)act->conf;
 		filter->action.rx_queue = act_q->index;
-		if (filter->action.rx_queue >= pf->dev_data->nb_rx_queues) {
+		if ((!filter->input.flow_ext.is_vf &&
+		     filter->action.rx_queue >= pf->dev_data->nb_rx_queues) ||
+		    (filter->input.flow_ext.is_vf &&
+		     filter->action.rx_queue >= pf->vf_nb_qps)) {
 			rte_flow_error_set(error, EINVAL,
 					   RTE_FLOW_ERROR_TYPE_ACTION, act,
 					   "Invalid queue ID for FDIR.");
