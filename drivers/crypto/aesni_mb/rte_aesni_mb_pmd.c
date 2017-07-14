@@ -644,6 +644,9 @@ aesni_mb_pmd_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
 
 	int retval, processed_jobs = 0;
 
+	if (unlikely(nb_ops == 0))
+		return 0;
+
 	do {
 		/* Get next operation to process from ingress queue */
 		retval = rte_ring_dequeue(qp->ingress_queue, (void **)&op);
