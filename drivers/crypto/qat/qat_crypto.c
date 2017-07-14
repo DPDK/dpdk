@@ -1218,6 +1218,21 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
 			set_cipher_iv(ctx->auth_iv.length,
 				ctx->auth_iv.offset,
 				cipher_param, op, qat_req);
+			auth_ofs = op->sym->auth.data.offset;
+			auth_len = op->sym->auth.data.length;
+
+			auth_param->u1.aad_adr = 0;
+			auth_param->u2.aad_sz = 0;
+
+			/*
+			 * If len(iv)==12B fw computes J0
+			 */
+			if (ctx->auth_iv.length == 12) {
+				ICP_QAT_FW_LA_GCM_IV_LEN_FLAG_SET(
+					qat_req->comn_hdr.serv_specif_flags,
+					ICP_QAT_FW_LA_GCM_IV_LEN_12_OCTETS);
+
+			}
 		} else {
 			auth_ofs = op->sym->auth.data.offset;
 			auth_len = op->sym->auth.data.length;
@@ -1230,6 +1245,21 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
 	}
 
 	if (do_aead) {
+		if (ctx->qat_hash_alg ==
+				ICP_QAT_HW_AUTH_ALGO_GALOIS_128 ||
+				ctx->qat_hash_alg ==
+					ICP_QAT_HW_AUTH_ALGO_GALOIS_64) {
+			/*
+			 * If len(iv)==12B fw computes J0
+			 */
+			if (ctx->cipher_iv.length == 12) {
+				ICP_QAT_FW_LA_GCM_IV_LEN_FLAG_SET(
+					qat_req->comn_hdr.serv_specif_flags,
+					ICP_QAT_FW_LA_GCM_IV_LEN_12_OCTETS);
+			}
+
+		}
+
 		cipher_len = op->sym->aead.data.length;
 		cipher_ofs = op->sym->aead.data.offset;
 		auth_len = op->sym->aead.data.length;
@@ -1345,30 +1375,6 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
 	} else {
 		qat_req->comn_mid.src_data_addr = src_buf_start;
 		qat_req->comn_mid.dest_data_addr = dst_buf_start;
-	}
-
-	if (ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_GALOIS_128 ||
-			ctx->qat_hash_alg == ICP_QAT_HW_AUTH_ALGO_GALOIS_64) {
-		if (ctx->cipher_iv.length == 12 ||
-				ctx->auth_iv.length == 12) {
-			/*
-			 * For GCM a 12 byte IV is allowed,
-			 * but we need to inform the f/w
-			 */
-			ICP_QAT_FW_LA_GCM_IV_LEN_FLAG_SET(
-				qat_req->comn_hdr.serv_specif_flags,
-				ICP_QAT_FW_LA_GCM_IV_LEN_12_OCTETS);
-		}
-		/* GMAC */
-		if (!do_aead) {
-			qat_req->comn_mid.dst_length =
-				qat_req->comn_mid.src_length =
-					rte_pktmbuf_data_len(op->sym->m_src);
-			auth_param->u1.aad_adr = 0;
-			auth_param->auth_len = op->sym->auth.data.length;
-			auth_param->auth_off = op->sym->auth.data.offset;
-			auth_param->u2.aad_sz = 0;
-		}
 	}
 
 #ifdef RTE_LIBRTE_PMD_QAT_DEBUG_TX
