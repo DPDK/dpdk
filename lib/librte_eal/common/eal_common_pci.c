@@ -245,6 +245,7 @@ rte_pci_probe_one_driver(struct rte_pci_driver *dr,
 	ret = dr->probe(dr, dev);
 	if (ret) {
 		dev->driver = NULL;
+		dev->device.driver = NULL;
 		if ((dr->drv_flags & RTE_PCI_DRV_NEED_MAPPING) &&
 			/* Don't unmap if device is unsupported and
 			 * driver needs mapped resources.
