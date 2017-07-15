@@ -187,7 +187,7 @@ int rte_eal_hotplug_add(const char *busname, const char *devname,
 		goto err_devarg;
 	}
 
-	ret = bus->plug(dev, devargs);
+	ret = bus->plug(dev);
 	if (ret) {
 		RTE_LOG(ERR, EAL, "Driver cannot attach the device (%s)\n",
 			dev->name);

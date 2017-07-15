@@ -541,7 +541,7 @@ pci_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
 }
 
 static int
-pci_plug(struct rte_device *dev, const char *devargs __rte_unused)
+pci_plug(struct rte_device *dev)
 {
 	return pci_probe_all_drivers(RTE_DEV_TO_PCI(dev));
 }

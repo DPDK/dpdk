@@ -319,7 +319,7 @@ vdev_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
 }
 
 static int
-vdev_plug(struct rte_device *dev, const char *args __rte_unused)
+vdev_plug(struct rte_device *dev)
 {
 	return vdev_probe_all_drivers(RTE_DEV_TO_VDEV(dev));
 }

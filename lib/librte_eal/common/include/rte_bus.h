@@ -113,15 +113,11 @@ typedef struct rte_device *
  * @param dev
  *	Device pointer that was returned by a previous call to find_device.
  *
- * @param devargs
- *	Device declaration.
- *
  * @return
  *	0 on success.
  *	!0 on error.
  */
-typedef int (*rte_bus_plug_t)(struct rte_device *dev,
-			      const char *devargs);
+typedef int (*rte_bus_plug_t)(struct rte_device *dev);
 
 /**
  * Implementation specific remove function which is responsible for unlinking
