@@ -113,6 +113,11 @@ struct rte_pci_driver;
 struct rte_pci_device;
 
 /**
+ * Find the name of a PCI device.
+ */
+void pci_name_set(struct rte_pci_device *dev);
+
+/**
  * Add a PCI device to the PCI Bus (append to PCI Device list). This function
  * also updates the bus references of the PCI Device (and the generic device
  * object embedded within.

@@ -324,8 +324,7 @@ pci_scan_one(const char *dirname, const struct rte_pci_addr *addr)
 		dev->device.numa_node = 0;
 	}
 
-	rte_pci_device_name(addr, dev->name, sizeof(dev->name));
-	dev->device.name = dev->name;
+	pci_name_set(dev);
 
 	/* parse resources */
 	snprintf(filename, sizeof(filename), "%s/resource", dirname);
@@ -373,6 +372,7 @@ pci_scan_one(const char *dirname, const struct rte_pci_addr *addr)
 			} else { /* already registered */
 				dev2->kdrv = dev->kdrv;
 				dev2->max_vfs = dev->max_vfs;
+				pci_name_set(dev2);
 				memmove(dev2->mem_resource, dev->mem_resource,
 					sizeof(dev->mem_resource));
 				free(dev);
