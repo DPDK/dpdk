@@ -24,6 +24,7 @@ General Project Administration
 M: Thomas Monjalon <thomas@monjalon.net>
 T: git://dpdk.org/dpdk
 F: MAINTAINERS
+F: devtools/check-dup-includes.sh
 F: devtools/check-maintainers.sh
 F: devtools/check-git-log.sh
 F: devtools/check-includes.sh
