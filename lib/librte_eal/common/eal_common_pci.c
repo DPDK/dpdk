@@ -47,7 +47,6 @@
 #include <rte_pci.h>
 #include <rte_per_lcore.h>
 #include <rte_memory.h>
-#include <rte_memcpy.h>
 #include <rte_memzone.h>
 #include <rte_eal.h>
 #include <rte_string_fns.h>
@@ -544,32 +543,20 @@ pci_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
 static int
 pci_plug(struct rte_device *dev, const char *devargs __rte_unused)
 {
-	struct rte_pci_device *pdev;
-	struct rte_pci_addr *addr;
-
-	addr = &RTE_DEV_TO_PCI(dev)->addr;
-
-	/* Find the current device holding this address in the bus. */
-	FOREACH_DEVICE_ON_PCIBUS(pdev) {
-		if (rte_eal_compare_pci_addr(&pdev->addr, addr) == 0)
-			return rte_pci_probe_one(addr);
-	}
-
-	rte_errno = ENODEV;
-	return -1;
+	return pci_probe_all_drivers(RTE_DEV_TO_PCI(dev));
 }
 
 static int
 pci_unplug(struct rte_device *dev)
 {
 	struct rte_pci_device *pdev;
+	int ret;
 
 	pdev = RTE_DEV_TO_PCI(dev);
-	if (rte_pci_detach(&pdev->addr) != 0) {
-		rte_errno = ENODEV;
-		return -1;
-	}
-	return 0;
+	ret = rte_pci_detach_dev(pdev);
+	rte_pci_remove_device(pdev);
+	free(pdev);
+	return ret;
 }
 
 struct rte_pci_bus rte_pci_bus = {
