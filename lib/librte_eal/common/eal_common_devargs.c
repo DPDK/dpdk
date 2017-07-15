@@ -41,6 +41,7 @@
 #include <string.h>
 
 #include <rte_devargs.h>
+#include <rte_tailq.h>
 #include "eal_private.h"
 
 /** Global list of user devices */
@@ -180,6 +181,24 @@ fail:
 	}
 
 	return -1;
+}
+
+int
+rte_eal_devargs_remove(const char *busname, const char *devname)
+{
+	struct rte_devargs *d;
+	void *tmp;
+
+	TAILQ_FOREACH_SAFE(d, &devargs_list, next, tmp) {
+		if (strcmp(d->bus->name, busname) == 0 &&
+		    strcmp(d->name, devname) == 0) {
+			TAILQ_REMOVE(&devargs_list, d, next);
+			free(d->args);
+			free(d);
+			return 0;
+		}
+	}
+	return 1;
 }
 
 /* count the number of devices of a specified type */

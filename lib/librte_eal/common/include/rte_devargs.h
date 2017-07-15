@@ -163,6 +163,24 @@ rte_eal_devargs_parse(const char *dev,
 int rte_eal_devargs_add(enum rte_devtype devtype, const char *devargs_str);
 
 /**
+ * Remove a device from the user device list.
+ * Its resources are freed.
+ * If the devargs cannot be found, nothing happens.
+ *
+ * @param busname
+ *   bus name of the devargs to remove.
+ *
+ * @param devname
+ *   device name of the devargs to remove.
+ *
+ * @return
+ *   0 on success.
+ *   <0 on error.
+ *   >0 if the devargs was not within the user device list.
+ */
+int rte_eal_devargs_remove(const char *busname, const char *devname);
+
+/**
  * Count the number of user devices of a specified type
  *
  * @param devtype

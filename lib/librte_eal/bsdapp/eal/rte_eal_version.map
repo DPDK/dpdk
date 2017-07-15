@@ -207,6 +207,7 @@ EXPERIMENTAL {
 	global:
 
 	rte_eal_devargs_parse;
+	rte_eal_devargs_remove;
 	rte_eal_hotplug_add;
 	rte_eal_hotplug_remove;
 	rte_service_disable_on_lcore;
