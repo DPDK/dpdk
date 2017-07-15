@@ -319,12 +319,14 @@ vdev_find_device(const struct rte_device *start, rte_dev_cmp_t cmp,
 }
 
 static int
+vdev_plug(struct rte_device *dev, const char *args __rte_unused)
+{
+	return vdev_probe_all_drivers(RTE_DEV_TO_VDEV(dev));
+}
+
+static int
 vdev_unplug(struct rte_device *dev)
 {
-	/*
-	 * The virtual bus doesn't support 'unattached' devices so this is
-	 * actually equal to hotplugging removal of it.
-	 */
 	return rte_vdev_uninit(dev->name);
 }
 
@@ -332,7 +334,7 @@ static struct rte_bus rte_vdev_bus = {
 	.scan = vdev_scan,
 	.probe = vdev_probe,
 	.find_device = vdev_find_device,
-	/* .plug = NULL, see comment on vdev_unplug */
+	.plug = vdev_plug,
 	.unplug = vdev_unplug,
 	.parse = vdev_parse,
 };
