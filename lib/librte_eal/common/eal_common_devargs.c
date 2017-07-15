@@ -138,6 +138,18 @@ rte_eal_devargs_parse(const char *dev, struct rte_devargs *da)
 	return 0;
 }
 
+int
+rte_eal_devargs_insert(struct rte_devargs *da)
+{
+	int ret;
+
+	ret = rte_eal_devargs_remove(da->bus->name, da->name);
+	if (ret < 0)
+		return ret;
+	TAILQ_INSERT_TAIL(&devargs_list, da, next);
+	return 0;
+}
+
 /* store a whitelist parameter for later parsing */
 int
 rte_eal_devargs_add(enum rte_devtype devtype, const char *devargs_str)

@@ -139,6 +139,19 @@ rte_eal_devargs_parse(const char *dev,
 		      struct rte_devargs *da);
 
 /**
+ * Insert an rte_devargs in the global list.
+ *
+ * @param da
+ *  The devargs structure to insert.
+ *
+ * @return
+ *   - 0 on success
+ *   - Negative on error.
+ */
+int
+rte_eal_devargs_insert(struct rte_devargs *da);
+
+/**
  * Add a device to the user device list
  *
  * For PCI devices, the format of arguments string is "PCI_ADDR" or
