@@ -117,11 +117,32 @@ int rte_eal_dev_detach(struct rte_device *dev)
 	return ret;
 }
 
+static char *
+full_dev_name(const char *bus, const char *dev, const char *args)
+{
+	char *name;
+	size_t len;
+
+	len = strlen(bus) + 1 +
+	      strlen(dev) + 1 +
+	      strlen(args) + 1;
+	name = calloc(1, len);
+	if (name == NULL) {
+		RTE_LOG(ERR, EAL, "Could not allocate full device name\n");
+		return NULL;
+	}
+	snprintf(name, len, "%s:%s,%s", bus, dev,
+		 args ? args : "");
+	return name;
+}
+
 int rte_eal_hotplug_add(const char *busname, const char *devname,
 			const char *devargs)
 {
 	struct rte_bus *bus;
 	struct rte_device *dev;
+	struct rte_devargs *da;
+	char *name;
 	int ret;
 
 	bus = rte_bus_find_by_name(busname);
@@ -136,21 +157,49 @@ int rte_eal_hotplug_add(const char *busname, const char *devname,
 		return -ENOTSUP;
 	}
 
+	name = full_dev_name(busname, devname, devargs);
+	if (name == NULL)
+		return -ENOMEM;
+
+	da = calloc(1, sizeof(*da));
+	if (da == NULL) {
+		ret = -ENOMEM;
+		goto err_name;
+	}
+
+	ret = rte_eal_devargs_parse(name, da);
+	if (ret)
+		goto err_devarg;
+
+	ret = rte_eal_devargs_insert(da);
+	if (ret)
+		goto err_devarg;
+
 	ret = bus->scan();
 	if (ret)
-		return ret;
+		goto err_devarg;
 
 	dev = bus->find_device(NULL, cmp_detached_dev_name, devname);
 	if (dev == NULL) {
 		RTE_LOG(ERR, EAL, "Cannot find unplugged device (%s)\n",
 			devname);
-		return -EINVAL;
+		ret = -ENODEV;
+		goto err_devarg;
 	}
 
 	ret = bus->plug(dev, devargs);
-	if (ret)
+	if (ret) {
 		RTE_LOG(ERR, EAL, "Driver cannot attach the device (%s)\n",
 			dev->name);
+		goto err_devarg;
+	}
+	free(name);
+	return 0;
+
+err_devarg:
+	rte_eal_devargs_remove(busname, devname);
+err_name:
+	free(name);
 	return ret;
 }
 
@@ -182,5 +231,6 @@ int rte_eal_hotplug_remove(const char *busname, const char *devname)
 	if (ret)
 		RTE_LOG(ERR, EAL, "Driver cannot detach the device (%s)\n",
 			dev->name);
+	rte_eal_devargs_remove(busname, devname);
 	return ret;
 }
