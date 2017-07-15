@@ -944,14 +944,14 @@ eal_parse_common_option(int opt, const char *optarg,
 	switch (opt) {
 	/* blacklist */
 	case 'b':
-		if (rte_eal_devargs_add(RTE_DEVTYPE_BLACKLISTED,
+		if (rte_eal_devargs_add(RTE_DEVTYPE_BLACKLISTED_PCI,
 				optarg) < 0) {
 			return -1;
 		}
 		break;
 	/* whitelist */
 	case 'w':
-		if (rte_eal_devargs_add(RTE_DEVTYPE_WHITELISTED,
+		if (rte_eal_devargs_add(RTE_DEVTYPE_WHITELISTED_PCI,
 				optarg) < 0) {
 			return -1;
 		}
@@ -1061,7 +1061,7 @@ eal_parse_common_option(int opt, const char *optarg,
 		break;
 
 	case OPT_VDEV_NUM:
-		if (rte_eal_devargs_add(RTE_DEVTYPE_UNDEFINED,
+		if (rte_eal_devargs_add(RTE_DEVTYPE_VIRTUAL,
 				optarg) < 0) {
 			return -1;
 		}
@@ -1184,6 +1184,13 @@ eal_check_common_options(struct internal_config *internal_cfg)
 	if (internal_cfg->no_hugetlbfs && internal_cfg->hugepage_unlink) {
 		RTE_LOG(ERR, EAL, "Option --"OPT_HUGE_UNLINK" cannot "
 			"be specified together with --"OPT_NO_HUGE"\n");
+		return -1;
+	}
+
+	if (rte_eal_devargs_type_count(RTE_DEVTYPE_WHITELISTED_PCI) != 0 &&
+		rte_eal_devargs_type_count(RTE_DEVTYPE_BLACKLISTED_PCI) != 0) {
+		RTE_LOG(ERR, EAL, "Options blacklist (-b) and whitelist (-w) "
+			"cannot be used at the same time\n");
 		return -1;
 	}
 

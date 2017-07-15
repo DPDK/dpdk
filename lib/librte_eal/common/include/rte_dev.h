@@ -127,6 +127,14 @@ enum rte_kernel_driver {
 };
 
 /**
+ * Device policies.
+ */
+enum rte_dev_policy {
+	RTE_DEV_WHITELISTED,
+	RTE_DEV_BLACKLISTED,
+};
+
+/**
  * A generic memory resource representation.
  */
 struct rte_mem_resource {

@@ -56,9 +56,9 @@ extern "C" {
  * Type of generic device
  */
 enum rte_devtype {
-	RTE_DEVTYPE_UNDEFINED,
-	RTE_DEVTYPE_WHITELISTED,
-	RTE_DEVTYPE_BLACKLISTED,
+	RTE_DEVTYPE_WHITELISTED_PCI,
+	RTE_DEVTYPE_BLACKLISTED_PCI,
+	RTE_DEVTYPE_VIRTUAL,
 };
 
 /**
@@ -76,6 +76,8 @@ struct rte_devargs {
 	TAILQ_ENTRY(rte_devargs) next;
 	/** Type of device. */
 	enum rte_devtype type;
+	/** Device policy. */
+	enum rte_dev_policy policy;
 	/** Bus handle for the device. */
 	struct rte_bus *bus;
 	/** Name of the device. */

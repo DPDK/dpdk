@@ -64,32 +64,30 @@ test_devargs(void)
 	TAILQ_INIT(&devargs_list);
 
 	/* test valid cases */
-	if (rte_eal_devargs_add(RTE_DEVTYPE_WHITELISTED, "08:00.1") < 0)
+	if (rte_eal_devargs_add(RTE_DEVTYPE_WHITELISTED_PCI, "08:00.1") < 0)
 		goto fail;
-	if (rte_eal_devargs_add(RTE_DEVTYPE_WHITELISTED, "0000:5:00.0") < 0)
+	if (rte_eal_devargs_add(RTE_DEVTYPE_WHITELISTED_PCI, "0000:5:00.0") < 0)
 		goto fail;
-	if (rte_eal_devargs_add(RTE_DEVTYPE_WHITELISTED, "04:00.0,arg=val") < 0)
+	if (rte_eal_devargs_add(RTE_DEVTYPE_BLACKLISTED_PCI, "04:00.0,arg=val") < 0)
 		goto fail;
-	if (rte_eal_devargs_add(RTE_DEVTYPE_WHITELISTED, "0000:01:00.1") < 0)
+	if (rte_eal_devargs_add(RTE_DEVTYPE_BLACKLISTED_PCI, "0000:01:00.1") < 0)
 		goto fail;
-	if (rte_eal_devargs_type_count(RTE_DEVTYPE_WHITELISTED) != 4)
+	if (rte_eal_devargs_type_count(RTE_DEVTYPE_WHITELISTED_PCI) != 2)
 		goto fail;
-	if (rte_eal_devargs_type_count(RTE_DEVTYPE_BLACKLISTED) != 0)
+	if (rte_eal_devargs_type_count(RTE_DEVTYPE_BLACKLISTED_PCI) != 2)
 		goto fail;
-	if (rte_eal_devargs_type_count(RTE_DEVTYPE_UNDEFINED) != 0)
+	if (rte_eal_devargs_type_count(RTE_DEVTYPE_VIRTUAL) != 0)
 		goto fail;
-	if (rte_eal_devargs_add(RTE_DEVTYPE_UNDEFINED, "net_ring0") < 0)
+	if (rte_eal_devargs_add(RTE_DEVTYPE_VIRTUAL, "net_ring0") < 0)
 		goto fail;
-	if (rte_eal_devargs_add(RTE_DEVTYPE_UNDEFINED,
-				"net_ring1,key=val,k2=val2") < 0)
+	if (rte_eal_devargs_add(RTE_DEVTYPE_VIRTUAL, "net_ring1,key=val,k2=val2") < 0)
 		goto fail;
-	if (rte_eal_devargs_type_count(RTE_DEVTYPE_UNDEFINED) != 2)
+	if (rte_eal_devargs_type_count(RTE_DEVTYPE_VIRTUAL) != 2)
 		goto fail;
 	free_devargs_list();
 
 	/* check virtual device with argument parsing */
-	if (rte_eal_devargs_add(RTE_DEVTYPE_UNDEFINED,
-				"net_ring1,k1=val,k2=val2") < 0)
+	if (rte_eal_devargs_add(RTE_DEVTYPE_VIRTUAL, "net_ring1,k1=val,k2=val2") < 0)
 		goto fail;
 	devargs = TAILQ_FIRST(&devargs_list);
 	if (strncmp(devargs->name, "net_ring1",
@@ -100,7 +98,7 @@ test_devargs(void)
 	free_devargs_list();
 
 	/* check PCI device with empty argument parsing */
-	if (rte_eal_devargs_add(RTE_DEVTYPE_WHITELISTED, "04:00.1") < 0)
+	if (rte_eal_devargs_add(RTE_DEVTYPE_WHITELISTED_PCI, "04:00.1") < 0)
 		goto fail;
 	devargs = TAILQ_FIRST(&devargs_list);
 	if (strcmp(devargs->name, "04:00.1") != 0)
@@ -110,15 +108,15 @@ test_devargs(void)
 	free_devargs_list();
 
 	/* test error case: bad PCI address */
-	if (rte_eal_devargs_add(RTE_DEVTYPE_WHITELISTED, "08:1") == 0)
+	if (rte_eal_devargs_add(RTE_DEVTYPE_WHITELISTED_PCI, "08:1") == 0)
 		goto fail;
-	if (rte_eal_devargs_add(RTE_DEVTYPE_WHITELISTED, "00.1") == 0)
+	if (rte_eal_devargs_add(RTE_DEVTYPE_WHITELISTED_PCI, "00.1") == 0)
 		goto fail;
-	if (rte_eal_devargs_add(RTE_DEVTYPE_WHITELISTED, "foo") == 0)
+	if (rte_eal_devargs_add(RTE_DEVTYPE_WHITELISTED_PCI, "foo") == 0)
 		goto fail;
-	if (rte_eal_devargs_add(RTE_DEVTYPE_WHITELISTED, ",") == 0)
+	if (rte_eal_devargs_add(RTE_DEVTYPE_WHITELISTED_PCI, ",") == 0)
 		goto fail;
-	if (rte_eal_devargs_add(RTE_DEVTYPE_WHITELISTED, "000f:0:0") == 0)
+	if (rte_eal_devargs_add(RTE_DEVTYPE_WHITELISTED_PCI, "000f:0:0") == 0)
 		goto fail;
 
 	devargs_list = save_devargs_list;

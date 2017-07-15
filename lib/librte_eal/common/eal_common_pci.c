@@ -219,8 +219,8 @@ rte_pci_probe_one_driver(struct rte_pci_driver *dr,
 
 	/* no initialization when blacklisted, return without error */
 	if (dev->device.devargs != NULL &&
-		dev->device.devargs->type ==
-			RTE_DEVTYPE_BLACKLISTED) {
+		dev->device.devargs->policy ==
+			RTE_DEV_BLACKLISTED) {
 		RTE_LOG(INFO, EAL, "  Device is blacklisted, not"
 			" initializing\n");
 		return 1;
@@ -424,7 +424,7 @@ rte_pci_probe(void)
 		if (probe_all)
 			ret = pci_probe_all_drivers(dev);
 		else if (devargs != NULL &&
-			devargs->type == RTE_DEVTYPE_WHITELISTED)
+			devargs->policy == RTE_DEV_WHITELISTED)
 			ret = pci_probe_all_drivers(dev);
 		if (ret < 0) {
 			RTE_LOG(ERR, EAL, "Requested device " PCI_PRI_FMT
