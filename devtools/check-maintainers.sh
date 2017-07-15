@@ -34,6 +34,9 @@
 
 cd $(dirname $0)/..
 
+# speed up by ignoring Unicode details
+export LC_ALL=C
+
 # Get files matching paths with wildcards and / meaning recursing
 files () # <path> [<path> ...]
 {
