@@ -38,7 +38,6 @@
 #include <stdint.h>
 #include <stdarg.h>
 #include <inttypes.h>
-#include <inttypes.h>
 #include <sys/queue.h>
 #include <errno.h>
 #include <netinet/ip.h>
@@ -47,7 +46,6 @@
 #include <rte_memory.h>
 #include <rte_memzone.h>
 #include <rte_eal.h>
-#include <rte_byteorder.h>
 #include <rte_launch.h>
 #include <rte_per_lcore.h>
 #include <rte_lcore.h>

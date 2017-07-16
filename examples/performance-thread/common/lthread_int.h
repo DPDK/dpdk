@@ -59,7 +59,6 @@
  * SUCH DAMAGE.
  */
 #ifndef LTHREAD_INT_H
-#include <lthread_api.h>
 #define LTHREAD_INT_H
 
 #ifdef __cplusplus

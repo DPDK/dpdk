@@ -53,8 +53,6 @@
 #include <rte_launch.h>
 #include <rte_lcore.h>
 #include <rte_ring.h>
-#include <rte_launch.h>
-#include <rte_lcore.h>
 #include <rte_debug.h>
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
