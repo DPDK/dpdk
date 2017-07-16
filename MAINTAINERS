@@ -825,6 +825,7 @@ M: Jerin Jacob <jerin.jacob@caviumnetworks.com>
 F: app/test-eventdev/
 F: doc/guides/tools/testeventdev.rst
 F: doc/guides/tools/img/eventdev_*
+F: test/test/test_event_ring.c
 
 Procinfo tool
 M: Maryam Tahhan <maryam.tahhan@intel.com>
