@@ -293,6 +293,7 @@ API Changes
   * Added new field ``session_pool`` to ``rte_cryptodev_queue_pair_setup()``.
   * Removed ``aad_size`` parameter from ``rte_cryptodev_sym_capability_check_auth()``.
   * Added ``iv_size`` parameter to ``rte_cryptodev_sym_capability_check_auth()``.
+  * Removed ``RTE_CRYPTO_OP_STATUS_ENQUEUED`` from enum ``rte_crypto_op_status``.
 
 
 ABI Changes

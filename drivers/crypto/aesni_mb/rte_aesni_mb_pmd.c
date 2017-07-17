@@ -414,7 +414,6 @@ set_mb_job_params(JOB_AES_HMAC *job, struct aesni_mb_qp *qp,
 		op->status = RTE_CRYPTO_OP_STATUS_INVALID_SESSION;
 		return -1;
 	}
-	op->status = RTE_CRYPTO_OP_STATUS_ENQUEUED;
 
 	/* Set crypto operation */
 	job->chain_order = session->chain_order;
@@ -541,7 +540,7 @@ post_process_mb_job(struct aesni_mb_qp *qp, JOB_AES_HMAC *job)
 							op->sym->session,
 							cryptodev_driver_id);
 
-	if (unlikely(op->status == RTE_CRYPTO_OP_STATUS_ENQUEUED)) {
+	if (likely(op->status == RTE_CRYPTO_OP_STATUS_NOT_PROCESSED)) {
 		switch (job->status) {
 		case STS_COMPLETED:
 			op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;

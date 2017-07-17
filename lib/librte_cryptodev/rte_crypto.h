@@ -66,8 +66,6 @@ enum rte_crypto_op_status {
 	/**< Operation completed successfully */
 	RTE_CRYPTO_OP_STATUS_NOT_PROCESSED,
 	/**< Operation has not yet been processed by a crypto device */
-	RTE_CRYPTO_OP_STATUS_ENQUEUED,
-	/**< Operation is enqueued on device */
 	RTE_CRYPTO_OP_STATUS_AUTH_FAILED,
 	/**< Authentication verification failed */
 	RTE_CRYPTO_OP_STATUS_INVALID_SESSION,

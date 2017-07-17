@@ -142,8 +142,7 @@ scheduler_order_drain(struct rte_ring *order_ring,
 
 	while (nb_ops_to_deq < nb_objs) {
 		SCHEDULER_GET_RING_OBJ(order_ring, nb_ops_to_deq, op);
-		if (op->status == RTE_CRYPTO_OP_STATUS_NOT_PROCESSED ||
-					op->status == RTE_CRYPTO_OP_STATUS_ENQUEUED)
+		if (op->status == RTE_CRYPTO_OP_STATUS_NOT_PROCESSED)
 			break;
 		nb_ops_to_deq++;
 	}
