@@ -588,6 +588,10 @@ virtio_dev_close(struct rte_eth_dev *dev)
 
 	PMD_INIT_LOG(DEBUG, "virtio_dev_close");
 
+	if (!hw->opened)
+		return;
+	hw->opened = false;
+
 	/* reset the NIC */
 	if (dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)
 		VTPCI_OPS(hw)->set_config_irq(hw, VIRTIO_MSI_NO_VECTOR);
@@ -1924,6 +1928,8 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 			   DEV_RX_OFFLOAD_VLAN_STRIP))
 		hw->use_simple_rx = 0;
 
+	hw->opened = true;
+
 	return 0;
 }
 
@@ -2014,7 +2020,7 @@ virtio_dev_start(struct rte_eth_dev *dev)
 	}
 
 	set_rxtx_funcs(dev);
-	hw->started = 1;
+	hw->started = true;
 
 	/* Initialize Link state */
 	virtio_dev_link_update(dev, 0);
@@ -2080,6 +2086,10 @@ virtio_dev_stop(struct rte_eth_dev *dev)
 	PMD_INIT_LOG(DEBUG, "stop");
 
 	rte_spinlock_lock(&hw->state_lock);
+	if (!hw->started)
+		goto out_unlock;
+	hw->started = false;
+
 	if (intr_conf->lsc || intr_conf->rxq) {
 		virtio_intr_disable(dev);
 
@@ -2091,9 +2101,9 @@ virtio_dev_stop(struct rte_eth_dev *dev)
 		}
 	}
 
-	hw->started = 0;
 	memset(&link, 0, sizeof(link));
 	rte_eth_linkstatus_set(dev, &link);
+out_unlock:
 	rte_spinlock_unlock(&hw->state_lock);
 }
 
@@ -2109,7 +2119,7 @@ virtio_dev_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complet
 	link.link_speed  = ETH_SPEED_NUM_10G;
 	link.link_autoneg = ETH_LINK_FIXED;
 
-	if (hw->started == 0) {
+	if (!hw->started) {
 		link.link_status = ETH_LINK_DOWN;
 	} else if (vtpci_with_feature(hw, VIRTIO_NET_F_STATUS)) {
 		PMD_INIT_LOG(DEBUG, "Get link status from hw");
