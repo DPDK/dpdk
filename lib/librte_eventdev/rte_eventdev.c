@@ -298,7 +298,7 @@ rte_event_dev_port_config(struct rte_eventdev *dev, uint8_t nb_ports)
 			sizeof(dev->data->links_map[0]) * nb_ports *
 			RTE_EVENT_MAX_QUEUES_PER_DEV,
 			RTE_CACHE_LINE_SIZE);
-		if (dev->data->links_map == NULL) {
+		if (links_map == NULL) {
 			dev->data->nb_ports = 0;
 			RTE_EDEV_LOG_ERR("failed to realloc mem for port_map,"
 					"nb_ports %u", nb_ports);
