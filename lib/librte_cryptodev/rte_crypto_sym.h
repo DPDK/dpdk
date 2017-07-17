@@ -315,17 +315,6 @@ struct rte_crypto_auth_xform {
 	 * (for example RFC 2104, FIPS 198a).
 	 */
 
-	uint16_t digest_length;
-	/**< Length of the digest to be returned. If the verify option is set,
-	 * this specifies the length of the digest to be compared for the
-	 * session.
-	 *
-	 * It is the caller's responsibility to ensure that the
-	 * digest length is compliant with the hash algorithm being used.
-	 * If the value is less than the maximum length allowed by the hash,
-	 * the result shall be truncated.
-	 */
-
 	struct {
 		uint16_t offset;
 		/**< Starting point for Initialisation Vector or Counter,
@@ -353,6 +342,17 @@ struct rte_crypto_auth_xform {
 		 *
 		 */
 	} iv;	/**< Initialisation vector parameters */
+
+	uint16_t digest_length;
+	/**< Length of the digest to be returned. If the verify option is set,
+	 * this specifies the length of the digest to be compared for the
+	 * session.
+	 *
+	 * It is the caller's responsibility to ensure that the
+	 * digest length is compliant with the hash algorithm being used.
+	 * If the value is less than the maximum length allowed by the hash,
+	 * the result shall be truncated.
+	 */
 };
 
 
