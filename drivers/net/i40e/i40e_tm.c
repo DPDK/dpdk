@@ -962,8 +962,6 @@ i40e_hierarchy_commit(struct rte_eth_dev *dev,
 		goto fail_clear;
 	}
 
-	goto done;
-
 done:
 	pf->tm_conf.committed = true;
 	return 0;
