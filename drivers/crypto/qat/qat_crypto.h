@@ -50,6 +50,11 @@
 	(((num) + (align) - 1) & ~((align) - 1))
 #define QAT_64_BTYE_ALIGN_MASK (~0x3f)
 
+enum qat_device_gen {
+	QAT_GEN1 = 1,
+	QAT_GEN2,
+};
+
 /**
  * Structure associated with each queue.
  */
@@ -77,6 +82,7 @@ struct qat_qp {
 	struct rte_mempool *op_cookie_pool;
 	void **op_cookies;
 	uint32_t nb_descriptors;
+	enum qat_device_gen qat_dev_gen;
 } __rte_cache_aligned;
 
 /** private data structure for each QAT device */
@@ -85,6 +91,8 @@ struct qat_pmd_private {
 	/**< Max number of queue pairs supported by device */
 	unsigned max_nb_sessions;
 	/**< Max number of sessions supported by device */
+	enum qat_device_gen qat_dev_gen;
+	/**< QAT device generation */
 	const struct rte_cryptodev_capabilities *qat_dev_capabilities;
 };
 

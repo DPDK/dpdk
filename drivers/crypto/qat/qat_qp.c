@@ -243,6 +243,11 @@ int qat_crypto_sym_qp_setup(struct rte_cryptodev *dev, uint16_t queue_pair_id,
 				offsetof(struct qat_crypto_op_cookie,
 				qat_sgl_list_dst);
 	}
+
+	struct qat_pmd_private *internals
+		= dev->data->dev_private;
+	qp->qat_dev_gen = internals->qat_dev_gen;
+
 	dev->data->queue_pairs[queue_pair_id] = qp;
 	return 0;
 

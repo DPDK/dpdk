@@ -34,7 +34,7 @@
 #ifndef _QAT_CRYPTO_CAPABILITIES_H_
 #define _QAT_CRYPTO_CAPABILITIES_H_
 
-#define QAT_BASE_CPM16_SYM_CAPABILITIES					\
+#define QAT_BASE_GEN1_SYM_CAPABILITIES					\
 	{	/* SHA1 HMAC */						\
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,			\
 		{.sym = {						\
@@ -506,7 +506,7 @@
 		}, }							\
 	}
 
-#define QAT_EXTRA_CPM17_SYM_CAPABILITIES				\
+#define QAT_EXTRA_GEN2_SYM_CAPABILITIES					\
 	{	/* ZUC (EEA3) */					\
 		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,			\
 		{.sym = {						\

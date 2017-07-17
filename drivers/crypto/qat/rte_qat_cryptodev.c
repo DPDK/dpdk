@@ -42,14 +42,14 @@
 
 uint8_t cryptodev_qat_driver_id;
 
-static const struct rte_cryptodev_capabilities qat_cpm16_capabilities[] = {
-	QAT_BASE_CPM16_SYM_CAPABILITIES,
+static const struct rte_cryptodev_capabilities qat_gen1_capabilities[] = {
+	QAT_BASE_GEN1_SYM_CAPABILITIES,
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
 
-static const struct rte_cryptodev_capabilities qat_cpm17_capabilities[] = {
-	QAT_BASE_CPM16_SYM_CAPABILITIES,
-	QAT_EXTRA_CPM17_SYM_CAPABILITIES,
+static const struct rte_cryptodev_capabilities qat_gen2_capabilities[] = {
+	QAT_BASE_GEN1_SYM_CAPABILITIES,
+	QAT_EXTRA_GEN2_SYM_CAPABILITIES,
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
 
@@ -122,12 +122,14 @@ crypto_qat_dev_init(struct rte_cryptodev *cryptodev)
 	internals->max_nb_sessions = RTE_QAT_PMD_MAX_NB_SESSIONS;
 	switch (RTE_DEV_TO_PCI(cryptodev->device)->id.device_id) {
 	case 0x0443:
-		internals->qat_dev_capabilities = qat_cpm16_capabilities;
+		internals->qat_dev_gen = QAT_GEN1;
+		internals->qat_dev_capabilities = qat_gen1_capabilities;
 		break;
 	case 0x37c9:
 	case 0x19e3:
 	case 0x6f55:
-		internals->qat_dev_capabilities = qat_cpm17_capabilities;
+		internals->qat_dev_gen = QAT_GEN2;
+		internals->qat_dev_capabilities = qat_gen2_capabilities;
 		break;
 	default:
 		PMD_DRV_LOG(ERR,

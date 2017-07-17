@@ -606,6 +606,7 @@ int qat_alg_aead_session_create_content_desc_cipher(struct qat_session *cdesc,
 		cipher_cd_ctrl->cipher_state_sz =
 			ICP_QAT_HW_ZUC_3G_EEA3_IV_SZ >> 3;
 		qat_proto_flag = QAT_CRYPTO_PROTO_FLAG_ZUC;
+		cdesc->min_qat_dev_gen = QAT_GEN2;
 	} else {
 		total_key_size = cipherkeylen;
 		cipher_cd_ctrl->cipher_state_sz = ICP_QAT_HW_AES_BLK_SZ >> 3;
@@ -858,6 +859,7 @@ int qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
 		cdesc->cd_cur_ptr += state1_size + state2_size
 			+ ICP_QAT_HW_ZUC_3G_EEA3_IV_SZ;
 		auth_param->hash_state_sz = ICP_QAT_HW_ZUC_3G_EEA3_IV_SZ >> 3;
+		cdesc->min_qat_dev_gen = QAT_GEN2;
 
 		break;
 	case ICP_QAT_HW_AUTH_ALGO_MD5:

@@ -51,6 +51,7 @@
 #include "icp_qat_hw.h"
 #include "icp_qat_fw.h"
 #include "icp_qat_fw_la.h"
+#include "../qat_crypto.h"
 
 /*
  * Key Modifier (KM) value used in KASUMI algorithm in F9 mode to XOR
@@ -137,6 +138,7 @@ struct qat_session {
 	} auth_iv;
 	uint16_t digest_length;
 	rte_spinlock_t lock;	/* protects this struct */
+	enum qat_device_gen min_qat_dev_gen;
 };
 
 int qat_get_inter_state_size(enum icp_qat_hw_auth_algo qat_hash_alg);

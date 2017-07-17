@@ -214,7 +214,7 @@ adf_modulo(uint32_t data, uint32_t shift);
 
 static inline int
 qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
-		struct qat_crypto_op_cookie *qat_op_cookie);
+		struct qat_crypto_op_cookie *qat_op_cookie, struct qat_qp *qp);
 
 void
 qat_crypto_sym_clear_session(struct rte_cryptodev *dev,
@@ -491,6 +491,8 @@ qat_crypto_set_session_parameters(struct rte_cryptodev *dev,
 	/* Set context descriptor physical address */
 	session->cd_paddr = rte_mempool_virt2phy(NULL, session) +
 			offsetof(struct qat_session, cd);
+
+	session->min_qat_dev_gen = QAT_GEN1;
 
 	/* Get requested QAT command id */
 	qat_cmd_id = qat_get_cmd_id(xform);
@@ -924,7 +926,7 @@ qat_pmd_enqueue_op_burst(void *qp, struct rte_crypto_op **ops,
 
 	while (nb_ops_sent != nb_ops_possible) {
 		ret = qat_write_hw_desc_entry(*cur_op, base_addr + tail,
-				tmp_qp->op_cookies[tail / queue->msg_size]);
+			tmp_qp->op_cookies[tail / queue->msg_size], tmp_qp);
 		if (ret != 0) {
 			tmp_qp->stats.enqueue_err_count++;
 			/*
@@ -1081,7 +1083,7 @@ set_cipher_iv(uint16_t iv_length, uint16_t iv_offset,
 
 static inline int
 qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
-		struct qat_crypto_op_cookie *qat_op_cookie)
+		struct qat_crypto_op_cookie *qat_op_cookie, struct qat_qp *qp)
 {
 	int ret = 0;
 	struct qat_session *ctx;
@@ -1114,6 +1116,12 @@ qat_write_hw_desc_entry(struct rte_crypto_op *op, uint8_t *out_msg,
 
 	if (unlikely(ctx == NULL)) {
 		PMD_DRV_LOG(ERR, "Session was not created for this device");
+		return -EINVAL;
+	}
+
+	if (unlikely(ctx->min_qat_dev_gen > qp->qat_dev_gen)) {
+		PMD_DRV_LOG(ERR, "Session alg not supported on this device gen");
+		op->status = RTE_CRYPTO_OP_STATUS_INVALID_SESSION;
 		return -EINVAL;
 	}
 
