@@ -65,6 +65,7 @@ eal_short_options[] =
 	"d:" /* driver */
 	"h"  /* help */
 	"l:" /* corelist */
+	"S:" /* service corelist */
 	"m:" /* memory size */
 	"n:" /* memory channels */
 	"r:" /* memory ranks */
@@ -398,6 +399,72 @@ eal_parse_coremask(const char *coremask)
 		return -1;
 	/* Update the count of enabled logical cores of the EAL configuration */
 	cfg->lcore_count = count;
+	return 0;
+}
+
+static int
+eal_parse_service_corelist(const char *corelist)
+{
+	struct rte_config *cfg = rte_eal_get_configuration();
+	int i, idx = 0;
+	unsigned count = 0;
+	char *end = NULL;
+	int min, max;
+
+	if (corelist == NULL)
+		return -1;
+
+	/* Remove all blank characters ahead and after */
+	while (isblank(*corelist))
+		corelist++;
+	i = strlen(corelist);
+	while ((i > 0) && isblank(corelist[i - 1]))
+		i--;
+
+	/* Get list of cores */
+	min = RTE_MAX_LCORE;
+	do {
+		while (isblank(*corelist))
+			corelist++;
+		if (*corelist == '\0')
+			return -1;
+		errno = 0;
+		idx = strtoul(corelist, &end, 10);
+		if (errno || end == NULL)
+			return -1;
+		while (isblank(*end))
+			end++;
+		if (*end == '-') {
+			min = idx;
+		} else if ((*end == ',') || (*end == '\0')) {
+			max = idx;
+			if (min == RTE_MAX_LCORE)
+				min = idx;
+			for (idx = min; idx <= max; idx++) {
+				if (cfg->lcore_role[idx] != ROLE_SERVICE) {
+					/* handle master lcore already parsed */
+					uint32_t lcore = idx;
+					if (cfg->master_lcore == lcore &&
+							master_lcore_parsed) {
+						RTE_LOG(ERR, EAL,
+							"Error: lcore %u is master lcore, cannot use as service core\n",
+							idx);
+						return -1;
+					}
+					lcore_config[idx].core_role =
+							ROLE_SERVICE;
+					count++;
+				}
+			}
+			min = RTE_MAX_LCORE;
+		} else
+			return -1;
+		corelist = end + 1;
+	} while (*end != '\0');
+
+	if (count == 0)
+		return -1;
+
 	return 0;
 }
 
@@ -909,6 +976,13 @@ eal_parse_common_option(int opt, const char *optarg,
 	case 's':
 		if (eal_parse_service_coremask(optarg) < 0) {
 			RTE_LOG(ERR, EAL, "invalid service coremask\n");
+			return -1;
+		}
+		break;
+	/* service corelist */
+	case 'S':
+		if (eal_parse_service_corelist(optarg) < 0) {
+			RTE_LOG(ERR, EAL, "invalid service core list\n");
 			return -1;
 		}
 		break;
