@@ -1233,6 +1233,14 @@ ixgbe_parse_fdir_act_attr(const struct rte_flow_attr *attr,
 		act_q = (const struct rte_flow_action_queue *)act->conf;
 		rule->queue = act_q->index;
 	} else { /* drop */
+		/* signature mode does not support drop action. */
+		if (rule->mode == RTE_FDIR_MODE_SIGNATURE) {
+			memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
+			rte_flow_error_set(error, EINVAL,
+				RTE_FLOW_ERROR_TYPE_ACTION,
+				act, "Not supported action.");
+			return -rte_errno;
+		}
 		rule->fdirflags = IXGBE_FDIRCMD_DROP;
 	}
 
