@@ -186,29 +186,6 @@ static int vfio_map_irq_region(struct fslmc_vfio_group *group)
 	return -errno;
 }
 
-int vfio_dmamap_mem_region(uint64_t vaddr,
-			   uint64_t iova,
-			   uint64_t size)
-{
-	struct fslmc_vfio_group *group;
-	struct vfio_iommu_type1_dma_map dma_map = {
-		.argsz = sizeof(dma_map),
-		.flags = VFIO_DMA_MAP_FLAG_READ | VFIO_DMA_MAP_FLAG_WRITE,
-	};
-
-	dma_map.vaddr = vaddr;
-	dma_map.size = size;
-	dma_map.iova = iova;
-
-	/* SET DMA MAP for IOMMU */
-	group = &vfio_groups[0];
-	if (ioctl(group->container->fd, VFIO_IOMMU_MAP_DMA, &dma_map)) {
-		FSLMC_VFIO_LOG(ERR, "VFIO_IOMMU_MAP_DMA (errno = %d)", errno);
-		return -1;
-	}
-	return 0;
-}
-
 int rte_fslmc_vfio_dmamap(void)
 {
 	int ret;

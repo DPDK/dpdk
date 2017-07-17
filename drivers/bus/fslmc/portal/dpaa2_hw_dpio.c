@@ -469,16 +469,6 @@ dpaa2_create_dpio_device(struct fslmc_vfio_device *vdev,
 				PROT_WRITE | PROT_READ, MAP_SHARED,
 				vfio_dev_fd, reg_info.offset);
 
-	/* Create Mapping for QBMan Cache Enabled area. This is a fix for
-	 * SMMU fault for DQRR statshing transaction.
-	 */
-	if (vfio_dmamap_mem_region(dpio_dev->qbman_portal_ce_paddr,
-				   reg_info.offset, reg_info.size)) {
-		PMD_INIT_LOG(ERR, "DMAMAP for Portal CE area failed.\n");
-		rte_free(dpio_dev);
-		return -1;
-	}
-
 	reg_info.index = 1;
 	if (ioctl(vfio_dev_fd, VFIO_DEVICE_GET_REGION_INFO, &reg_info)) {
 		PMD_INIT_LOG(ERR, "vfio: error getting region info\n");

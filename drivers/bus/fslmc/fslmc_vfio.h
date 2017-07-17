@@ -85,11 +85,6 @@ struct rte_dpaa2_object {
 	rte_fslmc_obj_create_t create;
 };
 
-int vfio_dmamap_mem_region(
-	uint64_t vaddr,
-	uint64_t iova,
-	uint64_t size);
-
 int rte_dpaa2_intr_enable(struct rte_intr_handle *intr_handle,
 			  uint32_t index);
 
