@@ -1166,23 +1166,6 @@ static const struct eth_dev_ops ops = {
 	.filter_ctrl            = tap_dev_filter_ctrl,
 };
 
-static int
-tap_kernel_support(struct pmd_internals *pmd)
-{
-	struct utsname utsname;
-	int ver[3];
-
-	if (uname(&utsname) == -1 ||
-	    sscanf(utsname.release, "%d.%d.%d",
-		   &ver[0], &ver[1], &ver[2]) != 3)
-		return 0;
-	if (KERNEL_VERSION(ver[0], ver[1], ver[2]) >= FLOWER_KERNEL_VERSION)
-		pmd->flower_support = 1;
-	if (KERNEL_VERSION(ver[0], ver[1], ver[2]) >=
-	    FLOWER_VLAN_KERNEL_VERSION)
-		pmd->flower_vlan_support = 1;
-	return 1;
-}
 
 static int
 eth_dev_tap_create(struct rte_vdev_device *vdev, char *tap_name,
@@ -1270,21 +1253,6 @@ eth_dev_tap_create(struct rte_vdev_device *vdev, char *tap_name,
 	rte_memcpy(ifr.ifr_hwaddr.sa_data, &pmd->eth_addr, ETHER_ADDR_LEN);
 	if (tap_ioctl(pmd, SIOCSIFHWADDR, &ifr, 0, LOCAL_ONLY) < 0)
 		goto error_exit;
-
-	tap_kernel_support(pmd);
-	if (!pmd->flower_support) {
-		if (remote_iface[0]) {
-			RTE_LOG(ERR, PMD,
-				"%s: kernel does not support TC rules, required for remote feature.\n",
-				pmd->name);
-			goto error_exit;
-		} else {
-			RTE_LOG(INFO, PMD,
-				"%s: kernel too old for Flow API support.\n",
-				pmd->name);
-			return 0;
-		}
-	}
 
 	/*
 	 * Set up everything related to rte_flow:
@@ -1378,7 +1346,6 @@ disable_rte_flow:
 		RTE_LOG(ERR, PMD, "Remote feature requires flow support.\n");
 		goto error_exit;
 	}
-	pmd->flower_support = 0;
 	return 0;
 
 error_remote:
@@ -1543,7 +1510,7 @@ rte_pmd_tap_remove(struct rte_vdev_device *dev)
 		return 0;
 
 	internals = eth_dev->data->dev_private;
-	if (internals->flower_support && internals->nlsk_fd) {
+	if (internals->nlsk_fd) {
 		tap_flow_flush(eth_dev, NULL);
 		tap_flow_implicit_flush(internals, NULL);
 		nl_final(internals->nlsk_fd);
