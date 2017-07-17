@@ -391,6 +391,11 @@ i40evf_execute_vf_cmd(struct rte_eth_dev *dev, struct vf_cmd_info *args)
 			rte_delay_ms(ASQ_DELAY_MS);
 			/* If don't read msg or read sys event, continue */
 		} while (i++ < MAX_TRY_TIMES);
+		/* If there's no response is received, clear command */
+		if (i >= MAX_TRY_TIMES) {
+			PMD_DRV_LOG(WARNING, "No response for %d", args->ops);
+			_clear_cmd(vf);
+		}
 		break;
 	}
 
