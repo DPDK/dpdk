@@ -765,7 +765,7 @@ l2fwd_main_loop(struct l2fwd_crypto_options *options)
 			port_cparams[i].aead_algo = options->aead_xform.aead.algo;
 			port_cparams[i].digest_length =
 					options->aead_xform.aead.digest_length;
-			if (options->aead_xform.aead.add_auth_data_length) {
+			if (options->aead_xform.aead.aad_length) {
 				port_cparams[i].aad.data = options->aad.data;
 				port_cparams[i].aad.phys_addr = options->aad.phys_addr;
 				port_cparams[i].aad.length = options->aad.length;
@@ -2082,7 +2082,7 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 			} else
 				options->aad.length = cap->sym.auth.aad_size.min;
 
-			options->aead_xform.aead.add_auth_data_length =
+			options->aead_xform.aead.aad_length =
 						options->aad.length;
 
 			/* Check if digest size is supported by the algorithm. */

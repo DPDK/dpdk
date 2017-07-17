@@ -1193,7 +1193,7 @@ dpaa2_sec_aead_init(struct rte_cryptodev *dev,
 
 	session->digest_length = aead_xform->digest_length;
 	session->aead_key.length = aead_xform->key.length;
-	ctxt->auth_only_len = aead_xform->add_auth_data_length;
+	ctxt->auth_only_len = aead_xform->aad_length;
 
 	aeaddata.key = (uint64_t)session->aead_key.data;
 	aeaddata.keylen = session->aead_key.length;

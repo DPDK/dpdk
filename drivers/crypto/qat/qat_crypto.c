@@ -744,7 +744,7 @@ qat_crypto_sym_configure_session_aead(struct rte_crypto_sym_xform *xform,
 		if (qat_alg_aead_session_create_content_desc_auth(session,
 					aead_xform->key.data,
 					aead_xform->key.length,
-					aead_xform->add_auth_data_length,
+					aead_xform->aad_length,
 					aead_xform->digest_length,
 					RTE_CRYPTO_AUTH_OP_GENERATE))
 			goto error_out;
@@ -757,7 +757,7 @@ qat_crypto_sym_configure_session_aead(struct rte_crypto_sym_xform *xform,
 		if (qat_alg_aead_session_create_content_desc_auth(session,
 					aead_xform->key.data,
 					aead_xform->key.length,
-					aead_xform->add_auth_data_length,
+					aead_xform->aad_length,
 					aead_xform->digest_length,
 					RTE_CRYPTO_AUTH_OP_VERIFY))
 			goto error_out;

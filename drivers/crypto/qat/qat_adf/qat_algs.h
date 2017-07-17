@@ -150,7 +150,7 @@ int qat_alg_aead_session_create_content_desc_cipher(struct qat_session *cd,
 int qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
 						uint8_t *authkey,
 						uint32_t authkeylen,
-						uint32_t add_auth_data_length,
+						uint32_t aad_length,
 						uint32_t digestsize,
 						unsigned int operation);
 

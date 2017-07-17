@@ -2881,7 +2881,7 @@ test_perf_create_openssl_session(uint8_t dev_id, enum chain_mode chain,
 		case RTE_CRYPTO_AEAD_AES_GCM:
 			aead_xform.aead.key.data = aes_key;
 			aead_xform.aead.iv.length = AES_CIPHER_IV_LENGTH;
-			aead_xform.aead.add_auth_data_length = AES_GCM_AAD_LENGTH;
+			aead_xform.aead.aad_length = AES_GCM_AAD_LENGTH;
 			aead_xform.aead.digest_length = get_aead_digest_length(aead_algo);
 			break;
 		default:
@@ -4267,7 +4267,7 @@ test_perf_create_session(uint8_t dev_id, struct perf_test_params *pparams)
 	aead_xform.aead.key.length = pparams->session_attrs->key_aead_len;
 	aead_xform.aead.iv.length = pparams->session_attrs->iv_len;
 	aead_xform.aead.iv.offset = IV_OFFSET;
-	aead_xform.aead.add_auth_data_length = pparams->session_attrs->aad_len;
+	aead_xform.aead.aad_length = pparams->session_attrs->aad_len;
 	aead_xform.aead.digest_length = pparams->session_attrs->digest_len;
 
 	test_crypto_session = rte_cryptodev_sym_session_create(ts_params->sess_mp);

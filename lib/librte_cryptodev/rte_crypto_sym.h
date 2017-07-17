@@ -426,7 +426,7 @@ struct rte_crypto_aead_xform {
 
 	uint16_t digest_length;
 
-	uint16_t add_auth_data_length;
+	uint16_t aad_length;
 	/**< The length of the additional authenticated data (AAD) in bytes. */
 };
 

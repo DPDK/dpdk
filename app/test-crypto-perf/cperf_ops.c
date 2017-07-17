@@ -509,7 +509,7 @@ cperf_create_session(struct rte_mempool *sess_mp,
 		aead_xform.aead.iv.length = test_vector->aead_iv.length;
 
 		aead_xform.aead.digest_length = options->digest_sz;
-		aead_xform.aead.add_auth_data_length =
+		aead_xform.aead.aad_length =
 					options->aead_aad_sz;
 
 		/* Create crypto session */

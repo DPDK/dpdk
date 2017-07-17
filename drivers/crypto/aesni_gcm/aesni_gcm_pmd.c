@@ -102,7 +102,7 @@ aesni_gcm_set_session_parameters(const struct aesni_gcm_ops *gcm_ops,
 		key_length = aead_xform->aead.key.length;
 		key = aead_xform->aead.key.data;
 
-		sess->aad_length = aead_xform->aead.add_auth_data_length;
+		sess->aad_length = aead_xform->aead.aad_length;
 		digest_length = aead_xform->aead.digest_length;
 	} else {
 		GCM_LOG_ERR("Wrong xform type, has to be AEAD or authentication");

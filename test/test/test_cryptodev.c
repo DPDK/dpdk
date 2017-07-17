@@ -4810,7 +4810,7 @@ create_gcm_session(uint8_t dev_id, enum rte_crypto_aead_operation op,
 	ut_params->aead_xform.aead.iv.offset = IV_OFFSET;
 	ut_params->aead_xform.aead.iv.length = iv_len;
 	ut_params->aead_xform.aead.digest_length = auth_len;
-	ut_params->aead_xform.aead.add_auth_data_length = aad_len;
+	ut_params->aead_xform.aead.aad_length = aad_len;
 
 	TEST_HEXDUMP(stdout, "key:", key, key_len);
 
@@ -4848,7 +4848,7 @@ create_gcm_xforms(struct rte_crypto_op *op,
 	sym_op->xform->aead.iv.offset = IV_OFFSET;
 	sym_op->xform->aead.iv.length = iv_len;
 	sym_op->xform->aead.digest_length = auth_len;
-	sym_op->xform->aead.add_auth_data_length = aad_len;
+	sym_op->xform->aead.aad_length = aad_len;
 
 	TEST_HEXDUMP(stdout, "key:", key, key_len);
 

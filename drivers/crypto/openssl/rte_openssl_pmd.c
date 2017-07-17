@@ -458,7 +458,7 @@ openssl_set_session_aead_parameters(struct openssl_session *sess,
 		return -EINVAL;
 	}
 
-	sess->auth.aad_length = xform->aead.add_auth_data_length;
+	sess->auth.aad_length = xform->aead.aad_length;
 	sess->auth.digest_length = xform->aead.digest_length;
 
 	return 0;

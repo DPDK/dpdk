@@ -665,7 +665,7 @@ int qat_alg_aead_session_create_content_desc_cipher(struct qat_session *cdesc,
 int qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
 						uint8_t *authkey,
 						uint32_t authkeylen,
-						uint32_t add_auth_data_length,
+						uint32_t aad_length,
 						uint32_t digestsize,
 						unsigned int operation)
 {
@@ -814,14 +814,14 @@ int qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
 		 * in big-endian format. This field is 8 bytes
 		 */
 		auth_param->u2.aad_sz =
-				RTE_ALIGN_CEIL(add_auth_data_length, 16);
+				RTE_ALIGN_CEIL(aad_length, 16);
 		auth_param->hash_state_sz = (auth_param->u2.aad_sz) >> 3;
 
 		aad_len = (uint32_t *)(cdesc->cd_cur_ptr +
 					ICP_QAT_HW_GALOIS_128_STATE1_SZ +
 					ICP_QAT_HW_GALOIS_H_SZ);
-		*aad_len = rte_bswap32(add_auth_data_length);
-		cdesc->aad_len = add_auth_data_length;
+		*aad_len = rte_bswap32(aad_length);
+		cdesc->aad_len = aad_length;
 		break;
 	case ICP_QAT_HW_AUTH_ALGO_SNOW_3G_UIA2:
 		qat_proto_flag = QAT_CRYPTO_PROTO_FLAG_SNOW3G;

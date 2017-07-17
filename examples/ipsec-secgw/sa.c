@@ -720,7 +720,7 @@ sa_add_rules(struct sa_ctx *sa_ctx, const struct ipsec_sa entries[],
 				sa_ctx->xf[idx].a.next = NULL;
 				sa_ctx->xf[idx].a.aead.iv.offset = IV_OFFSET;
 				sa_ctx->xf[idx].a.aead.iv.length = iv_length;
-				sa_ctx->xf[idx].a.aead.add_auth_data_length =
+				sa_ctx->xf[idx].a.aead.aad_length =
 					sa->aad_len;
 				sa_ctx->xf[idx].a.aead.digest_length =
 					sa->digest_len;
@@ -735,7 +735,7 @@ sa_add_rules(struct sa_ctx *sa_ctx, const struct ipsec_sa entries[],
 				sa_ctx->xf[idx].a.next = NULL;
 				sa_ctx->xf[idx].a.aead.iv.offset = IV_OFFSET;
 				sa_ctx->xf[idx].a.aead.iv.length = iv_length;
-				sa_ctx->xf[idx].a.aead.add_auth_data_length =
+				sa_ctx->xf[idx].a.aead.aad_length =
 					sa->aad_len;
 				sa_ctx->xf[idx].a.aead.digest_length =
 					sa->digest_len;
