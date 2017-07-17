@@ -1029,8 +1029,6 @@ ixgbe_hierarchy_commit(struct rte_eth_dev *dev,
 		}
 	}
 
-	goto done;
-
 done:
 	tm_conf->committed = true;
 	return 0;
