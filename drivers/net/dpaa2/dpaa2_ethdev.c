@@ -1482,7 +1482,7 @@ dpaa2_dev_uninit(struct rte_eth_dev *eth_dev)
 	PMD_INIT_FUNC_TRACE();
 
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
-		return -EPERM;
+		return 0;
 
 	if (!dpni) {
 		PMD_INIT_LOG(WARNING, "Already closed or not started");
@@ -1535,11 +1535,10 @@ rte_dpaa2_probe(struct rte_dpaa2_driver *dpaa2_drv,
 	struct rte_eth_dev *eth_dev;
 	int diag;
 
-	eth_dev = rte_eth_dev_allocate(dpaa2_dev->device.name);
-	if (eth_dev == NULL)
-		return -ENOMEM;
-
 	if (rte_eal_process_type() == RTE_PROC_PRIMARY) {
+		eth_dev = rte_eth_dev_allocate(dpaa2_dev->device.name);
+		if (!eth_dev)
+			return -ENODEV;
 		eth_dev->data->dev_private = rte_zmalloc(
 						"ethdev private structure",
 						sizeof(struct dpaa2_dev_priv),
@@ -1550,7 +1549,12 @@ rte_dpaa2_probe(struct rte_dpaa2_driver *dpaa2_drv,
 			rte_eth_dev_release_port(eth_dev);
 			return -ENOMEM;
 		}
+	} else {
+		eth_dev = rte_eth_dev_attach_secondary(dpaa2_dev->device.name);
+		if (!eth_dev)
+			return -ENODEV;
 	}
+
 	eth_dev->device = &dpaa2_dev->device;
 	eth_dev->device->driver = &dpaa2_drv->driver;
 
