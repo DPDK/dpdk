@@ -143,7 +143,7 @@ struct rte_crypto_cipher_xform {
 
 	struct {
 		uint8_t *data;	/**< pointer to key data */
-		size_t length;	/**< key length in bytes */
+		uint16_t length;/**< key length in bytes */
 	} key;
 	/**< Cipher key
 	 *
@@ -306,7 +306,7 @@ struct rte_crypto_auth_xform {
 
 	struct {
 		uint8_t *data;	/**< pointer to key data */
-		size_t length;	/**< key length in bytes */
+		uint16_t length;/**< key length in bytes */
 	} key;
 	/**< Authentication key data.
 	 * The authentication key length MUST be less than or equal to the
@@ -389,7 +389,7 @@ struct rte_crypto_aead_xform {
 
 	struct {
 		uint8_t *data;  /**< pointer to key data */
-		size_t length;   /**< key length in bytes */
+		uint16_t length;/**< key length in bytes */
 	} key;
 
 	struct {
@@ -424,7 +424,7 @@ struct rte_crypto_aead_xform {
 		 */
 	} iv;	/**< Initialisation vector parameters */
 
-	uint32_t digest_length;
+	uint16_t digest_length;
 
 	uint16_t add_auth_data_length;
 	/**< The length of the additional authenticated data (AAD) in bytes. */

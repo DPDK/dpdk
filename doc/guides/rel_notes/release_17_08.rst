@@ -321,6 +321,7 @@ ABI Changes
 * **Reorganized the ``rte_crypto_sym_cipher_xform`` structure.**
 
   * Added cipher IV length and offset parameters.
+  * Changed field size of key length from size_t to uint16_t.
 
 * **Reorganized the ``rte_crypto_sym_auth_xform`` structure.**
 
@@ -328,6 +329,7 @@ ABI Changes
   * Changed field size of AAD length from uint32_t to uint16_t.
   * Changed field size of digest length from uint32_t to uint16_t.
   * Removed AAD length.
+  * Changed field size of key length from size_t to uint16_t.
 
 * Replaced ``dev_type`` enumeration with uint8_t ``driver_id`` in
   ``rte_cryptodev_info`` and  ``rte_cryptodev`` structures.
