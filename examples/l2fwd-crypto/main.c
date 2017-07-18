@@ -2038,7 +2038,7 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 			 * is supported by the algorithm chosen.
 			 */
 			} else if (options->aead_key_random_size != -1) {
-				if (check_supported_size(options->ckey_random_size,
+				if (check_supported_size(options->aead_key_random_size,
 						cap->sym.aead.key_size.min,
 						cap->sym.aead.key_size.max,
 						cap->sym.aead.key_size.increment)
@@ -2047,7 +2047,7 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 					return -1;
 				}
 				options->aead_xform.aead.key.length =
-							options->ckey_random_size;
+							options->aead_key_random_size;
 			/* No size provided, use minimum size. */
 			} else
 				options->aead_xform.aead.key.length =
