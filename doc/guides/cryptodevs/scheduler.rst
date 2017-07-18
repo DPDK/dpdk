@@ -191,6 +191,8 @@ operation:
 
    * corelist: Semicolon-separated list of logical cores to be used as workers.
      The number of worker cores should be equal to the number of slave cryptodevs.
+     These cores should be present in EAL core list parameter and
+     should not be used by the application or any other process.
 
    Example:
     ... --vdev "crypto_aesni_mb1,name=aesni_mb_1" --vdev "crypto_aesni_mb_pmd2,name=aesni_mb_2" \
