@@ -142,6 +142,7 @@ fs_hotplug_alarm(void *arg)
 		if (ret)
 			ERROR("Unable to synchronize sub_device state");
 	}
+	failsafe_dev_remove(dev);
 	ret = failsafe_hotplug_alarm_install(dev);
 	if (ret)
 		ERROR("Unable to set up next alarm");

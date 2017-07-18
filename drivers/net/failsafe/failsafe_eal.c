@@ -63,6 +63,7 @@ fs_bus_init(struct rte_eth_dev *dev)
 			return -ENODEV;
 		}
 		SUB_ID(sdev) = i;
+		sdev->fs_dev = dev;
 		sdev->dev = ETH(sdev)->device;
 		ETH(sdev)->state = RTE_ETH_DEV_DEFERRED;
 		sdev->state = DEV_PROBED;
@@ -80,7 +81,7 @@ failsafe_eal_init(struct rte_eth_dev *dev)
 		return ret;
 	if (PRIV(dev)->state < DEV_PROBED)
 		PRIV(dev)->state = DEV_PROBED;
-	fs_switch_dev(dev);
+	fs_switch_dev(dev, NULL);
 	return 0;
 }
 

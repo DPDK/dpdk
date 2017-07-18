@@ -51,6 +51,12 @@ The Fail-safe PMD only supports a limited set of features. If you plan to use a
 device underneath the Fail-safe PMD with a specific feature, this feature must
 be supported by the Fail-safe PMD to avoid throwing any error.
 
+A notable exception is the device removal feature. The fail-safe PMD being a
+virtual device, it cannot currently be removed in the sense of a specific bus
+hotplug, like for PCI for example. It will however enable this feature for its
+sub-device automatically, detecting those that are capable and register the
+relevant callback for such event.
+
 Check the feature matrix for the complete set of supported features.
 
 Compilation option
@@ -179,6 +185,14 @@ apply it upon the probing of its missing sub-device. After this configuration
 pass, the new sub-device will be synchronized with other sub-devices, i.e. be
 started if the fail-safe PMD has been started by the user before.
 
+Plug-out feature
+----------------
+
+A sub-device supporting the device removal event can be removed from its bus at
+any time. The fail-safe PMD will register a callback for such event and react
+accordingly. It will try to safely stop, close and uninit the sub-device having
+emitted this event, allowing it to free its eventual resources.
+
 Fail-safe glossary
 ------------------
 
@@ -195,6 +209,7 @@ Preferred device : Primary device
 Upkeep round
     Periodical process when slaves are serviced. Each devices having a state
     different to that of the fail-safe device itself, is synchronized with it.
+    Additionally, each slave having the remove flag set are cleaned-up.
 
 Slave
     In the context of the fail-safe PMD, synonymous to sub-device.

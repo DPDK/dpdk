@@ -250,6 +250,67 @@ fs_eth_dev_conf_apply(struct rte_eth_dev *dev,
 	return 0;
 }
 
+static void
+fs_dev_remove(struct sub_device *sdev)
+{
+	int ret;
+
+	if (sdev == NULL)
+		return;
+	switch (sdev->state) {
+	case DEV_STARTED:
+		rte_eth_dev_stop(PORT_ID(sdev));
+		sdev->state = DEV_ACTIVE;
+		/* fallthrough */
+	case DEV_ACTIVE:
+		rte_eth_dev_close(PORT_ID(sdev));
+		sdev->state = DEV_PROBED;
+		/* fallthrough */
+	case DEV_PROBED:
+		ret = rte_eal_hotplug_remove(sdev->bus->name,
+					     sdev->dev->name);
+		if (ret) {
+			ERROR("Bus detach failed for sub_device %u",
+			      SUB_ID(sdev));
+		} else {
+			ETH(sdev)->state = RTE_ETH_DEV_UNUSED;
+		}
+		sdev->state = DEV_PARSED;
+		/* fallthrough */
+	case DEV_PARSED:
+	case DEV_UNDEFINED:
+		sdev->state = DEV_UNDEFINED;
+		/* the end */
+		break;
+	}
+	failsafe_hotplug_alarm_install(sdev->fs_dev);
+}
+
+static inline int
+fs_rxtx_clean(struct sub_device *sdev)
+{
+	uint16_t i;
+
+	for (i = 0; i < ETH(sdev)->data->nb_rx_queues; i++)
+		if (FS_ATOMIC_RX(sdev, i))
+			return 0;
+	for (i = 0; i < ETH(sdev)->data->nb_tx_queues; i++)
+		if (FS_ATOMIC_TX(sdev, i))
+			return 0;
+	return 1;
+}
+
+void
+failsafe_dev_remove(struct rte_eth_dev *dev)
+{
+	struct sub_device *sdev;
+	uint8_t i;
+
+	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE)
+		if (sdev->remove && fs_rxtx_clean(sdev))
+			fs_dev_remove(sdev);
+}
+
 int
 failsafe_eth_dev_state_sync(struct rte_eth_dev *dev)
 {
@@ -263,13 +324,13 @@ failsafe_eth_dev_state_sync(struct rte_eth_dev *dev)
 
 	ret = failsafe_args_parse_subs(dev);
 	if (ret)
-		return ret;
+		goto err_remove;
 
 	if (PRIV(dev)->state < DEV_PROBED)
 		return 0;
 	ret = failsafe_eal_init(dev);
 	if (ret)
-		return ret;
+		goto err_remove;
 	if (PRIV(dev)->state < DEV_ACTIVE)
 		return 0;
 	inactive = 0;
@@ -278,15 +339,14 @@ failsafe_eth_dev_state_sync(struct rte_eth_dev *dev)
 			inactive |= UINT32_C(1) << i;
 	ret = dev->dev_ops->dev_configure(dev);
 	if (ret)
-		return ret;
+		goto err_remove;
 	FOREACH_SUBDEV(sdev, i, dev) {
 		if (inactive & (UINT32_C(1) << i)) {
 			ret = fs_eth_dev_conf_apply(dev, sdev);
 			if (ret) {
 				ERROR("Could not apply configuration to sub_device %d",
 				      i);
-				/* TODO: disable device */
-				return ret;
+				goto err_remove;
 			}
 		}
 	}
@@ -300,6 +360,30 @@ failsafe_eth_dev_state_sync(struct rte_eth_dev *dev)
 		return 0;
 	ret = dev->dev_ops->dev_start(dev);
 	if (ret)
-		return ret;
+		goto err_remove;
+	return 0;
+err_remove:
+	FOREACH_SUBDEV(sdev, i, dev)
+		if (sdev->state != PRIV(dev)->state)
+			sdev->remove = 1;
+	return ret;
+}
+
+int
+failsafe_eth_rmv_event_callback(uint8_t port_id __rte_unused,
+				enum rte_eth_event_type event __rte_unused,
+				void *cb_arg, void *out __rte_unused)
+{
+	struct sub_device *sdev = cb_arg;
+
+	/* Switch as soon as possible tx_dev. */
+	fs_switch_dev(sdev->fs_dev, sdev);
+	/* Use safe bursts in any case. */
+	set_burst_fn(sdev->fs_dev, 1);
+	/*
+	 * Async removal, the sub-PMD will try to unregister
+	 * the callback at the source of the current thread context.
+	 */
+	sdev->remove = 1;
 	return 0;
 }

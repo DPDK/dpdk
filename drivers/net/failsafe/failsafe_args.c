@@ -436,6 +436,17 @@ failsafe_args_count_subdevice(struct rte_eth_dev *dev,
 				    dev, params);
 }
 
+static int
+fs_parse_sub_device(struct sub_device *sdev)
+{
+	struct rte_devargs *da;
+	char devstr[DEVARGS_MAXLEN] = "";
+
+	da = &sdev->devargs;
+	snprintf(devstr, sizeof(devstr), "%s,%s", da->name, da->args);
+	return fs_parse_device(sdev, devstr);
+}
+
 int
 failsafe_args_parse_subs(struct rte_eth_dev *dev)
 {
@@ -448,6 +459,8 @@ failsafe_args_parse_subs(struct rte_eth_dev *dev)
 			continue;
 		if (sdev->cmdline)
 			ret = fs_execute_cmd(sdev, sdev->cmdline);
+		else
+			ret = fs_parse_sub_device(sdev);
 		if (ret == 0)
 			sdev->state = DEV_PARSED;
 	}

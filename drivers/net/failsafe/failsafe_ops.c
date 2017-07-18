@@ -34,6 +34,7 @@
 #include <stdint.h>
 
 #include <rte_debug.h>
+#include <rte_atomic.h>
 #include <rte_ethdev.h>
 #include <rte_malloc.h>
 #include <rte_flow.h>
@@ -204,9 +205,21 @@ fs_dev_configure(struct rte_eth_dev *dev)
 		}
 	}
 	FOREACH_SUBDEV(sdev, i, dev) {
+		int rmv_interrupt = 0;
+
 		if (sdev->state != DEV_PROBED)
 			continue;
+
+		rmv_interrupt = ETH(sdev)->data->dev_flags &
+				RTE_ETH_DEV_INTR_RMV;
+		if (rmv_interrupt) {
+			DEBUG("Enabling RMV interrupts for sub_device %d", i);
+			dev->data->dev_conf.intr_conf.rmv = 1;
+		} else {
+			DEBUG("sub_device %d does not support RMV event", i);
+		}
 		DEBUG("Configuring sub-device %d", i);
+		sdev->remove = 0;
 		ret = rte_eth_dev_configure(PORT_ID(sdev),
 					dev->data->nb_rx_queues,
 					dev->data->nb_tx_queues,
@@ -215,6 +228,16 @@ fs_dev_configure(struct rte_eth_dev *dev)
 			ERROR("Could not configure sub_device %d", i);
 			return ret;
 		}
+		if (rmv_interrupt) {
+			ret = rte_eth_dev_callback_register(PORT_ID(sdev),
+					RTE_ETH_EVENT_INTR_RMV,
+					failsafe_eth_rmv_event_callback,
+					sdev);
+			if (ret)
+				WARN("Failed to register RMV callback for sub_device %d",
+				     SUB_ID(sdev));
+		}
+		dev->data->dev_conf.intr_conf.rmv = 0;
 		sdev->state = DEV_ACTIVE;
 	}
 	if (PRIV(dev)->state < DEV_ACTIVE)
@@ -240,7 +263,7 @@ fs_dev_start(struct rte_eth_dev *dev)
 	}
 	if (PRIV(dev)->state < DEV_STARTED)
 		PRIV(dev)->state = DEV_STARTED;
-	fs_switch_dev(dev);
+	fs_switch_dev(dev, NULL);
 	return 0;
 }
 
@@ -351,10 +374,14 @@ fs_rx_queue_setup(struct rte_eth_dev *dev,
 		fs_rx_queue_release(rxq);
 		dev->data->rx_queues[rx_queue_id] = NULL;
 	}
-	rxq = rte_zmalloc(NULL, sizeof(*rxq),
+	rxq = rte_zmalloc(NULL,
+			  sizeof(*rxq) +
+			  sizeof(rte_atomic64_t) * PRIV(dev)->subs_tail,
 			  RTE_CACHE_LINE_SIZE);
 	if (rxq == NULL)
 		return -ENOMEM;
+	FOREACH_SUBDEV(sdev, i, dev)
+		rte_atomic64_init(&rxq->refcnt[i]);
 	rxq->qid = rx_queue_id;
 	rxq->socket_id = socket_id;
 	rxq->info.mp = mb_pool;
@@ -414,10 +441,14 @@ fs_tx_queue_setup(struct rte_eth_dev *dev,
 		fs_tx_queue_release(txq);
 		dev->data->tx_queues[tx_queue_id] = NULL;
 	}
-	txq = rte_zmalloc("ethdev TX queue", sizeof(*txq),
+	txq = rte_zmalloc("ethdev TX queue",
+			  sizeof(*txq) +
+			  sizeof(rte_atomic64_t) * PRIV(dev)->subs_tail,
 			  RTE_CACHE_LINE_SIZE);
 	if (txq == NULL)
 		return -ENOMEM;
+	FOREACH_SUBDEV(sdev, i, dev)
+		rte_atomic64_init(&txq->refcnt[i]);
 	txq->qid = tx_queue_id;
 	txq->socket_id = socket_id;
 	txq->info.conf = *tx_conf;

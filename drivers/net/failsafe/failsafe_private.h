@@ -36,6 +36,7 @@
 
 #include <sys/queue.h>
 
+#include <rte_atomic.h>
 #include <rte_dev.h>
 #include <rte_ethdev.h>
 #include <rte_devargs.h>
@@ -65,6 +66,7 @@ struct rxq {
 	uint8_t last_polled;
 	unsigned int socket_id;
 	struct rte_eth_rxq_info info;
+	rte_atomic64_t refcnt[];
 };
 
 struct txq {
@@ -72,6 +74,7 @@ struct txq {
 	uint16_t qid;
 	unsigned int socket_id;
 	struct rte_eth_txq_info info;
+	rte_atomic64_t refcnt[];
 };
 
 struct rte_flow {
@@ -101,6 +104,10 @@ struct sub_device {
 	enum dev_state state;
 	/* Some device are defined as a command line */
 	char *cmdline;
+	/* fail-safe device backreference */
+	struct rte_eth_dev *fs_dev;
+	/* flag calling for recollection */
+	volatile unsigned int remove:1;
 };
 
 struct fs_priv {
@@ -168,6 +175,10 @@ int failsafe_eal_uninit(struct rte_eth_dev *dev);
 /* ETH_DEV */
 
 int failsafe_eth_dev_state_sync(struct rte_eth_dev *dev);
+void failsafe_dev_remove(struct rte_eth_dev *dev);
+int failsafe_eth_rmv_event_callback(uint8_t port_id,
+				    enum rte_eth_event_type type,
+				    void *arg, void *out);
 
 /* GLOBALS */
 
@@ -233,6 +244,39 @@ extern int mac_from_arg;
 #define SUBOPS(s, ops) \
 	(ETH(s)->dev_ops->ops)
 
+/**
+ * Atomic guard
+ */
+
+/**
+ * a: (rte_atomic64_t)
+ */
+#define FS_ATOMIC_P(a) \
+	rte_atomic64_add(&(a), 1)
+
+/**
+ * a: (rte_atomic64_t)
+ */
+#define FS_ATOMIC_V(a) \
+	rte_atomic64_sub(&(a), 1)
+
+/**
+ * s: (struct sub_device *)
+ * i: uint16_t qid
+ */
+#define FS_ATOMIC_RX(s, i) \
+	rte_atomic64_read( \
+	 &((struct rxq *)((s)->fs_dev->data->rx_queues[i]))->refcnt[(s)->sid] \
+	)
+/**
+ * s: (struct sub_device *)
+ * i: uint16_t qid
+ */
+#define FS_ATOMIC_TX(s, i) \
+	rte_atomic64_read( \
+	 &((struct txq *)((s)->fs_dev->data->tx_queues[i]))->refcnt[(s)->sid] \
+	)
+
 #define LOG__(level, m, ...) \
 	RTE_LOG(level, PMD, "net_failsafe: " m "%c", __VA_ARGS__)
 #define LOG_(level, ...) LOG__(level, __VA_ARGS__, '\n')
@@ -257,33 +301,45 @@ fs_find_next(struct rte_eth_dev *dev, uint8_t sid,
 	return sid;
 }
 
+/*
+ * Switch emitting device.
+ * If banned is set, banned must not be considered for
+ * the role of emitting device.
+ */
 static inline void
-fs_switch_dev(struct rte_eth_dev *dev)
+fs_switch_dev(struct rte_eth_dev *dev,
+	      struct sub_device *banned)
 {
+	struct sub_device *txd;
 	enum dev_state req_state;
 
 	req_state = PRIV(dev)->state;
-	if (PREFERRED_SUBDEV(dev)->state >= req_state) {
-		if (TX_SUBDEV(dev) != PREFERRED_SUBDEV(dev) &&
-		    (TX_SUBDEV(dev) == NULL ||
+	txd = TX_SUBDEV(dev);
+	if (PREFERRED_SUBDEV(dev)->state >= req_state &&
+	    PREFERRED_SUBDEV(dev) != banned) {
+		if (txd != PREFERRED_SUBDEV(dev) &&
+		    (txd == NULL ||
 		     (req_state == DEV_STARTED) ||
-		     (TX_SUBDEV(dev) && TX_SUBDEV(dev)->state < DEV_STARTED))) {
+		     (txd && txd->state < DEV_STARTED))) {
 			DEBUG("Switching tx_dev to preferred sub_device");
 			PRIV(dev)->subs_tx = 0;
 		}
-	} else if ((TX_SUBDEV(dev) && TX_SUBDEV(dev)->state < req_state) ||
-		   TX_SUBDEV(dev) == NULL) {
+	} else if ((txd && txd->state < req_state) ||
+		   txd == NULL ||
+		   txd == banned) {
 		struct sub_device *sdev;
 		uint8_t i;
 
 		/* Using acceptable device */
 		FOREACH_SUBDEV_STATE(sdev, i, dev, req_state) {
+			if (sdev == banned)
+				continue;
 			DEBUG("Switching tx_dev to sub_device %d",
 			      i);
 			PRIV(dev)->subs_tx = i;
 			break;
 		}
-	} else if (TX_SUBDEV(dev) && TX_SUBDEV(dev)->state < req_state) {
+	} else if (txd && txd->state < req_state) {
 		DEBUG("No device ready, deactivating tx_dev");
 		PRIV(dev)->subs_tx = PRIV(dev)->subs_tail;
 	} else {
