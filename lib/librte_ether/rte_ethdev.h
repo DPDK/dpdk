@@ -1750,13 +1750,12 @@ uint8_t rte_eth_find_next(uint8_t port_id);
 
 /**
  * Get the total number of Ethernet devices that have been successfully
- * initialized by the [matching] Ethernet driver during the PCI probing phase.
- * All devices whose port identifier is in the range
- * [0,  rte_eth_dev_count() - 1] can be operated on by network applications
- * immediately after invoking rte_eal_init().
- * If the application unplugs a port using hotplug function, The enabled port
- * numbers may be noncontiguous. In the case, the applications need to manage
- * enabled port by using the ``RTE_ETH_FOREACH_DEV()`` macro.
+ * initialized by the matching Ethernet driver during the PCI probing phase
+ * and that are available for applications to use. These devices must be
+ * accessed by using the ``RTE_ETH_FOREACH_DEV()`` macro to deal with
+ * non-contiguous ranges of devices.
+ * These non-contiguous ranges can be created by calls to hotplug functions or
+ * by some PMDs.
  *
  * @return
  *   - The total number of usable Ethernet devices.

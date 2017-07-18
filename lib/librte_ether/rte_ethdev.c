@@ -72,7 +72,6 @@ static const char *MZ_RTE_ETH_DEV_DATA = "rte_eth_dev_data";
 struct rte_eth_dev rte_eth_devices[RTE_MAX_ETHPORTS];
 static struct rte_eth_dev_data *rte_eth_dev_data;
 static uint8_t eth_dev_last_created_port;
-static uint8_t nb_ports;
 
 /* spinlock for eth device callbacks */
 static rte_spinlock_t rte_eth_dev_cb_lock = RTE_SPINLOCK_INITIALIZER;
@@ -210,7 +209,6 @@ eth_dev_get(uint8_t port_id)
 	TAILQ_INIT(&(eth_dev->link_intr_cbs));
 
 	eth_dev_last_created_port = port_id;
-	nb_ports++;
 
 	return eth_dev;
 }
@@ -283,7 +281,6 @@ rte_eth_dev_release_port(struct rte_eth_dev *eth_dev)
 		return -EINVAL;
 
 	eth_dev->state = RTE_ETH_DEV_UNUSED;
-	nb_ports--;
 	return 0;
 }
 
@@ -308,7 +305,15 @@ rte_eth_dev_socket_id(uint8_t port_id)
 uint8_t
 rte_eth_dev_count(void)
 {
-	return nb_ports;
+	uint8_t p;
+	uint8_t count;
+
+	count = 0;
+
+	RTE_ETH_FOREACH_DEV(p)
+		count++;
+
+	return count;
 }
 
 int
@@ -340,9 +345,6 @@ rte_eth_dev_get_port_by_name(const char *name, uint8_t *port_id)
 		RTE_PMD_DEBUG_TRACE("Null pointer is specified\n");
 		return -EINVAL;
 	}
-
-	if (!nb_ports)
-		return -ENODEV;
 
 	RTE_ETH_FOREACH_DEV(i) {
 		if (!rte_eth_devices[i].device)
