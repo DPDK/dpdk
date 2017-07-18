@@ -1272,7 +1272,9 @@ ixgbe_fdir_filter_program(struct rte_eth_dev *dev,
 	     hw->mac.type == ixgbe_mac_X550EM_x ||
 	     hw->mac.type == ixgbe_mac_X550EM_a) &&
 	    (rule->ixgbe_fdir.formatted.flow_type ==
-	     IXGBE_ATR_FLOW_TYPE_IPV4) &&
+	     IXGBE_ATR_FLOW_TYPE_IPV4 ||
+	     rule->ixgbe_fdir.formatted.flow_type ==
+	     IXGBE_ATR_FLOW_TYPE_IPV6) &&
 	    (info->mask.src_port_mask != 0 ||
 	     info->mask.dst_port_mask != 0)) {
 		PMD_DRV_LOG(ERR, "By this device,"
