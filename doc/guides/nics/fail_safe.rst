@@ -87,6 +87,19 @@ Fail-safe command line parameters
   additional sub-device parameters if need be. They will be passed on to the
   sub-device.
 
+- **exec(<shell command>)** parameter
+
+  This parameter allows the user to provide a command to the fail-safe PMD to
+  execute and define a sub-device.
+  It is done within a regular shell context.
+  The first line of its output is read by the fail-safe PMD and otherwise
+  interpreted as if passed by the regular **dev** parameter.
+  Any other line is discarded.
+  If the command fail or output an incorrect string, the sub-device is not
+  initialized.
+  All commas within the ``shell command`` are replaced by spaces before
+  executing the command. This helps using scripts to specify devices.
+
 - **mac** parameter [MAC address]
 
   This parameter allows the user to set a default MAC address to the fail-safe
@@ -133,6 +146,13 @@ This section shows some example of using **testpmd** with a fail-safe PMD.
       $RTE_TARGET/build/app/testpmd -c 0xff -n 4 \
          --vdev 'net_failsafe0,mac=de:ad:be:ef:01:02,dev(84:00.0),dev(net_ring0)'
          -w 81:00.0 -- -i
+
+#. Start testpmd using a flexible device definition
+
+   .. code-block:: console
+
+      $RTE_TARGET/build/app/testpmd -c 0xff -n 4 --no-pci \
+         --vdev='net_failsafe0,exec(echo 84:00.0)' -- -i
 
 Using the Fail-safe PMD from an application
 -------------------------------------------

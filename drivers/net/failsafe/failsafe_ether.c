@@ -188,6 +188,13 @@ failsafe_eth_dev_state_sync(struct rte_eth_dev *dev)
 	int ret;
 	uint8_t i;
 
+	if (PRIV(dev)->state < DEV_PARSED)
+		return 0;
+
+	ret = failsafe_args_parse_subs(dev);
+	if (ret)
+		return ret;
+
 	if (PRIV(dev)->state < DEV_PROBED)
 		return 0;
 	ret = failsafe_eal_init(dev);

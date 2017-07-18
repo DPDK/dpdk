@@ -44,6 +44,7 @@
 #define PMD_FAILSAFE_HOTPLUG_POLL_KVARG "hotplug_poll"
 #define PMD_FAILSAFE_PARAM_STRING	\
 	"dev(<ifc>),"			\
+	"exec(<shell command>),"	\
 	"mac=mac_addr,"			\
 	"hotplug_poll=u64"		\
 	""
@@ -87,6 +88,8 @@ struct sub_device {
 	struct rte_eth_dev *edev;
 	/* Device state machine */
 	enum dev_state state;
+	/* Some device are defined as a command line */
+	char *cmdline;
 };
 
 struct fs_priv {
@@ -135,6 +138,7 @@ uint16_t failsafe_tx_burst(void *txq,
 int failsafe_args_parse(struct rte_eth_dev *dev, const char *params);
 void failsafe_args_free(struct rte_eth_dev *dev);
 int failsafe_args_count_subdevice(struct rte_eth_dev *dev, const char *params);
+int failsafe_args_parse_subs(struct rte_eth_dev *dev);
 
 /* EAL */
 

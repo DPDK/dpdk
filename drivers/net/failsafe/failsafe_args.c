@@ -34,6 +34,7 @@
 #include <string.h>
 #include <errno.h>
 
+#include <rte_debug.h>
 #include <rte_devargs.h>
 #include <rte_malloc.h>
 #include <rte_kvargs.h>
@@ -97,6 +98,72 @@ fs_parse_device(struct sub_device *sdev, char *args)
 	return 0;
 }
 
+static void
+fs_sanitize_cmdline(char *args)
+{
+	size_t len;
+
+	len = strnlen(args, DEVARGS_MAXLEN);
+	args[len - 1] = '\0';
+}
+
+static int
+fs_execute_cmd(struct sub_device *sdev, char *cmdline)
+{
+	FILE *fp;
+	/* store possible newline as well */
+	char output[DEVARGS_MAXLEN + 1];
+	size_t len;
+	int old_err;
+	int ret;
+
+	RTE_ASSERT(cmdline != NULL || sdev->cmdline != NULL);
+	if (sdev->cmdline == NULL) {
+		size_t i;
+
+		len = strlen(cmdline) + 1;
+		sdev->cmdline = calloc(1, len);
+		if (sdev->cmdline == NULL) {
+			ERROR("Command line allocation failed");
+			return -ENOMEM;
+		}
+		snprintf(sdev->cmdline, len, "%s", cmdline);
+		/* Replace all commas in the command line by spaces */
+		for (i = 0; i < len; i++)
+			if (sdev->cmdline[i] == ',')
+				sdev->cmdline[i] = ' ';
+	}
+	DEBUG("'%s'", sdev->cmdline);
+	old_err = errno;
+	fp = popen(sdev->cmdline, "r");
+	if (fp == NULL) {
+		ret = errno;
+		ERROR("popen: %s", strerror(errno));
+		errno = old_err;
+		return ret;
+	}
+	/* We only read one line */
+	if (fgets(output, sizeof(output) - 1, fp) == NULL) {
+		DEBUG("Could not read command output");
+		return -ENODEV;
+	}
+	fs_sanitize_cmdline(output);
+	ret = fs_parse_device(sdev, output);
+	if (ret) {
+		ERROR("Parsing device '%s' failed", output);
+		goto ret_pclose;
+	}
+ret_pclose:
+	ret = pclose(fp);
+	if (ret) {
+		ret = errno;
+		ERROR("pclose: %s", strerror(errno));
+		errno = old_err;
+		return ret;
+	}
+	return ret;
+}
+
 static int
 fs_parse_device_param(struct rte_eth_dev *dev, const char *param,
 		uint8_t head)
@@ -129,6 +196,14 @@ fs_parse_device_param(struct rte_eth_dev *dev, const char *param,
 	sdev = &priv->subs[head];
 	if (strncmp(param, "dev", 3) == 0) {
 		ret = fs_parse_device(sdev, args);
+		if (ret)
+			goto free_args;
+	} else if (strncmp(param, "exec", 4) == 0) {
+		ret = fs_execute_cmd(sdev, args);
+		if (ret == -ENODEV) {
+			DEBUG("Reading device info from command line failed");
+			ret = 0;
+		}
 		if (ret)
 			goto free_args;
 	} else {
@@ -328,6 +403,8 @@ failsafe_args_free(struct rte_eth_dev *dev)
 	uint8_t i;
 
 	FOREACH_SUBDEV(sdev, i, dev) {
+		rte_free(sdev->cmdline);
+		sdev->cmdline = NULL;
 		free(sdev->devargs.args);
 		sdev->devargs.args = NULL;
 	}
@@ -342,7 +419,8 @@ fs_count_device(struct rte_eth_dev *dev, const char *param,
 	while  (param[b] != '(' &&
 		param[b] != '\0')
 		b++;
-	if (strncmp(param, "dev", b) != 0) {
+	if (strncmp(param, "dev", b) != 0 &&
+	    strncmp(param, "exec", b) != 0) {
 		ERROR("Unrecognized device type: %.*s", (int)b, param);
 		return -EINVAL;
 	}
@@ -356,4 +434,22 @@ failsafe_args_count_subdevice(struct rte_eth_dev *dev,
 {
 	return fs_parse_sub_devices(fs_count_device,
 				    dev, params);
+}
+
+int
+failsafe_args_parse_subs(struct rte_eth_dev *dev)
+{
+	struct sub_device *sdev;
+	uint8_t i;
+	int ret = 0;
+
+	FOREACH_SUBDEV(sdev, i, dev) {
+		if (sdev->state >= DEV_PARSED)
+			continue;
+		if (sdev->cmdline)
+			ret = fs_execute_cmd(sdev, sdev->cmdline);
+		if (ret == 0)
+			sdev->state = DEV_PARSED;
+	}
+	return 0;
 }
