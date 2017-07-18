@@ -118,7 +118,8 @@ void rte_metrics_init(int socket_id);
  * is required for updating said metric's value.
  *
  * @param name
- *   Metric name
+ *   Metric name. If this exceeds RTE_METRICS_MAX_NAME_LEN (including
+ *   the NULL terminator), it is truncated.
  *
  * @return
  *  - Zero or positive: Success (index key of new metric)

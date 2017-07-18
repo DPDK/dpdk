@@ -51,7 +51,7 @@
  */
 struct rte_metrics_meta_s {
 	/** Name of metric */
-	char name[RTE_METRICS_MAX_NAME_LEN + 1];
+	char name[RTE_METRICS_MAX_NAME_LEN];
 	/** Current value for metric */
 	uint64_t value[RTE_MAX_ETHPORTS];
 	/** Used for global metrics */
@@ -144,6 +144,8 @@ rte_metrics_reg_names(const char * const *names, uint16_t cnt_names)
 		entry = &stats->metadata[idx_name + stats->cnt_stats];
 		strncpy(entry->name, names[idx_name],
 			RTE_METRICS_MAX_NAME_LEN);
+		/* Enforce NULL-termination */
+		entry->name[RTE_METRICS_MAX_NAME_LEN - 1] = '\0';
 		memset(entry->value, 0, sizeof(entry->value));
 		entry->idx_next_stat = idx_name + stats->cnt_stats + 1;
 	}
