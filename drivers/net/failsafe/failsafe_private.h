@@ -179,6 +179,9 @@ void failsafe_dev_remove(struct rte_eth_dev *dev);
 int failsafe_eth_rmv_event_callback(uint8_t port_id,
 				    enum rte_eth_event_type type,
 				    void *arg, void *out);
+int failsafe_eth_lsc_event_callback(uint8_t port_id,
+				    enum rte_eth_event_type event,
+				    void *cb_arg, void *out);
 
 /* GLOBALS */
 

@@ -206,6 +206,8 @@ fs_dev_configure(struct rte_eth_dev *dev)
 	}
 	FOREACH_SUBDEV(sdev, i, dev) {
 		int rmv_interrupt = 0;
+		int lsc_interrupt = 0;
+		int lsc_enabled;
 
 		if (sdev->state != DEV_PROBED)
 			continue;
@@ -217,6 +219,17 @@ fs_dev_configure(struct rte_eth_dev *dev)
 			dev->data->dev_conf.intr_conf.rmv = 1;
 		} else {
 			DEBUG("sub_device %d does not support RMV event", i);
+		}
+		lsc_enabled = dev->data->dev_conf.intr_conf.lsc;
+		lsc_interrupt = lsc_enabled &&
+				(ETH(sdev)->data->dev_flags &
+				 RTE_ETH_DEV_INTR_LSC);
+		if (lsc_interrupt) {
+			DEBUG("Enabling LSC interrupts for sub_device %d", i);
+			dev->data->dev_conf.intr_conf.lsc = 1;
+		} else if (lsc_enabled && !lsc_interrupt) {
+			DEBUG("Disabling LSC interrupts for sub_device %d", i);
+			dev->data->dev_conf.intr_conf.lsc = 0;
 		}
 		DEBUG("Configuring sub-device %d", i);
 		sdev->remove = 0;
@@ -238,6 +251,16 @@ fs_dev_configure(struct rte_eth_dev *dev)
 				     SUB_ID(sdev));
 		}
 		dev->data->dev_conf.intr_conf.rmv = 0;
+		if (lsc_interrupt) {
+			ret = rte_eth_dev_callback_register(PORT_ID(sdev),
+						RTE_ETH_EVENT_INTR_LSC,
+						failsafe_eth_lsc_event_callback,
+						dev);
+			if (ret)
+				WARN("Failed to register LSC callback for sub_device %d",
+				     SUB_ID(sdev));
+		}
+		dev->data->dev_conf.intr_conf.lsc = lsc_enabled;
 		sdev->state = DEV_ACTIVE;
 	}
 	if (PRIV(dev)->state < DEV_ACTIVE)

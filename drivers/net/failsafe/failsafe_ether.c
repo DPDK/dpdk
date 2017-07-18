@@ -387,3 +387,21 @@ failsafe_eth_rmv_event_callback(uint8_t port_id __rte_unused,
 	sdev->remove = 1;
 	return 0;
 }
+
+int
+failsafe_eth_lsc_event_callback(uint8_t port_id __rte_unused,
+				enum rte_eth_event_type event __rte_unused,
+				void *cb_arg, void *out __rte_unused)
+{
+	struct rte_eth_dev *dev = cb_arg;
+	int ret;
+
+	ret = dev->dev_ops->link_update(dev, 0);
+	/* We must pass on the LSC event */
+	if (ret)
+		return _rte_eth_dev_callback_process(dev,
+						     RTE_ETH_EVENT_INTR_LSC,
+						     NULL, NULL);
+	else
+		return 0;
+}
