@@ -72,37 +72,14 @@ fs_bus_init(struct rte_eth_dev *dev)
 int
 failsafe_eal_init(struct rte_eth_dev *dev)
 {
-	struct sub_device *sdev;
-	uint8_t i;
 	int ret;
 
 	ret = fs_bus_init(dev);
 	if (ret)
 		return ret;
-	/*
-	 * We only update TX_SUBDEV if we are not started.
-	 * If a sub_device is emitting, we will switch the TX_SUBDEV to the
-	 * preferred port only upon starting it, so that the switch is smoother.
-	 */
-	if (PREFERRED_SUBDEV(dev)->state >= DEV_PROBED) {
-		if (TX_SUBDEV(dev) != PREFERRED_SUBDEV(dev) &&
-		    (TX_SUBDEV(dev) == NULL ||
-		     (TX_SUBDEV(dev) && TX_SUBDEV(dev)->state < DEV_STARTED))) {
-			DEBUG("Switching tx_dev to preferred sub_device");
-			PRIV(dev)->subs_tx = 0;
-		}
-	} else {
-		if ((TX_SUBDEV(dev) && TX_SUBDEV(dev)->state < DEV_PROBED) ||
-		    TX_SUBDEV(dev) == NULL) {
-			/* Using first probed device */
-			FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_PROBED) {
-				DEBUG("Switching tx_dev to sub_device %d",
-				      i);
-				PRIV(dev)->subs_tx = i;
-				break;
-			}
-		}
-	}
+	if (PRIV(dev)->state < DEV_PROBED)
+		PRIV(dev)->state = DEV_PROBED;
+	fs_switch_dev(dev);
 	return 0;
 }
 
@@ -134,5 +111,6 @@ failsafe_eal_uninit(struct rte_eth_dev *dev)
 	ret = fs_bus_uninit(dev);
 	if (ret)
 		return ret;
+	PRIV(dev)->state = DEV_PROBED - 1;
 	return 0;
 }

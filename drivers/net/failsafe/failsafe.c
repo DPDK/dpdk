@@ -81,6 +81,72 @@ fs_sub_device_free(struct rte_eth_dev *dev)
 	rte_free(PRIV(dev)->subs);
 }
 
+static void fs_hotplug_alarm(void *arg);
+
+int
+failsafe_hotplug_alarm_install(struct rte_eth_dev *dev)
+{
+	int ret;
+
+	if (dev == NULL)
+		return -EINVAL;
+	if (PRIV(dev)->pending_alarm)
+		return 0;
+	ret = rte_eal_alarm_set(hotplug_poll * 1000,
+				fs_hotplug_alarm,
+				dev);
+	if (ret) {
+		ERROR("Could not set up plug-in event detection");
+		return ret;
+	}
+	PRIV(dev)->pending_alarm = 1;
+	return 0;
+}
+
+int
+failsafe_hotplug_alarm_cancel(struct rte_eth_dev *dev)
+{
+	int ret = 0;
+
+	if (PRIV(dev)->pending_alarm) {
+		rte_errno = 0;
+		rte_eal_alarm_cancel(fs_hotplug_alarm, dev);
+		if (rte_errno) {
+			ERROR("rte_eal_alarm_cancel failed (errno: %s)",
+			      strerror(rte_errno));
+			ret = -rte_errno;
+		} else {
+			PRIV(dev)->pending_alarm = 0;
+		}
+	}
+	return ret;
+}
+
+static void
+fs_hotplug_alarm(void *arg)
+{
+	struct rte_eth_dev *dev = arg;
+	struct sub_device *sdev;
+	int ret;
+	uint8_t i;
+
+	if (!PRIV(dev)->pending_alarm)
+		return;
+	PRIV(dev)->pending_alarm = 0;
+	FOREACH_SUBDEV(sdev, i, dev)
+		if (sdev->state != PRIV(dev)->state)
+			break;
+	/* if we have non-probed device */
+	if (i != PRIV(dev)->subs_tail) {
+		ret = failsafe_eth_dev_state_sync(dev);
+		if (ret)
+			ERROR("Unable to synchronize sub_device state");
+	}
+	ret = failsafe_hotplug_alarm_install(dev);
+	if (ret)
+		ERROR("Unable to set up next alarm");
+}
+
 static int
 fs_eth_dev_create(struct rte_vdev_device *vdev)
 {
@@ -126,6 +192,11 @@ fs_eth_dev_create(struct rte_vdev_device *vdev)
 	ret = failsafe_eal_init(dev);
 	if (ret)
 		goto free_args;
+	ret = failsafe_hotplug_alarm_install(dev);
+	if (ret) {
+		ERROR("Could not set up plug-in event detection");
+		goto free_args;
+	}
 	mac = &dev->data->mac_addrs[0];
 	if (mac_from_arg) {
 		/*

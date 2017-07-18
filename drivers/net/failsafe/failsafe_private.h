@@ -41,10 +41,14 @@
 #define FAILSAFE_DRIVER_NAME "Fail-safe PMD"
 
 #define PMD_FAILSAFE_MAC_KVARG "mac"
+#define PMD_FAILSAFE_HOTPLUG_POLL_KVARG "hotplug_poll"
 #define PMD_FAILSAFE_PARAM_STRING	\
 	"dev(<ifc>),"			\
-	"mac=mac_addr"			\
+	"mac=mac_addr,"			\
+	"hotplug_poll=u64"		\
 	""
+
+#define FAILSAFE_HOTPLUG_DEFAULT_TIMEOUT_MS 2000
 
 #define FAILSAFE_MAX_ETHPORTS 2
 #define FAILSAFE_MAX_ETHADDR 128
@@ -103,7 +107,21 @@ struct fs_priv {
 	uint32_t mac_addr_pool[FAILSAFE_MAX_ETHADDR];
 	/* current capabilities */
 	struct rte_eth_dev_info infos;
+	/*
+	 * Fail-safe state machine.
+	 * This level will be tracking state of the EAL and eth
+	 * layer at large as defined by the user application.
+	 * It will then steer the sub_devices toward the same
+	 * synchronized state.
+	 */
+	enum dev_state state;
+	unsigned int pending_alarm:1; /* An alarm is pending */
 };
+
+/* MISC */
+
+int failsafe_hotplug_alarm_install(struct rte_eth_dev *dev);
+int failsafe_hotplug_alarm_cancel(struct rte_eth_dev *dev);
 
 /* RX / TX */
 
@@ -123,10 +141,15 @@ int failsafe_args_count_subdevice(struct rte_eth_dev *dev, const char *params);
 int failsafe_eal_init(struct rte_eth_dev *dev);
 int failsafe_eal_uninit(struct rte_eth_dev *dev);
 
+/* ETH_DEV */
+
+int failsafe_eth_dev_state_sync(struct rte_eth_dev *dev);
+
 /* GLOBALS */
 
 extern const char pmd_failsafe_driver_name[];
 extern const struct eth_dev_ops failsafe_ops;
+extern uint64_t hotplug_poll;
 extern int mac_from_arg;
 
 /* HELPERS */
@@ -203,6 +226,41 @@ fs_find_next(struct rte_eth_dev *dev, uint8_t sid,
 	if (sid >= PRIV(dev)->subs_tail)
 		return PRIV(dev)->subs_tail;
 	return sid;
+}
+
+static inline void
+fs_switch_dev(struct rte_eth_dev *dev)
+{
+	enum dev_state req_state;
+
+	req_state = PRIV(dev)->state;
+	if (PREFERRED_SUBDEV(dev)->state >= req_state) {
+		if (TX_SUBDEV(dev) != PREFERRED_SUBDEV(dev) &&
+		    (TX_SUBDEV(dev) == NULL ||
+		     (req_state == DEV_STARTED) ||
+		     (TX_SUBDEV(dev) && TX_SUBDEV(dev)->state < DEV_STARTED))) {
+			DEBUG("Switching tx_dev to preferred sub_device");
+			PRIV(dev)->subs_tx = 0;
+		}
+	} else if ((TX_SUBDEV(dev) && TX_SUBDEV(dev)->state < req_state) ||
+		   TX_SUBDEV(dev) == NULL) {
+		struct sub_device *sdev;
+		uint8_t i;
+
+		/* Using acceptable device */
+		FOREACH_SUBDEV_STATE(sdev, i, dev, req_state) {
+			DEBUG("Switching tx_dev to sub_device %d",
+			      i);
+			PRIV(dev)->subs_tx = i;
+			break;
+		}
+	} else if (TX_SUBDEV(dev) && TX_SUBDEV(dev)->state < req_state) {
+		DEBUG("No device ready, deactivating tx_dev");
+		PRIV(dev)->subs_tx = PRIV(dev)->subs_tail;
+	} else {
+		return;
+	}
+	rte_wmb();
 }
 
 #endif /* _RTE_ETH_FAILSAFE_PRIVATE_H_ */

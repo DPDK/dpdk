@@ -98,6 +98,11 @@ Fail-safe command line parameters
   address is generated, that will be subsequently applied to all sub-device once
   they are probed.
 
+- **hotplug_poll** parameter [UINT64] (default **2000**)
+
+  This parameter allows the user to configure the amount of time in milliseconds
+  between two slave upkeep round.
+
 Usage example
 ~~~~~~~~~~~~~
 
@@ -140,6 +145,20 @@ access, and in particular, using the ``RTE_ETH_FOREACH_DEV`` macro to iterate
 over ethernet devices, instead of directly accessing them or by writing one's
 own device iterator.
 
+Plug-in feature
+---------------
+
+A sub-device can be defined without existing on the system when the fail-safe
+PMD is initialized. Upon probing this device, the fail-safe PMD will detect its
+absence and postpone its use. It will then register for a periodic check on any
+missing sub-device.
+
+During this time, the fail-safe PMD can be used normally, configured and told to
+emit and receive packets. It will store any applied configuration, and try to
+apply it upon the probing of its missing sub-device. After this configuration
+pass, the new sub-device will be synchronized with other sub-devices, i.e. be
+started if the fail-safe PMD has been started by the user before.
+
 Fail-safe glossary
 ------------------
 
@@ -152,6 +171,10 @@ Preferred device : Primary device
     When this device is plugged, it is always used as emitting device.
     It is the main sub-device and is used as target for configuration
     operations if there is any ambiguity.
+
+Upkeep round
+    Periodical process when slaves are serviced. Each devices having a state
+    different to that of the fail-safe device itself, is synchronized with it.
 
 Slave
     In the context of the fail-safe PMD, synonymous to sub-device.

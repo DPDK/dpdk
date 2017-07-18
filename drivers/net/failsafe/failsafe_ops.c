@@ -89,6 +89,8 @@ fs_dev_configure(struct rte_eth_dev *dev)
 		}
 		sdev->state = DEV_ACTIVE;
 	}
+	if (PRIV(dev)->state < DEV_ACTIVE)
+		PRIV(dev)->state = DEV_ACTIVE;
 	return 0;
 }
 
@@ -108,21 +110,9 @@ fs_dev_start(struct rte_eth_dev *dev)
 			return ret;
 		sdev->state = DEV_STARTED;
 	}
-	if (PREFERRED_SUBDEV(dev)->state == DEV_STARTED) {
-		if (TX_SUBDEV(dev) != PREFERRED_SUBDEV(dev)) {
-			DEBUG("Switching tx_dev to preferred sub_device");
-			PRIV(dev)->subs_tx = 0;
-		}
-	} else {
-		if ((TX_SUBDEV(dev) && TX_SUBDEV(dev)->state < DEV_STARTED) ||
-		    TX_SUBDEV(dev) == NULL) {
-			FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_STARTED) {
-				DEBUG("Switching tx_dev to sub_device %d", i);
-				PRIV(dev)->subs_tx = i;
-				break;
-			}
-		}
-	}
+	if (PRIV(dev)->state < DEV_STARTED)
+		PRIV(dev)->state = DEV_STARTED;
+	fs_switch_dev(dev);
 	return 0;
 }
 
@@ -132,6 +122,7 @@ fs_dev_stop(struct rte_eth_dev *dev)
 	struct sub_device *sdev;
 	uint8_t i;
 
+	PRIV(dev)->state = DEV_STARTED - 1;
 	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_STARTED) {
 		rte_eth_dev_stop(PORT_ID(sdev));
 		sdev->state = DEV_STARTED - 1;
@@ -183,6 +174,10 @@ fs_dev_close(struct rte_eth_dev *dev)
 	struct sub_device *sdev;
 	uint8_t i;
 
+	failsafe_hotplug_alarm_cancel(dev);
+	if (PRIV(dev)->state == DEV_STARTED)
+		dev->dev_ops->dev_stop(dev);
+	PRIV(dev)->state = DEV_ACTIVE - 1;
 	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
 		DEBUG("Closing sub_device %d", i);
 		rte_eth_dev_close(PORT_ID(sdev));

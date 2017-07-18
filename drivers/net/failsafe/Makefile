@@ -44,6 +44,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_PMD_FAILSAFE) += failsafe_args.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_FAILSAFE) += failsafe_eal.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_FAILSAFE) += failsafe_ops.c
 SRCS-$(CONFIG_RTE_LIBRTE_PMD_FAILSAFE) += failsafe_rxtx.c
+SRCS-$(CONFIG_RTE_LIBRTE_PMD_FAILSAFE) += failsafe_ether.c
 
 # No exported include files
 
