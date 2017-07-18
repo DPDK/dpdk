@@ -447,3 +447,30 @@ It means if APP has set the max bandwidth for that TC, it comes to no
 effect.
 It's suggested to set the strict priority mode for a TC that is latency
 sensitive but no consuming much bandwidth.
+
+VF performance is impacted by PCI extended tag setting
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To reach maximum NIC performance in the VF the PCI extended tag must be
+enabled. The DPDK I40E PF driver will set this feature during initialization,
+but the kernel PF driver does not. So when running traffic on a VF which is
+managed by the kernel PF driver, a significant NIC performance downgrade has
+been observed (for 64 byte packets, there is about 25% linerate downgrade for
+a 25G device and about 35% for a 40G device).
+
+For kernel version >= 4.11, the kernel's PCI driver will enable the extended
+tag if it detects that the device supports it. So by default, this is not an
+issue. For kernels <= 4.11 or when the PCI extended tag is disabled it can be
+enabled using the steps below.
+
+#. Get the current value of the PCI configure register::
+
+      setpci -s <XX:XX.X> a8.w
+
+#. Set bit 8::
+
+      value = value | 0x100
+
+#. Set the PCI configure register with new value::
+
+      setpci -s <XX:XX.X> a8.w=<value>
