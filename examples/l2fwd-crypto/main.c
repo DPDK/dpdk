@@ -752,6 +752,8 @@ l2fwd_main_loop(struct l2fwd_crypto_options *options)
 				port_cparams[i].hash_verify = 0;
 
 			port_cparams[i].auth_algo = options->auth_xform.auth.algo;
+			port_cparams[i].digest_length =
+					options->auth_xform.auth.digest_length;
 			/* Set IV parameters */
 			if (options->auth_iv.length) {
 				options->auth_xform.auth.iv.offset =
