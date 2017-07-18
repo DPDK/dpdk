@@ -123,6 +123,7 @@ struct rte_cryptodev_scheduler;
  *   - 0 if the scheduler is successfully loaded
  *   - -ENOTSUP if the operation is not supported.
  *   - -EBUSY if device is started.
+ *   - -EINVAL if input values are invalid.
  */
 int
 rte_cryptodev_scheduler_load_user_scheduler(uint8_t scheduler_id,

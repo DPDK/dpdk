@@ -461,8 +461,22 @@ rte_cryptodev_scheduler_load_user_scheduler(uint8_t scheduler_id,
 
 	sched_ctx = dev->data->dev_private;
 
+	if (strlen(scheduler->name) > RTE_CRYPTODEV_NAME_MAX_LEN - 1) {
+		CS_LOG_ERR("Invalid name %s, should be less than "
+				"%u bytes.\n", scheduler->name,
+				RTE_CRYPTODEV_NAME_MAX_LEN);
+		return -EINVAL;
+	}
 	strncpy(sched_ctx->name, scheduler->name,
 			RTE_CRYPTODEV_SCHEDULER_NAME_MAX_LEN);
+
+	if (strlen(scheduler->description) >
+			RTE_CRYPTODEV_SCHEDULER_DESC_MAX_LEN - 1) {
+		CS_LOG_ERR("Invalid description %s, should be less than "
+				"%u bytes.\n", scheduler->description,
+				RTE_CRYPTODEV_SCHEDULER_DESC_MAX_LEN - 1);
+		return -EINVAL;
+	}
 	strncpy(sched_ctx->description, scheduler->description,
 			RTE_CRYPTODEV_SCHEDULER_DESC_MAX_LEN);
 
