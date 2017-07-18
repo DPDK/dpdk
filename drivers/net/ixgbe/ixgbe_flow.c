@@ -1905,30 +1905,22 @@ ixgbe_parse_fdir_filter_normal(const struct rte_flow_attr *attr,
 				item, "Not supported last point for range");
 			return -rte_errno;
 		}
-		/**
-		 * Only care about src & dst ports,
-		 * others should be masked.
-		 */
-		if (!item->mask) {
-			memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
-			rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ITEM,
-				item, "Not supported by fdir filter");
-			return -rte_errno;
+
+		if (item->mask) {
+			rule->b_mask = TRUE;
+			sctp_mask =
+				(const struct rte_flow_item_sctp *)item->mask;
+			if (sctp_mask->hdr.tag ||
+				sctp_mask->hdr.cksum) {
+				memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
+				rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ITEM,
+					item, "Not supported by fdir filter");
+				return -rte_errno;
+			}
+			rule->mask.src_port_mask = sctp_mask->hdr.src_port;
+			rule->mask.dst_port_mask = sctp_mask->hdr.dst_port;
 		}
-		rule->b_mask = TRUE;
-		sctp_mask =
-			(const struct rte_flow_item_sctp *)item->mask;
-		if (sctp_mask->hdr.tag ||
-		    sctp_mask->hdr.cksum) {
-			memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
-			rte_flow_error_set(error, EINVAL,
-				RTE_FLOW_ERROR_TYPE_ITEM,
-				item, "Not supported by fdir filter");
-			return -rte_errno;
-		}
-		rule->mask.src_port_mask = sctp_mask->hdr.src_port;
-		rule->mask.dst_port_mask = sctp_mask->hdr.dst_port;
 
 		if (item->spec) {
 			rule->b_spec = TRUE;
@@ -2545,7 +2537,17 @@ ixgbe_parse_fdir_filter(struct rte_eth_dev *dev,
 	ret = ixgbe_parse_fdir_filter_tunnel(attr, pattern,
 					actions, rule, error);
 
+	if (ret)
+		return ret;
+
 step_next:
+
+	if (hw->mac.type == ixgbe_mac_82599EB &&
+		rule->fdirflags == IXGBE_FDIRCMD_DROP &&
+		(rule->mask.src_port_mask != 0 ||
+		rule->mask.dst_port_mask != 0))
+		return -ENOTSUP;
+
 	if (fdir_mode == RTE_FDIR_MODE_NONE ||
 	    fdir_mode != rule->mode)
 		return -ENOTSUP;
