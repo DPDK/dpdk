@@ -62,6 +62,7 @@ fs_bus_init(struct rte_eth_dev *dev)
 			ERROR("sub_device %d init went wrong", i);
 			return -ENODEV;
 		}
+		SUB_ID(sdev) = i;
 		sdev->dev = ETH(sdev)->device;
 		ETH(sdev)->state = RTE_ETH_DEV_DEFERRED;
 		sdev->state = DEV_PROBED;

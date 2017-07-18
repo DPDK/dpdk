@@ -34,6 +34,8 @@
 #ifndef _RTE_ETH_FAILSAFE_PRIVATE_H_
 #define _RTE_ETH_FAILSAFE_PRIVATE_H_
 
+#include <sys/queue.h>
+
 #include <rte_dev.h>
 #include <rte_ethdev.h>
 #include <rte_devargs.h>
@@ -72,6 +74,14 @@ struct txq {
 	struct rte_eth_txq_info info;
 };
 
+struct rte_flow {
+	TAILQ_ENTRY(rte_flow) next;
+	/* sub_flows */
+	struct rte_flow *flows[FAILSAFE_MAX_ETHPORTS];
+	/* flow description for synchronization */
+	struct rte_flow_desc *fd;
+};
+
 enum dev_state {
 	DEV_UNDEFINED,
 	DEV_PARSED,
@@ -86,6 +96,7 @@ struct sub_device {
 	struct rte_bus *bus;
 	struct rte_device *dev;
 	struct rte_eth_dev *edev;
+	uint8_t sid;
 	/* Device state machine */
 	enum dev_state state;
 	/* Some device are defined as a command line */
@@ -104,6 +115,8 @@ struct fs_priv {
 	uint8_t subs_tail; /* first invalid */
 	uint8_t subs_tx; /* current emitting device */
 	uint8_t current_probed;
+	/* flow mapping */
+	TAILQ_HEAD(sub_flows, rte_flow) flow_list;
 	/* current number of mac_addr slots allocated. */
 	uint32_t nb_mac_addr;
 	struct ether_addr mac_addrs[FAILSAFE_MAX_ETHADDR];
@@ -153,6 +166,7 @@ int failsafe_eth_dev_state_sync(struct rte_eth_dev *dev);
 
 extern const char pmd_failsafe_driver_name[];
 extern const struct eth_dev_ops failsafe_ops;
+extern const struct rte_flow_ops fs_flow_ops;
 extern uint64_t hotplug_poll;
 extern int mac_from_arg;
 
@@ -169,6 +183,10 @@ extern int mac_from_arg;
 /* sdev: (struct sub_device *) */
 #define PORT_ID(sdev) \
 	(ETH(sdev)->data->port_id)
+
+/* sdev: (struct sub_device *) */
+#define SUB_ID(sdev) \
+	((sdev)->sid)
 
 /**
  * Stateful iterator construct over fail-safe sub-devices:

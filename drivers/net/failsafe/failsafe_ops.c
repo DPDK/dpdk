@@ -36,6 +36,7 @@
 #include <rte_debug.h>
 #include <rte_ethdev.h>
 #include <rte_malloc.h>
+#include <rte_flow.h>
 
 #include "failsafe_private.h"
 
@@ -627,6 +628,33 @@ fs_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
 		rte_eth_dev_default_mac_addr_set(PORT_ID(sdev), mac_addr);
 }
 
+static int
+fs_filter_ctrl(struct rte_eth_dev *dev,
+		enum rte_filter_type type,
+		enum rte_filter_op op,
+		void *arg)
+{
+	struct sub_device *sdev;
+	uint8_t i;
+	int ret;
+
+	if (type == RTE_ETH_FILTER_GENERIC &&
+	    op == RTE_ETH_FILTER_GET) {
+		*(const void **)arg = &fs_flow_ops;
+		return 0;
+	}
+	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
+		DEBUG("Calling rte_eth_dev_filter_ctrl on sub_device %d", i);
+		ret = rte_eth_dev_filter_ctrl(PORT_ID(sdev), type, op, arg);
+		if (ret) {
+			ERROR("Operation rte_eth_dev_filter_ctrl failed for sub_device %d"
+			      " with error %d", i, ret);
+			return ret;
+		}
+	}
+	return 0;
+}
+
 const struct eth_dev_ops failsafe_ops = {
 	.dev_configure = fs_dev_configure,
 	.dev_start = fs_dev_start,
@@ -654,4 +682,5 @@ const struct eth_dev_ops failsafe_ops = {
 	.mac_addr_remove = fs_mac_addr_remove,
 	.mac_addr_add = fs_mac_addr_add,
 	.mac_addr_set = fs_mac_addr_set,
+	.filter_ctrl = fs_filter_ctrl,
 };

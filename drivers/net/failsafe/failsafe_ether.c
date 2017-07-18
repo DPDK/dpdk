@@ -33,7 +33,45 @@
 
 #include <unistd.h>
 
+#include <rte_flow.h>
+#include <rte_flow_driver.h>
+
 #include "failsafe_private.h"
+
+/** Print a message out of a flow error. */
+static int
+fs_flow_complain(struct rte_flow_error *error)
+{
+	static const char *const errstrlist[] = {
+		[RTE_FLOW_ERROR_TYPE_NONE] = "no error",
+		[RTE_FLOW_ERROR_TYPE_UNSPECIFIED] = "cause unspecified",
+		[RTE_FLOW_ERROR_TYPE_HANDLE] = "flow rule (handle)",
+		[RTE_FLOW_ERROR_TYPE_ATTR_GROUP] = "group field",
+		[RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY] = "priority field",
+		[RTE_FLOW_ERROR_TYPE_ATTR_INGRESS] = "ingress field",
+		[RTE_FLOW_ERROR_TYPE_ATTR_EGRESS] = "egress field",
+		[RTE_FLOW_ERROR_TYPE_ATTR] = "attributes structure",
+		[RTE_FLOW_ERROR_TYPE_ITEM_NUM] = "pattern length",
+		[RTE_FLOW_ERROR_TYPE_ITEM] = "specific pattern item",
+		[RTE_FLOW_ERROR_TYPE_ACTION_NUM] = "number of actions",
+		[RTE_FLOW_ERROR_TYPE_ACTION] = "specific action",
+	};
+	const char *errstr;
+	char buf[32];
+	int err = rte_errno;
+
+	if ((unsigned int)error->type >= RTE_DIM(errstrlist) ||
+			!errstrlist[error->type])
+		errstr = "unknown type";
+	else
+		errstr = errstrlist[error->type];
+	ERROR("Caught error type %d (%s): %s%s\n",
+		error->type, errstr,
+		error->cause ? (snprintf(buf, sizeof(buf), "cause: %p, ",
+				error->cause), buf) : "",
+		error->message ? error->message : "(no stated reason)");
+	return -err;
+}
 
 static int
 fs_eth_dev_conf_apply(struct rte_eth_dev *dev,
@@ -42,6 +80,8 @@ fs_eth_dev_conf_apply(struct rte_eth_dev *dev,
 	struct rte_eth_dev *edev;
 	struct rte_vlan_filter_conf *vfc1;
 	struct rte_vlan_filter_conf *vfc2;
+	struct rte_flow *flow;
+	struct rte_flow_error ferror;
 	uint32_t i;
 	int ret;
 
@@ -176,6 +216,36 @@ fs_eth_dev_conf_apply(struct rte_eth_dev *dev,
 		}
 	} else {
 		DEBUG("VLAN filter already set");
+	}
+	/* rte_flow */
+	if (TAILQ_EMPTY(&PRIV(dev)->flow_list)) {
+		DEBUG("rte_flow already set");
+	} else {
+		DEBUG("Resetting rte_flow configuration");
+		ret = rte_flow_flush(PORT_ID(sdev), &ferror);
+		if (ret) {
+			fs_flow_complain(&ferror);
+			return ret;
+		}
+		i = 0;
+		rte_errno = 0;
+		DEBUG("Configuring rte_flow");
+		TAILQ_FOREACH(flow, &PRIV(dev)->flow_list, next) {
+			DEBUG("Creating flow #%" PRIu32, i++);
+			flow->flows[SUB_ID(sdev)] =
+				rte_flow_create(PORT_ID(sdev),
+						&flow->fd->attr,
+						flow->fd->items,
+						flow->fd->actions,
+						&ferror);
+			ret = rte_errno;
+			if (ret)
+				break;
+		}
+		if (ret) {
+			fs_flow_complain(&ferror);
+			return ret;
+		}
 	}
 	return 0;
 }
