@@ -291,7 +291,8 @@ int
 rte_eth_dev_is_valid_port(uint8_t port_id)
 {
 	if (port_id >= RTE_MAX_ETHPORTS ||
-	    rte_eth_devices[port_id].state != RTE_ETH_DEV_ATTACHED)
+	    (rte_eth_devices[port_id].state != RTE_ETH_DEV_ATTACHED &&
+	     rte_eth_devices[port_id].state != RTE_ETH_DEV_DEFERRED))
 		return 0;
 	else
 		return 1;
