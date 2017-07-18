@@ -764,6 +764,11 @@ l2fwd_main_loop(struct l2fwd_crypto_options *options)
 		}
 
 		if (port_cparams[i].do_aead) {
+			port_cparams[i].aead_iv.data = options->aead_iv.data;
+			port_cparams[i].aead_iv.length = options->aead_iv.length;
+			if (!options->aead_iv_param)
+				generate_random_key(port_cparams[i].aead_iv.data,
+						port_cparams[i].aead_iv.length);
 			port_cparams[i].aead_algo = options->aead_xform.aead.algo;
 			port_cparams[i].digest_length =
 					options->aead_xform.aead.digest_length;
