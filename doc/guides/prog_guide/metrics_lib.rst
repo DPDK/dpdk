@@ -144,6 +144,7 @@ print out all metrics for a given port:
 .. code-block:: c
 
     void print_metrics() {
+        struct rte_metric_value *metrics;
         struct rte_metric_name *names;
         int len;
 
