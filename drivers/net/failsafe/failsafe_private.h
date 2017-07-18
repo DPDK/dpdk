@@ -141,9 +141,16 @@ int failsafe_hotplug_alarm_cancel(struct rte_eth_dev *dev);
 
 /* RX / TX */
 
+void set_burst_fn(struct rte_eth_dev *dev, int force_safe);
+
 uint16_t failsafe_rx_burst(void *rxq,
 		struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
 uint16_t failsafe_tx_burst(void *txq,
+		struct rte_mbuf **tx_pkts, uint16_t nb_pkts);
+
+uint16_t failsafe_rx_burst_fast(void *rxq,
+		struct rte_mbuf **rx_pkts, uint16_t nb_pkts);
+uint16_t failsafe_tx_burst_fast(void *txq,
 		struct rte_mbuf **tx_pkts, uint16_t nb_pkts);
 
 /* ARGS */
@@ -282,6 +289,7 @@ fs_switch_dev(struct rte_eth_dev *dev)
 	} else {
 		return;
 	}
+	set_burst_fn(dev, 0);
 	rte_wmb();
 }
 
