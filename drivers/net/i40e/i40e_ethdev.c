@@ -9223,8 +9223,9 @@ i40e_pctype_to_flowtype(enum i40e_filter_pctype pctype)
  */
 
 /* For both X710 and XL710 */
-#define I40E_GL_SWR_PRI_JOIN_MAP_0_VALUE 0x10000200
-#define I40E_GL_SWR_PRI_JOIN_MAP_0       0x26CE00
+#define I40E_GL_SWR_PRI_JOIN_MAP_0_VALUE_1	0x10000200
+#define I40E_GL_SWR_PRI_JOIN_MAP_0_VALUE_2	0x20000200
+#define I40E_GL_SWR_PRI_JOIN_MAP_0		0x26CE00
 
 #define I40E_GL_SWR_PRI_JOIN_MAP_2_VALUE 0x011f0200
 #define I40E_GL_SWR_PRI_JOIN_MAP_2       0x26CE08
@@ -9279,8 +9280,12 @@ i40e_configure_registers(struct i40e_hw *hw)
 				reg_table[i].val =
 					I40E_X722_GL_SWR_PRI_JOIN_MAP_0_VALUE;
 			else /* For X710/XL710/XXV710 */
-				reg_table[i].val =
-					I40E_GL_SWR_PRI_JOIN_MAP_0_VALUE;
+				if (hw->aq.fw_maj_ver < 6)
+					reg_table[i].val =
+					     I40E_GL_SWR_PRI_JOIN_MAP_0_VALUE_1;
+				else
+					reg_table[i].val =
+					     I40E_GL_SWR_PRI_JOIN_MAP_0_VALUE_2;
 		}
 
 		if (reg_table[i].addr == I40E_GL_SWR_PRI_JOIN_MAP_2) {
