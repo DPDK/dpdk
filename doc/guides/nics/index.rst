@@ -64,6 +64,7 @@ Network Interface Controller Drivers
     vhost
     vmxnet3
     pcap_ring
+    fail_safe
 
 **Figures**
 

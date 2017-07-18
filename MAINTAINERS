@@ -504,6 +504,11 @@ M: Tetsuya Mukawa <mtetsuyah@gmail.com>
 F: drivers/net/null/
 F: doc/guides/nics/features/null.ini
 
+Fail-safe PMD
+M: Gaetan Rivet <gaetan.rivet@6wind.com>
+F: drivers/net/failsafe/
+F: doc/guides/nics/fail_safe.rst
+
 
 Crypto Drivers
 --------------

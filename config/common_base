@@ -420,6 +420,11 @@ CONFIG_RTE_LIBRTE_PMD_XENVIRT=n
 CONFIG_RTE_LIBRTE_PMD_NULL=y
 
 #
+# Compile fail-safe PMD
+#
+CONFIG_RTE_LIBRTE_PMD_FAILSAFE=y
+
+#
 # Do prefetch of packet data within PMD driver receive function
 #
 CONFIG_RTE_PMD_PACKET_PREFETCH=y
