@@ -74,6 +74,28 @@ fs_flow_complain(struct rte_flow_error *error)
 }
 
 static int
+eth_dev_flow_isolate_set(struct rte_eth_dev *dev,
+			 struct sub_device *sdev)
+{
+	struct rte_flow_error ferror;
+	int ret;
+
+	if (!PRIV(dev)->flow_isolated) {
+		DEBUG("Flow isolation already disabled");
+	} else {
+		DEBUG("Enabling flow isolation");
+		ret = rte_flow_isolate(PORT_ID(sdev),
+				       PRIV(dev)->flow_isolated,
+				       &ferror);
+		if (ret) {
+			fs_flow_complain(&ferror);
+			return ret;
+		}
+	}
+	return 0;
+}
+
+static int
 fs_eth_dev_conf_apply(struct rte_eth_dev *dev,
 		struct sub_device *sdev)
 {
@@ -334,9 +356,17 @@ failsafe_eth_dev_state_sync(struct rte_eth_dev *dev)
 	if (PRIV(dev)->state < DEV_ACTIVE)
 		return 0;
 	inactive = 0;
-	FOREACH_SUBDEV(sdev, i, dev)
-		if (sdev->state == DEV_PROBED)
+	FOREACH_SUBDEV(sdev, i, dev) {
+		if (sdev->state == DEV_PROBED) {
 			inactive |= UINT32_C(1) << i;
+			ret = eth_dev_flow_isolate_set(dev, sdev);
+			if (ret) {
+				ERROR("Could not apply configuration to sub_device %d",
+				      i);
+				goto err_remove;
+			}
+		}
+	}
 	ret = dev->dev_ops->dev_configure(dev);
 	if (ret)
 		goto err_remove;

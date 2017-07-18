@@ -206,10 +206,39 @@ fs_flow_query(struct rte_eth_dev *dev,
 	return -1;
 }
 
+static int
+fs_flow_isolate(struct rte_eth_dev *dev,
+		int set,
+		struct rte_flow_error *error)
+{
+	struct sub_device *sdev;
+	uint8_t i;
+	int ret;
+
+	FOREACH_SUBDEV(sdev, i, dev) {
+		if (sdev->state < DEV_PROBED)
+			continue;
+		DEBUG("Calling rte_flow_isolate on sub_device %d", i);
+		if (PRIV(dev)->flow_isolated != sdev->flow_isolated)
+			WARN("flow isolation mode of sub_device %d in incoherent state.",
+				i);
+		ret = rte_flow_isolate(PORT_ID(sdev), set, error);
+		if (ret) {
+			ERROR("Operation rte_flow_isolate failed for sub_device %d"
+			      " with error %d", i, ret);
+			return ret;
+		}
+		sdev->flow_isolated = set;
+	}
+	PRIV(dev)->flow_isolated = set;
+	return 0;
+}
+
 const struct rte_flow_ops fs_flow_ops = {
 	.validate = fs_flow_validate,
 	.create = fs_flow_create,
 	.destroy = fs_flow_destroy,
 	.flush = fs_flow_flush,
 	.query = fs_flow_query,
+	.isolate = fs_flow_isolate,
 };
