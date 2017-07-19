@@ -315,7 +315,8 @@ dpaa2_eventdev_info_get(struct rte_eventdev *dev,
 	dev_info->max_event_port_enqueue_depth =
 		DPAA2_EVENT_MAX_PORT_ENQUEUE_DEPTH;
 	dev_info->max_num_events = DPAA2_EVENT_MAX_NUM_EVENTS;
-	dev_info->event_dev_cap = RTE_EVENT_DEV_CAP_DISTRIBUTED_SCHED;
+	dev_info->event_dev_cap = RTE_EVENT_DEV_CAP_DISTRIBUTED_SCHED |
+		RTE_EVENT_DEV_CAP_BURST_MODE;
 }
 
 static int
