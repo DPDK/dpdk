@@ -73,11 +73,11 @@
 #define MAX_PKT_BURST           (32)
 #define DEF_PKT_BURST           (16)
 
-#define BONDED_DEV_NAME         ("ut_mode4_bond_dev")
+#define BONDED_DEV_NAME         ("net_bonding_m4_bond_dev")
 
-#define SLAVE_DEV_NAME_FMT      ("ut_mode4_slave_%d")
-#define SLAVE_RX_QUEUE_FMT      ("ut_mode4_slave_%d_rx")
-#define SLAVE_TX_QUEUE_FMT      ("ut_mode4_slave_%d_tx")
+#define SLAVE_DEV_NAME_FMT      ("net_virt_%d")
+#define SLAVE_RX_QUEUE_FMT      ("net_virt_%d_rx")
+#define SLAVE_TX_QUEUE_FMT      ("net_virt_%d_tx")
 
 #define INVALID_SOCKET_ID       (-1)
 #define INVALID_PORT_ID         (0xFF)
@@ -676,6 +676,74 @@ test_mode4_lacp(void)
 	/* Test LACP handshake function */
 	retval = bond_handshake();
 	TEST_ASSERT_SUCCESS(retval, "Initial handshake failed");
+
+	retval = remove_slaves_and_stop_bonded_device();
+	TEST_ASSERT_SUCCESS(retval, "Test cleanup failed.");
+
+	return TEST_SUCCESS;
+}
+static int
+test_mode4_agg_mode_selection(void)
+{
+	int retval;
+	/* Test and verify for Stable mode */
+	retval = initialize_bonded_device_with_slaves(TEST_LACP_SLAVE_COUT, 0);
+	TEST_ASSERT_SUCCESS(retval, "Failed to initialize bonded device");
+
+
+	retval = rte_eth_bond_8023ad_agg_selection_set(
+			test_params.bonded_port_id, AGG_STABLE);
+	TEST_ASSERT_SUCCESS(retval, "Failed to initialize bond aggregation mode");
+	retval = bond_handshake();
+	TEST_ASSERT_SUCCESS(retval, "Initial handshake failed");
+
+
+	retval = rte_eth_bond_8023ad_agg_selection_get(
+			test_params.bonded_port_id);
+	TEST_ASSERT_EQUAL(retval, AGG_STABLE,
+			"Wrong agg mode received from bonding device");
+
+	retval = remove_slaves_and_stop_bonded_device();
+	TEST_ASSERT_SUCCESS(retval, "Test cleanup failed.");
+
+
+	/* test and verify for Bandwidth mode */
+	retval = initialize_bonded_device_with_slaves(TEST_LACP_SLAVE_COUT, 0);
+	TEST_ASSERT_SUCCESS(retval, "Failed to initialize bonded device");
+
+
+	retval = rte_eth_bond_8023ad_agg_selection_set(
+			test_params.bonded_port_id,
+			AGG_BANDWIDTH);
+	TEST_ASSERT_SUCCESS(retval,
+			"Failed to initialize bond aggregation mode");
+	retval = bond_handshake();
+	TEST_ASSERT_SUCCESS(retval, "Initial handshake failed");
+
+	retval = rte_eth_bond_8023ad_agg_selection_get(
+			test_params.bonded_port_id);
+	TEST_ASSERT_EQUAL(retval, AGG_BANDWIDTH,
+			"Wrong agg mode received from bonding device");
+
+	retval = remove_slaves_and_stop_bonded_device();
+	TEST_ASSERT_SUCCESS(retval, "Test cleanup failed.");
+
+	/* test and verify selection for count mode */
+	retval = initialize_bonded_device_with_slaves(TEST_LACP_SLAVE_COUT, 0);
+	TEST_ASSERT_SUCCESS(retval, "Failed to initialize bonded device");
+
+
+	retval = rte_eth_bond_8023ad_agg_selection_set(
+			test_params.bonded_port_id, AGG_COUNT);
+	TEST_ASSERT_SUCCESS(retval,
+			"Failed to initialize bond aggregation mode");
+	retval = bond_handshake();
+	TEST_ASSERT_SUCCESS(retval, "Initial handshake failed");
+
+	retval = rte_eth_bond_8023ad_agg_selection_get(
+			test_params.bonded_port_id);
+	TEST_ASSERT_EQUAL(retval, AGG_COUNT,
+			"Wrong agg mode received from bonding device");
 
 	retval = remove_slaves_and_stop_bonded_device();
 	TEST_ASSERT_SUCCESS(retval, "Test cleanup failed.");
@@ -1535,6 +1603,11 @@ test_mode4_executor(int (*test_func)(void))
 }
 
 static int
+test_mode4_agg_mode_selection_wrapper(void){
+	return test_mode4_executor(&test_mode4_agg_mode_selection);
+}
+
+static int
 test_mode4_lacp_wrapper(void)
 {
 	return test_mode4_executor(&test_mode4_lacp);
@@ -1581,6 +1654,8 @@ static struct unit_test_suite link_bonding_mode4_test_suite  = {
 	.setup = test_setup,
 	.teardown = testsuite_teardown,
 	.unit_test_cases = {
+		TEST_CASE_NAMED("test_mode4_agg_mode_selection",
+				test_mode4_agg_mode_selection_wrapper),
 		TEST_CASE_NAMED("test_mode4_lacp", test_mode4_lacp_wrapper),
 		TEST_CASE_NAMED("test_mode4_rx", test_mode4_rx_wrapper),
 		TEST_CASE_NAMED("test_mode4_tx_burst", test_mode4_tx_burst_wrapper),
