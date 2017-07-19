@@ -98,7 +98,7 @@ struct rte_jobstats {
 } __rte_cache_aligned;
 
 struct rte_jobstats_context {
-	/** Viariable holding time at different points:
+	/** Variable holding time at different points:
 	 * -# loop start time if loop was started but no job executed yet.
 	 * -# job start time if job is currently executing.
 	 * -# job finish time if job finished its execution.
