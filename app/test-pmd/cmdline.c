@@ -579,6 +579,9 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"set bonding mac_addr (port_id) (address)\n"
 			"	Set the MAC address of a bonded device.\n\n"
 
+			"set bonding mode IEEE802.3AD aggregator policy (port_id) (agg_name)"
+			"	Set Aggregation mode for IEEE802.3AD (mode 4)"
+
 			"set bonding xmit_balance_policy (port_id) (l2|l23|l34)\n"
 			"	Set the transmit balance policy for bonded device running in balance mode.\n\n"
 
@@ -4589,7 +4592,7 @@ static void cmd_show_bonding_config_parsed(void *parsed_result,
 		__attribute__((unused)) void *data)
 {
 	struct cmd_show_bonding_config_result *res = parsed_result;
-	int bonding_mode;
+	int bonding_mode, agg_mode;
 	uint8_t slaves[RTE_MAX_ETHPORTS];
 	int num_slaves, num_active_slaves;
 	int primary_id;
@@ -4628,6 +4631,23 @@ static void cmd_show_bonding_config_parsed(void *parsed_result,
 			}
 			printf("\n");
 		}
+	}
+
+	if (bonding_mode == BONDING_MODE_8023AD) {
+		agg_mode = rte_eth_bond_8023ad_agg_selection_get(port_id);
+		printf("\tIEEE802.3AD Aggregator Mode: ");
+		switch (agg_mode) {
+		case AGG_BANDWIDTH:
+			printf("bandwidth");
+			break;
+		case AGG_STABLE:
+			printf("stable");
+			break;
+		case AGG_COUNT:
+			printf("count");
+			break;
+		}
+		printf("\n");
 	}
 
 	num_slaves = rte_eth_bond_slaves_get(port_id, slaves, RTE_MAX_ETHPORTS);
@@ -5061,6 +5081,77 @@ cmdline_parse_inst_t cmd_set_bond_mon_period = {
 				NULL
 		}
 };
+
+
+
+struct cmd_set_bonding_agg_mode_policy_result {
+	cmdline_fixed_string_t set;
+	cmdline_fixed_string_t bonding;
+	cmdline_fixed_string_t agg_mode;
+	uint8_t port_num;
+	cmdline_fixed_string_t policy;
+};
+
+
+static void
+cmd_set_bonding_agg_mode(void *parsed_result,
+		__attribute__((unused)) struct cmdline *cl,
+		__attribute__((unused)) void *data)
+{
+	struct cmd_set_bonding_agg_mode_policy_result *res = parsed_result;
+	uint8_t policy = AGG_BANDWIDTH;
+
+	if (res->port_num >= nb_ports) {
+		printf("Port id %d must be less than %d\n",
+				res->port_num, nb_ports);
+		return;
+	}
+
+	if (!strcmp(res->policy, "bandwidth"))
+		policy = AGG_BANDWIDTH;
+	else if (!strcmp(res->policy, "stable"))
+		policy = AGG_STABLE;
+	else if (!strcmp(res->policy, "count"))
+		policy = AGG_COUNT;
+
+	rte_eth_bond_8023ad_agg_selection_set(res->port_num, policy);
+}
+
+
+cmdline_parse_token_string_t cmd_set_bonding_agg_mode_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_bonding_agg_mode_policy_result,
+				set, "set");
+cmdline_parse_token_string_t cmd_set_bonding_agg_mode_bonding =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_bonding_agg_mode_policy_result,
+				bonding, "bonding");
+
+cmdline_parse_token_string_t cmd_set_bonding_agg_mode_agg_mode =
+	TOKEN_STRING_INITIALIZER(struct cmd_set_bonding_agg_mode_policy_result,
+				agg_mode, "agg_mode");
+
+cmdline_parse_token_num_t cmd_set_bonding_agg_mode_portnum =
+	TOKEN_NUM_INITIALIZER(struct cmd_set_bonding_agg_mode_policy_result,
+				port_num, UINT8);
+
+cmdline_parse_token_string_t cmd_set_bonding_agg_mode_policy_string =
+	TOKEN_STRING_INITIALIZER(
+			struct cmd_set_bonding_balance_xmit_policy_result,
+		policy, "stable#bandwidth#count");
+
+cmdline_parse_inst_t cmd_set_bonding_agg_mode_policy = {
+	.f = cmd_set_bonding_agg_mode,
+	.data = (void *) 0,
+	.help_str = "set bonding mode IEEE802.3AD aggregator policy <port_id> <agg_name>",
+	.tokens = {
+			(void *)&cmd_set_bonding_agg_mode_set,
+			(void *)&cmd_set_bonding_agg_mode_bonding,
+			(void *)&cmd_set_bonding_agg_mode_agg_mode,
+			(void *)&cmd_set_bonding_agg_mode_portnum,
+			(void *)&cmd_set_bonding_agg_mode_policy_string,
+			NULL
+		}
+};
+
 
 #endif /* RTE_LIBRTE_PMD_BOND */
 
@@ -14141,6 +14232,7 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *) &cmd_set_balance_xmit_policy,
 	(cmdline_parse_inst_t *) &cmd_set_bond_mon_period,
 	(cmdline_parse_inst_t *) &cmd_set_lacp_dedicated_queues,
+	(cmdline_parse_inst_t *) &cmd_set_bonding_agg_mode_policy,
 #endif
 	(cmdline_parse_inst_t *)&cmd_vlan_offload,
 	(cmdline_parse_inst_t *)&cmd_vlan_tpid,
