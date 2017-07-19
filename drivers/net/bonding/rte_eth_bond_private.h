@@ -45,6 +45,7 @@
 #define PMD_BOND_SLAVE_PORT_KVARG			("slave")
 #define PMD_BOND_PRIMARY_SLAVE_KVARG		("primary")
 #define PMD_BOND_MODE_KVARG					("mode")
+#define PMD_BOND_AGG_MODE_KVARG				("agg_mode")
 #define PMD_BOND_XMIT_POLICY_KVARG			("xmit_policy")
 #define PMD_BOND_SOCKET_ID_KVARG			("socket_id")
 #define PMD_BOND_MAC_ADDR_KVARG				("mac")
@@ -266,6 +267,10 @@ bond_ethdev_parse_slave_port_kvarg(const char *key,
 
 int
 bond_ethdev_parse_slave_mode_kvarg(const char *key,
+		const char *value, void *extra_args);
+
+int
+bond_ethdev_parse_slave_agg_mode_kvarg(const char *key __rte_unused,
 		const char *value, void *extra_args);
 
 int

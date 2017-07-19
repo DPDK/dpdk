@@ -73,6 +73,12 @@ enum rte_bond_8023ad_selection {
 	SELECTED
 };
 
+enum rte_bond_8023ad_agg_selection {
+	AGG_BANDWIDTH,
+	AGG_COUNT,
+	AGG_STABLE
+};
+
 /** Generic slow protocol structure */
 struct slow_protocol {
 	uint8_t subtype;
@@ -161,6 +167,7 @@ struct rte_eth_bond_8023ad_conf {
 	uint32_t rx_marker_period_ms;
 	uint32_t update_timeout_ms;
 	rte_eth_bond_8023ad_ext_slowrx_fn slowrx_cb;
+	enum rte_bond_8023ad_agg_selection agg_selection;
 };
 
 struct rte_eth_bond_8023ad_slave_info {
@@ -193,6 +200,9 @@ rte_eth_bond_8023ad_conf_get_v20(uint8_t port_id,
 int
 rte_eth_bond_8023ad_conf_get_v1607(uint8_t port_id,
 		struct rte_eth_bond_8023ad_conf *conf);
+int
+rte_eth_bond_8023ad_conf_get_v1708(uint8_t port_id,
+		struct rte_eth_bond_8023ad_conf *conf);
 
 /**
  * @internal
@@ -213,6 +223,9 @@ rte_eth_bond_8023ad_setup_v20(uint8_t port_id,
 		struct rte_eth_bond_8023ad_conf *conf);
 int
 rte_eth_bond_8023ad_setup_v1607(uint8_t port_id,
+		struct rte_eth_bond_8023ad_conf *conf);
+int
+rte_eth_bond_8023ad_setup_v1708(uint8_t port_id,
 		struct rte_eth_bond_8023ad_conf *conf);
 
 /**
@@ -344,4 +357,23 @@ rte_eth_bond_8023ad_dedicated_queues_enable(uint8_t port_id);
 int
 rte_eth_bond_8023ad_dedicated_queues_disable(uint8_t port_id);
 
+/*
+ * Get aggregator mode for 8023ad
+ * @param port_id Bonding device id
+ *
+ * @return
+ *   agregator mode on success, negative value otherwise
+ */
+int
+rte_eth_bond_8023ad_agg_selection_get(uint8_t port_id);
+
+/**
+ * Set aggregator mode for 8023ad
+ * @param port_id Bonding device id
+ * @return
+ *   0 on success, negative value otherwise
+ */
+int
+rte_eth_bond_8023ad_agg_selection_set(uint8_t port_id,
+		enum rte_bond_8023ad_agg_selection agg_selection);
 #endif /* RTE_ETH_BOND_8023AD_H_ */

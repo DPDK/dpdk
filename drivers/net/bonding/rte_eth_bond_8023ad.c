@@ -44,7 +44,6 @@
 #include "rte_eth_bond_private.h"
 
 static void bond_mode_8023ad_ext_periodic_cb(void *arg);
-
 #ifdef RTE_LIBRTE_BOND_DEBUG_8023AD
 #define MODE4_DEBUG(fmt, ...) RTE_LOG(DEBUG, PMD, "%6u [Port %u: %s] " fmt, \
 			bond_dbg_get_time_diff_ms(), slave_id, \
@@ -660,6 +659,25 @@ tx_machine(struct bond_dev_private *internals, uint8_t slave_id)
 	SM_FLAG_CLR(port, NTT);
 }
 
+static uint8_t
+max_index(uint64_t *a, int n)
+{
+	if (n <= 0)
+		return -1;
+
+	int i, max_i = 0;
+	uint64_t max = a[0];
+
+	for (i = 1; i < n; ++i) {
+		if (a[i] > max) {
+			max = a[i];
+			max_i = i;
+		}
+	}
+
+	return max_i;
+}
+
 /**
  * Function assigns port to aggregator.
  *
@@ -670,8 +688,13 @@ static void
 selection_logic(struct bond_dev_private *internals, uint8_t slave_id)
 {
 	struct port *agg, *port;
-	uint8_t slaves_count, new_agg_id, i;
+	uint8_t slaves_count, new_agg_id, i, j = 0;
 	uint8_t *slaves;
+	uint64_t agg_bandwidth[8] = {0};
+	uint64_t agg_count[8] = {0};
+	uint8_t default_slave = 0;
+	uint8_t mode_count_id, mode_band_id;
+	struct rte_eth_link link_info;
 
 	slaves = internals->active_slaves;
 	slaves_count = internals->active_slave_count;
@@ -684,6 +707,10 @@ selection_logic(struct bond_dev_private *internals, uint8_t slave_id)
 		if (agg->aggregator_port_id != slaves[i])
 			continue;
 
+		agg_count[agg->aggregator_port_id] += 1;
+		rte_eth_link_get_nowait(slaves[i], &link_info);
+		agg_bandwidth[agg->aggregator_port_id] += link_info.link_speed;
+
 		/* Actors system ID is not checked since all slave device have the same
 		 * ID (MAC address). */
 		if ((agg->actor.key == port->actor.key &&
@@ -694,15 +721,36 @@ selection_logic(struct bond_dev_private *internals, uint8_t slave_id)
 			(agg->actor.key &
 				rte_cpu_to_be_16(BOND_LINK_FULL_DUPLEX_KEY)) != 0) {
 
-			break;
+			if (j == 0)
+				default_slave = i;
+			j++;
 		}
 	}
 
-	/* By default, port uses it self as agregator */
-	if (i == slaves_count)
-		new_agg_id = slave_id;
-	else
-		new_agg_id = slaves[i];
+	switch (internals->mode4.agg_selection) {
+	case AGG_COUNT:
+		mode_count_id = max_index(
+				(uint64_t *)agg_count, slaves_count);
+		new_agg_id = mode_count_id;
+		break;
+	case AGG_BANDWIDTH:
+		mode_band_id = max_index(
+				(uint64_t *)agg_bandwidth, slaves_count);
+		new_agg_id = mode_band_id;
+		break;
+	case AGG_STABLE:
+		if (default_slave == slaves_count)
+			new_agg_id = slave_id;
+		else
+			new_agg_id = slaves[default_slave];
+		break;
+	default:
+		if (default_slave == slaves_count)
+			new_agg_id = slave_id;
+		else
+			new_agg_id = slaves[default_slave];
+		break;
+	}
 
 	if (new_agg_id != port->aggregator_port_id) {
 		port->aggregator_port_id = new_agg_id;
@@ -909,7 +957,7 @@ bond_mode_8023ad_activate_slave(struct rte_eth_dev *bond_dev, uint8_t slave_id)
 
 	/* default states */
 	port->actor_state = STATE_AGGREGATION | STATE_LACP_ACTIVE | STATE_DEFAULTED;
-	port->partner_state = STATE_LACP_ACTIVE;
+	port->partner_state = STATE_LACP_ACTIVE | STATE_AGGREGATION;
 	port->sm_flags = SM_FLAGS_BEGIN;
 
 	/* use this port as agregator */
@@ -1077,6 +1125,18 @@ bond_mode_8023ad_conf_get_v1607(struct rte_eth_dev *dev,
 }
 
 static void
+bond_mode_8023ad_conf_get_v1708(struct rte_eth_dev *dev,
+		struct rte_eth_bond_8023ad_conf *conf)
+{
+	struct bond_dev_private *internals = dev->data->dev_private;
+	struct mode8023ad_private *mode4 = &internals->mode4;
+
+	bond_mode_8023ad_conf_get(dev, conf);
+	conf->slowrx_cb = mode4->slowrx_cb;
+	conf->agg_selection = mode4->agg_selection;
+}
+
+static void
 bond_mode_8023ad_conf_get_default(struct rte_eth_bond_8023ad_conf *conf)
 {
 	conf->fast_periodic_ms = BOND_8023AD_FAST_PERIODIC_MS;
@@ -1088,6 +1148,7 @@ bond_mode_8023ad_conf_get_default(struct rte_eth_bond_8023ad_conf *conf)
 	conf->rx_marker_period_ms = BOND_8023AD_RX_MARKER_PERIOD_MS;
 	conf->update_timeout_ms = BOND_MODE_8023AX_UPDATE_TIMEOUT_MS;
 	conf->slowrx_cb = NULL;
+	conf->agg_selection = AGG_STABLE;
 }
 
 static void
@@ -1146,7 +1207,29 @@ bond_mode_8023ad_setup(struct rte_eth_dev *dev,
 
 	bond_mode_8023ad_stop(dev);
 	bond_mode_8023ad_conf_assign(mode4, conf);
+
+
+	if (dev->data->dev_started)
+		bond_mode_8023ad_start(dev);
+}
+
+static void
+bond_mode_8023ad_setup_v1708(struct rte_eth_dev *dev,
+		struct rte_eth_bond_8023ad_conf *conf)
+{
+	struct rte_eth_bond_8023ad_conf def_conf;
+	struct bond_dev_private *internals = dev->data->dev_private;
+	struct mode8023ad_private *mode4 = &internals->mode4;
+
+	if (conf == NULL) {
+		conf = &def_conf;
+		bond_mode_8023ad_conf_get_default(conf);
+	}
+
+	bond_mode_8023ad_stop(dev);
+	bond_mode_8023ad_conf_assign(mode4, conf);
 	mode4->slowrx_cb = conf->slowrx_cb;
+	mode4->agg_selection = AGG_STABLE;
 
 	if (dev->data->dev_started)
 		bond_mode_8023ad_start(dev);
@@ -1308,10 +1391,71 @@ rte_eth_bond_8023ad_conf_get_v1607(uint8_t port_id,
 	bond_mode_8023ad_conf_get_v1607(bond_dev, conf);
 	return 0;
 }
-BIND_DEFAULT_SYMBOL(rte_eth_bond_8023ad_conf_get, _v1607, 16.07);
+VERSION_SYMBOL(rte_eth_bond_8023ad_conf_get, _v1607, 16.07);
+
+int
+rte_eth_bond_8023ad_conf_get_v1708(uint8_t port_id,
+		struct rte_eth_bond_8023ad_conf *conf)
+{
+	struct rte_eth_dev *bond_dev;
+
+	if (valid_bonded_port_id(port_id) != 0)
+		return -EINVAL;
+
+	if (conf == NULL)
+		return -EINVAL;
+
+	bond_dev = &rte_eth_devices[port_id];
+	bond_mode_8023ad_conf_get_v1708(bond_dev, conf);
+	return 0;
+}
 MAP_STATIC_SYMBOL(int rte_eth_bond_8023ad_conf_get(uint8_t port_id,
 		struct rte_eth_bond_8023ad_conf *conf),
-		rte_eth_bond_8023ad_conf_get_v1607);
+		rte_eth_bond_8023ad_conf_get_v1708);
+BIND_DEFAULT_SYMBOL(rte_eth_bond_8023ad_conf_get, _v1708, 17.08);
+
+int
+rte_eth_bond_8023ad_agg_selection_set(uint8_t port_id,
+		enum rte_bond_8023ad_agg_selection agg_selection)
+{
+	struct rte_eth_dev *bond_dev;
+	struct bond_dev_private *internals;
+	struct mode8023ad_private *mode4;
+
+	bond_dev = &rte_eth_devices[port_id];
+	internals = bond_dev->data->dev_private;
+
+	if (valid_bonded_port_id(port_id) != 0)
+		return -EINVAL;
+	if (internals->mode != 4)
+		return -EINVAL;
+
+	mode4 = &internals->mode4;
+	if (agg_selection == AGG_COUNT || agg_selection == AGG_BANDWIDTH
+			|| agg_selection == AGG_STABLE)
+		mode4->agg_selection = agg_selection;
+	return 0;
+}
+
+int rte_eth_bond_8023ad_agg_selection_get(uint8_t port_id)
+{
+	struct rte_eth_dev *bond_dev;
+	struct bond_dev_private *internals;
+	struct mode8023ad_private *mode4;
+
+	bond_dev = &rte_eth_devices[port_id];
+	internals = bond_dev->data->dev_private;
+
+	if (valid_bonded_port_id(port_id) != 0)
+		return -EINVAL;
+	if (internals->mode != 4)
+		return -EINVAL;
+	mode4 = &internals->mode4;
+
+	return mode4->agg_selection;
+}
+
+
 
 static int
 bond_8023ad_setup_validate(uint8_t port_id,
@@ -1372,10 +1516,34 @@ rte_eth_bond_8023ad_setup_v1607(uint8_t port_id,
 
 	return 0;
 }
-BIND_DEFAULT_SYMBOL(rte_eth_bond_8023ad_setup, _v1607, 16.07);
+VERSION_SYMBOL(rte_eth_bond_8023ad_setup, _v1607, 16.07);
+
+
+int
+rte_eth_bond_8023ad_setup_v1708(uint8_t port_id,
+		struct rte_eth_bond_8023ad_conf *conf)
+{
+	struct rte_eth_dev *bond_dev;
+	int err;
+
+	err = bond_8023ad_setup_validate(port_id, conf);
+	if (err != 0)
+		return err;
+
+	bond_dev = &rte_eth_devices[port_id];
+	bond_mode_8023ad_setup_v1708(bond_dev, conf);
+
+	return 0;
+}
+BIND_DEFAULT_SYMBOL(rte_eth_bond_8023ad_setup, _v1708, 17.08);
 MAP_STATIC_SYMBOL(int rte_eth_bond_8023ad_setup(uint8_t port_id,
 		struct rte_eth_bond_8023ad_conf *conf),
-		rte_eth_bond_8023ad_setup_v1607);
+		rte_eth_bond_8023ad_setup_v1708);
+
+
+
+
+
 
 int
 rte_eth_bond_8023ad_slave_info(uint8_t port_id, uint8_t slave_id,

@@ -195,6 +195,7 @@ struct mode8023ad_private {
 		uint16_t rx_qid;
 		uint16_t tx_qid;
 	} dedicated_queues;
+	enum rte_bond_8023ad_agg_selection agg_selection;
 };
 
 /**

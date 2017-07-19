@@ -2822,7 +2822,7 @@ bond_probe(struct rte_vdev_device *dev)
 	const char *name;
 	struct bond_dev_private *internals;
 	struct rte_kvargs *kvlist;
-	uint8_t bonding_mode, socket_id;
+	uint8_t bonding_mode, socket_id/*, agg_mode*/;
 	int  arg_count, port_id;
 
 	if (!dev)
@@ -2949,6 +2949,7 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 	struct rte_kvargs *kvlist = internals->kvlist;
 	int arg_count;
 	uint8_t port_id = dev - rte_eth_devices;
+	uint8_t agg_mode;
 
 	static const uint8_t default_rss_key[40] = {
 		0x6D, 0x5A, 0x56, 0xDA, 0x25, 0x5B, 0x0E, 0xC2, 0x41, 0x67, 0x25, 0x3D,
@@ -3034,6 +3035,21 @@ bond_ethdev_configure(struct rte_eth_dev *dev)
 				"Transmit policy can be specified only once for bonded device"
 				" %s\n", name);
 		return -1;
+	}
+
+	if (rte_kvargs_count(kvlist, PMD_BOND_AGG_MODE_KVARG) == 1) {
+		if (rte_kvargs_process(kvlist,
+				PMD_BOND_AGG_MODE_KVARG,
+				&bond_ethdev_parse_slave_agg_mode_kvarg,
+				&agg_mode) != 0) {
+			RTE_LOG(ERR, EAL,
+					"Failed to parse agg selection mode for bonded device %s\n",
+					name);
+		}
+		if (internals->mode == BONDING_MODE_8023AD)
+			if (agg_mode != 0)
+				rte_eth_bond_8023ad_agg_selection_set(port_id,
+						agg_mode);
 	}
 
 	/* Parse/add slave ports to bonded device */
@@ -3199,6 +3215,7 @@ RTE_PMD_REGISTER_PARAM_STRING(net_bonding,
 	"primary=<ifc> "
 	"mode=[0-6] "
 	"xmit_policy=[l2 | l23 | l34] "
+	"agg_mode=[count | stable | bandwidth] "
 	"socket_id=<int> "
 	"mac=<mac addr> "
 	"lsc_poll_period_ms=<int> "
