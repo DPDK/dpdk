@@ -193,6 +193,8 @@ struct l2fwd_crypto_options {
 	char string_type[MAX_STR_LEN];
 
 	uint64_t cryptodev_mask;
+
+	unsigned int mac_updating;
 };
 
 /** l2fwd crypto lcore params */
@@ -608,21 +610,31 @@ l2fwd_send_packet(struct rte_mbuf *m, uint8_t port)
 }
 
 static void
-l2fwd_simple_forward(struct rte_mbuf *m, unsigned portid)
+l2fwd_mac_updating(struct rte_mbuf *m, unsigned int dest_portid)
 {
 	struct ether_hdr *eth;
 	void *tmp;
-	unsigned dst_port;
 
-	dst_port = l2fwd_dst_ports[portid];
 	eth = rte_pktmbuf_mtod(m, struct ether_hdr *);
 
 	/* 02:00:00:00:00:xx */
 	tmp = &eth->d_addr.addr_bytes[0];
-	*((uint64_t *)tmp) = 0x000000000002 + ((uint64_t)dst_port << 40);
+	*((uint64_t *)tmp) = 0x000000000002 + ((uint64_t)dest_portid << 40);
 
 	/* src addr */
-	ether_addr_copy(&l2fwd_ports_eth_addr[dst_port], &eth->s_addr);
+	ether_addr_copy(&l2fwd_ports_eth_addr[dest_portid], &eth->s_addr);
+}
+
+static void
+l2fwd_simple_forward(struct rte_mbuf *m, unsigned int portid,
+		struct l2fwd_crypto_options *options)
+{
+	unsigned int dst_port;
+
+	dst_port = l2fwd_dst_ports[portid];
+
+	if (options->mac_updating)
+		l2fwd_mac_updating(m, dst_port);
 
 	l2fwd_send_packet(m, (uint8_t) dst_port);
 }
@@ -927,7 +939,8 @@ l2fwd_main_loop(struct l2fwd_crypto_options *options)
 					m = ops_burst[j]->sym->m_src;
 
 					rte_crypto_op_free(ops_burst[j]);
-					l2fwd_simple_forward(m, portid);
+					l2fwd_simple_forward(m, portid,
+							options);
 				}
 			} while (nb_rx == MAX_PKT_BURST);
 		}
@@ -982,7 +995,12 @@ l2fwd_crypto_usage(const char *prgname)
 		"  --digest_size SIZE: size of digest to be generated/verified\n"
 
 		"  --sessionless\n"
-		"  --cryptodev_mask MASK: hexadecimal bitmask of crypto devices to configure\n",
+		"  --cryptodev_mask MASK: hexadecimal bitmask of crypto devices to configure\n"
+
+		"  --[no-]mac-updating: Enable or disable MAC addresses updating (enabled by default)\n"
+		"      When enabled:\n"
+		"       - The source MAC address is replaced by the TX port MAC address\n"
+		"       - The destination MAC address is replaced by 02:00:00:00:00:TX_PORT_ID\n",
 	       prgname);
 }
 
@@ -1329,6 +1347,16 @@ l2fwd_crypto_parse_args_long_options(struct l2fwd_crypto_options *options,
 	else if (strcmp(lgopts[option_index].name, "cryptodev_mask") == 0)
 		return parse_cryptodev_mask(options, optarg);
 
+	else if (strcmp(lgopts[option_index].name, "mac-updating") == 0) {
+		options->mac_updating = 1;
+		return 0;
+	}
+
+	else if (strcmp(lgopts[option_index].name, "no-mac-updating") == 0) {
+		options->mac_updating = 0;
+		return 0;
+	}
+
 	return -1;
 }
 
@@ -1462,6 +1490,8 @@ l2fwd_crypto_default_options(struct l2fwd_crypto_options *options)
 
 	options->type = CDEV_TYPE_ANY;
 	options->cryptodev_mask = UINT64_MAX;
+
+	options->mac_updating = 1;
 }
 
 static void
@@ -1622,6 +1652,9 @@ l2fwd_crypto_parse_args(struct l2fwd_crypto_options *options,
 
 			{ "sessionless", no_argument, 0, 0 },
 			{ "cryptodev_mask", required_argument, 0, 0},
+
+			{ "mac-updating", no_argument, 0, 0},
+			{ "no-mac-updating", no_argument, 0, 0},
 
 			{ NULL, 0, 0, 0 }
 	};
@@ -2444,6 +2477,9 @@ main(int argc, char **argv)
 	ret = l2fwd_crypto_parse_args(&options, argc, argv);
 	if (ret < 0)
 		rte_exit(EXIT_FAILURE, "Invalid L2FWD-CRYPTO arguments\n");
+
+	printf("MAC updating %s\n",
+			options.mac_updating ? "enabled" : "disabled");
 
 	/* create the mbuf pool */
 	l2fwd_pktmbuf_pool = rte_pktmbuf_pool_create("mbuf_pool", NB_MBUF, 512,

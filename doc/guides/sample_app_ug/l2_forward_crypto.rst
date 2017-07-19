@@ -46,7 +46,7 @@ for each packet that is received on a RX_PORT and performs L2 forwarding.
 The destination port is the adjacent port from the enabled portmask, that is,
 if the first four ports are enabled (portmask 0xf),
 ports 0 and 1 forward into each other, and ports 2 and 3 forward into each other.
-Also, the MAC addresses are affected as follows:
+Also, if MAC addresses updating is enabled, the MAC addresses are affected as follows:
 
 *   The source MAC address is replaced by the TX_PORT MAC address
 
@@ -90,7 +90,8 @@ The application requires a number of command line options:
     [--auth_algo ALGO] [--auth_op GENERATE/VERIFY] [--auth_key KEY] /
     [--auth_key_random_size SIZE] [--auth_iv IV] [--auth_iv_random_size SIZE] /
     [--aad AAD] [--aad_random_size SIZE] /
-    [--digest size SIZE] [--sessionless] [--cryptodev_mask MASK]
+    [--digest size SIZE] [--sessionless] [--cryptodev_mask MASK] /
+    [--mac-updating] [--no-mac-updating]
 
 where,
 
@@ -190,6 +191,8 @@ where,
     application.
 
     (default is all cryptodevs).
+
+*   [no-]mac-updating: Enable or disable MAC addresses updating (enabled by default).
 
 
 The application requires that crypto devices capable of performing
