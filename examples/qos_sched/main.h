@@ -69,8 +69,13 @@ extern "C" {
 #define BURST_TX_DRAIN_US 100
 
 #ifndef APP_MAX_LCORE
+#if (RTE_MAX_LCORE > 64)
 #define APP_MAX_LCORE 64
+#else
+#define APP_MAX_LCORE RTE_MAX_LCORE
 #endif
+#endif
+
 #define MAX_DATA_STREAMS (APP_MAX_LCORE/2)
 #define MAX_SCHED_SUBPORTS		8
 #define MAX_SCHED_PIPES		4096
