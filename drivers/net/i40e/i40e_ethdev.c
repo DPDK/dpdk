@@ -2051,12 +2051,15 @@ static void
 i40e_dev_stop(struct rte_eth_dev *dev)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct i40e_vsi *main_vsi = pf->main_vsi;
 	struct i40e_mirror_rule *p_mirror;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	int i;
 
+	if (hw->adapter_stopped == 1)
+		return;
 	/* Disable all queues */
 	i40e_dev_switch_queues(pf, FALSE);
 
@@ -2101,6 +2104,8 @@ i40e_dev_stop(struct rte_eth_dev *dev)
 
 	/* reset hierarchy commit */
 	pf->tm_conf.committed = false;
+
+	hw->adapter_stopped = 1;
 }
 
 static void
@@ -2116,7 +2121,6 @@ i40e_dev_close(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	i40e_dev_stop(dev);
-	hw->adapter_stopped = 1;
 	i40e_dev_free_queues(dev);
 
 	/* Disable interrupt */

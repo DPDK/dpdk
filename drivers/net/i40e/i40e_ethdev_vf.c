@@ -911,6 +911,8 @@ i40evf_add_mac_addr(struct rte_eth_dev *dev,
 	if (err)
 		PMD_DRV_LOG(ERR, "fail to execute command "
 			    "OP_ADD_ETHER_ADDRESS");
+	else
+		vf->vsi.mac_num++;
 
 	return err;
 }
@@ -949,6 +951,8 @@ i40evf_del_mac_addr_by_addr(struct rte_eth_dev *dev,
 	if (err)
 		PMD_DRV_LOG(ERR, "fail to execute command "
 			    "OP_DEL_ETHER_ADDRESS");
+	else
+		vf->vsi.mac_num--;
 	return;
 }
 
@@ -2063,10 +2067,16 @@ i40evf_add_del_all_mac_addr(struct rte_eth_dev *dev, bool add)
 		args.out_buffer = vf->aq_resp;
 		args.out_size = I40E_AQ_BUF_SZ;
 		err = i40evf_execute_vf_cmd(dev, &args);
-		if (err)
+		if (err) {
 			PMD_DRV_LOG(ERR, "fail to execute command %s",
 				    add ? "OP_ADD_ETHER_ADDRESS" :
 				    "OP_DEL_ETHER_ADDRESS");
+		} else {
+			if (add)
+				vf->vsi.mac_num++;
+			else
+				vf->vsi.mac_num--;
+		}
 		rte_free(list);
 		begin = next_begin;
 	} while (begin < I40E_NUM_MACADDR_MAX);
@@ -2145,9 +2155,12 @@ i40evf_dev_stop(struct rte_eth_dev *dev)
 {
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev);
 
 	PMD_INIT_FUNC_TRACE();
 
+	if (hw->adapter_stopped == 1)
+		return;
 	i40evf_stop_queues(dev);
 	i40evf_disable_queues_intr(dev);
 	i40e_dev_clear_queues(dev);
@@ -2160,6 +2173,7 @@ i40evf_dev_stop(struct rte_eth_dev *dev)
 	}
 	/* remove all mac addrs */
 	i40evf_add_del_all_mac_addr(dev, FALSE);
+	hw->adapter_stopped = 1;
 
 }
 
@@ -2347,7 +2361,6 @@ i40evf_dev_close(struct rte_eth_dev *dev)
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 
 	i40evf_dev_stop(dev);
-	hw->adapter_stopped = 1;
 	i40e_dev_free_queues(dev);
 	i40evf_reset_vf(hw);
 	i40e_shutdown_adminq(hw);
