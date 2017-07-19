@@ -50,6 +50,8 @@
 	(((num) + (align) - 1) & ~((align) - 1))
 #define QAT_64_BTYE_ALIGN_MASK (~0x3f)
 
+struct qat_session;
+
 enum qat_device_gen {
 	QAT_GEN1 = 1,
 	QAT_GEN2,
@@ -134,18 +136,19 @@ int
 qat_crypto_set_session_parameters(struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform, void *session_private);
 
-struct qat_session *
+int
 qat_crypto_sym_configure_session_aead(struct rte_crypto_sym_xform *xform,
-				struct qat_session *session_private);
+				struct qat_session *session);
 
-struct qat_session *
+int
 qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev,
 				struct rte_crypto_sym_xform *xform,
-				struct qat_session *session_private);
+				struct qat_session *session);
 
-void *
+int
 qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
-		struct rte_crypto_sym_xform *xform, void *session_private);
+		struct rte_crypto_sym_xform *xform,
+		struct qat_session *session);
 
 
 extern void

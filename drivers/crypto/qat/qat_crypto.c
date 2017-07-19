@@ -295,11 +295,12 @@ qat_get_cipher_xform(struct rte_crypto_sym_xform *xform)
 
 	return NULL;
 }
-void *
+
+int
 qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
-		struct rte_crypto_sym_xform *xform, void *session_private)
+		struct rte_crypto_sym_xform *xform,
+		struct qat_session *session)
 {
-	struct qat_session *session = session_private;
 	struct qat_pmd_private *internals = dev->data->dev_private;
 	struct rte_crypto_cipher_xform *cipher_xform = NULL;
 
@@ -440,14 +441,14 @@ qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
 						cipher_xform->key.length))
 		goto error_out;
 
-	return session;
+	return 0;
 
 error_out:
 	if (session->bpi_ctx) {
 		bpi_cipher_ctx_free(session->bpi_ctx);
 		session->bpi_ctx = NULL;
 	}
-	return NULL;
+	return -1;
 }
 
 int
@@ -498,36 +499,44 @@ qat_crypto_set_session_parameters(struct rte_cryptodev *dev,
 	qat_cmd_id = qat_get_cmd_id(xform);
 	if (qat_cmd_id < 0 || qat_cmd_id >= ICP_QAT_FW_LA_CMD_DELIMITER) {
 		PMD_DRV_LOG(ERR, "Unsupported xform chain requested");
-		goto error_out;
+		return -1;
 	}
 	session->qat_cmd = (enum icp_qat_fw_la_cmd_id)qat_cmd_id;
 	switch (session->qat_cmd) {
 	case ICP_QAT_FW_LA_CMD_CIPHER:
-	session = qat_crypto_sym_configure_session_cipher(dev, xform, session);
+		if (qat_crypto_sym_configure_session_cipher(dev, xform, session) < 0)
+			return -1;
 		break;
 	case ICP_QAT_FW_LA_CMD_AUTH:
-	session = qat_crypto_sym_configure_session_auth(dev, xform, session);
+		if (qat_crypto_sym_configure_session_auth(dev, xform, session) < 0)
+			return -1;
 		break;
 	case ICP_QAT_FW_LA_CMD_CIPHER_HASH:
-		if (xform->type == RTE_CRYPTO_SYM_XFORM_AEAD)
-			session = qat_crypto_sym_configure_session_aead(xform,
-					session);
-		else {
-			session = qat_crypto_sym_configure_session_cipher(dev,
-					xform, session);
-			session = qat_crypto_sym_configure_session_auth(dev,
-					xform, session);
+		if (xform->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
+			if (qat_crypto_sym_configure_session_aead(xform,
+					session) < 0)
+				return -1;
+		} else {
+			if (qat_crypto_sym_configure_session_cipher(dev,
+					xform, session) < 0)
+				return -1;
+			if (qat_crypto_sym_configure_session_auth(dev,
+					xform, session) < 0)
+				return -1;
 		}
 		break;
 	case ICP_QAT_FW_LA_CMD_HASH_CIPHER:
-		if (xform->type == RTE_CRYPTO_SYM_XFORM_AEAD)
-			session = qat_crypto_sym_configure_session_aead(xform,
-					session);
-		else {
-			session = qat_crypto_sym_configure_session_auth(dev,
-					xform, session);
-			session = qat_crypto_sym_configure_session_cipher(dev,
-					xform, session);
+		if (xform->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
+			if (qat_crypto_sym_configure_session_aead(xform,
+					session) < 0)
+				return -1;
+		} else {
+			if (qat_crypto_sym_configure_session_auth(dev,
+					xform, session) < 0)
+				return -1;
+			if (qat_crypto_sym_configure_session_cipher(dev,
+					xform, session) < 0)
+				return -1;
 		}
 		break;
 	case ICP_QAT_FW_LA_CMD_TRNG_GET_RANDOM:
@@ -541,26 +550,21 @@ qat_crypto_set_session_parameters(struct rte_cryptodev *dev,
 	case ICP_QAT_FW_LA_CMD_DELIMITER:
 	PMD_DRV_LOG(ERR, "Unsupported Service %u",
 		session->qat_cmd);
-		goto error_out;
+		return -1;
 	default:
 	PMD_DRV_LOG(ERR, "Unsupported Service %u",
 		session->qat_cmd);
-		goto error_out;
+		return -1;
 	}
 
 	return 0;
-
-error_out:
-	return -1;
 }
 
-struct qat_session *
+int
 qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev,
 				struct rte_crypto_sym_xform *xform,
-				struct qat_session *session_private)
+				struct qat_session *session)
 {
-
-	struct qat_session *session = session_private;
 	struct rte_crypto_auth_xform *auth_xform = NULL;
 	struct qat_pmd_private *internals = dev->data->dev_private;
 	auth_xform = qat_get_auth_xform(xform);
@@ -690,17 +694,16 @@ qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev,
 	}
 
 	session->digest_length = auth_xform->digest_length;
-	return session;
+	return 0;
 
 error_out:
-	return NULL;
+	return -1;
 }
 
-struct qat_session *
+int
 qat_crypto_sym_configure_session_aead(struct rte_crypto_sym_xform *xform,
-				struct qat_session *session_private)
+				struct qat_session *session)
 {
-	struct qat_session *session = session_private;
 	struct rte_crypto_aead_xform *aead_xform = &xform->aead;
 
 	/*
@@ -769,10 +772,10 @@ qat_crypto_sym_configure_session_aead(struct rte_crypto_sym_xform *xform,
 	}
 
 	session->digest_length = aead_xform->digest_length;
-	return session;
+	return 0;
 
 error_out:
-	return NULL;
+	return -1;
 }
 
 unsigned qat_crypto_sym_get_session_private_size(
