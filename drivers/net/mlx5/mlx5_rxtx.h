@@ -480,30 +480,18 @@ mlx5_tx_complete(struct txq *txq)
 	struct rte_mempool *pool = NULL;
 	unsigned int blk_n = 0;
 
-	do {
-		volatile struct mlx5_cqe *tmp;
-
-		tmp = &(*txq->cqes)[cq_ci & cqe_cnt];
-		if (check_cqe(tmp, cqe_n, cq_ci))
-			break;
-		cqe = tmp;
-#ifndef NDEBUG
-		if (MLX5_CQE_FORMAT(cqe->op_own) == MLX5_COMPRESSED) {
-			if (!check_cqe_seen(cqe))
-				ERROR("unexpected compressed CQE, TX stopped");
-			return;
-		}
-		if ((MLX5_CQE_OPCODE(cqe->op_own) == MLX5_CQE_RESP_ERR) ||
-		    (MLX5_CQE_OPCODE(cqe->op_own) == MLX5_CQE_REQ_ERR)) {
-			if (!check_cqe_seen(cqe))
-				ERROR("unexpected error CQE, TX stopped");
-			return;
-		}
-#endif /* NDEBUG */
-		++cq_ci;
-	} while (1);
-	if (unlikely(cqe == NULL))
+	cqe = &(*txq->cqes)[cq_ci & cqe_cnt];
+	if (unlikely(check_cqe(cqe, cqe_n, cq_ci)))
 		return;
+#ifndef NDEBUG
+	if ((MLX5_CQE_OPCODE(cqe->op_own) == MLX5_CQE_RESP_ERR) ||
+	    (MLX5_CQE_OPCODE(cqe->op_own) == MLX5_CQE_REQ_ERR)) {
+		if (!check_cqe_seen(cqe))
+			ERROR("unexpected error CQE, TX stopped");
+		return;
+	}
+#endif /* NDEBUG */
+	++cq_ci;
 	txq->wqe_pi = ntohs(cqe->wqe_counter);
 	ctrl = (volatile struct mlx5_wqe_ctrl *)
 		tx_mlx5_wqe(txq, txq->wqe_pi);
