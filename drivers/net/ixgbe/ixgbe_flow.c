@@ -266,7 +266,8 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 	item = next_no_void_pattern(pattern, item);
 	if (item->type != RTE_FLOW_ITEM_TYPE_TCP &&
 	    item->type != RTE_FLOW_ITEM_TYPE_UDP &&
-	    item->type != RTE_FLOW_ITEM_TYPE_SCTP) {
+	    item->type != RTE_FLOW_ITEM_TYPE_SCTP &&
+	    item->type != RTE_FLOW_ITEM_TYPE_END) {
 		memset(filter, 0, sizeof(struct rte_eth_ntuple_filter));
 		rte_flow_error_set(error, EINVAL,
 			RTE_FLOW_ERROR_TYPE_ITEM,
@@ -275,7 +276,8 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 	}
 
 	/* get the TCP/UDP info */
-	if (!item->spec || !item->mask) {
+	if ((item->type != RTE_FLOW_ITEM_TYPE_END) &&
+		(!item->spec || !item->mask)) {
 		memset(filter, 0, sizeof(struct rte_eth_ntuple_filter));
 		rte_flow_error_set(error, EINVAL,
 			RTE_FLOW_ERROR_TYPE_ITEM,
@@ -355,7 +357,7 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 		udp_spec = (const struct rte_flow_item_udp *)item->spec;
 		filter->dst_port = udp_spec->hdr.dst_port;
 		filter->src_port = udp_spec->hdr.src_port;
-	} else {
+	} else if (item->type == RTE_FLOW_ITEM_TYPE_SCTP) {
 		sctp_mask = (const struct rte_flow_item_sctp *)item->mask;
 
 		/**
@@ -378,6 +380,8 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 		sctp_spec = (const struct rte_flow_item_sctp *)item->spec;
 		filter->dst_port = sctp_spec->hdr.dst_port;
 		filter->src_port = sctp_spec->hdr.src_port;
+	} else {
+		goto action;
 	}
 
 	/* check if the next not void item is END */
@@ -389,6 +393,8 @@ cons_parse_ntuple_filter(const struct rte_flow_attr *attr,
 			item, "Not supported by ntuple filter");
 		return -rte_errno;
 	}
+
+action:
 
 	/**
 	 * n-tuple only supports forwarding,
