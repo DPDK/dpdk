@@ -1804,7 +1804,7 @@ set bonding lacp dedicated_queue
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Enable dedicated tx/rx queues on bonding devices slaves to handle LACP control plane traffic
-when in mode 4 (link-aggregration-802.3ad)
+when in mode 4 (link-aggregration-802.3ad)::
 
    testpmd> set bonding lacp dedicated_queues (port_id) (enable|disable)
 
