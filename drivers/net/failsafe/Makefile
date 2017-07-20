@@ -50,7 +50,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_PMD_FAILSAFE) += failsafe_flow.c
 # No exported include files
 
 # Basic CFLAGS:
-CFLAGS += -std=c11 -Wextra
+CFLAGS += -std=gnu99 -Wextra
 CFLAGS += -O3
 CFLAGS += -I.
 CFLAGS += -D_DEFAULT_SOURCE
