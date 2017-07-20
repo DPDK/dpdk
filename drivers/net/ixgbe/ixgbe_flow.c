@@ -2579,8 +2579,8 @@ step_next:
 
 	if (hw->mac.type == ixgbe_mac_82599EB &&
 		rule->fdirflags == IXGBE_FDIRCMD_DROP &&
-		(rule->mask.src_port_mask != 0 ||
-		rule->mask.dst_port_mask != 0))
+		(rule->ixgbe_fdir.formatted.src_port != 0 ||
+		rule->ixgbe_fdir.formatted.dst_port != 0))
 		return -ENOTSUP;
 
 	if (fdir_mode == RTE_FDIR_MODE_NONE ||
