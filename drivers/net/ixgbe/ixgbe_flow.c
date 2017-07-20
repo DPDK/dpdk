@@ -1387,7 +1387,8 @@ static inline uint8_t signature_match(const struct rte_flow_item pattern[])
  * Item->last should be NULL.
  */
 static int
-ixgbe_parse_fdir_filter_normal(const struct rte_flow_attr *attr,
+ixgbe_parse_fdir_filter_normal(struct rte_eth_dev *dev,
+			       const struct rte_flow_attr *attr,
 			       const struct rte_flow_item pattern[],
 			       const struct rte_flow_action actions[],
 			       struct ixgbe_fdir_rule *rule,
@@ -1410,8 +1411,9 @@ ixgbe_parse_fdir_filter_normal(const struct rte_flow_attr *attr,
 	const struct rte_flow_item_vlan *vlan_mask;
 	const struct rte_flow_item_raw *raw_mask;
 	const struct rte_flow_item_raw *raw_spec;
-
 	uint8_t j;
+
+	struct ixgbe_hw *hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	if (!pattern) {
 		rte_flow_error_set(error, EINVAL,
@@ -1910,7 +1912,21 @@ ixgbe_parse_fdir_filter_normal(const struct rte_flow_attr *attr,
 			return -rte_errno;
 		}
 
-		if (item->mask) {
+		/* only x550 family only support sctp port */
+		if (hw->mac.type == ixgbe_mac_X550 ||
+		    hw->mac.type == ixgbe_mac_X550EM_x ||
+		    hw->mac.type == ixgbe_mac_X550EM_a) {
+			/**
+			 * Only care about src & dst ports,
+			 * others should be masked.
+			 */
+			if (!item->mask) {
+				memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
+				rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ITEM,
+					item, "Not supported by fdir filter");
+				return -rte_errno;
+			}
 			rule->b_mask = TRUE;
 			sctp_mask =
 				(const struct rte_flow_item_sctp *)item->mask;
@@ -1924,21 +1940,36 @@ ixgbe_parse_fdir_filter_normal(const struct rte_flow_attr *attr,
 			}
 			rule->mask.src_port_mask = sctp_mask->hdr.src_port;
 			rule->mask.dst_port_mask = sctp_mask->hdr.dst_port;
-		}
 
-		if (item->spec) {
-			rule->b_spec = TRUE;
-			sctp_spec =
+			if (item->spec) {
+				rule->b_spec = TRUE;
+				sctp_spec =
 				(const struct rte_flow_item_sctp *)item->spec;
-			rule->ixgbe_fdir.formatted.src_port =
-				sctp_spec->hdr.src_port;
-			rule->ixgbe_fdir.formatted.dst_port =
-				sctp_spec->hdr.dst_port;
+				rule->ixgbe_fdir.formatted.src_port =
+					sctp_spec->hdr.src_port;
+				rule->ixgbe_fdir.formatted.dst_port =
+					sctp_spec->hdr.dst_port;
+			}
+		/* others even sctp port is not supported */
+		} else {
+			sctp_mask =
+				(const struct rte_flow_item_sctp *)item->mask;
+			if (sctp_mask &&
+				(sctp_mask->hdr.src_port ||
+				 sctp_mask->hdr.dst_port ||
+				 sctp_mask->hdr.tag ||
+				 sctp_mask->hdr.cksum)) {
+				memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
+				rte_flow_error_set(error, EINVAL,
+					RTE_FLOW_ERROR_TYPE_ITEM,
+					item, "Not supported by fdir filter");
+				return -rte_errno;
+			}
 		}
 
 		item = next_no_fuzzy_pattern(pattern, item);
 		if (item->type != RTE_FLOW_ITEM_TYPE_RAW &&
-		    item->type != RTE_FLOW_ITEM_TYPE_END) {
+			item->type != RTE_FLOW_ITEM_TYPE_END) {
 			memset(rule, 0, sizeof(struct ixgbe_fdir_rule));
 			rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ITEM,
@@ -2532,7 +2563,7 @@ ixgbe_parse_fdir_filter(struct rte_eth_dev *dev,
 		hw->mac.type != ixgbe_mac_X550EM_a)
 		return -ENOTSUP;
 
-	ret = ixgbe_parse_fdir_filter_normal(attr, pattern,
+	ret = ixgbe_parse_fdir_filter_normal(dev, attr, pattern,
 					actions, rule, error);
 
 	if (!ret)
