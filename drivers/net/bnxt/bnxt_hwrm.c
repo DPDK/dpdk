@@ -352,6 +352,9 @@ int bnxt_hwrm_set_filter(struct bnxt *bp,
 	struct hwrm_cfa_l2_filter_alloc_output *resp = bp->hwrm_cmd_resp_addr;
 	uint32_t enables = 0;
 
+	if (filter->fw_l2_filter_id != UINT64_MAX)
+		bnxt_hwrm_clear_filter(bp, filter);
+
 	HWRM_PREP(req, CFA_L2_FILTER_ALLOC, -1, resp);
 
 	req.flags = rte_cpu_to_le_32(filter->flags);
