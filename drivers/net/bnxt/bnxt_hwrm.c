@@ -980,6 +980,7 @@ int bnxt_hwrm_vnic_alloc(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	HWRM_CHECK_RESULT;
 
 	vnic->fw_vnic_id = rte_le_to_cpu_16(resp->vnic_id);
+	RTE_LOG(DEBUG, PMD, "VNIC ID %x\n", vnic->fw_vnic_id);
 	return rc;
 }
 
@@ -1045,6 +1046,11 @@ int bnxt_hwrm_vnic_cfg(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	uint32_t ctx_enable_flag = HWRM_VNIC_CFG_INPUT_ENABLES_RSS_RULE;
 	struct bnxt_plcmodes_cfg pmodes;
 
+	if (vnic->fw_vnic_id == INVALID_HW_RING_ID) {
+		RTE_LOG(DEBUG, PMD, "VNIC ID %x\n", vnic->fw_vnic_id);
+		return rc;
+	}
+
 	rc = bnxt_hwrm_vnic_plcmodes_qcfg(bp, vnic, &pmodes);
 	if (rc)
 		return rc;
@@ -1103,6 +1109,10 @@ int bnxt_hwrm_vnic_qcfg(struct bnxt *bp, struct bnxt_vnic_info *vnic,
 	struct hwrm_vnic_qcfg_input req = {.req_type = 0 };
 	struct hwrm_vnic_qcfg_output *resp = bp->hwrm_cmd_resp_addr;
 
+	if (vnic->fw_vnic_id == INVALID_HW_RING_ID) {
+		RTE_LOG(DEBUG, PMD, "VNIC QCFG ID %d\n", vnic->fw_vnic_id);
+		return rc;
+	}
 	HWRM_PREP(req, VNIC_QCFG, -1, resp);
 
 	req.enables =
@@ -1149,6 +1159,7 @@ int bnxt_hwrm_vnic_ctx_alloc(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	HWRM_CHECK_RESULT;
 
 	vnic->rss_rule = rte_le_to_cpu_16(resp->rss_cos_lb_ctx_id);
+	RTE_LOG(DEBUG, PMD, "VNIC RSS Rule %x\n", vnic->rss_rule);
 
 	return rc;
 }
@@ -1160,6 +1171,10 @@ int bnxt_hwrm_vnic_ctx_free(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	struct hwrm_vnic_rss_cos_lb_ctx_free_output *resp =
 						bp->hwrm_cmd_resp_addr;
 
+	if (vnic->rss_rule == 0xffff) {
+		RTE_LOG(DEBUG, PMD, "VNIC RSS Rule %x\n", vnic->rss_rule);
+		return rc;
+	}
 	HWRM_PREP(req, VNIC_RSS_COS_LB_CTX_FREE, -1, resp);
 
 	req.rss_cos_lb_ctx_id = rte_cpu_to_le_16(vnic->rss_rule);
@@ -1179,8 +1194,10 @@ int bnxt_hwrm_vnic_free(struct bnxt *bp, struct bnxt_vnic_info *vnic)
 	struct hwrm_vnic_free_input req = {.req_type = 0 };
 	struct hwrm_vnic_free_output *resp = bp->hwrm_cmd_resp_addr;
 
-	if (vnic->fw_vnic_id == INVALID_HW_RING_ID)
+	if (vnic->fw_vnic_id == INVALID_HW_RING_ID) {
+		RTE_LOG(DEBUG, PMD, "VNIC FREE ID %x\n", vnic->fw_vnic_id);
 		return rc;
+	}
 
 	HWRM_PREP(req, VNIC_FREE, -1, resp);
 
