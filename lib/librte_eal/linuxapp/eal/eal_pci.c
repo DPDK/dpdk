@@ -314,15 +314,10 @@ pci_scan_one(const char *dirname, const struct rte_pci_addr *addr)
 	snprintf(filename, sizeof(filename), "%s/numa_node",
 		 dirname);
 
-	if (eal_parse_sysfs_value(filename, &tmp) == 0 &&
-		tmp < RTE_MAX_NUMA_NODES)
+	if (eal_parse_sysfs_value(filename, &tmp) == 0)
 		dev->device.numa_node = tmp;
-	else {
-		RTE_LOG(WARNING, EAL,
-			"numa_node is invalid or not present. "
-			"Set it 0 as default\n");
-		dev->device.numa_node = 0;
-	}
+	else
+		dev->device.numa_node = -1;
 
 	pci_name_set(dev);
 
