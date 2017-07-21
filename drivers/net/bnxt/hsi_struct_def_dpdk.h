@@ -123,7 +123,7 @@
 #define HWRM_CFA_L2_FILTER_CFG		(UINT32_C(0x92))
 #define HWRM_CFA_L2_SET_RX_MASK		(UINT32_C(0x93))
     /* Reserved for future use */
-#define RESERVED4			(UINT32_C(0x94))
+#define HWRM_CFA_VLAN_ANTISPOOF_CFG	(UINT32_C(0x94))
 #define HWRM_CFA_TUNNEL_FILTER_ALLOC	(UINT32_C(0x95))
 #define HWRM_CFA_TUNNEL_FILTER_FREE	(UINT32_C(0x96))
 #define HWRM_CFA_NTUPLE_FILTER_ALLOC	(UINT32_C(0x99))
@@ -9470,6 +9470,85 @@ struct hwrm_cfa_l2_set_rx_mask_output {
 	 * this field is written last.
 	 */
 } __attribute__((packed));
+
+/* hwrm_cfa_vlan_antispoof_cfg */
+/* Description: Configures vlan anti-spoof filters for VF. */
+/* Input (32 bytes) */
+struct hwrm_cfa_vlan_antispoof_cfg_input {
+	uint16_t req_type;
+	/*
+	 * This value indicates what type of request this is. The format for the
+	 * rest of the command is determined by this field.
+	 */
+	uint16_t cmpl_ring;
+	/*
+	 * This value indicates the what completion ring the request will be
+	 * optionally completed on. If the value is -1, then no CR completion
+	 * will be generated. Any other value must be a valid CR ring_id value
+	 * for this function.
+	 */
+	uint16_t seq_id;
+	/* This value indicates the command sequence number. */
+	uint16_t target_id;
+	/*
+	 * Target ID of this command. 0x0 - 0xFFF8 - Used for function ids
+	 * 0xFFF8 - 0xFFFE - Reserved for internal processors 0xFFFF - HWRM
+	 */
+	uint64_t resp_addr;
+	/*
+	 * This is the host address where the response will be written when the
+	 * request is complete. This area must be 16B aligned and must be
+	 * cleared to zero before the request is made.
+	 */
+	uint16_t fid;
+	/*
+	 * Function ID of the function that is being configured. Only valid for
+	 * a VF FID configured by the PF.
+	 */
+	uint8_t unused_0;
+	uint8_t unused_1;
+	uint32_t num_vlan_entries;
+	/* Number of VLAN entries in the vlan_tag_mask_tbl. */
+	uint64_t vlan_tag_mask_tbl_addr;
+	/*
+	 * The vlan_tag_mask_tbl_addr is the DMA address of the VLAN antispoof
+	 * table. Each table entry contains the 16-bit TPID (0x8100 or 0x88a8
+	 * only), 16-bit VLAN ID, and a 16-bit mask, all in network order to
+	 * match hwrm_cfa_l2_set_rx_mask. For an individual VLAN entry, the mask
+	 * value should be 0xfff for the 12-bit VLAN ID.
+	 */
+};
+
+/* Output (16 bytes) */
+struct hwrm_cfa_vlan_antispoof_cfg_output {
+	uint16_t error_code;
+	/*
+	 * Pass/Fail or error type Note: receiver to verify the in parameters,
+	 * and fail the call with an error when appropriate
+	 */
+	uint16_t req_type;
+	/* This field returns the type of original request. */
+	uint16_t seq_id;
+	/* This field provides original sequence number of the command. */
+	uint16_t resp_len;
+	/*
+	 * This field is the length of the response in bytes. The last byte of
+	 * the response is a valid flag that will read as '1' when the command
+	 * has been completely written to memory.
+	 */
+	uint32_t unused_0;
+	uint8_t unused_1;
+	uint8_t unused_2;
+	uint8_t unused_3;
+	uint8_t valid;
+	/*
+	 * This field is used in Output records to indicate that the output is
+	 * completely written to RAM. This field should be read as '1' to
+	 * indicate that the output has been completely written. When writing a
+	 * command completion or response to an internal processor, the order of
+	 * writes has to be such that this field is written last.
+	 */
+};
 
 /* hwrm_tunnel_dst_port_query */
 /*

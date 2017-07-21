@@ -48,6 +48,9 @@ int bnxt_hwrm_cfa_l2_clear_rx_mask(struct bnxt *bp,
 int bnxt_hwrm_cfa_l2_set_rx_mask(struct bnxt *bp, struct bnxt_vnic_info *vnic,
 				 uint16_t vlan_count,
 				 struct bnxt_vlan_table_entry *vlan_table);
+int bnxt_hwrm_cfa_vlan_antispoof_cfg(struct bnxt *bp, uint16_t fid,
+			uint16_t vlan_count,
+			struct bnxt_vlan_antispoof_table_entry *vlan_table);
 int bnxt_hwrm_clear_filter(struct bnxt *bp,
 			   struct bnxt_filter_info *filter);
 int bnxt_hwrm_set_filter(struct bnxt *bp,

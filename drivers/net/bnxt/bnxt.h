@@ -97,9 +97,16 @@ struct bnxt_vlan_table_entry {
 	uint16_t		vid;
 } __attribute__((packed));
 
+struct bnxt_vlan_antispoof_table_entry {
+	uint16_t		tpid;
+	uint16_t		vid;
+	uint16_t		mask;
+} __attribute__((packed));
+
 struct bnxt_child_vf_info {
 	void			*req_buf;
 	struct bnxt_vlan_table_entry	*vlan_table;
+	struct bnxt_vlan_antispoof_table_entry	*vlan_as_table;
 	STAILQ_HEAD(, bnxt_filter_info)	filter;
 	uint32_t		func_cfg_flags;
 	uint32_t		l2_rx_mask;
