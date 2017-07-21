@@ -2306,6 +2306,7 @@ int bnxt_hwrm_allocate_vfs(struct bnxt *bp, int num_vfs)
 
 		reserve_resources_from_vf(bp, &req, i);
 		bp->pf.active_vfs++;
+		bnxt_hwrm_func_clr_stats(bp, bp->pf.vf_info[i].fid);
 	}
 
 	/*
