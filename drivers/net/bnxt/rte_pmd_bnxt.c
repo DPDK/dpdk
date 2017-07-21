@@ -473,62 +473,59 @@ int rte_pmd_bnxt_set_vf_vlan_filter(uint8_t port, uint16_t vlan,
 
 	for (i = 0; vf_mask; i++, vf_mask >>= 1) {
 		cnt = bp->pf.vf_info[i].vlan_count;
-		if (vf_mask & 1) {
-			if (bp->pf.vf_info[i].vlan_table == NULL) {
-				rc = -1;
-				continue;
-			}
-			if (vlan_on) {
-				/* First, search for a duplicate... */
-				for (j = 0; j < cnt; j++) {
-					if (rte_be_to_cpu_16(
-					 bp->pf.vf_info[i].vlan_table[j].vid) ==
-					    vlan)
-						break;
-				}
-				if (j == cnt) {
-					/* Now check that there's space */
-					if (cnt == getpagesize() /
-					 sizeof(struct bnxt_vlan_table_entry)) {
-						RTE_LOG(ERR, PMD,
-						  "VF %d VLAN table is full\n",
-						  i);
-						RTE_LOG(ERR, PMD,
-							"cannot add VLAN %u\n",
-							vlan);
-						rc = -1;
-						continue;
-					}
+		if ((vf_mask & 1)  == 0)
+			continue;
 
-					cnt = bp->pf.vf_info[i].vlan_count++;
-					/*
-					 * And finally, add to the
-					 * end of the table
-					 */
-					ve = &bp->pf.vf_info[i].vlan_table[cnt];
-					/* TODO: Hardcoded TPID */
-					ve->tpid = rte_cpu_to_be_16(0x8100);
-					ve->vid = rte_cpu_to_be_16(vlan);
-				}
-			} else {
-				for (j = 0; cnt; j++) {
-					if (rte_be_to_cpu_16(
-					bp->pf.vf_info[i].vlan_table[j].vid) !=
-					    vlan)
-						continue;
-					memmove(
-					 &bp->pf.vf_info[i].vlan_table[j],
-					 &bp->pf.vf_info[i].vlan_table[j + 1],
-					 getpagesize() -
-					 ((j + 1) *
-					 sizeof(struct bnxt_vlan_table_entry)));
-					j--;
-					cnt = bp->pf.vf_info[i].vlan_count--;
-				}
-			}
-			rte_pmd_bnxt_set_vf_vlan_anti_spoof(dev->data->port_id,
-					 i, bp->pf.vf_info[i].vlan_spoof_en);
+		if (bp->pf.vf_info[i].vlan_table == NULL) {
+			rc = -1;
+			continue;
 		}
+		if (vlan_on) {
+			/* First, search for a duplicate... */
+			for (j = 0; j < cnt; j++) {
+				if (rte_be_to_cpu_16(
+				   bp->pf.vf_info[i].vlan_table[j].vid) == vlan)
+					break;
+			}
+			if (j == cnt) {
+				/* Now check that there's space */
+				if (cnt == getpagesize() /
+				 sizeof(struct bnxt_vlan_table_entry)) {
+					RTE_LOG(ERR, PMD,
+						"VF %d VLAN table is full\n",
+						i);
+					RTE_LOG(ERR, PMD,
+						"cannot add VLAN %u\n", vlan);
+					rc = -1;
+					continue;
+				}
+
+				/* cnt is one less than vlan_count */
+				cnt = bp->pf.vf_info[i].vlan_count++;
+				/*
+				 * And finally, add to the
+				 * end of the table
+				 */
+				ve = &bp->pf.vf_info[i].vlan_table[cnt];
+				/* TODO: Hardcoded TPID */
+				ve->tpid = rte_cpu_to_be_16(0x8100);
+				ve->vid = rte_cpu_to_be_16(vlan);
+			}
+		} else {
+			for (j = 0; j < cnt; j++) {
+				if (rte_be_to_cpu_16(
+				   bp->pf.vf_info[i].vlan_table[j].vid) != vlan)
+					continue;
+				memmove(&bp->pf.vf_info[i].vlan_table[j],
+					&bp->pf.vf_info[i].vlan_table[j + 1],
+					getpagesize() - ((j + 1) *
+					sizeof(struct bnxt_vlan_table_entry)));
+				j--;
+				cnt = --bp->pf.vf_info[i].vlan_count;
+			}
+		}
+		rte_pmd_bnxt_set_vf_vlan_anti_spoof(dev->data->port_id, i,
+					bp->pf.vf_info[i].vlan_spoof_en);
 	}
 
 	return rc;
