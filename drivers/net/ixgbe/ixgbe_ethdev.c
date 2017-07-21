@@ -5461,6 +5461,9 @@ ixgbe_mirror_rule_reset(struct rte_eth_dev *dev, uint8_t rule_id)
 	if (ixgbe_vt_check(hw) < 0)
 		return -ENOTSUP;
 
+	if (rule_id >= IXGBE_MAX_MIRROR_RULES)
+		return -EINVAL;
+
 	memset(&mr_info->mr_conf[rule_id], 0,
 	       sizeof(struct rte_eth_mirror_conf));
 
