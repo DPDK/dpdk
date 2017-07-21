@@ -1971,7 +1971,6 @@ port_phy_cfg:
 			"Set link config failed with rc %d\n", rc);
 	}
 
-	rte_delay_ms(BNXT_LINK_WAIT_INTERVAL);
 error:
 	return rc;
 }
