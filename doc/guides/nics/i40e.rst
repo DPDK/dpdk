@@ -404,16 +404,6 @@ is used as the VF driver, DPDK cannot choose 16 byte receive descriptor. That
 is to say, user should keep ``CONFIG_RTE_LIBRTE_I40E_16BYTE_RX_DESC=n`` in
 config file.
 
-Link down with i40e kernel driver after DPDK application exit
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-After DPDK application quit, and the device is bound back to Linux i40e
-kernel driver, the link cannot be up after ``ifconfig <dev> up``.
-To work around this issue, ``ethtool -s <dev> autoneg on`` should be
-set first and then the link can be brought up through ``ifconfig <dev> up``.
-
-NOTE: requires Linux kernel i40e driver version >= 1.4.X
-
 Receive packets with Ethertype 0x88A8
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
