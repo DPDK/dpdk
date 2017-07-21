@@ -58,7 +58,7 @@ void bnxt_handle_async_event(struct bnxt *bp,
 		bnxt_link_update_op(bp->eth_dev, 0);
 		break;
 	default:
-		RTE_LOG(ERR, PMD, "handle_async_event id = 0x%x\n", event_id);
+		RTE_LOG(DEBUG, PMD, "handle_async_event id = 0x%x\n", event_id);
 		break;
 	}
 }

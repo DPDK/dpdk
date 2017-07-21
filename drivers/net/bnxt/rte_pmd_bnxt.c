@@ -333,7 +333,7 @@ int rte_pmd_bnxt_set_vf_vlan_anti_spoof(uint8_t port, uint16_t vf, uint8_t on)
 				 * This simply indicates there's no driver
 				 * loaded.  This is not an error.
 				 */
-				RTE_LOG(ERR, PMD,
+				RTE_LOG(INFO, PMD,
 				      "Unable to get default VNIC for VF %d\n",
 					vf);
 			} else {
