@@ -175,6 +175,16 @@ __rte_deprecated
 uint32_t rte_get_log_type(void);
 
 /**
+ * Get the log level for a given type.
+ *
+ * @param logtype
+ *   The log type identifier.
+ * @return
+ *   0 on success, a negative value if logtype is invalid.
+ */
+int rte_log_get_level(uint32_t logtype);
+
+/**
  * Set the log level for a given type.
  *
  * @param pattern

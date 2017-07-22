@@ -112,6 +112,15 @@ rte_get_log_level(void)
 	return rte_log_get_global_level();
 }
 
+int
+rte_log_get_level(uint32_t type)
+{
+	if (type >= rte_logs.dynamic_types_len)
+		return -1;
+
+	return rte_logs.dynamic_types[type].loglevel;
+}
+
 /* Set global log type */
 __rte_deprecated void
 rte_set_log_type(uint32_t type, int enable)
