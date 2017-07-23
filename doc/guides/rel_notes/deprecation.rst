@@ -39,7 +39,7 @@ Deprecation Notices
   PKT_RX_QINQ_STRIPPED, that are better described. The old flags and
   their behavior will be kept until 17.05 and will be removed in 17.08.
 
-* ethdev: Tx offloads will no longer be enabled by default in 17.08.
+* ethdev: Tx offloads will no longer be enabled by default in 17.11.
   Instead, the ``rte_eth_txmode`` structure will be extended with
   bit field to enable each Tx offload.
   Besides of making the Rx/Tx configuration API more consistent for the
