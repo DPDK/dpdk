@@ -995,6 +995,23 @@ rte_eth_dev_close(uint8_t port_id)
 }
 
 int
+rte_eth_dev_reset(uint8_t port_id)
+{
+	struct rte_eth_dev *dev;
+	int ret;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
+	dev = &rte_eth_devices[port_id];
+
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->dev_reset, -ENOTSUP);
+
+	rte_eth_dev_stop(port_id);
+	ret = dev->dev_ops->dev_reset(dev);
+
+	return ret;
+}
+
+int
 rte_eth_rx_queue_setup(uint8_t port_id, uint16_t rx_queue_id,
 		       uint16_t nb_rx_desc, unsigned int socket_id,
 		       const struct rte_eth_rxconf *rx_conf,

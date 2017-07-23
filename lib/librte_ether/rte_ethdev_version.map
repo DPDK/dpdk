@@ -187,3 +187,10 @@ DPDK_17.08 {
 	rte_tm_wred_profile_delete;
 
 } DPDK_17.05;
+
+DPDK_17.11 {
+	global:
+
+	rte_eth_dev_reset;
+
+} DPDK_17.08;
