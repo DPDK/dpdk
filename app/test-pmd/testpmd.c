@@ -1683,6 +1683,47 @@ close_port(portid_t pid)
 }
 
 void
+reset_port(portid_t pid)
+{
+	int diag;
+	portid_t pi;
+	struct rte_port *port;
+
+	if (port_id_is_invalid(pid, ENABLED_WARN))
+		return;
+
+	printf("Resetting ports...\n");
+
+	RTE_ETH_FOREACH_DEV(pi) {
+		if (pid != pi && pid != (portid_t)RTE_PORT_ALL)
+			continue;
+
+		if (port_is_forwarding(pi) != 0 && test_done == 0) {
+			printf("Please remove port %d from forwarding "
+			       "configuration.\n", pi);
+			continue;
+		}
+
+		if (port_is_bonding_slave(pi)) {
+			printf("Please remove port %d from bonded device.\n",
+			       pi);
+			continue;
+		}
+
+		diag = rte_eth_dev_reset(pi);
+		if (diag == 0) {
+			port = &ports[pi];
+			port->need_reconfig = 1;
+			port->need_reconfig_queues = 1;
+		} else {
+			printf("Failed to reset port %d. diag=%d\n", pi, diag);
+		}
+	}
+
+	printf("Done\n");
+}
+
+void
 attach_port(char *identifier)
 {
 	portid_t pi = 0;

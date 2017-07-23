@@ -610,6 +610,7 @@ int init_port_dcb_config(portid_t pid, enum dcb_mode_enable dcb_mode,
 int start_port(portid_t pid);
 void stop_port(portid_t pid);
 void close_port(portid_t pid);
+void reset_port(portid_t pid);
 void attach_port(char *identifier);
 void detach_port(uint8_t port_id);
 int all_ports_stopped(void);
