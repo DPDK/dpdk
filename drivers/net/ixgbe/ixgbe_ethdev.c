@@ -169,6 +169,7 @@ static void ixgbe_dev_stop(struct rte_eth_dev *dev);
 static int  ixgbe_dev_set_link_up(struct rte_eth_dev *dev);
 static int  ixgbe_dev_set_link_down(struct rte_eth_dev *dev);
 static void ixgbe_dev_close(struct rte_eth_dev *dev);
+static int  ixgbe_dev_reset(struct rte_eth_dev *dev);
 static void ixgbe_dev_promiscuous_enable(struct rte_eth_dev *dev);
 static void ixgbe_dev_promiscuous_disable(struct rte_eth_dev *dev);
 static void ixgbe_dev_allmulticast_enable(struct rte_eth_dev *dev);
@@ -265,6 +266,7 @@ static int ixgbevf_dev_link_update(struct rte_eth_dev *dev,
 				   int wait_to_complete);
 static void ixgbevf_dev_stop(struct rte_eth_dev *dev);
 static void ixgbevf_dev_close(struct rte_eth_dev *dev);
+static int  ixgbevf_dev_reset(struct rte_eth_dev *dev);
 static void ixgbevf_intr_disable(struct ixgbe_hw *hw);
 static void ixgbevf_intr_enable(struct ixgbe_hw *hw);
 static void ixgbevf_dev_stats_get(struct rte_eth_dev *dev,
@@ -518,6 +520,7 @@ static const struct eth_dev_ops ixgbe_eth_dev_ops = {
 	.dev_set_link_up    = ixgbe_dev_set_link_up,
 	.dev_set_link_down  = ixgbe_dev_set_link_down,
 	.dev_close            = ixgbe_dev_close,
+	.dev_reset	      = ixgbe_dev_reset,
 	.promiscuous_enable   = ixgbe_dev_promiscuous_enable,
 	.promiscuous_disable  = ixgbe_dev_promiscuous_disable,
 	.allmulticast_enable  = ixgbe_dev_allmulticast_enable,
@@ -608,6 +611,7 @@ static const struct eth_dev_ops ixgbevf_eth_dev_ops = {
 	.xstats_reset         = ixgbevf_dev_stats_reset,
 	.xstats_get_names     = ixgbevf_dev_xstats_get_names,
 	.dev_close            = ixgbevf_dev_close,
+	.dev_reset	      = ixgbevf_dev_reset,
 	.allmulticast_enable  = ixgbevf_dev_allmulticast_enable,
 	.allmulticast_disable = ixgbevf_dev_allmulticast_disable,
 	.dev_infos_get        = ixgbevf_dev_info_get,
@@ -2842,7 +2846,7 @@ ixgbe_dev_set_link_down(struct rte_eth_dev *dev)
 }
 
 /*
- * Reest and stop device.
+ * Reset and stop device.
  */
 static void
 ixgbe_dev_close(struct rte_eth_dev *dev)
@@ -2863,6 +2867,32 @@ ixgbe_dev_close(struct rte_eth_dev *dev)
 
 	/* reprogram the RAR[0] in case user changed it. */
 	ixgbe_set_rar(hw, 0, hw->mac.addr, 0, IXGBE_RAH_AV);
+}
+
+/*
+ * Reset PF device.
+ */
+static int
+ixgbe_dev_reset(struct rte_eth_dev *dev)
+{
+	int ret;
+
+	/* When a DPDK PMD PF begin to reset PF port, it should notify all
+	 * its VF to make them align with it. The detailed notification
+	 * mechanism is PMD specific. As to ixgbe PF, it is rather complex.
+	 * To avoid unexpected behavior in VF, currently reset of PF with
+	 * SR-IOV activation is not supported. It might be supported later.
+	 */
+	if (dev->data->sriov.active)
+		return -ENOTSUP;
+
+	ret = eth_ixgbe_dev_uninit(dev);
+	if (ret)
+		return ret;
+
+	ret = eth_ixgbe_dev_init(dev);
+
+	return ret;
 }
 
 static void
@@ -5076,6 +5106,23 @@ ixgbevf_dev_close(struct rte_eth_dev *dev)
 	 * after stop, close and detach of the VF
 	 **/
 	ixgbevf_remove_mac_addr(dev, 0);
+}
+
+/*
+ * Reset VF device
+ */
+static int
+ixgbevf_dev_reset(struct rte_eth_dev *dev)
+{
+	int ret;
+
+	ret = eth_ixgbevf_dev_uninit(dev);
+	if (ret)
+		return ret;
+
+	ret = eth_ixgbevf_dev_init(dev);
+
+	return ret;
 }
 
 static void ixgbevf_set_vfta_all(struct rte_eth_dev *dev, bool on)
