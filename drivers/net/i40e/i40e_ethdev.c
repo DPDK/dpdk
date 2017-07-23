@@ -250,6 +250,7 @@ static int i40e_dev_configure(struct rte_eth_dev *dev);
 static int i40e_dev_start(struct rte_eth_dev *dev);
 static void i40e_dev_stop(struct rte_eth_dev *dev);
 static void i40e_dev_close(struct rte_eth_dev *dev);
+static int  i40e_dev_reset(struct rte_eth_dev *dev);
 static void i40e_dev_promiscuous_enable(struct rte_eth_dev *dev);
 static void i40e_dev_promiscuous_disable(struct rte_eth_dev *dev);
 static void i40e_dev_allmulticast_enable(struct rte_eth_dev *dev);
@@ -449,6 +450,7 @@ static const struct eth_dev_ops i40e_eth_dev_ops = {
 	.dev_start                    = i40e_dev_start,
 	.dev_stop                     = i40e_dev_stop,
 	.dev_close                    = i40e_dev_close,
+	.dev_reset		      = i40e_dev_reset,
 	.promiscuous_enable           = i40e_dev_promiscuous_enable,
 	.promiscuous_disable          = i40e_dev_promiscuous_disable,
 	.allmulticast_enable          = i40e_dev_allmulticast_enable,
@@ -2163,6 +2165,32 @@ i40e_dev_close(struct rte_eth_dev *dev)
 	I40E_WRITE_REG(hw, I40E_PFGEN_CTRL,
 			(reg | I40E_PFGEN_CTRL_PFSWR_MASK));
 	I40E_WRITE_FLUSH(hw);
+}
+
+/*
+ * Reset PF device only to re-initialize resources in PMD layer
+ */
+static int
+i40e_dev_reset(struct rte_eth_dev *dev)
+{
+	int ret;
+
+	/* When a DPDK PMD PF begin to reset PF port, it should notify all
+	 * its VF to make them align with it. The detailed notification
+	 * mechanism is PMD specific. As to i40e PF, it is rather complex.
+	 * To avoid unexpected behavior in VF, currently reset of PF with
+	 * SR-IOV activation is not supported. It might be supported later.
+	 */
+	if (dev->data->sriov.active)
+		return -ENOTSUP;
+
+	ret = eth_i40e_dev_uninit(dev);
+	if (ret)
+		return ret;
+
+	ret = eth_i40e_dev_init(dev);
+
+	return ret;
 }
 
 static void
