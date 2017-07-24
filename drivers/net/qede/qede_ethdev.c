@@ -363,9 +363,10 @@ static void qede_print_adapter_info(struct qede_dev *qdev)
 
 	DP_INFO(edev, "*********************************\n");
 	DP_INFO(edev, " DPDK version:%s\n", rte_version());
-	DP_INFO(edev, " Chip details : %s%d\n",
+	DP_INFO(edev, " Chip details : %s %c%d\n",
 		  ECORE_IS_BB(edev) ? "BB" : "AH",
-		  CHIP_REV_IS_A0(edev) ? 0 : 1);
+		  'A' + edev->chip_rev,
+		  (int)edev->chip_metal);
 	snprintf(ver_str, QEDE_PMD_DRV_VER_STR_SIZE, "%d.%d.%d.%d",
 		 info->fw_major, info->fw_minor, info->fw_rev, info->fw_eng);
 	snprintf(drv_ver, QEDE_PMD_DRV_VER_STR_SIZE, "%s_%s",
