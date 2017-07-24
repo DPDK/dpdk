@@ -584,4 +584,16 @@ enum _ecore_status_t
 ecore_set_queue_coalesce(struct ecore_hwfn *p_hwfn, u16 rx_coal,
 			 u16 tx_coal, void *p_handle);
 
+/**
+ * @brief ecore_pglueb_set_pfid_enable - Enable or disable PCI BUS MASTER
+ *
+ * @param p_hwfn
+ * @param p_ptt
+ * @param b_enable - true/false
+ *
+ * @return enum _ecore_status_t
+ */
+enum _ecore_status_t ecore_pglueb_set_pfid_enable(struct ecore_hwfn *p_hwfn,
+						  struct ecore_ptt *p_ptt,
+						  bool b_enable);
 #endif

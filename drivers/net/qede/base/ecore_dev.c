@@ -1080,7 +1080,7 @@ enum _ecore_status_t ecore_final_cleanup(struct ecore_hwfn *p_hwfn,
 	}
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
-		   "Sending final cleanup for PFVF[%d] [Command %08x\n]",
+		   "Sending final cleanup for PFVF[%d] [Command %08x]\n",
 		   id, command);
 
 	ecore_wr(p_hwfn, p_ptt, XSDM_REG_OPERATION_GEN, command);
@@ -1776,13 +1776,6 @@ ecore_hw_init_pf(struct ecore_hwfn *p_hwfn,
 	/* perform debug configuration when chip is out of reset */
 	OSAL_BEFORE_PF_START((void *)p_hwfn->p_dev, p_hwfn->my_id);
 
-	/* Cleanup chip from previous driver if such remains exist */
-	rc = ecore_final_cleanup(p_hwfn, p_ptt, rel_pf_id, false);
-	if (rc != ECORE_SUCCESS) {
-		ecore_hw_err_notify(p_hwfn, ECORE_HW_ERR_RAMROD_FAIL);
-		return rc;
-	}
-
 	/* PF Init sequence */
 	rc = ecore_init_run(p_hwfn, p_ptt, PHASE_PF, rel_pf_id, hw_mode);
 	if (rc)
@@ -1866,17 +1859,17 @@ ecore_hw_init_pf(struct ecore_hwfn *p_hwfn,
 	return rc;
 }
 
-static enum _ecore_status_t
-ecore_change_pci_hwfn(struct ecore_hwfn *p_hwfn,
-		      struct ecore_ptt *p_ptt, u8 enable)
+enum _ecore_status_t ecore_pglueb_set_pfid_enable(struct ecore_hwfn *p_hwfn,
+						  struct ecore_ptt *p_ptt,
+						  bool b_enable)
 {
-	u32 delay_idx = 0, val, set_val = enable ? 1 : 0;
+	u32 delay_idx = 0, val, set_val = b_enable ? 1 : 0;
 
-	/* Change PF in PXP */
+	/* Configure the PF's internal FID_enable for master transactions */
 	ecore_wr(p_hwfn, p_ptt,
 		 PGLUE_B_REG_INTERNAL_PFID_ENABLE_MASTER, set_val);
 
-	/* wait until value is set - try for 1 second every 50us */
+	/* Wait until value is set - try for 1 second every 50us */
 	for (delay_idx = 0; delay_idx < 20000; delay_idx++) {
 		val = ecore_rd(p_hwfn, p_ptt,
 			       PGLUE_B_REG_INTERNAL_PFID_ENABLE_MASTER);
@@ -1918,14 +1911,21 @@ enum _ecore_status_t ecore_vf_start(struct ecore_hwfn *p_hwfn,
 	return ECORE_SUCCESS;
 }
 
+static void ecore_pglueb_clear_err(struct ecore_hwfn *p_hwfn,
+				     struct ecore_ptt *p_ptt)
+{
+	ecore_wr(p_hwfn, p_ptt, PGLUE_B_REG_WAS_ERROR_PF_31_0_CLR,
+		 1 << p_hwfn->abs_pf_id);
+}
+
 enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 				   struct ecore_hw_init_params *p_params)
 {
 	struct ecore_load_req_params load_req_params;
-	u32 load_code, param, drv_mb_param;
+	u32 load_code, resp, param, drv_mb_param;
 	bool b_default_mtu = true;
 	struct ecore_hwfn *p_hwfn;
-	enum _ecore_status_t rc = ECORE_SUCCESS, mfw_rc;
+	enum _ecore_status_t rc = ECORE_SUCCESS;
 	int i;
 
 	if ((p_params->int_mode == ECORE_INT_MODE_MSI) &&
@@ -1942,7 +1942,7 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 	}
 
 	for_each_hwfn(p_dev, i) {
-		struct ecore_hwfn *p_hwfn = &p_dev->hwfns[i];
+		p_hwfn = &p_dev->hwfns[i];
 
 		/* If management didn't provide a default, set one of our own */
 		if (!p_hwfn->hw_info.mtu) {
@@ -1954,11 +1954,6 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 			ecore_vf_start(p_hwfn, p_params);
 			continue;
 		}
-
-		/* Enable DMAE in PXP */
-		rc = ecore_change_pci_hwfn(p_hwfn, p_hwfn->p_main_ptt, true);
-		if (rc != ECORE_SUCCESS)
-			return rc;
 
 		rc = ecore_calc_hw_mode(p_hwfn);
 		if (rc != ECORE_SUCCESS)
@@ -2009,6 +2004,30 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 			qm_lock_init = true;
 		}
 
+		/* Clean up chip from previous driver if such remains exist.
+		 * This is not needed when the PF is the first one on the
+		 * engine, since afterwards we are going to init the FW.
+		 */
+		if (load_code != FW_MSG_CODE_DRV_LOAD_ENGINE) {
+			rc = ecore_final_cleanup(p_hwfn, p_hwfn->p_main_ptt,
+						 p_hwfn->rel_pf_id, false);
+			if (rc != ECORE_SUCCESS) {
+				ecore_hw_err_notify(p_hwfn,
+						    ECORE_HW_ERR_RAMROD_FAIL);
+				goto load_err;
+			}
+		}
+
+		/* Log and clean previous pglue_b errors if such exist */
+		ecore_pglueb_rbc_attn_handler(p_hwfn, p_hwfn->p_main_ptt);
+		ecore_pglueb_clear_err(p_hwfn, p_hwfn->p_main_ptt);
+
+		/* Enable the PF's internal FID_enable in the PXP */
+		rc = ecore_pglueb_set_pfid_enable(p_hwfn, p_hwfn->p_main_ptt,
+						  true);
+		if (rc != ECORE_SUCCESS)
+			goto load_err;
+
 		switch (load_code) {
 		case FW_MSG_CODE_DRV_LOAD_ENGINE:
 			rc = ecore_hw_init_common(p_hwfn, p_hwfn->p_main_ptt,
@@ -2037,35 +2056,28 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 			break;
 		}
 
-		if (rc != ECORE_SUCCESS)
+		if (rc != ECORE_SUCCESS) {
 			DP_NOTICE(p_hwfn, true,
 				  "init phase failed for loadcode 0x%x (rc %d)\n",
 				  load_code, rc);
+			goto load_err;
+		}
 
-		/* ACK mfw regardless of success or failure of initialization */
-		mfw_rc = ecore_mcp_cmd(p_hwfn, p_hwfn->p_main_ptt,
-				       DRV_MSG_CODE_LOAD_DONE,
-				       0, &load_code, &param);
+		rc = ecore_mcp_load_done(p_hwfn, p_hwfn->p_main_ptt);
 		if (rc != ECORE_SUCCESS)
 			return rc;
-
-		if (mfw_rc != ECORE_SUCCESS) {
-			DP_NOTICE(p_hwfn, true,
-				  "Failed sending a LOAD_DONE command\n");
-			return mfw_rc;
-		}
 
 		/* send DCBX attention request command */
 		DP_VERBOSE(p_hwfn, ECORE_MSG_DCB,
 			   "sending phony dcbx set command to trigger DCBx attention handling\n");
-		mfw_rc = ecore_mcp_cmd(p_hwfn, p_hwfn->p_main_ptt,
-				       DRV_MSG_CODE_SET_DCBX,
-				       1 << DRV_MB_PARAM_DCBX_NOTIFY_SHIFT,
-				       &load_code, &param);
-		if (mfw_rc != ECORE_SUCCESS) {
+		rc = ecore_mcp_cmd(p_hwfn, p_hwfn->p_main_ptt,
+				   DRV_MSG_CODE_SET_DCBX,
+				   1 << DRV_MB_PARAM_DCBX_NOTIFY_SHIFT, &resp,
+				   &param);
+		if (rc != ECORE_SUCCESS) {
 			DP_NOTICE(p_hwfn, true,
 				  "Failed to send DCBX attention request\n");
-			return mfw_rc;
+			return rc;
 		}
 
 		p_hwfn->hw_init_done = true;
@@ -2076,7 +2088,7 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 		drv_mb_param = STORM_FW_VERSION;
 		rc = ecore_mcp_cmd(p_hwfn, p_hwfn->p_main_ptt,
 				   DRV_MSG_CODE_OV_UPDATE_STORM_FW_VER,
-				   drv_mb_param, &load_code, &param);
+				   drv_mb_param, &resp, &param);
 		if (rc != ECORE_SUCCESS)
 			DP_INFO(p_hwfn, "Failed to update firmware version\n");
 
@@ -2093,6 +2105,14 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 			DP_INFO(p_hwfn, "Failed to update driver state\n");
 	}
 
+	return rc;
+
+load_err:
+	/* The MFW load lock should be released regardless of success or failure
+	 * of initialization.
+	 * TODO: replace this with an attempt to send cancel_load.
+	 */
+	ecore_mcp_load_done(p_hwfn, p_hwfn->p_main_ptt);
 	return rc;
 }
 
@@ -2261,18 +2281,20 @@ enum _ecore_status_t ecore_hw_stop(struct ecore_dev *p_dev)
 		}
 	} /* hwfn loop */
 
-	if (IS_PF(p_dev)) {
+	if (IS_PF(p_dev) && !p_dev->recov_in_prog) {
 		p_hwfn = ECORE_LEADING_HWFN(p_dev);
 		p_ptt = ECORE_LEADING_HWFN(p_dev)->p_main_ptt;
 
-		/* Disable DMAE in PXP - in CMT, this should only be done for
-		 * first hw-function, and only after all transactions have
-		 * stopped for all active hw-functions.
-		 */
-		rc = ecore_change_pci_hwfn(p_hwfn, p_ptt, false);
+		 /* Clear the PF's internal FID_enable in the PXP.
+		  * In CMT this should only be done for first hw-function, and
+		  * only after all transactions have stopped for all active
+		  * hw-functions.
+		  */
+		rc = ecore_pglueb_set_pfid_enable(p_hwfn, p_hwfn->p_main_ptt,
+						  false);
 		if (rc != ECORE_SUCCESS) {
 			DP_NOTICE(p_hwfn, true,
-				  "ecore_change_pci_hwfn failed. rc = %d.\n",
+				  "ecore_pglueb_set_pfid_enable() failed. rc = %d.\n",
 				  rc);
 			rc2 = ECORE_UNKNOWN_ERROR;
 		}
@@ -2370,9 +2392,8 @@ static void ecore_hw_hwfn_prepare(struct ecore_hwfn *p_hwfn)
 			 PGLUE_B_REG_PGL_ADDR_94_F0_BB, 0);
 	}
 
-	/* Clean Previous errors if such exist */
-	ecore_wr(p_hwfn, p_hwfn->p_main_ptt,
-		 PGLUE_B_REG_WAS_ERROR_PF_31_0_CLR, 1 << p_hwfn->abs_pf_id);
+	/* Clean previous pglue_b errors if such exist */
+	ecore_pglueb_clear_err(p_hwfn, p_hwfn->p_main_ptt);
 
 	/* enable internal target-read */
 	ecore_wr(p_hwfn, p_hwfn->p_main_ptt,

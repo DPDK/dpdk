@@ -284,120 +284,117 @@ out:
 #define ECORE_PGLUE_ATTENTION_ICPL_VALID (1 << 23)
 #define ECORE_PGLUE_ATTENTION_ZLR_VALID (1 << 25)
 #define ECORE_PGLUE_ATTENTION_ILT_VALID (1 << 23)
-static enum _ecore_status_t ecore_pglub_rbc_attn_cb(struct ecore_hwfn *p_hwfn)
+
+enum _ecore_status_t ecore_pglueb_rbc_attn_handler(struct ecore_hwfn *p_hwfn,
+						   struct ecore_ptt *p_ptt)
 {
 	u32 tmp;
 
-	tmp = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
-		       PGLUE_B_REG_TX_ERR_WR_DETAILS2);
+	tmp = ecore_rd(p_hwfn, p_ptt, PGLUE_B_REG_TX_ERR_WR_DETAILS2);
 	if (tmp & ECORE_PGLUE_ATTENTION_VALID) {
 		u32 addr_lo, addr_hi, details;
 
-		addr_lo = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+		addr_lo = ecore_rd(p_hwfn, p_ptt,
 				   PGLUE_B_REG_TX_ERR_WR_ADD_31_0);
-		addr_hi = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+		addr_hi = ecore_rd(p_hwfn, p_ptt,
 				   PGLUE_B_REG_TX_ERR_WR_ADD_63_32);
-		details = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+		details = ecore_rd(p_hwfn, p_ptt,
 				   PGLUE_B_REG_TX_ERR_WR_DETAILS);
 
-		DP_INFO(p_hwfn,
-			"Illegal write by chip to [%08x:%08x] blocked."
-			"Details: %08x [PFID %02x, VFID %02x, VF_VALID %02x]"
-			" Details2 %08x [Was_error %02x BME deassert %02x"
-			" FID_enable deassert %02x]\n",
-			addr_hi, addr_lo, details,
-			(u8)((details &
-			      ECORE_PGLUE_ATTENTION_DETAILS_PFID_MASK) >>
-			     ECORE_PGLUE_ATTENTION_DETAILS_PFID_SHIFT),
-			(u8)((details &
-			      ECORE_PGLUE_ATTENTION_DETAILS_VFID_MASK) >>
-			     ECORE_PGLUE_ATTENTION_DETAILS_VFID_SHIFT),
-			(u8)((details & ECORE_PGLUE_ATTENTION_DETAILS_VF_VALID)
-			     ? 1 : 0), tmp,
-			(u8)((tmp & ECORE_PGLUE_ATTENTION_DETAILS2_WAS_ERR) ? 1
-			     : 0),
-			(u8)((tmp & ECORE_PGLUE_ATTENTION_DETAILS2_BME) ? 1 :
-			     0),
-			(u8)((tmp & ECORE_PGLUE_ATTENTION_DETAILS2_FID_EN) ? 1
-			     : 0));
+		DP_NOTICE(p_hwfn, false,
+			  "Illegal write by chip to [%08x:%08x] blocked. Details: %08x [PFID %02x, VFID %02x, VF_VALID %02x] Details2 %08x [Was_error %02x BME deassert %02x FID_enable deassert %02x]\n",
+			  addr_hi, addr_lo, details,
+			  (u8)((details &
+				ECORE_PGLUE_ATTENTION_DETAILS_PFID_MASK) >>
+			       ECORE_PGLUE_ATTENTION_DETAILS_PFID_SHIFT),
+			  (u8)((details &
+				ECORE_PGLUE_ATTENTION_DETAILS_VFID_MASK) >>
+			       ECORE_PGLUE_ATTENTION_DETAILS_VFID_SHIFT),
+			  (u8)((details &
+			       ECORE_PGLUE_ATTENTION_DETAILS_VF_VALID) ? 1 : 0),
+			  tmp,
+			  (u8)((tmp & ECORE_PGLUE_ATTENTION_DETAILS2_WAS_ERR) ?
+				1 : 0),
+			  (u8)((tmp & ECORE_PGLUE_ATTENTION_DETAILS2_BME) ?
+				1 : 0),
+			  (u8)((tmp & ECORE_PGLUE_ATTENTION_DETAILS2_FID_EN) ?
+				1 : 0));
 	}
 
-	tmp = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
-		       PGLUE_B_REG_TX_ERR_RD_DETAILS2);
+	tmp = ecore_rd(p_hwfn, p_ptt, PGLUE_B_REG_TX_ERR_RD_DETAILS2);
 	if (tmp & ECORE_PGLUE_ATTENTION_RD_VALID) {
 		u32 addr_lo, addr_hi, details;
 
-		addr_lo = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+		addr_lo = ecore_rd(p_hwfn, p_ptt,
 				   PGLUE_B_REG_TX_ERR_RD_ADD_31_0);
-		addr_hi = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+		addr_hi = ecore_rd(p_hwfn, p_ptt,
 				   PGLUE_B_REG_TX_ERR_RD_ADD_63_32);
-		details = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+		details = ecore_rd(p_hwfn, p_ptt,
 				   PGLUE_B_REG_TX_ERR_RD_DETAILS);
 
-		DP_INFO(p_hwfn,
-			"Illegal read by chip from [%08x:%08x] blocked."
-			" Details: %08x [PFID %02x, VFID %02x, VF_VALID %02x]"
-			" Details2 %08x [Was_error %02x BME deassert %02x"
-			" FID_enable deassert %02x]\n",
-			addr_hi, addr_lo, details,
-			(u8)((details &
-			      ECORE_PGLUE_ATTENTION_DETAILS_PFID_MASK) >>
-			     ECORE_PGLUE_ATTENTION_DETAILS_PFID_SHIFT),
-			(u8)((details &
-			      ECORE_PGLUE_ATTENTION_DETAILS_VFID_MASK) >>
-			     ECORE_PGLUE_ATTENTION_DETAILS_VFID_SHIFT),
-			(u8)((details & ECORE_PGLUE_ATTENTION_DETAILS_VF_VALID)
-			     ? 1 : 0), tmp,
-			(u8)((tmp & ECORE_PGLUE_ATTENTION_DETAILS2_WAS_ERR) ? 1
-			     : 0),
-			(u8)((tmp & ECORE_PGLUE_ATTENTION_DETAILS2_BME) ? 1 :
-			     0),
-			(u8)((tmp & ECORE_PGLUE_ATTENTION_DETAILS2_FID_EN) ? 1
-			     : 0));
+		DP_NOTICE(p_hwfn, false,
+			  "Illegal read by chip from [%08x:%08x] blocked. Details: %08x [PFID %02x, VFID %02x, VF_VALID %02x] Details2 %08x [Was_error %02x BME deassert %02x FID_enable deassert %02x]\n",
+			  addr_hi, addr_lo, details,
+			  (u8)((details &
+				ECORE_PGLUE_ATTENTION_DETAILS_PFID_MASK) >>
+			       ECORE_PGLUE_ATTENTION_DETAILS_PFID_SHIFT),
+			  (u8)((details &
+				ECORE_PGLUE_ATTENTION_DETAILS_VFID_MASK) >>
+			       ECORE_PGLUE_ATTENTION_DETAILS_VFID_SHIFT),
+			  (u8)((details &
+			       ECORE_PGLUE_ATTENTION_DETAILS_VF_VALID) ? 1 : 0),
+			  tmp,
+			  (u8)((tmp & ECORE_PGLUE_ATTENTION_DETAILS2_WAS_ERR) ?
+				1 : 0),
+			  (u8)((tmp & ECORE_PGLUE_ATTENTION_DETAILS2_BME) ?
+				1 : 0),
+			  (u8)((tmp & ECORE_PGLUE_ATTENTION_DETAILS2_FID_EN) ?
+				1 : 0));
 	}
 
-	tmp = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
-		       PGLUE_B_REG_TX_ERR_WR_DETAILS_ICPL);
+	tmp = ecore_rd(p_hwfn, p_ptt, PGLUE_B_REG_TX_ERR_WR_DETAILS_ICPL);
 	if (tmp & ECORE_PGLUE_ATTENTION_ICPL_VALID)
-		DP_INFO(p_hwfn, "ICPL error - %08x\n", tmp);
+		DP_NOTICE(p_hwfn, false, "ICPL erorr - %08x\n", tmp);
 
-	tmp = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
-		       PGLUE_B_REG_MASTER_ZLR_ERR_DETAILS);
+	tmp = ecore_rd(p_hwfn, p_ptt, PGLUE_B_REG_MASTER_ZLR_ERR_DETAILS);
 	if (tmp & ECORE_PGLUE_ATTENTION_ZLR_VALID) {
 		u32 addr_hi, addr_lo;
 
-		addr_lo = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+		addr_lo = ecore_rd(p_hwfn, p_ptt,
 				   PGLUE_B_REG_MASTER_ZLR_ERR_ADD_31_0);
-		addr_hi = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+		addr_hi = ecore_rd(p_hwfn, p_ptt,
 				   PGLUE_B_REG_MASTER_ZLR_ERR_ADD_63_32);
 
-		DP_INFO(p_hwfn, "ICPL error - %08x [Address %08x:%08x]\n",
-			tmp, addr_hi, addr_lo);
+		DP_NOTICE(p_hwfn, false,
+			  "ICPL erorr - %08x [Address %08x:%08x]\n",
+			  tmp, addr_hi, addr_lo);
 	}
 
-	tmp = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
-		       PGLUE_B_REG_VF_ILT_ERR_DETAILS2);
+	tmp = ecore_rd(p_hwfn, p_ptt, PGLUE_B_REG_VF_ILT_ERR_DETAILS2);
 	if (tmp & ECORE_PGLUE_ATTENTION_ILT_VALID) {
 		u32 addr_hi, addr_lo, details;
 
-		addr_lo = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+		addr_lo = ecore_rd(p_hwfn, p_ptt,
 				   PGLUE_B_REG_VF_ILT_ERR_ADD_31_0);
-		addr_hi = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+		addr_hi = ecore_rd(p_hwfn, p_ptt,
 				   PGLUE_B_REG_VF_ILT_ERR_ADD_63_32);
-		details = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
+		details = ecore_rd(p_hwfn, p_ptt,
 				   PGLUE_B_REG_VF_ILT_ERR_DETAILS);
 
-		DP_INFO(p_hwfn,
-			"ILT error - Details %08x Details2 %08x"
-			" [Address %08x:%08x]\n",
-			details, tmp, addr_hi, addr_lo);
+		DP_NOTICE(p_hwfn, false,
+			  "ILT error - Details %08x Details2 %08x [Address %08x:%08x]\n",
+			  details, tmp, addr_hi, addr_lo);
 	}
 
 	/* Clear the indications */
-	ecore_wr(p_hwfn, p_hwfn->p_dpc_ptt,
-		 PGLUE_B_REG_LATCHED_ERRORS_CLR, (1 << 2));
+	ecore_wr(p_hwfn, p_ptt, PGLUE_B_REG_LATCHED_ERRORS_CLR, (1 << 2));
 
 	return ECORE_SUCCESS;
+}
+
+static enum _ecore_status_t ecore_pglueb_rbc_attn_cb(struct ecore_hwfn *p_hwfn)
+{
+	return ecore_pglueb_rbc_attn_handler(p_hwfn, p_hwfn->p_dpc_ptt);
 }
 
 static enum _ecore_status_t ecore_fw_assertion(struct ecore_hwfn *p_hwfn)
@@ -505,7 +502,7 @@ static struct aeu_invert_reg aeu_descs[NUM_ATTN_REGS] = {
 	 {			/* After Invert 2 */
 	  {"PGLUE config_space", ATTENTION_SINGLE, OSAL_NULL, MAX_BLOCK_ID},
 	  {"PGLUE misc_flr", ATTENTION_SINGLE, OSAL_NULL, MAX_BLOCK_ID},
-	  {"PGLUE B RBC", ATTENTION_PAR_INT, ecore_pglub_rbc_attn_cb,
+	  {"PGLUE B RBC", ATTENTION_PAR_INT, ecore_pglueb_rbc_attn_cb,
 	   BLOCK_PGLUE_B},
 	  {"PGLUE misc_mctp", ATTENTION_SINGLE, OSAL_NULL, MAX_BLOCK_ID},
 	  {"Flash event", ATTENTION_SINGLE, OSAL_NULL, MAX_BLOCK_ID},
@@ -827,8 +824,9 @@ ecore_int_deassertion_aeu_bit(struct ecore_hwfn *p_hwfn,
 				     ATTN_TYPE_INTERRUPT, !b_fatal);
 }
 
+	/* @DPDK */
 	/* Reach assertion if attention is fatal */
-	if (b_fatal) {
+	if (b_fatal || (strcmp(p_bit_name, "PGLUE B RBC") == 0)) {
 		DP_NOTICE(p_hwfn, true, "`%s': Fatal attention\n",
 			  p_bit_name);
 

@@ -893,6 +893,30 @@ enum _ecore_status_t ecore_mcp_load_req(struct ecore_hwfn *p_hwfn,
 	return ECORE_SUCCESS;
 }
 
+enum _ecore_status_t ecore_mcp_load_done(struct ecore_hwfn *p_hwfn,
+					 struct ecore_ptt *p_ptt)
+{
+	u32 resp = 0, param = 0;
+	enum _ecore_status_t rc;
+
+	rc = ecore_mcp_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_LOAD_DONE, 0, &resp,
+			   &param);
+	if (rc != ECORE_SUCCESS) {
+		DP_NOTICE(p_hwfn, false,
+			  "Failed to send a LOAD_DONE command, rc = %d\n", rc);
+		return rc;
+	}
+
+#define FW_MB_PARAM_LOAD_DONE_DID_EFUSE_ERROR     (1 << 0)
+
+	/* Check if there is a DID mismatch between nvm-cfg/efuse */
+	if (param & FW_MB_PARAM_LOAD_DONE_DID_EFUSE_ERROR)
+		DP_NOTICE(p_hwfn, false,
+			  "warning: device configuration is not supported on this board type. The device may not function as expected.\n");
+
+	return ECORE_SUCCESS;
+}
+
 enum _ecore_status_t ecore_mcp_unload_req(struct ecore_hwfn *p_hwfn,
 					  struct ecore_ptt *p_ptt)
 {
@@ -2892,6 +2916,27 @@ struct ecore_resc_alloc_out_params {
 	u32 vf_resc_start;
 	u32 flags;
 };
+
+#define ECORE_RECOVERY_PROLOG_SLEEP_MS	100
+
+enum _ecore_status_t ecore_recovery_prolog(struct ecore_dev *p_dev)
+{
+	struct ecore_hwfn *p_hwfn = ECORE_LEADING_HWFN(p_dev);
+	struct ecore_ptt *p_ptt = p_hwfn->p_main_ptt;
+	enum _ecore_status_t rc;
+
+	/* Allow ongoing PCIe transactions to complete */
+	OSAL_MSLEEP(ECORE_RECOVERY_PROLOG_SLEEP_MS);
+
+	/* Clear the PF's internal FID_enable in the PXP */
+	rc = ecore_pglueb_set_pfid_enable(p_hwfn, p_ptt, false);
+	if (rc != ECORE_SUCCESS)
+		DP_NOTICE(p_hwfn, false,
+			  "ecore_pglueb_set_pfid_enable() failed. rc = %d.\n",
+			  rc);
+
+	return rc;
+}
 
 static enum _ecore_status_t
 ecore_mcp_resc_allocation_msg(struct ecore_hwfn *p_hwfn,

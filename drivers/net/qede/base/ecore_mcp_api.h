@@ -736,6 +736,17 @@ enum _ecore_status_t ecore_start_recovery_process(struct ecore_hwfn *p_hwfn,
 						  struct ecore_ptt *p_ptt);
 
 /**
+ * @brief A recovery handler must call this function as its first step.
+ *        It is assumed that the handler is not run from an interrupt context.
+ *
+ *  @param p_dev
+ *  @param p_ptt
+ *
+ * @return enum _ecore_status_t
+ */
+enum _ecore_status_t ecore_recovery_prolog(struct ecore_dev *p_dev);
+
+/**
  * @brief Notify MFW about the change in base device properties
  *
  *  @param p_hwfn
