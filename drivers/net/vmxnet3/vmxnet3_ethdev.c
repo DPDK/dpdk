@@ -1219,7 +1219,10 @@ vmxnet3_dev_promiscuous_disable(struct rte_eth_dev *dev)
 	struct vmxnet3_hw *hw = dev->data->dev_private;
 	uint32_t *vf_table = hw->shared->devRead.rxFilterConf.vfTable;
 
-	memcpy(vf_table, hw->shadow_vfta, VMXNET3_VFT_TABLE_SIZE);
+	if (dev->data->dev_conf.rxmode.hw_vlan_filter)
+		memcpy(vf_table, hw->shadow_vfta, VMXNET3_VFT_TABLE_SIZE);
+	else
+		memset(vf_table, 0xff, VMXNET3_VFT_TABLE_SIZE);
 	vmxnet3_dev_set_rxmode(hw, VMXNET3_RXM_PROMISC, 0);
 	VMXNET3_WRITE_BAR1_REG(hw, VMXNET3_REG_CMD,
 			       VMXNET3_CMD_UPDATE_VLAN_FILTERS);
