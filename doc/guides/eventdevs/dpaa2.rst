@@ -94,12 +94,12 @@ separately:
 
   SDK and related information can be obtained from:  `NXP QorIQ SDK  <http://www.nxp.com/products/software-and-tools/run-time-software/linux-sdk/linux-sdk-for-qoriq-processors:SDKLINUX>`_.
 
-- **DPDK Helper Scripts**
+- **DPDK Extra Scripts**
 
   DPAA2 based resources can be configured easily with the help of ready scripts
-  as provided in the DPDK helper repository.
+  as provided in the DPDK Extra repository.
 
-  `DPDK Helper Scripts <https://github.com/qoriq-open-source/dpdk-helper>`_.
+  `DPDK Extras Scripts <https://github.com/qoriq-open-source/dpdk-extras>`_.
 
 Currently supported by DPDK:
 
