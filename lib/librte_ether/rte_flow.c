@@ -248,8 +248,10 @@ static void
 flow_item_spec_size(const struct rte_flow_item *item,
 		    size_t *size, size_t *pad)
 {
-	if (!item->spec)
+	if (!item->spec) {
+		*size = 0;
 		goto empty;
+	}
 	switch (item->type) {
 		union {
 			const struct rte_flow_item_raw *raw;
@@ -262,10 +264,10 @@ flow_item_spec_size(const struct rte_flow_item *item,
 			spec.raw->length * sizeof(*spec.raw->pattern);
 		break;
 	default:
-empty:
-		*size = 0;
+		*size = rte_flow_desc_item[item->type].size;
 		break;
 	}
+empty:
 	*pad = RTE_ALIGN_CEIL(*size, sizeof(double)) - *size;
 }
 
@@ -274,8 +276,10 @@ static void
 flow_action_conf_size(const struct rte_flow_action *action,
 		      size_t *size, size_t *pad)
 {
-	if (!action->conf)
+	if (!action->conf) {
+		*size = 0;
 		goto empty;
+	}
 	switch (action->type) {
 		union {
 			const struct rte_flow_action_rss *rss;
@@ -288,10 +292,10 @@ flow_action_conf_size(const struct rte_flow_action *action,
 			conf.rss->num * sizeof(*conf.rss->queue);
 		break;
 	default:
-empty:
-		*size = 0;
+		*size = rte_flow_desc_action[action->type].size;
 		break;
 	}
+empty:
 	*pad = RTE_ALIGN_CEIL(*size, sizeof(double)) - *size;
 }
 
