@@ -9260,16 +9260,22 @@ i40e_dev_sync_phy_type(struct i40e_hw *hw)
 	enum i40e_status_code status;
 	struct i40e_aq_get_phy_abilities_resp phy_ab;
 	int ret = -ENOTSUP;
+	int retries = 0;
 
 	status = i40e_aq_get_phy_capabilities(hw, false, true, &phy_ab,
 					      NULL);
 
-	if (status) {
+	while (status) {
 		PMD_INIT_LOG(WARNING, "Failed to sync phy type: status=%d",
 			status);
-		return ret;
+		retries++;
+		rte_delay_us(100000);
+		if  (retries < 5)
+			status = i40e_aq_get_phy_capabilities(hw, false,
+					true, &phy_ab, NULL);
+		else
+			return ret;
 	}
-
 	return 0;
 }
 
