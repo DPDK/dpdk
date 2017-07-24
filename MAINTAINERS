@@ -424,6 +424,7 @@ F: doc/guides/nics/features/bnx2x*.ini
 QLogic qede PMD
 M: Rasesh Mody <rasesh.mody@cavium.com>
 M: Harish Patil <harish.patil@cavium.com>
+M: Shahed Shaikh <shahed.shaikh@cavium.com>
 F: drivers/net/qede/
 F: doc/guides/nics/qede.rst
 F: doc/guides/nics/features/qede*.ini

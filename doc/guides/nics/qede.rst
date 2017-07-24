@@ -62,13 +62,13 @@ Supported Features
 - VXLAN tunneling offload
 - N-tuple filter and flow director (limited support)
 - LRO/TSO
+- NPAR (NIC Partitioning)
 
 Non-supported Features
 ----------------------
 
 - SR-IOV PF
 - GENEVE and NVGRE Tunneling offloads
-- NPAR
 
 Supported QLogic Adapters
 -------------------------
