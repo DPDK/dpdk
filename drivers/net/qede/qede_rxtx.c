@@ -1681,12 +1681,6 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				inner_l4_hdr_offset = (mbuf->l2_len -
 					MPLSINUDP_HDR_SIZE + mbuf->l3_len) / 2;
 
-				/* TODO: There's no DPDK flag to request outer
-				 * L4 checksum offload, so we don't do it.
-				 * bd1_bd_flags_bf |=
-				 *      ETH_TX_1ST_BD_FLAGS_TUNN_L4_CSUM_MASK <<
-				 *      ETH_TX_1ST_BD_FLAGS_TUNN_L4_CSUM_SHIFT;
-				 */
 				/* Inner L2 size and address type */
 				bd2_bf1 |= (inner_l2_hdr_size &
 					ETH_TX_DATA_2ND_BD_TUNN_INNER_L2_HDR_SIZE_W_MASK) <<
@@ -1765,15 +1759,36 @@ qede_xmit_pkts(void *p_txq, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		}
 
 		/* Offload the IP checksum in the hardware */
-		if (tx_ol_flags & PKT_TX_IP_CKSUM)
+		if (tx_ol_flags & PKT_TX_IP_CKSUM) {
 			bd1_bd_flags_bf |=
 				1 << ETH_TX_1ST_BD_FLAGS_IP_CSUM_SHIFT;
+			/* There's no DPDK flag to request outer-L4 csum
+			 * offload. But in the case of tunnel if inner L3 or L4
+			 * csum offload is requested then we need to force
+			 * recalculation of L4 tunnel header csum also.
+			 */
+			if (tunn_flg) {
+				bd1_bd_flags_bf |=
+					ETH_TX_1ST_BD_FLAGS_TUNN_L4_CSUM_MASK <<
+					ETH_TX_1ST_BD_FLAGS_TUNN_L4_CSUM_SHIFT;
+			}
+		}
 
 		/* L4 checksum offload (tcp or udp) */
 		if ((tx_ol_flags & (PKT_TX_IPV4 | PKT_TX_IPV6)) &&
 		    (tx_ol_flags & (PKT_TX_UDP_CKSUM | PKT_TX_TCP_CKSUM))) {
 			bd1_bd_flags_bf |=
 				1 << ETH_TX_1ST_BD_FLAGS_L4_CSUM_SHIFT;
+			/* There's no DPDK flag to request outer-L4 csum
+			 * offload. But in the case of tunnel if inner L3 or L4
+			 * csum offload is requested then we need to force
+			 * recalculation of L4 tunnel header csum also.
+			 */
+			if (tunn_flg) {
+				bd1_bd_flags_bf |=
+					ETH_TX_1ST_BD_FLAGS_TUNN_L4_CSUM_MASK <<
+					ETH_TX_1ST_BD_FLAGS_TUNN_L4_CSUM_SHIFT;
+			}
 		}
 
 		/* Fill the entry in the SW ring and the BDs in the FW ring */
