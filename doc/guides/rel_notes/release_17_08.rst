@@ -101,6 +101,15 @@ New Features
 
   Added support for firmwares with multiple Ethernet ports per physical port.
 
+* **Updated dpaa2 PMD.**
+
+  Major enhancements include:
+  * Support MAC Filter configuration
+  * Support Segmented Buffers
+  * Support VLAN filter and strip functionality.
+  * Other enhancements to add support for more dev_ops.
+  * Optimized the packet receive path
+
 * **Reorganized the symmetric crypto operation structure.**
 
   The crypto operation (``rte_crypto_sym_op``) has been reorganized as follows:
