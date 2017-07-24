@@ -1,6 +1,5 @@
 ..  BSD LICENSE
-    Copyright (C) NXP. 2016.
-    All rights reserved.
+    Copyright 2016 NXP.
 
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following conditions
@@ -423,9 +422,15 @@ Features of the DPAA2 PMD are:
 
 - Multiple queues for TX and RX
 - Receive Side Scaling (RSS)
+- MAC/VLAN filtering
 - Packet type information
 - Checksum offload
 - Promiscuous mode
+- Multicast mode
+- Port hardware statistics
+- Jumbo frames
+- Link flow control
+- Scattered and gather for TX and RX
 
 Supported DPAA2 SoCs
 --------------------
@@ -592,3 +597,10 @@ The DPAA2 SoC family support a maximum of a 10240 jumbo frame. The value
 is fixed and cannot be changed. So, even when the ``rxmode.max_rx_pkt_len``
 member of ``struct rte_eth_conf`` is set to a value lower than 10240, frames
 up to 10240 bytes can still reach the host interface.
+
+Other Limitations
+~~~~~~~~~~~~~~~~~
+
+- RSS hash key cannot be modified.
+- RSS RETA cannot be configured.
+- Secondary process packet I/O is not supported.
