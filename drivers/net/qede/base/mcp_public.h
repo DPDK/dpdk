@@ -132,13 +132,28 @@ struct eth_stats {
 	u64 r1023; /* 0x04 (Offset 0x20 ) RX 512 to 1023 byte frame counter*/
 /* 0x05 (Offset 0x28 ) RX 1024 to 1518 byte frame counter */
 	u64 r1518;
+	union {
+		struct { /* bb */
 /* 0x06 (Offset 0x30 ) RX 1519 to 1522 byte VLAN-tagged frame counter */
-	u64 r1522;
-	u64 r2047; /* 0x07 (Offset 0x38 ) RX 1519 to 2047 byte frame counter*/
-	u64 r4095; /* 0x08 (Offset 0x40 ) RX 2048 to 4095 byte frame counter*/
-	u64 r9216; /* 0x09 (Offset 0x48 ) RX 4096 to 9216 byte frame counter*/
+			u64 r1522;
+/* 0x07 (Offset 0x38 ) RX 1519 to 2047 byte frame counter*/
+			u64 r2047;
+/* 0x08 (Offset 0x40 ) RX 2048 to 4095 byte frame counter*/
+			u64 r4095;
+/* 0x09 (Offset 0x48 ) RX 4096 to 9216 byte frame counter*/
+			u64 r9216;
 /* 0x0A (Offset 0x50 ) RX 9217 to 16383 byte frame counter */
-	u64 r16383;
+			u64 r16383;
+		} bb0;
+		struct { /* ah */
+			u64 unused1;
+/* 0x07 (Offset 0x38 ) RX 1519 to max byte frame counter*/
+			u64 r1519_to_max;
+			u64 unused2;
+			u64 unused3;
+			u64 unused4;
+		} ah0;
+	} u0;
 	u64 rfcs;       /* 0x0F (Offset 0x58 ) RX FCS error frame counter*/
 	u64 rxcf;       /* 0x10 (Offset 0x60 ) RX control frame counter*/
 	u64 rxpf;       /* 0x11 (Offset 0x68 ) RX pause frame counter*/
@@ -156,19 +171,40 @@ struct eth_stats {
 	u64 t1023; /* 0x44 (Offset 0xc8 ) TX 512 to 1023 byte frame counter*/
 /* 0x45 (Offset 0xd0 ) TX 1024 to 1518 byte frame counter */
 	u64 t1518;
+	union {
+		struct { /* bb */
 /* 0x47 (Offset 0xd8 ) TX 1519 to 2047 byte frame counter */
-	u64 t2047;
+			u64 t2047;
 /* 0x48 (Offset 0xe0 ) TX 2048 to 4095 byte frame counter */
-	u64 t4095;
+			u64 t4095;
 /* 0x49 (Offset 0xe8 ) TX 4096 to 9216 byte frame counter */
-	u64 t9216;
+			u64 t9216;
 /* 0x4A (Offset 0xf0 ) TX 9217 to 16383 byte frame counter */
-	u64 t16383;
+			u64 t16383;
+		} bb1;
+		struct { /* ah */
+/* 0x47 (Offset 0xd8 ) TX 1519 to max byte frame counter */
+			u64 t1519_to_max;
+			u64 unused6;
+			u64 unused7;
+			u64 unused8;
+		} ah1;
+	} u1;
 	u64 txpf;       /* 0x50 (Offset 0xf8 ) TX pause frame counter */
 	u64 txpp;       /* 0x51 (Offset 0x100) TX PFC frame counter */
 /* 0x6C (Offset 0x108) Transmit Logical Type LLFC message counter */
-	u64 tlpiec;
-	u64 tncl; /* 0x6E (Offset 0x110) Transmit Total Collision Counter */
+	union {
+		struct { /* bb */
+/* 0x6C (Offset 0x108) Transmit Logical Type LLFC message counter */
+			u64 tlpiec;
+/* 0x6E (Offset 0x110) Transmit Total Collision Counter */
+			u64 tncl;
+		} bb2;
+		struct { /* ah */
+			u64 unused9;
+			u64 unused10;
+		} ah2;
+	} u2;
 	u64 rbyte;      /* 0x3d (Offset 0x118) RX byte counter */
 	u64 rxuca;      /* 0x0c (Offset 0x120) RX UC frame counter */
 	u64 rxmca;      /* 0x0d (Offset 0x128) RX MC frame counter */

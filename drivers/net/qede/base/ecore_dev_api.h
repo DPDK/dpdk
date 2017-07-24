@@ -241,7 +241,7 @@ void ecore_ptt_release(struct ecore_hwfn *p_hwfn,
 		       struct ecore_ptt *p_ptt);
 
 #ifndef __EXTRACT__LINUX__
-struct ecore_eth_stats {
+struct ecore_eth_stats_common {
 	u64 no_buff_discards;
 	u64 packet_too_big_discard;
 	u64 ttl0_discard;
@@ -273,11 +273,6 @@ struct ecore_eth_stats {
 	u64 rx_256_to_511_byte_packets;
 	u64 rx_512_to_1023_byte_packets;
 	u64 rx_1024_to_1518_byte_packets;
-	u64 rx_1519_to_1522_byte_packets;
-	u64 rx_1519_to_2047_byte_packets;
-	u64 rx_2048_to_4095_byte_packets;
-	u64 rx_4096_to_9216_byte_packets;
-	u64 rx_9217_to_16383_byte_packets;
 	u64 rx_crc_errors;
 	u64 rx_mac_crtl_frames;
 	u64 rx_pause_frames;
@@ -294,14 +289,8 @@ struct ecore_eth_stats {
 	u64 tx_256_to_511_byte_packets;
 	u64 tx_512_to_1023_byte_packets;
 	u64 tx_1024_to_1518_byte_packets;
-	u64 tx_1519_to_2047_byte_packets;
-	u64 tx_2048_to_4095_byte_packets;
-	u64 tx_4096_to_9216_byte_packets;
-	u64 tx_9217_to_16383_byte_packets;
 	u64 tx_pause_frames;
 	u64 tx_pfc_frames;
-	u64 tx_lpi_entry_count;
-	u64 tx_total_collisions;
 	u64 brb_truncates;
 	u64 brb_discards;
 	u64 rx_mac_bytes;
@@ -314,6 +303,33 @@ struct ecore_eth_stats {
 	u64 tx_mac_mc_packets;
 	u64 tx_mac_bc_packets;
 	u64 tx_mac_ctrl_frames;
+};
+
+struct ecore_eth_stats_bb {
+	u64 rx_1519_to_1522_byte_packets;
+	u64 rx_1519_to_2047_byte_packets;
+	u64 rx_2048_to_4095_byte_packets;
+	u64 rx_4096_to_9216_byte_packets;
+	u64 rx_9217_to_16383_byte_packets;
+	u64 tx_1519_to_2047_byte_packets;
+	u64 tx_2048_to_4095_byte_packets;
+	u64 tx_4096_to_9216_byte_packets;
+	u64 tx_9217_to_16383_byte_packets;
+	u64 tx_lpi_entry_count;
+	u64 tx_total_collisions;
+};
+
+struct ecore_eth_stats_ah {
+	u64 rx_1519_to_max_byte_packets;
+	u64 tx_1519_to_max_byte_packets;
+};
+
+struct ecore_eth_stats {
+	struct ecore_eth_stats_common common;
+	union {
+		struct ecore_eth_stats_bb bb;
+		struct ecore_eth_stats_ah ah;
+	};
 };
 #endif
 

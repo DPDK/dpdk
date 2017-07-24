@@ -249,8 +249,11 @@ qede_get_mcp_proto_stats(struct ecore_dev *edev,
 
 	if (type == ECORE_MCP_LAN_STATS) {
 		ecore_get_vport_stats(edev, &lan_stats);
-		stats->lan_stats.ucast_rx_pkts = lan_stats.rx_ucast_pkts;
-		stats->lan_stats.ucast_tx_pkts = lan_stats.tx_ucast_pkts;
+
+		/* @DPDK */
+		stats->lan_stats.ucast_rx_pkts = lan_stats.common.rx_ucast_pkts;
+		stats->lan_stats.ucast_tx_pkts = lan_stats.common.tx_ucast_pkts;
+
 		stats->lan_stats.fcs_err = -1;
 	} else {
 		DP_INFO(edev, "Statistics request type %d not supported\n",
