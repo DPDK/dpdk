@@ -314,10 +314,14 @@ pci_scan_one(const char *dirname, const struct rte_pci_addr *addr)
 	snprintf(filename, sizeof(filename), "%s/numa_node",
 		 dirname);
 
-	if (eal_parse_sysfs_value(filename, &tmp) == 0)
-		dev->device.numa_node = tmp;
-	else
-		dev->device.numa_node = -1;
+	if (access(filename, F_OK) != -1) {
+		if (eal_parse_sysfs_value(filename, &tmp) == 0)
+			dev->device.numa_node = tmp;
+		else
+			dev->device.numa_node = -1;
+	} else {
+		dev->device.numa_node = 0;
+	}
 
 	pci_name_set(dev);
 

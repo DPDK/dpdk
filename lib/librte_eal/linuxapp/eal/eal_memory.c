@@ -610,8 +610,8 @@ find_numasocket(struct hugepage_file *hugepg_tbl, struct hugepage_info *hpi)
 
 	f = fopen("/proc/self/numa_maps", "r");
 	if (f == NULL) {
-		RTE_LOG(NOTICE, EAL, "cannot open /proc/self/numa_maps,"
-				" consider that all memory is in socket_id 0\n");
+		RTE_LOG(NOTICE, EAL, "NUMA support not available"
+			" consider that all memory is in socket_id 0\n");
 		return 0;
 	}
 
