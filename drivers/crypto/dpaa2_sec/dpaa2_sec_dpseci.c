@@ -1912,9 +1912,7 @@ dpaa2_sec_dev_init(struct rte_cryptodev *cryptodev)
 	if (!internals->fle_pool) {
 		RTE_LOG(ERR, PMD, "%s create failed\n", str);
 		goto init_error;
-	} else
-		RTE_LOG(INFO, PMD, "%s created: %p\n", str,
-				internals->fle_pool);
+	}
 
 	PMD_INIT_LOG(DEBUG, "driver %s: created\n", cryptodev->data->name);
 	return 0;
