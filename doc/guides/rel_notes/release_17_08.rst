@@ -169,6 +169,11 @@ New Features
   Added a multicore based distribution mode, which distributes the enqueued
   crypto operations among several slaves, running on different logical cores.
 
+* **Added NXP DPAA2 Eventdev PMD.**
+
+  Added the new dpaa2 eventdev driver for NXP DPAA2 devices. See the
+  "Event Device Drivers" document for more details on this new driver.
+
 * **Added dpdk-test-eventdev test application.**
 
   The dpdk-test-eventdev tool is a Data Plane Development Kit (DPDK) application
