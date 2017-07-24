@@ -488,7 +488,7 @@ dpaa2_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	}
 	dpaa2_q->tc_index = tc_id;
 
-	if (priv->flags & DPAA2_TX_CGR_SUPPORT) {
+	if (!(priv->flags & DPAA2_TX_CGR_OFF)) {
 		struct dpni_congestion_notification_cfg cong_notif_cfg;
 
 		cong_notif_cfg.units = DPNI_CONGESTION_UNIT_FRAMES;

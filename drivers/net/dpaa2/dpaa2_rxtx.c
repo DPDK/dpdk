@@ -524,7 +524,7 @@ uint16_t
 dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 {
 	/* Function to transmit the frames to given device and VQ*/
-	uint32_t loop;
+	uint32_t loop, retry_count;
 	int32_t ret;
 	struct qbman_fd fd_arr[MAX_TX_RING_SLOTS];
 	struct rte_mbuf *mi;
@@ -559,8 +559,13 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 	/*Clear the unused FD fields before sending*/
 	while (nb_pkts) {
 		/*Check if the queue is congested*/
-		if (qbman_result_SCN_state_in_mem(dpaa2_q->cscn))
-			goto skip_tx;
+		retry_count = 0;
+		if (qbman_result_SCN_state_in_mem(dpaa2_q->cscn)) {
+			retry_count++;
+			/* Retry for some time before giving up */
+			if (retry_count > CONG_RETRY_COUNT)
+				goto skip_tx;
+		}
 
 		frames_to_send = (nb_pkts >> 3) ? MAX_TX_RING_SLOTS : nb_pkts;
 

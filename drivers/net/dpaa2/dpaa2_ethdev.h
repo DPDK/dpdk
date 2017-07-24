@@ -55,6 +55,8 @@
  */
 #define CONG_EXIT_TX_THRESHOLD    480
 
+#define CONG_RETRY_COUNT 18000
+
 /* RX queue tail drop threshold
  * currently considering 32 KB packets
  */
@@ -66,7 +68,7 @@
 /* Enable TX Congestion control support
  * default is disable
  */
-#define DPAA2_TX_CGR_SUPPORT	0x01
+#define DPAA2_TX_CGR_OFF	0x01
 
 /* Disable RX tail drop, default is enable */
 #define DPAA2_RX_TAILDROP_OFF	0x04
