@@ -321,6 +321,9 @@ int rte_pmd_bnxt_set_vf_vlan_anti_spoof(uint8_t port, uint16_t vf, uint8_t on)
 	if (vf >= dev_info.max_vfs)
 		return -EINVAL;
 
+	if (on == bp->pf.vf_info[vf].vlan_spoof_en)
+		return 0;
+
 	rc = bnxt_hwrm_func_cfg_vf_set_vlan_anti_spoof(bp, vf, on);
 	if (!rc) {
 		bp->pf.vf_info[vf].vlan_spoof_en = on;
