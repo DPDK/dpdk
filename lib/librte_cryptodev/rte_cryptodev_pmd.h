@@ -276,7 +276,9 @@ typedef unsigned (*cryptodev_sym_get_session_private_size_t)(
  *
  * @return
  *  - Returns 0 if private session structure have been created successfully.
- *  - Returns -1 on failure.
+ *  - Returns -EINVAL if input parameters are invalid.
+ *  - Returns -ENOTSUP if crypto device does not support the crypto transform.
+ *  - Returns -ENOMEM if the private session could not be allocated.
  */
 typedef int (*cryptodev_sym_configure_session_t)(struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform,

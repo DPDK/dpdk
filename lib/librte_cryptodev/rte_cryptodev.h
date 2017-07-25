@@ -924,7 +924,9 @@ rte_cryptodev_sym_session_free(struct rte_cryptodev_sym_session *sess);
  *
  * @return
  *  - On success, zero.
- *  - On failure, a negative value.
+ *  - -EINVAL if input parameters are invalid.
+ *  - -ENOTSUP if crypto device does not support the crypto transform.
+ *  - -ENOMEM if the private session could not be allocated.
  */
 int
 rte_cryptodev_sym_session_init(uint8_t dev_id,

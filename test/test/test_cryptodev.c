@@ -6415,7 +6415,7 @@ test_null_invalid_operation(void)
 	ret = rte_cryptodev_sym_session_init(ts_params->valid_devs[0],
 			ut_params->sess, &ut_params->cipher_xform,
 			ts_params->session_mpool);
-	TEST_ASSERT(ret == -1,
+	TEST_ASSERT(ret < 0,
 			"Session creation succeeded unexpectedly");
 
 
@@ -6433,7 +6433,7 @@ test_null_invalid_operation(void)
 	ret = rte_cryptodev_sym_session_init(ts_params->valid_devs[0],
 			ut_params->sess, &ut_params->auth_xform,
 			ts_params->session_mpool);
-	TEST_ASSERT(ret == -1,
+	TEST_ASSERT(ret < 0,
 			"Session creation succeeded unexpectedly");
 
 	return TEST_SUCCESS;

@@ -417,7 +417,7 @@ armv8_crypto_set_session_chained_parameters(struct armv8_crypto_session *sess,
 		order = sess->chain_order;
 		break;
 	default:
-		return -EINVAL;
+		return -ENOTSUP;
 	}
 	/* Select cipher direction */
 	sess->cipher.direction = cipher_xform->cipher.op;
@@ -437,7 +437,7 @@ armv8_crypto_set_session_chained_parameters(struct armv8_crypto_session *sess,
 		sess->cipher.iv.length = 16;
 		break;
 	default:
-		return -EINVAL;
+		return -ENOTSUP;
 	}
 	/* Select auth generate/verify */
 	sess->auth.operation = auth_xform->auth.op;
@@ -451,7 +451,7 @@ armv8_crypto_set_session_chained_parameters(struct armv8_crypto_session *sess,
 		sess->auth.mode = ARMV8_CRYPTO_AUTH_AS_HMAC;
 		break;
 	default:
-		return -EINVAL;
+		return -ENOTSUP;
 	}
 
 	/* Set the digest length */
@@ -471,7 +471,7 @@ armv8_crypto_set_session_chained_parameters(struct armv8_crypto_session *sess,
 	default: /* Fall through */
 		sess->crypto_func = NULL;
 		sess->cipher.key_sched = NULL;
-		return -EINVAL;
+		return -ENOTSUP;
 	}
 
 	if (unlikely(sess->crypto_func == NULL)) {
@@ -525,7 +525,7 @@ armv8_crypto_set_session_parameters(struct armv8_crypto_session *sess,
 		break;
 	default:
 		is_chained_op = false;
-		return -EINVAL;
+		return -ENOTSUP;
 	}
 
 	/* Set IV offset */
@@ -537,11 +537,11 @@ armv8_crypto_set_session_parameters(struct armv8_crypto_session *sess,
 		if (unlikely(ret != 0)) {
 			ARMV8_CRYPTO_LOG_ERR(
 			"Invalid/unsupported chained (cipher/auth) parameters");
-			return -EINVAL;
+			return ret;
 		}
 	} else {
 		ARMV8_CRYPTO_LOG_ERR("Invalid/unsupported operation");
-		return -EINVAL;
+		return -ENOTSUP;
 	}
 
 	return 0;

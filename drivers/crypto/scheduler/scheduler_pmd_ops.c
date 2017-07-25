@@ -515,14 +515,16 @@ scheduler_pmd_session_configure(struct rte_cryptodev *dev,
 {
 	struct scheduler_ctx *sched_ctx = dev->data->dev_private;
 	uint32_t i;
+	int ret;
 
 	for (i = 0; i < sched_ctx->nb_slaves; i++) {
 		struct scheduler_slave *slave = &sched_ctx->slaves[i];
 
-		if (rte_cryptodev_sym_session_init(slave->dev_id, sess,
-					xform, mempool) < 0) {
+		ret = rte_cryptodev_sym_session_init(slave->dev_id, sess,
+					xform, mempool);
+		if (ret < 0) {
 			CS_LOG_ERR("unabled to config sym session");
-			return -1;
+			return ret;
 		}
 	}
 

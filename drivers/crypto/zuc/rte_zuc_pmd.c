@@ -110,13 +110,13 @@ zuc_set_session_parameters(struct zuc_session *sess,
 	case ZUC_OP_NOT_SUPPORTED:
 	default:
 		ZUC_LOG_ERR("Unsupported operation chain order parameter");
-		return -EINVAL;
+		return -ENOTSUP;
 	}
 
 	if (cipher_xform) {
 		/* Only ZUC EEA3 supported */
 		if (cipher_xform->cipher.algo != RTE_CRYPTO_CIPHER_ZUC_EEA3)
-			return -EINVAL;
+			return -ENOTSUP;
 
 		if (cipher_xform->cipher.iv.length != ZUC_IV_KEY_LENGTH) {
 			ZUC_LOG_ERR("Wrong IV length");
@@ -132,7 +132,7 @@ zuc_set_session_parameters(struct zuc_session *sess,
 	if (auth_xform) {
 		/* Only ZUC EIA3 supported */
 		if (auth_xform->auth.algo != RTE_CRYPTO_AUTH_ZUC_EIA3)
-			return -EINVAL;
+			return -ENOTSUP;
 
 		if (auth_xform->auth.digest_length != ZUC_DIGEST_LENGTH) {
 			ZUC_LOG_ERR("Wrong digest length");

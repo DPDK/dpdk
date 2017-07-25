@@ -171,16 +171,19 @@ cipher_decrypt_err:
 /** Creates a context in either AES or DES in ECB mode
  *  Depends on openssl libcrypto
  */
-static void *
+static int
 bpi_cipher_ctx_init(enum rte_crypto_cipher_algorithm cryptodev_algo,
 		enum rte_crypto_cipher_operation direction __rte_unused,
-					uint8_t *key)
+		uint8_t *key, void **ctx)
 {
 	const EVP_CIPHER *algo = NULL;
-	EVP_CIPHER_CTX *ctx = EVP_CIPHER_CTX_new();
+	int ret;
+	*ctx = EVP_CIPHER_CTX_new();
 
-	if (ctx == NULL)
+	if (*ctx == NULL) {
+		ret = -ENOMEM;
 		goto ctx_init_err;
+	}
 
 	if (cryptodev_algo == RTE_CRYPTO_CIPHER_DES_DOCSISBPI)
 		algo = EVP_des_ecb();
@@ -188,15 +191,17 @@ bpi_cipher_ctx_init(enum rte_crypto_cipher_algorithm cryptodev_algo,
 		algo = EVP_aes_128_ecb();
 
 	/* IV will be ECB encrypted whether direction is encrypt or decrypt*/
-	if (EVP_EncryptInit_ex(ctx, algo, NULL, key, 0) != 1)
+	if (EVP_EncryptInit_ex(*ctx, algo, NULL, key, 0) != 1) {
+		ret = -EINVAL;
 		goto ctx_init_err;
+	}
 
-	return ctx;
+	return 0;
 
 ctx_init_err:
-	if (ctx != NULL)
-		EVP_CIPHER_CTX_free(ctx);
-	return NULL;
+	if (*ctx != NULL)
+		EVP_CIPHER_CTX_free(*ctx);
+	return ret;
 }
 
 /** Frees a context previously created
@@ -303,6 +308,7 @@ qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
 {
 	struct qat_pmd_private *internals = dev->data->dev_private;
 	struct rte_crypto_cipher_xform *cipher_xform = NULL;
+	int ret;
 
 	/* Get cipher xform from crypto xform chain */
 	cipher_xform = qat_get_cipher_xform(xform);
@@ -315,6 +321,7 @@ qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
 		if (qat_alg_validate_aes_key(cipher_xform->key.length,
 				&session->qat_cipher_alg) != 0) {
 			PMD_DRV_LOG(ERR, "Invalid AES cipher key size");
+			ret = -EINVAL;
 			goto error_out;
 		}
 		session->qat_mode = ICP_QAT_HW_CIPHER_CBC_MODE;
@@ -323,6 +330,7 @@ qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
 		if (qat_alg_validate_aes_key(cipher_xform->key.length,
 				&session->qat_cipher_alg) != 0) {
 			PMD_DRV_LOG(ERR, "Invalid AES cipher key size");
+			ret = -EINVAL;
 			goto error_out;
 		}
 		session->qat_mode = ICP_QAT_HW_CIPHER_CTR_MODE;
@@ -331,6 +339,7 @@ qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
 		if (qat_alg_validate_snow3g_key(cipher_xform->key.length,
 					&session->qat_cipher_alg) != 0) {
 			PMD_DRV_LOG(ERR, "Invalid SNOW 3G cipher key size");
+			ret = -EINVAL;
 			goto error_out;
 		}
 		session->qat_mode = ICP_QAT_HW_CIPHER_ECB_MODE;
@@ -342,6 +351,7 @@ qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
 		if (qat_alg_validate_kasumi_key(cipher_xform->key.length,
 					&session->qat_cipher_alg) != 0) {
 			PMD_DRV_LOG(ERR, "Invalid KASUMI cipher key size");
+			ret = -EINVAL;
 			goto error_out;
 		}
 		session->qat_mode = ICP_QAT_HW_CIPHER_F8_MODE;
@@ -350,6 +360,7 @@ qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
 		if (qat_alg_validate_3des_key(cipher_xform->key.length,
 				&session->qat_cipher_alg) != 0) {
 			PMD_DRV_LOG(ERR, "Invalid 3DES cipher key size");
+			ret = -EINVAL;
 			goto error_out;
 		}
 		session->qat_mode = ICP_QAT_HW_CIPHER_CBC_MODE;
@@ -358,6 +369,7 @@ qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
 		if (qat_alg_validate_des_key(cipher_xform->key.length,
 				&session->qat_cipher_alg) != 0) {
 			PMD_DRV_LOG(ERR, "Invalid DES cipher key size");
+			ret = -EINVAL;
 			goto error_out;
 		}
 		session->qat_mode = ICP_QAT_HW_CIPHER_CBC_MODE;
@@ -366,38 +378,43 @@ qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
 		if (qat_alg_validate_3des_key(cipher_xform->key.length,
 				&session->qat_cipher_alg) != 0) {
 			PMD_DRV_LOG(ERR, "Invalid 3DES cipher key size");
+			ret = -EINVAL;
 			goto error_out;
 		}
 		session->qat_mode = ICP_QAT_HW_CIPHER_CTR_MODE;
 		break;
 	case RTE_CRYPTO_CIPHER_DES_DOCSISBPI:
-		session->bpi_ctx = bpi_cipher_ctx_init(
+		ret = bpi_cipher_ctx_init(
 					cipher_xform->algo,
 					cipher_xform->op,
-					cipher_xform->key.data);
-		if (session->bpi_ctx == NULL) {
+					cipher_xform->key.data,
+					&session->bpi_ctx);
+		if (ret != 0) {
 			PMD_DRV_LOG(ERR, "failed to create DES BPI ctx");
 			goto error_out;
 		}
 		if (qat_alg_validate_des_key(cipher_xform->key.length,
 				&session->qat_cipher_alg) != 0) {
 			PMD_DRV_LOG(ERR, "Invalid DES cipher key size");
+			ret = -EINVAL;
 			goto error_out;
 		}
 		session->qat_mode = ICP_QAT_HW_CIPHER_CBC_MODE;
 		break;
 	case RTE_CRYPTO_CIPHER_AES_DOCSISBPI:
-		session->bpi_ctx = bpi_cipher_ctx_init(
+		ret = bpi_cipher_ctx_init(
 					cipher_xform->algo,
 					cipher_xform->op,
-					cipher_xform->key.data);
-		if (session->bpi_ctx == NULL) {
+					cipher_xform->key.data,
+					&session->bpi_ctx);
+		if (ret != 0) {
 			PMD_DRV_LOG(ERR, "failed to create AES BPI ctx");
 			goto error_out;
 		}
 		if (qat_alg_validate_aes_docsisbpi_key(cipher_xform->key.length,
 				&session->qat_cipher_alg) != 0) {
 			PMD_DRV_LOG(ERR, "Invalid AES DOCSISBPI key size");
+			ret = -EINVAL;
 			goto error_out;
 		}
 		session->qat_mode = ICP_QAT_HW_CIPHER_CBC_MODE;
@@ -408,11 +425,13 @@ qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
 			PMD_DRV_LOG(ERR, "%s not supported on this device",
 				rte_crypto_cipher_algorithm_strings
 					[cipher_xform->algo]);
+			ret = -ENOTSUP;
 			goto error_out;
 		}
 		if (qat_alg_validate_zuc_key(cipher_xform->key.length,
 				&session->qat_cipher_alg) != 0) {
 			PMD_DRV_LOG(ERR, "Invalid ZUC cipher key size");
+			ret = -EINVAL;
 			goto error_out;
 		}
 		session->qat_mode = ICP_QAT_HW_CIPHER_ECB_MODE;
@@ -424,10 +443,12 @@ qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
 	case RTE_CRYPTO_CIPHER_ARC4:
 		PMD_DRV_LOG(ERR, "Crypto QAT PMD: Unsupported Cipher alg %u",
 				cipher_xform->algo);
+		ret = -ENOTSUP;
 		goto error_out;
 	default:
 		PMD_DRV_LOG(ERR, "Crypto: Undefined Cipher specified %u\n",
 				cipher_xform->algo);
+		ret = -EINVAL;
 		goto error_out;
 	}
 
@@ -438,8 +459,10 @@ qat_crypto_sym_configure_session_cipher(struct rte_cryptodev *dev,
 
 	if (qat_alg_aead_session_create_content_desc_cipher(session,
 						cipher_xform->key.data,
-						cipher_xform->key.length))
+						cipher_xform->key.length)) {
+		ret = -EINVAL;
 		goto error_out;
+	}
 
 	return 0;
 
@@ -448,7 +471,7 @@ error_out:
 		bpi_cipher_ctx_free(session->bpi_ctx);
 		session->bpi_ctx = NULL;
 	}
-	return -1;
+	return ret;
 }
 
 int
@@ -458,20 +481,22 @@ qat_crypto_sym_configure_session(struct rte_cryptodev *dev,
 		struct rte_mempool *mempool)
 {
 	void *sess_private_data;
+	int ret;
 
 	if (rte_mempool_get(mempool, &sess_private_data)) {
 		CDEV_LOG_ERR(
 			"Couldn't get object from session mempool");
-		return -1;
+		return -ENOMEM;
 	}
 
-	if (qat_crypto_set_session_parameters(dev, xform, sess_private_data) != 0) {
+	ret = qat_crypto_set_session_parameters(dev, xform, sess_private_data);
+	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "Crypto QAT PMD: failed to configure "
 				"session parameters");
 
 		/* Return session to mempool */
 		rte_mempool_put(mempool, sess_private_data);
-		return -1;
+		return ret;
 	}
 
 	set_session_private_data(sess, dev->driver_id,
@@ -485,6 +510,7 @@ qat_crypto_set_session_parameters(struct rte_cryptodev *dev,
 		struct rte_crypto_sym_xform *xform, void *session_private)
 {
 	struct qat_session *session = session_private;
+	int ret;
 
 	int qat_cmd_id;
 	PMD_INIT_FUNC_TRACE();
@@ -499,44 +525,52 @@ qat_crypto_set_session_parameters(struct rte_cryptodev *dev,
 	qat_cmd_id = qat_get_cmd_id(xform);
 	if (qat_cmd_id < 0 || qat_cmd_id >= ICP_QAT_FW_LA_CMD_DELIMITER) {
 		PMD_DRV_LOG(ERR, "Unsupported xform chain requested");
-		return -1;
+		return -ENOTSUP;
 	}
 	session->qat_cmd = (enum icp_qat_fw_la_cmd_id)qat_cmd_id;
 	switch (session->qat_cmd) {
 	case ICP_QAT_FW_LA_CMD_CIPHER:
-		if (qat_crypto_sym_configure_session_cipher(dev, xform, session) < 0)
-			return -1;
+		ret = qat_crypto_sym_configure_session_cipher(dev, xform, session);
+		if (ret < 0)
+			return ret;
 		break;
 	case ICP_QAT_FW_LA_CMD_AUTH:
-		if (qat_crypto_sym_configure_session_auth(dev, xform, session) < 0)
-			return -1;
+		ret = qat_crypto_sym_configure_session_auth(dev, xform, session);
+		if (ret < 0)
+			return ret;
 		break;
 	case ICP_QAT_FW_LA_CMD_CIPHER_HASH:
 		if (xform->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
-			if (qat_crypto_sym_configure_session_aead(xform,
-					session) < 0)
-				return -1;
+			ret = qat_crypto_sym_configure_session_aead(xform,
+					session);
+			if (ret < 0)
+				return ret;
 		} else {
-			if (qat_crypto_sym_configure_session_cipher(dev,
-					xform, session) < 0)
-				return -1;
-			if (qat_crypto_sym_configure_session_auth(dev,
-					xform, session) < 0)
-				return -1;
+			ret = qat_crypto_sym_configure_session_cipher(dev,
+					xform, session);
+			if (ret < 0)
+				return ret;
+			ret = qat_crypto_sym_configure_session_auth(dev,
+					xform, session);
+			if (ret < 0)
+				return ret;
 		}
 		break;
 	case ICP_QAT_FW_LA_CMD_HASH_CIPHER:
 		if (xform->type == RTE_CRYPTO_SYM_XFORM_AEAD) {
-			if (qat_crypto_sym_configure_session_aead(xform,
-					session) < 0)
-				return -1;
+			ret = qat_crypto_sym_configure_session_aead(xform,
+					session);
+			if (ret < 0)
+				return ret;
 		} else {
-			if (qat_crypto_sym_configure_session_auth(dev,
-					xform, session) < 0)
-				return -1;
-			if (qat_crypto_sym_configure_session_cipher(dev,
-					xform, session) < 0)
-				return -1;
+			ret = qat_crypto_sym_configure_session_auth(dev,
+					xform, session);
+			if (ret < 0)
+				return ret;
+			ret = qat_crypto_sym_configure_session_cipher(dev,
+					xform, session);
+			if (ret < 0)
+				return ret;
 		}
 		break;
 	case ICP_QAT_FW_LA_CMD_TRNG_GET_RANDOM:
@@ -550,11 +584,11 @@ qat_crypto_set_session_parameters(struct rte_cryptodev *dev,
 	case ICP_QAT_FW_LA_CMD_DELIMITER:
 	PMD_DRV_LOG(ERR, "Unsupported Service %u",
 		session->qat_cmd);
-		return -1;
+		return -ENOTSUP;
 	default:
 	PMD_DRV_LOG(ERR, "Unsupported Service %u",
 		session->qat_cmd);
-		return -1;
+		return -ENOTSUP;
 	}
 
 	return 0;
@@ -594,7 +628,7 @@ qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev,
 		if (qat_alg_validate_aes_key(auth_xform->key.length,
 				&session->qat_cipher_alg) != 0) {
 			PMD_DRV_LOG(ERR, "Invalid AES key size");
-			goto error_out;
+			return -EINVAL;
 		}
 		session->qat_mode = ICP_QAT_HW_CIPHER_CTR_MODE;
 		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_GALOIS_128;
@@ -617,7 +651,7 @@ qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev,
 			PMD_DRV_LOG(ERR, "%s not supported on this device",
 				rte_crypto_auth_algorithm_strings
 				[auth_xform->algo]);
-			goto error_out;
+			return -ENOTSUP;
 		}
 		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_ZUC_3G_128_EIA3;
 		break;
@@ -631,11 +665,11 @@ qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev,
 	case RTE_CRYPTO_AUTH_AES_CBC_MAC:
 		PMD_DRV_LOG(ERR, "Crypto: Unsupported hash alg %u",
 				auth_xform->algo);
-		goto error_out;
+		return -ENOTSUP;
 	default:
 		PMD_DRV_LOG(ERR, "Crypto: Undefined Hash algo %u specified",
 				auth_xform->algo);
-		goto error_out;
+		return -EINVAL;
 	}
 
 	session->auth_iv.offset = auth_xform->iv.offset;
@@ -652,7 +686,7 @@ qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev,
 			if (qat_alg_aead_session_create_content_desc_cipher(session,
 						auth_xform->key.data,
 						auth_xform->key.length))
-				goto error_out;
+				return -EINVAL;
 
 			if (qat_alg_aead_session_create_content_desc_auth(session,
 						key_data,
@@ -660,7 +694,7 @@ qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev,
 						0,
 						auth_xform->digest_length,
 						auth_xform->op))
-				goto error_out;
+				return -EINVAL;
 		} else {
 			session->qat_cmd = ICP_QAT_FW_LA_CMD_HASH_CIPHER;
 			session->qat_dir = ICP_QAT_HW_CIPHER_DECRYPT;
@@ -674,12 +708,12 @@ qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev,
 					0,
 					auth_xform->digest_length,
 					auth_xform->op))
-				goto error_out;
+				return -EINVAL;
 
 			if (qat_alg_aead_session_create_content_desc_cipher(session,
 						auth_xform->key.data,
 						auth_xform->key.length))
-				goto error_out;
+				return -EINVAL;
 		}
 		/* Restore to authentication only only */
 		session->qat_cmd = ICP_QAT_FW_LA_CMD_AUTH;
@@ -690,14 +724,11 @@ qat_crypto_sym_configure_session_auth(struct rte_cryptodev *dev,
 				0,
 				auth_xform->digest_length,
 				auth_xform->op))
-			goto error_out;
+			return -EINVAL;
 	}
 
 	session->digest_length = auth_xform->digest_length;
 	return 0;
-
-error_out:
-	return -1;
 }
 
 int
@@ -718,7 +749,7 @@ qat_crypto_sym_configure_session_aead(struct rte_crypto_sym_xform *xform,
 		if (qat_alg_validate_aes_key(aead_xform->key.length,
 				&session->qat_cipher_alg) != 0) {
 			PMD_DRV_LOG(ERR, "Invalid AES key size");
-			goto error_out;
+			return -EINVAL;
 		}
 		session->qat_mode = ICP_QAT_HW_CIPHER_CTR_MODE;
 		session->qat_hash_alg = ICP_QAT_HW_AUTH_ALGO_GALOIS_128;
@@ -726,11 +757,11 @@ qat_crypto_sym_configure_session_aead(struct rte_crypto_sym_xform *xform,
 	case RTE_CRYPTO_AEAD_AES_CCM:
 		PMD_DRV_LOG(ERR, "Crypto QAT PMD: Unsupported AEAD alg %u",
 				aead_xform->algo);
-		goto error_out;
+		return -ENOTSUP;
 	default:
 		PMD_DRV_LOG(ERR, "Crypto: Undefined AEAD specified %u\n",
 				aead_xform->algo);
-		goto error_out;
+		return -EINVAL;
 	}
 
 	if (aead_xform->op == RTE_CRYPTO_AEAD_OP_ENCRYPT) {
@@ -742,7 +773,7 @@ qat_crypto_sym_configure_session_aead(struct rte_crypto_sym_xform *xform,
 		if (qat_alg_aead_session_create_content_desc_cipher(session,
 					aead_xform->key.data,
 					aead_xform->key.length))
-			goto error_out;
+			return -EINVAL;
 
 		if (qat_alg_aead_session_create_content_desc_auth(session,
 					aead_xform->key.data,
@@ -750,7 +781,7 @@ qat_crypto_sym_configure_session_aead(struct rte_crypto_sym_xform *xform,
 					aead_xform->aad_length,
 					aead_xform->digest_length,
 					RTE_CRYPTO_AUTH_OP_GENERATE))
-			goto error_out;
+			return -EINVAL;
 	} else {
 		session->qat_dir = ICP_QAT_HW_CIPHER_DECRYPT;
 		/*
@@ -763,19 +794,16 @@ qat_crypto_sym_configure_session_aead(struct rte_crypto_sym_xform *xform,
 					aead_xform->aad_length,
 					aead_xform->digest_length,
 					RTE_CRYPTO_AUTH_OP_VERIFY))
-			goto error_out;
+			return -EINVAL;
 
 		if (qat_alg_aead_session_create_content_desc_cipher(session,
 					aead_xform->key.data,
 					aead_xform->key.length))
-			goto error_out;
+			return -EINVAL;
 	}
 
 	session->digest_length = aead_xform->digest_length;
 	return 0;
-
-error_out:
-	return -1;
 }
 
 unsigned qat_crypto_sym_get_session_private_size(

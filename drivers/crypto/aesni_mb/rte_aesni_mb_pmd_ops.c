@@ -480,25 +480,27 @@ aesni_mb_pmd_session_configure(struct rte_cryptodev *dev,
 {
 	void *sess_private_data;
 	struct aesni_mb_private *internals = dev->data->dev_private;
+	int ret;
 
 	if (unlikely(sess == NULL)) {
 		MB_LOG_ERR("invalid session struct");
-		return -1;
+		return -EINVAL;
 	}
 
 	if (rte_mempool_get(mempool, &sess_private_data)) {
 		CDEV_LOG_ERR(
 			"Couldn't get object from session mempool");
-		return -1;
+		return -ENOMEM;
 	}
 
-	if (aesni_mb_set_session_parameters(&job_ops[internals->vector_mode],
-			sess_private_data, xform) != 0) {
+	ret = aesni_mb_set_session_parameters(&job_ops[internals->vector_mode],
+			sess_private_data, xform);
+	if (ret != 0) {
 		MB_LOG_ERR("failed configure session parameters");
 
 		/* Return session to mempool */
 		rte_mempool_put(mempool, sess_private_data);
-		return -1;
+		return ret;
 	}
 
 	set_session_private_data(sess, dev->driver_id,

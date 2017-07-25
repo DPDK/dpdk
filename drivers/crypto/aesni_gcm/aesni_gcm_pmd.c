@@ -63,7 +63,7 @@ aesni_gcm_set_session_parameters(const struct aesni_gcm_ops *gcm_ops,
 		if (auth_xform->auth.algo != RTE_CRYPTO_AUTH_AES_GMAC) {
 			GCM_LOG_ERR("Only AES GMAC is supported as an "
 					"authentication only algorithm");
-			return -EINVAL;
+			return -ENOTSUP;
 		}
 		/* Set IV parameters */
 		sess->iv.offset = auth_xform->auth.iv.offset;
@@ -86,7 +86,7 @@ aesni_gcm_set_session_parameters(const struct aesni_gcm_ops *gcm_ops,
 		if (aead_xform->aead.algo != RTE_CRYPTO_AEAD_AES_GCM) {
 			GCM_LOG_ERR("The only combined operation "
 						"supported is AES GCM");
-			return -EINVAL;
+			return -ENOTSUP;
 		}
 
 		/* Set IV parameters */
@@ -106,7 +106,7 @@ aesni_gcm_set_session_parameters(const struct aesni_gcm_ops *gcm_ops,
 		digest_length = aead_xform->aead.digest_length;
 	} else {
 		GCM_LOG_ERR("Wrong xform type, has to be AEAD or authentication");
-		return -EINVAL;
+		return -ENOTSUP;
 	}
 
 
@@ -129,7 +129,7 @@ aesni_gcm_set_session_parameters(const struct aesni_gcm_ops *gcm_ops,
 		sess->key = AESNI_GCM_KEY_256;
 		break;
 	default:
-		GCM_LOG_ERR("Unsupported key length");
+		GCM_LOG_ERR("Invalid key length");
 		return -EINVAL;
 	}
 

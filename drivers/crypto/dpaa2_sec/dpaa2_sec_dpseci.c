@@ -1540,7 +1540,7 @@ dpaa2_sec_set_session_parameters(struct rte_cryptodev *dev,
 
 	} else {
 		RTE_LOG(ERR, PMD, "Invalid crypto type\n");
-		return -1;
+		return -EINVAL;
 	}
 
 	return 0;
@@ -1553,20 +1553,22 @@ dpaa2_sec_session_configure(struct rte_cryptodev *dev,
 		struct rte_mempool *mempool)
 {
 	void *sess_private_data;
+	int ret;
 
 	if (rte_mempool_get(mempool, &sess_private_data)) {
 		CDEV_LOG_ERR(
 			"Couldn't get object from session mempool");
-		return -1;
+		return -ENOMEM;
 	}
 
-	if (dpaa2_sec_set_session_parameters(dev, xform, sess_private_data) != 0) {
+	ret = dpaa2_sec_set_session_parameters(dev, xform, sess_private_data);
+	if (ret != 0) {
 		PMD_DRV_LOG(ERR, "DPAA2 PMD: failed to configure "
 				"session parameters");
 
 		/* Return session to mempool */
 		rte_mempool_put(mempool, sess_private_data);
-		return -1;
+		return ret;
 	}
 
 	set_session_private_data(sess, dev->driver_id,

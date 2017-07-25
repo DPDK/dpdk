@@ -48,7 +48,7 @@ null_crypto_set_session_parameters(
 		const struct rte_crypto_sym_xform *xform)
 {
 	if (xform == NULL) {
-		return -1;
+		return -EINVAL;
 	} else if (xform->type == RTE_CRYPTO_SYM_XFORM_AUTH &&
 			xform->next == NULL) {
 		/* Authentication Only */
@@ -73,7 +73,7 @@ null_crypto_set_session_parameters(
 			return 0;
 	}
 
-	return -1;
+	return -ENOTSUP;
 }
 
 /** Process crypto operation for mbuf */

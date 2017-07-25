@@ -111,13 +111,13 @@ snow3g_set_session_parameters(struct snow3g_session *sess,
 	case SNOW3G_OP_NOT_SUPPORTED:
 	default:
 		SNOW3G_LOG_ERR("Unsupported operation chain order parameter");
-		return -EINVAL;
+		return -ENOTSUP;
 	}
 
 	if (cipher_xform) {
 		/* Only SNOW 3G UEA2 supported */
 		if (cipher_xform->cipher.algo != RTE_CRYPTO_CIPHER_SNOW3G_UEA2)
-			return -EINVAL;
+			return -ENOTSUP;
 
 		if (cipher_xform->cipher.iv.length != SNOW3G_IV_LENGTH) {
 			SNOW3G_LOG_ERR("Wrong IV length");
@@ -133,7 +133,7 @@ snow3g_set_session_parameters(struct snow3g_session *sess,
 	if (auth_xform) {
 		/* Only SNOW 3G UIA2 supported */
 		if (auth_xform->auth.algo != RTE_CRYPTO_AUTH_SNOW3G_UIA2)
-			return -EINVAL;
+			return -ENOTSUP;
 
 		if (auth_xform->auth.digest_length != SNOW3G_DIGEST_LENGTH) {
 			SNOW3G_LOG_ERR("Wrong digest length");

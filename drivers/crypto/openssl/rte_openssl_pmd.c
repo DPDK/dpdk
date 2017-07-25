@@ -336,7 +336,7 @@ openssl_set_session_cipher_parameters(struct openssl_session *sess,
 		break;
 	default:
 		sess->cipher.algo = RTE_CRYPTO_CIPHER_NULL;
-		return -EINVAL;
+		return -ENOTSUP;
 	}
 
 	return 0;
@@ -412,7 +412,7 @@ openssl_set_session_auth_parameters(struct openssl_session *sess,
 		break;
 
 	default:
-		return -EINVAL;
+		return -ENOTSUP;
 	}
 
 	sess->auth.digest_length = xform->auth.digest_length;
@@ -455,7 +455,7 @@ openssl_set_session_aead_parameters(struct openssl_session *sess,
 		sess->chain_order = OPENSSL_CHAIN_COMBINED;
 		break;
 	default:
-		return -EINVAL;
+		return -ENOTSUP;
 	}
 
 	sess->auth.aad_length = xform->aead.aad_length;
@@ -472,6 +472,7 @@ openssl_set_session_parameters(struct openssl_session *sess,
 	const struct rte_crypto_sym_xform *cipher_xform = NULL;
 	const struct rte_crypto_sym_xform *auth_xform = NULL;
 	const struct rte_crypto_sym_xform *aead_xform = NULL;
+	int ret;
 
 	sess->chain_order = openssl_get_chain_order(xform);
 	switch (sess->chain_order) {
@@ -501,27 +502,30 @@ openssl_set_session_parameters(struct openssl_session *sess,
 
 	/* cipher_xform must be check before auth_xform */
 	if (cipher_xform) {
-		if (openssl_set_session_cipher_parameters(
-				sess, cipher_xform)) {
+		ret = openssl_set_session_cipher_parameters(
+				sess, cipher_xform);
+		if (ret != 0) {
 			OPENSSL_LOG_ERR(
 				"Invalid/unsupported cipher parameters");
-			return -EINVAL;
+			return ret;
 		}
 	}
 
 	if (auth_xform) {
-		if (openssl_set_session_auth_parameters(sess, auth_xform)) {
+		ret = openssl_set_session_auth_parameters(sess, auth_xform);
+		if (ret != 0) {
 			OPENSSL_LOG_ERR(
 				"Invalid/unsupported auth parameters");
-			return -EINVAL;
+			return ret;
 		}
 	}
 
 	if (aead_xform) {
-		if (openssl_set_session_aead_parameters(sess, aead_xform)) {
+		ret = openssl_set_session_aead_parameters(sess, aead_xform);
+		if (ret != 0) {
 			OPENSSL_LOG_ERR(
 				"Invalid/unsupported AEAD parameters");
-			return -EINVAL;
+			return ret;
 		}
 	}
 

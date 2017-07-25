@@ -111,13 +111,13 @@ kasumi_set_session_parameters(struct kasumi_session *sess,
 	case KASUMI_OP_NOT_SUPPORTED:
 	default:
 		KASUMI_LOG_ERR("Unsupported operation chain order parameter");
-		return -EINVAL;
+		return -ENOTSUP;
 	}
 
 	if (cipher_xform) {
 		/* Only KASUMI F8 supported */
 		if (cipher_xform->cipher.algo != RTE_CRYPTO_CIPHER_KASUMI_F8)
-			return -EINVAL;
+			return -ENOTSUP;
 
 		sess->cipher_iv_offset = cipher_xform->cipher.iv.offset;
 		if (cipher_xform->cipher.iv.length != KASUMI_IV_LENGTH) {
@@ -133,7 +133,7 @@ kasumi_set_session_parameters(struct kasumi_session *sess,
 	if (auth_xform) {
 		/* Only KASUMI F9 supported */
 		if (auth_xform->auth.algo != RTE_CRYPTO_AUTH_KASUMI_F9)
-			return -EINVAL;
+			return -ENOTSUP;
 
 		if (auth_xform->auth.digest_length != KASUMI_DIGEST_LENGTH) {
 			KASUMI_LOG_ERR("Wrong digest length");

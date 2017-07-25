@@ -663,25 +663,26 @@ openssl_pmd_session_configure(struct rte_cryptodev *dev __rte_unused,
 		struct rte_mempool *mempool)
 {
 	void *sess_private_data;
+	int ret;
 
 	if (unlikely(sess == NULL)) {
 		OPENSSL_LOG_ERR("invalid session struct");
-		return -1;
+		return -EINVAL;
 	}
 
 	if (rte_mempool_get(mempool, &sess_private_data)) {
 		CDEV_LOG_ERR(
 			"Couldn't get object from session mempool");
-		return -1;
+		return -ENOMEM;
 	}
 
-	if (openssl_set_session_parameters(
-			sess_private_data, xform) != 0) {
+	ret = openssl_set_session_parameters(sess_private_data, xform);
+	if (ret != 0) {
 		OPENSSL_LOG_ERR("failed configure session parameters");
 
 		/* Return session to mempool */
 		rte_mempool_put(mempool, sess_private_data);
-		return -1;
+		return ret;
 	}
 
 	set_session_private_data(sess, dev->driver_id,

@@ -1085,20 +1085,22 @@ rte_cryptodev_sym_session_init(uint8_t dev_id,
 {
 	struct rte_cryptodev *dev;
 	uint8_t index;
+	int ret;
 
 	dev = rte_cryptodev_pmd_get_dev(dev_id);
 
 	if (sess == NULL || xforms == NULL || dev == NULL)
-		return -1;
+		return -EINVAL;
 
 	index = dev->driver_id;
 
 	if (sess->sess_private_data[index] == NULL) {
-		if (dev->dev_ops->session_configure(dev, xforms, sess, mp) < 0) {
+		ret = dev->dev_ops->session_configure(dev, xforms, sess, mp);
+		if (ret < 0) {
 			CDEV_LOG_ERR(
 				"dev_id %d failed to configure session details",
 				dev_id);
-			return -1;
+			return ret;
 		}
 	}
 

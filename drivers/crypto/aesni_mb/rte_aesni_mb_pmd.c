@@ -169,7 +169,7 @@ aesni_mb_set_session_auth_parameters(const struct aesni_mb_op_fns *mb_ops,
 		break;
 	default:
 		MB_LOG_ERR("Unsupported authentication algorithm selection");
-		return -1;
+		return -ENOTSUP;
 	}
 
 	/* Calculate Authentication precomputes */
@@ -197,7 +197,7 @@ aesni_mb_set_session_cipher_parameters(const struct aesni_mb_op_fns *mb_ops,
 
 	if (xform->type != RTE_CRYPTO_SYM_XFORM_CIPHER) {
 		MB_LOG_ERR("Crypto xform struct not of type cipher");
-		return -1;
+		return -EINVAL;
 	}
 
 	/* Select cipher direction */
@@ -209,8 +209,8 @@ aesni_mb_set_session_cipher_parameters(const struct aesni_mb_op_fns *mb_ops,
 		sess->cipher.direction = DECRYPT;
 		break;
 	default:
-		MB_LOG_ERR("Unsupported cipher operation parameter");
-		return -1;
+		MB_LOG_ERR("Invalid cipher operation parameter");
+		return -EINVAL;
 	}
 
 	/* Select cipher mode */
@@ -226,7 +226,7 @@ aesni_mb_set_session_cipher_parameters(const struct aesni_mb_op_fns *mb_ops,
 		break;
 	default:
 		MB_LOG_ERR("Unsupported cipher mode parameter");
-		return -1;
+		return -ENOTSUP;
 	}
 
 	/* Check key length and choose key expansion function */
@@ -244,8 +244,8 @@ aesni_mb_set_session_cipher_parameters(const struct aesni_mb_op_fns *mb_ops,
 		aes_keyexp_fn = mb_ops->aux.keyexp.aes256;
 		break;
 	default:
-		MB_LOG_ERR("Unsupported cipher key length");
-		return -1;
+		MB_LOG_ERR("Invalid cipher key length");
+		return -EINVAL;
 	}
 
 	/* Set IV parameters */
@@ -268,6 +268,7 @@ aesni_mb_set_session_parameters(const struct aesni_mb_op_fns *mb_ops,
 {
 	const struct rte_crypto_sym_xform *auth_xform = NULL;
 	const struct rte_crypto_sym_xform *cipher_xform = NULL;
+	int ret;
 
 	/* Select Crypto operation - hash then cipher / cipher then hash */
 	switch (aesni_mb_get_chain_order(xform)) {
@@ -303,22 +304,25 @@ aesni_mb_set_session_parameters(const struct aesni_mb_op_fns *mb_ops,
 	case AESNI_MB_OP_NOT_SUPPORTED:
 	default:
 		MB_LOG_ERR("Unsupported operation chain order parameter");
-		return -1;
+		return -ENOTSUP;
 	}
 
 	/* Default IV length = 0 */
 	sess->iv.length = 0;
 
-	if (aesni_mb_set_session_auth_parameters(mb_ops, sess, auth_xform)) {
+	ret = aesni_mb_set_session_auth_parameters(mb_ops, sess, auth_xform);
+	if (ret != 0) {
 		MB_LOG_ERR("Invalid/unsupported authentication parameters");
-		return -1;
+		return ret;
 	}
 
-	if (aesni_mb_set_session_cipher_parameters(mb_ops, sess,
-			cipher_xform)) {
+	ret = aesni_mb_set_session_cipher_parameters(mb_ops, sess,
+			cipher_xform);
+	if (ret != 0) {
 		MB_LOG_ERR("Invalid/unsupported cipher parameters");
-		return -1;
+		return ret;
 	}
+
 	return 0;
 }
 
