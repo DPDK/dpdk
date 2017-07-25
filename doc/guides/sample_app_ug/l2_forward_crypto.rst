@@ -84,11 +84,13 @@ The application requires a number of command line options:
 .. code-block:: console
 
     ./build/l2fwd-crypto [EAL options] -- [-p PORTMASK] [-q NQ] [-s] [-T PERIOD] /
-    [--cdev_type HW/SW/ANY] [--chain HASH_CIPHER/CIPHER_HASH/CIPHER_ONLY/HASH_ONLY] /
+    [--cdev_type HW/SW/ANY] [--chain HASH_CIPHER/CIPHER_HASH/CIPHER_ONLY/HASH_ONLY/AEAD] /
     [--cipher_algo ALGO] [--cipher_op ENCRYPT/DECRYPT] [--cipher_key KEY] /
     [--cipher_key_random_size SIZE] [--cipher_iv IV] [--cipher_iv_random_size SIZE] /
     [--auth_algo ALGO] [--auth_op GENERATE/VERIFY] [--auth_key KEY] /
     [--auth_key_random_size SIZE] [--auth_iv IV] [--auth_iv_random_size SIZE] /
+    [--aead_algo ALGO] [--aead_op ENCRYPT/DECRYPT] [--aead_key KEY] /
+    [--aead_key_random_size SIZE] [--aead_iv] [--aead_iv_random_size SIZE] /
     [--aad AAD] [--aad_random_size SIZE] /
     [--digest size SIZE] [--sessionless] [--cryptodev_mask MASK] /
     [--mac-updating] [--no-mac-updating]
@@ -363,8 +365,14 @@ This session is created and is later attached to the crypto operation:
                    uint8_t cdev_id)
    {
            struct rte_crypto_sym_xform *first_xform;
+           struct rte_cryptodev_sym_session *session;
+           uint8_t socket_id = rte_cryptodev_socket_id(cdev_id);
+           struct rte_mempool *sess_mp = session_pool_socket[socket_id];
 
-           if (options->xform_chain == L2FWD_CRYPTO_CIPHER_HASH) {
+
+           if (options->xform_chain == L2FWD_CRYPTO_AEAD) {
+                   first_xform = &options->aead_xform;
+           } else if (options->xform_chain == L2FWD_CRYPTO_CIPHER_HASH) {
                    first_xform = &options->cipher_xform;
                    first_xform->next = &options->auth_xform;
            } else if (options->xform_chain == L2FWD_CRYPTO_HASH_CIPHER) {
@@ -376,8 +384,16 @@ This session is created and is later attached to the crypto operation:
                    first_xform = &options->auth_xform;
            }
 
-           /* Setup Cipher Parameters */
-           return rte_cryptodev_sym_session_create(cdev_id, first_xform);
+           session = rte_cryptodev_sym_session_create(sess_mp);
+
+           if (session == NULL)
+                   return NULL;
+
+          if (rte_cryptodev_sym_session_init(cdev_id, session,
+                                first_xform, sess_mp) < 0)
+                   return NULL;
+
+          return session;
    }
 
    ...
