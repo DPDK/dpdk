@@ -520,7 +520,7 @@ openssl_set_session_parameters(struct openssl_session *sess,
 	if (aead_xform) {
 		if (openssl_set_session_aead_parameters(sess, aead_xform)) {
 			OPENSSL_LOG_ERR(
-				"Invalid/unsupported auth parameters");
+				"Invalid/unsupported AEAD parameters");
 			return -EINVAL;
 		}
 	}
