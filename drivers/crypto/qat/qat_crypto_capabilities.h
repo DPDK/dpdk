@@ -104,7 +104,7 @@
 			.xform_type = RTE_CRYPTO_SYM_XFORM_AUTH,	\
 			{.auth = {					\
 				.algo = RTE_CRYPTO_AUTH_SHA384_HMAC,	\
-				.block_size = 64,			\
+				.block_size = 128,			\
 				.key_size = {				\
 					.min = 1,			\
 					.max = 128,			\
