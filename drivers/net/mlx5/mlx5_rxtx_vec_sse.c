@@ -288,8 +288,7 @@ txq_scatter_v(struct txq *txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			(*txq->elts)[elts_head++ & elts_m] = buf;
 			buf = buf->next;
 		} while (--segs_n);
-		if (ds % nb_dword_per_wqebb)
-			++wqe_ci;
+		++wqe_ci;
 		/* Fill CTRL in the header. */
 		ctrl = _mm_set_epi32(0, 0, txq->qp_num_8s | ds,
 				     MLX5_OPC_MOD_MPW << 24 |
