@@ -694,7 +694,8 @@ igb_parse_ethertype_filter(struct rte_eth_dev *dev,
 
 	if (hw->mac.type == e1000_82576) {
 		if (filter->queue >= IGB_MAX_RX_QUEUE_NUM_82576) {
-			memset(filter, 0, sizeof(struct rte_eth_ntuple_filter));
+			memset(filter, 0, sizeof(
+					struct rte_eth_ethertype_filter));
 			rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ITEM,
 				NULL, "queue number not supported "
@@ -703,7 +704,8 @@ igb_parse_ethertype_filter(struct rte_eth_dev *dev,
 		}
 	} else {
 		if (filter->queue >= IGB_MAX_RX_QUEUE_NUM) {
-			memset(filter, 0, sizeof(struct rte_eth_ntuple_filter));
+			memset(filter, 0, sizeof(
+					struct rte_eth_ethertype_filter));
 			rte_flow_error_set(error, EINVAL,
 				RTE_FLOW_ERROR_TYPE_ITEM,
 				NULL, "queue number not supported "
