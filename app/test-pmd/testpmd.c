@@ -2329,6 +2329,13 @@ main(int argc, char** argv)
 	if (tx_first && interactive)
 		rte_exit(EXIT_FAILURE, "--tx-first cannot be used on "
 				"interactive mode.\n");
+
+	if (tx_first && lsc_interrupt) {
+		printf("Warning: lsc_interrupt needs to be off when "
+				" using tx_first. Disabling.\n");
+		lsc_interrupt = 0;
+	}
+
 	if (!nb_rxq && !nb_txq)
 		printf("Warning: Either rx or tx queues should be non-zero\n");
 
