@@ -43,9 +43,9 @@
 				.algo = RTE_CRYPTO_AUTH_SHA1_HMAC,	\
 				.block_size = 64,			\
 				.key_size = {				\
-					.min = 64,			\
+					.min = 1,			\
 					.max = 64,			\
-					.increment = 0			\
+					.increment = 1			\
 				},					\
 				.digest_size = {			\
 					.min = 20,			\
@@ -64,9 +64,9 @@
 				.algo = RTE_CRYPTO_AUTH_SHA224_HMAC,	\
 				.block_size = 64,			\
 				.key_size = {				\
-					.min = 64,			\
+					.min = 1,			\
 					.max = 64,			\
-					.increment = 0			\
+					.increment = 1			\
 				},					\
 				.digest_size = {			\
 					.min = 28,			\
@@ -85,9 +85,9 @@
 				.algo = RTE_CRYPTO_AUTH_SHA256_HMAC,	\
 				.block_size = 64,			\
 				.key_size = {				\
-					.min = 64,			\
+					.min = 1,			\
 					.max = 64,			\
-					.increment = 0			\
+					.increment = 1			\
 				},					\
 				.digest_size = {			\
 					.min = 32,			\
@@ -106,9 +106,9 @@
 				.algo = RTE_CRYPTO_AUTH_SHA384_HMAC,	\
 				.block_size = 64,			\
 				.key_size = {				\
-					.min = 128,			\
+					.min = 1,			\
 					.max = 128,			\
-					.increment = 0			\
+					.increment = 1			\
 				},					\
 				.digest_size = {			\
 					.min = 48,			\
@@ -127,9 +127,9 @@
 				.algo = RTE_CRYPTO_AUTH_SHA512_HMAC,	\
 				.block_size = 128,			\
 				.key_size = {				\
-					.min = 128,			\
+					.min = 1,			\
 					.max = 128,			\
-					.increment = 0			\
+					.increment = 1			\
 				},					\
 				.digest_size = {			\
 					.min = 64,			\
@@ -148,9 +148,9 @@
 				.algo = RTE_CRYPTO_AUTH_MD5_HMAC,	\
 				.block_size = 64,			\
 				.key_size = {				\
-					.min = 8,			\
+					.min = 1,			\
 					.max = 64,			\
-					.increment = 8			\
+					.increment = 1			\
 				},					\
 				.digest_size = {			\
 					.min = 16,			\
