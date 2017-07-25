@@ -119,6 +119,7 @@ struct ethtool_link_settings {
 #define ETHTOOL_LINK_MODE_100000baseCR4_Full_BIT 38
 #define ETHTOOL_LINK_MODE_100000baseLR4_ER4_Full_BIT 39
 #endif
+#define ETHTOOL_LINK_MODE_MASK_MAX_KERNEL_NU32 (SCHAR_MAX)
 
 /**
  * Return private structure associated with an Ethernet device.
@@ -807,9 +808,12 @@ static int
 mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev, int wait_to_complete)
 {
 	struct priv *priv = mlx5_get_priv(dev);
-	struct ethtool_link_settings edata = {
-		.cmd = ETHTOOL_GLINKSETTINGS,
-	};
+	__extension__ struct {
+		struct ethtool_link_settings edata;
+		uint32_t link_mode_data[3 *
+					ETHTOOL_LINK_MODE_MASK_MAX_KERNEL_NU32];
+	} ecmd;
+
 	struct ifreq ifr;
 	struct rte_eth_link dev_link;
 	uint64_t sc;
@@ -822,15 +826,23 @@ mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev, int wait_to_complete)
 	memset(&dev_link, 0, sizeof(dev_link));
 	dev_link.link_status = ((ifr.ifr_flags & IFF_UP) &&
 				(ifr.ifr_flags & IFF_RUNNING));
-	ifr.ifr_data = (void *)&edata;
+	memset(&ecmd, 0, sizeof(ecmd));
+	ecmd.edata.cmd = ETHTOOL_GLINKSETTINGS;
+	ifr.ifr_data = (void *)&ecmd;
 	if (priv_ifreq(priv, SIOCETHTOOL, &ifr)) {
 		DEBUG("ioctl(SIOCETHTOOL, ETHTOOL_GLINKSETTINGS) failed: %s",
 		      strerror(errno));
 		return -1;
 	}
-	dev_link.link_speed = edata.speed;
-	sc = edata.link_mode_masks[0] |
-		((uint64_t)edata.link_mode_masks[1] << 32);
+	ecmd.edata.link_mode_masks_nwords = -ecmd.edata.link_mode_masks_nwords;
+	if (priv_ifreq(priv, SIOCETHTOOL, &ifr)) {
+		DEBUG("ioctl(SIOCETHTOOL, ETHTOOL_GLINKSETTINGS) failed: %s",
+		      strerror(errno));
+		return -1;
+	}
+	dev_link.link_speed = ecmd.edata.speed;
+	sc = ecmd.edata.link_mode_masks[0] |
+		((uint64_t)ecmd.edata.link_mode_masks[1] << 32);
 	priv->link_speed_capa = 0;
 	if (sc & ETHTOOL_LINK_MODE_Autoneg_BIT)
 		priv->link_speed_capa |= ETH_LINK_SPEED_AUTONEG;
@@ -866,7 +878,7 @@ mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev, int wait_to_complete)
 		  ETHTOOL_LINK_MODE_100000baseCR4_Full_BIT |
 		  ETHTOOL_LINK_MODE_100000baseLR4_ER4_Full_BIT))
 		priv->link_speed_capa |= ETH_LINK_SPEED_100G;
-	dev_link.link_duplex = ((edata.duplex == DUPLEX_HALF) ?
+	dev_link.link_duplex = ((ecmd.edata.duplex == DUPLEX_HALF) ?
 				ETH_LINK_HALF_DUPLEX : ETH_LINK_FULL_DUPLEX);
 	dev_link.link_autoneg = !(dev->data->dev_conf.link_speeds &
 				  ETH_LINK_SPEED_FIXED);
