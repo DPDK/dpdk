@@ -79,6 +79,9 @@ In order to enable this virtual crypto PMD, user must:
 * Export the environmental variable LIBSSO_ZUC_PATH with the path where
   the library was extracted (zuc folder).
 
+* Export the environmental variable LD_LIBRARY_PATH with the path
+  where the built libsso library is (LIBSSO_ZUC_PATH/build).
+
 * Build the LIBSSO_ZUC library (explained in Installation section).
 
 * Build DPDK as follows:
