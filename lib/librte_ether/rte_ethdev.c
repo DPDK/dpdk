@@ -367,16 +367,6 @@ rte_eth_dev_is_detachable(uint8_t port_id)
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
 
-	switch (rte_eth_devices[port_id].data->kdrv) {
-	case RTE_KDRV_IGB_UIO:
-	case RTE_KDRV_UIO_GENERIC:
-	case RTE_KDRV_NIC_UIO:
-	case RTE_KDRV_NONE:
-	case RTE_KDRV_VFIO:
-		break;
-	default:
-		return -ENOTSUP;
-	}
 	dev_flags = rte_eth_devices[port_id].data->dev_flags;
 	if ((dev_flags & RTE_ETH_DEV_DETACHABLE) &&
 		(!(dev_flags & RTE_ETH_DEV_BONDED_SLAVE)))
