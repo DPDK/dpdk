@@ -1836,7 +1836,6 @@ rmv_event_callback(void *arg)
 	close_port(port_id);
 	printf("removing device %s\n", dev->device->name);
 	rte_eal_dev_detach(dev->device);
-	dev->state = RTE_ETH_DEV_UNUSED;
 }
 
 /* This function is used by the interrupt thread */
