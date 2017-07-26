@@ -6376,6 +6376,7 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 
 		priv->dev = eth_dev;
 		eth_dev->dev_ops = &mlx4_dev_ops;
+		eth_dev->data->dev_flags |= RTE_ETH_DEV_DETACHABLE;
 
 		/* Bring Ethernet device up. */
 		DEBUG("forcing Ethernet interface up");
