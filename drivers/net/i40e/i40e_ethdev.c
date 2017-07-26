@@ -2033,7 +2033,7 @@ i40e_dev_start(struct rte_eth_dev *dev)
 
 	i40e_filter_restore(pf);
 
-	if (!pf->tm_conf.committed)
+	if (pf->tm_conf.root && !pf->tm_conf.committed)
 		PMD_DRV_LOG(WARNING,
 			    "please call hierarchy_commit() "
 			    "before starting the port");
