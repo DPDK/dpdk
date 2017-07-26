@@ -1138,6 +1138,7 @@ static inline struct rte_mbuf *rte_pktmbuf_alloc(struct rte_mempool *mp)
  *    Array size
  *  @return
  *   - 0: Success
+ *   - -ENOENT: Not enough entries in the mempool; no mbufs are retrieved.
  */
 static inline int rte_pktmbuf_alloc_bulk(struct rte_mempool *pool,
 	 struct rte_mbuf **mbufs, unsigned count)
