@@ -1755,7 +1755,7 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			pkt = seg;
 			assert(len >= (rxq->crc_present << 2));
 			/* Update packet information. */
-			pkt->packet_type = 0;
+			pkt->packet_type = rxq_cq_to_pkt_type(cqe);
 			pkt->ol_flags = 0;
 			if (rss_hash_res && rxq->rss_hash) {
 				pkt->hash.rss = rss_hash_res;
@@ -1773,10 +1773,8 @@ mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 						mlx5_flow_mark_get(mark);
 				}
 			}
-			if (rxq->csum | rxq->csum_l2tun) {
-				pkt->packet_type = rxq_cq_to_pkt_type(cqe);
+			if (rxq->csum | rxq->csum_l2tun)
 				pkt->ol_flags |= rxq_cq_to_ol_flags(rxq, cqe);
-			}
 			if (rxq->vlan_strip &&
 			    (cqe->hdr_type_etc &
 			     htons(MLX5_CQE_VLAN_STRIPPED))) {
