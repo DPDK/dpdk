@@ -83,7 +83,7 @@
 #define MAX_PKT_BURST			(512)
 #define DEF_PKT_BURST			(16)
 
-#define BONDED_DEV_NAME			("unit_test_bond_dev")
+#define BONDED_DEV_NAME			("net_bonding_ut")
 
 #define INVALID_SOCKET_ID		(-1)
 #define INVALID_PORT_ID			(-1)
@@ -944,7 +944,7 @@ test_set_bonded_port_initialization_mac_assignment(void)
 	/*
 	 * 1. a - Create / configure  bonded / slave ethdevs
 	 */
-	bonded_port_id = rte_eth_bond_create("ethdev_bond_mac_ass_test",
+	bonded_port_id = rte_eth_bond_create("net_bonding_mac_ass_test",
 			BONDING_MODE_ACTIVE_BACKUP, rte_socket_id());
 	TEST_ASSERT(bonded_port_id > 0, "failed to create bonded device");
 
