@@ -2693,7 +2693,7 @@ skip_link_setup:
 	ixgbe_l2_tunnel_conf(dev);
 	ixgbe_filter_restore(dev);
 
-	if (!tm_conf->committed)
+	if (tm_conf->root && !tm_conf->committed)
 		PMD_DRV_LOG(WARNING,
 			    "please call hierarchy_commit() "
 			    "before starting the port");
