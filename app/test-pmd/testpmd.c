@@ -1728,8 +1728,10 @@ detach_port(uint8_t port_id)
 	if (ports[port_id].flow_list)
 		port_flow_flush(port_id);
 
-	if (rte_eth_dev_detach(port_id, name))
+	if (rte_eth_dev_detach(port_id, name)) {
+		RTE_LOG(ERR, USER1, "Failed to detach port '%s'\n", name);
 		return;
+	}
 
 	nb_ports = rte_eth_dev_count();
 
@@ -1835,7 +1837,9 @@ rmv_event_callback(void *arg)
 	stop_port(port_id);
 	close_port(port_id);
 	printf("removing device %s\n", dev->device->name);
-	rte_eal_dev_detach(dev->device);
+	if (rte_eal_dev_detach(dev->device))
+		RTE_LOG(ERR, USER1, "Failed to detach device %s\n",
+			dev->device->name);
 }
 
 /* This function is used by the interrupt thread */
