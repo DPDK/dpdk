@@ -60,7 +60,7 @@
 #define RXTX_RING_SIZE			1024
 #define RXTX_QUEUE_COUNT		4
 
-#define BONDED_DEV_NAME         ("rssconf_bond_dev")
+#define BONDED_DEV_NAME         ("net_bonding_rss")
 
 #define SLAVE_DEV_NAME_FMT      ("net_null%d")
 #define SLAVE_RXTX_QUEUE_FMT      ("rssconf_slave%d_q%d")
