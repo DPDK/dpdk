@@ -79,29 +79,121 @@ mlx5_rx_poll_len(struct rxq *rxq, volatile struct mlx5_cqe *cqe,
 static __rte_always_inline uint32_t
 rxq_cq_to_ol_flags(struct rxq *rxq, volatile struct mlx5_cqe *cqe);
 
-/*
- * The index to the array should have:
- * bit[1:0] = l3_hdr_type, bit[2] = tunneled, bit[3] = outer_l3_type
- */
-const uint32_t mlx5_ptype_table[] = {
-	RTE_PTYPE_UNKNOWN,
-	RTE_PTYPE_L3_IPV6_EXT_UNKNOWN,               /* b0001 */
-	RTE_PTYPE_L3_IPV4_EXT_UNKNOWN,               /* b0010 */
-	RTE_PTYPE_UNKNOWN, RTE_PTYPE_UNKNOWN,
-	RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
-		RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN, /* b0101 */
-	RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
-		RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN, /* b0110 */
-	RTE_PTYPE_UNKNOWN, RTE_PTYPE_UNKNOWN,
-	RTE_PTYPE_L3_IPV6_EXT_UNKNOWN,               /* b1001 */
-	RTE_PTYPE_L3_IPV4_EXT_UNKNOWN,               /* b1010 */
-	RTE_PTYPE_UNKNOWN, RTE_PTYPE_UNKNOWN,
-	RTE_PTYPE_L3_IPV6_EXT_UNKNOWN |
-		RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN, /* b1101 */
-	RTE_PTYPE_L3_IPV6_EXT_UNKNOWN |
-		RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN, /* b1110 */
-	RTE_PTYPE_ALL_MASK			     /* b1111 */
+uint32_t mlx5_ptype_table[] __rte_cache_aligned = {
+	[0xff] = RTE_PTYPE_ALL_MASK, /* Last entry for errored packet. */
 };
+
+/**
+ * Build a table to translate Rx completion flags to packet type.
+ *
+ * @note: fix mlx5_dev_supported_ptypes_get() if any change here.
+ */
+void
+mlx5_set_ptype_table(void)
+{
+	unsigned int i;
+	uint32_t (*p)[RTE_DIM(mlx5_ptype_table)] = &mlx5_ptype_table;
+
+	for (i = 0; i < RTE_DIM(mlx5_ptype_table); ++i)
+		(*p)[i] = RTE_PTYPE_UNKNOWN;
+	/*
+	 * The index to the array should have:
+	 * bit[1:0] = l3_hdr_type
+	 * bit[4:2] = l4_hdr_type
+	 * bit[5] = ip_frag
+	 * bit[6] = tunneled
+	 * bit[7] = outer_l3_type
+	 */
+	/* L3 */
+	(*p)[0x01] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_L4_NONFRAG;
+	(*p)[0x02] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_L4_NONFRAG;
+	/* Fragmented */
+	(*p)[0x21] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_L4_FRAG;
+	(*p)[0x22] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_L4_FRAG;
+	/* TCP */
+	(*p)[0x05] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_L4_TCP;
+	(*p)[0x06] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_L4_TCP;
+	/* UDP */
+	(*p)[0x09] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_L4_UDP;
+	(*p)[0x0a] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_L4_UDP;
+	/* Repeat with outer_l3_type being set. Just in case. */
+	(*p)[0x81] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_L4_NONFRAG;
+	(*p)[0x82] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_L4_NONFRAG;
+	(*p)[0xa1] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_L4_FRAG;
+	(*p)[0xa2] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_L4_FRAG;
+	(*p)[0x85] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_L4_TCP;
+	(*p)[0x86] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_L4_TCP;
+	(*p)[0x89] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_L4_UDP;
+	(*p)[0x8a] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_L4_UDP;
+	/* Tunneled - L3 */
+	(*p)[0x41] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L4_NONFRAG;
+	(*p)[0x42] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L4_NONFRAG;
+	(*p)[0xc1] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L4_NONFRAG;
+	(*p)[0xc2] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L4_NONFRAG;
+	/* Tunneled - Fragmented */
+	(*p)[0x61] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L4_FRAG;
+	(*p)[0x62] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L4_FRAG;
+	(*p)[0xe1] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L4_FRAG;
+	(*p)[0xe2] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L4_FRAG;
+	/* Tunneled - TCP */
+	(*p)[0x45] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_L4_TCP;
+	(*p)[0x46] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_L4_TCP;
+	(*p)[0xc5] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_L4_TCP;
+	(*p)[0xc6] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_L4_TCP;
+	/* Tunneled - UDP */
+	(*p)[0x49] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_L4_UDP;
+	(*p)[0x4a] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_L4_UDP;
+	(*p)[0xc9] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_L4_UDP;
+	(*p)[0xca] = RTE_PTYPE_L2_ETHER | RTE_PTYPE_L3_IPV6_EXT_UNKNOWN |
+		     RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN |
+		     RTE_PTYPE_L4_UDP;
+}
 
 /**
  * Return the size of tailroom of WQ.
@@ -1501,30 +1593,20 @@ mlx5_tx_burst_empw(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 static inline uint32_t
 rxq_cq_to_pkt_type(volatile struct mlx5_cqe *cqe)
 {
-	uint32_t pkt_type;
-	uint16_t flags = ntohs(cqe->hdr_type_etc);
+	uint8_t idx;
+	uint8_t pinfo = cqe->pkt_info;
+	uint16_t ptype = cqe->hdr_type_etc;
 
-	if (cqe->pkt_info & MLX5_CQE_RX_TUNNEL_PACKET) {
-		pkt_type =
-			TRANSPOSE(flags,
-				  MLX5_CQE_RX_IPV4_PACKET,
-				  RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN) |
-			TRANSPOSE(flags,
-				  MLX5_CQE_RX_IPV6_PACKET,
-				  RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN);
-		pkt_type |= ((cqe->pkt_info & MLX5_CQE_RX_OUTER_PACKET) ?
-			     RTE_PTYPE_L3_IPV6_EXT_UNKNOWN :
-			     RTE_PTYPE_L3_IPV4_EXT_UNKNOWN);
-	} else {
-		pkt_type =
-			TRANSPOSE(flags,
-				  MLX5_CQE_L3_HDR_TYPE_IPV6,
-				  RTE_PTYPE_L3_IPV6_EXT_UNKNOWN) |
-			TRANSPOSE(flags,
-				  MLX5_CQE_L3_HDR_TYPE_IPV4,
-				  RTE_PTYPE_L3_IPV4_EXT_UNKNOWN);
-	}
-	return pkt_type;
+	/*
+	 * The index to the array should have:
+	 * bit[1:0] = l3_hdr_type
+	 * bit[4:2] = l4_hdr_type
+	 * bit[5] = ip_frag
+	 * bit[6] = tunneled
+	 * bit[7] = outer_l3_type
+	 */
+	idx = ((pinfo & 0x3) << 6) | ((ptype & 0xfc00) >> 10);
+	return mlx5_ptype_table[idx];
 }
 
 /**

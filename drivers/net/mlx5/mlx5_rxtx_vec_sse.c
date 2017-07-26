@@ -755,7 +755,7 @@ rxq_cq_to_ptype_oflags_v(struct rxq *rxq, __m128i cqes[4], __m128i op_err,
 	__m128i cv_flags;
 	const __m128i zero = _mm_setzero_si128();
 	const __m128i ptype_mask =
-		_mm_set_epi32(0xd06, 0xd06, 0xd06, 0xd06);
+		_mm_set_epi32(0xfd06, 0xfd06, 0xfd06, 0xfd06);
 	const __m128i ptype_ol_mask =
 		_mm_set_epi32(0x106, 0x106, 0x106, 0x106);
 	const __m128i pinfo_mask =
@@ -816,18 +816,23 @@ rxq_cq_to_ptype_oflags_v(struct rxq *rxq, __m128i cqes[4], __m128i op_err,
 	}
 	/*
 	 * Merge the two fields to generate the following:
-	 * bit[1]  = l3_ok,    bit[2]     = l4_ok
-	 * bit[8]  = cv,       bit[11:10] = l3_hdr_type
-	 * bit[12] = tunneled, bit[13]    = outer_l3_type
+	 * bit[1]     = l3_ok
+	 * bit[2]     = l4_ok
+	 * bit[8]     = cv
+	 * bit[11:10] = l3_hdr_type
+	 * bit[14:12] = l4_hdr_type
+	 * bit[15]    = ip_frag
+	 * bit[16]    = tunneled
+	 * bit[17]    = outer_l3_type
 	 */
 	ptype = _mm_and_si128(ptype, ptype_mask);
 	pinfo = _mm_and_si128(pinfo, pinfo_mask);
-	pinfo = _mm_slli_epi32(pinfo, 12);
+	pinfo = _mm_slli_epi32(pinfo, 16);
 	ptype = _mm_or_si128(ptype, pinfo);
 	ptype = _mm_srli_epi32(ptype, 10);
 	ptype = _mm_packs_epi32(ptype, zero);
 	/* Errored packets will have RTE_PTYPE_ALL_MASK. */
-	op_err = _mm_srli_epi16(op_err, 12);
+	op_err = _mm_srli_epi16(op_err, 8);
 	ptype = _mm_or_si128(ptype, op_err);
 	pkts[0]->packet_type = mlx5_ptype_table[_mm_extract_epi8(ptype, 0)];
 	pkts[1]->packet_type = mlx5_ptype_table[_mm_extract_epi8(ptype, 2)];
