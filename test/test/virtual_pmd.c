@@ -565,6 +565,7 @@ virtual_ethdev_create(const char *name, struct ether_addr *mac_addr,
 		goto err;
 
 	pci_dev->device.numa_node = socket_id;
+	pci_dev->device.name = eth_dev->data->name;
 	pci_drv->driver.name = virtual_ethdev_driver_name;
 	pci_drv->id_table = id_table;
 
