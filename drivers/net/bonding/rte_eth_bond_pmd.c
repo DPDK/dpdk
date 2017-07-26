@@ -2535,6 +2535,9 @@ bond_ethdev_lsc_event_callback(uint8_t port_id, enum rte_eth_event_type type,
 		/* Remove from active slave list */
 		deactivate_slave(bonded_eth_dev, port_id);
 
+		if (internals->active_slave_count < 1)
+			lsc_flag = 1;
+
 		/* Update primary id, take first active slave from list or if none
 		 * available set to -1 */
 		if (port_id == internals->current_primary_port) {
