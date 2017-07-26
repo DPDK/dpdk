@@ -514,14 +514,13 @@ rte_eth_bond_primary_set(uint8_t bonded_port_id, uint8_t slave_port_id)
 {
 	struct bond_dev_private *internals;
 
-	internals =  rte_eth_devices[bonded_port_id].data->dev_private;
-
 	if (valid_bonded_port_id(bonded_port_id) != 0)
 		return -1;
 
+	internals = rte_eth_devices[bonded_port_id].data->dev_private;
+
 	if (valid_slave_port_id(slave_port_id, internals->mode) != 0)
 		return -1;
-
 
 	internals->user_defined_primary_port = 1;
 	internals->primary_port = slave_port_id;
