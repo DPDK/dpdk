@@ -46,8 +46,10 @@ CFLAGS += $(WERROR_FLAGS)
 endif
 CFLAGS += -D _GNU_SOURCE
 
+ifeq ($(CONFIG_RTE_TOOLCHAIN_GCC),y)
 ifeq ($(shell test $(GCC_VERSION) -gt 70 && echo 1), 1)
 CFLAGS += -Wno-implicit-fallthrough
+endif
 endif
 
 CFLAGS += -I$(RTE_SDK)/drivers/crypto/dpaa2_sec/
