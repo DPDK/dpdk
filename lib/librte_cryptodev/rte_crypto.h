@@ -266,8 +266,9 @@ rte_crypto_op_alloc(struct rte_mempool *mempool, enum rte_crypto_op_type type)
  * @param	nb_ops	Number of crypto operations to allocate
  *
  * @returns
- * - On success returns a valid rte_crypto_op structure
- * - On failure returns NULL
+ * - nb_ops if the number of operations requested were allocated.
+ * - 0 if the requested number of ops are not available.
+ *   None are allocated in this case.
  */
 
 static inline unsigned
