@@ -424,6 +424,7 @@ operations, as well as also supporting AEAD operations.
 
 
 Session and Session Management
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Sessions are used in symmetric cryptographic processing to store the immutable
 data defined in a cryptographic transform which is used in the operation
