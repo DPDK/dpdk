@@ -1809,6 +1809,14 @@ when in mode 4 (link-aggregration-802.3ad)::
    testpmd> set bonding lacp dedicated_queues (port_id) (enable|disable)
 
 
+set bonding agg_mode
+~~~~~~~~~~~~~~~~~~~~
+
+Enable one of the specific aggregators mode when in mode 4 (link-aggregration-802.3ad)::
+
+   testpmd> set bonding agg_mode (port_id) (bandwidth|count|stable)
+
+
 show bonding config
 ~~~~~~~~~~~~~~~~~~~
 
