@@ -3719,8 +3719,10 @@ i40e_flow_parse_qinq_pattern(__rte_unused struct rte_eth_dev *dev,
 	}
 
 	/* Get filter specification */
-	if ((o_vlan_mask->tci == rte_cpu_to_be_16(I40E_TCI_MASK)) &&
-	    (i_vlan_mask->tci == rte_cpu_to_be_16(I40E_TCI_MASK))) {
+	if ((o_vlan_mask != NULL) && (o_vlan_mask->tci ==
+			rte_cpu_to_be_16(I40E_TCI_MASK)) &&
+			(i_vlan_mask != NULL) &&
+			(i_vlan_mask->tci == rte_cpu_to_be_16(I40E_TCI_MASK))) {
 		filter->outer_vlan = rte_be_to_cpu_16(o_vlan_spec->tci)
 			& I40E_TCI_MASK;
 		filter->inner_vlan = rte_be_to_cpu_16(i_vlan_spec->tci)
