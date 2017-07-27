@@ -175,12 +175,13 @@ const struct rte_flow_attr flow_attr_8023ad = {
 int
 bond_ethdev_8023ad_flow_verify(struct rte_eth_dev *bond_dev,
 		uint8_t slave_port) {
+	struct rte_eth_dev_info slave_info;
 	struct rte_flow_error error;
 	struct bond_dev_private *internals = (struct bond_dev_private *)
 			(bond_dev->data->dev_private);
 
-	struct rte_flow_action_queue lacp_queue_conf = {
-		.index = internals->mode4.dedicated_queues.rx_qid,
+	const struct rte_flow_action_queue lacp_queue_conf = {
+		.index = 0,
 	};
 
 	const struct rte_flow_action actions[] = {
@@ -195,8 +196,21 @@ bond_ethdev_8023ad_flow_verify(struct rte_eth_dev *bond_dev,
 
 	int ret = rte_flow_validate(slave_port, &flow_attr_8023ad,
 			flow_item_8023ad, actions, &error);
-	if (ret < 0)
+	if (ret < 0) {
+		RTE_BOND_LOG(ERR, "%s: %s (slave_port=%d queue_id=%d)",
+				__func__, error.message, slave_port,
+				internals->mode4.dedicated_queues.rx_qid);
 		return -1;
+	}
+
+	rte_eth_dev_info_get(slave_port, &slave_info);
+	if (slave_info.max_rx_queues < bond_dev->data->nb_rx_queues ||
+			slave_info.max_tx_queues < bond_dev->data->nb_tx_queues) {
+		RTE_BOND_LOG(ERR,
+			"%s: Slave %d capabilities doesn't allow to allocate additional queues",
+			__func__, slave_port);
+		return -1;
+	}
 
 	return 0;
 }
@@ -206,7 +220,7 @@ bond_8023ad_slow_pkt_hw_filter_supported(uint8_t port_id) {
 	struct rte_eth_dev *bond_dev = &rte_eth_devices[port_id];
 	struct bond_dev_private *internals = (struct bond_dev_private *)
 			(bond_dev->data->dev_private);
-	struct rte_eth_dev_info bond_info, slave_info;
+	struct rte_eth_dev_info bond_info;
 	uint8_t idx;
 
 	/* Verify if all slaves in bonding supports flow director and */
@@ -217,9 +231,6 @@ bond_8023ad_slow_pkt_hw_filter_supported(uint8_t port_id) {
 		internals->mode4.dedicated_queues.tx_qid = bond_info.nb_tx_queues;
 
 		for (idx = 0; idx < internals->slave_count; idx++) {
-			rte_eth_dev_info_get(internals->slaves[idx].port_id,
-					&slave_info);
-
 			if (bond_ethdev_8023ad_flow_verify(bond_dev,
 					internals->slaves[idx].port_id) != 0)
 				return -1;
