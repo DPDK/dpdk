@@ -491,14 +491,14 @@ cperf_throughput_test_runner(void *test_ctx)
 					cycles_per_packet);
 		} else {
 			if (!only_once)
-				printf("# lcore id, Buffer Size(B),"
+				printf("#lcore id,Buffer Size(B),"
 					"Burst Size,Enqueued,Dequeued,Failed Enq,"
 					"Failed Deq,Ops(Millions),Throughput(Gbps),"
 					"Cycles/Buf\n\n");
 			only_once = 1;
 
-			printf("%10u;%10u;%u;%"PRIu64";%"PRIu64";%"PRIu64";%"PRIu64";"
-					"%.f3;%.f3;%.f3\n",
+			printf("%u;%u;%u;%"PRIu64";%"PRIu64";%"PRIu64";%"PRIu64";"
+					"%.3f;%.3f;%.3f\n",
 					ctx->lcore_id,
 					ctx->options->test_buffer_size,
 					test_burst_size,
