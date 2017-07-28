@@ -353,8 +353,14 @@ cperf_throughput_test_runner(void *test_ctx)
 			if (ops_needed != rte_crypto_op_bulk_alloc(
 					ctx->crypto_op_pool,
 					RTE_CRYPTO_OP_TYPE_SYMMETRIC,
-					ops, ops_needed))
+					ops, ops_needed)) {
+				RTE_LOG(ERR, USER1,
+					"Failed to allocate more crypto operations "
+					"from the the crypto operation pool.\n"
+					"Consider increasing the pool size "
+					"with --pool-sz\n");
 				return -1;
+			}
 
 			/* Setup crypto op, attach mbuf etc */
 			(ctx->populate_ops)(ops, &ctx->mbufs_in[m_idx],
