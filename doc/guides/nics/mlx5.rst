@@ -1,5 +1,6 @@
 ..  BSD LICENSE
     Copyright 2015 6WIND S.A.
+    Copyright 2015 Mellanox
 
     Redistribution and use in source and binary forms, with or without
     modification, are permitted provided that the following conditions
@@ -64,6 +65,9 @@ physical memory (or memory that does not belong to the current process).
 This capability allows the PMD to coexist with kernel network interfaces
 which remain functional, although they stop receiving unicast packets as
 long as they share the same MAC address.
+This means legacy linux control tools (for example: ethtool, ifconfig and
+more) can operate on the same network interfaces that owned by the DPDK
+application.
 
 Enabling librte_pmd_mlx5 causes DPDK applications to be linked against
 libibverbs.
@@ -71,6 +75,7 @@ libibverbs.
 Features
 --------
 
+- Multi arch support: x86_64, POWER8, ARMv8.
 - Multiple TX and RX queues.
 - Support for scattered TX and RX frames.
 - IPv4, IPv6, TCPv4, TCPv6, UDPv4 and UDPv6 RSS on any number of queues.
@@ -92,6 +97,8 @@ Features
 - RSS hash result is supported.
 - Hardware TSO.
 - Hardware checksum TX offload for VXLAN and GRE.
+- RX interrupts.
+- Statistics query including Basic, Extended and per queue.
 
 Limitations
 -----------
@@ -100,6 +107,22 @@ Limitations
 - Port statistics through software counters only.
 - Hardware checksum RX offloads for VXLAN inner header are not supported yet.
 - Secondary process RX is not supported.
+- Flow pattern without any specific vlan will match for vlan packets as well:
+
+  When VLAN spec is not specified in the pattern, the matching rule will be created with VLAN as a wild card.
+  Meaning, the flow rule::
+
+        flow create 0 ingress pattern eth / vlan vid is 3 / ipv4 / end ...
+
+  Will only match vlan packets with vid=3. and the flow rules::
+
+        flow create 0 ingress pattern eth / ipv4 / end ...
+
+  Or::
+
+        flow create 0 ingress pattern eth / vlan / ipv4 / end ...
+
+  Will match any ipv4 packet (VLAN included).
 
 Configuration
 -------------
@@ -156,13 +179,12 @@ Run-time configuration
 - ``rxq_cqe_comp_en`` parameter [int]
 
   A nonzero value enables the compression of CQE on RX side. This feature
-  allows to save PCI bandwidth and improve performance at the cost of a
-  slightly higher CPU usage.  Enabled by default.
+  allows to save PCI bandwidth and improve performance. Enabled by default.
 
   Supported on:
 
-  - x86_64 with ConnectX4 and ConnectX4 LX
-  - Power8 with ConnectX4 LX
+  - x86_64 with ConnectX-4, ConnectX-4 LX and ConnectX-5.
+  - POWER8 and ARMv8 with ConnectX-4 LX and ConnectX-5.
 
 - ``txq_inline`` parameter [int]
 
@@ -170,8 +192,8 @@ Run-time configuration
   Can improve PPS performance when PCI back pressure is detected and may be
   useful for scenarios involving heavy traffic on many queues.
 
-  It is not enabled by default (set to 0) since the additional software
-  logic necessary to handle this mode can lower performance when back
+  Because additional software logic is necessary to handle this mode, this
+  option should be used with care, as it can lower performance when back
   pressure is not expected.
 
 - ``txqs_min_inline`` parameter [int]
@@ -180,6 +202,15 @@ Run-time configuration
   to this value.
 
   This option should be used in combination with ``txq_inline`` above.
+
+  On ConnectX-4, ConnectX-4 LX and ConnectX-5 without Enhanced MPW:
+
+        - Disabled by default.
+        - In case ``txq_inline`` is set recommendation is 4.
+
+  On ConnectX-5 with Enhanced MPW:
+
+        - Set to 8 by default.
 
 - ``txq_mpw_en`` parameter [int]
 
@@ -221,9 +252,7 @@ Run-time configuration
 
   A nonzero value enables hardware TSO.
   When hardware TSO is enabled, packets marked with TCP segmentation
-  offload will be divided into segments by the hardware.
-
-  Disabled by default.
+  offload will be divided into segments by the hardware. Disabled by default.
 
 Prerequisites
 -------------
@@ -279,13 +308,13 @@ DPDK and must be installed separately:
 
 Currently supported by DPDK:
 
-- Mellanox OFED version: **4.0-2.0.0.0**
+- Mellanox OFED version: **4.1**.
 - firmware version:
 
-  - ConnectX-4: **12.18.2000**
-  - ConnectX-4 Lx: **14.18.2000**
-  - ConnectX-5: **16.19.1200**
-  - ConnectX-5 Ex: **16.19.1200**
+  - ConnectX-4: **12.20.1010** and above.
+  - ConnectX-4 Lx: **14.20.1010** and above.
+  - ConnectX-5: **16.20.1010** and above.
+  - ConnectX-5 Ex: **16.20.1010** and above.
 
 Getting Mellanox OFED
 ~~~~~~~~~~~~~~~~~~~~~
@@ -330,25 +359,154 @@ Supported NICs
 * Mellanox(R) ConnectX(R)-5 100G MCX556A-ECAT (2x100G)
 * Mellanox(R) ConnectX(R)-5 Ex EN 100G MCX516A-CDAT (2x100G)
 
-Known issues
-------------
+Quick Start Guide
+-----------------
 
-* **Flow pattern without any specific vlan will match for vlan packets as well.**
+1. Download latest Mellanox OFED. For more info check the  `prerequisites`_.
 
-  When VLAN spec is not specified in the pattern, the matching rule will be created with VLAN as a wild card.
-  Meaning, the flow rule::
 
-        flow create 0 ingress pattern eth / vlan vid is 3 / ipv4 / end ...
+2. Install the required libraries and kernel modules either by installing
+   only the required set, or by installing the entire Mellanox OFED:
 
-  Will only match vlan packets with vid=3. and the flow rules::
+   .. code-block:: console
 
-        flow create 0 ingress pattern eth / ipv4 / end ...
+        ./mlnxofedinstall
 
-  Or::
+3. Verify the firmware is the correct one:
 
-        flow create 0 ingress pattern eth / vlan / ipv4 / end ...
+   .. code-block:: console
 
-  Will match any ipv4 packet (VLAN included).
+        ibv_devinfo
+
+4. Verify all ports links are set to Ethernet:
+
+   .. code-block:: console
+
+        mlxconfig -d <mst device> query | grep LINK_TYPE
+        LINK_TYPE_P1                        ETH(2)
+        LINK_TYPE_P2                        ETH(2)
+
+   Link types may have to be configured to Ethernet:
+
+   .. code-block:: console
+
+        mlxconfig -d <mst device> set LINK_TYPE_P1/2=1/2/3
+
+        * LINK_TYPE_P1=<1|2|3> , 1=Infiniband 2=Ethernet 3=VPI(auto-sense)
+
+   For hypervisors verify SR-IOV is enabled on the NIC:
+
+   .. code-block:: console
+
+        mlxconfig -d <mst device> query | grep SRIOV_EN
+        SRIOV_EN                            True(1)
+
+   If needed, set enable the set the relevant fields:
+
+   .. code-block:: console
+
+        mlxconfig -d <mst device> set SRIOV_EN=1 NUM_OF_VFS=16
+        mlxfwreset -d <mst device> reset
+
+5. Restart the driver:
+
+   .. code-block:: console
+
+        /etc/init.d/openibd restart
+
+   or:
+
+   .. code-block:: console
+
+        service openibd restart
+
+   If link type was changed, firmware must be reset as well:
+
+   .. code-block:: console
+
+        mlxfwreset -d <mst device> reset
+
+   For hypervisors, after reset write the sysfs number of virtual functions
+   needed for the PF.
+
+   To dynamically instantiate a given number of virtual functions (VFs):
+
+   .. code-block:: console
+
+        echo [num_vfs] > /sys/class/infiniband/mlx5_0/device/sriov_numvfs
+
+6. Compile DPDK and you are ready to go. See instructions on
+   :ref:`Development Kit Build System <Development_Kit_Build_System>`
+
+Performance tuning
+------------------
+
+1. Configure aggressive CQE Zipping for maximum performance:
+
+  .. code-block:: console
+
+        mlxconfig -d <mst device> s CQE_COMPRESSION=1
+
+  To set it back to the default CQE Zipping mode use:
+
+  .. code-block:: console
+
+        mlxconfig -d <mst device> s CQE_COMPRESSION=0
+
+2. In case of virtualization:
+
+   - Make sure that hypervisor kernel is 3.16 or newer.
+   - Configure boot with ``iommu=pt``.
+   - Use 1G huge pages.
+   - Make sure to allocate a VM on huge pages.
+   - Make sure to set CPU pinning.
+
+3. Use the CPU near local NUMA node to which the PCIe adapter is connected,
+   for better performance. For VMs, verify that the right CPU
+   and NUMA node are pinned according to the above. Run:
+
+   .. code-block:: console
+
+        lstopo-no-graphics
+
+   to identify the NUMA node to which the PCIe adapter is connected.
+
+4. If more than one adapter is used, and root complex capabilities allow
+   to put both adapters on the same NUMA node without PCI bandwidth degradation,
+   it is recommended to locate both adapters on the same NUMA node.
+   This in order to forward packets from one to the other without
+   NUMA performance penalty.
+
+5. Disable pause frames:
+
+   .. code-block:: console
+
+        ethtool -A <netdev> rx off tx off
+
+6. Verify IO non-posted prefetch is disabled by default. This can be checked
+   via the BIOS configuration. Please contact you server provider for more
+   information about the settings.
+
+.. note::
+
+        On some machines, depends on the machine integrator, it is beneficial
+        to set the PCI max read request parameter to 1K. This can be
+        done in the following way:
+
+        To query the read request size use:
+
+        .. code-block:: console
+
+                setpci -s <NIC PCI address> 68.w
+
+        If the output is different than 3XXX, set it by:
+
+        .. code-block:: console
+
+                setpci -s <NIC PCI address> 68.w=3XXX
+
+        The XXX can be different on different systems. Make sure to configure
+        according to the setpci output.
 
 Notes for testpmd
 -----------------
