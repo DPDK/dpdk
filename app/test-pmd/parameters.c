@@ -211,11 +211,11 @@ usage(char* progname)
 	printf("  --bitrate-stats=N: set the logical core N to perform "
 		"bit-rate calculation.\n");
 	printf("  --print-event <unknown|intr_lsc|queue_state|intr_reset|vf_mbox|macsec|intr_rmv|all>: "
-	       "enable print of designated event or all of them.");
+	       "enable print of designated event or all of them.\n");
 	printf("  --mask-event <unknown|intr_lsc|queue_state|intr_reset|vf_mbox|macsec|intr_rmv|all>: "
-	       "disable print of designated event or all of them.");
+	       "disable print of designated event or all of them.\n");
 	printf("  --flow-isolate-all: "
-	       "requests flow API isolated mode on all ports at initialization time.");
+	       "requests flow API isolated mode on all ports at initialization time.\n");
 }
 
 #ifdef RTE_LIBRTE_CMDLINE
