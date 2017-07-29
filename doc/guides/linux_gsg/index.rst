@@ -40,6 +40,7 @@ Getting Started Guide for Linux
     intro
     sys_reqs
     build_dpdk
+    linux_drivers
     build_sample_apps
     enable_func
     quick_start

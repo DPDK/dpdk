@@ -186,22 +186,8 @@ Configurations before running DPDK
    **Note**: To get the best performance, ensure that the core and NICs are in the same socket.
    In the example above ``85:00.0`` is on socket 1 and should be used by cores on socket 1 for the best performance.
 
-4. Bind the test ports to DPDK compatible drivers, such as igb_uio. For example bind two ports to a DPDK compatible driver and check the status:
-
-   .. code-block:: console
-
-
-      # Bind ports 82:00.0 and 85:00.0 to dpdk driver
-      ./dpdk_folder/usertools/dpdk-devbind.py -b igb_uio 82:00.0 85:00.0
-
-      # Check the port driver status
-      ./dpdk_folder/usertools/dpdk-devbind.py --status
-
-   See ``dpdk-devbind.py --help`` for more details.
-
-
-More details about DPDK setup and Linux kernel requirements see :ref:`linux_gsg_compiling_dpdk`.
-
+4. Check which kernel drivers needs to be loaded and whether there is a need to unbind the network ports from their kernel drivers.
+More details about DPDK setup and Linux kernel requirements see :ref:`linux_gsg_compiling_dpdk` and :ref:`linux_gsg_linux_drivers`.
 
 Example of getting best performance for an Intel NIC
 ----------------------------------------------------
