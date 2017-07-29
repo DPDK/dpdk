@@ -98,12 +98,14 @@ Running a Sample Application
 
 .. warning::
 
-    The UIO drivers and hugepages must be setup prior to running an application.
+    Before running the application make sure:
 
-.. warning::
+    - Hugepages setup is done.
+    - Any kernel driver being used is loaded.
+    - In case needed, ports being used by the application should be
+      bound to the corresponding kernel driver.
 
-    Any ports to be used by the application must be already bound to an appropriate kernel
-    module, as described in :ref:`linux_gsg_binding_kernel`, prior to running the application.
+    refer to :ref:`linux_gsg_linux_drivers` for more details.
 
 The application is linked with the DPDK target environment's Environmental Abstraction Layer (EAL) library,
 which provides some options that are generic to every DPDK application.

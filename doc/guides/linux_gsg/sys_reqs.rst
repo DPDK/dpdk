@@ -131,8 +131,6 @@ System Software
 
     For other kernel builds, options which should be enabled for DPDK include:
 
-    *   UIO support
-
     *   HUGETLBFS
 
     *   PROC_PAGE_MONITOR  support
