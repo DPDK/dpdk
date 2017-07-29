@@ -464,3 +464,82 @@ enabled using the steps below.
 #. Set the PCI configure register with new value::
 
       setpci -s <XX:XX.X> a8.w=<value>
+
+High Performance of Small Packets on 40G NIC
+--------------------------------------------
+
+As there might be firmware fixes for performance enhancement in latest version
+of firmware image, the firmware update might be needed for getting high performance.
+Check with the local Intel's Network Division application engineers for firmware updates.
+Users should consult the release notes specific to a DPDK release to identify
+the validated firmware version for a NIC using the i40e driver.
+
+Use 16 Bytes RX Descriptor Size
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+As i40e PMD supports both 16 and 32 bytes RX descriptor sizes, and 16 bytes size can provide helps to high performance of small packets.
+Configuration of ``CONFIG_RTE_LIBRTE_I40E_16BYTE_RX_DESC`` in config files can be changed to use 16 bytes size RX descriptors.
+
+High Performance and per Packet Latency Tradeoff
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Due to the hardware design, the interrupt signal inside NIC is needed for per
+packet descriptor write-back. The minimum interval of interrupts could be set
+at compile time by ``CONFIG_RTE_LIBRTE_I40E_ITR_INTERVAL`` in configuration files.
+Though there is a default configuration, the interval could be tuned by the
+users with that configuration item depends on what the user cares about more,
+performance or per packet latency.
+
+Example of getting best performance with l3fwd example
+------------------------------------------------------
+
+The following is an example of running the DPDK ``l3fwd`` sample application to get high performance with an
+Intel server platform and Intel XL710 NICs.
+
+The example scenario is to get best performance with two Intel XL710 40GbE ports.
+See :numref:`figure_intel_perf_test_setup` for the performance test setup.
+
+.. _figure_intel_perf_test_setup:
+
+.. figure:: img/intel_perf_test_setup.*
+
+   Performance Test Setup
+
+
+1. Add two Intel XL710 NICs to the platform, and use one port per card to get best performance.
+   The reason for using two NICs is to overcome a PCIe Gen3's limitation since it cannot provide 80G bandwidth
+   for two 40G ports, but two different PCIe Gen3 x8 slot can.
+   Refer to the sample NICs output above, then we can select ``82:00.0`` and ``85:00.0`` as test ports::
+
+      82:00.0 Ethernet [0200]: Intel XL710 for 40GbE QSFP+ [8086:1583]
+      85:00.0 Ethernet [0200]: Intel XL710 for 40GbE QSFP+ [8086:1583]
+
+2. Connect the ports to the traffic generator. For high speed testing, it's best to use a hardware traffic generator.
+
+3. Check the PCI devices numa node (socket id) and get the cores number on the exact socket id.
+   In this case, ``82:00.0`` and ``85:00.0`` are both in socket 1, and the cores on socket 1 in the referenced platform
+   are 18-35 and 54-71.
+   Note: Don't use 2 logical cores on the same core (e.g core18 has 2 logical cores, core18 and core54), instead, use 2 logical
+   cores from different cores (e.g core18 and core19).
+
+4. Bind these two ports to igb_uio.
+
+5. As to XL710 40G port, we need at least two queue pairs to achieve best performance, then two queues per port
+   will be required, and each queue pair will need a dedicated CPU core for receiving/transmitting packets.
+
+6. The DPDK sample application ``l3fwd`` will be used for performance testing, with using two ports for bi-directional forwarding.
+   Compile the ``l3fwd sample`` with the default lpm mode.
+
+7. The command line of running l3fwd would be something like the following::
+
+      ./l3fwd -l 18-21 -n 4 -w 82:00.0 -w 85:00.0 \
+              -- -p 0x3 --config '(0,0,18),(0,1,19),(1,0,20),(1,1,21)'
+
+   This means that the application uses core 18 for port 0, queue pair 0 forwarding, core 19 for port 0, queue pair 1 forwarding,
+   core 20 for port 1, queue pair 0 forwarding, and core 21 for port 1, queue pair 1 forwarding.
+
+8. Configure the traffic at a traffic generator.
+
+   * Start creating a stream on packet generator.
+
+   * Set the Ethernet II type to 0x0800.
