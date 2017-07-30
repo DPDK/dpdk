@@ -291,27 +291,14 @@ auth_set_prerequisites(struct armv8_crypto_session *sess,
 		 * Generate authentication key, i_key_pad and o_key_pad.
 		 */
 		/* Zero memory under key */
-		memset(sess->auth.hmac.key, 0, SHA1_AUTH_KEY_LENGTH);
+		memset(sess->auth.hmac.key, 0, SHA1_BLOCK_SIZE);
 
-		if (xform->auth.key.length > SHA1_AUTH_KEY_LENGTH) {
-			/*
-			 * In case the key is longer than 160 bits
-			 * the algorithm will use SHA1(key) instead.
-			 */
-			error = sha1_block(NULL, xform->auth.key.data,
-				sess->auth.hmac.key, xform->auth.key.length);
-			if (error != 0)
-				return -1;
-		} else {
-			/*
-			 * Now copy the given authentication key to the session
-			 * key assuming that the session key is zeroed there is
-			 * no need for additional zero padding if the key is
-			 * shorter than SHA1_AUTH_KEY_LENGTH.
-			 */
-			rte_memcpy(sess->auth.hmac.key, xform->auth.key.data,
-							xform->auth.key.length);
-		}
+		/*
+		 * Now copy the given authentication key to the session
+		 * key.
+		 */
+		rte_memcpy(sess->auth.hmac.key, xform->auth.key.data,
+						xform->auth.key.length);
 
 		/* Prepare HMAC padding: key|pattern */
 		auth_hmac_pad_prepare(sess, xform);
@@ -337,27 +324,14 @@ auth_set_prerequisites(struct armv8_crypto_session *sess,
 		 * Generate authentication key, i_key_pad and o_key_pad.
 		 */
 		/* Zero memory under key */
-		memset(sess->auth.hmac.key, 0, SHA256_AUTH_KEY_LENGTH);
+		memset(sess->auth.hmac.key, 0, SHA256_BLOCK_SIZE);
 
-		if (xform->auth.key.length > SHA256_AUTH_KEY_LENGTH) {
-			/*
-			 * In case the key is longer than 256 bits
-			 * the algorithm will use SHA256(key) instead.
-			 */
-			error = sha256_block(NULL, xform->auth.key.data,
-				sess->auth.hmac.key, xform->auth.key.length);
-			if (error != 0)
-				return -1;
-		} else {
-			/*
-			 * Now copy the given authentication key to the session
-			 * key assuming that the session key is zeroed there is
-			 * no need for additional zero padding if the key is
-			 * shorter than SHA256_AUTH_KEY_LENGTH.
-			 */
-			rte_memcpy(sess->auth.hmac.key, xform->auth.key.data,
-							xform->auth.key.length);
-		}
+		/*
+		 * Now copy the given authentication key to the session
+		 * key.
+		 */
+		rte_memcpy(sess->auth.hmac.key, xform->auth.key.data,
+						xform->auth.key.length);
 
 		/* Prepare HMAC padding: key|pattern */
 		auth_hmac_pad_prepare(sess, xform);
