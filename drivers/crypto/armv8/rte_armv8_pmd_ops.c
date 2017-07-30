@@ -50,9 +50,9 @@ static const struct rte_cryptodev_capabilities
 					.algo = RTE_CRYPTO_AUTH_SHA1_HMAC,
 					.block_size = 64,
 					.key_size = {
-						.min = 16,
-						.max = 128,
-						.increment = 0
+						.min = 1,
+						.max = 64,
+						.increment = 1
 					},
 					.digest_size = {
 						.min = 20,
@@ -71,9 +71,9 @@ static const struct rte_cryptodev_capabilities
 					.algo = RTE_CRYPTO_AUTH_SHA256_HMAC,
 					.block_size = 64,
 					.key_size = {
-						.min = 16,
-						.max = 128,
-						.increment = 0
+						.min = 1,
+						.max = 64,
+						.increment = 1
 					},
 					.digest_size = {
 						.min = 32,
