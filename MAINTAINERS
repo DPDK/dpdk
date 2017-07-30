@@ -517,7 +517,6 @@ T: git://dpdk.org/next/dpdk-next-crypto
 F: doc/guides/cryptodevs/features/default.ini
 
 ARMv8 Crypto PMD
-M: Zbigniew Bodek <zbigniew.bodek@caviumnetworks.com>
 M: Jerin Jacob <jerin.jacob@caviumnetworks.com>
 F: drivers/crypto/armv8/
 F: doc/guides/cryptodevs/armv8.rst
