@@ -109,7 +109,7 @@ evt_parse_queue_priority(struct evt_options *opt, const char *arg __rte_unused)
 static int
 evt_parse_test_name(struct evt_options *opt, const char *arg)
 {
-	strcpy(opt->test_name, arg);
+	snprintf(opt->test_name, EVT_TEST_NAME_MAX_LEN, "%s", arg);
 	return 0;
 }
 
