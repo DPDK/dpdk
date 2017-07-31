@@ -66,7 +66,7 @@ range="$*"
 # get major release version of a commit
 commit_version () # <hash>
 {
-	tag=$(git tag -l --contains $1 | head -n1)
+	tag=$(git tag -l --contains $1 --merged | head -n1)
 	if [ -z "$tag" ] ; then
 		# before -rc1 tag of release in progress
 		make showversion | cut -d'.' -f-2
