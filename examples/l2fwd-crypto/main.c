@@ -662,7 +662,12 @@ initialize_crypto_session(struct l2fwd_crypto_options *options, uint8_t cdev_id)
 {
 	struct rte_crypto_sym_xform *first_xform;
 	struct rte_cryptodev_sym_session *session;
-	uint8_t socket_id = rte_cryptodev_socket_id(cdev_id);
+	int retval = rte_cryptodev_socket_id(cdev_id);
+
+	if (retval < 0)
+		return NULL;
+
+	uint8_t socket_id = (uint8_t) retval;
 	struct rte_mempool *sess_mp = session_pool_socket[socket_id];
 
 	if (options->xform_chain == L2FWD_CRYPTO_AEAD) {
@@ -1996,7 +2001,14 @@ initialize_cryptodevs(struct l2fwd_crypto_options *options, unsigned nb_ports,
 			cdev_id++) {
 		struct rte_cryptodev_qp_conf qp_conf;
 		struct rte_cryptodev_info dev_info;
-		uint8_t socket_id = rte_cryptodev_socket_id(cdev_id);
+		retval = rte_cryptodev_socket_id(cdev_id);
+
+		if (retval < 0) {
+			printf("Invalid crypto device id used\n");
+			return -1;
+		}
+
+		uint8_t socket_id = (uint8_t) retval;
 
 		struct rte_cryptodev_config conf = {
 			.nb_queue_pairs = 1,
