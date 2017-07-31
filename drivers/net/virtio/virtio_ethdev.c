@@ -1659,8 +1659,15 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 {
 	const struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
 	struct virtio_hw *hw = dev->data->dev_private;
+	int ret;
 
 	PMD_INIT_LOG(DEBUG, "configure");
+
+	if (dev->data->dev_conf.intr_conf.rxq) {
+		ret = virtio_init_device(dev, hw->req_guest_features);
+		if (ret < 0)
+			return ret;
+	}
 
 	/* Virtio does L4 checksum but not L3! */
 	if (rxmode->hw_ip_checksum) {
