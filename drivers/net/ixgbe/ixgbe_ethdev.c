@@ -2642,9 +2642,22 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 
 	speed = 0x0;
 	if (*link_speeds == ETH_LINK_SPEED_AUTONEG) {
-		speed = (hw->mac.type != ixgbe_mac_82598EB) ?
-				IXGBE_LINK_SPEED_82599_AUTONEG :
-				IXGBE_LINK_SPEED_82598_AUTONEG;
+		switch (hw->mac.type) {
+		case ixgbe_mac_82598EB:
+			speed = IXGBE_LINK_SPEED_82598_AUTONEG;
+			break;
+		case ixgbe_mac_82599EB:
+		case ixgbe_mac_X540:
+			speed = IXGBE_LINK_SPEED_82599_AUTONEG;
+			break;
+		case ixgbe_mac_X550:
+		case ixgbe_mac_X550EM_x:
+		case ixgbe_mac_X550EM_a:
+			speed = IXGBE_LINK_SPEED_X550_AUTONEG;
+			break;
+		default:
+			speed = IXGBE_LINK_SPEED_82599_AUTONEG;
+		}
 	} else {
 		if (*link_speeds & ETH_LINK_SPEED_10G)
 			speed |= IXGBE_LINK_SPEED_10GB_FULL;
@@ -3688,6 +3701,10 @@ ixgbe_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	    hw->mac.type == ixgbe_mac_X550_vf) {
 		dev_info->speed_capa |= ETH_LINK_SPEED_100M;
 	}
+	if (hw->mac.type == ixgbe_mac_X550) {
+		dev_info->speed_capa |= ETH_LINK_SPEED_2_5G;
+		dev_info->speed_capa |= ETH_LINK_SPEED_5G;
+	}
 }
 
 static const uint32_t *
@@ -3965,6 +3982,14 @@ ixgbe_dev_link_update_share(struct rte_eth_dev *dev,
 
 	case IXGBE_LINK_SPEED_1GB_FULL:
 		link.link_speed = ETH_SPEED_NUM_1G;
+		break;
+
+	case IXGBE_LINK_SPEED_2_5GB_FULL:
+		link.link_speed = ETH_SPEED_NUM_2_5G;
+		break;
+
+	case IXGBE_LINK_SPEED_5GB_FULL:
+		link.link_speed = ETH_SPEED_NUM_5G;
 		break;
 
 	case IXGBE_LINK_SPEED_10GB_FULL:

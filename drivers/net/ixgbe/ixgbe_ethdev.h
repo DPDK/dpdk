@@ -33,6 +33,7 @@
 
 #ifndef _IXGBE_ETHDEV_H_
 #define _IXGBE_ETHDEV_H_
+#include "base/ixgbe_type.h"
 #include "base/ixgbe_dcb.h"
 #include "base/ixgbe_dcb_82599.h"
 #include "base/ixgbe_dcb_82598.h"
@@ -153,6 +154,13 @@
 		(type) != ixgbe_mac_X550EM_a)\
 		return -ENOTSUP;\
 } while (0)
+
+/* Link speed for X550 auto negotiation */
+#define IXGBE_LINK_SPEED_X550_AUTONEG	(IXGBE_LINK_SPEED_100_FULL | \
+					 IXGBE_LINK_SPEED_1GB_FULL | \
+					 IXGBE_LINK_SPEED_2_5GB_FULL | \
+					 IXGBE_LINK_SPEED_5GB_FULL | \
+					 IXGBE_LINK_SPEED_10GB_FULL)
 
 /*
  * Information about the fdir mode.
