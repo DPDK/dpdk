@@ -68,6 +68,14 @@ Deprecation Notices
   Target release for removal of the legacy API will be defined once most
   PMDs have switched to rte_flow.
 
+* ethdev: The device flag advertizing hotplug capability
+  ``RTE_ETH_DEV_DETACHABLE`` is not needed anymore and will be removed in
+  v17.11.
+  This capability is verified upon calling the relevant hotplug functions in EAL
+  by checking that the ``unplug`` ops is set in the bus. This verification is
+  done by the EAL and not by the ``ethdev`` layer anymore. Users relying on this
+  flag being present only have to remove their checks to follow the change.
+
 * librte_table: The ``key_mask`` parameter will be added to all the hash tables
   that currently do not have it, as well as to the hash compute function prototype.
   The non-"do-sig" versions of the hash tables will be removed
