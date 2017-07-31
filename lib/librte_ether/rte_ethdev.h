@@ -1831,7 +1831,8 @@ int rte_eth_dev_attach(const char *devargs, uint8_t *port_id);
  * @param port_id
  *   The port identifier of the device to detach.
  * @param devname
- *  A pointer to a device name actually detached.
+ *   A pointer to a buffer that will be filled with the device name.
+ *   This buffer must be at least RTE_DEV_NAME_MAX_LEN long.
  * @return
  *  0 on success and devname is filled, negative on error
  */

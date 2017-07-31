@@ -436,8 +436,8 @@ rte_eth_dev_detach(uint8_t port_id, char *name)
 	if (rte_eth_dev_is_detachable(port_id))
 		goto err;
 
-	snprintf(name, sizeof(rte_eth_devices[port_id].device->name),
-		 "%s", rte_eth_devices[port_id].device->name);
+	snprintf(name, RTE_DEV_NAME_MAX_LEN, "%s",
+		 rte_eth_devices[port_id].device->name);
 
 	ret = rte_eal_dev_detach(rte_eth_devices[port_id].device);
 	if (ret < 0)
