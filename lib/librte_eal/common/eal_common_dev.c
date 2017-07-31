@@ -66,6 +66,7 @@ static int cmp_dev_name(const struct rte_device *dev, const void *_name)
 
 int rte_eal_dev_attach(const char *name, const char *devargs)
 {
+	struct rte_bus *bus;
 	int ret;
 
 	if (name == NULL || devargs == NULL) {
@@ -73,9 +74,18 @@ int rte_eal_dev_attach(const char *name, const char *devargs)
 		return -EINVAL;
 	}
 
-	ret = rte_eal_hotplug_add("pci", name, devargs);
-	if (ret != -EINVAL)
-		return ret;
+	bus = rte_bus_find_by_device_name(name);
+	if (bus == NULL) {
+		RTE_LOG(ERR, EAL, "Unable to find a bus for the device '%s'\n",
+			name);
+		return -EINVAL;
+	}
+	if (strcmp(bus->name, "pci") == 0)
+		return rte_eal_hotplug_add("pci", name, devargs);
+	if (strcmp(bus->name, "vdev") != 0) {
+		RTE_LOG(ERR, EAL, "Device attach is only supported for PCI and vdev devices.\n");
+		return -ENOTSUP;
+	}
 
 	/*
 	 * If we haven't found a bus device the user meant to "hotplug" a
