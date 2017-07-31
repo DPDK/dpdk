@@ -50,20 +50,21 @@
 
 int bnxt_rcv_msg_from_vf(struct bnxt *bp, uint16_t vf_id, void *msg)
 {
-	struct rte_pmd_bnxt_mb_event_param cb_param;
+	struct rte_pmd_bnxt_mb_event_param ret_param;
 
-	cb_param.retval = RTE_PMD_BNXT_MB_EVENT_PROCEED;
-	cb_param.vf_id = vf_id;
-	cb_param.msg = msg;
+	ret_param.retval = RTE_PMD_BNXT_MB_EVENT_PROCEED;
+	ret_param.vf_id = vf_id;
+	ret_param.msg = msg;
 
 	_rte_eth_dev_callback_process(bp->eth_dev, RTE_ETH_EVENT_VF_MBOX,
-			&cb_param, NULL);
+				      NULL, &ret_param);
 
 	/* Default to approve */
-	if (cb_param.retval == RTE_PMD_BNXT_MB_EVENT_PROCEED)
-		cb_param.retval = RTE_PMD_BNXT_MB_EVENT_NOOP_ACK;
+	if (ret_param.retval == RTE_PMD_BNXT_MB_EVENT_PROCEED)
+		ret_param.retval = RTE_PMD_BNXT_MB_EVENT_NOOP_ACK;
 
-	return cb_param.retval == RTE_PMD_BNXT_MB_EVENT_NOOP_ACK ? true : false;
+	return ret_param.retval == RTE_PMD_BNXT_MB_EVENT_NOOP_ACK ?
+		true : false;
 }
 
 int rte_pmd_bnxt_set_tx_loopback(uint8_t port, uint8_t on)
