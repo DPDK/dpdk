@@ -81,7 +81,7 @@ rte_gro_ctx_create(const struct rte_gro_param *param)
 		return NULL;
 
 	for (i = 0; i < RTE_GRO_TYPE_MAX_NUM; i++) {
-		gro_type_flag = 1 << i;
+		gro_type_flag = 1ULL << i;
 		if ((param->gro_types & gro_type_flag) == 0)
 			continue;
 
@@ -116,7 +116,7 @@ rte_gro_ctx_destroy(void *ctx)
 	if (gro_ctx == NULL)
 		return;
 	for (i = 0; i < RTE_GRO_TYPE_MAX_NUM; i++) {
-		gro_type_flag = 1 << i;
+		gro_type_flag = 1ULL << i;
 		if ((gro_ctx->gro_types & gro_type_flag) == 0)
 			continue;
 		destroy_tbl_fn = tbl_destroy_fn[i];
@@ -265,7 +265,7 @@ rte_gro_get_pkt_count(void *ctx)
 	uint8_t i;
 
 	for (i = 0; i < RTE_GRO_TYPE_MAX_NUM; i++) {
-		gro_type_flag = 1 << i;
+		gro_type_flag = 1ULL << i;
 		if ((gro_ctx->gro_types & gro_type_flag) == 0)
 			continue;
 
