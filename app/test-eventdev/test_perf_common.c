@@ -203,7 +203,7 @@ perf_launch_lcores(struct evt_test *test, struct evt_options *opt,
 			perf_cycles = new_cycles;
 			total_mpps += mpps;
 			++samples;
-			if (opt->fwd_latency) {
+			if (opt->fwd_latency && pkts > 0) {
 				printf(CLGRN"\r%.3f mpps avg %.3f mpps [avg fwd latency %.3f us] "CLNRM,
 					mpps, total_mpps/samples,
 					(float)(latency/pkts)/freq_mhz);
