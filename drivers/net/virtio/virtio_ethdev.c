@@ -1754,6 +1754,11 @@ virtio_dev_start(struct rte_eth_dev *dev)
 		virtqueue_notify(rxvq->vq);
 	}
 
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		txvq = dev->data->tx_queues[i];
+		virtqueue_notify(txvq->vq);
+	}
+
 	PMD_INIT_LOG(DEBUG, "Notified backend at initialization");
 
 	for (i = 0; i < dev->data->nb_rx_queues; i++) {
