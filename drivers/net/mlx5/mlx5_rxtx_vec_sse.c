@@ -568,7 +568,8 @@ rxq_replenish_bulk_mbuf(struct rxq *rxq, uint16_t n)
 		return;
 	}
 	for (i = 0; i < n; ++i)
-		wq[i].addr = htonll(rte_pktmbuf_mtod(elts[i], uintptr_t));
+		wq[i].addr = htonll((uintptr_t)elts[i]->buf_addr +
+				    RTE_PKTMBUF_HEADROOM);
 	rxq->rq_ci += n;
 	rte_wmb();
 	*rxq->rq_db = htonl(rxq->rq_ci);
