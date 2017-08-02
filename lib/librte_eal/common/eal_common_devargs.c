@@ -170,22 +170,12 @@ rte_eal_devargs_add(enum rte_devtype devtype, const char *devargs_str)
 	bus = devargs->bus;
 	if (devargs->type == RTE_DEVTYPE_BLACKLISTED_PCI)
 		devargs->policy = RTE_DEV_BLACKLISTED;
-	if (devargs->policy == RTE_DEV_WHITELISTED) {
-		if (bus->conf.scan_mode == RTE_BUS_SCAN_UNDEFINED) {
+	if (bus->conf.scan_mode == RTE_BUS_SCAN_UNDEFINED) {
+		if (devargs->policy == RTE_DEV_WHITELISTED)
 			bus->conf.scan_mode = RTE_BUS_SCAN_WHITELIST;
-		} else if (bus->conf.scan_mode == RTE_BUS_SCAN_BLACKLIST) {
-			fprintf(stderr, "ERROR: incompatible device policy and bus scan mode\n");
-			goto fail;
-		}
-	} else if (devargs->policy == RTE_DEV_BLACKLISTED) {
-		if (bus->conf.scan_mode == RTE_BUS_SCAN_UNDEFINED) {
+		else if (devargs->policy == RTE_DEV_BLACKLISTED)
 			bus->conf.scan_mode = RTE_BUS_SCAN_BLACKLIST;
-		} else if (bus->conf.scan_mode == RTE_BUS_SCAN_WHITELIST) {
-			fprintf(stderr, "ERROR: incompatible device policy and bus scan mode\n");
-			goto fail;
-		}
 	}
-
 	TAILQ_INSERT_TAIL(&devargs_list, devargs, next);
 	return 0;
 
