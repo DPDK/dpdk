@@ -23,11 +23,6 @@ Deprecation Notices
   Accompanying this evolution, device command line parameters will thus support
   explicit bus definition in a device declaration.
 
-* igb_uio: iomem mapping and sysfs files created for iomem and ioport in
-  igb_uio will be removed, because we are able to detect these from what Linux
-  has exposed, like the way we have done with uio-pci-generic. This change
-  targets release 17.05.
-
 * The VDEV subsystem will be converted as driver of the new bus model.
   It may imply some EAL API changes in 17.08.
 
