@@ -503,7 +503,8 @@ static inline void enic_free_wq_bufs(struct vnic_wq *wq, u16 completed_index)
 		tail_idx = enic_ring_incr(desc_count, tail_idx);
 	}
 
-	rte_mempool_put_bulk(pool, (void **)free, nb_free);
+	if (nb_free > 0)
+		rte_mempool_put_bulk(pool, (void **)free, nb_free);
 
 	wq->tail_idx = tail_idx;
 	wq->ring.desc_avail += nb_to_free;
