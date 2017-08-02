@@ -254,6 +254,20 @@ Run-time configuration
   When hardware TSO is enabled, packets marked with TCP segmentation
   offload will be divided into segments by the hardware. Disabled by default.
 
+- ``tx_vec_en`` parameter [int]
+
+  A nonzero value enables Tx vector on ConnectX-5 only NIC if the number of
+  global Tx queues on the port is lesser than MLX5_VPMD_MIN_TXQS.
+
+  Enabled by default on ConnectX-5.
+
+- ``rx_vec_en`` parameter [int]
+
+  A nonzero value enables Rx vector if the port is not configured in
+  multi-segment otherwise this parameter is ignored.
+
+  Enabled by default.
+
 Prerequisites
 -------------
 

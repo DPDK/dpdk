@@ -131,6 +131,8 @@ struct priv {
 	unsigned int tso:1; /* Whether TSO is supported. */
 	unsigned int tunnel_en:1;
 	unsigned int isolated:1; /* Whether isolated mode is enabled. */
+	unsigned int tx_vec_en:1; /* Whether Tx vector is enabled. */
+	unsigned int rx_vec_en:1; /* Whether Rx vector is enabled. */
 	/* Whether Tx offloads for tunneled packets are supported. */
 	unsigned int max_tso_payload_sz; /* Maximum TCP payload for TSO. */
 	unsigned int txq_inline; /* Maximum packet size for inlining. */

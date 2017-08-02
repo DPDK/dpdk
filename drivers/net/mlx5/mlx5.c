@@ -94,6 +94,12 @@
 /* Device parameter to enable hardware TSO offload. */
 #define MLX5_TSO "tso"
 
+/* Device parameter to enable hardware Tx vector. */
+#define MLX5_TX_VEC_EN "tx_vec_en"
+
+/* Device parameter to enable hardware Rx vector. */
+#define MLX5_RX_VEC_EN "rx_vec_en"
+
 /* Default PMD specific parameter value. */
 #define MLX5_ARG_UNSET (-1)
 
@@ -105,6 +111,8 @@ struct mlx5_args {
 	int mpw_hdr_dseg;
 	int inline_max_packet_sz;
 	int tso;
+	int tx_vec_en;
+	int rx_vec_en;
 };
 /**
  * Retrieve integer value from environment variable.
@@ -324,6 +332,10 @@ mlx5_args_check(const char *key, const char *val, void *opaque)
 		args->inline_max_packet_sz = tmp;
 	} else if (strcmp(MLX5_TSO, key) == 0) {
 		args->tso = !!tmp;
+	} else if (strcmp(MLX5_TX_VEC_EN, key) == 0) {
+		args->tx_vec_en = !!tmp;
+	} else if (strcmp(MLX5_RX_VEC_EN, key) == 0) {
+		args->rx_vec_en = !!tmp;
 	} else {
 		WARN("%s: unknown parameter", key);
 		return -EINVAL;
@@ -353,6 +365,8 @@ mlx5_args(struct mlx5_args *args, struct rte_devargs *devargs)
 		MLX5_TXQ_MPW_HDR_DSEG_EN,
 		MLX5_TXQ_MAX_INLINE_LEN,
 		MLX5_TSO,
+		MLX5_TX_VEC_EN,
+		MLX5_RX_VEC_EN,
 		NULL,
 	};
 	struct rte_kvargs *kvlist;
@@ -408,6 +422,10 @@ mlx5_args_assign(struct priv *priv, struct mlx5_args *args)
 		priv->inline_max_packet_sz = args->inline_max_packet_sz;
 	if (args->tso != MLX5_ARG_UNSET)
 		priv->tso = args->tso;
+	if (args->tx_vec_en != MLX5_ARG_UNSET)
+		priv->tx_vec_en = args->tx_vec_en;
+	if (args->rx_vec_en != MLX5_ARG_UNSET)
+		priv->rx_vec_en = args->rx_vec_en;
 }
 
 /**
@@ -553,6 +571,8 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			.mpw_hdr_dseg = MLX5_ARG_UNSET,
 			.inline_max_packet_sz = MLX5_ARG_UNSET,
 			.tso = MLX5_ARG_UNSET,
+			.tx_vec_en = MLX5_ARG_UNSET,
+			.rx_vec_en = MLX5_ARG_UNSET,
 		};
 
 		exp_device_attr.comp_mask =
@@ -615,6 +635,9 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		priv->mps = mps; /* Enable MPW by default if supported. */
 		priv->cqe_comp = 1; /* Enable compression by default. */
 		priv->tunnel_en = tunnel_en;
+		/* Enable vector by default if supported. */
+		priv->tx_vec_en = 1;
+		priv->rx_vec_en = 1;
 		err = mlx5_args(&args, pci_dev->device.devargs);
 		if (err) {
 			ERROR("failed to process device arguments: %s",
