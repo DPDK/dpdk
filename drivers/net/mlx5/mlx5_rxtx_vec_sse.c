@@ -829,8 +829,9 @@ rxq_cq_to_ptype_oflags_v(struct rxq *rxq, __m128i cqes[4], __m128i op_err,
 	ptype = _mm_and_si128(ptype, ptype_mask);
 	pinfo = _mm_and_si128(pinfo, pinfo_mask);
 	pinfo = _mm_slli_epi32(pinfo, 16);
-	ptype = _mm_or_si128(ptype, pinfo);
-	ptype = _mm_srli_epi32(ptype, 10);
+	/* Make pinfo has merged fields for ol_flags calculation. */
+	pinfo = _mm_or_si128(ptype, pinfo);
+	ptype = _mm_srli_epi32(pinfo, 10);
 	ptype = _mm_packs_epi32(ptype, zero);
 	/* Errored packets will have RTE_PTYPE_ALL_MASK. */
 	op_err = _mm_srli_epi16(op_err, 8);
