@@ -2681,6 +2681,7 @@ ixgbe_flow_create(struct rte_eth_dev *dev,
 	struct ixgbe_eth_l2_tunnel_conf_ele *l2_tn_filter_ptr;
 	struct ixgbe_fdir_rule_ele *fdir_rule_ptr;
 	struct ixgbe_flow_mem *ixgbe_flow_mem_ptr;
+	uint8_t first_mask = FALSE;
 
 	flow = rte_zmalloc("ixgbe_rte_flow", sizeof(struct rte_flow), 0);
 	if (!flow) {
@@ -2784,6 +2785,7 @@ ixgbe_flow_create(struct rte_eth_dev *dev,
 					goto out;
 
 				fdir_info->mask_added = TRUE;
+				first_mask = TRUE;
 			} else {
 				/**
 				 * Only support one global mask,
@@ -2818,8 +2820,15 @@ ixgbe_flow_create(struct rte_eth_dev *dev,
 				return flow;
 			}
 
-			if (ret)
+			if (ret) {
+				/**
+				 * clean the mask_added flag if fail to
+				 * program
+				 **/
+				if (first_mask)
+					fdir_info->mask_added = FALSE;
 				goto out;
+			}
 		}
 
 		goto out;
