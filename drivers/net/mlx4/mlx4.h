@@ -182,7 +182,13 @@ enum {
 		(DEBUG__(__VA_ARGS__), 0)	\
 	})[0])
 #define DEBUG(...) DEBUG_(__VA_ARGS__, '\n')
+#ifndef MLX4_PMD_DEBUG_BROKEN_VERBS
 #define claim_zero(...) assert((__VA_ARGS__) == 0)
+#else /* MLX4_PMD_DEBUG_BROKEN_VERBS */
+#define claim_zero(...) \
+	(void)(((__VA_ARGS__) == 0) || \
+		DEBUG("Assertion `(" # __VA_ARGS__ ") == 0' failed (IGNORED)."))
+#endif /* MLX4_PMD_DEBUG_BROKEN_VERBS */
 #define claim_nonzero(...) assert((__VA_ARGS__) != 0)
 #define claim_positive(...) assert((__VA_ARGS__) >= 0)
 #else /* NDEBUG */

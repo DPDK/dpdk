@@ -119,6 +119,14 @@ These options can be modified in the ``.config`` file.
   adds additional run-time checks and debugging messages at the cost of
   lower performance.
 
+- ``CONFIG_RTE_LIBRTE_MLX4_DEBUG_BROKEN_VERBS`` (default **n**)
+
+  Mellanox OFED versions earlier than 4.2 may return false errors from
+  Verbs object destruction APIs after the device is plugged out.
+  Enabling this option replaces assertion checks that cause the program
+  to abort with harmless debugging messages as a workaround.
+  Relevant only when CONFIG_RTE_LIBRTE_MLX4_DEBUG is enabled.
+
 - ``CONFIG_RTE_LIBRTE_MLX4_SGE_WR_N`` (default **4**)
 
   Number of scatter/gather elements (SGEs) per work request (WR). Lowering
