@@ -47,6 +47,7 @@
 #include <rte_eal.h>
 #include <rte_log.h>
 #include <rte_lcore.h>
+#include <rte_tailq.h>
 #include <rte_version.h>
 #include <rte_devargs.h>
 #include <rte_memcpy.h>
@@ -125,10 +126,66 @@ static const char *default_solib_dir = RTE_EAL_PMD_PATH;
 static const char dpdk_solib_path[] __attribute__((used)) =
 "DPDK_PLUGIN_PATH=" RTE_EAL_PMD_PATH;
 
+TAILQ_HEAD(device_option_list, device_option);
+
+struct device_option {
+	TAILQ_ENTRY(device_option) next;
+
+	enum rte_devtype type;
+	char arg[];
+};
+
+static struct device_option_list devopt_list =
+TAILQ_HEAD_INITIALIZER(devopt_list);
 
 static int master_lcore_parsed;
 static int mem_parsed;
 static int core_parsed;
+
+static int
+eal_option_device_add(enum rte_devtype type, const char *optarg)
+{
+	struct device_option *devopt;
+	size_t optlen;
+	int ret;
+
+	optlen = strlen(optarg) + 1;
+	devopt = calloc(1, sizeof(*devopt) + optlen);
+	if (devopt == NULL) {
+		RTE_LOG(ERR, EAL, "Unable to allocate device option\n");
+		return -ENOMEM;
+	}
+
+	devopt->type = type;
+	ret = snprintf(devopt->arg, optlen, "%s", optarg);
+	if (ret < 0) {
+		RTE_LOG(ERR, EAL, "Unable to copy device option\n");
+		free(devopt);
+		return -EINVAL;
+	}
+	TAILQ_INSERT_TAIL(&devopt_list, devopt, next);
+	return 0;
+}
+
+int
+eal_option_device_parse(void)
+{
+	struct device_option *devopt;
+	void *tmp;
+	int ret = 0;
+
+	TAILQ_FOREACH_SAFE(devopt, &devopt_list, next, tmp) {
+		if (ret == 0) {
+			ret = rte_eal_devargs_add(devopt->type, devopt->arg);
+			if (ret)
+				RTE_LOG(ERR, EAL, "Unable to parse device '%s'\n",
+					devopt->arg);
+		}
+		TAILQ_REMOVE(&devopt_list, devopt, next);
+		free(devopt);
+	}
+	return ret;
+}
 
 void
 eal_reset_internal_config(struct internal_config *internal_cfg)
@@ -941,20 +998,29 @@ int
 eal_parse_common_option(int opt, const char *optarg,
 			struct internal_config *conf)
 {
+	static int b_used;
+	static int w_used;
+
 	switch (opt) {
 	/* blacklist */
 	case 'b':
-		if (rte_eal_devargs_add(RTE_DEVTYPE_BLACKLISTED_PCI,
+		if (w_used)
+			goto bw_used;
+		if (eal_option_device_add(RTE_DEVTYPE_BLACKLISTED_PCI,
 				optarg) < 0) {
 			return -1;
 		}
+		b_used = 1;
 		break;
 	/* whitelist */
 	case 'w':
-		if (rte_eal_devargs_add(RTE_DEVTYPE_WHITELISTED_PCI,
+		if (b_used)
+			goto bw_used;
+		if (eal_option_device_add(RTE_DEVTYPE_WHITELISTED_PCI,
 				optarg) < 0) {
 			return -1;
 		}
+		w_used = 1;
 		break;
 	/* coremask */
 	case 'c':
@@ -1061,7 +1127,7 @@ eal_parse_common_option(int opt, const char *optarg,
 		break;
 
 	case OPT_VDEV_NUM:
-		if (rte_eal_devargs_add(RTE_DEVTYPE_VIRTUAL,
+		if (eal_option_device_add(RTE_DEVTYPE_VIRTUAL,
 				optarg) < 0) {
 			return -1;
 		}
@@ -1100,6 +1166,10 @@ eal_parse_common_option(int opt, const char *optarg,
 	}
 
 	return 0;
+bw_used:
+	RTE_LOG(ERR, EAL, "Options blacklist (-b) and whitelist (-w) "
+		"cannot be used at the same time\n");
+	return -1;
 }
 
 static void
@@ -1184,13 +1254,6 @@ eal_check_common_options(struct internal_config *internal_cfg)
 	if (internal_cfg->no_hugetlbfs && internal_cfg->hugepage_unlink) {
 		RTE_LOG(ERR, EAL, "Option --"OPT_HUGE_UNLINK" cannot "
 			"be specified together with --"OPT_NO_HUGE"\n");
-		return -1;
-	}
-
-	if (rte_eal_devargs_type_count(RTE_DEVTYPE_WHITELISTED_PCI) != 0 &&
-		rte_eal_devargs_type_count(RTE_DEVTYPE_BLACKLISTED_PCI) != 0) {
-		RTE_LOG(ERR, EAL, "Options blacklist (-b) and whitelist (-w) "
-			"cannot be used at the same time\n");
 		return -1;
 	}
 

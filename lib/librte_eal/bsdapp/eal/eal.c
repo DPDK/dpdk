@@ -614,6 +614,11 @@ rte_eal_init(int argc, char **argv)
 		rte_config.master_lcore, thread_id, cpuset,
 		ret == 0 ? "" : "...");
 
+	if (eal_option_device_parse()) {
+		rte_errno = ENODEV;
+		return -1;
+	}
+
 	if (rte_bus_scan()) {
 		rte_eal_init_alert("Cannot scan the buses for devices\n");
 		rte_errno = ENODEV;
