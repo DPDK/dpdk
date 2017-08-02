@@ -887,16 +887,28 @@ rxq_handle_pending_error(struct rxq *rxq, struct rte_mbuf **pkts,
 {
 	uint16_t n = 0;
 	unsigned int i;
+#ifdef MLX5_PMD_SOFT_COUNTERS
+	uint32_t err_bytes = 0;
+#endif
 
 	for (i = 0; i < pkts_n; ++i) {
 		struct rte_mbuf *pkt = pkts[i];
 
-		if (pkt->packet_type == RTE_PTYPE_ALL_MASK)
+		if (pkt->packet_type == RTE_PTYPE_ALL_MASK) {
+#ifdef MLX5_PMD_SOFT_COUNTERS
+			err_bytes += PKT_LEN(pkt);
+#endif
 			rte_pktmbuf_free_seg(pkt);
-		else
+		} else {
 			pkts[n++] = pkt;
+		}
 	}
 	rxq->stats.idropped += (pkts_n - n);
+#ifdef MLX5_PMD_SOFT_COUNTERS
+	/* Correct counters of errored completions. */
+	rxq->stats.ipackets -= (pkts_n - n);
+	rxq->stats.ibytes -= err_bytes;
+#endif
 	rxq->pending_err = 0;
 	return n;
 }

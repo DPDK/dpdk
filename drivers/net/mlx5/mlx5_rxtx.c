@@ -94,7 +94,8 @@ mlx5_set_ptype_table(void)
 	unsigned int i;
 	uint32_t (*p)[RTE_DIM(mlx5_ptype_table)] = &mlx5_ptype_table;
 
-	for (i = 0; i < RTE_DIM(mlx5_ptype_table); ++i)
+	/* Last entry must not be overwritten, reserved for errored packet. */
+	for (i = 0; i < RTE_DIM(mlx5_ptype_table) - 1; ++i)
 		(*p)[i] = RTE_PTYPE_UNKNOWN;
 	/*
 	 * The index to the array should have:
