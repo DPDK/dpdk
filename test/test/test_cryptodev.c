@@ -8978,8 +8978,8 @@ test_cryptodev_openssl(void)
 			RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD));
 
 	if (gbl_driver_id == -1) {
-		RTE_LOG(ERR, USER1, "AESNI MB PMD must be loaded. Check if "
-				"CONFIG_RTE_LIBRTE_PMD_AESNI_MB is enabled "
+		RTE_LOG(ERR, USER1, "OPENSSL PMD must be loaded. Check if "
+				"CONFIG_RTE_LIBRTE_PMD_OPENSSL is enabled "
 				"in config file to run this testsuite.\n");
 		return TEST_FAILED;
 	}
