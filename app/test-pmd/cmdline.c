@@ -424,8 +424,8 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"    Display the status of TCP Segmentation Offload.\n\n"
 
 			"gro (on|off) (port_id)"
-			"    Enable or disable Generic Receive Offload in io"
-			" forward engine.\n\n"
+			"    Enable or disable Generic Receive Offload in"
+			" csum forwarding engine.\n\n"
 
 			"gro set (max_flow_num) (max_item_num_per_flow) (port_id)\n"
 			"    Set max flow number and max packet number per-flow"
