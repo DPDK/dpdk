@@ -101,10 +101,11 @@ fs_parse_device(struct sub_device *sdev, char *args)
 static void
 fs_sanitize_cmdline(char *args)
 {
-	size_t len;
+	char *nl;
 
-	len = strnlen(args, DEVARGS_MAXLEN);
-	args[len - 1] = '\0';
+	nl = strrchr(args, '\n');
+	if (nl)
+		nl[0] = '\0';
 }
 
 static int
@@ -149,6 +150,10 @@ fs_execute_cmd(struct sub_device *sdev, char *cmdline)
 		goto ret_pclose;
 	}
 	fs_sanitize_cmdline(output);
+	if (output[0] == '\0') {
+		ret = -ENODEV;
+		goto ret_pclose;
+	}
 	ret = fs_parse_device(sdev, output);
 	if (ret) {
 		ERROR("Parsing device '%s' failed", output);
