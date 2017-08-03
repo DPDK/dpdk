@@ -46,6 +46,5 @@ Release Notes
     release_2_1
     release_2_0
     release_1_8
-    supported_os
     known_issues
     deprecation
