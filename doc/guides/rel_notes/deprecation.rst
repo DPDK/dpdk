@@ -9,7 +9,7 @@ Deprecation Notices
 -------------------
 
 * eal: the following functions are deprecated starting from 17.05 and will
-  be removed in 17.08:
+  be removed in 17.11:
 
   - ``rte_set_log_level``, replaced by ``rte_log_set_global_level``
   - ``rte_get_log_level``, replaced by ``rte_log_get_global_level``
