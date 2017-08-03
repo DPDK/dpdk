@@ -797,73 +797,6 @@ rxq_cleanup(struct rxq_ctrl *rxq_ctrl)
 }
 
 /**
- * Reconfigure RX queue buffers.
- *
- * rxq_rehash() does not allocate mbufs, which, if not done from the right
- * thread (such as a control thread), may corrupt the pool.
- * In case of failure, the queue is left untouched.
- *
- * @param dev
- *   Pointer to Ethernet device structure.
- * @param rxq_ctrl
- *   RX queue pointer.
- *
- * @return
- *   0 on success, errno value on failure.
- */
-int
-rxq_rehash(struct rte_eth_dev *dev, struct rxq_ctrl *rxq_ctrl)
-{
-	unsigned int elts_n = 1 << rxq_ctrl->rxq.elts_n;
-	unsigned int i;
-	struct ibv_exp_wq_attr mod;
-	int err;
-
-	DEBUG("%p: rehashing queue %p with %u SGE(s) per packet",
-	      (void *)dev, (void *)rxq_ctrl, 1 << rxq_ctrl->rxq.sges_n);
-	assert(!(elts_n % (1 << rxq_ctrl->rxq.sges_n)));
-	/* From now on, any failure will render the queue unusable.
-	 * Reinitialize WQ. */
-	mod = (struct ibv_exp_wq_attr){
-		.attr_mask = IBV_EXP_WQ_ATTR_STATE,
-		.wq_state = IBV_EXP_WQS_RESET,
-	};
-	err = ibv_exp_modify_wq(rxq_ctrl->wq, &mod);
-	if (err) {
-		ERROR("%p: cannot reset WQ: %s", (void *)dev, strerror(err));
-		assert(err > 0);
-		return err;
-	}
-	/* Snatch mbufs from original queue. */
-	claim_zero(rxq_trim_elts(&rxq_ctrl->rxq));
-	claim_zero(rxq_alloc_elts(rxq_ctrl, elts_n, rxq_ctrl->rxq.elts));
-	for (i = 0; i != elts_n; ++i) {
-		struct rte_mbuf *buf = (*rxq_ctrl->rxq.elts)[i];
-
-		assert(rte_mbuf_refcnt_read(buf) == 2);
-		rte_pktmbuf_free_seg(buf);
-	}
-	/* Change queue state to ready. */
-	mod = (struct ibv_exp_wq_attr){
-		.attr_mask = IBV_EXP_WQ_ATTR_STATE,
-		.wq_state = IBV_EXP_WQS_RDY,
-	};
-	err = ibv_exp_modify_wq(rxq_ctrl->wq, &mod);
-	if (err) {
-		ERROR("%p: WQ state to IBV_EXP_WQS_RDY failed: %s",
-		      (void *)dev, strerror(err));
-		goto error;
-	}
-	/* Update doorbell counter. */
-	rxq_ctrl->rxq.rq_ci = elts_n >> rxq_ctrl->rxq.sges_n;
-	rte_wmb();
-	*rxq_ctrl->rxq.rq_db = htonl(rxq_ctrl->rxq.rq_ci);
-error:
-	assert(err >= 0);
-	return err;
-}
-
-/**
  * Initialize RX queue.
  *
  * @param tmpl
@@ -927,7 +860,7 @@ rxq_setup(struct rxq_ctrl *tmpl)
  * @return
  *   0 on success, errno value on failure.
  */
-int
+static int
 rxq_ctrl_setup(struct rte_eth_dev *dev, struct rxq_ctrl *rxq_ctrl,
 	       uint16_t desc, unsigned int socket,
 	       const struct rte_eth_rxconf *conf, struct rte_mempool *mp)
