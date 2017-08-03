@@ -642,11 +642,8 @@ priv_rehash_flows(struct priv *priv)
  *
  * @param rxq
  *   Pointer to RX queue structure.
- *
- * @return
- *   0 on success, errno value on failure.
  */
-static int
+static void
 rxq_trim_elts(struct rxq *rxq)
 {
 	const uint16_t q_n = (1 << rxq->elts_n);
@@ -655,17 +652,11 @@ rxq_trim_elts(struct rxq *rxq)
 	uint16_t i;
 
 	if (!rxq->trim_elts)
-		return 0;
-	for (i = 0; i < used; ++i) {
-		struct rte_mbuf *buf;
-		buf = rte_pktmbuf_alloc(rxq->mp);
-		if (!buf)
-			return ENOMEM;
-		(*rxq->elts)[(rxq->rq_ci + i) & q_mask] = buf;
-	}
-	rxq->rq_pi = rxq->rq_ci;
+		return;
+	for (i = 0; i < used; ++i)
+		(*rxq->elts)[(rxq->rq_ci + i) & q_mask] = NULL;
 	rxq->trim_elts = 0;
-	return 0;
+	return;
 }
 
 /**
@@ -696,15 +687,13 @@ rxq_alloc_elts(struct rxq_ctrl *rxq_ctrl, unsigned int elts_n,
 		volatile struct mlx5_wqe_data_seg *scat =
 			&(*rxq_ctrl->rxq.wqes)[i];
 
-		if (pool != NULL) {
-			buf = (*pool)[i];
-			assert(buf != NULL);
+		buf = (pool != NULL) ? (*pool)[i] : NULL;
+		if (buf != NULL) {
 			rte_pktmbuf_reset(buf);
 			rte_pktmbuf_refcnt_update(buf, 1);
 		} else
 			buf = rte_pktmbuf_alloc(rxq_ctrl->rxq.mp);
 		if (buf == NULL) {
-			assert(pool == NULL);
 			ERROR("%p: empty mbuf pool", (void *)rxq_ctrl);
 			ret = ENOMEM;
 			goto error;
@@ -759,6 +748,7 @@ rxq_free_elts(struct rxq_ctrl *rxq_ctrl)
 {
 	unsigned int i;
 
+	rxq_trim_elts(&rxq_ctrl->rxq);
 	DEBUG("%p: freeing WRs", (void *)rxq_ctrl);
 	if (rxq_ctrl->rxq.elts == NULL)
 		return;
@@ -1078,9 +1068,8 @@ rxq_ctrl_setup(struct rte_eth_dev *dev, struct rxq_ctrl *rxq_ctrl,
 	if (rxq_ctrl->rxq.elts_n) {
 		assert(1 << rxq_ctrl->rxq.elts_n == desc);
 		assert(rxq_ctrl->rxq.elts != tmpl.rxq.elts);
-		ret = rxq_trim_elts(&rxq_ctrl->rxq);
-		if (!ret)
-			ret = rxq_alloc_elts(&tmpl, desc, rxq_ctrl->rxq.elts);
+		rxq_trim_elts(&rxq_ctrl->rxq);
+		ret = rxq_alloc_elts(&tmpl, desc, rxq_ctrl->rxq.elts);
 	} else
 		ret = rxq_alloc_elts(&tmpl, desc, NULL);
 	if (ret) {
