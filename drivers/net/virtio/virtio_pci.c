@@ -553,7 +553,7 @@ get_cfg_addr(struct rte_pci_device *dev, struct virtio_pci_cap *cap)
 	uint32_t offset = cap->offset;
 	uint8_t *base;
 
-	if (bar > 5) {
+	if (bar >= PCI_MAX_RESOURCE) {
 		PMD_INIT_LOG(ERR, "invalid bar: %u", bar);
 		return NULL;
 	}
