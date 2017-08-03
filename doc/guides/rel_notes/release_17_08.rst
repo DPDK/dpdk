@@ -41,6 +41,11 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **Bumped minimal x86 ISA to SSE4.2.**
+
+  Starting with version 17.08, DPDK requires SSE4.2 to run on x86.
+  Previous versions required SSE3.
+
 * **Added Service Core functionality.**
 
   The service core functionality added to EAL allows DPDK to run services such
