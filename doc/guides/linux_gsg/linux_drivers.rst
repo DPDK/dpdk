@@ -67,6 +67,13 @@ be loaded as shown below:
     For some devices which lack support for legacy interrupts, e.g. virtual function
     (VF) devices, the ``igb_uio`` module may be needed in place of ``uio_pci_generic``.
 
+.. note::
+
+   If UEFI secure boot is enabled, the Linux kernel may disallow the use of
+   UIO on the system. Therefore, devices for use by DPDK should be bound to the
+   ``vfio-pci`` kernel module rather than ``igb_uio`` or ``uio_pci_generic``.
+   For more details see :ref:`linux_gsg_binding_kernel` below.
+
 Since DPDK release 1.7 onward provides VFIO support, use of UIO is optional
 for platforms that support using VFIO.
 

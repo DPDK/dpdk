@@ -222,3 +222,10 @@ How can hugepage-backed memory be shared among multiple processes?
 ------------------------------------------------------------------
 
 See the Primary and Secondary examples in the :ref:`multi-process sample application <multi_process_app>`.
+
+
+Why can't my application receive packets on my system with UEFI Secure Boot enabled?
+------------------------------------------------------------------------------------
+
+If UEFI secure boot is enabled, the Linux kernel may disallow the use of UIO on the system.
+Therefore, devices for use by DPDK should be bound to the ``vfio-pci`` kernel module rather than ``igb_uio`` or ``uio_pci_generic``.
