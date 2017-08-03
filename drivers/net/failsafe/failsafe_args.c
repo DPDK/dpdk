@@ -115,7 +115,7 @@ fs_execute_cmd(struct sub_device *sdev, char *cmdline)
 	char output[DEVARGS_MAXLEN + 1];
 	size_t len;
 	int old_err;
-	int ret;
+	int ret, pclose_ret;
 
 	RTE_ASSERT(cmdline != NULL || sdev->cmdline != NULL);
 	if (sdev->cmdline == NULL) {
@@ -145,7 +145,8 @@ fs_execute_cmd(struct sub_device *sdev, char *cmdline)
 	/* We only read one line */
 	if (fgets(output, sizeof(output) - 1, fp) == NULL) {
 		DEBUG("Could not read command output");
-		return -ENODEV;
+		ret = -ENODEV;
+		goto ret_pclose;
 	}
 	fs_sanitize_cmdline(output);
 	ret = fs_parse_device(sdev, output);
@@ -154,12 +155,12 @@ fs_execute_cmd(struct sub_device *sdev, char *cmdline)
 		goto ret_pclose;
 	}
 ret_pclose:
-	ret = pclose(fp);
-	if (ret) {
-		ret = errno;
+	pclose_ret = pclose(fp);
+	if (pclose_ret) {
+		pclose_ret = errno;
 		ERROR("pclose: %s", strerror(errno));
 		errno = old_err;
-		return ret;
+		return pclose_ret;
 	}
 	return ret;
 }
