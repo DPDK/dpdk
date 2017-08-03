@@ -86,6 +86,16 @@ Deprecation Notices
   The size of the unique name will increase RTE_ETH_NAME_MAX_LEN from 32 to
   64 characters to allow using a globally unique identifier (GUID) in this field.
 
+* ethdev: new parameters - ``rte_security_capabilities`` and
+  ``rte_security_ops`` will be added to ``rte_eth_dev_info`` and
+  ``rte_eth_dev`` respectively  to support security operations like
+  ipsec inline.
+
+* cryptodev: new parameters - ``rte_security_capabilities`` and
+  ``rte_security_ops`` will be added to ``rte_cryptodev_info`` and
+  ``rte_cryptodev`` respectively to support security protocol offloaded
+  operations.
+
 * librte_table: The ``key_mask`` parameter will be added to all the hash tables
   that currently do not have it, as well as to the hash compute function prototype.
   The non-"do-sig" versions of the hash tables will be removed
