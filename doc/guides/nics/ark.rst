@@ -146,9 +146,6 @@ Data Path Interface
 Ingress RX and Egress TX operation is by the nominal DPDK API .
 The driver supports single-port, multi-queue for both RX and TX.
 
-Refer to ``ark_ethdev.h`` for the list of supported methods to
-act upon RX and TX Queues.
-
 Configuration Information
 -------------------------
 

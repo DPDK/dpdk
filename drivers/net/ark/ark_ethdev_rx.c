@@ -36,7 +36,6 @@
 #include "ark_ethdev_rx.h"
 #include "ark_global.h"
 #include "ark_logs.h"
-#include "ark_ethdev.h"
 #include "ark_mpu.h"
 #include "ark_udm.h"
 

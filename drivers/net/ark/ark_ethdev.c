@@ -40,7 +40,6 @@
 
 #include "ark_global.h"
 #include "ark_logs.h"
-#include "ark_ethdev.h"
 #include "ark_ethdev_tx.h"
 #include "ark_ethdev_rx.h"
 #include "ark_mpu.h"

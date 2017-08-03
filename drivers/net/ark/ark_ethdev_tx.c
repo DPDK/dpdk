@@ -37,7 +37,6 @@
 #include "ark_global.h"
 #include "ark_mpu.h"
 #include "ark_ddm.h"
-#include "ark_ethdev.h"
 #include "ark_logs.h"
 
 #define ARK_TX_META_SIZE   32
