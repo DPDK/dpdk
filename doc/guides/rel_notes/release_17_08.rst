@@ -260,6 +260,8 @@ Known Issues
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* **Starting with version 17.08, libnuma is required to build DPDK.**
+
 
 API Changes
 -----------
