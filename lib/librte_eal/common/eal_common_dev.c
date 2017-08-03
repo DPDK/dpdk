@@ -133,16 +133,13 @@ full_dev_name(const char *bus, const char *dev, const char *args)
 	char *name;
 	size_t len;
 
-	len = strlen(bus) + 1 +
-	      strlen(dev) + 1 +
-	      strlen(args) + 1;
+	len = snprintf(NULL, 0, "%s:%s,%s", bus, dev, args);
 	name = calloc(1, len);
 	if (name == NULL) {
 		RTE_LOG(ERR, EAL, "Could not allocate full device name\n");
 		return NULL;
 	}
-	snprintf(name, len, "%s:%s,%s", bus, dev,
-		 args ? args : "");
+	snprintf(name, len, "%s:%s,%s", bus, dev, args);
 	return name;
 }
 
