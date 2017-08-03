@@ -204,7 +204,10 @@ int rte_eal_hotplug_add(const char *busname, const char *devname,
 	return 0;
 
 err_devarg:
-	rte_eal_devargs_remove(busname, devname);
+	if (rte_eal_devargs_remove(busname, devname)) {
+		free(da->args);
+		free(da);
+	}
 err_name:
 	free(name);
 	return ret;
