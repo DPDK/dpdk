@@ -96,13 +96,18 @@ Deprecation Notices
   ``rte_cryptodev`` respectively to support security protocol offloaded
   operations.
 
+* cryptodev: the following function is deprecated starting from 17.08 and will
+  be removed in 17.11:
+
+  - ``rte_cryptodev_create_vdev``
+
+* cryptodev: the following function will be static in 17.11 and included
+  by all crypto drivers, therefore, will not be public:
+
+  - ``rte_cryptodev_vdev_pmd_init``
+
 * librte_table: The ``key_mask`` parameter will be added to all the hash tables
   that currently do not have it, as well as to the hash compute function prototype.
   The non-"do-sig" versions of the hash tables will be removed
   (including the ``signature_offset`` parameter)
   and the "do-sig" versions renamed accordingly.
-
-* cryptodev: the following function is deprecated starting from 17.08 and will
-  be removed in 17.11:
-
-  - ``rte_cryptodev_create_vdev``
