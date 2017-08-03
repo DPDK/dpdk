@@ -29,6 +29,9 @@ Deprecation Notices
   - ``rte_eal_devargs_type_count``
   - ``rte_eal_parse_devargs_str``, replaced by ``rte_eal_devargs_parse``
 
+* eal: the support of Xen dom0 will be removed from EAL in 17.11; and with
+  that, drivers/net/xenvirt and examples/vhost_xen will also be removed.
+
 * The mbuf flags PKT_RX_VLAN_PKT and PKT_RX_QINQ_PKT are deprecated and
   are respectively replaced by PKT_RX_VLAN_STRIPPED and
   PKT_RX_QINQ_STRIPPED, that are better described. The old flags and
