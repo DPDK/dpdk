@@ -756,6 +756,7 @@ F: lib/librte_kvargs/
 F: test/test/test_kvargs.c
 
 Power management
+M: David Hunt <david.hunt@intel.com>
 F: lib/librte_power/
 F: doc/guides/prog_guide/power_man.rst
 F: test/test/test_power*
