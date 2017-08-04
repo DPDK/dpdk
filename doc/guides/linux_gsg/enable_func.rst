@@ -87,6 +87,14 @@ The application can then determine what action to take, if any, if the HPET is n
 Running DPDK Applications Without Root Privileges
 --------------------------------------------------------
 
+.. note::
+
+    The instructions below will allow running DPDK as non-root with older
+    Linux kernel versions. However, since version 4.0, the kernel does not allow
+    unprivileged processes to read the physical address information from
+    the pagemaps file, making it impossible for those processes to use HW
+    devices which require physical addresses
+
 Although applications using the DPDK use network ports and other hardware resources directly,
 with a number of small permission adjustments it is possible to run these applications as a user other than "root".
 To do so, the ownership, or permissions, on the following Linux file system objects should be adjusted to ensure that
