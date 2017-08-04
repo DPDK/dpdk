@@ -38,6 +38,9 @@
  * Interface to GRO library
  */
 
+#include <stdint.h>
+#include <rte_mbuf.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
