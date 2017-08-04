@@ -69,7 +69,7 @@ The KNI kernel loadable module provides support for two types of devices:
         (simulating the RX side of the net driver).
 
     *   For multiple kernel thread mode, maintains a kernel thread context for each KNI instance
-        (simulating the RX side of the new driver).
+        (simulating the RX side of the net driver).
 
 *   Net device:
 
