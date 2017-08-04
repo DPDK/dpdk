@@ -403,6 +403,10 @@ The appropriate maintainer can be found in the ``MAINTAINERS`` file::
 
    git send-email --to maintainer@some.org --cc dev@dpdk.org 000*.patch
 
+Script ``get-maintainer.sh`` can be used to select maintainers automatically::
+
+  git send-email --to-cmd ./devtools/get-maintainer.sh --cc dev@dpdk.org 000*.patch
+
 New additions can be sent without a maintainer::
 
    git send-email --to dev@dpdk.org 000*.patch

@@ -47,6 +47,7 @@ F: devtools/check-maintainers.sh
 F: devtools/check-git-log.sh
 F: devtools/check-includes.sh
 F: devtools/checkpatches.sh
+F: devtools/get-maintainer.sh
 F: devtools/git-log-fixes.sh
 F: devtools/load-devel-config
 F: devtools/test-build.sh
