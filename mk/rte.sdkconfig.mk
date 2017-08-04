@@ -60,16 +60,38 @@ showconfigs:
 
 .PHONY: notemplate
 notemplate:
-	@printf "No template specified. "
-	@echo "Use T=template among the following list:"
+	@printf "No template specified. Use 'make defconfig' or "
+	@echo "use T=template from the following list:"
 	@$(MAKE) -rR showconfigs | sed 's,^,  ,'
+
+
+.PHONY: defconfig
+defconfig:
+	@$(MAKE) config T=$(shell \
+                uname -m | awk '{ \
+                if ($$0 == "aarch64") { \
+                        print "arm64-armv8a"} \
+                else if ($$0 == "armv7l") { \
+                        print "arm-armv7a"} \
+                else if ($$0 == "ppc64") { \
+                        print "ppc_64-power8"} \
+                else { \
+                        printf "%s-native", $$0} }')-$(shell \
+                uname | awk '{ \
+                if ($$0 == "Linux") { \
+                        print "linuxapp"} \
+                else { \
+                        print "bsdapp"} }')-$(shell \
+                ${CC} -v 2>&1 | \
+                grep " version " | cut -d ' ' -f 1)
 
 .PHONY: config
 ifeq ($(RTE_CONFIG_TEMPLATE),)
 config: notemplate
 else
 config: $(RTE_OUTPUT)/include/rte_config.h $(RTE_OUTPUT)/Makefile
-	@echo "Configuration done"
+	@echo "Configuration done using" \
+		$(patsubst defconfig_%,%,$(notdir $(RTE_CONFIG_TEMPLATE)))
 endif
 
 $(RTE_OUTPUT):

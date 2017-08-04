@@ -88,8 +88,8 @@ export ROOTDIRS-y ROOTDIRS- ROOTDIRS-n
 .PHONY: default
 default: all
 
-.PHONY: config showconfigs showversion showversionum
-config showconfigs showversion showversionum:
+.PHONY: config defconfig showconfigs showversion showversionum
+config defconfig showconfigs showversion showversionum:
 	$(Q)$(MAKE) -f $(RTE_SDK)/mk/rte.sdkconfig.mk $@
 
 .PHONY: cscope gtags tags etags
