@@ -614,7 +614,7 @@ em_parse_ptype(struct rte_mbuf *m)
 				packet_type |= RTE_PTYPE_L4_UDP;
 		} else
 			packet_type |= RTE_PTYPE_L3_IPV4_EXT;
-	} else if (ether_type == rte_cpu_to_be_16(ETHER_TYPE_IPv4)) {
+	} else if (ether_type == rte_cpu_to_be_16(ETHER_TYPE_IPv6)) {
 		ipv6_hdr = (struct ipv6_hdr *)l3;
 		if (ipv6_hdr->proto == IPPROTO_TCP)
 			packet_type |= RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L4_TCP;
