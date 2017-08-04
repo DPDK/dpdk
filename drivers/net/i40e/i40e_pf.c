@@ -152,21 +152,20 @@ i40e_pf_host_vf_reset(struct i40e_pf_vf *vf, bool do_hw_reset)
 		val |= I40E_VPGEN_VFRTRIG_VFSWR_MASK;
 		I40E_WRITE_REG(hw, I40E_VPGEN_VFRTRIG(vf_id), val);
 		I40E_WRITE_FLUSH(hw);
+	}
 
 #define VFRESET_MAX_WAIT_CNT 100
-		/* Wait until VF reset is done */
-		for (i = 0; i < VFRESET_MAX_WAIT_CNT; i++) {
-			rte_delay_us(10);
-			val = I40E_READ_REG(hw, I40E_VPGEN_VFRSTAT(vf_id));
-			if (val & I40E_VPGEN_VFRSTAT_VFRD_MASK)
-				break;
-		}
+	/* Wait until VF reset is done */
+	for (i = 0; i < VFRESET_MAX_WAIT_CNT; i++) {
+		rte_delay_us(10);
+		val = I40E_READ_REG(hw, I40E_VPGEN_VFRSTAT(vf_id));
+		if (val & I40E_VPGEN_VFRSTAT_VFRD_MASK)
+			break;
+	}
 
-		if (i >= VFRESET_MAX_WAIT_CNT) {
-			PMD_DRV_LOG(ERR, "VF reset timeout");
-			return -ETIMEDOUT;
-		}
-		vf->state = I40E_VF_ACTIVE;
+	if (i >= VFRESET_MAX_WAIT_CNT) {
+		PMD_DRV_LOG(ERR, "VF reset timeout");
+		return -ETIMEDOUT;
 	}
 	/* This is not first time to do reset, do cleanup job first */
 	if (vf->vsi) {
@@ -262,10 +261,7 @@ i40e_pf_host_send_msg_to_vf(struct i40e_pf_vf *vf,
 {
 	struct i40e_hw *hw = I40E_PF_TO_HW(vf->pf);
 	uint16_t abs_vf_id = hw->func_caps.vf_base_id + vf->vf_idx;
-	int ret = I40E_ERR_ADMIN_QUEUE_ERROR;
-
-	if (vf->state == I40E_VF_INACTIVE)
-		return ret;
+	int ret;
 
 	ret = i40e_aq_send_msg_to_vf(hw, abs_vf_id, opcode, retval,
 						msg, msglen, NULL);
