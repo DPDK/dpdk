@@ -16,12 +16,18 @@ Deprecation Notices
   - ``rte_set_log_type``, replaced by ``rte_log_set_level``
   - ``rte_get_log_type``, replaced by ``rte_log_get_level``
 
-* devargs: An ABI change is planned for 17.08 for the structure ``rte_devargs``.
-  The current version is dependent on bus-specific device identifier, which will
-  be made generic and abstracted, in order to make the EAL bus-agnostic.
+* eal: several API and ABI changes are planned for ``rte_devargs`` in v17.11.
+  The format of device command line parameters will change. The bus will need
+  to be explicitly stated in the device declaration. The enum ``rte_devtype``
+  was used to identify a bus and will disappear.
+  The structure ``rte_devargs`` will change.
+  The ``rte_devargs_list`` will be made private.
+  The following functions are deprecated starting from 17.08 and will either be
+  modified or removed in 17.11:
 
-  Accompanying this evolution, device command line parameters will thus support
-  explicit bus definition in a device declaration.
+  - ``rte_eal_devargs_add``
+  - ``rte_eal_devargs_type_count``
+  - ``rte_eal_parse_devargs_str``, replaced by ``rte_eal_devargs_parse``
 
 * The mbuf flags PKT_RX_VLAN_PKT and PKT_RX_QINQ_PKT are deprecated and
   are respectively replaced by PKT_RX_VLAN_STRIPPED and
@@ -48,11 +54,6 @@ Deprecation Notices
   The non-"do-sig" versions of the hash tables will be removed
   (including the ``signature_offset`` parameter)
   and the "do-sig" versions renamed accordingly.
-
-* eal: the following function is deprecated starting from 17.08 and will
-  be removed in 17.11:
-
-  - ``rte_eal_parse_devargs_str``, replaced by ``rte_eal_devargs_parse``
 
 * cryptodev: the following function is deprecated starting from 17.08 and will
   be removed in 17.11:
