@@ -91,7 +91,7 @@ static struct fastpath_data *fdata;
 struct config_data {
 	unsigned int active_cores;
 	unsigned int num_workers;
-	long num_packets;
+	int64_t num_packets;
 	unsigned int num_fids;
 	int queue_type;
 	int worker_cycles;
@@ -120,7 +120,6 @@ core_in_use(unsigned int lcore_id) {
 	return (fdata->rx_core[lcore_id] || fdata->sched_core[lcore_id] ||
 		fdata->tx_core[lcore_id] || fdata->worker_core[lcore_id]);
 }
-
 
 static void
 eth_tx_buffer_retry(struct rte_mbuf **pkts, uint16_t unsent,
@@ -471,7 +470,9 @@ parse_app_args(int argc, char **argv)
 		int popcnt = 0;
 		switch (c) {
 		case 'n':
-			cdata.num_packets = (unsigned long)atol(optarg);
+			cdata.num_packets = (int64_t)atol(optarg);
+			if (cdata.num_packets == 0)
+				cdata.num_packets = INT64_MAX;
 			break;
 		case 'f':
 			cdata.num_fids = (unsigned int)atoi(optarg);
@@ -908,7 +909,7 @@ main(int argc, char **argv)
 		printf("  Config:\n");
 		printf("\tports: %u\n", num_ports);
 		printf("\tworkers: %u\n", cdata.num_workers);
-		printf("\tpackets: %lu\n", cdata.num_packets);
+		printf("\tpackets: %"PRIi64"\n", cdata.num_packets);
 		printf("\tQueue-prio: %u\n", cdata.enable_queue_priorities);
 		if (cdata.queue_type == RTE_EVENT_QUEUE_CFG_ORDERED_ONLY)
 			printf("\tqid0 type: ordered\n");
