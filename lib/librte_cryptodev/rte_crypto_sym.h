@@ -507,6 +507,7 @@ struct rte_crypto_sym_op {
 		/**< Session-less API crypto operation parameters */
 	};
 
+	RTE_STD_C11
 	union {
 		struct {
 			struct {
