@@ -62,6 +62,12 @@ New Features
   inputted packets are IP fragmented, GRO API assumes they are complete
   packets (i.e. with L4 headers).
 
+* **Added Fail-Safe PMD**
+
+  Added the new Fail-Safe PMD. This virtual device allows applications to
+  support seamless hotplug of devices.
+  See the :doc:`/nics/fail_safe` guide for more details about this driver.
+
 * **Added support for generic flow API (rte_flow) on igb NIC.**
 
   This API provides a generic means to configure hardware to match specific
@@ -232,7 +238,6 @@ EAL
 
 Drivers
 ~~~~~~~
-
 
 Libraries
 ~~~~~~~~~
