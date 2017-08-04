@@ -37,8 +37,8 @@ Alternatively, applications can also be run as regular user.
 For more information, please refer to :ref:`DPDK Getting Started Guide <linux_gsg>`.
 
 
-If I want to change the number of TLB Hugepages allocated, how do I remove the original pages allocated?
---------------------------------------------------------------------------------------------------------
+If I want to change the number of hugepages allocated, how do I remove the original pages allocated?
+----------------------------------------------------------------------------------------------------
 
 The number of pages allocated can be seen by executing the following command::
 
