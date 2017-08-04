@@ -48,6 +48,8 @@ There are more differences between drivers regarding some internal properties,
 portability or even documentation availability.
 Most of these differences are summarized below.
 
+More details about features can be found in :doc:`features`.
+
 .. _table_net_pmd_features:
 
 .. include:: overview_table.txt

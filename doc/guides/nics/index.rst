@@ -36,6 +36,7 @@ Network Interface Controller Drivers
     :numbered:
 
     overview
+    features
     build_and_test
     ark
     avp
