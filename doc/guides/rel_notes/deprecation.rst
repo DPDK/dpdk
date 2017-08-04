@@ -112,6 +112,9 @@ Deprecation Notices
 
   - ``rte_cryptodev_allocate_driver``
 
+* librte_meter: The API will change to accommodate configuration profiles.
+  Most of the API functions will have an additional opaque parameter.
+
 * librte_table: The ``key_mask`` parameter will be added to all the hash tables
   that currently do not have it, as well as to the hash compute function prototype.
   The non-"do-sig" versions of the hash tables will be removed
