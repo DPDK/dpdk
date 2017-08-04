@@ -41,7 +41,7 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
-* **Bumped minimal x86 ISA to SSE4.2.**
+* **Increase minimum x86 ISA version to SSE4.2.**
 
   Starting with version 17.08, DPDK requires SSE4.2 to run on x86.
   Previous versions required SSE3.
@@ -49,17 +49,17 @@ New Features
 * **Added Service Core functionality.**
 
   The service core functionality added to EAL allows DPDK to run services such
-  as SW PMDs on lcores without the application manually running them. The
+  as software PMDs on lcores without the application manually running them. The
   service core infrastructure allows flexibility of running multiple services
   on the same service lcore, and provides the application with powerful APIs to
   configure the mapping from service lcores to services.
 
 * **Added Generic Receive Offload API.**
 
-  Generic Receive Offload (GRO) API supports to reassemble TCP/IPv4
-  packets. GRO API assumes all inputted packets are with correct
+  Added Generic Receive Offload (GRO) API support to reassemble TCP/IPv4
+  packets. The GRO API assumes all input packets have the correct
   checksums. GRO API doesn't update checksums for merged packets. If
-  inputted packets are IP fragmented, GRO API assumes they are complete
+  input packets are IP fragmented, the GRO API assumes they are complete
   packets (i.e. with L4 headers).
 
 * **Added Fail-Safe PMD**
@@ -68,77 +68,79 @@ New Features
   support seamless hotplug of devices.
   See the :doc:`/nics/fail_safe` guide for more details about this driver.
 
-* **Added support for generic flow API (rte_flow) on igb NIC.**
+* **Added support for generic flow API (rte_flow) on igb NICs.**
 
-  This API provides a generic means to configure hardware to match specific
-  ingress or egress traffic, alter its behavior and query related counters
+  This API provides a generic means of configuring hardware to match specific
+  ingress or egress traffic, altering its behavior and querying related counters
   according to any number of user-defined rules.
 
-  * Generic flow API support for Ethernet, IPv4, UDP, TCP and
-    RAW pattern items with QUEUE actions. There are four
-    type of filter support for this feature on igb.
+  Added generic flow API support for Ethernet, IPv4, UDP, TCP and RAW pattern
+  items with QUEUE actions. There are four types of filter support for this
+  feature on igb.
 
-* **Added Generic Flow API support to enic.**
+* **Added support for generic flow API (rte_flow) on enic.**
 
-  Flow API support for outer Ethernet, VLAN, IPv4, IPv6, UDP, TCP, SCTP, VxLAN
-  and inner Ethernet, VLAN, IPv4, IPv6, UDP and TCP pattern items with QUEUE,
-  MARK, FLAG and VOID actions for ingress traffic.
+  Added flow API support for outer Ethernet, VLAN, IPv4, IPv6, UDP, TCP, SCTP,
+  VxLAN and inner Ethernet, VLAN, IPv4, IPv6, UDP and TCP pattern items with
+  QUEUE, MARK, FLAG and VOID actions for ingress traffic.
 
 * **Added support for Chelsio T6 family of adapters**
 
-  CXGBE PMD updated to run Chelsio T6 family of adapters.
+  The CXGBE PMD was updated to run Chelsio T6 family of adapters.
 
 * **Added latency and performance improvements for cxgbe**
 
-  TX and RX path reworked to improve performance.  Also reduced latency
-  for slow traffic.
+  the Tx and Rx path in cxgbe were reworked to improve performance. In
+  addition the latency was reduced for slow traffic.
 
-* **Updated bnxt PMD.**
+* **Updated the bnxt PMD.**
 
-  Major enhancements include:
+  Updated the bnxt PMD. The major enhancements include:
+
   * Support MTU modification.
-  * Support LRO.
-  * Support VLAN filter and strip functionality.
-  * Other enhancements to add support for more dev_ops.
-  * Add PMD specific APIs mainly to control VF from PF.
+  * Add support for LRO.
+  * Add support for VLAN filter and strip functionality.
+  * Additional enhancements to add support for more dev_ops.
+  * Added PMD specific APIs mainly to control VF from PF.
   * Update HWRM version to 1.7.7
 
 * **Added support for Rx interrupts on mlx4 driver.**
 
-  Rx queues can be armed with an interrupt which will trigger on the
+  Rx queues can be now be armed with an interrupt which will trigger on the
   next packet arrival.
 
 * **Updated mlx5 driver.**
 
-  Updated the mlx5 driver, include the following changes:
+  Updated the mlx5 driver including the following changes:
 
   * Added vectorized Rx/Tx burst for x86.
   * Added support for isolated mode from flow API.
-  * Re-worked flow drop action to implement in hardware classifier.
+  * Reworked the flow drop action to implement in hardware classifier.
   * Improved Rx interrupts management.
 
 * **Updated szedata2 PMD.**
 
-  Added support for firmwares with multiple Ethernet ports per physical port.
+  Added support for firmware with multiple Ethernet ports per physical port.
 
 * **Updated dpaa2 PMD.**
 
-  Major enhancements include:
-  * Support MAC Filter configuration
-  * Support Segmented Buffers
-  * Support VLAN filter and strip functionality.
-  * Other enhancements to add support for more dev_ops.
+  Updated dpaa2 PMD. Major enhancements include:
+
+  * Added support for MAC Filter configuration.
+  * Added support for Segmented Buffers.
+  * Added support for VLAN filter and strip functionality.
+  * Additional enhancements to add support for more dev_ops.
   * Optimized the packet receive path
 
 * **Reorganized the symmetric crypto operation structure.**
 
   The crypto operation (``rte_crypto_sym_op``) has been reorganized as follows:
 
-  * Removed field ``rte_crypto_sym_op_sess_type``.
-  * Replaced pointer and physical address of IV with offset from the start
+  * Removed the ``rte_crypto_sym_op_sess_type`` field.
+  * Replaced the pointer and physical address of IV with offset from the start
     of the crypto operation.
   * Moved length and offset of cipher IV to ``rte_crypto_cipher_xform``.
-  * Removed Additional Authentication Data (AAD) length.
+  * Removed "Additional Authentication Data" (AAD) length.
   * Removed digest length.
   * Removed AAD pointer and physical address from ``auth`` structure.
   * Added ``aead`` structure, containing parameters for AEAD algorithms.
@@ -147,9 +149,9 @@ New Features
 
   The crypto operation (``rte_crypto_op``) has been reorganized as follows:
 
-  * Added field ``rte_crypto_op_sess_type``.
-  * Enumerations ``rte_crypto_op_status`` and ``rte_crypto_op_type``
-    have been modified to be uint8_t values.
+  * Added the ``rte_crypto_op_sess_type`` field.
+  * The enumerations ``rte_crypto_op_status`` and ``rte_crypto_op_type``
+    have been modified to be ``uint8_t`` values.
   * Removed the field ``opaque_data``.
   * Pointer to ``rte_crypto_sym_op`` has been replaced with a zero length array.
 
@@ -158,9 +160,9 @@ New Features
   The crypto symmetric session structure (``rte_cryptodev_sym_session``) has
   been reorganized as follows:
 
-  * ``dev_id`` field has been removed.
-  * ``driver_id`` field has been removed.
-  * Mempool pointer ``mp`` has been removed.
+  * The ``dev_id`` field has been removed.
+  * The ``driver_id`` field has been removed.
+  * The mempool pointer ``mp`` has been removed.
   * Replaced ``private`` marker with array of pointers to private data sessions
     ``sess_private_data``.
 
@@ -173,25 +175,23 @@ New Features
   * Added support for multi-device sessions, so a single session can be
     used in multiple drivers.
   * Added functions to initialize and free individual driver private data
-    with a same session.
+    with the same session.
 
 * **Updated dpaa2_sec crypto PMD.**
 
-  Added support for AES-GCM and AES-CTR
+  Added support for AES-GCM and AES-CTR.
 
 * **Updated the AESNI MB PMD.**
 
   The AESNI MB PMD has been updated with additional support for:
 
-    * 12-byte IV on AES Counter Mode, apart from the previous 16-byte IV.
+  * 12-byte IV on AES Counter Mode, apart from the previous 16-byte IV.
 
 * **Updated the AES-NI GCM PMD.**
 
   The AES-NI GCM PMD was migrated from the ISA-L library to the Multi Buffer
   library, as the latter library has Scatter Gather List support
-  now. The migration entailed adding additional support for:
-
-  * 192-bit key.
+  now. The migration entailed adding additional support for 192-bit keys.
 
 * **Updated the Cryptodev Scheduler PMD.**
 
@@ -210,45 +210,6 @@ New Features
   This application has a generic framework to add new eventdev based test cases
   to verify functionality and measure the performance parameters of DPDK
   eventdev devices.
-
-
-Resolved Issues
----------------
-
-.. This section should contain bug fixes added to the relevant
-   sections. Sample format:
-
-   * **code/section Fixed issue in the past tense with a full stop.**
-
-     Add a short 1-2 sentence description of the resolved issue in the past
-     tense.
-
-     The title should contain the code/lib section like a commit message.
-
-     Add the entries in alphabetic order in the relevant sections below.
-
-   This section is a comment. do not overwrite or remove it.
-   Also, make sure to start the actual text at the margin.
-   =========================================================
-
-
-EAL
-~~~
-
-
-Drivers
-~~~~~~~
-
-Libraries
-~~~~~~~~~
-
-
-Examples
-~~~~~~~~
-
-
-Other
-~~~~~
 
 
 Known Issues
@@ -283,35 +244,35 @@ API Changes
 
 * **Modified the _rte_eth_dev_callback_process function in the ethdev library.**
 
-  The function ``_rte_eth_dev_callback_process()`` has been modified. The return
-  value has been changed from void to int and an extra parameter ``void *ret_param``
-  has been added.
+  The function ``_rte_eth_dev_callback_process()`` has been modified. The
+  return value has been changed from void to int and an extra parameter ``void
+  *ret_param`` has been added.
 
 * **Moved bypass functions from the rte_ethdev library to ixgbe PMD**
 
   * The following rte_ethdev library functions were removed:
 
-    * ``rte_eth_dev_bypass_event_show``
-    * ``rte_eth_dev_bypass_event_store``
-    * ``rte_eth_dev_bypass_init``
-    * ``rte_eth_dev_bypass_state_set``
-    * ``rte_eth_dev_bypass_state_show``
-    * ``rte_eth_dev_bypass_ver_show``
-    * ``rte_eth_dev_bypass_wd_reset``
-    * ``rte_eth_dev_bypass_wd_timeout_show``
-    * ``rte_eth_dev_wd_timeout_store``
+    * ``rte_eth_dev_bypass_event_show()``
+    * ``rte_eth_dev_bypass_event_store()``
+    * ``rte_eth_dev_bypass_init()``
+    * ``rte_eth_dev_bypass_state_set()``
+    * ``rte_eth_dev_bypass_state_show()``
+    * ``rte_eth_dev_bypass_ver_show()``
+    * ``rte_eth_dev_bypass_wd_reset()``
+    * ``rte_eth_dev_bypass_wd_timeout_show()``
+    * ``rte_eth_dev_wd_timeout_store()``
 
   * The following ixgbe PMD functions were added:
 
-    * ``rte_pmd_ixgbe_bypass_event_show``
-    * ``rte_pmd_ixgbe_bypass_event_store``
-    * ``rte_pmd_ixgbe_bypass_init``
-    * ``rte_pmd_ixgbe_bypass_state_set``
-    * ``rte_pmd_ixgbe_bypass_state_show``
-    * ``rte_pmd_ixgbe_bypass_ver_show``
-    * ``rte_pmd_ixgbe_bypass_wd_reset``
-    * ``rte_pmd_ixgbe_bypass_wd_timeout_show``
-    * ``rte_pmd_ixgbe_bypass_wd_timeout_store``
+    * ``rte_pmd_ixgbe_bypass_event_show()``
+    * ``rte_pmd_ixgbe_bypass_event_store()``
+    * ``rte_pmd_ixgbe_bypass_init()``
+    * ``rte_pmd_ixgbe_bypass_state_set()``
+    * ``rte_pmd_ixgbe_bypass_state_show()``
+    * ``rte_pmd_ixgbe_bypass_ver_show()``
+    * ``rte_pmd_ixgbe_bypass_wd_reset()``
+    * ``rte_pmd_ixgbe_bypass_wd_timeout_show()``
+    * ``rte_pmd_ixgbe_bypass_wd_timeout_store()``
 
 * **Reworked rte_cryptodev library.**
 
@@ -323,18 +284,21 @@ API Changes
     by the new function ``rte_crypto_count_by_driver()``.
   * Moved crypto device driver names definitions to the particular PMDs.
     These names are not public anymore.
-  * ``rte_cryptodev_configure()`` does not create the session mempool
-    for the device anymore.
-  * ``rte_cryptodev_queue_pair_attach_sym_session()`` and
+  * The ``rte_cryptodev_configure()`` function does not create the session
+    mempool for the device anymore.
+  * The ``rte_cryptodev_queue_pair_attach_sym_session()`` and
     ``rte_cryptodev_queue_pair_dettach_sym_session()`` functions require
     the new parameter ``device id``.
-  * Modified parameters of ``rte_cryptodev_sym_session_create()``, to accept
-    ``mempool``, instead of ``device id`` and ``rte_crypto_sym_xform``.
-  * Remove ``device id`` parameter from ``rte_cryptodev_sym_session_free()``.
-  * Added new field ``session_pool`` to ``rte_cryptodev_queue_pair_setup()``.
-  * Removed ``aad_size`` parameter from ``rte_cryptodev_sym_capability_check_auth()``.
-  * Added ``iv_size`` parameter to ``rte_cryptodev_sym_capability_check_auth()``.
-  * Removed ``RTE_CRYPTO_OP_STATUS_ENQUEUED`` from enum ``rte_crypto_op_status``.
+  * Parameters of ``rte_cryptodev_sym_session_create()`` were modified to
+    accept ``mempool``, instead of ``device id`` and ``rte_crypto_sym_xform``.
+  * Removed ``device id`` parameter from ``rte_cryptodev_sym_session_free()``.
+  * Added a new field ``session_pool`` to ``rte_cryptodev_queue_pair_setup()``.
+  * Removed ``aad_size`` parameter from
+    ``rte_cryptodev_sym_capability_check_auth()``.
+  * Added ``iv_size`` parameter to
+    ``rte_cryptodev_sym_capability_check_auth()``.
+  * Removed ``RTE_CRYPTO_OP_STATUS_ENQUEUED`` from enum
+    ``rte_crypto_op_status``.
 
 
 ABI Changes
@@ -352,28 +316,29 @@ ABI Changes
 
 * **Reorganized the crypto operation structures.**
 
-  Some fields have been modified in the ``rte_crypto_op`` and ``rte_crypto_sym_op``
-  structures, as described in the `New Features`_ section.
+  Some fields have been modified in the ``rte_crypto_op`` and
+  ``rte_crypto_sym_op`` structures, as described in the `New Features`_
+  section.
 
 * **Reorganized the crypto symmetric session structure.**
 
   Some fields have been modified in the ``rte_cryptodev_sym_session``
   structure, as described in the `New Features`_ section.
 
-* **Reorganized the ``rte_crypto_sym_cipher_xform`` structure.**
+* **Reorganized the rte_crypto_sym_cipher_xform structure.**
 
   * Added cipher IV length and offset parameters.
-  * Changed field size of key length from size_t to uint16_t.
+  * Changed field size of key length from ``size_t`` to ``uint16_t``.
 
-* **Reorganized the ``rte_crypto_sym_auth_xform`` structure.**
+* **Reorganized the rte_crypto_sym_auth_xform structure.**
 
   * Added authentication IV length and offset parameters.
-  * Changed field size of AAD length from uint32_t to uint16_t.
-  * Changed field size of digest length from uint32_t to uint16_t.
+  * Changed field size of AAD length from ``uint32_t`` to ``uint16_t``.
+  * Changed field size of digest length from ``uint32_t`` to ``uint16_t``.
   * Removed AAD length.
-  * Changed field size of key length from size_t to uint16_t.
+  * Changed field size of key length from ``size_t`` to ``uint16_t``.
 
-* Replaced ``dev_type`` enumeration with uint8_t ``driver_id`` in
+* Replaced ``dev_type`` enumeration with ``uint8_t`` ``driver_id`` in
   ``rte_cryptodev_info`` and  ``rte_cryptodev`` structures.
 
 * Removed ``session_mp`` from ``rte_cryptodev_config``.
@@ -526,7 +491,8 @@ Tested Platforms
        * Device ID: 15b3:1013
        * Firmware version: 12.18.2000
 
-     * Mellanox(R) ConnectX(R)-4 50G MCX415A-GCAT/MCX416A-BCAT/MCX416A-GCAT (2x50G)
+     * Mellanox(R) ConnectX(R)-4 50G MCX415A-GCAT/MCX416A-BCAT/MCX416A-GCAT
+       (2x50G)
 
        * Host interface: PCI Express 3.0 x16
        * Device ID: 15b3:1013
@@ -636,4 +602,3 @@ Tested Platforms
        * Firmware version: 1.48, 0x800006e7
        * Device id (pf/vf): 8086:1521 / 8086:1520
        * Driver version: 5.2.13-k (igb)
-
