@@ -47,6 +47,8 @@ extern "C" {
 
 #include <string.h>
 
+#include <rte_eal.h>
+#include <rte_lcore.h>
 #include <rte_pci.h>
 
 #include "rte_eventdev_pmd.h"
@@ -58,7 +60,7 @@ typedef int (*eventdev_pmd_pci_callback_t)(struct rte_eventdev *dev);
  * Wrapper for use by pci drivers as a .probe function to attach to a event
  * interface.
  */
-static int
+static inline int
 rte_event_pmd_pci_probe(struct rte_pci_driver *pci_drv,
 			    struct rte_pci_device *pci_dev,
 			    size_t private_data_size,
