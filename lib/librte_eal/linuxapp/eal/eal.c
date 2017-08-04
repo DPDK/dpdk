@@ -568,11 +568,11 @@ eal_parse_args(int argc, char **argv)
 			exit(EXIT_SUCCESS);
 
 		case OPT_HUGE_DIR_NUM:
-			internal_config.hugepage_dir = optarg;
+			internal_config.hugepage_dir = strdup(optarg);
 			break;
 
 		case OPT_FILE_PREFIX_NUM:
-			internal_config.hugefile_prefix = optarg;
+			internal_config.hugefile_prefix = strdup(optarg);
 			break;
 
 		case OPT_SOCKET_MEM_NUM:
