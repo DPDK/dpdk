@@ -433,7 +433,7 @@ cperf_latency_test_runner(void *arg)
 			/* Free memory for not enqueued operations */
 			if (ops_enqd != burst_size)
 				rte_mempool_put_bulk(ctx->crypto_op_pool,
-						(void **)&ops_processed[ops_enqd],
+						(void **)&ops[ops_enqd],
 						burst_size - ops_enqd);
 
 			for (i = 0; i < ops_enqd; i++) {
