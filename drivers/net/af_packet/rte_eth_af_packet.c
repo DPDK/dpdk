@@ -216,7 +216,7 @@ eth_af_packet_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		mbuf = *bufs++;
 
 		/* drop oversized packets */
-		if (rte_pktmbuf_data_len(mbuf) > pkt_q->frame_data_size) {
+		if (mbuf->pkt_len > pkt_q->frame_data_size) {
 			rte_pktmbuf_free(mbuf);
 			continue;
 		}
@@ -237,8 +237,17 @@ eth_af_packet_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		/* copy the tx frame data */
 		pbuf = (uint8_t *) ppd + TPACKET2_HDRLEN -
 			sizeof(struct sockaddr_ll);
-		memcpy(pbuf, rte_pktmbuf_mtod(mbuf, void*), rte_pktmbuf_data_len(mbuf));
-		ppd->tp_len = ppd->tp_snaplen = rte_pktmbuf_data_len(mbuf);
+
+		struct rte_mbuf *tmp_mbuf = mbuf;
+		while (tmp_mbuf) {
+			uint16_t data_len = rte_pktmbuf_data_len(tmp_mbuf);
+			memcpy(pbuf, rte_pktmbuf_mtod(tmp_mbuf, void*), data_len);
+			pbuf += data_len;
+			tmp_mbuf = tmp_mbuf->next;
+		}
+
+		ppd->tp_len = mbuf->pkt_len;
+		ppd->tp_snaplen = mbuf->pkt_len;
 
 		/* release incoming frame and advance ring buffer */
 		ppd->tp_status = TP_STATUS_SEND_REQUEST;
