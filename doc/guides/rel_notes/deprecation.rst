@@ -23,12 +23,6 @@ Deprecation Notices
   Accompanying this evolution, device command line parameters will thus support
   explicit bus definition in a device declaration.
 
-* The VDEV subsystem will be converted as driver of the new bus model.
-  It may imply some EAL API changes in 17.08.
-
-* The struct ``rte_pci_driver`` is planned to be removed from
-  ``rte_cryptodev_driver`` and ``rte_eventdev_driver`` in 17.08.
-
 * The mbuf flags PKT_RX_VLAN_PKT and PKT_RX_QINQ_PKT are deprecated and
   are respectively replaced by PKT_RX_VLAN_STRIPPED and
   PKT_RX_QINQ_STRIPPED, that are better described. The old flags and
