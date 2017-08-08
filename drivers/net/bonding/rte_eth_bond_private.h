@@ -154,6 +154,9 @@ struct bond_dev_private {
 extern const struct eth_dev_ops default_dev_ops;
 
 int
+check_for_master_bonded_ethdev(const struct rte_eth_dev *eth_dev);
+
+int
 check_for_bonded_ethdev(const struct rte_eth_dev *eth_dev);
 
 /* Search given slave array to find position of given id.

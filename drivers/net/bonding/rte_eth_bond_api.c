@@ -34,6 +34,25 @@ valid_bonded_port_id(uint16_t port_id)
 }
 
 int
+check_for_master_bonded_ethdev(const struct rte_eth_dev *eth_dev)
+{
+	int i;
+	struct bond_dev_private *internals;
+
+	if (check_for_bonded_ethdev(eth_dev) != 0)
+		return 0;
+
+	internals = eth_dev->data->dev_private;
+
+	/* Check if any of slave devices is a bonded device */
+	for (i = 0; i < internals->slave_count; i++)
+		if (valid_bonded_port_id(internals->slaves[i].port_id) == 0)
+			return 1;
+
+	return 0;
+}
+
+int
 valid_slave_port_id(uint16_t port_id, uint8_t mode)
 {
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -1);
@@ -467,10 +486,18 @@ rte_eth_bond_slave_remove(uint16_t bonded_port_id, uint16_t slave_port_id)
 int
 rte_eth_bond_mode_set(uint16_t bonded_port_id, uint8_t mode)
 {
+	struct rte_eth_dev *bonded_eth_dev;
+
 	if (valid_bonded_port_id(bonded_port_id) != 0)
 		return -1;
 
-	return bond_ethdev_mode_set(&rte_eth_devices[bonded_port_id], mode);
+	bonded_eth_dev = &rte_eth_devices[bonded_port_id];
+
+	if (check_for_master_bonded_ethdev(bonded_eth_dev) != 0 &&
+			mode == BONDING_MODE_8023AD)
+		return -1;
+
+	return bond_ethdev_mode_set(bonded_eth_dev, mode);
 }
 
 int
