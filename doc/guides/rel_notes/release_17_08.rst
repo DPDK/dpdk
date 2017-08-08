@@ -314,6 +314,15 @@ ABI Changes
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* Changed type of ``domain`` field in ``rte_pci_addr`` to ``uint32_t``
+  to follow the PCI standard.
+
+* Added new ``rte_bus`` experimental APIs available as operators within the
+  ``rte_bus`` structure.
+
+* Made ``rte_devargs`` structure internal device representation generic to
+  prepare for a bus-agnostic EAL.
+
 * **Reorganized the crypto operation structures.**
 
   Some fields have been modified in the ``rte_crypto_op`` and
@@ -368,7 +377,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_cmdline.so.2
    + librte_cryptodev.so.3
      librte_distributor.so.1
-     librte_eal.so.4
+   + librte_eal.so.5
    + librte_ethdev.so.7
    + librte_gro.so.1
      librte_hash.so.2
