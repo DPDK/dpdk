@@ -762,15 +762,29 @@ vfio_spapr_dma_map(int vfio_container_fd)
 		return -1;
 	}
 
-	/* calculate window size based on number of hugepages configured */
-	create.window_size = rte_eal_get_physmem_size();
+	/* create DMA window from 0 to max(phys_addr + len) */
+	for (i = 0; i < RTE_MAX_MEMSEG; i++) {
+		if (ms[i].addr == NULL)
+			break;
+
+		create.window_size = RTE_MAX(create.window_size,
+				ms[i].phys_addr + ms[i].len);
+	}
+
+	/* sPAPR requires window size to be a power of 2 */
+	create.window_size = rte_align64pow2(create.window_size);
 	create.page_shift = __builtin_ctzll(ms->hugepage_sz);
-	create.levels = 2;
+	create.levels = 1;
 
 	ret = ioctl(vfio_container_fd, VFIO_IOMMU_SPAPR_TCE_CREATE, &create);
 	if (ret) {
 		RTE_LOG(ERR, EAL, "  cannot create new DMA window, "
 				"error %i (%s)\n", errno, strerror(errno));
+		return -1;
+	}
+
+	if (create.start_addr != 0) {
+		RTE_LOG(ERR, EAL, "  DMA window start address != 0\n");
 		return -1;
 	}
 
