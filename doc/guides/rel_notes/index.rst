@@ -36,6 +36,7 @@ Release Notes
     :numbered:
 
     rel_description
+    release_17_11
     release_17_08
     release_17_05
     release_17_02
