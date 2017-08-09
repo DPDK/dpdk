@@ -267,8 +267,6 @@ create_directed_qids(struct test *t, int num_qids, const uint8_t ports[])
 	static const struct rte_event_queue_conf conf = {
 			.priority = RTE_EVENT_DEV_PRIORITY_NORMAL,
 			.event_queue_cfg = RTE_EVENT_QUEUE_CFG_SINGLE_LINK,
-			.nb_atomic_flows = 1024,
-			.nb_atomic_order_sequences = 1024,
 	};
 
 	for (i = t->nb_qids; i < t->nb_qids + num_qids; i++) {
@@ -1334,8 +1332,6 @@ port_single_lb_reconfig(struct test *t)
 	static const struct rte_event_queue_conf conf_single_link = {
 		.priority = RTE_EVENT_DEV_PRIORITY_NORMAL,
 		.event_queue_cfg = RTE_EVENT_QUEUE_CFG_SINGLE_LINK,
-		.nb_atomic_flows = 1024,
-		.nb_atomic_order_sequences = 1024,
 	};
 	if (rte_event_queue_setup(evdev, 1, &conf_single_link) < 0) {
 		printf("%d: error creating qid\n", __LINE__);

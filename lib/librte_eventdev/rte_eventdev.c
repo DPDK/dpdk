@@ -519,7 +519,9 @@ rte_event_queue_default_conf_get(uint8_t dev_id, uint8_t queue_id,
 static inline int
 is_valid_atomic_queue_conf(const struct rte_event_queue_conf *queue_conf)
 {
-	if (queue_conf && (
+	if (queue_conf &&
+		!(queue_conf->event_queue_cfg &
+		  RTE_EVENT_QUEUE_CFG_SINGLE_LINK) && (
 		((queue_conf->event_queue_cfg &
 			RTE_EVENT_QUEUE_CFG_TYPE_MASK)
 			== RTE_EVENT_QUEUE_CFG_ALL_TYPES) ||
@@ -535,7 +537,9 @@ is_valid_atomic_queue_conf(const struct rte_event_queue_conf *queue_conf)
 static inline int
 is_valid_ordered_queue_conf(const struct rte_event_queue_conf *queue_conf)
 {
-	if (queue_conf && (
+	if (queue_conf &&
+		!(queue_conf->event_queue_cfg &
+		  RTE_EVENT_QUEUE_CFG_SINGLE_LINK) && (
 		((queue_conf->event_queue_cfg &
 			RTE_EVENT_QUEUE_CFG_TYPE_MASK)
 			== RTE_EVENT_QUEUE_CFG_ALL_TYPES) ||

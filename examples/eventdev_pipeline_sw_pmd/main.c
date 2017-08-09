@@ -696,11 +696,7 @@ setup_eventdev(struct prod_data *prod_data,
 	};
 	const struct rte_event_queue_conf tx_q_conf = {
 			.priority = RTE_EVENT_DEV_PRIORITY_HIGHEST,
-			.event_queue_cfg =
-					RTE_EVENT_QUEUE_CFG_ATOMIC_ONLY |
-					RTE_EVENT_QUEUE_CFG_SINGLE_LINK,
-			.nb_atomic_flows = 1024,
-			.nb_atomic_order_sequences = 1024,
+			.event_queue_cfg = RTE_EVENT_QUEUE_CFG_SINGLE_LINK,
 	};
 
 	struct port_link worker_queues[MAX_NUM_STAGES];
