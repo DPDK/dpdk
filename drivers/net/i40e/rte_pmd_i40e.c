@@ -591,7 +591,9 @@ rte_pmd_i40e_set_vf_mac_addr(uint8_t port, uint16_t vf_id,
 
 	/* Remove all existing mac */
 	TAILQ_FOREACH_SAFE(f, &vsi->mac_list, next, temp)
-		i40e_vsi_delete_mac(vsi, &f->mac_info.mac_addr);
+		if (i40e_vsi_delete_mac(vsi, &f->mac_info.mac_addr)
+				!= I40E_SUCCESS)
+			PMD_DRV_LOG(WARNING, "Delete MAC failed");
 
 	return 0;
 }
