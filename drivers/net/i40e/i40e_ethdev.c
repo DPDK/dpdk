@@ -86,12 +86,6 @@
 /* Flow control default timer */
 #define I40E_DEFAULT_PAUSE_TIME 0xFFFFU
 
-/* Flow control default high water */
-#define I40E_DEFAULT_HIGH_WATER (0x1C40/1024)
-
-/* Flow control default low water */
-#define I40E_DEFAULT_LOW_WATER  (0x1A40/1024)
-
 /* Flow control enable fwd bit */
 #define I40E_PRTMAC_FWD_CTRL   0x00000001
 
@@ -100,6 +94,12 @@
 
 /* Kilobytes shift */
 #define I40E_KILOSHIFT 10
+
+/* Flow control default high water */
+#define I40E_DEFAULT_HIGH_WATER (0xF2000 >> I40E_KILOSHIFT)
+
+/* Flow control default low water */
+#define I40E_DEFAULT_LOW_WATER  (0xF2000 >> I40E_KILOSHIFT)
 
 /* Receive Average Packet Size in Byte*/
 #define I40E_PACKET_AVERAGE_SIZE 128
@@ -3253,6 +3253,13 @@ i40e_flow_ctrl_get(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 
 	fc_conf->pause_time = pf->fc_conf.pause_time;
+
+	/* read out from register, in case they are modified by other port */
+	pf->fc_conf.high_water[I40E_MAX_TRAFFIC_CLASS] =
+		I40E_READ_REG(hw, I40E_GLRPB_GHW) >> I40E_KILOSHIFT;
+	pf->fc_conf.low_water[I40E_MAX_TRAFFIC_CLASS] =
+		I40E_READ_REG(hw, I40E_GLRPB_GLW) >> I40E_KILOSHIFT;
+
 	fc_conf->high_water =  pf->fc_conf.high_water[I40E_MAX_TRAFFIC_CLASS];
 	fc_conf->low_water = pf->fc_conf.low_water[I40E_MAX_TRAFFIC_CLASS];
 
