@@ -163,7 +163,7 @@ virtio_send_command(struct virtnet_ctl *cvq, struct virtio_pmd_ctrl *ctrl,
 	uint32_t head, i;
 	int k, sum = 0;
 	virtio_net_ctrl_ack status = ~0;
-	struct virtio_pmd_ctrl result;
+	struct virtio_pmd_ctrl *result;
 	struct virtqueue *vq;
 
 	ctrl->status = status;
@@ -254,10 +254,9 @@ virtio_send_command(struct virtnet_ctl *cvq, struct virtio_pmd_ctrl *ctrl,
 	PMD_INIT_LOG(DEBUG, "vq->vq_free_cnt=%d\nvq->vq_desc_head_idx=%d",
 			vq->vq_free_cnt, vq->vq_desc_head_idx);
 
-	memcpy(&result, cvq->virtio_net_hdr_mz->addr,
-			sizeof(struct virtio_pmd_ctrl));
+	result = cvq->virtio_net_hdr_mz->addr;
 
-	return result.status;
+	return result->status;
 }
 
 static int
