@@ -143,6 +143,11 @@ static inline void nn_writel(uint32_t val, volatile void *addr)
 	rte_write32(val, addr);
 }
 
+static inline void nn_writew(uint16_t val, volatile void *addr)
+{
+	rte_write16(val, addr);
+}
+
 static inline uint64_t nn_readq(volatile void *addr)
 {
 	const volatile uint32_t *p = addr;

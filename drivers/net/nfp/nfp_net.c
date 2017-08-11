@@ -603,6 +603,20 @@ static void nfp_net_read_mac(struct nfp_net_hw *hw)
 	memcpy(&hw->mac_addr[4], &tmp, 2);
 }
 
+static void
+nfp_net_write_mac(struct nfp_net_hw *hw, uint8_t *mac)
+{
+	uint32_t mac0 = *(uint32_t *)mac;
+	uint16_t mac1;
+
+	nn_writel(rte_cpu_to_be_32(mac0), hw->ctrl_bar + NFP_NET_CFG_MACADDR);
+
+	mac += 4;
+	mac1 = *(uint16_t *)mac;
+	nn_writew(rte_cpu_to_be_16(mac1),
+		  hw->ctrl_bar + NFP_NET_CFG_MACADDR + 6);
+}
+
 static int
 nfp_configure_rx_interrupt(struct rte_eth_dev *dev,
 			   struct rte_intr_handle *intr_handle)
@@ -2539,9 +2553,11 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 
 	nfp_net_read_mac(hw);
 
-	if (!is_valid_assigned_ether_addr((struct ether_addr *)&hw->mac_addr))
+	if (!is_valid_assigned_ether_addr((struct ether_addr *)&hw->mac_addr)) {
 		/* Using random mac addresses for VFs */
 		eth_random_addr(&hw->mac_addr[0]);
+		nfp_net_write_mac(hw, (uint8_t *)&hw->mac_addr);
+	}
 
 	/* Copying mac address to DPDK eth_dev struct */
 	ether_addr_copy((struct ether_addr *)hw->mac_addr,
