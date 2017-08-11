@@ -641,14 +641,19 @@ nfp_configure_rx_interrupt(struct rte_eth_dev *dev,
 		PMD_INIT_LOG(INFO, "VF: enabling RX interrupt with UIO");
 		/* UIO just supports one queue and no LSC*/
 		nn_cfg_writeb(hw, NFP_NET_CFG_RXR_VEC(0), 0);
+		intr_handle->intr_vec[0] = 0;
 	} else {
 		PMD_INIT_LOG(INFO, "VF: enabling RX interrupt with VFIO");
-		for (i = 0; i < dev->data->nb_rx_queues; i++)
+		for (i = 0; i < dev->data->nb_rx_queues; i++) {
 			/*
 			 * The first msix vector is reserved for non
 			 * efd interrupts
 			*/
 			nn_cfg_writeb(hw, NFP_NET_CFG_RXR_VEC(i), i + 1);
+			intr_handle->intr_vec[i] = i + 1;
+			PMD_INIT_LOG(DEBUG, "intr_vec[%d]= %d\n", i,
+					    intr_handle->intr_vec[i]);
+		}
 	}
 
 	/* Avoiding TX interrupts */
@@ -698,20 +703,17 @@ nfp_net_start(struct rte_eth_dev *dev)
 		intr_vector = dev->data->nb_rx_queues;
 		if (rte_intr_efd_enable(intr_handle, intr_vector))
 			return -1;
-	}
 
-	if (rte_intr_dp_is_en(intr_handle))
 		nfp_configure_rx_interrupt(dev, intr_handle);
+		update = NFP_NET_CFG_UPDATE_MSIX;
+	}
 
 	rte_intr_enable(intr_handle);
 
 	/* Enable device */
 	new_ctrl = hw->ctrl | NFP_NET_CFG_CTRL_ENABLE;
-	update = NFP_NET_CFG_UPDATE_GEN | NFP_NET_CFG_UPDATE_RING;
 
-	/* Just configuring queues interrupts when necessary */
-	if (rte_intr_dp_is_en(intr_handle))
-		update |= NFP_NET_CFG_UPDATE_MSIX;
+	update |= NFP_NET_CFG_UPDATE_GEN | NFP_NET_CFG_UPDATE_RING;
 
 	if (hw->cap & NFP_NET_CFG_CTRL_RINGCFG)
 		new_ctrl |= NFP_NET_CFG_CTRL_RINGCFG;
