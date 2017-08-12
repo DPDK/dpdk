@@ -73,11 +73,9 @@ rte_bus_scan(void)
 
 	TAILQ_FOREACH(bus, &rte_bus_list, next) {
 		ret = bus->scan();
-		if (ret) {
+		if (ret)
 			RTE_LOG(ERR, EAL, "Scan for (%s) bus failed.\n",
 				bus->name);
-			return ret;
-		}
 	}
 
 	return 0;
@@ -97,20 +95,16 @@ rte_bus_probe(void)
 		}
 
 		ret = bus->probe();
-		if (ret) {
+		if (ret)
 			RTE_LOG(ERR, EAL, "Bus (%s) probe failed.\n",
 				bus->name);
-			return ret;
-		}
 	}
 
 	if (vbus) {
 		ret = vbus->probe();
-		if (ret) {
+		if (ret)
 			RTE_LOG(ERR, EAL, "Bus (%s) probe failed.\n",
 				vbus->name);
-			return ret;
-		}
 	}
 
 	return 0;
