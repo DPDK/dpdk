@@ -526,7 +526,7 @@ void rte_timer_manage(void)
 		return;
 	cur_time = rte_get_timer_cycles();
 
-#ifdef RTE_ARCH_X86_64
+#ifdef RTE_ARCH_64
 	/* on 64-bit the value cached in the pending_head.expired will be
 	 * updated atomically, so we can consult that for a quick check here
 	 * outside the lock */
