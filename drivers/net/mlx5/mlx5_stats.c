@@ -435,8 +435,10 @@ mlx5_xstats_get(struct rte_eth_dev *dev,
 
 		priv_lock(priv);
 		stats_n = priv_ethtool_get_stats_n(priv);
-		if (stats_n < 0)
+		if (stats_n < 0) {
+			priv_unlock(priv);
 			return -1;
+		}
 		if (xstats_ctrl->stats_n != stats_n)
 			priv_xstats_init(priv);
 		ret = priv_xstats_get(priv, stats);
@@ -461,10 +463,11 @@ mlx5_xstats_reset(struct rte_eth_dev *dev)
 	priv_lock(priv);
 	stats_n = priv_ethtool_get_stats_n(priv);
 	if (stats_n < 0)
-		return;
+		goto unlock;
 	if (xstats_ctrl->stats_n != stats_n)
 		priv_xstats_init(priv);
 	priv_xstats_reset(priv);
+unlock:
 	priv_unlock(priv);
 }
 
