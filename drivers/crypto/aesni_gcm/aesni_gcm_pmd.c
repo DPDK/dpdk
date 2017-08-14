@@ -224,7 +224,7 @@ process_gcm_crypto_op(struct aesni_gcm_qp *qp, struct rte_crypto_op *op,
 
 	RTE_ASSERT(m_src != NULL);
 
-	while (offset >= m_src->data_len) {
+	while (offset >= m_src->data_len && data_length != 0) {
 		offset -= m_src->data_len;
 		m_src = m_src->next;
 
