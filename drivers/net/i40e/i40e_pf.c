@@ -1192,7 +1192,10 @@ send_msg:
 void
 i40e_notify_vf_link_status(struct rte_eth_dev *dev, struct i40e_pf_vf *vf)
 {
+	struct i40e_hw *hw = I40E_PF_TO_HW(vf->pf);
 	struct virtchnl_pf_event event;
+	uint16_t vf_id = vf->vf_idx;
+	uint32_t tval, rval;
 
 	event.event = VIRTCHNL_EVENT_LINK_CHANGE;
 	event.event_data.link_event.link_status =
@@ -1224,8 +1227,15 @@ i40e_notify_vf_link_status(struct rte_eth_dev *dev, struct i40e_pf_vf *vf)
 		break;
 	}
 
-	i40e_pf_host_send_msg_to_vf(vf, VIRTCHNL_OP_EVENT,
-		I40E_SUCCESS, (uint8_t *)&event, sizeof(event));
+	tval = I40E_READ_REG(hw, I40E_VF_ATQLEN(vf_id));
+	rval = I40E_READ_REG(hw, I40E_VF_ARQLEN(vf_id));
+
+	if (tval & I40E_VF_ATQLEN_ATQLEN_MASK ||
+	    tval & I40E_VF_ATQLEN_ATQENABLE_MASK ||
+	    rval & I40E_VF_ARQLEN_ARQLEN_MASK ||
+	    rval & I40E_VF_ARQLEN_ARQENABLE_MASK)
+		i40e_pf_host_send_msg_to_vf(vf, VIRTCHNL_OP_EVENT,
+			I40E_SUCCESS, (uint8_t *)&event, sizeof(event));
 }
 
 void
