@@ -78,6 +78,8 @@ Prerequisites
 - To get better performance on Intel platforms, please follow the "How to get best performance with NICs on Intel platforms"
   section of the :ref:`Getting Started Guide for Linux <linux_gsg>`.
 
+- Upgrade the NVM/FW version following the `Intel® Ethernet NVM Update Tool Quick Usage Guide for Linux
+  <https://www-ssl.intel.com/content/www/us/en/embedded/products/networking/nvm-update-tool-quick-linux-usage-guide.html>`_ if needed.
 
 Pre-Installation Configuration
 ------------------------------
