@@ -524,7 +524,9 @@ nic_xstats_display(uint8_t port_id)
 			sprintf(buf, "PUTVAL %s/dpdkstat-port.%u/%s-%s N:%"
 				PRIu64"\n", host_id, port_id, counter_type,
 				xstats_names[i].name, values[i]);
-			write(stdout_fd, buf, strlen(buf));
+			ret = write(stdout_fd, buf, strlen(buf));
+			if (ret < 0)
+				goto err;
 		} else {
 			printf("%s: %"PRIu64"\n", xstats_names[i].name,
 					values[i]);
