@@ -334,7 +334,7 @@ fs_switch_dev(struct rte_eth_dev *dev,
 	} else if ((txd && txd->state < req_state) ||
 		   txd == NULL ||
 		   txd == banned) {
-		struct sub_device *sdev;
+		struct sub_device *sdev = NULL;
 		uint8_t i;
 
 		/* Using acceptable device */
@@ -346,9 +346,10 @@ fs_switch_dev(struct rte_eth_dev *dev,
 			PRIV(dev)->subs_tx = i;
 			break;
 		}
-	} else if (txd && txd->state < req_state) {
-		DEBUG("No device ready, deactivating tx_dev");
-		PRIV(dev)->subs_tx = PRIV(dev)->subs_tail;
+		if (i >= PRIV(dev)->subs_tail || sdev == NULL) {
+			DEBUG("No device ready, deactivating tx_dev");
+			PRIV(dev)->subs_tx = PRIV(dev)->subs_tail;
+		}
 	} else {
 		return;
 	}
