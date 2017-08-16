@@ -65,6 +65,13 @@ struct rte_cryptodev_global {
 	uint8_t max_devs;		/**< Max number of devices */
 };
 
+/* Cryptodev driver, containing the driver ID */
+struct cryptodev_driver {
+	TAILQ_ENTRY(cryptodev_driver) next; /**< Next in list. */
+	const struct rte_driver *driver;
+	uint8_t id;
+};
+
 /** pointer to global crypto devices data structure. */
 extern struct rte_cryptodev_global *rte_cryptodev_globals;
 
@@ -404,6 +411,29 @@ void rte_cryptodev_pmd_callback_process(struct rte_cryptodev *dev,
  */
 int
 rte_cryptodev_pmd_create_dev_name(char *name, const char *dev_name_prefix);
+
+/**
+ * @internal
+ * Allocate Cryptodev driver.
+ *
+ * @param crypto_drv
+ *   Pointer to cryptodev_driver.
+ * @param drv
+ *   Pointer to rte_driver.
+ *
+ * @return
+ *  The driver type identifier
+ */
+uint8_t rte_cryptodev_allocate_driver(struct cryptodev_driver *crypto_drv,
+		const struct rte_driver *drv);
+
+
+#define RTE_PMD_REGISTER_CRYPTO_DRIVER(crypto_drv, drv, driver_id)\
+RTE_INIT(init_ ##driver_id);\
+static void init_ ##driver_id(void)\
+{\
+	driver_id = rte_cryptodev_allocate_driver(&crypto_drv, &(drv).driver);\
+}
 
 static inline void *
 get_session_private_data(const struct rte_cryptodev_sym_session *sess,

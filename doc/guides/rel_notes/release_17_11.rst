@@ -232,6 +232,11 @@ API Changes
   By this way PMDs can return an error value in case of failure at stats
   getting process time.
 
+* **Modified the rte_cryptodev_allocate_driver function in the cryptodev library.**
+
+  The function ``rte_cryptodev_allocate_driver()`` has been modified.
+  An extra parameter ``struct cryptodev_driver *crypto_drv`` has been added.
+
 
 ABI Changes
 -----------

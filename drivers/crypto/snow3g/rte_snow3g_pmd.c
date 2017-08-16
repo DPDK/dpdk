@@ -661,10 +661,13 @@ static struct rte_vdev_driver cryptodev_snow3g_pmd_drv = {
 	.remove = cryptodev_snow3g_remove
 };
 
+static struct cryptodev_driver snow3g_crypto_drv;
+
 RTE_PMD_REGISTER_VDEV(CRYPTODEV_NAME_SNOW3G_PMD, cryptodev_snow3g_pmd_drv);
 RTE_PMD_REGISTER_ALIAS(CRYPTODEV_NAME_SNOW3G_PMD, cryptodev_snow3g_pmd);
 RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_SNOW3G_PMD,
 	"max_nb_queue_pairs=<int> "
 	"max_nb_sessions=<int> "
 	"socket_id=<int>");
-RTE_PMD_REGISTER_CRYPTO_DRIVER(cryptodev_snow3g_pmd_drv, cryptodev_driver_id);
+RTE_PMD_REGISTER_CRYPTO_DRIVER(snow3g_crypto_drv, cryptodev_snow3g_pmd_drv,
+		cryptodev_driver_id);

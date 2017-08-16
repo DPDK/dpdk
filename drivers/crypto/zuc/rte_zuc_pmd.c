@@ -565,9 +565,12 @@ static struct rte_vdev_driver cryptodev_zuc_pmd_drv = {
 	.remove = cryptodev_zuc_remove
 };
 
+static struct cryptodev_driver zuc_crypto_drv;
+
 RTE_PMD_REGISTER_VDEV(CRYPTODEV_NAME_ZUC_PMD, cryptodev_zuc_pmd_drv);
 RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_ZUC_PMD,
 	"max_nb_queue_pairs=<int> "
 	"max_nb_sessions=<int> "
 	"socket_id=<int>");
-RTE_PMD_REGISTER_CRYPTO_DRIVER(cryptodev_zuc_pmd_drv, cryptodev_driver_id);
+RTE_PMD_REGISTER_CRYPTO_DRIVER(zuc_crypto_drv, cryptodev_zuc_pmd_drv,
+		cryptodev_driver_id);

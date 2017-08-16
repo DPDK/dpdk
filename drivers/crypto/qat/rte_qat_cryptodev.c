@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2015-2016 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2015-2017 Intel Corporation. All rights reserved.
  *   All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
@@ -169,6 +169,9 @@ static struct rte_pci_driver rte_qat_pmd = {
 	.remove = crypto_qat_pci_remove
 };
 
+static struct cryptodev_driver qat_crypto_drv;
+
 RTE_PMD_REGISTER_PCI(CRYPTODEV_NAME_QAT_SYM_PMD, rte_qat_pmd);
 RTE_PMD_REGISTER_PCI_TABLE(CRYPTODEV_NAME_QAT_SYM_PMD, pci_id_qat_map);
-RTE_PMD_REGISTER_CRYPTO_DRIVER(rte_qat_pmd, cryptodev_qat_driver_id);
+RTE_PMD_REGISTER_CRYPTO_DRIVER(qat_crypto_drv, rte_qat_pmd,
+		cryptodev_qat_driver_id);

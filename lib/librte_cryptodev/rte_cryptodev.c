@@ -1362,12 +1362,6 @@ TAILQ_HEAD(cryptodev_driver_list, cryptodev_driver);
 static struct cryptodev_driver_list cryptodev_driver_list =
 	TAILQ_HEAD_INITIALIZER(cryptodev_driver_list);
 
-struct cryptodev_driver {
-	TAILQ_ENTRY(cryptodev_driver) next; /**< Next in list. */
-	const struct rte_driver *driver;
-	uint8_t id;
-};
-
 int
 rte_cryptodev_driver_id_get(const char *name)
 {
@@ -1399,15 +1393,13 @@ rte_cryptodev_driver_name_get(uint8_t driver_id)
 }
 
 uint8_t
-rte_cryptodev_allocate_driver(const struct rte_driver *drv)
+rte_cryptodev_allocate_driver(struct cryptodev_driver *crypto_drv,
+		const struct rte_driver *drv)
 {
-	struct cryptodev_driver *driver;
+	crypto_drv->driver = drv;
+	crypto_drv->id = nb_drivers;
 
-	driver = malloc(sizeof(*driver));
-	driver->driver = drv;
-	driver->id = nb_drivers;
-
-	TAILQ_INSERT_TAIL(&cryptodev_driver_list, driver, next);
+	TAILQ_INSERT_TAIL(&cryptodev_driver_list, crypto_drv, next);
 
 	return nb_drivers++;
 }

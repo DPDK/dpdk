@@ -286,10 +286,13 @@ static struct rte_vdev_driver cryptodev_null_pmd_drv = {
 	.remove = cryptodev_null_remove_dev,
 };
 
+static struct cryptodev_driver null_crypto_drv;
+
 RTE_PMD_REGISTER_VDEV(CRYPTODEV_NAME_NULL_PMD, cryptodev_null_pmd_drv);
 RTE_PMD_REGISTER_ALIAS(CRYPTODEV_NAME_NULL_PMD, cryptodev_null_pmd);
 RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_NULL_PMD,
 	"max_nb_queue_pairs=<int> "
 	"max_nb_sessions=<int> "
 	"socket_id=<int>");
-RTE_PMD_REGISTER_CRYPTO_DRIVER(cryptodev_null_pmd_drv, cryptodev_driver_id);
+RTE_PMD_REGISTER_CRYPTO_DRIVER(null_crypto_drv, cryptodev_null_pmd_drv,
+		cryptodev_driver_id);

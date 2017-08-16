@@ -505,6 +505,8 @@ static struct rte_vdev_driver cryptodev_scheduler_pmd_drv = {
 	.remove = cryptodev_scheduler_remove
 };
 
+static struct cryptodev_driver scheduler_crypto_drv;
+
 RTE_PMD_REGISTER_VDEV(CRYPTODEV_NAME_SCHEDULER_PMD,
 	cryptodev_scheduler_pmd_drv);
 RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_SCHEDULER_PMD,
@@ -512,5 +514,6 @@ RTE_PMD_REGISTER_PARAM_STRING(CRYPTODEV_NAME_SCHEDULER_PMD,
 	"max_nb_sessions=<int> "
 	"socket_id=<int> "
 	"slave=<name>");
-RTE_PMD_REGISTER_CRYPTO_DRIVER(cryptodev_scheduler_pmd_drv,
+RTE_PMD_REGISTER_CRYPTO_DRIVER(scheduler_crypto_drv,
+		cryptodev_scheduler_pmd_drv,
 		cryptodev_driver_id);

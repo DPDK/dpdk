@@ -84,12 +84,6 @@ Deprecation Notices
 
   - ``rte_cryptodev_vdev_pmd_init``
 
-* cryptodev: the following function will have an extra parameter, passing a
-  statically allocated crypto driver structure, instead of calling malloc,
-  in 17.11:
-
-  - ``rte_cryptodev_allocate_driver``
-
 * librte_meter: The API will change to accommodate configuration profiles.
   Most of the API functions will have an additional opaque parameter.
 
