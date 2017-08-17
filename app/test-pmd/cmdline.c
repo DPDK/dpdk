@@ -7213,11 +7213,22 @@ static void cmd_vf_mac_addr_parsed(void *parsed_result,
 		__attribute__((unused)) void *data)
 {
 	struct cmd_vf_mac_addr_result *res = parsed_result;
-	int ret = 0;
+	int ret = -ENOTSUP;
 
-	if (strcmp(res->what, "add") == 0)
-		ret = rte_eth_dev_mac_addr_add(res->port_num,
-					&res->address, res->vf_num);
+	if (strcmp(res->what, "add") != 0)
+		return;
+
+#ifdef RTE_LIBRTE_I40E_PMD
+	if (ret == -ENOTSUP)
+		ret = rte_pmd_i40e_add_vf_mac_addr(res->port_num, res->vf_num,
+						   &res->address);
+#endif
+#ifdef RTE_LIBRTE_BNXT_PMD
+	if (ret == -ENOTSUP)
+		ret = rte_pmd_bnxt_mac_addr_add(res->port_num, &res->address,
+						res->vf_num);
+#endif
+
 	if(ret < 0)
 		printf("vf_mac_addr_cmd error: (%s)\n", strerror(-ret));
 
