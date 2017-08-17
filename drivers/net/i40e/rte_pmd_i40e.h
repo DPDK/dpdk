@@ -637,4 +637,24 @@ int rte_pmd_i40e_ptype_mapping_replace(uint8_t port,
 				       uint8_t mask,
 				       uint32_t pkt_type);
 
+/**
+ * Add a VF MAC address.
+ *
+ * Add more MAC address for VF. The existing MAC addresses
+ * are still effective.
+ *
+ * @param port
+ *   The port identifier of the Ethernet device.
+ * @param vf_id
+ *   VF id.
+ * @param mac_addr
+ *   VF MAC address.
+ * @return
+ *   - (0) if successful.
+ *   - (-ENODEV) if *port* invalid.
+ *   - (-EINVAL) if *vf* or *mac_addr* is invalid.
+ */
+int rte_pmd_i40e_add_vf_mac_addr(uint8_t port, uint16_t vf_id,
+				 struct ether_addr *mac_addr);
+
 #endif /* _PMD_I40E_H_ */

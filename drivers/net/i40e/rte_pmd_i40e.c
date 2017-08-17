@@ -2117,3 +2117,47 @@ int rte_pmd_i40e_ptype_mapping_replace(uint8_t port,
 
 	return 0;
 }
+
+int
+rte_pmd_i40e_add_vf_mac_addr(uint8_t port, uint16_t vf_id,
+			     struct ether_addr *mac_addr)
+{
+	struct rte_eth_dev *dev;
+	struct i40e_pf_vf *vf;
+	struct i40e_vsi *vsi;
+	struct i40e_pf *pf;
+	struct i40e_mac_filter_info mac_filter;
+	int ret;
+
+	if (i40e_validate_mac_addr((u8 *)mac_addr) != I40E_SUCCESS)
+		return -EINVAL;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+
+	if (!is_i40e_supported(dev))
+		return -ENOTSUP;
+
+	pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+
+	if (vf_id >= pf->vf_num || !pf->vfs)
+		return -EINVAL;
+
+	vf = &pf->vfs[vf_id];
+	vsi = vf->vsi;
+	if (!vsi) {
+		PMD_DRV_LOG(ERR, "Invalid VSI.");
+		return -EINVAL;
+	}
+
+	mac_filter.filter_type = RTE_MACVLAN_PERFECT_MATCH;
+	ether_addr_copy(mac_addr, &mac_filter.mac_addr);
+	ret = i40e_vsi_add_mac(vsi, &mac_filter);
+	if (ret != I40E_SUCCESS) {
+		PMD_DRV_LOG(ERR, "Failed to add MAC filter.");
+		return -1;
+	}
+
+	return 0;
+}

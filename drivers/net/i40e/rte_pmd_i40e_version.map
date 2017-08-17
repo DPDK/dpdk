@@ -45,3 +45,10 @@ DPDK_17.08 {
 	rte_pmd_i40e_get_ddp_info;
 
 } DPDK_17.05;
+
+DPDK_17.11 {
+	global:
+
+	rte_pmd_i40e_add_vf_mac_addr;
+
+} DPDK_17.08;
