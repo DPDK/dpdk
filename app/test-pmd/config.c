@@ -40,6 +40,10 @@
 #include <inttypes.h>
 
 #include <sys/queue.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 #include <rte_common.h>
 #include <rte_byteorder.h>
@@ -3375,46 +3379,43 @@ port_dcb_info_display(uint8_t port_id)
 uint8_t *
 open_ddp_package_file(const char *file_path, uint32_t *size)
 {
-	FILE *fh = fopen(file_path, "rb");
-	uint32_t pkg_size;
+	int fd = open(file_path, O_RDONLY);
+	off_t pkg_size;
 	uint8_t *buf = NULL;
 	int ret = 0;
+	struct stat st_buf;
 
 	if (size)
 		*size = 0;
 
-	if (fh == NULL) {
+	if (fd == -1) {
 		printf("%s: Failed to open %s\n", __func__, file_path);
 		return buf;
 	}
 
-	ret = fseek(fh, 0, SEEK_END);
-	if (ret < 0) {
-		fclose(fh);
+	if ((fstat(fd, &st_buf) != 0) || (!S_ISREG(st_buf.st_mode))) {
+		close(fd);
 		printf("%s: File operations failed\n", __func__);
 		return buf;
 	}
 
-	pkg_size = ftell(fh);
+	pkg_size = st_buf.st_size;
+	if (pkg_size < 0) {
+		close(fd);
+		printf("%s: File operations failed\n", __func__);
+		return buf;
+	}
 
 	buf = (uint8_t *)malloc(pkg_size);
 	if (!buf) {
-		fclose(fh);
+		close(fd);
 		printf("%s: Failed to malloc memory\n",	__func__);
 		return buf;
 	}
 
-	ret = fseek(fh, 0, SEEK_SET);
+	ret = read(fd, buf, pkg_size);
 	if (ret < 0) {
-		fclose(fh);
-		printf("%s: File seek operation failed\n", __func__);
-		close_ddp_package_file(buf);
-		return NULL;
-	}
-
-	ret = fread(buf, 1, pkg_size, fh);
-	if (ret < 0) {
-		fclose(fh);
+		close(fd);
 		printf("%s: File read operation failed\n", __func__);
 		close_ddp_package_file(buf);
 		return NULL;
@@ -3423,7 +3424,7 @@ open_ddp_package_file(const char *file_path, uint32_t *size)
 	if (size)
 		*size = pkg_size;
 
-	fclose(fh);
+	close(fd);
 
 	return buf;
 }
