@@ -136,7 +136,7 @@ This section shows some example of using **testpmd** with a fail-safe PMD.
    .. code-block:: console
 
       $RTE_TARGET/build/app/testpmd -c 0xff -n 4 \
-         --vdev 'net_failsafe0,mac=de:ad:be:ef:01:02,dev(84:00.0),dev(net_ring0)'
+         --vdev 'net_failsafe0,mac=de:ad:be:ef:01:02,dev(84:00.0),dev(net_ring0)' \
          -b 84:00.0 -b 00:04.0 -- -i
 
    If the slave device being used is not blacklisted, it will be probed by the
@@ -150,7 +150,7 @@ This section shows some example of using **testpmd** with a fail-safe PMD.
    .. code-block:: console
 
       $RTE_TARGET/build/app/testpmd -c 0xff -n 4 \
-         --vdev 'net_failsafe0,mac=de:ad:be:ef:01:02,dev(84:00.0),dev(net_ring0)'
+         --vdev 'net_failsafe0,mac=de:ad:be:ef:01:02,dev(84:00.0),dev(net_ring0)' \
          -w 81:00.0 -- -i
 
 #. Start testpmd using a flexible device definition
