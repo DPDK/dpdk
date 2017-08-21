@@ -85,8 +85,13 @@ struct rte_service_spec {
  *
  * For example the eventdev SW PMD requires CPU cycles to perform its
  * scheduling. This can be achieved by registering it as a service, and the
- * application can then assign CPU resources to it using
- * *rte_service_set_coremask*.
+ * application can then assign CPU resources to that service.
+ *
+ * Note that when a service component registers itself, it is not permitted to
+ * add or remove service-core threads, or modify lcore-to-service mappings. The
+ * only API that may be called by the service-component is
+ * *rte_service_component_runstate_set*, which indicates that the service
+ * component is ready to be executed.
  *
  * @param spec The specification of the service to register
  * @param[out] service_id A pointer to a uint32_t, which will be filled in
