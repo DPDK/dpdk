@@ -89,11 +89,15 @@ struct rte_service_spec {
  * *rte_service_set_coremask*.
  *
  * @param spec The specification of the service to register
+ * @param[out] service_id A pointer to a uint32_t, which will be filled in
+ *             during registration of the service. It is set to the integers
+ *             service number given to the service. This parameter may be NULL.
  * @retval 0 Successfully registered the service.
  *         -EINVAL Attempted to register an invalid service (eg, no callback
  *         set)
  */
-int32_t rte_service_register(const struct rte_service_spec *spec);
+int32_t rte_service_component_register(const struct rte_service_spec *spec,
+				       uint32_t *service_id);
 
 /**
  * @warning

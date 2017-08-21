@@ -278,6 +278,7 @@ struct sw_evdev {
 	uint16_t xstats_count_per_qid[RTE_EVENT_MAX_QUEUES_PER_DEV];
 	uint16_t xstats_offset_for_qid[RTE_EVENT_MAX_QUEUES_PER_DEV];
 
+	uint32_t service_id;
 	char service_name[SW_PMD_NAME_MAX];
 };
 

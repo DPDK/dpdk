@@ -242,7 +242,8 @@ rte_service_is_running(const struct rte_service_spec *spec)
 }
 
 int32_t
-rte_service_register(const struct rte_service_spec *spec)
+rte_service_component_register(const struct rte_service_spec *spec,
+			       uint32_t *id_ptr)
 {
 	uint32_t i;
 	int32_t free_slot = -1;
@@ -266,6 +267,9 @@ rte_service_register(const struct rte_service_spec *spec)
 
 	rte_smp_wmb();
 	rte_service_count++;
+
+	if (id_ptr)
+		*id_ptr = free_slot;
 
 	return 0;
 }

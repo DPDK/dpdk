@@ -160,15 +160,17 @@ dummy_register(void)
 	struct rte_service_spec service;
 	memset(&service, 0, sizeof(struct rte_service_spec));
 
-	TEST_ASSERT_EQUAL(-EINVAL, rte_service_register(&service),
+	TEST_ASSERT_EQUAL(-EINVAL,
+			rte_service_component_register(&service, NULL),
 			"Invalid callback");
 	service.callback = dummy_cb;
 
-	TEST_ASSERT_EQUAL(-EINVAL, rte_service_register(&service),
+	TEST_ASSERT_EQUAL(-EINVAL,
+			rte_service_component_register(&service, NULL),
 			"Invalid name");
 	snprintf(service.name, sizeof(service.name), DUMMY_SERVICE_NAME);
 
-	TEST_ASSERT_EQUAL(0, rte_service_register(&service),
+	TEST_ASSERT_EQUAL(0, rte_service_component_register(&service, NULL),
 			"Failed to register valid service");
 
 	return TEST_SUCCESS;
@@ -187,13 +189,15 @@ service_get_by_name(void)
 	/* register service */
 	struct rte_service_spec service;
 	memset(&service, 0, sizeof(struct rte_service_spec));
-	TEST_ASSERT_EQUAL(-EINVAL, rte_service_register(&service),
+	TEST_ASSERT_EQUAL(-EINVAL,
+			rte_service_component_register(&service, NULL),
 			"Invalid callback");
 	service.callback = dummy_cb;
-	TEST_ASSERT_EQUAL(-EINVAL, rte_service_register(&service),
+	TEST_ASSERT_EQUAL(-EINVAL,
+			rte_service_component_register(&service, NULL),
 			"Invalid name");
 	snprintf(service.name, sizeof(service.name), DUMMY_SERVICE_NAME);
-	TEST_ASSERT_EQUAL(0, rte_service_register(&service),
+	TEST_ASSERT_EQUAL(0, rte_service_component_register(&service, NULL),
 			"Failed to register valid service");
 
 	/* ensure with dummy services registered returns same ptr as ID */
@@ -221,7 +225,7 @@ service_probe_capability(void)
 	service.callback = dummy_cb;
 	snprintf(service.name, sizeof(service.name), DUMMY_SERVICE_NAME);
 	service.capabilities |= RTE_SERVICE_CAP_MT_SAFE;
-	TEST_ASSERT_EQUAL(0, rte_service_register(&service),
+	TEST_ASSERT_EQUAL(0, rte_service_component_register(&service, NULL),
 			"Register of MT SAFE service failed");
 
 	/* verify flag is enabled */
@@ -235,7 +239,7 @@ service_probe_capability(void)
 	memset(&service, 0, sizeof(struct rte_service_spec));
 	service.callback = dummy_cb;
 	snprintf(service.name, sizeof(service.name), DUMMY_SERVICE_NAME);
-	TEST_ASSERT_EQUAL(0, rte_service_register(&service),
+	TEST_ASSERT_EQUAL(0, rte_service_component_register(&service, NULL),
 			"Register of non-MT safe service failed");
 
 	/* verify flag is enabled */
@@ -274,28 +278,28 @@ static int
 service_start_stop(void)
 {
 	const uint32_t sid = 0;
-	struct rte_service_spec *service = rte_service_get_by_id(0);
+	struct rte_service_spec *s = rte_service_get_by_id(0);
 
-	/* is_running() returns if service is running and slcore is mapped */
+	/* runstate_get() returns if service is running and slcore is mapped */
 	TEST_ASSERT_EQUAL(0, rte_service_lcore_add(slcore_id),
 			"Service core add did not return zero");
 	int ret = rte_service_map_lcore_set(sid, slcore_id, 1);
 	TEST_ASSERT_EQUAL(0, ret,
 			"Enabling service core, expected 0 got %d", ret);
 
-	TEST_ASSERT_EQUAL(0, rte_service_is_running(service),
+	TEST_ASSERT_EQUAL(0, rte_service_is_running(s),
 			"Error: Service should be stopped");
 
-	TEST_ASSERT_EQUAL(0, rte_service_stop(service),
+	TEST_ASSERT_EQUAL(0, rte_service_stop(s),
 			"Error: Service stopped returned non-zero");
 
-	TEST_ASSERT_EQUAL(0, rte_service_is_running(service),
+	TEST_ASSERT_EQUAL(0, rte_service_is_running(s),
 			"Error: Service is running - should be stopped");
 
-	TEST_ASSERT_EQUAL(0, rte_service_start(service),
+	TEST_ASSERT_EQUAL(0, rte_service_start(s),
 			"Error: Service start returned non-zero");
 
-	TEST_ASSERT_EQUAL(1, rte_service_is_running(service),
+	TEST_ASSERT_EQUAL(1, rte_service_is_running(s),
 			"Error: Service is not running");
 
 	return unregister_all();
@@ -471,7 +475,7 @@ service_threaded_test(int mt_safe)
 		service.callback = dummy_mt_unsafe_cb;
 	}
 
-	TEST_ASSERT_EQUAL(0, rte_service_register(&service),
+	TEST_ASSERT_EQUAL(0, rte_service_component_register(&service, NULL),
 			"Register of MT SAFE service failed");
 
 	struct rte_service_spec *s = rte_service_get_by_id(0);

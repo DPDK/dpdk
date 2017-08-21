@@ -620,7 +620,7 @@ sw_start(struct rte_eventdev *dev)
 	struct rte_service_spec *s = rte_service_get_by_name(sw->service_name);
 	if (!rte_service_is_running(s))
 		SW_LOG_ERR("Warning: No Service core enabled on service %s\n",
-				s->name);
+				sw->service_name);
 
 	/* check all ports are set up */
 	for (i = 0; i < sw->port_count; i++)
@@ -855,7 +855,7 @@ sw_probe(struct rte_vdev_device *vdev)
 	service.callback = sw_sched_service_func;
 	service.callback_userdata = (void *)dev;
 
-	int32_t ret = rte_service_register(&service);
+	int32_t ret = rte_service_component_register(&service, &sw->service_id);
 	if (ret) {
 		SW_LOG_ERR("service register() failed");
 		return -ENOEXEC;
