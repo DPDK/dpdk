@@ -627,6 +627,18 @@ ixgbe_get_vf_queues(struct rte_eth_dev *dev, uint32_t vf, uint32_t *msgbuf)
 	struct ixgbe_vf_info *vfinfo =
 		*IXGBE_DEV_PRIVATE_TO_P_VFDATA(dev->data->dev_private);
 	uint32_t default_q = vf * RTE_ETH_DEV_SRIOV(dev).nb_q_per_pool;
+	struct rte_eth_conf *eth_conf;
+	struct rte_eth_vmdq_dcb_tx_conf *vmdq_dcb_tx_conf;
+	u8 num_tcs;
+	struct ixgbe_hw *hw;
+	u32 vmvir;
+#define IXGBE_VMVIR_VLANA_MASK		0xC0000000
+#define IXGBE_VMVIR_VLAN_VID_MASK	0x00000FFF
+#define IXGBE_VMVIR_VLAN_UP_MASK	0x0000E000
+#define VLAN_PRIO_SHIFT			13
+	u32 vlana;
+	u32 vid;
+	u32 user_priority;
 
 	/* Verify if the PF supports the mbox APIs version or not */
 	switch (vfinfo[vf].api_version) {
@@ -645,10 +657,51 @@ ixgbe_get_vf_queues(struct rte_eth_dev *dev, uint32_t vf, uint32_t *msgbuf)
 	/* Notify VF of default queue */
 	msgbuf[IXGBE_VF_DEF_QUEUE] = default_q;
 
-	/*
-	 * FIX ME if it needs fill msgbuf[IXGBE_VF_TRANS_VLAN]
-	 * for VLAN strip or VMDQ_DCB or VMDQ_DCB_RSS
-	 */
+	/* Notify VF of number of DCB traffic classes */
+	eth_conf = &dev->data->dev_conf;
+	switch (eth_conf->txmode.mq_mode) {
+	case ETH_MQ_TX_NONE:
+	case ETH_MQ_TX_DCB:
+		RTE_LOG(ERR, PMD, "PF must work with virtualization for VF %u"
+			", but its tx mode = %d\n", vf,
+			eth_conf->txmode.mq_mode);
+		return -1;
+
+	case ETH_MQ_TX_VMDQ_DCB:
+		vmdq_dcb_tx_conf = &eth_conf->tx_adv_conf.vmdq_dcb_tx_conf;
+		switch (vmdq_dcb_tx_conf->nb_queue_pools) {
+		case ETH_16_POOLS:
+			num_tcs = ETH_8_TCS;
+			break;
+		case ETH_32_POOLS:
+			num_tcs = ETH_4_TCS;
+			break;
+		default:
+			return -1;
+		}
+		break;
+
+	/* ETH_MQ_TX_VMDQ_ONLY,  DCB not enabled */
+	case ETH_MQ_TX_VMDQ_ONLY:
+		hw = IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+		vmvir = IXGBE_READ_REG(hw, IXGBE_VMVIR(vf));
+		vlana = vmvir & IXGBE_VMVIR_VLANA_MASK;
+		vid = vmvir & IXGBE_VMVIR_VLAN_VID_MASK;
+		user_priority =
+			(vmvir & IXGBE_VMVIR_VLAN_UP_MASK) >> VLAN_PRIO_SHIFT;
+		if ((vlana == IXGBE_VMVIR_VLANA_DEFAULT) &&
+			((vid !=  0) || (user_priority != 0)))
+			num_tcs = 1;
+		else
+			num_tcs = 0;
+		break;
+
+	default:
+		RTE_LOG(ERR, PMD, "PF work with invalid mode = %d\n",
+			eth_conf->txmode.mq_mode);
+		return -1;
+	}
+	msgbuf[IXGBE_VF_TRANS_VLAN] = num_tcs;
 
 	return 0;
 }
