@@ -117,7 +117,7 @@ struct rte_jobstats_context {
 	/**< Minimum loop execute time. */
 
 	uint64_t max_exec_time;
-	/**< Minimum loop execute time. */
+	/**< Maximum loop execute time. */
 
 	/**
 	 * Sum of time that is not the execute time (ex: from job finish to next
