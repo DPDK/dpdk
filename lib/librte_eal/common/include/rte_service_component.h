@@ -103,7 +103,7 @@ int32_t rte_service_component_register(const struct rte_service_spec *spec,
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice
  *
- * Unregister a service.
+ * Unregister a service component.
  *
  * The service being removed must be stopped before calling this function.
  *
@@ -111,7 +111,7 @@ int32_t rte_service_component_register(const struct rte_service_spec *spec,
  * @retval -EBUSY The service is currently running, stop the service before
  *          calling unregister. No action has been taken.
  */
-int32_t rte_service_unregister(struct rte_service_spec *service);
+int32_t rte_service_component_unregister(uint32_t id);
 
 /**
  * @warning

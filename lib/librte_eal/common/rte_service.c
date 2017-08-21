@@ -260,35 +260,22 @@ rte_service_component_register(const struct rte_service_spec *spec,
 }
 
 int32_t
-rte_service_unregister(struct rte_service_spec *spec)
+rte_service_component_unregister(uint32_t id)
 {
-	struct rte_service_spec_impl *s = NULL;
-	struct rte_service_spec_impl *spec_impl =
-		(struct rte_service_spec_impl *)spec;
-
 	uint32_t i;
-	uint32_t service_id;
-	for (i = 0; i < RTE_SERVICE_NUM_MAX; i++) {
-		if (&rte_services[i] == spec_impl) {
-			s = spec_impl;
-			service_id = i;
-			break;
-		}
-	}
-
-	if (!s)
-		return -EINVAL;
+	struct rte_service_spec_impl *s;
+	SERVICE_VALID_GET_OR_ERR_RET(id, s, -EINVAL);
 
 	rte_service_count--;
 	rte_smp_wmb();
 
 	s->internal_flags &= ~(SERVICE_F_REGISTERED);
 
+	/* clear the run-bit in all cores */
 	for (i = 0; i < RTE_MAX_LCORE; i++)
-		lcore_states[i].service_mask &= ~(UINT64_C(1) << service_id);
+		lcore_states[i].service_mask &= ~(UINT64_C(1) << id);
 
-	memset(&rte_services[service_id], 0,
-			sizeof(struct rte_service_spec_impl));
+	memset(&rte_services[id], 0, sizeof(struct rte_service_spec_impl));
 
 	return 0;
 }

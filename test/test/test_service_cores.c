@@ -131,17 +131,13 @@ static int
 unregister_all(void)
 {
 	uint32_t i;
-	struct rte_service_spec *dead = (struct rte_service_spec *)0xdead;
 
-	TEST_ASSERT_EQUAL(-EINVAL, rte_service_unregister(0),
-			"Unregistered NULL pointer");
-	TEST_ASSERT_EQUAL(-EINVAL, rte_service_unregister(dead),
-			"Unregistered invalid pointer");
+	TEST_ASSERT_EQUAL(-EINVAL, rte_service_component_unregister(1000),
+			"Unregistered invalid service id");
 
 	uint32_t c = rte_service_get_count();
 	for (i = 0; i < c; i++) {
-		struct rte_service_spec *s = rte_service_get_by_id(i);
-		TEST_ASSERT_EQUAL(0, rte_service_unregister(s),
+		TEST_ASSERT_EQUAL(0, rte_service_component_unregister(i),
 				"Error unregistering a valid service");
 	}
 
