@@ -3517,12 +3517,19 @@ ixgbe_vmdq_dcb_rx_config(struct rte_eth_dev *dev,
 		dcb_config->num_tcs.pg_tcs = ETH_4_TCS;
 		dcb_config->num_tcs.pfc_tcs = ETH_4_TCS;
 	}
+
+	/* Initialize User Priority to Traffic Class mapping */
+	for (j = 0; j < IXGBE_DCB_MAX_TRAFFIC_CLASS; j++) {
+		tc = &dcb_config->tc_config[j];
+		tc->path[IXGBE_DCB_RX_CONFIG].up_to_tc_bitmap = 0;
+	}
+
 	/* User Priority to Traffic Class mapping */
 	for (i = 0; i < ETH_DCB_NUM_USER_PRIORITIES; i++) {
 		j = vmdq_rx_conf->dcb_tc[i];
 		tc = &dcb_config->tc_config[j];
-		tc->path[IXGBE_DCB_RX_CONFIG].up_to_tc_bitmap =
-						(uint8_t)(1 << j);
+		tc->path[IXGBE_DCB_RX_CONFIG].up_to_tc_bitmap |=
+						(uint8_t)(1 << i);
 	}
 }
 
@@ -3544,12 +3551,18 @@ ixgbe_dcb_vt_tx_config(struct rte_eth_dev *dev,
 		dcb_config->num_tcs.pfc_tcs = ETH_4_TCS;
 	}
 
+	/* Initialize User Priority to Traffic Class mapping */
+	for (j = 0; j < IXGBE_DCB_MAX_TRAFFIC_CLASS; j++) {
+		tc = &dcb_config->tc_config[j];
+		tc->path[IXGBE_DCB_TX_CONFIG].up_to_tc_bitmap = 0;
+	}
+
 	/* User Priority to Traffic Class mapping */
 	for (i = 0; i < ETH_DCB_NUM_USER_PRIORITIES; i++) {
 		j = vmdq_tx_conf->dcb_tc[i];
 		tc = &dcb_config->tc_config[j];
-		tc->path[IXGBE_DCB_TX_CONFIG].up_to_tc_bitmap =
-						(uint8_t)(1 << j);
+		tc->path[IXGBE_DCB_TX_CONFIG].up_to_tc_bitmap |=
+						(uint8_t)(1 << i);
 	}
 }
 
@@ -3565,12 +3578,18 @@ ixgbe_dcb_rx_config(struct rte_eth_dev *dev,
 	dcb_config->num_tcs.pg_tcs = (uint8_t)rx_conf->nb_tcs;
 	dcb_config->num_tcs.pfc_tcs = (uint8_t)rx_conf->nb_tcs;
 
+	/* Initialize User Priority to Traffic Class mapping */
+	for (j = 0; j < IXGBE_DCB_MAX_TRAFFIC_CLASS; j++) {
+		tc = &dcb_config->tc_config[j];
+		tc->path[IXGBE_DCB_RX_CONFIG].up_to_tc_bitmap = 0;
+	}
+
 	/* User Priority to Traffic Class mapping */
 	for (i = 0; i < ETH_DCB_NUM_USER_PRIORITIES; i++) {
 		j = rx_conf->dcb_tc[i];
 		tc = &dcb_config->tc_config[j];
-		tc->path[IXGBE_DCB_RX_CONFIG].up_to_tc_bitmap =
-						(uint8_t)(1 << j);
+		tc->path[IXGBE_DCB_RX_CONFIG].up_to_tc_bitmap |=
+						(uint8_t)(1 << i);
 	}
 }
 
@@ -3586,12 +3605,18 @@ ixgbe_dcb_tx_config(struct rte_eth_dev *dev,
 	dcb_config->num_tcs.pg_tcs = (uint8_t)tx_conf->nb_tcs;
 	dcb_config->num_tcs.pfc_tcs = (uint8_t)tx_conf->nb_tcs;
 
+	/* Initialize User Priority to Traffic Class mapping */
+	for (j = 0; j < IXGBE_DCB_MAX_TRAFFIC_CLASS; j++) {
+		tc = &dcb_config->tc_config[j];
+		tc->path[IXGBE_DCB_TX_CONFIG].up_to_tc_bitmap = 0;
+	}
+
 	/* User Priority to Traffic Class mapping */
 	for (i = 0; i < ETH_DCB_NUM_USER_PRIORITIES; i++) {
 		j = tx_conf->dcb_tc[i];
 		tc = &dcb_config->tc_config[j];
-		tc->path[IXGBE_DCB_TX_CONFIG].up_to_tc_bitmap =
-						(uint8_t)(1 << j);
+		tc->path[IXGBE_DCB_TX_CONFIG].up_to_tc_bitmap |=
+						(uint8_t)(1 << i);
 	}
 }
 
