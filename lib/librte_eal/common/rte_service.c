@@ -166,18 +166,15 @@ service_mt_safe(struct rte_service_spec_impl *s)
 	return s->spec.capabilities & RTE_SERVICE_CAP_MT_SAFE;
 }
 
-int32_t rte_service_set_stats_enable(struct rte_service_spec *service,
-				  int32_t enabled)
+int32_t rte_service_set_stats_enable(uint32_t id, int32_t enabled)
 {
-	struct rte_service_spec_impl *impl =
-		(struct rte_service_spec_impl *)service;
-	if (!impl)
-		return -EINVAL;
+	struct rte_service_spec_impl *s;
+	SERVICE_VALID_GET_OR_ERR_RET(id, s, 0);
 
 	if (enabled)
-		impl->internal_flags |= SERVICE_F_STATS_ENABLED;
+		s->internal_flags |= SERVICE_F_STATS_ENABLED;
 	else
-		impl->internal_flags &= ~(SERVICE_F_STATS_ENABLED);
+		s->internal_flags &= ~(SERVICE_F_STATS_ENABLED);
 
 	return 0;
 }
@@ -683,9 +680,10 @@ service_dump_calls_per_lcore(FILE *f, uint32_t lcore, uint32_t reset)
 	fprintf(f, "\n");
 }
 
-int32_t rte_service_dump(FILE *f, struct rte_service_spec *service)
+int32_t rte_service_dump(FILE *f, uint32_t id)
 {
 	uint32_t i;
+	int print_one = (id != UINT32_MAX);
 
 	uint64_t total_cycles = 0;
 	for (i = 0; i < rte_service_count; i++) {
@@ -694,15 +692,17 @@ int32_t rte_service_dump(FILE *f, struct rte_service_spec *service)
 		total_cycles += rte_services[i].cycles_spent;
 	}
 
-	if (service) {
-		struct rte_service_spec_impl *s =
-			(struct rte_service_spec_impl *)service;
+	/* print only the specified service */
+	if (print_one) {
+		struct rte_service_spec_impl *s;
+		SERVICE_VALID_GET_OR_ERR_RET(id, s, -EINVAL);
 		fprintf(f, "Service %s Summary\n", s->spec.name);
 		uint32_t reset = 0;
 		rte_service_dump_one(f, s, total_cycles, reset);
 		return 0;
 	}
 
+	/* print all services, as UINT32_MAX was passed as id */
 	fprintf(f, "Services Summary\n");
 	for (i = 0; i < rte_service_count; i++) {
 		uint32_t reset = 1;

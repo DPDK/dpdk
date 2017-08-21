@@ -318,13 +318,12 @@ int32_t rte_service_lcore_reset_all(void);
  * Enable or disable statistics collection for *service*.
  *
  * This function enables per core, per-service cycle count collection.
- * @param service The service to enable statistics gathering on.
+ * @param id The service to enable statistics gathering on.
  * @param enable Zero to disable statistics, non-zero to enable.
  * @retval 0 Success
  * @retval -EINVAL Invalid service pointer passed
  */
-int32_t rte_service_set_stats_enable(struct rte_service_spec *service,
-				  int32_t enable);
+int32_t rte_service_set_stats_enable(uint32_t id, int32_t enable);
 
 /**
  * @warning
@@ -364,10 +363,13 @@ int32_t rte_service_lcore_count_services(uint32_t lcore);
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice
  *
- * Dumps any information available about the service. If service is NULL,
- * dumps info for all services.
+ * Dumps any information available about the service. When id is UINT32_MAX,
+ * this function dumps info for all services.
+ *
+ * @retval 0 Statistics have been successfully dumped
+ * @retval -EINVAL Invalid service id provided
  */
-int32_t rte_service_dump(FILE *f, struct rte_service_spec *service);
+int32_t rte_service_dump(FILE *f, uint32_t id);
 
 #ifdef __cplusplus
 }

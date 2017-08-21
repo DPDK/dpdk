@@ -265,11 +265,11 @@ service_name(void)
 static int
 service_dump(void)
 {
-	struct rte_service_spec *service = rte_service_get_by_id(0);
-	rte_service_set_stats_enable(service, 1);
-	rte_service_dump(stdout, service);
-	rte_service_set_stats_enable(service, 0);
-	rte_service_dump(stdout, service);
+	const uint32_t sid = 0;
+	rte_service_set_stats_enable(sid, 1);
+	rte_service_dump(stdout, 0);
+	rte_service_set_stats_enable(sid, 0);
+	rte_service_dump(stdout, 0);
 	return unregister_all();
 }
 
