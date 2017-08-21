@@ -273,12 +273,13 @@ service_dump(void)
 static int
 service_start_stop(void)
 {
+	const uint32_t sid = 0;
 	struct rte_service_spec *service = rte_service_get_by_id(0);
 
 	/* is_running() returns if service is running and slcore is mapped */
 	TEST_ASSERT_EQUAL(0, rte_service_lcore_add(slcore_id),
 			"Service core add did not return zero");
-	int ret = rte_service_enable_on_lcore(service, slcore_id);
+	int ret = rte_service_map_lcore_set(sid, slcore_id, 1);
 	TEST_ASSERT_EQUAL(0, ret,
 			"Enabling service core, expected 0 got %d", ret);
 
@@ -313,12 +314,12 @@ service_remote_launch_func(void *arg)
 static int
 service_lcore_en_dis_able(void)
 {
-	struct rte_service_spec *s = rte_service_get_by_id(0);
+	const uint32_t sid = 0;
 
 	/* expected failure cases */
-	TEST_ASSERT_EQUAL(-EINVAL, rte_service_enable_on_lcore(s, 100000),
+	TEST_ASSERT_EQUAL(-EINVAL, rte_service_map_lcore_set(sid, 100000, 1),
 			"Enable on invalid core did not fail");
-	TEST_ASSERT_EQUAL(-EINVAL, rte_service_disable_on_lcore(s, 100000),
+	TEST_ASSERT_EQUAL(-EINVAL, rte_service_map_lcore_set(sid, 100000, 0),
 			"Disable on invalid core did not fail");
 
 	/* add service core to allow enabling */
@@ -326,15 +327,15 @@ service_lcore_en_dis_able(void)
 			"Add service core failed when not in use before");
 
 	/* valid enable */
-	TEST_ASSERT_EQUAL(0, rte_service_enable_on_lcore(s, slcore_id),
+	TEST_ASSERT_EQUAL(0, rte_service_map_lcore_set(sid, slcore_id, 1),
 			"Enabling valid service and core failed");
-	TEST_ASSERT_EQUAL(1, rte_service_get_enabled_on_lcore(s, slcore_id),
+	TEST_ASSERT_EQUAL(1, rte_service_map_lcore_get(sid, slcore_id),
 			"Enabled core returned not-enabled");
 
 	/* valid disable */
-	TEST_ASSERT_EQUAL(0, rte_service_disable_on_lcore(s, slcore_id),
+	TEST_ASSERT_EQUAL(0, rte_service_map_lcore_set(sid, slcore_id, 0),
 			"Disabling valid service and lcore failed");
-	TEST_ASSERT_EQUAL(0, rte_service_get_enabled_on_lcore(s, slcore_id),
+	TEST_ASSERT_EQUAL(0, rte_service_map_lcore_get(sid, slcore_id),
 			"Disabled core returned enabled");
 
 	/* call remote_launch to verify that app can launch ex-service lcore */
@@ -474,11 +475,12 @@ service_threaded_test(int mt_safe)
 			"Register of MT SAFE service failed");
 
 	struct rte_service_spec *s = rte_service_get_by_id(0);
+	const uint32_t sid = 0;
 	TEST_ASSERT_EQUAL(0, rte_service_start(s),
 			"Starting valid service failed");
-	TEST_ASSERT_EQUAL(0, rte_service_enable_on_lcore(s, slcore_1),
+	TEST_ASSERT_EQUAL(0, rte_service_map_lcore_set(sid, slcore_1, 1),
 			"Failed to enable lcore 1 on mt safe service");
-	TEST_ASSERT_EQUAL(0, rte_service_enable_on_lcore(s, slcore_2),
+	TEST_ASSERT_EQUAL(0, rte_service_map_lcore_set(sid, slcore_2, 1),
 			"Failed to enable lcore 2 on mt safe service");
 	rte_service_lcore_start(slcore_1);
 	rte_service_lcore_start(slcore_2);
@@ -529,10 +531,11 @@ static int
 service_lcore_start_stop(void)
 {
 	/* start service core and service, create mapping so tick() runs */
+	const uint32_t sid = 0;
 	struct rte_service_spec *s = rte_service_get_by_id(0);
 	TEST_ASSERT_EQUAL(0, rte_service_start(s),
 			"Starting valid service failed");
-	TEST_ASSERT_EQUAL(-EINVAL, rte_service_enable_on_lcore(s, slcore_id),
+	TEST_ASSERT_EQUAL(-EINVAL, rte_service_map_lcore_set(sid, slcore_id, 1),
 			"Enabling valid service on non-service core must fail");
 
 	/* core start */
@@ -540,7 +543,7 @@ service_lcore_start_stop(void)
 			"Service core start without add should return EINVAL");
 	TEST_ASSERT_EQUAL(0, rte_service_lcore_add(slcore_id),
 			"Service core add did not return zero");
-	TEST_ASSERT_EQUAL(0, rte_service_enable_on_lcore(s, slcore_id),
+	TEST_ASSERT_EQUAL(0, rte_service_map_lcore_set(sid, slcore_id, 1),
 			"Enabling valid service on valid core failed");
 	TEST_ASSERT_EQUAL(0, rte_service_lcore_start(slcore_id),
 			"Service core start after add failed");

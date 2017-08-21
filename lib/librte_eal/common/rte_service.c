@@ -449,7 +449,7 @@ rte_service_start_with_defaults(void)
 		 * should multiplex to a single core, or 1:1 if there are the
 		 * same amount of services as service-cores
 		 */
-		ret = rte_service_enable_on_lcore(s, ids[lcore_iter]);
+		ret = rte_service_map_lcore_set(i, ids[lcore_iter], 1);
 		if (ret)
 			return -ENODEV;
 
@@ -505,28 +505,25 @@ service_update(struct rte_service_spec *service, uint32_t lcore,
 	return 0;
 }
 
-int32_t rte_service_get_enabled_on_lcore(struct rte_service_spec *service,
-					uint32_t lcore)
+int32_t
+rte_service_map_lcore_set(uint32_t id, uint32_t lcore, uint32_t enabled)
 {
+	struct rte_service_spec_impl *s;
+	SERVICE_VALID_GET_OR_ERR_RET(id, s, -EINVAL);
+	uint32_t on = enabled > 0;
+	return service_update(&s->spec, lcore, &on, 0);
+}
+
+int32_t
+rte_service_map_lcore_get(uint32_t id, uint32_t lcore)
+{
+	struct rte_service_spec_impl *s;
+	SERVICE_VALID_GET_OR_ERR_RET(id, s, -EINVAL);
 	uint32_t enabled;
-	int ret = service_update(service, lcore, 0, &enabled);
+	int ret = service_update(&s->spec, lcore, 0, &enabled);
 	if (ret == 0)
 		return enabled;
-	return -EINVAL;
-}
-
-int32_t
-rte_service_enable_on_lcore(struct rte_service_spec *service, uint32_t lcore)
-{
-	uint32_t on = 1;
-	return service_update(service, lcore, &on, 0);
-}
-
-int32_t
-rte_service_disable_on_lcore(struct rte_service_spec *service, uint32_t lcore)
-{
-	uint32_t off = 0;
-	return service_update(service, lcore, &off, 0);
+	return ret;
 }
 
 int32_t rte_service_lcore_reset_all(void)

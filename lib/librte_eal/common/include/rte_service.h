@@ -152,10 +152,10 @@ int32_t rte_service_probe_capability(uint32_t id, uint32_t capability);
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice
  *
- * Enable a core to run a service.
+ * Map or unmap a lcore to a service.
  *
- * Each core can be added or removed from running specific services. This
- * functions adds *lcore* to the set of cores that will run *service*.
+ * Each core can be added or removed from running a specific service. This
+ * function enables or disables *lcore* to run *service_id*.
  *
  * If multiple cores are enabled on a service, an atomic is used to ensure that
  * only one cores runs the service at a time. The exception to this is when
@@ -163,43 +163,30 @@ int32_t rte_service_probe_capability(uint32_t id, uint32_t capability);
  * called RTE_SERVICE_CAP_MT_SAFE. With the multi-thread safe capability set,
  * the service function can be run on multiple threads at the same time.
  *
- * @retval 0 lcore added successfully
+ * @param service_id the service to apply the lcore to
+ * @param lcore The lcore that will be mapped to service
+ * @param enable Zero to unmap or disable the core, non-zero to enable
+ *
+ * @retval 0 lcore map updated successfully
  * @retval -EINVAL An invalid service or lcore was provided.
  */
-int32_t rte_service_enable_on_lcore(struct rte_service_spec *service,
-				   uint32_t lcore);
+int32_t rte_service_map_lcore_set(uint32_t service_id, uint32_t lcore,
+				  uint32_t enable);
 
 /**
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice
  *
- * Disable a core to run a service.
+ * Retrieve the mapping of an lcore to a service.
  *
- * Each core can be added or removed from running specific services. This
- * functions removes *lcore* to the set of cores that will run *service*.
+ * @param service_id the service to apply the lcore to
+ * @param lcore The lcore that will be mapped to service
  *
- * @retval 0 Lcore removed successfully
+ * @retval 1 lcore is mapped to service
+ * @retval 0 lcore is not mapped to service
  * @retval -EINVAL An invalid service or lcore was provided.
  */
-int32_t rte_service_disable_on_lcore(struct rte_service_spec *service,
-				   uint32_t lcore);
-
-/**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
- * Return if an lcore is enabled for the service.
- *
- * This function allows the application to query if *lcore* is currently set to
- * run *service*.
- *
- * @retval 1 Lcore enabled on this lcore
- * @retval 0 Lcore disabled on this lcore
- * @retval -EINVAL An invalid service or lcore was provided.
- */
-int32_t rte_service_get_enabled_on_lcore(struct rte_service_spec *service,
-					uint32_t lcore);
-
+int32_t rte_service_map_lcore_get(uint32_t service_id, uint32_t lcore);
 
 /**
  * @warning
