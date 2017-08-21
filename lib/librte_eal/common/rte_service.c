@@ -163,7 +163,7 @@ service_stats_enabled(struct rte_service_spec_impl *impl)
 static inline int
 service_mt_safe(struct rte_service_spec_impl *s)
 {
-	return s->spec.capabilities & RTE_SERVICE_CAP_MT_SAFE;
+	return !!(s->spec.capabilities & RTE_SERVICE_CAP_MT_SAFE);
 }
 
 int32_t rte_service_set_stats_enable(uint32_t id, int32_t enabled)
@@ -215,7 +215,7 @@ rte_service_probe_capability(uint32_t id, uint32_t capability)
 {
 	struct rte_service_spec_impl *s;
 	SERVICE_VALID_GET_OR_ERR_RET(id, s, -EINVAL);
-	return s->spec.capabilities & capability;
+	return !!(s->spec.capabilities & capability);
 }
 
 int32_t
@@ -476,7 +476,7 @@ service_update(struct rte_service_spec *service, uint32_t lcore,
 	}
 
 	if (enabled)
-		*enabled = (lcore_states[lcore].service_mask & (sid_mask));
+		*enabled = !!(lcore_states[lcore].service_mask & (sid_mask));
 
 	rte_smp_wmb();
 
