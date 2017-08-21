@@ -117,6 +117,19 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* **Service cores API updated for usability**
+
+  The service cores API has been changed, removing pointers from the API
+  where possible, instead using integer IDs to identify each service. This
+  simplifed application code, aids debugging, and provides better
+  encapsulation. A summary of the main changes made is as follows:
+
+  * Services identified by ID not by ``rte_service_spec`` pointer
+  * Reduced API surface by using ``set`` functions instead of enable/disable
+  * Reworked ``rte_service_register`` to provide the service ID to registrar
+  * Rework start and stop APIs into ``rte_service_runstate_set``
+  * Added API to set runstate of service implementation to indicate readyness
+
 
 ABI Changes
 -----------
