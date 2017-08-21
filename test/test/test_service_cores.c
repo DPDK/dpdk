@@ -225,8 +225,8 @@ service_probe_capability(void)
 			"Register of MT SAFE service failed");
 
 	/* verify flag is enabled */
-	struct rte_service_spec *s = rte_service_get_by_id(0);
-	int32_t mt = rte_service_probe_capability(s, RTE_SERVICE_CAP_MT_SAFE);
+	const uint32_t sid = 0;
+	int32_t mt = rte_service_probe_capability(sid, RTE_SERVICE_CAP_MT_SAFE);
 	TEST_ASSERT_EQUAL(1, mt, "MT SAFE capability flag not set.");
 
 
@@ -239,8 +239,7 @@ service_probe_capability(void)
 			"Register of non-MT safe service failed");
 
 	/* verify flag is enabled */
-	s = rte_service_get_by_id(0);
-	mt = rte_service_probe_capability(s, RTE_SERVICE_CAP_MT_SAFE);
+	mt = rte_service_probe_capability(sid, RTE_SERVICE_CAP_MT_SAFE);
 	TEST_ASSERT_EQUAL(0, mt, "MT SAFE cap flag set on non MT SAFE service");
 
 	return unregister_all();

@@ -133,7 +133,7 @@ struct rte_service_spec *rte_service_get_by_name(const char *name);
  * @return A pointer to the name of the service. The returned pointer remains
  *         in ownership of the service, and the application must not free it.
  */
-const char *rte_service_get_name(const struct rte_service_spec *service);
+const char *rte_service_get_name(uint32_t id);
 
 /**
  * @warning
@@ -146,8 +146,7 @@ const char *rte_service_get_name(const struct rte_service_spec *service);
  * @retval 1 Capability supported by this service instance
  * @retval 0 Capability not supported by this service instance
  */
-int32_t rte_service_probe_capability(const struct rte_service_spec *service,
-				     uint32_t capability);
+int32_t rte_service_probe_capability(uint32_t id, uint32_t capability);
 
 /**
  * @warning

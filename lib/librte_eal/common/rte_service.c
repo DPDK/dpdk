@@ -144,6 +144,13 @@ service_valid(uint32_t id)
 	return !!(rte_services[id].internal_flags & SERVICE_F_REGISTERED);
 }
 
+/* validate ID and retrieve service pointer, or return error value */
+#define SERVICE_VALID_GET_OR_ERR_RET(id, service, retval) do {          \
+	if (id >= RTE_SERVICE_NUM_MAX || !service_valid(id))            \
+		return retval;                                          \
+	service = &rte_services[id];                                    \
+} while (0)
+
 /* returns 1 if statistics should be colleced for service
  * Returns 0 if statistics should not be collected for service
  */
@@ -207,16 +214,19 @@ struct rte_service_spec *rte_service_get_by_name(const char *name)
 }
 
 const char *
-rte_service_get_name(const struct rte_service_spec *service)
+rte_service_get_name(uint32_t id)
 {
-	return service->name;
+	struct rte_service_spec_impl *s;
+	SERVICE_VALID_GET_OR_ERR_RET(id, s, 0);
+	return s->spec.name;
 }
 
 int32_t
-rte_service_probe_capability(const struct rte_service_spec *service,
-			     uint32_t capability)
+rte_service_probe_capability(uint32_t id, uint32_t capability)
 {
-	return service->capabilities & capability;
+	struct rte_service_spec_impl *s;
+	SERVICE_VALID_GET_OR_ERR_RET(id, s, -EINVAL);
+	return s->spec.capabilities & capability;
 }
 
 int32_t
