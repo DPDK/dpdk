@@ -166,8 +166,11 @@ dummy_register(void)
 			"Invalid name");
 	snprintf(service.name, sizeof(service.name), DUMMY_SERVICE_NAME);
 
-	TEST_ASSERT_EQUAL(0, rte_service_component_register(&service, NULL),
+	uint32_t id;
+	TEST_ASSERT_EQUAL(0, rte_service_component_register(&service, &id),
 			"Failed to register valid service");
+
+	rte_service_component_runstate_set(id, 1);
 
 	return TEST_SUCCESS;
 }
@@ -470,13 +473,11 @@ service_threaded_test(int mt_safe)
 	if (mt_safe) {
 		service.callback = dummy_mt_safe_cb;
 		service.capabilities |= RTE_SERVICE_CAP_MT_SAFE;
-	} else {
-		/* initialize to pass, see callback comment for details */
-		test_params[1] = 1;
+	} else
 		service.callback = dummy_mt_unsafe_cb;
-	}
 
-	TEST_ASSERT_EQUAL(0, rte_service_component_register(&service, NULL),
+	uint32_t id;
+	TEST_ASSERT_EQUAL(0, rte_service_component_register(&service, &id),
 			"Register of MT SAFE service failed");
 
 	const uint32_t sid = 0;
@@ -494,9 +495,26 @@ service_threaded_test(int mt_safe)
 	rte_service_lcore_stop(slcore_1);
 	rte_service_lcore_stop(slcore_2);
 
+	TEST_ASSERT_EQUAL(0, test_params[1],
+			"Service run with component runstate = 0");
+
+	/* enable backend runstate: the service should run after this */
+	rte_service_component_runstate_set(id, 1);
+
+	/* initialize to pass, see callback comment for details */
+	if (!mt_safe)
+		test_params[1] = 1;
+
+	rte_service_lcore_start(slcore_1);
+	rte_service_lcore_start(slcore_2);
+
+	/* wait for the worker threads to run */
+	rte_delay_ms(500);
+	rte_service_lcore_stop(slcore_1);
+	rte_service_lcore_stop(slcore_2);
+
 	TEST_ASSERT_EQUAL(1, test_params[1],
 			"MT Safe service not run by two cores concurrently");
-
 	TEST_ASSERT_EQUAL(0, rte_service_runstate_set(sid, 0),
 			"Failed to stop MT Safe service");
 

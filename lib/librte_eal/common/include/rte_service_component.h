@@ -135,6 +135,23 @@ int32_t rte_service_start_with_defaults(void);
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice
  *
+ * Set the backend runstate of a component.
+ *
+ * This function allows services to be registered at startup, but not yet
+ * enabled to run by default. When the service has been configured (via the
+ * usual method; eg rte_eventdev_configure, the service can mark itself as
+ * ready to run. The differentiation between backend runstate and
+ * service_runstate is that the backend runstate is set by the service
+ * component while the service runstate is reserved for application usage.
+ *
+ * @retval 0 Success
+ */
+int32_t rte_service_component_runstate_set(uint32_t id, uint32_t runstate);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
  * Initialize the service library.
  *
  * In order to use the service library, it must be initialized. EAL initializes

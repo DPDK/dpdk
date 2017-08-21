@@ -71,7 +71,8 @@ struct rte_service_spec_impl {
 	rte_atomic32_t execute_lock;
 
 	/* API set/get-able variables */
-	int32_t runstate;
+	int8_t app_runstate;
+	int8_t comp_runstate;
 	uint8_t internal_flags;
 
 	/* per service statistics */
@@ -273,15 +274,30 @@ rte_service_component_unregister(uint32_t id)
 }
 
 int32_t
+rte_service_component_runstate_set(uint32_t id, uint32_t runstate)
+{
+	struct rte_service_spec_impl *s;
+	SERVICE_VALID_GET_OR_ERR_RET(id, s, -EINVAL);
+
+	if (runstate)
+		s->comp_runstate = RUNSTATE_RUNNING;
+	else
+		s->comp_runstate = RUNSTATE_STOPPED;
+
+	rte_smp_wmb();
+	return 0;
+}
+
+int32_t
 rte_service_runstate_set(uint32_t id, uint32_t runstate)
 {
 	struct rte_service_spec_impl *s;
 	SERVICE_VALID_GET_OR_ERR_RET(id, s, -EINVAL);
 
 	if (runstate)
-		s->runstate = RUNSTATE_RUNNING;
+		s->app_runstate = RUNSTATE_RUNNING;
 	else
-		s->runstate = RUNSTATE_STOPPED;
+		s->app_runstate = RUNSTATE_STOPPED;
 
 	rte_smp_wmb();
 	return 0;
@@ -292,8 +308,10 @@ rte_service_runstate_get(uint32_t id)
 {
 	struct rte_service_spec_impl *s;
 	SERVICE_VALID_GET_OR_ERR_RET(id, s, -EINVAL);
-
-	return (s->runstate == RUNSTATE_RUNNING) && (s->num_mapped_cores > 0);
+	rte_smp_rmb();
+	return (s->app_runstate == RUNSTATE_RUNNING) &&
+		(s->comp_runstate == RUNSTATE_RUNNING) &&
+		(s->num_mapped_cores > 0);
 }
 
 static inline void
@@ -328,7 +346,8 @@ rte_service_runner_func(void *arg)
 			if (!service_valid(i))
 				continue;
 			struct rte_service_spec_impl *s = &rte_services[i];
-			if (s->runstate != RUNSTATE_RUNNING ||
+			if (s->comp_runstate != RUNSTATE_RUNNING ||
+					s->app_runstate != RUNSTATE_RUNNING ||
 					!(service_mask & (UINT64_C(1) << i)))
 				continue;
 
@@ -609,8 +628,7 @@ rte_service_lcore_stop(uint32_t lcore)
 	for (i = 0; i < RTE_SERVICE_NUM_MAX; i++) {
 		int32_t enabled =
 			lcore_states[i].service_mask & (UINT64_C(1) << i);
-		int32_t service_running = rte_services[i].runstate !=
-						RUNSTATE_STOPPED;
+		int32_t service_running = rte_service_runstate_get(i);
 		int32_t only_core = rte_services[i].num_mapped_cores == 1;
 
 		/* if the core is mapped, and the service is running, and this
