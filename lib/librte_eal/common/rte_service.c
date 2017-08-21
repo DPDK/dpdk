@@ -296,6 +296,23 @@ rte_service_runstate_get(uint32_t id)
 	return (s->runstate == RUNSTATE_RUNNING) && (s->num_mapped_cores > 0);
 }
 
+static inline void
+rte_service_runner_do_callback(struct rte_service_spec_impl *s,
+			       struct core_state *cs, uint32_t service_idx)
+{
+	void *userdata = s->spec.callback_userdata;
+
+	if (service_stats_enabled(s)) {
+		uint64_t start = rte_rdtsc();
+		s->spec.callback(userdata);
+		uint64_t end = rte_rdtsc();
+		s->cycles_spent += end - start;
+		cs->calls_per_service[service_idx]++;
+		s->calls++;
+	} else
+		s->spec.callback(userdata);
+}
+
 static int32_t
 rte_service_runner_func(void *arg)
 {
@@ -315,26 +332,16 @@ rte_service_runner_func(void *arg)
 			/* check do we need cmpset, if MT safe or <= 1 core
 			 * mapped, atomic ops are not required.
 			 */
-			const int need_cmpset = !((service_mt_safe(s) == 0) &&
-						(s->num_mapped_cores > 1));
-			uint32_t *lock = (uint32_t *)&s->execute_lock;
-
-			if (need_cmpset || rte_atomic32_cmpset(lock, 0, 1)) {
-				void *userdata = s->spec.callback_userdata;
-
-				if (service_stats_enabled(s)) {
-					uint64_t start = rte_rdtsc();
-					s->spec.callback(userdata);
-					uint64_t end = rte_rdtsc();
-					s->cycles_spent += end - start;
-					cs->calls_per_service[i]++;
-					s->calls++;
-				} else
-					s->spec.callback(userdata);
-
-				if (need_cmpset)
+			const int use_atomics = (service_mt_safe(s) == 0) &&
+						(s->num_mapped_cores > 1);
+			if (use_atomics) {
+				uint32_t *lock = (uint32_t *)&s->execute_lock;
+				if (rte_atomic32_cmpset(lock, 0, 1)) {
+					rte_service_runner_do_callback(s, cs, i);
 					rte_atomic32_clear(&s->execute_lock);
-			}
+				}
+			} else
+				rte_service_runner_do_callback(s, cs, i);
 		}
 
 		rte_smp_rmb();

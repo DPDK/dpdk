@@ -65,6 +65,13 @@ Resolved Issues
 EAL
 ~~~
 
+* **Service core fails to call service callback due to atomic lock**
+
+  In a specific configuration of multi-thread unsafe services and service
+  cores, a service core previously did not correctly release the atomic lock
+  on the service. This would result in the cores polling the service, but it
+  looked like another thread was executing the service callback. The logic for
+  atomic locking of the services has been fixed and refactored for readability.
 
 Drivers
 ~~~~~~~
