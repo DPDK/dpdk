@@ -617,8 +617,7 @@ sw_start(struct rte_eventdev *dev)
 	struct sw_evdev *sw = sw_pmd_priv(dev);
 
 	/* check a service core is mapped to this service */
-	struct rte_service_spec *s = rte_service_get_by_name(sw->service_name);
-	if (!rte_service_is_running(s))
+	if (!rte_service_runstate_get(sw->service_id))
 		SW_LOG_ERR("Warning: No Service core enabled on service %s\n",
 				sw->service_name);
 

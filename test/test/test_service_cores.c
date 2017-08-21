@@ -278,7 +278,6 @@ static int
 service_start_stop(void)
 {
 	const uint32_t sid = 0;
-	struct rte_service_spec *s = rte_service_get_by_id(0);
 
 	/* runstate_get() returns if service is running and slcore is mapped */
 	TEST_ASSERT_EQUAL(0, rte_service_lcore_add(slcore_id),
@@ -287,19 +286,19 @@ service_start_stop(void)
 	TEST_ASSERT_EQUAL(0, ret,
 			"Enabling service core, expected 0 got %d", ret);
 
-	TEST_ASSERT_EQUAL(0, rte_service_is_running(s),
+	TEST_ASSERT_EQUAL(0, rte_service_runstate_get(sid),
 			"Error: Service should be stopped");
 
-	TEST_ASSERT_EQUAL(0, rte_service_stop(s),
+	TEST_ASSERT_EQUAL(0, rte_service_runstate_set(sid, 0),
 			"Error: Service stopped returned non-zero");
 
-	TEST_ASSERT_EQUAL(0, rte_service_is_running(s),
+	TEST_ASSERT_EQUAL(0, rte_service_runstate_get(sid),
 			"Error: Service is running - should be stopped");
 
-	TEST_ASSERT_EQUAL(0, rte_service_start(s),
+	TEST_ASSERT_EQUAL(0, rte_service_runstate_set(sid, 1),
 			"Error: Service start returned non-zero");
 
-	TEST_ASSERT_EQUAL(1, rte_service_is_running(s),
+	TEST_ASSERT_EQUAL(1, rte_service_runstate_get(sid),
 			"Error: Service is not running");
 
 	return unregister_all();
@@ -478,9 +477,8 @@ service_threaded_test(int mt_safe)
 	TEST_ASSERT_EQUAL(0, rte_service_component_register(&service, NULL),
 			"Register of MT SAFE service failed");
 
-	struct rte_service_spec *s = rte_service_get_by_id(0);
 	const uint32_t sid = 0;
-	TEST_ASSERT_EQUAL(0, rte_service_start(s),
+	TEST_ASSERT_EQUAL(0, rte_service_runstate_set(sid, 1),
 			"Starting valid service failed");
 	TEST_ASSERT_EQUAL(0, rte_service_map_lcore_set(sid, slcore_1, 1),
 			"Failed to enable lcore 1 on mt safe service");
@@ -497,7 +495,7 @@ service_threaded_test(int mt_safe)
 	TEST_ASSERT_EQUAL(1, test_params[1],
 			"MT Safe service not run by two cores concurrently");
 
-	TEST_ASSERT_EQUAL(0, rte_service_stop(s),
+	TEST_ASSERT_EQUAL(0, rte_service_runstate_set(sid, 0),
 			"Failed to stop MT Safe service");
 
 	unregister_all();
@@ -536,8 +534,7 @@ service_lcore_start_stop(void)
 {
 	/* start service core and service, create mapping so tick() runs */
 	const uint32_t sid = 0;
-	struct rte_service_spec *s = rte_service_get_by_id(0);
-	TEST_ASSERT_EQUAL(0, rte_service_start(s),
+	TEST_ASSERT_EQUAL(0, rte_service_runstate_set(sid, 1),
 			"Starting valid service failed");
 	TEST_ASSERT_EQUAL(-EINVAL, rte_service_map_lcore_set(sid, slcore_id, 1),
 			"Enabling valid service on non-service core must fail");

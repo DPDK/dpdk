@@ -217,7 +217,6 @@ EXPERIMENTAL {
 	rte_service_get_by_id;
 	rte_service_get_by_name;
 	rte_service_get_count;
-	rte_service_is_running;
 	rte_service_lcore_add;
 	rte_service_lcore_count;
 	rte_service_lcore_count_services;
@@ -230,10 +229,10 @@ EXPERIMENTAL {
 	rte_service_map_lcore_set;
 	rte_service_probe_capability;
 	rte_service_reset;
+	rte_service_runstate_get;
+	rte_service_runstate_set;
 	rte_service_set_stats_enable;
-	rte_service_start;
 	rte_service_start_with_defaults;
-	rte_service_stop;
 	rte_service_unregister;
 
 } DPDK_17.08;

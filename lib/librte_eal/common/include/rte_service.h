@@ -192,40 +192,31 @@ int32_t rte_service_map_lcore_get(uint32_t service_id, uint32_t lcore);
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice
  *
- * Enable *service* to run.
+ * Set the runstate of the service.
  *
- * This function switches on a service during runtime.
+ * Each service is either running or stopped. Setting a non-zero runstate
+ * enables the service to run, while setting runstate zero disables it.
+ *
+ * @param id The id of the service
+ * @param runstate The run state to apply to the service
+ *
  * @retval 0 The service was successfully started
+ * @retval -EINVAL Invalid service id
  */
-int32_t rte_service_start(struct rte_service_spec *service);
+int32_t rte_service_runstate_set(uint32_t id, uint32_t runstate);
 
 /**
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice
  *
- * Disable *service*.
+ * Get the runstate for the service with *id*. See *rte_service_runstate_set*
+ * for details of runstates.
  *
- * Switch off a service, so it is not run until it is *rte_service_start* is
- * called on it.
- * @retval 0 Service successfully switched off
+ * @retval 1 Service is running
+ * @retval 0 Service is stopped
+ * @retval -EINVAL Invalid service id
  */
-int32_t rte_service_stop(struct rte_service_spec *service);
-
-/**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
- * Returns if *service* is currently running.
- *
- * This function returns true if the service has been started using
- * *rte_service_start*, AND a service core is mapped to the service. This
- * function can be used to ensure that the service will be run.
- *
- * @retval 1 Service is currently running, and has a service lcore mapped
- * @retval 0 Service is currently stopped, or no service lcore is mapped
- * @retval -EINVAL Invalid service pointer provided
- */
-int32_t rte_service_is_running(const struct rte_service_spec *service);
+int32_t rte_service_runstate_get(uint32_t id);
 
 /**
  * @warning

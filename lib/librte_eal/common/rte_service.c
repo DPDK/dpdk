@@ -230,18 +230,6 @@ rte_service_probe_capability(uint32_t id, uint32_t capability)
 }
 
 int32_t
-rte_service_is_running(const struct rte_service_spec *spec)
-{
-	const struct rte_service_spec_impl *impl =
-		(const struct rte_service_spec_impl *)spec;
-	if (!impl)
-		return -EINVAL;
-
-	return (impl->runstate == RUNSTATE_RUNNING) &&
-		(impl->num_mapped_cores > 0);
-}
-
-int32_t
 rte_service_component_register(const struct rte_service_spec *spec,
 			       uint32_t *id_ptr)
 {
@@ -309,23 +297,27 @@ rte_service_unregister(struct rte_service_spec *spec)
 }
 
 int32_t
-rte_service_start(struct rte_service_spec *service)
+rte_service_runstate_set(uint32_t id, uint32_t runstate)
 {
-	struct rte_service_spec_impl *s =
-		(struct rte_service_spec_impl *)service;
-	s->runstate = RUNSTATE_RUNNING;
+	struct rte_service_spec_impl *s;
+	SERVICE_VALID_GET_OR_ERR_RET(id, s, -EINVAL);
+
+	if (runstate)
+		s->runstate = RUNSTATE_RUNNING;
+	else
+		s->runstate = RUNSTATE_STOPPED;
+
 	rte_smp_wmb();
 	return 0;
 }
 
 int32_t
-rte_service_stop(struct rte_service_spec *service)
+rte_service_runstate_get(uint32_t id)
 {
-	struct rte_service_spec_impl *s =
-		(struct rte_service_spec_impl *)service;
-	s->runstate = RUNSTATE_STOPPED;
-	rte_smp_wmb();
-	return 0;
+	struct rte_service_spec_impl *s;
+	SERVICE_VALID_GET_OR_ERR_RET(id, s, -EINVAL);
+
+	return (s->runstate == RUNSTATE_RUNNING) && (s->num_mapped_cores > 0);
 }
 
 static int32_t
@@ -461,7 +453,7 @@ rte_service_start_with_defaults(void)
 		if (lcore_iter >= lcore_count)
 			lcore_iter = 0;
 
-		ret = rte_service_start(s);
+		ret = rte_service_runstate_set(i, 1);
 		if (ret)
 			return -ENOEXEC;
 	}
