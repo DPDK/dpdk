@@ -550,7 +550,8 @@ rte_service_lcore_add(uint32_t lcore)
 	lcore_states[lcore].runstate = RUNSTATE_STOPPED;
 
 	rte_smp_wmb();
-	return 0;
+
+	return rte_eal_wait_lcore(lcore);
 }
 
 int32_t
