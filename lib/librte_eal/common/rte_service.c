@@ -323,7 +323,10 @@ rte_service_runner_func(void *arg)
 
 	while (lcore_states[lcore].runstate == RUNSTATE_RUNNING) {
 		const uint64_t service_mask = cs->service_mask;
-		for (i = 0; i < rte_service_count; i++) {
+
+		for (i = 0; i < RTE_SERVICE_NUM_MAX; i++) {
+			if (!service_valid(i))
+				continue;
 			struct rte_service_spec_impl *s = &rte_services[i];
 			if (s->runstate != RUNSTATE_RUNNING ||
 					!(service_mask & (UINT64_C(1) << i)))
@@ -668,7 +671,8 @@ int32_t rte_service_dump(FILE *f, uint32_t id)
 	int print_one = (id != UINT32_MAX);
 
 	uint64_t total_cycles = 0;
-	for (i = 0; i < rte_service_count; i++) {
+
+	for (i = 0; i < RTE_SERVICE_NUM_MAX; i++) {
 		if (!service_valid(i))
 			continue;
 		total_cycles += rte_services[i].cycles_spent;
@@ -686,7 +690,9 @@ int32_t rte_service_dump(FILE *f, uint32_t id)
 
 	/* print all services, as UINT32_MAX was passed as id */
 	fprintf(f, "Services Summary\n");
-	for (i = 0; i < rte_service_count; i++) {
+	for (i = 0; i < RTE_SERVICE_NUM_MAX; i++) {
+		if (!service_valid(i))
+			continue;
 		uint32_t reset = 1;
 		rte_service_dump_one(f, &rte_services[i], total_cycles, reset);
 	}
