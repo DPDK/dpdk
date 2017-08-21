@@ -1559,9 +1559,6 @@ lio_dev_close(struct rte_eth_dev *eth_dev)
 		rte_write32(pkt_count, droq->pkts_sent_reg);
 	}
 
-	/* Do FLR for the VF */
-	cn23xx_vf_ask_pf_to_do_flr(lio_dev);
-
 	/* lio_free_mbox */
 	lio_dev->fn_list.free_mbox(lio_dev);
 
@@ -1928,11 +1925,6 @@ lio_first_time_init(struct lio_device *lio_dev,
 	/* Do handshake and exit if incompatible PF driver */
 	if (cn23xx_pfvf_handshake(lio_dev))
 		goto error;
-
-	/* Initial reset */
-	cn23xx_vf_ask_pf_to_do_flr(lio_dev);
-	/* Wait for FLR for 100ms per SRIOV specification */
-	rte_delay_ms(100);
 
 	if (cn23xx_vf_set_io_queues_off(lio_dev)) {
 		lio_dev_err(lio_dev, "Setting io queues off failed\n");
