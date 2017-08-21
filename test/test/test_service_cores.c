@@ -178,9 +178,13 @@ service_get_by_name(void)
 {
 	unregister_all();
 
-	/* ensure with no services registered returns NULL */
-	TEST_ASSERT_EQUAL(0, rte_service_get_by_name(DUMMY_SERVICE_NAME),
-			"Service get by name should return NULL");
+	uint32_t sid;
+	TEST_ASSERT_EQUAL(-ENODEV,
+			rte_service_get_by_name(DUMMY_SERVICE_NAME, &sid),
+			"get by name with invalid name should return -ENODEV");
+	TEST_ASSERT_EQUAL(-EINVAL,
+			rte_service_get_by_name(DUMMY_SERVICE_NAME, 0x0),
+			"get by name with NULL ptr should return -ENODEV");
 
 	/* register service */
 	struct rte_service_spec service;
@@ -196,16 +200,19 @@ service_get_by_name(void)
 	TEST_ASSERT_EQUAL(0, rte_service_component_register(&service, NULL),
 			"Failed to register valid service");
 
-	/* ensure with dummy services registered returns same ptr as ID */
-	struct rte_service_spec *s_by_id = rte_service_get_by_id(0);
-	TEST_ASSERT_EQUAL(s_by_id, rte_service_get_by_name(DUMMY_SERVICE_NAME),
-			"Service get_by_name should equal get_by_id()");
+	/* we unregistered all service, now registering 1, should be id 0 */
+	uint32_t service_id_as_expected = 0;
+	TEST_ASSERT_EQUAL(0, rte_service_get_by_name(DUMMY_SERVICE_NAME, &sid),
+			"Service get_by_name should return 0 on valid inputs");
+	TEST_ASSERT_EQUAL(service_id_as_expected, sid,
+			"Service get_by_name should equal expected id");
 
 	unregister_all();
 
 	/* ensure after unregister, get_by_name returns NULL */
-	TEST_ASSERT_EQUAL(0, rte_service_get_by_name(DUMMY_SERVICE_NAME),
-			"get by name should return NULL after unregister");
+	TEST_ASSERT_EQUAL(-ENODEV,
+			rte_service_get_by_name(DUMMY_SERVICE_NAME, &sid),
+			"get by name should return -ENODEV after unregister");
 
 	return TEST_SUCCESS;
 }
@@ -249,9 +256,8 @@ service_probe_capability(void)
 static int
 service_name(void)
 {
-	struct rte_service_spec *service = rte_service_get_by_id(0);
-
-	int equal = strcmp(service->name, DUMMY_SERVICE_NAME);
+	const char *name = rte_service_get_name(0);
+	int equal = strcmp(name, DUMMY_SERVICE_NAME);
 	TEST_ASSERT_EQUAL(0, equal, "Error: Service name not correct");
 
 	return unregister_all();

@@ -61,9 +61,6 @@ extern "C" {
 
 #include <rte_lcore.h>
 
-/* forward declaration only. Definition in rte_service_private.h */
-struct rte_service_spec;
-
 #define RTE_SERVICE_NAME_MAX 32
 
 /* Capabilities of a service.
@@ -89,40 +86,32 @@ struct rte_service_spec;
  */
 uint32_t rte_service_get_count(void);
 
-
 /**
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice
  *
- * Return the specification of a service by integer id.
+ * Return the id of a service by name.
  *
- * This function provides the specification of a service. This can be used by
- * the application to understand what the service represents. The service
- * must not be modified by the application directly, only passed to the various
- * rte_service_* functions.
+ * This function provides the id of the service using the service name as
+ * lookup key. The service id is to be passed to other functions in the
+ * rte_service_* API.
  *
- * @param id The integer id of the service to retrieve
- * @retval non-zero A valid pointer to the service_spec
- * @retval NULL Invalid *id* provided.
- */
-struct rte_service_spec *rte_service_get_by_id(uint32_t id);
-
-/**
- * @warning
- * @b EXPERIMENTAL: this API may change without prior notice
- *
- * Return the specification of a service by name.
- *
- * This function provides the specification of a service using the service name
- * as lookup key. This can be used by the application to understand what the
- * service represents. The service must not be modified by the application
- * directly, only passed to the various rte_service_* functions.
+ * Example usage:
+ * @code
+ *      uint32_t service_id;
+ *      int32_t ret = rte_service_get_by_name("service_X", &service_id);
+ *      if (ret) {
+ *              // handle error
+ *      }
+ * @endcode
  *
  * @param name The name of the service to retrieve
- * @retval non-zero A valid pointer to the service_spec
- * @retval NULL Invalid *name* provided.
+ * @param[out] service_id A pointer to a uint32_t, to be filled in with the id.
+ * @retval 0 Success. The service id is provided in *service_id*.
+ * @retval -EINVAL Null *service_id* pointer provided
+ * @retval -ENODEV No such service registered
  */
-struct rte_service_spec *rte_service_get_by_name(const char *name);
+int32_t rte_service_get_by_name(const char *name, uint32_t *service_id);
 
 /**
  * @warning

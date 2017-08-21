@@ -218,6 +218,7 @@ EXPERIMENTAL {
 	rte_service_get_by_id;
 	rte_service_get_by_name;
 	rte_service_get_count;
+	rte_service_get_name;
 	rte_service_lcore_add;
 	rte_service_lcore_count;
 	rte_service_lcore_count_services;

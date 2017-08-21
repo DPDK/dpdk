@@ -185,29 +185,21 @@ rte_service_get_count(void)
 	return rte_service_count;
 }
 
-struct rte_service_spec *
-rte_service_get_by_id(uint32_t id)
+int32_t rte_service_get_by_name(const char *name, uint32_t *service_id)
 {
-	struct rte_service_spec *service = NULL;
-	if (id < rte_service_count)
-		service = (struct rte_service_spec *)&rte_services[id];
+	if (!service_id)
+		return -EINVAL;
 
-	return service;
-}
-
-struct rte_service_spec *rte_service_get_by_name(const char *name)
-{
-	struct rte_service_spec *service = NULL;
 	int i;
 	for (i = 0; i < RTE_SERVICE_NUM_MAX; i++) {
 		if (service_valid(i) &&
 				strcmp(name, rte_services[i].spec.name) == 0) {
-			service = (struct rte_service_spec *)&rte_services[i];
-			break;
+			*service_id = i;
+			return 0;
 		}
 	}
 
-	return service;
+	return -ENODEV;
 }
 
 const char *
@@ -420,10 +412,6 @@ rte_service_start_with_defaults(void)
 		rte_service_lcore_start(ids[i]);
 
 	for (i = 0; i < count; i++) {
-		struct rte_service_spec *s = rte_service_get_by_id(i);
-		if (!s)
-			return -EINVAL;
-
 		/* do 1:1 core mapping here, with each service getting
 		 * assigned a single core by default. Adding multiple services
 		 * should multiplex to a single core, or 1:1 if there are the
