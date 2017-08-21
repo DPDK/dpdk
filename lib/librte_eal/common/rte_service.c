@@ -703,7 +703,7 @@ int32_t rte_service_dump(FILE *f, uint32_t id)
 		if (lcore_config[i].core_role != ROLE_SERVICE)
 			continue;
 
-		uint32_t reset = 0;
+		uint32_t reset = 1;
 		service_dump_calls_per_lcore(f, i, reset);
 	}
 
