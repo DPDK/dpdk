@@ -83,7 +83,7 @@ struct virtnet_ctl {
 	const struct rte_memzone *virtio_net_hdr_mz;
 	phys_addr_t virtio_net_hdr_mem; /**< hdr for each xmit packet */
 	uint16_t port_id;               /**< Device port identifier. */
-	const struct rte_memzone *mz;   /**< mem zone to populate RX ring. */
+	const struct rte_memzone *mz;   /**< mem zone to populate CTL ring. */
 };
 
 int virtio_rxq_vec_setup(struct virtnet_rx *rxvq);
