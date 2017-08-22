@@ -2707,6 +2707,10 @@ ixgbe_flow_create(struct rte_eth_dev *dev,
 		if (!ret) {
 			ntuple_filter_ptr = rte_zmalloc("ixgbe_ntuple_filter",
 				sizeof(struct ixgbe_ntuple_filter_ele), 0);
+			if (!ntuple_filter_ptr) {
+				PMD_DRV_LOG(ERR, "failed to allocate memory");
+				goto out;
+			}
 			(void)rte_memcpy(&ntuple_filter_ptr->filter_info,
 				&ntuple_filter,
 				sizeof(struct rte_eth_ntuple_filter));
@@ -2729,6 +2733,10 @@ ixgbe_flow_create(struct rte_eth_dev *dev,
 			ethertype_filter_ptr = rte_zmalloc(
 				"ixgbe_ethertype_filter",
 				sizeof(struct ixgbe_ethertype_filter_ele), 0);
+			if (!ethertype_filter_ptr) {
+				PMD_DRV_LOG(ERR, "failed to allocate memory");
+				goto out;
+			}
 			(void)rte_memcpy(&ethertype_filter_ptr->filter_info,
 				&ethertype_filter,
 				sizeof(struct rte_eth_ethertype_filter));
@@ -2749,6 +2757,10 @@ ixgbe_flow_create(struct rte_eth_dev *dev,
 		if (!ret) {
 			syn_filter_ptr = rte_zmalloc("ixgbe_syn_filter",
 				sizeof(struct ixgbe_eth_syn_filter_ele), 0);
+			if (!syn_filter_ptr) {
+				PMD_DRV_LOG(ERR, "failed to allocate memory");
+				goto out;
+			}
 			(void)rte_memcpy(&syn_filter_ptr->filter_info,
 				&syn_filter,
 				sizeof(struct rte_eth_syn_filter));
@@ -2809,6 +2821,10 @@ ixgbe_flow_create(struct rte_eth_dev *dev,
 			if (!ret) {
 				fdir_rule_ptr = rte_zmalloc("ixgbe_fdir_filter",
 					sizeof(struct ixgbe_fdir_rule_ele), 0);
+				if (!fdir_rule_ptr) {
+					PMD_DRV_LOG(ERR, "failed to allocate memory");
+					goto out;
+				}
 				(void)rte_memcpy(&fdir_rule_ptr->filter_info,
 					&fdir_rule,
 					sizeof(struct ixgbe_fdir_rule));
@@ -2842,6 +2858,10 @@ ixgbe_flow_create(struct rte_eth_dev *dev,
 		if (!ret) {
 			l2_tn_filter_ptr = rte_zmalloc("ixgbe_l2_tn_filter",
 				sizeof(struct ixgbe_eth_l2_tunnel_conf_ele), 0);
+			if (!l2_tn_filter_ptr) {
+				PMD_DRV_LOG(ERR, "failed to allocate memory");
+				goto out;
+			}
 			(void)rte_memcpy(&l2_tn_filter_ptr->filter_info,
 				&l2_tn_filter,
 				sizeof(struct rte_eth_l2_tunnel_conf));
