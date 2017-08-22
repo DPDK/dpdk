@@ -1736,6 +1736,8 @@ nfp_net_rx_cksum(struct nfp_net_rxq *rxq, struct nfp_net_rx_desc *rxd,
 #define NFP_HASH_OFFSET      ((uint8_t *)mbuf->buf_addr + mbuf->data_off - 4)
 #define NFP_HASH_TYPE_OFFSET ((uint8_t *)mbuf->buf_addr + mbuf->data_off - 8)
 
+#define NFP_DESC_META_LEN(d) (d->rxd.meta_len_dd & PCIE_DESC_RX_META_LEN_MASK)
+
 /*
  * nfp_net_set_hash - Set mbuf hash data
  *
@@ -1746,18 +1748,57 @@ static inline void
 nfp_net_set_hash(struct nfp_net_rxq *rxq, struct nfp_net_rx_desc *rxd,
 		 struct rte_mbuf *mbuf)
 {
-	uint32_t hash;
-	uint32_t hash_type;
 	struct nfp_net_hw *hw = rxq->hw;
+	uint8_t *meta_offset;
+	uint32_t meta_info;
+	uint32_t hash = 0;
+	uint32_t hash_type = 0;
 
 	if (!(hw->ctrl & NFP_NET_CFG_CTRL_RSS))
 		return;
 
-	if (!(rxd->rxd.flags & PCIE_DESC_RX_RSS))
-		return;
+	if (NFD_CFG_MAJOR_VERSION_of(hw->ver) <= 3) {
+		if (!(rxd->rxd.flags & PCIE_DESC_RX_RSS))
+			return;
 
-	hash = rte_be_to_cpu_32(*(uint32_t *)NFP_HASH_OFFSET);
-	hash_type = rte_be_to_cpu_32(*(uint32_t *)NFP_HASH_TYPE_OFFSET);
+		hash = rte_be_to_cpu_32(*(uint32_t *)NFP_HASH_OFFSET);
+		hash_type = rte_be_to_cpu_32(*(uint32_t *)NFP_HASH_TYPE_OFFSET);
+
+	} else if (NFP_DESC_META_LEN(rxd)) {
+		/*
+		 * new metadata api:
+		 * <----  32 bit  ----->
+		 * m    field type word
+		 * e     data field #2
+		 * t     data field #1
+		 * a     data field #0
+		 * ====================
+		 *    packet data
+		 *
+		 * Field type word contains up to 8 4bit field types
+		 * A 4bit field type refers to a data field word
+		 * A data field word can have several 4bit field types
+		 */
+		meta_offset = rte_pktmbuf_mtod(mbuf, uint8_t *);
+		meta_offset -= NFP_DESC_META_LEN(rxd);
+		meta_info = rte_be_to_cpu_32(*(uint32_t *)meta_offset);
+		meta_offset += 4;
+		/* NFP PMD just supports metadata for hashing */
+		switch (meta_info & NFP_NET_META_FIELD_MASK) {
+		case NFP_NET_META_HASH:
+			/* next field type is about the hash type */
+			meta_info >>= NFP_NET_META_FIELD_SIZE;
+			/* hash value is in the data field */
+			hash = rte_be_to_cpu_32(*(uint32_t *)meta_offset);
+			hash_type = meta_info & NFP_NET_META_FIELD_MASK;
+			break;
+		default:
+			/* Unsupported metadata can be a performance issue */
+			return;
+		}
+	} else {
+		return;
+	}
 
 	mbuf->hash.rss = hash;
 	mbuf->ol_flags |= PKT_RX_RSS_HASH;
