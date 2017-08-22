@@ -2110,7 +2110,7 @@ nfp_net_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		 */
 		pkt_size = pkt->pkt_len;
 
-		while (pkt_size) {
+		while (pkt) {
 			/* Copying TSO, VLAN and cksum info */
 			*txds = txd;
 
@@ -2142,13 +2142,13 @@ nfp_net_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 				txq->wr_p = 0;
 
 			pkt_size -= dma_size;
-			if (!pkt_size) {
+			if (!pkt_size)
 				/* End of packet */
 				txds->offset_eop |= PCIE_DESC_TX_EOP;
-			} else {
+			else
 				txds->offset_eop &= PCIE_DESC_TX_OFFSET_MASK;
-				pkt = pkt->next;
-			}
+
+			pkt = pkt->next;
 			/* Referencing next free TX descriptor */
 			txds = &txq->txds[txq->wr_p];
 			lmbuf = &txq->txbufs[txq->wr_p].mbuf;
