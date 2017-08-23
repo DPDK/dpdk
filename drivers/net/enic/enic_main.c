@@ -368,6 +368,7 @@ enic_alloc_consistent(void *priv, size_t size,
 		pr_err("%s : Failed to allocate memory for memzone list\n",
 		       __func__);
 		rte_memzone_free(rz);
+		return NULL;
 	}
 
 	mze->rz = rz;
