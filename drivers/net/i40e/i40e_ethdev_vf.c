@@ -430,9 +430,7 @@ i40evf_check_api_version(struct rte_eth_dev *dev)
 	pver = (struct virtchnl_version_info *)args.out_buffer;
 	vf->version_major = pver->major;
 	vf->version_minor = pver->minor;
-	if (vf->version_major == I40E_DPDK_VERSION_MAJOR)
-		PMD_DRV_LOG(INFO, "Peer is DPDK PF host");
-	else if ((vf->version_major == VIRTCHNL_VERSION_MAJOR) &&
+	if ((vf->version_major == VIRTCHNL_VERSION_MAJOR) &&
 		(vf->version_minor <= VIRTCHNL_VERSION_MINOR))
 		PMD_DRV_LOG(INFO, "Peer is Linux PF host");
 	else {
@@ -653,14 +651,10 @@ i40evf_config_irq_map(struct rte_eth_dev *dev)
 	uint32_t vector_id;
 	int i, err;
 
-	if (rte_intr_allow_others(intr_handle)) {
-		if (vf->version_major == I40E_DPDK_VERSION_MAJOR)
-			vector_id = I40EVF_VSI_DEFAULT_MSIX_INTR;
-		else
-			vector_id = I40EVF_VSI_DEFAULT_MSIX_INTR_LNX;
-	} else {
+	if (rte_intr_allow_others(intr_handle))
+		vector_id = I40EVF_VSI_DEFAULT_MSIX_INTR_LNX;
+	else
 		vector_id = I40E_MISC_VEC_ID;
-	}
 
 	map_info = (struct virtchnl_irq_map_info *)cmd_buffer;
 	map_info->num_vectors = 1;
@@ -1204,15 +1198,12 @@ i40evf_init_vf(struct rte_eth_dev *dev)
 	else
 		eth_random_addr(hw->mac.addr); /* Generate a random one */
 
-	/* If the PF host is not DPDK, set the interval of ITR0 to max*/
-	if (vf->version_major != I40E_DPDK_VERSION_MAJOR) {
-		I40E_WRITE_REG(hw, I40E_VFINT_DYN_CTL01,
-			       (I40E_ITR_INDEX_DEFAULT <<
-				I40E_VFINT_DYN_CTL0_ITR_INDX_SHIFT) |
-			       (interval <<
-				I40E_VFINT_DYN_CTL0_INTERVAL_SHIFT));
-		I40EVF_WRITE_FLUSH(hw);
-	}
+	I40E_WRITE_REG(hw, I40E_VFINT_DYN_CTL01,
+		       (I40E_ITR_INDEX_DEFAULT <<
+			I40E_VFINT_DYN_CTL0_ITR_INDX_SHIFT) |
+		       (interval <<
+			I40E_VFINT_DYN_CTL0_INTERVAL_SHIFT));
+	I40EVF_WRITE_FLUSH(hw);
 
 	return 0;
 
@@ -1768,7 +1759,6 @@ i40evf_tx_init(struct rte_eth_dev *dev)
 static inline void
 i40evf_enable_queues_intr(struct rte_eth_dev *dev)
 {
-	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
@@ -1783,25 +1773,12 @@ i40evf_enable_queues_intr(struct rte_eth_dev *dev)
 		return;
 	}
 
-	if (vf->version_major == I40E_DPDK_VERSION_MAJOR)
-		/* To support DPDK PF host */
-		I40E_WRITE_REG(hw,
-			I40E_VFINT_DYN_CTLN1(I40EVF_VSI_DEFAULT_MSIX_INTR - 1),
-			I40E_VFINT_DYN_CTLN1_INTENA_MASK |
-			I40E_VFINT_DYN_CTLN_CLEARPBA_MASK);
-	/* If host driver is kernel driver, do nothing.
-	 * Interrupt 0 is used for rx packets, but don't set
-	 * I40E_VFINT_DYN_CTL01,
-	 * because it is already done in i40evf_enable_irq0.
-	 */
-
 	I40EVF_WRITE_FLUSH(hw);
 }
 
 static inline void
 i40evf_disable_queues_intr(struct rte_eth_dev *dev)
 {
-	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
@@ -1812,17 +1789,6 @@ i40evf_disable_queues_intr(struct rte_eth_dev *dev)
 		I40EVF_WRITE_FLUSH(hw);
 		return;
 	}
-
-	if (vf->version_major == I40E_DPDK_VERSION_MAJOR)
-		I40E_WRITE_REG(hw,
-			       I40E_VFINT_DYN_CTLN1(I40EVF_VSI_DEFAULT_MSIX_INTR
-						    - 1),
-			       0);
-	/* If host driver is kernel driver, do nothing.
-	 * Interrupt 0 is used for rx packets, but don't zero
-	 * I40E_VFINT_DYN_CTL01,
-	 * because interrupt 0 is also used for adminq processing.
-	 */
 
 	I40EVF_WRITE_FLUSH(hw);
 }

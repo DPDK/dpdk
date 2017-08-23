@@ -34,15 +34,6 @@
 #ifndef _I40E_PF_H_
 #define _I40E_PF_H_
 
-/* VERSION info to exchange between VF and PF host. In case VF works with
- *  ND kernel driver, it reads VIRTCHNL_VERSION_MAJOR/MINOR. In
- *  case works with DPDK host, it reads version below. Then VF realize who it
- *  is talking to and use proper language to communicate.
- * */
-#define I40E_DPDK_SIGNATURE     ('D' << 24 | 'P' << 16 | 'D' << 8 | 'K')
-#define I40E_DPDK_VERSION_MAJOR I40E_DPDK_SIGNATURE
-#define I40E_DPDK_VERSION_MINOR 0
-
 /* Default setting on number of VSIs that VF can contain */
 #define I40E_DEFAULT_VF_VSI_NUM 1
 
