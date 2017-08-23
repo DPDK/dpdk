@@ -1540,7 +1540,6 @@ void
 priv_select_rx_function(struct priv *priv)
 {
 	if (priv_check_vec_rx_support(priv) > 0) {
-		priv_prep_vec_rx_function(priv);
 		priv->dev->rx_pkt_burst = mlx5_rx_burst_vec;
 		DEBUG("selected RX vectorized function");
 	} else {

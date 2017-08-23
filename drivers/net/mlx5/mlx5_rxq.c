@@ -711,6 +711,27 @@ rxq_alloc_elts(struct rxq_ctrl *rxq_ctrl, unsigned int elts_n)
 		};
 		(*rxq_ctrl->rxq.elts)[i] = buf;
 	}
+	if (rxq_check_vec_support(&rxq_ctrl->rxq) > 0) {
+		struct rxq *rxq = &rxq_ctrl->rxq;
+		struct rte_mbuf *mbuf_init = &rxq->fake_mbuf;
+
+		assert(rxq->elts_n == rxq->cqe_n);
+		/* Initialize default rearm_data for vPMD. */
+		mbuf_init->data_off = RTE_PKTMBUF_HEADROOM;
+		rte_mbuf_refcnt_set(mbuf_init, 1);
+		mbuf_init->nb_segs = 1;
+		mbuf_init->port = rxq->port_id;
+		/*
+		 * prevent compiler reordering:
+		 * rearm_data covers previous fields.
+		 */
+		rte_compiler_barrier();
+		rxq->mbuf_initializer = *(uint64_t *)&mbuf_init->rearm_data;
+		/* Padding with a fake mbuf for vectorized Rx. */
+		for (i = 0; i < MLX5_VPMD_DESCS_PER_LOOP; ++i)
+			(*rxq->elts)[elts_n + i] = &rxq->fake_mbuf;
+		rxq->trim_elts = 1;
+	}
 	DEBUG("%p: allocated and configured %u segments (max %u packets)",
 	      (void *)rxq_ctrl, elts_n, elts_n / (1 << rxq_ctrl->rxq.sges_n));
 	assert(ret == 0);
@@ -791,9 +812,11 @@ rxq_setup(struct rxq_ctrl *tmpl)
 	struct ibv_cq *ibcq = tmpl->cq;
 	struct ibv_mlx5_cq_info cq_info;
 	struct mlx5_rwq *rwq = container_of(tmpl->wq, struct mlx5_rwq, wq);
-	struct rte_mbuf *(*elts)[1 << tmpl->rxq.elts_n] =
+	const uint16_t desc_n =
+		(1 << tmpl->rxq.elts_n) + tmpl->priv->rx_vec_en *
+		MLX5_VPMD_DESCS_PER_LOOP;
+	struct rte_mbuf *(*elts)[desc_n] =
 		rte_calloc_socket("RXQ", 1, sizeof(*elts), 0, tmpl->socket);
-
 	if (ibv_mlx5_exp_get_cq_info(ibcq, &cq_info)) {
 		ERROR("Unable to query CQ info. check your OFED.");
 		return ENOTSUP;
@@ -863,7 +886,9 @@ rxq_ctrl_setup(struct rte_eth_dev *dev, struct rxq_ctrl *rxq_ctrl,
 	} attr;
 	unsigned int mb_len = rte_pktmbuf_data_room_size(mp);
 	unsigned int cqe_n = desc - 1;
-	struct rte_mbuf *(*elts)[desc] = NULL;
+	const uint16_t desc_n =
+		desc + priv->rx_vec_en * MLX5_VPMD_DESCS_PER_LOOP;
+	struct rte_mbuf *(*elts)[desc_n] = NULL;
 	int ret = 0;
 
 	(void)conf; /* Thresholds configuration (ignored). */
@@ -1114,7 +1139,8 @@ mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	struct priv *priv = dev->data->dev_private;
 	struct rxq *rxq = (*priv->rxqs)[idx];
 	struct rxq_ctrl *rxq_ctrl = container_of(rxq, struct rxq_ctrl, rxq);
-	const uint16_t desc_pad = MLX5_VPMD_DESCS_PER_LOOP; /* For vPMD. */
+	const uint16_t desc_n =
+		desc + priv->rx_vec_en * MLX5_VPMD_DESCS_PER_LOOP;
 	int ret;
 
 	if (mlx5_is_secondary())
@@ -1147,9 +1173,8 @@ mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		/* Resize if rxq size is changed. */
 		if (rxq_ctrl->rxq.elts_n != log2above(desc)) {
 			rxq_ctrl = rte_realloc(rxq_ctrl,
-					       sizeof(*rxq_ctrl) +
-					       (desc + desc_pad) *
-						sizeof(struct rte_mbuf *),
+					       sizeof(*rxq_ctrl) + desc_n *
+					       sizeof(struct rte_mbuf *),
 					       RTE_CACHE_LINE_SIZE);
 			if (!rxq_ctrl) {
 				ERROR("%p: unable to reallocate queue index %u",
@@ -1160,8 +1185,8 @@ mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		}
 	} else {
 		rxq_ctrl = rte_calloc_socket("RXQ", 1, sizeof(*rxq_ctrl) +
-					     (desc + desc_pad) *
-					      sizeof(struct rte_mbuf *),
+					     desc_n *
+					     sizeof(struct rte_mbuf *),
 					     0, socket);
 		if (rxq_ctrl == NULL) {
 			ERROR("%p: unable to allocate queue index %u",

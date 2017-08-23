@@ -348,7 +348,6 @@ int priv_check_raw_vec_tx_support(struct priv *);
 int priv_check_vec_tx_support(struct priv *);
 int rxq_check_vec_support(struct rxq *);
 int priv_check_vec_rx_support(struct priv *);
-void priv_prep_vec_rx_function(struct priv *);
 uint16_t mlx5_tx_burst_raw_vec(void *, struct rte_mbuf **, uint16_t);
 uint16_t mlx5_tx_burst_vec(void *, struct rte_mbuf **, uint16_t);
 uint16_t mlx5_rx_burst_vec(void *, struct rte_mbuf **, uint16_t);

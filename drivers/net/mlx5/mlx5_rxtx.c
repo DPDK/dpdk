@@ -2028,9 +2028,3 @@ priv_check_vec_rx_support(struct priv *priv)
 	(void)priv;
 	return -ENOTSUP;
 }
-
-void __attribute__((weak))
-priv_prep_vec_rx_function(struct priv *priv)
-{
-	(void)priv;
-}
