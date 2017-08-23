@@ -220,10 +220,10 @@ extern int mac_from_arg;
  * dev:   (struct rte_eth_dev *), fail-safe ethdev
  * state: (enum dev_state), minimum acceptable device state
  */
-#define FOREACH_SUBDEV_STATE(s, i, dev, state)				\
-	for (i = fs_find_next((dev), 0, state);				\
-	     i < PRIV(dev)->subs_tail && (s = &PRIV(dev)->subs[i]);	\
-	     i = fs_find_next((dev), i + 1, state))
+#define FOREACH_SUBDEV_STATE(s, i, dev, state)		\
+	for (s = fs_find_next((dev), 0, state, &i);	\
+	     s != NULL;					\
+	     s = fs_find_next((dev), i + 1, state, &i))
 
 /**
  * Iterator construct over fail-safe sub-devices:
@@ -294,18 +294,26 @@ extern int mac_from_arg;
 
 /* inlined functions */
 
-static inline uint8_t
-fs_find_next(struct rte_eth_dev *dev, uint8_t sid,
-		enum dev_state min_state)
+static inline struct sub_device *
+fs_find_next(struct rte_eth_dev *dev,
+	     uint8_t sid,
+	     enum dev_state min_state,
+	     uint8_t *sid_out)
 {
-	while (sid < PRIV(dev)->subs_tail) {
-		if (PRIV(dev)->subs[sid].state >= min_state)
+	struct sub_device *subs;
+	uint8_t tail;
+
+	subs = PRIV(dev)->subs;
+	tail = PRIV(dev)->subs_tail;
+	while (sid < tail) {
+		if (subs[sid].state >= min_state)
 			break;
 		sid++;
 	}
-	if (sid >= PRIV(dev)->subs_tail)
-		return PRIV(dev)->subs_tail;
-	return sid;
+	*sid_out = sid;
+	if (sid >= tail)
+		return NULL;
+	return &subs[sid];
 }
 
 /*
