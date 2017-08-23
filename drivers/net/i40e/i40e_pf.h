@@ -46,45 +46,6 @@
 /* Default setting on number of VSIs that VF can contain */
 #define I40E_DEFAULT_VF_VSI_NUM 1
 
-#define I40E_DPDK_OFFSET  0x100
-
-/* DPDK pf driver specific command to VF */
-enum virtchnl_ops_dpdk {
-	/*
-	 * Keep some gap between Linux PF commands and
-	 * DPDK PF extended commands.
-	 */
-	VIRTCHNL_OP_CONFIG_VSI_QUEUES_EXT = VIRTCHNL_OP_VERSION +
-					    I40E_DPDK_OFFSET,
-};
-
-/* A structure to support extended info of a receive queue. */
-struct virtchnl_rxq_ext_info {
-	uint8_t crcstrip;
-};
-
-/*
- * A structure to support extended info of queue pairs, an additional field
- * is added, comparing to original 'struct virtchnl_queue_pair_info'.
- */
-struct virtchnl_queue_pair_ext_info {
-	/* vsi_id and queue_id should be identical for both rx and tx queues.*/
-	struct virtchnl_txq_info txq;
-	struct virtchnl_rxq_info rxq;
-	struct virtchnl_rxq_ext_info rxq_ext;
-};
-
-/*
- * A structure to support extended info of VSI queue pairs,
- * 'struct virtchnl_queue_pair_ext_info' is used, see its original
- * of 'struct virtchnl_queue_pair_info'.
- */
-struct virtchnl_vsi_queue_config_ext_info {
-	uint16_t vsi_id;
-	uint16_t num_queue_pairs;
-	struct virtchnl_queue_pair_ext_info qpair[0];
-};
-
 struct virtchnl_vlan_offload_info {
 	uint16_t vsi_id;
 	uint8_t enable_vlan_strip;

@@ -597,7 +597,6 @@ i40evf_fill_virtchnl_vsi_rxq_info(struct virtchnl_rxq_info *rxq_info,
 	}
 }
 
-/* It configures VSI queues to co-work with Linux PF host */
 static int
 i40evf_configure_vsi_queues(struct rte_eth_dev *dev)
 {
@@ -639,72 +638,6 @@ i40evf_configure_vsi_queues(struct rte_eth_dev *dev)
 			"VIRTCHNL_OP_CONFIG_VSI_QUEUES");
 
 	return ret;
-}
-
-/* It configures VSI queues to co-work with DPDK PF host */
-static int
-i40evf_configure_vsi_queues_ext(struct rte_eth_dev *dev)
-{
-	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
-	struct i40e_rx_queue **rxq =
-		(struct i40e_rx_queue **)dev->data->rx_queues;
-	struct i40e_tx_queue **txq =
-		(struct i40e_tx_queue **)dev->data->tx_queues;
-	struct virtchnl_vsi_queue_config_ext_info *vc_vqcei;
-	struct virtchnl_queue_pair_ext_info *vc_qpei;
-	struct vf_cmd_info args;
-	uint16_t i, nb_qp = vf->num_queue_pairs;
-	const uint32_t size =
-		I40E_VIRTCHNL_CONFIG_VSI_QUEUES_SIZE(vc_vqcei, nb_qp);
-	uint8_t buff[size];
-	int ret;
-
-	memset(buff, 0, sizeof(buff));
-	vc_vqcei = (struct virtchnl_vsi_queue_config_ext_info *)buff;
-	vc_vqcei->vsi_id = vf->vsi_res->vsi_id;
-	vc_vqcei->num_queue_pairs = nb_qp;
-	vc_qpei = vc_vqcei->qpair;
-	for (i = 0; i < nb_qp; i++, vc_qpei++) {
-		i40evf_fill_virtchnl_vsi_txq_info(&vc_qpei->txq,
-			vc_vqcei->vsi_id, i, dev->data->nb_tx_queues, txq[i]);
-		i40evf_fill_virtchnl_vsi_rxq_info(&vc_qpei->rxq,
-			vc_vqcei->vsi_id, i, dev->data->nb_rx_queues,
-					vf->max_pkt_len, rxq[i]);
-		if (i < dev->data->nb_rx_queues)
-			/*
-			 * It adds extra info for configuring VSI queues, which
-			 * is needed to enable the configurable crc stripping
-			 * in VF.
-			 */
-			vc_qpei->rxq_ext.crcstrip =
-				dev->data->dev_conf.rxmode.hw_strip_crc;
-	}
-	memset(&args, 0, sizeof(args));
-	args.ops =
-		(enum virtchnl_ops)VIRTCHNL_OP_CONFIG_VSI_QUEUES_EXT;
-	args.in_args = (uint8_t *)vc_vqcei;
-	args.in_args_size = size;
-	args.out_buffer = vf->aq_resp;
-	args.out_size = I40E_AQ_BUF_SZ;
-	ret = i40evf_execute_vf_cmd(dev, &args);
-	if (ret)
-		PMD_DRV_LOG(ERR, "Failed to execute command of "
-			"VIRTCHNL_OP_CONFIG_VSI_QUEUES_EXT");
-
-	return ret;
-}
-
-static int
-i40evf_configure_queues(struct rte_eth_dev *dev)
-{
-	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
-
-	if (vf->version_major == I40E_DPDK_VERSION_MAJOR)
-		/* To support DPDK PF host */
-		return i40evf_configure_vsi_queues_ext(dev);
-	else
-		/* To support Linux PF host */
-		return i40evf_configure_vsi_queues(dev);
 }
 
 static int
@@ -2060,7 +1993,7 @@ i40evf_dev_start(struct rte_eth_dev *dev)
 
 	i40evf_tx_init(dev);
 
-	if (i40evf_configure_queues(dev) != 0) {
+	if (i40evf_configure_vsi_queues(dev) != 0) {
 		PMD_DRV_LOG(ERR, "configure queues failed");
 		goto err_queue;
 	}

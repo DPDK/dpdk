@@ -538,73 +538,6 @@ send_msg:
 	return ret;
 }
 
-static int
-i40e_pf_host_process_cmd_config_vsi_queues_ext(struct i40e_pf_vf *vf,
-					       uint8_t *msg,
-					       uint16_t msglen,
-					       bool b_op)
-{
-	struct i40e_hw *hw = I40E_PF_TO_HW(vf->pf);
-	struct i40e_vsi *vsi = vf->vsi;
-	struct virtchnl_vsi_queue_config_ext_info *vc_vqcei =
-		(struct virtchnl_vsi_queue_config_ext_info *)msg;
-	struct virtchnl_queue_pair_ext_info *vc_qpei;
-	int i, ret = I40E_SUCCESS;
-
-	if (!b_op) {
-		i40e_pf_host_send_msg_to_vf(
-			vf,
-			VIRTCHNL_OP_CONFIG_VSI_QUEUES_EXT,
-			I40E_NOT_SUPPORTED, NULL, 0);
-		return ret;
-	}
-
-	if (!msg || vc_vqcei->num_queue_pairs > vsi->nb_qps ||
-		vc_vqcei->num_queue_pairs > I40E_MAX_VSI_QP ||
-		msglen < I40E_VIRTCHNL_CONFIG_VSI_QUEUES_SIZE(vc_vqcei,
-					vc_vqcei->num_queue_pairs)) {
-		PMD_DRV_LOG(ERR, "vsi_queue_config_ext_info argument wrong");
-		ret = I40E_ERR_PARAM;
-		goto send_msg;
-	}
-
-	vc_qpei = vc_vqcei->qpair;
-	for (i = 0; i < vc_vqcei->num_queue_pairs; i++) {
-		if (vc_qpei[i].rxq.queue_id > vsi->nb_qps - 1 ||
-			vc_qpei[i].txq.queue_id > vsi->nb_qps - 1) {
-			ret = I40E_ERR_PARAM;
-			goto send_msg;
-		}
-		/*
-		 * Apply VF RX queue setting to HMC.
-		 * If the opcode is VIRTCHNL_OP_CONFIG_VSI_QUEUES_EXT,
-		 * then the extra information of
-		 * 'struct virtchnl_queue_pair_ext_info' is needed,
-		 * otherwise set the last parameter to NULL.
-		 */
-		if (i40e_pf_host_hmc_config_rxq(hw, vf, &vc_qpei[i].rxq,
-			vc_qpei[i].rxq_ext.crcstrip) != I40E_SUCCESS) {
-			PMD_DRV_LOG(ERR, "Configure RX queue HMC failed");
-			ret = I40E_ERR_PARAM;
-			goto send_msg;
-		}
-
-		/* Apply VF TX queue setting to HMC */
-		if (i40e_pf_host_hmc_config_txq(hw, vf, &vc_qpei[i].txq) !=
-							I40E_SUCCESS) {
-			PMD_DRV_LOG(ERR, "Configure TX queue HMC failed");
-			ret = I40E_ERR_PARAM;
-			goto send_msg;
-		}
-	}
-
-send_msg:
-	i40e_pf_host_send_msg_to_vf(vf, VIRTCHNL_OP_CONFIG_VSI_QUEUES_EXT,
-								ret, NULL, 0);
-
-	return ret;
-}
-
 static void
 i40e_pf_config_irq_link_list(struct i40e_pf_vf *vf,
 			      struct virtchnl_vector_map *vvm)
@@ -1277,11 +1210,6 @@ i40e_pf_host_handle_vf_msg(struct rte_eth_dev *dev,
 		PMD_DRV_LOG(INFO, "OP_CONFIG_VSI_QUEUES received");
 		i40e_pf_host_process_cmd_config_vsi_queues(vf, msg,
 							   msglen, b_op);
-		break;
-	case VIRTCHNL_OP_CONFIG_VSI_QUEUES_EXT:
-		PMD_DRV_LOG(INFO, "OP_CONFIG_VSI_QUEUES_EXT received");
-		i40e_pf_host_process_cmd_config_vsi_queues_ext(vf, msg,
-							       msglen, b_op);
 		break;
 	case VIRTCHNL_OP_CONFIG_IRQ_MAP:
 		PMD_DRV_LOG(INFO, "OP_CONFIG_IRQ_MAP received");
