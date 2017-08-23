@@ -634,32 +634,6 @@ priv_rehash_flows(struct priv *priv)
 }
 
 /**
- * Unlike regular Rx function, vPMD Rx doesn't replace mbufs immediately when
- * receiving packets. Instead it replaces later in bulk. In rxq->elts[], entries
- * from rq_pi to rq_ci are owned by device but the rest is already delivered to
- * application. In order not to reuse those mbufs by rxq_alloc_elts(), this
- * function must be called to replace used mbufs.
- *
- * @param rxq
- *   Pointer to RX queue structure.
- */
-static void
-rxq_trim_elts(struct rxq *rxq)
-{
-	const uint16_t q_n = (1 << rxq->elts_n);
-	const uint16_t q_mask = q_n - 1;
-	uint16_t used = q_n - (rxq->rq_ci - rxq->rq_pi);
-	uint16_t i;
-
-	if (!rxq->trim_elts)
-		return;
-	for (i = 0; i < used; ++i)
-		(*rxq->elts)[(rxq->rq_ci + i) & q_mask] = NULL;
-	rxq->trim_elts = 0;
-	return;
-}
-
-/**
  * Allocate RX queue elements.
  *
  * @param rxq_ctrl
@@ -730,7 +704,6 @@ rxq_alloc_elts(struct rxq_ctrl *rxq_ctrl, unsigned int elts_n)
 		/* Padding with a fake mbuf for vectorized Rx. */
 		for (i = 0; i < MLX5_VPMD_DESCS_PER_LOOP; ++i)
 			(*rxq->elts)[elts_n + i] = &rxq->fake_mbuf;
-		rxq->trim_elts = 1;
 	}
 	DEBUG("%p: allocated and configured %u segments (max %u packets)",
 	      (void *)rxq_ctrl, elts_n, elts_n / (1 << rxq_ctrl->rxq.sges_n));
@@ -757,17 +730,28 @@ error:
 static void
 rxq_free_elts(struct rxq_ctrl *rxq_ctrl)
 {
-	unsigned int i;
+	struct rxq *rxq = &rxq_ctrl->rxq;
+	const uint16_t q_n = (1 << rxq->elts_n);
+	const uint16_t q_mask = q_n - 1;
+	uint16_t used = q_n - (rxq->rq_ci - rxq->rq_pi);
+	uint16_t i;
 
-	rxq_trim_elts(&rxq_ctrl->rxq);
 	DEBUG("%p: freeing WRs", (void *)rxq_ctrl);
-	if (rxq_ctrl->rxq.elts == NULL)
+	if (rxq->elts == NULL)
 		return;
-
-	for (i = 0; (i != (1u << rxq_ctrl->rxq.elts_n)); ++i) {
-		if ((*rxq_ctrl->rxq.elts)[i] != NULL)
-			rte_pktmbuf_free_seg((*rxq_ctrl->rxq.elts)[i]);
-		(*rxq_ctrl->rxq.elts)[i] = NULL;
+	/**
+	 * Some mbuf in the Ring belongs to the application.  They cannot be
+	 * freed.
+	 */
+	if (rxq_check_vec_support(rxq) > 0) {
+		for (i = 0; i < used; ++i)
+			(*rxq->elts)[(rxq->rq_ci + i) & q_mask] = NULL;
+		rxq->rq_pi = rxq->rq_ci;
+	}
+	for (i = 0; (i != (1u << rxq->elts_n)); ++i) {
+		if ((*rxq->elts)[i] != NULL)
+			rte_pktmbuf_free_seg((*rxq->elts)[i]);
+		(*rxq->elts)[i] = NULL;
 	}
 }
 

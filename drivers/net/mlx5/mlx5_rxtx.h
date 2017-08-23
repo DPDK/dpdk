@@ -116,8 +116,7 @@ struct rxq {
 	unsigned int rss_hash:1; /* RSS hash result is enabled. */
 	unsigned int mark:1; /* Marked flow available on the queue. */
 	unsigned int pending_err:1; /* CQE error needs to be handled. */
-	unsigned int trim_elts:1; /* Whether elts needs clean-up. */
-	unsigned int :6; /* Remaining bits. */
+	unsigned int :7; /* Remaining bits. */
 	volatile uint32_t *rq_db;
 	volatile uint32_t *cq_db;
 	uint16_t rq_ci;
