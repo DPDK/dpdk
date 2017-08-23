@@ -54,9 +54,8 @@ enum virtchnl_ops_dpdk {
 	 * Keep some gap between Linux PF commands and
 	 * DPDK PF extended commands.
 	 */
-	I40E_VIRTCHNL_OP_CFG_VLAN_PVID = VIRTCHNL_OP_VERSION +
-					 I40E_DPDK_OFFSET,
-	VIRTCHNL_OP_CONFIG_VSI_QUEUES_EXT,
+	VIRTCHNL_OP_CONFIG_VSI_QUEUES_EXT = VIRTCHNL_OP_VERSION +
+					    I40E_DPDK_OFFSET,
 };
 
 /* A structure to support extended info of a receive queue. */
@@ -98,17 +97,6 @@ struct virtchnl_vlan_offload_info {
  */
 #define I40E_VIRTCHNL_CONFIG_VSI_QUEUES_SIZE(x, n) \
 	(sizeof(*(x)) + sizeof((x)->qpair[0]) * (n))
-
-/*
- * I40E_VIRTCHNL_OP_CFG_VLAN_PVID
- * VF sends this message to enable/disable pvid. If it's
- * enable op, needs to specify the pvid. PF returns status
- * code in retval.
- */
-struct virtchnl_pvid_info {
-	uint16_t vsi_id;
-	struct i40e_vsi_vlan_pvid_info info;
-};
 
 int i40e_pf_host_vf_reset(struct i40e_pf_vf *vf, bool do_hw_reset);
 void i40e_pf_host_handle_vf_msg(struct rte_eth_dev *dev,

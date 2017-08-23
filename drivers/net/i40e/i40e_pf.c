@@ -1157,38 +1157,6 @@ i40e_pf_host_process_cmd_disable_vlan_strip(struct i40e_pf_vf *vf, bool b_op)
 	return ret;
 }
 
-static int
-i40e_pf_host_process_cmd_cfg_pvid(struct i40e_pf_vf *vf,
-					uint8_t *msg,
-					uint16_t msglen,
-					bool b_op)
-{
-	int ret = I40E_SUCCESS;
-	struct virtchnl_pvid_info  *tpid_info =
-			(struct virtchnl_pvid_info *)msg;
-
-	if (!b_op) {
-		i40e_pf_host_send_msg_to_vf(
-			vf,
-			I40E_VIRTCHNL_OP_CFG_VLAN_PVID,
-			I40E_NOT_SUPPORTED, NULL, 0);
-		return ret;
-	}
-
-	if (msg == NULL || msglen != sizeof(*tpid_info)) {
-		ret = I40E_ERR_PARAM;
-		goto send_msg;
-	}
-
-	ret = i40e_vsi_vlan_pvid_set(vf->vsi, &tpid_info->info);
-
-send_msg:
-	i40e_pf_host_send_msg_to_vf(vf, I40E_VIRTCHNL_OP_CFG_VLAN_PVID,
-					ret, NULL, 0);
-
-	return ret;
-}
-
 void
 i40e_notify_vf_link_status(struct rte_eth_dev *dev, struct i40e_pf_vf *vf)
 {
@@ -1368,10 +1336,6 @@ i40e_pf_host_handle_vf_msg(struct rte_eth_dev *dev,
 	case VIRTCHNL_OP_DISABLE_VLAN_STRIPPING:
 		PMD_DRV_LOG(INFO, "OP_DISABLE_VLAN_STRIPPING received");
 		i40e_pf_host_process_cmd_disable_vlan_strip(vf, b_op);
-		break;
-	case I40E_VIRTCHNL_OP_CFG_VLAN_PVID:
-		PMD_DRV_LOG(INFO, "OP_CFG_VLAN_PVID received");
-		i40e_pf_host_process_cmd_cfg_pvid(vf, msg, msglen, b_op);
 		break;
 	/* Don't add command supported below, which will
 	 * return an error code.
