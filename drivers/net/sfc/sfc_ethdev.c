@@ -991,7 +991,7 @@ sfc_set_mc_addr_list(struct rte_eth_dev *dev, struct ether_addr *mc_addr_set,
 	}
 
 	for (i = 0; i < nb_mc_addr; ++i) {
-		(void)rte_memcpy(mc_addrs, mc_addr_set[i].addr_bytes,
+		rte_memcpy(mc_addrs, mc_addr_set[i].addr_bytes,
 				 EFX_MAC_ADDR_LEN);
 		mc_addrs += EFX_MAC_ADDR_LEN;
 	}
