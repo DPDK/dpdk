@@ -1279,10 +1279,6 @@ priv_flow_destroy(struct priv *priv,
 		claim_zero(ibv_destroy_qp(flow->qp));
 	if (flow->ind_table)
 		claim_zero(ibv_exp_destroy_rwq_ind_table(flow->ind_table));
-	if (flow->drop && flow->wq)
-		claim_zero(ibv_exp_destroy_wq(flow->wq));
-	if (flow->drop && flow->cq)
-		claim_zero(ibv_destroy_cq(flow->cq));
 	if (flow->mark) {
 		struct rte_flow *tmp;
 		struct rxq *rxq;
