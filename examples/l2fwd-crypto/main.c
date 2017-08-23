@@ -1088,6 +1088,7 @@ parse_key(uint8_t *data, char *input_arg)
 	unsigned byte_count;
 	char *token;
 
+	errno = 0;
 	for (byte_count = 0, token = strtok(input_arg, ":");
 			(byte_count < MAX_KEY_SIZE) && (token != NULL);
 			token = strtok(NULL, ":")) {
