@@ -6964,7 +6964,7 @@ cmd_set_vf_macvlan_parsed(void *parsed_result,
 
 	memset(&filter, 0, sizeof(struct rte_eth_mac_filter));
 
-	(void)rte_memcpy(&filter.mac_addr, &res->address, ETHER_ADDR_LEN);
+	rte_memcpy(&filter.mac_addr, &res->address, ETHER_ADDR_LEN);
 
 	/* set VF MAC filter */
 	filter.is_vf = 1;
@@ -8838,7 +8838,7 @@ cmd_ethertype_filter_parsed(void *parsed_result,
 	memset(&filter, 0, sizeof(filter));
 	if (!strcmp(res->mac, "mac_addr")) {
 		filter.flags |= RTE_ETHTYPE_FLAGS_MAC;
-		(void)rte_memcpy(&filter.mac_addr, &res->mac_addr,
+		rte_memcpy(&filter.mac_addr, &res->mac_addr,
 			sizeof(struct ether_addr));
 	}
 	if (!strcmp(res->drop, "drop"))
@@ -9027,7 +9027,7 @@ do { \
 #define IPV6_ADDR_TO_ARRAY(ip_addr, ip) \
 do { \
 	if ((ip_addr).family == AF_INET6) \
-		(void)rte_memcpy(&(ip), \
+		rte_memcpy(&(ip), \
 				 &((ip_addr).addr.ipv6), \
 				 sizeof(struct in6_addr)); \
 	else { \
@@ -9159,12 +9159,12 @@ cmd_flow_director_filter_parsed(void *parsed_result,
 	}
 
 	if (fdir_conf.mode ==  RTE_FDIR_MODE_PERFECT_MAC_VLAN)
-		(void)rte_memcpy(&entry.input.flow.mac_vlan_flow.mac_addr,
+		rte_memcpy(&entry.input.flow.mac_vlan_flow.mac_addr,
 				 &res->mac_addr,
 				 sizeof(struct ether_addr));
 
 	if (fdir_conf.mode ==  RTE_FDIR_MODE_PERFECT_TUNNEL) {
-		(void)rte_memcpy(&entry.input.flow.tunnel_flow.mac_addr,
+		rte_memcpy(&entry.input.flow.tunnel_flow.mac_addr,
 				 &res->mac_addr,
 				 sizeof(struct ether_addr));
 		entry.input.flow.tunnel_flow.tunnel_type =
@@ -9173,7 +9173,7 @@ cmd_flow_director_filter_parsed(void *parsed_result,
 			rte_cpu_to_be_32(res->tunnel_id_value);
 	}
 
-	(void)rte_memcpy(entry.input.flow_ext.flexbytes,
+	rte_memcpy(entry.input.flow_ext.flexbytes,
 		   flexbytes,
 		   RTE_ETH_FDIR_MAX_FLEXLEN);
 
@@ -9871,7 +9871,7 @@ cmd_flow_director_flex_mask_parsed(void *parsed_result,
 			memset(&port->dev_conf.fdir_conf.flex_conf.flex_mask[i],
 			       0, sizeof(struct rte_eth_fdir_flex_mask));
 		port->dev_conf.fdir_conf.flex_conf.nb_flexmasks = 1;
-		(void)rte_memcpy(&port->dev_conf.fdir_conf.flex_conf.flex_mask[0],
+		rte_memcpy(&port->dev_conf.fdir_conf.flex_conf.flex_mask[0],
 				 &flex_mask,
 				 sizeof(struct rte_eth_fdir_flex_mask));
 		cmd_reconfig_device_queue(res->port_id, 1, 1);

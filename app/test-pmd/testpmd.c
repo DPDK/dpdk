@@ -2214,7 +2214,7 @@ init_port_dcb_config(portid_t pid,
 	 * Set the numbers of RX & TX queues to 0, so
 	 * the RX & TX queues will not be setup.
 	 */
-	(void)rte_eth_dev_configure(pid, 0, 0, &port_conf);
+	rte_eth_dev_configure(pid, 0, 0, &port_conf);
 
 	rte_eth_dev_info_get(pid, &rte_port->dev_info);
 

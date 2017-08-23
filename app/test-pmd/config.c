@@ -3004,7 +3004,7 @@ fdir_set_flex_mask(portid_t port_id, struct rte_eth_fdir_flex_mask *cfg)
 			return;
 		}
 	}
-	(void)rte_memcpy(&flex_conf->flex_mask[idx],
+	rte_memcpy(&flex_conf->flex_mask[idx],
 			 cfg,
 			 sizeof(struct rte_eth_fdir_flex_mask));
 }
@@ -3034,7 +3034,7 @@ fdir_set_flex_payload(portid_t port_id, struct rte_eth_flex_payload_cfg *cfg)
 			return;
 		}
 	}
-	(void)rte_memcpy(&flex_conf->flex_set[idx],
+	rte_memcpy(&flex_conf->flex_set[idx],
 			 cfg,
 			 sizeof(struct rte_eth_flex_payload_cfg));
 
