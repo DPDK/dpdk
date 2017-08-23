@@ -51,6 +51,7 @@
 #include <rte_mbuf.h>
 #include <rte_mempool.h>
 #include <rte_common.h>
+#include <rte_hexdump.h>
 
 #include "mlx5_utils.h"
 #include "mlx5.h"
@@ -408,16 +409,24 @@ check_cqe(volatile struct mlx5_cqe *cqe,
 		if ((syndrome == MLX5_CQE_SYNDROME_LOCAL_LENGTH_ERR) ||
 		    (syndrome == MLX5_CQE_SYNDROME_REMOTE_ABORTED_ERR))
 			return 0;
-		if (!check_cqe_seen(cqe))
+		if (!check_cqe_seen(cqe)) {
 			ERROR("unexpected CQE error %u (0x%02x)"
 			      " syndrome 0x%02x",
 			      op_code, op_code, syndrome);
+			rte_hexdump(stderr, "MLX5 Error CQE:",
+				    (const void *)((uintptr_t)err_cqe),
+				    sizeof(*err_cqe));
+		}
 		return 1;
 	} else if ((op_code != MLX5_CQE_RESP_SEND) &&
 		   (op_code != MLX5_CQE_REQ)) {
-		if (!check_cqe_seen(cqe))
+		if (!check_cqe_seen(cqe)) {
 			ERROR("unexpected CQE opcode %u (0x%02x)",
 			      op_code, op_code);
+			rte_hexdump(stderr, "MLX5 CQE:",
+				    (const void *)((uintptr_t)cqe),
+				    sizeof(*cqe));
+		}
 		return 1;
 	}
 #endif /* NDEBUG */
@@ -472,8 +481,13 @@ mlx5_tx_complete(struct txq *txq)
 #ifndef NDEBUG
 	if ((MLX5_CQE_OPCODE(cqe->op_own) == MLX5_CQE_RESP_ERR) ||
 	    (MLX5_CQE_OPCODE(cqe->op_own) == MLX5_CQE_REQ_ERR)) {
-		if (!check_cqe_seen(cqe))
+		if (!check_cqe_seen(cqe)) {
 			ERROR("unexpected error CQE, TX stopped");
+			rte_hexdump(stderr, "MLX5 TXQ:",
+				    (const void *)((uintptr_t)txq->wqes),
+				    ((1 << txq->wqe_n) *
+				     MLX5_WQE_SIZE));
+		}
 		return;
 	}
 #endif /* NDEBUG */
