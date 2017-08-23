@@ -1348,7 +1348,7 @@ ixgbe_fdir_filter_program(struct rte_eth_dev *dev,
 				   0);
 		if (!node)
 			return -ENOMEM;
-		(void)rte_memcpy(&node->ixgbe_fdir,
+		rte_memcpy(&node->ixgbe_fdir,
 				 &rule->ixgbe_fdir,
 				 sizeof(union ixgbe_atr_input));
 		node->fdirflags = fdircmd_flags;
