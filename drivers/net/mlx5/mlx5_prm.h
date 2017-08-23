@@ -89,9 +89,6 @@
 /* Default max packet length to be inlined. */
 #define MLX5_EMPW_MAX_INLINE_LEN (4U * MLX5_WQE_SIZE)
 
-#ifndef HAVE_VERBS_MLX5_OPCODE_TSO
-#define MLX5_OPCODE_TSO MLX5_OPCODE_LSO_MPW /* Compat with OFED 3.3. */
-#endif
 
 #define MLX5_OPC_MOD_ENHANCED_MPSW 0
 #define MLX5_OPCODE_ENHANCED_MPSW 0x29
