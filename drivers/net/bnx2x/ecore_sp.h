@@ -113,7 +113,7 @@ typedef rte_spinlock_t ECORE_MUTEX_SPIN;
 #define ECORE_FCOE_CID(sc) ((sc)->fp[FCOE_IDX(sc)].cl_id)
 
 #define ECORE_MEMCMP(_a, _b, _s) memcmp(_a, _b, _s)
-#define ECORE_MEMCPY(_a, _b, _s) (void)rte_memcpy(_a, _b, _s)
+#define ECORE_MEMCPY(_a, _b, _s) rte_memcpy(_a, _b, _s)
 #define ECORE_MEMSET(_a, _c, _s) memset(_a, _c, _s)
 
 #define ECORE_CPU_TO_LE16(x) htole16(x)

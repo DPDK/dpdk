@@ -6604,7 +6604,7 @@ bnx2x_config_rss_pf(struct bnx2x_softc *sc, struct ecore_rss_config_obj *rss_obj
 	/* Hash bits */
 	params.rss_result_mask = MULTI_MASK;
 
-	(void)rte_memcpy(params.ind_table, rss_obj->ind_table,
+	rte_memcpy(params.ind_table, rss_obj->ind_table,
 			 sizeof(params.ind_table));
 
 	if (config_hash) {
@@ -6671,7 +6671,7 @@ bnx2x_set_mac_one(struct bnx2x_softc *sc, uint8_t * mac,
 
 	/* fill a user request section if needed */
 	if (!bnx2x_test_bit(RAMROD_CONT, ramrod_flags)) {
-		(void)rte_memcpy(ramrod_param.user_req.u.mac.mac, mac,
+		rte_memcpy(ramrod_param.user_req.u.mac.mac, mac,
 				 ETH_ALEN);
 
 		bnx2x_set_bit(mac_type, &ramrod_param.user_req.vlan_mac_flags);
@@ -6879,7 +6879,7 @@ static void bnx2x_link_report(struct bnx2x_softc *sc)
 	sc->link_cnt++;
 
 	/* report new link params and remember the state for the next time */
-	(void)rte_memcpy(&sc->last_reported_link, &cur_data, sizeof(cur_data));
+	rte_memcpy(&sc->last_reported_link, &cur_data, sizeof(cur_data));
 
 	if (bnx2x_test_bit(BNX2X_LINK_REPORT_LINK_DOWN,
 			 &cur_data.link_report_flags)) {

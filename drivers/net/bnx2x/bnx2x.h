@@ -1525,12 +1525,12 @@ bnx2x_reg_read32(struct bnx2x_softc *sc, size_t offset)
 #define REG_RD_DMAE(sc, offset, valp, len32)               \
     do {                                                   \
 	(void)bnx2x_read_dmae(sc, offset, len32);                  \
-	(void)rte_memcpy(valp, BNX2X_SP(sc, wb_data[0]), (len32) * 4); \
+	rte_memcpy(valp, BNX2X_SP(sc, wb_data[0]), (len32) * 4); \
     } while (0)
 
 #define REG_WR_DMAE(sc, offset, valp, len32)                            \
     do {                                                                \
-	(void)rte_memcpy(BNX2X_SP(sc, wb_data[0]), valp, (len32) * 4);              \
+	rte_memcpy(BNX2X_SP(sc, wb_data[0]), valp, (len32) * 4);              \
 	(void)bnx2x_write_dmae(sc, BNX2X_SP_MAPPING(sc, wb_data), offset, len32); \
     } while (0)
 
