@@ -34,16 +34,9 @@
 #include <linux/sockios.h>
 #include <linux/ethtool.h>
 
-/* DPDK headers don't like -pedantic. */
-#ifdef PEDANTIC
-#pragma GCC diagnostic ignored "-Wpedantic"
-#endif
 #include <rte_ethdev.h>
 #include <rte_common.h>
 #include <rte_malloc.h>
-#ifdef PEDANTIC
-#pragma GCC diagnostic error "-Wpedantic"
-#endif
 
 #include "mlx5.h"
 #include "mlx5_rxtx.h"
