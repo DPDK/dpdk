@@ -302,7 +302,6 @@ void rxq_cleanup(struct rxq_ctrl *);
 int mlx5_rx_queue_setup(struct rte_eth_dev *, uint16_t, uint16_t, unsigned int,
 			const struct rte_eth_rxconf *, struct rte_mempool *);
 void mlx5_rx_queue_release(void *);
-uint16_t mlx5_rx_burst_secondary_setup(void *, struct rte_mbuf **, uint16_t);
 int priv_rx_intr_vec_enable(struct priv *priv);
 void priv_rx_intr_vec_disable(struct priv *priv);
 #ifdef HAVE_UPDATE_CQ_CI
@@ -318,7 +317,6 @@ int txq_ctrl_setup(struct rte_eth_dev *, struct txq_ctrl *, uint16_t,
 int mlx5_tx_queue_setup(struct rte_eth_dev *, uint16_t, uint16_t, unsigned int,
 			const struct rte_eth_txconf *);
 void mlx5_tx_queue_release(void *);
-uint16_t mlx5_tx_burst_secondary_setup(void *, struct rte_mbuf **, uint16_t);
 
 /* mlx5_rxtx.c */
 

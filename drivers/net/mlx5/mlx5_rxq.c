@@ -1223,47 +1223,6 @@ mlx5_rx_queue_release(void *dpdk_rxq)
 }
 
 /**
- * DPDK callback for RX in secondary processes.
- *
- * This function configures all queues from primary process information
- * if necessary before reverting to the normal RX burst callback.
- *
- * @param dpdk_rxq
- *   Generic pointer to RX queue structure.
- * @param[out] pkts
- *   Array to store received packets.
- * @param pkts_n
- *   Maximum number of packets in array.
- *
- * @return
- *   Number of packets successfully received (<= pkts_n).
- */
-uint16_t
-mlx5_rx_burst_secondary_setup(void *dpdk_rxq, struct rte_mbuf **pkts,
-			      uint16_t pkts_n)
-{
-	struct rxq *rxq = dpdk_rxq;
-	struct rxq_ctrl *rxq_ctrl = container_of(rxq, struct rxq_ctrl, rxq);
-	struct priv *priv = mlx5_secondary_data_setup(rxq_ctrl->priv);
-	struct priv *primary_priv;
-	unsigned int index;
-
-	if (priv == NULL)
-		return 0;
-	primary_priv =
-		mlx5_secondary_data[priv->dev->data->port_id].primary_priv;
-	/* Look for queue index in both private structures. */
-	for (index = 0; index != priv->rxqs_n; ++index)
-		if (((*primary_priv->rxqs)[index] == rxq) ||
-		    ((*priv->rxqs)[index] == rxq))
-			break;
-	if (index == priv->rxqs_n)
-		return 0;
-	rxq = (*priv->rxqs)[index];
-	return priv->dev->rx_pkt_burst(rxq, pkts, pkts_n);
-}
-
-/**
  * Allocate queue vector and fill epoll fd list for Rx interrupts.
  *
  * @param priv

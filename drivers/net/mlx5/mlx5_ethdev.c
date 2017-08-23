@@ -126,12 +126,7 @@ struct ethtool_link_settings {
 struct priv *
 mlx5_get_priv(struct rte_eth_dev *dev)
 {
-	struct mlx5_secondary_data *sd;
-
-	if (!mlx5_is_secondary())
-		return dev->data->dev_private;
-	sd = &mlx5_secondary_data[dev->data->port_id];
-	return sd->data.dev_private;
+	return dev->data->dev_private;
 }
 
 /**
@@ -143,7 +138,7 @@ mlx5_get_priv(struct rte_eth_dev *dev)
 inline int
 mlx5_is_secondary(void)
 {
-	return rte_eal_process_type() != RTE_PROC_PRIMARY;
+	return rte_eal_process_type() == RTE_PROC_SECONDARY;
 }
 
 /**
@@ -1333,163 +1328,6 @@ mlx5_set_link_up(struct rte_eth_dev *dev)
 	err = priv_set_link(priv, 1);
 	priv_unlock(priv);
 	return err;
-}
-
-/**
- * Configure secondary process queues from a private data pointer (primary
- * or secondary) and update burst callbacks. Can take place only once.
- *
- * All queues must have been previously created by the primary process to
- * avoid undefined behavior.
- *
- * @param priv
- *   Private data pointer from either primary or secondary process.
- *
- * @return
- *   Private data pointer from secondary process, NULL in case of error.
- */
-struct priv *
-mlx5_secondary_data_setup(struct priv *priv)
-{
-	unsigned int port_id = 0;
-	struct mlx5_secondary_data *sd;
-	void **tx_queues;
-	void **rx_queues;
-	unsigned int nb_tx_queues;
-	unsigned int nb_rx_queues;
-	unsigned int i;
-
-	/* priv must be valid at this point. */
-	assert(priv != NULL);
-	/* priv->dev must also be valid but may point to local memory from
-	 * another process, possibly with the same address and must not
-	 * be dereferenced yet. */
-	assert(priv->dev != NULL);
-	/* Determine port ID by finding out where priv comes from. */
-	while (1) {
-		sd = &mlx5_secondary_data[port_id];
-		rte_spinlock_lock(&sd->lock);
-		/* Primary process? */
-		if (sd->primary_priv == priv)
-			break;
-		/* Secondary process? */
-		if (sd->data.dev_private == priv)
-			break;
-		rte_spinlock_unlock(&sd->lock);
-		if (++port_id == RTE_DIM(mlx5_secondary_data))
-			port_id = 0;
-	}
-	/* Switch to secondary private structure. If private data has already
-	 * been updated by another thread, there is nothing else to do. */
-	priv = sd->data.dev_private;
-	if (priv->dev->data == &sd->data)
-		goto end;
-	/* Sanity checks. Secondary private structure is supposed to point
-	 * to local eth_dev, itself still pointing to the shared device data
-	 * structure allocated by the primary process. */
-	assert(sd->shared_dev_data != &sd->data);
-	assert(sd->data.nb_tx_queues == 0);
-	assert(sd->data.tx_queues == NULL);
-	assert(sd->data.nb_rx_queues == 0);
-	assert(sd->data.rx_queues == NULL);
-	assert(priv != sd->primary_priv);
-	assert(priv->dev->data == sd->shared_dev_data);
-	assert(priv->txqs_n == 0);
-	assert(priv->txqs == NULL);
-	assert(priv->rxqs_n == 0);
-	assert(priv->rxqs == NULL);
-	nb_tx_queues = sd->shared_dev_data->nb_tx_queues;
-	nb_rx_queues = sd->shared_dev_data->nb_rx_queues;
-	/* Allocate local storage for queues. */
-	tx_queues = rte_zmalloc("secondary ethdev->tx_queues",
-				sizeof(sd->data.tx_queues[0]) * nb_tx_queues,
-				RTE_CACHE_LINE_SIZE);
-	rx_queues = rte_zmalloc("secondary ethdev->rx_queues",
-				sizeof(sd->data.rx_queues[0]) * nb_rx_queues,
-				RTE_CACHE_LINE_SIZE);
-	if (tx_queues == NULL || rx_queues == NULL)
-		goto error;
-	/* Lock to prevent control operations during setup. */
-	priv_lock(priv);
-	/* TX queues. */
-	for (i = 0; i != nb_tx_queues; ++i) {
-		struct txq *primary_txq = (*sd->primary_priv->txqs)[i];
-		struct txq_ctrl *primary_txq_ctrl;
-		struct txq_ctrl *txq_ctrl;
-
-		if (primary_txq == NULL)
-			continue;
-		primary_txq_ctrl = container_of(primary_txq,
-						struct txq_ctrl, txq);
-		txq_ctrl = rte_calloc_socket("TXQ", 1, sizeof(*txq_ctrl) +
-					     (1 << primary_txq->elts_n) *
-					     sizeof(struct rte_mbuf *), 0,
-					     primary_txq_ctrl->socket);
-		if (txq_ctrl != NULL) {
-			if (txq_ctrl_setup(priv->dev,
-					   txq_ctrl,
-					   1 << primary_txq->elts_n,
-					   primary_txq_ctrl->socket,
-					   NULL) == 0) {
-				txq_ctrl->txq.stats.idx =
-					primary_txq->stats.idx;
-				tx_queues[i] = &txq_ctrl->txq;
-				continue;
-			}
-			rte_free(txq_ctrl);
-		}
-		while (i) {
-			txq_ctrl = tx_queues[--i];
-			txq_cleanup(txq_ctrl);
-			rte_free(txq_ctrl);
-		}
-		goto error;
-	}
-	/* RX queues. */
-	for (i = 0; i != nb_rx_queues; ++i) {
-		struct rxq_ctrl *primary_rxq =
-			container_of((*sd->primary_priv->rxqs)[i],
-				     struct rxq_ctrl, rxq);
-
-		if (primary_rxq == NULL)
-			continue;
-		/* Not supported yet. */
-		rx_queues[i] = NULL;
-	}
-	/* Update everything. */
-	priv->txqs = (void *)tx_queues;
-	priv->txqs_n = nb_tx_queues;
-	priv->rxqs = (void *)rx_queues;
-	priv->rxqs_n = nb_rx_queues;
-	sd->data.rx_queues = rx_queues;
-	sd->data.tx_queues = tx_queues;
-	sd->data.nb_rx_queues = nb_rx_queues;
-	sd->data.nb_tx_queues = nb_tx_queues;
-	sd->data.dev_link = sd->shared_dev_data->dev_link;
-	sd->data.mtu = sd->shared_dev_data->mtu;
-	memcpy(sd->data.rx_queue_state, sd->shared_dev_data->rx_queue_state,
-	       sizeof(sd->data.rx_queue_state));
-	memcpy(sd->data.tx_queue_state, sd->shared_dev_data->tx_queue_state,
-	       sizeof(sd->data.tx_queue_state));
-	sd->data.dev_flags = sd->shared_dev_data->dev_flags;
-	/* Use local data from now on. */
-	rte_mb();
-	priv->dev->data = &sd->data;
-	rte_mb();
-	priv_select_tx_function(priv);
-	priv_select_rx_function(priv);
-	priv_unlock(priv);
-end:
-	/* More sanity checks. */
-	assert(priv->dev->data == &sd->data);
-	rte_spinlock_unlock(&sd->lock);
-	return priv;
-error:
-	priv_unlock(priv);
-	rte_free(tx_queues);
-	rte_free(rx_queues);
-	rte_spinlock_unlock(&sd->lock);
-	return NULL;
 }
 
 /**

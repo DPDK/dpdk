@@ -771,37 +771,8 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			err = ENOMEM;
 			goto port_error;
 		}
-
-		/* Secondary processes have to use local storage for their
-		 * private data as well as a copy of eth_dev->data, but this
-		 * pointer must not be modified before burst functions are
-		 * actually called. */
-		if (mlx5_is_secondary()) {
-			struct mlx5_secondary_data *sd =
-				&mlx5_secondary_data[eth_dev->data->port_id];
-			sd->primary_priv = eth_dev->data->dev_private;
-			if (sd->primary_priv == NULL) {
-				ERROR("no private data for port %u",
-						eth_dev->data->port_id);
-				err = EINVAL;
-				goto port_error;
-			}
-			sd->shared_dev_data = eth_dev->data;
-			rte_spinlock_init(&sd->lock);
-			memcpy(sd->data.name, sd->shared_dev_data->name,
-				   sizeof(sd->data.name));
-			sd->data.dev_private = priv;
-			sd->data.rx_mbuf_alloc_failed = 0;
-			sd->data.mtu = ETHER_MTU;
-			sd->data.port_id = sd->shared_dev_data->port_id;
-			sd->data.mac_addrs = priv->mac;
-			eth_dev->tx_pkt_burst = mlx5_tx_burst_secondary_setup;
-			eth_dev->rx_pkt_burst = mlx5_rx_burst_secondary_setup;
-		} else {
-			eth_dev->data->dev_private = priv;
-			eth_dev->data->mac_addrs = priv->mac;
-		}
-
+		eth_dev->data->dev_private = priv;
+		eth_dev->data->mac_addrs = priv->mac;
 		eth_dev->device = &pci_dev->device;
 		rte_eth_copy_pci_info(eth_dev, pci_dev);
 		eth_dev->data->dev_flags |= RTE_ETH_DEV_DETACHABLE;
