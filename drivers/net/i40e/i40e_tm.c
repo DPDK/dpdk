@@ -302,7 +302,7 @@ i40e_shaper_profile_add(struct rte_eth_dev *dev,
 	if (!shaper_profile)
 		return -ENOMEM;
 	shaper_profile->shaper_profile_id = shaper_profile_id;
-	(void)rte_memcpy(&shaper_profile->profile, profile,
+	rte_memcpy(&shaper_profile->profile, profile,
 			 sizeof(struct rte_tm_shaper_params));
 	TAILQ_INSERT_TAIL(&pf->tm_conf.shaper_profile_list,
 			  shaper_profile, node);
@@ -544,7 +544,7 @@ i40e_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 		tm_node->reference_count = 0;
 		tm_node->parent = NULL;
 		tm_node->shaper_profile = shaper_profile;
-		(void)rte_memcpy(&tm_node->params, params,
+		rte_memcpy(&tm_node->params, params,
 				 sizeof(struct rte_tm_node_params));
 		pf->tm_conf.root = tm_node;
 
@@ -617,7 +617,7 @@ i40e_node_add(struct rte_eth_dev *dev, uint32_t node_id,
 	tm_node->reference_count = 0;
 	tm_node->parent = pf->tm_conf.root;
 	tm_node->shaper_profile = shaper_profile;
-	(void)rte_memcpy(&tm_node->params, params,
+	rte_memcpy(&tm_node->params, params,
 			 sizeof(struct rte_tm_node_params));
 	if (parent_node_type == I40E_TM_NODE_TYPE_PORT) {
 		TAILQ_INSERT_TAIL(&pf->tm_conf.tc_list,

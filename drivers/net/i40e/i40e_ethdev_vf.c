@@ -478,7 +478,7 @@ i40evf_get_vf_resource(struct rte_eth_dev *dev)
 	len =  sizeof(struct virtchnl_vf_resource) +
 		I40E_MAX_VF_VSI * sizeof(struct virtchnl_vsi_resource);
 
-	(void)rte_memcpy(vf->vf_res, args.out_buffer,
+	rte_memcpy(vf->vf_res, args.out_buffer,
 			RTE_MIN(args.out_size, len));
 	i40e_vf_parse_hw_config(hw, vf->vf_res);
 
@@ -794,7 +794,7 @@ i40evf_add_mac_addr(struct rte_eth_dev *dev,
 	list = (struct virtchnl_ether_addr_list *)cmd_buffer;
 	list->vsi_id = vf->vsi_res->vsi_id;
 	list->num_elements = 1;
-	(void)rte_memcpy(list->list[0].addr, addr->addr_bytes,
+	rte_memcpy(list->list[0].addr, addr->addr_bytes,
 					sizeof(addr->addr_bytes));
 
 	args.ops = VIRTCHNL_OP_ADD_ETH_ADDR;
@@ -834,7 +834,7 @@ i40evf_del_mac_addr_by_addr(struct rte_eth_dev *dev,
 	list = (struct virtchnl_ether_addr_list *)cmd_buffer;
 	list->vsi_id = vf->vsi_res->vsi_id;
 	list->num_elements = 1;
-	(void)rte_memcpy(list->list[0].addr, addr->addr_bytes,
+	rte_memcpy(list->list[0].addr, addr->addr_bytes,
 			sizeof(addr->addr_bytes));
 
 	args.ops = VIRTCHNL_OP_DEL_ETH_ADDR;
@@ -1885,7 +1885,7 @@ i40evf_add_del_all_mac_addr(struct rte_eth_dev *dev, bool add)
 			addr = &dev->data->mac_addrs[i];
 			if (is_zero_ether_addr(addr))
 				continue;
-			(void)rte_memcpy(list->list[j].addr, addr->addr_bytes,
+			rte_memcpy(list->list[j].addr, addr->addr_bytes,
 					 sizeof(addr->addr_bytes));
 			PMD_DRV_LOG(DEBUG, "add/rm mac:%x:%x:%x:%x:%x:%x",
 				    addr->addr_bytes[0], addr->addr_bytes[1],

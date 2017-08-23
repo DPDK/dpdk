@@ -926,7 +926,7 @@ i40e_fdir_construct_pkt(struct i40e_pf *pf,
 		dst = pf->fdir.flex_set[pit_idx].dst_offset * sizeof(uint16_t);
 		ptr = payload +
 			pf->fdir.flex_set[pit_idx].src_offset * sizeof(uint16_t);
-		(void)rte_memcpy(ptr,
+		rte_memcpy(ptr,
 				 &fdir_input->flow_ext.flexbytes[dst],
 				 size * sizeof(uint16_t));
 	}
