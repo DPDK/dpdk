@@ -2012,6 +2012,10 @@ int qede_rss_reta_update(struct rte_eth_dev *eth_dev,
 	memset(&vport_update_params, 0, sizeof(vport_update_params));
 	params = rte_zmalloc("qede_rss", sizeof(*params) * edev->num_hwfns,
 			     RTE_CACHE_LINE_SIZE);
+	if (params == NULL) {
+		DP_ERR(edev, "failed to allocate memory\n");
+		return -ENOMEM;
+	}
 
 	for (i = 0; i < reta_size; i++) {
 		idx = i / RTE_RETA_GROUP_SIZE;
