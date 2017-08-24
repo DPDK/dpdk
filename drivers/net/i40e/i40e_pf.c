@@ -647,7 +647,7 @@ i40e_pf_host_process_cmd_config_irq_map(struct i40e_pf_vf *vf,
 	    (struct virtchnl_irq_map_info *)msg;
 	struct virtchnl_vector_map *map;
 	int i;
-	uint16_t vector_id;
+	uint16_t vector_id, itr_idx;
 	unsigned long qbit_max;
 
 	if (!b_op) {
@@ -674,12 +674,13 @@ i40e_pf_host_process_cmd_config_irq_map(struct i40e_pf_vf *vf,
 		vf->vsi->msix_intr = irqmap->vecmap[0].vector_id;
 		vf->vsi->nb_msix = irqmap->num_vectors;
 		vf->vsi->nb_used_qps = vf->vsi->nb_qps;
+		itr_idx = irqmap->vecmap[0].rxitr_idx;
 
 		/* Don't care how the TX/RX queue mapping with this vector.
 		 * Link all VF RX queues together. Only did mapping work.
 		 * VF can disable/enable the intr by itself.
 		 */
-		i40e_vsi_queues_bind_intr(vf->vsi);
+		i40e_vsi_queues_bind_intr(vf->vsi, itr_idx);
 		goto send_msg;
 	}
 

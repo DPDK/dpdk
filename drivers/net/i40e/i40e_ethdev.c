@@ -1596,7 +1596,8 @@ i40e_vsi_queues_unbind_intr(struct i40e_vsi *vsi)
 
 static void
 __vsi_queues_bind_intr(struct i40e_vsi *vsi, uint16_t msix_vect,
-		       int base_queue, int nb_queue)
+		       int base_queue, int nb_queue,
+		       uint16_t itr_idx)
 {
 	int i;
 	uint32_t val;
@@ -1605,7 +1606,7 @@ __vsi_queues_bind_intr(struct i40e_vsi *vsi, uint16_t msix_vect,
 	/* Bind all RX queues to allocated MSIX interrupt */
 	for (i = 0; i < nb_queue; i++) {
 		val = (msix_vect << I40E_QINT_RQCTL_MSIX_INDX_SHIFT) |
-			I40E_QINT_RQCTL_ITR_INDX_MASK |
+			itr_idx << I40E_QINT_RQCTL_ITR_INDX_SHIFT |
 			((base_queue + i + 1) <<
 			 I40E_QINT_RQCTL_NEXTQ_INDX_SHIFT) |
 			(0 << I40E_QINT_RQCTL_NEXTQ_TYPE_SHIFT) |
@@ -1668,7 +1669,7 @@ __vsi_queues_bind_intr(struct i40e_vsi *vsi, uint16_t msix_vect,
 }
 
 void
-i40e_vsi_queues_bind_intr(struct i40e_vsi *vsi)
+i40e_vsi_queues_bind_intr(struct i40e_vsi *vsi, uint16_t itr_idx)
 {
 	struct rte_eth_dev *dev = vsi->adapter->eth_dev;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
@@ -1696,7 +1697,8 @@ i40e_vsi_queues_bind_intr(struct i40e_vsi *vsi)
 	/* VF bind interrupt */
 	if (vsi->type == I40E_VSI_SRIOV) {
 		__vsi_queues_bind_intr(vsi, msix_vect,
-				       vsi->base_queue, vsi->nb_qps);
+				       vsi->base_queue, vsi->nb_qps,
+				       itr_idx);
 		return;
 	}
 
@@ -1722,7 +1724,8 @@ i40e_vsi_queues_bind_intr(struct i40e_vsi *vsi)
 			/* no enough msix_vect, map all to one */
 			__vsi_queues_bind_intr(vsi, msix_vect,
 					       vsi->base_queue + i,
-					       vsi->nb_used_qps - i);
+					       vsi->nb_used_qps - i,
+					       itr_idx);
 			for (; !!record && i < vsi->nb_used_qps; i++)
 				intr_handle->intr_vec[queue_idx + i] =
 					msix_vect;
@@ -1730,7 +1733,8 @@ i40e_vsi_queues_bind_intr(struct i40e_vsi *vsi)
 		}
 		/* 1:1 queue/msix_vect mapping */
 		__vsi_queues_bind_intr(vsi, msix_vect,
-				       vsi->base_queue + i, 1);
+				       vsi->base_queue + i, 1,
+				       itr_idx);
 		if (!!record)
 			intr_handle->intr_vec[queue_idx + i] = msix_vect;
 
@@ -1959,19 +1963,21 @@ i40e_dev_start(struct rte_eth_dev *dev)
 	/* Map queues with MSIX interrupt */
 	main_vsi->nb_used_qps = dev->data->nb_rx_queues -
 		pf->nb_cfg_vmdq_vsi * RTE_LIBRTE_I40E_QUEUE_NUM_PER_VM;
-	i40e_vsi_queues_bind_intr(main_vsi);
+	i40e_vsi_queues_bind_intr(main_vsi, I40E_ITR_INDEX_DEFAULT);
 	i40e_vsi_enable_queues_intr(main_vsi);
 
 	/* Map VMDQ VSI queues with MSIX interrupt */
 	for (i = 0; i < pf->nb_cfg_vmdq_vsi; i++) {
 		pf->vmdq[i].vsi->nb_used_qps = RTE_LIBRTE_I40E_QUEUE_NUM_PER_VM;
-		i40e_vsi_queues_bind_intr(pf->vmdq[i].vsi);
+		i40e_vsi_queues_bind_intr(pf->vmdq[i].vsi,
+					  I40E_ITR_INDEX_DEFAULT);
 		i40e_vsi_enable_queues_intr(pf->vmdq[i].vsi);
 	}
 
 	/* enable FDIR MSIX interrupt */
 	if (pf->fdir.fdir_vsi) {
-		i40e_vsi_queues_bind_intr(pf->fdir.fdir_vsi);
+		i40e_vsi_queues_bind_intr(pf->fdir.fdir_vsi,
+					  I40E_ITR_INDEX_NONE);
 		i40e_vsi_enable_queues_intr(pf->fdir.fdir_vsi);
 	}
 

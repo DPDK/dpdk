@@ -186,9 +186,9 @@ enum i40e_flxpld_layer_idx {
 
 /* Default queue interrupt throttling time in microseconds */
 #define I40E_ITR_INDEX_DEFAULT          0
+#define I40E_ITR_INDEX_NONE             3
 #define I40E_QUEUE_ITR_INTERVAL_DEFAULT 32 /* 32 us */
 #define I40E_QUEUE_ITR_INTERVAL_MAX     8160 /* 8160 us */
-
 /* Special FW support this floating VEB feature */
 #define FLOATING_VEB_SUPPORTED_FW_MAJ 5
 #define FLOATING_VEB_SUPPORTED_FW_MIN 0
@@ -919,7 +919,7 @@ void i40e_update_vsi_stats(struct i40e_vsi *vsi);
 void i40e_pf_disable_irq0(struct i40e_hw *hw);
 void i40e_pf_enable_irq0(struct i40e_hw *hw);
 int i40e_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete);
-void i40e_vsi_queues_bind_intr(struct i40e_vsi *vsi);
+void i40e_vsi_queues_bind_intr(struct i40e_vsi *vsi, uint16_t itr_idx);
 void i40e_vsi_queues_unbind_intr(struct i40e_vsi *vsi);
 int i40e_vsi_vlan_pvid_set(struct i40e_vsi *vsi,
 			   struct i40e_vsi_vlan_pvid_info *info);
