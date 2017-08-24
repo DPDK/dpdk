@@ -912,7 +912,7 @@ static void
 eal_intr_proc_rxtx_intr(int fd, const struct rte_intr_handle *intr_handle)
 {
 	union rte_intr_read_buffer buf;
-	int bytes_read = 1;
+	int bytes_read = 0;
 	int nbytes;
 
 	switch (intr_handle->type) {
@@ -928,11 +928,9 @@ eal_intr_proc_rxtx_intr(int fd, const struct rte_intr_handle *intr_handle)
 		break;
 #endif
 	case RTE_INTR_HANDLE_VDEV:
-		/* for vdev, fd points to:
-		 * a. eventfd which does not need to read out;
-		 * b. datapath fd which needs PMD to read out.
-		 */
-		return;
+		bytes_read = intr_handle->efd_counter_size;
+		/* For vdev, number of bytes to read is set by driver */
+		break;
 	case RTE_INTR_HANDLE_EXT:
 		return;
 	default:
@@ -945,6 +943,8 @@ eal_intr_proc_rxtx_intr(int fd, const struct rte_intr_handle *intr_handle)
 	 * read out to clear the ready-to-be-read flag
 	 * for epoll_wait.
 	 */
+	if (bytes_read == 0)
+		return;
 	do {
 		nbytes = read(fd, &buf, bytes_read);
 		if (nbytes < 0) {
@@ -1204,7 +1204,12 @@ rte_intr_efd_enable(struct rte_intr_handle *intr_handle, uint32_t nb_efd)
 		intr_handle->nb_efd   = n;
 		intr_handle->max_intr = NB_OTHER_INTR + n;
 	} else if (intr_handle->type == RTE_INTR_HANDLE_VDEV) {
-		/* do nothing, and let vdev driver to initialize this struct */
+		/* only check, initialization would be done in vdev driver.*/
+		if (intr_handle->efd_counter_size >
+		    sizeof(union rte_intr_read_buffer)) {
+			RTE_LOG(ERR, EAL, "the efd_counter_size is oversized");
+			return -EINVAL;
+		}
 	} else {
 		intr_handle->efds[0]  = intr_handle->fd;
 		intr_handle->nb_efd   = RTE_MIN(nb_efd, 1U);
