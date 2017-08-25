@@ -77,3 +77,10 @@ DPDK_17.08 {
 	rte_global_active_dqs_list;
 
 } DPDK_17.05;
+
+DPDK_17.11 {
+	global:
+
+	rte_dpaa2_dev_type;
+
+} DPDK_17.08;

@@ -56,6 +56,8 @@ extern "C" {
 #include <rte_dev.h>
 #include <rte_bus.h>
 
+#define FSLMC_OBJECT_MAX_LEN 32   /**< Length of each device on bus */
+
 struct rte_dpaa2_driver;
 
 /* DPAA2 Device and Driver lists for FSLMC bus */
@@ -63,6 +65,20 @@ TAILQ_HEAD(rte_fslmc_device_list, rte_dpaa2_device);
 TAILQ_HEAD(rte_fslmc_driver_list, rte_dpaa2_driver);
 
 extern struct rte_fslmc_bus rte_fslmc_bus;
+
+enum rte_dpaa2_dev_type {
+	/* Devices backed by DPDK driver */
+	DPAA2_ETH,	/**< DPNI type device*/
+	DPAA2_CRYPTO,	/**< DPSECI type device */
+	DPAA2_CON,	/**< DPCONC type device */
+	/* Devices not backed by a DPDK driver: DPIO, DPBP, DPCI, DPMCP */
+	DPAA2_BPOOL,	/**< DPBP type device */
+	DPAA2_IO,	/**< DPIO type device */
+	DPAA2_CI,	/**< DPCI type device */
+	DPAA2_MPORTAL,  /**< DPMCP type device */
+	/* Unknown device placeholder */
+	DPAA2_UNKNOWN
+};
 
 /**
  * A structure describing a DPAA2 device.
@@ -74,11 +90,11 @@ struct rte_dpaa2_device {
 		struct rte_eth_dev *eth_dev;        /**< ethernet device */
 		struct rte_cryptodev *cryptodev;    /**< Crypto Device */
 	};
-	uint16_t dev_type;                  /**< Device Type */
-	uint16_t object_id;             /**< DPAA2 Object ID */
+	enum rte_dpaa2_dev_type dev_type;   /**< Device Type */
+	uint16_t object_id;                 /**< DPAA2 Object ID */
 	struct rte_intr_handle intr_handle; /**< Interrupt handle */
 	struct rte_dpaa2_driver *driver;    /**< Associated driver */
-	char name[32];          /**< DPAA2 Object name*/
+	char name[FSLMC_OBJECT_MAX_LEN];    /**< DPAA2 Object name*/
 };
 
 typedef int (*rte_dpaa2_probe_t)(struct rte_dpaa2_driver *dpaa2_drv,
@@ -93,7 +109,7 @@ struct rte_dpaa2_driver {
 	struct rte_driver driver;           /**< Inherit core driver. */
 	struct rte_fslmc_bus *fslmc_bus;    /**< FSLMC bus reference */
 	uint32_t drv_flags;                 /**< Flags for controlling device.*/
-	uint16_t drv_type;                  /**< Driver Type */
+	enum rte_dpaa2_dev_type drv_type;   /**< Driver Type */
 	rte_dpaa2_probe_t probe;
 	rte_dpaa2_remove_t remove;
 };

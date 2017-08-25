@@ -288,8 +288,8 @@ dpaa2_compare_dpaa2_dev(const struct rte_dpaa2_device *dev,
 			 const struct rte_dpaa2_device *dev2)
 {
 	/*not the same family device */
-	if (dev->dev_type != DPAA2_MC_DPNI_DEVID ||
-			dev->dev_type != DPAA2_MC_DPSECI_DEVID)
+	if (dev->dev_type != DPAA2_ETH ||
+			dev->dev_type != DPAA2_CRYPTO)
 		return -1;
 
 	if (dev->object_id == dev2->object_id)
@@ -506,7 +506,7 @@ int fslmc_vfio_process_group(void)
 			/* store hw_id of dpni/dpseci device */
 			dev->object_id = object_id;
 			dev->dev_type = (strcmp(object_type, "dpseci")) ?
-				DPAA2_MC_DPNI_DEVID : DPAA2_MC_DPSECI_DEVID;
+				DPAA2_ETH : DPAA2_CRYPTO;
 
 			sprintf(dev->name, "%s.%d", object_type, object_id);
 			dev->device.name = dev->name;
