@@ -2000,7 +2000,7 @@ cryptodev_dpaa2_sec_remove(struct rte_dpaa2_device *dpaa2_dev)
 }
 
 static struct rte_dpaa2_driver rte_dpaa2_sec_driver = {
-	.drv_type = DPAA2_MC_DPSECI_DEVID,
+	.drv_type = DPAA2_CRYPTO,
 	.driver = {
 		.name = "DPAA2 SEC PMD"
 	},
