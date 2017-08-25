@@ -880,6 +880,23 @@ rcd_done:
 		}
 	}
 
+	if (unlikely(nb_rxd == 0)) {
+		uint32_t avail;
+		for (ring_idx = 0; ring_idx < VMXNET3_RX_CMDRING_SIZE; ring_idx++) {
+			avail = vmxnet3_cmd_ring_desc_avail(&rxq->cmd_ring[ring_idx]);
+			if (unlikely(avail > 0)) {
+				/* try to alloc new buf and renew descriptors */
+				vmxnet3_post_rx_bufs(rxq, ring_idx);
+			}
+		}
+		if (unlikely(rxq->shared->ctrl.updateRxProd)) {
+			for (ring_idx = 0; ring_idx < VMXNET3_RX_CMDRING_SIZE; ring_idx++) {
+				VMXNET3_WRITE_BAR0_REG(hw, rxprod_reg[ring_idx] + (rxq->queue_id * VMXNET3_REG_ALIGN),
+						       rxq->cmd_ring[ring_idx].next2fill);
+			}
+		}
+	}
+
 	return nb_rx;
 }
 
