@@ -1588,7 +1588,7 @@ rte_dpaa2_remove(struct rte_dpaa2_device *dpaa2_dev)
 }
 
 static struct rte_dpaa2_driver rte_dpaa2_pmd = {
-	.drv_type = DPAA2_MC_DPNI_DEVID,
+	.drv_type = DPAA2_ETH,
 	.probe = rte_dpaa2_probe,
 	.remove = rte_dpaa2_remove,
 };
