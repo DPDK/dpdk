@@ -36,14 +36,12 @@
 
 #include "eal_vfio.h"
 
-#define DPAA2_VENDOR_ID		0x1957
 #define DPAA2_MC_DPNI_DEVID	7
 #define DPAA2_MC_DPSECI_DEVID	3
 #define DPAA2_MC_DPCON_DEVID	5
 #define DPAA2_MC_DPIO_DEVID	9
 #define DPAA2_MC_DPBP_DEVID	10
 #define DPAA2_MC_DPCI_DEVID	11
-
 
 typedef struct fslmc_vfio_device {
 	int fd; /* fslmc root container device ?? */
@@ -71,6 +69,8 @@ int rte_dpaa2_intr_enable(struct rte_intr_handle *intr_handle,
 
 int fslmc_vfio_setup_group(void);
 int fslmc_vfio_process_group(void);
+char *fslmc_get_container(void);
+int fslmc_get_container_group(int *gropuid);
 int rte_fslmc_vfio_dmamap(void);
 
 #endif /* _FSLMC_VFIO_H_ */

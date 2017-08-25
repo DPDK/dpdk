@@ -59,7 +59,6 @@
 #include <rte_dev.h>
 
 #include <fslmc_logs.h>
-#include <fslmc_vfio.h>
 #include <rte_fslmc.h>
 #include "dpaa2_hw_pvt.h"
 #include "dpaa2_hw_dpio.h"

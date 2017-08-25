@@ -56,6 +56,9 @@ extern "C" {
 #include <rte_interrupts.h>
 #include <rte_dev.h>
 #include <rte_bus.h>
+#include <rte_tailq.h>
+
+#include <fslmc_vfio.h>
 
 #define FSLMC_OBJECT_MAX_LEN 32   /**< Length of each device on bus */
 
