@@ -44,7 +44,6 @@
 #define DPAA2_MC_DPBP_DEVID	10
 #define DPAA2_MC_DPCI_DEVID	11
 
-#define VFIO_MAX_GRP 1
 
 typedef struct fslmc_vfio_device {
 	int fd; /* fslmc root container device ?? */
@@ -64,7 +63,7 @@ typedef struct fslmc_vfio_container {
 	int fd; /* /dev/vfio/vfio */
 	int used;
 	int index; /* index in group list */
-	struct fslmc_vfio_group *group_list[VFIO_MAX_GRP];
+	struct fslmc_vfio_group *group;
 } fslmc_vfio_container;
 
 struct rte_dpaa2_object;

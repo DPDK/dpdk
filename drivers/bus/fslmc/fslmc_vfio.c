@@ -62,8 +62,6 @@
 #include "portal/dpaa2_hw_pvt.h"
 #include "portal/dpaa2_hw_dpio.h"
 
-#define VFIO_MAX_CONTAINERS	1
-
 #define FSLMC_VFIO_LOG(level, fmt, args...) \
 	RTE_LOG(level, EAL, "%s(): " fmt "\n", __func__, ##args)
 
@@ -71,8 +69,8 @@
 #define SYSFS_FSL_MC_DEVICES "/sys/bus/fsl-mc/devices"
 
 /* Number of VFIO containers & groups with in */
-static struct fslmc_vfio_group vfio_groups[VFIO_MAX_GRP];
-static struct fslmc_vfio_container vfio_containers[VFIO_MAX_CONTAINERS];
+static struct fslmc_vfio_group vfio_group;
+static struct fslmc_vfio_container vfio_container;
 static int container_device_fd;
 static uint32_t *msi_intr_vaddr;
 void *(*rte_mcp_ptr_list);
@@ -90,22 +88,18 @@ rte_fslmc_object_register(struct rte_dpaa2_object *object)
 	TAILQ_INSERT_TAIL(&fslmc_obj_list, object, next);
 }
 
-static int vfio_connect_container(struct fslmc_vfio_group *vfio_group)
+static int vfio_connect_container(void)
 {
-	struct fslmc_vfio_container *container;
-	int i, fd, ret;
+	int fd, ret;
 
 	/* Try connecting to vfio container if already created */
-	for (i = 0; i < VFIO_MAX_CONTAINERS; i++) {
-		container = &vfio_containers[i];
-		if (!ioctl(vfio_group->fd, VFIO_GROUP_SET_CONTAINER,
-			   &container->fd)) {
-			FSLMC_VFIO_LOG(INFO,
-			    "Container pre-exists with FD[0x%x] for this group",
-			    container->fd);
-			vfio_group->container = container;
-			return 0;
-		}
+	if (!ioctl(vfio_group.fd, VFIO_GROUP_SET_CONTAINER,
+		&vfio_container.fd)) {
+		FSLMC_VFIO_LOG(INFO,
+		    "Container pre-exists with FD[0x%x] for this group",
+		    vfio_container.fd);
+		vfio_group.container = &vfio_container;
+		return 0;
 	}
 
 	/* Opens main vfio file descriptor which represents the "container" */
@@ -118,7 +112,7 @@ static int vfio_connect_container(struct fslmc_vfio_group *vfio_group)
 	/* Check whether support for SMMU type IOMMU present or not */
 	if (ioctl(fd, VFIO_CHECK_EXTENSION, VFIO_TYPE1_IOMMU)) {
 		/* Connect group to container */
-		ret = ioctl(vfio_group->fd, VFIO_GROUP_SET_CONTAINER, &fd);
+		ret = ioctl(vfio_group.fd, VFIO_GROUP_SET_CONTAINER, &fd);
 		if (ret) {
 			FSLMC_VFIO_LOG(ERR, "Failed to setup group container");
 			close(fd);
@@ -137,23 +131,11 @@ static int vfio_connect_container(struct fslmc_vfio_group *vfio_group)
 		return -EINVAL;
 	}
 
-	container = NULL;
-	for (i = 0; i < VFIO_MAX_CONTAINERS; i++) {
-		if (vfio_containers[i].used)
-			continue;
-		container = &vfio_containers[i];
-	}
-	if (!container) {
-		FSLMC_VFIO_LOG(ERR, "No free container found");
-		close(fd);
-		return -ENOMEM;
-	}
+	vfio_container.used = 1;
+	vfio_container.fd = fd;
+	vfio_container.group = &vfio_group;
+	vfio_group.container = &vfio_container;
 
-	container->used = 1;
-	container->fd = fd;
-	container->group_list[container->index] = vfio_group;
-	vfio_group->container = container;
-	container->index++;
 	return 0;
 }
 
@@ -222,7 +204,7 @@ int rte_fslmc_vfio_dmamap(void)
 #endif
 
 		/* SET DMA MAP for IOMMU */
-		group = &vfio_groups[0];
+		group = &vfio_group;
 
 		if (!group->container) {
 			FSLMC_VFIO_LOG(ERR, "Container is not connected ");
@@ -392,7 +374,7 @@ int fslmc_vfio_process_group(void)
 	char path[PATH_MAX];
 	int64_t v_addr;
 	int ndev_count;
-	struct fslmc_vfio_group *group = &vfio_groups[0];
+	struct fslmc_vfio_group *group = &vfio_group;
 	static int process_once;
 
 	/* if already done once */
@@ -569,7 +551,7 @@ int fslmc_vfio_setup_group(void)
 {
 	struct fslmc_vfio_group *group = NULL;
 	int groupid;
-	int ret, i;
+	int ret;
 	char *container;
 	struct vfio_group_status status = { .argsz = sizeof(status) };
 
@@ -599,13 +581,11 @@ int fslmc_vfio_setup_group(void)
 	FSLMC_VFIO_LOG(DEBUG, "VFIO iommu group id = %d", groupid);
 
 	/* Check if group already exists */
-	for (i = 0; i < VFIO_MAX_GRP; i++) {
-		group = &vfio_groups[i];
-		if (group->groupid == groupid) {
-			FSLMC_VFIO_LOG(ERR, "groupid already exists %d",
-				       groupid);
-			return 0;
-		}
+	group = &vfio_group;
+	if (group->groupid == groupid) {
+		FSLMC_VFIO_LOG(ERR, "groupid already exists %d",
+			       groupid);
+		return 0;
 	}
 
 	/* get the actual group fd */
@@ -637,7 +617,7 @@ int fslmc_vfio_setup_group(void)
 	/* check if group does not have a container yet */
 	if (!(status.flags & VFIO_GROUP_FLAGS_CONTAINER_SET)) {
 		/* Now connect this IOMMU group to given container */
-		ret = vfio_connect_container(group);
+		ret = vfio_connect_container();
 		if (ret) {
 			FSLMC_VFIO_LOG(ERR, "VFIO error connecting container"
 				       " with groupid %d", groupid);
