@@ -46,7 +46,7 @@
 #include <rte_dev.h>
 #include <rte_ethdev.h>
 
-#include <fslmc_vfio.h>
+#include <rte_fslmc.h>
 #include <mc/fsl_dpcon.h>
 #include <portal/dpaa2_hw_pvt.h>
 #include "dpaa2_eventdev.h"
@@ -56,9 +56,9 @@ static struct dpcon_dev_list dpcon_dev_list
 	= TAILQ_HEAD_INITIALIZER(dpcon_dev_list); /*!< DPCON device list */
 
 static int
-rte_dpaa2_create_dpcon_device(struct fslmc_vfio_device *vdev __rte_unused,
+rte_dpaa2_create_dpcon_device(int dev_fd __rte_unused,
 			      struct vfio_device_info *obj_info __rte_unused,
-			 int dpcon_id)
+			      int dpcon_id)
 {
 	struct dpaa2_dpcon_dev *dpcon_node;
 	struct dpcon_attr attr;
@@ -132,7 +132,7 @@ void rte_dpaa2_free_dpcon_dev(struct dpaa2_dpcon_dev *dpcon)
 }
 
 static struct rte_dpaa2_object rte_dpaa2_dpcon_obj = {
-	.object_id = DPAA2_MC_DPCON_DEVID,
+	.dev_type = DPAA2_CON,
 	.create = rte_dpaa2_create_dpcon_device,
 };
 

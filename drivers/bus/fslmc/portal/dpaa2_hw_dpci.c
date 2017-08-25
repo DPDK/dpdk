@@ -47,7 +47,7 @@
 #include <rte_ethdev.h>
 
 #include <fslmc_logs.h>
-#include <fslmc_vfio.h>
+#include <rte_fslmc.h>
 #include <mc/fsl_dpci.h>
 #include "portal/dpaa2_hw_pvt.h"
 #include "portal/dpaa2_hw_dpio.h"
@@ -57,9 +57,9 @@ static struct dpci_dev_list dpci_dev_list
 	= TAILQ_HEAD_INITIALIZER(dpci_dev_list); /*!< DPCI device list */
 
 static int
-rte_dpaa2_create_dpci_device(struct fslmc_vfio_device *vdev __rte_unused,
+rte_dpaa2_create_dpci_device(int vdev_fd __rte_unused,
 			     struct vfio_device_info *obj_info __rte_unused,
-				int dpci_id)
+			     int dpci_id)
 {
 	struct dpaa2_dpci_dev *dpci_node;
 	struct dpci_attr attr;
@@ -172,7 +172,7 @@ void rte_dpaa2_free_dpci_dev(struct dpaa2_dpci_dev *dpci)
 }
 
 static struct rte_dpaa2_object rte_dpaa2_dpci_obj = {
-	.object_id = DPAA2_MC_DPCI_DEVID,
+	.dev_type = DPAA2_CI,
 	.create = rte_dpaa2_create_dpci_device,
 };
 

@@ -48,7 +48,7 @@
 #include <rte_ethdev.h>
 
 #include <fslmc_logs.h>
-#include <fslmc_vfio.h>
+#include <rte_fslmc.h>
 #include <mc/fsl_dpbp.h>
 #include "portal/dpaa2_hw_pvt.h"
 #include "portal/dpaa2_hw_dpio.h"
@@ -58,7 +58,7 @@ static struct dpbp_dev_list dpbp_dev_list
 	= TAILQ_HEAD_INITIALIZER(dpbp_dev_list); /*!< DPBP device list */
 
 static int
-dpaa2_create_dpbp_device(struct fslmc_vfio_device *vdev __rte_unused,
+dpaa2_create_dpbp_device(int vdev_fd __rte_unused,
 			 struct vfio_device_info *obj_info __rte_unused,
 			 int dpbp_id)
 {
@@ -130,7 +130,7 @@ void dpaa2_free_dpbp_dev(struct dpaa2_dpbp_dev *dpbp)
 }
 
 static struct rte_dpaa2_object rte_dpaa2_dpbp_obj = {
-	.object_id = DPAA2_MC_DPBP_DEVID,
+	.dev_type = DPAA2_BPOOL,
 	.create = dpaa2_create_dpbp_device,
 };
 

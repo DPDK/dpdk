@@ -60,6 +60,7 @@
 
 #include <fslmc_logs.h>
 #include <fslmc_vfio.h>
+#include <rte_fslmc.h>
 #include "dpaa2_hw_pvt.h"
 #include "dpaa2_hw_dpio.h"
 #include <mc/fsl_dpmng.h>
@@ -428,7 +429,7 @@ dpaa2_affine_qbman_swp_sec(void)
 }
 
 static int
-dpaa2_create_dpio_device(struct fslmc_vfio_device *vdev,
+dpaa2_create_dpio_device(int vdev_fd,
 			 struct vfio_device_info *obj_info,
 			 int object_id)
 {
@@ -451,7 +452,7 @@ dpaa2_create_dpio_device(struct fslmc_vfio_device *vdev,
 
 	dpio_dev->dpio = NULL;
 	dpio_dev->hw_id = object_id;
-	dpio_dev->intr_handle.vfio_dev_fd = vdev->fd;
+	dpio_dev->intr_handle.vfio_dev_fd = vdev_fd;
 	rte_atomic16_init(&dpio_dev->ref_count);
 	/* Using single portal  for all devices */
 	dpio_dev->mc_portal = rte_mcp_ptr_list[MC_PORTAL_INDEX];
@@ -529,7 +530,7 @@ fail:
 }
 
 static struct rte_dpaa2_object rte_dpaa2_dpio_obj = {
-	.object_id = DPAA2_MC_DPIO_DEVID,
+	.dev_type = DPAA2_IO,
 	.create = dpaa2_create_dpio_device,
 };
 

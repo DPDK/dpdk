@@ -50,6 +50,7 @@ extern "C" {
 #include <sys/queue.h>
 #include <stdint.h>
 #include <inttypes.h>
+#include <linux/vfio.h>
 
 #include <rte_debug.h>
 #include <rte_interrupts.h>
@@ -78,6 +79,22 @@ enum rte_dpaa2_dev_type {
 	DPAA2_MPORTAL,  /**< DPMCP type device */
 	/* Unknown device placeholder */
 	DPAA2_UNKNOWN
+};
+
+TAILQ_HEAD(rte_dpaa2_object_list, rte_dpaa2_object);
+
+typedef int (*rte_dpaa2_obj_create_t)(int vdev_fd,
+				      struct vfio_device_info *obj_info,
+				      int object_id);
+
+/**
+ * A structure describing a DPAA2 object.
+ */
+struct rte_dpaa2_object {
+	TAILQ_ENTRY(rte_dpaa2_object) next; /**< Next in list. */
+	const char *name;                   /**< Name of Object. */
+	enum rte_dpaa2_dev_type dev_type;   /**< Type of device */
+	rte_dpaa2_obj_create_t create;
 };
 
 /**
@@ -158,5 +175,24 @@ RTE_PMD_EXPORT_NAME(nm, __COUNTER__)
 #ifdef __cplusplus
 }
 #endif
+
+/**
+ * Register a DPAA2 MC Object driver.
+ *
+ * @param mc_object
+ *   A pointer to a rte_dpaa_object structure describing the mc object
+ *   to be registered.
+ */
+void rte_fslmc_object_register(struct rte_dpaa2_object *object);
+
+/** Helper for DPAA2 object registration */
+#define RTE_PMD_REGISTER_DPAA2_OBJECT(nm, dpaa2_obj) \
+RTE_INIT(dpaa2objinitfn_ ##nm); \
+static void dpaa2objinitfn_ ##nm(void) \
+{\
+	(dpaa2_obj).name = RTE_STR(nm);\
+	rte_fslmc_object_register(&dpaa2_obj); \
+} \
+RTE_PMD_EXPORT_NAME(nm, __COUNTER__)
 
 #endif /* _RTE_FSLMC_H_ */

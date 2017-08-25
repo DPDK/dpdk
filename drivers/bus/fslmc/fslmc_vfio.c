@@ -76,8 +76,9 @@ static uint32_t *msi_intr_vaddr;
 void *(*rte_mcp_ptr_list);
 static uint32_t mcp_id;
 static int is_dma_done;
-static struct rte_fslmc_object_list fslmc_obj_list =
-	TAILQ_HEAD_INITIALIZER(fslmc_obj_list);
+
+static struct rte_dpaa2_object_list dpaa2_obj_list =
+	TAILQ_HEAD_INITIALIZER(dpaa2_obj_list);
 
 /*register a fslmc bus based dpaa2 driver */
 void
@@ -85,7 +86,7 @@ rte_fslmc_object_register(struct rte_dpaa2_object *object)
 {
 	RTE_VERIFY(object);
 
-	TAILQ_INSERT_TAIL(&fslmc_obj_list, object, next);
+	TAILQ_INSERT_TAIL(&dpaa2_obj_list, object, next);
 }
 
 static int vfio_connect_container(void)
@@ -517,9 +518,9 @@ int fslmc_vfio_process_group(void)
 			/* Parse all other objects */
 			struct rte_dpaa2_object *object;
 
-			TAILQ_FOREACH(object, &fslmc_obj_list, next) {
+			TAILQ_FOREACH(object, &dpaa2_obj_list, next) {
 				if (!strcmp(object_type, object->name))
-					object->create(vdev, &device_info,
+					object->create(dev_fd, &device_info,
 						       object_id);
 				else
 					continue;

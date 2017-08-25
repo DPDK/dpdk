@@ -66,48 +66,11 @@ typedef struct fslmc_vfio_container {
 	struct fslmc_vfio_group *group;
 } fslmc_vfio_container;
 
-struct rte_dpaa2_object;
-
-TAILQ_HEAD(rte_fslmc_object_list, rte_dpaa2_object);
-
-typedef int (*rte_fslmc_obj_create_t)(struct fslmc_vfio_device *vdev,
-					 struct vfio_device_info *obj_info,
-					 int object_id);
-
-/**
- * A structure describing a DPAA2 driver.
- */
-struct rte_dpaa2_object {
-	TAILQ_ENTRY(rte_dpaa2_object) next; /**< Next in list. */
-	const char *name;            /**< Name of Object. */
-	uint16_t object_id;             /**< DPAA2 Object ID */
-	rte_fslmc_obj_create_t create;
-};
-
 int rte_dpaa2_intr_enable(struct rte_intr_handle *intr_handle,
 			  uint32_t index);
 
 int fslmc_vfio_setup_group(void);
 int fslmc_vfio_process_group(void);
 int rte_fslmc_vfio_dmamap(void);
-
-/**
- * Register a DPAA2 MC Object driver.
- *
- * @param mc_object
- *   A pointer to a rte_dpaa_object structure describing the mc object
- *   to be registered.
- */
-void rte_fslmc_object_register(struct rte_dpaa2_object *object);
-
-/** Helper for DPAA2 object registration */
-#define RTE_PMD_REGISTER_DPAA2_OBJECT(nm, dpaa2_obj) \
-RTE_INIT(dpaa2objinitfn_ ##nm); \
-static void dpaa2objinitfn_ ##nm(void) \
-{\
-	(dpaa2_obj).name = RTE_STR(nm);\
-	rte_fslmc_object_register(&dpaa2_obj); \
-} \
-RTE_PMD_EXPORT_NAME(nm, __COUNTER__)
 
 #endif /* _FSLMC_VFIO_H_ */
