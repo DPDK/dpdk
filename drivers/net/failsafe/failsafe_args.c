@@ -286,10 +286,17 @@ fs_remove_sub_devices_definition(char params[DEVARGS_MAXLEN])
 			ERROR("Invalid parameter");
 			return -EINVAL;
 		}
-		if (params[b] == ',' || params[b] == '\0')
-			i += snprintf(&buffer[i], b - a + 1, "%s", &params[a]);
-		if (params[b] == '(') {
+		if (params[b] == ',' || params[b] == '\0') {
+			size_t len = b - a;
+
+			if (i > 0)
+				len += 1;
+			snprintf(&buffer[i], len + 1, "%s%s",
+					i ? "," : "", &params[a]);
+			i += len;
+		} else if (params[b] == '(') {
 			size_t start = b;
+
 			b += closing_paren(&params[b]);
 			if (b == start)
 				return -EINVAL;
@@ -393,6 +400,7 @@ failsafe_args_parse(struct rte_eth_dev *dev, const char *params)
 					&dev->data->mac_addrs[0]);
 			if (ret < 0)
 				goto free_kvlist;
+
 			mac_from_arg = 1;
 		}
 	}
