@@ -285,7 +285,7 @@ struct rte_bus *rte_bus_find_by_name(const char *busname);
  * The constructor has higher priority than PMD constructors.
  */
 #define RTE_REGISTER_BUS(nm, bus) \
-RTE_INIT_PRIO(businitfn_ ##nm, 101); \
+RTE_INIT_PRIO(businitfn_ ##nm, 110); \
 static void businitfn_ ##nm(void) \
 {\
 	(bus).name = RTE_STR(nm);\
