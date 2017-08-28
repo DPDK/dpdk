@@ -29,14 +29,18 @@
 #   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-subdir('eal')
+mkfile = custom_target('igb_uio_makefile',
+	output: 'Makefile',
+	command: ['touch', '@OUTPUT@'])
 
-if get_option('enable_kmods')
-	kernel_dir = get_option('kernel_dir')
-	if kernel_dir == ''
-		kernel_version = run_command('uname', '-r').stdout().strip()
-		kernel_dir = '/lib/modules/' + kernel_version + '/build'
-	endif
-
-	subdir('igb_uio')
-endif
+custom_target('igb_uio',
+	input: ['igb_uio.c', 'Kbuild'],
+	output: 'igb_uio.ko',
+	command: ['make', '-C', kernel_dir,
+		'M=' + meson.current_build_dir(),
+		'src=' + meson.current_source_dir(),
+		'EXTRA_CFLAGS=-I' + meson.current_source_dir() +
+			'/../../common/include',
+		'modules'],
+	depends: mkfile,
+	build_by_default: true)

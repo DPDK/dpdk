@@ -4,3 +4,5 @@ option('max_numa_nodes', type: 'string', value: '4', description: 'maximum numbe
 option('use_hpet', type: 'boolean', value: false, description: 'use HPET timer in EAL')
 option('allow_invalid_socket_id', type: 'boolean', value: false,
 	description: 'allow out-of-range NUMA socket id\'s for platforms that don\'t report the value correctly')
+option('enable_kmods', type: 'boolean', value: true, description: 'build kernel modules')
+option('kernel_dir', type: 'string', value: '', description: 'path to the kernel for building kernel modules')
