@@ -1,0 +1,6 @@
+option('machine', type: 'string', value: 'native', description: 'set the target machine type')
+option('max_lcores', type: 'string', value: '128', description: 'maximum number of cores/threads supported by EAL')
+option('max_numa_nodes', type: 'string', value: '4', description: 'maximum number of NUMA nodes supported by EAL')
+option('use_hpet', type: 'boolean', value: false, description: 'use HPET timer in EAL')
+option('allow_invalid_socket_id', type: 'boolean', value: false,
+	description: 'allow out-of-range NUMA socket id\'s for platforms that don\'t report the value correctly')

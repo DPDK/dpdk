@@ -72,6 +72,12 @@ F: doc/guides/prog_guide/build_app.rst
 F: doc/guides/prog_guide/dev_kit_*
 F: doc/guides/prog_guide/ext_app_lib_make_help.rst
 
+Meson build
+M: Bruce Richardson <bruce.richardson@intel.com>
+F: meson.build
+F: meson_options.txt
+F: config/rte_config.h
+
 ABI versioning
 M: Neil Horman <nhorman@tuxdriver.com>
 F: lib/librte_compat/
