@@ -1068,7 +1068,7 @@ sfc_rx_rss_config(struct sfc_adapter *sa)
 			goto finish;
 
 		rc = efx_rx_scale_tbl_set(sa->nic, sa->rss_tbl,
-					  sizeof(sa->rss_tbl));
+					  RTE_DIM(sa->rss_tbl));
 	}
 
 finish:
