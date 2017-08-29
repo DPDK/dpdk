@@ -59,9 +59,10 @@ endif
 global_inc = include_directories('.', 'config')
 subdir('config')
 
-# build libs and (TODO) drivers
+# build libs and drivers
 subdir('lib')
 subdir('buildtools')
+subdir('drivers')
 
 # TODO build binaries and installable tools
 
