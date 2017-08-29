@@ -222,6 +222,7 @@ EXPERIMENTAL {
 	rte_service_is_running;
 	rte_service_lcore_add;
 	rte_service_lcore_count;
+	rte_service_lcore_count_services;
 	rte_service_lcore_del;
 	rte_service_lcore_list;
 	rte_service_lcore_reset_all;

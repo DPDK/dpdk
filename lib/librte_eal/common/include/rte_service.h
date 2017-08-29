@@ -374,6 +374,19 @@ int32_t rte_service_lcore_list(uint32_t array[], uint32_t n);
  * @warning
  * @b EXPERIMENTAL: this API may change without prior notice
  *
+ * Get the numer of services running on the supplied lcore.
+ *
+ * @param lcore Id of the service core.
+ * @retval >=0 Number of services registered to this core.
+ * @retval -EINVAL Invalid lcore provided
+ * @retval -ENOTSUP The provided lcore is not a service core.
+ */
+int32_t rte_service_lcore_count_services(uint32_t lcore);
+
+/**
+ * @warning
+ * @b EXPERIMENTAL: this API may change without prior notice
+ *
  * Dumps any information available about the service. If service is NULL,
  * dumps info for all services.
  */

@@ -397,6 +397,19 @@ rte_service_lcore_list(uint32_t array[], uint32_t n)
 }
 
 int32_t
+rte_service_lcore_count_services(uint32_t lcore)
+{
+	if (lcore >= RTE_MAX_LCORE)
+		return -EINVAL;
+
+	struct core_state *cs = &lcore_states[lcore];
+	if (!cs->is_service_core)
+		return -ENOTSUP;
+
+	return __builtin_popcountll(cs->service_mask);
+}
+
+int32_t
 rte_service_start_with_defaults(void)
 {
 	/* create a default mapping from cores to services, then start the
