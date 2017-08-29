@@ -61,6 +61,7 @@ subdir('config')
 
 # build libs and (TODO) drivers
 subdir('lib')
+subdir('buildtools')
 
 # TODO build binaries and installable tools
 
