@@ -146,15 +146,16 @@ struct rte_bus *
 rte_bus_find(const struct rte_bus *start, rte_bus_cmp_t cmp,
 	     const void *data)
 {
-	struct rte_bus *bus = NULL;
+	struct rte_bus *bus;
 
-	TAILQ_FOREACH(bus, &rte_bus_list, next) {
-		if (start && bus == start) {
-			start = NULL; /* starting point found */
-			continue;
-		}
+	if (start != NULL)
+		bus = TAILQ_NEXT(start, next);
+	else
+		bus = TAILQ_FIRST(&rte_bus_list);
+	while (bus != NULL) {
 		if (cmp(bus, data) == 0)
 			break;
+		bus = TAILQ_NEXT(bus, next);
 	}
 	return bus;
 }
