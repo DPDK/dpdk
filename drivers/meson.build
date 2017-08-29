@@ -29,7 +29,7 @@
 #   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-driver_classes = ['bus', 'mempool']
+driver_classes = ['bus', 'crypto', 'mempool']
 
 foreach class:driver_classes
 	drivers = []
@@ -46,6 +46,7 @@ foreach class:driver_classes
 
 		# set up empty variables used for build
 		build = true # set to false to disable, e.g. missing deps
+		name = drv
 		version = 1
 		allow_experimental_apis = false
 		sources = []
@@ -66,7 +67,7 @@ foreach class:driver_classes
 		subdir(drv_path)
 
 		if build
-			dpdk_conf.set(config_flag_fmt.format(drv.to_upper()),1)
+			dpdk_conf.set(config_flag_fmt.format(name.to_upper()),1)
 
 			if allow_experimental_apis
 				cflags += '-DALLOW_EXPERIMENTAL_API'
@@ -97,11 +98,11 @@ foreach class:driver_classes
 			endforeach
 
 			# now build the driver itself, and add to the drivers list
-			drv_name = driver_name_fmt.format(drv)
+			lib_name = driver_name_fmt.format(name)
 			version_map = '@0@/@1@/@2@_version.map'.format(
 					meson.current_source_dir(),
-					drv_path, drv_name)
-			lib = library(drv_name,
+					drv_path, lib_name)
+			lib = library(lib_name,
 				sources,
 				objects: objs,
 				include_directories: includes,
@@ -117,7 +118,7 @@ foreach class:driver_classes
 
 			# create a dependency object and add it to the global dictionary so
 			# testpmd or other built-in apps can find it if necessary
-			set_variable('dep_@0@'.format(drv_name),
+			set_variable('dep_@0@'.format(lib_name),
 					declare_dependency(link_with: lib,
 					include_directories: includes,
 					dependencies: dep_objs))
