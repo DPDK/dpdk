@@ -803,7 +803,7 @@ sfc_flow_parse_attr(const struct rte_flow_attr *attr,
 	}
 
 	flow->spec.efs_flags |= EFX_FILTER_FLAG_RX;
-	flow->spec.efs_rss_context = EFX_FILTER_SPEC_RSS_CONTEXT_DEFAULT;
+	flow->spec.efs_rss_context = EFX_RSS_CONTEXT_DEFAULT;
 
 	return 0;
 }
