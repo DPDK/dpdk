@@ -64,7 +64,8 @@ subdir('lib')
 subdir('buildtools')
 subdir('drivers')
 
-# TODO build binaries and installable tools
+# build binaries and (TODO) installable tools
+subdir('app')
 
 # write the build config
 build_cfg = 'rte_build_config.h'
