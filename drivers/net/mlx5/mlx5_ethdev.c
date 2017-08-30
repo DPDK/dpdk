@@ -113,7 +113,6 @@ struct ethtool_link_settings {
 #define ETHTOOL_LINK_MODE_100000baseCR4_Full_BIT 38
 #define ETHTOOL_LINK_MODE_100000baseLR4_ER4_Full_BIT 39
 #endif
-#define ETHTOOL_LINK_MODE_MASK_MAX_KERNEL_NU32 (SCHAR_MAX)
 
 /**
  * Return private structure associated with an Ethernet device.
@@ -805,11 +804,7 @@ static int
 mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev, int wait_to_complete)
 {
 	struct priv *priv = mlx5_get_priv(dev);
-	alignas(struct ethtool_link_settings)
-	uint8_t data[offsetof(struct ethtool_link_settings, link_mode_masks) +
-		     sizeof(uint32_t) *
-		     ETHTOOL_LINK_MODE_MASK_MAX_KERNEL_NU32 * 3];
-	struct ethtool_link_settings *ecmd = (void *)data;
+	struct ethtool_link_settings gcmd = { .cmd = ETHTOOL_GLINKSETTINGS };
 	struct ifreq ifr;
 	struct rte_eth_link dev_link;
 	uint64_t sc;
@@ -822,15 +817,21 @@ mlx5_link_update_unlocked_gs(struct rte_eth_dev *dev, int wait_to_complete)
 	memset(&dev_link, 0, sizeof(dev_link));
 	dev_link.link_status = ((ifr.ifr_flags & IFF_UP) &&
 				(ifr.ifr_flags & IFF_RUNNING));
-	memset(ecmd, 0, sizeof(*ecmd));
-	ecmd->cmd = ETHTOOL_GLINKSETTINGS;
-	ifr.ifr_data = (void *)ecmd;
+	ifr.ifr_data = (void *)&gcmd;
 	if (priv_ifreq(priv, SIOCETHTOOL, &ifr)) {
 		DEBUG("ioctl(SIOCETHTOOL, ETHTOOL_GLINKSETTINGS) failed: %s",
 		      strerror(errno));
 		return -1;
 	}
-	ecmd->link_mode_masks_nwords = -ecmd->link_mode_masks_nwords;
+	gcmd.link_mode_masks_nwords = -gcmd.link_mode_masks_nwords;
+
+	alignas(struct ethtool_link_settings)
+	uint8_t data[offsetof(struct ethtool_link_settings, link_mode_masks) +
+		     sizeof(uint32_t) * gcmd.link_mode_masks_nwords * 3];
+	struct ethtool_link_settings *ecmd = (void *)data;
+
+	*ecmd = gcmd;
+	ifr.ifr_data = (void *)ecmd;
 	if (priv_ifreq(priv, SIOCETHTOOL, &ifr)) {
 		DEBUG("ioctl(SIOCETHTOOL, ETHTOOL_GLINKSETTINGS) failed: %s",
 		      strerror(errno));
