@@ -115,8 +115,7 @@ fs_execute_cmd(struct sub_device *sdev, char *cmdline)
 	/* store possible newline as well */
 	char output[DEVARGS_MAXLEN + 1];
 	size_t len;
-	int old_err;
-	int ret, pclose_ret;
+	int ret;
 
 	RTE_ASSERT(cmdline != NULL || sdev->cmdline != NULL);
 	if (sdev->cmdline == NULL) {
@@ -135,12 +134,10 @@ fs_execute_cmd(struct sub_device *sdev, char *cmdline)
 				sdev->cmdline[i] = ' ';
 	}
 	DEBUG("'%s'", sdev->cmdline);
-	old_err = errno;
 	fp = popen(sdev->cmdline, "r");
 	if (fp == NULL) {
-		ret = errno;
+		ret = -errno;
 		ERROR("popen: %s", strerror(errno));
-		errno = old_err;
 		return ret;
 	}
 	/* We only read one line */
@@ -155,18 +152,11 @@ fs_execute_cmd(struct sub_device *sdev, char *cmdline)
 		goto ret_pclose;
 	}
 	ret = fs_parse_device(sdev, output);
-	if (ret) {
+	if (ret)
 		ERROR("Parsing device '%s' failed", output);
-		goto ret_pclose;
-	}
 ret_pclose:
-	pclose_ret = pclose(fp);
-	if (pclose_ret) {
-		pclose_ret = errno;
+	if (pclose(fp) == -1)
 		ERROR("pclose: %s", strerror(errno));
-		errno = old_err;
-		return pclose_ret;
-	}
 	return ret;
 }
 
