@@ -137,6 +137,7 @@ enum octeon_tag_type {
 #define LIO_MAX_RX_PKTLEN		(64 * 1024)
 
 /* NIC Command types */
+#define LIO_CMD_CHANGE_MTU		0x1
 #define LIO_CMD_CHANGE_DEVFLAGS		0x3
 #define LIO_CMD_RX_CTL			0x4
 #define LIO_CMD_CLEAR_STATS		0x6

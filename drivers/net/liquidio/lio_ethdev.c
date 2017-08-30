@@ -446,28 +446,63 @@ lio_dev_info_get(struct rte_eth_dev *eth_dev,
 }
 
 static int
-lio_dev_validate_vf_mtu(struct rte_eth_dev *eth_dev, uint16_t new_mtu)
+lio_dev_mtu_set(struct rte_eth_dev *eth_dev, uint16_t mtu)
 {
 	struct lio_device *lio_dev = LIO_DEV(eth_dev);
+	uint16_t pf_mtu = lio_dev->linfo.link.s.mtu;
+	uint32_t frame_len = mtu + ETHER_HDR_LEN + ETHER_CRC_LEN;
+	struct lio_dev_ctrl_cmd ctrl_cmd;
+	struct lio_ctrl_pkt ctrl_pkt;
 
 	PMD_INIT_FUNC_TRACE();
 
 	if (!lio_dev->intf_open) {
-		lio_dev_err(lio_dev, "Port %d down, can't check MTU\n",
+		lio_dev_err(lio_dev, "Port %d down, can't set MTU\n",
 			    lio_dev->port_id);
 		return -EINVAL;
 	}
 
-	/* Limit the MTU to make sure the ethernet packets are between
-	 * ETHER_MIN_MTU bytes and PF's MTU
+	/* check if VF MTU is within allowed range.
+	 * New value should not exceed PF MTU.
 	 */
-	if ((new_mtu < ETHER_MIN_MTU) ||
-			(new_mtu > lio_dev->linfo.link.s.mtu)) {
-		lio_dev_err(lio_dev, "Invalid MTU: %d\n", new_mtu);
-		lio_dev_err(lio_dev, "Valid range %d and %d\n",
-			    ETHER_MIN_MTU, lio_dev->linfo.link.s.mtu);
+	if ((mtu < ETHER_MIN_MTU) || (mtu > pf_mtu)) {
+		lio_dev_err(lio_dev, "VF MTU should be >= %d and <= %d\n",
+			    ETHER_MIN_MTU, pf_mtu);
 		return -EINVAL;
 	}
+
+	/* flush added to prevent cmd failure
+	 * incase the queue is full
+	 */
+	lio_flush_iq(lio_dev, lio_dev->instr_queue[0]);
+
+	memset(&ctrl_pkt, 0, sizeof(struct lio_ctrl_pkt));
+	memset(&ctrl_cmd, 0, sizeof(struct lio_dev_ctrl_cmd));
+
+	ctrl_cmd.eth_dev = eth_dev;
+	ctrl_cmd.cond = 0;
+
+	ctrl_pkt.ncmd.s.cmd = LIO_CMD_CHANGE_MTU;
+	ctrl_pkt.ncmd.s.param1 = mtu;
+	ctrl_pkt.ctrl_cmd = &ctrl_cmd;
+
+	if (lio_send_ctrl_pkt(lio_dev, &ctrl_pkt)) {
+		lio_dev_err(lio_dev, "Failed to send command to change MTU\n");
+		return -1;
+	}
+
+	if (lio_wait_for_ctrl_cmd(lio_dev, &ctrl_cmd)) {
+		lio_dev_err(lio_dev, "Command to change MTU timed out\n");
+		return -1;
+	}
+
+	if (frame_len > ETHER_MAX_LEN)
+		eth_dev->data->dev_conf.rxmode.jumbo_frame = 1;
+	else
+		eth_dev->data->dev_conf.rxmode.jumbo_frame = 0;
+
+	eth_dev->data->dev_conf.rxmode.max_rx_pkt_len = frame_len;
+	eth_dev->data->mtu = mtu;
 
 	return 0;
 }
@@ -1333,6 +1368,11 @@ lio_dev_get_link_status(struct rte_eth_dev *eth_dev)
 	lio_swap_8B_data((uint64_t *)ls, sizeof(union octeon_link_status) >> 3);
 
 	if (lio_dev->linfo.link.link_status64 != ls->link_status64) {
+		if (ls->s.mtu < eth_dev->data->mtu) {
+			lio_dev_info(lio_dev, "Lowered VF MTU to %d as PF MTU dropped\n",
+				     ls->s.mtu);
+			eth_dev->data->mtu = ls->s.mtu;
+		}
 		lio_dev->linfo.link.link_status64 = ls->link_status64;
 		lio_dev_link_update(eth_dev, 0);
 	}
@@ -1404,35 +1444,22 @@ lio_dev_start(struct rte_eth_dev *eth_dev)
 
 	if (lio_dev->linfo.link.link_status64 == 0) {
 		ret = -1;
-		goto dev_mtu_check_error;
+		goto dev_mtu_set_error;
 	}
 
-	if (eth_dev->data->dev_conf.rxmode.jumbo_frame == 1) {
-		if (frame_len <= ETHER_MAX_LEN ||
-		    frame_len > LIO_MAX_RX_PKTLEN) {
-			lio_dev_err(lio_dev, "max packet length should be >= %d and < %d when jumbo frame is enabled\n",
-				    ETHER_MAX_LEN, LIO_MAX_RX_PKTLEN);
-			ret = -EINVAL;
-			goto dev_mtu_check_error;
-		}
-		mtu = (uint16_t)(frame_len - ETHER_HDR_LEN - ETHER_CRC_LEN);
-	} else {
-		/* default MTU */
-		mtu = ETHER_MTU;
-		eth_dev->data->dev_conf.rxmode.max_rx_pkt_len = ETHER_MAX_LEN;
-	}
+	mtu = (uint16_t)(frame_len - ETHER_HDR_LEN - ETHER_CRC_LEN);
+	if (mtu < ETHER_MIN_MTU)
+		mtu = ETHER_MIN_MTU;
 
-	if (lio_dev->linfo.link.s.mtu != mtu) {
-		ret = lio_dev_validate_vf_mtu(eth_dev, mtu);
+	if (eth_dev->data->mtu != mtu) {
+		ret = lio_dev_mtu_set(eth_dev, mtu);
 		if (ret)
-			goto dev_mtu_check_error;
+			goto dev_mtu_set_error;
 	}
-
-	eth_dev->data->mtu = mtu;
 
 	return 0;
 
-dev_mtu_check_error:
+dev_mtu_set_error:
 	rte_eal_alarm_cancel(lio_sync_link_state_check, eth_dev);
 
 dev_lsc_handle_error:
@@ -1841,6 +1868,7 @@ static const struct eth_dev_ops liovf_eth_dev_ops = {
 	.rss_hash_update	= lio_dev_rss_hash_update,
 	.udp_tunnel_port_add	= lio_dev_udp_tunnel_add,
 	.udp_tunnel_port_del	= lio_dev_udp_tunnel_del,
+	.mtu_set		= lio_dev_mtu_set,
 };
 
 static void
