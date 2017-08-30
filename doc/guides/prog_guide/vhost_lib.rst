@@ -129,8 +129,7 @@ The following is an overview of some key Vhost API functions:
 
   * ``destroy_device(int vid)``
 
-    This callback is invoked when a virtio device shuts down (or when the
-    vhost connection is broken).
+    This callback is invoked when a virtio device is paused or shut down.
 
   * ``vring_state_changed(int vid, uint16_t queue_id, int enable)``
 
@@ -142,6 +141,18 @@ The following is an overview of some key Vhost API functions:
     This callback is invoked when the features is changed. For example,
     ``VHOST_F_LOG_ALL`` will be set/cleared at the start/end of live
     migration, respectively.
+
+  * ``new_connection(int vid)``
+
+    This callback is invoked on new vhost-user socket connection. If DPDK
+    acts as the server the device should not be deleted before
+    ``destroy_connection`` callback is received.
+
+  * ``destroy_connection(int vid)``
+
+    This callback is invoked when vhost-user socket connection is closed.
+    It indicates that device with id ``vid`` is no longer in use and can be
+    safely deleted.
 
 * ``rte_vhost_driver_disable/enable_features(path, features))``
 

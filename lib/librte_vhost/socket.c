@@ -217,9 +217,7 @@ vhost_user_add_connection(int fd, struct vhost_user_socket *vsocket)
 
 	vid = vhost_new_device();
 	if (vid == -1) {
-		close(fd);
-		free(conn);
-		return;
+		goto err;
 	}
 
 	size = strnlen(vsocket->path, PATH_MAX);
@@ -230,24 +228,40 @@ vhost_user_add_connection(int fd, struct vhost_user_socket *vsocket)
 
 	RTE_LOG(INFO, VHOST_CONFIG, "new device, handle is %d\n", vid);
 
+	if (vsocket->notify_ops->new_connection) {
+		ret = vsocket->notify_ops->new_connection(vid);
+		if (ret < 0) {
+			RTE_LOG(ERR, VHOST_CONFIG,
+				"failed to add vhost user connection with fd %d\n",
+				fd);
+			goto err;
+		}
+	}
+
 	conn->connfd = fd;
 	conn->vsocket = vsocket;
 	conn->vid = vid;
 	ret = fdset_add(&vhost_user.fdset, fd, vhost_user_read_cb,
 			NULL, conn);
 	if (ret < 0) {
-		conn->connfd = -1;
-		free(conn);
-		close(fd);
 		RTE_LOG(ERR, VHOST_CONFIG,
 			"failed to add fd %d into vhost server fdset\n",
 			fd);
-		return;
+
+		if (vsocket->notify_ops->destroy_connection)
+			vsocket->notify_ops->destroy_connection(conn->vid);
+
+		goto err;
 	}
 
 	pthread_mutex_lock(&vsocket->conn_mutex);
 	TAILQ_INSERT_TAIL(&vsocket->conn_list, conn, next);
 	pthread_mutex_unlock(&vsocket->conn_mutex);
+	return;
+
+err:
+	free(conn);
+	close(fd);
 }
 
 /* call back when there is new vhost-user connection from client  */
@@ -276,6 +290,9 @@ vhost_user_read_cb(int connfd, void *dat, int *remove)
 		close(connfd);
 		*remove = 1;
 		vhost_destroy_device(conn->vid);
+
+		if (vsocket->notify_ops->destroy_connection)
+			vsocket->notify_ops->destroy_connection(conn->vid);
 
 		pthread_mutex_lock(&vsocket->conn_mutex);
 		TAILQ_REMOVE(&vsocket->conn_list, conn, next);

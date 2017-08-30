@@ -107,7 +107,10 @@ struct vhost_device_ops {
 	 */
 	int (*features_changed)(int vid, uint64_t features);
 
-	void *reserved[4]; /**< Reserved for future extension */
+	int (*new_connection)(int vid);
+	void (*destroy_connection)(int vid);
+
+	void *reserved[2]; /**< Reserved for future extension */
 };
 
 /**
