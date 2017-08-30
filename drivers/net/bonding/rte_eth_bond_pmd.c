@@ -125,11 +125,12 @@ bond_ethdev_rx_burst_active_backup(void *queue, struct rte_mbuf **bufs,
 }
 
 static inline uint8_t
-is_lacp_packets(uint16_t ethertype, uint8_t subtype, uint16_t vlan_tci)
+is_lacp_packets(uint16_t ethertype, uint8_t subtype, struct rte_mbuf *mbuf)
 {
 	const uint16_t ether_type_slow_be = rte_be_to_cpu_16(ETHER_TYPE_SLOW);
 
-	return !vlan_tci && (ethertype == ether_type_slow_be &&
+	return !((mbuf->ol_flags & PKT_RX_VLAN_PKT) ? mbuf->vlan_tci : 0) &&
+		(ethertype == ether_type_slow_be &&
 		(subtype == SLOW_SUBTYPE_MARKER || subtype == SLOW_SUBTYPE_LACP));
 }
 
@@ -455,7 +456,7 @@ bond_ethdev_rx_burst_8023ad(void *queue, struct rte_mbuf **bufs,
 			/* Remove packet from array if it is slow packet or slave is not
 			 * in collecting state or bonding interface is not in promiscuous
 			 * mode and packet address does not match. */
-			if (unlikely(is_lacp_packets(hdr->ether_type, subtype, bufs[j]->vlan_tci) ||
+			if (unlikely(is_lacp_packets(hdr->ether_type, subtype, bufs[j]) ||
 				!collecting || (!promisc &&
 					!is_multicast_ether_addr(&hdr->d_addr) &&
 					!is_same_ether_addr(&bond_mac, &hdr->d_addr)))) {
