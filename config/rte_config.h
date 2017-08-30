@@ -102,6 +102,18 @@
  */
 #define RTE_QAT_PMD_MAX_NB_SESSIONS 2048
 
+/* fm10k defines */
+#define RTE_LIBRTE_FM10K_RX_OLFLAGS_ENABLE 1
+
+/* i40e defines */
+#define RTE_LIBRTE_I40E_RX_ALLOW_BULK_ALLOC 1
+#undef RTE_LIBRTE_I40E_16BYTE_RX_DESC
+#define RTE_LIBRTE_I40E_QUEUE_NUM_PER_PF 64
+#define RTE_LIBRTE_I40E_QUEUE_NUM_PER_VF 4
+#define RTE_LIBRTE_I40E_QUEUE_NUM_PER_VM 4
+/* interval up to 8160 us, aligned to 2 (or default value) */
+#define RTE_LIBRTE_I40E_ITR_INTERVAL -1
+
 /* Ring net PMD settings */
 #define RTE_PMD_RING_MAX_RX_RINGS 16
 #define RTE_PMD_RING_MAX_TX_RINGS 16

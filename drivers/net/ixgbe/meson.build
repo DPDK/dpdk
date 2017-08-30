@@ -29,10 +29,32 @@
 #   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-drivers = ['af_packet', 'e1000', 'fm10k', 'i40e', 'ixgbe',
-	'null', 'pcap', 'ring']
-std_deps = ['ethdev', 'kvargs'] # 'ethdev' also pulls in mbuf, net, eal etc
-std_deps += ['bus_pci']         # very many PMDs depend on PCI, so make std
-std_deps += ['bus_vdev']        # same with vdev bus
-config_flag_fmt = 'RTE_LIBRTE_@0@_PMD'
-driver_name_fmt = 'rte_pmd_@0@'
+cflags = ['-DRTE_LIBRTE_IXGBE_BYPASS']
+
+subdir('base')
+objs = [base_objs]
+
+allow_experimental_apis = true
+sources = files(
+	'ixgbe_82599_bypass.c',
+	'ixgbe_bypass.c',
+	'ixgbe_ethdev.c',
+	'ixgbe_fdir.c',
+	'ixgbe_flow.c',
+	'ixgbe_ipsec.c',
+	'ixgbe_pf.c',
+	'ixgbe_rxtx.c',
+	'ixgbe_tm.c',
+	'rte_pmd_ixgbe.c'
+)
+
+deps += ['hash', 'security']
+
+if arch_subdir == 'x86'
+	dpdk_conf.set('RTE_IXGBE_INC_VECTOR', 1)
+	sources += files('ixgbe_rxtx_vec_sse.c')
+endif
+
+includes += include_directories('base')
+
+install_headers('rte_pmd_ixgbe.h')

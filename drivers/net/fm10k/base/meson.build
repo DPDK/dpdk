@@ -29,10 +29,27 @@
 #   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-drivers = ['af_packet', 'e1000', 'fm10k', 'i40e', 'ixgbe',
-	'null', 'pcap', 'ring']
-std_deps = ['ethdev', 'kvargs'] # 'ethdev' also pulls in mbuf, net, eal etc
-std_deps += ['bus_pci']         # very many PMDs depend on PCI, so make std
-std_deps += ['bus_vdev']        # same with vdev bus
-config_flag_fmt = 'RTE_LIBRTE_@0@_PMD'
-driver_name_fmt = 'rte_pmd_@0@'
+sources = [
+	'fm10k_api.c',
+	'fm10k_common.c',
+	'fm10k_mbx.c',
+	'fm10k_pf.c',
+	'fm10k_tlv.c',
+	'fm10k_vf.c'
+]
+
+error_cflags = ['-Wno-unused-parameter', '-Wno-unused-value',
+	'-Wno-strict-aliasing', '-Wno-format-extra-args',
+	'-Wno-unused-variable', '-Wno-missing-field-initializers'
+]
+c_args = cflags
+foreach flag: error_cflags
+	if cc.has_argument(flag)
+		c_args += flag
+	endif
+endforeach
+
+base_lib = static_library('fm10k_base', sources,
+	dependencies: rte_eal,
+	c_args: c_args)
+base_objs = base_lib.extract_all_objects()

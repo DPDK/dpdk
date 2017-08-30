@@ -29,10 +29,32 @@
 #   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-drivers = ['af_packet', 'e1000', 'fm10k', 'i40e', 'ixgbe',
-	'null', 'pcap', 'ring']
-std_deps = ['ethdev', 'kvargs'] # 'ethdev' also pulls in mbuf, net, eal etc
-std_deps += ['bus_pci']         # very many PMDs depend on PCI, so make std
-std_deps += ['bus_vdev']        # same with vdev bus
-config_flag_fmt = 'RTE_LIBRTE_@0@_PMD'
-driver_name_fmt = 'rte_pmd_@0@'
+sources = [
+	'ixgbe_82598.c',
+	'ixgbe_82599.c',
+	'ixgbe_api.c',
+	'ixgbe_common.c',
+	'ixgbe_dcb_82598.c',
+	'ixgbe_dcb_82599.c',
+	'ixgbe_dcb.c',
+	'ixgbe_hv_vf.c',
+	'ixgbe_mbx.c',
+	'ixgbe_phy.c',
+	'ixgbe_vf.c',
+	'ixgbe_x540.c',
+	'ixgbe_x550.c'
+]
+
+error_cflags = ['-Wno-unused-value',
+		'-Wno-unused-but-set-variable']
+c_args = cflags
+foreach flag: error_cflags
+	if cc.has_argument(flag)
+		c_args += flag
+	endif
+endforeach
+
+base_lib = static_library('ixgbe_base', sources,
+	dependencies: rte_eal,
+	c_args: c_args)
+base_objs = base_lib.extract_all_objects()

@@ -29,10 +29,28 @@
 #   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-drivers = ['af_packet', 'e1000', 'fm10k', 'i40e', 'ixgbe',
-	'null', 'pcap', 'ring']
-std_deps = ['ethdev', 'kvargs'] # 'ethdev' also pulls in mbuf, net, eal etc
-std_deps += ['bus_pci']         # very many PMDs depend on PCI, so make std
-std_deps += ['bus_vdev']        # same with vdev bus
-config_flag_fmt = 'RTE_LIBRTE_@0@_PMD'
-driver_name_fmt = 'rte_pmd_@0@'
+sources = [
+	'i40e_adminq.c',
+	'i40e_common.c',
+	'i40e_dcb.c',
+	'i40e_diag.c',
+	'i40e_hmc.c',
+	'i40e_lan_hmc.c',
+	'i40e_nvm.c'
+]
+
+error_cflags = ['-Wno-sign-compare', '-Wno-unused-value',
+		'-Wno-format', '-Wno-unused-but-set-variable',
+		'-Wno-strict-aliasing'
+]
+c_args = cflags
+foreach flag: error_cflags
+	if cc.has_argument(flag)
+		c_args += flag
+	endif
+endforeach
+
+base_lib = static_library('i40e_base', sources,
+	dependencies: rte_eal,
+	c_args: c_args)
+base_objs = base_lib.extract_all_objects()

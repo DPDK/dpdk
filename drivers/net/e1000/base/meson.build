@@ -29,10 +29,37 @@
 #   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-drivers = ['af_packet', 'e1000', 'fm10k', 'i40e', 'ixgbe',
-	'null', 'pcap', 'ring']
-std_deps = ['ethdev', 'kvargs'] # 'ethdev' also pulls in mbuf, net, eal etc
-std_deps += ['bus_pci']         # very many PMDs depend on PCI, so make std
-std_deps += ['bus_vdev']        # same with vdev bus
-config_flag_fmt = 'RTE_LIBRTE_@0@_PMD'
-driver_name_fmt = 'rte_pmd_@0@'
+sources = [
+	'e1000_80003es2lan.c',
+	'e1000_82540.c',
+	'e1000_82541.c',
+	'e1000_82542.c',
+	'e1000_82543.c',
+	'e1000_82571.c',
+	'e1000_82575.c',
+	'e1000_api.c',
+	'e1000_i210.c',
+	'e1000_ich8lan.c',
+	'e1000_mac.c',
+	'e1000_manage.c',
+	'e1000_mbx.c',
+	'e1000_nvm.c',
+	'e1000_osdep.c',
+	'e1000_phy.c',
+	'e1000_vf.c'
+]
+
+error_cflags = ['-Wno-uninitialized', '-Wno-unused-parameter',
+	'-Wno-unused-variable', '-Wno-misleading-indentation',
+	'-Wno-implicit-fallthrough']
+c_args = cflags
+foreach flag: error_cflags
+	if cc.has_argument(flag)
+		c_args += flag
+	endif
+endforeach
+
+base_lib = static_library('e1000_base', sources,
+	dependencies: rte_eal,
+	c_args: c_args)
+base_objs = base_lib.extract_all_objects()
