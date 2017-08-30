@@ -528,11 +528,11 @@ sfc_set_rss_defaults(struct sfc_adapter *sa)
 	if (rc != 0)
 		goto fail_rx_init;
 
-	rc = efx_rx_scale_support_get(sa->nic, &sa->rss_support);
+	rc = efx_rx_scale_default_support_get(sa->nic, &sa->rss_support);
 	if (rc != 0)
 		goto fail_scale_support_get;
 
-	rc = efx_rx_hash_support_get(sa->nic, &sa->hash_support);
+	rc = efx_rx_hash_default_support_get(sa->nic, &sa->hash_support);
 	if (rc != 0)
 		goto fail_hash_support_get;
 
