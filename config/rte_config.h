@@ -94,4 +94,12 @@
 #define RTE_SCHED_PORT_N_GRINDERS 8
 #undef RTE_SCHED_VECTOR
 
+/****** driver defines ********/
+
+/*
+ * Number of sessions to create in the session memory pool
+ * on a single QuickAssist device.
+ */
+#define RTE_QAT_PMD_MAX_NB_SESSIONS 2048
+
 #endif /* _RTE_CONFIG_H_ */

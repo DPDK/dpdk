@@ -29,7 +29,14 @@
 #   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-drivers = ['qat', 'null', 'openssl']
-std_deps = ['cryptodev'] # cryptodev pulls in all other needed deps
-config_flag_fmt = 'RTE_LIBRTE_@0@_PMD'
-driver_name_fmt = 'rte_pmd_@0@'
+dep = dependency('libcrypto', required: false)
+if not dep.found()
+	build = false
+endif
+sources = files('qat_crypto.c', 'qat_qp.c',
+		'qat_adf/qat_algs_build_desc.c',
+		'rte_qat_cryptodev.c')
+includes += include_directories('qat_adf')
+deps += ['bus_pci']
+ext_deps += dep
+pkgconfig_extra_libs += '-lcrypto'
