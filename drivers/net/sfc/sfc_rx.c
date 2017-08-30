@@ -349,6 +349,43 @@ sfc_efx_rx_qdesc_npending(struct sfc_dp_rxq *dp_rxq)
 	return rxq->pending - rxq->completed;
 }
 
+static sfc_dp_rx_qdesc_status_t sfc_efx_rx_qdesc_status;
+static int
+sfc_efx_rx_qdesc_status(struct sfc_dp_rxq *dp_rxq, uint16_t offset)
+{
+	struct sfc_efx_rxq *rxq = sfc_efx_rxq_by_dp_rxq(dp_rxq);
+
+	if (unlikely(offset > rxq->ptr_mask))
+		return -EINVAL;
+
+	/*
+	 * Poll EvQ to derive up-to-date 'rxq->pending' figure;
+	 * it is required for the queue to be running, but the
+	 * check is omitted because API design assumes that it
+	 * is the duty of the caller to satisfy all conditions
+	 */
+	SFC_ASSERT((rxq->flags & SFC_EFX_RXQ_FLAG_RUNNING) ==
+		   SFC_EFX_RXQ_FLAG_RUNNING);
+	sfc_ev_qpoll(rxq->evq);
+
+	/*
+	 * There is a handful of reserved entries in the ring,
+	 * but an explicit check whether the offset points to
+	 * a reserved entry is neglected since the two checks
+	 * below rely on the figures which take the HW limits
+	 * into account and thus if an entry is reserved, the
+	 * checks will fail and UNAVAIL code will be returned
+	 */
+
+	if (offset < (rxq->pending - rxq->completed))
+		return RTE_ETH_RX_DESC_DONE;
+
+	if (offset < (rxq->added - rxq->completed))
+		return RTE_ETH_RX_DESC_AVAIL;
+
+	return RTE_ETH_RX_DESC_UNAVAIL;
+}
+
 struct sfc_rxq *
 sfc_rxq_by_dp_rxq(const struct sfc_dp_rxq *dp_rxq)
 {
@@ -498,6 +535,7 @@ struct sfc_dp_rx sfc_efx_rx = {
 	.qpurge			= sfc_efx_rx_qpurge,
 	.supported_ptypes_get	= sfc_efx_supported_ptypes_get,
 	.qdesc_npending		= sfc_efx_rx_qdesc_npending,
+	.qdesc_status		= sfc_efx_rx_qdesc_status,
 	.pkt_burst		= sfc_efx_recv_pkts,
 };
 

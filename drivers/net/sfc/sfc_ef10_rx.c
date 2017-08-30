@@ -544,6 +544,14 @@ sfc_ef10_rx_qdesc_npending(__rte_unused struct sfc_dp_rxq *dp_rxq)
 	return -ENOTSUP;
 }
 
+static sfc_dp_rx_qdesc_status_t sfc_ef10_rx_qdesc_status;
+static int
+sfc_ef10_rx_qdesc_status(__rte_unused struct sfc_dp_rxq *dp_rxq,
+			 __rte_unused uint16_t offset)
+{
+	return -ENOTSUP;
+}
+
 
 static uint64_t
 sfc_ef10_mk_mbuf_rearm_data(uint16_t port_id, uint16_t prefix_size)
@@ -708,5 +716,6 @@ struct sfc_dp_rx sfc_ef10_rx = {
 	.qpurge			= sfc_ef10_rx_qpurge,
 	.supported_ptypes_get	= sfc_ef10_supported_ptypes_get,
 	.qdesc_npending		= sfc_ef10_rx_qdesc_npending,
+	.qdesc_status		= sfc_ef10_rx_qdesc_status,
 	.pkt_burst		= sfc_ef10_recv_pkts,
 };

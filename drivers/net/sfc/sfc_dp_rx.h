@@ -155,6 +155,10 @@ typedef const uint32_t * (sfc_dp_rx_supported_ptypes_get_t)(void);
 /** Get number of pending Rx descriptors */
 typedef unsigned int (sfc_dp_rx_qdesc_npending_t)(struct sfc_dp_rxq *dp_rxq);
 
+/** Check Rx descriptor status */
+typedef int (sfc_dp_rx_qdesc_status_t)(struct sfc_dp_rxq *dp_rxq,
+				       uint16_t offset);
+
 /** Receive datapath definition */
 struct sfc_dp_rx {
 	struct sfc_dp				dp;
@@ -170,6 +174,7 @@ struct sfc_dp_rx {
 	sfc_dp_rx_qpurge_t			*qpurge;
 	sfc_dp_rx_supported_ptypes_get_t	*supported_ptypes_get;
 	sfc_dp_rx_qdesc_npending_t		*qdesc_npending;
+	sfc_dp_rx_qdesc_status_t		*qdesc_status;
 	eth_rx_burst_t				pkt_burst;
 };
 

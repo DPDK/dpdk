@@ -1087,6 +1087,15 @@ sfc_rx_descriptor_done(void *queue, uint16_t offset)
 }
 
 static int
+sfc_rx_descriptor_status(void *queue, uint16_t offset)
+{
+	struct sfc_dp_rxq *dp_rxq = queue;
+	struct sfc_rxq *rxq = sfc_rxq_by_dp_rxq(dp_rxq);
+
+	return rxq->evq->sa->dp_rx->qdesc_status(dp_rxq, offset);
+}
+
+static int
 sfc_rx_queue_start(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
 	struct sfc_adapter *sa = dev->data->dev_private;
@@ -1469,6 +1478,7 @@ static const struct eth_dev_ops sfc_eth_dev_ops = {
 	.rx_queue_release		= sfc_rx_queue_release,
 	.rx_queue_count			= sfc_rx_queue_count,
 	.rx_descriptor_done		= sfc_rx_descriptor_done,
+	.rx_descriptor_status		= sfc_rx_descriptor_status,
 	.tx_queue_setup			= sfc_tx_queue_setup,
 	.tx_queue_release		= sfc_tx_queue_release,
 	.flow_ctrl_get			= sfc_flow_ctrl_get,
