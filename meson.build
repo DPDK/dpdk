@@ -64,7 +64,8 @@ subdir('lib')
 subdir('buildtools')
 subdir('drivers')
 
-# build binaries and (TODO) installable tools
+# build binaries and installable tools
+subdir('usertools')
 subdir('app')
 
 # write the build config
