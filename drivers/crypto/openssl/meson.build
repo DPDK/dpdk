@@ -29,7 +29,11 @@
 #   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-drivers = ['null', 'openssl']
-std_deps = ['cryptodev'] # cryptodev pulls in all other needed deps
-config_flag_fmt = 'RTE_LIBRTE_@0@_PMD'
-driver_name_fmt = 'rte_pmd_@0@'
+dep = dependency('libcrypto', required: false)
+if not dep.found()
+	build = false
+endif
+deps += 'bus_vdev'
+sources = files('rte_openssl_pmd.c', 'rte_openssl_pmd_ops.c')
+ext_deps += dep
+pkgconfig_extra_libs += '-lcrypto'
