@@ -1102,18 +1102,20 @@ sfc_rx_rss_config(struct sfc_adapter *sa)
 	int rc = 0;
 
 	if (sa->rss_channels > 0) {
-		rc = efx_rx_scale_mode_set(sa->nic, EFX_RX_HASHALG_TOEPLITZ,
+		rc = efx_rx_scale_mode_set(sa->nic, EFX_RSS_CONTEXT_DEFAULT,
+					   EFX_RX_HASHALG_TOEPLITZ,
 					   sa->rss_hash_types, B_TRUE);
 		if (rc != 0)
 			goto finish;
 
-		rc = efx_rx_scale_key_set(sa->nic, sa->rss_key,
+		rc = efx_rx_scale_key_set(sa->nic, EFX_RSS_CONTEXT_DEFAULT,
+					  sa->rss_key,
 					  sizeof(sa->rss_key));
 		if (rc != 0)
 			goto finish;
 
-		rc = efx_rx_scale_tbl_set(sa->nic, sa->rss_tbl,
-					  RTE_DIM(sa->rss_tbl));
+		rc = efx_rx_scale_tbl_set(sa->nic, EFX_RSS_CONTEXT_DEFAULT,
+					  sa->rss_tbl, RTE_DIM(sa->rss_tbl));
 	}
 
 finish:

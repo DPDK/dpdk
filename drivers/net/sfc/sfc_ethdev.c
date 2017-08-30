@@ -1270,14 +1270,17 @@ sfc_dev_rss_hash_update(struct rte_eth_dev *dev,
 
 	efx_hash_types = sfc_rte_to_efx_hash_type(rss_conf->rss_hf);
 
-	rc = efx_rx_scale_mode_set(sa->nic, EFX_RX_HASHALG_TOEPLITZ,
+	rc = efx_rx_scale_mode_set(sa->nic, EFX_RSS_CONTEXT_DEFAULT,
+				   EFX_RX_HASHALG_TOEPLITZ,
 				   efx_hash_types, B_TRUE);
 	if (rc != 0)
 		goto fail_scale_mode_set;
 
 	if (rss_conf->rss_key != NULL) {
 		if (sa->state == SFC_ADAPTER_STARTED) {
-			rc = efx_rx_scale_key_set(sa->nic, rss_conf->rss_key,
+			rc = efx_rx_scale_key_set(sa->nic,
+						  EFX_RSS_CONTEXT_DEFAULT,
+						  rss_conf->rss_key,
 						  sizeof(sa->rss_key));
 			if (rc != 0)
 				goto fail_scale_key_set;
@@ -1293,7 +1296,8 @@ sfc_dev_rss_hash_update(struct rte_eth_dev *dev,
 	return 0;
 
 fail_scale_key_set:
-	if (efx_rx_scale_mode_set(sa->nic, EFX_RX_HASHALG_TOEPLITZ,
+	if (efx_rx_scale_mode_set(sa->nic, EFX_RSS_CONTEXT_DEFAULT,
+				  EFX_RX_HASHALG_TOEPLITZ,
 				  sa->rss_hash_types, B_TRUE) != 0)
 		sfc_err(sa, "failed to restore RSS mode");
 
@@ -1389,7 +1393,8 @@ sfc_dev_rss_reta_update(struct rte_eth_dev *dev,
 		}
 	}
 
-	rc = efx_rx_scale_tbl_set(sa->nic, rss_tbl_new, EFX_RSS_TBL_SIZE);
+	rc = efx_rx_scale_tbl_set(sa->nic, EFX_RSS_CONTEXT_DEFAULT,
+				  rss_tbl_new, EFX_RSS_TBL_SIZE);
 	if (rc == 0)
 		rte_memcpy(sa->rss_tbl, rss_tbl_new, sizeof(sa->rss_tbl));
 
