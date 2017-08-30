@@ -977,6 +977,44 @@ sfc_efx_tx_qreap(struct sfc_dp_txq *dp_txq)
 	txq->flags &= ~SFC_EFX_TXQ_FLAG_STARTED;
 }
 
+static sfc_dp_tx_qdesc_status_t sfc_efx_tx_qdesc_status;
+static int
+sfc_efx_tx_qdesc_status(struct sfc_dp_txq *dp_txq, uint16_t offset)
+{
+	struct sfc_efx_txq *txq = sfc_efx_txq_by_dp_txq(dp_txq);
+
+	if (unlikely(offset > txq->ptr_mask))
+		return -EINVAL;
+
+	if (unlikely(offset >= EFX_TXQ_LIMIT(txq->ptr_mask + 1)))
+		return RTE_ETH_TX_DESC_UNAVAIL;
+
+	/*
+	 * Poll EvQ to derive up-to-date 'txq->pending' figure;
+	 * it is required for the queue to be running, but the
+	 * check is omitted because API design assumes that it
+	 * is the duty of the caller to satisfy all conditions
+	 */
+	SFC_ASSERT((txq->flags & SFC_EFX_TXQ_FLAG_RUNNING) ==
+		   SFC_EFX_TXQ_FLAG_RUNNING);
+	sfc_ev_qpoll(txq->evq);
+
+	/*
+	 * Ring tail is 'txq->pending', and although descriptors
+	 * between 'txq->completed' and 'txq->pending' are still
+	 * in use by the driver, they should be reported as DONE
+	 */
+	if (unlikely(offset < (txq->added - txq->pending)))
+		return RTE_ETH_TX_DESC_FULL;
+
+	/*
+	 * There is no separate return value for unused descriptors;
+	 * the latter will be reported as DONE because genuine DONE
+	 * descriptors will be freed anyway in SW on the next burst
+	 */
+	return RTE_ETH_TX_DESC_DONE;
+}
+
 struct sfc_dp_tx sfc_efx_tx = {
 	.dp = {
 		.name		= SFC_KVARG_DATAPATH_EFX,
@@ -991,5 +1029,6 @@ struct sfc_dp_tx sfc_efx_tx = {
 	.qstart			= sfc_efx_tx_qstart,
 	.qstop			= sfc_efx_tx_qstop,
 	.qreap			= sfc_efx_tx_qreap,
+	.qdesc_status		= sfc_efx_tx_qdesc_status,
 	.pkt_burst		= sfc_efx_xmit_pkts,
 };

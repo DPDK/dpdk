@@ -565,6 +565,14 @@ sfc_ef10_tx_qreap(struct sfc_dp_txq *dp_txq)
 	txq->flags &= ~SFC_EF10_TXQ_STARTED;
 }
 
+static sfc_dp_tx_qdesc_status_t sfc_ef10_tx_qdesc_status;
+static int
+sfc_ef10_tx_qdesc_status(__rte_unused struct sfc_dp_txq *dp_txq,
+			 __rte_unused uint16_t offset)
+{
+	return -ENOTSUP;
+}
+
 struct sfc_dp_tx sfc_ef10_tx = {
 	.dp = {
 		.name		= SFC_KVARG_DATAPATH_EF10,
@@ -579,6 +587,7 @@ struct sfc_dp_tx sfc_ef10_tx = {
 	.qtx_ev			= sfc_ef10_tx_qtx_ev,
 	.qstop			= sfc_ef10_tx_qstop,
 	.qreap			= sfc_ef10_tx_qreap,
+	.qdesc_status		= sfc_ef10_tx_qdesc_status,
 	.pkt_burst		= sfc_ef10_xmit_pkts,
 };
 
@@ -594,5 +603,6 @@ struct sfc_dp_tx sfc_ef10_simple_tx = {
 	.qtx_ev			= sfc_ef10_tx_qtx_ev,
 	.qstop			= sfc_ef10_tx_qstop,
 	.qreap			= sfc_ef10_tx_qreap,
+	.qdesc_status		= sfc_ef10_tx_qdesc_status,
 	.pkt_burst		= sfc_ef10_simple_xmit_pkts,
 };
