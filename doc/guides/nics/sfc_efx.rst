@@ -148,6 +148,8 @@ Supported actions:
 
 - QUEUE
 
+- RSS
+
 Validating flow rules depends on the firmware variant.
 
 Ethernet destinaton individual/group match

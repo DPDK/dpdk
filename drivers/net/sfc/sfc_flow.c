@@ -886,6 +886,170 @@ sfc_flow_parse_queue(struct sfc_adapter *sa,
 	return 0;
 }
 
+#if EFSYS_OPT_RX_SCALE
+static int
+sfc_flow_parse_rss(struct sfc_adapter *sa,
+		   const struct rte_flow_action_rss *rss,
+		   struct rte_flow *flow)
+{
+	unsigned int rxq_sw_index;
+	struct sfc_rxq *rxq;
+	unsigned int rxq_hw_index_min;
+	unsigned int rxq_hw_index_max;
+	const struct rte_eth_rss_conf *rss_conf = rss->rss_conf;
+	uint64_t rss_hf;
+	uint8_t *rss_key = NULL;
+	struct sfc_flow_rss *sfc_rss_conf = &flow->rss_conf;
+	unsigned int i;
+
+	if (rss->num == 0)
+		return -EINVAL;
+
+	rxq_sw_index = sa->rxq_count - 1;
+	rxq = sa->rxq_info[rxq_sw_index].rxq;
+	rxq_hw_index_min = rxq->hw_index;
+	rxq_hw_index_max = 0;
+
+	for (i = 0; i < rss->num; ++i) {
+		rxq_sw_index = rss->queue[i];
+
+		if (rxq_sw_index >= sa->rxq_count)
+			return -EINVAL;
+
+		rxq = sa->rxq_info[rxq_sw_index].rxq;
+
+		if (rxq->hw_index < rxq_hw_index_min)
+			rxq_hw_index_min = rxq->hw_index;
+
+		if (rxq->hw_index > rxq_hw_index_max)
+			rxq_hw_index_max = rxq->hw_index;
+	}
+
+	rss_hf = (rss_conf != NULL) ? rss_conf->rss_hf : SFC_RSS_OFFLOADS;
+	if ((rss_hf & ~SFC_RSS_OFFLOADS) != 0)
+		return -EINVAL;
+
+	if (rss_conf != NULL) {
+		if (rss_conf->rss_key_len != sizeof(sa->rss_key))
+			return -EINVAL;
+
+		rss_key = rss_conf->rss_key;
+	} else {
+		rss_key = sa->rss_key;
+	}
+
+	flow->rss = B_TRUE;
+
+	sfc_rss_conf->rxq_hw_index_min = rxq_hw_index_min;
+	sfc_rss_conf->rxq_hw_index_max = rxq_hw_index_max;
+	sfc_rss_conf->rss_hash_types = sfc_rte_to_efx_hash_type(rss_hf);
+	rte_memcpy(sfc_rss_conf->rss_key, rss_key, sizeof(sa->rss_key));
+
+	for (i = 0; i < RTE_DIM(sfc_rss_conf->rss_tbl); ++i) {
+		unsigned int rxq_sw_index = rss->queue[i % rss->num];
+		struct sfc_rxq *rxq = sa->rxq_info[rxq_sw_index].rxq;
+
+		sfc_rss_conf->rss_tbl[i] = rxq->hw_index - rxq_hw_index_min;
+	}
+
+	return 0;
+}
+#endif /* EFSYS_OPT_RX_SCALE */
+
+static int
+sfc_flow_filter_insert(struct sfc_adapter *sa,
+		       struct rte_flow *flow)
+{
+	efx_filter_spec_t *spec = &flow->spec;
+
+#if EFSYS_OPT_RX_SCALE
+	struct sfc_flow_rss *rss = &flow->rss_conf;
+	int rc = 0;
+
+	if (flow->rss) {
+		unsigned int rss_spread = MIN(rss->rxq_hw_index_max -
+					      rss->rxq_hw_index_min + 1,
+					      EFX_MAXRSS);
+
+		rc = efx_rx_scale_context_alloc(sa->nic,
+						EFX_RX_SCALE_EXCLUSIVE,
+						rss_spread,
+						&spec->efs_rss_context);
+		if (rc != 0)
+			goto fail_scale_context_alloc;
+
+		rc = efx_rx_scale_mode_set(sa->nic, spec->efs_rss_context,
+					   EFX_RX_HASHALG_TOEPLITZ,
+					   rss->rss_hash_types, B_TRUE);
+		if (rc != 0)
+			goto fail_scale_mode_set;
+
+		rc = efx_rx_scale_key_set(sa->nic, spec->efs_rss_context,
+					  rss->rss_key,
+					  sizeof(sa->rss_key));
+		if (rc != 0)
+			goto fail_scale_key_set;
+
+		spec->efs_dmaq_id = rss->rxq_hw_index_min;
+		spec->efs_flags |= EFX_FILTER_FLAG_RX_RSS;
+	}
+
+	rc = efx_filter_insert(sa->nic, spec);
+	if (rc != 0)
+		goto fail_filter_insert;
+
+	if (flow->rss) {
+		/*
+		 * Scale table is set after filter insertion because
+		 * the table entries are relative to the base RxQ ID
+		 * and the latter is submitted to the HW by means of
+		 * inserting a filter, so by the time of the request
+		 * the HW knows all the information needed to verify
+		 * the table entries, and the operation will succeed
+		 */
+		rc = efx_rx_scale_tbl_set(sa->nic, spec->efs_rss_context,
+					  rss->rss_tbl, RTE_DIM(rss->rss_tbl));
+		if (rc != 0)
+			goto fail_scale_tbl_set;
+	}
+
+	return 0;
+
+fail_scale_tbl_set:
+	efx_filter_remove(sa->nic, spec);
+
+fail_filter_insert:
+fail_scale_key_set:
+fail_scale_mode_set:
+	if (rss != NULL)
+		efx_rx_scale_context_free(sa->nic, spec->efs_rss_context);
+
+fail_scale_context_alloc:
+	return rc;
+#else /* !EFSYS_OPT_RX_SCALE */
+	return efx_filter_insert(sa->nic, spec);
+#endif /* EFSYS_OPT_RX_SCALE */
+}
+
+static int
+sfc_flow_filter_remove(struct sfc_adapter *sa,
+		       struct rte_flow *flow)
+{
+	efx_filter_spec_t *spec = &flow->spec;
+	int rc = 0;
+
+	rc = efx_filter_remove(sa->nic, spec);
+	if (rc != 0)
+		return rc;
+
+#if EFSYS_OPT_RX_SCALE
+	if (flow->rss)
+		rc = efx_rx_scale_context_free(sa->nic, spec->efs_rss_context);
+#endif /* EFSYS_OPT_RX_SCALE */
+
+	return rc;
+}
+
 static int
 sfc_flow_parse_actions(struct sfc_adapter *sa,
 		       const struct rte_flow_action actions[],
@@ -918,6 +1082,20 @@ sfc_flow_parse_actions(struct sfc_adapter *sa,
 
 			is_specified = B_TRUE;
 			break;
+
+#if EFSYS_OPT_RX_SCALE
+		case RTE_FLOW_ACTION_TYPE_RSS:
+			rc = sfc_flow_parse_rss(sa, actions->conf, flow);
+			if (rc != 0) {
+				rte_flow_error_set(error, rc,
+					RTE_FLOW_ERROR_TYPE_ACTION, actions,
+					"Bad RSS action");
+				return -rte_errno;
+			}
+
+			is_specified = B_TRUE;
+			break;
+#endif /* EFSYS_OPT_RX_SCALE */
 
 		default:
 			rte_flow_error_set(error, ENOTSUP,
@@ -1013,7 +1191,7 @@ sfc_flow_create(struct rte_eth_dev *dev,
 	sfc_adapter_lock(sa);
 
 	if (sa->state == SFC_ADAPTER_STARTED) {
-		rc = efx_filter_insert(sa->nic, &flow->spec);
+		rc = sfc_flow_filter_insert(sa, flow);
 		if (rc != 0) {
 			rte_flow_error_set(error, rc,
 				RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
@@ -1047,7 +1225,7 @@ sfc_flow_remove(struct sfc_adapter *sa,
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
 
 	if (sa->state == SFC_ADAPTER_STARTED) {
-		rc = efx_filter_remove(sa->nic, &flow->spec);
+		rc = sfc_flow_filter_remove(sa, flow);
 		if (rc != 0)
 			rte_flow_error_set(error, rc,
 				RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
@@ -1172,7 +1350,7 @@ sfc_flow_stop(struct sfc_adapter *sa)
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
 
 	TAILQ_FOREACH(flow, &sa->filter.flow_list, entries)
-		efx_filter_remove(sa->nic, &flow->spec);
+		sfc_flow_filter_remove(sa, flow);
 }
 
 int
@@ -1186,7 +1364,7 @@ sfc_flow_start(struct sfc_adapter *sa)
 	SFC_ASSERT(sfc_adapter_is_locked(sa));
 
 	TAILQ_FOREACH(flow, &sa->filter.flow_list, entries) {
-		rc = efx_filter_insert(sa->nic, &flow->spec);
+		rc = sfc_flow_filter_insert(sa, flow);
 		if (rc != 0)
 			goto fail_bad_flow;
 	}

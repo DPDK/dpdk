@@ -41,9 +41,24 @@
 extern "C" {
 #endif
 
+#if EFSYS_OPT_RX_SCALE
+/* RSS configuration storage */
+struct sfc_flow_rss {
+	unsigned int	rxq_hw_index_min;
+	unsigned int	rxq_hw_index_max;
+	unsigned int	rss_hash_types;
+	uint8_t		rss_key[EFX_RSS_KEY_SIZE];
+	unsigned int	rss_tbl[EFX_RSS_TBL_SIZE];
+};
+#endif /* EFSYS_OPT_RX_SCALE */
+
 /* PMD-specific definition of the opaque type from rte_flow.h */
 struct rte_flow {
 	efx_filter_spec_t spec;		/* filter specification */
+#if EFSYS_OPT_RX_SCALE
+	boolean_t rss;			/* RSS toggle */
+	struct sfc_flow_rss rss_conf;	/* RSS configuration */
+#endif /* EFSYS_OPT_RX_SCALE */
 	TAILQ_ENTRY(rte_flow) entries;	/* flow list entries */
 };
 
