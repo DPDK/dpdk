@@ -102,4 +102,8 @@
  */
 #define RTE_QAT_PMD_MAX_NB_SESSIONS 2048
 
+/* Ring net PMD settings */
+#define RTE_PMD_RING_MAX_RX_RINGS 16
+#define RTE_PMD_RING_MAX_TX_RINGS 16
+
 #endif /* _RTE_CONFIG_H_ */

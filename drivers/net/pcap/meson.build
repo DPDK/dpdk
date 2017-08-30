@@ -29,9 +29,13 @@
 #   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-drivers = ['af_packet', 'null', 'pcap', 'ring']
-std_deps = ['ethdev', 'kvargs'] # 'ethdev' also pulls in mbuf, net, eal etc
-std_deps += ['bus_pci']         # very many PMDs depend on PCI, so make std
-std_deps += ['bus_vdev']        # same with vdev bus
-config_flag_fmt = 'RTE_LIBRTE_@0@_PMD'
-driver_name_fmt = 'rte_pmd_@0@'
+pcap_dep = dependency('pcap', required: false)
+if pcap_dep.found() == true
+	ext_deps += pcap_dep
+elif find_program('pcap-config', required: false).found() == true
+	ext_deps += cc.find_library('pcap')
+else
+	build = false
+endif
+sources = files('rte_eth_pcap.c')
+pkgconfig_extra_libs += '-lpcap'
