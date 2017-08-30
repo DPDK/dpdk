@@ -148,7 +148,7 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 #if EFSYS_OPT_RX_SCALE
 	if (sa->rss_support != EFX_RX_SCALE_UNAVAILABLE) {
 		dev_info->reta_size = EFX_RSS_TBL_SIZE;
-		dev_info->hash_key_size = SFC_RSS_KEY_SIZE;
+		dev_info->hash_key_size = EFX_RSS_KEY_SIZE;
 		dev_info->flow_type_rss_offloads = SFC_RSS_OFFLOADS;
 	}
 #endif
@@ -1223,9 +1223,9 @@ sfc_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 	 * locally in 'sfc_adapter' and kept up-to-date
 	 */
 	rss_conf->rss_hf = sfc_efx_to_rte_hash_type(sa->rss_hash_types);
-	rss_conf->rss_key_len = SFC_RSS_KEY_SIZE;
+	rss_conf->rss_key_len = EFX_RSS_KEY_SIZE;
 	if (rss_conf->rss_key != NULL)
-		rte_memcpy(rss_conf->rss_key, sa->rss_key, SFC_RSS_KEY_SIZE);
+		rte_memcpy(rss_conf->rss_key, sa->rss_key, EFX_RSS_KEY_SIZE);
 
 	sfc_adapter_unlock(sa);
 
