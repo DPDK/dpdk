@@ -510,10 +510,10 @@ static const uint8_t default_rss_key[SFC_RSS_KEY_SIZE] = {
 };
 #endif
 
+#if EFSYS_OPT_RX_SCALE
 static int
 sfc_set_rss_defaults(struct sfc_adapter *sa)
 {
-#if EFSYS_OPT_RX_SCALE
 	int rc;
 
 	rc = efx_intr_init(sa->nic, sa->intr.type, NULL);
@@ -556,10 +556,14 @@ fail_ev_init:
 
 fail_intr_init:
 	return rc;
-#else
-	return 0;
-#endif
 }
+#else
+static int
+sfc_set_rss_defaults(__rte_unused struct sfc_adapter *sa)
+{
+	return 0;
+}
+#endif
 
 int
 sfc_attach(struct sfc_adapter *sa)

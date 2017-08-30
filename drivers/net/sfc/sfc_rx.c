@@ -207,11 +207,11 @@ sfc_efx_supported_ptypes_get(void)
 	return ptypes;
 }
 
+#if EFSYS_OPT_RX_SCALE
 static void
 sfc_efx_rx_set_rss_hash(struct sfc_efx_rxq *rxq, unsigned int flags,
 			struct rte_mbuf *m)
 {
-#if EFSYS_OPT_RX_SCALE
 	uint8_t *mbuf_data;
 
 
@@ -227,8 +227,15 @@ sfc_efx_rx_set_rss_hash(struct sfc_efx_rxq *rxq, unsigned int flags,
 
 		m->ol_flags |= PKT_RX_RSS_HASH;
 	}
-#endif
 }
+#else
+static void
+sfc_efx_rx_set_rss_hash(__rte_unused struct sfc_efx_rxq *rxq,
+			__rte_unused unsigned int flags,
+			__rte_unused struct rte_mbuf *m)
+{
+}
+#endif
 
 static uint16_t
 sfc_efx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
@@ -1088,12 +1095,12 @@ sfc_efx_to_rte_hash_type(efx_rx_hash_type_t efx_hash_types)
 }
 #endif
 
+#if EFSYS_OPT_RX_SCALE
 static int
 sfc_rx_rss_config(struct sfc_adapter *sa)
 {
 	int rc = 0;
 
-#if EFSYS_OPT_RX_SCALE
 	if (sa->rss_channels > 0) {
 		rc = efx_rx_scale_mode_set(sa->nic, EFX_RX_HASHALG_TOEPLITZ,
 					   sa->rss_hash_types, B_TRUE);
@@ -1110,9 +1117,15 @@ sfc_rx_rss_config(struct sfc_adapter *sa)
 	}
 
 finish:
-#endif
 	return rc;
 }
+#else
+static int
+sfc_rx_rss_config(__rte_unused struct sfc_adapter *sa)
+{
+	return 0;
+}
+#endif
 
 int
 sfc_rx_start(struct sfc_adapter *sa)
@@ -1281,7 +1294,6 @@ sfc_rx_configure(struct sfc_adapter *sa)
 {
 	struct rte_eth_conf *dev_conf = &sa->eth_dev->data->dev_conf;
 	const unsigned int nb_rx_queues = sa->eth_dev->data->nb_rx_queues;
-	unsigned int sw_index;
 	int rc;
 
 	sfc_log_init(sa, "nb_rx_queues=%u (old %u)",
@@ -1334,6 +1346,8 @@ sfc_rx_configure(struct sfc_adapter *sa)
 			   MIN(sa->rxq_count, EFX_MAXRSS) : 0;
 
 	if (sa->rss_channels > 0) {
+		unsigned int sw_index;
+
 		for (sw_index = 0; sw_index < EFX_RSS_TBL_SIZE; ++sw_index)
 			sa->rss_tbl[sw_index] = sw_index % sa->rss_channels;
 	}
