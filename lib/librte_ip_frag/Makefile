@@ -37,7 +37,7 @@ LIB = librte_ip_frag.a
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS) -I$(SRCDIR)
 
-EXPORT_MAP := rte_ipfrag_version.map
+EXPORT_MAP := rte_ip_frag_version.map
 
 LIBABIVER := 1
 
