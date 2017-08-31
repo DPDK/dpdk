@@ -43,10 +43,20 @@ sources = ['eal_alarm.c',
 eal_extra_link_arg = '-lexecinfo'
 
 eal_inc += include_directories('../../../librte_compat')
+if get_option('per_library_versions')
+	lib_version = '@0@.1'.format(version)
+	so_version = '@0@'.format(version)
+else
+	pver = meson.project_version().split('.')
+	lib_version = '@0@.@1@'.format(pver.get(0), pver.get(1))
+	so_version = lib_version
+endif
+
 eal_lib = library('rte_eal', sources, eal_common_sources, eal_common_arch_sources,
 			dependencies: dependency('threads'),
 			include_directories : eal_inc,
-			version: '@0@.1'.format(version),
+			version: lib_version,
+			soversion: so_version,
 			c_args: ['-D_GNU_SOURCE', '-DALLOW_EXPERIMENTAL_API'],
 			link_depends: version_map,
 			link_args: [eal_extra_link_arg,

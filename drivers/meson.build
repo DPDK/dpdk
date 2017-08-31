@@ -97,6 +97,16 @@ foreach class:driver_classes
 						depends: [pmdinfogen, tmp_lib])
 			endforeach
 
+			if get_option('per_library_versions')
+				lib_version = '@0@.1'.format(version)
+				so_version = '@0@'.format(version)
+			else
+				pver = meson.project_version().split('.')
+				lib_version = '@0@.@1@'.format(pver.get(0),
+						pver.get(1))
+				so_version = lib_version
+			endif
+
 			# now build the driver itself, and add to the drivers list
 			lib_name = driver_name_fmt.format(name)
 			version_map = '@0@/@1@/@2@_version.map'.format(
@@ -110,7 +120,8 @@ foreach class:driver_classes
 				c_args: cflags,
 				link_args: '-Wl,--version-script=' + version_map,
 				link_depends: version_map,
-				version: '@0@.1'.format(version),
+				version: lib_version,
+				soversion: so_version,
 				install: true,
 				install_dir: driver_install_path)
 

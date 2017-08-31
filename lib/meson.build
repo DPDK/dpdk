@@ -86,6 +86,15 @@ foreach l:libraries
 			cflags += '-DALLOW_EXPERIMENTAL_API'
 		endif
 
+		if get_option('per_library_versions')
+			lib_version = '@0@.1'.format(version)
+			so_version = '@0@'.format(version)
+		else
+			pver = meson.project_version().split('.')
+			lib_version = '@0@.@1@'.format(pver.get(0), pver.get(1))
+			so_version = lib_version
+		endif
+
 		version_map = '@0@/@1@/rte_@2@_version.map'.format(
 				meson.current_source_dir(), dir_name, name)
 		libname = 'rte_' + name
@@ -97,7 +106,8 @@ foreach l:libraries
 				include_directories: include_directories(dir_name),
 				link_args: '-Wl,--version-script=' + version_map,
 				link_depends: version_map,
-				version: '@0@.1'.format(version),
+				version: lib_version,
+				soversion: so_version,
 				install: true)
 		dep = declare_dependency(link_with: lib,
 				include_directories: include_directories(dir_name),
