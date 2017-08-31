@@ -454,6 +454,7 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			length -= pkt_inline_sz;
 			addr += pkt_inline_sz;
 		}
+		raw += MLX5_WQE_DWORD_SIZE;
 		if (txq->tso_en) {
 			tso = buf->ol_flags & PKT_TX_TCP_SEG;
 			if (tso) {
@@ -486,7 +487,6 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				copy_b = tso_header_sz - pkt_inline_sz;
 				/* First seg must contain all headers. */
 				assert(copy_b <= length);
-				raw += MLX5_WQE_DWORD_SIZE;
 				if (copy_b &&
 				   ((end - (uintptr_t)raw) > copy_b)) {
 					uint16_t n = (MLX5_WQE_DS(copy_b) -
@@ -499,14 +499,11 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 						   (void *)addr, copy_b);
 					addr += copy_b;
 					length -= copy_b;
+					/* Include padding for TSO header. */
+					copy_b = MLX5_WQE_DS(copy_b) *
+						 MLX5_WQE_DWORD_SIZE;
 					pkt_inline_sz += copy_b;
-					/*
-					 * Another DWORD will be added
-					 * in the inline part.
-					 */
-					raw += MLX5_WQE_DS(copy_b) *
-					       MLX5_WQE_DWORD_SIZE -
-					       MLX5_WQE_DWORD_SIZE;
+					raw += copy_b;
 				} else {
 					/* NOP WQE. */
 					wqe->ctrl = (rte_v128u32_t){
@@ -524,19 +521,20 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		}
 		/* Inline if enough room. */
 		if (inline_en || tso) {
+			uint32_t inl;
 			uintptr_t end = (uintptr_t)
 				(((uintptr_t)txq->wqes) +
 				 (1 << txq->wqe_n) * MLX5_WQE_SIZE);
 			unsigned int inline_room = max_inline *
 						   RTE_CACHE_LINE_SIZE -
-						   (pkt_inline_sz - 2);
+						   (pkt_inline_sz - 2) -
+						   !!tso * sizeof(inl);
 			uintptr_t addr_end = (addr + inline_room) &
 					     ~(RTE_CACHE_LINE_SIZE - 1);
 			unsigned int copy_b = (addr_end > addr) ?
 				RTE_MIN((addr_end - addr), length) :
 				0;
 
-			raw += MLX5_WQE_DWORD_SIZE;
 			if (copy_b && ((end - (uintptr_t)raw) > copy_b)) {
 				/*
 				 * One Dseg remains in the current WQE.  To
@@ -549,12 +547,7 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 					break;
 				max_wqe -= n;
 				if (tso) {
-					uint32_t inl =
-						htonl(copy_b | MLX5_INLINE_SEG);
-
-					pkt_inline_sz =
-						MLX5_WQE_DS(tso_header_sz) *
-						MLX5_WQE_DWORD_SIZE;
+					inl = htonl(copy_b | MLX5_INLINE_SEG);
 					rte_memcpy((void *)raw,
 						   (void *)&inl, sizeof(inl));
 					raw += sizeof(inl);
