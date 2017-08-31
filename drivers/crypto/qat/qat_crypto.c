@@ -46,7 +46,6 @@
 #include <rte_memory.h>
 #include <rte_memzone.h>
 #include <rte_tailq.h>
-#include <rte_ether.h>
 #include <rte_malloc.h>
 #include <rte_launch.h>
 #include <rte_eal.h>
