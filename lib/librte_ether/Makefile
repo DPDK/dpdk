@@ -39,7 +39,7 @@ LIB = librte_ethdev.a
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 
-EXPORT_MAP := rte_ether_version.map
+EXPORT_MAP := rte_ethdev_version.map
 
 LIBABIVER := 6
 
