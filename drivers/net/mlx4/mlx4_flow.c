@@ -935,20 +935,10 @@ exit:
 }
 
 /**
+ * Configure isolated mode.
+ *
  * @see rte_flow_isolate()
- *
- * Must be done before calling dev_configure().
- *
- * @param dev
- *   Pointer to the ethernet device structure.
- * @param enable
- *   Nonzero to enter isolated mode, attempt to leave it otherwise.
- * @param[out] error
- *   Perform verbose error reporting if not NULL. PMDs initialize this
- *   structure in case of error only.
- *
- * @return
- *   0 on success, a negative value on error.
+ * @see rte_flow_ops
  */
 static int
 mlx4_flow_isolate(struct rte_eth_dev *dev,
@@ -957,14 +947,17 @@ mlx4_flow_isolate(struct rte_eth_dev *dev,
 {
 	struct priv *priv = dev->data->dev_private;
 
-	if (priv->rxqs) {
-		rte_flow_error_set(error, ENOTSUP,
-				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
-				   NULL, "isolated mode must be set"
-				   " before configuring the device");
-		return -rte_errno;
-	}
+	if (!!enable == !!priv->isolated)
+		return 0;
 	priv->isolated = !!enable;
+	if (enable) {
+		mlx4_mac_addr_del(priv);
+	} else if (mlx4_mac_addr_add(priv) < 0) {
+		priv->isolated = 1;
+		return -rte_flow_error_set(error, rte_errno,
+					   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
+					   NULL, "cannot leave isolated mode");
+	}
 	return 0;
 }
 
