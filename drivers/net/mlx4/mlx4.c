@@ -2817,8 +2817,7 @@ priv_dev_interrupt_handler_uninstall(struct priv *priv, struct rte_eth_dev *dev)
 		ERROR("rte_intr_callback_unregister failed with %d %s",
 		      ret, strerror(rte_errno));
 	}
-	priv->intr_handle.fd = 0;
-	priv->intr_handle.type = RTE_INTR_HANDLE_UNKNOWN;
+	priv->intr_handle.fd = -1;
 	return ret;
 }
 
@@ -2859,7 +2858,6 @@ priv_dev_interrupt_handler_install(struct priv *priv,
 		return -rte_errno;
 	} else {
 		priv->intr_handle.fd = priv->ctx->async_fd;
-		priv->intr_handle.type = RTE_INTR_HANDLE_EXT;
 		rc = rte_intr_callback_register(&priv->intr_handle,
 						 mlx4_dev_interrupt_handler,
 						 dev);
@@ -2867,6 +2865,7 @@ priv_dev_interrupt_handler_install(struct priv *priv,
 			rte_errno = -rc;
 			ERROR("rte_intr_callback_register failed "
 			      " (rte_errno: %s)", strerror(rte_errno));
+			priv->intr_handle.fd = -1;
 			return -rte_errno;
 		}
 	}
@@ -2997,7 +2996,7 @@ priv_rx_intr_vec_enable(struct priv *priv)
 	unsigned int rxqs_n = priv->rxqs_n;
 	unsigned int n = RTE_MIN(rxqs_n, (uint32_t)RTE_MAX_RXTX_INTR_VEC_ID);
 	unsigned int count = 0;
-	struct rte_intr_handle *intr_handle = priv->dev->intr_handle;
+	struct rte_intr_handle *intr_handle = &priv->intr_handle;
 
 	if (!priv->dev->data->dev_conf.intr_conf.rxq)
 		return 0;
@@ -3009,7 +3008,6 @@ priv_rx_intr_vec_enable(struct priv *priv)
 		      " Rx interrupts will not be supported");
 		return -rte_errno;
 	}
-	intr_handle->type = RTE_INTR_HANDLE_EXT;
 	for (i = 0; i != n; ++i) {
 		struct rxq *rxq = (*priv->rxqs)[i];
 		int fd;
@@ -3062,7 +3060,7 @@ priv_rx_intr_vec_enable(struct priv *priv)
 static void
 priv_rx_intr_vec_disable(struct priv *priv)
 {
-	struct rte_intr_handle *intr_handle = priv->dev->intr_handle;
+	struct rte_intr_handle *intr_handle = &priv->intr_handle;
 
 	rte_intr_free_epoll_fd(intr_handle);
 	free(intr_handle->intr_vec);
@@ -3429,14 +3427,24 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		eth_dev->device = &pci_dev->device;
 		rte_eth_copy_pci_info(eth_dev, pci_dev);
 		eth_dev->device->driver = &mlx4_driver.driver;
+		/* Initialize local interrupt handle for current port. */
+		priv->intr_handle = (struct rte_intr_handle){
+			.fd = -1,
+			.type = RTE_INTR_HANDLE_EXT,
+		};
 		/*
-		 * Copy and override interrupt handle to prevent it from
-		 * being shared between all ethdev instances of a given PCI
-		 * device. This is required to properly handle Rx interrupts
-		 * on all ports.
+		 * Override ethdev interrupt handle pointer with private
+		 * handle instead of that of the parent PCI device used by
+		 * default. This prevents it from being shared between all
+		 * ports of the same PCI device since each of them is
+		 * associated its own Verbs context.
+		 *
+		 * Rx interrupts in particular require this as the PMD has
+		 * no control over the registration of queue interrupts
+		 * besides setting up eth_dev->intr_handle, the rest is
+		 * handled by rte_intr_rx_ctl().
 		 */
-		priv->intr_handle_dev = *eth_dev->intr_handle;
-		eth_dev->intr_handle = &priv->intr_handle_dev;
+		eth_dev->intr_handle = &priv->intr_handle;
 		priv->dev = eth_dev;
 		eth_dev->dev_ops = &mlx4_dev_ops;
 		eth_dev->data->dev_flags |= RTE_ETH_DEV_DETACHABLE;
