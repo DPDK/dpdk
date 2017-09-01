@@ -3,6 +3,9 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/file.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #include <rte_log.h>
 
@@ -38,7 +41,8 @@
 #define NSP_STATUS_MINOR(x)      (int)(((x) >> 32) & 0xfff)
 
 /* NSP commands */
-#define NSP_CMD_RESET			1
+#define NSP_CMD_RESET          1
+#define NSP_CMD_FW_LOAD        6
 
 #define NSP_BUFFER_CFG_SIZE_MASK	(0xff)
 
@@ -303,4 +307,64 @@ nfp_fw_reset(nspu_desc_t *nspu_desc)
 		RTE_LOG(INFO, PMD, "fw reset failed: error %d", res);
 
 	return res;
+}
+
+#define DEFAULT_FW_PATH       "/lib/firmware/netronome"
+#define DEFAULT_FW_FILENAME   "nic_dpdk_default.nffw"
+
+int
+nfp_fw_upload(nspu_desc_t *nspu_desc)
+{
+	int fw_f;
+	char *fw_buf;
+	char filename[100];
+	struct stat file_stat;
+	off_t fsize, bytes;
+	ssize_t size;
+	int ret;
+
+	size = nspu_desc->buf_size;
+
+	sprintf(filename, "%s/%s", DEFAULT_FW_PATH, DEFAULT_FW_FILENAME);
+	fw_f = open(filename, O_RDONLY);
+	if (fw_f < 0) {
+		RTE_LOG(INFO, PMD, "Firmware file %s/%s not found.",
+			DEFAULT_FW_PATH, DEFAULT_FW_FILENAME);
+		return -ENOENT;
+	}
+
+	fstat(fw_f, &file_stat);
+
+	fsize = file_stat.st_size;
+	RTE_LOG(DEBUG, PMD, "Firmware file with size: %" PRIu64 "\n",
+			    (uint64_t)fsize);
+
+	if (fsize > (off_t)size) {
+		RTE_LOG(INFO, PMD, "fw file too big: %" PRIu64
+				   " bytes (%" PRIu64 " max)",
+				  (uint64_t)fsize, (uint64_t)size);
+		return -EINVAL;
+	}
+
+	fw_buf = malloc((size_t)size);
+	if (!fw_buf) {
+		RTE_LOG(INFO, PMD, "malloc failed for fw buffer");
+		return -ENOMEM;
+	}
+	memset(fw_buf, 0, size);
+
+	bytes = read(fw_f, fw_buf, fsize);
+	if (bytes != fsize) {
+		RTE_LOG(INFO, PMD, "Reading fw to buffer failed.\n"
+				   "Just %" PRIu64 " of %" PRIu64 " bytes read.",
+				   (uint64_t)bytes, (uint64_t)fsize);
+		free(fw_buf);
+		return -EIO;
+	}
+
+	ret = nspu_command(nspu_desc, NSP_CMD_FW_LOAD, 0, 1, fw_buf, 0, bytes);
+
+	free(fw_buf);
+
+	return ret;
 }

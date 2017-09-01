@@ -73,3 +73,4 @@ int nfp_nspu_init(nspu_desc_t *desc, int nfp, int pcie_bar, size_t pcie_barsz,
 		  int exp_bar, void *exp_bar_cfg_base, void *exp_bar_mmap);
 int nfp_nsp_get_abi_version(nspu_desc_t *desc, int *major, int *minor);
 int nfp_fw_reset(nspu_desc_t *nspu_desc);
+int nfp_fw_upload(nspu_desc_t *nspu_desc);
