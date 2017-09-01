@@ -34,7 +34,6 @@
 /*
  * Known limitations:
  * - RSS hash key and options cannot be modified.
- * - Hardware counters aren't implemented.
  */
 
 /* System headers. */
@@ -1372,9 +1371,7 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		struct txq_elt *elt_next = &(*txq->elts)[elts_head_next];
 		struct txq_elt *elt = &(*txq->elts)[elts_head];
 		unsigned int segs = NB_SEGS(buf);
-#ifdef MLX4_PMD_SOFT_COUNTERS
 		unsigned int sent_size = 0;
-#endif
 		uint32_t send_flags = 0;
 
 		/* Clean up old buffer. */
@@ -1452,9 +1449,7 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 					 send_flags);
 			if (unlikely(err))
 				goto stop;
-#ifdef MLX4_PMD_SOFT_COUNTERS
 			sent_size += length;
-#endif
 		} else {
 #if MLX4_PMD_SGE_WR_N > 1
 			struct ibv_sge sges[MLX4_PMD_SGE_WR_N];
@@ -1473,9 +1468,7 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				 send_flags);
 			if (unlikely(err))
 				goto stop;
-#ifdef MLX4_PMD_SOFT_COUNTERS
 			sent_size += ret.length;
-#endif
 #else /* MLX4_PMD_SGE_WR_N > 1 */
 			DEBUG("%p: TX scattered buffers support not"
 			      " compiled in", (void *)txq);
@@ -1483,19 +1476,15 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 #endif /* MLX4_PMD_SGE_WR_N > 1 */
 		}
 		elts_head = elts_head_next;
-#ifdef MLX4_PMD_SOFT_COUNTERS
 		/* Increment sent bytes counter. */
 		txq->stats.obytes += sent_size;
-#endif
 	}
 stop:
 	/* Take a shortcut if nothing must be sent. */
 	if (unlikely(i == 0))
 		return 0;
-#ifdef MLX4_PMD_SOFT_COUNTERS
 	/* Increment sent packets counter. */
 	txq->stats.opackets += i;
-#endif
 	/* Ring QP doorbell. */
 	err = txq->if_qp->send_flush(txq->qp);
 	if (unlikely(err)) {
@@ -2786,10 +2775,8 @@ mlx4_rx_burst_sp(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				      " completion status (%d): %s",
 				      (void *)rxq, wc.wr_id, wc.status,
 				      ibv_wc_status_str(wc.status));
-#ifdef MLX4_PMD_SOFT_COUNTERS
 				/* Increment dropped packets counter. */
 				++rxq->stats.idropped;
-#endif
 				/* Link completed WRs together for repost. */
 				*next = wr;
 				next = &wr->next;
@@ -2901,10 +2888,8 @@ mlx4_rx_burst_sp(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		/* Return packet. */
 		*(pkts++) = pkt_buf;
 		++pkts_ret;
-#ifdef MLX4_PMD_SOFT_COUNTERS
 		/* Increase bytes counter. */
 		rxq->stats.ibytes += pkt_buf_len;
-#endif
 repost:
 		if (++elts_head >= elts_n)
 			elts_head = 0;
@@ -2924,10 +2909,8 @@ repost:
 		abort();
 	}
 	rxq->elts_head = elts_head;
-#ifdef MLX4_PMD_SOFT_COUNTERS
 	/* Increase packets counter. */
 	rxq->stats.ipackets += pkts_ret;
-#endif
 	return pkts_ret;
 }
 
@@ -3008,10 +2991,8 @@ mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				      " completion status (%d): %s",
 				      (void *)rxq, wc.wr_id, wc.status,
 				      ibv_wc_status_str(wc.status));
-#ifdef MLX4_PMD_SOFT_COUNTERS
 				/* Increment dropped packets counter. */
 				++rxq->stats.idropped;
-#endif
 				/* Add SGE to array for repost. */
 				sges[i] = elt->sge;
 				goto repost;
@@ -3062,10 +3043,8 @@ mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		/* Return packet. */
 		*(pkts++) = seg;
 		++pkts_ret;
-#ifdef MLX4_PMD_SOFT_COUNTERS
 		/* Increase bytes counter. */
 		rxq->stats.ibytes += len;
-#endif
 repost:
 		if (++elts_head >= elts_n)
 			elts_head = 0;
@@ -3083,10 +3062,8 @@ repost:
 		abort();
 	}
 	rxq->elts_head = elts_head;
-#ifdef MLX4_PMD_SOFT_COUNTERS
 	/* Increase packets counter. */
 	rxq->stats.ipackets += pkts_ret;
-#endif
 	return pkts_ret;
 }
 
@@ -4270,17 +4247,13 @@ mlx4_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 			continue;
 		idx = rxq->stats.idx;
 		if (idx < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-#ifdef MLX4_PMD_SOFT_COUNTERS
 			tmp.q_ipackets[idx] += rxq->stats.ipackets;
 			tmp.q_ibytes[idx] += rxq->stats.ibytes;
-#endif
 			tmp.q_errors[idx] += (rxq->stats.idropped +
 					      rxq->stats.rx_nombuf);
 		}
-#ifdef MLX4_PMD_SOFT_COUNTERS
 		tmp.ipackets += rxq->stats.ipackets;
 		tmp.ibytes += rxq->stats.ibytes;
-#endif
 		tmp.ierrors += rxq->stats.idropped;
 		tmp.rx_nombuf += rxq->stats.rx_nombuf;
 	}
@@ -4291,21 +4264,14 @@ mlx4_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 			continue;
 		idx = txq->stats.idx;
 		if (idx < RTE_ETHDEV_QUEUE_STAT_CNTRS) {
-#ifdef MLX4_PMD_SOFT_COUNTERS
 			tmp.q_opackets[idx] += txq->stats.opackets;
 			tmp.q_obytes[idx] += txq->stats.obytes;
-#endif
 			tmp.q_errors[idx] += txq->stats.odropped;
 		}
-#ifdef MLX4_PMD_SOFT_COUNTERS
 		tmp.opackets += txq->stats.opackets;
 		tmp.obytes += txq->stats.obytes;
-#endif
 		tmp.oerrors += txq->stats.odropped;
 	}
-#ifndef MLX4_PMD_SOFT_COUNTERS
-	/* FIXME: retrieve and add hardware counters. */
-#endif
 	*stats = tmp;
 	priv_unlock(priv);
 }
@@ -4340,9 +4306,6 @@ mlx4_stats_reset(struct rte_eth_dev *dev)
 		(*priv->txqs)[i]->stats =
 			(struct mlx4_txq_stats){ .idx = idx };
 	}
-#ifndef MLX4_PMD_SOFT_COUNTERS
-	/* FIXME: reset hardware counters. */
-#endif
 	priv_unlock(priv);
 }
 

@@ -97,7 +97,6 @@ Limitations
 - RSS RETA cannot be configured
 - RSS always includes L3 (IPv4/IPv6) and L4 (UDP/TCP). They cannot be
   dissociated.
-- Hardware counters are not implemented (they are software counters).
 
 Configuration
 -------------
@@ -144,11 +143,6 @@ These options can be modified in the ``.config`` file.
   (MRs). This is a slow operation that must be cached.
 
   This value is always 1 for RX queues since they use a single MP.
-
-- ``CONFIG_RTE_LIBRTE_MLX4_SOFT_COUNTERS`` (default **1**)
-
-  Toggle software counters. No counters are available if this option is
-  disabled since hardware counters are not supported.
 
 Environment variables
 ~~~~~~~~~~~~~~~~~~~~~

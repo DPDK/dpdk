@@ -101,14 +101,6 @@
 #define MLX4_PMD_TX_MP_CACHE 8
 #endif
 
-/*
- * If defined, only use software counters. The PMD will never ask the hardware
- * for these, and many of them won't be available.
- */
-#ifndef MLX4_PMD_SOFT_COUNTERS
-#define MLX4_PMD_SOFT_COUNTERS 1
-#endif
-
 /* Alarm timeout. */
 #define MLX4_ALARM_TIMEOUT_US 100000
 
@@ -186,10 +178,8 @@ enum {
 
 struct mlx4_rxq_stats {
 	unsigned int idx; /**< Mapping index. */
-#ifdef MLX4_PMD_SOFT_COUNTERS
 	uint64_t ipackets; /**< Total of successfully received packets. */
 	uint64_t ibytes; /**< Total of successfully received bytes. */
-#endif
 	uint64_t idropped; /**< Total of packets dropped when RX ring full. */
 	uint64_t rx_nombuf; /**< Total of RX mbuf allocation failures. */
 };
@@ -252,10 +242,8 @@ struct txq_elt {
 
 struct mlx4_txq_stats {
 	unsigned int idx; /**< Mapping index. */
-#ifdef MLX4_PMD_SOFT_COUNTERS
 	uint64_t opackets; /**< Total of successfully sent packets. */
 	uint64_t obytes;   /**< Total of successfully sent bytes. */
-#endif
 	uint64_t odropped; /**< Total of packets not sent when TX ring full. */
 };
 
