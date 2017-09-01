@@ -49,5 +49,7 @@ LIBABIVER := 1
 # all source are stored in SRCS-y
 #
 SRCS-$(CONFIG_RTE_LIBRTE_NFP_PMD) += nfp_net.c
+SRCS-$(CONFIG_RTE_LIBRTE_NFP_PMD) += nfp_nfpu.c
+SRCS-$(CONFIG_RTE_LIBRTE_NFP_PMD) += nfp_nspu.c
 
 include $(RTE_SDK)/mk/rte.lib.mk
