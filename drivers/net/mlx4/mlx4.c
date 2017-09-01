@@ -1914,8 +1914,6 @@ rxq_setup_qp(struct priv *priv, struct ibv_cq *cq, uint16_t desc,
 		.res_domain = rd,
 	};
 
-	attr.max_inl_recv = priv->inl_recv_size,
-	attr.comp_mask |= IBV_EXP_QP_INIT_ATTR_INL_RECV;
 	return ibv_exp_create_qp(priv->ctx, &attr);
 }
 
@@ -2977,25 +2975,6 @@ priv_get_mac(struct priv *priv, uint8_t (*mac)[ETHER_ADDR_LEN])
 	return 0;
 }
 
-/**
- * Retrieve integer value from environment variable.
- *
- * @param[in] name
- *   Environment variable name.
- *
- * @return
- *   Integer value, 0 if the variable is not set.
- */
-static int
-mlx4_getenv_int(const char *name)
-{
-	const char *val = getenv(name);
-
-	if (val == NULL)
-		return 0;
-	return atoi(val);
-}
-
 static void
 mlx4_dev_link_status_handler(void *);
 static void
@@ -3644,13 +3623,11 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		struct ibv_pd *pd = NULL;
 		struct priv *priv = NULL;
 		struct rte_eth_dev *eth_dev = NULL;
-		struct ibv_exp_device_attr exp_device_attr;
 		struct ether_addr mac;
 
 		/* If port is not enabled, skip. */
 		if (!(conf.ports.enabled & (1 << i)))
 			continue;
-		exp_device_attr.comp_mask = IBV_EXP_DEVICE_ATTR_EXP_CAP_FLAGS;
 
 		DEBUG("using port %u", port);
 
@@ -3703,35 +3680,6 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		priv->port = port;
 		priv->pd = pd;
 		priv->mtu = ETHER_MTU;
-		if (ibv_exp_query_device(ctx, &exp_device_attr)) {
-			ERROR("ibv_exp_query_device() failed");
-			err = ENODEV;
-			goto port_error;
-		}
-
-		priv->inl_recv_size = mlx4_getenv_int("MLX4_INLINE_RECV_SIZE");
-
-		if (priv->inl_recv_size) {
-			exp_device_attr.comp_mask =
-				IBV_EXP_DEVICE_ATTR_INLINE_RECV_SZ;
-			if (ibv_exp_query_device(ctx, &exp_device_attr)) {
-				INFO("Couldn't query device for inline-receive"
-				     " capabilities.");
-				priv->inl_recv_size = 0;
-			} else {
-				if ((unsigned)exp_device_attr.inline_recv_sz <
-				    priv->inl_recv_size) {
-					INFO("Max inline-receive (%d) <"
-					     " requested inline-receive (%u)",
-					     exp_device_attr.inline_recv_sz,
-					     priv->inl_recv_size);
-					priv->inl_recv_size =
-						exp_device_attr.inline_recv_sz;
-				}
-			}
-			INFO("Set inline receive size to %u",
-			     priv->inl_recv_size);
-		}
 
 		priv->vf = vf;
 		/* Configure the first MAC address by default. */

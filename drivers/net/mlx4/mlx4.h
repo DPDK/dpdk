@@ -223,7 +223,6 @@ struct priv {
 	unsigned int vf:1; /* This is a VF device. */
 	unsigned int pending_alarm:1; /* An alarm is pending. */
 	unsigned int isolated:1; /* Toggle isolated mode. */
-	unsigned int inl_recv_size; /* Inline recv size */
 	/* RX/TX queues. */
 	unsigned int rxqs_n; /* RX queues array size. */
 	unsigned int txqs_n; /* TX queues array size. */
