@@ -57,6 +57,8 @@
  * the fast path.
  */
 
+#include <rte_spinlock.h>
+
 typedef struct {
 	int nfp;        /* NFP device */
 	int pcie_bar;   /* PF PCI BAR to work with */
@@ -67,6 +69,7 @@ typedef struct {
 	uint64_t windowsz; /* NSPU BAR window size */
 	void *cfg_base; /* Expansion BARs address */
 	void *mem_base; /* NSP interface */
+	rte_spinlock_t nsp_lock;
 } nspu_desc_t;
 
 int nfp_nspu_init(nspu_desc_t *desc, int nfp, int pcie_bar, size_t pcie_barsz,
@@ -75,3 +78,4 @@ int nfp_nsp_get_abi_version(nspu_desc_t *desc, int *major, int *minor);
 int nfp_nsp_fw_setup(nspu_desc_t *desc, const char *sym, uint64_t *pcie_offset);
 int nfp_nsp_map_ctrl_bar(nspu_desc_t *desc, uint64_t *pcie_offset);
 void nfp_nsp_map_queues_bar(nspu_desc_t *desc, uint64_t *pcie_offset);
+int nfp_nsp_eth_config(nspu_desc_t *desc, int port, int up);

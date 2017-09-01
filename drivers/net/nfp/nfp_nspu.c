@@ -8,8 +8,10 @@
 #include <fcntl.h>
 
 #include <rte_log.h>
+#include <rte_byteorder.h>
 
 #include "nfp_nfpu.h"
+#include "nfp_net_eth.h"
 
 #define CFG_EXP_BAR_ADDR_SZ     1
 #define CFG_EXP_BAR_MAP_TYPE	1
@@ -45,9 +47,11 @@
 #define NSP_STATUS_MINOR(x)      (int)(((x) >> 32) & 0xfff)
 
 /* NSP commands */
-#define NSP_CMD_RESET          1
-#define NSP_CMD_FW_LOAD        6
-#define NSP_CMD_GET_SYMBOL     14
+#define NSP_CMD_RESET                   1
+#define NSP_CMD_FW_LOAD                 6
+#define NSP_CMD_READ_ETH_TABLE          7
+#define NSP_CMD_WRITE_ETH_TABLE         8
+#define NSP_CMD_GET_SYMBOL             14
 
 #define NSP_BUFFER_CFG_SIZE_MASK	(0xff)
 
@@ -527,4 +531,73 @@ nfp_nsp_map_queues_bar(nspu_desc_t *desc, uint64_t *pcie_offset)
 
 	/* This is the pcie offset to use by the host */
 	*pcie_offset |= ((NFP_NET_PF_HW_QUEUES_EXP_BAR & 0x7) << (27 - 3));
+}
+
+int
+nfp_nsp_eth_config(nspu_desc_t *desc, int port, int up)
+{
+	union eth_table_entry *entries, *entry;
+	int modified;
+	int ret, idx;
+	int i;
+
+	idx = port;
+
+	RTE_LOG(INFO, PMD, "Hw ethernet port %d configure...\n", port);
+	rte_spinlock_lock(&desc->nsp_lock);
+	entries = malloc(NSP_ETH_TABLE_SIZE);
+	if (!entries) {
+		rte_spinlock_unlock(&desc->nsp_lock);
+		return -ENOMEM;
+	}
+
+	ret = nspu_command(desc, NSP_CMD_READ_ETH_TABLE, 1, 0, entries,
+			   NSP_ETH_TABLE_SIZE, 0);
+	if (ret) {
+		rte_spinlock_unlock(&desc->nsp_lock);
+		return ret;
+	}
+
+	entry = entries;
+
+	for (i = 0; i < NSP_ETH_MAX_COUNT; i++) {
+		/* ports in use do not appear sequentially in the table */
+		if (!(entry->port & NSP_ETH_PORT_LANES_MASK)) {
+			/* entry not in use */
+			entry++;
+			continue;
+		}
+		if (idx == 0)
+			break;
+		idx--;
+		entry++;
+	}
+
+	if (i == NSP_ETH_MAX_COUNT) {
+		rte_spinlock_unlock(&desc->nsp_lock);
+		return -EINVAL;
+	}
+
+	if (up && !(entry->state & NSP_ETH_STATE_CONFIGURED)) {
+		entry->control |= NSP_ETH_STATE_CONFIGURED;
+		modified = 1;
+	}
+
+	if (!up && (entry->state & NSP_ETH_STATE_CONFIGURED)) {
+		entry->control &= ~NSP_ETH_STATE_CONFIGURED;
+		modified = 1;
+	}
+
+	if (modified) {
+		ret = nspu_command(desc, NSP_CMD_WRITE_ETH_TABLE, 0, 1, entries,
+				   0, NSP_ETH_TABLE_SIZE);
+		if (!ret)
+			RTE_LOG(INFO, PMD,
+				"Hw ethernet port %d configure done\n", port);
+		else
+			RTE_LOG(INFO, PMD,
+				"Hw ethernet port %d configure failed\n", port);
+	}
+	rte_spinlock_unlock(&desc->nsp_lock);
+	return ret;
 }
