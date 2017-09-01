@@ -608,8 +608,10 @@ txq_alloc_elts(struct txq *txq, unsigned int elts_n)
 	txq->elts_head = 0;
 	txq->elts_tail = 0;
 	txq->elts_comp = 0;
-	/* Request send completion every MLX4_PMD_TX_PER_COMP_REQ packets or
-	 * at least 4 times per ring. */
+	/*
+	 * Request send completion every MLX4_PMD_TX_PER_COMP_REQ packets or
+	 * at least 4 times per ring.
+	 */
 	txq->elts_comp_cd_init =
 		((MLX4_PMD_TX_PER_COMP_REQ < (elts_n / 4)) ?
 		 MLX4_PMD_TX_PER_COMP_REQ : (elts_n / 4));
@@ -618,7 +620,6 @@ txq_alloc_elts(struct txq *txq, unsigned int elts_n)
 	return 0;
 error:
 	rte_free(elts);
-
 	DEBUG("%p: failed, freed everything", (void *)txq);
 	assert(ret > 0);
 	rte_errno = ret;
@@ -663,7 +664,6 @@ txq_free_elts(struct txq *txq)
 	}
 	rte_free(elts);
 }
-
 
 /**
  * Clean up a TX queue.
@@ -755,7 +755,6 @@ static void mlx4_check_mempool_cb(struct rte_mempool *mp,
 
 	(void)mp;
 	(void)mem_idx;
-
 	/* It already failed, skip the next chunks. */
 	if (data->ret != 0)
 		return;
@@ -799,7 +798,6 @@ static int mlx4_check_mempool(struct rte_mempool *mp, uintptr_t *start,
 	rte_mempool_mem_iter(mp, mlx4_check_mempool_cb, &data);
 	*start = (uintptr_t)data.start;
 	*end = (uintptr_t)data.end;
-
 	return data.ret;
 }
 
@@ -833,7 +831,6 @@ mlx4_mp2mr(struct ibv_pd *pd, struct rte_mempool *mp)
 			(void *)mp);
 		return NULL;
 	}
-
 	DEBUG("mempool %p area start=%p end=%p size=%zu",
 	      (void *)mp, (void *)start, (void *)end,
 	      (size_t)(end - start));
@@ -960,8 +957,10 @@ txq_mp2mr_mbuf_check(struct rte_mempool *mp, void *arg, void *obj,
 	struct txq_mp2mr_mbuf_check_data *data = arg;
 	struct rte_mbuf *buf = obj;
 
-	/* Check whether mbuf structure fits element size and whether mempool
-	 * pointer is valid. */
+	/*
+	 * Check whether mbuf structure fits element size and whether mempool
+	 * pointer is valid.
+	 */
 	if (sizeof(*buf) > mp->elt_size || buf->pool != mp)
 		data->ret = -1;
 }
@@ -1224,8 +1223,10 @@ txq_setup(struct rte_eth_dev *dev, struct txq *txq, uint16_t desc,
 			.max_inline_data = MLX4_PMD_MAX_INLINE,
 		},
 		.qp_type = IBV_QPT_RAW_PACKET,
-		/* Do *NOT* enable this, completions events are managed per
-		 * TX burst. */
+		/*
+		 * Do *NOT* enable this, completions events are managed per
+		 * Tx burst.
+		 */
 		.sq_sig_all = 0,
 	};
 	tmpl.qp = ibv_create_qp(priv->pd, &attr.init);
@@ -1698,12 +1699,10 @@ mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			++rxq->priv->dev->data->rx_mbuf_alloc_failed;
 			goto repost;
 		}
-
 		/* Reconfigure sge to use rep instead of seg. */
 		elt->sge.addr = (uintptr_t)rep->buf_addr + RTE_PKTMBUF_HEADROOM;
 		assert(elt->sge.lkey == rxq->mr->lkey);
 		elt->buf = rep;
-
 		/* Update seg information. */
 		SET_DATA_OFF(seg, RTE_PKTMBUF_HEADROOM);
 		NB_SEGS(seg) = 1;
@@ -1713,7 +1712,6 @@ mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		DATA_LEN(seg) = len;
 		seg->packet_type = 0;
 		seg->ol_flags = 0;
-
 		/* Return packet. */
 		*(pkts++) = seg;
 		++pkts_ret;
@@ -2215,9 +2213,11 @@ mlx4_dev_close(struct rte_eth_dev *dev)
 	      (void *)dev,
 	      ((priv->ctx != NULL) ? priv->ctx->device->name : ""));
 	priv_mac_addr_del(priv);
-	/* Prevent crashes when queues are still in use. This is unfortunately
+	/*
+	 * Prevent crashes when queues are still in use. This is unfortunately
 	 * still required for DPDK 1.3 because some programs (such as testpmd)
-	 * never release them before closing the device. */
+	 * never release them before closing the device.
+	 */
 	dev->rx_pkt_burst = removed_rx_burst;
 	dev->tx_pkt_burst = removed_tx_burst;
 	if (priv->rxqs != NULL) {
@@ -2334,6 +2334,7 @@ mlx4_set_link_up(struct rte_eth_dev *dev)
 	priv_unlock(priv);
 	return err;
 }
+
 /**
  * DPDK callback to get information about the device.
  *
@@ -2350,7 +2351,6 @@ mlx4_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	char ifname[IF_NAMESIZE];
 
 	info->pci_dev = RTE_ETH_DEV_TO_PCI(dev);
-
 	if (priv == NULL)
 		return;
 	priv_lock(priv);
@@ -2495,7 +2495,6 @@ mlx4_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 	int link_speed = 0;
 
 	/* priv_lock() is not taken to allow concurrent calls. */
-
 	if (priv == NULL) {
 		rte_errno = EINVAL;
 		return -rte_errno;
@@ -2590,7 +2589,6 @@ mlx4_dev_get_flow_ctrl(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 		     strerror(rte_errno));
 		goto out;
 	}
-
 	fc_conf->autoneg = ethpause.autoneg;
 	if (ethpause.rx_pause && ethpause.tx_pause)
 		fc_conf->mode = RTE_FC_FULL;
@@ -2601,7 +2599,6 @@ mlx4_dev_get_flow_ctrl(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	else
 		fc_conf->mode = RTE_FC_NONE;
 	ret = 0;
-
 out:
 	priv_unlock(priv);
 	assert(ret >= 0);
@@ -2636,13 +2633,11 @@ mlx4_dev_set_flow_ctrl(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 		ethpause.rx_pause = 1;
 	else
 		ethpause.rx_pause = 0;
-
 	if (((fc_conf->mode & RTE_FC_FULL) == RTE_FC_FULL) ||
 	    (fc_conf->mode & RTE_FC_TX_PAUSE))
 		ethpause.tx_pause = 1;
 	else
 		ethpause.tx_pause = 0;
-
 	priv_lock(priv);
 	if (priv_ifreq(priv, SIOCETHTOOL, &ifr)) {
 		ret = rte_errno;
@@ -2652,7 +2647,6 @@ mlx4_dev_set_flow_ctrl(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 		goto out;
 	}
 	ret = 0;
-
 out:
 	priv_unlock(priv);
 	assert(ret >= 0);
@@ -2886,8 +2880,8 @@ mlx4_dev_link_status_handler(void *arg)
 	ret = priv_dev_status_handler(priv, dev, &events);
 	priv_unlock(priv);
 	if (ret > 0 && events & (1 << RTE_ETH_EVENT_INTR_LSC))
-		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL,
-					      NULL);
+		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC,
+					      NULL, NULL);
 }
 
 /**
@@ -2934,6 +2928,7 @@ mlx4_dev_interrupt_handler(void *cb_arg)
  *   Pointer to private structure.
  * @param dev
  *   Pointer to the rte_eth_dev structure.
+ *
  * @return
  *   0 on success, negative errno value otherwise and rte_errno is set.
  */
@@ -2965,6 +2960,7 @@ priv_dev_interrupt_handler_uninstall(struct priv *priv, struct rte_eth_dev *dev)
  *   Pointer to private structure.
  * @param dev
  *   Pointer to the rte_eth_dev structure.
+ *
  * @return
  *   0 on success, negative errno value otherwise and rte_errno is set.
  */
@@ -2975,8 +2971,9 @@ priv_dev_interrupt_handler_install(struct priv *priv,
 	int flags;
 	int rc;
 
-	/* Check whether the interrupt handler has already been installed
-	 * for either type of interrupt
+	/*
+	 * Check whether the interrupt handler has already been installed
+	 * for either type of interrupt.
 	 */
 	if (priv->intr_conf.lsc &&
 	    priv->intr_conf.rmv &&
@@ -3014,6 +3011,7 @@ priv_dev_interrupt_handler_install(struct priv *priv,
  *   Pointer to private structure.
  * @param dev
  *   Pointer to the rte_eth_dev structure.
+ *
  * @return
  *   0 on success, negative errno value otherwise and rte_errno is set.
  */
@@ -3035,6 +3033,7 @@ priv_dev_removal_interrupt_handler_uninstall(struct priv *priv,
  *   Pointer to private structure.
  * @param dev
  *   Pointer to the rte_eth_dev structure.
+ *
  * @return
  *   0 on success, negative errno value otherwise and rte_errno is set.
  */
@@ -3068,6 +3067,7 @@ priv_dev_link_interrupt_handler_uninstall(struct priv *priv,
  *   Pointer to private structure.
  * @param dev
  *   Pointer to the rte_eth_dev structure.
+ *
  * @return
  *   0 on success, negative errno value otherwise and rte_errno is set.
  */
@@ -3093,6 +3093,7 @@ priv_dev_link_interrupt_handler_install(struct priv *priv,
  *   Pointer to private structure.
  * @param dev
  *   Pointer to the rte_eth_dev structure.
+ *
  * @return
  *   0 on success, negative errno value otherwise and rte_errno is set.
  */
@@ -3390,7 +3391,6 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 
 	(void)pci_drv;
 	assert(pci_drv == &mlx4_driver);
-
 	list = ibv_get_device_list(&i);
 	if (list == NULL) {
 		rte_errno = errno;
@@ -3441,14 +3441,12 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		return -rte_errno;
 	}
 	ibv_dev = list[i];
-
 	DEBUG("device opened");
 	if (ibv_query_device(attr_ctx, &device_attr)) {
 		rte_errno = ENODEV;
 		goto error;
 	}
 	INFO("%u port(s) detected", device_attr.phys_port_cnt);
-
 	conf.ports.present |= (UINT64_C(1) << device_attr.phys_port_cnt) - 1;
 	if (mlx4_args(pci_dev->device.devargs, &conf)) {
 		ERROR("failed to process device arguments");
@@ -3470,15 +3468,12 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		/* If port is not enabled, skip. */
 		if (!(conf.ports.enabled & (1 << i)))
 			continue;
-
 		DEBUG("using port %u", port);
-
 		ctx = ibv_open_device(ibv_dev);
 		if (ctx == NULL) {
 			rte_errno = ENODEV;
 			goto port_error;
 		}
-
 		/* Check port status. */
 		err = ibv_query_port(ctx, port, &port_attr);
 		if (err) {
@@ -3486,19 +3481,16 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			ERROR("port query failed: %s", strerror(rte_errno));
 			goto port_error;
 		}
-
 		if (port_attr.link_layer != IBV_LINK_LAYER_ETHERNET) {
 			rte_errno = ENOTSUP;
 			ERROR("port %d is not configured in Ethernet mode",
 			      port);
 			goto port_error;
 		}
-
 		if (port_attr.state != IBV_PORT_ACTIVE)
 			DEBUG("port %d is not active: \"%s\" (%d)",
 			      port, ibv_port_state_str(port_attr.state),
 			      port_attr.state);
-
 		/* Allocate protection domain. */
 		pd = ibv_alloc_pd(ctx);
 		if (pd == NULL) {
@@ -3506,7 +3498,6 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			ERROR("PD allocation failure");
 			goto port_error;
 		}
-
 		/* from rte_ethdev.c */
 		priv = rte_zmalloc("ethdev private structure",
 				   sizeof(*priv),
@@ -3516,13 +3507,11 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			ERROR("priv allocation failure");
 			goto port_error;
 		}
-
 		priv->ctx = ctx;
 		priv->device_attr = device_attr;
 		priv->port = port;
 		priv->pd = pd;
 		priv->mtu = ETHER_MTU;
-
 		priv->vf = vf;
 		/* Configure the first MAC address by default. */
 		if (priv_get_mac(priv, &mac.addr_bytes)) {
@@ -3553,7 +3542,6 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		/* Get actual MTU if possible. */
 		priv_get_mtu(priv, &priv->mtu);
 		DEBUG("port %u MTU is %u", priv->port, priv->mtu);
-
 		/* from rte_ethdev.c */
 		{
 			char name[RTE_ETH_NAME_MAX_LEN];
@@ -3567,15 +3555,11 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			rte_errno = ENOMEM;
 			goto port_error;
 		}
-
 		eth_dev->data->dev_private = priv;
 		eth_dev->data->mac_addrs = &priv->mac;
 		eth_dev->device = &pci_dev->device;
-
 		rte_eth_copy_pci_info(eth_dev, pci_dev);
-
 		eth_dev->device->driver = &mlx4_driver.driver;
-
 		/*
 		 * Copy and override interrupt handle to prevent it from
 		 * being shared between all ethdev instances of a given PCI
@@ -3584,11 +3568,9 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		 */
 		priv->intr_handle_dev = *eth_dev->intr_handle;
 		eth_dev->intr_handle = &priv->intr_handle_dev;
-
 		priv->dev = eth_dev;
 		eth_dev->dev_ops = &mlx4_dev_ops;
 		eth_dev->data->dev_flags |= RTE_ETH_DEV_DETACHABLE;
-
 		/* Bring Ethernet device up. */
 		DEBUG("forcing Ethernet interface up");
 		priv_set_flags(priv, ~IFF_UP, IFF_UP);
@@ -3596,7 +3578,6 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		if (eth_dev->data->dev_flags & RTE_ETH_DEV_INTR_LSC)
 			mlx4_link_update(eth_dev, 0);
 		continue;
-
 port_error:
 		rte_free(priv);
 		if (pd)
@@ -3609,14 +3590,12 @@ port_error:
 	}
 	if (i == device_attr.phys_port_cnt)
 		return 0;
-
 	/*
 	 * XXX if something went wrong in the loop above, there is a resource
 	 * leak (ctx, pd, priv, dpdk ethdev) but we can do nothing about it as
 	 * long as the dpdk does not provide a way to deallocate a ethdev and a
 	 * way to enumerate the registered ethdevs to free the previous ones.
 	 */
-
 error:
 	if (attr_ctx)
 		claim_zero(ibv_close_device(attr_ctx));

@@ -835,7 +835,6 @@ priv_flow_create_action_queue(struct priv *priv,
 		goto error;
 	}
 	return rte_flow;
-
 error:
 	rte_free(rte_flow);
 	return NULL;
