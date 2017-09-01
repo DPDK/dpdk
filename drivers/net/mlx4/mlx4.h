@@ -229,10 +229,6 @@ struct priv {
 	struct rte_flow_drop *flow_drop_queue; /* Flow drop queue. */
 	LIST_HEAD(mlx4_flows, rte_flow) flows;
 	struct rte_intr_conf intr_conf; /* Active interrupt configuration. */
-	rte_spinlock_t lock; /* Lock for control functions. */
 };
-
-void priv_lock(struct priv *priv);
-void priv_unlock(struct priv *priv);
 
 #endif /* RTE_PMD_MLX4_H_ */

@@ -703,13 +703,9 @@ mlx4_flow_validate(struct rte_eth_dev *dev,
 		   struct rte_flow_error *error)
 {
 	struct priv *priv = dev->data->dev_private;
-	int ret;
 	struct mlx4_flow flow = { .offset = sizeof(struct ibv_flow_attr) };
 
-	priv_lock(priv);
-	ret = priv_flow_validate(priv, attr, items, actions, error, &flow);
-	priv_unlock(priv);
-	return ret;
+	return priv_flow_validate(priv, attr, items, actions, error, &flow);
 }
 
 /**
@@ -936,13 +932,11 @@ mlx4_flow_create(struct rte_eth_dev *dev,
 	struct priv *priv = dev->data->dev_private;
 	struct rte_flow *flow;
 
-	priv_lock(priv);
 	flow = priv_flow_create(priv, attr, items, actions, error);
 	if (flow) {
 		LIST_INSERT_HEAD(&priv->flows, flow, next);
 		DEBUG("Flow created %p", (void *)flow);
 	}
-	priv_unlock(priv);
 	return flow;
 }
 
@@ -969,17 +963,14 @@ mlx4_flow_isolate(struct rte_eth_dev *dev,
 {
 	struct priv *priv = dev->data->dev_private;
 
-	priv_lock(priv);
 	if (priv->rxqs) {
 		rte_flow_error_set(error, ENOTSUP,
 				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED,
 				   NULL, "isolated mode must be set"
 				   " before configuring the device");
-		priv_unlock(priv);
 		return -rte_errno;
 	}
 	priv->isolated = !!enable;
-	priv_unlock(priv);
 	return 0;
 }
 
@@ -1017,9 +1008,7 @@ mlx4_flow_destroy(struct rte_eth_dev *dev,
 	struct priv *priv = dev->data->dev_private;
 
 	(void)error;
-	priv_lock(priv);
 	priv_flow_destroy(priv, flow);
-	priv_unlock(priv);
 	return 0;
 }
 
@@ -1053,9 +1042,7 @@ mlx4_flow_flush(struct rte_eth_dev *dev,
 	struct priv *priv = dev->data->dev_private;
 
 	(void)error;
-	priv_lock(priv);
 	priv_flow_flush(priv);
-	priv_unlock(priv);
 	return 0;
 }
 

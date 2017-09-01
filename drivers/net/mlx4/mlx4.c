@@ -59,7 +59,6 @@
 #include <rte_mempool.h>
 #include <rte_prefetch.h>
 #include <rte_malloc.h>
-#include <rte_spinlock.h>
 #include <rte_log.h>
 #include <rte_alarm.h>
 #include <rte_memory.h>
@@ -109,29 +108,6 @@ priv_rx_intr_vec_enable(struct priv *priv);
 
 static void
 priv_rx_intr_vec_disable(struct priv *priv);
-
-/**
- * Lock private structure to protect it from concurrent access in the
- * control path.
- *
- * @param priv
- *   Pointer to private structure.
- */
-void priv_lock(struct priv *priv)
-{
-	rte_spinlock_lock(&priv->lock);
-}
-
-/**
- * Unlock private structure.
- *
- * @param priv
- *   Pointer to private structure.
- */
-void priv_unlock(struct priv *priv)
-{
-	rte_spinlock_unlock(&priv->lock);
-}
 
 /* Allocate a buffer on the stack and fill it with a printf format string. */
 #define MKSTR(name, ...) \
@@ -559,13 +535,7 @@ dev_configure(struct rte_eth_dev *dev)
 static int
 mlx4_dev_configure(struct rte_eth_dev *dev)
 {
-	struct priv *priv = dev->data->dev_private;
-	int ret;
-
-	priv_lock(priv);
-	ret = dev_configure(dev);
-	priv_unlock(priv);
-	return ret;
+	return dev_configure(dev);
 }
 
 static uint16_t mlx4_tx_burst(void *, struct rte_mbuf **, uint16_t);
@@ -1317,14 +1287,12 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	struct txq *txq = (*priv->txqs)[idx];
 	int ret;
 
-	priv_lock(priv);
 	DEBUG("%p: configuring queue %u for %u descriptors",
 	      (void *)dev, idx, desc);
 	if (idx >= priv->txqs_n) {
 		rte_errno = EOVERFLOW;
 		ERROR("%p: queue index out of range (%u >= %u)",
 		      (void *)dev, idx, priv->txqs_n);
-		priv_unlock(priv);
 		return -rte_errno;
 	}
 	if (txq != NULL) {
@@ -1332,7 +1300,6 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		      (void *)dev, idx, (void *)txq);
 		if (priv->started) {
 			rte_errno = EEXIST;
-			priv_unlock(priv);
 			return -rte_errno;
 		}
 		(*priv->txqs)[idx] = NULL;
@@ -1343,7 +1310,6 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 			rte_errno = ENOMEM;
 			ERROR("%p: unable to allocate queue index %u",
 			      (void *)dev, idx);
-			priv_unlock(priv);
 			return -rte_errno;
 		}
 	}
@@ -1358,7 +1324,6 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		/* Update send callback. */
 		dev->tx_pkt_burst = mlx4_tx_burst;
 	}
-	priv_unlock(priv);
 	return ret;
 }
 
@@ -1378,7 +1343,6 @@ mlx4_tx_queue_release(void *dpdk_txq)
 	if (txq == NULL)
 		return;
 	priv = txq->priv;
-	priv_lock(priv);
 	for (i = 0; (i != priv->txqs_n); ++i)
 		if ((*priv->txqs)[i] == txq) {
 			DEBUG("%p: removing TX queue %p from list",
@@ -1388,7 +1352,6 @@ mlx4_tx_queue_release(void *dpdk_txq)
 		}
 	txq_cleanup(txq);
 	rte_free(txq);
-	priv_unlock(priv);
 }
 
 /* RX queues handling. */
@@ -1958,14 +1921,12 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	struct rxq *rxq = (*priv->rxqs)[idx];
 	int ret;
 
-	priv_lock(priv);
 	DEBUG("%p: configuring queue %u for %u descriptors",
 	      (void *)dev, idx, desc);
 	if (idx >= priv->rxqs_n) {
 		rte_errno = EOVERFLOW;
 		ERROR("%p: queue index out of range (%u >= %u)",
 		      (void *)dev, idx, priv->rxqs_n);
-		priv_unlock(priv);
 		return -rte_errno;
 	}
 	if (rxq != NULL) {
@@ -1973,7 +1934,6 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		      (void *)dev, idx, (void *)rxq);
 		if (priv->started) {
 			rte_errno = EEXIST;
-			priv_unlock(priv);
 			return -rte_errno;
 		}
 		(*priv->rxqs)[idx] = NULL;
@@ -1986,7 +1946,6 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 			rte_errno = ENOMEM;
 			ERROR("%p: unable to allocate queue index %u",
 			      (void *)dev, idx);
-			priv_unlock(priv);
 			return -rte_errno;
 		}
 	}
@@ -2001,7 +1960,6 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		/* Update receive callback. */
 		dev->rx_pkt_burst = mlx4_rx_burst;
 	}
-	priv_unlock(priv);
 	return ret;
 }
 
@@ -2021,7 +1979,6 @@ mlx4_rx_queue_release(void *dpdk_rxq)
 	if (rxq == NULL)
 		return;
 	priv = rxq->priv;
-	priv_lock(priv);
 	for (i = 0; (i != priv->rxqs_n); ++i)
 		if ((*priv->rxqs)[i] == rxq) {
 			DEBUG("%p: removing RX queue %p from list",
@@ -2033,7 +1990,6 @@ mlx4_rx_queue_release(void *dpdk_rxq)
 		}
 	rxq_cleanup(rxq);
 	rte_free(rxq);
-	priv_unlock(priv);
 }
 
 static int
@@ -2062,11 +2018,8 @@ mlx4_dev_start(struct rte_eth_dev *dev)
 	struct priv *priv = dev->data->dev_private;
 	int ret;
 
-	priv_lock(priv);
-	if (priv->started) {
-		priv_unlock(priv);
+	if (priv->started)
 		return 0;
-	}
 	DEBUG("%p: attaching configured flows to all RX queues", (void *)dev);
 	priv->started = 1;
 	ret = priv_mac_addr_add(priv);
@@ -2096,13 +2049,11 @@ mlx4_dev_start(struct rte_eth_dev *dev)
 		      (void *)dev, strerror(ret));
 		goto err;
 	}
-	priv_unlock(priv);
 	return 0;
 err:
 	/* Rollback. */
 	priv_mac_addr_del(priv);
 	priv->started = 0;
-	priv_unlock(priv);
 	return ret;
 }
 
@@ -2119,16 +2070,12 @@ mlx4_dev_stop(struct rte_eth_dev *dev)
 {
 	struct priv *priv = dev->data->dev_private;
 
-	priv_lock(priv);
-	if (!priv->started) {
-		priv_unlock(priv);
+	if (!priv->started)
 		return;
-	}
 	DEBUG("%p: detaching flows from all RX queues", (void *)dev);
 	priv->started = 0;
 	mlx4_priv_flow_stop(priv);
 	priv_mac_addr_del(priv);
-	priv_unlock(priv);
 }
 
 /**
@@ -2208,7 +2155,6 @@ mlx4_dev_close(struct rte_eth_dev *dev)
 
 	if (priv == NULL)
 		return;
-	priv_lock(priv);
 	DEBUG("%p: closing device \"%s\"",
 	      (void *)dev,
 	      ((priv->ctx != NULL) ? priv->ctx->device->name : ""));
@@ -2257,7 +2203,6 @@ mlx4_dev_close(struct rte_eth_dev *dev)
 	priv_dev_removal_interrupt_handler_uninstall(priv, dev);
 	priv_dev_link_interrupt_handler_uninstall(priv, dev);
 	priv_rx_intr_vec_disable(priv);
-	priv_unlock(priv);
 	memset(priv, 0, sizeof(*priv));
 }
 
@@ -2306,12 +2251,8 @@ static int
 mlx4_set_link_down(struct rte_eth_dev *dev)
 {
 	struct priv *priv = dev->data->dev_private;
-	int err;
 
-	priv_lock(priv);
-	err = priv_set_link(priv, 0);
-	priv_unlock(priv);
-	return err;
+	return priv_set_link(priv, 0);
 }
 
 /**
@@ -2327,12 +2268,8 @@ static int
 mlx4_set_link_up(struct rte_eth_dev *dev)
 {
 	struct priv *priv = dev->data->dev_private;
-	int err;
 
-	priv_lock(priv);
-	err = priv_set_link(priv, 1);
-	priv_unlock(priv);
-	return err;
+	return priv_set_link(priv, 1);
 }
 
 /**
@@ -2353,7 +2290,6 @@ mlx4_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	info->pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	if (priv == NULL)
 		return;
-	priv_lock(priv);
 	/* FIXME: we should ask the device for these values. */
 	info->min_rx_bufsize = 32;
 	info->max_rx_pktlen = 65536;
@@ -2380,7 +2316,6 @@ mlx4_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 			ETH_LINK_SPEED_20G |
 			ETH_LINK_SPEED_40G |
 			ETH_LINK_SPEED_56G;
-	priv_unlock(priv);
 }
 
 /**
@@ -2401,7 +2336,6 @@ mlx4_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 
 	if (priv == NULL)
 		return;
-	priv_lock(priv);
 	/* Add software counters. */
 	for (i = 0; (i != priv->rxqs_n); ++i) {
 		struct rxq *rxq = (*priv->rxqs)[i];
@@ -2436,7 +2370,6 @@ mlx4_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 		tmp.oerrors += txq->stats.odropped;
 	}
 	*stats = tmp;
-	priv_unlock(priv);
 }
 
 /**
@@ -2454,7 +2387,6 @@ mlx4_stats_reset(struct rte_eth_dev *dev)
 
 	if (priv == NULL)
 		return;
-	priv_lock(priv);
 	for (i = 0; (i != priv->rxqs_n); ++i) {
 		if ((*priv->rxqs)[i] == NULL)
 			continue;
@@ -2469,7 +2401,6 @@ mlx4_stats_reset(struct rte_eth_dev *dev)
 		(*priv->txqs)[i]->stats =
 			(struct mlx4_txq_stats){ .idx = idx };
 	}
-	priv_unlock(priv);
 }
 
 /**
@@ -2494,7 +2425,6 @@ mlx4_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 	struct rte_eth_link dev_link;
 	int link_speed = 0;
 
-	/* priv_lock() is not taken to allow concurrent calls. */
 	if (priv == NULL) {
 		rte_errno = EINVAL;
 		return -rte_errno;
@@ -2543,7 +2473,6 @@ mlx4_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	struct priv *priv = dev->data->dev_private;
 	int ret = 0;
 
-	priv_lock(priv);
 	/* Set kernel interface MTU first. */
 	if (priv_set_mtu(priv, mtu)) {
 		ret = rte_errno;
@@ -2554,7 +2483,6 @@ mlx4_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 		DEBUG("adapter port %u MTU set to %u", priv->port, mtu);
 	priv->mtu = mtu;
 out:
-	priv_unlock(priv);
 	assert(ret >= 0);
 	return -ret;
 }
@@ -2581,7 +2509,6 @@ mlx4_dev_get_flow_ctrl(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	int ret;
 
 	ifr.ifr_data = (void *)&ethpause;
-	priv_lock(priv);
 	if (priv_ifreq(priv, SIOCETHTOOL, &ifr)) {
 		ret = rte_errno;
 		WARN("ioctl(SIOCETHTOOL, ETHTOOL_GPAUSEPARAM)"
@@ -2600,7 +2527,6 @@ mlx4_dev_get_flow_ctrl(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 		fc_conf->mode = RTE_FC_NONE;
 	ret = 0;
 out:
-	priv_unlock(priv);
 	assert(ret >= 0);
 	return -ret;
 }
@@ -2638,7 +2564,6 @@ mlx4_dev_set_flow_ctrl(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 		ethpause.tx_pause = 1;
 	else
 		ethpause.tx_pause = 0;
-	priv_lock(priv);
 	if (priv_ifreq(priv, SIOCETHTOOL, &ifr)) {
 		ret = rte_errno;
 		WARN("ioctl(SIOCETHTOOL, ETHTOOL_SPAUSEPARAM)"
@@ -2648,7 +2573,6 @@ mlx4_dev_set_flow_ctrl(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	}
 	ret = 0;
 out:
-	priv_unlock(priv);
 	assert(ret >= 0);
 	return -ret;
 }
@@ -2874,11 +2798,9 @@ mlx4_dev_link_status_handler(void *arg)
 	uint32_t events;
 	int ret;
 
-	priv_lock(priv);
 	assert(priv->pending_alarm == 1);
 	priv->pending_alarm = 0;
 	ret = priv_dev_status_handler(priv, dev, &events);
-	priv_unlock(priv);
 	if (ret > 0 && events & (1 << RTE_ETH_EVENT_INTR_LSC))
 		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC,
 					      NULL, NULL);
@@ -2901,9 +2823,7 @@ mlx4_dev_interrupt_handler(void *cb_arg)
 	uint32_t ev;
 	int i;
 
-	priv_lock(priv);
 	ret = priv_dev_status_handler(priv, dev, &ev);
-	priv_unlock(priv);
 	if (ret > 0) {
 		for (i = RTE_ETH_EVENT_UNKNOWN;
 		     i < RTE_ETH_EVENT_MAX;
