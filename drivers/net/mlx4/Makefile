@@ -36,6 +36,7 @@ LIB = librte_pmd_mlx4.a
 
 # Sources.
 SRCS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += mlx4.c
+SRCS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += mlx4_ethdev.c
 SRCS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += mlx4_flow.c
 SRCS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += mlx4_intr.c
 SRCS-$(CONFIG_RTE_LIBRTE_MLX4_PMD) += mlx4_rxtx.c

@@ -34,6 +34,9 @@
 #ifndef MLX4_UTILS_H_
 #define MLX4_UTILS_H_
 
+#include <stddef.h>
+#include <stdio.h>
+
 #include <rte_common.h>
 #include <rte_log.h>
 
@@ -94,6 +97,12 @@ pmd_drv_log_basename(const char *s)
 #define INFO(...) PMD_DRV_LOG(INFO, __VA_ARGS__)
 #define WARN(...) PMD_DRV_LOG(WARNING, __VA_ARGS__)
 #define ERROR(...) PMD_DRV_LOG(ERR, __VA_ARGS__)
+
+/* Allocate a buffer on the stack and fill it with a printf format string. */
+#define MKSTR(name, ...) \
+	char name[snprintf(NULL, 0, __VA_ARGS__) + 1]; \
+	\
+	snprintf(name, sizeof(name), __VA_ARGS__)
 
 /* mlx4_utils.c */
 

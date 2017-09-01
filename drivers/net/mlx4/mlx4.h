@@ -34,6 +34,7 @@
 #ifndef RTE_PMD_MLX4_H_
 #define RTE_PMD_MLX4_H_
 
+#include <net/if.h>
 #include <stdint.h>
 
 /* Verbs header. */
@@ -117,7 +118,24 @@ struct priv {
 /* mlx4.c */
 
 struct ibv_mr *mlx4_mp2mr(struct ibv_pd *pd, struct rte_mempool *mp);
+
+/* mlx4_ethdev.c */
+
+int mlx4_get_ifname(const struct priv *priv, char (*ifname)[IF_NAMESIZE]);
+int mlx4_get_mac(struct priv *priv, uint8_t (*mac)[ETHER_ADDR_LEN]);
+int mlx4_mtu_get(struct priv *priv, uint16_t *mtu);
+int mlx4_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
+int mlx4_dev_set_link_down(struct rte_eth_dev *dev);
+int mlx4_dev_set_link_up(struct rte_eth_dev *dev);
+void mlx4_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats);
+void mlx4_stats_reset(struct rte_eth_dev *dev);
+void mlx4_dev_infos_get(struct rte_eth_dev *dev,
+			struct rte_eth_dev_info *info);
 int mlx4_link_update(struct rte_eth_dev *dev, int wait_to_complete);
+int mlx4_flow_ctrl_get(struct rte_eth_dev *dev,
+		       struct rte_eth_fc_conf *fc_conf);
+int mlx4_flow_ctrl_set(struct rte_eth_dev *dev,
+		       struct rte_eth_fc_conf *fc_conf);
 
 /* mlx4_intr.c */
 
