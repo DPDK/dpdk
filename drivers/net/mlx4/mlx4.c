@@ -74,15 +74,6 @@
 #include "mlx4.h"
 #include "mlx4_flow.h"
 
-/* Convenience macros for accessing mbuf fields. */
-#define NEXT(m) ((m)->next)
-#define DATA_LEN(m) ((m)->data_len)
-#define PKT_LEN(m) ((m)->pkt_len)
-#define DATA_OFF(m) ((m)->data_off)
-#define SET_DATA_OFF(m, o) ((m)->data_off = (o))
-#define NB_SEGS(m) ((m)->nb_segs)
-#define PORT(m) ((m)->port)
-
 /** Configuration structure for device arguments. */
 struct mlx4_conf {
 	struct {
@@ -995,7 +986,7 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		struct txq_elt *elt_next = &(*txq->elts)[elts_head_next];
 		struct txq_elt *elt = &(*txq->elts)[elts_head];
 		struct ibv_send_wr *wr = &elt->wr;
-		unsigned int segs = NB_SEGS(buf);
+		unsigned int segs = buf->nb_segs;
 		unsigned int sent_size = 0;
 		uint32_t send_flags = 0;
 
@@ -1009,7 +1000,7 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 #endif
 			/* Faster than rte_pktmbuf_free(). */
 			do {
-				struct rte_mbuf *next = NEXT(tmp);
+				struct rte_mbuf *next = tmp->next;
 
 				rte_pktmbuf_free_seg(tmp);
 				tmp = next;
@@ -1029,7 +1020,7 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 
 			/* Retrieve buffer information. */
 			addr = rte_pktmbuf_mtod(buf, uintptr_t);
-			length = DATA_LEN(buf);
+			length = buf->data_len;
 			/* Retrieve Memory Region key for this memory pool. */
 			lkey = txq_mp2mr(txq, txq_mb2mp(buf));
 			if (unlikely(lkey == (uint32_t)-1)) {
@@ -1385,7 +1376,7 @@ rxq_alloc_elts(struct rxq *rxq, unsigned int elts_n)
 		wr->sg_list = sge;
 		wr->num_sge = 1;
 		/* Headroom is reserved by rte_pktmbuf_alloc(). */
-		assert(DATA_OFF(buf) == RTE_PKTMBUF_HEADROOM);
+		assert(buf->data_off == RTE_PKTMBUF_HEADROOM);
 		/* Buffer is supposed to be empty. */
 		assert(rte_pktmbuf_data_len(buf) == 0);
 		assert(rte_pktmbuf_pkt_len(buf) == 0);
@@ -1655,12 +1646,12 @@ mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		assert(elt->sge.lkey == rxq->mr->lkey);
 		elt->buf = rep;
 		/* Update seg information. */
-		SET_DATA_OFF(seg, RTE_PKTMBUF_HEADROOM);
-		NB_SEGS(seg) = 1;
-		PORT(seg) = rxq->port_id;
-		NEXT(seg) = NULL;
-		PKT_LEN(seg) = len;
-		DATA_LEN(seg) = len;
+		seg->data_off = RTE_PKTMBUF_HEADROOM;
+		seg->nb_segs = 1;
+		seg->port = rxq->port_id;
+		seg->next = NULL;
+		seg->pkt_len = len;
+		seg->data_len = len;
 		seg->packet_type = 0;
 		seg->ol_flags = 0;
 		/* Return packet. */
