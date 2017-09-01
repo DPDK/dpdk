@@ -417,10 +417,10 @@ priv_get_mtu(struct priv *priv, uint16_t *mtu)
 }
 
 /**
- * Set device MTU.
+ * DPDK callback to change the MTU.
  *
  * @param priv
- *   Pointer to private structure.
+ *   Pointer to Ethernet device structure.
  * @param mtu
  *   MTU value to set.
  *
@@ -428,8 +428,9 @@ priv_get_mtu(struct priv *priv, uint16_t *mtu)
  *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
-priv_set_mtu(struct priv *priv, uint16_t mtu)
+mlx4_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 {
+	struct priv *priv = dev->data->dev_private;
 	uint16_t new_mtu;
 	int ret = priv_set_sysfs_ulong(priv, "mtu", mtu);
 
@@ -438,8 +439,10 @@ priv_set_mtu(struct priv *priv, uint16_t mtu)
 	ret = priv_get_mtu(priv, &new_mtu);
 	if (ret)
 		return ret;
-	if (new_mtu == mtu)
+	if (new_mtu == mtu) {
+		priv->mtu = mtu;
 		return 0;
+	}
 	rte_errno = EINVAL;
 	return -rte_errno;
 }
@@ -491,7 +494,7 @@ static void
 priv_mac_addr_del(struct priv *priv);
 
 /**
- * Ethernet device configuration.
+ * DPDK callback for Ethernet device configuration.
  *
  * Prepare the driver for a given number of TX and RX queues.
  *
@@ -502,7 +505,7 @@ priv_mac_addr_del(struct priv *priv);
  *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
-dev_configure(struct rte_eth_dev *dev)
+mlx4_dev_configure(struct rte_eth_dev *dev)
 {
 	struct priv *priv = dev->data->dev_private;
 	unsigned int rxqs_n = dev->data->nb_rx_queues;
@@ -521,21 +524,6 @@ dev_configure(struct rte_eth_dev *dev)
 		priv->rxqs_n = rxqs_n;
 	}
 	return 0;
-}
-
-/**
- * DPDK callback for Ethernet device configuration.
- *
- * @param dev
- *   Pointer to Ethernet device structure.
- *
- * @return
- *   0 on success, negative errno value otherwise and rte_errno is set.
- */
-static int
-mlx4_dev_configure(struct rte_eth_dev *dev)
-{
-	return dev_configure(dev);
 }
 
 static uint16_t mlx4_tx_burst(void *, struct rte_mbuf **, uint16_t);
@@ -2454,37 +2442,6 @@ mlx4_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 			ETH_LINK_SPEED_FIXED);
 	dev->data->dev_link = dev_link;
 	return 0;
-}
-
-/**
- * DPDK callback to change the MTU.
- *
- * @param dev
- *   Pointer to Ethernet device structure.
- * @param in_mtu
- *   New MTU.
- *
- * @return
- *   0 on success, negative errno value otherwise and rte_errno is set.
- */
-static int
-mlx4_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
-{
-	struct priv *priv = dev->data->dev_private;
-	int ret = 0;
-
-	/* Set kernel interface MTU first. */
-	if (priv_set_mtu(priv, mtu)) {
-		ret = rte_errno;
-		WARN("cannot set port %u MTU to %u: %s", priv->port, mtu,
-		     strerror(rte_errno));
-		goto out;
-	} else
-		DEBUG("adapter port %u MTU set to %u", priv->port, mtu);
-	priv->mtu = mtu;
-out:
-	assert(ret >= 0);
-	return -ret;
 }
 
 /**

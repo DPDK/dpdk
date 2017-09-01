@@ -837,29 +837,19 @@ error:
 }
 
 /**
- * Convert a flow.
+ * Create a flow.
  *
- * @param priv
- *   Pointer to private structure.
- * @param[in] attr
- *   Flow rule attributes.
- * @param[in] items
- *   Pattern specification (list terminated by the END pattern item).
- * @param[in] actions
- *   Associated actions (list terminated by the END action).
- * @param[out] error
- *   Perform verbose error reporting if not NULL.
- *
- * @return
- *   A flow on success, NULL otherwise.
+ * @see rte_flow_create()
+ * @see rte_flow_ops
  */
-static struct rte_flow *
-priv_flow_create(struct priv *priv,
+struct rte_flow *
+mlx4_flow_create(struct rte_eth_dev *dev,
 		 const struct rte_flow_attr *attr,
 		 const struct rte_flow_item items[],
 		 const struct rte_flow_action actions[],
 		 struct rte_flow_error *error)
 {
+	struct priv *priv = dev->data->dev_private;
 	struct rte_flow *rte_flow;
 	struct mlx4_flow_action action;
 	struct mlx4_flow flow = { .offset = sizeof(struct ibv_flow_attr), };
@@ -909,35 +899,14 @@ priv_flow_create(struct priv *priv,
 	}
 	rte_flow = priv_flow_create_action_queue(priv, flow.ibv_attr,
 						 &action, error);
-	if (rte_flow)
+	if (rte_flow) {
+		LIST_INSERT_HEAD(&priv->flows, rte_flow, next);
+		DEBUG("Flow created %p", (void *)rte_flow);
 		return rte_flow;
+	}
 exit:
 	rte_free(flow.ibv_attr);
 	return NULL;
-}
-
-/**
- * Create a flow.
- *
- * @see rte_flow_create()
- * @see rte_flow_ops
- */
-struct rte_flow *
-mlx4_flow_create(struct rte_eth_dev *dev,
-		 const struct rte_flow_attr *attr,
-		 const struct rte_flow_item items[],
-		 const struct rte_flow_action actions[],
-		 struct rte_flow_error *error)
-{
-	struct priv *priv = dev->data->dev_private;
-	struct rte_flow *flow;
-
-	flow = priv_flow_create(priv, attr, items, actions, error);
-	if (flow) {
-		LIST_INSERT_HEAD(&priv->flows, flow, next);
-		DEBUG("Flow created %p", (void *)flow);
-	}
-	return flow;
 }
 
 /**
@@ -977,26 +946,6 @@ mlx4_flow_isolate(struct rte_eth_dev *dev,
 /**
  * Destroy a flow.
  *
- * @param priv
- *   Pointer to private structure.
- * @param[in] flow
- *   Flow to destroy.
- */
-static void
-priv_flow_destroy(struct priv *priv, struct rte_flow *flow)
-{
-	(void)priv;
-	LIST_REMOVE(flow, next);
-	if (flow->ibv_flow)
-		claim_zero(ibv_destroy_flow(flow->ibv_flow));
-	rte_free(flow->ibv_attr);
-	DEBUG("Flow destroyed %p", (void *)flow);
-	rte_free(flow);
-}
-
-/**
- * Destroy a flow.
- *
  * @see rte_flow_destroy()
  * @see rte_flow_ops
  */
@@ -1005,28 +954,15 @@ mlx4_flow_destroy(struct rte_eth_dev *dev,
 		  struct rte_flow *flow,
 		  struct rte_flow_error *error)
 {
-	struct priv *priv = dev->data->dev_private;
-
+	(void)dev;
 	(void)error;
-	priv_flow_destroy(priv, flow);
+	LIST_REMOVE(flow, next);
+	if (flow->ibv_flow)
+		claim_zero(ibv_destroy_flow(flow->ibv_flow));
+	rte_free(flow->ibv_attr);
+	DEBUG("Flow destroyed %p", (void *)flow);
+	rte_free(flow);
 	return 0;
-}
-
-/**
- * Destroy all flows.
- *
- * @param priv
- *   Pointer to private structure.
- */
-static void
-priv_flow_flush(struct priv *priv)
-{
-	while (!LIST_EMPTY(&priv->flows)) {
-		struct rte_flow *flow;
-
-		flow = LIST_FIRST(&priv->flows);
-		priv_flow_destroy(priv, flow);
-	}
 }
 
 /**
@@ -1041,8 +977,12 @@ mlx4_flow_flush(struct rte_eth_dev *dev,
 {
 	struct priv *priv = dev->data->dev_private;
 
-	(void)error;
-	priv_flow_flush(priv);
+	while (!LIST_EMPTY(&priv->flows)) {
+		struct rte_flow *flow;
+
+		flow = LIST_FIRST(&priv->flows);
+		mlx4_flow_destroy(dev, flow, error);
+	}
 	return 0;
 }
 
