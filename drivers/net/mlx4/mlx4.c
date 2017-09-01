@@ -1178,7 +1178,7 @@ txq_setup(struct rte_eth_dev *dev, struct txq *txq, uint16_t desc,
 		struct ibv_exp_qp_init_attr init;
 		struct ibv_exp_res_domain_init_attr rd;
 		struct ibv_exp_cq_init_attr cq;
-		struct ibv_exp_qp_attr mod;
+		struct ibv_qp_attr mod;
 	} attr;
 	enum ibv_exp_query_intf_status status;
 	int ret = 0;
@@ -1251,14 +1251,13 @@ txq_setup(struct rte_eth_dev *dev, struct txq *txq, uint16_t desc,
 	}
 	/* ibv_create_qp() updates this value. */
 	tmpl.max_inline = attr.init.cap.max_inline_data;
-	attr.mod = (struct ibv_exp_qp_attr){
+	attr.mod = (struct ibv_qp_attr){
 		/* Move the QP to this state. */
 		.qp_state = IBV_QPS_INIT,
 		/* Primary port number. */
 		.port_num = priv->port
 	};
-	ret = ibv_exp_modify_qp(tmpl.qp, &attr.mod,
-				(IBV_EXP_QP_STATE | IBV_EXP_QP_PORT));
+	ret = ibv_modify_qp(tmpl.qp, &attr.mod, IBV_QP_STATE | IBV_QP_PORT);
 	if (ret) {
 		ERROR("%p: QP state to IBV_QPS_INIT failed: %s",
 		      (void *)dev, strerror(ret));
@@ -1270,17 +1269,17 @@ txq_setup(struct rte_eth_dev *dev, struct txq *txq, uint16_t desc,
 		      (void *)dev, strerror(ret));
 		goto error;
 	}
-	attr.mod = (struct ibv_exp_qp_attr){
+	attr.mod = (struct ibv_qp_attr){
 		.qp_state = IBV_QPS_RTR
 	};
-	ret = ibv_exp_modify_qp(tmpl.qp, &attr.mod, IBV_EXP_QP_STATE);
+	ret = ibv_modify_qp(tmpl.qp, &attr.mod, IBV_QP_STATE);
 	if (ret) {
 		ERROR("%p: QP state to IBV_QPS_RTR failed: %s",
 		      (void *)dev, strerror(ret));
 		goto error;
 	}
 	attr.mod.qp_state = IBV_QPS_RTS;
-	ret = ibv_exp_modify_qp(tmpl.qp, &attr.mod, IBV_EXP_QP_STATE);
+	ret = ibv_modify_qp(tmpl.qp, &attr.mod, IBV_QP_STATE);
 	if (ret) {
 		ERROR("%p: QP state to IBV_QPS_RTS failed: %s",
 		      (void *)dev, strerror(ret));
@@ -1947,7 +1946,7 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 		.mp = mp,
 		.socket = socket
 	};
-	struct ibv_exp_qp_attr mod;
+	struct ibv_qp_attr mod;
 	union {
 		struct ibv_exp_query_intf_params params;
 		struct ibv_exp_cq_init_attr cq;
@@ -2035,15 +2034,13 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 		      (void *)dev, strerror(ret));
 		goto error;
 	}
-	mod = (struct ibv_exp_qp_attr){
+	mod = (struct ibv_qp_attr){
 		/* Move the QP to this state. */
 		.qp_state = IBV_QPS_INIT,
 		/* Primary port number. */
 		.port_num = priv->port
 	};
-	ret = ibv_exp_modify_qp(tmpl.qp, &mod,
-				IBV_EXP_QP_STATE |
-				IBV_EXP_QP_PORT);
+	ret = ibv_modify_qp(tmpl.qp, &mod, IBV_QP_STATE | IBV_QP_PORT);
 	if (ret) {
 		ERROR("%p: QP state to IBV_QPS_INIT failed: %s",
 		      (void *)dev, strerror(ret));
@@ -2063,10 +2060,10 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 		      strerror(ret));
 		goto error;
 	}
-	mod = (struct ibv_exp_qp_attr){
+	mod = (struct ibv_qp_attr){
 		.qp_state = IBV_QPS_RTR
 	};
-	ret = ibv_exp_modify_qp(tmpl.qp, &mod, IBV_EXP_QP_STATE);
+	ret = ibv_modify_qp(tmpl.qp, &mod, IBV_QP_STATE);
 	if (ret) {
 		ERROR("%p: QP state to IBV_QPS_RTR failed: %s",
 		      (void *)dev, strerror(ret));
