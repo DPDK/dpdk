@@ -115,10 +115,6 @@ struct priv {
 	LIST_HEAD(mlx4_flows, rte_flow) flows;
 };
 
-/* mlx4.c */
-
-struct ibv_mr *mlx4_mp2mr(struct ibv_pd *pd, struct rte_mempool *mp);
-
 /* mlx4_ethdev.c */
 
 int mlx4_get_ifname(const struct priv *priv, char (*ifname)[IF_NAMESIZE]);
@@ -143,5 +139,9 @@ int mlx4_intr_uninstall(struct priv *priv);
 int mlx4_intr_install(struct priv *priv);
 int mlx4_rx_intr_disable(struct rte_eth_dev *dev, uint16_t idx);
 int mlx4_rx_intr_enable(struct rte_eth_dev *dev, uint16_t idx);
+
+/* mlx4_mr.c */
+
+struct ibv_mr *mlx4_mp2mr(struct ibv_pd *pd, struct rte_mempool *mp);
 
 #endif /* RTE_PMD_MLX4_H_ */

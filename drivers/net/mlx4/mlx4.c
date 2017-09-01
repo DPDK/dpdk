@@ -48,9 +48,7 @@
 #include <rte_dev.h>
 #include <rte_mbuf.h>
 #include <rte_errno.h>
-#include <rte_mempool.h>
 #include <rte_malloc.h>
-#include <rte_memory.h>
 #include <rte_kvargs.h>
 #include <rte_interrupts.h>
 #include <rte_common.h>
@@ -108,119 +106,6 @@ mlx4_dev_configure(struct rte_eth_dev *dev)
 		priv->rxqs_n = rxqs_n;
 	}
 	return 0;
-}
-
-struct mlx4_check_mempool_data {
-	int ret;
-	char *start;
-	char *end;
-};
-
-/* Called by mlx4_check_mempool() when iterating the memory chunks. */
-static void mlx4_check_mempool_cb(struct rte_mempool *mp,
-	void *opaque, struct rte_mempool_memhdr *memhdr,
-	unsigned mem_idx)
-{
-	struct mlx4_check_mempool_data *data = opaque;
-
-	(void)mp;
-	(void)mem_idx;
-	/* It already failed, skip the next chunks. */
-	if (data->ret != 0)
-		return;
-	/* It is the first chunk. */
-	if (data->start == NULL && data->end == NULL) {
-		data->start = memhdr->addr;
-		data->end = data->start + memhdr->len;
-		return;
-	}
-	if (data->end == memhdr->addr) {
-		data->end += memhdr->len;
-		return;
-	}
-	if (data->start == (char *)memhdr->addr + memhdr->len) {
-		data->start -= memhdr->len;
-		return;
-	}
-	/* Error, mempool is not virtually contigous. */
-	data->ret = -1;
-}
-
-/**
- * Check if a mempool can be used: it must be virtually contiguous.
- *
- * @param[in] mp
- *   Pointer to memory pool.
- * @param[out] start
- *   Pointer to the start address of the mempool virtual memory area
- * @param[out] end
- *   Pointer to the end address of the mempool virtual memory area
- *
- * @return
- *   0 on success (mempool is virtually contiguous), -1 on error.
- */
-static int mlx4_check_mempool(struct rte_mempool *mp, uintptr_t *start,
-	uintptr_t *end)
-{
-	struct mlx4_check_mempool_data data;
-
-	memset(&data, 0, sizeof(data));
-	rte_mempool_mem_iter(mp, mlx4_check_mempool_cb, &data);
-	*start = (uintptr_t)data.start;
-	*end = (uintptr_t)data.end;
-	return data.ret;
-}
-
-/**
- * Register mempool as a memory region.
- *
- * @param pd
- *   Pointer to protection domain.
- * @param mp
- *   Pointer to memory pool.
- *
- * @return
- *   Memory region pointer, NULL in case of error and rte_errno is set.
- */
-struct ibv_mr *
-mlx4_mp2mr(struct ibv_pd *pd, struct rte_mempool *mp)
-{
-	const struct rte_memseg *ms = rte_eal_get_physmem_layout();
-	uintptr_t start;
-	uintptr_t end;
-	unsigned int i;
-	struct ibv_mr *mr;
-
-	if (mlx4_check_mempool(mp, &start, &end) != 0) {
-		rte_errno = EINVAL;
-		ERROR("mempool %p: not virtually contiguous",
-			(void *)mp);
-		return NULL;
-	}
-	DEBUG("mempool %p area start=%p end=%p size=%zu",
-	      (void *)mp, (void *)start, (void *)end,
-	      (size_t)(end - start));
-	/* Round start and end to page boundary if found in memory segments. */
-	for (i = 0; (i < RTE_MAX_MEMSEG) && (ms[i].addr != NULL); ++i) {
-		uintptr_t addr = (uintptr_t)ms[i].addr;
-		size_t len = ms[i].len;
-		unsigned int align = ms[i].hugepage_sz;
-
-		if ((start > addr) && (start < addr + len))
-			start = RTE_ALIGN_FLOOR(start, align);
-		if ((end > addr) && (end < addr + len))
-			end = RTE_ALIGN_CEIL(end, align);
-	}
-	DEBUG("mempool %p using start=%p end=%p size=%zu for MR",
-	      (void *)mp, (void *)start, (void *)end,
-	      (size_t)(end - start));
-	mr = ibv_reg_mr(pd,
-			(void *)start,
-			end - start,
-			IBV_ACCESS_LOCAL_WRITE);
-	if (!mr)
-		rte_errno = errno ? errno : EINVAL;
-	return mr;
 }
 
 /**
