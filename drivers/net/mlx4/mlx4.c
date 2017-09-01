@@ -84,17 +84,6 @@
 #define NB_SEGS(m) ((m)->nb_segs)
 #define PORT(m) ((m)->port)
 
-/* Work Request ID data type (64 bit). */
-typedef union {
-	struct {
-		uint32_t id;
-		uint16_t offset;
-	} data;
-	uint64_t raw;
-} wr_id_t;
-
-#define WR_ID(o) (((wr_id_t *)&(o))->data)
-
 /** Configuration structure for device arguments. */
 struct mlx4_conf {
 	struct {
@@ -1403,13 +1392,7 @@ rxq_alloc_elts(struct rxq *rxq, unsigned int elts_n)
 			ret = ENOMEM;
 			goto error;
 		}
-		/* Configure WR. Work request ID contains its own index in
-		 * the elts array and the offset between SGE buffer header and
-		 * its data. */
-		WR_ID(wr->wr_id).id = i;
-		WR_ID(wr->wr_id).offset =
-			(((uintptr_t)buf->buf_addr + RTE_PKTMBUF_HEADROOM) -
-			 (uintptr_t)buf);
+		elt->buf = buf;
 		wr->next = &(*elts)[(i + 1)].wr;
 		wr->sg_list = sge;
 		wr->num_sge = 1;
@@ -1427,18 +1410,6 @@ rxq_alloc_elts(struct rxq *rxq, unsigned int elts_n)
 		sge->lkey = rxq->mr->lkey;
 		/* Redundant check for tailroom. */
 		assert(sge->length == rte_pktmbuf_tailroom(buf));
-		/* Make sure elts index and SGE mbuf pointer can be deduced
-		 * from WR ID. */
-		if ((WR_ID(wr->wr_id).id != i) ||
-		    ((void *)((uintptr_t)sge->addr -
-			WR_ID(wr->wr_id).offset) != buf)) {
-			ERROR("%p: cannot store index and offset in WR ID",
-			      (void *)rxq);
-			sge->addr = 0;
-			rte_pktmbuf_free(buf);
-			ret = EOVERFLOW;
-			goto error;
-		}
 	}
 	/* The last WR pointer must be NULL. */
 	(*elts)[(i - 1)].wr.next = NULL;
@@ -1451,17 +1422,8 @@ rxq_alloc_elts(struct rxq *rxq, unsigned int elts_n)
 	return 0;
 error:
 	if (elts != NULL) {
-		for (i = 0; (i != elemof(*elts)); ++i) {
-			struct rxq_elt *elt = &(*elts)[i];
-			struct rte_mbuf *buf;
-
-			if (elt->sge.addr == 0)
-				continue;
-			assert(WR_ID(elt->wr.wr_id).id == i);
-			buf = (void *)((uintptr_t)elt->sge.addr -
-				WR_ID(elt->wr.wr_id).offset);
-			rte_pktmbuf_free_seg(buf);
-		}
+		for (i = 0; (i != elemof(*elts)); ++i)
+			rte_pktmbuf_free_seg((*elts)[i].buf);
 		rte_free(elts);
 	}
 	DEBUG("%p: failed, freed everything", (void *)rxq);
@@ -1487,17 +1449,8 @@ rxq_free_elts(struct rxq *rxq)
 	rxq->elts = NULL;
 	if (elts == NULL)
 		return;
-	for (i = 0; (i != elemof(*elts)); ++i) {
-		struct rxq_elt *elt = &(*elts)[i];
-		struct rte_mbuf *buf;
-
-		if (elt->sge.addr == 0)
-			continue;
-		assert(WR_ID(elt->wr.wr_id).id == i);
-		buf = (void *)((uintptr_t)elt->sge.addr -
-			WR_ID(elt->wr.wr_id).offset);
-		rte_pktmbuf_free_seg(buf);
-	}
+	for (i = 0; (i != elemof(*elts)); ++i)
+		rte_pktmbuf_free_seg((*elts)[i].buf);
 	rte_free(elts);
 }
 
@@ -1674,15 +1627,11 @@ mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		struct ibv_wc *wc = &wcs[i];
 		struct rxq_elt *elt = &(*elts)[elts_head];
 		struct ibv_recv_wr *wr = &elt->wr;
-		uint64_t wr_id = wr->wr_id;
 		uint32_t len = wc->byte_len;
-		struct rte_mbuf *seg = (void *)((uintptr_t)elt->sge.addr -
-			WR_ID(wr_id).offset);
+		struct rte_mbuf *seg = elt->buf;
 		struct rte_mbuf *rep;
 
 		/* Sanity checks. */
-		assert(WR_ID(wr_id).id < rxq->elts_n);
-		assert(wr_id == wc->wr_id);
 		assert(wr->sg_list == &elt->sge);
 		assert(wr->num_sge == 1);
 		assert(elts_head < rxq->elts_n);
@@ -1698,9 +1647,8 @@ mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		wr_next = &wr->next;
 		if (unlikely(wc->status != IBV_WC_SUCCESS)) {
 			/* Whatever, just repost the offending WR. */
-			DEBUG("rxq=%p, wr_id=%" PRIu64 ": bad work completion"
-			      " status (%d): %s",
-			      (void *)rxq, wr_id, wc->status,
+			DEBUG("rxq=%p: bad work completion status (%d): %s",
+			      (void *)rxq, wc->status,
 			      ibv_wc_status_str(wc->status));
 			/* Increment dropped packets counter. */
 			++rxq->stats.idropped;
@@ -1712,9 +1660,8 @@ mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			 * Unable to allocate a replacement mbuf,
 			 * repost WR.
 			 */
-			DEBUG("rxq=%p, wr_id=%" PRIu32 ":"
-			      " can't allocate a new mbuf",
-			      (void *)rxq, WR_ID(wr_id).id);
+			DEBUG("rxq=%p: can't allocate a new mbuf",
+			      (void *)rxq);
 			/* Increase out of memory counters. */
 			++rxq->stats.rx_nombuf;
 			++rxq->priv->dev->data->rx_mbuf_alloc_failed;
@@ -1724,10 +1671,7 @@ mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		/* Reconfigure sge to use rep instead of seg. */
 		elt->sge.addr = (uintptr_t)rep->buf_addr + RTE_PKTMBUF_HEADROOM;
 		assert(elt->sge.lkey == rxq->mr->lkey);
-		WR_ID(wr->wr_id).offset =
-			(((uintptr_t)rep->buf_addr + RTE_PKTMBUF_HEADROOM) -
-			 (uintptr_t)rep);
-		assert(WR_ID(wr->wr_id).id == WR_ID(wr_id).id);
+		elt->buf = rep;
 
 		/* Update seg information. */
 		SET_DATA_OFF(seg, RTE_PKTMBUF_HEADROOM);
@@ -3659,7 +3603,6 @@ RTE_INIT(rte_mlx4_pmd_init);
 static void
 rte_mlx4_pmd_init(void)
 {
-	RTE_BUILD_BUG_ON(sizeof(wr_id_t) != sizeof(uint64_t));
 	/*
 	 * RDMAV_HUGEPAGES_SAFE tells ibv_fork_init() we intend to use
 	 * huge pages. Calling ibv_fork_init() during init allows

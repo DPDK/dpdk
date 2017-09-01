@@ -148,7 +148,7 @@ struct mlx4_rxq_stats {
 struct rxq_elt {
 	struct ibv_recv_wr wr; /* Work Request. */
 	struct ibv_sge sge; /* Scatter/Gather Element. */
-	/* mbuf pointer is derived from WR_ID(wr.wr_id).offset. */
+	struct rte_mbuf *buf; /**< Buffer. */
 };
 
 /* RX queue descriptor. */
