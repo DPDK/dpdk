@@ -1977,9 +1977,8 @@ mlx4_rx_queue_release(void *dpdk_rxq)
 	rte_free(rxq);
 }
 
-static int priv_interrupt_handler_install(struct priv *priv);
-static int priv_removal_interrupt_handler_install(struct priv *priv);
-static int priv_link_interrupt_handler_install(struct priv *priv);
+static int priv_intr_uninstall(struct priv *priv);
+static int priv_intr_install(struct priv *priv);
 
 /**
  * DPDK callback to start the device.
@@ -2005,22 +2004,10 @@ mlx4_dev_start(struct rte_eth_dev *dev)
 	ret = priv_mac_addr_add(priv);
 	if (ret)
 		goto err;
-	ret = priv_link_interrupt_handler_install(priv);
+	ret = priv_intr_install(priv);
 	if (ret) {
-		ERROR("%p: LSC handler install failed",
+		ERROR("%p: interrupt handler installation failed",
 		     (void *)dev);
-		goto err;
-	}
-	ret = priv_removal_interrupt_handler_install(priv);
-	if (ret) {
-		ERROR("%p: RMV handler install failed",
-		     (void *)dev);
-		goto err;
-	}
-	ret = priv_rx_intr_vec_enable(priv);
-	if (ret) {
-		ERROR("%p: Rx interrupt vector creation failed",
-		      (void *)dev);
 		goto err;
 	}
 	ret = mlx4_priv_flow_start(priv);
@@ -2055,6 +2042,7 @@ mlx4_dev_stop(struct rte_eth_dev *dev)
 	DEBUG("%p: detaching flows from all RX queues", (void *)dev);
 	priv->started = 0;
 	mlx4_priv_flow_stop(priv);
+	priv_intr_uninstall(priv);
 	priv_mac_addr_del(priv);
 }
 
@@ -2107,10 +2095,6 @@ removed_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	(void)pkts_n;
 	return 0;
 }
-
-static int priv_interrupt_handler_uninstall(struct priv *priv);
-static int priv_removal_interrupt_handler_uninstall(struct priv *priv);
-static int priv_link_interrupt_handler_uninstall(struct priv *priv);
 
 /**
  * DPDK callback to close the device.
@@ -2174,9 +2158,7 @@ mlx4_dev_close(struct rte_eth_dev *dev)
 		claim_zero(ibv_close_device(priv->ctx));
 	} else
 		assert(priv->ctx == NULL);
-	priv_removal_interrupt_handler_uninstall(priv);
-	priv_link_interrupt_handler_uninstall(priv);
-	priv_rx_intr_vec_disable(priv);
+	priv_intr_uninstall(priv);
 	memset(priv, 0, sizeof(*priv));
 }
 
@@ -2682,6 +2664,8 @@ priv_collect_interrupt_events(struct priv *priv, uint32_t *events)
 	struct ibv_async_event event;
 	int port_change = 0;
 	struct rte_eth_link *link = &priv->dev->data->dev_link;
+	const struct rte_intr_conf *const intr_conf =
+		&priv->dev->data->dev_conf.intr_conf;
 	int ret = 0;
 
 	*events = 0;
@@ -2691,11 +2675,11 @@ priv_collect_interrupt_events(struct priv *priv, uint32_t *events)
 			break;
 		if ((event.event_type == IBV_EVENT_PORT_ACTIVE ||
 		     event.event_type == IBV_EVENT_PORT_ERR) &&
-		    (priv->intr_conf.lsc == 1)) {
+		    intr_conf->lsc) {
 			port_change = 1;
 			ret++;
 		} else if (event.event_type == IBV_EVENT_DEVICE_FATAL &&
-			   priv->intr_conf.rmv == 1) {
+			   intr_conf->rmv) {
 			*events |= (1 << RTE_ETH_EVENT_INTR_RMV);
 			ret++;
 		} else
@@ -2784,24 +2768,22 @@ mlx4_interrupt_handler(struct priv *priv)
  *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
-priv_interrupt_handler_uninstall(struct priv *priv)
+priv_intr_uninstall(struct priv *priv)
 {
-	int ret;
+	int err = rte_errno; /* Make sure rte_errno remains unchanged. */
 
-	if (priv->intr_conf.lsc ||
-	    priv->intr_conf.rmv)
-		return 0;
-	ret = rte_intr_callback_unregister(&priv->intr_handle,
-					   (void (*)(void *))
-					   mlx4_interrupt_handler,
-					   priv);
-	if (ret < 0) {
-		rte_errno = ret;
-		ERROR("rte_intr_callback_unregister failed with %d %s",
-		      ret, strerror(rte_errno));
+	if (priv->intr_handle.fd != -1) {
+		rte_intr_callback_unregister(&priv->intr_handle,
+					     (void (*)(void *))
+					     mlx4_interrupt_handler,
+					     priv);
+		priv->intr_handle.fd = -1;
 	}
-	priv->intr_handle.fd = -1;
-	return ret;
+	rte_eal_alarm_cancel((void (*)(void *))mlx4_link_status_alarm, priv);
+	priv->intr_alarm = 0;
+	priv_rx_intr_vec_disable(priv);
+	rte_errno = err;
+	return 0;
 }
 
 /**
@@ -2814,127 +2796,30 @@ priv_interrupt_handler_uninstall(struct priv *priv)
  *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
-priv_interrupt_handler_install(struct priv *priv)
+priv_intr_install(struct priv *priv)
 {
+	const struct rte_intr_conf *const intr_conf =
+		&priv->dev->data->dev_conf.intr_conf;
 	int rc;
 
-	/*
-	 * Check whether the interrupt handler has already been installed
-	 * for either type of interrupt.
-	 */
-	if (priv->intr_conf.lsc &&
-	    priv->intr_conf.rmv &&
-	    priv->intr_handle.fd)
-		return 0;
-	priv->intr_handle.fd = priv->ctx->async_fd;
-	rc = rte_intr_callback_register(&priv->intr_handle,
-					(void (*)(void *))
-					mlx4_interrupt_handler,
-					priv);
-	if (!rc)
-		return 0;
-	rte_errno = -rc;
-	ERROR("rte_intr_callback_register failed (rte_errno: %s)",
-	      strerror(rte_errno));
-	priv->intr_handle.fd = -1;
-	return -rte_errno;
-}
-
-/**
- * Uninstall interrupt handler.
- *
- * @param priv
- *   Pointer to private structure.
- *
- * @return
- *   0 on success, negative errno value otherwise and rte_errno is set.
- */
-static int
-priv_removal_interrupt_handler_uninstall(struct priv *priv)
-{
-	if (priv->dev->data->dev_conf.intr_conf.rmv) {
-		priv->intr_conf.rmv = 0;
-		return priv_interrupt_handler_uninstall(priv);
-	}
-	return 0;
-}
-
-/**
- * Uninstall interrupt handler.
- *
- * @param priv
- *   Pointer to private structure.
- *
- * @return
- *   0 on success, negative errno value otherwise and rte_errno is set.
- */
-static int
-priv_link_interrupt_handler_uninstall(struct priv *priv)
-{
-	int ret = 0;
-
-	if (priv->dev->data->dev_conf.intr_conf.lsc) {
-		priv->intr_conf.lsc = 0;
-		ret = priv_interrupt_handler_uninstall(priv);
-		if (ret)
-			return ret;
-	}
-	if (priv->intr_alarm)
-		if (rte_eal_alarm_cancel((void (*)(void *))
-					 mlx4_link_status_alarm,
-					 priv)) {
-			ERROR("rte_eal_alarm_cancel failed "
-			      " (rte_errno: %s)", strerror(rte_errno));
-			return -rte_errno;
+	priv_intr_uninstall(priv);
+	if (intr_conf->rxq && priv_rx_intr_vec_enable(priv) < 0)
+		goto error;
+	if (intr_conf->lsc | intr_conf->rmv) {
+		priv->intr_handle.fd = priv->ctx->async_fd;
+		rc = rte_intr_callback_register(&priv->intr_handle,
+						(void (*)(void *))
+						mlx4_interrupt_handler,
+						priv);
+		if (rc < 0) {
+			rte_errno = -rc;
+			goto error;
 		}
-	priv->intr_alarm = 0;
-	return 0;
-}
-
-/**
- * Install link interrupt handler.
- *
- * @param priv
- *   Pointer to private structure.
- *
- * @return
- *   0 on success, negative errno value otherwise and rte_errno is set.
- */
-static int
-priv_link_interrupt_handler_install(struct priv *priv)
-{
-	int ret;
-
-	if (priv->dev->data->dev_conf.intr_conf.lsc) {
-		ret = priv_interrupt_handler_install(priv);
-		if (ret)
-			return ret;
-		priv->intr_conf.lsc = 1;
 	}
 	return 0;
-}
-
-/**
- * Install removal interrupt handler.
- *
- * @param priv
- *   Pointer to private structure.
- *
- * @return
- *   0 on success, negative errno value otherwise and rte_errno is set.
- */
-static int
-priv_removal_interrupt_handler_install(struct priv *priv)
-{
-	int ret;
-
-	if (priv->dev->data->dev_conf.intr_conf.rmv) {
-		ret = priv_interrupt_handler_install(priv);
-		if (ret)
-			return ret;
-		priv->intr_conf.rmv = 1;
-	}
-	return 0;
+error:
+	priv_intr_uninstall(priv);
+	return -rte_errno;
 }
 
 /**
@@ -2955,8 +2840,6 @@ priv_rx_intr_vec_enable(struct priv *priv)
 	unsigned int count = 0;
 	struct rte_intr_handle *intr_handle = &priv->intr_handle;
 
-	if (!priv->dev->data->dev_conf.intr_conf.rxq)
-		return 0;
 	priv_rx_intr_vec_disable(priv);
 	intr_handle->intr_vec = malloc(sizeof(intr_handle->intr_vec[rxqs_n]));
 	if (intr_handle->intr_vec == NULL) {
