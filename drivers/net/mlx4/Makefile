@@ -91,11 +91,7 @@ mlx4_autoconf.h.new: FORCE
 
 mlx4_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 	$Q $(RM) -f -- '$@'
-	$Q sh -- '$<' '$@' \
-		HAVE_EXP_QP_BURST_CREATE_DISABLE_ETH_LOOPBACK \
-		infiniband/verbs.h \
-		enum IBV_EXP_QP_BURST_CREATE_DISABLE_ETH_LOOPBACK \
-		$(AUTOCONF_OUTPUT)
+	$Q : > '$@'
 
 # Create mlx4_autoconf.h or update it in case it differs from the new one.
 
