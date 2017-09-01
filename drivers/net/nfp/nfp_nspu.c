@@ -43,6 +43,7 @@
 /* NSP commands */
 #define NSP_CMD_RESET          1
 #define NSP_CMD_FW_LOAD        6
+#define NSP_CMD_GET_SYMBOL     14
 
 #define NSP_BUFFER_CFG_SIZE_MASK	(0xff)
 
@@ -366,5 +367,90 @@ nfp_fw_upload(nspu_desc_t *nspu_desc)
 
 	free(fw_buf);
 
+	return ret;
+}
+
+/* Firmware symbol descriptor size */
+#define NFP_SYM_DESC_LEN 40
+
+#define SYMBOL_DATA(b, off)     (*(int64_t *)((b) + (off)))
+#define SYMBOL_UDATA(b, off)     (*(uint64_t *)((b) + (off)))
+
+/* Firmware symbols contain information about how to access what they
+ * represent. It can be as simple as an numeric variable declared at a
+ * specific NFP memory, but it can also be more complex structures and
+ * related to specific hardware functionalities or components. Target,
+ * domain and address allow to create the BAR window for accessing such
+ * hw object and size defines the length to map.
+ *
+ * A vNIC is a network interface implemented inside the NFP and using a
+ * subset of device PCI BARs. Specific firmware symbols allow to map those
+ * vNIC bars by host drivers like the NFP PMD.
+ *
+ * Accessing what the symbol represents implies to map the access through
+ * a PCI BAR window. NFP expansion BARs are used in this regard through
+ * the NSPU interface.
+ */
+int
+nfp_nspu_set_bar_from_symbl(nspu_desc_t *desc, const char *symbl,
+			    uint32_t expbar, uint64_t *pcie_offset,
+			    ssize_t *size)
+{
+	int64_t type;
+	int64_t target;
+	int64_t domain;
+	uint64_t addr;
+	char *sym_buf;
+	int ret = 0;
+
+	sym_buf = malloc(desc->buf_size);
+	strncpy(sym_buf, symbl, strlen(symbl));
+	ret = nspu_command(desc, NSP_CMD_GET_SYMBOL, 1, 1, sym_buf,
+			   NFP_SYM_DESC_LEN, strlen(symbl));
+	if (ret) {
+		RTE_LOG(DEBUG, PMD, "symbol resolution (%s) failed\n", symbl);
+		goto clean;
+	}
+
+	/* Reading symbol information */
+	type = SYMBOL_DATA(sym_buf, 0);
+	target = SYMBOL_DATA(sym_buf, 8);
+	domain =  SYMBOL_DATA(sym_buf, 16);
+	addr = SYMBOL_UDATA(sym_buf, 24);
+	*size = (ssize_t)SYMBOL_UDATA(sym_buf, 32);
+
+	if (type != 1) {
+		RTE_LOG(INFO, PMD, "wrong symbol type\n");
+		ret = -EINVAL;
+		goto clean;
+	}
+	if (!(target == 7 || target == -7)) {
+		RTE_LOG(INFO, PMD, "wrong symbol target\n");
+		ret = -EINVAL;
+		goto clean;
+	}
+	if (domain == 8 || domain == 9) {
+		RTE_LOG(INFO, PMD, "wrong symbol domain\n");
+		ret = -EINVAL;
+		goto clean;
+	}
+
+	/* Adjusting address based on symbol location */
+	if ((domain >= 24) && (domain < 28) && (target == 7)) {
+		addr = 1ULL << 37 | addr | ((uint64_t)domain & 0x3) << 35;
+	} else {
+		addr = 1ULL << 39 | addr | ((uint64_t)domain & 0x3f) << 32;
+		if (target == -7)
+			target = 7;
+	}
+
+	/* Configuring NFP expansion bar for mapping specific PCI BAR window */
+	nfp_nspu_mem_bar_cfg(desc, expbar, target, addr, pcie_offset);
+
+	/* This is the PCI BAR offset to use by the host */
+	*pcie_offset |= ((expbar & 0x7) << (desc->barsz - 3));
+
+clean:
+	free(sym_buf);
 	return ret;
 }

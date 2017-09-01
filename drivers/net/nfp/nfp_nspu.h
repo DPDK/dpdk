@@ -74,3 +74,6 @@ int nfp_nspu_init(nspu_desc_t *desc, int nfp, int pcie_bar, size_t pcie_barsz,
 int nfp_nsp_get_abi_version(nspu_desc_t *desc, int *major, int *minor);
 int nfp_fw_reset(nspu_desc_t *nspu_desc);
 int nfp_fw_upload(nspu_desc_t *nspu_desc);
+int nfp_nspu_set_bar_from_symbl(nspu_desc_t *desc, const char *symbl,
+				uint32_t expbar, uint64_t *pcie_offset,
+				ssize_t *size);
