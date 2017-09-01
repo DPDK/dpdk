@@ -157,7 +157,7 @@ static int eth_igb_vlan_filter_set(struct rte_eth_dev *dev,
 static int eth_igb_vlan_tpid_set(struct rte_eth_dev *dev,
 				 enum rte_vlan_type vlan_type,
 				 uint16_t tpid_id);
-static void eth_igb_vlan_offload_set(struct rte_eth_dev *dev, int mask);
+static int eth_igb_vlan_offload_set(struct rte_eth_dev *dev, int mask);
 
 static void igb_vlan_hw_filter_enable(struct rte_eth_dev *dev);
 static void igb_vlan_hw_filter_disable(struct rte_eth_dev *dev);
@@ -1401,7 +1401,12 @@ eth_igb_start(struct rte_eth_dev *dev)
 	 */
 	mask = ETH_VLAN_STRIP_MASK | ETH_VLAN_FILTER_MASK | \
 			ETH_VLAN_EXTEND_MASK;
-	eth_igb_vlan_offload_set(dev, mask);
+	ret = eth_igb_vlan_offload_set(dev, mask);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Unable to set vlan offload");
+		igb_dev_clear_queues(dev);
+		return ret;
+	}
 
 	if (dev->data->dev_conf.rxmode.mq_mode == ETH_MQ_RX_VMDQ_ONLY) {
 		/* Enable VLAN filter since VMDq always use VLAN filter */
@@ -2718,7 +2723,7 @@ igb_vlan_hw_extend_enable(struct rte_eth_dev *dev)
 						2 * VLAN_TAG_SIZE);
 }
 
-static void
+static int
 eth_igb_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 {
 	if(mask & ETH_VLAN_STRIP_MASK){
@@ -2741,6 +2746,8 @@ eth_igb_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 		else
 			igb_vlan_hw_extend_disable(dev);
 	}
+
+	return 0;
 }
 
 

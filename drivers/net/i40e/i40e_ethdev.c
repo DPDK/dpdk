@@ -276,7 +276,7 @@ static int i40e_vlan_filter_set(struct rte_eth_dev *dev,
 static int i40e_vlan_tpid_set(struct rte_eth_dev *dev,
 			      enum rte_vlan_type vlan_type,
 			      uint16_t tpid);
-static void i40e_vlan_offload_set(struct rte_eth_dev *dev, int mask);
+static int i40e_vlan_offload_set(struct rte_eth_dev *dev, int mask);
 static void i40e_vlan_strip_queue_set(struct rte_eth_dev *dev,
 				      uint16_t queue,
 				      int on);
@@ -3220,7 +3220,7 @@ i40e_vlan_tpid_set(struct rte_eth_dev *dev,
 	return ret;
 }
 
-static void
+static int
 i40e_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
@@ -3253,6 +3253,8 @@ i40e_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 		else
 			i40e_vsi_config_double_vlan(vsi, FALSE);
 	}
+
+	return 0;
 }
 
 static void
@@ -5313,7 +5315,11 @@ i40e_dev_init_vlan(struct rte_eth_dev *dev)
 
 	/* Apply vlan offload setting */
 	mask = ETH_VLAN_STRIP_MASK | ETH_VLAN_FILTER_MASK;
-	i40e_vlan_offload_set(dev, mask);
+	ret = i40e_vlan_offload_set(dev, mask);
+	if (ret) {
+		PMD_DRV_LOG(INFO, "Failed to update vlan offload");
+		return ret;
+	}
 
 	/* Apply double-vlan setting, not implemented yet */
 

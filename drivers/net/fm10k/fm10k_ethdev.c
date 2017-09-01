@@ -1594,7 +1594,7 @@ fm10k_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 	return 0;
 }
 
-static void
+static int
 fm10k_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 {
 	if (mask & ETH_VLAN_STRIP_MASK) {
@@ -1613,6 +1613,8 @@ fm10k_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 		if (!dev->data->dev_conf.rxmode.hw_vlan_filter)
 			PMD_INIT_LOG(ERR, "VLAN filter is always on in fm10k");
 	}
+
+	return 0;
 }
 
 /* Add/Remove a MAC address, and update filters to main VSI */

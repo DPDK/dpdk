@@ -362,6 +362,13 @@ API Changes
   - if VLAN is not stripped and TCI is saved: ``PKT_RX_VLAN``
   - if VLAN is stripped and TCI is saved: ``PKT_RX_VLAN | PKT_RX_VLAN_STRIPPED``
 
+* **Modified the vlan_offload_set_t function prototype in the ethdev library.**
+
+  Changed the function prototype of ``vlan_offload_set_t``.  The return value
+  has been changed from ``void`` to ``int`` so the caller to knows whether
+  the backing device supports the operation or if the operation was
+  successfully performed.
+
 
 ABI Changes
 -----------

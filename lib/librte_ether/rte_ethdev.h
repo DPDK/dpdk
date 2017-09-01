@@ -1328,7 +1328,7 @@ typedef int (*vlan_tpid_set_t)(struct rte_eth_dev *dev,
 			       enum rte_vlan_type type, uint16_t tpid);
 /**< @internal set the outer/inner VLAN-TPID by an Ethernet device. */
 
-typedef void (*vlan_offload_set_t)(struct rte_eth_dev *dev, int mask);
+typedef int (*vlan_offload_set_t)(struct rte_eth_dev *dev, int mask);
 /**< @internal set VLAN offload function by an Ethernet device. */
 
 typedef int (*vlan_pvid_set_t)(struct rte_eth_dev *dev,

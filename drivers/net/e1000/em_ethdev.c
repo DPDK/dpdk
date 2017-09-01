@@ -99,7 +99,7 @@ static int eth_em_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
 
 static int eth_em_vlan_filter_set(struct rte_eth_dev *dev,
 		uint16_t vlan_id, int on);
-static void eth_em_vlan_offload_set(struct rte_eth_dev *dev, int mask);
+static int eth_em_vlan_offload_set(struct rte_eth_dev *dev, int mask);
 static void em_vlan_hw_filter_enable(struct rte_eth_dev *dev);
 static void em_vlan_hw_filter_disable(struct rte_eth_dev *dev);
 static void em_vlan_hw_strip_enable(struct rte_eth_dev *dev);
@@ -668,7 +668,12 @@ eth_em_start(struct rte_eth_dev *dev)
 
 	mask = ETH_VLAN_STRIP_MASK | ETH_VLAN_FILTER_MASK | \
 			ETH_VLAN_EXTEND_MASK;
-	eth_em_vlan_offload_set(dev, mask);
+	ret = eth_em_vlan_offload_set(dev, mask);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Unable to update vlan offload");
+		em_dev_clear_queues(dev);
+		return ret;
+	}
 
 	/* Set Interrupt Throttling Rate to maximum allowed value. */
 	E1000_WRITE_REG(hw, E1000_ITR, UINT16_MAX);
@@ -1448,7 +1453,7 @@ em_vlan_hw_strip_enable(struct rte_eth_dev *dev)
 	E1000_WRITE_REG(hw, E1000_CTRL, reg);
 }
 
-static void
+static int
 eth_em_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 {
 	if(mask & ETH_VLAN_STRIP_MASK){
@@ -1464,6 +1469,8 @@ eth_em_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 		else
 			em_vlan_hw_filter_disable(dev);
 	}
+
+	return 0;
 }
 
 /*

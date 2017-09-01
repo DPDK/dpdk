@@ -162,7 +162,7 @@ dpaa2_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 	return ret;
 }
 
-static void
+static int
 dpaa2_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 {
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
@@ -188,6 +188,8 @@ dpaa2_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 			RTE_LOG(INFO, PMD,
 				"VLAN extend offload not supported\n");
 	}
+
+	return 0;
 }
 
 static int
@@ -754,8 +756,15 @@ dpaa2_dev_start(struct rte_eth_dev *dev)
 		return ret;
 	}
 	/* VLAN Offload Settings */
-	if (priv->max_vlan_filters)
-		dpaa2_vlan_offload_set(dev, ETH_VLAN_FILTER_MASK);
+	if (priv->max_vlan_filters) {
+		ret = dpaa2_vlan_offload_set(dev, ETH_VLAN_FILTER_MASK);
+		if (ret) {
+			PMD_INIT_LOG(ERR, "Error to dpaa2_vlan_offload_set:"
+				     "code = %d\n", ret);
+			return ret;
+		}
+	}
+
 
 	/* if the interrupts were configured on this devices*/
 	if (intr_handle && (intr_handle->fd) &&

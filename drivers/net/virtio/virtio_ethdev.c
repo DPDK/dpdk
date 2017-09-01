@@ -73,6 +73,7 @@ static void virtio_dev_info_get(struct rte_eth_dev *dev,
 				struct rte_eth_dev_info *dev_info);
 static int virtio_dev_link_update(struct rte_eth_dev *dev,
 	int wait_to_complete);
+static int virtio_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask);
 
 static void virtio_set_hwaddr(struct virtio_hw *hw);
 static void virtio_get_hwaddr(struct virtio_hw *hw);
@@ -779,6 +780,7 @@ static const struct eth_dev_ops virtio_eth_dev_ops = {
 	.stats_reset             = virtio_dev_stats_reset,
 	.xstats_reset            = virtio_dev_stats_reset,
 	.link_update             = virtio_dev_link_update,
+	.vlan_offload_set        = virtio_dev_vlan_offload_set,
 	.rx_queue_setup          = virtio_dev_rx_queue_setup,
 	.rx_queue_intr_enable    = virtio_dev_rx_queue_intr_enable,
 	.rx_queue_intr_disable   = virtio_dev_rx_queue_intr_disable,
@@ -1950,6 +1952,29 @@ virtio_dev_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complet
 	virtio_dev_atomic_write_link_status(dev, &link);
 
 	return (old.link_status == link.link_status) ? -1 : 0;
+}
+
+static int
+virtio_dev_vlan_offload_set(struct rte_eth_dev *dev, int mask)
+{
+	const struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
+	struct virtio_hw *hw = dev->data->dev_private;
+
+	if (mask & ETH_VLAN_FILTER_MASK) {
+		if (rxmode->hw_vlan_filter &&
+				!vtpci_with_feature(hw, VIRTIO_NET_F_CTRL_VLAN)) {
+
+			PMD_DRV_LOG(NOTICE,
+				"vlan filtering not available on this host");
+
+			return -ENOTSUP;
+		}
+	}
+
+	if (mask & ETH_VLAN_STRIP_MASK)
+		hw->vlan_strip = rxmode->hw_vlan_strip;
+
+	return 0;
 }
 
 static void

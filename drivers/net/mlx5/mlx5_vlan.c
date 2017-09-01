@@ -178,7 +178,7 @@ mlx5_vlan_strip_queue_set(struct rte_eth_dev *dev, uint16_t queue, int on)
  * @param mask
  *   VLAN offload bit mask.
  */
-void
+int
 mlx5_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 {
 	struct priv *priv = dev->data->dev_private;
@@ -189,7 +189,7 @@ mlx5_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 
 		if (!priv->hw_vlan_strip) {
 			ERROR("VLAN stripping is not supported");
-			return;
+			return 0;
 		}
 
 		/* Run on every RX queue and set/reset VLAN stripping. */
@@ -198,4 +198,6 @@ mlx5_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 			priv_vlan_strip_queue_set(priv, i, hw_vlan_strip);
 		priv_unlock(priv);
 	}
+
+	return 0;
 }

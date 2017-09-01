@@ -2306,11 +2306,12 @@ xmit_end:
 	return i;
 }
 
-static void
+static int
 nfp_net_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 {
 	uint32_t new_ctrl, update;
 	struct nfp_net_hw *hw;
+	int ret;
 
 	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	new_ctrl = 0;
@@ -2331,14 +2332,15 @@ nfp_net_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 		new_ctrl = hw->ctrl & ~NFP_NET_CFG_CTRL_RXVLAN;
 
 	if (new_ctrl == 0)
-		return;
+		return 0;
 
 	update = NFP_NET_CFG_UPDATE_GEN;
 
-	if (nfp_net_reconfig(hw, new_ctrl, update) < 0)
-		return;
+	ret = nfp_net_reconfig(hw, new_ctrl, update);
+	if (!ret)
+		hw->ctrl = new_ctrl;
 
-	hw->ctrl = new_ctrl;
+	return ret;
 }
 
 /* Update Redirection Table(RETA) of Receive Side Scaling of Ethernet device */

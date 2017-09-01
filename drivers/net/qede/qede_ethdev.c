@@ -1005,7 +1005,7 @@ static int qede_vlan_filter_set(struct rte_eth_dev *eth_dev,
 	return rc;
 }
 
-static void qede_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask)
+static int qede_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask)
 {
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
@@ -1043,6 +1043,8 @@ static void qede_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask)
 
 	DP_INFO(edev, "vlan offload mask %d vlan-strip %d vlan-filter %d\n",
 		mask, rxmode->hw_vlan_strip, rxmode->hw_vlan_filter);
+
+	return 0;
 }
 
 static void qede_prandom_bytes(uint32_t *buff)
@@ -1192,6 +1194,7 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
 	struct ecore_dev *edev = QEDE_INIT_EDEV(qdev);
 	struct rte_eth_rxmode *rxmode = &eth_dev->data->dev_conf.rxmode;
+	int ret;
 
 	PMD_INIT_FUNC_TRACE(edev);
 
@@ -1262,9 +1265,11 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 	qdev->new_mtu = qdev->mtu;
 
 	/* Enable VLAN offloads by default */
-	qede_vlan_offload_set(eth_dev, ETH_VLAN_STRIP_MASK  |
+	ret = qede_vlan_offload_set(eth_dev, ETH_VLAN_STRIP_MASK  |
 			ETH_VLAN_FILTER_MASK |
 			ETH_VLAN_EXTEND_MASK);
+	if (ret)
+		return ret;
 
 	DP_INFO(edev, "Device configured with RSS=%d TSS=%d\n",
 			QEDE_RSS_COUNT(qdev), QEDE_TSS_COUNT(qdev));

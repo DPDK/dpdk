@@ -118,7 +118,7 @@ static int i40evf_dev_xstats_get_names(struct rte_eth_dev *dev,
 static void i40evf_dev_xstats_reset(struct rte_eth_dev *dev);
 static int i40evf_vlan_filter_set(struct rte_eth_dev *dev,
 				  uint16_t vlan_id, int on);
-static void i40evf_vlan_offload_set(struct rte_eth_dev *dev, int mask);
+static int i40evf_vlan_offload_set(struct rte_eth_dev *dev, int mask);
 static void i40evf_dev_close(struct rte_eth_dev *dev);
 static int  i40evf_dev_reset(struct rte_eth_dev *dev);
 static void i40evf_dev_promiscuous_enable(struct rte_eth_dev *dev);
@@ -1587,12 +1587,10 @@ static int
 i40evf_init_vlan(struct rte_eth_dev *dev)
 {
 	/* Apply vlan offload setting */
-	i40evf_vlan_offload_set(dev, ETH_VLAN_STRIP_MASK);
-
-	return I40E_SUCCESS;
+	return i40evf_vlan_offload_set(dev, ETH_VLAN_STRIP_MASK);
 }
 
-static void
+static int
 i40evf_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 {
 	struct rte_eth_conf *dev_conf = &dev->data->dev_conf;
@@ -1605,6 +1603,8 @@ i40evf_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 		else
 			i40evf_disable_vlan_strip(dev);
 	}
+
+	return 0;
 }
 
 static int

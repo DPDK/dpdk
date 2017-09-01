@@ -70,7 +70,7 @@ static void avp_dev_stop(struct rte_eth_dev *dev);
 static void avp_dev_close(struct rte_eth_dev *dev);
 static void avp_dev_info_get(struct rte_eth_dev *dev,
 			     struct rte_eth_dev_info *dev_info);
-static void avp_vlan_offload_set(struct rte_eth_dev *dev, int mask);
+static int avp_vlan_offload_set(struct rte_eth_dev *dev, int mask);
 static int avp_dev_link_update(struct rte_eth_dev *dev, int wait_to_complete);
 static void avp_dev_promiscuous_enable(struct rte_eth_dev *dev);
 static void avp_dev_promiscuous_disable(struct rte_eth_dev *dev);
@@ -2029,7 +2029,12 @@ avp_dev_configure(struct rte_eth_dev *eth_dev)
 	mask = (ETH_VLAN_STRIP_MASK |
 		ETH_VLAN_FILTER_MASK |
 		ETH_VLAN_EXTEND_MASK);
-	avp_vlan_offload_set(eth_dev, mask);
+	ret = avp_vlan_offload_set(eth_dev, mask);
+	if (ret < 0) {
+		PMD_DRV_LOG(ERR, "VLAN offload set failed by host, ret=%d\n",
+			    ret);
+		goto unlock;
+	}
 
 	/* update device config */
 	memset(&config, 0, sizeof(config));
@@ -2212,7 +2217,7 @@ avp_dev_info_get(struct rte_eth_dev *eth_dev,
 	}
 }
 
-static void
+static int
 avp_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask)
 {
 	struct avp_dev *avp = AVP_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
@@ -2237,6 +2242,8 @@ avp_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask)
 		if (eth_dev->data->dev_conf.rxmode.hw_vlan_extend)
 			PMD_DRV_LOG(ERR, "VLAN extend offload not supported\n");
 	}
+
+	return 0;
 }
 
 static int

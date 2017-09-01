@@ -362,7 +362,7 @@ static int enicpmd_vlan_filter_set(struct rte_eth_dev *eth_dev,
 	return err;
 }
 
-static void enicpmd_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask)
+static int enicpmd_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask)
 {
 	struct enic *enic = pmd_priv(eth_dev);
 
@@ -386,6 +386,8 @@ static void enicpmd_vlan_offload_set(struct rte_eth_dev *eth_dev, int mask)
 		dev_warning(enic,
 			"Configuration of extended VLAN is not supported\n");
 	}
+
+	return 0;
 }
 
 static int enicpmd_dev_configure(struct rte_eth_dev *eth_dev)
@@ -410,9 +412,10 @@ static int enicpmd_dev_configure(struct rte_eth_dev *eth_dev)
 			eth_dev->data->dev_conf.rxmode.split_hdr_size);
 	}
 
-	enicpmd_vlan_offload_set(eth_dev, ETH_VLAN_STRIP_MASK);
 	enic->hw_ip_checksum = eth_dev->data->dev_conf.rxmode.hw_ip_checksum;
-	return 0;
+	ret = enicpmd_vlan_offload_set(eth_dev, ETH_VLAN_STRIP_MASK);
+
+	return ret;
 }
 
 /* Start the device.

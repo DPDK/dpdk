@@ -145,7 +145,7 @@ static const struct rte_pci_id bnxt_pci_id_map[] = {
 	ETH_RSS_NONFRAG_IPV6_TCP |	\
 	ETH_RSS_NONFRAG_IPV6_UDP)
 
-static void bnxt_vlan_offload_set_op(struct rte_eth_dev *dev, int mask);
+static int bnxt_vlan_offload_set_op(struct rte_eth_dev *dev, int mask);
 
 /***********************/
 
@@ -591,7 +591,9 @@ static int bnxt_dev_start_op(struct rte_eth_dev *eth_dev)
 		vlan_mask |= ETH_VLAN_FILTER_MASK;
 	if (eth_dev->data->dev_conf.rxmode.hw_vlan_strip)
 		vlan_mask |= ETH_VLAN_STRIP_MASK;
-	bnxt_vlan_offload_set_op(eth_dev, vlan_mask);
+	rc = bnxt_vlan_offload_set_op(eth_dev, vlan_mask);
+	if (rc)
+		goto error;
 
 	return 0;
 
@@ -1350,7 +1352,7 @@ static int bnxt_vlan_filter_set_op(struct rte_eth_dev *eth_dev,
 		return bnxt_del_vlan_filter(bp, vlan_id);
 }
 
-static void
+static int
 bnxt_vlan_offload_set_op(struct rte_eth_dev *dev, int mask)
 {
 	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
@@ -1382,6 +1384,8 @@ bnxt_vlan_offload_set_op(struct rte_eth_dev *dev, int mask)
 
 	if (mask & ETH_VLAN_EXTEND_MASK)
 		RTE_LOG(ERR, PMD, "Extend VLAN Not supported\n");
+
+	return 0;
 }
 
 static void

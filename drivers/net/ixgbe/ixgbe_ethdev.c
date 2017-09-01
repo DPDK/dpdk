@@ -220,7 +220,7 @@ static void ixgbe_vlan_hw_strip_bitmap_set(struct rte_eth_dev *dev,
 		uint16_t queue, bool on);
 static void ixgbe_vlan_strip_queue_set(struct rte_eth_dev *dev, uint16_t queue,
 		int on);
-static void ixgbe_vlan_offload_set(struct rte_eth_dev *dev, int mask);
+static int ixgbe_vlan_offload_set(struct rte_eth_dev *dev, int mask);
 static void ixgbe_vlan_hw_strip_enable(struct rte_eth_dev *dev, uint16_t queue);
 static void ixgbe_vlan_hw_strip_disable(struct rte_eth_dev *dev, uint16_t queue);
 static void ixgbe_vlan_hw_extend_enable(struct rte_eth_dev *dev);
@@ -277,7 +277,7 @@ static int ixgbevf_vlan_filter_set(struct rte_eth_dev *dev,
 		uint16_t vlan_id, int on);
 static void ixgbevf_vlan_strip_queue_set(struct rte_eth_dev *dev,
 		uint16_t queue, int on);
-static void ixgbevf_vlan_offload_set(struct rte_eth_dev *dev, int mask);
+static int ixgbevf_vlan_offload_set(struct rte_eth_dev *dev, int mask);
 static void ixgbevf_set_vfta_all(struct rte_eth_dev *dev, bool on);
 static int ixgbevf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev,
 					    uint16_t queue_id);
@@ -2132,7 +2132,7 @@ ixgbe_vlan_hw_extend_enable(struct rte_eth_dev *dev)
 	 */
 }
 
-static void
+static int
 ixgbe_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 {
 	if (mask & ETH_VLAN_STRIP_MASK) {
@@ -2155,6 +2155,8 @@ ixgbe_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 		else
 			ixgbe_vlan_hw_extend_disable(dev);
 	}
+
+	return 0;
 }
 
 static void
@@ -2576,9 +2578,13 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 		goto error;
 	}
 
-    mask = ETH_VLAN_STRIP_MASK | ETH_VLAN_FILTER_MASK |
+	mask = ETH_VLAN_STRIP_MASK | ETH_VLAN_FILTER_MASK |
 		ETH_VLAN_EXTEND_MASK;
-	ixgbe_vlan_offload_set(dev, mask);
+	err = ixgbe_vlan_offload_set(dev, mask);
+	if (err) {
+		PMD_INIT_LOG(ERR, "Unable to set VLAN offload");
+		goto error;
+	}
 
 	if (dev->data->dev_conf.rxmode.mq_mode == ETH_MQ_RX_VMDQ_ONLY) {
 		/* Enable vlan filtering for VMDq */
@@ -5033,7 +5039,12 @@ ixgbevf_dev_start(struct rte_eth_dev *dev)
 	/* Set HW strip */
 	mask = ETH_VLAN_STRIP_MASK | ETH_VLAN_FILTER_MASK |
 		ETH_VLAN_EXTEND_MASK;
-	ixgbevf_vlan_offload_set(dev, mask);
+	err = ixgbevf_vlan_offload_set(dev, mask);
+	if (err) {
+		PMD_INIT_LOG(ERR, "Unable to set VLAN offload (%d)", err);
+		ixgbe_dev_clear_queues(dev);
+		return err;
+	}
 
 	ixgbevf_dev_rxtx_start(dev);
 
@@ -5222,7 +5233,7 @@ ixgbevf_vlan_strip_queue_set(struct rte_eth_dev *dev, uint16_t queue, int on)
 	ixgbe_vlan_hw_strip_bitmap_set(dev, queue, on);
 }
 
-static void
+static int
 ixgbevf_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 {
 	struct ixgbe_hw *hw =
@@ -5237,6 +5248,8 @@ ixgbevf_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 		for (i = 0; i < hw->mac.max_rx_queues; i++)
 			ixgbevf_vlan_strip_queue_set(dev, i, on);
 	}
+
+	return 0;
 }
 
 int
