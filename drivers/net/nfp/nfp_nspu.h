@@ -62,6 +62,9 @@ typedef struct {
 	int pcie_bar;   /* PF PCI BAR to work with */
 	int exp_bar;    /* Expansion BAR number used by NSPU */
 	int barsz;      /* PCIE BAR log2 size */
+	uint64_t bufaddr;  /* commands buffer address */
+	size_t buf_size;   /* commands buffer size */
+	uint64_t windowsz; /* NSPU BAR window size */
 	void *cfg_base; /* Expansion BARs address */
 	void *mem_base; /* NSP interface */
 } nspu_desc_t;
@@ -69,3 +72,4 @@ typedef struct {
 int nfp_nspu_init(nspu_desc_t *desc, int nfp, int pcie_bar, size_t pcie_barsz,
 		  int exp_bar, void *exp_bar_cfg_base, void *exp_bar_mmap);
 int nfp_nsp_get_abi_version(nspu_desc_t *desc, int *major, int *minor);
+int nfp_fw_reset(nspu_desc_t *nspu_desc);
