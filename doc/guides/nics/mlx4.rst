@@ -80,8 +80,6 @@ Features
 - Multi arch support: x86_64 and POWER8.
 - Link state information is provided.
 - Scattered packets are supported for TX and RX.
-- Inner L3/L4 (IP, TCP and UDP) TX/RX checksum offloading and validation.
-- Outer L3 (IP) TX/RX checksum offloading and validation for VXLAN frames.
 - RX interrupts.
 
 Configuration

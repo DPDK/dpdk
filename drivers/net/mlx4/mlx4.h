@@ -179,8 +179,6 @@ struct rxq {
 		struct rxq_elt (*no_sp)[]; /* RX elements. */
 	} elts;
 	unsigned int sp:1; /* Use scattered RX elements. */
-	unsigned int csum:1; /* Enable checksum offloading. */
-	unsigned int csum_l2tun:1; /* Same for L2 tunnels. */
 	struct mlx4_rxq_stats stats; /* RX queue counters. */
 	unsigned int socket; /* CPU socket ID for allocations. */
 	struct ibv_exp_res_domain *rd; /* Resource Domain. */
@@ -248,8 +246,6 @@ struct priv {
 	uint16_t mtu; /* Configured MTU. */
 	uint8_t port; /* Physical port number. */
 	unsigned int started:1; /* Device started, flows enabled. */
-	unsigned int hw_csum:1; /* Checksum offload is supported. */
-	unsigned int hw_csum_l2tun:1; /* Same for L2 tunnels. */
 	unsigned int vf:1; /* This is a VF device. */
 	unsigned int pending_alarm:1; /* An alarm is pending. */
 	unsigned int isolated:1; /* Toggle isolated mode. */

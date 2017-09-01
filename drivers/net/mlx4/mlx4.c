@@ -1258,17 +1258,6 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			++elts_comp;
 			send_flags |= IBV_EXP_QP_BURST_SIGNALED;
 		}
-		/* Should we enable HW CKSUM offload */
-		if (buf->ol_flags &
-		    (PKT_TX_IP_CKSUM | PKT_TX_TCP_CKSUM | PKT_TX_UDP_CKSUM)) {
-			send_flags |= IBV_EXP_QP_BURST_IP_CSUM;
-			/* HW does not support checksum offloads at arbitrary
-			 * offsets but automatically recognizes the packet
-			 * type. For inner L3/L4 checksums, only VXLAN (UDP)
-			 * tunnels are currently supported. */
-			if (RTE_ETH_IS_TUNNEL_PKT(buf->packet_type))
-				send_flags |= IBV_EXP_QP_BURST_TUNNEL;
-		}
 		if (likely(segs == 1)) {
 			uintptr_t addr;
 			uint32_t length;
@@ -2140,41 +2129,6 @@ rxq_cq_to_pkt_type(uint32_t flags)
 	return pkt_type;
 }
 
-/**
- * Translate RX completion flags to offload flags.
- *
- * @param[in] rxq
- *   Pointer to RX queue structure.
- * @param flags
- *   RX completion flags returned by poll_length_flags().
- *
- * @return
- *   Offload flags (ol_flags) for struct rte_mbuf.
- */
-static inline uint32_t
-rxq_cq_to_ol_flags(const struct rxq *rxq, uint32_t flags)
-{
-	uint32_t ol_flags = 0;
-
-	if (rxq->csum)
-		ol_flags |=
-			TRANSPOSE(flags,
-				  IBV_EXP_CQ_RX_IP_CSUM_OK,
-				  PKT_RX_IP_CKSUM_GOOD) |
-			TRANSPOSE(flags,
-				  IBV_EXP_CQ_RX_TCP_UDP_CSUM_OK,
-				  PKT_RX_L4_CKSUM_GOOD);
-	if ((flags & IBV_EXP_CQ_RX_TUNNEL_PACKET) && (rxq->csum_l2tun))
-		ol_flags |=
-			TRANSPOSE(flags,
-				  IBV_EXP_CQ_RX_OUTER_IP_CSUM_OK,
-				  PKT_RX_IP_CKSUM_GOOD) |
-			TRANSPOSE(flags,
-				  IBV_EXP_CQ_RX_OUTER_TCP_UDP_CSUM_OK,
-				  PKT_RX_L4_CKSUM_GOOD);
-	return ol_flags;
-}
-
 static uint16_t
 mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n);
 
@@ -2362,7 +2316,7 @@ mlx4_rx_burst_sp(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		PORT(pkt_buf) = rxq->port_id;
 		PKT_LEN(pkt_buf) = pkt_buf_len;
 		pkt_buf->packet_type = rxq_cq_to_pkt_type(flags);
-		pkt_buf->ol_flags = rxq_cq_to_ol_flags(rxq, flags);
+		pkt_buf->ol_flags = 0;
 
 		/* Return packet. */
 		*(pkts++) = pkt_buf;
@@ -2517,7 +2471,7 @@ mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		PKT_LEN(seg) = len;
 		DATA_LEN(seg) = len;
 		seg->packet_type = rxq_cq_to_pkt_type(flags);
-		seg->ol_flags = rxq_cq_to_ol_flags(rxq, flags);
+		seg->ol_flags = 0;
 
 		/* Return packet. */
 		*(pkts++) = seg;
@@ -2626,15 +2580,6 @@ rxq_rehash(struct rte_eth_dev *dev, struct rxq *rxq)
 	/* Number of descriptors and mbufs currently allocated. */
 	desc_n = (tmpl.elts_n * (tmpl.sp ? MLX4_PMD_SGE_WR_N : 1));
 	mbuf_n = desc_n;
-	/* Toggle RX checksum offload if hardware supports it. */
-	if (priv->hw_csum) {
-		tmpl.csum = !!dev->data->dev_conf.rxmode.hw_ip_checksum;
-		rxq->csum = tmpl.csum;
-	}
-	if (priv->hw_csum_l2tun) {
-		tmpl.csum_l2tun = !!dev->data->dev_conf.rxmode.hw_ip_checksum;
-		rxq->csum_l2tun = tmpl.csum_l2tun;
-	}
 	/* Enable scattered packets support for this queue if necessary. */
 	assert(mb_len >= RTE_PKTMBUF_HEADROOM);
 	if (dev->data->dev_conf.rxmode.enable_scatter &&
@@ -2808,11 +2753,6 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 		      " multiple of %d)", (void *)dev, MLX4_PMD_SGE_WR_N);
 		return EINVAL;
 	}
-	/* Toggle RX checksum offload if hardware supports it. */
-	if (priv->hw_csum)
-		tmpl.csum = !!dev->data->dev_conf.rxmode.hw_ip_checksum;
-	if (priv->hw_csum_l2tun)
-		tmpl.csum_l2tun = !!dev->data->dev_conf.rxmode.hw_ip_checksum;
 	/* Enable scattered packets support for this queue if necessary. */
 	assert(mb_len >= RTE_PKTMBUF_HEADROOM);
 	if (dev->data->dev_conf.rxmode.max_rx_pkt_len <=
@@ -3416,18 +3356,8 @@ mlx4_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	info->max_tx_queues = max;
 	/* Last array entry is reserved for broadcast. */
 	info->max_mac_addrs = 1;
-	info->rx_offload_capa =
-		(priv->hw_csum ?
-		 (DEV_RX_OFFLOAD_IPV4_CKSUM |
-		  DEV_RX_OFFLOAD_UDP_CKSUM |
-		  DEV_RX_OFFLOAD_TCP_CKSUM) :
-		 0);
-	info->tx_offload_capa =
-		(priv->hw_csum ?
-		 (DEV_TX_OFFLOAD_IPV4_CKSUM |
-		  DEV_TX_OFFLOAD_UDP_CKSUM |
-		  DEV_TX_OFFLOAD_TCP_CKSUM) :
-		 0);
+	info->rx_offload_capa = 0;
+	info->tx_offload_capa = 0;
 	if (priv_get_ifname(priv, &ifname) == 0)
 		info->if_index = if_nametoindex(ifname);
 	info->speed_capa =
@@ -4654,19 +4584,6 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			err = ENODEV;
 			goto port_error;
 		}
-
-		priv->hw_csum =
-			((exp_device_attr.exp_device_cap_flags &
-			  IBV_EXP_DEVICE_RX_CSUM_TCP_UDP_PKT) &&
-			 (exp_device_attr.exp_device_cap_flags &
-			  IBV_EXP_DEVICE_RX_CSUM_IP_PKT));
-		DEBUG("checksum offloading is %ssupported",
-		      (priv->hw_csum ? "" : "not "));
-
-		priv->hw_csum_l2tun = !!(exp_device_attr.exp_device_cap_flags &
-					 IBV_EXP_DEVICE_VXLAN_SUPPORT);
-		DEBUG("L2 tunnel checksum offloads are %ssupported",
-		      (priv->hw_csum_l2tun ? "" : "not "));
 
 		priv->inl_recv_size = mlx4_getenv_int("MLX4_INLINE_RECV_SIZE");
 
