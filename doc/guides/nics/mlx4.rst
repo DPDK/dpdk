@@ -1,5 +1,5 @@
 ..  BSD LICENSE
-    Copyright 2012-2015 6WIND S.A.
+    Copyright 2012 6WIND S.A.
     Copyright 2015 Mellanox
 
     Redistribution and use in source and binary forms, with or without

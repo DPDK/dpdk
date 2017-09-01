@@ -2,7 +2,7 @@
  *   BSD LICENSE
  *
  *   Copyright 2017 6WIND S.A.
- *   Copyright 2017 Mellanox.
+ *   Copyright 2017 Mellanox
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
