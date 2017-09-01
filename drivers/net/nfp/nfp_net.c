@@ -2677,13 +2677,16 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 static int nfp_pf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 			    struct rte_pci_device *dev)
 {
+	struct rte_eth_dev *eth_dev;
+	struct nfp_net_hw *hw;
 	nfpu_desc_t *nfpu_desc;
 	nspu_desc_t *nspu_desc;
 	uint64_t offset_symbol;
 	int major, minor;
+	int ret = -ENODEV;
 
 	if (!dev)
-		return -ENODEV;
+		return ret;
 
 	nfpu_desc = rte_malloc("nfp nfpu", sizeof(nfpu_desc_t), 0);
 	if (!nfpu_desc)
@@ -2701,25 +2704,57 @@ static int nfp_pf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	/* Check NSP ABI version */
 	if (nfp_nsp_get_abi_version(nspu_desc, &major, &minor) < 0) {
 		RTE_LOG(INFO, PMD, "NFP NSP not present\n");
-		goto no_abi;
+		goto error;
 	}
 	PMD_INIT_LOG(INFO, "nspu ABI version: %d.%d\n", major, minor);
 
 	if ((major == 0) && (minor < 20)) {
 		RTE_LOG(INFO, PMD, "NFP NSP ABI version too old. Required 0.20 or higher\n");
-		goto no_abi;
+		goto error;
 	}
 
-	nfp_nsp_fw_setup(nspu_desc, "nfd_cfg_pf0_num_ports", &offset_symbol);
+	ret = nfp_nsp_fw_setup(nspu_desc, "nfd_cfg_pf0_num_ports",
+			       &offset_symbol);
+	if (ret)
+		goto error;
 
-	/* No port is created yet */
+	eth_dev = rte_eth_dev_allocate(dev->device.name);
+	if (!eth_dev) {
+		ret = -ENODEV;
+		goto error;
+	}
 
-no_abi:
+	eth_dev->data->dev_private = rte_zmalloc("nfp_pf_port",
+						 sizeof(struct nfp_net_adapter),
+						 RTE_CACHE_LINE_SIZE);
+	if (!eth_dev->data->dev_private) {
+		rte_eth_dev_release_port(eth_dev);
+		ret = -ENODEV;
+		goto error;
+	}
+
+	hw = (struct nfp_net_hw *)(eth_dev->data->dev_private);
+	hw->nspu_desc = nspu_desc;
+	hw->nfpu_desc = nfpu_desc;
+	hw->is_pf = 1;
+
+	eth_dev->device = &dev->device;
+	rte_eth_copy_pci_info(eth_dev, dev);
+
+	ret = nfp_net_init(eth_dev);
+
+	if (!ret)
+		return 0;
+
+	/* something went wrong */
+	rte_eth_dev_release_port(eth_dev);
+
+error:
 	nfpu_close(nfpu_desc);
 nfpu_error:
 	rte_free(nfpu_desc);
 
-	return -ENODEV;
+	return ret;
 }
 
 static const struct rte_pci_id pci_id_nfp_pf_net_map[] = {
