@@ -98,8 +98,7 @@ mlx4_flow_isolate(struct rte_eth_dev *dev,
 struct mlx4_flow_action {
 	uint32_t drop:1; /**< Target is a drop queue. */
 	uint32_t queue:1; /**< Target is a receive queue. */
-	uint16_t queues[RTE_MAX_QUEUES_PER_PORT]; /**< Queue indices to use. */
-	uint16_t queues_n; /**< Number of entries in queue[] */
+	uint32_t queue_id; /**< Identifier of the queue. */
 };
 
 int mlx4_priv_flow_start(struct priv *priv);
