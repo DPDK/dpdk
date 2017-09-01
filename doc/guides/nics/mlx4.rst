@@ -88,7 +88,6 @@ Features
 - Scattered packets are supported for TX and RX.
 - Inner L3/L4 (IP, TCP and UDP) TX/RX checksum offloading and validation.
 - Outer L3 (IP) TX/RX checksum offloading and validation for VXLAN frames.
-- Secondary process TX is supported.
 - RX interrupts.
 
 Limitations
@@ -99,7 +98,6 @@ Limitations
 - RSS always includes L3 (IPv4/IPv6) and L4 (UDP/TCP). They cannot be
   dissociated.
 - Hardware counters are not implemented (they are software counters).
-- Secondary process RX is not supported.
 
 Configuration
 -------------
