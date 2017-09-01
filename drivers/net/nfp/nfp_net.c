@@ -687,6 +687,11 @@ nfp_net_start(struct rte_eth_dev *dev)
 
 	/* check and configure queue intr-vector mapping */
 	if (dev->data->dev_conf.intr_conf.rxq != 0) {
+		if (hw->pf_multiport_enabled) {
+			PMD_INIT_LOG(ERR, "PMD rx interrupt is not supported "
+					  "with NFP multiport PF");
+				return -EINVAL;
+		}
 		if (intr_handle->type == RTE_INTR_HANDLE_UIO) {
 			/*
 			 * Better not to share LSC with RX interrupts.
@@ -2489,11 +2494,43 @@ static const struct eth_dev_ops nfp_net_eth_dev_ops = {
 	.rx_queue_intr_disable  = nfp_rx_queue_intr_disable,
 };
 
+/*
+ * All eth_dev created got its private data, but before nfp_net_init, that
+ * private data is referencing private data for all the PF ports. This is due
+ * to how the vNIC bars are mapped based on first port, so all ports need info
+ * about port 0 private data. Inside nfp_net_init the private data pointer is
+ * changed to the right address for each port once the bars have been mapped.
+ *
+ * This functions helps to find out which port and therefore which offset
+ * inside the private data array to use.
+ */
+static int
+get_pf_port_number(char *name)
+{
+	char *pf_str = name;
+	int size = 0;
+
+	while ((*pf_str != '_') && (*pf_str != '\0') && (size++ < 30))
+		pf_str++;
+
+	if (size == 30)
+		/*
+		 * This should not happen at all and it would mean major
+		 * implementation fault.
+		 */
+		rte_panic("nfp_net: problem with pf device name\n");
+
+	/* Expecting _portX with X within [0,7] */
+	pf_str += 5;
+
+	return (int)strtol(pf_str, NULL, 10);
+}
+
 static int
 nfp_net_init(struct rte_eth_dev *eth_dev)
 {
 	struct rte_pci_device *pci_dev;
-	struct nfp_net_hw *hw;
+	struct nfp_net_hw *hw, *hwport0;
 
 	uint64_t tx_bar_off = 0, rx_bar_off = 0;
 	uint32_t start_q;
@@ -2501,10 +2538,32 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 
 	nspu_desc_t *nspu_desc = NULL;
 	uint64_t bar_offset;
+	int port = 0;
 
 	PMD_INIT_FUNC_TRACE();
 
-	hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
+
+	if ((pci_dev->id.device_id == PCI_DEVICE_ID_NFP4000_PF_NIC) ||
+	    (pci_dev->id.device_id == PCI_DEVICE_ID_NFP6000_PF_NIC)) {
+		port = get_pf_port_number(eth_dev->data->name);
+		if (port < 0 || port > 7) {
+			RTE_LOG(ERR, PMD, "Port value is wrong\n");
+			return -ENODEV;
+		}
+
+		PMD_INIT_LOG(DEBUG, "Working with PF port value %d\n", port);
+
+		/* This points to port 0 private data */
+		hwport0 = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+
+		/* This points to the specific port private data */
+		hw = &hwport0[port];
+		hw->pf_port_idx = port;
+	} else {
+		hw = NFP_NET_DEV_PRIVATE_TO_HW(eth_dev->data->dev_private);
+		hwport0 = 0;
+	}
 
 	eth_dev->dev_ops = &nfp_net_eth_dev_ops;
 	eth_dev->rx_pkt_burst = &nfp_net_recv_pkts;
@@ -2514,9 +2573,10 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
 		return 0;
 
-	pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 	rte_eth_copy_pci_info(eth_dev, pci_dev);
-	eth_dev->data->dev_flags |= RTE_ETH_DEV_DETACHABLE;
+	/* hotplug is not possible with multiport PF */
+	if (!hw->pf_multiport_enabled)
+		eth_dev->data->dev_flags |= RTE_ETH_DEV_DETACHABLE;
 
 	hw->device_id = pci_dev->id.device_id;
 	hw->vendor_id = pci_dev->id.vendor_id;
@@ -2535,9 +2595,7 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 		return -ENODEV;
 	}
 
-	/* Is this a PF device? */
-	if ((pci_dev->id.device_id == PCI_DEVICE_ID_NFP4000_PF_NIC) ||
-	    (pci_dev->id.device_id == PCI_DEVICE_ID_NFP6000_PF_NIC)) {
+	if (hw->is_pf && port == 0) {
 		nspu_desc = hw->nspu_desc;
 
 		if (nfp_nsp_map_ctrl_bar(nspu_desc, &bar_offset) != 0) {
@@ -2553,6 +2611,17 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 		hw->ctrl_bar += bar_offset;
 		PMD_INIT_LOG(DEBUG, "ctrl bar: %p\n", hw->ctrl_bar);
 	}
+
+	if (port > 0) {
+		if (!hwport0->ctrl_bar)
+			return -ENODEV;
+
+		/* address based on port0 offset */
+		hw->ctrl_bar = hwport0->ctrl_bar +
+			       (port * NFP_PF_CSR_SLICE_SIZE);
+	}
+
+	PMD_INIT_LOG(DEBUG, "ctrl bar: %p\n", hw->ctrl_bar);
 
 	hw->max_rx_queues = nn_cfg_readl(hw, NFP_NET_CFG_MAX_RXRINGS);
 	hw->max_tx_queues = nn_cfg_readl(hw, NFP_NET_CFG_MAX_TXRINGS);
@@ -2575,18 +2644,21 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	PMD_INIT_LOG(DEBUG, "tx_bar_off: 0x%" PRIx64 "\n", tx_bar_off);
 	PMD_INIT_LOG(DEBUG, "rx_bar_off: 0x%" PRIx64 "\n", rx_bar_off);
 
-	if ((pci_dev->id.device_id == PCI_DEVICE_ID_NFP4000_PF_NIC) ||
-	    (pci_dev->id.device_id == PCI_DEVICE_ID_NFP6000_PF_NIC)) {
+	if (hw->is_pf && port == 0) {
 		/* configure access to tx/rx vNIC BARs */
 		nfp_nsp_map_queues_bar(nspu_desc, &bar_offset);
 		PMD_INIT_LOG(DEBUG, "tx/rx bar_offset: %" PRIx64 "\n",
 				    bar_offset);
-		hw->hw_queues = (uint8_t *)pci_dev->mem_resource[0].addr;
+		hwport0->hw_queues = (uint8_t *)pci_dev->mem_resource[0].addr;
 
 		/* vNIC PF tx/rx BARs are a subset of PF PCI device */
-		hw->hw_queues += bar_offset;
-		hw->tx_bar = hw->hw_queues + tx_bar_off;
-		hw->rx_bar = hw->hw_queues + rx_bar_off;
+		hwport0->hw_queues += bar_offset;
+	}
+
+	if (hw->is_pf) {
+		hw->tx_bar = hwport0->hw_queues + tx_bar_off;
+		hw->rx_bar = hwport0->hw_queues + rx_bar_off;
+		eth_dev->data->dev_private = hw;
 	} else {
 		hw->tx_bar = (uint8_t *)pci_dev->mem_resource[2].addr +
 			     tx_bar_off;
@@ -2674,16 +2746,77 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
-static int nfp_pf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
-			    struct rte_pci_device *dev)
+static int
+nfp_pf_create_dev(struct rte_pci_device *dev, int port, int ports,
+		  nfpu_desc_t *nfpu_desc, void **priv)
 {
 	struct rte_eth_dev *eth_dev;
 	struct nfp_net_hw *hw;
+	char *port_name;
+	int ret;
+
+	port_name = rte_zmalloc("nfp_pf_port_name", 100, 0);
+	if (!port_name)
+		return -ENOMEM;
+
+	if (ports > 1)
+		sprintf(port_name, "%s_port%d", dev->device.name, port);
+	else
+		sprintf(port_name, "%s", dev->device.name);
+
+	eth_dev = rte_eth_dev_allocate(port_name);
+	if (!eth_dev)
+		return -ENOMEM;
+
+	if (port == 0) {
+		*priv = rte_zmalloc(port_name,
+				    sizeof(struct nfp_net_adapter) * ports,
+				    RTE_CACHE_LINE_SIZE);
+		if (!*priv) {
+			rte_eth_dev_release_port(eth_dev);
+			return -ENOMEM;
+		}
+	}
+
+	eth_dev->data->dev_private = *priv;
+
+	/*
+	 * dev_private pointing to port0 dev_private because we need
+	 * to configure vNIC bars based on port0 at nfp_net_init.
+	 * Then dev_private is adjusted per port.
+	 */
+	hw = (struct nfp_net_hw *)(eth_dev->data->dev_private) + port;
+	hw->nspu_desc = nfpu_desc->nspu;
+	hw->nfpu_desc = nfpu_desc;
+	hw->is_pf = 1;
+	if (ports > 1)
+		hw->pf_multiport_enabled = 1;
+
+	eth_dev->device = &dev->device;
+	rte_eth_copy_pci_info(eth_dev, dev);
+
+	ret = nfp_net_init(eth_dev);
+
+	if (ret)
+		rte_eth_dev_release_port(eth_dev);
+
+	rte_free(port_name);
+
+	return ret;
+}
+
+static int nfp_pf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
+			    struct rte_pci_device *dev)
+{
 	nfpu_desc_t *nfpu_desc;
 	nspu_desc_t *nspu_desc;
 	uint64_t offset_symbol;
+	uint8_t *bar_offset;
 	int major, minor;
+	int total_ports;
+	void *priv = 0;
 	int ret = -ENODEV;
+	int i;
 
 	if (!dev)
 		return ret;
@@ -2718,36 +2851,24 @@ static int nfp_pf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 	if (ret)
 		goto error;
 
-	eth_dev = rte_eth_dev_allocate(dev->device.name);
-	if (!eth_dev) {
+	bar_offset = (uint8_t *)dev->mem_resource[0].addr;
+	bar_offset += offset_symbol;
+	total_ports = (uint32_t)*bar_offset;
+	PMD_INIT_LOG(INFO, "Total pf ports: %d\n", total_ports);
+
+	if (total_ports <= 0 || total_ports > 8) {
+		RTE_LOG(ERR, PMD, "nfd_cfg_pf0_num_ports symbol with wrong value");
 		ret = -ENODEV;
 		goto error;
 	}
 
-	eth_dev->data->dev_private = rte_zmalloc("nfp_pf_port",
-						 sizeof(struct nfp_net_adapter),
-						 RTE_CACHE_LINE_SIZE);
-	if (!eth_dev->data->dev_private) {
-		rte_eth_dev_release_port(eth_dev);
-		ret = -ENODEV;
-		goto error;
+	for (i = 0; i < total_ports; i++) {
+		ret = nfp_pf_create_dev(dev, i, total_ports, nfpu_desc, &priv);
+		if (ret)
+			goto error;
 	}
 
-	hw = (struct nfp_net_hw *)(eth_dev->data->dev_private);
-	hw->nspu_desc = nspu_desc;
-	hw->nfpu_desc = nfpu_desc;
-	hw->is_pf = 1;
-
-	eth_dev->device = &dev->device;
-	rte_eth_copy_pci_info(eth_dev, dev);
-
-	ret = nfp_net_init(eth_dev);
-
-	if (!ret)
-		return 0;
-
-	/* something went wrong */
-	rte_eth_dev_release_port(eth_dev);
+	return 0;
 
 error:
 	nfpu_close(nfpu_desc);

@@ -334,6 +334,9 @@
 #define NFP_NET_CFG_RXR_STATS(_x)       (NFP_NET_CFG_RXR_STATS_BASE + \
 					 ((_x) * 0x10))
 
+/* PF multiport offset */
+#define NFP_PF_CSR_SLICE_SIZE	(32 * 1024)
+
 #endif /* _NFP_NET_CTRL_H_ */
 /*
  * Local variables:

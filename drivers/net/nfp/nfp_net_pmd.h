@@ -439,6 +439,8 @@ struct nfp_net_hw {
 #endif
 	uint8_t *hw_queues;
 	uint8_t is_pf;
+	uint8_t pf_port_idx;
+	uint8_t pf_multiport_enabled;
 	nspu_desc_t *nspu_desc;
 	nfpu_desc_t *nfpu_desc;
 };
