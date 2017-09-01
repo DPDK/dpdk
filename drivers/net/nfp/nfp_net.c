@@ -737,6 +737,10 @@ nfp_net_start(struct rte_eth_dev *dev)
 		goto error;
 	}
 
+	if (hw->is_pf)
+		/* Configure the physical port up */
+		nfp_nsp_eth_config(hw->nspu_desc, hw->pf_port_idx, 1);
+
 	hw->ctrl = new_ctrl;
 
 	return 0;
@@ -765,8 +769,11 @@ static void
 nfp_net_stop(struct rte_eth_dev *dev)
 {
 	int i;
+	struct nfp_net_hw *hw;
 
 	PMD_INIT_LOG(DEBUG, "Stop");
+
+	hw = NFP_NET_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 
 	nfp_net_disable_queues(dev);
 
@@ -780,6 +787,10 @@ nfp_net_stop(struct rte_eth_dev *dev)
 		nfp_net_reset_rx_queue(
 			(struct nfp_net_rxq *)dev->data->rx_queues[i]);
 	}
+
+	if (hw->is_pf)
+		/* Configure the physical port down */
+		nfp_nsp_eth_config(hw->nspu_desc, hw->pf_port_idx, 0);
 }
 
 /* Reset and stop device. The device can not be restarted. */
@@ -788,6 +799,7 @@ nfp_net_close(struct rte_eth_dev *dev)
 {
 	struct nfp_net_hw *hw;
 	struct rte_pci_device *pci_dev;
+	int i;
 
 	PMD_INIT_LOG(DEBUG, "Close");
 
@@ -799,7 +811,18 @@ nfp_net_close(struct rte_eth_dev *dev)
 	 * threads/queues before calling the device close function.
 	 */
 
-	nfp_net_stop(dev);
+	nfp_net_disable_queues(dev);
+
+	/* Clear queues */
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		nfp_net_reset_tx_queue(
+			(struct nfp_net_txq *)dev->data->tx_queues[i]);
+	}
+
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		nfp_net_reset_rx_queue(
+			(struct nfp_net_rxq *)dev->data->rx_queues[i]);
+	}
 
 	rte_intr_disable(&pci_dev->intr_handle);
 	nn_cfg_writeb(hw, NFP_NET_CFG_LSC, 0xff);
