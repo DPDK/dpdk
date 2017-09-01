@@ -63,8 +63,8 @@
 #define MLX4_PMD_TX_MP_CACHE 8
 #endif
 
-/* Alarm timeout. */
-#define MLX4_ALARM_TIMEOUT_US 100000
+/* Interrupt alarm timeout value in microseconds. */
+#define MLX4_INTR_ALARM_TIMEOUT 100000
 
 /* Port parameter. */
 #define MLX4_PMD_PORT_KVARG "port"
@@ -162,7 +162,7 @@ struct priv {
 	uint8_t port; /* Physical port number. */
 	unsigned int started:1; /* Device started, flows enabled. */
 	unsigned int vf:1; /* This is a VF device. */
-	unsigned int pending_alarm:1; /* An alarm is pending. */
+	unsigned int intr_alarm:1; /* An interrupt alarm is scheduled. */
 	unsigned int isolated:1; /* Toggle isolated mode. */
 	/* RX/TX queues. */
 	unsigned int rxqs_n; /* RX queues array size. */

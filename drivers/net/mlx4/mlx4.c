@@ -2720,10 +2720,10 @@ priv_dev_status_handler(struct priv *priv, struct rte_eth_dev *dev,
 	mlx4_link_update(dev, 0);
 	if (((link->link_speed == 0) && link->link_status) ||
 	    ((link->link_speed != 0) && !link->link_status)) {
-		if (!priv->pending_alarm) {
+		if (!priv->intr_alarm) {
 			/* Inconsistent status, check again later. */
-			priv->pending_alarm = 1;
-			rte_eal_alarm_set(MLX4_ALARM_TIMEOUT_US,
+			priv->intr_alarm = 1;
+			rte_eal_alarm_set(MLX4_INTR_ALARM_TIMEOUT,
 					  mlx4_dev_link_status_handler,
 					  dev);
 		}
@@ -2747,8 +2747,8 @@ mlx4_dev_link_status_handler(void *arg)
 	uint32_t events;
 	int ret;
 
-	assert(priv->pending_alarm == 1);
-	priv->pending_alarm = 0;
+	assert(priv->intr_alarm == 1);
+	priv->intr_alarm = 0;
 	ret = priv_dev_status_handler(priv, dev, &events);
 	if (ret > 0 && events & (1 << RTE_ETH_EVENT_INTR_LSC))
 		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC,
@@ -2917,14 +2917,14 @@ priv_dev_link_interrupt_handler_uninstall(struct priv *priv,
 		if (ret)
 			return ret;
 	}
-	if (priv->pending_alarm)
+	if (priv->intr_alarm)
 		if (rte_eal_alarm_cancel(mlx4_dev_link_status_handler,
 					 dev)) {
 			ERROR("rte_eal_alarm_cancel failed "
 			      " (rte_errno: %s)", strerror(rte_errno));
 			return -rte_errno;
 		}
-	priv->pending_alarm = 0;
+	priv->intr_alarm = 0;
 	return 0;
 }
 
