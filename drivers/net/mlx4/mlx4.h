@@ -178,4 +178,15 @@ struct priv {
 	LIST_HEAD(mlx4_flows, rte_flow) flows;
 };
 
+/* mlx4.c */
+
+int mlx4_link_update(struct rte_eth_dev *dev, int wait_to_complete);
+
+/* mlx4_intr.c */
+
+int mlx4_intr_uninstall(struct priv *priv);
+int mlx4_intr_install(struct priv *priv);
+int mlx4_rx_intr_disable(struct rte_eth_dev *dev, uint16_t idx);
+int mlx4_rx_intr_enable(struct rte_eth_dev *dev, uint16_t idx);
+
 #endif /* RTE_PMD_MLX4_H_ */
