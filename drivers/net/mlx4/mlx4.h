@@ -84,9 +84,7 @@
 #define MLX4_PMD_SGE_WR_N 4
 
 /* Maximum size for inline data. */
-#ifndef MLX4_PMD_MAX_INLINE
 #define MLX4_PMD_MAX_INLINE 0
-#endif
 
 /*
  * Maximum number of cached Memory Pools (MPs) per TX queue. Each RTE MP
@@ -267,9 +265,7 @@ struct txq {
 	struct ibv_qp *qp; /* Queue Pair. */
 	struct ibv_exp_qp_burst_family *if_qp; /* QP burst interface. */
 	struct ibv_exp_cq_family *if_cq; /* CQ interface. */
-#if MLX4_PMD_MAX_INLINE > 0
 	uint32_t max_inline; /* Max inline send size <= MLX4_PMD_MAX_INLINE. */
-#endif
 	unsigned int elts_n; /* (*elts)[] length. */
 	struct txq_elt (*elts)[]; /* TX elements. */
 	unsigned int elts_head; /* Current index in (*elts)[]. */
