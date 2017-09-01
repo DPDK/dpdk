@@ -41,6 +41,16 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **nfp: Added PF support.**
+
+  Previously Netronome's NFP PMD had just support for VFs. PF support is
+  just as a basic DPDK port and has no VF management yet.
+
+  PF support comes with firmware upload support which allows the PMD to
+  independently work from kernel netdev NFP drivers.
+
+  NFP 4000 devices are also now supported along with previous 6000 devices.
+
 
 Resolved Issues
 ---------------
