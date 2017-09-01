@@ -55,11 +55,10 @@
 #include <rte_alarm.h>
 #include <rte_spinlock.h>
 
+#include "nfp_nfpu.h"
 #include "nfp_net_pmd.h"
 #include "nfp_net_logs.h"
 #include "nfp_net_ctrl.h"
-
-#include "nfp_nfpu.h"
 
 /* Prototypes */
 static void nfp_net_close(struct rte_eth_dev *dev);
@@ -101,7 +100,7 @@ static uint16_t nfp_net_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
  * happen to be at the same offset on the NFP6000 and the NFP3200 so
  * we use a single macro here.
  */
-#define NFP_PCIE_QUEUE(_q)	(0x80000 + (0x800 * ((_q) & 0xff)))
+#define NFP_PCIE_QUEUE(_q)	(0x800 * ((_q) & 0xff))
 
 /* Maximum value which can be added to a queue with one transaction */
 #define NFP_QCP_MAX_ADD	0x7f
@@ -2496,9 +2495,12 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	struct rte_pci_device *pci_dev;
 	struct nfp_net_hw *hw;
 
-	uint32_t tx_bar_off, rx_bar_off;
+	uint64_t tx_bar_off = 0, rx_bar_off = 0;
 	uint32_t start_q;
 	int stride = 4;
+
+	nspu_desc_t *nspu_desc = NULL;
+	uint64_t bar_offset;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -2532,11 +2534,33 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 			"hw->ctrl_bar is NULL. BAR0 not configured\n");
 		return -ENODEV;
 	}
+
+	/* Is this a PF device? */
+	if ((pci_dev->id.device_id == PCI_DEVICE_ID_NFP4000_PF_NIC) ||
+	    (pci_dev->id.device_id == PCI_DEVICE_ID_NFP6000_PF_NIC)) {
+		nspu_desc = hw->nspu_desc;
+
+		if (nfp_nsp_map_ctrl_bar(nspu_desc, &bar_offset) != 0) {
+			/*
+			 * A firmware should be there after PF probe so this
+			 * should not happen.
+			 */
+			RTE_LOG(ERR, PMD, "PF BAR symbol resolution failed\n");
+			return -ENODEV;
+		}
+
+		/* vNIC PF control BAR is a subset of PF PCI device BAR */
+		hw->ctrl_bar += bar_offset;
+		PMD_INIT_LOG(DEBUG, "ctrl bar: %p\n", hw->ctrl_bar);
+	}
+
 	hw->max_rx_queues = nn_cfg_readl(hw, NFP_NET_CFG_MAX_RXRINGS);
 	hw->max_tx_queues = nn_cfg_readl(hw, NFP_NET_CFG_MAX_TXRINGS);
 
 	/* Work out where in the BAR the queues start. */
 	switch (pci_dev->id.device_id) {
+	case PCI_DEVICE_ID_NFP4000_PF_NIC:
+	case PCI_DEVICE_ID_NFP6000_PF_NIC:
 	case PCI_DEVICE_ID_NFP6000_VF_NIC:
 		start_q = nn_cfg_readl(hw, NFP_NET_CFG_START_TXQ);
 		tx_bar_off = NFP_PCIE_QUEUE(start_q);
@@ -2548,11 +2572,27 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 		return -ENODEV;
 	}
 
-	PMD_INIT_LOG(DEBUG, "tx_bar_off: 0x%08x", tx_bar_off);
-	PMD_INIT_LOG(DEBUG, "rx_bar_off: 0x%08x", rx_bar_off);
+	PMD_INIT_LOG(DEBUG, "tx_bar_off: 0x%" PRIx64 "\n", tx_bar_off);
+	PMD_INIT_LOG(DEBUG, "rx_bar_off: 0x%" PRIx64 "\n", rx_bar_off);
 
-	hw->tx_bar = (uint8_t *)pci_dev->mem_resource[2].addr + tx_bar_off;
-	hw->rx_bar = (uint8_t *)pci_dev->mem_resource[2].addr + rx_bar_off;
+	if ((pci_dev->id.device_id == PCI_DEVICE_ID_NFP4000_PF_NIC) ||
+	    (pci_dev->id.device_id == PCI_DEVICE_ID_NFP6000_PF_NIC)) {
+		/* configure access to tx/rx vNIC BARs */
+		nfp_nsp_map_queues_bar(nspu_desc, &bar_offset);
+		PMD_INIT_LOG(DEBUG, "tx/rx bar_offset: %" PRIx64 "\n",
+				    bar_offset);
+		hw->hw_queues = (uint8_t *)pci_dev->mem_resource[0].addr;
+
+		/* vNIC PF tx/rx BARs are a subset of PF PCI device */
+		hw->hw_queues += bar_offset;
+		hw->tx_bar = hw->hw_queues + tx_bar_off;
+		hw->rx_bar = hw->hw_queues + rx_bar_off;
+	} else {
+		hw->tx_bar = (uint8_t *)pci_dev->mem_resource[2].addr +
+			     tx_bar_off;
+		hw->rx_bar = (uint8_t *)pci_dev->mem_resource[2].addr +
+			     rx_bar_off;
+	}
 
 	PMD_INIT_LOG(DEBUG, "ctrl_bar: %p, tx_bar: %p, rx_bar: %p",
 		     hw->ctrl_bar, hw->tx_bar, hw->rx_bar);

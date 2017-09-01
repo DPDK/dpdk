@@ -437,6 +437,10 @@ struct nfp_net_hw {
 	struct nfp_cpp_area *rx_area;
 	struct nfp_cpp_area *msix_area;
 #endif
+	uint8_t *hw_queues;
+	uint8_t is_pf;
+	nspu_desc_t *nspu_desc;
+	nfpu_desc_t *nfpu_desc;
 };
 
 struct nfp_net_adapter {
