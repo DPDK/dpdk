@@ -21,6 +21,9 @@
 /* NFP target for NSP access */
 #define NFP_NSP_TARGET   7
 
+/* Expansion BARs for mapping PF vnic BARs */
+#define NFP_NET_PF_CFG_EXP_BAR    6
+
 /*
  * This is an NFP internal address used for configuring properly an NFP
  * expansion BAR.
@@ -297,7 +300,7 @@ nspu_command(nspu_desc_t *desc, uint16_t cmd, int read, int write,
 	return ret;
 }
 
-int
+static int
 nfp_fw_reset(nspu_desc_t *nspu_desc)
 {
 	int res;
@@ -313,7 +316,7 @@ nfp_fw_reset(nspu_desc_t *nspu_desc)
 #define DEFAULT_FW_PATH       "/lib/firmware/netronome"
 #define DEFAULT_FW_FILENAME   "nic_dpdk_default.nffw"
 
-int
+static int
 nfp_fw_upload(nspu_desc_t *nspu_desc)
 {
 	int fw_f;
@@ -391,7 +394,7 @@ nfp_fw_upload(nspu_desc_t *nspu_desc)
  * a PCI BAR window. NFP expansion BARs are used in this regard through
  * the NSPU interface.
  */
-int
+static int
 nfp_nspu_set_bar_from_symbl(nspu_desc_t *desc, const char *symbl,
 			    uint32_t expbar, uint64_t *pcie_offset,
 			    ssize_t *size)
@@ -453,4 +456,43 @@ nfp_nspu_set_bar_from_symbl(nspu_desc_t *desc, const char *symbl,
 clean:
 	free(sym_buf);
 	return ret;
+}
+
+int
+nfp_nsp_fw_setup(nspu_desc_t *desc, const char *sym, uint64_t *pcie_offset)
+{
+	ssize_t bar0_sym_size;
+
+	/* If the symbol resolution works, it implies a firmware app
+	 * is already there.
+	 */
+	if (!nfp_nspu_set_bar_from_symbl(desc, sym, NFP_NET_PF_CFG_EXP_BAR,
+					 pcie_offset, &bar0_sym_size))
+		return 0;
+
+	/* No firmware app detected or not the right one */
+	RTE_LOG(INFO, PMD, "No firmware detected. Resetting NFP...\n");
+	if (nfp_fw_reset(desc) < 0) {
+		RTE_LOG(ERR, PMD, "nfp fw reset failed\n");
+		return -ENODEV;
+	}
+
+	RTE_LOG(INFO, PMD, "Reset done.\n");
+	RTE_LOG(INFO, PMD, "Uploading firmware...\n");
+
+	if (nfp_fw_upload(desc) < 0) {
+		RTE_LOG(ERR, PMD, "nfp fw upload failed\n");
+		return -ENODEV;
+	}
+
+	RTE_LOG(INFO, PMD, "Done.\n");
+
+	/* Now the symbol should be there */
+	if (nfp_nspu_set_bar_from_symbl(desc, sym, NFP_NET_PF_CFG_EXP_BAR,
+					pcie_offset, &bar0_sym_size)) {
+		RTE_LOG(ERR, PMD, "nfp PF BAR symbol resolution failed\n");
+		return -ENODEV;
+	}
+
+	return 0;
 }

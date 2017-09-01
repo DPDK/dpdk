@@ -2639,6 +2639,7 @@ static int nfp_pf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 {
 	nfpu_desc_t *nfpu_desc;
 	nspu_desc_t *nspu_desc;
+	uint64_t offset_symbol;
 	int major, minor;
 
 	if (!dev)
@@ -2668,6 +2669,8 @@ static int nfp_pf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
 		RTE_LOG(INFO, PMD, "NFP NSP ABI version too old. Required 0.20 or higher\n");
 		goto no_abi;
 	}
+
+	nfp_nsp_fw_setup(nspu_desc, "nfd_cfg_pf0_num_ports", &offset_symbol);
 
 	/* No port is created yet */
 
