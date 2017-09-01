@@ -22,7 +22,8 @@
 #define NFP_NSP_TARGET   7
 
 /* Expansion BARs for mapping PF vnic BARs */
-#define NFP_NET_PF_CFG_EXP_BAR    6
+#define NFP_NET_PF_CFG_EXP_BAR          6
+#define NFP_NET_PF_HW_QUEUES_EXP_BAR    5
 
 /*
  * This is an NFP internal address used for configuring properly an NFP
@@ -508,4 +509,22 @@ nfp_nsp_map_ctrl_bar(nspu_desc_t *desc, uint64_t *pcie_offset)
 		return -ENODEV;
 
 	return 0;
+}
+
+/*
+ * This is a hardcoded fixed NFP internal CPP bus address for the hw queues unit
+ * inside the PCIE island.
+ */
+#define NFP_CPP_PCIE_QUEUES ((uint64_t)(1ULL << 39) |  0x80000 | \
+			     ((uint64_t)0x4 & 0x3f) << 32)
+
+/* Configure a specific NFP expansion bar for accessing the vNIC rx/tx BARs */
+void
+nfp_nsp_map_queues_bar(nspu_desc_t *desc, uint64_t *pcie_offset)
+{
+	nfp_nspu_mem_bar_cfg(desc, NFP_NET_PF_HW_QUEUES_EXP_BAR, 0,
+			     NFP_CPP_PCIE_QUEUES, pcie_offset);
+
+	/* This is the pcie offset to use by the host */
+	*pcie_offset |= ((NFP_NET_PF_HW_QUEUES_EXP_BAR & 0x7) << (27 - 3));
 }
