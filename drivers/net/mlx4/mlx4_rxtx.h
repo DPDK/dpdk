@@ -120,6 +120,17 @@ struct txq {
 	unsigned int socket; /**< CPU socket ID for allocations. */
 };
 
+/* mlx4_rxq.c */
+
+void mlx4_rxq_cleanup(struct rxq *rxq);
+int mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx,
+			uint16_t desc, unsigned int socket,
+			const struct rte_eth_rxconf *conf,
+			struct rte_mempool *mp);
+void mlx4_rx_queue_release(void *dpdk_rxq);
+void mlx4_mac_addr_del(struct priv *priv);
+int mlx4_mac_addr_add(struct priv *priv);
+
 /* mlx4_rxtx.c */
 
 uint32_t mlx4_txq_mp2mr(struct txq *txq, struct rte_mempool *mp);
