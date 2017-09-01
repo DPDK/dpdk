@@ -561,7 +561,7 @@ static const struct mlx4_flow_items mlx4_flow_items[] = {
 };
 
 /**
- * Validate a flow supported by the NIC.
+ * Make sure a flow rule is supported and initialize associated structure.
  *
  * @param priv
  *   Pointer to private structure.
@@ -580,12 +580,12 @@ static const struct mlx4_flow_items mlx4_flow_items[] = {
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 static int
-priv_flow_validate(struct priv *priv,
-		   const struct rte_flow_attr *attr,
-		   const struct rte_flow_item items[],
-		   const struct rte_flow_action actions[],
-		   struct rte_flow_error *error,
-		   struct mlx4_flow *flow)
+mlx4_flow_prepare(struct priv *priv,
+		  const struct rte_flow_attr *attr,
+		  const struct rte_flow_item items[],
+		  const struct rte_flow_action actions[],
+		  struct rte_flow_error *error,
+		  struct mlx4_flow *flow)
 {
 	const struct mlx4_flow_items *cur_item = mlx4_flow_items;
 	struct mlx4_flow_action action = {
@@ -725,7 +725,7 @@ mlx4_flow_validate(struct rte_eth_dev *dev,
 	struct priv *priv = dev->data->dev_private;
 	struct mlx4_flow flow = { .offset = sizeof(struct ibv_flow_attr) };
 
-	return priv_flow_validate(priv, attr, items, actions, error, &flow);
+	return mlx4_flow_prepare(priv, attr, items, actions, error, &flow);
 }
 
 /**
@@ -817,7 +817,7 @@ err:
  *   A flow if the rule could be created.
  */
 static struct rte_flow *
-priv_flow_create_action_queue(struct priv *priv,
+mlx4_flow_create_action_queue(struct priv *priv,
 			      struct ibv_flow_attr *ibv_attr,
 			      struct mlx4_flow_action *action,
 			      struct rte_flow_error *error)
@@ -875,7 +875,7 @@ mlx4_flow_create(struct rte_eth_dev *dev,
 	struct mlx4_flow flow = { .offset = sizeof(struct ibv_flow_attr), };
 	int err;
 
-	err = priv_flow_validate(priv, attr, items, actions, error, &flow);
+	err = mlx4_flow_prepare(priv, attr, items, actions, error, &flow);
 	if (err)
 		return NULL;
 	flow.ibv_attr = rte_malloc(__func__, flow.offset, 0);
@@ -894,8 +894,8 @@ mlx4_flow_create(struct rte_eth_dev *dev,
 		.port = priv->port,
 		.flags = 0,
 	};
-	claim_zero(priv_flow_validate(priv, attr, items, actions,
-				      error, &flow));
+	claim_zero(mlx4_flow_prepare(priv, attr, items, actions,
+				     error, &flow));
 	action = (struct mlx4_flow_action){
 		.queue = 0,
 		.drop = 0,
@@ -917,7 +917,7 @@ mlx4_flow_create(struct rte_eth_dev *dev,
 			goto exit;
 		}
 	}
-	rte_flow = priv_flow_create_action_queue(priv, flow.ibv_attr,
+	rte_flow = mlx4_flow_create_action_queue(priv, flow.ibv_attr,
 						 &action, error);
 	if (rte_flow) {
 		LIST_INSERT_HEAD(&priv->flows, rte_flow, next);
@@ -1015,7 +1015,7 @@ mlx4_flow_flush(struct rte_eth_dev *dev,
  *   Pointer to private structure.
  */
 void
-mlx4_priv_flow_stop(struct priv *priv)
+mlx4_flow_stop(struct priv *priv)
 {
 	struct rte_flow *flow;
 
@@ -1039,7 +1039,7 @@ mlx4_priv_flow_stop(struct priv *priv)
  *   0 on success, a errno value otherwise and rte_errno is set.
  */
 int
-mlx4_priv_flow_start(struct priv *priv)
+mlx4_flow_start(struct priv *priv)
 {
 	int ret;
 	struct ibv_qp *qp;

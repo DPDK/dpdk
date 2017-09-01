@@ -253,7 +253,7 @@ mlx4_dev_start(struct rte_eth_dev *dev)
 		     (void *)dev);
 		goto err;
 	}
-	ret = mlx4_priv_flow_start(priv);
+	ret = mlx4_flow_start(priv);
 	if (ret) {
 		ERROR("%p: flow start failed: %s",
 		      (void *)dev, strerror(ret));
@@ -284,7 +284,7 @@ mlx4_dev_stop(struct rte_eth_dev *dev)
 		return;
 	DEBUG("%p: detaching flows from all RX queues", (void *)dev);
 	priv->started = 0;
-	mlx4_priv_flow_stop(priv);
+	mlx4_flow_stop(priv);
 	mlx4_intr_uninstall(priv);
 	mlx4_mac_addr_del(priv);
 }

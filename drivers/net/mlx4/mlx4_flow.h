@@ -74,8 +74,8 @@ struct mlx4_flow_action {
 
 /* mlx4_flow.c */
 
-int mlx4_priv_flow_start(struct priv *priv);
-void mlx4_priv_flow_stop(struct priv *priv);
+int mlx4_flow_start(struct priv *priv);
+void mlx4_flow_stop(struct priv *priv);
 int mlx4_filter_ctrl(struct rte_eth_dev *dev,
 		     enum rte_filter_type filter_type,
 		     enum rte_filter_op filter_op,
