@@ -59,6 +59,8 @@
 #include "nfp_net_logs.h"
 #include "nfp_net_ctrl.h"
 
+#include "nfp_nfpu.h"
+
 /* Prototypes */
 static void nfp_net_close(struct rte_eth_dev *dev);
 static int nfp_net_configure(struct rte_eth_dev *dev);
@@ -2632,11 +2634,62 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 	return 0;
 }
 
-static const struct rte_pci_id pci_id_nfp_net_map[] = {
+static int nfp_pf_pci_probe(struct rte_pci_driver *pci_drv __rte_unused,
+			    struct rte_pci_device *dev)
+{
+	nfpu_desc_t *nfpu_desc;
+	nspu_desc_t *nspu_desc;
+	int major, minor;
+
+	if (!dev)
+		return -ENODEV;
+
+	nfpu_desc = rte_malloc("nfp nfpu", sizeof(nfpu_desc_t), 0);
+	if (!nfpu_desc)
+		return -ENOMEM;
+
+	if (nfpu_open(dev, nfpu_desc, 0) < 0) {
+		RTE_LOG(ERR, PMD,
+			"nfpu_open failed\n");
+		goto nfpu_error;
+	}
+
+	nspu_desc = nfpu_desc->nspu;
+
+
+	/* Check NSP ABI version */
+	if (nfp_nsp_get_abi_version(nspu_desc, &major, &minor) < 0) {
+		RTE_LOG(INFO, PMD, "NFP NSP not present\n");
+		goto no_abi;
+	}
+	PMD_INIT_LOG(INFO, "nspu ABI version: %d.%d\n", major, minor);
+
+	if ((major == 0) && (minor < 20)) {
+		RTE_LOG(INFO, PMD, "NFP NSP ABI version too old. Required 0.20 or higher\n");
+		goto no_abi;
+	}
+
+	/* No port is created yet */
+
+no_abi:
+	nfpu_close(nfpu_desc);
+nfpu_error:
+	rte_free(nfpu_desc);
+
+	return -ENODEV;
+}
+
+static const struct rte_pci_id pci_id_nfp_pf_net_map[] = {
 	{
 		RTE_PCI_DEVICE(PCI_VENDOR_ID_NETRONOME,
 			       PCI_DEVICE_ID_NFP6000_PF_NIC)
 	},
+	{
+		.vendor_id = 0,
+	},
+};
+
+static const struct rte_pci_id pci_id_nfp_vf_net_map[] = {
 	{
 		RTE_PCI_DEVICE(PCI_VENDOR_ID_NETRONOME,
 			       PCI_DEVICE_ID_NFP6000_VF_NIC)
@@ -2658,16 +2711,26 @@ static int eth_nfp_pci_remove(struct rte_pci_device *pci_dev)
 	return rte_eth_dev_pci_generic_remove(pci_dev, NULL);
 }
 
-static struct rte_pci_driver rte_nfp_net_pmd = {
-	.id_table = pci_id_nfp_net_map,
+static struct rte_pci_driver rte_nfp_net_pf_pmd = {
+	.id_table = pci_id_nfp_pf_net_map,
+	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
+	.probe = nfp_pf_pci_probe,
+	.remove = eth_nfp_pci_remove,
+};
+
+static struct rte_pci_driver rte_nfp_net_vf_pmd = {
+	.id_table = pci_id_nfp_vf_net_map,
 	.drv_flags = RTE_PCI_DRV_NEED_MAPPING | RTE_PCI_DRV_INTR_LSC,
 	.probe = eth_nfp_pci_probe,
 	.remove = eth_nfp_pci_remove,
 };
 
-RTE_PMD_REGISTER_PCI(net_nfp, rte_nfp_net_pmd);
-RTE_PMD_REGISTER_PCI_TABLE(net_nfp, pci_id_nfp_net_map);
-RTE_PMD_REGISTER_KMOD_DEP(net_nfp, "* igb_uio | uio_pci_generic | vfio-pci");
+RTE_PMD_REGISTER_PCI(net_nfp_pf, rte_nfp_net_pf_pmd);
+RTE_PMD_REGISTER_PCI(net_nfp_vf, rte_nfp_net_vf_pmd);
+RTE_PMD_REGISTER_PCI_TABLE(net_nfp_pf, pci_id_nfp_pf_net_map);
+RTE_PMD_REGISTER_PCI_TABLE(net_nfp_vf, pci_id_nfp_vf_net_map);
+RTE_PMD_REGISTER_KMOD_DEP(net_nfp_pf, "* igb_uio | uio_pci_generic | vfio");
+RTE_PMD_REGISTER_KMOD_DEP(net_nfp_vf, "* igb_uio | uio_pci_generic | vfio");
 
 /*
  * Local variables:
