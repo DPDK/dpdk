@@ -31,6 +31,11 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+/**
+ * @file
+ * Flow API operations for mlx4 driver.
+ */
+
 #include <arpa/inet.h>
 #include <assert.h>
 #include <errno.h>

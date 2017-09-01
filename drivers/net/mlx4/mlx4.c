@@ -31,29 +31,41 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/* System headers. */
+/**
+ * @file
+ * mlx4 driver initialization.
+ */
+
+#include <assert.h>
+#include <errno.h>
+#include <inttypes.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
-#include <inttypes.h>
 #include <string.h>
-#include <errno.h>
 #include <unistd.h>
-#include <assert.h>
 
-#include <rte_ether.h>
+/* Verbs headers do not support -pedantic. */
+#ifdef PEDANTIC
+#pragma GCC diagnostic ignored "-Wpedantic"
+#endif
+#include <infiniband/verbs.h>
+#ifdef PEDANTIC
+#pragma GCC diagnostic error "-Wpedantic"
+#endif
+
+#include <rte_common.h>
+#include <rte_dev.h>
+#include <rte_errno.h>
 #include <rte_ethdev.h>
 #include <rte_ethdev_pci.h>
-#include <rte_dev.h>
-#include <rte_mbuf.h>
-#include <rte_errno.h>
-#include <rte_malloc.h>
-#include <rte_kvargs.h>
+#include <rte_ether.h>
 #include <rte_interrupts.h>
-#include <rte_common.h>
+#include <rte_kvargs.h>
+#include <rte_malloc.h>
+#include <rte_mbuf.h>
 
-/* PMD headers. */
 #include "mlx4.h"
 #include "mlx4_flow.h"
 #include "mlx4_rxtx.h"
@@ -72,8 +84,6 @@ const char *pmd_mlx4_init_params[] = {
 	MLX4_PMD_PORT_KVARG,
 	NULL,
 };
-
-/* Device configuration. */
 
 /**
  * DPDK callback for Ethernet device configuration.
