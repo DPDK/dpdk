@@ -56,6 +56,7 @@
 #include <rte_interrupts.h>
 
 #include "mlx4.h"
+#include "mlx4_rxtx.h"
 #include "mlx4_utils.h"
 
 static void mlx4_link_status_alarm(struct priv *priv);

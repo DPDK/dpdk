@@ -85,73 +85,8 @@ enum {
 
 #define MLX4_DRIVER_NAME "net_mlx4"
 
-struct mlx4_rxq_stats {
-	unsigned int idx; /**< Mapping index. */
-	uint64_t ipackets; /**< Total of successfully received packets. */
-	uint64_t ibytes; /**< Total of successfully received bytes. */
-	uint64_t idropped; /**< Total of packets dropped when RX ring full. */
-	uint64_t rx_nombuf; /**< Total of RX mbuf allocation failures. */
-};
-
-/* RX element. */
-struct rxq_elt {
-	struct ibv_recv_wr wr; /* Work Request. */
-	struct ibv_sge sge; /* Scatter/Gather Element. */
-	struct rte_mbuf *buf; /**< Buffer. */
-};
-
-/* RX queue descriptor. */
-struct rxq {
-	struct priv *priv; /* Back pointer to private data. */
-	struct rte_mempool *mp; /* Memory Pool for allocations. */
-	struct ibv_mr *mr; /* Memory Region (for mp). */
-	struct ibv_cq *cq; /* Completion Queue. */
-	struct ibv_qp *qp; /* Queue Pair. */
-	struct ibv_comp_channel *channel;
-	unsigned int port_id; /* Port ID for incoming packets. */
-	unsigned int elts_n; /* (*elts)[] length. */
-	unsigned int elts_head; /* Current index in (*elts)[]. */
-	struct rxq_elt (*elts)[]; /* Rx elements. */
-	struct mlx4_rxq_stats stats; /* RX queue counters. */
-	unsigned int socket; /* CPU socket ID for allocations. */
-};
-
-/* TX element. */
-struct txq_elt {
-	struct ibv_send_wr wr; /* Work request. */
-	struct ibv_sge sge; /* Scatter/gather element. */
-	struct rte_mbuf *buf;
-};
-
-struct mlx4_txq_stats {
-	unsigned int idx; /**< Mapping index. */
-	uint64_t opackets; /**< Total of successfully sent packets. */
-	uint64_t obytes;   /**< Total of successfully sent bytes. */
-	uint64_t odropped; /**< Total of packets not sent when TX ring full. */
-};
-
-/* TX queue descriptor. */
-struct txq {
-	struct priv *priv; /* Back pointer to private data. */
-	struct {
-		const struct rte_mempool *mp; /* Cached Memory Pool. */
-		struct ibv_mr *mr; /* Memory Region (for mp). */
-		uint32_t lkey; /* mr->lkey */
-	} mp2mr[MLX4_PMD_TX_MP_CACHE]; /* MP to MR translation table. */
-	struct ibv_cq *cq; /* Completion Queue. */
-	struct ibv_qp *qp; /* Queue Pair. */
-	uint32_t max_inline; /* Max inline send size <= MLX4_PMD_MAX_INLINE. */
-	unsigned int elts_n; /* (*elts)[] length. */
-	struct txq_elt (*elts)[]; /* TX elements. */
-	unsigned int elts_head; /* Current index in (*elts)[]. */
-	unsigned int elts_tail; /* First element awaiting completion. */
-	unsigned int elts_comp; /* Number of completion requests. */
-	unsigned int elts_comp_cd; /* Countdown for next completion request. */
-	unsigned int elts_comp_cd_init; /* Initial value for countdown. */
-	struct mlx4_txq_stats stats; /* TX queue counters. */
-	unsigned int socket; /* CPU socket ID for allocations. */
-};
-
+struct rxq;
+struct txq;
 struct rte_flow;
 
 struct priv {

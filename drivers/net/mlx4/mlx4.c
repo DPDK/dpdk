@@ -71,6 +71,7 @@
 /* PMD headers. */
 #include "mlx4.h"
 #include "mlx4_flow.h"
+#include "mlx4_rxtx.h"
 #include "mlx4_utils.h"
 
 /** Configuration structure for device arguments. */
