@@ -515,6 +515,9 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 static void
 rxq_cleanup(struct rxq *rxq);
 
+static void
+priv_mac_addr_del(struct priv *priv);
+
 /**
  * Create RSS parent queue.
  *
@@ -641,6 +644,7 @@ dev_configure(struct rte_eth_dev *dev)
 		for (i = 0; (i != priv->rxqs_n); ++i)
 			if ((*priv->rxqs)[i] != NULL)
 				return EINVAL;
+		priv_mac_addr_del(priv);
 		priv_parent_list_cleanup(priv);
 		priv->rss = 0;
 		priv->rxqs_n = 0;
@@ -2065,46 +2069,57 @@ rxq_free_elts(struct rxq *rxq)
 }
 
 /**
- * Unregister a MAC address from a Rx queue.
+ * Unregister a MAC address.
  *
- * @param rxq
- *   Pointer to RX queue structure.
+ * @param priv
+ *   Pointer to private structure.
  */
 static void
-rxq_mac_addr_del(struct rxq *rxq)
+priv_mac_addr_del(struct priv *priv)
 {
 #ifndef NDEBUG
-	struct priv *priv = rxq->priv;
-	const uint8_t (*mac)[ETHER_ADDR_LEN] =
-		(const uint8_t (*)[ETHER_ADDR_LEN])
-		priv->mac.addr_bytes;
+	uint8_t (*mac)[ETHER_ADDR_LEN] = &priv->mac.addr_bytes;
 #endif
-	if (!rxq->mac_flow)
+
+	if (!priv->mac_flow)
 		return;
 	DEBUG("%p: removing MAC address %02x:%02x:%02x:%02x:%02x:%02x",
-	      (void *)rxq,
+	      (void *)priv,
 	      (*mac)[0], (*mac)[1], (*mac)[2], (*mac)[3], (*mac)[4], (*mac)[5]);
-	claim_zero(ibv_destroy_flow(rxq->mac_flow));
-	rxq->mac_flow = NULL;
+	claim_zero(ibv_destroy_flow(priv->mac_flow));
+	priv->mac_flow = NULL;
 }
 
 /**
- * Register a MAC address in a Rx queue.
+ * Register a MAC address.
  *
- * @param rxq
- *   Pointer to RX queue structure.
+ * In RSS mode, the MAC address is registered in the parent queue,
+ * otherwise it is registered in queue 0.
+ *
+ * @param priv
+ *   Pointer to private structure.
  *
  * @return
  *   0 on success, errno value on failure.
  */
 static int
-rxq_mac_addr_add(struct rxq *rxq)
+priv_mac_addr_add(struct priv *priv)
 {
+	uint8_t (*mac)[ETHER_ADDR_LEN] = &priv->mac.addr_bytes;
+	struct rxq *rxq;
 	struct ibv_flow *flow;
-	struct priv *priv = rxq->priv;
-	const uint8_t (*mac)[ETHER_ADDR_LEN] =
-			(const uint8_t (*)[ETHER_ADDR_LEN])
-			priv->mac.addr_bytes;
+
+	/* If device isn't started, this is all we need to do. */
+	if (!priv->started)
+		return 0;
+	if (priv->isolated)
+		return 0;
+	if (priv->rss)
+		rxq = LIST_FIRST(&priv->parents);
+	else if (*priv->rxqs && (*priv->rxqs)[0])
+		rxq = (*priv->rxqs)[0];
+	else
+		return 0;
 
 	/* Allocate flow specification on the stack. */
 	struct __attribute__((packed)) {
@@ -2114,8 +2129,8 @@ rxq_mac_addr_add(struct rxq *rxq)
 	struct ibv_flow_attr *attr = &data.attr;
 	struct ibv_flow_spec_eth *spec = &data.spec;
 
-	if (rxq->mac_flow)
-		rxq_mac_addr_del(rxq);
+	if (priv->mac_flow)
+		priv_mac_addr_del(priv);
 	/*
 	 * No padding must be inserted by the compiler between attr and spec.
 	 * This layout is expected by libibverbs.
@@ -2142,7 +2157,7 @@ rxq_mac_addr_add(struct rxq *rxq)
 		}
 	};
 	DEBUG("%p: adding MAC address %02x:%02x:%02x:%02x:%02x:%02x",
-	      (void *)rxq,
+	      (void *)priv,
 	      (*mac)[0], (*mac)[1], (*mac)[2], (*mac)[3], (*mac)[4], (*mac)[5]);
 	/* Create related flow. */
 	errno = 0;
@@ -2156,60 +2171,8 @@ rxq_mac_addr_add(struct rxq *rxq)
 			return errno;
 		return EINVAL;
 	}
-	assert(rxq->mac_flow == NULL);
-	rxq->mac_flow = flow;
-	return 0;
-}
-
-/**
- * Register a MAC address.
- *
- * In RSS mode, the MAC address is registered in the parent queue,
- * otherwise it is registered in each queue directly.
- *
- * @param priv
- *   Pointer to private structure.
- * @param mac
- *   MAC address to register.
- *
- * @return
- *   0 on success, errno value on failure.
- */
-static int
-priv_mac_addr_add(struct priv *priv, const uint8_t (*mac)[ETHER_ADDR_LEN])
-{
-	unsigned int i;
-	int ret;
-
-	priv->mac = (struct ether_addr){
-		{
-			(*mac)[0], (*mac)[1], (*mac)[2],
-			(*mac)[3], (*mac)[4], (*mac)[5]
-		}
-	};
-	/* If device isn't started, this is all we need to do. */
-	if (!priv->started) {
-		goto end;
-	}
-	if (priv->rss) {
-		ret = rxq_mac_addr_add(LIST_FIRST(&priv->parents));
-		if (ret)
-			return ret;
-		goto end;
-	}
-	for (i = 0; (i != priv->rxqs_n); ++i) {
-		if ((*priv->rxqs)[i] == NULL)
-			continue;
-		ret = rxq_mac_addr_add((*priv->rxqs)[i]);
-		if (!ret)
-			continue;
-		/* Failure, rollback. */
-		while (i != 0)
-			if ((*priv->rxqs)[(--i)] != NULL)
-				rxq_mac_addr_del((*priv->rxqs)[i]);
-		return ret;
-	}
-end:
+	assert(priv->mac_flow == NULL);
+	priv->mac_flow = flow;
 	return 0;
 }
 
@@ -2252,9 +2215,6 @@ rxq_cleanup(struct rxq *rxq)
 		claim_zero(ibv_exp_release_intf(rxq->priv->ctx,
 						rxq->if_cq,
 						&params));
-	}
-	if (rxq->qp != NULL && !rxq->priv->isolated) {
-		rxq_mac_addr_del(rxq);
 	}
 	if (rxq->qp != NULL)
 		claim_zero(ibv_destroy_qp(rxq->qp));
@@ -2894,12 +2854,6 @@ rxq_rehash(struct rte_eth_dev *dev, struct rxq *rxq)
 		DEBUG("%p: nothing to do", (void *)dev);
 		return 0;
 	}
-	/* Remove attached flows if RSS is disabled (no parent queue). */
-	if (!priv->rss && !priv->isolated) {
-		rxq_mac_addr_del(&tmpl);
-		/* Update original queue in case of failure. */
-		rxq->mac_flow = NULL;
-	}
 	/* From now on, any failure will render the queue unusable.
 	 * Reinitialize QP. */
 	if (!tmpl.qp)
@@ -2932,12 +2886,6 @@ skip_init:
 		ERROR("%p: cannot resize CQ: %s", (void *)dev, strerror(err));
 		assert(err > 0);
 		return err;
-	}
-	/* Reconfigure flows. Do not care for errors. */
-	if (!priv->rss && !priv->isolated) {
-		rxq_mac_addr_add(&tmpl);
-		/* Update original queue in case of failure. */
-		rxq->mac_flow = NULL;
 	}
 	/* Allocate pool. */
 	pool = rte_malloc(__func__, (mbuf_n * sizeof(*pool)), 0);
@@ -3080,15 +3028,6 @@ rxq_create_qp(struct rxq *rxq,
 		ERROR("QP state to IBV_QPS_INIT failed: %s",
 		      strerror(ret));
 		return ret;
-	}
-	if (!priv->isolated && (parent || !priv->rss)) {
-		/* Configure MAC and broadcast addresses. */
-		ret = rxq_mac_addr_add(rxq);
-		if (ret) {
-			ERROR("QP flow attachment failed: %s",
-			      strerror(ret));
-			return ret;
-		}
 	}
 	if (!parent) {
 		ret = ibv_post_recv(rxq->qp,
@@ -3359,6 +3298,8 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 			return -EEXIST;
 		}
 		(*priv->rxqs)[idx] = NULL;
+		if (idx == 0)
+			priv_mac_addr_del(priv);
 		rxq_cleanup(rxq);
 	} else {
 		rxq = rte_calloc_socket("RXQ", 1, sizeof(*rxq), 0, socket);
@@ -3418,6 +3359,8 @@ mlx4_rx_queue_release(void *dpdk_rxq)
 			DEBUG("%p: removing RX queue %p from list",
 			      (void *)priv->dev, (void *)rxq);
 			(*priv->rxqs)[i] = NULL;
+			if (i == 0)
+				priv_mac_addr_del(priv);
 			break;
 		}
 	rxq_cleanup(rxq);
@@ -3449,9 +3392,6 @@ static int
 mlx4_dev_start(struct rte_eth_dev *dev)
 {
 	struct priv *priv = dev->data->dev_private;
-	unsigned int i = 0;
-	unsigned int r;
-	struct rxq *rxq;
 	int ret;
 
 	priv_lock(priv);
@@ -3461,28 +3401,9 @@ mlx4_dev_start(struct rte_eth_dev *dev)
 	}
 	DEBUG("%p: attaching configured flows to all RX queues", (void *)dev);
 	priv->started = 1;
-	if (priv->isolated) {
-		rxq = NULL;
-		r = 1;
-	} else if (priv->rss) {
-		rxq = LIST_FIRST(&priv->parents);
-		r = 1;
-	} else {
-		rxq = (*priv->rxqs)[0];
-		r = priv->rxqs_n;
-	}
-	/* Iterate only once when RSS is enabled. */
-	do {
-		/* Ignore nonexistent RX queues. */
-		if (rxq == NULL)
-			continue;
-		ret = rxq_mac_addr_add(rxq);
-		if (!ret)
-			continue;
-		WARN("%p: QP flow attachment failed: %s",
-		     (void *)dev, strerror(ret));
+	ret = priv_mac_addr_add(priv);
+	if (ret)
 		goto err;
-	} while ((--r) && ((rxq = (*priv->rxqs)[++i]), i));
 	ret = priv_dev_link_interrupt_handler_install(priv, dev);
 	if (ret) {
 		ERROR("%p: LSC handler install failed",
@@ -3511,12 +3432,7 @@ mlx4_dev_start(struct rte_eth_dev *dev)
 	return 0;
 err:
 	/* Rollback. */
-	while (i != 0) {
-		rxq = (*priv->rxqs)[i--];
-		if (rxq != NULL) {
-			rxq_mac_addr_del(rxq);
-		}
-	}
+	priv_mac_addr_del(priv);
 	priv->started = 0;
 	priv_unlock(priv);
 	return -ret;
@@ -3534,9 +3450,6 @@ static void
 mlx4_dev_stop(struct rte_eth_dev *dev)
 {
 	struct priv *priv = dev->data->dev_private;
-	unsigned int i = 0;
-	unsigned int r;
-	struct rxq *rxq;
 
 	priv_lock(priv);
 	if (!priv->started) {
@@ -3545,24 +3458,8 @@ mlx4_dev_stop(struct rte_eth_dev *dev)
 	}
 	DEBUG("%p: detaching flows from all RX queues", (void *)dev);
 	priv->started = 0;
-	if (priv->isolated) {
-		rxq = NULL;
-		r = 1;
-	} else if (priv->rss) {
-		rxq = LIST_FIRST(&priv->parents);
-		r = 1;
-	} else {
-		rxq = (*priv->rxqs)[0];
-		r = priv->rxqs_n;
-	}
 	mlx4_priv_flow_stop(priv);
-	/* Iterate only once when RSS is enabled. */
-	do {
-		/* Ignore nonexistent RX queues. */
-		if (rxq == NULL)
-			continue;
-		rxq_mac_addr_del(rxq);
-	} while ((--r) && ((rxq = (*priv->rxqs)[++i]), i));
+	priv_mac_addr_del(priv);
 	priv_unlock(priv);
 }
 
@@ -3647,6 +3544,7 @@ mlx4_dev_close(struct rte_eth_dev *dev)
 	DEBUG("%p: closing device \"%s\"",
 	      (void *)dev,
 	      ((priv->ctx != NULL) ? priv->ctx->device->name : ""));
+	priv_mac_addr_del(priv);
 	/* Prevent crashes when queues are still in use. This is unfortunately
 	 * still required for DPDK 1.3 because some programs (such as testpmd)
 	 * never release them before closing the device. */
@@ -4036,6 +3934,8 @@ mlx4_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	} else
 		DEBUG("adapter port %u MTU set to %u", priv->port, mtu);
 	priv->mtu = mtu;
+	/* Remove MAC flow. */
+	priv_mac_addr_del(priv);
 	/* Temporarily replace RX handler with a fake one, assuming it has not
 	 * been copied elsewhere. */
 	dev->rx_pkt_burst = removed_rx_burst;
@@ -4064,11 +3964,6 @@ mlx4_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 				rx_func = mlx4_rx_burst_sp;
 			break;
 		}
-		/* Reenable non-RSS queue attributes. No need to check
-		 * for errors at this stage. */
-		if (!priv->rss && !priv->isolated) {
-			rxq_mac_addr_add(rxq);
-		}
 		/* Scattered burst function takes priority. */
 		if (rxq->sp)
 			rx_func = mlx4_rx_burst_sp;
@@ -4076,6 +3971,8 @@ mlx4_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	/* Burst functions can now be called again. */
 	rte_wmb();
 	dev->rx_pkt_burst = rx_func;
+	/* Restore MAC flow. */
+	ret = priv_mac_addr_add(priv);
 out:
 	priv_unlock(priv);
 	assert(ret >= 0);
@@ -5131,9 +5028,9 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		     mac.addr_bytes[2], mac.addr_bytes[3],
 		     mac.addr_bytes[4], mac.addr_bytes[5]);
 		/* Register MAC address. */
-		claim_zero(priv_mac_addr_add(priv,
-					     (const uint8_t (*)[ETHER_ADDR_LEN])
-					     mac.addr_bytes));
+		priv->mac = mac;
+		if (priv_mac_addr_add(priv))
+			goto port_error;
 #ifndef NDEBUG
 		{
 			char ifname[IF_NAMESIZE];

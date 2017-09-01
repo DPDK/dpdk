@@ -172,7 +172,6 @@ struct rxq {
 	struct ibv_exp_qp_burst_family *if_qp; /* QP burst interface. */
 	struct ibv_exp_cq_family *if_cq; /* CQ interface. */
 	struct ibv_comp_channel *channel;
-	struct ibv_flow *mac_flow; /* Flow associated with MAC address. */
 	unsigned int port_id; /* Port ID for incoming packets. */
 	unsigned int elts_n; /* (*elts)[] length. */
 	unsigned int elts_head; /* Current index in (*elts)[]. */
@@ -249,6 +248,7 @@ struct priv {
 	struct ibv_device_attr device_attr; /* Device properties. */
 	struct ibv_pd *pd; /* Protection Domain. */
 	struct ether_addr mac; /* MAC address. */
+	struct ibv_flow *mac_flow; /* Flow associated with MAC address. */
 	/* Device properties. */
 	uint16_t mtu; /* Configured MTU. */
 	uint8_t port; /* Physical port number. */
