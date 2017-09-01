@@ -158,8 +158,6 @@ struct rxq {
 	struct ibv_mr *mr; /* Memory Region (for mp). */
 	struct ibv_cq *cq; /* Completion Queue. */
 	struct ibv_qp *qp; /* Queue Pair. */
-	struct ibv_exp_qp_burst_family *if_qp; /* QP burst interface. */
-	struct ibv_exp_cq_family *if_cq; /* CQ interface. */
 	struct ibv_comp_channel *channel;
 	unsigned int port_id; /* Port ID for incoming packets. */
 	unsigned int elts_n; /* (*elts)[] length. */

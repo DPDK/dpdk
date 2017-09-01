@@ -1617,32 +1617,8 @@ priv_mac_addr_add(struct priv *priv)
 static void
 rxq_cleanup(struct rxq *rxq)
 {
-	struct ibv_exp_release_intf_params params;
-
 	DEBUG("cleaning up %p", (void *)rxq);
 	rxq_free_elts(rxq);
-	if (rxq->if_qp != NULL) {
-		assert(rxq->priv != NULL);
-		assert(rxq->priv->ctx != NULL);
-		assert(rxq->qp != NULL);
-		params = (struct ibv_exp_release_intf_params){
-			.comp_mask = 0,
-		};
-		claim_zero(ibv_exp_release_intf(rxq->priv->ctx,
-						rxq->if_qp,
-						&params));
-	}
-	if (rxq->if_cq != NULL) {
-		assert(rxq->priv != NULL);
-		assert(rxq->priv->ctx != NULL);
-		assert(rxq->cq != NULL);
-		params = (struct ibv_exp_release_intf_params){
-			.comp_mask = 0,
-		};
-		claim_zero(ibv_exp_release_intf(rxq->priv->ctx,
-						rxq->if_cq,
-						&params));
-	}
 	if (rxq->qp != NULL)
 		claim_zero(ibv_destroy_qp(rxq->qp));
 	if (rxq->cq != NULL)
@@ -1676,23 +1652,37 @@ mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	struct rxq_elt (*elts)[rxq->elts_n] = rxq->elts;
 	const unsigned int elts_n = rxq->elts_n;
 	unsigned int elts_head = rxq->elts_head;
-	struct ibv_sge sges[pkts_n];
+	struct ibv_wc wcs[pkts_n];
+	struct ibv_recv_wr *wr_head = NULL;
+	struct ibv_recv_wr **wr_next = &wr_head;
+	struct ibv_recv_wr *wr_bad = NULL;
 	unsigned int i;
 	unsigned int pkts_ret = 0;
 	int ret;
 
-	for (i = 0; (i != pkts_n); ++i) {
+	ret = ibv_poll_cq(rxq->cq, pkts_n, wcs);
+	if (unlikely(ret == 0))
+		return 0;
+	if (unlikely(ret < 0)) {
+		DEBUG("rxq=%p, ibv_poll_cq() failed (wc_n=%d)",
+		      (void *)rxq, ret);
+		return 0;
+	}
+	assert(ret <= (int)pkts_n);
+	/* For each work completion. */
+	for (i = 0; i != (unsigned int)ret; ++i) {
+		struct ibv_wc *wc = &wcs[i];
 		struct rxq_elt *elt = &(*elts)[elts_head];
 		struct ibv_recv_wr *wr = &elt->wr;
 		uint64_t wr_id = wr->wr_id;
-		unsigned int len;
+		uint32_t len = wc->byte_len;
 		struct rte_mbuf *seg = (void *)((uintptr_t)elt->sge.addr -
 			WR_ID(wr_id).offset);
 		struct rte_mbuf *rep;
-		uint32_t flags;
 
 		/* Sanity checks. */
 		assert(WR_ID(wr_id).id < rxq->elts_n);
+		assert(wr_id == wc->wr_id);
 		assert(wr->sg_list == &elt->sge);
 		assert(wr->num_sge == 1);
 		assert(elts_head < rxq->elts_n);
@@ -1703,41 +1693,19 @@ mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		 */
 		rte_mbuf_prefetch_part1(seg);
 		rte_mbuf_prefetch_part2(seg);
-		ret = rxq->if_cq->poll_length_flags(rxq->cq, NULL, NULL,
-						    &flags);
-		if (unlikely(ret < 0)) {
-			struct ibv_wc wc;
-			int wcs_n;
-
-			DEBUG("rxq=%p, poll_length() failed (ret=%d)",
-			      (void *)rxq, ret);
-			/* ibv_poll_cq() must be used in case of failure. */
-			wcs_n = ibv_poll_cq(rxq->cq, 1, &wc);
-			if (unlikely(wcs_n == 0))
-				break;
-			if (unlikely(wcs_n < 0)) {
-				DEBUG("rxq=%p, ibv_poll_cq() failed (wcs_n=%d)",
-				      (void *)rxq, wcs_n);
-				break;
-			}
-			assert(wcs_n == 1);
-			if (unlikely(wc.status != IBV_WC_SUCCESS)) {
-				/* Whatever, just repost the offending WR. */
-				DEBUG("rxq=%p, wr_id=%" PRIu64 ": bad work"
-				      " completion status (%d): %s",
-				      (void *)rxq, wc.wr_id, wc.status,
-				      ibv_wc_status_str(wc.status));
-				/* Increment dropped packets counter. */
-				++rxq->stats.idropped;
-				/* Add SGE to array for repost. */
-				sges[i] = elt->sge;
-				goto repost;
-			}
-			ret = wc.byte_len;
+		/* Link completed WRs together for repost. */
+		*wr_next = wr;
+		wr_next = &wr->next;
+		if (unlikely(wc->status != IBV_WC_SUCCESS)) {
+			/* Whatever, just repost the offending WR. */
+			DEBUG("rxq=%p, wr_id=%" PRIu64 ": bad work completion"
+			      " status (%d): %s",
+			      (void *)rxq, wr_id, wc->status,
+			      ibv_wc_status_str(wc->status));
+			/* Increment dropped packets counter. */
+			++rxq->stats.idropped;
+			goto repost;
 		}
-		if (ret == 0)
-			break;
-		len = ret;
 		rep = rte_mbuf_raw_alloc(rxq->mp);
 		if (unlikely(rep == NULL)) {
 			/*
@@ -1750,8 +1718,6 @@ mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			/* Increase out of memory counters. */
 			++rxq->stats.rx_nombuf;
 			++rxq->priv->dev->data->rx_mbuf_alloc_failed;
-			/* Add SGE to array for repost. */
-			sges[i] = elt->sge;
 			goto repost;
 		}
 
@@ -1762,9 +1728,6 @@ mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			(((uintptr_t)rep->buf_addr + RTE_PKTMBUF_HEADROOM) -
 			 (uintptr_t)rep);
 		assert(WR_ID(wr->wr_id).id == WR_ID(wr_id).id);
-
-		/* Add SGE to array for repost. */
-		sges[i] = elt->sge;
 
 		/* Update seg information. */
 		SET_DATA_OFF(seg, RTE_PKTMBUF_HEADROOM);
@@ -1789,7 +1752,9 @@ repost:
 	if (unlikely(i == 0))
 		return 0;
 	/* Repost WRs. */
-	ret = rxq->if_qp->recv_burst(rxq->qp, sges, i);
+	*wr_next = NULL;
+	assert(wr_head);
+	ret = ibv_post_recv(rxq->qp, wr_head, &wr_bad);
 	if (unlikely(ret)) {
 		/* Inability to repost WRs is fatal. */
 		DEBUG("%p: recv_burst(): failed (ret=%d)",
@@ -1870,10 +1835,6 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 		.socket = socket
 	};
 	struct ibv_qp_attr mod;
-	union {
-		struct ibv_exp_query_intf_params params;
-	} attr;
-	enum ibv_exp_query_intf_status status;
 	struct ibv_recv_wr *bad_wr;
 	unsigned int mb_len;
 	int ret = 0;
@@ -1975,28 +1936,6 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 	/* Save port ID. */
 	tmpl.port_id = dev->data->port_id;
 	DEBUG("%p: RTE port ID: %u", (void *)rxq, tmpl.port_id);
-	attr.params = (struct ibv_exp_query_intf_params){
-		.intf_scope = IBV_EXP_INTF_GLOBAL,
-		.intf = IBV_EXP_INTF_CQ,
-		.obj = tmpl.cq,
-	};
-	tmpl.if_cq = ibv_exp_query_intf(priv->ctx, &attr.params, &status);
-	if (tmpl.if_cq == NULL) {
-		ERROR("%p: CQ interface family query failed with status %d",
-		      (void *)dev, status);
-		goto error;
-	}
-	attr.params = (struct ibv_exp_query_intf_params){
-		.intf_scope = IBV_EXP_INTF_GLOBAL,
-		.intf = IBV_EXP_INTF_QP_BURST,
-		.obj = tmpl.qp,
-	};
-	tmpl.if_qp = ibv_exp_query_intf(priv->ctx, &attr.params, &status);
-	if (tmpl.if_qp == NULL) {
-		ERROR("%p: QP interface family query failed with status %d",
-		      (void *)dev, status);
-		goto error;
-	}
 	/* Clean up rxq in case we're reinitializing it. */
 	DEBUG("%p: cleaning-up old rxq just in case", (void *)rxq);
 	rxq_cleanup(rxq);
