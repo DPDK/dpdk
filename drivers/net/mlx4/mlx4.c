@@ -69,13 +69,13 @@
 #include <rte_malloc.h>
 #include <rte_spinlock.h>
 #include <rte_atomic.h>
-#include <rte_version.h>
 #include <rte_log.h>
 #include <rte_alarm.h>
 #include <rte_memory.h>
 #include <rte_flow.h>
 #include <rte_kvargs.h>
 #include <rte_interrupts.h>
+#include <rte_branch_prediction.h>
 
 /* Generated configuration header. */
 #include "mlx4_autoconf.h"
@@ -4649,10 +4649,6 @@ mlx4_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 	return -1;
 }
 
-static int
-mlx4_ibv_device_to_pci_addr(const struct ibv_device *device,
-			    struct rte_pci_addr *pci_addr);
-
 /**
  * DPDK callback to change the MTU.
  *
@@ -4998,10 +4994,6 @@ mlx4_dev_filter_ctrl(struct rte_eth_dev *dev,
 			return -EINVAL;
 		*(const void **)arg = &mlx4_flow_ops;
 		return 0;
-	case RTE_ETH_FILTER_FDIR:
-		DEBUG("%p: filter type FDIR is not supported by this PMD",
-		      (void *)dev);
-		break;
 	default:
 		ERROR("%p: filter type (%d) not supported",
 		      (void *)dev, filter_type);
@@ -5024,22 +5016,15 @@ static const struct eth_dev_ops mlx4_dev_ops = {
 	.link_update = mlx4_link_update,
 	.stats_get = mlx4_stats_get,
 	.stats_reset = mlx4_stats_reset,
-	.queue_stats_mapping_set = NULL,
 	.dev_infos_get = mlx4_dev_infos_get,
 	.dev_supported_ptypes_get = mlx4_dev_supported_ptypes_get,
 	.vlan_filter_set = mlx4_vlan_filter_set,
-	.vlan_tpid_set = NULL,
-	.vlan_strip_queue_set = NULL,
-	.vlan_offload_set = NULL,
 	.rx_queue_setup = mlx4_rx_queue_setup,
 	.tx_queue_setup = mlx4_tx_queue_setup,
 	.rx_queue_release = mlx4_rx_queue_release,
 	.tx_queue_release = mlx4_tx_queue_release,
-	.dev_led_on = NULL,
-	.dev_led_off = NULL,
 	.flow_ctrl_get = mlx4_dev_get_flow_ctrl,
 	.flow_ctrl_set = mlx4_dev_set_flow_ctrl,
-	.priority_flow_ctrl_set = NULL,
 	.mac_addr_remove = mlx4_mac_addr_remove,
 	.mac_addr_add = mlx4_mac_addr_add,
 	.mac_addr_set = mlx4_mac_addr_set,

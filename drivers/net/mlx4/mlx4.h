@@ -34,7 +34,6 @@
 #ifndef RTE_PMD_MLX4_H_
 #define RTE_PMD_MLX4_H_
 
-#include <stddef.h>
 #include <stdint.h>
 #include <limits.h>
 
@@ -149,17 +148,6 @@ enum {
 
 /* Number of elements in array. */
 #define elemof(a) (sizeof(a) / sizeof((a)[0]))
-
-/* Cast pointer p to structure member m to its parent structure of type t. */
-#define containerof(p, t, m) ((t *)((uint8_t *)(p) - offsetof(t, m)))
-
-/* Branch prediction helpers. */
-#ifndef likely
-#define likely(c) __builtin_expect(!!(c), 1)
-#endif
-#ifndef unlikely
-#define unlikely(c) __builtin_expect(!!(c), 0)
-#endif
 
 /* Debugging */
 #ifndef NDEBUG
