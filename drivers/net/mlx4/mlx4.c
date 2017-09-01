@@ -45,7 +45,6 @@
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
-#include <limits.h>
 #include <assert.h>
 #include <net/if.h>
 #include <dirent.h>
@@ -2066,84 +2065,46 @@ rxq_free_elts(struct rxq *rxq)
 }
 
 /**
- * Delete flow steering rule.
+ * Unregister a MAC address from a Rx queue.
  *
  * @param rxq
  *   Pointer to RX queue structure.
- * @param mac_index
- *   MAC address index.
  */
 static void
-rxq_del_flow(struct rxq *rxq, unsigned int mac_index)
+rxq_mac_addr_del(struct rxq *rxq)
 {
 #ifndef NDEBUG
 	struct priv *priv = rxq->priv;
 	const uint8_t (*mac)[ETHER_ADDR_LEN] =
 		(const uint8_t (*)[ETHER_ADDR_LEN])
-		priv->mac[mac_index].addr_bytes;
+		priv->mac.addr_bytes;
 #endif
-	assert(rxq->mac_flow[mac_index] != NULL);
-	DEBUG("%p: removing MAC address %02x:%02x:%02x:%02x:%02x:%02x index %u",
-	      (void *)rxq,
-	      (*mac)[0], (*mac)[1], (*mac)[2], (*mac)[3], (*mac)[4], (*mac)[5],
-	      mac_index);
-	claim_zero(ibv_destroy_flow(rxq->mac_flow[mac_index]));
-	rxq->mac_flow[mac_index] = NULL;
-}
-
-/**
- * Unregister a MAC address from a RX queue.
- *
- * @param rxq
- *   Pointer to RX queue structure.
- * @param mac_index
- *   MAC address index.
- */
-static void
-rxq_mac_addr_del(struct rxq *rxq, unsigned int mac_index)
-{
-	assert(mac_index < elemof(rxq->priv->mac));
-	if (!BITFIELD_ISSET(rxq->mac_configured, mac_index))
+	if (!rxq->mac_flow)
 		return;
-	rxq_del_flow(rxq, mac_index);
-	BITFIELD_RESET(rxq->mac_configured, mac_index);
+	DEBUG("%p: removing MAC address %02x:%02x:%02x:%02x:%02x:%02x",
+	      (void *)rxq,
+	      (*mac)[0], (*mac)[1], (*mac)[2], (*mac)[3], (*mac)[4], (*mac)[5]);
+	claim_zero(ibv_destroy_flow(rxq->mac_flow));
+	rxq->mac_flow = NULL;
 }
 
 /**
- * Unregister all MAC addresses from a RX queue.
+ * Register a MAC address in a Rx queue.
  *
  * @param rxq
  *   Pointer to RX queue structure.
- */
-static void
-rxq_mac_addrs_del(struct rxq *rxq)
-{
-	struct priv *priv = rxq->priv;
-	unsigned int i;
-
-	for (i = 0; (i != elemof(priv->mac)); ++i)
-		rxq_mac_addr_del(rxq, i);
-}
-
-/**
- * Add single flow steering rule.
- *
- * @param rxq
- *   Pointer to RX queue structure.
- * @param mac_index
- *   MAC address index to register.
  *
  * @return
  *   0 on success, errno value on failure.
  */
 static int
-rxq_add_flow(struct rxq *rxq, unsigned int mac_index)
+rxq_mac_addr_add(struct rxq *rxq)
 {
 	struct ibv_flow *flow;
 	struct priv *priv = rxq->priv;
 	const uint8_t (*mac)[ETHER_ADDR_LEN] =
 			(const uint8_t (*)[ETHER_ADDR_LEN])
-			priv->mac[mac_index].addr_bytes;
+			priv->mac.addr_bytes;
 
 	/* Allocate flow specification on the stack. */
 	struct __attribute__((packed)) {
@@ -2153,7 +2114,8 @@ rxq_add_flow(struct rxq *rxq, unsigned int mac_index)
 	struct ibv_flow_attr *attr = &data.attr;
 	struct ibv_flow_spec_eth *spec = &data.spec;
 
-	assert(mac_index < elemof(priv->mac));
+	if (rxq->mac_flow)
+		rxq_mac_addr_del(rxq);
 	/*
 	 * No padding must be inserted by the compiler between attr and spec.
 	 * This layout is expected by libibverbs.
@@ -2179,10 +2141,9 @@ rxq_add_flow(struct rxq *rxq, unsigned int mac_index)
 			.dst_mac = "\xff\xff\xff\xff\xff\xff",
 		}
 	};
-	DEBUG("%p: adding MAC address %02x:%02x:%02x:%02x:%02x:%02x index %u",
+	DEBUG("%p: adding MAC address %02x:%02x:%02x:%02x:%02x:%02x",
 	      (void *)rxq,
-	      (*mac)[0], (*mac)[1], (*mac)[2], (*mac)[3], (*mac)[4], (*mac)[5],
-	      mac_index);
+	      (*mac)[0], (*mac)[1], (*mac)[2], (*mac)[3], (*mac)[4], (*mac)[5]);
 	/* Create related flow. */
 	errno = 0;
 	flow = ibv_create_flow(rxq->qp, attr);
@@ -2195,96 +2156,9 @@ rxq_add_flow(struct rxq *rxq, unsigned int mac_index)
 			return errno;
 		return EINVAL;
 	}
-	assert(rxq->mac_flow[mac_index] == NULL);
-	rxq->mac_flow[mac_index] = flow;
+	assert(rxq->mac_flow == NULL);
+	rxq->mac_flow = flow;
 	return 0;
-}
-
-/**
- * Register a MAC address in a RX queue.
- *
- * @param rxq
- *   Pointer to RX queue structure.
- * @param mac_index
- *   MAC address index to register.
- *
- * @return
- *   0 on success, errno value on failure.
- */
-static int
-rxq_mac_addr_add(struct rxq *rxq, unsigned int mac_index)
-{
-	int ret;
-
-	assert(mac_index < elemof(rxq->priv->mac));
-	if (BITFIELD_ISSET(rxq->mac_configured, mac_index))
-		rxq_mac_addr_del(rxq, mac_index);
-	ret = rxq_add_flow(rxq, mac_index);
-	if (ret)
-		return ret;
-	BITFIELD_SET(rxq->mac_configured, mac_index);
-	return 0;
-}
-
-/**
- * Register all MAC addresses in a RX queue.
- *
- * @param rxq
- *   Pointer to RX queue structure.
- *
- * @return
- *   0 on success, errno value on failure.
- */
-static int
-rxq_mac_addrs_add(struct rxq *rxq)
-{
-	struct priv *priv = rxq->priv;
-	unsigned int i;
-	int ret;
-
-	for (i = 0; (i != elemof(priv->mac)); ++i) {
-		if (!BITFIELD_ISSET(priv->mac_configured, i))
-			continue;
-		ret = rxq_mac_addr_add(rxq, i);
-		if (!ret)
-			continue;
-		/* Failure, rollback. */
-		while (i != 0)
-			rxq_mac_addr_del(rxq, --i);
-		assert(ret > 0);
-		return ret;
-	}
-	return 0;
-}
-
-/**
- * Unregister a MAC address.
- *
- * In RSS mode, the MAC address is unregistered from the parent queue,
- * otherwise it is unregistered from each queue directly.
- *
- * @param priv
- *   Pointer to private structure.
- * @param mac_index
- *   MAC address index.
- */
-static void
-priv_mac_addr_del(struct priv *priv, unsigned int mac_index)
-{
-	unsigned int i;
-
-	assert(!priv->isolated);
-	assert(mac_index < elemof(priv->mac));
-	if (!BITFIELD_ISSET(priv->mac_configured, mac_index))
-		return;
-	if (priv->rss) {
-		rxq_mac_addr_del(LIST_FIRST(&priv->parents), mac_index);
-		goto end;
-	}
-	for (i = 0; (i != priv->dev->data->nb_rx_queues); ++i)
-		rxq_mac_addr_del((*priv->rxqs)[i], mac_index);
-end:
-	BITFIELD_RESET(priv->mac_configured, mac_index);
 }
 
 /**
@@ -2295,8 +2169,6 @@ end:
  *
  * @param priv
  *   Pointer to private structure.
- * @param mac_index
- *   MAC address index to use.
  * @param mac
  *   MAC address to register.
  *
@@ -2304,28 +2176,12 @@ end:
  *   0 on success, errno value on failure.
  */
 static int
-priv_mac_addr_add(struct priv *priv, unsigned int mac_index,
-		  const uint8_t (*mac)[ETHER_ADDR_LEN])
+priv_mac_addr_add(struct priv *priv, const uint8_t (*mac)[ETHER_ADDR_LEN])
 {
 	unsigned int i;
 	int ret;
 
-	assert(mac_index < elemof(priv->mac));
-	/* First, make sure this address isn't already configured. */
-	for (i = 0; (i != elemof(priv->mac)); ++i) {
-		/* Skip this index, it's going to be reconfigured. */
-		if (i == mac_index)
-			continue;
-		if (!BITFIELD_ISSET(priv->mac_configured, i))
-			continue;
-		if (memcmp(priv->mac[i].addr_bytes, *mac, sizeof(*mac)))
-			continue;
-		/* Address already configured elsewhere, return with error. */
-		return EADDRINUSE;
-	}
-	if (BITFIELD_ISSET(priv->mac_configured, mac_index))
-		priv_mac_addr_del(priv, mac_index);
-	priv->mac[mac_index] = (struct ether_addr){
+	priv->mac = (struct ether_addr){
 		{
 			(*mac)[0], (*mac)[1], (*mac)[2],
 			(*mac)[3], (*mac)[4], (*mac)[5]
@@ -2333,19 +2189,10 @@ priv_mac_addr_add(struct priv *priv, unsigned int mac_index,
 	};
 	/* If device isn't started, this is all we need to do. */
 	if (!priv->started) {
-#ifndef NDEBUG
-		/* Verify that all queues have this index disabled. */
-		for (i = 0; (i != priv->rxqs_n); ++i) {
-			if ((*priv->rxqs)[i] == NULL)
-				continue;
-			assert(!BITFIELD_ISSET
-			       ((*priv->rxqs)[i]->mac_configured, mac_index));
-		}
-#endif
 		goto end;
 	}
 	if (priv->rss) {
-		ret = rxq_mac_addr_add(LIST_FIRST(&priv->parents), mac_index);
+		ret = rxq_mac_addr_add(LIST_FIRST(&priv->parents));
 		if (ret)
 			return ret;
 		goto end;
@@ -2353,17 +2200,16 @@ priv_mac_addr_add(struct priv *priv, unsigned int mac_index,
 	for (i = 0; (i != priv->rxqs_n); ++i) {
 		if ((*priv->rxqs)[i] == NULL)
 			continue;
-		ret = rxq_mac_addr_add((*priv->rxqs)[i], mac_index);
+		ret = rxq_mac_addr_add((*priv->rxqs)[i]);
 		if (!ret)
 			continue;
 		/* Failure, rollback. */
 		while (i != 0)
 			if ((*priv->rxqs)[(--i)] != NULL)
-				rxq_mac_addr_del((*priv->rxqs)[i], mac_index);
+				rxq_mac_addr_del((*priv->rxqs)[i]);
 		return ret;
 	}
 end:
-	BITFIELD_SET(priv->mac_configured, mac_index);
 	return 0;
 }
 
@@ -2408,7 +2254,7 @@ rxq_cleanup(struct rxq *rxq)
 						&params));
 	}
 	if (rxq->qp != NULL && !rxq->priv->isolated) {
-		rxq_mac_addrs_del(rxq);
+		rxq_mac_addr_del(rxq);
 	}
 	if (rxq->qp != NULL)
 		claim_zero(ibv_destroy_qp(rxq->qp));
@@ -3050,11 +2896,9 @@ rxq_rehash(struct rte_eth_dev *dev, struct rxq *rxq)
 	}
 	/* Remove attached flows if RSS is disabled (no parent queue). */
 	if (!priv->rss && !priv->isolated) {
-		rxq_mac_addrs_del(&tmpl);
+		rxq_mac_addr_del(&tmpl);
 		/* Update original queue in case of failure. */
-		memcpy(rxq->mac_configured, tmpl.mac_configured,
-		       sizeof(rxq->mac_configured));
-		memcpy(rxq->mac_flow, tmpl.mac_flow, sizeof(rxq->mac_flow));
+		rxq->mac_flow = NULL;
 	}
 	/* From now on, any failure will render the queue unusable.
 	 * Reinitialize QP. */
@@ -3091,11 +2935,9 @@ skip_init:
 	}
 	/* Reconfigure flows. Do not care for errors. */
 	if (!priv->rss && !priv->isolated) {
-		rxq_mac_addrs_add(&tmpl);
+		rxq_mac_addr_add(&tmpl);
 		/* Update original queue in case of failure. */
-		memcpy(rxq->mac_configured, tmpl.mac_configured,
-		       sizeof(rxq->mac_configured));
-		memcpy(rxq->mac_flow, tmpl.mac_flow, sizeof(rxq->mac_flow));
+		rxq->mac_flow = NULL;
 	}
 	/* Allocate pool. */
 	pool = rte_malloc(__func__, (mbuf_n * sizeof(*pool)), 0);
@@ -3241,7 +3083,7 @@ rxq_create_qp(struct rxq *rxq,
 	}
 	if (!priv->isolated && (parent || !priv->rss)) {
 		/* Configure MAC and broadcast addresses. */
-		ret = rxq_mac_addrs_add(rxq);
+		ret = rxq_mac_addr_add(rxq);
 		if (ret) {
 			ERROR("QP flow attachment failed: %s",
 			      strerror(ret));
@@ -3634,7 +3476,7 @@ mlx4_dev_start(struct rte_eth_dev *dev)
 		/* Ignore nonexistent RX queues. */
 		if (rxq == NULL)
 			continue;
-		ret = rxq_mac_addrs_add(rxq);
+		ret = rxq_mac_addr_add(rxq);
 		if (!ret)
 			continue;
 		WARN("%p: QP flow attachment failed: %s",
@@ -3672,7 +3514,7 @@ err:
 	while (i != 0) {
 		rxq = (*priv->rxqs)[i--];
 		if (rxq != NULL) {
-			rxq_mac_addrs_del(rxq);
+			rxq_mac_addr_del(rxq);
 		}
 	}
 	priv->started = 0;
@@ -3719,7 +3561,7 @@ mlx4_dev_stop(struct rte_eth_dev *dev)
 		/* Ignore nonexistent RX queues. */
 		if (rxq == NULL)
 			continue;
-		rxq_mac_addrs_del(rxq);
+		rxq_mac_addr_del(rxq);
 	} while ((--r) && ((rxq = (*priv->rxqs)[++i]), i));
 	priv_unlock(priv);
 }
@@ -3972,7 +3814,7 @@ mlx4_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	info->max_rx_queues = max;
 	info->max_tx_queues = max;
 	/* Last array entry is reserved for broadcast. */
-	info->max_mac_addrs = (elemof(priv->mac) - 1);
+	info->max_mac_addrs = 1;
 	info->rx_offload_capa =
 		(priv->hw_csum ?
 		 (DEV_RX_OFFLOAD_IPV4_CKSUM |
@@ -4104,90 +3946,6 @@ mlx4_stats_reset(struct rte_eth_dev *dev)
 }
 
 /**
- * DPDK callback to remove a MAC address.
- *
- * @param dev
- *   Pointer to Ethernet device structure.
- * @param index
- *   MAC address index.
- */
-static void
-mlx4_mac_addr_remove(struct rte_eth_dev *dev, uint32_t index)
-{
-	struct priv *priv = dev->data->dev_private;
-
-	priv_lock(priv);
-	if (priv->isolated)
-		goto end;
-	DEBUG("%p: removing MAC address from index %" PRIu32,
-	      (void *)dev, index);
-	/* Last array entry is reserved for broadcast. */
-	if (index >= (elemof(priv->mac) - 1))
-		goto end;
-	priv_mac_addr_del(priv, index);
-end:
-	priv_unlock(priv);
-}
-
-/**
- * DPDK callback to add a MAC address.
- *
- * @param dev
- *   Pointer to Ethernet device structure.
- * @param mac_addr
- *   MAC address to register.
- * @param index
- *   MAC address index.
- * @param vmdq
- *   VMDq pool index to associate address with (ignored).
- */
-static int
-mlx4_mac_addr_add(struct rte_eth_dev *dev, struct ether_addr *mac_addr,
-		  uint32_t index, uint32_t vmdq)
-{
-	struct priv *priv = dev->data->dev_private;
-	int re;
-
-	(void)vmdq;
-	priv_lock(priv);
-	if (priv->isolated) {
-		DEBUG("%p: cannot add MAC address, "
-		      "device is in isolated mode", (void *)dev);
-		re = EPERM;
-		goto end;
-	}
-	DEBUG("%p: adding MAC address at index %" PRIu32,
-	      (void *)dev, index);
-	/* Last array entry is reserved for broadcast. */
-	if (index >= (elemof(priv->mac) - 1)) {
-		re = EINVAL;
-		goto end;
-	}
-	re = priv_mac_addr_add(priv, index,
-			       (const uint8_t (*)[ETHER_ADDR_LEN])
-			       mac_addr->addr_bytes);
-end:
-	priv_unlock(priv);
-	return -re;
-}
-
-/**
- * DPDK callback to set the primary MAC address.
- *
- * @param dev
- *   Pointer to Ethernet device structure.
- * @param mac_addr
- *   MAC address to register.
- */
-static void
-mlx4_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
-{
-	DEBUG("%p: setting primary MAC address", (void *)dev);
-	mlx4_mac_addr_remove(dev, 0);
-	mlx4_mac_addr_add(dev, mac_addr, 0, 0);
-}
-
-/**
  * DPDK callback to retrieve physical link information.
  *
  * @param dev
@@ -4309,7 +4067,7 @@ mlx4_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 		/* Reenable non-RSS queue attributes. No need to check
 		 * for errors at this stage. */
 		if (!priv->rss && !priv->isolated) {
-			rxq_mac_addrs_add(rxq);
+			rxq_mac_addr_add(rxq);
 		}
 		/* Scattered burst function takes priority. */
 		if (rxq->sp)
@@ -4487,9 +4245,6 @@ static const struct eth_dev_ops mlx4_dev_ops = {
 	.tx_queue_release = mlx4_tx_queue_release,
 	.flow_ctrl_get = mlx4_dev_get_flow_ctrl,
 	.flow_ctrl_set = mlx4_dev_set_flow_ctrl,
-	.mac_addr_remove = mlx4_mac_addr_remove,
-	.mac_addr_add = mlx4_mac_addr_add,
-	.mac_addr_set = mlx4_mac_addr_set,
 	.mtu_set = mlx4_dev_set_mtu,
 	.filter_ctrl = mlx4_dev_filter_ctrl,
 	.rx_queue_intr_enable = mlx4_rx_intr_enable,
@@ -5375,13 +5130,10 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		     mac.addr_bytes[0], mac.addr_bytes[1],
 		     mac.addr_bytes[2], mac.addr_bytes[3],
 		     mac.addr_bytes[4], mac.addr_bytes[5]);
-		/* Register MAC and broadcast addresses. */
-		claim_zero(priv_mac_addr_add(priv, 0,
+		/* Register MAC address. */
+		claim_zero(priv_mac_addr_add(priv,
 					     (const uint8_t (*)[ETHER_ADDR_LEN])
 					     mac.addr_bytes));
-		claim_zero(priv_mac_addr_add(priv, (elemof(priv->mac) - 1),
-					     &(const uint8_t [ETHER_ADDR_LEN])
-					     { "\xff\xff\xff\xff\xff\xff" }));
 #ifndef NDEBUG
 		{
 			char ifname[IF_NAMESIZE];
@@ -5412,7 +5164,7 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		}
 
 		eth_dev->data->dev_private = priv;
-		eth_dev->data->mac_addrs = priv->mac;
+		eth_dev->data->mac_addrs = &priv->mac;
 		eth_dev->device = &pci_dev->device;
 
 		rte_eth_copy_pci_info(eth_dev, pci_dev);

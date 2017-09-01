@@ -81,7 +81,6 @@ Features
 - RSS, also known as RCA, is supported. In this mode the number of
   configured RX queues must be a power of two.
 - Link state information is provided.
-- Multiple MAC addresses (unicast, multicast) can be configured.
 - Scattered packets are supported for TX and RX.
 - Inner L3/L4 (IP, TCP and UDP) TX/RX checksum offloading and validation.
 - Outer L3 (IP) TX/RX checksum offloading and validation for VXLAN frames.

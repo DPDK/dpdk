@@ -35,7 +35,6 @@
 #define RTE_PMD_MLX4_H_
 
 #include <stdint.h>
-#include <limits.h>
 
 /*
  * Runtime logging through RTE_LOG() is enabled when not in debugging mode.
@@ -63,16 +62,6 @@
 #ifdef PEDANTIC
 #pragma GCC diagnostic error "-Wpedantic"
 #endif
-
-/*
- * Maximum number of simultaneous MAC addresses supported.
- *
- * According to ConnectX's Programmer Reference Manual:
- *   The L2 Address Match is implemented by comparing a MAC/VLAN combination
- *   of 128 MAC addresses and 127 VLAN values, comprising 128x127 possible
- *   L2 addresses.
- */
-#define MLX4_MAX_MAC_ADDRESSES 128
 
 /* Request send completion once in every 64 sends, might be less. */
 #define MLX4_PMD_TX_PER_COMP_REQ 64
@@ -111,25 +100,6 @@ enum {
 };
 
 #define MLX4_DRIVER_NAME "net_mlx4"
-
-/* Bit-field manipulation. */
-#define BITFIELD_DECLARE(bf, type, size)				\
-	type bf[(((size_t)(size) / (sizeof(type) * CHAR_BIT)) +		\
-		 !!((size_t)(size) % (sizeof(type) * CHAR_BIT)))]
-#define BITFIELD_DEFINE(bf, type, size)					\
-	BITFIELD_DECLARE((bf), type, (size)) = { 0 }
-#define BITFIELD_SET(bf, b)						\
-	(assert((size_t)(b) < (sizeof(bf) * CHAR_BIT)),			\
-	 (void)((bf)[((b) / (sizeof((bf)[0]) * CHAR_BIT))] |=		\
-		((size_t)1 << ((b) % (sizeof((bf)[0]) * CHAR_BIT)))))
-#define BITFIELD_RESET(bf, b)						\
-	(assert((size_t)(b) < (sizeof(bf) * CHAR_BIT)),			\
-	 (void)((bf)[((b) / (sizeof((bf)[0]) * CHAR_BIT))] &=		\
-		~((size_t)1 << ((b) % (sizeof((bf)[0]) * CHAR_BIT)))))
-#define BITFIELD_ISSET(bf, b)						\
-	(assert((size_t)(b) < (sizeof(bf) * CHAR_BIT)),			\
-	 !!(((bf)[((b) / (sizeof((bf)[0]) * CHAR_BIT))] &		\
-	     ((size_t)1 << ((b) % (sizeof((bf)[0]) * CHAR_BIT))))))
 
 /* Number of elements in array. */
 #define elemof(a) (sizeof(a) / sizeof((a)[0]))
@@ -202,8 +172,7 @@ struct rxq {
 	struct ibv_exp_qp_burst_family *if_qp; /* QP burst interface. */
 	struct ibv_exp_cq_family *if_cq; /* CQ interface. */
 	struct ibv_comp_channel *channel;
-	BITFIELD_DECLARE(mac_configured, uint32_t, MLX4_MAX_MAC_ADDRESSES);
-	struct ibv_flow *mac_flow[MLX4_MAX_MAC_ADDRESSES];
+	struct ibv_flow *mac_flow; /* Flow associated with MAC address. */
 	unsigned int port_id; /* Port ID for incoming packets. */
 	unsigned int elts_n; /* (*elts)[] length. */
 	unsigned int elts_head; /* Current index in (*elts)[]. */
@@ -279,13 +248,7 @@ struct priv {
 	struct ibv_context *ctx; /* Verbs context. */
 	struct ibv_device_attr device_attr; /* Device properties. */
 	struct ibv_pd *pd; /* Protection Domain. */
-	/*
-	 * MAC addresses array and configuration bit-field.
-	 * An extra entry that cannot be modified by the DPDK is reserved
-	 * for broadcast frames (destination MAC address ff:ff:ff:ff:ff:ff).
-	 */
-	struct ether_addr mac[MLX4_MAX_MAC_ADDRESSES];
-	BITFIELD_DECLARE(mac_configured, uint32_t, MLX4_MAX_MAC_ADDRESSES);
+	struct ether_addr mac; /* MAC address. */
 	/* Device properties. */
 	uint16_t mtu; /* Configured MTU. */
 	uint8_t port; /* Physical port number. */
