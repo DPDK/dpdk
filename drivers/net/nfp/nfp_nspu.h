@@ -73,3 +73,4 @@ int nfp_nspu_init(nspu_desc_t *desc, int nfp, int pcie_bar, size_t pcie_barsz,
 		  int exp_bar, void *exp_bar_cfg_base, void *exp_bar_mmap);
 int nfp_nsp_get_abi_version(nspu_desc_t *desc, int *major, int *minor);
 int nfp_nsp_fw_setup(nspu_desc_t *desc, const char *sym, uint64_t *pcie_offset);
+int nfp_nsp_map_ctrl_bar(nspu_desc_t *desc, uint64_t *pcie_offset);

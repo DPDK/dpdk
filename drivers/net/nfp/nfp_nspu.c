@@ -496,3 +496,16 @@ nfp_nsp_fw_setup(nspu_desc_t *desc, const char *sym, uint64_t *pcie_offset)
 
 	return 0;
 }
+
+int
+nfp_nsp_map_ctrl_bar(nspu_desc_t *desc, uint64_t *pcie_offset)
+{
+	ssize_t bar0_sym_size;
+
+	if (nfp_nspu_set_bar_from_symbl(desc, "_pf0_net_bar0",
+					NFP_NET_PF_CFG_EXP_BAR,
+					pcie_offset, &bar0_sym_size))
+		return -ENODEV;
+
+	return 0;
+}
