@@ -48,7 +48,6 @@
 #include <netinet/in.h>
 #include <linux/ethtool.h>
 #include <linux/sockios.h>
-#include <fcntl.h>
 
 #include <rte_ether.h>
 #include <rte_ethdev.h>
@@ -1800,6 +1799,12 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 			      (void *)dev, strerror(rte_errno));
 			goto error;
 		}
+		if (mlx4_fd_set_non_blocking(tmpl.channel->fd) < 0) {
+			ERROR("%p: unable to make Rx interrupt completion"
+			      " channel non-blocking: %s",
+			      (void *)dev, strerror(rte_errno));
+			goto error;
+		}
 	}
 	tmpl.cq = ibv_create_cq(priv->ctx, desc, NULL, tmpl.channel, 0);
 	if (tmpl.cq == NULL) {
@@ -2836,7 +2841,6 @@ static int
 priv_dev_interrupt_handler_install(struct priv *priv,
 				   struct rte_eth_dev *dev)
 {
-	int flags;
 	int rc;
 
 	/*
@@ -2847,29 +2851,17 @@ priv_dev_interrupt_handler_install(struct priv *priv,
 	    priv->intr_conf.rmv &&
 	    priv->intr_handle.fd)
 		return 0;
-	assert(priv->ctx->async_fd > 0);
-	flags = fcntl(priv->ctx->async_fd, F_GETFL);
-	rc = fcntl(priv->ctx->async_fd, F_SETFL, flags | O_NONBLOCK);
-	if (rc < 0) {
-		rte_errno = errno ? errno : EINVAL;
-		INFO("failed to change file descriptor async event queue");
-		dev->data->dev_conf.intr_conf.lsc = 0;
-		dev->data->dev_conf.intr_conf.rmv = 0;
-		return -rte_errno;
-	} else {
-		priv->intr_handle.fd = priv->ctx->async_fd;
-		rc = rte_intr_callback_register(&priv->intr_handle,
-						 mlx4_dev_interrupt_handler,
-						 dev);
-		if (rc) {
-			rte_errno = -rc;
-			ERROR("rte_intr_callback_register failed "
-			      " (rte_errno: %s)", strerror(rte_errno));
-			priv->intr_handle.fd = -1;
-			return -rte_errno;
-		}
-	}
-	return 0;
+	priv->intr_handle.fd = priv->ctx->async_fd;
+	rc = rte_intr_callback_register(&priv->intr_handle,
+					mlx4_dev_interrupt_handler,
+					dev);
+	if (!rc)
+		return 0;
+	rte_errno = -rc;
+	ERROR("rte_intr_callback_register failed (rte_errno: %s)",
+	      strerror(rte_errno));
+	priv->intr_handle.fd = -1;
+	return -rte_errno;
 }
 
 /**
@@ -3010,9 +3002,6 @@ priv_rx_intr_vec_enable(struct priv *priv)
 	}
 	for (i = 0; i != n; ++i) {
 		struct rxq *rxq = (*priv->rxqs)[i];
-		int fd;
-		int flags;
-		int rc;
 
 		/* Skip queues that cannot request interrupts. */
 		if (!rxq || !rxq->channel) {
@@ -3030,18 +3019,8 @@ priv_rx_intr_vec_enable(struct priv *priv)
 			priv_rx_intr_vec_disable(priv);
 			return -rte_errno;
 		}
-		fd = rxq->channel->fd;
-		flags = fcntl(fd, F_GETFL);
-		rc = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
-		if (rc < 0) {
-			rte_errno = errno;
-			ERROR("failed to make Rx interrupt file descriptor"
-			      " %d non-blocking for queue index %d", fd, i);
-			priv_rx_intr_vec_disable(priv);
-			return -rte_errno;
-		}
 		intr_handle->intr_vec[i] = RTE_INTR_VEC_RXTX_OFFSET + count;
-		intr_handle->efds[count] = fd;
+		intr_handle->efds[count] = rxq->channel->fd;
 		count++;
 	}
 	if (!count)
@@ -3358,6 +3337,12 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			DEBUG("port %d is not active: \"%s\" (%d)",
 			      port, ibv_port_state_str(port_attr.state),
 			      port_attr.state);
+		/* Make asynchronous FD non-blocking to handle interrupts. */
+		if (mlx4_fd_set_non_blocking(ctx->async_fd) < 0) {
+			ERROR("cannot make asynchronous FD non-blocking: %s",
+			      strerror(rte_errno));
+			goto port_error;
+		}
 		/* Allocate protection domain. */
 		pd = ibv_alloc_pd(ctx);
 		if (pd == NULL) {

@@ -31,72 +31,36 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MLX4_UTILS_H_
-#define MLX4_UTILS_H_
-
-#include <rte_common.h>
-#include <rte_log.h>
-
-#include "mlx4.h"
-
-#ifndef NDEBUG
-
-/*
- * When debugging is enabled (NDEBUG not defined), file, line and function
- * information replace the driver name (MLX4_DRIVER_NAME) in log messages.
+/**
+ * @file
+ * Utility functions used by the mlx4 driver.
  */
 
-/* Return the file name part of a path. */
-static inline const char *
-pmd_drv_log_basename(const char *s)
+#include <assert.h>
+#include <errno.h>
+#include <fcntl.h>
+
+#include <rte_errno.h>
+
+#include "mlx4_utils.h"
+
+/**
+ * Make a file descriptor non-blocking.
+ *
+ * @param fd
+ *   File descriptor to alter.
+ *
+ * @return
+ *   0 on success, negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx4_fd_set_non_blocking(int fd)
 {
-	const char *n = s;
+	int ret = fcntl(fd, F_GETFL);
 
-	while (*n)
-		if (*(n++) == '/')
-			s = n;
-	return s;
+	if (ret != -1 && !fcntl(fd, F_SETFL, ret | O_NONBLOCK))
+		return 0;
+	assert(errno);
+	rte_errno = errno;
+	return -rte_errno;
 }
-
-#define PMD_DRV_LOG(level, ...) \
-	RTE_LOG(level, PMD, \
-		RTE_FMT("%s:%u: %s(): " RTE_FMT_HEAD(__VA_ARGS__,) "\n", \
-			pmd_drv_log_basename(__FILE__), \
-			__LINE__, \
-			__func__, \
-			RTE_FMT_TAIL(__VA_ARGS__,)))
-#define DEBUG(...) PMD_DRV_LOG(DEBUG, __VA_ARGS__)
-#ifndef MLX4_PMD_DEBUG_BROKEN_VERBS
-#define claim_zero(...) assert((__VA_ARGS__) == 0)
-#else /* MLX4_PMD_DEBUG_BROKEN_VERBS */
-#define claim_zero(...) \
-	(void)(((__VA_ARGS__) == 0) || \
-		DEBUG("Assertion `(" # __VA_ARGS__ ") == 0' failed (IGNORED)."))
-#endif /* MLX4_PMD_DEBUG_BROKEN_VERBS */
-
-#else /* NDEBUG */
-
-/*
- * Like assert(), DEBUG() becomes a no-op and claim_zero() does not perform
- * any check when debugging is disabled.
- */
-
-#define PMD_DRV_LOG(level, ...) \
-	RTE_LOG(level, PMD, \
-		RTE_FMT(MLX4_DRIVER_NAME ": " \
-			RTE_FMT_HEAD(__VA_ARGS__,) "\n", \
-		RTE_FMT_TAIL(__VA_ARGS__,)))
-#define DEBUG(...) (void)0
-#define claim_zero(...) (__VA_ARGS__)
-
-#endif /* NDEBUG */
-
-#define INFO(...) PMD_DRV_LOG(INFO, __VA_ARGS__)
-#define WARN(...) PMD_DRV_LOG(WARNING, __VA_ARGS__)
-#define ERROR(...) PMD_DRV_LOG(ERR, __VA_ARGS__)
-
-/* mlx4_utils.c */
-
-int mlx4_fd_set_non_blocking(int fd);
-
-#endif /* MLX4_UTILS_H_ */

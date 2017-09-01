@@ -46,6 +46,10 @@
 #pragma GCC diagnostic error "-Wpedantic"
 #endif
 
+#include <rte_ethdev.h>
+#include <rte_ether.h>
+#include <rte_interrupts.h>
+
 /* Request send completion once in every 64 sends, might be less. */
 #define MLX4_PMD_TX_PER_COMP_REQ 64
 
