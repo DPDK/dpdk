@@ -96,12 +96,6 @@ typedef union {
 
 #define WR_ID(o) (((wr_id_t *)&(o))->data)
 
-/* Transpose flags. Useful to convert IBV to DPDK flags. */
-#define TRANSPOSE(val, from, to) \
-	(((from) >= (to)) ? \
-	 (((val) & (from)) / ((from) / (to))) : \
-	 (((val) & (from)) * ((to) / (from))))
-
 /** Configuration structure for device arguments. */
 struct mlx4_conf {
 	struct {
@@ -2088,47 +2082,6 @@ rxq_cleanup(struct rxq *rxq)
 	memset(rxq, 0, sizeof(*rxq));
 }
 
-/**
- * Translate RX completion flags to packet type.
- *
- * @param flags
- *   RX completion flags returned by poll_length_flags().
- *
- * @note: fix mlx4_dev_supported_ptypes_get() if any change here.
- *
- * @return
- *   Packet type for struct rte_mbuf.
- */
-static inline uint32_t
-rxq_cq_to_pkt_type(uint32_t flags)
-{
-	uint32_t pkt_type;
-
-	if (flags & IBV_EXP_CQ_RX_TUNNEL_PACKET)
-		pkt_type =
-			TRANSPOSE(flags,
-				  IBV_EXP_CQ_RX_OUTER_IPV4_PACKET,
-				  RTE_PTYPE_L3_IPV4_EXT_UNKNOWN) |
-			TRANSPOSE(flags,
-				  IBV_EXP_CQ_RX_OUTER_IPV6_PACKET,
-				  RTE_PTYPE_L3_IPV6_EXT_UNKNOWN) |
-			TRANSPOSE(flags,
-				  IBV_EXP_CQ_RX_IPV4_PACKET,
-				  RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN) |
-			TRANSPOSE(flags,
-				  IBV_EXP_CQ_RX_IPV6_PACKET,
-				  RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN);
-	else
-		pkt_type =
-			TRANSPOSE(flags,
-				  IBV_EXP_CQ_RX_IPV4_PACKET,
-				  RTE_PTYPE_L3_IPV4_EXT_UNKNOWN) |
-			TRANSPOSE(flags,
-				  IBV_EXP_CQ_RX_IPV6_PACKET,
-				  RTE_PTYPE_L3_IPV6_EXT_UNKNOWN);
-	return pkt_type;
-}
-
 static uint16_t
 mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n);
 
@@ -2315,7 +2268,7 @@ mlx4_rx_burst_sp(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		NB_SEGS(pkt_buf) = j;
 		PORT(pkt_buf) = rxq->port_id;
 		PKT_LEN(pkt_buf) = pkt_buf_len;
-		pkt_buf->packet_type = rxq_cq_to_pkt_type(flags);
+		pkt_buf->packet_type = 0;
 		pkt_buf->ol_flags = 0;
 
 		/* Return packet. */
@@ -2470,7 +2423,7 @@ mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		NEXT(seg) = NULL;
 		PKT_LEN(seg) = len;
 		DATA_LEN(seg) = len;
-		seg->packet_type = rxq_cq_to_pkt_type(flags);
+		seg->packet_type = 0;
 		seg->ol_flags = 0;
 
 		/* Return packet. */
@@ -3369,24 +3322,6 @@ mlx4_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	priv_unlock(priv);
 }
 
-static const uint32_t *
-mlx4_dev_supported_ptypes_get(struct rte_eth_dev *dev)
-{
-	static const uint32_t ptypes[] = {
-		/* refers to rxq_cq_to_pkt_type() */
-		RTE_PTYPE_L3_IPV4,
-		RTE_PTYPE_L3_IPV6,
-		RTE_PTYPE_INNER_L3_IPV4,
-		RTE_PTYPE_INNER_L3_IPV6,
-		RTE_PTYPE_UNKNOWN
-	};
-
-	if (dev->rx_pkt_burst == mlx4_rx_burst ||
-	    dev->rx_pkt_burst == mlx4_rx_burst_sp)
-		return ptypes;
-	return NULL;
-}
-
 /**
  * DPDK callback to get device statistics.
  *
@@ -3768,7 +3703,6 @@ static const struct eth_dev_ops mlx4_dev_ops = {
 	.stats_get = mlx4_stats_get,
 	.stats_reset = mlx4_stats_reset,
 	.dev_infos_get = mlx4_dev_infos_get,
-	.dev_supported_ptypes_get = mlx4_dev_supported_ptypes_get,
 	.rx_queue_setup = mlx4_rx_queue_setup,
 	.tx_queue_setup = mlx4_tx_queue_setup,
 	.rx_queue_release = mlx4_rx_queue_release,
