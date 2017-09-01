@@ -171,6 +171,8 @@ struct rxq {
 
 /* TX element. */
 struct txq_elt {
+	struct ibv_send_wr wr; /* Work request. */
+	struct ibv_sge sge; /* Scatter/gather element. */
 	struct rte_mbuf *buf;
 };
 
@@ -191,8 +193,6 @@ struct txq {
 	} mp2mr[MLX4_PMD_TX_MP_CACHE]; /* MP to MR translation table. */
 	struct ibv_cq *cq; /* Completion Queue. */
 	struct ibv_qp *qp; /* Queue Pair. */
-	struct ibv_exp_qp_burst_family *if_qp; /* QP burst interface. */
-	struct ibv_exp_cq_family *if_cq; /* CQ interface. */
 	uint32_t max_inline; /* Max inline send size <= MLX4_PMD_MAX_INLINE. */
 	unsigned int elts_n; /* (*elts)[] length. */
 	struct txq_elt (*elts)[]; /* TX elements. */
