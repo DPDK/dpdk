@@ -66,9 +66,6 @@
 /* Request send completion once in every 64 sends, might be less. */
 #define MLX4_PMD_TX_PER_COMP_REQ 64
 
-/* Maximum number of Scatter/Gather Elements per Work Request. */
-#define MLX4_PMD_SGE_WR_N 4
-
 /* Maximum size for inline data. */
 #define MLX4_PMD_MAX_INLINE 0
 
@@ -147,13 +144,6 @@ struct mlx4_rxq_stats {
 	uint64_t rx_nombuf; /**< Total of RX mbuf allocation failures. */
 };
 
-/* RX element (scattered packets). */
-struct rxq_elt_sp {
-	struct ibv_recv_wr wr; /* Work Request. */
-	struct ibv_sge sges[MLX4_PMD_SGE_WR_N]; /* Scatter/Gather Elements. */
-	struct rte_mbuf *bufs[MLX4_PMD_SGE_WR_N]; /* SGEs buffers. */
-};
-
 /* RX element. */
 struct rxq_elt {
 	struct ibv_recv_wr wr; /* Work Request. */
@@ -174,11 +164,7 @@ struct rxq {
 	unsigned int port_id; /* Port ID for incoming packets. */
 	unsigned int elts_n; /* (*elts)[] length. */
 	unsigned int elts_head; /* Current index in (*elts)[]. */
-	union {
-		struct rxq_elt_sp (*sp)[]; /* Scattered RX elements. */
-		struct rxq_elt (*no_sp)[]; /* RX elements. */
-	} elts;
-	unsigned int sp:1; /* Use scattered RX elements. */
+	struct rxq_elt (*elts)[]; /* Rx elements. */
 	struct mlx4_rxq_stats stats; /* RX queue counters. */
 	unsigned int socket; /* CPU socket ID for allocations. */
 	struct ibv_exp_res_domain *rd; /* Resource Domain. */
@@ -195,16 +181,6 @@ struct mlx4_txq_stats {
 	uint64_t obytes;   /**< Total of successfully sent bytes. */
 	uint64_t odropped; /**< Total of packets not sent when TX ring full. */
 };
-
-/*
- * Linear buffer type. It is used when transmitting buffers with too many
- * segments that do not fit the hardware queue (see max_send_sge).
- * Extra segments are copied (linearized) in such buffers, replacing the
- * last SGE during TX.
- * The size is arbitrary but large enough to hold a jumbo frame with
- * 8 segments considering mbuf.buf_len is about 2048 bytes.
- */
-typedef uint8_t linear_t[16384];
 
 /* TX queue descriptor. */
 struct txq {
@@ -227,8 +203,6 @@ struct txq {
 	unsigned int elts_comp_cd; /* Countdown for next completion request. */
 	unsigned int elts_comp_cd_init; /* Initial value for countdown. */
 	struct mlx4_txq_stats stats; /* TX queue counters. */
-	linear_t (*elts_linear)[]; /* Linearized buffers. */
-	struct ibv_mr *mr_linear; /* Memory Region for linearized buffers. */
 	unsigned int socket; /* CPU socket ID for allocations. */
 	struct ibv_exp_res_domain *rd; /* Resource Domain. */
 };

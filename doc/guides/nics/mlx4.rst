@@ -79,7 +79,6 @@ Features
 
 - Multi arch support: x86_64 and POWER8.
 - Link state information is provided.
-- Scattered packets are supported for TX and RX.
 - RX interrupts.
 
 Configuration
