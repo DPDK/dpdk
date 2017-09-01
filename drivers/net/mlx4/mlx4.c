@@ -2141,9 +2141,6 @@ rxq_mac_addrs_del(struct rxq *rxq)
 		rxq_mac_addr_del(rxq, i);
 }
 
-static int rxq_promiscuous_enable(struct rxq *);
-static void rxq_promiscuous_disable(struct rxq *);
-
 /**
  * Add single flow steering rule.
  *
@@ -2422,122 +2419,6 @@ end:
 }
 
 /**
- * Enable allmulti mode in a RX queue.
- *
- * @param rxq
- *   Pointer to RX queue structure.
- *
- * @return
- *   0 on success, errno value on failure.
- */
-static int
-rxq_allmulticast_enable(struct rxq *rxq)
-{
-	struct ibv_flow *flow;
-	struct ibv_flow_attr attr = {
-		.type = IBV_FLOW_ATTR_MC_DEFAULT,
-		.num_of_specs = 0,
-		.port = rxq->priv->port,
-		.flags = 0
-	};
-
-	DEBUG("%p: enabling allmulticast mode", (void *)rxq);
-	if (rxq->allmulti_flow != NULL)
-		return EBUSY;
-	errno = 0;
-	flow = ibv_create_flow(rxq->qp, &attr);
-	if (flow == NULL) {
-		/* It's not clear whether errno is always set in this case. */
-		ERROR("%p: flow configuration failed, errno=%d: %s",
-		      (void *)rxq, errno,
-		      (errno ? strerror(errno) : "Unknown error"));
-		if (errno)
-			return errno;
-		return EINVAL;
-	}
-	rxq->allmulti_flow = flow;
-	DEBUG("%p: allmulticast mode enabled", (void *)rxq);
-	return 0;
-}
-
-/**
- * Disable allmulti mode in a RX queue.
- *
- * @param rxq
- *   Pointer to RX queue structure.
- */
-static void
-rxq_allmulticast_disable(struct rxq *rxq)
-{
-	DEBUG("%p: disabling allmulticast mode", (void *)rxq);
-	if (rxq->allmulti_flow == NULL)
-		return;
-	claim_zero(ibv_destroy_flow(rxq->allmulti_flow));
-	rxq->allmulti_flow = NULL;
-	DEBUG("%p: allmulticast mode disabled", (void *)rxq);
-}
-
-/**
- * Enable promiscuous mode in a RX queue.
- *
- * @param rxq
- *   Pointer to RX queue structure.
- *
- * @return
- *   0 on success, errno value on failure.
- */
-static int
-rxq_promiscuous_enable(struct rxq *rxq)
-{
-	struct ibv_flow *flow;
-	struct ibv_flow_attr attr = {
-		.type = IBV_FLOW_ATTR_ALL_DEFAULT,
-		.num_of_specs = 0,
-		.port = rxq->priv->port,
-		.flags = 0
-	};
-
-	if (rxq->priv->vf)
-		return 0;
-	DEBUG("%p: enabling promiscuous mode", (void *)rxq);
-	if (rxq->promisc_flow != NULL)
-		return EBUSY;
-	errno = 0;
-	flow = ibv_create_flow(rxq->qp, &attr);
-	if (flow == NULL) {
-		/* It's not clear whether errno is always set in this case. */
-		ERROR("%p: flow configuration failed, errno=%d: %s",
-		      (void *)rxq, errno,
-		      (errno ? strerror(errno) : "Unknown error"));
-		if (errno)
-			return errno;
-		return EINVAL;
-	}
-	rxq->promisc_flow = flow;
-	DEBUG("%p: promiscuous mode enabled", (void *)rxq);
-	return 0;
-}
-
-/**
- * Disable promiscuous mode in a RX queue.
- *
- * @param rxq
- *   Pointer to RX queue structure.
- */
-static void
-rxq_promiscuous_disable(struct rxq *rxq)
-{
-	if (rxq->priv->vf)
-		return;
-	DEBUG("%p: disabling promiscuous mode", (void *)rxq);
-	if (rxq->promisc_flow == NULL)
-		return;
-	claim_zero(ibv_destroy_flow(rxq->promisc_flow));
-	rxq->promisc_flow = NULL;
-	DEBUG("%p: promiscuous mode disabled", (void *)rxq);
-}
-
-/**
  * Clean up a RX queue.
  *
  * Destroy objects, free allocated memory and reset the structure for reuse.
@@ -2578,8 +2459,6 @@ rxq_cleanup(struct rxq *rxq)
 						&params));
 	}
 	if (rxq->qp != NULL && !rxq->priv->isolated) {
-		rxq_promiscuous_disable(rxq);
-		rxq_allmulticast_disable(rxq);
 		rxq_mac_addrs_del(rxq);
 	}
 	if (rxq->qp != NULL)
@@ -3222,12 +3101,8 @@ rxq_rehash(struct rte_eth_dev *dev, struct rxq *rxq)
 	}
 	/* Remove attached flows if RSS is disabled (no parent queue). */
 	if (!priv->rss && !priv->isolated) {
-		rxq_allmulticast_disable(&tmpl);
-		rxq_promiscuous_disable(&tmpl);
 		rxq_mac_addrs_del(&tmpl);
 		/* Update original queue in case of failure. */
-		rxq->allmulti_flow = tmpl.allmulti_flow;
-		rxq->promisc_flow = tmpl.promisc_flow;
 		memcpy(rxq->mac_configured, tmpl.mac_configured,
 		       sizeof(rxq->mac_configured));
 		memcpy(rxq->mac_flow, tmpl.mac_flow, sizeof(rxq->mac_flow));
@@ -3268,13 +3143,7 @@ skip_init:
 	/* Reconfigure flows. Do not care for errors. */
 	if (!priv->rss && !priv->isolated) {
 		rxq_mac_addrs_add(&tmpl);
-		if (priv->promisc)
-			rxq_promiscuous_enable(&tmpl);
-		if (priv->allmulti)
-			rxq_allmulticast_enable(&tmpl);
 		/* Update original queue in case of failure. */
-		rxq->allmulti_flow = tmpl.allmulti_flow;
-		rxq->promisc_flow = tmpl.promisc_flow;
 		memcpy(rxq->mac_configured, tmpl.mac_configured,
 		       sizeof(rxq->mac_configured));
 		memcpy(rxq->mac_flow, tmpl.mac_flow, sizeof(rxq->mac_flow));
@@ -3817,10 +3686,6 @@ mlx4_dev_start(struct rte_eth_dev *dev)
 		if (rxq == NULL)
 			continue;
 		ret = rxq_mac_addrs_add(rxq);
-		if (!ret && priv->promisc)
-			ret = rxq_promiscuous_enable(rxq);
-		if (!ret && priv->allmulti)
-			ret = rxq_allmulticast_enable(rxq);
 		if (!ret)
 			continue;
 		WARN("%p: QP flow attachment failed: %s",
@@ -3858,8 +3723,6 @@ err:
 	while (i != 0) {
 		rxq = (*priv->rxqs)[i--];
 		if (rxq != NULL) {
-			rxq_allmulticast_disable(rxq);
-			rxq_promiscuous_disable(rxq);
 			rxq_mac_addrs_del(rxq);
 		}
 	}
@@ -3907,8 +3770,6 @@ mlx4_dev_stop(struct rte_eth_dev *dev)
 		/* Ignore nonexistent RX queues. */
 		if (rxq == NULL)
 			continue;
-		rxq_allmulticast_disable(rxq);
-		rxq_promiscuous_disable(rxq);
 		rxq_mac_addrs_del(rxq);
 	} while ((--r) && ((rxq = (*priv->rxqs)[++i]), i));
 	priv_unlock(priv);
@@ -4378,170 +4239,6 @@ mlx4_mac_addr_set(struct rte_eth_dev *dev, struct ether_addr *mac_addr)
 }
 
 /**
- * DPDK callback to enable promiscuous mode.
- *
- * @param dev
- *   Pointer to Ethernet device structure.
- */
-static void
-mlx4_promiscuous_enable(struct rte_eth_dev *dev)
-{
-	struct priv *priv = dev->data->dev_private;
-	unsigned int i;
-	int ret;
-
-	priv_lock(priv);
-	if (priv->isolated) {
-		DEBUG("%p: cannot enable promiscuous, "
-		      "device is in isolated mode", (void *)dev);
-		priv_unlock(priv);
-		return;
-	}
-	if (priv->promisc) {
-		priv_unlock(priv);
-		return;
-	}
-	/* If device isn't started, this is all we need to do. */
-	if (!priv->started)
-		goto end;
-	if (priv->rss) {
-		ret = rxq_promiscuous_enable(LIST_FIRST(&priv->parents));
-		if (ret) {
-			priv_unlock(priv);
-			return;
-		}
-		goto end;
-	}
-	for (i = 0; (i != priv->rxqs_n); ++i) {
-		if ((*priv->rxqs)[i] == NULL)
-			continue;
-		ret = rxq_promiscuous_enable((*priv->rxqs)[i]);
-		if (!ret)
-			continue;
-		/* Failure, rollback. */
-		while (i != 0)
-			if ((*priv->rxqs)[--i] != NULL)
-				rxq_promiscuous_disable((*priv->rxqs)[i]);
-		priv_unlock(priv);
-		return;
-	}
-end:
-	priv->promisc = 1;
-	priv_unlock(priv);
-}
-
-/**
- * DPDK callback to disable promiscuous mode.
- *
- * @param dev
- *   Pointer to Ethernet device structure.
- */
-static void
-mlx4_promiscuous_disable(struct rte_eth_dev *dev)
-{
-	struct priv *priv = dev->data->dev_private;
-	unsigned int i;
-
-	priv_lock(priv);
-	if (!priv->promisc || priv->isolated) {
-		priv_unlock(priv);
-		return;
-	}
-	if (priv->rss) {
-		rxq_promiscuous_disable(LIST_FIRST(&priv->parents));
-		goto end;
-	}
-	for (i = 0; (i != priv->rxqs_n); ++i)
-		if ((*priv->rxqs)[i] != NULL)
-			rxq_promiscuous_disable((*priv->rxqs)[i]);
-end:
-	priv->promisc = 0;
-	priv_unlock(priv);
-}
-
-/**
- * DPDK callback to enable allmulti mode.
- *
- * @param dev
- *   Pointer to Ethernet device structure.
- */
-static void
-mlx4_allmulticast_enable(struct rte_eth_dev *dev)
-{
-	struct priv *priv = dev->data->dev_private;
-	unsigned int i;
-	int ret;
-
-	priv_lock(priv);
-	if (priv->isolated) {
-		DEBUG("%p: cannot enable allmulticast, "
-		      "device is in isolated mode", (void *)dev);
-		priv_unlock(priv);
-		return;
-	}
-	if (priv->allmulti) {
-		priv_unlock(priv);
-		return;
-	}
-	/* If device isn't started, this is all we need to do. */
-	if (!priv->started)
-		goto end;
-	if (priv->rss) {
-		ret = rxq_allmulticast_enable(LIST_FIRST(&priv->parents));
-		if (ret) {
-			priv_unlock(priv);
-			return;
-		}
-		goto end;
-	}
-	for (i = 0; (i != priv->rxqs_n); ++i) {
-		if ((*priv->rxqs)[i] == NULL)
-			continue;
-		ret = rxq_allmulticast_enable((*priv->rxqs)[i]);
-		if (!ret)
-			continue;
-		/* Failure, rollback. */
-		while (i != 0)
-			if ((*priv->rxqs)[--i] != NULL)
-				rxq_allmulticast_disable((*priv->rxqs)[i]);
-		priv_unlock(priv);
-		return;
-	}
-end:
-	priv->allmulti = 1;
-	priv_unlock(priv);
-}
-
-/**
- * DPDK callback to disable allmulti mode.
- *
- * @param dev
- *   Pointer to Ethernet device structure.
- */
-static void
-mlx4_allmulticast_disable(struct rte_eth_dev *dev)
-{
-	struct priv *priv = dev->data->dev_private;
-	unsigned int i;
-
-	priv_lock(priv);
-	if (!priv->allmulti || priv->isolated) {
-		priv_unlock(priv);
-		return;
-	}
-	if (priv->rss) {
-		rxq_allmulticast_disable(LIST_FIRST(&priv->parents));
-		goto end;
-	}
-	for (i = 0; (i != priv->rxqs_n); ++i)
-		if ((*priv->rxqs)[i] != NULL)
-			rxq_allmulticast_disable((*priv->rxqs)[i]);
-end:
-	priv->allmulti = 0;
-	priv_unlock(priv);
-}
-
-/**
  * DPDK callback to retrieve physical link information.
  *
  * @param dev
@@ -4664,10 +4361,6 @@ mlx4_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 		 * for errors at this stage. */
 		if (!priv->rss && !priv->isolated) {
 			rxq_mac_addrs_add(rxq);
-			if (priv->promisc)
-				rxq_promiscuous_enable(rxq);
-			if (priv->allmulti)
-				rxq_allmulticast_enable(rxq);
 		}
 		/* Scattered burst function takes priority. */
 		if (rxq->sp)
@@ -4956,10 +4649,6 @@ static const struct eth_dev_ops mlx4_dev_ops = {
 	.dev_set_link_down = mlx4_set_link_down,
 	.dev_set_link_up = mlx4_set_link_up,
 	.dev_close = mlx4_dev_close,
-	.promiscuous_enable = mlx4_promiscuous_enable,
-	.promiscuous_disable = mlx4_promiscuous_disable,
-	.allmulticast_enable = mlx4_allmulticast_enable,
-	.allmulticast_disable = mlx4_allmulticast_disable,
 	.link_update = mlx4_link_update,
 	.stats_get = mlx4_stats_get,
 	.stats_reset = mlx4_stats_reset,

@@ -210,8 +210,6 @@ struct rxq {
 	 */
 	BITFIELD_DECLARE(mac_configured, uint32_t, MLX4_MAX_MAC_ADDRESSES);
 	struct ibv_flow *mac_flow[MLX4_MAX_MAC_ADDRESSES][MLX4_MAX_VLAN_IDS];
-	struct ibv_flow *promisc_flow; /* Promiscuous flow. */
-	struct ibv_flow *allmulti_flow; /* Multicast flow. */
 	unsigned int port_id; /* Port ID for incoming packets. */
 	unsigned int elts_n; /* (*elts)[] length. */
 	unsigned int elts_head; /* Current index in (*elts)[]. */
@@ -303,8 +301,6 @@ struct priv {
 	uint16_t mtu; /* Configured MTU. */
 	uint8_t port; /* Physical port number. */
 	unsigned int started:1; /* Device started, flows enabled. */
-	unsigned int promisc:1; /* Device in promiscuous mode. */
-	unsigned int allmulti:1; /* Device receives all multicast packets. */
 	unsigned int hw_qpg:1; /* QP groups are supported. */
 	unsigned int hw_tss:1; /* TSS is supported. */
 	unsigned int hw_rss:1; /* RSS is supported. */

@@ -82,8 +82,6 @@ Features
   configured RX queues must be a power of two.
 - VLAN filtering is supported.
 - Link state information is provided.
-- Promiscuous mode is supported.
-- All multicast mode is supported.
 - Multiple MAC addresses (unicast, multicast) can be configured.
 - Scattered packets are supported for TX and RX.
 - Inner L3/L4 (IP, TCP and UDP) TX/RX checksum offloading and validation.
