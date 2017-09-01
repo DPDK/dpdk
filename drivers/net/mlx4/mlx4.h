@@ -167,7 +167,6 @@ struct rxq {
 	struct rxq_elt (*elts)[]; /* Rx elements. */
 	struct mlx4_rxq_stats stats; /* RX queue counters. */
 	unsigned int socket; /* CPU socket ID for allocations. */
-	struct ibv_exp_res_domain *rd; /* Resource Domain. */
 };
 
 /* TX element. */
@@ -204,7 +203,6 @@ struct txq {
 	unsigned int elts_comp_cd_init; /* Initial value for countdown. */
 	struct mlx4_txq_stats stats; /* TX queue counters. */
 	unsigned int socket; /* CPU socket ID for allocations. */
-	struct ibv_exp_res_domain *rd; /* Resource Domain. */
 };
 
 struct rte_flow;

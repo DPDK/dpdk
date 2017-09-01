@@ -752,29 +752,21 @@ mlx4_flow_create_drop_queue(struct priv *priv)
 		ERROR("Cannot allocate memory for drop struct");
 		goto err;
 	}
-	cq = ibv_exp_create_cq(priv->ctx, 1, NULL, NULL, 0,
-			      &(struct ibv_exp_cq_init_attr){
-					.comp_mask = 0,
-			      });
+	cq = ibv_create_cq(priv->ctx, 1, NULL, NULL, 0);
 	if (!cq) {
 		ERROR("Cannot create drop CQ");
 		goto err_create_cq;
 	}
-	qp = ibv_exp_create_qp(priv->ctx,
-			      &(struct ibv_exp_qp_init_attr){
-					.send_cq = cq,
-					.recv_cq = cq,
-					.cap = {
-						.max_recv_wr = 1,
-						.max_recv_sge = 1,
-					},
-					.qp_type = IBV_QPT_RAW_PACKET,
-					.comp_mask =
-						IBV_EXP_QP_INIT_ATTR_PD |
-						IBV_EXP_QP_INIT_ATTR_PORT,
-					.pd = priv->pd,
-					.port_num = priv->port,
-			      });
+	qp = ibv_create_qp(priv->pd,
+			   &(struct ibv_qp_init_attr){
+				.send_cq = cq,
+				.recv_cq = cq,
+				.cap = {
+					.max_recv_wr = 1,
+					.max_recv_sge = 1,
+				},
+				.qp_type = IBV_QPT_RAW_PACKET,
+			   });
 	if (!qp) {
 		ERROR("Cannot create drop QP");
 		goto err_create_qp;
