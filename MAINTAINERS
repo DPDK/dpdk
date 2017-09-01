@@ -407,7 +407,7 @@ Netronome nfp
 M: Alejandro Lucero <alejandro.lucero@netronome.com>
 F: drivers/net/nfp/
 F: doc/guides/nics/nfp.rst
-F: doc/guides/nics/features/nfp.ini
+F: doc/guides/nics/features/nfp*.ini
 
 NXP dpaa2
 M: Hemant Agrawal <hemant.agrawal@nxp.com>
