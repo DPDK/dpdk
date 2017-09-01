@@ -119,4 +119,16 @@ struct txq {
 	unsigned int socket; /**< CPU socket ID for allocations. */
 };
 
+/* mlx4_rxtx.c */
+
+uint32_t mlx4_txq_mp2mr(struct txq *txq, struct rte_mempool *mp);
+uint16_t mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts,
+		       uint16_t pkts_n);
+uint16_t mlx4_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts,
+		       uint16_t pkts_n);
+uint16_t mlx4_tx_burst_removed(void *dpdk_txq, struct rte_mbuf **pkts,
+			       uint16_t pkts_n);
+uint16_t mlx4_rx_burst_removed(void *dpdk_rxq, struct rte_mbuf **pkts,
+			       uint16_t pkts_n);
+
 #endif /* MLX4_RXTX_H_ */

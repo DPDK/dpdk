@@ -49,6 +49,7 @@
 #include <rte_ethdev.h>
 #include <rte_ether.h>
 #include <rte_interrupts.h>
+#include <rte_mempool.h>
 
 /* Request send completion once in every 64 sends, might be less. */
 #define MLX4_PMD_TX_PER_COMP_REQ 64
@@ -115,6 +116,7 @@ struct priv {
 
 /* mlx4.c */
 
+struct ibv_mr *mlx4_mp2mr(struct ibv_pd *pd, struct rte_mempool *mp);
 int mlx4_link_update(struct rte_eth_dev *dev, int wait_to_complete);
 
 /* mlx4_intr.c */
