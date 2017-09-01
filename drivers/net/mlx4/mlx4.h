@@ -98,9 +98,6 @@ enum {
 
 #define MLX4_DRIVER_NAME "net_mlx4"
 
-/* Number of elements in array. */
-#define elemof(a) (sizeof(a) / sizeof((a)[0]))
-
 /* Debugging */
 #ifndef NDEBUG
 #include <stdio.h>

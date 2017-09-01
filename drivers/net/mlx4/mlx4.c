@@ -66,6 +66,7 @@
 #include <rte_kvargs.h>
 #include <rte_interrupts.h>
 #include <rte_branch_prediction.h>
+#include <rte_common.h>
 
 /* Generated configuration header. */
 #include "mlx4_autoconf.h"
@@ -633,7 +634,7 @@ txq_cleanup(struct txq *txq)
 		claim_zero(ibv_destroy_qp(txq->qp));
 	if (txq->cq != NULL)
 		claim_zero(ibv_destroy_cq(txq->cq));
-	for (i = 0; (i != elemof(txq->mp2mr)); ++i) {
+	for (i = 0; (i != RTE_DIM(txq->mp2mr)); ++i) {
 		if (txq->mp2mr[i].mp == NULL)
 			break;
 		assert(txq->mp2mr[i].mr != NULL);
@@ -843,7 +844,7 @@ txq_mp2mr(struct txq *txq, struct rte_mempool *mp)
 	unsigned int i;
 	struct ibv_mr *mr;
 
-	for (i = 0; (i != elemof(txq->mp2mr)); ++i) {
+	for (i = 0; (i != RTE_DIM(txq->mp2mr)); ++i) {
 		if (unlikely(txq->mp2mr[i].mp == NULL)) {
 			/* Unknown MP, add a new MR for it. */
 			break;
@@ -863,7 +864,7 @@ txq_mp2mr(struct txq *txq, struct rte_mempool *mp)
 		      (void *)txq);
 		return (uint32_t)-1;
 	}
-	if (unlikely(i == elemof(txq->mp2mr))) {
+	if (unlikely(i == RTE_DIM(txq->mp2mr))) {
 		/* Table is full, remove oldest entry. */
 		DEBUG("%p: MR <-> MP table full, dropping oldest entry.",
 		      (void *)txq);
@@ -1400,7 +1401,7 @@ rxq_alloc_elts(struct rxq *rxq, unsigned int elts_n)
 	return 0;
 error:
 	if (elts != NULL) {
-		for (i = 0; (i != elemof(*elts)); ++i)
+		for (i = 0; (i != RTE_DIM(*elts)); ++i)
 			rte_pktmbuf_free_seg((*elts)[i].buf);
 		rte_free(elts);
 	}
@@ -1427,7 +1428,7 @@ rxq_free_elts(struct rxq *rxq)
 	rxq->elts = NULL;
 	if (elts == NULL)
 		return;
-	for (i = 0; (i != elemof(*elts)); ++i)
+	for (i = 0; (i != RTE_DIM(*elts)); ++i)
 		rte_pktmbuf_free_seg((*elts)[i].buf);
 	rte_free(elts);
 }
