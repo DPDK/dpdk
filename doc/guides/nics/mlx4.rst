@@ -124,13 +124,6 @@ These options can be modified in the ``.config`` file.
   to abort with harmless debugging messages as a workaround.
   Relevant only when CONFIG_RTE_LIBRTE_MLX4_DEBUG is enabled.
 
-- ``CONFIG_RTE_LIBRTE_MLX4_SGE_WR_N`` (default **4**)
-
-  Number of scatter/gather elements (SGEs) per work request (WR). Lowering
-  this number improves performance but also limits the ability to receive
-  scattered packets (packets that do not fit a single mbuf). The default
-  value is a safe tradeoff.
-
 - ``CONFIG_RTE_LIBRTE_MLX4_MAX_INLINE`` (default **0**)
 
   Amount of data to be inlined during TX operations. Improves latency but

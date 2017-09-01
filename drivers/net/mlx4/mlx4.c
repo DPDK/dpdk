@@ -1176,8 +1176,6 @@ txq_mp2mr_iter(struct rte_mempool *mp, void *arg)
 	txq_mp2mr(txq, mp);
 }
 
-#if MLX4_PMD_SGE_WR_N > 1
-
 /**
  * Copy scattered mbuf contents to a single linear buffer.
  *
@@ -1324,8 +1322,6 @@ stop:
 	};
 }
 
-#endif /* MLX4_PMD_SGE_WR_N > 1 */
-
 /**
  * DPDK callback for TX.
  *
@@ -1451,7 +1447,6 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				goto stop;
 			sent_size += length;
 		} else {
-#if MLX4_PMD_SGE_WR_N > 1
 			struct ibv_sge sges[MLX4_PMD_SGE_WR_N];
 			struct tx_burst_sg_ret ret;
 
@@ -1469,11 +1464,6 @@ mlx4_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 			if (unlikely(err))
 				goto stop;
 			sent_size += ret.length;
-#else /* MLX4_PMD_SGE_WR_N > 1 */
-			DEBUG("%p: TX scattered buffers support not"
-			      " compiled in", (void *)txq);
-			goto stop;
-#endif /* MLX4_PMD_SGE_WR_N > 1 */
 		}
 		elts_head = elts_head_next;
 		/* Increment sent bytes counter. */
