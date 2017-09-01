@@ -31,8 +31,26 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <arpa/inet.h>
 #include <assert.h>
+#include <errno.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <string.h>
+#include <sys/queue.h>
 
+/* Verbs headers do not support -pedantic. */
+#ifdef PEDANTIC
+#pragma GCC diagnostic ignored "-Wpedantic"
+#endif
+#include <infiniband/verbs.h>
+#ifdef PEDANTIC
+#pragma GCC diagnostic error "-Wpedantic"
+#endif
+
+#include <rte_errno.h>
+#include <rte_eth_ctrl.h>
+#include <rte_ethdev.h>
 #include <rte_flow.h>
 #include <rte_flow_driver.h>
 #include <rte_malloc.h>
@@ -697,7 +715,7 @@ exit_action_not_supported:
  * @see rte_flow_validate()
  * @see rte_flow_ops
  */
-int
+static int
 mlx4_flow_validate(struct rte_eth_dev *dev,
 		   const struct rte_flow_attr *attr,
 		   const struct rte_flow_item items[],
@@ -844,7 +862,7 @@ error:
  * @see rte_flow_create()
  * @see rte_flow_ops
  */
-struct rte_flow *
+static struct rte_flow *
 mlx4_flow_create(struct rte_eth_dev *dev,
 		 const struct rte_flow_attr *attr,
 		 const struct rte_flow_item items[],
@@ -927,7 +945,7 @@ exit:
  * @return
  *   0 on success, a negative value on error.
  */
-int
+static int
 mlx4_flow_isolate(struct rte_eth_dev *dev,
 		  int enable,
 		  struct rte_flow_error *error)
@@ -951,7 +969,7 @@ mlx4_flow_isolate(struct rte_eth_dev *dev,
  * @see rte_flow_destroy()
  * @see rte_flow_ops
  */
-int
+static int
 mlx4_flow_destroy(struct rte_eth_dev *dev,
 		  struct rte_flow *flow,
 		  struct rte_flow_error *error)
@@ -973,7 +991,7 @@ mlx4_flow_destroy(struct rte_eth_dev *dev,
  * @see rte_flow_flush()
  * @see rte_flow_ops
  */
-int
+static int
 mlx4_flow_flush(struct rte_eth_dev *dev,
 		struct rte_flow_error *error)
 {
@@ -1043,4 +1061,48 @@ mlx4_priv_flow_start(struct priv *priv)
 		DEBUG("Flow %p applied", (void *)flow);
 	}
 	return 0;
+}
+
+static const struct rte_flow_ops mlx4_flow_ops = {
+	.validate = mlx4_flow_validate,
+	.create = mlx4_flow_create,
+	.destroy = mlx4_flow_destroy,
+	.flush = mlx4_flow_flush,
+	.isolate = mlx4_flow_isolate,
+};
+
+/**
+ * Manage filter operations.
+ *
+ * @param dev
+ *   Pointer to Ethernet device structure.
+ * @param filter_type
+ *   Filter type.
+ * @param filter_op
+ *   Operation to perform.
+ * @param arg
+ *   Pointer to operation-specific structure.
+ *
+ * @return
+ *   0 on success, negative errno value otherwise and rte_errno is set.
+ */
+int
+mlx4_filter_ctrl(struct rte_eth_dev *dev,
+		 enum rte_filter_type filter_type,
+		 enum rte_filter_op filter_op,
+		 void *arg)
+{
+	switch (filter_type) {
+	case RTE_ETH_FILTER_GENERIC:
+		if (filter_op != RTE_ETH_FILTER_GET)
+			break;
+		*(const void **)arg = &mlx4_flow_ops;
+		return 0;
+	default:
+		ERROR("%p: filter type (%d) not supported",
+		      (void *)dev, filter_type);
+		break;
+	}
+	rte_errno = ENOTSUP;
+	return -rte_errno;
 }

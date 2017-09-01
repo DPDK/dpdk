@@ -51,7 +51,6 @@
 #include <rte_mempool.h>
 #include <rte_malloc.h>
 #include <rte_memory.h>
-#include <rte_flow.h>
 #include <rte_kvargs.h>
 #include <rte_interrupts.h>
 #include <rte_common.h>
@@ -356,51 +355,6 @@ mlx4_dev_close(struct rte_eth_dev *dev)
 	memset(priv, 0, sizeof(*priv));
 }
 
-const struct rte_flow_ops mlx4_flow_ops = {
-	.validate = mlx4_flow_validate,
-	.create = mlx4_flow_create,
-	.destroy = mlx4_flow_destroy,
-	.flush = mlx4_flow_flush,
-	.query = NULL,
-	.isolate = mlx4_flow_isolate,
-};
-
-/**
- * Manage filter operations.
- *
- * @param dev
- *   Pointer to Ethernet device structure.
- * @param filter_type
- *   Filter type.
- * @param filter_op
- *   Operation to perform.
- * @param arg
- *   Pointer to operation-specific structure.
- *
- * @return
- *   0 on success, negative errno value otherwise and rte_errno is set.
- */
-static int
-mlx4_dev_filter_ctrl(struct rte_eth_dev *dev,
-		     enum rte_filter_type filter_type,
-		     enum rte_filter_op filter_op,
-		     void *arg)
-{
-	switch (filter_type) {
-	case RTE_ETH_FILTER_GENERIC:
-		if (filter_op != RTE_ETH_FILTER_GET)
-			break;
-		*(const void **)arg = &mlx4_flow_ops;
-		return 0;
-	default:
-		ERROR("%p: filter type (%d) not supported",
-		      (void *)dev, filter_type);
-		break;
-	}
-	rte_errno = ENOTSUP;
-	return -rte_errno;
-}
-
 static const struct eth_dev_ops mlx4_dev_ops = {
 	.dev_configure = mlx4_dev_configure,
 	.dev_start = mlx4_dev_start,
@@ -419,7 +373,7 @@ static const struct eth_dev_ops mlx4_dev_ops = {
 	.flow_ctrl_get = mlx4_flow_ctrl_get,
 	.flow_ctrl_set = mlx4_flow_ctrl_set,
 	.mtu_set = mlx4_mtu_set,
-	.filter_ctrl = mlx4_dev_filter_ctrl,
+	.filter_ctrl = mlx4_filter_ctrl,
 	.rx_queue_intr_enable = mlx4_rx_intr_enable,
 	.rx_queue_intr_disable = mlx4_rx_intr_disable,
 };

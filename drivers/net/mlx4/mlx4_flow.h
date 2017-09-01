@@ -34,7 +34,6 @@
 #ifndef RTE_PMD_MLX4_FLOW_H_
 #define RTE_PMD_MLX4_FLOW_H_
 
-#include <stddef.h>
 #include <stdint.h>
 #include <sys/queue.h>
 
@@ -48,11 +47,11 @@
 #pragma GCC diagnostic error "-Wpedantic"
 #endif
 
+#include <rte_eth_ctrl.h>
+#include <rte_ethdev.h>
 #include <rte_flow.h>
 #include <rte_flow_driver.h>
 #include <rte_byteorder.h>
-
-#include "mlx4.h"
 
 struct rte_flow {
 	LIST_ENTRY(rte_flow) next; /**< Pointer to the next flow structure. */
@@ -61,39 +60,11 @@ struct rte_flow {
 	struct ibv_qp *qp; /**< Verbs queue pair. */
 };
 
-int
-mlx4_flow_validate(struct rte_eth_dev *dev,
-		   const struct rte_flow_attr *attr,
-		   const struct rte_flow_item items[],
-		   const struct rte_flow_action actions[],
-		   struct rte_flow_error *error);
-
-struct rte_flow *
-mlx4_flow_create(struct rte_eth_dev *dev,
-		 const struct rte_flow_attr *attr,
-		 const struct rte_flow_item items[],
-		 const struct rte_flow_action actions[],
-		 struct rte_flow_error *error);
-
-int
-mlx4_flow_destroy(struct rte_eth_dev *dev,
-		  struct rte_flow *flow,
-		  struct rte_flow_error *error);
-
-int
-mlx4_flow_flush(struct rte_eth_dev *dev,
-		struct rte_flow_error *error);
-
 /** Structure to pass to the conversion function. */
 struct mlx4_flow {
 	struct ibv_flow_attr *ibv_attr; /**< Verbs attribute. */
 	unsigned int offset; /**< Offset in bytes in the ibv_attr buffer. */
 };
-
-int
-mlx4_flow_isolate(struct rte_eth_dev *dev,
-		  int enable,
-		  struct rte_flow_error *error);
 
 struct mlx4_flow_action {
 	uint32_t drop:1; /**< Target is a drop queue. */
@@ -101,7 +72,13 @@ struct mlx4_flow_action {
 	uint32_t queue_id; /**< Identifier of the queue. */
 };
 
+/* mlx4_flow.c */
+
 int mlx4_priv_flow_start(struct priv *priv);
 void mlx4_priv_flow_stop(struct priv *priv);
+int mlx4_filter_ctrl(struct rte_eth_dev *dev,
+		     enum rte_filter_type filter_type,
+		     enum rte_filter_op filter_op,
+		     void *arg);
 
 #endif /* RTE_PMD_MLX4_FLOW_H_ */
