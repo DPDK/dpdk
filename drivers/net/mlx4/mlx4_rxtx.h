@@ -45,6 +45,7 @@
 #pragma GCC diagnostic error "-Wpedantic"
 #endif
 
+#include <rte_ethdev.h>
 #include <rte_mbuf.h>
 #include <rte_mempool.h>
 
@@ -130,5 +131,13 @@ uint16_t mlx4_tx_burst_removed(void *dpdk_txq, struct rte_mbuf **pkts,
 			       uint16_t pkts_n);
 uint16_t mlx4_rx_burst_removed(void *dpdk_rxq, struct rte_mbuf **pkts,
 			       uint16_t pkts_n);
+
+/* mlx4_txq.c */
+
+void mlx4_txq_cleanup(struct txq *txq);
+int mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx,
+			uint16_t desc, unsigned int socket,
+			const struct rte_eth_txconf *conf);
+void mlx4_tx_queue_release(void *dpdk_txq);
 
 #endif /* MLX4_RXTX_H_ */
