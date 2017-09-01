@@ -31,11 +31,6 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-/*
- * Known limitations:
- * - RSS hash key and options cannot be modified.
- */
-
 /* System headers. */
 #include <stddef.h>
 #include <stdio.h>
@@ -507,7 +502,7 @@ txq_cleanup(struct txq *txq);
 
 static int
 rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
-	  unsigned int socket, int inactive, const struct rte_eth_rxconf *conf,
+	  unsigned int socket, const struct rte_eth_rxconf *conf,
 	  struct rte_mempool *mp);
 
 static void
@@ -520,7 +515,6 @@ priv_mac_addr_del(struct priv *priv);
  * Ethernet device configuration.
  *
  * Prepare the driver for a given number of TX and RX queues.
- * Allocate parent RSS queue when several RX queues are requested.
  *
  * @param dev
  *   Pointer to Ethernet device structure.
@@ -534,8 +528,6 @@ dev_configure(struct rte_eth_dev *dev)
 	struct priv *priv = dev->data->dev_private;
 	unsigned int rxqs_n = dev->data->nb_rx_queues;
 	unsigned int txqs_n = dev->data->nb_tx_queues;
-	unsigned int tmp;
-	int ret;
 
 	priv->rxqs = (void *)dev->data->rx_queues;
 	priv->txqs = (void *)dev->data->tx_queues;
@@ -544,61 +536,12 @@ dev_configure(struct rte_eth_dev *dev)
 		     (void *)dev, priv->txqs_n, txqs_n);
 		priv->txqs_n = txqs_n;
 	}
-	if (rxqs_n == priv->rxqs_n)
-		return 0;
-	if (!rte_is_power_of_2(rxqs_n) && !priv->isolated) {
-		unsigned n_active;
-
-		n_active = rte_align32pow2(rxqs_n + 1) >> 1;
-		WARN("%p: number of RX queues must be a power"
-			" of 2: %u queues among %u will be active",
-			(void *)dev, n_active, rxqs_n);
-	}
-
-	INFO("%p: RX queues number update: %u -> %u",
-	     (void *)dev, priv->rxqs_n, rxqs_n);
-	/* If RSS is enabled, disable it first. */
-	if (priv->rss) {
-		unsigned int i;
-
-		/* Only if there are no remaining child RX queues. */
-		for (i = 0; (i != priv->rxqs_n); ++i)
-			if ((*priv->rxqs)[i] != NULL)
-				return EINVAL;
-		priv_mac_addr_del(priv);
-		rxq_cleanup(&priv->rxq_parent);
-		priv->rss = 0;
-		priv->rxqs_n = 0;
-	}
-	if (rxqs_n <= 1) {
-		/* Nothing else to do. */
+	if (rxqs_n != priv->rxqs_n) {
+		INFO("%p: Rx queues number update: %u -> %u",
+		     (void *)dev, priv->rxqs_n, rxqs_n);
 		priv->rxqs_n = rxqs_n;
-		return 0;
 	}
-	/* Allocate a new RSS parent queue if supported by hardware. */
-	if (!priv->hw_rss) {
-		ERROR("%p: only a single RX queue can be configured when"
-		      " hardware doesn't support RSS",
-		      (void *)dev);
-		return EINVAL;
-	}
-	/* Fail if hardware doesn't support that many RSS queues. */
-	if (rxqs_n >= priv->max_rss_tbl_sz) {
-		ERROR("%p: only %u RX queues can be configured for RSS",
-		      (void *)dev, priv->max_rss_tbl_sz);
-		return EINVAL;
-	}
-	priv->rss = 1;
-	tmp = priv->rxqs_n;
-	priv->rxqs_n = rxqs_n;
-	ret = rxq_setup(dev, &priv->rxq_parent, 0, 0, 0, NULL, NULL);
-	if (!ret)
-		return 0;
-	/* Failure, rollback. */
-	priv->rss = 0;
-	priv->rxqs_n = tmp;
-	assert(ret > 0);
-	return ret;
+	return 0;
 }
 
 /**
@@ -2014,8 +1957,7 @@ priv_mac_addr_del(struct priv *priv)
 /**
  * Register a MAC address.
  *
- * In RSS mode, the MAC address is registered in the parent queue,
- * otherwise it is registered in queue 0.
+ * The MAC address is registered in queue 0.
  *
  * @param priv
  *   Pointer to private structure.
@@ -2035,9 +1977,7 @@ priv_mac_addr_add(struct priv *priv)
 		return 0;
 	if (priv->isolated)
 		return 0;
-	if (priv->rss)
-		rxq = &priv->rxq_parent;
-	else if (*priv->rxqs && (*priv->rxqs)[0])
+	if (*priv->rxqs && (*priv->rxqs)[0])
 		rxq = (*priv->rxqs)[0];
 	else
 		return 0;
@@ -2647,69 +2587,8 @@ rxq_setup_qp(struct priv *priv, struct ibv_cq *cq, uint16_t desc,
 		.res_domain = rd,
 	};
 
-	attr.max_inl_recv = priv->inl_recv_size;
-	attr.comp_mask |= IBV_EXP_QP_INIT_ATTR_INL_RECV;
-	return ibv_exp_create_qp(priv->ctx, &attr);
-}
-
-/**
- * Allocate a RSS Queue Pair.
- * Optionally setup inline receive if supported.
- *
- * @param priv
- *   Pointer to private structure.
- * @param cq
- *   Completion queue to associate with QP.
- * @param desc
- *   Number of descriptors in QP (hint only).
- * @param parent
- *   If nonzero, create a parent QP, otherwise a child.
- *
- * @return
- *   QP pointer or NULL in case of error.
- */
-static struct ibv_qp *
-rxq_setup_qp_rss(struct priv *priv, struct ibv_cq *cq, uint16_t desc,
-		 int parent, struct ibv_exp_res_domain *rd)
-{
-	struct ibv_exp_qp_init_attr attr = {
-		/* CQ to be associated with the send queue. */
-		.send_cq = cq,
-		/* CQ to be associated with the receive queue. */
-		.recv_cq = cq,
-		.cap = {
-			/* Max number of outstanding WRs. */
-			.max_recv_wr = ((priv->device_attr.max_qp_wr < desc) ?
-					priv->device_attr.max_qp_wr :
-					desc),
-			/* Max number of scatter/gather elements in a WR. */
-			.max_recv_sge = ((priv->device_attr.max_sge <
-					  MLX4_PMD_SGE_WR_N) ?
-					 priv->device_attr.max_sge :
-					 MLX4_PMD_SGE_WR_N),
-		},
-		.qp_type = IBV_QPT_RAW_PACKET,
-		.comp_mask = (IBV_EXP_QP_INIT_ATTR_PD |
-			      IBV_EXP_QP_INIT_ATTR_RES_DOMAIN |
-			      IBV_EXP_QP_INIT_ATTR_QPG),
-		.pd = priv->pd,
-		.res_domain = rd,
-	};
-
 	attr.max_inl_recv = priv->inl_recv_size,
 	attr.comp_mask |= IBV_EXP_QP_INIT_ATTR_INL_RECV;
-	if (parent) {
-		attr.qpg.qpg_type = IBV_EXP_QPG_PARENT;
-		/* TSS isn't necessary. */
-		attr.qpg.parent_attrib.tss_child_count = 0;
-		attr.qpg.parent_attrib.rss_child_count =
-			rte_align32pow2(priv->rxqs_n + 1) >> 1;
-		DEBUG("initializing parent RSS queue");
-	} else {
-		attr.qpg.qpg_type = IBV_EXP_QPG_CHILD_RX;
-		attr.qpg.qpg_parent = priv->rxq_parent.qp;
-		DEBUG("initializing child RSS queue");
-	}
 	return ibv_exp_create_qp(priv->ctx, &attr);
 }
 
@@ -2741,13 +2620,7 @@ rxq_rehash(struct rte_eth_dev *dev, struct rxq *rxq)
 	struct ibv_recv_wr *bad_wr;
 	unsigned int mb_len;
 	int err;
-	int parent = (rxq == &priv->rxq_parent);
 
-	if (parent) {
-		ERROR("%p: cannot rehash parent queue %p",
-		      (void *)dev, (void *)rxq);
-		return EINVAL;
-	}
 	mb_len = rte_pktmbuf_data_room_size(rxq->mp);
 	DEBUG("%p: rehashing queue %p", (void *)dev, (void *)rxq);
 	/* Number of descriptors and mbufs currently allocated. */
@@ -2800,9 +2673,8 @@ rxq_rehash(struct rte_eth_dev *dev, struct rxq *rxq)
 		.port_num = priv->port
 	};
 	err = ibv_exp_modify_qp(tmpl.qp, &mod,
-				(IBV_EXP_QP_STATE |
-				 (parent ? IBV_EXP_QP_GROUP_RSS : 0) |
-				 IBV_EXP_QP_PORT));
+				IBV_EXP_QP_STATE |
+				IBV_EXP_QP_PORT);
 	if (err) {
 		ERROR("%p: QP state to IBV_QPS_INIT failed: %s",
 		      (void *)dev, strerror(err));
@@ -2899,9 +2771,6 @@ skip_rtr:
  *   Number of descriptors to configure in queue.
  * @param socket
  *   NUMA socket on which memory must be allocated.
- * @param inactive
- *   If true, the queue is disabled because its index is higher or
- *   equal to the real number of queues, which must be a power of 2.
  * @param[in] conf
  *   Thresholds parameters.
  * @param mp
@@ -2912,7 +2781,7 @@ skip_rtr:
  */
 static int
 rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
-	  unsigned int socket, int inactive, const struct rte_eth_rxconf *conf,
+	  unsigned int socket, const struct rte_eth_rxconf *conf,
 	  struct rte_mempool *mp)
 {
 	struct priv *priv = dev->data->dev_private;
@@ -2931,20 +2800,8 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 	struct ibv_recv_wr *bad_wr;
 	unsigned int mb_len;
 	int ret = 0;
-	int parent = (rxq == &priv->rxq_parent);
 
 	(void)conf; /* Thresholds configuration (ignored). */
-	/*
-	 * If this is a parent queue, hardware must support RSS and
-	 * RSS must be enabled.
-	 */
-	assert((!parent) || ((priv->hw_rss) && (priv->rss)));
-	if (parent) {
-		/* Even if unused, ibv_create_cq() requires at least one
-		 * descriptor. */
-		desc = 1;
-		goto skip_mr;
-	}
 	mb_len = rte_pktmbuf_data_room_size(mp);
 	if ((desc == 0) || (desc % MLX4_PMD_SGE_WR_N)) {
 		ERROR("%p: invalid number of RX descriptors (must be a"
@@ -2982,7 +2839,6 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 		      (void *)dev, strerror(ret));
 		goto error;
 	}
-skip_mr:
 	attr.rd = (struct ibv_exp_res_domain_init_attr){
 		.comp_mask = (IBV_EXP_RES_DOMAIN_THREAD_MODEL |
 			      IBV_EXP_RES_DOMAIN_MSG_MODEL),
@@ -3022,11 +2878,7 @@ skip_mr:
 	      priv->device_attr.max_qp_wr);
 	DEBUG("priv->device_attr.max_sge is %d",
 	      priv->device_attr.max_sge);
-	if (priv->rss && !inactive)
-		tmpl.qp = rxq_setup_qp_rss(priv, tmpl.cq, desc, parent,
-					   tmpl.rd);
-	else
-		tmpl.qp = rxq_setup_qp(priv, tmpl.cq, desc, tmpl.rd);
+	tmpl.qp = rxq_setup_qp(priv, tmpl.cq, desc, tmpl.rd);
 	if (tmpl.qp == NULL) {
 		ret = (errno ? errno : EINVAL);
 		ERROR("%p: QP creation failure: %s",
@@ -3040,17 +2892,13 @@ skip_mr:
 		.port_num = priv->port
 	};
 	ret = ibv_exp_modify_qp(tmpl.qp, &mod,
-				(IBV_EXP_QP_STATE |
-				 (parent ? IBV_EXP_QP_GROUP_RSS : 0) |
-				 IBV_EXP_QP_PORT));
+				IBV_EXP_QP_STATE |
+				IBV_EXP_QP_PORT);
 	if (ret) {
 		ERROR("%p: QP state to IBV_QPS_INIT failed: %s",
 		      (void *)dev, strerror(ret));
 		goto error;
 	}
-	/* Allocate descriptors for RX queues, except for the RSS parent. */
-	if (parent)
-		goto skip_alloc;
 	if (tmpl.sp)
 		ret = rxq_alloc_elts_sp(&tmpl, desc, NULL);
 	else
@@ -3072,7 +2920,6 @@ skip_mr:
 		      strerror(ret));
 		goto error;
 	}
-skip_alloc:
 	mod = (struct ibv_exp_qp_attr){
 		.qp_state = IBV_QPS_RTR
 	};
@@ -3146,7 +2993,6 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 {
 	struct priv *priv = dev->data->dev_private;
 	struct rxq *rxq = (*priv->rxqs)[idx];
-	int inactive = 0;
 	int ret;
 
 	priv_lock(priv);
@@ -3178,9 +3024,7 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 			return -ENOMEM;
 		}
 	}
-	if (idx >= rte_align32pow2(priv->rxqs_n + 1) >> 1)
-		inactive = 1;
-	ret = rxq_setup(dev, rxq, desc, socket, inactive, conf, mp);
+	ret = rxq_setup(dev, rxq, desc, socket, conf, mp);
 	if (ret)
 		rte_free(rxq);
 	else {
@@ -3215,7 +3059,6 @@ mlx4_rx_queue_release(void *dpdk_rxq)
 		return;
 	priv = rxq->priv;
 	priv_lock(priv);
-	assert(rxq != &priv->rxq_parent);
 	for (i = 0; (i != priv->rxqs_n); ++i)
 		if ((*priv->rxqs)[i] == rxq) {
 			DEBUG("%p: removing RX queue %p from list",
@@ -3440,8 +3283,6 @@ mlx4_dev_close(struct rte_eth_dev *dev)
 		priv->txqs_n = 0;
 		priv->txqs = NULL;
 	}
-	if (priv->rss)
-		rxq_cleanup(&priv->rxq_parent);
 	if (priv->pd != NULL) {
 		assert(priv->ctx != NULL);
 		claim_zero(ibv_dealloc_pd(priv->pd));
@@ -4756,7 +4597,6 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		if (!(conf.ports.enabled & (1 << i)))
 			continue;
 		exp_device_attr.comp_mask = IBV_EXP_DEVICE_ATTR_EXP_CAP_FLAGS;
-		exp_device_attr.comp_mask |= IBV_EXP_DEVICE_ATTR_RSS_TBL_SZ;
 
 		DEBUG("using port %u", port);
 
@@ -4814,30 +4654,6 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			err = ENODEV;
 			goto port_error;
 		}
-		if ((exp_device_attr.exp_device_cap_flags &
-		     IBV_EXP_DEVICE_QPG) &&
-		    (exp_device_attr.exp_device_cap_flags &
-		     IBV_EXP_DEVICE_UD_RSS) &&
-		    (exp_device_attr.comp_mask &
-		     IBV_EXP_DEVICE_ATTR_RSS_TBL_SZ) &&
-		    (exp_device_attr.max_rss_tbl_sz > 0)) {
-			priv->hw_qpg = 1;
-			priv->hw_rss = 1;
-			priv->max_rss_tbl_sz = exp_device_attr.max_rss_tbl_sz;
-		} else {
-			priv->hw_qpg = 0;
-			priv->hw_rss = 0;
-			priv->max_rss_tbl_sz = 0;
-		}
-		priv->hw_tss = !!(exp_device_attr.exp_device_cap_flags &
-				  IBV_EXP_DEVICE_UD_TSS);
-		DEBUG("device flags: %s%s%s",
-		      (priv->hw_qpg ? "IBV_DEVICE_QPG " : ""),
-		      (priv->hw_tss ? "IBV_DEVICE_TSS " : ""),
-		      (priv->hw_rss ? "IBV_DEVICE_RSS " : ""));
-		if (priv->hw_rss)
-			DEBUG("maximum RSS indirection table size: %u",
-			      exp_device_attr.max_rss_tbl_sz);
 
 		priv->hw_csum =
 			((exp_device_attr.exp_device_cap_flags &

@@ -78,21 +78,11 @@ Features
 --------
 
 - Multi arch support: x86_64 and POWER8.
-- RSS, also known as RCA, is supported. In this mode the number of
-  configured RX queues must be a power of two.
 - Link state information is provided.
 - Scattered packets are supported for TX and RX.
 - Inner L3/L4 (IP, TCP and UDP) TX/RX checksum offloading and validation.
 - Outer L3 (IP) TX/RX checksum offloading and validation for VXLAN frames.
 - RX interrupts.
-
-Limitations
------------
-
-- RSS hash key cannot be modified.
-- RSS RETA cannot be configured
-- RSS always includes L3 (IPv4/IPv6) and L4 (UDP/TCP). They cannot be
-  dissociated.
 
 Configuration
 -------------
@@ -144,9 +134,6 @@ Environment variables
 
 Run-time configuration
 ~~~~~~~~~~~~~~~~~~~~~~
-
-- The only constraint when RSS mode is requested is to make sure the number
-  of RX queues is a power of two. This is a hardware requirement.
 
 - librte_pmd_mlx4 brings kernel network interfaces up during initialization
   because it is affected by their state. Forcing them down prevents packets
