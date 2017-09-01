@@ -37,9 +37,6 @@
 #include <rte_flow_driver.h>
 #include <rte_malloc.h>
 
-/* Generated configuration header. */
-#include "mlx4_autoconf.h"
-
 /* PMD headers. */
 #include "mlx4.h"
 #include "mlx4_flow.h"

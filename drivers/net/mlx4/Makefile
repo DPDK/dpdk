@@ -104,18 +104,6 @@ mlx4_autoconf.h.new: FORCE
 mlx4_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 	$Q $(RM) -f -- '$@'
 	$Q sh -- '$<' '$@' \
-		RSS_SUPPORT \
-		infiniband/verbs.h \
-		enum IBV_EXP_DEVICE_UD_RSS $(AUTOCONF_OUTPUT)
-	$Q sh -- '$<' '$@' \
-		INLINE_RECV \
-		infiniband/verbs.h \
-		enum IBV_EXP_DEVICE_ATTR_INLINE_RECV_SZ $(AUTOCONF_OUTPUT)
-	$Q sh -- '$<' '$@' \
-		HAVE_EXP_QUERY_DEVICE \
-		infiniband/verbs.h \
-		type 'struct ibv_exp_device_attr' $(AUTOCONF_OUTPUT)
-	$Q sh -- '$<' '$@' \
 		HAVE_EXP_QP_BURST_CREATE_DISABLE_ETH_LOOPBACK \
 		infiniband/verbs.h \
 		enum IBV_EXP_QP_BURST_CREATE_DISABLE_ETH_LOOPBACK \

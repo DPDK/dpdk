@@ -344,9 +344,7 @@ struct priv {
 	unsigned int vf:1; /* This is a VF device. */
 	unsigned int pending_alarm:1; /* An alarm is pending. */
 	unsigned int isolated:1; /* Toggle isolated mode. */
-#ifdef INLINE_RECV
 	unsigned int inl_recv_size; /* Inline recv size */
-#endif
 	unsigned int max_rss_tbl_sz; /* Maximum number of RSS queues. */
 	/* RX/TX queues. */
 	unsigned int rxqs_n; /* RX queues array size. */

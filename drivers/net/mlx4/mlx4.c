@@ -1103,10 +1103,6 @@ txq_complete(struct txq *txq)
 
 	if (unlikely(elts_comp == 0))
 		return 0;
-#ifdef DEBUG_SEND
-	DEBUG("%p: processing %u work requests completions",
-	      (void *)txq, elts_comp);
-#endif
 	wcs_n = txq->if_cq->poll_cnt(txq->cq, elts_comp);
 	if (unlikely(wcs_n == 0))
 		return 0;
@@ -3155,9 +3151,6 @@ repost:
 		return 0;
 	*next = NULL;
 	/* Repost WRs. */
-#ifdef DEBUG_RECV
-	DEBUG("%p: reposting %d WRs", (void *)rxq, i);
-#endif
 	ret = ibv_post_recv(rxq->qp, head.next, &bad_wr);
 	if (unlikely(ret)) {
 		/* Inability to repost WRs is fatal. */
@@ -3318,9 +3311,6 @@ repost:
 	if (unlikely(i == 0))
 		return 0;
 	/* Repost WRs. */
-#ifdef DEBUG_RECV
-	DEBUG("%p: reposting %u WRs", (void *)rxq, i);
-#endif
 	ret = rxq->if_qp->recv_burst(rxq->qp, sges, i);
 	if (unlikely(ret)) {
 		/* Inability to repost WRs is fatal. */
@@ -3418,14 +3408,10 @@ rxq_setup_qp(struct priv *priv, struct ibv_cq *cq, uint16_t desc,
 		.res_domain = rd,
 	};
 
-#ifdef INLINE_RECV
 	attr.max_inl_recv = priv->inl_recv_size;
 	attr.comp_mask |= IBV_EXP_QP_INIT_ATTR_INL_RECV;
-#endif
 	return ibv_exp_create_qp(priv->ctx, &attr);
 }
-
-#ifdef RSS_SUPPORT
 
 /**
  * Allocate a RSS Queue Pair.
@@ -3474,10 +3460,8 @@ rxq_setup_qp_rss(struct priv *priv, struct ibv_cq *cq, uint16_t desc,
 		.res_domain = rd,
 	};
 
-#ifdef INLINE_RECV
 	attr.max_inl_recv = priv->inl_recv_size,
 	attr.comp_mask |= IBV_EXP_QP_INIT_ATTR_INL_RECV;
-#endif
 	if (children_n > 0) {
 		attr.qpg.qpg_type = IBV_EXP_QPG_PARENT;
 		/* TSS isn't necessary. */
@@ -3492,8 +3476,6 @@ rxq_setup_qp_rss(struct priv *priv, struct ibv_cq *cq, uint16_t desc,
 	}
 	return ibv_exp_create_qp(priv->ctx, &attr);
 }
-
-#endif /* RSS_SUPPORT */
 
 /**
  * Reconfigure a RX queue with new parameters.
@@ -3728,13 +3710,11 @@ rxq_create_qp(struct rxq *rxq,
 	int parent = (children_n > 0);
 	struct priv *priv = rxq->priv;
 
-#ifdef RSS_SUPPORT
 	if (priv->rss && !inactive && (rxq_parent || parent))
 		rxq->qp = rxq_setup_qp_rss(priv, rxq->cq, desc,
 					   children_n, rxq->rd,
 					   rxq_parent);
 	else
-#endif /* RSS_SUPPORT */
 		rxq->qp = rxq_setup_qp(priv, rxq->cq, desc, rxq->rd);
 	if (rxq->qp == NULL) {
 		ret = (errno ? errno : EINVAL);
@@ -3750,9 +3730,7 @@ rxq_create_qp(struct rxq *rxq,
 	};
 	ret = ibv_exp_modify_qp(rxq->qp, &mod,
 				(IBV_EXP_QP_STATE |
-#ifdef RSS_SUPPORT
 				 (parent ? IBV_EXP_QP_GROUP_RSS : 0) |
-#endif /* RSS_SUPPORT */
 				 IBV_EXP_QP_PORT));
 	if (ret) {
 		ERROR("QP state to IBV_QPS_INIT failed: %s",
@@ -6115,20 +6093,14 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		struct ibv_pd *pd = NULL;
 		struct priv *priv = NULL;
 		struct rte_eth_dev *eth_dev = NULL;
-#ifdef HAVE_EXP_QUERY_DEVICE
 		struct ibv_exp_device_attr exp_device_attr;
-#endif /* HAVE_EXP_QUERY_DEVICE */
 		struct ether_addr mac;
 
 		/* If port is not enabled, skip. */
 		if (!(conf.ports.enabled & (1 << i)))
 			continue;
-#ifdef HAVE_EXP_QUERY_DEVICE
 		exp_device_attr.comp_mask = IBV_EXP_DEVICE_ATTR_EXP_CAP_FLAGS;
-#ifdef RSS_SUPPORT
 		exp_device_attr.comp_mask |= IBV_EXP_DEVICE_ATTR_RSS_TBL_SZ;
-#endif /* RSS_SUPPORT */
-#endif /* HAVE_EXP_QUERY_DEVICE */
 
 		DEBUG("using port %u", port);
 
@@ -6181,13 +6153,11 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		priv->port = port;
 		priv->pd = pd;
 		priv->mtu = ETHER_MTU;
-#ifdef HAVE_EXP_QUERY_DEVICE
 		if (ibv_exp_query_device(ctx, &exp_device_attr)) {
 			ERROR("ibv_exp_query_device() failed");
 			err = ENODEV;
 			goto port_error;
 		}
-#ifdef RSS_SUPPORT
 		if ((exp_device_attr.exp_device_cap_flags &
 		     IBV_EXP_DEVICE_QPG) &&
 		    (exp_device_attr.exp_device_cap_flags &
@@ -6212,7 +6182,6 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		if (priv->hw_rss)
 			DEBUG("maximum RSS indirection table size: %u",
 			      exp_device_attr.max_rss_tbl_sz);
-#endif /* RSS_SUPPORT */
 
 		priv->hw_csum =
 			((exp_device_attr.exp_device_cap_flags &
@@ -6227,7 +6196,6 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		DEBUG("L2 tunnel checksum offloads are %ssupported",
 		      (priv->hw_csum_l2tun ? "" : "not "));
 
-#ifdef INLINE_RECV
 		priv->inl_recv_size = mlx4_getenv_int("MLX4_INLINE_RECV_SIZE");
 
 		if (priv->inl_recv_size) {
@@ -6251,10 +6219,7 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			INFO("Set inline receive size to %u",
 			     priv->inl_recv_size);
 		}
-#endif /* INLINE_RECV */
-#endif /* HAVE_EXP_QUERY_DEVICE */
 
-		(void)mlx4_getenv_int;
 		priv->vf = vf;
 		/* Configure the first MAC address by default. */
 		if (priv_get_mac(priv, &mac.addr_bytes)) {
