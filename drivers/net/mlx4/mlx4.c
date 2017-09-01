@@ -1977,14 +1977,9 @@ mlx4_rx_queue_release(void *dpdk_rxq)
 	rte_free(rxq);
 }
 
-static int
-priv_dev_interrupt_handler_install(struct priv *, struct rte_eth_dev *);
-
-static int
-priv_dev_removal_interrupt_handler_install(struct priv *, struct rte_eth_dev *);
-
-static int
-priv_dev_link_interrupt_handler_install(struct priv *, struct rte_eth_dev *);
+static int priv_interrupt_handler_install(struct priv *priv);
+static int priv_removal_interrupt_handler_install(struct priv *priv);
+static int priv_link_interrupt_handler_install(struct priv *priv);
 
 /**
  * DPDK callback to start the device.
@@ -2010,13 +2005,13 @@ mlx4_dev_start(struct rte_eth_dev *dev)
 	ret = priv_mac_addr_add(priv);
 	if (ret)
 		goto err;
-	ret = priv_dev_link_interrupt_handler_install(priv, dev);
+	ret = priv_link_interrupt_handler_install(priv);
 	if (ret) {
 		ERROR("%p: LSC handler install failed",
 		     (void *)dev);
 		goto err;
 	}
-	ret = priv_dev_removal_interrupt_handler_install(priv, dev);
+	ret = priv_removal_interrupt_handler_install(priv);
 	if (ret) {
 		ERROR("%p: RMV handler install failed",
 		     (void *)dev);
@@ -2113,15 +2108,9 @@ removed_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	return 0;
 }
 
-static int
-priv_dev_interrupt_handler_uninstall(struct priv *, struct rte_eth_dev *);
-
-static int
-priv_dev_removal_interrupt_handler_uninstall(struct priv *,
-					     struct rte_eth_dev *);
-
-static int
-priv_dev_link_interrupt_handler_uninstall(struct priv *, struct rte_eth_dev *);
+static int priv_interrupt_handler_uninstall(struct priv *priv);
+static int priv_removal_interrupt_handler_uninstall(struct priv *priv);
+static int priv_link_interrupt_handler_uninstall(struct priv *priv);
 
 /**
  * DPDK callback to close the device.
@@ -2185,8 +2174,8 @@ mlx4_dev_close(struct rte_eth_dev *dev)
 		claim_zero(ibv_close_device(priv->ctx));
 	} else
 		assert(priv->ctx == NULL);
-	priv_dev_removal_interrupt_handler_uninstall(priv, dev);
-	priv_dev_link_interrupt_handler_uninstall(priv, dev);
+	priv_removal_interrupt_handler_uninstall(priv);
+	priv_link_interrupt_handler_uninstall(priv);
 	priv_rx_intr_vec_disable(priv);
 	memset(priv, 0, sizeof(*priv));
 }
@@ -2674,31 +2663,25 @@ priv_get_mac(struct priv *priv, uint8_t (*mac)[ETHER_ADDR_LEN])
 	return 0;
 }
 
-static void
-mlx4_dev_link_status_handler(void *);
-static void
-mlx4_dev_interrupt_handler(void *);
+static void mlx4_link_status_alarm(struct priv *priv);
 
 /**
- * Link/device status handler.
+ * Collect interrupt events.
  *
  * @param priv
  *   Pointer to private structure.
- * @param dev
- *   Pointer to the rte_eth_dev structure.
  * @param events
  *   Pointer to event flags holder.
  *
  * @return
- *   Number of events
+ *   Number of events.
  */
 static int
-priv_dev_status_handler(struct priv *priv, struct rte_eth_dev *dev,
-			uint32_t *events)
+priv_collect_interrupt_events(struct priv *priv, uint32_t *events)
 {
 	struct ibv_async_event event;
 	int port_change = 0;
-	struct rte_eth_link *link = &dev->data->dev_link;
+	struct rte_eth_link *link = &priv->dev->data->dev_link;
 	int ret = 0;
 
 	*events = 0;
@@ -2722,15 +2705,16 @@ priv_dev_status_handler(struct priv *priv, struct rte_eth_dev *dev,
 	}
 	if (!port_change)
 		return ret;
-	mlx4_link_update(dev, 0);
+	mlx4_link_update(priv->dev, 0);
 	if (((link->link_speed == 0) && link->link_status) ||
 	    ((link->link_speed != 0) && !link->link_status)) {
 		if (!priv->intr_alarm) {
 			/* Inconsistent status, check again later. */
 			priv->intr_alarm = 1;
 			rte_eal_alarm_set(MLX4_INTR_ALARM_TIMEOUT,
-					  mlx4_dev_link_status_handler,
-					  dev);
+					  (void (*)(void *))
+					  mlx4_link_status_alarm,
+					  priv);
 		}
 	} else {
 		*events |= (1 << RTE_ETH_EVENT_INTR_LSC);
@@ -2739,53 +2723,48 @@ priv_dev_status_handler(struct priv *priv, struct rte_eth_dev *dev,
 }
 
 /**
- * Handle delayed link status event.
+ * Process scheduled link status check.
  *
- * @param arg
- *   Registered argument.
+ * @param priv
+ *   Pointer to private structure.
  */
 static void
-mlx4_dev_link_status_handler(void *arg)
+mlx4_link_status_alarm(struct priv *priv)
 {
-	struct rte_eth_dev *dev = arg;
-	struct priv *priv = dev->data->dev_private;
 	uint32_t events;
 	int ret;
 
 	assert(priv->intr_alarm == 1);
 	priv->intr_alarm = 0;
-	ret = priv_dev_status_handler(priv, dev, &events);
+	ret = priv_collect_interrupt_events(priv, &events);
 	if (ret > 0 && events & (1 << RTE_ETH_EVENT_INTR_LSC))
-		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC,
+		_rte_eth_dev_callback_process(priv->dev,
+					      RTE_ETH_EVENT_INTR_LSC,
 					      NULL, NULL);
 }
 
 /**
  * Handle interrupts from the NIC.
  *
- * @param[in] intr_handle
- *   Interrupt handler.
- * @param cb_arg
- *   Callback argument.
+ * @param priv
+ *   Pointer to private structure.
  */
 static void
-mlx4_dev_interrupt_handler(void *cb_arg)
+mlx4_interrupt_handler(struct priv *priv)
 {
-	struct rte_eth_dev *dev = cb_arg;
-	struct priv *priv = dev->data->dev_private;
 	int ret;
 	uint32_t ev;
 	int i;
 
-	ret = priv_dev_status_handler(priv, dev, &ev);
+	ret = priv_collect_interrupt_events(priv, &ev);
 	if (ret > 0) {
 		for (i = RTE_ETH_EVENT_UNKNOWN;
 		     i < RTE_ETH_EVENT_MAX;
 		     i++) {
 			if (ev & (1 << i)) {
 				ev &= ~(1 << i);
-				_rte_eth_dev_callback_process(dev, i, NULL,
-							      NULL);
+				_rte_eth_dev_callback_process(priv->dev, i,
+							      NULL, NULL);
 				ret--;
 			}
 		}
@@ -2800,14 +2779,12 @@ mlx4_dev_interrupt_handler(void *cb_arg)
  *
  * @param priv
  *   Pointer to private structure.
- * @param dev
- *   Pointer to the rte_eth_dev structure.
  *
  * @return
  *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
-priv_dev_interrupt_handler_uninstall(struct priv *priv, struct rte_eth_dev *dev)
+priv_interrupt_handler_uninstall(struct priv *priv)
 {
 	int ret;
 
@@ -2815,8 +2792,9 @@ priv_dev_interrupt_handler_uninstall(struct priv *priv, struct rte_eth_dev *dev)
 	    priv->intr_conf.rmv)
 		return 0;
 	ret = rte_intr_callback_unregister(&priv->intr_handle,
-					   mlx4_dev_interrupt_handler,
-					   dev);
+					   (void (*)(void *))
+					   mlx4_interrupt_handler,
+					   priv);
 	if (ret < 0) {
 		rte_errno = ret;
 		ERROR("rte_intr_callback_unregister failed with %d %s",
@@ -2831,15 +2809,12 @@ priv_dev_interrupt_handler_uninstall(struct priv *priv, struct rte_eth_dev *dev)
  *
  * @param priv
  *   Pointer to private structure.
- * @param dev
- *   Pointer to the rte_eth_dev structure.
  *
  * @return
  *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
-priv_dev_interrupt_handler_install(struct priv *priv,
-				   struct rte_eth_dev *dev)
+priv_interrupt_handler_install(struct priv *priv)
 {
 	int rc;
 
@@ -2853,8 +2828,9 @@ priv_dev_interrupt_handler_install(struct priv *priv,
 		return 0;
 	priv->intr_handle.fd = priv->ctx->async_fd;
 	rc = rte_intr_callback_register(&priv->intr_handle,
-					mlx4_dev_interrupt_handler,
-					dev);
+					(void (*)(void *))
+					mlx4_interrupt_handler,
+					priv);
 	if (!rc)
 		return 0;
 	rte_errno = -rc;
@@ -2869,19 +2845,16 @@ priv_dev_interrupt_handler_install(struct priv *priv,
  *
  * @param priv
  *   Pointer to private structure.
- * @param dev
- *   Pointer to the rte_eth_dev structure.
  *
  * @return
  *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
-priv_dev_removal_interrupt_handler_uninstall(struct priv *priv,
-					    struct rte_eth_dev *dev)
+priv_removal_interrupt_handler_uninstall(struct priv *priv)
 {
-	if (dev->data->dev_conf.intr_conf.rmv) {
+	if (priv->dev->data->dev_conf.intr_conf.rmv) {
 		priv->intr_conf.rmv = 0;
-		return priv_dev_interrupt_handler_uninstall(priv, dev);
+		return priv_interrupt_handler_uninstall(priv);
 	}
 	return 0;
 }
@@ -2891,27 +2864,25 @@ priv_dev_removal_interrupt_handler_uninstall(struct priv *priv,
  *
  * @param priv
  *   Pointer to private structure.
- * @param dev
- *   Pointer to the rte_eth_dev structure.
  *
  * @return
  *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
-priv_dev_link_interrupt_handler_uninstall(struct priv *priv,
-					  struct rte_eth_dev *dev)
+priv_link_interrupt_handler_uninstall(struct priv *priv)
 {
 	int ret = 0;
 
-	if (dev->data->dev_conf.intr_conf.lsc) {
+	if (priv->dev->data->dev_conf.intr_conf.lsc) {
 		priv->intr_conf.lsc = 0;
-		ret = priv_dev_interrupt_handler_uninstall(priv, dev);
+		ret = priv_interrupt_handler_uninstall(priv);
 		if (ret)
 			return ret;
 	}
 	if (priv->intr_alarm)
-		if (rte_eal_alarm_cancel(mlx4_dev_link_status_handler,
-					 dev)) {
+		if (rte_eal_alarm_cancel((void (*)(void *))
+					 mlx4_link_status_alarm,
+					 priv)) {
 			ERROR("rte_eal_alarm_cancel failed "
 			      " (rte_errno: %s)", strerror(rte_errno));
 			return -rte_errno;
@@ -2925,20 +2896,17 @@ priv_dev_link_interrupt_handler_uninstall(struct priv *priv,
  *
  * @param priv
  *   Pointer to private structure.
- * @param dev
- *   Pointer to the rte_eth_dev structure.
  *
  * @return
  *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
-priv_dev_link_interrupt_handler_install(struct priv *priv,
-					struct rte_eth_dev *dev)
+priv_link_interrupt_handler_install(struct priv *priv)
 {
 	int ret;
 
-	if (dev->data->dev_conf.intr_conf.lsc) {
-		ret = priv_dev_interrupt_handler_install(priv, dev);
+	if (priv->dev->data->dev_conf.intr_conf.lsc) {
+		ret = priv_interrupt_handler_install(priv);
 		if (ret)
 			return ret;
 		priv->intr_conf.lsc = 1;
@@ -2951,20 +2919,17 @@ priv_dev_link_interrupt_handler_install(struct priv *priv,
  *
  * @param priv
  *   Pointer to private structure.
- * @param dev
- *   Pointer to the rte_eth_dev structure.
  *
  * @return
  *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
-priv_dev_removal_interrupt_handler_install(struct priv *priv,
-					   struct rte_eth_dev *dev)
+priv_removal_interrupt_handler_install(struct priv *priv)
 {
 	int ret;
 
-	if (dev->data->dev_conf.intr_conf.rmv) {
-		ret = priv_dev_interrupt_handler_install(priv, dev);
+	if (priv->dev->data->dev_conf.intr_conf.rmv) {
+		ret = priv_interrupt_handler_install(priv);
 		if (ret)
 			return ret;
 		priv->intr_conf.rmv = 1;
