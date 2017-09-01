@@ -507,94 +507,14 @@ txq_cleanup(struct txq *txq);
 
 static int
 rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
-	  unsigned int socket, int inactive,
-	  const struct rte_eth_rxconf *conf,
-	  struct rte_mempool *mp, int children_n,
-	  struct rxq *rxq_parent);
+	  unsigned int socket, int inactive, const struct rte_eth_rxconf *conf,
+	  struct rte_mempool *mp);
 
 static void
 rxq_cleanup(struct rxq *rxq);
 
 static void
 priv_mac_addr_del(struct priv *priv);
-
-/**
- * Create RSS parent queue.
- *
- * The new parent is inserted in front of the list in the private structure.
- *
- * @param priv
- *   Pointer to private structure.
- * @param queues
- *   Queues indices array, if NULL use all Rx queues.
- * @param children_n
- *   The number of entries in queues[].
- *
- * @return
- *   Pointer to a parent rxq structure, NULL on failure.
- */
-static struct rxq *
-priv_parent_create(struct priv *priv,
-		   uint16_t queues[],
-		   uint16_t children_n)
-{
-	int ret;
-	uint16_t i;
-	struct rxq *parent;
-
-	parent = rte_zmalloc("parent queue",
-			     sizeof(*parent),
-			     RTE_CACHE_LINE_SIZE);
-	if (!parent) {
-		ERROR("cannot allocate memory for RSS parent queue");
-		return NULL;
-	}
-	ret = rxq_setup(priv->dev, parent, 0, 0, 0,
-			NULL, NULL, children_n, NULL);
-	if (ret) {
-		rte_free(parent);
-		return NULL;
-	}
-	parent->rss.queues_n = children_n;
-	if (queues) {
-		for (i = 0; i < children_n; ++i)
-			parent->rss.queues[i] = queues[i];
-	} else {
-		/* the default RSS ring case */
-		assert(priv->rxqs_n == children_n);
-		for (i = 0; i < priv->rxqs_n; ++i)
-			parent->rss.queues[i] = i;
-	}
-	LIST_INSERT_HEAD(&priv->parents, parent, next);
-	return parent;
-}
-
-/**
- * Clean up RX queue parent structure.
- *
- * @param parent
- *   RX queue parent structure.
- */
-void
-rxq_parent_cleanup(struct rxq *parent)
-{
-	LIST_REMOVE(parent, next);
-	rxq_cleanup(parent);
-	rte_free(parent);
-}
-
-/**
- * Clean up parent structures from the parent list.
- *
- * @param priv
- *   Pointer to private structure.
- */
-static void
-priv_parent_list_cleanup(struct priv *priv)
-{
-	while (!LIST_EMPTY(&priv->parents))
-		rxq_parent_cleanup(LIST_FIRST(&priv->parents));
-}
 
 /**
  * Ethernet device configuration.
@@ -615,6 +535,7 @@ dev_configure(struct rte_eth_dev *dev)
 	unsigned int rxqs_n = dev->data->nb_rx_queues;
 	unsigned int txqs_n = dev->data->nb_tx_queues;
 	unsigned int tmp;
+	int ret;
 
 	priv->rxqs = (void *)dev->data->rx_queues;
 	priv->txqs = (void *)dev->data->tx_queues;
@@ -645,7 +566,7 @@ dev_configure(struct rte_eth_dev *dev)
 			if ((*priv->rxqs)[i] != NULL)
 				return EINVAL;
 		priv_mac_addr_del(priv);
-		priv_parent_list_cleanup(priv);
+		rxq_cleanup(&priv->rxq_parent);
 		priv->rss = 0;
 		priv->rxqs_n = 0;
 	}
@@ -670,16 +591,14 @@ dev_configure(struct rte_eth_dev *dev)
 	priv->rss = 1;
 	tmp = priv->rxqs_n;
 	priv->rxqs_n = rxqs_n;
-	if (priv->isolated) {
-		priv->rss = 0;
-		return 0;
-	}
-	if (priv_parent_create(priv, NULL, priv->rxqs_n))
+	ret = rxq_setup(dev, &priv->rxq_parent, 0, 0, 0, NULL, NULL);
+	if (!ret)
 		return 0;
 	/* Failure, rollback. */
 	priv->rss = 0;
 	priv->rxqs_n = tmp;
-	return ENOMEM;
+	assert(ret > 0);
+	return ret;
 }
 
 /**
@@ -2117,7 +2036,7 @@ priv_mac_addr_add(struct priv *priv)
 	if (priv->isolated)
 		return 0;
 	if (priv->rss)
-		rxq = LIST_FIRST(&priv->parents);
+		rxq = &priv->rxq_parent;
 	else if (*priv->rxqs && (*priv->rxqs)[0])
 		rxq = (*priv->rxqs)[0];
 	else
@@ -2743,18 +2662,15 @@ rxq_setup_qp(struct priv *priv, struct ibv_cq *cq, uint16_t desc,
  *   Completion queue to associate with QP.
  * @param desc
  *   Number of descriptors in QP (hint only).
- * @param children_n
- *   If nonzero, a number of children for parent QP and zero for a child.
- * @param rxq_parent
- *   Pointer for a parent in a child case, NULL otherwise.
+ * @param parent
+ *   If nonzero, create a parent QP, otherwise a child.
  *
  * @return
  *   QP pointer or NULL in case of error.
  */
 static struct ibv_qp *
 rxq_setup_qp_rss(struct priv *priv, struct ibv_cq *cq, uint16_t desc,
-		 int children_n, struct ibv_exp_res_domain *rd,
-		 struct rxq *rxq_parent)
+		 int parent, struct ibv_exp_res_domain *rd)
 {
 	struct ibv_exp_qp_init_attr attr = {
 		/* CQ to be associated with the send queue. */
@@ -2782,16 +2698,16 @@ rxq_setup_qp_rss(struct priv *priv, struct ibv_cq *cq, uint16_t desc,
 
 	attr.max_inl_recv = priv->inl_recv_size,
 	attr.comp_mask |= IBV_EXP_QP_INIT_ATTR_INL_RECV;
-	if (children_n > 0) {
+	if (parent) {
 		attr.qpg.qpg_type = IBV_EXP_QPG_PARENT;
 		/* TSS isn't necessary. */
 		attr.qpg.parent_attrib.tss_child_count = 0;
 		attr.qpg.parent_attrib.rss_child_count =
-			rte_align32pow2(children_n + 1) >> 1;
+			rte_align32pow2(priv->rxqs_n + 1) >> 1;
 		DEBUG("initializing parent RSS queue");
 	} else {
 		attr.qpg.qpg_type = IBV_EXP_QPG_CHILD_RX;
-		attr.qpg.qpg_parent = rxq_parent->qp;
+		attr.qpg.qpg_parent = priv->rxq_parent.qp;
 		DEBUG("initializing child RSS queue");
 	}
 	return ibv_exp_create_qp(priv->ctx, &attr);
@@ -2825,7 +2741,13 @@ rxq_rehash(struct rte_eth_dev *dev, struct rxq *rxq)
 	struct ibv_recv_wr *bad_wr;
 	unsigned int mb_len;
 	int err;
+	int parent = (rxq == &priv->rxq_parent);
 
+	if (parent) {
+		ERROR("%p: cannot rehash parent queue %p",
+		      (void *)dev, (void *)rxq);
+		return EINVAL;
+	}
 	mb_len = rte_pktmbuf_data_room_size(rxq->mp);
 	DEBUG("%p: rehashing queue %p", (void *)dev, (void *)rxq);
 	/* Number of descriptors and mbufs currently allocated. */
@@ -2858,12 +2780,16 @@ rxq_rehash(struct rte_eth_dev *dev, struct rxq *rxq)
 	}
 	/* From now on, any failure will render the queue unusable.
 	 * Reinitialize QP. */
-	if (!tmpl.qp)
-		goto skip_init;
 	mod = (struct ibv_exp_qp_attr){ .qp_state = IBV_QPS_RESET };
 	err = ibv_exp_modify_qp(tmpl.qp, &mod, IBV_EXP_QP_STATE);
 	if (err) {
 		ERROR("%p: cannot reset QP: %s", (void *)dev, strerror(err));
+		assert(err > 0);
+		return err;
+	}
+	err = ibv_resize_cq(tmpl.cq, desc_n);
+	if (err) {
+		ERROR("%p: cannot resize CQ: %s", (void *)dev, strerror(err));
 		assert(err > 0);
 		return err;
 	}
@@ -2875,6 +2801,7 @@ rxq_rehash(struct rte_eth_dev *dev, struct rxq *rxq)
 	};
 	err = ibv_exp_modify_qp(tmpl.qp, &mod,
 				(IBV_EXP_QP_STATE |
+				 (parent ? IBV_EXP_QP_GROUP_RSS : 0) |
 				 IBV_EXP_QP_PORT));
 	if (err) {
 		ERROR("%p: QP state to IBV_QPS_INIT failed: %s",
@@ -2882,13 +2809,6 @@ rxq_rehash(struct rte_eth_dev *dev, struct rxq *rxq)
 		assert(err > 0);
 		return err;
 	};
-skip_init:
-	err = ibv_resize_cq(tmpl.cq, desc_n);
-	if (err) {
-		ERROR("%p: cannot resize CQ: %s", (void *)dev, strerror(err));
-		assert(err > 0);
-		return err;
-	}
 	/* Allocate pool. */
 	pool = rte_malloc(__func__, (mbuf_n * sizeof(*pool)), 0);
 	if (pool == NULL) {
@@ -2942,8 +2862,6 @@ skip_init:
 	rxq->elts_n = 0;
 	rte_free(rxq->elts.sp);
 	rxq->elts.sp = NULL;
-	if (!tmpl.qp)
-		goto skip_rtr;
 	/* Post WRs. */
 	err = ibv_post_recv(tmpl.qp,
 			    (tmpl.sp ?
@@ -2971,103 +2889,6 @@ skip_rtr:
 }
 
 /**
- * Create verbs QP resources associated with a rxq.
- *
- * @param rxq
- *   Pointer to RX queue structure.
- * @param desc
- *   Number of descriptors to configure in queue.
- * @param inactive
- *   If true, the queue is disabled because its index is higher or
- *   equal to the real number of queues, which must be a power of 2.
- * @param children_n
- *   The number of children in a parent case, zero for a child.
- * @param rxq_parent
- *   The pointer to a parent RX structure for a child in RSS case,
- *   NULL for parent.
- *
- * @return
- *   0 on success, errno value on failure.
- */
-int
-rxq_create_qp(struct rxq *rxq,
-	      uint16_t desc,
-	      int inactive,
-	      int children_n,
-	      struct rxq *rxq_parent)
-{
-	int ret;
-	struct ibv_exp_qp_attr mod;
-	struct ibv_exp_query_intf_params params;
-	enum ibv_exp_query_intf_status status;
-	struct ibv_recv_wr *bad_wr;
-	int parent = (children_n > 0);
-	struct priv *priv = rxq->priv;
-
-	if (priv->rss && !inactive && (rxq_parent || parent))
-		rxq->qp = rxq_setup_qp_rss(priv, rxq->cq, desc,
-					   children_n, rxq->rd,
-					   rxq_parent);
-	else
-		rxq->qp = rxq_setup_qp(priv, rxq->cq, desc, rxq->rd);
-	if (rxq->qp == NULL) {
-		ret = (errno ? errno : EINVAL);
-		ERROR("QP creation failure: %s",
-		      strerror(ret));
-		return ret;
-	}
-	mod = (struct ibv_exp_qp_attr){
-		/* Move the QP to this state. */
-		.qp_state = IBV_QPS_INIT,
-		/* Primary port number. */
-		.port_num = priv->port
-	};
-	ret = ibv_exp_modify_qp(rxq->qp, &mod,
-				(IBV_EXP_QP_STATE |
-				 (parent ? IBV_EXP_QP_GROUP_RSS : 0) |
-				 IBV_EXP_QP_PORT));
-	if (ret) {
-		ERROR("QP state to IBV_QPS_INIT failed: %s",
-		      strerror(ret));
-		return ret;
-	}
-	if (!parent) {
-		ret = ibv_post_recv(rxq->qp,
-				    (rxq->sp ?
-				     &(*rxq->elts.sp)[0].wr :
-				     &(*rxq->elts.no_sp)[0].wr),
-				    &bad_wr);
-		if (ret) {
-			ERROR("ibv_post_recv() failed for WR %p: %s",
-			      (void *)bad_wr,
-			      strerror(ret));
-			return ret;
-		}
-	}
-	mod = (struct ibv_exp_qp_attr){
-		.qp_state = IBV_QPS_RTR
-	};
-	ret = ibv_exp_modify_qp(rxq->qp, &mod, IBV_EXP_QP_STATE);
-	if (ret) {
-		ERROR("QP state to IBV_QPS_RTR failed: %s",
-		      strerror(ret));
-		return ret;
-	}
-	params = (struct ibv_exp_query_intf_params){
-		.intf_scope = IBV_EXP_INTF_GLOBAL,
-		.intf = IBV_EXP_INTF_QP_BURST,
-		.obj = rxq->qp,
-	};
-	rxq->if_qp = ibv_exp_query_intf(priv->ctx, &params, &status);
-	if (rxq->if_qp == NULL) {
-		ERROR("QP interface family query failed with status %d",
-		      status);
-		return errno;
-	}
-	return 0;
-}
-
-/**
  * Configure a RX queue.
  *
  * @param dev
@@ -3085,21 +2906,14 @@ rxq_create_qp(struct rxq *rxq,
  *   Thresholds parameters.
  * @param mp
  *   Memory pool for buffer allocations.
- * @param children_n
- *   The number of children in a parent case, zero for a child.
- * @param rxq_parent
- *   The pointer to a parent RX structure (or NULL) in a child case,
- *   NULL for parent.
  *
  * @return
  *   0 on success, errno value on failure.
  */
 static int
 rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
-	  unsigned int socket, int inactive,
-	  const struct rte_eth_rxconf *conf,
-	  struct rte_mempool *mp, int children_n,
-	  struct rxq *rxq_parent)
+	  unsigned int socket, int inactive, const struct rte_eth_rxconf *conf,
+	  struct rte_mempool *mp)
 {
 	struct priv *priv = dev->data->dev_private;
 	struct rxq tmpl = {
@@ -3107,15 +2921,17 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 		.mp = mp,
 		.socket = socket
 	};
+	struct ibv_exp_qp_attr mod;
 	union {
 		struct ibv_exp_query_intf_params params;
 		struct ibv_exp_cq_init_attr cq;
 		struct ibv_exp_res_domain_init_attr rd;
 	} attr;
 	enum ibv_exp_query_intf_status status;
+	struct ibv_recv_wr *bad_wr;
 	unsigned int mb_len;
 	int ret = 0;
-	int parent = (children_n > 0);
+	int parent = (rxq == &priv->rxq_parent);
 
 	(void)conf; /* Thresholds configuration (ignored). */
 	/*
@@ -3206,6 +3022,32 @@ skip_mr:
 	      priv->device_attr.max_qp_wr);
 	DEBUG("priv->device_attr.max_sge is %d",
 	      priv->device_attr.max_sge);
+	if (priv->rss && !inactive)
+		tmpl.qp = rxq_setup_qp_rss(priv, tmpl.cq, desc, parent,
+					   tmpl.rd);
+	else
+		tmpl.qp = rxq_setup_qp(priv, tmpl.cq, desc, tmpl.rd);
+	if (tmpl.qp == NULL) {
+		ret = (errno ? errno : EINVAL);
+		ERROR("%p: QP creation failure: %s",
+		      (void *)dev, strerror(ret));
+		goto error;
+	}
+	mod = (struct ibv_exp_qp_attr){
+		/* Move the QP to this state. */
+		.qp_state = IBV_QPS_INIT,
+		/* Primary port number. */
+		.port_num = priv->port
+	};
+	ret = ibv_exp_modify_qp(tmpl.qp, &mod,
+				(IBV_EXP_QP_STATE |
+				 (parent ? IBV_EXP_QP_GROUP_RSS : 0) |
+				 IBV_EXP_QP_PORT));
+	if (ret) {
+		ERROR("%p: QP state to IBV_QPS_INIT failed: %s",
+		      (void *)dev, strerror(ret));
+		goto error;
+	}
 	/* Allocate descriptors for RX queues, except for the RSS parent. */
 	if (parent)
 		goto skip_alloc;
@@ -3216,14 +3058,29 @@ skip_mr:
 	if (ret) {
 		ERROR("%p: RXQ allocation failed: %s",
 		      (void *)dev, strerror(ret));
-		return ret;
+		goto error;
+	}
+	ret = ibv_post_recv(tmpl.qp,
+			    (tmpl.sp ?
+			     &(*tmpl.elts.sp)[0].wr :
+			     &(*tmpl.elts.no_sp)[0].wr),
+			    &bad_wr);
+	if (ret) {
+		ERROR("%p: ibv_post_recv() failed for WR %p: %s",
+		      (void *)dev,
+		      (void *)bad_wr,
+		      strerror(ret));
+		goto error;
 	}
 skip_alloc:
-	if (parent || rxq_parent || !priv->rss) {
-		ret = rxq_create_qp(&tmpl, desc, inactive,
-				    children_n, rxq_parent);
-		if (ret)
-			goto error;
+	mod = (struct ibv_exp_qp_attr){
+		.qp_state = IBV_QPS_RTR
+	};
+	ret = ibv_exp_modify_qp(tmpl.qp, &mod, IBV_EXP_QP_STATE);
+	if (ret) {
+		ERROR("%p: QP state to IBV_QPS_RTR failed: %s",
+		      (void *)dev, strerror(ret));
+		goto error;
 	}
 	/* Save port ID. */
 	tmpl.port_id = dev->data->port_id;
@@ -3235,8 +3092,18 @@ skip_alloc:
 	};
 	tmpl.if_cq = ibv_exp_query_intf(priv->ctx, &attr.params, &status);
 	if (tmpl.if_cq == NULL) {
-		ret = EINVAL;
 		ERROR("%p: CQ interface family query failed with status %d",
+		      (void *)dev, status);
+		goto error;
+	}
+	attr.params = (struct ibv_exp_query_intf_params){
+		.intf_scope = IBV_EXP_INTF_GLOBAL,
+		.intf = IBV_EXP_INTF_QP_BURST,
+		.obj = tmpl.qp,
+	};
+	tmpl.if_qp = ibv_exp_query_intf(priv->ctx, &attr.params, &status);
+	if (tmpl.if_qp == NULL) {
+		ERROR("%p: QP interface family query failed with status %d",
 		      (void *)dev, status);
 		goto error;
 	}
@@ -3277,7 +3144,6 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		    unsigned int socket, const struct rte_eth_rxconf *conf,
 		    struct rte_mempool *mp)
 {
-	struct rxq *parent;
 	struct priv *priv = dev->data->dev_private;
 	struct rxq *rxq = (*priv->rxqs)[idx];
 	int inactive = 0;
@@ -3312,16 +3178,9 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 			return -ENOMEM;
 		}
 	}
-	if (priv->rss && !priv->isolated) {
-		/* The list consists of the single default one. */
-		parent = LIST_FIRST(&priv->parents);
-		if (idx >= rte_align32pow2(priv->rxqs_n + 1) >> 1)
-			inactive = 1;
-	} else {
-		parent = NULL;
-	}
-	ret = rxq_setup(dev, rxq, desc, socket,
-			inactive, conf, mp, 0, parent);
+	if (idx >= rte_align32pow2(priv->rxqs_n + 1) >> 1)
+		inactive = 1;
+	ret = rxq_setup(dev, rxq, desc, socket, inactive, conf, mp);
 	if (ret)
 		rte_free(rxq);
 	else {
@@ -3356,6 +3215,7 @@ mlx4_rx_queue_release(void *dpdk_rxq)
 		return;
 	priv = rxq->priv;
 	priv_lock(priv);
+	assert(rxq != &priv->rxq_parent);
 	for (i = 0; (i != priv->rxqs_n); ++i)
 		if ((*priv->rxqs)[i] == rxq) {
 			DEBUG("%p: removing RX queue %p from list",
@@ -3581,7 +3441,7 @@ mlx4_dev_close(struct rte_eth_dev *dev)
 		priv->txqs = NULL;
 	}
 	if (priv->rss)
-		priv_parent_list_cleanup(priv);
+		rxq_cleanup(&priv->rxq_parent);
 	if (priv->pd != NULL) {
 		assert(priv->ctx != NULL);
 		claim_zero(ibv_dealloc_pd(priv->pd));
