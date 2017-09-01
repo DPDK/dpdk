@@ -2476,13 +2476,8 @@ mlx4_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 				ETH_LINK_HALF_DUPLEX : ETH_LINK_FULL_DUPLEX);
 	dev_link.link_autoneg = !(dev->data->dev_conf.link_speeds &
 			ETH_LINK_SPEED_FIXED);
-	if (memcmp(&dev_link, &dev->data->dev_link, sizeof(dev_link))) {
-		/* Link status changed. */
-		dev->data->dev_link = dev_link;
-		return 0;
-	}
-	/* Link status is still the same. */
-	return -1;
+	dev->data->dev_link = dev_link;
+	return 0;
 }
 
 /**
