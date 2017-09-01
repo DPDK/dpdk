@@ -36,23 +36,6 @@
 
 #include <stdint.h>
 
-/*
- * Runtime logging through RTE_LOG() is enabled when not in debugging mode.
- * Intermediate LOG_*() macros add the required end-of-line characters.
- */
-#ifndef NDEBUG
-#define INFO(...) DEBUG(__VA_ARGS__)
-#define WARN(...) DEBUG(__VA_ARGS__)
-#define ERROR(...) DEBUG(__VA_ARGS__)
-#else
-#define LOG__(level, m, ...) \
-	RTE_LOG(level, PMD, MLX4_DRIVER_NAME ": " m "%c", __VA_ARGS__)
-#define LOG_(level, ...) LOG__(level, __VA_ARGS__, '\n')
-#define INFO(...) LOG_(INFO, __VA_ARGS__)
-#define WARN(...) LOG_(WARNING, __VA_ARGS__)
-#define ERROR(...) LOG_(ERR, __VA_ARGS__)
-#endif
-
 /* Verbs header. */
 /* ISO C doesn't support unnamed structs/unions, disabling -pedantic. */
 #ifdef PEDANTIC
@@ -97,41 +80,6 @@ enum {
 };
 
 #define MLX4_DRIVER_NAME "net_mlx4"
-
-/* Debugging */
-#ifndef NDEBUG
-#include <stdio.h>
-#define DEBUG__(m, ...)						\
-	(fprintf(stderr, "%s:%d: %s(): " m "%c",		\
-		 __FILE__, __LINE__, __func__, __VA_ARGS__),	\
-	 fflush(stderr),					\
-	 (void)0)
-/*
- * Save/restore errno around DEBUG__().
- * XXX somewhat undefined behavior, but works.
- */
-#define DEBUG_(...)				\
-	(errno = ((int []){			\
-		*(volatile int *)&errno,	\
-		(DEBUG__(__VA_ARGS__), 0)	\
-	})[0])
-#define DEBUG(...) DEBUG_(__VA_ARGS__, '\n')
-#ifndef MLX4_PMD_DEBUG_BROKEN_VERBS
-#define claim_zero(...) assert((__VA_ARGS__) == 0)
-#else /* MLX4_PMD_DEBUG_BROKEN_VERBS */
-#define claim_zero(...) \
-	(void)(((__VA_ARGS__) == 0) || \
-		DEBUG("Assertion `(" # __VA_ARGS__ ") == 0' failed (IGNORED)."))
-#endif /* MLX4_PMD_DEBUG_BROKEN_VERBS */
-#define claim_nonzero(...) assert((__VA_ARGS__) != 0)
-#define claim_positive(...) assert((__VA_ARGS__) >= 0)
-#else /* NDEBUG */
-/* No-ops. */
-#define DEBUG(...) (void)0
-#define claim_zero(...) (__VA_ARGS__)
-#define claim_nonzero(...) (__VA_ARGS__)
-#define claim_positive(...) (__VA_ARGS__)
-#endif /* NDEBUG */
 
 struct mlx4_rxq_stats {
 	unsigned int idx; /**< Mapping index. */

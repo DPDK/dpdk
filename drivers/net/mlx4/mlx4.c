@@ -59,7 +59,6 @@
 #include <rte_mempool.h>
 #include <rte_prefetch.h>
 #include <rte_malloc.h>
-#include <rte_log.h>
 #include <rte_alarm.h>
 #include <rte_memory.h>
 #include <rte_flow.h>
@@ -74,6 +73,7 @@
 /* PMD headers. */
 #include "mlx4.h"
 #include "mlx4_flow.h"
+#include "mlx4_utils.h"
 
 /** Configuration structure for device arguments. */
 struct mlx4_conf {
