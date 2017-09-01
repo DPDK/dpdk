@@ -5444,40 +5444,6 @@ priv_get_mac(struct priv *priv, uint8_t (*mac)[ETHER_ADDR_LEN])
 	return 0;
 }
 
-/* Support up to 32 adapters. */
-static struct {
-	struct rte_pci_addr pci_addr; /* associated PCI address */
-	uint32_t ports; /* physical ports bitfield. */
-} mlx4_dev[32];
-
-/**
- * Get device index in mlx4_dev[] from PCI bus address.
- *
- * @param[in] pci_addr
- *   PCI bus address to look for.
- *
- * @return
- *   mlx4_dev[] index on success, -1 on failure.
- */
-static int
-mlx4_dev_idx(struct rte_pci_addr *pci_addr)
-{
-	unsigned int i;
-	int ret = -1;
-
-	assert(pci_addr != NULL);
-	for (i = 0; (i != elemof(mlx4_dev)); ++i) {
-		if ((mlx4_dev[i].pci_addr.domain == pci_addr->domain) &&
-		    (mlx4_dev[i].pci_addr.bus == pci_addr->bus) &&
-		    (mlx4_dev[i].pci_addr.devid == pci_addr->devid) &&
-		    (mlx4_dev[i].pci_addr.function == pci_addr->function))
-			return i;
-		if ((mlx4_dev[i].ports == 0) && (ret == -1))
-			ret = i;
-	}
-	return ret;
-}
-
 /**
  * Retrieve integer value from environment variable.
  *
@@ -6060,21 +6026,11 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		.active_ports = 0,
 	};
 	unsigned int vf;
-	int idx;
 	int i;
 
 	(void)pci_drv;
 	assert(pci_drv == &mlx4_driver);
-	/* Get mlx4_dev[] index. */
-	idx = mlx4_dev_idx(&pci_dev->addr);
-	if (idx == -1) {
-		ERROR("this driver cannot support any more adapters");
-		return -ENOMEM;
-	}
-	DEBUG("using driver device index %d", idx);
 
-	/* Save PCI address. */
-	mlx4_dev[idx].pci_addr = pci_dev->addr;
 	list = ibv_get_device_list(&i);
 	if (list == NULL) {
 		assert(errno);
@@ -6141,7 +6097,6 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	}
 	for (i = 0; i < device_attr.phys_port_cnt; i++) {
 		uint32_t port = i + 1; /* ports are indexed from one */
-		uint32_t test = (1 << i);
 		struct ibv_context *ctx = NULL;
 		struct ibv_port_attr port_attr;
 		struct ibv_pd *pd = NULL;
@@ -6162,7 +6117,7 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 #endif /* RSS_SUPPORT */
 #endif /* HAVE_EXP_QUERY_DEVICE */
 
-		DEBUG("using port %u (%08" PRIx32 ")", port, test);
+		DEBUG("using port %u", port);
 
 		ctx = ibv_open_device(ibv_dev);
 		if (ctx == NULL) {
@@ -6197,8 +6152,6 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			err = ENOMEM;
 			goto port_error;
 		}
-
-		mlx4_dev[idx].ports |= test;
 
 		/* from rte_ethdev.c */
 		priv = rte_zmalloc("ethdev private structure",
@@ -6405,6 +6358,8 @@ port_error:
 			rte_eth_dev_release_port(eth_dev);
 		break;
 	}
+	if (i == device_attr.phys_port_cnt)
+		return 0;
 
 	/*
 	 * XXX if something went wrong in the loop above, there is a resource
@@ -6412,12 +6367,6 @@ port_error:
 	 * long as the dpdk does not provide a way to deallocate a ethdev and a
 	 * way to enumerate the registered ethdevs to free the previous ones.
 	 */
-
-	/* no port found, complain */
-	if (!mlx4_dev[idx].ports) {
-		err = ENODEV;
-		goto error;
-	}
 
 error:
 	if (attr_ctx)
