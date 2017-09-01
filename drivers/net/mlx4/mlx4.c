@@ -47,7 +47,6 @@
 #include <unistd.h>
 #include <limits.h>
 #include <assert.h>
-#include <arpa/inet.h>
 #include <net/if.h>
 #include <dirent.h>
 #include <sys/ioctl.h>
@@ -2073,11 +2072,9 @@ rxq_free_elts(struct rxq *rxq)
  *   Pointer to RX queue structure.
  * @param mac_index
  *   MAC address index.
- * @param vlan_index
- *   VLAN index.
  */
 static void
-rxq_del_flow(struct rxq *rxq, unsigned int mac_index, unsigned int vlan_index)
+rxq_del_flow(struct rxq *rxq, unsigned int mac_index)
 {
 #ifndef NDEBUG
 	struct priv *priv = rxq->priv;
@@ -2085,14 +2082,13 @@ rxq_del_flow(struct rxq *rxq, unsigned int mac_index, unsigned int vlan_index)
 		(const uint8_t (*)[ETHER_ADDR_LEN])
 		priv->mac[mac_index].addr_bytes;
 #endif
-	assert(rxq->mac_flow[mac_index][vlan_index] != NULL);
-	DEBUG("%p: removing MAC address %02x:%02x:%02x:%02x:%02x:%02x index %u"
-	      " (VLAN ID %" PRIu16 ")",
+	assert(rxq->mac_flow[mac_index] != NULL);
+	DEBUG("%p: removing MAC address %02x:%02x:%02x:%02x:%02x:%02x index %u",
 	      (void *)rxq,
 	      (*mac)[0], (*mac)[1], (*mac)[2], (*mac)[3], (*mac)[4], (*mac)[5],
-	      mac_index, priv->vlan_filter[vlan_index].id);
-	claim_zero(ibv_destroy_flow(rxq->mac_flow[mac_index][vlan_index]));
-	rxq->mac_flow[mac_index][vlan_index] = NULL;
+	      mac_index);
+	claim_zero(ibv_destroy_flow(rxq->mac_flow[mac_index]));
+	rxq->mac_flow[mac_index] = NULL;
 }
 
 /**
@@ -2106,22 +2102,10 @@ rxq_del_flow(struct rxq *rxq, unsigned int mac_index, unsigned int vlan_index)
 static void
 rxq_mac_addr_del(struct rxq *rxq, unsigned int mac_index)
 {
-	struct priv *priv = rxq->priv;
-	unsigned int i;
-	unsigned int vlans = 0;
-
-	assert(mac_index < elemof(priv->mac));
+	assert(mac_index < elemof(rxq->priv->mac));
 	if (!BITFIELD_ISSET(rxq->mac_configured, mac_index))
 		return;
-	for (i = 0; (i != elemof(priv->vlan_filter)); ++i) {
-		if (!priv->vlan_filter[i].enabled)
-			continue;
-		rxq_del_flow(rxq, mac_index, i);
-		vlans++;
-	}
-	if (!vlans) {
-		rxq_del_flow(rxq, mac_index, 0);
-	}
+	rxq_del_flow(rxq, mac_index);
 	BITFIELD_RESET(rxq->mac_configured, mac_index);
 }
 
@@ -2148,14 +2132,12 @@ rxq_mac_addrs_del(struct rxq *rxq)
  *   Pointer to RX queue structure.
  * @param mac_index
  *   MAC address index to register.
- * @param vlan_index
- *   VLAN index. Use -1 for a flow without VLAN.
  *
  * @return
  *   0 on success, errno value on failure.
  */
 static int
-rxq_add_flow(struct rxq *rxq, unsigned int mac_index, unsigned int vlan_index)
+rxq_add_flow(struct rxq *rxq, unsigned int mac_index)
 {
 	struct ibv_flow *flow;
 	struct priv *priv = rxq->priv;
@@ -2172,7 +2154,6 @@ rxq_add_flow(struct rxq *rxq, unsigned int mac_index, unsigned int vlan_index)
 	struct ibv_flow_spec_eth *spec = &data.spec;
 
 	assert(mac_index < elemof(priv->mac));
-	assert((vlan_index < elemof(priv->vlan_filter)) || (vlan_index == -1u));
 	/*
 	 * No padding must be inserted by the compiler between attr and spec.
 	 * This layout is expected by libibverbs.
@@ -2193,22 +2174,15 @@ rxq_add_flow(struct rxq *rxq, unsigned int mac_index, unsigned int vlan_index)
 				(*mac)[0], (*mac)[1], (*mac)[2],
 				(*mac)[3], (*mac)[4], (*mac)[5]
 			},
-			.vlan_tag = ((vlan_index != -1u) ?
-				     htons(priv->vlan_filter[vlan_index].id) :
-				     0),
 		},
 		.mask = {
 			.dst_mac = "\xff\xff\xff\xff\xff\xff",
-			.vlan_tag = ((vlan_index != -1u) ? htons(0xfff) : 0),
 		}
 	};
-	DEBUG("%p: adding MAC address %02x:%02x:%02x:%02x:%02x:%02x index %u"
-	      " (VLAN %s %" PRIu16 ")",
+	DEBUG("%p: adding MAC address %02x:%02x:%02x:%02x:%02x:%02x index %u",
 	      (void *)rxq,
 	      (*mac)[0], (*mac)[1], (*mac)[2], (*mac)[3], (*mac)[4], (*mac)[5],
-	      mac_index,
-	      ((vlan_index != -1u) ? "ID" : "index"),
-	      ((vlan_index != -1u) ? priv->vlan_filter[vlan_index].id : -1u));
+	      mac_index);
 	/* Create related flow. */
 	errno = 0;
 	flow = ibv_create_flow(rxq->qp, attr);
@@ -2221,10 +2195,8 @@ rxq_add_flow(struct rxq *rxq, unsigned int mac_index, unsigned int vlan_index)
 			return errno;
 		return EINVAL;
 	}
-	if (vlan_index == -1u)
-		vlan_index = 0;
-	assert(rxq->mac_flow[mac_index][vlan_index] == NULL);
-	rxq->mac_flow[mac_index][vlan_index] = flow;
+	assert(rxq->mac_flow[mac_index] == NULL);
+	rxq->mac_flow[mac_index] = flow;
 	return 0;
 }
 
@@ -2242,37 +2214,14 @@ rxq_add_flow(struct rxq *rxq, unsigned int mac_index, unsigned int vlan_index)
 static int
 rxq_mac_addr_add(struct rxq *rxq, unsigned int mac_index)
 {
-	struct priv *priv = rxq->priv;
-	unsigned int i;
-	unsigned int vlans = 0;
 	int ret;
 
-	assert(mac_index < elemof(priv->mac));
+	assert(mac_index < elemof(rxq->priv->mac));
 	if (BITFIELD_ISSET(rxq->mac_configured, mac_index))
 		rxq_mac_addr_del(rxq, mac_index);
-	/* Fill VLAN specifications. */
-	for (i = 0; (i != elemof(priv->vlan_filter)); ++i) {
-		if (!priv->vlan_filter[i].enabled)
-			continue;
-		/* Create related flow. */
-		ret = rxq_add_flow(rxq, mac_index, i);
-		if (!ret) {
-			vlans++;
-			continue;
-		}
-		/* Failure, rollback. */
-		while (i != 0)
-			if (priv->vlan_filter[--i].enabled)
-				rxq_del_flow(rxq, mac_index, i);
-		assert(ret > 0);
+	ret = rxq_add_flow(rxq, mac_index);
+	if (ret)
 		return ret;
-	}
-	/* In case there is no VLAN filter. */
-	if (!vlans) {
-		ret = rxq_add_flow(rxq, mac_index, -1);
-		if (ret)
-			return ret;
-	}
 	BITFIELD_SET(rxq->mac_configured, mac_index);
 	return 0;
 }
@@ -4474,128 +4423,6 @@ out:
 	return -ret;
 }
 
-/**
- * Configure a VLAN filter.
- *
- * @param dev
- *   Pointer to Ethernet device structure.
- * @param vlan_id
- *   VLAN ID to filter.
- * @param on
- *   Toggle filter.
- *
- * @return
- *   0 on success, errno value on failure.
- */
-static int
-vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
-{
-	struct priv *priv = dev->data->dev_private;
-	unsigned int i;
-	unsigned int j = -1;
-
-	DEBUG("%p: %s VLAN filter ID %" PRIu16,
-	      (void *)dev, (on ? "enable" : "disable"), vlan_id);
-	for (i = 0; (i != elemof(priv->vlan_filter)); ++i) {
-		if (!priv->vlan_filter[i].enabled) {
-			/* Unused index, remember it. */
-			j = i;
-			continue;
-		}
-		if (priv->vlan_filter[i].id != vlan_id)
-			continue;
-		/* This VLAN ID is already known, use its index. */
-		j = i;
-		break;
-	}
-	/* Check if there's room for another VLAN filter. */
-	if (j == (unsigned int)-1)
-		return ENOMEM;
-	/*
-	 * VLAN filters apply to all configured MAC addresses, flow
-	 * specifications must be reconfigured accordingly.
-	 */
-	priv->vlan_filter[j].id = vlan_id;
-	if ((on) && (!priv->vlan_filter[j].enabled)) {
-		/*
-		 * Filter is disabled, enable it.
-		 * Rehashing flows in all RX queues is necessary.
-		 */
-		if (priv->rss)
-			rxq_mac_addrs_del(LIST_FIRST(&priv->parents));
-		else
-			for (i = 0; (i != priv->rxqs_n); ++i)
-				if ((*priv->rxqs)[i] != NULL)
-					rxq_mac_addrs_del((*priv->rxqs)[i]);
-		priv->vlan_filter[j].enabled = 1;
-		if (priv->started) {
-			if (priv->rss)
-				rxq_mac_addrs_add(LIST_FIRST(&priv->parents));
-			else
-				for (i = 0; (i != priv->rxqs_n); ++i) {
-					if ((*priv->rxqs)[i] == NULL)
-						continue;
-					rxq_mac_addrs_add((*priv->rxqs)[i]);
-				}
-		}
-	} else if ((!on) && (priv->vlan_filter[j].enabled)) {
-		/*
-		 * Filter is enabled, disable it.
-		 * Rehashing flows in all RX queues is necessary.
-		 */
-		if (priv->rss)
-			rxq_mac_addrs_del(LIST_FIRST(&priv->parents));
-		else
-			for (i = 0; (i != priv->rxqs_n); ++i)
-				if ((*priv->rxqs)[i] != NULL)
-					rxq_mac_addrs_del((*priv->rxqs)[i]);
-		priv->vlan_filter[j].enabled = 0;
-		if (priv->started) {
-			if (priv->rss)
-				rxq_mac_addrs_add(LIST_FIRST(&priv->parents));
-			else
-				for (i = 0; (i != priv->rxqs_n); ++i) {
-					if ((*priv->rxqs)[i] == NULL)
-						continue;
-					rxq_mac_addrs_add((*priv->rxqs)[i]);
-				}
-		}
-	}
-	return 0;
-}
-
-/**
- * DPDK callback to configure a VLAN filter.
- *
- * @param dev
- *   Pointer to Ethernet device structure.
- * @param vlan_id
- *   VLAN ID to filter.
- * @param on
- *   Toggle filter.
- *
- * @return
- *   0 on success, negative errno value on failure.
- */
-static int
-mlx4_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
-{
-	struct priv *priv = dev->data->dev_private;
-	int ret;
-
-	priv_lock(priv);
-	if (priv->isolated) {
-		DEBUG("%p: cannot set vlan filter, "
-		      "device is in isolated mode", (void *)dev);
-		priv_unlock(priv);
-		return -EINVAL;
-	}
-	ret = vlan_filter_set(dev, vlan_id, on);
-	priv_unlock(priv);
-	assert(ret >= 0);
-	return -ret;
-}
-
 const struct rte_flow_ops mlx4_flow_ops = {
 	.validate = mlx4_flow_validate,
 	.create = mlx4_flow_create,
@@ -4654,7 +4481,6 @@ static const struct eth_dev_ops mlx4_dev_ops = {
 	.stats_reset = mlx4_stats_reset,
 	.dev_infos_get = mlx4_dev_infos_get,
 	.dev_supported_ptypes_get = mlx4_dev_supported_ptypes_get,
-	.vlan_filter_set = mlx4_vlan_filter_set,
 	.rx_queue_setup = mlx4_rx_queue_setup,
 	.tx_queue_setup = mlx4_tx_queue_setup,
 	.rx_queue_release = mlx4_rx_queue_release,

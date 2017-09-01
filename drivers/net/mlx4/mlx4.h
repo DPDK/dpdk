@@ -74,9 +74,6 @@
  */
 #define MLX4_MAX_MAC_ADDRESSES 128
 
-/* Maximum number of simultaneous VLAN filters supported. See above. */
-#define MLX4_MAX_VLAN_IDS 127
-
 /* Request send completion once in every 64 sends, might be less. */
 #define MLX4_PMD_TX_PER_COMP_REQ 64
 
@@ -205,11 +202,8 @@ struct rxq {
 	struct ibv_exp_qp_burst_family *if_qp; /* QP burst interface. */
 	struct ibv_exp_cq_family *if_cq; /* CQ interface. */
 	struct ibv_comp_channel *channel;
-	/*
-	 * Each VLAN ID requires a separate flow steering rule.
-	 */
 	BITFIELD_DECLARE(mac_configured, uint32_t, MLX4_MAX_MAC_ADDRESSES);
-	struct ibv_flow *mac_flow[MLX4_MAX_MAC_ADDRESSES][MLX4_MAX_VLAN_IDS];
+	struct ibv_flow *mac_flow[MLX4_MAX_MAC_ADDRESSES];
 	unsigned int port_id; /* Port ID for incoming packets. */
 	unsigned int elts_n; /* (*elts)[] length. */
 	unsigned int elts_head; /* Current index in (*elts)[]. */
@@ -292,11 +286,6 @@ struct priv {
 	 */
 	struct ether_addr mac[MLX4_MAX_MAC_ADDRESSES];
 	BITFIELD_DECLARE(mac_configured, uint32_t, MLX4_MAX_MAC_ADDRESSES);
-	/* VLAN filters. */
-	struct {
-		unsigned int enabled:1; /* If enabled. */
-		unsigned int id:12; /* VLAN ID (0-4095). */
-	} vlan_filter[MLX4_MAX_VLAN_IDS]; /* VLAN filters table. */
 	/* Device properties. */
 	uint16_t mtu; /* Configured MTU. */
 	uint8_t port; /* Physical port number. */

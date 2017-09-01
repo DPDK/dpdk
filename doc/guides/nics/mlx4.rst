@@ -80,7 +80,6 @@ Features
 - Multi arch support: x86_64 and POWER8.
 - RSS, also known as RCA, is supported. In this mode the number of
   configured RX queues must be a power of two.
-- VLAN filtering is supported.
 - Link state information is provided.
 - Multiple MAC addresses (unicast, multicast) can be configured.
 - Scattered packets are supported for TX and RX.
