@@ -403,15 +403,15 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		    struct rte_mempool *mp)
 {
 	struct priv *priv = dev->data->dev_private;
-	struct rxq *rxq = (*priv->rxqs)[idx];
+	struct rxq *rxq = dev->data->rx_queues[idx];
 	int ret;
 
 	DEBUG("%p: configuring queue %u for %u descriptors",
 	      (void *)dev, idx, desc);
-	if (idx >= priv->rxqs_n) {
+	if (idx >= dev->data->nb_rx_queues) {
 		rte_errno = EOVERFLOW;
 		ERROR("%p: queue index out of range (%u >= %u)",
-		      (void *)dev, idx, priv->rxqs_n);
+		      (void *)dev, idx, dev->data->nb_rx_queues);
 		return -rte_errno;
 	}
 	if (rxq != NULL) {
@@ -421,7 +421,7 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 			rte_errno = EEXIST;
 			return -rte_errno;
 		}
-		(*priv->rxqs)[idx] = NULL;
+		dev->data->rx_queues[idx] = NULL;
 		if (idx == 0)
 			mlx4_mac_addr_del(priv);
 		mlx4_rxq_cleanup(rxq);
@@ -441,7 +441,7 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		rxq->stats.idx = idx;
 		DEBUG("%p: adding Rx queue %p to list",
 		      (void *)dev, (void *)rxq);
-		(*priv->rxqs)[idx] = rxq;
+		dev->data->rx_queues[idx] = rxq;
 		/* Update receive callback. */
 		dev->rx_pkt_burst = mlx4_rx_burst;
 	}
@@ -464,11 +464,11 @@ mlx4_rx_queue_release(void *dpdk_rxq)
 	if (rxq == NULL)
 		return;
 	priv = rxq->priv;
-	for (i = 0; (i != priv->rxqs_n); ++i)
-		if ((*priv->rxqs)[i] == rxq) {
+	for (i = 0; i != priv->dev->data->nb_rx_queues; ++i)
+		if (priv->dev->data->rx_queues[i] == rxq) {
 			DEBUG("%p: removing Rx queue %p from list",
 			      (void *)priv->dev, (void *)rxq);
-			(*priv->rxqs)[i] = NULL;
+			priv->dev->data->rx_queues[i] = NULL;
 			if (i == 0)
 				mlx4_mac_addr_del(priv);
 			break;
@@ -522,8 +522,8 @@ mlx4_mac_addr_add(struct priv *priv)
 		return 0;
 	if (priv->isolated)
 		return 0;
-	if (*priv->rxqs && (*priv->rxqs)[0])
-		rxq = (*priv->rxqs)[0];
+	if (priv->dev->data->rx_queues && priv->dev->data->rx_queues[0])
+		rxq = priv->dev->data->rx_queues[0];
 	else
 		return 0;
 

@@ -91,7 +91,7 @@ static int
 mlx4_rx_intr_vec_enable(struct priv *priv)
 {
 	unsigned int i;
-	unsigned int rxqs_n = priv->rxqs_n;
+	unsigned int rxqs_n = priv->dev->data->nb_rx_queues;
 	unsigned int n = RTE_MIN(rxqs_n, (uint32_t)RTE_MAX_RXTX_INTR_VEC_ID);
 	unsigned int count = 0;
 	struct rte_intr_handle *intr_handle = &priv->intr_handle;
@@ -105,7 +105,7 @@ mlx4_rx_intr_vec_enable(struct priv *priv)
 		return -rte_errno;
 	}
 	for (i = 0; i != n; ++i) {
-		struct rxq *rxq = (*priv->rxqs)[i];
+		struct rxq *rxq = priv->dev->data->rx_queues[i];
 
 		/* Skip queues that cannot request interrupts. */
 		if (!rxq || !rxq->channel) {
@@ -324,8 +324,7 @@ error:
 int
 mlx4_rx_intr_disable(struct rte_eth_dev *dev, uint16_t idx)
 {
-	struct priv *priv = dev->data->dev_private;
-	struct rxq *rxq = (*priv->rxqs)[idx];
+	struct rxq *rxq = dev->data->rx_queues[idx];
 	struct ibv_cq *ev_cq;
 	void *ev_ctx;
 	int ret;
@@ -361,8 +360,7 @@ mlx4_rx_intr_disable(struct rte_eth_dev *dev, uint16_t idx)
 int
 mlx4_rx_intr_enable(struct rte_eth_dev *dev, uint16_t idx)
 {
-	struct priv *priv = dev->data->dev_private;
-	struct rxq *rxq = (*priv->rxqs)[idx];
+	struct rxq *rxq = dev->data->rx_queues[idx];
 	int ret;
 
 	if (!rxq || !rxq->channel)

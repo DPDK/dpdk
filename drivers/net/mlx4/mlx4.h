@@ -104,11 +104,6 @@ struct priv {
 	unsigned int vf:1; /* This is a VF device. */
 	unsigned int intr_alarm:1; /* An interrupt alarm is scheduled. */
 	unsigned int isolated:1; /* Toggle isolated mode. */
-	/* RX/TX queues. */
-	unsigned int rxqs_n; /* RX queues array size. */
-	unsigned int txqs_n; /* TX queues array size. */
-	struct rxq *(*rxqs)[]; /* RX queues. */
-	struct txq *(*txqs)[]; /* TX queues. */
 	struct rte_intr_handle intr_handle; /* Port interrupt handle. */
 	struct rte_flow_drop *flow_drop_queue; /* Flow drop queue. */
 	LIST_HEAD(mlx4_flows, rte_flow) flows;

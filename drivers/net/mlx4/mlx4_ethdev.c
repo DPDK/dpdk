@@ -574,17 +574,14 @@ mlx4_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 void
 mlx4_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
-	struct priv *priv = dev->data->dev_private;
 	struct rte_eth_stats tmp;
 	unsigned int i;
 	unsigned int idx;
 
-	if (priv == NULL)
-		return;
 	memset(&tmp, 0, sizeof(tmp));
 	/* Add software counters. */
-	for (i = 0; (i != priv->rxqs_n); ++i) {
-		struct rxq *rxq = (*priv->rxqs)[i];
+	for (i = 0; i != dev->data->nb_rx_queues; ++i) {
+		struct rxq *rxq = dev->data->rx_queues[i];
 
 		if (rxq == NULL)
 			continue;
@@ -600,8 +597,8 @@ mlx4_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 		tmp.ierrors += rxq->stats.idropped;
 		tmp.rx_nombuf += rxq->stats.rx_nombuf;
 	}
-	for (i = 0; (i != priv->txqs_n); ++i) {
-		struct txq *txq = (*priv->txqs)[i];
+	for (i = 0; i != dev->data->nb_tx_queues; ++i) {
+		struct txq *txq = dev->data->tx_queues[i];
 
 		if (txq == NULL)
 			continue;
@@ -627,25 +624,23 @@ mlx4_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 void
 mlx4_stats_reset(struct rte_eth_dev *dev)
 {
-	struct priv *priv = dev->data->dev_private;
 	unsigned int i;
-	unsigned int idx;
 
-	if (priv == NULL)
-		return;
-	for (i = 0; (i != priv->rxqs_n); ++i) {
-		if ((*priv->rxqs)[i] == NULL)
-			continue;
-		idx = (*priv->rxqs)[i]->stats.idx;
-		(*priv->rxqs)[i]->stats =
-			(struct mlx4_rxq_stats){ .idx = idx };
+	for (i = 0; i != dev->data->nb_rx_queues; ++i) {
+		struct rxq *rxq = dev->data->rx_queues[i];
+
+		if (rxq)
+			rxq->stats = (struct mlx4_rxq_stats){
+				.idx = rxq->stats.idx,
+			};
 	}
-	for (i = 0; (i != priv->txqs_n); ++i) {
-		if ((*priv->txqs)[i] == NULL)
-			continue;
-		idx = (*priv->txqs)[i]->stats.idx;
-		(*priv->txqs)[i]->stats =
-			(struct mlx4_txq_stats){ .idx = idx };
+	for (i = 0; i != dev->data->nb_tx_queues; ++i) {
+		struct txq *txq = dev->data->tx_queues[i];
+
+		if (txq)
+			txq->stats = (struct mlx4_txq_stats){
+				.idx = txq->stats.idx,
+			};
 	}
 }
 

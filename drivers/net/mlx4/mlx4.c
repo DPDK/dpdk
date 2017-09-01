@@ -44,7 +44,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 /* Verbs headers do not support -pedantic. */
 #ifdef PEDANTIC
@@ -88,8 +87,6 @@ const char *pmd_mlx4_init_params[] = {
 /**
  * DPDK callback for Ethernet device configuration.
  *
- * Prepare the driver for a given number of TX and RX queues.
- *
  * @param dev
  *   Pointer to Ethernet device structure.
  *
@@ -99,22 +96,7 @@ const char *pmd_mlx4_init_params[] = {
 static int
 mlx4_dev_configure(struct rte_eth_dev *dev)
 {
-	struct priv *priv = dev->data->dev_private;
-	unsigned int rxqs_n = dev->data->nb_rx_queues;
-	unsigned int txqs_n = dev->data->nb_tx_queues;
-
-	priv->rxqs = (void *)dev->data->rx_queues;
-	priv->txqs = (void *)dev->data->tx_queues;
-	if (txqs_n != priv->txqs_n) {
-		INFO("%p: TX queues number update: %u -> %u",
-		     (void *)dev, priv->txqs_n, txqs_n);
-		priv->txqs_n = txqs_n;
-	}
-	if (rxqs_n != priv->rxqs_n) {
-		INFO("%p: Rx queues number update: %u -> %u",
-		     (void *)dev, priv->rxqs_n, rxqs_n);
-		priv->rxqs_n = rxqs_n;
-	}
+	(void)dev;
 	return 0;
 }
 
@@ -196,7 +178,6 @@ static void
 mlx4_dev_close(struct rte_eth_dev *dev)
 {
 	struct priv *priv = dev->data->dev_private;
-	void *tmp;
 	unsigned int i;
 
 	if (priv == NULL)
@@ -205,41 +186,12 @@ mlx4_dev_close(struct rte_eth_dev *dev)
 	      (void *)dev,
 	      ((priv->ctx != NULL) ? priv->ctx->device->name : ""));
 	mlx4_mac_addr_del(priv);
-	/*
-	 * Prevent crashes when queues are still in use. This is unfortunately
-	 * still required for DPDK 1.3 because some programs (such as testpmd)
-	 * never release them before closing the device.
-	 */
 	dev->rx_pkt_burst = mlx4_rx_burst_removed;
 	dev->tx_pkt_burst = mlx4_tx_burst_removed;
-	if (priv->rxqs != NULL) {
-		/* XXX race condition if mlx4_rx_burst() is still running. */
-		usleep(1000);
-		for (i = 0; (i != priv->rxqs_n); ++i) {
-			tmp = (*priv->rxqs)[i];
-			if (tmp == NULL)
-				continue;
-			(*priv->rxqs)[i] = NULL;
-			mlx4_rxq_cleanup(tmp);
-			rte_free(tmp);
-		}
-		priv->rxqs_n = 0;
-		priv->rxqs = NULL;
-	}
-	if (priv->txqs != NULL) {
-		/* XXX race condition if mlx4_tx_burst() is still running. */
-		usleep(1000);
-		for (i = 0; (i != priv->txqs_n); ++i) {
-			tmp = (*priv->txqs)[i];
-			if (tmp == NULL)
-				continue;
-			(*priv->txqs)[i] = NULL;
-			mlx4_txq_cleanup(tmp);
-			rte_free(tmp);
-		}
-		priv->txqs_n = 0;
-		priv->txqs = NULL;
-	}
+	for (i = 0; i != dev->data->nb_rx_queues; ++i)
+		mlx4_rx_queue_release(dev->data->rx_queues[i]);
+	for (i = 0; i != dev->data->nb_tx_queues; ++i)
+		mlx4_tx_queue_release(dev->data->tx_queues[i]);
 	if (priv->pd != NULL) {
 		assert(priv->ctx != NULL);
 		claim_zero(ibv_dealloc_pd(priv->pd));

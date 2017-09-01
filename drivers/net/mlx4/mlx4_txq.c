@@ -401,15 +401,15 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		    unsigned int socket, const struct rte_eth_txconf *conf)
 {
 	struct priv *priv = dev->data->dev_private;
-	struct txq *txq = (*priv->txqs)[idx];
+	struct txq *txq = dev->data->tx_queues[idx];
 	int ret;
 
 	DEBUG("%p: configuring queue %u for %u descriptors",
 	      (void *)dev, idx, desc);
-	if (idx >= priv->txqs_n) {
+	if (idx >= dev->data->nb_tx_queues) {
 		rte_errno = EOVERFLOW;
 		ERROR("%p: queue index out of range (%u >= %u)",
-		      (void *)dev, idx, priv->txqs_n);
+		      (void *)dev, idx, dev->data->nb_tx_queues);
 		return -rte_errno;
 	}
 	if (txq != NULL) {
@@ -419,7 +419,7 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 			rte_errno = EEXIST;
 			return -rte_errno;
 		}
-		(*priv->txqs)[idx] = NULL;
+		dev->data->tx_queues[idx] = NULL;
 		mlx4_txq_cleanup(txq);
 	} else {
 		txq = rte_calloc_socket("TXQ", 1, sizeof(*txq), 0, socket);
@@ -437,7 +437,7 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		txq->stats.idx = idx;
 		DEBUG("%p: adding Tx queue %p to list",
 		      (void *)dev, (void *)txq);
-		(*priv->txqs)[idx] = txq;
+		dev->data->tx_queues[idx] = txq;
 		/* Update send callback. */
 		dev->tx_pkt_burst = mlx4_tx_burst;
 	}
@@ -460,11 +460,11 @@ mlx4_tx_queue_release(void *dpdk_txq)
 	if (txq == NULL)
 		return;
 	priv = txq->priv;
-	for (i = 0; (i != priv->txqs_n); ++i)
-		if ((*priv->txqs)[i] == txq) {
+	for (i = 0; i != priv->dev->data->nb_tx_queues; ++i)
+		if (priv->dev->data->tx_queues[i] == txq) {
 			DEBUG("%p: removing Tx queue %p from list",
 			      (void *)priv->dev, (void *)txq);
-			(*priv->txqs)[i] = NULL;
+			priv->dev->data->tx_queues[i] = NULL;
 			break;
 		}
 	mlx4_txq_cleanup(txq);

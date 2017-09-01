@@ -691,7 +691,8 @@ mlx4_flow_prepare(struct priv *priv,
 				(const struct rte_flow_action_queue *)
 				actions->conf;
 
-			if (!queue || (queue->index > (priv->rxqs_n - 1)))
+			if (!queue || (queue->index >
+				       (priv->dev->data->nb_rx_queues - 1)))
 				goto exit_action_not_supported;
 			action.queue = 1;
 		} else {
@@ -841,7 +842,7 @@ mlx4_flow_create_action_queue(struct priv *priv,
 	if (action->drop) {
 		qp = priv->flow_drop_queue ? priv->flow_drop_queue->qp : NULL;
 	} else {
-		struct rxq *rxq = (*priv->rxqs)[action->queue_id];
+		struct rxq *rxq = priv->dev->data->rx_queues[action->queue_id];
 
 		qp = rxq->qp;
 		rte_flow->qp = qp;
