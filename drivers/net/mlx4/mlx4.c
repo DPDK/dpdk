@@ -148,7 +148,7 @@ void priv_unlock(struct priv *priv)
  *   Interface name output buffer.
  *
  * @return
- *   0 on success, -1 on failure and errno is set.
+ *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
 priv_get_ifname(const struct priv *priv, char (*ifname)[IF_NAMESIZE])
@@ -163,8 +163,10 @@ priv_get_ifname(const struct priv *priv, char (*ifname)[IF_NAMESIZE])
 		MKSTR(path, "%s/device/net", priv->ctx->device->ibdev_path);
 
 		dir = opendir(path);
-		if (dir == NULL)
-			return -1;
+		if (dir == NULL) {
+			rte_errno = errno;
+			return -rte_errno;
+		}
 	}
 	while ((dent = readdir(dir)) != NULL) {
 		char *name = dent->d_name;
@@ -214,8 +216,10 @@ try_dev_id:
 			snprintf(match, sizeof(match), "%s", name);
 	}
 	closedir(dir);
-	if (match[0] == '\0')
-		return -1;
+	if (match[0] == '\0') {
+		rte_errno = ENODEV;
+		return -rte_errno;
+	}
 	strncpy(*ifname, match, sizeof(*ifname));
 	return 0;
 }
@@ -233,7 +237,8 @@ try_dev_id:
  *   Buffer size.
  *
  * @return
- *   0 on success, -1 on failure and errno is set.
+ *   Number of bytes read on success, negative errno value otherwise and
+ *   rte_errno is set.
  */
 static int
 priv_sysfs_read(const struct priv *priv, const char *entry,
@@ -242,25 +247,27 @@ priv_sysfs_read(const struct priv *priv, const char *entry,
 	char ifname[IF_NAMESIZE];
 	FILE *file;
 	int ret;
-	int err;
 
-	if (priv_get_ifname(priv, &ifname))
-		return -1;
+	ret = priv_get_ifname(priv, &ifname);
+	if (ret)
+		return ret;
 
 	MKSTR(path, "%s/device/net/%s/%s", priv->ctx->device->ibdev_path,
 	      ifname, entry);
 
 	file = fopen(path, "rb");
-	if (file == NULL)
-		return -1;
+	if (file == NULL) {
+		rte_errno = errno;
+		return -rte_errno;
+	}
 	ret = fread(buf, 1, size, file);
-	err = errno;
-	if (((size_t)ret < size) && (ferror(file)))
-		ret = -1;
-	else
+	if ((size_t)ret < size && ferror(file)) {
+		rte_errno = EIO;
+		ret = -rte_errno;
+	} else {
 		ret = size;
+	}
 	fclose(file);
-	errno = err;
 	return ret;
 }
 
@@ -277,7 +284,8 @@ priv_sysfs_read(const struct priv *priv, const char *entry,
  *   Buffer size.
  *
  * @return
- *   0 on success, -1 on failure and errno is set.
+ *   Number of bytes written on success, negative errno value otherwise and
+ *   rte_errno is set.
  */
 static int
 priv_sysfs_write(const struct priv *priv, const char *entry,
@@ -286,25 +294,27 @@ priv_sysfs_write(const struct priv *priv, const char *entry,
 	char ifname[IF_NAMESIZE];
 	FILE *file;
 	int ret;
-	int err;
 
-	if (priv_get_ifname(priv, &ifname))
-		return -1;
+	ret = priv_get_ifname(priv, &ifname);
+	if (ret)
+		return ret;
 
 	MKSTR(path, "%s/device/net/%s/%s", priv->ctx->device->ibdev_path,
 	      ifname, entry);
 
 	file = fopen(path, "wb");
-	if (file == NULL)
-		return -1;
+	if (file == NULL) {
+		rte_errno = errno;
+		return -rte_errno;
+	}
 	ret = fwrite(buf, 1, size, file);
-	err = errno;
-	if (((size_t)ret < size) || (ferror(file)))
-		ret = -1;
-	else
+	if ((size_t)ret < size || ferror(file)) {
+		rte_errno = EIO;
+		ret = -rte_errno;
+	} else {
 		ret = size;
+	}
 	fclose(file);
-	errno = err;
 	return ret;
 }
 
@@ -319,7 +329,7 @@ priv_sysfs_write(const struct priv *priv, const char *entry,
  *   Value output buffer.
  *
  * @return
- *   0 on success, -1 on failure and errno is set.
+ *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
 priv_get_sysfs_ulong(struct priv *priv, const char *name, unsigned long *value)
@@ -329,18 +339,19 @@ priv_get_sysfs_ulong(struct priv *priv, const char *name, unsigned long *value)
 	char value_str[32];
 
 	ret = priv_sysfs_read(priv, name, value_str, (sizeof(value_str) - 1));
-	if (ret == -1) {
+	if (ret < 0) {
 		DEBUG("cannot read %s value from sysfs: %s",
-		      name, strerror(errno));
-		return -1;
+		      name, strerror(rte_errno));
+		return ret;
 	}
 	value_str[ret] = '\0';
 	errno = 0;
 	value_ret = strtoul(value_str, NULL, 0);
 	if (errno) {
+		rte_errno = errno;
 		DEBUG("invalid %s value `%s': %s", name, value_str,
-		      strerror(errno));
-		return -1;
+		      strerror(rte_errno));
+		return -rte_errno;
 	}
 	*value = value_ret;
 	return 0;
@@ -357,7 +368,7 @@ priv_get_sysfs_ulong(struct priv *priv, const char *name, unsigned long *value)
  *   Value to set.
  *
  * @return
- *   0 on success, -1 on failure and errno is set.
+ *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
 priv_set_sysfs_ulong(struct priv *priv, const char *name, unsigned long value)
@@ -366,10 +377,10 @@ priv_set_sysfs_ulong(struct priv *priv, const char *name, unsigned long value)
 	MKSTR(value_str, "%lu", value);
 
 	ret = priv_sysfs_write(priv, name, value_str, (sizeof(value_str) - 1));
-	if (ret == -1) {
+	if (ret < 0) {
 		DEBUG("cannot write %s `%s' (%lu) to sysfs: %s",
-		      name, value_str, value, strerror(errno));
-		return -1;
+		      name, value_str, value, strerror(rte_errno));
+		return ret;
 	}
 	return 0;
 }
@@ -385,18 +396,23 @@ priv_set_sysfs_ulong(struct priv *priv, const char *name, unsigned long value)
  *   Interface request structure output buffer.
  *
  * @return
- *   0 on success, -1 on failure and errno is set.
+ *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
 priv_ifreq(const struct priv *priv, int req, struct ifreq *ifr)
 {
 	int sock = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
-	int ret = -1;
+	int ret;
 
-	if (sock == -1)
-		return ret;
-	if (priv_get_ifname(priv, &ifr->ifr_name) == 0)
-		ret = ioctl(sock, req, ifr);
+	if (sock == -1) {
+		rte_errno = errno;
+		return -rte_errno;
+	}
+	ret = priv_get_ifname(priv, &ifr->ifr_name);
+	if (!ret && ioctl(sock, req, ifr) == -1) {
+		rte_errno = errno;
+		ret = -rte_errno;
+	}
 	close(sock);
 	return ret;
 }
@@ -410,15 +426,16 @@ priv_ifreq(const struct priv *priv, int req, struct ifreq *ifr)
  *   MTU value output buffer.
  *
  * @return
- *   0 on success, -1 on failure and errno is set.
+ *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
 priv_get_mtu(struct priv *priv, uint16_t *mtu)
 {
-	unsigned long ulong_mtu;
+	unsigned long ulong_mtu = 0;
+	int ret = priv_get_sysfs_ulong(priv, "mtu", &ulong_mtu);
 
-	if (priv_get_sysfs_ulong(priv, "mtu", &ulong_mtu) == -1)
-		return -1;
+	if (ret)
+		return ret;
 	*mtu = ulong_mtu;
 	return 0;
 }
@@ -432,20 +449,23 @@ priv_get_mtu(struct priv *priv, uint16_t *mtu)
  *   MTU value to set.
  *
  * @return
- *   0 on success, -1 on failure and errno is set.
+ *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
 priv_set_mtu(struct priv *priv, uint16_t mtu)
 {
 	uint16_t new_mtu;
+	int ret = priv_set_sysfs_ulong(priv, "mtu", mtu);
 
-	if (priv_set_sysfs_ulong(priv, "mtu", mtu) ||
-	    priv_get_mtu(priv, &new_mtu))
-		return -1;
+	if (ret)
+		return ret;
+	ret = priv_get_mtu(priv, &new_mtu);
+	if (ret)
+		return ret;
 	if (new_mtu == mtu)
 		return 0;
-	errno = EINVAL;
-	return -1;
+	rte_errno = EINVAL;
+	return -rte_errno;
 }
 
 /**
@@ -459,15 +479,16 @@ priv_set_mtu(struct priv *priv, uint16_t mtu)
  *   Bitmask for flags to modify.
  *
  * @return
- *   0 on success, -1 on failure and errno is set.
+ *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
 priv_set_flags(struct priv *priv, unsigned int keep, unsigned int flags)
 {
-	unsigned long tmp;
+	unsigned long tmp = 0;
+	int ret = priv_get_sysfs_ulong(priv, "flags", &tmp);
 
-	if (priv_get_sysfs_ulong(priv, "flags", &tmp) == -1)
-		return -1;
+	if (ret)
+		return ret;
 	tmp &= keep;
 	tmp |= (flags & (~keep));
 	return priv_set_sysfs_ulong(priv, "flags", tmp);
@@ -502,7 +523,7 @@ priv_mac_addr_del(struct priv *priv);
  *   Pointer to Ethernet device structure.
  *
  * @return
- *   0 on success, errno value on failure.
+ *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
 dev_configure(struct rte_eth_dev *dev)
@@ -533,7 +554,7 @@ dev_configure(struct rte_eth_dev *dev)
  *   Pointer to Ethernet device structure.
  *
  * @return
- *   0 on success, negative errno value on failure.
+ *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
 mlx4_dev_configure(struct rte_eth_dev *dev)
@@ -543,9 +564,8 @@ mlx4_dev_configure(struct rte_eth_dev *dev)
 
 	priv_lock(priv);
 	ret = dev_configure(dev);
-	assert(ret >= 0);
 	priv_unlock(priv);
-	return -ret;
+	return ret;
 }
 
 static uint16_t mlx4_tx_burst(void *, struct rte_mbuf **, uint16_t);
@@ -562,7 +582,7 @@ static uint16_t removed_rx_burst(void *, struct rte_mbuf **, uint16_t);
  *   Number of elements to allocate.
  *
  * @return
- *   0 on success, errno value on failure.
+ *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
 txq_alloc_elts(struct txq *txq, unsigned int elts_n)
@@ -601,7 +621,8 @@ error:
 
 	DEBUG("%p: failed, freed everything", (void *)txq);
 	assert(ret > 0);
-	return ret;
+	rte_errno = ret;
+	return -rte_errno;
 }
 
 /**
@@ -795,7 +816,7 @@ static struct ibv_mr *mlx4_mp2mr(struct ibv_pd *, struct rte_mempool *)
  *   Pointer to memory pool.
  *
  * @return
- *   Memory region pointer, NULL in case of error.
+ *   Memory region pointer, NULL in case of error and rte_errno is set.
  */
 static struct ibv_mr *
 mlx4_mp2mr(struct ibv_pd *pd, struct rte_mempool *mp)
@@ -804,8 +825,10 @@ mlx4_mp2mr(struct ibv_pd *pd, struct rte_mempool *mp)
 	uintptr_t start;
 	uintptr_t end;
 	unsigned int i;
+	struct ibv_mr *mr;
 
 	if (mlx4_check_mempool(mp, &start, &end) != 0) {
+		rte_errno = EINVAL;
 		ERROR("mempool %p: not virtually contiguous",
 			(void *)mp);
 		return NULL;
@@ -828,10 +851,13 @@ mlx4_mp2mr(struct ibv_pd *pd, struct rte_mempool *mp)
 	DEBUG("mempool %p using start=%p end=%p size=%zu for MR",
 	      (void *)mp, (void *)start, (void *)end,
 	      (size_t)(end - start));
-	return ibv_reg_mr(pd,
-			  (void *)start,
-			  end - start,
-			  IBV_ACCESS_LOCAL_WRITE);
+	mr = ibv_reg_mr(pd,
+			(void *)start,
+			end - start,
+			IBV_ACCESS_LOCAL_WRITE);
+	if (!mr)
+		rte_errno = errno ? errno : EINVAL;
+	return mr;
 }
 
 /**
@@ -1144,7 +1170,7 @@ stop:
  *   Thresholds parameters.
  *
  * @return
- *   0 on success, errno value on failure.
+ *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
 txq_setup(struct rte_eth_dev *dev, struct txq *txq, uint16_t desc,
@@ -1159,21 +1185,24 @@ txq_setup(struct rte_eth_dev *dev, struct txq *txq, uint16_t desc,
 		struct ibv_qp_init_attr init;
 		struct ibv_qp_attr mod;
 	} attr;
-	int ret = 0;
+	int ret;
 
 	(void)conf; /* Thresholds configuration (ignored). */
-	if (priv == NULL)
-		return EINVAL;
+	if (priv == NULL) {
+		rte_errno = EINVAL;
+		goto error;
+	}
 	if (desc == 0) {
+		rte_errno = EINVAL;
 		ERROR("%p: invalid number of Tx descriptors", (void *)dev);
-		return EINVAL;
+		goto error;
 	}
 	/* MRs will be registered in mp2mr[] later. */
 	tmpl.cq = ibv_create_cq(priv->ctx, desc, NULL, NULL, 0);
 	if (tmpl.cq == NULL) {
-		ret = ENOMEM;
+		rte_errno = ENOMEM;
 		ERROR("%p: CQ creation failure: %s",
-		      (void *)dev, strerror(ret));
+		      (void *)dev, strerror(rte_errno));
 		goto error;
 	}
 	DEBUG("priv->device_attr.max_qp_wr is %d",
@@ -1201,9 +1230,9 @@ txq_setup(struct rte_eth_dev *dev, struct txq *txq, uint16_t desc,
 	};
 	tmpl.qp = ibv_create_qp(priv->pd, &attr.init);
 	if (tmpl.qp == NULL) {
-		ret = (errno ? errno : EINVAL);
+		rte_errno = errno ? errno : EINVAL;
 		ERROR("%p: QP creation failure: %s",
-		      (void *)dev, strerror(ret));
+		      (void *)dev, strerror(rte_errno));
 		goto error;
 	}
 	/* ibv_create_qp() updates this value. */
@@ -1216,14 +1245,16 @@ txq_setup(struct rte_eth_dev *dev, struct txq *txq, uint16_t desc,
 	};
 	ret = ibv_modify_qp(tmpl.qp, &attr.mod, IBV_QP_STATE | IBV_QP_PORT);
 	if (ret) {
+		rte_errno = ret;
 		ERROR("%p: QP state to IBV_QPS_INIT failed: %s",
-		      (void *)dev, strerror(ret));
+		      (void *)dev, strerror(rte_errno));
 		goto error;
 	}
 	ret = txq_alloc_elts(&tmpl, desc);
 	if (ret) {
+		rte_errno = ret;
 		ERROR("%p: TXQ allocation failed: %s",
-		      (void *)dev, strerror(ret));
+		      (void *)dev, strerror(rte_errno));
 		goto error;
 	}
 	attr.mod = (struct ibv_qp_attr){
@@ -1231,15 +1262,17 @@ txq_setup(struct rte_eth_dev *dev, struct txq *txq, uint16_t desc,
 	};
 	ret = ibv_modify_qp(tmpl.qp, &attr.mod, IBV_QP_STATE);
 	if (ret) {
+		rte_errno = ret;
 		ERROR("%p: QP state to IBV_QPS_RTR failed: %s",
-		      (void *)dev, strerror(ret));
+		      (void *)dev, strerror(rte_errno));
 		goto error;
 	}
 	attr.mod.qp_state = IBV_QPS_RTS;
 	ret = ibv_modify_qp(tmpl.qp, &attr.mod, IBV_QP_STATE);
 	if (ret) {
+		rte_errno = ret;
 		ERROR("%p: QP state to IBV_QPS_RTS failed: %s",
-		      (void *)dev, strerror(ret));
+		      (void *)dev, strerror(rte_errno));
 		goto error;
 	}
 	/* Clean up txq in case we're reinitializing it. */
@@ -1249,12 +1282,13 @@ txq_setup(struct rte_eth_dev *dev, struct txq *txq, uint16_t desc,
 	DEBUG("%p: txq updated with %p", (void *)txq, (void *)&tmpl);
 	/* Pre-register known mempools. */
 	rte_mempool_walk(txq_mp2mr_iter, txq);
-	assert(ret == 0);
 	return 0;
 error:
+	ret = rte_errno;
 	txq_cleanup(&tmpl);
-	assert(ret > 0);
-	return ret;
+	rte_errno = ret;
+	assert(rte_errno > 0);
+	return -rte_errno;
 }
 
 /**
@@ -1272,7 +1306,7 @@ error:
  *   Thresholds parameters.
  *
  * @return
- *   0 on success, negative errno value on failure.
+ *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
 mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
@@ -1286,27 +1320,30 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	DEBUG("%p: configuring queue %u for %u descriptors",
 	      (void *)dev, idx, desc);
 	if (idx >= priv->txqs_n) {
+		rte_errno = EOVERFLOW;
 		ERROR("%p: queue index out of range (%u >= %u)",
 		      (void *)dev, idx, priv->txqs_n);
 		priv_unlock(priv);
-		return -EOVERFLOW;
+		return -rte_errno;
 	}
 	if (txq != NULL) {
 		DEBUG("%p: reusing already allocated queue index %u (%p)",
 		      (void *)dev, idx, (void *)txq);
 		if (priv->started) {
+			rte_errno = EEXIST;
 			priv_unlock(priv);
-			return -EEXIST;
+			return -rte_errno;
 		}
 		(*priv->txqs)[idx] = NULL;
 		txq_cleanup(txq);
 	} else {
 		txq = rte_calloc_socket("TXQ", 1, sizeof(*txq), 0, socket);
 		if (txq == NULL) {
+			rte_errno = ENOMEM;
 			ERROR("%p: unable to allocate queue index %u",
 			      (void *)dev, idx);
 			priv_unlock(priv);
-			return -ENOMEM;
+			return -rte_errno;
 		}
 	}
 	ret = txq_setup(dev, txq, desc, socket, conf);
@@ -1321,7 +1358,7 @@ mlx4_tx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		dev->tx_pkt_burst = mlx4_tx_burst;
 	}
 	priv_unlock(priv);
-	return -ret;
+	return ret;
 }
 
 /**
@@ -1364,7 +1401,7 @@ mlx4_tx_queue_release(void *dpdk_txq)
  *   Number of elements to allocate.
  *
  * @return
- *   0 on success, errno value on failure.
+ *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
 rxq_alloc_elts(struct rxq *rxq, unsigned int elts_n)
@@ -1373,11 +1410,10 @@ rxq_alloc_elts(struct rxq *rxq, unsigned int elts_n)
 	struct rxq_elt (*elts)[elts_n] =
 		rte_calloc_socket("RXQ elements", 1, sizeof(*elts), 0,
 				  rxq->socket);
-	int ret = 0;
 
 	if (elts == NULL) {
+		rte_errno = ENOMEM;
 		ERROR("%p: can't allocate packets array", (void *)rxq);
-		ret = ENOMEM;
 		goto error;
 	}
 	/* For each WR (packet). */
@@ -1388,8 +1424,8 @@ rxq_alloc_elts(struct rxq *rxq, unsigned int elts_n)
 		struct rte_mbuf *buf = rte_pktmbuf_alloc(rxq->mp);
 
 		if (buf == NULL) {
+			rte_errno = ENOMEM;
 			ERROR("%p: empty mbuf pool", (void *)rxq);
-			ret = ENOMEM;
 			goto error;
 		}
 		elt->buf = buf;
@@ -1418,7 +1454,6 @@ rxq_alloc_elts(struct rxq *rxq, unsigned int elts_n)
 	rxq->elts_n = elts_n;
 	rxq->elts_head = 0;
 	rxq->elts = elts;
-	assert(ret == 0);
 	return 0;
 error:
 	if (elts != NULL) {
@@ -1427,8 +1462,8 @@ error:
 		rte_free(elts);
 	}
 	DEBUG("%p: failed, freed everything", (void *)rxq);
-	assert(ret > 0);
-	return ret;
+	assert(rte_errno > 0);
+	return -rte_errno;
 }
 
 /**
@@ -1485,7 +1520,7 @@ priv_mac_addr_del(struct priv *priv)
  *   Pointer to private structure.
  *
  * @return
- *   0 on success, errno value on failure.
+ *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
 priv_mac_addr_add(struct priv *priv)
@@ -1543,16 +1578,12 @@ priv_mac_addr_add(struct priv *priv)
 	      (void *)priv,
 	      (*mac)[0], (*mac)[1], (*mac)[2], (*mac)[3], (*mac)[4], (*mac)[5]);
 	/* Create related flow. */
-	errno = 0;
 	flow = ibv_create_flow(rxq->qp, attr);
 	if (flow == NULL) {
-		/* It's not clear whether errno is always set in this case. */
+		rte_errno = errno ? errno : EINVAL;
 		ERROR("%p: flow configuration failed, errno=%d: %s",
-		      (void *)rxq, errno,
-		      (errno ? strerror(errno) : "Unknown error"));
-		if (errno)
-			return errno;
-		return EINVAL;
+		      (void *)rxq, rte_errno, strerror(errno));
+		return -rte_errno;
 	}
 	assert(priv->mac_flow == NULL);
 	priv->mac_flow = flow;
@@ -1724,11 +1755,12 @@ repost:
  *   Number of descriptors in QP (hint only).
  *
  * @return
- *   QP pointer or NULL in case of error.
+ *   QP pointer or NULL in case of error and rte_errno is set.
  */
 static struct ibv_qp *
 rxq_setup_qp(struct priv *priv, struct ibv_cq *cq, uint16_t desc)
 {
+	struct ibv_qp *qp;
 	struct ibv_qp_init_attr attr = {
 		/* CQ to be associated with the send queue. */
 		.send_cq = cq,
@@ -1745,7 +1777,10 @@ rxq_setup_qp(struct priv *priv, struct ibv_cq *cq, uint16_t desc)
 		.qp_type = IBV_QPT_RAW_PACKET,
 	};
 
-	return ibv_create_qp(priv->pd, &attr);
+	qp = ibv_create_qp(priv->pd, &attr);
+	if (!qp)
+		rte_errno = errno ? errno : EINVAL;
+	return qp;
 }
 
 /**
@@ -1765,7 +1800,7 @@ rxq_setup_qp(struct priv *priv, struct ibv_cq *cq, uint16_t desc)
  *   Memory pool for buffer allocations.
  *
  * @return
- *   0 on success, errno value on failure.
+ *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
 rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
@@ -1781,13 +1816,14 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 	struct ibv_qp_attr mod;
 	struct ibv_recv_wr *bad_wr;
 	unsigned int mb_len;
-	int ret = 0;
+	int ret;
 
 	(void)conf; /* Thresholds configuration (ignored). */
 	mb_len = rte_pktmbuf_data_room_size(mp);
 	if (desc == 0) {
+		rte_errno = EINVAL;
 		ERROR("%p: invalid number of Rx descriptors", (void *)dev);
-		return EINVAL;
+		goto error;
 	}
 	/* Enable scattered packets support for this queue if necessary. */
 	assert(mb_len >= RTE_PKTMBUF_HEADROOM);
@@ -1809,26 +1845,26 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 	/* Use the entire RX mempool as the memory region. */
 	tmpl.mr = mlx4_mp2mr(priv->pd, mp);
 	if (tmpl.mr == NULL) {
-		ret = EINVAL;
+		rte_errno = EINVAL;
 		ERROR("%p: MR creation failure: %s",
-		      (void *)dev, strerror(ret));
+		      (void *)dev, strerror(rte_errno));
 		goto error;
 	}
 	if (dev->data->dev_conf.intr_conf.rxq) {
 		tmpl.channel = ibv_create_comp_channel(priv->ctx);
 		if (tmpl.channel == NULL) {
-			ret = ENOMEM;
+			rte_errno = ENOMEM;
 			ERROR("%p: Rx interrupt completion channel creation"
 			      " failure: %s",
-			      (void *)dev, strerror(ret));
+			      (void *)dev, strerror(rte_errno));
 			goto error;
 		}
 	}
 	tmpl.cq = ibv_create_cq(priv->ctx, desc, NULL, tmpl.channel, 0);
 	if (tmpl.cq == NULL) {
-		ret = ENOMEM;
+		rte_errno = ENOMEM;
 		ERROR("%p: CQ creation failure: %s",
-		      (void *)dev, strerror(ret));
+		      (void *)dev, strerror(rte_errno));
 		goto error;
 	}
 	DEBUG("priv->device_attr.max_qp_wr is %d",
@@ -1837,9 +1873,8 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 	      priv->device_attr.max_sge);
 	tmpl.qp = rxq_setup_qp(priv, tmpl.cq, desc);
 	if (tmpl.qp == NULL) {
-		ret = (errno ? errno : EINVAL);
 		ERROR("%p: QP creation failure: %s",
-		      (void *)dev, strerror(ret));
+		      (void *)dev, strerror(rte_errno));
 		goto error;
 	}
 	mod = (struct ibv_qp_attr){
@@ -1850,22 +1885,24 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 	};
 	ret = ibv_modify_qp(tmpl.qp, &mod, IBV_QP_STATE | IBV_QP_PORT);
 	if (ret) {
+		rte_errno = ret;
 		ERROR("%p: QP state to IBV_QPS_INIT failed: %s",
-		      (void *)dev, strerror(ret));
+		      (void *)dev, strerror(rte_errno));
 		goto error;
 	}
 	ret = rxq_alloc_elts(&tmpl, desc);
 	if (ret) {
 		ERROR("%p: RXQ allocation failed: %s",
-		      (void *)dev, strerror(ret));
+		      (void *)dev, strerror(rte_errno));
 		goto error;
 	}
 	ret = ibv_post_recv(tmpl.qp, &(*tmpl.elts)[0].wr, &bad_wr);
 	if (ret) {
+		rte_errno = ret;
 		ERROR("%p: ibv_post_recv() failed for WR %p: %s",
 		      (void *)dev,
 		      (void *)bad_wr,
-		      strerror(ret));
+		      strerror(rte_errno));
 		goto error;
 	}
 	mod = (struct ibv_qp_attr){
@@ -1873,8 +1910,9 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 	};
 	ret = ibv_modify_qp(tmpl.qp, &mod, IBV_QP_STATE);
 	if (ret) {
+		rte_errno = ret;
 		ERROR("%p: QP state to IBV_QPS_RTR failed: %s",
-		      (void *)dev, strerror(ret));
+		      (void *)dev, strerror(rte_errno));
 		goto error;
 	}
 	/* Save port ID. */
@@ -1885,12 +1923,13 @@ rxq_setup(struct rte_eth_dev *dev, struct rxq *rxq, uint16_t desc,
 	rxq_cleanup(rxq);
 	*rxq = tmpl;
 	DEBUG("%p: rxq updated with %p", (void *)rxq, (void *)&tmpl);
-	assert(ret == 0);
 	return 0;
 error:
+	ret = rte_errno;
 	rxq_cleanup(&tmpl);
-	assert(ret > 0);
-	return ret;
+	rte_errno = ret;
+	assert(rte_errno > 0);
+	return -rte_errno;
 }
 
 /**
@@ -1910,7 +1949,7 @@ error:
  *   Memory pool for buffer allocations.
  *
  * @return
- *   0 on success, negative errno value on failure.
+ *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
 mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
@@ -1925,17 +1964,19 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	DEBUG("%p: configuring queue %u for %u descriptors",
 	      (void *)dev, idx, desc);
 	if (idx >= priv->rxqs_n) {
+		rte_errno = EOVERFLOW;
 		ERROR("%p: queue index out of range (%u >= %u)",
 		      (void *)dev, idx, priv->rxqs_n);
 		priv_unlock(priv);
-		return -EOVERFLOW;
+		return -rte_errno;
 	}
 	if (rxq != NULL) {
 		DEBUG("%p: reusing already allocated queue index %u (%p)",
 		      (void *)dev, idx, (void *)rxq);
 		if (priv->started) {
+			rte_errno = EEXIST;
 			priv_unlock(priv);
-			return -EEXIST;
+			return -rte_errno;
 		}
 		(*priv->rxqs)[idx] = NULL;
 		if (idx == 0)
@@ -1944,10 +1985,11 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 	} else {
 		rxq = rte_calloc_socket("RXQ", 1, sizeof(*rxq), 0, socket);
 		if (rxq == NULL) {
+			rte_errno = ENOMEM;
 			ERROR("%p: unable to allocate queue index %u",
 			      (void *)dev, idx);
 			priv_unlock(priv);
-			return -ENOMEM;
+			return -rte_errno;
 		}
 	}
 	ret = rxq_setup(dev, rxq, desc, socket, conf, mp);
@@ -1962,7 +2004,7 @@ mlx4_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		dev->rx_pkt_burst = mlx4_rx_burst;
 	}
 	priv_unlock(priv);
-	return -ret;
+	return ret;
 }
 
 /**
@@ -2014,7 +2056,7 @@ priv_dev_link_interrupt_handler_install(struct priv *, struct rte_eth_dev *);
  *   Pointer to Ethernet device structure.
  *
  * @return
- *   0 on success, negative errno value on failure.
+ *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
 mlx4_dev_start(struct rte_eth_dev *dev)
@@ -2063,7 +2105,7 @@ err:
 	priv_mac_addr_del(priv);
 	priv->started = 0;
 	priv_unlock(priv);
-	return -ret;
+	return ret;
 }
 
 /**
@@ -2228,7 +2270,7 @@ mlx4_dev_close(struct rte_eth_dev *dev)
  *   Nonzero for link up, otherwise link down.
  *
  * @return
- *   0 on success, errno value on failure.
+ *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
 priv_set_link(struct priv *priv, int up)
@@ -2258,7 +2300,7 @@ priv_set_link(struct priv *priv, int up)
  *   Pointer to Ethernet device structure.
  *
  * @return
- *   0 on success, errno value on failure.
+ *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
 mlx4_set_link_down(struct rte_eth_dev *dev)
@@ -2279,7 +2321,7 @@ mlx4_set_link_down(struct rte_eth_dev *dev)
  *   Pointer to Ethernet device structure.
  *
  * @return
- *   0 on success, errno value on failure.
+ *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
 mlx4_set_link_up(struct rte_eth_dev *dev)
@@ -2437,6 +2479,9 @@ mlx4_stats_reset(struct rte_eth_dev *dev)
  *   Pointer to Ethernet device structure.
  * @param wait_to_complete
  *   Wait for request completion (ignored).
+ *
+ * @return
+ *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
 mlx4_link_update(struct rte_eth_dev *dev, int wait_to_complete)
@@ -2451,12 +2496,14 @@ mlx4_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 
 	/* priv_lock() is not taken to allow concurrent calls. */
 
-	if (priv == NULL)
-		return -EINVAL;
+	if (priv == NULL) {
+		rte_errno = EINVAL;
+		return -rte_errno;
+	}
 	(void)wait_to_complete;
 	if (priv_ifreq(priv, SIOCGIFFLAGS, &ifr)) {
-		WARN("ioctl(SIOCGIFFLAGS) failed: %s", strerror(errno));
-		return -1;
+		WARN("ioctl(SIOCGIFFLAGS) failed: %s", strerror(rte_errno));
+		return -rte_errno;
 	}
 	memset(&dev_link, 0, sizeof(dev_link));
 	dev_link.link_status = ((ifr.ifr_flags & IFF_UP) &&
@@ -2464,8 +2511,8 @@ mlx4_link_update(struct rte_eth_dev *dev, int wait_to_complete)
 	ifr.ifr_data = (void *)&edata;
 	if (priv_ifreq(priv, SIOCETHTOOL, &ifr)) {
 		WARN("ioctl(SIOCETHTOOL, ETHTOOL_GSET) failed: %s",
-		     strerror(errno));
-		return -1;
+		     strerror(rte_errno));
+		return -rte_errno;
 	}
 	link_speed = ethtool_cmd_speed(&edata);
 	if (link_speed == -1)
@@ -2489,7 +2536,7 @@ mlx4_link_update(struct rte_eth_dev *dev, int wait_to_complete)
  *   New MTU.
  *
  * @return
- *   0 on success, negative errno value on failure.
+ *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
 mlx4_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
@@ -2500,9 +2547,9 @@ mlx4_dev_set_mtu(struct rte_eth_dev *dev, uint16_t mtu)
 	priv_lock(priv);
 	/* Set kernel interface MTU first. */
 	if (priv_set_mtu(priv, mtu)) {
-		ret = errno;
+		ret = rte_errno;
 		WARN("cannot set port %u MTU to %u: %s", priv->port, mtu,
-		     strerror(ret));
+		     strerror(rte_errno));
 		goto out;
 	} else
 		DEBUG("adapter port %u MTU set to %u", priv->port, mtu);
@@ -2522,7 +2569,7 @@ out:
  *   Flow control output buffer.
  *
  * @return
- *   0 on success, negative errno value on failure.
+ *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
 mlx4_dev_get_flow_ctrl(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
@@ -2537,10 +2584,10 @@ mlx4_dev_get_flow_ctrl(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	ifr.ifr_data = (void *)&ethpause;
 	priv_lock(priv);
 	if (priv_ifreq(priv, SIOCETHTOOL, &ifr)) {
-		ret = errno;
+		ret = rte_errno;
 		WARN("ioctl(SIOCETHTOOL, ETHTOOL_GPAUSEPARAM)"
 		     " failed: %s",
-		     strerror(ret));
+		     strerror(rte_errno));
 		goto out;
 	}
 
@@ -2570,7 +2617,7 @@ out:
  *   Flow control parameters.
  *
  * @return
- *   0 on success, negative errno value on failure.
+ *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
 mlx4_dev_set_flow_ctrl(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
@@ -2598,10 +2645,10 @@ mlx4_dev_set_flow_ctrl(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 
 	priv_lock(priv);
 	if (priv_ifreq(priv, SIOCETHTOOL, &ifr)) {
-		ret = errno;
+		ret = rte_errno;
 		WARN("ioctl(SIOCETHTOOL, ETHTOOL_SPAUSEPARAM)"
 		     " failed: %s",
-		     strerror(ret));
+		     strerror(rte_errno));
 		goto out;
 	}
 	ret = 0;
@@ -2634,7 +2681,7 @@ const struct rte_flow_ops mlx4_flow_ops = {
  *   Pointer to operation-specific structure.
  *
  * @return
- *   0 on success, negative errno value on failure.
+ *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
 mlx4_dev_filter_ctrl(struct rte_eth_dev *dev,
@@ -2642,12 +2689,10 @@ mlx4_dev_filter_ctrl(struct rte_eth_dev *dev,
 		     enum rte_filter_op filter_op,
 		     void *arg)
 {
-	int ret = EINVAL;
-
 	switch (filter_type) {
 	case RTE_ETH_FILTER_GENERIC:
 		if (filter_op != RTE_ETH_FILTER_GET)
-			return -EINVAL;
+			break;
 		*(const void **)arg = &mlx4_flow_ops;
 		return 0;
 	default:
@@ -2655,7 +2700,8 @@ mlx4_dev_filter_ctrl(struct rte_eth_dev *dev,
 		      (void *)dev, filter_type);
 		break;
 	}
-	return -ret;
+	rte_errno = ENOTSUP;
+	return -rte_errno;
 }
 
 static const struct eth_dev_ops mlx4_dev_ops = {
@@ -2690,7 +2736,7 @@ static const struct eth_dev_ops mlx4_dev_ops = {
  *   PCI bus address output buffer.
  *
  * @return
- *   0 on success, -1 on failure and errno is set.
+ *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
 mlx4_ibv_device_to_pci_addr(const struct ibv_device *device,
@@ -2701,8 +2747,10 @@ mlx4_ibv_device_to_pci_addr(const struct ibv_device *device,
 	MKSTR(path, "%s/device/uevent", device->ibdev_path);
 
 	file = fopen(path, "rb");
-	if (file == NULL)
-		return -1;
+	if (file == NULL) {
+		rte_errno = errno;
+		return -rte_errno;
+	}
 	while (fgets(line, sizeof(line), file) == line) {
 		size_t len = strlen(line);
 		int ret;
@@ -2740,15 +2788,16 @@ mlx4_ibv_device_to_pci_addr(const struct ibv_device *device,
  *   MAC address output buffer.
  *
  * @return
- *   0 on success, -1 on failure and errno is set.
+ *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
 priv_get_mac(struct priv *priv, uint8_t (*mac)[ETHER_ADDR_LEN])
 {
 	struct ifreq request;
+	int ret = priv_ifreq(priv, SIOCGIFHWADDR, &request);
 
-	if (priv_ifreq(priv, SIOCGIFHWADDR, &request))
-		return -1;
+	if (ret)
+		return ret;
 	memcpy(mac, request.ifr_hwaddr.sa_data, ETHER_ADDR_LEN);
 	return 0;
 }
@@ -2886,7 +2935,7 @@ mlx4_dev_interrupt_handler(void *cb_arg)
  * @param dev
  *   Pointer to the rte_eth_dev structure.
  * @return
- *   0 on success, negative errno value on failure.
+ *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
 priv_dev_interrupt_handler_uninstall(struct priv *priv, struct rte_eth_dev *dev)
@@ -2900,11 +2949,9 @@ priv_dev_interrupt_handler_uninstall(struct priv *priv, struct rte_eth_dev *dev)
 					   mlx4_dev_interrupt_handler,
 					   dev);
 	if (ret < 0) {
-		ERROR("rte_intr_callback_unregister failed with %d"
-		      "%s%s%s", ret,
-		      (errno ? " (errno: " : ""),
-		      (errno ? strerror(errno) : ""),
-		      (errno ? ")" : ""));
+		rte_errno = ret;
+		ERROR("rte_intr_callback_unregister failed with %d %s",
+		      ret, strerror(rte_errno));
 	}
 	priv->intr_handle.fd = 0;
 	priv->intr_handle.type = RTE_INTR_HANDLE_UNKNOWN;
@@ -2919,7 +2966,7 @@ priv_dev_interrupt_handler_uninstall(struct priv *priv, struct rte_eth_dev *dev)
  * @param dev
  *   Pointer to the rte_eth_dev structure.
  * @return
- *   0 on success, negative errno value on failure.
+ *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
 priv_dev_interrupt_handler_install(struct priv *priv,
@@ -2939,10 +2986,11 @@ priv_dev_interrupt_handler_install(struct priv *priv,
 	flags = fcntl(priv->ctx->async_fd, F_GETFL);
 	rc = fcntl(priv->ctx->async_fd, F_SETFL, flags | O_NONBLOCK);
 	if (rc < 0) {
+		rte_errno = errno ? errno : EINVAL;
 		INFO("failed to change file descriptor async event queue");
 		dev->data->dev_conf.intr_conf.lsc = 0;
 		dev->data->dev_conf.intr_conf.rmv = 0;
-		return -errno;
+		return -rte_errno;
 	} else {
 		priv->intr_handle.fd = priv->ctx->async_fd;
 		priv->intr_handle.type = RTE_INTR_HANDLE_EXT;
@@ -2950,9 +2998,10 @@ priv_dev_interrupt_handler_install(struct priv *priv,
 						 mlx4_dev_interrupt_handler,
 						 dev);
 		if (rc) {
+			rte_errno = -rc;
 			ERROR("rte_intr_callback_register failed "
-			      " (errno: %s)", strerror(errno));
-			return rc;
+			      " (rte_errno: %s)", strerror(rte_errno));
+			return -rte_errno;
 		}
 	}
 	return 0;
@@ -2966,7 +3015,7 @@ priv_dev_interrupt_handler_install(struct priv *priv,
  * @param dev
  *   Pointer to the rte_eth_dev structure.
  * @return
- *   0 on success, negative value on error.
+ *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
 priv_dev_removal_interrupt_handler_uninstall(struct priv *priv,
@@ -2987,7 +3036,7 @@ priv_dev_removal_interrupt_handler_uninstall(struct priv *priv,
  * @param dev
  *   Pointer to the rte_eth_dev structure.
  * @return
- *   0 on success, negative value on error,
+ *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
 priv_dev_link_interrupt_handler_uninstall(struct priv *priv,
@@ -3005,7 +3054,7 @@ priv_dev_link_interrupt_handler_uninstall(struct priv *priv,
 		if (rte_eal_alarm_cancel(mlx4_dev_link_status_handler,
 					 dev)) {
 			ERROR("rte_eal_alarm_cancel failed "
-			      " (errno: %s)", strerror(rte_errno));
+			      " (rte_errno: %s)", strerror(rte_errno));
 			return -rte_errno;
 		}
 	priv->pending_alarm = 0;
@@ -3020,7 +3069,7 @@ priv_dev_link_interrupt_handler_uninstall(struct priv *priv,
  * @param dev
  *   Pointer to the rte_eth_dev structure.
  * @return
- *   0 on success, negative value on error.
+ *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
 priv_dev_link_interrupt_handler_install(struct priv *priv,
@@ -3045,7 +3094,7 @@ priv_dev_link_interrupt_handler_install(struct priv *priv,
  * @param dev
  *   Pointer to the rte_eth_dev structure.
  * @return
- *   0 on success, negative value on error.
+ *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
 priv_dev_removal_interrupt_handler_install(struct priv *priv,
@@ -3069,7 +3118,7 @@ priv_dev_removal_interrupt_handler_install(struct priv *priv,
  *   Pointer to private structure.
  *
  * @return
- *   0 on success, negative on failure.
+ *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
 priv_rx_intr_vec_enable(struct priv *priv)
@@ -3085,9 +3134,10 @@ priv_rx_intr_vec_enable(struct priv *priv)
 	priv_rx_intr_vec_disable(priv);
 	intr_handle->intr_vec = malloc(sizeof(intr_handle->intr_vec[rxqs_n]));
 	if (intr_handle->intr_vec == NULL) {
+		rte_errno = ENOMEM;
 		ERROR("failed to allocate memory for interrupt vector,"
 		      " Rx interrupts will not be supported");
-		return -ENOMEM;
+		return -rte_errno;
 	}
 	intr_handle->type = RTE_INTR_HANDLE_EXT;
 	for (i = 0; i != n; ++i) {
@@ -3105,20 +3155,22 @@ priv_rx_intr_vec_enable(struct priv *priv)
 			continue;
 		}
 		if (count >= RTE_MAX_RXTX_INTR_VEC_ID) {
+			rte_errno = E2BIG;
 			ERROR("too many Rx queues for interrupt vector size"
 			      " (%d), Rx interrupts cannot be enabled",
 			      RTE_MAX_RXTX_INTR_VEC_ID);
 			priv_rx_intr_vec_disable(priv);
-			return -1;
+			return -rte_errno;
 		}
 		fd = rxq->channel->fd;
 		flags = fcntl(fd, F_GETFL);
 		rc = fcntl(fd, F_SETFL, flags | O_NONBLOCK);
 		if (rc < 0) {
+			rte_errno = errno;
 			ERROR("failed to make Rx interrupt file descriptor"
 			      " %d non-blocking for queue index %d", fd, i);
 			priv_rx_intr_vec_disable(priv);
-			return rc;
+			return -rte_errno;
 		}
 		intr_handle->intr_vec[i] = RTE_INTR_VEC_RXTX_OFFSET + count;
 		intr_handle->efds[count] = fd;
@@ -3157,7 +3209,7 @@ priv_rx_intr_vec_disable(struct priv *priv)
  *   Rx queue index.
  *
  * @return
- *   0 on success, negative on failure.
+ *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
 mlx4_rx_intr_enable(struct rte_eth_dev *dev, uint16_t idx)
@@ -3170,8 +3222,10 @@ mlx4_rx_intr_enable(struct rte_eth_dev *dev, uint16_t idx)
 		ret = EINVAL;
 	else
 		ret = ibv_req_notify_cq(rxq->cq, 0);
-	if (ret)
+	if (ret) {
+		rte_errno = ret;
 		WARN("unable to arm interrupt on rx queue %d", idx);
+	}
 	return -ret;
 }
 
@@ -3184,7 +3238,7 @@ mlx4_rx_intr_enable(struct rte_eth_dev *dev, uint16_t idx)
  *   Rx queue index.
  *
  * @return
- *   0 on success, negative on failure.
+ *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
 mlx4_rx_intr_disable(struct rte_eth_dev *dev, uint16_t idx)
@@ -3202,11 +3256,13 @@ mlx4_rx_intr_disable(struct rte_eth_dev *dev, uint16_t idx)
 		if (ret || ev_cq != rxq->cq)
 			ret = EINVAL;
 	}
-	if (ret)
+	if (ret) {
+		rte_errno = ret;
 		WARN("unable to disable interrupt on rx queue %d",
 		     idx);
-	else
+	} else {
 		ibv_ack_cq_events(rxq->cq, 1);
+	}
 	return -ret;
 }
 
@@ -3221,7 +3277,7 @@ mlx4_rx_intr_disable(struct rte_eth_dev *dev, uint16_t idx)
  *   Shared configuration data.
  *
  * @return
- *   0 on success, negative errno value on failure.
+ *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
 mlx4_arg_parse(const char *key, const char *val, struct mlx4_conf *conf)
@@ -3231,8 +3287,9 @@ mlx4_arg_parse(const char *key, const char *val, struct mlx4_conf *conf)
 	errno = 0;
 	tmp = strtoul(val, NULL, 0);
 	if (errno) {
+		rte_errno = errno;
 		WARN("%s: \"%s\" is not a valid integer", key, val);
-		return -errno;
+		return -rte_errno;
 	}
 	if (strcmp(MLX4_PMD_PORT_KVARG, key) == 0) {
 		uint32_t ports = rte_log2_u32(conf->ports.present);
@@ -3243,13 +3300,15 @@ mlx4_arg_parse(const char *key, const char *val, struct mlx4_conf *conf)
 			return -EINVAL;
 		}
 		if (!(conf->ports.present & (1 << tmp))) {
+			rte_errno = EINVAL;
 			ERROR("invalid port index %lu", tmp);
-			return -EINVAL;
+			return -rte_errno;
 		}
 		conf->ports.enabled |= 1 << tmp;
 	} else {
+		rte_errno = EINVAL;
 		WARN("%s: unknown parameter", key);
-		return -EINVAL;
+		return -rte_errno;
 	}
 	return 0;
 }
@@ -3261,7 +3320,7 @@ mlx4_arg_parse(const char *key, const char *val, struct mlx4_conf *conf)
  *   Device arguments structure.
  *
  * @return
- *   0 on success, negative errno value on failure.
+ *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
 mlx4_args(struct rte_devargs *devargs, struct mlx4_conf *conf)
@@ -3275,8 +3334,9 @@ mlx4_args(struct rte_devargs *devargs, struct mlx4_conf *conf)
 		return 0;
 	kvlist = rte_kvargs_parse(devargs->args, pmd_mlx4_init_params);
 	if (kvlist == NULL) {
+		rte_errno = EINVAL;
 		ERROR("failed to parse kvargs");
-		return -EINVAL;
+		return -rte_errno;
 	}
 	/* Process parameters. */
 	for (i = 0; pmd_mlx4_init_params[i]; ++i) {
@@ -3312,7 +3372,7 @@ static struct rte_pci_driver mlx4_driver;
  *   PCI device information.
  *
  * @return
- *   0 on success, negative errno value on failure.
+ *   0 on success, negative errno value otherwise and rte_errno is set.
  */
 static int
 mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
@@ -3333,10 +3393,11 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 
 	list = ibv_get_device_list(&i);
 	if (list == NULL) {
-		assert(errno);
-		if (errno == ENOSYS)
+		rte_errno = errno;
+		assert(rte_errno);
+		if (rte_errno == ENOSYS)
 			ERROR("cannot list devices, is ib_uverbs loaded?");
-		return -errno;
+		return -rte_errno;
 	}
 	assert(i >= 0);
 	/*
@@ -3367,20 +3428,23 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		ibv_free_device_list(list);
 		switch (err) {
 		case 0:
+			rte_errno = ENODEV;
 			ERROR("cannot access device, is mlx4_ib loaded?");
-			return -ENODEV;
+			return -rte_errno;
 		case EINVAL:
+			rte_errno = EINVAL;
 			ERROR("cannot use device, are drivers up to date?");
-			return -EINVAL;
+			return -rte_errno;
 		}
 		assert(err > 0);
-		return -err;
+		rte_errno = err;
+		return -rte_errno;
 	}
 	ibv_dev = list[i];
 
 	DEBUG("device opened");
 	if (ibv_query_device(attr_ctx, &device_attr)) {
-		err = ENODEV;
+		rte_errno = ENODEV;
 		goto error;
 	}
 	INFO("%u port(s) detected", device_attr.phys_port_cnt);
@@ -3388,7 +3452,7 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	conf.ports.present |= (UINT64_C(1) << device_attr.phys_port_cnt) - 1;
 	if (mlx4_args(pci_dev->device.devargs, &conf)) {
 		ERROR("failed to process device arguments");
-		err = EINVAL;
+		rte_errno = EINVAL;
 		goto error;
 	}
 	/* Use all ports when none are defined */
@@ -3411,22 +3475,22 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 
 		ctx = ibv_open_device(ibv_dev);
 		if (ctx == NULL) {
-			err = ENODEV;
+			rte_errno = ENODEV;
 			goto port_error;
 		}
 
 		/* Check port status. */
 		err = ibv_query_port(ctx, port, &port_attr);
 		if (err) {
-			ERROR("port query failed: %s", strerror(err));
-			err = ENODEV;
+			rte_errno = err;
+			ERROR("port query failed: %s", strerror(rte_errno));
 			goto port_error;
 		}
 
 		if (port_attr.link_layer != IBV_LINK_LAYER_ETHERNET) {
+			rte_errno = ENOTSUP;
 			ERROR("port %d is not configured in Ethernet mode",
 			      port);
-			err = EINVAL;
 			goto port_error;
 		}
 
@@ -3438,8 +3502,8 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		/* Allocate protection domain. */
 		pd = ibv_alloc_pd(ctx);
 		if (pd == NULL) {
+			rte_errno = ENOMEM;
 			ERROR("PD allocation failure");
-			err = ENOMEM;
 			goto port_error;
 		}
 
@@ -3448,8 +3512,8 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 				   sizeof(*priv),
 				   RTE_CACHE_LINE_SIZE);
 		if (priv == NULL) {
+			rte_errno = ENOMEM;
 			ERROR("priv allocation failure");
-			err = ENOMEM;
 			goto port_error;
 		}
 
@@ -3463,8 +3527,7 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		/* Configure the first MAC address by default. */
 		if (priv_get_mac(priv, &mac.addr_bytes)) {
 			ERROR("cannot get MAC address, is mlx4_en loaded?"
-			      " (errno: %s)", strerror(errno));
-			err = ENODEV;
+			      " (rte_errno: %s)", strerror(rte_errno));
 			goto port_error;
 		}
 		INFO("port %u MAC address is %02x:%02x:%02x:%02x:%02x:%02x",
@@ -3501,7 +3564,7 @@ mlx4_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		}
 		if (eth_dev == NULL) {
 			ERROR("can not allocate rte ethdev");
-			err = ENOMEM;
+			rte_errno = ENOMEM;
 			goto port_error;
 		}
 
@@ -3559,8 +3622,8 @@ error:
 		claim_zero(ibv_close_device(attr_ctx));
 	if (list)
 		ibv_free_device_list(list);
-	assert(err >= 0);
-	return -err;
+	assert(rte_errno >= 0);
+	return -rte_errno;
 }
 
 static const struct rte_pci_id mlx4_pci_id_map[] = {
