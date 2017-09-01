@@ -58,6 +58,7 @@
  */
 
 #include <rte_spinlock.h>
+#include "nfp_net_eth.h"
 
 typedef struct {
 	int nfp;        /* NFP device */
@@ -79,3 +80,4 @@ int nfp_nsp_fw_setup(nspu_desc_t *desc, const char *sym, uint64_t *pcie_offset);
 int nfp_nsp_map_ctrl_bar(nspu_desc_t *desc, uint64_t *pcie_offset);
 void nfp_nsp_map_queues_bar(nspu_desc_t *desc, uint64_t *pcie_offset);
 int nfp_nsp_eth_config(nspu_desc_t *desc, int port, int up);
+int nfp_nsp_eth_read_table(nspu_desc_t *desc, union eth_table_entry **table);

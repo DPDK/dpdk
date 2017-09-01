@@ -441,6 +441,7 @@ struct nfp_net_hw {
 	uint8_t is_pf;
 	uint8_t pf_port_idx;
 	uint8_t pf_multiport_enabled;
+	union eth_table_entry *eth_table;
 	nspu_desc_t *nspu_desc;
 	nfpu_desc_t *nfpu_desc;
 };

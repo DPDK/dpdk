@@ -593,7 +593,55 @@ nfp_net_cfg_queue_setup(struct nfp_net_hw *hw)
 	hw->qcp_cfg = hw->tx_bar + NFP_QCP_QUEUE_ADDR_SZ;
 }
 
-static void nfp_net_read_mac(struct nfp_net_hw *hw)
+#define ETH_ADDR_LEN	6
+
+static void
+nfp_eth_copy_mac_reverse(uint8_t *dst, const uint8_t *src)
+{
+	int i;
+
+	for (i = 0; i < ETH_ADDR_LEN; i++)
+		dst[ETH_ADDR_LEN - i - 1] = src[i];
+}
+
+static int
+nfp_net_pf_read_mac(struct nfp_net_hw *hw, int port)
+{
+	union eth_table_entry *entry;
+	int idx, i;
+
+	idx = port;
+	entry = hw->eth_table;
+
+	/* Reading NFP ethernet table obtained before */
+	for (i = 0; i < NSP_ETH_MAX_COUNT; i++) {
+		if (!(entry->port & NSP_ETH_PORT_LANES_MASK)) {
+			/* port not in use */
+			entry++;
+			continue;
+		}
+		if (idx == 0)
+			break;
+		idx--;
+		entry++;
+	}
+
+	if (i == NSP_ETH_MAX_COUNT)
+		return -EINVAL;
+
+	/*
+	 * hw points to port0 private data. We need hw now pointing to
+	 * right port.
+	 */
+	hw += port;
+	nfp_eth_copy_mac_reverse((uint8_t *)&hw->mac_addr,
+				 (uint8_t *)&entry->mac_addr);
+
+	return 0;
+}
+
+static void
+nfp_net_vf_read_mac(struct nfp_net_hw *hw)
 {
 	uint32_t tmp;
 
@@ -2676,6 +2724,10 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 
 		/* vNIC PF tx/rx BARs are a subset of PF PCI device */
 		hwport0->hw_queues += bar_offset;
+
+		/* Lets seize the chance to read eth table from hw */
+		if (nfp_nsp_eth_read_table(nspu_desc, &hw->eth_table))
+			return -ENODEV;
 	}
 
 	if (hw->is_pf) {
@@ -2736,7 +2788,10 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 		return -ENOMEM;
 	}
 
-	nfp_net_read_mac(hw);
+	if (hw->is_pf)
+		nfp_net_pf_read_mac(hwport0, port);
+	else
+		nfp_net_vf_read_mac(hw);
 
 	if (!is_valid_assigned_ether_addr((struct ether_addr *)&hw->mac_addr)) {
 		/* Using random mac addresses for VFs */

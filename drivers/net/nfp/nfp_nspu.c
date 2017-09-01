@@ -11,7 +11,6 @@
 #include <rte_byteorder.h>
 
 #include "nfp_nfpu.h"
-#include "nfp_net_eth.h"
 
 #define CFG_EXP_BAR_ADDR_SZ     1
 #define CFG_EXP_BAR_MAP_TYPE	1
@@ -600,4 +599,25 @@ nfp_nsp_eth_config(nspu_desc_t *desc, int port, int up)
 	}
 	rte_spinlock_unlock(&desc->nsp_lock);
 	return ret;
+}
+
+int
+nfp_nsp_eth_read_table(nspu_desc_t *desc, union eth_table_entry **table)
+{
+	int ret;
+
+	RTE_LOG(INFO, PMD, "Reading hw ethernet table...\n");
+	/* port 0 allocates the eth table and read it using NSPU */
+	*table = malloc(NSP_ETH_TABLE_SIZE);
+	if (!table)
+		return -ENOMEM;
+
+	ret = nspu_command(desc, NSP_CMD_READ_ETH_TABLE, 1, 0, *table,
+			   NSP_ETH_TABLE_SIZE, 0);
+	if (ret)
+		return ret;
+
+	RTE_LOG(INFO, PMD, "Done\n");
+
+	return 0;
 }
