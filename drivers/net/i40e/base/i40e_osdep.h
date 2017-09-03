@@ -99,7 +99,6 @@ typedef enum i40e_status_code i40e_status;
 #define max(a,b) RTE_MAX(a,b)
 
 #define FIELD_SIZEOF(t, f) (sizeof(((t*)0)->f))
-#define ASSERT(x) if(!(x)) rte_panic("IXGBE: x")
 
 #define DEBUGOUT(S)        PMD_DRV_LOG_RAW(DEBUG, S)
 #define DEBUGOUT1(S, A...) PMD_DRV_LOG_RAW(DEBUG, S, ##A)
