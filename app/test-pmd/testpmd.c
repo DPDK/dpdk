@@ -464,9 +464,10 @@ static void
 set_default_fwd_ports_config(void)
 {
 	portid_t pt_id;
+	int i = 0;
 
-	for (pt_id = 0; pt_id < nb_ports; pt_id++)
-		fwd_ports_ids[pt_id] = pt_id;
+	RTE_ETH_FOREACH_DEV(pt_id)
+		fwd_ports_ids[i++] = pt_id;
 
 	nb_cfg_ports = nb_ports;
 	nb_fwd_ports = nb_ports;
