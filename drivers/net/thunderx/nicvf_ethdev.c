@@ -1380,6 +1380,13 @@ nicvf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 
 	dev_info->pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 
+	/* Autonegotiation may be disabled */
+	dev_info->speed_capa = ETH_LINK_SPEED_FIXED;
+	dev_info->speed_capa |= ETH_LINK_SPEED_10M | ETH_LINK_SPEED_100M |
+				 ETH_LINK_SPEED_1G | ETH_LINK_SPEED_10G;
+	if (nicvf_hw_version(nic) != PCI_SUB_DEVICE_ID_CN81XX_NICVF)
+		dev_info->speed_capa |= ETH_LINK_SPEED_40G;
+
 	dev_info->min_rx_bufsize = ETHER_MIN_MTU;
 	dev_info->max_rx_pktlen = NIC_HW_MAX_FRS;
 	dev_info->max_rx_queues =
