@@ -66,7 +66,16 @@ range="$*"
 # get major release version of a commit
 commit_version () # <hash>
 {
-	tag=$(git tag -l --contains $1 --merged | head -n1)
+	# use current branch as history reference
+	local refbranch=$(git rev-parse --abbrev-ref HEAD)
+	local tag=$( (git tag -l --contains $1 --merged $refbranch 2>&- ||
+		# tag --merged option has been introduced in git 2.7.0
+		# below is a fallback in case of old git version
+		for t in $(git tag -l --contains $1) ; do
+			git branch $refbranch --contains $t |
+			sed "s,.\+,$t,"
+		done) |
+		head -n1)
 	if [ -z "$tag" ] ; then
 		# before -rc1 tag of release in progress
 		make showversion | cut -d'.' -f-2
