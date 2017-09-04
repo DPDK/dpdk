@@ -445,7 +445,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	struct ibv_device_attr device_attr;
 	unsigned int sriov;
 	unsigned int mps;
-	unsigned int tunnel_en;
+	unsigned int tunnel_en = 0;
 	int idx;
 	int i;
 
@@ -503,6 +503,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			mps = MLX5_MPW_DISABLED;
 			break;
 		case PCI_DEVICE_ID_MELLANOX_CONNECTX4LX:
+			tunnel_en = 1;
 			mps = MLX5_MPW;
 			break;
 		case PCI_DEVICE_ID_MELLANOX_CONNECTX5:
