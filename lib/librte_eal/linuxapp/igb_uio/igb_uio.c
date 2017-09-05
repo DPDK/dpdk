@@ -91,27 +91,6 @@ static struct attribute *dev_attrs[] = {
 static const struct attribute_group dev_attr_grp = {
 	.attrs = dev_attrs,
 };
-/*
- * It masks the msix on/off of generating MSI-X messages.
- */
-static void
-igbuio_msix_mask_irq(struct msi_desc *desc, int32_t state)
-{
-	u32 mask_bits = desc->masked;
-	unsigned offset = desc->msi_attrib.entry_nr * PCI_MSIX_ENTRY_SIZE +
-						PCI_MSIX_ENTRY_VECTOR_CTRL;
-
-	if (state != 0)
-		mask_bits &= ~PCI_MSIX_ENTRY_CTRL_MASKBIT;
-	else
-		mask_bits |= PCI_MSIX_ENTRY_CTRL_MASKBIT;
-
-	if (mask_bits != desc->masked) {
-		writel(mask_bits, desc->mask_base + offset);
-		readl(desc->mask_base);
-		desc->masked = mask_bits;
-	}
-}
 
 /**
  * This is the irqcontrol callback to be registered to uio_info.
@@ -132,21 +111,31 @@ igbuio_pci_irqcontrol(struct uio_info *info, s32 irq_state)
 	struct rte_uio_pci_dev *udev = info->priv;
 	struct pci_dev *pdev = udev->pdev;
 
+#ifdef HAVE_IRQ_DATA
+	struct irq_data *irq = irq_get_irq_data(udev->info.irq);
+#else
+	unsigned int irq = udev->info.irq;
+#endif
+
 	pci_cfg_access_lock(pdev);
+
+	if (udev->mode == RTE_INTR_MODE_MSIX) {
+#ifdef HAVE_PCI_MSI_MASK_IRQ
+		if (irq_state == 1)
+			pci_msi_unmask_irq(irq);
+		else
+			pci_msi_mask_irq(irq);
+#else
+		if (irq_state == 1)
+			unmask_msi_irq(irq);
+		else
+			mask_msi_irq(irq);
+#endif
+	}
+
 	if (udev->mode == RTE_INTR_MODE_LEGACY)
 		pci_intx(pdev, !!irq_state);
 
-	else if (udev->mode == RTE_INTR_MODE_MSIX) {
-		struct msi_desc *desc;
-
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 3, 0))
-		list_for_each_entry(desc, &pdev->msi_list, list)
-			igbuio_msix_mask_irq(desc, irq_state);
-#else
-		list_for_each_entry(desc, &pdev->dev.msi_list, list)
-			igbuio_msix_mask_irq(desc, irq_state);
-#endif
-	}
 	pci_cfg_access_unlock(pdev);
 
 	return 0;
