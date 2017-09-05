@@ -407,7 +407,7 @@ get_session(struct aesni_mb_qp *qp, struct rte_crypto_op *op)
  */
 static inline int
 set_mb_job_params(JOB_AES_HMAC *job, struct aesni_mb_qp *qp,
-		struct rte_crypto_op *op)
+		struct rte_crypto_op *op, uint8_t *digest_idx)
 {
 	struct rte_mbuf *m_src = op->sym->m_src, *m_dst;
 	struct aesni_mb_session *session;
@@ -466,19 +466,8 @@ set_mb_job_params(JOB_AES_HMAC *job, struct aesni_mb_qp *qp,
 	/* Set digest output location */
 	if (job->hash_alg != NULL_HASH &&
 			session->auth.operation == RTE_CRYPTO_AUTH_OP_VERIFY) {
-		job->auth_tag_output = (uint8_t *)rte_pktmbuf_append(m_dst,
-				get_digest_byte_length(job->hash_alg));
-
-		if (job->auth_tag_output == NULL) {
-			MB_LOG_ERR("failed to allocate space in output mbuf "
-					"for temp digest");
-			op->status = RTE_CRYPTO_OP_STATUS_ERROR;
-			return -1;
-		}
-
-		memset(job->auth_tag_output, 0,
-				sizeof(get_digest_byte_length(job->hash_alg)));
-
+		job->auth_tag_output = qp->temp_digests[*digest_idx];
+		*digest_idx = (*digest_idx + 1) % MAX_JOBS;
 	} else {
 		job->auth_tag_output = op->sym->auth.digest.data;
 	}
@@ -507,22 +496,17 @@ set_mb_job_params(JOB_AES_HMAC *job, struct aesni_mb_qp *qp,
 
 	/* Set user data to be crypto operation data struct */
 	job->user_data = op;
-	job->user_data2 = m_dst;
 
 	return 0;
 }
 
 static inline void
-verify_digest(JOB_AES_HMAC *job, struct rte_crypto_op *op) {
-	struct rte_mbuf *m_dst = (struct rte_mbuf *)job->user_data2;
-
+verify_digest(struct aesni_mb_qp *qp __rte_unused, JOB_AES_HMAC *job,
+		struct rte_crypto_op *op) {
 	/* Verify digest if required */
 	if (memcmp(job->auth_tag_output, op->sym->auth.digest.data,
 			job->auth_tag_output_len_in_bytes) != 0)
 		op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
-
-	/* trim area used for digest from mbuf */
-	rte_pktmbuf_trim(m_dst,	get_digest_byte_length(job->hash_alg));
 }
 
 /**
@@ -532,8 +516,7 @@ verify_digest(JOB_AES_HMAC *job, struct rte_crypto_op *op) {
  * @param job	JOB_AES_HMAC job to process
  *
  * @return
- * - Returns processed crypto operation which mbuf is trimmed of output digest
- *   used in verification of supplied digest.
+ * - Returns processed crypto operation.
  * - Returns NULL on invalid job
  */
 static inline struct rte_crypto_op *
@@ -552,7 +535,7 @@ post_process_mb_job(struct aesni_mb_qp *qp, JOB_AES_HMAC *job)
 			if (job->hash_alg != NULL_HASH) {
 				if (sess->auth.operation ==
 						RTE_CRYPTO_AUTH_OP_VERIFY)
-					verify_digest(job, op);
+					verify_digest(qp, job, op);
 			}
 			break;
 		default:
@@ -650,6 +633,7 @@ aesni_mb_pmd_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
 	if (unlikely(nb_ops == 0))
 		return 0;
 
+	uint8_t digest_idx = qp->digest_idx;
 	do {
 		/* Get next operation to process from ingress queue */
 		retval = rte_ring_dequeue(qp->ingress_queue, (void **)&op);
@@ -667,7 +651,7 @@ aesni_mb_pmd_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
 			job = (*qp->op_fns->job.get_next)(&qp->mb_mgr);
 		}
 
-		retval = set_mb_job_params(job, qp, op);
+		retval = set_mb_job_params(job, qp, op, &digest_idx);
 		if (unlikely(retval != 0)) {
 			qp->stats.dequeue_err_count++;
 			set_job_null_op(job);
@@ -686,6 +670,8 @@ aesni_mb_pmd_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
 					nb_ops - processed_jobs);
 
 	} while (processed_jobs < nb_ops);
+
+	qp->digest_idx = digest_idx;
 
 	if (processed_jobs < 1)
 		processed_jobs += flush_mb_mgr(qp,

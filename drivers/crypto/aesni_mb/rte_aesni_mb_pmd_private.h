@@ -61,6 +61,8 @@
 #define HMAC_IPAD_VALUE			(0x36)
 #define HMAC_OPAD_VALUE			(0x5C)
 
+/* Maximum length for digest (SHA-512 truncated needs 32 bytes) */
+#define DIGEST_LENGTH_MAX 32
 static const unsigned auth_blocksize[] = {
 		[MD5]		= 64,
 		[SHA1]		= 64,
@@ -164,8 +166,16 @@ struct aesni_mb_qp {
 	/**< Session Mempool */
 	struct rte_cryptodev_stats stats;
 	/**< Queue pair statistics */
+	uint8_t digest_idx;
+	/**< Index of the next slot to be used in temp_digests,
+	 * to store the digest for a given operation
+	 */
+	uint8_t temp_digests[MAX_JOBS][DIGEST_LENGTH_MAX];
+	/**< Buffers used to store the digest generated
+	 * by the driver when verifying a digest provided
+	 * by the user (using authentication verify operation)
+	 */
 } __rte_cache_aligned;
-
 
 /** AES-NI multi-buffer private session structure */
 struct aesni_mb_session {

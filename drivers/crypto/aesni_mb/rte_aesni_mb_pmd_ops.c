@@ -430,6 +430,11 @@ aesni_mb_pmd_qp_setup(struct rte_cryptodev *dev, uint16_t qp_id,
 
 	memset(&qp->stats, 0, sizeof(qp->stats));
 
+	char mp_name[RTE_MEMPOOL_NAMESIZE];
+
+	snprintf(mp_name, RTE_MEMPOOL_NAMESIZE,
+				"digest_mp_%u_%u", dev->data->dev_id, qp_id);
+
 	/* Initialise multi-buffer manager */
 	(*qp->op_fns->job.init_mgr)(&qp->mb_mgr);
 	return 0;
