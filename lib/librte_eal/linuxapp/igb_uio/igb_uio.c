@@ -482,7 +482,7 @@ igbuio_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 
 	err = sysfs_create_group(&dev->dev.kobj, &dev_attr_grp);
 	if (err != 0)
-		goto fail_release_iomem;
+		goto fail_disable_interrupts;
 
 	/* register uio driver */
 	err = uio_register_device(&dev->dev, &udev->info);
@@ -519,9 +519,10 @@ igbuio_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 
 fail_remove_group:
 	sysfs_remove_group(&dev->dev.kobj, &dev_attr_grp);
+fail_disable_interrupts:
+	igbuio_pci_disable_interrupts(udev);
 fail_release_iomem:
 	igbuio_pci_release_iomem(&udev->info);
-	igbuio_pci_disable_interrupts(udev);
 	pci_disable_device(dev);
 fail_free:
 	kfree(udev);
@@ -536,8 +537,8 @@ igbuio_pci_remove(struct pci_dev *dev)
 
 	sysfs_remove_group(&dev->dev.kobj, &dev_attr_grp);
 	uio_unregister_device(&udev->info);
-	igbuio_pci_release_iomem(&udev->info);
 	igbuio_pci_disable_interrupts(udev);
+	igbuio_pci_release_iomem(&udev->info);
 	pci_disable_device(dev);
 	pci_set_drvdata(dev, NULL);
 	kfree(udev);
