@@ -135,53 +135,6 @@ mlx4_rx_intr_vec_enable(struct priv *priv)
 }
 
 /**
- * Collect interrupt events.
- *
- * @param priv
- *   Pointer to private structure.
- * @param events
- *   Pointer to event flags holder.
- *
- * @return
- *   Number of events.
- */
-static int
-mlx4_collect_interrupt_events(struct priv *priv, uint32_t *events)
-{
-	struct ibv_async_event event;
-	const struct rte_intr_conf *const intr_conf =
-		&priv->dev->data->dev_conf.intr_conf;
-	int ret = 0;
-
-	*events = 0;
-	/* Read all message and acknowledge them. */
-	for (;;) {
-		if (ibv_get_async_event(priv->ctx, &event))
-			break;
-		switch (event.event_type) {
-		case IBV_EVENT_PORT_ACTIVE:
-		case IBV_EVENT_PORT_ERR:
-			if (!intr_conf->lsc || mlx4_link_status_check(priv))
-				break;
-			*events |= (1 << RTE_ETH_EVENT_INTR_LSC);
-			ret++;
-			break;
-		case IBV_EVENT_DEVICE_FATAL:
-			if (!intr_conf->rmv)
-				break;
-			*events |= (1 << RTE_ETH_EVENT_INTR_RMV);
-			ret++;
-			break;
-		default:
-			DEBUG("event type %d on port %d not handled",
-			      event.event_type, event.element.port_num);
-		}
-		ibv_ack_async_event(&event);
-	}
-	return ret;
-}
-
-/**
  * Process scheduled link status check.
  *
  * If LSC interrupts are requested, process related callback.
@@ -250,26 +203,39 @@ mlx4_link_status_check(struct priv *priv)
 static void
 mlx4_interrupt_handler(struct priv *priv)
 {
-	int ret;
-	uint32_t ev;
-	int i;
+	enum { LSC, RMV, };
+	static const enum rte_eth_event_type type[] = {
+		[LSC] = RTE_ETH_EVENT_INTR_LSC,
+		[RMV] = RTE_ETH_EVENT_INTR_RMV,
+	};
+	uint32_t caught[RTE_DIM(type)] = { 0 };
+	struct ibv_async_event event;
+	const struct rte_intr_conf *const intr_conf =
+		&priv->dev->data->dev_conf.intr_conf;
+	unsigned int i;
 
-	ret = mlx4_collect_interrupt_events(priv, &ev);
-	if (ret > 0) {
-		for (i = RTE_ETH_EVENT_UNKNOWN;
-		     i < RTE_ETH_EVENT_MAX;
-		     i++) {
-			if (ev & (1 << i)) {
-				ev &= ~(1 << i);
-				_rte_eth_dev_callback_process(priv->dev, i,
-							      NULL, NULL);
-				ret--;
-			}
+	/* Read all message and acknowledge them. */
+	while (!ibv_get_async_event(priv->ctx, &event)) {
+		switch (event.event_type) {
+		case IBV_EVENT_PORT_ACTIVE:
+		case IBV_EVENT_PORT_ERR:
+			if (intr_conf->lsc && !mlx4_link_status_check(priv))
+				++caught[LSC];
+			break;
+		case IBV_EVENT_DEVICE_FATAL:
+			if (intr_conf->rmv)
+				++caught[RMV];
+			break;
+		default:
+			DEBUG("event type %d on physical port %d not handled",
+			      event.event_type, event.element.port_num);
 		}
-		if (ret)
-			WARN("%d event%s not processed", ret,
-			     (ret > 1 ? "s were" : " was"));
+		ibv_ack_async_event(&event);
 	}
+	for (i = 0; i != RTE_DIM(caught); ++i)
+		if (caught[i])
+			_rte_eth_dev_callback_process(priv->dev, type[i],
+						      NULL, NULL);
 }
 
 /**
