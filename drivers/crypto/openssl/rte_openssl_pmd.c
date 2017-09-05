@@ -1284,9 +1284,9 @@ process_openssl_docsis_bpi_op(struct rte_crypto_op *op,
 
 /** Process auth operation */
 static void
-process_openssl_auth_op
-		(struct rte_crypto_op *op, struct openssl_session *sess,
-		struct rte_mbuf *mbuf_src, struct rte_mbuf *mbuf_dst)
+process_openssl_auth_op(struct openssl_qp *qp, struct rte_crypto_op *op,
+		struct openssl_session *sess, struct rte_mbuf *mbuf_src,
+		struct rte_mbuf *mbuf_dst)
 {
 	uint8_t *dst;
 	int srclen, status;
@@ -1294,8 +1294,7 @@ process_openssl_auth_op
 	srclen = op->sym->auth.data.length;
 
 	if (sess->auth.operation == RTE_CRYPTO_AUTH_OP_VERIFY)
-		dst = (uint8_t *)rte_pktmbuf_append(mbuf_src,
-				sess->auth.digest_length);
+		dst = qp->temp_digest;
 	else {
 		dst = op->sym->auth.digest.data;
 		if (dst == NULL)
@@ -1325,8 +1324,6 @@ process_openssl_auth_op
 				sess->auth.digest_length) != 0) {
 			op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
 		}
-		/* Trim area used for digest from mbuf. */
-		rte_pktmbuf_trim(mbuf_src, sess->auth.digest_length);
 	}
 
 	if (status != 0)
@@ -1335,7 +1332,7 @@ process_openssl_auth_op
 
 /** Process crypto operation for mbuf */
 static int
-process_op(const struct openssl_qp *qp, struct rte_crypto_op *op,
+process_op(struct openssl_qp *qp, struct rte_crypto_op *op,
 		struct openssl_session *sess)
 {
 	struct rte_mbuf *msrc, *mdst;
@@ -1351,14 +1348,14 @@ process_op(const struct openssl_qp *qp, struct rte_crypto_op *op,
 		process_openssl_cipher_op(op, sess, msrc, mdst);
 		break;
 	case OPENSSL_CHAIN_ONLY_AUTH:
-		process_openssl_auth_op(op, sess, msrc, mdst);
+		process_openssl_auth_op(qp, op, sess, msrc, mdst);
 		break;
 	case OPENSSL_CHAIN_CIPHER_AUTH:
 		process_openssl_cipher_op(op, sess, msrc, mdst);
-		process_openssl_auth_op(op, sess, mdst, mdst);
+		process_openssl_auth_op(qp, op, sess, mdst, mdst);
 		break;
 	case OPENSSL_CHAIN_AUTH_CIPHER:
-		process_openssl_auth_op(op, sess, msrc, mdst);
+		process_openssl_auth_op(qp, op, sess, msrc, mdst);
 		process_openssl_cipher_op(op, sess, msrc, mdst);
 		break;
 	case OPENSSL_CHAIN_COMBINED:

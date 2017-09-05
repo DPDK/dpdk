@@ -60,6 +60,8 @@
 #define OPENSSL_LOG_DBG(fmt, args...)
 #endif
 
+/* Maximum length for digest (SHA-512 needs 64 bytes) */
+#define DIGEST_LENGTH_MAX 64
 
 /** OPENSSL operation order mode enumerator */
 enum openssl_chain_order {
@@ -104,6 +106,11 @@ struct openssl_qp {
 	/**< Session Mempool */
 	struct rte_cryptodev_stats stats;
 	/**< Queue pair statistics */
+	uint8_t temp_digest[DIGEST_LENGTH_MAX];
+	/**< Buffer used to store the digest generated
+	 * by the driver when verifying a digest provided
+	 * by the user (using authentication verify operation)
+	 */
 } __rte_cache_aligned;
 
 /** OPENSSL crypto private session structure */
