@@ -312,14 +312,14 @@ static int
 igbuio_pci_enable_interrupts(struct rte_uio_pci_dev *udev)
 {
 	int err = 0;
-#ifdef HAVE_PCI_ENABLE_MSIX
+#ifndef HAVE_ALLOC_IRQ_VECTORS
 	struct msix_entry msix_entry;
 #endif
 
 	switch (igbuio_intr_mode_preferred) {
 	case RTE_INTR_MODE_MSIX:
 		/* Only 1 msi-x vector needed */
-#ifdef HAVE_PCI_ENABLE_MSIX
+#ifndef HAVE_ALLOC_IRQ_VECTORS
 		msix_entry.entry = 0;
 		if (pci_enable_msix(udev->pdev, &msix_entry, 1) == 0) {
 			dev_dbg(&udev->pdev->dev, "using MSI-X");
@@ -364,8 +364,13 @@ igbuio_pci_enable_interrupts(struct rte_uio_pci_dev *udev)
 static void
 igbuio_pci_disable_interrupts(struct rte_uio_pci_dev *udev)
 {
+#ifndef HAVE_ALLOC_IRQ_VECTORS
 	if (udev->mode == RTE_INTR_MODE_MSIX)
 		pci_disable_msix(udev->pdev);
+#else
+	if (udev->mode == RTE_INTR_MODE_MSIX)
+		pci_free_irq_vectors(udev->pdev);
+#endif
 }
 
 static int
