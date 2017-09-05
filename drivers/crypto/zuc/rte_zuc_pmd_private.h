@@ -59,6 +59,8 @@
 #endif
 
 #define ZUC_IV_KEY_LENGTH 16
+#define ZUC_DIGEST_LENGTH 4
+
 /** private data structure for each virtual ZUC device */
 struct zuc_private {
 	unsigned max_nb_queue_pairs;
@@ -79,6 +81,11 @@ struct zuc_qp {
 	/**< Session Mempool */
 	struct rte_cryptodev_stats qp_stats;
 	/**< Queue pair statistics */
+	uint8_t temp_digest[ZUC_DIGEST_LENGTH];
+	/**< Buffer used to store the digest generated
+	 * by the driver when verifying a digest provided
+	 * by the user (using authentication verify operation)
+	 */
 } __rte_cache_aligned;
 
 enum zuc_operation {

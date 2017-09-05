@@ -42,7 +42,6 @@
 
 #include "rte_zuc_pmd_private.h"
 
-#define ZUC_DIGEST_LENGTH 4
 #define ZUC_MAX_BURST 8
 #define BYTE_LEN 8
 
@@ -258,7 +257,7 @@ process_zuc_cipher_op(struct rte_crypto_op **ops,
 
 /** Generate/verify hash from mbufs with same hash key. */
 static int
-process_zuc_hash_op(struct rte_crypto_op **ops,
+process_zuc_hash_op(struct zuc_qp *qp, struct rte_crypto_op **ops,
 		struct zuc_session *session,
 		uint8_t num_ops)
 {
@@ -285,8 +284,7 @@ process_zuc_hash_op(struct rte_crypto_op **ops,
 				session->auth_iv_offset);
 
 		if (session->auth_op == RTE_CRYPTO_AUTH_OP_VERIFY) {
-			dst = (uint32_t *)rte_pktmbuf_append(ops[i]->sym->m_src,
-					ZUC_DIGEST_LENGTH);
+			dst = (uint32_t *)qp->temp_digest;
 
 			sso_zuc_eia3_1_buffer(session->pKey_hash,
 					iv, src,
@@ -295,10 +293,6 @@ process_zuc_hash_op(struct rte_crypto_op **ops,
 			if (memcmp(dst, ops[i]->sym->auth.digest.data,
 					ZUC_DIGEST_LENGTH) != 0)
 				ops[i]->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
-
-			/* Trim area used for digest from mbuf. */
-			rte_pktmbuf_trim(ops[i]->sym->m_src,
-					ZUC_DIGEST_LENGTH);
 		} else  {
 			dst = (uint32_t *)ops[i]->sym->auth.digest.data;
 
@@ -327,16 +321,16 @@ process_ops(struct rte_crypto_op **ops, struct zuc_session *session,
 				session, num_ops);
 		break;
 	case ZUC_OP_ONLY_AUTH:
-		processed_ops = process_zuc_hash_op(ops, session,
+		processed_ops = process_zuc_hash_op(qp, ops, session,
 				num_ops);
 		break;
 	case ZUC_OP_CIPHER_AUTH:
 		processed_ops = process_zuc_cipher_op(ops, session,
 				num_ops);
-		process_zuc_hash_op(ops, session, processed_ops);
+		process_zuc_hash_op(qp, ops, session, processed_ops);
 		break;
 	case ZUC_OP_AUTH_CIPHER:
-		processed_ops = process_zuc_hash_op(ops, session,
+		processed_ops = process_zuc_hash_op(qp, ops, session,
 				num_ops);
 		process_zuc_cipher_op(ops, session, processed_ops);
 		break;
