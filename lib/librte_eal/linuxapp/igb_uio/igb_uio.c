@@ -331,6 +331,7 @@ igbuio_pci_enable_interrupts(struct rte_uio_pci_dev *udev)
 #else
 		if (pci_alloc_irq_vectors(udev->pdev, 1, 1, PCI_IRQ_MSIX) == 1) {
 			dev_dbg(&udev->pdev->dev, "using MSI-X");
+			udev->info.irq_flags = IRQF_NO_THREAD;
 			udev->info.irq = pci_irq_vector(udev->pdev, 0);
 			udev->mode = RTE_INTR_MODE_MSIX;
 			break;
