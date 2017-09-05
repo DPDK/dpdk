@@ -34,6 +34,7 @@
 #define _OPENSSL_PMD_PRIVATE_H_
 
 #include <openssl/evp.h>
+#include <openssl/hmac.h>
 #include <openssl/des.h>
 
 #define CRYPTODEV_NAME_OPENSSL_PMD	crypto_openssl
@@ -164,7 +165,7 @@ struct openssl_session {
 				/**< pointer to EVP key */
 				const EVP_MD *evp_algo;
 				/**< pointer to EVP algorithm function */
-				EVP_MD_CTX *ctx;
+				HMAC_CTX *ctx;
 				/**< pointer to EVP context structure */
 			} hmac;
 		};

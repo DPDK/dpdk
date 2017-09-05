@@ -39,6 +39,7 @@
 #include <rte_malloc.h>
 #include <rte_cpuflags.h>
 
+#include <openssl/hmac.h>
 #include <openssl/evp.h>
 
 #include "rte_openssl_pmd_private.h"
@@ -46,6 +47,25 @@
 #define DES_BLOCK_SIZE 8
 
 static uint8_t cryptodev_driver_id;
+
+#if (OPENSSL_VERSION_NUMBER < 0x10100000L)
+static HMAC_CTX *HMAC_CTX_new(void)
+{
+	HMAC_CTX *ctx = OPENSSL_malloc(sizeof(*ctx));
+
+	if (ctx != NULL)
+		HMAC_CTX_init(ctx);
+	return ctx;
+}
+
+static void HMAC_CTX_free(HMAC_CTX *ctx)
+{
+	if (ctx != NULL) {
+		HMAC_CTX_cleanup(ctx);
+		OPENSSL_free(ctx);
+	}
+}
+#endif
 
 static int cryptodev_openssl_remove(struct rte_vdev_device *vdev);
 
@@ -403,12 +423,16 @@ openssl_set_session_auth_parameters(struct openssl_session *sess,
 	case RTE_CRYPTO_AUTH_SHA384_HMAC:
 	case RTE_CRYPTO_AUTH_SHA512_HMAC:
 		sess->auth.mode = OPENSSL_AUTH_AS_HMAC;
-		sess->auth.hmac.ctx = EVP_MD_CTX_create();
+		sess->auth.hmac.ctx = HMAC_CTX_new();
 		if (get_auth_algo(xform->auth.algo,
 				&sess->auth.hmac.evp_algo) != 0)
 			return -EINVAL;
-		sess->auth.hmac.pkey = EVP_PKEY_new_mac_key(EVP_PKEY_HMAC, NULL,
-				xform->auth.key.data, xform->auth.key.length);
+
+		if (HMAC_Init_ex(sess->auth.hmac.ctx,
+				xform->auth.key.data,
+				xform->auth.key.length,
+				sess->auth.hmac.evp_algo, NULL) != 1)
+			return -EINVAL;
 		break;
 
 	default:
@@ -547,7 +571,7 @@ openssl_reset_session(struct openssl_session *sess)
 		break;
 	case OPENSSL_AUTH_AS_HMAC:
 		EVP_PKEY_free(sess->auth.hmac.pkey);
-		EVP_MD_CTX_destroy(sess->auth.hmac.ctx);
+		HMAC_CTX_free(sess->auth.hmac.ctx);
 		break;
 	default:
 		break;
@@ -971,10 +995,9 @@ process_auth_err:
 /** Process standard openssl auth algorithms with hmac */
 static int
 process_openssl_auth_hmac(struct rte_mbuf *mbuf_src, uint8_t *dst, int offset,
-		__rte_unused uint8_t *iv, EVP_PKEY *pkey,
-		int srclen, EVP_MD_CTX *ctx, const EVP_MD *algo)
+		int srclen, HMAC_CTX *ctx)
 {
-	size_t dstlen;
+	unsigned int dstlen;
 	struct rte_mbuf *m;
 	int l, n = srclen;
 	uint8_t *src;
@@ -986,19 +1009,16 @@ process_openssl_auth_hmac(struct rte_mbuf *mbuf_src, uint8_t *dst, int offset,
 	if (m == 0)
 		goto process_auth_err;
 
-	if (EVP_DigestSignInit(ctx, NULL, algo, NULL, pkey) <= 0)
-		goto process_auth_err;
-
 	src = rte_pktmbuf_mtod_offset(m, uint8_t *, offset);
 
 	l = rte_pktmbuf_data_len(m) - offset;
 	if (srclen <= l) {
-		if (EVP_DigestSignUpdate(ctx, (char *)src, srclen) <= 0)
+		if (HMAC_Update(ctx, (unsigned char *)src, srclen) != 1)
 			goto process_auth_err;
 		goto process_auth_final;
 	}
 
-	if (EVP_DigestSignUpdate(ctx, (char *)src, l) <= 0)
+	if (HMAC_Update(ctx, (unsigned char *)src, l) != 1)
 		goto process_auth_err;
 
 	n -= l;
@@ -1006,13 +1026,16 @@ process_openssl_auth_hmac(struct rte_mbuf *mbuf_src, uint8_t *dst, int offset,
 	for (m = m->next; (m != NULL) && (n > 0); m = m->next) {
 		src = rte_pktmbuf_mtod(m, uint8_t *);
 		l = rte_pktmbuf_data_len(m) < n ? rte_pktmbuf_data_len(m) : n;
-		if (EVP_DigestSignUpdate(ctx, (char *)src, l) <= 0)
+		if (HMAC_Update(ctx, (unsigned char *)src, l) != 1)
 			goto process_auth_err;
 		n -= l;
 	}
 
 process_auth_final:
-	if (EVP_DigestSignFinal(ctx, dst, &dstlen) <= 0)
+	if (HMAC_Final(ctx, dst, &dstlen) != 1)
+		goto process_auth_err;
+
+	if (unlikely(HMAC_Init_ex(ctx, NULL, 0, NULL, NULL) != 1))
 		goto process_auth_err;
 
 	return 0;
@@ -1265,9 +1288,8 @@ process_openssl_auth_op
 		break;
 	case OPENSSL_AUTH_AS_HMAC:
 		status = process_openssl_auth_hmac(mbuf_src, dst,
-				op->sym->auth.data.offset, NULL,
-				sess->auth.hmac.pkey, srclen,
-				sess->auth.hmac.ctx, sess->auth.hmac.evp_algo);
+				op->sym->auth.data.offset, srclen,
+				sess->auth.hmac.ctx);
 		break;
 	default:
 		status = -1;
