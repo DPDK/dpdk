@@ -309,6 +309,66 @@ igbuio_pci_release_iomem(struct uio_info *info)
 }
 
 static int
+igbuio_pci_enable_interrupts(struct rte_uio_pci_dev *udev)
+{
+	int err = 0;
+#ifdef HAVE_PCI_ENABLE_MSIX
+	struct msix_entry msix_entry;
+#endif
+
+	switch (igbuio_intr_mode_preferred) {
+	case RTE_INTR_MODE_MSIX:
+		/* Only 1 msi-x vector needed */
+#ifdef HAVE_PCI_ENABLE_MSIX
+		msix_entry.entry = 0;
+		if (pci_enable_msix(udev->pdev, &msix_entry, 1) == 0) {
+			dev_dbg(&udev->pdev->dev, "using MSI-X");
+			udev->info.irq_flags = IRQF_NO_THREAD;
+			udev->info.irq = msix_entry.vector;
+			udev->mode = RTE_INTR_MODE_MSIX;
+			break;
+		}
+#else
+		if (pci_alloc_irq_vectors(udev->pdev, 1, 1, PCI_IRQ_MSIX) == 1) {
+			dev_dbg(&udev->pdev->dev, "using MSI-X");
+			udev->info.irq = pci_irq_vector(udev->pdev, 0);
+			udev->mode = RTE_INTR_MODE_MSIX;
+			break;
+		}
+#endif
+	/* fall back to INTX */
+	case RTE_INTR_MODE_LEGACY:
+		if (pci_intx_mask_supported(udev->pdev)) {
+			dev_dbg(&udev->pdev->dev, "using INTX");
+			udev->info.irq_flags = IRQF_SHARED | IRQF_NO_THREAD;
+			udev->info.irq = udev->pdev->irq;
+			udev->mode = RTE_INTR_MODE_LEGACY;
+			break;
+		}
+		dev_notice(&udev->pdev->dev, "PCI INTX mask not supported\n");
+		/* fall back to no IRQ */
+	case RTE_INTR_MODE_NONE:
+		udev->mode = RTE_INTR_MODE_NONE;
+		udev->info.irq = 0;
+		break;
+
+	default:
+		dev_err(&udev->pdev->dev, "invalid IRQ mode %u",
+			igbuio_intr_mode_preferred);
+		err = -EINVAL;
+	}
+
+	return err;
+}
+
+static void
+igbuio_pci_disable_interrupts(struct rte_uio_pci_dev *udev)
+{
+	if (udev->mode == RTE_INTR_MODE_MSIX)
+		pci_disable_msix(udev->pdev);
+}
+
+static int
 igbuio_setup_bars(struct pci_dev *dev, struct uio_info *info)
 {
 	int i, iom, iop, ret;
@@ -356,9 +416,6 @@ static int
 igbuio_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 {
 	struct rte_uio_pci_dev *udev;
-#ifdef HAVE_PCI_ENABLE_MSIX
-	struct msix_entry msix_entry;
-#endif
 	dma_addr_t map_dma_addr;
 	void *map_addr;
 	int err;
@@ -413,48 +470,9 @@ igbuio_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 	udev->info.priv = udev;
 	udev->pdev = dev;
 
-	switch (igbuio_intr_mode_preferred) {
-	case RTE_INTR_MODE_MSIX:
-		/* Only 1 msi-x vector needed */
-#ifdef HAVE_PCI_ENABLE_MSIX
-		msix_entry.entry = 0;
-		if (pci_enable_msix(dev, &msix_entry, 1) == 0) {
-			dev_dbg(&dev->dev, "using MSI-X");
-			udev->info.irq_flags = IRQF_NO_THREAD;
-			udev->info.irq = msix_entry.vector;
-			udev->mode = RTE_INTR_MODE_MSIX;
-			break;
-		}
-#else
-		if (pci_alloc_irq_vectors(dev, 1, 1, PCI_IRQ_MSIX) == 1) {
-			dev_dbg(&dev->dev, "using MSI-X");
-			udev->info.irq = pci_irq_vector(dev, 0);
-			udev->mode = RTE_INTR_MODE_MSIX;
-			break;
-		}
-#endif
-		/* fall back to INTX */
-	case RTE_INTR_MODE_LEGACY:
-		if (pci_intx_mask_supported(dev)) {
-			dev_dbg(&dev->dev, "using INTX");
-			udev->info.irq_flags = IRQF_SHARED | IRQF_NO_THREAD;
-			udev->info.irq = dev->irq;
-			udev->mode = RTE_INTR_MODE_LEGACY;
-			break;
-		}
-		dev_notice(&dev->dev, "PCI INTX mask not supported\n");
-		/* fall back to no IRQ */
-	case RTE_INTR_MODE_NONE:
-		udev->mode = RTE_INTR_MODE_NONE;
-		udev->info.irq = 0;
-		break;
-
-	default:
-		dev_err(&dev->dev, "invalid IRQ mode %u",
-			igbuio_intr_mode_preferred);
-		err = -EINVAL;
+	err = igbuio_pci_enable_interrupts(udev);
+	if (err != 0)
 		goto fail_release_iomem;
-	}
 
 	err = sysfs_create_group(&dev->dev.kobj, &dev_attr_grp);
 	if (err != 0)
@@ -497,8 +515,7 @@ fail_remove_group:
 	sysfs_remove_group(&dev->dev.kobj, &dev_attr_grp);
 fail_release_iomem:
 	igbuio_pci_release_iomem(&udev->info);
-	if (udev->mode == RTE_INTR_MODE_MSIX)
-		pci_disable_msix(udev->pdev);
+	igbuio_pci_disable_interrupts(udev);
 	pci_disable_device(dev);
 fail_free:
 	kfree(udev);
@@ -514,8 +531,7 @@ igbuio_pci_remove(struct pci_dev *dev)
 	sysfs_remove_group(&dev->dev.kobj, &dev_attr_grp);
 	uio_unregister_device(&udev->info);
 	igbuio_pci_release_iomem(&udev->info);
-	if (udev->mode == RTE_INTR_MODE_MSIX)
-		pci_disable_msix(dev);
+	igbuio_pci_disable_interrupts(udev);
 	pci_disable_device(dev);
 	pci_set_drvdata(dev, NULL);
 	kfree(udev);
