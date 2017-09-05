@@ -137,6 +137,7 @@ parse_range(const char *arg, uint32_t *min, uint32_t *max, uint32_t *inc)
 	if (copy_arg == NULL)
 		return -1;
 
+	errno = 0;
 	token = strtok(copy_arg, ":");
 
 	/* Parse minimum value */
@@ -203,6 +204,7 @@ parse_list(const char *arg, uint32_t *list, uint32_t *min, uint32_t *max)
 	if (copy_arg == NULL)
 		return -1;
 
+	errno = 0;
 	token = strtok(copy_arg, ",");
 
 	/* Parse first value */
