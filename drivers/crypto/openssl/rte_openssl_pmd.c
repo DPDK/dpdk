@@ -327,6 +327,22 @@ openssl_set_session_cipher_parameters(struct openssl_session *sess,
 
 		get_cipher_key(xform->cipher.key.data, sess->cipher.key.length,
 			sess->cipher.key.data);
+		if (sess->cipher.direction == RTE_CRYPTO_CIPHER_OP_ENCRYPT) {
+			if (EVP_EncryptInit_ex(sess->cipher.ctx,
+					sess->cipher.evp_algo,
+					NULL, xform->cipher.key.data,
+					NULL) != 1) {
+				return -EINVAL;
+			}
+		} else if (sess->cipher.direction ==
+				RTE_CRYPTO_CIPHER_OP_DECRYPT) {
+			if (EVP_DecryptInit_ex(sess->cipher.ctx,
+					sess->cipher.evp_algo,
+					NULL, xform->cipher.key.data,
+					NULL) != 1) {
+				return -EINVAL;
+			}
+		}
 
 		break;
 
@@ -353,6 +369,23 @@ openssl_set_session_cipher_parameters(struct openssl_session *sess,
 
 		get_cipher_key(xform->cipher.key.data, sess->cipher.key.length,
 			sess->cipher.key.data);
+		if (sess->cipher.direction == RTE_CRYPTO_CIPHER_OP_ENCRYPT) {
+			if (EVP_EncryptInit_ex(sess->cipher.ctx,
+					sess->cipher.evp_algo,
+					NULL, xform->cipher.key.data,
+					NULL) != 1) {
+				return -EINVAL;
+			}
+		} else if (sess->cipher.direction ==
+				RTE_CRYPTO_CIPHER_OP_DECRYPT) {
+			if (EVP_DecryptInit_ex(sess->cipher.ctx,
+					sess->cipher.evp_algo,
+					NULL, xform->cipher.key.data,
+					NULL) != 1) {
+				return -EINVAL;
+			}
+		}
+
 		break;
 	default:
 		sess->cipher.algo = RTE_CRYPTO_CIPHER_NULL;
@@ -717,12 +750,11 @@ process_openssl_decryption_update(struct rte_mbuf *mbuf_src, int offset,
 /** Process standard openssl cipher encryption */
 static int
 process_openssl_cipher_encrypt(struct rte_mbuf *mbuf_src, uint8_t *dst,
-		int offset, uint8_t *iv, uint8_t *key, int srclen,
-		EVP_CIPHER_CTX *ctx, const EVP_CIPHER *algo)
+		int offset, uint8_t *iv, int srclen, EVP_CIPHER_CTX *ctx)
 {
 	int totlen;
 
-	if (EVP_EncryptInit_ex(ctx, algo, NULL, key, iv) <= 0)
+	if (EVP_EncryptInit_ex(ctx, NULL, NULL, NULL, iv) <= 0)
 		goto process_cipher_encrypt_err;
 
 	EVP_CIPHER_CTX_set_padding(ctx, 0);
@@ -767,12 +799,11 @@ process_cipher_encrypt_err:
 /** Process standard openssl cipher decryption */
 static int
 process_openssl_cipher_decrypt(struct rte_mbuf *mbuf_src, uint8_t *dst,
-		int offset, uint8_t *iv, uint8_t *key, int srclen,
-		EVP_CIPHER_CTX *ctx, const EVP_CIPHER *algo)
+		int offset, uint8_t *iv, int srclen, EVP_CIPHER_CTX *ctx)
 {
 	int totlen;
 
-	if (EVP_DecryptInit_ex(ctx, algo, NULL, key, iv) <= 0)
+	if (EVP_DecryptInit_ex(ctx, NULL, NULL, NULL, iv) <= 0)
 		goto process_cipher_decrypt_err;
 
 	EVP_CIPHER_CTX_set_padding(ctx, 0);
@@ -1145,15 +1176,11 @@ process_openssl_cipher_op
 		if (sess->cipher.direction == RTE_CRYPTO_CIPHER_OP_ENCRYPT)
 			status = process_openssl_cipher_encrypt(mbuf_src, dst,
 					op->sym->cipher.data.offset, iv,
-					sess->cipher.key.data, srclen,
-					sess->cipher.ctx,
-					sess->cipher.evp_algo);
+					srclen, sess->cipher.ctx);
 		else
 			status = process_openssl_cipher_decrypt(mbuf_src, dst,
 					op->sym->cipher.data.offset, iv,
-					sess->cipher.key.data, srclen,
-					sess->cipher.ctx,
-					sess->cipher.evp_algo);
+					srclen, sess->cipher.ctx);
 	else
 		status = process_openssl_cipher_des3ctr(mbuf_src, dst,
 				op->sym->cipher.data.offset, iv,
@@ -1197,8 +1224,7 @@ process_openssl_docsis_bpi_op(struct rte_crypto_op *op,
 			/* Encrypt with the block aligned stream with CBC mode */
 			status = process_openssl_cipher_encrypt(mbuf_src, dst,
 					op->sym->cipher.data.offset, iv,
-					sess->cipher.key.data, srclen,
-					sess->cipher.ctx, sess->cipher.evp_algo);
+					srclen, sess->cipher.ctx);
 			if (last_block_len) {
 				/* Point at last block */
 				dst += srclen;
@@ -1248,9 +1274,7 @@ process_openssl_docsis_bpi_op(struct rte_crypto_op *op,
 			/* Decrypt with CBC mode */
 			status |= process_openssl_cipher_decrypt(mbuf_src, dst,
 					op->sym->cipher.data.offset, iv,
-					sess->cipher.key.data, srclen,
-					sess->cipher.ctx,
-					sess->cipher.evp_algo);
+					srclen, sess->cipher.ctx);
 		}
 	}
 
