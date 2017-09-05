@@ -160,16 +160,21 @@ mlx4_collect_interrupt_events(struct priv *priv, uint32_t *events)
 	for (;;) {
 		if (ibv_get_async_event(priv->ctx, &event))
 			break;
-		if ((event.event_type == IBV_EVENT_PORT_ACTIVE ||
-		     event.event_type == IBV_EVENT_PORT_ERR) &&
-		    intr_conf->lsc) {
+		switch (event.event_type) {
+		case IBV_EVENT_PORT_ACTIVE:
+		case IBV_EVENT_PORT_ERR:
+			if (!intr_conf->lsc)
+				break;
 			port_change = 1;
 			ret++;
-		} else if (event.event_type == IBV_EVENT_DEVICE_FATAL &&
-			   intr_conf->rmv) {
+			break;
+		case IBV_EVENT_DEVICE_FATAL:
+			if (!intr_conf->rmv)
+				break;
 			*events |= (1 << RTE_ETH_EVENT_INTR_RMV);
 			ret++;
-		} else {
+			break;
+		default:
 			DEBUG("event type %d on port %d not handled",
 			      event.event_type, event.element.port_num);
 		}
