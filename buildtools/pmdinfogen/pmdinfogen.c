@@ -397,7 +397,7 @@ static void output_pmd_info_string(struct elf_info *info, char *outfile)
 
 int main(int argc, char **argv)
 {
-	struct elf_info info;
+	struct elf_info info = {0};
 	int rc = 1;
 
 	if (argc < 3) {
