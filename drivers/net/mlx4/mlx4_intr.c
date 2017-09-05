@@ -59,7 +59,7 @@
 #include "mlx4_rxtx.h"
 #include "mlx4_utils.h"
 
-static void mlx4_link_status_alarm(struct priv *priv);
+static int mlx4_link_status_check(struct priv *priv);
 
 /**
  * Clean up Rx interrupts handler.
@@ -149,8 +149,6 @@ static int
 mlx4_collect_interrupt_events(struct priv *priv, uint32_t *events)
 {
 	struct ibv_async_event event;
-	int port_change = 0;
-	struct rte_eth_link *link = &priv->dev->data->dev_link;
 	const struct rte_intr_conf *const intr_conf =
 		&priv->dev->data->dev_conf.intr_conf;
 	int ret = 0;
@@ -163,9 +161,9 @@ mlx4_collect_interrupt_events(struct priv *priv, uint32_t *events)
 		switch (event.event_type) {
 		case IBV_EVENT_PORT_ACTIVE:
 		case IBV_EVENT_PORT_ERR:
-			if (!intr_conf->lsc)
+			if (!intr_conf->lsc || mlx4_link_status_check(priv))
 				break;
-			port_change = 1;
+			*events |= (1 << RTE_ETH_EVENT_INTR_LSC);
 			ret++;
 			break;
 		case IBV_EVENT_DEVICE_FATAL:
@@ -180,27 +178,13 @@ mlx4_collect_interrupt_events(struct priv *priv, uint32_t *events)
 		}
 		ibv_ack_async_event(&event);
 	}
-	if (!port_change)
-		return ret;
-	mlx4_link_update(priv->dev, 0);
-	if (((link->link_speed == 0) && link->link_status) ||
-	    ((link->link_speed != 0) && !link->link_status)) {
-		if (!priv->intr_alarm) {
-			/* Inconsistent status, check again later. */
-			priv->intr_alarm = 1;
-			rte_eal_alarm_set(MLX4_INTR_ALARM_TIMEOUT,
-					  (void (*)(void *))
-					  mlx4_link_status_alarm,
-					  priv);
-		}
-	} else {
-		*events |= (1 << RTE_ETH_EVENT_INTR_LSC);
-	}
 	return ret;
 }
 
 /**
  * Process scheduled link status check.
+ *
+ * If LSC interrupts are requested, process related callback.
  *
  * @param priv
  *   Pointer to private structure.
@@ -208,16 +192,53 @@ mlx4_collect_interrupt_events(struct priv *priv, uint32_t *events)
 static void
 mlx4_link_status_alarm(struct priv *priv)
 {
-	uint32_t events;
-	int ret;
+	const struct rte_intr_conf *const intr_conf =
+		&priv->dev->data->dev_conf.intr_conf;
 
 	assert(priv->intr_alarm == 1);
 	priv->intr_alarm = 0;
-	ret = mlx4_collect_interrupt_events(priv, &events);
-	if (ret > 0 && events & (1 << RTE_ETH_EVENT_INTR_LSC))
+	if (intr_conf->lsc && !mlx4_link_status_check(priv))
 		_rte_eth_dev_callback_process(priv->dev,
 					      RTE_ETH_EVENT_INTR_LSC,
 					      NULL, NULL);
+}
+
+/**
+ * Check link status.
+ *
+ * In case of inconsistency, another check is scheduled.
+ *
+ * @param priv
+ *   Pointer to private structure.
+ *
+ * @return
+ *   0 on success (link status is consistent), negative errno value
+ *   otherwise and rte_errno is set.
+ */
+static int
+mlx4_link_status_check(struct priv *priv)
+{
+	struct rte_eth_link *link = &priv->dev->data->dev_link;
+	int ret = mlx4_link_update(priv->dev, 0);
+
+	if (ret)
+		return ret;
+	if ((!link->link_speed && link->link_status) ||
+	    (link->link_speed && !link->link_status)) {
+		if (!priv->intr_alarm) {
+			/* Inconsistent status, check again later. */
+			ret = rte_eal_alarm_set(MLX4_INTR_ALARM_TIMEOUT,
+						(void (*)(void *))
+						mlx4_link_status_alarm,
+						priv);
+			if (ret)
+				return ret;
+			priv->intr_alarm = 1;
+		}
+		rte_errno = EINPROGRESS;
+		return -rte_errno;
+	}
+	return 0;
 }
 
 /**
