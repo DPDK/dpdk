@@ -575,8 +575,8 @@ get_session(struct armv8_crypto_qp *qp, struct rte_crypto_op *op)
 
 /** Process cipher operation */
 static inline void
-process_armv8_chained_op
-		(struct rte_crypto_op *op, struct armv8_crypto_session *sess,
+process_armv8_chained_op(struct armv8_crypto_qp *qp, struct rte_crypto_op *op,
+		struct armv8_crypto_session *sess,
 		struct rte_mbuf *mbuf_src, struct rte_mbuf *mbuf_dst)
 {
 	crypto_func_t crypto_func;
@@ -633,8 +633,7 @@ process_armv8_chained_op
 					op->sym->auth.data.length);
 		}
 	} else {
-		adst = (uint8_t *)rte_pktmbuf_append(m_asrc,
-				sess->auth.digest_length);
+		adst = qp->temp_digest;
 	}
 
 	arg.cipher.iv = rte_crypto_op_ctod_offset(op, uint8_t *,
@@ -655,15 +654,12 @@ process_armv8_chained_op
 				sess->auth.digest_length) != 0) {
 			op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
 		}
-		/* Trim area used for digest from mbuf. */
-		rte_pktmbuf_trim(m_asrc,
-				sess->auth.digest_length);
 	}
 }
 
 /** Process crypto operation for mbuf */
 static inline int
-process_op(const struct armv8_crypto_qp *qp, struct rte_crypto_op *op,
+process_op(struct armv8_crypto_qp *qp, struct rte_crypto_op *op,
 		struct armv8_crypto_session *sess)
 {
 	struct rte_mbuf *msrc, *mdst;
@@ -676,7 +672,7 @@ process_op(const struct armv8_crypto_qp *qp, struct rte_crypto_op *op,
 	switch (sess->chain_order) {
 	case ARMV8_CRYPTO_CHAIN_CIPHER_AUTH:
 	case ARMV8_CRYPTO_CHAIN_AUTH_CIPHER: /* Fall through */
-		process_armv8_chained_op(op, sess, msrc, mdst);
+		process_armv8_chained_op(qp, op, sess, msrc, mdst);
 		break;
 	default:
 		op->status = RTE_CRYPTO_OP_STATUS_ERROR;

@@ -69,6 +69,9 @@ do {								\
 #define NBBY		8		/* Number of bits in a byte */
 #define BYTE_LENGTH(x)	((x) / NBBY)	/* Number of bytes in x (round down) */
 
+/* Maximum length for digest (SHA-256 needs 32 bytes) */
+#define DIGEST_LENGTH_MAX 32
+
 /** ARMv8 operation order mode enumerator */
 enum armv8_crypto_chain_order {
 	ARMV8_CRYPTO_CHAIN_CIPHER_AUTH,
@@ -147,6 +150,11 @@ struct armv8_crypto_qp {
 	/**< Queue pair statistics */
 	char name[RTE_CRYPTODEV_NAME_LEN];
 	/**< Unique Queue Pair Name */
+	uint8_t temp_digest[DIGEST_LENGTH_MAX];
+	/**< Buffer used to store the digest generated
+	 * by the driver when verifying a digest provided
+	 * by the user (using authentication verify operation)
+	 */
 } __rte_cache_aligned;
 
 /** ARMv8 crypto private session structure */
