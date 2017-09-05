@@ -58,6 +58,8 @@
 #define GCM_LOG_DBG(fmt, args...)
 #endif
 
+/* Maximum length for digest */
+#define DIGEST_LENGTH_MAX 16
 
 /** private data structure for each virtual AESNI GCM device */
 struct aesni_gcm_private {
@@ -84,6 +86,11 @@ struct aesni_gcm_qp {
 	/**< Queue Pair Identifier */
 	char name[RTE_CRYPTODEV_NAME_LEN];
 	/**< Unique Queue Pair Name */
+	uint8_t temp_digest[DIGEST_LENGTH_MAX];
+	/**< Buffer used to store the digest generated
+	 * by the driver when verifying a digest provided
+	 * by the user (using authentication verify operation)
+	 */
 } __rte_cache_aligned;
 
 

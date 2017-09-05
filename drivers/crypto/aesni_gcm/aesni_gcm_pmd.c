@@ -298,14 +298,7 @@ process_gcm_crypto_op(struct aesni_gcm_qp *qp, struct rte_crypto_op *op,
 				sym_op->aead.digest.data,
 				(uint64_t)session->digest_length);
 	} else if (session->op == AESNI_GCM_OP_AUTHENTICATED_DECRYPTION) {
-		uint8_t *auth_tag = (uint8_t *)rte_pktmbuf_append(sym_op->m_dst ?
-				sym_op->m_dst : sym_op->m_src,
-				session->digest_length);
-
-		if (!auth_tag) {
-			GCM_LOG_ERR("auth_tag");
-			return -1;
-		}
+		uint8_t *auth_tag = qp->temp_digest;
 
 		qp->ops[session->key].init(&session->gdata_key,
 				&qp->gdata_ctx,
@@ -350,14 +343,7 @@ process_gcm_crypto_op(struct aesni_gcm_qp *qp, struct rte_crypto_op *op,
 				sym_op->auth.digest.data,
 				(uint64_t)session->digest_length);
 	} else { /* AESNI_GMAC_OP_VERIFY */
-		uint8_t *auth_tag = (uint8_t *)rte_pktmbuf_append(sym_op->m_dst ?
-				sym_op->m_dst : sym_op->m_src,
-				session->digest_length);
-
-		if (!auth_tag) {
-			GCM_LOG_ERR("auth_tag");
-			return -1;
-		}
+		uint8_t *auth_tag = qp->temp_digest;
 
 		qp->ops[session->key].init(&session->gdata_key,
 				&qp->gdata_ctx,
@@ -385,11 +371,10 @@ process_gcm_crypto_op(struct aesni_gcm_qp *qp, struct rte_crypto_op *op,
  * - Returns NULL on invalid job
  */
 static void
-post_process_gcm_crypto_op(struct rte_crypto_op *op,
+post_process_gcm_crypto_op(struct aesni_gcm_qp *qp,
+		struct rte_crypto_op *op,
 		struct aesni_gcm_session *session)
 {
-	struct rte_mbuf *m = op->sym->m_dst ? op->sym->m_dst : op->sym->m_src;
-
 	op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
 
 	/* Verify digest if required */
@@ -397,8 +382,7 @@ post_process_gcm_crypto_op(struct rte_crypto_op *op,
 			session->op == AESNI_GMAC_OP_VERIFY) {
 		uint8_t *digest;
 
-		uint8_t *tag = rte_pktmbuf_mtod_offset(m, uint8_t *,
-				m->data_len - session->digest_length);
+		uint8_t *tag = (uint8_t *)&qp->temp_digest;
 
 		if (session->op == AESNI_GMAC_OP_VERIFY)
 			digest = op->sym->auth.digest.data;
@@ -414,9 +398,6 @@ post_process_gcm_crypto_op(struct rte_crypto_op *op,
 
 		if (memcmp(tag, digest,	session->digest_length) != 0)
 			op->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
-
-		/* trim area used for digest from mbuf */
-		rte_pktmbuf_trim(m, session->digest_length);
 	}
 }
 
@@ -435,7 +416,7 @@ handle_completed_gcm_crypto_op(struct aesni_gcm_qp *qp,
 		struct rte_crypto_op *op,
 		struct aesni_gcm_session *sess)
 {
-	post_process_gcm_crypto_op(op, sess);
+	post_process_gcm_crypto_op(qp, op, sess);
 
 	/* Free session if a session-less crypto op */
 	if (op->sess_type == RTE_CRYPTO_OP_SESSIONLESS) {
