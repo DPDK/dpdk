@@ -119,7 +119,7 @@ igbuio_pci_irqcontrol(struct uio_info *info, s32 irq_state)
 
 	pci_cfg_access_lock(pdev);
 
-	if (udev->mode == RTE_INTR_MODE_MSIX) {
+	if (udev->mode == RTE_INTR_MODE_MSIX || udev->mode == RTE_INTR_MODE_MSI) {
 #ifdef HAVE_PCI_MSI_MASK_IRQ
 		if (irq_state == 1)
 			pci_msi_unmask_irq(irq);
@@ -326,6 +326,25 @@ igbuio_pci_enable_interrupts(struct rte_uio_pci_dev *udev)
 			break;
 		}
 #endif
+	/* fall back to MSI */
+	case RTE_INTR_MODE_MSI:
+#ifndef HAVE_ALLOC_IRQ_VECTORS
+		if (pci_enable_msi(udev->pdev) == 0) {
+			dev_dbg(&udev->pdev->dev, "using MSI");
+			udev->info.irq_flags = IRQF_NO_THREAD;
+			udev->info.irq = udev->pdev->irq;
+			udev->mode = RTE_INTR_MODE_MSI;
+			break;
+		}
+#else
+		if (pci_alloc_irq_vectors(udev->pdev, 1, 1, PCI_IRQ_MSI) == 1) {
+			dev_dbg(&udev->pdev->dev, "using MSI");
+			udev->info.irq_flags = IRQF_NO_THREAD;
+			udev->info.irq = pci_irq_vector(udev->pdev, 0);
+			udev->mode = RTE_INTR_MODE_MSI;
+			break;
+		}
+#endif
 	/* fall back to INTX */
 	case RTE_INTR_MODE_LEGACY:
 		if (pci_intx_mask_supported(udev->pdev)) {
@@ -336,7 +355,7 @@ igbuio_pci_enable_interrupts(struct rte_uio_pci_dev *udev)
 			break;
 		}
 		dev_notice(&udev->pdev->dev, "PCI INTX mask not supported\n");
-		/* fall back to no IRQ */
+	/* fall back to no IRQ */
 	case RTE_INTR_MODE_NONE:
 		udev->mode = RTE_INTR_MODE_NONE;
 		udev->info.irq = 0;
@@ -357,8 +376,11 @@ igbuio_pci_disable_interrupts(struct rte_uio_pci_dev *udev)
 #ifndef HAVE_ALLOC_IRQ_VECTORS
 	if (udev->mode == RTE_INTR_MODE_MSIX)
 		pci_disable_msix(udev->pdev);
+	if (udev->mode == RTE_INTR_MODE_MSI)
+		pci_disable_msi(udev->pdev);
 #else
-	if (udev->mode == RTE_INTR_MODE_MSIX)
+	if (udev->mode == RTE_INTR_MODE_MSIX ||
+	    udev->mode == RTE_INTR_MODE_MSI)
 		pci_free_irq_vectors(udev->pdev);
 #endif
 }
@@ -544,6 +566,9 @@ igbuio_config_intr_mode(char *intr_str)
 	if (!strcmp(intr_str, RTE_INTR_MODE_MSIX_NAME)) {
 		igbuio_intr_mode_preferred = RTE_INTR_MODE_MSIX;
 		pr_info("Use MSIX interrupt\n");
+	} else if (!strcmp(intr_str, RTE_INTR_MODE_MSI_NAME)) {
+		igbuio_intr_mode_preferred = RTE_INTR_MODE_MSI;
+		pr_info("Use MSI interrupt\n");
 	} else if (!strcmp(intr_str, RTE_INTR_MODE_LEGACY_NAME)) {
 		igbuio_intr_mode_preferred = RTE_INTR_MODE_LEGACY;
 		pr_info("Use legacy interrupt\n");
@@ -587,6 +612,7 @@ module_param(intr_mode, charp, S_IRUGO);
 MODULE_PARM_DESC(intr_mode,
 "igb_uio interrupt mode (default=msix):\n"
 "    " RTE_INTR_MODE_MSIX_NAME "       Use MSIX interrupt\n"
+"    " RTE_INTR_MODE_MSI_NAME "        Use MSI interrupt\n"
 "    " RTE_INTR_MODE_LEGACY_NAME "     Use Legacy interrupt\n"
 "\n");
 
