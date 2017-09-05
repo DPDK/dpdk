@@ -5497,13 +5497,13 @@ ixgbe_mirror_rule_set(struct rte_eth_dev *dev,
 	IXGBE_WRITE_REG(hw, IXGBE_MRCTL(rule_id), mr_ctl);
 
 	/* write pool mirrror control  register */
-	if (mirror_conf->rule_type == ETH_MIRROR_VIRTUAL_POOL_UP) {
+	if (mirror_conf->rule_type & ETH_MIRROR_VIRTUAL_POOL_UP) {
 		IXGBE_WRITE_REG(hw, IXGBE_VMRVM(rule_id), mp_lsb);
 		IXGBE_WRITE_REG(hw, IXGBE_VMRVM(rule_id + rule_mr_offset),
 				mp_msb);
 	}
 	/* write VLAN mirrror control  register */
-	if (mirror_conf->rule_type == ETH_MIRROR_VLAN) {
+	if (mirror_conf->rule_type & ETH_MIRROR_VLAN) {
 		IXGBE_WRITE_REG(hw, IXGBE_VMRVLAN(rule_id), mv_lsb);
 		IXGBE_WRITE_REG(hw, IXGBE_VMRVLAN(rule_id + rule_mr_offset),
 				mv_msb);
