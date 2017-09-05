@@ -43,7 +43,6 @@
 #include "rte_snow3g_pmd_private.h"
 
 #define SNOW3G_IV_LENGTH 16
-#define SNOW3G_DIGEST_LENGTH 4
 #define SNOW3G_MAX_BURST 8
 #define BYTE_LEN 8
 
@@ -263,7 +262,7 @@ process_snow3g_cipher_op_bit(struct rte_crypto_op *op,
 
 /** Generate/verify hash from mbufs with same hash key. */
 static int
-process_snow3g_hash_op(struct rte_crypto_op **ops,
+process_snow3g_hash_op(struct snow3g_qp *qp, struct rte_crypto_op **ops,
 		struct snow3g_session *session,
 		uint8_t num_ops)
 {
@@ -289,8 +288,7 @@ process_snow3g_hash_op(struct rte_crypto_op **ops,
 				session->auth_iv_offset);
 
 		if (session->auth_op == RTE_CRYPTO_AUTH_OP_VERIFY) {
-			dst = (uint8_t *)rte_pktmbuf_append(ops[i]->sym->m_src,
-					SNOW3G_DIGEST_LENGTH);
+			dst = qp->temp_digest;
 
 			sso_snow3g_f9_1_buffer(&session->pKeySched_hash,
 					iv, src,
@@ -299,10 +297,6 @@ process_snow3g_hash_op(struct rte_crypto_op **ops,
 			if (memcmp(dst, ops[i]->sym->auth.digest.data,
 					SNOW3G_DIGEST_LENGTH) != 0)
 				ops[i]->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
-
-			/* Trim area used for digest from mbuf. */
-			rte_pktmbuf_trim(ops[i]->sym->m_src,
-					SNOW3G_DIGEST_LENGTH);
 		} else  {
 			dst = ops[i]->sym->auth.digest.data;
 
@@ -346,16 +340,16 @@ process_ops(struct rte_crypto_op **ops, struct snow3g_session *session,
 				session, num_ops);
 		break;
 	case SNOW3G_OP_ONLY_AUTH:
-		processed_ops = process_snow3g_hash_op(ops, session,
+		processed_ops = process_snow3g_hash_op(qp, ops, session,
 				num_ops);
 		break;
 	case SNOW3G_OP_CIPHER_AUTH:
 		processed_ops = process_snow3g_cipher_op(ops, session,
 				num_ops);
-		process_snow3g_hash_op(ops, session, processed_ops);
+		process_snow3g_hash_op(qp, ops, session, processed_ops);
 		break;
 	case SNOW3G_OP_AUTH_CIPHER:
-		processed_ops = process_snow3g_hash_op(ops, session,
+		processed_ops = process_snow3g_hash_op(qp, ops, session,
 				num_ops);
 		process_snow3g_cipher_op(ops, session, processed_ops);
 		break;
@@ -403,15 +397,15 @@ process_op_bit(struct rte_crypto_op *op, struct snow3g_session *session,
 				session);
 		break;
 	case SNOW3G_OP_ONLY_AUTH:
-		processed_op = process_snow3g_hash_op(&op, session, 1);
+		processed_op = process_snow3g_hash_op(qp, &op, session, 1);
 		break;
 	case SNOW3G_OP_CIPHER_AUTH:
 		processed_op = process_snow3g_cipher_op_bit(op, session);
 		if (processed_op == 1)
-			process_snow3g_hash_op(&op, session, 1);
+			process_snow3g_hash_op(qp, &op, session, 1);
 		break;
 	case SNOW3G_OP_AUTH_CIPHER:
-		processed_op = process_snow3g_hash_op(&op, session, 1);
+		processed_op = process_snow3g_hash_op(qp, &op, session, 1);
 		if (processed_op == 1)
 			process_snow3g_cipher_op_bit(op, session);
 		break;
