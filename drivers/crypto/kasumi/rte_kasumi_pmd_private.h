@@ -58,6 +58,8 @@
 #define KASUMI_LOG_DBG(fmt, args...)
 #endif
 
+#define KASUMI_DIGEST_LENGTH 4
+
 /** private data structure for each virtual KASUMI device */
 struct kasumi_private {
 	unsigned max_nb_queue_pairs;
@@ -78,6 +80,11 @@ struct kasumi_qp {
 	/**< Session Mempool */
 	struct rte_cryptodev_stats qp_stats;
 	/**< Queue pair statistics */
+	uint8_t temp_digest[KASUMI_DIGEST_LENGTH];
+	/**< Buffer used to store the digest generated
+	 * by the driver when verifying a digest provided
+	 * by the user (using authentication verify operation)
+	 */
 } __rte_cache_aligned;
 
 enum kasumi_operation {

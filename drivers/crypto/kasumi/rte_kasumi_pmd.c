@@ -44,7 +44,6 @@
 
 #define KASUMI_KEY_LENGTH 16
 #define KASUMI_IV_LENGTH 8
-#define KASUMI_DIGEST_LENGTH 4
 #define KASUMI_MAX_BURST 4
 #define BYTE_LEN 8
 
@@ -261,7 +260,7 @@ process_kasumi_cipher_op_bit(struct rte_crypto_op *op,
 
 /** Generate/verify hash from mbufs with same hash key. */
 static int
-process_kasumi_hash_op(struct rte_crypto_op **ops,
+process_kasumi_hash_op(struct kasumi_qp *qp, struct rte_crypto_op **ops,
 		struct kasumi_session *session,
 		uint8_t num_ops)
 {
@@ -287,8 +286,7 @@ process_kasumi_hash_op(struct rte_crypto_op **ops,
 		num_bytes = length_in_bits >> 3;
 
 		if (session->auth_op == RTE_CRYPTO_AUTH_OP_VERIFY) {
-			dst = (uint8_t *)rte_pktmbuf_append(ops[i]->sym->m_src,
-					KASUMI_DIGEST_LENGTH);
+			dst = qp->temp_digest;
 			sso_kasumi_f9_1_buffer(&session->pKeySched_hash, src,
 					num_bytes, dst);
 
@@ -296,10 +294,6 @@ process_kasumi_hash_op(struct rte_crypto_op **ops,
 			if (memcmp(dst, ops[i]->sym->auth.digest.data,
 					KASUMI_DIGEST_LENGTH) != 0)
 				ops[i]->status = RTE_CRYPTO_OP_STATUS_AUTH_FAILED;
-
-			/* Trim area used for digest from mbuf. */
-			rte_pktmbuf_trim(ops[i]->sym->m_src,
-					KASUMI_DIGEST_LENGTH);
 		} else  {
 			dst = ops[i]->sym->auth.digest.data;
 
@@ -327,16 +321,16 @@ process_ops(struct rte_crypto_op **ops, struct kasumi_session *session,
 				session, num_ops);
 		break;
 	case KASUMI_OP_ONLY_AUTH:
-		processed_ops = process_kasumi_hash_op(ops, session,
+		processed_ops = process_kasumi_hash_op(qp, ops, session,
 				num_ops);
 		break;
 	case KASUMI_OP_CIPHER_AUTH:
 		processed_ops = process_kasumi_cipher_op(ops, session,
 				num_ops);
-		process_kasumi_hash_op(ops, session, processed_ops);
+		process_kasumi_hash_op(qp, ops, session, processed_ops);
 		break;
 	case KASUMI_OP_AUTH_CIPHER:
-		processed_ops = process_kasumi_hash_op(ops, session,
+		processed_ops = process_kasumi_hash_op(qp, ops, session,
 				num_ops);
 		process_kasumi_cipher_op(ops, session, processed_ops);
 		break;
@@ -384,15 +378,15 @@ process_op_bit(struct rte_crypto_op *op, struct kasumi_session *session,
 				session);
 		break;
 	case KASUMI_OP_ONLY_AUTH:
-		processed_op = process_kasumi_hash_op(&op, session, 1);
+		processed_op = process_kasumi_hash_op(qp, &op, session, 1);
 		break;
 	case KASUMI_OP_CIPHER_AUTH:
 		processed_op = process_kasumi_cipher_op_bit(op, session);
 		if (processed_op == 1)
-			process_kasumi_hash_op(&op, session, 1);
+			process_kasumi_hash_op(qp, &op, session, 1);
 		break;
 	case KASUMI_OP_AUTH_CIPHER:
-		processed_op = process_kasumi_hash_op(&op, session, 1);
+		processed_op = process_kasumi_hash_op(qp, &op, session, 1);
 		if (processed_op == 1)
 			process_kasumi_cipher_op_bit(op, session);
 		break;
