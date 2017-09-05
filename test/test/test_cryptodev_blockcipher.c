@@ -452,25 +452,13 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 	if (t->feature_mask & BLOCKCIPHER_TEST_FEATURE_OOP) {
 		struct rte_mbuf *mbuf;
 		uint8_t value;
-		uint32_t head_unchanged_len = 0, changed_len = 0;
+		uint32_t head_unchanged_len, changed_len = 0;
 		uint32_t i;
 
 		mbuf = sym_op->m_src;
-		if (t->op_mask & BLOCKCIPHER_TEST_OP_AUTH_VERIFY) {
-			/* white-box test: PMDs use some of the
-			 * tailroom as temp storage in verify case
-			 */
-			head_unchanged_len = rte_pktmbuf_headroom(mbuf)
-					+ rte_pktmbuf_data_len(mbuf);
-			changed_len = digest_len;
-		} else {
-			head_unchanged_len = mbuf->buf_len;
-			changed_len = 0;
-		}
+		head_unchanged_len = mbuf->buf_len;
 
 		for (i = 0; i < mbuf->buf_len; i++) {
-			if (i == head_unchanged_len)
-				i += changed_len;
 			value = *((uint8_t *)(mbuf->buf_addr)+i);
 			if (value != tmp_src_buf[i]) {
 				snprintf(test_msg, BLOCKCIPHER_TEST_MSG_LEN,
@@ -530,19 +518,6 @@ test_blockcipher_one_case(const struct blockcipher_test_case *t,
 
 		if (t->op_mask & BLOCKCIPHER_TEST_OP_AUTH_GEN)
 			changed_len += digest_len;
-
-		if (t->op_mask & BLOCKCIPHER_TEST_OP_AUTH_VERIFY) {
-			/* white-box test: PMDs use some of the
-			 * tailroom as temp storage in verify case
-			 */
-			if (t->op_mask & BLOCKCIPHER_TEST_OP_CIPHER) {
-				/* This is simplified, not checking digest*/
-				changed_len += digest_len*2;
-			} else {
-				head_unchanged_len += digest_len;
-				changed_len += digest_len;
-			}
-		}
 
 		for (i = 0; i < mbuf->buf_len; i++) {
 			if (i == head_unchanged_len)
