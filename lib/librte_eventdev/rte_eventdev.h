@@ -882,7 +882,10 @@ rte_event_dev_close(uint8_t dev_id);
 #define RTE_EVENT_OP_FORWARD            1
 /**< The CPU use this operation to forward the event to different event queue or
  * change to new application specific flow or schedule type to enable
- * pipelining
+ * pipelining.
+ *
+ * This operation must only be enqueued to the same port that the
+ * event to be forwarded was dequeued from.
  */
 #define RTE_EVENT_OP_RELEASE            2
 /**< Release the flow context associated with the schedule type.
@@ -911,6 +914,9 @@ rte_event_dev_close(uint8_t dev_id);
  * If current flow's scheduler type method is *RTE_SCHED_TYPE_PARALLEL*
  * or no scheduling context is held then this function may be an NOOP,
  * depending on the implementation.
+ *
+ * This operation must only be enqueued to the same port that the
+ * event to be released was dequeued from.
  *
  */
 
@@ -1144,6 +1150,9 @@ __rte_event_enqueue_burst(uint8_t dev_id, uint8_t port_id,
  * The *nb_events* parameter is the number of event objects to enqueue which are
  * supplied in the *ev* array of *rte_event* structure.
  *
+ * Event operations RTE_EVENT_OP_FORWARD and RTE_EVENT_OP_RELEASE must only be
+ * enqueued to the same port that their associated events were dequeued from.
+ *
  * The rte_event_enqueue_burst() function returns the number of
  * events objects it actually enqueued. A return value equal to *nb_events*
  * means that all event objects have been enqueued.
@@ -1345,6 +1354,9 @@ rte_event_dequeue_timeout_ticks(uint8_t dev_id, uint64_t ns,
  * rte_event_dequeue_burst() invocation, or invoking rte_event_enqueue_burst()
  * with RTE_EVENT_OP_RELEASE operation can be used to release the
  * contexts early.
+ *
+ * Event operations RTE_EVENT_OP_FORWARD and RTE_EVENT_OP_RELEASE must only be
+ * enqueued to the same port that their associated events were dequeued from.
  *
  * @param dev_id
  *   The identifier of the device.
