@@ -625,9 +625,9 @@ rte_service_lcore_stop(uint32_t lcore)
 		return -EALREADY;
 
 	uint32_t i;
+	uint64_t service_mask = lcore_states[lcore].service_mask;
 	for (i = 0; i < RTE_SERVICE_NUM_MAX; i++) {
-		int32_t enabled =
-			lcore_states[i].service_mask & (UINT64_C(1) << i);
+		int32_t enabled = service_mask & (UINT64_C(1) << i);
 		int32_t service_running = rte_service_runstate_get(i);
 		int32_t only_core = rte_services[i].num_mapped_cores == 1;
 

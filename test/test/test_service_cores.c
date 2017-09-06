@@ -576,6 +576,10 @@ service_lcore_start_stop(void)
 			"Service core expected to poll service but it didn't");
 
 	/* core stop */
+	TEST_ASSERT_EQUAL(-EBUSY, rte_service_lcore_stop(slcore_id),
+			"Service core running a service should return -EBUSY");
+	TEST_ASSERT_EQUAL(0, rte_service_runstate_set(sid, 0),
+			"Stopping valid service failed");
 	TEST_ASSERT_EQUAL(-EINVAL, rte_service_lcore_stop(100000),
 			"Invalid Service core stop should return -EINVAL");
 	TEST_ASSERT_EQUAL(0, rte_service_lcore_stop(slcore_id),
