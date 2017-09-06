@@ -69,9 +69,9 @@ The format of a DPDK target is::
 
 where:
 
-* ``ARCH`` can be:  ``i686``, ``x86_64``, ``ppc_64``
+* ``ARCH`` can be:  ``i686``, ``x86_64``, ``ppc_64``, ``arm64``
 
-* ``MACHINE`` can be:  ``native``, ``power8``
+* ``MACHINE`` can be:  ``native``, ``power8``, ``armv8a``
 
 * ``EXECENV`` can be:  ``linuxapp``,  ``bsdapp``
 
