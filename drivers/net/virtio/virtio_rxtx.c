@@ -455,7 +455,7 @@ virtio_dev_rx_queue_setup_finish(struct rte_eth_dev *dev, uint16_t queue_idx)
 	/* Allocate blank mbufs for the each rx descriptor */
 	nbufs = 0;
 
-	if (hw->use_simple_rxtx) {
+	if (hw->use_simple_rx) {
 		for (desc_idx = 0; desc_idx < vq->vq_nentries;
 		     desc_idx++) {
 			vq->vq_ring.avail->ring[desc_idx] = desc_idx;
@@ -477,7 +477,7 @@ virtio_dev_rx_queue_setup_finish(struct rte_eth_dev *dev, uint16_t queue_idx)
 			break;
 
 		/* Enqueue allocated buffers */
-		if (hw->use_simple_rxtx)
+		if (hw->use_simple_rx)
 			error = virtqueue_enqueue_recv_refill_simple(vq, m);
 		else
 			error = virtqueue_enqueue_recv_refill(vq, m);
@@ -524,7 +524,7 @@ virtio_dev_tx_queue_setup(struct rte_eth_dev *dev,
 
 	/* cannot use simple rxtx funcs with multisegs or offloads */
 	if ((tx_conf->txq_flags & VIRTIO_SIMPLE_FLAGS) != VIRTIO_SIMPLE_FLAGS)
-		hw->use_simple_rxtx = 0;
+		hw->use_simple_tx = 0;
 
 	if (nb_desc == 0 || nb_desc > vq->vq_nentries)
 		nb_desc = vq->vq_nentries;
@@ -566,7 +566,7 @@ virtio_dev_tx_queue_setup_finish(struct rte_eth_dev *dev,
 
 	PMD_INIT_FUNC_TRACE();
 
-	if (hw->use_simple_rxtx) {
+	if (hw->use_simple_tx) {
 		for (desc_idx = 0; desc_idx < mid_idx; desc_idx++) {
 			vq->vq_ring.avail->ring[desc_idx] =
 				desc_idx + mid_idx;

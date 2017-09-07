@@ -369,7 +369,8 @@ virtio_user_eth_dev_alloc(struct rte_vdev_device *vdev)
 	 */
 	hw->use_msix = 1;
 	hw->modern   = 0;
-	hw->use_simple_rxtx = 0;
+	hw->use_simple_rx = 0;
+	hw->use_simple_tx = 0;
 	hw->virtio_user_dev = dev;
 	data->dev_flags = RTE_ETH_DEV_DETACHABLE;
 	return eth_dev;
