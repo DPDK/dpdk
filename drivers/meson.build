@@ -29,7 +29,7 @@
 #   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-driver_classes = ['bus', 'crypto', 'mempool', 'net']
+driver_classes = ['bus', 'crypto', 'event', 'mempool', 'net']
 
 foreach class:driver_classes
 	drivers = []
