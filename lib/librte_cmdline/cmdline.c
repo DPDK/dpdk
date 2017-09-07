@@ -205,7 +205,8 @@ cmdline_printf(const struct cmdline *cl, const char *fmt, ...)
 	}
 	if (ret >= BUFSIZ)
 		ret = BUFSIZ - 1;
-	write(cl->s_out, buf, ret);
+	ret = write(cl->s_out, buf, ret);
+	(void)ret;
 	free(buf);
 #endif
 }
