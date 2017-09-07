@@ -609,12 +609,15 @@ flush_mb_mgr(struct aesni_mb_qp *qp, struct rte_crypto_op **ops,
 }
 
 static inline JOB_AES_HMAC *
-set_job_null_op(JOB_AES_HMAC *job)
+set_job_null_op(JOB_AES_HMAC *job, struct rte_crypto_op *op)
 {
 	job->chain_order = HASH_CIPHER;
 	job->cipher_mode = NULL_CIPHER;
 	job->hash_alg = NULL_HASH;
 	job->cipher_direction = DECRYPT;
+
+	/* Set user data to be crypto operation data struct */
+	job->user_data = op;
 
 	return job;
 }
@@ -654,7 +657,7 @@ aesni_mb_pmd_dequeue_burst(void *queue_pair, struct rte_crypto_op **ops,
 		retval = set_mb_job_params(job, qp, op, &digest_idx);
 		if (unlikely(retval != 0)) {
 			qp->stats.dequeue_err_count++;
-			set_job_null_op(job);
+			set_job_null_op(job, op);
 		}
 
 		/* Submit job to multi-buffer for processing */
