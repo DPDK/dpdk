@@ -1756,6 +1756,9 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 		hw->use_simple_tx = 0;
 	}
 
+	if (rxmode->hw_ip_checksum)
+		hw->use_simple_rx = 0;
+
 	return 0;
 }
 
