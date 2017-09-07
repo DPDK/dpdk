@@ -1737,6 +1737,19 @@ virtio_dev_start(struct rte_eth_dev *dev)
 	struct virtnet_rx *rxvq;
 	struct virtnet_tx *txvq __rte_unused;
 	struct virtio_hw *hw = dev->data->dev_private;
+	int ret;
+
+	/* Finish the initialization of the queues */
+	for (i = 0; i < dev->data->nb_rx_queues; i++) {
+		ret = virtio_dev_rx_queue_setup_finish(dev, i);
+		if (ret < 0)
+			return ret;
+	}
+	for (i = 0; i < dev->data->nb_tx_queues; i++) {
+		ret = virtio_dev_tx_queue_setup_finish(dev, i);
+		if (ret < 0)
+			return ret;
+	}
 
 	/* check if lsc interrupt feature is enabled */
 	if (dev->data->dev_conf.intr_conf.lsc) {
