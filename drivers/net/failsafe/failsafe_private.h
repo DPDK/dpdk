@@ -102,6 +102,8 @@ struct sub_device {
 	uint8_t sid;
 	/* Device state machine */
 	enum dev_state state;
+	/* Last stats snapshot passed to user */
+	struct rte_eth_stats stats_snapshot;
 	/* Some device are defined as a command line */
 	char *cmdline;
 	/* fail-safe device backreference */
@@ -140,6 +142,7 @@ struct fs_priv {
 	 * synchronized state.
 	 */
 	enum dev_state state;
+	struct rte_eth_stats stats_accumulator;
 	unsigned int pending_alarm:1; /* An alarm is pending */
 	/* flow isolation state */
 	int flow_isolated:1;
@@ -180,6 +183,8 @@ int failsafe_eal_uninit(struct rte_eth_dev *dev);
 
 int failsafe_eth_dev_state_sync(struct rte_eth_dev *dev);
 void failsafe_dev_remove(struct rte_eth_dev *dev);
+void failsafe_stats_increment(struct rte_eth_stats *to,
+				struct rte_eth_stats *from);
 int failsafe_eth_rmv_event_callback(uint8_t port_id,
 				    enum rte_eth_event_type type,
 				    void *arg, void *out);

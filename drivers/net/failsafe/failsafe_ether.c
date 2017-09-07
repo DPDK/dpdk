@@ -309,6 +309,14 @@ fs_dev_remove(struct sub_device *sdev)
 	failsafe_hotplug_alarm_install(sdev->fs_dev);
 }
 
+static void
+fs_dev_stats_save(struct sub_device *sdev)
+{
+	failsafe_stats_increment(&PRIV(sdev->fs_dev)->stats_accumulator,
+			&sdev->stats_snapshot);
+	memset(&sdev->stats_snapshot, 0, sizeof(struct rte_eth_stats));
+}
+
 static inline int
 fs_rxtx_clean(struct sub_device *sdev)
 {
@@ -330,8 +338,10 @@ failsafe_dev_remove(struct rte_eth_dev *dev)
 	uint8_t i;
 
 	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE)
-		if (sdev->remove && fs_rxtx_clean(sdev))
+		if (sdev->remove && fs_rxtx_clean(sdev)) {
+			fs_dev_stats_save(sdev);
 			fs_dev_remove(sdev);
+		}
 }
 
 int
@@ -398,6 +408,29 @@ err_remove:
 		if (sdev->state != PRIV(dev)->state)
 			sdev->remove = 1;
 	return ret;
+}
+
+void
+failsafe_stats_increment(struct rte_eth_stats *to, struct rte_eth_stats *from)
+{
+	uint32_t i;
+
+	RTE_ASSERT(to != NULL && from != NULL);
+	to->ipackets += from->ipackets;
+	to->opackets += from->opackets;
+	to->ibytes += from->ibytes;
+	to->obytes += from->obytes;
+	to->imissed += from->imissed;
+	to->ierrors += from->ierrors;
+	to->oerrors += from->oerrors;
+	to->rx_nombuf += from->rx_nombuf;
+	for (i = 0; i < RTE_ETHDEV_QUEUE_STAT_CNTRS; i++) {
+		to->q_ipackets[i] += from->q_ipackets[i];
+		to->q_opackets[i] += from->q_opackets[i];
+		to->q_ibytes[i] += from->q_ibytes[i];
+		to->q_obytes[i] += from->q_obytes[i];
+		to->q_errors[i] += from->q_errors[i];
+	}
 }
 
 int

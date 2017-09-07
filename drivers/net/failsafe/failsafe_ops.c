@@ -586,9 +586,14 @@ static void
 fs_stats_get(struct rte_eth_dev *dev,
 	     struct rte_eth_stats *stats)
 {
-	if (TX_SUBDEV(dev) == NULL)
-		return;
-	rte_eth_stats_get(PORT_ID(TX_SUBDEV(dev)), stats);
+	struct sub_device *sdev;
+	uint8_t i;
+
+	rte_memcpy(stats, &PRIV(dev)->stats_accumulator, sizeof(*stats));
+	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
+		rte_eth_stats_get(PORT_ID(sdev), &sdev->stats_snapshot);
+		failsafe_stats_increment(stats, &sdev->stats_snapshot);
+	}
 }
 
 static void
@@ -597,8 +602,11 @@ fs_stats_reset(struct rte_eth_dev *dev)
 	struct sub_device *sdev;
 	uint8_t i;
 
-	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE)
+	FOREACH_SUBDEV_STATE(sdev, i, dev, DEV_ACTIVE) {
 		rte_eth_stats_reset(PORT_ID(sdev));
+		memset(&sdev->stats_snapshot, 0, sizeof(struct rte_eth_stats));
+	}
+	memset(&PRIV(dev)->stats_accumulator, 0, sizeof(struct rte_eth_stats));
 }
 
 /**
