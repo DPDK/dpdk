@@ -1692,7 +1692,7 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 
 	if (rxmode->hw_ip_checksum &&
 		!vtpci_with_feature(hw, VIRTIO_NET_F_GUEST_CSUM)) {
-		PMD_DRV_LOG(NOTICE,
+		PMD_DRV_LOG(ERR,
 			"rx checksum not available on this host");
 		return -ENOTSUP;
 	}
@@ -1700,7 +1700,7 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 	if (rxmode->enable_lro &&
 		(!vtpci_with_feature(hw, VIRTIO_NET_F_GUEST_TSO4) ||
 			!vtpci_with_feature(hw, VIRTIO_NET_F_GUEST_TSO4))) {
-		PMD_DRV_LOG(NOTICE,
+		PMD_DRV_LOG(ERR,
 			"Large Receive Offload not available on this host");
 		return -ENOTSUP;
 	}
@@ -1713,7 +1713,7 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 
 	if (rxmode->hw_vlan_filter
 	    && !vtpci_with_feature(hw, VIRTIO_NET_F_CTRL_VLAN)) {
-		PMD_DRV_LOG(NOTICE,
+		PMD_DRV_LOG(ERR,
 			    "vlan filtering not available on this host");
 		return -ENOTSUP;
 	}
