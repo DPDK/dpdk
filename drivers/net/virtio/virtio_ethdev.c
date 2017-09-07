@@ -49,6 +49,7 @@
 #include <rte_ether.h>
 #include <rte_common.h>
 #include <rte_errno.h>
+#include <rte_cpuflags.h>
 
 #include <rte_memory.h>
 #include <rte_eal.h>
@@ -1235,14 +1236,36 @@ virtio_interrupt_handler(void *param)
 
 }
 
+/* set rx and tx handlers according to what is supported */
 static void
-rx_func_get(struct rte_eth_dev *eth_dev)
+set_rxtx_funcs(struct rte_eth_dev *eth_dev)
 {
 	struct virtio_hw *hw = eth_dev->data->dev_private;
-	if (vtpci_with_feature(hw, VIRTIO_NET_F_MRG_RXBUF))
+
+	if (hw->use_simple_rxtx) {
+		PMD_INIT_LOG(INFO, "virtio: using simple Rx path on port %u",
+			eth_dev->data->port_id);
+		eth_dev->rx_pkt_burst = virtio_recv_pkts_vec;
+	} else if (vtpci_with_feature(hw, VIRTIO_NET_F_MRG_RXBUF)) {
+		PMD_INIT_LOG(INFO,
+			"virtio: using mergeable buffer Rx path on port %u",
+			eth_dev->data->port_id);
 		eth_dev->rx_pkt_burst = &virtio_recv_mergeable_pkts;
-	else
+	} else {
+		PMD_INIT_LOG(INFO, "virtio: using standard Rx path on port %u",
+			eth_dev->data->port_id);
 		eth_dev->rx_pkt_burst = &virtio_recv_pkts;
+	}
+
+	if (hw->use_simple_rxtx) {
+		PMD_INIT_LOG(INFO, "virtio: using simple Tx path on port %u",
+			eth_dev->data->port_id);
+		eth_dev->tx_pkt_burst = virtio_xmit_pkts_simple;
+	} else {
+		PMD_INIT_LOG(INFO, "virtio: using standard Tx path on port %u",
+			eth_dev->data->port_id);
+		eth_dev->tx_pkt_burst = virtio_xmit_pkts;
+	}
 }
 
 /* Only support 1:1 queue/interrupt mapping so far.
@@ -1366,8 +1389,6 @@ virtio_init_device(struct rte_eth_dev *eth_dev, uint64_t req_features)
 		eth_dev->data->dev_flags |= RTE_ETH_DEV_INTR_LSC;
 	else
 		eth_dev->data->dev_flags &= ~RTE_ETH_DEV_INTR_LSC;
-
-	rx_func_get(eth_dev);
 
 	/* Setting up rx_header size for the device */
 	if (vtpci_with_feature(hw, VIRTIO_NET_F_MRG_RXBUF) ||
@@ -1534,7 +1555,6 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 	RTE_BUILD_BUG_ON(RTE_PKTMBUF_HEADROOM < sizeof(struct virtio_net_hdr_mrg_rxbuf));
 
 	eth_dev->dev_ops = &virtio_eth_dev_ops;
-	eth_dev->tx_pkt_burst = &virtio_xmit_pkts;
 
 	if (rte_eal_process_type() == RTE_PROC_SECONDARY) {
 		if (!hw->virtio_user_dev) {
@@ -1544,12 +1564,8 @@ eth_virtio_dev_init(struct rte_eth_dev *eth_dev)
 		}
 
 		virtio_set_vtpci_ops(hw);
-		if (hw->use_simple_rxtx) {
-			eth_dev->tx_pkt_burst = virtio_xmit_pkts_simple;
-			eth_dev->rx_pkt_burst = virtio_recv_pkts_vec;
-		} else {
-			rx_func_get(eth_dev);
-		}
+		set_rxtx_funcs(eth_dev);
+
 		return 0;
 	}
 
@@ -1726,6 +1742,18 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 			return -EBUSY;
 		}
 
+	hw->use_simple_rxtx = 1;
+
+#if defined RTE_ARCH_X86
+	if (!rte_cpu_get_flag_enabled(RTE_CPUFLAG_SSE3))
+		hw->use_simple_rxtx = 0;
+#elif defined RTE_ARCH_ARM64 || defined CONFIG_RTE_ARCH_ARM
+	if (!rte_cpu_get_flag_enabled(RTE_CPUFLAG_NEON))
+		hw->use_simple_rxtx = 0;
+#endif
+	if (vtpci_with_feature(hw, VIRTIO_NET_F_MRG_RXBUF))
+		hw->use_simple_rxtx = 0;
+
 	return 0;
 }
 
@@ -1807,6 +1835,7 @@ virtio_dev_start(struct rte_eth_dev *dev)
 		VIRTQUEUE_DUMP(txvq->vq);
 	}
 
+	set_rxtx_funcs(dev);
 	hw->started = 1;
 
 	/* Initialize Link state */

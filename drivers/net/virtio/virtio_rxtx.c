@@ -50,7 +50,6 @@
 #include <rte_string_fns.h>
 #include <rte_errno.h>
 #include <rte_byteorder.h>
-#include <rte_cpuflags.h>
 #include <rte_net.h>
 #include <rte_ip.h>
 #include <rte_udp.h>
@@ -501,31 +500,6 @@ virtio_dev_rx_queue_setup_finish(struct rte_eth_dev *dev, uint16_t queue_idx)
 	return 0;
 }
 
-static void
-virtio_update_rxtx_handler(struct rte_eth_dev *dev,
-			   const struct rte_eth_txconf *tx_conf)
-{
-	uint8_t use_simple_rxtx = 0;
-	struct virtio_hw *hw = dev->data->dev_private;
-
-#if defined RTE_ARCH_X86
-	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_SSE3))
-		use_simple_rxtx = 1;
-#elif defined RTE_ARCH_ARM64 || defined CONFIG_RTE_ARCH_ARM
-	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_NEON))
-		use_simple_rxtx = 1;
-#endif
-	/* Use simple rx/tx func if single segment and no offloads */
-	if (use_simple_rxtx &&
-	    (tx_conf->txq_flags & VIRTIO_SIMPLE_FLAGS) == VIRTIO_SIMPLE_FLAGS &&
-	    !vtpci_with_feature(hw, VIRTIO_NET_F_MRG_RXBUF)) {
-		PMD_INIT_LOG(INFO, "Using simple rx/tx path");
-		dev->tx_pkt_burst = virtio_xmit_pkts_simple;
-		dev->rx_pkt_burst = virtio_recv_pkts_vec;
-		hw->use_simple_rxtx = use_simple_rxtx;
-	}
-}
-
 /*
  * struct rte_eth_dev *dev: Used to update dev
  * uint16_t nb_desc: Defaults to values read from config space
@@ -548,7 +522,9 @@ virtio_dev_tx_queue_setup(struct rte_eth_dev *dev,
 
 	PMD_INIT_FUNC_TRACE();
 
-	virtio_update_rxtx_handler(dev, tx_conf);
+	/* cannot use simple rxtx funcs with multisegs or offloads */
+	if ((tx_conf->txq_flags & VIRTIO_SIMPLE_FLAGS) != VIRTIO_SIMPLE_FLAGS)
+		hw->use_simple_rxtx = 0;
 
 	if (nb_desc == 0 || nb_desc > vq->vq_nentries)
 		nb_desc = vq->vq_nentries;
