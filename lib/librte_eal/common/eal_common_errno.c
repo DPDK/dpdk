@@ -46,18 +46,20 @@ RTE_DEFINE_PER_LCORE(int, _rte_errno);
 const char *
 rte_strerror(int errnum)
 {
+	/* BSD puts a colon in the "unknown error" messages, Linux doesn't */
+#ifdef RTE_EXEC_ENV_BSDAPP
+	static const char *sep = ":";
+#else
+	static const char *sep = "";
+#endif
 #define RETVAL_SZ 256
 	static RTE_DEFINE_PER_LCORE(char[RETVAL_SZ], retval);
+	char *ret = RTE_PER_LCORE(retval);
 
 	/* since some implementations of strerror_r throw an error
 	 * themselves if errnum is too big, we handle that case here */
-	if (errnum > RTE_MAX_ERRNO)
-		snprintf(RTE_PER_LCORE(retval), RETVAL_SZ,
-#ifdef RTE_EXEC_ENV_BSDAPP
-				"Unknown error: %d", errnum);
-#else
-				"Unknown error %d", errnum);
-#endif
+	if (errnum >= RTE_MAX_ERRNO)
+		snprintf(ret, RETVAL_SZ, "Unknown error%s %d", sep, errnum);
 	else
 		switch (errnum){
 		case E_RTE_SECONDARY:
@@ -65,8 +67,10 @@ rte_strerror(int errnum)
 		case E_RTE_NO_CONFIG:
 			return "Missing rte_config structure";
 		default:
-			strerror_r(errnum, RTE_PER_LCORE(retval), RETVAL_SZ);
+			if (strerror_r(errnum, ret, RETVAL_SZ) != 0)
+				snprintf(ret, RETVAL_SZ, "Unknown error%s %d",
+						sep, errnum);
 		}
 
-	return RTE_PER_LCORE(retval);
+	return ret;
 }
