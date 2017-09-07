@@ -1659,9 +1659,11 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 {
 	const struct rte_eth_rxmode *rxmode = &dev->data->dev_conf.rxmode;
 	struct virtio_hw *hw = dev->data->dev_private;
+	uint64_t req_features;
 	int ret;
 
 	PMD_INIT_LOG(DEBUG, "configure");
+	req_features = VIRTIO_PMD_DEFAULT_GUEST_FEATURES;
 
 	if (dev->data->dev_conf.intr_conf.rxq) {
 		ret = virtio_init_device(dev, hw->req_guest_features);
@@ -1675,10 +1677,23 @@ virtio_dev_configure(struct rte_eth_dev *dev)
 			    "virtio does not support IP checksum");
 		return -ENOTSUP;
 	}
+	if (rxmode->enable_lro)
+		req_features |=
+			(1ULL << VIRTIO_NET_F_GUEST_TSO4) |
+			(1ULL << VIRTIO_NET_F_GUEST_TSO6);
 
-	if (rxmode->enable_lro) {
+	/* if request features changed, reinit the device */
+	if (req_features != hw->req_guest_features) {
+		ret = virtio_init_device(dev, req_features);
+		if (ret < 0)
+			return ret;
+	}
+
+	if (rxmode->enable_lro &&
+		(!vtpci_with_feature(hw, VIRTIO_NET_F_GUEST_TSO4) ||
+			!vtpci_with_feature(hw, VIRTIO_NET_F_GUEST_TSO4))) {
 		PMD_DRV_LOG(NOTICE,
-			    "virtio does not support Large Receive Offload");
+			"Large Receive Offload not available on this host");
 		return -ENOTSUP;
 	}
 
@@ -1909,6 +1924,8 @@ virtio_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	}
 	tso_mask = (1ULL << VIRTIO_NET_F_GUEST_TSO4) |
 		(1ULL << VIRTIO_NET_F_GUEST_TSO6);
+	if ((host_features & tso_mask) == tso_mask)
+		dev_info->rx_offload_capa |= DEV_RX_OFFLOAD_TCP_LRO;
 
 	dev_info->tx_offload_capa = 0;
 	if (hw->guest_features & (1ULL << VIRTIO_NET_F_CSUM)) {
