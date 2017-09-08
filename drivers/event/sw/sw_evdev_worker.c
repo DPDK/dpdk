@@ -85,14 +85,18 @@ sw_event_enqueue_burst(void *port, const struct rte_event ev[], uint16_t num)
 	struct sw_port *p = port;
 	struct sw_evdev *sw = (void *)p->sw;
 	uint32_t sw_inflights = rte_atomic32_read(&sw->inflights);
-
-	if (unlikely(p->inflight_max < sw_inflights))
-		return 0;
+	int new = 0;
 
 	if (num > PORT_ENQUEUE_MAX_BURST_SIZE)
 		num = PORT_ENQUEUE_MAX_BURST_SIZE;
 
-	if (p->inflight_credits < num) {
+	for (i = 0; i < num; i++)
+		new += (ev[i].op == RTE_EVENT_OP_NEW);
+
+	if (unlikely(new > 0 && p->inflight_max < sw_inflights))
+		return 0;
+
+	if (p->inflight_credits < new) {
 		/* check if event enqueue brings port over max threshold */
 		uint32_t credit_update_quanta = sw->credit_update_quanta;
 		if (sw_inflights + credit_update_quanta > sw->nb_events_limit)
@@ -101,7 +105,7 @@ sw_event_enqueue_burst(void *port, const struct rte_event ev[], uint16_t num)
 		rte_atomic32_add(&sw->inflights, credit_update_quanta);
 		p->inflight_credits += (credit_update_quanta);
 
-		if (p->inflight_credits < num)
+		if (p->inflight_credits < new)
 			return 0;
 	}
 
