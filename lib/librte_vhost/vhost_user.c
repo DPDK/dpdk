@@ -230,6 +230,15 @@ vhost_user_set_vring_num(struct virtio_net *dev,
 		return -1;
 	}
 
+	vq->batch_copy_elems = rte_malloc(NULL,
+				vq->size * sizeof(struct batch_copy_elem),
+				RTE_CACHE_LINE_SIZE);
+	if (!vq->batch_copy_elems) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+			"failed to allocate memory for batching copy.\n");
+		return -1;
+	}
+
 	return 0;
 }
 
@@ -740,6 +749,9 @@ vhost_user_get_vring_base(struct virtio_net *dev,
 		free_zmbufs(vq);
 	rte_free(vq->shadow_used_ring);
 	vq->shadow_used_ring = NULL;
+
+	rte_free(vq->batch_copy_elems);
+	vq->batch_copy_elems = NULL;
 
 	return 0;
 }

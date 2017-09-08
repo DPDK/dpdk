@@ -102,7 +102,7 @@ free_device(struct virtio_net *dev)
 		vq = dev->virtqueue[i];
 
 		rte_free(vq->shadow_used_ring);
-
+		rte_free(vq->batch_copy_elems);
 		rte_free(vq);
 	}
 

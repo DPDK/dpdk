@@ -81,6 +81,16 @@ struct zcopy_mbuf {
 };
 TAILQ_HEAD(zcopy_mbuf_list, zcopy_mbuf);
 
+/*
+ * Structure contains the info for each batched memory copy.
+ */
+struct batch_copy_elem {
+	void *dst;
+	void *src;
+	uint32_t len;
+	uint64_t log_addr;
+};
+
 /**
  * Structure contains variables relevant to RX/TX virtqueues.
  */
@@ -114,6 +124,9 @@ struct vhost_virtqueue {
 
 	struct vring_used_elem  *shadow_used_ring;
 	uint16_t                shadow_used_idx;
+
+	struct batch_copy_elem	*batch_copy_elems;
+	uint16_t		batch_copy_nb_elems;
 } __rte_cache_aligned;
 
 /* Old kernels have no such macros defined */
