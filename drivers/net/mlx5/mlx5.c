@@ -871,7 +871,7 @@ static struct rte_pci_driver mlx5_driver = {
 	},
 	.id_table = mlx5_pci_id_map,
 	.probe = mlx5_pci_probe,
-	.drv_flags = RTE_PCI_DRV_INTR_LSC,
+	.drv_flags = RTE_PCI_DRV_INTR_LSC | RTE_PCI_DRV_INTR_RMV,
 };
 
 /**

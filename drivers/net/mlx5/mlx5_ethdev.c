@@ -1173,6 +1173,9 @@ priv_dev_status_handler(struct priv *priv)
 			event.event_type == IBV_EVENT_PORT_ERR) &&
 			(priv->dev->data->dev_conf.intr_conf.lsc == 1))
 			ret |= (1 << RTE_ETH_EVENT_INTR_LSC);
+		else if (event.event_type == IBV_EVENT_DEVICE_FATAL &&
+			priv->dev->data->dev_conf.intr_conf.rmv == 1)
+			ret |= (1 << RTE_ETH_EVENT_INTR_RMV);
 		else
 			DEBUG("event type %d on port %d not handled",
 			      event.event_type, event.element.port_num);
@@ -1228,6 +1231,9 @@ mlx5_dev_interrupt_handler(void *cb_arg)
 	if (events & (1 << RTE_ETH_EVENT_INTR_LSC))
 		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC, NULL,
 					      NULL);
+	if (events & (1 << RTE_ETH_EVENT_INTR_RMV))
+		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_RMV, NULL,
+					      NULL);
 }
 
 /**
@@ -1241,7 +1247,8 @@ mlx5_dev_interrupt_handler(void *cb_arg)
 void
 priv_dev_interrupt_handler_uninstall(struct priv *priv, struct rte_eth_dev *dev)
 {
-	if (!dev->data->dev_conf.intr_conf.lsc)
+	if (!dev->data->dev_conf.intr_conf.lsc &&
+		!dev->data->dev_conf.intr_conf.rmv)
 		return;
 	rte_intr_callback_unregister(&priv->intr_handle,
 				     mlx5_dev_interrupt_handler,
@@ -1266,7 +1273,8 @@ priv_dev_interrupt_handler_install(struct priv *priv, struct rte_eth_dev *dev)
 {
 	int rc, flags;
 
-	if (!dev->data->dev_conf.intr_conf.lsc)
+	if (!dev->data->dev_conf.intr_conf.lsc &&
+		!dev->data->dev_conf.intr_conf.rmv)
 		return;
 	assert(priv->ctx->async_fd > 0);
 	flags = fcntl(priv->ctx->async_fd, F_GETFL);
@@ -1274,6 +1282,7 @@ priv_dev_interrupt_handler_install(struct priv *priv, struct rte_eth_dev *dev)
 	if (rc < 0) {
 		INFO("failed to change file descriptor async event queue");
 		dev->data->dev_conf.intr_conf.lsc = 0;
+		dev->data->dev_conf.intr_conf.rmv = 0;
 	} else {
 		priv->intr_handle.fd = priv->ctx->async_fd;
 		priv->intr_handle.type = RTE_INTR_HANDLE_EXT;
