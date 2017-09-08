@@ -55,4 +55,4 @@
 # CPU_LDFLAGS =
 # CPU_ASFLAGS =
 
-MACHINE_CFLAGS = -march=atom
+MACHINE_CFLAGS = -march=silvermont
