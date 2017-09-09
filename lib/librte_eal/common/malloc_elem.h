@@ -53,13 +53,13 @@ struct malloc_elem {
 	volatile enum elem_state state;
 	uint32_t pad;
 	size_t size;
-#ifdef RTE_LIBRTE_MALLOC_DEBUG
+#ifdef RTE_MALLOC_DEBUG
 	uint64_t header_cookie;         /* Cookie marking start of data */
 	                                /* trailer cookie at start + size */
 #endif
 } __rte_cache_aligned;
 
-#ifndef RTE_LIBRTE_MALLOC_DEBUG
+#ifndef RTE_MALLOC_DEBUG
 static const unsigned MALLOC_ELEM_TRAILER_LEN = 0;
 
 /* dummy function - just check if pointer is non-null */

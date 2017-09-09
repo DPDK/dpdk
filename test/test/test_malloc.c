@@ -108,8 +108,7 @@ test_align_overlap_per_lcore(__attribute__((unused)) void *arg)
 		}
 		for(j = 0; j < 1000 ; j++) {
 			if( *(char *)p1 != 0) {
-				printf("rte_zmalloc didn't zero"
-				       "the allocated memory\n");
+				printf("rte_zmalloc didn't zero the allocated memory\n");
 				ret = -1;
 			}
 		}
@@ -180,8 +179,7 @@ test_reordered_free_per_lcore(__attribute__((unused)) void *arg)
 		}
 		for(j = 0; j < 1000 ; j++) {
 			if( *(char *)p1 != 0) {
-				printf("rte_zmalloc didn't zero"
-				       "the allocated memory\n");
+				printf("rte_zmalloc didn't zero the allocated memory\n");
 				ret = -1;
 			}
 		}
@@ -293,7 +291,7 @@ test_multi_alloc_statistics(void)
 	struct rte_malloc_socket_stats pre_stats, post_stats ,first_stats, second_stats;
 	size_t size = 2048;
 	int align = 1024;
-#ifndef RTE_LIBRTE_MALLOC_DEBUG
+#ifndef RTE_MALLOC_DEBUG
 	int trailer_size = 0;
 #else
 	int trailer_size = RTE_CACHE_LINE_SIZE;
@@ -623,7 +621,7 @@ test_rte_malloc_validate(void)
 	const size_t request_size = 1024;
 	size_t allocated_size;
 	char *data_ptr = rte_malloc(NULL, request_size, RTE_CACHE_LINE_SIZE);
-#ifdef RTE_LIBRTE_MALLOC_DEBUG
+#ifdef RTE_MALLOC_DEBUG
 	int retval;
 	char *over_write_vals = NULL;
 #endif
@@ -645,7 +643,7 @@ test_rte_malloc_validate(void)
 	if (allocated_size < request_size)
 		err_return();
 
-#ifdef RTE_LIBRTE_MALLOC_DEBUG
+#ifdef RTE_MALLOC_DEBUG
 
 	/****** change the header to be bad */
 	char save_buf[64];
