@@ -1063,7 +1063,7 @@ void vnic_dev_unregister(struct vnic_dev *vdev)
 			vdev->free_consistent(vdev->priv,
 				sizeof(struct vnic_devcmd_fw_info),
 				vdev->fw_info, vdev->fw_info_pa);
-		kfree(vdev);
+		rte_free(vdev);
 	}
 }
 
@@ -1072,7 +1072,13 @@ struct vnic_dev *vnic_dev_register(struct vnic_dev *vdev,
 	unsigned int num_bars)
 {
 	if (!vdev) {
-		vdev = kzalloc(sizeof(struct vnic_dev), GFP_ATOMIC);
+		char name[NAME_MAX];
+		snprintf((char *)name, sizeof(name), "%s-vnic",
+			  pdev->device.name);
+		vdev = (struct vnic_dev *)rte_zmalloc_socket(name,
+					sizeof(struct vnic_dev),
+					RTE_CACHE_LINE_SIZE,
+					pdev->device.numa_node);
 		if (!vdev)
 			return NULL;
 	}

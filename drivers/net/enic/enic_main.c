@@ -1181,6 +1181,9 @@ int enic_set_mtu(struct enic *enic, uint16_t new_mtu)
 	old_mtu = eth_dev->data->mtu;
 	config_mtu = enic->config.mtu;
 
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -E_RTE_SECONDARY;
+
 	if (new_mtu > enic->max_mtu) {
 		dev_err(enic,
 			"MTU not updated: requested (%u) greater than max (%u)\n",
@@ -1331,6 +1334,10 @@ int enic_probe(struct enic *enic)
 	int err = -1;
 
 	dev_debug(enic, " Initializing ENIC PMD\n");
+
+	/* if this is a secondary process the hardware is already initialized */
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
 
 	enic->bar0.vaddr = (void *)pdev->mem_resource[0].addr;
 	enic->bar0.len = pdev->mem_resource[0].len;
