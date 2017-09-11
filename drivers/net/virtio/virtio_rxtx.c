@@ -670,7 +670,7 @@ virtio_rx_offload(struct rte_mbuf *m, struct virtio_net_hdr *hdr)
 			 * In case of SCTP, this will be wrong since it's a CRC
 			 * but there's nothing we can do.
 			 */
-			uint16_t csum, off;
+			uint16_t csum = 0, off;
 
 			rte_raw_cksum_mbuf(m, hdr->csum_start,
 				rte_pktmbuf_pkt_len(m) - hdr->csum_start,
