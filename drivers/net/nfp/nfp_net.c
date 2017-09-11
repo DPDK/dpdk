@@ -988,17 +988,10 @@ nfp_net_link_update(struct rte_eth_dev *dev, __rte_unused int wait_to_complete)
 	nn_link_status = (nn_link_status >> NFP_NET_CFG_STS_LINK_RATE_SHIFT) &
 			 NFP_NET_CFG_STS_LINK_RATE_MASK;
 
-	if ((NFD_CFG_MAJOR_VERSION_of(hw->ver) < 4) ||
-	    ((NFD_CFG_MINOR_VERSION_of(hw->ver) == 4) &&
-	    (NFD_CFG_MINOR_VERSION_of(hw->ver) == 0)))
-		/* We really do not know the speed wil old firmware */
+	if (nn_link_status >= RTE_DIM(ls_to_ethtool))
 		link.link_speed = ETH_SPEED_NUM_NONE;
-	else {
-		if (nn_link_status >= RTE_DIM(ls_to_ethtool))
-			link.link_speed = ETH_SPEED_NUM_NONE;
-		else
-			link.link_speed = ls_to_ethtool[nn_link_status];
-	}
+	else
+		link.link_speed = ls_to_ethtool[nn_link_status];
 
 	if (old.link_status != link.link_status) {
 		nfp_net_dev_atomic_write_link_status(dev, &link);
