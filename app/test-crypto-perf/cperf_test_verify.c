@@ -366,6 +366,9 @@ cperf_verify_op(struct rte_crypto_op *op,
 		auth = 1;
 		auth_offset = vector->aad.length + options->test_buffer_size;
 		break;
+	default:
+		res = 1;
+		goto out;
 	}
 
 	if (cipher == 1) {
@@ -386,6 +389,7 @@ cperf_verify_op(struct rte_crypto_op *op,
 					options->digest_sz);
 	}
 
+out:
 	rte_free(data);
 	return !!res;
 }
