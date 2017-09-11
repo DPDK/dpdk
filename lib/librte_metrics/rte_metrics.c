@@ -115,7 +115,7 @@ rte_metrics_reg_name(const char *name)
 int
 rte_metrics_reg_names(const char * const *names, uint16_t cnt_names)
 {
-	struct rte_metrics_meta_s *entry;
+	struct rte_metrics_meta_s *entry = NULL;
 	struct rte_metrics_data_s *stats;
 	const struct rte_memzone *memzone;
 	uint16_t idx_name;
