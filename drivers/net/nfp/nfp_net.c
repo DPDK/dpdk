@@ -1218,6 +1218,11 @@ nfp_net_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 			     ETH_TXQ_FLAGS_NOOFFLOADS,
 	};
 
+	dev_info->flow_type_rss_offloads = ETH_RSS_NONFRAG_IPV4_TCP |
+					   ETH_RSS_NONFRAG_IPV4_UDP |
+					   ETH_RSS_NONFRAG_IPV6_TCP |
+					   ETH_RSS_NONFRAG_IPV6_UDP;
+
 	dev_info->reta_size = NFP_NET_CFG_RSS_ITBL_SZ;
 	dev_info->hash_key_size = NFP_NET_CFG_RSS_KEY_SZ;
 
