@@ -113,7 +113,7 @@ int rte_pmd_bnxt_set_all_queues_drop_en(uint8_t port, uint8_t on)
 	struct rte_eth_dev *eth_dev;
 	struct bnxt *bp;
 	uint32_t i;
-	int rc;
+	int rc = -EINVAL;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
 
