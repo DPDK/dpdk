@@ -386,6 +386,7 @@ cperf_verify_op(struct rte_crypto_op *op,
 					options->digest_sz);
 	}
 
+	rte_free(data);
 	return !!res;
 }
 
