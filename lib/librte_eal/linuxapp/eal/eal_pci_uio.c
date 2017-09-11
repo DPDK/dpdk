@@ -154,7 +154,7 @@ pci_get_uio_dev(struct rte_pci_device *dev, char *dstbuf,
 			   unsigned int buflen, int create)
 {
 	struct rte_pci_addr *loc = &dev->addr;
-	unsigned int uio_num;
+	int uio_num = -1;
 	struct dirent *e;
 	DIR *dir;
 	char dirname[PATH_MAX];
