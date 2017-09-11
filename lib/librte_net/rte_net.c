@@ -396,6 +396,7 @@ uint32_t rte_net_get_ptype(const struct rte_mbuf *m,
 	if ((layers & RTE_PTYPE_INNER_L2_MASK) == 0)
 		return pkt_type;
 
+	hdr_lens->inner_l2_len = 0;
 	if (proto == rte_cpu_to_be_16(ETHER_TYPE_TEB)) {
 		eh = rte_pktmbuf_read(m, off, sizeof(*eh), &eh_copy);
 		if (unlikely(eh == NULL))
