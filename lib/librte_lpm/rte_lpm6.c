@@ -521,7 +521,7 @@ rte_lpm6_add_v1705(struct rte_lpm6 *lpm, uint8_t *ip, uint8_t depth,
 		uint32_t next_hop)
 {
 	struct rte_lpm6_tbl_entry *tbl;
-	struct rte_lpm6_tbl_entry *tbl_next;
+	struct rte_lpm6_tbl_entry *tbl_next = NULL;
 	int32_t rule_index;
 	int status;
 	uint8_t masked_ip[RTE_LPM6_IPV6_ADDR_SIZE];
