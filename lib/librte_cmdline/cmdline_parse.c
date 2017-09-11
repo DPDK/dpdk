@@ -163,7 +163,7 @@ static int
 match_inst(cmdline_parse_inst_t *inst, const char *buf,
 	   unsigned int nb_match_token, void *resbuf, unsigned resbuf_size)
 {
-	cmdline_parse_token_hdr_t * token_p;
+	cmdline_parse_token_hdr_t *token_p = NULL;
 	unsigned int i=0;
 	int n = 0;
 	struct cmdline_token_hdr token_hdr;
