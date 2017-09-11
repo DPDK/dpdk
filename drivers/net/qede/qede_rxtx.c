@@ -780,7 +780,7 @@ int qede_start_queues(struct rte_eth_dev *eth_dev)
 {
 	struct qede_dev *qdev = QEDE_INIT_QDEV(eth_dev);
 	uint8_t id;
-	int rc;
+	int rc = -1;
 
 	for_each_rss(id) {
 		rc = qede_rx_queue_start(eth_dev, id);
