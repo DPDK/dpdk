@@ -68,6 +68,11 @@ subdir('drivers')
 subdir('usertools')
 subdir('app')
 
+# build any examples explicitly requested - useful for developers
+if get_option('examples') != ''
+	subdir('examples')
+endif
+
 # write the build config
 build_cfg = 'rte_build_config.h'
 configure_file(output: build_cfg,
