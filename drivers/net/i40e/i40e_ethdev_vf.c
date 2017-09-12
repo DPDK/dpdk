@@ -1144,29 +1144,29 @@ i40evf_init_vf(struct rte_eth_dev *dev)
 	/* VF reset, shutdown admin queue and initialize again */
 	if (i40e_shutdown_adminq(hw) != I40E_SUCCESS) {
 		PMD_INIT_LOG(ERR, "i40e_shutdown_adminq failed");
-		return -1;
+		goto err;
 	}
 
 	i40e_init_adminq_parameter(hw);
 	if (i40e_init_adminq(hw) != I40E_SUCCESS) {
 		PMD_INIT_LOG(ERR, "init_adminq failed");
-		return -1;
+		goto err;
 	}
 	vf->aq_resp = rte_zmalloc("vf_aq_resp", I40E_AQ_BUF_SZ, 0);
 	if (!vf->aq_resp) {
 		PMD_INIT_LOG(ERR, "unable to allocate vf_aq_resp memory");
-			goto err_aq;
+		goto err_aq;
 	}
 	if (i40evf_check_api_version(dev) != 0) {
 		PMD_INIT_LOG(ERR, "check_api version failed");
-		goto err_aq;
+		goto err_api;
 	}
 	bufsz = sizeof(struct virtchnl_vf_resource) +
 		(I40E_MAX_VF_VSI * sizeof(struct virtchnl_vsi_resource));
 	vf->vf_res = rte_zmalloc("vf_res", bufsz, 0);
 	if (!vf->vf_res) {
 		PMD_INIT_LOG(ERR, "unable to allocate vf_res memory");
-			goto err_aq;
+		goto err_api;
 	}
 
 	if (i40evf_get_vf_resource(dev) != 0) {
@@ -1209,6 +1209,9 @@ i40evf_init_vf(struct rte_eth_dev *dev)
 
 err_alloc:
 	rte_free(vf->vf_res);
+	vf->vsi_res = NULL;
+err_api:
+	rte_free(vf->aq_resp);
 err_aq:
 	i40e_shutdown_adminq(hw); /* ignore error */
 err:
