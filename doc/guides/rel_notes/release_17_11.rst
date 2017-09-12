@@ -87,6 +87,7 @@ New Features
 
   * Removed atomics from the internal queue pair structure.
   * Coalesce writes to HEAD CSR on response processing.
+  * Coalesce writes to TAIL CSR on request processing.
 
 * **Added IOMMU support to libvhost-user**
 

@@ -921,6 +921,14 @@ qat_bpicipher_postprocess(struct qat_session *ctx,
 	return sym_op->cipher.data.length - last_block_len;
 }
 
+static inline void
+txq_write_tail(struct qat_qp *qp, struct qat_queue *q) {
+	WRITE_CSR_RING_TAIL(qp->mmap_bar_addr, q->hw_bundle_number,
+			q->hw_queue_number, q->tail);
+	q->nb_pending_requests = 0;
+	q->csr_tail = q->tail;
+}
+
 uint16_t
 qat_pmd_enqueue_op_burst(void *qp, struct rte_crypto_op **ops,
 		uint16_t nb_ops)
@@ -973,10 +981,13 @@ qat_pmd_enqueue_op_burst(void *qp, struct rte_crypto_op **ops,
 		cur_op++;
 	}
 kick_tail:
-	WRITE_CSR_RING_TAIL(tmp_qp->mmap_bar_addr, queue->hw_bundle_number,
-			queue->hw_queue_number, tail);
 	queue->tail = tail;
 	tmp_qp->stats.enqueued_count += nb_ops_sent;
+	queue->nb_pending_requests += nb_ops_sent;
+	if (tmp_qp->inflights16 < QAT_CSR_TAIL_FORCE_WRITE_THRESH ||
+			queue->nb_pending_requests > QAT_CSR_TAIL_WRITE_THRESH) {
+		txq_write_tail(tmp_qp, queue);
+	}
 	return nb_ops_sent;
 }
 
@@ -1011,17 +1022,18 @@ uint16_t
 qat_pmd_dequeue_op_burst(void *qp, struct rte_crypto_op **ops,
 		uint16_t nb_ops)
 {
-	struct qat_queue *queue;
+	struct qat_queue *rx_queue, *tx_queue;
 	struct qat_qp *tmp_qp = (struct qat_qp *)qp;
 	uint32_t msg_counter = 0;
 	struct rte_crypto_op *rx_op;
 	struct icp_qat_fw_comn_resp *resp_msg;
 	uint32_t head;
 
-	queue = &(tmp_qp->rx_q);
-	head = queue->head;
+	rx_queue = &(tmp_qp->rx_q);
+	tx_queue = &(tmp_qp->tx_q);
+	head = rx_queue->head;
 	resp_msg = (struct icp_qat_fw_comn_resp *)
-			((uint8_t *)queue->base_addr + head);
+			((uint8_t *)rx_queue->base_addr + head);
 
 	while (*(uint32_t *)resp_msg != ADF_RING_EMPTY_SIG &&
 			msg_counter != nb_ops) {
@@ -1048,21 +1060,26 @@ qat_pmd_dequeue_op_burst(void *qp, struct rte_crypto_op **ops,
 			rx_op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
 		}
 
-		head = adf_modulo(head + queue->msg_size, queue->modulo);
+		head = adf_modulo(head + rx_queue->msg_size, rx_queue->modulo);
 		resp_msg = (struct icp_qat_fw_comn_resp *)
-				((uint8_t *)queue->base_addr + head);
+				((uint8_t *)rx_queue->base_addr + head);
 		*ops = rx_op;
 		ops++;
 		msg_counter++;
 	}
 	if (msg_counter > 0) {
-		queue->head = head;
+		rx_queue->head = head;
 		tmp_qp->stats.dequeued_count += msg_counter;
-		queue->nb_processed_responses += msg_counter;
+		rx_queue->nb_processed_responses += msg_counter;
 		tmp_qp->inflights16 -= msg_counter;
 
-		if (queue->nb_processed_responses > QAT_CSR_HEAD_WRITE_THRESH)
-			rxq_free_desc(tmp_qp, queue);
+		if (rx_queue->nb_processed_responses > QAT_CSR_HEAD_WRITE_THRESH)
+			rxq_free_desc(tmp_qp, rx_queue);
+	}
+	/* also check if tail needs to be advanced */
+	if (tmp_qp->inflights16 <= QAT_CSR_TAIL_FORCE_WRITE_THRESH &&
+			tx_queue->tail != tx_queue->csr_tail) {
+		txq_write_tail(tmp_qp, tx_queue);
 	}
 	return msg_counter;
 }
