@@ -42,6 +42,7 @@ SRCS-y += cperf_options_parsing.c
 SRCS-y += cperf_test_vectors.c
 SRCS-y += cperf_test_throughput.c
 SRCS-y += cperf_test_latency.c
+SRCS-y += cperf_test_pmd_cyclecount.c
 SRCS-y += cperf_test_verify.c
 SRCS-y += cperf_test_vector_parsing.c
 

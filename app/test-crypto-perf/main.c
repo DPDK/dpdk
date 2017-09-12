@@ -42,6 +42,7 @@
 #include "cperf_test_throughput.h"
 #include "cperf_test_latency.h"
 #include "cperf_test_verify.h"
+#include "cperf_test_pmd_cyclecount.h"
 
 #define NUM_SESSIONS 2048
 #define SESS_MEMPOOL_CACHE_SIZE 64
@@ -49,7 +50,8 @@
 const char *cperf_test_type_strs[] = {
 	[CPERF_TEST_TYPE_THROUGHPUT] = "throughput",
 	[CPERF_TEST_TYPE_LATENCY] = "latency",
-	[CPERF_TEST_TYPE_VERIFY] = "verify"
+	[CPERF_TEST_TYPE_VERIFY] = "verify",
+	[CPERF_TEST_TYPE_PMDCC] = "pmd-cyclecount"
 };
 
 const char *cperf_op_type_strs[] = {
@@ -75,6 +77,11 @@ const struct cperf_test cperf_testmap[] = {
 				cperf_verify_test_constructor,
 				cperf_verify_test_runner,
 				cperf_verify_test_destructor
+		},
+		[CPERF_TEST_TYPE_PMDCC] = {
+				cperf_pmd_cyclecount_test_constructor,
+				cperf_pmd_cyclecount_test_runner,
+				cperf_pmd_cyclecount_test_destructor
 		}
 };
 

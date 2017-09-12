@@ -76,6 +76,10 @@ parse_cperf_test_type(struct cperf_options *opts, const char *arg)
 		{
 			cperf_test_type_strs[CPERF_TEST_TYPE_LATENCY],
 			CPERF_TEST_TYPE_LATENCY
+		},
+		{
+			cperf_test_type_strs[CPERF_TEST_TYPE_PMDCC],
+			CPERF_TEST_TYPE_PMDCC
 		}
 	};
 
@@ -643,6 +647,20 @@ parse_csv_friendly(struct cperf_options *opts, const char *arg __rte_unused)
 	return 0;
 }
 
+static int
+parse_pmd_cyclecount_delay_ms(struct cperf_options *opts,
+			const char *arg)
+{
+	int ret = parse_uint32_t(&opts->pmdcc_delay, arg);
+
+	if (ret) {
+		RTE_LOG(ERR, USER1, "failed to parse pmd-cyclecount delay\n");
+		return -1;
+	}
+
+	return 0;
+}
+
 typedef int (*option_parser_t)(struct cperf_options *opts,
 		const char *arg);
 
@@ -694,6 +712,8 @@ static struct option lgopts[] = {
 	{ CPERF_DIGEST_SZ, required_argument, 0, 0 },
 
 	{ CPERF_CSV, no_argument, 0, 0},
+
+	{ CPERF_PMDCC_DELAY_MS, required_argument, 0, 0 },
 
 	{ NULL, 0, 0, 0 }
 };
@@ -749,6 +769,8 @@ cperf_options_default(struct cperf_options *opts)
 	opts->aead_aad_sz = 0;
 
 	opts->digest_sz = 12;
+
+	opts->pmdcc_delay = 0;
 }
 
 static int
@@ -784,6 +806,7 @@ cperf_opts_parse_long(int opt_idx, struct cperf_options *opts)
 		{ CPERF_AEAD_AAD_SZ,	parse_aead_aad_sz },
 		{ CPERF_DIGEST_SZ,	parse_digest_sz },
 		{ CPERF_CSV,		parse_csv_friendly},
+		{ CPERF_PMDCC_DELAY_MS,	parse_pmd_cyclecount_delay_ms},
 	};
 	unsigned int i;
 
@@ -927,6 +950,14 @@ cperf_options_check(struct cperf_options *options)
 		return -EINVAL;
 	}
 
+	if (options->test == CPERF_TEST_TYPE_PMDCC &&
+			options->pool_sz < options->nb_descriptors) {
+		RTE_LOG(ERR, USER1, "For pmd cyclecount benchmarks, pool size "
+				"must be equal or greater than the number of "
+				"cryptodev descriptors.\n");
+		return -EINVAL;
+	}
+
 	if (options->op_type == CPERF_CIPHER_THEN_AUTH) {
 		if (options->cipher_op != RTE_CRYPTO_CIPHER_OP_ENCRYPT &&
 				options->auth_op !=
@@ -995,6 +1026,8 @@ cperf_options_dump(struct cperf_options *opts)
 	printf("# crypto operation: %s\n", cperf_op_type_strs[opts->op_type]);
 	printf("# sessionless: %s\n", opts->sessionless ? "yes" : "no");
 	printf("# out of place: %s\n", opts->out_of_place ? "yes" : "no");
+	if (opts->test == CPERF_TEST_TYPE_PMDCC)
+		printf("# inter-burst delay: %u ms\n", opts->pmdcc_delay);
 
 	printf("#\n");
 

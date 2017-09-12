@@ -50,7 +50,8 @@ offload are still consumed by the test tool and included in the cycle-count.
 These cycles are consumed by retries and inefficient API calls enqueuing and
 dequeuing smaller bursts than specified by the cmdline parameter. This results
 in a larger cycle-count measurement and should not be interpreted as an offload
-cost measurement.
+cost measurement. Using "pmd-cyclecount" mode will give a better idea of
+actual costs of hardware acceleration.
 
 On hardware devices the throughput measurement is not necessarily the maximum
 possible for the device, e.g. it may be necessary to use multiple cores to keep
@@ -134,6 +135,7 @@ The following are the appication command-line options:
            throughput
            latency
            verify
+           pmd-cyclecount
 
 * ``--silent``
 
@@ -328,6 +330,12 @@ The following are the appication command-line options:
 * ``--desc-nb <n>``
 
         Set number of descriptors for each crypto device.
+
+* ``--pmd-cyclecount-delay-ms <n>``
+
+        Add a delay (in milliseconds) between enqueue and dequeue in
+        pmd-cyclecount benchmarking mode (useful when benchmarking
+        hardware acceleration).
 
 * ``--csv-friendly``
 

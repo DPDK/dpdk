@@ -89,6 +89,12 @@ New Features
   * Coalesce writes to HEAD CSR on response processing.
   * Coalesce writes to TAIL CSR on request processing.
 
+* **Add new benchmarking mode to dpdk-test-crypto-perf application.**
+
+  Added new "PMD cyclecount" benchmark mode to dpdk-test-crypto-perf application
+  that displays more detailed breakdown of CPU cycles used by hardware
+  acceleration.
+
 * **Added IOMMU support to libvhost-user**
 
   Implemented device IOTLB in Vhost-user backend, and enabled Virtio's IOMMU

@@ -41,12 +41,16 @@
 
 #define CPERF_CSV		("csv-friendly")
 
+/* benchmark-specific options */
+#define CPERF_PMDCC_DELAY_MS	("pmd-cyclecount-delay-ms")
+
 #define MAX_LIST 32
 
 enum cperf_perf_test_type {
 	CPERF_TEST_TYPE_THROUGHPUT,
 	CPERF_TEST_TYPE_LATENCY,
-	CPERF_TEST_TYPE_VERIFY
+	CPERF_TEST_TYPE_VERIFY,
+	CPERF_TEST_TYPE_PMDCC
 };
 
 
@@ -115,6 +119,8 @@ struct cperf_options {
 	uint32_t min_burst_size;
 	uint32_t inc_burst_size;
 
+	/* pmd-cyclecount specific options */
+	uint32_t pmdcc_delay;
 };
 
 void
