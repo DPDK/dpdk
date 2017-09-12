@@ -325,6 +325,10 @@ The following are the appication command-line options:
 
         Set the size of digest.
 
+* ``--desc-nb <n>``
+
+        Set number of descriptors for each crypto device.
+
 * ``--csv-friendly``
 
         Enable test result output CSV friendly rather than human friendly.

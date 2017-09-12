@@ -342,6 +342,24 @@ parse_segments_nb(struct cperf_options *opts, const char *arg)
 }
 
 static int
+parse_desc_nb(struct cperf_options *opts, const char *arg)
+{
+	int ret = parse_uint32_t(&opts->nb_descriptors, arg);
+
+	if (ret) {
+		RTE_LOG(ERR, USER1, "failed to parse descriptors number\n");
+		return -1;
+	}
+
+	if (opts->nb_descriptors == 0) {
+		RTE_LOG(ERR, USER1, "invalid descriptors number specified\n");
+		return -1;
+	}
+
+	return 0;
+}
+
+static int
 parse_device_type(struct cperf_options *opts, const char *arg)
 {
 	if (strlen(arg) > (sizeof(opts->device_type) - 1))
@@ -643,6 +661,7 @@ static struct option lgopts[] = {
 	{ CPERF_BURST_SIZE, required_argument, 0, 0 },
 	{ CPERF_BUFFER_SIZE, required_argument, 0, 0 },
 	{ CPERF_SEGMENTS_NB, required_argument, 0, 0 },
+	{ CPERF_DESC_NB, required_argument, 0, 0 },
 
 	{ CPERF_DEVTYPE, required_argument, 0, 0 },
 	{ CPERF_OPTYPE, required_argument, 0, 0 },
@@ -686,6 +705,7 @@ cperf_options_default(struct cperf_options *opts)
 
 	opts->pool_sz = 8192;
 	opts->total_ops = 10000000;
+	opts->nb_descriptors = 2048;
 
 	opts->buffer_size_list[0] = 64;
 	opts->buffer_size_count = 1;
@@ -742,6 +762,7 @@ cperf_opts_parse_long(int opt_idx, struct cperf_options *opts)
 		{ CPERF_BURST_SIZE,	parse_burst_sz },
 		{ CPERF_BUFFER_SIZE,	parse_buffer_sz },
 		{ CPERF_SEGMENTS_NB,	parse_segments_nb },
+		{ CPERF_DESC_NB,	parse_desc_nb },
 		{ CPERF_DEVTYPE,	parse_device_type },
 		{ CPERF_OPTYPE,		parse_op_type },
 		{ CPERF_SESSIONLESS,	parse_sessionless },

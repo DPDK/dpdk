@@ -123,7 +123,7 @@ cperf_initialize_cryptodev(struct cperf_options *opts, uint8_t *enabled_cdevs,
 		};
 
 		struct rte_cryptodev_qp_conf qp_conf = {
-				.nb_descriptors = 2048
+			    .nb_descriptors = opts->nb_descriptors
 		};
 
 
