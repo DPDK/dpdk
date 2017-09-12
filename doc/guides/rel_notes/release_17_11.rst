@@ -81,6 +81,12 @@ New Features
    * Support for Flow API
    * Support for Tx and Rx descriptor status functions
 
+* **Updated QAT crypto PMD.**
+
+  Performance enhancements:
+
+  * Removed atomics from the internal queue pair structure.
+
 * **Added IOMMU support to libvhost-user**
 
   Implemented device IOTLB in Vhost-user backend, and enabled Virtio's IOMMU

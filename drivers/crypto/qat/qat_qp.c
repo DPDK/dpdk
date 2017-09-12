@@ -181,7 +181,7 @@ int qat_crypto_sym_qp_setup(struct rte_cryptodev *dev, uint16_t queue_pair_id,
 			RTE_CACHE_LINE_SIZE);
 
 	qp->mmap_bar_addr = pci_dev->mem_resource[0].addr;
-	rte_atomic16_init(&qp->inflights16);
+	qp->inflights16 = 0;
 
 	if (qat_tx_queue_create(dev, &(qp->tx_q),
 		queue_pair_id, qp_conf->nb_descriptors, socket_id) != 0) {
@@ -264,7 +264,7 @@ int qat_crypto_sym_qp_release(struct rte_cryptodev *dev, uint16_t queue_pair_id)
 	}
 
 	/* Don't free memory if there are still responses to be processed */
-	if (rte_atomic16_read(&(qp->inflights16)) == 0) {
+	if (qp->inflights16 == 0) {
 		qat_queue_delete(&(qp->tx_q));
 		qat_queue_delete(&(qp->rx_q));
 	} else {

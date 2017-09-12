@@ -77,7 +77,7 @@ struct qat_queue {
 
 struct qat_qp {
 	void			*mmap_bar_addr;
-	rte_atomic16_t		inflights16;
+	uint16_t		inflights16;
 	struct	qat_queue	tx_q;
 	struct	qat_queue	rx_q;
 	struct	rte_cryptodev_stats stats;

@@ -51,7 +51,6 @@
 #include <rte_eal.h>
 #include <rte_per_lcore.h>
 #include <rte_lcore.h>
-#include <rte_atomic.h>
 #include <rte_branch_prediction.h>
 #include <rte_mempool.h>
 #include <rte_mbuf.h>
@@ -945,10 +944,10 @@ qat_pmd_enqueue_op_burst(void *qp, struct rte_crypto_op **ops,
 	tail = queue->tail;
 
 	/* Find how many can actually fit on the ring */
-	overflow = rte_atomic16_add_return(&tmp_qp->inflights16, nb_ops)
-				- queue->max_inflights;
+	tmp_qp->inflights16 += nb_ops;
+	overflow = tmp_qp->inflights16 - queue->max_inflights;
 	if (overflow > 0) {
-		rte_atomic16_sub(&tmp_qp->inflights16, overflow);
+		tmp_qp->inflights16 -= overflow;
 		nb_ops_possible = nb_ops - overflow;
 		if (nb_ops_possible == 0)
 			return 0;
@@ -963,8 +962,7 @@ qat_pmd_enqueue_op_burst(void *qp, struct rte_crypto_op **ops,
 			 * This message cannot be enqueued,
 			 * decrease number of ops that wasn't sent
 			 */
-			rte_atomic16_sub(&tmp_qp->inflights16,
-					nb_ops_possible - nb_ops_sent);
+			tmp_qp->inflights16 -= nb_ops_possible - nb_ops_sent;
 			if (nb_ops_sent == 0)
 				return 0;
 			goto kick_tail;
@@ -1036,7 +1034,7 @@ qat_pmd_dequeue_op_burst(void *qp, struct rte_crypto_op **ops,
 		WRITE_CSR_RING_HEAD(tmp_qp->mmap_bar_addr,
 					queue->hw_bundle_number,
 					queue->hw_queue_number, queue->head);
-		rte_atomic16_sub(&tmp_qp->inflights16, msg_counter);
+		tmp_qp->inflights16 -= msg_counter;
 		tmp_qp->stats.dequeued_count += msg_counter;
 	}
 	return msg_counter;
