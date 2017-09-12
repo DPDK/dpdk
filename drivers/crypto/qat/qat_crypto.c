@@ -980,6 +980,33 @@ kick_tail:
 	return nb_ops_sent;
 }
 
+static inline
+void rxq_free_desc(struct qat_qp *qp, struct qat_queue *q)
+{
+	uint32_t old_head, new_head;
+	uint32_t max_head;
+
+	old_head = q->csr_head;
+	new_head = q->head;
+	max_head = qp->nb_descriptors * q->msg_size;
+
+	/* write out free descriptors */
+	void *cur_desc = (uint8_t *)q->base_addr + old_head;
+
+	if (new_head < old_head) {
+		memset(cur_desc, ADF_RING_EMPTY_SIG, max_head - old_head);
+		memset(q->base_addr, ADF_RING_EMPTY_SIG, new_head);
+	} else {
+		memset(cur_desc, ADF_RING_EMPTY_SIG, new_head - old_head);
+	}
+	q->nb_processed_responses = 0;
+	q->csr_head = new_head;
+
+	/* write current head to CSR */
+	WRITE_CSR_RING_HEAD(qp->mmap_bar_addr, q->hw_bundle_number,
+			    q->hw_queue_number, new_head);
+}
+
 uint16_t
 qat_pmd_dequeue_op_burst(void *qp, struct rte_crypto_op **ops,
 		uint16_t nb_ops)
@@ -989,10 +1016,12 @@ qat_pmd_dequeue_op_burst(void *qp, struct rte_crypto_op **ops,
 	uint32_t msg_counter = 0;
 	struct rte_crypto_op *rx_op;
 	struct icp_qat_fw_comn_resp *resp_msg;
+	uint32_t head;
 
 	queue = &(tmp_qp->rx_q);
+	head = queue->head;
 	resp_msg = (struct icp_qat_fw_comn_resp *)
-			((uint8_t *)queue->base_addr + queue->head);
+			((uint8_t *)queue->base_addr + head);
 
 	while (*(uint32_t *)resp_msg != ADF_RING_EMPTY_SIG &&
 			msg_counter != nb_ops) {
@@ -1019,23 +1048,21 @@ qat_pmd_dequeue_op_burst(void *qp, struct rte_crypto_op **ops,
 			rx_op->status = RTE_CRYPTO_OP_STATUS_SUCCESS;
 		}
 
-		*(uint32_t *)resp_msg = ADF_RING_EMPTY_SIG;
-		queue->head = adf_modulo(queue->head +
-				queue->msg_size,
-				ADF_RING_SIZE_MODULO(queue->queue_size));
+		head = adf_modulo(head + queue->msg_size, queue->modulo);
 		resp_msg = (struct icp_qat_fw_comn_resp *)
-					((uint8_t *)queue->base_addr +
-							queue->head);
+				((uint8_t *)queue->base_addr + head);
 		*ops = rx_op;
 		ops++;
 		msg_counter++;
 	}
 	if (msg_counter > 0) {
-		WRITE_CSR_RING_HEAD(tmp_qp->mmap_bar_addr,
-					queue->hw_bundle_number,
-					queue->hw_queue_number, queue->head);
-		tmp_qp->inflights16 -= msg_counter;
+		queue->head = head;
 		tmp_qp->stats.dequeued_count += msg_counter;
+		queue->nb_processed_responses += msg_counter;
+		tmp_qp->inflights16 -= msg_counter;
+
+		if (queue->nb_processed_responses > QAT_CSR_HEAD_WRITE_THRESH)
+			rxq_free_desc(tmp_qp, queue);
 	}
 	return msg_counter;
 }

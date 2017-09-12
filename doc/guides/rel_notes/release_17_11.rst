@@ -86,6 +86,7 @@ New Features
   Performance enhancements:
 
   * Removed atomics from the internal queue pair structure.
+  * Coalesce writes to HEAD CSR on response processing.
 
 * **Added IOMMU support to libvhost-user**
 

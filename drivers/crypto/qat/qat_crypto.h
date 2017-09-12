@@ -50,6 +50,9 @@
 	(((num) + (align) - 1) & ~((align) - 1))
 #define QAT_64_BTYE_ALIGN_MASK (~0x3f)
 
+#define QAT_CSR_HEAD_WRITE_THRESH 32U
+/* number of requests to accumulate before writing head CSR */
+
 struct qat_session;
 
 enum qat_device_gen {
@@ -73,6 +76,9 @@ struct qat_queue {
 	uint8_t		hw_bundle_number;
 	uint8_t		hw_queue_number;
 	/* HW queue aka ring offset on bundle */
+	uint32_t	csr_head;		/* last written head value */
+	uint16_t	nb_processed_responses;
+	/* number of responses processed since last CSR head write */
 };
 
 struct qat_qp {
