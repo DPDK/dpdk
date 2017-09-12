@@ -4094,7 +4094,7 @@ eth_igb_get_flex_filter(struct rte_eth_dev *dev,
 	flex_filter.filter_info.priority = filter->priority;
 	memcpy(flex_filter.filter_info.dwords, filter->bytes, filter->len);
 	memcpy(flex_filter.filter_info.mask, filter->mask,
-			RTE_ALIGN(filter->len, sizeof(char)) / sizeof(char));
+			RTE_ALIGN(filter->len, CHAR_BIT) / CHAR_BIT);
 
 	it = eth_igb_flex_filter_lookup(&filter_info->flex_list,
 				&flex_filter.filter_info);
