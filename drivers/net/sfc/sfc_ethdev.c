@@ -145,6 +145,12 @@ sfc_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	if (~sa->dp_tx->features & SFC_DP_TX_FEAT_MULTI_SEG)
 		dev_info->default_txconf.txq_flags |= ETH_TXQ_FLAGS_NOMULTSEGS;
 
+	if (~sa->dp_tx->features & SFC_DP_TX_FEAT_MULTI_POOL)
+		dev_info->default_txconf.txq_flags |= ETH_TXQ_FLAGS_NOMULTMEMP;
+
+	if (~sa->dp_tx->features & SFC_DP_TX_FEAT_REFCNT)
+		dev_info->default_txconf.txq_flags |= ETH_TXQ_FLAGS_NOREFCOUNT;
+
 #if EFSYS_OPT_RX_SCALE
 	if (sa->rss_support != EFX_RX_SCALE_UNAVAILABLE) {
 		dev_info->reta_size = EFX_RSS_TBL_SIZE;

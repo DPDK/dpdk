@@ -91,6 +91,21 @@ sfc_tx_qcheck_conf(struct sfc_adapter *sa, uint16_t nb_tx_desc,
 		rc = EINVAL;
 	}
 
+	if (((flags & ETH_TXQ_FLAGS_NOMULTMEMP) == 0) &&
+	    (~sa->dp_tx->features & SFC_DP_TX_FEAT_MULTI_POOL)) {
+		sfc_err(sa, "multi-mempool is not supported by %s datapath",
+			sa->dp_tx->dp.name);
+		rc = EINVAL;
+	}
+
+	if (((flags & ETH_TXQ_FLAGS_NOREFCOUNT) == 0) &&
+	    (~sa->dp_tx->features & SFC_DP_TX_FEAT_REFCNT)) {
+		sfc_err(sa,
+			"mbuf reference counters are neglected by %s datapath",
+			sa->dp_tx->dp.name);
+		rc = EINVAL;
+	}
+
 	if ((flags & ETH_TXQ_FLAGS_NOVLANOFFL) == 0) {
 		if (!encp->enc_hw_tx_insert_vlan_enabled) {
 			sfc_err(sa, "VLAN offload is not supported");
@@ -1023,6 +1038,8 @@ struct sfc_dp_tx sfc_efx_tx = {
 	},
 	.features		= SFC_DP_TX_FEAT_VLAN_INSERT |
 				  SFC_DP_TX_FEAT_TSO |
+				  SFC_DP_TX_FEAT_MULTI_POOL |
+				  SFC_DP_TX_FEAT_REFCNT |
 				  SFC_DP_TX_FEAT_MULTI_SEG,
 	.qcreate		= sfc_efx_tx_qcreate,
 	.qdestroy		= sfc_efx_tx_qdestroy,

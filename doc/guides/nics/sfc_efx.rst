@@ -245,12 +245,16 @@ boolean parameters value.
   features available and required by the datapath implementation.
   **efx** chooses libefx-based datapath which supports VLAN insertion
   (full-feature firmware variant only), TSO and multi-segment mbufs.
+  Mbuf segments may come from different mempools, and mbuf reference
+  counters are treated responsibly.
   **ef10** chooses EF10 (SFN7xxx, SFN8xxx) native datapath which is
   more efficient than libefx-based but has no VLAN insertion and TSO
   support yet.
+  Mbuf segments may come from different mempools, and mbuf reference
+  counters are treated responsibly.
   **ef10_simple** chooses EF10 (SFN7xxx, SFN8xxx) native datapath which
   is even more faster then **ef10** but does not support multi-segment
-  mbufs.
+  mbufs, disallows multiple mempools and neglects mbuf reference counters.
 
 - ``perf_profile`` [auto|throughput|low-latency] (default **throughput**)
 

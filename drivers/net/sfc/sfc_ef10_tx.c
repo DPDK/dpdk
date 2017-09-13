@@ -401,13 +401,24 @@ sfc_ef10_simple_tx_reap(struct sfc_ef10_txq *txq)
 	pending += sfc_ef10_tx_process_events(txq);
 
 	if (pending != completed) {
+		struct rte_mbuf *bulk[SFC_TX_REAP_BULK_SIZE];
+		unsigned int nb = 0;
+
 		do {
 			struct sfc_ef10_tx_sw_desc *txd;
 
 			txd = &txq->sw_ring[completed & ptr_mask];
 
-			rte_pktmbuf_free_seg(txd->mbuf);
+			if (nb == RTE_DIM(bulk)) {
+				rte_mempool_put_bulk(bulk[0]->pool,
+						     (void *)bulk, nb);
+				nb = 0;
+			}
+
+			bulk[nb++] = txd->mbuf;
 		} while (++completed != pending);
+
+		rte_mempool_put_bulk(bulk[0]->pool, (void *)bulk, nb);
 
 		txq->completed = completed;
 	}
@@ -614,6 +625,8 @@ struct sfc_dp_tx sfc_ef10_tx = {
 		.hw_fw_caps	= SFC_DP_HW_FW_CAP_EF10,
 	},
 	.features		= SFC_DP_TX_FEAT_MULTI_SEG |
+				  SFC_DP_TX_FEAT_MULTI_POOL |
+				  SFC_DP_TX_FEAT_REFCNT |
 				  SFC_DP_TX_FEAT_MULTI_PROCESS,
 	.qcreate		= sfc_ef10_tx_qcreate,
 	.qdestroy		= sfc_ef10_tx_qdestroy,
