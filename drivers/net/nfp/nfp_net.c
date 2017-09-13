@@ -515,6 +515,18 @@ nfp_net_configure(struct rte_eth_dev *dev)
 	if (hw->cap & NFP_NET_CFG_CTRL_L2MC)
 		new_ctrl |= NFP_NET_CFG_CTRL_L2MC;
 
+	/* TX checksum offload */
+	if (hw->cap & NFP_NET_CFG_CTRL_TXCSUM)
+		new_ctrl |= NFP_NET_CFG_CTRL_TXCSUM;
+
+	/* LSO offload */
+	if (hw->cap & NFP_NET_CFG_CTRL_LSO)
+		new_ctrl |= NFP_NET_CFG_CTRL_LSO;
+
+	/* RX gather */
+	if (hw->cap & NFP_NET_CFG_CTRL_GATHER)
+		new_ctrl |= NFP_NET_CFG_CTRL_GATHER;
+
 	if (!new_ctrl)
 		return 0;
 
