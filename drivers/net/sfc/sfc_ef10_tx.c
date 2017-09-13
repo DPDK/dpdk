@@ -158,16 +158,34 @@ sfc_ef10_tx_reap(struct sfc_ef10_txq *txq)
 	pending += sfc_ef10_tx_process_events(txq);
 
 	if (pending != completed) {
+		struct rte_mbuf *bulk[SFC_TX_REAP_BULK_SIZE];
+		unsigned int nb = 0;
+
 		do {
 			struct sfc_ef10_tx_sw_desc *txd;
+			struct rte_mbuf *m;
 
 			txd = &txq->sw_ring[completed & ptr_mask];
+			if (txd->mbuf == NULL)
+				continue;
 
-			if (txd->mbuf != NULL) {
-				rte_pktmbuf_free(txd->mbuf);
-				txd->mbuf = NULL;
+			m = rte_pktmbuf_prefree_seg(txd->mbuf);
+			txd->mbuf = NULL;
+			if (m == NULL)
+				continue;
+
+			if ((nb == RTE_DIM(bulk)) ||
+			    ((nb != 0) && (m->pool != bulk[0]->pool))) {
+				rte_mempool_put_bulk(bulk[0]->pool,
+						     (void *)bulk, nb);
+				nb = 0;
 			}
+
+			bulk[nb++] = m;
 		} while (++completed != pending);
+
+		if (nb != 0)
+			rte_mempool_put_bulk(bulk[0]->pool, (void *)bulk, nb);
 
 		txq->completed = completed;
 	}
@@ -325,6 +343,7 @@ sfc_ef10_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 		do {
 			phys_addr_t seg_addr = rte_mbuf_data_dma_addr(m_seg);
 			unsigned int seg_len = rte_pktmbuf_data_len(m_seg);
+			unsigned int id = added & ptr_mask;
 
 			SFC_ASSERT(seg_len <= SFC_EF10_TX_DMA_DESC_LEN_MAX);
 
@@ -332,15 +351,30 @@ sfc_ef10_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 			sfc_ef10_tx_qdesc_dma_create(seg_addr,
 				seg_len, (pkt_len == 0),
-				&txq->txq_hw_ring[added & ptr_mask]);
+				&txq->txq_hw_ring[id]);
+
+			/*
+			 * rte_pktmbuf_free() is commonly used in DPDK for
+			 * recycling packets - the function checks every
+			 * segment's reference counter and returns the
+			 * buffer to its pool whenever possible;
+			 * nevertheless, freeing mbuf segments one by one
+			 * may entail some performance decline;
+			 * from this point, sfc_efx_tx_reap() does the same job
+			 * on its own and frees buffers in bulks (all mbufs
+			 * within a bulk belong to the same pool);
+			 * from this perspective, individual segment pointers
+			 * must be associated with the corresponding SW
+			 * descriptors independently so that only one loop
+			 * is sufficient on reap to inspect all the buffers
+			 */
+			txq->sw_ring[id].mbuf = m_seg;
+
 			++added;
 
 		} while ((m_seg = m_seg->next) != 0);
 
 		dma_desc_space -= (added - pkt_start);
-
-		/* Assign mbuf to the last used desc */
-		txq->sw_ring[(added - 1) & ptr_mask].mbuf = *pktp;
 	}
 
 	if (likely(added != txq->added)) {

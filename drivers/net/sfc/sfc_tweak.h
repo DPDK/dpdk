@@ -53,4 +53,7 @@
 /** Default free threshold follows recommendations from DPDK documentation */
 #define SFC_TX_DEFAULT_FREE_THRESH	32
 
+/** Number of mbufs to be freed in bulk in a single call */
+#define SFC_TX_REAP_BULK_SIZE		32
+
 #endif /* _SFC_TWEAK_H_ */

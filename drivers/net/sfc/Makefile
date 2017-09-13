@@ -65,6 +65,9 @@ CFLAGS += -Wbad-function-cast
 CFLAGS_BASE_DRIVER += -Wno-empty-body
 else ifeq ($(CONFIG_RTE_TOOLCHAIN_ICC),y)
 CFLAGS_BASE_DRIVER += -Wno-unused-but-set-variable
+# Suppress ICC false positive warning on 'bulk' may be used before its
+# value is set
+CFLAGS_sfc_ef10_tx.o += -wd3656
 endif
 
 #
