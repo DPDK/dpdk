@@ -172,8 +172,41 @@ int rte_power_kvm_vm_freq_max(unsigned lcore_id);
  */
 int rte_power_kvm_vm_freq_min(unsigned lcore_id);
 
+/**
+ * It should be protected outside of this function for threadsafe.
+ *
+ * @param lcore_id
+ *  lcore id.
+ *
+ * @return
+ *  -ENOTSUP
+ */
+int rte_power_kvm_vm_turbo_status(unsigned int lcore_id);
+
+/**
+ * It should be protected outside of this function for threadsafe.
+ *
+ * @param lcore_id
+ *  lcore id.
+ *
+ * @return
+ *  - 1 on success.
+ *  - Negative on error.
+ */
+int rte_power_kvm_vm_enable_turbo(unsigned int lcore_id);
+
+/**
+ * It should be protected outside of this function for threadsafe.
+ *
+ * @param lcore_id
+ *  lcore id.
+ *
+ * @return
+ *  - 1 on success.
+ *  - Negative on error.
+ */
+int rte_power_kvm_vm_disable_turbo(unsigned int lcore_id);
 #ifdef __cplusplus
 }
 #endif
-
 #endif

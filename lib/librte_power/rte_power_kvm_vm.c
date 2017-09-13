@@ -134,3 +134,22 @@ rte_power_kvm_vm_freq_min(unsigned lcore_id)
 {
 	return send_msg(lcore_id, CPU_POWER_SCALE_MIN);
 }
+
+int
+rte_power_kvm_vm_turbo_status(__attribute__((unused)) unsigned int lcore_id)
+{
+	RTE_LOG(ERR, POWER, "rte_power_turbo_status is not implemented for Virtual Machine Power Management\n");
+	return -ENOTSUP;
+}
+
+int
+rte_power_kvm_vm_enable_turbo(unsigned int lcore_id)
+{
+	return send_msg(lcore_id, CPU_POWER_ENABLE_TURBO);
+}
+
+int
+rte_power_kvm_vm_disable_turbo(unsigned int lcore_id)
+{
+	return send_msg(lcore_id, CPU_POWER_DISABLE_TURBO);
+}

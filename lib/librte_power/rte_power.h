@@ -236,6 +236,47 @@ extern rte_power_freq_change_t rte_power_freq_max;
  */
 extern rte_power_freq_change_t rte_power_freq_min;
 
+/**
+ * Query the Turbo Boost status of a specific lcore.
+ * Review each environments specific documentation for usage..
+ *
+ * @param lcore_id
+ *  lcore id.
+ *
+ * @return
+ *  - 1 Turbo Boost is enabled for this lcore.
+ *  - 0 Turbo Boost is disabled for this lcore.
+ *  - Negative on error.
+ */
+extern rte_power_freq_change_t rte_power_turbo_status;
+
+/**
+ * Enable Turbo Boost for this lcore.
+ * Review each environments specific documentation for usage..
+ *
+ * @param lcore_id
+ *  lcore id.
+ *
+ * @return
+ *  - 0 on success.
+ *  - Negative on error.
+ */
+extern rte_power_freq_change_t rte_power_freq_enable_turbo;
+
+/**
+ * Disable Turbo Boost for this lcore.
+ * Review each environments specific documentation for usage..
+ *
+ * @param lcore_id
+ *  lcore id.
+ *
+ * @return
+ *  - 0 on success.
+ *  - Negative on error.
+ */
+extern rte_power_freq_change_t rte_power_freq_disable_turbo;
+
+
 #ifdef __cplusplus
 }
 #endif

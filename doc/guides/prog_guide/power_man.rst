@@ -89,6 +89,14 @@ Core state can be altered by speculative sleeps whenever the specified lcore has
 In the DPDK, if no packet is received after polling,
 speculative sleeps can be triggered according the strategies defined by the user space application.
 
+Per-core Turbo Boost
+--------------------
+
+Individual cores can be allowed to enter a Turbo Boost state on a per-core
+basis. This is achieved by enabling Turbo Boost Technology in the BIOS, then
+looping through the relevant cores and enabling/disabling Turbo Boost on each
+core.
+
 API Overview of the Power Library
 ---------------------------------
 
@@ -107,6 +115,10 @@ The main methods exported by power library are for CPU frequency scaling and inc
 *   **Freq get**: Get the current frequency of the specific lcore.
 
 *   **Freq set**: Prompt the kernel to set the frequency for the specific lcore.
+
+*   **Enable turbo**: Prompt the kernel to enable Turbo Boost for the specific lcore.
+
+*   **Disable turbo**: Prompt the kernel to disable Turbo Boost for the specific lcore.
 
 User Cases
 ----------

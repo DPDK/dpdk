@@ -185,6 +185,46 @@ int rte_power_acpi_cpufreq_freq_max(unsigned lcore_id);
  */
 int rte_power_acpi_cpufreq_freq_min(unsigned lcore_id);
 
+/**
+ * Get the turbo status of a specific lcore.
+ * It should be protected outside of this function for threadsafe.
+ *
+ * @param lcore_id
+ *  lcore id.
+ *
+ * @return
+ *  - 1 Turbo Boost is enabled on this lcore.
+ *  - 0 Turbo Boost is disabled on this lcore.
+ *  - Negative on error.
+ */
+int rte_power_acpi_turbo_status(unsigned int lcore_id);
+
+/**
+ * Enable Turbo Boost on a specific lcore.
+ * It should be protected outside of this function for threadsafe.
+ *
+ * @param lcore_id
+ *  lcore id.
+ *
+ * @return
+ *  - 0 Turbo Boost is enabled successfully on this lcore.
+ *  - Negative on error.
+ */
+int rte_power_acpi_enable_turbo(unsigned int lcore_id);
+
+/**
+ * Disable Turbo Boost on a specific lcore.
+ * It should be protected outside of this function for threadsafe.
+ *
+ * @param lcore_id
+ *  lcore id.
+ *
+ * @return
+ *  - 0 Turbo Boost disabled successfully on this lcore.
+ *  - Negative on error.
+ */
+int rte_power_acpi_disable_turbo(unsigned int lcore_id);
+
 #ifdef __cplusplus
 }
 #endif

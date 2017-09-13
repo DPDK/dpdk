@@ -52,6 +52,8 @@ extern "C" {
 #define CPU_POWER_SCALE_DOWN    2
 #define CPU_POWER_SCALE_MAX     3
 #define CPU_POWER_SCALE_MIN     4
+#define CPU_POWER_ENABLE_TURBO  5
+#define CPU_POWER_DISABLE_TURBO 6
 
 struct channel_packet {
 	uint64_t resource_id; /**< core_num, device */

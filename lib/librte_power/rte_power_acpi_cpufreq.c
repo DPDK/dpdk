@@ -87,6 +87,14 @@
 #define POWER_SYSFILE_SETSPEED   \
 		"/sys/devices/system/cpu/cpu%u/cpufreq/scaling_setspeed"
 
+/*
+ * MSR related
+ */
+#define PLATFORM_INFO     0x0CE
+#define TURBO_RATIO_LIMIT 0x1AD
+#define IA32_PERF_CTL     0x199
+#define CORE_TURBO_DISABLE_BIT ((uint64_t)1<<32)
+
 enum power_state {
 	POWER_IDLE = 0,
 	POWER_ONGOING,
@@ -105,6 +113,8 @@ struct rte_power_info {
 	char governor_ori[32];               /**< Original governor name */
 	uint32_t curr_idx;                   /**< Freq index in freqs array */
 	volatile uint32_t state;             /**< Power in use state */
+	uint16_t turbo_available;            /**< Turbo Boost available */
+	uint16_t turbo_enable;               /**< Turbo Boost enable/disable */
 } __rte_cache_aligned;
 
 static struct rte_power_info lcore_power_info[RTE_MAX_LCORE];
@@ -242,6 +252,18 @@ power_get_available_freqs(struct rte_power_info *pi)
 				i, freqs[i]);
 		pi->freqs[pi->nb_freqs++] = strtoul(freqs[i], &p,
 				POWER_CONVERT_TO_DECIMAL);
+	}
+
+	if ((pi->freqs[0]-1000) == pi->freqs[1]) {
+		pi->turbo_available = 1;
+		pi->turbo_enable = 1;
+		POWER_DEBUG_TRACE("Lcore %u Can do Turbo Boost\n",
+				pi->lcore_id);
+	} else {
+		pi->turbo_available = 0;
+		pi->turbo_enable = 0;
+		POWER_DEBUG_TRACE("Turbo Boost not available on Lcore %u\n",
+				pi->lcore_id);
 	}
 
 	ret = 0;
@@ -525,7 +547,17 @@ rte_power_acpi_cpufreq_freq_max(unsigned lcore_id)
 	}
 
 	/* Frequencies in the array are from high to low. */
-	return set_freq_internal(&lcore_power_info[lcore_id], 0);
+	if (lcore_power_info[lcore_id].turbo_available) {
+		if (lcore_power_info[lcore_id].turbo_enable)
+			/* Set to Turbo */
+			return set_freq_internal(
+					&lcore_power_info[lcore_id], 0);
+		else
+			/* Set to max non-turbo */
+			return set_freq_internal(
+					&lcore_power_info[lcore_id], 1);
+	} else
+		return set_freq_internal(&lcore_power_info[lcore_id], 0);
 }
 
 int
@@ -542,4 +574,81 @@ rte_power_acpi_cpufreq_freq_min(unsigned lcore_id)
 
 	/* Frequencies in the array are from high to low. */
 	return set_freq_internal(pi, pi->nb_freqs - 1);
+}
+
+
+int
+rte_power_acpi_turbo_status(unsigned int lcore_id)
+{
+	struct rte_power_info *pi;
+
+	if (lcore_id >= RTE_MAX_LCORE) {
+		RTE_LOG(ERR, POWER, "Invalid lcore ID\n");
+		return -1;
+	}
+
+	pi = &lcore_power_info[lcore_id];
+
+	return pi->turbo_enable;
+}
+
+
+int
+rte_power_acpi_enable_turbo(unsigned int lcore_id)
+{
+	struct rte_power_info *pi;
+
+	if (lcore_id >= RTE_MAX_LCORE) {
+		RTE_LOG(ERR, POWER, "Invalid lcore ID\n");
+		return -1;
+	}
+
+	pi = &lcore_power_info[lcore_id];
+
+	if (pi->turbo_available)
+		pi->turbo_enable = 1;
+	else {
+		pi->turbo_enable = 0;
+		RTE_LOG(ERR, POWER,
+			"Failed to enable turbo on lcore %u\n",
+			lcore_id);
+			return -1;
+	}
+
+	/* Max may have changed, so call to max function */
+	if (rte_power_acpi_cpufreq_freq_max(lcore_id) < 0) {
+		RTE_LOG(ERR, POWER,
+			"Failed to set frequency of lcore %u to max\n",
+			lcore_id);
+			return -1;
+	}
+
+	return 0;
+}
+
+int
+rte_power_acpi_disable_turbo(unsigned int lcore_id)
+{
+	struct rte_power_info *pi;
+
+	if (lcore_id >= RTE_MAX_LCORE) {
+		RTE_LOG(ERR, POWER, "Invalid lcore ID\n");
+		return -1;
+	}
+
+	pi = &lcore_power_info[lcore_id];
+
+	 pi->turbo_enable = 0;
+
+	if ((pi->turbo_available) && (pi->curr_idx <= 1)) {
+		/* Try to set freq to max by default coming out of turbo */
+		if (rte_power_acpi_cpufreq_freq_max(lcore_id) < 0) {
+			RTE_LOG(ERR, POWER,
+				"Failed to set frequency of lcore %u to max\n",
+				lcore_id);
+			return -1;
+		}
+	}
+
+	return 0;
 }
