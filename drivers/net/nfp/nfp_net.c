@@ -2810,10 +2810,12 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 		return -ENOMEM;
 	}
 
-	if (hw->is_pf)
+	if (hw->is_pf) {
 		nfp_net_pf_read_mac(hwport0, port);
-	else
+		nfp_net_write_mac(hw, (uint8_t *)&hw->mac_addr);
+	} else {
 		nfp_net_vf_read_mac(hw);
+	}
 
 	if (!is_valid_assigned_ether_addr((struct ether_addr *)&hw->mac_addr)) {
 		/* Using random mac addresses for VFs */
