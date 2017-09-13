@@ -29,11 +29,11 @@
 #   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-drivers = ['af_packet', 'bonding',
-	'e1000', 'fm10k', 'i40e', 'ixgbe',
-	'null', 'pcap', 'ring']
-std_deps = ['ethdev', 'kvargs'] # 'ethdev' also pulls in mbuf, net, eal etc
-std_deps += ['bus_pci']         # very many PMDs depend on PCI, so make std
-std_deps += ['bus_vdev']        # same with vdev bus
-config_flag_fmt = 'RTE_LIBRTE_@0@_PMD'
-driver_name_fmt = 'rte_pmd_@0@'
+name = 'bond' #, james bond :-)
+sources = files('rte_eth_bond_api.c', 'rte_eth_bond_pmd.c',
+	'rte_eth_bond_args.c', 'rte_eth_bond_8023ad.c', 'rte_eth_bond_alb.c')
+
+deps += 'sched' # needed for rte_bitmap.h
+deps += ['compat', 'ip_frag', 'cmdline']
+
+install_headers('rte_eth_bond.h', 'rte_eth_bond_8023ad.h')
