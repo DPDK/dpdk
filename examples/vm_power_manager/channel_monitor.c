@@ -105,6 +105,12 @@ process_request(struct channel_packet *pkt, struct channel_info *chan_info)
 			case(CPU_POWER_SCALE_UP):
 					power_manager_scale_core_up(core_num);
 			break;
+			case(CPU_POWER_ENABLE_TURBO):
+				power_manager_enable_turbo_core(core_num);
+			break;
+			case(CPU_POWER_DISABLE_TURBO):
+				power_manager_disable_turbo_core(core_num);
+			break;
 			default:
 				break;
 			}
@@ -121,6 +127,12 @@ process_request(struct channel_packet *pkt, struct channel_info *chan_info)
 			break;
 			case(CPU_POWER_SCALE_UP):
 					power_manager_scale_mask_up(core_mask);
+			break;
+			case(CPU_POWER_ENABLE_TURBO):
+				power_manager_enable_turbo_mask(core_mask);
+			break;
+			case(CPU_POWER_DISABLE_TURBO):
+				power_manager_disable_turbo_mask(core_mask);
 			break;
 			default:
 				break;

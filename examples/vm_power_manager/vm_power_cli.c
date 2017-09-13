@@ -520,6 +520,10 @@ cmd_set_cpu_freq_mask_parsed(void *parsed_result, struct cmdline *cl,
 		ret = power_manager_scale_mask_min(res->core_mask);
 	else if (!strcmp(res->cmd , "max"))
 		ret = power_manager_scale_mask_max(res->core_mask);
+	else if (!strcmp(res->cmd, "enable_turbo"))
+		ret = power_manager_enable_turbo_mask(res->core_mask);
+	else if (!strcmp(res->cmd, "disable_turbo"))
+		ret = power_manager_disable_turbo_mask(res->core_mask);
 	if (ret < 0) {
 		cmdline_printf(cl, "Error scaling core_mask(0x%"PRIx64") '%s' , not "
 				"all cores specified have been scaled\n",
@@ -535,14 +539,13 @@ cmdline_parse_token_num_t cmd_set_cpu_freq_mask_core_mask =
 			core_mask, UINT64);
 cmdline_parse_token_string_t cmd_set_cpu_freq_mask_result =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_cpu_freq_mask_result,
-			cmd, "up#down#min#max");
+			cmd, "up#down#min#max#enable_turbo#disable_turbo");
 
 cmdline_parse_inst_t cmd_set_cpu_freq_mask_set = {
 	.f = cmd_set_cpu_freq_mask_parsed,
 	.data = NULL,
-	.help_str = "set_cpu_freq <core_mask> <up|down|min|max>, Set the current "
-			"frequency for the cores specified in <core_mask> by scaling "
-			"each up/down/min/max.",
+	.help_str = "set_cpu_freq <core_mask> <up|down|min|max|enable_turbo|disable_turbo>, adjust the current "
+			"frequency for the cores specified in <core_mask>",
 	.tokens = {
 		(void *)&cmd_set_cpu_freq_mask,
 		(void *)&cmd_set_cpu_freq_mask_core_mask,
@@ -614,6 +617,10 @@ cmd_set_cpu_freq_parsed(void *parsed_result, struct cmdline *cl,
 		ret = power_manager_scale_core_min(res->core_num);
 	else if (!strcmp(res->cmd , "max"))
 		ret = power_manager_scale_core_max(res->core_num);
+	else if (!strcmp(res->cmd, "enable_turbo"))
+		ret = power_manager_enable_turbo_core(res->core_num);
+	else if (!strcmp(res->cmd, "disable_turbo"))
+		ret = power_manager_disable_turbo_core(res->core_num);
 	if (ret < 0) {
 		cmdline_printf(cl, "Error scaling core(%u) '%s'\n", res->core_num,
 				res->cmd);
@@ -628,13 +635,13 @@ cmdline_parse_token_num_t cmd_set_cpu_freq_core_num =
 			core_num, UINT8);
 cmdline_parse_token_string_t cmd_set_cpu_freq_cmd_cmd =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_cpu_freq_result,
-			cmd, "up#down#min#max");
+			cmd, "up#down#min#max#enable_turbo#disable_turbo");
 
 cmdline_parse_inst_t cmd_set_cpu_freq_set = {
 	.f = cmd_set_cpu_freq_parsed,
 	.data = NULL,
-	.help_str = "set_cpu_freq <core_num> <up|down|min|max>, Set the current "
-			"frequency for the specified core by scaling up/down/min/max",
+	.help_str = "set_cpu_freq <core_num> <up|down|min|max|enable_turbo|disable_turbo>, adjust the current "
+			"frequency for the specified core",
 	.tokens = {
 		(void *)&cmd_set_cpu_freq,
 		(void *)&cmd_set_cpu_freq_core_num,

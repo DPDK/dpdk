@@ -216,6 +216,24 @@ power_manager_scale_mask_max(uint64_t core_mask)
 }
 
 int
+power_manager_enable_turbo_mask(uint64_t core_mask)
+{
+	int ret = 0;
+
+	POWER_SCALE_MASK(enable_turbo, core_mask, ret);
+	return ret;
+}
+
+int
+power_manager_disable_turbo_mask(uint64_t core_mask)
+{
+	int ret = 0;
+
+	POWER_SCALE_MASK(disable_turbo, core_mask, ret);
+	return ret;
+}
+
+int
 power_manager_scale_core_up(unsigned core_num)
 {
 	int ret = 0;
@@ -248,5 +266,23 @@ power_manager_scale_core_max(unsigned core_num)
 	int ret = 0;
 
 	POWER_SCALE_CORE(max, core_num, ret);
+	return ret;
+}
+
+int
+power_manager_enable_turbo_core(unsigned int core_num)
+{
+	int ret = 0;
+
+	POWER_SCALE_CORE(enable_turbo, core_num, ret);
+	return ret;
+}
+
+int
+power_manager_disable_turbo_core(unsigned int core_num)
+{
+	int ret = 0;
+
+	POWER_SCALE_CORE(disable_turbo, core_num, ret);
 	return ret;
 }
