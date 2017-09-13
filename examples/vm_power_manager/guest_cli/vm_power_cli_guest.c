@@ -108,6 +108,10 @@ cmd_set_cpu_freq_parsed(void *parsed_result, struct cmdline *cl,
 		ret = rte_power_freq_min(res->lcore_id);
 	else if (!strcmp(res->cmd , "max"))
 		ret = rte_power_freq_max(res->lcore_id);
+	else if (!strcmp(res->cmd, "enable_turbo"))
+		ret = rte_power_freq_enable_turbo(res->lcore_id);
+	else if (!strcmp(res->cmd, "disable_turbo"))
+		ret = rte_power_freq_disable_turbo(res->lcore_id);
 	if (ret != 1)
 		cmdline_printf(cl, "Error sending message: %s\n", strerror(ret));
 }
@@ -120,7 +124,7 @@ cmdline_parse_token_string_t cmd_set_cpu_freq_core_num =
 			lcore_id, UINT8);
 cmdline_parse_token_string_t cmd_set_cpu_freq_cmd_cmd =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_cpu_freq_result,
-			cmd, "up#down#min#max");
+			cmd, "up#down#min#max#enable_turbo#disable_turbo");
 
 cmdline_parse_inst_t cmd_set_cpu_freq_set = {
 	.f = cmd_set_cpu_freq_parsed,
