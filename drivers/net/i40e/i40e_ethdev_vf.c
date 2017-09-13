@@ -783,7 +783,7 @@ i40evf_add_mac_addr(struct rte_eth_dev *dev,
 	int err;
 	struct vf_cmd_info args;
 
-	if (i40e_validate_mac_addr(addr->addr_bytes) != I40E_SUCCESS) {
+	if (is_zero_ether_addr(addr)) {
 		PMD_DRV_LOG(ERR, "Invalid mac:%x:%x:%x:%x:%x:%x",
 			    addr->addr_bytes[0], addr->addr_bytes[1],
 			    addr->addr_bytes[2], addr->addr_bytes[3],
