@@ -488,10 +488,6 @@ nfp_net_configure(struct rte_eth_dev *dev)
 		return -EINVAL;
 	}
 
-	/* Supporting VLAN insertion by default */
-	if (hw->cap & NFP_NET_CFG_CTRL_TXVLAN)
-		new_ctrl |= NFP_NET_CFG_CTRL_TXVLAN;
-
 	if (rxmode->jumbo_frame)
 		/* this is handled in rte_eth_dev_configure */
 
@@ -504,6 +500,20 @@ nfp_net_configure(struct rte_eth_dev *dev)
 		PMD_INIT_LOG(INFO, "Scatter not supported");
 		return -EINVAL;
 	}
+
+	/* If next capabilities are supported, configure them by default */
+
+	/* VLAN insertion */
+	if (hw->cap & NFP_NET_CFG_CTRL_TXVLAN)
+		new_ctrl |= NFP_NET_CFG_CTRL_TXVLAN;
+
+	/* L2 broadcast */
+	if (hw->cap & NFP_NET_CFG_CTRL_L2BC)
+		new_ctrl |= NFP_NET_CFG_CTRL_L2BC;
+
+	/* L2 multicast */
+	if (hw->cap & NFP_NET_CFG_CTRL_L2MC)
+		new_ctrl |= NFP_NET_CFG_CTRL_L2MC;
 
 	if (!new_ctrl)
 		return 0;
@@ -2757,8 +2767,10 @@ nfp_net_init(struct rte_eth_dev *eth_dev)
 
 	PMD_INIT_LOG(INFO, "VER: %#x, Maximum supported MTU: %d",
 		     hw->ver, hw->max_mtu);
-	PMD_INIT_LOG(INFO, "CAP: %#x, %s%s%s%s%s%s%s%s%s", hw->cap,
+	PMD_INIT_LOG(INFO, "CAP: %#x, %s%s%s%s%s%s%s%s%s%s%s", hw->cap,
 		     hw->cap & NFP_NET_CFG_CTRL_PROMISC ? "PROMISC " : "",
+		     hw->cap & NFP_NET_CFG_CTRL_L2BC    ? "L2BCFILT " : "",
+		     hw->cap & NFP_NET_CFG_CTRL_L2MC    ? "L2MCFILT " : "",
 		     hw->cap & NFP_NET_CFG_CTRL_RXCSUM  ? "RXCSUM "  : "",
 		     hw->cap & NFP_NET_CFG_CTRL_TXCSUM  ? "TXCSUM "  : "",
 		     hw->cap & NFP_NET_CFG_CTRL_RXVLAN  ? "RXVLAN "  : "",
