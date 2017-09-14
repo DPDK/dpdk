@@ -296,11 +296,6 @@ app_init_eal(struct app_params *app)
 		app->eal_argv[n_args++] = strdup(buffer);
 	}
 
-	if ((p->xen_dom0_present) && (p->xen_dom0)) {
-		snprintf(buffer, sizeof(buffer), "--xen-dom0");
-		app->eal_argv[n_args++] = strdup(buffer);
-	}
-
 	snprintf(buffer, sizeof(buffer), "--");
 	app->eal_argv[n_args++] = strdup(buffer);
 

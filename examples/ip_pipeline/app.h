@@ -428,10 +428,6 @@ struct app_eal_params {
 	/* Interrupt mode for VFIO (legacy|msi|msix) */
 	char *vfio_intr;
 
-	/* Support running on Xen dom0 without hugetlbfs */
-	uint32_t xen_dom0_present;
-	int xen_dom0;
-
 	uint32_t parsed;
 };
 

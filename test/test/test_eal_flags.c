@@ -51,11 +51,7 @@
 
 #include "process.h"
 
-#ifdef RTE_LIBRTE_XEN_DOM0
-#define DEFAULT_MEM_SIZE "30"
-#else
 #define DEFAULT_MEM_SIZE "18"
-#endif
 #define mp_flag "--proc-type=secondary"
 #define no_hpet "--no-hpet"
 #define no_huge "--no-huge"
@@ -809,72 +805,6 @@ test_no_huge_flag(void)
 	return 0;
 }
 
-#ifdef RTE_LIBRTE_XEN_DOM0
-static int
-test_dom0_misc_flags(void)
-{
-	char prefix[PATH_MAX], tmp[PATH_MAX];
-
-	if (get_current_prefix(tmp, sizeof(tmp)) == NULL) {
-		printf("Error - unable to get current prefix!\n");
-		return -1;
-	}
-	snprintf(prefix, sizeof(prefix), "--file-prefix=%s", tmp);
-
-	/* check that some general flags don't prevent things from working.
-	 * All cases, apart from the first, app should run.
-	 * No further testing of output done.
-	 */
-	/* sanity check - failure with invalid option */
-	const char *argv0[] = {prgname, prefix, mp_flag, "-c", "1", "--invalid-opt"};
-
-	/* With --no-pci */
-	const char *argv1[] = {prgname, prefix, mp_flag, "-c", "1", "--no-pci"};
-	/* With -v */
-	const char *argv2[] = {prgname, prefix, mp_flag, "-c", "1", "-v"};
-	/* With valid --syslog */
-	const char *argv3[] = {prgname, prefix, mp_flag, "-c", "1",
-			"--syslog", "syslog"};
-	/* With empty --syslog (should fail) */
-	const char *argv4[] = {prgname, prefix, mp_flag, "-c", "1", "--syslog"};
-	/* With invalid --syslog */
-	const char *argv5[] = {prgname, prefix, mp_flag, "-c", "1", "--syslog", "error"};
-	/* With no-sh-conf */
-	const char *argv6[] = {prgname, "-c", "1", "-n", "2", "-m", "20",
-			"--no-shconf", "--file-prefix=noshconf" };
-
-	if (launch_proc(argv0) == 0) {
-		printf("Error - process ran ok with invalid flag\n");
-		return -1;
-	}
-	if (launch_proc(argv1) != 0) {
-		printf("Error - process did not run ok with --no-pci flag\n");
-		return -1;
-	}
-	if (launch_proc(argv2) != 0) {
-		printf("Error - process did not run ok with -v flag\n");
-		return -1;
-	}
-	if (launch_proc(argv3) != 0) {
-		printf("Error - process did not run ok with --syslog flag\n");
-		return -1;
-	}
-	if (launch_proc(argv4) == 0) {
-		printf("Error - process run ok with empty --syslog flag\n");
-		return -1;
-	}
-	if (launch_proc(argv5) == 0) {
-		printf("Error - process run ok with invalid --syslog flag\n");
-		return -1;
-	}
-	if (launch_proc(argv6) != 0) {
-		printf("Error - process did not run ok with --no-shconf flag\n");
-		return -1;
-	}
-
-	return 0;
-}
-#else
 static int
 test_misc_flags(void)
 {
@@ -1061,7 +991,6 @@ test_misc_flags(void)
 	}
 	return 0;
 }
-#endif
 
 static int
 test_file_prefix(void)
@@ -1098,9 +1027,6 @@ test_file_prefix(void)
 		printf("Error - unable to get current prefix!\n");
 		return -1;
 	}
-#ifdef RTE_LIBRTE_XEN_DOM0
-	return 0;
-#endif
 
 	/* check if files for current prefix are present */
 	if (process_hugefiles(prefix, HUGEPAGE_CHECK_EXISTS) != 1) {
@@ -1299,9 +1225,6 @@ test_memory_flags(void)
 		printf("Error - process failed with valid -m flag!\n");
 		return -1;
 	}
-#ifdef RTE_LIBRTE_XEN_DOM0
-	return 0;
-#endif
 	if (launch_proc(argv2) == 0) {
 		printf("Error - process run ok with invalid (zero) --socket-mem!\n");
 		return -1;
@@ -1427,11 +1350,7 @@ test_eal_flags(void)
 		return ret;
 	}
 
-#ifdef RTE_LIBRTE_XEN_DOM0
-	ret = test_dom0_misc_flags();
-#else
 	ret = test_misc_flags();
-#endif
 	if (ret < 0) {
 		printf("Error in test_misc_flags()");
 		return ret;

@@ -809,21 +809,6 @@ parse_eal(struct app_params *app,
 			continue;
 		}
 
-		/* xen_dom0 */
-		if (strcmp(entry->name, "xen_dom0") == 0) {
-			int val;
-
-			PARSE_ERROR_DUPLICATE((p->xen_dom0_present == 0),
-				section_name,
-				entry->name);
-			p->xen_dom0_present = 1;
-
-			val = parser_read_arg_bool(entry->value);
-			PARSE_ERROR((val >= 0), section_name, entry->name);
-			p->xen_dom0 = val;
-			continue;
-		}
-
 		/* unrecognized */
 		PARSE_ERROR_INVALID(0, section_name, entry->name);
 	}
@@ -2642,10 +2627,6 @@ save_eal_params(struct app_params *app, FILE *f)
 
 	if (p->vfio_intr)
 		fprintf(f, "%s = %s\n", "vfio_intr", p->vfio_intr);
-
-	if (p->xen_dom0_present)
-		fprintf(f, "%s = %s\n", "xen_dom0",
-			(p->xen_dom0) ? "yes" : "no");
 
 	fputc('\n', f);
 }

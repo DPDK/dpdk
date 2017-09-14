@@ -52,11 +52,7 @@ static inline int
 process_dup(const char *const argv[], int numargs, const char *env_value)
 {
 	int num;
-#ifdef RTE_LIBRTE_XEN_DOM0
-	char *argv_cpy[numargs + 2];
-#else
 	char *argv_cpy[numargs + 1];
-#endif
 	int i, fd, status;
 	char path[32];
 
@@ -67,14 +63,8 @@ process_dup(const char *const argv[], int numargs, const char *env_value)
 		/* make a copy of the arguments to be passed to exec */
 		for (i = 0; i < numargs; i++)
 			argv_cpy[i] = strdup(argv[i]);
-#ifdef RTE_LIBRTE_XEN_DOM0
-		argv_cpy[i] = strdup("--xen-dom0");
-		argv_cpy[i + 1] = NULL;
-		num = numargs + 1;
-#else
 		argv_cpy[i] = NULL;
 		num = numargs;
-#endif
 
 		/* close all open file descriptors, check /proc/self/fd to only
 		 * call close on open fds. Exclude fds 0, 1 and 2*/
