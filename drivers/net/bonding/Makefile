@@ -39,7 +39,7 @@ LIB = librte_pmd_bond.a
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)
 
-EXPORT_MAP := rte_eth_bond_version.map
+EXPORT_MAP := rte_pmd_bond_version.map
 
 LIBABIVER := 1
 
