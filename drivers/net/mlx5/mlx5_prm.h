@@ -151,6 +151,9 @@
 /* Default mark value used when none is provided. */
 #define MLX5_FLOW_MARK_DEFAULT 0xffffff
 
+/* Maximum number of DS in WQE. */
+#define MLX5_DSEG_MAX 63
+
 /* Subset of struct mlx5_wqe_eth_seg. */
 struct mlx5_wqe_eth_seg_small {
 	uint32_t rsvd0;

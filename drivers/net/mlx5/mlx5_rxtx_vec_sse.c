@@ -248,6 +248,10 @@ txq_scatter_v(struct txq *txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		if (segs_n == 1 ||
 		    max_elts < segs_n || max_wqe < 2)
 			break;
+		if (segs_n > MLX5_MPW_DSEG_MAX) {
+			txq->stats.oerrors++;
+			break;
+		}
 		wqe = &((volatile struct mlx5_wqe64 *)
 			 txq->wqes)[wqe_ci & wq_mask].hdr;
 		if (buf->ol_flags &
@@ -365,6 +369,7 @@ txq_burst_v(struct txq *txq, struct rte_mbuf **pkts, uint16_t pkts_n,
 	max_elts = (elts_n - (elts_head - txq->elts_tail));
 	max_wqe = (1u << txq->wqe_n) - (txq->wqe_ci - txq->wqe_pi);
 	pkts_n = RTE_MIN((unsigned int)RTE_MIN(pkts_n, max_wqe), max_elts);
+	assert(pkts_n <= MLX5_DSEG_MAX - nb_dword_in_hdr);
 	if (unlikely(!pkts_n))
 		return 0;
 	elts = &(*txq->elts)[elts_head & elts_m];

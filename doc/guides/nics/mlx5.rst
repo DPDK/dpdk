@@ -124,6 +124,10 @@ Limitations
 
   Will match any ipv4 packet (VLAN included).
 
+- A multi segment packet must have less than 6 segments in case the Tx burst function
+  is set to multi-packet send or Enhanced multi-packet send. Otherwise it must have
+  less than 50 segments.
+
 Configuration
 -------------
 

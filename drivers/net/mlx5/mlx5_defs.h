@@ -100,7 +100,8 @@
 
 /*
  * Maximum size of burst for vectorized Tx. This is related to the maximum size
- * of Enhaned MPW (eMPW) WQE as vectorized Tx is supported with eMPW.
+ * of Enhanced MPW (eMPW) WQE as vectorized Tx is supported with eMPW.
+ * Careful when changing, large value can cause WQE DS to overlap.
  */
 #define MLX5_VPMD_TX_MAX_BURST        32U
 
