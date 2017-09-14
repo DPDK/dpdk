@@ -1887,7 +1887,7 @@ fm10k_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 		return -ENOMEM;
 	}
 	q->hw_ring = mz->addr;
-	q->hw_ring_phys_addr = rte_mem_phy2mch(mz->memseg_id, mz->phys_addr);
+	q->hw_ring_phys_addr = mz->phys_addr;
 
 	/* Check if number of descs satisfied Vector requirement */
 	if (!rte_is_power_of_2(nb_desc)) {
@@ -2047,7 +2047,7 @@ fm10k_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_id,
 		return -ENOMEM;
 	}
 	q->hw_ring = mz->addr;
-	q->hw_ring_phys_addr = rte_mem_phy2mch(mz->memseg_id, mz->phys_addr);
+	q->hw_ring_phys_addr = mz->phys_addr;
 
 	/*
 	 * allocate memory for the RS bit tracker. Enough slots to hold the

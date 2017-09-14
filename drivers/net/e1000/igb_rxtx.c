@@ -1530,7 +1530,7 @@ eth_igb_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->port_id = dev->data->port_id;
 
 	txq->tdt_reg_addr = E1000_PCI_REG_ADDR(hw, E1000_TDT(txq->reg_idx));
-	txq->tx_ring_phys_addr = rte_mem_phy2mch(tz->memseg_id, tz->phys_addr);
+	txq->tx_ring_phys_addr = tz->phys_addr;
 
 	txq->tx_ring = (union e1000_adv_tx_desc *) tz->addr;
 	/* Allocate software ring */
@@ -1667,7 +1667,7 @@ eth_igb_rx_queue_setup(struct rte_eth_dev *dev,
 	}
 	rxq->rdt_reg_addr = E1000_PCI_REG_ADDR(hw, E1000_RDT(rxq->reg_idx));
 	rxq->rdh_reg_addr = E1000_PCI_REG_ADDR(hw, E1000_RDH(rxq->reg_idx));
-	rxq->rx_ring_phys_addr = rte_mem_phy2mch(rz->memseg_id, rz->phys_addr);
+	rxq->rx_ring_phys_addr = rz->phys_addr;
 	rxq->rx_ring = (union e1000_adv_rx_desc *) rz->addr;
 
 	/* Allocate software ring. */

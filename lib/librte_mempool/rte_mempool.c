@@ -504,8 +504,6 @@ rte_mempool_populate_virt(struct rte_mempool *mp, char *addr,
 		     mp->populated_size < mp->size; off += phys_len) {
 
 		paddr = rte_mem_virt2phy(addr + off);
-		/* required for xen_dom0 to get the machine address */
-		paddr = rte_mem_phy2mch(-1, paddr);
 
 		if (paddr == RTE_BAD_PHYS_ADDR && rte_eal_has_hugepages()) {
 			ret = -EINVAL;
@@ -517,7 +515,6 @@ rte_mempool_populate_virt(struct rte_mempool *mp, char *addr,
 			phys_addr_t paddr_tmp;
 
 			paddr_tmp = rte_mem_virt2phy(addr + off + phys_len);
-			paddr_tmp = rte_mem_phy2mch(-1, paddr_tmp);
 
 			if (paddr_tmp != paddr + phys_len)
 				break;

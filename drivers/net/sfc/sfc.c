@@ -61,7 +61,7 @@ sfc_dma_alloc(const struct sfc_adapter *sa, const char *name, uint16_t id,
 		return ENOMEM;
 	}
 
-	esmp->esm_addr = rte_mem_phy2mch(mz->memseg_id, mz->phys_addr);
+	esmp->esm_addr = mz->phys_addr;
 	if (esmp->esm_addr == RTE_BAD_PHYS_ADDR) {
 		(void)rte_memzone_free(mz);
 		return EFAULT;

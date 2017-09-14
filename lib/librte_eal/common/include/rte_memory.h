@@ -200,30 +200,6 @@ unsigned rte_memory_get_nrank(void);
 /**< Internal use only - should DOM0 memory mapping be used */
 int rte_xen_dom0_supported(void);
 
-/**< Internal use only - phys to virt mapping for xen */
-phys_addr_t rte_xen_mem_phy2mch(int32_t, const phys_addr_t);
-
-/**
- * Return the physical address of elt, which is an element of the pool mp.
- *
- * @param memseg_id
- *   Identifier of the memory segment owning the physical address. If
- *   set to -1, find it automatically.
- * @param phy_addr
- *   physical address of elt.
- *
- * @return
- *   The physical address or RTE_BAD_PHYS_ADDR on error.
- */
-static inline phys_addr_t
-rte_mem_phy2mch(int32_t memseg_id, const phys_addr_t phy_addr)
-{
-	if (rte_xen_dom0_supported())
-		return rte_xen_mem_phy2mch(memseg_id, phy_addr);
-	else
-		return phy_addr;
-}
-
 /**
  * Memory init for supporting application running on Xen domain0.
  *
@@ -249,12 +225,6 @@ int rte_xen_dom0_memory_attach(void);
 static inline int rte_xen_dom0_supported(void)
 {
 	return 0;
-}
-
-static inline phys_addr_t
-rte_mem_phy2mch(int32_t memseg_id __rte_unused, const phys_addr_t phy_addr)
-{
-	return phy_addr;
 }
 #endif
 
