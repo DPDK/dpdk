@@ -199,7 +199,6 @@ F: lib/librte_eal/linuxapp/eal/*xen*
 F: lib/librte_eal/linuxapp/eal/include/exec-env/rte_dom0_common.h
 F: drivers/net/xenvirt/
 F: doc/guides/xen/
-F: examples/vhost_xen/
 F: doc/guides/nics/features/xenvirt.ini
 
 FreeBSD EAL (with overlaps)
