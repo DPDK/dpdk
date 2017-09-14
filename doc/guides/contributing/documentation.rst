@@ -34,7 +34,6 @@ The main directories that contain files related to documentation are shown below
        |-- testpmd_app_ug
        |-- rel_notes
        |-- nics
-       |-- xen
        |-- ...
 
 

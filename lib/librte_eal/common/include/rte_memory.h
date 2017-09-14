@@ -46,10 +46,6 @@
 
 #include <rte_config.h>
 
-#ifdef RTE_EXEC_ENV_LINUXAPP
-#include <exec-env/rte_dom0_common.h>
-#endif
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -116,10 +112,6 @@ struct rte_memseg {
 	int32_t socket_id;          /**< NUMA socket ID. */
 	uint32_t nchannel;          /**< Number of channels. */
 	uint32_t nrank;             /**< Number of ranks. */
-#ifdef RTE_LIBRTE_XEN_DOM0
-	 /**< store segment MFNs */
-	uint64_t mfn[DOM0_NUM_MEMBLOCK];
-#endif
 } __rte_packed;
 
 /**
@@ -194,39 +186,6 @@ unsigned rte_memory_get_nchannel(void);
  *   not the same on all devices.
  */
 unsigned rte_memory_get_nrank(void);
-
-#ifdef RTE_LIBRTE_XEN_DOM0
-
-/**< Internal use only - should DOM0 memory mapping be used */
-int rte_xen_dom0_supported(void);
-
-/**
- * Memory init for supporting application running on Xen domain0.
- *
- * @param void
- *
- * @return
- *       0: successfully
- *	 negative: error
- */
-int rte_xen_dom0_memory_init(void);
-
-/**
- * Attach to memory setments of primary process on Xen domain0.
- *
- * @param void
- *
- * @return
- *       0: successfully
- *       negative: error
- */
-int rte_xen_dom0_memory_attach(void);
-#else
-static inline int rte_xen_dom0_supported(void)
-{
-	return 0;
-}
-#endif
 
 #ifdef __cplusplus
 }

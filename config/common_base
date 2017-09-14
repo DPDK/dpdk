@@ -733,11 +733,6 @@ CONFIG_RTE_LIBRTE_VHOST_DEBUG=n
 CONFIG_RTE_LIBRTE_PMD_VHOST=n
 
 #
-#Compile Xen domain0 support
-#
-CONFIG_RTE_LIBRTE_XEN_DOM0=n
-
-#
 # Compile the test application
 #
 CONFIG_RTE_APP_TEST=y

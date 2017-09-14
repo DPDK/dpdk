@@ -29,9 +29,6 @@ Deprecation Notices
   - ``rte_eal_devargs_type_count``
   - ``rte_eal_parse_devargs_str``, replaced by ``rte_eal_devargs_parse``
 
-* eal: the support of Xen dom0 will be removed from EAL in 17.11; and with
-  that, drivers/net/xenvirt and examples/vhost_xen will also be removed.
-
 * eal: An ABI change is planned for 17.11 to make DPDK aware of IOVA address
   translation scheme.
   Reference to phys address in EAL data-structure or functions may change to

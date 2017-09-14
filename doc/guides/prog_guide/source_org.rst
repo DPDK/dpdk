@@ -108,7 +108,6 @@ The drivers directory has a *net* subdirectory which contains::
     +-- szedata2           # SZEDATA2 poll mode driver
     +-- virtio             # Virtio poll mode driver
     +-- vmxnet3            # VMXNET3 poll mode driver
-    +-- xenvirt            # Xen virtio poll mode driver
 
 .. note::
 

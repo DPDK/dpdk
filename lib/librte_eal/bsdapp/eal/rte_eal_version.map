@@ -87,8 +87,6 @@ DPDK_2.0 {
 	rte_thread_get_affinity;
 	rte_thread_set_affinity;
 	rte_vlog;
-	rte_xen_dom0_memory_attach;
-	rte_xen_dom0_memory_init;
 	rte_zmalloc;
 	rte_zmalloc_socket;
 
@@ -115,7 +113,6 @@ DPDK_2.2 {
 	rte_keepalive_dispatch_pings;
 	rte_keepalive_mark_alive;
 	rte_keepalive_register_core;
-	rte_xen_dom0_supported;
 
 } DPDK_2.1;
 

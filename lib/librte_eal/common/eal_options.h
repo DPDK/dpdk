@@ -83,8 +83,6 @@ enum {
 	OPT_VFIO_INTR_NUM,
 #define OPT_VMWARE_TSC_MAP    "vmware-tsc-map"
 	OPT_VMWARE_TSC_MAP_NUM,
-#define OPT_XEN_DOM0          "xen-dom0"
-	OPT_XEN_DOM0_NUM,
 	OPT_LONG_MAX_NUM
 };
 

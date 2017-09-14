@@ -48,7 +48,7 @@ LDLIBS += -lgcc_s
 
 EXPORT_MAP := rte_eal_version.map
 
-LIBABIVER := 5
+LIBABIVER := 6
 
 # specific to bsdapp exec-env
 SRCS-$(CONFIG_RTE_EXEC_ENV_BSDAPP) := eal.c

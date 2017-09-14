@@ -98,7 +98,6 @@ eal_long_options[] = {
 	{OPT_VDEV,              1, NULL, OPT_VDEV_NUM             },
 	{OPT_VFIO_INTR,         1, NULL, OPT_VFIO_INTR_NUM        },
 	{OPT_VMWARE_TSC_MAP,    0, NULL, OPT_VMWARE_TSC_MAP_NUM   },
-	{OPT_XEN_DOM0,          0, NULL, OPT_XEN_DOM0_NUM         },
 	{0,                     0, NULL, 0                        }
 };
 
@@ -208,8 +207,6 @@ eal_reset_internal_config(struct internal_config *internal_cfg)
 	internal_cfg->base_virtaddr = 0;
 
 	internal_cfg->syslog_facility = LOG_DAEMON;
-
-	internal_cfg->xen_dom0_support = 0;
 
 	/* if set to NONE, interrupt mode is determined automatically */
 	internal_cfg->vfio_intr_mode = RTE_INTR_MODE_NONE;

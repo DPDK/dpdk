@@ -178,6 +178,8 @@ API Changes
   * Added ``flags`` param in ``rte_mempool_xmem_size`` and
     ``rte_mempool_xmem_usage``.
 
+* Xen dom0 in EAL was removed, as well as xenvirt PMD and vhost_xen.
+
 * ``rte_mem_phy2mch`` was used in Xen dom0 to obtain the physical address;
   remove this API as Xen dom0 support was removed.
 

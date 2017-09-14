@@ -52,9 +52,6 @@ ExclusiveArch: i686 x86_64 aarch64
 %endif
 
 BuildRequires: kernel-devel, kernel-headers, libpcap-devel
-%ifarch i686 x86_64
-BuildRequires: xen-devel
-%endif
 BuildRequires: doxygen, python-sphinx, inkscape
 BuildRequires: texlive-collection-latexextra
 

@@ -367,7 +367,6 @@ eal_usage(const char *prgname)
 	       "  --"OPT_BASE_VIRTADDR"     Base virtual address\n"
 	       "  --"OPT_CREATE_UIO_DEV"    Create /dev/uioX (usually done by hotplug)\n"
 	       "  --"OPT_VFIO_INTR"         Interrupt mode for VFIO (legacy|msi|msix)\n"
-	       "  --"OPT_XEN_DOM0"          Support running on Xen dom0 without hugetlbfs\n"
 	       "\n");
 	/* Allow the application to print its usage message too if hook is set */
 	if ( rte_application_usage_hook ) {
@@ -568,19 +567,6 @@ eal_parse_args(int argc, char **argv)
 			eal_usage(prgname);
 			exit(EXIT_SUCCESS);
 
-		/* long options */
-		case OPT_XEN_DOM0_NUM:
-#ifdef RTE_LIBRTE_XEN_DOM0
-			internal_config.xen_dom0_support = 1;
-#else
-			RTE_LOG(ERR, EAL, "Can't support DPDK app "
-				"running on Dom0, please configure"
-				" RTE_LIBRTE_XEN_DOM0=y\n");
-			ret = -1;
-			goto out;
-#endif
-			break;
-
 		case OPT_HUGE_DIR_NUM:
 			internal_config.hugepage_dir = optarg;
 			break;
@@ -653,15 +639,6 @@ eal_parse_args(int argc, char **argv)
 
 	/* sanity checks */
 	if (eal_check_common_options(&internal_config) != 0) {
-		eal_usage(prgname);
-		ret = -1;
-		goto out;
-	}
-
-	/* --xen-dom0 doesn't make sense with --socket-mem */
-	if (internal_config.xen_dom0_support && internal_config.force_sockets == 1) {
-		RTE_LOG(ERR, EAL, "Options --"OPT_SOCKET_MEM" cannot be specified "
-			"together with --"OPT_XEN_DOM0"\n");
 		eal_usage(prgname);
 		ret = -1;
 		goto out;
@@ -827,7 +804,6 @@ rte_eal_init(int argc, char **argv)
 
 	if (internal_config.no_hugetlbfs == 0 &&
 			internal_config.process_type != RTE_PROC_SECONDARY &&
-			internal_config.xen_dom0_support == 0 &&
 			eal_hugepage_info_init() < 0) {
 		rte_eal_init_alert("Cannot get hugepage information.");
 		rte_errno = EACCES;

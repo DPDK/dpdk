@@ -34,9 +34,6 @@
 #include <linux/version.h>
 #include <linux/slab.h>
 
-#ifdef CONFIG_XEN_DOM0
-#include <xen/xen.h>
-#endif
 #include <rte_pci_dev_features.h>
 
 #include "compat.h"
@@ -190,52 +187,6 @@ igbuio_pci_release(struct uio_info *info, struct inode *inode)
 
 	return 0;
 }
-
-#ifdef CONFIG_XEN_DOM0
-static int
-igbuio_dom0_mmap_phys(struct uio_info *info, struct vm_area_struct *vma)
-{
-	int idx;
-
-	idx = (int)vma->vm_pgoff;
-	vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
-#ifdef HAVE_PTE_MASK_PAGE_IOMAP
-	vma->vm_page_prot.pgprot |= _PAGE_IOMAP;
-#endif
-
-	return remap_pfn_range(vma,
-			vma->vm_start,
-			info->mem[idx].addr >> PAGE_SHIFT,
-			vma->vm_end - vma->vm_start,
-			vma->vm_page_prot);
-}
-
-/**
- * This is uio device mmap method which will use igbuio mmap for Xen
- * Dom0 environment.
- */
-static int
-igbuio_dom0_pci_mmap(struct uio_info *info, struct vm_area_struct *vma)
-{
-	int idx;
-
-	if (vma->vm_pgoff >= MAX_UIO_MAPS)
-		return -EINVAL;
-
-	if (info->mem[vma->vm_pgoff].size == 0)
-		return -EINVAL;
-
-	idx = (int)vma->vm_pgoff;
-	switch (info->mem[idx].memtype) {
-	case UIO_MEM_PHYS:
-		return igbuio_dom0_mmap_phys(info, vma);
-	case UIO_MEM_LOGICAL:
-	case UIO_MEM_VIRTUAL:
-	default:
-		return -EINVAL;
-	}
-}
-#endif
 
 /* Remap pci resources described by bar #pci_bar in uio resource n. */
 static int
@@ -480,11 +431,6 @@ igbuio_pci_probe(struct pci_dev *dev, const struct pci_device_id *id)
 	udev->info.irqcontrol = igbuio_pci_irqcontrol;
 	udev->info.open = igbuio_pci_open;
 	udev->info.release = igbuio_pci_release;
-#ifdef CONFIG_XEN_DOM0
-	/* check if the driver run on Xen Dom0 */
-	if (xen_initial_domain())
-		udev->info.mmap = igbuio_dom0_pci_mmap;
-#endif
 	udev->info.priv = udev;
 	udev->pdev = dev;
 

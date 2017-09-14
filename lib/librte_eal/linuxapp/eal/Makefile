@@ -37,7 +37,7 @@ ARCH_DIR ?= $(RTE_ARCH)
 EXPORT_MAP := rte_eal_version.map
 VPATH += $(RTE_SDK)/lib/librte_eal/common/arch/$(ARCH_DIR)
 
-LIBABIVER := 5
+LIBABIVER := 6
 
 VPATH += $(RTE_SDK)/lib/librte_eal/common
 
@@ -58,9 +58,6 @@ endif
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) := eal.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_hugepage_info.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_memory.c
-ifeq ($(CONFIG_RTE_LIBRTE_XEN_DOM0),y)
-SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_xen_memory.c
-endif
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_thread.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_log.c
 SRCS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal_vfio.c
@@ -130,7 +127,7 @@ ifeq ($(CONFIG_RTE_TOOLCHAIN_GCC),y)
 CFLAGS_eal_thread.o += -Wno-return-type
 endif
 
-INC := rte_interrupts.h rte_kni_common.h rte_dom0_common.h
+INC := rte_interrupts.h rte_kni_common.h
 
 SYMLINK-$(CONFIG_RTE_EXEC_ENV_LINUXAPP)-include/exec-env := \
 	$(addprefix include/exec-env/,$(INC))

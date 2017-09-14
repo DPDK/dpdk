@@ -35,7 +35,5 @@ DIRS-$(CONFIG_RTE_EXEC_ENV_LINUXAPP) += eal
 DIRS-$(CONFIG_RTE_EAL_IGB_UIO) += igb_uio
 DIRS-$(CONFIG_RTE_KNI_KMOD) += kni
 DEPDIRS-kni := eal
-DIRS-$(CONFIG_RTE_LIBRTE_XEN_DOM0) += xen_dom0
-DEPDIRS-xen_dom0 := eal
 
 include $(RTE_SDK)/mk/rte.subdir.mk

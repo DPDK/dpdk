@@ -94,10 +94,6 @@ See the DPDK Getting Started Guides for more information on these options.
 
     Display the version information on startup.
 
-*   ``--xen-dom0``
-
-    Support application running on Xen Domain0 without hugetlbfs.
-
 *   ``--syslog``
 
     Set the syslog facility.
