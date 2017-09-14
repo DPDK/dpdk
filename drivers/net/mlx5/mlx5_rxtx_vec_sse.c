@@ -112,8 +112,7 @@ txq_wr_dseg_v(struct txq *txq, __m128i *dseg,
 }
 
 /**
- * Count the number of continuous single segment packets. The first packet must
- * be a single segment packet.
+ * Count the number of continuous single segment packets.
  *
  * @param pkts
  *   Pointer to array of packets.
@@ -130,9 +129,8 @@ txq_check_multiseg(struct rte_mbuf **pkts, uint16_t pkts_n)
 
 	if (!pkts_n)
 		return 0;
-	assert(NB_SEGS(pkts[0]) == 1);
 	/* Count the number of continuous single segment packets. */
-	for (pos = 1; pos < pkts_n; ++pos)
+	for (pos = 0; pos < pkts_n; ++pos)
 		if (NB_SEGS(pkts[pos]) > 1)
 			break;
 	return pos;
