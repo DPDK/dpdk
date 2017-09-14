@@ -47,7 +47,7 @@ CFLAGS += $(WERROR_FLAGS)
 LIBABIVER := 1
 
 # versioning export map
-EXPORT_MAP := rte_pmd_aesni_version.map
+EXPORT_MAP := rte_pmd_aesni_mb_version.map
 
 # external library dependencies
 CFLAGS += -I$(AESNI_MULTI_BUFFER_LIB_PATH)
