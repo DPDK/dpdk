@@ -360,13 +360,13 @@ mlx5_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 			tmp.q_opackets[idx] += txq->stats.opackets;
 			tmp.q_obytes[idx] += txq->stats.obytes;
 #endif
-			tmp.q_errors[idx] += txq->stats.odropped;
+			tmp.q_errors[idx] += txq->stats.oerrors;
 		}
 #ifdef MLX5_PMD_SOFT_COUNTERS
 		tmp.opackets += txq->stats.opackets;
 		tmp.obytes += txq->stats.obytes;
 #endif
-		tmp.oerrors += txq->stats.odropped;
+		tmp.oerrors += txq->stats.oerrors;
 	}
 #ifndef MLX5_PMD_SOFT_COUNTERS
 	/* FIXME: retrieve and add hardware counters. */

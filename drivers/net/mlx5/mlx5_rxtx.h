@@ -75,7 +75,7 @@ struct mlx5_txq_stats {
 	uint64_t opackets; /**< Total of successfully sent packets. */
 	uint64_t obytes; /**< Total of successfully sent bytes. */
 #endif
-	uint64_t odropped; /**< Total of packets not sent when TX ring full. */
+	uint64_t oerrors; /**< Total number of failed transmitted packets. */
 };
 
 /* Flow director queue structure. */
