@@ -51,7 +51,7 @@ CFLAGS += $(WERROR_FLAGS)
 LIBABIVER := 1
 
 # versioning export map
-EXPORT_MAP := rte_armv8_pmd_version.map
+EXPORT_MAP := rte_pmd_armv8_version.map
 
 # external library dependencies
 CFLAGS += -I$(ARMV8_CRYPTO_LIB_PATH)
