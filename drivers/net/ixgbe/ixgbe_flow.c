@@ -79,6 +79,51 @@
 #define IXGBE_MAX_N_TUPLE_PRIO 7
 #define IXGBE_MAX_FLX_SOURCE_OFF 62
 
+/* ntuple filter list structure */
+struct ixgbe_ntuple_filter_ele {
+	TAILQ_ENTRY(ixgbe_ntuple_filter_ele) entries;
+	struct rte_eth_ntuple_filter filter_info;
+};
+/* ethertype filter list structure */
+struct ixgbe_ethertype_filter_ele {
+	TAILQ_ENTRY(ixgbe_ethertype_filter_ele) entries;
+	struct rte_eth_ethertype_filter filter_info;
+};
+/* syn filter list structure */
+struct ixgbe_eth_syn_filter_ele {
+	TAILQ_ENTRY(ixgbe_eth_syn_filter_ele) entries;
+	struct rte_eth_syn_filter filter_info;
+};
+/* fdir filter list structure */
+struct ixgbe_fdir_rule_ele {
+	TAILQ_ENTRY(ixgbe_fdir_rule_ele) entries;
+	struct ixgbe_fdir_rule filter_info;
+};
+/* l2_tunnel filter list structure */
+struct ixgbe_eth_l2_tunnel_conf_ele {
+	TAILQ_ENTRY(ixgbe_eth_l2_tunnel_conf_ele) entries;
+	struct rte_eth_l2_tunnel_conf filter_info;
+};
+/* ixgbe_flow memory list structure */
+struct ixgbe_flow_mem {
+	TAILQ_ENTRY(ixgbe_flow_mem) entries;
+	struct rte_flow *flow;
+};
+
+TAILQ_HEAD(ixgbe_ntuple_filter_list, ixgbe_ntuple_filter_ele);
+TAILQ_HEAD(ixgbe_ethertype_filter_list, ixgbe_ethertype_filter_ele);
+TAILQ_HEAD(ixgbe_syn_filter_list, ixgbe_eth_syn_filter_ele);
+TAILQ_HEAD(ixgbe_fdir_rule_filter_list, ixgbe_fdir_rule_ele);
+TAILQ_HEAD(ixgbe_l2_tunnel_filter_list, ixgbe_eth_l2_tunnel_conf_ele);
+TAILQ_HEAD(ixgbe_flow_mem_list, ixgbe_flow_mem);
+
+static struct ixgbe_ntuple_filter_list filter_ntuple_list;
+static struct ixgbe_ethertype_filter_list filter_ethertype_list;
+static struct ixgbe_syn_filter_list filter_syn_list;
+static struct ixgbe_fdir_rule_filter_list filter_fdir_list;
+static struct ixgbe_l2_tunnel_filter_list filter_l2_tunnel_list;
+static struct ixgbe_flow_mem_list ixgbe_flow_list;
+
 /**
  * Endless loop will never happen with below assumption
  * 1. there is at least one no-void item(END)
@@ -2597,6 +2642,17 @@ step_next:
 		return -ENOTSUP;
 
 	return ret;
+}
+
+void
+ixgbe_filterlist_init(void)
+{
+	TAILQ_INIT(&filter_ntuple_list);
+	TAILQ_INIT(&filter_ethertype_list);
+	TAILQ_INIT(&filter_syn_list);
+	TAILQ_INIT(&filter_fdir_list);
+	TAILQ_INIT(&filter_l2_tunnel_list);
+	TAILQ_INIT(&ixgbe_flow_list);
 }
 
 void

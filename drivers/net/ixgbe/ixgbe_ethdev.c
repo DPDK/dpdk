@@ -1336,12 +1336,8 @@ eth_ixgbe_dev_init(struct rte_eth_dev *eth_dev)
 	/* initialize l2 tunnel filter list & hash */
 	ixgbe_l2_tn_filter_init(eth_dev);
 
-	TAILQ_INIT(&filter_ntuple_list);
-	TAILQ_INIT(&filter_ethertype_list);
-	TAILQ_INIT(&filter_syn_list);
-	TAILQ_INIT(&filter_fdir_list);
-	TAILQ_INIT(&filter_l2_tunnel_list);
-	TAILQ_INIT(&ixgbe_flow_list);
+	/* initialize flow filter lists */
+	ixgbe_filterlist_init();
 
 	/* initialize bandwidth configuration info */
 	memset(bw_conf, 0, sizeof(struct ixgbe_bw_conf));
