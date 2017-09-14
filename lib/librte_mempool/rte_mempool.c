@@ -571,11 +571,7 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 	/* update mempool capabilities */
 	mp->flags |= mp_flags;
 
-	if (rte_xen_dom0_supported()) {
-		pg_sz = RTE_PGSIZE_2M;
-		pg_shift = rte_bsf32(pg_sz);
-		align = pg_sz;
-	} else if (rte_eal_has_hugepages()) {
+	if (rte_eal_has_hugepages()) {
 		pg_shift = 0; /* not needed, zone is physically contiguous */
 		pg_sz = 0;
 		align = RTE_CACHE_LINE_SIZE;
@@ -613,7 +609,7 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 		else
 			paddr = mz->phys_addr;
 
-		if (rte_eal_has_hugepages() && !rte_xen_dom0_supported())
+		if (rte_eal_has_hugepages())
 			ret = rte_mempool_populate_phys(mp, mz->addr,
 				paddr, mz->len,
 				rte_mempool_memchunk_mz_free,

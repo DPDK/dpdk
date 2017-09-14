@@ -122,14 +122,9 @@ queue_dma_zone_reserve(const char *queue_name, uint32_t queue_size,
 	break;
 	default:
 		memzone_flags = RTE_MEMZONE_SIZE_HINT_ONLY;
-}
-#ifdef RTE_LIBRTE_XEN_DOM0
-	return rte_memzone_reserve_bounded(queue_name, queue_size,
-		socket_id, 0, RTE_CACHE_LINE_SIZE, RTE_PGSIZE_2M);
-#else
+	}
 	return rte_memzone_reserve_aligned(queue_name, queue_size, socket_id,
 		memzone_flags, queue_size);
-#endif
 }
 
 int qat_crypto_sym_qp_setup(struct rte_cryptodev *dev, uint16_t queue_pair_id,
