@@ -197,9 +197,7 @@ M: Jianfeng Tan <jianfeng.tan@intel.com>
 F: lib/librte_eal/linuxapp/xen_dom0/
 F: lib/librte_eal/linuxapp/eal/*xen*
 F: lib/librte_eal/linuxapp/eal/include/exec-env/rte_dom0_common.h
-F: drivers/net/xenvirt/
 F: doc/guides/xen/
-F: doc/guides/nics/features/xenvirt.ini
 
 FreeBSD EAL (with overlaps)
 M: Bruce Richardson <bruce.richardson@intel.com>

@@ -76,9 +76,6 @@
 #ifdef RTE_LIBRTE_IXGBE_PMD
 #include <rte_pmd_ixgbe.h>
 #endif
-#ifdef RTE_LIBRTE_PMD_XENVIRT
-#include <rte_eth_xenvirt.h>
-#endif
 #ifdef RTE_LIBRTE_PDUMP
 #include <rte_pdump.h>
 #endif
@@ -497,37 +494,25 @@ mbuf_pool_create(uint16_t mbuf_seg_size, unsigned nb_mbuf,
 		"create a new mbuf pool <%s>: n=%u, size=%u, socket=%u\n",
 		pool_name, nb_mbuf, mbuf_seg_size, socket_id);
 
-#ifdef RTE_LIBRTE_PMD_XENVIRT
-	rte_mp = rte_mempool_gntalloc_create(pool_name, nb_mbuf, mb_size,
-		(unsigned) mb_mempool_cache,
-		sizeof(struct rte_pktmbuf_pool_private),
-		rte_pktmbuf_pool_init, NULL,
-		rte_pktmbuf_init, NULL,
-		socket_id, 0);
-#endif
+	if (mp_anon != 0) {
+		rte_mp = rte_mempool_create_empty(pool_name, nb_mbuf,
+			mb_size, (unsigned) mb_mempool_cache,
+			sizeof(struct rte_pktmbuf_pool_private),
+			socket_id, 0);
+		if (rte_mp == NULL)
+			goto err;
 
-	/* if the former XEN allocation failed fall back to normal allocation */
-	if (rte_mp == NULL) {
-		if (mp_anon != 0) {
-			rte_mp = rte_mempool_create_empty(pool_name, nb_mbuf,
-				mb_size, (unsigned) mb_mempool_cache,
-				sizeof(struct rte_pktmbuf_pool_private),
-				socket_id, 0);
-			if (rte_mp == NULL)
-				goto err;
-
-			if (rte_mempool_populate_anon(rte_mp) == 0) {
-				rte_mempool_free(rte_mp);
-				rte_mp = NULL;
-				goto err;
-			}
-			rte_pktmbuf_pool_init(rte_mp, NULL);
-			rte_mempool_obj_iter(rte_mp, rte_pktmbuf_init, NULL);
-		} else {
-			/* wrapper to rte_mempool_create() */
-			rte_mp = rte_pktmbuf_pool_create(pool_name, nb_mbuf,
-				mb_mempool_cache, 0, mbuf_seg_size, socket_id);
+		if (rte_mempool_populate_anon(rte_mp) == 0) {
+			rte_mempool_free(rte_mp);
+			rte_mp = NULL;
+			goto err;
 		}
+		rte_pktmbuf_pool_init(rte_mp, NULL);
+		rte_mempool_obj_iter(rte_mp, rte_pktmbuf_init, NULL);
+	} else {
+		/* wrapper to rte_mempool_create() */
+		rte_mp = rte_pktmbuf_pool_create(pool_name, nb_mbuf,
+			mb_mempool_cache, 0, mbuf_seg_size, socket_id);
 	}
 
 err:
