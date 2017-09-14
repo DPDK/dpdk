@@ -451,10 +451,16 @@ ark_config_device(struct rte_eth_dev *dev)
 	 */
 	ark->start_pg = 0;
 	ark->pg = ark_pktgen_init(ark->pktgen.v, 0, 1);
+	if (ark->pg == NULL)
+		return -1;
 	ark_pktgen_reset(ark->pg);
 	ark->pc = ark_pktchkr_init(ark->pktchkr.v, 0, 1);
+	if (ark->pc == NULL)
+		return -1;
 	ark_pktchkr_stop(ark->pc);
 	ark->pd = ark_pktdir_init(ark->pktdir.v);
+	if (ark->pd == NULL)
+		return -1;
 
 	/* Verify HW */
 	if (ark_udm_verify(ark->udm.v))

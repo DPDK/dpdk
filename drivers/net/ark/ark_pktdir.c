@@ -36,6 +36,7 @@
 
 #include "ark_pktdir.h"
 #include "ark_global.h"
+#include "ark_logs.h"
 
 
 ark_pkt_dir_t
@@ -45,6 +46,10 @@ ark_pktdir_init(void *base)
 		rte_malloc("ark_pkt_dir_inst",
 			   sizeof(struct ark_pkt_dir_inst),
 			   0);
+	if (inst == NULL) {
+		PMD_DRV_LOG(ERR, "Failed to malloc ark_pkt_dir_inst.\n");
+		return inst;
+	}
 	inst->regs = (struct ark_pkt_dir_regs *)base;
 	inst->regs->ctrl = 0x00110110;	/* POR state */
 	return inst;

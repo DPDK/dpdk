@@ -110,6 +110,10 @@ ark_pktgen_init(void *adr, int ord, int l2_mode)
 	struct ark_pkt_gen_inst *inst =
 		rte_malloc("ark_pkt_gen_inst_pmd",
 			   sizeof(struct ark_pkt_gen_inst), 0);
+	if (inst == NULL) {
+		PMD_DRV_LOG(ERR, "Failed to malloc ark_pkt_gen_inst.\n");
+		return inst;
+	}
 	inst->regs = (struct ark_pkt_gen_regs *)adr;
 	inst->ordinal = ord;
 	inst->l2_mode = l2_mode;

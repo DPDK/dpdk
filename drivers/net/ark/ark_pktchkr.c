@@ -112,6 +112,10 @@ ark_pktchkr_init(void *addr, int ord, int l2_mode)
 	struct ark_pkt_chkr_inst *inst =
 		rte_malloc("ark_pkt_chkr_inst",
 			   sizeof(struct ark_pkt_chkr_inst), 0);
+	if (inst == NULL) {
+		PMD_DRV_LOG(ERR, "Failed to malloc ark_pkt_chkr_inst.\n");
+		return inst;
+	}
 	inst->sregs = (struct ark_pkt_chkr_stat_regs *)addr;
 	inst->cregs =
 		(struct ark_pkt_chkr_ctl_regs *)(((uint8_t *)addr) + 0x100);
