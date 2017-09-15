@@ -974,6 +974,7 @@ lio_dev_link_update(struct rte_eth_dev *eth_dev,
 	link.link_status = ETH_LINK_DOWN;
 	link.link_speed = ETH_SPEED_NUM_NONE;
 	link.link_duplex = ETH_LINK_HALF_DUPLEX;
+	link.link_autoneg = ETH_LINK_AUTONEG;
 	memset(&old, 0, sizeof(old));
 
 	/* Return what we found */
