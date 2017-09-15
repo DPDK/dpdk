@@ -45,4 +45,5 @@ install_headers(
 	'rte_rtm.h',
 	'rte_rwlock.h',
 	'rte_spinlock.h',
-	'rte_vect.h')
+	'rte_vect.h',
+	subdir: get_option('include_subdir_arch'))

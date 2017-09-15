@@ -72,7 +72,8 @@ subdir('app')
 build_cfg = 'rte_build_config.h'
 configure_file(output: build_cfg,
 		configuration: dpdk_conf,
-		install_dir: get_option('includedir'))
+		install_dir: join_paths(get_option('includedir'),
+				get_option('include_subdir_arch')))
 
 # for static builds, include the drivers as libs, and also any
 # other dependent libs that DPDK needs to link against
@@ -87,5 +88,6 @@ pkg.generate(name: meson.project_name(),
 	version: meson.project_version(),
 	libraries: dpdk_libraries,
 	description: 'The Data Plane Development Kit (DPDK)',
+	subdirs: [get_option('include_subdir_arch'), '.'],
 	extra_cflags: ['-include', 'rte_config.h', '-march=@0@'.format(machine)]
 )

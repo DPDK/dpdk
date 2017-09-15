@@ -70,4 +70,4 @@ dpdk_conf.set('RTE_EAL_ALLOW_INV_SOCKET_ID', get_option('allow_invalid_socket_id
 # values which have defaults which may be overridden
 dpdk_conf.set('RTE_MAX_VFIO_GROUPS', 64)
 
-install_headers('rte_config.h')
+install_headers('rte_config.h', subdir: get_option('include_subdir_arch'))
