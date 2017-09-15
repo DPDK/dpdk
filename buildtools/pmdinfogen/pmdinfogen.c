@@ -327,6 +327,10 @@ static int locate_pmd_entries(struct elf_info *info)
 
 	do {
 		new = calloc(sizeof(struct pmd_driver), 1);
+		if (new == NULL) {
+			fprintf(stderr, "Failed to calloc memory\n");
+			return -1;
+		}
 		new->name_sym = find_sym_in_symtab(info, "this_pmd_name", last);
 		last = new->name_sym;
 		if (!new->name_sym)
@@ -408,7 +412,8 @@ int main(int argc, char **argv)
 	}
 	parse_elf(&info, argv[1]);
 
-	locate_pmd_entries(&info);
+	if (locate_pmd_entries(&info) < 0)
+		exit(1);
 
 	if (info.drivers) {
 		output_pmd_info_string(&info, argv[2]);
