@@ -661,7 +661,7 @@ bond_handshake(void)
 	TEST_ASSERT_EQUAL(all_slaves_done, 1, "Bond handshake failed\n");
 
 	/* If flags doesn't match - report failure */
-	return all_slaves_done = 1 ? TEST_SUCCESS : TEST_FAILED;
+	return all_slaves_done == 1 ? TEST_SUCCESS : TEST_FAILED;
 }
 
 #define TEST_LACP_SLAVE_COUT RTE_DIM(test_params.slave_ports)
