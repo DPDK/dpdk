@@ -83,6 +83,7 @@ endif
 
 pkg = import('pkgconfig')
 pkg.generate(name: meson.project_name(),
+	filebase: 'lib' + meson.project_name().to_lower(),
 	version: meson.project_version(),
 	libraries: dpdk_libraries,
 	description: 'The Data Plane Development Kit (DPDK)',
