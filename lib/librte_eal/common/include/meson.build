@@ -67,6 +67,6 @@ common_headers = [
 	'rte_version.h']
 
 install_headers(common_headers)
-install_subdir('generic', install_dir : 'include')
+install_subdir('generic', install_dir : get_option('includedir'))
 
 subdir('arch')

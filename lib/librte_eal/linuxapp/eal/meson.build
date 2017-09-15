@@ -30,7 +30,7 @@
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 eal_inc += include_directories('include', '../../../librte_compat')
-install_subdir('include/exec-env', install_dir: 'include')
+install_subdir('include/exec-env', install_dir: get_option('includedir'))
 
 sources = ['eal_alarm.c',
 		'eal_debug.c',
