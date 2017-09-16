@@ -464,6 +464,10 @@ fslmc_process_iodevices(struct rte_dpaa2_device *dev)
 	}
 
 	switch (dev->dev_type) {
+	case DPAA2_ETH:
+		rte_dpaa2_vfio_setup_intr(&dev->intr_handle, dev_fd,
+					  device_info.num_irqs);
+		break;
 	case DPAA2_CON:
 	case DPAA2_IO:
 	case DPAA2_CI:
