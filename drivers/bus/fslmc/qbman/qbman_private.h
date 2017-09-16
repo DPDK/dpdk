@@ -27,7 +27,7 @@
  */
 
 /* Perform extra checking */
-#define QBMAN_CHECKING
+/*#define QBMAN_CHECKING*/
 
 /* To maximise the amount of logic that is common between the Linux driver and
  * other targets (such as the embedded MC firmware), we pivot here between the
