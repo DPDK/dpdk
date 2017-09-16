@@ -47,15 +47,6 @@
 #undef QBMAN_CINH_TRACE
 #undef QBMAN_CENA_TRACE
 
-static inline void word_copy(void *d, const void *s, unsigned int cnt)
-{
-	uint32_t *dd = d;
-	const uint32_t *ss = s;
-
-	while (cnt--)
-		*(dd++) = *(ss++);
-}
-
 /* Currently, the CENA support code expects each 32-bit word to be written in
  * host order, and these are converted to hardware (little-endian) order on
  * command submission. However, 64-bit quantities are must be written (and read)
