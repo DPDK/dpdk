@@ -666,7 +666,7 @@ dpaa2_dev_start(struct rte_eth_dev *dev)
 		return ret;
 	}
 
-	/* Power up the phy. Needed to make the link go Up */
+	/* Power up the phy. Needed to make the link go UP */
 	dpaa2_dev_set_link_up(dev);
 
 	ret = dpni_get_qdid(dpni, CMD_PRI_LOW, priv->token,
@@ -1137,8 +1137,6 @@ dpaa2_dev_link_update(struct rte_eth_dev *dev,
 	struct rte_eth_link link, old;
 	struct dpni_link_state state = {0};
 
-	PMD_INIT_FUNC_TRACE();
-
 	if (dpni == NULL) {
 		RTE_LOG(ERR, PMD, "dpni is NULL\n");
 		return 0;
@@ -1171,7 +1169,7 @@ dpaa2_dev_link_update(struct rte_eth_dev *dev,
 	if (link.link_status)
 		PMD_DRV_LOG(INFO, "Port %d Link is Up\n", dev->data->port_id);
 	else
-		PMD_DRV_LOG(INFO, "Port %d Link is Down\n", dev->data->port_id);
+		PMD_DRV_LOG(INFO, "Port %d Link is Down", dev->data->port_id);
 	return 0;
 }
 
@@ -1186,8 +1184,7 @@ dpaa2_dev_set_link_up(struct rte_eth_dev *dev)
 	struct dpaa2_dev_priv *priv;
 	struct fsl_mc_io *dpni;
 	int en = 0;
-
-	PMD_INIT_FUNC_TRACE();
+	struct dpni_link_state state = {0};
 
 	priv = dev->data->dev_private;
 	dpni = (struct fsl_mc_io *)priv->hw;
@@ -1213,11 +1210,21 @@ dpaa2_dev_set_link_up(struct rte_eth_dev *dev)
 			return -EINVAL;
 		}
 	}
+	ret = dpni_get_link_state(dpni, CMD_PRI_LOW, priv->token, &state);
+	if (ret < 0) {
+		RTE_LOG(ERR, PMD, "error: dpni_get_link_state %d\n", ret);
+		return -1;
+	}
+
 	/* changing tx burst function to start enqueues */
 	dev->tx_pkt_burst = dpaa2_dev_tx;
-	dev->data->dev_link.link_status = 1;
+	dev->data->dev_link.link_status = state.up;
 
-	PMD_DRV_LOG(INFO, "Port %d Link UP successful", dev->data->port_id);
+	if (state.up)
+		PMD_DRV_LOG(INFO, "Port %d Link is set as UP",
+			    dev->data->port_id);
+	else
+		PMD_DRV_LOG(INFO, "Port %d Link is DOWN", dev->data->port_id);
 	return ret;
 }
 
