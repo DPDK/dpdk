@@ -326,18 +326,7 @@ dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 		}
 	}
 
-	/* Check for correct configuration */
-	if (eth_conf->rxmode.mq_mode != ETH_MQ_RX_RSS &&
-	    data->nb_rx_queues > 1) {
-		PMD_INIT_LOG(ERR, "Distribution is not enabled, "
-			    "but Rx queues more than 1\n");
-		return -1;
-	}
-
 	if (eth_conf->rxmode.mq_mode == ETH_MQ_RX_RSS) {
-		/* Return in case number of Rx queues is 1 */
-		if (data->nb_rx_queues == 1)
-			return 0;
 		ret = dpaa2_setup_flow_dist(dev,
 				eth_conf->rx_adv_conf.rss_conf.rss_hf);
 		if (ret) {
