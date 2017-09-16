@@ -51,6 +51,7 @@ CFLAGS += -I$(RTE_SDK)/drivers/bus/fslmc
 CFLAGS += -I$(RTE_SDK)/drivers/bus/fslmc/mc
 CFLAGS += -I$(RTE_SDK)/drivers/bus/fslmc/qbman/include
 CFLAGS += -I$(RTE_SDK)/lib/librte_eal/linuxapp/eal
+CFLAGS += -I$(RTE_SDK)/lib/librte_eal/common
 
 # versioning export map
 EXPORT_MAP := rte_bus_fslmc_version.map

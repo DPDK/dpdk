@@ -64,8 +64,12 @@ typedef struct fslmc_vfio_container {
 	struct fslmc_vfio_group *group;
 } fslmc_vfio_container;
 
-int rte_dpaa2_intr_enable(struct rte_intr_handle *intr_handle,
-			  uint32_t index);
+int rte_dpaa2_intr_enable(struct rte_intr_handle *intr_handle, int index);
+int rte_dpaa2_intr_disable(struct rte_intr_handle *intr_handle, int index);
+
+int rte_dpaa2_vfio_setup_intr(struct rte_intr_handle *intr_handle,
+			      int vfio_dev_fd,
+			      int num_irqs);
 
 int fslmc_vfio_setup_group(void);
 int fslmc_vfio_process_group(void);
