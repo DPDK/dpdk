@@ -52,6 +52,28 @@
 #include <mc/fsl_dpmng.h>
 #include "dpaa2_ethdev.h"
 
+struct rte_dpaa2_xstats_name_off {
+	char name[RTE_ETH_XSTATS_NAME_SIZE];
+	uint8_t page_id; /* dpni statistics page id */
+	uint8_t stats_id; /* stats id in the given page */
+};
+
+static const struct rte_dpaa2_xstats_name_off dpaa2_xstats_strings[] = {
+	{"ingress_multicast_frames", 0, 2},
+	{"ingress_multicast_bytes", 0, 3},
+	{"ingress_broadcast_frames", 0, 4},
+	{"ingress_broadcast_bytes", 0, 5},
+	{"egress_multicast_frames", 1, 2},
+	{"egress_multicast_bytes", 1, 3},
+	{"egress_broadcast_frames", 1, 4},
+	{"egress_broadcast_bytes", 1, 5},
+	{"ingress_filtered_frames", 2, 0},
+	{"ingress_discarded_frames", 2, 1},
+	{"ingress_nobuffer_discards", 2, 2},
+	{"egress_discarded_frames", 2, 3},
+	{"egress_confirmed_frames", 2, 4},
+};
+
 static struct rte_dpaa2_driver rte_dpaa2_pmd;
 static int dpaa2_dev_uninit(struct rte_eth_dev *eth_dev);
 static int dpaa2_dev_link_update(struct rte_eth_dev *dev,
@@ -1090,8 +1112,151 @@ err:
 	return;
 };
 
-static
-void dpaa2_dev_stats_reset(struct rte_eth_dev *dev)
+static int
+dpaa2_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
+		     unsigned int n)
+{
+	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+	struct fsl_mc_io *dpni = (struct fsl_mc_io *)priv->hw;
+	int32_t  retcode;
+	union dpni_statistics value[3] = {};
+	unsigned int i = 0, num = RTE_DIM(dpaa2_xstats_strings);
+
+	if (xstats == NULL)
+		return 0;
+
+	if (n < num)
+		return num;
+
+	/* Get Counters from page_0*/
+	retcode = dpni_get_statistics(dpni, CMD_PRI_LOW, priv->token,
+				      0, 0, &value[0]);
+	if (retcode)
+		goto err;
+
+	/* Get Counters from page_1*/
+	retcode = dpni_get_statistics(dpni, CMD_PRI_LOW, priv->token,
+				      1, 0, &value[1]);
+	if (retcode)
+		goto err;
+
+	/* Get Counters from page_2*/
+	retcode = dpni_get_statistics(dpni, CMD_PRI_LOW, priv->token,
+				      2, 0, &value[2]);
+	if (retcode)
+		goto err;
+
+	for (i = 0; i < num; i++) {
+		xstats[i].id = i;
+		xstats[i].value = value[dpaa2_xstats_strings[i].page_id].
+			raw.counter[dpaa2_xstats_strings[i].stats_id];
+	}
+	return i;
+err:
+	RTE_LOG(ERR, PMD, "Error in obtaining extended stats (%d)\n", retcode);
+	return retcode;
+}
+
+static int
+dpaa2_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
+		       struct rte_eth_xstat_name *xstats_names,
+		       __rte_unused unsigned int limit)
+{
+	unsigned int i, stat_cnt = RTE_DIM(dpaa2_xstats_strings);
+
+	if (xstats_names != NULL)
+		for (i = 0; i < stat_cnt; i++)
+			snprintf(xstats_names[i].name,
+				 sizeof(xstats_names[i].name),
+				 "%s",
+				 dpaa2_xstats_strings[i].name);
+
+	return stat_cnt;
+}
+
+static int
+dpaa2_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
+		       uint64_t *values, unsigned int n)
+{
+	unsigned int i, stat_cnt = RTE_DIM(dpaa2_xstats_strings);
+	uint64_t values_copy[stat_cnt];
+
+	if (!ids) {
+		struct dpaa2_dev_priv *priv = dev->data->dev_private;
+		struct fsl_mc_io *dpni = (struct fsl_mc_io *)priv->hw;
+		int32_t  retcode;
+		union dpni_statistics value[3] = {};
+
+		if (n < stat_cnt)
+			return stat_cnt;
+
+		if (!values)
+			return 0;
+
+		/* Get Counters from page_0*/
+		retcode = dpni_get_statistics(dpni, CMD_PRI_LOW, priv->token,
+					      0, 0, &value[0]);
+		if (retcode)
+			return 0;
+
+		/* Get Counters from page_1*/
+		retcode = dpni_get_statistics(dpni, CMD_PRI_LOW, priv->token,
+					      1, 0, &value[1]);
+		if (retcode)
+			return 0;
+
+		/* Get Counters from page_2*/
+		retcode = dpni_get_statistics(dpni, CMD_PRI_LOW, priv->token,
+					      2, 0, &value[2]);
+		if (retcode)
+			return 0;
+
+		for (i = 0; i < stat_cnt; i++) {
+			values[i] = value[dpaa2_xstats_strings[i].page_id].
+				raw.counter[dpaa2_xstats_strings[i].stats_id];
+		}
+		return stat_cnt;
+	}
+
+	dpaa2_xstats_get_by_id(dev, NULL, values_copy, stat_cnt);
+
+	for (i = 0; i < n; i++) {
+		if (ids[i] >= stat_cnt) {
+			PMD_INIT_LOG(ERR, "id value isn't valid");
+			return -1;
+		}
+		values[i] = values_copy[ids[i]];
+	}
+	return n;
+}
+
+static int
+dpaa2_xstats_get_names_by_id(
+	struct rte_eth_dev *dev,
+	struct rte_eth_xstat_name *xstats_names,
+	const uint64_t *ids,
+	unsigned int limit)
+{
+	unsigned int i, stat_cnt = RTE_DIM(dpaa2_xstats_strings);
+	struct rte_eth_xstat_name xstats_names_copy[stat_cnt];
+
+	if (!ids)
+		return dpaa2_xstats_get_names(dev, xstats_names, limit);
+
+	dpaa2_xstats_get_names(dev, xstats_names_copy, limit);
+
+	for (i = 0; i < limit; i++) {
+		if (ids[i] >= stat_cnt) {
+			PMD_INIT_LOG(ERR, "id value isn't valid");
+			return -1;
+		}
+		strcpy(xstats_names[i].name, xstats_names_copy[ids[i]].name);
+	}
+	return limit;
+}
+
+static void
+dpaa2_dev_stats_reset(struct rte_eth_dev *dev)
 {
 	struct dpaa2_dev_priv *priv = dev->data->dev_private;
 	struct fsl_mc_io *dpni = (struct fsl_mc_io *)priv->hw;
@@ -1471,7 +1636,12 @@ static struct eth_dev_ops dpaa2_ethdev_ops = {
 	.dev_set_link_down    = dpaa2_dev_set_link_down,
 	.link_update	   = dpaa2_dev_link_update,
 	.stats_get	       = dpaa2_dev_stats_get,
+	.xstats_get	       = dpaa2_dev_xstats_get,
+	.xstats_get_by_id     = dpaa2_xstats_get_by_id,
+	.xstats_get_names_by_id = dpaa2_xstats_get_names_by_id,
+	.xstats_get_names      = dpaa2_xstats_get_names,
 	.stats_reset	   = dpaa2_dev_stats_reset,
+	.xstats_reset	      = dpaa2_dev_stats_reset,
 	.fw_version_get	   = dpaa2_fw_version_get,
 	.dev_infos_get	   = dpaa2_dev_info_get,
 	.dev_supported_ptypes_get = dpaa2_supported_ptypes_get,
