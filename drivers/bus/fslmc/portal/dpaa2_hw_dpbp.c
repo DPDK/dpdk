@@ -98,7 +98,7 @@ dpaa2_create_dpbp_device(int vdev_fd __rte_unused,
 
 	TAILQ_INSERT_TAIL(&dpbp_dev_list, dpbp_node, next);
 
-	PMD_INIT_LOG(DEBUG, "DPAA2: Added [dpbp.%d]", dpbp_id);
+	RTE_LOG(DEBUG, PMD, "DPAA2: Added [dpbp.%d]\n", dpbp_id);
 
 	return 0;
 }

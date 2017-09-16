@@ -210,7 +210,7 @@ configure_dpio_qbman_swp(struct dpaa2_dpio_dev *dpio_dev)
 		return -1;
 	}
 
-	PMD_DRV_LOG(DEBUG, "\t Allocated  DPIO Portal[%p]", dpio_dev->dpio);
+	PMD_DRV_LOG(DEBUG, "Allocated  DPIO Portal[%p]", dpio_dev->dpio);
 	dpio_dev->dpio->regs = dpio_dev->mc_portal;
 	if (dpio_open(dpio_dev->dpio, CMD_PRI_LOW, dpio_dev->hw_id,
 		      &dpio_dev->token)) {
@@ -241,8 +241,6 @@ configure_dpio_qbman_swp(struct dpaa2_dpio_dev *dpio_dev)
 		free(dpio_dev->dpio);
 		return -1;
 	}
-
-	PMD_INIT_LOG(DEBUG, "Qbman Portal ID %d", attr.qbman_portal_id);
 
 	/* Configure & setup SW portal */
 	p_des.block = NULL;
@@ -502,7 +500,7 @@ dpaa2_create_dpio_device(int vdev_fd,
 	}
 
 	TAILQ_INSERT_TAIL(&dpio_dev_list, dpio_dev, next);
-	PMD_INIT_LOG(DEBUG, "DPAA2: Added [dpio.%d]", object_id);
+	RTE_LOG(DEBUG, PMD, "DPAA2: Added [dpio.%d]\n", object_id);
 
 	return 0;
 }

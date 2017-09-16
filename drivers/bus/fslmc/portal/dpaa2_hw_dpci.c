@@ -140,7 +140,7 @@ rte_dpaa2_create_dpci_device(int vdev_fd __rte_unused,
 
 	TAILQ_INSERT_TAIL(&dpci_dev_list, dpci_node, next);
 
-	PMD_INIT_LOG(DEBUG, "DPAA2: Added [dpci.%d]", dpci_id);
+	RTE_LOG(DEBUG, PMD, "DPAA2: Added [dpci.%d]\n", dpci_id);
 
 	return 0;
 }
