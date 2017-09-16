@@ -171,4 +171,8 @@ static inline void hexdump(const void *ptr, size_t sz)
 	__hexdump(start, end, p, sz, c);
 }
 
+#define QMAN_REV_4000   0x04000000
+#define QMAN_REV_4100   0x04010000
+#define QMAN_REV_4101   0x04010001
+
 #include "qbman_sys.h"

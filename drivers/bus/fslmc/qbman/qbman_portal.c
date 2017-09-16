@@ -105,8 +105,6 @@ struct qb_attr_code code_sdqcr_dqsrc = QB_CODE(0, 0, 16);
 #define MAX_QBMAN_PORTALS  35
 static struct qbman_swp *portal_idx_map[MAX_QBMAN_PORTALS];
 
-uint32_t qman_version;
-
 /*********************************/
 /* Portal constructor/destructor */
 /*********************************/
@@ -1578,9 +1576,4 @@ done:
 	s->eqcr.pi = initial_pi;
 
 	return sent;
-}
-
-int qbman_get_version(void)
-{
-	return qman_version;
 }

@@ -38,10 +38,6 @@ typedef uint64_t  dma_addr_t;
  *
  */
 
-#define QMAN_REV_4000   0x04000000
-#define QMAN_REV_4100   0x04010000
-#define QMAN_REV_4101   0x04010001
-
 /**
  * struct qbman_block_desc - qbman block descriptor structure
  * @ccsr_reg_bar: CCSR register map.
