@@ -40,12 +40,50 @@
  * *not* to provide linux compatibility.
  */
 
-/* Trace the 3 different classes of read/write access to QBMan. #undef as
- * required.
- */
-#undef QBMAN_CCSR_TRACE
-#undef QBMAN_CINH_TRACE
-#undef QBMAN_CENA_TRACE
+#include "qbman_sys_decl.h"
+
+/* Debugging assists */
+static inline void __hexdump(unsigned long start, unsigned long end,
+			     unsigned long p, size_t sz, const unsigned char *c)
+{
+	while (start < end) {
+		unsigned int pos = 0;
+		char buf[64];
+		int nl = 0;
+
+		pos += sprintf(buf + pos, "%08lx: ", start);
+		do {
+			if ((start < p) || (start >= (p + sz)))
+				pos += sprintf(buf + pos, "..");
+			else
+				pos += sprintf(buf + pos, "%02x", *(c++));
+			if (!(++start & 15)) {
+				buf[pos++] = '\n';
+				nl = 1;
+			} else {
+				nl = 0;
+				if (!(start & 1))
+					buf[pos++] = ' ';
+				if (!(start & 3))
+					buf[pos++] = ' ';
+			}
+		} while (start & 15);
+		if (!nl)
+			buf[pos++] = '\n';
+		buf[pos] = '\0';
+		pr_info("%s", buf);
+	}
+}
+
+static inline void hexdump(const void *ptr, size_t sz)
+{
+	unsigned long p = (unsigned long)ptr;
+	unsigned long start = p & ~15;
+	unsigned long end = (p + sz + 15) & ~15;
+	const unsigned char *c = ptr;
+
+	__hexdump(start, end, p, sz, c);
+}
 
 /* Currently, the CENA support code expects each 32-bit word to be written in
  * host order, and these are converted to hardware (little-endian) order on
@@ -93,34 +131,6 @@ static inline void u64_from_le32_copy(uint64_t *d, const void *s,
 #endif
 	}
 }
-
-/* Convert a host-native 32bit value into little endian */
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-static inline uint32_t make_le32(uint32_t val)
-{
-	return ((val & 0xff) << 24) | ((val & 0xff00) << 8) |
-		((val & 0xff0000) >> 8) | ((val & 0xff000000) >> 24);
-}
-
-static inline uint32_t make_le24(uint32_t val)
-{
-	return (((val & 0xff) << 16) | (val & 0xff00) |
-		((val & 0xff0000) >> 16));
-}
-
-static inline void make_le32_n(uint32_t *val, unsigned int num)
-{
-	while (num--) {
-		*val = make_le32(*val);
-		val++;
-	}
-}
-
-#else
-#define make_le32(val) (val)
-#define make_le24(val) (val)
-#define make_le32_n(val, len) do {} while (0)
-#endif
 
 	/******************/
 	/* Portal access  */
@@ -249,7 +259,7 @@ static inline void *qbman_cena_read_wo_shadow(struct qbman_swp_sys *s,
 					      uint32_t offset)
 {
 #ifdef QBMAN_CENA_TRACE
-	pr_info("qbman_cena_read(%p:%d:0x%03x) %p\n",
+	pr_info("qbman_cena_read(%p:%d:0x%03x)\n",
 		s->addr_cena, s->idx, offset);
 #endif
 	return s->addr_cena + offset;
@@ -283,20 +293,20 @@ static inline void qbman_cena_prefetch(struct qbman_swp_sys *s,
  * qbman_portal.c. So use of it is declared locally here.
  */
 #define QBMAN_CINH_SWP_CFG   0xd00
+#define QBMAN_CINH_SWP_CFG   0xd00
+#define SWP_CFG_DQRR_MF_SHIFT 20
+#define SWP_CFG_EST_SHIFT     16
+#define SWP_CFG_WN_SHIFT      14
+#define SWP_CFG_RPM_SHIFT     12
+#define SWP_CFG_DCM_SHIFT     10
+#define SWP_CFG_EPM_SHIFT     8
+#define SWP_CFG_SD_SHIFT      5
+#define SWP_CFG_SP_SHIFT      4
+#define SWP_CFG_SE_SHIFT      3
+#define SWP_CFG_DP_SHIFT      2
+#define SWP_CFG_DE_SHIFT      1
+#define SWP_CFG_EP_SHIFT      0
 
-/* For MC portal use, we always configure with
- * DQRR_MF is (SWP_CFG,20,3) - DQRR max fill (<- 0x4)
- * EST is (SWP_CFG,16,3) - EQCR_CI stashing threshold (<- 0x2)
- * RPM is (SWP_CFG,12,2) - RCR production notification mode (<- 0x3)
- * DCM is (SWP_CFG,10,2) - DQRR consumption notification mode (<- 0x2)
- * EPM is (SWP_CFG,8,2) - EQCR production notification mode (<- 0x2)
- * SD is (SWP_CFG,5,1) - memory stashing drop enable (<- TRUE)
- * SP is (SWP_CFG,4,1) - memory stashing priority (<- TRUE)
- * SE is (SWP_CFG,3,1) - memory stashing enable (<- TRUE)
- * DP is (SWP_CFG,2,1) - dequeue stashing priority (<- TRUE)
- * DE is (SWP_CFG,1,1) - dequeue stashing enable (<- TRUE)
- * EP is (SWP_CFG,0,1) - EQCR_CI stashing priority (<- TRUE)
- */
 static inline uint32_t qbman_set_swp_cfg(uint8_t max_fill, uint8_t wn,
 					 uint8_t est, uint8_t rpm, uint8_t dcm,
 					uint8_t epm, int sd, int sp, int se,
@@ -304,12 +314,19 @@ static inline uint32_t qbman_set_swp_cfg(uint8_t max_fill, uint8_t wn,
 {
 	uint32_t reg;
 
-	reg = e32_uint8_t(20, (uint32_t)(3 + (max_fill >> 3)), max_fill) |
-		e32_uint8_t(16, 3, est) |
-		e32_uint8_t(12, 2, rpm) | e32_uint8_t(10, 2, dcm) |
-		e32_uint8_t(8, 2, epm) | e32_int(5, 1, sd) |
-		e32_int(4, 1, sp) | e32_int(3, 1, se) | e32_int(2, 1, dp) |
-		e32_int(1, 1, de) | e32_int(0, 1, ep) |	e32_uint8_t(14, 1, wn);
+	reg = (max_fill << SWP_CFG_DQRR_MF_SHIFT |
+		est << SWP_CFG_EST_SHIFT |
+		wn << SWP_CFG_WN_SHIFT |
+		rpm << SWP_CFG_RPM_SHIFT |
+		dcm << SWP_CFG_DCM_SHIFT |
+		epm << SWP_CFG_EPM_SHIFT |
+		sd << SWP_CFG_SD_SHIFT |
+		sp << SWP_CFG_SP_SHIFT |
+		se << SWP_CFG_SE_SHIFT |
+		dp << SWP_CFG_DP_SHIFT |
+		de << SWP_CFG_DE_SHIFT |
+		ep << SWP_CFG_EP_SHIFT);
+
 	return reg;
 }
 
@@ -322,7 +339,7 @@ static inline int qbman_swp_sys_init(struct qbman_swp_sys *s,
 	s->addr_cena = d->cena_bar;
 	s->addr_cinh = d->cinh_bar;
 	s->idx = (uint32_t)d->idx;
-	s->cena = (void *)get_zeroed_page(GFP_KERNEL);
+	s->cena = malloc(4096);
 	if (!s->cena) {
 		pr_err("Could not allocate page for cena shadow\n");
 		return -1;
@@ -347,7 +364,7 @@ static inline int qbman_swp_sys_init(struct qbman_swp_sys *s,
 	reg = qbman_cinh_read(s, QBMAN_CINH_SWP_CFG);
 	if (!reg) {
 		pr_err("The portal %d is not enabled!\n", s->idx);
-		kfree(s->cena);
+		free(s->cena);
 		return -1;
 	}
 	return 0;
@@ -355,5 +372,5 @@ static inline int qbman_swp_sys_init(struct qbman_swp_sys *s,
 
 static inline void qbman_swp_sys_finish(struct qbman_swp_sys *s)
 {
-	free_page((unsigned long)s->cena);
+	free(s->cena);
 }

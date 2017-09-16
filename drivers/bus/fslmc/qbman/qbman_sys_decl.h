@@ -34,27 +34,6 @@
 #error "Unknown endianness!"
 #endif
 
-/* The platform-independent code shouldn't need endianness, except for
- * weird/fast-path cases like qbman_result_has_token(), which needs to
- * perform a passive and endianness-specific test on a read-only data structure
- * very quickly. It's an exception, and this symbol is used for that case.
- */
-#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-#define DQRR_TOK_OFFSET 0
-#define QBMAN_RESULT_VERB_OFFSET_IN_MEM 24
-#define SCN_STATE_OFFSET_IN_MEM 8
-#define SCN_RID_OFFSET_IN_MEM 8
-#else
-#define DQRR_TOK_OFFSET 24
-#define QBMAN_RESULT_VERB_OFFSET_IN_MEM 0
-#define SCN_STATE_OFFSET_IN_MEM 16
-#define SCN_RID_OFFSET_IN_MEM 0
-#endif
-
-/* Similarly-named functions */
-#define upper32(a) upper_32_bits(a)
-#define lower32(a) lower_32_bits(a)
-
 	/****************/
 	/* arch assists */
 	/****************/
@@ -64,10 +43,10 @@
 #define dccivac(p) { asm volatile("dc civac, %0" : : "r"(p) : "memory"); }
 static inline void prefetch_for_load(void *p)
 {
-	asm volatile("prfm pldl1keep, [%0, #64]" : : "r" (p));
+	asm volatile("prfm pldl1keep, [%0, #0]" : : "r" (p));
 }
 
 static inline void prefetch_for_store(void *p)
 {
-	asm volatile("prfm pstl1keep, [%0, #64]" : : "r" (p));
+	asm volatile("prfm pstl1keep, [%0, #0]" : : "r" (p));
 }

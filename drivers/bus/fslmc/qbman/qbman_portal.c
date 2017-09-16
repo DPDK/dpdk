@@ -126,7 +126,7 @@ struct qbman_swp *qbman_swp_init(const struct qbman_swp_desc *d)
 {
 	int ret;
 	uint32_t eqcr_pi;
-	struct qbman_swp *p = kmalloc(sizeof(*p), GFP_KERNEL);
+	struct qbman_swp *p = malloc(sizeof(*p));
 
 	if (!p)
 		return NULL;
@@ -155,7 +155,7 @@ struct qbman_swp *qbman_swp_init(const struct qbman_swp_desc *d)
 
 	ret = qbman_swp_sys_init(&p->sys, d, p->dqrr.dqrr_size);
 	if (ret) {
-		kfree(p);
+		free(p);
 		pr_err("qbman_swp_sys_init() failed %d\n", ret);
 		return NULL;
 	}
@@ -183,7 +183,7 @@ void qbman_swp_finish(struct qbman_swp *p)
 #endif
 	qbman_swp_sys_finish(&p->sys);
 	portal_idx_map[p->desc.idx] = NULL;
-	kfree(p);
+	free(p);
 }
 
 const struct qbman_swp_desc *qbman_swp_get_desc(struct qbman_swp *p)
@@ -1097,15 +1097,7 @@ int qbman_result_bpscn_is_surplus(const struct qbman_result *scn)
 
 uint64_t qbman_result_bpscn_ctx(const struct qbman_result *scn)
 {
-	uint64_t ctx;
-	uint32_t ctx_hi, ctx_lo;
-
-	ctx = qbman_result_SCN_ctx(scn);
-	ctx_hi = upper32(ctx);
-	ctx_lo = lower32(ctx);
-
-	return ((uint64_t)make_le32(ctx_hi) << 32 |
-		(uint64_t)make_le32(ctx_lo));
+	return qbman_result_SCN_ctx(scn);
 }
 
 /*****************/
@@ -1118,15 +1110,7 @@ uint16_t qbman_result_cgcu_cgid(const struct qbman_result *scn)
 
 uint64_t qbman_result_cgcu_icnt(const struct qbman_result *scn)
 {
-	uint64_t ctx;
-	uint32_t ctx_hi, ctx_lo;
-
-	ctx = qbman_result_SCN_ctx(scn);
-	ctx_hi = upper32(ctx);
-	ctx_lo = lower32(ctx);
-
-	return ((uint64_t)(make_le32(ctx_hi) & 0xFF) << 32) |
-		(uint64_t)make_le32(ctx_lo);
+	return qbman_result_SCN_ctx(scn);
 }
 
 /******************/

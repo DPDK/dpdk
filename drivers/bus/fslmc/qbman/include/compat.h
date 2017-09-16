@@ -30,32 +30,17 @@
 #ifndef HEADER_COMPAT_H
 #define HEADER_COMPAT_H
 
-#include <sched.h>
-
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
 #include <stdint.h>
 #include <stdlib.h>
-#include <stddef.h>
 #include <errno.h>
 #include <string.h>
-#include <pthread.h>
-#include <net/ethernet.h>
-#include <stdio.h>
-#include <stdbool.h>
-#include <ctype.h>
 #include <malloc.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
 #include <unistd.h>
-#include <sys/mman.h>
-#include <limits.h>
-#include <assert.h>
-#include <dirent.h>
-#include <inttypes.h>
 #include <error.h>
+#include <linux/types.h>
 #include <rte_atomic.h>
 
 /* The following definitions are primarily to allow the single-source driver
@@ -67,35 +52,9 @@
 /* Required compiler attributes */
 #define likely(x)	__builtin_expect(!!(x), 1)
 #define unlikely(x)	__builtin_expect(!!(x), 0)
-#define ____cacheline_aligned __attribute__((aligned(L1_CACHE_BYTES)))
-
-#ifdef ARRAY_SIZE
-#undef ARRAY_SIZE
-#endif
-#define ARRAY_SIZE(a) (sizeof(a) / sizeof((a)[0]))
 
 /* Required types */
-typedef uint8_t		u8;
-typedef uint16_t	u16;
-typedef uint32_t	u32;
-typedef uint64_t	u64;
 typedef uint64_t	dma_addr_t;
-typedef cpu_set_t	cpumask_t;
-typedef unsigned int	gfp_t;
-typedef uint32_t	phandle;
-
-/* I/O operations */
-static inline u32 in_be32(volatile void *__p)
-{
-	volatile u32 *p = __p;
-	return *p;
-}
-
-static inline void out_be32(volatile void *__p, u32 val)
-{
-	volatile u32 *p = __p;
-	*p = val;
-}
 
 /* Debugging */
 #define prflush(fmt, args...) \
@@ -109,65 +68,44 @@ static inline void out_be32(volatile void *__p, u32 val)
 #define pr_info(fmt, args...)	 prflush(fmt, ##args)
 
 #ifdef RTE_LIBRTE_DPAA2_DEBUG_BUS
+
+/* Trace the 3 different classes of read/write access to QBMan. #undef as
+ * required.
+ */
+#define QBMAN_CCSR_TRACE
+#define QBMAN_CINH_TRACE
+#define QBMAN_CENA_TRACE
+
+#define QBMAN_CHECKING
+
 #ifdef pr_debug
 #undef pr_debug
 #endif
-#define pr_debug(fmt, args...) {}
-#define WARN_ON(c, str) \
+#define pr_debug(fmt, args...)	printf(fmt, ##args)
+#define QBMAN_BUG_ON(c) \
 do { \
 	static int warned_##__LINE__; \
 	if ((c) && !warned_##__LINE__) { \
-		pr_warn("%s\n", str); \
 		pr_warn("(%s:%d)\n", __FILE__, __LINE__); \
 		warned_##__LINE__ = 1; \
 	} \
 } while (0)
-#ifdef CONFIG_BUGON
-#define QBMAN_BUG_ON(c) WARN_ON(c, "BUG")
 #else
 #define QBMAN_BUG_ON(c) {}
+#define pr_debug(fmt, args...) {}
 #endif
 
-#define ALIGN(x, a) (((x) + ((typeof(x))(a) - 1)) & ~((typeof(x))(a) - 1))
-
 /* Other miscellaneous interfaces our APIs depend on; */
-#define lower_32_bits(x) ((u32)(x))
-#define upper_32_bits(x) ((u32)(((x) >> 16) >> 16))
 
-/* Compiler/type stuff */
+#define lower_32_bits(x) ((uint32_t)(x))
+#define upper_32_bits(x) ((uint32_t)(((x) >> 16) >> 16))
+
 
 #define __iomem
-#define GFP_KERNEL	0
+
 #define __raw_readb(p)	(*(const volatile unsigned char *)(p))
 #define __raw_readl(p)	(*(const volatile unsigned int *)(p))
 #define __raw_writel(v, p) {*(volatile unsigned int *)(p) = (v); }
-
-/* Allocator stuff */
-#define kmalloc(sz, t)	malloc(sz)
-#define kfree(p)	{ if (p) free(p); }
-static inline void *kzalloc(size_t sz, gfp_t __foo __rte_unused)
-{
-	void *ptr = malloc(sz);
-
-	if (ptr)
-		memset(ptr, 0, sz);
-	return ptr;
-}
-
-static inline unsigned long get_zeroed_page(gfp_t __foo __rte_unused)
-{
-	void *p;
-
-	if (posix_memalign(&p, 4096, 4096))
-		return 0;
-	memset(p, 0, 4096);
-	return (unsigned long)p;
-}
-
-static inline void free_page(unsigned long p)
-{
-	free((void *)p);
-}
 
 #define atomic_t                rte_atomic32_t
 #define atomic_read(v)          rte_atomic32_read(v)
