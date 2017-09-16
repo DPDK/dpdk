@@ -704,7 +704,7 @@ static struct qb_attr_code code_pull_dct = QB_CODE(0, 0, 2);
 static struct qb_attr_code code_pull_dt = QB_CODE(0, 2, 2);
 static struct qb_attr_code code_pull_rls = QB_CODE(0, 4, 1);
 static struct qb_attr_code code_pull_stash = QB_CODE(0, 5, 1);
-static struct qb_attr_code code_pull_numframes = QB_CODE(0, 8, 4);
+static struct qb_attr_code code_pull_numframes = QB_CODE(0, 8, 5);
 static struct qb_attr_code code_pull_token = QB_CODE(0, 16, 8);
 static struct qb_attr_code code_pull_dqsource = QB_CODE(1, 0, 24);
 static struct qb_attr_code code_pull_rsp_lo = QB_CODE(2, 0, 32);
@@ -743,7 +743,6 @@ void qbman_pull_desc_set_numframes(struct qbman_pull_desc *d, uint8_t numframes)
 {
 	uint32_t *cl = qb_cl(d);
 
-	QBMAN_BUG_ON(!numframes || (numframes > 16));
 	qb_attr_code_encode(&code_pull_numframes, cl,
 			    (uint32_t)(numframes - 1));
 }
