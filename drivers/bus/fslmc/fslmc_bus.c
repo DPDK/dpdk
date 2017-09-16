@@ -66,6 +66,49 @@ cleanup_fslmc_device_list(void)
 }
 
 static int
+compare_dpaa2_devname(struct rte_dpaa2_device *dev1,
+		      struct rte_dpaa2_device *dev2)
+{
+	int comp;
+
+	if (dev1->dev_type > dev2->dev_type) {
+		comp = 1;
+	} else if (dev1->dev_type < dev2->dev_type) {
+		comp = -1;
+	} else {
+		/* Check the ID as types match */
+		if (dev1->object_id > dev2->object_id)
+			comp = 1;
+		else if (dev1->object_id < dev2->object_id)
+			comp = -1;
+		else
+			comp = 0; /* Duplicate device name */
+	}
+
+	return comp;
+}
+
+static void
+insert_in_device_list(struct rte_dpaa2_device *newdev)
+{
+	int comp, inserted = 0;
+	struct rte_dpaa2_device *dev = NULL;
+	struct rte_dpaa2_device *tdev = NULL;
+
+	TAILQ_FOREACH_SAFE(dev, &rte_fslmc_bus.device_list, next, tdev) {
+		comp = compare_dpaa2_devname(newdev, dev);
+		if (comp < 0) {
+			TAILQ_INSERT_BEFORE(dev, newdev, next);
+			inserted = 1;
+			break;
+		}
+	}
+
+	if (!inserted)
+		TAILQ_INSERT_TAIL(&rte_fslmc_bus.device_list, newdev, next);
+}
+
+static int
 scan_one_fslmc_device(char *dev_name)
 {
 	char *dup_dev_name, *t_ptr;
@@ -135,7 +178,7 @@ scan_one_fslmc_device(char *dev_name)
 	}
 
 	/* Add device in the fslmc device list */
-	TAILQ_INSERT_TAIL(&rte_fslmc_bus.device_list, dev, next);
+	insert_in_device_list(dev);
 
 	/* Don't need the duplicated device filesystem entry anymore */
 	if (dup_dev_name)
