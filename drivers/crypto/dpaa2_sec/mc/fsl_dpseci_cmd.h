@@ -5,7 +5,7 @@
  *   BSD LICENSE
  *
  * Copyright 2013-2016 Freescale Semiconductor Inc.
- * Copyright 2016 NXP.
+ * Copyright 2016-2017 NXP.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -37,220 +37,187 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-
 #ifndef _FSL_DPSECI_CMD_H
 #define _FSL_DPSECI_CMD_H
 
 /* DPSECI Version */
-#define DPSECI_VER_MAJOR				5
-#define DPSECI_VER_MINOR				0
+#define DPSECI_VER_MAJOR		5
+#define DPSECI_VER_MINOR		1
+
+/* Command versioning */
+#define DPSECI_CMD_BASE_VERSION		1
+#define DPSECI_CMD_BASE_VERSION_V2	2
+#define DPSECI_CMD_ID_OFFSET		4
+
+#define DPSECI_CMD_V1(id) \
+	((id << DPSECI_CMD_ID_OFFSET) | DPSECI_CMD_BASE_VERSION)
+#define DPSECI_CMD_V2(id) \
+	((id << DPSECI_CMD_ID_OFFSET) | DPSECI_CMD_BASE_VERSION_V2)
 
 /* Command IDs */
-#define DPSECI_CMDID_CLOSE                              ((0x800 << 4) | (0x1))
-#define DPSECI_CMDID_OPEN                               ((0x809 << 4) | (0x1))
-#define DPSECI_CMDID_CREATE                             ((0x909 << 4) | (0x1))
-#define DPSECI_CMDID_DESTROY                            ((0x989 << 4) | (0x1))
-#define DPSECI_CMDID_GET_API_VERSION                    ((0xa09 << 4) | (0x1))
+#define DPSECI_CMDID_CLOSE		DPSECI_CMD_V1(0x800)
+#define DPSECI_CMDID_OPEN		DPSECI_CMD_V1(0x809)
+#define DPSECI_CMDID_CREATE		DPSECI_CMD_V2(0x909)
+#define DPSECI_CMDID_DESTROY		DPSECI_CMD_V1(0x989)
+#define DPSECI_CMDID_GET_API_VERSION	DPSECI_CMD_V1(0xa09)
 
-#define DPSECI_CMDID_ENABLE                             ((0x002 << 4) | (0x1))
-#define DPSECI_CMDID_DISABLE                            ((0x003 << 4) | (0x1))
-#define DPSECI_CMDID_GET_ATTR                           ((0x004 << 4) | (0x1))
-#define DPSECI_CMDID_RESET                              ((0x005 << 4) | (0x1))
-#define DPSECI_CMDID_IS_ENABLED                         ((0x006 << 4) | (0x1))
+#define DPSECI_CMDID_ENABLE		DPSECI_CMD_V1(0x002)
+#define DPSECI_CMDID_DISABLE		DPSECI_CMD_V1(0x003)
+#define DPSECI_CMDID_GET_ATTR		DPSECI_CMD_V1(0x004)
+#define DPSECI_CMDID_RESET		DPSECI_CMD_V1(0x005)
+#define DPSECI_CMDID_IS_ENABLED		DPSECI_CMD_V1(0x006)
 
-#define DPSECI_CMDID_SET_IRQ                            ((0x010 << 4) | (0x1))
-#define DPSECI_CMDID_GET_IRQ                            ((0x011 << 4) | (0x1))
-#define DPSECI_CMDID_SET_IRQ_ENABLE                     ((0x012 << 4) | (0x1))
-#define DPSECI_CMDID_GET_IRQ_ENABLE                     ((0x013 << 4) | (0x1))
-#define DPSECI_CMDID_SET_IRQ_MASK                       ((0x014 << 4) | (0x1))
-#define DPSECI_CMDID_GET_IRQ_MASK                       ((0x015 << 4) | (0x1))
-#define DPSECI_CMDID_GET_IRQ_STATUS                     ((0x016 << 4) | (0x1))
-#define DPSECI_CMDID_CLEAR_IRQ_STATUS                   ((0x017 << 4) | (0x1))
+#define DPSECI_CMDID_SET_RX_QUEUE	DPSECI_CMD_V1(0x194)
+#define DPSECI_CMDID_GET_RX_QUEUE	DPSECI_CMD_V1(0x196)
+#define DPSECI_CMDID_GET_TX_QUEUE	DPSECI_CMD_V1(0x197)
+#define DPSECI_CMDID_GET_SEC_ATTR	DPSECI_CMD_V1(0x198)
+#define DPSECI_CMDID_GET_SEC_COUNTERS	DPSECI_CMD_V1(0x199)
 
-#define DPSECI_CMDID_SET_RX_QUEUE                       ((0x194 << 4) | (0x1))
-#define DPSECI_CMDID_GET_RX_QUEUE                       ((0x196 << 4) | (0x1))
-#define DPSECI_CMDID_GET_TX_QUEUE                       ((0x197 << 4) | (0x1))
-#define DPSECI_CMDID_GET_SEC_ATTR                       ((0x198 << 4) | (0x1))
-#define DPSECI_CMDID_GET_SEC_COUNTERS                   ((0x199 << 4) | (0x1))
+#define DPSECI_CMDID_SET_CONGESTION_NOTIFICATION	DPSECI_CMD_V1(0x170)
+#define DPSECI_CMDID_GET_CONGESTION_NOTIFICATION	DPSECI_CMD_V1(0x171)
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPSECI_CMD_OPEN(cmd, dpseci_id) \
-	MC_CMD_OP(cmd, 0, 0,  32, int,      dpseci_id)
+/* Macros for accessing command fields smaller than 1byte */
+#define DPSECI_MASK(field)        \
+	GENMASK(DPSECI_##field##_SHIFT + DPSECI_##field##_SIZE - 1, \
+		DPSECI_##field##_SHIFT)
+#define dpseci_set_field(var, field, val) \
+	((var) |= (((val) << DPSECI_##field##_SHIFT) & DPSECI_MASK(field)))
+#define dpseci_get_field(var, field)      \
+	(((var) & DPSECI_MASK(field)) >> DPSECI_##field##_SHIFT)
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPSECI_CMD_CREATE(cmd, cfg) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  8,  uint8_t,  cfg->priorities[0]);\
-	MC_CMD_OP(cmd, 0, 8,  8,  uint8_t,  cfg->priorities[1]);\
-	MC_CMD_OP(cmd, 0, 16, 8,  uint8_t,  cfg->priorities[2]);\
-	MC_CMD_OP(cmd, 0, 24, 8,  uint8_t,  cfg->priorities[3]);\
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  cfg->priorities[4]);\
-	MC_CMD_OP(cmd, 0, 40, 8,  uint8_t,  cfg->priorities[5]);\
-	MC_CMD_OP(cmd, 0, 48, 8,  uint8_t,  cfg->priorities[6]);\
-	MC_CMD_OP(cmd, 0, 56, 8,  uint8_t,  cfg->priorities[7]);\
-	MC_CMD_OP(cmd, 1, 0,  8,  uint8_t,  cfg->num_tx_queues);\
-	MC_CMD_OP(cmd, 1, 8,  8,  uint8_t,  cfg->num_rx_queues);\
-} while (0)
+#pragma pack(push, 1)
+struct dpseci_cmd_open {
+	uint32_t dpseci_id;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPSECI_RSP_IS_ENABLED(cmd, en) \
-	MC_RSP_OP(cmd, 0, 0,  1,  int,	    en)
+struct dpseci_cmd_create {
+	uint8_t priorities[8];
+	uint8_t num_tx_queues;
+	uint8_t num_rx_queues;
+	uint8_t pad[6];
+	uint32_t options;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPSECI_CMD_SET_IRQ(cmd, irq_index, irq_cfg) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  8,  uint8_t,  irq_index);\
-	MC_CMD_OP(cmd, 0, 32, 32, uint32_t, irq_cfg->val);\
-	MC_CMD_OP(cmd, 1, 0,  64, uint64_t, irq_cfg->addr);\
-	MC_CMD_OP(cmd, 2, 0,  32, int,	    irq_cfg->irq_num); \
-} while (0)
+struct dpseci_cmd_destroy {
+	uint32_t dpseci_id;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPSECI_CMD_GET_IRQ(cmd, irq_index) \
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index)
+#define DPSECI_ENABLE_SHIFT	0
+#define DPSECI_ENABLE_SIZE	1
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPSECI_RSP_GET_IRQ(cmd, type, irq_cfg) \
-do { \
-	MC_RSP_OP(cmd, 0, 0,  32, uint32_t, irq_cfg->val); \
-	MC_RSP_OP(cmd, 1, 0,  64, uint64_t, irq_cfg->addr);\
-	MC_RSP_OP(cmd, 2, 0,  32, int,	    irq_cfg->irq_num); \
-	MC_RSP_OP(cmd, 2, 32, 32, int,	    type); \
-} while (0)
+struct dpseci_rsp_is_enabled {
+	/* only the first LSB */
+	uint8_t en;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPSECI_CMD_SET_IRQ_ENABLE(cmd, irq_index, enable_state) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  8,  uint8_t,  enable_state); \
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index); \
-} while (0)
+struct dpseci_rsp_get_attr {
+	uint32_t id;
+	uint32_t pad;
+	uint8_t num_tx_queues;
+	uint8_t num_rx_queues;
+	uint8_t pad1[6];
+	uint32_t options;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPSECI_CMD_GET_IRQ_ENABLE(cmd, irq_index) \
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index)
+#define DPSECI_DEST_TYPE_SHIFT	0
+#define DPSECI_DEST_TYPE_SIZE	4
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPSECI_RSP_GET_IRQ_ENABLE(cmd, enable_state) \
-	MC_RSP_OP(cmd, 0, 0,  8,  uint8_t,  enable_state)
+#define DPSECI_ORDER_PRESERVATION_SHIFT	0
+#define DPSECI_ORDER_PRESERVATION_SIZE	1
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPSECI_CMD_SET_IRQ_MASK(cmd, irq_index, mask) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  32, uint32_t, mask); \
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index); \
-} while (0)
+struct dpseci_cmd_set_rx_queue {
+	uint32_t dest_id;
+	uint8_t dest_priority;
+	uint8_t queue;
+	/* from LSB: dest_type:4 */
+	uint8_t dest_type;
+	uint8_t pad;
+	uint64_t user_ctx;
+	uint32_t options;
+	/* only the LSB */
+	uint8_t order_preservation_en;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPSECI_CMD_GET_IRQ_MASK(cmd, irq_index) \
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index)
+struct dpseci_cmd_get_queue {
+	uint8_t pad[5];
+	uint8_t queue;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPSECI_RSP_GET_IRQ_MASK(cmd, mask) \
-	MC_RSP_OP(cmd, 0, 0,  32, uint32_t, mask)
+struct dpseci_rsp_get_rx_queue {
+	uint32_t dest_id;
+	uint8_t dest_priority;
+	uint8_t pad1;
+	/* from LSB: dest_type:4 */
+	uint8_t dest_type;
+	uint8_t pad2;
+	uint64_t user_ctx;
+	uint32_t fqid;
+	/* only the LSB */
+	uint8_t order_preservation_en;
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPSECI_CMD_GET_IRQ_STATUS(cmd, irq_index, status) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  32, uint32_t, status);\
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index);\
-} while (0)
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPSECI_RSP_GET_IRQ_STATUS(cmd, status) \
-	MC_RSP_OP(cmd, 0, 0,  32, uint32_t,  status)
+struct dpseci_rsp_get_tx_queue {
+	uint32_t pad;
+	uint32_t fqid;
+	uint8_t priority;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPSECI_CMD_CLEAR_IRQ_STATUS(cmd, irq_index, status) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  32, uint32_t, status); \
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  irq_index); \
-} while (0)
+struct dpseci_rsp_get_sec_attr {
+	uint16_t ip_id;
+	uint8_t major_rev;
+	uint8_t minor_rev;
+	uint8_t era;
+	uint8_t pad1[3];
+	uint8_t deco_num;
+	uint8_t zuc_auth_acc_num;
+	uint8_t zuc_enc_acc_num;
+	uint8_t pad2;
+	uint8_t snow_f8_acc_num;
+	uint8_t snow_f9_acc_num;
+	uint8_t crc_acc_num;
+	uint8_t pad3;
+	uint8_t pk_acc_num;
+	uint8_t kasumi_acc_num;
+	uint8_t rng_acc_num;
+	uint8_t pad4;
+	uint8_t md_acc_num;
+	uint8_t arc4_acc_num;
+	uint8_t des_acc_num;
+	uint8_t aes_acc_num;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPSECI_RSP_GET_ATTR(cmd, attr) \
-do { \
-	MC_RSP_OP(cmd, 0, 0,  32, int,	    attr->id); \
-	MC_RSP_OP(cmd, 1, 0,  8,  uint8_t,  attr->num_tx_queues); \
-	MC_RSP_OP(cmd, 1, 8,  8,  uint8_t,  attr->num_rx_queues); \
-} while (0)
+struct dpseci_rsp_get_sec_counters {
+	uint64_t dequeued_requests;
+	uint64_t ob_enc_requests;
+	uint64_t ib_dec_requests;
+	uint64_t ob_enc_bytes;
+	uint64_t ob_prot_bytes;
+	uint64_t ib_dec_bytes;
+	uint64_t ib_valid_bytes;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPSECI_CMD_SET_RX_QUEUE(cmd, queue, cfg) \
-do { \
-	MC_CMD_OP(cmd, 0, 0,  32, int,      cfg->dest_cfg.dest_id); \
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t,  cfg->dest_cfg.priority); \
-	MC_CMD_OP(cmd, 0, 40, 8,  uint8_t,  queue); \
-	MC_CMD_OP(cmd, 0, 48, 4,  enum dpseci_dest, cfg->dest_cfg.dest_type); \
-	MC_CMD_OP(cmd, 1, 0,  64, uint64_t, cfg->user_ctx); \
-	MC_CMD_OP(cmd, 2, 0,  32, uint32_t, cfg->options);\
-	MC_CMD_OP(cmd, 2, 32, 1,  int,		cfg->order_preservation_en);\
-} while (0)
+struct dpseci_rsp_get_api_version {
+	uint16_t major;
+	uint16_t minor;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPSECI_CMD_GET_RX_QUEUE(cmd, queue) \
-	MC_CMD_OP(cmd, 0, 40, 8,  uint8_t,  queue)
+#define DPSECI_DEST_TYPE_SHIFT		0
+#define DPSECI_DEST_TYPE_SIZE		4
+#define DPSECI_CG_UNITS_SHIFT		4
+#define DPSECI_CG_UNITS_SIZE		2
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPSECI_RSP_GET_RX_QUEUE(cmd, attr) \
-do { \
-	MC_RSP_OP(cmd, 0, 0,  32, int,      attr->dest_cfg.dest_id);\
-	MC_RSP_OP(cmd, 0, 32, 8,  uint8_t,  attr->dest_cfg.priority);\
-	MC_RSP_OP(cmd, 0, 48, 4,  enum dpseci_dest, attr->dest_cfg.dest_type);\
-	MC_RSP_OP(cmd, 1, 0,  8,  uint64_t,  attr->user_ctx);\
-	MC_RSP_OP(cmd, 2, 0,  32, uint32_t,  attr->fqid);\
-	MC_RSP_OP(cmd, 2, 32, 1,  int,		 attr->order_preservation_en);\
-} while (0)
+struct dpseci_cmd_set_congestion_notification {
+	uint32_t dest_id;
+	uint16_t notification_mode;
+	uint8_t dest_priority;
+	/* from LSB: dest_type: 4 units:2 */
+	uint8_t type_units;
+	uint64_t message_iova;
+	uint64_t message_ctx;
+	uint32_t threshold_entry;
+	uint32_t threshold_exit;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPSECI_CMD_GET_TX_QUEUE(cmd, queue) \
-	MC_CMD_OP(cmd, 0, 40, 8,  uint8_t,  queue)
-
-/*                cmd, param, offset, width, type, arg_name */
-#define DPSECI_RSP_GET_TX_QUEUE(cmd, attr) \
-do { \
-	MC_RSP_OP(cmd, 0, 32, 32, uint32_t,  attr->fqid);\
-	MC_RSP_OP(cmd, 1, 0,  8,  uint8_t,   attr->priority);\
-} while (0)
-
-/*                cmd, param, offset, width, type, arg_name */
-#define DPSECI_RSP_GET_SEC_ATTR(cmd, attr) \
-do { \
-	MC_RSP_OP(cmd, 0,  0, 16, uint16_t,  attr->ip_id);\
-	MC_RSP_OP(cmd, 0, 16,  8,  uint8_t,  attr->major_rev);\
-	MC_RSP_OP(cmd, 0, 24,  8,  uint8_t,  attr->minor_rev);\
-	MC_RSP_OP(cmd, 0, 32,  8,  uint8_t,  attr->era);\
-	MC_RSP_OP(cmd, 1,  0,  8,  uint8_t,  attr->deco_num);\
-	MC_RSP_OP(cmd, 1,  8,  8,  uint8_t,  attr->zuc_auth_acc_num);\
-	MC_RSP_OP(cmd, 1, 16,  8,  uint8_t,  attr->zuc_enc_acc_num);\
-	MC_RSP_OP(cmd, 1, 32,  8,  uint8_t,  attr->snow_f8_acc_num);\
-	MC_RSP_OP(cmd, 1, 40,  8,  uint8_t,  attr->snow_f9_acc_num);\
-	MC_RSP_OP(cmd, 1, 48,  8,  uint8_t,  attr->crc_acc_num);\
-	MC_RSP_OP(cmd, 2,  0,  8,  uint8_t,  attr->pk_acc_num);\
-	MC_RSP_OP(cmd, 2,  8,  8,  uint8_t,  attr->kasumi_acc_num);\
-	MC_RSP_OP(cmd, 2, 16,  8,  uint8_t,  attr->rng_acc_num);\
-	MC_RSP_OP(cmd, 2, 32,  8,  uint8_t,  attr->md_acc_num);\
-	MC_RSP_OP(cmd, 2, 40,  8,  uint8_t,  attr->arc4_acc_num);\
-	MC_RSP_OP(cmd, 2, 48,  8,  uint8_t,  attr->des_acc_num);\
-	MC_RSP_OP(cmd, 2, 56,  8,  uint8_t,  attr->aes_acc_num);\
-} while (0)
-
-/*                cmd, param, offset, width, type, arg_name */
-#define DPSECI_RSP_GET_SEC_COUNTERS(cmd, counters) \
-do { \
-	MC_RSP_OP(cmd, 0,  0, 64, uint64_t,  counters->dequeued_requests);\
-	MC_RSP_OP(cmd, 1,  0, 64, uint64_t,  counters->ob_enc_requests);\
-	MC_RSP_OP(cmd, 2,  0, 64, uint64_t,  counters->ib_dec_requests);\
-	MC_RSP_OP(cmd, 3,  0, 64, uint64_t,  counters->ob_enc_bytes);\
-	MC_RSP_OP(cmd, 4,  0, 64, uint64_t,  counters->ob_prot_bytes);\
-	MC_RSP_OP(cmd, 5,  0, 64, uint64_t,  counters->ib_dec_bytes);\
-	MC_RSP_OP(cmd, 6,  0, 64, uint64_t,  counters->ib_valid_bytes);\
-} while (0)
-
-/*                cmd, param, offset, width, type,      arg_name */
-#define DPSECI_RSP_GET_API_VERSION(cmd, major, minor) \
-do { \
-	MC_RSP_OP(cmd, 0, 0,  16, uint16_t, major);\
-	MC_RSP_OP(cmd, 0, 16, 16, uint16_t, minor);\
-} while (0)
-
+#pragma pack(pop)
 #endif /* _FSL_DPSECI_CMD_H */

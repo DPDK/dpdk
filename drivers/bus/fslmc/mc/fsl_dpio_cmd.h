@@ -5,7 +5,7 @@
  *   BSD LICENSE
  *
  * Copyright 2013-2016 Freescale Semiconductor Inc.
- * Copyright 2016 NXP.
+ * Copyright 2016-2017 NXP.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -41,82 +41,108 @@
 #define _FSL_DPIO_CMD_H
 
 /* DPIO Version */
-#define DPIO_VER_MAJOR				4
-#define DPIO_VER_MINOR				2
+#define DPIO_VER_MAJOR			4
+#define DPIO_VER_MINOR			2
+
+#define DPIO_CMD_BASE_VERSION		1
+#define DPIO_CMD_ID_OFFSET		4
+
+#define DPIO_CMD(id)	(((id) << DPIO_CMD_ID_OFFSET) | DPIO_CMD_BASE_VERSION)
 
 /* Command IDs */
-#define DPIO_CMDID_CLOSE                                0x8001
-#define DPIO_CMDID_OPEN                                 0x8031
-#define DPIO_CMDID_CREATE                               0x9031
-#define DPIO_CMDID_DESTROY                              0x9831
-#define DPIO_CMDID_GET_API_VERSION                      0xa031
+#define DPIO_CMDID_CLOSE				DPIO_CMD(0x800)
+#define DPIO_CMDID_OPEN					DPIO_CMD(0x803)
+#define DPIO_CMDID_CREATE				DPIO_CMD(0x903)
+#define DPIO_CMDID_DESTROY				DPIO_CMD(0x983)
+#define DPIO_CMDID_GET_API_VERSION			DPIO_CMD(0xa03)
 
-#define DPIO_CMDID_ENABLE                               0x0021
-#define DPIO_CMDID_DISABLE                              0x0031
-#define DPIO_CMDID_GET_ATTR                             0x0041
-#define DPIO_CMDID_RESET                                0x0051
-#define DPIO_CMDID_IS_ENABLED                           0x0061
+#define DPIO_CMDID_ENABLE				DPIO_CMD(0x002)
+#define DPIO_CMDID_DISABLE				DPIO_CMD(0x003)
+#define DPIO_CMDID_GET_ATTR				DPIO_CMD(0x004)
+#define DPIO_CMDID_RESET				DPIO_CMD(0x005)
+#define DPIO_CMDID_IS_ENABLED				DPIO_CMD(0x006)
 
-#define DPIO_CMDID_SET_STASHING_DEST                    0x1201
-#define DPIO_CMDID_GET_STASHING_DEST                    0x1211
-#define DPIO_CMDID_ADD_STATIC_DEQUEUE_CHANNEL           0x1221
-#define DPIO_CMDID_REMOVE_STATIC_DEQUEUE_CHANNEL        0x1231
+#define DPIO_CMDID_SET_IRQ_ENABLE			DPIO_CMD(0x012)
+#define DPIO_CMDID_GET_IRQ_ENABLE			DPIO_CMD(0x013)
+#define DPIO_CMDID_SET_IRQ_MASK				DPIO_CMD(0x014)
+#define DPIO_CMDID_GET_IRQ_MASK				DPIO_CMD(0x015)
+#define DPIO_CMDID_GET_IRQ_STATUS			DPIO_CMD(0x016)
+#define DPIO_CMDID_CLEAR_IRQ_STATUS			DPIO_CMD(0x017)
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPIO_CMD_OPEN(cmd, dpio_id) \
-	MC_CMD_OP(cmd, 0, 0,  32, uint32_t,     dpio_id)
+#define DPIO_CMDID_SET_STASHING_DEST			DPIO_CMD(0x120)
+#define DPIO_CMDID_GET_STASHING_DEST			DPIO_CMD(0x121)
+#define DPIO_CMDID_ADD_STATIC_DEQUEUE_CHANNEL		DPIO_CMD(0x122)
+#define DPIO_CMDID_REMOVE_STATIC_DEQUEUE_CHANNEL	DPIO_CMD(0x123)
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPIO_CMD_CREATE(cmd, cfg) \
-do { \
-	MC_CMD_OP(cmd, 0, 16, 2,  enum dpio_channel_mode,	\
-					   cfg->channel_mode);\
-	MC_CMD_OP(cmd, 0, 32, 8,  uint8_t, cfg->num_priorities);\
-} while (0)
+/* Macros for accessing command fields smaller than 1byte */
+#define DPIO_MASK(field)        \
+	GENMASK(DPIO_##field##_SHIFT + DPIO_##field##_SIZE - 1, \
+		DPIO_##field##_SHIFT)
+#define dpio_set_field(var, field, val) \
+	((var) |= (((val) << DPIO_##field##_SHIFT) & DPIO_MASK(field)))
+#define dpio_get_field(var, field)      \
+	(((var) & DPIO_MASK(field)) >> DPIO_##field##_SHIFT)
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPIO_RSP_IS_ENABLED(cmd, en) \
-	MC_RSP_OP(cmd, 0, 0,  1,  int,	    en)
+#pragma pack(push, 1)
+struct dpio_cmd_open {
+	uint32_t dpio_id;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPIO_RSP_GET_ATTRIBUTES(cmd, attr) \
-do { \
-	MC_RSP_OP(cmd, 0,  0, 32, int,	    (attr)->id);\
-	MC_RSP_OP(cmd, 0, 32, 16, uint16_t, (attr)->qbman_portal_id);\
-	MC_RSP_OP(cmd, 0, 48,  8, uint8_t,  (attr)->num_priorities);\
-	MC_RSP_OP(cmd, 0, 56,  4, enum dpio_channel_mode,\
-			(attr)->channel_mode);\
-	MC_RSP_OP(cmd, 1,  0, 64, uint64_t, (attr)->qbman_portal_ce_offset);\
-	MC_RSP_OP(cmd, 2,  0, 64, uint64_t, (attr)->qbman_portal_ci_offset);\
-	MC_RSP_OP(cmd, 3,  0, 32, uint32_t, (attr)->qbman_version);\
-	MC_RSP_OP(cmd, 4,  0, 32, uint32_t, (attr)->clk);\
-} while (0)
+#define DPIO_CHANNEL_MODE_SHIFT		0
+#define DPIO_CHANNEL_MODE_SIZE		2
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPIO_CMD_SET_STASHING_DEST(cmd, sdest) \
-	MC_CMD_OP(cmd, 0, 0,  8,  uint8_t,  sdest)
+struct dpio_cmd_create {
+	uint16_t pad1;
+	/* from LSB: channel_mode:2 */
+	uint8_t channel_mode;
+	uint8_t pad2;
+	uint8_t num_priorities;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPIO_RSP_GET_STASHING_DEST(cmd, sdest) \
-	MC_RSP_OP(cmd, 0, 0,  8,  uint8_t,  sdest)
+struct dpio_cmd_destroy {
+	uint32_t dpio_id;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPIO_CMD_ADD_STATIC_DEQUEUE_CHANNEL(cmd, dpcon_id) \
-	MC_CMD_OP(cmd, 0, 0,  32, int,      dpcon_id)
+#define DPIO_ENABLE_SHIFT	0
+#define DPIO_ENABLE_SIZE	1
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPIO_RSP_ADD_STATIC_DEQUEUE_CHANNEL(cmd, channel_index) \
-	MC_RSP_OP(cmd, 0, 0,  8,  uint8_t,  channel_index)
+struct dpio_rsp_is_enabled {
+	/* only the LSB */
+	uint8_t en;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPIO_CMD_REMOVE_STATIC_DEQUEUE_CHANNEL(cmd, dpcon_id) \
-	MC_CMD_OP(cmd, 0, 0,  32, int,      dpcon_id)
+#define DPIO_ATTR_CHANNEL_MODE_SHIFT	0
+#define DPIO_ATTR_CHANNEL_MODE_SIZE	4
 
-/*                cmd, param, offset, width, type,      arg_name */
-#define DPIO_RSP_GET_API_VERSION(cmd, major, minor) \
-do { \
-	MC_RSP_OP(cmd, 0, 0,  16, uint16_t, major);\
-	MC_RSP_OP(cmd, 0, 16, 16, uint16_t, minor);\
-} while (0)
+struct dpio_rsp_get_attr {
+	uint32_t id;
+	uint16_t qbman_portal_id;
+	uint8_t num_priorities;
+	/* from LSB: channel_mode:4 */
+	uint8_t channel_mode;
+	uint64_t qbman_portal_ce_offset;
+	uint64_t qbman_portal_ci_offset;
+	uint32_t qbman_version;
+	uint32_t pad;
+	uint32_t clk;
+};
 
+struct dpio_stashing_dest {
+	uint8_t sdest;
+};
+
+struct dpio_cmd_static_dequeue_channel {
+	uint32_t dpcon_id;
+};
+
+struct dpio_rsp_add_static_dequeue_channel {
+	uint8_t channel_index;
+};
+
+struct dpio_rsp_get_api_version {
+	uint16_t major;
+	uint16_t minor;
+};
+
+#pragma pack(pop)
 #endif /* _FSL_DPIO_CMD_H */

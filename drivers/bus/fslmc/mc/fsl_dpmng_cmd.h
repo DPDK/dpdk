@@ -5,6 +5,7 @@
  *   BSD LICENSE
  *
  * Copyright 2013-2016 Freescale Semiconductor Inc.
+ * Copyright 2017 NXP.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -36,26 +37,32 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
 #ifndef __FSL_DPMNG_CMD_H
 #define __FSL_DPMNG_CMD_H
 
+/* Command versioning */
+#define DPMNG_CMD_BASE_VERSION		1
+#define DPMNG_CMD_ID_OFFSET		4
+
+#define DPMNG_CMD(id)	((id << DPMNG_CMD_ID_OFFSET) | DPMNG_CMD_BASE_VERSION)
+
 /* Command IDs */
-#define DPMNG_CMDID_GET_VERSION			0x8311
-#define DPMNG_CMDID_GET_SOC_VERSION		0x8321
+#define DPMNG_CMDID_GET_VERSION		DPMNG_CMD(0x831)
+#define DPMNG_CMDID_GET_SOC_VERSION	DPMNG_CMD(0x832)
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPMNG_RSP_GET_VERSION(cmd, mc_ver_info) \
-do { \
-	MC_RSP_OP(cmd, 0, 0,  32, uint32_t, mc_ver_info->revision); \
-	MC_RSP_OP(cmd, 0, 32, 32, uint32_t, mc_ver_info->major); \
-	MC_RSP_OP(cmd, 1, 0,  32, uint32_t, mc_ver_info->minor); \
-} while (0)
+#pragma pack(push, 1)
+struct dpmng_rsp_get_version {
+	uint32_t revision;
+	uint32_t version_major;
+	uint32_t version_minor;
+};
 
-/*                cmd, param, offset, width, type, arg_name */
-#define DPMNG_RSP_GET_SOC_VERSION(cmd, mc_soc_version) \
-do { \
-	MC_RSP_OP(cmd, 0, 0,  32, uint32_t, mc_soc_version->svr); \
-	MC_RSP_OP(cmd, 0, 32, 32, uint32_t, mc_soc_version->pvr); \
-} while (0)
+struct dpmng_rsp_get_soc_version {
+	uint32_t svr;
+	uint32_t pvr;
+};
+
+#pragma pack(pop)
 
 #endif /* __FSL_DPMNG_CMD_H */

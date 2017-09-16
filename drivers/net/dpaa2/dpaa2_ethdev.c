@@ -941,7 +941,7 @@ void dpaa2_dev_stats_get(struct rte_eth_dev *dev,
 
 	/*Get Counters from page_0*/
 	retcode = dpni_get_statistics(dpni, CMD_PRI_LOW, priv->token,
-				      page0, &value);
+				      page0, 0, &value);
 	if (retcode)
 		goto err;
 
@@ -950,7 +950,7 @@ void dpaa2_dev_stats_get(struct rte_eth_dev *dev,
 
 	/*Get Counters from page_1*/
 	retcode = dpni_get_statistics(dpni, CMD_PRI_LOW, priv->token,
-				      page1, &value);
+				      page1, 0, &value);
 	if (retcode)
 		goto err;
 
@@ -959,7 +959,7 @@ void dpaa2_dev_stats_get(struct rte_eth_dev *dev,
 
 	/*Get Counters from page_2*/
 	retcode = dpni_get_statistics(dpni, CMD_PRI_LOW, priv->token,
-				      page2, &value);
+				      page2, 0, &value);
 	if (retcode)
 		goto err;
 
@@ -1384,22 +1384,19 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 		goto init_err;
 	}
 
-	priv->num_tc = attr.num_tcs;
+	priv->num_rx_tc = attr.num_rx_tcs;
 
-	/* Resetting the "num_rx_vqueues" to equal number of queues in first TC
+	/* Resetting the "num_rx_queues" to equal number of queues in first TC
 	 * as only one TC is supported on Rx Side. Once Multiple TCs will be
 	 * in use for Rx processing then this will be changed or removed.
 	 */
 	priv->nb_rx_queues = attr.num_queues;
 
-	/* TODO:Using hard coded value for number of TX queues due to dependency
-	 * in MC.
-	 */
-	priv->nb_tx_queues = 8;
+	/* Using number of TX queues as number of TX TCs */
+	priv->nb_tx_queues = attr.num_tx_tcs;
 
-	PMD_INIT_LOG(DEBUG, "num TC - RX %d", priv->num_tc);
-	PMD_INIT_LOG(DEBUG, "nb_tx_queues %d", priv->nb_tx_queues);
-	PMD_INIT_LOG(DEBUG, "nb_rx_queues %d", priv->nb_rx_queues);
+	PMD_DRV_LOG(DEBUG, "RX-TC= %d, nb_rx_queues= %d, nb_tx_queues=%d",
+		    priv->num_tc, priv->nb_rx_queues, priv->nb_tx_queues);
 
 	priv->hw = dpni_dev;
 	priv->hw_id = hw_id;

@@ -58,6 +58,7 @@
 
 #include "rte_fslmc.h"
 #include "fslmc_vfio.h"
+#include <mc/fsl_dpmng.h>
 
 #include "portal/dpaa2_hw_pvt.h"
 #include "portal/dpaa2_hw_dpio.h"
@@ -417,6 +418,8 @@ fslmc_process_mcp(struct rte_dpaa2_device *dev)
 {
 	int64_t v_addr;
 	char *dev_name;
+	struct fsl_mc_io dpmng  = {0};
+	struct mc_version mc_ver_info = {0};
 
 	rte_mcp_ptr_list = malloc(sizeof(void *) * 1);
 	if (!rte_mcp_ptr_list) {
@@ -441,6 +444,22 @@ fslmc_process_mcp(struct rte_dpaa2_device *dev)
 		return -1;
 	}
 
+	/* check the MC version compatibility */
+	dpmng.regs = (void *)v_addr;
+	if (mc_get_version(&dpmng, CMD_PRI_LOW, &mc_ver_info))
+		RTE_LOG(WARNING, PMD, "\tmc_get_version failed\n");
+
+	if ((mc_ver_info.major != MC_VER_MAJOR) ||
+	    (mc_ver_info.minor < MC_VER_MINOR)) {
+		RTE_LOG(ERR, PMD, "DPAA2 MC version not compatible!"
+			" Expected %d.%d.x, Detected %d.%d.%d\n",
+			MC_VER_MAJOR, MC_VER_MINOR,
+			mc_ver_info.major, mc_ver_info.minor,
+			mc_ver_info.revision);
+		free(rte_mcp_ptr_list);
+		rte_mcp_ptr_list = NULL;
+		return -1;
+	}
 	rte_mcp_ptr_list[0] = (void *)v_addr;
 
 	return 0;

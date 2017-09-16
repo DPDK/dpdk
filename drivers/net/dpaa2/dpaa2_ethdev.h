@@ -87,7 +87,7 @@ struct dpaa2_dev_priv {
 	uint32_t options;
 	uint8_t max_mac_filters;
 	uint8_t max_vlan_filters;
-	uint8_t num_tc;
+	uint8_t num_rx_tc;
 	uint8_t flags; /*dpaa2 config flags */
 };
 
