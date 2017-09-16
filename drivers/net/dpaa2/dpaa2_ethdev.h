@@ -61,6 +61,7 @@
  * currently considering 32 KB packets
  */
 #define CONG_THRESHOLD_RX_Q  (64 * 1024)
+#define CONG_RX_OAL	128
 
 /* Size of the input SMMU mapped memory required by MC */
 #define DIST_PARAM_IOVA_SIZE 256
