@@ -366,6 +366,7 @@ void set_swp_active_dqs(uint16_t dpio_index, struct qbman_result *dqs)
 }
 struct dpaa2_dpbp_dev *dpaa2_alloc_dpbp_dev(void);
 void dpaa2_free_dpbp_dev(struct dpaa2_dpbp_dev *dpbp);
+int dpaa2_dpbp_supported(void);
 
 struct dpaa2_dpci_dev *rte_dpaa2_alloc_dpci_dev(void);
 void rte_dpaa2_free_dpci_dev(struct dpaa2_dpci_dev *dpci);

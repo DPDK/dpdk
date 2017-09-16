@@ -83,6 +83,7 @@ DPDK_17.08 {
 DPDK_17.11 {
 	global:
 
+	dpaa2_dpbp_supported;
 	rte_dpaa2_dev_type;
 
 } DPDK_17.08;
