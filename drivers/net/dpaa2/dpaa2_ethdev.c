@@ -334,8 +334,10 @@ fail:
 static int
 dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 {
-	struct rte_eth_dev_data *data = dev->data;
-	struct rte_eth_conf *eth_conf = &data->dev_conf;
+	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+	struct fsl_mc_io *dpni = priv->hw;
+	struct rte_eth_conf *eth_conf = &dev->data->dev_conf;
+	int rx_ip_csum_offload = false;
 	int ret;
 
 	PMD_INIT_FUNC_TRACE();
@@ -362,6 +364,37 @@ dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 				     "please check queue config\n");
 			return ret;
 		}
+	}
+
+	if (eth_conf->rxmode.hw_ip_checksum)
+		rx_ip_csum_offload = true;
+
+	ret = dpni_set_offload(dpni, CMD_PRI_LOW, priv->token,
+			       DPNI_OFF_RX_L3_CSUM, rx_ip_csum_offload);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Error to set RX l3 csum:Error = %d\n", ret);
+		return ret;
+	}
+
+	ret = dpni_set_offload(dpni, CMD_PRI_LOW, priv->token,
+			       DPNI_OFF_RX_L4_CSUM, rx_ip_csum_offload);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Error to get RX l4 csum:Error = %d\n", ret);
+		return ret;
+	}
+
+	ret = dpni_set_offload(dpni, CMD_PRI_LOW, priv->token,
+			       DPNI_OFF_TX_L3_CSUM, true);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Error to set TX l3 csum:Error = %d\n", ret);
+		return ret;
+	}
+
+	ret = dpni_set_offload(dpni, CMD_PRI_LOW, priv->token,
+			       DPNI_OFF_TX_L4_CSUM, true);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "Error to get TX l4 csum:Error = %d\n", ret);
+		return ret;
 	}
 
 	/* update the current status */
@@ -705,34 +738,6 @@ dpaa2_dev_start(struct rte_eth_dev *dev)
 			return ret;
 		}
 		dpaa2_q->fqid = qid.fqid;
-	}
-
-	ret = dpni_set_offload(dpni, CMD_PRI_LOW, priv->token,
-			       DPNI_OFF_RX_L3_CSUM, true);
-	if (ret) {
-		PMD_INIT_LOG(ERR, "Error to set RX l3 csum:Error = %d\n", ret);
-		return ret;
-	}
-
-	ret = dpni_set_offload(dpni, CMD_PRI_LOW, priv->token,
-			       DPNI_OFF_RX_L4_CSUM, true);
-	if (ret) {
-		PMD_INIT_LOG(ERR, "Error to get RX l4 csum:Error = %d\n", ret);
-		return ret;
-	}
-
-	ret = dpni_set_offload(dpni, CMD_PRI_LOW, priv->token,
-			       DPNI_OFF_TX_L3_CSUM, true);
-	if (ret) {
-		PMD_INIT_LOG(ERR, "Error to set TX l3 csum:Error = %d\n", ret);
-		return ret;
-	}
-
-	ret = dpni_set_offload(dpni, CMD_PRI_LOW, priv->token,
-			       DPNI_OFF_TX_L4_CSUM, true);
-	if (ret) {
-		PMD_INIT_LOG(ERR, "Error to get TX l4 csum:Error = %d\n", ret);
-		return ret;
 	}
 
 	/*checksum errors, send them to normal path and set it in annotation */
