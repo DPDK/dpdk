@@ -1092,7 +1092,8 @@ priv_flow_process(struct pmd_internals *pmd,
 			if (action)
 				goto exit_action_not_supported;
 			action = 1;
-			if (!queue || (queue->index >= pmd->nb_queues))
+			if (!queue ||
+			    (queue->index > pmd->dev->data->nb_rx_queues - 1))
 				goto exit_action_not_supported;
 			if (flow)
 				err = add_action_skbedit(flow, queue->index);
