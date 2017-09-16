@@ -93,7 +93,7 @@ struct dpaa2_dev_priv {
 };
 
 int dpaa2_setup_flow_dist(struct rte_eth_dev *eth_dev,
-			  uint32_t req_dist_set);
+			  uint64_t req_dist_set);
 
 int dpaa2_remove_flow_dist(struct rte_eth_dev *eth_dev,
 			   uint8_t tc_index);

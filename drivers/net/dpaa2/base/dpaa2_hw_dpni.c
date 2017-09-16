@@ -51,12 +51,12 @@
 
 static int
 dpaa2_distset_to_dpkg_profile_cfg(
-		uint32_t req_dist_set,
+		uint64_t req_dist_set,
 		struct dpkg_profile_cfg *kg_cfg);
 
 int
 dpaa2_setup_flow_dist(struct rte_eth_dev *eth_dev,
-		      uint32_t req_dist_set)
+		      uint64_t req_dist_set)
 {
 	struct dpaa2_dev_priv *priv = eth_dev->data->dev_private;
 	struct fsl_mc_io *dpni = priv->hw;
@@ -76,7 +76,7 @@ dpaa2_setup_flow_dist(struct rte_eth_dev *eth_dev,
 
 	ret = dpaa2_distset_to_dpkg_profile_cfg(req_dist_set, &kg_cfg);
 	if (ret) {
-		PMD_INIT_LOG(ERR, "given rss_hf (%x) not supported",
+		PMD_INIT_LOG(ERR, "given rss_hf (%lx) not supported",
 			     req_dist_set);
 		rte_free(p_params);
 		return ret;
@@ -148,7 +148,7 @@ int dpaa2_remove_flow_dist(
 
 static int
 dpaa2_distset_to_dpkg_profile_cfg(
-		uint32_t req_dist_set,
+		uint64_t req_dist_set,
 		struct dpkg_profile_cfg *kg_cfg)
 {
 	uint32_t loop = 0, i = 0, dist_field = 0;
