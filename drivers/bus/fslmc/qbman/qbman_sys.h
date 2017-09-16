@@ -217,7 +217,6 @@ static inline void qbman_cena_write_complete_wo_shadow(struct qbman_swp_sys *s,
 #ifdef QBMAN_CENA_TRACE
 	pr_info("qbman_cena_write_complete(%p:%d:0x%03x)\n",
 		s->addr_cena, s->idx, offset);
-	hexdump(cmd, 64);
 #endif
 	dcbf(s->addr_cena + offset);
 }
@@ -251,11 +250,7 @@ static inline void *qbman_cena_read_wo_shadow(struct qbman_swp_sys *s,
 {
 #ifdef QBMAN_CENA_TRACE
 	pr_info("qbman_cena_read(%p:%d:0x%03x) %p\n",
-		s->addr_cena, s->idx, offset, shadow);
-#endif
-
-#ifdef QBMAN_CENA_TRACE
-	hexdump(shadow, 64);
+		s->addr_cena, s->idx, offset);
 #endif
 	return s->addr_cena + offset;
 }
