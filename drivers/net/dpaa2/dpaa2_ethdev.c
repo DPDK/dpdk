@@ -182,6 +182,12 @@ dpaa2_vlan_offload_set(struct rte_eth_dev *dev, int mask)
 			RTE_LOG(ERR, PMD, "Unable to set vlan filter = %d\n",
 				ret);
 	}
+
+	if (mask & ETH_VLAN_EXTEND_MASK) {
+		if (dev->data->dev_conf.rxmode.hw_vlan_extend)
+			RTE_LOG(INFO, PMD,
+				"VLAN extend offload not supported\n");
+	}
 }
 
 static int
