@@ -622,7 +622,7 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		}
 		loop = 0;
 		while (loop < frames_to_send) {
-			loop += qbman_swp_send_multiple(swp, &eqdesc,
+			loop += qbman_swp_enqueue_multiple(swp, &eqdesc,
 					&fd_arr[loop], frames_to_send - loop);
 		}
 

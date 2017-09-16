@@ -914,19 +914,33 @@ void qbman_eq_desc_set_dca(struct qbman_eq_desc *d, int enable,
 int qbman_swp_enqueue(struct qbman_swp *s, const struct qbman_eq_desc *d,
 		      const struct qbman_fd *fd);
 /**
- * qbman_swp_enqueue_multiple_eqdesc() - Enqueue multiple frames with separte
- * enqueue descriptors.
+ * qbman_swp_enqueue_multiple() - Enqueue multiple frames with same
+				  eq descriptor
  * @s: the software portal used for enqueue.
- * @d: the enqueue descriptors
+ * @d: the enqueue descriptor.
  * @fd: the frame descriptor to be enqueued.
  * @num_frames: the number of the frames to be enqueued.
  *
  * Return the number of enqueued frames, -EBUSY if the EQCR is not ready.
  */
-int qbman_swp_enqueue_multiple_eqdesc(struct qbman_swp *s,
+int qbman_swp_enqueue_multiple(struct qbman_swp *s,
 			       const struct qbman_eq_desc *d,
 			       const struct qbman_fd *fd,
 			       int num_frames);
+/**
+ * qbman_swp_enqueue_multiple_desc() - Enqueue multiple frames with
+ *				       individual eq descriptor.
+ * @s: the software portal used for enqueue.
+ * @d: the enqueue descriptor.
+ * @fd: the frame descriptor to be enqueued.
+ * @num_frames: the number of the frames to be enqueued.
+ *
+ * Return the number of enqueued frames, -EBUSY if the EQCR is not ready.
+ */
+int qbman_swp_enqueue_multiple_desc(struct qbman_swp *s,
+				    const struct qbman_eq_desc *d,
+				    const struct qbman_fd *fd,
+				    int num_frames);
 
 /* TODO:
  * qbman_swp_enqueue_thresh() - Set threshold for EQRI interrupt.
@@ -1119,16 +1133,6 @@ int qbman_swp_CDAN_disable(struct qbman_swp *s, uint16_t channelid);
  */
 int qbman_swp_CDAN_set_context_enable(struct qbman_swp *s, uint16_t channelid,
 				      uint64_t ctx);
-int qbman_swp_fill_ring(struct qbman_swp *s,
-			const struct qbman_eq_desc *d,
-		       const struct qbman_fd *fd,
-		       uint8_t burst_index);
-int qbman_swp_flush_ring(struct qbman_swp *s);
-void qbman_sync(void);
-int qbman_swp_send_multiple(struct qbman_swp *s,
-			    const struct qbman_eq_desc *d,
-			    const struct qbman_fd *fd,
-			    int frames_to_send);
 
 int qbman_check_command_complete(struct qbman_swp *s,
 				 const struct qbman_result *dq);

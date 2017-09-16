@@ -144,7 +144,7 @@ dpaa2_eventdev_enqueue_burst(void *port, const struct rte_event ev[],
 		}
 		loop = 0;
 		while (loop < frames_to_send) {
-			loop += qbman_swp_enqueue_multiple_eqdesc(swp,
+			loop += qbman_swp_enqueue_multiple_desc(swp,
 					&eqdesc[loop], &fd_arr[loop],
 					frames_to_send - loop);
 		}
