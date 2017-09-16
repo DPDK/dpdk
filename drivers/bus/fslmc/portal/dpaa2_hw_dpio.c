@@ -90,19 +90,21 @@ static int dpaa2_cluster_sz = 2;
  * Cluster 1 (ID = x02) : CPU0, CPU1, CPU2, CPU3;
  * Cluster 2 (ID = x03) : CPU4, CPU5, CPU6, CPU7;
  */
-
-/* Set the STASH Destination depending on Current CPU ID.
- * e.g. Valid values of SDEST are 4,5,6,7. Where,
- * CPU 0-1 will have SDEST 4
- * CPU 2-3 will have SDEST 5.....and so on.
+/* For LX2160 platform There are four clusters with following mapping:
+ * Cluster 1 (ID = x00) : CPU0, CPU1;
+ * Cluster 2 (ID = x01) : CPU2, CPU3;
+ * Cluster 3 (ID = x02) : CPU4, CPU5;
+ * Cluster 4 (ID = x03) : CPU6, CPU7;
+ * Cluster 1 (ID = x04) : CPU8, CPU9;
+ * Cluster 2 (ID = x05) : CPU10, CP11;
+ * Cluster 3 (ID = x06) : CPU12, CPU13;
+ * Cluster 4 (ID = x07) : CPU14, CPU15;
  */
+
 static int
 dpaa2_core_cluster_sdest(int cpu_id)
 {
 	int x = cpu_id / dpaa2_cluster_sz;
-
-	if (x > 3)
-		x = 3;
 
 	return dpaa2_core_cluster_base + x;
 }
@@ -278,6 +280,10 @@ dpaa2_configure_stashing(struct dpaa2_dpio_dev *dpio_dev, int cpu_id)
 			dpaa2_core_cluster_base = 0x02;
 			dpaa2_cluster_sz = 4;
 			PMD_INIT_LOG(DEBUG, "\tLS108x (A53) Platform Detected");
+		} else if ((mc_plat_info.svr & 0xffff0000) == SVR_LX2160A) {
+			dpaa2_core_cluster_base = 0x00;
+			dpaa2_cluster_sz = 2;
+			PMD_INIT_LOG(DEBUG, "\tLX2160 Platform Detected");
 		}
 		first_time = 1;
 	}
