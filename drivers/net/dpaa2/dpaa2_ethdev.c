@@ -1418,6 +1418,46 @@ dpaa2_flow_ctrl_set(struct rte_eth_dev *dev, struct rte_eth_fc_conf *fc_conf)
 	return ret;
 }
 
+static int
+dpaa2_dev_rss_hash_update(struct rte_eth_dev *dev,
+			  struct rte_eth_rss_conf *rss_conf)
+{
+	struct rte_eth_dev_data *data = dev->data;
+	struct rte_eth_conf *eth_conf = &data->dev_conf;
+	int ret;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (rss_conf->rss_hf) {
+		ret = dpaa2_setup_flow_dist(dev, rss_conf->rss_hf);
+		if (ret) {
+			PMD_INIT_LOG(ERR, "unable to set flow dist");
+			return ret;
+		}
+	} else {
+		ret = dpaa2_remove_flow_dist(dev, 0);
+		if (ret) {
+			PMD_INIT_LOG(ERR, "unable to remove flow dist");
+			return ret;
+		}
+	}
+	eth_conf->rx_adv_conf.rss_conf.rss_hf = rss_conf->rss_hf;
+	return 0;
+}
+
+static int
+dpaa2_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
+			    struct rte_eth_rss_conf *rss_conf)
+{
+	struct rte_eth_dev_data *data = dev->data;
+	struct rte_eth_conf *eth_conf = &data->dev_conf;
+
+	/* dpaa2 does not support rss_key, so length should be 0*/
+	rss_conf->rss_key_len = 0;
+	rss_conf->rss_hf = eth_conf->rx_adv_conf.rss_conf.rss_hf;
+	return 0;
+}
+
 static struct eth_dev_ops dpaa2_ethdev_ops = {
 	.dev_configure	  = dpaa2_eth_dev_configure,
 	.dev_start	      = dpaa2_dev_start,
@@ -1447,6 +1487,8 @@ static struct eth_dev_ops dpaa2_ethdev_ops = {
 	.mac_addr_add         = dpaa2_dev_add_mac_addr,
 	.mac_addr_remove      = dpaa2_dev_remove_mac_addr,
 	.mac_addr_set         = dpaa2_dev_set_mac_addr,
+	.rss_hash_update      = dpaa2_dev_rss_hash_update,
+	.rss_hash_conf_get    = dpaa2_dev_rss_hash_conf_get,
 };
 
 static int
