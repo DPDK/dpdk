@@ -54,6 +54,8 @@
 
 static struct rte_dpaa2_driver rte_dpaa2_pmd;
 static int dpaa2_dev_uninit(struct rte_eth_dev *eth_dev);
+static int dpaa2_dev_link_update(struct rte_eth_dev *dev,
+				 int wait_to_complete);
 static int dpaa2_dev_set_link_up(struct rte_eth_dev *dev);
 static int dpaa2_dev_set_link_down(struct rte_eth_dev *dev);
 static int dpaa2_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu);
@@ -344,6 +346,10 @@ dpaa2_eth_dev_configure(struct rte_eth_dev *dev)
 			return ret;
 		}
 	}
+
+	/* update the current status */
+	dpaa2_dev_link_update(dev, 0);
+
 	return 0;
 }
 
@@ -556,9 +562,87 @@ dpaa2_supported_ptypes_get(struct rte_eth_dev *dev)
 	return NULL;
 }
 
+/**
+ * Dpaa2 link Interrupt handler
+ *
+ * @param param
+ *  The address of parameter (struct rte_eth_dev *) regsitered before.
+ *
+ * @return
+ *  void
+ */
+static void
+dpaa2_interrupt_handler(void *param)
+{
+	struct rte_eth_dev *dev = param;
+	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+	struct fsl_mc_io *dpni = (struct fsl_mc_io *)priv->hw;
+	int ret;
+	int irq_index = DPNI_IRQ_INDEX;
+	unsigned int status = 0, clear = 0;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (dpni == NULL) {
+		RTE_LOG(ERR, PMD, "dpni is NULL");
+		return;
+	}
+
+	ret = dpni_get_irq_status(dpni, CMD_PRI_LOW, priv->token,
+				  irq_index, &status);
+	if (unlikely(ret)) {
+		RTE_LOG(ERR, PMD, "Can't get irq status (err %d)", ret);
+		clear = 0xffffffff;
+		goto out;
+	}
+
+	if (status & DPNI_IRQ_EVENT_LINK_CHANGED) {
+		clear = DPNI_IRQ_EVENT_LINK_CHANGED;
+		dpaa2_dev_link_update(dev, 0);
+		/* calling all the apps registered for link status event */
+		_rte_eth_dev_callback_process(dev, RTE_ETH_EVENT_INTR_LSC,
+					      NULL, NULL);
+	}
+out:
+	ret = dpni_clear_irq_status(dpni, CMD_PRI_LOW, priv->token,
+				    irq_index, clear);
+	if (unlikely(ret))
+		RTE_LOG(ERR, PMD, "Can't clear irq status (err %d)", ret);
+}
+
+static int
+dpaa2_eth_setup_irqs(struct rte_eth_dev *dev, int enable)
+{
+	int err = 0;
+	struct dpaa2_dev_priv *priv = dev->data->dev_private;
+	struct fsl_mc_io *dpni = (struct fsl_mc_io *)priv->hw;
+	int irq_index = DPNI_IRQ_INDEX;
+	unsigned int mask = DPNI_IRQ_EVENT_LINK_CHANGED;
+
+	PMD_INIT_FUNC_TRACE();
+
+	err = dpni_set_irq_mask(dpni, CMD_PRI_LOW, priv->token,
+				irq_index, mask);
+	if (err < 0) {
+		PMD_INIT_LOG(ERR, "Error: dpni_set_irq_mask():%d (%s)", err,
+			     strerror(-err));
+		return err;
+	}
+
+	err = dpni_set_irq_enable(dpni, CMD_PRI_LOW, priv->token,
+				  irq_index, enable);
+	if (err < 0)
+		PMD_INIT_LOG(ERR, "Error: dpni_set_irq_enable():%d (%s)", err,
+			     strerror(-err));
+
+	return err;
+}
+
 static int
 dpaa2_dev_start(struct rte_eth_dev *dev)
 {
+	struct rte_device *rdev = dev->device;
+	struct rte_dpaa2_device *dpaa2_dev;
 	struct rte_eth_dev_data *data = dev->data;
 	struct dpaa2_dev_priv *priv = data->dev_private;
 	struct fsl_mc_io *dpni = (struct fsl_mc_io *)priv->hw;
@@ -568,6 +652,10 @@ dpaa2_dev_start(struct rte_eth_dev *dev)
 	struct dpni_queue_id qid;
 	struct dpaa2_queue *dpaa2_q;
 	int ret, i;
+	struct rte_intr_handle *intr_handle;
+
+	dpaa2_dev = container_of(rdev, struct rte_dpaa2_device, device);
+	intr_handle = &dpaa2_dev->intr_handle;
 
 	PMD_INIT_FUNC_TRACE();
 
@@ -647,6 +735,24 @@ dpaa2_dev_start(struct rte_eth_dev *dev)
 	if (priv->max_vlan_filters)
 		dpaa2_vlan_offload_set(dev, ETH_VLAN_FILTER_MASK);
 
+	/* if the interrupts were configured on this devices*/
+	if (intr_handle && (intr_handle->fd) &&
+	    (dev->data->dev_conf.intr_conf.lsc != 0)) {
+		/* Registering LSC interrupt handler */
+		rte_intr_callback_register(intr_handle,
+					   dpaa2_interrupt_handler,
+					   (void *)dev);
+
+		/* enable vfio intr/eventfd mapping
+		 * Interrupt index 0 is required, so we can not use
+		 * rte_intr_enable.
+		 */
+		rte_dpaa2_intr_enable(intr_handle, DPNI_IRQ_INDEX);
+
+		/* enable dpni_irqs */
+		dpaa2_eth_setup_irqs(dev, 1);
+	}
+
 	return 0;
 }
 
@@ -661,8 +767,24 @@ dpaa2_dev_stop(struct rte_eth_dev *dev)
 	struct fsl_mc_io *dpni = (struct fsl_mc_io *)priv->hw;
 	int ret;
 	struct rte_eth_link link;
+	struct rte_intr_handle *intr_handle = dev->intr_handle;
 
 	PMD_INIT_FUNC_TRACE();
+
+	/* reset interrupt callback  */
+	if (intr_handle && (intr_handle->fd) &&
+	    (dev->data->dev_conf.intr_conf.lsc != 0)) {
+		/*disable dpni irqs */
+		dpaa2_eth_setup_irqs(dev, 0);
+
+		/* disable vfio intr before callback unregister */
+		rte_dpaa2_intr_disable(intr_handle, DPNI_IRQ_INDEX);
+
+		/* Unregistering LSC interrupt handler */
+		rte_intr_callback_unregister(intr_handle,
+					     dpaa2_interrupt_handler,
+					     (void *)dev);
+	}
 
 	dpaa2_dev_set_link_down(dev);
 
@@ -1458,6 +1580,7 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 	}
 
 	eth_dev->dev_ops = &dpaa2_ethdev_ops;
+	eth_dev->data->dev_flags |= RTE_ETH_DEV_INTR_LSC;
 
 	eth_dev->rx_pkt_burst = dpaa2_dev_prefetch_rx;
 	eth_dev->tx_pkt_burst = dpaa2_dev_tx;

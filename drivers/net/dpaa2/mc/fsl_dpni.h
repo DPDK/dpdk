@@ -247,6 +247,55 @@ int dpni_reset(struct fsl_mc_io *mc_io,
 	       uint16_t token);
 
 /**
+ * DPNI IRQ Index and Events
+ */
+
+/**
+ * IRQ index
+ */
+#define DPNI_IRQ_INDEX				0
+/**
+ * IRQ event - indicates a change in link state
+ */
+#define DPNI_IRQ_EVENT_LINK_CHANGED		0x00000001
+
+int dpni_set_irq_enable(struct fsl_mc_io *mc_io,
+			uint32_t cmd_flags,
+			uint16_t token,
+			uint8_t irq_index,
+			uint8_t en);
+
+int dpni_get_irq_enable(struct fsl_mc_io *mc_io,
+			uint32_t cmd_flags,
+			uint16_t token,
+			uint8_t irq_index,
+			uint8_t *en);
+
+int dpni_set_irq_mask(struct fsl_mc_io *mc_io,
+		      uint32_t cmd_flags,
+		      uint16_t token,
+		      uint8_t irq_index,
+		      uint32_t mask);
+
+int dpni_get_irq_mask(struct fsl_mc_io *mc_io,
+		      uint32_t cmd_flags,
+		      uint16_t token,
+		      uint8_t irq_index,
+		      uint32_t *mask);
+
+int dpni_get_irq_status(struct fsl_mc_io *mc_io,
+			uint32_t cmd_flags,
+			uint16_t token,
+			uint8_t irq_index,
+			uint32_t *status);
+
+int dpni_clear_irq_status(struct fsl_mc_io *mc_io,
+			  uint32_t cmd_flags,
+			  uint16_t token,
+			  uint8_t irq_index,
+			  uint32_t status);
+
+/**
  * struct dpni_attr - Structure representing DPNI attributes
  * @options: Any combination of the following options:
  *		DPNI_OPT_TX_FRM_RELEASE

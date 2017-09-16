@@ -64,6 +64,13 @@
 #define DPNI_CMDID_RESET			DPNI_CMD(0x005)
 #define DPNI_CMDID_IS_ENABLED			DPNI_CMD(0x006)
 
+#define DPNI_CMDID_SET_IRQ_ENABLE		DPNI_CMD(0x012)
+#define DPNI_CMDID_GET_IRQ_ENABLE		DPNI_CMD(0x013)
+#define DPNI_CMDID_SET_IRQ_MASK			DPNI_CMD(0x014)
+#define DPNI_CMDID_GET_IRQ_MASK			DPNI_CMD(0x015)
+#define DPNI_CMDID_GET_IRQ_STATUS		DPNI_CMD(0x016)
+#define DPNI_CMDID_CLEAR_IRQ_STATUS		DPNI_CMD(0x017)
+
 #define DPNI_CMDID_SET_POOLS			DPNI_CMD_V2(0x200)
 #define DPNI_CMDID_SET_ERRORS_BEHAVIOR		DPNI_CMD(0x20B)
 
@@ -167,6 +174,49 @@ struct dpni_cmd_set_pools {
 
 struct dpni_rsp_is_enabled {
 	uint8_t enabled;
+};
+
+struct dpni_cmd_set_irq_enable {
+	uint8_t enable;
+	uint8_t pad[3];
+	uint8_t irq_index;
+};
+
+struct dpni_cmd_get_irq_enable {
+	uint32_t pad;
+	uint8_t irq_index;
+};
+
+struct dpni_rsp_get_irq_enable {
+	uint8_t enabled;
+};
+
+struct dpni_cmd_set_irq_mask {
+	uint32_t mask;
+	uint8_t irq_index;
+};
+
+struct dpni_cmd_get_irq_mask {
+	uint32_t pad;
+	uint8_t irq_index;
+};
+
+struct dpni_rsp_get_irq_mask {
+	uint32_t mask;
+};
+
+struct dpni_cmd_get_irq_status {
+	uint32_t status;
+	uint8_t irq_index;
+};
+
+struct dpni_rsp_get_irq_status {
+	uint32_t status;
+};
+
+struct dpni_cmd_clear_irq_status {
+	uint32_t status;
+	uint8_t irq_index;
 };
 
 struct dpni_rsp_get_attr {
