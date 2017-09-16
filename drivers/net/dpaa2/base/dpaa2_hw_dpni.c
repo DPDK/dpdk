@@ -49,7 +49,7 @@
 
 #include "../dpaa2_ethdev.h"
 
-static void
+static int
 dpaa2_distset_to_dpkg_profile_cfg(
 		uint32_t req_dist_set,
 		struct dpkg_profile_cfg *kg_cfg);
@@ -68,20 +68,26 @@ dpaa2_setup_flow_dist(struct rte_eth_dev *eth_dev,
 	p_params = rte_malloc(
 		NULL, DIST_PARAM_IOVA_SIZE, RTE_CACHE_LINE_SIZE);
 	if (!p_params) {
-		RTE_LOG(ERR, PMD, "Memory unavaialble\n");
+		PMD_INIT_LOG(ERR, "Memory unavailable");
 		return -ENOMEM;
 	}
 	memset(p_params, 0, DIST_PARAM_IOVA_SIZE);
 	memset(&tc_cfg, 0, sizeof(struct dpni_rx_tc_dist_cfg));
 
-	dpaa2_distset_to_dpkg_profile_cfg(req_dist_set, &kg_cfg);
+	ret = dpaa2_distset_to_dpkg_profile_cfg(req_dist_set, &kg_cfg);
+	if (ret) {
+		PMD_INIT_LOG(ERR, "given rss_hf (%x) not supported",
+			     req_dist_set);
+		rte_free(p_params);
+		return ret;
+	}
 	tc_cfg.key_cfg_iova = (uint64_t)(DPAA2_VADDR_TO_IOVA(p_params));
 	tc_cfg.dist_size = eth_dev->data->nb_rx_queues;
 	tc_cfg.dist_mode = DPNI_DIST_MODE_HASH;
 
 	ret = dpkg_prepare_key_cfg(&kg_cfg, p_params);
 	if (ret) {
-		RTE_LOG(ERR, PMD, "Unable to prepare extract parameters\n");
+		PMD_INIT_LOG(ERR, "Unable to prepare extract parameters");
 		rte_free(p_params);
 		return ret;
 	}
@@ -90,9 +96,9 @@ dpaa2_setup_flow_dist(struct rte_eth_dev *eth_dev,
 				  &tc_cfg);
 	rte_free(p_params);
 	if (ret) {
-		RTE_LOG(ERR, PMD,
-			"Setting distribution for Rx failed with err: %d\n",
-			ret);
+		PMD_INIT_LOG(ERR,
+			     "Setting distribution for Rx failed with err: %d",
+			     ret);
 		return ret;
 	}
 
@@ -113,7 +119,7 @@ int dpaa2_remove_flow_dist(
 	p_params = rte_malloc(
 		NULL, DIST_PARAM_IOVA_SIZE, RTE_CACHE_LINE_SIZE);
 	if (!p_params) {
-		RTE_LOG(ERR, PMD, "Memory unavaialble\n");
+		PMD_INIT_LOG(ERR, "Memory unavailable");
 		return -ENOMEM;
 	}
 	memset(p_params, 0, DIST_PARAM_IOVA_SIZE);
@@ -125,7 +131,7 @@ int dpaa2_remove_flow_dist(
 
 	ret = dpkg_prepare_key_cfg(&kg_cfg, p_params);
 	if (ret) {
-		RTE_LOG(ERR, PMD, "Unable to prepare extract parameters\n");
+		PMD_INIT_LOG(ERR, "Unable to prepare extract parameters");
 		rte_free(p_params);
 		return ret;
 	}
@@ -134,13 +140,13 @@ int dpaa2_remove_flow_dist(
 				  &tc_cfg);
 	rte_free(p_params);
 	if (ret)
-		RTE_LOG(ERR, PMD,
-			"Setting distribution for Rx failed with err: %d\n",
-			ret);
+		PMD_INIT_LOG(ERR,
+			     "Setting distribution for Rx failed with err:%d",
+			     ret);
 	return ret;
 }
 
-static void
+static int
 dpaa2_distset_to_dpkg_profile_cfg(
 		uint32_t req_dist_set,
 		struct dpkg_profile_cfg *kg_cfg)
@@ -276,14 +282,17 @@ dpaa2_distset_to_dpkg_profile_cfg(
 				break;
 
 			default:
-				PMD_DRV_LOG(WARNING, "Bad flow distribution"
-					    " option %x\n", dist_field);
+				PMD_INIT_LOG(WARNING,
+					     "Unsupported flow dist option %x",
+					     dist_field);
+				return -EINVAL;
 			}
 		}
 		req_dist_set = req_dist_set >> 1;
 		loop++;
 	}
 	kg_cfg->num_extracts = i;
+	return 0;
 }
 
 int
