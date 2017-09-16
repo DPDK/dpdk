@@ -123,12 +123,12 @@ struct qbman_swp {
  * non-NULL if only if the response is complete).
  */
 void *qbman_swp_mc_start(struct qbman_swp *p);
-void qbman_swp_mc_submit(struct qbman_swp *p, void *cmd, uint32_t cmd_verb);
+void qbman_swp_mc_submit(struct qbman_swp *p, void *cmd, uint8_t cmd_verb);
 void *qbman_swp_mc_result(struct qbman_swp *p);
 
 /* Wraps up submit + poll-for-result */
 static inline void *qbman_swp_mc_complete(struct qbman_swp *swp, void *cmd,
-					  uint32_t cmd_verb)
+					  uint8_t cmd_verb)
 {
 	int loopvar;
 
@@ -275,4 +275,4 @@ static inline int32_t qb_attr_code_makesigned(const struct qb_attr_code *code,
  * an inline) is necessary to work with different descriptor types and to work
  * correctly with const and non-const inputs (and similarly-qualified outputs).
  */
-#define qb_cl(d) (&(d)->dont_manipulate_directly[0])
+#define qb_cl(d) (&(d)->donot_manipulate_directly[0])

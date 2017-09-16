@@ -92,7 +92,7 @@ do { \
  *
  */
 #ifdef __LP64__
-#define MAKE_MASK32(width) ((uint32_t)(( 1ULL << width) - 1))
+#define MAKE_MASK32(width) ((uint32_t)((1ULL << width) - 1))
 #else
 #define MAKE_MASK32(width) (width == 32 ? 0xffffffff : \
 				 (uint32_t)((1 << width) - 1))

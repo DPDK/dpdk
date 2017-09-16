@@ -747,13 +747,13 @@ dpaa2_sec_dequeue_burst(void *qp, struct rte_crypto_op **ops,
 		 * Also seems like the SWP is shared between the Ethernet Driver
 		 * and the SEC driver.
 		 */
-		while (!qbman_check_command_complete(swp, dq_storage))
+		while (!qbman_check_command_complete(dq_storage))
 			;
 
 		/* Loop until the dq_storage is updated with
 		 * new token by QBMAN
 		 */
-		while (!qbman_result_has_new_result(swp, dq_storage))
+		while (!qbman_check_new_result(dq_storage))
 			;
 		/* Check whether Last Pull command is Expired and
 		 * setting Condition for Loop termination

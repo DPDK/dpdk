@@ -62,11 +62,12 @@ DPDK_17.08 {
 	dpio_remove_static_dequeue_channel;
 	mc_get_soc_version;
 	mc_get_version;
+	qbman_check_new_result;
 	qbman_eq_desc_set_dca;
 	qbman_get_dqrr_from_idx;
 	qbman_get_dqrr_idx;
 	qbman_result_DQ_fqd_ctx;
-	qbman_result_SCN_state_in_mem;
+	qbman_result_SCN_state;
 	qbman_swp_dqrr_consume;
 	qbman_swp_dqrr_next;
 	qbman_swp_enqueue_multiple;
