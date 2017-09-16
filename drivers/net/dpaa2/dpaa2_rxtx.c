@@ -350,7 +350,6 @@ eth_copy_mbuf_to_fd(struct rte_mbuf *mbuf,
 	if (rte_dpaa2_mbuf_alloc_bulk(
 		rte_dpaa2_bpid_info[bpid].bp_list->mp, &mb, 1)) {
 		PMD_TX_LOG(WARNING, "Unable to allocated DPAA2 buffer");
-		rte_pktmbuf_free(mbuf);
 		return -1;
 	}
 	m = (struct rte_mbuf *)mb;
@@ -382,8 +381,6 @@ eth_copy_mbuf_to_fd(struct rte_mbuf *mbuf,
 		rte_dpaa2_bpid_info[DPAA2_GET_FD_BPID(fd)].meta_data_size,
 		DPAA2_GET_FD_OFFSET(fd),
 		DPAA2_GET_FD_LEN(fd));
-	/*free the original packet */
-	rte_pktmbuf_free(mbuf);
 
 	return 0;
 }
@@ -580,39 +577,35 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 				mp = mi->pool;
 			}
 			/* Not a hw_pkt pool allocated frame */
-			if (!mp) {
+			if (unlikely(!mp || !priv->bp_list)) {
 				PMD_TX_LOG(ERR, "err: no bpool attached");
-				goto skip_tx;
+				goto send_n_return;
 			}
+
 			if (mp->ops_index != priv->bp_list->dpaa2_ops_index) {
 				PMD_TX_LOG(ERR, "non hw offload bufffer ");
 				/* alloc should be from the default buffer pool
 				 * attached to this interface
 				 */
-				if (priv->bp_list) {
-					bpid = priv->bp_list->buf_pool.bpid;
-				} else {
-					PMD_TX_LOG(ERR,
-						   "err: no bpool attached");
-					num_tx = 0;
-					goto skip_tx;
-				}
+				bpid = priv->bp_list->buf_pool.bpid;
+
 				if (unlikely((*bufs)->nb_segs > 1)) {
 					PMD_TX_LOG(ERR, "S/G support not added"
 						" for non hw offload buffer");
-					goto skip_tx;
+					goto send_n_return;
 				}
 				if (eth_copy_mbuf_to_fd(*bufs,
 							&fd_arr[loop], bpid)) {
-					bufs++;
-					continue;
+					goto send_n_return;
 				}
+				/* free the original packet */
+				rte_pktmbuf_free(*bufs);
 			} else {
 				bpid = mempool_to_bpid(mp);
 				if (unlikely((*bufs)->nb_segs > 1)) {
 					if (eth_mbuf_to_sg_fd(*bufs,
 							&fd_arr[loop], bpid))
-						goto skip_tx;
+						goto send_n_return;
 				} else {
 					eth_mbuf_to_fd(*bufs,
 						       &fd_arr[loop], bpid);
@@ -629,6 +622,20 @@ dpaa2_dev_tx(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
 		num_tx += frames_to_send;
 		dpaa2_q->tx_pkts += frames_to_send;
 		nb_pkts -= frames_to_send;
+	}
+	return num_tx;
+
+send_n_return:
+	/* send any already prepared fd */
+	if (loop) {
+		unsigned int i = 0;
+
+		while (i < loop) {
+			i += qbman_swp_enqueue_multiple(swp, &eqdesc,
+							&fd_arr[i], loop - i);
+		}
+		num_tx += loop;
+		dpaa2_q->tx_pkts += loop;
 	}
 skip_tx:
 	return num_tx;
