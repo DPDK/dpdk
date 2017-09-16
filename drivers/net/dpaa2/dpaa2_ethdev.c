@@ -426,8 +426,8 @@ dpaa2_dev_rx_queue_setup(struct rte_eth_dev *dev,
 
 	PMD_INIT_FUNC_TRACE();
 
-	PMD_INIT_LOG(DEBUG, "dev =%p, queue =%d, pool = %p, conf =%p",
-		     dev, rx_queue_id, mb_pool, rx_conf);
+	PMD_DRV_LOG(DEBUG, "dev =%p, queue =%d, pool = %p, conf =%p",
+		    dev, rx_queue_id, mb_pool, rx_conf);
 
 	if (!priv->bp_list || priv->bp_list->mp != mb_pool) {
 		bpid = mempool_to_bpid(mb_pool);
@@ -476,8 +476,8 @@ dpaa2_dev_rx_queue_setup(struct rte_eth_dev *dev,
 		taildrop.threshold = CONG_THRESHOLD_RX_Q;
 		taildrop.units = DPNI_CONGESTION_UNIT_BYTES;
 		taildrop.oal = CONG_RX_OAL;
-		PMD_INIT_LOG(DEBUG, "Enabling Early Drop on queue = %d",
-			     rx_queue_id);
+		PMD_DRV_LOG(DEBUG, "Enabling Early Drop on queue = %d",
+			    rx_queue_id);
 		ret = dpni_set_taildrop(dpni, CMD_PRI_LOW, priv->token,
 					DPNI_CP_QUEUE, DPNI_QUEUE_RX,
 					dpaa2_q->tc_index, flow_id, &taildrop);
@@ -983,7 +983,7 @@ dpaa2_dev_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 		PMD_DRV_LOG(ERR, "setting the max frame length failed");
 		return -1;
 	}
-	PMD_DRV_LOG(INFO, "MTU is configured %d for the device\n", mtu);
+	PMD_DRV_LOG(INFO, "MTU is configured %d for the device", mtu);
 	return 0;
 }
 
@@ -1738,7 +1738,7 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 	priv->nb_tx_queues = attr.num_tx_tcs;
 
 	PMD_DRV_LOG(DEBUG, "RX-TC= %d, nb_rx_queues= %d, nb_tx_queues=%d",
-		    priv->num_tc, priv->nb_rx_queues, priv->nb_tx_queues);
+		    priv->num_rx_tc, priv->nb_rx_queues, priv->nb_tx_queues);
 
 	priv->hw = dpni_dev;
 	priv->hw_id = hw_id;
@@ -1805,6 +1805,7 @@ dpaa2_dev_init(struct rte_eth_dev *eth_dev)
 	eth_dev->tx_pkt_burst = dpaa2_dev_tx;
 	rte_fslmc_vfio_dmamap();
 
+	RTE_LOG(INFO, PMD, "%s: netdev created\n", eth_dev->data->name);
 	return 0;
 init_err:
 	dpaa2_dev_uninit(eth_dev);
@@ -1865,6 +1866,7 @@ dpaa2_dev_uninit(struct rte_eth_dev *eth_dev)
 	eth_dev->rx_pkt_burst = NULL;
 	eth_dev->tx_pkt_burst = NULL;
 
+	RTE_LOG(INFO, PMD, "%s: netdev created\n", eth_dev->data->name);
 	return 0;
 }
 
