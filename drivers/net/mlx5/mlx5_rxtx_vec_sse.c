@@ -293,7 +293,7 @@ txq_scatter_v(struct txq *txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		/* Fill ESEG in the header. */
 		_mm_store_si128(t_wqe + 1,
 				_mm_set_epi16(0, 0, 0, 0,
-					      htons(len), cs_flags,
+					      rte_cpu_to_be_16(len), cs_flags,
 					      0, 0));
 		txq->wqe_ci = wqe_ci;
 	}
@@ -302,7 +302,7 @@ txq_scatter_v(struct txq *txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 	txq->elts_comp += (uint16_t)(elts_head - txq->elts_head);
 	txq->elts_head = elts_head;
 	if (txq->elts_comp >= MLX5_TX_COMP_THRESH) {
-		wqe->ctrl[2] = htonl(8);
+		wqe->ctrl[2] = rte_cpu_to_be_32(8);
 		wqe->ctrl[3] = txq->elts_head;
 		txq->elts_comp = 0;
 		++txq->cq_pi;
@@ -564,11 +564,11 @@ rxq_replenish_bulk_mbuf(struct rxq *rxq, uint16_t n)
 		return;
 	}
 	for (i = 0; i < n; ++i)
-		wq[i].addr = htonll((uintptr_t)elts[i]->buf_addr +
-				    RTE_PKTMBUF_HEADROOM);
+		wq[i].addr = rte_cpu_to_be_64((uintptr_t)elts[i]->buf_addr +
+					      RTE_PKTMBUF_HEADROOM);
 	rxq->rq_ci += n;
 	rte_wmb();
-	*rxq->rq_db = htonl(rxq->rq_ci);
+	*rxq->rq_db = rte_cpu_to_be_32(rxq->rq_ci);
 }
 
 /**
@@ -1251,7 +1251,7 @@ rxq_burst_v(struct rxq *rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 		}
 	}
 	rte_wmb();
-	*rxq->cq_db = htonl(rxq->cq_ci);
+	*rxq->cq_db = rte_cpu_to_be_32(rxq->cq_ci);
 	return rcvd_pkt;
 }
 

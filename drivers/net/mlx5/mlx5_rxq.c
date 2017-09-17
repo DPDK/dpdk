@@ -672,9 +672,10 @@ rxq_alloc_elts(struct rxq_ctrl *rxq_ctrl, unsigned int elts_n)
 		/* scat->addr must be able to store a pointer. */
 		assert(sizeof(scat->addr) >= sizeof(uintptr_t));
 		*scat = (struct mlx5_wqe_data_seg){
-			.addr = htonll(rte_pktmbuf_mtod(buf, uintptr_t)),
-			.byte_count = htonl(DATA_LEN(buf)),
-			.lkey = htonl(rxq_ctrl->mr->lkey),
+			.addr =
+			    rte_cpu_to_be_64(rte_pktmbuf_mtod(buf, uintptr_t)),
+			.byte_count = rte_cpu_to_be_32(DATA_LEN(buf)),
+			.lkey = rte_cpu_to_be_32(rxq_ctrl->mr->lkey),
 		};
 		(*rxq_ctrl->rxq.elts)[i] = buf;
 	}
@@ -1077,7 +1078,7 @@ rxq_ctrl_setup(struct rte_eth_dev *dev, struct rxq_ctrl *rxq_ctrl,
 	/* Update doorbell counter. */
 	rxq_ctrl->rxq.rq_ci = desc >> rxq_ctrl->rxq.sges_n;
 	rte_wmb();
-	*rxq_ctrl->rxq.rq_db = htonl(rxq_ctrl->rxq.rq_ci);
+	*rxq_ctrl->rxq.rq_db = rte_cpu_to_be_32(rxq_ctrl->rxq.rq_ci);
 	DEBUG("%p: rxq updated with %p", (void *)rxq_ctrl, (void *)&tmpl);
 	assert(ret == 0);
 	return 0;

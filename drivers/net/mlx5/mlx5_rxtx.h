@@ -269,7 +269,7 @@ struct txq {
 		uintptr_t start; /* Start address of MR */
 		uintptr_t end; /* End address of MR */
 		struct ibv_mr *mr; /* Memory Region (for mp). */
-		uint32_t lkey; /* htonl(mr->lkey) */
+		uint32_t lkey; /* rte_cpu_to_be_32(mr->lkey) */
 	} mp2mr[MLX5_PMD_TX_MP_CACHE]; /* MP to MR translation table. */
 	uint16_t mr_cache_idx; /* Index of last hit entry. */
 	struct rte_mbuf *(*elts)[]; /* TX elements. */
@@ -492,7 +492,7 @@ mlx5_tx_complete(struct txq *txq)
 	}
 #endif /* NDEBUG */
 	++cq_ci;
-	txq->wqe_pi = ntohs(cqe->wqe_counter);
+	txq->wqe_pi = rte_be_to_cpu_16(cqe->wqe_counter);
 	ctrl = (volatile struct mlx5_wqe_ctrl *)
 		tx_mlx5_wqe(txq, txq->wqe_pi);
 	elts_tail = ctrl->ctrl3;
@@ -530,7 +530,7 @@ mlx5_tx_complete(struct txq *txq)
 	txq->elts_tail = elts_tail;
 	/* Update the consumer index. */
 	rte_wmb();
-	*txq->cq_db = htonl(cq_ci);
+	*txq->cq_db = rte_cpu_to_be_32(cq_ci);
 }
 
 /**
@@ -581,7 +581,7 @@ mlx5_tx_mb2mr(struct txq *txq, struct rte_mbuf *mb)
 		if (txq->mp2mr[i].start <= addr &&
 		    txq->mp2mr[i].end >= addr) {
 			assert(txq->mp2mr[i].lkey != (uint32_t)-1);
-			assert(htonl(txq->mp2mr[i].mr->lkey) ==
+			assert(rte_cpu_to_be_32(txq->mp2mr[i].mr->lkey) ==
 			       txq->mp2mr[i].lkey);
 			txq->mr_cache_idx = i;
 			return txq->mp2mr[i].lkey;
@@ -606,7 +606,7 @@ mlx5_tx_dbrec(struct txq *txq, volatile struct mlx5_wqe *wqe)
 	volatile uint64_t *src = ((volatile uint64_t *)wqe);
 
 	rte_io_wmb();
-	*txq->qp_db = htonl(txq->wqe_ci);
+	*txq->qp_db = rte_cpu_to_be_32(txq->wqe_ci);
 	/* Ensure ordering between DB record and BF copy. */
 	rte_wmb();
 	*dst = *src;

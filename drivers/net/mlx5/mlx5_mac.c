@@ -263,11 +263,15 @@ hash_rxq_add_mac_flow(struct hash_rxq *hash_rxq, unsigned int mac_index,
 				(*mac)[0], (*mac)[1], (*mac)[2],
 				(*mac)[3], (*mac)[4], (*mac)[5]
 			},
-			.vlan_tag = (vlan_enabled ? htons(vlan_id) : 0),
+			.vlan_tag = (vlan_enabled ?
+				     rte_cpu_to_be_16(vlan_id)
+				     : 0),
 		},
 		.mask = {
 			.dst_mac = "\xff\xff\xff\xff\xff\xff",
-			.vlan_tag = (vlan_enabled ? htons(0xfff) : 0),
+			.vlan_tag = (vlan_enabled ?
+				     rte_cpu_to_be_16(0xfff) :
+				     0),
 		},
 	};
 	DEBUG("%p: adding MAC address %02x:%02x:%02x:%02x:%02x:%02x index %u"
