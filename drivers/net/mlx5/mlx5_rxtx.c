@@ -475,7 +475,10 @@ mlx5_tx_burst(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
 				tso_header_sz = buf->l2_len + vlan_sz +
 						buf->l3_len + buf->l4_len;
 				tso_segsz = buf->tso_segsz;
-
+				if (unlikely(tso_segsz == 0)) {
+					txq->stats.oerrors++;
+					break;
+				}
 				if (is_tunneled	&& txq->tunnel_en) {
 					tso_header_sz += buf->outer_l2_len +
 							 buf->outer_l3_len;
