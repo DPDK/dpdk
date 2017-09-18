@@ -358,7 +358,7 @@ igbuio_pci_enable_interrupts(struct rte_uio_pci_dev *udev)
 	/* fall back to no IRQ */
 	case RTE_INTR_MODE_NONE:
 		udev->mode = RTE_INTR_MODE_NONE;
-		udev->info.irq = 0;
+		udev->info.irq = UIO_IRQ_NONE;
 		break;
 
 	default:
