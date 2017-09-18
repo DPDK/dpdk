@@ -1132,10 +1132,11 @@ tap_intr_handle_set(struct rte_eth_dev *dev, int set)
 
 	/* In any case, disable interrupt if the conf is no longer there. */
 	if (!dev->data->dev_conf.intr_conf.lsc) {
-		if (pmd->intr_handle.fd != -1)
+		if (pmd->intr_handle.fd != -1) {
 			nl_final(pmd->intr_handle.fd);
-		rte_intr_callback_unregister(
-			&pmd->intr_handle, tap_dev_intr_handler, dev);
+			rte_intr_callback_unregister(&pmd->intr_handle,
+				tap_dev_intr_handler, dev);
+		}
 		return 0;
 	}
 	if (set) {
