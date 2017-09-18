@@ -1734,36 +1734,42 @@ i40e_dev_rx_queue_setup(struct rte_eth_dev *dev,
 			const struct rte_eth_rxconf *rx_conf,
 			struct rte_mempool *mp)
 {
-	struct i40e_vsi *vsi;
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct i40e_adapter *ad =
 		I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct i40e_vsi *vsi;
+	struct i40e_pf *pf = NULL;
+	struct i40e_vf *vf = NULL;
 	struct i40e_rx_queue *rxq;
 	const struct rte_memzone *rz;
 	uint32_t ring_size;
 	uint16_t len, i;
-	uint16_t base, bsf, tc_mapping;
-	int use_def_burst_func = 1;
+	uint16_t reg_idx, base, bsf, tc_mapping;
+	int q_offset, use_def_burst_func = 1;
 
 	if (hw->mac.type == I40E_MAC_VF || hw->mac.type == I40E_MAC_X722_VF) {
-		struct i40e_vf *vf =
-			I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+		vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 		vsi = &vf->vsi;
-	} else
+		if (!vsi)
+			return -EINVAL;
+		reg_idx = queue_idx;
+	} else {
+		pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 		vsi = i40e_pf_get_vsi_by_qindex(pf, queue_idx);
-
-	if (vsi == NULL) {
-		PMD_DRV_LOG(ERR, "VSI not available or queue "
-			    "index exceeds the maximum");
-		return I40E_ERR_PARAM;
+		if (!vsi)
+			return -EINVAL;
+		q_offset = i40e_get_queue_offset_by_qindex(pf, queue_idx);
+		if (q_offset < 0)
+			return -EINVAL;
+		reg_idx = vsi->base_queue + q_offset;
 	}
+
 	if (nb_desc % I40E_ALIGN_RING_DESC != 0 ||
-			(nb_desc > I40E_MAX_RING_DESC) ||
-			(nb_desc < I40E_MIN_RING_DESC)) {
+	    (nb_desc > I40E_MAX_RING_DESC) ||
+	    (nb_desc < I40E_MIN_RING_DESC)) {
 		PMD_DRV_LOG(ERR, "Number (%u) of receive descriptors is "
 			    "invalid", nb_desc);
-		return I40E_ERR_PARAM;
+		return -EINVAL;
 	}
 
 	/* Free memory if needed */
@@ -1786,12 +1792,7 @@ i40e_dev_rx_queue_setup(struct rte_eth_dev *dev,
 	rxq->nb_rx_desc = nb_desc;
 	rxq->rx_free_thresh = rx_conf->rx_free_thresh;
 	rxq->queue_id = queue_idx;
-	if (hw->mac.type == I40E_MAC_VF || hw->mac.type == I40E_MAC_X722_VF)
-		rxq->reg_idx = queue_idx;
-	else /* PF device */
-		rxq->reg_idx = vsi->base_queue +
-			i40e_get_queue_offset_by_qindex(pf, queue_idx);
-
+	rxq->reg_idx = reg_idx;
 	rxq->port_id = dev->data->port_id;
 	rxq->crc_len = (uint8_t) ((dev->data->dev_conf.rxmode.hw_strip_crc) ?
 							0 : ETHER_CRC_LEN);
@@ -2012,34 +2013,40 @@ i40e_dev_tx_queue_setup(struct rte_eth_dev *dev,
 			unsigned int socket_id,
 			const struct rte_eth_txconf *tx_conf)
 {
-	struct i40e_vsi *vsi;
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	struct i40e_vsi *vsi;
+	struct i40e_pf *pf = NULL;
+	struct i40e_vf *vf = NULL;
 	struct i40e_tx_queue *txq;
 	const struct rte_memzone *tz;
 	uint32_t ring_size;
 	uint16_t tx_rs_thresh, tx_free_thresh;
-	uint16_t i, base, bsf, tc_mapping;
+	uint16_t reg_idx, i, base, bsf, tc_mapping;
+	int q_offset;
 
 	if (hw->mac.type == I40E_MAC_VF || hw->mac.type == I40E_MAC_X722_VF) {
-		struct i40e_vf *vf =
-			I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+		vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 		vsi = &vf->vsi;
-	} else
+		if (!vsi)
+			return -EINVAL;
+		reg_idx = queue_idx;
+	} else {
+		pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 		vsi = i40e_pf_get_vsi_by_qindex(pf, queue_idx);
-
-	if (vsi == NULL) {
-		PMD_DRV_LOG(ERR, "VSI is NULL, or queue index (%u) "
-			    "exceeds the maximum", queue_idx);
-		return I40E_ERR_PARAM;
+		if (!vsi)
+			return -EINVAL;
+		q_offset = i40e_get_queue_offset_by_qindex(pf, queue_idx);
+		if (q_offset < 0)
+			return -EINVAL;
+		reg_idx = vsi->base_queue + q_offset;
 	}
 
 	if (nb_desc % I40E_ALIGN_RING_DESC != 0 ||
-			(nb_desc > I40E_MAX_RING_DESC) ||
-			(nb_desc < I40E_MIN_RING_DESC)) {
+	    (nb_desc > I40E_MAX_RING_DESC) ||
+	    (nb_desc < I40E_MIN_RING_DESC)) {
 		PMD_DRV_LOG(ERR, "Number (%u) of transmit descriptors is "
 			    "invalid", nb_desc);
-		return I40E_ERR_PARAM;
+		return -EINVAL;
 	}
 
 	/**
@@ -2148,12 +2155,7 @@ i40e_dev_tx_queue_setup(struct rte_eth_dev *dev,
 	txq->hthresh = tx_conf->tx_thresh.hthresh;
 	txq->wthresh = tx_conf->tx_thresh.wthresh;
 	txq->queue_id = queue_idx;
-	if (hw->mac.type == I40E_MAC_VF || hw->mac.type == I40E_MAC_X722_VF)
-		txq->reg_idx = queue_idx;
-	else /* PF device */
-		txq->reg_idx = vsi->base_queue +
-			i40e_get_queue_offset_by_qindex(pf, queue_idx);
-
+	txq->reg_idx = reg_idx;
 	txq->port_id = dev->data->port_id;
 	txq->txq_flags = tx_conf->txq_flags;
 	txq->vsi = vsi;
