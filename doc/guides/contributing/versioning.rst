@@ -18,6 +18,8 @@ General Guidelines
 #. The modification of symbols can generally be managed with versioning
 #. The removal of symbols generally is an ABI break and requires bumping of the
    LIBABIVER macro
+#. Updates to the minimum hardware requirements, which drop support for hardware which
+   was previously supported, should be treated as an ABI change.
 
 What is an ABI
 --------------
@@ -76,6 +78,13 @@ be made to preserve the ABI whenever possible. The ABI should only be changed
 for significant reasons, such as performance enhancements. ABI breakage due to
 changes such as reorganizing public structure fields for aesthetic or
 readability purposes should be avoided.
+
+.. note::
+
+   Updates to the minimum hardware requirements, which drop support for hardware
+   which was previously supported, should be treated as an ABI change, and
+   follow the relevant deprecation policy procedures as above: 3 acks and
+   announcement at least one release in advance.
 
 Examples of Deprecation Notices
 -------------------------------
