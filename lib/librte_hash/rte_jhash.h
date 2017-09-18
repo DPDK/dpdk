@@ -290,7 +290,10 @@ rte_jhash_32b_2hashes(const uint32_t *k, uint32_t length, uint32_t *pc, uint32_t
 /**
  * The most generic version, hashes an arbitrary sequence
  * of bytes.  No alignment or length assumptions are made about
- * the input key.
+ * the input key.  For keys not aligned to four byte boundaries
+ * or a multiple of four bytes in length, the memory region
+ * just after may be read (but not used in the computation).
+ * This may cross a page boundary.
  *
  * @param key
  *   Key to calculate hash of.
