@@ -35,6 +35,7 @@
 
 #include <string.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdarg.h>
 
@@ -57,7 +58,6 @@ typedef uint16_t        u16;
 typedef uint32_t        u32;
 typedef int32_t         s32;
 typedef uint64_t        u64;
-typedef int             bool;
 
 typedef enum i40e_status_code i40e_status;
 #define __iomem
