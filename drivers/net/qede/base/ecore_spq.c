@@ -36,9 +36,8 @@
 /***************************************************************************
  * Blocking Imp. (BLOCK/EBLOCK mode)
  ***************************************************************************/
-static void ecore_spq_blocking_cb(struct ecore_hwfn *p_hwfn,
-				  void *cookie,
-				  union event_ring_data *data,
+static void ecore_spq_blocking_cb(struct ecore_hwfn *p_hwfn, void *cookie,
+				  union event_ring_data OSAL_UNUSED * data,
 				  u8 fw_return_code)
 {
 	struct ecore_spq_comp_done *comp_done;

@@ -171,7 +171,7 @@ qede_config_cmn_fdir_filter(struct rte_eth_dev *eth_dev,
 					  &qdev->fdir_info.arfs);
 	}
 	/* configure filter with ECORE_SPQ_MODE_EBLOCK */
-	rc = ecore_configure_rfs_ntuple_filter(p_hwfn, p_hwfn->p_arfs_ptt, NULL,
+	rc = ecore_configure_rfs_ntuple_filter(p_hwfn, NULL,
 					       (dma_addr_t)mz->phys_addr,
 					       pkt_len,
 					       fdir_filter->action.rx_queue,

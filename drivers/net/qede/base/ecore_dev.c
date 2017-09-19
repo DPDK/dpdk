@@ -3187,8 +3187,7 @@ static enum _ecore_status_t ecore_hw_get_resc(struct ecore_hwfn *p_hwfn,
 	 * Old drivers that don't acquire the lock can run in parallel, and
 	 * their allocation values won't be affected by the updated max values.
 	 */
-	ecore_mcp_resc_lock_default_init(p_hwfn, &resc_lock_params,
-					 &resc_unlock_params,
+	ecore_mcp_resc_lock_default_init(&resc_lock_params, &resc_unlock_params,
 					 ECORE_RESC_LOCK_RESC_ALLOC, false);
 
 	rc = ecore_mcp_resc_lock(p_hwfn, p_ptt, &resc_lock_params);
@@ -5117,8 +5116,7 @@ static void ecore_configure_wfq_for_all_vports(struct ecore_hwfn *p_hwfn,
 	}
 }
 
-static void
-ecore_init_wfq_default_param(struct ecore_hwfn *p_hwfn, u32 min_pf_rate)
+static void ecore_init_wfq_default_param(struct ecore_hwfn *p_hwfn)
 {
 	int i;
 
@@ -5127,8 +5125,7 @@ ecore_init_wfq_default_param(struct ecore_hwfn *p_hwfn, u32 min_pf_rate)
 }
 
 static void ecore_disable_wfq_for_all_vports(struct ecore_hwfn *p_hwfn,
-					     struct ecore_ptt *p_ptt,
-					     u32 min_pf_rate)
+					     struct ecore_ptt *p_ptt)
 {
 	struct init_qm_vport_params *vport_params;
 	int i;
@@ -5136,7 +5133,7 @@ static void ecore_disable_wfq_for_all_vports(struct ecore_hwfn *p_hwfn,
 	vport_params = p_hwfn->qm_info.qm_vport_params;
 
 	for (i = 0; i < p_hwfn->qm_info.num_vports; i++) {
-		ecore_init_wfq_default_param(p_hwfn, min_pf_rate);
+		ecore_init_wfq_default_param(p_hwfn);
 		ecore_init_vport_wfq(p_hwfn, p_ptt,
 				     vport_params[i].first_tx_pq_id,
 				     vport_params[i].vport_wfq);
@@ -5290,7 +5287,7 @@ static int __ecore_configure_vp_wfq_on_link_change(struct ecore_hwfn *p_hwfn,
 	if (rc == ECORE_SUCCESS && use_wfq)
 		ecore_configure_wfq_for_all_vports(p_hwfn, p_ptt, min_pf_rate);
 	else
-		ecore_disable_wfq_for_all_vports(p_hwfn, p_ptt, min_pf_rate);
+		ecore_disable_wfq_for_all_vports(p_hwfn, p_ptt);
 
 	return rc;
 }
@@ -5493,8 +5490,7 @@ void ecore_clean_wfq_db(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt)
 	p_link = &p_hwfn->mcp_info->link_output;
 
 	if (p_link->min_pf_rate)
-		ecore_disable_wfq_for_all_vports(p_hwfn, p_ptt,
-						 p_link->min_pf_rate);
+		ecore_disable_wfq_for_all_vports(p_hwfn, p_ptt);
 
 	OSAL_MEMSET(p_hwfn->qm_info.wfq_data, 0,
 		    sizeof(*p_hwfn->qm_info.wfq_data) *

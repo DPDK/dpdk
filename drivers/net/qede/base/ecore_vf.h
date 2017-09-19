@@ -273,34 +273,28 @@ enum _ecore_status_t ecore_vf_pf_int_cleanup(struct ecore_hwfn *p_hwfn);
 /**
  * @brief - return the link params in a given bulletin board
  *
- * @param p_hwfn
  * @param p_params - pointer to a struct to fill with link params
  * @param p_bulletin
  */
-void __ecore_vf_get_link_params(struct ecore_hwfn *p_hwfn,
-				struct ecore_mcp_link_params *p_params,
+void __ecore_vf_get_link_params(struct ecore_mcp_link_params *p_params,
 				struct ecore_bulletin_content *p_bulletin);
 
 /**
  * @brief - return the link state in a given bulletin board
  *
- * @param p_hwfn
  * @param p_link - pointer to a struct to fill with link state
  * @param p_bulletin
  */
-void __ecore_vf_get_link_state(struct ecore_hwfn *p_hwfn,
-			       struct ecore_mcp_link_state *p_link,
+void __ecore_vf_get_link_state(struct ecore_mcp_link_state *p_link,
 			       struct ecore_bulletin_content *p_bulletin);
 
 /**
  * @brief - return the link capabilities in a given bulletin board
  *
- * @param p_hwfn
  * @param p_link - pointer to a struct to fill with link capabilities
  * @param p_bulletin
  */
-void __ecore_vf_get_link_caps(struct ecore_hwfn *p_hwfn,
-			      struct ecore_mcp_link_capabilities *p_link_caps,
+void __ecore_vf_get_link_caps(struct ecore_mcp_link_capabilities *p_link_caps,
 			      struct ecore_bulletin_content *p_bulletin);
 
 enum _ecore_status_t

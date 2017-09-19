@@ -901,8 +901,7 @@ __ecore_mcp_load_req(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 	return ECORE_SUCCESS;
 }
 
-static void ecore_get_mfw_drv_role(struct ecore_hwfn *p_hwfn,
-				   enum ecore_drv_role drv_role,
+static void ecore_get_mfw_drv_role(enum ecore_drv_role drv_role,
 				   u8 *p_mfw_drv_role)
 {
 	switch (drv_role) {
@@ -921,8 +920,7 @@ enum ecore_load_req_force {
 	ECORE_LOAD_REQ_FORCE_ALL,
 };
 
-static void ecore_get_mfw_force_cmd(struct ecore_hwfn *p_hwfn,
-				    enum ecore_load_req_force force_cmd,
+static void ecore_get_mfw_force_cmd(enum ecore_load_req_force force_cmd,
 				    u8 *p_mfw_force_cmd)
 {
 	switch (force_cmd) {
@@ -959,11 +957,10 @@ enum _ecore_status_t ecore_mcp_load_req(struct ecore_hwfn *p_hwfn,
 	in_params.drv_ver_0 = ECORE_VERSION;
 	in_params.drv_ver_1 = ecore_get_config_bitmap();
 	in_params.fw_ver = STORM_FW_VERSION;
-	ecore_get_mfw_drv_role(p_hwfn, p_params->drv_role, &mfw_drv_role);
+	ecore_get_mfw_drv_role(p_params->drv_role, &mfw_drv_role);
 	in_params.drv_role = mfw_drv_role;
 	in_params.timeout_val = p_params->timeout_val;
-	ecore_get_mfw_force_cmd(p_hwfn, ECORE_LOAD_REQ_FORCE_NONE,
-				&mfw_force_cmd);
+	ecore_get_mfw_force_cmd(ECORE_LOAD_REQ_FORCE_NONE, &mfw_force_cmd);
 	in_params.force_cmd = mfw_force_cmd;
 	in_params.avoid_eng_reset = p_params->avoid_eng_reset;
 
@@ -1000,8 +997,7 @@ enum _ecore_status_t ecore_mcp_load_req(struct ecore_hwfn *p_hwfn,
 				out_params.exist_drv_ver_0,
 				out_params.exist_drv_ver_1);
 
-			ecore_get_mfw_force_cmd(p_hwfn,
-						ECORE_LOAD_REQ_FORCE_ALL,
+			ecore_get_mfw_force_cmd(ECORE_LOAD_REQ_FORCE_ALL,
 						&mfw_force_cmd);
 
 			in_params.force_cmd = mfw_force_cmd;
@@ -1614,8 +1610,7 @@ ecore_mcp_update_bw(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt)
 		      &param);
 }
 
-static void ecore_mcp_handle_fan_failure(struct ecore_hwfn *p_hwfn,
-					 struct ecore_ptt *p_ptt)
+static void ecore_mcp_handle_fan_failure(struct ecore_hwfn *p_hwfn)
 {
 	/* A single notification should be sent to upper driver in CMT mode */
 	if (p_hwfn != ECORE_LEADING_HWFN(p_hwfn->p_dev))
@@ -1924,7 +1919,7 @@ enum _ecore_status_t ecore_mcp_handle_events(struct ecore_hwfn *p_hwfn,
 			ecore_mcp_update_bw(p_hwfn, p_ptt);
 			break;
 		case MFW_DRV_MSG_FAILURE_DETECTED:
-			ecore_mcp_handle_fan_failure(p_hwfn, p_ptt);
+			ecore_mcp_handle_fan_failure(p_hwfn);
 			break;
 		case MFW_DRV_MSG_CRITICAL_ERROR_OCCURRED:
 			ecore_mcp_handle_critical_error(p_hwfn, p_ptt);
@@ -3492,12 +3487,10 @@ ecore_mcp_resc_lock(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 	return ECORE_SUCCESS;
 }
 
-void
-ecore_mcp_resc_lock_default_init(struct ecore_hwfn *p_hwfn,
-				 struct ecore_resc_lock_params *p_lock,
-				 struct ecore_resc_unlock_params *p_unlock,
-				 enum ecore_resc_lock resource,
-				 bool b_is_permanent)
+void ecore_mcp_resc_lock_default_init(struct ecore_resc_lock_params *p_lock,
+				      struct ecore_resc_unlock_params *p_unlock,
+				      enum ecore_resc_lock resource,
+				      bool b_is_permanent)
 {
 	if (p_lock != OSAL_NULL) {
 		OSAL_MEM_ZERO(p_lock, sizeof(*p_lock));

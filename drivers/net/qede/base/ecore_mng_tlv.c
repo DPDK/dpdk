@@ -1403,9 +1403,9 @@ ecore_mfw_get_iscsi_tlv_value(struct ecore_drv_tlv_hdr *p_tlv,
 	return -1;
 }
 
-static enum _ecore_status_t
-ecore_mfw_update_tlvs(u8 tlv_group, struct ecore_hwfn *p_hwfn,
-		      struct ecore_ptt *p_ptt, u8 *p_mfw_buf, u32 size)
+static enum _ecore_status_t ecore_mfw_update_tlvs(struct ecore_hwfn *p_hwfn,
+						  u8 tlv_group, u8 *p_mfw_buf,
+						  u32 size)
 {
 	union ecore_mfw_tlv_data *p_tlv_data;
 	struct ecore_drv_tlv_hdr tlv;
@@ -1512,8 +1512,7 @@ ecore_mfw_process_tlv_req(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt)
 	/* Update the TLV values in the local buffer */
 	for (id = ECORE_MFW_TLV_GENERIC; id < ECORE_MFW_TLV_MAX; id <<= 1) {
 		if (tlv_group & id) {
-			if (ecore_mfw_update_tlvs(id, p_hwfn, p_ptt, p_mfw_buf,
-						  size))
+			if (ecore_mfw_update_tlvs(p_hwfn, id, p_mfw_buf, size))
 				goto drv_done;
 		}
 	}

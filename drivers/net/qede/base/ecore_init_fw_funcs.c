@@ -361,7 +361,6 @@ static void ecore_tx_pq_map_rt_init(struct ecore_hwfn *p_hwfn,
 				    u8 port_id,
 				    u8 pf_id,
 				    u8 max_phys_tcs_per_port,
-				    bool is_first_pf,
 				    u32 num_pf_cids,
 				    u32 num_vf_cids,
 				    u16 start_pq,
@@ -473,10 +472,10 @@ static void ecore_tx_pq_map_rt_init(struct ecore_hwfn *p_hwfn,
 
 /* Prepare Other PQ mapping runtime init values for the specified PF */
 static void ecore_other_pq_map_rt_init(struct ecore_hwfn *p_hwfn,
-				       u8 port_id,
 				       u8 pf_id,
 				       u32 num_pf_cids,
-				       u32 num_tids, u32 base_mem_addr_4kb)
+				       u32 num_tids,
+				       u32 base_mem_addr_4kb)
 {
 	u32 pq_size, pq_mem_4kb, mem_addr_4kb;
 	u16 i, pq_id, pq_group;
@@ -684,10 +683,11 @@ static bool ecore_send_qm_cmd(struct ecore_hwfn *p_hwfn,
 
 /******************** INTERFACE IMPLEMENTATION *********************/
 
-u32 ecore_qm_pf_mem_size(u8 pf_id,
-			 u32 num_pf_cids,
+u32 ecore_qm_pf_mem_size(u32 num_pf_cids,
 			 u32 num_vf_cids,
-			 u32 num_tids, u16 num_pf_pqs, u16 num_vf_pqs)
+			 u32 num_tids,
+			 u16 num_pf_pqs,
+			 u16 num_vf_pqs)
 {
 	return QM_PQ_MEM_4KB(num_pf_cids) * num_pf_pqs +
 	    QM_PQ_MEM_4KB(num_vf_cids) * num_vf_pqs +
@@ -748,7 +748,6 @@ int ecore_qm_pf_rt_init(struct ecore_hwfn *p_hwfn,
 			u8 port_id,
 			u8 pf_id,
 			u8 max_phys_tcs_per_port,
-			bool is_first_pf,
 			u32 num_pf_cids,
 			u32 num_vf_cids,
 			u32 num_tids,
@@ -775,16 +774,14 @@ int ecore_qm_pf_rt_init(struct ecore_hwfn *p_hwfn,
 
 	/* Map Other PQs (if any) */
 #if QM_OTHER_PQS_PER_PF > 0
-	ecore_other_pq_map_rt_init(p_hwfn, port_id, pf_id, num_pf_cids,
-				   num_tids, 0);
+	ecore_other_pq_map_rt_init(p_hwfn, pf_id, num_pf_cids, num_tids, 0);
 #endif
 
 	/* Map Tx PQs */
 	ecore_tx_pq_map_rt_init(p_hwfn, p_ptt, port_id, pf_id,
-				max_phys_tcs_per_port, is_first_pf, num_pf_cids,
-				num_vf_cids, start_pq, num_pf_pqs, num_vf_pqs,
-				start_vport, other_mem_size_4kb, pq_params,
-				vport_params);
+				max_phys_tcs_per_port, num_pf_cids, num_vf_cids,
+				start_pq, num_pf_pqs, num_vf_pqs, start_vport,
+				other_mem_size_4kb, pq_params, vport_params);
 
 	/* Init PF WFQ */
 	if (pf_wfq)
@@ -1335,23 +1332,8 @@ void ecore_init_brb_ram(struct ecore_hwfn *p_hwfn,
 	}
 }
 
-/* In MF should be called once per engine to set EtherType of OuterTag */
-void ecore_set_engine_mf_ovlan_eth_type(struct ecore_hwfn *p_hwfn,
-					struct ecore_ptt *p_ptt, u32 ethType)
-{
-	/* Update PRS register */
-	STORE_RT_REG(p_hwfn, PRS_REG_TAG_ETHERTYPE_0_RT_OFFSET, ethType);
-
-	/* Update NIG register */
-	STORE_RT_REG(p_hwfn, NIG_REG_TAG_ETHERTYPE_0_RT_OFFSET, ethType);
-
-	/* Update PBF register */
-	STORE_RT_REG(p_hwfn, PBF_REG_TAG_ETHERTYPE_0_RT_OFFSET, ethType);
-}
-
 /* In MF should be called once per port to set EtherType of OuterTag */
-void ecore_set_port_mf_ovlan_eth_type(struct ecore_hwfn *p_hwfn,
-				      struct ecore_ptt *p_ptt, u32 ethType)
+void ecore_set_port_mf_ovlan_eth_type(struct ecore_hwfn *p_hwfn, u32 ethType)
 {
 	/* Update DORQ register */
 	STORE_RT_REG(p_hwfn, DORQ_REG_TAG1_ETHERTYPE_RT_OFFSET, ethType);
@@ -1733,9 +1715,7 @@ static u8 cdu_crc8_table[CRC8_TABLE_SIZE];
 /* Calculate and return CDU validation byte per connection type / region /
  * cid
  */
-static u8 ecore_calc_cdu_validation_byte(struct ecore_hwfn *p_hwfn,
-					 u8 conn_type,
-					 u8 region, u32 cid)
+static u8 ecore_calc_cdu_validation_byte(u8 conn_type, u8 region, u32 cid)
 {
 	const u8 validation_cfg = CDU_VALIDATION_DEFAULT_CFG;
 
@@ -1794,9 +1774,8 @@ static u8 ecore_calc_cdu_validation_byte(struct ecore_hwfn *p_hwfn,
 }
 
 /* Calcualte and set validation bytes for session context */
-void ecore_calc_session_ctx_validation(struct ecore_hwfn *p_hwfn,
-				       void *p_ctx_mem,
-				       u16 ctx_size, u8 ctx_type, u32 cid)
+void ecore_calc_session_ctx_validation(void *p_ctx_mem, u16 ctx_size,
+				       u8 ctx_type, u32 cid)
 {
 	u8 *x_val_ptr, *t_val_ptr, *u_val_ptr, *p_ctx;
 
@@ -1807,14 +1786,14 @@ void ecore_calc_session_ctx_validation(struct ecore_hwfn *p_hwfn,
 
 	OSAL_MEMSET(p_ctx, 0, ctx_size);
 
-	*x_val_ptr = ecore_calc_cdu_validation_byte(p_hwfn, ctx_type, 3, cid);
-	*t_val_ptr = ecore_calc_cdu_validation_byte(p_hwfn, ctx_type, 4, cid);
-	*u_val_ptr = ecore_calc_cdu_validation_byte(p_hwfn, ctx_type, 5, cid);
+	*x_val_ptr = ecore_calc_cdu_validation_byte(ctx_type, 3, cid);
+	*t_val_ptr = ecore_calc_cdu_validation_byte(ctx_type, 4, cid);
+	*u_val_ptr = ecore_calc_cdu_validation_byte(ctx_type, 5, cid);
 }
 
 /* Calcualte and set validation bytes for task context */
-void ecore_calc_task_ctx_validation(struct ecore_hwfn *p_hwfn, void *p_ctx_mem,
-				    u16 ctx_size, u8 ctx_type, u32 tid)
+void ecore_calc_task_ctx_validation(void *p_ctx_mem, u16 ctx_size, u8 ctx_type,
+				    u32 tid)
 {
 	u8 *p_ctx, *region1_val_ptr;
 
@@ -1823,8 +1802,7 @@ void ecore_calc_task_ctx_validation(struct ecore_hwfn *p_hwfn, void *p_ctx_mem,
 
 	OSAL_MEMSET(p_ctx, 0, ctx_size);
 
-	*region1_val_ptr = ecore_calc_cdu_validation_byte(p_hwfn, ctx_type,
-								1, tid);
+	*region1_val_ptr = ecore_calc_cdu_validation_byte(ctx_type, 1, tid);
 }
 
 /* Memset session context to 0 while preserving validation bytes */

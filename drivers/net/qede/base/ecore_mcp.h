@@ -493,18 +493,15 @@ ecore_mcp_resc_unlock(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 /**
  * @brief - default initialization for lock/unlock resource structs
  *
- * @param p_hwfn
  * @param p_lock - lock params struct to be initialized; Can be OSAL_NULL
  * @param p_unlock - unlock params struct to be initialized; Can be OSAL_NULL
  * @param resource - the requested resource
  * @paral b_is_permanent - disable retries & aging when set
  */
-void
-ecore_mcp_resc_lock_default_init(struct ecore_hwfn *p_hwfn,
-				 struct ecore_resc_lock_params *p_lock,
-				 struct ecore_resc_unlock_params *p_unlock,
-				 enum ecore_resc_lock resource,
-				 bool b_is_permanent);
+void ecore_mcp_resc_lock_default_init(struct ecore_resc_lock_params *p_lock,
+				      struct ecore_resc_unlock_params *p_unlock,
+				      enum ecore_resc_lock resource,
+				      bool b_is_permanent);
 
 /**
  * @brief Learn of supported MFW features; To be done during early init

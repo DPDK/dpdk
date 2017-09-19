@@ -545,7 +545,6 @@ ecore_dcbx_get_common_params(struct ecore_hwfn *p_hwfn,
 
 static void
 ecore_dcbx_get_local_params(struct ecore_hwfn *p_hwfn,
-			    struct ecore_ptt *p_ptt,
 			    struct ecore_dcbx_get *params)
 {
 	struct dcbx_features *p_feat;
@@ -559,7 +558,6 @@ ecore_dcbx_get_local_params(struct ecore_hwfn *p_hwfn,
 
 static void
 ecore_dcbx_get_remote_params(struct ecore_hwfn *p_hwfn,
-			     struct ecore_ptt *p_ptt,
 			     struct ecore_dcbx_get *params)
 {
 	struct dcbx_features *p_feat;
@@ -574,7 +572,6 @@ ecore_dcbx_get_remote_params(struct ecore_hwfn *p_hwfn,
 
 static enum _ecore_status_t
 ecore_dcbx_get_operational_params(struct ecore_hwfn *p_hwfn,
-				  struct ecore_ptt *p_ptt,
 				  struct ecore_dcbx_get *params)
 {
 	struct ecore_dcbx_operational_params *p_operational;
@@ -633,10 +630,8 @@ ecore_dcbx_get_operational_params(struct ecore_hwfn *p_hwfn,
 	return ECORE_SUCCESS;
 }
 
-static void
-ecore_dcbx_get_dscp_params(struct ecore_hwfn *p_hwfn,
-			   struct ecore_ptt *p_ptt,
-			   struct ecore_dcbx_get *params)
+static void  ecore_dcbx_get_dscp_params(struct ecore_hwfn *p_hwfn,
+					struct ecore_dcbx_get *params)
 {
 	struct ecore_dcbx_dscp_params *p_dscp;
 	struct dcb_dscp_map *p_dscp_map;
@@ -660,10 +655,8 @@ ecore_dcbx_get_dscp_params(struct ecore_hwfn *p_hwfn,
 	}
 }
 
-static void
-ecore_dcbx_get_local_lldp_params(struct ecore_hwfn *p_hwfn,
-				 struct ecore_ptt *p_ptt,
-				 struct ecore_dcbx_get *params)
+static void ecore_dcbx_get_local_lldp_params(struct ecore_hwfn *p_hwfn,
+					     struct ecore_dcbx_get *params)
 {
 	struct lldp_config_params_s *p_local;
 
@@ -676,10 +669,8 @@ ecore_dcbx_get_local_lldp_params(struct ecore_hwfn *p_hwfn,
 		    OSAL_ARRAY_SIZE(p_local->local_port_id));
 }
 
-static void
-ecore_dcbx_get_remote_lldp_params(struct ecore_hwfn *p_hwfn,
-				  struct ecore_ptt *p_ptt,
-				  struct ecore_dcbx_get *params)
+static void ecore_dcbx_get_remote_lldp_params(struct ecore_hwfn *p_hwfn,
+					      struct ecore_dcbx_get *params)
 {
 	struct lldp_status_params_s *p_remote;
 
@@ -693,34 +684,32 @@ ecore_dcbx_get_remote_lldp_params(struct ecore_hwfn *p_hwfn,
 }
 
 static enum _ecore_status_t
-ecore_dcbx_get_params(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
+ecore_dcbx_get_params(struct ecore_hwfn *p_hwfn,
 		      struct ecore_dcbx_get *p_params,
 		      enum ecore_mib_read_type type)
 {
-	enum _ecore_status_t rc = ECORE_SUCCESS;
-
 	switch (type) {
 	case ECORE_DCBX_REMOTE_MIB:
-		ecore_dcbx_get_remote_params(p_hwfn, p_ptt, p_params);
+		ecore_dcbx_get_remote_params(p_hwfn, p_params);
 		break;
 	case ECORE_DCBX_LOCAL_MIB:
-		ecore_dcbx_get_local_params(p_hwfn, p_ptt, p_params);
+		ecore_dcbx_get_local_params(p_hwfn, p_params);
 		break;
 	case ECORE_DCBX_OPERATIONAL_MIB:
-		ecore_dcbx_get_operational_params(p_hwfn, p_ptt, p_params);
+		ecore_dcbx_get_operational_params(p_hwfn, p_params);
 		break;
 	case ECORE_DCBX_REMOTE_LLDP_MIB:
-		ecore_dcbx_get_remote_lldp_params(p_hwfn, p_ptt, p_params);
+		ecore_dcbx_get_remote_lldp_params(p_hwfn, p_params);
 		break;
 	case ECORE_DCBX_LOCAL_LLDP_MIB:
-		ecore_dcbx_get_local_lldp_params(p_hwfn, p_ptt, p_params);
+		ecore_dcbx_get_local_lldp_params(p_hwfn, p_params);
 		break;
 	default:
 		DP_ERR(p_hwfn, "MIB read err, unknown mib type %d\n", type);
 		return ECORE_INVAL;
 	}
 
-	return rc;
+	return ECORE_SUCCESS;
 }
 
 static enum _ecore_status_t
@@ -869,8 +858,7 @@ ecore_dcbx_mib_update_event(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 		return rc;
 
 	if (type == ECORE_DCBX_OPERATIONAL_MIB) {
-		ecore_dcbx_get_dscp_params(p_hwfn, p_ptt,
-					   &p_hwfn->p_dcbx_info->get);
+		ecore_dcbx_get_dscp_params(p_hwfn, &p_hwfn->p_dcbx_info->get);
 
 		rc = ecore_dcbx_process_mib_info(p_hwfn);
 		if (!rc) {
@@ -890,7 +878,8 @@ ecore_dcbx_mib_update_event(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 			enabled = p_hwfn->p_dcbx_info->results.dcbx_enabled;
 		}
 	}
-	ecore_dcbx_get_params(p_hwfn, p_ptt, &p_hwfn->p_dcbx_info->get, type);
+
+	ecore_dcbx_get_params(p_hwfn, &p_hwfn->p_dcbx_info->get, type);
 
 	/* Update the DSCP to TC mapping bit if required */
 	if ((type == ECORE_DCBX_OPERATIONAL_MIB) &&
@@ -978,7 +967,7 @@ enum _ecore_status_t ecore_dcbx_query_params(struct ecore_hwfn *p_hwfn,
 	if (rc != ECORE_SUCCESS)
 		goto out;
 
-	rc = ecore_dcbx_get_params(p_hwfn, p_ptt, p_get, type);
+	rc = ecore_dcbx_get_params(p_hwfn, p_get, type);
 
 out:
 	ecore_ptt_release(p_hwfn, p_ptt);

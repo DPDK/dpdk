@@ -297,8 +297,8 @@ struct ecore_tm_iids {
 	u32 per_vf_tids;
 };
 
-static OSAL_INLINE void ecore_cxt_tm_iids(struct ecore_cxt_mngr *p_mngr,
-					  struct ecore_tm_iids *iids)
+static void ecore_cxt_tm_iids(struct ecore_cxt_mngr *p_mngr,
+			      struct ecore_tm_iids *iids)
 {
 	bool tm_vf_required = false;
 	bool tm_required = false;
@@ -687,7 +687,7 @@ enum _ecore_status_t ecore_cxt_cfg_ilt_compute(struct ecore_hwfn *p_hwfn)
 	p_blk = &p_cli->pf_blks[0];
 
 	ecore_cxt_qm_iids(p_hwfn, &qm_iids);
-	total = ecore_qm_pf_mem_size(p_hwfn->rel_pf_id, qm_iids.cids,
+	total = ecore_qm_pf_mem_size(qm_iids.cids,
 				     qm_iids.vf_cids, qm_iids.tids,
 				     p_hwfn->qm_info.num_pqs,
 				     p_hwfn->qm_info.num_vf_pqs);
@@ -1436,7 +1436,6 @@ void ecore_qm_init_pf(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt)
 
 	ecore_qm_pf_rt_init(p_hwfn, p_ptt, p_hwfn->port_id,
 			    p_hwfn->rel_pf_id, qm_info->max_phys_tcs_per_port,
-			    p_hwfn->first_on_engine,
 			    iids.cids, iids.vf_cids, iids.tids,
 			    qm_info->start_pq,
 			    qm_info->num_pqs - qm_info->num_vf_pqs,

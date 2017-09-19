@@ -206,17 +206,13 @@ enum _ecore_status_t ecore_iov_hw_info(struct ecore_hwfn *p_hwfn);
 /**
  * @brief ecore_add_tlv - place a given tlv on the tlv buffer at next offset
  *
- * @param p_hwfn
- * @param p_iov
+ * @param offset
  * @param type
  * @param length
  *
  * @return pointer to the newly placed tlv
  */
-void *ecore_add_tlv(struct ecore_hwfn	*p_hwfn,
-		    u8			**offset,
-		    u16			type,
-		    u16			length);
+void *ecore_add_tlv(u8 **offset, u16 type, u16 length);
 
 /**
  * @brief list the types and lengths of the tlvs on the buffer

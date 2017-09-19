@@ -176,8 +176,7 @@ static enum _ecore_status_t ecore_init_array_dmae(struct ecore_hwfn *p_hwfn,
 
 static enum _ecore_status_t ecore_init_fill_dmae(struct ecore_hwfn *p_hwfn,
 						 struct ecore_ptt *p_ptt,
-						 u32 addr, u32 fill,
-						 u32 fill_count)
+						 u32 addr, u32 fill_count)
 {
 	static u32 zero_buffer[DMAE_MAX_RW_SIZE];
 
@@ -309,7 +308,7 @@ static enum _ecore_status_t ecore_init_cmd_wr(struct ecore_hwfn *p_hwfn,
 	case INIT_SRC_ZEROS:
 		data = OSAL_LE32_TO_CPU(p_cmd->args.zeros_count);
 		if (b_must_dmae || (b_can_dmae && (data >= 64)))
-			rc = ecore_init_fill_dmae(p_hwfn, p_ptt, addr, 0, data);
+			rc = ecore_init_fill_dmae(p_hwfn, p_ptt, addr, data);
 		else
 			ecore_init_fill(p_hwfn, p_ptt, addr, 0, data);
 		break;
@@ -397,10 +396,13 @@ static void ecore_init_cmd_rd(struct ecore_hwfn *p_hwfn,
 		       OSAL_LE32_TO_CPU(cmd->op_data));
 }
 
-/* init_ops callbacks entry point */
+/* init_ops callbacks entry point.
+ * OSAL_UNUSED is temporary used to avoid unused-parameter compilation warnings.
+ * Should be removed when the function is actually used.
+ */
 static void ecore_init_cmd_cb(struct ecore_hwfn *p_hwfn,
-			      struct ecore_ptt *p_ptt,
-			      struct init_callback_op *p_cmd)
+			      struct ecore_ptt OSAL_UNUSED * p_ptt,
+			      struct init_callback_op OSAL_UNUSED * p_cmd)
 {
 	DP_NOTICE(p_hwfn, true,
 		  "Currently init values have no need of callbacks\n");
@@ -444,8 +446,7 @@ static u32 ecore_init_cmd_mode(struct ecore_hwfn *p_hwfn,
 				 INIT_IF_MODE_OP_CMD_OFFSET);
 }
 
-static u32 ecore_init_cmd_phase(struct ecore_hwfn *p_hwfn,
-				struct init_if_phase_op *p_cmd,
+static u32 ecore_init_cmd_phase(struct init_if_phase_op *p_cmd,
 				u32 phase, u32 phase_id)
 {
 	u32 data = OSAL_LE32_TO_CPU(p_cmd->phase_data);
@@ -500,8 +501,8 @@ enum _ecore_status_t ecore_init_run(struct ecore_hwfn *p_hwfn,
 						       modes);
 			break;
 		case INIT_OP_IF_PHASE:
-			cmd_num += ecore_init_cmd_phase(p_hwfn, &cmd->if_phase,
-							phase, phase_id);
+			cmd_num += ecore_init_cmd_phase(&cmd->if_phase, phase,
+							phase_id);
 			b_dmae = GET_FIELD(data, INIT_IF_PHASE_OP_DMAE_ENABLE);
 			break;
 		case INIT_OP_DELAY:
@@ -573,7 +574,11 @@ void ecore_gtt_init(struct ecore_hwfn *p_hwfn,
 }
 
 enum _ecore_status_t ecore_init_fw_data(struct ecore_dev *p_dev,
-					const u8 *data)
+#ifdef CONFIG_ECORE_BINARY_FW
+					const u8 *fw_data)
+#else
+					const u8 OSAL_UNUSED * fw_data)
+#endif
 {
 	struct ecore_fw_data *fw = p_dev->fw_data;
 
@@ -581,24 +586,24 @@ enum _ecore_status_t ecore_init_fw_data(struct ecore_dev *p_dev,
 	struct bin_buffer_hdr *buf_hdr;
 	u32 offset, len;
 
-	if (!data) {
+	if (!fw_data) {
 		DP_NOTICE(p_dev, true, "Invalid fw data\n");
 		return ECORE_INVAL;
 	}
 
-	buf_hdr = (struct bin_buffer_hdr *)(uintptr_t)data;
+	buf_hdr = (struct bin_buffer_hdr *)(uintptr_t)fw_data;
 
 	offset = buf_hdr[BIN_BUF_INIT_FW_VER_INFO].offset;
-	fw->fw_ver_info = (struct fw_ver_info *)((uintptr_t)(data + offset));
+	fw->fw_ver_info = (struct fw_ver_info *)((uintptr_t)(fw_data + offset));
 
 	offset = buf_hdr[BIN_BUF_INIT_CMD].offset;
-	fw->init_ops = (union init_op *)((uintptr_t)(data + offset));
+	fw->init_ops = (union init_op *)((uintptr_t)(fw_data + offset));
 
 	offset = buf_hdr[BIN_BUF_INIT_VAL].offset;
-	fw->arr_data = (u32 *)((uintptr_t)(data + offset));
+	fw->arr_data = (u32 *)((uintptr_t)(fw_data + offset));
 
 	offset = buf_hdr[BIN_BUF_INIT_MODE_TREE].offset;
-	fw->modes_tree_buf = (u8 *)((uintptr_t)(data + offset));
+	fw->modes_tree_buf = (u8 *)((uintptr_t)(fw_data + offset));
 	len = buf_hdr[BIN_BUF_INIT_CMD].length;
 	fw->init_ops_size = len / sizeof(struct init_raw_op);
 #else

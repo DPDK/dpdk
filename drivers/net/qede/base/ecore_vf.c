@@ -44,7 +44,7 @@ static void *ecore_vf_pf_prep(struct ecore_hwfn *p_hwfn, u16 type, u16 length)
 	OSAL_MEMSET(p_iov->pf2vf_reply, 0, sizeof(union pfvf_tlvs));
 
 	/* Init type and length */
-	p_tlv = ecore_add_tlv(p_hwfn, &p_iov->offset, type, length);
+	p_tlv = ecore_add_tlv(&p_iov->offset, type, length);
 
 	/* Init first tlv header */
 	((struct vfpf_first_tlv *)p_tlv)->reply_address =
@@ -146,7 +146,7 @@ static void ecore_vf_pf_add_qid(struct ecore_hwfn *p_hwfn,
 	      PFVF_ACQUIRE_CAP_QUEUE_QIDS))
 		return;
 
-	p_qid_tlv = ecore_add_tlv(p_hwfn, &p_iov->offset,
+	p_qid_tlv = ecore_add_tlv(&p_iov->offset,
 				  CHANNEL_TLV_QID, sizeof(*p_qid_tlv));
 	p_qid_tlv->qid = p_cid->qid_usage_idx;
 }
@@ -222,7 +222,7 @@ static enum _ecore_status_t ecore_vf_pf_acquire(struct ecore_hwfn *p_hwfn)
 	req->bulletin_size = p_iov->bulletin.size;
 
 	/* add list termination tlv */
-	ecore_add_tlv(p_hwfn, &p_iov->offset,
+	ecore_add_tlv(&p_iov->offset,
 		      CHANNEL_TLV_LIST_END,
 		      sizeof(struct channel_list_end_tlv));
 
@@ -610,7 +610,7 @@ ecore_vf_pf_tunnel_param_update(struct ecore_hwfn *p_hwfn,
 				     ECORE_MODE_IPGRE_TUNN, &p_req->ipgre_clss);
 
 	/* add list termination tlv */
-	ecore_add_tlv(p_hwfn, &p_iov->offset,
+	ecore_add_tlv(&p_iov->offset,
 		      CHANNEL_TLV_LIST_END,
 		      sizeof(struct channel_list_end_tlv));
 
@@ -679,7 +679,7 @@ ecore_vf_pf_rxq_start(struct ecore_hwfn *p_hwfn,
 	ecore_vf_pf_add_qid(p_hwfn, p_cid);
 
 	/* add list termination tlv */
-	ecore_add_tlv(p_hwfn, &p_iov->offset,
+	ecore_add_tlv(&p_iov->offset,
 		      CHANNEL_TLV_LIST_END,
 		      sizeof(struct channel_list_end_tlv));
 
@@ -736,7 +736,7 @@ enum _ecore_status_t ecore_vf_pf_rxq_stop(struct ecore_hwfn *p_hwfn,
 	ecore_vf_pf_add_qid(p_hwfn, p_cid);
 
 	/* add list termination tlv */
-	ecore_add_tlv(p_hwfn, &p_iov->offset,
+	ecore_add_tlv(&p_iov->offset,
 		      CHANNEL_TLV_LIST_END,
 		      sizeof(struct channel_list_end_tlv));
 
@@ -782,7 +782,7 @@ ecore_vf_pf_txq_start(struct ecore_hwfn *p_hwfn,
 	ecore_vf_pf_add_qid(p_hwfn, p_cid);
 
 	/* add list termination tlv */
-	ecore_add_tlv(p_hwfn, &p_iov->offset,
+	ecore_add_tlv(&p_iov->offset,
 		      CHANNEL_TLV_LIST_END,
 		      sizeof(struct channel_list_end_tlv));
 
@@ -835,7 +835,7 @@ enum _ecore_status_t ecore_vf_pf_txq_stop(struct ecore_hwfn *p_hwfn,
 	ecore_vf_pf_add_qid(p_hwfn, p_cid);
 
 	/* add list termination tlv */
-	ecore_add_tlv(p_hwfn, &p_iov->offset,
+	ecore_add_tlv(&p_iov->offset,
 		      CHANNEL_TLV_LIST_END,
 		      sizeof(struct channel_list_end_tlv));
 
@@ -891,7 +891,7 @@ enum _ecore_status_t ecore_vf_pf_rxqs_update(struct ecore_hwfn *p_hwfn,
 	ecore_vf_pf_add_qid(p_hwfn, *pp_cid);
 
 	/* add list termination tlv */
-	ecore_add_tlv(p_hwfn, &p_iov->offset,
+	ecore_add_tlv(&p_iov->offset,
 		      CHANNEL_TLV_LIST_END,
 		      sizeof(struct channel_list_end_tlv));
 
@@ -940,7 +940,7 @@ ecore_vf_pf_vport_start(struct ecore_hwfn *p_hwfn, u8 vport_id,
 	}
 
 	/* add list termination tlv */
-	ecore_add_tlv(p_hwfn, &p_iov->offset,
+	ecore_add_tlv(&p_iov->offset,
 		      CHANNEL_TLV_LIST_END,
 		      sizeof(struct channel_list_end_tlv));
 
@@ -971,7 +971,7 @@ enum _ecore_status_t ecore_vf_pf_vport_stop(struct ecore_hwfn *p_hwfn)
 			 sizeof(struct vfpf_first_tlv));
 
 	/* add list termination tlv */
-	ecore_add_tlv(p_hwfn, &p_iov->offset,
+	ecore_add_tlv(&p_iov->offset,
 		      CHANNEL_TLV_LIST_END,
 		      sizeof(struct channel_list_end_tlv));
 
@@ -1078,7 +1078,7 @@ ecore_vf_pf_vport_update(struct ecore_hwfn *p_hwfn,
 		struct vfpf_vport_update_activate_tlv *p_act_tlv;
 
 		size = sizeof(struct vfpf_vport_update_activate_tlv);
-		p_act_tlv = ecore_add_tlv(p_hwfn, &p_iov->offset,
+		p_act_tlv = ecore_add_tlv(&p_iov->offset,
 					  CHANNEL_TLV_VPORT_UPDATE_ACTIVATE,
 					  size);
 		resp_size += sizeof(struct pfvf_def_resp_tlv);
@@ -1098,7 +1098,7 @@ ecore_vf_pf_vport_update(struct ecore_hwfn *p_hwfn,
 		struct vfpf_vport_update_vlan_strip_tlv *p_vlan_tlv;
 
 		size = sizeof(struct vfpf_vport_update_vlan_strip_tlv);
-		p_vlan_tlv = ecore_add_tlv(p_hwfn, &p_iov->offset,
+		p_vlan_tlv = ecore_add_tlv(&p_iov->offset,
 					   CHANNEL_TLV_VPORT_UPDATE_VLAN_STRIP,
 					   size);
 		resp_size += sizeof(struct pfvf_def_resp_tlv);
@@ -1111,7 +1111,7 @@ ecore_vf_pf_vport_update(struct ecore_hwfn *p_hwfn,
 
 		size = sizeof(struct vfpf_vport_update_tx_switch_tlv);
 		tlv = CHANNEL_TLV_VPORT_UPDATE_TX_SWITCH;
-		p_tx_switch_tlv = ecore_add_tlv(p_hwfn, &p_iov->offset,
+		p_tx_switch_tlv = ecore_add_tlv(&p_iov->offset,
 						tlv, size);
 		resp_size += sizeof(struct pfvf_def_resp_tlv);
 
@@ -1122,7 +1122,7 @@ ecore_vf_pf_vport_update(struct ecore_hwfn *p_hwfn,
 		struct vfpf_vport_update_mcast_bin_tlv *p_mcast_tlv;
 
 		size = sizeof(struct vfpf_vport_update_mcast_bin_tlv);
-		p_mcast_tlv = ecore_add_tlv(p_hwfn, &p_iov->offset,
+		p_mcast_tlv = ecore_add_tlv(&p_iov->offset,
 					    CHANNEL_TLV_VPORT_UPDATE_MCAST,
 					    size);
 		resp_size += sizeof(struct pfvf_def_resp_tlv);
@@ -1140,7 +1140,7 @@ ecore_vf_pf_vport_update(struct ecore_hwfn *p_hwfn,
 
 		tlv = CHANNEL_TLV_VPORT_UPDATE_ACCEPT_PARAM;
 		size = sizeof(struct vfpf_vport_update_accept_param_tlv);
-		p_accept_tlv = ecore_add_tlv(p_hwfn, &p_iov->offset, tlv, size);
+		p_accept_tlv = ecore_add_tlv(&p_iov->offset, tlv, size);
 		resp_size += sizeof(struct pfvf_def_resp_tlv);
 
 		if (update_rx) {
@@ -1162,7 +1162,7 @@ ecore_vf_pf_vport_update(struct ecore_hwfn *p_hwfn,
 		int i, table_size;
 
 		size = sizeof(struct vfpf_vport_update_rss_tlv);
-		p_rss_tlv = ecore_add_tlv(p_hwfn, &p_iov->offset,
+		p_rss_tlv = ecore_add_tlv(&p_iov->offset,
 					  CHANNEL_TLV_VPORT_UPDATE_RSS, size);
 		resp_size += sizeof(struct pfvf_def_resp_tlv);
 
@@ -1200,8 +1200,7 @@ ecore_vf_pf_vport_update(struct ecore_hwfn *p_hwfn,
 
 		size = sizeof(struct vfpf_vport_update_accept_any_vlan_tlv);
 		tlv = CHANNEL_TLV_VPORT_UPDATE_ACCEPT_ANY_VLAN;
-		p_any_vlan_tlv = ecore_add_tlv(p_hwfn, &p_iov->offset,
-					       tlv, size);
+		p_any_vlan_tlv = ecore_add_tlv(&p_iov->offset, tlv, size);
 
 		resp_size += sizeof(struct pfvf_def_resp_tlv);
 		p_any_vlan_tlv->accept_any_vlan = p_params->accept_any_vlan;
@@ -1215,7 +1214,7 @@ ecore_vf_pf_vport_update(struct ecore_hwfn *p_hwfn,
 
 		sge_tpa_params = p_params->sge_tpa_params;
 		size = sizeof(struct vfpf_vport_update_sge_tpa_tlv);
-		p_sge_tpa_tlv = ecore_add_tlv(p_hwfn, &p_iov->offset,
+		p_sge_tpa_tlv = ecore_add_tlv(&p_iov->offset,
 					      CHANNEL_TLV_VPORT_UPDATE_SGE_TPA,
 					      size);
 		resp_size += sizeof(struct pfvf_def_resp_tlv);
@@ -1253,7 +1252,7 @@ ecore_vf_pf_vport_update(struct ecore_hwfn *p_hwfn,
 	}
 
 	/* add list termination tlv */
-	ecore_add_tlv(p_hwfn, &p_iov->offset,
+	ecore_add_tlv(&p_iov->offset,
 		      CHANNEL_TLV_LIST_END,
 		      sizeof(struct channel_list_end_tlv));
 
@@ -1285,7 +1284,7 @@ enum _ecore_status_t ecore_vf_pf_reset(struct ecore_hwfn *p_hwfn)
 	req = ecore_vf_pf_prep(p_hwfn, CHANNEL_TLV_CLOSE, sizeof(*req));
 
 	/* add list termination tlv */
-	ecore_add_tlv(p_hwfn, &p_iov->offset,
+	ecore_add_tlv(&p_iov->offset,
 		      CHANNEL_TLV_LIST_END,
 		      sizeof(struct channel_list_end_tlv));
 
@@ -1319,7 +1318,7 @@ enum _ecore_status_t ecore_vf_pf_release(struct ecore_hwfn *p_hwfn)
 	req = ecore_vf_pf_prep(p_hwfn, CHANNEL_TLV_RELEASE, sizeof(*req));
 
 	/* add list termination tlv */
-	ecore_add_tlv(p_hwfn, &p_iov->offset,
+	ecore_add_tlv(&p_iov->offset,
 		      CHANNEL_TLV_LIST_END,
 		      sizeof(struct channel_list_end_tlv));
 
@@ -1405,7 +1404,7 @@ enum _ecore_status_t ecore_vf_pf_filter_ucast(struct ecore_hwfn *p_hwfn,
 	req->vlan = p_ucast->vlan;
 
 	/* add list termination tlv */
-	ecore_add_tlv(p_hwfn, &p_iov->offset,
+	ecore_add_tlv(&p_iov->offset,
 		      CHANNEL_TLV_LIST_END,
 		      sizeof(struct channel_list_end_tlv));
 
@@ -1436,7 +1435,7 @@ enum _ecore_status_t ecore_vf_pf_int_cleanup(struct ecore_hwfn *p_hwfn)
 			 sizeof(struct vfpf_first_tlv));
 
 	/* add list termination tlv */
-	ecore_add_tlv(p_hwfn, &p_iov->offset,
+	ecore_add_tlv(&p_iov->offset,
 		      CHANNEL_TLV_LIST_END,
 		      sizeof(struct channel_list_end_tlv));
 
@@ -1477,7 +1476,7 @@ ecore_vf_pf_set_coalesce(struct ecore_hwfn *p_hwfn, u16 rx_coal, u16 tx_coal,
 		   rx_coal, tx_coal, req->qid);
 
 	/* add list termination tlv */
-	ecore_add_tlv(p_hwfn, &p_iov->offset, CHANNEL_TLV_LIST_END,
+	ecore_add_tlv(&p_iov->offset, CHANNEL_TLV_LIST_END,
 		      sizeof(struct channel_list_end_tlv));
 
 	resp = &p_iov->pf2vf_reply->default_resp;
@@ -1562,8 +1561,7 @@ enum _ecore_status_t ecore_vf_read_bulletin(struct ecore_hwfn *p_hwfn,
 	return ECORE_SUCCESS;
 }
 
-void __ecore_vf_get_link_params(struct ecore_hwfn *p_hwfn,
-				struct ecore_mcp_link_params *p_params,
+void __ecore_vf_get_link_params(struct ecore_mcp_link_params *p_params,
 				struct ecore_bulletin_content *p_bulletin)
 {
 	OSAL_MEMSET(p_params, 0, sizeof(*p_params));
@@ -1580,12 +1578,11 @@ void __ecore_vf_get_link_params(struct ecore_hwfn *p_hwfn,
 void ecore_vf_get_link_params(struct ecore_hwfn *p_hwfn,
 			      struct ecore_mcp_link_params *params)
 {
-	__ecore_vf_get_link_params(p_hwfn, params,
+	__ecore_vf_get_link_params(params,
 				   &p_hwfn->vf_iov_info->bulletin_shadow);
 }
 
-void __ecore_vf_get_link_state(struct ecore_hwfn *p_hwfn,
-			       struct ecore_mcp_link_state *p_link,
+void __ecore_vf_get_link_state(struct ecore_mcp_link_state *p_link,
 			       struct ecore_bulletin_content *p_bulletin)
 {
 	OSAL_MEMSET(p_link, 0, sizeof(*p_link));
@@ -1607,12 +1604,11 @@ void __ecore_vf_get_link_state(struct ecore_hwfn *p_hwfn,
 void ecore_vf_get_link_state(struct ecore_hwfn *p_hwfn,
 			     struct ecore_mcp_link_state *link)
 {
-	__ecore_vf_get_link_state(p_hwfn, link,
+	__ecore_vf_get_link_state(link,
 				  &p_hwfn->vf_iov_info->bulletin_shadow);
 }
 
-void __ecore_vf_get_link_caps(struct ecore_hwfn *p_hwfn,
-			      struct ecore_mcp_link_capabilities *p_link_caps,
+void __ecore_vf_get_link_caps(struct ecore_mcp_link_capabilities *p_link_caps,
 			      struct ecore_bulletin_content *p_bulletin)
 {
 	OSAL_MEMSET(p_link_caps, 0, sizeof(*p_link_caps));
@@ -1622,7 +1618,7 @@ void __ecore_vf_get_link_caps(struct ecore_hwfn *p_hwfn,
 void ecore_vf_get_link_caps(struct ecore_hwfn *p_hwfn,
 			    struct ecore_mcp_link_capabilities *p_link_caps)
 {
-	__ecore_vf_get_link_caps(p_hwfn, p_link_caps,
+	__ecore_vf_get_link_caps(p_link_caps,
 				 &p_hwfn->vf_iov_info->bulletin_shadow);
 }
 

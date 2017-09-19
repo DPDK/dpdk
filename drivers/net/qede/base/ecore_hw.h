@@ -102,13 +102,11 @@ void ecore_ptt_pool_free(struct ecore_hwfn *p_hwfn);
 /**
  * @brief ecore_ptt_get_hw_addr - Get PTT's GRC/HW address
  *
- * @param p_hwfn
  * @param p_ptt
  *
  * @return u32
  */
-u32 ecore_ptt_get_hw_addr(struct ecore_hwfn	*p_hwfn,
-			  struct ecore_ptt	*p_ptt);
+u32 ecore_ptt_get_hw_addr(struct ecore_ptt *p_ptt);
 
 /**
  * @brief ecore_ptt_get_bar_addr - Get PPT's external BAR address
