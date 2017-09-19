@@ -196,6 +196,7 @@ static struct ecore_queue_cid *
 _ecore_eth_queue_to_cid(struct ecore_hwfn *p_hwfn,
 			u16 opaque_fid, u32 cid,
 			struct ecore_queue_start_common_params *p_params,
+			bool b_is_rx,
 			struct ecore_queue_cid_vf_params *p_vf_params)
 {
 	struct ecore_queue_cid *p_cid;
@@ -214,6 +215,7 @@ _ecore_eth_queue_to_cid(struct ecore_hwfn *p_hwfn,
 	p_cid->rel.queue_id = p_params->queue_id;
 	p_cid->rel.stats_id = p_params->stats_id;
 	p_cid->sb_igu_id = p_params->p_sb->igu_sb_id;
+	p_cid->b_is_rx = b_is_rx;
 	p_cid->sb_idx = p_params->sb_idx;
 
 	/* Fill-in bits related to VFs' queues if information was provided */
@@ -287,6 +289,7 @@ fail:
 struct ecore_queue_cid *
 ecore_eth_queue_to_cid(struct ecore_hwfn *p_hwfn, u16 opaque_fid,
 		       struct ecore_queue_start_common_params *p_params,
+		       bool b_is_rx,
 		       struct ecore_queue_cid_vf_params *p_vf_params)
 {
 	struct ecore_queue_cid *p_cid;
@@ -321,7 +324,7 @@ ecore_eth_queue_to_cid(struct ecore_hwfn *p_hwfn, u16 opaque_fid,
 	}
 
 	p_cid = _ecore_eth_queue_to_cid(p_hwfn, opaque_fid, cid,
-					p_params, p_vf_params);
+					p_params, b_is_rx, p_vf_params);
 	if ((p_cid == OSAL_NULL) && IS_PF(p_hwfn->p_dev) && !b_legacy_vf)
 		_ecore_cxt_release_cid(p_hwfn, cid, vfid);
 
@@ -330,9 +333,11 @@ ecore_eth_queue_to_cid(struct ecore_hwfn *p_hwfn, u16 opaque_fid,
 
 static struct ecore_queue_cid *
 ecore_eth_queue_to_cid_pf(struct ecore_hwfn *p_hwfn, u16 opaque_fid,
+			  bool b_is_rx,
 			  struct ecore_queue_start_common_params *p_params)
 {
-	return ecore_eth_queue_to_cid(p_hwfn, opaque_fid, p_params, OSAL_NULL);
+	return ecore_eth_queue_to_cid(p_hwfn, opaque_fid, p_params, b_is_rx,
+				      OSAL_NULL);
 }
 
 enum _ecore_status_t
@@ -984,7 +989,7 @@ ecore_eth_rx_queue_start(struct ecore_hwfn *p_hwfn,
 	enum _ecore_status_t rc;
 
 	/* Allocate a CID for the queue */
-	p_cid = ecore_eth_queue_to_cid_pf(p_hwfn, opaque_fid, p_params);
+	p_cid = ecore_eth_queue_to_cid_pf(p_hwfn, opaque_fid, true, p_params);
 	if (p_cid == OSAL_NULL)
 		return ECORE_NOMEM;
 
@@ -1200,7 +1205,7 @@ ecore_eth_tx_queue_start(struct ecore_hwfn *p_hwfn, u16 opaque_fid,
 	struct ecore_queue_cid *p_cid;
 	enum _ecore_status_t rc;
 
-	p_cid = ecore_eth_queue_to_cid_pf(p_hwfn, opaque_fid, p_params);
+	p_cid = ecore_eth_queue_to_cid_pf(p_hwfn, opaque_fid, false, p_params);
 	if (p_cid == OSAL_NULL)
 		return ECORE_INVAL;
 
@@ -2136,4 +2141,109 @@ ecore_configure_rfs_ntuple_filter(struct ecore_hwfn *p_hwfn,
 		   (unsigned long)p_addr, length);
 
 	return ecore_spq_post(p_hwfn, p_ent, OSAL_NULL);
+}
+
+int ecore_get_rxq_coalesce(struct ecore_hwfn *p_hwfn,
+			   struct ecore_ptt *p_ptt,
+			   struct ecore_queue_cid *p_cid,
+			   u16 *p_rx_coal)
+{
+	u32 coalesce, address, is_valid;
+	struct cau_sb_entry sb_entry;
+	u8 timer_res;
+	enum _ecore_status_t rc;
+
+	rc = ecore_dmae_grc2host(p_hwfn, p_ptt, CAU_REG_SB_VAR_MEMORY +
+				 p_cid->sb_igu_id * sizeof(u64),
+				 (u64)(osal_uintptr_t)&sb_entry, 2, 0);
+	if (rc != ECORE_SUCCESS) {
+		DP_ERR(p_hwfn, "dmae_grc2host failed %d\n", rc);
+		return rc;
+	}
+
+	timer_res = GET_FIELD(sb_entry.params, CAU_SB_ENTRY_TIMER_RES0);
+
+	address = BAR0_MAP_REG_USDM_RAM +
+		  USTORM_ETH_QUEUE_ZONE_OFFSET(p_cid->abs.queue_id);
+	coalesce = ecore_rd(p_hwfn, p_ptt, address);
+
+	is_valid = GET_FIELD(coalesce, COALESCING_TIMESET_VALID);
+	if (!is_valid)
+		return ECORE_INVAL;
+
+	coalesce = GET_FIELD(coalesce, COALESCING_TIMESET_TIMESET);
+	*p_rx_coal = (u16)(coalesce << timer_res);
+
+	return ECORE_SUCCESS;
+}
+
+int ecore_get_txq_coalesce(struct ecore_hwfn *p_hwfn,
+			   struct ecore_ptt *p_ptt,
+			   struct ecore_queue_cid *p_cid,
+			   u16 *p_tx_coal)
+{
+	u32 coalesce, address, is_valid;
+	struct cau_sb_entry sb_entry;
+	u8 timer_res;
+	enum _ecore_status_t rc;
+
+	rc = ecore_dmae_grc2host(p_hwfn, p_ptt, CAU_REG_SB_VAR_MEMORY +
+				 p_cid->sb_igu_id * sizeof(u64),
+				 (u64)(osal_uintptr_t)&sb_entry, 2, 0);
+	if (rc != ECORE_SUCCESS) {
+		DP_ERR(p_hwfn, "dmae_grc2host failed %d\n", rc);
+		return rc;
+	}
+
+	timer_res = GET_FIELD(sb_entry.params, CAU_SB_ENTRY_TIMER_RES1);
+
+	address = BAR0_MAP_REG_XSDM_RAM +
+		  XSTORM_ETH_QUEUE_ZONE_OFFSET(p_cid->abs.queue_id);
+	coalesce = ecore_rd(p_hwfn, p_ptt, address);
+
+	is_valid = GET_FIELD(coalesce, COALESCING_TIMESET_VALID);
+	if (!is_valid)
+		return ECORE_INVAL;
+
+	coalesce = GET_FIELD(coalesce, COALESCING_TIMESET_TIMESET);
+	*p_tx_coal = (u16)(coalesce << timer_res);
+
+	return ECORE_SUCCESS;
+}
+
+enum _ecore_status_t
+ecore_get_queue_coalesce(struct ecore_hwfn *p_hwfn, u16 *p_coal,
+			 void *handle)
+{
+	struct ecore_queue_cid *p_cid = (struct ecore_queue_cid *)handle;
+	enum _ecore_status_t rc = ECORE_SUCCESS;
+	struct ecore_ptt *p_ptt;
+
+	if (IS_VF(p_hwfn->p_dev)) {
+		rc = ecore_vf_pf_get_coalesce(p_hwfn, p_coal, p_cid);
+		if (rc != ECORE_SUCCESS)
+			DP_NOTICE(p_hwfn, false,
+				  "Unable to read queue calescing\n");
+
+		return rc;
+	}
+
+	p_ptt = ecore_ptt_acquire(p_hwfn);
+	if (!p_ptt)
+		return ECORE_AGAIN;
+
+	if (p_cid->b_is_rx) {
+		rc = ecore_get_rxq_coalesce(p_hwfn, p_ptt, p_cid, p_coal);
+		if (rc != ECORE_SUCCESS)
+			goto out;
+	} else {
+		rc = ecore_get_txq_coalesce(p_hwfn, p_ptt, p_cid, p_coal);
+		if (rc != ECORE_SUCCESS)
+			goto out;
+	}
+
+out:
+	ecore_ptt_release(p_hwfn, p_ptt);
+
+	return rc;
 }

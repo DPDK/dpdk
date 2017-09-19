@@ -54,6 +54,7 @@ const char *ecore_channel_tlvs_string[] = {
 	"CHANNEL_TLV_UPDATE_TUNN_PARAM",
 	"CHANNEL_TLV_COALESCE_UPDATE",
 	"CHANNEL_TLV_QID",
+	"CHANNEL_TLV_COALESCE_READ",
 	"CHANNEL_TLV_MAX"
 };
 
@@ -1392,6 +1393,8 @@ static void ecore_iov_send_response(struct ecore_hwfn *p_hwfn,
 	REG_WR(p_hwfn,
 	       GTT_BAR0_MAP_REG_USDM_RAM +
 	       USTORM_VF_PF_CHANNEL_READY_OFFSET(eng_vf_id), 1);
+
+	OSAL_IOV_PF_RESP_TYPE(p_hwfn, p_vf->relative_vf_id, status);
 }
 
 static u16 ecore_iov_vport_to_tlv(enum ecore_iov_vport_update_flag flag)
@@ -1476,8 +1479,6 @@ static void ecore_iov_prepare_resp(struct ecore_hwfn *p_hwfn,
 		      sizeof(struct channel_list_end_tlv));
 
 	ecore_iov_send_response(p_hwfn, p_ptt, vf_info, length, status);
-
-	OSAL_IOV_PF_RESP_TYPE(p_hwfn, vf_info->relative_vf_id, status);
 }
 
 struct ecore_public_vf_info
@@ -2258,7 +2259,7 @@ static void ecore_iov_vf_mbx_start_rxq(struct ecore_hwfn *p_hwfn,
 	vf_params.qid_usage_idx = qid_usage_idx;
 
 	p_cid = ecore_eth_queue_to_cid(p_hwfn, vf->opaque_fid,
-				       &params, &vf_params);
+				       &params, true, &vf_params);
 	if (p_cid == OSAL_NULL)
 		goto out;
 
@@ -2532,7 +2533,7 @@ static void ecore_iov_vf_mbx_start_txq(struct ecore_hwfn *p_hwfn,
 	vf_params.qid_usage_idx = qid_usage_idx;
 
 	p_cid = ecore_eth_queue_to_cid(p_hwfn, vf->opaque_fid,
-				       &params, &vf_params);
+				       &params, false, &vf_params);
 	if (p_cid == OSAL_NULL)
 		goto out;
 
@@ -3452,6 +3453,76 @@ static void ecore_iov_vf_mbx_release(struct ecore_hwfn *p_hwfn,
 			       length, status);
 }
 
+static void ecore_iov_vf_pf_get_coalesce(struct ecore_hwfn *p_hwfn,
+					 struct ecore_ptt *p_ptt,
+					 struct ecore_vf_info *p_vf)
+{
+	struct ecore_iov_vf_mbx *mbx = &p_vf->vf_mbx;
+	struct pfvf_read_coal_resp_tlv *p_resp;
+	struct vfpf_read_coal_req_tlv *req;
+	u8 status = PFVF_STATUS_FAILURE;
+	struct ecore_vf_queue *p_queue;
+	struct ecore_queue_cid *p_cid;
+	enum _ecore_status_t rc = ECORE_SUCCESS;
+	u16 coal = 0, qid, i;
+	bool b_is_rx;
+
+	mbx->offset = (u8 *)mbx->reply_virt;
+	req = &mbx->req_virt->read_coal_req;
+
+	qid = req->qid;
+	b_is_rx = req->is_rx ? true : false;
+
+	if (b_is_rx) {
+		if (!ecore_iov_validate_rxq(p_hwfn, p_vf, qid,
+					    ECORE_IOV_VALIDATE_Q_ENABLE)) {
+			DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
+				   "VF[%d]: Invalid Rx queue_id = %d\n",
+				   p_vf->abs_vf_id, qid);
+			goto send_resp;
+		}
+
+		p_cid = ecore_iov_get_vf_rx_queue_cid(&p_vf->vf_queues[qid]);
+		rc = ecore_get_rxq_coalesce(p_hwfn, p_ptt, p_cid, &coal);
+		if (rc != ECORE_SUCCESS)
+			goto send_resp;
+	} else {
+		if (!ecore_iov_validate_txq(p_hwfn, p_vf, qid,
+					    ECORE_IOV_VALIDATE_Q_ENABLE)) {
+			DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
+				   "VF[%d]: Invalid Tx queue_id = %d\n",
+				   p_vf->abs_vf_id, qid);
+			goto send_resp;
+		}
+		for (i = 0; i < MAX_QUEUES_PER_QZONE; i++) {
+			p_queue = &p_vf->vf_queues[qid];
+			if ((p_queue->cids[i].p_cid == OSAL_NULL) ||
+			    (!p_queue->cids[i].b_is_tx))
+				continue;
+
+			p_cid = p_queue->cids[i].p_cid;
+
+			rc = ecore_get_txq_coalesce(p_hwfn, p_ptt,
+						    p_cid, &coal);
+			if (rc != ECORE_SUCCESS)
+				goto send_resp;
+			break;
+		}
+	}
+
+	status = PFVF_STATUS_SUCCESS;
+
+send_resp:
+	p_resp = ecore_add_tlv(&mbx->offset, CHANNEL_TLV_COALESCE_READ,
+			       sizeof(*p_resp));
+	p_resp->coal = coal;
+
+	ecore_add_tlv(&mbx->offset, CHANNEL_TLV_LIST_END,
+		      sizeof(struct channel_list_end_tlv));
+
+	ecore_iov_send_response(p_hwfn, p_ptt, p_vf, sizeof(*p_resp), status);
+}
+
 static void ecore_iov_vf_pf_set_coalesce(struct ecore_hwfn *p_hwfn,
 					 struct ecore_ptt *p_ptt,
 					 struct ecore_vf_info *vf)
@@ -3985,6 +4056,9 @@ void ecore_iov_process_mbx_req(struct ecore_hwfn *p_hwfn,
 			break;
 		case CHANNEL_TLV_COALESCE_UPDATE:
 			ecore_iov_vf_pf_set_coalesce(p_hwfn, p_ptt, p_vf);
+			break;
+		case CHANNEL_TLV_COALESCE_READ:
+			ecore_iov_vf_pf_get_coalesce(p_hwfn, p_ptt, p_vf);
 			break;
 		}
 	} else if (ecore_iov_tlv_supported(mbx->first_tlv.tl.type)) {

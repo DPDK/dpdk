@@ -1454,6 +1454,39 @@ exit:
 	return rc;
 }
 
+enum _ecore_status_t ecore_vf_pf_get_coalesce(struct ecore_hwfn *p_hwfn,
+					      u16 *p_coal,
+					      struct ecore_queue_cid *p_cid)
+{
+	struct ecore_vf_iov *p_iov = p_hwfn->vf_iov_info;
+	struct pfvf_read_coal_resp_tlv *resp;
+	struct vfpf_read_coal_req_tlv *req;
+	enum _ecore_status_t rc;
+
+	/* clear mailbox and prep header tlv */
+	req = ecore_vf_pf_prep(p_hwfn, CHANNEL_TLV_COALESCE_READ,
+			       sizeof(*req));
+	req->qid = p_cid->rel.queue_id;
+	req->is_rx = p_cid->b_is_rx ? 1 : 0;
+
+	ecore_add_tlv(&p_iov->offset, CHANNEL_TLV_LIST_END,
+		      sizeof(struct channel_list_end_tlv));
+	resp = &p_iov->pf2vf_reply->read_coal_resp;
+
+	rc = ecore_send_msg2pf(p_hwfn, &resp->hdr.status, sizeof(*resp));
+	if (rc != ECORE_SUCCESS)
+		goto exit;
+
+	if (resp->hdr.status != PFVF_STATUS_SUCCESS)
+		goto exit;
+
+	*p_coal = resp->coal;
+exit:
+	ecore_vf_pf_req_end(p_hwfn, rc);
+
+	return rc;
+}
+
 enum _ecore_status_t
 ecore_vf_pf_set_coalesce(struct ecore_hwfn *p_hwfn, u16 rx_coal, u16 tx_coal,
 			 struct ecore_queue_cid     *p_cid)

@@ -635,6 +635,20 @@ enum _ecore_status_t ecore_final_cleanup(struct ecore_hwfn	*p_hwfn,
 					 struct ecore_ptt	*p_ptt,
 					 u16			id,
 					 bool			is_vf);
+
+/**
+ * @brief ecore_get_queue_coalesce - Retrieve coalesce value for a given queue.
+ *
+ * @param p_hwfn
+ * @param p_coal - store coalesce value read from the hardware.
+ * @param p_handle
+ *
+ * @return enum _ecore_status_t
+ **/
+enum _ecore_status_t
+ecore_get_queue_coalesce(struct ecore_hwfn *p_hwfn, u16 *coal,
+			 void *handle);
+
 /**
  * @brief ecore_set_queue_coalesce - Configure coalesce parameters for Rx and
  *    Tx queue. The fact that we can configure coalescing to up to 511, but on

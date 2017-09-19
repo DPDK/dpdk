@@ -503,6 +503,19 @@ struct vfpf_update_coalesce {
 	u8 padding[2];
 };
 
+struct vfpf_read_coal_req_tlv {
+	struct vfpf_first_tlv first_tlv;
+	u16 qid;
+	u8 is_rx;
+	u8 padding[5];
+};
+
+struct pfvf_read_coal_resp_tlv {
+	struct pfvf_tlv hdr;
+	u16 coal;
+	u8 padding[6];
+};
+
 union vfpf_tlvs {
 	struct vfpf_first_tlv			first_tlv;
 	struct vfpf_acquire_tlv			acquire;
@@ -516,6 +529,7 @@ union vfpf_tlvs {
 	struct vfpf_ucast_filter_tlv		ucast_filter;
 	struct vfpf_update_tunn_param_tlv	tunn_param_update;
 	struct vfpf_update_coalesce		update_coalesce;
+	struct vfpf_read_coal_req_tlv		read_coal_req;
 	struct tlv_buffer_size			tlv_buf_size;
 };
 
@@ -525,6 +539,7 @@ union pfvf_tlvs {
 	struct tlv_buffer_size			tlv_buf_size;
 	struct pfvf_start_queue_resp_tlv	queue_start;
 	struct pfvf_update_tunn_param_tlv	tunn_param_resp;
+	struct pfvf_read_coal_resp_tlv		read_coal_resp;
 };
 
 /* This is a structure which is allocated in the VF, which the PF may update
@@ -644,6 +659,7 @@ enum {
 	CHANNEL_TLV_UPDATE_TUNN_PARAM,
 	CHANNEL_TLV_COALESCE_UPDATE,
 	CHANNEL_TLV_QID,
+	CHANNEL_TLV_COALESCE_READ,
 	CHANNEL_TLV_MAX,
 
 	/* Required for iterating over vport-update tlvs.

@@ -51,23 +51,25 @@ struct ecore_vf_iov {
 	struct ecore_sb_info *sbs_info[PFVF_MAX_SBS_PER_VF];
 };
 
-
-enum _ecore_status_t ecore_set_rxq_coalesce(struct ecore_hwfn *p_hwfn,
-					    struct ecore_ptt *p_ptt,
-					    u16 coalesce,
-					    struct ecore_queue_cid *p_cid);
-enum _ecore_status_t ecore_set_txq_coalesce(struct ecore_hwfn *p_hwfn,
-					    struct ecore_ptt *p_ptt,
-					    u16 coalesce,
-					    struct ecore_queue_cid *p_cid);
+/**
+ * @brief VF - Get coalesce per VF's relative queue.
+ *
+ * @param p_hwfn
+ * @param p_coal - coalesce value in micro second for VF queues.
+ * @param p_cid  - queue cid
+ *
+ **/
+enum _ecore_status_t ecore_vf_pf_get_coalesce(struct ecore_hwfn *p_hwfn,
+					      u16 *p_coal,
+					      struct ecore_queue_cid *p_cid);
 /**
  * @brief VF - Set Rx/Tx coalesce per VF's relative queue.
- *	Coalesce value '0' will omit the configuration.
+ *             Coalesce value '0' will omit the configuration.
  *
- *	@param p_hwfn
- *	@param rx_coal - coalesce value in micro second for rx queue
- *	@param tx_coal - coalesce value in micro second for tx queue
- *	@param queue_cid
+ * @param p_hwfn
+ * @param rx_coal - coalesce value in micro second for rx queue
+ * @param tx_coal - coalesce value in micro second for tx queue
+ * @param p_cid   - queue cid
  *
  **/
 enum _ecore_status_t ecore_vf_pf_set_coalesce(struct ecore_hwfn *p_hwfn,
