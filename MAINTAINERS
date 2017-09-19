@@ -21,8 +21,24 @@ Descriptions of section entries:
 
 General Project Administration
 ------------------------------
+
+Main Branch
 M: Thomas Monjalon <thomas@monjalon.net>
 T: git://dpdk.org/dpdk
+
+Stable Branches
+T: git://dpdk.org/dpdk-stable
+
+Security Issues
+M: maintainers@dpdk.org
+
+Documentation (with overlaps)
+M: John McNamara <john.mcnamara@intel.com>
+F: README
+F: doc/
+
+Developers and Maintainers Tools
+M: Thomas Monjalon <thomas@monjalon.net>
 F: MAINTAINERS
 F: devtools/check-dup-includes.sh
 F: devtools/check-maintainers.sh
@@ -32,21 +48,6 @@ F: devtools/checkpatches.sh
 F: devtools/git-log-fixes.sh
 F: devtools/load-devel-config
 F: devtools/test-build.sh
-
-Stable Branches
----------------
-T: git://dpdk.org/dpdk-stable
-
-Security Issues
----------------
-M: maintainers@dpdk.org
-
-
-Documentation (with overlaps)
--------------
-M: John McNamara <john.mcnamara@intel.com>
-F: README
-F: doc/
 
 
 Build System
