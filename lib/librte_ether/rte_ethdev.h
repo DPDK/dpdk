@@ -922,7 +922,7 @@ struct rte_eth_conf {
 		/**< Port dcb RX configuration. */
 		struct rte_eth_vmdq_rx_conf vmdq_rx_conf;
 		/**< Port vmdq RX configuration. */
-	} rx_adv_conf; /**< Port RX filtering configuration (union). */
+	} rx_adv_conf; /**< Port RX filtering configuration. */
 	union {
 		struct rte_eth_vmdq_dcb_tx_conf vmdq_dcb_tx_conf;
 		/**< Port vmdq+dcb TX configuration. */
