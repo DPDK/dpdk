@@ -1434,11 +1434,16 @@ ecore_mcp_mdump_cmd(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 		return rc;
 
 	p_mdump_cmd_params->mcp_resp = mb_params.mcp_resp;
+
 	if (p_mdump_cmd_params->mcp_resp == FW_MSG_CODE_MDUMP_INVALID_CMD) {
-		DP_NOTICE(p_hwfn, false,
-			  "MFW claims that the mdump command is illegal [mdump_cmd 0x%x]\n",
-			  p_mdump_cmd_params->cmd);
-		rc = ECORE_INVAL;
+		DP_INFO(p_hwfn,
+			"The mdump sub command is unsupported by the MFW [mdump_cmd 0x%x]\n",
+			p_mdump_cmd_params->cmd);
+		rc = ECORE_NOTIMPL;
+	} else if (p_mdump_cmd_params->mcp_resp == FW_MSG_CODE_UNSUPPORTED) {
+		DP_INFO(p_hwfn,
+			"The mdump command is not supported by the MFW\n");
+		rc = ECORE_NOTIMPL;
 	}
 
 	return rc;
@@ -1496,16 +1501,10 @@ ecore_mcp_mdump_get_config(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 	if (rc != ECORE_SUCCESS)
 		return rc;
 
-	if (mdump_cmd_params.mcp_resp == FW_MSG_CODE_UNSUPPORTED) {
-		DP_INFO(p_hwfn,
-			"The mdump command is not supported by the MFW\n");
-		return ECORE_NOTIMPL;
-	}
-
 	if (mdump_cmd_params.mcp_resp != FW_MSG_CODE_OK) {
-		DP_NOTICE(p_hwfn, false,
-			  "Failed to get the mdump configuration and logs info [mcp_resp 0x%x]\n",
-			  mdump_cmd_params.mcp_resp);
+		DP_INFO(p_hwfn,
+			"Failed to get the mdump configuration and logs info [mcp_resp 0x%x]\n",
+			mdump_cmd_params.mcp_resp);
 		rc = ECORE_UNKNOWN_ERROR;
 	}
 
@@ -1566,17 +1565,71 @@ enum _ecore_status_t ecore_mcp_mdump_clear_logs(struct ecore_hwfn *p_hwfn,
 	return ecore_mcp_mdump_cmd(p_hwfn, p_ptt, &mdump_cmd_params);
 }
 
+enum _ecore_status_t
+ecore_mcp_mdump_get_retain(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
+			   struct ecore_mdump_retain_data *p_mdump_retain)
+{
+	struct ecore_mdump_cmd_params mdump_cmd_params;
+	struct mdump_retain_data_stc mfw_mdump_retain;
+	enum _ecore_status_t rc;
+
+	OSAL_MEM_ZERO(&mdump_cmd_params, sizeof(mdump_cmd_params));
+	mdump_cmd_params.cmd = DRV_MSG_CODE_MDUMP_GET_RETAIN;
+	mdump_cmd_params.p_data_dst = &mfw_mdump_retain;
+	mdump_cmd_params.data_dst_size = sizeof(mfw_mdump_retain);
+
+	rc = ecore_mcp_mdump_cmd(p_hwfn, p_ptt, &mdump_cmd_params);
+	if (rc != ECORE_SUCCESS)
+		return rc;
+
+	if (mdump_cmd_params.mcp_resp != FW_MSG_CODE_OK) {
+		DP_INFO(p_hwfn,
+			"Failed to get the mdump retained data [mcp_resp 0x%x]\n",
+			mdump_cmd_params.mcp_resp);
+		return ECORE_UNKNOWN_ERROR;
+	}
+
+	p_mdump_retain->valid = mfw_mdump_retain.valid;
+	p_mdump_retain->epoch = mfw_mdump_retain.epoch;
+	p_mdump_retain->pf = mfw_mdump_retain.pf;
+	p_mdump_retain->status = mfw_mdump_retain.status;
+
+	return ECORE_SUCCESS;
+}
+
+enum _ecore_status_t ecore_mcp_mdump_clr_retain(struct ecore_hwfn *p_hwfn,
+						struct ecore_ptt *p_ptt)
+{
+	struct ecore_mdump_cmd_params mdump_cmd_params;
+
+	OSAL_MEM_ZERO(&mdump_cmd_params, sizeof(mdump_cmd_params));
+	mdump_cmd_params.cmd = DRV_MSG_CODE_MDUMP_CLR_RETAIN;
+
+	return ecore_mcp_mdump_cmd(p_hwfn, p_ptt, &mdump_cmd_params);
+}
+
 static void ecore_mcp_handle_critical_error(struct ecore_hwfn *p_hwfn,
 					    struct ecore_ptt *p_ptt)
 {
+	struct ecore_mdump_retain_data mdump_retain;
+	enum _ecore_status_t rc;
+
 	/* In CMT mode - no need for more than a single acknowledgment to the
 	 * MFW, and no more than a single notification to the upper driver.
 	 */
 	if (p_hwfn != ECORE_LEADING_HWFN(p_hwfn->p_dev))
 		return;
 
-	DP_NOTICE(p_hwfn, false,
-		  "Received a critical error notification from the MFW!\n");
+	rc = ecore_mcp_mdump_get_retain(p_hwfn, p_ptt, &mdump_retain);
+	if (rc == ECORE_SUCCESS && mdump_retain.valid) {
+		DP_NOTICE(p_hwfn, false,
+			  "The MFW notified that a critical error occurred in the device [epoch 0x%08x, pf 0x%x, status 0x%08x]\n",
+			  mdump_retain.epoch, mdump_retain.pf,
+			  mdump_retain.status);
+	} else {
+		DP_NOTICE(p_hwfn, false,
+			  "The MFW notified that a critical error occurred in the device\n");
+	}
 
 	if (p_hwfn->p_dev->allow_mdump) {
 		DP_NOTICE(p_hwfn, false,
@@ -1584,6 +1637,8 @@ static void ecore_mcp_handle_critical_error(struct ecore_hwfn *p_hwfn,
 		return;
 	}
 
+	DP_NOTICE(p_hwfn, false,
+		  "Acknowledging the notification to not allow the MFW crash dump [driver debug data collection is preferable]\n");
 	ecore_mcp_mdump_ack(p_hwfn, p_ptt);
 	ecore_hw_err_notify(p_hwfn, ECORE_HW_ERR_HW_ATTN);
 }
@@ -2245,8 +2300,8 @@ enum _ecore_status_t ecore_mcp_mask_parities(struct ecore_hwfn *p_hwfn,
 					     struct ecore_ptt *p_ptt,
 					     u32 mask_parities)
 {
-	enum _ecore_status_t rc;
 	u32 resp = 0, param = 0;
+	enum _ecore_status_t rc;
 
 	rc = ecore_mcp_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_MASK_PARITIES,
 			   mask_parities, &resp, &param);

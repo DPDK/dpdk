@@ -3564,6 +3564,7 @@ ecore_hw_prepare_single(struct ecore_hwfn *p_hwfn,
 			void OSAL_IOMEM * p_doorbells,
 			struct ecore_hw_prepare_params *p_params)
 {
+	struct ecore_mdump_retain_data mdump_retain;
 	struct ecore_dev *p_dev = p_hwfn->p_dev;
 	struct ecore_mdump_info mdump_info;
 	enum _ecore_status_t rc = ECORE_SUCCESS;
@@ -3631,24 +3632,37 @@ ecore_hw_prepare_single(struct ecore_hwfn *p_hwfn,
 	/* Sending a mailbox to the MFW should be after ecore_get_hw_info() is
 	 * called, since among others it sets the ports number in an engine.
 	 */
-	if (p_params->initiate_pf_flr && p_hwfn == ECORE_LEADING_HWFN(p_dev) &&
+	if (p_params->initiate_pf_flr && IS_LEAD_HWFN(p_hwfn) &&
 	    !p_dev->recov_in_prog) {
 		rc = ecore_mcp_initiate_pf_flr(p_hwfn, p_hwfn->p_main_ptt);
 		if (rc != ECORE_SUCCESS)
 			DP_NOTICE(p_hwfn, false, "Failed to initiate PF FLR\n");
 	}
 
-	/* Check if mdump logs are present and update the epoch value */
-	if (p_hwfn == ECORE_LEADING_HWFN(p_hwfn->p_dev)) {
+	/* Check if mdump logs/data are present and update the epoch value */
+	if (IS_LEAD_HWFN(p_hwfn)) {
+#ifndef ASIC_ONLY
+		if (!CHIP_REV_IS_EMUL(p_dev)) {
+#endif
 		rc = ecore_mcp_mdump_get_info(p_hwfn, p_hwfn->p_main_ptt,
 					      &mdump_info);
-		if (rc == ECORE_SUCCESS && mdump_info.num_of_logs > 0) {
+		if (rc == ECORE_SUCCESS && mdump_info.num_of_logs)
 			DP_NOTICE(p_hwfn, false,
 				  "* * * IMPORTANT - HW ERROR register dump captured by device * * *\n");
-		}
+
+		rc = ecore_mcp_mdump_get_retain(p_hwfn, p_hwfn->p_main_ptt,
+						&mdump_retain);
+		if (rc == ECORE_SUCCESS && mdump_retain.valid)
+			DP_NOTICE(p_hwfn, false,
+				  "mdump retained data: epoch 0x%08x, pf 0x%x, status 0x%08x\n",
+				  mdump_retain.epoch, mdump_retain.pf,
+				  mdump_retain.status);
 
 		ecore_mcp_mdump_set_values(p_hwfn, p_hwfn->p_main_ptt,
 					   p_params->epoch);
+#ifndef ASIC_ONLY
+		}
+#endif
 	}
 
 	/* Allocate the init RT array and initialize the init-ops engine */

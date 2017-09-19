@@ -376,11 +376,32 @@ enum _ecore_status_t ecore_mcp_mdump_set_values(struct ecore_hwfn *p_hwfn,
  *
  * @param p_hwfn
  * @param p_ptt
+ * @param epoch
  *
  * @param return ECORE_SUCCESS upon success.
  */
 enum _ecore_status_t ecore_mcp_mdump_trigger(struct ecore_hwfn *p_hwfn,
 					     struct ecore_ptt *p_ptt);
+
+struct ecore_mdump_retain_data {
+	u32 valid;
+	u32 epoch;
+	u32 pf;
+	u32 status;
+};
+
+/**
+ * @brief - Gets the mdump retained data from the MFW.
+ *
+ * @param p_hwfn
+ * @param p_ptt
+ * @param p_mdump_retain
+ *
+ * @param return ECORE_SUCCESS upon success.
+ */
+enum _ecore_status_t
+ecore_mcp_mdump_get_retain(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
+			   struct ecore_mdump_retain_data *p_mdump_retain);
 
 /**
  * @brief - Sets the MFW's max value for the given resource

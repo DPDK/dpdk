@@ -1123,6 +1123,17 @@ enum _ecore_status_t ecore_mcp_mdump_clear_logs(struct ecore_hwfn *p_hwfn,
 						struct ecore_ptt *p_ptt);
 
 /**
+ * @brief - Clear the mdump retained data.
+ *
+ * @param p_hwfn
+ * @param p_ptt
+ *
+ * @param return ECORE_SUCCESS upon success.
+ */
+enum _ecore_status_t ecore_mcp_mdump_clr_retain(struct ecore_hwfn *p_hwfn,
+						struct ecore_ptt *p_ptt);
+
+/**
  * @brief - Processes the TLV request from MFW i.e., get the required TLV info
  *          from the ecore client and send it to the MFW.
  *

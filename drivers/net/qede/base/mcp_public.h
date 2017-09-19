@@ -1108,6 +1108,13 @@ struct load_rsp_stc {
 #define LOAD_RSP_FLAGS0_DRV_EXISTS	(0x1 << 0)
 };
 
+struct mdump_retain_data_stc {
+	u32 valid;
+	u32 epoch;
+	u32 pf;
+	u32 status;
+};
+
 union drv_union_data {
 	struct mcp_mac wol_mac; /* UNLOAD_DONE */
 
@@ -1138,6 +1145,7 @@ union drv_union_data {
 
 	struct load_req_stc load_req;
 	struct load_rsp_stc load_rsp;
+	struct mdump_retain_data_stc mdump_retain;
 	/* ... */
 };
 
@@ -1350,6 +1358,8 @@ struct public_drv_mb {
 #define DRV_MSG_CODE_MDUMP_SET_ENABLE		0x05
 /* Clear all logs */
 #define DRV_MSG_CODE_MDUMP_CLEAR_LOGS		0x06
+#define DRV_MSG_CODE_MDUMP_GET_RETAIN		0x07 /* Get retained data */
+#define DRV_MSG_CODE_MDUMP_CLR_RETAIN		0x08 /* Clear retain data */
 #define DRV_MSG_CODE_MEM_ECC_EVENTS		0x00260000 /* Param: None */
 /* Param: [0:15] - gpio number */
 #define DRV_MSG_CODE_GPIO_INFO			0x00270000
