@@ -27,6 +27,7 @@ M: Thomas Monjalon <thomas@monjalon.net>
 T: git://dpdk.org/dpdk
 
 Stable Branches
+M: Yuanhan Liu <yliu@fridaylinux.org>
 T: git://dpdk.org/dpdk-stable
 
 Security Issues
