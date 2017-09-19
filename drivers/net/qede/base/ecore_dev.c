@@ -3352,6 +3352,7 @@ ecore_get_hw_info(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 static enum _ecore_status_t ecore_get_dev_info(struct ecore_dev *p_dev)
 {
 	struct ecore_hwfn *p_hwfn = ECORE_LEADING_HWFN(p_dev);
+	u16 device_id_mask;
 	u32 tmp;
 
 	/* Read Vendor Id / Device Id */
@@ -3361,10 +3362,19 @@ static enum _ecore_status_t ecore_get_dev_info(struct ecore_dev *p_dev)
 				  &p_dev->device_id);
 
 	/* Determine type */
-	if ((p_dev->device_id & ECORE_DEV_ID_MASK) == ECORE_DEV_ID_MASK_AH)
-		p_dev->type = ECORE_DEV_TYPE_AH;
-	else
+	device_id_mask = p_dev->device_id & ECORE_DEV_ID_MASK;
+	switch (device_id_mask) {
+	case ECORE_DEV_ID_MASK_BB:
 		p_dev->type = ECORE_DEV_TYPE_BB;
+		break;
+	case ECORE_DEV_ID_MASK_AH:
+		p_dev->type = ECORE_DEV_TYPE_AH;
+		break;
+	default:
+		DP_NOTICE(p_hwfn, true, "Unknown device id 0x%x\n",
+			  p_dev->device_id);
+		return ECORE_ABORTED;
+	}
 
 	p_dev->chip_num = (u16)ecore_rd(p_hwfn, p_hwfn->p_main_ptt,
 					 MISCS_REG_CHIP_NUM);

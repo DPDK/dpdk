@@ -48,6 +48,8 @@ struct qed_dev_info {
 	bool vxlan_enable;
 	bool gre_enable;
 	bool geneve_enable;
+
+	enum ecore_dev_type dev_type;
 };
 
 struct qed_dev_eth_info {

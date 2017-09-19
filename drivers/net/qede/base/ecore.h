@@ -632,15 +632,18 @@ enum qed_dbg_features {
 	DBG_FEATURE_NUM
 };
 
+enum ecore_dev_type {
+	ECORE_DEV_TYPE_BB,
+	ECORE_DEV_TYPE_AH,
+};
+
 struct ecore_dev {
 	u32				dp_module;
 	u8				dp_level;
 	char				name[NAME_SIZE];
 	void				*dp_ctx;
 
-	u8				type;
-#define ECORE_DEV_TYPE_BB	(0 << 0)
-#define ECORE_DEV_TYPE_AH	(1 << 0)
+	enum ecore_dev_type		type;
 /* Translate type/revision combo into the proper conditions */
 #define ECORE_IS_BB(dev)	((dev)->type == ECORE_DEV_TYPE_BB)
 #define ECORE_IS_BB_A0(dev)	(ECORE_IS_BB(dev) && CHIP_REV_IS_A0(dev))
@@ -653,12 +656,11 @@ struct ecore_dev {
 #define ECORE_IS_AH(dev)	((dev)->type == ECORE_DEV_TYPE_AH)
 #define ECORE_IS_K2(dev)	ECORE_IS_AH(dev)
 
+	u16 vendor_id;
+	u16 device_id;
 #define ECORE_DEV_ID_MASK	0xff00
 #define ECORE_DEV_ID_MASK_BB	0x1600
 #define ECORE_DEV_ID_MASK_AH	0x8000
-
-	u16 vendor_id;
-	u16 device_id;
 
 	u16				chip_num;
 	#define CHIP_NUM_MASK			0xffff
