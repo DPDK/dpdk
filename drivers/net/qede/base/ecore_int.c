@@ -851,32 +851,38 @@ ecore_int_deassertion_aeu_bit(struct ecore_hwfn *p_hwfn,
  * @brief ecore_int_deassertion_parity - handle a single parity AEU source
  *
  * @param p_hwfn
- * @param p_aeu - descriptor of an AEU bit which caused the
- *              parity
+ * @param p_aeu - descriptor of an AEU bit which caused the parity
+ * @param aeu_en_reg - address of the AEU enable register
  * @param bit_index
  */
 static void ecore_int_deassertion_parity(struct ecore_hwfn *p_hwfn,
 					 struct aeu_invert_reg_bit *p_aeu,
-					 u8 bit_index)
+					 u32 aeu_en_reg, u8 bit_index)
 {
-	u32 block_id = p_aeu->block_index;
+	u32 block_id = p_aeu->block_index, mask, val;
 
-	DP_INFO(p_hwfn->p_dev, "%s[%d] parity attention is set\n",
-		p_aeu->bit_name, bit_index);
+	DP_NOTICE(p_hwfn->p_dev, false,
+		  "%s parity attention is set [address 0x%08x, bit %d]\n",
+		  p_aeu->bit_name, aeu_en_reg, bit_index);
 
-	if (block_id == MAX_BLOCK_ID)
-		return;
+	if (block_id != MAX_BLOCK_ID) {
+		ecore_int_attn_print(p_hwfn, block_id, ATTN_TYPE_PARITY, false);
 
-	ecore_int_attn_print(p_hwfn, block_id,
-			     ATTN_TYPE_PARITY, false);
-
-	/* In A0, there's a single parity bit for several blocks */
-	if (block_id == BLOCK_BTB) {
-		ecore_int_attn_print(p_hwfn, BLOCK_OPTE,
-				     ATTN_TYPE_PARITY, false);
-		ecore_int_attn_print(p_hwfn, BLOCK_MCP,
-				     ATTN_TYPE_PARITY, false);
+		/* In A0, there's a single parity bit for several blocks */
+		if (block_id == BLOCK_BTB) {
+			ecore_int_attn_print(p_hwfn, BLOCK_OPTE,
+					     ATTN_TYPE_PARITY, false);
+			ecore_int_attn_print(p_hwfn, BLOCK_MCP,
+					     ATTN_TYPE_PARITY, false);
+		}
 	}
+
+	/* Prevent this parity error from being re-asserted */
+	mask = ~(0x1 << bit_index);
+	val = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt, aeu_en_reg);
+	ecore_wr(p_hwfn, p_hwfn->p_dpc_ptt, aeu_en_reg, val & mask);
+	DP_INFO(p_hwfn, "`%s' - Disabled future parity errors\n",
+		p_aeu->bit_name);
 }
 
 /**
@@ -891,8 +897,7 @@ static enum _ecore_status_t ecore_int_deassertion(struct ecore_hwfn *p_hwfn,
 						  u16 deasserted_bits)
 {
 	struct ecore_sb_attn_info *sb_attn_sw = p_hwfn->p_sb_attn;
-	u32 aeu_inv_arr[NUM_ATTN_REGS], aeu_mask;
-	bool b_parity = false;
+	u32 aeu_inv_arr[NUM_ATTN_REGS], aeu_mask, aeu_en, en;
 	u8 i, j, k, bit_idx;
 	enum _ecore_status_t rc = ECORE_SUCCESS;
 
@@ -908,11 +913,11 @@ static enum _ecore_status_t ecore_int_deassertion(struct ecore_hwfn *p_hwfn,
 	/* Handle parity attentions first */
 	for (i = 0; i < NUM_ATTN_REGS; i++) {
 		struct aeu_invert_reg *p_aeu = &sb_attn_sw->p_aeu_desc[i];
-		u32 en = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
-				  MISC_REG_AEU_ENABLE1_IGU_OUT_0 +
-				  i * sizeof(u32));
+		u32 parities;
 
-		u32 parities = sb_attn_sw->parity_mask[i] & aeu_inv_arr[i] & en;
+		aeu_en = MISC_REG_AEU_ENABLE1_IGU_OUT_0 + i * sizeof(u32);
+		en = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt, aeu_en);
+		parities = sb_attn_sw->parity_mask[i] & aeu_inv_arr[i] & en;
 
 		/* Skip register in which no parity bit is currently set */
 		if (!parities)
@@ -922,11 +927,9 @@ static enum _ecore_status_t ecore_int_deassertion(struct ecore_hwfn *p_hwfn,
 			struct aeu_invert_reg_bit *p_bit = &p_aeu->bits[j];
 
 			if (ecore_int_is_parity_flag(p_hwfn, p_bit) &&
-			    !!(parities & (1 << bit_idx))) {
+			    !!(parities & (1 << bit_idx)))
 				ecore_int_deassertion_parity(p_hwfn, p_bit,
-							     bit_idx);
-				b_parity = true;
-			}
+							     aeu_en, bit_idx);
 
 			bit_idx += ATTENTION_LENGTH(p_bit->flags);
 		}
@@ -941,10 +944,13 @@ static enum _ecore_status_t ecore_int_deassertion(struct ecore_hwfn *p_hwfn,
 			continue;
 
 		for (i = 0; i < NUM_ATTN_REGS; i++) {
-			u32 aeu_en = MISC_REG_AEU_ENABLE1_IGU_OUT_0 +
-			    i * sizeof(u32) + k * sizeof(u32) * NUM_ATTN_REGS;
-			u32 en = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt, aeu_en);
-			u32 bits = aeu_inv_arr[i] & en;
+			u32 bits;
+
+			aeu_en = MISC_REG_AEU_ENABLE1_IGU_OUT_0 +
+				 i * sizeof(u32) +
+				 k * sizeof(u32) * NUM_ATTN_REGS;
+			en = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt, aeu_en);
+			bits = aeu_inv_arr[i] & en;
 
 			/* Skip if no bit from this group is currently set */
 			if (!bits)
