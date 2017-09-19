@@ -50,6 +50,7 @@
 #define FCOE_BDQ_ID(_port_id) (_port_id + 2)
 /* Constants */
 #define ECORE_WID_SIZE		(1024)
+#define ECORE_MIN_WIDS		(4)
 
 /* Configurable */
 #define ECORE_PF_DEMS_SIZE	(4)

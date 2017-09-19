@@ -1892,9 +1892,9 @@ static enum _ecore_status_t
 ecore_hw_init_dpi_size(struct ecore_hwfn *p_hwfn,
 		       struct ecore_ptt *p_ptt, u32 pwm_region_size, u32 n_cpus)
 {
-	u32 dpi_page_size_1, dpi_page_size_2, dpi_page_size;
-	u32 dpi_bit_shift, dpi_count;
+	u32 dpi_bit_shift, dpi_count, dpi_page_size;
 	u32 min_dpis;
+	u32 n_wids;
 
 	/* Calculate DPI size
 	 * ------------------
@@ -1917,12 +1917,11 @@ ecore_hw_init_dpi_size(struct ecore_hwfn *p_hwfn,
 	 * 0 is 4kB, 1 is 8kB and etc. Hence the minimum size is 4,096
 	 * containing 4 WIDs.
 	 */
-	dpi_page_size_1 = ECORE_WID_SIZE * n_cpus;
-	dpi_page_size_2 = OSAL_MAX_T(u32, ECORE_WID_SIZE, OSAL_PAGE_SIZE);
-	dpi_page_size = OSAL_MAX_T(u32, dpi_page_size_1, dpi_page_size_2);
-	dpi_page_size = OSAL_ROUNDUP_POW_OF_TWO(dpi_page_size);
+	n_wids = OSAL_MAX_T(u32, ECORE_MIN_WIDS, n_cpus);
+	dpi_page_size = ECORE_WID_SIZE * OSAL_ROUNDUP_POW_OF_TWO(n_wids);
+	dpi_page_size = (dpi_page_size + OSAL_PAGE_SIZE - 1) &
+			~(OSAL_PAGE_SIZE - 1);
 	dpi_bit_shift = OSAL_LOG2(dpi_page_size / 4096);
-
 	dpi_count = pwm_region_size / dpi_page_size;
 
 	min_dpis = p_hwfn->pf_params.rdma_pf_params.min_dpis;
@@ -1981,7 +1980,8 @@ ecore_hw_init_pf_doorbell_bar(struct ecore_hwfn *p_hwfn,
 	    ecore_cxt_get_proto_cid_count(p_hwfn, PROTOCOLID_CORE,
 					  OSAL_NULL) +
 	    ecore_cxt_get_proto_cid_count(p_hwfn, PROTOCOLID_ETH, OSAL_NULL);
-	norm_regsize = ROUNDUP(ECORE_PF_DEMS_SIZE * non_pwm_conn, 4096);
+	norm_regsize = ROUNDUP(ECORE_PF_DEMS_SIZE * non_pwm_conn,
+			       OSAL_PAGE_SIZE);
 	min_addr_reg1 = norm_regsize / 4096;
 	pwm_regsize = db_bar_size - norm_regsize;
 
