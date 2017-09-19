@@ -237,10 +237,8 @@ static enum _ecore_status_t ecore_vf_pf_acquire(struct ecore_hwfn *p_hwfn)
 		/* send acquire request */
 		rc = ecore_send_msg2pf(p_hwfn,
 				       &resp->hdr.status, sizeof(*resp));
-
-		/* PF timeout */
-		if (rc)
-			return rc;
+		if (rc != ECORE_SUCCESS)
+			goto exit;
 
 		/* copy acquire response from buffer to p_hwfn */
 		OSAL_MEMCPY(&p_iov->acquire_resp,
