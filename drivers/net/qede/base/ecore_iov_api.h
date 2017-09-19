@@ -693,7 +693,28 @@ bool ecore_iov_is_vf_started(struct ecore_hwfn *p_hwfn,
  * @return - rate in Mbps
  */
 int ecore_iov_get_vf_min_rate(struct ecore_hwfn *p_hwfn, int vfid);
+
 #endif
+
+/**
+ * @brief ecore_pf_configure_vf_queue_coalesce - PF configure coalesce
+ *    parameters of VFs for Rx and Tx queue.
+ *    While the API allows setting coalescing per-qid, all queues sharing a SB
+ *    should be in same range [i.e., either 0-0x7f, 0x80-0xff or 0x100-0x1ff]
+ *    otherwise configuration would break.
+ *
+ * @param p_hwfn
+ * @param rx_coal - Rx Coalesce value in micro seconds.
+ * @param tx_coal - TX Coalesce value in micro seconds.
+ * @param vf_id
+ * @param qid
+ *
+ * @return int
+ **/
+enum _ecore_status_t
+ecore_iov_pf_configure_vf_queue_coalesce(struct ecore_hwfn *p_hwfn,
+					 u16 rx_coal, u16 tx_coal,
+					 u16 vf_id, u16 qid);
 
 /**
  * @brief - Given a VF index, return index of next [including that] active VF.

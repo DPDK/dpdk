@@ -3475,6 +3475,7 @@ static void ecore_iov_vf_pf_set_coalesce(struct ecore_hwfn *p_hwfn,
 				   vf->abs_vf_id, vf->vf_queues[qid].fw_rx_qid);
 			goto out;
 		}
+		vf->rx_coal = rx_coal;
 	}
 
 	/* TODO - in future, it might be possible to pass this in a per-cid
@@ -3499,12 +3500,100 @@ static void ecore_iov_vf_pf_set_coalesce(struct ecore_hwfn *p_hwfn,
 				goto out;
 			}
 		}
+		vf->tx_coal = tx_coal;
 	}
 
 	status = PFVF_STATUS_SUCCESS;
 out:
 	ecore_iov_prepare_resp(p_hwfn, p_ptt, vf, CHANNEL_TLV_COALESCE_UPDATE,
 			       sizeof(struct pfvf_def_resp_tlv), status);
+}
+
+enum _ecore_status_t
+ecore_iov_pf_configure_vf_queue_coalesce(struct ecore_hwfn *p_hwfn,
+					 u16 rx_coal, u16 tx_coal,
+					 u16 vf_id, u16 qid)
+{
+	struct ecore_queue_cid *p_cid;
+	struct ecore_vf_info *vf;
+	struct ecore_ptt *p_ptt;
+	int i, rc = 0;
+
+	if (!ecore_iov_is_valid_vfid(p_hwfn, vf_id, true, true)) {
+		DP_NOTICE(p_hwfn, true,
+			  "VF[%d] - Can not set coalescing: VF is not active\n",
+			  vf_id);
+		return ECORE_INVAL;
+	}
+
+	vf = &p_hwfn->pf_iov_info->vfs_array[vf_id];
+	p_ptt = ecore_ptt_acquire(p_hwfn);
+	if (!p_ptt)
+		return ECORE_AGAIN;
+
+	if (!ecore_iov_validate_rxq(p_hwfn, vf, qid,
+				    ECORE_IOV_VALIDATE_Q_ENABLE) &&
+	    rx_coal) {
+		DP_ERR(p_hwfn, "VF[%d]: Invalid Rx queue_id = %d\n",
+		       vf->abs_vf_id, qid);
+		goto out;
+	}
+
+	if (!ecore_iov_validate_txq(p_hwfn, vf, qid,
+				    ECORE_IOV_VALIDATE_Q_ENABLE) &&
+	    tx_coal) {
+		DP_ERR(p_hwfn, "VF[%d]: Invalid Tx queue_id = %d\n",
+		       vf->abs_vf_id, qid);
+		goto out;
+	}
+
+	DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
+		   "VF[%d]: Setting coalesce for VF rx_coal = %d, tx_coal = %d at queue = %d\n",
+		   vf->abs_vf_id, rx_coal, tx_coal, qid);
+
+	if (rx_coal) {
+		p_cid = ecore_iov_get_vf_rx_queue_cid(p_hwfn, vf,
+						      &vf->vf_queues[qid]);
+
+		rc = ecore_set_rxq_coalesce(p_hwfn, p_ptt, rx_coal, p_cid);
+		if (rc != ECORE_SUCCESS) {
+			DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
+				   "VF[%d]: Unable to set rx queue = %d coalesce\n",
+				   vf->abs_vf_id, vf->vf_queues[qid].fw_rx_qid);
+			goto out;
+		}
+		vf->rx_coal = rx_coal;
+	}
+
+	/* TODO - in future, it might be possible to pass this in a per-cid
+	 * granularity. For now, do this for all Tx queues.
+	 */
+	if (tx_coal) {
+		struct ecore_vf_queue *p_queue = &vf->vf_queues[qid];
+
+		for (i = 0; i < MAX_QUEUES_PER_QZONE; i++) {
+			if (p_queue->cids[i].p_cid == OSAL_NULL)
+				continue;
+
+			if (!p_queue->cids[i].b_is_tx)
+				continue;
+
+			rc = ecore_set_txq_coalesce(p_hwfn, p_ptt, tx_coal,
+						    p_queue->cids[i].p_cid);
+			if (rc != ECORE_SUCCESS) {
+				DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
+					   "VF[%d]: Unable to set tx queue coalesce\n",
+					   vf->abs_vf_id);
+				goto out;
+			}
+		}
+		vf->tx_coal = tx_coal;
+	}
+
+out:
+	ecore_ptt_release(p_hwfn, p_ptt);
+
+	return rc;
 }
 
 static enum _ecore_status_t
