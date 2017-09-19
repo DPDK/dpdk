@@ -1991,6 +1991,8 @@ enum _ecore_status_t ecore_cxt_set_pf_params(struct ecore_hwfn *p_hwfn)
 	switch (p_hwfn->hw_info.personality) {
 	case ECORE_PCI_ETH:
 		{
+		u32 count = 0;
+
 		struct ecore_eth_pf_params *p_params =
 			    &p_hwfn->pf_params.eth_pf_params;
 
@@ -1999,7 +2001,13 @@ enum _ecore_status_t ecore_cxt_set_pf_params(struct ecore_hwfn *p_hwfn)
 		ecore_cxt_set_proto_cid_count(p_hwfn, PROTOCOLID_ETH,
 					      p_params->num_cons,
 					      p_params->num_vf_cons);
-		p_hwfn->p_cxt_mngr->arfs_count = p_params->num_arfs_filters;
+
+		count = p_params->num_arfs_filters;
+
+		if (!OSAL_TEST_BIT(ECORE_MF_DISABLE_ARFS,
+				   &p_hwfn->p_dev->mf_bits))
+			p_hwfn->p_cxt_mngr->arfs_count = count;
+
 		break;
 		}
 	default:

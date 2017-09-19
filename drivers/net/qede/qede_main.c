@@ -378,6 +378,8 @@ qed_fill_dev_info(struct ecore_dev *edev, struct qed_dev_info *dev_info)
 	if (IS_PF(edev)) {
 		dev_info->b_inter_pf_switch =
 			OSAL_TEST_BIT(ECORE_MF_INTER_PF_SWITCH, &edev->mf_bits);
+		if (!OSAL_TEST_BIT(ECORE_MF_DISABLE_ARFS, &edev->mf_bits))
+			dev_info->b_arfs_capable = true;
 		dev_info->tx_switching = false;
 
 		dev_info->smart_an = ecore_mcp_is_smart_an_supported(p_hwfn);

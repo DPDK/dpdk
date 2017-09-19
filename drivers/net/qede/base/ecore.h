@@ -528,6 +528,8 @@ enum ecore_mf_mode_bit {
 
 	/* TODO - if we ever re-utilize any of this logic, we can rename */
 	ECORE_MF_UFP_SPECIFIC,
+
+	ECORE_MF_DISABLE_ARFS,
 };
 
 enum ecore_ufp_mode {

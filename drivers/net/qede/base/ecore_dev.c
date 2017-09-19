@@ -3501,7 +3501,8 @@ ecore_hw_get_nvm_info(struct ecore_hwfn *p_hwfn,
 		p_hwfn->p_dev->mf_bits = 1 << ECORE_MF_LLH_MAC_CLSS |
 					 1 << ECORE_MF_LLH_PROTO_CLSS |
 					 1 << ECORE_MF_LL2_NON_UNICAST |
-					 1 << ECORE_MF_INTER_PF_SWITCH;
+					 1 << ECORE_MF_INTER_PF_SWITCH |
+					 1 << ECORE_MF_DISABLE_ARFS;
 		break;
 	case NVM_CFG1_GLOB_MF_MODE_DEFAULT:
 		p_hwfn->p_dev->mf_bits = 1 << ECORE_MF_LLH_MAC_CLSS |
@@ -3513,6 +3514,9 @@ ecore_hw_get_nvm_info(struct ecore_hwfn *p_hwfn,
 	}
 	DP_INFO(p_hwfn, "Multi function mode is 0x%lx\n",
 		p_hwfn->p_dev->mf_bits);
+
+	if (ECORE_IS_CMT(p_hwfn->p_dev))
+		p_hwfn->p_dev->mf_bits |= (1 << ECORE_MF_DISABLE_ARFS);
 
 	/* It's funny since we have another switch, but it's easier
 	 * to throw this away in linux this way. Long term, it might be

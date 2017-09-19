@@ -2072,6 +2072,9 @@ void ecore_arfs_mode_configure(struct ecore_hwfn *p_hwfn,
 			       struct ecore_ptt *p_ptt,
 			       struct ecore_arfs_config_params *p_cfg_params)
 {
+	if (OSAL_TEST_BIT(ECORE_MF_DISABLE_ARFS, &p_hwfn->p_dev->mf_bits))
+		return;
+
 	if (p_cfg_params->arfs_enable) {
 		ecore_gft_config(p_hwfn, p_ptt, p_hwfn->rel_pf_id,
 				 p_cfg_params->tcp,
