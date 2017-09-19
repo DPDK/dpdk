@@ -538,11 +538,28 @@ static void ecore_mcp_mf_workaround(struct ecore_hwfn *p_hwfn,
 }
 #endif
 
-static bool ecore_mcp_can_force_load(u8 drv_role, u8 exist_drv_role)
+static bool
+ecore_mcp_can_force_load(u8 drv_role, u8 exist_drv_role,
+			 enum ecore_override_force_load override_force_load)
 {
-	return (drv_role == DRV_ROLE_OS &&
-		exist_drv_role == DRV_ROLE_PREBOOT) ||
-	       (drv_role == DRV_ROLE_KDUMP && exist_drv_role == DRV_ROLE_OS);
+	bool can_force_load = false;
+
+	switch (override_force_load) {
+	case ECORE_OVERRIDE_FORCE_LOAD_ALWAYS:
+		can_force_load = true;
+		break;
+	case ECORE_OVERRIDE_FORCE_LOAD_NEVER:
+		can_force_load = false;
+		break;
+	default:
+		can_force_load = (drv_role == DRV_ROLE_OS &&
+				  exist_drv_role == DRV_ROLE_PREBOOT) ||
+				 (drv_role == DRV_ROLE_KDUMP &&
+				  exist_drv_role == DRV_ROLE_OS);
+		break;
+	}
+
+	return can_force_load;
 }
 
 static enum _ecore_status_t ecore_mcp_cancel_load_req(struct ecore_hwfn *p_hwfn,
@@ -713,9 +730,9 @@ __ecore_mcp_load_req(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 	return ECORE_SUCCESS;
 }
 
-static enum _ecore_status_t eocre_get_mfw_drv_role(struct ecore_hwfn *p_hwfn,
-						   enum ecore_drv_role drv_role,
-						   u8 *p_mfw_drv_role)
+static void ecore_get_mfw_drv_role(struct ecore_hwfn *p_hwfn,
+				   enum ecore_drv_role drv_role,
+				   u8 *p_mfw_drv_role)
 {
 	switch (drv_role) {
 	case ECORE_DRV_ROLE_OS:
@@ -724,12 +741,7 @@ static enum _ecore_status_t eocre_get_mfw_drv_role(struct ecore_hwfn *p_hwfn,
 	case ECORE_DRV_ROLE_KDUMP:
 		*p_mfw_drv_role = DRV_ROLE_KDUMP;
 		break;
-	default:
-		DP_ERR(p_hwfn, "Unexpected driver role %d\n", drv_role);
-		return ECORE_INVAL;
 	}
-
-	return ECORE_SUCCESS;
 }
 
 enum ecore_load_req_force {
@@ -738,10 +750,9 @@ enum ecore_load_req_force {
 	ECORE_LOAD_REQ_FORCE_ALL,
 };
 
-static enum _ecore_status_t
-ecore_get_mfw_force_cmd(struct ecore_hwfn *p_hwfn,
-			enum ecore_load_req_force force_cmd,
-			u8 *p_mfw_force_cmd)
+static void ecore_get_mfw_force_cmd(struct ecore_hwfn *p_hwfn,
+				    enum ecore_load_req_force force_cmd,
+				    u8 *p_mfw_force_cmd)
 {
 	switch (force_cmd) {
 	case ECORE_LOAD_REQ_FORCE_NONE:
@@ -753,12 +764,7 @@ ecore_get_mfw_force_cmd(struct ecore_hwfn *p_hwfn,
 	case ECORE_LOAD_REQ_FORCE_ALL:
 		*p_mfw_force_cmd = LOAD_REQ_FORCE_ALL;
 		break;
-	default:
-		DP_ERR(p_hwfn, "Unexpected force value %d\n", force_cmd);
-		return ECORE_INVAL;
 	}
-
-	return ECORE_SUCCESS;
 }
 
 enum _ecore_status_t ecore_mcp_load_req(struct ecore_hwfn *p_hwfn,
@@ -767,7 +773,7 @@ enum _ecore_status_t ecore_mcp_load_req(struct ecore_hwfn *p_hwfn,
 {
 	struct ecore_load_req_out_params out_params;
 	struct ecore_load_req_in_params in_params;
-	u8 mfw_drv_role, mfw_force_cmd;
+	u8 mfw_drv_role = 0, mfw_force_cmd;
 	enum _ecore_status_t rc;
 
 #ifndef ASIC_ONLY
@@ -782,17 +788,11 @@ enum _ecore_status_t ecore_mcp_load_req(struct ecore_hwfn *p_hwfn,
 	in_params.drv_ver_0 = ECORE_VERSION;
 	in_params.drv_ver_1 = ecore_get_config_bitmap();
 	in_params.fw_ver = STORM_FW_VERSION;
-	rc = eocre_get_mfw_drv_role(p_hwfn, p_params->drv_role, &mfw_drv_role);
-	if (rc != ECORE_SUCCESS)
-		return rc;
-
+	ecore_get_mfw_drv_role(p_hwfn, p_params->drv_role, &mfw_drv_role);
 	in_params.drv_role = mfw_drv_role;
 	in_params.timeout_val = p_params->timeout_val;
-	rc = ecore_get_mfw_force_cmd(p_hwfn, ECORE_LOAD_REQ_FORCE_NONE,
-				     &mfw_force_cmd);
-	if (rc != ECORE_SUCCESS)
-		return rc;
-
+	ecore_get_mfw_force_cmd(p_hwfn, ECORE_LOAD_REQ_FORCE_NONE,
+				&mfw_force_cmd);
 	in_params.force_cmd = mfw_force_cmd;
 	in_params.avoid_eng_reset = p_params->avoid_eng_reset;
 
@@ -824,19 +824,20 @@ enum _ecore_status_t ecore_mcp_load_req(struct ecore_hwfn *p_hwfn,
 		p_hwfn->mcp_info->block_mb_sending = false;
 
 		if (ecore_mcp_can_force_load(in_params.drv_role,
-					     out_params.exist_drv_role)) {
+					     out_params.exist_drv_role,
+					     p_params->override_force_load)) {
 			DP_INFO(p_hwfn,
-				"A force load is required [existing: role %d, fw_ver 0x%08x, drv_ver 0x%08x_0x%08x]. Sending a force load request.\n",
+				"A force load is required [{role, fw_ver, drv_ver}: loading={%d, 0x%08x, 0x%08x_%08x}, existing={%d, 0x%08x, 0x%08x_%08x}]\n",
+				in_params.drv_role, in_params.fw_ver,
+				in_params.drv_ver_0, in_params.drv_ver_1,
 				out_params.exist_drv_role,
 				out_params.exist_fw_ver,
 				out_params.exist_drv_ver_0,
 				out_params.exist_drv_ver_1);
 
-			rc = ecore_get_mfw_force_cmd(p_hwfn,
-						     ECORE_LOAD_REQ_FORCE_ALL,
-						     &mfw_force_cmd);
-			if (rc != ECORE_SUCCESS)
-				return rc;
+			ecore_get_mfw_force_cmd(p_hwfn,
+						ECORE_LOAD_REQ_FORCE_ALL,
+						&mfw_force_cmd);
 
 			in_params.force_cmd = mfw_force_cmd;
 			OSAL_MEM_ZERO(&out_params, sizeof(out_params));
@@ -846,7 +847,9 @@ enum _ecore_status_t ecore_mcp_load_req(struct ecore_hwfn *p_hwfn,
 				return rc;
 		} else {
 			DP_NOTICE(p_hwfn, false,
-				  "A force load is required [existing: role %d, fw_ver 0x%08x, drv_ver 0x%08x_0x%08x]. Avoiding to prevent disruption of active PFs.\n",
+				  "A force load is required [{role, fw_ver, drv_ver}: loading={%d, 0x%08x, x%08x_0x%08x}, existing={%d, 0x%08x, 0x%08x_0x%08x}] - Avoid\n",
+				  in_params.drv_role, in_params.fw_ver,
+				  in_params.drv_ver_0, in_params.drv_ver_1,
 				  out_params.exist_drv_role,
 				  out_params.exist_fw_ver,
 				  out_params.exist_drv_ver_0,
@@ -877,19 +880,11 @@ enum _ecore_status_t ecore_mcp_load_req(struct ecore_hwfn *p_hwfn,
 			return ECORE_INVAL;
 		}
 		break;
-	case FW_MSG_CODE_DRV_LOAD_REFUSED_PDA:
-	case FW_MSG_CODE_DRV_LOAD_REFUSED_DIAG:
-	case FW_MSG_CODE_DRV_LOAD_REFUSED_HSI:
-	case FW_MSG_CODE_DRV_LOAD_REFUSED_REJECT:
-		DP_NOTICE(p_hwfn, false,
-			  "MFW refused a load request [resp 0x%08x]. Aborting.\n",
-			  out_params.load_code);
-		return ECORE_BUSY;
 	default:
 		DP_NOTICE(p_hwfn, false,
-			  "Unexpected response to load request [resp 0x%08x]. Aborting.\n",
+			  "Unexpected refusal to load request [resp 0x%08x]. Aborting.\n",
 			  out_params.load_code);
-		break;
+		return ECORE_BUSY;
 	}
 
 	p_params->load_code = out_params.load_code;

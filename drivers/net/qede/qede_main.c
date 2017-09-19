@@ -221,10 +221,11 @@ static void qed_stop_iov_task(struct ecore_dev *edev)
 static int qed_slowpath_start(struct ecore_dev *edev,
 			      struct qed_slowpath_params *params)
 {
+	struct ecore_drv_load_params drv_load_params;
+	struct ecore_hw_init_params hw_init_params;
+	struct ecore_mcp_drv_version drv_version;
 	const uint8_t *data = NULL;
 	struct ecore_hwfn *hwfn;
-	struct ecore_mcp_drv_version drv_version;
-	struct ecore_hw_init_params hw_init_params;
 	struct ecore_ptt *p_ptt;
 	int rc;
 
@@ -280,8 +281,13 @@ static int qed_slowpath_start(struct ecore_dev *edev,
 	hw_init_params.int_mode = ECORE_INT_MODE_MSIX;
 	hw_init_params.allow_npar_tx_switch = true;
 	hw_init_params.bin_fw_data = data;
-	hw_init_params.mfw_timeout_val = ECORE_LOAD_REQ_LOCK_TO_DEFAULT;
-	hw_init_params.avoid_eng_reset = false;
+
+	memset(&drv_load_params, 0, sizeof(drv_load_params));
+	drv_load_params.mfw_timeout_val = ECORE_LOAD_REQ_LOCK_TO_DEFAULT;
+	drv_load_params.avoid_eng_reset = false;
+	drv_load_params.override_force_load = ECORE_OVERRIDE_FORCE_LOAD_ALWAYS;
+	hw_init_params.p_drv_load_params = &drv_load_params;
+
 	rc = ecore_hw_init(edev, &hw_init_params);
 	if (rc) {
 		DP_ERR(edev, "ecore_hw_init failed\n");

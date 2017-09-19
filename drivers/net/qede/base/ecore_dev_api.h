@@ -57,22 +57,13 @@ enum _ecore_status_t ecore_resc_alloc(struct ecore_dev *p_dev);
  */
 void ecore_resc_setup(struct ecore_dev *p_dev);
 
-struct ecore_hw_init_params {
-	/* Tunnelling parameters */
-	struct ecore_tunnel_info *p_tunn;
+enum ecore_override_force_load {
+	ECORE_OVERRIDE_FORCE_LOAD_NONE,
+	ECORE_OVERRIDE_FORCE_LOAD_ALWAYS,
+	ECORE_OVERRIDE_FORCE_LOAD_NEVER,
+};
 
-	bool b_hw_start;
-
-	/* Interrupt mode [msix, inta, etc.] to use */
-	enum ecore_int_mode int_mode;
-
-	/* NPAR tx switching to be used for vports configured for tx-switching
-	 */
-	bool allow_npar_tx_switch;
-
-	/* Binary fw data pointer in binary fw file */
-	const u8 *bin_fw_data;
-
+struct ecore_drv_load_params {
 	/* Indicates whether the driver is running over a crash kernel.
 	 * As part of the load request, this will be used for providing the
 	 * driver role to the MFW.
@@ -90,6 +81,29 @@ struct ecore_hw_init_params {
 
 	/* Avoid engine reset when first PF loads on it */
 	bool avoid_eng_reset;
+
+	/* Allow overriding the default force load behavior */
+	enum ecore_override_force_load override_force_load;
+};
+
+struct ecore_hw_init_params {
+	/* Tunneling parameters */
+	struct ecore_tunnel_info *p_tunn;
+
+	bool b_hw_start;
+
+	/* Interrupt mode [msix, inta, etc.] to use */
+	enum ecore_int_mode int_mode;
+
+	/* NPAR tx switching to be used for vports configured for tx-switching
+	 */
+	bool allow_npar_tx_switch;
+
+	/* Binary fw data pointer in binary fw file */
+	const u8 *bin_fw_data;
+
+	/* Driver load parameters */
+	struct ecore_drv_load_params *p_drv_load_params;
 };
 
 /**

@@ -13,6 +13,7 @@
 #include "mcp_public.h"
 #include "ecore.h"
 #include "ecore_mcp_api.h"
+#include "ecore_dev_api.h"
 
 /* Using hwfn number (and not pf_num) is required since in CMT mode,
  * same pf_num may be used by two different hwfn
@@ -153,9 +154,13 @@ enum ecore_drv_role {
 };
 
 struct ecore_load_req_params {
+	/* Input params */
 	enum ecore_drv_role drv_role;
 	u8 timeout_val; /* 1..254, '0' - default value, '255' - no timeout */
 	bool avoid_eng_reset;
+	enum ecore_override_force_load override_force_load;
+
+	/* Output params */
 	u32 load_code;
 };
 

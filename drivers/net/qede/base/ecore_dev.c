@@ -1980,6 +1980,30 @@ static void ecore_pglueb_clear_err(struct ecore_hwfn *p_hwfn,
 		 1 << p_hwfn->abs_pf_id);
 }
 
+static void
+ecore_fill_load_req_params(struct ecore_load_req_params *p_load_req,
+			   struct ecore_drv_load_params *p_drv_load)
+{
+	/* Make sure that if ecore-client didn't provide inputs, all the
+	 * expected defaults are indeed zero.
+	 */
+	OSAL_BUILD_BUG_ON(ECORE_DRV_ROLE_OS != 0);
+	OSAL_BUILD_BUG_ON(ECORE_LOAD_REQ_LOCK_TO_DEFAULT != 0);
+	OSAL_BUILD_BUG_ON(ECORE_OVERRIDE_FORCE_LOAD_NONE != 0);
+
+	OSAL_MEM_ZERO(p_load_req, sizeof(*p_load_req));
+
+	if (p_drv_load != OSAL_NULL) {
+		p_load_req->drv_role = p_drv_load->is_crash_kernel ?
+				       ECORE_DRV_ROLE_KDUMP :
+				       ECORE_DRV_ROLE_OS;
+		p_load_req->timeout_val = p_drv_load->mfw_timeout_val;
+		p_load_req->avoid_eng_reset = p_drv_load->avoid_eng_reset;
+		p_load_req->override_force_load =
+			p_drv_load->override_force_load;
+	}
+}
+
 enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 				   struct ecore_hw_init_params *p_params)
 {
@@ -2021,12 +2045,8 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 		if (rc != ECORE_SUCCESS)
 			return rc;
 
-		OSAL_MEM_ZERO(&load_req_params, sizeof(load_req_params));
-		load_req_params.drv_role = p_params->is_crash_kernel ?
-					   ECORE_DRV_ROLE_KDUMP :
-					   ECORE_DRV_ROLE_OS;
-		load_req_params.timeout_val = p_params->mfw_timeout_val;
-		load_req_params.avoid_eng_reset = p_params->avoid_eng_reset;
+		ecore_fill_load_req_params(&load_req_params,
+					   p_params->p_drv_load_params);
 		rc = ecore_mcp_load_req(p_hwfn, p_hwfn->p_main_ptt,
 					&load_req_params);
 		if (rc != ECORE_SUCCESS) {
