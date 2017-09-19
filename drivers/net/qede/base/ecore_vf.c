@@ -350,7 +350,7 @@ static enum _ecore_status_t ecore_vf_pf_acquire(struct ecore_hwfn *p_hwfn)
 
 	/* get HW info */
 	p_hwfn->p_dev->type = resp->pfdev_info.dev_type;
-	p_hwfn->p_dev->chip_rev = resp->pfdev_info.chip_rev;
+	p_hwfn->p_dev->chip_rev = (u8)resp->pfdev_info.chip_rev;
 
 	DP_INFO(p_hwfn, "Chip details - %s%d\n",
 		ECORE_IS_BB(p_hwfn->p_dev) ? "BB" : "AH",

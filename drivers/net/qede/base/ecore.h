@@ -680,45 +680,45 @@ struct ecore_dev {
 #define ECORE_DEV_ID_MASK_AH	0x8000
 
 	u16				chip_num;
-	#define CHIP_NUM_MASK			0xffff
-	#define CHIP_NUM_SHIFT			16
+#define CHIP_NUM_MASK			0xffff
+#define CHIP_NUM_SHIFT			0
 
-	u16				chip_rev;
-	#define CHIP_REV_MASK			0xf
-	#define CHIP_REV_SHIFT			12
+	u8				chip_rev;
+#define CHIP_REV_MASK			0xf
+#define CHIP_REV_SHIFT			0
 #ifndef ASIC_ONLY
-	#define CHIP_REV_IS_TEDIBEAR(_p_dev) ((_p_dev)->chip_rev == 0x5)
-	#define CHIP_REV_IS_EMUL_A0(_p_dev) ((_p_dev)->chip_rev == 0xe)
-	#define CHIP_REV_IS_EMUL_B0(_p_dev) ((_p_dev)->chip_rev == 0xc)
-	#define CHIP_REV_IS_EMUL(_p_dev) (CHIP_REV_IS_EMUL_A0(_p_dev) || \
-					  CHIP_REV_IS_EMUL_B0(_p_dev))
-	#define CHIP_REV_IS_FPGA_A0(_p_dev) ((_p_dev)->chip_rev == 0xf)
-	#define CHIP_REV_IS_FPGA_B0(_p_dev) ((_p_dev)->chip_rev == 0xd)
-	#define CHIP_REV_IS_FPGA(_p_dev) (CHIP_REV_IS_FPGA_A0(_p_dev) || \
-					  CHIP_REV_IS_FPGA_B0(_p_dev))
-	#define CHIP_REV_IS_SLOW(_p_dev) \
-		(CHIP_REV_IS_EMUL(_p_dev) || CHIP_REV_IS_FPGA(_p_dev))
-	#define CHIP_REV_IS_A0(_p_dev) \
-		(CHIP_REV_IS_EMUL_A0(_p_dev) || \
-		 CHIP_REV_IS_FPGA_A0(_p_dev) || \
-		 !(_p_dev)->chip_rev)
-	#define CHIP_REV_IS_B0(_p_dev) \
-		(CHIP_REV_IS_EMUL_B0(_p_dev) || \
-		 CHIP_REV_IS_FPGA_B0(_p_dev) || \
-		 (_p_dev)->chip_rev == 1)
-	#define CHIP_REV_IS_ASIC(_p_dev) !CHIP_REV_IS_SLOW(_p_dev)
+#define CHIP_REV_IS_TEDIBEAR(_p_dev)	((_p_dev)->chip_rev == 0x5)
+#define CHIP_REV_IS_EMUL_A0(_p_dev)	((_p_dev)->chip_rev == 0xe)
+#define CHIP_REV_IS_EMUL_B0(_p_dev)	((_p_dev)->chip_rev == 0xc)
+#define CHIP_REV_IS_EMUL(_p_dev) \
+	(CHIP_REV_IS_EMUL_A0(_p_dev) || CHIP_REV_IS_EMUL_B0(_p_dev))
+#define CHIP_REV_IS_FPGA_A0(_p_dev)	((_p_dev)->chip_rev == 0xf)
+#define CHIP_REV_IS_FPGA_B0(_p_dev)	((_p_dev)->chip_rev == 0xd)
+#define CHIP_REV_IS_FPGA(_p_dev) \
+	(CHIP_REV_IS_FPGA_A0(_p_dev) || CHIP_REV_IS_FPGA_B0(_p_dev))
+#define CHIP_REV_IS_SLOW(_p_dev) \
+	(CHIP_REV_IS_EMUL(_p_dev) || CHIP_REV_IS_FPGA(_p_dev))
+#define CHIP_REV_IS_A0(_p_dev) \
+	(CHIP_REV_IS_EMUL_A0(_p_dev) || CHIP_REV_IS_FPGA_A0(_p_dev) || \
+	 (!(_p_dev)->chip_rev && !(_p_dev)->chip_metal))
+#define CHIP_REV_IS_B0(_p_dev) \
+	(CHIP_REV_IS_EMUL_B0(_p_dev) || CHIP_REV_IS_FPGA_B0(_p_dev) || \
+	 ((_p_dev)->chip_rev == 1 && !(_p_dev)->chip_metal))
+#define CHIP_REV_IS_ASIC(_p_dev)	!CHIP_REV_IS_SLOW(_p_dev)
 #else
-	#define CHIP_REV_IS_A0(_p_dev)	(!(_p_dev)->chip_rev)
-	#define CHIP_REV_IS_B0(_p_dev)	((_p_dev)->chip_rev == 1)
+#define CHIP_REV_IS_A0(_p_dev) \
+	(!(_p_dev)->chip_rev && !(_p_dev)->chip_metal)
+#define CHIP_REV_IS_B0(_p_dev) \
+	((_p_dev)->chip_rev == 1 && !(_p_dev)->chip_metal)
 #endif
 
-	u16				chip_metal;
-	#define CHIP_METAL_MASK			0xff
-	#define CHIP_METAL_SHIFT		4
+	u8				chip_metal;
+#define CHIP_METAL_MASK			0xff
+#define CHIP_METAL_SHIFT		0
 
-	u16				chip_bond_id;
-	#define CHIP_BOND_ID_MASK		0xf
-	#define CHIP_BOND_ID_SHIFT		0
+	u8				chip_bond_id;
+#define CHIP_BOND_ID_MASK		0xff
+#define CHIP_BOND_ID_SHIFT		0
 
 	u8				num_engines;
 	u8				num_ports_in_engines;
@@ -726,12 +726,12 @@ struct ecore_dev {
 
 	u8				path_id;
 	enum ecore_mf_mode		mf_mode;
-	#define IS_MF_DEFAULT(_p_hwfn)	\
-			(((_p_hwfn)->p_dev)->mf_mode == ECORE_MF_DEFAULT)
-	#define IS_MF_SI(_p_hwfn)	\
-			(((_p_hwfn)->p_dev)->mf_mode == ECORE_MF_NPAR)
-	#define IS_MF_SD(_p_hwfn)	\
-			(((_p_hwfn)->p_dev)->mf_mode == ECORE_MF_OVLAN)
+#define IS_MF_DEFAULT(_p_hwfn)	\
+	(((_p_hwfn)->p_dev)->mf_mode == ECORE_MF_DEFAULT)
+#define IS_MF_SI(_p_hwfn)	\
+	(((_p_hwfn)->p_dev)->mf_mode == ECORE_MF_NPAR)
+#define IS_MF_SD(_p_hwfn)	\
+	(((_p_hwfn)->p_dev)->mf_mode == ECORE_MF_OVLAN)
 
 	int				pcie_width;
 	int				pcie_speed;
