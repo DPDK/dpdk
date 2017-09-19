@@ -832,6 +832,7 @@ ecore_concrete_to_sw_fid(__rte_unused struct ecore_dev *p_dev, u32 concrete_fid)
 
 int ecore_configure_vport_wfq(struct ecore_dev *p_dev, u16 vp_id, u32 rate);
 void ecore_configure_vp_wfq_on_link_change(struct ecore_dev *p_dev,
+					   struct ecore_ptt *p_ptt,
 					   u32 min_pf_rate);
 
 int ecore_configure_pf_max_bandwidth(struct ecore_dev *p_dev, u8 max_bw);

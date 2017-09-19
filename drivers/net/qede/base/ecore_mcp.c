@@ -1116,7 +1116,7 @@ static void ecore_mcp_handle_link_change(struct ecore_hwfn *p_hwfn,
 	/* Mintz bandwidth configuration */
 	__ecore_configure_pf_min_bandwidth(p_hwfn, p_ptt,
 					   p_link, min_bw);
-	ecore_configure_vp_wfq_on_link_change(p_hwfn->p_dev,
+	ecore_configure_vp_wfq_on_link_change(p_hwfn->p_dev, p_ptt,
 					      p_link->min_pf_rate);
 
 	p_link->an = !!(status & LINK_STATUS_AUTO_NEGOTIATE_ENABLED);

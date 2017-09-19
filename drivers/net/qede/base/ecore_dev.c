@@ -4903,6 +4903,7 @@ int ecore_configure_vport_wfq(struct ecore_dev *p_dev, u16 vp_id, u32 rate)
 
 /* API to configure WFQ from mcp link change */
 void ecore_configure_vp_wfq_on_link_change(struct ecore_dev *p_dev,
+					   struct ecore_ptt *p_ptt,
 					   u32 min_pf_rate)
 {
 	int i;
@@ -4917,8 +4918,7 @@ void ecore_configure_vp_wfq_on_link_change(struct ecore_dev *p_dev,
 	for_each_hwfn(p_dev, i) {
 		struct ecore_hwfn *p_hwfn = &p_dev->hwfns[i];
 
-		__ecore_configure_vp_wfq_on_link_change(p_hwfn,
-							p_hwfn->p_dpc_ptt,
+		__ecore_configure_vp_wfq_on_link_change(p_hwfn, p_ptt,
 							min_pf_rate);
 	}
 }
