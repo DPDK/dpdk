@@ -1161,7 +1161,7 @@ static int qede_dev_configure(struct rte_eth_dev *eth_dev)
 	PMD_INIT_FUNC_TRACE(edev);
 
 	/* Check requirements for 100G mode */
-	if (edev->num_hwfns > 1) {
+	if (ECORE_IS_CMT(edev)) {
 		if (eth_dev->data->nb_rx_queues < 2 ||
 				eth_dev->data->nb_tx_queues < 2) {
 			DP_ERR(edev, "100G mode needs min. 2 RX/TX queues\n");
@@ -1456,7 +1456,7 @@ static void qede_dev_close(struct rte_eth_dev *eth_dev)
 	rte_intr_disable(&pci_dev->intr_handle);
 	rte_intr_callback_unregister(&pci_dev->intr_handle,
 				     qede_interrupt_handler, (void *)eth_dev);
-	if (edev->num_hwfns > 1)
+	if (ECORE_IS_CMT(edev))
 		rte_eal_alarm_cancel(qede_poll_sp_sb_cb, (void *)eth_dev);
 }
 
@@ -2035,7 +2035,7 @@ int qede_rss_reta_update(struct rte_eth_dev *eth_dev,
 	params->update_rss_config = 1;
 
 	/* Fix up RETA for CMT mode device */
-	if (edev->num_hwfns > 1)
+	if (ECORE_IS_CMT(edev))
 		qdev->rss_enable = qede_update_rss_parm_cmt(edev,
 							    params);
 	vport_update_params.vport_id = 0;
@@ -2600,7 +2600,7 @@ static int qede_common_dev_init(struct rte_eth_dev *eth_dev, bool is_vf)
 	 * This is required since uio device uses only one MSI-x
 	 * interrupt vector but we need one for each engine.
 	 */
-	if (edev->num_hwfns > 1 && IS_PF(edev)) {
+	if (ECORE_IS_CMT(edev) && IS_PF(edev)) {
 		rc = rte_eal_alarm_set(timer_period * US_PER_S,
 				       qede_poll_sp_sb_cb,
 				       (void *)eth_dev);

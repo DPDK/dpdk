@@ -434,7 +434,7 @@ qed_fill_eth_dev_info(struct ecore_dev *edev, struct qed_dev_eth_info *info)
 	} else {
 		ecore_vf_get_num_rxqs(ECORE_LEADING_HWFN(edev),
 				      &info->num_queues);
-		if (edev->num_hwfns > 1) {
+		if (ECORE_IS_CMT(edev)) {
 			ecore_vf_get_num_rxqs(&edev->hwfns[1], &queues);
 			info->num_queues += queues;
 		}

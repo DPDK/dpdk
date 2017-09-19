@@ -53,7 +53,7 @@ int qede_check_fdir_support(struct rte_eth_dev *eth_dev)
 		DP_INFO(edev, "flowdir is disabled\n");
 	break;
 	case RTE_FDIR_MODE_PERFECT:
-		if (edev->num_hwfns > 1) {
+		if (ECORE_IS_CMT(edev)) {
 			DP_ERR(edev, "flowdir is not supported in 100G mode\n");
 			qdev->fdir_info.arfs.arfs_enable = false;
 			return -ENOTSUP;
@@ -386,7 +386,7 @@ qede_fdir_filter_conf(struct rte_eth_dev *eth_dev,
 	switch (filter_op) {
 	case RTE_ETH_FILTER_NOP:
 		/* Typically used to query flowdir support */
-		if (edev->num_hwfns > 1) {
+		if (ECORE_IS_CMT(edev)) {
 			DP_ERR(edev, "flowdir is not supported in 100G mode\n");
 			return -ENOTSUP;
 		}
@@ -425,7 +425,7 @@ int qede_ntuple_filter_conf(struct rte_eth_dev *eth_dev,
 	switch (filter_op) {
 	case RTE_ETH_FILTER_NOP:
 		/* Typically used to query fdir support */
-		if (edev->num_hwfns > 1) {
+		if (ECORE_IS_CMT(edev)) {
 			DP_ERR(edev, "flowdir is not supported in 100G mode\n");
 			return -ENOTSUP;
 		}

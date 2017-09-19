@@ -700,7 +700,7 @@ static void ecore_mcp_mf_workaround(struct ecore_hwfn *p_hwfn,
 		load_phase = FW_MSG_CODE_DRV_LOAD_FUNCTION;
 
 	/* On CMT, always tell that it's engine */
-	if (p_hwfn->p_dev->num_hwfns > 1)
+	if (ECORE_IS_CMT(p_hwfn->p_dev))
 		load_phase = FW_MSG_CODE_DRV_LOAD_ENGINE;
 
 	*p_load_code = load_phase;

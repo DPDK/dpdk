@@ -513,8 +513,8 @@ struct ecore_hwfn {
 #define IS_LEAD_HWFN(edev)		(!((edev)->my_id))
 	u8				rel_pf_id;	/* Relative to engine*/
 	u8				abs_pf_id;
-	#define ECORE_PATH_ID(_p_hwfn) \
-		(ECORE_IS_K2((_p_hwfn)->p_dev) ? 0 : ((_p_hwfn)->abs_pf_id & 1))
+#define ECORE_PATH_ID(_p_hwfn) \
+	(ECORE_IS_BB((_p_hwfn)->p_dev) ? ((_p_hwfn)->abs_pf_id & 1) : 0)
 	u8				port_id;
 	bool				b_active;
 
@@ -765,6 +765,7 @@ struct ecore_dev {
 	/* HW functions */
 	u8				num_hwfns;
 	struct ecore_hwfn		hwfns[MAX_HWFNS_PER_DEVICE];
+#define ECORE_IS_CMT(dev)		((dev)->num_hwfns > 1)
 
 	/* SRIOV */
 	struct ecore_hw_sriov_info	*p_iov_info;

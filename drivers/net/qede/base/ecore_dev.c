@@ -103,7 +103,7 @@ struct ecore_hwfn *ecore_db_rec_find_hwfn(struct ecore_dev *p_dev,
 	/* In CMT doorbell bar is split down the middle between engine 0 and
 	 * enigne 1
 	 */
-	if (p_dev->num_hwfns > 1)
+	if (ECORE_IS_CMT(p_dev))
 		p_hwfn = db_addr < p_dev->hwfns[1].doorbells ?
 			&p_dev->hwfns[0] : &p_dev->hwfns[1];
 	else
@@ -392,7 +392,7 @@ static u32 ecore_hw_bar_size(struct ecore_hwfn *p_hwfn,
 	 * they were found to be useful MFW started updating them from 8.7.7.0.
 	 * In older MFW versions they are set to 0 which means disabled.
 	 */
-	if (p_hwfn->p_dev->num_hwfns > 1) {
+	if (ECORE_IS_CMT(p_hwfn->p_dev)) {
 		DP_INFO(p_hwfn,
 			"BAR size not configured. Assuming BAR size of 256kB for GRC and 512kB for DB\n");
 		val = BAR_ID_0 ? 256 * 1024 : 512 * 1024;
@@ -1483,7 +1483,7 @@ static enum _ecore_status_t ecore_calc_hw_mode(struct ecore_hwfn *p_hwfn)
 #endif
 		hw_mode |= 1 << MODE_ASIC;
 
-	if (p_hwfn->p_dev->num_hwfns > 1)
+	if (ECORE_IS_CMT(p_hwfn->p_dev))
 		hw_mode |= 1 << MODE_100G;
 
 	p_hwfn->hw_info.hw_mode = hw_mode;
@@ -1959,7 +1959,7 @@ ecore_hw_init_pf_doorbell_bar(struct ecore_hwfn *p_hwfn,
 	u8 cond;
 
 	db_bar_size = ecore_hw_bar_size(p_hwfn, p_ptt, BAR_ID_1);
-	if (p_hwfn->p_dev->num_hwfns > 1)
+	if (ECORE_IS_CMT(p_hwfn->p_dev))
 		db_bar_size /= 2;
 
 	/* Calculate doorbell regions
@@ -2078,7 +2078,7 @@ static enum _ecore_status_t ecore_hw_init_port(struct ecore_hwfn *p_hwfn,
 		else if (ECORE_IS_BB(p_hwfn->p_dev))
 			ecore_link_init_bb(p_hwfn, p_ptt, p_hwfn->port_id);
 	} else if (CHIP_REV_IS_EMUL(p_hwfn->p_dev)) {
-		if (p_hwfn->p_dev->num_hwfns > 1) {
+		if (ECORE_IS_CMT(p_hwfn->p_dev)) {
 			/* Activate OPTE in CMT */
 			u32 val;
 
@@ -2337,8 +2337,7 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 	enum _ecore_status_t rc = ECORE_SUCCESS;
 	int i;
 
-	if ((p_params->int_mode == ECORE_INT_MODE_MSI) &&
-	    (p_dev->num_hwfns > 1)) {
+	if ((p_params->int_mode == ECORE_INT_MODE_MSI) && ECORE_IS_CMT(p_dev)) {
 		DP_NOTICE(p_dev, false,
 			  "MSI mode is not supported for CMT devices\n");
 		return ECORE_INVAL;
@@ -3560,7 +3559,7 @@ static void ecore_get_num_funcs(struct ecore_hwfn *p_hwfn,
 
 	if (reg_function_hide & 0x1) {
 		if (ECORE_IS_BB(p_dev)) {
-			if (ECORE_PATH_ID(p_hwfn) && p_dev->num_hwfns == 1) {
+			if (ECORE_PATH_ID(p_hwfn) && !ECORE_IS_CMT(p_dev)) {
 				num_funcs = 0;
 				eng_mask = 0xaaaa;
 			} else {
@@ -3617,7 +3616,7 @@ static void ecore_hw_info_port_num_bb(struct ecore_hwfn *p_hwfn,
 	/* Read the port mode */
 	if (CHIP_REV_IS_FPGA(p_dev))
 		port_mode = 4;
-	else if (CHIP_REV_IS_EMUL(p_dev) && p_dev->num_hwfns > 1)
+	else if (CHIP_REV_IS_EMUL(p_dev) && ECORE_IS_CMT(p_dev))
 		/* In CMT on emulation, assume 1 port */
 		port_mode = 1;
 	else
@@ -3694,7 +3693,7 @@ static void ecore_hw_info_port_num(struct ecore_hwfn *p_hwfn,
 		ecore_hw_info_port_num_ah_e5(p_hwfn, p_ptt);
 
 	/* Get the total number of ports of the device */
-	if (p_dev->num_hwfns > 1) {
+	if (ECORE_IS_CMT(p_dev)) {
 		/* In CMT there is always only one port */
 		p_dev->num_ports = 1;
 #ifndef ASIC_ONLY
@@ -4133,7 +4132,7 @@ enum _ecore_status_t ecore_hw_prepare(struct ecore_dev *p_dev,
 	p_params->personality = p_hwfn->hw_info.personality;
 
 	/* initilalize 2nd hwfn if necessary */
-	if (p_dev->num_hwfns > 1) {
+	if (ECORE_IS_CMT(p_dev)) {
 		void OSAL_IOMEM *p_regview, *p_doorbell;
 		u8 OSAL_IOMEM *addr;
 
@@ -5323,7 +5322,7 @@ int ecore_configure_vport_wfq(struct ecore_dev *p_dev, u16 vp_id, u32 rate)
 	int i, rc = ECORE_INVAL;
 
 	/* TBD - for multiple hardware functions - that is 100 gig */
-	if (p_dev->num_hwfns > 1) {
+	if (ECORE_IS_CMT(p_dev)) {
 		DP_NOTICE(p_dev, false,
 			  "WFQ configuration is not supported for this device\n");
 		return rc;
@@ -5358,7 +5357,7 @@ void ecore_configure_vp_wfq_on_link_change(struct ecore_dev *p_dev,
 	int i;
 
 	/* TBD - for multiple hardware functions - that is 100 gig */
-	if (p_dev->num_hwfns > 1) {
+	if (ECORE_IS_CMT(p_dev)) {
 		DP_VERBOSE(p_dev, ECORE_MSG_LINK,
 			   "WFQ configuration is not supported for this device\n");
 		return;

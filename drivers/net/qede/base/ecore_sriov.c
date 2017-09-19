@@ -1698,7 +1698,7 @@ static void ecore_iov_vf_mbx_acquire(struct ecore_hwfn       *p_hwfn,
 	}
 
 	/* On 100g PFs, prevent old VFs from loading */
-	if ((p_hwfn->p_dev->num_hwfns > 1) &&
+	if (ECORE_IS_CMT(p_hwfn->p_dev) &&
 	    !(req->vfdev_info.capabilities & VFPF_ACQUIRE_CAP_100G)) {
 		DP_INFO(p_hwfn,
 			"VF[%d] is running an old driver that doesn't support"
@@ -1730,7 +1730,7 @@ static void ecore_iov_vf_mbx_acquire(struct ecore_hwfn       *p_hwfn,
 
 	pfdev_info->capabilities = PFVF_ACQUIRE_CAP_DEFAULT_UNTAGGED |
 				   PFVF_ACQUIRE_CAP_POST_FW_OVERRIDE;
-	if (p_hwfn->p_dev->num_hwfns > 1)
+	if (ECORE_IS_CMT(p_hwfn->p_dev))
 		pfdev_info->capabilities |= PFVF_ACQUIRE_CAP_100G;
 
 	/* Share our ability to use multiple queue-ids only with VFs
