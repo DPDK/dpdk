@@ -2836,9 +2836,6 @@ static enum _ecore_status_t ecore_hw_set_resc_info(struct ecore_hwfn *p_hwfn,
 	return ECORE_SUCCESS;
 }
 
-#define ECORE_RESC_ALLOC_LOCK_RETRY_CNT		10
-#define ECORE_RESC_ALLOC_LOCK_RETRY_INTVL_US	10000 /* 10 msec */
-
 static enum _ecore_status_t ecore_hw_get_resc(struct ecore_hwfn *p_hwfn,
 					      struct ecore_ptt *p_ptt,
 					      bool drv_resc_alloc)
@@ -2870,13 +2867,9 @@ static enum _ecore_status_t ecore_hw_get_resc(struct ecore_hwfn *p_hwfn,
 	 * Old drivers that don't acquire the lock can run in parallel, and
 	 * their allocation values won't be affected by the updated max values.
 	 */
-	OSAL_MEM_ZERO(&resc_lock_params, sizeof(resc_lock_params));
-	resc_lock_params.resource = ECORE_RESC_LOCK_RESC_ALLOC;
-	resc_lock_params.retry_num = ECORE_RESC_ALLOC_LOCK_RETRY_CNT;
-	resc_lock_params.retry_interval = ECORE_RESC_ALLOC_LOCK_RETRY_INTVL_US;
-	resc_lock_params.sleep_b4_retry = true;
-	OSAL_MEM_ZERO(&resc_unlock_params, sizeof(resc_unlock_params));
-	resc_unlock_params.resource = ECORE_RESC_LOCK_RESC_ALLOC;
+	ecore_mcp_resc_lock_default_init(p_hwfn, &resc_lock_params,
+					 &resc_unlock_params,
+					 ECORE_RESC_LOCK_RESC_ALLOC, false);
 
 	rc = ecore_mcp_resc_lock(p_hwfn, p_ptt, &resc_lock_params);
 	if (rc != ECORE_SUCCESS && rc != ECORE_NOTIMPL) {

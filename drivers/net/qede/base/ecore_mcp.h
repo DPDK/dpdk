@@ -413,7 +413,12 @@ enum ecore_resc_lock {
 	/* Locks that the MFW is aware of should be added here downwards */
 
 	/* Ecore only locks should be added here upwards */
-	ECORE_RESC_LOCK_RESC_ALLOC = ECORE_MCP_RESC_LOCK_MAX_VAL
+	ECORE_RESC_LOCK_RESC_ALLOC = ECORE_MCP_RESC_LOCK_MAX_VAL,
+
+	/* A dummy value to be used for auxiliary functions in need of
+	 * returning an 'error' value.
+	 */
+	ECORE_RESC_LOCK_RESC_INVALID,
 };
 
 struct ecore_resc_lock_params {
@@ -427,9 +432,11 @@ struct ecore_resc_lock_params {
 
 	/* Number of times to retry locking */
 	u8 retry_num;
+#define ECORE_MCP_RESC_LOCK_RETRY_CNT_DFLT	10
 
 	/* The interval in usec between retries */
 	u16 retry_interval;
+#define ECORE_MCP_RESC_LOCK_RETRY_VAL_DFLT	10000
 
 	/* Use sleep or delay between retries */
 	bool sleep_b4_retry;
@@ -479,6 +486,22 @@ struct ecore_resc_unlock_params {
 enum _ecore_status_t
 ecore_mcp_resc_unlock(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 		      struct ecore_resc_unlock_params *p_params);
+
+/**
+ * @brief - default initialization for lock/unlock resource structs
+ *
+ * @param p_hwfn
+ * @param p_lock - lock params struct to be initialized; Can be OSAL_NULL
+ * @param p_unlock - unlock params struct to be initialized; Can be OSAL_NULL
+ * @param resource - the requested resource
+ * @paral b_is_permanent - disable retries & aging when set
+ */
+void
+ecore_mcp_resc_lock_default_init(struct ecore_hwfn *p_hwfn,
+				 struct ecore_resc_lock_params *p_lock,
+				 struct ecore_resc_unlock_params *p_unlock,
+				 enum ecore_resc_lock resource,
+				 bool b_is_permanent);
 
 /**
  * @brief Learn of supported MFW features; To be done during early init
