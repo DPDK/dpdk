@@ -49,6 +49,11 @@ struct ecore_vf_iov {
 	 * compatibility [with older PFs] we'd still need to store these.
 	 */
 	struct ecore_sb_info *sbs_info[PFVF_MAX_SBS_PER_VF];
+
+	/* Determines whether VF utilizes doorbells via limited register
+	 * bar or via the doorbell bar.
+	 */
+	bool b_doorbell_bar;
 };
 
 /**
@@ -304,5 +309,8 @@ ecore_vf_pf_tunnel_param_update(struct ecore_hwfn *p_hwfn,
 				struct ecore_tunnel_info *p_tunn);
 
 void ecore_vf_set_vf_start_tunn_update_param(struct ecore_tunnel_info *p_tun);
+
+u32 ecore_vf_hw_bar_size(struct ecore_hwfn *p_hwfn,
+		     enum BAR_ID bar_id);
 #endif
 #endif /* __ECORE_VF_H__ */

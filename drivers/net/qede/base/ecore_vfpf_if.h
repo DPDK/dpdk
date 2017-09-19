@@ -101,6 +101,12 @@ struct vfpf_acquire_tlv {
 	 * this, and use the legacy CID scheme.
 	 */
 #define VFPF_ACQUIRE_CAP_QUEUE_QIDS	(1 << 2)
+
+	/* The VF is using the physical bar. While this is mostly internal
+	 * to the VF, might affect the number of CIDs supported assuming
+	 * QUEUE_QIDS is set.
+	 */
+#define VFPF_ACQUIRE_CAP_PHYSICAL_BAR	(1 << 3)
 		u64 capabilities;
 		u8 fw_major;
 		u8 fw_minor;
@@ -190,7 +196,8 @@ struct pfvf_acquire_resp_tlv {
 		u16 chip_rev;
 		u8 dev_type;
 
-		u8 padding;
+		/* Doorbell bar size configured in HW: log(size) or 0 */
+		u8 bar_size;
 
 		struct pfvf_stats_info stats_info;
 

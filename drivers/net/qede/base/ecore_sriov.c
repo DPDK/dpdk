@@ -1538,7 +1538,62 @@ static void ecore_iov_vf_cleanup(struct ecore_hwfn *p_hwfn,
 	OSAL_IOV_VF_CLEANUP(p_hwfn, p_vf->relative_vf_id);
 }
 
+/* Returns either 0, or log(size) */
+static u32 ecore_iov_vf_db_bar_size(struct ecore_hwfn *p_hwfn,
+				    struct ecore_ptt *p_ptt)
+{
+	u32 val = ecore_rd(p_hwfn, p_ptt, PGLUE_B_REG_VF_BAR1_SIZE);
+
+	if (val)
+		return val + 11;
+	return 0;
+}
+
+static void
+ecore_iov_vf_mbx_acquire_resc_cids(struct ecore_hwfn *p_hwfn,
+				   struct ecore_ptt *p_ptt,
+				   struct ecore_vf_info *p_vf,
+				   struct vf_pf_resc_request *p_req,
+				   struct pf_vf_resc *p_resp)
+{
+	u8 num_vf_cons = p_hwfn->pf_params.eth_pf_params.num_vf_cons;
+	u8 db_size = DB_ADDR_VF(1, DQ_DEMS_LEGACY) -
+		     DB_ADDR_VF(0, DQ_DEMS_LEGACY);
+	u32 bar_size;
+
+	p_resp->num_cids = OSAL_MIN_T(u8, p_req->num_cids, num_vf_cons);
+
+	/* If VF didn't bother asking for QIDs than don't bother limiting
+	 * number of CIDs. The VF doesn't care about the number, and this
+	 * has the likely result of causing an additional acquisition.
+	 */
+	if (!(p_vf->acquire.vfdev_info.capabilities &
+	      VFPF_ACQUIRE_CAP_QUEUE_QIDS))
+		return;
+
+	/* If doorbell bar was mapped by VF, limit the VF CIDs to an amount
+	 * that would make sure doorbells for all CIDs fall within the bar.
+	 * If it doesn't, make sure regview window is sufficient.
+	 */
+	if (p_vf->acquire.vfdev_info.capabilities &
+	    VFPF_ACQUIRE_CAP_PHYSICAL_BAR) {
+		bar_size = ecore_iov_vf_db_bar_size(p_hwfn, p_ptt);
+		if (bar_size)
+			bar_size = 1 << bar_size;
+
+		if (ECORE_IS_CMT(p_hwfn->p_dev))
+			bar_size /= 2;
+	} else {
+		bar_size = PXP_VF_BAR0_DQ_LENGTH;
+	}
+
+	if (bar_size / db_size < 256)
+		p_resp->num_cids = OSAL_MIN_T(u8, p_resp->num_cids,
+					      (u8)(bar_size / db_size));
+}
+
 static u8 ecore_iov_vf_mbx_acquire_resc(struct ecore_hwfn *p_hwfn,
+					struct ecore_ptt *p_ptt,
 					struct ecore_vf_info *p_vf,
 					struct vf_pf_resc_request *p_req,
 					struct pf_vf_resc *p_resp)
@@ -1573,9 +1628,7 @@ static u8 ecore_iov_vf_mbx_acquire_resc(struct ecore_hwfn *p_hwfn,
 	p_resp->num_vlan_filters = OSAL_MIN_T(u8, p_vf->num_vlan_filters,
 					      p_req->num_vlan_filters);
 
-	p_resp->num_cids =
-		OSAL_MIN_T(u8, p_req->num_cids,
-			   p_hwfn->pf_params.eth_pf_params.num_vf_cons);
+	ecore_iov_vf_mbx_acquire_resc_cids(p_hwfn, p_ptt, p_vf, p_req, p_resp);
 
 	/* This isn't really needed/enforced, but some legacy VFs might depend
 	 * on the correct filling of this field.
@@ -1739,6 +1792,10 @@ static void ecore_iov_vf_mbx_acquire(struct ecore_hwfn       *p_hwfn,
 	if (req->vfdev_info.capabilities & VFPF_ACQUIRE_CAP_QUEUE_QIDS)
 		pfdev_info->capabilities |= PFVF_ACQUIRE_CAP_QUEUE_QIDS;
 
+	/* Share the sizes of the bars with VF */
+	resp->pfdev_info.bar_size = (u8)ecore_iov_vf_db_bar_size(p_hwfn,
+							     p_ptt);
+
 	ecore_iov_vf_mbx_acquire_stats(&pfdev_info->stats_info);
 
 	OSAL_MEMCPY(pfdev_info->port_mac, p_hwfn->hw_info.hw_mac_addr,
@@ -1764,7 +1821,7 @@ static void ecore_iov_vf_mbx_acquire(struct ecore_hwfn       *p_hwfn,
 	/* Fill resources available to VF; Make sure there are enough to
 	 * satisfy the VF's request.
 	 */
-	vfpf_status = ecore_iov_vf_mbx_acquire_resc(p_hwfn, vf,
+	vfpf_status = ecore_iov_vf_mbx_acquire_resc(p_hwfn, p_ptt, vf,
 						    &req->resc_request, resc);
 	if (vfpf_status != PFVF_STATUS_SUCCESS)
 		goto out;

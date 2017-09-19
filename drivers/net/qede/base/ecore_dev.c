@@ -363,11 +363,6 @@ void ecore_db_recovery_execute(struct ecore_hwfn *p_hwfn,
 /* Derived */
 #define ECORE_MIN_PWM_REGION	(ECORE_WID_SIZE * ECORE_MIN_DPIS)
 
-enum BAR_ID {
-	BAR_ID_0,		/* used for GRC */
-	BAR_ID_1		/* Used for doorbells */
-};
-
 static u32 ecore_hw_bar_size(struct ecore_hwfn *p_hwfn,
 			     struct ecore_ptt *p_ptt,
 			     enum BAR_ID bar_id)
@@ -376,13 +371,8 @@ static u32 ecore_hw_bar_size(struct ecore_hwfn *p_hwfn,
 		       PGLUE_B_REG_PF_BAR0_SIZE : PGLUE_B_REG_PF_BAR1_SIZE);
 	u32 val;
 
-	if (IS_VF(p_hwfn->p_dev)) {
-		/* TODO - assume each VF hwfn has 64Kb for Bar0; Bar1 can be
-		 * read from actual register, but we're currently not using
-		 * it for actual doorbelling.
-		 */
-		return 1 << 17;
-	}
+	if (IS_VF(p_hwfn->p_dev))
+		return ecore_vf_hw_bar_size(p_hwfn, bar_id);
 
 	val = ecore_rd(p_hwfn, p_ptt, bar_reg);
 	if (val)

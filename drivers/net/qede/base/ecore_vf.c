@@ -151,6 +151,69 @@ static void ecore_vf_pf_add_qid(struct ecore_hwfn *p_hwfn,
 	p_qid_tlv->qid = p_cid->qid_usage_idx;
 }
 
+enum _ecore_status_t _ecore_vf_pf_release(struct ecore_hwfn *p_hwfn,
+					  bool b_final)
+{
+	struct ecore_vf_iov *p_iov = p_hwfn->vf_iov_info;
+	struct pfvf_def_resp_tlv *resp;
+	struct vfpf_first_tlv *req;
+	u32 size;
+	enum _ecore_status_t rc;
+
+	/* clear mailbox and prep first tlv */
+	req = ecore_vf_pf_prep(p_hwfn, CHANNEL_TLV_RELEASE, sizeof(*req));
+
+	/* add list termination tlv */
+	ecore_add_tlv(&p_iov->offset,
+		      CHANNEL_TLV_LIST_END,
+		      sizeof(struct channel_list_end_tlv));
+
+	resp = &p_iov->pf2vf_reply->default_resp;
+	rc = ecore_send_msg2pf(p_hwfn, &resp->hdr.status, sizeof(*resp));
+
+	if (rc == ECORE_SUCCESS && resp->hdr.status != PFVF_STATUS_SUCCESS)
+		rc = ECORE_AGAIN;
+
+	ecore_vf_pf_req_end(p_hwfn, rc);
+	if (!b_final)
+		return rc;
+
+	p_hwfn->b_int_enabled = 0;
+
+	if (p_iov->vf2pf_request)
+		OSAL_DMA_FREE_COHERENT(p_hwfn->p_dev,
+				       p_iov->vf2pf_request,
+				       p_iov->vf2pf_request_phys,
+				       sizeof(union vfpf_tlvs));
+	if (p_iov->pf2vf_reply)
+		OSAL_DMA_FREE_COHERENT(p_hwfn->p_dev,
+				       p_iov->pf2vf_reply,
+				       p_iov->pf2vf_reply_phys,
+				       sizeof(union pfvf_tlvs));
+
+	if (p_iov->bulletin.p_virt) {
+		size = sizeof(struct ecore_bulletin_content);
+		OSAL_DMA_FREE_COHERENT(p_hwfn->p_dev,
+				       p_iov->bulletin.p_virt,
+				       p_iov->bulletin.phys,
+				       size);
+	}
+
+#ifdef CONFIG_ECORE_LOCK_ALLOC
+	OSAL_MUTEX_DEALLOC(&p_iov->mutex);
+#endif
+
+	OSAL_FREE(p_hwfn->p_dev, p_hwfn->vf_iov_info);
+	p_hwfn->vf_iov_info = OSAL_NULL;
+
+	return rc;
+}
+
+enum _ecore_status_t ecore_vf_pf_release(struct ecore_hwfn *p_hwfn)
+{
+	return _ecore_vf_pf_release(p_hwfn, true);
+}
+
 #define VF_ACQUIRE_THRESH 3
 static void ecore_vf_pf_acquire_reduce_resc(struct ecore_hwfn *p_hwfn,
 					    struct vf_pf_resc_request *p_req,
@@ -216,6 +279,11 @@ static enum _ecore_status_t ecore_vf_pf_acquire(struct ecore_hwfn *p_hwfn)
 
 	/* Fill capability field with any non-deprecated config we support */
 	req->vfdev_info.capabilities |= VFPF_ACQUIRE_CAP_100G;
+
+	/* If we've mapped the doorbell bar, try using queue qids */
+	if (p_iov->b_doorbell_bar)
+		req->vfdev_info.capabilities |= VFPF_ACQUIRE_CAP_PHYSICAL_BAR |
+						VFPF_ACQUIRE_CAP_QUEUE_QIDS;
 
 	/* pf 2 vf bulletin board address */
 	req->bulletin_addr = p_iov->bulletin.phys;
@@ -380,20 +448,34 @@ exit:
 	return rc;
 }
 
+u32 ecore_vf_hw_bar_size(struct ecore_hwfn *p_hwfn,
+			 enum BAR_ID bar_id)
+{
+	u32 bar_size;
+
+	/* Regview size is fixed */
+	if (bar_id == BAR_ID_0)
+		return 1 << 17;
+
+	/* Doorbell is received from PF */
+	bar_size = p_hwfn->vf_iov_info->acquire_resp.pfdev_info.bar_size;
+	if (bar_size)
+		return 1 << bar_size;
+	return 0;
+}
+
 enum _ecore_status_t ecore_vf_hw_prepare(struct ecore_hwfn *p_hwfn)
 {
+	struct ecore_hwfn *p_lead = ECORE_LEADING_HWFN(p_hwfn->p_dev);
 	struct ecore_vf_iov *p_iov;
 	u32 reg;
+	enum _ecore_status_t rc;
 
 	/* Set number of hwfns - might be overridden once leading hwfn learns
 	 * actual configuration from PF.
 	 */
 	if (IS_LEAD_HWFN(p_hwfn))
 		p_hwfn->p_dev->num_hwfns = 1;
-
-	/* Set the doorbell bar. Assumption: regview is set */
-	p_hwfn->doorbells = (u8 OSAL_IOMEM *)p_hwfn->regview +
-	    PXP_VF_BAR0_START_DQ;
 
 	reg = PXP_VF_BAR0_ME_OPAQUE_ADDRESS;
 	p_hwfn->hw_info.opaque_fid = (u16)REG_RD(p_hwfn, reg);
@@ -407,6 +489,31 @@ enum _ecore_status_t ecore_vf_hw_prepare(struct ecore_hwfn *p_hwfn)
 		DP_NOTICE(p_hwfn, true,
 			  "Failed to allocate `struct ecore_sriov'\n");
 		return ECORE_NOMEM;
+	}
+
+	/* Doorbells are tricky; Upper-layer has alreday set the hwfn doorbell
+	 * value, but there are several incompatibily scenarios where that
+	 * would be incorrect and we'd need to override it.
+	 */
+	if (p_hwfn->doorbells == OSAL_NULL) {
+		p_hwfn->doorbells = (u8 OSAL_IOMEM *)p_hwfn->regview +
+						     PXP_VF_BAR0_START_DQ;
+	} else if (p_hwfn == p_lead) {
+		/* For leading hw-function, value is always correct, but need
+		 * to handle scenario where legacy PF would not support 100g
+		 * mapped bars later.
+		 */
+		p_iov->b_doorbell_bar = true;
+	} else {
+		/* here, value would be correct ONLY if the leading hwfn
+		 * received indication that mapped-bars are supported.
+		 */
+		if (p_lead->vf_iov_info->b_doorbell_bar)
+			p_iov->b_doorbell_bar = true;
+		else
+			p_hwfn->doorbells = (u8 OSAL_IOMEM *)
+					    p_hwfn->regview +
+					    PXP_VF_BAR0_START_DQ;
 	}
 
 	/* Allocate vf2pf msg */
@@ -460,7 +567,35 @@ enum _ecore_status_t ecore_vf_hw_prepare(struct ecore_hwfn *p_hwfn)
 
 	p_hwfn->hw_info.personality = ECORE_PCI_ETH;
 
-	return ecore_vf_pf_acquire(p_hwfn);
+	rc = ecore_vf_pf_acquire(p_hwfn);
+
+	/* If VF is 100g using a mapped bar and PF is too old to support that,
+	 * acquisition would succeed - but the VF would have no way knowing
+	 * the size of the doorbell bar configured in HW and thus will not
+	 * know how to split it for 2nd hw-function.
+	 * In this case we re-try without the indication of the mapped
+	 * doorbell.
+	 */
+	if (rc == ECORE_SUCCESS &&
+	    p_iov->b_doorbell_bar &&
+	    !ecore_vf_hw_bar_size(p_hwfn, BAR_ID_1) &&
+	    ECORE_IS_CMT(p_hwfn->p_dev)) {
+		rc = _ecore_vf_pf_release(p_hwfn, false);
+		if (rc != ECORE_SUCCESS)
+			return rc;
+
+		p_iov->b_doorbell_bar = false;
+		p_hwfn->doorbells = (u8 OSAL_IOMEM *)p_hwfn->regview +
+						     PXP_VF_BAR0_START_DQ;
+		rc = ecore_vf_pf_acquire(p_hwfn);
+	}
+
+	DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
+		   "Regview [%p], Doorbell [%p], Device-doorbell [%p]\n",
+		   p_hwfn->regview, p_hwfn->doorbells,
+		   p_hwfn->p_dev->doorbells);
+
+	return rc;
 
 free_vf2pf_request:
 	OSAL_DMA_FREE_COHERENT(p_hwfn->p_dev, p_iov->vf2pf_request,
@@ -1300,59 +1435,6 @@ enum _ecore_status_t ecore_vf_pf_reset(struct ecore_hwfn *p_hwfn)
 
 exit:
 	ecore_vf_pf_req_end(p_hwfn, rc);
-
-	return rc;
-}
-
-enum _ecore_status_t ecore_vf_pf_release(struct ecore_hwfn *p_hwfn)
-{
-	struct ecore_vf_iov *p_iov = p_hwfn->vf_iov_info;
-	struct pfvf_def_resp_tlv *resp;
-	struct vfpf_first_tlv *req;
-	u32 size;
-	enum _ecore_status_t rc;
-
-	/* clear mailbox and prep first tlv */
-	req = ecore_vf_pf_prep(p_hwfn, CHANNEL_TLV_RELEASE, sizeof(*req));
-
-	/* add list termination tlv */
-	ecore_add_tlv(&p_iov->offset,
-		      CHANNEL_TLV_LIST_END,
-		      sizeof(struct channel_list_end_tlv));
-
-	resp = &p_iov->pf2vf_reply->default_resp;
-	rc = ecore_send_msg2pf(p_hwfn, &resp->hdr.status, sizeof(*resp));
-
-	if (rc == ECORE_SUCCESS && resp->hdr.status != PFVF_STATUS_SUCCESS)
-		rc = ECORE_AGAIN;
-
-	ecore_vf_pf_req_end(p_hwfn, rc);
-
-	p_hwfn->b_int_enabled = 0;
-
-	if (p_iov->vf2pf_request)
-		OSAL_DMA_FREE_COHERENT(p_hwfn->p_dev,
-				       p_iov->vf2pf_request,
-				       p_iov->vf2pf_request_phys,
-				       sizeof(union vfpf_tlvs));
-	if (p_iov->pf2vf_reply)
-		OSAL_DMA_FREE_COHERENT(p_hwfn->p_dev,
-				       p_iov->pf2vf_reply,
-				       p_iov->pf2vf_reply_phys,
-				       sizeof(union pfvf_tlvs));
-
-	if (p_iov->bulletin.p_virt) {
-		size = sizeof(struct ecore_bulletin_content);
-		OSAL_DMA_FREE_COHERENT(p_hwfn->p_dev,
-				       p_iov->bulletin.p_virt,
-				       p_iov->bulletin.phys, size);
-	}
-
-#ifdef CONFIG_ECORE_LOCK_ALLOC
-	OSAL_MUTEX_DEALLOC(&p_iov->mutex);
-#endif
-
-	OSAL_FREE(p_hwfn->p_dev, p_hwfn->vf_iov_info);
 
 	return rc;
 }

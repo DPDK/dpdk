@@ -546,6 +546,11 @@ struct ecore_ufp_info {
 	u8 tc;
 };
 
+enum BAR_ID {
+	BAR_ID_0,	/* used for GRC */
+	BAR_ID_1	/* Used for doorbells */
+};
+
 struct ecore_hwfn {
 	struct ecore_dev		*p_dev;
 	u8				my_id;		/* ID inside the PF */
