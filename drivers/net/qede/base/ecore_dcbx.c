@@ -570,7 +570,7 @@ ecore_dcbx_get_remote_params(struct ecore_hwfn *p_hwfn,
 	params->remote.valid = true;
 }
 
-static enum _ecore_status_t
+static void
 ecore_dcbx_get_operational_params(struct ecore_hwfn *p_hwfn,
 				  struct ecore_dcbx_get *params)
 {
@@ -593,7 +593,7 @@ ecore_dcbx_get_operational_params(struct ecore_hwfn *p_hwfn,
 		p_operational->enabled = enabled;
 		p_operational->valid = false;
 		DP_VERBOSE(p_hwfn, ECORE_MSG_DCB, "Dcbx is disabled\n");
-		return ECORE_INVAL;
+		return;
 	}
 
 	p_feat = &p_hwfn->p_dcbx_info->operational.features;
@@ -626,8 +626,6 @@ ecore_dcbx_get_operational_params(struct ecore_hwfn *p_hwfn,
 	p_operational->err = err;
 	p_operational->enabled = enabled;
 	p_operational->valid = true;
-
-	return ECORE_SUCCESS;
 }
 
 static void  ecore_dcbx_get_dscp_params(struct ecore_hwfn *p_hwfn,

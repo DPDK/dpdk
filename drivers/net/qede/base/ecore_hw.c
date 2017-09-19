@@ -136,7 +136,7 @@ void ecore_ptt_release(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt)
 	OSAL_SPIN_UNLOCK(&p_hwfn->p_ptt_pool->lock);
 }
 
-u32 ecore_ptt_get_hw_addr(struct ecore_ptt *p_ptt)
+static u32 ecore_ptt_get_hw_addr(struct ecore_ptt *p_ptt)
 {
 	/* The HW is using DWORDS and we need to translate it to Bytes */
 	return OSAL_LE32_TO_CPU(p_ptt->pxp.offset) << 2;

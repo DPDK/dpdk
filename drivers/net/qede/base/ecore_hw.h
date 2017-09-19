@@ -100,15 +100,6 @@ enum _ecore_status_t ecore_ptt_pool_alloc(struct ecore_hwfn *p_hwfn);
 void ecore_ptt_pool_free(struct ecore_hwfn *p_hwfn);
 
 /**
- * @brief ecore_ptt_get_hw_addr - Get PTT's GRC/HW address
- *
- * @param p_ptt
- *
- * @return u32
- */
-u32 ecore_ptt_get_hw_addr(struct ecore_ptt *p_ptt);
-
-/**
  * @brief ecore_ptt_get_bar_addr - Get PPT's external BAR address
  *
  * @param p_hwfn
