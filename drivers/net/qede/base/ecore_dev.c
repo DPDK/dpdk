@@ -2423,22 +2423,26 @@ static void get_function_id(struct ecore_hwfn *p_hwfn)
 static void ecore_hw_set_feat(struct ecore_hwfn *p_hwfn)
 {
 	u32 *feat_num = p_hwfn->hw_info.feat_num;
-	struct ecore_sb_cnt_info sb_cnt_info;
-	int num_features = 1;
+	u32 non_l2_sbs = 0;
 
 	/* L2 Queues require each: 1 status block. 1 L2 queue */
-	feat_num[ECORE_PF_L2_QUE] =
-	    OSAL_MIN_T(u32,
-		       RESC_NUM(p_hwfn, ECORE_SB) / num_features,
-		       RESC_NUM(p_hwfn, ECORE_L2_QUEUE));
+	if (ECORE_IS_L2_PERSONALITY(p_hwfn)) {
+		struct ecore_sb_cnt_info sb_cnt_info;
 
-	OSAL_MEM_ZERO(&sb_cnt_info, sizeof(sb_cnt_info));
-	ecore_int_get_num_sbs(p_hwfn, &sb_cnt_info);
-	feat_num[ECORE_VF_L2_QUE] =
-		OSAL_MIN_T(u32,
-			   RESC_NUM(p_hwfn, ECORE_L2_QUEUE) -
-			   FEAT_NUM(p_hwfn, ECORE_PF_L2_QUE),
-			   sb_cnt_info.sb_iov_cnt);
+		OSAL_MEM_ZERO(&sb_cnt_info, sizeof(sb_cnt_info));
+		ecore_int_get_num_sbs(p_hwfn, &sb_cnt_info);
+
+		/* Start by allocating VF queues, then PF's */
+		feat_num[ECORE_VF_L2_QUE] =
+			OSAL_MIN_T(u32,
+				   RESC_NUM(p_hwfn, ECORE_L2_QUEUE),
+				   sb_cnt_info.sb_iov_cnt);
+		feat_num[ECORE_PF_L2_QUE] =
+			OSAL_MIN_T(u32,
+				   RESC_NUM(p_hwfn, ECORE_SB) - non_l2_sbs,
+				   RESC_NUM(p_hwfn, ECORE_L2_QUEUE) -
+				   FEAT_NUM(p_hwfn, ECORE_VF_L2_QUE));
+	}
 
 	feat_num[ECORE_FCOE_CQ] = OSAL_MIN_T(u32, RESC_NUM(p_hwfn, ECORE_SB),
 					     RESC_NUM(p_hwfn, ECORE_CMDQS_CQS));
