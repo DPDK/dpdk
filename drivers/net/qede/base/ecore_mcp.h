@@ -521,6 +521,41 @@ enum _ecore_status_t ecore_mcp_get_capabilities(struct ecore_hwfn *p_hwfn,
 enum _ecore_status_t ecore_mcp_set_capabilities(struct ecore_hwfn *p_hwfn,
 						struct ecore_ptt *p_ptt);
 
+enum ecore_mcp_drv_attr_cmd {
+	ECORE_MCP_DRV_ATTR_CMD_READ,
+	ECORE_MCP_DRV_ATTR_CMD_WRITE,
+	ECORE_MCP_DRV_ATTR_CMD_READ_CLEAR,
+	ECORE_MCP_DRV_ATTR_CMD_CLEAR,
+};
+
+struct ecore_mcp_drv_attr {
+	enum ecore_mcp_drv_attr_cmd attr_cmd;
+	u32 attr_num;
+
+	/* R/RC - will be set with the read value
+	 * W - should hold the required value to be written
+	 * C - DC
+	 */
+	u32 val;
+
+	/* W - mask/offset to be applied on the given value
+	 * R/RC/C - DC
+	 */
+	u32 mask;
+	u32 offset;
+};
+
+/**
+ * @brief Handle the drivers' attributes that are kept by the MFW.
+ *
+ * @param p_hwfn
+ * @param p_ptt
+ * @param p_drv_attr
+ */
+enum _ecore_status_t
+ecore_mcp_drv_attribute(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
+			struct ecore_mcp_drv_attr *p_drv_attr);
+
 /**
  * @brief Read ufp config from the shared memory.
  *

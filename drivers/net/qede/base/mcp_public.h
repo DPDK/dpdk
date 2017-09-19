@@ -475,6 +475,18 @@ struct dcb_dscp_map {
 	u32 dscp_pri_map[8];
 };
 
+/**************************************
+ *     Attributes commands
+ **************************************/
+
+enum _attribute_commands_e {
+	ATTRIBUTE_CMD_READ = 0,
+	ATTRIBUTE_CMD_WRITE,
+	ATTRIBUTE_CMD_READ_CLEAR,
+	ATTRIBUTE_CMD_CLEAR,
+	ATTRIBUTE_NUM_OF_COMMANDS
+};
+
 /**************************************/
 /*                                    */
 /*     P U B L I C      G L O B A L   */
@@ -1149,6 +1161,12 @@ struct mdump_retain_data_stc {
 	u32 status;
 };
 
+struct attribute_cmd_write_stc {
+	u32 val;
+	u32 mask;
+	u32 offset;
+};
+
 union drv_union_data {
 	struct mcp_mac wol_mac; /* UNLOAD_DONE */
 
@@ -1180,6 +1198,7 @@ union drv_union_data {
 	struct load_req_stc load_req;
 	struct load_rsp_stc load_rsp;
 	struct mdump_retain_data_stc mdump_retain;
+	struct attribute_cmd_write_stc attribute_cmd_write;
 	/* ... */
 };
 
@@ -1414,6 +1433,8 @@ struct public_drv_mb {
 #define DRV_MSG_CODE_FEATURE_SUPPORT            0x00300000
 /* return FW_MB_PARAM_FEATURE_SUPPORT_*  */
 #define DRV_MSG_CODE_GET_MFW_FEATURE_SUPPORT	0x00310000
+/* Param: [0:23] Attribute key, [24:31] Attribute sub command */
+#define DRV_MSG_CODE_ATTRIBUTE			0x00350000
 
 #define DRV_MSG_SEQ_NUMBER_MASK                 0x0000ffff
 
@@ -1573,6 +1594,11 @@ struct public_drv_mb {
 #define DRV_MB_PARAM_FEATURE_SUPPORT_PORT_EEE       0x00000002
 #define DRV_MB_PARAM_FEATURE_SUPPORT_FUNC_MASK      0xFFFF0000
 #define DRV_MB_PARAM_FEATURE_SUPPORT_FUNC_OFFSET     16
+	/* Driver attributes params */
+#define DRV_MB_PARAM_ATTRIBUTE_KEY_OFFSET		 0
+#define DRV_MB_PARAM_ATTRIBUTE_KEY_MASK		0x00FFFFFF
+#define DRV_MB_PARAM_ATTRIBUTE_CMD_OFFSET		24
+#define DRV_MB_PARAM_ATTRIBUTE_CMD_MASK		0xFF000000
 
 	u32 fw_mb_header;
 #define FW_MSG_CODE_MASK                        0xffff0000
@@ -1686,6 +1712,8 @@ struct public_drv_mb {
 
 #define FW_MSG_SEQ_NUMBER_MASK                  0x0000ffff
 
+#define FW_MSG_CODE_ATTRIBUTE_INVALID_KEY	0x00020000
+#define FW_MSG_CODE_ATTRIBUTE_INVALID_CMD	0x00030000
 
 	u32 fw_mb_param;
 /* Resource Allocation params - MFW  version support */
