@@ -2121,6 +2121,8 @@ static void ecore_iov_vf_mbx_stop_vport(struct ecore_hwfn *p_hwfn,
 			  "VF [%02x] - considered malicious;"
 			  " Unable to stop RX/TX queuess\n",
 			  vf->abs_vf_id);
+		status = PFVF_STATUS_MALICIOUS;
+		goto out;
 	}
 
 	rc = ecore_sp_vport_stop(p_hwfn, vf->opaque_fid, vf->vport_id);
@@ -2134,6 +2136,7 @@ static void ecore_iov_vf_mbx_stop_vport(struct ecore_hwfn *p_hwfn,
 	vf->configured_features = 0;
 	OSAL_MEMSET(&vf->shadow_config, 0, sizeof(vf->shadow_config));
 
+out:
 	ecore_iov_prepare_resp(p_hwfn, p_ptt, vf, CHANNEL_TLV_VPORT_TEARDOWN,
 			       sizeof(struct pfvf_def_resp_tlv), status);
 }
