@@ -171,6 +171,9 @@ test_cpuflags(void)
 	printf("Check for AVX2:\t\t");
 	CHECK_FOR_FLAG(RTE_CPUFLAG_AVX2);
 
+	printf("Check for AVX512F:\t");
+	CHECK_FOR_FLAG(RTE_CPUFLAG_AVX512F);
+
 	printf("Check for TRBOBST:\t");
 	CHECK_FOR_FLAG(RTE_CPUFLAG_TRBOBST);
 
