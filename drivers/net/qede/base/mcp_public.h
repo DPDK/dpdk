@@ -59,7 +59,7 @@ struct eth_phy_cfg {
 /* 0 = autoneg, 1000/10000/20000/25000/40000/50000/100000 */
 	u32 speed;
 #define ETH_SPEED_AUTONEG   0
-#define ETH_SPEED_SMARTLINQ  0x8
+#define ETH_SPEED_SMARTLINQ  0x8 /* deprecated - use link_modes field instead */
 
 	u32 pause;      /* bitmask */
 #define ETH_PAUSE_NONE		0x0
@@ -84,32 +84,22 @@ struct eth_phy_cfg {
 /* Remote Serdes Loopback (RX to TX) */
 #define ETH_LOOPBACK_INT_PHY_FEA_AH_ONLY (9)
 
-	/* Used to configure the EEE Tx LPI timer, has several modes of
-	 * operation, according to bits 29:28
-	 * 2'b00: Timer will be configured by nvram, output will be the value
-	 *        from nvram.
-	 * 2'b01: Timer will be configured by nvram, output will be in
-	 *        16xmicroseconds.
-	 * 2'b10: bits 1:0 contain an nvram value which will be used instead
-	 *        of the one located in the nvram. Output will be that value.
-	 * 2'b11: bits 19:0 contain the idle timer in microseconds; output
-	 *        will be in 16xmicroseconds.
-	 * Bits 31:30 should be 2'b11 in order for EEE to be enabled.
-	 */
-	u32 eee_mode;
-#define EEE_MODE_TIMER_USEC_MASK	(0x000fffff)
-#define EEE_MODE_TIMER_USEC_OFFSET	(0)
-#define EEE_MODE_TIMER_USEC_BALANCED_TIME	(0xa00)
-#define EEE_MODE_TIMER_USEC_AGGRESSIVE_TIME	(0x100)
-#define EEE_MODE_TIMER_USEC_LATENCY_TIME	(0x6000)
-/* Set by the driver to request status timer will be in microseconds and and not
- * in EEE policy definition
+	u32 eee_cfg;
+/* EEE is enabled (configuration). Refer to eee_status->active for negotiated
+ * status
  */
-#define EEE_MODE_OUTPUT_TIME		(1 << 28)
-/* Set by the driver to override default nvm timer */
-#define EEE_MODE_OVERRIDE_NVRAM		(1 << 29)
-#define EEE_MODE_ENABLE_LPI		(1 << 30) /* Set when */
-#define EEE_MODE_ADV_LPI		(1 << 31) /* Set when EEE is enabled */
+#define EEE_CFG_EEE_ENABLED	(1 << 0)
+#define EEE_CFG_TX_LPI		(1 << 1)
+#define EEE_CFG_ADV_SPEED_1G	(1 << 2)
+#define EEE_CFG_ADV_SPEED_10G	(1 << 3)
+#define EEE_TX_TIMER_USEC_MASK	(0xfffffff0)
+#define EEE_TX_TIMER_USEC_SHIFT	4
+#define EEE_TX_TIMER_USEC_BALANCED_TIME		(0xa00)
+#define EEE_TX_TIMER_USEC_AGGRESSIVE_TIME	(0x100)
+#define EEE_TX_TIMER_USEC_LATENCY_TIME		(0x6000)
+
+	u32 link_modes; /* Additional link modes */
+#define LINK_MODE_SMARTLINQ_ENABLE		0x1
 };
 
 struct port_mf_cfg {
@@ -697,6 +687,7 @@ struct public_port {
 #define LFA_SPEED_MISMATCH				(1 << 3)
 #define LFA_FLOW_CTRL_MISMATCH				(1 << 4)
 #define LFA_ADV_SPEED_MISMATCH				(1 << 5)
+#define LFA_EEE_MISMATCH				(1 << 6)
 #define LINK_FLAP_AVOIDANCE_COUNT_OFFSET	8
 #define LINK_FLAP_AVOIDANCE_COUNT_MASK		0x0000ff00
 #define LINK_FLAP_COUNT_OFFSET			16
@@ -787,38 +778,35 @@ struct public_port {
 	u32 wol_pkt_details;
 	struct dcb_dscp_map dcb_dscp_map;
 
-	/* the status of EEE auto-negotiation
-	 * bits 19:0 the configured tx-lpi entry timer value. Depends on bit 31.
-	 * bits 23:20 the speeds advertised for EEE.
-	 * bits 27:24 the speeds the Link partner advertised for EEE.
-	 * The supported/adv. modes in bits 27:19 originate from the
-	 * SHMEM_EEE_XXX_ADV definitions (where XXX is replaced by speed).
-	 * bit 28 when 1'b1 EEE was requested.
-	 * bit 29 when 1'b1 tx lpi was requested.
-	 * bit 30 when 1'b1 EEE was negotiated. Tx lpi will be asserted if 30:29
-	 *        are 2'b11.
-	 * bit 31 - When 1'b0 bits 15:0 contain
-	 *          NVM_CFG1_PORT_EEE_POWER_SAVING_MODE_XXX define as value.
-	 *          When 1'b1 those bits contains a value times 16 microseconds.
-	 */
 	u32 eee_status;
-#define EEE_TIMER_MASK		0x000fffff
-#define EEE_ADV_STATUS_MASK	0x00f00000
-#define EEE_1G_ADV	(1 << 1)
-#define EEE_10G_ADV	(1 << 2)
-#define EEE_ADV_STATUS_SHIFT	20
-#define	EEE_LP_ADV_STATUS_MASK	0x0f000000
-#define EEE_LP_ADV_STATUS_SHIFT	24
-#define EEE_REQUESTED_BIT	0x10000000
-#define EEE_LPI_REQUESTED_BIT	0x20000000
-#define EEE_ACTIVE_BIT		0x40000000
-#define EEE_TIME_OUTPUT_BIT	0x80000000
+/* Set when EEE negotiation is complete. */
+#define EEE_ACTIVE_BIT		(1 << 0)
+
+/* Shows the Local Device EEE capabilities */
+#define EEE_LD_ADV_STATUS_MASK	0x000000f0
+#define EEE_LD_ADV_STATUS_SHIFT	4
+	#define EEE_1G_ADV	(1 << 1)
+	#define EEE_10G_ADV	(1 << 2)
+/* Same values as in EEE_LD_ADV, but for Link Parter */
+#define	EEE_LP_ADV_STATUS_MASK	0x00000f00
+#define EEE_LP_ADV_STATUS_SHIFT	8
 
 	u32 eee_remote;	/* Used for EEE in LLDP */
 #define EEE_REMOTE_TW_TX_MASK	0x0000ffff
 #define EEE_REMOTE_TW_TX_SHIFT	0
 #define EEE_REMOTE_TW_RX_MASK	0xffff0000
 #define EEE_REMOTE_TW_RX_SHIFT	16
+
+	u32 module_info;
+#define ETH_TRANSCEIVER_MONITORING_TYPE_MASK		0x000000FF
+#define ETH_TRANSCEIVER_MONITORING_TYPE_OFFSET		0
+#define ETH_TRANSCEIVER_ADDR_CHNG_REQUIRED		(1 << 2)
+#define ETH_TRANSCEIVER_RCV_PWR_MEASURE_TYPE		(1 << 3)
+#define ETH_TRANSCEIVER_EXTERNALLY_CALIBRATED		(1 << 4)
+#define ETH_TRANSCEIVER_INTERNALLY_CALIBRATED		(1 << 5)
+#define ETH_TRANSCEIVER_HAS_DIAGNOSTIC			(1 << 6)
+#define ETH_TRANSCEIVER_IDENT_MASK			0x0000ff00
+#define ETH_TRANSCEIVER_IDENT_OFFSET			8
 };
 
 /**************************************/
@@ -1376,6 +1364,11 @@ struct public_drv_mb {
 #define DRV_MB_PARAM_PORT_MASK			0x00600000
 #define DRV_MSG_CODE_EXT_PHY_FW_UPGRADE		0x002a0000
 
+/* Param: Set DRV_MB_PARAM_FEATURE_SUPPORT_*,
+ * return FW_MB_PARAM_FEATURE_SUPPORT_*
+ */
+#define DRV_MSG_CODE_FEATURE_SUPPORT            0x00300000
+
 #define DRV_MSG_SEQ_NUMBER_MASK                 0x0000ffff
 
 	u32 drv_mb_param;
@@ -1523,6 +1516,11 @@ struct public_drv_mb {
 #define DRV_MB_PARAM_BIST_TEST_IMAGE_INDEX_SHIFT      8
 #define DRV_MB_PARAM_BIST_TEST_IMAGE_INDEX_MASK       0x0000FF00
 
+/* driver supports SmartLinQ */
+#define DRV_MB_PARAM_FEATURE_SUPPORT_SMARTLINQ  0x00000001
+/* driver support EEE */
+#define DRV_MB_PARAM_FEATURE_SUPPORT_EEE        0x00000002
+
 	u32 fw_mb_header;
 #define FW_MSG_CODE_MASK                        0xffff0000
 #define FW_MSG_CODE_UNSUPPORTED			0x00000000
@@ -1638,6 +1636,10 @@ struct public_drv_mb {
 #define FW_MB_PARAM_RESOURCE_ALLOC_VERSION_MINOR_MASK	0x0000FFFF
 #define FW_MB_PARAM_RESOURCE_ALLOC_VERSION_MINOR_SHIFT		0
 
+/* MFW supports SmartLinQ */
+#define FW_MB_PARAM_FEATURE_SUPPORT_SMARTLINQ   0x00000001
+/* MFW supports EEE */
+#define FW_MB_PARAM_FEATURE_SUPPORT_EEE         0x00000002
 
 	u32 drv_pulse_mb;
 #define DRV_PULSE_SEQ_MASK                      0x00007fff
