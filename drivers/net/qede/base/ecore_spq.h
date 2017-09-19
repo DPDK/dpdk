@@ -124,6 +124,9 @@ struct ecore_spq {
 	u32				comp_count;
 
 	u32				cid;
+
+	u32				db_addr_offset;
+	struct core_db_data		db_data;
 };
 
 struct ecore_port;

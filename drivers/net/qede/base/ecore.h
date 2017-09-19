@@ -351,6 +351,12 @@ enum ecore_hw_err_type {
 };
 #endif
 
+enum ecore_db_rec_exec {
+	DB_REC_DRY_RUN,
+	DB_REC_REAL_DEAL,
+	DB_REC_ONCE,
+};
+
 struct ecore_hw_info {
 	/* PCI personality */
 	enum ecore_pci_personality personality;
@@ -479,6 +485,12 @@ struct ecore_qm_info {
 	u8			num_pf_rls;
 };
 
+struct ecore_db_recovery_info {
+	osal_list_t list;
+	osal_spinlock_t lock;
+	u32 db_recovery_counter;
+};
+
 struct storm_stats {
 	u32 address;
 	u32 len;
@@ -604,6 +616,9 @@ struct ecore_hwfn {
 
 	/* L2-related */
 	struct ecore_l2_info		*p_l2_info;
+
+	/* Mechanism for recovering from doorbell drop */
+	struct ecore_db_recovery_info	db_recovery_info;
 
 	/* @DPDK */
 	struct ecore_ptt		*p_arfs_ptt;
@@ -860,6 +875,13 @@ u16 ecore_get_cm_pq_idx_mcos(struct ecore_hwfn *p_hwfn, u8 tc);
 u16 ecore_get_cm_pq_idx_vf(struct ecore_hwfn *p_hwfn, u16 vf);
 u16 ecore_get_cm_pq_idx_rl(struct ecore_hwfn *p_hwfn, u8 qpid);
 
+const char *ecore_hw_get_resc_name(enum ecore_resources res_id);
+
+/* doorbell recovery mechanism */
+void ecore_db_recovery_dp(struct ecore_hwfn *p_hwfn);
+void ecore_db_recovery_execute(struct ecore_hwfn *p_hwfn,
+			       enum ecore_db_rec_exec);
+
 /* amount of resources used in qm init */
 u8 ecore_init_qm_get_num_tcs(struct ecore_hwfn *p_hwfn);
 u16 ecore_init_qm_get_num_vfs(struct ecore_hwfn *p_hwfn);
@@ -868,7 +890,5 @@ u16 ecore_init_qm_get_num_vports(struct ecore_hwfn *p_hwfn);
 u16 ecore_init_qm_get_num_pqs(struct ecore_hwfn *p_hwfn);
 
 #define ECORE_LEADING_HWFN(dev)	(&dev->hwfns[0])
-
-const char *ecore_hw_get_resc_name(enum ecore_resources res_id);
 
 #endif /* __ECORE_H */

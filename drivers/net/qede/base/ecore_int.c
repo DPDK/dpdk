@@ -414,30 +414,135 @@ ecore_general_attention_35(struct ecore_hwfn *p_hwfn)
 	return ECORE_SUCCESS;
 }
 
-#define ECORE_DORQ_ATTENTION_REASON_MASK (0xfffff)
-#define ECORE_DORQ_ATTENTION_OPAQUE_MASK (0xffff)
-#define ECORE_DORQ_ATTENTION_SIZE_MASK	 (0x7f0000)
-#define ECORE_DORQ_ATTENTION_SIZE_SHIFT	 (16)
+#define ECORE_DORQ_ATTENTION_REASON_MASK	(0xfffff)
+#define ECORE_DORQ_ATTENTION_OPAQUE_MASK	(0xffff)
+#define ECORE_DORQ_ATTENTION_OPAQUE_SHIFT	(0x0)
+#define ECORE_DORQ_ATTENTION_SIZE_MASK		(0x7f)
+#define ECORE_DORQ_ATTENTION_SIZE_SHIFT		(16)
+
+#define ECORE_DB_REC_COUNT			10
+#define ECORE_DB_REC_INTERVAL			100
+
+/* assumes sticky overflow indication was set for this PF */
+static enum _ecore_status_t ecore_db_rec_attn(struct ecore_hwfn *p_hwfn,
+					      struct ecore_ptt *p_ptt)
+{
+	u8 count = ECORE_DB_REC_COUNT;
+	u32 usage = 1;
+
+	/* wait for usage to zero or count to run out. This is necessary since
+	 * EDPM doorbell transactions can take multiple 64b cycles, and as such
+	 * can "split" over the pci. Possibly, the doorbell drop can happen with
+	 * half an EDPM in the queue and other half dropped. Another EDPM
+	 * doorbell to the same address (from doorbell recovery mechanism or
+	 * from the doorbelling entity) could have first half dropped and second
+	 * half interperted as continuation of the first. To prevent such
+	 * malformed doorbells from reaching the device, flush the queue before
+	 * releaseing the overflow sticky indication.
+	 */
+	while (count-- && usage) {
+		usage = ecore_rd(p_hwfn, p_ptt, DORQ_REG_PF_USAGE_CNT);
+		OSAL_UDELAY(ECORE_DB_REC_INTERVAL);
+	}
+
+	/* should have been depleted by now */
+	if (usage) {
+		DP_NOTICE(p_hwfn->p_dev, false,
+			  "DB recovery: doorbell usage failed to zero after %d usec. usage was %x\n",
+			  ECORE_DB_REC_INTERVAL * ECORE_DB_REC_COUNT, usage);
+		return ECORE_TIMEOUT;
+	}
+
+	/* flush any pedning (e)dpm as they may never arrive */
+	ecore_wr(p_hwfn, p_ptt, DORQ_REG_DPM_FORCE_ABORT, 0x1);
+
+	/* release overflow sticky indication (stop silently dropping
+	 * everything)
+	 */
+	ecore_wr(p_hwfn, p_ptt, DORQ_REG_PF_OVFL_STICKY, 0x0);
+
+	/* repeat all last doorbells (doorbell drop recovery) */
+	ecore_db_recovery_execute(p_hwfn, DB_REC_REAL_DEAL);
+
+	return ECORE_SUCCESS;
+}
 
 static enum _ecore_status_t ecore_dorq_attn_cb(struct ecore_hwfn *p_hwfn)
 {
-	u32 reason;
+	u32 int_sts, first_drop_reason, details, address, overflow,
+		all_drops_reason;
+	struct ecore_ptt *p_ptt = p_hwfn->p_dpc_ptt;
+	enum _ecore_status_t rc;
 
-	reason = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt, DORQ_REG_DB_DROP_REASON) &
-	    ECORE_DORQ_ATTENTION_REASON_MASK;
-	if (reason) {
-		u32 details = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
-				       DORQ_REG_DB_DROP_DETAILS);
+	int_sts = ecore_rd(p_hwfn, p_ptt, DORQ_REG_INT_STS);
+	DP_NOTICE(p_hwfn->p_dev, false, "DORQ attention. int_sts was %x\n",
+		  int_sts);
 
-		DP_INFO(p_hwfn->p_dev,
-			"DORQ db_drop: address 0x%08x Opaque FID 0x%04x"
-			" Size [bytes] 0x%08x Reason: 0x%08x\n",
-			ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
-				 DORQ_REG_DB_DROP_DETAILS_ADDRESS),
-			(u16)(details & ECORE_DORQ_ATTENTION_OPAQUE_MASK),
-			((details & ECORE_DORQ_ATTENTION_SIZE_MASK) >>
-			 ECORE_DORQ_ATTENTION_SIZE_SHIFT) * 4, reason);
+	/* int_sts may be zero since all PFs were interrupted for doorbell
+	 * overflow but another one already handled it. Can abort here. If
+	 * This PF also requires overflow recovery we will be interrupted again
+	 */
+	if (!int_sts)
+		return ECORE_SUCCESS;
+
+	/* check if db_drop or overflow happened */
+	if (int_sts & (DORQ_REG_INT_STS_DB_DROP |
+		       DORQ_REG_INT_STS_DORQ_FIFO_OVFL_ERR)) {
+		/* obtain data about db drop/overflow */
+		first_drop_reason = ecore_rd(p_hwfn, p_ptt,
+				  DORQ_REG_DB_DROP_REASON) &
+				  ECORE_DORQ_ATTENTION_REASON_MASK;
+		details = ecore_rd(p_hwfn, p_ptt,
+				   DORQ_REG_DB_DROP_DETAILS);
+		address = ecore_rd(p_hwfn, p_ptt,
+				   DORQ_REG_DB_DROP_DETAILS_ADDRESS);
+		overflow = ecore_rd(p_hwfn, p_ptt,
+				    DORQ_REG_PF_OVFL_STICKY);
+		all_drops_reason = ecore_rd(p_hwfn, p_ptt,
+					    DORQ_REG_DB_DROP_DETAILS_REASON);
+
+		/* log info */
+		DP_NOTICE(p_hwfn->p_dev, false,
+			  "Doorbell drop occurred\n"
+			  "Address\t\t0x%08x\t(second BAR address)\n"
+			  "FID\t\t0x%04x\t\t(Opaque FID)\n"
+			  "Size\t\t0x%04x\t\t(in bytes)\n"
+			  "1st drop reason\t0x%08x\t(details on first drop since last handling)\n"
+			  "Sticky reasons\t0x%08x\t(all drop reasons since last handling)\n"
+			  "Overflow\t0x%x\t\t(a per PF indication)\n",
+			  address,
+			  GET_FIELD(details, ECORE_DORQ_ATTENTION_OPAQUE),
+			  GET_FIELD(details, ECORE_DORQ_ATTENTION_SIZE) * 4,
+			  first_drop_reason, all_drops_reason, overflow);
+
+		/* if this PF caused overflow, initiate recovery */
+		if (overflow) {
+			rc = ecore_db_rec_attn(p_hwfn, p_ptt);
+			if (rc != ECORE_SUCCESS)
+				return rc;
+		}
+
+		/* clear the doorbell drop details and prepare for next drop */
+		ecore_wr(p_hwfn, p_ptt, DORQ_REG_DB_DROP_DETAILS_REL, 0);
+
+		/* mark interrupt as handeld (note: even if drop was due to a
+		 * different reason than overflow we mark as handled)
+		 */
+		ecore_wr(p_hwfn, p_ptt, DORQ_REG_INT_STS_WR,
+			 DORQ_REG_INT_STS_DB_DROP |
+			 DORQ_REG_INT_STS_DORQ_FIFO_OVFL_ERR);
+
+		/* if there are no indications otherthan drop indications,
+		 * success
+		 */
+		if ((int_sts & ~(DORQ_REG_INT_STS_DB_DROP |
+				 DORQ_REG_INT_STS_DORQ_FIFO_OVFL_ERR |
+				 DORQ_REG_INT_STS_DORQ_FIFO_AFULL)) == 0)
+			return ECORE_SUCCESS;
 	}
+
+	/* some other indication was present - non recoverable */
+	DP_INFO(p_hwfn, "DORQ fatal attention\n");
 
 	return ECORE_INVAL;
 }

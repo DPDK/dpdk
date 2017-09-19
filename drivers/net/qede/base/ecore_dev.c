@@ -42,6 +42,318 @@
 static osal_spinlock_t qm_lock;
 static bool qm_lock_init;
 
+/******************** Doorbell Recovery *******************/
+/* The doorbell recovery mechanism consists of a list of entries which represent
+ * doorbelling entities (l2 queues, roce sq/rq/cqs, the slowpath spq, etc). Each
+ * entity needs to register with the mechanism and provide the parameters
+ * describing it's doorbell, including a location where last used doorbell data
+ * can be found. The doorbell execute function will traverse the list and
+ * doorbell all of the registered entries.
+ */
+struct ecore_db_recovery_entry {
+	osal_list_entry_t	list_entry;
+	void OSAL_IOMEM		*db_addr;
+	void			*db_data;
+	enum ecore_db_rec_width	db_width;
+	enum ecore_db_rec_space	db_space;
+	u8			hwfn_idx;
+};
+
+/* display a single doorbell recovery entry */
+void ecore_db_recovery_dp_entry(struct ecore_hwfn *p_hwfn,
+				struct ecore_db_recovery_entry *db_entry,
+				const char *action)
+{
+	DP_VERBOSE(p_hwfn, ECORE_MSG_SPQ, "(%s: db_entry %p, addr %p, data %p, width %s, %s space, hwfn %d)\n",
+		   action, db_entry, db_entry->db_addr, db_entry->db_data,
+		   db_entry->db_width == DB_REC_WIDTH_32B ? "32b" : "64b",
+		   db_entry->db_space == DB_REC_USER ? "user" : "kernel",
+		   db_entry->hwfn_idx);
+}
+
+/* doorbell address sanity (address within doorbell bar range) */
+bool ecore_db_rec_sanity(struct ecore_dev *p_dev, void OSAL_IOMEM *db_addr,
+			 void *db_data)
+{
+	/* make sure doorbell address  is within the doorbell bar */
+	if (db_addr < p_dev->doorbells || (u8 *)db_addr >
+			(u8 *)p_dev->doorbells + p_dev->db_size) {
+		OSAL_WARN(true,
+			  "Illegal doorbell address: %p. Legal range for doorbell addresses is [%p..%p]\n",
+			  db_addr, p_dev->doorbells,
+			  (u8 *)p_dev->doorbells + p_dev->db_size);
+		return false;
+	}
+
+	/* make sure doorbell data pointer is not null */
+	if (!db_data) {
+		OSAL_WARN(true, "Illegal doorbell data pointer: %p", db_data);
+		return false;
+	}
+
+	return true;
+}
+
+/* find hwfn according to the doorbell address */
+struct ecore_hwfn *ecore_db_rec_find_hwfn(struct ecore_dev *p_dev,
+					  void OSAL_IOMEM *db_addr)
+{
+	struct ecore_hwfn *p_hwfn;
+
+	/* In CMT doorbell bar is split down the middle between engine 0 and
+	 * enigne 1
+	 */
+	if (p_dev->num_hwfns > 1)
+		p_hwfn = db_addr < p_dev->hwfns[1].doorbells ?
+			&p_dev->hwfns[0] : &p_dev->hwfns[1];
+	else
+		p_hwfn = ECORE_LEADING_HWFN(p_dev);
+
+	return p_hwfn;
+}
+
+/* add a new entry to the doorbell recovery mechanism */
+enum _ecore_status_t ecore_db_recovery_add(struct ecore_dev *p_dev,
+					   void OSAL_IOMEM *db_addr,
+					   void *db_data,
+					   enum ecore_db_rec_width db_width,
+					   enum ecore_db_rec_space db_space)
+{
+	struct ecore_db_recovery_entry *db_entry;
+	struct ecore_hwfn *p_hwfn;
+
+	/* shortcircuit VFs, for now */
+	if (IS_VF(p_dev)) {
+		DP_VERBOSE(p_dev, ECORE_MSG_IOV, "db recovery - skipping VF doorbell\n");
+		return ECORE_SUCCESS;
+	}
+
+	/* sanitize doorbell address */
+	if (!ecore_db_rec_sanity(p_dev, db_addr, db_data))
+		return ECORE_INVAL;
+
+	/* obtain hwfn from doorbell address */
+	p_hwfn = ecore_db_rec_find_hwfn(p_dev, db_addr);
+
+	/* create entry */
+	db_entry = OSAL_ZALLOC(p_hwfn->p_dev, GFP_KERNEL, sizeof(*db_entry));
+	if (!db_entry) {
+		DP_NOTICE(p_dev, false, "Failed to allocate a db recovery entry\n");
+		return ECORE_NOMEM;
+	}
+
+	/* populate entry */
+	db_entry->db_addr = db_addr;
+	db_entry->db_data = db_data;
+	db_entry->db_width = db_width;
+	db_entry->db_space = db_space;
+	db_entry->hwfn_idx = p_hwfn->my_id;
+
+	/* display */
+	ecore_db_recovery_dp_entry(p_hwfn, db_entry, "Adding");
+
+	/* protect the list */
+	OSAL_SPIN_LOCK(&p_hwfn->db_recovery_info.lock);
+	OSAL_LIST_PUSH_TAIL(&db_entry->list_entry,
+			    &p_hwfn->db_recovery_info.list);
+	OSAL_SPIN_UNLOCK(&p_hwfn->db_recovery_info.lock);
+
+	return ECORE_SUCCESS;
+}
+
+/* remove an entry from the doorbell recovery mechanism */
+enum _ecore_status_t ecore_db_recovery_del(struct ecore_dev *p_dev,
+					   void OSAL_IOMEM *db_addr,
+					   void *db_data)
+{
+	struct ecore_db_recovery_entry *db_entry = OSAL_NULL;
+	enum _ecore_status_t rc = ECORE_INVAL;
+	struct ecore_hwfn *p_hwfn;
+
+	/* shortcircuit VFs, for now */
+	if (IS_VF(p_dev)) {
+		DP_VERBOSE(p_dev, ECORE_MSG_IOV, "db recovery - skipping VF doorbell\n");
+		return ECORE_SUCCESS;
+	}
+
+	/* sanitize doorbell address */
+	if (!ecore_db_rec_sanity(p_dev, db_addr, db_data))
+		return ECORE_INVAL;
+
+	/* obtain hwfn from doorbell address */
+	p_hwfn = ecore_db_rec_find_hwfn(p_dev, db_addr);
+
+	/* protect the list */
+	OSAL_SPIN_LOCK(&p_hwfn->db_recovery_info.lock);
+	OSAL_LIST_FOR_EACH_ENTRY(db_entry,
+				 &p_hwfn->db_recovery_info.list,
+				 list_entry,
+				 struct ecore_db_recovery_entry) {
+		/* search according to db_data addr since db_addr is not unique
+		 * (roce)
+		 */
+		if (db_entry->db_data == db_data) {
+			ecore_db_recovery_dp_entry(p_hwfn, db_entry,
+						   "Deleting");
+			OSAL_LIST_REMOVE_ENTRY(&db_entry->list_entry,
+					       &p_hwfn->db_recovery_info.list);
+			rc = ECORE_SUCCESS;
+			break;
+		}
+	}
+
+	OSAL_SPIN_UNLOCK(&p_hwfn->db_recovery_info.lock);
+
+	if (rc == ECORE_INVAL)
+		/*OSAL_WARN(true,*/
+		DP_NOTICE(p_hwfn, false,
+			  "Failed to find element in list. Key (db_data addr) was %p. db_addr was %p\n",
+			  db_data, db_addr);
+	else
+		OSAL_FREE(p_dev, db_entry);
+
+	return rc;
+}
+
+/* initialize the doorbell recovery mechanism */
+enum _ecore_status_t ecore_db_recovery_setup(struct ecore_hwfn *p_hwfn)
+{
+	DP_VERBOSE(p_hwfn, ECORE_MSG_SPQ, "Setting up db recovery\n");
+
+	/* make sure db_size was set in p_dev */
+	if (!p_hwfn->p_dev->db_size) {
+		DP_ERR(p_hwfn->p_dev, "db_size not set\n");
+		return ECORE_INVAL;
+	}
+
+	OSAL_LIST_INIT(&p_hwfn->db_recovery_info.list);
+#ifdef CONFIG_ECORE_LOCK_ALLOC
+	OSAL_SPIN_LOCK_ALLOC(p_hwfn, &p_hwfn->db_recovery_info.lock);
+#endif
+	OSAL_SPIN_LOCK_INIT(&p_hwfn->db_recovery_info.lock);
+	p_hwfn->db_recovery_info.db_recovery_counter = 0;
+
+	return ECORE_SUCCESS;
+}
+
+/* destroy the doorbell recovery mechanism */
+void ecore_db_recovery_teardown(struct ecore_hwfn *p_hwfn)
+{
+	struct ecore_db_recovery_entry *db_entry = OSAL_NULL;
+
+	DP_VERBOSE(p_hwfn, ECORE_MSG_SPQ, "Tearing down db recovery\n");
+	if (!OSAL_LIST_IS_EMPTY(&p_hwfn->db_recovery_info.list)) {
+		DP_VERBOSE(p_hwfn, false, "Doorbell Recovery teardown found the doorbell recovery list was not empty (Expected in disorderly driver unload (e.g. recovery) otherwise this probably means some flow forgot to db_recovery_del). Prepare to purge doorbell recovery list...\n");
+		while (!OSAL_LIST_IS_EMPTY(&p_hwfn->db_recovery_info.list)) {
+			db_entry = OSAL_LIST_FIRST_ENTRY(
+						&p_hwfn->db_recovery_info.list,
+						struct ecore_db_recovery_entry,
+						list_entry);
+			ecore_db_recovery_dp_entry(p_hwfn, db_entry, "Purging");
+			OSAL_LIST_REMOVE_ENTRY(&db_entry->list_entry,
+					       &p_hwfn->db_recovery_info.list);
+			OSAL_FREE(p_hwfn->p_dev, db_entry);
+		}
+	}
+#ifdef CONFIG_ECORE_LOCK_ALLOC
+	OSAL_SPIN_LOCK_DEALLOC(&p_hwfn->db_recovery_info.lock);
+#endif
+	p_hwfn->db_recovery_info.db_recovery_counter = 0;
+}
+
+/* print the content of the doorbell recovery mechanism */
+void ecore_db_recovery_dp(struct ecore_hwfn *p_hwfn)
+{
+	struct ecore_db_recovery_entry *db_entry = OSAL_NULL;
+
+	DP_NOTICE(p_hwfn, false,
+		  "Dispalying doorbell recovery database. Counter was %d\n",
+		  p_hwfn->db_recovery_info.db_recovery_counter);
+
+	/* protect the list */
+	OSAL_SPIN_LOCK(&p_hwfn->db_recovery_info.lock);
+	OSAL_LIST_FOR_EACH_ENTRY(db_entry,
+				 &p_hwfn->db_recovery_info.list,
+				 list_entry,
+				 struct ecore_db_recovery_entry) {
+		ecore_db_recovery_dp_entry(p_hwfn, db_entry, "Printing");
+	}
+
+	OSAL_SPIN_UNLOCK(&p_hwfn->db_recovery_info.lock);
+}
+
+/* ring the doorbell of a single doorbell recovery entry */
+void ecore_db_recovery_ring(struct ecore_hwfn *p_hwfn,
+			    struct ecore_db_recovery_entry *db_entry,
+			    enum ecore_db_rec_exec db_exec)
+{
+	/* Print according to width */
+	if (db_entry->db_width == DB_REC_WIDTH_32B)
+		DP_VERBOSE(p_hwfn, ECORE_MSG_SPQ, "%s doorbell address %p data %x\n",
+			   db_exec == DB_REC_DRY_RUN ? "would have rung" : "ringing",
+			   db_entry->db_addr, *(u32 *)db_entry->db_data);
+	else
+		DP_VERBOSE(p_hwfn, ECORE_MSG_SPQ, "%s doorbell address %p data %lx\n",
+			   db_exec == DB_REC_DRY_RUN ? "would have rung" : "ringing",
+			   db_entry->db_addr,
+			   *(unsigned long *)(db_entry->db_data));
+
+	/* Sanity */
+	if (!ecore_db_rec_sanity(p_hwfn->p_dev, db_entry->db_addr,
+				 db_entry->db_data))
+		return;
+
+	/* Flush the write combined buffer. Since there are multiple doorbelling
+	 * entities using the same address, if we don't flush, a transaction
+	 * could be lost.
+	 */
+	OSAL_WMB(p_hwfn->p_dev);
+
+	/* Ring the doorbell */
+	if (db_exec == DB_REC_REAL_DEAL || db_exec == DB_REC_ONCE) {
+		if (db_entry->db_width == DB_REC_WIDTH_32B)
+			DIRECT_REG_WR(p_hwfn, db_entry->db_addr,
+				      *(u32 *)(db_entry->db_data));
+		else
+			DIRECT_REG_WR64(p_hwfn, db_entry->db_addr,
+					*(u64 *)(db_entry->db_data));
+	}
+
+	/* Flush the write combined buffer. Next doorbell may come from a
+	 * different entity to the same address...
+	 */
+	OSAL_WMB(p_hwfn->p_dev);
+}
+
+/* traverse the doorbell recovery entry list and ring all the doorbells */
+void ecore_db_recovery_execute(struct ecore_hwfn *p_hwfn,
+			       enum ecore_db_rec_exec db_exec)
+{
+	struct ecore_db_recovery_entry *db_entry = OSAL_NULL;
+
+	if (db_exec != DB_REC_ONCE) {
+		DP_NOTICE(p_hwfn, false, "Executing doorbell recovery. Counter was %d\n",
+			  p_hwfn->db_recovery_info.db_recovery_counter);
+
+		/* track amount of times recovery was executed */
+		p_hwfn->db_recovery_info.db_recovery_counter++;
+	}
+
+	/* protect the list */
+	OSAL_SPIN_LOCK(&p_hwfn->db_recovery_info.lock);
+	OSAL_LIST_FOR_EACH_ENTRY(db_entry,
+				 &p_hwfn->db_recovery_info.list,
+				 list_entry,
+				 struct ecore_db_recovery_entry) {
+		ecore_db_recovery_ring(p_hwfn, db_entry, db_exec);
+		if (db_exec == DB_REC_ONCE)
+			break;
+	}
+
+	OSAL_SPIN_UNLOCK(&p_hwfn->db_recovery_info.lock);
+}
+/******************** Doorbell Recovery end ****************/
+
 /* Configurable */
 #define ECORE_MIN_DPIS		(4)	/* The minimal num of DPIs required to
 					 * load the driver. The number was
@@ -172,6 +484,9 @@ void ecore_resc_free(struct ecore_dev *p_dev)
 		ecore_dmae_info_free(p_hwfn);
 		ecore_dcbx_info_free(p_hwfn, p_hwfn->p_dcbx_info);
 		/* @@@TBD Flush work-queue ? */
+
+		/* destroy doorbell recovery mechanism */
+		ecore_db_recovery_teardown(p_hwfn);
 	}
 }
 
@@ -863,12 +1178,17 @@ enum _ecore_status_t ecore_resc_alloc(struct ecore_dev *p_dev)
 		struct ecore_hwfn *p_hwfn = &p_dev->hwfns[i];
 		u32 n_eqes, num_cons;
 
+		/* initialize the doorbell recovery mechanism */
+		rc = ecore_db_recovery_setup(p_hwfn);
+		if (rc)
+			goto alloc_err;
+
 		/* First allocate the context manager structure */
 		rc = ecore_cxt_mngr_alloc(p_hwfn);
 		if (rc)
 			goto alloc_err;
 
-		/* Set the HW cid/tid numbers (in the contest manager)
+		/* Set the HW cid/tid numbers (in the context manager)
 		 * Must be done prior to any further computations.
 		 */
 		rc = ecore_cxt_set_pf_params(p_hwfn);

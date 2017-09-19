@@ -148,6 +148,9 @@ void osal_dma_free_mem(struct ecore_dev *edev, dma_addr_t phys);
 			      ((u8 *)(uintptr_t)(_p_hwfn->doorbells) +	\
 			      (_db_addr)), (u32)_val)
 
+#define DIRECT_REG_WR64(hwfn, addr, value) nothing
+#define DIRECT_REG_RD64(hwfn, addr) 0
+
 /* Mutexes */
 
 typedef pthread_mutex_t osal_mutex_t;

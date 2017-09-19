@@ -231,9 +231,9 @@ static enum _ecore_status_t ecore_spq_hw_post(struct ecore_hwfn *p_hwfn,
 					      struct ecore_spq_entry *p_ent)
 {
 	struct ecore_chain *p_chain = &p_hwfn->p_spq->chain;
+	struct core_db_data *p_db_data = &p_spq->db_data;
 	u16 echo = ecore_chain_get_prod_idx(p_chain);
 	struct slow_path_element *elem;
-	struct core_db_data db;
 
 	p_ent->elem.hdr.echo = OSAL_CPU_TO_LE16(echo);
 	elem = ecore_chain_produce(p_chain);
@@ -242,31 +242,24 @@ static enum _ecore_status_t ecore_spq_hw_post(struct ecore_hwfn *p_hwfn,
 		return ECORE_INVAL;
 	}
 
-	*elem = p_ent->elem;	/* struct assignment */
+	*elem = p_ent->elem;	/* Struct assignment */
 
-	/* send a doorbell on the slow hwfn session */
-	OSAL_MEMSET(&db, 0, sizeof(db));
-	SET_FIELD(db.params, CORE_DB_DATA_DEST, DB_DEST_XCM);
-	SET_FIELD(db.params, CORE_DB_DATA_AGG_CMD, DB_AGG_CMD_SET);
-	SET_FIELD(db.params, CORE_DB_DATA_AGG_VAL_SEL,
-		  DQ_XCM_CORE_SPQ_PROD_CMD);
-	db.agg_flags = DQ_XCM_CORE_DQ_CF_CMD;
-	db.spq_prod = OSAL_CPU_TO_LE16(ecore_chain_get_prod_idx(p_chain));
+	p_db_data->spq_prod =
+		OSAL_CPU_TO_LE16(ecore_chain_get_prod_idx(p_chain));
 
-	/* make sure the SPQE is updated before the doorbell */
+	/* Make sure the SPQE is updated before the doorbell */
 	OSAL_WMB(p_hwfn->p_dev);
 
-	DOORBELL(p_hwfn, DB_ADDR(p_spq->cid, DQ_DEMS_LEGACY),
-		 *(u32 *)&db);
+	DOORBELL(p_hwfn, p_spq->db_addr_offset, *(u32 *)p_db_data);
 
-	/* make sure doorbell is rang */
+	/* Make sure doorbell is rang */
 	OSAL_WMB(p_hwfn->p_dev);
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_SPQ,
 		   "Doorbelled [0x%08x, CID 0x%08x] with Flags: %02x"
 		   " agg_params: %02x, prod: %04x\n",
-		   DB_ADDR(p_spq->cid, DQ_DEMS_LEGACY), p_spq->cid, db.params,
-		   db.agg_flags, ecore_chain_get_prod_idx(p_chain));
+		   p_spq->db_addr_offset, p_spq->cid, p_db_data->params,
+		   p_db_data->agg_flags, ecore_chain_get_prod_idx(p_chain));
 
 	return ECORE_SUCCESS;
 }
@@ -456,8 +449,11 @@ void ecore_spq_setup(struct ecore_hwfn *p_hwfn)
 {
 	struct ecore_spq *p_spq = p_hwfn->p_spq;
 	struct ecore_spq_entry *p_virt = OSAL_NULL;
+	struct core_db_data *p_db_data;
+	void OSAL_IOMEM *db_addr;
 	dma_addr_t p_phys = 0;
 	u32 i, capacity;
+	enum _ecore_status_t rc;
 
 	OSAL_LIST_INIT(&p_spq->pending);
 	OSAL_LIST_INIT(&p_spq->completion_pending);
@@ -495,6 +491,24 @@ void ecore_spq_setup(struct ecore_hwfn *p_hwfn)
 
 	/* reset the chain itself */
 	ecore_chain_reset(&p_spq->chain);
+
+	/* Initialize the address/data of the SPQ doorbell */
+	p_spq->db_addr_offset = DB_ADDR(p_spq->cid, DQ_DEMS_LEGACY);
+	p_db_data = &p_spq->db_data;
+	OSAL_MEM_ZERO(p_db_data, sizeof(*p_db_data));
+	SET_FIELD(p_db_data->params, CORE_DB_DATA_DEST, DB_DEST_XCM);
+	SET_FIELD(p_db_data->params, CORE_DB_DATA_AGG_CMD, DB_AGG_CMD_MAX);
+	SET_FIELD(p_db_data->params, CORE_DB_DATA_AGG_VAL_SEL,
+		  DQ_XCM_CORE_SPQ_PROD_CMD);
+	p_db_data->agg_flags = DQ_XCM_CORE_DQ_CF_CMD;
+
+	/* Register the SPQ doorbell with the doorbell recovery mechanism */
+	db_addr = (void *)((u8 *)p_hwfn->doorbells + p_spq->db_addr_offset);
+	rc = ecore_db_recovery_add(p_hwfn->p_dev, db_addr, &p_spq->db_data,
+				   DB_REC_WIDTH_32B, DB_REC_KERNEL);
+	if (rc != ECORE_SUCCESS)
+		DP_INFO(p_hwfn,
+			"Failed to register the SPQ doorbell with the doorbell recovery mechanism\n");
 }
 
 enum _ecore_status_t ecore_spq_alloc(struct ecore_hwfn *p_hwfn)
@@ -552,10 +566,15 @@ spq_allocate_fail:
 void ecore_spq_free(struct ecore_hwfn *p_hwfn)
 {
 	struct ecore_spq *p_spq = p_hwfn->p_spq;
+	void OSAL_IOMEM *db_addr;
 	u32 capacity;
 
 	if (!p_spq)
 		return;
+
+	/* Delete the SPQ doorbell from the doorbell recovery mechanism */
+	db_addr = (void *)((u8 *)p_hwfn->doorbells + p_spq->db_addr_offset);
+	ecore_db_recovery_del(p_hwfn->p_dev, db_addr, &p_spq->db_data);
 
 	if (p_spq->p_virt) {
 		capacity = ecore_chain_get_capacity(&p_spq->chain);
