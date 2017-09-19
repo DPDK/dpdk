@@ -1973,6 +1973,7 @@ static void _ecore_get_vport_stats(struct ecore_dev *p_dev,
 		struct ecore_hwfn *p_hwfn = &p_dev->hwfns[i];
 		struct ecore_ptt *p_ptt = IS_PF(p_dev) ?
 		    ecore_ptt_acquire(p_hwfn) : OSAL_NULL;
+		bool b_get_port_stats;
 
 		if (IS_PF(p_dev)) {
 			/* The main vport index is relative first */
@@ -1987,8 +1988,9 @@ static void _ecore_get_vport_stats(struct ecore_dev *p_dev,
 			continue;
 		}
 
+		b_get_port_stats = IS_PF(p_dev) && IS_LEAD_HWFN(p_hwfn);
 		__ecore_get_vport_stats(p_hwfn, p_ptt, stats, fw_vport,
-					IS_PF(p_dev) ? true : false);
+					b_get_port_stats);
 
 out:
 		if (IS_PF(p_dev) && p_ptt)

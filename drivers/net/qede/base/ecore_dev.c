@@ -624,7 +624,7 @@ static void ecore_init_qm_params(struct ecore_hwfn *p_hwfn)
 	qm_info->vport_wfq_en = 1;
 
 	/* TC config is different for AH 4 port */
-	four_port = p_hwfn->p_dev->num_ports_in_engines == MAX_NUM_PORTS_K2;
+	four_port = p_hwfn->p_dev->num_ports_in_engine == MAX_NUM_PORTS_K2;
 
 	/* in AH 4 port we have fewer TCs per port */
 	qm_info->max_phys_tcs_per_port = four_port ? NUM_PHYS_TCS_4PORT_K2 :
@@ -653,7 +653,7 @@ static void ecore_init_qm_vport_params(struct ecore_hwfn *p_hwfn)
 static void ecore_init_qm_port_params(struct ecore_hwfn *p_hwfn)
 {
 	/* Initialize qm port parameters */
-	u8 i, active_phys_tcs, num_ports = p_hwfn->p_dev->num_ports_in_engines;
+	u8 i, active_phys_tcs, num_ports = p_hwfn->p_dev->num_ports_in_engine;
 
 	/* indicate how ooo and high pri traffic is dealt with */
 	active_phys_tcs = num_ports == MAX_NUM_PORTS_K2 ?
@@ -1007,7 +1007,7 @@ static void ecore_dp_init_qm_params(struct ecore_hwfn *p_hwfn)
 		   qm_info->num_pf_rls, ecore_get_pq_flags(p_hwfn));
 
 	/* port table */
-	for (i = 0; i < p_hwfn->p_dev->num_ports_in_engines; i++) {
+	for (i = 0; i < p_hwfn->p_dev->num_ports_in_engine; i++) {
 		port = &qm_info->qm_port_params[i];
 		DP_VERBOSE(p_hwfn, ECORE_MSG_HW,
 			   "port idx %d, active %d, active_phys_tcs %d,"
@@ -1136,7 +1136,7 @@ static enum _ecore_status_t ecore_alloc_qm_data(struct ecore_hwfn *p_hwfn)
 
 	qm_info->qm_port_params = OSAL_ZALLOC(p_hwfn->p_dev, GFP_KERNEL,
 				      sizeof(struct init_qm_port_params) *
-				      p_hwfn->p_dev->num_ports_in_engines);
+				      p_hwfn->p_dev->num_ports_in_engine);
 	if (!qm_info->qm_port_params)
 		goto alloc_err;
 
@@ -1438,7 +1438,7 @@ static enum _ecore_status_t ecore_calc_hw_mode(struct ecore_hwfn *p_hwfn)
 	}
 
 	/* Ports per engine is based on the values in CNIG_REG_NW_PORT_MODE */
-	switch (p_hwfn->p_dev->num_ports_in_engines) {
+	switch (p_hwfn->p_dev->num_ports_in_engine) {
 	case 1:
 		hw_mode |= 1 << MODE_PORTS_PER_ENG_1;
 		break;
@@ -1451,7 +1451,7 @@ static enum _ecore_status_t ecore_calc_hw_mode(struct ecore_hwfn *p_hwfn)
 	default:
 		DP_NOTICE(p_hwfn, true,
 			  "num_ports_in_engine = %d not supported\n",
-			  p_hwfn->p_dev->num_ports_in_engines);
+			  p_hwfn->p_dev->num_ports_in_engine);
 		return ECORE_INVAL;
 	}
 
@@ -1525,10 +1525,10 @@ static enum _ecore_status_t ecore_hw_init_chip(struct ecore_hwfn *p_hwfn,
 		if (ECORE_IS_AH(p_dev)) {
 			/* 2 for 4-port, 1 for 2-port, 0 for 1-port */
 			ecore_wr(p_hwfn, p_ptt, MISC_REG_PORT_MODE,
-				 (p_dev->num_ports_in_engines >> 1));
+				 (p_dev->num_ports_in_engine >> 1));
 
 			ecore_wr(p_hwfn, p_ptt, MISC_REG_BLOCK_256B_EN,
-				 p_dev->num_ports_in_engines == 4 ? 0 : 3);
+				 p_dev->num_ports_in_engine == 4 ? 0 : 3);
 		}
 	}
 
@@ -1667,7 +1667,7 @@ static enum _ecore_status_t ecore_hw_init_common(struct ecore_hwfn *p_hwfn,
 	}
 
 	ecore_qm_common_rt_init(p_hwfn,
-				p_dev->num_ports_in_engines,
+				p_dev->num_ports_in_engine,
 				qm_info->max_phys_tcs_per_port,
 				qm_info->pf_rl_en, qm_info->pf_wfq_en,
 				qm_info->vport_rl_en, qm_info->vport_wfq_en,
@@ -3610,14 +3610,14 @@ static void ecore_get_num_funcs(struct ecore_hwfn *p_hwfn,
 static void ecore_hw_info_port_num_bb(struct ecore_hwfn *p_hwfn,
 				      struct ecore_ptt *p_ptt)
 {
+	struct ecore_dev *p_dev = p_hwfn->p_dev;
 	u32 port_mode;
 
 #ifndef ASIC_ONLY
 	/* Read the port mode */
-	if (CHIP_REV_IS_FPGA(p_hwfn->p_dev))
+	if (CHIP_REV_IS_FPGA(p_dev))
 		port_mode = 4;
-	else if (CHIP_REV_IS_EMUL(p_hwfn->p_dev) &&
-		 (p_hwfn->p_dev->num_hwfns > 1))
+	else if (CHIP_REV_IS_EMUL(p_dev) && p_dev->num_hwfns > 1)
 		/* In CMT on emulation, assume 1 port */
 		port_mode = 1;
 	else
@@ -3625,38 +3625,39 @@ static void ecore_hw_info_port_num_bb(struct ecore_hwfn *p_hwfn,
 	port_mode = ecore_rd(p_hwfn, p_ptt, CNIG_REG_NW_PORT_MODE_BB);
 
 	if (port_mode < 3) {
-		p_hwfn->p_dev->num_ports_in_engines = 1;
+		p_dev->num_ports_in_engine = 1;
 	} else if (port_mode <= 5) {
-		p_hwfn->p_dev->num_ports_in_engines = 2;
+		p_dev->num_ports_in_engine = 2;
 	} else {
 		DP_NOTICE(p_hwfn, true, "PORT MODE: %d not supported\n",
-			  p_hwfn->p_dev->num_ports_in_engines);
+			  p_dev->num_ports_in_engine);
 
-		/* Default num_ports_in_engines to something */
-		p_hwfn->p_dev->num_ports_in_engines = 1;
+		/* Default num_ports_in_engine to something */
+		p_dev->num_ports_in_engine = 1;
 	}
 }
 
 static void ecore_hw_info_port_num_ah_e5(struct ecore_hwfn *p_hwfn,
 					 struct ecore_ptt *p_ptt)
 {
+	struct ecore_dev *p_dev = p_hwfn->p_dev;
 	u32 port;
 	int i;
 
-	p_hwfn->p_dev->num_ports_in_engines = 0;
+	p_dev->num_ports_in_engine = 0;
 
 #ifndef ASIC_ONLY
-	if (CHIP_REV_IS_EMUL(p_hwfn->p_dev)) {
+	if (CHIP_REV_IS_EMUL(p_dev)) {
 		port = ecore_rd(p_hwfn, p_ptt, MISCS_REG_ECO_RESERVED);
 		switch ((port & 0xf000) >> 12) {
 		case 1:
-			p_hwfn->p_dev->num_ports_in_engines = 1;
+			p_dev->num_ports_in_engine = 1;
 			break;
 		case 3:
-			p_hwfn->p_dev->num_ports_in_engines = 2;
+			p_dev->num_ports_in_engine = 2;
 			break;
 		case 0xf:
-			p_hwfn->p_dev->num_ports_in_engines = 4;
+			p_dev->num_ports_in_engine = 4;
 			break;
 		default:
 			DP_NOTICE(p_hwfn, false,
@@ -3670,17 +3671,47 @@ static void ecore_hw_info_port_num_ah_e5(struct ecore_hwfn *p_hwfn,
 					CNIG_REG_NIG_PORT0_CONF_K2_E5 +
 					(i * 4));
 			if (port & 1)
-				p_hwfn->p_dev->num_ports_in_engines++;
+				p_dev->num_ports_in_engine++;
 		}
+
+	if (!p_dev->num_ports_in_engine) {
+		DP_NOTICE(p_hwfn, true, "All NIG ports are inactive\n");
+
+		/* Default num_ports_in_engine to something */
+		p_dev->num_ports_in_engine = 1;
+	}
 }
 
 static void ecore_hw_info_port_num(struct ecore_hwfn *p_hwfn,
 				   struct ecore_ptt *p_ptt)
 {
-	if (ECORE_IS_BB(p_hwfn->p_dev))
+	struct ecore_dev *p_dev = p_hwfn->p_dev;
+
+	/* Determine the number of ports per engine */
+	if (ECORE_IS_BB(p_dev))
 		ecore_hw_info_port_num_bb(p_hwfn, p_ptt);
 	else
 		ecore_hw_info_port_num_ah_e5(p_hwfn, p_ptt);
+
+	/* Get the total number of ports of the device */
+	if (p_dev->num_hwfns > 1) {
+		/* In CMT there is always only one port */
+		p_dev->num_ports = 1;
+#ifndef ASIC_ONLY
+	} else if (CHIP_REV_IS_EMUL(p_dev) || CHIP_REV_IS_TEDIBEAR(p_dev)) {
+		p_dev->num_ports = p_dev->num_ports_in_engine *
+				   ecore_device_num_engines(p_dev);
+#endif
+	} else {
+		u32 addr, global_offsize, global_addr;
+
+		addr = SECTION_OFFSIZE_ADDR(p_hwfn->mcp_info->public_base,
+					    PUBLIC_GLOBAL);
+		global_offsize = ecore_rd(p_hwfn, p_ptt, addr);
+		global_addr = SECTION_ADDR(global_offsize, 0);
+		addr = global_addr + OFFSETOF(struct public_global, max_ports);
+		p_dev->num_ports = (u8)ecore_rd(p_hwfn, p_ptt, addr);
+	}
 }
 
 static void ecore_mcp_get_eee_caps(struct ecore_hwfn *p_hwfn,
@@ -3724,14 +3755,8 @@ ecore_get_hw_info(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 		}
 	}
 
-	/* TODO In get_hw_info, amoungst others:
-	 * Get MCP FW revision and determine according to it the supported
-	 * featrues (e.g. DCB)
-	 * Get boot mode
-	 * ecore_get_pcie_width_speed, WOL capability.
-	 * Number of global CQ-s (for storage
-	 */
-	ecore_hw_info_port_num(p_hwfn, p_ptt);
+	if (IS_LEAD_HWFN(p_hwfn))
+		ecore_hw_info_port_num(p_hwfn, p_ptt);
 
 	ecore_mcp_get_capabilities(p_hwfn, p_ptt);
 
@@ -5501,11 +5526,7 @@ int ecore_device_num_engines(struct ecore_dev *p_dev)
 
 int ecore_device_num_ports(struct ecore_dev *p_dev)
 {
-	/* in CMT always only one port */
-	if (p_dev->num_hwfns > 1)
-		return 1;
-
-	return p_dev->num_ports_in_engines * ecore_device_num_engines(p_dev);
+	return p_dev->num_ports;
 }
 
 void ecore_set_fw_mac_addr(__le16 *fw_msb,

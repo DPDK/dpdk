@@ -25,11 +25,10 @@
 					    ((rel_pfid) | \
 					     ((p_hwfn)->abs_pf_id & 1) << 3) : \
 					     rel_pfid)
-#define MCP_PF_ID(p_hwfn) MCP_PF_ID_BY_REL(p_hwfn, (p_hwfn)->rel_pf_id)
+#define MCP_PF_ID(p_hwfn)	MCP_PF_ID_BY_REL(p_hwfn, (p_hwfn)->rel_pf_id)
 
 #define MFW_PORT(_p_hwfn)	((_p_hwfn)->abs_pf_id % \
-				 ((_p_hwfn)->p_dev->num_ports_in_engines * \
-				  ecore_device_num_engines((_p_hwfn)->p_dev)))
+				 ecore_device_num_ports((_p_hwfn)->p_dev))
 
 struct ecore_mcp_info {
 	/* List for mailbox commands which were sent and wait for a response */
@@ -112,7 +111,7 @@ enum _ecore_status_t ecore_mcp_cmd_init(struct ecore_hwfn *p_hwfn,
  *
  * @param p_hwfn
  * @param p_ptt
- * Can only be called after `num_ports_in_engines' is set
+ * Can only be called after `num_ports_in_engine' is set
  */
 void ecore_mcp_cmd_port_init(struct ecore_hwfn *p_hwfn,
 			     struct ecore_ptt *p_ptt);

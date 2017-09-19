@@ -721,7 +721,8 @@ struct ecore_dev {
 #define CHIP_BOND_ID_SHIFT		0
 
 	u8				num_engines;
-	u8				num_ports_in_engines;
+	u8				num_ports;
+	u8				num_ports_in_engine;
 	u8				num_funcs_in_port;
 
 	u8				path_id;
