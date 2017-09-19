@@ -450,12 +450,12 @@ static u32 ecore_init_cmd_phase(struct init_if_phase_op *p_cmd,
 				u32 phase, u32 phase_id)
 {
 	u32 data = OSAL_LE32_TO_CPU(p_cmd->phase_data);
+	u32 op_data = OSAL_LE32_TO_CPU(p_cmd->op_data);
 
 	if (!(GET_FIELD(data, INIT_IF_PHASE_OP_PHASE) == phase &&
 	      (GET_FIELD(data, INIT_IF_PHASE_OP_PHASE_ID) == ANY_PHASE_ID ||
 	       GET_FIELD(data, INIT_IF_PHASE_OP_PHASE_ID) == phase_id)))
-		return GET_FIELD(OSAL_LE32_TO_CPU(p_cmd->op_data),
-				 INIT_IF_PHASE_OP_CMD_OFFSET);
+		return GET_FIELD(op_data, INIT_IF_PHASE_OP_CMD_OFFSET);
 	else
 		return 0;
 }

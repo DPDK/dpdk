@@ -235,7 +235,7 @@ _ecore_eth_queue_to_cid(struct ecore_hwfn *p_hwfn,
 	}
 
 	/* Calculate the engine-absolute indices of the resources.
-	 * The would guarantee they're valid later on.
+	 * This would guarantee they're valid later on.
 	 * In some cases [SBs] we already have the right values.
 	 */
 	rc = ecore_fw_vport(p_hwfn, p_cid->rel.vport_id, &p_cid->abs.vport_id);
@@ -347,6 +347,7 @@ ecore_sp_eth_vport_start(struct ecore_hwfn *p_hwfn,
 	struct vport_start_ramrod_data *p_ramrod = OSAL_NULL;
 	struct ecore_spq_entry *p_ent = OSAL_NULL;
 	struct ecore_sp_init_data init_data;
+	struct eth_vport_tpa_param *p_tpa;
 	u16 rx_mode = 0, tx_err = 0;
 	u8 abs_vport_id = 0;
 	enum _ecore_status_t rc = ECORE_NOTIMPL;
@@ -371,8 +372,8 @@ ecore_sp_eth_vport_start(struct ecore_hwfn *p_hwfn,
 	p_ramrod->vport_id = abs_vport_id;
 
 	p_ramrod->mtu = OSAL_CPU_TO_LE16(p_params->mtu);
-	p_ramrod->inner_vlan_removal_en = p_params->remove_inner_vlan;
 	p_ramrod->handle_ptp_pkts = p_params->handle_ptp_pkts;
+	p_ramrod->inner_vlan_removal_en	= p_params->remove_inner_vlan;
 	p_ramrod->drop_ttl0_en = p_params->drop_ttl0;
 	p_ramrod->untagged = p_params->only_untagged;
 	p_ramrod->zero_placement_offset = p_params->zero_placement_offset;
@@ -407,22 +408,22 @@ ecore_sp_eth_vport_start(struct ecore_hwfn *p_hwfn,
 	p_ramrod->tx_err_behav.values = OSAL_CPU_TO_LE16(tx_err);
 
 	/* TPA related fields */
-	OSAL_MEMSET(&p_ramrod->tpa_param, 0,
-		    sizeof(struct eth_vport_tpa_param));
-	p_ramrod->tpa_param.max_buff_num = p_params->max_buffers_per_cqe;
+	p_tpa = &p_ramrod->tpa_param;
+	OSAL_MEMSET(p_tpa, 0, sizeof(struct eth_vport_tpa_param));
+	p_tpa->max_buff_num = p_params->max_buffers_per_cqe;
 
 	switch (p_params->tpa_mode) {
 	case ECORE_TPA_MODE_GRO:
-		p_ramrod->tpa_param.tpa_max_aggs_num = ETH_TPA_MAX_AGGS_NUM;
-		p_ramrod->tpa_param.tpa_max_size = (u16)-1;
-		p_ramrod->tpa_param.tpa_min_size_to_cont = p_params->mtu / 2;
-		p_ramrod->tpa_param.tpa_min_size_to_start = p_params->mtu / 2;
-		p_ramrod->tpa_param.tpa_ipv4_en_flg = 1;
-		p_ramrod->tpa_param.tpa_ipv6_en_flg = 1;
-		p_ramrod->tpa_param.tpa_ipv4_tunn_en_flg = 1;
-		p_ramrod->tpa_param.tpa_ipv6_tunn_en_flg = 1;
-		p_ramrod->tpa_param.tpa_pkt_split_flg = 1;
-		p_ramrod->tpa_param.tpa_gro_consistent_flg = 1;
+		p_tpa->tpa_max_aggs_num = ETH_TPA_MAX_AGGS_NUM;
+		p_tpa->tpa_max_size = (u16)-1;
+		p_tpa->tpa_min_size_to_cont = p_params->mtu / 2;
+		p_tpa->tpa_min_size_to_start = p_params->mtu / 2;
+		p_tpa->tpa_ipv4_en_flg = 1;
+		p_tpa->tpa_ipv6_en_flg = 1;
+		p_tpa->tpa_ipv4_tunn_en_flg = 1;
+		p_tpa->tpa_ipv6_tunn_en_flg = 1;
+		p_tpa->tpa_pkt_split_flg = 1;
+		p_tpa->tpa_gro_consistent_flg = 1;
 		break;
 	default:
 		break;
@@ -464,6 +465,7 @@ ecore_sp_vport_update_rss(struct ecore_hwfn *p_hwfn,
 			  struct ecore_rss_params *p_rss)
 {
 	struct eth_vport_rss_config *p_config;
+	u16 capabilities = 0;
 	int i, table_size;
 	enum _ecore_status_t rc = ECORE_SUCCESS;
 
@@ -490,26 +492,26 @@ ecore_sp_vport_update_rss(struct ecore_hwfn *p_hwfn,
 
 	p_config->capabilities = 0;
 
-	SET_FIELD(p_config->capabilities,
+	SET_FIELD(capabilities,
 		  ETH_VPORT_RSS_CONFIG_IPV4_CAPABILITY,
 		  !!(p_rss->rss_caps & ECORE_RSS_IPV4));
-	SET_FIELD(p_config->capabilities,
+	SET_FIELD(capabilities,
 		  ETH_VPORT_RSS_CONFIG_IPV6_CAPABILITY,
 		  !!(p_rss->rss_caps & ECORE_RSS_IPV6));
-	SET_FIELD(p_config->capabilities,
+	SET_FIELD(capabilities,
 		  ETH_VPORT_RSS_CONFIG_IPV4_TCP_CAPABILITY,
 		  !!(p_rss->rss_caps & ECORE_RSS_IPV4_TCP));
-	SET_FIELD(p_config->capabilities,
+	SET_FIELD(capabilities,
 		  ETH_VPORT_RSS_CONFIG_IPV6_TCP_CAPABILITY,
 		  !!(p_rss->rss_caps & ECORE_RSS_IPV6_TCP));
-	SET_FIELD(p_config->capabilities,
+	SET_FIELD(capabilities,
 		  ETH_VPORT_RSS_CONFIG_IPV4_UDP_CAPABILITY,
 		  !!(p_rss->rss_caps & ECORE_RSS_IPV4_UDP));
-	SET_FIELD(p_config->capabilities,
+	SET_FIELD(capabilities,
 		  ETH_VPORT_RSS_CONFIG_IPV6_UDP_CAPABILITY,
 		  !!(p_rss->rss_caps & ECORE_RSS_IPV6_UDP));
 	p_config->tbl_size = p_rss->rss_table_size_log;
-	p_config->capabilities = OSAL_CPU_TO_LE16(p_config->capabilities);
+	p_config->capabilities = OSAL_CPU_TO_LE16(capabilities);
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_IFUP,
 		   "update rss flag %d, rss_mode = %d, update_caps = %d, capabilities = %d, update_ind = %d, update_rss_key = %d\n",
@@ -641,6 +643,7 @@ ecore_sp_vport_update_sge_tpa(struct vport_update_ramrod_data *p_ramrod,
 			      struct ecore_sge_tpa_params *p_params)
 {
 	struct eth_vport_tpa_param *p_tpa;
+	u16 val;
 
 	if (!p_params) {
 		p_ramrod->common.update_tpa_param_flg = 0;
@@ -662,9 +665,12 @@ ecore_sp_vport_update_sge_tpa(struct vport_update_ramrod_data *p_ramrod,
 	p_tpa->tpa_hdr_data_split_flg = p_params->tpa_hdr_data_split_flg;
 	p_tpa->tpa_gro_consistent_flg = p_params->tpa_gro_consistent_flg;
 	p_tpa->tpa_max_aggs_num = p_params->tpa_max_aggs_num;
-	p_tpa->tpa_max_size = p_params->tpa_max_size;
-	p_tpa->tpa_min_size_to_start = p_params->tpa_min_size_to_start;
-	p_tpa->tpa_min_size_to_cont = p_params->tpa_min_size_to_cont;
+	val = p_params->tpa_max_size;
+	p_tpa->tpa_max_size = OSAL_CPU_TO_LE16(val);
+	val = p_params->tpa_min_size_to_start;
+	p_tpa->tpa_min_size_to_start = OSAL_CPU_TO_LE16(val);
+	val = p_params->tpa_min_size_to_cont;
+	p_tpa->tpa_min_size_to_cont = OSAL_CPU_TO_LE16(val);
 }
 
 static void

@@ -361,7 +361,7 @@ void ecore_db_recovery_execute(struct ecore_hwfn *p_hwfn,
 					 */
 
 /* Derived */
-#define ECORE_MIN_PWM_REGION	((ECORE_WID_SIZE) * (ECORE_MIN_DPIS))
+#define ECORE_MIN_PWM_REGION	(ECORE_WID_SIZE * ECORE_MIN_DPIS)
 
 enum BAR_ID {
 	BAR_ID_0,		/* used for GRC */

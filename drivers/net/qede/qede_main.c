@@ -423,7 +423,7 @@ qed_fill_eth_dev_info(struct ecore_dev *edev, struct qed_dev_eth_info *info)
 			info->num_queues +=
 			FEAT_NUM(&edev->hwfns[i], ECORE_PF_L2_QUE);
 
-		if (edev->p_iov_info)
+		if (IS_ECORE_SRIOV(edev))
 			max_vf_vlan_filters = edev->p_iov_info->total_vfs *
 					      ECORE_ETH_VF_NUM_VLAN_FILTERS;
 		info->num_vlan_filters = RESC_NUM(&edev->hwfns[0], ECORE_VLAN) -

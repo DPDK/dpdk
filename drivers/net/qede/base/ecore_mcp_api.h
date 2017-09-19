@@ -59,9 +59,15 @@ struct ecore_mcp_link_capabilities {
 struct ecore_mcp_link_state {
 	bool link_up;
 
-	u32 line_speed; /* In Mb/s */
 	u32 min_pf_rate; /* In Mb/s */
-	u32 speed; /* In Mb/s */
+
+	/* Actual link speed in Mb/s */
+	u32 line_speed;
+
+	/* PF max speed in MB/s, deduced from line_speed
+	 * according to PF max bandwidth configuration.
+	 */
+	u32 speed;
 	bool full_duplex;
 
 	bool an;
@@ -594,9 +600,9 @@ enum _ecore_status_t ecore_mcp_get_media_type(struct ecore_hwfn *p_hwfn,
  * @param p_hwfn      - hw function
  * @param p_ptt       - PTT required for register access
  * @param cmd         - command to be sent to the MCP
- * @param param       - optional param
- * @param o_mcp_resp  - the MCP response code (exclude sequence)
- * @param o_mcp_param - optional parameter provided by the MCP response
+ * @param param       - Optional param
+ * @param o_mcp_resp  - The MCP response code (exclude sequence)
+ * @param o_mcp_param - Optional parameter provided by the MCP response
  *
  * @return enum _ecore_status_t -
  *      ECORE_SUCCESS - operation was successful
@@ -849,7 +855,7 @@ enum _ecore_status_t ecore_mcp_nvm_resp(struct ecore_dev *p_dev, u8 *p_buf);
  *  @param p_dev
  *  @param addr - nvm offset
  *  @param cmd - nvm command
- *  @param p_buf - nvm write buffer
+ *  @param p_buf - nvm read buffer
  *  @param len - buffer len
  *
  * @return enum _ecore_status_t - ECORE_SUCCESS - operation was successful.
@@ -862,7 +868,7 @@ enum _ecore_status_t ecore_mcp_phy_read(struct ecore_dev *p_dev, u32 cmd,
  *
  *  @param p_dev
  *  @param addr - nvm offset
- *  @param p_buf - nvm write buffer
+ *  @param p_buf - nvm read buffer
  *  @param len - buffer len
  *
  * @return enum _ecore_status_t - ECORE_SUCCESS - operation was successful.

@@ -955,11 +955,8 @@ enum _ecore_status_t ecore_dcbx_query_params(struct ecore_hwfn *p_hwfn,
 		return ECORE_INVAL;
 
 	p_ptt = ecore_ptt_acquire(p_hwfn);
-	if (!p_ptt) {
-		rc = ECORE_TIMEOUT;
-		DP_ERR(p_hwfn, "rc = %d\n", rc);
-		return rc;
-	}
+	if (!p_ptt)
+		return ECORE_TIMEOUT;
 
 	rc = ecore_dcbx_read_mib(p_hwfn, p_ptt, type);
 	if (rc != ECORE_SUCCESS)
@@ -1125,7 +1122,7 @@ ecore_dcbx_set_app_data(struct ecore_hwfn *p_hwfn,
 	DP_VERBOSE(p_hwfn, ECORE_MSG_DCB, "flags = 0x%x\n", p_app->flags);
 }
 
-static enum _ecore_status_t
+static void
 ecore_dcbx_set_local_params(struct ecore_hwfn *p_hwfn,
 			    struct dcbx_local_params *local_admin,
 			    struct ecore_dcbx_set *params)
@@ -1155,8 +1152,6 @@ ecore_dcbx_set_local_params(struct ecore_hwfn *p_hwfn,
 	if (params->override_flags & ECORE_DCBX_OVERRIDE_APP_CFG)
 		ecore_dcbx_set_app_data(p_hwfn, &local_admin->features.app,
 					&params->config.params, ieee);
-
-	return ECORE_SUCCESS;
 }
 
 static enum _ecore_status_t
@@ -1255,10 +1250,8 @@ enum _ecore_status_t ecore_dcbx_get_config_params(struct ecore_hwfn *p_hwfn,
 
 	dcbx_info = OSAL_ALLOC(p_hwfn->p_dev, GFP_KERNEL,
 			       sizeof(*dcbx_info));
-	if (!dcbx_info) {
-		DP_ERR(p_hwfn, "Failed to allocate struct ecore_dcbx_info\n");
+	if (!dcbx_info)
 		return ECORE_NOMEM;
-	}
 
 	OSAL_MEMSET(dcbx_info, 0, sizeof(*dcbx_info));
 	rc = ecore_dcbx_query_params(p_hwfn, dcbx_info,

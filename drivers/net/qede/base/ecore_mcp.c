@@ -1441,7 +1441,7 @@ enum _ecore_status_t ecore_mcp_set_link(struct ecore_hwfn *p_hwfn,
 	 */
 	ecore_mcp_handle_link_change(p_hwfn, p_ptt, !b_up);
 
-	return rc;
+	return ECORE_SUCCESS;
 }
 
 u32 ecore_get_process_kill_counter(struct ecore_hwfn *p_hwfn,

@@ -230,13 +230,6 @@ struct ecore_cxt_mngr {
 	/* TODO - VF arfs filters ? */
 };
 
-/* check if resources/configuration is required according to protocol type */
-static OSAL_INLINE bool src_proto(struct ecore_hwfn *p_hwfn,
-				  enum protocol_type type)
-{
-	return type == PROTOCOLID_TOE;
-}
-
 static OSAL_INLINE bool tm_cid_proto(enum protocol_type type)
 {
 	return type == PROTOCOLID_TOE;
@@ -270,16 +263,12 @@ struct ecore_src_iids {
 	u32 per_vf_cids;
 };
 
-static OSAL_INLINE void ecore_cxt_src_iids(struct ecore_hwfn *p_hwfn,
-					   struct ecore_cxt_mngr *p_mngr,
-					   struct ecore_src_iids *iids)
+static void ecore_cxt_src_iids(struct ecore_cxt_mngr *p_mngr,
+			       struct ecore_src_iids *iids)
 {
 	u32 i;
 
 	for (i = 0; i < MAX_CONN_TYPES; i++) {
-		if (!src_proto(p_hwfn, i))
-			continue;
-
 		iids->pf_cids += p_mngr->conn_cfg[i].cid_count;
 		iids->per_vf_cids += p_mngr->conn_cfg[i].cids_per_vf;
 	}
@@ -395,6 +384,20 @@ static struct ecore_tid_seg *ecore_cxt_tid_seg_info(struct ecore_hwfn *p_hwfn,
 			return &p_cfg->conn_cfg[i].tid_seg[seg];
 	}
 	return OSAL_NULL;
+}
+
+static void ecore_cxt_set_srq_count(struct ecore_hwfn *p_hwfn, u32 num_srqs)
+{
+	struct ecore_cxt_mngr *p_mgr = p_hwfn->p_cxt_mngr;
+
+	p_mgr->srq_count = num_srqs;
+}
+
+u32 ecore_cxt_get_srq_count(struct ecore_hwfn *p_hwfn)
+{
+	struct ecore_cxt_mngr *p_mgr = p_hwfn->p_cxt_mngr;
+
+	return p_mgr->srq_count;
 }
 
 /* set the iids (cid/tid) count per protocol */
@@ -706,7 +709,7 @@ enum _ecore_status_t ecore_cxt_cfg_ilt_compute(struct ecore_hwfn *p_hwfn)
 
 	/* SRC */
 	p_cli = &p_mngr->clients[ILT_CLI_SRC];
-	ecore_cxt_src_iids(p_hwfn, p_mngr, &src_iids);
+	ecore_cxt_src_iids(p_mngr, &src_iids);
 
 	/* Both the PF and VFs searcher connections are stored in the per PF
 	 * database. Thus sum the PF searcher cids and all the VFs searcher
@@ -820,7 +823,7 @@ static enum _ecore_status_t ecore_cxt_src_t2_alloc(struct ecore_hwfn *p_hwfn)
 	if (!p_src->active)
 		return ECORE_SUCCESS;
 
-	ecore_cxt_src_iids(p_hwfn, p_mngr, &src_iids);
+	ecore_cxt_src_iids(p_mngr, &src_iids);
 	conn_num = src_iids.pf_cids + src_iids.per_vf_cids * p_mngr->vf_count;
 	total_size = conn_num * sizeof(struct src_ent);
 
@@ -1447,7 +1450,7 @@ void ecore_qm_init_pf(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt)
 }
 
 /* CM PF */
-void ecore_cm_init_pf(struct ecore_hwfn *p_hwfn)
+static void ecore_cm_init_pf(struct ecore_hwfn *p_hwfn)
 {
 	STORE_RT_REG(p_hwfn, XCM_REG_CON_PHY_Q3_RT_OFFSET,
 		     ecore_get_cm_pq_idx(p_hwfn, PQ_FLAGS_LB));
@@ -1642,7 +1645,7 @@ static void ecore_src_init_pf(struct ecore_hwfn *p_hwfn)
 	struct ecore_src_iids src_iids;
 
 	OSAL_MEM_ZERO(&src_iids, sizeof(src_iids));
-	ecore_cxt_src_iids(p_hwfn, p_mngr, &src_iids);
+	ecore_cxt_src_iids(p_mngr, &src_iids);
 	conn_num = src_iids.pf_cids + src_iids.per_vf_cids * p_mngr->vf_count;
 	if (!conn_num)
 		return;
@@ -1769,8 +1772,10 @@ static void ecore_tm_init_pf(struct ecore_hwfn *p_hwfn)
 static void ecore_prs_init_pf(struct ecore_hwfn *p_hwfn)
 {
 	struct ecore_cxt_mngr *p_mngr = p_hwfn->p_cxt_mngr;
-	struct ecore_conn_type_cfg *p_fcoe = &p_mngr->conn_cfg[PROTOCOLID_FCOE];
+	struct ecore_conn_type_cfg *p_fcoe;
 	struct ecore_tid_seg *p_tid;
+
+	p_fcoe = &p_mngr->conn_cfg[PROTOCOLID_FCOE];
 
 	/* If FCoE is active set the MAX OX_ID (tid) in the Parser */
 	if (!p_fcoe->cid_count)
@@ -1970,20 +1975,6 @@ enum _ecore_status_t ecore_cxt_get_cid_info(struct ecore_hwfn *p_hwfn,
 		(p_info->iid / cxts_per_p), p_info->p_cxt, p_info->iid);
 
 	return ECORE_SUCCESS;
-}
-
-static void ecore_cxt_set_srq_count(struct ecore_hwfn *p_hwfn, u32 num_srqs)
-{
-	struct ecore_cxt_mngr *p_mgr = p_hwfn->p_cxt_mngr;
-
-	p_mgr->srq_count = num_srqs;
-}
-
-u32 ecore_cxt_get_srq_count(struct ecore_hwfn *p_hwfn)
-{
-	struct ecore_cxt_mngr *p_mgr = p_hwfn->p_cxt_mngr;
-
-	return p_mgr->srq_count;
 }
 
 enum _ecore_status_t ecore_cxt_set_pf_params(struct ecore_hwfn *p_hwfn)
