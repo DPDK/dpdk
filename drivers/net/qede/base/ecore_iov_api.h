@@ -345,21 +345,13 @@ ecore_iov_get_public_vf_info(struct ecore_hwfn *p_hwfn,
 			     u16 vfid, bool b_enabled_only);
 
 /**
- * @brief Set pending events bitmap for given @vfid
- *
- * @param p_hwfn
- * @param vfid
- */
-void ecore_iov_pf_add_pending_events(struct ecore_hwfn *p_hwfn, u8 vfid);
-
-/**
- * @brief Copy pending events bitmap in @events and clear
- *	  original copy of events
+ * @brief fills a bitmask of all VFs which have pending unhandled
+ *        messages.
  *
  * @param p_hwfn
  */
-void ecore_iov_pf_get_and_clear_pending_events(struct ecore_hwfn *p_hwfn,
-					       u64 *events);
+void ecore_iov_pf_get_pending_events(struct ecore_hwfn *p_hwfn,
+				     u64 *events);
 
 /**
  * @brief Copy VF's message to PF's buffer

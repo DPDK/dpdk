@@ -3755,8 +3755,7 @@ cleanup:
 		ack_vfs[vfid / 32] |= (1 << (vfid % 32));
 		p_hwfn->pf_iov_info->pending_flr[rel_vf_id / 64] &=
 		    ~(1ULL << (rel_vf_id % 64));
-		p_hwfn->pf_iov_info->pending_events[rel_vf_id / 64] &=
-		    ~(1ULL << (rel_vf_id % 64));
+		p_vf->vf_mbx.b_pending_msg = false;
 	}
 
 	return rc;
@@ -3886,11 +3885,21 @@ void ecore_iov_process_mbx_req(struct ecore_hwfn *p_hwfn,
 	mbx = &p_vf->vf_mbx;
 
 	/* ecore_iov_process_mbx_request */
-	DP_VERBOSE(p_hwfn,
-		   ECORE_MSG_IOV,
-		   "VF[%02x]: Processing mailbox message\n", p_vf->abs_vf_id);
+#ifndef CONFIG_ECORE_SW_CHANNEL
+	if (!mbx->b_pending_msg) {
+		DP_NOTICE(p_hwfn, true,
+			  "VF[%02x]: Trying to process mailbox message when none is pending\n",
+			  p_vf->abs_vf_id);
+		return;
+	}
+	mbx->b_pending_msg = false;
+#endif
 
 	mbx->first_tlv = mbx->req_virt->first_tlv;
+
+	DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
+		   "VF[%02x]: Processing mailbox message [type %04x]\n",
+		   p_vf->abs_vf_id, mbx->first_tlv.tl.type);
 
 	OSAL_IOV_VF_MSG_TYPE(p_hwfn,
 			     p_vf->relative_vf_id,
@@ -4016,26 +4025,20 @@ void ecore_iov_process_mbx_req(struct ecore_hwfn *p_hwfn,
 #endif
 }
 
-void ecore_iov_pf_add_pending_events(struct ecore_hwfn *p_hwfn, u8 vfid)
+void ecore_iov_pf_get_pending_events(struct ecore_hwfn *p_hwfn,
+				     u64 *events)
 {
-	u64 add_bit = 1ULL << (vfid % 64);
+	int i;
 
-	/* TODO - add locking mechanisms [no atomics in ecore, so we can't
-	* add the lock inside the ecore_pf_iov struct].
-	*/
-	p_hwfn->pf_iov_info->pending_events[vfid / 64] |= add_bit;
-}
+	OSAL_MEM_ZERO(events, sizeof(u64) * ECORE_VF_ARRAY_LENGTH);
 
-void ecore_iov_pf_get_and_clear_pending_events(struct ecore_hwfn *p_hwfn,
-					       u64 *events)
-{
-	u64 *p_pending_events = p_hwfn->pf_iov_info->pending_events;
+	ecore_for_each_vf(p_hwfn, i) {
+		struct ecore_vf_info *p_vf;
 
-	/* TODO - Take a lock */
-	OSAL_MEMCPY(events, p_pending_events,
-		    sizeof(u64) * ECORE_VF_ARRAY_LENGTH);
-	OSAL_MEMSET(p_pending_events, 0,
-		    sizeof(u64) * ECORE_VF_ARRAY_LENGTH);
+		p_vf = &p_hwfn->pf_iov_info->vfs_array[i];
+		if (p_vf->vf_mbx.b_pending_msg)
+			events[i / 64] |= 1ULL << (i % 64);
+	}
 }
 
 static struct ecore_vf_info *
@@ -4068,6 +4071,8 @@ static enum _ecore_status_t ecore_sriov_vfpf_msg(struct ecore_hwfn *p_hwfn,
 	 * could later on copy the message from it.
 	 */
 	p_vf->vf_mbx.pending_req = (((u64)vf_msg->hi) << 32) | vf_msg->lo;
+
+	p_vf->vf_mbx.b_pending_msg = true;
 
 	return OSAL_PF_VF_MSG(p_hwfn, p_vf->relative_vf_id);
 }

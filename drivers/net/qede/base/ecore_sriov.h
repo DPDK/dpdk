@@ -45,6 +45,9 @@ struct ecore_iov_vf_mbx {
 	/* Address in VF where a pending message is located */
 	dma_addr_t		pending_req;
 
+	/* Message from VF awaits handling */
+	bool			b_pending_msg;
+
 	u8 *offset;
 
 #ifdef CONFIG_ECORE_SW_CHANNEL
@@ -168,7 +171,6 @@ struct ecore_vf_info {
  */
 struct ecore_pf_iov {
 	struct ecore_vf_info	vfs_array[E4_MAX_NUM_VFS];
-	u64			pending_events[ECORE_VF_ARRAY_LENGTH];
 	u64			pending_flr[ECORE_VF_ARRAY_LENGTH];
 
 #ifndef REMOVE_DBG
