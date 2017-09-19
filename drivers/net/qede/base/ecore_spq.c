@@ -271,17 +271,43 @@ static enum _ecore_status_t
 ecore_async_event_completion(struct ecore_hwfn *p_hwfn,
 			     struct event_ring_entry *p_eqe)
 {
-	switch (p_eqe->protocol_id) {
-	case PROTOCOLID_COMMON:
-		return ecore_sriov_eqe_event(p_hwfn,
-					     p_eqe->opcode,
-					     p_eqe->echo, &p_eqe->data);
-	default:
+	ecore_spq_async_comp_cb cb;
+
+	if (!p_hwfn->p_spq || (p_eqe->protocol_id >= MAX_PROTOCOL_TYPE))
+		return ECORE_INVAL;
+
+	cb = p_hwfn->p_spq->async_comp_cb[p_eqe->protocol_id];
+	if (cb) {
+		return cb(p_hwfn, p_eqe->opcode, p_eqe->echo,
+			  &p_eqe->data, p_eqe->fw_return_code);
+	} else {
 		DP_NOTICE(p_hwfn,
 			  true, "Unknown Async completion for protocol: %d\n",
 			  p_eqe->protocol_id);
 		return ECORE_INVAL;
 	}
+}
+
+enum _ecore_status_t
+ecore_spq_register_async_cb(struct ecore_hwfn *p_hwfn,
+			    enum protocol_type protocol_id,
+			    ecore_spq_async_comp_cb cb)
+{
+	if (!p_hwfn->p_spq || (protocol_id >= MAX_PROTOCOL_TYPE))
+		return ECORE_INVAL;
+
+	p_hwfn->p_spq->async_comp_cb[protocol_id] = cb;
+	return ECORE_SUCCESS;
+}
+
+void
+ecore_spq_unregister_async_cb(struct ecore_hwfn *p_hwfn,
+			      enum protocol_type protocol_id)
+{
+	if (!p_hwfn->p_spq || (protocol_id >= MAX_PROTOCOL_TYPE))
+		return;
+
+	p_hwfn->p_spq->async_comp_cb[protocol_id] = OSAL_NULL;
 }
 
 /***************************************************************************

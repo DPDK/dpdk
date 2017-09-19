@@ -27,6 +27,12 @@
 #include "ecore_init_fw_funcs.h"
 #include "ecore_sp_commands.h"
 
+static enum _ecore_status_t ecore_sriov_eqe_event(struct ecore_hwfn *p_hwfn,
+						  u8 opcode,
+						  __le16 echo,
+						  union event_ring_data *data,
+						  u8 fw_return_code);
+
 const char *ecore_channel_tlvs_string[] = {
 	"CHANNEL_TLV_NONE",	/* ends tlv sequence */
 	"CHANNEL_TLV_ACQUIRE",
@@ -591,6 +597,9 @@ enum _ecore_status_t ecore_iov_alloc(struct ecore_hwfn *p_hwfn)
 
 	p_hwfn->pf_iov_info = p_sriov;
 
+	ecore_spq_register_async_cb(p_hwfn, PROTOCOLID_COMMON,
+				    ecore_sriov_eqe_event);
+
 	return ecore_iov_allocate_vfdb(p_hwfn);
 }
 
@@ -604,6 +613,8 @@ void ecore_iov_setup(struct ecore_hwfn *p_hwfn)
 
 void ecore_iov_free(struct ecore_hwfn *p_hwfn)
 {
+	ecore_spq_unregister_async_cb(p_hwfn, PROTOCOLID_COMMON);
+
 	if (IS_PF_SRIOV_ALLOC(p_hwfn)) {
 		ecore_iov_free_vfdb(p_hwfn);
 		OSAL_FREE(p_hwfn->p_dev, p_hwfn->pf_iov_info);
@@ -4195,10 +4206,11 @@ static void ecore_sriov_vfpf_malicious(struct ecore_hwfn *p_hwfn,
 	OSAL_PF_VF_MALICIOUS(p_hwfn, p_vf->relative_vf_id);
 }
 
-enum _ecore_status_t ecore_sriov_eqe_event(struct ecore_hwfn *p_hwfn,
-					   u8 opcode,
-					   __le16 echo,
-					   union event_ring_data *data)
+static enum _ecore_status_t ecore_sriov_eqe_event(struct ecore_hwfn *p_hwfn,
+						  u8 opcode,
+						  __le16 echo,
+						  union event_ring_data *data,
+						  u8 OSAL_UNUSED fw_return_code)
 {
 	switch (opcode) {
 	case COMMON_EVENT_VF_PF_CHANNEL:

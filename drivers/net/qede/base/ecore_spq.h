@@ -86,6 +86,22 @@ struct ecore_consq {
 	struct ecore_chain	chain;
 };
 
+typedef enum _ecore_status_t
+(*ecore_spq_async_comp_cb)(struct ecore_hwfn *p_hwfn,
+			   u8 opcode,
+			   u16 echo,
+			   union event_ring_data *data,
+			   u8 fw_return_code);
+
+enum _ecore_status_t
+ecore_spq_register_async_cb(struct ecore_hwfn *p_hwfn,
+			    enum protocol_type protocol_id,
+			    ecore_spq_async_comp_cb cb);
+
+void
+ecore_spq_unregister_async_cb(struct ecore_hwfn *p_hwfn,
+			      enum protocol_type protocol_id);
+
 struct ecore_spq {
 	osal_spinlock_t			lock;
 
@@ -127,6 +143,7 @@ struct ecore_spq {
 
 	u32				db_addr_offset;
 	struct core_db_data		db_data;
+	ecore_spq_async_comp_cb		async_comp_cb[MAX_PROTOCOL_TYPE];
 };
 
 struct ecore_port;

@@ -254,19 +254,6 @@ void ecore_iov_free(struct ecore_hwfn *p_hwfn);
 void ecore_iov_free_hw_info(struct ecore_dev *p_dev);
 
 /**
- * @brief ecore_sriov_eqe_event - handle async sriov event arrived on eqe.
- *
- * @param p_hwfn
- * @param opcode
- * @param echo
- * @param data
- */
-enum _ecore_status_t ecore_sriov_eqe_event(struct ecore_hwfn	 *p_hwfn,
-					   u8			 opcode,
-					   __le16		 echo,
-					   union event_ring_data *data);
-
-/**
  * @brief Mark structs of vfs that have been FLR-ed.
  *
  * @param p_hwfn
