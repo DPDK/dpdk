@@ -347,7 +347,7 @@ enum _ecore_status_t ecore_sp_pf_start(struct ecore_hwfn *p_hwfn,
 			  "Unsupported MF mode, init as DEFAULT\n");
 		p_ramrod->mf_mode = MF_NPAR;
 	}
-	p_ramrod->outer_tag = p_hwfn->hw_info.ovlan;
+	p_ramrod->outer_tag_config.outer_tag.tpid = p_hwfn->hw_info.ovlan;
 
 	/* Place EQ address in RAMROD */
 	DMA_REGPAIR_LE(p_ramrod->event_ring_pbl_addr,
@@ -387,7 +387,7 @@ enum _ecore_status_t ecore_sp_pf_start(struct ecore_hwfn *p_hwfn,
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_SPQ,
 		   "Setting event_ring_sb [id %04x index %02x], outer_tag [%d]\n",
-		   sb, sb_index, p_ramrod->outer_tag);
+		   sb, sb_index, p_ramrod->outer_tag_config.outer_tag.tpid);
 
 	rc = ecore_spq_post(p_hwfn, p_ent, OSAL_NULL);
 

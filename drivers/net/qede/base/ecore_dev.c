@@ -665,7 +665,7 @@ static void ecore_init_qm_port_params(struct ecore_hwfn *p_hwfn)
 
 		p_qm_port->active = 1;
 		p_qm_port->active_phys_tcs = active_phys_tcs;
-		p_qm_port->num_pbf_cmd_lines = PBF_MAX_CMD_LINES / num_ports;
+		p_qm_port->num_pbf_cmd_lines = PBF_MAX_CMD_LINES_E4 / num_ports;
 		p_qm_port->num_btb_blocks = BTB_MAX_BLOCKS / num_ports;
 	}
 }
@@ -2059,7 +2059,21 @@ static enum _ecore_status_t ecore_hw_init_port(struct ecore_hwfn *p_hwfn,
 					       struct ecore_ptt *p_ptt,
 					       int hw_mode)
 {
+	u32 ppf_to_eng_sel[NIG_REG_PPF_TO_ENGINE_SEL_RT_SIZE];
+	u32 val;
 	enum _ecore_status_t rc	= ECORE_SUCCESS;
+	u8 i;
+
+	/* In CMT for non-RoCE packets - use connection based classification */
+	val = ECORE_IS_CMT(p_hwfn->p_dev) ? 0x8 : 0x0;
+	for (i = 0; i < NIG_REG_PPF_TO_ENGINE_SEL_RT_SIZE; i++)
+		ppf_to_eng_sel[i] = val;
+	STORE_RT_REG_AGG(p_hwfn, NIG_REG_PPF_TO_ENGINE_SEL_RT_OFFSET,
+			 ppf_to_eng_sel);
+
+	/* In CMT the gate should be cleared by the 2nd hwfn */
+	if (!ECORE_IS_CMT(p_hwfn->p_dev) || !IS_LEAD_HWFN(p_hwfn))
+		STORE_RT_REG(p_hwfn, NIG_REG_BRB_GATE_DNTFWD_PORT_RT_OFFSET, 0);
 
 	rc = ecore_init_run(p_hwfn, p_ptt, PHASE_PORT, p_hwfn->port_id,
 			    hw_mode);
@@ -3959,7 +3973,6 @@ void ecore_prepare_hibernate(struct ecore_dev *p_dev)
 			   "Mark hw/fw uninitialized\n");
 
 		p_hwfn->hw_init_done = false;
-		p_hwfn->first_on_engine = false;
 
 		ecore_ptt_invalidate(p_hwfn);
 	}

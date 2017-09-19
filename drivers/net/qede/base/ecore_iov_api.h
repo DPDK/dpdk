@@ -714,7 +714,7 @@ ecore_iov_pf_configure_vf_queue_coalesce(struct ecore_hwfn *p_hwfn,
  * @param p_hwfn
  * @param rel_vf_id
  *
- * @return E4_MAX_NUM_VFS in case no further active VFs, otherwise index.
+ * @return MAX_NUM_VFS_E4 in case no further active VFs, otherwise index.
  */
 u16 ecore_iov_get_next_active_vf(struct ecore_hwfn *p_hwfn, u16 rel_vf_id);
 
@@ -724,7 +724,7 @@ void ecore_iov_bulletin_set_udp_ports(struct ecore_hwfn *p_hwfn, int vfid,
 
 #define ecore_for_each_vf(_p_hwfn, _i)					\
 	for (_i = ecore_iov_get_next_active_vf(_p_hwfn, 0);		\
-	     _i < E4_MAX_NUM_VFS;					\
+	     _i < MAX_NUM_VFS_E4;					\
 	     _i = ecore_iov_get_next_active_vf(_p_hwfn, _i + 1))
 
 #endif

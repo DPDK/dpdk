@@ -1726,7 +1726,7 @@ static void ecore_iov_vf_mbx_acquire(struct ecore_hwfn       *p_hwfn,
 	/* fill in pfdev info */
 	pfdev_info->chip_num = p_hwfn->p_dev->chip_num;
 	pfdev_info->db_size = 0;	/* @@@ TBD MichalK Vf Doorbells */
-	pfdev_info->indices_per_sb = PIS_PER_SB;
+	pfdev_info->indices_per_sb = PIS_PER_SB_E4;
 
 	pfdev_info->capabilities = PFVF_ACQUIRE_CAP_DEFAULT_UNTAGGED |
 				   PFVF_ACQUIRE_CAP_POST_FW_OVERRIDE;
@@ -3734,11 +3734,11 @@ static enum _ecore_status_t
 ecore_iov_vf_flr_poll_pbf(struct ecore_hwfn *p_hwfn,
 			  struct ecore_vf_info *p_vf, struct ecore_ptt *p_ptt)
 {
-	u32 cons[MAX_NUM_VOQS], distance[MAX_NUM_VOQS];
+	u32 cons[MAX_NUM_VOQS_E4], distance[MAX_NUM_VOQS_E4];
 	int i, cnt;
 
 	/* Read initial consumers & producers */
-	for (i = 0; i < MAX_NUM_VOQS; i++) {
+	for (i = 0; i < MAX_NUM_VOQS_E4; i++) {
 		u32 prod;
 
 		cons[i] = ecore_rd(p_hwfn, p_ptt,
@@ -3753,7 +3753,7 @@ ecore_iov_vf_flr_poll_pbf(struct ecore_hwfn *p_hwfn,
 	/* Wait for consumers to pass the producers */
 	i = 0;
 	for (cnt = 0; cnt < 50; cnt++) {
-		for (; i < MAX_NUM_VOQS; i++) {
+		for (; i < MAX_NUM_VOQS_E4; i++) {
 			u32 tmp;
 
 			tmp = ecore_rd(p_hwfn, p_ptt,
@@ -3763,7 +3763,7 @@ ecore_iov_vf_flr_poll_pbf(struct ecore_hwfn *p_hwfn,
 				break;
 		}
 
-		if (i == MAX_NUM_VOQS)
+		if (i == MAX_NUM_VOQS_E4)
 			break;
 
 		OSAL_MSLEEP(20);
@@ -4255,7 +4255,7 @@ u16 ecore_iov_get_next_active_vf(struct ecore_hwfn *p_hwfn, u16 rel_vf_id)
 			return i;
 
 out:
-	return E4_MAX_NUM_VFS;
+	return MAX_NUM_VFS_E4;
 }
 
 enum _ecore_status_t ecore_iov_copy_vf_msg(struct ecore_hwfn *p_hwfn,
@@ -4624,6 +4624,7 @@ enum _ecore_status_t ecore_iov_configure_tx_rate(struct ecore_hwfn *p_hwfn,
 						 struct ecore_ptt *p_ptt,
 						 int vfid, int val)
 {
+	struct ecore_mcp_link_state *p_link;
 	struct ecore_vf_info *vf;
 	u8 abs_vp_id = 0;
 	enum _ecore_status_t rc;
@@ -4637,7 +4638,10 @@ enum _ecore_status_t ecore_iov_configure_tx_rate(struct ecore_hwfn *p_hwfn,
 	if (rc != ECORE_SUCCESS)
 		return rc;
 
-	return ecore_init_vport_rl(p_hwfn, p_ptt, abs_vp_id, (u32)val);
+	p_link = &ECORE_LEADING_HWFN(p_hwfn->p_dev)->mcp_info->link_output;
+
+	return ecore_init_vport_rl(p_hwfn, p_ptt, abs_vp_id, (u32)val,
+				   p_link->speed);
 }
 
 enum _ecore_status_t ecore_iov_get_vf_stats(struct ecore_hwfn *p_hwfn,

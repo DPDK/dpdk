@@ -2073,11 +2073,12 @@ void ecore_arfs_mode_configure(struct ecore_hwfn *p_hwfn,
 			       struct ecore_arfs_config_params *p_cfg_params)
 {
 	if (p_cfg_params->arfs_enable) {
-		ecore_set_rfs_mode_enable(p_hwfn, p_ptt, p_hwfn->rel_pf_id,
-					  p_cfg_params->tcp,
-					  p_cfg_params->udp,
-					  p_cfg_params->ipv4,
-					  p_cfg_params->ipv6);
+		ecore_gft_config(p_hwfn, p_ptt, p_hwfn->rel_pf_id,
+				 p_cfg_params->tcp,
+				 p_cfg_params->udp,
+				 p_cfg_params->ipv4,
+				 p_cfg_params->ipv6,
+				 GFT_PROFILE_TYPE_4_TUPLE);
 		DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
 			   "tcp = %s, udp = %s, ipv4 = %s, ipv6 =%s\n",
 			   p_cfg_params->tcp ? "Enable" : "Disable",
@@ -2085,7 +2086,7 @@ void ecore_arfs_mode_configure(struct ecore_hwfn *p_hwfn,
 			   p_cfg_params->ipv4 ? "Enable" : "Disable",
 			   p_cfg_params->ipv6 ? "Enable" : "Disable");
 	} else {
-		ecore_set_rfs_mode_disable(p_hwfn, p_ptt, p_hwfn->rel_pf_id);
+		ecore_gft_disable(p_hwfn, p_ptt, p_hwfn->rel_pf_id);
 	}
 	DP_VERBOSE(p_hwfn, ECORE_MSG_SP, "Configured ARFS mode : %s\n",
 		   p_cfg_params->arfs_enable ? "Enable" : "Disable");
@@ -2136,9 +2137,17 @@ ecore_configure_rfs_ntuple_filter(struct ecore_hwfn *p_hwfn,
 
 	DMA_REGPAIR_LE(p_ramrod->pkt_hdr_addr, p_addr);
 	p_ramrod->pkt_hdr_length = OSAL_CPU_TO_LE16(length);
-	p_ramrod->rx_qid_or_action_icid = OSAL_CPU_TO_LE16(abs_rx_q_id);
+
+	p_ramrod->action_icid_valid = 0;
+	p_ramrod->action_icid = 0;
+
+	p_ramrod->rx_qid_valid = 1;
+	p_ramrod->rx_qid = OSAL_CPU_TO_LE16(abs_rx_q_id);
+
+	p_ramrod->flow_id_valid = 0;
+	p_ramrod->flow_id = 0;
+
 	p_ramrod->vport_id = abs_vport_id;
-	p_ramrod->filter_type = RFS_FILTER_TYPE;
 	p_ramrod->filter_action = b_is_add ? GFT_ADD_FILTER
 					   : GFT_DELETE_FILTER;
 

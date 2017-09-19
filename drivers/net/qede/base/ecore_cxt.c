@@ -59,8 +59,8 @@
 
 /* connection context union */
 union conn_context {
-	struct core_conn_context core_ctx;
-	struct eth_conn_context eth_ctx;
+	struct e4_core_conn_context core_ctx;
+	struct e4_eth_conn_context eth_ctx;
 };
 
 /* TYPE-0 task context - iSCSI, FCOE */
@@ -1432,10 +1432,13 @@ static void ecore_cdu_init_pf(struct ecore_hwfn *p_hwfn)
 void ecore_qm_init_pf(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt)
 {
 	struct ecore_qm_info *qm_info = &p_hwfn->qm_info;
+	struct ecore_mcp_link_state *p_link;
 	struct ecore_qm_iids iids;
 
 	OSAL_MEM_ZERO(&iids, sizeof(iids));
 	ecore_cxt_qm_iids(p_hwfn, &iids);
+
+	p_link = &ECORE_LEADING_HWFN(p_hwfn->p_dev)->mcp_info->link_output;
 
 	ecore_qm_pf_rt_init(p_hwfn, p_ptt, p_hwfn->port_id,
 			    p_hwfn->rel_pf_id, qm_info->max_phys_tcs_per_port,
@@ -1445,7 +1448,8 @@ void ecore_qm_init_pf(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt)
 			    qm_info->num_vf_pqs,
 			    qm_info->start_vport,
 			    qm_info->num_vports, qm_info->pf_wfq,
-			    qm_info->pf_rl, p_hwfn->qm_info.qm_pq_params,
+			    qm_info->pf_rl, p_link->speed,
+			    p_hwfn->qm_info.qm_pq_params,
 			    p_hwfn->qm_info.qm_vport_params);
 }
 

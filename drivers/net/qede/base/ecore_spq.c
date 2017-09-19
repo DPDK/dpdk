@@ -179,7 +179,7 @@ static void ecore_spq_hw_initialize(struct ecore_hwfn *p_hwfn,
 				    struct ecore_spq *p_spq)
 {
 	struct ecore_cxt_info cxt_info;
-	struct core_conn_context *p_cxt;
+	struct e4_core_conn_context *p_cxt;
 	enum _ecore_status_t rc;
 	u16 physical_q;
 

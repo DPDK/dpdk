@@ -669,7 +669,7 @@ struct mstorm_eth_conn_st_ctx {
 /*
  * eth connection context
  */
-struct eth_conn_context {
+struct e4_eth_conn_context {
 /* tstorm storm context */
 	struct tstorm_eth_conn_st_ctx tstorm_st_context;
 	struct regpair tstorm_st_padding[2] /* padding */;
@@ -765,6 +765,7 @@ enum eth_event_opcode {
 	ETH_EVENT_RX_DELETE_UDP_FILTER,
 	ETH_EVENT_RX_CREATE_GFT_ACTION,
 	ETH_EVENT_RX_GFT_UPDATE_FILTER,
+	ETH_EVENT_TX_QUEUE_UPDATE,
 	MAX_ETH_EVENT_OPCODE
 };
 
@@ -882,6 +883,7 @@ enum eth_ramrod_cmd_id {
 	ETH_RAMROD_RX_CREATE_GFT_ACTION /* RX - Create a Gft Action */,
 /* RX - Add/Delete a GFT Filter to the Searcher */
 	ETH_RAMROD_GFT_UPDATE_FILTER,
+	ETH_RAMROD_TX_QUEUE_UPDATE /* TX Queue Update Ramrod */,
 	MAX_ETH_RAMROD_CMD_ID
 };
 
@@ -1092,22 +1094,12 @@ struct eth_vport_tx_mode {
 
 
 /*
- * Ramrod data for rx create gft action
+ * GFT filter update action type.
  */
 enum gft_filter_update_action {
 	GFT_ADD_FILTER,
 	GFT_DELETE_FILTER,
 	MAX_GFT_FILTER_UPDATE_ACTION
-};
-
-
-/*
- * Ramrod data for rx create gft action
- */
-enum gft_logic_filter_type {
-	GFT_FILTER_TYPE /* flow FW is GFT-logic as well */,
-	RFS_FILTER_TYPE /* flow FW is A-RFS-logic */,
-	MAX_GFT_LOGIC_FILTER_TYPE
 };
 
 
@@ -1166,7 +1158,7 @@ struct rx_create_openflow_action_data {
  */
 struct rx_queue_start_ramrod_data {
 	__le16 rx_queue_id /* ID of RX queue */;
-	__le16 num_of_pbl_pages /* Num of pages in CQE PBL */;
+	__le16 num_of_pbl_pages /* Number of pages in CQE PBL */;
 	__le16 bd_max_bytes /* maximal bytes that can be places on the bd */;
 	__le16 sb_id /* Status block ID */;
 	u8 sb_index /* index of the protocol index */;
@@ -1254,26 +1246,34 @@ struct rx_udp_filter_data {
 
 
 /*
- * Ramrod to add filter - filter is packet headr of type of packet wished to
- * pass certin FW flow
+ * add or delete GFT filter - filter is packet header of type of packet wished
+ * to pass certain FW flow
  */
 struct rx_update_gft_filter_data {
 /* Pointer to Packet Header That Defines GFT Filter */
 	struct regpair pkt_hdr_addr;
 	__le16 pkt_hdr_length /* Packet Header Length */;
-/* If is_rfs flag is set: Queue Id to associate filter with else: action icid */
-	__le16 rx_qid_or_action_icid;
-/* Field is used if is_rfs flag is set: vport Id of which to associate filter
- * with
+/* Action icid. Valid if action_icid_valid flag set. */
+	__le16 action_icid;
+	__le16 rx_qid /* RX queue ID. Valid if rx_qid_valid set. */;
+	__le16 flow_id /* RX flow ID. Valid if flow_id_valid set. */;
+	u8 vport_id /* RX vport Id. */;
+/* If set, action_icid will used for GFT filter update. */
+	u8 action_icid_valid;
+/* If set, rx_qid will used for traffic steering, in additional to vport_id.
+ * flow_id_valid must be cleared. If cleared, queue ID will selected by RSS.
  */
-	u8 vport_id;
-/* Use enum to set type of flow using gft HW logic blocks */
-	u8 filter_type;
+	u8 rx_qid_valid;
+/* If set, flow_id will reported by CQE, rx_qid_valid must be cleared. If
+ * cleared, flow_id 0 will reported by CQE.
+ */
+	u8 flow_id_valid;
 	u8 filter_action /* Use to set type of action on filter */;
 /* 0 - dont assert in case of error. Just return an error code. 1 - assert in
  * case of error.
  */
 	u8 assert_on_error;
+	u8 reserved[2];
 };
 
 
@@ -1344,6 +1344,17 @@ struct tx_queue_stop_ramrod_data {
 };
 
 
+/*
+ * Ramrod data for tx queue update ramrod
+ */
+struct tx_queue_update_ramrod_data {
+	__le16 update_qm_pq_id_flg /* Flag to Update QM PQ ID */;
+	__le16 qm_pq_id /* Updated QM PQ ID */;
+	__le32 reserved0;
+	struct regpair reserved1[5];
+};
+
+
 
 /*
  * Ramrod data for vport update ramrod
@@ -1388,9 +1399,9 @@ struct vport_start_ramrod_data {
 /* If set, ETH header padding will not inserted. placement_offset will be zero.
  */
 	u8 zero_placement_offset;
-/* If set, Contorl frames will be filtered according to MAC check. */
+/* If set, control frames will be filtered according to MAC check. */
 	u8 ctl_frame_mac_check_en;
-/* If set, Contorl frames will be filtered according to ethtype check. */
+/* If set, control frames will be filtered according to ethtype check. */
 	u8 ctl_frame_ethtype_check_en;
 	u8 reserved[5];
 };
@@ -1456,9 +1467,9 @@ struct vport_update_ramrod_data_cmn {
  * updated
  */
 	u8 update_ctl_frame_checks_en_flg;
-/* If set, Contorl frames will be filtered according to MAC check. */
+/* If set, control frames will be filtered according to MAC check. */
 	u8 ctl_frame_mac_check_en;
-/* If set, Contorl frames will be filtered according to ethtype check. */
+/* If set, control frames will be filtered according to ethtype check. */
 	u8 ctl_frame_ethtype_check_en;
 	u8 reserved[15];
 };

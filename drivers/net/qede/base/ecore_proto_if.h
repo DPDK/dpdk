@@ -71,6 +71,7 @@ struct ecore_iscsi_pf_params {
 
 	u8		is_target;
 	u8		bdq_pbl_num_entries[2];
+	u8		disable_stats_collection;
 };
 
 enum ecore_rdma_protocol {

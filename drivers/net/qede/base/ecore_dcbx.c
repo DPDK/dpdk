@@ -931,8 +931,6 @@ void ecore_dcbx_set_pf_update_params(struct ecore_dcbx_results *p_src,
 	struct protocol_dcb_data *p_dcb_data;
 	u8 update_flag;
 
-	p_dest->pf_id = p_src->pf_id;
-
 	update_flag = p_src->arr[DCBX_PROTOCOL_ETH].update;
 	p_dest->update_eth_dcb_data_mode = update_flag;
 	update_flag = p_src->arr[DCBX_PROTOCOL_IWARP].update;

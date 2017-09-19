@@ -1053,7 +1053,7 @@ enum dbg_status {
 	DBG_STATUS_MCP_TRACE_NO_META,
 	DBG_STATUS_MCP_COULD_NOT_HALT,
 	DBG_STATUS_MCP_COULD_NOT_RESUME,
-	DBG_STATUS_DMAE_FAILED,
+	DBG_STATUS_RESERVED2,
 	DBG_STATUS_SEMI_FIFO_NOT_EMPTY,
 	DBG_STATUS_IGU_FIFO_BAD_DATA,
 	DBG_STATUS_MCP_COULD_NOT_MASK_PRTY,
@@ -1107,7 +1107,9 @@ struct dbg_tools_data {
 	u8 chip_id /* Chip ID (from enum chip_ids) */;
 	u8 platform_id /* Platform ID */;
 	u8 initialized /* Indicates if the data was initialized */;
-	u8 reserved;
+	u8 use_dmae /* Indicates if DMAE should be used */;
+/* Numbers of registers that were read since last log */
+	__le32 num_regs_read;
 };
 
 
