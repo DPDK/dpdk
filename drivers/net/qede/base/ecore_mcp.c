@@ -2248,9 +2248,10 @@ enum _ecore_status_t ecore_start_recovery_process(struct ecore_hwfn *p_hwfn,
 	return ECORE_SUCCESS;
 }
 
-enum _ecore_status_t ecore_mcp_config_vf_msix(struct ecore_hwfn *p_hwfn,
-					      struct ecore_ptt *p_ptt,
-					      u8 vf_id, u8 num)
+static enum _ecore_status_t
+ecore_mcp_config_vf_msix_bb(struct ecore_hwfn *p_hwfn,
+			    struct ecore_ptt *p_ptt,
+			    u8 vf_id, u8 num)
 {
 	u32 resp = 0, param = 0, rc_param = 0;
 	enum _ecore_status_t rc;
@@ -2280,6 +2281,39 @@ enum _ecore_status_t ecore_mcp_config_vf_msix(struct ecore_hwfn *p_hwfn,
 	}
 
 	return rc;
+}
+
+static enum _ecore_status_t
+ecore_mcp_config_vf_msix_ah(struct ecore_hwfn *p_hwfn,
+			    struct ecore_ptt *p_ptt,
+			    u8 num)
+{
+	u32 resp = 0, param = num, rc_param = 0;
+	enum _ecore_status_t rc;
+
+	rc = ecore_mcp_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_CFG_PF_VFS_MSIX,
+			   param, &resp, &rc_param);
+
+	if (resp != FW_MSG_CODE_DRV_CFG_PF_VFS_MSIX_DONE) {
+		DP_NOTICE(p_hwfn, true, "MFW failed to set MSI-X for VFs\n");
+		rc = ECORE_INVAL;
+	} else {
+		DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
+			   "Requested 0x%02x MSI-x interrupts for VFs\n",
+			   num);
+	}
+
+	return rc;
+}
+
+enum _ecore_status_t ecore_mcp_config_vf_msix(struct ecore_hwfn *p_hwfn,
+					      struct ecore_ptt *p_ptt,
+					      u8 vf_id, u8 num)
+{
+	if (ECORE_IS_BB(p_hwfn->p_dev))
+		return ecore_mcp_config_vf_msix_bb(p_hwfn, p_ptt, vf_id, num);
+	else
+		return ecore_mcp_config_vf_msix_ah(p_hwfn, p_ptt, num);
 }
 
 enum _ecore_status_t

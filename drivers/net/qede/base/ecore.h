@@ -754,6 +754,7 @@ struct ecore_dev {
 #define IS_ECORE_SRIOV(p_dev)		(!!(p_dev)->p_iov_info)
 	struct ecore_tunnel_info	tunnel;
 	bool				b_is_vf;
+	bool				b_dont_override_vf_msix;
 
 	u32				drv_type;
 

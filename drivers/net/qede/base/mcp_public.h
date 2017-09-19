@@ -1192,6 +1192,7 @@ struct public_drv_mb {
 #define DRV_MSG_CODE_INITIATE_PF_FLR            0x02010000
 #define DRV_MSG_CODE_VF_DISABLED_DONE           0xc0000000
 #define DRV_MSG_CODE_CFG_VF_MSIX                0xc0010000
+#define DRV_MSG_CODE_CFG_PF_VFS_MSIX            0xc0020000
 /* Param is either DRV_MB_PARAM_NVM_PUT_FILE_BEGIN_MFW/IMAGE */
 #define DRV_MSG_CODE_NVM_PUT_FILE_BEGIN		0x00010000
 /* Param should be set to the transaction size (up to 64 bytes) */
@@ -1434,11 +1435,14 @@ struct public_drv_mb {
 #define DRV_MB_PARAM_PHYMOD_LANE_MASK		0x000000FF
 #define DRV_MB_PARAM_PHYMOD_SIZE_OFFSET		8
 #define DRV_MB_PARAM_PHYMOD_SIZE_MASK		0x000FFF00
-	/* configure vf MSIX params*/
+	/* configure vf MSIX params BB */
 #define DRV_MB_PARAM_CFG_VF_MSIX_VF_ID_OFFSET	0
 #define DRV_MB_PARAM_CFG_VF_MSIX_VF_ID_MASK	0x000000FF
 #define DRV_MB_PARAM_CFG_VF_MSIX_SB_NUM_OFFSET	8
 #define DRV_MB_PARAM_CFG_VF_MSIX_SB_NUM_MASK	0x0000FF00
+	/* configure vf MSIX for PF params AH*/
+#define DRV_MB_PARAM_CFG_PF_VFS_MSIX_SB_NUM_OFFSET	0
+#define DRV_MB_PARAM_CFG_PF_VFS_MSIX_SB_NUM_MASK	0x000000FF
 
 	/* OneView configuration parametres */
 #define DRV_MB_PARAM_OV_CURR_CFG_OFFSET		0
@@ -1647,6 +1651,10 @@ struct public_drv_mb {
 #define FW_MSG_CODE_MDUMP_INVALID_CMD		0x00030000
 #define FW_MSG_CODE_MDUMP_IN_PROGRESS		0x00040000
 #define FW_MSG_CODE_MDUMP_WRITE_FAILED		0x00050000
+
+
+#define FW_MSG_CODE_DRV_CFG_PF_VFS_MSIX_DONE     0x00870000
+#define FW_MSG_CODE_DRV_CFG_PF_VFS_MSIX_BAD_ASIC 0x00880000
 
 #define FW_MSG_SEQ_NUMBER_MASK                  0x0000ffff
 

@@ -819,11 +819,47 @@ static void ecore_iov_vf_igu_set_int(struct ecore_hwfn *p_hwfn,
 }
 
 static enum _ecore_status_t
+ecore_iov_enable_vf_access_msix(struct ecore_hwfn *p_hwfn,
+				struct ecore_ptt *p_ptt,
+				u8 abs_vf_id,
+				u8 num_sbs)
+{
+	u8 current_max = 0;
+	int i;
+
+	/* If client overrides this, don't do anything */
+	if (p_hwfn->p_dev->b_dont_override_vf_msix)
+		return ECORE_SUCCESS;
+
+	/* For AH onward, configuration is per-PF. Find maximum of all
+	 * the currently enabled child VFs, and set the number to be that.
+	 */
+	if (!ECORE_IS_BB(p_hwfn->p_dev)) {
+		ecore_for_each_vf(p_hwfn, i) {
+			struct ecore_vf_info *p_vf;
+
+			p_vf  = ecore_iov_get_vf_info(p_hwfn, (u16)i, true);
+			if (!p_vf)
+				continue;
+
+			current_max = OSAL_MAX_T(u8, current_max,
+						 p_vf->num_sbs);
+		}
+	}
+
+	if (num_sbs > current_max)
+		return ecore_mcp_config_vf_msix(p_hwfn, p_ptt,
+						abs_vf_id, num_sbs);
+
+	return ECORE_SUCCESS;
+}
+
+static enum _ecore_status_t
 ecore_iov_enable_vf_access(struct ecore_hwfn *p_hwfn,
 			   struct ecore_ptt *p_ptt, struct ecore_vf_info *vf)
 {
 	u32 igu_vf_conf = IGU_VF_CONF_FUNC_EN;
-	enum _ecore_status_t rc;
+	enum _ecore_status_t rc = ECORE_SUCCESS;
 
 	if (vf->to_disable)
 		return ECORE_SUCCESS;
@@ -839,9 +875,8 @@ ecore_iov_enable_vf_access(struct ecore_hwfn *p_hwfn,
 
 	/* It's possible VF was previously considered malicious */
 	vf->b_malicious = false;
-
-	rc = ecore_mcp_config_vf_msix(p_hwfn, p_ptt,
-				      vf->abs_vf_id, vf->num_sbs);
+	rc = ecore_iov_enable_vf_access_msix(p_hwfn, p_ptt,
+					     vf->abs_vf_id, vf->num_sbs);
 	if (rc != ECORE_SUCCESS)
 		return rc;
 
