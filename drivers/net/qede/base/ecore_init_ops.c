@@ -317,10 +317,10 @@ static enum _ecore_status_t ecore_init_cmd_wr(struct ecore_hwfn *p_hwfn,
 					  b_must_dmae, b_can_dmae);
 		break;
 	case INIT_SRC_RUNTIME:
-		ecore_init_rt(p_hwfn, p_ptt, addr,
-			      OSAL_LE16_TO_CPU(p_cmd->args.runtime.offset),
-			      OSAL_LE16_TO_CPU(p_cmd->args.runtime.size),
-			      b_must_dmae);
+		rc = ecore_init_rt(p_hwfn, p_ptt, addr,
+				   OSAL_LE16_TO_CPU(p_cmd->args.runtime.offset),
+				   OSAL_LE16_TO_CPU(p_cmd->args.runtime.size),
+				   b_must_dmae);
 		break;
 	}
 
