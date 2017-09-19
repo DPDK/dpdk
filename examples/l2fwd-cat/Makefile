@@ -40,9 +40,6 @@ endif
 # Default target, can be overridden by command line or environment
 RTE_TARGET ?= x86_64-native-linuxapp-gcc
 
-# Location of PQoS library and includes,
-PQOS_LIBRARY_PATH = $(PQOS_INSTALL_PATH)/libpqos.a
-
 include $(RTE_SDK)/mk/rte.vars.mk
 
 # binary name
@@ -65,6 +62,6 @@ CFLAGS += -I$(PQOS_INSTALL_PATH)/../include
 CFLAGS_cat.o := -D_GNU_SOURCE
 
 LDLIBS += -L$(PQOS_INSTALL_PATH)
-LDLIBS += $(PQOS_LIBRARY_PATH)
+LDLIBS += -lpqos
 
 include $(RTE_SDK)/mk/rte.extapp.mk

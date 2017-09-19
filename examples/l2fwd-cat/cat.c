@@ -53,7 +53,11 @@
 static const struct pqos_cap *m_cap;
 static const struct pqos_cpuinfo *m_cpu;
 static const struct pqos_capability *m_cap_l3ca;
+#if PQOS_VERSION <= 103
 static unsigned m_sockets[PQOS_MAX_SOCKETS];
+#else
+static unsigned int *m_sockets;
+#endif
 static unsigned m_sock_count;
 static struct cat_config m_config[PQOS_MAX_CORES];
 static unsigned m_config_count;
@@ -271,15 +275,15 @@ parse_l3ca(const char *l3ca)
 		/* scan the separator '@', ','(next) or '\0'(finish) */
 		l3ca += strcspn(l3ca, "@,");
 
-		if (*l3ca == '@') {
-			/* explicit assign cpu_set */
-			offset = parse_set(l3ca + 1, &cpuset);
-			if (offset < 0 || CPU_COUNT(&cpuset) == 0)
-				goto err;
-
-			end = l3ca + 1 + offset;
-		} else
+		if (*l3ca != '@')
 			goto err;
+
+		/* explicit assign cpu_set */
+		offset = parse_set(l3ca + 1, &cpuset);
+		if (offset < 0 || CPU_COUNT(&cpuset) == 0)
+			goto err;
+
+		end = l3ca + 1 + offset;
 
 		if (*end != ',' && *end != '\0')
 			goto err;
@@ -353,9 +357,6 @@ parse_l3ca(const char *l3ca)
 		idx++;
 	} while (*end != '\0' && idx < PQOS_MAX_CORES);
 
-	if (m_config_count == 0)
-		goto err;
-
 	return 0;
 
 err:
@@ -408,7 +409,11 @@ check_cpus(void)
 					goto exit;
 				}
 
+#if PQOS_VERSION <= 103
 				ret = pqos_l3ca_assoc_get(cpu_id, &cos_id);
+#else
+				ret = pqos_alloc_assoc_get(cpu_id, &cos_id);
+#endif
 				if (ret != PQOS_RETVAL_OK) {
 					printf("PQOS: Failed to read COS "
 						"associated to cpu %u.\n",
@@ -512,7 +517,11 @@ check_and_select_classes(unsigned cos_id_map[][PQOS_MAX_SOCKETS])
 	for (j = 0; j < m_cpu->num_cores; j++) {
 		cpu_id = m_cpu->cores[j].lcore;
 
+#if PQOS_VERSION <= 103
 		ret = pqos_l3ca_assoc_get(cpu_id, &cos_id);
+#else
+		ret = pqos_alloc_assoc_get(cpu_id, &cos_id);
+#endif
 		if (ret != PQOS_RETVAL_OK) {
 			printf("PQOS: Failed to read COS associated to "
 				"cpu %u on phy_pkg %u.\n", cpu_id, phy_pkg_id);
@@ -598,10 +607,19 @@ configure_cat(unsigned cos_id_map[][PQOS_MAX_SOCKETS])
 
 		l3ca.cdp = m_config[i].cdp;
 		if (m_config[i].cdp == 1) {
+#if PQOS_VERSION <= 103
 			l3ca.code_mask = m_config[i].code_mask;
 			l3ca.data_mask = m_config[i].data_mask;
+#else
+			l3ca.u.s.code_mask = m_config[i].code_mask;
+			l3ca.u.s.data_mask = m_config[i].data_mask;
+#endif
 		} else
+#if PQOS_VERSION <= 103
 			l3ca.ways_mask = m_config[i].mask;
+#else
+			l3ca.u.ways_mask = m_config[i].mask;
+#endif
 
 		for (j = 0; j < m_sock_count; j++) {
 			phy_pkg_id = m_sockets[j];
@@ -637,7 +655,11 @@ configure_cat(unsigned cos_id_map[][PQOS_MAX_SOCKETS])
 
 			cos_id = cos_id_map[i][phy_pkg_id];
 
+#if PQOS_VERSION <= 103
 			ret = pqos_l3ca_assoc_set(cpu_id, cos_id);
+#else
+			ret = pqos_alloc_assoc_set(cpu_id, cos_id);
+#endif
 			if (ret != PQOS_RETVAL_OK) {
 				printf("PQOS: Failed to associate COS %u to "
 					"cpu %u\n", cos_id, cpu_id);
@@ -754,24 +776,43 @@ print_cat_config(void)
 			if (tab[n].cdp == 1) {
 				printf("PQOS: COS: %u, cMASK: 0x%llx, "
 					"dMASK: 0x%llx\n", tab[n].class_id,
+#if PQOS_VERSION <= 103
 					(unsigned long long)tab[n].code_mask,
 					(unsigned long long)tab[n].data_mask);
+#else
+					(unsigned long long)tab[n].u.s.code_mask,
+					(unsigned long long)tab[n].u.s.data_mask);
+#endif
 			} else {
 				printf("PQOS: COS: %u, MASK: 0x%llx\n",
 					tab[n].class_id,
+#if PQOS_VERSION <= 103
 					(unsigned long long)tab[n].ways_mask);
+#else
+					(unsigned long long)tab[n].u.ways_mask);
+#endif
 			}
 		}
 	}
 
 	for (i = 0; i < m_sock_count; i++) {
+#if PQOS_VERSION <= 103
 		unsigned lcores[PQOS_MAX_SOCKET_CORES] = {0};
+#else
+		unsigned int *lcores = NULL;
+#endif
 		unsigned lcount = 0;
 		unsigned n = 0;
 
+#if PQOS_VERSION <= 103
 		ret = pqos_cpu_get_cores(m_cpu, m_sockets[i],
 				PQOS_MAX_SOCKET_CORES, &lcount, &lcores[0]);
 		if (ret != PQOS_RETVAL_OK) {
+#else
+		lcores = pqos_cpu_get_cores(m_cpu, m_sockets[i],
+				&lcount);
+		if (lcores == NULL || lcount == 0) {
+#endif
 			printf("PQOS: Error retrieving core information!\n");
 			return;
 		}
@@ -780,13 +821,21 @@ print_cat_config(void)
 		for (n = 0; n < lcount; n++) {
 			unsigned class_id = 0;
 
+#if PQOS_VERSION <= 103
 			ret = pqos_l3ca_assoc_get(lcores[n], &class_id);
+#else
+			ret = pqos_alloc_assoc_get(lcores[n], &class_id);
+#endif
 			if (ret == PQOS_RETVAL_OK)
 				printf("PQOS: CPU: %u, COS: %u\n", lcores[n],
 					class_id);
 			else
 				printf("PQOS: CPU: %u, ERROR\n", lcores[n]);
 		}
+
+#if PQOS_VERSION > 103
+		free(lcores);
+#endif
 	}
 
 }
@@ -849,7 +898,12 @@ cat_fini(void)
 	m_cap = NULL;
 	m_cpu = NULL;
 	m_cap_l3ca = NULL;
+#if PQOS_VERSION <= 103
 	memset(m_sockets, 0, sizeof(m_sockets));
+#else
+	if (m_sockets != NULL)
+		free(m_sockets);
+#endif
 	m_sock_count = 0;
 	memset(m_config, 0, sizeof(m_config));
 	m_config_count = 0;
@@ -875,7 +929,11 @@ cat_exit(void)
 			if (CPU_ISSET(cpu_id, &m_config[i].cpumask) == 0)
 				continue;
 
+#if PQOS_VERSION <= 103
 			ret = pqos_l3ca_assoc_set(cpu_id, 0);
+#else
+			ret = pqos_alloc_assoc_set(cpu_id, 0);
+#endif
 			if (ret != PQOS_RETVAL_OK) {
 				printf("PQOS: Failed to associate COS 0 to "
 					"cpu %u\n", cpu_id);
@@ -927,7 +985,9 @@ cat_init(int argc, char **argv)
 	/* PQoS Initialization - Check and initialize CAT capability */
 	cfg.fd_log = STDOUT_FILENO;
 	cfg.verbose = 0;
+#if PQOS_VERSION <= 103
 	cfg.cdp_cfg = PQOS_REQUIRE_CDP_ANY;
+#endif
 	ret = pqos_init(&cfg);
 	if (ret != PQOS_RETVAL_OK) {
 		printf("PQOS: Error initializing PQoS library!\n");
@@ -953,9 +1013,14 @@ cat_init(int argc, char **argv)
 	}
 
 	/* Get CPU socket information */
+#if PQOS_VERSION <= 103
 	ret = pqos_cpu_get_sockets(m_cpu, PQOS_MAX_SOCKETS, &m_sock_count,
 		m_sockets);
 	if (ret != PQOS_RETVAL_OK) {
+#else
+	m_sockets = pqos_cpu_get_sockets(m_cpu, &m_sock_count);
+	if (m_sockets == NULL) {
+#endif
 		printf("PQOS: Error retrieving CPU socket information!\n");
 		ret = -EFAULT;
 		goto err;
