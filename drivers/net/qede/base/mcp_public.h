@@ -99,7 +99,7 @@ struct eth_phy_cfg {
 #define EEE_TX_TIMER_USEC_LATENCY_TIME		(0x6000)
 
 	u32 link_modes; /* Additional link modes */
-#define LINK_MODE_SMARTLINQ_ENABLE		0x1
+#define LINK_MODE_SMARTLINQ_ENABLE		0x1  /* XXX Deprecate */
 };
 
 struct port_mf_cfg {
@@ -688,6 +688,7 @@ struct public_port {
 #define LFA_FLOW_CTRL_MISMATCH				(1 << 4)
 #define LFA_ADV_SPEED_MISMATCH				(1 << 5)
 #define LFA_EEE_MISMATCH				(1 << 6)
+#define LFA_LINK_MODES_MISMATCH			(1 << 7)
 #define LINK_FLAP_AVOIDANCE_COUNT_OFFSET	8
 #define LINK_FLAP_AVOIDANCE_COUNT_MASK		0x0000ff00
 #define LINK_FLAP_COUNT_OFFSET			16
@@ -1364,10 +1365,10 @@ struct public_drv_mb {
 #define DRV_MB_PARAM_PORT_MASK			0x00600000
 #define DRV_MSG_CODE_EXT_PHY_FW_UPGRADE		0x002a0000
 
-/* Param: Set DRV_MB_PARAM_FEATURE_SUPPORT_*,
- * return FW_MB_PARAM_FEATURE_SUPPORT_*
- */
+/* Param: Set DRV_MB_PARAM_FEATURE_SUPPORT_* */
 #define DRV_MSG_CODE_FEATURE_SUPPORT            0x00300000
+/* return FW_MB_PARAM_FEATURE_SUPPORT_*  */
+#define DRV_MSG_CODE_GET_MFW_FEATURE_SUPPORT	0x00310000
 
 #define DRV_MSG_SEQ_NUMBER_MASK                 0x0000ffff
 
@@ -1516,10 +1517,14 @@ struct public_drv_mb {
 #define DRV_MB_PARAM_BIST_TEST_IMAGE_INDEX_SHIFT      8
 #define DRV_MB_PARAM_BIST_TEST_IMAGE_INDEX_MASK       0x0000FF00
 
-/* driver supports SmartLinQ */
-#define DRV_MB_PARAM_FEATURE_SUPPORT_SMARTLINQ  0x00000001
-/* driver support EEE */
-#define DRV_MB_PARAM_FEATURE_SUPPORT_EEE        0x00000002
+#define DRV_MB_PARAM_FEATURE_SUPPORT_PORT_MASK      0x0000FFFF
+#define DRV_MB_PARAM_FEATURE_SUPPORT_PORT_SHIFT     0
+/* driver supports SmartLinQ parameter */
+#define DRV_MB_PARAM_FEATURE_SUPPORT_PORT_SMARTLINQ 0x00000001
+/* driver supports EEE parameter */
+#define DRV_MB_PARAM_FEATURE_SUPPORT_PORT_EEE       0x00000002
+#define DRV_MB_PARAM_FEATURE_SUPPORT_FUNC_MASK      0xFFFF0000
+#define DRV_MB_PARAM_FEATURE_SUPPORT_FUNC_SHIFT     16
 
 	u32 fw_mb_header;
 #define FW_MSG_CODE_MASK                        0xffff0000
@@ -1636,6 +1641,7 @@ struct public_drv_mb {
 #define FW_MB_PARAM_RESOURCE_ALLOC_VERSION_MINOR_MASK	0x0000FFFF
 #define FW_MB_PARAM_RESOURCE_ALLOC_VERSION_MINOR_SHIFT		0
 
+/* get MFW feature support response */
 /* MFW supports SmartLinQ */
 #define FW_MB_PARAM_FEATURE_SUPPORT_SMARTLINQ   0x00000001
 /* MFW supports EEE */

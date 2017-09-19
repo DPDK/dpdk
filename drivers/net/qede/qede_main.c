@@ -335,6 +335,7 @@ err:
 static int
 qed_fill_dev_info(struct ecore_dev *edev, struct qed_dev_info *dev_info)
 {
+	struct ecore_hwfn *p_hwfn = ECORE_LEADING_HWFN(edev);
 	struct ecore_ptt *ptt = NULL;
 	struct ecore_tunnel_info *tun = &edev->tunnel;
 
@@ -370,6 +371,8 @@ qed_fill_dev_info(struct ecore_dev *edev, struct qed_dev_info *dev_info)
 	if (IS_PF(edev)) {
 		dev_info->mf_mode = edev->mf_mode;
 		dev_info->tx_switching = false;
+
+		dev_info->smart_an = ecore_mcp_is_smart_an_supported(p_hwfn);
 
 		ptt = ecore_ptt_acquire(ECORE_LEADING_HWFN(edev));
 		if (ptt) {

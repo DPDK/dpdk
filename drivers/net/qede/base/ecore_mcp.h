@@ -60,6 +60,9 @@ struct ecore_mcp_info {
 	u8 *mfw_mb_shadow;
 	u16 mfw_mb_length;
 	u16 mcp_hist;
+
+	/* Capabilties negotiated with the MFW */
+	u32 capabilities;
 };
 
 struct ecore_mcp_mb_params {
@@ -492,5 +495,24 @@ struct ecore_resc_unlock_params {
 enum _ecore_status_t
 ecore_mcp_resc_unlock(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 		      struct ecore_resc_unlock_params *p_params);
+
+/**
+ * @brief Learn of supported MFW features; To be done during early init
+ *
+ * @param p_hwfn
+ * @param p_ptt
+ */
+enum _ecore_status_t ecore_mcp_get_capabilities(struct ecore_hwfn *p_hwfn,
+						struct ecore_ptt *p_ptt);
+
+/**
+ * @brief Inform MFW of set of features supported by driver. Should be done
+ * inside the contet of the LOAD_REQ.
+ *
+ * @param p_hwfn
+ * @param p_ptt
+ */
+enum _ecore_status_t ecore_mcp_set_capabilities(struct ecore_hwfn *p_hwfn,
+						struct ecore_ptt *p_ptt);
 
 #endif /* __ECORE_MCP_H__ */

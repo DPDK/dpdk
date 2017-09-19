@@ -44,6 +44,8 @@ struct qed_dev_info {
 	bool tx_switching;
 	u16 mtu;
 
+	bool smart_an;
+
 	/* Out param for qede */
 	bool vxlan_enable;
 	bool gre_enable;

@@ -1134,4 +1134,13 @@ enum _ecore_status_t ecore_mcp_mdump_clear_logs(struct ecore_hwfn *p_hwfn,
 enum _ecore_status_t ecore_mfw_process_tlv_req(struct ecore_hwfn *p_hwfn,
 					       struct ecore_ptt *p_ptt);
 
+
+/**
+ * @brief - Return whether management firmware support smart AN
+ *
+ * @param p_hwfn
+ *
+ * @return bool - true iff feature is supported.
+ */
+bool ecore_mcp_is_smart_an_supported(struct ecore_hwfn *p_hwfn);
 #endif

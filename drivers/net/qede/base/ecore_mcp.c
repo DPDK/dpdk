@@ -225,7 +225,11 @@ static enum _ecore_status_t ecore_mcp_mb_lock(struct ecore_hwfn *p_hwfn,
 	if (cmd == DRV_MSG_CODE_LOAD_DONE || cmd == DRV_MSG_CODE_UNLOAD_DONE)
 		p_hwfn->mcp_info->block_mb_sending = false;
 
-	if (p_hwfn->mcp_info->block_mb_sending) {
+	/* There's at least a single command that is sent by ecore during the
+	 * load sequence [expectation of MFW].
+	 */
+	if ((p_hwfn->mcp_info->block_mb_sending) &&
+	    (cmd != DRV_MSG_CODE_FEATURE_SUPPORT)) {
 		DP_NOTICE(p_hwfn, false,
 			  "Trying to send a MFW mailbox command [0x%x]"
 			  " in parallel to [UN]LOAD_REQ. Aborting.\n",
@@ -1202,8 +1206,7 @@ enum _ecore_status_t ecore_mcp_set_link(struct ecore_hwfn *p_hwfn,
 
 	if (b_up)
 		DP_VERBOSE(p_hwfn, ECORE_MSG_LINK,
-			   "Configuring Link: Speed 0x%08x, Pause 0x%08x,"
-			   " adv_speed 0x%08x, loopback 0x%08x\n",
+			   "Configuring Link: Speed 0x%08x, Pause 0x%08x, adv_speed 0x%08x, loopback 0x%08x\n",
 			   phy_cfg.speed, phy_cfg.pause, phy_cfg.adv_speed,
 			   phy_cfg.loopback_mode);
 	else
@@ -3249,4 +3252,37 @@ ecore_mcp_resc_unlock(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 	}
 
 	return ECORE_SUCCESS;
+}
+
+bool ecore_mcp_is_smart_an_supported(struct ecore_hwfn *p_hwfn)
+{
+	return !!(p_hwfn->mcp_info->capabilities &
+		  FW_MB_PARAM_FEATURE_SUPPORT_SMARTLINQ);
+}
+
+enum _ecore_status_t ecore_mcp_get_capabilities(struct ecore_hwfn *p_hwfn,
+						struct ecore_ptt *p_ptt)
+{
+	u32 mcp_resp;
+	enum _ecore_status_t rc;
+
+	rc = ecore_mcp_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_GET_MFW_FEATURE_SUPPORT,
+			   0, &mcp_resp, &p_hwfn->mcp_info->capabilities);
+	if (rc == ECORE_SUCCESS)
+		DP_VERBOSE(p_hwfn, (ECORE_MSG_SP | ECORE_MSG_PROBE),
+			   "MFW supported features: %08x\n",
+			   p_hwfn->mcp_info->capabilities);
+
+	return rc;
+}
+
+enum _ecore_status_t ecore_mcp_set_capabilities(struct ecore_hwfn *p_hwfn,
+						struct ecore_ptt *p_ptt)
+{
+	u32 mcp_resp, mcp_param, features;
+
+	features = DRV_MB_PARAM_FEATURE_SUPPORT_PORT_SMARTLINQ;
+
+	return ecore_mcp_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_FEATURE_SUPPORT,
+			     features, &mcp_resp, &mcp_param);
 }

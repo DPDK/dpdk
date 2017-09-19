@@ -2040,6 +2040,8 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 			   "Load request was sent. Load code: 0x%x\n",
 			   load_code);
 
+		ecore_mcp_set_capabilities(p_hwfn, p_hwfn->p_main_ptt);
+
 		/* CQ75580:
 		 * When coming back from hiberbate state, the registers from
 		 * which shadow is read initially are not initialized. It turns
@@ -2943,6 +2945,7 @@ ecore_hw_get_nvm_info(struct ecore_hwfn *p_hwfn,
 {
 	u32 nvm_cfg1_offset, mf_mode, addr, generic_cont0, core_cfg, dcbx_mode;
 	u32 port_cfg_addr, link_temp, nvm_cfg_addr, device_capabilities;
+	struct ecore_mcp_link_capabilities *p_caps;
 	struct ecore_mcp_link_params *link;
 	enum _ecore_status_t rc;
 
@@ -3032,6 +3035,7 @@ ecore_hw_get_nvm_info(struct ecore_hwfn *p_hwfn,
 
 	/* Read default link configuration */
 	link = &p_hwfn->mcp_info->link_input;
+	p_caps = &p_hwfn->mcp_info->link_capabilities;
 	port_cfg_addr = MCP_REG_SCRATCH + nvm_cfg1_offset +
 	    OFFSETOF(struct nvm_cfg1, port[MFW_PORT(p_hwfn)]);
 	link_temp = ecore_rd(p_hwfn, p_ptt,
@@ -3039,9 +3043,7 @@ ecore_hw_get_nvm_info(struct ecore_hwfn *p_hwfn,
 			     OFFSETOF(struct nvm_cfg1_port, speed_cap_mask));
 	link_temp &= NVM_CFG1_PORT_DRV_SPEED_CAPABILITY_MASK_MASK;
 	link->speed.advertised_speeds = link_temp;
-
-	link_temp = link->speed.advertised_speeds;
-	p_hwfn->mcp_info->link_capabilities.speed_capabilities = link_temp;
+	p_caps->speed_capabilities = link->speed.advertised_speeds;
 
 	link_temp = ecore_rd(p_hwfn, p_ptt,
 			     port_cfg_addr +
@@ -3073,10 +3075,8 @@ ecore_hw_get_nvm_info(struct ecore_hwfn *p_hwfn,
 		DP_NOTICE(p_hwfn, true, "Unknown Speed in 0x%08x\n", link_temp);
 	}
 
-	p_hwfn->mcp_info->link_capabilities.default_speed =
-	    link->speed.forced_speed;
-	p_hwfn->mcp_info->link_capabilities.default_speed_autoneg =
-	    link->speed.autoneg;
+	p_caps->default_speed = link->speed.forced_speed;
+	p_caps->default_speed_autoneg = link->speed.autoneg;
 
 	link_temp &= NVM_CFG1_PORT_DRV_FLOW_CONTROL_MASK;
 	link_temp >>= NVM_CFG1_PORT_DRV_FLOW_CONTROL_OFFSET;
@@ -3325,6 +3325,8 @@ ecore_get_hw_info(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 	 * Number of global CQ-s (for storage
 	 */
 	ecore_hw_info_port_num(p_hwfn, p_ptt);
+
+	ecore_mcp_get_capabilities(p_hwfn, p_ptt);
 
 #ifndef ASIC_ONLY
 	if (CHIP_REV_IS_ASIC(p_hwfn->p_dev)) {
