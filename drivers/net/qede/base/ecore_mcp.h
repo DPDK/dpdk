@@ -40,6 +40,9 @@ struct ecore_mcp_info {
 	 */
 	osal_spinlock_t cmd_lock;
 
+	/* Flag to indicate whether sending a MFW mailbox command is blocked */
+	bool b_block_cmd;
+
 	/* Spinlock used for syncing SW link-changes and link-changes
 	 * originating from attention context.
 	 */

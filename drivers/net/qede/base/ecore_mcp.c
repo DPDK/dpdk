@@ -304,6 +304,12 @@ enum _ecore_status_t ecore_mcp_reset(struct ecore_hwfn *p_hwfn,
 		delay = EMUL_MCP_RESP_ITER_US;
 #endif
 
+	if (p_hwfn->mcp_info->b_block_cmd) {
+		DP_NOTICE(p_hwfn, false,
+			  "The MFW is not responsive. Avoid sending MCP_RESET mailbox command.\n");
+		return ECORE_ABORTED;
+	}
+
 	/* Ensure that only a single thread is accessing the mailbox */
 	OSAL_SPIN_LOCK(&p_hwfn->mcp_info->cmd_lock);
 
@@ -431,6 +437,15 @@ static void __ecore_mcp_cmd_and_union(struct ecore_hwfn *p_hwfn,
 		   (p_mb_params->cmd | seq_num), p_mb_params->param);
 }
 
+static void ecore_mcp_cmd_set_blocking(struct ecore_hwfn *p_hwfn,
+				       bool block_cmd)
+{
+	p_hwfn->mcp_info->b_block_cmd = block_cmd;
+
+	DP_INFO(p_hwfn, "%s sending of mailbox commands to the MFW\n",
+		block_cmd ? "Block" : "Unblock");
+}
+
 static enum _ecore_status_t
 _ecore_mcp_cmd_and_union(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 			 struct ecore_mcp_mb_params *p_mb_params,
@@ -513,6 +528,7 @@ _ecore_mcp_cmd_and_union(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 		ecore_mcp_cmd_del_elem(p_hwfn, p_cmd_elem);
 		OSAL_SPIN_UNLOCK(&p_hwfn->mcp_info->cmd_lock);
 
+		ecore_mcp_cmd_set_blocking(p_hwfn, true);
 		ecore_hw_err_notify(p_hwfn, ECORE_HW_ERR_MFW_RESP_FAIL);
 		return ECORE_AGAIN;
 	}
@@ -565,6 +581,13 @@ ecore_mcp_cmd_and_union(struct ecore_hwfn *p_hwfn,
 		       p_mb_params->data_src_size, p_mb_params->data_dst_size,
 		       union_data_size);
 		return ECORE_INVAL;
+	}
+
+	if (p_hwfn->mcp_info->b_block_cmd) {
+		DP_NOTICE(p_hwfn, false,
+			  "The MFW is not responsive. Avoid sending mailbox command 0x%08x [param 0x%08x].\n",
+			  p_mb_params->cmd, p_mb_params->param);
+		return ECORE_ABORTED;
 	}
 
 	return _ecore_mcp_cmd_and_union(p_hwfn, p_ptt, p_mb_params, max_retries,
@@ -2354,33 +2377,68 @@ ecore_mcp_send_drv_version(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 	return rc;
 }
 
+/* A maximal 100 msec waiting time for the MCP to halt */
+#define ECORE_MCP_HALT_SLEEP_MS		10
+#define ECORE_MCP_HALT_MAX_RETRIES	10
+
 enum _ecore_status_t ecore_mcp_halt(struct ecore_hwfn *p_hwfn,
 				    struct ecore_ptt *p_ptt)
 {
+	u32 resp = 0, param = 0, cpu_state, cnt = 0;
 	enum _ecore_status_t rc;
-	u32 resp = 0, param = 0;
 
 	rc = ecore_mcp_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_MCP_HALT, 0, &resp,
 			   &param);
-	if (rc != ECORE_SUCCESS)
+	if (rc != ECORE_SUCCESS) {
 		DP_ERR(p_hwfn, "MCP response failure, aborting\n");
+		return rc;
+	}
 
-	return rc;
+	do {
+		OSAL_MSLEEP(ECORE_MCP_HALT_SLEEP_MS);
+		cpu_state = ecore_rd(p_hwfn, p_ptt, MCP_REG_CPU_STATE);
+		if (cpu_state & MCP_REG_CPU_STATE_SOFT_HALTED)
+			break;
+	} while (++cnt < ECORE_MCP_HALT_MAX_RETRIES);
+
+	if (cnt == ECORE_MCP_HALT_MAX_RETRIES) {
+		DP_NOTICE(p_hwfn, false,
+			  "Failed to halt the MCP [CPU_MODE = 0x%08x, CPU_STATE = 0x%08x]\n",
+			  ecore_rd(p_hwfn, p_ptt, MCP_REG_CPU_MODE), cpu_state);
+		return ECORE_BUSY;
+	}
+
+	ecore_mcp_cmd_set_blocking(p_hwfn, true);
+
+	return ECORE_SUCCESS;
 }
+
+#define ECORE_MCP_RESUME_SLEEP_MS	10
 
 enum _ecore_status_t ecore_mcp_resume(struct ecore_hwfn *p_hwfn,
 				      struct ecore_ptt *p_ptt)
 {
-	u32 value, cpu_mode;
+	u32 cpu_mode, cpu_state;
 
 	ecore_wr(p_hwfn, p_ptt, MCP_REG_CPU_STATE, 0xffffffff);
 
-	value = ecore_rd(p_hwfn, p_ptt, MCP_REG_CPU_MODE);
-	value &= ~MCP_REG_CPU_MODE_SOFT_HALT;
-	ecore_wr(p_hwfn, p_ptt, MCP_REG_CPU_MODE, value);
 	cpu_mode = ecore_rd(p_hwfn, p_ptt, MCP_REG_CPU_MODE);
+	cpu_mode &= ~MCP_REG_CPU_MODE_SOFT_HALT;
+	ecore_wr(p_hwfn, p_ptt, MCP_REG_CPU_MODE, cpu_mode);
 
-	return (cpu_mode & MCP_REG_CPU_MODE_SOFT_HALT) ? -1 : 0;
+	OSAL_MSLEEP(ECORE_MCP_RESUME_SLEEP_MS);
+	cpu_state = ecore_rd(p_hwfn, p_ptt, MCP_REG_CPU_STATE);
+
+	if (cpu_state & MCP_REG_CPU_STATE_SOFT_HALTED) {
+		DP_NOTICE(p_hwfn, false,
+			  "Failed to resume the MCP [CPU_MODE = 0x%08x, CPU_STATE = 0x%08x]\n",
+			  cpu_mode, cpu_state);
+		return ECORE_BUSY;
+	}
+
+	ecore_mcp_cmd_set_blocking(p_hwfn, false);
+
+	return ECORE_SUCCESS;
 }
 
 enum _ecore_status_t
