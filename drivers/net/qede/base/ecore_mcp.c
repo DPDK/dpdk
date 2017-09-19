@@ -1984,6 +1984,9 @@ enum _ecore_status_t ecore_mcp_handle_events(struct ecore_hwfn *p_hwfn,
 		case MFW_DRV_MSG_DCBX_OPERATIONAL_MIB_UPDATED:
 			ecore_dcbx_mib_update_event(p_hwfn, p_ptt,
 						    ECORE_DCBX_OPERATIONAL_MIB);
+			/* clear the user-config cache */
+			OSAL_MEMSET(&p_hwfn->p_dcbx_info->set, 0,
+				    sizeof(struct ecore_dcbx_set));
 			break;
 		case MFW_DRV_MSG_OEM_CFG_UPDATE:
 			ecore_mcp_handle_ufp_event(p_hwfn, p_ptt);

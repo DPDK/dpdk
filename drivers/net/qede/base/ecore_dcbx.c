@@ -1220,15 +1220,10 @@ enum _ecore_status_t ecore_dcbx_config_params(struct ecore_hwfn *p_hwfn,
 	u32 resp = 0, param = 0;
 	enum _ecore_status_t rc = ECORE_SUCCESS;
 
-	if (!hw_commit) {
-		OSAL_MEMCPY(&p_hwfn->p_dcbx_info->set, params,
-			    sizeof(p_hwfn->p_dcbx_info->set));
+	OSAL_MEMCPY(&p_hwfn->p_dcbx_info->set, params,
+		    sizeof(p_hwfn->p_dcbx_info->set));
+	if (!hw_commit)
 		return ECORE_SUCCESS;
-	}
-
-	/* clear set-parmas cache */
-	OSAL_MEMSET(&p_hwfn->p_dcbx_info->set, 0,
-		    sizeof(struct ecore_dcbx_set));
 
 	OSAL_MEMSET(&local_admin, 0, sizeof(local_admin));
 	ecore_dcbx_set_local_params(p_hwfn, &local_admin, params);
