@@ -896,7 +896,9 @@ struct public_func {
 #define FUNC_MF_CFG_MAX_BW_DEFAULT              0x00640000
 
 	u32 status;
-#define FUNC_STATUS_VLINK_DOWN			0x00000001
+#define FUNC_STATUS_VIRTUAL_LINK_UP		0x00000001
+#define FUNC_STATUS_LOGICAL_LINK_UP		0x00000002
+#define FUNC_STATUS_FORCED_LINK			0x00000004
 
 	u32 mac_upper;      /* MAC */
 #define FUNC_MF_CFG_UPPERMAC_MASK               0x0000ffff
@@ -1594,6 +1596,8 @@ struct public_drv_mb {
 #define DRV_MB_PARAM_FEATURE_SUPPORT_PORT_EEE       0x00000002
 #define DRV_MB_PARAM_FEATURE_SUPPORT_FUNC_MASK      0xFFFF0000
 #define DRV_MB_PARAM_FEATURE_SUPPORT_FUNC_OFFSET     16
+/* driver supports virtual link parameter */
+#define DRV_MB_PARAM_FEATURE_SUPPORT_FUNC_VLINK     0x00010000
 	/* Driver attributes params */
 #define DRV_MB_PARAM_ATTRIBUTE_KEY_OFFSET		 0
 #define DRV_MB_PARAM_ATTRIBUTE_KEY_MASK		0x00FFFFFF
@@ -1727,6 +1731,8 @@ struct public_drv_mb {
 #define FW_MB_PARAM_FEATURE_SUPPORT_SMARTLINQ   0x00000001
 /* MFW supports EEE */
 #define FW_MB_PARAM_FEATURE_SUPPORT_EEE         0x00000002
+/* MFW supports virtual link */
+#define FW_MB_PARAM_FEATURE_SUPPORT_VLINK       0x00010000
 
 #define FW_MB_PARAM_LOAD_DONE_DID_EFUSE_ERROR	(1 << 0)
 

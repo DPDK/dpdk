@@ -1220,6 +1220,28 @@ static void ecore_mcp_read_eee_config(struct ecore_hwfn *p_hwfn,
 		p_link->eee_lp_adv_caps |= ECORE_EEE_10G_ADV;
 }
 
+static u32 ecore_mcp_get_shmem_func(struct ecore_hwfn *p_hwfn,
+				    struct ecore_ptt *p_ptt,
+				    struct public_func *p_data,
+				    int pfid)
+{
+	u32 addr = SECTION_OFFSIZE_ADDR(p_hwfn->mcp_info->public_base,
+					PUBLIC_FUNC);
+	u32 mfw_path_offsize = ecore_rd(p_hwfn, p_ptt, addr);
+	u32 func_addr = SECTION_ADDR(mfw_path_offsize, pfid);
+	u32 i, size;
+
+	OSAL_MEM_ZERO(p_data, sizeof(*p_data));
+
+	size = OSAL_MIN_T(u32, sizeof(*p_data),
+			  SECTION_SIZE(mfw_path_offsize));
+	for (i = 0; i < size / sizeof(u32); i++)
+		((u32 *)p_data)[i] = ecore_rd(p_hwfn, p_ptt,
+					      func_addr + (i << 2));
+
+	return size;
+}
+
 static void ecore_mcp_handle_link_change(struct ecore_hwfn *p_hwfn,
 					 struct ecore_ptt *p_ptt,
 					 bool b_reset)
@@ -1249,10 +1271,24 @@ static void ecore_mcp_handle_link_change(struct ecore_hwfn *p_hwfn,
 		goto out;
 	}
 
-	if (p_hwfn->b_drv_link_init)
-		p_link->link_up = !!(status & LINK_STATUS_LINK_UP);
-	else
+	if (p_hwfn->b_drv_link_init) {
+		/* Link indication with modern MFW arrives as per-PF
+		 * indication.
+		 */
+		if (p_hwfn->mcp_info->capabilities &
+		    FW_MB_PARAM_FEATURE_SUPPORT_VLINK) {
+			struct public_func shmem_info;
+
+			ecore_mcp_get_shmem_func(p_hwfn, p_ptt, &shmem_info,
+						 MCP_PF_ID(p_hwfn));
+			p_link->link_up = !!(shmem_info.status &
+					     FUNC_STATUS_VIRTUAL_LINK_UP);
+		} else {
+			p_link->link_up = !!(status & LINK_STATUS_LINK_UP);
+		}
+	} else {
 		p_link->link_up = false;
+	}
 
 	p_link->full_duplex = true;
 	switch ((status & LINK_STATUS_SPEED_AND_DUPLEX_MASK)) {
@@ -1515,7 +1551,8 @@ static void ecore_mcp_send_protocol_stats(struct ecore_hwfn *p_hwfn,
 		hsi_param = DRV_MSG_CODE_STATS_TYPE_LAN;
 		break;
 	default:
-		DP_INFO(p_hwfn, "Invalid protocol type %d\n", type);
+		DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
+			   "Invalid protocol type %d\n", type);
 		return;
 	}
 
@@ -1563,28 +1600,6 @@ static void ecore_read_pf_bandwidth(struct ecore_hwfn *p_hwfn,
 			p_info->bandwidth_max);
 		p_info->bandwidth_max = 100;
 	}
-}
-
-static u32 ecore_mcp_get_shmem_func(struct ecore_hwfn *p_hwfn,
-				    struct ecore_ptt *p_ptt,
-				    struct public_func *p_data,
-				    int pfid)
-{
-	u32 addr = SECTION_OFFSIZE_ADDR(p_hwfn->mcp_info->public_base,
-					PUBLIC_FUNC);
-	u32 mfw_path_offsize = ecore_rd(p_hwfn, p_ptt, addr);
-	u32 func_addr = SECTION_ADDR(mfw_path_offsize, pfid);
-	u32 i, size;
-
-	OSAL_MEM_ZERO(p_data, sizeof(*p_data));
-
-	size = OSAL_MIN_T(u32, sizeof(*p_data),
-			  SECTION_SIZE(mfw_path_offsize));
-	for (i = 0; i < size / sizeof(u32); i++)
-		((u32 *)p_data)[i] = ecore_rd(p_hwfn, p_ptt,
-					      func_addr + (i << 2));
-
-	return size;
 }
 
 static void
@@ -3667,7 +3682,8 @@ enum _ecore_status_t ecore_mcp_set_capabilities(struct ecore_hwfn *p_hwfn,
 	u32 mcp_resp, mcp_param, features;
 
 	features = DRV_MB_PARAM_FEATURE_SUPPORT_PORT_SMARTLINQ |
-		   DRV_MB_PARAM_FEATURE_SUPPORT_PORT_EEE;
+		   DRV_MB_PARAM_FEATURE_SUPPORT_PORT_EEE |
+		   DRV_MB_PARAM_FEATURE_SUPPORT_FUNC_VLINK;
 
 	return ecore_mcp_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_FEATURE_SUPPORT,
 			     features, &mcp_resp, &mcp_param);
