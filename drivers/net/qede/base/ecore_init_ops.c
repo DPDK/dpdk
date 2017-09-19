@@ -40,6 +40,13 @@ void ecore_init_clear_rt_data(struct ecore_hwfn *p_hwfn)
 
 void ecore_init_store_rt_reg(struct ecore_hwfn *p_hwfn, u32 rt_offset, u32 val)
 {
+	if (rt_offset >= RUNTIME_ARRAY_SIZE) {
+		DP_ERR(p_hwfn,
+		       "Avoid storing %u in rt_data at index %u since RUNTIME_ARRAY_SIZE is %u!\n",
+		       val, rt_offset, RUNTIME_ARRAY_SIZE);
+		return;
+	}
+
 	p_hwfn->rt_data.init_val[rt_offset] = val;
 	p_hwfn->rt_data.b_valid[rt_offset] = true;
 }
@@ -48,6 +55,14 @@ void ecore_init_store_rt_agg(struct ecore_hwfn *p_hwfn,
 			     u32 rt_offset, u32 *p_val, osal_size_t size)
 {
 	osal_size_t i;
+
+	if ((rt_offset + size - 1) >= RUNTIME_ARRAY_SIZE) {
+		DP_ERR(p_hwfn,
+		       "Avoid storing values in rt_data at indices %u-%u since RUNTIME_ARRAY_SIZE is %u!\n",
+		       rt_offset, (u32)(rt_offset + size - 1),
+		       RUNTIME_ARRAY_SIZE);
+		return;
+	}
 
 	for (i = 0; i < size / sizeof(u32); i++) {
 		p_hwfn->rt_data.init_val[rt_offset + i] = p_val[i];
