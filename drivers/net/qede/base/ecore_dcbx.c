@@ -925,8 +925,7 @@ enum _ecore_status_t ecore_dcbx_info_alloc(struct ecore_hwfn *p_hwfn)
 	return ECORE_SUCCESS;
 }
 
-void ecore_dcbx_info_free(struct ecore_hwfn *p_hwfn,
-			  struct ecore_dcbx_info *p_dcbx_info)
+void ecore_dcbx_info_free(struct ecore_hwfn *p_hwfn)
 {
 	OSAL_FREE(p_hwfn->p_dev, p_hwfn->p_dcbx_info);
 }

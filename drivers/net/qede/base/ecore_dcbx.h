@@ -50,7 +50,7 @@ ecore_dcbx_mib_update_event(struct ecore_hwfn *, struct ecore_ptt *,
 			    enum ecore_mib_read_type);
 
 enum _ecore_status_t ecore_dcbx_info_alloc(struct ecore_hwfn *p_hwfn);
-void ecore_dcbx_info_free(struct ecore_hwfn *, struct ecore_dcbx_info *);
+void ecore_dcbx_info_free(struct ecore_hwfn *p_hwfn);
 void ecore_dcbx_set_pf_update_params(struct ecore_dcbx_results *p_src,
 				     struct pf_update_ramrod_data *p_dest);
 

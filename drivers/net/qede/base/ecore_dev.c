@@ -472,7 +472,7 @@ void ecore_resc_free(struct ecore_dev *p_dev)
 		ecore_iov_free(p_hwfn);
 		ecore_l2_free(p_hwfn);
 		ecore_dmae_info_free(p_hwfn);
-		ecore_dcbx_info_free(p_hwfn, p_hwfn->p_dcbx_info);
+		ecore_dcbx_info_free(p_hwfn);
 		/* @@@TBD Flush work-queue ? */
 
 		/* destroy doorbell recovery mechanism */
