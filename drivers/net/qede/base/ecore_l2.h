@@ -34,7 +34,7 @@ struct ecore_queue_cid_vf_params {
 	 *  - Producers would be placed in a different place.
 	 *  - Makes assumptions regarding the CIDs.
 	 */
-	bool b_legacy;
+	u8 vf_legacy;
 
 	/* For VFs, this index arrives via TLV to diffrentiate between
 	 * different queues opened on the same qzone, and is passed
@@ -69,7 +69,9 @@ struct ecore_queue_cid {
 	u8 qid_usage_idx;
 
 	/* Legacy VFs might have Rx producer located elsewhere */
-	bool b_legacy_vf;
+	u8 vf_legacy;
+#define ECORE_QCID_LEGACY_VF_RX_PROD	(1 << 0)
+#define ECORE_QCID_LEGACY_VF_CID	(1 << 1)
 
 	struct ecore_hwfn *p_owner;
 };

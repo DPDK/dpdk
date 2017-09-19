@@ -14,6 +14,11 @@
 #include "ecore_l2_api.h"
 #include "ecore_vfpf_if.h"
 
+/* Default number of CIDs [total of both Rx and Tx] to be requested
+ * by default.
+ */
+#define ECORE_ETH_VF_DEFAULT_NUM_CIDS	(32)
+
 /* This data is held in the ecore_hwfn structure for VFs only. */
 struct ecore_vf_iov {
 	union vfpf_tlvs			*vf2pf_request;

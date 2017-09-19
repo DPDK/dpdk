@@ -63,6 +63,10 @@ struct ecore_iov_vf_mbx {
 					 */
 };
 
+#define ECORE_IOV_LEGACY_QID_RX (0)
+#define ECORE_IOV_LEGACY_QID_TX (1)
+#define ECORE_IOV_QID_INVALID (0xFE)
+
 struct ecore_vf_queue_cid {
 	bool b_is_tx;
 	struct ecore_queue_cid *p_cid;

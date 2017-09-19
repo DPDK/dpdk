@@ -135,22 +135,36 @@ ecore_send_msg2pf(struct ecore_hwfn *p_hwfn,
 	return rc;
 }
 
+static void ecore_vf_pf_add_qid(struct ecore_hwfn *p_hwfn,
+				struct ecore_queue_cid *p_cid)
+{
+	struct ecore_vf_iov *p_iov = p_hwfn->vf_iov_info;
+	struct vfpf_qid_tlv *p_qid_tlv;
+
+	/* Only add QIDs for the queue if it was negotiated with PF */
+	if (!(p_iov->acquire_resp.pfdev_info.capabilities &
+	      PFVF_ACQUIRE_CAP_QUEUE_QIDS))
+		return;
+
+	p_qid_tlv = ecore_add_tlv(p_hwfn, &p_iov->offset,
+				  CHANNEL_TLV_QID, sizeof(*p_qid_tlv));
+	p_qid_tlv->qid = p_cid->qid_usage_idx;
+}
+
 #define VF_ACQUIRE_THRESH 3
 static void ecore_vf_pf_acquire_reduce_resc(struct ecore_hwfn *p_hwfn,
 					    struct vf_pf_resc_request *p_req,
 					    struct pf_vf_resc *p_resp)
 {
 	DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
-		   "PF unwilling to fullill resource request: rxq [%02x/%02x]"
-		   " txq [%02x/%02x] sbs [%02x/%02x] mac [%02x/%02x]"
-		   " vlan [%02x/%02x] mc [%02x/%02x]."
-		   " Try PF recommended amount\n",
+		   "PF unwilling to fullill resource request: rxq [%02x/%02x] txq [%02x/%02x] sbs [%02x/%02x] mac [%02x/%02x] vlan [%02x/%02x] mc [%02x/%02x] cids [%02x/%02x]. Try PF recommended amount\n",
 		   p_req->num_rxqs, p_resp->num_rxqs,
 		   p_req->num_rxqs, p_resp->num_txqs,
 		   p_req->num_sbs, p_resp->num_sbs,
 		   p_req->num_mac_filters, p_resp->num_mac_filters,
 		   p_req->num_vlan_filters, p_resp->num_vlan_filters,
-		   p_req->num_mc_filters, p_resp->num_mc_filters);
+		   p_req->num_mc_filters, p_resp->num_mc_filters,
+		   p_req->num_cids, p_resp->num_cids);
 
 	/* humble our request */
 	p_req->num_txqs = p_resp->num_txqs;
@@ -159,6 +173,7 @@ static void ecore_vf_pf_acquire_reduce_resc(struct ecore_hwfn *p_hwfn,
 	p_req->num_mac_filters = p_resp->num_mac_filters;
 	p_req->num_vlan_filters = p_resp->num_vlan_filters;
 	p_req->num_mc_filters = p_resp->num_mc_filters;
+	p_req->num_cids = p_resp->num_cids;
 }
 
 static enum _ecore_status_t ecore_vf_pf_acquire(struct ecore_hwfn *p_hwfn)
@@ -185,6 +200,7 @@ static enum _ecore_status_t ecore_vf_pf_acquire(struct ecore_hwfn *p_hwfn)
 	p_resc->num_sbs = ECORE_MAX_VF_CHAINS_PER_PF;
 	p_resc->num_mac_filters = ECORE_ETH_VF_NUM_MAC_FILTERS;
 	p_resc->num_vlan_filters = ECORE_ETH_VF_NUM_VLAN_FILTERS;
+	p_resc->num_cids = ECORE_ETH_VF_DEFAULT_NUM_CIDS;
 
 	OSAL_MEMSET(&vf_sw_info, 0, sizeof(vf_sw_info));
 	OSAL_VF_FILL_ACQUIRE_RESC_REQ(p_hwfn, &req->resc_request, &vf_sw_info);
@@ -309,6 +325,15 @@ static enum _ecore_status_t ecore_vf_pf_acquire(struct ecore_hwfn *p_hwfn)
 	if (req->vfdev_info.capabilities &
 	    VFPF_ACQUIRE_CAP_PRE_FP_HSI)
 		p_iov->b_pre_fp_hsi = true;
+
+	/* In case PF doesn't support multi-queue Tx, update the number of
+	 * CIDs to reflect the number of queues [older PFs didn't fill that
+	 * field].
+	 */
+	if (!(resp->pfdev_info.capabilities &
+	      PFVF_ACQUIRE_CAP_QUEUE_QIDS))
+		resp->resc.num_cids = resp->resc.num_rxqs +
+				      resp->resc.num_txqs;
 
 	rc = OSAL_VF_UPDATE_ACQUIRE_RESC_RESP(p_hwfn, &resp->resc);
 	if (rc) {
@@ -649,6 +674,8 @@ ecore_vf_pf_rxq_start(struct ecore_hwfn *p_hwfn,
 				  (u32 *)(&init_prod_val));
 	}
 
+	ecore_vf_pf_add_qid(p_hwfn, p_cid);
+
 	/* add list termination tlv */
 	ecore_add_tlv(p_hwfn, &p_iov->offset,
 		      CHANNEL_TLV_LIST_END,
@@ -704,6 +731,8 @@ enum _ecore_status_t ecore_vf_pf_rxq_stop(struct ecore_hwfn *p_hwfn,
 	req->num_rxqs = 1;
 	req->cqe_completion = cqe_completion;
 
+	ecore_vf_pf_add_qid(p_hwfn, p_cid);
+
 	/* add list termination tlv */
 	ecore_add_tlv(p_hwfn, &p_iov->offset,
 		      CHANNEL_TLV_LIST_END,
@@ -747,6 +776,8 @@ ecore_vf_pf_txq_start(struct ecore_hwfn *p_hwfn,
 	req->pbl_size = pbl_size;
 	req->hw_sb = p_cid->rel.sb;
 	req->sb_index = p_cid->rel.sb_idx;
+
+	ecore_vf_pf_add_qid(p_hwfn, p_cid);
 
 	/* add list termination tlv */
 	ecore_add_tlv(p_hwfn, &p_iov->offset,
@@ -799,6 +830,8 @@ enum _ecore_status_t ecore_vf_pf_txq_stop(struct ecore_hwfn *p_hwfn,
 	req->tx_qid = p_cid->rel.queue_id;
 	req->num_txqs = 1;
 
+	ecore_vf_pf_add_qid(p_hwfn, p_cid);
+
 	/* add list termination tlv */
 	ecore_add_tlv(p_hwfn, &p_iov->offset,
 		      CHANNEL_TLV_LIST_END,
@@ -831,31 +864,29 @@ enum _ecore_status_t ecore_vf_pf_rxqs_update(struct ecore_hwfn *p_hwfn,
 	struct vfpf_update_rxq_tlv *req;
 	enum _ecore_status_t rc;
 
-	/* TODO - API is limited to assuming continuous regions of queues,
-	 * but VF queues might not fullfil this requirement.
-	 * Need to consider whether we need new TLVs for this, or whether
-	 * simply doing it iteratively is good enough.
+	/* Starting with CHANNEL_TLV_QID and the need for additional queue
+	 * information, this API stopped supporting multiple rxqs.
+	 * TODO - remove this and change the API to accept a single queue-cid
+	 * in a follow-up patch.
 	 */
-	if (!num_rxqs)
+	if (num_rxqs != 1) {
+		DP_NOTICE(p_hwfn, true,
+			  "VFs can no longer update more than a single queue\n");
 		return ECORE_INVAL;
+	}
 
-again:
 	/* clear mailbox and prep first tlv */
 	req = ecore_vf_pf_prep(p_hwfn, CHANNEL_TLV_UPDATE_RXQ, sizeof(*req));
 
-	/* Find the length of the current contagious range of queues beginning
-	 * at first queue's index.
-	 */
 	req->rx_qid = (*pp_cid)->rel.queue_id;
-	for (req->num_rxqs = 1; req->num_rxqs < num_rxqs; req->num_rxqs++)
-		if (pp_cid[req->num_rxqs]->rel.queue_id !=
-		    req->rx_qid + req->num_rxqs)
-			break;
+	req->num_rxqs = 1;
 
 	if (comp_cqe_flg)
 		req->flags |= VFPF_RXQ_UPD_COMPLETE_CQE_FLAG;
 	if (comp_event_flg)
 		req->flags |= VFPF_RXQ_UPD_COMPLETE_EVENT_FLAG;
+
+	ecore_vf_pf_add_qid(p_hwfn, *pp_cid);
 
 	/* add list termination tlv */
 	ecore_add_tlv(p_hwfn, &p_iov->offset,
@@ -869,15 +900,6 @@ again:
 	if (resp->hdr.status != PFVF_STATUS_SUCCESS) {
 		rc = ECORE_INVAL;
 		goto exit;
-	}
-
-	/* Make sure we're done with all the queues */
-	if (req->num_rxqs < num_rxqs) {
-		num_rxqs -= req->num_rxqs;
-		pp_cid += req->num_rxqs;
-		/* TODO - should we give a non-locked variant instead? */
-		ecore_vf_pf_req_end(p_hwfn, rc);
-		goto again;
 	}
 
 exit:

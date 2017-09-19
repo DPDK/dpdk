@@ -1993,19 +1993,16 @@ enum _ecore_status_t ecore_cxt_set_pf_params(struct ecore_hwfn *p_hwfn)
 	switch (p_hwfn->hw_info.personality) {
 	case ECORE_PCI_ETH:
 		{
-			struct ecore_eth_pf_params *p_params =
+		struct ecore_eth_pf_params *p_params =
 			    &p_hwfn->pf_params.eth_pf_params;
 
-			/* TODO - we probably want to add VF number to the PF
-			 * params;
-			 * As of now, allocates 16 * 2 per-VF [to retain regular
-			 * functionality].
-			 */
-			ecore_cxt_set_proto_cid_count(p_hwfn, PROTOCOLID_ETH,
-						      p_params->num_cons, 32);
-			p_hwfn->p_cxt_mngr->arfs_count =
-						p_params->num_arfs_filters;
-			break;
+		if (!p_params->num_vf_cons)
+			p_params->num_vf_cons = ETH_PF_PARAMS_VF_CONS_DEFAULT;
+		ecore_cxt_set_proto_cid_count(p_hwfn, PROTOCOLID_ETH,
+					      p_params->num_cons,
+					      p_params->num_vf_cons);
+		p_hwfn->p_cxt_mngr->arfs_count = p_params->num_arfs_filters;
+		break;
 		}
 	default:
 		return ECORE_INVAL;

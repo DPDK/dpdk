@@ -173,16 +173,19 @@ static void ecore_eth_queue_qid_usage_del(struct ecore_hwfn *p_hwfn,
 void ecore_eth_queue_cid_release(struct ecore_hwfn *p_hwfn,
 				 struct ecore_queue_cid *p_cid)
 {
-	/* For VF-queues, stuff is a bit complicated as:
-	 *  - They always maintain the qid_usage on their own.
-	 *  - In legacy mode, they also maintain their CIDs.
-	 */
+	bool b_legacy_vf = !!(p_cid->vf_legacy &
+			      ECORE_QCID_LEGACY_VF_CID);
 
-	/* VFs' CIDs are 0-based in PF-view, and uninitialized on VF */
-	if (IS_PF(p_hwfn->p_dev) && !p_cid->b_legacy_vf)
+	/* VFs' CIDs are 0-based in PF-view, and uninitialized on VF.
+	 * For legacy vf-queues, the CID doesn't go through here.
+	 */
+	if (IS_PF(p_hwfn->p_dev) && !b_legacy_vf)
 		_ecore_cxt_release_cid(p_hwfn, p_cid->cid, p_cid->vfid);
-	if (!p_cid->b_legacy_vf)
+
+	/* VFs maintain the index inside queue-zone on their own */
+	if (p_cid->vfid == ECORE_QUEUE_CID_PF)
 		ecore_eth_queue_qid_usage_del(p_hwfn, p_cid);
+
 	OSAL_VFREE(p_hwfn->p_dev, p_cid);
 }
 
@@ -211,7 +214,7 @@ _ecore_eth_queue_to_cid(struct ecore_hwfn *p_hwfn,
 	if (p_vf_params != OSAL_NULL) {
 		p_cid->vfid = p_vf_params->vfid;
 		p_cid->vf_qid = p_vf_params->vf_qid;
-		p_cid->b_legacy_vf = p_vf_params->b_legacy;
+		p_cid->vf_legacy = p_vf_params->vf_legacy;
 	} else {
 		p_cid->vfid = ECORE_QUEUE_CID_PF;
 	}
@@ -296,7 +299,8 @@ ecore_eth_queue_to_cid(struct ecore_hwfn *p_hwfn, u16 opaque_fid,
 	if (p_vf_params) {
 		vfid = p_vf_params->vfid;
 
-		if (p_vf_params->b_legacy) {
+		if (p_vf_params->vf_legacy &
+		    ECORE_QCID_LEGACY_VF_CID) {
 			b_legacy_vf = true;
 			cid = p_vf_params->vf_qid;
 		}
@@ -928,12 +932,15 @@ ecore_eth_rxq_start_ramrod(struct ecore_hwfn *p_hwfn,
 	DMA_REGPAIR_LE(p_ramrod->cqe_pbl_addr, cqe_pbl_addr);
 
 	if (p_cid->vfid != ECORE_QUEUE_CID_PF) {
+		bool b_legacy_vf = !!(p_cid->vf_legacy &
+				      ECORE_QCID_LEGACY_VF_RX_PROD);
+
 		p_ramrod->vf_rx_prod_index = p_cid->vf_qid;
 		DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
 			   "Queue%s is meant for VF rxq[%02x]\n",
-			   !!p_cid->b_legacy_vf ? " [legacy]" : "",
+			   b_legacy_vf ? " [legacy]" : "",
 			   p_cid->vf_qid);
-		p_ramrod->vf_rx_prod_use_zone_a = !!p_cid->b_legacy_vf;
+		p_ramrod->vf_rx_prod_use_zone_a = b_legacy_vf;
 	}
 
 	return ecore_spq_post(p_hwfn, p_ent, OSAL_NULL);

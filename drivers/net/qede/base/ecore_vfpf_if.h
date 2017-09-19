@@ -19,13 +19,14 @@
  *
  **/
 struct vf_pf_resc_request {
-	u8  num_rxqs;
-	u8  num_txqs;
-	u8  num_sbs;
-	u8  num_mac_filters;
-	u8  num_vlan_filters;
-	u8  num_mc_filters; /* No limit  so superfluous */
-	u16 padding;
+	u8 num_rxqs;
+	u8 num_txqs;
+	u8 num_sbs;
+	u8 num_mac_filters;
+	u8 num_vlan_filters;
+	u8 num_mc_filters; /* No limit  so superfluous */
+	u8 num_cids;
+	u8 padding;
 };
 
 struct hw_sb_info {
@@ -92,6 +93,14 @@ struct vfpf_acquire_tlv {
 /* VF pre-FP hsi version */
 #define VFPF_ACQUIRE_CAP_PRE_FP_HSI	(1 << 0)
 #define VFPF_ACQUIRE_CAP_100G		(1 << 1) /* VF can support 100g */
+
+	/* A requirement for supporting multi-Tx queues on a single queue-zone,
+	 * VF would pass qids as additional information whenever passing queue
+	 * references.
+	 * TODO - due to the CID limitations in Bar0, VFs currently don't pass
+	 * this, and use the legacy CID scheme.
+	 */
+#define VFPF_ACQUIRE_CAP_QUEUE_QIDS	(1 << 2)
 		u64 capabilities;
 		u8 fw_major;
 		u8 fw_minor;
@@ -170,6 +179,9 @@ struct pfvf_acquire_resp_tlv {
 #endif
 #define PFVF_ACQUIRE_CAP_POST_FW_OVERRIDE	(1 << 2)
 
+	/* PF expects queues to be received with additional qids */
+#define PFVF_ACQUIRE_CAP_QUEUE_QIDS		(1 << 3)
+
 		u16 db_size;
 		u8  indices_per_sb;
 		u8 os_type;
@@ -210,7 +222,8 @@ struct pfvf_acquire_resp_tlv {
 		u8      num_mac_filters;
 		u8      num_vlan_filters;
 		u8      num_mc_filters;
-		u8      padding[2];
+		u8	num_cids;
+		u8      padding;
 	} resc;
 
 	u32 bulletin_size;
@@ -221,6 +234,16 @@ struct pfvf_start_queue_resp_tlv {
 	struct pfvf_tlv hdr;
 	u32 offset; /* offset to consumer/producer of queue */
 	u8 padding[4];
+};
+
+/* Extended queue information - additional index for reference inside qzone.
+ * If commmunicated between VF/PF, each TLV relating to queues should be
+ * extended by one such [or have a future base TLV that already contains info].
+ */
+struct vfpf_qid_tlv {
+	struct channel_tlv	tl;
+	u8			qid;
+	u8			padding[3];
 };
 
 /* Setup Queue */
@@ -265,7 +288,15 @@ struct vfpf_stop_rxqs_tlv {
 	struct vfpf_first_tlv	first_tlv;
 
 	u16			rx_qid;
+
+	/* While the API supports multiple Rx-queues on a single TLV
+	 * message, in practice older VFs always used it as one [ecore].
+	 * And there are PFs [starting with the CHANNEL_TLV_QID] which
+	 * would start assuming this is always a '1'. So in practice this
+	 * field should be considered deprecated and *Always* set to '1'.
+	 */
 	u8			num_rxqs;
+
 	u8			cqe_completion;
 	u8			padding[4];
 };
@@ -275,6 +306,13 @@ struct vfpf_stop_txqs_tlv {
 	struct vfpf_first_tlv	first_tlv;
 
 	u16			tx_qid;
+
+	/* While the API supports multiple Tx-queues on a single TLV
+	 * message, in practice older VFs always used it as one [ecore].
+	 * And there are PFs [starting with the CHANNEL_TLV_QID] which
+	 * would start assuming this is always a '1'. So in practice this
+	 * field should be considered deprecated and *Always* set to '1'.
+	 */
 	u8			num_txqs;
 	u8			padding[5];
 };
@@ -605,6 +643,7 @@ enum {
 	CHANNEL_TLV_VPORT_UPDATE_SGE_TPA,
 	CHANNEL_TLV_UPDATE_TUNN_PARAM,
 	CHANNEL_TLV_COALESCE_UPDATE,
+	CHANNEL_TLV_QID,
 	CHANNEL_TLV_MAX,
 
 	/* Required for iterating over vport-update tlvs.
