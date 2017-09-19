@@ -238,10 +238,8 @@ enum _ecore_status_t ecore_iov_alloc(struct ecore_hwfn *p_hwfn);
  * @brief ecore_iov_setup - setup sriov related resources
  *
  * @param p_hwfn
- * @param p_ptt
  */
-void ecore_iov_setup(struct ecore_hwfn	*p_hwfn,
-		     struct ecore_ptt	*p_ptt);
+void ecore_iov_setup(struct ecore_hwfn	*p_hwfn);
 
 /**
  * @brief ecore_iov_free - free sriov related resources

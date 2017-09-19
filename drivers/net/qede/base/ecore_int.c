@@ -248,21 +248,21 @@ static enum _ecore_status_t ecore_grc_attn_cb(struct ecore_hwfn *p_hwfn)
 	tmp2 = ecore_rd(p_hwfn, p_hwfn->p_dpc_ptt,
 			GRC_REG_TIMEOUT_ATTN_ACCESS_DATA_1);
 
-	DP_INFO(p_hwfn->p_dev,
-		"GRC timeout [%08x:%08x] - %s Address [%08x] [Master %s]"
-		" [PF: %02x %s %02x]\n",
-		tmp2, tmp,
-		(tmp & ECORE_GRC_ATTENTION_RDWR_BIT) ? "Write to" : "Read from",
-		(tmp & ECORE_GRC_ATTENTION_ADDRESS_MASK) << 2,
-		grc_timeout_attn_master_to_str((tmp &
-					ECORE_GRC_ATTENTION_MASTER_MASK) >>
-				       ECORE_GRC_ATTENTION_MASTER_SHIFT),
-		(tmp2 & ECORE_GRC_ATTENTION_PF_MASK),
-		(((tmp2 & ECORE_GRC_ATTENTION_PRIV_MASK) >>
+	DP_NOTICE(p_hwfn->p_dev, false,
+		  "GRC timeout [%08x:%08x] - %s Address [%08x] [Master %s] [PF: %02x %s %02x]\n",
+		  tmp2, tmp,
+		  (tmp & ECORE_GRC_ATTENTION_RDWR_BIT) ? "Write to"
+						       : "Read from",
+		  (tmp & ECORE_GRC_ATTENTION_ADDRESS_MASK) << 2,
+		  grc_timeout_attn_master_to_str(
+			(tmp & ECORE_GRC_ATTENTION_MASTER_MASK) >>
+			 ECORE_GRC_ATTENTION_MASTER_SHIFT),
+		  (tmp2 & ECORE_GRC_ATTENTION_PF_MASK),
+		  (((tmp2 & ECORE_GRC_ATTENTION_PRIV_MASK) >>
 		  ECORE_GRC_ATTENTION_PRIV_SHIFT) ==
-		 ECORE_GRC_ATTENTION_PRIV_VF) ? "VF" : "(Irrelevant:)",
-		(tmp2 & ECORE_GRC_ATTENTION_VF_MASK) >>
-		ECORE_GRC_ATTENTION_VF_SHIFT);
+		  ECORE_GRC_ATTENTION_PRIV_VF) ? "VF" : "(Irrelevant:)",
+		  (tmp2 & ECORE_GRC_ATTENTION_VF_MASK) >>
+		  ECORE_GRC_ATTENTION_VF_SHIFT);
 
 out:
 	/* Regardles of anything else, clean the validity bit */

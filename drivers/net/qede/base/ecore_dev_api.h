@@ -142,8 +142,9 @@ enum _ecore_status_t ecore_hw_stop(struct ecore_dev *p_dev);
  *
  * @param p_dev
  *
+ * @return enum _ecore_status_t
  */
-void ecore_hw_stop_fastpath(struct ecore_dev *p_dev);
+enum _ecore_status_t ecore_hw_stop_fastpath(struct ecore_dev *p_dev);
 
 #ifndef LINUX_REMOVE
 /**
@@ -160,10 +161,11 @@ void ecore_prepare_hibernate(struct ecore_dev *p_dev);
  * @brief ecore_hw_start_fastpath -restart fastpath traffic,
  *        only if hw_stop_fastpath was called
 
- * @param p_dev
+ * @param p_hwfn
  *
+ * @return enum _ecore_status_t
  */
-void ecore_hw_start_fastpath(struct ecore_hwfn *p_hwfn);
+enum _ecore_status_t ecore_hw_start_fastpath(struct ecore_hwfn *p_hwfn);
 
 enum ecore_hw_prepare_result {
 	ECORE_HW_PREPARE_SUCCESS,

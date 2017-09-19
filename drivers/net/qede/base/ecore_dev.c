@@ -56,7 +56,9 @@ enum BAR_ID {
 	BAR_ID_1		/* Used for doorbells */
 };
 
-static u32 ecore_hw_bar_size(struct ecore_hwfn *p_hwfn, enum BAR_ID bar_id)
+static u32 ecore_hw_bar_size(struct ecore_hwfn *p_hwfn,
+			     struct ecore_ptt *p_ptt,
+			     enum BAR_ID bar_id)
 {
 	u32 bar_reg = (bar_id == BAR_ID_0 ?
 		       PGLUE_B_REG_PF_BAR0_SIZE : PGLUE_B_REG_PF_BAR1_SIZE);
@@ -70,7 +72,7 @@ static u32 ecore_hw_bar_size(struct ecore_hwfn *p_hwfn, enum BAR_ID bar_id)
 		return 1 << 17;
 	}
 
-	val = ecore_rd(p_hwfn, p_hwfn->p_main_ptt, bar_reg);
+	val = ecore_rd(p_hwfn, p_ptt, bar_reg);
 	if (val)
 		return 1 << (val + 15);
 
@@ -79,14 +81,12 @@ static u32 ecore_hw_bar_size(struct ecore_hwfn *p_hwfn, enum BAR_ID bar_id)
 	 * In older MFW versions they are set to 0 which means disabled.
 	 */
 	if (p_hwfn->p_dev->num_hwfns > 1) {
-		DP_NOTICE(p_hwfn, false,
-			  "BAR size not configured. Assuming BAR size of 256kB"
-			  " for GRC and 512kB for DB\n");
+		DP_INFO(p_hwfn,
+			"BAR size not configured. Assuming BAR size of 256kB for GRC and 512kB for DB\n");
 		val = BAR_ID_0 ? 256 * 1024 : 512 * 1024;
 	} else {
-		DP_NOTICE(p_hwfn, false,
-			  "BAR size not configured. Assuming BAR size of 512kB"
-			  " for GRC and 512kB for DB\n");
+		DP_INFO(p_hwfn,
+			"BAR size not configured. Assuming BAR size of 512kB for GRC and 512kB for DB\n");
 		val = 512 * 1024;
 	}
 
@@ -777,7 +777,7 @@ enum _ecore_status_t ecore_qm_reconf(struct ecore_hwfn *p_hwfn,
 	ecore_init_clear_rt_data(p_hwfn);
 
 	/* prepare QM portion of runtime array */
-	ecore_qm_init_pf(p_hwfn);
+	ecore_qm_init_pf(p_hwfn, p_ptt);
 
 	/* activate init tool on runtime array */
 	rc = ecore_init_run(p_hwfn, p_ptt, PHASE_QM_PF, p_hwfn->rel_pf_id,
@@ -1036,7 +1036,7 @@ void ecore_resc_setup(struct ecore_dev *p_dev)
 		ecore_int_setup(p_hwfn, p_hwfn->p_main_ptt);
 
 		ecore_l2_setup(p_hwfn);
-		ecore_iov_setup(p_hwfn, p_hwfn->p_main_ptt);
+		ecore_iov_setup(p_hwfn);
 	}
 }
 
@@ -1327,11 +1327,11 @@ static enum _ecore_status_t ecore_hw_init_common(struct ecore_hwfn *p_hwfn,
 	ecore_init_cau_rt_data(p_dev);
 
 	/* Program GTT windows */
-	ecore_gtt_init(p_hwfn);
+	ecore_gtt_init(p_hwfn, p_ptt);
 
 #ifndef ASIC_ONLY
 	if (CHIP_REV_IS_EMUL(p_dev)) {
-		rc = ecore_hw_init_chip(p_hwfn, p_hwfn->p_main_ptt);
+		rc = ecore_hw_init_chip(p_hwfn, p_ptt);
 		if (rc != ECORE_SUCCESS)
 			return rc;
 	}
@@ -1637,7 +1637,7 @@ ecore_hw_init_pf_doorbell_bar(struct ecore_hwfn *p_hwfn,
 	enum _ecore_status_t rc = ECORE_SUCCESS;
 	u8 cond;
 
-	db_bar_size = ecore_hw_bar_size(p_hwfn, BAR_ID_1);
+	db_bar_size = ecore_hw_bar_size(p_hwfn, p_ptt, BAR_ID_1);
 	if (p_hwfn->p_dev->num_hwfns > 1)
 		db_bar_size /= 2;
 
@@ -1808,7 +1808,7 @@ ecore_hw_init_pf(struct ecore_hwfn *p_hwfn,
 		/* Update rate limit once we'll actually have a link */
 		p_hwfn->qm_info.pf_rl = 100000;
 	}
-	ecore_cxt_hw_init_pf(p_hwfn);
+	ecore_cxt_hw_init_pf(p_hwfn, p_ptt);
 
 	ecore_int_igu_init_rt(p_hwfn);
 
@@ -1877,7 +1877,8 @@ ecore_hw_init_pf(struct ecore_hwfn *p_hwfn,
 			return rc;
 
 		/* send function start command */
-		rc = ecore_sp_pf_start(p_hwfn, p_tunn, p_hwfn->p_dev->mf_mode,
+		rc = ecore_sp_pf_start(p_hwfn, p_ptt, p_tunn,
+				       p_hwfn->p_dev->mf_mode,
 				       allow_npar_tx_switch);
 		if (rc) {
 			DP_NOTICE(p_hwfn, true,
@@ -2394,18 +2395,21 @@ enum _ecore_status_t ecore_hw_stop(struct ecore_dev *p_dev)
 	return rc2;
 }
 
-void ecore_hw_stop_fastpath(struct ecore_dev *p_dev)
+enum _ecore_status_t ecore_hw_stop_fastpath(struct ecore_dev *p_dev)
 {
 	int j;
 
 	for_each_hwfn(p_dev, j) {
 		struct ecore_hwfn *p_hwfn = &p_dev->hwfns[j];
-		struct ecore_ptt *p_ptt = p_hwfn->p_main_ptt;
+		struct ecore_ptt *p_ptt;
 
 		if (IS_VF(p_dev)) {
 			ecore_vf_pf_int_cleanup(p_hwfn);
 			continue;
 		}
+		p_ptt = ecore_ptt_acquire(p_hwfn);
+		if (!p_ptt)
+			return ECORE_AGAIN;
 
 		DP_VERBOSE(p_hwfn, ECORE_MSG_IFDOWN,
 			   "Shutting down the fastpath\n");
@@ -2427,15 +2431,22 @@ void ecore_hw_stop_fastpath(struct ecore_dev *p_dev)
 		ecore_int_igu_init_pure_rt(p_hwfn, p_ptt, false, false);
 		/* Need to wait 1ms to guarantee SBs are cleared */
 		OSAL_MSLEEP(1);
+		ecore_ptt_release(p_hwfn, p_ptt);
 	}
+
+	return ECORE_SUCCESS;
 }
 
-void ecore_hw_start_fastpath(struct ecore_hwfn *p_hwfn)
+enum _ecore_status_t ecore_hw_start_fastpath(struct ecore_hwfn *p_hwfn)
 {
-	struct ecore_ptt *p_ptt = p_hwfn->p_main_ptt;
+	struct ecore_ptt *p_ptt;
 
 	if (IS_VF(p_hwfn->p_dev))
-		return;
+		return ECORE_SUCCESS;
+
+	p_ptt = ecore_ptt_acquire(p_hwfn);
+	if (!p_ptt)
+		return ECORE_AGAIN;
 
 	/* If roce info is allocated it means roce is initialized and should
 	 * be enabled in searcher.
@@ -2448,8 +2459,11 @@ void ecore_hw_start_fastpath(struct ecore_hwfn *p_hwfn)
 	}
 
 	/* Re-open incoming traffic */
-	ecore_wr(p_hwfn, p_hwfn->p_main_ptt,
+	ecore_wr(p_hwfn, p_ptt,
 		 NIG_REG_RX_LLH_BRB_GATE_DNTFWD_PERPF, 0x0);
+	ecore_ptt_release(p_hwfn, p_ptt);
+
+	return ECORE_SUCCESS;
 }
 
 /* Free hwfn memory and resources acquired in hw_hwfn_prepare */
@@ -2589,12 +2603,14 @@ const char *ecore_hw_get_resc_name(enum ecore_resources res_id)
 
 static enum _ecore_status_t
 __ecore_hw_set_soft_resc_size(struct ecore_hwfn *p_hwfn,
-			      enum ecore_resources res_id, u32 resc_max_val,
+			      struct ecore_ptt *p_ptt,
+			      enum ecore_resources res_id,
+			      u32 resc_max_val,
 			      u32 *p_mcp_resp)
 {
 	enum _ecore_status_t rc;
 
-	rc = ecore_mcp_set_resc_max_val(p_hwfn, p_hwfn->p_main_ptt, res_id,
+	rc = ecore_mcp_set_resc_max_val(p_hwfn, p_ptt, res_id,
 					resc_max_val, p_mcp_resp);
 	if (rc != ECORE_SUCCESS) {
 		DP_NOTICE(p_hwfn, true,
@@ -2612,7 +2628,8 @@ __ecore_hw_set_soft_resc_size(struct ecore_hwfn *p_hwfn,
 }
 
 static enum _ecore_status_t
-ecore_hw_set_soft_resc_size(struct ecore_hwfn *p_hwfn)
+ecore_hw_set_soft_resc_size(struct ecore_hwfn *p_hwfn,
+			    struct ecore_ptt *p_ptt)
 {
 	bool b_ah = ECORE_IS_AH(p_hwfn->p_dev);
 	u32 resc_max_val, mcp_resp;
@@ -2632,7 +2649,7 @@ ecore_hw_set_soft_resc_size(struct ecore_hwfn *p_hwfn)
 			continue;
 		}
 
-		rc = __ecore_hw_set_soft_resc_size(p_hwfn, res_id,
+		rc = __ecore_hw_set_soft_resc_size(p_hwfn, p_ptt, res_id,
 						   resc_max_val, &mcp_resp);
 		if (rc != ECORE_SUCCESS)
 			return rc;
@@ -2821,6 +2838,7 @@ static enum _ecore_status_t ecore_hw_set_resc_info(struct ecore_hwfn *p_hwfn,
 #define ECORE_RESC_ALLOC_LOCK_RETRY_INTVL_US	10000 /* 10 msec */
 
 static enum _ecore_status_t ecore_hw_get_resc(struct ecore_hwfn *p_hwfn,
+					      struct ecore_ptt *p_ptt,
 					      bool drv_resc_alloc)
 {
 	struct ecore_resc_unlock_params resc_unlock_params;
@@ -2858,7 +2876,7 @@ static enum _ecore_status_t ecore_hw_get_resc(struct ecore_hwfn *p_hwfn,
 	OSAL_MEM_ZERO(&resc_unlock_params, sizeof(resc_unlock_params));
 	resc_unlock_params.resource = ECORE_RESC_LOCK_RESC_ALLOC;
 
-	rc = ecore_mcp_resc_lock(p_hwfn, p_hwfn->p_main_ptt, &resc_lock_params);
+	rc = ecore_mcp_resc_lock(p_hwfn, p_ptt, &resc_lock_params);
 	if (rc != ECORE_SUCCESS && rc != ECORE_NOTIMPL) {
 		return rc;
 	} else if (rc == ECORE_NOTIMPL) {
@@ -2870,7 +2888,7 @@ static enum _ecore_status_t ecore_hw_get_resc(struct ecore_hwfn *p_hwfn,
 		rc = ECORE_BUSY;
 		goto unlock_and_exit;
 	} else {
-		rc = ecore_hw_set_soft_resc_size(p_hwfn);
+		rc = ecore_hw_set_soft_resc_size(p_hwfn, p_ptt);
 		if (rc != ECORE_SUCCESS && rc != ECORE_NOTIMPL) {
 			DP_NOTICE(p_hwfn, false,
 				  "Failed to set the max values of the soft resources\n");
@@ -2878,7 +2896,7 @@ static enum _ecore_status_t ecore_hw_get_resc(struct ecore_hwfn *p_hwfn,
 		} else if (rc == ECORE_NOTIMPL) {
 			DP_INFO(p_hwfn,
 				"Skip the max values setting of the soft resources since it is not supported by the MFW\n");
-			rc = ecore_mcp_resc_unlock(p_hwfn, p_hwfn->p_main_ptt,
+			rc = ecore_mcp_resc_unlock(p_hwfn, p_ptt,
 						   &resc_unlock_params);
 			if (rc != ECORE_SUCCESS)
 				DP_INFO(p_hwfn,
@@ -2891,7 +2909,7 @@ static enum _ecore_status_t ecore_hw_get_resc(struct ecore_hwfn *p_hwfn,
 		goto unlock_and_exit;
 
 	if (resc_lock_params.b_granted && !resc_unlock_params.b_released) {
-		rc = ecore_mcp_resc_unlock(p_hwfn, p_hwfn->p_main_ptt,
+		rc = ecore_mcp_resc_unlock(p_hwfn, p_ptt,
 					   &resc_unlock_params);
 		if (rc != ECORE_SUCCESS)
 			DP_INFO(p_hwfn,
@@ -2938,7 +2956,7 @@ static enum _ecore_status_t ecore_hw_get_resc(struct ecore_hwfn *p_hwfn,
 	}
 
 	/* This will also learn the number of SBs from MFW */
-	if (ecore_int_igu_reset_cam(p_hwfn, p_hwfn->p_main_ptt))
+	if (ecore_int_igu_reset_cam(p_hwfn, p_ptt))
 		return ECORE_INVAL;
 
 	ecore_hw_set_feat(p_hwfn);
@@ -2954,7 +2972,9 @@ static enum _ecore_status_t ecore_hw_get_resc(struct ecore_hwfn *p_hwfn,
 	return ECORE_SUCCESS;
 
 unlock_and_exit:
-	ecore_mcp_resc_unlock(p_hwfn, p_hwfn->p_main_ptt, &resc_unlock_params);
+	if (resc_lock_params.b_granted && !resc_unlock_params.b_released)
+		ecore_mcp_resc_unlock(p_hwfn, p_ptt,
+				      &resc_unlock_params);
 	return rc;
 }
 
@@ -3486,7 +3506,7 @@ ecore_get_hw_info(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 	 * the resources/features depends on them.
 	 * This order is not harmful if not forcing.
 	 */
-	rc = ecore_hw_get_resc(p_hwfn, drv_resc_alloc);
+	rc = ecore_hw_get_resc(p_hwfn, p_ptt, drv_resc_alloc);
 	if (rc != ECORE_SUCCESS && p_params->b_relaxed_probe) {
 		rc = ECORE_SUCCESS;
 		p_params->p_relaxed_res = ECORE_HW_PREPARE_BAD_MCP;
@@ -3495,9 +3515,10 @@ ecore_get_hw_info(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 	return rc;
 }
 
-static enum _ecore_status_t ecore_get_dev_info(struct ecore_dev *p_dev)
+static enum _ecore_status_t ecore_get_dev_info(struct ecore_hwfn *p_hwfn,
+					       struct ecore_ptt *p_ptt)
 {
-	struct ecore_hwfn *p_hwfn = ECORE_LEADING_HWFN(p_dev);
+	struct ecore_dev *p_dev = p_hwfn->p_dev;
 	u16 device_id_mask;
 	u32 tmp;
 
@@ -3522,16 +3543,15 @@ static enum _ecore_status_t ecore_get_dev_info(struct ecore_dev *p_dev)
 		return ECORE_ABORTED;
 	}
 
-	p_dev->chip_num = (u16)ecore_rd(p_hwfn, p_hwfn->p_main_ptt,
-					 MISCS_REG_CHIP_NUM);
-	p_dev->chip_rev = (u16)ecore_rd(p_hwfn, p_hwfn->p_main_ptt,
-					 MISCS_REG_CHIP_REV);
+	p_dev->chip_num = (u16)ecore_rd(p_hwfn, p_ptt,
+						MISCS_REG_CHIP_NUM);
+	p_dev->chip_rev = (u16)ecore_rd(p_hwfn, p_ptt,
+						MISCS_REG_CHIP_REV);
 
 	MASK_FIELD(CHIP_REV, p_dev->chip_rev);
 
 	/* Learn number of HW-functions */
-	tmp = ecore_rd(p_hwfn, p_hwfn->p_main_ptt,
-		       MISCS_REG_CMT_ENABLED_FOR_PAIR);
+	tmp = ecore_rd(p_hwfn, p_ptt, MISCS_REG_CMT_ENABLED_FOR_PAIR);
 
 	if (tmp & (1 << p_hwfn->rel_pf_id)) {
 		DP_NOTICE(p_dev->hwfns, false, "device in CMT mode\n");
@@ -3551,10 +3571,10 @@ static enum _ecore_status_t ecore_get_dev_info(struct ecore_dev *p_dev)
 	}
 #endif
 
-	p_dev->chip_bond_id = ecore_rd(p_hwfn, p_hwfn->p_main_ptt,
+	p_dev->chip_bond_id = ecore_rd(p_hwfn, p_ptt,
 				       MISCS_REG_CHIP_TEST_REG) >> 4;
 	MASK_FIELD(CHIP_BOND_ID, p_dev->chip_bond_id);
-	p_dev->chip_metal = (u16)ecore_rd(p_hwfn, p_hwfn->p_main_ptt,
+	p_dev->chip_metal = (u16)ecore_rd(p_hwfn, p_ptt,
 					   MISCS_REG_CHIP_METAL);
 	MASK_FIELD(CHIP_METAL, p_dev->chip_metal);
 	DP_INFO(p_dev->hwfns,
@@ -3571,12 +3591,10 @@ static enum _ecore_status_t ecore_get_dev_info(struct ecore_dev *p_dev)
 	}
 #ifndef ASIC_ONLY
 	if (CHIP_REV_IS_EMUL(p_dev) && ECORE_IS_AH(p_dev))
-		ecore_wr(p_hwfn, p_hwfn->p_main_ptt,
-			 MISCS_REG_PLL_MAIN_CTRL_4, 0x1);
+		ecore_wr(p_hwfn, p_ptt, MISCS_REG_PLL_MAIN_CTRL_4, 0x1);
 
 	if (CHIP_REV_IS_EMUL(p_dev)) {
-		tmp = ecore_rd(p_hwfn, p_hwfn->p_main_ptt,
-			       MISCS_REG_ECO_RESERVED);
+		tmp = ecore_rd(p_hwfn, p_ptt, MISCS_REG_ECO_RESERVED);
 		if (tmp & (1 << 29)) {
 			DP_NOTICE(p_hwfn, false,
 				  "Emulation: Running on a FULL build\n");
@@ -3656,7 +3674,7 @@ ecore_hw_prepare_single(struct ecore_hwfn *p_hwfn,
 
 	/* First hwfn learns basic information, e.g., number of hwfns */
 	if (!p_hwfn->my_id) {
-		rc = ecore_get_dev_info(p_dev);
+		rc = ecore_get_dev_info(p_hwfn, p_hwfn->p_main_ptt);
 		if (rc != ECORE_SUCCESS) {
 			if (p_params->b_relaxed_probe)
 				p_params->p_relaxed_res =
@@ -3785,11 +3803,15 @@ enum _ecore_status_t ecore_hw_prepare(struct ecore_dev *p_dev,
 
 		/* adjust bar offset for second engine */
 		addr = (u8 OSAL_IOMEM *)p_dev->regview +
-		    ecore_hw_bar_size(p_hwfn, BAR_ID_0) / 2;
+					ecore_hw_bar_size(p_hwfn,
+							  p_hwfn->p_main_ptt,
+							  BAR_ID_0) / 2;
 		p_regview = (void OSAL_IOMEM *)addr;
 
 		addr = (u8 OSAL_IOMEM *)p_dev->doorbells +
-		    ecore_hw_bar_size(p_hwfn, BAR_ID_1) / 2;
+					ecore_hw_bar_size(p_hwfn,
+							  p_hwfn->p_main_ptt,
+							  BAR_ID_1) / 2;
 		p_doorbell = (void OSAL_IOMEM *)addr;
 
 		/* prepare second hw function */

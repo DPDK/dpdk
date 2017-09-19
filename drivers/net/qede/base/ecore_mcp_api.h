@@ -608,14 +608,16 @@ enum _ecore_status_t ecore_mcp_get_mfw_ver(struct ecore_hwfn *p_hwfn,
  * @brief Get media type value of the port.
  *
  * @param p_dev      - ecore dev pointer
+ * @param p_ptt
  * @param mfw_ver    - media type value
  *
  * @return enum _ecore_status_t -
  *      ECORE_SUCCESS - Operation was successful.
  *      ECORE_BUSY - Operation failed
  */
-enum _ecore_status_t ecore_mcp_get_media_type(struct ecore_dev *p_dev,
-					   u32 *media_type);
+enum _ecore_status_t ecore_mcp_get_media_type(struct ecore_hwfn *p_hwfn,
+					      struct ecore_ptt *p_ptt,
+					      u32 *media_type);
 
 /**
  * @brief - Sends a command to the MCP mailbox.

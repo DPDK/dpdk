@@ -71,8 +71,10 @@ enum _dmae_cmd_crc_mask {
 * @brief ecore_gtt_init - Initialize GTT windows
 *
 * @param p_hwfn
+* @param p_ptt
 */
-void ecore_gtt_init(struct ecore_hwfn *p_hwfn);
+void ecore_gtt_init(struct ecore_hwfn *p_hwfn,
+		    struct ecore_ptt *p_ptt);
 
 /**
  * @brief ecore_ptt_invalidate - Forces all ptt entries to be re-configured

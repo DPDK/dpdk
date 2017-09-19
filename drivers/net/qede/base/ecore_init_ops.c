@@ -525,7 +525,8 @@ enum _ecore_status_t ecore_init_run(struct ecore_hwfn *p_hwfn,
 	return rc;
 }
 
-void ecore_gtt_init(struct ecore_hwfn *p_hwfn)
+void ecore_gtt_init(struct ecore_hwfn *p_hwfn,
+		    struct ecore_ptt *p_ptt)
 {
 	u32 gtt_base;
 	u32 i;
@@ -543,7 +544,7 @@ void ecore_gtt_init(struct ecore_hwfn *p_hwfn)
 
 		/* initialize PTT/GTT (poll for completion) */
 		if (!initialized) {
-			ecore_wr(p_hwfn, p_hwfn->p_main_ptt,
+			ecore_wr(p_hwfn, p_ptt,
 				 PGLUE_B_REG_START_INIT_PTT_GTT, 1);
 			initialized = true;
 		}
@@ -552,7 +553,7 @@ void ecore_gtt_init(struct ecore_hwfn *p_hwfn)
 			/* ptt might be overrided by HW until this is done */
 			OSAL_UDELAY(10);
 			ecore_ptt_invalidate(p_hwfn);
-			val = ecore_rd(p_hwfn, p_hwfn->p_main_ptt,
+			val = ecore_rd(p_hwfn, p_ptt,
 				       PGLUE_B_REG_INIT_DONE_PTT_GTT);
 		} while ((val != 1) && --poll_cnt);
 

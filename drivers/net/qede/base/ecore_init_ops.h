@@ -107,5 +107,6 @@ void ecore_init_store_rt_agg(struct ecore_hwfn *p_hwfn,
  *
  * @param p_hwfn
  */
-void ecore_gtt_init(struct ecore_hwfn *p_hwfn);
+void ecore_gtt_init(struct ecore_hwfn *p_hwfn,
+		    struct ecore_ptt *p_ptt);
 #endif /* __ECORE_INIT_OPS__ */

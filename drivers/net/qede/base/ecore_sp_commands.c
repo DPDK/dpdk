@@ -232,6 +232,7 @@ static void ecore_set_hw_tunn_mode(struct ecore_hwfn *p_hwfn,
 }
 
 static void ecore_set_hw_tunn_mode_port(struct ecore_hwfn *p_hwfn,
+					struct ecore_ptt  *p_ptt,
 					struct ecore_tunnel_info *p_tunn)
 {
 	if (ECORE_IS_BB_A0(p_hwfn->p_dev)) {
@@ -241,14 +242,14 @@ static void ecore_set_hw_tunn_mode_port(struct ecore_hwfn *p_hwfn,
 	}
 
 	if (p_tunn->vxlan_port.b_update_port)
-		ecore_set_vxlan_dest_port(p_hwfn, p_hwfn->p_main_ptt,
+		ecore_set_vxlan_dest_port(p_hwfn, p_ptt,
 					  p_tunn->vxlan_port.port);
 
 	if (p_tunn->geneve_port.b_update_port)
-		ecore_set_geneve_dest_port(p_hwfn, p_hwfn->p_main_ptt,
+		ecore_set_geneve_dest_port(p_hwfn, p_ptt,
 					   p_tunn->geneve_port.port);
 
-	ecore_set_hw_tunn_mode(p_hwfn, p_hwfn->p_main_ptt, p_tunn);
+	ecore_set_hw_tunn_mode(p_hwfn, p_ptt, p_tunn);
 }
 
 static void
@@ -294,6 +295,7 @@ ecore_tunn_set_pf_start_params(struct ecore_hwfn *p_hwfn,
 }
 
 enum _ecore_status_t ecore_sp_pf_start(struct ecore_hwfn *p_hwfn,
+				       struct ecore_ptt *p_ptt,
 				       struct ecore_tunnel_info *p_tunn,
 				       enum ecore_mf_mode mode,
 				       bool allow_npar_tx_switch)
@@ -390,7 +392,8 @@ enum _ecore_status_t ecore_sp_pf_start(struct ecore_hwfn *p_hwfn,
 	rc = ecore_spq_post(p_hwfn, p_ent, OSAL_NULL);
 
 	if (p_tunn)
-		ecore_set_hw_tunn_mode_port(p_hwfn, &p_hwfn->p_dev->tunnel);
+		ecore_set_hw_tunn_mode_port(p_hwfn, p_ptt,
+					    &p_hwfn->p_dev->tunnel);
 
 	return rc;
 }
@@ -465,6 +468,7 @@ enum _ecore_status_t ecore_sp_rl_update(struct ecore_hwfn *p_hwfn,
 /* Set pf update ramrod command params */
 enum _ecore_status_t
 ecore_sp_pf_update_tunn_cfg(struct ecore_hwfn *p_hwfn,
+			    struct ecore_ptt *p_ptt,
 			    struct ecore_tunnel_info *p_tunn,
 			    enum spq_mode comp_mode,
 			    struct ecore_spq_comp_cb *p_comp_data)
@@ -505,7 +509,7 @@ ecore_sp_pf_update_tunn_cfg(struct ecore_hwfn *p_hwfn,
 	if (rc != ECORE_SUCCESS)
 		return rc;
 
-	ecore_set_hw_tunn_mode_port(p_hwfn, &p_hwfn->p_dev->tunnel);
+	ecore_set_hw_tunn_mode_port(p_hwfn, p_ptt, &p_hwfn->p_dev->tunnel);
 
 	return rc;
 }

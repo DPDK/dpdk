@@ -178,7 +178,7 @@ static void qed_handle_bulletin_change(struct ecore_hwfn *hwfn)
 		rte_memcpy(hwfn->hw_info.hw_mac_addr, mac, ETH_ALEN);
 
 	/* Always update link configuration according to bulletin */
-	qed_link_update(hwfn);
+	qed_link_update(hwfn, NULL);
 }
 
 static void qede_vf_task(void *arg)
@@ -489,6 +489,7 @@ qed_sb_init(struct ecore_dev *edev, struct ecore_sb_info *sb_info,
 }
 
 static void qed_fill_link(struct ecore_hwfn *hwfn,
+			  __rte_unused struct ecore_ptt *ptt,
 			  struct qed_link_output *if_link)
 {
 	struct ecore_mcp_link_params params;
@@ -559,12 +560,22 @@ static void qed_fill_link(struct ecore_hwfn *hwfn,
 static void
 qed_get_current_link(struct ecore_dev *edev, struct qed_link_output *if_link)
 {
-	qed_fill_link(&edev->hwfns[0], if_link);
+	struct ecore_hwfn *hwfn;
+	struct ecore_ptt *ptt;
 
-#ifdef CONFIG_QED_SRIOV
-	for_each_hwfn(cdev, i)
-		qed_inform_vf_link_state(&cdev->hwfns[i]);
-#endif
+	hwfn = &edev->hwfns[0];
+	if (IS_PF(edev)) {
+		ptt = ecore_ptt_acquire(hwfn);
+		if (!ptt)
+			DP_NOTICE(hwfn, true, "Failed to fill link; No PTT\n");
+
+			qed_fill_link(hwfn, ptt, if_link);
+
+		if (ptt)
+			ecore_ptt_release(hwfn, ptt);
+	} else {
+		qed_fill_link(hwfn, NULL, if_link);
+	}
 }
 
 static int qed_set_link(struct ecore_dev *edev, struct qed_link_params *params)
@@ -614,11 +625,11 @@ static int qed_set_link(struct ecore_dev *edev, struct qed_link_params *params)
 	return rc;
 }
 
-void qed_link_update(struct ecore_hwfn *hwfn)
+void qed_link_update(struct ecore_hwfn *hwfn, struct ecore_ptt *ptt)
 {
 	struct qed_link_output if_link;
 
-	qed_fill_link(hwfn, &if_link);
+	qed_fill_link(hwfn, ptt, &if_link);
 }
 
 static int qed_drain(struct ecore_dev *edev)

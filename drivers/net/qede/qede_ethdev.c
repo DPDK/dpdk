@@ -2167,11 +2167,15 @@ qede_conf_udp_dst_port(struct rte_eth_dev *eth_dev,
 						  QEDE_VXLAN_DEF_PORT;
 		for_each_hwfn(edev, i) {
 			p_hwfn = &edev->hwfns[i];
-			rc = ecore_sp_pf_update_tunn_cfg(p_hwfn, &tunn,
+			struct ecore_ptt *p_ptt = IS_PF(edev) ?
+			       ecore_ptt_acquire(p_hwfn) : NULL;
+			rc = ecore_sp_pf_update_tunn_cfg(p_hwfn, p_ptt, &tunn,
 						ECORE_SPQ_MODE_CB, NULL);
 			if (rc != ECORE_SUCCESS) {
 				DP_ERR(edev, "Unable to config UDP port %u\n",
 				       tunn.vxlan_port.port);
+				if (IS_PF(edev))
+					ecore_ptt_release(p_hwfn, p_ptt);
 				return rc;
 			}
 		}
@@ -2318,11 +2322,15 @@ static int qede_vxlan_tunn_config(struct rte_eth_dev *eth_dev,
 		qede_set_cmn_tunn_param(&tunn, clss, true, true);
 		for_each_hwfn(edev, i) {
 			p_hwfn = &edev->hwfns[i];
-			rc = ecore_sp_pf_update_tunn_cfg(p_hwfn,
+			struct ecore_ptt *p_ptt = IS_PF(edev) ?
+			       ecore_ptt_acquire(p_hwfn) : NULL;
+			rc = ecore_sp_pf_update_tunn_cfg(p_hwfn, p_ptt,
 				&tunn, ECORE_SPQ_MODE_CB, NULL);
 			if (rc != ECORE_SUCCESS) {
 				DP_ERR(edev, "Failed to update tunn_clss %u\n",
 				       tunn.vxlan.tun_cls);
+				if (IS_PF(edev))
+					ecore_ptt_release(p_hwfn, p_ptt);
 			}
 		}
 		qdev->num_tunn_filters++; /* Filter added successfully */
@@ -2352,12 +2360,17 @@ static int qede_vxlan_tunn_config(struct rte_eth_dev *eth_dev,
 			qede_set_cmn_tunn_param(&tunn, clss, false, true);
 			for_each_hwfn(edev, i) {
 				p_hwfn = &edev->hwfns[i];
-				rc = ecore_sp_pf_update_tunn_cfg(p_hwfn, &tunn,
-					ECORE_SPQ_MODE_CB, NULL);
+				struct ecore_ptt *p_ptt = IS_PF(edev) ?
+				       ecore_ptt_acquire(p_hwfn) : NULL;
+				rc = ecore_sp_pf_update_tunn_cfg(p_hwfn, p_ptt,
+					&tunn, ECORE_SPQ_MODE_CB, NULL);
 				if (rc != ECORE_SUCCESS) {
 					DP_ERR(edev,
 						"Failed to update tunn_clss %u\n",
 						tunn.vxlan.tun_cls);
+					if (IS_PF(edev))
+						ecore_ptt_release(p_hwfn,
+								  p_ptt);
 					break;
 				}
 			}

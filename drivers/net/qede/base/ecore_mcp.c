@@ -1196,7 +1196,7 @@ static void ecore_mcp_handle_link_change(struct ecore_hwfn *p_hwfn,
 	if (p_hwfn->mcp_info->capabilities & FW_MB_PARAM_FEATURE_SUPPORT_EEE)
 		ecore_mcp_read_eee_config(p_hwfn, p_ptt, p_link);
 
-	OSAL_LINK_UPDATE(p_hwfn);
+	OSAL_LINK_UPDATE(p_hwfn, p_ptt);
 }
 
 enum _ecore_status_t ecore_mcp_set_link(struct ecore_hwfn *p_hwfn,
@@ -1832,14 +1832,13 @@ enum _ecore_status_t ecore_mcp_get_mfw_ver(struct ecore_hwfn *p_hwfn,
 	return ECORE_SUCCESS;
 }
 
-enum _ecore_status_t ecore_mcp_get_media_type(struct ecore_dev *p_dev,
+enum _ecore_status_t ecore_mcp_get_media_type(struct ecore_hwfn *p_hwfn,
+					      struct ecore_ptt *p_ptt,
 					      u32 *p_media_type)
 {
-	struct ecore_hwfn *p_hwfn = &p_dev->hwfns[0];
-	struct ecore_ptt *p_ptt;
 
 	/* TODO - Add support for VFs */
-	if (IS_VF(p_dev))
+	if (IS_VF(p_hwfn->p_dev))
 		return ECORE_INVAL;
 
 	if (!ecore_mcp_is_init(p_hwfn)) {
@@ -1847,16 +1846,15 @@ enum _ecore_status_t ecore_mcp_get_media_type(struct ecore_dev *p_dev,
 		return ECORE_BUSY;
 	}
 
-	*p_media_type = MEDIA_UNSPECIFIED;
-
-	p_ptt = ecore_ptt_acquire(p_hwfn);
-	if (!p_ptt)
-		return ECORE_BUSY;
-
-	*p_media_type = ecore_rd(p_hwfn, p_ptt, p_hwfn->mcp_info->port_addr +
-				 OFFSETOF(struct public_port, media_type));
-
-	ecore_ptt_release(p_hwfn, p_ptt);
+	if (!p_ptt) {
+		*p_media_type = MEDIA_UNSPECIFIED;
+		return ECORE_INVAL;
+	} else {
+		*p_media_type = ecore_rd(p_hwfn, p_ptt,
+					 p_hwfn->mcp_info->port_addr +
+					 OFFSETOF(struct public_port,
+						  media_type));
+	}
 
 	return ECORE_SUCCESS;
 }

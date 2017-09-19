@@ -87,6 +87,7 @@ static enum _ecore_status_t ecore_spq_block(struct ecore_hwfn *p_hwfn,
 					    u8 *p_fw_ret, bool skip_quick_poll)
 {
 	struct ecore_spq_comp_done *comp_done;
+	struct ecore_ptt *p_ptt;
 	enum _ecore_status_t rc;
 
 	/* A relatively short polling period w/o sleeping, to allow the FW to
@@ -103,8 +104,13 @@ static enum _ecore_status_t ecore_spq_block(struct ecore_hwfn *p_hwfn,
 	if (rc == ECORE_SUCCESS)
 		return ECORE_SUCCESS;
 
+	p_ptt = ecore_ptt_acquire(p_hwfn);
+	if (!p_ptt)
+		return ECORE_AGAIN;
+
 	DP_INFO(p_hwfn, "Ramrod is stuck, requesting MCP drain\n");
-	rc = ecore_mcp_drain(p_hwfn, p_hwfn->p_main_ptt);
+	rc = ecore_mcp_drain(p_hwfn, p_ptt);
+	ecore_ptt_release(p_hwfn, p_ptt);
 	if (rc != ECORE_SUCCESS) {
 		DP_NOTICE(p_hwfn, true, "MCP drain failed\n");
 		goto err;

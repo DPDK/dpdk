@@ -59,6 +59,7 @@ enum _ecore_status_t ecore_sp_init_request(struct ecore_hwfn *p_hwfn,
  * to the internal RAM of the UStorm by the Function Start Ramrod.
  *
  * @param p_hwfn
+ * @param p_ptt
  * @param p_tunn - pf start tunneling configuration
  * @param mode
  * @param allow_npar_tx_switch - npar tx switching to be used
@@ -68,6 +69,7 @@ enum _ecore_status_t ecore_sp_init_request(struct ecore_hwfn *p_hwfn,
  */
 
 enum _ecore_status_t ecore_sp_pf_start(struct ecore_hwfn *p_hwfn,
+				       struct ecore_ptt *p_ptt,
 				       struct ecore_tunnel_info *p_tunn,
 				       enum ecore_mf_mode mode,
 				       bool allow_npar_tx_switch);

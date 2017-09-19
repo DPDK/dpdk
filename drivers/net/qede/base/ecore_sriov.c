@@ -601,7 +601,7 @@ enum _ecore_status_t ecore_iov_alloc(struct ecore_hwfn *p_hwfn)
 	return ecore_iov_allocate_vfdb(p_hwfn);
 }
 
-void ecore_iov_setup(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt)
+void ecore_iov_setup(struct ecore_hwfn *p_hwfn)
 {
 	if (!IS_PF_SRIOV(p_hwfn) || !IS_PF_SRIOV_ALLOC(p_hwfn))
 		return;
@@ -2387,7 +2387,7 @@ static void ecore_iov_vf_mbx_update_tunn_param(struct ecore_hwfn *p_hwfn,
 	if (b_update_required) {
 		u16 geneve_port;
 
-		rc = ecore_sp_pf_update_tunn_cfg(p_hwfn, &tunn,
+		rc = ecore_sp_pf_update_tunn_cfg(p_hwfn, p_ptt, &tunn,
 						 ECORE_SPQ_MODE_EBLOCK,
 						 OSAL_NULL);
 		if (rc != ECORE_SUCCESS)
