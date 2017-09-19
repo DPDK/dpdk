@@ -1258,6 +1258,61 @@ static void ecore_init_cau_rt_data(struct ecore_dev *p_dev)
 	}
 }
 
+static void ecore_init_cache_line_size(struct ecore_hwfn *p_hwfn,
+				       struct ecore_ptt *p_ptt)
+{
+	u32 val, wr_mbs, cache_line_size;
+
+	val = ecore_rd(p_hwfn, p_ptt, PSWRQ2_REG_WR_MBS0);
+	switch (val) {
+	case 0:
+		wr_mbs = 128;
+		break;
+	case 1:
+		wr_mbs = 256;
+		break;
+	case 2:
+		wr_mbs = 512;
+		break;
+	default:
+		DP_INFO(p_hwfn,
+			"Unexpected value of PSWRQ2_REG_WR_MBS0 [0x%x]. Avoid configuring PGLUE_B_REG_CACHE_LINE_SIZE.\n",
+			val);
+		return;
+	}
+
+	cache_line_size = OSAL_MIN_T(u32, OSAL_CACHE_LINE_SIZE, wr_mbs);
+	switch (cache_line_size) {
+	case 32:
+		val = 0;
+		break;
+	case 64:
+		val = 1;
+		break;
+	case 128:
+		val = 2;
+		break;
+	case 256:
+		val = 3;
+		break;
+	default:
+		DP_INFO(p_hwfn,
+			"Unexpected value of cache line size [0x%x]. Avoid configuring PGLUE_B_REG_CACHE_LINE_SIZE.\n",
+			cache_line_size);
+	}
+
+	if (wr_mbs < OSAL_CACHE_LINE_SIZE)
+		DP_INFO(p_hwfn,
+			"The cache line size for padding is suboptimal for performance [OS cache line size 0x%x, wr mbs 0x%x]\n",
+			OSAL_CACHE_LINE_SIZE, wr_mbs);
+
+	STORE_RT_REG(p_hwfn, PGLUE_REG_B_CACHE_LINE_SIZE_RT_OFFSET, val);
+	if (val > 0) {
+		STORE_RT_REG(p_hwfn, PSWRQ2_REG_DRAM_ALIGN_WR_RT_OFFSET, val);
+		STORE_RT_REG(p_hwfn, PSWRQ2_REG_DRAM_ALIGN_RD_RT_OFFSET, val);
+	}
+}
+
 static enum _ecore_status_t ecore_hw_init_common(struct ecore_hwfn *p_hwfn,
 						 struct ecore_ptt *p_ptt,
 						 int hw_mode)
@@ -1297,6 +1352,8 @@ static enum _ecore_status_t ecore_hw_init_common(struct ecore_hwfn *p_hwfn,
 				qm_info->qm_port_params);
 
 	ecore_cxt_hw_init_common(p_hwfn);
+
+	ecore_init_cache_line_size(p_hwfn, p_ptt);
 
 	rc = ecore_init_run(p_hwfn, p_ptt, PHASE_ENGINE, ANY_PHASE_ID, hw_mode);
 	if (rc != ECORE_SUCCESS)
@@ -1686,6 +1743,9 @@ static enum _ecore_status_t ecore_hw_init_port(struct ecore_hwfn *p_hwfn,
 			    hw_mode);
 	if (rc != ECORE_SUCCESS)
 		return rc;
+
+	ecore_wr(p_hwfn, p_ptt, PGLUE_B_REG_MASTER_WRITE_PAD_ENABLE, 0);
+
 #ifndef ASIC_ONLY
 	if (CHIP_REV_IS_ASIC(p_hwfn->p_dev))
 		return ECORE_SUCCESS;
