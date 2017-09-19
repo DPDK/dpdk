@@ -3318,8 +3318,8 @@ ecore_hw_get_nvm_info(struct ecore_hwfn *p_hwfn,
 	nvm_cfg1_offset = ecore_rd(p_hwfn, p_ptt, nvm_cfg_addr + 4);
 
 	addr = MCP_REG_SCRATCH + nvm_cfg1_offset +
-	    OFFSETOF(struct nvm_cfg1, glob) + OFFSETOF(struct nvm_cfg1_glob,
-						       core_cfg);
+		   OFFSETOF(struct nvm_cfg1, glob) +
+		   OFFSETOF(struct nvm_cfg1_glob, core_cfg);
 
 	core_cfg = ecore_rd(p_hwfn, p_ptt, addr);
 
@@ -3399,8 +3399,8 @@ ecore_hw_get_nvm_info(struct ecore_hwfn *p_hwfn,
 	p_caps->speed_capabilities = link->speed.advertised_speeds;
 
 	link_temp = ecore_rd(p_hwfn, p_ptt,
-			     port_cfg_addr +
-			     OFFSETOF(struct nvm_cfg1_port, link_settings));
+				 port_cfg_addr +
+				 OFFSETOF(struct nvm_cfg1_port, link_settings));
 	switch ((link_temp & NVM_CFG1_PORT_DRV_LINK_SPEED_MASK) >>
 		NVM_CFG1_PORT_DRV_LINK_SPEED_OFFSET) {
 	case NVM_CFG1_PORT_DRV_LINK_SPEED_AUTONEG:
@@ -3480,8 +3480,8 @@ ecore_hw_get_nvm_info(struct ecore_hwfn *p_hwfn,
 
 	/* Read Multi-function information from shmem */
 	addr = MCP_REG_SCRATCH + nvm_cfg1_offset +
-	    OFFSETOF(struct nvm_cfg1, glob) +
-	    OFFSETOF(struct nvm_cfg1_glob, generic_cont0);
+		   OFFSETOF(struct nvm_cfg1, glob) +
+		   OFFSETOF(struct nvm_cfg1_glob, generic_cont0);
 
 	generic_cont0 = ecore_rd(p_hwfn, p_ptt, addr);
 
@@ -3540,25 +3540,25 @@ ecore_hw_get_nvm_info(struct ecore_hwfn *p_hwfn,
 
 	/* Read Multi-function information from shmem */
 	addr = MCP_REG_SCRATCH + nvm_cfg1_offset +
-	    OFFSETOF(struct nvm_cfg1, glob) +
-	    OFFSETOF(struct nvm_cfg1_glob, device_capabilities);
+		   OFFSETOF(struct nvm_cfg1, glob) +
+		   OFFSETOF(struct nvm_cfg1_glob, device_capabilities);
 
 	device_capabilities = ecore_rd(p_hwfn, p_ptt, addr);
 	if (device_capabilities & NVM_CFG1_GLOB_DEVICE_CAPABILITIES_ETHERNET)
 		OSAL_SET_BIT(ECORE_DEV_CAP_ETH,
-			     &p_hwfn->hw_info.device_capabilities);
+				&p_hwfn->hw_info.device_capabilities);
 	if (device_capabilities & NVM_CFG1_GLOB_DEVICE_CAPABILITIES_FCOE)
 		OSAL_SET_BIT(ECORE_DEV_CAP_FCOE,
-			     &p_hwfn->hw_info.device_capabilities);
+				&p_hwfn->hw_info.device_capabilities);
 	if (device_capabilities & NVM_CFG1_GLOB_DEVICE_CAPABILITIES_ISCSI)
 		OSAL_SET_BIT(ECORE_DEV_CAP_ISCSI,
-			     &p_hwfn->hw_info.device_capabilities);
+				&p_hwfn->hw_info.device_capabilities);
 	if (device_capabilities & NVM_CFG1_GLOB_DEVICE_CAPABILITIES_ROCE)
 		OSAL_SET_BIT(ECORE_DEV_CAP_ROCE,
-			     &p_hwfn->hw_info.device_capabilities);
+				&p_hwfn->hw_info.device_capabilities);
 	if (device_capabilities & NVM_CFG1_GLOB_DEVICE_CAPABILITIES_IWARP)
 		OSAL_SET_BIT(ECORE_DEV_CAP_IWARP,
-			     &p_hwfn->hw_info.device_capabilities);
+				&p_hwfn->hw_info.device_capabilities);
 
 	rc = ecore_mcp_fill_shmem_func_info(p_hwfn, p_ptt);
 	if (rc != ECORE_SUCCESS && p_params->b_relaxed_probe) {

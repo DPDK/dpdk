@@ -3764,3 +3764,29 @@ ecore_mcp_drv_attribute(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 
 	return ECORE_SUCCESS;
 }
+
+void ecore_mcp_wol_wr(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
+		      u32 offset, u32 val)
+{
+	struct ecore_mcp_mb_params mb_params = {0};
+	enum _ecore_status_t	   rc = ECORE_SUCCESS;
+	u32			   dword = val;
+
+	mb_params.cmd = DRV_MSG_CODE_WRITE_WOL_REG;
+	mb_params.param = offset;
+	mb_params.p_data_src = &dword;
+	mb_params.data_src_size = sizeof(dword);
+
+	rc = ecore_mcp_cmd_and_union(p_hwfn, p_ptt, &mb_params);
+	if (rc != ECORE_SUCCESS) {
+		DP_NOTICE(p_hwfn, false,
+			  "Failed to wol write request, rc = %d\n", rc);
+	}
+
+	if (mb_params.mcp_resp != FW_MSG_CODE_WOL_READ_WRITE_OK) {
+		DP_NOTICE(p_hwfn, false,
+			  "Failed to write value 0x%x to offset 0x%x [mcp_resp 0x%x]\n",
+			  val, offset, mb_params.mcp_resp);
+		rc = ECORE_UNKNOWN_ERROR;
+	}
+}

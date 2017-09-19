@@ -1248,12 +1248,12 @@ struct public_drv_mb {
 #define DRV_MSG_CODE_NVM_PUT_FILE_DATA		0x00020000
 /* MFW will place the file offset and len in file_att struct */
 #define DRV_MSG_CODE_NVM_GET_FILE_ATT		0x00030000
-/* Read 32bytes of nvram data. Param is [0:23] – Offset [24:31] –
- * Len in Bytes
+/* Read 32bytes of nvram data. Param is [0:23] ??? Offset [24:31] -
+ * ??? Len in Bytes
  */
 #define DRV_MSG_CODE_NVM_READ_NVRAM		0x00050000
-/* Writes up to 32Bytes to nvram. Param is [0:23] – Offset [24:31] –
- * Len in Bytes. In case this address is in the range of secured file in
+/* Writes up to 32Bytes to nvram. Param is [0:23] ??? Offset [24:31]
+ * ??? Len in Bytes. In case this address is in the range of secured file in
  * secured mode, the operation will fail
  */
 #define DRV_MSG_CODE_NVM_WRITE_NVRAM		0x00060000
@@ -1431,10 +1431,14 @@ struct public_drv_mb {
 #define DRV_MB_PARAM_PORT_MASK			0x00600000
 #define DRV_MSG_CODE_EXT_PHY_FW_UPGRADE		0x002a0000
 
+#define DRV_MSG_CODE_GET_TLV_DONE		0x002f0000 /* Param: None */
 /* Param: Set DRV_MB_PARAM_FEATURE_SUPPORT_* */
 #define DRV_MSG_CODE_FEATURE_SUPPORT            0x00300000
 /* return FW_MB_PARAM_FEATURE_SUPPORT_*  */
 #define DRV_MSG_CODE_GET_MFW_FEATURE_SUPPORT	0x00310000
+#define DRV_MSG_CODE_READ_WOL_REG		0X00320000
+#define DRV_MSG_CODE_WRITE_WOL_REG		0X00330000
+#define DRV_MSG_CODE_GET_WOL_BUFFER		0X00340000
 /* Param: [0:23] Attribute key, [24:31] Attribute sub command */
 #define DRV_MSG_CODE_ATTRIBUTE			0x00350000
 
@@ -1713,6 +1717,12 @@ struct public_drv_mb {
 
 #define FW_MSG_CODE_DRV_CFG_PF_VFS_MSIX_DONE     0x00870000
 #define FW_MSG_CODE_DRV_CFG_PF_VFS_MSIX_BAD_ASIC 0x00880000
+
+#define FW_MSG_CODE_WOL_READ_WRITE_OK		0x00820000
+#define FW_MSG_CODE_WOL_READ_WRITE_INVALID_VAL	0x00830000
+#define FW_MSG_CODE_WOL_READ_WRITE_INVALID_ADDR	0x00840000
+#define FW_MSG_CODE_WOL_READ_BUFFER_OK		0x00850000
+#define FW_MSG_CODE_WOL_READ_BUFFER_INVALID_VAL	0x00860000
 
 #define FW_MSG_SEQ_NUMBER_MASK                  0x0000ffff
 
