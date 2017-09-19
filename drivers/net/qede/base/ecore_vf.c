@@ -1497,8 +1497,8 @@ enum _ecore_status_t ecore_vf_read_bulletin(struct ecore_hwfn *p_hwfn,
 		return ECORE_SUCCESS;
 
 	/* Verify the bulletin we see is valid */
-	crc = ecore_crc32(0, (u8 *)&shadow + crc_size,
-			  p_iov->bulletin.size - crc_size);
+	crc = OSAL_CRC32(0, (u8 *)&shadow + crc_size,
+			 p_iov->bulletin.size - crc_size);
 	if (crc != shadow.crc)
 		return ECORE_AGAIN;
 

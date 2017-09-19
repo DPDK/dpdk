@@ -325,19 +325,6 @@ static bool ecore_iov_validate_active_txq(struct ecore_hwfn *p_hwfn,
 	return false;
 }
 
-/* TODO - this is linux crc32; Need a way to ifdef it out for linux */
-u32 ecore_crc32(u32 crc, u8 *ptr, u32 length)
-{
-	int i;
-
-	while (length--) {
-		crc ^= *ptr++;
-		for (i = 0; i < 8; i++)
-			crc = (crc >> 1) ^ ((crc & 1) ? 0xedb88320 : 0);
-	}
-	return crc;
-}
-
 enum _ecore_status_t ecore_iov_post_vf_bulletin(struct ecore_hwfn *p_hwfn,
 						int vfid,
 						struct ecore_ptt *p_ptt)
@@ -359,8 +346,8 @@ enum _ecore_status_t ecore_iov_post_vf_bulletin(struct ecore_hwfn *p_hwfn,
 
 	/* Increment bulletin board version and compute crc */
 	p_bulletin->version++;
-	p_bulletin->crc = ecore_crc32(0, (u8 *)p_bulletin + crc_size,
-				      p_vf->bulletin.size - crc_size);
+	p_bulletin->crc = OSAL_CRC32(0, (u8 *)p_bulletin + crc_size,
+				     p_vf->bulletin.size - crc_size);
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
 		   "Posting Bulletin 0x%08x to VF[%d] (CRC 0x%08x)\n",

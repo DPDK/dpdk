@@ -292,3 +292,15 @@ qede_hw_err_notify(struct ecore_hwfn *p_hwfn, enum ecore_hw_err_type err_type)
 	DP_ERR(p_hwfn, "HW error occurred [%s]\n", err_str);
 	ecore_int_attn_clr_enable(p_hwfn->p_dev, true);
 }
+
+u32 qede_crc32(u32 crc, u8 *ptr, u32 length)
+{
+	int i;
+
+	while (length--) {
+		crc ^= *ptr++;
+		for (i = 0; i < 8; i++)
+			crc = (crc >> 1) ^ ((crc & 1) ? 0xedb88320 : 0);
+	}
+	return crc;
+}

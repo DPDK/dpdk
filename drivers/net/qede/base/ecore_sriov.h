@@ -264,19 +264,6 @@ enum _ecore_status_t ecore_sriov_eqe_event(struct ecore_hwfn	 *p_hwfn,
 					   union event_ring_data *data);
 
 /**
- * @brief calculate CRC for bulletin board validation
- *
- * @param basic crc seed
- * @param ptr to beginning of buffer
- * @length in bytes of buffer
- *
- * @return calculated crc over buffer [with respect to seed].
- */
-u32 ecore_crc32(u32 crc,
-		u8  *ptr,
-		u32 length);
-
-/**
  * @brief Mark structs of vfs that have been FLR-ed.
  *
  * @param p_hwfn
