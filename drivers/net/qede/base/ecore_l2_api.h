@@ -11,6 +11,7 @@
 
 #include "ecore_status.h"
 #include "ecore_sp_api.h"
+#include "ecore_int_api.h"
 
 #ifndef __EXTRACT__LINUX__
 enum ecore_rss_caps {
@@ -35,8 +36,7 @@ struct ecore_queue_start_common_params {
 	/* Relative, but relevant only for PFs */
 	u8 stats_id;
 
-	/* These are always absolute */
-	u16 sb;
+	struct ecore_sb_info *p_sb;
 	u8 sb_idx;
 };
 

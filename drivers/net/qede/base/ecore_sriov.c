@@ -446,33 +446,6 @@ static enum _ecore_status_t ecore_iov_pci_cfg_info(struct ecore_dev *p_dev)
 	return ECORE_SUCCESS;
 }
 
-static void ecore_iov_clear_vf_igu_blocks(struct ecore_hwfn *p_hwfn,
-					  struct ecore_ptt *p_ptt)
-{
-	struct ecore_igu_block *p_sb;
-	u16 sb_id;
-	u32 val;
-
-	if (!p_hwfn->hw_info.p_igu_info) {
-		DP_ERR(p_hwfn,
-		       "ecore_iov_clear_vf_igu_blocks IGU Info not inited\n");
-		return;
-	}
-
-	for (sb_id = 0;
-	     sb_id < ECORE_MAPPING_MEMORY_SIZE(p_hwfn->p_dev); sb_id++) {
-		p_sb = &p_hwfn->hw_info.p_igu_info->igu_map.igu_blocks[sb_id];
-		if ((p_sb->status & ECORE_IGU_STATUS_FREE) &&
-		    !(p_sb->status & ECORE_IGU_STATUS_PF)) {
-			val = ecore_rd(p_hwfn, p_ptt,
-				       IGU_REG_MAPPING_MEMORY + sb_id * 4);
-			SET_FIELD(val, IGU_MAPPING_LINE_VALID, 0);
-			ecore_wr(p_hwfn, p_ptt,
-				 IGU_REG_MAPPING_MEMORY + 4 * sb_id, val);
-		}
-	}
-}
-
 static void ecore_iov_setup_vfdb(struct ecore_hwfn *p_hwfn)
 {
 	struct ecore_hw_sriov_info *p_iov = p_hwfn->p_dev->p_iov_info;
@@ -634,7 +607,6 @@ void ecore_iov_setup(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt)
 		return;
 
 	ecore_iov_setup_vfdb(p_hwfn);
-	ecore_iov_clear_vf_igu_blocks(p_hwfn, p_ptt);
 }
 
 void ecore_iov_free(struct ecore_hwfn *p_hwfn)
@@ -938,46 +910,38 @@ static u8 ecore_iov_alloc_vf_igu_sbs(struct ecore_hwfn *p_hwfn,
 				     struct ecore_vf_info *vf,
 				     u16 num_rx_queues)
 {
-	struct ecore_igu_block *igu_blocks;
-	int qid = 0, igu_id = 0;
+	struct ecore_igu_block *p_block;
+	struct cau_sb_entry sb_entry;
+	int qid = 0;
 	u32 val = 0;
 
-	igu_blocks = p_hwfn->hw_info.p_igu_info->igu_map.igu_blocks;
-
-	if (num_rx_queues > p_hwfn->hw_info.p_igu_info->free_blks)
-		num_rx_queues = p_hwfn->hw_info.p_igu_info->free_blks;
-
-	p_hwfn->hw_info.p_igu_info->free_blks -= num_rx_queues;
+	if (num_rx_queues > p_hwfn->hw_info.p_igu_info->usage.free_cnt_iov)
+		num_rx_queues =
+		(u16)p_hwfn->hw_info.p_igu_info->usage.free_cnt_iov;
+	p_hwfn->hw_info.p_igu_info->usage.free_cnt_iov -= num_rx_queues;
 
 	SET_FIELD(val, IGU_MAPPING_LINE_FUNCTION_NUMBER, vf->abs_vf_id);
 	SET_FIELD(val, IGU_MAPPING_LINE_VALID, 1);
 	SET_FIELD(val, IGU_MAPPING_LINE_PF_VALID, 0);
 
-	while ((qid < num_rx_queues) &&
-	       (igu_id < ECORE_MAPPING_MEMORY_SIZE(p_hwfn->p_dev))) {
-		if (igu_blocks[igu_id].status & ECORE_IGU_STATUS_FREE) {
-			struct cau_sb_entry sb_entry;
+	for (qid = 0; qid < num_rx_queues; qid++) {
+		p_block = ecore_get_igu_free_sb(p_hwfn, false);
+		vf->igu_sbs[qid] = p_block->igu_sb_id;
+		p_block->status &= ~ECORE_IGU_STATUS_FREE;
+		SET_FIELD(val, IGU_MAPPING_LINE_VECTOR_NUMBER, qid);
 
-			vf->igu_sbs[qid] = (u16)igu_id;
-			igu_blocks[igu_id].status &= ~ECORE_IGU_STATUS_FREE;
+		ecore_wr(p_hwfn, p_ptt,
+			 IGU_REG_MAPPING_MEMORY +
+			 sizeof(u32) * p_block->igu_sb_id, val);
 
-			SET_FIELD(val, IGU_MAPPING_LINE_VECTOR_NUMBER, qid);
-
-			ecore_wr(p_hwfn, p_ptt,
-				 IGU_REG_MAPPING_MEMORY + sizeof(u32) * igu_id,
-				 val);
-
-			/* Configure igu sb in CAU which were marked valid */
-			ecore_init_cau_sb_entry(p_hwfn, &sb_entry,
-						p_hwfn->rel_pf_id,
-						vf->abs_vf_id, 1);
-			ecore_dmae_host2grc(p_hwfn, p_ptt,
-					    (u64)(osal_uintptr_t)&sb_entry,
-					    CAU_REG_SB_VAR_MEMORY +
-					    igu_id * sizeof(u64), 2, 0);
-			qid++;
-		}
-		igu_id++;
+		/* Configure igu sb in CAU which were marked valid */
+		ecore_init_cau_sb_entry(p_hwfn, &sb_entry,
+					p_hwfn->rel_pf_id,
+					vf->abs_vf_id, 1);
+		ecore_dmae_host2grc(p_hwfn, p_ptt,
+				    (u64)(osal_uintptr_t)&sb_entry,
+				    CAU_REG_SB_VAR_MEMORY +
+				    p_block->igu_sb_id * sizeof(u64), 2, 0);
 	}
 
 	vf->num_sbs = (u8)num_rx_queues;
@@ -1013,10 +977,8 @@ static void ecore_iov_free_vf_igu_sbs(struct ecore_hwfn *p_hwfn,
 		SET_FIELD(val, IGU_MAPPING_LINE_VALID, 0);
 		ecore_wr(p_hwfn, p_ptt, addr, val);
 
-		p_info->igu_map.igu_blocks[igu_id].status |=
-		    ECORE_IGU_STATUS_FREE;
-
-		p_hwfn->hw_info.p_igu_info->free_blks++;
+		p_info->entry[igu_id].status |= ECORE_IGU_STATUS_FREE;
+		p_hwfn->hw_info.p_igu_info->usage.free_cnt_iov++;
 	}
 
 	vf->num_sbs = 0;
@@ -1114,34 +1076,28 @@ ecore_iov_init_hw_for_vf(struct ecore_hwfn *p_hwfn,
 	vf->vport_id = p_params->vport_id;
 	vf->rss_eng_id = p_params->rss_eng_id;
 
-	/* Perform sanity checking on the requested queue_id */
+	/* Since it's possible to relocate SBs, it's a bit difficult to check
+	 * things here. Simply check whether the index falls in the range
+	 * belonging to the PF.
+	 */
 	for (i = 0; i < p_params->num_queues; i++) {
-		u16 min_vf_qzone = (u16)FEAT_NUM(p_hwfn, ECORE_PF_L2_QUE);
-		u16 max_vf_qzone = min_vf_qzone +
-				   FEAT_NUM(p_hwfn, ECORE_VF_L2_QUE) - 1;
-
 		qid = p_params->req_rx_queue[i];
-		if (qid < min_vf_qzone || qid > max_vf_qzone) {
+		if (qid > (u16)RESC_NUM(p_hwfn, ECORE_L2_QUEUE)) {
 			DP_NOTICE(p_hwfn, true,
-				  "Can't enable Rx qid [%04x] for VF[%d]: qids [0x%04x,...,0x%04x] available\n",
+				  "Can't enable Rx qid [%04x] for VF[%d]: qids [0,,...,0x%04x] available\n",
 				  qid, p_params->rel_vf_id,
-				  min_vf_qzone, max_vf_qzone);
+				  (u16)RESC_NUM(p_hwfn, ECORE_L2_QUEUE));
 			return ECORE_INVAL;
 		}
 
 		qid = p_params->req_tx_queue[i];
-		if (qid > max_vf_qzone) {
+		if (qid > (u16)RESC_NUM(p_hwfn, ECORE_L2_QUEUE)) {
 			DP_NOTICE(p_hwfn, true,
-				  "Can't enable Tx qid [%04x] for VF[%d]: max qid 0x%04x\n",
-				  qid, p_params->rel_vf_id, max_vf_qzone);
+				  "Can't enable Tx qid [%04x] for VF[%d]: qids [0,,...,0x%04x] available\n",
+				  qid, p_params->rel_vf_id,
+				  (u16)RESC_NUM(p_hwfn, ECORE_L2_QUEUE));
 			return ECORE_INVAL;
 		}
-
-		/* If client *really* wants, Tx qid can be shared with PF */
-		if (qid < min_vf_qzone)
-			DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
-				   "VF[%d] is using PF qid [0x%04x] for Txq[0x%02x]\n",
-				   p_params->rel_vf_id, qid, i);
 	}
 
 	/* Limit number of queues according to number of CIDs */
@@ -2233,6 +2189,7 @@ static void ecore_iov_vf_mbx_start_rxq(struct ecore_hwfn *p_hwfn,
 	struct ecore_vf_queue *p_queue;
 	struct vfpf_start_rxq_tlv *req;
 	struct ecore_queue_cid *p_cid;
+	struct ecore_sb_info sb_dummy;
 	enum _ecore_status_t rc;
 
 	req = &mbx->req_virt->start_rxq;
@@ -2257,7 +2214,11 @@ static void ecore_iov_vf_mbx_start_rxq(struct ecore_hwfn *p_hwfn,
 	params.queue_id = (u8)p_queue->fw_rx_qid;
 	params.vport_id = vf->vport_id;
 	params.stats_id = vf->abs_vf_id + 0x10;
-	params.sb = req->hw_sb;
+
+	/* Since IGU index is passed via sb_info, construct a dummy one */
+	OSAL_MEM_ZERO(&sb_dummy, sizeof(sb_dummy));
+	sb_dummy.igu_sb_id = req->hw_sb;
+	params.p_sb = &sb_dummy;
 	params.sb_idx = req->sb_index;
 
 	OSAL_MEM_ZERO(&vf_params, sizeof(vf_params));
@@ -2500,6 +2461,7 @@ static void ecore_iov_vf_mbx_start_txq(struct ecore_hwfn *p_hwfn,
 	struct ecore_vf_queue *p_queue;
 	struct vfpf_start_txq_tlv *req;
 	struct ecore_queue_cid *p_cid;
+	struct ecore_sb_info sb_dummy;
 	u8 qid_usage_idx, vf_legacy;
 	u32 cid = 0;
 	enum _ecore_status_t rc;
@@ -2527,7 +2489,11 @@ static void ecore_iov_vf_mbx_start_txq(struct ecore_hwfn *p_hwfn,
 	params.queue_id = p_queue->fw_tx_qid;
 	params.vport_id = vf->vport_id;
 	params.stats_id = vf->abs_vf_id + 0x10;
-	params.sb = req->hw_sb;
+
+	/* Since IGU index is passed via sb_info, construct a dummy one */
+	OSAL_MEM_ZERO(&sb_dummy, sizeof(sb_dummy));
+	sb_dummy.igu_sb_id = req->hw_sb;
+	params.p_sb = &sb_dummy;
 	params.sb_idx = req->sb_index;
 
 	OSAL_MEM_ZERO(&vf_params, sizeof(vf_params));

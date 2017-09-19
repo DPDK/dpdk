@@ -21,31 +21,76 @@
 #define SB_ALIGNED_SIZE(p_hwfn)					\
 	ALIGNED_TYPE_SIZE(struct status_block, p_hwfn)
 
+#define ECORE_SB_INVALID_IDX	0xffff
+
 struct ecore_igu_block {
 	u8 status;
 #define ECORE_IGU_STATUS_FREE	0x01
 #define ECORE_IGU_STATUS_VALID	0x02
 #define ECORE_IGU_STATUS_PF	0x04
+#define ECORE_IGU_STATUS_DSB	0x08
 
 	u8 vector_number;
 	u8 function_id;
 	u8 is_pf;
-};
 
-struct ecore_igu_map {
-	struct ecore_igu_block igu_blocks[MAX_TOT_SB_PER_PATH];
+	/* Index inside IGU [meant for back reference] */
+	u16 igu_sb_id;
+
+	struct ecore_sb_info *sb_info;
 };
 
 struct ecore_igu_info {
-	struct ecore_igu_map igu_map;
+	struct ecore_igu_block entry[MAX_TOT_SB_PER_PATH];
 	u16 igu_dsb_id;
-	u16 igu_base_sb;
-	u16 igu_base_sb_iov;
-	u16 igu_sb_cnt;
-	u16 igu_sb_cnt_iov;
-	u16 free_blks;
+
+	/* The numbers can shift when using APIs to switch SBs between PF and
+	 * VF.
+	 */
+	struct ecore_sb_cnt_info usage;
+
+	/* Determine whether we can shift SBs between VFs and PFs */
+	bool b_allow_pf_vf_change;
 };
 
+/**
+ * @brief - Make sure the IGU CAM reflects the resources provided by MFW
+ *
+ * @param p_hwfn
+ * @param p_ptt
+ */
+int ecore_int_igu_reset_cam(struct ecore_hwfn *p_hwfn,
+			    struct ecore_ptt *p_ptt);
+
+/**
+ * @brief - Make sure IGU CAM reflects the default resources once again,
+ *          starting with a 'dirty' SW database.
+ * @param p_hwfn
+ * @param p_ptt
+ */
+int ecore_int_igu_reset_cam_default(struct ecore_hwfn *p_hwfn,
+				    struct ecore_ptt *p_ptt);
+
+/**
+ * @brief Translate the weakly-defined client sb-id into an IGU sb-id
+ *
+ * @param p_hwfn
+ * @param sb_id - user provided sb_id
+ *
+ * @return an index inside IGU CAM where the SB resides
+ */
+u16 ecore_get_igu_sb_id(struct ecore_hwfn *p_hwfn, u16 sb_id);
+
+/**
+ * @brief return a pointer to an unused valid SB
+ *
+ * @param p_hwfn
+ * @param b_is_pf - true iff we want a SB belonging to a PF
+ *
+ * @return point to an igu_block, OSAL_NULL if none is available
+ */
+struct ecore_igu_block *
+ecore_get_igu_free_sb(struct ecore_hwfn *p_hwfn, bool b_is_pf);
 /* TODO Names of function may change... */
 void ecore_int_igu_init_pure_rt(struct ecore_hwfn *p_hwfn,
 				struct ecore_ptt *p_ptt,
@@ -125,9 +170,11 @@ u16 ecore_int_get_sp_sb_id(struct ecore_hwfn *p_hwfn);
  * @param opaque	- opaque fid of the sb owner.
  * @param cleanup_set	- set(1) / clear(0)
  */
-void ecore_int_igu_init_pure_rt_single(struct ecore_hwfn *p_hwfn,
-				       struct ecore_ptt *p_ptt,
-				       u32 sb_id, u16 opaque, bool b_set);
+void ecore_int_igu_init_pure_rt_single(struct ecore_hwfn	*p_hwfn,
+				       struct ecore_ptt		*p_ptt,
+				       u16			sb_id,
+				       u16			opaque,
+				       bool			b_set);
 
 /**
  * @brief ecore_int_cau_conf - configure cau for a given status

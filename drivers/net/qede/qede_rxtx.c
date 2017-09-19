@@ -555,7 +555,7 @@ qede_rx_queue_start(struct rte_eth_dev *eth_dev, uint16_t rx_queue_id)
 		params.queue_id = rx_queue_id / edev->num_hwfns;
 		params.vport_id = 0;
 		params.stats_id = params.vport_id;
-		params.sb = fp->sb_info->igu_sb_id;
+		params.p_sb = fp->sb_info;
 		DP_INFO(edev, "rxq %u igu_sb_id 0x%x\n",
 				fp->rxq->queue_id, fp->sb_info->igu_sb_id);
 		params.sb_idx = RX_PI;
@@ -614,7 +614,7 @@ qede_tx_queue_start(struct rte_eth_dev *eth_dev, uint16_t tx_queue_id)
 		params.queue_id = tx_queue_id / edev->num_hwfns;
 		params.vport_id = 0;
 		params.stats_id = params.vport_id;
-		params.sb = fp->sb_info->igu_sb_id;
+		params.p_sb = fp->sb_info;
 		DP_INFO(edev, "txq %u igu_sb_id 0x%x\n",
 				fp->txq->queue_id, fp->sb_info->igu_sb_id);
 		params.sb_idx = TX_PI(0); /* tc = 0 */

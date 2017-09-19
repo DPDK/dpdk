@@ -279,7 +279,6 @@ struct ecore_qm_iids {
  * is received from MFW.
  */
 enum ecore_resources {
-	ECORE_SB,
 	ECORE_L2_QUEUE,
 	ECORE_VPORT,
 	ECORE_RSS_ENG,
@@ -293,7 +292,13 @@ enum ecore_resources {
 	ECORE_CMDQS_CQS,
 	ECORE_RDMA_STATS_QUEUE,
 	ECORE_BDQ,
-	ECORE_MAX_RESC,			/* must be last */
+
+	/* This is needed only internally for matching against the IGU.
+	 * In case of legacy MFW, would be set to `0'.
+	 */
+	ECORE_SB,
+
+	ECORE_MAX_RESC,
 };
 
 /* Features that require resources, given as input to the resource management
@@ -555,10 +560,6 @@ struct ecore_hwfn {
 
 	bool				b_rdma_enabled_in_prs;
 	u32				rdma_prs_search_reg;
-
-	/* Array of sb_info of all status blocks */
-	struct ecore_sb_info		*sbs_info[MAX_SB_PER_PF_MIMD];
-	u16				num_sbs;
 
 	struct ecore_cxt_mngr		*p_cxt_mngr;
 

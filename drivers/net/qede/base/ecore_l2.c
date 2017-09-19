@@ -207,8 +207,14 @@ _ecore_eth_queue_to_cid(struct ecore_hwfn *p_hwfn,
 
 	p_cid->opaque_fid = opaque_fid;
 	p_cid->cid = cid;
-	p_cid->rel = *p_params;
 	p_cid->p_owner = p_hwfn;
+
+	/* Fill in parameters */
+	p_cid->rel.vport_id = p_params->vport_id;
+	p_cid->rel.queue_id = p_params->queue_id;
+	p_cid->rel.stats_id = p_params->stats_id;
+	p_cid->sb_igu_id = p_params->p_sb->igu_sb_id;
+	p_cid->sb_idx = p_params->sb_idx;
 
 	/* Fill-in bits related to VFs' queues if information was provided */
 	if (p_vf_params != OSAL_NULL) {
@@ -251,10 +257,6 @@ _ecore_eth_queue_to_cid(struct ecore_hwfn *p_hwfn,
 		p_cid->abs.stats_id = p_cid->rel.stats_id;
 	}
 
-	/* SBs relevant information was already provided as absolute */
-	p_cid->abs.sb = p_cid->rel.sb;
-	p_cid->abs.sb_idx = p_cid->rel.sb_idx;
-
 out:
 	/* VF-images have provided the qid_usage_idx on their own.
 	 * Otherwise, we need to allocate a unique one.
@@ -273,7 +275,7 @@ out:
 		   p_cid->rel.queue_id,	p_cid->qid_usage_idx,
 		   p_cid->abs.queue_id,
 		   p_cid->rel.stats_id, p_cid->abs.stats_id,
-		   p_cid->abs.sb, p_cid->abs.sb_idx);
+		   p_cid->sb_igu_id, p_cid->sb_idx);
 
 	return p_cid;
 
@@ -901,7 +903,7 @@ ecore_eth_rxq_start_ramrod(struct ecore_hwfn *p_hwfn,
 	DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
 		   "opaque_fid=0x%x, cid=0x%x, rx_qzone=0x%x, vport_id=0x%x, sb_id=0x%x\n",
 		   p_cid->opaque_fid, p_cid->cid, p_cid->abs.queue_id,
-		   p_cid->abs.vport_id, p_cid->abs.sb);
+		   p_cid->abs.vport_id, p_cid->sb_igu_id);
 
 	/* Get SPQ entry */
 	OSAL_MEMSET(&init_data, 0, sizeof(init_data));
@@ -917,8 +919,8 @@ ecore_eth_rxq_start_ramrod(struct ecore_hwfn *p_hwfn,
 
 	p_ramrod = &p_ent->ramrod.rx_queue_start;
 
-	p_ramrod->sb_id = OSAL_CPU_TO_LE16(p_cid->abs.sb);
-	p_ramrod->sb_index = p_cid->abs.sb_idx;
+	p_ramrod->sb_id = OSAL_CPU_TO_LE16(p_cid->sb_igu_id);
+	p_ramrod->sb_index = p_cid->sb_idx;
 	p_ramrod->vport_id = p_cid->abs.vport_id;
 	p_ramrod->stats_counter_id = p_cid->abs.stats_id;
 	p_ramrod->rx_queue_id = OSAL_CPU_TO_LE16(p_cid->abs.queue_id);
@@ -1153,8 +1155,8 @@ ecore_eth_txq_start_ramrod(struct ecore_hwfn *p_hwfn,
 	p_ramrod = &p_ent->ramrod.tx_queue_start;
 	p_ramrod->vport_id = p_cid->abs.vport_id;
 
-	p_ramrod->sb_id = OSAL_CPU_TO_LE16(p_cid->abs.sb);
-	p_ramrod->sb_index = p_cid->abs.sb_idx;
+	p_ramrod->sb_id = OSAL_CPU_TO_LE16(p_cid->sb_igu_id);
+	p_ramrod->sb_index = p_cid->sb_idx;
 	p_ramrod->stats_counter_id = p_cid->abs.stats_id;
 
 	p_ramrod->queue_zone_id = OSAL_CPU_TO_LE16(p_cid->abs.queue_id);

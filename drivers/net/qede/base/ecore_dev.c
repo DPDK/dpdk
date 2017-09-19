@@ -1232,7 +1232,7 @@ static enum _ecore_status_t ecore_hw_init_chip(struct ecore_hwfn *p_hwfn,
 static void ecore_init_cau_rt_data(struct ecore_dev *p_dev)
 {
 	u32 offset = CAU_REG_SB_VAR_MEMORY_RT_OFFSET;
-	int i, sb_id;
+	int i, igu_sb_id;
 
 	for_each_hwfn(p_dev, i) {
 		struct ecore_hwfn *p_hwfn = &p_dev->hwfns[i];
@@ -1242,16 +1242,18 @@ static void ecore_init_cau_rt_data(struct ecore_dev *p_dev)
 
 		p_igu_info = p_hwfn->hw_info.p_igu_info;
 
-		for (sb_id = 0; sb_id < ECORE_MAPPING_MEMORY_SIZE(p_dev);
-		     sb_id++) {
-			p_block = &p_igu_info->igu_map.igu_blocks[sb_id];
+		for (igu_sb_id = 0;
+		     igu_sb_id < ECORE_MAPPING_MEMORY_SIZE(p_dev);
+		     igu_sb_id++) {
+			p_block = &p_igu_info->entry[igu_sb_id];
 
 			if (!p_block->is_pf)
 				continue;
 
 			ecore_init_cau_sb_entry(p_hwfn, &sb_entry,
 						p_block->function_id, 0, 0);
-			STORE_RT_REG_AGG(p_hwfn, offset + sb_id * 2, sb_entry);
+			STORE_RT_REG_AGG(p_hwfn, offset + igu_sb_id * 2,
+					 sb_entry);
 		}
 	}
 }
@@ -2255,6 +2257,13 @@ enum _ecore_status_t ecore_hw_stop(struct ecore_dev *p_dev)
 		ecore_wr(p_hwfn, p_ptt, IGU_REG_LEADING_EDGE_LATCH, 0);
 		ecore_wr(p_hwfn, p_ptt, IGU_REG_TRAILING_EDGE_LATCH, 0);
 		ecore_int_igu_init_pure_rt(p_hwfn, p_ptt, false, true);
+		rc = ecore_int_igu_reset_cam_default(p_hwfn, p_ptt);
+		if (rc != ECORE_SUCCESS) {
+			DP_NOTICE(p_hwfn, true,
+				  "Failed to return IGU CAM to default\n");
+			rc2 = ECORE_UNKNOWN_ERROR;
+		}
+
 		/* Need to wait 1ms to guarantee SBs are cleared */
 		OSAL_MSLEEP(1);
 
@@ -2423,31 +2432,32 @@ static void get_function_id(struct ecore_hwfn *p_hwfn)
 static void ecore_hw_set_feat(struct ecore_hwfn *p_hwfn)
 {
 	u32 *feat_num = p_hwfn->hw_info.feat_num;
+	struct ecore_sb_cnt_info sb_cnt;
 	u32 non_l2_sbs = 0;
+
+	OSAL_MEM_ZERO(&sb_cnt, sizeof(sb_cnt));
+	ecore_int_get_num_sbs(p_hwfn, &sb_cnt);
 
 	/* L2 Queues require each: 1 status block. 1 L2 queue */
 	if (ECORE_IS_L2_PERSONALITY(p_hwfn)) {
-		struct ecore_sb_cnt_info sb_cnt_info;
-
-		OSAL_MEM_ZERO(&sb_cnt_info, sizeof(sb_cnt_info));
-		ecore_int_get_num_sbs(p_hwfn, &sb_cnt_info);
-
 		/* Start by allocating VF queues, then PF's */
 		feat_num[ECORE_VF_L2_QUE] =
 			OSAL_MIN_T(u32,
 				   RESC_NUM(p_hwfn, ECORE_L2_QUEUE),
-				   sb_cnt_info.sb_iov_cnt);
+				   sb_cnt.iov_cnt);
 		feat_num[ECORE_PF_L2_QUE] =
 			OSAL_MIN_T(u32,
-				   RESC_NUM(p_hwfn, ECORE_SB) - non_l2_sbs,
+				   sb_cnt.cnt - non_l2_sbs,
 				   RESC_NUM(p_hwfn, ECORE_L2_QUEUE) -
 				   FEAT_NUM(p_hwfn, ECORE_VF_L2_QUE));
 	}
 
-	feat_num[ECORE_FCOE_CQ] = OSAL_MIN_T(u32, RESC_NUM(p_hwfn, ECORE_SB),
-					     RESC_NUM(p_hwfn, ECORE_CMDQS_CQS));
-	feat_num[ECORE_ISCSI_CQ] = OSAL_MIN_T(u32, RESC_NUM(p_hwfn, ECORE_SB),
-					     RESC_NUM(p_hwfn, ECORE_CMDQS_CQS));
+	feat_num[ECORE_FCOE_CQ] = OSAL_MIN_T(u32, sb_cnt.cnt,
+					     RESC_NUM(p_hwfn,
+						      ECORE_CMDQS_CQS));
+	feat_num[ECORE_ISCSI_CQ] = OSAL_MIN_T(u32, sb_cnt.cnt,
+					      RESC_NUM(p_hwfn,
+						       ECORE_CMDQS_CQS));
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_PROBE,
 		   "#PF_L2_QUEUE=%d VF_L2_QUEUES=%d #ROCE_CNQ=%d #FCOE_CQ=%d #ISCSI_CQ=%d #SB=%d\n",
@@ -2456,14 +2466,12 @@ static void ecore_hw_set_feat(struct ecore_hwfn *p_hwfn)
 		   (int)FEAT_NUM(p_hwfn, ECORE_RDMA_CNQ),
 		   (int)FEAT_NUM(p_hwfn, ECORE_FCOE_CQ),
 		   (int)FEAT_NUM(p_hwfn, ECORE_ISCSI_CQ),
-		   RESC_NUM(p_hwfn, ECORE_SB));
+		   (int)sb_cnt.cnt);
 }
 
 const char *ecore_hw_get_resc_name(enum ecore_resources res_id)
 {
 	switch (res_id) {
-	case ECORE_SB:
-		return "SB";
 	case ECORE_L2_QUEUE:
 		return "L2_QUEUE";
 	case ECORE_VPORT:
@@ -2490,6 +2498,8 @@ const char *ecore_hw_get_resc_name(enum ecore_resources res_id)
 		return "RDMA_STATS_QUEUE";
 	case ECORE_BDQ:
 		return "BDQ";
+	case ECORE_SB:
+		return "SB";
 	default:
 		return "UNKNOWN_RESOURCE";
 	}
@@ -2565,14 +2575,8 @@ enum _ecore_status_t ecore_hw_get_dflt_resc(struct ecore_hwfn *p_hwfn,
 {
 	u8 num_funcs = p_hwfn->num_funcs_on_engine;
 	bool b_ah = ECORE_IS_AH(p_hwfn->p_dev);
-	struct ecore_sb_cnt_info sb_cnt_info;
 
 	switch (res_id) {
-	case ECORE_SB:
-		OSAL_MEM_ZERO(&sb_cnt_info, sizeof(sb_cnt_info));
-		ecore_int_get_num_sbs(p_hwfn, &sb_cnt_info);
-		*p_resc_num = sb_cnt_info.sb_cnt;
-		break;
 	case ECORE_L2_QUEUE:
 		*p_resc_num = (b_ah ? MAX_NUM_L2_QUEUES_K2 :
 				 MAX_NUM_L2_QUEUES_BB) / num_funcs;
@@ -2628,6 +2632,12 @@ enum _ecore_status_t ecore_hw_get_dflt_resc(struct ecore_hwfn *p_hwfn,
 	case ECORE_BDQ:
 		if (!*p_resc_num)
 			*p_resc_start = 0;
+		break;
+	case ECORE_SB:
+		/* Since we want its value to reflect whether MFW supports
+		 * the new scheme, have a default of 0.
+		 */
+		*p_resc_num = 0;
 		break;
 	default:
 		*p_resc_start = *p_resc_num * p_hwfn->enabled_func_idx;
@@ -2693,14 +2703,9 @@ __ecore_hw_set_resc_info(struct ecore_hwfn *p_hwfn, enum ecore_resources res_id,
 		goto out;
 	}
 
-	/* TBD - remove this when revising the handling of the SB resource */
-	if (res_id == ECORE_SB) {
-		/* Excluding the slowpath SB */
-		*p_resc_num -= 1;
-		*p_resc_start -= p_hwfn->enabled_func_idx;
-	}
-
-	if (*p_resc_num != dflt_resc_num || *p_resc_start != dflt_resc_start) {
+	if ((*p_resc_num != dflt_resc_num ||
+	     *p_resc_start != dflt_resc_start) &&
+	    res_id != ECORE_SB) {
 		DP_INFO(p_hwfn,
 			"MFW allocation for resource %d [%s] differs from default values [%d,%d vs. %d,%d]%s\n",
 			res_id, ecore_hw_get_resc_name(res_id), *p_resc_num,
@@ -2849,6 +2854,10 @@ static enum _ecore_status_t ecore_hw_get_resc(struct ecore_hwfn *p_hwfn,
 			  1);
 		return ECORE_INVAL;
 	}
+
+	/* This will also learn the number of SBs from MFW */
+	if (ecore_int_igu_reset_cam(p_hwfn, p_hwfn->p_main_ptt))
+		return ECORE_INVAL;
 
 	ecore_hw_set_feat(p_hwfn);
 
@@ -4540,7 +4549,7 @@ enum _ecore_status_t ecore_set_rxq_coalesce(struct ecore_hwfn *p_hwfn,
 	timeset = (u8)(coalesce >> timer_res);
 
 	rc = ecore_int_set_timer_res(p_hwfn, p_ptt, timer_res,
-				     p_cid->abs.sb_idx, false);
+				     p_cid->sb_igu_id, false);
 	if (rc != ECORE_SUCCESS)
 		goto out;
 
@@ -4581,7 +4590,7 @@ enum _ecore_status_t ecore_set_txq_coalesce(struct ecore_hwfn *p_hwfn,
 	timeset = (u8)(coalesce >> timer_res);
 
 	rc = ecore_int_set_timer_res(p_hwfn, p_ptt, timer_res,
-				     p_cid->abs.sb_idx, true);
+				     p_cid->sb_igu_id, true);
 	if (rc != ECORE_SUCCESS)
 		goto out;
 
