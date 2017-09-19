@@ -194,6 +194,12 @@ enum _ecore_status_t ecore_db_recovery_add(struct ecore_dev *p_dev,
 enum _ecore_status_t ecore_db_recovery_del(struct ecore_dev *p_dev,
 					   void OSAL_IOMEM *db_addr,
 					   void *db_data);
+
+static OSAL_INLINE bool ecore_is_mf_ufp(struct ecore_hwfn *p_hwfn)
+{
+	return !!OSAL_TEST_BIT(ECORE_MF_UFP_SPECIFIC, &p_hwfn->p_dev->mf_bits);
+}
+
 #endif
 
 /**
@@ -295,7 +301,6 @@ struct ecore_ptt *ecore_ptt_acquire(struct ecore_hwfn *p_hwfn);
 void ecore_ptt_release(struct ecore_hwfn *p_hwfn,
 		       struct ecore_ptt *p_ptt);
 
-#ifndef __EXTRACT__LINUX__
 struct ecore_eth_stats_common {
 	u64 no_buff_discards;
 	u64 packet_too_big_discard;
@@ -386,7 +391,6 @@ struct ecore_eth_stats {
 		struct ecore_eth_stats_ah ah;
 	};
 };
-#endif
 
 enum ecore_dmae_address_type_t {
 	ECORE_DMAE_ADDRESS_HOST_VIRT,

@@ -21,6 +21,7 @@
 #include "ecore_iro.h"
 #include "ecore_dcbx.h"
 #include "ecore_sp_commands.h"
+#include "ecore_cxt.h"
 
 #define CHIP_MCP_RESP_ITER_US 10
 #define EMUL_MCP_RESP_ITER_US (1000 * 1000)
@@ -1860,6 +1861,74 @@ static void ecore_mcp_handle_critical_error(struct ecore_hwfn *p_hwfn,
 	ecore_hw_err_notify(p_hwfn, ECORE_HW_ERR_HW_ATTN);
 }
 
+void
+ecore_mcp_read_ufp_config(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt)
+{
+	struct public_func shmem_info;
+	u32 port_cfg, val;
+
+	if (!OSAL_TEST_BIT(ECORE_MF_UFP_SPECIFIC, &p_hwfn->p_dev->mf_bits))
+		return;
+
+	OSAL_MEMSET(&p_hwfn->ufp_info, 0, sizeof(p_hwfn->ufp_info));
+	port_cfg = ecore_rd(p_hwfn, p_ptt, p_hwfn->mcp_info->port_addr +
+			    OFFSETOF(struct public_port, oem_cfg_port));
+	val = GET_MFW_FIELD(port_cfg, OEM_CFG_CHANNEL_TYPE);
+	if (val != OEM_CFG_CHANNEL_TYPE_STAGGED)
+		DP_NOTICE(p_hwfn, false, "Incorrect UFP Channel type  %d\n",
+			  val);
+
+	val = GET_MFW_FIELD(port_cfg, OEM_CFG_SCHED_TYPE);
+	if (val == OEM_CFG_SCHED_TYPE_ETS)
+		p_hwfn->ufp_info.mode = ECORE_UFP_MODE_ETS;
+	else if (val == OEM_CFG_SCHED_TYPE_VNIC_BW)
+		p_hwfn->ufp_info.mode = ECORE_UFP_MODE_VNIC_BW;
+	else
+		DP_NOTICE(p_hwfn, false, "Unknown UFP scheduling mode %d\n",
+			  val);
+
+	ecore_mcp_get_shmem_func(p_hwfn, p_ptt, &shmem_info,
+				 MCP_PF_ID(p_hwfn));
+	val = GET_MFW_FIELD(shmem_info.oem_cfg_func, OEM_CFG_FUNC_TC);
+	p_hwfn->ufp_info.tc = (u8)val;
+	val = GET_MFW_FIELD(shmem_info.oem_cfg_func,
+			    OEM_CFG_FUNC_HOST_PRI_CTRL);
+	if (val == OEM_CFG_FUNC_HOST_PRI_CTRL_VNIC)
+		p_hwfn->ufp_info.pri_type = ECORE_UFP_PRI_VNIC;
+	else if (val == OEM_CFG_FUNC_HOST_PRI_CTRL_OS)
+		p_hwfn->ufp_info.pri_type = ECORE_UFP_PRI_OS;
+	else
+		DP_NOTICE(p_hwfn, false, "Unknown Host priority control %d\n",
+			  val);
+
+	DP_VERBOSE(p_hwfn, ECORE_MSG_DCB,
+		   "UFP shmem config: mode = %d tc = %d pri_type = %d\n",
+		   p_hwfn->ufp_info.mode, p_hwfn->ufp_info.tc,
+		   p_hwfn->ufp_info.pri_type);
+}
+
+static enum _ecore_status_t
+ecore_mcp_handle_ufp_event(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt)
+{
+	ecore_mcp_read_ufp_config(p_hwfn, p_ptt);
+
+	if (p_hwfn->ufp_info.mode == ECORE_UFP_MODE_VNIC_BW) {
+		p_hwfn->qm_info.ooo_tc = p_hwfn->ufp_info.tc;
+		p_hwfn->hw_info.offload_tc = p_hwfn->ufp_info.tc;
+
+		ecore_qm_reconf(p_hwfn, p_ptt);
+	} else {
+		/* Merge UFP TC with the dcbx TC data */
+		ecore_dcbx_mib_update_event(p_hwfn, p_ptt,
+					    ECORE_DCBX_OPERATIONAL_MIB);
+	}
+
+	/* update storm FW with negotiation results */
+	ecore_sp_pf_update_ufp(p_hwfn);
+
+	return ECORE_SUCCESS;
+}
+
 enum _ecore_status_t ecore_mcp_handle_events(struct ecore_hwfn *p_hwfn,
 					     struct ecore_ptt *p_ptt)
 {
@@ -1902,6 +1971,9 @@ enum _ecore_status_t ecore_mcp_handle_events(struct ecore_hwfn *p_hwfn,
 		case MFW_DRV_MSG_DCBX_OPERATIONAL_MIB_UPDATED:
 			ecore_dcbx_mib_update_event(p_hwfn, p_ptt,
 						    ECORE_DCBX_OPERATIONAL_MIB);
+			break;
+		case MFW_DRV_MSG_OEM_CFG_UPDATE:
+			ecore_mcp_handle_ufp_event(p_hwfn, p_ptt);
 			break;
 		case MFW_DRV_MSG_TRANSCEIVER_STATE_CHANGE:
 			ecore_mcp_handle_transceiver_change(p_hwfn, p_ptt);

@@ -1455,19 +1455,11 @@ static enum _ecore_status_t ecore_calc_hw_mode(struct ecore_hwfn *p_hwfn)
 		return ECORE_INVAL;
 	}
 
-	switch (p_hwfn->p_dev->mf_mode) {
-	case ECORE_MF_DEFAULT:
-	case ECORE_MF_NPAR:
-		hw_mode |= 1 << MODE_MF_SI;
-		break;
-	case ECORE_MF_OVLAN:
+	if (OSAL_TEST_BIT(ECORE_MF_OVLAN_CLSS,
+			  &p_hwfn->p_dev->mf_bits))
 		hw_mode |= 1 << MODE_MF_SD;
-		break;
-	default:
-		DP_NOTICE(p_hwfn, true,
-			  "Unsupported MF mode, init as DEFAULT\n");
+	else
 		hw_mode |= 1 << MODE_MF_SI;
-	}
 
 #ifndef ASIC_ONLY
 	if (CHIP_REV_IS_SLOW(p_hwfn->p_dev)) {
@@ -2154,6 +2146,11 @@ ecore_hw_init_pf(struct ecore_hwfn *p_hwfn,
 		STORE_RT_REG(p_hwfn, NIG_REG_LLH_FUNC_TAG_EN_RT_OFFSET, 1);
 		STORE_RT_REG(p_hwfn, NIG_REG_LLH_FUNC_TAG_VALUE_RT_OFFSET,
 			     p_hwfn->hw_info.ovlan);
+
+		DP_VERBOSE(p_hwfn, ECORE_MSG_HW,
+			   "Configuring LLH_FUNC_FILTER_HDR_SEL\n");
+		STORE_RT_REG(p_hwfn, NIG_REG_LLH_FUNC_FILTER_HDR_SEL_RT_OFFSET,
+			     1);
 	}
 
 	/* Enable classification by MAC if needed */
@@ -2214,7 +2211,6 @@ ecore_hw_init_pf(struct ecore_hwfn *p_hwfn,
 
 		/* send function start command */
 		rc = ecore_sp_pf_start(p_hwfn, p_ptt, p_tunn,
-				       p_hwfn->p_dev->mf_mode,
 				       allow_npar_tx_switch);
 		if (rc) {
 			DP_NOTICE(p_hwfn, true,
@@ -3504,6 +3500,37 @@ ecore_hw_get_nvm_info(struct ecore_hwfn *p_hwfn,
 
 	switch (mf_mode) {
 	case NVM_CFG1_GLOB_MF_MODE_MF_ALLOWED:
+		p_hwfn->p_dev->mf_bits = 1 << ECORE_MF_OVLAN_CLSS;
+		break;
+	case NVM_CFG1_GLOB_MF_MODE_UFP:
+		p_hwfn->p_dev->mf_bits = 1 << ECORE_MF_OVLAN_CLSS |
+					 1 << ECORE_MF_UFP_SPECIFIC;
+		break;
+
+	case NVM_CFG1_GLOB_MF_MODE_NPAR1_0:
+		p_hwfn->p_dev->mf_bits = 1 << ECORE_MF_LLH_MAC_CLSS |
+					 1 << ECORE_MF_LLH_PROTO_CLSS |
+					 1 << ECORE_MF_LL2_NON_UNICAST |
+					 1 << ECORE_MF_INTER_PF_SWITCH;
+		break;
+	case NVM_CFG1_GLOB_MF_MODE_DEFAULT:
+		p_hwfn->p_dev->mf_bits = 1 << ECORE_MF_LLH_MAC_CLSS |
+					 1 << ECORE_MF_LLH_PROTO_CLSS |
+					 1 << ECORE_MF_LL2_NON_UNICAST;
+		if (ECORE_IS_BB(p_hwfn->p_dev))
+			p_hwfn->p_dev->mf_bits |= 1 << ECORE_MF_NEED_DEF_PF;
+		break;
+	}
+	DP_INFO(p_hwfn, "Multi function mode is 0x%lx\n",
+		p_hwfn->p_dev->mf_bits);
+
+	/* It's funny since we have another switch, but it's easier
+	 * to throw this away in linux this way. Long term, it might be
+	 * better to have have getters for needed ECORE_MF_* fields,
+	 * convert client code and eliminate this.
+	 */
+	switch (mf_mode) {
+	case NVM_CFG1_GLOB_MF_MODE_MF_ALLOWED:
 		p_hwfn->p_dev->mf_mode = ECORE_MF_OVLAN;
 		break;
 	case NVM_CFG1_GLOB_MF_MODE_NPAR1_0:
@@ -3512,9 +3539,10 @@ ecore_hw_get_nvm_info(struct ecore_hwfn *p_hwfn,
 	case NVM_CFG1_GLOB_MF_MODE_DEFAULT:
 		p_hwfn->p_dev->mf_mode = ECORE_MF_DEFAULT;
 		break;
+	case NVM_CFG1_GLOB_MF_MODE_UFP:
+		p_hwfn->p_dev->mf_mode = ECORE_MF_UFP;
+		break;
 	}
-	DP_INFO(p_hwfn, "Multi function mode is %08x\n",
-		p_hwfn->p_dev->mf_mode);
 
 	/* Read Multi-function information from shmem */
 	addr = MCP_REG_SCRATCH + nvm_cfg1_offset +
@@ -3813,6 +3841,8 @@ ecore_get_hw_info(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 		ecore_mcp_cmd_port_init(p_hwfn, p_ptt);
 
 		ecore_mcp_get_eee_caps(p_hwfn, p_ptt);
+
+		ecore_mcp_read_ufp_config(p_hwfn, p_ptt);
 	}
 
 	if (personality != ECORE_PCI_DEFAULT) {
@@ -4609,7 +4639,8 @@ enum _ecore_status_t ecore_llh_add_mac_filter(struct ecore_hwfn *p_hwfn,
 	u32 high, low, entry_num;
 	enum _ecore_status_t rc;
 
-	if (!(IS_MF_SI(p_hwfn) || IS_MF_DEFAULT(p_hwfn)))
+	if (!OSAL_TEST_BIT(ECORE_MF_LLH_MAC_CLSS,
+			   &p_hwfn->p_dev->mf_bits))
 		return ECORE_SUCCESS;
 
 	high = p_filter[1] | (p_filter[0] << 8);
@@ -4676,7 +4707,8 @@ void ecore_llh_remove_mac_filter(struct ecore_hwfn *p_hwfn,
 	u32 high, low, entry_num;
 	enum _ecore_status_t rc;
 
-	if (!(IS_MF_SI(p_hwfn) || IS_MF_DEFAULT(p_hwfn)))
+	if (!OSAL_TEST_BIT(ECORE_MF_LLH_MAC_CLSS,
+			   &p_hwfn->p_dev->mf_bits))
 		return;
 
 	high = p_filter[1] | (p_filter[0] << 8);
@@ -4750,7 +4782,8 @@ ecore_llh_add_protocol_filter(struct ecore_hwfn *p_hwfn,
 	u32 high, low, entry_num;
 	enum _ecore_status_t rc;
 
-	if (!(IS_MF_SI(p_hwfn) || IS_MF_DEFAULT(p_hwfn)))
+	if (!OSAL_TEST_BIT(ECORE_MF_LLH_PROTO_CLSS,
+			   &p_hwfn->p_dev->mf_bits))
 		return ECORE_SUCCESS;
 
 	high = 0;
@@ -4893,7 +4926,8 @@ ecore_llh_remove_protocol_filter(struct ecore_hwfn *p_hwfn,
 	u32 high, low, entry_num;
 	enum _ecore_status_t rc;
 
-	if (!(IS_MF_SI(p_hwfn) || IS_MF_DEFAULT(p_hwfn)))
+	if (!OSAL_TEST_BIT(ECORE_MF_LLH_PROTO_CLSS,
+			   &p_hwfn->p_dev->mf_bits))
 		return;
 
 	high = 0;
@@ -4961,7 +4995,10 @@ static void ecore_llh_clear_all_filters_bb_ah(struct ecore_hwfn *p_hwfn,
 void ecore_llh_clear_all_filters(struct ecore_hwfn *p_hwfn,
 			     struct ecore_ptt *p_ptt)
 {
-	if (!(IS_MF_SI(p_hwfn) || IS_MF_DEFAULT(p_hwfn)))
+	if (!OSAL_TEST_BIT(ECORE_MF_LLH_PROTO_CLSS,
+			   &p_hwfn->p_dev->mf_bits) &&
+	    !OSAL_TEST_BIT(ECORE_MF_LLH_MAC_CLSS,
+			   &p_hwfn->p_dev->mf_bits))
 		return;
 
 	if (ECORE_IS_BB(p_hwfn->p_dev) || ECORE_IS_AH(p_hwfn->p_dev))
@@ -4972,7 +5009,7 @@ enum _ecore_status_t
 ecore_llh_set_function_as_default(struct ecore_hwfn *p_hwfn,
 				  struct ecore_ptt *p_ptt)
 {
-	if (IS_MF_DEFAULT(p_hwfn) && ECORE_IS_BB(p_hwfn->p_dev)) {
+	if (OSAL_TEST_BIT(ECORE_MF_NEED_DEF_PF, &p_hwfn->p_dev->mf_bits)) {
 		ecore_wr(p_hwfn, p_ptt,
 			 NIG_REG_LLH_TAGMAC_DEF_PF_VECTOR,
 			 1 << p_hwfn->abs_pf_id / 2);

@@ -234,8 +234,8 @@ ecore_dcbx_process_tlv(struct ecore_hwfn *p_hwfn,
 		       int count, u8 dcbx_version)
 {
 	enum dcbx_protocol_type type;
+	bool enable, ieee, eth_tlv;
 	u8 tc, priority_map;
-	bool enable, ieee;
 	u16 protocol_id;
 	u8 priority;
 	enum _ecore_status_t rc = ECORE_SUCCESS;
@@ -246,6 +246,7 @@ ecore_dcbx_process_tlv(struct ecore_hwfn *p_hwfn,
 		   count, pri_tc_tbl, dcbx_version);
 
 	ieee = (dcbx_version == DCBX_CONFIG_VERSION_IEEE);
+	eth_tlv = false;
 	/* Parse APP TLV */
 	for (i = 0; i < count; i++) {
 		protocol_id = GET_MFW_FIELD(p_tbl[i].entry,
@@ -269,12 +270,23 @@ ecore_dcbx_process_tlv(struct ecore_hwfn *p_hwfn,
 			 * indication, but we only got here if there was an
 			 * app tlv for the protocol, so dcbx must be enabled.
 			 */
-			enable = !(type == DCBX_PROTOCOL_ETH);
+			if (type == DCBX_PROTOCOL_ETH) {
+				enable = false;
+				eth_tlv = true;
+			} else {
+				enable = true;
+			}
 
 			ecore_dcbx_update_app_info(p_data, p_hwfn, enable,
 						   priority, tc, type);
 		}
 	}
+
+	/* If Eth TLV is not detected, use UFP TC as default TC */
+	if (OSAL_TEST_BIT(ECORE_MF_UFP_SPECIFIC,
+			  &p_hwfn->p_dev->mf_bits) && !eth_tlv)
+		p_data->arr[DCBX_PROTOCOL_ETH].tc = p_hwfn->ufp_info.tc;
+
 	/* Update ramrod protocol data and hw_info fields
 	 * with default info when corresponding APP TLV's are not detected.
 	 * The enabled field has a different logic for ethernet as only for

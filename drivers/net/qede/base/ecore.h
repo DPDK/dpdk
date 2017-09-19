@@ -507,6 +507,45 @@ struct ecore_fw_data {
 	u32 init_ops_size;
 };
 
+enum ecore_mf_mode_bit {
+	/* Supports PF-classification based on tag */
+	ECORE_MF_OVLAN_CLSS,
+
+	/* Supports PF-classification based on MAC */
+	ECORE_MF_LLH_MAC_CLSS,
+
+	/* Supports PF-classification based on protocol type */
+	ECORE_MF_LLH_PROTO_CLSS,
+
+	/* Requires a default PF to be set */
+	ECORE_MF_NEED_DEF_PF,
+
+	/* Allow LL2 to multicast/broadcast */
+	ECORE_MF_LL2_NON_UNICAST,
+
+	/* Allow Cross-PF [& child VFs] Tx-switching */
+	ECORE_MF_INTER_PF_SWITCH,
+
+	/* TODO - if we ever re-utilize any of this logic, we can rename */
+	ECORE_MF_UFP_SPECIFIC,
+};
+
+enum ecore_ufp_mode {
+	ECORE_UFP_MODE_ETS,
+	ECORE_UFP_MODE_VNIC_BW,
+};
+
+enum ecore_ufp_pri_type {
+	ECORE_UFP_PRI_OS,
+	ECORE_UFP_PRI_VNIC
+};
+
+struct ecore_ufp_info {
+	enum ecore_ufp_pri_type pri_type;
+	enum ecore_ufp_mode mode;
+	u8 tc;
+};
+
 struct ecore_hwfn {
 	struct ecore_dev		*p_dev;
 	u8				my_id;		/* ID inside the PF */
@@ -588,6 +627,7 @@ struct ecore_hwfn {
 	struct ecore_pf_iov		*pf_iov_info;
 	struct ecore_mcp_info		*mcp_info;
 	struct ecore_dcbx_info		*p_dcbx_info;
+	struct ecore_ufp_info		ufp_info;
 
 	struct ecore_dmae_info		dmae_info;
 
@@ -625,13 +665,12 @@ struct ecore_hwfn {
 	struct ecore_ptt		*p_arfs_ptt;
 };
 
-#ifndef __EXTRACT__LINUX__
 enum ecore_mf_mode {
 	ECORE_MF_DEFAULT,
 	ECORE_MF_OVLAN,
 	ECORE_MF_NPAR,
+	ECORE_MF_UFP,
 };
-#endif
 
 /* @DPDK */
 struct ecore_dbg_feature {
@@ -727,6 +766,8 @@ struct ecore_dev {
 	u8				num_funcs_in_port;
 
 	u8				path_id;
+
+	unsigned long			mf_bits;
 	enum ecore_mf_mode		mf_mode;
 #define IS_MF_DEFAULT(_p_hwfn)	\
 	(((_p_hwfn)->p_dev)->mf_mode == ECORE_MF_DEFAULT)

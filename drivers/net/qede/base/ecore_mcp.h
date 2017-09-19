@@ -521,4 +521,13 @@ enum _ecore_status_t ecore_mcp_get_capabilities(struct ecore_hwfn *p_hwfn,
 enum _ecore_status_t ecore_mcp_set_capabilities(struct ecore_hwfn *p_hwfn,
 						struct ecore_ptt *p_ptt);
 
+/**
+ * @brief Read ufp config from the shared memory.
+ *
+ * @param p_hwfn
+ * @param p_ptt
+ */
+void
+ecore_mcp_read_ufp_config(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt);
+
 #endif /* __ECORE_MCP_H__ */

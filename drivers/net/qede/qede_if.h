@@ -40,7 +40,7 @@ struct qed_dev_info {
 #define QED_MFW_VERSION_3_OFFSET	24
 
 	uint32_t flash_size;
-	uint8_t mf_mode;
+	bool b_inter_pf_switch;
 	bool tx_switching;
 	u16 mtu;
 
