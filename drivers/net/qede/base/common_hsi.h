@@ -718,8 +718,8 @@ struct iscsi_eqe_data {
  * Event Ring malicious VF data
  */
 struct malicious_vf_eqe_data {
-	u8 vfId /* Malicious VF ID */;
-	u8 errId /* Malicious VF error */;
+	u8 vf_id /* Malicious VF ID */;
+	u8 err_id /* Malicious VF error */;
 	__le16 reserved[3];
 };
 

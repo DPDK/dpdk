@@ -4192,16 +4192,22 @@ static void ecore_sriov_vfpf_malicious(struct ecore_hwfn *p_hwfn,
 {
 	struct ecore_vf_info *p_vf;
 
-	p_vf = ecore_sriov_get_vf_from_absid(p_hwfn, p_data->vfId);
+	p_vf = ecore_sriov_get_vf_from_absid(p_hwfn, p_data->vf_id);
 
 	if (!p_vf)
 		return;
 
-	DP_INFO(p_hwfn,
-		"VF [%d] - Malicious behavior [%02x]\n",
-		p_vf->abs_vf_id, p_data->errId);
+	if (!p_vf->b_malicious) {
+		DP_NOTICE(p_hwfn, false,
+			  "VF [%d] - Malicious behavior [%02x]\n",
+			  p_vf->abs_vf_id, p_data->err_id);
 
-	p_vf->b_malicious = true;
+		p_vf->b_malicious = true;
+	} else {
+		DP_INFO(p_hwfn,
+			"VF [%d] - Malicious behavior [%02x]\n",
+			p_vf->abs_vf_id, p_data->err_id);
+	}
 
 	OSAL_PF_VF_MALICIOUS(p_hwfn, p_vf->relative_vf_id);
 }
