@@ -20,6 +20,7 @@
 #include "ecore_gtt_reg_addr.h"
 #include "ecore_iro.h"
 #include "ecore_dcbx.h"
+#include "ecore_sp_commands.h"
 
 #define CHIP_MCP_RESP_ITER_US 10
 #define EMUL_MCP_RESP_ITER_US (1000 * 1000)

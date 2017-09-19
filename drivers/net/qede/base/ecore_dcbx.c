@@ -882,7 +882,7 @@ ecore_dcbx_mib_update_event(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 			ecore_qm_reconf(p_hwfn, p_ptt);
 
 			/* update storm FW with negotiation results */
-			ecore_sp_pf_update(p_hwfn);
+			ecore_sp_pf_update_dcbx(p_hwfn);
 
 			/* set eagle enigne 1 flow control workaround
 			 * according to negotiation results

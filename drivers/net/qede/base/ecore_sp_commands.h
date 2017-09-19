@@ -87,7 +87,7 @@ enum _ecore_status_t ecore_sp_pf_start(struct ecore_hwfn *p_hwfn,
  * @return enum _ecore_status_t
  */
 
-enum _ecore_status_t ecore_sp_pf_update(struct ecore_hwfn *p_hwfn);
+enum _ecore_status_t ecore_sp_pf_update_dcbx(struct ecore_hwfn *p_hwfn);
 
 /**
  * @brief ecore_sp_pf_stop - PF Function Stop Ramrod
@@ -144,5 +144,15 @@ struct ecore_rl_update_params {
  */
 enum _ecore_status_t ecore_sp_rl_update(struct ecore_hwfn *p_hwfn,
 					struct ecore_rl_update_params *params);
+
+/**
+ * @brief ecore_sp_pf_update_stag - PF STAG value update Ramrod
+ *
+ * @param p_hwfn
+ *
+ * @return enum _ecore_status_t
+ */
+
+enum _ecore_status_t ecore_sp_pf_update_stag(struct ecore_hwfn *p_hwfn);
 
 #endif /*__ECORE_SP_COMMANDS_H__*/

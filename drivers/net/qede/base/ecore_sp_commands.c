@@ -398,7 +398,7 @@ enum _ecore_status_t ecore_sp_pf_start(struct ecore_hwfn *p_hwfn,
 	return rc;
 }
 
-enum _ecore_status_t ecore_sp_pf_update(struct ecore_hwfn *p_hwfn)
+enum _ecore_status_t ecore_sp_pf_update_dcbx(struct ecore_hwfn *p_hwfn)
 {
 	struct ecore_spq_entry *p_ent = OSAL_NULL;
 	struct ecore_sp_init_data init_data;
@@ -552,6 +552,31 @@ enum _ecore_status_t ecore_sp_heartbeat_ramrod(struct ecore_hwfn *p_hwfn)
 				   &init_data);
 	if (rc != ECORE_SUCCESS)
 		return rc;
+
+	return ecore_spq_post(p_hwfn, p_ent, OSAL_NULL);
+}
+
+enum _ecore_status_t ecore_sp_pf_update_stag(struct ecore_hwfn *p_hwfn)
+{
+	struct ecore_spq_entry *p_ent = OSAL_NULL;
+	struct ecore_sp_init_data init_data;
+	enum _ecore_status_t rc = ECORE_NOTIMPL;
+
+	/* Get SPQ entry */
+	OSAL_MEMSET(&init_data, 0, sizeof(init_data));
+	init_data.cid = ecore_spq_get_cid(p_hwfn);
+	init_data.opaque_fid = p_hwfn->hw_info.opaque_fid;
+	init_data.comp_mode = ECORE_SPQ_MODE_CB;
+
+	rc = ecore_sp_init_request(p_hwfn, &p_ent,
+				   COMMON_RAMROD_PF_UPDATE, PROTOCOLID_COMMON,
+				   &init_data);
+	if (rc != ECORE_SUCCESS)
+		return rc;
+
+	p_ent->ramrod.pf_update.update_mf_vlan_flag = true;
+	p_ent->ramrod.pf_update.mf_vlan =
+				OSAL_CPU_TO_LE16(p_hwfn->hw_info.ovlan);
 
 	return ecore_spq_post(p_hwfn, p_ent, OSAL_NULL);
 }
