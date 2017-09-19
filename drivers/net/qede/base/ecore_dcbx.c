@@ -417,7 +417,7 @@ ecore_dcbx_get_app_data(struct ecore_hwfn *p_hwfn,
 	p_params->app_error = GET_MFW_FIELD(p_app->flags, DCBX_APP_ERROR);
 	p_params->num_app_entries = GET_MFW_FIELD(p_app->flags,
 						  DCBX_APP_NUM_ENTRIES);
-	for (i = 0; i < DCBX_MAX_APP_PROTOCOL; i++) {
+	for (i = 0; i < p_params->num_app_entries; i++) {
 		entry = &p_params->app_entry[i];
 		if (ieee) {
 			u8 sf_ieee;
@@ -1071,7 +1071,7 @@ ecore_dcbx_set_app_data(struct ecore_hwfn *p_hwfn,
 	p_app->flags |= (u32)p_params->num_app_entries <<
 			DCBX_APP_NUM_ENTRIES_OFFSET;
 
-	for (i = 0; i < DCBX_MAX_APP_PROTOCOL; i++) {
+	for (i = 0; i < p_params->num_app_entries; i++) {
 		entry = &p_app->app_pri_tbl[i].entry;
 		*entry = 0;
 		if (ieee) {
@@ -1273,7 +1273,7 @@ enum _ecore_status_t ecore_dcbx_get_config_params(struct ecore_hwfn *p_hwfn,
 	p_hwfn->p_dcbx_info->set.enabled = dcbx_info->operational.enabled;
 	OSAL_MEMCPY(&p_hwfn->p_dcbx_info->set.config.params,
 		    &dcbx_info->operational.params,
-		    sizeof(struct ecore_dcbx_admin_params));
+		    sizeof(p_hwfn->p_dcbx_info->set.config.params));
 	p_hwfn->p_dcbx_info->set.config.valid = true;
 
 	OSAL_MEMCPY(params, &p_hwfn->p_dcbx_info->set,
