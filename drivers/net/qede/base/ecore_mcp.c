@@ -1036,6 +1036,29 @@ static void ecore_mcp_handle_transceiver_change(struct ecore_hwfn *p_hwfn,
 		DP_NOTICE(p_hwfn, false, "Transceiver is unplugged.\n");
 }
 
+static void ecore_mcp_read_eee_config(struct ecore_hwfn *p_hwfn,
+				      struct ecore_ptt *p_ptt,
+				      struct ecore_mcp_link_state *p_link)
+{
+	u32 eee_status, val;
+
+	p_link->eee_adv_caps = 0;
+	p_link->eee_lp_adv_caps = 0;
+	eee_status = ecore_rd(p_hwfn, p_ptt, p_hwfn->mcp_info->port_addr +
+				     OFFSETOF(struct public_port, eee_status));
+	p_link->eee_active = !!(eee_status & EEE_ACTIVE_BIT);
+	val = (eee_status & EEE_LD_ADV_STATUS_MASK) >> EEE_LD_ADV_STATUS_SHIFT;
+	if (val & EEE_1G_ADV)
+		p_link->eee_adv_caps |= ECORE_EEE_1G_ADV;
+	if (val & EEE_10G_ADV)
+		p_link->eee_adv_caps |= ECORE_EEE_10G_ADV;
+	val = (eee_status & EEE_LP_ADV_STATUS_MASK) >> EEE_LP_ADV_STATUS_SHIFT;
+	if (val & EEE_1G_ADV)
+		p_link->eee_lp_adv_caps |= ECORE_EEE_1G_ADV;
+	if (val & EEE_10G_ADV)
+		p_link->eee_lp_adv_caps |= ECORE_EEE_10G_ADV;
+}
+
 static void ecore_mcp_handle_link_change(struct ecore_hwfn *p_hwfn,
 					 struct ecore_ptt *p_ptt,
 					 bool b_reset)
@@ -1170,6 +1193,9 @@ static void ecore_mcp_handle_link_change(struct ecore_hwfn *p_hwfn,
 
 	p_link->sfp_tx_fault = !!(status & LINK_STATUS_SFP_TX_FAULT);
 
+	if (p_hwfn->mcp_info->capabilities & FW_MB_PARAM_FEATURE_SUPPORT_EEE)
+		ecore_mcp_read_eee_config(p_hwfn, p_ptt, p_link);
+
 	OSAL_LINK_UPDATE(p_hwfn);
 }
 
@@ -1197,6 +1223,27 @@ enum _ecore_status_t ecore_mcp_set_link(struct ecore_hwfn *p_hwfn,
 	phy_cfg.pause |= (params->pause.forced_tx) ? ETH_PAUSE_TX : 0;
 	phy_cfg.adv_speed = params->speed.advertised_speeds;
 	phy_cfg.loopback_mode = params->loopback_mode;
+
+	/* There are MFWs that share this capability regardless of whether
+	 * this is feasible or not. And given that at the very least adv_caps
+	 * would be set internally by ecore, we want to make sure LFA would
+	 * still work.
+	 */
+	if ((p_hwfn->mcp_info->capabilities &
+	     FW_MB_PARAM_FEATURE_SUPPORT_EEE) &&
+	    params->eee.enable) {
+		phy_cfg.eee_cfg |= EEE_CFG_EEE_ENABLED;
+		if (params->eee.tx_lpi_enable)
+			phy_cfg.eee_cfg |= EEE_CFG_TX_LPI;
+		if (params->eee.adv_caps & ECORE_EEE_1G_ADV)
+			phy_cfg.eee_cfg |= EEE_CFG_ADV_SPEED_1G;
+		if (params->eee.adv_caps & ECORE_EEE_10G_ADV)
+			phy_cfg.eee_cfg |= EEE_CFG_ADV_SPEED_10G;
+		phy_cfg.eee_cfg |= (params->eee.tx_lpi_timer <<
+				    EEE_TX_TIMER_USEC_SHIFT) &
+					EEE_TX_TIMER_USEC_MASK;
+	}
+
 	p_hwfn->b_drv_link_init = b_up;
 
 	if (b_up)
@@ -3331,7 +3378,8 @@ enum _ecore_status_t ecore_mcp_set_capabilities(struct ecore_hwfn *p_hwfn,
 {
 	u32 mcp_resp, mcp_param, features;
 
-	features = DRV_MB_PARAM_FEATURE_SUPPORT_PORT_SMARTLINQ;
+	features = DRV_MB_PARAM_FEATURE_SUPPORT_PORT_SMARTLINQ |
+		   DRV_MB_PARAM_FEATURE_SUPPORT_PORT_EEE;
 
 	return ecore_mcp_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_FEATURE_SUPPORT,
 			     features, &mcp_resp, &mcp_param);

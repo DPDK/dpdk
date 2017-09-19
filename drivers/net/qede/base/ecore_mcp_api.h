@@ -23,16 +23,37 @@ struct ecore_mcp_link_pause_params {
 	bool forced_tx;
 };
 
+enum ecore_mcp_eee_mode {
+	ECORE_MCP_EEE_DISABLED,
+	ECORE_MCP_EEE_ENABLED,
+	ECORE_MCP_EEE_UNSUPPORTED
+};
+
+struct ecore_link_eee_params {
+	u32 tx_lpi_timer;
+#define ECORE_EEE_1G_ADV	(1 << 0)
+#define ECORE_EEE_10G_ADV	(1 << 1)
+	/* Capabilities are represented using ECORE_EEE_*_ADV values */
+	u8 adv_caps;
+	u8 lp_adv_caps;
+	bool enable;
+	bool tx_lpi_enable;
+};
+
 struct ecore_mcp_link_params {
 	struct ecore_mcp_link_speed_params speed;
 	struct ecore_mcp_link_pause_params pause;
 	u32 loopback_mode; /* in PMM_LOOPBACK values */
+	struct ecore_link_eee_params eee;
 };
 
 struct ecore_mcp_link_capabilities {
 	u32 speed_capabilities;
 	bool default_speed_autoneg; /* In Mb/s */
 	u32 default_speed; /* In Mb/s */
+	enum ecore_mcp_eee_mode default_eee;
+	u32 eee_lpi_timer;
+	u8 eee_speed_caps;
 };
 
 struct ecore_mcp_link_state {
@@ -67,6 +88,10 @@ struct ecore_mcp_link_state {
 	u8 partner_adv_pause;
 
 	bool sfp_tx_fault;
+
+	bool eee_active;
+	u8 eee_adv_caps;
+	u8 eee_lp_adv_caps;
 };
 
 struct ecore_mcp_function_info {

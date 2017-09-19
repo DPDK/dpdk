@@ -83,6 +83,7 @@ struct qed_link_params {
 #define QED_LINK_OVERRIDE_SPEED_ADV_SPEEDS      (1 << 1)
 #define QED_LINK_OVERRIDE_SPEED_FORCED_SPEED    (1 << 2)
 #define QED_LINK_OVERRIDE_PAUSE_CONFIG          (1 << 3)
+#define QED_LINK_OVERRIDE_EEE_CONFIG		(1 << 5)
 	uint32_t override_flags;
 	bool autoneg;
 	uint32_t adv_speeds;
@@ -91,6 +92,7 @@ struct qed_link_params {
 #define QED_LINK_PAUSE_RX_ENABLE                (1 << 1)
 #define QED_LINK_PAUSE_TX_ENABLE                (1 << 2)
 	uint32_t pause_config;
+	struct ecore_link_eee_params eee;
 };
 
 struct qed_link_output {
@@ -104,6 +106,12 @@ struct qed_link_output {
 	uint8_t port;		/* In PORT defs */
 	bool autoneg;
 	uint32_t pause_config;
+
+	/* EEE - capability & param */
+	bool eee_supported;
+	bool eee_active;
+	u8 sup_caps;
+	struct ecore_link_eee_params eee;
 };
 
 struct qed_slowpath_params {

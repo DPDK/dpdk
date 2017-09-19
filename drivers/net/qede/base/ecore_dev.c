@@ -3108,10 +3108,42 @@ ecore_hw_get_nvm_info(struct ecore_hwfn *p_hwfn,
 				    NVM_CFG1_PORT_DRV_FLOW_CONTROL_TX);
 	link->loopback_mode = 0;
 
+	if (p_hwfn->mcp_info->capabilities & FW_MB_PARAM_FEATURE_SUPPORT_EEE) {
+		link_temp = ecore_rd(p_hwfn, p_ptt, port_cfg_addr +
+				     OFFSETOF(struct nvm_cfg1_port, ext_phy));
+		link_temp &= NVM_CFG1_PORT_EEE_POWER_SAVING_MODE_MASK;
+		link_temp >>= NVM_CFG1_PORT_EEE_POWER_SAVING_MODE_OFFSET;
+		p_caps->default_eee = ECORE_MCP_EEE_ENABLED;
+		link->eee.enable = true;
+		switch (link_temp) {
+		case NVM_CFG1_PORT_EEE_POWER_SAVING_MODE_DISABLED:
+			p_caps->default_eee = ECORE_MCP_EEE_DISABLED;
+			link->eee.enable = false;
+			break;
+		case NVM_CFG1_PORT_EEE_POWER_SAVING_MODE_BALANCED:
+			p_caps->eee_lpi_timer = EEE_TX_TIMER_USEC_BALANCED_TIME;
+			break;
+		case NVM_CFG1_PORT_EEE_POWER_SAVING_MODE_AGGRESSIVE:
+			p_caps->eee_lpi_timer =
+				EEE_TX_TIMER_USEC_AGGRESSIVE_TIME;
+			break;
+		case NVM_CFG1_PORT_EEE_POWER_SAVING_MODE_LOW_LATENCY:
+			p_caps->eee_lpi_timer = EEE_TX_TIMER_USEC_LATENCY_TIME;
+			break;
+		}
+
+		link->eee.tx_lpi_timer = p_caps->eee_lpi_timer;
+		link->eee.tx_lpi_enable = link->eee.enable;
+		link->eee.adv_caps = ECORE_EEE_1G_ADV | ECORE_EEE_10G_ADV;
+	} else {
+		p_caps->default_eee = ECORE_MCP_EEE_UNSUPPORTED;
+	}
+
 	DP_VERBOSE(p_hwfn, ECORE_MSG_LINK,
-		   "Read default link: Speed 0x%08x, Adv. Speed 0x%08x, AN: 0x%02x, PAUSE AN: 0x%02x\n",
+		   "Read default link: Speed 0x%08x, Adv. Speed 0x%08x, AN: 0x%02x, PAUSE AN: 0x%02x\n EEE: %02x [%08x usec]",
 		   link->speed.forced_speed, link->speed.advertised_speeds,
-		   link->speed.autoneg, link->pause.autoneg);
+		   link->speed.autoneg, link->pause.autoneg,
+		   p_caps->default_eee, p_caps->eee_lpi_timer);
 
 	/* Read Multi-function information from shmem */
 	addr = MCP_REG_SCRATCH + nvm_cfg1_offset +
@@ -3317,6 +3349,27 @@ static void ecore_hw_info_port_num(struct ecore_hwfn *p_hwfn,
 		ecore_hw_info_port_num_ah_e5(p_hwfn, p_ptt);
 }
 
+static void ecore_mcp_get_eee_caps(struct ecore_hwfn *p_hwfn,
+				   struct ecore_ptt *p_ptt)
+{
+	struct ecore_mcp_link_capabilities *p_caps;
+	u32 eee_status;
+
+	p_caps = &p_hwfn->mcp_info->link_capabilities;
+	if (p_caps->default_eee == ECORE_MCP_EEE_UNSUPPORTED)
+		return;
+
+	p_caps->eee_speed_caps = 0;
+	eee_status = ecore_rd(p_hwfn, p_ptt, p_hwfn->mcp_info->port_addr +
+			      OFFSETOF(struct public_port, eee_status));
+	eee_status = (eee_status & EEE_SUPPORTED_SPEED_MASK) >>
+			EEE_SUPPORTED_SPEED_OFFSET;
+	if (eee_status & EEE_1G_SUPPORTED)
+		p_caps->eee_speed_caps |= ECORE_EEE_1G_ADV;
+	if (eee_status & EEE_10G_ADV)
+		p_caps->eee_speed_caps |= ECORE_EEE_10G_ADV;
+}
+
 static enum _ecore_status_t
 ecore_get_hw_info(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 		  enum ecore_pci_personality personality,
@@ -3386,6 +3439,8 @@ ecore_get_hw_info(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 			    p_hwfn->mcp_info->func_info.ovlan;
 
 		ecore_mcp_cmd_port_init(p_hwfn, p_ptt);
+
+		ecore_mcp_get_eee_caps(p_hwfn, p_ptt);
 	}
 
 	if (personality != ECORE_PCI_DEFAULT) {

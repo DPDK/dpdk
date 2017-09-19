@@ -792,6 +792,12 @@ struct public_port {
 #define	EEE_LP_ADV_STATUS_MASK	0x00000f00
 #define EEE_LP_ADV_STATUS_SHIFT	8
 
+/* Supported speeds for EEE */
+#define EEE_SUPPORTED_SPEED_MASK	0x0000f000
+#define EEE_SUPPORTED_SPEED_OFFSET	12
+	#define EEE_1G_SUPPORTED	(1 << 1)
+	#define EEE_10G_SUPPORTED	(1 << 2)
+
 	u32 eee_remote;	/* Used for EEE in LLDP */
 #define EEE_REMOTE_TW_TX_MASK	0x0000ffff
 #define EEE_REMOTE_TW_TX_SHIFT	0
