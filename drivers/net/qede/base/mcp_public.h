@@ -28,19 +28,19 @@
 
 typedef u32 offsize_t;      /* In DWORDS !!! */
 /* Offset from the beginning of the MCP scratchpad */
-#define OFFSIZE_OFFSET_SHIFT	0
+#define OFFSIZE_OFFSET_OFFSET	0
 #define OFFSIZE_OFFSET_MASK	0x0000ffff
 /* Size of specific element (not the whole array if any) */
-#define OFFSIZE_SIZE_SHIFT	16
+#define OFFSIZE_SIZE_OFFSET	16
 #define OFFSIZE_SIZE_MASK	0xffff0000
 
 /* SECTION_OFFSET is calculating the offset in bytes out of offsize */
 #define SECTION_OFFSET(_offsize)	\
-	((((_offsize & OFFSIZE_OFFSET_MASK) >> OFFSIZE_OFFSET_SHIFT) << 2))
+	((((_offsize & OFFSIZE_OFFSET_MASK) >> OFFSIZE_OFFSET_OFFSET) << 2))
 
 /* SECTION_SIZE is calculating the size in bytes out of offsize */
 #define SECTION_SIZE(_offsize)		\
-	(((_offsize & OFFSIZE_SIZE_MASK) >> OFFSIZE_SIZE_SHIFT) << 2)
+	(((_offsize & OFFSIZE_SIZE_MASK) >> OFFSIZE_SIZE_OFFSET) << 2)
 
 /* SECTION_ADDR returns the GRC addr of a section, given offsize and index
  * within section
@@ -93,7 +93,7 @@ struct eth_phy_cfg {
 #define EEE_CFG_ADV_SPEED_1G	(1 << 2)
 #define EEE_CFG_ADV_SPEED_10G	(1 << 3)
 #define EEE_TX_TIMER_USEC_MASK	(0xfffffff0)
-#define EEE_TX_TIMER_USEC_SHIFT	4
+#define EEE_TX_TIMER_USEC_OFFSET	4
 #define EEE_TX_TIMER_USEC_BALANCED_TIME		(0xa00)
 #define EEE_TX_TIMER_USEC_AGGRESSIVE_TIME	(0x100)
 #define EEE_TX_TIMER_USEC_LATENCY_TIME		(0x6000)
@@ -105,7 +105,7 @@ struct eth_phy_cfg {
 struct port_mf_cfg {
 	u32 dynamic_cfg;    /* device control channel */
 #define PORT_MF_CFG_OV_TAG_MASK              0x0000ffff
-#define PORT_MF_CFG_OV_TAG_SHIFT             0
+#define PORT_MF_CFG_OV_TAG_OFFSET             0
 #define PORT_MF_CFG_OV_TAG_DEFAULT         PORT_MF_CFG_OV_TAG_MASK
 
 	u32 reserved[1];
@@ -279,15 +279,15 @@ typedef enum _lldp_agent_e {
 struct lldp_config_params_s {
 	u32 config;
 #define LLDP_CONFIG_TX_INTERVAL_MASK        0x000000ff
-#define LLDP_CONFIG_TX_INTERVAL_SHIFT       0
+#define LLDP_CONFIG_TX_INTERVAL_OFFSET       0
 #define LLDP_CONFIG_HOLD_MASK               0x00000f00
-#define LLDP_CONFIG_HOLD_SHIFT              8
+#define LLDP_CONFIG_HOLD_OFFSET              8
 #define LLDP_CONFIG_MAX_CREDIT_MASK         0x0000f000
-#define LLDP_CONFIG_MAX_CREDIT_SHIFT        12
+#define LLDP_CONFIG_MAX_CREDIT_OFFSET        12
 #define LLDP_CONFIG_ENABLE_RX_MASK          0x40000000
-#define LLDP_CONFIG_ENABLE_RX_SHIFT         30
+#define LLDP_CONFIG_ENABLE_RX_OFFSET         30
 #define LLDP_CONFIG_ENABLE_TX_MASK          0x80000000
-#define LLDP_CONFIG_ENABLE_TX_SHIFT         31
+#define LLDP_CONFIG_ENABLE_TX_OFFSET         31
 	/* Holds local Chassis ID TLV header, subtype and 9B of payload.
 	 * If firtst byte is 0, then we will use default chassis ID
 	 */
@@ -311,17 +311,17 @@ struct lldp_status_params_s {
 struct dcbx_ets_feature {
 	u32 flags;
 #define DCBX_ETS_ENABLED_MASK                   0x00000001
-#define DCBX_ETS_ENABLED_SHIFT                  0
+#define DCBX_ETS_ENABLED_OFFSET                  0
 #define DCBX_ETS_WILLING_MASK                   0x00000002
-#define DCBX_ETS_WILLING_SHIFT                  1
+#define DCBX_ETS_WILLING_OFFSET                  1
 #define DCBX_ETS_ERROR_MASK                     0x00000004
-#define DCBX_ETS_ERROR_SHIFT                    2
+#define DCBX_ETS_ERROR_OFFSET                    2
 #define DCBX_ETS_CBS_MASK                       0x00000008
-#define DCBX_ETS_CBS_SHIFT                      3
+#define DCBX_ETS_CBS_OFFSET                      3
 #define DCBX_ETS_MAX_TCS_MASK                   0x000000f0
-#define DCBX_ETS_MAX_TCS_SHIFT                  4
+#define DCBX_ETS_MAX_TCS_OFFSET                  4
 #define DCBX_OOO_TC_MASK                        0x00000f00
-#define DCBX_OOO_TC_SHIFT                       8
+#define DCBX_OOO_TC_OFFSET                       8
 /* Entries in tc table are orginized that the left most is pri 0, right most is
  * prio 7
  */
@@ -353,7 +353,7 @@ struct dcbx_ets_feature {
 struct dcbx_app_priority_entry {
 	u32 entry;
 #define DCBX_APP_PRI_MAP_MASK       0x000000ff
-#define DCBX_APP_PRI_MAP_SHIFT      0
+#define DCBX_APP_PRI_MAP_OFFSET      0
 #define DCBX_APP_PRI_0              0x01
 #define DCBX_APP_PRI_1              0x02
 #define DCBX_APP_PRI_2              0x04
@@ -363,11 +363,11 @@ struct dcbx_app_priority_entry {
 #define DCBX_APP_PRI_6              0x40
 #define DCBX_APP_PRI_7              0x80
 #define DCBX_APP_SF_MASK            0x00000300
-#define DCBX_APP_SF_SHIFT           8
+#define DCBX_APP_SF_OFFSET           8
 #define DCBX_APP_SF_ETHTYPE         0
 #define DCBX_APP_SF_PORT            1
 #define DCBX_APP_SF_IEEE_MASK       0x0000f000
-#define DCBX_APP_SF_IEEE_SHIFT      12
+#define DCBX_APP_SF_IEEE_OFFSET      12
 #define DCBX_APP_SF_IEEE_RESERVED   0
 #define DCBX_APP_SF_IEEE_ETHTYPE    1
 #define DCBX_APP_SF_IEEE_TCP_PORT   2
@@ -375,7 +375,7 @@ struct dcbx_app_priority_entry {
 #define DCBX_APP_SF_IEEE_TCP_UDP_PORT 4
 
 #define DCBX_APP_PROTOCOL_ID_MASK   0xffff0000
-#define DCBX_APP_PROTOCOL_ID_SHIFT  16
+#define DCBX_APP_PROTOCOL_ID_OFFSET  16
 };
 
 
@@ -383,19 +383,19 @@ struct dcbx_app_priority_entry {
 struct dcbx_app_priority_feature {
 	u32 flags;
 #define DCBX_APP_ENABLED_MASK           0x00000001
-#define DCBX_APP_ENABLED_SHIFT          0
+#define DCBX_APP_ENABLED_OFFSET          0
 #define DCBX_APP_WILLING_MASK           0x00000002
-#define DCBX_APP_WILLING_SHIFT          1
+#define DCBX_APP_WILLING_OFFSET          1
 #define DCBX_APP_ERROR_MASK             0x00000004
-#define DCBX_APP_ERROR_SHIFT            2
+#define DCBX_APP_ERROR_OFFSET            2
 	/* Not in use
 	#define DCBX_APP_DEFAULT_PRI_MASK       0x00000f00
-	#define DCBX_APP_DEFAULT_PRI_SHIFT      8
+	#define DCBX_APP_DEFAULT_PRI_OFFSET      8
 	*/
 #define DCBX_APP_MAX_TCS_MASK           0x0000f000
-#define DCBX_APP_MAX_TCS_SHIFT          12
+#define DCBX_APP_MAX_TCS_OFFSET          12
 #define DCBX_APP_NUM_ENTRIES_MASK       0x00ff0000
-#define DCBX_APP_NUM_ENTRIES_SHIFT      16
+#define DCBX_APP_NUM_ENTRIES_OFFSET      16
 	struct dcbx_app_priority_entry  app_pri_tbl[DCBX_MAX_APP_PROTOCOL];
 };
 
@@ -406,7 +406,7 @@ struct dcbx_features {
 	/* PFC feature */
 	u32 pfc;
 #define DCBX_PFC_PRI_EN_BITMAP_MASK             0x000000ff
-#define DCBX_PFC_PRI_EN_BITMAP_SHIFT            0
+#define DCBX_PFC_PRI_EN_BITMAP_OFFSET            0
 #define DCBX_PFC_PRI_EN_BITMAP_PRI_0            0x01
 #define DCBX_PFC_PRI_EN_BITMAP_PRI_1            0x02
 #define DCBX_PFC_PRI_EN_BITMAP_PRI_2            0x04
@@ -417,17 +417,17 @@ struct dcbx_features {
 #define DCBX_PFC_PRI_EN_BITMAP_PRI_7            0x80
 
 #define DCBX_PFC_FLAGS_MASK                     0x0000ff00
-#define DCBX_PFC_FLAGS_SHIFT                    8
+#define DCBX_PFC_FLAGS_OFFSET                    8
 #define DCBX_PFC_CAPS_MASK                      0x00000f00
-#define DCBX_PFC_CAPS_SHIFT                     8
+#define DCBX_PFC_CAPS_OFFSET                     8
 #define DCBX_PFC_MBC_MASK                       0x00004000
-#define DCBX_PFC_MBC_SHIFT                      14
+#define DCBX_PFC_MBC_OFFSET                      14
 #define DCBX_PFC_WILLING_MASK                   0x00008000
-#define DCBX_PFC_WILLING_SHIFT                  15
+#define DCBX_PFC_WILLING_OFFSET                  15
 #define DCBX_PFC_ENABLED_MASK                   0x00010000
-#define DCBX_PFC_ENABLED_SHIFT                  16
+#define DCBX_PFC_ENABLED_OFFSET                  16
 #define DCBX_PFC_ERROR_MASK                     0x00020000
-#define DCBX_PFC_ERROR_SHIFT                    17
+#define DCBX_PFC_ERROR_OFFSET                    17
 
 	/* APP feature */
 	struct dcbx_app_priority_feature app;
@@ -436,7 +436,7 @@ struct dcbx_features {
 struct dcbx_local_params {
 	u32 config;
 #define DCBX_CONFIG_VERSION_MASK            0x00000007
-#define DCBX_CONFIG_VERSION_SHIFT           0
+#define DCBX_CONFIG_VERSION_OFFSET           0
 #define DCBX_CONFIG_VERSION_DISABLED        0
 #define DCBX_CONFIG_VERSION_IEEE            1
 #define DCBX_CONFIG_VERSION_CEE             2
@@ -451,7 +451,7 @@ struct dcbx_mib {
 	u32 flags;
 	/*
 	#define DCBX_CONFIG_VERSION_MASK            0x00000007
-	#define DCBX_CONFIG_VERSION_SHIFT           0
+	#define DCBX_CONFIG_VERSION_OFFSET           0
 	#define DCBX_CONFIG_VERSION_DISABLED        0
 	#define DCBX_CONFIG_VERSION_IEEE            1
 	#define DCBX_CONFIG_VERSION_CEE             2
@@ -470,7 +470,7 @@ struct lldp_system_tlvs_buffer_s {
 struct dcb_dscp_map {
 	u32 flags;
 #define DCB_DSCP_ENABLE_MASK			0x1
-#define DCB_DSCP_ENABLE_SHIFT			0
+#define DCB_DSCP_ENABLE_OFFSET			0
 #define DCB_DSCP_ENABLE				1
 	u32 dscp_pri_map[8];
 };
@@ -502,12 +502,12 @@ struct public_global {
 #define MDUMP_REASON_DUMP_AGED		(1 << 2)
 	u32 ext_phy_upgrade_fw;
 #define EXT_PHY_FW_UPGRADE_STATUS_MASK		(0x0000ffff)
-#define EXT_PHY_FW_UPGRADE_STATUS_SHIFT		(0)
+#define EXT_PHY_FW_UPGRADE_STATUS_OFFSET		(0)
 #define EXT_PHY_FW_UPGRADE_STATUS_IN_PROGRESS	(1)
 #define EXT_PHY_FW_UPGRADE_STATUS_FAILED	(2)
 #define EXT_PHY_FW_UPGRADE_STATUS_SUCCESS	(3)
 #define EXT_PHY_FW_UPGRADE_TYPE_MASK		(0xffff0000)
-#define EXT_PHY_FW_UPGRADE_TYPE_SHIFT		(16)
+#define EXT_PHY_FW_UPGRADE_TYPE_OFFSET		(16)
 };
 
 /**************************************/
@@ -557,9 +557,9 @@ struct public_path {
 /* Reset on mcp reset, and incremented for eveny process kill event. */
 	u32 process_kill;
 #define PROCESS_KILL_COUNTER_MASK		0x0000ffff
-#define PROCESS_KILL_COUNTER_SHIFT		0
+#define PROCESS_KILL_COUNTER_OFFSET		0
 #define PROCESS_KILL_GLOB_AEU_BIT_MASK		0xffff0000
-#define PROCESS_KILL_GLOB_AEU_BIT_SHIFT		16
+#define PROCESS_KILL_GLOB_AEU_BIT_OFFSET	16
 #define GLOBAL_AEU_BIT(aeu_reg_id, aeu_bit) (aeu_reg_id * 32 + aeu_bit)
 };
 
@@ -713,13 +713,13 @@ struct public_port {
 	u32 fc_npiv_nvram_tbl_size;
 	u32 transceiver_data;
 #define ETH_TRANSCEIVER_STATE_MASK			0x000000FF
-#define ETH_TRANSCEIVER_STATE_SHIFT			0x00000000
+#define ETH_TRANSCEIVER_STATE_OFFSET			0x00000000
 #define ETH_TRANSCEIVER_STATE_UNPLUGGED			0x00000000
 #define ETH_TRANSCEIVER_STATE_PRESENT			0x00000001
 #define ETH_TRANSCEIVER_STATE_VALID			0x00000003
 #define ETH_TRANSCEIVER_STATE_UPDATING			0x00000008
 #define ETH_TRANSCEIVER_TYPE_MASK			0x0000FF00
-#define ETH_TRANSCEIVER_TYPE_SHIFT			0x00000008
+#define ETH_TRANSCEIVER_TYPE_OFFSET			0x00000008
 #define ETH_TRANSCEIVER_TYPE_NONE			0x00000000
 #define ETH_TRANSCEIVER_TYPE_UNKNOWN			0x000000FF
 /* 1G Passive copper cable */
@@ -785,12 +785,12 @@ struct public_port {
 
 /* Shows the Local Device EEE capabilities */
 #define EEE_LD_ADV_STATUS_MASK	0x000000f0
-#define EEE_LD_ADV_STATUS_SHIFT	4
+#define EEE_LD_ADV_STATUS_OFFSET	4
 	#define EEE_1G_ADV	(1 << 1)
 	#define EEE_10G_ADV	(1 << 2)
 /* Same values as in EEE_LD_ADV, but for Link Parter */
 #define	EEE_LP_ADV_STATUS_MASK	0x00000f00
-#define EEE_LP_ADV_STATUS_SHIFT	8
+#define EEE_LP_ADV_STATUS_OFFSET	8
 
 /* Supported speeds for EEE */
 #define EEE_SUPPORTED_SPEED_MASK	0x0000f000
@@ -800,9 +800,9 @@ struct public_port {
 
 	u32 eee_remote;	/* Used for EEE in LLDP */
 #define EEE_REMOTE_TW_TX_MASK	0x0000ffff
-#define EEE_REMOTE_TW_TX_SHIFT	0
+#define EEE_REMOTE_TW_TX_OFFSET	0
 #define EEE_REMOTE_TW_RX_MASK	0xffff0000
-#define EEE_REMOTE_TW_RX_SHIFT	16
+#define EEE_REMOTE_TW_RX_OFFSET	16
 
 	u32 module_info;
 #define ETH_TRANSCEIVER_MONITORING_TYPE_MASK		0x000000FF
@@ -852,11 +852,11 @@ struct public_func {
 	/* function 0 of each port cannot be hidden */
 #define FUNC_MF_CFG_FUNC_HIDE                   0x00000001
 #define FUNC_MF_CFG_PAUSE_ON_HOST_RING          0x00000002
-#define FUNC_MF_CFG_PAUSE_ON_HOST_RING_SHIFT    0x00000001
+#define FUNC_MF_CFG_PAUSE_ON_HOST_RING_OFFSET    0x00000001
 
 
 #define FUNC_MF_CFG_PROTOCOL_MASK               0x000000f0
-#define FUNC_MF_CFG_PROTOCOL_SHIFT              4
+#define FUNC_MF_CFG_PROTOCOL_OFFSET              4
 #define FUNC_MF_CFG_PROTOCOL_ETHERNET           0x00000000
 #define FUNC_MF_CFG_PROTOCOL_ISCSI              0x00000010
 #define FUNC_MF_CFG_PROTOCOL_FCOE		0x00000020
@@ -866,10 +866,10 @@ struct public_func {
 	/* MINBW, MAXBW */
 	/* value range - 0..100, increments in 1 %  */
 #define FUNC_MF_CFG_MIN_BW_MASK                 0x0000ff00
-#define FUNC_MF_CFG_MIN_BW_SHIFT                8
+#define FUNC_MF_CFG_MIN_BW_OFFSET                8
 #define FUNC_MF_CFG_MIN_BW_DEFAULT              0x00000000
 #define FUNC_MF_CFG_MAX_BW_MASK                 0x00ff0000
-#define FUNC_MF_CFG_MAX_BW_SHIFT                16
+#define FUNC_MF_CFG_MAX_BW_OFFSET                16
 #define FUNC_MF_CFG_MAX_BW_DEFAULT              0x00640000
 
 	u32 status;
@@ -877,7 +877,7 @@ struct public_func {
 
 	u32 mac_upper;      /* MAC */
 #define FUNC_MF_CFG_UPPERMAC_MASK               0x0000ffff
-#define FUNC_MF_CFG_UPPERMAC_SHIFT              0
+#define FUNC_MF_CFG_UPPERMAC_OFFSET              0
 #define FUNC_MF_CFG_UPPERMAC_DEFAULT            FUNC_MF_CFG_UPPERMAC_MASK
 	u32 mac_lower;
 #define FUNC_MF_CFG_LOWERMAC_DEFAULT            0xffffffff
@@ -890,7 +890,7 @@ struct public_func {
 
 	u32 ovlan_stag;     /* tags */
 #define FUNC_MF_CFG_OV_STAG_MASK              0x0000ffff
-#define FUNC_MF_CFG_OV_STAG_SHIFT             0
+#define FUNC_MF_CFG_OV_STAG_OFFSET             0
 #define FUNC_MF_CFG_OV_STAG_DEFAULT           FUNC_MF_CFG_OV_STAG_MASK
 
 	u32 pf_allocation; /* vf per pf */
@@ -907,29 +907,29 @@ struct public_func {
 
 	u32 drv_id;
 #define DRV_ID_PDA_COMP_VER_MASK	0x0000ffff
-#define DRV_ID_PDA_COMP_VER_SHIFT	0
+#define DRV_ID_PDA_COMP_VER_OFFSET	0
 
 #define LOAD_REQ_HSI_VERSION		2
 #define DRV_ID_MCP_HSI_VER_MASK		0x00ff0000
-#define DRV_ID_MCP_HSI_VER_SHIFT	16
+#define DRV_ID_MCP_HSI_VER_OFFSET	16
 #define DRV_ID_MCP_HSI_VER_CURRENT	(LOAD_REQ_HSI_VERSION << \
-					 DRV_ID_MCP_HSI_VER_SHIFT)
+					 DRV_ID_MCP_HSI_VER_OFFSET)
 
 #define DRV_ID_DRV_TYPE_MASK		0x7f000000
-#define DRV_ID_DRV_TYPE_SHIFT		24
-#define DRV_ID_DRV_TYPE_UNKNOWN		(0 << DRV_ID_DRV_TYPE_SHIFT)
-#define DRV_ID_DRV_TYPE_LINUX		(1 << DRV_ID_DRV_TYPE_SHIFT)
-#define DRV_ID_DRV_TYPE_WINDOWS		(2 << DRV_ID_DRV_TYPE_SHIFT)
-#define DRV_ID_DRV_TYPE_DIAG		(3 << DRV_ID_DRV_TYPE_SHIFT)
-#define DRV_ID_DRV_TYPE_PREBOOT		(4 << DRV_ID_DRV_TYPE_SHIFT)
-#define DRV_ID_DRV_TYPE_SOLARIS		(5 << DRV_ID_DRV_TYPE_SHIFT)
-#define DRV_ID_DRV_TYPE_VMWARE		(6 << DRV_ID_DRV_TYPE_SHIFT)
-#define DRV_ID_DRV_TYPE_FREEBSD		(7 << DRV_ID_DRV_TYPE_SHIFT)
-#define DRV_ID_DRV_TYPE_AIX		(8 << DRV_ID_DRV_TYPE_SHIFT)
+#define DRV_ID_DRV_TYPE_OFFSET		24
+#define DRV_ID_DRV_TYPE_UNKNOWN		(0 << DRV_ID_DRV_TYPE_OFFSET)
+#define DRV_ID_DRV_TYPE_LINUX		(1 << DRV_ID_DRV_TYPE_OFFSET)
+#define DRV_ID_DRV_TYPE_WINDOWS		(2 << DRV_ID_DRV_TYPE_OFFSET)
+#define DRV_ID_DRV_TYPE_DIAG		(3 << DRV_ID_DRV_TYPE_OFFSET)
+#define DRV_ID_DRV_TYPE_PREBOOT		(4 << DRV_ID_DRV_TYPE_OFFSET)
+#define DRV_ID_DRV_TYPE_SOLARIS		(5 << DRV_ID_DRV_TYPE_OFFSET)
+#define DRV_ID_DRV_TYPE_VMWARE		(6 << DRV_ID_DRV_TYPE_OFFSET)
+#define DRV_ID_DRV_TYPE_FREEBSD		(7 << DRV_ID_DRV_TYPE_OFFSET)
+#define DRV_ID_DRV_TYPE_AIX		(8 << DRV_ID_DRV_TYPE_OFFSET)
 
 #define DRV_ID_DRV_INIT_HW_MASK		0x80000000
-#define DRV_ID_DRV_INIT_HW_SHIFT	31
-#define DRV_ID_DRV_INIT_HW_FLAG		(1 << DRV_ID_DRV_INIT_HW_SHIFT)
+#define DRV_ID_DRV_INIT_HW_OFFSET	31
+#define DRV_ID_DRV_INIT_HW_FLAG		(1 << DRV_ID_DRV_INIT_HW_OFFSET)
 };
 
 /**************************************/
@@ -1014,13 +1014,13 @@ struct ocbb_data_stc {
 #define MFW_SENSOR_LOCATION_EXTERNAL		2
 #define MFW_SENSOR_LOCATION_SFP			3
 
-#define SENSOR_LOCATION_SHIFT			0
+#define SENSOR_LOCATION_OFFSET			0
 #define SENSOR_LOCATION_MASK			0x000000ff
-#define THRESHOLD_HIGH_SHIFT			8
+#define THRESHOLD_HIGH_OFFSET			8
 #define THRESHOLD_HIGH_MASK			0x0000ff00
-#define CRITICAL_TEMPERATURE_SHIFT		16
+#define CRITICAL_TEMPERATURE_OFFSET		16
 #define CRITICAL_TEMPERATURE_MASK		0x00ff0000
-#define CURRENT_TEMP_SHIFT			24
+#define CURRENT_TEMP_OFFSET			24
 #define CURRENT_TEMP_MASK			0xff000000
 struct temperature_status_stc {
 	u32 num_of_sensors;
@@ -1085,18 +1085,18 @@ struct load_req_stc {
 	u32 fw_ver;
 	u32 misc0;
 #define LOAD_REQ_ROLE_MASK		0x000000FF
-#define LOAD_REQ_ROLE_SHIFT		0
+#define LOAD_REQ_ROLE_OFFSET		0
 #define LOAD_REQ_LOCK_TO_MASK		0x0000FF00
-#define LOAD_REQ_LOCK_TO_SHIFT		8
+#define LOAD_REQ_LOCK_TO_OFFSET		8
 #define LOAD_REQ_LOCK_TO_DEFAULT	0
 #define LOAD_REQ_LOCK_TO_NONE		255
 #define LOAD_REQ_FORCE_MASK		0x000F0000
-#define LOAD_REQ_FORCE_SHIFT		16
+#define LOAD_REQ_FORCE_OFFSET		16
 #define LOAD_REQ_FORCE_NONE		0
 #define LOAD_REQ_FORCE_PF		1
 #define LOAD_REQ_FORCE_ALL		2
 #define LOAD_REQ_FLAGS0_MASK		0x00F00000
-#define LOAD_REQ_FLAGS0_SHIFT		20
+#define LOAD_REQ_FLAGS0_OFFSET		20
 #define LOAD_REQ_FLAGS0_AVOID_RESET	(0x1 << 0)
 };
 
@@ -1106,11 +1106,11 @@ struct load_rsp_stc {
 	u32 fw_ver;
 	u32 misc0;
 #define LOAD_RSP_ROLE_MASK		0x000000FF
-#define LOAD_RSP_ROLE_SHIFT		0
+#define LOAD_RSP_ROLE_OFFSET		0
 #define LOAD_RSP_HSI_MASK		0x0000FF00
-#define LOAD_RSP_HSI_SHIFT		8
+#define LOAD_RSP_HSI_OFFSET		8
 #define LOAD_RSP_FLAGS0_MASK		0x000F0000
-#define LOAD_RSP_FLAGS0_SHIFT		16
+#define LOAD_RSP_FLAGS0_OFFSET		16
 #define LOAD_RSP_FLAGS0_DRV_EXISTS	(0x1 << 0)
 };
 
@@ -1245,7 +1245,7 @@ struct public_drv_mb {
  * [3:0] - func, drv_data[7:0] - MAC/WWNN/WWPN
  */
 #define DRV_MSG_CODE_GET_VMAC                   0x00120000
-#define DRV_MSG_CODE_VMAC_TYPE_SHIFT            4
+#define DRV_MSG_CODE_VMAC_TYPE_OFFSET		4
 #define DRV_MSG_CODE_VMAC_TYPE_MASK             0x30
 #define DRV_MSG_CODE_VMAC_TYPE_MAC              1
 #define DRV_MSG_CODE_VMAC_TYPE_WWNN             2
@@ -1273,9 +1273,9 @@ struct public_drv_mb {
 /* Set function BW, params[15:8] - min, params[7:0] - max */
 #define DRV_MSG_CODE_SET_BW			0x00190000
 #define BW_MAX_MASK				0x000000ff
-#define BW_MAX_SHIFT				0
+#define BW_MAX_OFFSET				0
 #define BW_MIN_MASK				0x0000ff00
-#define BW_MIN_SHIFT				8
+#define BW_MIN_OFFSET				8
 
 /* When param is set to 1, all parities will be masked(disabled). When params
  * are set to 0, parities will be unmasked again.
@@ -1308,9 +1308,9 @@ struct public_drv_mb {
 #define DRV_MSG_CODE_RESOURCE_CMD		0x00230000
 
 #define RESOURCE_CMD_REQ_RESC_MASK		0x0000001F
-#define RESOURCE_CMD_REQ_RESC_SHIFT		0
+#define RESOURCE_CMD_REQ_RESC_OFFSET		0
 #define RESOURCE_CMD_REQ_OPCODE_MASK		0x000000E0
-#define RESOURCE_CMD_REQ_OPCODE_SHIFT		5
+#define RESOURCE_CMD_REQ_OPCODE_OFFSET		5
 /* request resource ownership with default aging */
 #define RESOURCE_OPCODE_REQ			1
 /* request resource ownership without aging */
@@ -1321,12 +1321,12 @@ struct public_drv_mb {
 /* force resource release */
 #define RESOURCE_OPCODE_FORCE_RELEASE		5
 #define RESOURCE_CMD_REQ_AGE_MASK		0x0000FF00
-#define RESOURCE_CMD_REQ_AGE_SHIFT		8
+#define RESOURCE_CMD_REQ_AGE_OFFSET		8
 
 #define RESOURCE_CMD_RSP_OWNER_MASK		0x000000FF
-#define RESOURCE_CMD_RSP_OWNER_SHIFT		0
+#define RESOURCE_CMD_RSP_OWNER_OFFSET		0
 #define RESOURCE_CMD_RSP_OPCODE_MASK		0x00000700
-#define RESOURCE_CMD_RSP_OPCODE_SHIFT		8
+#define RESOURCE_CMD_RSP_OPCODE_OFFSET		8
 /* resource is free and granted to requester */
 #define RESOURCE_OPCODE_GNT			1
 /* resource is busy, param[7:0] indicates owner as follow 0-15 = PF0-15,
@@ -1373,11 +1373,11 @@ struct public_drv_mb {
 #define DRV_MSG_CODE_EXT_PHY_READ		0x00280000
 /* Value should be placed in union */
 #define DRV_MSG_CODE_EXT_PHY_WRITE		0x00290000
-#define DRV_MB_PARAM_ADDR_SHIFT			0
+#define DRV_MB_PARAM_ADDR_OFFSET			0
 #define DRV_MB_PARAM_ADDR_MASK			0x0000FFFF
-#define DRV_MB_PARAM_DEVAD_SHIFT		16
+#define DRV_MB_PARAM_DEVAD_OFFSET		16
 #define DRV_MB_PARAM_DEVAD_MASK			0x001F0000
-#define DRV_MB_PARAM_PORT_SHIFT			21
+#define DRV_MB_PARAM_PORT_OFFSET			21
 #define DRV_MB_PARAM_PORT_MASK			0x00600000
 #define DRV_MSG_CODE_EXT_PHY_FW_UPGRADE		0x002a0000
 
@@ -1404,44 +1404,44 @@ struct public_drv_mb {
 
 	/* LLDP / DCBX params*/
 #define DRV_MB_PARAM_LLDP_SEND_MASK		0x00000001
-#define DRV_MB_PARAM_LLDP_SEND_SHIFT		0
+#define DRV_MB_PARAM_LLDP_SEND_OFFSET		0
 #define DRV_MB_PARAM_LLDP_AGENT_MASK		0x00000006
-#define DRV_MB_PARAM_LLDP_AGENT_SHIFT		1
+#define DRV_MB_PARAM_LLDP_AGENT_OFFSET		1
 #define DRV_MB_PARAM_DCBX_NOTIFY_MASK		0x00000008
-#define DRV_MB_PARAM_DCBX_NOTIFY_SHIFT		3
+#define DRV_MB_PARAM_DCBX_NOTIFY_OFFSET		3
 
 #define DRV_MB_PARAM_NIG_DRAIN_PERIOD_MS_MASK	0x000000FF
-#define DRV_MB_PARAM_NIG_DRAIN_PERIOD_MS_SHIFT	0
+#define DRV_MB_PARAM_NIG_DRAIN_PERIOD_MS_OFFSET	0
 
 #define DRV_MB_PARAM_NVM_PUT_FILE_BEGIN_MFW	0x1
 #define DRV_MB_PARAM_NVM_PUT_FILE_BEGIN_IMAGE	0x2
 
-#define DRV_MB_PARAM_NVM_OFFSET_SHIFT		0
+#define DRV_MB_PARAM_NVM_OFFSET_OFFSET		0
 #define DRV_MB_PARAM_NVM_OFFSET_MASK		0x00FFFFFF
-#define DRV_MB_PARAM_NVM_LEN_SHIFT		24
+#define DRV_MB_PARAM_NVM_LEN_OFFSET		24
 #define DRV_MB_PARAM_NVM_LEN_MASK		0xFF000000
 
-#define DRV_MB_PARAM_PHY_ADDR_SHIFT		0
+#define DRV_MB_PARAM_PHY_ADDR_OFFSET		0
 #define DRV_MB_PARAM_PHY_ADDR_MASK		0x1FF0FFFF
-#define DRV_MB_PARAM_PHY_LANE_SHIFT		16
+#define DRV_MB_PARAM_PHY_LANE_OFFSET		16
 #define DRV_MB_PARAM_PHY_LANE_MASK		0x000F0000
-#define DRV_MB_PARAM_PHY_SELECT_PORT_SHIFT	29
+#define DRV_MB_PARAM_PHY_SELECT_PORT_OFFSET	29
 #define DRV_MB_PARAM_PHY_SELECT_PORT_MASK	0x20000000
-#define DRV_MB_PARAM_PHY_PORT_SHIFT		30
+#define DRV_MB_PARAM_PHY_PORT_OFFSET		30
 #define DRV_MB_PARAM_PHY_PORT_MASK		0xc0000000
 
-#define DRV_MB_PARAM_PHYMOD_LANE_SHIFT		0
+#define DRV_MB_PARAM_PHYMOD_LANE_OFFSET		0
 #define DRV_MB_PARAM_PHYMOD_LANE_MASK		0x000000FF
-#define DRV_MB_PARAM_PHYMOD_SIZE_SHIFT		8
+#define DRV_MB_PARAM_PHYMOD_SIZE_OFFSET		8
 #define DRV_MB_PARAM_PHYMOD_SIZE_MASK		0x000FFF00
 	/* configure vf MSIX params*/
-#define DRV_MB_PARAM_CFG_VF_MSIX_VF_ID_SHIFT	0
+#define DRV_MB_PARAM_CFG_VF_MSIX_VF_ID_OFFSET	0
 #define DRV_MB_PARAM_CFG_VF_MSIX_VF_ID_MASK	0x000000FF
-#define DRV_MB_PARAM_CFG_VF_MSIX_SB_NUM_SHIFT	8
+#define DRV_MB_PARAM_CFG_VF_MSIX_SB_NUM_OFFSET	8
 #define DRV_MB_PARAM_CFG_VF_MSIX_SB_NUM_MASK	0x0000FF00
 
 	/* OneView configuration parametres */
-#define DRV_MB_PARAM_OV_CURR_CFG_SHIFT		0
+#define DRV_MB_PARAM_OV_CURR_CFG_OFFSET		0
 #define DRV_MB_PARAM_OV_CURR_CFG_MASK		0x0000000F
 #define DRV_MB_PARAM_OV_CURR_CFG_NONE		0
 #define DRV_MB_PARAM_OV_CURR_CFG_OS			1
@@ -1452,7 +1452,7 @@ struct public_drv_mb {
 #define DRV_MB_PARAM_OV_CURR_CFG_DCI		6
 #define DRV_MB_PARAM_OV_CURR_CFG_HII		7
 
-#define DRV_MB_PARAM_OV_UPDATE_BOOT_PROG_SHIFT				0
+#define DRV_MB_PARAM_OV_UPDATE_BOOT_PROG_OFFSET				0
 #define DRV_MB_PARAM_OV_UPDATE_BOOT_PROG_MASK			0x000000FF
 #define DRV_MB_PARAM_OV_UPDATE_BOOT_PROG_NONE				(1 << 0)
 #define DRV_MB_PARAM_OV_UPDATE_BOOT_PROG_ISCSI_IP_ACQUIRED		(1 << 1)
@@ -1465,17 +1465,17 @@ struct public_drv_mb {
 #define DRV_MB_PARAM_OV_UPDATE_BOOT_PROG_OS_HANDOFF			(1 << 6)
 #define DRV_MB_PARAM_OV_UPDATE_BOOT_COMPLETED				0
 
-#define DRV_MB_PARAM_OV_PCI_BUS_NUM_SHIFT				0
+#define DRV_MB_PARAM_OV_PCI_BUS_NUM_OFFSET				0
 #define DRV_MB_PARAM_OV_PCI_BUS_NUM_MASK		0x000000FF
 
-#define DRV_MB_PARAM_OV_STORM_FW_VER_SHIFT		0
+#define DRV_MB_PARAM_OV_STORM_FW_VER_OFFSET		0
 #define DRV_MB_PARAM_OV_STORM_FW_VER_MASK			0xFFFFFFFF
 #define DRV_MB_PARAM_OV_STORM_FW_VER_MAJOR_MASK		0xFF000000
 #define DRV_MB_PARAM_OV_STORM_FW_VER_MINOR_MASK		0x00FF0000
 #define DRV_MB_PARAM_OV_STORM_FW_VER_BUILD_MASK		0x0000FF00
 #define DRV_MB_PARAM_OV_STORM_FW_VER_DROP_MASK		0x000000FF
 
-#define DRV_MSG_CODE_OV_UPDATE_DRIVER_STATE_SHIFT		0
+#define DRV_MSG_CODE_OV_UPDATE_DRIVER_STATE_OFFSET		0
 #define DRV_MSG_CODE_OV_UPDATE_DRIVER_STATE_MASK		0xF
 #define DRV_MSG_CODE_OV_UPDATE_DRIVER_STATE_UNKNOWN		0x1
 /* Not Installed*/
@@ -1486,36 +1486,36 @@ struct public_drv_mb {
 /* installed and active */
 #define DRV_MSG_CODE_OV_UPDATE_DRIVER_STATE_ACTIVE		0x5
 
-#define DRV_MB_PARAM_OV_MTU_SIZE_SHIFT		0
+#define DRV_MB_PARAM_OV_MTU_SIZE_OFFSET		0
 #define DRV_MB_PARAM_OV_MTU_SIZE_MASK		0xFFFFFFFF
 
 #define DRV_MB_PARAM_SET_LED_MODE_OPER		0x0
 #define DRV_MB_PARAM_SET_LED_MODE_ON		0x1
 #define DRV_MB_PARAM_SET_LED_MODE_OFF		0x2
 
-#define DRV_MB_PARAM_TRANSCEIVER_PORT_SHIFT		0
+#define DRV_MB_PARAM_TRANSCEIVER_PORT_OFFSET		0
 #define DRV_MB_PARAM_TRANSCEIVER_PORT_MASK		0x00000003
-#define DRV_MB_PARAM_TRANSCEIVER_SIZE_SHIFT		2
+#define DRV_MB_PARAM_TRANSCEIVER_SIZE_OFFSET		2
 #define DRV_MB_PARAM_TRANSCEIVER_SIZE_MASK		0x000000FC
-#define DRV_MB_PARAM_TRANSCEIVER_I2C_ADDRESS_SHIFT	8
+#define DRV_MB_PARAM_TRANSCEIVER_I2C_ADDRESS_OFFSET	8
 #define DRV_MB_PARAM_TRANSCEIVER_I2C_ADDRESS_MASK	0x0000FF00
-#define DRV_MB_PARAM_TRANSCEIVER_OFFSET_SHIFT		16
+#define DRV_MB_PARAM_TRANSCEIVER_OFFSET_OFFSET		16
 #define DRV_MB_PARAM_TRANSCEIVER_OFFSET_MASK		0xFFFF0000
 
-#define DRV_MB_PARAM_GPIO_NUMBER_SHIFT		0
+#define DRV_MB_PARAM_GPIO_NUMBER_OFFSET		0
 #define DRV_MB_PARAM_GPIO_NUMBER_MASK		0x0000FFFF
-#define DRV_MB_PARAM_GPIO_VALUE_SHIFT		16
+#define DRV_MB_PARAM_GPIO_VALUE_OFFSET		16
 #define DRV_MB_PARAM_GPIO_VALUE_MASK		0xFFFF0000
-#define DRV_MB_PARAM_GPIO_DIRECTION_SHIFT	16
+#define DRV_MB_PARAM_GPIO_DIRECTION_OFFSET	16
 #define DRV_MB_PARAM_GPIO_DIRECTION_MASK	0x00FF0000
-#define DRV_MB_PARAM_GPIO_CTRL_SHIFT		24
+#define DRV_MB_PARAM_GPIO_CTRL_OFFSET		24
 #define DRV_MB_PARAM_GPIO_CTRL_MASK		0xFF000000
 
 	/* Resource Allocation params - Driver version support*/
 #define DRV_MB_PARAM_RESOURCE_ALLOC_VERSION_MAJOR_MASK	0xFFFF0000
-#define DRV_MB_PARAM_RESOURCE_ALLOC_VERSION_MAJOR_SHIFT		16
+#define DRV_MB_PARAM_RESOURCE_ALLOC_VERSION_MAJOR_OFFSET		16
 #define DRV_MB_PARAM_RESOURCE_ALLOC_VERSION_MINOR_MASK	0x0000FFFF
-#define DRV_MB_PARAM_RESOURCE_ALLOC_VERSION_MINOR_SHIFT		0
+#define DRV_MB_PARAM_RESOURCE_ALLOC_VERSION_MINOR_OFFSET		0
 
 #define DRV_MB_PARAM_BIST_UNKNOWN_TEST		0
 #define DRV_MB_PARAM_BIST_REGISTER_TEST		1
@@ -1528,19 +1528,19 @@ struct public_drv_mb {
 #define DRV_MB_PARAM_BIST_RC_FAILED		2
 #define DRV_MB_PARAM_BIST_RC_INVALID_PARAMETER		3
 
-#define DRV_MB_PARAM_BIST_TEST_INDEX_SHIFT      0
+#define DRV_MB_PARAM_BIST_TEST_INDEX_OFFSET      0
 #define DRV_MB_PARAM_BIST_TEST_INDEX_MASK       0x000000FF
-#define DRV_MB_PARAM_BIST_TEST_IMAGE_INDEX_SHIFT      8
+#define DRV_MB_PARAM_BIST_TEST_IMAGE_INDEX_OFFSET      8
 #define DRV_MB_PARAM_BIST_TEST_IMAGE_INDEX_MASK       0x0000FF00
 
 #define DRV_MB_PARAM_FEATURE_SUPPORT_PORT_MASK      0x0000FFFF
-#define DRV_MB_PARAM_FEATURE_SUPPORT_PORT_SHIFT     0
+#define DRV_MB_PARAM_FEATURE_SUPPORT_PORT_OFFSET     0
 /* driver supports SmartLinQ parameter */
 #define DRV_MB_PARAM_FEATURE_SUPPORT_PORT_SMARTLINQ 0x00000001
 /* driver supports EEE parameter */
 #define DRV_MB_PARAM_FEATURE_SUPPORT_PORT_EEE       0x00000002
 #define DRV_MB_PARAM_FEATURE_SUPPORT_FUNC_MASK      0xFFFF0000
-#define DRV_MB_PARAM_FEATURE_SUPPORT_FUNC_SHIFT     16
+#define DRV_MB_PARAM_FEATURE_SUPPORT_FUNC_OFFSET     16
 
 	u32 fw_mb_header;
 #define FW_MSG_CODE_MASK                        0xffff0000
@@ -1654,9 +1654,9 @@ struct public_drv_mb {
 	u32 fw_mb_param;
 /* Resource Allocation params - MFW  version support */
 #define FW_MB_PARAM_RESOURCE_ALLOC_VERSION_MAJOR_MASK	0xFFFF0000
-#define FW_MB_PARAM_RESOURCE_ALLOC_VERSION_MAJOR_SHIFT		16
+#define FW_MB_PARAM_RESOURCE_ALLOC_VERSION_MAJOR_OFFSET		16
 #define FW_MB_PARAM_RESOURCE_ALLOC_VERSION_MINOR_MASK	0x0000FFFF
-#define FW_MB_PARAM_RESOURCE_ALLOC_VERSION_MINOR_SHIFT		0
+#define FW_MB_PARAM_RESOURCE_ALLOC_VERSION_MINOR_OFFSET		0
 
 /* get MFW feature support response */
 /* MFW supports SmartLinQ */

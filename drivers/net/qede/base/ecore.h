@@ -98,16 +98,16 @@ do {									\
 
 #define GET_FIELD(value, name)						\
 	(((value) >> (name##_SHIFT)) & name##_MASK)
-#endif
 
-#define ECORE_MFW_GET_FIELD(name, field)				\
-	(((name) & (field ## _MASK)) >> (field ## _SHIFT))
+#define GET_MFW_FIELD(name, field)				\
+	(((name) & (field ## _MASK)) >> (field ## _OFFSET))
 
-#define ECORE_MFW_SET_FIELD(name, field, value)				\
+#define SET_MFW_FIELD(name, field, value)				\
 do {									\
-	(name) &= ~(field ## _MASK);					\
-	(name) |= (((value) << (field ## _SHIFT)) & (field ## _MASK));	\
+	(name) &= ~((field ## _MASK));		\
+	(name) |= (((value) << (field ## _OFFSET)) & (field ## _MASK));	\
 } while (0)
+#endif
 
 static OSAL_INLINE u32 DB_ADDR(u32 cid, u32 DEMS)
 {

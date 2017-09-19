@@ -43,9 +43,9 @@
 		     OFFSETOF(struct public_drv_mb, _field))
 
 #define PDA_COMP (((FW_MAJOR_VERSION) + (FW_MINOR_VERSION << 8)) << \
-	DRV_ID_PDA_COMP_VER_SHIFT)
+	DRV_ID_PDA_COMP_VER_OFFSET)
 
-#define MCP_BYTES_PER_MBIT_SHIFT 17
+#define MCP_BYTES_PER_MBIT_OFFSET 17
 
 #ifndef ASIC_ONLY
 static int loaded;
@@ -804,18 +804,16 @@ __ecore_mcp_load_req(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 	load_req.drv_ver_0 = p_in_params->drv_ver_0;
 	load_req.drv_ver_1 = p_in_params->drv_ver_1;
 	load_req.fw_ver = p_in_params->fw_ver;
-	ECORE_MFW_SET_FIELD(load_req.misc0, LOAD_REQ_ROLE,
-			    p_in_params->drv_role);
-	ECORE_MFW_SET_FIELD(load_req.misc0, LOAD_REQ_LOCK_TO,
-			    p_in_params->timeout_val);
-	ECORE_MFW_SET_FIELD(load_req.misc0, LOAD_REQ_FORCE,
-			    p_in_params->force_cmd);
-	ECORE_MFW_SET_FIELD(load_req.misc0, LOAD_REQ_FLAGS0,
-			    p_in_params->avoid_eng_reset);
+	SET_MFW_FIELD(load_req.misc0, LOAD_REQ_ROLE, p_in_params->drv_role);
+	SET_MFW_FIELD(load_req.misc0, LOAD_REQ_LOCK_TO,
+		      p_in_params->timeout_val);
+	SET_MFW_FIELD(load_req.misc0, LOAD_REQ_FORCE, p_in_params->force_cmd);
+	SET_MFW_FIELD(load_req.misc0, LOAD_REQ_FLAGS0,
+		      p_in_params->avoid_eng_reset);
 
 	hsi_ver = (p_in_params->hsi_ver == ECORE_LOAD_REQ_HSI_VER_DEFAULT) ?
 		  DRV_ID_MCP_HSI_VER_CURRENT :
-		  (p_in_params->hsi_ver << DRV_ID_MCP_HSI_VER_SHIFT);
+		  (p_in_params->hsi_ver << DRV_ID_MCP_HSI_VER_OFFSET);
 
 	OSAL_MEM_ZERO(&mb_params, sizeof(mb_params));
 	mb_params.cmd = DRV_MSG_CODE_LOAD_REQ;
@@ -828,22 +826,20 @@ __ecore_mcp_load_req(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 	DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
 		   "Load Request: param 0x%08x [init_hw %d, drv_type %d, hsi_ver %d, pda 0x%04x]\n",
 		   mb_params.param,
-		   ECORE_MFW_GET_FIELD(mb_params.param, DRV_ID_DRV_INIT_HW),
-		   ECORE_MFW_GET_FIELD(mb_params.param, DRV_ID_DRV_TYPE),
-		   ECORE_MFW_GET_FIELD(mb_params.param, DRV_ID_MCP_HSI_VER),
-		   ECORE_MFW_GET_FIELD(mb_params.param, DRV_ID_PDA_COMP_VER));
+		   GET_MFW_FIELD(mb_params.param, DRV_ID_DRV_INIT_HW),
+		   GET_MFW_FIELD(mb_params.param, DRV_ID_DRV_TYPE),
+		   GET_MFW_FIELD(mb_params.param, DRV_ID_MCP_HSI_VER),
+		   GET_MFW_FIELD(mb_params.param, DRV_ID_PDA_COMP_VER));
 
 	if (p_in_params->hsi_ver != ECORE_LOAD_REQ_HSI_VER_1)
 		DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
 			   "Load Request: drv_ver 0x%08x_0x%08x, fw_ver 0x%08x, misc0 0x%08x [role %d, timeout %d, force %d, flags0 0x%x]\n",
 			   load_req.drv_ver_0, load_req.drv_ver_1,
 			   load_req.fw_ver, load_req.misc0,
-			   ECORE_MFW_GET_FIELD(load_req.misc0, LOAD_REQ_ROLE),
-			   ECORE_MFW_GET_FIELD(load_req.misc0,
-					       LOAD_REQ_LOCK_TO),
-			   ECORE_MFW_GET_FIELD(load_req.misc0, LOAD_REQ_FORCE),
-			   ECORE_MFW_GET_FIELD(load_req.misc0,
-					       LOAD_REQ_FLAGS0));
+			   GET_MFW_FIELD(load_req.misc0, LOAD_REQ_ROLE),
+			   GET_MFW_FIELD(load_req.misc0, LOAD_REQ_LOCK_TO),
+			   GET_MFW_FIELD(load_req.misc0, LOAD_REQ_FORCE),
+			   GET_MFW_FIELD(load_req.misc0, LOAD_REQ_FLAGS0));
 
 	rc = ecore_mcp_cmd_and_union(p_hwfn, p_ptt, &mb_params);
 	if (rc != ECORE_SUCCESS) {
@@ -862,20 +858,19 @@ __ecore_mcp_load_req(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 			   "Load Response: exist_drv_ver 0x%08x_0x%08x, exist_fw_ver 0x%08x, misc0 0x%08x [exist_role %d, mfw_hsi %d, flags0 0x%x]\n",
 			   load_rsp.drv_ver_0, load_rsp.drv_ver_1,
 			   load_rsp.fw_ver, load_rsp.misc0,
-			   ECORE_MFW_GET_FIELD(load_rsp.misc0, LOAD_RSP_ROLE),
-			   ECORE_MFW_GET_FIELD(load_rsp.misc0, LOAD_RSP_HSI),
-			   ECORE_MFW_GET_FIELD(load_rsp.misc0,
-					       LOAD_RSP_FLAGS0));
+			   GET_MFW_FIELD(load_rsp.misc0, LOAD_RSP_ROLE),
+			   GET_MFW_FIELD(load_rsp.misc0, LOAD_RSP_HSI),
+			   GET_MFW_FIELD(load_rsp.misc0, LOAD_RSP_FLAGS0));
 
 		p_out_params->exist_drv_ver_0 = load_rsp.drv_ver_0;
 		p_out_params->exist_drv_ver_1 = load_rsp.drv_ver_1;
 		p_out_params->exist_fw_ver = load_rsp.fw_ver;
 		p_out_params->exist_drv_role =
-			ECORE_MFW_GET_FIELD(load_rsp.misc0, LOAD_RSP_ROLE);
+			GET_MFW_FIELD(load_rsp.misc0, LOAD_RSP_ROLE);
 		p_out_params->mfw_hsi_ver =
-			ECORE_MFW_GET_FIELD(load_rsp.misc0, LOAD_RSP_HSI);
+			GET_MFW_FIELD(load_rsp.misc0, LOAD_RSP_HSI);
 		p_out_params->drv_exists =
-			ECORE_MFW_GET_FIELD(load_rsp.misc0, LOAD_RSP_FLAGS0) &
+			GET_MFW_FIELD(load_rsp.misc0, LOAD_RSP_FLAGS0) &
 			LOAD_RSP_FLAGS0_DRV_EXISTS;
 	}
 
@@ -1174,7 +1169,8 @@ static void ecore_mcp_handle_transceiver_change(struct ecore_hwfn *p_hwfn,
 					    OFFSETOF(struct public_port,
 						     transceiver_data)));
 
-	transceiver_state = GET_FIELD(transceiver_state, ETH_TRANSCEIVER_STATE);
+	transceiver_state = GET_MFW_FIELD(transceiver_state,
+					  ETH_TRANSCEIVER_STATE);
 
 	if (transceiver_state == ETH_TRANSCEIVER_STATE_PRESENT)
 		DP_NOTICE(p_hwfn, false, "Transceiver is present.\n");
@@ -1193,12 +1189,12 @@ static void ecore_mcp_read_eee_config(struct ecore_hwfn *p_hwfn,
 	eee_status = ecore_rd(p_hwfn, p_ptt, p_hwfn->mcp_info->port_addr +
 				     OFFSETOF(struct public_port, eee_status));
 	p_link->eee_active = !!(eee_status & EEE_ACTIVE_BIT);
-	val = (eee_status & EEE_LD_ADV_STATUS_MASK) >> EEE_LD_ADV_STATUS_SHIFT;
+	val = (eee_status & EEE_LD_ADV_STATUS_MASK) >> EEE_LD_ADV_STATUS_OFFSET;
 	if (val & EEE_1G_ADV)
 		p_link->eee_adv_caps |= ECORE_EEE_1G_ADV;
 	if (val & EEE_10G_ADV)
 		p_link->eee_adv_caps |= ECORE_EEE_10G_ADV;
-	val = (eee_status & EEE_LP_ADV_STATUS_MASK) >> EEE_LP_ADV_STATUS_SHIFT;
+	val = (eee_status & EEE_LP_ADV_STATUS_MASK) >> EEE_LP_ADV_STATUS_OFFSET;
 	if (val & EEE_1G_ADV)
 		p_link->eee_lp_adv_caps |= ECORE_EEE_1G_ADV;
 	if (val & EEE_10G_ADV)
@@ -1391,7 +1387,7 @@ enum _ecore_status_t ecore_mcp_set_link(struct ecore_hwfn *p_hwfn,
 		if (params->eee.adv_caps & ECORE_EEE_10G_ADV)
 			phy_cfg.eee_cfg |= EEE_CFG_ADV_SPEED_10G;
 		phy_cfg.eee_cfg |= (params->eee.tx_lpi_timer <<
-				    EEE_TX_TIMER_USEC_SHIFT) &
+				    EEE_TX_TIMER_USEC_OFFSET) &
 					EEE_TX_TIMER_USEC_MASK;
 	}
 
@@ -1531,7 +1527,7 @@ static void ecore_read_pf_bandwidth(struct ecore_hwfn *p_hwfn,
 	 */
 	p_info->bandwidth_min = (p_shmem_info->config &
 				 FUNC_MF_CFG_MIN_BW_MASK) >>
-	    FUNC_MF_CFG_MIN_BW_SHIFT;
+	    FUNC_MF_CFG_MIN_BW_OFFSET;
 	if (p_info->bandwidth_min < 1 || p_info->bandwidth_min > 100) {
 		DP_INFO(p_hwfn,
 			"bandwidth minimum out of bounds [%02x]. Set to 1\n",
@@ -1541,7 +1537,7 @@ static void ecore_read_pf_bandwidth(struct ecore_hwfn *p_hwfn,
 
 	p_info->bandwidth_max = (p_shmem_info->config &
 				 FUNC_MF_CFG_MAX_BW_MASK) >>
-	    FUNC_MF_CFG_MAX_BW_SHIFT;
+	    FUNC_MF_CFG_MAX_BW_OFFSET;
 	if (p_info->bandwidth_max < 1 || p_info->bandwidth_max > 100) {
 		DP_INFO(p_hwfn,
 			"bandwidth maximum out of bounds [%02x]. Set to 100\n",
@@ -2226,8 +2222,8 @@ enum _ecore_status_t ecore_mcp_get_flash_size(struct ecore_hwfn *p_hwfn,
 
 	flash_size = ecore_rd(p_hwfn, p_ptt, MCP_REG_NVM_CFG4);
 	flash_size = (flash_size & MCP_REG_NVM_CFG4_FLASH_SIZE) >>
-	    MCP_REG_NVM_CFG4_FLASH_SIZE_SHIFT;
-	flash_size = (1 << (flash_size + MCP_BYTES_PER_MBIT_SHIFT));
+		     MCP_REG_NVM_CFG4_FLASH_SIZE_SHIFT;
+	flash_size = (1 << (flash_size + MCP_BYTES_PER_MBIT_OFFSET));
 
 	*p_flash_size = flash_size;
 
@@ -2265,9 +2261,9 @@ enum _ecore_status_t ecore_mcp_config_vf_msix(struct ecore_hwfn *p_hwfn,
 		return ECORE_SUCCESS;
 	num *= p_hwfn->p_dev->num_hwfns;
 
-	param |= (vf_id << DRV_MB_PARAM_CFG_VF_MSIX_VF_ID_SHIFT) &
+	param |= (vf_id << DRV_MB_PARAM_CFG_VF_MSIX_VF_ID_OFFSET) &
 	    DRV_MB_PARAM_CFG_VF_MSIX_VF_ID_MASK;
-	param |= (num << DRV_MB_PARAM_CFG_VF_MSIX_SB_NUM_SHIFT) &
+	param |= (num << DRV_MB_PARAM_CFG_VF_MSIX_SB_NUM_OFFSET) &
 	    DRV_MB_PARAM_CFG_VF_MSIX_SB_NUM_MASK;
 
 	rc = ecore_mcp_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_CFG_VF_MSIX, param,
@@ -2501,7 +2497,7 @@ enum _ecore_status_t ecore_mcp_nvm_read(struct ecore_dev *p_dev, u32 addr,
 		bytes_to_copy = OSAL_MIN_T(u32, bytes_left,
 					   MCP_DRV_NVM_BUF_LEN);
 		nvm_offset = (addr + offset) | (bytes_to_copy <<
-						DRV_MB_PARAM_NVM_LEN_SHIFT);
+						DRV_MB_PARAM_NVM_LEN_OFFSET);
 		rc = ecore_mcp_nvm_rd_cmd(p_hwfn, p_ptt,
 					  DRV_MSG_CODE_NVM_READ_NVRAM,
 					  nvm_offset, &resp, &param, &buf_size,
@@ -2652,8 +2648,9 @@ enum _ecore_status_t ecore_mcp_nvm_write(struct ecore_dev *p_dev, u32 cmd,
 	while (buf_idx < len) {
 		buf_size = OSAL_MIN_T(u32, (len - buf_idx),
 				      MCP_DRV_NVM_BUF_LEN);
-		nvm_offset = ((buf_size << DRV_MB_PARAM_NVM_LEN_SHIFT) | addr) +
-				buf_idx;
+		nvm_offset = ((buf_size << DRV_MB_PARAM_NVM_LEN_OFFSET) |
+			      addr) +
+			     buf_idx;
 		rc = ecore_mcp_nvm_wr_cmd(p_hwfn, p_ptt, nvm_cmd, nvm_offset,
 					  &resp, &param, buf_size,
 					  (u32 *)&p_buf[buf_idx]);
@@ -2744,8 +2741,8 @@ enum _ecore_status_t ecore_mcp_phy_sfp_read(struct ecore_hwfn *p_hwfn,
 	u32 resp, param;
 	enum _ecore_status_t rc;
 
-	nvm_offset = (port << DRV_MB_PARAM_TRANSCEIVER_PORT_SHIFT) |
-			(addr << DRV_MB_PARAM_TRANSCEIVER_I2C_ADDRESS_SHIFT);
+	nvm_offset = (port << DRV_MB_PARAM_TRANSCEIVER_PORT_OFFSET) |
+			(addr << DRV_MB_PARAM_TRANSCEIVER_I2C_ADDRESS_OFFSET);
 	addr = offset;
 	offset = 0;
 	bytes_left = len;
@@ -2755,9 +2752,9 @@ enum _ecore_status_t ecore_mcp_phy_sfp_read(struct ecore_hwfn *p_hwfn,
 		nvm_offset &= (DRV_MB_PARAM_TRANSCEIVER_I2C_ADDRESS_MASK |
 			       DRV_MB_PARAM_TRANSCEIVER_PORT_MASK);
 		nvm_offset |= ((addr + offset) <<
-				DRV_MB_PARAM_TRANSCEIVER_OFFSET_SHIFT);
+				DRV_MB_PARAM_TRANSCEIVER_OFFSET_OFFSET);
 		nvm_offset |= (bytes_to_copy <<
-			       DRV_MB_PARAM_TRANSCEIVER_SIZE_SHIFT);
+			       DRV_MB_PARAM_TRANSCEIVER_SIZE_OFFSET);
 		rc = ecore_mcp_nvm_rd_cmd(p_hwfn, p_ptt,
 					  DRV_MSG_CODE_TRANSCEIVER_READ,
 					  nvm_offset, &resp, &param, &buf_size,
@@ -2784,8 +2781,8 @@ enum _ecore_status_t ecore_mcp_phy_sfp_write(struct ecore_hwfn *p_hwfn,
 	u32 buf_idx, buf_size, nvm_offset, resp, param;
 	enum _ecore_status_t rc;
 
-	nvm_offset = (port << DRV_MB_PARAM_TRANSCEIVER_PORT_SHIFT) |
-			(addr << DRV_MB_PARAM_TRANSCEIVER_I2C_ADDRESS_SHIFT);
+	nvm_offset = (port << DRV_MB_PARAM_TRANSCEIVER_PORT_OFFSET) |
+			(addr << DRV_MB_PARAM_TRANSCEIVER_I2C_ADDRESS_OFFSET);
 	buf_idx = 0;
 	while (buf_idx < len) {
 		buf_size = OSAL_MIN_T(u32, (len - buf_idx),
@@ -2793,8 +2790,9 @@ enum _ecore_status_t ecore_mcp_phy_sfp_write(struct ecore_hwfn *p_hwfn,
 		nvm_offset &= (DRV_MB_PARAM_TRANSCEIVER_I2C_ADDRESS_MASK |
 				 DRV_MB_PARAM_TRANSCEIVER_PORT_MASK);
 		nvm_offset |= ((offset + buf_idx) <<
-				 DRV_MB_PARAM_TRANSCEIVER_OFFSET_SHIFT);
-		nvm_offset |= (buf_size << DRV_MB_PARAM_TRANSCEIVER_SIZE_SHIFT);
+				 DRV_MB_PARAM_TRANSCEIVER_OFFSET_OFFSET);
+		nvm_offset |= (buf_size <<
+			       DRV_MB_PARAM_TRANSCEIVER_SIZE_OFFSET);
 		rc = ecore_mcp_nvm_wr_cmd(p_hwfn, p_ptt,
 					  DRV_MSG_CODE_TRANSCEIVER_WRITE,
 					  nvm_offset, &resp, &param, buf_size,
@@ -2819,7 +2817,7 @@ enum _ecore_status_t ecore_mcp_gpio_read(struct ecore_hwfn *p_hwfn,
 	enum _ecore_status_t rc = ECORE_SUCCESS;
 	u32 drv_mb_param = 0, rsp;
 
-	drv_mb_param = (gpio << DRV_MB_PARAM_GPIO_NUMBER_SHIFT);
+	drv_mb_param = (gpio << DRV_MB_PARAM_GPIO_NUMBER_OFFSET);
 
 	rc = ecore_mcp_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_GPIO_READ,
 			   drv_mb_param, &rsp, gpio_val);
@@ -2840,8 +2838,8 @@ enum _ecore_status_t ecore_mcp_gpio_write(struct ecore_hwfn *p_hwfn,
 	enum _ecore_status_t rc = ECORE_SUCCESS;
 	u32 drv_mb_param = 0, param, rsp;
 
-	drv_mb_param = (gpio << DRV_MB_PARAM_GPIO_NUMBER_SHIFT) |
-		(gpio_val << DRV_MB_PARAM_GPIO_VALUE_SHIFT);
+	drv_mb_param = (gpio << DRV_MB_PARAM_GPIO_NUMBER_OFFSET) |
+		(gpio_val << DRV_MB_PARAM_GPIO_VALUE_OFFSET);
 
 	rc = ecore_mcp_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_GPIO_WRITE,
 			   drv_mb_param, &rsp, &param);
@@ -2863,7 +2861,7 @@ enum _ecore_status_t ecore_mcp_gpio_info(struct ecore_hwfn *p_hwfn,
 	u32 drv_mb_param = 0, rsp, val = 0;
 	enum _ecore_status_t rc = ECORE_SUCCESS;
 
-	drv_mb_param = gpio << DRV_MB_PARAM_GPIO_NUMBER_SHIFT;
+	drv_mb_param = gpio << DRV_MB_PARAM_GPIO_NUMBER_OFFSET;
 
 	rc = ecore_mcp_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_GPIO_INFO,
 			   drv_mb_param, &rsp, &val);
@@ -2871,9 +2869,9 @@ enum _ecore_status_t ecore_mcp_gpio_info(struct ecore_hwfn *p_hwfn,
 		return rc;
 
 	*gpio_direction = (val & DRV_MB_PARAM_GPIO_DIRECTION_MASK) >>
-			   DRV_MB_PARAM_GPIO_DIRECTION_SHIFT;
+			   DRV_MB_PARAM_GPIO_DIRECTION_OFFSET;
 	*gpio_ctrl = (val & DRV_MB_PARAM_GPIO_CTRL_MASK) >>
-		      DRV_MB_PARAM_GPIO_CTRL_SHIFT;
+		      DRV_MB_PARAM_GPIO_CTRL_OFFSET;
 
 	if ((rsp & FW_MSG_CODE_MASK) != FW_MSG_CODE_GPIO_OK)
 		return ECORE_UNKNOWN_ERROR;
@@ -2888,7 +2886,7 @@ enum _ecore_status_t ecore_mcp_bist_register_test(struct ecore_hwfn *p_hwfn,
 	enum _ecore_status_t rc = ECORE_SUCCESS;
 
 	drv_mb_param = (DRV_MB_PARAM_BIST_REGISTER_TEST <<
-			DRV_MB_PARAM_BIST_TEST_INDEX_SHIFT);
+			DRV_MB_PARAM_BIST_TEST_INDEX_OFFSET);
 
 	rc = ecore_mcp_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_BIST_TEST,
 			   drv_mb_param, &rsp, &param);
@@ -2910,7 +2908,7 @@ enum _ecore_status_t ecore_mcp_bist_clock_test(struct ecore_hwfn *p_hwfn,
 	enum _ecore_status_t rc = ECORE_SUCCESS;
 
 	drv_mb_param = (DRV_MB_PARAM_BIST_CLOCK_TEST <<
-			DRV_MB_PARAM_BIST_TEST_INDEX_SHIFT);
+			DRV_MB_PARAM_BIST_TEST_INDEX_OFFSET);
 
 	rc = ecore_mcp_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_BIST_TEST,
 			   drv_mb_param, &rsp, &param);
@@ -2932,7 +2930,7 @@ enum _ecore_status_t ecore_mcp_bist_nvm_test_get_num_images(
 	enum _ecore_status_t rc = ECORE_SUCCESS;
 
 	drv_mb_param = (DRV_MB_PARAM_BIST_NVM_TEST_NUM_IMAGES <<
-			DRV_MB_PARAM_BIST_TEST_INDEX_SHIFT);
+			DRV_MB_PARAM_BIST_TEST_INDEX_OFFSET);
 
 	rc = ecore_mcp_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_BIST_TEST,
 			   drv_mb_param, &rsp, num_images);
@@ -2954,8 +2952,9 @@ enum _ecore_status_t ecore_mcp_bist_nvm_test_get_image_att(
 	enum _ecore_status_t rc;
 
 	nvm_offset = (DRV_MB_PARAM_BIST_NVM_TEST_IMAGE_BY_INDEX <<
-				    DRV_MB_PARAM_BIST_TEST_INDEX_SHIFT);
-	nvm_offset |= (image_index << DRV_MB_PARAM_BIST_TEST_IMAGE_INDEX_SHIFT);
+				    DRV_MB_PARAM_BIST_TEST_INDEX_OFFSET);
+	nvm_offset |= (image_index <<
+		       DRV_MB_PARAM_BIST_TEST_IMAGE_INDEX_OFFSET);
 	rc = ecore_mcp_nvm_rd_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_BIST_TEST,
 				  nvm_offset, &resp, &param, &buf_size,
 				  (u32 *)p_image_att);
@@ -2996,13 +2995,13 @@ ecore_mcp_get_temperature_info(struct ecore_hwfn *p_hwfn,
 		val = mfw_temp_info.sensor[i];
 		p_temp_sensor = &p_temp_info->sensors[i];
 		p_temp_sensor->sensor_location = (val & SENSOR_LOCATION_MASK) >>
-						 SENSOR_LOCATION_SHIFT;
+						 SENSOR_LOCATION_OFFSET;
 		p_temp_sensor->threshold_high = (val & THRESHOLD_HIGH_MASK) >>
-						THRESHOLD_HIGH_SHIFT;
+						THRESHOLD_HIGH_OFFSET;
 		p_temp_sensor->critical = (val & CRITICAL_TEMPERATURE_MASK) >>
-					  CRITICAL_TEMPERATURE_SHIFT;
+					  CRITICAL_TEMPERATURE_OFFSET;
 		p_temp_sensor->current_temp = (val & CURRENT_TEMP_MASK) >>
-					      CURRENT_TEMP_SHIFT;
+					      CURRENT_TEMP_OFFSET;
 	}
 
 	return ECORE_SUCCESS;
@@ -3099,9 +3098,9 @@ ecore_mcp_get_mfw_res_id(enum ecore_resources res_id)
 #define ECORE_RESC_ALLOC_VERSION_MINOR	0
 #define ECORE_RESC_ALLOC_VERSION				\
 	((ECORE_RESC_ALLOC_VERSION_MAJOR <<			\
-	  DRV_MB_PARAM_RESOURCE_ALLOC_VERSION_MAJOR_SHIFT) |	\
+	  DRV_MB_PARAM_RESOURCE_ALLOC_VERSION_MAJOR_OFFSET) |	\
 	 (ECORE_RESC_ALLOC_VERSION_MINOR <<			\
-	  DRV_MB_PARAM_RESOURCE_ALLOC_VERSION_MINOR_SHIFT))
+	  DRV_MB_PARAM_RESOURCE_ALLOC_VERSION_MINOR_OFFSET))
 
 struct ecore_resc_alloc_in_params {
 	u32 cmd;
@@ -3185,10 +3184,10 @@ ecore_mcp_resc_allocation_msg(struct ecore_hwfn *p_hwfn,
 		   "Resource message request: cmd 0x%08x, res_id %d [%s], hsi_version %d.%d, val 0x%x\n",
 		   p_in_params->cmd, p_in_params->res_id,
 		   ecore_hw_get_resc_name(p_in_params->res_id),
-		   ECORE_MFW_GET_FIELD(mb_params.param,
-			   DRV_MB_PARAM_RESOURCE_ALLOC_VERSION_MAJOR),
-		   ECORE_MFW_GET_FIELD(mb_params.param,
-			   DRV_MB_PARAM_RESOURCE_ALLOC_VERSION_MINOR),
+		   GET_MFW_FIELD(mb_params.param,
+				 DRV_MB_PARAM_RESOURCE_ALLOC_VERSION_MAJOR),
+		   GET_MFW_FIELD(mb_params.param,
+				 DRV_MB_PARAM_RESOURCE_ALLOC_VERSION_MINOR),
 		   p_in_params->resc_max_val);
 
 	rc = ecore_mcp_cmd_and_union(p_hwfn, p_ptt, &mb_params);
@@ -3205,10 +3204,10 @@ ecore_mcp_resc_allocation_msg(struct ecore_hwfn *p_hwfn,
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
 		   "Resource message response: mfw_hsi_version %d.%d, num 0x%x, start 0x%x, vf_num 0x%x, vf_start 0x%x, flags 0x%08x\n",
-		   ECORE_MFW_GET_FIELD(p_out_params->mcp_param,
-			   FW_MB_PARAM_RESOURCE_ALLOC_VERSION_MAJOR),
-		   ECORE_MFW_GET_FIELD(p_out_params->mcp_param,
-			   FW_MB_PARAM_RESOURCE_ALLOC_VERSION_MINOR),
+		   GET_MFW_FIELD(p_out_params->mcp_param,
+				 FW_MB_PARAM_RESOURCE_ALLOC_VERSION_MAJOR),
+		   GET_MFW_FIELD(p_out_params->mcp_param,
+				 FW_MB_PARAM_RESOURCE_ALLOC_VERSION_MINOR),
 		   p_out_params->resc_num, p_out_params->resc_start,
 		   p_out_params->vf_resc_num, p_out_params->vf_resc_start,
 		   p_out_params->flags);
@@ -3296,7 +3295,7 @@ static enum _ecore_status_t ecore_mcp_resource_cmd(struct ecore_hwfn *p_hwfn,
 	}
 
 	if (*p_mcp_param == RESOURCE_OPCODE_UNKNOWN_CMD) {
-		u8 opcode = ECORE_MFW_GET_FIELD(param, RESOURCE_CMD_REQ_OPCODE);
+		u8 opcode = GET_MFW_FIELD(param, RESOURCE_CMD_REQ_OPCODE);
 
 		DP_NOTICE(p_hwfn, false,
 			  "The resource command is unknown to the MFW [param 0x%08x, opcode %d]\n",
@@ -3329,9 +3328,9 @@ __ecore_mcp_resc_lock(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 		break;
 	}
 
-	ECORE_MFW_SET_FIELD(param, RESOURCE_CMD_REQ_RESC, p_params->resource);
-	ECORE_MFW_SET_FIELD(param, RESOURCE_CMD_REQ_OPCODE, opcode);
-	ECORE_MFW_SET_FIELD(param, RESOURCE_CMD_REQ_AGE, p_params->timeout);
+	SET_MFW_FIELD(param, RESOURCE_CMD_REQ_RESC, p_params->resource);
+	SET_MFW_FIELD(param, RESOURCE_CMD_REQ_OPCODE, opcode);
+	SET_MFW_FIELD(param, RESOURCE_CMD_REQ_AGE, p_params->timeout);
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
 		   "Resource lock request: param 0x%08x [age %d, opcode %d, resource %d]\n",
@@ -3344,9 +3343,8 @@ __ecore_mcp_resc_lock(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 		return rc;
 
 	/* Analyze the response */
-	p_params->owner = ECORE_MFW_GET_FIELD(mcp_param,
-					     RESOURCE_CMD_RSP_OWNER);
-	opcode = ECORE_MFW_GET_FIELD(mcp_param, RESOURCE_CMD_RSP_OPCODE);
+	p_params->owner = GET_MFW_FIELD(mcp_param, RESOURCE_CMD_RSP_OWNER);
+	opcode = GET_MFW_FIELD(mcp_param, RESOURCE_CMD_RSP_OPCODE);
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
 		   "Resource lock response: mcp_param 0x%08x [opcode %d, owner %d]\n",
@@ -3443,8 +3441,8 @@ ecore_mcp_resc_unlock(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 
 	opcode = p_params->b_force ? RESOURCE_OPCODE_FORCE_RELEASE
 				   : RESOURCE_OPCODE_RELEASE;
-	ECORE_MFW_SET_FIELD(param, RESOURCE_CMD_REQ_RESC, p_params->resource);
-	ECORE_MFW_SET_FIELD(param, RESOURCE_CMD_REQ_OPCODE, opcode);
+	SET_MFW_FIELD(param, RESOURCE_CMD_REQ_RESC, p_params->resource);
+	SET_MFW_FIELD(param, RESOURCE_CMD_REQ_OPCODE, opcode);
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
 		   "Resource unlock request: param 0x%08x [opcode %d, resource %d]\n",
@@ -3457,7 +3455,7 @@ ecore_mcp_resc_unlock(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 		return rc;
 
 	/* Analyze the response */
-	opcode = ECORE_MFW_GET_FIELD(mcp_param, RESOURCE_CMD_RSP_OPCODE);
+	opcode = GET_MFW_FIELD(mcp_param, RESOURCE_CMD_RSP_OPCODE);
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
 		   "Resource unlock response: mcp_param 0x%08x [opcode %d]\n",

@@ -2159,7 +2159,7 @@ enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
 			   "sending phony dcbx set command to trigger DCBx attention handling\n");
 		rc = ecore_mcp_cmd(p_hwfn, p_hwfn->p_main_ptt,
 				   DRV_MSG_CODE_SET_DCBX,
-				   1 << DRV_MB_PARAM_DCBX_NOTIFY_SHIFT, &resp,
+				   1 << DRV_MB_PARAM_DCBX_NOTIFY_OFFSET, &resp,
 				   &param);
 		if (rc != ECORE_SUCCESS) {
 			DP_NOTICE(p_hwfn, true,
