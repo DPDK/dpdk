@@ -95,9 +95,9 @@ vhost_kernel_open_tap(char **p_ifname, int hdr_size, int req_mq)
 		ifr.ifr_flags |= IFF_MULTI_QUEUE;
 
 	if (*p_ifname)
-		strncpy(ifr.ifr_name, *p_ifname, IFNAMSIZ);
+		strncpy(ifr.ifr_name, *p_ifname, IFNAMSIZ - 1);
 	else
-		strncpy(ifr.ifr_name, "tap%d", IFNAMSIZ);
+		strncpy(ifr.ifr_name, "tap%d", IFNAMSIZ - 1);
 	if (ioctl(tapfd, TUNSETIFF, (void *)&ifr) == -1) {
 		PMD_DRV_LOG(ERR, "TUNSETIFF failed: %s", strerror(errno));
 		goto error;
