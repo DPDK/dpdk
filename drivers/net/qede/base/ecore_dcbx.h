@@ -17,6 +17,8 @@
 #include "ecore_hsi_common.h"
 #include "ecore_dcbx_api.h"
 
+#define ECORE_DCBX_DSCP_DISABLED 0XFF
+
 struct ecore_dcbx_info {
 	struct lldp_status_params_s lldp_remote[LLDP_MAX_LLDP_AGENTS];
 	struct lldp_config_params_s lldp_local[LLDP_MAX_LLDP_AGENTS];
@@ -51,5 +53,8 @@ enum _ecore_status_t ecore_dcbx_info_alloc(struct ecore_hwfn *p_hwfn);
 void ecore_dcbx_info_free(struct ecore_hwfn *, struct ecore_dcbx_info *);
 void ecore_dcbx_set_pf_update_params(struct ecore_dcbx_results *p_src,
 				     struct pf_update_ramrod_data *p_dest);
+
+/* Returns TOS value for a given priority */
+u8 ecore_dcbx_get_dscp_value(struct ecore_hwfn *p_hwfn, u8 pri);
 
 #endif /* __ECORE_DCBX_H__ */

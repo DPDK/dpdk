@@ -114,6 +114,21 @@ ecore_dcbx_dp_protocol(struct ecore_hwfn *p_hwfn,
 	}
 }
 
+u8 ecore_dcbx_get_dscp_value(struct ecore_hwfn *p_hwfn, u8 pri)
+{
+	struct ecore_dcbx_dscp_params *dscp = &p_hwfn->p_dcbx_info->get.dscp;
+	u8 i;
+
+	if (!dscp->enabled)
+		return ECORE_DCBX_DSCP_DISABLED;
+
+	for (i = 0; i < ECORE_DCBX_DSCP_SIZE; i++)
+		if (pri == dscp->dscp_pri_map[i])
+			return i;
+
+	return ECORE_DCBX_DSCP_DISABLED;
+}
+
 static void
 ecore_dcbx_set_params(struct ecore_dcbx_results *p_data,
 		      struct ecore_hwfn *p_hwfn,
@@ -121,29 +136,18 @@ ecore_dcbx_set_params(struct ecore_dcbx_results *p_data,
 		      enum dcbx_protocol_type type,
 		      enum ecore_pci_personality personality)
 {
-	struct ecore_dcbx_dscp_params *dscp = &p_hwfn->p_dcbx_info->get.dscp;
-
 	/* PF update ramrod data */
 	p_data->arr[type].enable = enable;
 	p_data->arr[type].priority = prio;
 	p_data->arr[type].tc = tc;
-	p_data->arr[type].dscp_enable = dscp->enabled;
-	if (p_data->arr[type].dscp_enable) {
-		u8 i;
-
-		for (i = 0; i < ECORE_DCBX_DSCP_SIZE; i++)
-			if (prio == dscp->dscp_pri_map[i]) {
-				p_data->arr[type].dscp_val = i;
-				break;
-			}
+	p_data->arr[type].dscp_val = ecore_dcbx_get_dscp_value(p_hwfn, prio);
+	if (p_data->arr[type].dscp_val == ECORE_DCBX_DSCP_DISABLED) {
+		p_data->arr[type].dscp_enable = false;
+		p_data->arr[type].dscp_val = 0;
+	} else {
+		p_data->arr[type].dscp_enable = true;
 	}
-
-	if (enable && p_data->arr[type].dscp_enable)
-		p_data->arr[type].update = UPDATE_DCB_DSCP;
-	else if (enable)
-		p_data->arr[type].update = UPDATE_DCB;
-	else
-		p_data->arr[type].update = DONT_UPDATE_DCB_DSCP;
+	p_data->arr[type].update = UPDATE_DCB_DSCP;
 
 	/* QM reconf data */
 	if (p_hwfn->hw_info.personality == personality)
@@ -582,6 +586,31 @@ ecore_dcbx_get_remote_params(struct ecore_hwfn *p_hwfn,
 	params->remote.valid = true;
 }
 
+static void  ecore_dcbx_get_dscp_params(struct ecore_hwfn *p_hwfn,
+					struct ecore_dcbx_get *params)
+{
+	struct ecore_dcbx_dscp_params *p_dscp;
+	struct dcb_dscp_map *p_dscp_map;
+	int i, j, entry;
+	u32 pri_map;
+
+	p_dscp = &params->dscp;
+	p_dscp_map = &p_hwfn->p_dcbx_info->dscp_map;
+	p_dscp->enabled = GET_MFW_FIELD(p_dscp_map->flags, DCB_DSCP_ENABLE);
+
+	/* MFW encodes 64 dscp entries into 8 element array of u32 entries,
+	 * where each entry holds the 4bit priority map for 8 dscp entries.
+	 */
+	for (i = 0, entry = 0; i < ECORE_DCBX_DSCP_SIZE / 8; i++) {
+		pri_map = OSAL_BE32_TO_CPU(p_dscp_map->dscp_pri_map[i]);
+		DP_VERBOSE(p_hwfn, ECORE_MSG_DCB, "elem %d pri_map 0x%x\n",
+			   entry, pri_map);
+		for (j = 0; j < ECORE_DCBX_DSCP_SIZE / 8; j++, entry++)
+			p_dscp->dscp_pri_map[entry] = (u32)(pri_map >>
+							   (j * 4)) & 0xf;
+	}
+}
+
 static void
 ecore_dcbx_get_operational_params(struct ecore_hwfn *p_hwfn,
 				  struct ecore_dcbx_get *params)
@@ -638,31 +667,6 @@ ecore_dcbx_get_operational_params(struct ecore_hwfn *p_hwfn,
 	p_operational->err = err;
 	p_operational->enabled = enabled;
 	p_operational->valid = true;
-}
-
-static void  ecore_dcbx_get_dscp_params(struct ecore_hwfn *p_hwfn,
-					struct ecore_dcbx_get *params)
-{
-	struct ecore_dcbx_dscp_params *p_dscp;
-	struct dcb_dscp_map *p_dscp_map;
-	int i, j, entry;
-	u32 pri_map;
-
-	p_dscp = &params->dscp;
-	p_dscp_map = &p_hwfn->p_dcbx_info->dscp_map;
-	p_dscp->enabled = GET_MFW_FIELD(p_dscp_map->flags, DCB_DSCP_ENABLE);
-
-	/* MFW encodes 64 dscp entries into 8 element array of u32 entries,
-	 * where each entry holds the 4bit priority map for 8 dscp entries.
-	 */
-	for (i = 0, entry = 0; i < ECORE_DCBX_DSCP_SIZE / 8; i++) {
-		pri_map = OSAL_BE32_TO_CPU(p_dscp_map->dscp_pri_map[i]);
-		DP_VERBOSE(p_hwfn, ECORE_MSG_DCB, "elem %d pri_map 0x%x\n",
-			   entry, pri_map);
-		for (j = 0; j < ECORE_DCBX_DSCP_SIZE / 8; j++, entry++)
-			p_dscp->dscp_pri_map[entry] = (u32)(pri_map >>
-							   (j * 4)) & 0xf;
-	}
 }
 
 static void ecore_dcbx_get_local_lldp_params(struct ecore_hwfn *p_hwfn,
@@ -894,7 +898,9 @@ ecore_dcbx_mib_update_event(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 	/* Update the DSCP to TC mapping bit if required */
 	if ((type == ECORE_DCBX_OPERATIONAL_MIB) &&
 	    p_hwfn->p_dcbx_info->dscp_nig_update) {
-		ecore_wr(p_hwfn, p_ptt, NIG_REG_DSCP_TO_TC_MAP_ENABLE, 0x1);
+		u8 val = !!p_hwfn->p_dcbx_info->get.dscp.enabled;
+
+		ecore_wr(p_hwfn, p_ptt, NIG_REG_DSCP_TO_TC_MAP_ENABLE, val);
 		p_hwfn->p_dcbx_info->dscp_nig_update = false;
 	}
 
@@ -971,6 +977,8 @@ enum _ecore_status_t ecore_dcbx_query_params(struct ecore_hwfn *p_hwfn,
 	rc = ecore_dcbx_read_mib(p_hwfn, p_ptt, type);
 	if (rc != ECORE_SUCCESS)
 		goto out;
+
+	ecore_dcbx_get_dscp_params(p_hwfn, p_get);
 
 	rc = ecore_dcbx_get_params(p_hwfn, p_get, type);
 
@@ -1191,6 +1199,12 @@ ecore_dcbx_set_dscp_params(struct ecore_hwfn *p_hwfn,
 	p_hwfn->p_dcbx_info->dscp_nig_update = true;
 
 	DP_VERBOSE(p_hwfn, ECORE_MSG_DCB, "flags = 0x%x\n", p_dscp_map->flags);
+	DP_VERBOSE(p_hwfn, ECORE_MSG_DCB,
+		   "pri_map[] = 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x\n",
+		   p_dscp_map->dscp_pri_map[0], p_dscp_map->dscp_pri_map[1],
+		   p_dscp_map->dscp_pri_map[2], p_dscp_map->dscp_pri_map[3],
+		   p_dscp_map->dscp_pri_map[4], p_dscp_map->dscp_pri_map[5],
+		   p_dscp_map->dscp_pri_map[6], p_dscp_map->dscp_pri_map[7]);
 
 	return ECORE_SUCCESS;
 }
@@ -1281,6 +1295,9 @@ enum _ecore_status_t ecore_dcbx_get_config_params(struct ecore_hwfn *p_hwfn,
 		p_hwfn->p_dcbx_info->set.ver_num |= DCBX_CONFIG_VERSION_STATIC;
 
 	p_hwfn->p_dcbx_info->set.enabled = dcbx_info->operational.enabled;
+	OSAL_MEMCPY(&p_hwfn->p_dcbx_info->set.dscp,
+		    &p_hwfn->p_dcbx_info->get.dscp,
+		    sizeof(struct ecore_dcbx_dscp_params));
 	OSAL_MEMCPY(&p_hwfn->p_dcbx_info->set.config.params,
 		    &dcbx_info->operational.params,
 		    sizeof(p_hwfn->p_dcbx_info->set.config.params));
