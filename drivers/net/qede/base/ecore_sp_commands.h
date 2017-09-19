@@ -125,10 +125,10 @@ struct ecore_rl_update_params {
 	u8 rl_id_last;
 	u8 rl_dc_qcn_flg; /* If set, RL will used for DCQCN */
 	u32 rl_bc_rate; /* Byte Counter Limit */
-	u16 rl_max_rate; /* Maximum rate in 1.6 Mbps resolution */
-	u16 rl_r_ai; /* Active increase rate */
-	u16 rl_r_hai; /* Hyper active increase rate */
-	u16 dcqcn_g; /* DCQCN Alpha update gain in 1/64K resolution */
+	u32 rl_max_rate; /* Maximum rate in Mbps resolution */
+	u32 rl_r_ai; /* Active increase rate */
+	u32 rl_r_hai; /* Hyper active increase rate */
+	u32 dcqcn_gd; /* DCQCN Alpha update gain */
 	u32 dcqcn_k_us; /* DCQCN Alpha update interval */
 	u32 dcqcn_timeuot_us;
 	u32 qcn_timeuot_us;

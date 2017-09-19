@@ -422,6 +422,22 @@ enum _ecore_status_t ecore_sp_pf_update_dcbx(struct ecore_hwfn *p_hwfn)
 	return ecore_spq_post(p_hwfn, p_ent, OSAL_NULL);
 }
 
+/* QM rate limiter resolution is 1.6Mbps */
+#define QM_RL_RESOLUTION(mb_val)	((mb_val) * 10 / 16)
+
+/* FW uses 1/64k to express gd */
+#define FW_GD_RESOLUTION(gd)		(64 * 1024 / (gd))
+
+u16 ecore_sp_rl_mb_to_qm(u32 mb_val)
+{
+	return (u16)OSAL_MIN_T(u32, (u16)(~0U), QM_RL_RESOLUTION(mb_val));
+}
+
+u16 ecore_sp_rl_gd_denom(u32 gd)
+{
+	return gd ? (u16)OSAL_MIN_T(u32, (u16)(~0U), FW_GD_RESOLUTION(gd)) : 0;
+}
+
 enum _ecore_status_t ecore_sp_rl_update(struct ecore_hwfn *p_hwfn,
 					struct ecore_rl_update_params *params)
 {
@@ -453,14 +469,29 @@ enum _ecore_status_t ecore_sp_rl_update(struct ecore_hwfn *p_hwfn,
 	rl_update->rl_id_last = params->rl_id_last;
 	rl_update->rl_dc_qcn_flg = params->rl_dc_qcn_flg;
 	rl_update->rl_bc_rate = OSAL_CPU_TO_LE32(params->rl_bc_rate);
-	rl_update->rl_max_rate = OSAL_CPU_TO_LE16(params->rl_max_rate);
-	rl_update->rl_r_ai = OSAL_CPU_TO_LE16(params->rl_r_ai);
-	rl_update->rl_r_hai = OSAL_CPU_TO_LE16(params->rl_r_hai);
-	rl_update->dcqcn_g = OSAL_CPU_TO_LE16(params->dcqcn_g);
+	rl_update->rl_max_rate =
+		OSAL_CPU_TO_LE16(ecore_sp_rl_mb_to_qm(params->rl_max_rate));
+	rl_update->rl_r_ai =
+		OSAL_CPU_TO_LE16(ecore_sp_rl_mb_to_qm(params->rl_r_ai));
+	rl_update->rl_r_hai =
+		OSAL_CPU_TO_LE16(ecore_sp_rl_mb_to_qm(params->rl_r_hai));
+	rl_update->dcqcn_g =
+		OSAL_CPU_TO_LE16(ecore_sp_rl_gd_denom(params->dcqcn_gd));
 	rl_update->dcqcn_k_us = OSAL_CPU_TO_LE32(params->dcqcn_k_us);
-	rl_update->dcqcn_timeuot_us = OSAL_CPU_TO_LE32(
-		params->dcqcn_timeuot_us);
+	rl_update->dcqcn_timeuot_us =
+		OSAL_CPU_TO_LE32(params->dcqcn_timeuot_us);
 	rl_update->qcn_timeuot_us = OSAL_CPU_TO_LE32(params->qcn_timeuot_us);
+
+	DP_VERBOSE(p_hwfn, ECORE_MSG_SPQ, "rl_params: qcn_update_param_flg %x, dcqcn_update_param_flg %x, rl_init_flg %x, rl_start_flg %x, rl_stop_flg %x, rl_id_first %x, rl_id_last %x, rl_dc_qcn_flg %x, rl_bc_rate %x, rl_max_rate %x, rl_r_ai %x, rl_r_hai %x, dcqcn_g %x, dcqcn_k_us %x, dcqcn_timeuot_us %x, qcn_timeuot_us %x\n",
+		   rl_update->qcn_update_param_flg,
+		   rl_update->dcqcn_update_param_flg,
+		   rl_update->rl_init_flg, rl_update->rl_start_flg,
+		   rl_update->rl_stop_flg, rl_update->rl_id_first,
+		   rl_update->rl_id_last, rl_update->rl_dc_qcn_flg,
+		   rl_update->rl_bc_rate, rl_update->rl_max_rate,
+		   rl_update->rl_r_ai, rl_update->rl_r_hai,
+		   rl_update->dcqcn_g, rl_update->dcqcn_k_us,
+		   rl_update->dcqcn_timeuot_us, rl_update->qcn_timeuot_us);
 
 	return ecore_spq_post(p_hwfn, p_ent, OSAL_NULL);
 }
