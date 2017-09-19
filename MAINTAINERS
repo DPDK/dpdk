@@ -24,6 +24,7 @@ General Project Administration
 
 Main Branch
 M: Thomas Monjalon <thomas@monjalon.net>
+M: Ferruh Yigit <ferruh.yigit@intel.com>
 T: git://dpdk.org/dpdk
 
 Stable Branches
