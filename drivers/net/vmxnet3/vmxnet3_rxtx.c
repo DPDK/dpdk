@@ -504,8 +504,9 @@ vmxnet3_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts,
 			 */
 			gdesc = txq->cmd_ring.base + txq->cmd_ring.next2fill;
 			if (copy_size) {
-				uint64 offset = txq->cmd_ring.next2fill *
-						txq->txdata_desc_size;
+				uint64 offset =
+					(uint64)txq->cmd_ring.next2fill *
+							txq->txdata_desc_size;
 				gdesc->txd.addr =
 					rte_cpu_to_le_64(txq->data_ring.basePA +
 							 offset);
