@@ -113,37 +113,6 @@ struct ecore_mcp_function_info {
 	u16 mtu;
 };
 
-struct ecore_mcp_nvm_common {
-	u32 offset;
-	u32 param;
-	u32 resp;
-	u32 cmd;
-};
-
-struct ecore_mcp_nvm_rd {
-	u32 *buf_size;
-	u32 *buf;
-};
-
-struct ecore_mcp_nvm_wr {
-	u32 buf_size;
-	u32 *buf;
-};
-
-struct ecore_mcp_nvm_params {
-#define ECORE_MCP_CMD		(1 << 0)
-#define ECORE_MCP_NVM_RD	(1 << 1)
-#define ECORE_MCP_NVM_WR	(1 << 2)
-	u8 type;
-
-	struct ecore_mcp_nvm_common nvm_common;
-
-	union {
-		struct ecore_mcp_nvm_rd nvm_rd;
-		struct ecore_mcp_nvm_wr nvm_wr;
-	};
-};
-
 #ifndef __EXTRACT__LINUX__
 enum ecore_nvm_images {
 	ECORE_NVM_IMAGE_ISCSI_CFG,
@@ -659,44 +628,6 @@ const struct ecore_mcp_function_info
 *ecore_mcp_get_function_info(struct ecore_hwfn *p_hwfn);
 #endif
 
-/**
- * @brief - Function for reading/manipulating the nvram. Following are supported
- *          functionalities.
- *          1. Read: Read the specified nvram offset.
- *             input values:
- *               type   - ECORE_MCP_NVM_RD
- *               cmd    - command code (e.g. DRV_MSG_CODE_NVM_READ_NVRAM)
- *               offset - nvm offset
- *
- *             output values:
- *               buf      - buffer
- *               buf_size - buffer size
- *
- *          2. Write: Write the data at the specified nvram offset
- *             input values:
- *               type     - ECORE_MCP_NVM_WR
- *               cmd      - command code (e.g. DRV_MSG_CODE_NVM_WRITE_NVRAM)
- *               offset   - nvm offset
- *               buf      - buffer
- *               buf_size - buffer size
- *
- *          3. Command: Send the NVM command to MCP.
- *             input values:
- *               type   - ECORE_MCP_CMD
- *               cmd    - command code (e.g. DRV_MSG_CODE_NVM_DEL_FILE)
- *               offset - nvm offset
- *
- *
- * @param p_hwfn
- * @param p_ptt
- * @param params
- *
- * @return ECORE_SUCCESS - operation was successful.
- */
-enum _ecore_status_t ecore_mcp_nvm_command(struct ecore_hwfn *p_hwfn,
-					   struct ecore_ptt *p_ptt,
-					   struct ecore_mcp_nvm_params *params);
-
 #ifndef LINUX_REMOVE
 /**
  * @brief - count number of function with a matching personality on engine.
@@ -938,6 +869,56 @@ enum _ecore_status_t ecore_mcp_phy_read(struct ecore_dev *p_dev, u32 cmd,
  */
 enum _ecore_status_t ecore_mcp_nvm_read(struct ecore_dev *p_dev, u32 addr,
 			   u8 *p_buf, u32 len);
+
+/**
+ * @brief - Sends an NVM write command request to the MFW with
+ *          payload.
+ *
+ * @param p_hwfn
+ * @param p_ptt
+ * @param cmd - Command: Either DRV_MSG_CODE_NVM_WRITE_NVRAM or
+ *            DRV_MSG_CODE_NVM_PUT_FILE_DATA
+ * @param param - [0:23] - Offset [24:31] - Size
+ * @param o_mcp_resp - MCP response
+ * @param o_mcp_param - MCP response param
+ * @param i_txn_size -  Buffer size
+ * @param i_buf - Pointer to the buffer
+ *
+ * @param return ECORE_SUCCESS upon success.
+ */
+enum _ecore_status_t ecore_mcp_nvm_wr_cmd(struct ecore_hwfn *p_hwfn,
+					  struct ecore_ptt *p_ptt,
+					  u32 cmd,
+					  u32 param,
+					  u32 *o_mcp_resp,
+					  u32 *o_mcp_param,
+					  u32 i_txn_size,
+					  u32 *i_buf);
+
+/**
+ * @brief - Sends an NVM read command request to the MFW to get
+ *        a buffer.
+ *
+ * @param p_hwfn
+ * @param p_ptt
+ * @param cmd - Command: DRV_MSG_CODE_NVM_GET_FILE_DATA or
+ *            DRV_MSG_CODE_NVM_READ_NVRAM commands
+ * @param param - [0:23] - Offset [24:31] - Size
+ * @param o_mcp_resp - MCP response
+ * @param o_mcp_param - MCP response param
+ * @param o_txn_size -  Buffer size output
+ * @param o_buf - Pointer to the buffer returned by the MFW.
+ *
+ * @param return ECORE_SUCCESS upon success.
+ */
+enum _ecore_status_t ecore_mcp_nvm_rd_cmd(struct ecore_hwfn *p_hwfn,
+					  struct ecore_ptt *p_ptt,
+					  u32 cmd,
+					  u32 param,
+					  u32 *o_mcp_resp,
+					  u32 *o_mcp_param,
+					  u32 *o_txn_size,
+					  u32 *o_buf);
 
 /**
  * @brief Read from sfp

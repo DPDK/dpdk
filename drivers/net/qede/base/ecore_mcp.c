@@ -2181,42 +2181,6 @@ const struct ecore_mcp_function_info
 	return &p_hwfn->mcp_info->func_info;
 }
 
-enum _ecore_status_t ecore_mcp_nvm_command(struct ecore_hwfn *p_hwfn,
-					   struct ecore_ptt *p_ptt,
-					   struct ecore_mcp_nvm_params *params)
-{
-	enum _ecore_status_t rc;
-
-	switch (params->type) {
-	case ECORE_MCP_NVM_RD:
-		rc = ecore_mcp_nvm_rd_cmd(p_hwfn, p_ptt, params->nvm_common.cmd,
-					  params->nvm_common.offset,
-					  &params->nvm_common.resp,
-					  &params->nvm_common.param,
-					  params->nvm_rd.buf_size,
-					  params->nvm_rd.buf);
-		break;
-	case ECORE_MCP_CMD:
-		rc = ecore_mcp_cmd(p_hwfn, p_ptt, params->nvm_common.cmd,
-				   params->nvm_common.offset,
-				   &params->nvm_common.resp,
-				   &params->nvm_common.param);
-		break;
-	case ECORE_MCP_NVM_WR:
-		rc = ecore_mcp_nvm_wr_cmd(p_hwfn, p_ptt, params->nvm_common.cmd,
-					  params->nvm_common.offset,
-					  &params->nvm_common.resp,
-					  &params->nvm_common.param,
-					  params->nvm_wr.buf_size,
-					  params->nvm_wr.buf);
-		break;
-	default:
-		rc = ECORE_NOTIMPL;
-		break;
-	}
-	return rc;
-}
-
 int ecore_mcp_get_personality_cnt(struct ecore_hwfn *p_hwfn,
 				  struct ecore_ptt *p_ptt, u32 personalities)
 {
@@ -2523,7 +2487,7 @@ enum _ecore_status_t ecore_mcp_nvm_read(struct ecore_dev *p_dev, u32 addr,
 {
 	struct ecore_hwfn *p_hwfn = ECORE_LEADING_HWFN(p_dev);
 	u32 bytes_left, offset, bytes_to_copy, buf_size;
-	struct ecore_mcp_nvm_params params;
+	u32 nvm_offset, resp, param;
 	struct ecore_ptt *p_ptt;
 	enum _ecore_status_t rc = ECORE_SUCCESS;
 
@@ -2531,22 +2495,29 @@ enum _ecore_status_t ecore_mcp_nvm_read(struct ecore_dev *p_dev, u32 addr,
 	if (!p_ptt)
 		return ECORE_BUSY;
 
-	OSAL_MEMSET(&params, 0, sizeof(struct ecore_mcp_nvm_params));
 	bytes_left = len;
 	offset = 0;
-	params.type = ECORE_MCP_NVM_RD;
-	params.nvm_rd.buf_size = &buf_size;
-	params.nvm_common.cmd = DRV_MSG_CODE_NVM_READ_NVRAM;
 	while (bytes_left > 0) {
 		bytes_to_copy = OSAL_MIN_T(u32, bytes_left,
 					   MCP_DRV_NVM_BUF_LEN);
-		params.nvm_common.offset = (addr + offset) |
-		    (bytes_to_copy << DRV_MB_PARAM_NVM_LEN_SHIFT);
-		params.nvm_rd.buf = (u32 *)(p_buf + offset);
-		rc = ecore_mcp_nvm_command(p_hwfn, p_ptt, &params);
-		if (rc != ECORE_SUCCESS || (params.nvm_common.resp !=
-					    FW_MSG_CODE_NVM_OK)) {
-			DP_NOTICE(p_dev, false, "MCP command rc = %d\n", rc);
+		nvm_offset = (addr + offset) | (bytes_to_copy <<
+						DRV_MB_PARAM_NVM_LEN_SHIFT);
+		rc = ecore_mcp_nvm_rd_cmd(p_hwfn, p_ptt,
+					  DRV_MSG_CODE_NVM_READ_NVRAM,
+					  nvm_offset, &resp, &param, &buf_size,
+					  (u32 *)(p_buf + offset));
+		if (rc != ECORE_SUCCESS) {
+			DP_NOTICE(p_dev, false,
+				  "ecore_mcp_nvm_rd_cmd() failed, rc = %d\n",
+				  rc);
+			resp = FW_MSG_CODE_ERROR;
+			break;
+		}
+
+		if (resp != FW_MSG_CODE_NVM_OK) {
+			DP_NOTICE(p_dev, false,
+				  "nvm read failed, resp = 0x%08x\n", resp);
+			rc = ECORE_UNKNOWN_ERROR;
 			break;
 		}
 
@@ -2554,14 +2525,14 @@ enum _ecore_status_t ecore_mcp_nvm_read(struct ecore_dev *p_dev, u32 addr,
 		 * isn't preemptible. Sleep a bit to prevent CPU hogging.
 		 */
 		if (bytes_left % 0x1000 <
-		    (bytes_left - *params.nvm_rd.buf_size) % 0x1000)
+		    (bytes_left - buf_size) % 0x1000)
 			OSAL_MSLEEP(1);
 
-		offset += *params.nvm_rd.buf_size;
-		bytes_left -= *params.nvm_rd.buf_size;
+		offset += buf_size;
+		bytes_left -= buf_size;
 	}
 
-	p_dev->mcp_nvm_resp = params.nvm_common.resp;
+	p_dev->mcp_nvm_resp = resp;
 	ecore_ptt_release(p_hwfn, p_ptt);
 
 	return rc;
@@ -2571,26 +2542,23 @@ enum _ecore_status_t ecore_mcp_phy_read(struct ecore_dev *p_dev, u32 cmd,
 					u32 addr, u8 *p_buf, u32 len)
 {
 	struct ecore_hwfn *p_hwfn = ECORE_LEADING_HWFN(p_dev);
-	struct ecore_mcp_nvm_params params;
 	struct ecore_ptt *p_ptt;
+	u32 resp, param;
 	enum _ecore_status_t rc;
 
 	p_ptt = ecore_ptt_acquire(p_hwfn);
 	if (!p_ptt)
 		return ECORE_BUSY;
 
-	OSAL_MEMSET(&params, 0, sizeof(struct ecore_mcp_nvm_params));
-	params.type = ECORE_MCP_NVM_RD;
-	params.nvm_rd.buf_size = &len;
-	params.nvm_common.cmd = (cmd == ECORE_PHY_CORE_READ) ?
-	    DRV_MSG_CODE_PHY_CORE_READ : DRV_MSG_CODE_PHY_RAW_READ;
-	params.nvm_common.offset = addr;
-	params.nvm_rd.buf = (u32 *)p_buf;
-	rc = ecore_mcp_nvm_command(p_hwfn, p_ptt, &params);
+	rc = ecore_mcp_nvm_rd_cmd(p_hwfn, p_ptt,
+				  (cmd == ECORE_PHY_CORE_READ) ?
+				  DRV_MSG_CODE_PHY_CORE_READ :
+				  DRV_MSG_CODE_PHY_RAW_READ,
+				  addr, &resp, &param, &len, (u32 *)p_buf);
 	if (rc != ECORE_SUCCESS)
 		DP_NOTICE(p_dev, false, "MCP command rc = %d\n", rc);
 
-	p_dev->mcp_nvm_resp = params.nvm_common.resp;
+	p_dev->mcp_nvm_resp = resp;
 	ecore_ptt_release(p_hwfn, p_ptt);
 
 	return rc;
@@ -2599,14 +2567,12 @@ enum _ecore_status_t ecore_mcp_phy_read(struct ecore_dev *p_dev, u32 cmd,
 enum _ecore_status_t ecore_mcp_nvm_resp(struct ecore_dev *p_dev, u8 *p_buf)
 {
 	struct ecore_hwfn *p_hwfn = ECORE_LEADING_HWFN(p_dev);
-	struct ecore_mcp_nvm_params params;
 	struct ecore_ptt *p_ptt;
 
 	p_ptt = ecore_ptt_acquire(p_hwfn);
 	if (!p_ptt)
 		return ECORE_BUSY;
 
-	OSAL_MEMSET(&params, 0, sizeof(struct ecore_mcp_nvm_params));
 	OSAL_MEMCPY(p_buf, &p_dev->mcp_nvm_resp, sizeof(p_dev->mcp_nvm_resp));
 	ecore_ptt_release(p_hwfn, p_ptt);
 
@@ -2616,19 +2582,16 @@ enum _ecore_status_t ecore_mcp_nvm_resp(struct ecore_dev *p_dev, u8 *p_buf)
 enum _ecore_status_t ecore_mcp_nvm_del_file(struct ecore_dev *p_dev, u32 addr)
 {
 	struct ecore_hwfn *p_hwfn = ECORE_LEADING_HWFN(p_dev);
-	struct ecore_mcp_nvm_params params;
 	struct ecore_ptt *p_ptt;
+	u32 resp, param;
 	enum _ecore_status_t rc;
 
 	p_ptt = ecore_ptt_acquire(p_hwfn);
 	if (!p_ptt)
 		return ECORE_BUSY;
-	OSAL_MEMSET(&params, 0, sizeof(struct ecore_mcp_nvm_params));
-	params.type = ECORE_MCP_CMD;
-	params.nvm_common.cmd = DRV_MSG_CODE_NVM_DEL_FILE;
-	params.nvm_common.offset = addr;
-	rc = ecore_mcp_nvm_command(p_hwfn, p_ptt, &params);
-	p_dev->mcp_nvm_resp = params.nvm_common.resp;
+	rc = ecore_mcp_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_NVM_DEL_FILE, addr,
+			   &resp, &param);
+	p_dev->mcp_nvm_resp = resp;
 	ecore_ptt_release(p_hwfn, p_ptt);
 
 	return rc;
@@ -2638,19 +2601,16 @@ enum _ecore_status_t ecore_mcp_nvm_put_file_begin(struct ecore_dev *p_dev,
 						  u32 addr)
 {
 	struct ecore_hwfn *p_hwfn = ECORE_LEADING_HWFN(p_dev);
-	struct ecore_mcp_nvm_params params;
 	struct ecore_ptt *p_ptt;
+	u32 resp, param;
 	enum _ecore_status_t rc;
 
 	p_ptt = ecore_ptt_acquire(p_hwfn);
 	if (!p_ptt)
 		return ECORE_BUSY;
-	OSAL_MEMSET(&params, 0, sizeof(struct ecore_mcp_nvm_params));
-	params.type = ECORE_MCP_CMD;
-	params.nvm_common.cmd = DRV_MSG_CODE_NVM_PUT_FILE_BEGIN;
-	params.nvm_common.offset = addr;
-	rc = ecore_mcp_nvm_command(p_hwfn, p_ptt, &params);
-	p_dev->mcp_nvm_resp = params.nvm_common.resp;
+	rc = ecore_mcp_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_NVM_PUT_FILE_BEGIN, addr,
+			   &resp, &param);
+	p_dev->mcp_nvm_resp = resp;
 	ecore_ptt_release(p_hwfn, p_ptt);
 
 	return rc;
@@ -2662,37 +2622,57 @@ enum _ecore_status_t ecore_mcp_nvm_put_file_begin(struct ecore_dev *p_dev,
 enum _ecore_status_t ecore_mcp_nvm_write(struct ecore_dev *p_dev, u32 cmd,
 					 u32 addr, u8 *p_buf, u32 len)
 {
+	u32 buf_idx, buf_size, nvm_cmd, nvm_offset, resp, param;
 	struct ecore_hwfn *p_hwfn = ECORE_LEADING_HWFN(p_dev);
 	enum _ecore_status_t rc = ECORE_INVAL;
-	struct ecore_mcp_nvm_params params;
 	struct ecore_ptt *p_ptt;
-	u32 buf_idx, buf_size;
 
 	p_ptt = ecore_ptt_acquire(p_hwfn);
 	if (!p_ptt)
 		return ECORE_BUSY;
 
-	OSAL_MEMSET(&params, 0, sizeof(struct ecore_mcp_nvm_params));
-	params.type = ECORE_MCP_NVM_WR;
-	if (cmd == ECORE_PUT_FILE_DATA)
-		params.nvm_common.cmd = DRV_MSG_CODE_NVM_PUT_FILE_DATA;
-	else
-		params.nvm_common.cmd = DRV_MSG_CODE_NVM_WRITE_NVRAM;
+	switch (cmd) {
+	case ECORE_PUT_FILE_DATA:
+		nvm_cmd = DRV_MSG_CODE_NVM_PUT_FILE_DATA;
+		break;
+	case ECORE_NVM_WRITE_NVRAM:
+		nvm_cmd = DRV_MSG_CODE_NVM_WRITE_NVRAM;
+		break;
+	case ECORE_EXT_PHY_FW_UPGRADE:
+		nvm_cmd = DRV_MSG_CODE_EXT_PHY_FW_UPGRADE;
+		break;
+	default:
+		DP_NOTICE(p_hwfn, true, "Invalid nvm write command 0x%x\n",
+			  cmd);
+		rc = ECORE_INVAL;
+		goto out;
+	}
+
 	buf_idx = 0;
 	while (buf_idx < len) {
 		buf_size = OSAL_MIN_T(u32, (len - buf_idx),
 				      MCP_DRV_NVM_BUF_LEN);
-		params.nvm_common.offset = ((buf_size <<
-					     DRV_MB_PARAM_NVM_LEN_SHIFT)
-					    | addr) + buf_idx;
-		params.nvm_wr.buf_size = buf_size;
-		params.nvm_wr.buf = (u32 *)&p_buf[buf_idx];
-		rc = ecore_mcp_nvm_command(p_hwfn, p_ptt, &params);
-		if (rc != ECORE_SUCCESS ||
-		    ((params.nvm_common.resp != FW_MSG_CODE_NVM_OK) &&
-		     (params.nvm_common.resp !=
-		      FW_MSG_CODE_NVM_PUT_FILE_FINISH_OK)))
-			DP_NOTICE(p_dev, false, "MCP command rc = %d\n", rc);
+		nvm_offset = ((buf_size << DRV_MB_PARAM_NVM_LEN_SHIFT) | addr) +
+				buf_idx;
+		rc = ecore_mcp_nvm_wr_cmd(p_hwfn, p_ptt, nvm_cmd, nvm_offset,
+					  &resp, &param, buf_size,
+					  (u32 *)&p_buf[buf_idx]);
+		if (rc != ECORE_SUCCESS) {
+			DP_NOTICE(p_dev, false,
+				  "ecore_mcp_nvm_write() failed, rc = %d\n",
+				  rc);
+			resp = FW_MSG_CODE_ERROR;
+			break;
+		}
+
+		if (resp != FW_MSG_CODE_OK &&
+		    resp != FW_MSG_CODE_NVM_OK &&
+		    resp != FW_MSG_CODE_NVM_PUT_FILE_FINISH_OK) {
+			DP_NOTICE(p_dev, false,
+				  "nvm write failed, resp = 0x%08x\n", resp);
+			rc = ECORE_UNKNOWN_ERROR;
+			break;
+		}
 
 		/* This can be a lengthy process, and it's possible scheduler
 		 * isn't preemptible. Sleep a bit to prevent CPU hogging.
@@ -2704,7 +2684,8 @@ enum _ecore_status_t ecore_mcp_nvm_write(struct ecore_dev *p_dev, u32 cmd,
 		buf_idx += buf_size;
 	}
 
-	p_dev->mcp_nvm_resp = params.nvm_common.resp;
+	p_dev->mcp_nvm_resp = resp;
+out:
 	ecore_ptt_release(p_hwfn, p_ptt);
 
 	return rc;
@@ -2714,25 +2695,21 @@ enum _ecore_status_t ecore_mcp_phy_write(struct ecore_dev *p_dev, u32 cmd,
 					 u32 addr, u8 *p_buf, u32 len)
 {
 	struct ecore_hwfn *p_hwfn = ECORE_LEADING_HWFN(p_dev);
-	struct ecore_mcp_nvm_params params;
 	struct ecore_ptt *p_ptt;
+	u32 resp, param, nvm_cmd;
 	enum _ecore_status_t rc;
 
 	p_ptt = ecore_ptt_acquire(p_hwfn);
 	if (!p_ptt)
 		return ECORE_BUSY;
 
-	OSAL_MEMSET(&params, 0, sizeof(struct ecore_mcp_nvm_params));
-	params.type = ECORE_MCP_NVM_WR;
-	params.nvm_wr.buf_size = len;
-	params.nvm_common.cmd = (cmd == ECORE_PHY_CORE_WRITE) ?
-	    DRV_MSG_CODE_PHY_CORE_WRITE : DRV_MSG_CODE_PHY_RAW_WRITE;
-	params.nvm_common.offset = addr;
-	params.nvm_wr.buf = (u32 *)p_buf;
-	rc = ecore_mcp_nvm_command(p_hwfn, p_ptt, &params);
+	nvm_cmd = (cmd == ECORE_PHY_CORE_WRITE) ?  DRV_MSG_CODE_PHY_CORE_WRITE :
+			DRV_MSG_CODE_PHY_RAW_WRITE;
+	rc = ecore_mcp_nvm_wr_cmd(p_hwfn, p_ptt, nvm_cmd, addr,
+				  &resp, &param, len, (u32 *)p_buf);
 	if (rc != ECORE_SUCCESS)
 		DP_NOTICE(p_dev, false, "MCP command rc = %d\n", rc);
-	p_dev->mcp_nvm_resp = params.nvm_common.resp;
+	p_dev->mcp_nvm_resp = resp;
 	ecore_ptt_release(p_hwfn, p_ptt);
 
 	return rc;
@@ -2742,20 +2719,17 @@ enum _ecore_status_t ecore_mcp_nvm_set_secure_mode(struct ecore_dev *p_dev,
 						   u32 addr)
 {
 	struct ecore_hwfn *p_hwfn = ECORE_LEADING_HWFN(p_dev);
-	struct ecore_mcp_nvm_params params;
 	struct ecore_ptt *p_ptt;
+	u32 resp, param;
 	enum _ecore_status_t rc;
 
 	p_ptt = ecore_ptt_acquire(p_hwfn);
 	if (!p_ptt)
 		return ECORE_BUSY;
 
-	OSAL_MEMSET(&params, 0, sizeof(struct ecore_mcp_nvm_params));
-	params.type = ECORE_MCP_CMD;
-	params.nvm_common.cmd = DRV_MSG_CODE_SET_SECURE_MODE;
-	params.nvm_common.offset = addr;
-	rc = ecore_mcp_nvm_command(p_hwfn, p_ptt, &params);
-	p_dev->mcp_nvm_resp = params.nvm_common.resp;
+	rc = ecore_mcp_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_SET_SECURE_MODE, addr,
+			   &resp, &param);
+	p_dev->mcp_nvm_resp = resp;
 	ecore_ptt_release(p_hwfn, p_ptt);
 
 	return rc;
@@ -2766,42 +2740,37 @@ enum _ecore_status_t ecore_mcp_phy_sfp_read(struct ecore_hwfn *p_hwfn,
 					    u32 port, u32 addr, u32 offset,
 					    u32 len, u8 *p_buf)
 {
-	struct ecore_mcp_nvm_params params;
+	u32 bytes_left, bytes_to_copy, buf_size, nvm_offset;
+	u32 resp, param;
 	enum _ecore_status_t rc;
-	u32 bytes_left, bytes_to_copy, buf_size;
 
-	OSAL_MEMSET(&params, 0, sizeof(struct ecore_mcp_nvm_params));
-	params.nvm_common.offset =
-		(port << DRV_MB_PARAM_TRANSCEIVER_PORT_SHIFT) |
-		(addr << DRV_MB_PARAM_TRANSCEIVER_I2C_ADDRESS_SHIFT);
+	nvm_offset = (port << DRV_MB_PARAM_TRANSCEIVER_PORT_SHIFT) |
+			(addr << DRV_MB_PARAM_TRANSCEIVER_I2C_ADDRESS_SHIFT);
 	addr = offset;
 	offset = 0;
 	bytes_left = len;
-	params.type = ECORE_MCP_NVM_RD;
-	params.nvm_rd.buf_size = &buf_size;
-	params.nvm_common.cmd = DRV_MSG_CODE_TRANSCEIVER_READ;
 	while (bytes_left > 0) {
 		bytes_to_copy = OSAL_MIN_T(u32, bytes_left,
 					   MAX_I2C_TRANSACTION_SIZE);
-		params.nvm_rd.buf = (u32 *)(p_buf + offset);
-		params.nvm_common.offset &=
-			(DRV_MB_PARAM_TRANSCEIVER_I2C_ADDRESS_MASK |
-			 DRV_MB_PARAM_TRANSCEIVER_PORT_MASK);
-		params.nvm_common.offset |=
-			((addr + offset) <<
-			 DRV_MB_PARAM_TRANSCEIVER_OFFSET_SHIFT);
-		params.nvm_common.offset |=
-			(bytes_to_copy << DRV_MB_PARAM_TRANSCEIVER_SIZE_SHIFT);
-		rc = ecore_mcp_nvm_command(p_hwfn, p_ptt, &params);
-		if ((params.nvm_common.resp & FW_MSG_CODE_MASK) ==
+		nvm_offset &= (DRV_MB_PARAM_TRANSCEIVER_I2C_ADDRESS_MASK |
+			       DRV_MB_PARAM_TRANSCEIVER_PORT_MASK);
+		nvm_offset |= ((addr + offset) <<
+				DRV_MB_PARAM_TRANSCEIVER_OFFSET_SHIFT);
+		nvm_offset |= (bytes_to_copy <<
+			       DRV_MB_PARAM_TRANSCEIVER_SIZE_SHIFT);
+		rc = ecore_mcp_nvm_rd_cmd(p_hwfn, p_ptt,
+					  DRV_MSG_CODE_TRANSCEIVER_READ,
+					  nvm_offset, &resp, &param, &buf_size,
+					  (u32 *)(p_buf + offset));
+		if ((resp & FW_MSG_CODE_MASK) ==
 		    FW_MSG_CODE_TRANSCEIVER_NOT_PRESENT) {
 			return ECORE_NODEV;
-		} else if ((params.nvm_common.resp & FW_MSG_CODE_MASK) !=
+		} else if ((resp & FW_MSG_CODE_MASK) !=
 			   FW_MSG_CODE_TRANSCEIVER_DIAG_OK)
 			return ECORE_UNKNOWN_ERROR;
 
-		offset += *params.nvm_rd.buf_size;
-		bytes_left -= *params.nvm_rd.buf_size;
+		offset += buf_size;
+		bytes_left -= buf_size;
 	}
 
 	return ECORE_SUCCESS;
@@ -2812,35 +2781,28 @@ enum _ecore_status_t ecore_mcp_phy_sfp_write(struct ecore_hwfn *p_hwfn,
 					     u32 port, u32 addr, u32 offset,
 					     u32 len, u8 *p_buf)
 {
-	struct ecore_mcp_nvm_params params;
+	u32 buf_idx, buf_size, nvm_offset, resp, param;
 	enum _ecore_status_t rc;
-	u32 buf_idx, buf_size;
 
-	OSAL_MEMSET(&params, 0, sizeof(struct ecore_mcp_nvm_params));
-	params.nvm_common.offset =
-		(port << DRV_MB_PARAM_TRANSCEIVER_PORT_SHIFT) |
-		(addr << DRV_MB_PARAM_TRANSCEIVER_I2C_ADDRESS_SHIFT);
-	params.type = ECORE_MCP_NVM_WR;
-	params.nvm_common.cmd = DRV_MSG_CODE_TRANSCEIVER_WRITE;
+	nvm_offset = (port << DRV_MB_PARAM_TRANSCEIVER_PORT_SHIFT) |
+			(addr << DRV_MB_PARAM_TRANSCEIVER_I2C_ADDRESS_SHIFT);
 	buf_idx = 0;
 	while (buf_idx < len) {
 		buf_size = OSAL_MIN_T(u32, (len - buf_idx),
 				      MAX_I2C_TRANSACTION_SIZE);
-		params.nvm_common.offset &=
-			(DRV_MB_PARAM_TRANSCEIVER_I2C_ADDRESS_MASK |
-			 DRV_MB_PARAM_TRANSCEIVER_PORT_MASK);
-		params.nvm_common.offset |=
-			((offset + buf_idx) <<
-			 DRV_MB_PARAM_TRANSCEIVER_OFFSET_SHIFT);
-		params.nvm_common.offset |=
-			(buf_size << DRV_MB_PARAM_TRANSCEIVER_SIZE_SHIFT);
-		params.nvm_wr.buf_size = buf_size;
-		params.nvm_wr.buf = (u32 *)&p_buf[buf_idx];
-		rc = ecore_mcp_nvm_command(p_hwfn, p_ptt, &params);
-		if ((params.nvm_common.resp & FW_MSG_CODE_MASK) ==
+		nvm_offset &= (DRV_MB_PARAM_TRANSCEIVER_I2C_ADDRESS_MASK |
+				 DRV_MB_PARAM_TRANSCEIVER_PORT_MASK);
+		nvm_offset |= ((offset + buf_idx) <<
+				 DRV_MB_PARAM_TRANSCEIVER_OFFSET_SHIFT);
+		nvm_offset |= (buf_size << DRV_MB_PARAM_TRANSCEIVER_SIZE_SHIFT);
+		rc = ecore_mcp_nvm_wr_cmd(p_hwfn, p_ptt,
+					  DRV_MSG_CODE_TRANSCEIVER_WRITE,
+					  nvm_offset, &resp, &param, buf_size,
+					  (u32 *)&p_buf[buf_idx]);
+		if ((resp & FW_MSG_CODE_MASK) ==
 		    FW_MSG_CODE_TRANSCEIVER_NOT_PRESENT) {
 			return ECORE_NODEV;
-		} else if ((params.nvm_common.resp & FW_MSG_CODE_MASK) !=
+		} else if ((resp & FW_MSG_CODE_MASK) !=
 			   FW_MSG_CODE_TRANSCEIVER_DIAG_OK)
 			return ECORE_UNKNOWN_ERROR;
 
@@ -2988,26 +2950,19 @@ enum _ecore_status_t ecore_mcp_bist_nvm_test_get_image_att(
 	struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 	struct bist_nvm_image_att *p_image_att, u32 image_index)
 {
-	struct ecore_mcp_nvm_params params;
+	u32 buf_size, nvm_offset, resp, param;
 	enum _ecore_status_t rc;
-	u32 buf_size;
 
-	OSAL_MEMSET(&params, 0, sizeof(struct ecore_mcp_nvm_params));
-	params.nvm_common.offset = (DRV_MB_PARAM_BIST_NVM_TEST_IMAGE_BY_INDEX <<
+	nvm_offset = (DRV_MB_PARAM_BIST_NVM_TEST_IMAGE_BY_INDEX <<
 				    DRV_MB_PARAM_BIST_TEST_INDEX_SHIFT);
-	params.nvm_common.offset |= (image_index <<
-				    DRV_MB_PARAM_BIST_TEST_IMAGE_INDEX_SHIFT);
-
-	params.type = ECORE_MCP_NVM_RD;
-	params.nvm_rd.buf_size = &buf_size;
-	params.nvm_common.cmd = DRV_MSG_CODE_BIST_TEST;
-	params.nvm_rd.buf = (u32 *)p_image_att;
-
-	rc = ecore_mcp_nvm_command(p_hwfn, p_ptt, &params);
+	nvm_offset |= (image_index << DRV_MB_PARAM_BIST_TEST_IMAGE_INDEX_SHIFT);
+	rc = ecore_mcp_nvm_rd_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_BIST_TEST,
+				  nvm_offset, &resp, &param, &buf_size,
+				  (u32 *)p_image_att);
 	if (rc != ECORE_SUCCESS)
 		return rc;
 
-	if (((params.nvm_common.resp & FW_MSG_CODE_MASK) != FW_MSG_CODE_OK) ||
+	if (((resp & FW_MSG_CODE_MASK) != FW_MSG_CODE_OK) ||
 	    (p_image_att->return_code != 1))
 		rc = ECORE_UNKNOWN_ERROR;
 
@@ -3058,23 +3013,17 @@ enum _ecore_status_t ecore_mcp_get_mba_versions(
 	struct ecore_ptt *p_ptt,
 	struct ecore_mba_vers *p_mba_vers)
 {
-	struct ecore_mcp_nvm_params params;
+	u32 buf_size, resp, param;
 	enum _ecore_status_t rc;
-	u32 buf_size;
 
-	OSAL_MEM_ZERO(&params, sizeof(params));
-	params.type = ECORE_MCP_NVM_RD;
-	params.nvm_common.cmd = DRV_MSG_CODE_GET_MBA_VERSION;
-	params.nvm_common.offset = 0;
-	params.nvm_rd.buf = &p_mba_vers->mba_vers[0];
-	params.nvm_rd.buf_size = &buf_size;
-	rc = ecore_mcp_nvm_command(p_hwfn, p_ptt, &params);
+	rc = ecore_mcp_nvm_rd_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_GET_MBA_VERSION,
+				  0, &resp, &param, &buf_size,
+				  &p_mba_vers->mba_vers[0]);
 
 	if (rc != ECORE_SUCCESS)
 		return rc;
 
-	if ((params.nvm_common.resp & FW_MSG_CODE_MASK) !=
-	    FW_MSG_CODE_NVM_OK)
+	if ((resp & FW_MSG_CODE_MASK) != FW_MSG_CODE_NVM_OK)
 		rc = ECORE_UNKNOWN_ERROR;
 
 	if (buf_size != MCP_DRV_NVM_BUF_LEN)

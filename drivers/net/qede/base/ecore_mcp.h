@@ -263,56 +263,6 @@ enum _ecore_status_t ecore_mcp_reset(struct ecore_hwfn *p_hwfn,
 				     struct ecore_ptt *p_ptt);
 
 /**
- * @brief - Sends an NVM write command request to the MFW with
- *          payload.
- *
- * @param p_hwfn
- * @param p_ptt
- * @param cmd - Command: Either DRV_MSG_CODE_NVM_WRITE_NVRAM or
- *            DRV_MSG_CODE_NVM_PUT_FILE_DATA
- * @param param - [0:23] - Offset [24:31] - Size
- * @param o_mcp_resp - MCP response
- * @param o_mcp_param - MCP response param
- * @param i_txn_size -  Buffer size
- * @param i_buf - Pointer to the buffer
- *
- * @param return ECORE_SUCCESS upon success.
- */
-enum _ecore_status_t ecore_mcp_nvm_wr_cmd(struct ecore_hwfn *p_hwfn,
-					  struct ecore_ptt *p_ptt,
-					  u32 cmd,
-					  u32 param,
-					  u32 *o_mcp_resp,
-					  u32 *o_mcp_param,
-					  u32 i_txn_size,
-					  u32 *i_buf);
-
-/**
- * @brief - Sends an NVM read command request to the MFW to get
- *        a buffer.
- *
- * @param p_hwfn
- * @param p_ptt
- * @param cmd - Command: DRV_MSG_CODE_NVM_GET_FILE_DATA or
- *            DRV_MSG_CODE_NVM_READ_NVRAM commands
- * @param param - [0:23] - Offset [24:31] - Size
- * @param o_mcp_resp - MCP response
- * @param o_mcp_param - MCP response param
- * @param o_txn_size -  Buffer size output
- * @param o_buf - Pointer to the buffer returned by the MFW.
- *
- * @param return ECORE_SUCCESS upon success.
- */
-enum _ecore_status_t ecore_mcp_nvm_rd_cmd(struct ecore_hwfn *p_hwfn,
-					  struct ecore_ptt *p_ptt,
-					  u32 cmd,
-					  u32 param,
-					  u32 *o_mcp_resp,
-					  u32 *o_mcp_param,
-					  u32 *o_txn_size,
-					  u32 *o_buf);
-
-/**
  * @brief indicates whether the MFW objects [under mcp_info] are accessible
  *
  * @param p_hwfn
