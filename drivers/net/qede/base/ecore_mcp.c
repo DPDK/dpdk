@@ -1068,8 +1068,6 @@ enum _ecore_status_t ecore_mcp_load_done(struct ecore_hwfn *p_hwfn,
 		return rc;
 	}
 
-#define FW_MB_PARAM_LOAD_DONE_DID_EFUSE_ERROR     (1 << 0)
-
 	/* Check if there is a DID mismatch between nvm-cfg/efuse */
 	if (param & FW_MB_PARAM_LOAD_DONE_DID_EFUSE_ERROR)
 		DP_NOTICE(p_hwfn, false,

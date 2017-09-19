@@ -1728,6 +1728,8 @@ struct public_drv_mb {
 /* MFW supports EEE */
 #define FW_MB_PARAM_FEATURE_SUPPORT_EEE         0x00000002
 
+#define FW_MB_PARAM_LOAD_DONE_DID_EFUSE_ERROR	(1 << 0)
+
 	u32 drv_pulse_mb;
 #define DRV_PULSE_SEQ_MASK                      0x00007fff
 #define DRV_PULSE_SYSTEM_TIME_MASK              0xffff0000
