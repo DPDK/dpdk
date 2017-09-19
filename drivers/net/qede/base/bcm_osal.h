@@ -345,8 +345,8 @@ u32 qede_find_first_zero_bit(unsigned long *, u32);
 #define OSAL_IOV_VF_VPORT_UPDATE(hwfn, vfid, p_params, p_mask) 0
 #define OSAL_VF_UPDATE_ACQUIRE_RESC_RESP(_dev_p, _resc_resp) 0
 #define OSAL_IOV_GET_OS_TYPE() 0
-#define OSAL_IOV_VF_MSG_TYPE(hwfn, vfid, vf_msg_type) 0
-#define OSAL_IOV_PF_RESP_TYPE(hwfn, vfid, pf_resp_type) 0
+#define OSAL_IOV_VF_MSG_TYPE(hwfn, vfid, vf_msg_type) nothing
+#define OSAL_IOV_PF_RESP_TYPE(hwfn, vfid, pf_resp_type) nothing
 
 u32 qede_unzip_data(struct ecore_hwfn *p_hwfn, u32 input_len,
 		   u8 *input_buf, u32 max_size, u8 *unzip_buf);
@@ -434,7 +434,7 @@ u32 qede_crc32(u32 crc, u8 *ptr, u32 length);
 #define OSAL_CRC32(crc, buf, length) qede_crc32(crc, buf, length)
 #define OSAL_CRC8_POPULATE(table, polynomial) nothing
 #define OSAL_CRC8(table, pdata, nbytes, crc) 0
-#define OSAL_MFW_TLV_REQ(p_hwfn) (0)
+#define OSAL_MFW_TLV_REQ(p_hwfn) nothing
 #define OSAL_MFW_FILL_TLV_DATA(type, buf, data) (0)
 #define OSAL_PF_VALIDATE_MODIFY_TUNN_CONFIG(p_hwfn, mask, b_update, tunn) 0
 #endif /* __BCM_OSAL_H */

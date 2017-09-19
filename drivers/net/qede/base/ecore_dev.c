@@ -121,7 +121,9 @@ void ecore_init_struct(struct ecore_dev *p_dev)
 		p_hwfn->my_id = i;
 		p_hwfn->b_active = false;
 
+#ifdef CONFIG_ECORE_LOCK_ALLOC
 		OSAL_MUTEX_ALLOC(p_hwfn, &p_hwfn->dmae_info.mutex);
+#endif
 		OSAL_MUTEX_INIT(&p_hwfn->dmae_info.mutex);
 	}
 
@@ -3862,7 +3864,9 @@ void ecore_hw_remove(struct ecore_dev *p_dev)
 		ecore_hw_hwfn_free(p_hwfn);
 		ecore_mcp_free(p_hwfn);
 
+#ifdef CONFIG_ECORE_LOCK_ALLOC
 		OSAL_MUTEX_DEALLOC(&p_hwfn->dmae_info.mutex);
+#endif
 	}
 
 	ecore_iov_free_hw_info(p_dev);

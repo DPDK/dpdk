@@ -453,7 +453,9 @@ enum _ecore_status_t ecore_vf_hw_prepare(struct ecore_hwfn *p_hwfn)
 		   p_iov->bulletin.p_virt, (unsigned long)p_iov->bulletin.phys,
 		   p_iov->bulletin.size);
 
+#ifdef CONFIG_ECORE_LOCK_ALLOC
 	OSAL_MUTEX_ALLOC(p_hwfn, &p_iov->mutex);
+#endif
 	OSAL_MUTEX_INIT(&p_iov->mutex);
 
 	p_hwfn->vf_iov_info = p_iov;
@@ -1348,6 +1350,10 @@ enum _ecore_status_t ecore_vf_pf_release(struct ecore_hwfn *p_hwfn)
 				       p_iov->bulletin.p_virt,
 				       p_iov->bulletin.phys, size);
 	}
+
+#ifdef CONFIG_ECORE_LOCK_ALLOC
+	OSAL_MUTEX_DEALLOC(&p_iov->mutex);
+#endif
 
 	OSAL_FREE(p_hwfn->p_dev, p_hwfn->vf_iov_info);
 

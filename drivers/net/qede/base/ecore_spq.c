@@ -536,7 +536,9 @@ enum _ecore_status_t ecore_spq_alloc(struct ecore_hwfn *p_hwfn)
 	p_spq->p_virt = p_virt;
 	p_spq->p_phys = p_phys;
 
+#ifdef CONFIG_ECORE_LOCK_ALLOC
 	OSAL_SPIN_LOCK_ALLOC(p_hwfn, &p_spq->lock);
+#endif
 
 	p_hwfn->p_spq = p_spq;
 	return ECORE_SUCCESS;
@@ -565,7 +567,10 @@ void ecore_spq_free(struct ecore_hwfn *p_hwfn)
 	}
 
 	ecore_chain_free(p_hwfn->p_dev, &p_spq->chain);
+#ifdef CONFIG_ECORE_LOCK_ALLOC
 	OSAL_SPIN_LOCK_DEALLOC(&p_spq->lock);
+#endif
+
 	OSAL_FREE(p_hwfn->p_dev, p_spq);
 }
 

@@ -96,13 +96,80 @@ void ecore_mcp_read_mb(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt)
 	}
 }
 
+struct ecore_mcp_cmd_elem {
+	osal_list_entry_t list;
+	struct ecore_mcp_mb_params *p_mb_params;
+	u16 expected_seq_num;
+	bool b_is_completed;
+};
+
+/* Must be called while cmd_lock is acquired */
+static struct ecore_mcp_cmd_elem *
+ecore_mcp_cmd_add_elem(struct ecore_hwfn *p_hwfn,
+		       struct ecore_mcp_mb_params *p_mb_params,
+		       u16 expected_seq_num)
+{
+	struct ecore_mcp_cmd_elem *p_cmd_elem = OSAL_NULL;
+
+	p_cmd_elem = OSAL_ZALLOC(p_hwfn->p_dev, GFP_ATOMIC,
+				 sizeof(*p_cmd_elem));
+	if (!p_cmd_elem) {
+		DP_NOTICE(p_hwfn, false,
+			  "Failed to allocate `struct ecore_mcp_cmd_elem'\n");
+		goto out;
+	}
+
+	p_cmd_elem->p_mb_params = p_mb_params;
+	p_cmd_elem->expected_seq_num = expected_seq_num;
+	OSAL_LIST_PUSH_HEAD(&p_cmd_elem->list, &p_hwfn->mcp_info->cmd_list);
+out:
+	return p_cmd_elem;
+}
+
+/* Must be called while cmd_lock is acquired */
+static void ecore_mcp_cmd_del_elem(struct ecore_hwfn *p_hwfn,
+				   struct ecore_mcp_cmd_elem *p_cmd_elem)
+{
+	OSAL_LIST_REMOVE_ENTRY(&p_cmd_elem->list, &p_hwfn->mcp_info->cmd_list);
+	OSAL_FREE(p_hwfn->p_dev, p_cmd_elem);
+}
+
+/* Must be called while cmd_lock is acquired */
+static struct ecore_mcp_cmd_elem *
+ecore_mcp_cmd_get_elem(struct ecore_hwfn *p_hwfn, u16 seq_num)
+{
+	struct ecore_mcp_cmd_elem *p_cmd_elem = OSAL_NULL;
+
+	OSAL_LIST_FOR_EACH_ENTRY(p_cmd_elem, &p_hwfn->mcp_info->cmd_list, list,
+				 struct ecore_mcp_cmd_elem) {
+		if (p_cmd_elem->expected_seq_num == seq_num)
+			return p_cmd_elem;
+	}
+
+	return OSAL_NULL;
+}
+
 enum _ecore_status_t ecore_mcp_free(struct ecore_hwfn *p_hwfn)
 {
 	if (p_hwfn->mcp_info) {
+		struct ecore_mcp_cmd_elem *p_cmd_elem = OSAL_NULL, *p_tmp;
+
+		OSAL_SPIN_LOCK(&p_hwfn->mcp_info->cmd_lock);
+		OSAL_LIST_FOR_EACH_ENTRY_SAFE(p_cmd_elem, p_tmp,
+					      &p_hwfn->mcp_info->cmd_list, list,
+					      struct ecore_mcp_cmd_elem) {
+			ecore_mcp_cmd_del_elem(p_hwfn, p_cmd_elem);
+		}
+		OSAL_SPIN_UNLOCK(&p_hwfn->mcp_info->cmd_lock);
+
 		OSAL_FREE(p_hwfn->p_dev, p_hwfn->mcp_info->mfw_mb_cur);
 		OSAL_FREE(p_hwfn->p_dev, p_hwfn->mcp_info->mfw_mb_shadow);
-		OSAL_SPIN_LOCK_DEALLOC(&p_hwfn->mcp_info->lock);
+#ifdef CONFIG_ECORE_LOCK_ALLOC
+		OSAL_SPIN_LOCK_DEALLOC(&p_hwfn->mcp_info->cmd_lock);
+		OSAL_SPIN_LOCK_DEALLOC(&p_hwfn->mcp_info->link_lock);
+#endif
 	}
+
 	OSAL_FREE(p_hwfn->p_dev, p_hwfn->mcp_info);
 
 	return ECORE_SUCCESS;
@@ -157,8 +224,7 @@ static enum _ecore_status_t ecore_load_mcp_offsets(struct ecore_hwfn *p_hwfn,
 	p_info->drv_pulse_seq = DRV_MB_RD(p_hwfn, p_ptt, drv_pulse_mb) &
 	    DRV_PULSE_SEQ_MASK;
 
-	p_info->mcp_hist = (u16)ecore_rd(p_hwfn, p_ptt,
-					  MISCS_REG_GENERIC_POR_0);
+	p_info->mcp_hist = ecore_rd(p_hwfn, p_ptt, MISCS_REG_GENERIC_POR_0);
 
 	return ECORE_SUCCESS;
 }
@@ -190,9 +256,15 @@ enum _ecore_status_t ecore_mcp_cmd_init(struct ecore_hwfn *p_hwfn,
 	if (!p_info->mfw_mb_shadow || !p_info->mfw_mb_addr)
 		goto err;
 
-	/* Initialize the MFW spinlock */
-	OSAL_SPIN_LOCK_ALLOC(p_hwfn, &p_info->lock);
-	OSAL_SPIN_LOCK_INIT(&p_info->lock);
+	/* Initialize the MFW spinlocks */
+#ifdef CONFIG_ECORE_LOCK_ALLOC
+	OSAL_SPIN_LOCK_ALLOC(p_hwfn, &p_info->cmd_lock);
+	OSAL_SPIN_LOCK_ALLOC(p_hwfn, &p_info->link_lock);
+#endif
+	OSAL_SPIN_LOCK_INIT(&p_info->cmd_lock);
+	OSAL_SPIN_LOCK_INIT(&p_info->link_lock);
+
+	OSAL_LIST_INIT(&p_info->cmd_list);
 
 	return ECORE_SUCCESS;
 
@@ -202,62 +274,28 @@ err:
 	return ECORE_NOMEM;
 }
 
-/* Locks the MFW mailbox of a PF to ensure a single access.
- * The lock is achieved in most cases by holding a spinlock, causing other
- * threads to wait till a previous access is done.
- * In some cases (currently when a [UN]LOAD_REQ commands are sent), the single
- * access is achieved by setting a blocking flag, which will fail other
- * competing contexts to send their mailboxes.
- */
-static enum _ecore_status_t ecore_mcp_mb_lock(struct ecore_hwfn *p_hwfn,
-					      u32 cmd)
+static void ecore_mcp_reread_offsets(struct ecore_hwfn *p_hwfn,
+				     struct ecore_ptt *p_ptt)
 {
-	OSAL_SPIN_LOCK(&p_hwfn->mcp_info->lock);
+	u32 generic_por_0 = ecore_rd(p_hwfn, p_ptt, MISCS_REG_GENERIC_POR_0);
 
-	/* The spinlock shouldn't be acquired when the mailbox command is
-	 * [UN]LOAD_REQ, since the engine is locked by the MFW, and a parallel
-	 * pending [UN]LOAD_REQ command of another PF together with a spinlock
-	 * (i.e. interrupts are disabled) - can lead to a deadlock.
-	 * It is assumed that for a single PF, no other mailbox commands can be
-	 * sent from another context while sending LOAD_REQ, and that any
-	 * parallel commands to UNLOAD_REQ can be cancelled.
+	/* Use MCP history register to check if MCP reset occurred between init
+	 * time and now.
 	 */
-	if (cmd == DRV_MSG_CODE_LOAD_DONE || cmd == DRV_MSG_CODE_UNLOAD_DONE)
-		p_hwfn->mcp_info->block_mb_sending = false;
+	if (p_hwfn->mcp_info->mcp_hist != generic_por_0) {
+		DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
+			   "Rereading MCP offsets [mcp_hist 0x%08x, generic_por_0 0x%08x]\n",
+			   p_hwfn->mcp_info->mcp_hist, generic_por_0);
 
-	/* There's at least a single command that is sent by ecore during the
-	 * load sequence [expectation of MFW].
-	 */
-	if ((p_hwfn->mcp_info->block_mb_sending) &&
-	    (cmd != DRV_MSG_CODE_FEATURE_SUPPORT)) {
-		DP_NOTICE(p_hwfn, false,
-			  "Trying to send a MFW mailbox command [0x%x]"
-			  " in parallel to [UN]LOAD_REQ. Aborting.\n",
-			  cmd);
-		OSAL_SPIN_UNLOCK(&p_hwfn->mcp_info->lock);
-		return ECORE_BUSY;
+		ecore_load_mcp_offsets(p_hwfn, p_ptt);
+		ecore_mcp_cmd_port_init(p_hwfn, p_ptt);
 	}
-
-	if (cmd == DRV_MSG_CODE_LOAD_REQ || cmd == DRV_MSG_CODE_UNLOAD_REQ) {
-		p_hwfn->mcp_info->block_mb_sending = true;
-		OSAL_SPIN_UNLOCK(&p_hwfn->mcp_info->lock);
-	}
-
-	return ECORE_SUCCESS;
-}
-
-static void ecore_mcp_mb_unlock(struct ecore_hwfn *p_hwfn, u32 cmd)
-{
-	if (cmd != DRV_MSG_CODE_LOAD_REQ && cmd != DRV_MSG_CODE_UNLOAD_REQ)
-		OSAL_SPIN_UNLOCK(&p_hwfn->mcp_info->lock);
 }
 
 enum _ecore_status_t ecore_mcp_reset(struct ecore_hwfn *p_hwfn,
 				     struct ecore_ptt *p_ptt)
 {
-	u32 seq = ++p_hwfn->mcp_info->drv_mb_seq;
-	u32 delay = CHIP_MCP_RESP_ITER_US;
-	u32 org_mcp_reset_seq, cnt = 0;
+	u32 org_mcp_reset_seq, seq, delay = CHIP_MCP_RESP_ITER_US, cnt = 0;
 	enum _ecore_status_t rc = ECORE_SUCCESS;
 
 #ifndef ASIC_ONLY
@@ -265,15 +303,14 @@ enum _ecore_status_t ecore_mcp_reset(struct ecore_hwfn *p_hwfn,
 		delay = EMUL_MCP_RESP_ITER_US;
 #endif
 
-	/* Ensure that only a single thread is accessing the mailbox at a
-	 * certain time.
-	 */
-	rc = ecore_mcp_mb_lock(p_hwfn, DRV_MSG_CODE_MCP_RESET);
-	if (rc != ECORE_SUCCESS)
-		return rc;
+	/* Ensure that only a single thread is accessing the mailbox */
+	OSAL_SPIN_LOCK(&p_hwfn->mcp_info->cmd_lock);
+
+	org_mcp_reset_seq = ecore_rd(p_hwfn, p_ptt, MISCS_REG_GENERIC_POR_0);
 
 	/* Set drv command along with the updated sequence */
-	org_mcp_reset_seq = ecore_rd(p_hwfn, p_ptt, MISCS_REG_GENERIC_POR_0);
+	ecore_mcp_reread_offsets(p_hwfn, p_ptt);
+	seq = ++p_hwfn->mcp_info->drv_mb_seq;
 	DRV_MB_WR(p_hwfn, p_ptt, drv_mb_header, (DRV_MSG_CODE_MCP_RESET | seq));
 
 	do {
@@ -293,21 +330,218 @@ enum _ecore_status_t ecore_mcp_reset(struct ecore_hwfn *p_hwfn,
 		rc = ECORE_AGAIN;
 	}
 
-	ecore_mcp_mb_unlock(p_hwfn, DRV_MSG_CODE_MCP_RESET);
+	OSAL_SPIN_UNLOCK(&p_hwfn->mcp_info->cmd_lock);
 
 	return rc;
 }
 
-static enum _ecore_status_t ecore_do_mcp_cmd(struct ecore_hwfn *p_hwfn,
-					     struct ecore_ptt *p_ptt,
-					     u32 cmd, u32 param,
-					     u32 *o_mcp_resp,
-					     u32 *o_mcp_param)
+/* Must be called while cmd_lock is acquired */
+static bool ecore_mcp_has_pending_cmd(struct ecore_hwfn *p_hwfn)
 {
-	u32 delay = CHIP_MCP_RESP_ITER_US;
-	u32 max_retries = ECORE_DRV_MB_MAX_RETRIES;
-	u32 seq, cnt = 1, actual_mb_seq;
+	struct ecore_mcp_cmd_elem *p_cmd_elem = OSAL_NULL;
+
+	/* There is at most one pending command at a certain time, and if it
+	 * exists - it is placed at the HEAD of the list.
+	 */
+	if (!OSAL_LIST_IS_EMPTY(&p_hwfn->mcp_info->cmd_list)) {
+		p_cmd_elem = OSAL_LIST_FIRST_ENTRY(&p_hwfn->mcp_info->cmd_list,
+						   struct ecore_mcp_cmd_elem,
+						   list);
+		return !p_cmd_elem->b_is_completed;
+	}
+
+	return false;
+}
+
+/* Must be called while cmd_lock is acquired */
+static enum _ecore_status_t
+ecore_mcp_update_pending_cmd(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt)
+{
+	struct ecore_mcp_mb_params *p_mb_params;
+	struct ecore_mcp_cmd_elem *p_cmd_elem;
+	u32 mcp_resp;
+	u16 seq_num;
+
+	mcp_resp = DRV_MB_RD(p_hwfn, p_ptt, fw_mb_header);
+	seq_num = (u16)(mcp_resp & FW_MSG_SEQ_NUMBER_MASK);
+
+	/* Return if no new non-handled response has been received */
+	if (seq_num != p_hwfn->mcp_info->drv_mb_seq)
+		return ECORE_AGAIN;
+
+	p_cmd_elem = ecore_mcp_cmd_get_elem(p_hwfn, seq_num);
+	if (!p_cmd_elem) {
+		DP_ERR(p_hwfn,
+		       "Failed to find a pending mailbox cmd that expects sequence number %d\n",
+		       seq_num);
+		return ECORE_UNKNOWN_ERROR;
+	}
+
+	p_mb_params = p_cmd_elem->p_mb_params;
+
+	/* Get the MFW response along with the sequence number */
+	p_mb_params->mcp_resp = mcp_resp;
+
+	/* Get the MFW param */
+	p_mb_params->mcp_param = DRV_MB_RD(p_hwfn, p_ptt, fw_mb_param);
+
+	/* Get the union data */
+	if (p_mb_params->p_data_dst != OSAL_NULL &&
+	    p_mb_params->data_dst_size) {
+		u32 union_data_addr = p_hwfn->mcp_info->drv_mb_addr +
+				      OFFSETOF(struct public_drv_mb,
+					       union_data);
+		ecore_memcpy_from(p_hwfn, p_ptt, p_mb_params->p_data_dst,
+				  union_data_addr, p_mb_params->data_dst_size);
+	}
+
+	p_cmd_elem->b_is_completed = true;
+
+	return ECORE_SUCCESS;
+}
+
+/* Must be called while cmd_lock is acquired */
+static void __ecore_mcp_cmd_and_union(struct ecore_hwfn *p_hwfn,
+				      struct ecore_ptt *p_ptt,
+				      struct ecore_mcp_mb_params *p_mb_params,
+				      u16 seq_num)
+{
+	union drv_union_data union_data;
+	u32 union_data_addr;
+
+	/* Set the union data */
+	union_data_addr = p_hwfn->mcp_info->drv_mb_addr +
+			  OFFSETOF(struct public_drv_mb, union_data);
+	OSAL_MEM_ZERO(&union_data, sizeof(union_data));
+	if (p_mb_params->p_data_src != OSAL_NULL && p_mb_params->data_src_size)
+		OSAL_MEMCPY(&union_data, p_mb_params->p_data_src,
+			    p_mb_params->data_src_size);
+	ecore_memcpy_to(p_hwfn, p_ptt, union_data_addr, &union_data,
+			sizeof(union_data));
+
+	/* Set the drv param */
+	DRV_MB_WR(p_hwfn, p_ptt, drv_mb_param, p_mb_params->param);
+
+	/* Set the drv command along with the sequence number */
+	DRV_MB_WR(p_hwfn, p_ptt, drv_mb_header, (p_mb_params->cmd | seq_num));
+
+	DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
+		   "MFW mailbox: command 0x%08x param 0x%08x\n",
+		   (p_mb_params->cmd | seq_num), p_mb_params->param);
+}
+
+static enum _ecore_status_t
+_ecore_mcp_cmd_and_union(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
+			 struct ecore_mcp_mb_params *p_mb_params,
+			 u32 max_retries, u32 delay)
+{
+	struct ecore_mcp_cmd_elem *p_cmd_elem;
+	u32 cnt = 0;
+	u16 seq_num;
 	enum _ecore_status_t rc = ECORE_SUCCESS;
+
+	/* Wait until the mailbox is non-occupied */
+	do {
+		/* Exit the loop if there is no pending command, or if the
+		 * pending command is completed during this iteration.
+		 * The spinlock stays locked until the command is sent.
+		 */
+
+		OSAL_SPIN_LOCK(&p_hwfn->mcp_info->cmd_lock);
+
+		if (!ecore_mcp_has_pending_cmd(p_hwfn))
+			break;
+
+		rc = ecore_mcp_update_pending_cmd(p_hwfn, p_ptt);
+		if (rc == ECORE_SUCCESS)
+			break;
+		else if (rc != ECORE_AGAIN)
+			goto err;
+
+		OSAL_SPIN_UNLOCK(&p_hwfn->mcp_info->cmd_lock);
+		OSAL_UDELAY(delay);
+	} while (++cnt < max_retries);
+
+	if (cnt >= max_retries) {
+		DP_NOTICE(p_hwfn, false,
+			  "The MFW mailbox is occupied by an uncompleted command. Failed to send command 0x%08x [param 0x%08x].\n",
+			  p_mb_params->cmd, p_mb_params->param);
+		return ECORE_AGAIN;
+	}
+
+	/* Send the mailbox command */
+	ecore_mcp_reread_offsets(p_hwfn, p_ptt);
+	seq_num = ++p_hwfn->mcp_info->drv_mb_seq;
+	p_cmd_elem = ecore_mcp_cmd_add_elem(p_hwfn, p_mb_params, seq_num);
+	if (!p_cmd_elem) {
+		rc = ECORE_NOMEM;
+		goto err;
+	}
+
+	__ecore_mcp_cmd_and_union(p_hwfn, p_ptt, p_mb_params, seq_num);
+	OSAL_SPIN_UNLOCK(&p_hwfn->mcp_info->cmd_lock);
+
+	/* Wait for the MFW response */
+	do {
+		/* Exit the loop if the command is already completed, or if the
+		 * command is completed during this iteration.
+		 * The spinlock stays locked until the list element is removed.
+		 */
+
+		OSAL_UDELAY(delay);
+		OSAL_SPIN_LOCK(&p_hwfn->mcp_info->cmd_lock);
+
+		if (p_cmd_elem->b_is_completed)
+			break;
+
+		rc = ecore_mcp_update_pending_cmd(p_hwfn, p_ptt);
+		if (rc == ECORE_SUCCESS)
+			break;
+		else if (rc != ECORE_AGAIN)
+			goto err;
+
+		OSAL_SPIN_UNLOCK(&p_hwfn->mcp_info->cmd_lock);
+	} while (++cnt < max_retries);
+
+	if (cnt >= max_retries) {
+		DP_NOTICE(p_hwfn, false,
+			  "The MFW failed to respond to command 0x%08x [param 0x%08x].\n",
+			  p_mb_params->cmd, p_mb_params->param);
+
+		OSAL_SPIN_LOCK(&p_hwfn->mcp_info->cmd_lock);
+		ecore_mcp_cmd_del_elem(p_hwfn, p_cmd_elem);
+		OSAL_SPIN_UNLOCK(&p_hwfn->mcp_info->cmd_lock);
+
+		ecore_hw_err_notify(p_hwfn, ECORE_HW_ERR_MFW_RESP_FAIL);
+		return ECORE_AGAIN;
+	}
+
+	ecore_mcp_cmd_del_elem(p_hwfn, p_cmd_elem);
+	OSAL_SPIN_UNLOCK(&p_hwfn->mcp_info->cmd_lock);
+
+	DP_VERBOSE(p_hwfn, ECORE_MSG_SP,
+		   "MFW mailbox: response 0x%08x param 0x%08x [after %d.%03d ms]\n",
+		   p_mb_params->mcp_resp, p_mb_params->mcp_param,
+		   (cnt * delay) / 1000, (cnt * delay) % 1000);
+
+	/* Clear the sequence number from the MFW response */
+	p_mb_params->mcp_resp &= FW_MSG_CODE_MASK;
+
+	return ECORE_SUCCESS;
+
+err:
+	OSAL_SPIN_UNLOCK(&p_hwfn->mcp_info->cmd_lock);
+	return rc;
+}
+
+static enum _ecore_status_t
+ecore_mcp_cmd_and_union(struct ecore_hwfn *p_hwfn,
+			struct ecore_ptt *p_ptt,
+			struct ecore_mcp_mb_params *p_mb_params)
+{
+	osal_size_t union_data_size = sizeof(union drv_union_data);
+	u32 max_retries = ECORE_DRV_MB_MAX_RETRIES;
+	u32 delay = CHIP_MCP_RESP_ITER_US;
 
 #ifndef ASIC_ONLY
 	if (CHIP_REV_IS_EMUL(p_hwfn->p_dev))
@@ -317,105 +551,23 @@ static enum _ecore_status_t ecore_do_mcp_cmd(struct ecore_hwfn *p_hwfn,
 		max_retries /= 10;
 #endif
 
-	/* Get actual driver mailbox sequence */
-	actual_mb_seq = DRV_MB_RD(p_hwfn, p_ptt, drv_mb_header) &
-	    DRV_MSG_SEQ_NUMBER_MASK;
-
-	/* Use MCP history register to check if MCP reset occurred between
-	 * init time and now.
-	 */
-	if (p_hwfn->mcp_info->mcp_hist !=
-	    ecore_rd(p_hwfn, p_ptt, MISCS_REG_GENERIC_POR_0)) {
-		DP_VERBOSE(p_hwfn, ECORE_MSG_SP, "Rereading MCP offsets\n");
-		ecore_load_mcp_offsets(p_hwfn, p_ptt);
-		ecore_mcp_cmd_port_init(p_hwfn, p_ptt);
-	}
-	seq = ++p_hwfn->mcp_info->drv_mb_seq;
-
-	/* Set drv param */
-	DRV_MB_WR(p_hwfn, p_ptt, drv_mb_param, param);
-
-	/* Set drv command along with the updated sequence */
-	DRV_MB_WR(p_hwfn, p_ptt, drv_mb_header, (cmd | seq));
-
-	do {
-		/* Wait for MFW response */
-		OSAL_UDELAY(delay);
-		*o_mcp_resp = DRV_MB_RD(p_hwfn, p_ptt, fw_mb_header);
-
-		/* Give the FW up to 5 second (500*10ms) */
-	} while ((seq != (*o_mcp_resp & FW_MSG_SEQ_NUMBER_MASK)) &&
-		 (cnt++ < max_retries));
-
-	/* Is this a reply to our command? */
-	if (seq == (*o_mcp_resp & FW_MSG_SEQ_NUMBER_MASK)) {
-		*o_mcp_resp &= FW_MSG_CODE_MASK;
-		/* Get the MCP param */
-		*o_mcp_param = DRV_MB_RD(p_hwfn, p_ptt, fw_mb_param);
-	} else {
-		/* FW BUG! */
-		DP_ERR(p_hwfn, "MFW failed to respond [cmd 0x%x param 0x%x]\n",
-		       cmd, param);
-		*o_mcp_resp = 0;
-		rc = ECORE_AGAIN;
-		ecore_hw_err_notify(p_hwfn, ECORE_HW_ERR_MFW_RESP_FAIL);
-	}
-	return rc;
-}
-
-static enum _ecore_status_t
-ecore_mcp_cmd_and_union(struct ecore_hwfn *p_hwfn,
-			struct ecore_ptt *p_ptt,
-			struct ecore_mcp_mb_params *p_mb_params)
-{
-	union drv_union_data union_data;
-	u32 union_data_addr;
-	enum _ecore_status_t rc;
-
 	/* MCP not initialized */
 	if (!ecore_mcp_is_init(p_hwfn)) {
 		DP_NOTICE(p_hwfn, true, "MFW is not initialized !\n");
 		return ECORE_BUSY;
 	}
 
-	if (p_mb_params->data_src_size > sizeof(union_data) ||
-	    p_mb_params->data_dst_size > sizeof(union_data)) {
+	if (p_mb_params->data_src_size > union_data_size ||
+	    p_mb_params->data_dst_size > union_data_size) {
 		DP_ERR(p_hwfn,
 		       "The provided size is larger than the union data size [src_size %u, dst_size %u, union_data_size %zu]\n",
 		       p_mb_params->data_src_size, p_mb_params->data_dst_size,
-		       sizeof(union_data));
+		       union_data_size);
 		return ECORE_INVAL;
 	}
 
-	union_data_addr = p_hwfn->mcp_info->drv_mb_addr +
-			  OFFSETOF(struct public_drv_mb, union_data);
-
-	/* Ensure that only a single thread is accessing the mailbox at a
-	 * certain time.
-	 */
-	rc = ecore_mcp_mb_lock(p_hwfn, p_mb_params->cmd);
-	if (rc != ECORE_SUCCESS)
-		return rc;
-
-	OSAL_MEM_ZERO(&union_data, sizeof(union_data));
-	if (p_mb_params->p_data_src != OSAL_NULL && p_mb_params->data_src_size)
-		OSAL_MEMCPY(&union_data, p_mb_params->p_data_src,
-			    p_mb_params->data_src_size);
-	ecore_memcpy_to(p_hwfn, p_ptt, union_data_addr, &union_data,
-			sizeof(union_data));
-
-	rc = ecore_do_mcp_cmd(p_hwfn, p_ptt, p_mb_params->cmd,
-			      p_mb_params->param, &p_mb_params->mcp_resp,
-			      &p_mb_params->mcp_param);
-
-	if (p_mb_params->p_data_dst != OSAL_NULL &&
-	    p_mb_params->data_dst_size)
-		ecore_memcpy_from(p_hwfn, p_ptt, p_mb_params->p_data_dst,
-				  union_data_addr, p_mb_params->data_dst_size);
-
-	ecore_mcp_mb_unlock(p_hwfn, p_mb_params->cmd);
-
-	return rc;
+	return _ecore_mcp_cmd_and_union(p_hwfn, p_ptt, p_mb_params, max_retries,
+					delay);
 }
 
 enum _ecore_status_t ecore_mcp_cmd(struct ecore_hwfn *p_hwfn,
@@ -809,9 +961,6 @@ enum _ecore_status_t ecore_mcp_load_req(struct ecore_hwfn *p_hwfn,
 		DP_INFO(p_hwfn,
 			"MFW refused a load request due to HSI > 1. Resending with HSI = 1.\n");
 
-		/* The previous load request set the mailbox blocking */
-		p_hwfn->mcp_info->block_mb_sending = false;
-
 		in_params.hsi_ver = ECORE_LOAD_REQ_HSI_VER_1;
 		OSAL_MEM_ZERO(&out_params, sizeof(out_params));
 		rc = __ecore_mcp_load_req(p_hwfn, p_ptt, &in_params,
@@ -820,9 +969,6 @@ enum _ecore_status_t ecore_mcp_load_req(struct ecore_hwfn *p_hwfn,
 			return rc;
 	} else if (out_params.load_code ==
 		   FW_MSG_CODE_DRV_LOAD_REFUSED_REQUIRES_FORCE) {
-		/* The previous load request set the mailbox blocking */
-		p_hwfn->mcp_info->block_mb_sending = false;
-
 		if (ecore_mcp_can_force_load(in_params.drv_role,
 					     out_params.exist_drv_role,
 					     p_params->override_force_load)) {
@@ -1067,6 +1213,9 @@ static void ecore_mcp_handle_link_change(struct ecore_hwfn *p_hwfn,
 	u8 max_bw, min_bw;
 	u32 status = 0;
 
+	/* Prevent SW/attentions from doing this at the same time */
+	OSAL_SPIN_LOCK(&p_hwfn->mcp_info->link_lock);
+
 	p_link = &p_hwfn->mcp_info->link_output;
 	OSAL_MEMSET(p_link, 0, sizeof(*p_link));
 	if (!b_reset) {
@@ -1082,7 +1231,7 @@ static void ecore_mcp_handle_link_change(struct ecore_hwfn *p_hwfn,
 	} else {
 		DP_VERBOSE(p_hwfn, ECORE_MSG_LINK,
 			   "Resetting link indications\n");
-		return;
+		goto out;
 	}
 
 	if (p_hwfn->b_drv_link_init)
@@ -1197,6 +1346,8 @@ static void ecore_mcp_handle_link_change(struct ecore_hwfn *p_hwfn,
 		ecore_mcp_read_eee_config(p_hwfn, p_ptt, p_link);
 
 	OSAL_LINK_UPDATE(p_hwfn, p_ptt);
+out:
+	OSAL_SPIN_UNLOCK(&p_hwfn->mcp_info->link_lock);
 }
 
 enum _ecore_status_t ecore_mcp_set_link(struct ecore_hwfn *p_hwfn,
@@ -1266,9 +1417,13 @@ enum _ecore_status_t ecore_mcp_set_link(struct ecore_hwfn *p_hwfn,
 		return rc;
 	}
 
-	/* Reset the link status if needed */
-	if (!b_up)
-		ecore_mcp_handle_link_change(p_hwfn, p_ptt, true);
+	/* Mimic link-change attention, done for several reasons:
+	 *  - On reset, there's no guarantee MFW would trigger
+	 *    an attention.
+	 *  - On initialization, older MFWs might not indicate link change
+	 *    during LFA, so we'll never get an UP indication.
+	 */
+	ecore_mcp_handle_link_change(p_hwfn, p_ptt, !b_up);
 
 	return rc;
 }

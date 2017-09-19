@@ -64,7 +64,9 @@ enum _ecore_status_t ecore_ptt_pool_alloc(struct ecore_hwfn *p_hwfn)
 	}
 
 	p_hwfn->p_ptt_pool = p_pool;
+#ifdef CONFIG_ECORE_LOCK_ALLOC
 	OSAL_SPIN_LOCK_ALLOC(p_hwfn, &p_pool->lock);
+#endif
 	OSAL_SPIN_LOCK_INIT(&p_pool->lock);
 
 	return ECORE_SUCCESS;
@@ -83,8 +85,10 @@ void ecore_ptt_invalidate(struct ecore_hwfn *p_hwfn)
 
 void ecore_ptt_pool_free(struct ecore_hwfn *p_hwfn)
 {
+#ifdef CONFIG_ECORE_LOCK_ALLOC
 	if (p_hwfn->p_ptt_pool)
 		OSAL_SPIN_LOCK_DEALLOC(&p_hwfn->p_ptt_pool->lock);
+#endif
 	OSAL_FREE(p_hwfn->p_dev, p_hwfn->p_ptt_pool);
 }
 

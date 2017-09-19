@@ -1170,7 +1170,9 @@ enum _ecore_status_t ecore_cxt_mngr_alloc(struct ecore_hwfn *p_hwfn)
 		p_mngr->vf_count = p_hwfn->p_dev->p_iov_info->total_vfs;
 
 	/* Initialize the dynamic ILT allocation mutex */
+#ifdef CONFIG_ECORE_LOCK_ALLOC
 	OSAL_MUTEX_ALLOC(p_hwfn, &p_mngr->mutex);
+#endif
 	OSAL_MUTEX_INIT(&p_mngr->mutex);
 
 	/* Set the cxt mangr pointer priori to further allocations */
@@ -1219,7 +1221,9 @@ void ecore_cxt_mngr_free(struct ecore_hwfn *p_hwfn)
 	ecore_cid_map_free(p_hwfn);
 	ecore_cxt_src_t2_free(p_hwfn);
 	ecore_ilt_shadow_free(p_hwfn);
+#ifdef CONFIG_ECORE_LOCK_ALLOC
 	OSAL_MUTEX_DEALLOC(&p_hwfn->p_cxt_mngr->mutex);
+#endif
 	OSAL_FREE(p_hwfn->p_dev, p_hwfn->p_cxt_mngr);
 }
 
