@@ -748,30 +748,37 @@ rte_event_port_setup(uint8_t dev_id, uint8_t port_id,
 }
 
 uint8_t
-rte_event_port_dequeue_depth(uint8_t dev_id, uint8_t port_id)
-{
-	struct rte_eventdev *dev;
-
-	dev = &rte_eventdevs[dev_id];
-	return dev->data->ports_dequeue_depth[port_id];
-}
-
-uint8_t
-rte_event_port_enqueue_depth(uint8_t dev_id, uint8_t port_id)
-{
-	struct rte_eventdev *dev;
-
-	dev = &rte_eventdevs[dev_id];
-	return dev->data->ports_enqueue_depth[port_id];
-}
-
-uint8_t
 rte_event_port_count(uint8_t dev_id)
 {
 	struct rte_eventdev *dev;
 
 	dev = &rte_eventdevs[dev_id];
 	return dev->data->nb_ports;
+}
+
+int
+rte_event_port_attr_get(uint8_t dev_id, uint8_t port_id, uint32_t attr_id,
+			uint32_t *attr_value)
+{
+	struct rte_eventdev *dev;
+	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
+	dev = &rte_eventdevs[dev_id];
+	if (!is_valid_port(dev, port_id)) {
+		RTE_EDEV_LOG_ERR("Invalid port_id=%" PRIu8, port_id);
+		return -EINVAL;
+	}
+
+	switch (attr_id) {
+	case RTE_EVENT_PORT_ATTR_ENQ_DEPTH:
+		*attr_value = dev->data->ports_enqueue_depth[port_id];
+		break;
+	case RTE_EVENT_PORT_ATTR_DEQ_DEPTH:
+		*attr_value = dev->data->ports_dequeue_depth[port_id];
+		break;
+	default:
+		return -EINVAL;
+	};
+	return 0;
 }
 
 int

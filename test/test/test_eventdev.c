@@ -460,8 +460,12 @@ test_eventdev_dequeue_depth(void)
 	ret = rte_event_port_setup(TEST_DEV_ID, 0, &pconf);
 	TEST_ASSERT_SUCCESS(ret, "Failed to setup port0");
 
-	TEST_ASSERT_EQUAL(rte_event_port_dequeue_depth(TEST_DEV_ID, 0),
-		 pconf.dequeue_depth, "Wrong port dequeue depth");
+	uint32_t value;
+	TEST_ASSERT_EQUAL(rte_event_port_attr_get(TEST_DEV_ID, 0,
+			RTE_EVENT_PORT_ATTR_DEQ_DEPTH, &value),
+			0, "Call to port dequeue depth failed");
+	TEST_ASSERT_EQUAL(value, pconf.dequeue_depth,
+			"Wrong port dequeue depth");
 
 	return TEST_SUCCESS;
 }
@@ -481,8 +485,12 @@ test_eventdev_enqueue_depth(void)
 	ret = rte_event_port_setup(TEST_DEV_ID, 0, &pconf);
 	TEST_ASSERT_SUCCESS(ret, "Failed to setup port0");
 
-	TEST_ASSERT_EQUAL(rte_event_port_enqueue_depth(TEST_DEV_ID, 0),
-		 pconf.enqueue_depth, "Wrong port enqueue depth");
+	uint32_t value;
+	TEST_ASSERT_EQUAL(rte_event_port_attr_get(TEST_DEV_ID, 0,
+			RTE_EVENT_PORT_ATTR_ENQ_DEPTH, &value),
+			0, "Call to port enqueue depth failed");
+	TEST_ASSERT_EQUAL(value, pconf.enqueue_depth,
+			"Wrong port enqueue depth");
 
 	return TEST_SUCCESS;
 }

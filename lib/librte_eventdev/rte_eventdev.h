@@ -715,38 +715,6 @@ rte_event_port_setup(uint8_t dev_id, uint8_t port_id,
 		     const struct rte_event_port_conf *port_conf);
 
 /**
- * Get the number of dequeue queue depth configured for event port designated
- * by its *port_id* on a specific event device
- *
- * @param dev_id
- *   Event device identifier.
- * @param port_id
- *   Event port identifier.
- * @return
- *   - The number of configured dequeue queue depth
- *
- * @see rte_event_dequeue_burst()
- */
-uint8_t
-rte_event_port_dequeue_depth(uint8_t dev_id, uint8_t port_id);
-
-/**
- * Get the number of enqueue queue depth configured for event port designated
- * by its *port_id* on a specific event device
- *
- * @param dev_id
- *   Event device identifier.
- * @param port_id
- *   Event port identifier.
- * @return
- *   - The number of configured enqueue queue depth
- *
- * @see rte_event_enqueue_burst()
- */
-uint8_t
-rte_event_port_enqueue_depth(uint8_t dev_id, uint8_t port_id);
-
-/**
  * Get the number of ports on a specific event device
  *
  * @param dev_id
@@ -756,6 +724,31 @@ rte_event_port_enqueue_depth(uint8_t dev_id, uint8_t port_id);
  */
 uint8_t
 rte_event_port_count(uint8_t dev_id);
+
+/**
+ * The queue depth of the port on the enqueue side
+ */
+#define RTE_EVENT_PORT_ATTR_ENQ_DEPTH 0
+/**
+ * The queue depth of the port on the dequeue side
+ */
+#define RTE_EVENT_PORT_ATTR_DEQ_DEPTH 1
+
+/**
+ * Get an attribute from a port.
+ *
+ * @param dev_id Eventdev id
+ * @param port_id Eventdev port id
+ * @param attr_id The attribute ID to retrieve
+ * @param[out] attr_value A pointer that will be filled in with the attribute
+ *             value if successful
+ *
+ * @retval 0 Successfully returned value
+ *         -EINVAL Invalid device, port or attr_id, or attr_value was NULL
+ */
+int
+rte_event_port_attr_get(uint8_t dev_id, uint8_t port_id, uint32_t attr_id,
+			uint32_t *attr_value);
 
 /**
  * Start an event device.
