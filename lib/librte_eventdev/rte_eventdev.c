@@ -613,18 +613,6 @@ rte_event_queue_setup(uint8_t dev_id, uint8_t queue_id,
 	return (*dev->dev_ops->queue_setup)(dev, queue_id, queue_conf);
 }
 
-uint8_t
-rte_event_queue_priority(uint8_t dev_id, uint8_t queue_id)
-{
-	struct rte_eventdev *dev;
-
-	dev = &rte_eventdevs[dev_id];
-	if (dev->data->event_dev_cap & RTE_EVENT_DEV_CAP_QUEUE_QOS)
-		return dev->data->queues_prio[queue_id];
-	else
-		return RTE_EVENT_DEV_PRIORITY_NORMAL;
-}
-
 static inline int
 is_valid_port(struct rte_eventdev *dev, uint8_t port_id)
 {
@@ -785,6 +773,34 @@ rte_event_port_attr_get(uint8_t dev_id, uint8_t port_id, uint32_t attr_id,
 		break;
 	case RTE_EVENT_PORT_ATTR_DEQ_DEPTH:
 		*attr_value = dev->data->ports_dequeue_depth[port_id];
+		break;
+	default:
+		return -EINVAL;
+	};
+	return 0;
+}
+
+int
+rte_event_queue_attr_get(uint8_t dev_id, uint8_t queue_id, uint32_t attr_id,
+			uint32_t *attr_value)
+{
+	struct rte_eventdev *dev;
+
+	if (!attr_value)
+		return -EINVAL;
+
+	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
+	dev = &rte_eventdevs[dev_id];
+	if (!is_valid_queue(dev, queue_id)) {
+		RTE_EDEV_LOG_ERR("Invalid queue_id=%" PRIu8, queue_id);
+		return -EINVAL;
+	}
+
+	switch (attr_id) {
+	case RTE_EVENT_QUEUE_ATTR_PRIORITY:
+		*attr_value = RTE_EVENT_DEV_PRIORITY_NORMAL;
+		if (dev->data->event_dev_cap & RTE_EVENT_DEV_CAP_QUEUE_QOS)
+			*attr_value = dev->data->queues_prio[queue_id];
 		break;
 	default:
 		return -EINVAL;

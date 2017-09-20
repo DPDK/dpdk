@@ -633,31 +633,26 @@ rte_event_queue_setup(uint8_t dev_id, uint8_t queue_id,
 		      const struct rte_event_queue_conf *queue_conf);
 
 /**
- * Get the number of event queues on a specific event device
- *
- * @param dev_id
- *   Event device identifier.
- * @return
- *   - The number of configured event queues
+ * The priority of the queue.
  */
-uint8_t
-rte_event_queue_count(uint8_t dev_id);
+#define RTE_EVENT_QUEUE_ATTR_PRIORITY 0
 
 /**
- * Get the priority of the event queue on a specific event device
+ * Get an attribute from a queue.
  *
- * @param dev_id
- *   Event device identifier.
- * @param queue_id
- *   Event queue identifier.
- * @return
- *   - If the device has RTE_EVENT_DEV_CAP_QUEUE_QOS capability then the
- *    configured priority of the event queue in
- *    [RTE_EVENT_DEV_PRIORITY_HIGHEST, RTE_EVENT_DEV_PRIORITY_LOWEST] range
- *    else the value RTE_EVENT_DEV_PRIORITY_NORMAL
+ * @param dev_id Eventdev id
+ * @param queue_id Eventdev queue id
+ * @param attr_id The attribute ID to retrieve
+ * @param[out] attr_value A pointer that will be filled in with the attribute
+ *             value if successful
+ *
+ * @retval 0 Successfully returned value
+ *         -EINVAL invalid device, queue or attr_id provided, or attr_value
+ *         was NULL
  */
-uint8_t
-rte_event_queue_priority(uint8_t dev_id, uint8_t queue_id);
+int
+rte_event_queue_attr_get(uint8_t dev_id, uint8_t queue_id, uint32_t attr_id,
+			uint32_t *attr_value);
 
 /* Event port specific APIs */
 

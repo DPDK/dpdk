@@ -381,7 +381,11 @@ test_eventdev_queue_priority(void)
 	}
 
 	for (i = 0; i < (int)queue_count; i++) {
-		priority =  rte_event_queue_priority(TEST_DEV_ID, i);
+		uint32_t tmp;
+		TEST_ASSERT_SUCCESS(rte_event_queue_attr_get(TEST_DEV_ID, i,
+				    RTE_EVENT_QUEUE_ATTR_PRIORITY, &tmp),
+				    "Queue priority get failed");
+		priority = tmp;
 
 		if (info.event_dev_cap & RTE_EVENT_DEV_CAP_QUEUE_QOS)
 			TEST_ASSERT_EQUAL(priority,
