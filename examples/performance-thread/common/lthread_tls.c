@@ -198,11 +198,12 @@ void _lthread_tls_destroy(struct lthread *lt)
 void
 *lthread_getspecific(unsigned int k)
 {
+	void *res = NULL;
 
-	if (k > LTHREAD_MAX_KEYS)
-		return NULL;
+	if (k < LTHREAD_MAX_KEYS)
+		res = THIS_LTHREAD->tls->data[k];
 
-	return THIS_LTHREAD->tls->data[k];
+	return res;
 }
 
 /*
@@ -212,7 +213,7 @@ void
  */
 int lthread_setspecific(unsigned int k, const void *data)
 {
-	if (k > LTHREAD_MAX_KEYS)
+	if (k >= LTHREAD_MAX_KEYS)
 		return POSIX_ERRNO(EINVAL);
 
 	int n = THIS_LTHREAD->tls->nb_keys_inuse;
