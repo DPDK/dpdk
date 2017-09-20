@@ -562,11 +562,14 @@ void lthread_run(void)
  * Return the scheduler for this lcore
  *
  */
-struct lthread_sched *_lthread_sched_get(int lcore_id)
+struct lthread_sched *_lthread_sched_get(unsigned int lcore_id)
 {
-	if (lcore_id > LTHREAD_MAX_LCORES)
-		return NULL;
-	return schedcore[lcore_id];
+	struct lthread_sched *res = NULL;
+
+	if (lcore_id < LTHREAD_MAX_LCORES)
+		res = schedcore[lcore_id];
+
+	return res;
 }
 
 /*
@@ -578,9 +581,8 @@ int lthread_set_affinity(unsigned lcoreid)
 	struct lthread *lt = THIS_LTHREAD;
 	struct lthread_sched *dest_sched;
 
-	if (unlikely(lcoreid > LTHREAD_MAX_LCORES))
+	if (unlikely(lcoreid >= LTHREAD_MAX_LCORES))
 		return POSIX_ERRNO(EINVAL);
-
 
 	DIAG_EVENT(lt, LT_DIAG_LTHREAD_AFFINITY, lcoreid, 0);
 

@@ -87,7 +87,7 @@ int _lthread_desched_sleep(struct lthread *lt);
 
 void _lthread_free(struct lthread *lt);
 
-struct lthread_sched *_lthread_sched_get(int lcore_id);
+struct lthread_sched *_lthread_sched_get(unsigned int lcore_id);
 
 struct lthread_stack *_stack_alloc(void);
 
