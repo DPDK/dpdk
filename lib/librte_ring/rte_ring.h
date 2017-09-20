@@ -174,7 +174,7 @@ struct rte_ring {
  * ring space will be wasted.
  */
 #define RING_F_EXACT_SZ 0x0004
-#define RTE_RING_SZ_MASK  (unsigned)(0x0fffffff) /**< Ring size mask */
+#define RTE_RING_SZ_MASK  (0x7fffffffU) /**< Ring size mask */
 
 /* @internal defines for passing to the enqueue dequeue worker functions */
 #define __IS_SP 1
