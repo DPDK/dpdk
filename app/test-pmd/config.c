@@ -500,12 +500,15 @@ port_infos_display(portid_t port_id)
 		char *p;
 
 		printf("Supported flow types:\n");
-		for (i = RTE_ETH_FLOW_UNKNOWN + 1; i < RTE_ETH_FLOW_MAX;
-								i++) {
+		for (i = RTE_ETH_FLOW_UNKNOWN + 1;
+		     i < sizeof(dev_info.flow_type_rss_offloads) * CHAR_BIT; i++) {
 			if (!(dev_info.flow_type_rss_offloads & (1ULL << i)))
 				continue;
 			p = flowtype_to_str(i);
-			printf("  %s\n", (p ? p : "unknown"));
+			if (p)
+				printf("  %s\n", p);
+			else
+				printf("  user defined %d\n", i);
 		}
 	}
 
