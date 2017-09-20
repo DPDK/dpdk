@@ -744,6 +744,9 @@ rte_event_dev_attr_get(uint8_t dev_id, uint32_t attr_id,
 	case RTE_EVENT_DEV_ATTR_QUEUE_COUNT:
 		*attr_value = dev->data->nb_queues;
 		break;
+	case RTE_EVENT_DEV_ATTR_STARTED:
+		*attr_value = dev->data->dev_started;
+		break;
 	default:
 		return -EINVAL;
 	}

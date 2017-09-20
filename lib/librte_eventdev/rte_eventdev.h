@@ -407,6 +407,10 @@ rte_event_dev_info_get(uint8_t dev_id, struct rte_event_dev_info *dev_info);
  * The count of queues.
  */
 #define RTE_EVENT_DEV_ATTR_QUEUE_COUNT 1
+/**
+ * The status of the device, zero for stopped, non-zero for started.
+ */
+#define RTE_EVENT_DEV_ATTR_STARTED 2
 
 /**
  * Get an attribute from a device.
