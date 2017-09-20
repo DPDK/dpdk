@@ -49,7 +49,7 @@ if get_option('default_library') == 'static'
 	driver_install_path = get_option('libdir')
 	eal_pmd_path = ''
 else
-	driver_install_path = join_paths(get_option('datadir'), 'dpdk/drivers')
+	driver_install_path = join_paths(get_option('libdir'), 'dpdk/drivers')
 	eal_pmd_path = join_paths(get_option('prefix'), driver_install_path)
 endif
 
