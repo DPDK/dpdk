@@ -132,51 +132,51 @@ static inline int
 rte_event_dev_queue_config(struct rte_eventdev *dev, uint8_t nb_queues)
 {
 	uint8_t old_nb_queues = dev->data->nb_queues;
-	uint8_t *queues_prio;
+	struct rte_event_queue_conf *queues_cfg;
 	unsigned int i;
 
 	RTE_EDEV_LOG_DEBUG("Setup %d queues on device %u", nb_queues,
 			 dev->data->dev_id);
 
 	/* First time configuration */
-	if (dev->data->queues_prio == NULL && nb_queues != 0) {
-		/* Allocate memory to store queue priority */
-		dev->data->queues_prio = rte_zmalloc_socket(
-				"eventdev->data->queues_prio",
-				sizeof(dev->data->queues_prio[0]) * nb_queues,
+	if (dev->data->queues_cfg == NULL && nb_queues != 0) {
+		/* Allocate memory to store queue configuration */
+		dev->data->queues_cfg = rte_zmalloc_socket(
+				"eventdev->data->queues_cfg",
+				sizeof(dev->data->queues_cfg[0]) * nb_queues,
 				RTE_CACHE_LINE_SIZE, dev->data->socket_id);
-		if (dev->data->queues_prio == NULL) {
+		if (dev->data->queues_cfg == NULL) {
 			dev->data->nb_queues = 0;
-			RTE_EDEV_LOG_ERR("failed to get mem for queue priority,"
+			RTE_EDEV_LOG_ERR("failed to get mem for queue cfg,"
 					"nb_queues %u", nb_queues);
 			return -(ENOMEM);
 		}
 	/* Re-configure */
-	} else if (dev->data->queues_prio != NULL && nb_queues != 0) {
+	} else if (dev->data->queues_cfg != NULL && nb_queues != 0) {
 		RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->queue_release, -ENOTSUP);
 
 		for (i = nb_queues; i < old_nb_queues; i++)
 			(*dev->dev_ops->queue_release)(dev, i);
 
-		/* Re allocate memory to store queue priority */
-		queues_prio = dev->data->queues_prio;
-		queues_prio = rte_realloc(queues_prio,
-				sizeof(queues_prio[0]) * nb_queues,
+		/* Re allocate memory to store queue configuration */
+		queues_cfg = dev->data->queues_cfg;
+		queues_cfg = rte_realloc(queues_cfg,
+				sizeof(queues_cfg[0]) * nb_queues,
 				RTE_CACHE_LINE_SIZE);
-		if (queues_prio == NULL) {
-			RTE_EDEV_LOG_ERR("failed to realloc queue priority,"
+		if (queues_cfg == NULL) {
+			RTE_EDEV_LOG_ERR("failed to realloc queue cfg memory,"
 						" nb_queues %u", nb_queues);
 			return -(ENOMEM);
 		}
-		dev->data->queues_prio = queues_prio;
+		dev->data->queues_cfg = queues_cfg;
 
 		if (nb_queues > old_nb_queues) {
 			uint8_t new_qs = nb_queues - old_nb_queues;
 
-			memset(queues_prio + old_nb_queues, 0,
-				sizeof(queues_prio[0]) * new_qs);
+			memset(queues_cfg + old_nb_queues, 0,
+				sizeof(queues_cfg[0]) * new_qs);
 		}
-	} else if (dev->data->queues_prio != NULL && nb_queues == 0) {
+	} else if (dev->data->queues_cfg != NULL && nb_queues == 0) {
 		RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->queue_release, -ENOTSUP);
 
 		for (i = nb_queues; i < old_nb_queues; i++)
@@ -609,7 +609,7 @@ rte_event_queue_setup(uint8_t dev_id, uint8_t queue_id,
 		queue_conf = &def_conf;
 	}
 
-	dev->data->queues_prio[queue_id] = queue_conf->priority;
+	dev->data->queues_cfg[queue_id] = *queue_conf;
 	return (*dev->dev_ops->queue_setup)(dev, queue_id, queue_conf);
 }
 
@@ -787,6 +787,7 @@ int
 rte_event_queue_attr_get(uint8_t dev_id, uint8_t queue_id, uint32_t attr_id,
 			uint32_t *attr_value)
 {
+	struct rte_event_queue_conf *conf;
 	struct rte_eventdev *dev;
 
 	if (!attr_value)
@@ -799,11 +800,22 @@ rte_event_queue_attr_get(uint8_t dev_id, uint8_t queue_id, uint32_t attr_id,
 		return -EINVAL;
 	}
 
+	conf = &dev->data->queues_cfg[queue_id];
+
 	switch (attr_id) {
 	case RTE_EVENT_QUEUE_ATTR_PRIORITY:
 		*attr_value = RTE_EVENT_DEV_PRIORITY_NORMAL;
 		if (dev->data->event_dev_cap & RTE_EVENT_DEV_CAP_QUEUE_QOS)
-			*attr_value = dev->data->queues_prio[queue_id];
+			*attr_value = conf->priority;
+		break;
+	case RTE_EVENT_QUEUE_ATTR_NB_ATOMIC_FLOWS:
+		*attr_value = conf->nb_atomic_flows;
+		break;
+	case RTE_EVENT_QUEUE_ATTR_NB_ATOMIC_ORDER_SEQUENCES:
+		*attr_value = conf->nb_atomic_order_sequences;
+		break;
+	case RTE_EVENT_QUEUE_ATTR_EVENT_QUEUE_CFG:
+		*attr_value = conf->event_queue_cfg;
 		break;
 	default:
 		return -EINVAL;

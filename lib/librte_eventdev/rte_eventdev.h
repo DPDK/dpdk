@@ -640,6 +640,18 @@ rte_event_queue_setup(uint8_t dev_id, uint8_t queue_id,
  * The priority of the queue.
  */
 #define RTE_EVENT_QUEUE_ATTR_PRIORITY 0
+/**
+ * The number of atomic flows configured for the queue.
+ */
+#define RTE_EVENT_QUEUE_ATTR_NB_ATOMIC_FLOWS 1
+/**
+ * The number of atomic order sequences configured for the queue.
+ */
+#define RTE_EVENT_QUEUE_ATTR_NB_ATOMIC_ORDER_SEQUENCES 2
+/**
+ * The cfg flags for the queue.
+ */
+#define RTE_EVENT_QUEUE_ATTR_EVENT_QUEUE_CFG 3
 
 /**
  * Get an attribute from a queue.
@@ -1051,8 +1063,8 @@ struct rte_eventdev_data {
 	/**< Array of port dequeue depth. */
 	uint8_t *ports_enqueue_depth;
 	/**< Array of port enqueue depth. */
-	uint8_t *queues_prio;
-	/**< Array of queue priority. */
+	struct rte_event_queue_conf *queues_cfg;
+	/**< Array of queue configuration structures. */
 	uint16_t *links_map;
 	/**< Memory to store queues to port connections. */
 	void *dev_private;

@@ -356,7 +356,7 @@ test_eventdev_queue_count(void)
 }
 
 static int
-test_eventdev_queue_priority(void)
+test_eventdev_queue_attr_priority(void)
 {
 	int i, ret;
 	struct rte_event_dev_info info;
@@ -395,6 +395,134 @@ test_eventdev_queue_priority(void)
 			TEST_ASSERT_EQUAL(priority,
 			 RTE_EVENT_DEV_PRIORITY_NORMAL,
 			 "Wrong priority value for queue%d", i);
+	}
+
+	return TEST_SUCCESS;
+}
+
+static int
+test_eventdev_queue_attr_nb_atomic_flows(void)
+{
+	int i, ret;
+	struct rte_event_dev_info info;
+	struct rte_event_queue_conf qconf;
+	uint32_t nb_atomic_flows;
+
+	ret = rte_event_dev_info_get(TEST_DEV_ID, &info);
+	TEST_ASSERT_SUCCESS(ret, "Failed to get event dev info");
+
+	uint32_t queue_count;
+	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(TEST_DEV_ID,
+			    RTE_EVENT_DEV_ATTR_QUEUE_COUNT, &queue_count),
+			    "Queue count get failed");
+
+	ret = rte_event_queue_default_conf_get(TEST_DEV_ID, 0, &qconf);
+	TEST_ASSERT_SUCCESS(ret, "Failed to get queue 0's def conf");
+
+	if (qconf.nb_atomic_flows == 0)
+		/* Assume PMD doesn't support atomic flows, return early */
+		return -ENOTSUP;
+
+	qconf.event_queue_cfg = RTE_EVENT_QUEUE_CFG_ATOMIC_ONLY;
+
+	for (i = 0; i < (int)queue_count; i++) {
+		ret = rte_event_queue_setup(TEST_DEV_ID, i, &qconf);
+		TEST_ASSERT_SUCCESS(ret, "Failed to setup queue%d", i);
+	}
+
+	for (i = 0; i < (int)queue_count; i++) {
+		TEST_ASSERT_SUCCESS(rte_event_queue_attr_get(TEST_DEV_ID, i,
+				    RTE_EVENT_QUEUE_ATTR_NB_ATOMIC_FLOWS,
+				    &nb_atomic_flows),
+				    "Queue nb_atomic_flows get failed");
+
+		TEST_ASSERT_EQUAL(nb_atomic_flows, qconf.nb_atomic_flows,
+				  "Wrong atomic flows value for queue%d", i);
+	}
+
+	return TEST_SUCCESS;
+}
+
+static int
+test_eventdev_queue_attr_nb_atomic_order_sequences(void)
+{
+	int i, ret;
+	struct rte_event_dev_info info;
+	struct rte_event_queue_conf qconf;
+	uint32_t nb_atomic_order_sequences;
+
+	ret = rte_event_dev_info_get(TEST_DEV_ID, &info);
+	TEST_ASSERT_SUCCESS(ret, "Failed to get event dev info");
+
+	uint32_t queue_count;
+	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(TEST_DEV_ID,
+			    RTE_EVENT_DEV_ATTR_QUEUE_COUNT, &queue_count),
+			    "Queue count get failed");
+
+	ret = rte_event_queue_default_conf_get(TEST_DEV_ID, 0, &qconf);
+	TEST_ASSERT_SUCCESS(ret, "Failed to get queue 0's def conf");
+
+	if (qconf.nb_atomic_order_sequences == 0)
+		/* Assume PMD doesn't support reordering */
+		return -ENOTSUP;
+
+	qconf.event_queue_cfg = RTE_EVENT_QUEUE_CFG_ORDERED_ONLY;
+
+	for (i = 0; i < (int)queue_count; i++) {
+		ret = rte_event_queue_setup(TEST_DEV_ID, i, &qconf);
+		TEST_ASSERT_SUCCESS(ret, "Failed to setup queue%d", i);
+	}
+
+	for (i = 0; i < (int)queue_count; i++) {
+		TEST_ASSERT_SUCCESS(rte_event_queue_attr_get(TEST_DEV_ID, i,
+			    RTE_EVENT_QUEUE_ATTR_NB_ATOMIC_ORDER_SEQUENCES,
+			    &nb_atomic_order_sequences),
+			    "Queue nb_atomic_order_sequencess get failed");
+
+		TEST_ASSERT_EQUAL(nb_atomic_order_sequences,
+				  qconf.nb_atomic_order_sequences,
+				  "Wrong atomic order sequences value for queue%d",
+				  i);
+	}
+
+	return TEST_SUCCESS;
+}
+
+static int
+test_eventdev_queue_attr_event_queue_cfg(void)
+{
+	int i, ret;
+	struct rte_event_dev_info info;
+	struct rte_event_queue_conf qconf;
+	uint32_t event_queue_cfg;
+
+	ret = rte_event_dev_info_get(TEST_DEV_ID, &info);
+	TEST_ASSERT_SUCCESS(ret, "Failed to get event dev info");
+
+	uint32_t queue_count;
+	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(TEST_DEV_ID,
+			    RTE_EVENT_DEV_ATTR_QUEUE_COUNT, &queue_count),
+			    "Queue count get failed");
+
+	ret = rte_event_queue_default_conf_get(TEST_DEV_ID, 0, &qconf);
+	TEST_ASSERT_SUCCESS(ret, "Failed to get queue0 def conf");
+
+	qconf.event_queue_cfg = RTE_EVENT_QUEUE_CFG_PARALLEL_ONLY;
+
+	for (i = 0; i < (int)queue_count; i++) {
+		ret = rte_event_queue_setup(TEST_DEV_ID, i, &qconf);
+		TEST_ASSERT_SUCCESS(ret, "Failed to setup queue%d", i);
+	}
+
+	for (i = 0; i < (int)queue_count; i++) {
+		TEST_ASSERT_SUCCESS(rte_event_queue_attr_get(TEST_DEV_ID, i,
+				    RTE_EVENT_QUEUE_ATTR_EVENT_QUEUE_CFG,
+				    &event_queue_cfg),
+				    "Queue event_queue_cfg get failed");
+
+		TEST_ASSERT_EQUAL(event_queue_cfg, qconf.event_queue_cfg,
+				  "Wrong event_queue_cfg value for queue%d",
+				  i);
 	}
 
 	return TEST_SUCCESS;
@@ -813,7 +941,13 @@ static struct unit_test_suite eventdev_common_testsuite  = {
 		TEST_CASE_ST(eventdev_configure_setup, NULL,
 			test_eventdev_queue_count),
 		TEST_CASE_ST(eventdev_configure_setup, NULL,
-			test_eventdev_queue_priority),
+			test_eventdev_queue_attr_priority),
+		TEST_CASE_ST(eventdev_configure_setup, NULL,
+			test_eventdev_queue_attr_nb_atomic_flows),
+		TEST_CASE_ST(eventdev_configure_setup, NULL,
+			test_eventdev_queue_attr_nb_atomic_order_sequences),
+		TEST_CASE_ST(eventdev_configure_setup, NULL,
+			test_eventdev_queue_attr_event_queue_cfg),
 		TEST_CASE_ST(eventdev_configure_setup, NULL,
 			test_eventdev_port_default_conf_get),
 		TEST_CASE_ST(eventdev_configure_setup, NULL,
