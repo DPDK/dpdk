@@ -77,5 +77,5 @@ executable('dpdk-testpmd',
 	link_whole: link_libs,
 	dependencies: dep_objs,
 	link_args: eal_extra_link_arg, # add -ldl for linux, -lexecinfo for BSD
-	install_rpath: driver_install_path,
+	install_rpath: join_paths(get_option('prefix'), driver_install_path),
 	install: true)
