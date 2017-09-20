@@ -606,7 +606,7 @@ test_eventdev_port_setup(void)
 }
 
 static int
-test_eventdev_dequeue_depth(void)
+test_eventdev_port_attr_dequeue_depth(void)
 {
 	int ret;
 	struct rte_event_dev_info info;
@@ -623,7 +623,7 @@ test_eventdev_dequeue_depth(void)
 	uint32_t value;
 	TEST_ASSERT_EQUAL(rte_event_port_attr_get(TEST_DEV_ID, 0,
 			RTE_EVENT_PORT_ATTR_DEQ_DEPTH, &value),
-			0, "Call to port dequeue depth failed");
+			0, "Call to get port dequeue depth failed");
 	TEST_ASSERT_EQUAL(value, pconf.dequeue_depth,
 			"Wrong port dequeue depth");
 
@@ -631,7 +631,7 @@ test_eventdev_dequeue_depth(void)
 }
 
 static int
-test_eventdev_enqueue_depth(void)
+test_eventdev_port_attr_enqueue_depth(void)
 {
 	int ret;
 	struct rte_event_dev_info info;
@@ -648,9 +648,34 @@ test_eventdev_enqueue_depth(void)
 	uint32_t value;
 	TEST_ASSERT_EQUAL(rte_event_port_attr_get(TEST_DEV_ID, 0,
 			RTE_EVENT_PORT_ATTR_ENQ_DEPTH, &value),
-			0, "Call to port enqueue depth failed");
+			0, "Call to get port enqueue depth failed");
 	TEST_ASSERT_EQUAL(value, pconf.enqueue_depth,
 			"Wrong port enqueue depth");
+
+	return TEST_SUCCESS;
+}
+
+static int
+test_eventdev_port_attr_new_event_threshold(void)
+{
+	int ret;
+	struct rte_event_dev_info info;
+	struct rte_event_port_conf pconf;
+
+	ret = rte_event_dev_info_get(TEST_DEV_ID, &info);
+	TEST_ASSERT_SUCCESS(ret, "Failed to get event dev info");
+
+	ret = rte_event_port_default_conf_get(TEST_DEV_ID, 0, &pconf);
+	TEST_ASSERT_SUCCESS(ret, "Failed to get port0 info");
+	ret = rte_event_port_setup(TEST_DEV_ID, 0, &pconf);
+	TEST_ASSERT_SUCCESS(ret, "Failed to setup port0");
+
+	uint32_t value;
+	TEST_ASSERT_EQUAL(rte_event_port_attr_get(TEST_DEV_ID, 0,
+			RTE_EVENT_PORT_ATTR_NEW_EVENT_THRESHOLD, &value),
+			0, "Call to get port new event threshold failed");
+	TEST_ASSERT_EQUAL((int32_t) value, pconf.new_event_threshold,
+			"Wrong port new event threshold");
 
 	return TEST_SUCCESS;
 }
@@ -953,9 +978,11 @@ static struct unit_test_suite eventdev_common_testsuite  = {
 		TEST_CASE_ST(eventdev_configure_setup, NULL,
 			test_eventdev_port_setup),
 		TEST_CASE_ST(eventdev_configure_setup, NULL,
-			test_eventdev_dequeue_depth),
+			test_eventdev_port_attr_dequeue_depth),
 		TEST_CASE_ST(eventdev_configure_setup, NULL,
-			test_eventdev_enqueue_depth),
+			test_eventdev_port_attr_enqueue_depth),
+		TEST_CASE_ST(eventdev_configure_setup, NULL,
+			test_eventdev_port_attr_new_event_threshold),
 		TEST_CASE_ST(eventdev_configure_setup, NULL,
 			test_eventdev_port_count),
 		TEST_CASE_ST(eventdev_configure_setup, NULL,

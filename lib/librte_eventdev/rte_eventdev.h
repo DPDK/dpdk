@@ -759,6 +759,10 @@ rte_event_port_setup(uint8_t dev_id, uint8_t port_id,
  * The queue depth of the port on the dequeue side
  */
 #define RTE_EVENT_PORT_ATTR_DEQ_DEPTH 1
+/**
+ * The new event threshold of the port
+ */
+#define RTE_EVENT_PORT_ATTR_NEW_EVENT_THRESHOLD 2
 
 /**
  * Get an attribute from a port.
@@ -1059,10 +1063,8 @@ struct rte_eventdev_data {
 	/**< Number of event ports. */
 	void **ports;
 	/**< Array of pointers to ports. */
-	uint8_t *ports_dequeue_depth;
-	/**< Array of port dequeue depth. */
-	uint8_t *ports_enqueue_depth;
-	/**< Array of port enqueue depth. */
+	struct rte_event_port_conf *ports_cfg;
+	/**< Array of port configuration structures. */
 	struct rte_event_queue_conf *queues_cfg;
 	/**< Array of queue configuration structures. */
 	uint16_t *links_map;

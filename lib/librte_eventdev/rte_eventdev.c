@@ -195,8 +195,7 @@ rte_event_dev_port_config(struct rte_eventdev *dev, uint8_t nb_ports)
 	uint8_t old_nb_ports = dev->data->nb_ports;
 	void **ports;
 	uint16_t *links_map;
-	uint8_t *ports_dequeue_depth;
-	uint8_t *ports_enqueue_depth;
+	struct rte_event_port_conf *ports_cfg;
 	unsigned int i;
 
 	RTE_EDEV_LOG_DEBUG("Setup %d ports on device %u", nb_ports,
@@ -214,26 +213,14 @@ rte_event_dev_port_config(struct rte_eventdev *dev, uint8_t nb_ports)
 			return -(ENOMEM);
 		}
 
-		/* Allocate memory to store ports dequeue depth */
-		dev->data->ports_dequeue_depth =
-			rte_zmalloc_socket("eventdev->ports_dequeue_depth",
-			sizeof(dev->data->ports_dequeue_depth[0]) * nb_ports,
+		/* Allocate memory to store port configurations */
+		dev->data->ports_cfg =
+			rte_zmalloc_socket("eventdev->ports_cfg",
+			sizeof(dev->data->ports_cfg[0]) * nb_ports,
 			RTE_CACHE_LINE_SIZE, dev->data->socket_id);
-		if (dev->data->ports_dequeue_depth == NULL) {
+		if (dev->data->ports_cfg == NULL) {
 			dev->data->nb_ports = 0;
-			RTE_EDEV_LOG_ERR("failed to get mem for port deq meta,"
-					"nb_ports %u", nb_ports);
-			return -(ENOMEM);
-		}
-
-		/* Allocate memory to store ports enqueue depth */
-		dev->data->ports_enqueue_depth =
-			rte_zmalloc_socket("eventdev->ports_enqueue_depth",
-			sizeof(dev->data->ports_enqueue_depth[0]) * nb_ports,
-			RTE_CACHE_LINE_SIZE, dev->data->socket_id);
-		if (dev->data->ports_enqueue_depth == NULL) {
-			dev->data->nb_ports = 0;
-			RTE_EDEV_LOG_ERR("failed to get mem for port enq meta,"
+			RTE_EDEV_LOG_ERR("failed to get mem for port cfg,"
 					"nb_ports %u", nb_ports);
 			return -(ENOMEM);
 		}
@@ -257,8 +244,7 @@ rte_event_dev_port_config(struct rte_eventdev *dev, uint8_t nb_ports)
 		RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->port_release, -ENOTSUP);
 
 		ports = dev->data->ports;
-		ports_dequeue_depth = dev->data->ports_dequeue_depth;
-		ports_enqueue_depth = dev->data->ports_enqueue_depth;
+		ports_cfg = dev->data->ports_cfg;
 		links_map = dev->data->links_map;
 
 		for (i = nb_ports; i < old_nb_ports; i++)
@@ -273,22 +259,12 @@ rte_event_dev_port_config(struct rte_eventdev *dev, uint8_t nb_ports)
 			return -(ENOMEM);
 		}
 
-		/* Realloc memory for ports_dequeue_depth */
-		ports_dequeue_depth = rte_realloc(ports_dequeue_depth,
-			sizeof(ports_dequeue_depth[0]) * nb_ports,
+		/* Realloc memory for ports_cfg */
+		ports_cfg = rte_realloc(ports_cfg,
+			sizeof(ports_cfg[0]) * nb_ports,
 			RTE_CACHE_LINE_SIZE);
-		if (ports_dequeue_depth == NULL) {
-			RTE_EDEV_LOG_ERR("failed to realloc port dequeue meta,"
-						" nb_ports %u", nb_ports);
-			return -(ENOMEM);
-		}
-
-		/* Realloc memory for ports_enqueue_depth */
-		ports_enqueue_depth = rte_realloc(ports_enqueue_depth,
-			sizeof(ports_enqueue_depth[0]) * nb_ports,
-			RTE_CACHE_LINE_SIZE);
-		if (ports_enqueue_depth == NULL) {
-			RTE_EDEV_LOG_ERR("failed to realloc port enqueue meta,"
+		if (ports_cfg == NULL) {
+			RTE_EDEV_LOG_ERR("failed to realloc port cfg mem,"
 						" nb_ports %u", nb_ports);
 			return -(ENOMEM);
 		}
@@ -314,18 +290,15 @@ rte_event_dev_port_config(struct rte_eventdev *dev, uint8_t nb_ports)
 
 			memset(ports + old_nb_ports, 0,
 				sizeof(ports[0]) * new_ps);
-			memset(ports_dequeue_depth + old_nb_ports, 0,
-				sizeof(ports_dequeue_depth[0]) * new_ps);
-			memset(ports_enqueue_depth + old_nb_ports, 0,
-				sizeof(ports_enqueue_depth[0]) * new_ps);
+			memset(ports_cfg + old_nb_ports, 0,
+				sizeof(ports_cfg[0]) * new_ps);
 			for (i = old_links_map_end; i < links_map_end; i++)
 				links_map[i] =
 					EVENT_QUEUE_SERVICE_PRIORITY_INVALID;
 		}
 
 		dev->data->ports = ports;
-		dev->data->ports_dequeue_depth = ports_dequeue_depth;
-		dev->data->ports_enqueue_depth = ports_enqueue_depth;
+		dev->data->ports_cfg = ports_cfg;
 		dev->data->links_map = links_map;
 	} else if (dev->data->ports != NULL && nb_ports == 0) {
 		RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->port_release, -ENOTSUP);
@@ -709,10 +682,7 @@ rte_event_port_setup(uint8_t dev_id, uint8_t port_id,
 		port_conf = &def_conf;
 	}
 
-	dev->data->ports_dequeue_depth[port_id] =
-			port_conf->dequeue_depth;
-	dev->data->ports_enqueue_depth[port_id] =
-			port_conf->enqueue_depth;
+	dev->data->ports_cfg[port_id] = *port_conf;
 
 	diag = (*dev->dev_ops->port_setup)(dev, port_id, port_conf);
 
@@ -772,10 +742,13 @@ rte_event_port_attr_get(uint8_t dev_id, uint8_t port_id, uint32_t attr_id,
 
 	switch (attr_id) {
 	case RTE_EVENT_PORT_ATTR_ENQ_DEPTH:
-		*attr_value = dev->data->ports_enqueue_depth[port_id];
+		*attr_value = dev->data->ports_cfg[port_id].enqueue_depth;
 		break;
 	case RTE_EVENT_PORT_ATTR_DEQ_DEPTH:
-		*attr_value = dev->data->ports_dequeue_depth[port_id];
+		*attr_value = dev->data->ports_cfg[port_id].dequeue_depth;
+		break;
+	case RTE_EVENT_PORT_ATTR_NEW_EVENT_THRESHOLD:
+		*attr_value = dev->data->ports_cfg[port_id].new_event_threshold;
 		break;
 	default:
 		return -EINVAL;
