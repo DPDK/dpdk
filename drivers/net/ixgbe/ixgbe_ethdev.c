@@ -5028,7 +5028,10 @@ ixgbevf_dev_start(struct rte_eth_dev *dev)
 
 	/* check and configure queue intr-vector mapping */
 	if (dev->data->dev_conf.intr_conf.rxq != 0) {
-		intr_vector = dev->data->nb_rx_queues;
+		/* According to datasheet, only vector 0/1/2 can be used,
+		 * now only one vector is used for Rx queue
+		 */
+		intr_vector = 1;
 		if (rte_intr_efd_enable(intr_handle, intr_vector))
 			return -1;
 	}
@@ -5555,9 +5558,12 @@ ixgbevf_dev_rx_queue_intr_enable(struct rte_eth_dev *dev, uint16_t queue_id)
 	uint32_t mask;
 	struct ixgbe_hw *hw =
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	uint32_t vec = IXGBE_MISC_VEC_ID;
 
 	mask = IXGBE_READ_REG(hw, IXGBE_VTEIMS);
-	mask |= (1 << IXGBE_MISC_VEC_ID);
+	if (rte_intr_allow_others(intr_handle))
+		vec = IXGBE_RX_VEC_START;
+	mask |= (1 << vec);
 	RTE_SET_USED(queue_id);
 	IXGBE_WRITE_REG(hw, IXGBE_VTEIMS, mask);
 
@@ -5572,9 +5578,14 @@ ixgbevf_dev_rx_queue_intr_disable(struct rte_eth_dev *dev, uint16_t queue_id)
 	uint32_t mask;
 	struct ixgbe_hw *hw =
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	uint32_t vec = IXGBE_MISC_VEC_ID;
 
 	mask = IXGBE_READ_REG(hw, IXGBE_VTEIMS);
-	mask &= ~(1 << IXGBE_MISC_VEC_ID);
+	if (rte_intr_allow_others(intr_handle))
+		vec = IXGBE_RX_VEC_START;
+	mask &= ~(1 << vec);
 	RTE_SET_USED(queue_id);
 	IXGBE_WRITE_REG(hw, IXGBE_VTEIMS, mask);
 
@@ -5716,6 +5727,7 @@ ixgbevf_configure_msix(struct rte_eth_dev *dev)
 		IXGBE_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	uint32_t q_idx;
 	uint32_t vector_idx = IXGBE_MISC_VEC_ID;
+	uint32_t base = IXGBE_MISC_VEC_ID;
 
 	/* Configure VF other cause ivar */
 	ixgbevf_set_ivar_map(hw, -1, 1, vector_idx);
@@ -5726,6 +5738,11 @@ ixgbevf_configure_msix(struct rte_eth_dev *dev)
 	if (!rte_intr_dp_is_en(intr_handle))
 		return;
 
+	if (rte_intr_allow_others(intr_handle)) {
+		base = IXGBE_RX_VEC_START;
+		vector_idx = IXGBE_RX_VEC_START;
+	}
+
 	/* Configure all RX queues of VF */
 	for (q_idx = 0; q_idx < dev->data->nb_rx_queues; q_idx++) {
 		/* Force all queue use vector 0,
@@ -5733,6 +5750,8 @@ ixgbevf_configure_msix(struct rte_eth_dev *dev)
 		 */
 		ixgbevf_set_ivar_map(hw, 0, q_idx, vector_idx);
 		intr_handle->intr_vec[q_idx] = vector_idx;
+		if (vector_idx < base + intr_handle->nb_efd - 1)
+			vector_idx++;
 	}
 }
 
