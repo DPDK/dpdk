@@ -34,7 +34,7 @@ include $(RTE_SDK)/mk/rte.vars.mk
 LIB = librte_eventdev.a
 
 # library version
-LIBABIVER := 2
+LIBABIVER := 3
 
 # build flags
 CFLAGS += -O3

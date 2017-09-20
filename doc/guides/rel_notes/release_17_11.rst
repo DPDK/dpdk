@@ -233,7 +233,7 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_distributor.so.1
      librte_eal.so.5
      librte_ethdev.so.8
-     librte_eventdev.so.2
+     librte_eventdev.so.3
      librte_gro.so.1
      librte_hash.so.2
      librte_ip_frag.so.1
