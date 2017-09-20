@@ -2369,8 +2369,12 @@ int rte_eth_stats_get(uint16_t port_id, struct rte_eth_stats *stats);
  *
  * @param port_id
  *   The port identifier of the Ethernet device.
+ * @return
+ *   - (0) if device notified to reset stats.
+ *   - (-ENOTSUP) if hardware doesn't support.
+ *   - (-ENODEV) if *port_id* invalid.
  */
-void rte_eth_stats_reset(uint16_t port_id);
+int rte_eth_stats_reset(uint16_t port_id);
 
 /**
  * Retrieve names of extended statistics of an Ethernet device.

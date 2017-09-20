@@ -47,6 +47,12 @@ New Features
   256 ports in dpdk. All ethdev APIs which have port_id as parameter are changed
   in the meantime.
 
+* **Modified the return type of rte_eth_stats_reset.**
+
+  Changed return type of ``rte_eth_stats_reset`` from ``void`` to ``int``
+  so the caller may know whether a device supports the operation or not
+  and if the operation was carried out.
+
 * **Added a new driver for Marvell Armada 7k/8k devices.**
 
   Added the new mrvl net driver for Marvell Armada 7k/8k devices. See the

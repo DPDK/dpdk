@@ -1535,17 +1535,19 @@ rte_eth_stats_get(uint16_t port_id, struct rte_eth_stats *stats)
 	return 0;
 }
 
-void
+int
 rte_eth_stats_reset(uint16_t port_id)
 {
 	struct rte_eth_dev *dev;
 
-	RTE_ETH_VALID_PORTID_OR_RET(port_id);
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	dev = &rte_eth_devices[port_id];
 
-	RTE_FUNC_PTR_OR_RET(*dev->dev_ops->stats_reset);
+	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->stats_reset, -ENOTSUP);
 	(*dev->dev_ops->stats_reset)(dev);
 	dev->data->rx_mbuf_alloc_failed = 0;
+
+	return 0;
 }
 
 static int
