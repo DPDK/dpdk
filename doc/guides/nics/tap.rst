@@ -113,7 +113,14 @@ Flow API support
 ----------------
 
 The tap PMD supports major flow API pattern items and actions, when running on
-linux kernels above 4.2 ("Flower" classifier required). Supported items:
+linux kernels above 4.2 ("Flower" classifier required).
+The kernel support can be checked with this command::
+
+   zcat /proc/config.gz | ( grep 'CLS_FLOWER=' || echo 'not supported' ) |
+   tee -a /dev/stderr | grep -q '=m' &&
+   lsmod | ( grep cls_flower || echo 'try modprobe cls_flower' )
+
+Supported items:
 
 - eth: src and dst (with variable masks), and eth_type (0xffff mask).
 - vlan: vid, pcp, tpid, but not eid. (requires kernel 4.9)
