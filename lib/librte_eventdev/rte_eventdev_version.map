@@ -19,14 +19,12 @@ DPDK_17.05 {
 
 	rte_event_port_default_conf_get;
 	rte_event_port_setup;
-	rte_event_port_count;
 	rte_event_port_link;
 	rte_event_port_unlink;
 	rte_event_port_links_get;
 
 	rte_event_queue_default_conf_get;
 	rte_event_queue_setup;
-	rte_event_queue_count;
 	rte_event_queue_priority;
 
 	rte_event_dequeue_timeout_ticks;
@@ -53,6 +51,7 @@ DPDK_17.08 {
 DPDK_17.11 {
 	global:
 
+	rte_event_dev_attr_get;
 	rte_event_port_attr_get;
 
 } DPDK_17.08;

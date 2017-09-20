@@ -273,7 +273,12 @@ test_eventdev_queue_default_conf_get(void)
 	ret = rte_event_queue_default_conf_get(TEST_DEV_ID, 0, NULL);
 	TEST_ASSERT(ret == -EINVAL, "Expected -EINVAL, %d", ret);
 
-	for (i = 0; i < rte_event_queue_count(TEST_DEV_ID); i++) {
+	uint32_t queue_count;
+	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(TEST_DEV_ID,
+			    RTE_EVENT_DEV_ATTR_QUEUE_COUNT, &queue_count),
+			    "Queue count get failed");
+
+	for (i = 0; i < (int)queue_count; i++) {
 		ret = rte_event_queue_default_conf_get(TEST_DEV_ID, i,
 						 &qconf);
 		TEST_ASSERT_SUCCESS(ret, "Failed to get queue%d info", i);
@@ -318,8 +323,12 @@ test_eventdev_queue_setup(void)
 	ret = rte_event_queue_setup(TEST_DEV_ID, 0, &qconf);
 	TEST_ASSERT_SUCCESS(ret, "Failed to setup queue0");
 
+	uint32_t queue_count;
+	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(TEST_DEV_ID,
+			    RTE_EVENT_DEV_ATTR_QUEUE_COUNT, &queue_count),
+			    "Queue count get failed");
 
-	for (i = 0; i < rte_event_queue_count(TEST_DEV_ID); i++) {
+	for (i = 0; i < (int)queue_count; i++) {
 		ret = rte_event_queue_setup(TEST_DEV_ID, i, NULL);
 		TEST_ASSERT_SUCCESS(ret, "Failed to setup queue%d", i);
 	}
@@ -336,8 +345,12 @@ test_eventdev_queue_count(void)
 	ret = rte_event_dev_info_get(TEST_DEV_ID, &info);
 	TEST_ASSERT_SUCCESS(ret, "Failed to get event dev info");
 
-	TEST_ASSERT_EQUAL(rte_event_queue_count(TEST_DEV_ID),
-		 info.max_event_queues, "Wrong queue count");
+	uint32_t queue_count;
+	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(TEST_DEV_ID,
+			    RTE_EVENT_DEV_ATTR_QUEUE_COUNT, &queue_count),
+			    "Queue count get failed");
+	TEST_ASSERT_EQUAL(queue_count, info.max_event_queues,
+			  "Wrong queue count");
 
 	return TEST_SUCCESS;
 }
@@ -353,7 +366,12 @@ test_eventdev_queue_priority(void)
 	ret = rte_event_dev_info_get(TEST_DEV_ID, &info);
 	TEST_ASSERT_SUCCESS(ret, "Failed to get event dev info");
 
-	for (i = 0; i < rte_event_queue_count(TEST_DEV_ID); i++) {
+	uint32_t queue_count;
+	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(TEST_DEV_ID,
+			    RTE_EVENT_DEV_ATTR_QUEUE_COUNT, &queue_count),
+			    "Queue count get failed");
+
+	for (i = 0; i < (int)queue_count; i++) {
 		ret = rte_event_queue_default_conf_get(TEST_DEV_ID, i,
 					&qconf);
 		TEST_ASSERT_SUCCESS(ret, "Failed to get queue%d def conf", i);
@@ -362,8 +380,9 @@ test_eventdev_queue_priority(void)
 		TEST_ASSERT_SUCCESS(ret, "Failed to setup queue%d", i);
 	}
 
-	for (i = 0; i < rte_event_queue_count(TEST_DEV_ID); i++) {
+	for (i = 0; i < (int)queue_count; i++) {
 		priority =  rte_event_queue_priority(TEST_DEV_ID, i);
+
 		if (info.event_dev_cap & RTE_EVENT_DEV_CAP_QUEUE_QOS)
 			TEST_ASSERT_EQUAL(priority,
 			 i %  RTE_EVENT_DEV_PRIORITY_LOWEST,
@@ -386,11 +405,16 @@ test_eventdev_port_default_conf_get(void)
 	ret = rte_event_port_default_conf_get(TEST_DEV_ID, 0, NULL);
 	TEST_ASSERT(ret == -EINVAL, "Expected -EINVAL, %d", ret);
 
+	uint32_t port_count;
+	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(TEST_DEV_ID,
+				RTE_EVENT_DEV_ATTR_PORT_COUNT,
+				&port_count), "Port count get failed");
+
 	ret = rte_event_port_default_conf_get(TEST_DEV_ID,
-			rte_event_port_count(TEST_DEV_ID) + 1, NULL);
+			port_count + 1, NULL);
 	TEST_ASSERT(ret == -EINVAL, "Expected -EINVAL, %d", ret);
 
-	for (i = 0; i < rte_event_port_count(TEST_DEV_ID); i++) {
+	for (i = 0; i < (int)port_count; i++) {
 		ret = rte_event_port_default_conf_get(TEST_DEV_ID, i,
 							&pconf);
 		TEST_ASSERT_SUCCESS(ret, "Failed to get port%d info", i);
@@ -436,8 +460,12 @@ test_eventdev_port_setup(void)
 	ret = rte_event_port_setup(TEST_DEV_ID, 0, &pconf);
 	TEST_ASSERT_SUCCESS(ret, "Failed to setup port0");
 
+	uint32_t port_count;
+	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(TEST_DEV_ID,
+				RTE_EVENT_DEV_ATTR_PORT_COUNT,
+				&port_count), "Port count get failed");
 
-	for (i = 0; i < rte_event_port_count(TEST_DEV_ID); i++) {
+	for (i = 0; i < (int)port_count; i++) {
 		ret = rte_event_port_setup(TEST_DEV_ID, i, NULL);
 		TEST_ASSERT_SUCCESS(ret, "Failed to setup port%d", i);
 	}
@@ -504,8 +532,11 @@ test_eventdev_port_count(void)
 	ret = rte_event_dev_info_get(TEST_DEV_ID, &info);
 	TEST_ASSERT_SUCCESS(ret, "Failed to get event dev info");
 
-	TEST_ASSERT_EQUAL(rte_event_port_count(TEST_DEV_ID),
-		 info.max_event_ports, "Wrong port count");
+	uint32_t port_count;
+	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(TEST_DEV_ID,
+				RTE_EVENT_DEV_ATTR_PORT_COUNT,
+				&port_count), "Port count get failed");
+	TEST_ASSERT_EQUAL(port_count, info.max_event_ports, "Wrong port count");
 
 	return TEST_SUCCESS;
 }
@@ -532,19 +563,28 @@ test_eventdev_start_stop(void)
 	ret = eventdev_configure_setup();
 	TEST_ASSERT_SUCCESS(ret, "Failed to configure eventdev");
 
-	for (i = 0; i < rte_event_queue_count(TEST_DEV_ID); i++) {
+	uint32_t queue_count;
+	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(TEST_DEV_ID,
+			    RTE_EVENT_DEV_ATTR_QUEUE_COUNT, &queue_count),
+			    "Queue count get failed");
+	for (i = 0; i < (int)queue_count; i++) {
 		ret = rte_event_queue_setup(TEST_DEV_ID, i, NULL);
 		TEST_ASSERT_SUCCESS(ret, "Failed to setup queue%d", i);
 	}
 
-	for (i = 0; i < rte_event_port_count(TEST_DEV_ID); i++) {
+	uint32_t port_count;
+	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(TEST_DEV_ID,
+				RTE_EVENT_DEV_ATTR_PORT_COUNT,
+				&port_count), "Port count get failed");
+
+	for (i = 0; i < (int)port_count; i++) {
 		ret = rte_event_port_setup(TEST_DEV_ID, i, NULL);
 		TEST_ASSERT_SUCCESS(ret, "Failed to setup port%d", i);
 	}
 
 	ret = rte_event_port_link(TEST_DEV_ID, 0, NULL, NULL, 0);
-	TEST_ASSERT(ret == rte_event_queue_count(TEST_DEV_ID),
-			"Failed to link port, device %d", TEST_DEV_ID);
+	TEST_ASSERT(ret == (int)queue_count, "Failed to link port, device %d",
+		    TEST_DEV_ID);
 
 	ret = rte_event_dev_start(TEST_DEV_ID);
 	TEST_ASSERT_SUCCESS(ret, "Failed to start device%d", TEST_DEV_ID);
@@ -562,19 +602,28 @@ eventdev_setup_device(void)
 	ret = eventdev_configure_setup();
 	TEST_ASSERT_SUCCESS(ret, "Failed to configure eventdev");
 
-	for (i = 0; i < rte_event_queue_count(TEST_DEV_ID); i++) {
+	uint32_t queue_count;
+	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(TEST_DEV_ID,
+			    RTE_EVENT_DEV_ATTR_QUEUE_COUNT, &queue_count),
+			    "Queue count get failed");
+	for (i = 0; i < (int)queue_count; i++) {
 		ret = rte_event_queue_setup(TEST_DEV_ID, i, NULL);
 		TEST_ASSERT_SUCCESS(ret, "Failed to setup queue%d", i);
 	}
 
-	for (i = 0; i < rte_event_port_count(TEST_DEV_ID); i++) {
+	uint32_t port_count;
+	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(TEST_DEV_ID,
+				RTE_EVENT_DEV_ATTR_PORT_COUNT,
+				&port_count), "Port count get failed");
+
+	for (i = 0; i < (int)port_count; i++) {
 		ret = rte_event_port_setup(TEST_DEV_ID, i, NULL);
 		TEST_ASSERT_SUCCESS(ret, "Failed to setup port%d", i);
 	}
 
 	ret = rte_event_port_link(TEST_DEV_ID, 0, NULL, NULL, 0);
-	TEST_ASSERT(ret == rte_event_queue_count(TEST_DEV_ID),
-			"Failed to link port, device %d", TEST_DEV_ID);
+	TEST_ASSERT(ret == (int)queue_count, "Failed to link port, device %d",
+		    TEST_DEV_ID);
 
 	ret = rte_event_dev_start(TEST_DEV_ID);
 	TEST_ASSERT_SUCCESS(ret, "Failed to start device%d", TEST_DEV_ID);
@@ -599,7 +648,11 @@ test_eventdev_link(void)
 	TEST_ASSERT(ret >= 0, "Failed to link with NULL device%d",
 				 TEST_DEV_ID);
 
-	nb_queues = rte_event_queue_count(TEST_DEV_ID);
+	uint32_t queue_count;
+	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(TEST_DEV_ID,
+			    RTE_EVENT_DEV_ATTR_QUEUE_COUNT, &queue_count),
+			    "Queue count get failed");
+	nb_queues = queue_count;
 	for (i = 0; i < nb_queues; i++) {
 		queues[i] = i;
 		priorities[i] = RTE_EVENT_DEV_PRIORITY_NORMAL;
@@ -622,7 +675,11 @@ test_eventdev_unlink(void)
 	TEST_ASSERT(ret >= 0, "Failed to unlink with NULL device%d",
 				 TEST_DEV_ID);
 
-	nb_queues = rte_event_queue_count(TEST_DEV_ID);
+	uint32_t queue_count;
+	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(TEST_DEV_ID,
+			    RTE_EVENT_DEV_ATTR_QUEUE_COUNT, &queue_count),
+			    "Queue count get failed");
+	nb_queues = queue_count;
 	for (i = 0; i < nb_queues; i++)
 		queues[i] = i;
 
@@ -636,7 +693,7 @@ test_eventdev_unlink(void)
 static int
 test_eventdev_link_get(void)
 {
-	int ret, nb_queues, i;
+	int ret, i;
 	uint8_t queues[RTE_EVENT_MAX_QUEUES_PER_DEV];
 	uint8_t priorities[RTE_EVENT_MAX_QUEUES_PER_DEV];
 
@@ -645,7 +702,11 @@ test_eventdev_link_get(void)
 	TEST_ASSERT(ret >= 0, "Failed to link with NULL device%d",
 				 TEST_DEV_ID);
 
-	nb_queues = rte_event_queue_count(TEST_DEV_ID);
+	uint32_t queue_count;
+	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(TEST_DEV_ID,
+			    RTE_EVENT_DEV_ATTR_QUEUE_COUNT, &queue_count),
+			    "Queue count get failed");
+	const int nb_queues = queue_count;
 	for (i = 0; i < nb_queues; i++)
 		queues[i] = i;
 
@@ -657,7 +718,6 @@ test_eventdev_link_get(void)
 	TEST_ASSERT(ret == 0, "(%d)Wrong link get=%d", TEST_DEV_ID, ret);
 
 	/* link all queues and get the links */
-	nb_queues = rte_event_queue_count(TEST_DEV_ID);
 	for (i = 0; i < nb_queues; i++) {
 		queues[i] = i;
 		priorities[i] = RTE_EVENT_DEV_PRIORITY_NORMAL;
@@ -687,8 +747,8 @@ test_eventdev_link_get(void)
 	ret = rte_event_port_unlink(TEST_DEV_ID, 0, NULL, 0);
 	TEST_ASSERT(ret == nb_queues, "Failed to unlink(device%d) ret=%d",
 				 TEST_DEV_ID, ret);
+
 	/* 4links and 2 unlinks */
-	nb_queues = rte_event_queue_count(TEST_DEV_ID);
 	if (nb_queues >= 4) {
 		for (i = 0; i < 4; i++) {
 			queues[i] = i;

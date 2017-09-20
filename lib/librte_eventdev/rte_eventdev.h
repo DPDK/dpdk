@@ -399,6 +399,32 @@ struct rte_event_dev_info {
 int
 rte_event_dev_info_get(uint8_t dev_id, struct rte_event_dev_info *dev_info);
 
+/**
+ * The count of ports.
+ */
+#define RTE_EVENT_DEV_ATTR_PORT_COUNT 0
+/**
+ * The count of queues.
+ */
+#define RTE_EVENT_DEV_ATTR_QUEUE_COUNT 1
+
+/**
+ * Get an attribute from a device.
+ *
+ * @param dev_id Eventdev id
+ * @param attr_id The attribute ID to retrieve
+ * @param[out] attr_value A pointer that will be filled in with the attribute
+ *             value if successful.
+ *
+ * @retval 0 Successfully retrieved attribute value
+ *         -EINVAL Invalid device or  *attr_id* provided, or *attr_value*
+ *         is NULL
+ */
+int
+rte_event_dev_attr_get(uint8_t dev_id, uint32_t attr_id,
+		       uint32_t *attr_value);
+
+
 /* Event device configuration bitmap flags */
 #define RTE_EVENT_DEV_CFG_PER_DEQUEUE_TIMEOUT (1ULL << 0)
 /**< Override the global *dequeue_timeout_ns* and use per dequeue timeout in ns.
@@ -713,17 +739,6 @@ rte_event_port_default_conf_get(uint8_t dev_id, uint8_t port_id,
 int
 rte_event_port_setup(uint8_t dev_id, uint8_t port_id,
 		     const struct rte_event_port_conf *port_conf);
-
-/**
- * Get the number of ports on a specific event device
- *
- * @param dev_id
- *   Event device identifier.
- * @return
- *   - The number of configured ports
- */
-uint8_t
-rte_event_port_count(uint8_t dev_id);
 
 /**
  * The queue depth of the port on the enqueue side

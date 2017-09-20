@@ -614,15 +614,6 @@ rte_event_queue_setup(uint8_t dev_id, uint8_t queue_id,
 }
 
 uint8_t
-rte_event_queue_count(uint8_t dev_id)
-{
-	struct rte_eventdev *dev;
-
-	dev = &rte_eventdevs[dev_id];
-	return dev->data->nb_queues;
-}
-
-uint8_t
 rte_event_queue_priority(uint8_t dev_id, uint8_t queue_id)
 {
 	struct rte_eventdev *dev;
@@ -747,13 +738,29 @@ rte_event_port_setup(uint8_t dev_id, uint8_t port_id,
 	return 0;
 }
 
-uint8_t
-rte_event_port_count(uint8_t dev_id)
+int
+rte_event_dev_attr_get(uint8_t dev_id, uint32_t attr_id,
+		       uint32_t *attr_value)
 {
 	struct rte_eventdev *dev;
 
+	if (!attr_value)
+		return -EINVAL;
+	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_eventdevs[dev_id];
-	return dev->data->nb_ports;
+
+	switch (attr_id) {
+	case RTE_EVENT_DEV_ATTR_PORT_COUNT:
+		*attr_value = dev->data->nb_ports;
+		break;
+	case RTE_EVENT_DEV_ATTR_QUEUE_COUNT:
+		*attr_value = dev->data->nb_queues;
+		break;
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
 }
 
 int
@@ -761,6 +768,10 @@ rte_event_port_attr_get(uint8_t dev_id, uint8_t port_id, uint32_t attr_id,
 			uint32_t *attr_value)
 {
 	struct rte_eventdev *dev;
+
+	if (!attr_value)
+		return -EINVAL;
+
 	RTE_EVENTDEV_VALID_DEVID_OR_ERR_RET(dev_id, -EINVAL);
 	dev = &rte_eventdevs[dev_id];
 	if (!is_valid_port(dev, port_id)) {

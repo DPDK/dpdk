@@ -193,8 +193,13 @@ _eventdev_setup(int mode)
 	ret = rte_event_dev_configure(evdev, &dev_conf);
 	TEST_ASSERT_SUCCESS(ret, "Failed to configure eventdev");
 
+	uint32_t queue_count;
+	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
+			    RTE_EVENT_DEV_ATTR_QUEUE_COUNT,
+			    &queue_count), "Queue count get failed");
+
 	if (mode == TEST_EVENTDEV_SETUP_PRIORITY) {
-		if (rte_event_queue_count(evdev) > 8) {
+		if (queue_count > 8) {
 			printf("test expects the unique priority per queue\n");
 			return -ENOTSUP;
 		}
@@ -204,8 +209,8 @@ _eventdev_setup(int mode)
 		 * RTE_EVENT_DEV_PRIORITY_LOWEST
 		 */
 		uint8_t step = (RTE_EVENT_DEV_PRIORITY_LOWEST + 1) /
-				rte_event_queue_count(evdev);
-		for (i = 0; i < rte_event_queue_count(evdev); i++) {
+				queue_count;
+		for (i = 0; i < (int)queue_count; i++) {
 			struct rte_event_queue_conf queue_conf;
 
 			ret = rte_event_queue_default_conf_get(evdev, i,
@@ -218,13 +223,17 @@ _eventdev_setup(int mode)
 
 	} else {
 		/* Configure event queues with default priority */
-		for (i = 0; i < rte_event_queue_count(evdev); i++) {
+		for (i = 0; i < (int)queue_count; i++) {
 			ret = rte_event_queue_setup(evdev, i, NULL);
 			TEST_ASSERT_SUCCESS(ret, "Failed to setup queue=%d", i);
 		}
 	}
 	/* Configure event ports */
-	for (i = 0; i < rte_event_port_count(evdev); i++) {
+	uint32_t port_count;
+	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
+				RTE_EVENT_DEV_ATTR_PORT_COUNT,
+				&port_count), "Port count get failed");
+	for (i = 0; i < (int)port_count; i++) {
 		ret = rte_event_port_setup(evdev, i, NULL);
 		TEST_ASSERT_SUCCESS(ret, "Failed to setup port=%d", i);
 		ret = rte_event_port_link(evdev, i, NULL, NULL, 0);
@@ -335,6 +344,11 @@ generate_random_events(const unsigned int total_events)
 	unsigned int i;
 	int ret;
 
+	uint32_t queue_count;
+	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
+			    RTE_EVENT_DEV_ATTR_QUEUE_COUNT,
+			    &queue_count), "Queue count get failed");
+
 	ret = rte_event_dev_info_get(evdev, &info);
 	TEST_ASSERT_SUCCESS(ret, "Failed to get event dev info");
 	for (i = 0; i < total_events; i++) {
@@ -343,7 +357,7 @@ generate_random_events(const unsigned int total_events)
 			rte_rand() % (RTE_EVENT_TYPE_CPU + 1) /* event_type */,
 			rte_rand() % 256 /* sub_event_type */,
 			rte_rand() % (RTE_SCHED_TYPE_PARALLEL + 1),
-			rte_rand() % rte_event_queue_count(evdev) /* queue */,
+			rte_rand() % queue_count /* queue */,
 			0 /* port */,
 			1 /* events */);
 		if (ret)
@@ -482,7 +496,7 @@ test_multi_queue_enq_single_port_deq(void)
 }
 
 /*
- * Inject 0..MAX_EVENTS events over 0..rte_event_queue_count() with modulus
+ * Inject 0..MAX_EVENTS events over 0..queue_count with modulus
  * operation
  *
  * For example, Inject 32 events over 0..7 queues
@@ -498,15 +512,19 @@ test_multi_queue_enq_single_port_deq(void)
 static int
 validate_queue_priority(uint32_t index, uint8_t port, struct rte_event *ev)
 {
-	uint32_t range = MAX_EVENTS / rte_event_queue_count(evdev);
-	uint32_t expected_val = (index % range) * rte_event_queue_count(evdev);
+	uint32_t queue_count;
+	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
+			    RTE_EVENT_DEV_ATTR_QUEUE_COUNT,
+			    &queue_count), "Queue count get failed");
+	uint32_t range = MAX_EVENTS / queue_count;
+	uint32_t expected_val = (index % range) * queue_count;
 
 	expected_val += ev->queue_id;
 	RTE_SET_USED(port);
 	TEST_ASSERT_EQUAL(ev->mbuf->seqn, expected_val,
 	"seqn=%d index=%d expected=%d range=%d nb_queues=%d max_event=%d",
 			ev->mbuf->seqn, index, expected_val, range,
-			rte_event_queue_count(evdev), MAX_EVENTS);
+			queue_count, MAX_EVENTS);
 	return 0;
 }
 
@@ -518,8 +536,12 @@ test_multi_queue_priority(void)
 	int i, max_evts_roundoff;
 
 	/* See validate_queue_priority() comments for priority validate logic */
-	max_evts_roundoff  = MAX_EVENTS / rte_event_queue_count(evdev);
-	max_evts_roundoff *= rte_event_queue_count(evdev);
+	uint32_t queue_count;
+	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
+			    RTE_EVENT_DEV_ATTR_QUEUE_COUNT,
+			    &queue_count), "Queue count get failed");
+	max_evts_roundoff  = MAX_EVENTS / queue_count;
+	max_evts_roundoff *= queue_count;
 
 	for (i = 0; i < max_evts_roundoff; i++) {
 		struct rte_event ev = {.event = 0, .u64 = 0};
@@ -528,7 +550,7 @@ test_multi_queue_priority(void)
 		TEST_ASSERT_NOT_NULL(m, "mempool alloc failed");
 
 		m->seqn = i;
-		queue = i % rte_event_queue_count(evdev);
+		queue = i % queue_count;
 		update_event_and_validation_attr(m, &ev, 0, RTE_EVENT_TYPE_CPU,
 			0, RTE_SCHED_TYPE_PARALLEL, queue, 0);
 		rte_event_enqueue_burst(evdev, 0, &ev, 1);
@@ -651,18 +673,21 @@ static int
 test_multi_queue_enq_multi_port_deq(void)
 {
 	const unsigned int total_events = MAX_EVENTS;
-	uint8_t nr_ports;
+	uint32_t nr_ports;
 	int ret;
 
 	ret = generate_random_events(total_events);
 	if (ret)
 		return TEST_FAILED;
 
-	nr_ports = RTE_MIN(rte_event_port_count(evdev), rte_lcore_count() - 1);
+	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
+				RTE_EVENT_DEV_ATTR_PORT_COUNT,
+				&nr_ports), "Port count get failed");
+	nr_ports = RTE_MIN(nr_ports, rte_lcore_count() - 1);
 
 	if (!nr_ports) {
 		printf("%s: Not enough ports=%d or workers=%d\n", __func__,
-			rte_event_port_count(evdev), rte_lcore_count() - 1);
+			nr_ports, rte_lcore_count() - 1);
 		return TEST_SUCCESS;
 	}
 
@@ -691,14 +716,23 @@ test_queue_to_port_single_link(void)
 {
 	int i, nr_links, ret;
 
+	uint32_t port_count;
+	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
+				RTE_EVENT_DEV_ATTR_PORT_COUNT,
+				&port_count), "Port count get failed");
+
 	/* Unlink all connections that created in eventdev_setup */
-	for (i = 0; i < rte_event_port_count(evdev); i++) {
+	for (i = 0; i < (int)port_count; i++) {
 		ret = rte_event_port_unlink(evdev, i, NULL, 0);
 		TEST_ASSERT(ret >= 0, "Failed to unlink all queues port=%d", i);
 	}
 
-	nr_links = RTE_MIN(rte_event_port_count(evdev),
-				rte_event_queue_count(evdev));
+	uint32_t queue_count;
+	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
+			    RTE_EVENT_DEV_ATTR_QUEUE_COUNT,
+			    &queue_count), "Queue count get failed");
+
+	nr_links = RTE_MIN(port_count, queue_count);
 	const unsigned int total_events = MAX_EVENTS / nr_links;
 
 	/* Link queue x to port x and inject events to queue x through port x */
@@ -750,10 +784,20 @@ static int
 test_queue_to_port_multi_link(void)
 {
 	int ret, port0_events = 0, port1_events = 0;
-	uint8_t nr_queues, nr_ports, queue, port;
+	uint8_t queue, port;
+	uint32_t nr_queues = 0;
+	uint32_t nr_ports = 0;
 
-	nr_queues = rte_event_queue_count(evdev);
-	nr_ports = rte_event_port_count(evdev);
+	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
+			    RTE_EVENT_DEV_ATTR_QUEUE_COUNT,
+			    &nr_queues), "Queue count get failed");
+
+	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
+				RTE_EVENT_DEV_ATTR_QUEUE_COUNT,
+				&nr_queues), "Queue count get failed");
+	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
+				RTE_EVENT_DEV_ATTR_PORT_COUNT,
+				&nr_ports), "Port count get failed");
 
 	if (nr_ports < 2) {
 		printf("%s: Not enough ports to test ports=%d\n",
@@ -854,14 +898,17 @@ test_multiport_flow_sched_type_test(uint8_t in_sched_type,
 			uint8_t out_sched_type)
 {
 	const unsigned int total_events = MAX_EVENTS;
-	uint8_t nr_ports;
+	uint32_t nr_ports;
 	int ret;
 
-	nr_ports = RTE_MIN(rte_event_port_count(evdev), rte_lcore_count() - 1);
+	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
+				RTE_EVENT_DEV_ATTR_PORT_COUNT,
+				&nr_ports), "Port count get failed");
+	nr_ports = RTE_MIN(nr_ports, rte_lcore_count() - 1);
 
 	if (!nr_ports) {
 		printf("%s: Not enough ports=%d or workers=%d\n", __func__,
-			rte_event_port_count(evdev), rte_lcore_count() - 1);
+			nr_ports, rte_lcore_count() - 1);
 		return TEST_SUCCESS;
 	}
 
@@ -1007,15 +1054,23 @@ test_multiport_queue_sched_type_test(uint8_t in_sched_type,
 			uint8_t out_sched_type)
 {
 	const unsigned int total_events = MAX_EVENTS;
-	uint8_t nr_ports;
+	uint32_t nr_ports;
 	int ret;
 
-	nr_ports = RTE_MIN(rte_event_port_count(evdev), rte_lcore_count() - 1);
+	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
+				RTE_EVENT_DEV_ATTR_PORT_COUNT,
+				&nr_ports), "Port count get failed");
 
-	if (rte_event_queue_count(evdev) < 2 ||  !nr_ports) {
+	nr_ports = RTE_MIN(nr_ports, rte_lcore_count() - 1);
+
+	uint32_t queue_count;
+	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
+			    RTE_EVENT_DEV_ATTR_QUEUE_COUNT,
+			    &queue_count), "Queue count get failed");
+	if (queue_count < 2 ||  !nr_ports) {
 		printf("%s: Not enough queues=%d ports=%d or workers=%d\n",
-			 __func__, rte_event_queue_count(evdev),
-			rte_event_port_count(evdev), rte_lcore_count() - 1);
+			 __func__, queue_count, nr_ports,
+			 rte_lcore_count() - 1);
 		return TEST_SUCCESS;
 	}
 
@@ -1142,14 +1197,17 @@ worker_flow_based_pipeline_max_stages_rand_sched_type(void *arg)
 static int
 launch_multi_port_max_stages_random_sched_type(int (*fn)(void *))
 {
-	uint8_t nr_ports;
+	uint32_t nr_ports;
 	int ret;
 
-	nr_ports = RTE_MIN(rte_event_port_count(evdev), rte_lcore_count() - 1);
+	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
+				RTE_EVENT_DEV_ATTR_PORT_COUNT,
+				&nr_ports), "Port count get failed");
+	nr_ports = RTE_MIN(nr_ports, rte_lcore_count() - 1);
 
 	if (!nr_ports) {
 		printf("%s: Not enough ports=%d or workers=%d\n", __func__,
-			rte_event_port_count(evdev), rte_lcore_count() - 1);
+			nr_ports, rte_lcore_count() - 1);
 		return TEST_SUCCESS;
 	}
 
@@ -1184,7 +1242,11 @@ worker_queue_based_pipeline_max_stages_rand_sched_type(void *arg)
 	struct rte_event ev;
 	uint16_t valid_event;
 	uint8_t port = param->port;
-	uint8_t nr_queues = rte_event_queue_count(evdev);
+	uint32_t queue_count;
+	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
+			    RTE_EVENT_DEV_ATTR_QUEUE_COUNT,
+			    &queue_count), "Queue count get failed");
+	uint8_t nr_queues = queue_count;
 	rte_atomic32_t *total_events = param->total_events;
 
 	while (rte_atomic32_read(total_events) > 0) {
@@ -1222,7 +1284,11 @@ worker_mixed_pipeline_max_stages_rand_sched_type(void *arg)
 	struct rte_event ev;
 	uint16_t valid_event;
 	uint8_t port = param->port;
-	uint8_t nr_queues = rte_event_queue_count(evdev);
+	uint32_t queue_count;
+	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
+			    RTE_EVENT_DEV_ATTR_QUEUE_COUNT,
+			    &queue_count), "Queue count get failed");
+	uint8_t nr_queues = queue_count;
 	rte_atomic32_t *total_events = param->total_events;
 
 	while (rte_atomic32_read(total_events) > 0) {
@@ -1288,9 +1354,12 @@ worker_ordered_flow_producer(void *arg)
 static inline int
 test_producer_consumer_ingress_order_test(int (*fn)(void *))
 {
-	uint8_t nr_ports;
+	uint32_t nr_ports;
 
-	nr_ports = RTE_MIN(rte_event_port_count(evdev), rte_lcore_count() - 1);
+	TEST_ASSERT_SUCCESS(rte_event_dev_attr_get(evdev,
+				RTE_EVENT_DEV_ATTR_PORT_COUNT,
+				&nr_ports), "Port count get failed");
+	nr_ports = RTE_MIN(nr_ports, rte_lcore_count() - 1);
 
 	if (rte_lcore_count() < 3 || nr_ports < 2) {
 		printf("### Not enough cores for %s test.\n", __func__);
