@@ -61,16 +61,6 @@ find_port_id_by_pci_addr(const struct rte_pci_addr *pci_addr)
 	unsigned i;
 
 	for (i = 0; i < rte_eth_dev_count(); i++) {
-
-		/* Currently populated by rte_eth_copy_pci_info().
-		 *
-		 * TODO: Once the PCI bus has arrived we should have a better
-		 * way to test for being a PCI device or not.
-		 */
-		if (rte_eth_devices[i].data->kdrv == RTE_KDRV_UNKNOWN ||
-		    rte_eth_devices[i].data->kdrv == RTE_KDRV_NONE)
-			continue;
-
 		pci_dev = RTE_ETH_DEV_TO_PCI(&rte_eth_devices[i]);
 		eth_pci_addr = &pci_dev->addr;
 
@@ -98,6 +88,16 @@ find_port_id_by_dev_name(const char *name)
 	return -1;
 }
 
+static inline int
+pci_addr_cmp(const struct rte_device *dev, const void *_pci_addr)
+{
+	struct rte_pci_device *pdev;
+	const struct rte_pci_addr *paddr = _pci_addr;
+
+	pdev = RTE_DEV_TO_PCI(*(struct rte_device **)(void *)&dev);
+	return rte_eal_compare_pci_addr(&pdev->addr, paddr);
+}
+
 /**
  * Parses a port identifier string to a port id by pci address, then by name,
  * and finally port id.
@@ -106,10 +106,23 @@ static inline int
 parse_port_id(const char *port_str)
 {
 	struct rte_pci_addr dev_addr;
+	struct rte_bus *pci_bus;
+	struct rte_device *dev;
 	int port_id;
 
+	pci_bus = rte_bus_find_by_name("pci");
+	if (pci_bus == NULL) {
+		RTE_LOG(ERR, PMD, "unable to find PCI bus\n");
+		return -1;
+	}
+
 	/* try parsing as pci address, physical devices */
-	if (eal_parse_pci_DomBDF(port_str, &dev_addr) == 0) {
+	if (pci_bus->parse(port_str, &dev_addr) == 0) {
+		dev = pci_bus->find_device(NULL, pci_addr_cmp, &dev_addr);
+		if (dev == NULL) {
+			RTE_LOG(ERR, PMD, "unable to find PCI device\n");
+			return -1;
+		}
 		port_id = find_port_id_by_pci_addr(&dev_addr);
 		if (port_id < 0)
 			return -1;
