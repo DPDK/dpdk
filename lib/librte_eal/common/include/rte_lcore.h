@@ -262,6 +262,20 @@ void rte_thread_get_affinity(rte_cpuset_t *cpusetp);
  */
 int rte_thread_setname(pthread_t id, const char *name);
 
+/**
+ * Test if the core supplied has a specific role
+ *
+ * @param lcore_id
+ *   The identifier of the lcore, which MUST be between 0 and
+ *   RTE_MAX_LCORE-1.
+ * @param role
+ *   The role to be checked against.
+ * @return
+ *   On success, return 0; otherwise return a negative value.
+ */
+int
+rte_lcore_has_role(unsigned int lcore_id, enum rte_lcore_role_t role);
+
 #ifdef __cplusplus
 }
 #endif
