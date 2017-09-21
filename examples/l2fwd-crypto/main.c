@@ -86,6 +86,8 @@ enum cdev_type {
 
 #define MAX_STR_LEN 32
 #define MAX_KEY_SIZE 128
+#define MAX_IV_SIZE 16
+#define MAX_AAD_SIZE 65535
 #define MAX_PKT_BURST 32
 #define BURST_TX_DRAIN_US 100 /* TX drain every ~100us */
 #define MAX_SESSIONS 32
@@ -534,7 +536,16 @@ l2fwd_simple_crypto_enqueue(struct rte_mbuf *m,
 		uint8_t *iv_ptr = rte_crypto_op_ctod_offset(op, uint8_t *,
 							IV_OFFSET);
 		/* Copy IV at the end of the crypto operation */
-		rte_memcpy(iv_ptr, cparams->aead_iv.data, cparams->aead_iv.length);
+		/*
+		 * If doing AES-CCM, nonce is copied one byte
+		 * after the start of IV field
+		 */
+		if (cparams->aead_algo == RTE_CRYPTO_AEAD_AES_CCM)
+			rte_memcpy(iv_ptr + 1, cparams->aead_iv.data,
+					cparams->aead_iv.length);
+		else
+			rte_memcpy(iv_ptr, cparams->aead_iv.data,
+					cparams->aead_iv.length);
 
 		op->sym->aead.data.offset = ipdata_offset;
 		op->sym->aead.data.length = data_len;
@@ -796,6 +807,14 @@ l2fwd_main_loop(struct l2fwd_crypto_options *options)
 				if (!options->aad_param)
 					generate_random_key(port_cparams[i].aad.data,
 						port_cparams[i].aad.length);
+				/*
+				 * If doing AES-CCM, first 18 bytes has to be reserved,
+				 * and actual AAD should start from byte 18
+				 */
+				if (port_cparams[i].aead_algo == RTE_CRYPTO_AEAD_AES_CCM)
+					memmove(port_cparams[i].aad.data + 18,
+							port_cparams[i].aad.data,
+							port_cparams[i].aad.length);
 
 			} else
 				port_cparams[i].aad.length = 0;
@@ -1081,16 +1100,16 @@ parse_cipher_op(enum rte_crypto_cipher_operation *op, char *optarg)
 	return -1;
 }
 
-/** Parse crypto key command line argument */
+/** Parse bytes from command line argument */
 static int
-parse_key(uint8_t *data, char *input_arg)
+parse_bytes(uint8_t *data, char *input_arg, uint16_t max_size)
 {
 	unsigned byte_count;
 	char *token;
 
 	errno = 0;
 	for (byte_count = 0, token = strtok(input_arg, ":");
-			(byte_count < MAX_KEY_SIZE) && (token != NULL);
+			(byte_count < max_size) && (token != NULL);
 			token = strtok(NULL, ":")) {
 
 		int number = (int)strtol(token, NULL, 16);
@@ -1230,7 +1249,8 @@ l2fwd_crypto_parse_args_long_options(struct l2fwd_crypto_options *options,
 	else if (strcmp(lgopts[option_index].name, "cipher_key") == 0) {
 		options->ckey_param = 1;
 		options->cipher_xform.cipher.key.length =
-			parse_key(options->cipher_xform.cipher.key.data, optarg);
+			parse_bytes(options->cipher_xform.cipher.key.data, optarg,
+					MAX_KEY_SIZE);
 		if (options->cipher_xform.cipher.key.length > 0)
 			return 0;
 		else
@@ -1243,7 +1263,7 @@ l2fwd_crypto_parse_args_long_options(struct l2fwd_crypto_options *options,
 	else if (strcmp(lgopts[option_index].name, "cipher_iv") == 0) {
 		options->cipher_iv_param = 1;
 		options->cipher_iv.length =
-			parse_key(options->cipher_iv.data, optarg);
+			parse_bytes(options->cipher_iv.data, optarg, MAX_IV_SIZE);
 		if (options->cipher_iv.length > 0)
 			return 0;
 		else
@@ -1266,7 +1286,8 @@ l2fwd_crypto_parse_args_long_options(struct l2fwd_crypto_options *options,
 	else if (strcmp(lgopts[option_index].name, "auth_key") == 0) {
 		options->akey_param = 1;
 		options->auth_xform.auth.key.length =
-			parse_key(options->auth_xform.auth.key.data, optarg);
+			parse_bytes(options->auth_xform.auth.key.data, optarg,
+					MAX_KEY_SIZE);
 		if (options->auth_xform.auth.key.length > 0)
 			return 0;
 		else
@@ -1280,7 +1301,7 @@ l2fwd_crypto_parse_args_long_options(struct l2fwd_crypto_options *options,
 	else if (strcmp(lgopts[option_index].name, "auth_iv") == 0) {
 		options->auth_iv_param = 1;
 		options->auth_iv.length =
-			parse_key(options->auth_iv.data, optarg);
+			parse_bytes(options->auth_iv.data, optarg, MAX_IV_SIZE);
 		if (options->auth_iv.length > 0)
 			return 0;
 		else
@@ -1303,7 +1324,8 @@ l2fwd_crypto_parse_args_long_options(struct l2fwd_crypto_options *options,
 	else if (strcmp(lgopts[option_index].name, "aead_key") == 0) {
 		options->aead_key_param = 1;
 		options->aead_xform.aead.key.length =
-			parse_key(options->aead_xform.aead.key.data, optarg);
+			parse_bytes(options->aead_xform.aead.key.data, optarg,
+					MAX_KEY_SIZE);
 		if (options->aead_xform.aead.key.length > 0)
 			return 0;
 		else
@@ -1317,7 +1339,7 @@ l2fwd_crypto_parse_args_long_options(struct l2fwd_crypto_options *options,
 	else if (strcmp(lgopts[option_index].name, "aead_iv") == 0) {
 		options->aead_iv_param = 1;
 		options->aead_iv.length =
-			parse_key(options->aead_iv.data, optarg);
+			parse_bytes(options->aead_iv.data, optarg, MAX_IV_SIZE);
 		if (options->aead_iv.length > 0)
 			return 0;
 		else
@@ -1330,7 +1352,7 @@ l2fwd_crypto_parse_args_long_options(struct l2fwd_crypto_options *options,
 	else if (strcmp(lgopts[option_index].name, "aad") == 0) {
 		options->aad_param = 1;
 		options->aad.length =
-			parse_key(options->aad.data, optarg);
+			parse_bytes(options->aad.data, optarg, MAX_AAD_SIZE);
 		if (options->aad.length > 0)
 			return 0;
 		else
