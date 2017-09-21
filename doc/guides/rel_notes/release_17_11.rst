@@ -89,6 +89,10 @@ New Features
   * Coalesce writes to HEAD CSR on response processing.
   * Coalesce writes to TAIL CSR on request processing.
 
+  Additional support for:
+
+  * AES CCM algorithm.
+
 * **Updated the AESNI MB PMD.**
 
   The AESNI MB PMD has been updated with additional support for:

@@ -124,6 +124,9 @@ static int qat_hash_get_state1_size(enum icp_qat_hw_auth_algo qat_hash_alg)
 	case ICP_QAT_HW_AUTH_ALGO_NULL:
 		return QAT_HW_ROUND_UP(ICP_QAT_HW_NULL_STATE1_SZ,
 						QAT_HW_DEFAULT_ALIGNMENT);
+	case ICP_QAT_HW_AUTH_ALGO_AES_CBC_MAC:
+		return QAT_HW_ROUND_UP(ICP_QAT_HW_AES_CBC_MAC_STATE1_SZ,
+						QAT_HW_DEFAULT_ALIGNMENT);
 	case ICP_QAT_HW_AUTH_ALGO_DELIMITER:
 		/* return maximum state1 size in this case */
 		return QAT_HW_ROUND_UP(ICP_QAT_HW_SHA512_STATE1_SZ,
@@ -875,6 +878,31 @@ int qat_alg_aead_session_create_content_desc_auth(struct qat_session *cdesc,
 		state1_size = qat_hash_get_state1_size(
 				ICP_QAT_HW_AUTH_ALGO_NULL);
 		state2_size = ICP_QAT_HW_NULL_STATE2_SZ;
+		break;
+	case ICP_QAT_HW_AUTH_ALGO_AES_CBC_MAC:
+		qat_proto_flag = QAT_CRYPTO_PROTO_FLAG_CCM;
+		state1_size = qat_hash_get_state1_size(
+				ICP_QAT_HW_AUTH_ALGO_AES_CBC_MAC);
+		state2_size = ICP_QAT_HW_AES_CBC_MAC_KEY_SZ +
+				ICP_QAT_HW_AES_CCM_CBC_E_CTR0_SZ;
+
+		if (aad_length > 0) {
+			aad_length += ICP_QAT_HW_CCM_AAD_B0_LEN +
+				ICP_QAT_HW_CCM_AAD_LEN_INFO;
+			auth_param->u2.aad_sz =
+					RTE_ALIGN_CEIL(aad_length,
+					ICP_QAT_HW_CCM_AAD_ALIGNMENT);
+		} else {
+			auth_param->u2.aad_sz = ICP_QAT_HW_CCM_AAD_B0_LEN;
+		}
+
+		cdesc->aad_len = aad_length;
+		hash->auth_counter.counter = 0;
+
+		hash_cd_ctrl->outer_prefix_sz = digestsize;
+		auth_param->hash_state_sz = digestsize;
+
+		memcpy(cdesc->cd_cur_ptr + state1_size, authkey, authkeylen);
 		break;
 	case ICP_QAT_HW_AUTH_ALGO_KASUMI_F9:
 		state1_size = qat_hash_get_state1_size(

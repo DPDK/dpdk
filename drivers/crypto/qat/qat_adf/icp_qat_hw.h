@@ -301,6 +301,26 @@ enum icp_qat_hw_cipher_convert {
 
 #define ICP_QAT_HW_CIPHER_MAX_KEY_SZ ICP_QAT_HW_AES_256_F8_KEY_SZ
 
+/* These defines describe position of the bit-fields
+ * in the flags byte in B0
+ */
+#define ICP_QAT_HW_CCM_B0_FLAGS_ADATA_SHIFT      6
+#define ICP_QAT_HW_CCM_B0_FLAGS_T_SHIFT          3
+
+#define ICP_QAT_HW_CCM_BUILD_B0_FLAGS(Adata, t, q)                  \
+	((((Adata) > 0 ? 1 : 0) << ICP_QAT_HW_CCM_B0_FLAGS_ADATA_SHIFT) \
+	| ((((t) - 2) >> 1) << ICP_QAT_HW_CCM_B0_FLAGS_T_SHIFT) \
+	| ((q) - 1))
+
+#define ICP_QAT_HW_CCM_NQ_CONST 15
+#define ICP_QAT_HW_CCM_AAD_B0_LEN 16
+#define ICP_QAT_HW_CCM_AAD_LEN_INFO 2
+#define ICP_QAT_HW_CCM_AAD_DATA_OFFSET (ICP_QAT_HW_CCM_AAD_B0_LEN + \
+		ICP_QAT_HW_CCM_AAD_LEN_INFO)
+#define ICP_QAT_HW_CCM_AAD_ALIGNMENT 16
+#define ICP_QAT_HW_CCM_MSG_LEN_MAX_FIELD_SIZE 4
+#define ICP_QAT_HW_CCM_NONCE_OFFSET 1
+
 struct icp_qat_hw_cipher_algo_blk {
 	struct icp_qat_hw_cipher_config cipher_config;
 	uint8_t key[ICP_QAT_HW_CIPHER_MAX_KEY_SZ];
