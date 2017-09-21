@@ -146,6 +146,10 @@ F: lib/librte_eal/common/rte_service.c
 F: doc/guides/prog_guide/service_cores.rst
 F: test/test/test_service_cores.c
 
+Bitmap
+M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
+F: lib/librte_eal/common/include/rte_bitmap.h
+
 ARM v7
 M: Jan Viktorin <viktorin@rehivetech.com>
 M: Jianbo Liu <jianbo.liu@linaro.org>

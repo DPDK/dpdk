@@ -42,9 +42,9 @@
 #include <rte_prefetch.h>
 #include <rte_branch_prediction.h>
 #include <rte_mbuf.h>
+#include <rte_bitmap.h>
 
 #include "rte_sched.h"
-#include "rte_bitmap.h"
 #include "rte_sched_common.h"
 #include "rte_approx.h"
 #include "rte_reciprocal.h"
