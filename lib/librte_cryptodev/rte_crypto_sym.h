@@ -196,7 +196,9 @@ struct rte_crypto_cipher_xform {
 		 * space for the implementation to write in the flags
 		 * in the first byte). Note that a full 16 bytes should
 		 * be allocated, even though the length field will
-		 * have a value less than this.
+		 * have a value less than this. Note that the PMDs may
+		 * modify the memory reserved (the first byte and the
+		 * final padding)
 		 *
 		 * - For AES-XTS, this is the 128bit tweak, i, from
 		 * IEEE Std 1619-2007.
@@ -555,20 +557,19 @@ struct rte_crypto_sym_op {
 				 * Specifically for CCM (@ref RTE_CRYPTO_AEAD_AES_CCM),
 				 * the caller should setup this field as follows:
 				 *
-				 * - the nonce should be written starting at an offset
-				 * of one byte into the array, leaving room for the
-				 * implementation to write in the flags to the first
-				 * byte.
-				 *
-				 * - the additional  authentication data itself should
+				 * - the additional authentication data itself should
 				 * be written starting at an offset of 18 bytes into
-				 * the array, leaving room for the length encoding in
-				 * the first two bytes of the second block.
+				 * the array, leaving room for the first block (16 bytes)
+				 * and the length encoding in the first two bytes of the
+				 * second block.
 				 *
 				 * - the array should be big enough to hold the above
-				 *  fields, plus any padding to round this up to the
-				 *  nearest multiple of the block size (16 bytes).
-				 *  Padding will be added by the implementation.
+				 * fields, plus any padding to round this up to the
+				 * nearest multiple of the block size (16 bytes).
+				 * Padding will be added by the implementation.
+				 *
+				 * - Note that PMDs may modify the memory reserved
+				 * (first 18 bytes and the final padding).
 				 *
 				 * Finally, for GCM (@ref RTE_CRYPTO_AEAD_AES_GCM), the
 				 * caller should setup this field as follows:
