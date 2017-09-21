@@ -156,11 +156,27 @@ cperf_alloc_common_memory(const struct cperf_options *options,
 	/* Calculate the object size */
 	uint16_t crypto_op_size = sizeof(struct rte_crypto_op) +
 		sizeof(struct rte_crypto_sym_op);
-	uint16_t crypto_op_private_size = extra_op_priv_size +
-				test_vector->cipher_iv.length +
-				test_vector->auth_iv.length +
-				test_vector->aead_iv.length +
-				options->aead_aad_sz;
+	uint16_t crypto_op_private_size;
+	/*
+	 * If doing AES-CCM, IV field needs to be 16 bytes long,
+	 * and AAD field needs to be long enough to have 18 bytes,
+	 * plus the length of the AAD, and all rounded to a
+	 * multiple of 16 bytes.
+	 */
+	if (options->aead_algo == RTE_CRYPTO_AEAD_AES_CCM) {
+		crypto_op_private_size = extra_op_priv_size +
+			test_vector->cipher_iv.length +
+			test_vector->auth_iv.length +
+			RTE_ALIGN_CEIL(test_vector->aead_iv.length, 16) +
+			RTE_ALIGN_CEIL(options->aead_aad_sz + 18, 16);
+	} else {
+		crypto_op_private_size = extra_op_priv_size +
+			test_vector->cipher_iv.length +
+			test_vector->auth_iv.length +
+			test_vector->aead_iv.length +
+			options->aead_aad_sz;
+	}
+
 	uint16_t crypto_op_total_size = crypto_op_size +
 				crypto_op_private_size;
 	uint16_t crypto_op_total_size_padded =

@@ -363,6 +363,7 @@ cperf_set_ops_aead(struct rte_crypto_op **ops,
 		uint16_t iv_offset)
 {
 	uint16_t i;
+	/* AAD is placed after the IV */
 	uint16_t aad_offset = iv_offset +
 			RTE_ALIGN_CEIL(test_vector->aead_iv.length, 16);
 
@@ -433,13 +434,26 @@ cperf_set_ops_aead(struct rte_crypto_op **ops,
 			uint8_t *iv_ptr = rte_crypto_op_ctod_offset(ops[i],
 					uint8_t *, iv_offset);
 
-			memcpy(iv_ptr, test_vector->aead_iv.data,
+			/*
+			 * If doing AES-CCM, nonce is copied one byte
+			 * after the start of IV field, and AAD is copied
+			 * 18 bytes after the start of the AAD field.
+			 */
+			if (options->aead_algo == RTE_CRYPTO_AEAD_AES_CCM) {
+				memcpy(iv_ptr + 1, test_vector->aead_iv.data,
 					test_vector->aead_iv.length);
 
-			/* Copy AAD after the IV */
-			memcpy(ops[i]->sym->aead.aad.data,
-				test_vector->aad.data,
-				test_vector->aad.length);
+				memcpy(ops[i]->sym->aead.aad.data + 18,
+					test_vector->aad.data,
+					test_vector->aad.length);
+			} else {
+				memcpy(iv_ptr, test_vector->aead_iv.data,
+					test_vector->aead_iv.length);
+
+				memcpy(ops[i]->sym->aead.aad.data,
+					test_vector->aad.data,
+					test_vector->aad.length);
+			}
 		}
 	}
 
