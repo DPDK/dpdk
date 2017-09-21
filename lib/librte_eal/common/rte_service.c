@@ -431,7 +431,7 @@ rte_service_start_with_defaults(void)
 	uint32_t count = rte_service_get_count();
 
 	int32_t lcore_iter = 0;
-	uint32_t ids[RTE_MAX_LCORE];
+	uint32_t ids[RTE_MAX_LCORE] = {0};
 	int32_t lcore_count = rte_service_lcore_list(ids, RTE_MAX_LCORE);
 
 	if (lcore_count == 0)
