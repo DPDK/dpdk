@@ -59,6 +59,7 @@
 #define ETH_AF_PACKET_BLOCKSIZE_ARG	"blocksz"
 #define ETH_AF_PACKET_FRAMESIZE_ARG	"framesz"
 #define ETH_AF_PACKET_FRAMECOUNT_ARG	"framecnt"
+#define ETH_AF_PACKET_QDISC_BYPASS_ARG	"qdisc_bypass"
 
 #define DFLT_BLOCK_SIZE		(1 << 12)
 #define DFLT_FRAME_SIZE		(1 << 11)
@@ -115,6 +116,7 @@ static const char *valid_arguments[] = {
 	ETH_AF_PACKET_BLOCKSIZE_ARG,
 	ETH_AF_PACKET_FRAMESIZE_ARG,
 	ETH_AF_PACKET_FRAMECOUNT_ARG,
+	ETH_AF_PACKET_QDISC_BYPASS_ARG,
 	NULL
 };
 
@@ -559,6 +561,7 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
                        unsigned int blockcnt,
                        unsigned int framesize,
                        unsigned int framecnt,
+		       unsigned int qdisc_bypass,
                        struct pmd_internals **internals,
                        struct rte_eth_dev **eth_dev,
                        struct rte_kvargs *kvlist)
@@ -579,9 +582,6 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 	unsigned int i, q, rdsize;
 #if defined(PACKET_FANOUT)
 	int fanout_arg;
-#endif
-#if defined(PACKET_QDISC_BYPASS)
-	int bypass;
 #endif
 
 	for (k_idx = 0; k_idx < kvlist->count; k_idx++) {
@@ -698,9 +698,8 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 		}
 
 #if defined(PACKET_QDISC_BYPASS)
-		bypass = 1;
 		rc = setsockopt(qsockfd, SOL_PACKET, PACKET_QDISC_BYPASS,
-				&bypass, sizeof(bypass));
+				&qdisc_bypass, sizeof(qdisc_bypass));
 		if (rc == -1) {
 			RTE_LOG(ERR, PMD,
 				"%s: could not set PACKET_QDISC_BYPASS "
@@ -708,6 +707,8 @@ rte_pmd_init_internals(struct rte_vdev_device *dev,
 			        pair->value);
 			goto error;
 		}
+#else
+		RTE_SET_USED(qdisc_bypass);
 #endif
 
 		rc = setsockopt(qsockfd, SOL_PACKET, PACKET_RX_RING, req, sizeof(*req));
@@ -851,6 +852,7 @@ rte_eth_from_packet(struct rte_vdev_device *dev,
 	unsigned int framesize = DFLT_FRAME_SIZE;
 	unsigned int framecount = DFLT_FRAME_COUNT;
 	unsigned int qpairs = 1;
+	unsigned int qdisc_bypass = 1;
 
 	/* do some parameter checking */
 	if (*sockfd < 0)
@@ -902,6 +904,16 @@ rte_eth_from_packet(struct rte_vdev_device *dev,
 			}
 			continue;
 		}
+		if (strstr(pair->key, ETH_AF_PACKET_QDISC_BYPASS_ARG) != NULL) {
+			qdisc_bypass = atoi(pair->value);
+			if (qdisc_bypass > 1) {
+				RTE_LOG(ERR, PMD,
+					"%s: invalid bypass value\n",
+					name);
+				return -1;
+			}
+			continue;
+		}
 	}
 
 	if (framesize > blocksize) {
@@ -927,6 +939,7 @@ rte_eth_from_packet(struct rte_vdev_device *dev,
 	if (rte_pmd_init_internals(dev, *sockfd, qpairs,
 				   blocksize, blockcount,
 				   framesize, framecount,
+				   qdisc_bypass,
 				   &internals, &eth_dev,
 				   kvlist) < 0)
 		return -1;
@@ -1021,4 +1034,5 @@ RTE_PMD_REGISTER_PARAM_STRING(net_af_packet,
 	"qpairs=<int> "
 	"blocksz=<int> "
 	"framesz=<int> "
-	"framecnt=<int>");
+	"framecnt=<int> "
+	"qdisc_bypass=<0|1>");
