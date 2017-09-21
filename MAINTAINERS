@@ -149,6 +149,7 @@ F: test/test/test_service_cores.c
 Bitmap
 M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
 F: lib/librte_eal/common/include/rte_bitmap.h
+F: test/test/test_bitmap.c
 
 ARM v7
 M: Jan Viktorin <viktorin@rehivetech.com>
