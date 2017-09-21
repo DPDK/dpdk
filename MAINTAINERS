@@ -176,6 +176,7 @@ M: Chao Zhu <chaozhu@linux.vnet.ibm.com>
 F: lib/librte_eal/common/arch/ppc_64/
 F: lib/librte_eal/common/include/arch/ppc_64/
 F: drivers/net/i40e/i40e_rxtx_vec_altivec.c
+F: examples/l3fwd/*altivec.h
 
 Intel x86
 M: Bruce Richardson <bruce.richardson@intel.com>
