@@ -203,8 +203,10 @@ nic_stats_display(portid_t port_id)
 	if (diff_cycles > 0)
 		diff_cycles = prev_cycles[port_id] - diff_cycles;
 
-	diff_pkts_rx = stats.ipackets - prev_pkts_rx[port_id];
-	diff_pkts_tx = stats.opackets - prev_pkts_tx[port_id];
+	diff_pkts_rx = (stats.ipackets > prev_pkts_rx[port_id]) ?
+		(stats.ipackets - prev_pkts_rx[port_id]) : 0;
+	diff_pkts_tx = (stats.opackets > prev_pkts_tx[port_id]) ?
+		(stats.opackets - prev_pkts_tx[port_id]) : 0;
 	prev_pkts_rx[port_id] = stats.ipackets;
 	prev_pkts_tx[port_id] = stats.opackets;
 	mpps_rx = diff_cycles > 0 ?
