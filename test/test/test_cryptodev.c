@@ -4933,25 +4933,49 @@ create_aead_operation(enum rte_crypto_aead_operation op,
 	struct rte_crypto_sym_op *sym_op = ut_params->op->sym;
 
 	/* Append aad data */
-	aad_pad_len = RTE_ALIGN_CEIL(tdata->aad.len, 16);
-	sym_op->aead.aad.data = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
-			aad_pad_len);
-	TEST_ASSERT_NOT_NULL(sym_op->aead.aad.data,
-			"no room to append aad");
+	if (tdata->algo == RTE_CRYPTO_AEAD_AES_CCM) {
+		aad_pad_len = RTE_ALIGN_CEIL(tdata->aad.len + 18, 16);
+		sym_op->aead.aad.data = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
+				aad_pad_len);
+		TEST_ASSERT_NOT_NULL(sym_op->aead.aad.data,
+				"no room to append aad");
 
-	sym_op->aead.aad.phys_addr =
-			rte_pktmbuf_mtophys(ut_params->ibuf);
-	memcpy(sym_op->aead.aad.data, tdata->aad.data, tdata->aad.len);
-	TEST_HEXDUMP(stdout, "aad:", sym_op->aead.aad.data,
-		tdata->aad.len);
+		sym_op->aead.aad.phys_addr =
+				rte_pktmbuf_mtophys(ut_params->ibuf);
+		/* Copy AAD 18 bytes after the AAD pointer, according to the API */
+		memcpy(sym_op->aead.aad.data + 18, tdata->aad.data, tdata->aad.len);
+		TEST_HEXDUMP(stdout, "aad:", sym_op->aead.aad.data,
+			tdata->aad.len);
 
-	/* Append IV at the end of the crypto operation*/
-	uint8_t *iv_ptr = rte_crypto_op_ctod_offset(ut_params->op,
-			uint8_t *, IV_OFFSET);
+		/* Append IV at the end of the crypto operation*/
+		uint8_t *iv_ptr = rte_crypto_op_ctod_offset(ut_params->op,
+				uint8_t *, IV_OFFSET);
 
-	rte_memcpy(iv_ptr, tdata->iv.data, tdata->iv.len);
-	TEST_HEXDUMP(stdout, "iv:", iv_ptr,
-		tdata->iv.len);
+		/* Copy IV 1 byte after the IV pointer, according to the API */
+		rte_memcpy(iv_ptr + 1, tdata->iv.data, tdata->iv.len);
+		TEST_HEXDUMP(stdout, "iv:", iv_ptr,
+			tdata->iv.len);
+	} else {
+		aad_pad_len = RTE_ALIGN_CEIL(tdata->aad.len, 16);
+		sym_op->aead.aad.data = (uint8_t *)rte_pktmbuf_append(ut_params->ibuf,
+				aad_pad_len);
+		TEST_ASSERT_NOT_NULL(sym_op->aead.aad.data,
+				"no room to append aad");
+
+		sym_op->aead.aad.phys_addr =
+				rte_pktmbuf_mtophys(ut_params->ibuf);
+		memcpy(sym_op->aead.aad.data, tdata->aad.data, tdata->aad.len);
+		TEST_HEXDUMP(stdout, "aad:", sym_op->aead.aad.data,
+			tdata->aad.len);
+
+		/* Append IV at the end of the crypto operation*/
+		uint8_t *iv_ptr = rte_crypto_op_ctod_offset(ut_params->op,
+				uint8_t *, IV_OFFSET);
+
+		rte_memcpy(iv_ptr, tdata->iv.data, tdata->iv.len);
+		TEST_HEXDUMP(stdout, "iv:", iv_ptr,
+			tdata->iv.len);
+	}
 
 	/* Append plaintext/ciphertext */
 	if (op == RTE_CRYPTO_AEAD_OP_ENCRYPT) {
@@ -5764,6 +5788,114 @@ test_AES_GCM_authenticated_decryption_sessionless_test_case_1(void)
 {
 	return test_authenticated_decryption_sessionless(
 			&gcm_test_case_5);
+}
+
+static int
+test_AES_CCM_authenticated_encryption_test_case_128_1(void)
+{
+	return test_authenticated_encryption(&ccm_test_case_128_1);
+}
+
+static int
+test_AES_CCM_authenticated_encryption_test_case_128_2(void)
+{
+	return test_authenticated_encryption(&ccm_test_case_128_2);
+}
+
+static int
+test_AES_CCM_authenticated_encryption_test_case_128_3(void)
+{
+	return test_authenticated_encryption(&ccm_test_case_128_3);
+}
+
+static int
+test_AES_CCM_authenticated_decryption_test_case_128_1(void)
+{
+	return test_authenticated_decryption(&ccm_test_case_128_1);
+}
+
+static int
+test_AES_CCM_authenticated_decryption_test_case_128_2(void)
+{
+	return test_authenticated_decryption(&ccm_test_case_128_2);
+}
+
+static int
+test_AES_CCM_authenticated_decryption_test_case_128_3(void)
+{
+	return test_authenticated_decryption(&ccm_test_case_128_3);
+}
+
+static int
+test_AES_CCM_authenticated_encryption_test_case_192_1(void)
+{
+	return test_authenticated_encryption(&ccm_test_case_192_1);
+}
+
+static int
+test_AES_CCM_authenticated_encryption_test_case_192_2(void)
+{
+	return test_authenticated_encryption(&ccm_test_case_192_2);
+}
+
+static int
+test_AES_CCM_authenticated_encryption_test_case_192_3(void)
+{
+	return test_authenticated_encryption(&ccm_test_case_192_3);
+}
+
+static int
+test_AES_CCM_authenticated_decryption_test_case_192_1(void)
+{
+	return test_authenticated_decryption(&ccm_test_case_192_1);
+}
+
+static int
+test_AES_CCM_authenticated_decryption_test_case_192_2(void)
+{
+	return test_authenticated_decryption(&ccm_test_case_192_2);
+}
+
+static int
+test_AES_CCM_authenticated_decryption_test_case_192_3(void)
+{
+	return test_authenticated_decryption(&ccm_test_case_192_3);
+}
+
+static int
+test_AES_CCM_authenticated_encryption_test_case_256_1(void)
+{
+	return test_authenticated_encryption(&ccm_test_case_256_1);
+}
+
+static int
+test_AES_CCM_authenticated_encryption_test_case_256_2(void)
+{
+	return test_authenticated_encryption(&ccm_test_case_256_2);
+}
+
+static int
+test_AES_CCM_authenticated_encryption_test_case_256_3(void)
+{
+	return test_authenticated_encryption(&ccm_test_case_256_3);
+}
+
+static int
+test_AES_CCM_authenticated_decryption_test_case_256_1(void)
+{
+	return test_authenticated_decryption(&ccm_test_case_256_1);
+}
+
+static int
+test_AES_CCM_authenticated_decryption_test_case_256_2(void)
+{
+	return test_authenticated_decryption(&ccm_test_case_256_2);
+}
+
+static int
+test_AES_CCM_authenticated_decryption_test_case_256_3(void)
+{
+	return test_authenticated_decryption(&ccm_test_case_256_3);
 }
 
 static int
@@ -7480,7 +7612,7 @@ create_aead_operation_SGL(enum rte_crypto_aead_operation op,
 
 	const unsigned int auth_tag_len = tdata->auth_tag.len;
 	const unsigned int iv_len = tdata->iv.len;
-	const unsigned int aad_len = tdata->aad.len;
+	unsigned int aad_len = tdata->aad.len;
 
 	/* Generate Crypto op data structure */
 	ut_params->op = rte_crypto_op_alloc(ts_params->op_mpool,
@@ -7505,24 +7637,50 @@ create_aead_operation_SGL(enum rte_crypto_aead_operation op,
 				auth_tag_len);
 	}
 
-	uint8_t *iv_ptr = rte_crypto_op_ctod_offset(ut_params->op,
-			uint8_t *, IV_OFFSET);
+	/* Append aad data */
+	if (tdata->algo == RTE_CRYPTO_AEAD_AES_CCM) {
+		uint8_t *iv_ptr = rte_crypto_op_ctod_offset(ut_params->op,
+				uint8_t *, IV_OFFSET);
 
-	rte_memcpy(iv_ptr, tdata->iv.data, iv_len);
+		/* Copy IV 1 byte after the IV pointer, according to the API */
+		rte_memcpy(iv_ptr + 1, tdata->iv.data, iv_len);
 
-	sym_op->aead.aad.data = (uint8_t *)rte_pktmbuf_prepend(
-			ut_params->ibuf, aad_len);
-	TEST_ASSERT_NOT_NULL(sym_op->aead.aad.data,
-			"no room to prepend aad");
-	sym_op->aead.aad.phys_addr = rte_pktmbuf_mtophys(
-			ut_params->ibuf);
+		aad_len = RTE_ALIGN_CEIL(aad_len + 18, 16);
 
-	memset(sym_op->aead.aad.data, 0, aad_len);
-	rte_memcpy(sym_op->aead.aad.data, tdata->aad.data, aad_len);
+		sym_op->aead.aad.data = (uint8_t *)rte_pktmbuf_prepend(
+				ut_params->ibuf, aad_len);
+		TEST_ASSERT_NOT_NULL(sym_op->aead.aad.data,
+				"no room to prepend aad");
+		sym_op->aead.aad.phys_addr = rte_pktmbuf_mtophys(
+				ut_params->ibuf);
 
-	TEST_HEXDUMP(stdout, "iv:", iv_ptr, iv_len);
-	TEST_HEXDUMP(stdout, "aad:",
-			sym_op->aead.aad.data, aad_len);
+		memset(sym_op->aead.aad.data, 0, aad_len);
+		/* Copy AAD 18 bytes after the AAD pointer, according to the API */
+		rte_memcpy(sym_op->aead.aad.data, tdata->aad.data, aad_len);
+
+		TEST_HEXDUMP(stdout, "iv:", iv_ptr, iv_len);
+		TEST_HEXDUMP(stdout, "aad:",
+				sym_op->aead.aad.data, aad_len);
+	} else {
+		uint8_t *iv_ptr = rte_crypto_op_ctod_offset(ut_params->op,
+				uint8_t *, IV_OFFSET);
+
+		rte_memcpy(iv_ptr, tdata->iv.data, iv_len);
+
+		sym_op->aead.aad.data = (uint8_t *)rte_pktmbuf_prepend(
+				ut_params->ibuf, aad_len);
+		TEST_ASSERT_NOT_NULL(sym_op->aead.aad.data,
+				"no room to prepend aad");
+		sym_op->aead.aad.phys_addr = rte_pktmbuf_mtophys(
+				ut_params->ibuf);
+
+		memset(sym_op->aead.aad.data, 0, aad_len);
+		rte_memcpy(sym_op->aead.aad.data, tdata->aad.data, aad_len);
+
+		TEST_HEXDUMP(stdout, "iv:", iv_ptr, iv_len);
+		TEST_HEXDUMP(stdout, "aad:",
+				sym_op->aead.aad.data, aad_len);
+	}
 
 	sym_op->aead.data.length = tdata->plaintext.len;
 	sym_op->aead.data.offset = aad_len;
@@ -8103,6 +8261,22 @@ static struct unit_test_suite cryptodev_qat_testsuite  = {
 		TEST_CASE_ST(ut_setup, ut_teardown, test_authonly_qat_all),
 		TEST_CASE_ST(ut_setup, ut_teardown, test_stats),
 
+		/** AES CCM Authenticated Encryption 128 bits key */
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_CCM_authenticated_encryption_test_case_128_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_CCM_authenticated_encryption_test_case_128_2),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_CCM_authenticated_encryption_test_case_128_3),
+
+		/** AES CCM Authenticated Decryption 128 bits key*/
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_CCM_authenticated_decryption_test_case_128_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_CCM_authenticated_decryption_test_case_128_2),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_CCM_authenticated_decryption_test_case_128_3),
+
 		/** AES GCM Authenticated Encryption */
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_AES_GCM_auth_encrypt_SGL_in_place_1500B),
@@ -8501,6 +8675,54 @@ static struct unit_test_suite cryptodev_openssl_testsuite  = {
 			test_AES_GMAC_authentication_test_case_4),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 			test_AES_GMAC_authentication_verify_test_case_4),
+
+		/** AES CCM Authenticated Encryption 128 bits key */
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_CCM_authenticated_encryption_test_case_128_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_CCM_authenticated_encryption_test_case_128_2),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_CCM_authenticated_encryption_test_case_128_3),
+
+		/** AES CCM Authenticated Decryption 128 bits key*/
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_CCM_authenticated_decryption_test_case_128_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_CCM_authenticated_decryption_test_case_128_2),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_CCM_authenticated_decryption_test_case_128_3),
+
+		/** AES CCM Authenticated Encryption 192 bits key */
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_CCM_authenticated_encryption_test_case_192_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_CCM_authenticated_encryption_test_case_192_2),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_CCM_authenticated_encryption_test_case_192_3),
+
+		/** AES CCM Authenticated Decryption 192 bits key*/
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_CCM_authenticated_decryption_test_case_192_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_CCM_authenticated_decryption_test_case_192_2),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_CCM_authenticated_decryption_test_case_192_3),
+
+		/** AES CCM Authenticated Encryption 256 bits key */
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_CCM_authenticated_encryption_test_case_256_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_CCM_authenticated_encryption_test_case_256_2),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_CCM_authenticated_encryption_test_case_256_3),
+
+		/** AES CCM Authenticated Decryption 256 bits key*/
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_CCM_authenticated_decryption_test_case_256_1),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_CCM_authenticated_decryption_test_case_256_2),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+			test_AES_CCM_authenticated_decryption_test_case_256_3),
 
 		/** Scatter-Gather */
 		TEST_CASE_ST(ut_setup, ut_teardown,
