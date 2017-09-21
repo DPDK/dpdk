@@ -1,7 +1,7 @@
 /*-
  *   BSD LICENSE
  *
- *   Copyright(c) 2015 Intel Corporation. All rights reserved.
+ *   Copyright(c) 2015-2017 Intel Corporation. All rights reserved.
  *
  *   Redistribution and use in source and binary forms, with or without
  *   modification, are permitted provided that the following conditions
@@ -30,23 +30,25 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef TEST_CRYPTODEV_GCM_TEST_VECTORS_H_
-#define TEST_CRYPTODEV_GCM_TEST_VECTORS_H_
+#ifndef TEST_CRYPTODEV_AEAD_TEST_VECTORS_H_
+#define TEST_CRYPTODEV_AEAD_TEST_VECTORS_H_
 
 #define GMAC_LARGE_PLAINTEXT_LENGTH		65344
-#define GCM_MAX_AAD_LENGTH			65536
+#define MAX_AAD_LENGTH				65536
 #define GCM_LARGE_AAD_LENGTH			65296
 
-static uint8_t gcm_aad_zero_text[GCM_MAX_AAD_LENGTH] = { 0 };
+static uint8_t gcm_aad_zero_text[MAX_AAD_LENGTH] = { 0 };
 
-static uint8_t gcm_aad_text[GCM_MAX_AAD_LENGTH] = {
+static uint8_t gcm_aad_text[MAX_AAD_LENGTH] = {
 		0xfe, 0xed, 0xfa, 0xce, 0xde, 0xad, 0xbe, 0xef,
 		0xfe, 0xed, 0xfa, 0xce, 0xde, 0xad, 0xbe, 0xef,
 		0x00, 0xf1, 0xe2, 0xd3, 0xc4, 0xb5, 0xa6, 0x97,
 		0x88, 0x79, 0x6a, 0x5b, 0x4c, 0x3d, 0x2e, 0x1f };
 
 
-struct gcm_test_data {
+struct aead_test_data {
+	enum rte_crypto_aead_algorithm algo;
+
 	struct {
 		uint8_t data[64];
 		unsigned len;
@@ -101,8 +103,9 @@ struct gmac_test_data {
 
 };
 
-/** AES-128 Test Vectors */
-static const struct gcm_test_data gcm_test_case_1 = {
+/** AES-GCM-128 Test Vectors */
+static const struct aead_test_data gcm_test_case_1 = {
+	.algo = RTE_CRYPTO_AEAD_AES_GCM,
 	.key = {
 		.data = {
 			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -138,8 +141,8 @@ static const struct gcm_test_data gcm_test_case_1 = {
 	}
 };
 
-/** AES-128 Test Vectors */
-static const struct gcm_test_data gcm_test_case_2 = {
+static const struct aead_test_data gcm_test_case_2 = {
+	.algo = RTE_CRYPTO_AEAD_AES_GCM,
 	.key = {
 		.data = {
 			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -176,8 +179,8 @@ static const struct gcm_test_data gcm_test_case_2 = {
 	}
 };
 
-/** AES-128 Test Vectors */
-static const struct gcm_test_data gcm_test_case_3 = {
+static const struct aead_test_data gcm_test_case_3 = {
+	.algo = RTE_CRYPTO_AEAD_AES_GCM,
 	.key = {
 		.data = {
 			0xfe, 0xff, 0xe9, 0x92, 0x86, 0x65, 0x73, 0x1c,
@@ -227,8 +230,8 @@ static const struct gcm_test_data gcm_test_case_3 = {
 	}
 };
 
-/** AES-128 Test Vectors */
-static const struct gcm_test_data gcm_test_case_4 = {
+static const struct aead_test_data gcm_test_case_4 = {
+	.algo = RTE_CRYPTO_AEAD_AES_GCM,
 	.key = {
 		.data = {
 			0xfe, 0xff, 0xe9, 0x92, 0x86, 0x65, 0x73, 0x1c,
@@ -282,8 +285,8 @@ static const struct gcm_test_data gcm_test_case_4 = {
 
 };
 
-/** AES-128 Test Vectors */
-static const struct gcm_test_data gcm_test_case_5 = {
+static const struct aead_test_data gcm_test_case_5 = {
+	.algo = RTE_CRYPTO_AEAD_AES_GCM,
 	.key = {
 		.data = {
 			0xfe, 0xff, 0xe9, 0x92, 0x86, 0x65, 0x73, 0x1c,
@@ -337,8 +340,8 @@ static const struct gcm_test_data gcm_test_case_5 = {
 
 };
 
-/** AES-128 Test Vectors */
-static const struct gcm_test_data gcm_test_case_6 = {
+static const struct aead_test_data gcm_test_case_6 = {
+	.algo = RTE_CRYPTO_AEAD_AES_GCM,
 	.key = {
 		.data = {
 			0xfe, 0xff, 0xe9, 0x92, 0x86, 0x65, 0x73, 0x1c,
@@ -392,8 +395,8 @@ static const struct gcm_test_data gcm_test_case_6 = {
 	}
 };
 
-/** AES-128 Test Vectors */
-static const struct gcm_test_data gcm_test_case_7 = {
+static const struct aead_test_data gcm_test_case_7 = {
+	.algo = RTE_CRYPTO_AEAD_AES_GCM,
 	.key = {
 		.data = {
 			0xfe, 0xff, 0xe9, 0x92, 0x86, 0x65, 0x73, 0x1c,
@@ -447,7 +450,8 @@ static const struct gcm_test_data gcm_test_case_7 = {
 	}
 };
 
-static const struct gcm_test_data gcm_test_case_8 = {
+static const struct aead_test_data gcm_test_case_8 = {
+	.algo = RTE_CRYPTO_AEAD_AES_GCM,
 	.key = {
 		.data = {
 			0xfe, 0xff, 0xe9, 0x92, 0x86, 0x65, 0x73, 0x1c,
@@ -997,8 +1001,9 @@ static const struct gcm_test_data gcm_test_case_8 = {
 	}
 };
 
-/** AES-192 Test Vectors */
-static const struct gcm_test_data gcm_test_case_192_1 = {
+/** AES-GCM-192 Test Vectors */
+static const struct aead_test_data gcm_test_case_192_1 = {
+	.algo = RTE_CRYPTO_AEAD_AES_GCM,
 	.key = {
 		.data = {
 			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -1035,7 +1040,8 @@ static const struct gcm_test_data gcm_test_case_192_1 = {
 	}
 };
 
-static const struct gcm_test_data gcm_test_case_192_2 = {
+static const struct aead_test_data gcm_test_case_192_2 = {
+	.algo = RTE_CRYPTO_AEAD_AES_GCM,
 	.key = {
 		.data = {
 			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -1079,7 +1085,8 @@ static const struct gcm_test_data gcm_test_case_192_2 = {
 	}
 };
 
-static const struct gcm_test_data gcm_test_case_192_3 = {
+static const struct aead_test_data gcm_test_case_192_3 = {
+	.algo = RTE_CRYPTO_AEAD_AES_GCM,
 	.key = {
 		.data = {
 			0xFE, 0xFF, 0xE9, 0x92, 0x86, 0x65, 0x73, 0x1C,
@@ -1134,7 +1141,8 @@ static const struct gcm_test_data gcm_test_case_192_3 = {
 	}
 };
 
-static const struct gcm_test_data gcm_test_case_192_4 = {
+static const struct aead_test_data gcm_test_case_192_4 = {
+	.algo = RTE_CRYPTO_AEAD_AES_GCM,
 	.key = {
 		.data = {
 			0xFE, 0xFF, 0xE9, 0x92, 0x86, 0x65, 0x73, 0x1C,
@@ -1189,7 +1197,8 @@ static const struct gcm_test_data gcm_test_case_192_4 = {
 	}
 };
 
-static const struct gcm_test_data gcm_test_case_192_5 = {
+static const struct aead_test_data gcm_test_case_192_5 = {
+	.algo = RTE_CRYPTO_AEAD_AES_GCM,
 	.key = {
 		.data = {
 			0xFE, 0xFF, 0xE9, 0x92, 0x86, 0x65, 0x73, 0x1C,
@@ -1244,7 +1253,8 @@ static const struct gcm_test_data gcm_test_case_192_5 = {
 	}
 };
 
-static const struct gcm_test_data gcm_test_case_192_6 = {
+static const struct aead_test_data gcm_test_case_192_6 = {
+	.algo = RTE_CRYPTO_AEAD_AES_GCM,
 	.key = {
 		.data = {
 			0xFE, 0xFF, 0xE9, 0x92, 0x86, 0x65, 0x73, 0x1C,
@@ -1299,7 +1309,8 @@ static const struct gcm_test_data gcm_test_case_192_6 = {
 	}
 };
 
-static const struct gcm_test_data gcm_test_case_192_7 = {
+static const struct aead_test_data gcm_test_case_192_7 = {
+	.algo = RTE_CRYPTO_AEAD_AES_GCM,
 	.key = {
 		.data = {
 			0xFE, 0xFF, 0xE9, 0x92, 0x86, 0x65, 0x73, 0x1C,
@@ -1354,8 +1365,9 @@ static const struct gcm_test_data gcm_test_case_192_7 = {
 	}
 };
 
-/** AES-256 Test Vectors */
-static const struct gcm_test_data gcm_test_case_256_1 = {
+/** AES-GCM-256 Test Vectors */
+static const struct aead_test_data gcm_test_case_256_1 = {
+	.algo = RTE_CRYPTO_AEAD_AES_GCM,
 	.key = {
 		.data = {
 			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -1390,8 +1402,8 @@ static const struct gcm_test_data gcm_test_case_256_1 = {
 	}
 };
 
-/** AES-256 Test Vectors */
-static const struct gcm_test_data gcm_test_case_256_2 = {
+static const struct aead_test_data gcm_test_case_256_2 = {
+	.algo = RTE_CRYPTO_AEAD_AES_GCM,
 	.key = {
 		.data = {
 			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -1430,8 +1442,8 @@ static const struct gcm_test_data gcm_test_case_256_2 = {
 	}
 };
 
-/** AES-256 Test Vectors */
-static const struct gcm_test_data gcm_test_case_256_3 = {
+static const struct aead_test_data gcm_test_case_256_3 = {
+	.algo = RTE_CRYPTO_AEAD_AES_GCM,
 	.key = {
 		.data = {
 			0xfe, 0xff, 0xe9, 0x92, 0x86, 0x65, 0x73, 0x1c,
@@ -1482,8 +1494,8 @@ static const struct gcm_test_data gcm_test_case_256_3 = {
 	}
 };
 
-/** AES-256 Test Vectors */
-static const struct gcm_test_data gcm_test_case_256_4 = {
+static const struct aead_test_data gcm_test_case_256_4 = {
+	.algo = RTE_CRYPTO_AEAD_AES_GCM,
 	.key = {
 		.data = {
 			0xfe, 0xff, 0xe9, 0x92, 0x86, 0x65, 0x73, 0x1c,
@@ -1535,8 +1547,8 @@ static const struct gcm_test_data gcm_test_case_256_4 = {
 
 };
 
-/** AES-256 Test Vectors */
-static const struct gcm_test_data gcm_test_case_256_5 = {
+static const struct aead_test_data gcm_test_case_256_5 = {
+	.algo = RTE_CRYPTO_AEAD_AES_GCM,
 	.key = {
 		.data = {
 			0xfe, 0xff, 0xe9, 0x92, 0x86, 0x65, 0x73, 0x1c,
@@ -1588,8 +1600,8 @@ static const struct gcm_test_data gcm_test_case_256_5 = {
 
 };
 
-/** AES-256 Test Vectors */
-static const struct gcm_test_data gcm_test_case_256_6 = {
+static const struct aead_test_data gcm_test_case_256_6 = {
+	.algo = RTE_CRYPTO_AEAD_AES_GCM,
 	.key = {
 		.data = {
 			0xfe, 0xff, 0xe9, 0x92, 0x86, 0x65, 0x73, 0x1c,
@@ -1640,8 +1652,8 @@ static const struct gcm_test_data gcm_test_case_256_6 = {
 	}
 };
 
-/** AES-256 Test Vectors */
-static const struct gcm_test_data gcm_test_case_256_7 = {
+static const struct aead_test_data gcm_test_case_256_7 = {
+	.algo = RTE_CRYPTO_AEAD_AES_GCM,
 	.key = {
 		.data = {
 			0xfe, 0xff, 0xe9, 0x92, 0x86, 0x65, 0x73, 0x1c,
@@ -1692,8 +1704,9 @@ static const struct gcm_test_data gcm_test_case_256_7 = {
 	}
 };
 
-/** variable AAD AES-128 Test Vectors */
-static const struct gcm_test_data gcm_test_case_aad_1 = {
+/** variable AAD AES-GCM-128 Test Vectors */
+static const struct aead_test_data gcm_test_case_aad_1 = {
+	.algo = RTE_CRYPTO_AEAD_AES_GCM,
 	.key = {
 		.data = {
 			0xfe, 0xff, 0xe9, 0x92, 0x86, 0x65, 0x73, 0x1c,
@@ -1744,8 +1757,9 @@ static const struct gcm_test_data gcm_test_case_aad_1 = {
 	}
 };
 
-/** variable AAD AES-256 Test Vectors */
-static const struct gcm_test_data gcm_test_case_aad_2 = {
+/** variable AAD AES-GCM-256 Test Vectors */
+static const struct aead_test_data gcm_test_case_aad_2 = {
+	.algo = RTE_CRYPTO_AEAD_AES_GCM,
 	.key = {
 		.data = {
 			0xfe, 0xff, 0xe9, 0x92, 0x86, 0x65, 0x73, 0x1c,
@@ -2567,7 +2581,8 @@ static const struct gmac_test_data gmac_test_case_4 = {
 	}
 };
 
-static const struct gcm_test_data gcm_test_case_SGL_1 = {
+static const struct aead_test_data gcm_test_case_SGL_1 = {
+	.algo = RTE_CRYPTO_AEAD_AES_GCM,
 	.key = {
 		.data = {
 			0xfe, 0xff, 0xe9, 0x92, 0x86, 0x65, 0x73, 0x1c,
@@ -3384,4 +3399,4 @@ static const struct gcm_test_data gcm_test_case_SGL_1 = {
 	}
 };
 
-#endif /* TEST_CRYPTODEV_GCM_TEST_VECTORS_H_ */
+#endif /* TEST_CRYPTODEV_AEAD_TEST_VECTORS_H_ */
