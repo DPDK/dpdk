@@ -888,15 +888,73 @@ i40evf_update_stats(struct rte_eth_dev *dev, struct i40e_eth_stats **pstats)
 	return 0;
 }
 
+static void
+i40evf_stat_update_48(uint64_t *offset,
+		   uint64_t *stat)
+{
+	if (*stat >= *offset)
+		*stat = *stat - *offset;
+	else
+		*stat = (uint64_t)((*stat +
+			((uint64_t)1 << I40E_48_BIT_WIDTH)) - *offset);
+
+	*stat &= I40E_48_BIT_MASK;
+}
+
+static void
+i40evf_stat_update_32(uint64_t *offset,
+		   uint64_t *stat)
+{
+	if (*stat >= *offset)
+		*stat = (uint64_t)(*stat - *offset);
+	else
+		*stat = (uint64_t)((*stat +
+			((uint64_t)1 << I40E_32_BIT_WIDTH)) - *offset);
+}
+
+static void
+i40evf_update_vsi_stats(struct i40e_vsi *vsi,
+					struct i40e_eth_stats *nes)
+{
+	struct i40e_eth_stats *oes = &vsi->eth_stats_offset;
+
+	i40evf_stat_update_48(&oes->rx_bytes,
+			    &nes->rx_bytes);
+	i40evf_stat_update_48(&oes->rx_unicast,
+			    &nes->rx_unicast);
+	i40evf_stat_update_48(&oes->rx_multicast,
+			    &nes->rx_multicast);
+	i40evf_stat_update_48(&oes->rx_broadcast,
+			    &nes->rx_broadcast);
+	i40evf_stat_update_32(&oes->rx_discards,
+				&nes->rx_discards);
+	i40evf_stat_update_32(&oes->rx_unknown_protocol,
+			    &nes->rx_unknown_protocol);
+	i40evf_stat_update_48(&oes->tx_bytes,
+			    &nes->tx_bytes);
+	i40evf_stat_update_48(&oes->tx_unicast,
+			    &nes->tx_unicast);
+	i40evf_stat_update_48(&oes->tx_multicast,
+			    &nes->tx_multicast);
+	i40evf_stat_update_48(&oes->tx_broadcast,
+			    &nes->tx_broadcast);
+	i40evf_stat_update_32(&oes->tx_errors, &nes->tx_errors);
+	i40evf_stat_update_32(&oes->tx_discards, &nes->tx_discards);
+}
+
 static int
 i40evf_get_statistics(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
 	int ret;
 	struct i40e_eth_stats *pstats = NULL;
+	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	struct i40e_vsi *vsi = &vf->vsi;
 
 	ret = i40evf_update_stats(dev, &pstats);
 	if (ret != 0)
 		return 0;
+
+	i40evf_update_vsi_stats(vsi, pstats);
 
 	stats->ipackets = pstats->rx_unicast + pstats->rx_multicast +
 						pstats->rx_broadcast;
@@ -920,7 +978,7 @@ i40evf_dev_xstats_reset(struct rte_eth_dev *dev)
 	i40evf_update_stats(dev, &pstats);
 
 	/* set stats offset base on current values */
-	vf->vsi.eth_stats_offset = vf->vsi.eth_stats;
+	vf->vsi.eth_stats_offset = *pstats;
 }
 
 static int i40evf_dev_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
@@ -944,6 +1002,8 @@ static int i40evf_dev_xstats_get(struct rte_eth_dev *dev,
 	int ret;
 	unsigned i;
 	struct i40e_eth_stats *pstats = NULL;
+	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	struct i40e_vsi *vsi = &vf->vsi;
 
 	if (n < I40EVF_NB_XSTATS)
 		return I40EVF_NB_XSTATS;
@@ -954,6 +1014,8 @@ static int i40evf_dev_xstats_get(struct rte_eth_dev *dev,
 
 	if (!xstats)
 		return 0;
+
+	i40evf_update_vsi_stats(vsi, pstats);
 
 	/* loop over xstats array and values from pstats */
 	for (i = 0; i < I40EVF_NB_XSTATS; i++) {
