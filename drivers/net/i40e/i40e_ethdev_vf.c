@@ -864,7 +864,7 @@ i40evf_del_mac_addr(struct rte_eth_dev *dev, uint32_t index)
 }
 
 static int
-i40evf_update_stats(struct rte_eth_dev *dev, struct i40e_eth_stats **pstats)
+i40evf_query_stats(struct rte_eth_dev *dev, struct i40e_eth_stats **pstats)
 {
 	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
 	struct virtchnl_queue_select q_stats;
@@ -914,7 +914,7 @@ i40evf_stat_update_32(uint64_t *offset,
 }
 
 static void
-i40evf_update_vsi_stats(struct i40e_vsi *vsi,
+i40evf_update_stats(struct i40e_vsi *vsi,
 					struct i40e_eth_stats *nes)
 {
 	struct i40e_eth_stats *oes = &vsi->eth_stats_offset;
@@ -943,32 +943,6 @@ i40evf_update_vsi_stats(struct i40e_vsi *vsi,
 	i40evf_stat_update_32(&oes->tx_discards, &nes->tx_discards);
 }
 
-static int
-i40evf_get_statistics(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
-{
-	int ret;
-	struct i40e_eth_stats *pstats = NULL;
-	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
-	struct i40e_vsi *vsi = &vf->vsi;
-
-	ret = i40evf_update_stats(dev, &pstats);
-	if (ret != 0)
-		return 0;
-
-	i40evf_update_vsi_stats(vsi, pstats);
-
-	stats->ipackets = pstats->rx_unicast + pstats->rx_multicast +
-						pstats->rx_broadcast;
-	stats->opackets = pstats->tx_broadcast + pstats->tx_multicast +
-						pstats->tx_unicast;
-	stats->imissed = pstats->rx_discards;
-	stats->oerrors = pstats->tx_errors + pstats->tx_discards;
-	stats->ibytes = pstats->rx_bytes;
-	stats->obytes = pstats->tx_bytes;
-
-	return 0;
-}
-
 static void
 i40evf_dev_xstats_reset(struct rte_eth_dev *dev)
 {
@@ -976,7 +950,7 @@ i40evf_dev_xstats_reset(struct rte_eth_dev *dev)
 	struct i40e_eth_stats *pstats = NULL;
 
 	/* read stat values to clear hardware registers */
-	i40evf_update_stats(dev, &pstats);
+	i40evf_query_stats(dev, &pstats);
 
 	/* set stats offset base on current values */
 	vf->vsi.eth_stats_offset = *pstats;
@@ -1009,14 +983,14 @@ static int i40evf_dev_xstats_get(struct rte_eth_dev *dev,
 	if (n < I40EVF_NB_XSTATS)
 		return I40EVF_NB_XSTATS;
 
-	ret = i40evf_update_stats(dev, &pstats);
+	ret = i40evf_query_stats(dev, &pstats);
 	if (ret != 0)
 		return 0;
 
 	if (!xstats)
 		return 0;
 
-	i40evf_update_vsi_stats(vsi, pstats);
+	i40evf_update_stats(vsi, pstats);
 
 	/* loop over xstats array and values from pstats */
 	for (i = 0; i < I40EVF_NB_XSTATS; i++) {
@@ -2250,8 +2224,26 @@ i40evf_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 static void
 i40evf_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 {
-	if (i40evf_get_statistics(dev, stats))
+	int ret;
+	struct i40e_eth_stats *pstats = NULL;
+	struct i40e_vf *vf = I40EVF_DEV_PRIVATE_TO_VF(dev->data->dev_private);
+	struct i40e_vsi *vsi = &vf->vsi;
+
+	ret = i40evf_query_stats(dev, &pstats);
+	if (ret == 0) {
+		i40evf_update_stats(vsi, pstats);
+
+		stats->ipackets = pstats->rx_unicast + pstats->rx_multicast +
+						pstats->rx_broadcast;
+		stats->opackets = pstats->tx_broadcast + pstats->tx_multicast +
+						pstats->tx_unicast;
+		stats->imissed = pstats->rx_discards;
+		stats->oerrors = pstats->tx_errors + pstats->tx_discards;
+		stats->ibytes = pstats->rx_bytes;
+		stats->obytes = pstats->tx_bytes;
+	} else {
 		PMD_DRV_LOG(ERR, "Get statistics failed");
+	}
 }
 
 static void
