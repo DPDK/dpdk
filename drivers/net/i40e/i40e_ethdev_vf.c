@@ -198,6 +198,7 @@ static const struct eth_dev_ops i40evf_eth_dev_ops = {
 	.allmulticast_disable = i40evf_dev_allmulticast_disable,
 	.link_update          = i40evf_dev_link_update,
 	.stats_get            = i40evf_dev_stats_get,
+	.stats_reset          = i40evf_dev_xstats_reset,
 	.xstats_get           = i40evf_dev_xstats_get,
 	.xstats_get_names     = i40evf_dev_xstats_get_names,
 	.xstats_reset         = i40evf_dev_xstats_reset,
