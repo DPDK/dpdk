@@ -58,6 +58,11 @@
 #define RTE_BACKTRACE 1
 #define RTE_EAL_VFIO 1
 
+/* bsd module defines */
+#define RTE_CONTIGMEM_MAX_NUM_BUFS 64
+#define RTE_CONTIGMEM_DEFAULT_NUM_BUFS 1
+#define RTE_CONTIGMEM_DEFAULT_BUF_SIZE (512*1024*1024)
+
 /* mempool defines */
 #define RTE_MEMPOOL_CACHE_MAX_SIZE 512
 

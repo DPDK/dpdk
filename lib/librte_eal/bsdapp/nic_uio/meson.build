@@ -29,27 +29,4 @@
 #   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-subdir('eal')
-kmods = ['contigmem', 'nic_uio']
-
-# for building kernel modules, we use kernel build system using make, as
-# with Linux. We have a skeleton BSDmakefile, which pulls many of its
-# values from the environment. Each module only has a single source file
-# right now, which allows us to simplify things. We pull in the source files
-# from the individual meson.build files, and then use a custom target to call
-# make, passing in the values as environmental parameters.
-kmod_cflags = ['-I' + meson.build_root(),
-		'-I' + join_paths(meson.source_root(), 'config'),
-		'-include rte_config.h']
-foreach k:kmods
-	subdir(k)
-	custom_target(k,
-		input: [files('BSDmakefile.meson'), sources],
-		output: k + '.ko',
-		command: ['make', '-f', '@INPUT0@',
-			'KMOD_SRC=@INPUT1@',
-			'KMOD=' + k,
-			'VPATH=' + join_paths(meson.current_source_dir(), k),
-			'KMOD_CFLAGS=' + ' '.join(kmod_cflags)],
-		build_by_default: get_option('enable_kmods'))
-endforeach
+sources = files('nic_uio.c')

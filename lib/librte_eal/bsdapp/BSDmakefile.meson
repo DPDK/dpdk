@@ -1,6 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright(c) 2017 Intel Corporation.
+#   Copyright(c) 2017 Intel Corporation. All rights reserved.
 #   All rights reserved.
 #
 #   Redistribution and use in source and binary forms, with or without
@@ -28,28 +28,15 @@
 #   THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 #   (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
 
-subdir('eal')
-kmods = ['contigmem', 'nic_uio']
+# makefile for building kernel modules using meson
+# takes parameters from the environment
 
-# for building kernel modules, we use kernel build system using make, as
-# with Linux. We have a skeleton BSDmakefile, which pulls many of its
-# values from the environment. Each module only has a single source file
-# right now, which allows us to simplify things. We pull in the source files
-# from the individual meson.build files, and then use a custom target to call
-# make, passing in the values as environmental parameters.
-kmod_cflags = ['-I' + meson.build_root(),
-		'-I' + join_paths(meson.source_root(), 'config'),
-		'-include rte_config.h']
-foreach k:kmods
-	subdir(k)
-	custom_target(k,
-		input: [files('BSDmakefile.meson'), sources],
-		output: k + '.ko',
-		command: ['make', '-f', '@INPUT0@',
-			'KMOD_SRC=@INPUT1@',
-			'KMOD=' + k,
-			'VPATH=' + join_paths(meson.current_source_dir(), k),
-			'KMOD_CFLAGS=' + ' '.join(kmod_cflags)],
-		build_by_default: get_option('enable_kmods'))
-endforeach
+# source file is passed via KMOD_SRC as full path, we only use final
+# component of it, as VPATH is used to find actual file, so as to
+# have the .o files placed in the build, not source directory
+SRCS = ${KMOD_SRC:T} device_if.h bus_if.h pci_if.h
+CFLAGS += $(KMOD_CFLAGS)
+
+.include <bsd.kmod.mk>

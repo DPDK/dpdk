@@ -75,6 +75,7 @@ F: doc/guides/prog_guide/ext_app_lib_make_help.rst
 Meson build
 M: Bruce Richardson <bruce.richardson@intel.com>
 F: meson.build
+F: lib/librte_eal/bsdapp/BSDmakefile.meson
 F: meson_options.txt
 F: config/rte_config.h
 F: buildtools/gen-pmdinfo-cfile.sh
