@@ -160,9 +160,6 @@ struct rte_crypto_cipher_xform {
 	 * Cipher key length is in bytes. For AES it can be 128 bits (16 bytes),
 	 * 192 bits (24 bytes) or 256 bits (32 bytes).
 	 *
-	 * For the CCM mode of operation, the only supported key length is 128
-	 * bits (16 bytes).
-	 *
 	 * For the RTE_CRYPTO_CIPHER_AES_F8 mode of operation, key.length
 	 * should be set to the combined length of the encryption key and the
 	 * keymask. Since the keymask and the encryption key are the same size,
@@ -429,7 +426,11 @@ struct rte_crypto_aead_xform {
 	uint16_t digest_length;
 
 	uint16_t aad_length;
-	/**< The length of the additional authenticated data (AAD) in bytes. */
+	/**< The length of the additional authenticated data (AAD) in bytes.
+	 * For CCM mode, this is the length of the actual AAD, even though
+	 * it is required to reserve 18 bytes before the AAD and padding
+	 * at the end of it, so a multiple of 16 bytes is allocated.
+	 */
 };
 
 /** Crypto transformation types */

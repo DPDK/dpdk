@@ -287,6 +287,21 @@ get_aead_algo(enum rte_crypto_aead_algorithm sess_algo, size_t keylen,
 				res = -EINVAL;
 			}
 			break;
+		case RTE_CRYPTO_AEAD_AES_CCM:
+			switch (keylen) {
+			case 16:
+				*algo = EVP_aes_128_ccm();
+				break;
+			case 24:
+				*algo = EVP_aes_192_ccm();
+				break;
+			case 32:
+				*algo = EVP_aes_256_ccm();
+				break;
+			default:
+				res = -EINVAL;
+			}
+			break;
 		default:
 			res = -EINVAL;
 			break;
@@ -305,6 +320,7 @@ openssl_set_sess_aead_enc_param(struct openssl_session *sess,
 		uint8_t tag_len, uint8_t *key)
 {
 	int iv_type = 0;
+	unsigned int do_ccm;
 
 	sess->cipher.direction = RTE_CRYPTO_CIPHER_OP_ENCRYPT;
 	sess->auth.operation = RTE_CRYPTO_AUTH_OP_GENERATE;
@@ -315,6 +331,14 @@ openssl_set_sess_aead_enc_param(struct openssl_session *sess,
 		iv_type = EVP_CTRL_GCM_SET_IVLEN;
 		if (tag_len != 16)
 			return -EINVAL;
+		do_ccm = 0;
+		break;
+	case RTE_CRYPTO_AEAD_AES_CCM:
+		iv_type = EVP_CTRL_CCM_SET_IVLEN;
+		/* Digest size can be 4, 6, 8, 10, 12, 14 or 16 bytes */
+		if (tag_len < 4 || tag_len > 16 || (tag_len & 1) == 1)
+			return -EINVAL;
+		do_ccm = 1;
 		break;
 	default:
 		return -ENOTSUP;
@@ -339,6 +363,10 @@ openssl_set_sess_aead_enc_param(struct openssl_session *sess,
 			NULL) <= 0)
 		return -EINVAL;
 
+	if (do_ccm)
+		EVP_CIPHER_CTX_ctrl(sess->cipher.ctx, EVP_CTRL_CCM_SET_TAG,
+				tag_len, NULL);
+
 	if (EVP_EncryptInit_ex(sess->cipher.ctx, NULL, NULL, key, NULL) <= 0)
 		return -EINVAL;
 
@@ -352,6 +380,7 @@ openssl_set_sess_aead_dec_param(struct openssl_session *sess,
 		uint8_t tag_len, uint8_t *key)
 {
 	int iv_type = 0;
+	unsigned int do_ccm = 0;
 
 	sess->cipher.direction = RTE_CRYPTO_CIPHER_OP_DECRYPT;
 	sess->auth.operation = RTE_CRYPTO_AUTH_OP_VERIFY;
@@ -362,6 +391,13 @@ openssl_set_sess_aead_dec_param(struct openssl_session *sess,
 		iv_type = EVP_CTRL_GCM_SET_IVLEN;
 		if (tag_len != 16)
 			return -EINVAL;
+		break;
+	case RTE_CRYPTO_AEAD_AES_CCM:
+		iv_type = EVP_CTRL_CCM_SET_IVLEN;
+		/* Digest size can be 4, 6, 8, 10, 12, 14 or 16 bytes */
+		if (tag_len < 4 || tag_len > 16 || (tag_len & 1) == 1)
+			return -EINVAL;
+		do_ccm = 1;
 		break;
 	default:
 		return -ENOTSUP;
@@ -385,6 +421,10 @@ openssl_set_sess_aead_dec_param(struct openssl_session *sess,
 	if (EVP_CIPHER_CTX_ctrl(sess->cipher.ctx, iv_type,
 			sess->iv.length, NULL) <= 0)
 		return -EINVAL;
+
+	if (do_ccm)
+		EVP_CIPHER_CTX_ctrl(sess->cipher.ctx, EVP_CTRL_CCM_SET_TAG,
+				tag_len, NULL);
 
 	if (EVP_DecryptInit_ex(sess->cipher.ctx, NULL, NULL, key, NULL) <= 0)
 		return -EINVAL;
@@ -600,7 +640,16 @@ openssl_set_session_aead_parameters(struct openssl_session *sess,
 	sess->cipher.key.length = xform->aead.key.length;
 
 	/* Set IV parameters */
-	sess->iv.offset = xform->aead.iv.offset;
+	if (xform->aead.algo == RTE_CRYPTO_AEAD_AES_CCM)
+		/*
+		 * For AES-CCM, the actual IV is placed
+		 * one byte after the start of the IV field,
+		 * according to the API.
+		 */
+		sess->iv.offset = xform->aead.iv.offset + 1;
+	else
+		sess->iv.offset = xform->aead.iv.offset;
+
 	sess->iv.length = xform->aead.iv.length;
 
 	sess->auth.aad_length = xform->aead.aad_length;
@@ -973,7 +1022,7 @@ process_cipher_des3ctr_err:
 	return -EINVAL;
 }
 
-/** Process auth/encription aes-gcm algorithm */
+/** Process AES-GCM encrypt algorithm */
 static int
 process_openssl_auth_encryption_gcm(struct rte_mbuf *mbuf_src, int offset,
 		int srclen, uint8_t *aad, int aadlen, uint8_t *iv,
@@ -1011,6 +1060,48 @@ process_auth_encryption_gcm_err:
 	return -EINVAL;
 }
 
+/** Process AES-CCM encrypt algorithm */
+static int
+process_openssl_auth_encryption_ccm(struct rte_mbuf *mbuf_src, int offset,
+		int srclen, uint8_t *aad, int aadlen, uint8_t *iv,
+		uint8_t *dst, uint8_t *tag, uint8_t taglen, EVP_CIPHER_CTX *ctx)
+{
+	int len = 0;
+
+	if (EVP_EncryptInit_ex(ctx, NULL, NULL, NULL, iv) <= 0)
+		goto process_auth_encryption_ccm_err;
+
+	if (EVP_EncryptUpdate(ctx, NULL, &len, NULL, srclen) <= 0)
+		goto process_auth_encryption_ccm_err;
+
+	if (aadlen > 0)
+		/*
+		 * For AES-CCM, the actual AAD is placed
+		 * 18 bytes after the start of the AAD field,
+		 * according to the API.
+		 */
+		if (EVP_EncryptUpdate(ctx, NULL, &len, aad + 18, aadlen) <= 0)
+			goto process_auth_encryption_ccm_err;
+
+	if (srclen > 0)
+		if (process_openssl_encryption_update(mbuf_src, offset, &dst,
+				srclen, ctx))
+			goto process_auth_encryption_ccm_err;
+
+	if (EVP_EncryptFinal_ex(ctx, dst, &len) <= 0)
+		goto process_auth_encryption_ccm_err;
+
+	if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_CCM_GET_TAG, taglen, tag) <= 0)
+		goto process_auth_encryption_ccm_err;
+
+	return 0;
+
+process_auth_encryption_ccm_err:
+	OPENSSL_LOG_ERR("Process openssl auth encryption ccm failed");
+	return -EINVAL;
+}
+
+/** Process AES-GCM decrypt algorithm */
 static int
 process_openssl_auth_decryption_gcm(struct rte_mbuf *mbuf_src, int offset,
 		int srclen, uint8_t *aad, int aadlen, uint8_t *iv,
@@ -1039,16 +1130,52 @@ process_openssl_auth_decryption_gcm(struct rte_mbuf *mbuf_src, int offset,
 		goto process_auth_decryption_gcm_err;
 
 	if (EVP_DecryptFinal_ex(ctx, dst, &len) <= 0)
-		goto process_auth_decryption_gcm_final_err;
+		return -EFAULT;
 
 	return 0;
 
 process_auth_decryption_gcm_err:
-	OPENSSL_LOG_ERR("Process openssl auth description gcm failed");
+	OPENSSL_LOG_ERR("Process openssl auth decryption gcm failed");
 	return -EINVAL;
+}
 
-process_auth_decryption_gcm_final_err:
-	return -EFAULT;
+/** Process AES-CCM decrypt algorithm */
+static int
+process_openssl_auth_decryption_ccm(struct rte_mbuf *mbuf_src, int offset,
+		int srclen, uint8_t *aad, int aadlen, uint8_t *iv,
+		uint8_t *dst, uint8_t *tag, uint8_t tag_len,
+		EVP_CIPHER_CTX *ctx)
+{
+	int len = 0;
+
+	if (EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_CCM_SET_TAG, tag_len, tag) <= 0)
+		goto process_auth_decryption_ccm_err;
+
+	if (EVP_DecryptInit_ex(ctx, NULL, NULL, NULL, iv) <= 0)
+		goto process_auth_decryption_ccm_err;
+
+	if (EVP_DecryptUpdate(ctx, NULL, &len, NULL, srclen) <= 0)
+		goto process_auth_decryption_ccm_err;
+
+	if (aadlen > 0)
+		/*
+		 * For AES-CCM, the actual AAD is placed
+		 * 18 bytes after the start of the AAD field,
+		 * according to the API.
+		 */
+		if (EVP_DecryptUpdate(ctx, NULL, &len, aad + 18, aadlen) <= 0)
+			goto process_auth_decryption_ccm_err;
+
+	if (srclen > 0)
+		if (process_openssl_decryption_update(mbuf_src, offset, &dst,
+				srclen, ctx))
+			return -EFAULT;
+
+	return 0;
+
+process_auth_decryption_ccm_err:
+	OPENSSL_LOG_ERR("Process openssl auth decryption ccm failed");
+	return -EINVAL;
 }
 
 /** Process standard openssl auth algorithms */
@@ -1169,6 +1296,7 @@ process_openssl_combined_op
 	uint8_t *dst = NULL, *iv, *tag, *aad;
 	int srclen, aadlen, status = -1;
 	uint32_t offset;
+	uint8_t taglen;
 
 	/*
 	 * Segmented destination buffer is not supported for
@@ -1204,16 +1332,34 @@ process_openssl_combined_op
 				offset + srclen);
 	}
 
-	if (sess->cipher.direction == RTE_CRYPTO_CIPHER_OP_ENCRYPT)
-		status = process_openssl_auth_encryption_gcm(
-				mbuf_src, offset, srclen,
-				aad, aadlen, iv,
-				dst, tag, sess->cipher.ctx);
-	else
-		status = process_openssl_auth_decryption_gcm(
-				mbuf_src, offset, srclen,
-				aad, aadlen, iv,
-				dst, tag, sess->cipher.ctx);
+	taglen = sess->auth.digest_length;
+
+	if (sess->cipher.direction == RTE_CRYPTO_CIPHER_OP_ENCRYPT) {
+		if (sess->auth.algo == RTE_CRYPTO_AUTH_AES_GMAC ||
+				sess->aead_algo == RTE_CRYPTO_AEAD_AES_GCM)
+			status = process_openssl_auth_encryption_gcm(
+					mbuf_src, offset, srclen,
+					aad, aadlen, iv,
+					dst, tag, sess->cipher.ctx);
+		else
+			status = process_openssl_auth_encryption_ccm(
+					mbuf_src, offset, srclen,
+					aad, aadlen, iv,
+					dst, tag, taglen, sess->cipher.ctx);
+
+	} else {
+		if (sess->auth.algo == RTE_CRYPTO_AUTH_AES_GMAC ||
+				sess->aead_algo == RTE_CRYPTO_AEAD_AES_GCM)
+			status = process_openssl_auth_decryption_gcm(
+					mbuf_src, offset, srclen,
+					aad, aadlen, iv,
+					dst, tag, sess->cipher.ctx);
+		else
+			status = process_openssl_auth_decryption_ccm(
+					mbuf_src, offset, srclen,
+					aad, aadlen, iv,
+					dst, tag, taglen, sess->cipher.ctx);
+	}
 
 	if (status != 0) {
 		if (status == (-EFAULT) &&

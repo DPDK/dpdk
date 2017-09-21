@@ -104,6 +104,7 @@ New Features
   The OpenSSL PMD has been updated with additional support for:
 
   * DES CBC algorithm.
+  * AES CCM algorithm.
 
 * **Add new benchmarking mode to dpdk-test-crypto-perf application.**
 
