@@ -509,18 +509,21 @@ static int
 openssl_set_session_aead_parameters(struct openssl_session *sess,
 		const struct rte_crypto_sym_xform *xform)
 {
-	/* Select cipher direction */
-	sess->cipher.direction = xform->cipher.op;
+	/* Select cipher direction and auth operation */
+	if (xform->aead.op == RTE_CRYPTO_AEAD_OP_ENCRYPT) {
+		sess->cipher.direction = RTE_CRYPTO_CIPHER_OP_ENCRYPT;
+		sess->auth.operation = RTE_CRYPTO_AUTH_OP_GENERATE;
+	} else {
+		sess->cipher.direction = RTE_CRYPTO_CIPHER_OP_DECRYPT;
+		sess->auth.operation = RTE_CRYPTO_AUTH_OP_VERIFY;
+	}
+
 	/* Select cipher key */
 	sess->cipher.key.length = xform->aead.key.length;
 
 	/* Set IV parameters */
 	sess->iv.offset = xform->aead.iv.offset;
 	sess->iv.length = xform->aead.iv.length;
-
-	/* Select auth generate/verify */
-	sess->auth.operation = xform->auth.op;
-	sess->auth.algo = xform->auth.algo;
 
 	/* Select auth algo */
 	switch (xform->aead.algo) {
