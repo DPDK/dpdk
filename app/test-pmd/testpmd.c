@@ -180,6 +180,13 @@ uint16_t mbuf_data_size = DEFAULT_MBUF_DATA_SIZE; /**< Mbuf data space size. */
 uint32_t param_total_num_mbufs = 0;  /**< number of mbufs in all pools - if
                                       * specified on command-line. */
 uint16_t stats_period; /**< Period to show statistics (disabled by default) */
+
+/*
+ * In container, it cannot terminate the process which running with 'stats-period'
+ * option. Set flag to exit stats period loop after received SIGINT/SIGTERM.
+ */
+uint8_t f_quit;
+
 /*
  * Configuration of packet segments used by the "txonly" processing engine.
  */
@@ -2335,6 +2342,8 @@ signal_handler(int signum)
 		rte_latencystats_uninit();
 #endif
 		force_quit();
+		/* Set flag to indicate the force termination. */
+		f_quit = 1;
 		/* exit with the expected status */
 		signal(signum, SIG_DFL);
 		kill(getpid(), signum);
@@ -2457,6 +2466,8 @@ main(int argc, char** argv)
 		char c;
 		int rc;
 
+		f_quit = 0;
+
 		printf("No commandline core given, start packet forwarding\n");
 		start_packet_forwarding(tx_first);
 		if (stats_period != 0) {
@@ -2466,7 +2477,7 @@ main(int argc, char** argv)
 			/* Convert to number of cycles */
 			timer_period = stats_period * rte_get_timer_hz();
 
-			while (1) {
+			while (f_quit == 0) {
 				cur_time = rte_get_timer_cycles();
 				diff_time += cur_time - prev_time;
 
