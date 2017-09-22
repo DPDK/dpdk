@@ -130,6 +130,10 @@ vhost_user_read(int fd, struct vhost_user_msg *msg)
 	}
 
 	sz_payload = msg->size;
+
+	if ((size_t)sz_payload > sizeof(msg->payload))
+		goto fail;
+
 	if (sz_payload) {
 		ret = recv(fd, (void *)((char *)msg + sz_hdr), sz_payload, 0);
 		if (ret < sz_payload) {
