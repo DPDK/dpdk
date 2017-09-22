@@ -222,6 +222,7 @@ fdset_event_dispatch(void *arg)
 	int remove1, remove2;
 	int need_shrink;
 	struct fdset *pfdset = arg;
+	int val;
 
 	if (pfdset == NULL)
 		return NULL;
@@ -239,7 +240,9 @@ fdset_event_dispatch(void *arg)
 		numfds = pfdset->num;
 		pthread_mutex_unlock(&pfdset->fd_mutex);
 
-		poll(pfdset->rwfds, numfds, 1000 /* millisecs */);
+		val = poll(pfdset->rwfds, numfds, 1000 /* millisecs */);
+		if (val < 0)
+			continue;
 
 		need_shrink = 0;
 		for (i = 0; i < numfds; i++) {
