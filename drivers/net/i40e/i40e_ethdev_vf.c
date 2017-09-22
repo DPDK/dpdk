@@ -1225,7 +1225,15 @@ i40evf_init_vf(struct rte_eth_dev *dev)
 	if (hw->mac.type == I40E_MAC_X722_VF)
 		vf->flags = I40E_FLAG_RSS_AQ_CAPABLE;
 	vf->vsi.vsi_id = vf->vsi_res->vsi_id;
-	vf->vsi.type = (enum i40e_vsi_type)vf->vsi_res->vsi_type;
+
+	switch (vf->vsi_res->vsi_type) {
+	case VIRTCHNL_VSI_SRIOV:
+		vf->vsi.type = I40E_VSI_SRIOV;
+		break;
+	default:
+		vf->vsi.type = I40E_VSI_TYPE_UNKNOWN;
+		break;
+	}
 	vf->vsi.nb_qps = vf->vsi_res->num_queue_pairs;
 	vf->vsi.adapter = I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
 
