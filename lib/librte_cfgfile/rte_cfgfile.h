@@ -121,6 +121,82 @@ struct rte_cfgfile *rte_cfgfile_load_with_params(const char *filename,
 	int flags, const struct rte_cfgfile_parameters *params);
 
 /**
+ * Create new cfgfile instance with empty sections and entries
+ *
+ * @param flags
+ *   - CFG_FLAG_GLOBAL_SECTION
+ *     Indicates that the file supports key value entries before the first
+ *     defined section.  These entries can be accessed in the "GLOBAL"
+ *     section.
+ *   - CFG_FLAG_EMPTY_VALUES
+ *     Indicates that file supports key value entries where the value can
+ *     be zero length (e.g., "key=").
+ * @return
+ *   Handle to cfgfile instance on success, NULL otherwise
+ */
+struct rte_cfgfile *rte_cfgfile_create(int flags);
+
+/**
+ * Add section in cfgfile instance.
+ *
+ * @param cfg
+ *   Pointer to the cfgfile structure.
+ * @param sectionname
+ *   Section name which will be add to cfgfile.
+ * @return
+ *   0 on success, -ENOMEM if can't add section
+ */
+int
+rte_cfgfile_add_section(struct rte_cfgfile *cfg, const char *sectionname);
+
+/**
+ * Add entry to specified section in cfgfile instance.
+ *
+ * @param cfg
+ *   Pointer to the cfgfile structure.
+ * @param sectionname
+ *   Given section name to add an entry.
+ * @param entryname
+ *   Entry name to add.
+ * @param entryvalue
+ *   Entry value to add.
+ * @return
+ *   0 on success, -EEXIST if entry already exist, -EINVAL if bad argument
+ */
+int rte_cfgfile_add_entry(struct rte_cfgfile *cfg,
+		const char *sectionname, const char *entryname,
+		const char *entryvalue);
+
+/**
+ * Update value of specified entry name in given section in config file
+ *
+ * @param cfg
+ *   Config file
+ * @param sectionname
+ *   Section name
+ * @param entryname
+ *   Entry name to look for the value change
+ * @param entryvalue
+ *   New entry value. Can be also an empty string if CFG_FLAG_EMPTY_VALUES = 1
+ * @return
+ *   0 on success, -EINVAL if bad argument
+ */
+int rte_cfgfile_set_entry(struct rte_cfgfile *cfg, const char *sectionname,
+		const char *entryname, const char *entryvalue);
+
+/**
+ * Save object cfgfile to file on disc
+ *
+ * @param cfg
+ *   Config file structure
+ * @param filename
+ *   File name to save data
+ * @return
+ *   0 on success, errno otherwise
+ */
+int rte_cfgfile_save(struct rte_cfgfile *cfg, const char *filename);
+
+/**
 * Get number of sections in config file
 *
 * @param cfg

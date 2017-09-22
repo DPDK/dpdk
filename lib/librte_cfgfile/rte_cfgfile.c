@@ -121,6 +121,36 @@ _get_section(struct rte_cfgfile *cfg, const char *sectionname)
 }
 
 static int
+_add_entry(struct rte_cfgfile_section *section, const char *entryname,
+		const char *entryvalue)
+{
+	/* resize entry structure if we don't have room for more entries */
+	if (section->num_entries == section->allocated_entries) {
+		struct rte_cfgfile_entry *n_entries = realloc(
+				section->entries,
+				sizeof(struct rte_cfgfile_entry) *
+				((section->allocated_entries) +
+						CFG_ALLOC_ENTRY_BATCH));
+
+		if (n_entries == NULL)
+			return -ENOMEM;
+
+		section->entries = n_entries;
+		section->allocated_entries += CFG_ALLOC_ENTRY_BATCH;
+	}
+	/* fill up entry fields with key name and value */
+	struct rte_cfgfile_entry *curr_entry =
+					&section->entries[section->num_entries];
+
+	snprintf(curr_entry->name, sizeof(curr_entry->name), "%s", entryname);
+	snprintf(curr_entry->value,
+				sizeof(curr_entry->value), "%s", entryvalue);
+	section->num_entries++;
+
+	return 0;
+}
+
+static int
 rte_cfgfile_check_params(const struct rte_cfgfile_parameters *params)
 {
 	unsigned int valid_comment;
@@ -344,6 +374,162 @@ error1:
 error2:
 	fclose(f);
 	return NULL;
+}
+
+struct rte_cfgfile *
+rte_cfgfile_create(int flags)
+{
+	int i;
+	struct rte_cfgfile *cfg = NULL;
+
+	cfg = malloc(sizeof(*cfg));
+
+	if (cfg == NULL)
+		return NULL;
+
+	cfg->flags = flags;
+	cfg->num_sections = 0;
+
+	/* allocate first batch of sections and entries */
+	cfg->sections = malloc(sizeof(struct rte_cfgfile_section) *
+			CFG_ALLOC_SECTION_BATCH);
+
+	if (cfg->sections == NULL)
+		return NULL;
+
+	cfg->allocated_sections = CFG_ALLOC_SECTION_BATCH;
+
+	for (i = 0; i < CFG_ALLOC_SECTION_BATCH; i++) {
+		cfg->sections[i].entries = malloc(sizeof(
+			struct rte_cfgfile_entry) * CFG_ALLOC_ENTRY_BATCH);
+
+		if (cfg->sections[i].entries == NULL)
+			return NULL;
+
+		cfg->sections[i].num_entries = 0;
+		cfg->sections[i].allocated_entries = CFG_ALLOC_ENTRY_BATCH;
+	}
+
+	if (flags & CFG_FLAG_GLOBAL_SECTION)
+		rte_cfgfile_add_section(cfg, "GLOBAL");
+	return cfg;
+}
+
+int
+rte_cfgfile_add_section(struct rte_cfgfile *cfg, const char *sectionname)
+{
+	int i;
+
+	if (cfg == NULL)
+		return -EINVAL;
+
+	if (sectionname == NULL)
+		return -EINVAL;
+
+	/* resize overall struct if we don't have room for more	sections */
+	if (cfg->num_sections == cfg->allocated_sections) {
+
+		struct rte_cfgfile_section *n_sections =
+				realloc(cfg->sections,
+				sizeof(struct rte_cfgfile_section) *
+				((cfg->allocated_sections) +
+				CFG_ALLOC_SECTION_BATCH));
+
+		if (n_sections == NULL)
+			return -ENOMEM;
+
+		for (i = 0; i < CFG_ALLOC_SECTION_BATCH; i++) {
+			n_sections[i + cfg->allocated_sections].num_entries = 0;
+			n_sections[i +
+				 cfg->allocated_sections].allocated_entries = 0;
+			n_sections[i + cfg->allocated_sections].entries = NULL;
+		}
+		cfg->sections = n_sections;
+		cfg->allocated_sections += CFG_ALLOC_SECTION_BATCH;
+	}
+
+	snprintf(cfg->sections[cfg->num_sections].name,
+			sizeof(cfg->sections[0].name), "%s", sectionname);
+	cfg->sections[cfg->num_sections].num_entries = 0;
+	cfg->num_sections++;
+
+	return 0;
+}
+
+int rte_cfgfile_add_entry(struct rte_cfgfile *cfg,
+		const char *sectionname, const char *entryname,
+		const char *entryvalue)
+{
+	int ret;
+
+	if ((cfg == NULL) || (sectionname == NULL) || (entryname == NULL)
+			|| (entryvalue == NULL))
+		return -EINVAL;
+
+	if (rte_cfgfile_has_entry(cfg, sectionname, entryname) != 0)
+		return -EEXIST;
+
+	/* search for section pointer by sectionname */
+	struct rte_cfgfile_section *curr_section = _get_section(cfg,
+								sectionname);
+	if (curr_section == NULL)
+		return -EINVAL;
+
+	ret = _add_entry(curr_section, entryname, entryvalue);
+
+	return ret;
+}
+
+int rte_cfgfile_set_entry(struct rte_cfgfile *cfg, const char *sectionname,
+		const char *entryname, const char *entryvalue)
+{
+	int i;
+
+	if ((cfg == NULL) || (sectionname == NULL) || (entryname == NULL))
+		return -EINVAL;
+
+	/* search for section pointer by sectionname */
+	struct rte_cfgfile_section *curr_section = _get_section(cfg,
+								sectionname);
+	if (curr_section == NULL)
+		return -EINVAL;
+
+	if (entryvalue == NULL)
+		entryvalue = "";
+
+	for (i = 0; i < curr_section->num_entries; i++)
+		if (!strcmp(curr_section->entries[i].name, entryname)) {
+			snprintf(curr_section->entries[i].value,
+					sizeof(curr_section->entries[i].value),
+							"%s", entryvalue);
+			return 0;
+		}
+	printf("Error - entry name doesn't exist\n");
+	return -EINVAL;
+}
+
+int rte_cfgfile_save(struct rte_cfgfile *cfg, const char *filename)
+{
+	int i, j;
+
+	if ((cfg == NULL) || (filename == NULL))
+		return -EINVAL;
+
+	FILE *f = fopen(filename, "w");
+
+	if (f == NULL)
+		return -EINVAL;
+
+	for (i = 0; i < cfg->num_sections; i++) {
+		fprintf(f, "[%s]\n", cfg->sections[i].name);
+
+		for (j = 0; j < cfg->sections[i].num_entries; j++) {
+			fprintf(f, "%s=%s\n",
+					cfg->sections[i].entries[j].name,
+					cfg->sections[i].entries[j].value);
+		}
+	}
+	return fclose(f);
 }
 
 int rte_cfgfile_close(struct rte_cfgfile *cfg)
