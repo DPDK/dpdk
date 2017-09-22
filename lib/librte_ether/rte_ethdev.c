@@ -67,6 +67,7 @@
 
 #include "rte_ether.h"
 #include "rte_ethdev.h"
+#include "ethdev_profile.h"
 
 static const char *MZ_RTE_ETH_DEV_DATA = "rte_eth_dev_data";
 struct rte_eth_dev rte_eth_devices[RTE_MAX_ETHPORTS];
@@ -813,6 +814,16 @@ rte_eth_dev_configure(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 	diag = (*dev->dev_ops->dev_configure)(dev);
 	if (diag != 0) {
 		RTE_PMD_DEBUG_TRACE("port%d dev_configure = %d\n",
+				port_id, diag);
+		rte_eth_dev_rx_queue_config(dev, 0);
+		rte_eth_dev_tx_queue_config(dev, 0);
+		return diag;
+	}
+
+	/* Initialize Rx profiling if enabled at compilation time. */
+	diag = __rte_eth_profile_rx_init(port_id, dev);
+	if (diag != 0) {
+		RTE_PMD_DEBUG_TRACE("port%d __rte_eth_profile_rx_init = %d\n",
 				port_id, diag);
 		rte_eth_dev_rx_queue_config(dev, 0);
 		rte_eth_dev_tx_queue_config(dev, 0);

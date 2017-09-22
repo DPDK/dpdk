@@ -39,7 +39,8 @@ Profiling on x86
 ----------------
 
 Intel processors provide performance counters to monitor events.
-Some tools provided by Intel, such as VTune, can be used to profile and benchmark an application.
+Some tools provided by Intel, such as Intel® VTune™ Amplifier, can be used
+to profile and benchmark an application.
 See the *VTune Performance Analyzer Essentials* publication from Intel Press for more information.
 
 For a DPDK application, this can be done in a Linux* application environment only.
@@ -57,6 +58,40 @@ The main situations that should be monitored through event counters are:
 Refer to the
 `Intel Performance Analysis Guide <http://software.intel.com/sites/products/collateral/hpc/vtune/performance_analysis_guide.pdf>`_
 for details about application profiling.
+
+
+Empty cycles tracing
+~~~~~~~~~~~~~~~~~~~~
+
+Iterations that yielded no RX packets (empty cycles, wasted iterations) can
+be analyzed using VTune Amplifier. This profiling employs the
+`Instrumentation and Tracing Technology (ITT) API
+<https://software.intel.com/en-us/node/544195>`_
+feature of VTune Amplifier and requires only reconfiguring the DPDK library,
+no changes in a DPDK application are needed.
+
+To trace wasted iterations on RX queues, first reconfigure DPDK with
+``CONFIG_RTE_ETHDEV_RXTX_CALLBACKS`` and
+``CONFIG_RTE_ETHDEV_PROFILE_ITT_WASTED_RX_ITERATIONS`` enabled.
+
+Then rebuild DPDK, specifying paths to the ITT header and library, which can
+be found in any VTune Amplifier distribution in the *include* and *lib*
+directories respectively:
+
+.. code-block:: console
+
+    make EXTRA_CFLAGS=-I<path to ittnotify.h> \
+         EXTRA_LDLIBS="-L<path to libittnotify.a> -littnotify"
+
+Finally, to see wasted iterations in your performance analysis results,
+select the *"Analyze user tasks, events, and counters"* checkbox in the
+*"Analysis Type"* tab when configuring analysis via VTune Amplifier GUI.
+Alternatively, when running VTune Amplifier via command line, specify
+``-knob enable-user-tasks=true`` option.
+
+Collected regions of wasted iterations will be marked on VTune Amplifier's
+timeline as ITT tasks. These ITT tasks have predefined names, containing
+Ethernet device and RX queue identifiers.
 
 
 Profiling on ARM64
