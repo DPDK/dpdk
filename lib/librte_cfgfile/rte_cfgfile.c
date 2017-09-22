@@ -36,7 +36,6 @@
 #include <string.h>
 #include <ctype.h>
 #include <rte_common.h>
-#include <rte_string_fns.h>
 
 #include "rte_cfgfile.h"
 
@@ -258,19 +257,25 @@ rte_cfgfile_load_with_params(const char *filename, int flags,
 
 			struct rte_cfgfile_section *sect =
 				cfg->sections[curr_section];
-			int n;
+
 			char *split[2] = {NULL};
-			n = rte_strsplit(buffer, sizeof(buffer), split, 2, '=');
-			if (flags & CFG_FLAG_EMPTY_VALUES) {
-				if ((n < 1) || (n > 2)) {
-					printf("Error at line %d - cannot split string, n=%d\n",
-					       lineno, n);
-					goto error1;
-				}
+			split[0] = buffer;
+			split[1] = memchr(buffer, '=', len);
+
+			/* when delimeter not found */
+			if (split[1] == NULL) {
+				printf("Error at line %d - cannot "
+					"split string\n", lineno);
+				goto error1;
 			} else {
-				if (n != 2) {
-					printf("Error at line %d - cannot split string, n=%d\n",
-					       lineno, n);
+				/* when delimeter found */
+				*split[1] = '\0';
+				split[1]++;
+
+				if (!(flags & CFG_FLAG_EMPTY_VALUES) &&
+						(*split[1] == '\0')) {
+					printf("Error at line %d - cannot "
+						"split string\n", lineno);
 					goto error1;
 				}
 			}
