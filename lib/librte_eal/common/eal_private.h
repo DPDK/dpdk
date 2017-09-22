@@ -315,6 +315,17 @@ void set_tsc_freq(void);
 uint64_t get_tsc_freq(void);
 
 /**
+ * Get TSC frequency if the architecture supports.
+ *
+ * This function is private to the EAL.
+ *
+ * @return
+ *   The number of TSC cycles in one second.
+ *   Returns zero if the architecture support is not available.
+ */
+uint64_t get_tsc_freq_arch(void);
+
+/**
  * Prepare physical memory mapping
  * i.e. hugepages on Linux and
  *      contigmem on BSD.

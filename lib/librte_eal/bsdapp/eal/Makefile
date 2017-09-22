@@ -92,6 +92,7 @@ SRCS-$(CONFIG_RTE_EXEC_ENV_BSDAPP) += rte_service.c
 # from arch dir
 SRCS-$(CONFIG_RTE_EXEC_ENV_BSDAPP) += rte_cpuflags.c
 SRCS-$(CONFIG_RTE_ARCH_X86) += rte_spinlock.c
+SRCS-y += rte_cycles.c
 
 CFLAGS_eal_common_cpuflags.o := $(CPUFLAGS_LIST)
 

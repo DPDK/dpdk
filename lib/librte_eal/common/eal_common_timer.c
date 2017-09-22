@@ -80,8 +80,11 @@ estimate_tsc_freq(void)
 void
 set_tsc_freq(void)
 {
-	uint64_t freq = get_tsc_freq();
+	uint64_t freq;
 
+	freq = get_tsc_freq_arch();
+	if (!freq)
+		freq = get_tsc_freq();
 	if (!freq)
 		freq = estimate_tsc_freq();
 
