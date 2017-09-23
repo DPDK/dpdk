@@ -392,7 +392,7 @@ ddp get info
 
 Display information about dynamic device personalization (DDP) profile::
 
-   testpmd> ddp get info (profile_patch)
+   testpmd> ddp get info (profile_path)
 
 show vf stats
 ~~~~~~~~~~~~~
