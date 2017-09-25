@@ -1,6 +1,12 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2010-2014 Intel Corporation
 
+# binary name
+APP = l3fwd-power
+
+# all source are stored in SRCS-y
+SRCS-y := main.c
+
 ifeq ($(RTE_SDK),)
 $(error "Please define RTE_SDK environment variable")
 endif
@@ -15,12 +21,6 @@ $(info This application can only operate in a linuxapp environment, \
 please change the definition of the RTE_TARGET environment variable)
 all:
 else
-
-# binary name
-APP = l3fwd-power
-
-# all source are stored in SRCS-y
-SRCS-y := main.c
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)

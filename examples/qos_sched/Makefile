@@ -1,6 +1,12 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2010-2014 Intel Corporation
 
+# binary name
+APP = qos_sched
+
+# all source are stored in SRCS-y
+SRCS-y := main.c args.c init.c app_thread.c cfg_file.c cmdline.c stats.c
+
 ifeq ($(RTE_SDK),)
 $(error "Please define RTE_SDK environment variable")
 endif
@@ -16,12 +22,6 @@ please change the definition of the RTE_TARGET environment variable)
 all:
 clean:
 else
-
-# binary name
-APP = qos_sched
-
-# all source are stored in SRCS-y
-SRCS-y := main.c args.c init.c app_thread.c cfg_file.c cmdline.c stats.c
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)

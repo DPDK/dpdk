@@ -30,6 +30,10 @@
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
+APP = flow
+
+SRCS-y := main.c
+
 ifeq ($(RTE_SDK),)
 $(error "Please define RTE_SDK environment variable")
 endif
@@ -38,10 +42,6 @@ endif
 RTE_TARGET ?= x86_64-native-linuxapp-gcc
 
 include $(RTE_SDK)/mk/rte.vars.mk
-
-APP = flow
-
-SRCS-y := main.c
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)

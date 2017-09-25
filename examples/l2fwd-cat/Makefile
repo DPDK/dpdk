@@ -1,6 +1,12 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2016 Intel Corporation
 
+# binary name
+APP = l2fwd-cat
+
+# all source are stored in SRCS-y
+SRCS-y := l2fwd-cat.c cat.c
+
 ifeq ($(RTE_SDK),)
 $(error "Please define RTE_SDK environment variable")
 endif
@@ -13,12 +19,6 @@ endif
 RTE_TARGET ?= x86_64-native-linuxapp-gcc
 
 include $(RTE_SDK)/mk/rte.vars.mk
-
-# binary name
-APP = l2fwd-cat
-
-# all source are stored in SRCS-y
-SRCS-y := l2fwd-cat.c cat.c
 
 CFLAGS += $(WERROR_FLAGS)
 

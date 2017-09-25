@@ -1,6 +1,12 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2010-2014 Intel Corporation
 
+# binary name
+APP = cmdline
+
+# all source are stored in SRCS-y
+SRCS-y := main.c commands.c parse_obj_list.c
+
 ifeq ($(RTE_SDK),)
 $(error "Please define RTE_SDK environment variable")
 endif

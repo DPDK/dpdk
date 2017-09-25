@@ -1,6 +1,12 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2010-2015 Intel Corporation
 
+# binary name
+APP = tep_termination
+
+# all source are stored in SRCS-y
+SRCS-y := main.c vxlan_setup.c vxlan.c
+
 ifeq ($(RTE_SDK),)
 $(error "Please define RTE_SDK environment variable")
 endif
@@ -14,12 +20,6 @@ ifneq ($(CONFIG_RTE_EXEC_ENV),"linuxapp")
 $(error This application can only operate in a linuxapp environment, \
 please change the definition of the RTE_TARGET environment variable)
 endif
-
-# binary name
-APP = tep_termination
-
-# all source are stored in SRCS-y
-SRCS-y := main.c vxlan_setup.c vxlan.c
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)

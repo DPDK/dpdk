@@ -1,6 +1,20 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright(c) 2016 Intel Corporation
 
+APP = ipsec-secgw
+
+#
+# all source are stored in SRCS-y
+#
+SRCS-y += parser.c
+SRCS-y += ipsec.c
+SRCS-y += esp.c
+SRCS-y += sp4.c
+SRCS-y += sp6.c
+SRCS-y += sa.c
+SRCS-y += rt.c
+SRCS-y += ipsec-secgw.c
+
 ifeq ($(RTE_SDK),)
 	$(error "Please define RTE_SDK environment variable")
 endif
@@ -16,8 +30,6 @@ $(error "RTE_LIBRTE_SECURITY is required to build ipsec-secgw")
 endif
 endif
 
-APP = ipsec-secgw
-
 CFLAGS += -DALLOW_EXPERIMENTAL_API
 CFLAGS += -O3 -gdwarf-2
 CFLAGS += $(WERROR_FLAGS)
@@ -28,17 +40,5 @@ endif
 ifeq ($(DEBUG),1)
 CFLAGS += -DIPSEC_DEBUG -fstack-protector-all -O0
 endif
-
-#
-# all source are stored in SRCS-y
-#
-SRCS-y += parser.c
-SRCS-y += ipsec.c
-SRCS-y += esp.c
-SRCS-y += sp4.c
-SRCS-y += sp6.c
-SRCS-y += sa.c
-SRCS-y += rt.c
-SRCS-y += ipsec-secgw.c
 
 include $(RTE_SDK)/mk/rte.extapp.mk
