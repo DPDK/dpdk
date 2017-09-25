@@ -361,6 +361,12 @@ static int i40e_dev_sync_phy_type(struct i40e_hw *hw);
 static void i40e_configure_registers(struct i40e_hw *hw);
 static void i40e_hw_init(struct rte_eth_dev *dev);
 static int i40e_config_qinq(struct i40e_hw *hw, struct i40e_vsi *vsi);
+static enum i40e_status_code i40e_aq_del_mirror_rule(struct i40e_hw *hw,
+						     uint16_t seid,
+						     uint16_t rule_type,
+						     uint16_t *entries,
+						     uint16_t count,
+						     uint16_t rule_id);
 static int i40e_mirror_rule_set(struct rte_eth_dev *dev,
 			struct rte_eth_mirror_conf *mirror_conf,
 			uint8_t sw_id, uint8_t on);
@@ -2071,7 +2077,6 @@ i40e_dev_stop(struct rte_eth_dev *dev)
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct i40e_vsi *main_vsi = pf->main_vsi;
-	struct i40e_mirror_rule *p_mirror;
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
 	int i;
@@ -2100,13 +2105,6 @@ i40e_dev_stop(struct rte_eth_dev *dev)
 	/* Set link down */
 	i40e_dev_set_link_down(dev);
 
-	/* Remove all mirror rules */
-	while ((p_mirror = TAILQ_FIRST(&pf->mirror_list))) {
-		TAILQ_REMOVE(&pf->mirror_list, p_mirror, rules);
-		rte_free(p_mirror);
-	}
-	pf->nb_mirror_rule = 0;
-
 	if (!rte_intr_allow_others(intr_handle))
 		/* resume to the default handler */
 		rte_intr_callback_register(intr_handle,
@@ -2133,12 +2131,34 @@ i40e_dev_close(struct rte_eth_dev *dev)
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
 	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	struct i40e_mirror_rule *p_mirror;
 	uint32_t reg;
 	int i;
+	int ret;
 
 	PMD_INIT_FUNC_TRACE();
 
 	i40e_dev_stop(dev);
+
+	/* Remove all mirror rules */
+	while ((p_mirror = TAILQ_FIRST(&pf->mirror_list))) {
+		ret = i40e_aq_del_mirror_rule(hw,
+					      pf->main_vsi->veb->seid,
+					      p_mirror->rule_type,
+					      p_mirror->entries,
+					      p_mirror->num_entries,
+					      p_mirror->id);
+		if (ret < 0)
+			PMD_DRV_LOG(ERR, "failed to remove mirror rule: "
+				    "status = %d, aq_err = %d.", ret,
+				    hw->aq.asq_last_status);
+
+		/* remove mirror software resource anyway */
+		TAILQ_REMOVE(&pf->mirror_list, p_mirror, rules);
+		rte_free(p_mirror);
+		pf->nb_mirror_rule--;
+	}
+
 	i40e_dev_free_queues(dev);
 
 	/* Disable interrupt */
