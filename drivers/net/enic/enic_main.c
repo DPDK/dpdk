@@ -224,7 +224,7 @@ enic_free_rq_buf(struct rte_mbuf **mbuf)
 		return;
 
 	rte_pktmbuf_free(*mbuf);
-	mbuf = NULL;
+	*mbuf = NULL;
 }
 
 void enic_init_vnic_resources(struct enic *enic)
