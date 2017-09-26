@@ -297,7 +297,7 @@ DPDK and must be installed separately:
   This library basically implements send/receive calls to the hardware
   queues.
 
-- **Kernel modules** (mlnx-ofed-kernel)
+- **Kernel modules**
 
   They provide the kernel-side Verbs API and low level device drivers that
   manage actual hardware initialization and resources sharing with user
@@ -324,18 +324,32 @@ DPDK and must be installed separately:
    Both libraries are BSD and GPL licensed. Linux kernel modules are GPL
    licensed.
 
-Currently supported by DPDK:
+Installation
+~~~~~~~~~~~~
 
-- Mellanox OFED version: **4.1**.
+Either RDMA Core library with a recent enough Linux kernel release
+(recommended) or Mellanox OFED, which provides compatibility with older
+releases.
+
+RMDA Core with Linux Kernel
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- Minimal kernel version : 4.13-rc4 (see `Linux installation documentation`_)
+- Minimal rdma-core version: v15 (see `RDMA Core installation documentation`_)
+
+.. _`Linux installation documentation`: https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable.git/plain/Documentation/admin-guide/README.rst
+.. _`RDMA Core installation documentation`: https://raw.githubusercontent.com/linux-rdma/rdma-core/master/README.md
+
+Mellanox OFED
+^^^^^^^^^^^^^
+
+- Mellanox OFED version: **4.2**.
 - firmware version:
 
   - ConnectX-4: **12.20.1010** and above.
   - ConnectX-4 Lx: **14.20.1010** and above.
   - ConnectX-5: **16.20.1010** and above.
   - ConnectX-5 Ex: **16.20.1010** and above.
-
-Getting Mellanox OFED
-~~~~~~~~~~~~~~~~~~~~~
 
 While these libraries and kernel modules are available on OpenFabrics
 Alliance's `website <https://www.openfabrics.org/>`__ and provided by package
@@ -377,8 +391,8 @@ Supported NICs
 * Mellanox(R) ConnectX(R)-5 100G MCX556A-ECAT (2x100G)
 * Mellanox(R) ConnectX(R)-5 Ex EN 100G MCX516A-CDAT (2x100G)
 
-Quick Start Guide
------------------
+Quick Start Guide on OFED
+-------------------------
 
 1. Download latest Mellanox OFED. For more info check the  `prerequisites`_.
 

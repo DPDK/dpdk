@@ -72,7 +72,7 @@ struct mlx5_fdir_filter {
 	uint16_t queue; /* Queue assigned to if FDIR match. */
 	enum rte_eth_fdir_behavior behavior;
 	struct fdir_flow_desc desc;
-	struct ibv_exp_flow *flow;
+	struct ibv_flow *flow;
 };
 
 LIST_HEAD(fdir_filter_list, mlx5_fdir_filter);
@@ -238,19 +238,19 @@ priv_fdir_flow_add(struct priv *priv,
 		   struct mlx5_fdir_filter *mlx5_fdir_filter,
 		   struct fdir_queue *fdir_queue)
 {
-	struct ibv_exp_flow *flow;
+	struct ibv_flow *flow;
 	struct fdir_flow_desc *desc = &mlx5_fdir_filter->desc;
 	enum rte_fdir_mode fdir_mode =
 		priv->dev->data->dev_conf.fdir_conf.mode;
 	struct rte_eth_fdir_masks *mask =
 		&priv->dev->data->dev_conf.fdir_conf.mask;
 	FLOW_ATTR_SPEC_ETH(data, priv_flow_attr(priv, NULL, 0, desc->type));
-	struct ibv_exp_flow_attr *attr = &data->attr;
+	struct ibv_flow_attr *attr = &data->attr;
 	uintptr_t spec_offset = (uintptr_t)&data->spec;
-	struct ibv_exp_flow_spec_eth *spec_eth;
-	struct ibv_exp_flow_spec_ipv4 *spec_ipv4;
-	struct ibv_exp_flow_spec_ipv6 *spec_ipv6;
-	struct ibv_exp_flow_spec_tcp_udp *spec_tcp_udp;
+	struct ibv_flow_spec_eth *spec_eth;
+	struct ibv_flow_spec_ipv4 *spec_ipv4;
+	struct ibv_flow_spec_ipv6 *spec_ipv6;
+	struct ibv_flow_spec_tcp_udp *spec_tcp_udp;
 	struct mlx5_fdir_filter *iter_fdir_filter;
 	unsigned int i;
 
@@ -272,10 +272,10 @@ priv_fdir_flow_add(struct priv *priv,
 	priv_flow_attr(priv, attr, sizeof(data), desc->type);
 
 	/* Set Ethernet spec */
-	spec_eth = (struct ibv_exp_flow_spec_eth *)spec_offset;
+	spec_eth = (struct ibv_flow_spec_eth *)spec_offset;
 
 	/* The first specification must be Ethernet. */
-	assert(spec_eth->type == IBV_EXP_FLOW_SPEC_ETH);
+	assert(spec_eth->type == IBV_FLOW_SPEC_ETH);
 	assert(spec_eth->size == sizeof(*spec_eth));
 
 	/* VLAN ID */
@@ -302,10 +302,10 @@ priv_fdir_flow_add(struct priv *priv,
 		spec_offset += spec_eth->size;
 
 		/* Set IP spec */
-		spec_ipv4 = (struct ibv_exp_flow_spec_ipv4 *)spec_offset;
+		spec_ipv4 = (struct ibv_flow_spec_ipv4 *)spec_offset;
 
 		/* The second specification must be IP. */
-		assert(spec_ipv4->type == IBV_EXP_FLOW_SPEC_IPV4);
+		assert(spec_ipv4->type == IBV_FLOW_SPEC_IPV4);
 		assert(spec_ipv4->size == sizeof(*spec_ipv4));
 
 		spec_ipv4->val.src_ip =
@@ -329,10 +329,10 @@ priv_fdir_flow_add(struct priv *priv,
 		spec_offset += spec_eth->size;
 
 		/* Set IP spec */
-		spec_ipv6 = (struct ibv_exp_flow_spec_ipv6 *)spec_offset;
+		spec_ipv6 = (struct ibv_flow_spec_ipv6 *)spec_offset;
 
 		/* The second specification must be IP. */
-		assert(spec_ipv6->type == IBV_EXP_FLOW_SPEC_IPV6);
+		assert(spec_ipv6->type == IBV_FLOW_SPEC_IPV6);
 		assert(spec_ipv6->size == sizeof(*spec_ipv6));
 
 		for (i = 0; i != RTE_DIM(desc->src_ip); ++i) {
@@ -362,11 +362,11 @@ priv_fdir_flow_add(struct priv *priv,
 	}
 
 	/* Set TCP/UDP flow specification. */
-	spec_tcp_udp = (struct ibv_exp_flow_spec_tcp_udp *)spec_offset;
+	spec_tcp_udp = (struct ibv_flow_spec_tcp_udp *)spec_offset;
 
 	/* The third specification must be TCP/UDP. */
-	assert(spec_tcp_udp->type == IBV_EXP_FLOW_SPEC_TCP ||
-	       spec_tcp_udp->type == IBV_EXP_FLOW_SPEC_UDP);
+	assert(spec_tcp_udp->type == IBV_FLOW_SPEC_TCP ||
+	       spec_tcp_udp->type == IBV_FLOW_SPEC_UDP);
 	assert(spec_tcp_udp->size == sizeof(*spec_tcp_udp));
 
 	spec_tcp_udp->val.src_port = desc->src_port & mask->src_port_mask;
@@ -380,7 +380,7 @@ priv_fdir_flow_add(struct priv *priv,
 create_flow:
 
 	errno = 0;
-	flow = ibv_exp_create_flow(fdir_queue->qp, attr);
+	flow = ibv_create_flow(fdir_queue->qp, attr);
 	if (flow == NULL) {
 		/* It's not clear whether errno is always set in this case. */
 		ERROR("%p: flow director configuration failed, errno=%d: %s",
@@ -416,16 +416,16 @@ priv_fdir_queue_destroy(struct priv *priv, struct fdir_queue *fdir_queue)
 		assert(idx < priv->rxqs_n);
 		if (fdir_queue == rxq_ctrl->fdir_queue &&
 		    fdir_filter->flow != NULL) {
-			claim_zero(ibv_exp_destroy_flow(fdir_filter->flow));
+			claim_zero(ibv_destroy_flow(fdir_filter->flow));
 			fdir_filter->flow = NULL;
 		}
 	}
 	assert(fdir_queue->qp);
 	claim_zero(ibv_destroy_qp(fdir_queue->qp));
 	assert(fdir_queue->ind_table);
-	claim_zero(ibv_exp_destroy_rwq_ind_table(fdir_queue->ind_table));
+	claim_zero(ibv_destroy_rwq_ind_table(fdir_queue->ind_table));
 	if (fdir_queue->wq)
-		claim_zero(ibv_exp_destroy_wq(fdir_queue->wq));
+		claim_zero(ibv_destroy_wq(fdir_queue->wq));
 	if (fdir_queue->cq)
 		claim_zero(ibv_destroy_cq(fdir_queue->cq));
 #ifndef NDEBUG
@@ -447,7 +447,7 @@ priv_fdir_queue_destroy(struct priv *priv, struct fdir_queue *fdir_queue)
  *   Related flow director queue on success, NULL otherwise.
  */
 static struct fdir_queue *
-priv_fdir_queue_create(struct priv *priv, struct ibv_exp_wq *wq,
+priv_fdir_queue_create(struct priv *priv, struct ibv_wq *wq,
 		       unsigned int socket)
 {
 	struct fdir_queue *fdir_queue;
@@ -461,21 +461,18 @@ priv_fdir_queue_create(struct priv *priv, struct ibv_exp_wq *wq,
 	assert(priv->pd);
 	assert(priv->ctx);
 	if (!wq) {
-		fdir_queue->cq = ibv_exp_create_cq(
-			priv->ctx, 1, NULL, NULL, 0,
-			&(struct ibv_exp_cq_init_attr){
-				.comp_mask = 0,
-			});
+		fdir_queue->cq = ibv_create_cq(
+			priv->ctx, 1, NULL, NULL, 0);
 		if (!fdir_queue->cq) {
 			ERROR("cannot create flow director CQ");
 			goto error;
 		}
-		fdir_queue->wq = ibv_exp_create_wq(
+		fdir_queue->wq = ibv_create_wq(
 			priv->ctx,
-			&(struct ibv_exp_wq_init_attr){
-				.wq_type = IBV_EXP_WQT_RQ,
-				.max_recv_wr = 1,
-				.max_recv_sge = 1,
+			&(struct ibv_wq_init_attr){
+				.wq_type = IBV_WQT_RQ,
+				.max_wr = 1,
+				.max_sge = 1,
 				.pd = priv->pd,
 				.cq = fdir_queue->cq,
 			});
@@ -485,10 +482,9 @@ priv_fdir_queue_create(struct priv *priv, struct ibv_exp_wq *wq,
 		}
 		wq = fdir_queue->wq;
 	}
-	fdir_queue->ind_table = ibv_exp_create_rwq_ind_table(
+	fdir_queue->ind_table = ibv_create_rwq_ind_table(
 		priv->ctx,
-		&(struct ibv_exp_rwq_ind_table_init_attr){
-			.pd = priv->pd,
+		&(struct ibv_rwq_ind_table_init_attr){
 			.log_ind_tbl_size = 0,
 			.ind_tbl = &wq,
 			.comp_mask = 0,
@@ -497,24 +493,23 @@ priv_fdir_queue_create(struct priv *priv, struct ibv_exp_wq *wq,
 		ERROR("cannot create flow director indirection table");
 		goto error;
 	}
-	fdir_queue->qp = ibv_exp_create_qp(
+	fdir_queue->qp = ibv_create_qp_ex(
 		priv->ctx,
-		&(struct ibv_exp_qp_init_attr){
+		&(struct ibv_qp_init_attr_ex){
 			.qp_type = IBV_QPT_RAW_PACKET,
 			.comp_mask =
-				IBV_EXP_QP_INIT_ATTR_PD |
-				IBV_EXP_QP_INIT_ATTR_PORT |
-				IBV_EXP_QP_INIT_ATTR_RX_HASH,
-			.pd = priv->pd,
-			.rx_hash_conf = &(struct ibv_exp_rx_hash_conf){
+				IBV_QP_INIT_ATTR_PD |
+				IBV_QP_INIT_ATTR_IND_TABLE |
+				IBV_QP_INIT_ATTR_RX_HASH,
+			.rx_hash_conf = (struct ibv_rx_hash_conf){
 				.rx_hash_function =
-					IBV_EXP_RX_HASH_FUNC_TOEPLITZ,
+					IBV_RX_HASH_FUNC_TOEPLITZ,
 				.rx_hash_key_len = rss_hash_default_key_len,
 				.rx_hash_key = rss_hash_default_key,
 				.rx_hash_fields_mask = 0,
-				.rwq_ind_tbl = fdir_queue->ind_table,
 			},
-			.port_num = priv->port,
+			.rwq_ind_tbl = fdir_queue->ind_table,
+			.pd = priv->pd,
 		});
 	if (!fdir_queue->qp) {
 		ERROR("cannot create flow director hash RX QP");
@@ -525,10 +520,10 @@ error:
 	assert(fdir_queue);
 	assert(!fdir_queue->qp);
 	if (fdir_queue->ind_table)
-		claim_zero(ibv_exp_destroy_rwq_ind_table
+		claim_zero(ibv_destroy_rwq_ind_table
 			   (fdir_queue->ind_table));
 	if (fdir_queue->wq)
-		claim_zero(ibv_exp_destroy_wq(fdir_queue->wq));
+		claim_zero(ibv_destroy_wq(fdir_queue->wq));
 	if (fdir_queue->cq)
 		claim_zero(ibv_destroy_cq(fdir_queue->cq));
 	rte_free(fdir_queue);
@@ -673,13 +668,13 @@ priv_fdir_filter_flush(struct priv *priv)
 	struct mlx5_fdir_filter *mlx5_fdir_filter;
 
 	while ((mlx5_fdir_filter = LIST_FIRST(priv->fdir_filter_list))) {
-		struct ibv_exp_flow *flow = mlx5_fdir_filter->flow;
+		struct ibv_flow *flow = mlx5_fdir_filter->flow;
 
 		DEBUG("%p: flushing flow director filter %p",
 		      (void *)priv, (void *)mlx5_fdir_filter);
 		LIST_REMOVE(mlx5_fdir_filter, next);
 		if (flow != NULL)
-			claim_zero(ibv_exp_destroy_flow(flow));
+			claim_zero(ibv_destroy_flow(flow));
 		rte_free(mlx5_fdir_filter);
 	}
 }
@@ -712,7 +707,7 @@ priv_fdir_disable(struct priv *priv)
 
 	/* Run on every flow director filter and destroy flow handle. */
 	LIST_FOREACH(mlx5_fdir_filter, priv->fdir_filter_list, next) {
-		struct ibv_exp_flow *flow;
+		struct ibv_flow *flow;
 
 		/* Only valid elements should be in the list */
 		assert(mlx5_fdir_filter != NULL);
@@ -720,7 +715,7 @@ priv_fdir_disable(struct priv *priv)
 
 		/* Destroy flow handle */
 		if (flow != NULL) {
-			claim_zero(ibv_exp_destroy_flow(flow));
+			claim_zero(ibv_destroy_flow(flow));
 			mlx5_fdir_filter->flow = NULL;
 		}
 	}
@@ -887,7 +882,7 @@ priv_fdir_filter_update(struct priv *priv,
 
 	mlx5_fdir_filter = priv_find_filter_in_list(priv, fdir_filter);
 	if (mlx5_fdir_filter != NULL) {
-		struct ibv_exp_flow *flow = mlx5_fdir_filter->flow;
+		struct ibv_flow *flow = mlx5_fdir_filter->flow;
 		int err = 0;
 
 		/* Update queue number. */
@@ -895,7 +890,7 @@ priv_fdir_filter_update(struct priv *priv,
 
 		/* Destroy flow handle. */
 		if (flow != NULL) {
-			claim_zero(ibv_exp_destroy_flow(flow));
+			claim_zero(ibv_destroy_flow(flow));
 			mlx5_fdir_filter->flow = NULL;
 		}
 		DEBUG("%p: flow director filter %p updated",
@@ -933,14 +928,14 @@ priv_fdir_filter_delete(struct priv *priv,
 
 	mlx5_fdir_filter = priv_find_filter_in_list(priv, fdir_filter);
 	if (mlx5_fdir_filter != NULL) {
-		struct ibv_exp_flow *flow = mlx5_fdir_filter->flow;
+		struct ibv_flow *flow = mlx5_fdir_filter->flow;
 
 		/* Remove element from list. */
 		LIST_REMOVE(mlx5_fdir_filter, next);
 
 		/* Destroy flow handle. */
 		if (flow != NULL) {
-			claim_zero(ibv_exp_destroy_flow(flow));
+			claim_zero(ibv_destroy_flow(flow));
 			mlx5_fdir_filter->flow = NULL;
 		}
 

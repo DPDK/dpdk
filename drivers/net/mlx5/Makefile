@@ -63,7 +63,7 @@ CFLAGS += -D_DEFAULT_SOURCE
 CFLAGS += -D_XOPEN_SOURCE=600
 CFLAGS += $(WERROR_FLAGS)
 CFLAGS += -Wno-strict-prototypes
-LDLIBS += -libverbs
+LDLIBS += -libverbs -lmlx5
 
 # A few warnings cannot be avoided in external headers.
 CFLAGS += -Wno-error=cast-qual
@@ -104,19 +104,19 @@ mlx5_autoconf.h.new: FORCE
 mlx5_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 	$Q $(RM) -f -- '$@'
 	$Q sh -- '$<' '$@' \
-		HAVE_VERBS_IBV_EXP_CQ_COMPRESSED_CQE \
-		infiniband/verbs_exp.h \
-		enum IBV_EXP_CQ_COMPRESSED_CQE \
+		HAVE_IBV_DEVICE_VXLAN_SUPPORT \
+		infiniband/verbs.h \
+		enum IBV_DEVICE_VXLAN_SUPPORT \
 		$(AUTOCONF_OUTPUT)
 	$Q sh -- '$<' '$@' \
-		HAVE_VERBS_MLX5_ETH_VLAN_INLINE_HEADER_SIZE \
-		infiniband/mlx5_hw.h \
-		enum MLX5_ETH_VLAN_INLINE_HEADER_SIZE \
+		HAVE_IBV_WQ_FLAG_RX_END_PADDING \
+		infiniband/verbs.h \
+		enum IBV_WQ_FLAG_RX_END_PADDING \
 		$(AUTOCONF_OUTPUT)
 	$Q sh -- '$<' '$@' \
-		HAVE_VERBS_MLX5_OPCODE_TSO \
-		infiniband/mlx5_hw.h \
-		enum MLX5_OPCODE_TSO \
+		HAVE_IBV_MLX5_MOD_MPW \
+		infiniband/mlx5dv.h \
+		enum MLX5DV_CONTEXT_FLAGS_MPW_ALLOWED \
 		$(AUTOCONF_OUTPUT)
 	$Q sh -- '$<' '$@' \
 		HAVE_ETHTOOL_LINK_MODE_25G \
@@ -132,11 +132,6 @@ mlx5_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 		HAVE_ETHTOOL_LINK_MODE_100G \
 		/usr/include/linux/ethtool.h \
 		enum ETHTOOL_LINK_MODE_100000baseKR4_Full_BIT \
-		$(AUTOCONF_OUTPUT)
-	$Q sh -- '$<' '$@' \
-		HAVE_UPDATE_CQ_CI \
-		infiniband/mlx5_hw.h \
-		func ibv_mlx5_exp_update_cq_ci \
 		$(AUTOCONF_OUTPUT)
 
 # Create mlx5_autoconf.h or update it in case it differs from the new one.

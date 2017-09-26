@@ -43,7 +43,7 @@
 #pragma GCC diagnostic ignored "-Wpedantic"
 #endif
 #include <infiniband/verbs.h>
-#include <infiniband/mlx5_hw.h>
+#include <infiniband/mlx5dv.h>
 #ifdef PEDANTIC
 #pragma GCC diagnostic error "-Wpedantic"
 #endif
@@ -81,8 +81,8 @@ struct mlx5_txq_stats {
 /* Flow director queue structure. */
 struct fdir_queue {
 	struct ibv_qp *qp; /* Associated RX QP. */
-	struct ibv_exp_rwq_ind_table *ind_table; /* Indirection table. */
-	struct ibv_exp_wq *wq; /* Work queue. */
+	struct ibv_rwq_ind_table *ind_table; /* Indirection table. */
+	struct ibv_wq *wq; /* Work queue. */
 	struct ibv_cq *cq; /* Completion queue. */
 };
 
@@ -124,13 +124,16 @@ struct rxq {
 	struct mlx5_rxq_stats stats;
 	uint64_t mbuf_initializer; /* Default rearm_data for vectorized Rx. */
 	struct rte_mbuf fake_mbuf; /* elts padding for vectorized Rx. */
+	void *cq_uar; /* CQ user access region. */
+	uint32_t cqn; /* CQ number. */
+	uint8_t cq_arm_sn; /* CQ arm seq number. */
 } __rte_cache_aligned;
 
 /* RX queue control descriptor. */
 struct rxq_ctrl {
 	struct priv *priv; /* Back pointer to private data. */
 	struct ibv_cq *cq; /* Completion Queue. */
-	struct ibv_exp_wq *wq; /* Work Queue. */
+	struct ibv_wq *wq; /* Work Queue. */
 	struct fdir_queue *fdir_queue; /* Flow director queue. */
 	struct ibv_mr *mr; /* Memory Region (for mp). */
 	struct ibv_comp_channel *channel;
@@ -152,8 +155,8 @@ enum hash_rxq_type {
 /* Flow structure with Ethernet specification. It is packed to prevent padding
  * between attr and spec as this layout is expected by libibverbs. */
 struct flow_attr_spec_eth {
-	struct ibv_exp_flow_attr attr;
-	struct ibv_exp_flow_spec_eth spec;
+	struct ibv_flow_attr attr;
+	struct ibv_flow_spec_eth spec;
 } __attribute__((packed));
 
 /* Define a struct flow_attr_spec_eth object as an array of at least
@@ -171,13 +174,13 @@ struct hash_rxq_init {
 	unsigned int flow_priority; /* Flow priority to use. */
 	union {
 		struct {
-			enum ibv_exp_flow_spec_type type;
+			enum ibv_flow_spec_type type;
 			uint16_t size;
 		} hdr;
-		struct ibv_exp_flow_spec_tcp_udp tcp_udp;
-		struct ibv_exp_flow_spec_ipv4 ipv4;
-		struct ibv_exp_flow_spec_ipv6 ipv6;
-		struct ibv_exp_flow_spec_eth eth;
+		struct ibv_flow_spec_tcp_udp tcp_udp;
+		struct ibv_flow_spec_ipv4 ipv4;
+		struct ibv_flow_spec_ipv6 ipv6;
+		struct ibv_flow_spec_eth eth;
 	} flow_spec; /* Flow specification template. */
 	const struct hash_rxq_init *underlayer; /* Pointer to underlayer. */
 };
@@ -231,9 +234,9 @@ struct hash_rxq {
 	struct ibv_qp *qp; /* Hash RX QP. */
 	enum hash_rxq_type type; /* Hash RX queue type. */
 	/* MAC flow steering rules, one per VLAN ID. */
-	struct ibv_exp_flow *mac_flow
+	struct ibv_flow *mac_flow
 		[MLX5_MAX_MAC_ADDRESSES][MLX5_MAX_VLAN_IDS];
-	struct ibv_exp_flow *special_flow
+	struct ibv_flow *special_flow
 		[MLX5_MAX_SPECIAL_FLOWS][MLX5_MAX_VLAN_IDS];
 };
 
@@ -293,7 +296,7 @@ extern const unsigned int hash_rxq_init_n;
 extern uint8_t rss_hash_default_key[];
 extern const size_t rss_hash_default_key_len;
 
-size_t priv_flow_attr(struct priv *, struct ibv_exp_flow_attr *,
+size_t priv_flow_attr(struct priv *, struct ibv_flow_attr *,
 		      size_t, enum hash_rxq_type);
 int priv_create_hash_rxqs(struct priv *);
 void priv_destroy_hash_rxqs(struct priv *);
@@ -305,10 +308,8 @@ int mlx5_rx_queue_setup(struct rte_eth_dev *, uint16_t, uint16_t, unsigned int,
 void mlx5_rx_queue_release(void *);
 int priv_rx_intr_vec_enable(struct priv *priv);
 void priv_rx_intr_vec_disable(struct priv *priv);
-#ifdef HAVE_UPDATE_CQ_CI
 int mlx5_rx_intr_enable(struct rte_eth_dev *dev, uint16_t rx_queue_id);
 int mlx5_rx_intr_disable(struct rte_eth_dev *dev, uint16_t rx_queue_id);
-#endif /* HAVE_UPDATE_CQ_CI */
 
 /* mlx5_txq.c */
 

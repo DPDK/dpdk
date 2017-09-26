@@ -96,6 +96,11 @@
 /* Default PMD specific parameter value. */
 #define MLX5_ARG_UNSET (-1)
 
+#ifndef HAVE_IBV_MLX5_MOD_MPW
+#define MLX5DV_CONTEXT_FLAGS_MPW_ALLOWED (1 << 2)
+#define MLX5DV_CONTEXT_FLAGS_ENHANCED_MPW (1 << 3)
+#endif
+
 struct mlx5_args {
 	int cqe_comp;
 	int txq_inline;
@@ -247,10 +252,8 @@ static const struct eth_dev_ops mlx5_dev_ops = {
 	.filter_ctrl = mlx5_dev_filter_ctrl,
 	.rx_descriptor_status = mlx5_rx_descriptor_status,
 	.tx_descriptor_status = mlx5_tx_descriptor_status,
-#ifdef HAVE_UPDATE_CQ_CI
 	.rx_queue_intr_enable = mlx5_rx_intr_enable,
 	.rx_queue_intr_disable = mlx5_rx_intr_disable,
-#endif
 };
 
 static struct {
@@ -442,12 +445,13 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	struct ibv_device *ibv_dev;
 	int err = 0;
 	struct ibv_context *attr_ctx = NULL;
-	struct ibv_device_attr device_attr;
+	struct ibv_device_attr_ex device_attr;
 	unsigned int sriov;
 	unsigned int mps;
 	unsigned int tunnel_en = 0;
 	int idx;
 	int i;
+	struct mlx5dv_context attrs_out;
 
 	(void)pci_drv;
 	assert(pci_drv == &mlx5_driver);
@@ -493,35 +497,24 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		       PCI_DEVICE_ID_MELLANOX_CONNECTX5VF) ||
 		      (pci_dev->id.device_id ==
 		       PCI_DEVICE_ID_MELLANOX_CONNECTX5EXVF));
-		/*
-		 * Multi-packet send is supported by ConnectX-4 Lx PF as well
-		 * as all ConnectX-5 devices.
-		 */
 		switch (pci_dev->id.device_id) {
 		case PCI_DEVICE_ID_MELLANOX_CONNECTX4:
 			tunnel_en = 1;
-			mps = MLX5_MPW_DISABLED;
 			break;
 		case PCI_DEVICE_ID_MELLANOX_CONNECTX4LX:
-			tunnel_en = 1;
-			mps = MLX5_MPW;
-			break;
 		case PCI_DEVICE_ID_MELLANOX_CONNECTX5:
 		case PCI_DEVICE_ID_MELLANOX_CONNECTX5VF:
 		case PCI_DEVICE_ID_MELLANOX_CONNECTX5EX:
 		case PCI_DEVICE_ID_MELLANOX_CONNECTX5EXVF:
 			tunnel_en = 1;
-			mps = MLX5_MPW_ENHANCED;
 			break;
 		default:
-			mps = MLX5_MPW_DISABLED;
+			break;
 		}
 		INFO("PCI information matches, using device \"%s\""
-		     " (SR-IOV: %s, %sMPS: %s)",
+		     " (SR-IOV: %s)",
 		     list[i]->name,
-		     sriov ? "true" : "false",
-		     mps == MLX5_MPW_ENHANCED ? "Enhanced " : "",
-		     mps != MLX5_MPW_DISABLED ? "true" : "false");
+		     sriov ? "true" : "false");
 		attr_ctx = ibv_open_device(list[i]);
 		err = errno;
 		break;
@@ -542,11 +535,27 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	ibv_dev = list[i];
 
 	DEBUG("device opened");
-	if (ibv_query_device(attr_ctx, &device_attr))
+	/*
+	 * Multi-packet send is supported by ConnectX-4 Lx PF as well
+	 * as all ConnectX-5 devices.
+	 */
+	mlx5dv_query_device(attr_ctx, &attrs_out);
+	if (attrs_out.flags & (MLX5DV_CONTEXT_FLAGS_ENHANCED_MPW |
+			       MLX5DV_CONTEXT_FLAGS_MPW_ALLOWED)) {
+		INFO("Enhanced MPW is detected\n");
+		mps = MLX5_MPW_ENHANCED;
+	} else if (attrs_out.flags & MLX5DV_CONTEXT_FLAGS_MPW_ALLOWED) {
+		INFO("MPW is detected\n");
+		mps = MLX5_MPW;
+	} else {
+		INFO("MPW is disabled\n");
+		mps = MLX5_MPW_DISABLED;
+	}
+	if (ibv_query_device_ex(attr_ctx, NULL, &device_attr))
 		goto error;
-	INFO("%u port(s) detected", device_attr.phys_port_cnt);
+	INFO("%u port(s) detected", device_attr.orig_attr.phys_port_cnt);
 
-	for (i = 0; i < device_attr.phys_port_cnt; i++) {
+	for (i = 0; i < device_attr.orig_attr.phys_port_cnt; i++) {
 		uint32_t port = i + 1; /* ports are indexed from one */
 		uint32_t test = (1 << i);
 		struct ibv_context *ctx = NULL;
@@ -554,7 +563,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		struct ibv_pd *pd = NULL;
 		struct priv *priv = NULL;
 		struct rte_eth_dev *eth_dev;
-		struct ibv_exp_device_attr exp_device_attr;
+		struct ibv_device_attr_ex device_attr_ex;
 		struct ether_addr mac;
 		uint16_t num_vfs = 0;
 		struct mlx5_args args = {
@@ -568,14 +577,6 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			.tx_vec_en = MLX5_ARG_UNSET,
 			.rx_vec_en = MLX5_ARG_UNSET,
 		};
-
-		exp_device_attr.comp_mask =
-			IBV_EXP_DEVICE_ATTR_EXP_CAP_FLAGS |
-			IBV_EXP_DEVICE_ATTR_RX_HASH |
-			IBV_EXP_DEVICE_ATTR_VLAN_OFFLOADS |
-			IBV_EXP_DEVICE_ATTR_RX_PAD_END_ALIGN |
-			IBV_EXP_DEVICE_ATTR_TSO_CAPS |
-			0;
 
 		DEBUG("using port %u (%08" PRIx32 ")", port, test);
 
@@ -642,26 +643,26 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			goto port_error;
 		}
 		mlx5_args_assign(priv, &args);
-		if (ibv_exp_query_device(ctx, &exp_device_attr)) {
-			ERROR("ibv_exp_query_device() failed");
-			err = ENODEV;
+		if (ibv_query_device_ex(ctx, NULL, &device_attr_ex)) {
+			ERROR("ibv_query_device_ex() failed");
 			goto port_error;
 		}
 
 		priv->hw_csum =
-			((exp_device_attr.exp_device_cap_flags &
-			  IBV_EXP_DEVICE_RX_CSUM_TCP_UDP_PKT) &&
-			 (exp_device_attr.exp_device_cap_flags &
-			  IBV_EXP_DEVICE_RX_CSUM_IP_PKT));
+			!!(device_attr_ex.device_cap_flags_ex &
+			   IBV_DEVICE_RAW_IP_CSUM);
 		DEBUG("checksum offloading is %ssupported",
 		      (priv->hw_csum ? "" : "not "));
 
+#ifdef HAVE_IBV_DEVICE_VXLAN_SUPPORT
 		priv->hw_csum_l2tun = !!(exp_device_attr.exp_device_cap_flags &
-					 IBV_EXP_DEVICE_VXLAN_SUPPORT);
+					 IBV_DEVICE_VXLAN_SUPPORT);
+#endif
 		DEBUG("L2 tunnel checksum offloads are %ssupported",
 		      (priv->hw_csum_l2tun ? "" : "not "));
 
-		priv->ind_table_max_size = exp_device_attr.rx_hash_caps.max_rwq_indirection_table_size;
+		priv->ind_table_max_size =
+			device_attr_ex.rss_caps.max_rwq_indirection_table_size;
 		/* Remove this check once DPDK supports larger/variable
 		 * indirection tables. */
 		if (priv->ind_table_max_size >
@@ -669,29 +670,32 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			priv->ind_table_max_size = ETH_RSS_RETA_SIZE_512;
 		DEBUG("maximum RX indirection table size is %u",
 		      priv->ind_table_max_size);
-		priv->hw_vlan_strip = !!(exp_device_attr.wq_vlan_offloads_cap &
-					 IBV_EXP_RECEIVE_WQ_CVLAN_STRIP);
+		priv->hw_vlan_strip = !!(device_attr_ex.raw_packet_caps &
+					 IBV_RAW_PACKET_CAP_CVLAN_STRIPPING);
 		DEBUG("VLAN stripping is %ssupported",
 		      (priv->hw_vlan_strip ? "" : "not "));
 
-		priv->hw_fcs_strip = !!(exp_device_attr.exp_device_cap_flags &
-					IBV_EXP_DEVICE_SCATTER_FCS);
+		priv->hw_fcs_strip =
+				!!(device_attr_ex.orig_attr.device_cap_flags &
+				IBV_WQ_FLAGS_SCATTER_FCS);
 		DEBUG("FCS stripping configuration is %ssupported",
 		      (priv->hw_fcs_strip ? "" : "not "));
 
-		priv->hw_padding = !!exp_device_attr.rx_pad_end_addr_align;
+#ifdef HAVE_IBV_WQ_FLAG_RX_END_PADDING
+		priv->hw_padding = !!device_attr_ex.rx_pad_end_addr_align;
+#endif
 		DEBUG("hardware RX end alignment padding is %ssupported",
 		      (priv->hw_padding ? "" : "not "));
 
 		priv_get_num_vfs(priv, &num_vfs);
 		priv->sriov = (num_vfs || sriov);
 		priv->tso = ((priv->tso) &&
-			    (exp_device_attr.tso_caps.max_tso > 0) &&
-			    (exp_device_attr.tso_caps.supported_qpts &
-			    (1 << IBV_QPT_RAW_ETH)));
+			    (device_attr_ex.tso_caps.max_tso > 0) &&
+			    (device_attr_ex.tso_caps.supported_qpts &
+			    (1 << IBV_QPT_RAW_PACKET)));
 		if (priv->tso)
 			priv->max_tso_payload_sz =
-				exp_device_attr.tso_caps.max_tso;
+				device_attr_ex.tso_caps.max_tso;
 		if (priv->mps && !mps) {
 			ERROR("multi-packet send not supported on this device"
 			      " (" MLX5_TXQ_MPW_EN ")");

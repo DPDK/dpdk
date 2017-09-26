@@ -660,8 +660,8 @@ mlx5_dev_infos_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *info)
 	 * Since we need one CQ per QP, the limit is the minimum number
 	 * between the two values.
 	 */
-	max = ((priv->device_attr.max_cq > priv->device_attr.max_qp) ?
-	       priv->device_attr.max_qp : priv->device_attr.max_cq);
+	max = RTE_MIN(priv->device_attr.orig_attr.max_cq,
+		      priv->device_attr.orig_attr.max_qp);
 	/* If max >= 65535 then max = 0, max_rx_queues is uint16_t. */
 	if (max >= 65535)
 		max = 65535;

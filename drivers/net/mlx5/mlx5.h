@@ -89,7 +89,7 @@ struct mlx5_xstats_ctrl {
 struct priv {
 	struct rte_eth_dev *dev; /* Ethernet device. */
 	struct ibv_context *ctx; /* Verbs context. */
-	struct ibv_device_attr device_attr; /* Device properties. */
+	struct ibv_device_attr_ex device_attr; /* Device properties. */
 	struct ibv_pd *pd; /* Protection Domain. */
 	/*
 	 * MAC addresses array and configuration bit-field.
@@ -132,7 +132,7 @@ struct priv {
 	struct rxq *(*rxqs)[]; /* RX queues. */
 	struct txq *(*txqs)[]; /* TX queues. */
 	/* Indirection tables referencing all RX WQs. */
-	struct ibv_exp_rwq_ind_table *(*ind_tables)[];
+	struct ibv_rwq_ind_table *(*ind_tables)[];
 	unsigned int ind_tables_n; /* Number of indirection tables. */
 	unsigned int ind_table_max_size; /* Maximum indirection table size. */
 	/* Hash RX QPs feeding the indirection table. */

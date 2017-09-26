@@ -41,7 +41,7 @@
 #ifdef PEDANTIC
 #pragma GCC diagnostic ignored "-Wpedantic"
 #endif
-#include <infiniband/mlx5_hw.h>
+#include <infiniband/mlx5dv.h>
 #ifdef PEDANTIC
 #pragma GCC diagnostic error "-Wpedantic"
 #endif
@@ -242,6 +242,46 @@ struct mlx5_cqe {
 	uint16_t wqe_counter;
 	uint8_t rsvd4;
 	uint8_t op_own;
+};
+
+/* Adding direct verbs to data-path. */
+
+/* CQ sequence number mask. */
+#define MLX5_CQ_SQN_MASK 0x3
+
+/* CQ sequence number index. */
+#define MLX5_CQ_SQN_OFFSET 28
+
+/* CQ doorbell index mask. */
+#define MLX5_CI_MASK 0xffffff
+
+/* CQ doorbell offset. */
+#define MLX5_CQ_ARM_DB 1
+
+/* CQ doorbell offset*/
+#define MLX5_CQ_DOORBELL 0x20
+
+/* CQE format value. */
+#define MLX5_COMPRESSED 0x3
+
+/* CQE format mask. */
+#define MLX5E_CQE_FORMAT_MASK 0xc
+
+/* MPW opcode. */
+#define MLX5_OPC_MOD_MPW 0x01
+
+/* Compressed Rx CQE structure. */
+struct mlx5_mini_cqe8 {
+	union {
+		uint32_t rx_hash_result;
+		uint32_t checksum;
+		struct {
+			uint16_t wqe_counter;
+			uint8_t  s_wqe_opcode;
+			uint8_t  reserved;
+		} s_wqe_info;
+	};
+	uint32_t byte_cnt;
 };
 
 /**
