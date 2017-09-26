@@ -272,7 +272,7 @@ int vnic_dev_alloc_desc_ring(struct vnic_dev *vdev,
 	__attribute__((unused)) unsigned int socket_id,
 	char *z_name)
 {
-	void *alloc_addr = NULL;
+	void *alloc_addr;
 	dma_addr_t alloc_pa = 0;
 
 	vnic_dev_desc_ring_size(ring, desc_count, desc_size);
