@@ -650,7 +650,7 @@ int vnic_dev_stats_dump(struct vnic_dev *vdev, struct vnic_stats **stats)
 
 	if (!vdev->stats) {
 		snprintf((char *)name, sizeof(name),
-			"vnic_stats-%d", instance++);
+			"vnic_stats-%u", instance++);
 		vdev->stats = vdev->alloc_consistent(vdev->priv,
 			sizeof(struct vnic_stats), &vdev->stats_pa, (u8 *)name);
 		if (!vdev->stats)
@@ -900,7 +900,7 @@ int vnic_dev_notify_set(struct vnic_dev *vdev, u16 intr)
 	}
 	if (!vnic_dev_in_reset(vdev)) {
 		snprintf((char *)name, sizeof(name),
-			"vnic_notify-%d", instance++);
+			"vnic_notify-%u", instance++);
 		notify_addr = vdev->alloc_consistent(vdev->priv,
 			sizeof(struct vnic_devcmd_notify),
 			&notify_pa, (u8 *)name);
@@ -1156,7 +1156,7 @@ int vnic_dev_classifier(struct vnic_dev *vdev, u8 cmd, u16 *entry,
 		tlv_size = filter_size + action_size +
 		    2*sizeof(struct filter_tlv);
 		snprintf((char *)z_name, sizeof(z_name),
-			"vnic_clsf_%d", unique_id++);
+			"vnic_clsf_%u", unique_id++);
 		tlv_va = vdev->alloc_consistent(vdev->priv,
 			tlv_size, &tlv_pa, (u8 *)z_name);
 		if (!tlv_va)

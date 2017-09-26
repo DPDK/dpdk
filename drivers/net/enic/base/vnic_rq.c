@@ -58,13 +58,13 @@ int vnic_rq_alloc(struct vnic_dev *vdev, struct vnic_rq *rq, unsigned int index,
 
 	rq->ctrl = vnic_dev_get_res(vdev, RES_TYPE_RQ, index);
 	if (!rq->ctrl) {
-		pr_err("Failed to hook RQ[%d] resource\n", index);
+		pr_err("Failed to hook RQ[%u] resource\n", index);
 		return -EINVAL;
 	}
 
 	vnic_rq_disable(rq);
 
-	snprintf(res_name, sizeof(res_name), "%d-rq-%d", instance++, index);
+	snprintf(res_name, sizeof(res_name), "%d-rq-%u", instance++, index);
 	rc = vnic_dev_alloc_desc_ring(vdev, &rq->ring, desc_count, desc_size,
 		rq->socket_id, res_name);
 	return rc;

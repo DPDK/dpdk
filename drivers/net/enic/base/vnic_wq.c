@@ -52,7 +52,7 @@ int vnic_wq_alloc_ring(struct vnic_dev *vdev, struct vnic_wq *wq,
 	char res_name[NAME_MAX];
 	static int instance;
 
-	snprintf(res_name, sizeof(res_name), "%d-wq-%d", instance++, wq->index);
+	snprintf(res_name, sizeof(res_name), "%d-wq-%u", instance++, wq->index);
 	return vnic_dev_alloc_desc_ring(vdev, &wq->ring, desc_count, desc_size,
 		wq->socket_id, res_name);
 }
