@@ -50,35 +50,3 @@ void vnic_set_rss_key(union vnic_rss_key *rss_key, u8 *key)
 	}
 }
 
-void vnic_set_rss_cpu(union vnic_rss_cpu *rss_cpu, u8 *cpu)
-{
-	u32 i;
-	u32 *p = (u32 *)cpu;
-
-	for (i = 0; i < 32; ++i)
-		iowrite32(*p++, &rss_cpu->cpu[i].b[0]);
-}
-
-void vnic_get_rss_key(union vnic_rss_key *rss_key, u8 *key)
-{
-	u32 i;
-	u32 *p;
-	u16 *q;
-
-	for (i = 0; i < 4; ++i) {
-		p = (u32 *)(key + (10 * i));
-		*p++ = ioread32(&rss_key->key[i].b[0]);
-		*p++ = ioread32(&rss_key->key[i].b[4]);
-		q = (u16 *)p;
-		*q = (u16)ioread32(&rss_key->key[i].b[8]);
-	}
-}
-
-void vnic_get_rss_cpu(union vnic_rss_cpu *rss_cpu, u8 *cpu)
-{
-	u32 i;
-	u32 *p = (u32 *)cpu;
-
-	for (i = 0; i < 32; ++i)
-		*p++ = ioread32(&rss_cpu->cpu[i].b[0]);
-}

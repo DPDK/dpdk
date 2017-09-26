@@ -443,24 +443,6 @@ static int vnic_dev_cmd_no_proxy(struct vnic_dev *vdev,
 	return err;
 }
 
-void vnic_dev_cmd_proxy_by_index_start(struct vnic_dev *vdev, u16 index)
-{
-	vdev->proxy = PROXY_BY_INDEX;
-	vdev->proxy_index = index;
-}
-
-void vnic_dev_cmd_proxy_by_bdf_start(struct vnic_dev *vdev, u16 bdf)
-{
-	vdev->proxy = PROXY_BY_BDF;
-	vdev->proxy_index = bdf;
-}
-
-void vnic_dev_cmd_proxy_end(struct vnic_dev *vdev)
-{
-	vdev->proxy = PROXY_NONE;
-	vdev->proxy_index = 0;
-}
-
 int vnic_dev_cmd(struct vnic_dev *vdev, enum vnic_devcmd_cmd cmd,
 	u64 *a0, u64 *a1, int wait)
 {
@@ -672,15 +654,6 @@ int vnic_dev_close(struct vnic_dev *vdev)
 	return vnic_dev_cmd(vdev, CMD_CLOSE, &a0, &a1, wait);
 }
 
-/** Deprecated.  @see vnic_dev_enable_wait */
-int vnic_dev_enable(struct vnic_dev *vdev)
-{
-	u64 a0 = 0, a1 = 0;
-	int wait = 1000;
-
-	return vnic_dev_cmd(vdev, CMD_ENABLE, &a0, &a1, wait);
-}
-
 int vnic_dev_enable_wait(struct vnic_dev *vdev)
 {
 	u64 a0 = 0, a1 = 0;
@@ -717,31 +690,6 @@ int vnic_dev_open_done(struct vnic_dev *vdev, int *done)
 	*done = 0;
 
 	err = vnic_dev_cmd(vdev, CMD_OPEN_STATUS, &a0, &a1, wait);
-	if (err)
-		return err;
-
-	*done = (a0 == 0);
-
-	return 0;
-}
-
-int vnic_dev_soft_reset(struct vnic_dev *vdev, int arg)
-{
-	u64 a0 = (u32)arg, a1 = 0;
-	int wait = 1000;
-
-	return vnic_dev_cmd(vdev, CMD_SOFT_RESET, &a0, &a1, wait);
-}
-
-int vnic_dev_soft_reset_done(struct vnic_dev *vdev, int *done)
-{
-	u64 a0 = 0, a1 = 0;
-	int wait = 1000;
-	int err;
-
-	*done = 0;
-
-	err = vnic_dev_cmd(vdev, CMD_SOFT_RESET_STATUS, &a0, &a1, wait);
 	if (err)
 		return err;
 
@@ -838,19 +786,6 @@ int vnic_dev_set_ig_vlan_rewrite_mode(struct vnic_dev *vdev,
 				&a0, &a1, wait);
 	else
 		return 0;
-}
-
-int vnic_dev_raise_intr(struct vnic_dev *vdev, u16 intr)
-{
-	u64 a0 = intr, a1 = 0;
-	int wait = 1000;
-	int err;
-
-	err = vnic_dev_cmd(vdev, CMD_IAR, &a0, &a1, wait);
-	if (err)
-		pr_err("Failed to raise INTR[%d], err %d\n", intr, err);
-
-	return err;
 }
 
 void vnic_dev_set_reset_flag(struct vnic_dev *vdev, int state)
@@ -985,14 +920,6 @@ int vnic_dev_init(struct vnic_dev *vdev, int arg)
 	return r;
 }
 
-int vnic_dev_deinit(struct vnic_dev *vdev)
-{
-	u64 a0 = 0, a1 = 0;
-	int wait = 1000;
-
-	return vnic_dev_cmd(vdev, CMD_DEINIT, &a0, &a1, wait);
-}
-
 void vnic_dev_intr_coal_timer_info_default(struct vnic_dev *vdev)
 {
 	/* Default: hardware intr coal timer is in units of 1.5 usecs */
@@ -1016,18 +943,6 @@ u32 vnic_dev_port_speed(struct vnic_dev *vdev)
 		return 0;
 
 	return vdev->notify_copy.port_speed;
-}
-
-void vnic_dev_set_intr_mode(struct vnic_dev *vdev,
-	enum vnic_dev_intr_mode intr_mode)
-{
-	vdev->intr_mode = intr_mode;
-}
-
-enum vnic_dev_intr_mode vnic_dev_get_intr_mode(
-	struct vnic_dev *vdev)
-{
-	return vdev->intr_mode;
 }
 
 u32 vnic_dev_intr_coal_timer_usec_to_hw(struct vnic_dev *vdev, u32 usec)
@@ -1098,23 +1013,6 @@ struct vnic_dev *vnic_dev_register(struct vnic_dev *vdev,
 err_out:
 	vnic_dev_unregister(vdev);
 	return NULL;
-}
-
-struct rte_pci_device *vnic_dev_get_pdev(struct vnic_dev *vdev)
-{
-	return vdev->pdev;
-}
-
-int vnic_dev_set_mac_addr(struct vnic_dev *vdev, u8 *mac_addr)
-{
-	u64 a0, a1 = 0;
-	int wait = 1000;
-	int i;
-
-	for (i = 0; i < ETH_ALEN; i++)
-		((u8 *)&a0)[i] = mac_addr[i];
-
-	return vnic_dev_cmd(vdev, CMD_SET_MAC_ADDR, &a0, &a1, wait);
 }
 
 /*

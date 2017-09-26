@@ -227,11 +227,6 @@ static inline unsigned int enic_cq_wq(struct enic *enic, unsigned int wq)
 	return enic->rq_count + wq;
 }
 
-static inline unsigned int enic_msix_err_intr(__rte_unused struct enic *enic)
-{
-	return 0;
-}
-
 static inline struct enic *pmd_priv(struct rte_eth_dev *eth_dev)
 {
 	return (struct enic *)eth_dev->data->dev_private;

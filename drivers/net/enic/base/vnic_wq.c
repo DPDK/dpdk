@@ -145,11 +145,6 @@ void vnic_wq_init(struct vnic_wq *wq, unsigned int cq_index,
 	wq->last_completed_index = 0;
 }
 
-void vnic_wq_error_out(struct vnic_wq *wq, unsigned int error)
-{
-	iowrite32(error, &wq->ctrl->error_status);
-}
-
 unsigned int vnic_wq_error_status(struct vnic_wq *wq)
 {
 	return ioread32(&wq->ctrl->error_status);

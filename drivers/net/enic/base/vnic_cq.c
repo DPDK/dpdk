@@ -35,16 +35,6 @@
 #include "vnic_dev.h"
 #include "vnic_cq.h"
 
-int vnic_cq_mem_size(struct vnic_cq *cq, unsigned int desc_count,
-	unsigned int desc_size)
-{
-	int mem_size;
-
-	mem_size = vnic_dev_desc_ring_size(&cq->ring, desc_count, desc_size);
-
-	return mem_size;
-}
-
 void vnic_cq_free(struct vnic_cq *cq)
 {
 	vnic_dev_free_desc_ring(cq->vdev, &cq->ring);

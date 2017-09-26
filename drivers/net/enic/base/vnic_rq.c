@@ -118,11 +118,6 @@ void vnic_rq_init(struct vnic_rq *rq, unsigned int cq_index,
 	rq->pkt_last_seg = NULL;
 }
 
-void vnic_rq_error_out(struct vnic_rq *rq, unsigned int error)
-{
-	iowrite32(error, &rq->ctrl->error_status);
-}
-
 unsigned int vnic_rq_error_status(struct vnic_rq *rq)
 {
 	return ioread32(&rq->ctrl->error_status);
