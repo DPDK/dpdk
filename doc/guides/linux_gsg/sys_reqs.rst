@@ -121,7 +121,10 @@ System Software
 
 **Required:**
 
-*   Kernel version >= 2.6.34
+*   Kernel version >= 3.2
+
+    The kernel version required is based on the oldest long term stable kernel available
+    at kernel.org when the DPDK version is in development.
 
     The kernel version in use can be checked using the command::
 
