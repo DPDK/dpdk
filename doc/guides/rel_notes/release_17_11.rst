@@ -188,8 +188,12 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_net.so.1
      librte_pdump.so.1
      librte_pipeline.so.3
+     librte_pmd_bnxt.so.1
      librte_pmd_bond.so.1
+     librte_pmd_i40e.so.1
+     librte_pmd_ixgbe.so.1
      librte_pmd_ring.so.2
+     librte_pmd_vhost.so.1
      librte_port.so.3
      librte_power.so.1
      librte_reorder.so.1
