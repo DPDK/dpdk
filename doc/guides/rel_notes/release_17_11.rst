@@ -184,6 +184,11 @@ API Changes
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* **Ethdev device name length increased**
+
+  The size of internal device name is increased to 64 characters
+  to allow for storing longer bus specific name.
+
 * **Service cores API updated for usability**
 
   The service cores API has been changed, removing pointers from the API

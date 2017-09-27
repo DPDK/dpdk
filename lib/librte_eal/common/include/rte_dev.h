@@ -152,7 +152,11 @@ struct rte_driver {
 	const char *alias;              /**< Driver alias. */
 };
 
-#define RTE_DEV_NAME_MAX_LEN (32)
+/*
+ * Internal identifier length
+ * Sufficiently large to allow for UUID or PCI address
+ */
+#define RTE_DEV_NAME_MAX_LEN 64
 
 /**
  * A structure describing a generic device.

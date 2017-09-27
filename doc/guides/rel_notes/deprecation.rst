@@ -64,10 +64,6 @@ Deprecation Notices
   done by the EAL and not by the ``ethdev`` layer anymore. Users relying on this
   flag being present only have to remove their checks to follow the change.
 
-* ethdev: An ABI change is planned for 17.11 for the structure rte_eth_dev_data.
-  The size of the unique name will increase RTE_ETH_NAME_MAX_LEN from 32 to
-  64 characters to allow using a globally unique identifier (GUID) in this field.
-
 * ethdev: new parameters - ``rte_security_capabilities`` and
   ``rte_security_ops`` will be added to ``rte_eth_dev_info`` and
   ``rte_eth_dev`` respectively  to support security operations like
