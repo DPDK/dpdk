@@ -358,3 +358,54 @@ void bnxt_dev_xstats_reset_op(struct rte_eth_dev *eth_dev)
 	if (!(bp->flags & BNXT_FLAG_PORT_STATS))
 		RTE_LOG(ERR, PMD, "Operation not supported\n");
 }
+
+int bnxt_dev_xstats_get_by_id_op(struct rte_eth_dev *dev, const uint64_t *ids,
+		uint64_t *values, unsigned int limit)
+{
+	/* Account for the Tx drop pkts aka the Anti spoof counter */
+	const unsigned int stat_cnt = RTE_DIM(bnxt_rx_stats_strings) +
+				RTE_DIM(bnxt_tx_stats_strings) + 1;
+	struct rte_eth_xstat xstats[stat_cnt];
+	uint64_t values_copy[stat_cnt];
+	uint16_t i;
+
+	if (!ids)
+		return bnxt_dev_xstats_get_op(dev, xstats, stat_cnt);
+
+	bnxt_dev_xstats_get_by_id_op(dev, NULL, values_copy, stat_cnt);
+	for (i = 0; i < limit; i++) {
+		if (ids[i] >= stat_cnt) {
+			RTE_LOG(ERR, PMD, "id value isn't valid");
+			return -1;
+		}
+		values[i] = values_copy[ids[i]];
+	}
+	return stat_cnt;
+}
+
+int bnxt_dev_xstats_get_names_by_id_op(struct rte_eth_dev *dev,
+				struct rte_eth_xstat_name *xstats_names,
+				const uint64_t *ids, unsigned int limit)
+{
+	/* Account for the Tx drop pkts aka the Anti spoof counter */
+	const unsigned int stat_cnt = RTE_DIM(bnxt_rx_stats_strings) +
+				RTE_DIM(bnxt_tx_stats_strings) + 1;
+	struct rte_eth_xstat_name xstats_names_copy[stat_cnt];
+	uint16_t i;
+
+	if (!ids)
+		return bnxt_dev_xstats_get_names_op(dev, xstats_names,
+						    stat_cnt);
+	bnxt_dev_xstats_get_names_by_id_op(dev, xstats_names_copy, NULL,
+			stat_cnt);
+
+	for (i = 0; i < limit; i++) {
+		if (ids[i] >= stat_cnt) {
+			RTE_LOG(ERR, PMD, "id value isn't valid");
+			return -1;
+		}
+		strcpy(xstats_names[i].name,
+				xstats_names_copy[ids[i]].name);
+	}
+	return stat_cnt;
+}

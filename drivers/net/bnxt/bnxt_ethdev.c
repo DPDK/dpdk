@@ -1569,6 +1569,8 @@ static const struct eth_dev_ops bnxt_dev_ops = {
 	.txq_info_get = bnxt_txq_info_get_op,
 	.dev_led_on = bnxt_dev_led_on_op,
 	.dev_led_off = bnxt_dev_led_off_op,
+	.xstats_get_by_id = bnxt_dev_xstats_get_by_id_op,
+	.xstats_get_names_by_id = bnxt_dev_xstats_get_names_by_id_op,
 };
 
 static bool bnxt_vf_pciid(uint16_t id)
@@ -1648,6 +1650,9 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 	rte_atomic64_init(&bp->rx_mbuf_alloc_fail);
 	bp->dev_stopped = 1;
 
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		goto skip_init;
+
 	if (bnxt_vf_pciid(pci_dev->id.device_id))
 		bp->flags |= BNXT_FLAG_VF;
 
@@ -1657,7 +1662,10 @@ bnxt_dev_init(struct rte_eth_dev *eth_dev)
 			"Board initialization failed rc: %x\n", rc);
 		goto error;
 	}
+skip_init:
 	eth_dev->dev_ops = &bnxt_dev_ops;
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return 0;
 	eth_dev->rx_pkt_burst = &bnxt_recv_pkts;
 	eth_dev->tx_pkt_burst = &bnxt_xmit_pkts;
 
@@ -1881,6 +1889,9 @@ static int
 bnxt_dev_uninit(struct rte_eth_dev *eth_dev) {
 	struct bnxt *bp = eth_dev->data->dev_private;
 	int rc;
+
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY)
+		return -EPERM;
 
 	bnxt_disable_int(bp);
 	bnxt_free_int(bp);
