@@ -188,6 +188,11 @@ out:
 		struct rte_eth_rss_conf *rss = &dev_conf->rx_adv_conf.rss_conf;
 		uint16_t hash_type = 0;
 
+		if (bp->flags & BNXT_FLAG_UPDATE_HASH) {
+			rss = &bp->rss_conf;
+			bp->flags &= ~BNXT_FLAG_UPDATE_HASH;
+		}
+
 		if (rss->rss_hf & ETH_RSS_IPV4)
 			hash_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV4;
 		if (rss->rss_hf & ETH_RSS_NONFRAG_IPV4_TCP)

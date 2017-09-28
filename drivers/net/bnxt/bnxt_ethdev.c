@@ -837,6 +837,10 @@ static int bnxt_rss_hash_update_op(struct rte_eth_dev *eth_dev,
 		if (rss_conf->rss_hf & BNXT_ETH_RSS_SUPPORT)
 			return -EINVAL;
 	}
+
+	bp->flags |= BNXT_FLAG_UPDATE_HASH;
+	memcpy(&bp->rss_conf, rss_conf, sizeof(*rss_conf));
+
 	if (rss_conf->rss_hf & ETH_RSS_IPV4)
 		hash_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV4;
 	if (rss_conf->rss_hf & ETH_RSS_NONFRAG_IPV4_TCP)
