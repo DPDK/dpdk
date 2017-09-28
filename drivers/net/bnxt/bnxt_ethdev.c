@@ -53,6 +53,7 @@
 #include "bnxt_txr.h"
 #include "bnxt_vnic.h"
 #include "hsi_struct_def_dpdk.h"
+#include "bnxt_nvm_defs.h"
 
 #define DRV_MODULE_NAME		"bnxt"
 static const char bnxt_version[] =
@@ -1854,6 +1855,142 @@ bnxt_dev_supported_ptypes_get_op(struct rte_eth_dev *dev)
 }
 
 
+
+static int
+bnxt_get_eeprom_length_op(struct rte_eth_dev *dev)
+{
+	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
+	int rc;
+	uint32_t dir_entries;
+	uint32_t entry_length;
+
+	RTE_LOG(INFO, PMD, "%s(): %04x:%02x:%02x:%02x\n",
+		__func__, bp->pdev->addr.domain, bp->pdev->addr.bus,
+		bp->pdev->addr.devid, bp->pdev->addr.function);
+
+	rc = bnxt_hwrm_nvm_get_dir_info(bp, &dir_entries, &entry_length);
+	if (rc != 0)
+		return rc;
+
+	return dir_entries * entry_length;
+}
+
+static int
+bnxt_get_eeprom_op(struct rte_eth_dev *dev,
+		struct rte_dev_eeprom_info *in_eeprom)
+{
+	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
+	uint32_t index;
+	uint32_t offset;
+
+	RTE_LOG(INFO, PMD, "%s(): %04x:%02x:%02x:%02x in_eeprom->offset = %d "
+		"len = %d\n", __func__, bp->pdev->addr.domain,
+		bp->pdev->addr.bus, bp->pdev->addr.devid,
+		bp->pdev->addr.function, in_eeprom->offset, in_eeprom->length);
+
+	if (in_eeprom->offset == 0) /* special offset value to get directory */
+		return bnxt_get_nvram_directory(bp, in_eeprom->length,
+						in_eeprom->data);
+
+	index = in_eeprom->offset >> 24;
+	offset = in_eeprom->offset & 0xffffff;
+
+	if (index != 0)
+		return bnxt_hwrm_get_nvram_item(bp, index - 1, offset,
+					   in_eeprom->length, in_eeprom->data);
+
+	return 0;
+}
+
+static bool bnxt_dir_type_is_ape_bin_format(uint16_t dir_type)
+{
+	switch (dir_type) {
+	case BNX_DIR_TYPE_CHIMP_PATCH:
+	case BNX_DIR_TYPE_BOOTCODE:
+	case BNX_DIR_TYPE_BOOTCODE_2:
+	case BNX_DIR_TYPE_APE_FW:
+	case BNX_DIR_TYPE_APE_PATCH:
+	case BNX_DIR_TYPE_KONG_FW:
+	case BNX_DIR_TYPE_KONG_PATCH:
+	case BNX_DIR_TYPE_BONO_FW:
+	case BNX_DIR_TYPE_BONO_PATCH:
+		return true;
+	}
+
+	return false;
+}
+
+static bool bnxt_dir_type_is_other_exec_format(uint16_t dir_type)
+{
+	switch (dir_type) {
+	case BNX_DIR_TYPE_AVS:
+	case BNX_DIR_TYPE_EXP_ROM_MBA:
+	case BNX_DIR_TYPE_PCIE:
+	case BNX_DIR_TYPE_TSCF_UCODE:
+	case BNX_DIR_TYPE_EXT_PHY:
+	case BNX_DIR_TYPE_CCM:
+	case BNX_DIR_TYPE_ISCSI_BOOT:
+	case BNX_DIR_TYPE_ISCSI_BOOT_IPV6:
+	case BNX_DIR_TYPE_ISCSI_BOOT_IPV4N6:
+		return true;
+	}
+
+	return false;
+}
+
+static bool bnxt_dir_type_is_executable(uint16_t dir_type)
+{
+	return bnxt_dir_type_is_ape_bin_format(dir_type) ||
+		bnxt_dir_type_is_other_exec_format(dir_type);
+}
+
+static int
+bnxt_set_eeprom_op(struct rte_eth_dev *dev,
+		struct rte_dev_eeprom_info *in_eeprom)
+{
+	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
+	uint8_t index, dir_op;
+	uint16_t type, ext, ordinal, attr;
+
+	RTE_LOG(INFO, PMD, "%s(): %04x:%02x:%02x:%02x in_eeprom->offset = %d "
+		"len = %d\n", __func__, bp->pdev->addr.domain,
+		bp->pdev->addr.bus, bp->pdev->addr.devid,
+		bp->pdev->addr.function, in_eeprom->offset, in_eeprom->length);
+
+	if (!BNXT_PF(bp)) {
+		RTE_LOG(ERR, PMD, "NVM write not supported from a VF\n");
+		return -EINVAL;
+	}
+
+	type = in_eeprom->magic >> 16;
+
+	if (type == 0xffff) { /* special value for directory operations */
+		index = in_eeprom->magic & 0xff;
+		dir_op = in_eeprom->magic >> 8;
+		if (index == 0)
+			return -EINVAL;
+		switch (dir_op) {
+		case 0x0e: /* erase */
+			if (in_eeprom->offset != ~in_eeprom->magic)
+				return -EINVAL;
+			return bnxt_hwrm_erase_nvram_directory(bp, index - 1);
+		default:
+			return -EINVAL;
+		}
+	}
+
+	/* Create or re-write an NVM item: */
+	if (bnxt_dir_type_is_executable(type) == true)
+		return -EOPNOTSUPP;
+	ext = in_eeprom->magic & 0xffff;
+	ordinal = in_eeprom->offset >> 16;
+	attr = in_eeprom->offset & 0xffff;
+
+	return bnxt_hwrm_flash_nvram(bp, type, ordinal, ext, attr,
+				     in_eeprom->data, in_eeprom->length);
+	return 0;
+}
+
 /*
  * Initialization
  */
@@ -1908,6 +2045,9 @@ static const struct eth_dev_ops bnxt_dev_ops = {
 	.tx_descriptor_status = bnxt_tx_descriptor_status_op,
 	.filter_ctrl = bnxt_filter_ctrl_op,
 	.dev_supported_ptypes_get = bnxt_dev_supported_ptypes_get_op,
+	.get_eeprom_length    = bnxt_get_eeprom_length_op,
+	.get_eeprom           = bnxt_get_eeprom_op,
+	.set_eeprom           = bnxt_set_eeprom_op,
 };
 
 static bool bnxt_vf_pciid(uint16_t id)

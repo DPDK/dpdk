@@ -164,4 +164,15 @@ int bnxt_hwrm_set_ntuple_filter(struct bnxt *bp, uint16_t dst_id,
 			 struct bnxt_filter_info *filter);
 int bnxt_hwrm_clear_ntuple_filter(struct bnxt *bp,
 				struct bnxt_filter_info *filter);
+int bnxt_get_nvram_directory(struct bnxt *bp, uint32_t len, uint8_t *data);
+int bnxt_hwrm_nvm_get_dir_info(struct bnxt *bp, uint32_t *entries,
+			       uint32_t *length);
+int bnxt_hwrm_get_nvram_item(struct bnxt *bp, uint32_t index,
+			     uint32_t offset, uint32_t length,
+			     uint8_t *data);
+int bnxt_hwrm_erase_nvram_directory(struct bnxt *bp, uint8_t index);
+int bnxt_hwrm_flash_nvram(struct bnxt *bp, uint16_t dir_type,
+			  uint16_t dir_ordinal, uint16_t dir_ext,
+			  uint16_t dir_attr, const uint8_t *data,
+			  size_t data_len);
 #endif

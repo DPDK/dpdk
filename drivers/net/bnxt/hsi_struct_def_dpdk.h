@@ -11315,6 +11315,144 @@ struct hwrm_reject_fwd_resp_output {
 	 */
 } __attribute__((packed));
 
+/* hwrm_nvm_get_dir_entries */
+/* Input (24 bytes) */
+struct hwrm_nvm_get_dir_entries_input {
+	uint16_t req_type;
+	uint16_t cmpl_ring;
+	uint16_t seq_id;
+	uint16_t target_id;
+	uint64_t resp_addr;
+	uint64_t host_dest_addr;
+} __attribute__((packed));
+
+/* Output (16 bytes) */
+struct hwrm_nvm_get_dir_entries_output {
+	uint16_t error_code;
+	uint16_t req_type;
+	uint16_t seq_id;
+	uint16_t resp_len;
+	uint32_t unused_0;
+	uint8_t unused_1;
+	uint8_t unused_2;
+	uint8_t unused_3;
+	uint8_t valid;
+} __attribute__((packed));
+
+
+/* hwrm_nvm_erase_dir_entry */
+/* Input (24 bytes) */
+struct hwrm_nvm_erase_dir_entry_input {
+	uint16_t req_type;
+	uint16_t cmpl_ring;
+	uint16_t seq_id;
+	uint16_t target_id;
+	uint64_t resp_addr;
+	uint16_t dir_idx;
+	uint16_t unused_0[3];
+};
+
+/* Output (16 bytes) */
+struct hwrm_nvm_erase_dir_entry_output {
+	uint16_t error_code;
+	uint16_t req_type;
+	uint16_t seq_id;
+	uint16_t resp_len;
+	uint32_t unused_0;
+	uint8_t unused_1;
+	uint8_t unused_2;
+	uint8_t unused_3;
+	uint8_t valid;
+};
+
+/* hwrm_nvm_get_dir_info */
+/* Input (16 bytes) */
+struct hwrm_nvm_get_dir_info_input {
+	uint16_t req_type;
+	uint16_t cmpl_ring;
+	uint16_t seq_id;
+	uint16_t target_id;
+	uint64_t resp_addr;
+} __attribute__((packed));
+
+/* Output (24 bytes) */
+struct hwrm_nvm_get_dir_info_output {
+	uint16_t error_code;
+	uint16_t req_type;
+	uint16_t seq_id;
+	uint16_t resp_len;
+	uint32_t entries;
+	uint32_t entry_length;
+	uint32_t unused_0;
+	uint8_t unused_1;
+	uint8_t unused_2;
+	uint8_t unused_3;
+	uint8_t valid;
+} __attribute__((packed));
+
+
+/* hwrm_nvm_write */
+/* Input (48 bytes) */
+struct hwrm_nvm_write_input {
+	uint16_t req_type;
+	uint16_t cmpl_ring;
+	uint16_t seq_id;
+	uint16_t target_id;
+	uint64_t resp_addr;
+	uint64_t host_src_addr;
+	uint16_t dir_type;
+	uint16_t dir_ordinal;
+	uint16_t dir_ext;
+	uint16_t dir_attr;
+	uint32_t dir_data_length;
+	uint16_t option;
+	uint16_t flags;
+	#define NVM_WRITE_REQ_FLAGS_KEEP_ORIG_ACTIVE_IMG	    0x1UL
+	uint32_t dir_item_length;
+	uint32_t unused_0;
+};
+
+/* Output (16 bytes) */
+struct hwrm_nvm_write_output {
+	uint16_t error_code;
+	uint16_t req_type;
+	uint16_t seq_id;
+	uint16_t resp_len;
+	uint32_t dir_item_length;
+	uint16_t dir_idx;
+	uint8_t unused_0;
+	uint8_t valid;
+};
+/* hwrm_nvm_read */
+/* Input (40 bytes) */
+struct hwrm_nvm_read_input {
+	uint16_t req_type;
+	uint16_t cmpl_ring;
+	uint16_t seq_id;
+	uint16_t target_id;
+	uint64_t resp_addr;
+	uint64_t host_dest_addr;
+	uint16_t dir_idx;
+	uint8_t unused_0;
+	uint8_t unused_1;
+	uint32_t offset;
+	uint32_t len;
+	uint32_t unused_2;
+} __attribute__((packed));
+
+/* Output (16 bytes) */
+struct hwrm_nvm_read_output {
+	uint16_t error_code;
+	uint16_t req_type;
+	uint16_t seq_id;
+	uint16_t resp_len;
+	uint32_t unused_0;
+	uint8_t unused_1;
+	uint8_t unused_2;
+	uint8_t unused_3;
+	uint8_t valid;
+} __attribute__((packed));
+
 /* Hardware Resource Manager Specification */
 /* Description: This structure is used to specify port description. */
 /*

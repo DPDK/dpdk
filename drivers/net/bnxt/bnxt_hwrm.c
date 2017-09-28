@@ -2975,6 +2975,167 @@ int bnxt_hwrm_port_led_cfg(struct bnxt *bp, bool led_on)
 	return rc;
 }
 
+int bnxt_hwrm_nvm_get_dir_info(struct bnxt *bp, uint32_t *entries,
+			       uint32_t *length)
+{
+	int rc;
+	struct hwrm_nvm_get_dir_info_input req = {0};
+	struct hwrm_nvm_get_dir_info_output *resp = bp->hwrm_cmd_resp_addr;
+
+	HWRM_PREP(req, NVM_GET_DIR_INFO);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+
+	HWRM_CHECK_RESULT();
+	HWRM_UNLOCK();
+
+	if (!rc) {
+		*entries = rte_le_to_cpu_32(resp->entries);
+		*length = rte_le_to_cpu_32(resp->entry_length);
+	}
+	return rc;
+}
+
+int bnxt_get_nvram_directory(struct bnxt *bp, uint32_t len, uint8_t *data)
+{
+	int rc;
+	uint32_t dir_entries;
+	uint32_t entry_length;
+	uint8_t *buf;
+	size_t buflen;
+	phys_addr_t dma_handle;
+	struct hwrm_nvm_get_dir_entries_input req = {0};
+	struct hwrm_nvm_get_dir_entries_output *resp = bp->hwrm_cmd_resp_addr;
+
+	rc = bnxt_hwrm_nvm_get_dir_info(bp, &dir_entries, &entry_length);
+	if (rc != 0)
+		return rc;
+
+	*data++ = dir_entries;
+	*data++ = entry_length;
+	len -= 2;
+	memset(data, 0xff, len);
+
+	buflen = dir_entries * entry_length;
+	buf = rte_malloc("nvm_dir", buflen, 0);
+	rte_mem_lock_page(buf);
+	if (buf == NULL)
+		return -ENOMEM;
+	dma_handle = rte_mem_virt2phy(buf);
+	if (dma_handle == 0) {
+		RTE_LOG(ERR, PMD,
+			"unable to map response address to physical memory\n");
+		return -ENOMEM;
+	}
+	HWRM_PREP(req, NVM_GET_DIR_ENTRIES);
+	req.host_dest_addr = rte_cpu_to_le_64(dma_handle);
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+
+	HWRM_CHECK_RESULT();
+	HWRM_UNLOCK();
+
+	if (rc == 0)
+		memcpy(data, buf, len > buflen ? buflen : len);
+
+	rte_free(buf);
+
+	return rc;
+}
+
+int bnxt_hwrm_get_nvram_item(struct bnxt *bp, uint32_t index,
+			     uint32_t offset, uint32_t length,
+			     uint8_t *data)
+{
+	int rc;
+	uint8_t *buf;
+	phys_addr_t dma_handle;
+	struct hwrm_nvm_read_input req = {0};
+	struct hwrm_nvm_read_output *resp = bp->hwrm_cmd_resp_addr;
+
+	buf = rte_malloc("nvm_item", length, 0);
+	rte_mem_lock_page(buf);
+	if (!buf)
+		return -ENOMEM;
+
+	dma_handle = rte_mem_virt2phy(buf);
+	if (dma_handle == 0) {
+		RTE_LOG(ERR, PMD,
+			"unable to map response address to physical memory\n");
+		return -ENOMEM;
+	}
+	HWRM_PREP(req, NVM_READ);
+	req.host_dest_addr = rte_cpu_to_le_64(dma_handle);
+	req.dir_idx = rte_cpu_to_le_16(index);
+	req.offset = rte_cpu_to_le_32(offset);
+	req.len = rte_cpu_to_le_32(length);
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+	HWRM_CHECK_RESULT();
+	HWRM_UNLOCK();
+	if (rc == 0)
+		memcpy(data, buf, length);
+
+	rte_free(buf);
+	return rc;
+}
+
+int bnxt_hwrm_erase_nvram_directory(struct bnxt *bp, uint8_t index)
+{
+	int rc;
+	struct hwrm_nvm_erase_dir_entry_input req = {0};
+	struct hwrm_nvm_erase_dir_entry_output *resp = bp->hwrm_cmd_resp_addr;
+
+	HWRM_PREP(req, NVM_ERASE_DIR_ENTRY);
+	req.dir_idx = rte_cpu_to_le_16(index);
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+	HWRM_CHECK_RESULT();
+	HWRM_UNLOCK();
+
+	return rc;
+}
+
+
+int bnxt_hwrm_flash_nvram(struct bnxt *bp, uint16_t dir_type,
+			  uint16_t dir_ordinal, uint16_t dir_ext,
+			  uint16_t dir_attr, const uint8_t *data,
+			  size_t data_len)
+{
+	int rc;
+	struct hwrm_nvm_write_input req = {0};
+	struct hwrm_nvm_write_output *resp = bp->hwrm_cmd_resp_addr;
+	phys_addr_t dma_handle;
+	uint8_t *buf;
+
+	HWRM_PREP(req, NVM_WRITE);
+
+	req.dir_type = rte_cpu_to_le_16(dir_type);
+	req.dir_ordinal = rte_cpu_to_le_16(dir_ordinal);
+	req.dir_ext = rte_cpu_to_le_16(dir_ext);
+	req.dir_attr = rte_cpu_to_le_16(dir_attr);
+	req.dir_data_length = rte_cpu_to_le_32(data_len);
+
+	buf = rte_malloc("nvm_write", data_len, 0);
+	rte_mem_lock_page(buf);
+	if (!buf)
+		return -ENOMEM;
+
+	dma_handle = rte_mem_virt2phy(buf);
+	if (dma_handle == 0) {
+		RTE_LOG(ERR, PMD,
+			"unable to map response address to physical memory\n");
+		return -ENOMEM;
+	}
+	memcpy(buf, data, data_len);
+	req.host_src_addr = rte_cpu_to_le_64(dma_handle);
+
+	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
+
+	HWRM_CHECK_RESULT();
+	HWRM_UNLOCK();
+
+	rte_free(buf);
+	return rc;
+}
+
 static void
 bnxt_vnic_count(struct bnxt_vnic_info *vnic __rte_unused, void *cbdata)
 {
