@@ -161,7 +161,7 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 
 	if (tx_pkt->ol_flags & (PKT_TX_TCP_SEG | PKT_TX_TCP_CKSUM |
 				PKT_TX_UDP_CKSUM | PKT_TX_IP_CKSUM |
-				PKT_TX_VLAN_PKT))
+				PKT_TX_VLAN_PKT | PKT_TX_OUTER_IP_CKSUM))
 		long_bd = true;
 
 	tx_buf = &txr->tx_buf_ring[txr->tx_prod];
@@ -211,21 +211,39 @@ static uint16_t bnxt_start_xmit(struct rte_mbuf *tx_pkt,
 
 		if (tx_pkt->ol_flags & PKT_TX_TCP_SEG) {
 			/* TSO */
-			txbd1->lflags = TX_BD_LONG_LFLAGS_LSO;
+			txbd1->lflags |= TX_BD_LONG_LFLAGS_LSO;
 			txbd1->hdr_size = tx_pkt->l2_len + tx_pkt->l3_len +
 					tx_pkt->l4_len + tx_pkt->outer_l2_len +
 					tx_pkt->outer_l3_len;
 			txbd1->mss = tx_pkt->tso_segsz;
 
-		} else if (tx_pkt->ol_flags & (PKT_TX_TCP_CKSUM |
-					PKT_TX_UDP_CKSUM)) {
-			/* TCP/UDP CSO */
-			txbd1->lflags = TX_BD_LONG_LFLAGS_TCP_UDP_CHKSUM;
+		} else if (tx_pkt->ol_flags & PKT_TX_OIP_IIP_TCP_UDP_CKSUM) {
+			/* Outer IP, Inner IP, Inner TCP/UDP CSO */
+			txbd1->lflags |= TX_BD_FLG_TIP_IP_TCP_UDP_CHKSUM;
 			txbd1->mss = 0;
-
+		} else if (tx_pkt->ol_flags & PKT_TX_IIP_TCP_UDP_CKSUM) {
+			/* (Inner) IP, (Inner) TCP/UDP CSO */
+			txbd1->lflags |= TX_BD_FLG_IP_TCP_UDP_CHKSUM;
+			txbd1->mss = 0;
+		} else if (tx_pkt->ol_flags & PKT_TX_OIP_TCP_UDP_CKSUM) {
+			/* Outer IP, (Inner) TCP/UDP CSO */
+			txbd1->lflags |= TX_BD_FLG_TIP_TCP_UDP_CHKSUM;
+			txbd1->mss = 0;
+		} else if (tx_pkt->ol_flags & PKT_TX_OIP_IIP_CKSUM) {
+			/* Outer IP, Inner IP CSO */
+			txbd1->lflags |= TX_BD_FLG_TIP_IP_CHKSUM;
+			txbd1->mss = 0;
+		} else if (tx_pkt->ol_flags & PKT_TX_TCP_UDP_CKSUM) {
+			/* TCP/UDP CSO */
+			txbd1->lflags |= TX_BD_LONG_LFLAGS_TCP_UDP_CHKSUM;
+			txbd1->mss = 0;
 		} else if (tx_pkt->ol_flags & PKT_TX_IP_CKSUM) {
 			/* IP CSO */
-			txbd1->lflags = TX_BD_LONG_LFLAGS_IP_CHKSUM;
+			txbd1->lflags |= TX_BD_LONG_LFLAGS_IP_CHKSUM;
+			txbd1->mss = 0;
+		} else if (tx_pkt->ol_flags & PKT_TX_OUTER_IP_CKSUM) {
+			/* IP CSO */
+			txbd1->lflags |= TX_BD_LONG_LFLAGS_T_IP_CHKSUM;
 			txbd1->mss = 0;
 		}
 	} else {
