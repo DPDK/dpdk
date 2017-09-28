@@ -92,7 +92,7 @@ int bnxt_hwrm_stat_ctx_alloc(struct bnxt *bp,
 int bnxt_hwrm_stat_ctx_free(struct bnxt *bp,
 			    struct bnxt_cp_ring_info *cpr, unsigned int idx);
 int bnxt_hwrm_ctx_qstats(struct bnxt *bp, uint32_t cid, int idx,
-			 struct rte_eth_stats *stats);
+			 struct rte_eth_stats *stats, uint8_t rx);
 
 int bnxt_hwrm_ver_get(struct bnxt *bp);
 
