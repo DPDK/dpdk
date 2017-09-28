@@ -85,6 +85,121 @@
 		(_fd)->bpid = _bpid; \
 	} while (0)
 
+static inline void dpaa_slow_parsing(struct rte_mbuf *m __rte_unused,
+				     uint64_t prs __rte_unused)
+{
+	DPAA_DP_LOG(DEBUG, "Slow parsing");
+	/*TBD:XXX: to be implemented*/
+}
+
+static inline void dpaa_eth_packet_info(struct rte_mbuf *m,
+					uint64_t fd_virt_addr)
+{
+	struct annotations_t *annot = GET_ANNOTATIONS(fd_virt_addr);
+	uint64_t prs = *((uint64_t *)(&annot->parse)) & DPAA_PARSE_MASK;
+
+	DPAA_DP_LOG(DEBUG, " Parsing mbuf: %p with annotations: %p", m, annot);
+
+	switch (prs) {
+	case DPAA_PKT_TYPE_NONE:
+		m->packet_type = 0;
+		break;
+	case DPAA_PKT_TYPE_ETHER:
+		m->packet_type = RTE_PTYPE_L2_ETHER;
+		break;
+	case DPAA_PKT_TYPE_IPV4:
+		m->packet_type = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4;
+		break;
+	case DPAA_PKT_TYPE_IPV6:
+		m->packet_type = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV6;
+		break;
+	case DPAA_PKT_TYPE_IPV4_FRAG:
+	case DPAA_PKT_TYPE_IPV4_FRAG_UDP:
+	case DPAA_PKT_TYPE_IPV4_FRAG_TCP:
+	case DPAA_PKT_TYPE_IPV4_FRAG_SCTP:
+		m->packet_type = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L4_FRAG;
+		break;
+	case DPAA_PKT_TYPE_IPV6_FRAG:
+	case DPAA_PKT_TYPE_IPV6_FRAG_UDP:
+	case DPAA_PKT_TYPE_IPV6_FRAG_TCP:
+	case DPAA_PKT_TYPE_IPV6_FRAG_SCTP:
+		m->packet_type = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L4_FRAG;
+		break;
+	case DPAA_PKT_TYPE_IPV4_EXT:
+		m->packet_type = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4_EXT;
+		break;
+	case DPAA_PKT_TYPE_IPV6_EXT:
+		m->packet_type = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV6_EXT;
+		break;
+	case DPAA_PKT_TYPE_IPV4_TCP:
+		m->packet_type = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L4_TCP;
+		break;
+	case DPAA_PKT_TYPE_IPV6_TCP:
+		m->packet_type = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L4_TCP;
+		break;
+	case DPAA_PKT_TYPE_IPV4_UDP:
+		m->packet_type = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L4_UDP;
+		break;
+	case DPAA_PKT_TYPE_IPV6_UDP:
+		m->packet_type = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L4_UDP;
+		break;
+	case DPAA_PKT_TYPE_IPV4_EXT_UDP:
+		m->packet_type = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4_EXT | RTE_PTYPE_L4_UDP;
+		break;
+	case DPAA_PKT_TYPE_IPV6_EXT_UDP:
+		m->packet_type = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV6_EXT | RTE_PTYPE_L4_UDP;
+		break;
+	case DPAA_PKT_TYPE_IPV4_EXT_TCP:
+		m->packet_type = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4_EXT | RTE_PTYPE_L4_TCP;
+		break;
+	case DPAA_PKT_TYPE_IPV6_EXT_TCP:
+		m->packet_type = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV6_EXT | RTE_PTYPE_L4_TCP;
+		break;
+	case DPAA_PKT_TYPE_IPV4_SCTP:
+		m->packet_type = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV4 | RTE_PTYPE_L4_SCTP;
+		break;
+	case DPAA_PKT_TYPE_IPV6_SCTP:
+		m->packet_type = RTE_PTYPE_L2_ETHER |
+			RTE_PTYPE_L3_IPV6 | RTE_PTYPE_L4_SCTP;
+		break;
+	/* More switch cases can be added */
+	default:
+		dpaa_slow_parsing(m, prs);
+	}
+
+	m->tx_offload = annot->parse.ip_off[0];
+	m->tx_offload |= (annot->parse.l4_off - annot->parse.ip_off[0])
+					<< DPAA_PKT_L3_LEN_SHIFT;
+
+	/* Set the hash values */
+	m->hash.rss = (uint32_t)(rte_be_to_cpu_64(annot->hash));
+	m->ol_flags = PKT_RX_RSS_HASH;
+	/* All packets with Bad checksum are dropped by interface (and
+	 * corresponding notification issued to RX error queues).
+	 */
+	m->ol_flags |= PKT_RX_IP_CKSUM_GOOD;
+
+	/* Check if Vlan is present */
+	if (prs & DPAA_PARSE_VLAN_MASK)
+		m->ol_flags |= PKT_RX_VLAN_PKT;
+	/* Packet received without stripping the vlan */
+}
+
 static inline struct rte_mbuf *dpaa_eth_fd_to_mbuf(struct qm_fd *fd,
 							uint32_t ifid)
 {
@@ -117,6 +232,7 @@ static inline struct rte_mbuf *dpaa_eth_fd_to_mbuf(struct qm_fd *fd,
 	mbuf->ol_flags = 0;
 	mbuf->next = NULL;
 	rte_mbuf_refcnt_set(mbuf, 1);
+	dpaa_eth_packet_info(mbuf, (uint64_t)mbuf->buf_addr);
 
 	return mbuf;
 }
