@@ -76,6 +76,26 @@
 static int is_global_init;
 
 static int
+dpaa_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
+{
+	struct dpaa_if *dpaa_intf = dev->data->dev_private;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (mtu < ETHER_MIN_MTU)
+		return -EINVAL;
+	if (mtu > ETHER_MAX_LEN)
+		return -1;
+
+	dev->data->dev_conf.rxmode.jumbo_frame = 0;
+	dev->data->dev_conf.rxmode.max_rx_pkt_len = mtu;
+
+	fman_if_set_maxfrm(dpaa_intf->fif, mtu);
+
+	return 0;
+}
+
+static int
 dpaa_eth_dev_configure(struct rte_eth_dev *dev __rte_unused)
 {
 	PMD_INIT_FUNC_TRACE();
@@ -197,6 +217,7 @@ static struct eth_dev_ops dpaa_devops = {
 	.tx_queue_setup		  = dpaa_eth_tx_queue_setup,
 	.rx_queue_release	  = dpaa_eth_rx_queue_release,
 	.tx_queue_release	  = dpaa_eth_tx_queue_release,
+	.mtu_set		  = dpaa_mtu_set,
 };
 
 /* Initialise an Rx FQ */
