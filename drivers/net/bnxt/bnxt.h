@@ -171,6 +171,12 @@ struct bnxt_cos_queue_info {
 	uint8_t	profile;
 };
 
+struct rte_flow {
+	STAILQ_ENTRY(rte_flow) next;
+	struct bnxt_filter_info *filter;
+	struct bnxt_vnic_info	*vnic;
+};
+
 #define BNXT_HWRM_SHORT_REQ_LEN		sizeof(struct hwrm_short_input)
 struct bnxt {
 	void				*bar0;
@@ -271,4 +277,5 @@ int bnxt_rcv_msg_from_vf(struct bnxt *bp, uint16_t vf_id, void *msg);
 #define RX_PROD_AGG_BD_TYPE_RX_PROD_AGG		0x6
 
 bool is_bnxt_supported(struct rte_eth_dev *dev);
+extern const struct rte_flow_ops bnxt_flow_ops;
 #endif

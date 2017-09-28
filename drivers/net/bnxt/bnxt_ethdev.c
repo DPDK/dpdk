@@ -616,7 +616,7 @@ static void bnxt_mac_addr_remove_op(struct rte_eth_dev *eth_dev,
 				if (filter->mac_index == index) {
 					STAILQ_REMOVE(&vnic->filter, filter,
 						      bnxt_filter_info, next);
-					bnxt_hwrm_clear_filter(bp, filter);
+					bnxt_hwrm_clear_l2_filter(bp, filter);
 					filter->mac_index = INVALID_MAC_INDEX;
 					memset(&filter->l2_addr, 0,
 					       ETHER_ADDR_LEN);
@@ -663,7 +663,7 @@ static int bnxt_mac_addr_add_op(struct rte_eth_dev *eth_dev,
 	STAILQ_INSERT_TAIL(&vnic->filter, filter, next);
 	filter->mac_index = index;
 	memcpy(filter->l2_addr, mac_addr, ETHER_ADDR_LEN);
-	return bnxt_hwrm_set_filter(bp, vnic->fw_vnic_id, filter);
+	return bnxt_hwrm_set_l2_filter(bp, vnic->fw_vnic_id, filter);
 }
 
 int bnxt_link_update_op(struct rte_eth_dev *eth_dev, int wait_to_complete)
@@ -1157,7 +1157,7 @@ static int bnxt_del_vlan_filter(struct bnxt *bp, uint16_t vlan_id)
 					/* Must delete the filter */
 					STAILQ_REMOVE(&vnic->filter, filter,
 						      bnxt_filter_info, next);
-					bnxt_hwrm_clear_filter(bp, filter);
+					bnxt_hwrm_clear_l2_filter(bp, filter);
 					STAILQ_INSERT_TAIL(
 							&bp->free_filter_list,
 							filter, next);
@@ -1183,7 +1183,7 @@ static int bnxt_del_vlan_filter(struct bnxt *bp, uint16_t vlan_id)
 					memcpy(new_filter->l2_addr,
 					       filter->l2_addr, ETHER_ADDR_LEN);
 					/* MAC only filter */
-					rc = bnxt_hwrm_set_filter(bp,
+					rc = bnxt_hwrm_set_l2_filter(bp,
 							vnic->fw_vnic_id,
 							new_filter);
 					if (rc)
@@ -1235,7 +1235,7 @@ static int bnxt_add_vlan_filter(struct bnxt *bp, uint16_t vlan_id)
 					/* Must delete the MAC filter */
 					STAILQ_REMOVE(&vnic->filter, filter,
 						      bnxt_filter_info, next);
-					bnxt_hwrm_clear_filter(bp, filter);
+					bnxt_hwrm_clear_l2_filter(bp, filter);
 					filter->l2_ovlan = 0;
 					STAILQ_INSERT_TAIL(
 							&bp->free_filter_list,
@@ -1258,8 +1258,9 @@ static int bnxt_add_vlan_filter(struct bnxt *bp, uint16_t vlan_id)
 				new_filter->l2_ovlan = vlan_id;
 				new_filter->l2_ovlan_mask = 0xF000;
 				new_filter->enables |= en;
-				rc = bnxt_hwrm_set_filter(bp, vnic->fw_vnic_id,
-							  new_filter);
+				rc = bnxt_hwrm_set_l2_filter(bp,
+							     vnic->fw_vnic_id,
+							     new_filter);
 				if (rc)
 					goto exit;
 				RTE_LOG(INFO, PMD,
@@ -1338,7 +1339,7 @@ bnxt_set_default_mac_addr_op(struct rte_eth_dev *dev, struct ether_addr *addr)
 		/* Default Filter is at Index 0 */
 		if (filter->mac_index != 0)
 			continue;
-		rc = bnxt_hwrm_clear_filter(bp, filter);
+		rc = bnxt_hwrm_clear_l2_filter(bp, filter);
 		if (rc)
 			break;
 		memcpy(filter->l2_addr, bp->mac_addr, ETHER_ADDR_LEN);
@@ -1347,7 +1348,7 @@ bnxt_set_default_mac_addr_op(struct rte_eth_dev *dev, struct ether_addr *addr)
 		filter->enables |=
 			HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_ADDR |
 			HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_ADDR_MASK;
-		rc = bnxt_hwrm_set_filter(bp, vnic->fw_vnic_id, filter);
+		rc = bnxt_hwrm_set_l2_filter(bp, vnic->fw_vnic_id, filter);
 		if (rc)
 			break;
 		filter->mac_index = 0;
@@ -1647,6 +1648,188 @@ bnxt_tx_descriptor_status_op(void *tx_queue, uint16_t offset)
 	return RTE_ETH_TX_DESC_FULL;
 }
 
+static struct bnxt_filter_info *
+bnxt_match_and_validate_ether_filter(struct bnxt *bp,
+				struct rte_eth_ethertype_filter *efilter,
+				struct bnxt_vnic_info *vnic0,
+				struct bnxt_vnic_info *vnic,
+				int *ret)
+{
+	struct bnxt_filter_info *mfilter = NULL;
+	int match = 0;
+	*ret = 0;
+
+	if (efilter->ether_type != ETHER_TYPE_IPv4 &&
+		efilter->ether_type != ETHER_TYPE_IPv6) {
+		RTE_LOG(ERR, PMD, "unsupported ether_type(0x%04x) in"
+			" ethertype filter.", efilter->ether_type);
+		*ret = -EINVAL;
+	}
+	if (efilter->queue >= bp->rx_nr_rings) {
+		RTE_LOG(ERR, PMD, "Invalid queue %d\n", efilter->queue);
+		*ret = -EINVAL;
+	}
+
+	vnic0 = STAILQ_FIRST(&bp->ff_pool[0]);
+	vnic = STAILQ_FIRST(&bp->ff_pool[efilter->queue]);
+	if (vnic == NULL) {
+		RTE_LOG(ERR, PMD, "Invalid queue %d\n", efilter->queue);
+		*ret = -EINVAL;
+	}
+
+	if (efilter->flags & RTE_ETHTYPE_FLAGS_DROP) {
+		STAILQ_FOREACH(mfilter, &vnic0->filter, next) {
+			if ((!memcmp(efilter->mac_addr.addr_bytes,
+				     mfilter->l2_addr, ETHER_ADDR_LEN) &&
+			     mfilter->flags ==
+			     HWRM_CFA_NTUPLE_FILTER_ALLOC_INPUT_FLAGS_DROP &&
+			     mfilter->ethertype == efilter->ether_type)) {
+				match = 1;
+				break;
+			}
+		}
+	} else {
+		STAILQ_FOREACH(mfilter, &vnic->filter, next)
+			if ((!memcmp(efilter->mac_addr.addr_bytes,
+				     mfilter->l2_addr, ETHER_ADDR_LEN) &&
+			     mfilter->ethertype == efilter->ether_type &&
+			     mfilter->flags ==
+			     HWRM_CFA_L2_FILTER_CFG_INPUT_FLAGS_PATH_RX)) {
+				match = 1;
+				break;
+			}
+	}
+
+	if (match)
+		*ret = -EEXIST;
+
+	return mfilter;
+}
+
+static int
+bnxt_ethertype_filter(struct rte_eth_dev *dev,
+			enum rte_filter_op filter_op,
+			void *arg)
+{
+	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
+	struct rte_eth_ethertype_filter *efilter =
+			(struct rte_eth_ethertype_filter *)arg;
+	struct bnxt_filter_info *bfilter, *filter1;
+	struct bnxt_vnic_info *vnic, *vnic0;
+	int ret;
+
+	if (filter_op == RTE_ETH_FILTER_NOP)
+		return 0;
+
+	if (arg == NULL) {
+		RTE_LOG(ERR, PMD, "arg shouldn't be NULL for operation %u.",
+			    filter_op);
+		return -EINVAL;
+	}
+
+	vnic0 = STAILQ_FIRST(&bp->ff_pool[0]);
+	vnic = STAILQ_FIRST(&bp->ff_pool[efilter->queue]);
+
+	switch (filter_op) {
+	case RTE_ETH_FILTER_ADD:
+		bnxt_match_and_validate_ether_filter(bp, efilter,
+							vnic0, vnic, &ret);
+		if (ret < 0)
+			return ret;
+
+		bfilter = bnxt_get_unused_filter(bp);
+		if (bfilter == NULL) {
+			RTE_LOG(ERR, PMD,
+				"Not enough resources for a new filter.\n");
+			return -ENOMEM;
+		}
+		bfilter->filter_type = HWRM_CFA_NTUPLE_FILTER;
+		memcpy(bfilter->l2_addr, efilter->mac_addr.addr_bytes,
+		       ETHER_ADDR_LEN);
+		memcpy(bfilter->dst_macaddr, efilter->mac_addr.addr_bytes,
+		       ETHER_ADDR_LEN);
+		bfilter->enables |= NTUPLE_FLTR_ALLOC_INPUT_EN_DST_MACADDR;
+		bfilter->ethertype = efilter->ether_type;
+		bfilter->enables |= NTUPLE_FLTR_ALLOC_INPUT_EN_ETHERTYPE;
+
+		filter1 = bnxt_get_l2_filter(bp, bfilter, vnic0);
+		if (filter1 == NULL) {
+			ret = -1;
+			goto cleanup;
+		}
+		bfilter->enables |=
+			HWRM_CFA_NTUPLE_FILTER_ALLOC_INPUT_ENABLES_L2_FILTER_ID;
+		bfilter->fw_l2_filter_id = filter1->fw_l2_filter_id;
+
+		bfilter->dst_id = vnic->fw_vnic_id;
+
+		if (efilter->flags & RTE_ETHTYPE_FLAGS_DROP) {
+			bfilter->flags =
+				HWRM_CFA_NTUPLE_FILTER_ALLOC_INPUT_FLAGS_DROP;
+		}
+
+		ret = bnxt_hwrm_set_ntuple_filter(bp, bfilter->dst_id, bfilter);
+		if (ret)
+			goto cleanup;
+		STAILQ_INSERT_TAIL(&vnic->filter, bfilter, next);
+		break;
+	case RTE_ETH_FILTER_DELETE:
+		filter1 = bnxt_match_and_validate_ether_filter(bp, efilter,
+							vnic0, vnic, &ret);
+		if (ret == -EEXIST) {
+			ret = bnxt_hwrm_clear_ntuple_filter(bp, filter1);
+
+			STAILQ_REMOVE(&vnic->filter, filter1, bnxt_filter_info,
+				      next);
+			bnxt_free_filter(bp, filter1);
+		} else if (ret == 0) {
+			RTE_LOG(ERR, PMD, "No matching filter found\n");
+		}
+		break;
+	default:
+		RTE_LOG(ERR, PMD, "unsupported operation %u.", filter_op);
+		ret = -EINVAL;
+		goto error;
+	}
+	return ret;
+cleanup:
+	bnxt_free_filter(bp, bfilter);
+error:
+	return ret;
+}
+
+static int
+bnxt_filter_ctrl_op(struct rte_eth_dev *dev __rte_unused,
+		    enum rte_filter_type filter_type,
+		    enum rte_filter_op filter_op, void *arg)
+{
+	int ret = 0;
+
+	switch (filter_type) {
+	case RTE_ETH_FILTER_NTUPLE:
+	case RTE_ETH_FILTER_FDIR:
+	case RTE_ETH_FILTER_TUNNEL:
+		/* FALLTHROUGH */
+		RTE_LOG(ERR, PMD,
+			"filter type: %d: To be implemented\n", filter_type);
+		break;
+	case RTE_ETH_FILTER_ETHERTYPE:
+		ret = bnxt_ethertype_filter(dev, filter_op, arg);
+		break;
+	case RTE_ETH_FILTER_GENERIC:
+		if (filter_op != RTE_ETH_FILTER_GET)
+			return -EINVAL;
+		*(const void **)arg = &bnxt_flow_ops;
+		break;
+	default:
+		RTE_LOG(ERR, PMD,
+			"Filter type (%d) not supported", filter_type);
+		ret = -EINVAL;
+		break;
+	}
+	return ret;
+}
+
 /*
  * Initialization
  */
@@ -1699,6 +1882,7 @@ static const struct eth_dev_ops bnxt_dev_ops = {
 	.rx_queue_count = bnxt_rx_queue_count_op,
 	.rx_descriptor_status = bnxt_rx_descriptor_status_op,
 	.tx_descriptor_status = bnxt_tx_descriptor_status_op,
+	.filter_ctrl = bnxt_filter_ctrl_op,
 };
 
 static bool bnxt_vf_pciid(uint16_t id)

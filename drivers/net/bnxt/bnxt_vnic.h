@@ -80,6 +80,7 @@ struct bnxt_vnic_info {
 	bool		rss_dflt_cr;
 
 	STAILQ_HEAD(, bnxt_filter_info)	filter;
+	STAILQ_HEAD(, rte_flow)	flow_list;
 };
 
 struct bnxt;

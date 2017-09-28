@@ -730,7 +730,7 @@ int rte_pmd_bnxt_mac_addr_add(uint8_t port, struct ether_addr *addr,
 		    (HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_ADDR |
 		     HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_ADDR_MASK) &&
 		    memcmp(addr, filter->l2_addr, ETHER_ADDR_LEN) == 0) {
-			bnxt_hwrm_clear_filter(bp, filter);
+			bnxt_hwrm_clear_l2_filter(bp, filter);
 			break;
 		}
 	}
@@ -748,7 +748,7 @@ int rte_pmd_bnxt_mac_addr_add(uint8_t port, struct ether_addr *addr,
 	/* Do not add a filter for the default MAC */
 	if (bnxt_hwrm_func_qcfg_vf_default_mac(bp, vf_id, &dflt_mac) ||
 	    memcmp(filter->l2_addr, dflt_mac.addr_bytes, ETHER_ADDR_LEN))
-		rc = bnxt_hwrm_set_filter(bp, vnic.fw_vnic_id, filter);
+		rc = bnxt_hwrm_set_l2_filter(bp, vnic.fw_vnic_id, filter);
 
 exit:
 	return rc;

@@ -83,6 +83,7 @@ void bnxt_init_vnics(struct bnxt *bp)
 
 		prandom_bytes(vnic->rss_hash_key, HW_HASH_KEY_SIZE);
 		STAILQ_INIT(&vnic->filter);
+		STAILQ_INIT(&vnic->flow_list);
 		STAILQ_INSERT_TAIL(&bp->free_vnic_list, vnic, next);
 	}
 	for (i = 0; i < MAX_FF_POOLS; i++)

@@ -51,9 +51,9 @@ int bnxt_hwrm_cfa_l2_set_rx_mask(struct bnxt *bp, struct bnxt_vnic_info *vnic,
 int bnxt_hwrm_cfa_vlan_antispoof_cfg(struct bnxt *bp, uint16_t fid,
 			uint16_t vlan_count,
 			struct bnxt_vlan_antispoof_table_entry *vlan_table);
-int bnxt_hwrm_clear_filter(struct bnxt *bp,
+int bnxt_hwrm_clear_l2_filter(struct bnxt *bp,
 			   struct bnxt_filter_info *filter);
-int bnxt_hwrm_set_filter(struct bnxt *bp,
+int bnxt_hwrm_set_l2_filter(struct bnxt *bp,
 			 uint16_t dst_id,
 			 struct bnxt_filter_info *filter);
 int bnxt_hwrm_exec_fwd_resp(struct bnxt *bp, uint16_t target_id,
@@ -156,4 +156,12 @@ int bnxt_hwrm_func_vf_vnic_query_and_config(struct bnxt *bp, uint16_t vf,
 int bnxt_hwrm_func_cfg_vf_set_vlan_anti_spoof(struct bnxt *bp, uint16_t vf,
 					      bool on);
 int bnxt_hwrm_func_qcfg_vf_dflt_vnic_id(struct bnxt *bp, int vf);
+int bnxt_hwrm_set_em_filter(struct bnxt *bp, uint16_t dst_id,
+			struct bnxt_filter_info *filter);
+int bnxt_hwrm_clear_em_filter(struct bnxt *bp, struct bnxt_filter_info *filter);
+
+int bnxt_hwrm_set_ntuple_filter(struct bnxt *bp, uint16_t dst_id,
+			 struct bnxt_filter_info *filter);
+int bnxt_hwrm_clear_ntuple_filter(struct bnxt *bp,
+				struct bnxt_filter_info *filter);
 #endif

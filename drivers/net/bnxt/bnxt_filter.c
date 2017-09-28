@@ -35,6 +35,9 @@
 
 #include <rte_log.h>
 #include <rte_malloc.h>
+#include <rte_flow.h>
+#include <rte_flow_driver.h>
+#include <rte_tailq.h>
 
 #include "bnxt.h"
 #include "bnxt_filter.h"
@@ -94,6 +97,8 @@ void bnxt_init_filters(struct bnxt *bp)
 	for (i = 0; i < max_filters; i++) {
 		filter = &bp->filter_info[i];
 		filter->fw_l2_filter_id = -1;
+		filter->fw_em_filter_id = -1;
+		filter->fw_ntuple_filter_id = -1;
 		STAILQ_INSERT_TAIL(&bp->free_filter_list, filter, next);
 	}
 }
@@ -121,7 +126,7 @@ void bnxt_free_all_filters(struct bnxt *bp)
 
 	for (i = 0; i < bp->pf.max_vfs; i++) {
 		STAILQ_FOREACH(filter, &bp->pf.vf_info[i].filter, next) {
-			bnxt_hwrm_clear_filter(bp, filter);
+			bnxt_hwrm_clear_l2_filter(bp, filter);
 		}
 	}
 }
@@ -142,7 +147,7 @@ void bnxt_free_filter_mem(struct bnxt *bp)
 		if (filter->fw_l2_filter_id != ((uint64_t)-1)) {
 			RTE_LOG(ERR, PMD, "HWRM filter is not freed??\n");
 			/* Call HWRM to try to free filter again */
-			rc = bnxt_hwrm_clear_filter(bp, filter);
+			rc = bnxt_hwrm_clear_l2_filter(bp, filter);
 			if (rc)
 				RTE_LOG(ERR, PMD,
 				       "HWRM filter cannot be freed rc = %d\n",
@@ -174,3 +179,865 @@ int bnxt_alloc_filter_mem(struct bnxt *bp)
 	bp->filter_info = filter_mem;
 	return 0;
 }
+
+struct bnxt_filter_info *bnxt_get_unused_filter(struct bnxt *bp)
+{
+	struct bnxt_filter_info *filter;
+
+	/* Find the 1st unused filter from the free_filter_list pool*/
+	filter = STAILQ_FIRST(&bp->free_filter_list);
+	if (!filter) {
+		RTE_LOG(ERR, PMD, "No more free filter resources\n");
+		return NULL;
+	}
+	STAILQ_REMOVE_HEAD(&bp->free_filter_list, next);
+
+	return filter;
+}
+
+void bnxt_free_filter(struct bnxt *bp, struct bnxt_filter_info *filter)
+{
+	STAILQ_INSERT_TAIL(&bp->free_filter_list, filter, next);
+}
+
+static int
+bnxt_flow_agrs_validate(const struct rte_flow_attr *attr,
+			const struct rte_flow_item pattern[],
+			const struct rte_flow_action actions[],
+			struct rte_flow_error *error)
+{
+	if (!pattern) {
+		rte_flow_error_set(error, EINVAL,
+			RTE_FLOW_ERROR_TYPE_ITEM_NUM,
+			NULL, "NULL pattern.");
+		return -rte_errno;
+	}
+
+	if (!actions) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ACTION_NUM,
+				   NULL, "NULL action.");
+		return -rte_errno;
+	}
+
+	if (!attr) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ATTR,
+				   NULL, "NULL attribute.");
+		return -rte_errno;
+	}
+
+	return 0;
+}
+
+static const struct rte_flow_item *
+nxt_non_void_pattern(const struct rte_flow_item *cur)
+{
+	while (1) {
+		if (cur->type != RTE_FLOW_ITEM_TYPE_VOID)
+			return cur;
+		cur++;
+	}
+}
+
+static const struct rte_flow_action *
+nxt_non_void_action(const struct rte_flow_action *cur)
+{
+	while (1) {
+		if (cur->type != RTE_FLOW_ACTION_TYPE_VOID)
+			return cur;
+		cur++;
+	}
+}
+
+static inline int check_zero_bytes(const uint8_t *bytes, int len)
+{
+	int i;
+	for (i = 0; i < len; i++)
+		if (bytes[i] != 0x00)
+			return 0;
+	return 1;
+}
+
+static int
+bnxt_filter_type_check(const struct rte_flow_item pattern[],
+		       struct rte_flow_error *error __rte_unused)
+{
+	const struct rte_flow_item *item = nxt_non_void_pattern(pattern);
+	int use_ntuple = 1;
+
+	while (item->type != RTE_FLOW_ITEM_TYPE_END) {
+		switch (item->type) {
+		case RTE_FLOW_ITEM_TYPE_ETH:
+			use_ntuple = 1;
+			break;
+		case RTE_FLOW_ITEM_TYPE_VLAN:
+			use_ntuple = 0;
+			break;
+		case RTE_FLOW_ITEM_TYPE_IPV4:
+		case RTE_FLOW_ITEM_TYPE_IPV6:
+		case RTE_FLOW_ITEM_TYPE_TCP:
+		case RTE_FLOW_ITEM_TYPE_UDP:
+			/* FALLTHROUGH */
+			/* need ntuple match, reset exact match */
+			if (!use_ntuple) {
+				RTE_LOG(ERR, PMD,
+					"VLAN flow cannot use NTUPLE filter\n");
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "Cannot use VLAN with NTUPLE");
+				return -rte_errno;
+			}
+			use_ntuple |= 1;
+			break;
+		default:
+			RTE_LOG(ERR, PMD, "Unknown Flow type");
+			use_ntuple |= 1;
+		}
+		item++;
+	}
+	return use_ntuple;
+}
+
+static int
+bnxt_validate_and_parse_flow_type(const struct rte_flow_item pattern[],
+				  struct rte_flow_error *error,
+				  struct bnxt_filter_info *filter)
+{
+	const struct rte_flow_item *item = nxt_non_void_pattern(pattern);
+	const struct rte_flow_item_vlan *vlan_spec, *vlan_mask;
+	const struct rte_flow_item_ipv4 *ipv4_spec, *ipv4_mask;
+	const struct rte_flow_item_ipv6 *ipv6_spec, *ipv6_mask;
+	const struct rte_flow_item_tcp *tcp_spec, *tcp_mask;
+	const struct rte_flow_item_udp *udp_spec, *udp_mask;
+	const struct rte_flow_item_eth *eth_spec, *eth_mask;
+	const struct rte_flow_item_nvgre *nvgre_spec;
+	const struct rte_flow_item_nvgre *nvgre_mask;
+	const struct rte_flow_item_vxlan *vxlan_spec;
+	const struct rte_flow_item_vxlan *vxlan_mask;
+	uint8_t vni_mask[] = {0xFF, 0xFF, 0xFF};
+	uint8_t tni_mask[] = {0xFF, 0xFF, 0xFF};
+	uint32_t tenant_id_be = 0;
+	bool vni_masked = 0;
+	bool tni_masked = 0;
+	int use_ntuple;
+	uint32_t en = 0;
+
+	use_ntuple = bnxt_filter_type_check(pattern, error);
+	RTE_LOG(ERR, PMD, "Use NTUPLE %d\n", use_ntuple);
+	if (use_ntuple < 0)
+		return use_ntuple;
+
+	filter->filter_type = use_ntuple ?
+		HWRM_CFA_NTUPLE_FILTER : HWRM_CFA_EM_FILTER;
+
+	while (item->type != RTE_FLOW_ITEM_TYPE_END) {
+		if (item->last) {
+			/* last or range is NOT supported as match criteria */
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item,
+					   "No support for range");
+			return -rte_errno;
+		}
+		if (!item->spec || !item->mask) {
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item,
+					   "spec/mask is NULL");
+			return -rte_errno;
+		}
+		switch (item->type) {
+		case RTE_FLOW_ITEM_TYPE_ETH:
+			eth_spec = (const struct rte_flow_item_eth *)item->spec;
+			eth_mask = (const struct rte_flow_item_eth *)item->mask;
+
+			/* Source MAC address mask cannot be partially set.
+			 * Should be All 0's or all 1's.
+			 * Destination MAC address mask must not be partially
+			 * set. Should be all 1's or all 0's.
+			 */
+			if ((!is_zero_ether_addr(&eth_mask->src) &&
+			     !is_broadcast_ether_addr(&eth_mask->src)) ||
+			    (!is_zero_ether_addr(&eth_mask->dst) &&
+			     !is_broadcast_ether_addr(&eth_mask->dst))) {
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "MAC_addr mask not valid");
+				return -rte_errno;
+			}
+
+			/* Mask is not allowed. Only exact matches are */
+			if ((eth_mask->type & UINT16_MAX) != UINT16_MAX) {
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "ethertype mask not valid");
+				return -rte_errno;
+			}
+
+			if (is_broadcast_ether_addr(&eth_mask->dst)) {
+				rte_memcpy(filter->dst_macaddr,
+					   &eth_spec->dst, 6);
+				en |= use_ntuple ?
+					NTUPLE_FLTR_ALLOC_INPUT_EN_DST_MACADDR :
+					EM_FLOW_ALLOC_INPUT_EN_DST_MACADDR;
+			}
+			if (is_broadcast_ether_addr(&eth_mask->src)) {
+				rte_memcpy(filter->src_macaddr,
+					   &eth_spec->src, 6);
+				en |= use_ntuple ?
+					NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_MACADDR :
+					EM_FLOW_ALLOC_INPUT_EN_SRC_MACADDR;
+			} /*
+			   * else {
+			   *  RTE_LOG(ERR, PMD, "Handle this condition\n");
+			   * }
+			   */
+			if (eth_spec->type) {
+				filter->ethertype =
+					rte_be_to_cpu_16(eth_spec->type);
+				en |= use_ntuple ?
+					NTUPLE_FLTR_ALLOC_INPUT_EN_ETHERTYPE :
+					EM_FLOW_ALLOC_INPUT_EN_ETHERTYPE;
+			}
+
+			break;
+		case RTE_FLOW_ITEM_TYPE_VLAN:
+			vlan_spec =
+				(const struct rte_flow_item_vlan *)item->spec;
+			vlan_mask =
+				(const struct rte_flow_item_vlan *)item->mask;
+			if (vlan_mask->tci & 0xFFFF && !vlan_mask->tpid) {
+				/* Only the VLAN ID can be matched. */
+				filter->l2_ovlan =
+					rte_be_to_cpu_16(vlan_spec->tci &
+							 0xFFF);
+				en |= EM_FLOW_ALLOC_INPUT_EN_OVLAN_VID;
+			} else {
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "VLAN mask is invalid");
+				return -rte_errno;
+			}
+
+			break;
+		case RTE_FLOW_ITEM_TYPE_IPV4:
+			/* If mask is not involved, we could use EM filters. */
+			ipv4_spec =
+				(const struct rte_flow_item_ipv4 *)item->spec;
+			ipv4_mask =
+				(const struct rte_flow_item_ipv4 *)item->mask;
+			/* Only IP DST and SRC fields are maskable. */
+			if (ipv4_mask->hdr.version_ihl ||
+			    ipv4_mask->hdr.type_of_service ||
+			    ipv4_mask->hdr.total_length ||
+			    ipv4_mask->hdr.packet_id ||
+			    ipv4_mask->hdr.fragment_offset ||
+			    ipv4_mask->hdr.time_to_live ||
+			    ipv4_mask->hdr.next_proto_id ||
+			    ipv4_mask->hdr.hdr_checksum) {
+				rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item,
+					   "Invalid IPv4 mask.");
+				return -rte_errno;
+			}
+			filter->dst_ipaddr[0] = ipv4_spec->hdr.dst_addr;
+			filter->src_ipaddr[0] = ipv4_spec->hdr.src_addr;
+			if (use_ntuple)
+				en |= NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_IPADDR |
+					NTUPLE_FLTR_ALLOC_INPUT_EN_DST_IPADDR;
+			else
+				en |= EM_FLOW_ALLOC_INPUT_EN_SRC_IPADDR |
+					EM_FLOW_ALLOC_INPUT_EN_DST_IPADDR;
+			if (ipv4_mask->hdr.src_addr) {
+				filter->src_ipaddr_mask[0] =
+					ipv4_mask->hdr.src_addr;
+				en |= !use_ntuple ? 0 :
+				     NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_IPADDR_MASK;
+			}
+			if (ipv4_mask->hdr.dst_addr) {
+				filter->dst_ipaddr_mask[0] =
+					ipv4_mask->hdr.dst_addr;
+				en |= !use_ntuple ? 0 :
+				     NTUPLE_FLTR_ALLOC_INPUT_EN_DST_IPADDR_MASK;
+			}
+			filter->ip_addr_type = use_ntuple ?
+			 HWRM_CFA_NTUPLE_FILTER_ALLOC_INPUT_IP_ADDR_TYPE_IPV4 :
+			 HWRM_CFA_EM_FLOW_ALLOC_INPUT_IP_ADDR_TYPE_IPV4;
+			if (ipv4_spec->hdr.next_proto_id) {
+				filter->ip_protocol =
+					ipv4_spec->hdr.next_proto_id;
+				if (use_ntuple)
+					en |= NTUPLE_FLTR_ALLOC_IN_EN_IP_PROTO;
+				else
+					en |= EM_FLOW_ALLOC_INPUT_EN_IP_PROTO;
+			}
+			break;
+		case RTE_FLOW_ITEM_TYPE_IPV6:
+			ipv6_spec =
+				(const struct rte_flow_item_ipv6 *)item->spec;
+			ipv6_mask =
+				(const struct rte_flow_item_ipv6 *)item->mask;
+
+			/* Only IP DST and SRC fields are maskable. */
+			if (ipv6_mask->hdr.vtc_flow ||
+			    ipv6_mask->hdr.payload_len ||
+			    ipv6_mask->hdr.proto ||
+			    ipv6_mask->hdr.hop_limits) {
+				rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item,
+					   "Invalid IPv6 mask.");
+				return -rte_errno;
+			}
+
+			if (use_ntuple)
+				en |= NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_IPADDR |
+					NTUPLE_FLTR_ALLOC_INPUT_EN_DST_IPADDR;
+			else
+				en |= EM_FLOW_ALLOC_INPUT_EN_SRC_IPADDR |
+					EM_FLOW_ALLOC_INPUT_EN_DST_IPADDR;
+			rte_memcpy(filter->src_ipaddr,
+				   ipv6_spec->hdr.src_addr, 16);
+			rte_memcpy(filter->dst_ipaddr,
+				   ipv6_spec->hdr.dst_addr, 16);
+			if (!check_zero_bytes(ipv6_mask->hdr.src_addr, 16)) {
+				rte_memcpy(filter->src_ipaddr_mask,
+					   ipv6_mask->hdr.src_addr, 16);
+				en |= !use_ntuple ? 0 :
+				    NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_IPADDR_MASK;
+			}
+			if (!check_zero_bytes(ipv6_mask->hdr.dst_addr, 16)) {
+				rte_memcpy(filter->dst_ipaddr_mask,
+					   ipv6_mask->hdr.dst_addr, 16);
+				en |= !use_ntuple ? 0 :
+				     NTUPLE_FLTR_ALLOC_INPUT_EN_DST_IPADDR_MASK;
+			}
+			filter->ip_addr_type = use_ntuple ?
+				NTUPLE_FLTR_ALLOC_INPUT_IP_ADDR_TYPE_IPV6 :
+				EM_FLOW_ALLOC_INPUT_IP_ADDR_TYPE_IPV6;
+			break;
+		case RTE_FLOW_ITEM_TYPE_TCP:
+			tcp_spec = (const struct rte_flow_item_tcp *)item->spec;
+			tcp_mask = (const struct rte_flow_item_tcp *)item->mask;
+
+			/* Check TCP mask. Only DST & SRC ports are maskable */
+			if (tcp_mask->hdr.sent_seq ||
+			    tcp_mask->hdr.recv_ack ||
+			    tcp_mask->hdr.data_off ||
+			    tcp_mask->hdr.tcp_flags ||
+			    tcp_mask->hdr.rx_win ||
+			    tcp_mask->hdr.cksum ||
+			    tcp_mask->hdr.tcp_urp) {
+				rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item,
+					   "Invalid TCP mask");
+				return -rte_errno;
+			}
+			filter->src_port = tcp_spec->hdr.src_port;
+			filter->dst_port = tcp_spec->hdr.dst_port;
+			if (use_ntuple)
+				en |= NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_PORT |
+					NTUPLE_FLTR_ALLOC_INPUT_EN_DST_PORT;
+			else
+				en |= EM_FLOW_ALLOC_INPUT_EN_SRC_PORT |
+					EM_FLOW_ALLOC_INPUT_EN_DST_PORT;
+			if (tcp_mask->hdr.dst_port) {
+				filter->dst_port_mask = tcp_mask->hdr.dst_port;
+				en |= !use_ntuple ? 0 :
+				  NTUPLE_FLTR_ALLOC_INPUT_EN_DST_PORT_MASK;
+			}
+			if (tcp_mask->hdr.src_port) {
+				filter->src_port_mask = tcp_mask->hdr.src_port;
+				en |= !use_ntuple ? 0 :
+				  NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_PORT_MASK;
+			}
+			break;
+		case RTE_FLOW_ITEM_TYPE_UDP:
+			udp_spec = (const struct rte_flow_item_udp *)item->spec;
+			udp_mask = (const struct rte_flow_item_udp *)item->mask;
+
+			if (udp_mask->hdr.dgram_len ||
+			    udp_mask->hdr.dgram_cksum) {
+				rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item,
+					   "Invalid UDP mask");
+				return -rte_errno;
+			}
+
+			filter->src_port = udp_spec->hdr.src_port;
+			filter->dst_port = udp_spec->hdr.dst_port;
+			if (use_ntuple)
+				en |= NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_PORT |
+					NTUPLE_FLTR_ALLOC_INPUT_EN_DST_PORT;
+			else
+				en |= EM_FLOW_ALLOC_INPUT_EN_SRC_PORT |
+					EM_FLOW_ALLOC_INPUT_EN_DST_PORT;
+
+			if (udp_mask->hdr.dst_port) {
+				filter->dst_port_mask = udp_mask->hdr.dst_port;
+				en |= !use_ntuple ? 0 :
+				  NTUPLE_FLTR_ALLOC_INPUT_EN_DST_PORT_MASK;
+			}
+			if (udp_mask->hdr.src_port) {
+				filter->src_port_mask = udp_mask->hdr.src_port;
+				en |= !use_ntuple ? 0 :
+				  NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_PORT_MASK;
+			}
+			break;
+		case RTE_FLOW_ITEM_TYPE_VXLAN:
+			vxlan_spec =
+				(const struct rte_flow_item_vxlan *)item->spec;
+			vxlan_mask =
+				(const struct rte_flow_item_vxlan *)item->mask;
+			/* Check if VXLAN item is used to describe protocol.
+			 * If yes, both spec and mask should be NULL.
+			 * If no, both spec and mask shouldn't be NULL.
+			 */
+			if ((!vxlan_spec && vxlan_mask) ||
+			    (vxlan_spec && !vxlan_mask)) {
+				rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item,
+					   "Invalid VXLAN item");
+				return -rte_errno;
+			}
+
+			if (vxlan_spec->rsvd1 || vxlan_spec->rsvd0[0] ||
+			    vxlan_spec->rsvd0[1] || vxlan_spec->rsvd0[2] ||
+			    vxlan_spec->flags != 0x8) {
+				rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item,
+					   "Invalid VXLAN item");
+				return -rte_errno;
+			}
+
+			/* Check if VNI is masked. */
+			if (vxlan_spec && vxlan_mask) {
+				vni_masked =
+					!!memcmp(vxlan_mask->vni, vni_mask,
+						 RTE_DIM(vni_mask));
+				if (vni_masked) {
+					rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "Invalid VNI mask");
+					return -rte_errno;
+				}
+
+				rte_memcpy(((uint8_t *)&tenant_id_be + 1),
+					   vxlan_spec->vni, 3);
+				filter->vni =
+					rte_be_to_cpu_32(tenant_id_be);
+				filter->tunnel_type =
+				 CFA_NTUPLE_FILTER_ALLOC_REQ_TUNNEL_TYPE_VXLAN;
+			}
+			break;
+		case RTE_FLOW_ITEM_TYPE_NVGRE:
+			nvgre_spec =
+				(const struct rte_flow_item_nvgre *)item->spec;
+			nvgre_mask =
+				(const struct rte_flow_item_nvgre *)item->mask;
+			/* Check if NVGRE item is used to describe protocol.
+			 * If yes, both spec and mask should be NULL.
+			 * If no, both spec and mask shouldn't be NULL.
+			 */
+			if ((!nvgre_spec && nvgre_mask) ||
+			    (nvgre_spec && !nvgre_mask)) {
+				rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item,
+					   "Invalid NVGRE item");
+				return -rte_errno;
+			}
+
+			if (nvgre_spec->c_k_s_rsvd0_ver != 0x2000 ||
+			    nvgre_spec->protocol != 0x6558) {
+				rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item,
+					   "Invalid NVGRE item");
+				return -rte_errno;
+			}
+
+			if (nvgre_spec && nvgre_mask) {
+				tni_masked =
+					!!memcmp(nvgre_mask->tni, tni_mask,
+						 RTE_DIM(tni_mask));
+				if (tni_masked) {
+					rte_flow_error_set(error, EINVAL,
+						       RTE_FLOW_ERROR_TYPE_ITEM,
+						       item,
+						       "Invalid TNI mask");
+					return -rte_errno;
+				}
+				rte_memcpy(((uint8_t *)&tenant_id_be + 1),
+					   nvgre_spec->tni, 3);
+				filter->vni =
+					rte_be_to_cpu_32(tenant_id_be);
+				filter->tunnel_type =
+				 CFA_NTUPLE_FILTER_ALLOC_REQ_TUNNEL_TYPE_NVGRE;
+			}
+			break;
+		default:
+			break;
+		}
+		item++;
+	}
+	filter->enables = en;
+
+	return 0;
+}
+
+/* Parse attributes */
+static int
+bnxt_flow_parse_attr(const struct rte_flow_attr *attr,
+		     struct rte_flow_error *error)
+{
+	/* Must be input direction */
+	if (!attr->ingress) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ATTR_INGRESS,
+				   attr, "Only support ingress.");
+		return -rte_errno;
+	}
+
+	/* Not supported */
+	if (attr->egress) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ATTR_EGRESS,
+				   attr, "No support for egress.");
+		return -rte_errno;
+	}
+
+	/* Not supported */
+	if (attr->priority) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ATTR_PRIORITY,
+				   attr, "No support for priority.");
+		return -rte_errno;
+	}
+
+	/* Not supported */
+	if (attr->group) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ATTR_GROUP,
+				   attr, "No support for group.");
+		return -rte_errno;
+	}
+
+	return 0;
+}
+
+struct bnxt_filter_info *
+bnxt_get_l2_filter(struct bnxt *bp, struct bnxt_filter_info *nf,
+		   struct bnxt_vnic_info *vnic)
+{
+	struct bnxt_filter_info *filter1, *f0;
+	struct bnxt_vnic_info *vnic0;
+	int rc;
+
+	vnic0 = STAILQ_FIRST(&bp->ff_pool[0]);
+	f0 = STAILQ_FIRST(&vnic0->filter);
+
+	//This flow has same DST MAC as the port/l2 filter.
+	if (memcmp(f0->l2_addr, nf->dst_macaddr, ETHER_ADDR_LEN) == 0)
+		return f0;
+
+	//This flow needs DST MAC which is not same as port/l2
+	RTE_LOG(DEBUG, PMD, "Create L2 filter for DST MAC\n");
+	filter1 = bnxt_get_unused_filter(bp);
+	filter1->flags = HWRM_CFA_L2_FILTER_ALLOC_INPUT_FLAGS_PATH_RX;
+	filter1->enables = HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_ADDR |
+			L2_FILTER_ALLOC_INPUT_EN_L2_ADDR_MASK;
+	memcpy(filter1->l2_addr, nf->dst_macaddr, ETHER_ADDR_LEN);
+	memset(filter1->l2_addr_mask, 0xff, ETHER_ADDR_LEN);
+	rc = bnxt_hwrm_set_l2_filter(bp, vnic->fw_vnic_id,
+				     filter1);
+	if (rc) {
+		bnxt_free_filter(bp, filter1);
+		return NULL;
+	}
+	STAILQ_INSERT_TAIL(&vnic->filter, filter1, next);
+	return filter1;
+}
+
+static int
+bnxt_validate_and_parse_flow(struct rte_eth_dev *dev,
+			     const struct rte_flow_item pattern[],
+			     const struct rte_flow_action actions[],
+			     const struct rte_flow_attr *attr,
+			     struct rte_flow_error *error,
+			     struct bnxt_filter_info *filter)
+{
+	const struct rte_flow_action *act = nxt_non_void_action(actions);
+	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
+	const struct rte_flow_action_queue *act_q;
+	struct bnxt_vnic_info *vnic, *vnic0;
+	struct bnxt_filter_info *filter1;
+	int rc;
+
+	if (bp->eth_dev->data->dev_conf.rxmode.mq_mode & ETH_MQ_RX_RSS) {
+		RTE_LOG(ERR, PMD, "Cannot create flow on RSS queues\n");
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_UNSPECIFIED, NULL,
+				   "Cannot create flow on RSS queues");
+		rc = -rte_errno;
+		goto ret;
+	}
+
+	rc = bnxt_validate_and_parse_flow_type(pattern, error, filter);
+	if (rc != 0)
+		goto ret;
+
+	rc = bnxt_flow_parse_attr(attr, error);
+	if (rc != 0)
+		goto ret;
+	//Since we support ingress attribute only - right now.
+	filter->flags = HWRM_CFA_EM_FLOW_ALLOC_INPUT_FLAGS_PATH_RX;
+
+	switch (act->type) {
+	case RTE_FLOW_ACTION_TYPE_QUEUE:
+		/* Allow this flow. Redirect to a VNIC. */
+		act_q = (const struct rte_flow_action_queue *)act->conf;
+		if (act_q->index >= bp->rx_nr_rings) {
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ACTION, act,
+					   "Invalid queue ID.");
+			rc = -rte_errno;
+			goto ret;
+		}
+		RTE_LOG(ERR, PMD, "Queue index %d\n", act_q->index);
+
+		vnic0 = STAILQ_FIRST(&bp->ff_pool[0]);
+		vnic = STAILQ_FIRST(&bp->ff_pool[act_q->index]);
+		if (vnic == NULL) {
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ACTION, act,
+					   "No matching VNIC for queue ID.");
+			rc = -rte_errno;
+			goto ret;
+		}
+		filter->dst_id = vnic->fw_vnic_id;
+		filter1 = bnxt_get_l2_filter(bp, filter, vnic);
+		filter->fw_l2_filter_id = filter1->fw_l2_filter_id;
+		RTE_LOG(DEBUG, PMD, "VNIC found\n");
+		break;
+	case RTE_FLOW_ACTION_TYPE_DROP:
+		vnic0 = STAILQ_FIRST(&bp->ff_pool[0]);
+		filter1 = bnxt_get_l2_filter(bp, filter, vnic0);
+		filter->fw_l2_filter_id = filter1->fw_l2_filter_id;
+		if (filter->filter_type == HWRM_CFA_EM_FILTER)
+			filter->flags =
+				HWRM_CFA_EM_FLOW_ALLOC_INPUT_FLAGS_DROP;
+		else
+			filter->flags =
+				HWRM_CFA_NTUPLE_FILTER_ALLOC_INPUT_FLAGS_DROP;
+		break;
+	case RTE_FLOW_ACTION_TYPE_COUNT:
+		vnic0 = STAILQ_FIRST(&bp->ff_pool[0]);
+		filter1 = bnxt_get_l2_filter(bp, filter, vnic0);
+		filter->fw_l2_filter_id = filter1->fw_l2_filter_id;
+		filter->flags = HWRM_CFA_NTUPLE_FILTER_ALLOC_INPUT_FLAGS_METER;
+		break;
+	default:
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ACTION, act,
+				   "Invalid action.");
+		rc = -rte_errno;
+		goto ret;
+	}
+
+	act = nxt_non_void_action(++act);
+	if (act->type != RTE_FLOW_ACTION_TYPE_END) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ACTION,
+				   act, "Invalid action.");
+		rc = -rte_errno;
+		goto ret;
+	}
+ret:
+	return rc;
+}
+
+static int
+bnxt_flow_validate(struct rte_eth_dev *dev,
+		const struct rte_flow_attr *attr,
+		const struct rte_flow_item pattern[],
+		const struct rte_flow_action actions[],
+		struct rte_flow_error *error)
+{
+	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
+	struct bnxt_filter_info *filter;
+	int ret = 0;
+
+	ret = bnxt_flow_agrs_validate(attr, pattern, actions, error);
+	if (ret != 0)
+		return ret;
+
+	filter = bnxt_get_unused_filter(bp);
+	if (filter == NULL) {
+		RTE_LOG(ERR, PMD, "Not enough resources for a new flow.\n");
+		return -ENOMEM;
+	}
+
+	ret = bnxt_validate_and_parse_flow(dev, pattern, actions, attr,
+					   error, filter);
+	/* No need to hold on to this filter if we are just validating flow */
+	bnxt_free_filter(bp, filter);
+
+	return ret;
+}
+
+static struct rte_flow *
+bnxt_flow_create(struct rte_eth_dev *dev,
+		  const struct rte_flow_attr *attr,
+		  const struct rte_flow_item pattern[],
+		  const struct rte_flow_action actions[],
+		  struct rte_flow_error *error)
+{
+	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
+	struct bnxt_filter_info *filter;
+	struct bnxt_vnic_info *vnic;
+	struct rte_flow *flow;
+	unsigned int i;
+	int ret = 0;
+
+	flow = rte_zmalloc("bnxt_flow", sizeof(struct rte_flow), 0);
+	if (!flow) {
+		rte_flow_error_set(error, ENOMEM,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "Failed to allocate memory");
+		return flow;
+	}
+
+	ret = bnxt_flow_agrs_validate(attr, pattern, actions, error);
+	if (ret != 0) {
+		RTE_LOG(ERR, PMD, "Not a validate flow.\n");
+		goto free_flow;
+	}
+
+	filter = bnxt_get_unused_filter(bp);
+	if (filter == NULL) {
+		RTE_LOG(ERR, PMD, "Not enough resources for a new flow.\n");
+		goto free_flow;
+	}
+
+	ret = bnxt_validate_and_parse_flow(dev, pattern, actions, attr,
+					   error, filter);
+	if (ret != 0)
+		goto free_filter;
+
+	if (filter->filter_type == HWRM_CFA_EM_FILTER) {
+		filter->enables |=
+			HWRM_CFA_EM_FLOW_ALLOC_INPUT_ENABLES_L2_FILTER_ID;
+		ret = bnxt_hwrm_set_em_filter(bp, filter->dst_id, filter);
+	}
+	if (filter->filter_type == HWRM_CFA_NTUPLE_FILTER) {
+		filter->enables |=
+			HWRM_CFA_NTUPLE_FILTER_ALLOC_INPUT_ENABLES_L2_FILTER_ID;
+		ret = bnxt_hwrm_set_ntuple_filter(bp, filter->dst_id, filter);
+	}
+
+	for (i = 0; i < bp->nr_vnics; i++) {
+		vnic = &bp->vnic_info[i];
+		if (filter->dst_id == vnic->fw_vnic_id)
+			break;
+	}
+
+	if (!ret) {
+		flow->filter = filter;
+		flow->vnic = vnic;
+		RTE_LOG(ERR, PMD, "Successfully created flow.\n");
+		STAILQ_INSERT_TAIL(&vnic->flow_list, flow, next);
+		return flow;
+	}
+free_filter:
+	bnxt_free_filter(bp, filter);
+free_flow:
+	RTE_LOG(ERR, PMD, "Failed to create flow.\n");
+	rte_flow_error_set(error, -ret,
+			   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+			   "Failed to create flow.");
+	rte_free(flow);
+	flow = NULL;
+	return flow;
+}
+
+static int
+bnxt_flow_destroy(struct rte_eth_dev *dev,
+		  struct rte_flow *flow,
+		  struct rte_flow_error *error)
+{
+	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
+	struct bnxt_filter_info *filter = flow->filter;
+	struct bnxt_vnic_info *vnic = flow->vnic;
+	int ret = 0;
+
+	if (filter->filter_type == HWRM_CFA_EM_FILTER)
+		ret = bnxt_hwrm_clear_em_filter(bp, filter);
+	if (filter->filter_type == HWRM_CFA_NTUPLE_FILTER)
+		ret = bnxt_hwrm_clear_ntuple_filter(bp, filter);
+
+	if (!ret) {
+		STAILQ_REMOVE(&vnic->flow_list, flow, rte_flow, next);
+		rte_free(flow);
+	} else {
+		rte_flow_error_set(error, -ret,
+				   RTE_FLOW_ERROR_TYPE_HANDLE, NULL,
+				   "Failed to destroy flow.");
+	}
+
+	return ret;
+}
+
+static int
+bnxt_flow_flush(struct rte_eth_dev *dev, struct rte_flow_error *error)
+{
+	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
+	struct bnxt_vnic_info *vnic;
+	struct rte_flow *flow;
+	unsigned int i;
+	int ret = 0;
+
+	for (i = 0; i < bp->nr_vnics; i++) {
+		vnic = &bp->vnic_info[i];
+		STAILQ_FOREACH(flow, &vnic->flow_list, next) {
+			struct bnxt_filter_info *filter = flow->filter;
+
+			if (filter->filter_type == HWRM_CFA_EM_FILTER)
+				ret = bnxt_hwrm_clear_em_filter(bp, filter);
+			if (filter->filter_type == HWRM_CFA_NTUPLE_FILTER)
+				ret = bnxt_hwrm_clear_ntuple_filter(bp, filter);
+
+			if (ret) {
+				rte_flow_error_set(error, -ret,
+						   RTE_FLOW_ERROR_TYPE_HANDLE,
+						   NULL,
+						   "Failed to flush flow in HW.");
+				return -rte_errno;
+			}
+
+			STAILQ_REMOVE(&vnic->flow_list, flow,
+				      rte_flow, next);
+			rte_free(flow);
+		}
+	}
+
+	return ret;
+}
+
+const struct rte_flow_ops bnxt_flow_ops = {
+	.validate = bnxt_flow_validate,
+	.create = bnxt_flow_create,
+	.destroy = bnxt_flow_destroy,
+	.flush = bnxt_flow_flush,
+};
