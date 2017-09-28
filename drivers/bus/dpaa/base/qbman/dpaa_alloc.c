@@ -41,6 +41,22 @@
 #include "dpaa_sys.h"
 #include <process.h>
 #include <fsl_qman.h>
+#include <fsl_bman.h>
+
+int bman_alloc_bpid_range(u32 *result, u32 count, u32 align, int partial)
+{
+	return process_alloc(dpaa_id_bpid, result, count, align, partial);
+}
+
+void bman_release_bpid_range(u32 bpid, u32 count)
+{
+	process_release(dpaa_id_bpid, bpid, count);
+}
+
+int bman_reserve_bpid_range(u32 bpid, u32 count)
+{
+	return process_reserve(dpaa_id_bpid, bpid, count);
+}
 
 int qman_alloc_fqid_range(u32 *result, u32 count, u32 align, int partial)
 {

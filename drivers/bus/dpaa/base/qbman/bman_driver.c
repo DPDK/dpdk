@@ -65,6 +65,7 @@ static __thread struct dpaa_ioctl_portal_map map = {
 static int fsl_bman_portal_init(uint32_t idx, int is_shared)
 {
 	cpu_set_t cpuset;
+	struct bman_portal *portal;
 	int loop, ret;
 	struct dpaa_ioctl_irq_map irq_map;
 
@@ -111,6 +112,14 @@ static int fsl_bman_portal_init(uint32_t idx, int is_shared)
 	/* Use the IRQ FD as a unique IRQ number */
 	pcfg.irq = fd;
 
+	portal = bman_create_affine_portal(&pcfg);
+	if (!portal) {
+		pr_err("Bman portal initialisation failed (%d)",
+		       pcfg.cpu);
+		process_portal_unmap(&map.addr);
+		return -EBUSY;
+	}
+
 	/* Set the IRQ number */
 	irq_map.type = dpaa_portal_bman;
 	irq_map.portal_cinh = map.addr.cinh;
@@ -120,10 +129,13 @@ static int fsl_bman_portal_init(uint32_t idx, int is_shared)
 
 static int fsl_bman_portal_finish(void)
 {
+	__maybe_unused const struct bm_portal_config *cfg;
 	int ret;
 
 	process_portal_irq_unmap(fd);
 
+	cfg = bman_destroy_affine_portal();
+	DPAA_BUG_ON(cfg != &pcfg);
 	ret = process_portal_unmap(&map.addr);
 	if (ret)
 		error(0, ret, "process_portal_unmap()");
