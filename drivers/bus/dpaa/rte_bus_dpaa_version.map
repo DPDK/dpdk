@@ -1,8 +1,55 @@
 DPDK_17.11 {
 	global:
 
+	bman_acquire;
+	bman_free_pool;
+	bman_get_params;
+	bman_global_init;
+	bman_new_pool;
+	bman_query_free_buffers;
+	bman_release;
+	dpaa_netcfg;
+	fman_ccsr_map_fd;
+	fman_dealloc_bufs_mask_hi;
+	fman_dealloc_bufs_mask_lo;
+	fman_if_add_mac_addr;
+	fman_if_clear_mac_addr;
+	fman_if_disable_rx;
+	fman_if_enable_rx;
+	fman_if_discard_rx_errors;
+	fman_if_get_fc_threshold;
+	fman_if_get_fc_quanta;
+	fman_if_get_fdoff;
+	fman_if_loopback_disable;
+	fman_if_loopback_enable;
+	fman_if_promiscuous_disable;
+	fman_if_promiscuous_enable;
+	fman_if_reset_mcast_filter_table;
+	fman_if_set_bp;
+	fman_if_set_fc_threshold;
+	fman_if_set_fc_quanta;
+	fman_if_set_fdoff;
+	fman_if_set_ic_params;
+	fman_if_set_maxfrm;
+	fman_if_set_mcast_filter_table;
+	fman_if_stats_get;
+	fman_if_stats_get_all;
+	fman_if_stats_reset;
+	fman_ip_rev;
+	netcfg_acquire;
+	netcfg_release;
+	qman_create_fq;
+	qman_dequeue;
+	qman_dqrr_consume;
+	qman_enqueue_multi;
+	qman_global_init;
+	qman_init_fq;
+	qman_set_vdq;
+	qman_reserve_fqid_range;
 	rte_dpaa_driver_register;
 	rte_dpaa_driver_unregister;
+	rte_dpaa_mem_ptov;
+	rte_dpaa_portal_init;
 
 	local: *;
 };

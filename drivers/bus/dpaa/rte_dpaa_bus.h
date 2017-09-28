@@ -35,6 +35,12 @@
 #include <rte_bus.h>
 #include <rte_mempool.h>
 
+#include <fsl_usd.h>
+#include <fsl_qman.h>
+#include <fsl_bman.h>
+#include <of.h>
+#include <netcfg.h>
+
 #define FSL_DPAA_BUS_NAME	"FSL_DPAA_BUS"
 
 #define DEV_TO_DPAA_DEVICE(ptr)	\
@@ -46,6 +52,9 @@ struct rte_dpaa_driver;
 /* DPAA Device and Driver lists for DPAA bus */
 TAILQ_HEAD(rte_dpaa_device_list, rte_dpaa_device);
 TAILQ_HEAD(rte_dpaa_driver_list, rte_dpaa_driver);
+
+/* Configuration variables exported from DPAA bus */
+extern struct netcfg_info *dpaa_netcfg;
 
 enum rte_dpaa_type {
 	FSL_DPAA_ETH = 1,
@@ -130,6 +139,22 @@ void rte_dpaa_driver_register(struct rte_dpaa_driver *driver);
  *	to be unregistered.
  */
 void rte_dpaa_driver_unregister(struct rte_dpaa_driver *driver);
+
+/**
+ * Initialize a DPAA portal
+ *
+ * @param arg
+ *	Per thread ID
+ *
+ * @return
+ *	0 in case of success, error otherwise
+ */
+int rte_dpaa_portal_init(void *arg);
+
+/**
+ * Cleanup a DPAA Portal
+ */
+void dpaa_portal_finish(void *arg);
 
 /** Helper for DPAA device registration from driver (eth, crypto) instance */
 #define RTE_PMD_REGISTER_DPAA(nm, dpaa_drv) \
