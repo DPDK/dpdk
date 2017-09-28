@@ -1246,6 +1246,761 @@ struct qman_cgr {
 	struct list_head node;
 };
 
+/* Flags to qman_create_fq() */
+#define QMAN_FQ_FLAG_NO_ENQUEUE      0x00000001 /* can't enqueue */
+#define QMAN_FQ_FLAG_NO_MODIFY       0x00000002 /* can only enqueue */
+#define QMAN_FQ_FLAG_TO_DCPORTAL     0x00000004 /* consumed by CAAM/PME/Fman */
+#define QMAN_FQ_FLAG_LOCKED          0x00000008 /* multi-core locking */
+#define QMAN_FQ_FLAG_AS_IS           0x00000010 /* query h/w state */
+#define QMAN_FQ_FLAG_DYNAMIC_FQID    0x00000020 /* (de)allocate fqid */
+
+/* Flags to qman_destroy_fq() */
+#define QMAN_FQ_DESTROY_PARKED       0x00000001 /* FQ can be parked or OOS */
+
+/* Flags from qman_fq_state() */
+#define QMAN_FQ_STATE_CHANGING       0x80000000 /* 'state' is changing */
+#define QMAN_FQ_STATE_NE             0x40000000 /* retired FQ isn't empty */
+#define QMAN_FQ_STATE_ORL            0x20000000 /* retired FQ has ORL */
+#define QMAN_FQ_STATE_BLOCKOOS       0xe0000000 /* if any are set, no OOS */
+#define QMAN_FQ_STATE_CGR_EN         0x10000000 /* CGR enabled */
+#define QMAN_FQ_STATE_VDQCR          0x08000000 /* being volatile dequeued */
+
+/* Flags to qman_init_fq() */
+#define QMAN_INITFQ_FLAG_SCHED       0x00000001 /* schedule rather than park */
+#define QMAN_INITFQ_FLAG_LOCAL       0x00000004 /* set dest portal */
+
+/* Flags to qman_enqueue(). NB, the strange numbering is to align with hardware,
+ * bit-wise. (NB: the PME API is sensitive to these precise numberings too, so
+ * any change here should be audited in PME.)
+ */
+#define QMAN_ENQUEUE_FLAG_WATCH_CGR  0x00080000 /* watch congestion state */
+#define QMAN_ENQUEUE_FLAG_DCA        0x00008000 /* perform enqueue-DCA */
+#define QMAN_ENQUEUE_FLAG_DCA_PARK   0x00004000 /* If DCA, requests park */
+#define QMAN_ENQUEUE_FLAG_DCA_PTR(p)		/* If DCA, p is DQRR entry */ \
+		(((u32)(p) << 2) & 0x00000f00)
+#define QMAN_ENQUEUE_FLAG_C_GREEN    0x00000000 /* choose one C_*** flag */
+#define QMAN_ENQUEUE_FLAG_C_YELLOW   0x00000008
+#define QMAN_ENQUEUE_FLAG_C_RED      0x00000010
+#define QMAN_ENQUEUE_FLAG_C_OVERRIDE 0x00000018
+/* For the ORP-specific qman_enqueue_orp() variant;
+ * - this flag indicates "Not Last In Sequence", ie. all but the final fragment
+ *   of a frame.
+ */
+#define QMAN_ENQUEUE_FLAG_NLIS       0x01000000
+/* - this flag performs no enqueue but fills in an ORP sequence number that
+ *   would otherwise block it (eg. if a frame has been dropped).
+ */
+#define QMAN_ENQUEUE_FLAG_HOLE       0x02000000
+/* - this flag performs no enqueue but advances NESN to the given sequence
+ *   number.
+ */
+#define QMAN_ENQUEUE_FLAG_NESN       0x04000000
+
+/* Flags to qman_modify_cgr() */
+#define QMAN_CGR_FLAG_USE_INIT       0x00000001
+#define QMAN_CGR_MODE_FRAME          0x00000001
+
+/**
+ * qman_get_portal_index - get portal configuration index
+ */
+int qman_get_portal_index(void);
+
+/**
+ * qman_affine_channel - return the channel ID of an portal
+ * @cpu: the cpu whose affine portal is the subject of the query
+ *
+ * If @cpu is -1, the affine portal for the current CPU will be used. It is a
+ * bug to call this function for any value of @cpu (other than -1) that is not a
+ * member of the cpu mask.
+ */
+u16 qman_affine_channel(int cpu);
+
+/**
+ * qman_set_vdq - Issue a volatile dequeue command
+ * @fq: Frame Queue on which the volatile dequeue command is issued
+ * @num: Number of Frames requested for volatile dequeue
+ *
+ * This function will issue a volatile dequeue command to the QMAN.
+ */
+int qman_set_vdq(struct qman_fq *fq, u16 num);
+
+/**
+ * qman_dequeue - Get the DQRR entry after volatile dequeue command
+ * @fq: Frame Queue on which the volatile dequeue command is issued
+ *
+ * This function will return the DQRR entry after a volatile dequeue command
+ * is issued. It will keep returning NULL until there is no packet available on
+ * the DQRR.
+ */
+struct qm_dqrr_entry *qman_dequeue(struct qman_fq *fq);
+
+/**
+ * qman_dqrr_consume - Consume the DQRR entriy after volatile dequeue
+ * @fq: Frame Queue on which the volatile dequeue command is issued
+ * @dq: DQRR entry to consume. This is the one which is provided by the
+ *    'qbman_dequeue' command.
+ *
+ * This will consume the DQRR enrey and make it available for next volatile
+ * dequeue.
+ */
+void qman_dqrr_consume(struct qman_fq *fq,
+		       struct qm_dqrr_entry *dq);
+
+/**
+ * qman_poll_dqrr - process DQRR (fast-path) entries
+ * @limit: the maximum number of DQRR entries to process
+ *
+ * Use of this function requires that DQRR processing not be interrupt-driven.
+ * Ie. the value returned by qman_irqsource_get() should not include
+ * QM_PIRQ_DQRI. If the current CPU is sharing a portal hosted on another CPU,
+ * this function will return -EINVAL, otherwise the return value is >=0 and
+ * represents the number of DQRR entries processed.
+ */
+int qman_poll_dqrr(unsigned int limit);
+
+/**
+ * qman_poll
+ *
+ * Dispatcher logic on a cpu can use this to trigger any maintenance of the
+ * affine portal. There are two classes of portal processing in question;
+ * fast-path (which involves demuxing dequeue ring (DQRR) entries and tracking
+ * enqueue ring (EQCR) consumption), and slow-path (which involves EQCR
+ * thresholds, congestion state changes, etc). This function does whatever
+ * processing is not triggered by interrupts.
+ *
+ * Note, if DQRR and some slow-path processing are poll-driven (rather than
+ * interrupt-driven) then this function uses a heuristic to determine how often
+ * to run slow-path processing - as slow-path processing introduces at least a
+ * minimum latency each time it is run, whereas fast-path (DQRR) processing is
+ * close to zero-cost if there is no work to be done.
+ */
+void qman_poll(void);
+
+/**
+ * qman_stop_dequeues - Stop h/w dequeuing to the s/w portal
+ *
+ * Disables DQRR processing of the portal. This is reference-counted, so
+ * qman_start_dequeues() must be called as many times as qman_stop_dequeues() to
+ * truly re-enable dequeuing.
+ */
+void qman_stop_dequeues(void);
+
+/**
+ * qman_start_dequeues - (Re)start h/w dequeuing to the s/w portal
+ *
+ * Enables DQRR processing of the portal. This is reference-counted, so
+ * qman_start_dequeues() must be called as many times as qman_stop_dequeues() to
+ * truly re-enable dequeuing.
+ */
+void qman_start_dequeues(void);
+
+/**
+ * qman_static_dequeue_add - Add pool channels to the portal SDQCR
+ * @pools: bit-mask of pool channels, using QM_SDQCR_CHANNELS_POOL(n)
+ *
+ * Adds a set of pool channels to the portal's static dequeue command register
+ * (SDQCR). The requested pools are limited to those the portal has dequeue
+ * access to.
+ */
+void qman_static_dequeue_add(u32 pools);
+
+/**
+ * qman_static_dequeue_del - Remove pool channels from the portal SDQCR
+ * @pools: bit-mask of pool channels, using QM_SDQCR_CHANNELS_POOL(n)
+ *
+ * Removes a set of pool channels from the portal's static dequeue command
+ * register (SDQCR). The requested pools are limited to those the portal has
+ * dequeue access to.
+ */
+void qman_static_dequeue_del(u32 pools);
+
+/**
+ * qman_static_dequeue_get - return the portal's current SDQCR
+ *
+ * Returns the portal's current static dequeue command register (SDQCR). The
+ * entire register is returned, so if only the currently-enabled pool channels
+ * are desired, mask the return value with QM_SDQCR_CHANNELS_POOL_MASK.
+ */
+u32 qman_static_dequeue_get(void);
+
+/**
+ * qman_dca - Perform a Discrete Consumption Acknowledgment
+ * @dq: the DQRR entry to be consumed
+ * @park_request: indicates whether the held-active @fq should be parked
+ *
+ * Only allowed in DCA-mode portals, for DQRR entries whose handler callback had
+ * previously returned 'qman_cb_dqrr_defer'. NB, as with the other APIs, this
+ * does not take a 'portal' argument but implies the core affine portal from the
+ * cpu that is currently executing the function. For reasons of locking, this
+ * function must be called from the same CPU as that which processed the DQRR
+ * entry in the first place.
+ */
+void qman_dca(struct qm_dqrr_entry *dq, int park_request);
+
+/**
+ * qman_eqcr_is_empty - Determine if portal's EQCR is empty
+ *
+ * For use in situations where a cpu-affine caller needs to determine when all
+ * enqueues for the local portal have been processed by Qman but can't use the
+ * QMAN_ENQUEUE_FLAG_WAIT_SYNC flag to do this from the final qman_enqueue().
+ * The function forces tracking of EQCR consumption (which normally doesn't
+ * happen until enqueue processing needs to find space to put new enqueue
+ * commands), and returns zero if the ring still has unprocessed entries,
+ * non-zero if it is empty.
+ */
+int qman_eqcr_is_empty(void);
+
+/**
+ * qman_set_dc_ern - Set the handler for DCP enqueue rejection notifications
+ * @handler: callback for processing DCP ERNs
+ * @affine: whether this handler is specific to the locally affine portal
+ *
+ * If a hardware block's interface to Qman (ie. its direct-connect portal, or
+ * DCP) is configured not to receive enqueue rejections, then any enqueues
+ * through that DCP that are rejected will be sent to a given software portal.
+ * If @affine is non-zero, then this handler will only be used for DCP ERNs
+ * received on the portal affine to the current CPU. If multiple CPUs share a
+ * portal and they all call this function, they will be setting the handler for
+ * the same portal! If @affine is zero, then this handler will be global to all
+ * portals handled by this instance of the driver. Only those portals that do
+ * not have their own affine handler will use the global handler.
+ */
+void qman_set_dc_ern(qman_cb_dc_ern handler, int affine);
+
+	/* FQ management */
+	/* ------------- */
+/**
+ * qman_create_fq - Allocates a FQ
+ * @fqid: the index of the FQD to encapsulate, must be "Out of Service"
+ * @flags: bit-mask of QMAN_FQ_FLAG_*** options
+ * @fq: memory for storing the 'fq', with callbacks filled in
+ *
+ * Creates a frame queue object for the given @fqid, unless the
+ * QMAN_FQ_FLAG_DYNAMIC_FQID flag is set in @flags, in which case a FQID is
+ * dynamically allocated (or the function fails if none are available). Once
+ * created, the caller should not touch the memory at 'fq' except as extended to
+ * adjacent memory for user-defined fields (see the definition of "struct
+ * qman_fq" for more info). NO_MODIFY is only intended for enqueuing to
+ * pre-existing frame-queues that aren't to be otherwise interfered with, it
+ * prevents all other modifications to the frame queue. The TO_DCPORTAL flag
+ * causes the driver to honour any contextB modifications requested in the
+ * qm_init_fq() API, as this indicates the frame queue will be consumed by a
+ * direct-connect portal (PME, CAAM, or Fman). When frame queues are consumed by
+ * software portals, the contextB field is controlled by the driver and can't be
+ * modified by the caller. If the AS_IS flag is specified, management commands
+ * will be used on portal @p to query state for frame queue @fqid and construct
+ * a frame queue object based on that, rather than assuming/requiring that it be
+ * Out of Service.
+ */
+int qman_create_fq(u32 fqid, u32 flags, struct qman_fq *fq);
+
+/**
+ * qman_destroy_fq - Deallocates a FQ
+ * @fq: the frame queue object to release
+ * @flags: bit-mask of QMAN_FQ_FREE_*** options
+ *
+ * The memory for this frame queue object ('fq' provided in qman_create_fq()) is
+ * not deallocated but the caller regains ownership, to do with as desired. The
+ * FQ must be in the 'out-of-service' state unless the QMAN_FQ_FREE_PARKED flag
+ * is specified, in which case it may also be in the 'parked' state.
+ */
+void qman_destroy_fq(struct qman_fq *fq, u32 flags);
+
+/**
+ * qman_fq_fqid - Queries the frame queue ID of a FQ object
+ * @fq: the frame queue object to query
+ */
+u32 qman_fq_fqid(struct qman_fq *fq);
+
+/**
+ * qman_fq_state - Queries the state of a FQ object
+ * @fq: the frame queue object to query
+ * @state: pointer to state enum to return the FQ scheduling state
+ * @flags: pointer to state flags to receive QMAN_FQ_STATE_*** bitmask
+ *
+ * Queries the state of the FQ object, without performing any h/w commands.
+ * This captures the state, as seen by the driver, at the time the function
+ * executes.
+ */
+void qman_fq_state(struct qman_fq *fq, enum qman_fq_state *state, u32 *flags);
+
+/**
+ * qman_init_fq - Initialises FQ fields, leaves the FQ "parked" or "scheduled"
+ * @fq: the frame queue object to modify, must be 'parked' or new.
+ * @flags: bit-mask of QMAN_INITFQ_FLAG_*** options
+ * @opts: the FQ-modification settings, as defined in the low-level API
+ *
+ * The @opts parameter comes from the low-level portal API. Select
+ * QMAN_INITFQ_FLAG_SCHED in @flags to cause the frame queue to be scheduled
+ * rather than parked. NB, @opts can be NULL.
+ *
+ * Note that some fields and options within @opts may be ignored or overwritten
+ * by the driver;
+ * 1. the 'count' and 'fqid' fields are always ignored (this operation only
+ * affects one frame queue: @fq).
+ * 2. the QM_INITFQ_WE_CONTEXTB option of the 'we_mask' field and the associated
+ * 'fqd' structure's 'context_b' field are sometimes overwritten;
+ *   - if @fq was not created with QMAN_FQ_FLAG_TO_DCPORTAL, then context_b is
+ *     initialised to a value used by the driver for demux.
+ *   - if context_b is initialised for demux, so is context_a in case stashing
+ *     is requested (see item 4).
+ * (So caller control of context_b is only possible for TO_DCPORTAL frame queue
+ * objects.)
+ * 3. if @flags contains QMAN_INITFQ_FLAG_LOCAL, the 'fqd' structure's
+ * 'dest::channel' field will be overwritten to match the portal used to issue
+ * the command. If the WE_DESTWQ write-enable bit had already been set by the
+ * caller, the channel workqueue will be left as-is, otherwise the write-enable
+ * bit is set and the workqueue is set to a default of 4. If the "LOCAL" flag
+ * isn't set, the destination channel/workqueue fields and the write-enable bit
+ * are left as-is.
+ * 4. if the driver overwrites context_a/b for demux, then if
+ * QM_INITFQ_WE_CONTEXTA is set, the driver will only overwrite
+ * context_a.address fields and will leave the stashing fields provided by the
+ * user alone, otherwise it will zero out the context_a.stashing fields.
+ */
+int qman_init_fq(struct qman_fq *fq, u32 flags, struct qm_mcc_initfq *opts);
+
+/**
+ * qman_schedule_fq - Schedules a FQ
+ * @fq: the frame queue object to schedule, must be 'parked'
+ *
+ * Schedules the frame queue, which must be Parked, which takes it to
+ * Tentatively-Scheduled or Truly-Scheduled depending on its fill-level.
+ */
+int qman_schedule_fq(struct qman_fq *fq);
+
+/**
+ * qman_retire_fq - Retires a FQ
+ * @fq: the frame queue object to retire
+ * @flags: FQ flags (as per qman_fq_state) if retirement completes immediately
+ *
+ * Retires the frame queue. This returns zero if it succeeds immediately, +1 if
+ * the retirement was started asynchronously, otherwise it returns negative for
+ * failure. When this function returns zero, @flags is set to indicate whether
+ * the retired FQ is empty and/or whether it has any ORL fragments (to show up
+ * as ERNs). Otherwise the corresponding flags will be known when a subsequent
+ * FQRN message shows up on the portal's message ring.
+ *
+ * NB, if the retirement is asynchronous (the FQ was in the Truly Scheduled or
+ * Active state), the completion will be via the message ring as a FQRN - but
+ * the corresponding callback may occur before this function returns!! Ie. the
+ * caller should be prepared to accept the callback as the function is called,
+ * not only once it has returned.
+ */
+int qman_retire_fq(struct qman_fq *fq, u32 *flags);
+
+/**
+ * qman_oos_fq - Puts a FQ "out of service"
+ * @fq: the frame queue object to be put out-of-service, must be 'retired'
+ *
+ * The frame queue must be retired and empty, and if any order restoration list
+ * was released as ERNs at the time of retirement, they must all be consumed.
+ */
+int qman_oos_fq(struct qman_fq *fq);
+
+/**
+ * qman_fq_flow_control - Set the XON/XOFF state of a FQ
+ * @fq: the frame queue object to be set to XON/XOFF state, must not be 'oos',
+ * or 'retired' or 'parked' state
+ * @xon: boolean to set fq in XON or XOFF state
+ *
+ * The frame should be in Tentatively Scheduled state or Truly Schedule sate,
+ * otherwise the IFSI interrupt will be asserted.
+ */
+int qman_fq_flow_control(struct qman_fq *fq, int xon);
+
+/**
+ * qman_query_fq - Queries FQD fields (via h/w query command)
+ * @fq: the frame queue object to be queried
+ * @fqd: storage for the queried FQD fields
+ */
+int qman_query_fq(struct qman_fq *fq, struct qm_fqd *fqd);
+
+/**
+ * qman_query_fq_has_pkts - Queries non-programmable FQD fields and returns '1'
+ * if packets are in the frame queue. If there are no packets on frame
+ * queue '0' is returned.
+ * @fq: the frame queue object to be queried
+ */
+int qman_query_fq_has_pkts(struct qman_fq *fq);
+
+/**
+ * qman_query_fq_np - Queries non-programmable FQD fields
+ * @fq: the frame queue object to be queried
+ * @np: storage for the queried FQD fields
+ */
+int qman_query_fq_np(struct qman_fq *fq, struct qm_mcr_queryfq_np *np);
+
+/**
+ * qman_query_wq - Queries work queue lengths
+ * @query_dedicated: If non-zero, query length of WQs in the channel dedicated
+ *		to this software portal. Otherwise, query length of WQs in a
+ *		channel  specified in wq.
+ * @wq: storage for the queried WQs lengths. Also specified the channel to
+ *	to query if query_dedicated is zero.
+ */
+int qman_query_wq(u8 query_dedicated, struct qm_mcr_querywq *wq);
+
+/**
+ * qman_volatile_dequeue - Issue a volatile dequeue command
+ * @fq: the frame queue object to dequeue from
+ * @flags: a bit-mask of QMAN_VOLATILE_FLAG_*** options
+ * @vdqcr: bit mask of QM_VDQCR_*** options, as per qm_dqrr_vdqcr_set()
+ *
+ * Attempts to lock access to the portal's VDQCR volatile dequeue functionality.
+ * The function will block and sleep if QMAN_VOLATILE_FLAG_WAIT is specified and
+ * the VDQCR is already in use, otherwise returns non-zero for failure. If
+ * QMAN_VOLATILE_FLAG_FINISH is specified, the function will only return once
+ * the VDQCR command has finished executing (ie. once the callback for the last
+ * DQRR entry resulting from the VDQCR command has been called). If not using
+ * the FINISH flag, completion can be determined either by detecting the
+ * presence of the QM_DQRR_STAT_UNSCHEDULED and QM_DQRR_STAT_DQCR_EXPIRED bits
+ * in the "stat" field of the "struct qm_dqrr_entry" passed to the FQ's dequeue
+ * callback, or by waiting for the QMAN_FQ_STATE_VDQCR bit to disappear from the
+ * "flags" retrieved from qman_fq_state().
+ */
+int qman_volatile_dequeue(struct qman_fq *fq, u32 flags, u32 vdqcr);
+
+/**
+ * qman_enqueue - Enqueue a frame to a frame queue
+ * @fq: the frame queue object to enqueue to
+ * @fd: a descriptor of the frame to be enqueued
+ * @flags: bit-mask of QMAN_ENQUEUE_FLAG_*** options
+ *
+ * Fills an entry in the EQCR of portal @qm to enqueue the frame described by
+ * @fd. The descriptor details are copied from @fd to the EQCR entry, the 'pid'
+ * field is ignored. The return value is non-zero on error, such as ring full
+ * (and FLAG_WAIT not specified), congestion avoidance (FLAG_WATCH_CGR
+ * specified), etc. If the ring is full and FLAG_WAIT is specified, this
+ * function will block. If FLAG_INTERRUPT is set, the EQCI bit of the portal
+ * interrupt will assert when Qman consumes the EQCR entry (subject to "status
+ * disable", "enable", and "inhibit" registers). If FLAG_DCA is set, Qman will
+ * perform an implied "discrete consumption acknowledgment" on the dequeue
+ * ring's (DQRR) entry, at the ring index specified by the FLAG_DCA_IDX(x)
+ * macro. (As an alternative to issuing explicit DCA actions on DQRR entries,
+ * this implicit DCA can delay the release of a "held active" frame queue
+ * corresponding to a DQRR entry until Qman consumes the EQCR entry - providing
+ * order-preservation semantics in packet-forwarding scenarios.) If FLAG_DCA is
+ * set, then FLAG_DCA_PARK can also be set to imply that the DQRR consumption
+ * acknowledgment should "park request" the "held active" frame queue. Ie.
+ * when the portal eventually releases that frame queue, it will be left in the
+ * Parked state rather than Tentatively Scheduled or Truly Scheduled. If the
+ * portal is watching congestion groups, the QMAN_ENQUEUE_FLAG_WATCH_CGR flag
+ * is requested, and the FQ is a member of a congestion group, then this
+ * function returns -EAGAIN if the congestion group is currently congested.
+ * Note, this does not eliminate ERNs, as the async interface means we can be
+ * sending enqueue commands to an un-congested FQ that becomes congested before
+ * the enqueue commands are processed, but it does minimise needless thrashing
+ * of an already busy hardware resource by throttling many of the to-be-dropped
+ * enqueues "at the source".
+ */
+int qman_enqueue(struct qman_fq *fq, const struct qm_fd *fd, u32 flags);
+
+int qman_enqueue_multi(struct qman_fq *fq,
+		       const struct qm_fd *fd,
+		int frames_to_send);
+
+typedef int (*qman_cb_precommit) (void *arg);
+
+/**
+ * qman_enqueue_orp - Enqueue a frame to a frame queue using an ORP
+ * @fq: the frame queue object to enqueue to
+ * @fd: a descriptor of the frame to be enqueued
+ * @flags: bit-mask of QMAN_ENQUEUE_FLAG_*** options
+ * @orp: the frame queue object used as an order restoration point.
+ * @orp_seqnum: the sequence number of this frame in the order restoration path
+ *
+ * Similar to qman_enqueue(), but with the addition of an Order Restoration
+ * Point (@orp) and corresponding sequence number (@orp_seqnum) for this
+ * enqueue operation to employ order restoration. Each frame queue object acts
+ * as an Order Definition Point (ODP) by providing each frame dequeued from it
+ * with an incrementing sequence number, this value is generally ignored unless
+ * that sequence of dequeued frames will need order restoration later. Each
+ * frame queue object also encapsulates an Order Restoration Point (ORP), which
+ * is a re-assembly context for re-ordering frames relative to their sequence
+ * numbers as they are enqueued. The ORP does not have to be within the frame
+ * queue that receives the enqueued frame, in fact it is usually the frame
+ * queue from which the frames were originally dequeued. For the purposes of
+ * order restoration, multiple frames (or "fragments") can be enqueued for a
+ * single sequence number by setting the QMAN_ENQUEUE_FLAG_NLIS flag for all
+ * enqueues except the final fragment of a given sequence number. Ordering
+ * between sequence numbers is guaranteed, even if fragments of different
+ * sequence numbers are interlaced with one another. Fragments of the same
+ * sequence number will retain the order in which they are enqueued. If no
+ * enqueue is to performed, QMAN_ENQUEUE_FLAG_HOLE indicates that the given
+ * sequence number is to be "skipped" by the ORP logic (eg. if a frame has been
+ * dropped from a sequence), or QMAN_ENQUEUE_FLAG_NESN indicates that the given
+ * sequence number should become the ORP's "Next Expected Sequence Number".
+ *
+ * Side note: a frame queue object can be used purely as an ORP, without
+ * carrying any frames at all. Care should be taken not to deallocate a frame
+ * queue object that is being actively used as an ORP, as a future allocation
+ * of the frame queue object may start using the internal ORP before the
+ * previous use has finished.
+ */
+int qman_enqueue_orp(struct qman_fq *fq, const struct qm_fd *fd, u32 flags,
+		     struct qman_fq *orp, u16 orp_seqnum);
+
+/**
+ * qman_alloc_fqid_range - Allocate a contiguous range of FQIDs
+ * @result: is set by the API to the base FQID of the allocated range
+ * @count: the number of FQIDs required
+ * @align: required alignment of the allocated range
+ * @partial: non-zero if the API can return fewer than @count FQIDs
+ *
+ * Returns the number of frame queues allocated, or a negative error code. If
+ * @partial is non zero, the allocation request may return a smaller range of
+ * FQs than requested (though alignment will be as requested). If @partial is
+ * zero, the return value will either be 'count' or negative.
+ */
+int qman_alloc_fqid_range(u32 *result, u32 count, u32 align, int partial);
+static inline int qman_alloc_fqid(u32 *result)
+{
+	int ret = qman_alloc_fqid_range(result, 1, 0, 0);
+
+	return (ret > 0) ? 0 : ret;
+}
+
+/**
+ * qman_release_fqid_range - Release the specified range of frame queue IDs
+ * @fqid: the base FQID of the range to deallocate
+ * @count: the number of FQIDs in the range
+ *
+ * This function can also be used to seed the allocator with ranges of FQIDs
+ * that it can subsequently allocate from.
+ */
+void qman_release_fqid_range(u32 fqid, unsigned int count);
+static inline void qman_release_fqid(u32 fqid)
+{
+	qman_release_fqid_range(fqid, 1);
+}
+
+void qman_seed_fqid_range(u32 fqid, unsigned int count);
+
+int qman_shutdown_fq(u32 fqid);
+
+/**
+ * qman_reserve_fqid_range - Reserve the specified range of frame queue IDs
+ * @fqid: the base FQID of the range to deallocate
+ * @count: the number of FQIDs in the range
+ */
+int qman_reserve_fqid_range(u32 fqid, unsigned int count);
+static inline int qman_reserve_fqid(u32 fqid)
+{
+	return qman_reserve_fqid_range(fqid, 1);
+}
+
+/* Pool-channel management */
+/**
+ * qman_alloc_pool_range - Allocate a contiguous range of pool-channel IDs
+ * @result: is set by the API to the base pool-channel ID of the allocated range
+ * @count: the number of pool-channel IDs required
+ * @align: required alignment of the allocated range
+ * @partial: non-zero if the API can return fewer than @count
+ *
+ * Returns the number of pool-channel IDs allocated, or a negative error code.
+ * If @partial is non zero, the allocation request may return a smaller range of
+ * than requested (though alignment will be as requested). If @partial is zero,
+ * the return value will either be 'count' or negative.
+ */
+int qman_alloc_pool_range(u32 *result, u32 count, u32 align, int partial);
+static inline int qman_alloc_pool(u32 *result)
+{
+	int ret = qman_alloc_pool_range(result, 1, 0, 0);
+
+	return (ret > 0) ? 0 : ret;
+}
+
+/**
+ * qman_release_pool_range - Release the specified range of pool-channel IDs
+ * @id: the base pool-channel ID of the range to deallocate
+ * @count: the number of pool-channel IDs in the range
+ */
+void qman_release_pool_range(u32 id, unsigned int count);
+static inline void qman_release_pool(u32 id)
+{
+	qman_release_pool_range(id, 1);
+}
+
+/**
+ * qman_reserve_pool_range - Reserve the specified range of pool-channel IDs
+ * @id: the base pool-channel ID of the range to reserve
+ * @count: the number of pool-channel IDs in the range
+ */
+int qman_reserve_pool_range(u32 id, unsigned int count);
+static inline int qman_reserve_pool(u32 id)
+{
+	return qman_reserve_pool_range(id, 1);
+}
+
+void qman_seed_pool_range(u32 id, unsigned int count);
+
+	/* CGR management */
+	/* -------------- */
+/**
+ * qman_create_cgr - Register a congestion group object
+ * @cgr: the 'cgr' object, with fields filled in
+ * @flags: QMAN_CGR_FLAG_* values
+ * @opts: optional state of CGR settings
+ *
+ * Registers this object to receiving congestion entry/exit callbacks on the
+ * portal affine to the cpu portal on which this API is executed. If opts is
+ * NULL then only the callback (cgr->cb) function is registered. If @flags
+ * contains QMAN_CGR_FLAG_USE_INIT, then an init hw command (which will reset
+ * any unspecified parameters) will be used rather than a modify hw hardware
+ * (which only modifies the specified parameters).
+ */
+int qman_create_cgr(struct qman_cgr *cgr, u32 flags,
+		    struct qm_mcc_initcgr *opts);
+
+/**
+ * qman_create_cgr_to_dcp - Register a congestion group object to DCP portal
+ * @cgr: the 'cgr' object, with fields filled in
+ * @flags: QMAN_CGR_FLAG_* values
+ * @dcp_portal: the DCP portal to which the cgr object is registered.
+ * @opts: optional state of CGR settings
+ *
+ */
+int qman_create_cgr_to_dcp(struct qman_cgr *cgr, u32 flags, u16 dcp_portal,
+			   struct qm_mcc_initcgr *opts);
+
+/**
+ * qman_delete_cgr - Deregisters a congestion group object
+ * @cgr: the 'cgr' object to deregister
+ *
+ * "Unplugs" this CGR object from the portal affine to the cpu on which this API
+ * is executed. This must be excuted on the same affine portal on which it was
+ * created.
+ */
+int qman_delete_cgr(struct qman_cgr *cgr);
+
+/**
+ * qman_modify_cgr - Modify CGR fields
+ * @cgr: the 'cgr' object to modify
+ * @flags: QMAN_CGR_FLAG_* values
+ * @opts: the CGR-modification settings
+ *
+ * The @opts parameter comes from the low-level portal API, and can be NULL.
+ * Note that some fields and options within @opts may be ignored or overwritten
+ * by the driver, in particular the 'cgrid' field is ignored (this operation
+ * only affects the given CGR object). If @flags contains
+ * QMAN_CGR_FLAG_USE_INIT, then an init hw command (which will reset any
+ * unspecified parameters) will be used rather than a modify hw hardware (which
+ * only modifies the specified parameters).
+ */
+int qman_modify_cgr(struct qman_cgr *cgr, u32 flags,
+		    struct qm_mcc_initcgr *opts);
+
+/**
+ * qman_query_cgr - Queries CGR fields
+ * @cgr: the 'cgr' object to query
+ * @result: storage for the queried congestion group record
+ */
+int qman_query_cgr(struct qman_cgr *cgr, struct qm_mcr_querycgr *result);
+
+/**
+ * qman_query_congestion - Queries the state of all congestion groups
+ * @congestion: storage for the queried state of all congestion groups
+ */
+int qman_query_congestion(struct qm_mcr_querycongestion *congestion);
+
+/**
+ * qman_alloc_cgrid_range - Allocate a contiguous range of CGR IDs
+ * @result: is set by the API to the base CGR ID of the allocated range
+ * @count: the number of CGR IDs required
+ * @align: required alignment of the allocated range
+ * @partial: non-zero if the API can return fewer than @count
+ *
+ * Returns the number of CGR IDs allocated, or a negative error code.
+ * If @partial is non zero, the allocation request may return a smaller range of
+ * than requested (though alignment will be as requested). If @partial is zero,
+ * the return value will either be 'count' or negative.
+ */
+int qman_alloc_cgrid_range(u32 *result, u32 count, u32 align, int partial);
+static inline int qman_alloc_cgrid(u32 *result)
+{
+	int ret = qman_alloc_cgrid_range(result, 1, 0, 0);
+
+	return (ret > 0) ? 0 : ret;
+}
+
+/**
+ * qman_release_cgrid_range - Release the specified range of CGR IDs
+ * @id: the base CGR ID of the range to deallocate
+ * @count: the number of CGR IDs in the range
+ */
+void qman_release_cgrid_range(u32 id, unsigned int count);
+static inline void qman_release_cgrid(u32 id)
+{
+	qman_release_cgrid_range(id, 1);
+}
+
+/**
+ * qman_reserve_cgrid_range - Reserve the specified range of CGR ID
+ * @id: the base CGR ID of the range to reserve
+ * @count: the number of CGR IDs in the range
+ */
+int qman_reserve_cgrid_range(u32 id, unsigned int count);
+static inline int qman_reserve_cgrid(u32 id)
+{
+	return qman_reserve_cgrid_range(id, 1);
+}
+
+void qman_seed_cgrid_range(u32 id, unsigned int count);
+
+	/* Helpers */
+	/* ------- */
+/**
+ * qman_poll_fq_for_init - Check if an FQ has been initialised from OOS
+ * @fqid: the FQID that will be initialised by other s/w
+ *
+ * In many situations, a FQID is provided for communication between s/w
+ * entities, and whilst the consumer is responsible for initialising and
+ * scheduling the FQ, the producer(s) generally create a wrapper FQ object using
+ * and only call qman_enqueue() (no FQ initialisation, scheduling, etc). Ie;
+ *     qman_create_fq(..., QMAN_FQ_FLAG_NO_MODIFY, ...);
+ * However, data can not be enqueued to the FQ until it is initialised out of
+ * the OOS state - this function polls for that condition. It is particularly
+ * useful for users of IPC functions - each endpoint's Rx FQ is the other
+ * endpoint's Tx FQ, so each side can initialise and schedule their Rx FQ object
+ * and then use this API on the (NO_MODIFY) Tx FQ object in order to
+ * synchronise. The function returns zero for success, +1 if the FQ is still in
+ * the OOS state, or negative if there was an error.
+ */
+static inline int qman_poll_fq_for_init(struct qman_fq *fq)
+{
+	struct qm_mcr_queryfq_np np;
+	int err;
+
+	err = qman_query_fq_np(fq, &np);
+	if (err)
+		return err;
+	if ((np.state & QM_MCR_NP_STATE_MASK) == QM_MCR_NP_STATE_OOS)
+		return 1;
+	return 0;
+}
+
+#if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#define cpu_to_hw_sg(x) (x)
+#define hw_sg_to_cpu(x) (x)
+#else
+#define cpu_to_hw_sg(x)  __cpu_to_hw_sg(x)
+#define hw_sg_to_cpu(x)  __hw_sg_to_cpu(x)
+
+static inline void __cpu_to_hw_sg(struct qm_sg_entry *sgentry)
+{
+	sgentry->opaque = cpu_to_be64(sgentry->opaque);
+	sgentry->val = cpu_to_be32(sgentry->val);
+	sgentry->val_off = cpu_to_be16(sgentry->val_off);
+}
+
+static inline void __hw_sg_to_cpu(struct qm_sg_entry *sgentry)
+{
+	sgentry->opaque = be64_to_cpu(sgentry->opaque);
+	sgentry->val = be32_to_cpu(sgentry->val);
+	sgentry->val_off = be16_to_cpu(sgentry->val_off);
+}
+#endif
 
 #ifdef __cplusplus
 }

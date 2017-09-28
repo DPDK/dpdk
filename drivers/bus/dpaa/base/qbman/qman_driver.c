@@ -66,6 +66,7 @@ static __thread struct dpaa_ioctl_portal_map map = {
 static int fsl_qman_portal_init(uint32_t index, int is_shared)
 {
 	cpu_set_t cpuset;
+	struct qman_portal *portal;
 	int loop, ret;
 	struct dpaa_ioctl_irq_map irq_map;
 
@@ -116,6 +117,14 @@ static int fsl_qman_portal_init(uint32_t index, int is_shared)
 	pcfg.node = NULL;
 	pcfg.irq = fd;
 
+	portal = qman_create_affine_portal(&pcfg, NULL);
+	if (!portal) {
+		pr_err("Qman portal initialisation failed (%d)\n",
+		       pcfg.cpu);
+		process_portal_unmap(&map.addr);
+		return -EBUSY;
+	}
+
 	irq_map.type = dpaa_portal_qman;
 	irq_map.portal_cinh = map.addr.cinh;
 	process_portal_irq_map(fd, &irq_map);
@@ -124,10 +133,13 @@ static int fsl_qman_portal_init(uint32_t index, int is_shared)
 
 static int fsl_qman_portal_finish(void)
 {
+	__maybe_unused const struct qm_portal_config *cfg;
 	int ret;
 
 	process_portal_irq_unmap(fd);
 
+	cfg = qman_destroy_affine_portal();
+	DPAA_BUG_ON(cfg != &pcfg);
 	ret = process_portal_unmap(&map.addr);
 	if (ret)
 		error(0, ret, "process_portal_unmap()");

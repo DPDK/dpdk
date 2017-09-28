@@ -63,7 +63,9 @@ SRCS-$(CONFIG_RTE_LIBRTE_DPAA_BUS) += \
 	base/fman/of.c \
 	base/fman/netcfg_layer.c \
 	base/qbman/process.c \
+	base/qbman/qman.c \
 	base/qbman/qman_driver.c \
+	base/qbman/dpaa_alloc.c \
 	base/qbman/dpaa_sys.c
 
 # Link Pthread

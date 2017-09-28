@@ -4,8 +4,8 @@
  *
  *   BSD LICENSE
  *
- * Copyright 2010-2011 Freescale Semiconductor, Inc.
- * All rights reserved.
+ * Copyright 2009-2016 Freescale Semiconductor Inc.
+ * Copyright 2017 NXP.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
@@ -38,65 +38,51 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __FSL_USD_H
-#define __FSL_USD_H
-
-#include <compat.h>
+#include "dpaa_sys.h"
+#include <process.h>
 #include <fsl_qman.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-/* Thread-entry/exit hooks; */
-int qman_thread_init(void);
-int qman_thread_finish(void);
-
-#define QBMAN_ANY_PORTAL_IDX 0xffffffff
-
-/* Obtain and free raw (unitialized) portals */
-
-struct dpaa_raw_portal {
-	/* inputs */
-
-	/* set to non zero to turn on stashing */
-	uint8_t enable_stash;
-	/* Stashing attributes for the portal */
-	uint32_t cpu;
-	uint32_t cache;
-	uint32_t window;
-
-	/* Specifies the stash request queue this portal should use */
-	uint8_t sdest;
-
-	/* Specifes a specific portal index to map or QBMAN_ANY_PORTAL_IDX
-	 * for don't care.  The portal index will be populated by the
-	 * driver when the ioctl() successfully completes.
-	 */
-	uint32_t index;
-
-	/* outputs */
-	uint64_t cinh;
-	uint64_t cena;
-};
-
-int qman_allocate_raw_portal(struct dpaa_raw_portal *portal);
-int qman_free_raw_portal(struct dpaa_raw_portal *portal);
-
-int bman_allocate_raw_portal(struct dpaa_raw_portal *portal);
-int bman_free_raw_portal(struct dpaa_raw_portal *portal);
-
-/* Post-process interrupts. NB, the kernel IRQ handler disables the interrupt
- * line before notifying us, and this post-processing re-enables it once
- * processing is complete. As such, it is essential to call this before going
- * into another blocking read/select/poll.
- */
-void qman_thread_irq(void);
-
-/* Global setup */
-int qman_global_init(void);
-#ifdef __cplusplus
+int qman_alloc_fqid_range(u32 *result, u32 count, u32 align, int partial)
+{
+	return process_alloc(dpaa_id_fqid, result, count, align, partial);
 }
-#endif
 
-#endif /* __FSL_USD_H */
+void qman_release_fqid_range(u32 fqid, u32 count)
+{
+	process_release(dpaa_id_fqid, fqid, count);
+}
+
+int qman_reserve_fqid_range(u32 fqid, unsigned int count)
+{
+	return process_reserve(dpaa_id_fqid, fqid, count);
+}
+
+int qman_alloc_pool_range(u32 *result, u32 count, u32 align, int partial)
+{
+	return process_alloc(dpaa_id_qpool, result, count, align, partial);
+}
+
+void qman_release_pool_range(u32 pool, u32 count)
+{
+	process_release(dpaa_id_qpool, pool, count);
+}
+
+int qman_reserve_pool_range(u32 pool, u32 count)
+{
+	return process_reserve(dpaa_id_qpool, pool, count);
+}
+
+int qman_alloc_cgrid_range(u32 *result, u32 count, u32 align, int partial)
+{
+	return process_alloc(dpaa_id_cgrid, result, count, align, partial);
+}
+
+void qman_release_cgrid_range(u32 cgrid, u32 count)
+{
+	process_release(dpaa_id_cgrid, cgrid, count);
+}
+
+int qman_reserve_cgrid_range(u32 cgrid, u32 count)
+{
+	return process_reserve(dpaa_id_cgrid, cgrid, count);
+}
