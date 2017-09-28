@@ -41,6 +41,22 @@
 
 /* IC offsets from buffer header address */
 #define DEFAULT_RX_ICEOF	16
+#define DEFAULT_TX_ICEOF	16
+
+/*
+ * Values for the L3R field of the FM Parse Results
+ */
+/* L3 Type field: First IP Present IPv4 */
+#define DPAA_L3_PARSE_RESULT_IPV4 0x80
+/* L3 Type field: First IP Present IPv6 */
+#define DPAA_L3_PARSE_RESULT_IPV6	0x40
+/* Values for the L4R field of the FM Parse Results
+ * See $8.8.4.7.20 - L4 HXS - L4 Results from DPAA-Rev2 Reference Manual.
+ */
+/* L4 Type field: UDP */
+#define DPAA_L4_PARSE_RESULT_UDP	0x40
+/* L4 Type field: TCP */
+#define DPAA_L4_PARSE_RESULT_TCP	0x20
 
 #define DPAA_MAX_DEQUEUE_NUM_FRAMES    63
 	/** <Maximum number of frames to be dequeued in a single rx call*/
@@ -255,7 +271,12 @@ struct annotations_t {
 	(struct annotations_t *)(_buf)
 
 #define GET_RX_PRS(_buf) \
-	(struct dpaa_eth_parse_results_t *)((uint8_t *)_buf + DEFAULT_RX_ICEOF)
+	(struct dpaa_eth_parse_results_t *)((uint8_t *)(_buf) + \
+	DEFAULT_RX_ICEOF)
+
+#define GET_TX_PRS(_buf) \
+	(struct dpaa_eth_parse_results_t *)((uint8_t *)(_buf) + \
+	DEFAULT_TX_ICEOF)
 
 uint16_t dpaa_eth_queue_rx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs);
 

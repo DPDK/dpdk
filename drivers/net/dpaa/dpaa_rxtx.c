@@ -200,6 +200,82 @@ static inline void dpaa_eth_packet_info(struct rte_mbuf *m,
 	/* Packet received without stripping the vlan */
 }
 
+static inline void dpaa_checksum(struct rte_mbuf *mbuf)
+{
+	struct ether_hdr *eth_hdr = rte_pktmbuf_mtod(mbuf, struct ether_hdr *);
+	char *l3_hdr = (char *)eth_hdr + mbuf->l2_len;
+	struct ipv4_hdr *ipv4_hdr = (struct ipv4_hdr *)l3_hdr;
+	struct ipv6_hdr *ipv6_hdr = (struct ipv6_hdr *)l3_hdr;
+
+	DPAA_DP_LOG(DEBUG, "Calculating checksum for mbuf: %p", mbuf);
+
+	if (((mbuf->packet_type & RTE_PTYPE_L3_MASK) == RTE_PTYPE_L3_IPV4) ||
+	    ((mbuf->packet_type & RTE_PTYPE_L3_MASK) ==
+	    RTE_PTYPE_L3_IPV4_EXT)) {
+		ipv4_hdr = (struct ipv4_hdr *)l3_hdr;
+		ipv4_hdr->hdr_checksum = 0;
+		ipv4_hdr->hdr_checksum = rte_ipv4_cksum(ipv4_hdr);
+	} else if (((mbuf->packet_type & RTE_PTYPE_L3_MASK) ==
+		   RTE_PTYPE_L3_IPV6) ||
+		   ((mbuf->packet_type & RTE_PTYPE_L3_MASK) ==
+		   RTE_PTYPE_L3_IPV6_EXT))
+		ipv6_hdr = (struct ipv6_hdr *)l3_hdr;
+
+	if ((mbuf->packet_type & RTE_PTYPE_L4_MASK) == RTE_PTYPE_L4_TCP) {
+		struct tcp_hdr *tcp_hdr = (struct tcp_hdr *)(l3_hdr +
+					  mbuf->l3_len);
+		tcp_hdr->cksum = 0;
+		if (eth_hdr->ether_type == htons(ETHER_TYPE_IPv4))
+			tcp_hdr->cksum = rte_ipv4_udptcp_cksum(ipv4_hdr,
+							       tcp_hdr);
+		else /* assume ethertype == ETHER_TYPE_IPv6 */
+			tcp_hdr->cksum = rte_ipv6_udptcp_cksum(ipv6_hdr,
+							       tcp_hdr);
+	} else if ((mbuf->packet_type & RTE_PTYPE_L4_MASK) ==
+		   RTE_PTYPE_L4_UDP) {
+		struct udp_hdr *udp_hdr = (struct udp_hdr *)(l3_hdr +
+							     mbuf->l3_len);
+		udp_hdr->dgram_cksum = 0;
+		if (eth_hdr->ether_type == htons(ETHER_TYPE_IPv4))
+			udp_hdr->dgram_cksum = rte_ipv4_udptcp_cksum(ipv4_hdr,
+								     udp_hdr);
+		else /* assume ethertype == ETHER_TYPE_IPv6 */
+			udp_hdr->dgram_cksum = rte_ipv6_udptcp_cksum(ipv6_hdr,
+								     udp_hdr);
+	}
+}
+
+static inline void dpaa_checksum_offload(struct rte_mbuf *mbuf,
+					 struct qm_fd *fd, char *prs_buf)
+{
+	struct dpaa_eth_parse_results_t *prs;
+
+	DPAA_DP_LOG(DEBUG, " Offloading checksum for mbuf: %p", mbuf);
+
+	prs = GET_TX_PRS(prs_buf);
+	prs->l3r = 0;
+	prs->l4r = 0;
+	if (((mbuf->packet_type & RTE_PTYPE_L3_MASK) == RTE_PTYPE_L3_IPV4) ||
+	   ((mbuf->packet_type & RTE_PTYPE_L3_MASK) ==
+	   RTE_PTYPE_L3_IPV4_EXT))
+		prs->l3r = DPAA_L3_PARSE_RESULT_IPV4;
+	else if (((mbuf->packet_type & RTE_PTYPE_L3_MASK) ==
+		   RTE_PTYPE_L3_IPV6) ||
+		 ((mbuf->packet_type & RTE_PTYPE_L3_MASK) ==
+		RTE_PTYPE_L3_IPV6_EXT))
+		prs->l3r = DPAA_L3_PARSE_RESULT_IPV6;
+
+	if ((mbuf->packet_type & RTE_PTYPE_L4_MASK) == RTE_PTYPE_L4_TCP)
+		prs->l4r = DPAA_L4_PARSE_RESULT_TCP;
+	else if ((mbuf->packet_type & RTE_PTYPE_L4_MASK) == RTE_PTYPE_L4_UDP)
+		prs->l4r = DPAA_L4_PARSE_RESULT_UDP;
+
+	prs->ip_off[0] = mbuf->l2_len;
+	prs->l4_off = mbuf->l3_len + mbuf->l2_len;
+	/* Enable L3 (and L4, if TCP or UDP) HW checksum*/
+	fd->cmd = DPAA_FD_CMD_RPD | DPAA_FD_CMD_DTC;
+}
+
 static inline struct rte_mbuf *dpaa_eth_fd_to_mbuf(struct qm_fd *fd,
 							uint32_t ifid)
 {
@@ -357,6 +433,19 @@ tx_on_dpaa_pool_unsegmented(struct rte_mbuf *mbuf,
 			DPAA_MBUF_TO_CONTIG_FD(mbuf, fd_arr, bp_info->bpid);
 		}
 		rte_pktmbuf_free(mbuf);
+	}
+
+	if (mbuf->ol_flags & DPAA_TX_CKSUM_OFFLOAD_MASK) {
+		if (mbuf->data_off < (DEFAULT_TX_ICEOF +
+		    sizeof(struct dpaa_eth_parse_results_t))) {
+			DPAA_DP_LOG(DEBUG, "Checksum offload Err: "
+				"Not enough Headroom "
+				"space for correct Checksum offload."
+				"So Calculating checksum in Software.");
+			dpaa_checksum(mbuf);
+		} else {
+			dpaa_checksum_offload(mbuf, fd_arr, mbuf->buf_addr);
+		}
 	}
 }
 
