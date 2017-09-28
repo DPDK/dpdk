@@ -85,6 +85,31 @@
 		(_fd)->bpid = _bpid; \
 	} while (0)
 
+#if (defined RTE_LIBRTE_DPAA_DEBUG_DRIVER)
+void dpaa_display_frame(const struct qm_fd *fd)
+{
+	int ii;
+	char *ptr;
+
+	printf("%s::bpid %x addr %08x%08x, format %d off %d, len %d stat %x\n",
+	       __func__, fd->bpid, fd->addr_hi, fd->addr_lo, fd->format,
+		fd->offset, fd->length20, fd->status);
+
+	ptr = (char *)rte_dpaa_mem_ptov(fd->addr);
+	ptr += fd->offset;
+	printf("%02x ", *ptr);
+	for (ii = 1; ii < fd->length20; ii++) {
+		printf("%02x ", *ptr);
+		if ((ii % 16) == 0)
+			printf("\n");
+		ptr++;
+	}
+	printf("\n");
+}
+#else
+#define dpaa_display_frame(a)
+#endif
+
 static inline void dpaa_slow_parsing(struct rte_mbuf *m __rte_unused,
 				     uint64_t prs __rte_unused)
 {
@@ -353,6 +378,7 @@ static inline struct rte_mbuf *dpaa_eth_fd_to_mbuf(struct qm_fd *fd,
 		return dpaa_eth_sg_to_mbuf(fd, ifid);
 
 	/* Ignoring case when format != qm_fd_contig */
+	dpaa_display_frame(fd);
 	ptr = rte_dpaa_mem_ptov(fd->addr);
 	/* Ignoring case when ptr would be NULL. That is only possible incase
 	 * of a corrupted packet
