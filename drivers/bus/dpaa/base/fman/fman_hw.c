@@ -37,6 +37,7 @@
  */
 #include <fsl_fman.h>
 #include <fsl_fman_crc64.h>
+#include <fsl_bman.h>
 
 /* Instantiate the global variable that the inline CRC64 implementation (in
  * <fsl_fman.h>) depends on.
@@ -390,6 +391,33 @@ fman_if_set_bp(struct fman_if *fm_if, unsigned num __always_unused,
 
 	out_be32(&((struct rx_bmi_regs *)__if->bmi_map)->fmbm_ebmpi[0],
 		 fmbm_ebmpi);
+}
+
+int
+fman_if_get_fc_threshold(struct fman_if *fm_if)
+{
+	struct __fman_if *__if = container_of(fm_if, struct __fman_if, __if);
+	unsigned int *fmbm_mpd;
+
+	assert(fman_ccsr_map_fd != -1);
+
+	fmbm_mpd = &((struct rx_bmi_regs *)__if->bmi_map)->fmbm_mpd;
+	return in_be32(fmbm_mpd);
+}
+
+int
+fman_if_set_fc_threshold(struct fman_if *fm_if, u32 high_water,
+			 u32 low_water, u32 bpid)
+{
+	struct __fman_if *__if = container_of(fm_if, struct __fman_if, __if);
+	unsigned int *fmbm_mpd;
+
+	assert(fman_ccsr_map_fd != -1);
+
+	fmbm_mpd = &((struct rx_bmi_regs *)__if->bmi_map)->fmbm_mpd;
+	out_be32(fmbm_mpd, FMAN_ENABLE_BPOOL_DEPLETION);
+	return bm_pool_set_hw_threshold(bpid, low_water, high_water);
+
 }
 
 int

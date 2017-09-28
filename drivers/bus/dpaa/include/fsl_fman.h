@@ -112,6 +112,13 @@ void fman_if_loopback_disable(struct fman_if *p);
 void fman_if_set_bp(struct fman_if *fm_if, unsigned int num, int bpid,
 		    size_t bufsize);
 
+/* Get Flow Control threshold parameters on specific interface */
+int fman_if_get_fc_threshold(struct fman_if *fm_if);
+
+/* Enable and Set Flow Control threshold parameters on specific interface */
+int fman_if_set_fc_threshold(struct fman_if *fm_if,
+			u32 high_water, u32 low_water, u32 bpid);
+
 /* Get Flow Control pause quanta on specific interface */
 int fman_if_get_fc_quanta(struct fman_if *fm_if);
 
