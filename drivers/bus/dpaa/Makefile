@@ -58,6 +58,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_DPAA_BUS) += \
 
 SRCS-$(CONFIG_RTE_LIBRTE_DPAA_BUS) += \
 	base/fman/fman.c \
+	base/fman/fman_hw.c \
 	base/fman/of.c \
 	base/fman/netcfg_layer.c
 
