@@ -60,11 +60,13 @@ void bnxt_free_rxq_stats(struct bnxt_rx_queue *rxq)
 int bnxt_mq_rx_configure(struct bnxt *bp)
 {
 	struct rte_eth_conf *dev_conf = &bp->eth_dev->data->dev_conf;
-	unsigned int i, j, nb_q_per_grp, ring_idx;
-	int start_grp_id, end_grp_id, rc = 0;
+	unsigned int i, j, nb_q_per_grp = 1, ring_idx = 0;
+	int start_grp_id, end_grp_id = 1, rc = 0;
 	struct bnxt_vnic_info *vnic;
 	struct bnxt_filter_info *filter;
+	enum rte_eth_nb_pools pools = bp->rx_cp_nr_rings, max_pools = 0;
 	struct bnxt_rx_queue *rxq;
+	bool rss_dflt_cr = false;
 
 	bp->nr_vnics = 0;
 
@@ -98,116 +100,123 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 	}
 
 	/* Multi-queue mode */
-	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_VMDQ_FLAG) {
+	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_VMDQ_DCB_RSS) {
 		/* VMDq ONLY, VMDq+RSS, VMDq+DCB, VMDq+DCB+RSS */
-		enum rte_eth_nb_pools pools;
+		const struct rte_eth_vmdq_rx_conf *conf =
+		    &dev_conf->rx_adv_conf.vmdq_rx_conf;
+
 
 		switch (dev_conf->rxmode.mq_mode) {
 		case ETH_MQ_RX_VMDQ_RSS:
 		case ETH_MQ_RX_VMDQ_ONLY:
-			{
-				const struct rte_eth_vmdq_rx_conf *conf =
-				    &dev_conf->rx_adv_conf.vmdq_rx_conf;
-
-				/* ETH_8/64_POOLs */
-				pools = conf->nb_queue_pools;
-				break;
-			}
+			/* ETH_8/64_POOLs */
+			pools = conf->nb_queue_pools;
+			/* For each pool, allocate MACVLAN CFA rule & VNIC */
+			max_pools = RTE_MIN(bp->max_vnics,
+					    RTE_MIN(bp->max_l2_ctx,
+					    RTE_MIN(bp->max_rsscos_ctx,
+						    ETH_64_POOLS)));
+			if (pools > max_pools)
+				pools = max_pools;
+			break;
+		case ETH_MQ_RX_RSS:
+			pools = 1;
+			break;
 		default:
 			RTE_LOG(ERR, PMD, "Unsupported mq_mod %d\n",
 				dev_conf->rxmode.mq_mode);
 			rc = -EINVAL;
 			goto err_out;
 		}
-		/* For each pool, allocate MACVLAN CFA rule & VNIC */
-		if (!pools) {
-			pools = RTE_MIN(bp->max_vnics,
-			    RTE_MIN(bp->max_l2_ctx,
-			     RTE_MIN(bp->max_rsscos_ctx, ETH_64_POOLS)));
-			RTE_LOG(ERR, PMD,
-				"VMDq pool not set, defaulted to %d\n", pools);
+	}
+	/*
+	 * If MQ RX w/o RSS no need for per VNIC filter.
+	 */
+	if ((dev_conf->rxmode.mq_mode & ETH_MQ_RX_VMDQ_DCB) ||
+	    (bp->rx_cp_nr_rings &&
+	     !(dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS)))
+		rss_dflt_cr = true;
+
+	nb_q_per_grp = bp->rx_cp_nr_rings / pools;
+	start_grp_id = 0;
+	end_grp_id = nb_q_per_grp;
+
+	for (i = 0; i < pools; i++) {
+		vnic = bnxt_alloc_vnic(bp);
+		if (!vnic) {
+			RTE_LOG(ERR, PMD, "VNIC alloc failed\n");
+			rc = -ENOMEM;
+			goto err_out;
 		}
-		nb_q_per_grp = bp->rx_cp_nr_rings / pools;
-		start_grp_id = 0;
-		end_grp_id = nb_q_per_grp;
+		vnic->flags |= BNXT_VNIC_INFO_BCAST;
+		STAILQ_INSERT_TAIL(&bp->ff_pool[i], vnic, next);
+		bp->nr_vnics++;
 
-		ring_idx = 0;
-		for (i = 0; i < pools; i++) {
-			vnic = bnxt_alloc_vnic(bp);
-			if (!vnic) {
-				RTE_LOG(ERR, PMD,
-					"VNIC alloc failed\n");
-				rc = -ENOMEM;
-				goto err_out;
-			}
-			vnic->flags |= BNXT_VNIC_INFO_BCAST;
-			STAILQ_INSERT_TAIL(&bp->ff_pool[i], vnic, next);
-			bp->nr_vnics++;
-
-			for (j = 0; j < nb_q_per_grp; j++, ring_idx++) {
-				rxq = bp->eth_dev->data->rx_queues[ring_idx];
-				rxq->vnic = vnic;
-			}
-			if (i == 0)
-				vnic->func_default = true;
-			vnic->ff_pool_idx = i;
-			vnic->start_grp_id = start_grp_id;
-			vnic->end_grp_id = end_grp_id;
-
-			filter = bnxt_alloc_filter(bp);
-			if (!filter) {
-				RTE_LOG(ERR, PMD,
-					"L2 filter alloc failed\n");
-				rc = -ENOMEM;
-				goto err_out;
-			}
-			/*
-			 * TODO: Configure & associate CFA rule for
-			 * each VNIC for each VMDq with MACVLAN, MACVLAN+TC
-			 */
-			STAILQ_INSERT_TAIL(&vnic->filter, filter, next);
-
-			start_grp_id = end_grp_id;
-			end_grp_id += nb_q_per_grp;
+		for (j = 0, ring_idx = 0; j < nb_q_per_grp; j++, ring_idx++) {
+			rxq = bp->eth_dev->data->rx_queues[ring_idx];
+			rxq->vnic = vnic;
 		}
-		goto out;
-	}
+		if (i == 0)
+			vnic->func_default = true;
+		vnic->ff_pool_idx = i;
+		vnic->start_grp_id = start_grp_id;
+		vnic->end_grp_id = end_grp_id;
 
-	/* Non-VMDq mode - RSS, DCB, RSS+DCB */
-	/* Init default VNIC for RSS or DCB only */
-	vnic = bnxt_alloc_vnic(bp);
-	if (!vnic) {
-		RTE_LOG(ERR, PMD, "VNIC alloc failed\n");
-		rc = -ENOMEM;
-		goto err_out;
-	}
-	vnic->flags |= BNXT_VNIC_INFO_BCAST;
-	/* Partition the rx queues for the single pool */
-	for (i = 0; i < bp->rx_cp_nr_rings; i++) {
-		rxq = bp->eth_dev->data->rx_queues[i];
-		rxq->vnic = vnic;
-	}
-	STAILQ_INSERT_TAIL(&bp->ff_pool[0], vnic, next);
-	bp->nr_vnics++;
+		if (rss_dflt_cr && i) {
+			vnic->rss_dflt_cr = true;
+			goto skip_filter_allocation;
+		}
+		filter = bnxt_alloc_filter(bp);
+		if (!filter) {
+			RTE_LOG(ERR, PMD, "L2 filter alloc failed\n");
+			rc = -ENOMEM;
+			goto err_out;
+		}
+		/*
+		 * TODO: Configure & associate CFA rule for
+		 * each VNIC for each VMDq with MACVLAN, MACVLAN+TC
+		 */
+		STAILQ_INSERT_TAIL(&vnic->filter, filter, next);
 
-	vnic->func_default = true;
-	vnic->ff_pool_idx = 0;
-	vnic->start_grp_id = 0;
-	vnic->end_grp_id = bp->rx_cp_nr_rings;
-	filter = bnxt_alloc_filter(bp);
-	if (!filter) {
-		RTE_LOG(ERR, PMD, "L2 filter alloc failed\n");
-		rc = -ENOMEM;
-		goto err_out;
+skip_filter_allocation:
+		start_grp_id = end_grp_id;
+		end_grp_id += nb_q_per_grp;
 	}
-	STAILQ_INSERT_TAIL(&vnic->filter, filter, next);
-
-	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG)
-		vnic->hash_type =
-			HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV4 |
-			HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV6;
 
 out:
+	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG) {
+		struct rte_eth_rss_conf *rss = &dev_conf->rx_adv_conf.rss_conf;
+		uint16_t hash_type = 0;
+
+		if (rss->rss_hf & ETH_RSS_IPV4)
+			hash_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV4;
+		if (rss->rss_hf & ETH_RSS_NONFRAG_IPV4_TCP)
+			hash_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV4;
+		if (rss->rss_hf & ETH_RSS_NONFRAG_IPV4_UDP)
+			hash_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV4;
+		if (rss->rss_hf & ETH_RSS_IPV6)
+			hash_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_IPV6;
+		if (rss->rss_hf & ETH_RSS_NONFRAG_IPV6_TCP)
+			hash_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_TCP_IPV6;
+		if (rss->rss_hf & ETH_RSS_NONFRAG_IPV6_UDP)
+			hash_type |= HWRM_VNIC_RSS_CFG_INPUT_HASH_TYPE_UDP_IPV6;
+
+		for (i = 0; i < bp->nr_vnics; i++) {
+			STAILQ_FOREACH(vnic, &bp->ff_pool[i], next) {
+			vnic->hash_type |= hash_type;
+
+			/*
+			 * Use the supplied key if the key length is
+			 * acceptable and the rss_key is not NULL
+			 */
+			if (rss->rss_key &&
+			    rss->rss_key_len <= HW_HASH_KEY_SIZE)
+				memcpy(vnic->rss_hash_key,
+				       rss->rss_key, rss->rss_key_len);
+			}
+		}
+	}
+
 	return rc;
 
 err_out:

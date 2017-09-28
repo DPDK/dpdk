@@ -360,6 +360,7 @@ static void bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 {
 	struct bnxt *bp = (struct bnxt *)eth_dev->data->dev_private;
 	uint16_t max_vnics, i, j, vpool, vrxq;
+	unsigned int max_rx_rings;
 
 	dev_info->pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 
@@ -370,8 +371,12 @@ static void bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 	/* PF/VF specifics */
 	if (BNXT_PF(bp))
 		dev_info->max_vfs = bp->pdev->max_vfs;
-	dev_info->max_rx_queues = bp->max_rx_rings;
-	dev_info->max_tx_queues = bp->max_tx_rings;
+	max_rx_rings = RTE_MIN(bp->max_vnics, RTE_MIN(bp->max_l2_ctx,
+						RTE_MIN(bp->max_rsscos_ctx,
+						bp->max_stat_ctx)));
+	/* For the sake of symmetry, max_rx_queues = max_tx_queues */
+	dev_info->max_rx_queues = max_rx_rings;
+	dev_info->max_tx_queues = max_rx_rings;
 	dev_info->reta_size = bp->max_rsscos_ctx;
 	max_vnics = bp->max_vnics;
 
@@ -827,7 +832,7 @@ static int bnxt_rss_hash_update_op(struct rte_eth_dev *eth_dev,
 	 */
 	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_RSS_FLAG) {
 		if (!rss_conf->rss_hf)
-			return -EINVAL;
+			RTE_LOG(ERR, PMD, "Hash type NONE\n");
 	} else {
 		if (rss_conf->rss_hf & BNXT_ETH_RSS_SUPPORT)
 			return -EINVAL;
