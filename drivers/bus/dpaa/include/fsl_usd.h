@@ -50,7 +50,9 @@ extern "C" {
 
 /* Thread-entry/exit hooks; */
 int qman_thread_init(void);
+int bman_thread_init(void);
 int qman_thread_finish(void);
+int bman_thread_finish(void);
 
 #define QBMAN_ANY_PORTAL_IDX 0xffffffff
 
@@ -92,9 +94,12 @@ int bman_free_raw_portal(struct dpaa_raw_portal *portal);
  * into another blocking read/select/poll.
  */
 void qman_thread_irq(void);
+void bman_thread_irq(void);
 
 /* Global setup */
 int qman_global_init(void);
+int bman_global_init(void);
+
 #ifdef __cplusplus
 }
 #endif
