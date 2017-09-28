@@ -29,13 +29,30 @@
 #   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 include $(RTE_SDK)/mk/rte.vars.mk
+RTE_BUS_DPAA=$(RTE_SDK)/drivers/bus/dpaa
 
-core-libs := librte_eal librte_mbuf librte_mempool librte_ring librte_ether
+#
+# library name
+#
+LIB = librte_bus_dpaa.a
 
-DIRS-$(CONFIG_RTE_LIBRTE_DPAA_BUS) += dpaa
-DEPDIRS-dpaa = $(core-libs)
+CFLAGS := -I$(SRCDIR) $(CFLAGS)
+CFLAGS += -O3 $(WERROR_FLAGS)
+CFLAGS += -I$(RTE_BUS_DPAA)/
+CFLAGS += -I$(RTE_SDK)/lib/librte_eal/linuxapp/eal
+CFLAGS += -I$(RTE_SDK)/lib/librte_eal/common/include
 
-DIRS-$(CONFIG_RTE_LIBRTE_FSLMC_BUS) += fslmc
-DEPDIRS-fslmc = $(core-libs)
+# versioning export map
+EXPORT_MAP := rte_bus_dpaa_version.map
 
-include $(RTE_SDK)/mk/rte.subdir.mk
+LIBABIVER := 1
+
+# all source are stored in SRCS-y
+#
+SRCS-$(CONFIG_RTE_LIBRTE_DPAA_BUS) += \
+	dpaa_bus.c
+
+# Link Pthread
+LDLIBS += -lpthread
+
+include $(RTE_SDK)/mk/rte.lib.mk
