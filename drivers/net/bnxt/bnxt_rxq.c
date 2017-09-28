@@ -168,7 +168,7 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 			 */
 			STAILQ_INSERT_TAIL(&vnic->filter, filter, next);
 
-			start_grp_id = end_grp_id + 1;
+			start_grp_id = end_grp_id;
 			end_grp_id += nb_q_per_grp;
 		}
 		goto out;
