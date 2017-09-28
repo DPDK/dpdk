@@ -139,4 +139,44 @@ struct dpaa_if {
 	struct rte_eth_fc_conf *fc_conf;
 };
 
+struct dpaa_if_stats {
+	/* Rx Statistics Counter */
+	uint64_t reoct;		/**<Rx Eth Octets Counter */
+	uint64_t roct;		/**<Rx Octet Counters */
+	uint64_t raln;		/**<Rx Alignment Error Counter */
+	uint64_t rxpf;		/**<Rx valid Pause Frame */
+	uint64_t rfrm;		/**<Rx Frame counter */
+	uint64_t rfcs;		/**<Rx frame check seq error */
+	uint64_t rvlan;		/**<Rx Vlan Frame Counter */
+	uint64_t rerr;		/**<Rx Frame error */
+	uint64_t ruca;		/**<Rx Unicast */
+	uint64_t rmca;		/**<Rx Multicast */
+	uint64_t rbca;		/**<Rx Broadcast */
+	uint64_t rdrp;		/**<Rx Dropped Packet */
+	uint64_t rpkt;		/**<Rx packet */
+	uint64_t rund;		/**<Rx undersized packets */
+	uint32_t res_x[14];
+	uint64_t rovr;		/**<Rx oversized but good */
+	uint64_t rjbr;		/**<Rx oversized with bad csum */
+	uint64_t rfrg;		/**<Rx fragment Packet */
+	uint64_t rcnp;		/**<Rx control packets (0x8808 */
+	uint64_t rdrntp;	/**<Rx dropped due to FIFO overflow */
+	uint32_t res01d0[12];
+	/* Tx Statistics Counter */
+	uint64_t teoct;		/**<Tx eth octets */
+	uint64_t toct;		/**<Tx Octets */
+	uint32_t res0210[2];
+	uint64_t txpf;		/**<Tx valid pause frame */
+	uint64_t tfrm;		/**<Tx frame counter */
+	uint64_t tfcs;		/**<Tx FCS error */
+	uint64_t tvlan;		/**<Tx Vlan Frame */
+	uint64_t terr;		/**<Tx frame error */
+	uint64_t tuca;		/**<Tx Unicast */
+	uint64_t tmca;		/**<Tx Multicast */
+	uint64_t tbca;		/**<Tx Broadcast */
+	uint32_t res0258[2];
+	uint64_t tpkt;		/**<Tx Packet */
+	uint64_t tund;		/**<Tx Undersized */
+};
+
 #endif

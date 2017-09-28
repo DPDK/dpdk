@@ -75,6 +75,40 @@
 /* Keep track of whether QMAN and BMAN have been globally initialized */
 static int is_global_init;
 
+struct rte_dpaa_xstats_name_off {
+	char name[RTE_ETH_XSTATS_NAME_SIZE];
+	uint32_t offset;
+};
+
+static const struct rte_dpaa_xstats_name_off dpaa_xstats_strings[] = {
+	{"rx_align_err",
+		offsetof(struct dpaa_if_stats, raln)},
+	{"rx_valid_pause",
+		offsetof(struct dpaa_if_stats, rxpf)},
+	{"rx_fcs_err",
+		offsetof(struct dpaa_if_stats, rfcs)},
+	{"rx_vlan_frame",
+		offsetof(struct dpaa_if_stats, rvlan)},
+	{"rx_frame_err",
+		offsetof(struct dpaa_if_stats, rerr)},
+	{"rx_drop_err",
+		offsetof(struct dpaa_if_stats, rdrp)},
+	{"rx_undersized",
+		offsetof(struct dpaa_if_stats, rund)},
+	{"rx_oversize_err",
+		offsetof(struct dpaa_if_stats, rovr)},
+	{"rx_fragment_pkt",
+		offsetof(struct dpaa_if_stats, rfrg)},
+	{"tx_valid_pause",
+		offsetof(struct dpaa_if_stats, txpf)},
+	{"tx_fcs_err",
+		offsetof(struct dpaa_if_stats, terr)},
+	{"tx_vlan_frame",
+		offsetof(struct dpaa_if_stats, tvlan)},
+	{"rx_undersized",
+		offsetof(struct dpaa_if_stats, tund)},
+};
+
 static int
 dpaa_mtu_set(struct rte_eth_dev *dev, uint16_t mtu)
 {
@@ -266,6 +300,110 @@ static void dpaa_eth_stats_reset(struct rte_eth_dev *dev)
 	PMD_INIT_FUNC_TRACE();
 
 	fman_if_stats_reset(dpaa_intf->fif);
+}
+
+static int
+dpaa_dev_xstats_get(struct rte_eth_dev *dev, struct rte_eth_xstat *xstats,
+		    unsigned int n)
+{
+	struct dpaa_if *dpaa_intf = dev->data->dev_private;
+	unsigned int i = 0, num = RTE_DIM(dpaa_xstats_strings);
+	uint64_t values[sizeof(struct dpaa_if_stats) / 8];
+
+	if (xstats == NULL)
+		return 0;
+
+	if (n < num)
+		return num;
+
+	fman_if_stats_get_all(dpaa_intf->fif, values,
+			      sizeof(struct dpaa_if_stats) / 8);
+
+	for (i = 0; i < num; i++) {
+		xstats[i].id = i;
+		xstats[i].value = values[dpaa_xstats_strings[i].offset / 8];
+	}
+	return i;
+}
+
+static int
+dpaa_xstats_get_names(__rte_unused struct rte_eth_dev *dev,
+		      struct rte_eth_xstat_name *xstats_names,
+		      __rte_unused unsigned int limit)
+{
+	unsigned int i, stat_cnt = RTE_DIM(dpaa_xstats_strings);
+
+	if (xstats_names != NULL)
+		for (i = 0; i < stat_cnt; i++)
+			snprintf(xstats_names[i].name,
+				 sizeof(xstats_names[i].name),
+				 "%s",
+				 dpaa_xstats_strings[i].name);
+
+	return stat_cnt;
+}
+
+static int
+dpaa_xstats_get_by_id(struct rte_eth_dev *dev, const uint64_t *ids,
+		      uint64_t *values, unsigned int n)
+{
+	unsigned int i, stat_cnt = RTE_DIM(dpaa_xstats_strings);
+	uint64_t values_copy[sizeof(struct dpaa_if_stats) / 8];
+
+	if (!ids) {
+		struct dpaa_if *dpaa_intf = dev->data->dev_private;
+
+		if (n < stat_cnt)
+			return stat_cnt;
+
+		if (!values)
+			return 0;
+
+		fman_if_stats_get_all(dpaa_intf->fif, values_copy,
+				      sizeof(struct dpaa_if_stats));
+
+		for (i = 0; i < stat_cnt; i++)
+			values[i] =
+				values_copy[dpaa_xstats_strings[i].offset / 8];
+
+		return stat_cnt;
+	}
+
+	dpaa_xstats_get_by_id(dev, NULL, values_copy, stat_cnt);
+
+	for (i = 0; i < n; i++) {
+		if (ids[i] >= stat_cnt) {
+			DPAA_PMD_ERR("id value isn't valid");
+			return -1;
+		}
+		values[i] = values_copy[ids[i]];
+	}
+	return n;
+}
+
+static int
+dpaa_xstats_get_names_by_id(
+	struct rte_eth_dev *dev,
+	struct rte_eth_xstat_name *xstats_names,
+	const uint64_t *ids,
+	unsigned int limit)
+{
+	unsigned int i, stat_cnt = RTE_DIM(dpaa_xstats_strings);
+	struct rte_eth_xstat_name xstats_names_copy[stat_cnt];
+
+	if (!ids)
+		return dpaa_xstats_get_names(dev, xstats_names, limit);
+
+	dpaa_xstats_get_names(dev, xstats_names_copy, limit);
+
+	for (i = 0; i < limit; i++) {
+		if (ids[i] >= stat_cnt) {
+			DPAA_PMD_ERR("id value isn't valid");
+			return -1;
+		}
+		strcpy(xstats_names[i].name, xstats_names_copy[ids[i]].name);
+	}
+	return limit;
 }
 
 static void dpaa_eth_promiscuous_enable(struct rte_eth_dev *dev)
@@ -535,6 +673,11 @@ static struct eth_dev_ops dpaa_devops = {
 
 	.link_update		  = dpaa_eth_link_update,
 	.stats_get		  = dpaa_eth_stats_get,
+	.xstats_get		  = dpaa_dev_xstats_get,
+	.xstats_get_by_id	  = dpaa_xstats_get_by_id,
+	.xstats_get_names_by_id	  = dpaa_xstats_get_names_by_id,
+	.xstats_get_names	  = dpaa_xstats_get_names,
+	.xstats_reset		  = dpaa_eth_stats_reset,
 	.stats_reset		  = dpaa_eth_stats_reset,
 	.promiscuous_enable	  = dpaa_eth_promiscuous_enable,
 	.promiscuous_disable	  = dpaa_eth_promiscuous_disable,
