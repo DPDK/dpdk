@@ -183,8 +183,10 @@ void bnxt_free_def_cp_ring(struct bnxt *bp)
 		return;
 
 	bnxt_free_ring(cpr->cp_ring_struct);
+	cpr->cp_ring_struct = NULL;
 	rte_free(cpr->cp_ring_struct);
 	rte_free(cpr);
+	bp->def_cp_ring = NULL;
 }
 
 /* For the default completion ring only */
