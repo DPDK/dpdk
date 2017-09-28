@@ -125,8 +125,7 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 			    RTE_MIN(bp->max_l2_ctx,
 			     RTE_MIN(bp->max_rsscos_ctx, ETH_64_POOLS)));
 			RTE_LOG(ERR, PMD,
-				"VMDq pool not set, defaulted to 64\n");
-			pools = ETH_64_POOLS;
+				"VMDq pool not set, defaulted to %d\n", pools);
 		}
 		nb_q_per_grp = bp->rx_cp_nr_rings / pools;
 		start_grp_id = 0;

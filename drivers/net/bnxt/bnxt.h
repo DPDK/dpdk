@@ -217,7 +217,7 @@ struct bnxt {
 	STAILQ_HEAD(, bnxt_filter_info)	free_filter_list;
 
 	/* VNIC pointer for flow filter (VMDq) pools */
-#define MAX_FF_POOLS	ETH_64_POOLS
+#define MAX_FF_POOLS	256
 	STAILQ_HEAD(, bnxt_vnic_info)	ff_pool[MAX_FF_POOLS];
 
 	struct bnxt_irq         *irq_tbl;
