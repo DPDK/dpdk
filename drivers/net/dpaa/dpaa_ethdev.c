@@ -142,6 +142,25 @@ static void dpaa_eth_dev_close(struct rte_eth_dev *dev)
 	dpaa_eth_dev_stop(dev);
 }
 
+static void dpaa_eth_dev_info(struct rte_eth_dev *dev,
+			      struct rte_eth_dev_info *dev_info)
+{
+	struct dpaa_if *dpaa_intf = dev->data->dev_private;
+
+	PMD_INIT_FUNC_TRACE();
+
+	dev_info->max_rx_queues = dpaa_intf->nb_rx_queues;
+	dev_info->max_tx_queues = dpaa_intf->nb_tx_queues;
+	dev_info->min_rx_bufsize = DPAA_MIN_RX_BUF_SIZE;
+	dev_info->max_rx_pktlen = DPAA_MAX_RX_PKT_LEN;
+	dev_info->max_mac_addrs = DPAA_MAX_MAC_FILTER;
+	dev_info->max_hash_mac_addrs = 0;
+	dev_info->max_vfs = 0;
+	dev_info->max_vmdq_pools = ETH_16_POOLS;
+	dev_info->speed_capa = (ETH_LINK_SPEED_1G |
+				ETH_LINK_SPEED_10G);
+}
+
 static int dpaa_eth_link_update(struct rte_eth_dev *dev,
 				int wait_to_complete __rte_unused)
 {
@@ -259,6 +278,7 @@ static struct eth_dev_ops dpaa_devops = {
 	.dev_start		  = dpaa_eth_dev_start,
 	.dev_stop		  = dpaa_eth_dev_stop,
 	.dev_close		  = dpaa_eth_dev_close,
+	.dev_infos_get		  = dpaa_eth_dev_info,
 
 	.rx_queue_setup		  = dpaa_eth_rx_queue_setup,
 	.tx_queue_setup		  = dpaa_eth_tx_queue_setup,
