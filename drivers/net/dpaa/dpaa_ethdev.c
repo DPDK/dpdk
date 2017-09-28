@@ -329,6 +329,85 @@ static int dpaa_link_up(struct rte_eth_dev *dev)
 }
 
 static int
+dpaa_flow_ctrl_set(struct rte_eth_dev *dev,
+		   struct rte_eth_fc_conf *fc_conf)
+{
+	struct dpaa_if *dpaa_intf = dev->data->dev_private;
+	struct rte_eth_fc_conf *net_fc;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (!(dpaa_intf->fc_conf)) {
+		dpaa_intf->fc_conf = rte_zmalloc(NULL,
+			sizeof(struct rte_eth_fc_conf), MAX_CACHELINE);
+		if (!dpaa_intf->fc_conf) {
+			DPAA_PMD_ERR("unable to save flow control info");
+			return -ENOMEM;
+		}
+	}
+	net_fc = dpaa_intf->fc_conf;
+
+	if (fc_conf->high_water < fc_conf->low_water) {
+		DPAA_PMD_ERR("Incorrect Flow Control Configuration");
+		return -EINVAL;
+	}
+
+	if (fc_conf->mode == RTE_FC_NONE) {
+		return 0;
+	} else if (fc_conf->mode == RTE_FC_TX_PAUSE ||
+		 fc_conf->mode == RTE_FC_FULL) {
+		fman_if_set_fc_threshold(dpaa_intf->fif, fc_conf->high_water,
+					 fc_conf->low_water,
+				dpaa_intf->bp_info->bpid);
+		if (fc_conf->pause_time)
+			fman_if_set_fc_quanta(dpaa_intf->fif,
+					      fc_conf->pause_time);
+	}
+
+	/* Save the information in dpaa device */
+	net_fc->pause_time = fc_conf->pause_time;
+	net_fc->high_water = fc_conf->high_water;
+	net_fc->low_water = fc_conf->low_water;
+	net_fc->send_xon = fc_conf->send_xon;
+	net_fc->mac_ctrl_frame_fwd = fc_conf->mac_ctrl_frame_fwd;
+	net_fc->mode = fc_conf->mode;
+	net_fc->autoneg = fc_conf->autoneg;
+
+	return 0;
+}
+
+static int
+dpaa_flow_ctrl_get(struct rte_eth_dev *dev,
+		   struct rte_eth_fc_conf *fc_conf)
+{
+	struct dpaa_if *dpaa_intf = dev->data->dev_private;
+	struct rte_eth_fc_conf *net_fc = dpaa_intf->fc_conf;
+	int ret;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (net_fc) {
+		fc_conf->pause_time = net_fc->pause_time;
+		fc_conf->high_water = net_fc->high_water;
+		fc_conf->low_water = net_fc->low_water;
+		fc_conf->send_xon = net_fc->send_xon;
+		fc_conf->mac_ctrl_frame_fwd = net_fc->mac_ctrl_frame_fwd;
+		fc_conf->mode = net_fc->mode;
+		fc_conf->autoneg = net_fc->autoneg;
+		return 0;
+	}
+	ret = fman_if_get_fc_threshold(dpaa_intf->fif);
+	if (ret) {
+		fc_conf->mode = RTE_FC_TX_PAUSE;
+		fc_conf->pause_time = fman_if_get_fc_quanta(dpaa_intf->fif);
+	} else {
+		fc_conf->mode = RTE_FC_NONE;
+	}
+
+	return 0;
+}
+
+static int
 dpaa_dev_add_mac_addr(struct rte_eth_dev *dev,
 			     struct ether_addr *addr,
 			     uint32_t index,
@@ -384,6 +463,9 @@ static struct eth_dev_ops dpaa_devops = {
 	.rx_queue_release	  = dpaa_eth_rx_queue_release,
 	.tx_queue_release	  = dpaa_eth_tx_queue_release,
 
+	.flow_ctrl_get		  = dpaa_flow_ctrl_get,
+	.flow_ctrl_set		  = dpaa_flow_ctrl_set,
+
 	.link_update		  = dpaa_eth_link_update,
 	.stats_get		  = dpaa_eth_stats_get,
 	.stats_reset		  = dpaa_eth_stats_reset,
@@ -399,6 +481,33 @@ static struct eth_dev_ops dpaa_devops = {
 	.mac_addr_set		  = dpaa_dev_set_mac_addr,
 
 };
+
+static int dpaa_fc_set_default(struct dpaa_if *dpaa_intf)
+{
+	struct rte_eth_fc_conf *fc_conf;
+	int ret;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (!(dpaa_intf->fc_conf)) {
+		dpaa_intf->fc_conf = rte_zmalloc(NULL,
+			sizeof(struct rte_eth_fc_conf), MAX_CACHELINE);
+		if (!dpaa_intf->fc_conf) {
+			DPAA_PMD_ERR("unable to save flow control info");
+			return -ENOMEM;
+		}
+	}
+	fc_conf = dpaa_intf->fc_conf;
+	ret = fman_if_get_fc_threshold(dpaa_intf->fif);
+	if (ret) {
+		fc_conf->mode = RTE_FC_TX_PAUSE;
+		fc_conf->pause_time = fman_if_get_fc_quanta(dpaa_intf->fif);
+	} else {
+		fc_conf->mode = RTE_FC_NONE;
+	}
+
+	return 0;
+}
 
 /* Initialise an Rx FQ */
 static int dpaa_rx_queue_init(struct qman_fq *fq,
@@ -552,6 +661,9 @@ dpaa_dev_init(struct rte_eth_dev *eth_dev)
 	dpaa_intf->nb_tx_queues = num_cores;
 
 	DPAA_PMD_DEBUG("All frame queues created");
+
+	/* Get the initial configuration for flow control */
+	dpaa_fc_set_default(dpaa_intf);
 
 	/* reset bpool list, initialize bpool dynamically */
 	list_for_each_entry_safe(bp, tmp_bp, &cfg->fman_if->bpool_list, node) {
