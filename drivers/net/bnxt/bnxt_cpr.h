@@ -41,6 +41,9 @@
 	(!!(((struct cmpl_base *)(cmp))->info3_v & CMPL_BASE_V) ==	\
 	 !((raw_cons) & ((ring)->ring_size)))
 
+#define CMPL_VALID(cmp, v)						\
+	(!!(((struct cmpl_base *)(cmp))->info3_v & CMPL_BASE_V) == !(v))
+
 #define CMP_TYPE(cmp)						\
 	(((struct cmpl_base *)cmp)->type & CMPL_BASE_TYPE_MASK)
 
@@ -48,6 +51,7 @@
 #define NEXT_RAW_CMP(idx)	ADV_RAW_CMP(idx, 1)
 #define RING_CMP(ring, idx)	((idx) & (ring)->ring_mask)
 #define NEXT_CMP(idx)		RING_CMP(ADV_RAW_CMP(idx, 1))
+#define FLIP_VALID(cons, mask, val)	((cons) >= (mask) ? !(val) : (val))
 
 #define DB_CP_REARM_FLAGS	(DB_KEY_CP | DB_IDX_VALID)
 #define DB_CP_FLAGS		(DB_KEY_CP | DB_IDX_VALID | DB_IRQ_DIS)
@@ -90,7 +94,7 @@ struct bnxt_cp_ring_info {
 
 	struct bnxt_ring	*cp_ring_struct;
 	uint16_t		cp_cons;
-	bool			v;
+	bool			valid;
 };
 
 #define RX_CMP_L2_ERRORS						\

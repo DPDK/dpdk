@@ -1527,6 +1527,51 @@ bnxt_dev_led_off_op(struct rte_eth_dev *dev)
 	return bnxt_hwrm_port_led_cfg(bp, false);
 }
 
+static uint32_t
+bnxt_rx_queue_count_op(struct rte_eth_dev *dev, uint16_t rx_queue_id)
+{
+	uint32_t desc = 0, raw_cons = 0, cons;
+	struct bnxt_cp_ring_info *cpr;
+	struct bnxt_rx_queue *rxq;
+	struct rx_pkt_cmpl *rxcmp;
+	uint16_t cmp_type;
+	uint8_t cmp = 1;
+	bool valid;
+
+	rxq = dev->data->rx_queues[rx_queue_id];
+	cpr = rxq->cp_ring;
+	valid = cpr->valid;
+
+	while (raw_cons < rxq->nb_rx_desc) {
+		cons = RING_CMP(cpr->cp_ring_struct, raw_cons);
+		rxcmp = (struct rx_pkt_cmpl *)&cpr->cp_desc_ring[cons];
+
+		if (!CMPL_VALID(rxcmp, valid))
+			goto nothing_to_do;
+		valid = FLIP_VALID(cons, cpr->cp_ring_struct->ring_mask, valid);
+		cmp_type = CMP_TYPE(rxcmp);
+		if (cmp_type == RX_PKT_CMPL_TYPE_RX_L2_TPA_END) {
+			cmp = (rte_le_to_cpu_32(
+					((struct rx_tpa_end_cmpl *)
+					 (rxcmp))->agg_bufs_v1) &
+			       RX_TPA_END_CMPL_AGG_BUFS_MASK) >>
+				RX_TPA_END_CMPL_AGG_BUFS_SFT;
+			desc++;
+		} else if (cmp_type == 0x11) {
+			desc++;
+			cmp = (rxcmp->agg_bufs_v1 &
+				   RX_PKT_CMPL_AGG_BUFS_MASK) >>
+				RX_PKT_CMPL_AGG_BUFS_SFT;
+		} else {
+			cmp = 1;
+		}
+nothing_to_do:
+		raw_cons += cmp ? cmp : 2;
+	}
+
+	return desc;
+}
+
 /*
  * Initialization
  */
@@ -1576,6 +1621,7 @@ static const struct eth_dev_ops bnxt_dev_ops = {
 	.dev_led_off = bnxt_dev_led_off_op,
 	.xstats_get_by_id = bnxt_dev_xstats_get_by_id_op,
 	.xstats_get_names_by_id = bnxt_dev_xstats_get_names_by_id_op,
+	.rx_queue_count = bnxt_rx_queue_count_op,
 };
 
 static bool bnxt_vf_pciid(uint16_t id)
