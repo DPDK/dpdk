@@ -313,6 +313,9 @@ static int bnxt_handle_tx_cp(struct bnxt_tx_queue *txq)
 
 			if (!CMP_VALID(txcmp, raw_cons, cpr->cp_ring_struct))
 				break;
+			cpr->valid = FLIP_VALID(cons,
+						cpr->cp_ring_struct->ring_mask,
+						cpr->valid);
 
 			if (CMP_TYPE(txcmp) == TX_CMPL_TYPE_TX_L2)
 				nb_tx_pkts++;

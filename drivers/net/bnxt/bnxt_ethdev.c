@@ -1610,6 +1610,43 @@ bnxt_rx_descriptor_status_op(void *rx_queue, uint16_t offset)
 	return RTE_ETH_RX_DESC_AVAIL;
 }
 
+static int
+bnxt_tx_descriptor_status_op(void *tx_queue, uint16_t offset)
+{
+	struct bnxt_tx_queue *txq = (struct bnxt_tx_queue *)tx_queue;
+	struct bnxt_tx_ring_info *txr;
+	struct bnxt_cp_ring_info *cpr;
+	struct bnxt_sw_tx_bd *tx_buf;
+	struct tx_pkt_cmpl *txcmp;
+	uint32_t cons, cp_cons;
+
+	if (!txq)
+		return -EINVAL;
+
+	cpr = txq->cp_ring;
+	txr = txq->tx_ring;
+
+	if (offset >= txq->nb_tx_desc)
+		return -EINVAL;
+
+	cons = RING_CMP(cpr->cp_ring_struct, offset);
+	txcmp = (struct tx_pkt_cmpl *)&cpr->cp_desc_ring[cons];
+	cp_cons = cpr->cp_raw_cons;
+
+	if (cons > cp_cons) {
+		if (CMPL_VALID(txcmp, cpr->valid))
+			return RTE_ETH_TX_DESC_UNAVAIL;
+	} else {
+		if (CMPL_VALID(txcmp, !cpr->valid))
+			return RTE_ETH_TX_DESC_UNAVAIL;
+	}
+	tx_buf = &txr->tx_buf_ring[cons];
+	if (tx_buf->mbuf == NULL)
+		return RTE_ETH_TX_DESC_DONE;
+
+	return RTE_ETH_TX_DESC_FULL;
+}
+
 /*
  * Initialization
  */
@@ -1661,6 +1698,7 @@ static const struct eth_dev_ops bnxt_dev_ops = {
 	.xstats_get_names_by_id = bnxt_dev_xstats_get_names_by_id_op,
 	.rx_queue_count = bnxt_rx_queue_count_op,
 	.rx_descriptor_status = bnxt_rx_descriptor_status_op,
+	.tx_descriptor_status = bnxt_tx_descriptor_status_op,
 };
 
 static bool bnxt_vf_pciid(uint16_t id)
