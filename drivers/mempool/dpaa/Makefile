@@ -1,6 +1,6 @@
 #   BSD LICENSE
 #
-#   Copyright 2017 NXP.
+#   Copyright 2016 NXP.
 #
 #   Redistribution and use in source and binary forms, with or without
 #   modification, are permitted provided that the following conditions
@@ -30,15 +30,29 @@
 
 include $(RTE_SDK)/mk/rte.vars.mk
 
-core-libs := librte_eal librte_mempool librte_ring
+#
+# library name
+#
+LIB = librte_mempool_dpaa.a
 
-DIRS-$(CONFIG_RTE_LIBRTE_DPAA_MEMPOOL) += dpaa
-DEPDIRS-dpaa = $(core-libs)
-DIRS-$(CONFIG_RTE_LIBRTE_DPAA2_MEMPOOL) += dpaa2
-DEPDIRS-dpaa2 = $(core-libs)
-DIRS-$(CONFIG_RTE_DRIVER_MEMPOOL_RING) += ring
-DEPDIRS-ring = $(core-libs)
-DIRS-$(CONFIG_RTE_DRIVER_MEMPOOL_STACK) += stack
-DEPDIRS-stack = $(core-libs)
+CFLAGS := -I$(SRCDIR) $(CFLAGS)
+CFLAGS += -O3 $(WERROR_FLAGS)
+CFLAGS += -D _GNU_SOURCE
+CFLAGS += -I$(RTE_SDK)/drivers/bus/dpaa
+CFLAGS += -I$(RTE_SDK)/drivers/bus/dpaa/include/
+CFLAGS += -I$(RTE_SDK)/drivers/mempool/dpaa
+CFLAGS += -I$(RTE_SDK)/lib/librte_mempool
 
-include $(RTE_SDK)/mk/rte.subdir.mk
+# versioning export map
+EXPORT_MAP := rte_mempool_dpaa_version.map
+
+# Lbrary version
+LIBABIVER := 1
+
+# all source are stored in SRCS-y
+#
+SRCS-$(CONFIG_RTE_LIBRTE_DPAA_MEMPOOL) += dpaa_mempool.c
+
+LDLIBS += -lrte_bus_dpaa
+
+include $(RTE_SDK)/mk/rte.lib.mk

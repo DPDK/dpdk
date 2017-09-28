@@ -413,6 +413,7 @@ NXP dpaa
 M: Hemant Agrawal <hemant.agrawal@nxp.com>
 M: Shreyansh Jain <shreyansh.jain@nxp.com>
 F: drivers/bus/dpaa/
+F: drivers/mempool/dpaa/
 F: doc/guides/nics/dpaa.rst
 F: doc/guides/nics/features/dpaa.ini
 
