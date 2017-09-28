@@ -183,6 +183,25 @@ static int dpaa_eth_link_update(struct rte_eth_dev *dev,
 	return 0;
 }
 
+
+static void dpaa_eth_promiscuous_enable(struct rte_eth_dev *dev)
+{
+	struct dpaa_if *dpaa_intf = dev->data->dev_private;
+
+	PMD_INIT_FUNC_TRACE();
+
+	fman_if_promiscuous_enable(dpaa_intf->fif);
+}
+
+static void dpaa_eth_promiscuous_disable(struct rte_eth_dev *dev)
+{
+	struct dpaa_if *dpaa_intf = dev->data->dev_private;
+
+	PMD_INIT_FUNC_TRACE();
+
+	fman_if_promiscuous_disable(dpaa_intf->fif);
+}
+
 static
 int dpaa_eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 			    uint16_t nb_desc __rte_unused,
@@ -286,6 +305,8 @@ static struct eth_dev_ops dpaa_devops = {
 	.tx_queue_release	  = dpaa_eth_tx_queue_release,
 
 	.link_update		  = dpaa_eth_link_update,
+	.promiscuous_enable	  = dpaa_eth_promiscuous_enable,
+	.promiscuous_disable	  = dpaa_eth_promiscuous_disable,
 	.mtu_set		  = dpaa_mtu_set,
 	.dev_set_link_down	  = dpaa_link_down,
 	.dev_set_link_up	  = dpaa_link_up,
