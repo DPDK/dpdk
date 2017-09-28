@@ -202,7 +202,15 @@ static int bnxt_init_chip(struct bnxt *bp)
 {
 	unsigned int i, rss_idx, fw_idx;
 	struct rte_eth_link new;
+	struct rte_pci_device *pci_dev = RTE_ETH_DEV_TO_PCI(bp->eth_dev);
+	struct rte_intr_handle *intr_handle = &pci_dev->intr_handle;
+	uint32_t intr_vector = 0;
+	uint32_t queue_id, base = BNXT_MISC_VEC_ID;
+	uint32_t vec = BNXT_MISC_VEC_ID;
 	int rc;
+
+	/* disable uio/vfio intr/eventfd mapping */
+	rte_intr_disable(intr_handle);
 
 	if (bp->eth_dev->data->mtu > ETHER_MTU) {
 		bp->eth_dev->data->dev_conf.rxmode.jumbo_frame = 1;
@@ -305,6 +313,48 @@ static int bnxt_init_chip(struct bnxt *bp)
 			"HWRM cfa l2 rx mask failure rc: %x\n", rc);
 		goto err_out;
 	}
+
+	/* check and configure queue intr-vector mapping */
+	if ((rte_intr_cap_multiple(intr_handle) ||
+	     !RTE_ETH_DEV_SRIOV(bp->eth_dev).active) &&
+	    bp->eth_dev->data->dev_conf.intr_conf.rxq != 0) {
+		intr_vector = bp->eth_dev->data->nb_rx_queues;
+		RTE_LOG(INFO, PMD, "%s(): intr_vector = %d\n", __func__,
+			intr_vector);
+		if (intr_vector > bp->rx_cp_nr_rings) {
+			RTE_LOG(ERR, PMD, "At most %d intr queues supported",
+					bp->rx_cp_nr_rings);
+			return -ENOTSUP;
+		}
+		if (rte_intr_efd_enable(intr_handle, intr_vector))
+			return -1;
+	}
+
+	if (rte_intr_dp_is_en(intr_handle) && !intr_handle->intr_vec) {
+		intr_handle->intr_vec =
+			rte_zmalloc("intr_vec",
+				    bp->eth_dev->data->nb_rx_queues *
+				    sizeof(int), 0);
+		if (intr_handle->intr_vec == NULL) {
+			RTE_LOG(ERR, PMD, "Failed to allocate %d rx_queues"
+				" intr_vec", bp->eth_dev->data->nb_rx_queues);
+			return -ENOMEM;
+		}
+		RTE_LOG(DEBUG, PMD, "%s(): intr_handle->intr_vec = %p "
+			"intr_handle->nb_efd = %d intr_handle->max_intr = %d\n",
+			 __func__, intr_handle->intr_vec, intr_handle->nb_efd,
+			intr_handle->max_intr);
+	}
+
+	for (queue_id = 0; queue_id < bp->eth_dev->data->nb_rx_queues;
+	     queue_id++) {
+		intr_handle->intr_vec[queue_id] = vec;
+		if (vec < base + intr_handle->nb_efd - 1)
+			vec++;
+	}
+
+	/* enable uio/vfio intr/eventfd mapping */
+	rte_intr_enable(intr_handle);
 
 	rc = bnxt_get_hwrm_link_config(bp, &new);
 	if (rc) {
@@ -420,6 +470,8 @@ static void bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 			     ETH_TXQ_FLAGS_NOOFFLOADS,
 	};
 	eth_dev->data->dev_conf.intr_conf.lsc = 1;
+
+	eth_dev->data->dev_conf.intr_conf.rxq = 1;
 
 	/* *INDENT-ON* */
 
@@ -2009,6 +2061,8 @@ static const struct eth_dev_ops bnxt_dev_ops = {
 	.rx_queue_release = bnxt_rx_queue_release_op,
 	.tx_queue_setup = bnxt_tx_queue_setup_op,
 	.tx_queue_release = bnxt_tx_queue_release_op,
+	.rx_queue_intr_enable = bnxt_rx_queue_intr_enable_op,
+	.rx_queue_intr_disable = bnxt_rx_queue_intr_disable_op,
 	.reta_update = bnxt_reta_update_op,
 	.reta_query = bnxt_reta_query_op,
 	.rss_hash_update = bnxt_rss_hash_update_op,

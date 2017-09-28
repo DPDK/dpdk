@@ -362,3 +362,41 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 out:
 	return rc;
 }
+
+int
+bnxt_rx_queue_intr_enable_op(struct rte_eth_dev *eth_dev, uint16_t queue_id)
+{
+	struct bnxt_rx_queue *rxq;
+	struct bnxt_cp_ring_info *cpr;
+	int rc = 0;
+
+	if (eth_dev->data->rx_queues) {
+		rxq = eth_dev->data->rx_queues[queue_id];
+		if (!rxq) {
+			rc = -EINVAL;
+			return rc;
+		}
+		cpr = rxq->cp_ring;
+		B_CP_DB_ARM(cpr);
+	}
+	return rc;
+}
+
+int
+bnxt_rx_queue_intr_disable_op(struct rte_eth_dev *eth_dev, uint16_t queue_id)
+{
+	struct bnxt_rx_queue *rxq;
+	struct bnxt_cp_ring_info *cpr;
+	int rc = 0;
+
+	if (eth_dev->data->rx_queues) {
+		rxq = eth_dev->data->rx_queues[queue_id];
+		if (!rxq) {
+			rc = -EINVAL;
+			return rc;
+		}
+		cpr = rxq->cp_ring;
+		B_CP_DB_DISARM(cpr);
+	}
+	return rc;
+}

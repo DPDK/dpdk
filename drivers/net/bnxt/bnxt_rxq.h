@@ -73,5 +73,9 @@ int bnxt_rx_queue_setup_op(struct rte_eth_dev *eth_dev,
 			       const struct rte_eth_rxconf *rx_conf,
 			       struct rte_mempool *mp);
 void bnxt_free_rx_mbufs(struct bnxt *bp);
+int bnxt_rx_queue_intr_enable_op(struct rte_eth_dev *eth_dev,
+				 uint16_t queue_id);
+int bnxt_rx_queue_intr_disable_op(struct rte_eth_dev *eth_dev,
+				  uint16_t queue_id);
 
 #endif
