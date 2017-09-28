@@ -70,6 +70,7 @@
 #include <netcfg.h>
 
 int dpaa_logtype_bus;
+int dpaa_logtype_mempool;
 
 struct rte_dpaa_bus rte_dpaa_bus;
 struct netcfg_info *dpaa_netcfg;
@@ -452,4 +453,8 @@ dpaa_init_log(void)
 	dpaa_logtype_bus = rte_log_register("bus.dpaa");
 	if (dpaa_logtype_bus >= 0)
 		rte_log_set_level(dpaa_logtype_bus, RTE_LOG_NOTICE);
+
+	dpaa_logtype_mempool = rte_log_register("mempool.dpaa");
+	if (dpaa_logtype_mempool >= 0)
+		rte_log_set_level(dpaa_logtype_mempool, RTE_LOG_NOTICE);
 }

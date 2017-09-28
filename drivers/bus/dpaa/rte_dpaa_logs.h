@@ -36,6 +36,7 @@
 #include <rte_log.h>
 
 extern int dpaa_logtype_bus;
+extern int dpaa_logtype_mempool;
 
 #define DPAA_BUS_LOG(level, fmt, args...) \
 	rte_log(RTE_LOG_ ## level, dpaa_logtype_bus, "%s(): " fmt "\n", \
@@ -61,5 +62,24 @@ extern int dpaa_logtype_bus;
 	DPAA_BUS_LOG(ERR, fmt, ## args)
 #define DPAA_BUS_WARN(fmt, args...) \
 	DPAA_BUS_LOG(WARNING, fmt, ## args)
+
+/* Mempool related logs */
+
+#define DPAA_MEMPOOL_LOG(level, fmt, args...) \
+	rte_log(RTE_LOG_ ## level, dpaa_logtype_mempool, "%s(): " fmt "\n", \
+		__func__, ##args)
+
+#define MEMPOOL_INIT_FUNC_TRACE() DPAA_MEMPOOL_LOG(DEBUG, " >>")
+
+#define DPAA_MEMPOOL_DPDEBUG(fmt, args...) \
+	RTE_LOG_DP(DEBUG, PMD, fmt, ## args)
+#define DPAA_MEMPOOL_DEBUG(fmt, args...) \
+	DPAA_MEMPOOL_LOG(DEBUG, fmt, ## args)
+#define DPAA_MEMPOOL_ERR(fmt, args...) \
+	DPAA_MEMPOOL_LOG(ERR, fmt, ## args)
+#define DPAA_MEMPOOL_INFO(fmt, args...) \
+	DPAA_MEMPOOL_LOG(INFO, fmt, ## args)
+#define DPAA_MEMPOOL_WARN(fmt, args...) \
+	DPAA_MEMPOOL_LOG(WARNING, fmt, ## args)
 
 #endif /* _DPAA_LOGS_H_ */
