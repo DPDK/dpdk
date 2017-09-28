@@ -43,6 +43,7 @@ Network Interface Controller Drivers
     bnx2x
     bnxt
     cxgbe
+    dpaa
     dpaa2
     e1000em
     ena
