@@ -5048,6 +5048,15 @@ ixgbevf_dev_start(struct rte_eth_dev *dev)
 	}
 	ixgbevf_configure_msix(dev);
 
+	/* When a VF port is bound to VFIO-PCI, only miscellaneous interrupt
+	 * is mapped to VFIO vector 0 in eth_ixgbevf_dev_init( ).
+	 * If previous VFIO interrupt mapping setting in eth_ixgbevf_dev_init( )
+	 * is not cleared, it will fail when following rte_intr_enable( ) tries
+	 * to map Rx queue interrupt to other VFIO vectors.
+	 * So clear uio/vfio intr/evevnfd first to avoid failure.
+	 */
+	rte_intr_disable(intr_handle);
+
 	rte_intr_enable(intr_handle);
 
 	/* Re-enable interrupt for VF */
