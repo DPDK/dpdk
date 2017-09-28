@@ -176,6 +176,65 @@ static inline struct qman_fq *table_find_fq(struct qman_portal *p, u32 fqid)
 	return fqtree_find(&p->retire_table, fqid);
 }
 
+#ifdef CONFIG_FSL_QMAN_FQ_LOOKUP
+static void **qman_fq_lookup_table;
+static size_t qman_fq_lookup_table_size;
+
+int qman_setup_fq_lookup_table(size_t num_entries)
+{
+	num_entries++;
+	/* Allocate 1 more entry since the first entry is not used */
+	qman_fq_lookup_table = vmalloc((num_entries * sizeof(void *)));
+	if (!qman_fq_lookup_table) {
+		pr_err("QMan: Could not allocate fq lookup table\n");
+		return -ENOMEM;
+	}
+	memset(qman_fq_lookup_table, 0, num_entries * sizeof(void *));
+	qman_fq_lookup_table_size = num_entries;
+	pr_debug("QMan: Allocated lookup table at %p, entry count %lu\n",
+		qman_fq_lookup_table,
+			(unsigned long)qman_fq_lookup_table_size);
+	return 0;
+}
+
+/* global structure that maintains fq object mapping */
+static DEFINE_SPINLOCK(fq_hash_table_lock);
+
+static int find_empty_fq_table_entry(u32 *entry, struct qman_fq *fq)
+{
+	u32 i;
+
+	spin_lock(&fq_hash_table_lock);
+	/* Can't use index zero because this has special meaning
+	 * in context_b field.
+	 */
+	for (i = 1; i < qman_fq_lookup_table_size; i++) {
+		if (qman_fq_lookup_table[i] == NULL) {
+			*entry = i;
+			qman_fq_lookup_table[i] = fq;
+			spin_unlock(&fq_hash_table_lock);
+			return 0;
+		}
+	}
+	spin_unlock(&fq_hash_table_lock);
+	return -ENOMEM;
+}
+
+static void clear_fq_table_entry(u32 entry)
+{
+	spin_lock(&fq_hash_table_lock);
+	DPAA_BUG_ON(entry >= qman_fq_lookup_table_size);
+	qman_fq_lookup_table[entry] = NULL;
+	spin_unlock(&fq_hash_table_lock);
+}
+
+static inline struct qman_fq *get_fq_table_entry(u32 entry)
+{
+	DPAA_BUG_ON(entry >= qman_fq_lookup_table_size);
+	return qman_fq_lookup_table[entry];
+}
+#endif
+
 static inline void cpu_to_hw_fqd(struct qm_fqd *fqd)
 {
 	/* Byteswap the FQD to HW format */
@@ -766,8 +825,13 @@ mr_loop:
 				break;
 			case QM_MR_VERB_FQPN:
 				/* Parked */
+#ifdef CONFIG_FSL_QMAN_FQ_LOOKUP
+				fq = get_fq_table_entry(
+					be32_to_cpu(msg->fq.contextB));
+#else
 				fq = (void *)(uintptr_t)
 					be32_to_cpu(msg->fq.contextB);
+#endif
 				fq_state_change(p, fq, msg, verb);
 				if (fq->cb.fqs)
 					fq->cb.fqs(p, fq, &swapped_msg);
@@ -792,7 +856,11 @@ mr_loop:
 			}
 		} else {
 			/* Its a software ERN */
+#ifdef CONFIG_FSL_QMAN_FQ_LOOKUP
+			fq = get_fq_table_entry(be32_to_cpu(msg->ern.tag));
+#else
 			fq = (void *)(uintptr_t)be32_to_cpu(msg->ern.tag);
+#endif
 			fq->cb.ern(p, fq, &swapped_msg);
 		}
 		num++;
@@ -907,7 +975,11 @@ static inline unsigned int __poll_portal_fast(struct qman_portal *p,
 				clear_vdqcr(p, fq);
 		} else {
 			/* SDQCR: context_b points to the FQ */
+#ifdef CONFIG_FSL_QMAN_FQ_LOOKUP
+			fq = get_fq_table_entry(dq->contextB);
+#else
 			fq = (void *)(uintptr_t)dq->contextB;
+#endif
 			/* Now let the callback do its stuff */
 			res = fq->cb.dqrr(p, fq, dq);
 			/*
@@ -1119,7 +1191,12 @@ int qman_create_fq(u32 fqid, u32 flags, struct qman_fq *fq)
 	fq->flags = flags;
 	fq->state = qman_fq_state_oos;
 	fq->cgr_groupid = 0;
-
+#ifdef CONFIG_FSL_QMAN_FQ_LOOKUP
+	if (unlikely(find_empty_fq_table_entry(&fq->key, fq))) {
+		pr_info("Find empty table entry failed\n");
+		return -ENOMEM;
+	}
+#endif
 	if (!(flags & QMAN_FQ_FLAG_AS_IS) || (flags & QMAN_FQ_FLAG_NO_MODIFY))
 		return 0;
 	/* Everything else is AS_IS support */
@@ -1193,7 +1270,9 @@ void qman_destroy_fq(struct qman_fq *fq, u32 flags __maybe_unused)
 	case qman_fq_state_oos:
 		if (fq_isset(fq, QMAN_FQ_FLAG_DYNAMIC_FQID))
 			qman_release_fqid(fq->fqid);
-
+#ifdef CONFIG_FSL_QMAN_FQ_LOOKUP
+		clear_fq_table_entry(fq->key);
+#endif
 		return;
 	default:
 		break;
@@ -1258,7 +1337,11 @@ int qman_init_fq(struct qman_fq *fq, u32 flags, struct qm_mcc_initfq *opts)
 		dma_addr_t phys_fq;
 
 		mcc->initfq.we_mask |= QM_INITFQ_WE_CONTEXTB;
+#ifdef CONFIG_FSL_QMAN_FQ_LOOKUP
+		mcc->initfq.fqd.context_b = fq->key;
+#else
 		mcc->initfq.fqd.context_b = (u32)(uintptr_t)fq;
+#endif
 		/*
 		 *  and the physical address - NB, if the user wasn't trying to
 		 * set CONTEXTA, clear the stashing settings.
@@ -1419,7 +1502,11 @@ int qman_retire_fq(struct qman_fq *fq, u32 *flags)
 			msg.verb = QM_MR_VERB_FQRNI;
 			msg.fq.fqs = mcr->alterfq.fqs;
 			msg.fq.fqid = fq->fqid;
+#ifdef CONFIG_FSL_QMAN_FQ_LOOKUP
+			msg.fq.contextB = fq->key;
+#else
 			msg.fq.contextB = (u32)(uintptr_t)fq;
+#endif
 			fq->cb.fqs(p, fq, &msg);
 		}
 	} else if (res == QM_MCR_RESULT_PENDING) {
@@ -1861,7 +1948,11 @@ static inline struct qm_eqcr_entry *try_p_eq_start(struct qman_portal *p,
 					QM_EQCR_DCA_PARK : 0) |
 			((flags >> 8) & QM_EQCR_DCA_IDXMASK);
 	eq->fqid = cpu_to_be32(fq->fqid);
+#ifdef CONFIG_FSL_QMAN_FQ_LOOKUP
+	eq->tag = cpu_to_be32(fq->key);
+#else
 	eq->tag = cpu_to_be32((u32)(uintptr_t)fq);
+#endif
 	eq->fd = *fd;
 	cpu_to_hw_fd(&eq->fd);
 	return eq;
@@ -1907,7 +1998,11 @@ int qman_enqueue_multi(struct qman_fq *fq,
 	/* try to send as many frames as possible */
 	while (eqcr->available && frames_to_send--) {
 		eq->fqid = cpu_to_be32(fq->fqid);
+#ifdef CONFIG_FSL_QMAN_FQ_LOOKUP
+		eq->tag = cpu_to_be32(fq->key);
+#else
 		eq->tag = cpu_to_be32((u32)(uintptr_t)fq);
+#endif
 		eq->fd.opaque_addr = fd->opaque_addr;
 		eq->fd.addr = cpu_to_be40(fd->addr);
 		eq->fd.status = cpu_to_be32(fd->status);

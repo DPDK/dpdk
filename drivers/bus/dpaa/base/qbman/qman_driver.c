@@ -279,5 +279,10 @@ int qman_global_init(void)
 	else
 		qman_clk = be32_to_cpu(*clk);
 
-	return ret;
+#ifdef CONFIG_FSL_QMAN_FQ_LOOKUP
+	ret = qman_setup_fq_lookup_table(CONFIG_FSL_QMAN_FQ_LOOKUP_MAX);
+	if (ret)
+		return ret;
+#endif
+	return 0;
 }

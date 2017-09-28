@@ -46,6 +46,15 @@ extern "C" {
 
 #include <dpaa_rbtree.h>
 
+/* FQ lookups (turn this on for 64bit user-space) */
+#if (__WORDSIZE == 64)
+#define CONFIG_FSL_QMAN_FQ_LOOKUP
+/* if FQ lookups are supported, this controls the number of initialised,
+ * s/w-consumed FQs that can be supported at any one time.
+ */
+#define CONFIG_FSL_QMAN_FQ_LOOKUP_MAX (32 * 1024)
+#endif
+
 /* Last updated for v00.800 of the BG */
 
 /* Hardware constants */
@@ -1228,6 +1237,9 @@ struct qman_fq {
 	enum qman_fq_state state;
 	int cgr_groupid;
 	struct rb_node node;
+#ifdef CONFIG_FSL_QMAN_FQ_LOOKUP
+	u32 key;
+#endif
 };
 
 /*
