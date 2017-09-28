@@ -276,17 +276,81 @@ static inline void dpaa_checksum_offload(struct rte_mbuf *mbuf,
 	fd->cmd = DPAA_FD_CMD_RPD | DPAA_FD_CMD_DTC;
 }
 
+struct rte_mbuf *
+dpaa_eth_sg_to_mbuf(struct qm_fd *fd, uint32_t ifid)
+{
+	struct dpaa_bp_info *bp_info = DPAA_BPID_TO_POOL_INFO(fd->bpid);
+	struct rte_mbuf *first_seg, *prev_seg, *cur_seg, *temp;
+	struct qm_sg_entry *sgt, *sg_temp;
+	void *vaddr, *sg_vaddr;
+	int i = 0;
+	uint8_t fd_offset = fd->offset;
+
+	DPAA_DP_LOG(DEBUG, "Received an SG frame");
+
+	vaddr = rte_dpaa_mem_ptov(qm_fd_addr(fd));
+	if (!vaddr) {
+		DPAA_PMD_ERR("unable to convert physical address");
+		return NULL;
+	}
+	sgt = vaddr + fd_offset;
+	sg_temp = &sgt[i++];
+	hw_sg_to_cpu(sg_temp);
+	temp = (struct rte_mbuf *)((char *)vaddr - bp_info->meta_data_size);
+	sg_vaddr = rte_dpaa_mem_ptov(qm_sg_entry_get64(sg_temp));
+
+	first_seg = (struct rte_mbuf *)((char *)sg_vaddr -
+						bp_info->meta_data_size);
+	first_seg->data_off = sg_temp->offset;
+	first_seg->data_len = sg_temp->length;
+	first_seg->pkt_len = sg_temp->length;
+	rte_mbuf_refcnt_set(first_seg, 1);
+
+	first_seg->port = ifid;
+	first_seg->nb_segs = 1;
+	first_seg->ol_flags = 0;
+	prev_seg = first_seg;
+	while (i < DPAA_SGT_MAX_ENTRIES) {
+		sg_temp = &sgt[i++];
+		hw_sg_to_cpu(sg_temp);
+		sg_vaddr = rte_dpaa_mem_ptov(qm_sg_entry_get64(sg_temp));
+		cur_seg = (struct rte_mbuf *)((char *)sg_vaddr -
+						      bp_info->meta_data_size);
+		cur_seg->data_off = sg_temp->offset;
+		cur_seg->data_len = sg_temp->length;
+		first_seg->pkt_len += sg_temp->length;
+		first_seg->nb_segs += 1;
+		rte_mbuf_refcnt_set(cur_seg, 1);
+		prev_seg->next = cur_seg;
+		if (sg_temp->final) {
+			cur_seg->next = NULL;
+			break;
+		}
+		prev_seg = cur_seg;
+	}
+
+	dpaa_eth_packet_info(first_seg, (uint64_t)vaddr);
+	rte_pktmbuf_free_seg(temp);
+
+	return first_seg;
+}
+
 static inline struct rte_mbuf *dpaa_eth_fd_to_mbuf(struct qm_fd *fd,
 							uint32_t ifid)
 {
 	struct dpaa_bp_info *bp_info = DPAA_BPID_TO_POOL_INFO(fd->bpid);
 	struct rte_mbuf *mbuf;
 	void *ptr;
+	uint8_t format =
+		(fd->opaque & DPAA_FD_FORMAT_MASK) >> DPAA_FD_FORMAT_SHIFT;
 	uint16_t offset =
 		(fd->opaque & DPAA_FD_OFFSET_MASK) >> DPAA_FD_OFFSET_SHIFT;
 	uint32_t length = fd->opaque & DPAA_FD_LENGTH_MASK;
 
 	DPAA_DP_LOG(DEBUG, " FD--->MBUF");
+
+	if (unlikely(format == qm_fd_sg))
+		return dpaa_eth_sg_to_mbuf(fd, ifid);
 
 	/* Ignoring case when format != qm_fd_contig */
 	ptr = rte_dpaa_mem_ptov(fd->addr);
@@ -390,6 +454,95 @@ static struct rte_mbuf *dpaa_get_dmable_mbuf(struct rte_mbuf *mbuf,
 	return dpaa_mbuf;
 }
 
+int
+dpaa_eth_mbuf_to_sg_fd(struct rte_mbuf *mbuf,
+		struct qm_fd *fd,
+		uint32_t bpid)
+{
+	struct rte_mbuf *cur_seg = mbuf, *prev_seg = NULL;
+	struct dpaa_bp_info *bp_info = DPAA_BPID_TO_POOL_INFO(bpid);
+	struct rte_mbuf *temp, *mi;
+	struct qm_sg_entry *sg_temp, *sgt;
+	int i = 0;
+
+	DPAA_DP_LOG(DEBUG, "Creating SG FD to transmit");
+
+	temp = rte_pktmbuf_alloc(bp_info->mp);
+	if (!temp) {
+		DPAA_PMD_ERR("Failure in allocation of mbuf");
+		return -1;
+	}
+	if (temp->buf_len < ((mbuf->nb_segs * sizeof(struct qm_sg_entry))
+				+ temp->data_off)) {
+		DPAA_PMD_ERR("Insufficient space in mbuf for SG entries");
+		return -1;
+	}
+
+	fd->cmd = 0;
+	fd->opaque_addr = 0;
+
+	if (mbuf->ol_flags & DPAA_TX_CKSUM_OFFLOAD_MASK) {
+		if (temp->data_off < DEFAULT_TX_ICEOF
+			+ sizeof(struct dpaa_eth_parse_results_t))
+			temp->data_off = DEFAULT_TX_ICEOF
+				+ sizeof(struct dpaa_eth_parse_results_t);
+		dcbz_64(temp->buf_addr);
+		dpaa_checksum_offload(mbuf, fd, temp->buf_addr);
+	}
+
+	sgt = temp->buf_addr + temp->data_off;
+	fd->format = QM_FD_SG;
+	fd->addr = temp->buf_physaddr;
+	fd->offset = temp->data_off;
+	fd->bpid = bpid;
+	fd->length20 = mbuf->pkt_len;
+
+	while (i < DPAA_SGT_MAX_ENTRIES) {
+		sg_temp = &sgt[i++];
+		sg_temp->opaque = 0;
+		sg_temp->val = 0;
+		sg_temp->addr = cur_seg->buf_physaddr;
+		sg_temp->offset = cur_seg->data_off;
+		sg_temp->length = cur_seg->data_len;
+		if (RTE_MBUF_DIRECT(cur_seg)) {
+			if (rte_mbuf_refcnt_read(cur_seg) > 1) {
+				/*If refcnt > 1, invalid bpid is set to ensure
+				 * buffer is not freed by HW.
+				 */
+				sg_temp->bpid = 0xff;
+				rte_mbuf_refcnt_update(cur_seg, -1);
+			} else {
+				sg_temp->bpid =
+					DPAA_MEMPOOL_TO_BPID(cur_seg->pool);
+			}
+			cur_seg = cur_seg->next;
+		} else {
+			/* Get owner MBUF from indirect buffer */
+			mi = rte_mbuf_from_indirect(cur_seg);
+			if (rte_mbuf_refcnt_read(mi) > 1) {
+				/*If refcnt > 1, invalid bpid is set to ensure
+				 * owner buffer is not freed by HW.
+				 */
+				sg_temp->bpid = 0xff;
+			} else {
+				sg_temp->bpid = DPAA_MEMPOOL_TO_BPID(mi->pool);
+				rte_mbuf_refcnt_update(mi, 1);
+			}
+			prev_seg = cur_seg;
+			cur_seg = cur_seg->next;
+			prev_seg->next = NULL;
+			rte_pktmbuf_free(prev_seg);
+		}
+		if (cur_seg == NULL) {
+			sg_temp->final = 1;
+			cpu_to_hw_sg(sg_temp);
+			break;
+		}
+		cpu_to_hw_sg(sg_temp);
+	}
+	return 0;
+}
+
 /* Handle mbufs which are not segmented (non SG) */
 static inline void
 tx_on_dpaa_pool_unsegmented(struct rte_mbuf *mbuf,
@@ -460,6 +613,12 @@ tx_on_dpaa_pool(struct rte_mbuf *mbuf,
 	if (mbuf->nb_segs == 1) {
 		/* Case for non-segmented buffers */
 		tx_on_dpaa_pool_unsegmented(mbuf, bp_info, fd_arr);
+	} else if (mbuf->nb_segs > 1 &&
+		   mbuf->nb_segs <= DPAA_SGT_MAX_ENTRIES) {
+		if (dpaa_eth_mbuf_to_sg_fd(mbuf, fd_arr, bp_info->bpid)) {
+			DPAA_PMD_DEBUG("Unable to create Scatter Gather FD");
+			return 1;
+		}
 	} else {
 		DPAA_PMD_DEBUG("Number of Segments not supported");
 		return 1;

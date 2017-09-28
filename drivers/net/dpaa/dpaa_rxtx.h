@@ -58,6 +58,8 @@
 /* L4 Type field: TCP */
 #define DPAA_L4_PARSE_RESULT_TCP	0x20
 
+#define DPAA_SGT_MAX_ENTRIES 16 /* maximum number of entries in SG Table */
+
 #define DPAA_MAX_DEQUEUE_NUM_FRAMES    63
 	/** <Maximum number of frames to be dequeued in a single rx call*/
 
@@ -285,4 +287,11 @@ uint16_t dpaa_eth_queue_tx(void *q, struct rte_mbuf **bufs, uint16_t nb_bufs);
 uint16_t dpaa_eth_tx_drop_all(void *q  __rte_unused,
 			      struct rte_mbuf **bufs __rte_unused,
 			      uint16_t nb_bufs __rte_unused);
+
+struct rte_mbuf *dpaa_eth_sg_to_mbuf(struct qm_fd *fd, uint32_t ifid);
+
+int dpaa_eth_mbuf_to_sg_fd(struct rte_mbuf *mbuf,
+			   struct qm_fd *fd,
+			   uint32_t bpid);
+
 #endif
