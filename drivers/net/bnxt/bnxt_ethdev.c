@@ -1830,6 +1830,30 @@ bnxt_filter_ctrl_op(struct rte_eth_dev *dev __rte_unused,
 	return ret;
 }
 
+static const uint32_t *
+bnxt_dev_supported_ptypes_get_op(struct rte_eth_dev *dev)
+{
+	static const uint32_t ptypes[] = {
+		RTE_PTYPE_L2_ETHER_VLAN,
+		RTE_PTYPE_L3_IPV4_EXT_UNKNOWN,
+		RTE_PTYPE_L3_IPV6_EXT_UNKNOWN,
+		RTE_PTYPE_L4_ICMP,
+		RTE_PTYPE_L4_TCP,
+		RTE_PTYPE_L4_UDP,
+		RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN,
+		RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN,
+		RTE_PTYPE_INNER_L4_ICMP,
+		RTE_PTYPE_INNER_L4_TCP,
+		RTE_PTYPE_INNER_L4_UDP,
+		RTE_PTYPE_UNKNOWN
+	};
+
+	if (dev->rx_pkt_burst == bnxt_recv_pkts)
+		return ptypes;
+	return NULL;
+}
+
+
 /*
  * Initialization
  */
@@ -1883,6 +1907,7 @@ static const struct eth_dev_ops bnxt_dev_ops = {
 	.rx_descriptor_status = bnxt_rx_descriptor_status_op,
 	.tx_descriptor_status = bnxt_tx_descriptor_status_op,
 	.filter_ctrl = bnxt_filter_ctrl_op,
+	.dev_supported_ptypes_get = bnxt_dev_supported_ptypes_get_op,
 };
 
 static bool bnxt_vf_pciid(uint16_t id)

@@ -335,6 +335,48 @@ static inline struct rte_mbuf *bnxt_tpa_end(
 	return mbuf;
 }
 
+static uint32_t
+bnxt_parse_pkt_type(struct rx_pkt_cmpl *rxcmp, struct rx_pkt_cmpl_hi *rxcmp1)
+{
+	uint32_t pkt_type = 0;
+	uint32_t t_ipcs = 0, ip = 0, ip6 = 0;
+	uint32_t tcp = 0, udp = 0, icmp = 0;
+	uint32_t vlan = 0;
+
+	vlan = !!(rxcmp1->flags2 &
+		rte_cpu_to_le_32(RX_PKT_CMPL_FLAGS2_META_FORMAT_VLAN));
+	t_ipcs = !!(rxcmp1->flags2 &
+		rte_cpu_to_le_32(RX_PKT_CMPL_FLAGS2_T_IP_CS_CALC));
+	ip6 = !!(rxcmp1->flags2 &
+		 rte_cpu_to_le_32(RX_PKT_CMPL_FLAGS2_IP_TYPE));
+	icmp = !!(rxcmp->flags_type &
+		  rte_cpu_to_le_16(RX_PKT_CMPL_FLAGS_ITYPE_ICMP));
+	tcp = !!(rxcmp->flags_type &
+		 rte_cpu_to_le_16(RX_PKT_CMPL_FLAGS_ITYPE_TCP));
+	udp = !!(rxcmp->flags_type &
+		 rte_cpu_to_le_16(RX_PKT_CMPL_FLAGS_ITYPE_UDP));
+	ip = !!(rxcmp->flags_type &
+		rte_cpu_to_le_16(RX_PKT_CMPL_FLAGS_ITYPE_IP));
+
+	pkt_type |= ((ip || tcp || udp || icmp) && !t_ipcs && !ip6) ?
+		RTE_PTYPE_L3_IPV4_EXT_UNKNOWN : 0;
+	pkt_type |= ((ip || tcp || udp || icmp) && !t_ipcs && ip6) ?
+		RTE_PTYPE_L3_IPV6_EXT_UNKNOWN : 0;
+	pkt_type |= (!t_ipcs &&  icmp) ? RTE_PTYPE_L4_ICMP : 0;
+	pkt_type |= (!t_ipcs &&  udp) ? RTE_PTYPE_L4_UDP : 0;
+	pkt_type |= (!t_ipcs &&  tcp) ? RTE_PTYPE_L4_TCP : 0;
+	pkt_type |= ((ip || tcp || udp || icmp) && t_ipcs && !ip6) ?
+		RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN : 0;
+	pkt_type |= ((ip || tcp || udp || icmp) && t_ipcs && ip6) ?
+		RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN : 0;
+	pkt_type |= (t_ipcs &&  icmp) ? RTE_PTYPE_INNER_L4_ICMP : 0;
+	pkt_type |= (t_ipcs &&  udp) ? RTE_PTYPE_INNER_L4_UDP : 0;
+	pkt_type |= (t_ipcs &&  tcp) ? RTE_PTYPE_INNER_L4_TCP : 0;
+	pkt_type |= vlan ? RTE_PTYPE_L2_ETHER_VLAN : 0;
+
+	return pkt_type;
+}
+
 static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 			    struct bnxt_rx_queue *rxq, uint32_t *raw_cons)
 {
@@ -435,6 +477,7 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	else
 		mbuf->ol_flags |= PKT_RX_L4_CKSUM_NONE;
 
+	mbuf->packet_type = bnxt_parse_pkt_type(rxcmp, rxcmp1);
 
 #ifdef BNXT_DEBUG
 	if (rxcmp1->errors_v2 & RX_CMP_L2_ERRORS) {
