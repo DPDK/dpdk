@@ -142,6 +142,28 @@ static void dpaa_eth_dev_close(struct rte_eth_dev *dev)
 	dpaa_eth_dev_stop(dev);
 }
 
+static int dpaa_eth_link_update(struct rte_eth_dev *dev,
+				int wait_to_complete __rte_unused)
+{
+	struct dpaa_if *dpaa_intf = dev->data->dev_private;
+	struct rte_eth_link *link = &dev->data->dev_link;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (dpaa_intf->fif->mac_type == fman_mac_1g)
+		link->link_speed = 1000;
+	else if (dpaa_intf->fif->mac_type == fman_mac_10g)
+		link->link_speed = 10000;
+	else
+		DPAA_PMD_ERR("invalid link_speed: %s, %d",
+			     dpaa_intf->name, dpaa_intf->fif->mac_type);
+
+	link->link_status = dpaa_intf->valid;
+	link->link_duplex = ETH_LINK_FULL_DUPLEX;
+	link->link_autoneg = ETH_LINK_AUTONEG;
+	return 0;
+}
+
 static
 int dpaa_eth_rx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 			    uint16_t nb_desc __rte_unused,
@@ -216,6 +238,22 @@ static void dpaa_eth_tx_queue_release(void *txq __rte_unused)
 	PMD_INIT_FUNC_TRACE();
 }
 
+static int dpaa_link_down(struct rte_eth_dev *dev)
+{
+	PMD_INIT_FUNC_TRACE();
+
+	dpaa_eth_dev_stop(dev);
+	return 0;
+}
+
+static int dpaa_link_up(struct rte_eth_dev *dev)
+{
+	PMD_INIT_FUNC_TRACE();
+
+	dpaa_eth_dev_start(dev);
+	return 0;
+}
+
 static struct eth_dev_ops dpaa_devops = {
 	.dev_configure		  = dpaa_eth_dev_configure,
 	.dev_start		  = dpaa_eth_dev_start,
@@ -226,7 +264,11 @@ static struct eth_dev_ops dpaa_devops = {
 	.tx_queue_setup		  = dpaa_eth_tx_queue_setup,
 	.rx_queue_release	  = dpaa_eth_rx_queue_release,
 	.tx_queue_release	  = dpaa_eth_tx_queue_release,
+
+	.link_update		  = dpaa_eth_link_update,
 	.mtu_set		  = dpaa_mtu_set,
+	.dev_set_link_down	  = dpaa_link_down,
+	.dev_set_link_up	  = dpaa_link_up,
 };
 
 /* Initialise an Rx FQ */
