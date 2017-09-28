@@ -280,8 +280,7 @@ int bnxt_hwrm_cfa_l2_set_rx_mask(struct bnxt *bp,
 			 rte_mem_virt2phy(vlan_table));
 		req.num_vlan_tags = rte_cpu_to_le_32((uint32_t)vlan_count);
 	}
-	req.mask = rte_cpu_to_le_32(HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_BCAST |
-				    mask);
+	req.mask = rte_cpu_to_le_32(mask);
 
 	rc = bnxt_hwrm_send_message(bp, &req, sizeof(req));
 
