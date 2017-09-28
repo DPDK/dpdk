@@ -47,6 +47,10 @@
 extern "C" {
 #endif
 
+/* Thread-entry/exit hooks; */
+int qman_thread_init(void);
+int qman_thread_finish(void);
+
 #define QBMAN_ANY_PORTAL_IDX 0xffffffff
 
 /* Obtain and free raw (unitialized) portals */
@@ -81,6 +85,15 @@ int qman_free_raw_portal(struct dpaa_raw_portal *portal);
 int bman_allocate_raw_portal(struct dpaa_raw_portal *portal);
 int bman_free_raw_portal(struct dpaa_raw_portal *portal);
 
+/* Post-process interrupts. NB, the kernel IRQ handler disables the interrupt
+ * line before notifying us, and this post-processing re-enables it once
+ * processing is complete. As such, it is essential to call this before going
+ * into another blocking read/select/poll.
+ */
+void qman_thread_irq(void);
+
+/* Global setup */
+int qman_global_init(void);
 #ifdef __cplusplus
 }
 #endif
