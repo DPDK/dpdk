@@ -409,20 +409,19 @@ int rte_pmd_bnxt_set_vf_rxmode(uint8_t port, uint16_t vf,
 	if (vf >= bp->pdev->max_vfs)
 		return -EINVAL;
 
-	if (rx_mask & (ETH_VMDQ_ACCEPT_UNTAG | ETH_VMDQ_ACCEPT_HASH_MC)) {
+	if (rx_mask & ETH_VMDQ_ACCEPT_UNTAG) {
 		RTE_LOG(ERR, PMD, "Currently cannot toggle this setting\n");
 		return -ENOTSUP;
 	}
 
-	if (rx_mask & ETH_VMDQ_ACCEPT_HASH_UC && !on) {
-		RTE_LOG(ERR, PMD, "Currently cannot disable UC Rx\n");
-		return -ENOTSUP;
-	}
+	/* Is this really the correct mapping?  VFd seems to think it is. */
+	if (rx_mask & ETH_VMDQ_ACCEPT_HASH_UC)
+		flag |= BNXT_VNIC_INFO_PROMISC;
 
 	if (rx_mask & ETH_VMDQ_ACCEPT_BROADCAST)
 		flag |= BNXT_VNIC_INFO_BCAST;
 	if (rx_mask & ETH_VMDQ_ACCEPT_MULTICAST)
-		flag |= BNXT_VNIC_INFO_ALLMULTI;
+		flag |= BNXT_VNIC_INFO_ALLMULTI | BNXT_VNIC_INFO_MCAST;
 
 	if (on)
 		bp->pf.vf_info[vf].l2_rx_mask |= flag;
