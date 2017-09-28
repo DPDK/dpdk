@@ -276,7 +276,7 @@ int bnxt_hwrm_cfa_l2_set_rx_mask(struct bnxt *bp,
 	if (vlan_table) {
 		if (!(mask & HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_VLAN_NONVLAN))
 			mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_VLANONLY;
-		req.vlan_tag_tbl_addr = rte_cpu_to_le_16(
+		req.vlan_tag_tbl_addr = rte_cpu_to_le_64(
 			 rte_mem_virt2phy(vlan_table));
 		req.num_vlan_tags = rte_cpu_to_le_32((uint32_t)vlan_count);
 	}
