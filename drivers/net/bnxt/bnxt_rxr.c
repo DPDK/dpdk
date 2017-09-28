@@ -391,7 +391,7 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	rte_prefetch0(mbuf);
 
 	if (mbuf == NULL)
-		return -ENOMEM;
+		return -EBUSY;
 
 	mbuf->nb_segs = 1;
 	mbuf->next = NULL;
@@ -448,13 +448,14 @@ static int bnxt_rx_pkt(struct rte_mbuf **rx_pkt,
 	if (bnxt_alloc_rx_data(rxq, rxr, prod)) {
 		RTE_LOG(ERR, PMD, "mbuf alloc failed with prod=0x%x\n", prod);
 		rc = -ENOMEM;
+		goto rx;
 	}
 	rxr->rx_prod = prod;
 	/*
 	 * All MBUFs are allocated with the same size under DPDK,
 	 * no optimization for rx_copy_thresh
 	 */
-
+rx:
 	*rx_pkt = mbuf;
 
 next_rx:
@@ -476,6 +477,7 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	struct rx_pkt_cmpl *rxcmp;
 	uint16_t prod = rxr->rx_prod;
 	uint16_t ag_prod = rxr->ag_prod;
+	int rc = 0;
 
 	/* Handle RX burst request */
 	while (1) {
@@ -491,7 +493,7 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 		/* TODO: Avoid magic numbers... */
 		if ((CMP_TYPE(rxcmp) & 0x30) == 0x10) {
 			rc = bnxt_rx_pkt(&rx_pkts[nb_rx_pkts], rxq, &raw_cons);
-			if (likely(!rc))
+			if (likely(!rc) || rc == -ENOMEM)
 				nb_rx_pkts++;
 			if (rc == -EBUSY)	/* partial completion */
 				break;
@@ -514,6 +516,30 @@ uint16_t bnxt_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts,
 	B_RX_DB(rxr->rx_doorbell, rxr->rx_prod);
 	/* Ring the AGG ring DB */
 	B_RX_DB(rxr->ag_doorbell, rxr->ag_prod);
+
+	/* Attempt to alloc Rx buf in case of a previous allocation failure. */
+	if (rc == -ENOMEM) {
+		int i;
+
+		for (i = prod; i <= nb_rx_pkts;
+			i = RING_NEXT(rxr->rx_ring_struct, i)) {
+			struct bnxt_sw_rx_bd *rx_buf = &rxr->rx_buf_ring[i];
+
+			/* Buffer already allocated for this index. */
+			if (rx_buf->mbuf != NULL)
+				continue;
+
+			/* This slot is empty. Alloc buffer for Rx */
+			if (!bnxt_alloc_rx_data(rxq, rxr, i)) {
+				rxr->rx_prod = i;
+				B_RX_DB(rxr->rx_doorbell, rxr->rx_prod);
+			} else {
+				RTE_LOG(ERR, PMD, "Alloc  mbuf failed\n");
+				break;
+			}
+		}
+	}
+
 	return nb_rx_pkts;
 }
 
