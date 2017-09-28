@@ -108,7 +108,7 @@ rte_cpu_get_features(hwcap_registers_t out)
 	Elf64_auxv_t auxv;
 
 	auxv_fd = open("/proc/self/auxv", O_RDONLY);
-	assert(auxv_fd);
+	assert(auxv_fd != -1);
 	while (read(auxv_fd, &auxv,
 		sizeof(Elf64_auxv_t)) == sizeof(Elf64_auxv_t)) {
 		if (auxv.a_type == AT_HWCAP)
