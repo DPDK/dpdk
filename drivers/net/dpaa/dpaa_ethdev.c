@@ -164,6 +164,41 @@ static void dpaa_eth_dev_close(struct rte_eth_dev *dev)
 	dpaa_eth_dev_stop(dev);
 }
 
+static int
+dpaa_fw_version_get(struct rte_eth_dev *dev __rte_unused,
+		     char *fw_version,
+		     size_t fw_size)
+{
+	int ret;
+	FILE *svr_file = NULL;
+	unsigned int svr_ver = 0;
+
+	PMD_INIT_FUNC_TRACE();
+
+	svr_file = fopen(DPAA_SOC_ID_FILE, "r");
+	if (!svr_file) {
+		DPAA_PMD_ERR("Unable to open SoC device");
+		return -ENOTSUP; /* Not supported on this infra */
+	}
+
+	ret = fscanf(svr_file, "svr:%x", &svr_ver);
+	if (ret <= 0) {
+		DPAA_PMD_ERR("Unable to read SoC device");
+		return -ENOTSUP; /* Not supported on this infra */
+	}
+
+	ret = snprintf(fw_version, fw_size,
+		       "svr:%x-fman-v%x",
+		       svr_ver,
+		       fman_ip_rev);
+
+	ret += 1; /* add the size of '\0' */
+	if (fw_size < (uint32_t)ret)
+		return ret;
+	else
+		return 0;
+}
+
 static void dpaa_eth_dev_info(struct rte_eth_dev *dev,
 			      struct rte_eth_dev_info *dev_info)
 {
@@ -512,6 +547,7 @@ static struct eth_dev_ops dpaa_devops = {
 	.mac_addr_remove	  = dpaa_dev_remove_mac_addr,
 	.mac_addr_set		  = dpaa_dev_set_mac_addr,
 
+	.fw_version_get		  = dpaa_fw_version_get,
 };
 
 static int dpaa_fc_set_default(struct dpaa_if *dpaa_intf)
