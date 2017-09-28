@@ -310,6 +310,50 @@ static int dpaa_link_up(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static int
+dpaa_dev_add_mac_addr(struct rte_eth_dev *dev,
+			     struct ether_addr *addr,
+			     uint32_t index,
+			     __rte_unused uint32_t pool)
+{
+	int ret;
+	struct dpaa_if *dpaa_intf = dev->data->dev_private;
+
+	PMD_INIT_FUNC_TRACE();
+
+	ret = fman_if_add_mac_addr(dpaa_intf->fif, addr->addr_bytes, index);
+
+	if (ret)
+		RTE_LOG(ERR, PMD, "error: Adding the MAC ADDR failed:"
+			" err = %d", ret);
+	return 0;
+}
+
+static void
+dpaa_dev_remove_mac_addr(struct rte_eth_dev *dev,
+			  uint32_t index)
+{
+	struct dpaa_if *dpaa_intf = dev->data->dev_private;
+
+	PMD_INIT_FUNC_TRACE();
+
+	fman_if_clear_mac_addr(dpaa_intf->fif, index);
+}
+
+static void
+dpaa_dev_set_mac_addr(struct rte_eth_dev *dev,
+		       struct ether_addr *addr)
+{
+	int ret;
+	struct dpaa_if *dpaa_intf = dev->data->dev_private;
+
+	PMD_INIT_FUNC_TRACE();
+
+	ret = fman_if_add_mac_addr(dpaa_intf->fif, addr->addr_bytes, 0);
+	if (ret)
+		RTE_LOG(ERR, PMD, "error: Setting the MAC ADDR failed %d", ret);
+}
+
 static struct eth_dev_ops dpaa_devops = {
 	.dev_configure		  = dpaa_eth_dev_configure,
 	.dev_start		  = dpaa_eth_dev_start,
@@ -330,6 +374,10 @@ static struct eth_dev_ops dpaa_devops = {
 	.mtu_set		  = dpaa_mtu_set,
 	.dev_set_link_down	  = dpaa_link_down,
 	.dev_set_link_up	  = dpaa_link_up,
+	.mac_addr_add		  = dpaa_dev_add_mac_addr,
+	.mac_addr_remove	  = dpaa_dev_remove_mac_addr,
+	.mac_addr_set		  = dpaa_dev_set_mac_addr,
+
 };
 
 /* Initialise an Rx FQ */
