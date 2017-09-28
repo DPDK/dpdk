@@ -1572,6 +1572,44 @@ nothing_to_do:
 	return desc;
 }
 
+static int
+bnxt_rx_descriptor_status_op(void *rx_queue, uint16_t offset)
+{
+	struct bnxt_rx_queue *rxq = (struct bnxt_rx_queue *)rx_queue;
+	struct bnxt_rx_ring_info *rxr;
+	struct bnxt_cp_ring_info *cpr;
+	struct bnxt_sw_rx_bd *rx_buf;
+	struct rx_pkt_cmpl *rxcmp;
+	uint32_t cons, cp_cons;
+
+	if (!rxq)
+		return -EINVAL;
+
+	cpr = rxq->cp_ring;
+	rxr = rxq->rx_ring;
+
+	if (offset >= rxq->nb_rx_desc)
+		return -EINVAL;
+
+	cons = RING_CMP(cpr->cp_ring_struct, offset);
+	cp_cons = cpr->cp_raw_cons;
+	rxcmp = (struct rx_pkt_cmpl *)&cpr->cp_desc_ring[cons];
+
+	if (cons > cp_cons) {
+		if (CMPL_VALID(rxcmp, cpr->valid))
+			return RTE_ETH_RX_DESC_DONE;
+	} else {
+		if (CMPL_VALID(rxcmp, !cpr->valid))
+			return RTE_ETH_RX_DESC_DONE;
+	}
+	rx_buf = &rxr->rx_buf_ring[cons];
+	if (rx_buf->mbuf == NULL)
+		return RTE_ETH_RX_DESC_UNAVAIL;
+
+
+	return RTE_ETH_RX_DESC_AVAIL;
+}
+
 /*
  * Initialization
  */
@@ -1622,6 +1660,7 @@ static const struct eth_dev_ops bnxt_dev_ops = {
 	.xstats_get_by_id = bnxt_dev_xstats_get_by_id_op,
 	.xstats_get_names_by_id = bnxt_dev_xstats_get_names_by_id_op,
 	.rx_queue_count = bnxt_rx_queue_count_op,
+	.rx_descriptor_status = bnxt_rx_descriptor_status_op,
 };
 
 static bool bnxt_vf_pciid(uint16_t id)
