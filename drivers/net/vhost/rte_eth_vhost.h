@@ -69,7 +69,7 @@ struct rte_eth_vhost_queue_event {
  *  - On success, zero.
  *  - On failure, a negative value.
  */
-int rte_eth_vhost_get_queue_event(uint8_t port_id,
+int rte_eth_vhost_get_queue_event(uint16_t port_id,
 		struct rte_eth_vhost_queue_event *event);
 
 /**
@@ -79,7 +79,7 @@ int rte_eth_vhost_get_queue_event(uint8_t port_id,
  *  - On success, the 'vid' associated with 'port_id'.
  *  - On failure, a negative value.
  */
-int rte_eth_vhost_get_vid_from_port_id(uint8_t port_id);
+int rte_eth_vhost_get_vid_from_port_id(uint16_t port_id);
 
 #ifdef __cplusplus
 }

@@ -41,7 +41,7 @@ CFLAGS += $(WERROR_FLAGS)
 
 EXPORT_MAP := rte_ethdev_version.map
 
-LIBABIVER := 7
+LIBABIVER := 8
 
 SRCS-y += rte_ethdev.c
 SRCS-y += rte_flow.c

@@ -84,7 +84,7 @@ rte_stats_bitrate_reg(struct rte_stats_bitrates *bitrate_data)
 
 int
 rte_stats_bitrate_calc(struct rte_stats_bitrates *bitrate_data,
-	uint8_t port_id)
+			uint16_t port_id)
 {
 	struct rte_stats_bitrate *port_data;
 	struct rte_eth_stats eth_stats;

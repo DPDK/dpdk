@@ -156,12 +156,12 @@ void init_ring(int lcore_id, uint8_t port_id)
 void
 pair_ports(void)
 {
-	uint8_t i, j;
+	uint16_t i, j;
 
 	/* Pair ports with their "closest neighbour" in the portmask */
 	for (i = 0; i < RTE_MAX_ETHPORTS; i++)
 		if (is_bit_set(i, portmask))
-			for (j = (uint8_t) (i + 1); j < RTE_MAX_ETHPORTS; j++)
+			for (j = i + 1; j < RTE_MAX_ETHPORTS; j++)
 				if (is_bit_set(j, portmask)) {
 					port_pairs[i] = j;
 					port_pairs[j] = i;

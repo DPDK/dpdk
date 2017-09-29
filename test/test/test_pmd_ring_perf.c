@@ -54,7 +54,7 @@ static const volatile unsigned bulk_sizes[] = { 1, 8, 32 };
 
 /* The ring structure used for tests */
 static struct rte_ring *r;
-static uint8_t ring_ethdev_port;
+static uint16_t ring_ethdev_port;
 
 /* Get cycle counts for dequeuing from an empty ring. Should be 2 or 3 cycles */
 static void

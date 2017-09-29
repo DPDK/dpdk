@@ -40,7 +40,7 @@ LIB = librte_pmd_bnxt.a
 
 EXPORT_MAP := rte_pmd_bnxt_version.map
 
-LIBABIVER := 1
+LIBABIVER := 2
 
 CFLAGS += -O3
 CFLAGS += $(WERROR_FLAGS)

@@ -166,7 +166,7 @@ bond_ethdev_parse_slave_port_kvarg(const char *key,
 			return -1;
 		} else
 			slave_ports->slaves[slave_ports->slave_count++] =
-					(uint8_t)port_id;
+					port_id;
 	}
 	return 0;
 }

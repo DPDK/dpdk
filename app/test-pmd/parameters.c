@@ -734,7 +734,7 @@ launch_args_parse(int argc, char** argv)
 			if (!strcmp(lgopts[opt_idx].name, "nb-ports")) {
 				n = atoi(optarg);
 				if (n > 0 && n <= nb_ports)
-					nb_fwd_ports = (uint8_t) n;
+					nb_fwd_ports = n;
 				else
 					rte_exit(EXIT_FAILURE,
 						 "Invalid port %d\n", n);

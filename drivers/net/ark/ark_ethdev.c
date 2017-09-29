@@ -646,7 +646,7 @@ eth_ark_dev_stop(struct rte_eth_dev *dev)
 	for (i = 0; i < dev->data->nb_tx_queues; i++) {
 		status = eth_ark_tx_queue_stop(dev, i);
 		if (status != 0) {
-			uint8_t port = dev->data->port_id;
+			uint16_t port = dev->data->port_id;
 			PMD_DRV_LOG(ERR,
 				    "tx_queue stop anomaly"
 				    " port %u, queue %u\n",

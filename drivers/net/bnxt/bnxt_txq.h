@@ -46,7 +46,7 @@ struct bnxt_tx_queue {
 	uint16_t		tx_next_rs; /* next desc to set RS bit */
 	uint16_t		queue_id; /* TX queue index */
 	uint16_t		reg_idx; /* TX queue register index */
-	uint8_t			port_id; /* Device port identifier */
+	uint16_t		port_id; /* Device port identifier */
 	uint8_t			pthresh; /* Prefetch threshold register */
 	uint8_t			hthresh; /* Host threshold register */
 	uint8_t			wthresh; /* Write-back threshold reg */

@@ -252,8 +252,8 @@ app_parse_flow_conf(const char *conf_str)
 
 	pconf = &qos_conf[nb_pfc];
 
-	pconf->rx_port = (uint8_t)vals[0];
-	pconf->tx_port = (uint8_t)vals[1];
+	pconf->rx_port = vals[0];
+	pconf->tx_port = vals[1];
 	pconf->rx_core = (uint8_t)vals[2];
 	pconf->wt_core = (uint8_t)vals[3];
 	if (ret == 5)
@@ -267,19 +267,19 @@ app_parse_flow_conf(const char *conf_str)
 	}
 
 	if (pconf->rx_port >= RTE_MAX_ETHPORTS) {
-		RTE_LOG(ERR, APP, "pfc %u: invalid rx port %"PRIu8" index\n",
+		RTE_LOG(ERR, APP, "pfc %u: invalid rx port %"PRIu16" index\n",
 				nb_pfc, pconf->rx_port);
 		return -1;
 	}
 	if (pconf->tx_port >= RTE_MAX_ETHPORTS) {
-		RTE_LOG(ERR, APP, "pfc %u: invalid tx port %"PRIu8" index\n",
+		RTE_LOG(ERR, APP, "pfc %u: invalid tx port %"PRIu16" index\n",
 				nb_pfc, pconf->tx_port);
 		return -1;
 	}
 
 	mask = 1lu << pconf->rx_port;
 	if (app_used_rx_port_mask & mask) {
-		RTE_LOG(ERR, APP, "pfc %u: rx port %"PRIu8" is used already\n",
+		RTE_LOG(ERR, APP, "pfc %u: rx port %"PRIu16" is used already\n",
 				nb_pfc, pconf->rx_port);
 		return -1;
 	}
@@ -288,7 +288,7 @@ app_parse_flow_conf(const char *conf_str)
 
 	mask = 1lu << pconf->tx_port;
 	if (app_used_tx_port_mask & mask) {
-		RTE_LOG(ERR, APP, "pfc %u: port %"PRIu8" is used already\n",
+		RTE_LOG(ERR, APP, "pfc %u: port %"PRIu16" is used already\n",
 				nb_pfc, pconf->tx_port);
 		return -1;
 	}

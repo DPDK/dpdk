@@ -71,7 +71,7 @@
 struct szedata2_rx_queue {
 	struct szedata *sze;
 	uint8_t rx_channel;
-	uint8_t in_port;
+	uint16_t in_port;
 	struct rte_mempool *mb_pool;
 	volatile uint64_t rx_pkts;
 	volatile uint64_t rx_bytes;

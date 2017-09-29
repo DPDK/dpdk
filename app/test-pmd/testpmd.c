@@ -390,7 +390,7 @@ struct gro_status gro_ports[RTE_MAX_ETHPORTS];
 /* Forward function declarations */
 static void map_port_queue_stats_mapping_registers(uint8_t pi, struct rte_port *port);
 static void check_all_ports_link_status(uint32_t port_mask);
-static int eth_event_callback(uint8_t port_id,
+static int eth_event_callback(portid_t port_id,
 			      enum rte_eth_event_type type,
 			      void *param, void *ret_param);
 
@@ -1816,7 +1816,8 @@ check_all_ports_link_status(uint32_t port_mask)
 {
 #define CHECK_INTERVAL 100 /* 100ms */
 #define MAX_CHECK_TIME 90 /* 9s (90 * 100ms) in total */
-	uint8_t portid, count, all_ports_up, print_flag = 0;
+	portid_t portid;
+	uint8_t count, all_ports_up, print_flag = 0;
 	struct rte_eth_link link;
 
 	printf("Checking link statuses...\n");
@@ -1831,14 +1832,13 @@ check_all_ports_link_status(uint32_t port_mask)
 			/* print link status if flag set */
 			if (print_flag == 1) {
 				if (link.link_status)
-					printf("Port %d Link Up - speed %u "
-						"Mbps - %s\n", (uint8_t)portid,
-						(unsigned)link.link_speed,
+					printf(
+					"Port%d Link Up. speed %u Mbps- %s\n",
+					portid, link.link_speed,
 				(link.link_duplex == ETH_LINK_FULL_DUPLEX) ?
 					("full-duplex") : ("half-duplex\n"));
 				else
-					printf("Port %d Link Down\n",
-						(uint8_t)portid);
+					printf("Port %d Link Down\n", portid);
 				continue;
 			}
 			/* clear all_ports_up flag if any link down */
@@ -1885,7 +1885,7 @@ rmv_event_callback(void *arg)
 
 /* This function is used by the interrupt thread */
 static int
-eth_event_callback(uint8_t port_id, enum rte_eth_event_type type, void *param,
+eth_event_callback(portid_t port_id, enum rte_eth_event_type type, void *param,
 		  void *ret_param)
 {
 	static const char * const event_desc[] = {
@@ -2328,7 +2328,7 @@ int
 main(int argc, char** argv)
 {
 	int  diag;
-	uint8_t port_id;
+	portid_t port_id;
 
 	signal(SIGINT, signal_handler);
 	signal(SIGTERM, signal_handler);

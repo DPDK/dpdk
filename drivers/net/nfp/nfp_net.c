@@ -1353,12 +1353,12 @@ nfp_net_dev_link_status_print(struct rte_eth_dev *dev)
 	nfp_net_dev_atomic_read_link_status(dev, &link);
 	if (link.link_status)
 		RTE_LOG(INFO, PMD, "Port %d: Link Up - speed %u Mbps - %s\n",
-			(int)(dev->data->port_id), (unsigned)link.link_speed,
+			dev->data->port_id, link.link_speed,
 			link.link_duplex == ETH_LINK_FULL_DUPLEX
 			? "full-duplex" : "half-duplex");
 	else
 		RTE_LOG(INFO, PMD, " Port %d: Link Down\n",
-			(int)(dev->data->port_id));
+			dev->data->port_id);
 
 	RTE_LOG(INFO, PMD, "PCI Address: %04d:%02d:%02d:%d\n",
 		pci_dev->addr.domain, pci_dev->addr.bus,
@@ -1662,7 +1662,7 @@ nfp_net_tx_queue_setup(struct rte_eth_dev *dev, uint16_t queue_idx,
 			"tx_free_thresh must be less than the number of TX "
 			"descriptors. (tx_free_thresh=%u port=%d "
 			"queue=%d)\n", (unsigned int)tx_free_thresh,
-			(int)dev->data->port_id, (int)queue_idx);
+			dev->data->port_id, (int)queue_idx);
 		return -(EINVAL);
 	}
 
@@ -2001,9 +2001,9 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		 */
 		new_mb = rte_pktmbuf_alloc(rxq->mem_pool);
 		if (unlikely(new_mb == NULL)) {
-			RTE_LOG_DP(DEBUG, PMD, "RX mbuf alloc failed port_id=%u "
-				"queue_id=%u\n", (unsigned)rxq->port_id,
-				(unsigned)rxq->qidx);
+			RTE_LOG_DP(DEBUG, PMD,
+			"RX mbuf alloc failed port_id=%u queue_id=%u\n",
+				rxq->port_id, (unsigned int)rxq->qidx);
 			nfp_net_mbuf_alloc_failed(rxq);
 			break;
 		}
@@ -2087,7 +2087,7 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 		return nb_hold;
 
 	PMD_RX_LOG(DEBUG, "RX  port_id=%u queue_id=%u, %d packets received\n",
-		   (unsigned)rxq->port_id, (unsigned)rxq->qidx, nb_hold);
+		   rxq->port_id, (unsigned int)rxq->qidx, nb_hold);
 
 	nb_hold += rxq->nb_rx_hold;
 
@@ -2098,7 +2098,7 @@ nfp_net_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
 	rte_wmb();
 	if (nb_hold > rxq->rx_free_thresh) {
 		PMD_RX_LOG(DEBUG, "port=%u queue=%u nb_hold=%u avail=%u\n",
-			   (unsigned)rxq->port_id, (unsigned)rxq->qidx,
+			   rxq->port_id, (unsigned int)rxq->qidx,
 			   (unsigned)nb_hold, (unsigned)avail);
 		nfp_qcp_ptr_add(rxq->qcp_fl, NFP_QCP_WRITE_PTR, nb_hold);
 		nb_hold = 0;

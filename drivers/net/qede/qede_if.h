@@ -104,7 +104,7 @@ struct qed_link_output {
 	uint32_t speed;		/* In Mb/s */
 	uint32_t adv_speed;	/* Speed mask */
 	uint8_t duplex;		/* In DUPLEX defs */
-	uint8_t port;		/* In PORT defs */
+	uint16_t port;		/* In PORT defs */
 	bool autoneg;
 	uint32_t pause_config;
 

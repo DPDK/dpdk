@@ -37,7 +37,8 @@
 #include "main.h"
 
 int
-qavg_q(uint8_t port_id, uint32_t subport_id, uint32_t pipe_id, uint8_t tc, uint8_t q)
+qavg_q(uint16_t port_id, uint32_t subport_id, uint32_t pipe_id, uint8_t tc,
+		uint8_t q)
 {
         struct rte_sched_queue_stats stats;
         struct rte_sched_port *port;
@@ -74,7 +75,8 @@ qavg_q(uint8_t port_id, uint32_t subport_id, uint32_t pipe_id, uint8_t tc, uint8
 }
 
 int
-qavg_tcpipe(uint8_t port_id, uint32_t subport_id, uint32_t pipe_id, uint8_t tc)
+qavg_tcpipe(uint16_t port_id, uint32_t subport_id, uint32_t pipe_id,
+	     uint8_t tc)
 {
         struct rte_sched_queue_stats stats;
         struct rte_sched_port *port;
@@ -114,7 +116,7 @@ qavg_tcpipe(uint8_t port_id, uint32_t subport_id, uint32_t pipe_id, uint8_t tc)
 }
 
 int
-qavg_pipe(uint8_t port_id, uint32_t subport_id, uint32_t pipe_id)
+qavg_pipe(uint16_t port_id, uint32_t subport_id, uint32_t pipe_id)
 {
         struct rte_sched_queue_stats stats;
         struct rte_sched_port *port;
@@ -153,7 +155,7 @@ qavg_pipe(uint8_t port_id, uint32_t subport_id, uint32_t pipe_id)
 }
 
 int
-qavg_tcsubport(uint8_t port_id, uint32_t subport_id, uint8_t tc)
+qavg_tcsubport(uint16_t port_id, uint32_t subport_id, uint8_t tc)
 {
         struct rte_sched_queue_stats stats;
         struct rte_sched_port *port;
@@ -195,7 +197,7 @@ qavg_tcsubport(uint8_t port_id, uint32_t subport_id, uint8_t tc)
 }
 
 int
-qavg_subport(uint8_t port_id, uint32_t subport_id)
+qavg_subport(uint16_t port_id, uint32_t subport_id)
 {
         struct rte_sched_queue_stats stats;
         struct rte_sched_port *port;
@@ -237,7 +239,7 @@ qavg_subport(uint8_t port_id, uint32_t subport_id)
 }
 
 int
-subport_stat(uint8_t port_id, uint32_t subport_id)
+subport_stat(uint16_t port_id, uint32_t subport_id)
 {
         struct rte_sched_subport_stats stats;
         struct rte_sched_port *port;
@@ -273,7 +275,7 @@ subport_stat(uint8_t port_id, uint32_t subport_id)
 }
 
 int
-pipe_stat(uint8_t port_id, uint32_t subport_id, uint32_t pipe_id)
+pipe_stat(uint16_t port_id, uint32_t subport_id, uint32_t pipe_id)
 {
         struct rte_sched_queue_stats stats;
         struct rte_sched_port *port;

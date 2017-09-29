@@ -256,7 +256,7 @@ struct nfp_net_txq {
 	uint32_t tx_hthresh;   /* not used by now. Future? */
 	uint32_t tx_wthresh;   /* not used by now. Future? */
 	uint32_t txq_flags;    /* not used by now. Future? */
-	uint8_t  port_id;
+	uint16_t port_id;
 	int qidx;
 	int tx_qcidx;
 	__le64 dma;

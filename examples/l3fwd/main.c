@@ -124,7 +124,7 @@ uint32_t hash_entry_number = HASH_ENTRY_NUMBER_DEFAULT;
 struct lcore_conf lcore_conf[RTE_MAX_LCORE];
 
 struct lcore_params {
-	uint8_t port_id;
+	uint16_t port_id;
 	uint8_t queue_id;
 	uint8_t lcore_id;
 } __rte_cache_aligned;
@@ -245,7 +245,7 @@ check_lcore_params(void)
 static int
 check_port_config(const unsigned nb_ports)
 {
-	unsigned portid;
+	uint16_t portid;
 	uint16_t i;
 
 	for (i = 0; i < nb_lcore_params; ++i) {
@@ -263,7 +263,7 @@ check_port_config(const unsigned nb_ports)
 }
 
 static uint8_t
-get_port_n_rx_queues(const uint8_t port)
+get_port_n_rx_queues(const uint16_t port)
 {
 	int queue = -1;
 	uint16_t i;
@@ -445,7 +445,7 @@ parse_config(const char *q_arg)
 static void
 parse_eth_dest(const char *optarg)
 {
-	uint8_t portid;
+	uint16_t portid;
 	char *port_end;
 	uint8_t c, *dest, peer_addr[6];
 
@@ -750,11 +750,12 @@ init_mem(unsigned nb_mbuf)
 
 /* Check the link status of all ports in up to 9s, and print them finally */
 static void
-check_all_ports_link_status(uint8_t port_num, uint32_t port_mask)
+check_all_ports_link_status(uint16_t port_num, uint32_t port_mask)
 {
 #define CHECK_INTERVAL 100 /* 100ms */
 #define MAX_CHECK_TIME 90 /* 9s (90 * 100ms) in total */
-	uint8_t portid, count, all_ports_up, print_flag = 0;
+	uint16_t portid;
+	uint8_t count, all_ports_up, print_flag = 0;
 	struct rte_eth_link link;
 
 	printf("\nChecking link status");
@@ -773,14 +774,13 @@ check_all_ports_link_status(uint8_t port_num, uint32_t port_mask)
 			/* print link status if flag set */
 			if (print_flag == 1) {
 				if (link.link_status)
-					printf("Port %d Link Up - speed %u "
-						"Mbps - %s\n", (uint8_t)portid,
-						(unsigned)link.link_speed,
+					printf(
+					"Port%d Link Up. Speed %u Mbps -%s\n",
+						portid, link.link_speed,
 				(link.link_duplex == ETH_LINK_FULL_DUPLEX) ?
 					("full-duplex") : ("half-duplex\n"));
 				else
-					printf("Port %d Link Down\n",
-						(uint8_t)portid);
+					printf("Port %d Link Down\n", portid);
 				continue;
 			}
 			/* clear all_ports_up flag if any link down */
@@ -818,7 +818,7 @@ signal_handler(int signum)
 }
 
 static int
-prepare_ptype_parser(uint8_t portid, uint16_t queueid)
+prepare_ptype_parser(uint16_t portid, uint16_t queueid)
 {
 	if (parse_ptype) {
 		printf("Port %d: softly parse packet type info\n", portid);
@@ -847,10 +847,10 @@ main(int argc, char **argv)
 	struct rte_eth_txconf *txconf;
 	int ret;
 	unsigned nb_ports;
-	uint16_t queueid;
+	uint16_t queueid, portid;
 	unsigned lcore_id;
 	uint32_t n_tx_queue, nb_lcores;
-	uint8_t portid, nb_rx_queue, queue, socketid;
+	uint8_t nb_rx_queue, queue, socketid;
 
 	/* init EAL */
 	ret = rte_eal_init(argc, argv);
@@ -1048,7 +1048,7 @@ main(int argc, char **argv)
 	}
 
 
-	check_all_ports_link_status((uint8_t)nb_ports, enabled_port_mask);
+	check_all_ports_link_status(nb_ports, enabled_port_mask);
 
 	ret = 0;
 	/* launch per-lcore init on every lcore */

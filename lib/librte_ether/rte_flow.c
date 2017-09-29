@@ -108,7 +108,7 @@ static const struct rte_flow_desc_data rte_flow_desc_action[] = {
 
 /* Get generic flow operations structure from a port. */
 const struct rte_flow_ops *
-rte_flow_ops_get(uint8_t port_id, struct rte_flow_error *error)
+rte_flow_ops_get(uint16_t port_id, struct rte_flow_error *error)
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
 	const struct rte_flow_ops *ops;

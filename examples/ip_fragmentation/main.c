@@ -154,7 +154,7 @@ struct rx_queue {
 	struct rte_mempool *indirect_pool;
 	struct rte_lpm *lpm;
 	struct rte_lpm6 *lpm6;
-	uint8_t portid;
+	uint16_t portid;
 };
 
 #define MAX_RX_QUEUE_PER_LCORE 16
@@ -240,7 +240,7 @@ static struct rte_lpm6 *socket_lpm6[RTE_MAX_NUMA_NODES];
 
 /* Send burst of packets on an output interface */
 static inline int
-send_burst(struct lcore_queue_conf *qconf, uint16_t n, uint8_t port)
+send_burst(struct lcore_queue_conf *qconf, uint16_t n, uint16_t port)
 {
 	struct rte_mbuf **m_table;
 	int ret;
@@ -261,11 +261,12 @@ send_burst(struct lcore_queue_conf *qconf, uint16_t n, uint8_t port)
 
 static inline void
 l3fwd_simple_forward(struct rte_mbuf *m, struct lcore_queue_conf *qconf,
-		uint8_t queueid, uint8_t port_in)
+		uint8_t queueid, uint16_t port_in)
 {
 	struct rx_queue *rxq;
 	uint32_t i, len, next_hop;
-	uint8_t port_out, ipv6;
+	uint8_t ipv6;
+	uint16_t port_out;
 	int32_t len2;
 
 	ipv6 = 0;
@@ -403,7 +404,7 @@ main_loop(__attribute__((unused)) void *dummy)
 	unsigned lcore_id;
 	uint64_t prev_tsc, diff_tsc, cur_tsc;
 	int i, j, nb_rx;
-	uint8_t portid;
+	uint16_t portid;
 	struct lcore_queue_conf *qconf;
 	const uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1) / US_PER_S * BURST_TX_DRAIN_US;
 
@@ -423,7 +424,7 @@ main_loop(__attribute__((unused)) void *dummy)
 
 		portid = qconf->rx_queue_list[i].portid;
 		RTE_LOG(INFO, IP_FRAG, " -- lcoreid=%u portid=%d\n", lcore_id,
-				(int) portid);
+				portid);
 	}
 
 	while (1) {
@@ -600,11 +601,12 @@ print_ethaddr(const char *name, struct ether_addr *eth_addr)
 
 /* Check the link status of all ports in up to 9s, and print them finally */
 static void
-check_all_ports_link_status(uint8_t port_num, uint32_t port_mask)
+check_all_ports_link_status(uint16_t port_num, uint32_t port_mask)
 {
 #define CHECK_INTERVAL 100 /* 100ms */
 #define MAX_CHECK_TIME 90 /* 9s (90 * 100ms) in total */
-	uint8_t portid, count, all_ports_up, print_flag = 0;
+	uint16_t portid;
+	uint8_t count, all_ports_up, print_flag = 0;
 	struct rte_eth_link link;
 
 	printf("\nChecking link status");
@@ -619,14 +621,13 @@ check_all_ports_link_status(uint8_t port_num, uint32_t port_mask)
 			/* print link status if flag set */
 			if (print_flag == 1) {
 				if (link.link_status)
-					printf("Port %d Link Up - speed %u "
-						"Mbps - %s\n", (uint8_t)portid,
-						(unsigned)link.link_speed,
+					printf(
+					"Port%d Link Up .Speed %u Mbps - %s\n",
+						portid, link.link_speed,
 				(link.link_duplex == ETH_LINK_FULL_DUPLEX) ?
 					("full-duplex") : ("half-duplex\n"));
 				else
-					printf("Port %d Link Down\n",
-							(uint8_t)portid);
+					printf("Port %d Link Down\n", portid);
 				continue;
 			}
 			/* clear all_ports_up flag if any link down */
@@ -708,7 +709,7 @@ parse_ptype(struct rte_mbuf *m)
 
 /* callback function to detect packet type for a queue of a port */
 static uint16_t
-cb_parse_ptype(uint8_t port __rte_unused, uint16_t queue __rte_unused,
+cb_parse_ptype(uint16_t port __rte_unused, uint16_t queue __rte_unused,
 		   struct rte_mbuf *pkts[], uint16_t nb_pkts,
 		   uint16_t max_pkts __rte_unused,
 		   void *user_param __rte_unused)
@@ -876,7 +877,7 @@ main(int argc, char **argv)
 	uint16_t queueid = 0;
 	unsigned lcore_id = 0, rx_lcore_id = 0;
 	uint32_t n_tx_queue, nb_lcores;
-	uint8_t portid;
+	uint16_t portid;
 
 	/* init EAL */
 	ret = rte_eal_init(argc, argv);
@@ -1035,7 +1036,7 @@ main(int argc, char **argv)
 	if (init_routing_table() < 0)
 		rte_exit(EXIT_FAILURE, "Cannot init routing table\n");
 
-	check_all_ports_link_status((uint8_t)nb_ports, enabled_port_mask);
+	check_all_ports_link_status(nb_ports, enabled_port_mask);
 
 	/* launch per-lcore init on every lcore */
 	rte_eal_mp_remote_launch(main_loop, NULL, CALL_MASTER);

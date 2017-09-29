@@ -269,21 +269,22 @@ configure_tx_buffers(struct rte_eth_dev_tx_buffer *tx_buffer[])
 				rte_eth_dev_socket_id(port_id));
 		if (tx_buffer[port_id] == NULL)
 			rte_exit(EXIT_FAILURE, "Cannot allocate buffer for tx on port %u\n",
-					(unsigned) port_id);
+				 port_id);
 
 		rte_eth_tx_buffer_init(tx_buffer[port_id], MAX_PKTS_BURST);
 
 		ret = rte_eth_tx_buffer_set_err_callback(tx_buffer[port_id],
 				flush_tx_error_callback, NULL);
 		if (ret < 0)
-			rte_exit(EXIT_FAILURE, "Cannot set error callback for "
-					"tx buffer on port %u\n", (unsigned) port_id);
+			rte_exit(EXIT_FAILURE,
+			"Cannot set error callback for tx buffer on port %u\n",
+				 port_id);
 	}
 	return 0;
 }
 
 static inline int
-configure_eth_port(uint8_t port_id)
+configure_eth_port(uint16_t port_id)
 {
 	struct ether_addr addr;
 	const uint16_t rxRings = 1, txRings = 1;
@@ -326,7 +327,7 @@ configure_eth_port(uint8_t port_id)
 	rte_eth_macaddr_get(port_id, &addr);
 	printf("Port %u MAC: %02"PRIx8" %02"PRIx8" %02"PRIx8
 			" %02"PRIx8" %02"PRIx8" %02"PRIx8"\n",
-			(unsigned)port_id,
+			port_id,
 			addr.addr_bytes[0], addr.addr_bytes[1],
 			addr.addr_bytes[2], addr.addr_bytes[3],
 			addr.addr_bytes[4], addr.addr_bytes[5]);
@@ -401,7 +402,7 @@ rx_thread(struct rte_ring *ring_out)
 	uint32_t seqn = 0;
 	uint16_t i, ret = 0;
 	uint16_t nb_rx_pkts;
-	uint8_t port_id;
+	uint16_t port_id;
 	struct rte_mbuf *pkts[MAX_PKTS_BURST];
 
 	RTE_LOG(INFO, REORDERAPP, "%s() started on lcore %u\n", __func__,
@@ -632,8 +633,8 @@ main(int argc, char **argv)
 	int ret;
 	unsigned nb_ports;
 	unsigned int lcore_id, last_lcore_id, master_lcore_id;
-	uint8_t port_id;
-	uint8_t nb_ports_available;
+	uint16_t port_id;
+	uint16_t nb_ports_available;
 	struct worker_thread_args worker_args = {NULL, NULL};
 	struct send_thread_args send_args = {NULL, NULL};
 	struct rte_ring *rx_to_workers;
@@ -687,7 +688,7 @@ main(int argc, char **argv)
 			continue;
 		}
 		/* init port */
-		printf("Initializing port %u... done\n", (unsigned) port_id);
+		printf("Initializing port %u... done\n", port_id);
 
 		if (configure_eth_port(port_id) != 0)
 			rte_exit(EXIT_FAILURE, "Cannot initialize port %"PRIu8"\n",

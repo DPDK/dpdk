@@ -74,7 +74,7 @@ parse_portmask(uint8_t max_ports, const char *portmask)
 {
 	char *end = NULL;
 	unsigned long pm;
-	uint8_t count = 0;
+	uint16_t count = 0;
 
 	if (portmask == NULL || *portmask == '\0')
 		return -1;
@@ -128,7 +128,7 @@ parse_num_clients(const char *clients)
  * on error.
  */
 int
-parse_app_args(uint8_t max_ports, int argc, char *argv[])
+parse_app_args(uint16_t max_ports, int argc, char *argv[])
 {
 	int option_index, opt;
 	char **argvopt = argv;

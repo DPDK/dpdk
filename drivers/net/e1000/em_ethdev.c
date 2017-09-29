@@ -1624,7 +1624,7 @@ eth_em_interrupt_action(struct rte_eth_dev *dev,
 	rte_em_dev_atomic_read_link_status(dev, &link);
 	if (link.link_status) {
 		PMD_INIT_LOG(INFO, " Port %d: Link Up - speed %u Mbps - %s",
-			     dev->data->port_id, (unsigned)link.link_speed,
+			     dev->data->port_id, link.link_speed,
 			     link.link_duplex == ETH_LINK_FULL_DUPLEX ?
 			     "full-duplex" : "half-duplex");
 	} else {

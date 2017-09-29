@@ -68,7 +68,7 @@ struct null_queue {
 struct pmd_internals {
 	unsigned packet_size;
 	unsigned packet_copy;
-	uint8_t port_id;
+	uint16_t port_id;
 
 	struct null_queue rx_null_queues[RTE_MAX_QUEUES_PER_PORT];
 	struct null_queue tx_null_queues[RTE_MAX_QUEUES_PER_PORT];

@@ -76,12 +76,6 @@ Deprecation Notices
   done by the EAL and not by the ``ethdev`` layer anymore. Users relying on this
   flag being present only have to remove their checks to follow the change.
 
-* ABI/API changes are planned for 17.11 in all structures which include port_id
-  definition such as "rte_eth_dev_data", "rte_port_ethdev_reader_params",
-  "rte_port_ethdev_writer_params", and so on. The definition of port_id will be
-  changed from 8 bits to 16 bits in order to support more than 256 ports in
-  DPDK. All APIs which have port_id parameter will be changed at the same time.
-
 * ethdev: An ABI change is planned for 17.11 for the structure rte_eth_dev_data.
   The size of the unique name will increase RTE_ETH_NAME_MAX_LEN from 32 to
   64 characters to allow using a globally unique identifier (GUID) in this field.

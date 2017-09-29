@@ -158,12 +158,12 @@ struct ptpv2_data_slave_ordinary {
 	struct clock_id master_clock_id;
 	struct timeval new_adj;
 	int64_t delta;
-	uint8_t portid;
+	uint16_t portid;
 	uint16_t seqID_SYNC;
 	uint16_t seqID_FOLLOWUP;
 	uint8_t ptpset;
 	uint8_t kernel_time_set;
-	uint8_t current_ptp_port;
+	uint16_t current_ptp_port;
 };
 
 static struct ptpv2_data_slave_ordinary ptp_data;

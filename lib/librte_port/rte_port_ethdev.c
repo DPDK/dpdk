@@ -60,7 +60,7 @@ struct rte_port_ethdev_reader {
 	struct rte_port_in_stats stats;
 
 	uint16_t queue_id;
-	uint8_t port_id;
+	uint16_t port_id;
 };
 
 static void *
@@ -156,7 +156,7 @@ struct rte_port_ethdev_writer {
 	uint16_t tx_buf_count;
 	uint64_t bsz_mask;
 	uint16_t queue_id;
-	uint8_t port_id;
+	uint16_t port_id;
 };
 
 static void *
@@ -337,7 +337,7 @@ struct rte_port_ethdev_writer_nodrop {
 	uint64_t bsz_mask;
 	uint64_t n_retries;
 	uint16_t queue_id;
-	uint8_t port_id;
+	uint16_t port_id;
 };
 
 static void *

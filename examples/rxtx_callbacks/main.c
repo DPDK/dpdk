@@ -59,7 +59,7 @@ static struct {
 
 
 static uint16_t
-add_timestamps(uint8_t port __rte_unused, uint16_t qidx __rte_unused,
+add_timestamps(uint16_t port __rte_unused, uint16_t qidx __rte_unused,
 		struct rte_mbuf **pkts, uint16_t nb_pkts,
 		uint16_t max_pkts __rte_unused, void *_ __rte_unused)
 {
@@ -72,7 +72,7 @@ add_timestamps(uint8_t port __rte_unused, uint16_t qidx __rte_unused,
 }
 
 static uint16_t
-calc_latency(uint8_t port __rte_unused, uint16_t qidx __rte_unused,
+calc_latency(uint16_t port __rte_unused, uint16_t qidx __rte_unused,
 		struct rte_mbuf **pkts, uint16_t nb_pkts, void *_ __rte_unused)
 {
 	uint64_t cycles = 0;
@@ -97,7 +97,7 @@ calc_latency(uint8_t port __rte_unused, uint16_t qidx __rte_unused,
  * coming from the mbuf_pool passed as parameter
  */
 static inline int
-port_init(uint8_t port, struct rte_mempool *mbuf_pool)
+port_init(uint16_t port, struct rte_mempool *mbuf_pool)
 {
 	struct rte_eth_conf port_conf = port_conf_default;
 	const uint16_t rx_rings = 1, tx_rings = 1;
@@ -195,7 +195,7 @@ int
 main(int argc, char *argv[])
 {
 	struct rte_mempool *mbuf_pool;
-	uint8_t portid;
+	uint16_t portid;
 
 	/* init EAL */
 	int ret = rte_eal_init(argc, argv);

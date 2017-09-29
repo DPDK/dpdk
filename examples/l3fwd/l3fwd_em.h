@@ -35,12 +35,12 @@
 #define __L3FWD_EM_H__
 
 static __rte_always_inline void
-l3fwd_em_simple_forward(struct rte_mbuf *m, uint8_t portid,
+l3fwd_em_simple_forward(struct rte_mbuf *m, uint16_t portid,
 		struct lcore_conf *qconf)
 {
 	struct ether_hdr *eth_hdr;
 	struct ipv4_hdr *ipv4_hdr;
-	uint8_t dst_port;
+	uint16_t dst_port;
 	uint32_t tcp_or_udp;
 	uint32_t l3_ptypes;
 
@@ -112,7 +112,7 @@ l3fwd_em_simple_forward(struct rte_mbuf *m, uint8_t portid,
  */
 static inline void
 l3fwd_em_no_opt_send_packets(int nb_rx, struct rte_mbuf **pkts_burst,
-			uint8_t portid, struct lcore_conf *qconf)
+			uint16_t portid, struct lcore_conf *qconf)
 {
 	int32_t j;
 

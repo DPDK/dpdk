@@ -67,7 +67,7 @@ int bnxt_rcv_msg_from_vf(struct bnxt *bp, uint16_t vf_id, void *msg)
 		true : false;
 }
 
-int rte_pmd_bnxt_set_tx_loopback(uint8_t port, uint8_t on)
+int rte_pmd_bnxt_set_tx_loopback(uint16_t port, uint8_t on)
 {
 	struct rte_eth_dev *eth_dev;
 	struct bnxt *bp;
@@ -108,7 +108,7 @@ rte_pmd_bnxt_set_all_queues_drop_en_cb(struct bnxt_vnic_info *vnic, void *onptr)
 	vnic->bd_stall = !(*on);
 }
 
-int rte_pmd_bnxt_set_all_queues_drop_en(uint8_t port, uint8_t on)
+int rte_pmd_bnxt_set_all_queues_drop_en(uint16_t port, uint8_t on)
 {
 	struct rte_eth_dev *eth_dev;
 	struct bnxt *bp;
@@ -159,7 +159,7 @@ int rte_pmd_bnxt_set_all_queues_drop_en(uint8_t port, uint8_t on)
 	return rc;
 }
 
-int rte_pmd_bnxt_set_vf_mac_addr(uint8_t port, uint16_t vf,
+int rte_pmd_bnxt_set_vf_mac_addr(uint16_t port, uint16_t vf,
 				struct ether_addr *mac_addr)
 {
 	struct rte_eth_dev *dev;
@@ -191,7 +191,7 @@ int rte_pmd_bnxt_set_vf_mac_addr(uint8_t port, uint16_t vf,
 	return rc;
 }
 
-int rte_pmd_bnxt_set_vf_rate_limit(uint8_t port, uint16_t vf,
+int rte_pmd_bnxt_set_vf_rate_limit(uint16_t port, uint16_t vf,
 				uint16_t tx_rate, uint64_t q_msk)
 {
 	struct rte_eth_dev *eth_dev;
@@ -241,7 +241,7 @@ int rte_pmd_bnxt_set_vf_rate_limit(uint8_t port, uint16_t vf,
 	return rc;
 }
 
-int rte_pmd_bnxt_set_vf_mac_anti_spoof(uint8_t port, uint16_t vf, uint8_t on)
+int rte_pmd_bnxt_set_vf_mac_anti_spoof(uint16_t port, uint16_t vf, uint8_t on)
 {
 	struct rte_eth_dev_info dev_info;
 	struct rte_eth_dev *dev;
@@ -294,7 +294,7 @@ int rte_pmd_bnxt_set_vf_mac_anti_spoof(uint8_t port, uint16_t vf, uint8_t on)
 	return rc;
 }
 
-int rte_pmd_bnxt_set_vf_vlan_anti_spoof(uint8_t port, uint16_t vf, uint8_t on)
+int rte_pmd_bnxt_set_vf_vlan_anti_spoof(uint16_t port, uint16_t vf, uint8_t on)
 {
 	struct rte_eth_dev_info dev_info;
 	struct rte_eth_dev *dev;
@@ -350,7 +350,7 @@ rte_pmd_bnxt_set_vf_vlan_stripq_cb(struct bnxt_vnic_info *vnic, void *onptr)
 }
 
 int
-rte_pmd_bnxt_set_vf_vlan_stripq(uint8_t port, uint16_t vf, uint8_t on)
+rte_pmd_bnxt_set_vf_vlan_stripq(uint16_t port, uint16_t vf, uint8_t on)
 {
 	struct rte_eth_dev *dev;
 	struct rte_eth_dev_info dev_info;
@@ -385,7 +385,7 @@ rte_pmd_bnxt_set_vf_vlan_stripq(uint8_t port, uint16_t vf, uint8_t on)
 	return rc;
 }
 
-int rte_pmd_bnxt_set_vf_rxmode(uint8_t port, uint16_t vf,
+int rte_pmd_bnxt_set_vf_rxmode(uint16_t port, uint16_t vf,
 				uint16_t rx_mask, uint8_t on)
 {
 	struct rte_eth_dev *dev;
@@ -476,7 +476,7 @@ static int bnxt_set_vf_table(struct bnxt *bp, uint16_t vf)
 	return rc;
 }
 
-int rte_pmd_bnxt_set_vf_vlan_filter(uint8_t port, uint16_t vlan,
+int rte_pmd_bnxt_set_vf_vlan_filter(uint16_t port, uint16_t vlan,
 				    uint64_t vf_mask, uint8_t vlan_on)
 {
 	struct bnxt_vlan_table_entry *ve;
@@ -569,7 +569,7 @@ int rte_pmd_bnxt_set_vf_vlan_filter(uint8_t port, uint16_t vlan,
 	return rc;
 }
 
-int rte_pmd_bnxt_get_vf_stats(uint8_t port,
+int rte_pmd_bnxt_get_vf_stats(uint16_t port,
 			      uint16_t vf_id,
 			      struct rte_eth_stats *stats)
 {
@@ -597,7 +597,7 @@ int rte_pmd_bnxt_get_vf_stats(uint8_t port,
 	return bnxt_hwrm_func_qstats(bp, bp->pf.first_vf_id + vf_id, stats);
 }
 
-int rte_pmd_bnxt_reset_vf_stats(uint8_t port,
+int rte_pmd_bnxt_reset_vf_stats(uint16_t port,
 				uint16_t vf_id)
 {
 	struct rte_eth_dev *dev;
@@ -624,7 +624,7 @@ int rte_pmd_bnxt_reset_vf_stats(uint8_t port,
 	return bnxt_hwrm_func_clr_stats(bp, bp->pf.first_vf_id + vf_id);
 }
 
-int rte_pmd_bnxt_get_vf_rx_status(uint8_t port, uint16_t vf_id)
+int rte_pmd_bnxt_get_vf_rx_status(uint16_t port, uint16_t vf_id)
 {
 	struct rte_eth_dev *dev;
 	struct rte_eth_dev_info dev_info;
@@ -650,7 +650,7 @@ int rte_pmd_bnxt_get_vf_rx_status(uint8_t port, uint16_t vf_id)
 	return bnxt_vf_vnic_count(bp, vf_id);
 }
 
-int rte_pmd_bnxt_get_vf_tx_drop_count(uint8_t port, uint16_t vf_id,
+int rte_pmd_bnxt_get_vf_tx_drop_count(uint16_t port, uint16_t vf_id,
 				      uint64_t *count)
 {
 	struct rte_eth_dev *dev;
@@ -678,7 +678,7 @@ int rte_pmd_bnxt_get_vf_tx_drop_count(uint8_t port, uint16_t vf_id,
 					     count);
 }
 
-int rte_pmd_bnxt_mac_addr_add(uint8_t port, struct ether_addr *addr,
+int rte_pmd_bnxt_mac_addr_add(uint16_t port, struct ether_addr *addr,
 				uint32_t vf_id)
 {
 	struct rte_eth_dev *dev;
@@ -755,7 +755,7 @@ exit:
 }
 
 int
-rte_pmd_bnxt_set_vf_vlan_insert(uint8_t port, uint16_t vf,
+rte_pmd_bnxt_set_vf_vlan_insert(uint16_t port, uint16_t vf,
 		uint16_t vlan_id)
 {
 	struct rte_eth_dev *dev;
@@ -792,7 +792,7 @@ rte_pmd_bnxt_set_vf_vlan_insert(uint8_t port, uint16_t vf,
 	return rc;
 }
 
-int rte_pmd_bnxt_set_vf_persist_stats(uint8_t port, uint16_t vf, uint8_t on)
+int rte_pmd_bnxt_set_vf_persist_stats(uint16_t port, uint16_t vf, uint8_t on)
 {
 	struct rte_eth_dev_info dev_info;
 	struct rte_eth_dev *dev;

@@ -129,7 +129,7 @@ static void netmap_unregif(uint32_t idx, uint32_t port);
 
 
 static int32_t
-ifname_to_portid(const char *ifname, uint8_t *port)
+ifname_to_portid(const char *ifname, uint16_t *port)
 {
 	char *endptr;
 	uint64_t portid;
@@ -140,7 +140,7 @@ ifname_to_portid(const char *ifname, uint8_t *port)
 			portid >= RTE_DIM(ports) || errno != 0)
 		return -EINVAL;
 
-	*port = (uint8_t)portid;
+	*port = portid;
 	return 0;
 }
 
@@ -222,10 +222,10 @@ fd_release(int32_t fd)
 }
 
 static int
-check_nmreq(struct nmreq *req, uint8_t *port)
+check_nmreq(struct nmreq *req, uint16_t *port)
 {
 	int32_t rc;
-	uint8_t portid;
+	uint16_t portid;
 
 	if (req == NULL)
 		return -EINVAL;
@@ -242,7 +242,7 @@ check_nmreq(struct nmreq *req, uint8_t *port)
 	}
 
 	if (ports[portid].pool == NULL) {
-	    	RTE_LOG(ERR, USER1, "Misconfigured portid %hhu\n", portid);
+		RTE_LOG(ERR, USER1, "Misconfigured portid %u\n", portid);
 		return -EINVAL;
 	}
 
@@ -262,7 +262,7 @@ check_nmreq(struct nmreq *req, uint8_t *port)
 static int
 ioctl_niocginfo(__rte_unused int fd, void * param)
 {
-	uint8_t portid;
+	uint16_t portid;
 	struct nmreq *req;
 	int32_t rc;
 
@@ -283,7 +283,7 @@ ioctl_niocginfo(__rte_unused int fd, void * param)
 }
 
 static void
-netmap_ring_setup(struct netmap_ring *ring, uint8_t port, uint32_t ringid,
+netmap_ring_setup(struct netmap_ring *ring, uint16_t port, uint32_t ringid,
 	uint32_t num_slots)
 {
 	uint32_t j;
@@ -305,7 +305,7 @@ netmap_ring_setup(struct netmap_ring *ring, uint8_t port, uint32_t ringid,
 }
 
 static int
-netmap_regif(struct nmreq *req, uint32_t idx, uint8_t port)
+netmap_regif(struct nmreq *req, uint32_t idx, uint16_t port)
 {
 	struct netmap_if *nmif;
 	struct netmap_ring *ring;
@@ -313,7 +313,7 @@ netmap_regif(struct nmreq *req, uint32_t idx, uint8_t port)
 	int32_t rc;
 
 	if (ports[port].fd < RTE_DIM(fd_port)) {
-	    	RTE_LOG(ERR, USER1, "port %hhu already in use by fd: %u\n",
+		RTE_LOG(ERR, USER1, "port %u already in use by fd: %u\n",
 			port, IDX_TO_FD(ports[port].fd));
 		return -EBUSY;
 	}
@@ -399,7 +399,7 @@ netmap_regif(struct nmreq *req, uint32_t idx, uint8_t port)
 static int
 ioctl_niocregif(int32_t fd, void * param)
 {
-	uint8_t portid;
+	uint16_t portid;
 	int32_t rc;
 	uint32_t idx;
 	struct nmreq *req;
@@ -422,7 +422,7 @@ netmap_unregif(uint32_t idx, uint32_t port)
 {
 	fd_port[idx].port = FD_PORT_RSRV;
 	ports[port].fd = UINT32_MAX;
-	rte_eth_dev_stop((uint8_t)port);
+	rte_eth_dev_stop(port);
 }
 
 /**
@@ -460,7 +460,7 @@ ioctl_niocunregif(int fd)
  * packets as it can hold coming from its dpdk port.
  */
 static inline int
-rx_sync_ring(struct netmap_ring *ring, uint8_t port, uint16_t ring_number,
+rx_sync_ring(struct netmap_ring *ring, uint16_t port, uint16_t ring_number,
 	uint16_t max_burst)
 {
 	int32_t i, n_rx;
@@ -513,7 +513,7 @@ rx_sync_if(uint32_t port)
 
 	for (i = 0; i < nifp->ni_rx_rings + 1; i++) {
 		r = NETMAP_RXRING(nifp, i);
-		rx_sync_ring(r, (uint8_t)port, (uint16_t)i, burst);
+		rx_sync_ring(r, port, (uint16_t)i, burst);
 		rc += r->avail;
 	}
 
@@ -542,7 +542,7 @@ ioctl_niocrxsync(int fd)
  * buffers into rte_mbufs and sending them out on the rings's dpdk port.
  */
 static int
-tx_sync_ring(struct netmap_ring *ring, uint8_t port, uint16_t ring_number,
+tx_sync_ring(struct netmap_ring *ring, uint16_t port, uint16_t ring_number,
 	struct rte_mempool *pool, uint16_t max_burst)
 {
 	uint32_t i, n_tx;
@@ -608,7 +608,7 @@ tx_sync_if(uint32_t port)
 
 	for (i = 0; i < nifp->ni_tx_rings + 1; i++) {
 		r = NETMAP_TXRING(nifp, i);
-		tx_sync_ring(r, (uint8_t)port, (uint16_t)i, mp, burst);
+		tx_sync_ring(r, port, (uint16_t)i, mp, burst);
 		rc += r->avail;
 	}
 
@@ -686,7 +686,7 @@ rte_netmap_init(const struct rte_netmap_conf *conf)
 
 
 int
-rte_netmap_init_port(uint8_t portid, const struct rte_netmap_port_conf *conf)
+rte_netmap_init_port(uint16_t portid, const struct rte_netmap_port_conf *conf)
 {
 	int32_t ret;
 	uint16_t i;
@@ -696,17 +696,17 @@ rte_netmap_init_port(uint8_t portid, const struct rte_netmap_port_conf *conf)
 			portid >= RTE_DIM(ports) ||
 			conf->nr_tx_rings > netmap.conf.max_rings ||
 			conf->nr_rx_rings > netmap.conf.max_rings) {
-		RTE_LOG(ERR, USER1, "%s(%hhu): invalid parameters\n",
+		RTE_LOG(ERR, USER1, "%s(%u): invalid parameters\n",
 			__func__, portid);
 		return -EINVAL;
 	}
 
-		rx_slots = (uint16_t)rte_align32pow2(conf->nr_rx_slots);
-		tx_slots = (uint16_t)rte_align32pow2(conf->nr_tx_slots);
+	rx_slots = (uint16_t)rte_align32pow2(conf->nr_rx_slots);
+	tx_slots = (uint16_t)rte_align32pow2(conf->nr_tx_slots);
 
 	if (tx_slots > netmap.conf.max_slots ||
 			rx_slots > netmap.conf.max_slots) {
-		RTE_LOG(ERR, USER1, "%s(%hhu): invalid parameters\n",
+		RTE_LOG(ERR, USER1, "%s(%u): invalid parameters\n",
 			__func__, portid);
 		return -EINVAL;
 	}
@@ -715,15 +715,15 @@ rte_netmap_init_port(uint8_t portid, const struct rte_netmap_port_conf *conf)
 		conf->nr_tx_rings, conf->eth_conf);
 
 	if (ret < 0) {
-	    RTE_LOG(ERR, USER1, "Couldn't configure port %hhu\n", portid);
-	    return ret;
+		RTE_LOG(ERR, USER1, "Couldn't configure port %u\n", portid);
+		return ret;
 	}
 
 	ret = rte_eth_dev_adjust_nb_rx_tx_desc(portid, &rx_slots, &tx_slots);
 
 	if (ret < 0) {
 		RTE_LOG(ERR, USER1,
-			"Couldn't ot adjust number of descriptors for port %hhu\n",
+			"Couldn't ot adjust number of descriptors for port %u\n",
 			portid);
 		return ret;
 	}
@@ -734,8 +734,7 @@ rte_netmap_init_port(uint8_t portid, const struct rte_netmap_port_conf *conf)
 
 		if (ret < 0) {
 			RTE_LOG(ERR, USER1,
-				"Couldn't configure TX queue %"PRIu16" of "
-				"port %"PRIu8"\n",
+				"fail to configure TX queue %u of port %u\n",
 				i, portid);
 			return ret;
 		}
@@ -745,8 +744,7 @@ rte_netmap_init_port(uint8_t portid, const struct rte_netmap_port_conf *conf)
 
 		if (ret < 0) {
 			RTE_LOG(ERR, USER1,
-				"Couldn't configure RX queue %"PRIu16" of "
-				"port %"PRIu8"\n",
+				"fail to configure RX queue %u of port %u\n",
 				i, portid);
 			return ret;
 		}

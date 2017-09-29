@@ -38,7 +38,7 @@
 #include "rte_pmd_ixgbe.h"
 
 int
-rte_pmd_ixgbe_set_vf_mac_addr(uint8_t port, uint16_t vf,
+rte_pmd_ixgbe_set_vf_mac_addr(uint16_t port, uint16_t vf,
 			      struct ether_addr *mac_addr)
 {
 	struct ixgbe_hw *hw;
@@ -73,7 +73,7 @@ rte_pmd_ixgbe_set_vf_mac_addr(uint8_t port, uint16_t vf,
 }
 
 int
-rte_pmd_ixgbe_ping_vf(uint8_t port, uint16_t vf)
+rte_pmd_ixgbe_ping_vf(uint16_t port, uint16_t vf)
 {
 	struct ixgbe_hw *hw;
 	struct ixgbe_vf_info *vfinfo;
@@ -105,7 +105,7 @@ rte_pmd_ixgbe_ping_vf(uint8_t port, uint16_t vf)
 }
 
 int
-rte_pmd_ixgbe_set_vf_vlan_anti_spoof(uint8_t port, uint16_t vf, uint8_t on)
+rte_pmd_ixgbe_set_vf_vlan_anti_spoof(uint16_t port, uint16_t vf, uint8_t on)
 {
 	struct ixgbe_hw *hw;
 	struct ixgbe_mac_info *mac;
@@ -135,7 +135,7 @@ rte_pmd_ixgbe_set_vf_vlan_anti_spoof(uint8_t port, uint16_t vf, uint8_t on)
 }
 
 int
-rte_pmd_ixgbe_set_vf_mac_anti_spoof(uint8_t port, uint16_t vf, uint8_t on)
+rte_pmd_ixgbe_set_vf_mac_anti_spoof(uint16_t port, uint16_t vf, uint8_t on)
 {
 	struct ixgbe_hw *hw;
 	struct ixgbe_mac_info *mac;
@@ -164,7 +164,7 @@ rte_pmd_ixgbe_set_vf_mac_anti_spoof(uint8_t port, uint16_t vf, uint8_t on)
 }
 
 int
-rte_pmd_ixgbe_set_vf_vlan_insert(uint8_t port, uint16_t vf, uint16_t vlan_id)
+rte_pmd_ixgbe_set_vf_vlan_insert(uint16_t port, uint16_t vf, uint16_t vlan_id)
 {
 	struct ixgbe_hw *hw;
 	uint32_t ctrl;
@@ -200,7 +200,7 @@ rte_pmd_ixgbe_set_vf_vlan_insert(uint8_t port, uint16_t vf, uint16_t vlan_id)
 }
 
 int
-rte_pmd_ixgbe_set_tx_loopback(uint8_t port, uint8_t on)
+rte_pmd_ixgbe_set_tx_loopback(uint16_t port, uint8_t on)
 {
 	struct ixgbe_hw *hw;
 	uint32_t ctrl;
@@ -230,7 +230,7 @@ rte_pmd_ixgbe_set_tx_loopback(uint8_t port, uint8_t on)
 }
 
 int
-rte_pmd_ixgbe_set_all_queues_drop_en(uint8_t port, uint8_t on)
+rte_pmd_ixgbe_set_all_queues_drop_en(uint16_t port, uint8_t on)
 {
 	struct ixgbe_hw *hw;
 	uint32_t reg_value;
@@ -260,7 +260,7 @@ rte_pmd_ixgbe_set_all_queues_drop_en(uint8_t port, uint8_t on)
 }
 
 int
-rte_pmd_ixgbe_set_vf_split_drop_en(uint8_t port, uint16_t vf, uint8_t on)
+rte_pmd_ixgbe_set_vf_split_drop_en(uint16_t port, uint16_t vf, uint8_t on)
 {
 	struct ixgbe_hw *hw;
 	uint32_t reg_value;
@@ -295,7 +295,7 @@ rte_pmd_ixgbe_set_vf_split_drop_en(uint8_t port, uint16_t vf, uint8_t on)
 }
 
 int
-rte_pmd_ixgbe_set_vf_vlan_stripq(uint8_t port, uint16_t vf, uint8_t on)
+rte_pmd_ixgbe_set_vf_vlan_stripq(uint16_t port, uint16_t vf, uint8_t on)
 {
 	struct rte_eth_dev *dev;
 	struct rte_pci_device *pci_dev;
@@ -342,7 +342,7 @@ rte_pmd_ixgbe_set_vf_vlan_stripq(uint8_t port, uint16_t vf, uint8_t on)
 }
 
 int
-rte_pmd_ixgbe_set_vf_rxmode(uint8_t port, uint16_t vf,
+rte_pmd_ixgbe_set_vf_rxmode(uint16_t port, uint16_t vf,
 			    uint16_t rx_mask, uint8_t on)
 {
 	int val = 0;
@@ -389,7 +389,7 @@ rte_pmd_ixgbe_set_vf_rxmode(uint8_t port, uint16_t vf,
 }
 
 int
-rte_pmd_ixgbe_set_vf_rx(uint8_t port, uint16_t vf, uint8_t on)
+rte_pmd_ixgbe_set_vf_rx(uint16_t port, uint16_t vf, uint8_t on)
 {
 	struct rte_eth_dev *dev;
 	struct rte_pci_device *pci_dev;
@@ -439,7 +439,7 @@ rte_pmd_ixgbe_set_vf_rx(uint8_t port, uint16_t vf, uint8_t on)
 }
 
 int
-rte_pmd_ixgbe_set_vf_tx(uint8_t port, uint16_t vf, uint8_t on)
+rte_pmd_ixgbe_set_vf_tx(uint16_t port, uint16_t vf, uint8_t on)
 {
 	struct rte_eth_dev *dev;
 	struct rte_pci_device *pci_dev;
@@ -489,7 +489,7 @@ rte_pmd_ixgbe_set_vf_tx(uint8_t port, uint16_t vf, uint8_t on)
 }
 
 int
-rte_pmd_ixgbe_set_vf_vlan_filter(uint8_t port, uint16_t vlan,
+rte_pmd_ixgbe_set_vf_vlan_filter(uint16_t port, uint16_t vlan,
 				 uint64_t vf_mask, uint8_t vlan_on)
 {
 	struct rte_eth_dev *dev;
@@ -524,7 +524,7 @@ rte_pmd_ixgbe_set_vf_vlan_filter(uint8_t port, uint16_t vlan,
 }
 
 int
-rte_pmd_ixgbe_set_vf_rate_limit(uint8_t port, uint16_t vf,
+rte_pmd_ixgbe_set_vf_rate_limit(uint16_t port, uint16_t vf,
 				uint16_t tx_rate, uint64_t q_msk)
 {
 	struct rte_eth_dev *dev;
@@ -540,7 +540,7 @@ rte_pmd_ixgbe_set_vf_rate_limit(uint8_t port, uint16_t vf,
 }
 
 int
-rte_pmd_ixgbe_macsec_enable(uint8_t port, uint8_t en, uint8_t rp)
+rte_pmd_ixgbe_macsec_enable(uint16_t port, uint8_t en, uint8_t rp)
 {
 	struct ixgbe_hw *hw;
 	struct rte_eth_dev *dev;
@@ -623,7 +623,7 @@ rte_pmd_ixgbe_macsec_enable(uint8_t port, uint8_t en, uint8_t rp)
 }
 
 int
-rte_pmd_ixgbe_macsec_disable(uint8_t port)
+rte_pmd_ixgbe_macsec_disable(uint16_t port)
 {
 	struct ixgbe_hw *hw;
 	struct rte_eth_dev *dev;
@@ -687,7 +687,7 @@ rte_pmd_ixgbe_macsec_disable(uint8_t port)
 }
 
 int
-rte_pmd_ixgbe_macsec_config_txsc(uint8_t port, uint8_t *mac)
+rte_pmd_ixgbe_macsec_config_txsc(uint16_t port, uint8_t *mac)
 {
 	struct ixgbe_hw *hw;
 	struct rte_eth_dev *dev;
@@ -712,7 +712,7 @@ rte_pmd_ixgbe_macsec_config_txsc(uint8_t port, uint8_t *mac)
 }
 
 int
-rte_pmd_ixgbe_macsec_config_rxsc(uint8_t port, uint8_t *mac, uint16_t pi)
+rte_pmd_ixgbe_macsec_config_rxsc(uint16_t port, uint8_t *mac, uint16_t pi)
 {
 	struct ixgbe_hw *hw;
 	struct rte_eth_dev *dev;
@@ -738,7 +738,7 @@ rte_pmd_ixgbe_macsec_config_rxsc(uint8_t port, uint8_t *mac, uint16_t pi)
 }
 
 int
-rte_pmd_ixgbe_macsec_select_txsa(uint8_t port, uint8_t idx, uint8_t an,
+rte_pmd_ixgbe_macsec_select_txsa(uint16_t port, uint8_t idx, uint8_t an,
 				 uint32_t pn, uint8_t *key)
 {
 	struct ixgbe_hw *hw;
@@ -794,7 +794,7 @@ rte_pmd_ixgbe_macsec_select_txsa(uint8_t port, uint8_t idx, uint8_t an,
 }
 
 int
-rte_pmd_ixgbe_macsec_select_rxsa(uint8_t port, uint8_t idx, uint8_t an,
+rte_pmd_ixgbe_macsec_select_rxsa(uint16_t port, uint8_t idx, uint8_t an,
 				 uint32_t pn, uint8_t *key)
 {
 	struct ixgbe_hw *hw;
@@ -837,7 +837,7 @@ rte_pmd_ixgbe_macsec_select_rxsa(uint8_t port, uint8_t idx, uint8_t an,
 }
 
 int
-rte_pmd_ixgbe_set_tc_bw_alloc(uint8_t port,
+rte_pmd_ixgbe_set_tc_bw_alloc(uint16_t port,
 			      uint8_t tc_num,
 			      uint8_t *bw_weight)
 {
@@ -911,7 +911,7 @@ rte_pmd_ixgbe_set_tc_bw_alloc(uint8_t port,
 
 #ifdef RTE_LIBRTE_IXGBE_BYPASS
 int
-rte_pmd_ixgbe_bypass_init(uint8_t port_id)
+rte_pmd_ixgbe_bypass_init(uint16_t port_id)
 {
 	struct rte_eth_dev *dev;
 
@@ -926,7 +926,7 @@ rte_pmd_ixgbe_bypass_init(uint8_t port_id)
 }
 
 int
-rte_pmd_ixgbe_bypass_state_show(uint8_t port_id, uint32_t *state)
+rte_pmd_ixgbe_bypass_state_show(uint16_t port_id, uint32_t *state)
 {
 	struct rte_eth_dev *dev;
 
@@ -940,7 +940,7 @@ rte_pmd_ixgbe_bypass_state_show(uint8_t port_id, uint32_t *state)
 }
 
 int
-rte_pmd_ixgbe_bypass_state_set(uint8_t port_id, uint32_t *new_state)
+rte_pmd_ixgbe_bypass_state_set(uint16_t port_id, uint32_t *new_state)
 {
 	struct rte_eth_dev *dev;
 
@@ -954,7 +954,7 @@ rte_pmd_ixgbe_bypass_state_set(uint8_t port_id, uint32_t *new_state)
 }
 
 int
-rte_pmd_ixgbe_bypass_event_show(uint8_t port_id,
+rte_pmd_ixgbe_bypass_event_show(uint16_t port_id,
 				uint32_t event,
 				uint32_t *state)
 {
@@ -970,7 +970,7 @@ rte_pmd_ixgbe_bypass_event_show(uint8_t port_id,
 }
 
 int
-rte_pmd_ixgbe_bypass_event_store(uint8_t port_id,
+rte_pmd_ixgbe_bypass_event_store(uint16_t port_id,
 				 uint32_t event,
 				 uint32_t state)
 {
@@ -986,7 +986,7 @@ rte_pmd_ixgbe_bypass_event_store(uint8_t port_id,
 }
 
 int
-rte_pmd_ixgbe_bypass_wd_timeout_store(uint8_t port_id, uint32_t timeout)
+rte_pmd_ixgbe_bypass_wd_timeout_store(uint16_t port_id, uint32_t timeout)
 {
 	struct rte_eth_dev *dev;
 
@@ -1000,7 +1000,7 @@ rte_pmd_ixgbe_bypass_wd_timeout_store(uint8_t port_id, uint32_t timeout)
 }
 
 int
-rte_pmd_ixgbe_bypass_ver_show(uint8_t port_id, uint32_t *ver)
+rte_pmd_ixgbe_bypass_ver_show(uint16_t port_id, uint32_t *ver)
 {
 	struct rte_eth_dev *dev;
 
@@ -1014,7 +1014,7 @@ rte_pmd_ixgbe_bypass_ver_show(uint8_t port_id, uint32_t *ver)
 }
 
 int
-rte_pmd_ixgbe_bypass_wd_timeout_show(uint8_t port_id, uint32_t *wd_timeout)
+rte_pmd_ixgbe_bypass_wd_timeout_show(uint16_t port_id, uint32_t *wd_timeout)
 {
 	struct rte_eth_dev *dev;
 
@@ -1028,7 +1028,7 @@ rte_pmd_ixgbe_bypass_wd_timeout_show(uint8_t port_id, uint32_t *wd_timeout)
 }
 
 int
-rte_pmd_ixgbe_bypass_wd_reset(uint8_t port_id)
+rte_pmd_ixgbe_bypass_wd_reset(uint16_t port_id)
 {
 	struct rte_eth_dev *dev;
 

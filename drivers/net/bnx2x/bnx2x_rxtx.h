@@ -41,7 +41,7 @@ struct bnx2x_rx_queue {
 	uint16_t                   rx_cq_head;           /**< Index of current rcq bd. */
 	uint16_t                   rx_cq_tail;           /**< Index of last rcq bd. */
 	uint16_t                   queue_id;             /**< RX queue index. */
-	uint8_t                    port_id;              /**< Device port identifier. */
+	uint16_t                   port_id;              /**< Device port identifier. */
 	struct bnx2x_softc           *sc;                  /**< Ptr to dev_private data. */
 };
 
@@ -62,7 +62,7 @@ struct bnx2x_tx_queue {
 	uint16_t                   nb_tx_avail;          /**< Number of TX descriptors available. */
 	uint16_t                   nb_tx_pages;          /**< number of TX pages */
 	uint16_t                   queue_id;             /**< TX queue index. */
-	uint8_t                    port_id;              /**< Device port identifier. */
+	uint16_t                   port_id;              /**< Device port identifier. */
 	struct bnx2x_softc           *sc;                  /**< Ptr to dev_private data */
 };
 

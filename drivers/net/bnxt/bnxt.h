@@ -126,7 +126,7 @@ struct bnxt_pf_info {
 #define BNXT_FIRST_VF_FID	128
 #define BNXT_PF_RINGS_USED(bp)	bnxt_get_num_queues(bp)
 #define BNXT_PF_RINGS_AVAIL(bp)	(bp->pf.max_cp_rings - BNXT_PF_RINGS_USED(bp))
-	uint8_t			port_id;
+	uint16_t		port_id;
 	uint16_t		first_vf_id;
 	uint16_t		active_vfs;
 	uint16_t		max_vfs;

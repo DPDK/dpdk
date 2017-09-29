@@ -63,13 +63,13 @@ struct rte_mbuf;
  * Structure which has the function pointers for KNI interface.
  */
 struct rte_kni_ops {
-	uint8_t port_id; /* Port ID */
+	uint16_t port_id; /* Port ID */
 
 	/* Pointer to function of changing MTU */
-	int (*change_mtu)(uint8_t port_id, unsigned new_mtu);
+	int (*change_mtu)(uint16_t port_id, unsigned int new_mtu);
 
 	/* Pointer to function of configuring network interface */
-	int (*config_network_if)(uint8_t port_id, uint8_t if_up);
+	int (*config_network_if)(uint16_t port_id, uint8_t if_up);
 };
 
 /**

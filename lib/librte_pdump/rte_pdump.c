@@ -207,7 +207,7 @@ pdump_copy(struct rte_mbuf **pkts, uint16_t nb_pkts, void *user_params)
 }
 
 static uint16_t
-pdump_rx(uint8_t port __rte_unused, uint16_t qidx __rte_unused,
+pdump_rx(uint16_t port __rte_unused, uint16_t qidx __rte_unused,
 	struct rte_mbuf **pkts, uint16_t nb_pkts,
 	uint16_t max_pkts __rte_unused,
 	void *user_params)
@@ -217,7 +217,7 @@ pdump_rx(uint8_t port __rte_unused, uint16_t qidx __rte_unused,
 }
 
 static uint16_t
-pdump_tx(uint8_t port __rte_unused, uint16_t qidx __rte_unused,
+pdump_tx(uint16_t port __rte_unused, uint16_t qidx __rte_unused,
 		struct rte_mbuf **pkts, uint16_t nb_pkts, void *user_params)
 {
 	pdump_copy(pkts, nb_pkts, user_params);
@@ -225,7 +225,7 @@ pdump_tx(uint8_t port __rte_unused, uint16_t qidx __rte_unused,
 }
 
 static int
-pdump_regitser_rx_callbacks(uint16_t end_q, uint8_t port, uint16_t queue,
+pdump_regitser_rx_callbacks(uint16_t end_q, uint16_t port, uint16_t queue,
 				struct rte_ring *ring, struct rte_mempool *mp,
 				uint16_t operation)
 {
@@ -279,7 +279,7 @@ pdump_regitser_rx_callbacks(uint16_t end_q, uint8_t port, uint16_t queue,
 }
 
 static int
-pdump_regitser_tx_callbacks(uint16_t end_q, uint8_t port, uint16_t queue,
+pdump_regitser_tx_callbacks(uint16_t end_q, uint16_t port, uint16_t queue,
 				struct rte_ring *ring, struct rte_mempool *mp,
 				uint16_t operation)
 {
@@ -337,7 +337,7 @@ static int
 set_pdump_rxtx_cbs(struct pdump_request *p)
 {
 	uint16_t nb_rx_q = 0, nb_tx_q = 0, end_q, queue;
-	uint8_t port;
+	uint16_t port;
 	int ret = 0;
 	uint32_t flags;
 	uint16_t operation;
@@ -764,7 +764,7 @@ pdump_validate_flags(uint32_t flags)
 }
 
 static int
-pdump_validate_port(uint8_t port, char *name)
+pdump_validate_port(uint16_t port, char *name)
 {
 	int ret = 0;
 
@@ -828,7 +828,7 @@ pdump_prepare_client_request(char *device, uint16_t queue,
 }
 
 int
-rte_pdump_enable(uint8_t port, uint16_t queue, uint32_t flags,
+rte_pdump_enable(uint16_t port, uint16_t queue, uint32_t flags,
 			struct rte_ring *ring,
 			struct rte_mempool *mp,
 			void *filter)
@@ -876,7 +876,7 @@ rte_pdump_enable_by_deviceid(char *device_id, uint16_t queue,
 }
 
 int
-rte_pdump_disable(uint8_t port, uint16_t queue, uint32_t flags)
+rte_pdump_disable(uint16_t port, uint16_t queue, uint32_t flags)
 {
 	int ret = 0;
 	char name[DEVICE_ID_SIZE];

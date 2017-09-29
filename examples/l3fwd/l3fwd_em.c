@@ -628,7 +628,7 @@ em_parse_ptype(struct rte_mbuf *m)
 }
 
 uint16_t
-em_cb_parse_ptype(uint8_t port __rte_unused, uint16_t queue __rte_unused,
+em_cb_parse_ptype(uint16_t port __rte_unused, uint16_t queue __rte_unused,
 		  struct rte_mbuf *pkts[], uint16_t nb_pkts,
 		  uint16_t max_pkts __rte_unused,
 		  void *user_param __rte_unused)

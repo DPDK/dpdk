@@ -78,7 +78,7 @@ struct rte_pmd_bnxt_mb_event_param {
  *   - (-ENODEV) if *port* invalid.
  *   - (-EINVAL) if bad parameter.
  */
-int rte_pmd_bnxt_set_vf_mac_anti_spoof(uint8_t port, uint16_t vf, uint8_t on);
+int rte_pmd_bnxt_set_vf_mac_anti_spoof(uint16_t port, uint16_t vf, uint8_t on);
 
 /**
  * Set the VF MAC address.
@@ -94,7 +94,7 @@ int rte_pmd_bnxt_set_vf_mac_anti_spoof(uint8_t port, uint16_t vf, uint8_t on);
  *   - (-ENODEV) if *port* invalid.
  *   - (-EINVAL) if *vf* or *mac_addr* is invalid.
  */
-int rte_pmd_bnxt_set_vf_mac_addr(uint8_t port, uint16_t vf,
+int rte_pmd_bnxt_set_vf_mac_addr(uint16_t port, uint16_t vf,
 		struct ether_addr *mac_addr);
 
 /**
@@ -115,7 +115,7 @@ int rte_pmd_bnxt_set_vf_mac_addr(uint8_t port, uint16_t vf,
  *   - (-EINVAL) if bad parameter.
  */
 int
-rte_pmd_bnxt_set_vf_vlan_stripq(uint8_t port, uint16_t vf, uint8_t on);
+rte_pmd_bnxt_set_vf_vlan_stripq(uint16_t port, uint16_t vf, uint8_t on);
 
 /**
  * Enable/Disable vf vlan insert
@@ -134,7 +134,7 @@ rte_pmd_bnxt_set_vf_vlan_stripq(uint8_t port, uint16_t vf, uint8_t on);
  *   - (-EINVAL) if bad parameter.
  */
 int
-rte_pmd_bnxt_set_vf_vlan_insert(uint8_t port, uint16_t vf,
+rte_pmd_bnxt_set_vf_vlan_insert(uint16_t port, uint16_t vf,
 		uint16_t vlan_id);
 
 /**
@@ -156,7 +156,7 @@ rte_pmd_bnxt_set_vf_vlan_insert(uint8_t port, uint16_t vf,
  *   - (-ENODEV) if *port_id* invalid.
  *   - (-EINVAL) if bad parameter.
  */
-int rte_pmd_bnxt_set_vf_vlan_filter(uint8_t port, uint16_t vlan,
+int rte_pmd_bnxt_set_vf_vlan_filter(uint16_t port, uint16_t vlan,
 				    uint64_t vf_mask, uint8_t vlan_on);
 
 /**
@@ -173,7 +173,7 @@ int rte_pmd_bnxt_set_vf_vlan_filter(uint8_t port, uint16_t vlan,
  *   - (-ENODEV) if *port* invalid.
  *   - (-EINVAL) if bad parameter.
  */
-int rte_pmd_bnxt_set_tx_loopback(uint8_t port, uint8_t on);
+int rte_pmd_bnxt_set_tx_loopback(uint16_t port, uint8_t on);
 
 /**
  * set all queues drop enable bit
@@ -189,7 +189,7 @@ int rte_pmd_bnxt_set_tx_loopback(uint8_t port, uint8_t on);
  *   - (-ENODEV) if *port* invalid.
  *   - (-EINVAL) if bad parameter.
  */
-int rte_pmd_bnxt_set_all_queues_drop_en(uint8_t port, uint8_t on);
+int rte_pmd_bnxt_set_all_queues_drop_en(uint16_t port, uint8_t on);
 
 /**
  * Set the VF rate limit.
@@ -207,7 +207,7 @@ int rte_pmd_bnxt_set_all_queues_drop_en(uint8_t port, uint8_t on);
  *   - (-ENODEV) if *port* invalid.
  *   - (-EINVAL) if *vf* or *mac_addr* is invalid.
  */
-int rte_pmd_bnxt_set_vf_rate_limit(uint8_t port, uint16_t vf,
+int rte_pmd_bnxt_set_vf_rate_limit(uint16_t port, uint16_t vf,
 				uint16_t tx_rate, uint64_t q_msk);
 
 /**
@@ -226,7 +226,7 @@ int rte_pmd_bnxt_set_vf_rate_limit(uint8_t port, uint16_t vf,
  *   - (-EINVAL) if bad parameter.
  */
 
-int rte_pmd_bnxt_get_vf_stats(uint8_t port,
+int rte_pmd_bnxt_get_vf_stats(uint16_t port,
 			      uint16_t vf_id,
 			      struct rte_eth_stats *stats);
 
@@ -242,7 +242,7 @@ int rte_pmd_bnxt_get_vf_stats(uint8_t port,
  *   - (-ENODEV) if *port* invalid.
  *   - (-EINVAL) if bad parameter.
  */
-int rte_pmd_bnxt_reset_vf_stats(uint8_t port,
+int rte_pmd_bnxt_reset_vf_stats(uint16_t port,
 				uint16_t vf_id);
 
 /**
@@ -261,7 +261,7 @@ int rte_pmd_bnxt_reset_vf_stats(uint8_t port,
  *   - (-ENODEV) if *port* invalid.
  *   - (-EINVAL) if bad parameter.
  */
-int rte_pmd_bnxt_set_vf_vlan_anti_spoof(uint8_t port, uint16_t vf, uint8_t on);
+int rte_pmd_bnxt_set_vf_vlan_anti_spoof(uint16_t port, uint16_t vf, uint8_t on);
 
 /**
  * Set RX L2 Filtering mode of a VF of an Ethernet device.
@@ -280,7 +280,7 @@ int rte_pmd_bnxt_set_vf_vlan_anti_spoof(uint8_t port, uint16_t vf, uint8_t on);
  *   - (-ENODEV) if *port_id* invalid.
  *   - (-EINVAL) if bad parameter.
  */
-int rte_pmd_bnxt_set_vf_rxmode(uint8_t port, uint16_t vf,
+int rte_pmd_bnxt_set_vf_rxmode(uint16_t port, uint16_t vf,
 				uint16_t rx_mask, uint8_t on);
 
 /**
@@ -297,7 +297,7 @@ int rte_pmd_bnxt_set_vf_rxmode(uint8_t port, uint16_t vf,
  *   - (-ENOMEM) on an allocation failure
  *   - (-1) firmware interface error
  */
-int rte_pmd_bnxt_get_vf_rx_status(uint8_t port, uint16_t vf_id);
+int rte_pmd_bnxt_get_vf_rx_status(uint16_t port, uint16_t vf_id);
 
 /**
  * Queries the TX drop counter for the function
@@ -313,7 +313,7 @@ int rte_pmd_bnxt_get_vf_rx_status(uint8_t port, uint16_t vf_id);
  *   - (-EINVAL) invalid vf_id specified.
  *   - (-ENOTSUP) Ethernet device is not a PF
  */
-int rte_pmd_bnxt_get_vf_tx_drop_count(uint8_t port, uint16_t vf_id,
+int rte_pmd_bnxt_get_vf_tx_drop_count(uint16_t port, uint16_t vf_id,
 				      uint64_t *count);
 
 /**
@@ -331,7 +331,7 @@ int rte_pmd_bnxt_get_vf_tx_drop_count(uint8_t port, uint16_t vf_id,
  *   - (-ENOTSUP) Ethernet device is not a PF
  *   - (-ENOMEM) on an allocation failure
  */
-int rte_pmd_bnxt_mac_addr_add(uint8_t port, struct ether_addr *mac_addr,
+int rte_pmd_bnxt_mac_addr_add(uint16_t port, struct ether_addr *mac_addr,
 				uint32_t vf_id);
 
 /**
@@ -350,5 +350,5 @@ int rte_pmd_bnxt_mac_addr_add(uint8_t port, struct ether_addr *mac_addr,
  *   - (-ENODEV) if *port* invalid.
  *   - (-EINVAL) if bad parameter.
  */
-int rte_pmd_bnxt_set_vf_persist_stats(uint8_t port, uint16_t vf, uint8_t on);
+int rte_pmd_bnxt_set_vf_persist_stats(uint16_t port, uint16_t vf, uint8_t on);
 #endif /* _PMD_BNXT_H_ */

@@ -360,7 +360,7 @@ rx_queue_infos_display(portid_t port_id, uint16_t queue_id)
 
 	rc = rte_eth_rx_queue_info_get(port_id, queue_id, &qinfo);
 	if (rc != 0) {
-		printf("Failed to retrieve information for port: %hhu, "
+		printf("Failed to retrieve information for port: %u, "
 			"RX queue: %hu\nerror desc: %s(%d)\n",
 			port_id, queue_id, strerror(-rc), rc);
 		return;
@@ -393,7 +393,7 @@ tx_queue_infos_display(portid_t port_id, uint16_t queue_id)
 
 	rc = rte_eth_tx_queue_info_get(port_id, queue_id, &qinfo);
 	if (rc != 0) {
-		printf("Failed to retrieve information for port: %hhu, "
+		printf("Failed to retrieve information for port: %u, "
 			"TX queue: %hu\nerror desc: %s(%d)\n",
 			port_id, queue_id, strerror(-rc), rc);
 		return;

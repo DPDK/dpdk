@@ -95,7 +95,7 @@ struct efd_stats {
 static struct node_rx_buf *cl_rx_buf;
 
 static const char *
-get_printable_mac_addr(uint8_t port)
+get_printable_mac_addr(uint16_t port)
 {
 	static const char err_address[] = "00:00:00:00:00:00";
 	static char addresses[RTE_MAX_ETHPORTS][sizeof(err_address)];

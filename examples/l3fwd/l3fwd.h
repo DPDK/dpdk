@@ -83,7 +83,7 @@ struct mbuf_table {
 };
 
 struct lcore_rx_queue {
-	uint8_t port_id;
+	uint16_t port_id;
 	uint8_t queue_id;
 } __rte_cache_aligned;
 
@@ -117,7 +117,7 @@ extern struct lcore_conf lcore_conf[RTE_MAX_LCORE];
 
 /* Send burst of packets on an output interface */
 static inline int
-send_burst(struct lcore_conf *qconf, uint16_t n, uint8_t port)
+send_burst(struct lcore_conf *qconf, uint16_t n, uint16_t port)
 {
 	struct rte_mbuf **m_table;
 	int ret;
@@ -139,7 +139,7 @@ send_burst(struct lcore_conf *qconf, uint16_t n, uint8_t port)
 /* Enqueue a single packet, and send burst if queue is filled */
 static inline int
 send_single_packet(struct lcore_conf *qconf,
-		struct rte_mbuf *m, uint8_t port)
+		   struct rte_mbuf *m, uint16_t port)
 {
 	uint16_t len;
 
@@ -212,11 +212,11 @@ int
 lpm_check_ptype(int portid);
 
 uint16_t
-em_cb_parse_ptype(uint8_t port, uint16_t queue, struct rte_mbuf *pkts[],
+em_cb_parse_ptype(uint16_t port, uint16_t queue, struct rte_mbuf *pkts[],
 		  uint16_t nb_pkts, uint16_t max_pkts, void *user_param);
 
 uint16_t
-lpm_cb_parse_ptype(uint8_t port, uint16_t queue, struct rte_mbuf *pkts[],
+lpm_cb_parse_ptype(uint16_t port, uint16_t queue, struct rte_mbuf *pkts[],
 		   uint16_t nb_pkts, uint16_t max_pkts, void *user_param);
 
 int

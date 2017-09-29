@@ -64,7 +64,7 @@ extern "C" {
 #define MARKER_TLV_TYPE_INFO                0x01
 #define MARKER_TLV_TYPE_RESP                0x02
 
-typedef void (*rte_eth_bond_8023ad_ext_slowrx_fn)(uint8_t slave_id,
+typedef void (*rte_eth_bond_8023ad_ext_slowrx_fn)(uint16_t slave_id,
 						  struct rte_mbuf *lacp_pkt);
 
 enum rte_bond_8023ad_selection {
@@ -176,7 +176,7 @@ struct rte_eth_bond_8023ad_slave_info {
 	struct port_params actor;
 	uint8_t partner_state;
 	struct port_params partner;
-	uint8_t agg_port_id;
+	uint16_t agg_port_id;
 };
 
 /**
@@ -192,7 +192,7 @@ struct rte_eth_bond_8023ad_slave_info {
  *   -EINVAL if conf is NULL
  */
 int
-rte_eth_bond_8023ad_conf_get(uint8_t port_id,
+rte_eth_bond_8023ad_conf_get(uint16_t port_id,
 		struct rte_eth_bond_8023ad_conf *conf);
 
 /**
@@ -207,7 +207,7 @@ rte_eth_bond_8023ad_conf_get(uint8_t port_id,
  *   -EINVAL if configuration is invalid.
  */
 int
-rte_eth_bond_8023ad_setup(uint8_t port_id,
+rte_eth_bond_8023ad_setup(uint16_t port_id,
 		struct rte_eth_bond_8023ad_conf *conf);
 
 /**
@@ -223,7 +223,7 @@ rte_eth_bond_8023ad_setup(uint8_t port_id,
  *       bonded device or is not inactive).
  */
 int
-rte_eth_bond_8023ad_slave_info(uint8_t port_id, uint8_t slave_id,
+rte_eth_bond_8023ad_slave_info(uint16_t port_id, uint16_t slave_id,
 		struct rte_eth_bond_8023ad_slave_info *conf);
 
 #ifdef __cplusplus
@@ -241,7 +241,8 @@ rte_eth_bond_8023ad_slave_info(uint8_t port_id, uint8_t slave_id,
  *   -EINVAL if slave is not valid.
  */
 int
-rte_eth_bond_8023ad_ext_collect(uint8_t port_id, uint8_t slave_id, int enabled);
+rte_eth_bond_8023ad_ext_collect(uint16_t port_id, uint16_t slave_id,
+				int enabled);
 
 /**
  * Get COLLECTING flag from slave port actor state.
@@ -254,7 +255,7 @@ rte_eth_bond_8023ad_ext_collect(uint8_t port_id, uint8_t slave_id, int enabled);
  *   -EINVAL if slave is not valid.
  */
 int
-rte_eth_bond_8023ad_ext_collect_get(uint8_t port_id, uint8_t slave_id);
+rte_eth_bond_8023ad_ext_collect_get(uint16_t port_id, uint16_t slave_id);
 
 /**
  * Configure a slave port to start distributing.
@@ -267,7 +268,8 @@ rte_eth_bond_8023ad_ext_collect_get(uint8_t port_id, uint8_t slave_id);
  *   -EINVAL if slave is not valid.
  */
 int
-rte_eth_bond_8023ad_ext_distrib(uint8_t port_id, uint8_t slave_id, int enabled);
+rte_eth_bond_8023ad_ext_distrib(uint16_t port_id, uint16_t slave_id,
+				int enabled);
 
 /**
  * Get DISTRIBUTING flag from slave port actor state.
@@ -280,7 +282,7 @@ rte_eth_bond_8023ad_ext_distrib(uint8_t port_id, uint8_t slave_id, int enabled);
  *   -EINVAL if slave is not valid.
  */
 int
-rte_eth_bond_8023ad_ext_distrib_get(uint8_t port_id, uint8_t slave_id);
+rte_eth_bond_8023ad_ext_distrib_get(uint16_t port_id, uint16_t slave_id);
 
 /**
  * LACPDU transmit path for external 802.3ad state machine.  Caller retains
@@ -294,7 +296,7 @@ rte_eth_bond_8023ad_ext_distrib_get(uint8_t port_id, uint8_t slave_id);
  *   0 on success, negative value otherwise.
  */
 int
-rte_eth_bond_8023ad_ext_slowtx(uint8_t port_id, uint8_t slave_id,
+rte_eth_bond_8023ad_ext_slowtx(uint16_t port_id, uint16_t slave_id,
 		struct rte_mbuf *lacp_pkt);
 
 /**
@@ -320,7 +322,7 @@ rte_eth_bond_8023ad_ext_slowtx(uint8_t port_id, uint8_t slave_id,
  *   0 on success, negative value otherwise.
  */
 int
-rte_eth_bond_8023ad_dedicated_queues_enable(uint8_t port_id);
+rte_eth_bond_8023ad_dedicated_queues_enable(uint16_t port_id);
 
 /**
  * Disable slow queue on slaves
@@ -337,7 +339,7 @@ rte_eth_bond_8023ad_dedicated_queues_enable(uint8_t port_id);
  *
  */
 int
-rte_eth_bond_8023ad_dedicated_queues_disable(uint8_t port_id);
+rte_eth_bond_8023ad_dedicated_queues_disable(uint16_t port_id);
 
 /*
  * Get aggregator mode for 8023ad
@@ -347,7 +349,7 @@ rte_eth_bond_8023ad_dedicated_queues_disable(uint8_t port_id);
  *   agregator mode on success, negative value otherwise
  */
 int
-rte_eth_bond_8023ad_agg_selection_get(uint8_t port_id);
+rte_eth_bond_8023ad_agg_selection_get(uint16_t port_id);
 
 /**
  * Set aggregator mode for 8023ad
@@ -356,6 +358,6 @@ rte_eth_bond_8023ad_agg_selection_get(uint8_t port_id);
  *   0 on success, negative value otherwise
  */
 int
-rte_eth_bond_8023ad_agg_selection_set(uint8_t port_id,
+rte_eth_bond_8023ad_agg_selection_set(uint16_t port_id,
 		enum rte_bond_8023ad_agg_selection agg_selection);
 #endif /* RTE_ETH_BOND_8023AD_H_ */

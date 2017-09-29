@@ -74,7 +74,7 @@ static uint8_t client_id = 0;
 #define MBQ_CAPACITY 32
 
 /* maps input ports to output ports for packets */
-static uint8_t output_ports[RTE_MAX_ETHPORTS];
+static uint16_t output_ports[RTE_MAX_ETHPORTS];
 
 /* buffers up a set of packet that are ready to send */
 struct rte_eth_dev_tx_buffer *tx_buffer[RTE_MAX_ETHPORTS];
@@ -150,7 +150,7 @@ static void
 flush_tx_error_callback(struct rte_mbuf **unsent, uint16_t count,
 		void *userdata) {
 	int i;
-	uint8_t port_id = (uintptr_t)userdata;
+	uint16_t port_id = (uintptr_t)userdata;
 
 	tx_stats->tx_drop[port_id] += count;
 
@@ -161,7 +161,7 @@ flush_tx_error_callback(struct rte_mbuf **unsent, uint16_t count,
 }
 
 static void
-configure_tx_buffer(uint8_t port_id, uint16_t size)
+configure_tx_buffer(uint16_t port_id, uint16_t size)
 {
 	int ret;
 
@@ -171,15 +171,16 @@ configure_tx_buffer(uint8_t port_id, uint16_t size)
 			rte_eth_dev_socket_id(port_id));
 	if (tx_buffer[port_id] == NULL)
 		rte_exit(EXIT_FAILURE, "Cannot allocate buffer for tx on port %u\n",
-				(unsigned) port_id);
+			 port_id);
 
 	rte_eth_tx_buffer_init(tx_buffer[port_id], size);
 
 	ret = rte_eth_tx_buffer_set_err_callback(tx_buffer[port_id],
 			flush_tx_error_callback, (void *)(intptr_t)port_id);
 	if (ret < 0)
-			rte_exit(EXIT_FAILURE, "Cannot set error callback for "
-					"tx buffer on port %u\n", (unsigned) port_id);
+		rte_exit(EXIT_FAILURE,
+		"Cannot set error callback for tx buffer on port %u\n",
+			 port_id);
 }
 
 /*
@@ -195,8 +196,8 @@ configure_output_ports(const struct port_info *ports)
 		rte_exit(EXIT_FAILURE, "Too many ethernet ports. RTE_MAX_ETHPORTS = %u\n",
 				(unsigned)RTE_MAX_ETHPORTS);
 	for (i = 0; i < ports->num_ports - 1; i+=2){
-		uint8_t p1 = ports->id[i];
-		uint8_t p2 = ports->id[i+1];
+		uint16_t p1 = ports->id[i];
+		uint16_t p2 = ports->id[i+1];
 		output_ports[p1] = p2;
 		output_ports[p2] = p1;
 

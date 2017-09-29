@@ -240,7 +240,7 @@ parse_arg_rx(const char *arg)
 		if (lp->io.rx.n_nic_queues >= APP_MAX_NIC_RX_QUEUES_PER_IO_LCORE) {
 			return -9;
 		}
-		lp->io.rx.nic_queues[lp->io.rx.n_nic_queues].port = (uint8_t) port;
+		lp->io.rx.nic_queues[lp->io.rx.n_nic_queues].port = port;
 		lp->io.rx.nic_queues[lp->io.rx.n_nic_queues].queue = (uint8_t) queue;
 		lp->io.rx.n_nic_queues ++;
 
@@ -318,7 +318,7 @@ parse_arg_tx(const char *arg)
 		if (lp->io.tx.n_nic_ports >= APP_MAX_NIC_TX_PORTS_PER_IO_LCORE) {
 			return -9;
 		}
-		lp->io.tx.nic_ports[lp->io.tx.n_nic_ports] = (uint8_t) port;
+		lp->io.tx.nic_ports[lp->io.tx.n_nic_ports] = port;
 		lp->io.tx.n_nic_ports ++;
 
 		n_tuples ++;
@@ -488,7 +488,7 @@ app_check_lpm_table(void)
 static int
 app_check_every_rx_port_is_tx_enabled(void)
 {
-	uint8_t port;
+	uint16_t port;
 
 	for (port = 0; port < APP_MAX_NIC_PORTS; port ++) {
 		if ((app_get_nic_rx_queues_per_port(port) > 0) && (app.nic_tx_port_mask[port] == 0)) {
@@ -762,7 +762,7 @@ app_parse_args(int argc, char **argv)
 }
 
 int
-app_get_nic_rx_queues_per_port(uint8_t port)
+app_get_nic_rx_queues_per_port(uint16_t port)
 {
 	uint32_t i, count;
 
@@ -781,7 +781,7 @@ app_get_nic_rx_queues_per_port(uint8_t port)
 }
 
 int
-app_get_lcore_for_nic_rx(uint8_t port, uint8_t queue, uint32_t *lcore_out)
+app_get_lcore_for_nic_rx(uint16_t port, uint8_t queue, uint32_t *lcore_out)
 {
 	uint32_t lcore;
 
@@ -808,7 +808,7 @@ app_get_lcore_for_nic_rx(uint8_t port, uint8_t queue, uint32_t *lcore_out)
 }
 
 int
-app_get_lcore_for_nic_tx(uint8_t port, uint32_t *lcore_out)
+app_get_lcore_for_nic_tx(uint16_t port, uint32_t *lcore_out)
 {
 	uint32_t lcore;
 
@@ -901,7 +901,7 @@ app_print_params(void)
 	/* Print NIC RX configuration */
 	printf("NIC RX ports: ");
 	for (port = 0; port < APP_MAX_NIC_PORTS; port ++) {
-		uint32_t n_rx_queues = app_get_nic_rx_queues_per_port((uint8_t) port);
+		uint32_t n_rx_queues = app_get_nic_rx_queues_per_port(port);
 
 		if (n_rx_queues == 0) {
 			continue;

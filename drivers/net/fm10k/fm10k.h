@@ -204,7 +204,7 @@ struct fm10k_rx_queue {
 	uint16_t rxrearm_nb;     /* number of remaining to be re-armed */
 	uint16_t rxrearm_start;  /* the idx we start the re-arming from */
 	uint16_t rx_using_sse; /* indicates that vector RX is in use */
-	uint8_t port_id;
+	uint16_t port_id;
 	uint8_t drop_en;
 	uint8_t rx_deferred_start; /* don't start this queue in dev start. */
 	uint16_t rx_ftag_en; /* indicates FTAG RX supported */
@@ -241,7 +241,7 @@ struct fm10k_tx_queue {
 	volatile uint32_t *tail_ptr;
 	uint32_t txq_flags; /* Holds flags for this TXq */
 	uint16_t nb_desc;
-	uint8_t port_id;
+	uint16_t port_id;
 	uint8_t tx_deferred_start; /** don't start this queue in dev start. */
 	uint16_t queue_id;
 	uint16_t tx_ftag_en; /* indicates FTAG TX supported */
@@ -289,7 +289,7 @@ static inline uint16_t fifo_remove(struct fifo *fifo)
 }
 
 static inline void
-fm10k_pktmbuf_reset(struct rte_mbuf *mb, uint8_t in_port)
+fm10k_pktmbuf_reset(struct rte_mbuf *mb, uint16_t in_port)
 {
 	rte_mbuf_refcnt_set(mb, 1);
 	mb->next = NULL;

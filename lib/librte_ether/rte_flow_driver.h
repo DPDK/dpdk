@@ -178,7 +178,7 @@ rte_flow_error_set(struct rte_flow_error *error,
  *   additional details.
  */
 const struct rte_flow_ops *
-rte_flow_ops_get(uint8_t port_id, struct rte_flow_error *error);
+rte_flow_ops_get(uint16_t port_id, struct rte_flow_error *error);
 
 #ifdef __cplusplus
 }

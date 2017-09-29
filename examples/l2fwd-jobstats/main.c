@@ -776,9 +776,9 @@ main(int argc, char **argv)
 	unsigned nb_ports_in_mask = 0;
 	int ret;
 	char name[RTE_JOBSTATS_NAMESIZE];
-	uint8_t nb_ports;
-	uint8_t nb_ports_available;
-	uint8_t portid, last_port;
+	uint16_t nb_ports;
+	uint16_t nb_ports_available;
+	uint16_t portid, last_port;
 	uint8_t i;
 
 	/* init EAL */
@@ -861,7 +861,7 @@ main(int argc, char **argv)
 
 		qconf->rx_port_list[qconf->n_rx_port] = portid;
 		qconf->n_rx_port++;
-		printf("Lcore %u: RX port %u\n", rx_lcore_id, (unsigned) portid);
+		printf("Lcore %u: RX port %u\n", rx_lcore_id, portid);
 	}
 
 	nb_ports_available = nb_ports;
@@ -870,24 +870,24 @@ main(int argc, char **argv)
 	for (portid = 0; portid < nb_ports; portid++) {
 		/* skip ports that are not enabled */
 		if ((l2fwd_enabled_port_mask & (1 << portid)) == 0) {
-			printf("Skipping disabled port %u\n", (unsigned) portid);
+			printf("Skipping disabled port %u\n", portid);
 			nb_ports_available--;
 			continue;
 		}
 		/* init port */
-		printf("Initializing port %u... ", (unsigned) portid);
+		printf("Initializing port %u... ", portid);
 		fflush(stdout);
 		ret = rte_eth_dev_configure(portid, 1, 1, &port_conf);
 		if (ret < 0)
 			rte_exit(EXIT_FAILURE, "Cannot configure device: err=%d, port=%u\n",
-				  ret, (unsigned) portid);
+				  ret, portid);
 
 		ret = rte_eth_dev_adjust_nb_rx_tx_desc(portid, &nb_rxd,
 						       &nb_txd);
 		if (ret < 0)
 			rte_exit(EXIT_FAILURE,
 				 "Cannot adjust number of descriptors: err=%d, port=%u\n",
-				 ret, (unsigned) portid);
+				 ret, portid);
 
 		rte_eth_macaddr_get(portid, &l2fwd_ports_eth_addr[portid]);
 
@@ -899,7 +899,7 @@ main(int argc, char **argv)
 					     l2fwd_pktmbuf_pool);
 		if (ret < 0)
 			rte_exit(EXIT_FAILURE, "rte_eth_rx_queue_setup:err=%d, port=%u\n",
-				  ret, (unsigned) portid);
+				  ret, portid);
 
 		/* init one TX queue on each port */
 		fflush(stdout);
@@ -907,8 +907,9 @@ main(int argc, char **argv)
 				rte_eth_dev_socket_id(portid),
 				NULL);
 		if (ret < 0)
-			rte_exit(EXIT_FAILURE, "rte_eth_tx_queue_setup:err=%d, port=%u\n",
-				ret, (unsigned) portid);
+			rte_exit(EXIT_FAILURE,
+			"rte_eth_tx_queue_setup:err=%d, port=%u\n",
+				ret, portid);
 
 		/* Initialize TX buffers */
 		tx_buffer[portid] = rte_zmalloc_socket("tx_buffer",
@@ -916,7 +917,7 @@ main(int argc, char **argv)
 				rte_eth_dev_socket_id(portid));
 		if (tx_buffer[portid] == NULL)
 			rte_exit(EXIT_FAILURE, "Cannot allocate buffer for tx on port %u\n",
-					(unsigned) portid);
+					portid);
 
 		rte_eth_tx_buffer_init(tx_buffer[portid], MAX_PKT_BURST);
 
@@ -924,21 +925,22 @@ main(int argc, char **argv)
 				rte_eth_tx_buffer_count_callback,
 				&port_statistics[portid].dropped);
 		if (ret < 0)
-				rte_exit(EXIT_FAILURE, "Cannot set error callback for "
-						"tx buffer on port %u\n", (unsigned) portid);
+			rte_exit(EXIT_FAILURE,
+			"Cannot set error callback for tx buffer on port %u\n",
+				 portid);
 
 		/* Start device */
 		ret = rte_eth_dev_start(portid);
 		if (ret < 0)
 			rte_exit(EXIT_FAILURE, "rte_eth_dev_start:err=%d, port=%u\n",
-				  ret, (unsigned) portid);
+				  ret, portid);
 
 		printf("done:\n");
 
 		rte_eth_promiscuous_enable(portid);
 
 		printf("Port %u, MAC address: %02X:%02X:%02X:%02X:%02X:%02X\n\n",
-				(unsigned) portid,
+				portid,
 				l2fwd_ports_eth_addr[portid].addr_bytes[0],
 				l2fwd_ports_eth_addr[portid].addr_bytes[1],
 				l2fwd_ports_eth_addr[portid].addr_bytes[2],

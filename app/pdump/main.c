@@ -623,7 +623,7 @@ static void
 create_mp_ring_vdev(void)
 {
 	int i;
-	uint8_t portid;
+	uint16_t portid;
 	struct pdump_tuples *pt = NULL;
 	struct rte_mempool *mbuf_pool = NULL;
 	char vdev_args[SIZE];

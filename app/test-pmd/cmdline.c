@@ -4602,7 +4602,7 @@ struct cmd_show_bonding_config_result {
 	cmdline_fixed_string_t show;
 	cmdline_fixed_string_t bonding;
 	cmdline_fixed_string_t config;
-	uint8_t port_id;
+	portid_t port_id;
 };
 
 static void cmd_show_bonding_config_parsed(void *parsed_result,
@@ -4611,7 +4611,7 @@ static void cmd_show_bonding_config_parsed(void *parsed_result,
 {
 	struct cmd_show_bonding_config_result *res = parsed_result;
 	int bonding_mode, agg_mode;
-	uint8_t slaves[RTE_MAX_ETHPORTS];
+	portid_t slaves[RTE_MAX_ETHPORTS];
 	int num_slaves, num_active_slaves;
 	int primary_id;
 	int i;
@@ -11527,7 +11527,7 @@ struct cmd_vf_vlan_stripq_result {
 	cmdline_fixed_string_t vf;
 	cmdline_fixed_string_t vlan;
 	cmdline_fixed_string_t stripq;
-	uint8_t port_id;
+	portid_t port_id;
 	uint16_t vf_id;
 	cmdline_fixed_string_t on_off;
 };

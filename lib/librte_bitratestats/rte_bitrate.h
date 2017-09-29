@@ -85,7 +85,7 @@ int rte_stats_bitrate_reg(struct rte_stats_bitrates *bitrate_data);
  *  - Negative value on error
  */
 int rte_stats_bitrate_calc(struct rte_stats_bitrates *bitrate_data,
-	uint8_t port_id);
+			   uint16_t port_id);
 
 #ifdef __cplusplus
 }

@@ -41,6 +41,12 @@ New Features
      Also, make sure to start the actual text at the margin.
      =========================================================
 
+* **Extended port_id range from uint8_t to uint16_t.**
+
+  Increased port_id range from 8 bits to 16 bits in order to support more than
+  256 ports in dpdk. All ethdev APIs which have port_id as parameter are changed
+  in the meantime.
+
 * **nfp: Added PF support.**
 
   Previously Netronome's NFP PMD had just support for VFs. PF support is
@@ -161,7 +167,10 @@ ABI Changes
    Also, make sure to start the actual text at the margin.
    =========================================================
 
+* **Extended port_id range.**
 
+  The size of the field ``port_id`` in the ``rte_eth_dev_data`` structure
+  changed, as described in the `New Features` section.
 
 Shared Library Versions
 -----------------------
@@ -182,13 +191,13 @@ The libraries prepended with a plus sign were incremented in this version.
 .. code-block:: diff
 
      librte_acl.so.2
-     librte_bitratestats.so.1
+     librte_bitratestats.so.2
      librte_cfgfile.so.2
      librte_cmdline.so.2
      librte_cryptodev.so.3
      librte_distributor.so.1
      librte_eal.so.5
-     librte_ethdev.so.7
+     librte_ethdev.so.8
      librte_eventdev.so.2
      librte_gro.so.1
      librte_hash.so.2
@@ -203,14 +212,14 @@ The libraries prepended with a plus sign were incremented in this version.
      librte_meter.so.1
      librte_metrics.so.1
      librte_net.so.1
-     librte_pdump.so.1
+     librte_pdump.so.2
      librte_pipeline.so.3
-     librte_pmd_bnxt.so.1
-     librte_pmd_bond.so.1
-     librte_pmd_i40e.so.1
-     librte_pmd_ixgbe.so.1
+     librte_pmd_bnxt.so.2
+     librte_pmd_bond.so.2
+     librte_pmd_i40e.so.2
+     librte_pmd_ixgbe.so.2
      librte_pmd_ring.so.2
-     librte_pmd_vhost.so.1
+     librte_pmd_vhost.so.2
      librte_port.so.3
      librte_power.so.1
      librte_reorder.so.1

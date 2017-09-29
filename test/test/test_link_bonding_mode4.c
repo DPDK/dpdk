@@ -325,7 +325,7 @@ remove_slave(struct slave_conf *slave)
 }
 
 static void
-lacp_recv_cb(uint8_t slave_id, struct rte_mbuf *lacp_pkt)
+lacp_recv_cb(uint16_t slave_id, struct rte_mbuf *lacp_pkt)
 {
 	struct ether_hdr *hdr;
 	struct slow_protocol_frame *slow_hdr;
@@ -343,7 +343,7 @@ lacp_recv_cb(uint8_t slave_id, struct rte_mbuf *lacp_pkt)
 }
 
 static int
-initialize_bonded_device_with_slaves(uint8_t slave_count, uint8_t external_sm)
+initialize_bonded_device_with_slaves(uint16_t slave_count, uint8_t external_sm)
 {
 	uint8_t i;
 
@@ -379,8 +379,8 @@ remove_slaves_and_stop_bonded_device(void)
 {
 	struct slave_conf *slave;
 	int retval;
-	uint8_t slaves[RTE_MAX_ETHPORTS];
-	uint8_t i;
+	uint16_t slaves[RTE_MAX_ETHPORTS];
+	uint16_t i;
 
 	rte_eth_dev_stop(test_params.bonded_port_id);
 
@@ -411,7 +411,7 @@ test_setup(void)
 	char name[RTE_ETH_NAME_MAX_LEN];
 	struct slave_conf *port;
 	const uint8_t socket_id = rte_socket_id();
-	uint8_t i;
+	uint16_t i;
 
 	if (test_params.mbuf_pool == NULL) {
 		nb_mbuf_per_pool = TEST_RX_DESC_MAX + DEF_PKT_BURST +
@@ -1521,7 +1521,7 @@ check_environment(void)
 {
 	struct slave_conf *port;
 	uint8_t i, env_state;
-	uint8_t slaves[RTE_DIM(test_params.slave_ports)];
+	uint16_t slaves[RTE_DIM(test_params.slave_ports)];
 	int slaves_count;
 
 	env_state = 0;

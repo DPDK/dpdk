@@ -105,7 +105,7 @@ struct vhost_queue {
 	rte_atomic32_t while_queuing;
 	struct pmd_internal *internal;
 	struct rte_mempool *mb_pool;
-	uint8_t port;
+	uint16_t port;
 	uint16_t virtqueue_id;
 	struct vhost_stats stats;
 };
@@ -705,7 +705,7 @@ static struct vhost_device_ops vhost_ops = {
 };
 
 int
-rte_eth_vhost_get_queue_event(uint8_t port_id,
+rte_eth_vhost_get_queue_event(uint16_t port_id,
 		struct rte_eth_vhost_queue_event *event)
 {
 	struct rte_vhost_vring_state *state;
@@ -742,7 +742,7 @@ rte_eth_vhost_get_queue_event(uint8_t port_id,
 }
 
 int
-rte_eth_vhost_get_vid_from_port_id(uint8_t port_id)
+rte_eth_vhost_get_vid_from_port_id(uint16_t port_id)
 {
 	struct internal_list *list;
 	struct rte_eth_dev *eth_dev;

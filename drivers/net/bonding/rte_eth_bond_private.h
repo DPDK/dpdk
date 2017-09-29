@@ -93,12 +93,12 @@ struct bond_tx_queue {
 
 /** Bonded slave devices structure */
 struct bond_ethdev_slave_ports {
-	uint8_t slaves[RTE_MAX_ETHPORTS];	/**< Slave port id array */
-	uint8_t slave_count;				/**< Number of slaves */
+	uint16_t slaves[RTE_MAX_ETHPORTS];	/**< Slave port id array */
+	uint16_t slave_count;				/**< Number of slaves */
 };
 
 struct bond_slave_details {
-	uint8_t port_id;
+	uint16_t port_id;
 
 	uint8_t link_status_poll_enabled;
 	uint8_t link_status_wait_to_complete;
@@ -114,14 +114,14 @@ typedef uint16_t (*xmit_hash_t)(const struct rte_mbuf *buf, uint8_t slave_count)
 
 /** Link Bonding PMD device private configuration Structure */
 struct bond_dev_private {
-	uint8_t port_id;					/**< Port Id of Bonded Port */
+	uint16_t port_id;			/**< Port Id of Bonded Port */
 	uint8_t mode;						/**< Link Bonding Mode */
 
 	rte_spinlock_t lock;
 
-	uint8_t primary_port;				/**< Primary Slave Port */
-	uint8_t current_primary_port;		/**< Primary Slave Port */
-	uint8_t user_defined_primary_port;
+	uint16_t primary_port;			/**< Primary Slave Port */
+	uint16_t current_primary_port;		/**< Primary Slave Port */
+	uint16_t user_defined_primary_port;
 	/**< Flag for whether primary port is user defined or not */
 
 	uint8_t balance_xmit_policy;
@@ -144,16 +144,17 @@ struct bond_dev_private {
 	uint16_t nb_rx_queues;			/**< Total number of rx queues */
 	uint16_t nb_tx_queues;			/**< Total number of tx queues*/
 
-	uint8_t active_slave;		/**< Next active_slave to poll */
-	uint8_t active_slave_count;		/**< Number of active slaves */
-	uint8_t active_slaves[RTE_MAX_ETHPORTS];	/**< Active slave list */
+	uint16_t active_slave;		/**< Next active_slave to poll */
+	uint16_t active_slave_count;		/**< Number of active slaves */
+	uint16_t active_slaves[RTE_MAX_ETHPORTS];    /**< Active slave list */
 
-	uint8_t slave_count;			/**< Number of bonded slaves */
+	uint16_t slave_count;			/**< Number of bonded slaves */
 	struct bond_slave_details slaves[RTE_MAX_ETHPORTS];
 	/**< Arary of bonded slaves details */
 
 	struct mode8023ad_private mode4;
-	uint8_t tlb_slaves_order[RTE_MAX_ETHPORTS]; /* TLB active slaves send order */
+	uint16_t tlb_slaves_order[RTE_MAX_ETHPORTS];
+	/**< TLB active slaves send order */
 	struct mode_alb_private mode6;
 
 	uint32_t rx_offload_capa;            /** Rx offload capability */
@@ -186,10 +187,10 @@ check_for_bonded_ethdev(const struct rte_eth_dev *eth_dev);
 
 /* Search given slave array to find position of given id.
  * Return slave pos or slaves_count if not found. */
-static inline uint8_t
-find_slave_by_id(uint8_t *slaves, uint8_t slaves_count, uint8_t slave_id) {
+static inline uint16_t
+find_slave_by_id(uint16_t *slaves, uint16_t slaves_count, uint16_t slave_id) {
 
-	uint8_t pos;
+	uint16_t pos;
 	for (pos = 0; pos < slaves_count; pos++) {
 		if (slave_id == slaves[pos])
 			break;
@@ -199,19 +200,19 @@ find_slave_by_id(uint8_t *slaves, uint8_t slaves_count, uint8_t slave_id) {
 }
 
 int
-valid_port_id(uint8_t port_id);
+valid_port_id(uint16_t port_id);
 
 int
-valid_bonded_port_id(uint8_t port_id);
+valid_bonded_port_id(uint16_t port_id);
 
 int
-valid_slave_port_id(uint8_t port_id, uint8_t mode);
+valid_slave_port_id(uint16_t port_id, uint8_t mode);
 
 void
-deactivate_slave(struct rte_eth_dev *eth_dev, uint8_t port_id);
+deactivate_slave(struct rte_eth_dev *eth_dev, uint16_t port_id);
 
 void
-activate_slave(struct rte_eth_dev *eth_dev, uint8_t port_id);
+activate_slave(struct rte_eth_dev *eth_dev, uint16_t port_id);
 
 void
 link_properties_set(struct rte_eth_dev *bonded_eth_dev,
@@ -255,10 +256,10 @@ xmit_l34_hash(const struct rte_mbuf *buf, uint8_t slave_count);
 
 void
 bond_ethdev_primary_set(struct bond_dev_private *internals,
-		uint8_t slave_port_id);
+		uint16_t slave_port_id);
 
 int
-bond_ethdev_lsc_event_callback(uint8_t port_id, enum rte_eth_event_type type,
+bond_ethdev_lsc_event_callback(uint16_t port_id, enum rte_eth_event_type type,
 		void *param, void *ret_param);
 
 int

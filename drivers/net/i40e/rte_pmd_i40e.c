@@ -41,7 +41,7 @@
 #include "rte_pmd_i40e.h"
 
 int
-rte_pmd_i40e_ping_vfs(uint8_t port, uint16_t vf)
+rte_pmd_i40e_ping_vfs(uint16_t port, uint16_t vf)
 {
 	struct rte_eth_dev *dev;
 	struct i40e_pf *pf;
@@ -66,7 +66,7 @@ rte_pmd_i40e_ping_vfs(uint8_t port, uint16_t vf)
 }
 
 int
-rte_pmd_i40e_set_vf_mac_anti_spoof(uint8_t port, uint16_t vf_id, uint8_t on)
+rte_pmd_i40e_set_vf_mac_anti_spoof(uint16_t port, uint16_t vf_id, uint8_t on)
 {
 	struct rte_eth_dev *dev;
 	struct i40e_pf *pf;
@@ -170,7 +170,7 @@ i40e_add_rm_all_vlan_filter(struct i40e_vsi *vsi, uint8_t add)
 }
 
 int
-rte_pmd_i40e_set_vf_vlan_anti_spoof(uint8_t port, uint16_t vf_id, uint8_t on)
+rte_pmd_i40e_set_vf_vlan_anti_spoof(uint16_t port, uint16_t vf_id, uint8_t on)
 {
 	struct rte_eth_dev *dev;
 	struct i40e_pf *pf;
@@ -430,7 +430,7 @@ i40e_vsi_set_tx_loopback(struct i40e_vsi *vsi, uint8_t on)
 }
 
 int
-rte_pmd_i40e_set_tx_loopback(uint8_t port, uint8_t on)
+rte_pmd_i40e_set_tx_loopback(uint16_t port, uint8_t on)
 {
 	struct rte_eth_dev *dev;
 	struct i40e_pf *pf;
@@ -473,7 +473,7 @@ rte_pmd_i40e_set_tx_loopback(uint8_t port, uint8_t on)
 }
 
 int
-rte_pmd_i40e_set_vf_unicast_promisc(uint8_t port, uint16_t vf_id, uint8_t on)
+rte_pmd_i40e_set_vf_unicast_promisc(uint16_t port, uint16_t vf_id, uint8_t on)
 {
 	struct rte_eth_dev *dev;
 	struct i40e_pf *pf;
@@ -514,7 +514,7 @@ rte_pmd_i40e_set_vf_unicast_promisc(uint8_t port, uint16_t vf_id, uint8_t on)
 }
 
 int
-rte_pmd_i40e_set_vf_multicast_promisc(uint8_t port, uint16_t vf_id, uint8_t on)
+rte_pmd_i40e_set_vf_multicast_promisc(uint16_t port, uint16_t vf_id, uint8_t on)
 {
 	struct rte_eth_dev *dev;
 	struct i40e_pf *pf;
@@ -555,7 +555,7 @@ rte_pmd_i40e_set_vf_multicast_promisc(uint8_t port, uint16_t vf_id, uint8_t on)
 }
 
 int
-rte_pmd_i40e_set_vf_mac_addr(uint8_t port, uint16_t vf_id,
+rte_pmd_i40e_set_vf_mac_addr(uint16_t port, uint16_t vf_id,
 			     struct ether_addr *mac_addr)
 {
 	struct i40e_mac_filter *f;
@@ -600,7 +600,7 @@ rte_pmd_i40e_set_vf_mac_addr(uint8_t port, uint16_t vf_id,
 
 /* Set vlan strip on/off for specific VF from host */
 int
-rte_pmd_i40e_set_vf_vlan_stripq(uint8_t port, uint16_t vf_id, uint8_t on)
+rte_pmd_i40e_set_vf_vlan_stripq(uint16_t port, uint16_t vf_id, uint8_t on)
 {
 	struct rte_eth_dev *dev;
 	struct i40e_pf *pf;
@@ -635,7 +635,7 @@ rte_pmd_i40e_set_vf_vlan_stripq(uint8_t port, uint16_t vf_id, uint8_t on)
 	return ret;
 }
 
-int rte_pmd_i40e_set_vf_vlan_insert(uint8_t port, uint16_t vf_id,
+int rte_pmd_i40e_set_vf_vlan_insert(uint16_t port, uint16_t vf_id,
 				    uint16_t vlan_id)
 {
 	struct rte_eth_dev *dev;
@@ -700,7 +700,7 @@ int rte_pmd_i40e_set_vf_vlan_insert(uint8_t port, uint16_t vf_id,
 	return ret;
 }
 
-int rte_pmd_i40e_set_vf_broadcast(uint8_t port, uint16_t vf_id,
+int rte_pmd_i40e_set_vf_broadcast(uint16_t port, uint16_t vf_id,
 				  uint8_t on)
 {
 	struct rte_eth_dev *dev;
@@ -766,7 +766,7 @@ int rte_pmd_i40e_set_vf_broadcast(uint8_t port, uint16_t vf_id,
 	return ret;
 }
 
-int rte_pmd_i40e_set_vf_vlan_tag(uint8_t port, uint16_t vf_id, uint8_t on)
+int rte_pmd_i40e_set_vf_vlan_tag(uint16_t port, uint16_t vf_id, uint8_t on)
 {
 	struct rte_eth_dev *dev;
 	struct i40e_pf *pf;
@@ -860,7 +860,7 @@ i40e_vlan_filter_count(struct i40e_vsi *vsi)
 	return count;
 }
 
-int rte_pmd_i40e_set_vf_vlan_filter(uint8_t port, uint16_t vlan_id,
+int rte_pmd_i40e_set_vf_vlan_filter(uint16_t port, uint16_t vlan_id,
 				    uint64_t vf_mask, uint8_t on)
 {
 	struct rte_eth_dev *dev;
@@ -943,7 +943,7 @@ int rte_pmd_i40e_set_vf_vlan_filter(uint8_t port, uint16_t vlan_id,
 }
 
 int
-rte_pmd_i40e_get_vf_stats(uint8_t port,
+rte_pmd_i40e_get_vf_stats(uint16_t port,
 			  uint16_t vf_id,
 			  struct rte_eth_stats *stats)
 {
@@ -988,7 +988,7 @@ rte_pmd_i40e_get_vf_stats(uint8_t port,
 }
 
 int
-rte_pmd_i40e_reset_vf_stats(uint8_t port,
+rte_pmd_i40e_reset_vf_stats(uint16_t port,
 			    uint16_t vf_id)
 {
 	struct rte_eth_dev *dev;
@@ -1022,7 +1022,7 @@ rte_pmd_i40e_reset_vf_stats(uint8_t port,
 }
 
 int
-rte_pmd_i40e_set_vf_max_bw(uint8_t port, uint16_t vf_id, uint32_t bw)
+rte_pmd_i40e_set_vf_max_bw(uint16_t port, uint16_t vf_id, uint32_t bw)
 {
 	struct rte_eth_dev *dev;
 	struct i40e_pf *pf;
@@ -1111,7 +1111,7 @@ rte_pmd_i40e_set_vf_max_bw(uint8_t port, uint16_t vf_id, uint32_t bw)
 }
 
 int
-rte_pmd_i40e_set_vf_tc_bw_alloc(uint8_t port, uint16_t vf_id,
+rte_pmd_i40e_set_vf_tc_bw_alloc(uint16_t port, uint16_t vf_id,
 				uint8_t tc_num, uint8_t *bw_weight)
 {
 	struct rte_eth_dev *dev;
@@ -1225,7 +1225,7 @@ rte_pmd_i40e_set_vf_tc_bw_alloc(uint8_t port, uint16_t vf_id,
 }
 
 int
-rte_pmd_i40e_set_vf_tc_max_bw(uint8_t port, uint16_t vf_id,
+rte_pmd_i40e_set_vf_tc_max_bw(uint16_t port, uint16_t vf_id,
 			      uint8_t tc_no, uint32_t bw)
 {
 	struct rte_eth_dev *dev;
@@ -1343,7 +1343,7 @@ rte_pmd_i40e_set_vf_tc_max_bw(uint8_t port, uint16_t vf_id,
 }
 
 int
-rte_pmd_i40e_set_tc_strict_prio(uint8_t port, uint8_t tc_map)
+rte_pmd_i40e_set_tc_strict_prio(uint16_t port, uint8_t tc_map)
 {
 	struct rte_eth_dev *dev;
 	struct i40e_pf *pf;
@@ -1515,7 +1515,7 @@ i40e_add_rm_profile_info(struct i40e_hw *hw, uint8_t *profile_info_sec)
 
 /* Check if the profile info exists */
 static int
-i40e_check_profile_info(uint8_t port, uint8_t *profile_info_sec)
+i40e_check_profile_info(uint16_t port, uint8_t *profile_info_sec)
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[port];
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
@@ -1559,7 +1559,7 @@ i40e_check_profile_info(uint8_t port, uint8_t *profile_info_sec)
 }
 
 int
-rte_pmd_i40e_process_ddp_package(uint8_t port, uint8_t *buff,
+rte_pmd_i40e_process_ddp_package(uint16_t port, uint8_t *buff,
 				 uint32_t size,
 				 enum rte_pmd_i40e_package_op op)
 {
@@ -2038,7 +2038,7 @@ int rte_pmd_i40e_get_ddp_info(uint8_t *pkg_buff, uint32_t pkg_size,
 }
 
 int
-rte_pmd_i40e_get_ddp_list(uint8_t port, uint8_t *buff, uint32_t size)
+rte_pmd_i40e_get_ddp_list(uint16_t port, uint8_t *buff, uint32_t size)
 {
 	struct rte_eth_dev *dev;
 	struct i40e_hw *hw;
@@ -2168,7 +2168,7 @@ static int check_invalid_ptype_mapping(
 
 int
 rte_pmd_i40e_ptype_mapping_update(
-			uint8_t port,
+			uint16_t port,
 			struct rte_pmd_i40e_ptype_mapping *mapping_items,
 			uint16_t count,
 			uint8_t exclusive)
@@ -2204,7 +2204,7 @@ rte_pmd_i40e_ptype_mapping_update(
 	return 0;
 }
 
-int rte_pmd_i40e_ptype_mapping_reset(uint8_t port)
+int rte_pmd_i40e_ptype_mapping_reset(uint16_t port)
 {
 	struct rte_eth_dev *dev;
 
@@ -2221,7 +2221,7 @@ int rte_pmd_i40e_ptype_mapping_reset(uint8_t port)
 }
 
 int rte_pmd_i40e_ptype_mapping_get(
-			uint8_t port,
+			uint16_t port,
 			struct rte_pmd_i40e_ptype_mapping *mapping_items,
 			uint16_t size,
 			uint16_t *count,
@@ -2255,7 +2255,7 @@ int rte_pmd_i40e_ptype_mapping_get(
 	return 0;
 }
 
-int rte_pmd_i40e_ptype_mapping_replace(uint8_t port,
+int rte_pmd_i40e_ptype_mapping_replace(uint16_t port,
 				       uint32_t target,
 				       uint8_t mask,
 				       uint32_t pkt_type)

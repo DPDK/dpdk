@@ -113,7 +113,7 @@ rte_pdump_uninit(void);
  */
 
 int
-rte_pdump_enable(uint8_t port, uint16_t queue, uint32_t flags,
+rte_pdump_enable(uint16_t port, uint16_t queue, uint32_t flags,
 		struct rte_ring *ring,
 		struct rte_mempool *mp,
 		void *filter);
@@ -136,7 +136,7 @@ rte_pdump_enable(uint8_t port, uint16_t queue, uint32_t flags,
  */
 
 int
-rte_pdump_disable(uint8_t port, uint16_t queue, uint32_t flags);
+rte_pdump_disable(uint16_t port, uint16_t queue, uint32_t flags);
 
 /**
  * Enables packet capturing on given device id and queue.

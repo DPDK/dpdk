@@ -122,7 +122,7 @@ pkt_burst_receive(struct fwd_stream *fs)
 	 */
 	if (verbose_level > 0)
 		printf("port %u/queue %u: received %u packets\n",
-		       (unsigned) fs->rx_port,
+		       fs->rx_port,
 		       (unsigned) fs->rx_queue,
 		       (unsigned) nb_rx);
 	for (i = 0; i < nb_rx; i++) {

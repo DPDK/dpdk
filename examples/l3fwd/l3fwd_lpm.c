@@ -105,7 +105,7 @@ struct rte_lpm *ipv4_l3fwd_lpm_lookup_struct[NB_SOCKETS];
 struct rte_lpm6 *ipv6_l3fwd_lpm_lookup_struct[NB_SOCKETS];
 
 static inline uint16_t
-lpm_get_ipv4_dst_port(void *ipv4_hdr,  uint8_t portid, void *lookup_struct)
+lpm_get_ipv4_dst_port(void *ipv4_hdr, uint16_t portid, void *lookup_struct)
 {
 	uint32_t next_hop;
 	struct rte_lpm *ipv4_l3fwd_lookup_struct =
@@ -117,7 +117,7 @@ lpm_get_ipv4_dst_port(void *ipv4_hdr,  uint8_t portid, void *lookup_struct)
 }
 
 static inline uint16_t
-lpm_get_ipv6_dst_port(void *ipv6_hdr,  uint8_t portid, void *lookup_struct)
+lpm_get_ipv6_dst_port(void *ipv6_hdr, uint16_t portid, void *lookup_struct)
 {
 	uint32_t next_hop;
 	struct rte_lpm6 *ipv6_l3fwd_lookup_struct =
@@ -130,7 +130,7 @@ lpm_get_ipv6_dst_port(void *ipv6_hdr,  uint8_t portid, void *lookup_struct)
 
 static __rte_always_inline uint16_t
 lpm_get_dst_port(const struct lcore_conf *qconf, struct rte_mbuf *pkt,
-		uint8_t portid)
+		uint16_t portid)
 {
 	struct ipv6_hdr *ipv6_hdr;
 	struct ipv4_hdr *ipv4_hdr;
@@ -162,7 +162,7 @@ lpm_get_dst_port(const struct lcore_conf *qconf, struct rte_mbuf *pkt,
  */
 static __rte_always_inline uint16_t
 lpm_get_dst_port_with_ipv4(const struct lcore_conf *qconf, struct rte_mbuf *pkt,
-	uint32_t dst_ipv4, uint8_t portid)
+	uint32_t dst_ipv4, uint16_t portid)
 {
 	uint32_t next_hop;
 	struct ipv6_hdr *ipv6_hdr;
@@ -203,7 +203,8 @@ lpm_main_loop(__attribute__((unused)) void *dummy)
 	unsigned lcore_id;
 	uint64_t prev_tsc, diff_tsc, cur_tsc;
 	int i, nb_rx;
-	uint8_t portid, queueid;
+	uint16_t portid;
+	uint8_t queueid;
 	struct lcore_conf *qconf;
 	const uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1) /
 		US_PER_S * BURST_TX_DRAIN_US;
@@ -225,7 +226,7 @@ lpm_main_loop(__attribute__((unused)) void *dummy)
 		portid = qconf->rx_queue_list[i].port_id;
 		queueid = qconf->rx_queue_list[i].queue_id;
 		RTE_LOG(INFO, L3FWD,
-			" -- lcoreid=%u portid=%hhu rxqueueid=%hhu\n",
+			" -- lcoreid=%u portid=%u rxqueueid=%hhu\n",
 			lcore_id, portid, queueid);
 	}
 
@@ -413,7 +414,7 @@ lpm_parse_ptype(struct rte_mbuf *m)
 }
 
 uint16_t
-lpm_cb_parse_ptype(uint8_t port __rte_unused, uint16_t queue __rte_unused,
+lpm_cb_parse_ptype(uint16_t port __rte_unused, uint16_t queue __rte_unused,
 		   struct rte_mbuf *pkts[], uint16_t nb_pkts,
 		   uint16_t max_pkts __rte_unused,
 		   void *user_param __rte_unused)

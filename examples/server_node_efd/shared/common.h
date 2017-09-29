@@ -65,9 +65,9 @@ struct filter_stats {
 
 struct shared_info {
 	uint8_t num_nodes;
-	uint8_t num_ports;
+	uint16_t num_ports;
 	uint32_t num_flows;
-	uint8_t id[RTE_MAX_ETHPORTS];
+	uint16_t id[RTE_MAX_ETHPORTS];
 	struct rx_stats rx_stats;
 	struct tx_stats tx_stats[MAX_NODES];
 	struct filter_stats filter_stats[MAX_NODES];

@@ -42,7 +42,7 @@ CFLAGS += -DX722_A0_SUPPORT
 
 EXPORT_MAP := rte_pmd_i40e_version.map
 
-LIBABIVER := 1
+LIBABIVER := 2
 
 #
 # Add extra flags for base driver files (also known as shared code)

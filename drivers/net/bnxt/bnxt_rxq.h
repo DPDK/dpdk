@@ -48,7 +48,7 @@ struct bnxt_rx_queue {
 	uint16_t		rx_free_thresh; /* max free RX desc to hold */
 	uint16_t		queue_id; /* RX queue index */
 	uint16_t		reg_idx; /* RX queue register index */
-	uint8_t			port_id; /* Device port identifier */
+	uint16_t		port_id; /* Device port identifier */
 	uint8_t			crc_len; /* 0 if CRC stripped, 4 otherwise */
 
 	struct bnxt		*bp;

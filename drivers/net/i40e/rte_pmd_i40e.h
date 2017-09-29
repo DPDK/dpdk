@@ -182,7 +182,7 @@ struct rte_pmd_i40e_ptype_mapping {
  *   - (-ENODEV) if *port* invalid.
  *   - (-EINVAL) if *vf* invalid.
  */
-int rte_pmd_i40e_ping_vfs(uint8_t port, uint16_t vf);
+int rte_pmd_i40e_ping_vfs(uint16_t port, uint16_t vf);
 
 /**
  * Enable/Disable VF MAC anti spoofing.
@@ -199,7 +199,7 @@ int rte_pmd_i40e_ping_vfs(uint8_t port, uint16_t vf);
  *   - (-ENODEV) if *port* invalid.
  *   - (-EINVAL) if bad parameter.
  */
-int rte_pmd_i40e_set_vf_mac_anti_spoof(uint8_t port,
+int rte_pmd_i40e_set_vf_mac_anti_spoof(uint16_t port,
 				       uint16_t vf_id,
 				       uint8_t on);
 
@@ -218,7 +218,7 @@ int rte_pmd_i40e_set_vf_mac_anti_spoof(uint8_t port,
  *   - (-ENODEV) if *port* invalid.
  *   - (-EINVAL) if bad parameter.
  */
-int rte_pmd_i40e_set_vf_vlan_anti_spoof(uint8_t port,
+int rte_pmd_i40e_set_vf_vlan_anti_spoof(uint16_t port,
 					uint16_t vf_id,
 					uint8_t on);
 
@@ -235,7 +235,7 @@ int rte_pmd_i40e_set_vf_vlan_anti_spoof(uint8_t port,
  *   - (-ENODEV) if *port* invalid.
  *   - (-EINVAL) if bad parameter.
  */
-int rte_pmd_i40e_set_tx_loopback(uint8_t port,
+int rte_pmd_i40e_set_tx_loopback(uint16_t port,
 				 uint8_t on);
 
 /**
@@ -253,7 +253,7 @@ int rte_pmd_i40e_set_tx_loopback(uint8_t port,
  *   - (-ENODEV) if *port* invalid.
  *   - (-EINVAL) if bad parameter.
  */
-int rte_pmd_i40e_set_vf_unicast_promisc(uint8_t port,
+int rte_pmd_i40e_set_vf_unicast_promisc(uint16_t port,
 					uint16_t vf_id,
 					uint8_t on);
 
@@ -272,7 +272,7 @@ int rte_pmd_i40e_set_vf_unicast_promisc(uint8_t port,
  *   - (-ENODEV) if *port* invalid.
  *   - (-EINVAL) if bad parameter.
  */
-int rte_pmd_i40e_set_vf_multicast_promisc(uint8_t port,
+int rte_pmd_i40e_set_vf_multicast_promisc(uint16_t port,
 					  uint16_t vf_id,
 					  uint8_t on);
 
@@ -296,7 +296,7 @@ int rte_pmd_i40e_set_vf_multicast_promisc(uint8_t port,
  *   - (-ENODEV) if *port* invalid.
  *   - (-EINVAL) if *vf* or *mac_addr* is invalid.
  */
-int rte_pmd_i40e_set_vf_mac_addr(uint8_t port, uint16_t vf_id,
+int rte_pmd_i40e_set_vf_mac_addr(uint16_t port, uint16_t vf_id,
 				 struct ether_addr *mac_addr);
 
 /**
@@ -316,7 +316,7 @@ int rte_pmd_i40e_set_vf_mac_addr(uint8_t port, uint16_t vf_id,
  *   - (-EINVAL) if bad parameter.
  */
 int
-rte_pmd_i40e_set_vf_vlan_stripq(uint8_t port, uint16_t vf, uint8_t on);
+rte_pmd_i40e_set_vf_vlan_stripq(uint16_t port, uint16_t vf, uint8_t on);
 
 /**
  * Enable/Disable vf vlan insert
@@ -334,7 +334,7 @@ rte_pmd_i40e_set_vf_vlan_stripq(uint8_t port, uint16_t vf, uint8_t on);
  *   - (-ENODEV) if *port* invalid.
  *   - (-EINVAL) if bad parameter.
  */
-int rte_pmd_i40e_set_vf_vlan_insert(uint8_t port, uint16_t vf_id,
+int rte_pmd_i40e_set_vf_vlan_insert(uint16_t port, uint16_t vf_id,
 				    uint16_t vlan_id);
 
 /**
@@ -353,7 +353,7 @@ int rte_pmd_i40e_set_vf_vlan_insert(uint8_t port, uint16_t vf_id,
  *   - (-ENODEV) if *port* invalid.
  *   - (-EINVAL) if bad parameter.
  */
-int rte_pmd_i40e_set_vf_broadcast(uint8_t port, uint16_t vf_id,
+int rte_pmd_i40e_set_vf_broadcast(uint16_t port, uint16_t vf_id,
 				  uint8_t on);
 
 /**
@@ -372,7 +372,7 @@ int rte_pmd_i40e_set_vf_broadcast(uint8_t port, uint16_t vf_id,
  *   - (-ENODEV) if *port* invalid.
  *   - (-EINVAL) if bad parameter.
  */
-int rte_pmd_i40e_set_vf_vlan_tag(uint8_t port, uint16_t vf_id, uint8_t on);
+int rte_pmd_i40e_set_vf_vlan_tag(uint16_t port, uint16_t vf_id, uint8_t on);
 
 /**
  * Enable/Disable VF VLAN filter
@@ -393,7 +393,7 @@ int rte_pmd_i40e_set_vf_vlan_tag(uint8_t port, uint16_t vf_id, uint8_t on);
  *   - (-EINVAL) if bad parameter.
  *   - (-ENOTSUP) not supported by firmware.
  */
-int rte_pmd_i40e_set_vf_vlan_filter(uint8_t port, uint16_t vlan_id,
+int rte_pmd_i40e_set_vf_vlan_filter(uint16_t port, uint16_t vlan_id,
 				    uint64_t vf_mask, uint8_t on);
 
 /**
@@ -418,7 +418,7 @@ int rte_pmd_i40e_set_vf_vlan_filter(uint8_t port, uint16_t vlan_id,
  *   - (-EINVAL) if bad parameter.
  */
 
-int rte_pmd_i40e_get_vf_stats(uint8_t port,
+int rte_pmd_i40e_get_vf_stats(uint16_t port,
 			      uint16_t vf_id,
 			      struct rte_eth_stats *stats);
 
@@ -434,7 +434,7 @@ int rte_pmd_i40e_get_vf_stats(uint8_t port,
  *   - (-ENODEV) if *port* invalid.
  *   - (-EINVAL) if bad parameter.
  */
-int rte_pmd_i40e_reset_vf_stats(uint8_t port,
+int rte_pmd_i40e_reset_vf_stats(uint16_t port,
 				uint16_t vf_id);
 
 /**
@@ -459,7 +459,7 @@ int rte_pmd_i40e_reset_vf_stats(uint8_t port,
  *   - (-EINVAL) if bad parameter.
  *   - (-ENOTSUP) not supported by firmware.
  */
-int rte_pmd_i40e_set_vf_max_bw(uint8_t port,
+int rte_pmd_i40e_set_vf_max_bw(uint16_t port,
 			       uint16_t vf_id,
 			       uint32_t bw);
 
@@ -484,7 +484,7 @@ int rte_pmd_i40e_set_vf_max_bw(uint8_t port,
  *   - (-EINVAL) if bad parameter.
  *   - (-ENOTSUP) not supported by firmware.
  */
-int rte_pmd_i40e_set_vf_tc_bw_alloc(uint8_t port,
+int rte_pmd_i40e_set_vf_tc_bw_alloc(uint16_t port,
 				    uint16_t vf_id,
 				    uint8_t tc_num,
 				    uint8_t *bw_weight);
@@ -509,7 +509,7 @@ int rte_pmd_i40e_set_vf_tc_bw_alloc(uint8_t port,
  *   - (-EINVAL) if bad parameter.
  *   - (-ENOTSUP) not supported by firmware.
  */
-int rte_pmd_i40e_set_vf_tc_max_bw(uint8_t port,
+int rte_pmd_i40e_set_vf_tc_max_bw(uint16_t port,
 				  uint16_t vf_id,
 				  uint8_t tc_no,
 				  uint32_t bw);
@@ -527,7 +527,7 @@ int rte_pmd_i40e_set_vf_tc_max_bw(uint8_t port,
  *   - (-EINVAL) if bad parameter.
  *   - (-ENOTSUP) not supported by firmware.
  */
-int rte_pmd_i40e_set_tc_strict_prio(uint8_t port, uint8_t tc_map);
+int rte_pmd_i40e_set_tc_strict_prio(uint16_t port, uint8_t tc_map);
 
 /**
  * Load/Unload a ddp package
@@ -548,7 +548,7 @@ int rte_pmd_i40e_set_tc_strict_prio(uint8_t port, uint8_t tc_map);
  *   - (-EACCES) if profile does not exist.
  *   - (-ENOTSUP) if operation not supported.
  */
-int rte_pmd_i40e_process_ddp_package(uint8_t port, uint8_t *buff,
+int rte_pmd_i40e_process_ddp_package(uint16_t port, uint8_t *buff,
 				     uint32_t size,
 				     enum rte_pmd_i40e_package_op op);
 
@@ -586,7 +586,7 @@ int rte_pmd_i40e_get_ddp_info(uint8_t *pkg, uint32_t pkg_size,
  *   - (-ENODEV) if *port* invalid.
  *   - (-EINVAL) if bad parameter.
  */
-int rte_pmd_i40e_get_ddp_list(uint8_t port, uint8_t *buff, uint32_t size);
+int rte_pmd_i40e_get_ddp_list(uint16_t port, uint8_t *buff, uint32_t size);
 
 /**
  * Update hardware defined ptype to software defined packet type
@@ -606,7 +606,7 @@ int rte_pmd_i40e_get_ddp_list(uint8_t port, uint8_t *buff, uint32_t size);
  *	set other PTYPEs maps to PTYPE_UNKNOWN.
  */
 int rte_pmd_i40e_ptype_mapping_update(
-			uint8_t port,
+			uint16_t port,
 			struct rte_pmd_i40e_ptype_mapping *mapping_items,
 			uint16_t count,
 			uint8_t exclusive);
@@ -618,7 +618,7 @@ int rte_pmd_i40e_ptype_mapping_update(
  * @param port
  *    pointer to port identifier of the device
  */
-int rte_pmd_i40e_ptype_mapping_reset(uint8_t port);
+int rte_pmd_i40e_ptype_mapping_reset(uint16_t port);
 
 /**
  * Get hardware defined ptype to software defined ptype
@@ -637,7 +637,7 @@ int rte_pmd_i40e_ptype_mapping_reset(uint8_t port);
  *    -(!0) only return mapping items which packet_type != RTE_PTYPE_UNKNOWN.
  */
 int rte_pmd_i40e_ptype_mapping_get(
-			uint8_t port,
+			uint16_t port,
 			struct rte_pmd_i40e_ptype_mapping *mapping_items,
 			uint16_t size,
 			uint16_t *count,
@@ -657,7 +657,7 @@ int rte_pmd_i40e_ptype_mapping_get(
  * @param pkt_type
  *    the new packet type to overwrite
  */
-int rte_pmd_i40e_ptype_mapping_replace(uint8_t port,
+int rte_pmd_i40e_ptype_mapping_replace(uint16_t port,
 				       uint32_t target,
 				       uint8_t mask,
 				       uint32_t pkt_type);

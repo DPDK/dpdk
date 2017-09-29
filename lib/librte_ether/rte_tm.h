@@ -1040,7 +1040,7 @@ struct rte_tm_error {
  *   0 on success, non-zero error code otherwise.
  */
 int
-rte_tm_get_number_of_leaf_nodes(uint8_t port_id,
+rte_tm_get_number_of_leaf_nodes(uint16_t port_id,
 	uint32_t *n_leaf_nodes,
 	struct rte_tm_error *error);
 
@@ -1064,7 +1064,7 @@ rte_tm_get_number_of_leaf_nodes(uint8_t port_id,
  *   0 on success, non-zero error code otherwise.
  */
 int
-rte_tm_node_type_get(uint8_t port_id,
+rte_tm_node_type_get(uint16_t port_id,
 	uint32_t node_id,
 	int *is_leaf,
 	struct rte_tm_error *error);
@@ -1082,7 +1082,7 @@ rte_tm_node_type_get(uint8_t port_id,
  *   0 on success, non-zero error code otherwise.
  */
 int
-rte_tm_capabilities_get(uint8_t port_id,
+rte_tm_capabilities_get(uint16_t port_id,
 	struct rte_tm_capabilities *cap,
 	struct rte_tm_error *error);
 
@@ -1102,7 +1102,7 @@ rte_tm_capabilities_get(uint8_t port_id,
  *   0 on success, non-zero error code otherwise.
  */
 int
-rte_tm_level_capabilities_get(uint8_t port_id,
+rte_tm_level_capabilities_get(uint16_t port_id,
 	uint32_t level_id,
 	struct rte_tm_level_capabilities *cap,
 	struct rte_tm_error *error);
@@ -1122,7 +1122,7 @@ rte_tm_level_capabilities_get(uint8_t port_id,
  *   0 on success, non-zero error code otherwise.
  */
 int
-rte_tm_node_capabilities_get(uint8_t port_id,
+rte_tm_node_capabilities_get(uint16_t port_id,
 	uint32_t node_id,
 	struct rte_tm_node_capabilities *cap,
 	struct rte_tm_error *error);
@@ -1147,7 +1147,7 @@ rte_tm_node_capabilities_get(uint8_t port_id,
  * @see struct rte_tm_capabilities::cman_wred_context_n_max
  */
 int
-rte_tm_wred_profile_add(uint8_t port_id,
+rte_tm_wred_profile_add(uint16_t port_id,
 	uint32_t wred_profile_id,
 	struct rte_tm_wred_params *profile,
 	struct rte_tm_error *error);
@@ -1170,7 +1170,7 @@ rte_tm_wred_profile_add(uint8_t port_id,
  * @see struct rte_tm_capabilities::cman_wred_context_n_max
  */
 int
-rte_tm_wred_profile_delete(uint8_t port_id,
+rte_tm_wred_profile_delete(uint16_t port_id,
 	uint32_t wred_profile_id,
 	struct rte_tm_error *error);
 
@@ -1201,7 +1201,7 @@ rte_tm_wred_profile_delete(uint8_t port_id,
  * @see struct rte_tm_capabilities::cman_wred_context_shared_n_max
  */
 int
-rte_tm_shared_wred_context_add_update(uint8_t port_id,
+rte_tm_shared_wred_context_add_update(uint16_t port_id,
 	uint32_t shared_wred_context_id,
 	uint32_t wred_profile_id,
 	struct rte_tm_error *error);
@@ -1225,7 +1225,7 @@ rte_tm_shared_wred_context_add_update(uint8_t port_id,
  * @see struct rte_tm_capabilities::cman_wred_context_shared_n_max
  */
 int
-rte_tm_shared_wred_context_delete(uint8_t port_id,
+rte_tm_shared_wred_context_delete(uint16_t port_id,
 	uint32_t shared_wred_context_id,
 	struct rte_tm_error *error);
 
@@ -1249,7 +1249,7 @@ rte_tm_shared_wred_context_delete(uint8_t port_id,
  * @see struct rte_tm_capabilities::shaper_n_max
  */
 int
-rte_tm_shaper_profile_add(uint8_t port_id,
+rte_tm_shaper_profile_add(uint16_t port_id,
 	uint32_t shaper_profile_id,
 	struct rte_tm_shaper_params *profile,
 	struct rte_tm_error *error);
@@ -1272,7 +1272,7 @@ rte_tm_shaper_profile_add(uint8_t port_id,
  * @see struct rte_tm_capabilities::shaper_n_max
  */
 int
-rte_tm_shaper_profile_delete(uint8_t port_id,
+rte_tm_shaper_profile_delete(uint16_t port_id,
 	uint32_t shaper_profile_id,
 	struct rte_tm_error *error);
 
@@ -1301,7 +1301,7 @@ rte_tm_shaper_profile_delete(uint8_t port_id,
  * @see struct rte_tm_capabilities::shaper_shared_n_max
  */
 int
-rte_tm_shared_shaper_add_update(uint8_t port_id,
+rte_tm_shared_shaper_add_update(uint16_t port_id,
 	uint32_t shared_shaper_id,
 	uint32_t shaper_profile_id,
 	struct rte_tm_error *error);
@@ -1324,7 +1324,7 @@ rte_tm_shared_shaper_add_update(uint8_t port_id,
  * @see struct rte_tm_capabilities::shaper_shared_n_max
  */
 int
-rte_tm_shared_shaper_delete(uint8_t port_id,
+rte_tm_shared_shaper_delete(uint16_t port_id,
 	uint32_t shared_shaper_id,
 	struct rte_tm_error *error);
 
@@ -1392,7 +1392,7 @@ rte_tm_shared_shaper_delete(uint8_t port_id,
  * @see struct rte_tm_capabilities
  */
 int
-rte_tm_node_add(uint8_t port_id,
+rte_tm_node_add(uint16_t port_id,
 	uint32_t node_id,
 	uint32_t parent_node_id,
 	uint32_t priority,
@@ -1425,7 +1425,7 @@ rte_tm_node_add(uint8_t port_id,
  * @see RTE_TM_UPDATE_NODE_ADD_DELETE
  */
 int
-rte_tm_node_delete(uint8_t port_id,
+rte_tm_node_delete(uint16_t port_id,
 	uint32_t node_id,
 	struct rte_tm_error *error);
 
@@ -1449,7 +1449,7 @@ rte_tm_node_delete(uint8_t port_id,
  * @see RTE_TM_UPDATE_NODE_SUSPEND_RESUME
  */
 int
-rte_tm_node_suspend(uint8_t port_id,
+rte_tm_node_suspend(uint16_t port_id,
 	uint32_t node_id,
 	struct rte_tm_error *error);
 
@@ -1472,7 +1472,7 @@ rte_tm_node_suspend(uint8_t port_id,
  * @see RTE_TM_UPDATE_NODE_SUSPEND_RESUME
  */
 int
-rte_tm_node_resume(uint8_t port_id,
+rte_tm_node_resume(uint16_t port_id,
 	uint32_t node_id,
 	struct rte_tm_error *error);
 
@@ -1513,7 +1513,7 @@ rte_tm_node_resume(uint8_t port_id,
  * @see rte_tm_node_delete()
  */
 int
-rte_tm_hierarchy_commit(uint8_t port_id,
+rte_tm_hierarchy_commit(uint16_t port_id,
 	int clear_on_fail,
 	struct rte_tm_error *error);
 
@@ -1549,7 +1549,7 @@ rte_tm_hierarchy_commit(uint8_t port_id,
  * @see RTE_TM_UPDATE_NODE_PARENT_CHANGE_LEVEL
  */
 int
-rte_tm_node_parent_update(uint8_t port_id,
+rte_tm_node_parent_update(uint16_t port_id,
 	uint32_t node_id,
 	uint32_t parent_node_id,
 	uint32_t priority,
@@ -1578,7 +1578,7 @@ rte_tm_node_parent_update(uint8_t port_id,
  * @see struct rte_tm_capabilities::shaper_private_n_max
  */
 int
-rte_tm_node_shaper_update(uint8_t port_id,
+rte_tm_node_shaper_update(uint16_t port_id,
 	uint32_t node_id,
 	uint32_t shaper_profile_id,
 	struct rte_tm_error *error);
@@ -1605,7 +1605,7 @@ rte_tm_node_shaper_update(uint8_t port_id,
  * @see struct rte_tm_capabilities::shaper_shared_n_max
  */
 int
-rte_tm_node_shared_shaper_update(uint8_t port_id,
+rte_tm_node_shared_shaper_update(uint16_t port_id,
 	uint32_t node_id,
 	uint32_t shared_shaper_id,
 	int add,
@@ -1632,7 +1632,7 @@ rte_tm_node_shared_shaper_update(uint8_t port_id,
  * @see RTE_TM_UPDATE_NODE_STATS
  */
 int
-rte_tm_node_stats_update(uint8_t port_id,
+rte_tm_node_stats_update(uint16_t port_id,
 	uint32_t node_id,
 	uint64_t stats_mask,
 	struct rte_tm_error *error);
@@ -1660,7 +1660,7 @@ rte_tm_node_stats_update(uint8_t port_id,
  * @see RTE_TM_UPDATE_NODE_N_SP_PRIORITIES
  */
 int
-rte_tm_node_wfq_weight_mode_update(uint8_t port_id,
+rte_tm_node_wfq_weight_mode_update(uint16_t port_id,
 	uint32_t node_id,
 	int *wfq_weight_mode,
 	uint32_t n_sp_priorities,
@@ -1683,7 +1683,7 @@ rte_tm_node_wfq_weight_mode_update(uint8_t port_id,
  * @see RTE_TM_UPDATE_NODE_CMAN
  */
 int
-rte_tm_node_cman_update(uint8_t port_id,
+rte_tm_node_cman_update(uint16_t port_id,
 	uint32_t node_id,
 	enum rte_tm_cman_mode cman,
 	struct rte_tm_error *error);
@@ -1707,7 +1707,7 @@ rte_tm_node_cman_update(uint8_t port_id,
  * @see struct rte_tm_capabilities::cman_wred_context_private_n_max
 */
 int
-rte_tm_node_wred_context_update(uint8_t port_id,
+rte_tm_node_wred_context_update(uint16_t port_id,
 	uint32_t node_id,
 	uint32_t wred_profile_id,
 	struct rte_tm_error *error);
@@ -1732,7 +1732,7 @@ rte_tm_node_wred_context_update(uint8_t port_id,
  * @see struct rte_tm_capabilities::cman_wred_context_shared_n_max
  */
 int
-rte_tm_node_shared_wred_context_update(uint8_t port_id,
+rte_tm_node_shared_wred_context_update(uint16_t port_id,
 	uint32_t node_id,
 	uint32_t shared_wred_context_id,
 	int add,
@@ -1764,7 +1764,7 @@ rte_tm_node_shared_wred_context_update(uint8_t port_id,
  * @see enum rte_tm_stats_type
  */
 int
-rte_tm_node_stats_read(uint8_t port_id,
+rte_tm_node_stats_read(uint16_t port_id,
 	uint32_t node_id,
 	struct rte_tm_node_stats *stats,
 	uint64_t *stats_mask,
@@ -1801,7 +1801,7 @@ rte_tm_node_stats_read(uint8_t port_id,
  * @see struct rte_tm_capabilities::mark_vlan_dei_supported
  */
 int
-rte_tm_mark_vlan_dei(uint8_t port_id,
+rte_tm_mark_vlan_dei(uint16_t port_id,
 	int mark_green,
 	int mark_yellow,
 	int mark_red,
@@ -1851,7 +1851,7 @@ rte_tm_mark_vlan_dei(uint8_t port_id,
  * @see struct rte_tm_capabilities::mark_ip_ecn_sctp_supported
  */
 int
-rte_tm_mark_ip_ecn(uint8_t port_id,
+rte_tm_mark_ip_ecn(uint16_t port_id,
 	int mark_green,
 	int mark_yellow,
 	int mark_red,
@@ -1899,7 +1899,7 @@ rte_tm_mark_ip_ecn(uint8_t port_id,
  * @see struct rte_tm_capabilities::mark_ip_dscp_supported
  */
 int
-rte_tm_mark_ip_dscp(uint8_t port_id,
+rte_tm_mark_ip_dscp(uint16_t port_id,
 	int mark_green,
 	int mark_yellow,
 	int mark_red,

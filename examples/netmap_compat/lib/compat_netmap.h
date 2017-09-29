@@ -67,7 +67,7 @@ struct rte_netmap_port_conf {
 };
 
 int rte_netmap_init(const struct rte_netmap_conf *conf);
-int rte_netmap_init_port(uint8_t portid,
+int rte_netmap_init_port(uint16_t portid,
 	const struct rte_netmap_port_conf *conf);
 
 int rte_netmap_close(int fd);

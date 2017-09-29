@@ -357,7 +357,7 @@ rte_tm_error_set(struct rte_tm_error *error,
  *   success, NULL otherwise.
  */
 const struct rte_tm_ops *
-rte_tm_ops_get(uint8_t port_id, struct rte_tm_error *error);
+rte_tm_ops_get(uint16_t port_id, struct rte_tm_error *error);
 
 #ifdef __cplusplus
 }

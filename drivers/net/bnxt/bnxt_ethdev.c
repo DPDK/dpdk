@@ -548,13 +548,13 @@ static void bnxt_print_link_info(struct rte_eth_dev *eth_dev)
 
 	if (link->link_status)
 		RTE_LOG(INFO, PMD, "Port %d Link Up - speed %u Mbps - %s\n",
-			(uint8_t)(eth_dev->data->port_id),
+			eth_dev->data->port_id,
 			(uint32_t)link->link_speed,
 			(link->link_duplex == ETH_LINK_FULL_DUPLEX) ?
 			("full-duplex") : ("half-duplex\n"));
 	else
 		RTE_LOG(INFO, PMD, "Port %d Link Down\n",
-			(uint8_t)(eth_dev->data->port_id));
+			eth_dev->data->port_id);
 }
 
 static int bnxt_dev_lsc_intr_setup(struct rte_eth_dev *eth_dev)

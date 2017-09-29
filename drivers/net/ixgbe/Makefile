@@ -41,7 +41,7 @@ CFLAGS += $(WERROR_FLAGS)
 
 EXPORT_MAP := rte_pmd_ixgbe_version.map
 
-LIBABIVER := 1
+LIBABIVER := 2
 
 ifeq ($(CONFIG_RTE_TOOLCHAIN_ICC),y)
 #

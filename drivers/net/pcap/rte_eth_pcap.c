@@ -75,7 +75,7 @@ struct queue_stat {
 
 struct pcap_rx_queue {
 	pcap_t *pcap;
-	uint8_t in_port;
+	uint16_t in_port;
 	struct rte_mempool *mb_pool;
 	struct queue_stat rx_stat;
 	char name[PATH_MAX];

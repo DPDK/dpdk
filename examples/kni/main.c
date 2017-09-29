@@ -110,7 +110,7 @@
  * Structure of port parameters
  */
 struct kni_port_params {
-	uint8_t port_id;/* Port ID */
+	uint16_t port_id;/* Port ID */
 	unsigned lcore_rx; /* lcore ID for RX */
 	unsigned lcore_tx; /* lcore ID for TX */
 	uint32_t nb_lcore_k; /* Number of lcores for KNI multi kernel threads */
@@ -162,8 +162,8 @@ struct kni_interface_stats {
 /* kni device statistics array */
 static struct kni_interface_stats kni_stats[RTE_MAX_ETHPORTS];
 
-static int kni_change_mtu(uint8_t port_id, unsigned new_mtu);
-static int kni_config_network_interface(uint8_t port_id, uint8_t if_up);
+static int kni_change_mtu(uint16_t port_id, unsigned int new_mtu);
+static int kni_config_network_interface(uint16_t port_id, uint8_t if_up);
 
 static rte_atomic32_t kni_stop = RTE_ATOMIC32_INIT(0);
 
@@ -171,7 +171,7 @@ static rte_atomic32_t kni_stop = RTE_ATOMIC32_INIT(0);
 static void
 print_stats(void)
 {
-	uint8_t i;
+	uint16_t i;
 
 	printf("\n**KNI example application statistics**\n"
 	       "======  ==============  ============  ============  ============  ============\n"
@@ -238,7 +238,8 @@ kni_burst_free_mbufs(struct rte_mbuf **pkts, unsigned num)
 static void
 kni_ingress(struct kni_port_params *p)
 {
-	uint8_t i, port_id;
+	uint8_t i;
+	uint16_t port_id;
 	unsigned nb_rx, num;
 	uint32_t nb_kni;
 	struct rte_mbuf *pkts_burst[PKT_BURST_SZ];
@@ -274,7 +275,8 @@ kni_ingress(struct kni_port_params *p)
 static void
 kni_egress(struct kni_port_params *p)
 {
-	uint8_t i, port_id;
+	uint8_t i;
+	uint16_t port_id;
 	unsigned nb_tx, num;
 	uint32_t nb_kni;
 	struct rte_mbuf *pkts_burst[PKT_BURST_SZ];
@@ -416,7 +418,7 @@ parse_config(const char *arg)
 	int i, j, nb_token;
 	char *str_fld[_NUM_FLD];
 	unsigned long int_fld[_NUM_FLD];
-	uint8_t port_id, nb_kni_port_params = 0;
+	uint16_t port_id, nb_kni_port_params = 0;
 
 	memset(&kni_port_params_array, 0, sizeof(kni_port_params_array));
 	while (((p = strchr(p0, '(')) != NULL) &&
@@ -445,7 +447,7 @@ parse_config(const char *arg)
 		}
 
 		i = 0;
-		port_id = (uint8_t)int_fld[i++];
+		port_id = int_fld[i++];
 		if (port_id >= RTE_MAX_ETHPORTS) {
 			printf("Port ID %d could not exceed the maximum %d\n",
 						port_id, RTE_MAX_ETHPORTS);
@@ -698,7 +700,7 @@ check_all_ports_link_status(uint8_t port_num, uint32_t port_mask)
 
 /* Callback for request of changing MTU */
 static int
-kni_change_mtu(uint8_t port_id, unsigned new_mtu)
+kni_change_mtu(uint16_t port_id, unsigned int new_mtu)
 {
 	int ret;
 	struct rte_eth_conf conf;
@@ -741,7 +743,7 @@ kni_change_mtu(uint8_t port_id, unsigned new_mtu)
 
 /* Callback for request of configuring network interface up/down */
 static int
-kni_config_network_interface(uint8_t port_id, uint8_t if_up)
+kni_config_network_interface(uint16_t port_id, uint8_t if_up)
 {
 	int ret = 0;
 
@@ -766,7 +768,7 @@ kni_config_network_interface(uint8_t port_id, uint8_t if_up)
 }
 
 static int
-kni_alloc(uint8_t port_id)
+kni_alloc(uint16_t port_id)
 {
 	uint8_t i;
 	struct rte_kni *kni;
@@ -790,7 +792,7 @@ kni_alloc(uint8_t port_id)
 		} else
 			snprintf(conf.name, RTE_KNI_NAMESIZE,
 						"vEth%u", port_id);
-		conf.group_id = (uint16_t)port_id;
+		conf.group_id = port_id;
 		conf.mbuf_size = MAX_PACKET_SZ;
 		/*
 		 * The first KNI device associated to a port
@@ -825,7 +827,7 @@ kni_alloc(uint8_t port_id)
 }
 
 static int
-kni_free_kni(uint8_t port_id)
+kni_free_kni(uint16_t port_id)
 {
 	uint8_t i;
 	struct kni_port_params **p = kni_port_params_array;
@@ -848,7 +850,7 @@ int
 main(int argc, char** argv)
 {
 	int ret;
-	uint8_t nb_sys_ports, port;
+	uint16_t nb_sys_ports, port;
 	unsigned i;
 
 	/* Associate signal_hanlder function with USR signals */

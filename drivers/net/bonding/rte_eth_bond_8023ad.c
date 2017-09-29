@@ -209,7 +209,7 @@ set_warning_flags(struct port *port, uint16_t flags)
 }
 
 static void
-show_warnings(uint8_t slave_id)
+show_warnings(uint16_t slave_id)
 {
 	struct port *port = &mode_8023ad_ports[slave_id];
 	uint8_t warnings;
@@ -278,7 +278,7 @@ record_default(struct port *port)
  * @param port			Port on which LACPDU was received.
  */
 static void
-rx_machine(struct bond_dev_private *internals, uint8_t slave_id,
+rx_machine(struct bond_dev_private *internals, uint16_t slave_id,
 		struct lacpdu *lacp)
 {
 	struct port *agg, *port = &mode_8023ad_ports[slave_id];
@@ -399,7 +399,7 @@ rx_machine(struct bond_dev_private *internals, uint8_t slave_id,
  * @param port			Port to handle state machine.
  */
 static void
-periodic_machine(struct bond_dev_private *internals, uint8_t slave_id)
+periodic_machine(struct bond_dev_private *internals, uint16_t slave_id)
 {
 	struct port *port = &mode_8023ad_ports[slave_id];
 	/* Calculate if either site is LACP enabled */
@@ -461,7 +461,7 @@ periodic_machine(struct bond_dev_private *internals, uint8_t slave_id)
  * @param port			Port to handle state machine.
  */
 static void
-mux_machine(struct bond_dev_private *internals, uint8_t slave_id)
+mux_machine(struct bond_dev_private *internals, uint16_t slave_id)
 {
 	struct port *port = &mode_8023ad_ports[slave_id];
 
@@ -564,7 +564,7 @@ mux_machine(struct bond_dev_private *internals, uint8_t slave_id)
  * @param port
  */
 static void
-tx_machine(struct bond_dev_private *internals, uint8_t slave_id)
+tx_machine(struct bond_dev_private *internals, uint16_t slave_id)
 {
 	struct port *agg, *port = &mode_8023ad_ports[slave_id];
 
@@ -688,11 +688,11 @@ static void
 selection_logic(struct bond_dev_private *internals, uint8_t slave_id)
 {
 	struct port *agg, *port;
-	uint8_t slaves_count, new_agg_id, i, j = 0;
-	uint8_t *slaves;
+	uint16_t slaves_count, new_agg_id, i, j = 0;
+	uint16_t *slaves;
 	uint64_t agg_bandwidth[8] = {0};
 	uint64_t agg_count[8] = {0};
-	uint8_t default_slave = 0;
+	uint16_t default_slave = 0;
 	uint8_t mode_count_id, mode_band_id;
 	struct rte_eth_link link_info;
 
@@ -923,7 +923,8 @@ bond_mode_8023ad_periodic_cb(void *arg)
 }
 
 void
-bond_mode_8023ad_activate_slave(struct rte_eth_dev *bond_dev, uint8_t slave_id)
+bond_mode_8023ad_activate_slave(struct rte_eth_dev *bond_dev,
+				uint16_t slave_id)
 {
 	struct bond_dev_private *internals = bond_dev->data->dev_private;
 
@@ -951,7 +952,7 @@ bond_mode_8023ad_activate_slave(struct rte_eth_dev *bond_dev, uint8_t slave_id)
 	memcpy(&port->actor, &initial, sizeof(struct port_params));
 	/* Standard requires that port ID must be grater than 0.
 	 * Add 1 do get corresponding port_number */
-	port->actor.port_number = rte_cpu_to_be_16((uint16_t)slave_id + 1);
+	port->actor.port_number = rte_cpu_to_be_16(slave_id + 1);
 
 	memcpy(&port->partner, &initial, sizeof(struct port_params));
 
@@ -1022,12 +1023,12 @@ bond_mode_8023ad_activate_slave(struct rte_eth_dev *bond_dev, uint8_t slave_id)
 
 int
 bond_mode_8023ad_deactivate_slave(struct rte_eth_dev *bond_dev,
-		uint8_t slave_id)
+		uint16_t slave_id)
 {
 	struct bond_dev_private *internals = bond_dev->data->dev_private;
 	void *pkt = NULL;
 	struct port *port;
-	uint8_t i;
+	uint16_t i;
 
 	/* Given slave must be in active list */
 	RTE_ASSERT(find_slave_by_id(internals->active_slaves,
@@ -1066,7 +1067,7 @@ bond_mode_8023ad_mac_address_update(struct rte_eth_dev *bond_dev)
 	struct bond_dev_private *internals = bond_dev->data->dev_private;
 	struct ether_addr slave_addr;
 	struct port *slave, *agg_slave;
-	uint8_t slave_id, i, j;
+	uint16_t slave_id, i, j;
 
 	bond_mode_8023ad_stop(bond_dev);
 
@@ -1214,7 +1215,7 @@ bond_mode_8023ad_stop(struct rte_eth_dev *bond_dev)
 
 void
 bond_mode_8023ad_handle_slow_pkt(struct bond_dev_private *internals,
-	uint8_t slave_id, struct rte_mbuf *pkt)
+				  uint16_t slave_id, struct rte_mbuf *pkt)
 {
 	struct mode8023ad_private *mode4 = &internals->mode4;
 	struct port *port = &mode_8023ad_ports[slave_id];
@@ -1295,7 +1296,7 @@ free_out:
 }
 
 int
-rte_eth_bond_8023ad_conf_get(uint8_t port_id,
+rte_eth_bond_8023ad_conf_get(uint16_t port_id,
 		struct rte_eth_bond_8023ad_conf *conf)
 {
 	struct rte_eth_dev *bond_dev;
@@ -1312,7 +1313,7 @@ rte_eth_bond_8023ad_conf_get(uint8_t port_id,
 }
 
 int
-rte_eth_bond_8023ad_agg_selection_set(uint8_t port_id,
+rte_eth_bond_8023ad_agg_selection_set(uint16_t port_id,
 		enum rte_bond_8023ad_agg_selection agg_selection)
 {
 	struct rte_eth_dev *bond_dev;
@@ -1334,7 +1335,7 @@ rte_eth_bond_8023ad_agg_selection_set(uint8_t port_id,
 	return 0;
 }
 
-int rte_eth_bond_8023ad_agg_selection_get(uint8_t port_id)
+int rte_eth_bond_8023ad_agg_selection_get(uint16_t port_id)
 {
 	struct rte_eth_dev *bond_dev;
 	struct bond_dev_private *internals;
@@ -1355,7 +1356,7 @@ int rte_eth_bond_8023ad_agg_selection_get(uint8_t port_id)
 
 
 static int
-bond_8023ad_setup_validate(uint8_t port_id,
+bond_8023ad_setup_validate(uint16_t port_id,
 		struct rte_eth_bond_8023ad_conf *conf)
 {
 	if (valid_bonded_port_id(port_id) != 0)
@@ -1379,8 +1380,9 @@ bond_8023ad_setup_validate(uint8_t port_id,
 	return 0;
 }
 
+
 int
-rte_eth_bond_8023ad_setup(uint8_t port_id,
+rte_eth_bond_8023ad_setup(uint16_t port_id,
 		struct rte_eth_bond_8023ad_conf *conf)
 {
 	struct rte_eth_dev *bond_dev;
@@ -1401,7 +1403,7 @@ rte_eth_bond_8023ad_setup(uint8_t port_id,
 
 
 int
-rte_eth_bond_8023ad_slave_info(uint8_t port_id, uint8_t slave_id,
+rte_eth_bond_8023ad_slave_info(uint16_t port_id, uint16_t slave_id,
 		struct rte_eth_bond_8023ad_slave_info *info)
 {
 	struct rte_eth_dev *bond_dev;
@@ -1434,7 +1436,7 @@ rte_eth_bond_8023ad_slave_info(uint8_t port_id, uint8_t slave_id,
 }
 
 static int
-bond_8023ad_ext_validate(uint8_t port_id, uint8_t slave_id)
+bond_8023ad_ext_validate(uint16_t port_id, uint16_t slave_id)
 {
 	struct rte_eth_dev *bond_dev;
 	struct bond_dev_private *internals;
@@ -1462,7 +1464,8 @@ bond_8023ad_ext_validate(uint8_t port_id, uint8_t slave_id)
 }
 
 int
-rte_eth_bond_8023ad_ext_collect(uint8_t port_id, uint8_t slave_id, int enabled)
+rte_eth_bond_8023ad_ext_collect(uint16_t port_id, uint16_t slave_id,
+				int enabled)
 {
 	struct port *port;
 	int res;
@@ -1482,7 +1485,8 @@ rte_eth_bond_8023ad_ext_collect(uint8_t port_id, uint8_t slave_id, int enabled)
 }
 
 int
-rte_eth_bond_8023ad_ext_distrib(uint8_t port_id, uint8_t slave_id, int enabled)
+rte_eth_bond_8023ad_ext_distrib(uint16_t port_id, uint16_t slave_id,
+				int enabled)
 {
 	struct port *port;
 	int res;
@@ -1502,7 +1506,7 @@ rte_eth_bond_8023ad_ext_distrib(uint8_t port_id, uint8_t slave_id, int enabled)
 }
 
 int
-rte_eth_bond_8023ad_ext_distrib_get(uint8_t port_id, uint8_t slave_id)
+rte_eth_bond_8023ad_ext_distrib_get(uint16_t port_id, uint16_t slave_id)
 {
 	struct port *port;
 	int err;
@@ -1516,7 +1520,7 @@ rte_eth_bond_8023ad_ext_distrib_get(uint8_t port_id, uint8_t slave_id)
 }
 
 int
-rte_eth_bond_8023ad_ext_collect_get(uint8_t port_id, uint8_t slave_id)
+rte_eth_bond_8023ad_ext_collect_get(uint16_t port_id, uint16_t slave_id)
 {
 	struct port *port;
 	int err;
@@ -1530,7 +1534,7 @@ rte_eth_bond_8023ad_ext_collect_get(uint8_t port_id, uint8_t slave_id)
 }
 
 int
-rte_eth_bond_8023ad_ext_slowtx(uint8_t port_id, uint8_t slave_id,
+rte_eth_bond_8023ad_ext_slowtx(uint16_t port_id, uint16_t slave_id,
 		struct rte_mbuf *lacp_pkt)
 {
 	struct port *port;
@@ -1591,7 +1595,7 @@ bond_mode_8023ad_ext_periodic_cb(void *arg)
 }
 
 int
-rte_eth_bond_8023ad_dedicated_queues_enable(uint8_t port)
+rte_eth_bond_8023ad_dedicated_queues_enable(uint16_t port)
 {
 	int retval = 0;
 	struct rte_eth_dev *dev = &rte_eth_devices[port];
@@ -1615,7 +1619,7 @@ rte_eth_bond_8023ad_dedicated_queues_enable(uint8_t port)
 }
 
 int
-rte_eth_bond_8023ad_dedicated_queues_disable(uint8_t port)
+rte_eth_bond_8023ad_dedicated_queues_disable(uint16_t port)
 {
 	int retval = 0;
 	struct rte_eth_dev *dev = &rte_eth_devices[port];

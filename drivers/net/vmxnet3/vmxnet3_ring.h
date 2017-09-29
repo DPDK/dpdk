@@ -144,7 +144,7 @@ typedef struct vmxnet3_tx_queue {
 	const struct rte_memzone     *mz;
 	bool                         stopped;
 	uint16_t                     queue_id;      /**< Device TX queue index. */
-	uint8_t                      port_id;       /**< Device port identifier. */
+	uint16_t                     port_id;       /**< Device port identifier. */
 	uint16_t		     txdata_desc_size;
 } vmxnet3_tx_queue_t;
 
@@ -179,7 +179,7 @@ typedef struct vmxnet3_rx_queue {
 	const struct rte_memzone    *mz;
 	bool                        stopped;
 	uint16_t                    queue_id;      /**< Device RX queue index. */
-	uint8_t                     port_id;       /**< Device port identifier. */
+	uint16_t                    port_id;       /**< Device port identifier. */
 } vmxnet3_rx_queue_t;
 
 #endif /* _VMXNET3_RING_H_ */

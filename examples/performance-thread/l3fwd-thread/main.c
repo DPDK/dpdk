@@ -140,7 +140,7 @@ parse_ptype(struct rte_mbuf *m)
 }
 
 static uint16_t
-cb_parse_ptype(__rte_unused uint8_t port, __rte_unused uint16_t queue,
+cb_parse_ptype(__rte_unused uint16_t port, __rte_unused uint16_t queue,
 		struct rte_mbuf *pkts[], uint16_t nb_pkts,
 		__rte_unused uint16_t max_pkts, __rte_unused void *user_param)
 {
@@ -277,7 +277,7 @@ struct mbuf_table {
 };
 
 struct lcore_rx_queue {
-	uint8_t port_id;
+	uint16_t port_id;
 	uint8_t queue_id;
 } __rte_cache_aligned;
 
@@ -287,7 +287,7 @@ struct lcore_rx_queue {
 
 #define MAX_LCORE_PARAMS       1024
 struct rx_thread_params {
-	uint8_t port_id;
+	uint16_t port_id;
 	uint8_t queue_id;
 	uint8_t lcore_id;
 	uint8_t thread_id;
@@ -648,7 +648,7 @@ struct thread_tx_conf tx_thread[MAX_TX_THREAD];
 
 /* Send burst of packets on an output interface */
 static inline int
-send_burst(struct thread_tx_conf *qconf, uint16_t n, uint8_t port)
+send_burst(struct thread_tx_conf *qconf, uint16_t n, uint16_t port)
 {
 	struct rte_mbuf **m_table;
 	int ret;
@@ -669,7 +669,7 @@ send_burst(struct thread_tx_conf *qconf, uint16_t n, uint8_t port)
 
 /* Enqueue a single packet, and send burst if queue is filled */
 static inline int
-send_single_packet(struct rte_mbuf *m, uint8_t port)
+send_single_packet(struct rte_mbuf *m, uint16_t port)
 {
 	uint16_t len;
 	struct thread_tx_conf *qconf;
@@ -696,7 +696,7 @@ send_single_packet(struct rte_mbuf *m, uint8_t port)
 #if ((APP_LOOKUP_METHOD == APP_LOOKUP_LPM) && \
 	(ENABLE_MULTI_BUFFER_OPTIMIZE == 1))
 static __rte_always_inline void
-send_packetsx4(uint8_t port,
+send_packetsx4(uint16_t port,
 	struct rte_mbuf *m[], uint32_t num)
 {
 	uint32_t len, j, n;
@@ -832,8 +832,8 @@ is_valid_ipv4_pkt(struct ipv4_hdr *pkt, uint32_t link_len)
 static __m128i mask0;
 static __m128i mask1;
 static __m128i mask2;
-static inline uint8_t
-get_ipv4_dst_port(void *ipv4_hdr, uint8_t portid,
+static inline uint16_t
+get_ipv4_dst_port(void *ipv4_hdr, uint16_t portid,
 		lookup_struct_t *ipv4_l3fwd_lookup_struct)
 {
 	int ret = 0;
@@ -846,11 +846,11 @@ get_ipv4_dst_port(void *ipv4_hdr, uint8_t portid,
 	key.xmm = _mm_and_si128(data, mask0);
 	/* Find destination port */
 	ret = rte_hash_lookup(ipv4_l3fwd_lookup_struct, (const void *)&key);
-	return (uint8_t)((ret < 0) ? portid : ipv4_l3fwd_out_if[ret]);
+	return ((ret < 0) ? portid : ipv4_l3fwd_out_if[ret]);
 }
 
-static inline uint8_t
-get_ipv6_dst_port(void *ipv6_hdr, uint8_t portid,
+static inline uint16_t
+get_ipv6_dst_port(void *ipv6_hdr, uint16_t portid,
 		lookup_struct_t *ipv6_l3fwd_lookup_struct)
 {
 	int ret = 0;
@@ -873,36 +873,36 @@ get_ipv6_dst_port(void *ipv6_hdr, uint8_t portid,
 
 	/* Find destination port */
 	ret = rte_hash_lookup(ipv6_l3fwd_lookup_struct, (const void *)&key);
-	return (uint8_t)((ret < 0) ? portid : ipv6_l3fwd_out_if[ret]);
+	return ((ret < 0) ? portid : ipv6_l3fwd_out_if[ret]);
 }
 #endif
 
 #if (APP_LOOKUP_METHOD == APP_LOOKUP_LPM)
 
-static inline uint8_t
-get_ipv4_dst_port(void *ipv4_hdr, uint8_t portid,
+static inline uint16_t
+get_ipv4_dst_port(void *ipv4_hdr, uint16_t portid,
 		lookup_struct_t *ipv4_l3fwd_lookup_struct)
 {
 	uint32_t next_hop;
 
-	return (uint8_t)((rte_lpm_lookup(ipv4_l3fwd_lookup_struct,
+	return ((rte_lpm_lookup(ipv4_l3fwd_lookup_struct,
 		rte_be_to_cpu_32(((struct ipv4_hdr *)ipv4_hdr)->dst_addr),
 		&next_hop) == 0) ? next_hop : portid);
 }
 
-static inline uint8_t
-get_ipv6_dst_port(void *ipv6_hdr,  uint8_t portid,
+static inline uint16_t
+get_ipv6_dst_port(void *ipv6_hdr,  uint16_t portid,
 		lookup6_struct_t *ipv6_l3fwd_lookup_struct)
 {
 	uint32_t next_hop;
 
-	return (uint8_t) ((rte_lpm6_lookup(ipv6_l3fwd_lookup_struct,
+	return ((rte_lpm6_lookup(ipv6_l3fwd_lookup_struct,
 			((struct ipv6_hdr *)ipv6_hdr)->dst_addr, &next_hop) == 0) ?
 			next_hop : portid);
 }
 #endif
 
-static inline void l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid)
+static inline void l3fwd_simple_forward(struct rte_mbuf *m, uint16_t portid)
 		__attribute__((unused));
 
 #if ((APP_LOOKUP_METHOD == APP_LOOKUP_EXACT_MATCH) && \
@@ -919,11 +919,11 @@ static inline void l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid)
 #define EXCLUDE_8TH_PKT 0x7f
 
 static inline void
-simple_ipv4_fwd_8pkts(struct rte_mbuf *m[8], uint8_t portid)
+simple_ipv4_fwd_8pkts(struct rte_mbuf *m[8], uint16_t portid)
 {
 	struct ether_hdr *eth_hdr[8];
 	struct ipv4_hdr *ipv4_hdr[8];
-	uint8_t dst_port[8];
+	uint16_t dst_port[8];
 	int32_t ret[8];
 	union ipv4_5tuple_host key[8];
 	__m128i data[8];
@@ -1042,14 +1042,14 @@ simple_ipv4_fwd_8pkts(struct rte_mbuf *m[8], uint8_t portid)
 
 	rte_hash_lookup_bulk(RTE_PER_LCORE(lcore_conf)->ipv4_lookup_struct,
 			&key_array[0], 8, ret);
-	dst_port[0] = (uint8_t) ((ret[0] < 0) ? portid : ipv4_l3fwd_out_if[ret[0]]);
-	dst_port[1] = (uint8_t) ((ret[1] < 0) ? portid : ipv4_l3fwd_out_if[ret[1]]);
-	dst_port[2] = (uint8_t) ((ret[2] < 0) ? portid : ipv4_l3fwd_out_if[ret[2]]);
-	dst_port[3] = (uint8_t) ((ret[3] < 0) ? portid : ipv4_l3fwd_out_if[ret[3]]);
-	dst_port[4] = (uint8_t) ((ret[4] < 0) ? portid : ipv4_l3fwd_out_if[ret[4]]);
-	dst_port[5] = (uint8_t) ((ret[5] < 0) ? portid : ipv4_l3fwd_out_if[ret[5]]);
-	dst_port[6] = (uint8_t) ((ret[6] < 0) ? portid : ipv4_l3fwd_out_if[ret[6]]);
-	dst_port[7] = (uint8_t) ((ret[7] < 0) ? portid : ipv4_l3fwd_out_if[ret[7]]);
+	dst_port[0] = ((ret[0] < 0) ? portid : ipv4_l3fwd_out_if[ret[0]]);
+	dst_port[1] = ((ret[1] < 0) ? portid : ipv4_l3fwd_out_if[ret[1]]);
+	dst_port[2] = ((ret[2] < 0) ? portid : ipv4_l3fwd_out_if[ret[2]]);
+	dst_port[3] = ((ret[3] < 0) ? portid : ipv4_l3fwd_out_if[ret[3]]);
+	dst_port[4] = ((ret[4] < 0) ? portid : ipv4_l3fwd_out_if[ret[4]]);
+	dst_port[5] = ((ret[5] < 0) ? portid : ipv4_l3fwd_out_if[ret[5]]);
+	dst_port[6] = ((ret[6] < 0) ? portid : ipv4_l3fwd_out_if[ret[6]]);
+	dst_port[7] = ((ret[7] < 0) ? portid : ipv4_l3fwd_out_if[ret[7]]);
 
 	if (dst_port[0] >= RTE_MAX_ETHPORTS ||
 			(enabled_port_mask & 1 << dst_port[0]) == 0)
@@ -1146,10 +1146,10 @@ static inline void get_ipv6_5tuple(struct rte_mbuf *m0, __m128i mask0,
 }
 
 static inline void
-simple_ipv6_fwd_8pkts(struct rte_mbuf *m[8], uint8_t portid)
+simple_ipv6_fwd_8pkts(struct rte_mbuf *m[8], uint16_t portid)
 {
 	int32_t ret[8];
-	uint8_t dst_port[8];
+	uint16_t dst_port[8];
 	struct ether_hdr *eth_hdr[8];
 	union ipv6_5tuple_host key[8];
 
@@ -1196,14 +1196,14 @@ simple_ipv6_fwd_8pkts(struct rte_mbuf *m[8], uint8_t portid)
 
 	rte_hash_lookup_bulk(RTE_PER_LCORE(lcore_conf)->ipv6_lookup_struct,
 			&key_array[0], 4, ret);
-	dst_port[0] = (uint8_t) ((ret[0] < 0) ? portid : ipv6_l3fwd_out_if[ret[0]]);
-	dst_port[1] = (uint8_t) ((ret[1] < 0) ? portid : ipv6_l3fwd_out_if[ret[1]]);
-	dst_port[2] = (uint8_t) ((ret[2] < 0) ? portid : ipv6_l3fwd_out_if[ret[2]]);
-	dst_port[3] = (uint8_t) ((ret[3] < 0) ? portid : ipv6_l3fwd_out_if[ret[3]]);
-	dst_port[4] = (uint8_t) ((ret[4] < 0) ? portid : ipv6_l3fwd_out_if[ret[4]]);
-	dst_port[5] = (uint8_t) ((ret[5] < 0) ? portid : ipv6_l3fwd_out_if[ret[5]]);
-	dst_port[6] = (uint8_t) ((ret[6] < 0) ? portid : ipv6_l3fwd_out_if[ret[6]]);
-	dst_port[7] = (uint8_t) ((ret[7] < 0) ? portid : ipv6_l3fwd_out_if[ret[7]]);
+	dst_port[0] = ((ret[0] < 0) ? portid : ipv6_l3fwd_out_if[ret[0]]);
+	dst_port[1] = ((ret[1] < 0) ? portid : ipv6_l3fwd_out_if[ret[1]]);
+	dst_port[2] = ((ret[2] < 0) ? portid : ipv6_l3fwd_out_if[ret[2]]);
+	dst_port[3] = ((ret[3] < 0) ? portid : ipv6_l3fwd_out_if[ret[3]]);
+	dst_port[4] = ((ret[4] < 0) ? portid : ipv6_l3fwd_out_if[ret[4]]);
+	dst_port[5] = ((ret[5] < 0) ? portid : ipv6_l3fwd_out_if[ret[5]]);
+	dst_port[6] = ((ret[6] < 0) ? portid : ipv6_l3fwd_out_if[ret[6]]);
+	dst_port[7] = ((ret[7] < 0) ? portid : ipv6_l3fwd_out_if[ret[7]]);
 
 	if (dst_port[0] >= RTE_MAX_ETHPORTS ||
 			(enabled_port_mask & 1 << dst_port[0]) == 0)
@@ -1250,24 +1250,24 @@ simple_ipv6_fwd_8pkts(struct rte_mbuf *m[8], uint8_t portid)
 	ether_addr_copy(&ports_eth_addr[dst_port[6]], &eth_hdr[6]->s_addr);
 	ether_addr_copy(&ports_eth_addr[dst_port[7]], &eth_hdr[7]->s_addr);
 
-	send_single_packet(m[0], (uint8_t)dst_port[0]);
-	send_single_packet(m[1], (uint8_t)dst_port[1]);
-	send_single_packet(m[2], (uint8_t)dst_port[2]);
-	send_single_packet(m[3], (uint8_t)dst_port[3]);
-	send_single_packet(m[4], (uint8_t)dst_port[4]);
-	send_single_packet(m[5], (uint8_t)dst_port[5]);
-	send_single_packet(m[6], (uint8_t)dst_port[6]);
-	send_single_packet(m[7], (uint8_t)dst_port[7]);
+	send_single_packet(m[0], dst_port[0]);
+	send_single_packet(m[1], dst_port[1]);
+	send_single_packet(m[2], dst_port[2]);
+	send_single_packet(m[3], dst_port[3]);
+	send_single_packet(m[4], dst_port[4]);
+	send_single_packet(m[5], dst_port[5]);
+	send_single_packet(m[6], dst_port[6]);
+	send_single_packet(m[7], dst_port[7]);
 
 }
 #endif /* APP_LOOKUP_METHOD */
 
 static __rte_always_inline void
-l3fwd_simple_forward(struct rte_mbuf *m, uint8_t portid)
+l3fwd_simple_forward(struct rte_mbuf *m, uint16_t portid)
 {
 	struct ether_hdr *eth_hdr;
 	struct ipv4_hdr *ipv4_hdr;
-	uint8_t dst_port;
+	uint16_t dst_port;
 
 	eth_hdr = rte_pktmbuf_mtod(m, struct ether_hdr *);
 
@@ -1379,7 +1379,7 @@ rfc1812_process(struct ipv4_hdr *ipv4_hdr, uint16_t *dp, uint32_t ptype)
 	(ENABLE_MULTI_BUFFER_OPTIMIZE == 1))
 
 static __rte_always_inline uint16_t
-get_dst_port(struct rte_mbuf *pkt, uint32_t dst_ipv4, uint8_t portid)
+get_dst_port(struct rte_mbuf *pkt, uint32_t dst_ipv4, uint16_t portid)
 {
 	uint32_t next_hop;
 	struct ipv6_hdr *ipv6_hdr;
@@ -1406,7 +1406,7 @@ get_dst_port(struct rte_mbuf *pkt, uint32_t dst_ipv4, uint8_t portid)
 }
 
 static inline void
-process_packet(struct rte_mbuf *pkt, uint16_t *dst_port, uint8_t portid)
+process_packet(struct rte_mbuf *pkt, uint16_t *dst_port, uint16_t portid)
 {
 	struct ether_hdr *eth_hdr;
 	struct ipv4_hdr *ipv4_hdr;
@@ -1473,7 +1473,7 @@ processx4_step1(struct rte_mbuf *pkt[FWDSTEP],
 static inline void
 processx4_step2(__m128i dip,
 		uint32_t ipv4_flag,
-		uint8_t portid,
+		uint16_t portid,
 		struct rte_mbuf *pkt[FWDSTEP],
 		uint16_t dprt[FWDSTEP])
 {
@@ -1716,7 +1716,8 @@ port_groupx4(uint16_t pn[FWDSTEP + 1], uint16_t *lp, __m128i dp1, __m128i dp2)
 
 static void
 process_burst(struct rte_mbuf *pkts_burst[MAX_PKT_BURST], int nb_rx,
-		uint8_t portid) {
+		uint16_t portid)
+{
 
 	int j;
 
@@ -2091,7 +2092,7 @@ lthread_tx(void *args)
 	struct lthread *lt;
 
 	unsigned lcore_id;
-	uint8_t portid;
+	uint16_t portid;
 	struct thread_tx_conf *tx_conf;
 
 	tx_conf = (struct thread_tx_conf *)args;
@@ -2138,7 +2139,8 @@ lthread_rx(void *dummy)
 	int ret;
 	uint16_t nb_rx;
 	int i;
-	uint8_t portid, queueid;
+	uint16_t portid;
+	uint8_t queueid;
 	int worker_id;
 	int len[RTE_MAX_LCORE] = { 0 };
 	int old_len, new_len;
@@ -2164,7 +2166,8 @@ lthread_rx(void *dummy)
 
 		portid = rx_conf->rx_queue_list[i].port_id;
 		queueid = rx_conf->rx_queue_list[i].queue_id;
-		RTE_LOG(INFO, L3FWD, " -- lcoreid=%u portid=%hhu rxqueueid=%hhu\n",
+		RTE_LOG(INFO, L3FWD,
+			" -- lcoreid=%u portid=%u rxqueueid=%hhu\n",
 				rte_lcore_id(), portid, queueid);
 	}
 
@@ -2323,7 +2326,7 @@ pthread_tx(void *dummy)
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
 	uint64_t prev_tsc, diff_tsc, cur_tsc;
 	int nb_rx;
-	uint8_t portid;
+	uint16_t portid;
 	struct thread_tx_conf *tx_conf;
 
 	const uint64_t drain_tsc = (rte_get_tsc_hz() + US_PER_S - 1) /
@@ -2392,7 +2395,8 @@ pthread_rx(void *dummy)
 	uint32_t n;
 	uint32_t nb_rx;
 	unsigned lcore_id;
-	uint8_t portid, queueid;
+	uint8_t queueid;
+	uint16_t portid;
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
 
 	struct thread_rx_conf *rx_conf;
@@ -2411,7 +2415,8 @@ pthread_rx(void *dummy)
 
 		portid = rx_conf->rx_queue_list[i].port_id;
 		queueid = rx_conf->rx_queue_list[i].queue_id;
-		RTE_LOG(INFO, L3FWD, " -- lcoreid=%u portid=%hhu rxqueueid=%hhu\n",
+		RTE_LOG(INFO, L3FWD,
+			" -- lcoreid=%u portid=%u rxqueueid=%hhu\n",
 				lcore_id, portid, queueid);
 	}
 
@@ -2769,7 +2774,7 @@ parse_rx_config(const char *q_arg)
 			return -1;
 		}
 		rx_thread_params_array[nb_rx_thread_params].port_id =
-				(uint8_t)int_fld[FLD_PORT];
+				int_fld[FLD_PORT];
 		rx_thread_params_array[nb_rx_thread_params].queue_id =
 				(uint8_t)int_fld[FLD_QUEUE];
 		rx_thread_params_array[nb_rx_thread_params].lcore_id =
@@ -2853,7 +2858,7 @@ parse_stat_lcore(const char *stat_lcore)
 static void
 parse_eth_dest(const char *optarg)
 {
-	uint8_t portid;
+	uint16_t portid;
 	char *port_end;
 	uint8_t c, *dest, peer_addr[6];
 
@@ -3440,7 +3445,8 @@ check_all_ports_link_status(uint8_t port_num, uint32_t port_mask)
 {
 #define CHECK_INTERVAL 100 /* 100ms */
 #define MAX_CHECK_TIME 90 /* 9s (90 * 100ms) in total */
-	uint8_t portid, count, all_ports_up, print_flag = 0;
+	uint16_t portid;
+	uint8_t count, all_ports_up, print_flag = 0;
 	struct rte_eth_link link;
 
 	printf("\nChecking link status");
@@ -3455,14 +3461,13 @@ check_all_ports_link_status(uint8_t port_num, uint32_t port_mask)
 			/* print link status if flag set */
 			if (print_flag == 1) {
 				if (link.link_status)
-					printf("Port %d Link Up - speed %u "
-						"Mbps - %s\n", (uint8_t)portid,
-						(unsigned)link.link_speed,
+					printf(
+					"Port%d Link Up. Speed %u Mbps - %s\n",
+						portid, link.link_speed,
 				(link.link_duplex == ETH_LINK_FULL_DUPLEX) ?
 					("full-duplex") : ("half-duplex\n"));
 				else
-					printf("Port %d Link Down\n",
-						(uint8_t)portid);
+					printf("Port %d Link Down\n", portid);
 				continue;
 			}
 			/* clear all_ports_up flag if any link down */
@@ -3497,10 +3502,10 @@ main(int argc, char **argv)
 	int ret;
 	int i;
 	unsigned nb_ports;
-	uint16_t queueid;
+	uint16_t queueid, portid;
 	unsigned lcore_id;
 	uint32_t n_tx_queue, nb_lcores;
-	uint8_t portid, nb_rx_queue, queue, socketid;
+	uint8_t nb_rx_queue, queue, socketid;
 
 	/* init EAL */
 	ret = rte_eal_init(argc, argv);

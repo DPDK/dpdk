@@ -51,7 +51,7 @@ struct client_data {
 	uint32_t cli_ip;
 	/**< Client IP address */
 
-	uint8_t slave_idx;
+	uint16_t slave_idx;
 	/**< Index of slave on which we connect with that client */
 	uint8_t in_use;
 	/**< Flag indicating if entry in client table is currently used */
@@ -113,7 +113,7 @@ bond_mode_alb_arp_recv(struct ether_hdr *eth_h, uint16_t offset,
  * @return
  * Index of slave on which packet should be sent.
  */
-uint8_t
+uint16_t
 bond_mode_alb_arp_xmit(struct ether_hdr *eth_h, uint16_t offset,
 		struct bond_dev_private *internals);
 
@@ -127,7 +127,7 @@ bond_mode_alb_arp_xmit(struct ether_hdr *eth_h, uint16_t offset,
  * @return
  * Index of slawe on which packet should be sent.
  */
-uint8_t
+uint16_t
 bond_mode_alb_arp_upd(struct client_data *client_info,
 		struct rte_mbuf *pkt, struct bond_dev_private *internals);
 

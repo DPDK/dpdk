@@ -78,7 +78,7 @@
 #define UMA_NO_CONFIG  0xFF
 
 typedef uint8_t  lcoreid_t;
-typedef uint8_t  portid_t;
+typedef uint16_t portid_t;
 typedef uint16_t queueid_t;
 typedef uint16_t streamid_t;
 
@@ -283,7 +283,7 @@ enum dcb_mode_enable
 #define MAX_RX_QUEUE_STATS_MAPPINGS 4096 /* MAX_PORT of 32 @ 128 rx_queues/port */
 
 struct queue_stats_mappings {
-	uint8_t port_id;
+	portid_t port_id;
 	uint16_t queue_id;
 	uint8_t stats_counter_id;
 } __rte_cache_aligned;

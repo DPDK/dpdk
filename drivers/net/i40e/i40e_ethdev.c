@@ -1950,8 +1950,9 @@ i40e_dev_start(struct rte_eth_dev *dev)
 	hw->adapter_stopped = 0;
 
 	if (dev->data->dev_conf.link_speeds & ETH_LINK_SPEED_FIXED) {
-		PMD_INIT_LOG(ERR, "Invalid link_speeds for port %hhu; autonegotiation disabled",
-			     dev->data->port_id);
+		PMD_INIT_LOG(ERR,
+		"Invalid link_speeds for port %u, autonegotiation disabled",
+			      dev->data->port_id);
 		return -EINVAL;
 	}
 

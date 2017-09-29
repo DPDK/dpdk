@@ -394,7 +394,7 @@ rte_eth_from_rings(const char *name, struct rte_ring *const rx_queues[],
 	};
 	char args_str[32] = { 0 };
 	char ring_name[32] = { 0 };
-	uint8_t port_id = RTE_MAX_ETHPORTS;
+	uint16_t port_id = RTE_MAX_ETHPORTS;
 	int ret;
 
 	/* do some parameter checking */

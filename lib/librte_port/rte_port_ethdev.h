@@ -54,7 +54,7 @@ extern "C" {
 /** ethdev_reader port parameters */
 struct rte_port_ethdev_reader_params {
 	/** NIC RX port ID */
-	uint8_t port_id;
+	uint16_t port_id;
 
 	/** NIC RX queue ID */
 	uint16_t queue_id;
@@ -66,7 +66,7 @@ extern struct rte_port_in_ops rte_port_ethdev_reader_ops;
 /** ethdev_writer port parameters */
 struct rte_port_ethdev_writer_params {
 	/** NIC RX port ID */
-	uint8_t port_id;
+	uint16_t port_id;
 
 	/** NIC RX queue ID */
 	uint16_t queue_id;
@@ -82,7 +82,7 @@ extern struct rte_port_out_ops rte_port_ethdev_writer_ops;
 /** ethdev_writer_nodrop port parameters */
 struct rte_port_ethdev_writer_nodrop_params {
 	/** NIC RX port ID */
-	uint8_t port_id;
+	uint16_t port_id;
 
 	/** NIC RX queue ID */
 	uint16_t queue_id;

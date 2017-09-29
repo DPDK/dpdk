@@ -145,7 +145,7 @@ print_stats(void)
 {
 	struct rte_eth_link link;
 	uint64_t total_packets_dropped, total_packets_tx, total_packets_rx;
-	unsigned portid;
+	uint16_t portid;
 
 	total_packets_dropped = 0;
 	total_packets_tx = 0;
@@ -165,7 +165,7 @@ print_stats(void)
 			continue;
 
 		memset(&link, 0, sizeof(link));
-		rte_eth_link_get_nowait((uint8_t)portid, &link);
+		rte_eth_link_get_nowait(portid, &link);
 		printf("\nStatistics for port %u ------------------------------"
 			   "\nLink status: %25s"
 			   "\nLink speed: %26u"
@@ -470,7 +470,7 @@ lsi_parse_args(int argc, char **argv)
  *  int.
  */
 static int
-lsi_event_callback(uint8_t port_id, enum rte_eth_event_type type, void *param,
+lsi_event_callback(uint16_t port_id, enum rte_eth_event_type type, void *param,
 		    void *ret_param)
 {
 	struct rte_eth_link link;
@@ -498,7 +498,8 @@ check_all_ports_link_status(uint8_t port_num, uint32_t port_mask)
 {
 #define CHECK_INTERVAL 100 /* 100ms */
 #define MAX_CHECK_TIME 90 /* 9s (90 * 100ms) in total */
-	uint8_t portid, count, all_ports_up, print_flag = 0;
+	uint8_t count, all_ports_up, print_flag = 0;
+	uint16_t portid;
 	struct rte_eth_link link;
 
 	printf("\nChecking link status");

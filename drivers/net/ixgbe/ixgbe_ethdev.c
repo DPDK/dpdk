@@ -2504,8 +2504,9 @@ ixgbe_dev_start(struct rte_eth_dev *dev)
 	*    - fixed speed: TODO implement
 	*/
 	if (dev->data->dev_conf.link_speeds & ETH_LINK_SPEED_FIXED) {
-		PMD_INIT_LOG(ERR, "Invalid link_speeds for port %hhu; fix speed not supported",
-			     dev->data->port_id);
+		PMD_INIT_LOG(ERR,
+		"Invalid link_speeds for port %u, fix speed not supported",
+				dev->data->port_id);
 		return -EINVAL;
 	}
 

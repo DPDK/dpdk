@@ -248,7 +248,7 @@ struct app_lcore_params_io {
 	struct {
 		/* NIC */
 		struct {
-			uint8_t port;
+			uint16_t port;
 			uint8_t queue;
 		} nic_queues[APP_MAX_NIC_RX_QUEUES_PER_IO_LCORE];
 		uint32_t n_nic_queues;
@@ -275,7 +275,7 @@ struct app_lcore_params_io {
 		struct rte_ring *rings[APP_MAX_NIC_PORTS][APP_MAX_WORKER_LCORES];
 
 		/* NIC */
-		uint8_t nic_ports[APP_MAX_NIC_TX_PORTS_PER_IO_LCORE];
+		uint16_t nic_ports[APP_MAX_NIC_TX_PORTS_PER_IO_LCORE];
 		uint32_t n_nic_ports;
 
 		/* Internal buffers */
@@ -368,9 +368,10 @@ void app_print_usage(void);
 void app_init(void);
 int app_lcore_main_loop(void *arg);
 
-int app_get_nic_rx_queues_per_port(uint8_t port);
-int app_get_lcore_for_nic_rx(uint8_t port, uint8_t queue, uint32_t *lcore_out);
-int app_get_lcore_for_nic_tx(uint8_t port, uint32_t *lcore_out);
+int app_get_nic_rx_queues_per_port(uint16_t port);
+int app_get_lcore_for_nic_rx(uint16_t port, uint8_t queue,
+			      uint32_t *lcore_out);
+int app_get_lcore_for_nic_tx(uint16_t port, uint32_t *lcore_out);
 int app_is_socket_used(uint32_t socket);
 uint32_t app_get_lcores_io_rx(void);
 uint32_t app_get_lcores_worker(void);

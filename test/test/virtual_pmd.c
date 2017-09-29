@@ -261,7 +261,7 @@ static const struct eth_dev_ops virtual_ethdev_default_dev_ops = {
 
 
 void
-virtual_ethdev_start_fn_set_success(uint8_t port_id, uint8_t success)
+virtual_ethdev_start_fn_set_success(uint16_t port_id, uint8_t success)
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
 	struct virtual_ethdev_private *dev_private = dev->data->dev_private;
@@ -275,7 +275,7 @@ virtual_ethdev_start_fn_set_success(uint8_t port_id, uint8_t success)
 }
 
 void
-virtual_ethdev_configure_fn_set_success(uint8_t port_id, uint8_t success)
+virtual_ethdev_configure_fn_set_success(uint16_t port_id, uint8_t success)
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
 	struct virtual_ethdev_private *dev_private = dev->data->dev_private;
@@ -288,7 +288,7 @@ virtual_ethdev_configure_fn_set_success(uint8_t port_id, uint8_t success)
 }
 
 void
-virtual_ethdev_rx_queue_setup_fn_set_success(uint8_t port_id, uint8_t success)
+virtual_ethdev_rx_queue_setup_fn_set_success(uint16_t port_id, uint8_t success)
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
 	struct virtual_ethdev_private *dev_private = dev->data->dev_private;
@@ -301,7 +301,7 @@ virtual_ethdev_rx_queue_setup_fn_set_success(uint8_t port_id, uint8_t success)
 }
 
 void
-virtual_ethdev_tx_queue_setup_fn_set_success(uint8_t port_id, uint8_t success)
+virtual_ethdev_tx_queue_setup_fn_set_success(uint16_t port_id, uint8_t success)
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
 	struct virtual_ethdev_private *dev_private = dev->data->dev_private;
@@ -314,7 +314,7 @@ virtual_ethdev_tx_queue_setup_fn_set_success(uint8_t port_id, uint8_t success)
 }
 
 void
-virtual_ethdev_link_update_fn_set_success(uint8_t port_id, uint8_t success)
+virtual_ethdev_link_update_fn_set_success(uint16_t port_id, uint8_t success)
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
 	struct virtual_ethdev_private *dev_private = dev->data->dev_private;
@@ -430,7 +430,7 @@ virtual_ethdev_tx_burst_fail(void *queue, struct rte_mbuf **bufs,
 
 
 void
-virtual_ethdev_rx_burst_fn_set_success(uint8_t port_id, uint8_t success)
+virtual_ethdev_rx_burst_fn_set_success(uint16_t port_id, uint8_t success)
 {
 	struct rte_eth_dev *vrtl_eth_dev = &rte_eth_devices[port_id];
 
@@ -442,7 +442,7 @@ virtual_ethdev_rx_burst_fn_set_success(uint8_t port_id, uint8_t success)
 
 
 void
-virtual_ethdev_tx_burst_fn_set_success(uint8_t port_id, uint8_t success)
+virtual_ethdev_tx_burst_fn_set_success(uint16_t port_id, uint8_t success)
 {
 	struct virtual_ethdev_private *dev_private = NULL;
 	struct rte_eth_dev *vrtl_eth_dev = &rte_eth_devices[port_id];
@@ -458,7 +458,7 @@ virtual_ethdev_tx_burst_fn_set_success(uint8_t port_id, uint8_t success)
 }
 
 void
-virtual_ethdev_tx_burst_fn_set_tx_pkt_fail_count(uint8_t port_id,
+virtual_ethdev_tx_burst_fn_set_tx_pkt_fail_count(uint16_t port_id,
 		uint8_t packet_fail_count)
 {
 	struct virtual_ethdev_private *dev_private = NULL;
@@ -470,7 +470,7 @@ virtual_ethdev_tx_burst_fn_set_tx_pkt_fail_count(uint8_t port_id,
 }
 
 void
-virtual_ethdev_set_link_status(uint8_t port_id, uint8_t link_status)
+virtual_ethdev_set_link_status(uint16_t port_id, uint8_t link_status)
 {
 	struct rte_eth_dev *vrtl_eth_dev = &rte_eth_devices[port_id];
 
@@ -478,7 +478,7 @@ virtual_ethdev_set_link_status(uint8_t port_id, uint8_t link_status)
 }
 
 void
-virtual_ethdev_simulate_link_status_interrupt(uint8_t port_id,
+virtual_ethdev_simulate_link_status_interrupt(uint16_t port_id,
 		uint8_t link_status)
 {
 	struct rte_eth_dev *vrtl_eth_dev = &rte_eth_devices[port_id];
@@ -490,7 +490,7 @@ virtual_ethdev_simulate_link_status_interrupt(uint8_t port_id,
 }
 
 int
-virtual_ethdev_add_mbufs_to_rx_queue(uint8_t port_id,
+virtual_ethdev_add_mbufs_to_rx_queue(uint16_t port_id,
 		struct rte_mbuf **pkt_burst, int burst_length)
 {
 	struct rte_eth_dev *vrtl_eth_dev = &rte_eth_devices[port_id];
@@ -502,7 +502,7 @@ virtual_ethdev_add_mbufs_to_rx_queue(uint8_t port_id,
 }
 
 int
-virtual_ethdev_get_mbufs_from_tx_queue(uint8_t port_id,
+virtual_ethdev_get_mbufs_from_tx_queue(uint16_t port_id,
 		struct rte_mbuf **pkt_burst, int burst_length)
 {
 	struct virtual_ethdev_private *dev_private;

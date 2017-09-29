@@ -52,7 +52,7 @@
 
 static __rte_always_inline void
 em_get_dst_port_ipv4xN(struct lcore_conf *qconf, struct rte_mbuf *m[],
-		uint8_t portid, uint16_t dst_port[])
+		uint16_t portid, uint16_t dst_port[])
 {
 	int i;
 	int32_t ret[EM_HASH_LOOKUP_COUNT];
@@ -68,7 +68,7 @@ em_get_dst_port_ipv4xN(struct lcore_conf *qconf, struct rte_mbuf *m[],
 			     EM_HASH_LOOKUP_COUNT, ret);
 
 	for (i = 0; i < EM_HASH_LOOKUP_COUNT; i++) {
-		dst_port[i] = (uint8_t) ((ret[i] < 0) ?
+		dst_port[i] = ((ret[i] < 0) ?
 				portid : ipv4_l3fwd_out_if[ret[i]]);
 
 		if (dst_port[i] >= RTE_MAX_ETHPORTS ||
@@ -79,7 +79,7 @@ em_get_dst_port_ipv4xN(struct lcore_conf *qconf, struct rte_mbuf *m[],
 
 static __rte_always_inline void
 em_get_dst_port_ipv6xN(struct lcore_conf *qconf, struct rte_mbuf *m[],
-		uint8_t portid, uint16_t dst_port[])
+		uint16_t portid, uint16_t dst_port[])
 {
 	int i;
 	int32_t ret[EM_HASH_LOOKUP_COUNT];
@@ -95,7 +95,7 @@ em_get_dst_port_ipv6xN(struct lcore_conf *qconf, struct rte_mbuf *m[],
 			     EM_HASH_LOOKUP_COUNT, ret);
 
 	for (i = 0; i < EM_HASH_LOOKUP_COUNT; i++) {
-		dst_port[i] = (uint8_t) ((ret[i] < 0) ?
+		dst_port[i] = ((ret[i] < 0) ?
 				portid : ipv6_l3fwd_out_if[ret[i]]);
 
 		if (dst_port[i] >= RTE_MAX_ETHPORTS ||
@@ -106,9 +106,9 @@ em_get_dst_port_ipv6xN(struct lcore_conf *qconf, struct rte_mbuf *m[],
 
 static __rte_always_inline uint16_t
 em_get_dst_port(const struct lcore_conf *qconf, struct rte_mbuf *pkt,
-		uint8_t portid)
+		uint16_t portid)
 {
-	uint8_t next_hop;
+	uint16_t next_hop;
 	struct ipv4_hdr *ipv4_hdr;
 	struct ipv6_hdr *ipv6_hdr;
 	uint32_t tcp_or_udp;
@@ -158,7 +158,7 @@ em_get_dst_port(const struct lcore_conf *qconf, struct rte_mbuf *pkt,
  */
 static inline void
 l3fwd_em_send_packets(int nb_rx, struct rte_mbuf **pkts_burst,
-		uint8_t portid, struct lcore_conf *qconf)
+		uint16_t portid, struct lcore_conf *qconf)
 {
 	int32_t i, j, pos;
 	uint16_t dst_port[MAX_PKT_BURST];

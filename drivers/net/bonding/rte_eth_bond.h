@@ -151,7 +151,7 @@ rte_eth_bond_free(const char *name);
  *	0 on success, negative value otherwise
  */
 int
-rte_eth_bond_slave_add(uint8_t bonded_port_id, uint8_t slave_port_id);
+rte_eth_bond_slave_add(uint16_t bonded_port_id, uint16_t slave_port_id);
 
 /**
  * Remove a slave rte_eth_dev device from the bonded device
@@ -163,7 +163,7 @@ rte_eth_bond_slave_add(uint8_t bonded_port_id, uint8_t slave_port_id);
  *	0 on success, negative value otherwise
  */
 int
-rte_eth_bond_slave_remove(uint8_t bonded_port_id, uint8_t slave_port_id);
+rte_eth_bond_slave_remove(uint16_t bonded_port_id, uint16_t slave_port_id);
 
 /**
  * Set link bonding mode of bonded device
@@ -175,7 +175,7 @@ rte_eth_bond_slave_remove(uint8_t bonded_port_id, uint8_t slave_port_id);
  *	0 on success, negative value otherwise
  */
 int
-rte_eth_bond_mode_set(uint8_t bonded_port_id, uint8_t mode);
+rte_eth_bond_mode_set(uint16_t bonded_port_id, uint8_t mode);
 
 /**
  * Get link bonding mode of bonded device
@@ -186,7 +186,7 @@ rte_eth_bond_mode_set(uint8_t bonded_port_id, uint8_t mode);
  *	link bonding mode on success, negative value otherwise
  */
 int
-rte_eth_bond_mode_get(uint8_t bonded_port_id);
+rte_eth_bond_mode_get(uint16_t bonded_port_id);
 
 /**
  * Set slave rte_eth_dev as primary slave of bonded device
@@ -198,7 +198,7 @@ rte_eth_bond_mode_get(uint8_t bonded_port_id);
  *	0 on success, negative value otherwise
  */
 int
-rte_eth_bond_primary_set(uint8_t bonded_port_id, uint8_t slave_port_id);
+rte_eth_bond_primary_set(uint16_t bonded_port_id, uint16_t slave_port_id);
 
 /**
  * Get primary slave of bonded device
@@ -209,7 +209,7 @@ rte_eth_bond_primary_set(uint8_t bonded_port_id, uint8_t slave_port_id);
  *	Port Id of primary slave on success, -1 on failure
  */
 int
-rte_eth_bond_primary_get(uint8_t bonded_port_id);
+rte_eth_bond_primary_get(uint16_t bonded_port_id);
 
 /**
  * Populate an array with list of the slaves port id's of the bonded device
@@ -223,7 +223,8 @@ rte_eth_bond_primary_get(uint8_t bonded_port_id);
  *	negative value otherwise
  */
 int
-rte_eth_bond_slaves_get(uint8_t bonded_port_id, uint8_t slaves[], uint8_t len);
+rte_eth_bond_slaves_get(uint16_t bonded_port_id, uint16_t slaves[],
+			uint16_t len);
 
 /**
  * Populate an array with list of the active slaves port id's of the bonded
@@ -238,8 +239,8 @@ rte_eth_bond_slaves_get(uint8_t bonded_port_id, uint8_t slaves[], uint8_t len);
  *	negative value otherwise
  */
 int
-rte_eth_bond_active_slaves_get(uint8_t bonded_port_id, uint8_t slaves[],
-		uint8_t len);
+rte_eth_bond_active_slaves_get(uint16_t bonded_port_id, uint16_t slaves[],
+				uint16_t len);
 
 /**
  * Set explicit MAC address to use on bonded device and it's slaves.
@@ -252,7 +253,7 @@ rte_eth_bond_active_slaves_get(uint8_t bonded_port_id, uint8_t slaves[],
  *	0 on success, negative value otherwise
  */
 int
-rte_eth_bond_mac_address_set(uint8_t bonded_port_id,
+rte_eth_bond_mac_address_set(uint16_t bonded_port_id,
 		struct ether_addr *mac_addr);
 
 /**
@@ -265,7 +266,7 @@ rte_eth_bond_mac_address_set(uint8_t bonded_port_id,
  *	0 on success, negative value otherwise
  */
 int
-rte_eth_bond_mac_address_reset(uint8_t bonded_port_id);
+rte_eth_bond_mac_address_reset(uint16_t bonded_port_id);
 
 /**
  * Set the transmit policy for bonded device to use when it is operating in
@@ -279,7 +280,7 @@ rte_eth_bond_mac_address_reset(uint8_t bonded_port_id);
  *	0 on success, negative value otherwise.
  */
 int
-rte_eth_bond_xmit_policy_set(uint8_t bonded_port_id, uint8_t policy);
+rte_eth_bond_xmit_policy_set(uint16_t bonded_port_id, uint8_t policy);
 
 /**
  * Get the transmit policy set on bonded device for balance mode operation
@@ -290,7 +291,7 @@ rte_eth_bond_xmit_policy_set(uint8_t bonded_port_id, uint8_t policy);
  *	Balance transmit policy on success, negative value otherwise.
  */
 int
-rte_eth_bond_xmit_policy_get(uint8_t bonded_port_id);
+rte_eth_bond_xmit_policy_get(uint16_t bonded_port_id);
 
 /**
  * Set the link monitoring frequency (in ms) for monitoring the link status of
@@ -304,7 +305,7 @@ rte_eth_bond_xmit_policy_get(uint8_t bonded_port_id);
  */
 
 int
-rte_eth_bond_link_monitoring_set(uint8_t bonded_port_id, uint32_t internal_ms);
+rte_eth_bond_link_monitoring_set(uint16_t bonded_port_id, uint32_t internal_ms);
 
 /**
  * Get the current link monitoring frequency (in ms) for monitoring of the link
@@ -316,7 +317,7 @@ rte_eth_bond_link_monitoring_set(uint8_t bonded_port_id, uint32_t internal_ms);
  *	Monitoring interval on success, negative value otherwise.
  */
 int
-rte_eth_bond_link_monitoring_get(uint8_t bonded_port_id);
+rte_eth_bond_link_monitoring_get(uint16_t bonded_port_id);
 
 
 /**
@@ -330,7 +331,8 @@ rte_eth_bond_link_monitoring_get(uint8_t bonded_port_id);
  *  0 on success, negative value otherwise.
  */
 int
-rte_eth_bond_link_down_prop_delay_set(uint8_t bonded_port_id, uint32_t delay_ms);
+rte_eth_bond_link_down_prop_delay_set(uint16_t bonded_port_id,
+				       uint32_t delay_ms);
 
 /**
  * Get the period in milliseconds set for delaying the disabling of a bonded
@@ -342,7 +344,7 @@ rte_eth_bond_link_down_prop_delay_set(uint8_t bonded_port_id, uint32_t delay_ms)
  *  Delay period on success, negative value otherwise.
  */
 int
-rte_eth_bond_link_down_prop_delay_get(uint8_t bonded_port_id);
+rte_eth_bond_link_down_prop_delay_get(uint16_t bonded_port_id);
 
 /**
  * Set the period in milliseconds for delaying the enabling of a bonded link
@@ -355,7 +357,8 @@ rte_eth_bond_link_down_prop_delay_get(uint8_t bonded_port_id);
  *  0 on success, negative value otherwise.
  */
 int
-rte_eth_bond_link_up_prop_delay_set(uint8_t bonded_port_id, uint32_t delay_ms);
+rte_eth_bond_link_up_prop_delay_set(uint16_t bonded_port_id,
+				    uint32_t delay_ms);
 
 /**
  * Get the period in milliseconds set for delaying the enabling of a bonded
@@ -367,7 +370,7 @@ rte_eth_bond_link_up_prop_delay_set(uint8_t bonded_port_id, uint32_t delay_ms);
  *  Delay period on success, negative value otherwise.
  */
 int
-rte_eth_bond_link_up_prop_delay_get(uint8_t bonded_port_id);
+rte_eth_bond_link_up_prop_delay_get(uint16_t bonded_port_id);
 
 
 #ifdef __cplusplus

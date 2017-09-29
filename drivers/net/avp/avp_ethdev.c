@@ -190,7 +190,7 @@ struct avp_dev {
 	struct rte_eth_dev_data *dev_data;
 	/**< Back pointer to ethernet device data */
 	volatile uint32_t flags; /**< Device operational flags */
-	uint8_t port_id; /**< Ethernet port identifier */
+	uint16_t port_id; /**< Ethernet port identifier */
 	struct rte_mempool *pool; /**< pkt mbuf mempool */
 	unsigned int guest_mbuf_size; /**< local pool mbuf size */
 	unsigned int host_mbuf_size; /**< host mbuf size */

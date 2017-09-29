@@ -122,7 +122,7 @@ struct igb_rx_queue {
 	uint16_t            rx_free_thresh; /**< max free RX desc to hold. */
 	uint16_t            queue_id;   /**< RX queue index. */
 	uint16_t            reg_idx;    /**< RX queue register index. */
-	uint8_t             port_id;    /**< Device port identifier. */
+	uint16_t            port_id;    /**< Device port identifier. */
 	uint8_t             pthresh;    /**< Prefetch threshold register. */
 	uint8_t             hthresh;    /**< Host threshold register. */
 	uint8_t             wthresh;    /**< Write-back threshold register. */
@@ -191,7 +191,7 @@ struct igb_tx_queue {
 	/**< Index of first used TX descriptor. */
 	uint16_t               queue_id; /**< TX queue index. */
 	uint16_t               reg_idx;  /**< TX queue register index. */
-	uint8_t                port_id;  /**< Device port identifier. */
+	uint16_t               port_id;  /**< Device port identifier. */
 	uint8_t                pthresh;  /**< Prefetch threshold register. */
 	uint8_t                hthresh;  /**< Host threshold register. */
 	uint8_t                wthresh;  /**< Write-back threshold register. */

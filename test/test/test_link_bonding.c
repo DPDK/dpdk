@@ -94,9 +94,9 @@ uint8_t slave_mac[] = {0x00, 0xFF, 0x00, 0xFF, 0x00, 0x00 };
 uint8_t bonded_mac[] = {0xAA, 0xFF, 0xAA, 0xFF, 0xAA, 0xFF };
 
 struct link_bonding_unittest_params {
-	int8_t bonded_port_id;
-	int8_t slave_port_ids[TEST_MAX_NUMBER_OF_PORTS];
-	uint8_t bonded_slave_count;
+	int16_t bonded_port_id;
+	int16_t slave_port_ids[TEST_MAX_NUMBER_OF_PORTS];
+	uint16_t bonded_slave_count;
 	uint8_t bonding_mode;
 
 	uint16_t nb_rx_q;
@@ -317,7 +317,7 @@ test_create_bonded_device(void)
 {
 	int current_slave_count;
 
-	uint8_t slaves[RTE_MAX_ETHPORTS];
+	uint16_t slaves[RTE_MAX_ETHPORTS];
 
 	/* Don't try to recreate bonded device if re-running test suite*/
 	if (test_params->bonded_port_id == -1) {
@@ -387,7 +387,7 @@ test_add_slave_to_bonded_device(void)
 {
 	int current_slave_count;
 
-	uint8_t slaves[RTE_MAX_ETHPORTS];
+	uint16_t slaves[RTE_MAX_ETHPORTS];
 
 	TEST_ASSERT_SUCCESS(rte_eth_bond_slave_add(test_params->bonded_port_id,
 			test_params->slave_port_ids[test_params->bonded_slave_count]),
@@ -434,7 +434,7 @@ test_remove_slave_from_bonded_device(void)
 {
 	int current_slave_count;
 	struct ether_addr read_mac_addr, *mac_addr;
-	uint8_t slaves[RTE_MAX_ETHPORTS];
+	uint16_t slaves[RTE_MAX_ETHPORTS];
 
 	TEST_ASSERT_SUCCESS(rte_eth_bond_slave_remove(test_params->bonded_port_id,
 			test_params->slave_port_ids[test_params->bonded_slave_count-1]),
@@ -496,7 +496,7 @@ static int
 test_add_already_bonded_slave_to_bonded_device(void)
 {
 	int port_id, current_slave_count;
-	uint8_t slaves[RTE_MAX_ETHPORTS];
+	uint16_t slaves[RTE_MAX_ETHPORTS];
 	char pmd_name[RTE_ETH_NAME_MAX_LEN];
 
 	test_add_slave_to_bonded_device();
@@ -528,7 +528,7 @@ static int
 test_get_slaves_from_bonded_device(void)
 {
 	int current_slave_count;
-	uint8_t slaves[RTE_MAX_ETHPORTS];
+	uint16_t slaves[RTE_MAX_ETHPORTS];
 
 	TEST_ASSERT_SUCCESS(test_add_slave_to_bonded_device(),
 			"Failed to add slave to bonded device");
@@ -609,7 +609,7 @@ test_start_bonded_device(void)
 	struct rte_eth_link link_status;
 
 	int current_slave_count, current_bonding_mode, primary_port;
-	uint8_t slaves[RTE_MAX_ETHPORTS];
+	uint16_t slaves[RTE_MAX_ETHPORTS];
 
 	/* Add slave to bonded device*/
 	TEST_ASSERT_SUCCESS(test_add_slave_to_bonded_device(),
@@ -658,7 +658,7 @@ static int
 test_stop_bonded_device(void)
 {
 	int current_slave_count;
-	uint8_t slaves[RTE_MAX_ETHPORTS];
+	uint16_t slaves[RTE_MAX_ETHPORTS];
 
 	struct rte_eth_link link_status;
 
@@ -932,7 +932,7 @@ test_set_bonded_port_initialization_mac_assignment(void)
 {
 	int i, slave_count, bonded_port_id;
 
-	uint8_t slaves[RTE_MAX_ETHPORTS];
+	uint16_t slaves[RTE_MAX_ETHPORTS];
 	int slave_port_ids[BONDED_INIT_MAC_ASSIGNMENT_SLAVE_COUNT];
 
 	struct ether_addr slave_mac_addr, bonded_mac_addr, read_mac_addr;
@@ -1114,7 +1114,7 @@ test_set_bonded_port_initialization_mac_assignment(void)
 
 static int
 initialize_bonded_device_with_slaves(uint8_t bonding_mode, uint8_t bond_en_isr,
-		uint8_t number_of_slaves, uint8_t enable_slave)
+		uint16_t number_of_slaves, uint8_t enable_slave)
 {
 	/* Configure bonded device */
 	TEST_ASSERT_SUCCESS(configure_ethdev(test_params->bonded_port_id, 0,
@@ -1179,7 +1179,7 @@ int test_lsc_interrupt_count;
 
 
 static int
-test_bonding_lsc_event_callback(uint8_t port_id __rte_unused,
+test_bonding_lsc_event_callback(uint16_t port_id __rte_unused,
 		enum rte_eth_event_type type  __rte_unused,
 		void *param __rte_unused,
 		void *ret_param __rte_unused)
@@ -1224,7 +1224,7 @@ static int
 test_status_interrupt(void)
 {
 	int slave_count;
-	uint8_t slaves[RTE_MAX_ETHPORTS];
+	uint16_t slaves[RTE_MAX_ETHPORTS];
 
 	/* initialized bonding device with T slaves */
 	TEST_ASSERT_SUCCESS(initialize_bonded_device_with_slaves(
@@ -1313,7 +1313,7 @@ test_status_interrupt(void)
 static int
 generate_test_burst(struct rte_mbuf **pkts_burst, uint16_t burst_size,
 		uint8_t vlan, uint8_t ipv4, uint8_t toggle_dst_mac,
-		uint8_t toggle_ip_addr, uint8_t toggle_udp_port)
+		uint8_t toggle_ip_addr, uint16_t toggle_udp_port)
 {
 	uint16_t pktlen, generated_burst_size, ether_type;
 	void *ip_hdr;
@@ -1854,7 +1854,7 @@ test_roundrobin_verify_slave_link_status_change_behaviour(void)
 	struct rte_mbuf *rx_pkt_burst[MAX_PKT_BURST] = { NULL };
 
 	struct rte_eth_stats port_stats;
-	uint8_t slaves[RTE_MAX_ETHPORTS];
+	uint16_t slaves[RTE_MAX_ETHPORTS];
 
 	int i, burst_size, slave_count;
 
@@ -2408,7 +2408,7 @@ test_activebackup_verify_slave_link_status_change_failover(void)
 	struct rte_mbuf *rx_pkt_burst[MAX_PKT_BURST] = { NULL };
 	struct rte_eth_stats port_stats;
 
-	uint8_t slaves[RTE_MAX_ETHPORTS];
+	uint16_t slaves[RTE_MAX_ETHPORTS];
 
 	int i, burst_size, slave_count, primary_port;
 
@@ -3302,7 +3302,7 @@ test_balance_verify_slave_link_status_change_behaviour(void)
 	struct rte_mbuf *rx_pkt_burst[MAX_PKT_BURST] = { NULL };
 	struct rte_eth_stats port_stats;
 
-	uint8_t slaves[RTE_MAX_ETHPORTS];
+	uint16_t slaves[RTE_MAX_ETHPORTS];
 
 	int i, burst_size, slave_count;
 
@@ -3861,7 +3861,7 @@ test_broadcast_verify_slave_link_status_change_behaviour(void)
 	struct rte_mbuf *rx_pkt_burst[MAX_PKT_BURST] = { NULL };
 	struct rte_eth_stats port_stats;
 
-	uint8_t slaves[RTE_MAX_ETHPORTS];
+	uint16_t slaves[RTE_MAX_ETHPORTS];
 
 	int i, burst_size, slave_count;
 
@@ -4373,7 +4373,7 @@ test_tlb_verify_slave_link_status_change_failover(void)
 	struct rte_mbuf *rx_pkt_burst[MAX_PKT_BURST] = { NULL };
 	struct rte_eth_stats port_stats;
 
-	uint8_t slaves[RTE_MAX_ETHPORTS];
+	uint16_t slaves[RTE_MAX_ETHPORTS];
 
 	int i, burst_size, slave_count, primary_port;
 

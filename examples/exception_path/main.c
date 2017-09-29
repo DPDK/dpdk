@@ -135,7 +135,7 @@ static uint64_t input_cores_mask = 0;
 static uint64_t output_cores_mask = 0;
 
 /* Array storing port_id that is associated with each lcore */
-static uint8_t port_ids[RTE_MAX_LCORE];
+static uint16_t port_ids[RTE_MAX_LCORE];
 
 /* Structure type for recording lcore-specific stats */
 struct stats {
@@ -360,8 +360,8 @@ static void
 setup_port_lcore_affinities(void)
 {
 	unsigned long i;
-	uint8_t tx_port = 0;
-	uint8_t rx_port = 0;
+	uint16_t tx_port = 0;
+	uint16_t rx_port = 0;
 
 	/* Setup port_ids[] array, and check masks were ok */
 	RTE_LCORE_FOREACH(i) {
@@ -451,17 +451,16 @@ init_port(uint8_t port)
 	uint16_t nb_txd = NB_TXD;
 
 	/* Initialise device and RX/TX queues */
-	PRINT_INFO("Initialising port %u ...", (unsigned)port);
+	PRINT_INFO("Initialising port %u ...", port);
 	fflush(stdout);
 	ret = rte_eth_dev_configure(port, 1, 1, &port_conf);
 	if (ret < 0)
-		FATAL_ERROR("Could not configure port%u (%d)",
-		            (unsigned)port, ret);
+		FATAL_ERROR("Could not configure port%u (%d)", port, ret);
 
 	ret = rte_eth_dev_adjust_nb_rx_tx_desc(port, &nb_rxd, &nb_txd);
 	if (ret < 0)
 		FATAL_ERROR("Could not adjust number of descriptors for port%u (%d)",
-			    (unsigned)port, ret);
+			    port, ret);
 
 	ret = rte_eth_rx_queue_setup(port, 0, nb_rxd,
 				rte_eth_dev_socket_id(port),
@@ -469,29 +468,30 @@ init_port(uint8_t port)
 				pktmbuf_pool);
 	if (ret < 0)
 		FATAL_ERROR("Could not setup up RX queue for port%u (%d)",
-		            (unsigned)port, ret);
+				port, ret);
 
 	ret = rte_eth_tx_queue_setup(port, 0, nb_txd,
 				rte_eth_dev_socket_id(port),
 				NULL);
 	if (ret < 0)
 		FATAL_ERROR("Could not setup up TX queue for port%u (%d)",
-		            (unsigned)port, ret);
+				port, ret);
 
 	ret = rte_eth_dev_start(port);
 	if (ret < 0)
-		FATAL_ERROR("Could not start port%u (%d)", (unsigned)port, ret);
+		FATAL_ERROR("Could not start port%u (%d)", port, ret);
 
 	rte_eth_promiscuous_enable(port);
 }
 
 /* Check the link status of all ports in up to 9s, and print them finally */
 static void
-check_all_ports_link_status(uint8_t port_num, uint32_t port_mask)
+check_all_ports_link_status(uint16_t port_num, uint32_t port_mask)
 {
 #define CHECK_INTERVAL 100 /* 100ms */
 #define MAX_CHECK_TIME 90 /* 9s (90 * 100ms) in total */
-	uint8_t portid, count, all_ports_up, print_flag = 0;
+	uint16_t portid;
+	uint8_t count, all_ports_up, print_flag = 0;
 	struct rte_eth_link link;
 
 	printf("\nChecking link status");
@@ -506,14 +506,13 @@ check_all_ports_link_status(uint8_t port_num, uint32_t port_mask)
 			/* print link status if flag set */
 			if (print_flag == 1) {
 				if (link.link_status)
-					printf("Port %d Link Up - speed %u "
-						"Mbps - %s\n", (uint8_t)portid,
-						(unsigned)link.link_speed,
+					printf(
+					"Port%d Link Up. Speed %u Mbps - %s\n",
+						portid, link.link_speed,
 				(link.link_duplex == ETH_LINK_FULL_DUPLEX) ?
 					("full-duplex") : ("half-duplex\n"));
 				else
-					printf("Port %d Link Down\n",
-						(uint8_t)portid);
+					printf("Port %d Link Down\n", portid);
 				continue;
 			}
 			/* clear all_ports_up flag if any link down */
@@ -546,7 +545,7 @@ main(int argc, char** argv)
 {
 	int ret;
 	unsigned i,high_port;
-	uint8_t nb_sys_ports, port;
+	uint16_t nb_sys_ports, port;
 
 	/* Associate signal_hanlder function with USR signals */
 	signal(SIGUSR1, signal_handler);

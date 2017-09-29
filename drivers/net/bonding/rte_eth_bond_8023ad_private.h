@@ -279,7 +279,7 @@ bond_mode_8023ad_stop(struct rte_eth_dev *dev);
  */
 void
 bond_mode_8023ad_handle_slow_pkt(struct bond_dev_private *internals,
-	uint8_t slave_id, struct rte_mbuf *pkt);
+				 uint16_t slave_id, struct rte_mbuf *pkt);
 
 /**
  * @internal
@@ -293,7 +293,7 @@ bond_mode_8023ad_handle_slow_pkt(struct bond_dev_private *internals,
  *  0 on success, negative value otherwise.
  */
 void
-bond_mode_8023ad_activate_slave(struct rte_eth_dev *dev, uint8_t port_id);
+bond_mode_8023ad_activate_slave(struct rte_eth_dev *dev, uint16_t port_id);
 
 /**
  * @internal
@@ -307,7 +307,7 @@ bond_mode_8023ad_activate_slave(struct rte_eth_dev *dev, uint8_t port_id);
  *  0 on success, negative value otherwise.
  */
 int
-bond_mode_8023ad_deactivate_slave(struct rte_eth_dev *dev, uint8_t slave_pos);
+bond_mode_8023ad_deactivate_slave(struct rte_eth_dev *dev, uint16_t slave_pos);
 
 /**
  * Updates state when MAC was changed on bonded device or one of its slaves.
@@ -318,12 +318,12 @@ bond_mode_8023ad_mac_address_update(struct rte_eth_dev *bond_dev);
 
 int
 bond_ethdev_8023ad_flow_verify(struct rte_eth_dev *bond_dev,
-		uint8_t slave_port);
+		uint16_t slave_port);
 
 int
-bond_ethdev_8023ad_flow_set(struct rte_eth_dev *bond_dev, uint8_t slave_port);
+bond_ethdev_8023ad_flow_set(struct rte_eth_dev *bond_dev, uint16_t slave_port);
 
 int
-bond_8023ad_slow_pkt_hw_filter_supported(uint8_t port_id);
+bond_8023ad_slow_pkt_hw_filter_supported(uint16_t port_id);
 
 #endif /* RTE_ETH_BOND_8023AD_H_ */

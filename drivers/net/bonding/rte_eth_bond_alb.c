@@ -148,7 +148,7 @@ void bond_mode_alb_arp_recv(struct ether_hdr *eth_h, uint16_t offset,
 	rte_spinlock_unlock(&internals->mode6.lock);
 }
 
-uint8_t
+uint16_t
 bond_mode_alb_arp_xmit(struct ether_hdr *eth_h, uint16_t offset,
 		struct bond_dev_private *internals)
 {
@@ -220,13 +220,13 @@ bond_mode_alb_arp_xmit(struct ether_hdr *eth_h, uint16_t offset,
 	return internals->current_primary_port;
 }
 
-uint8_t
+uint16_t
 bond_mode_alb_arp_upd(struct client_data *client_info,
 		struct rte_mbuf *pkt, struct bond_dev_private *internals)
 {
 	struct ether_hdr *eth_h;
 	struct arp_hdr *arp_h;
-	uint8_t slave_idx;
+	uint16_t slave_idx;
 
 	rte_spinlock_lock(&internals->mode6.lock);
 	eth_h = rte_pktmbuf_mtod(pkt, struct ether_hdr *);

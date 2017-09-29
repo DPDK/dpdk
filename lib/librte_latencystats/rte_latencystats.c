@@ -135,7 +135,7 @@ rte_latencystats_fill_values(struct rte_metric_value *values)
 }
 
 static uint16_t
-add_time_stamps(uint8_t pid __rte_unused,
+add_time_stamps(uint16_t pid __rte_unused,
 		uint16_t qid __rte_unused,
 		struct rte_mbuf **pkts,
 		uint16_t nb_pkts,
@@ -165,7 +165,7 @@ add_time_stamps(uint8_t pid __rte_unused,
 }
 
 static uint16_t
-calc_latency(uint8_t pid __rte_unused,
+calc_latency(uint16_t pid __rte_unused,
 		uint16_t qid __rte_unused,
 		struct rte_mbuf **pkts,
 		uint16_t nb_pkts,
@@ -226,10 +226,10 @@ rte_latencystats_init(uint64_t app_samp_intvl,
 		rte_latency_stats_flow_type_fn user_cb)
 {
 	unsigned int i;
-	uint8_t pid;
+	uint16_t pid;
 	uint16_t qid;
 	struct rxtx_cbs *cbs = NULL;
-	const uint8_t nb_ports = rte_eth_dev_count();
+	const uint16_t nb_ports = rte_eth_dev_count();
 	const char *ptr_strings[NUM_LATENCY_STATS] = {0};
 	const struct rte_memzone *mz = NULL;
 	const unsigned int flags = 0;
@@ -290,11 +290,11 @@ rte_latencystats_init(uint64_t app_samp_intvl,
 int
 rte_latencystats_uninit(void)
 {
-	uint8_t pid;
+	uint16_t pid;
 	uint16_t qid;
 	int ret = 0;
 	struct rxtx_cbs *cbs = NULL;
-	const uint8_t nb_ports = rte_eth_dev_count();
+	const uint16_t nb_ports = rte_eth_dev_count();
 
 	/** De register Rx/Tx callbacks */
 	for (pid = 0; pid < nb_ports; pid++) {

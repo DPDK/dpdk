@@ -434,7 +434,7 @@ failsafe_stats_increment(struct rte_eth_stats *to, struct rte_eth_stats *from)
 }
 
 int
-failsafe_eth_rmv_event_callback(uint8_t port_id __rte_unused,
+failsafe_eth_rmv_event_callback(uint16_t port_id __rte_unused,
 				enum rte_eth_event_type event __rte_unused,
 				void *cb_arg, void *out __rte_unused)
 {
@@ -453,7 +453,7 @@ failsafe_eth_rmv_event_callback(uint8_t port_id __rte_unused,
 }
 
 int
-failsafe_eth_lsc_event_callback(uint8_t port_id __rte_unused,
+failsafe_eth_lsc_event_callback(uint16_t port_id __rte_unused,
 				enum rte_eth_event_type event __rte_unused,
 				void *cb_arg, void *out __rte_unused)
 {

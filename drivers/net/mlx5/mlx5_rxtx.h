@@ -106,13 +106,13 @@ struct rxq {
 	unsigned int sges_n:2; /* Log 2 of SGEs (max buffers per packet). */
 	unsigned int cqe_n:4; /* Log 2 of CQ elements. */
 	unsigned int elts_n:4; /* Log 2 of Mbufs. */
-	unsigned int port_id:8;
 	unsigned int rss_hash:1; /* RSS hash result is enabled. */
 	unsigned int mark:1; /* Marked flow available on the queue. */
 	unsigned int pending_err:1; /* CQE error needs to be handled. */
-	unsigned int :7; /* Remaining bits. */
+	unsigned int :15; /* Remaining bits. */
 	volatile uint32_t *rq_db;
 	volatile uint32_t *cq_db;
+	uint16_t port_id;
 	uint16_t rq_ci;
 	uint16_t rq_pi;
 	uint16_t cq_ci;

@@ -207,7 +207,7 @@ static const struct {
 };
 
 static __rte_always_inline void
-send_packetsx4(struct lcore_conf *qconf, uint8_t port, struct rte_mbuf *m[],
+send_packetsx4(struct lcore_conf *qconf, uint16_t port, struct rte_mbuf *m[],
 		uint32_t num)
 {
 	uint32_t len, j, n;

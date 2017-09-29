@@ -100,7 +100,7 @@ struct nicvf_rxq {
 	uint16_t queue_id;
 	uint16_t precharge_cnt;
 	uint8_t rx_drop_en;
-	uint8_t  port_id;
+	uint16_t port_id;
 	uint8_t  rbptr_offset;
 } __rte_cache_aligned;
 

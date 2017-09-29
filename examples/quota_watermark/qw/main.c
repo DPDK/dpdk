@@ -155,7 +155,7 @@ receive_stage(__attribute__((unused)) void *args)
 {
 	int i, ret;
 
-	uint8_t port_id;
+	uint16_t port_id;
 	uint16_t nb_rx_pkts;
 
 	unsigned int lcore_id;
@@ -216,7 +216,7 @@ pipeline_stage(__attribute__((unused)) void *args)
 	int i, ret;
 	int nb_dq_pkts;
 
-	uint8_t port_id;
+	uint16_t port_id;
 
 	unsigned int lcore_id, previous_lcore_id;
 	unsigned int free;
@@ -279,8 +279,8 @@ send_stage(__attribute__((unused)) void *args)
 {
 	uint16_t nb_dq_pkts;
 
-	uint8_t port_id;
-	uint8_t dest_port_id;
+	uint16_t port_id;
+	uint16_t dest_port_id;
 
 	unsigned int lcore_id, previous_lcore_id;
 
@@ -324,7 +324,7 @@ main(int argc, char **argv)
 	int ret;
 	unsigned int lcore_id, master_lcore_id, last_lcore_id;
 
-	uint8_t port_id;
+	uint16_t port_id;
 
 	rte_log_set_global_level(RTE_LOG_INFO);
 

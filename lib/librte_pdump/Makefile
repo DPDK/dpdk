@@ -40,7 +40,7 @@ LDLIBS += -lpthread
 
 EXPORT_MAP := rte_pdump_version.map
 
-LIBABIVER := 1
+LIBABIVER := 2
 
 # all source are stored in SRCS-y
 SRCS-$(CONFIG_RTE_LIBRTE_PDUMP) := rte_pdump.c

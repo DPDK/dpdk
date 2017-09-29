@@ -141,10 +141,10 @@
 		addr.addr_bytes[0], addr.addr_bytes[1], addr.addr_bytes[2], \
 		addr.addr_bytes[3], addr.addr_bytes[4], addr.addr_bytes[5])
 
-uint8_t slaves[RTE_MAX_ETHPORTS];
-uint8_t slaves_count;
+uint16_t slaves[RTE_MAX_ETHPORTS];
+uint16_t slaves_count;
 
-static uint8_t BOND_PORT = 0xff;
+static uint16_t BOND_PORT = 0xffff;
 
 static struct rte_mempool *mbuf_pool;
 
@@ -171,7 +171,7 @@ static struct rte_eth_conf port_conf = {
 };
 
 static void
-slave_port_init(uint8_t portid, struct rte_mempool *mbuf_pool)
+slave_port_init(uint16_t portid, struct rte_mempool *mbuf_pool)
 {
 	int retval;
 	uint16_t nb_rxd = RTE_RX_DESC_DEFAULT;
@@ -215,7 +215,7 @@ slave_port_init(uint8_t portid, struct rte_mempool *mbuf_pool)
 	struct ether_addr addr;
 
 	rte_eth_macaddr_get(portid, &addr);
-	printf("Port %u MAC: ", (unsigned)portid);
+	printf("Port %u MAC: ", portid);
 	PRINT_MAC(addr);
 	printf("\n");
 }
@@ -234,7 +234,7 @@ bond_port_init(struct rte_mempool *mbuf_pool)
 		rte_exit(EXIT_FAILURE,
 				"Faled to create bond port\n");
 
-	BOND_PORT = (uint8_t)retval;
+	BOND_PORT = retval;
 
 	retval = rte_eth_dev_configure(BOND_PORT, 1, 1, &port_conf);
 	if (retval != 0)
@@ -675,10 +675,10 @@ static void cmd_show_parsed(__attribute__((unused)) void *parsed_result,
 			    struct cmdline *cl,
 			    __attribute__((unused)) void *data)
 {
-	uint8_t slaves[16] = {0};
+	uint16_t slaves[16] = {0};
 	uint8_t len = 16;
 	struct ether_addr addr;
-	uint8_t i = 0;
+	uint16_t i = 0;
 
 	while (i < slaves_count)	{
 		rte_eth_macaddr_get(i, &addr);

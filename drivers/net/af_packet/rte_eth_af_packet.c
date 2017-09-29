@@ -76,7 +76,7 @@ struct pkt_rx_queue {
 	unsigned int framenum;
 
 	struct rte_mempool *mb_pool;
-	uint8_t in_port;
+	uint16_t in_port;
 
 	volatile unsigned long rx_pkts;
 	volatile unsigned long err_pkts;
