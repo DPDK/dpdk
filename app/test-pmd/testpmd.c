@@ -38,6 +38,7 @@
 #include <string.h>
 #include <time.h>
 #include <fcntl.h>
+#include <sys/mman.h>
 #include <sys/types.h>
 #include <errno.h>
 
@@ -2321,6 +2322,11 @@ main(int argc, char** argv)
 	diag = rte_eal_init(argc, argv);
 	if (diag < 0)
 		rte_panic("Cannot init EAL\n");
+
+	if (mlockall(MCL_CURRENT | MCL_FUTURE)) {
+		RTE_LOG(NOTICE, USER1, "mlockall() failed with error \"%s\"\n",
+			strerror(errno));
+	}
 
 #ifdef RTE_LIBRTE_PDUMP
 	/* initialize packet capture framework */
