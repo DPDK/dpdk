@@ -1111,27 +1111,6 @@ bond_mode_8023ad_conf_get(struct rte_eth_dev *dev,
 	conf->tx_period_ms = mode4->tx_period_timeout / ms_ticks;
 	conf->update_timeout_ms = mode4->update_timeout_us / 1000;
 	conf->rx_marker_period_ms = mode4->rx_marker_timeout / ms_ticks;
-}
-
-static void
-bond_mode_8023ad_conf_get_v1607(struct rte_eth_dev *dev,
-		struct rte_eth_bond_8023ad_conf *conf)
-{
-	struct bond_dev_private *internals = dev->data->dev_private;
-	struct mode8023ad_private *mode4 = &internals->mode4;
-
-	bond_mode_8023ad_conf_get(dev, conf);
-	conf->slowrx_cb = mode4->slowrx_cb;
-}
-
-static void
-bond_mode_8023ad_conf_get_v1708(struct rte_eth_dev *dev,
-		struct rte_eth_bond_8023ad_conf *conf)
-{
-	struct bond_dev_private *internals = dev->data->dev_private;
-	struct mode8023ad_private *mode4 = &internals->mode4;
-
-	bond_mode_8023ad_conf_get(dev, conf);
 	conf->slowrx_cb = mode4->slowrx_cb;
 	conf->agg_selection = mode4->agg_selection;
 }
@@ -1171,50 +1150,8 @@ bond_mode_8023ad_conf_assign(struct mode8023ad_private *mode4,
 	mode4->dedicated_queues.tx_qid = UINT16_MAX;
 }
 
-static void
-bond_mode_8023ad_setup_v20(struct rte_eth_dev *dev,
-		struct rte_eth_bond_8023ad_conf *conf)
-{
-	struct rte_eth_bond_8023ad_conf def_conf;
-	struct bond_dev_private *internals = dev->data->dev_private;
-	struct mode8023ad_private *mode4 = &internals->mode4;
-
-	if (conf == NULL) {
-		conf = &def_conf;
-		bond_mode_8023ad_conf_get_default(conf);
-	}
-
-	bond_mode_8023ad_stop(dev);
-	bond_mode_8023ad_conf_assign(mode4, conf);
-
-	if (dev->data->dev_started)
-		bond_mode_8023ad_start(dev);
-}
-
-
 void
 bond_mode_8023ad_setup(struct rte_eth_dev *dev,
-		struct rte_eth_bond_8023ad_conf *conf)
-{
-	struct rte_eth_bond_8023ad_conf def_conf;
-	struct bond_dev_private *internals = dev->data->dev_private;
-	struct mode8023ad_private *mode4 = &internals->mode4;
-
-	if (conf == NULL) {
-		conf = &def_conf;
-		bond_mode_8023ad_conf_get_default(conf);
-	}
-
-	bond_mode_8023ad_stop(dev);
-	bond_mode_8023ad_conf_assign(mode4, conf);
-
-
-	if (dev->data->dev_started)
-		bond_mode_8023ad_start(dev);
-}
-
-static void
-bond_mode_8023ad_setup_v1708(struct rte_eth_dev *dev,
 		struct rte_eth_bond_8023ad_conf *conf)
 {
 	struct rte_eth_bond_8023ad_conf def_conf;
@@ -1358,7 +1295,7 @@ free_out:
 }
 
 int
-rte_eth_bond_8023ad_conf_get_v20(uint8_t port_id,
+rte_eth_bond_8023ad_conf_get(uint8_t port_id,
 		struct rte_eth_bond_8023ad_conf *conf)
 {
 	struct rte_eth_dev *bond_dev;
@@ -1373,46 +1310,6 @@ rte_eth_bond_8023ad_conf_get_v20(uint8_t port_id,
 	bond_mode_8023ad_conf_get(bond_dev, conf);
 	return 0;
 }
-VERSION_SYMBOL(rte_eth_bond_8023ad_conf_get, _v20, 2.0);
-
-int
-rte_eth_bond_8023ad_conf_get_v1607(uint8_t port_id,
-		struct rte_eth_bond_8023ad_conf *conf)
-{
-	struct rte_eth_dev *bond_dev;
-
-	if (valid_bonded_port_id(port_id) != 0)
-		return -EINVAL;
-
-	if (conf == NULL)
-		return -EINVAL;
-
-	bond_dev = &rte_eth_devices[port_id];
-	bond_mode_8023ad_conf_get_v1607(bond_dev, conf);
-	return 0;
-}
-VERSION_SYMBOL(rte_eth_bond_8023ad_conf_get, _v1607, 16.07);
-
-int
-rte_eth_bond_8023ad_conf_get_v1708(uint8_t port_id,
-		struct rte_eth_bond_8023ad_conf *conf)
-{
-	struct rte_eth_dev *bond_dev;
-
-	if (valid_bonded_port_id(port_id) != 0)
-		return -EINVAL;
-
-	if (conf == NULL)
-		return -EINVAL;
-
-	bond_dev = &rte_eth_devices[port_id];
-	bond_mode_8023ad_conf_get_v1708(bond_dev, conf);
-	return 0;
-}
-MAP_STATIC_SYMBOL(int rte_eth_bond_8023ad_conf_get(uint8_t port_id,
-		struct rte_eth_bond_8023ad_conf *conf),
-		rte_eth_bond_8023ad_conf_get_v1708);
-BIND_DEFAULT_SYMBOL(rte_eth_bond_8023ad_conf_get, _v1708, 17.08);
 
 int
 rte_eth_bond_8023ad_agg_selection_set(uint8_t port_id,
@@ -1483,25 +1380,7 @@ bond_8023ad_setup_validate(uint8_t port_id,
 }
 
 int
-rte_eth_bond_8023ad_setup_v20(uint8_t port_id,
-		struct rte_eth_bond_8023ad_conf *conf)
-{
-	struct rte_eth_dev *bond_dev;
-	int err;
-
-	err = bond_8023ad_setup_validate(port_id, conf);
-	if (err != 0)
-		return err;
-
-	bond_dev = &rte_eth_devices[port_id];
-	bond_mode_8023ad_setup_v20(bond_dev, conf);
-
-	return 0;
-}
-VERSION_SYMBOL(rte_eth_bond_8023ad_setup, _v20, 2.0);
-
-int
-rte_eth_bond_8023ad_setup_v1607(uint8_t port_id,
+rte_eth_bond_8023ad_setup(uint8_t port_id,
 		struct rte_eth_bond_8023ad_conf *conf)
 {
 	struct rte_eth_dev *bond_dev;
@@ -1516,30 +1395,6 @@ rte_eth_bond_8023ad_setup_v1607(uint8_t port_id,
 
 	return 0;
 }
-VERSION_SYMBOL(rte_eth_bond_8023ad_setup, _v1607, 16.07);
-
-
-int
-rte_eth_bond_8023ad_setup_v1708(uint8_t port_id,
-		struct rte_eth_bond_8023ad_conf *conf)
-{
-	struct rte_eth_dev *bond_dev;
-	int err;
-
-	err = bond_8023ad_setup_validate(port_id, conf);
-	if (err != 0)
-		return err;
-
-	bond_dev = &rte_eth_devices[port_id];
-	bond_mode_8023ad_setup_v1708(bond_dev, conf);
-
-	return 0;
-}
-BIND_DEFAULT_SYMBOL(rte_eth_bond_8023ad_setup, _v1708, 17.08);
-MAP_STATIC_SYMBOL(int rte_eth_bond_8023ad_setup(uint8_t port_id,
-		struct rte_eth_bond_8023ad_conf *conf),
-		rte_eth_bond_8023ad_setup_v1708);
-
 
 
 

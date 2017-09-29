@@ -194,15 +194,6 @@ struct rte_eth_bond_8023ad_slave_info {
 int
 rte_eth_bond_8023ad_conf_get(uint8_t port_id,
 		struct rte_eth_bond_8023ad_conf *conf);
-int
-rte_eth_bond_8023ad_conf_get_v20(uint8_t port_id,
-		struct rte_eth_bond_8023ad_conf *conf);
-int
-rte_eth_bond_8023ad_conf_get_v1607(uint8_t port_id,
-		struct rte_eth_bond_8023ad_conf *conf);
-int
-rte_eth_bond_8023ad_conf_get_v1708(uint8_t port_id,
-		struct rte_eth_bond_8023ad_conf *conf);
 
 /**
  * @internal
@@ -217,15 +208,6 @@ rte_eth_bond_8023ad_conf_get_v1708(uint8_t port_id,
  */
 int
 rte_eth_bond_8023ad_setup(uint8_t port_id,
-		struct rte_eth_bond_8023ad_conf *conf);
-int
-rte_eth_bond_8023ad_setup_v20(uint8_t port_id,
-		struct rte_eth_bond_8023ad_conf *conf);
-int
-rte_eth_bond_8023ad_setup_v1607(uint8_t port_id,
-		struct rte_eth_bond_8023ad_conf *conf);
-int
-rte_eth_bond_8023ad_setup_v1708(uint8_t port_id,
 		struct rte_eth_bond_8023ad_conf *conf);
 
 /**

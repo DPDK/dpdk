@@ -1,8 +1,6 @@
 DPDK_2.0 {
 	global:
 
-	rte_eth_bond_8023ad_conf_get;
-	rte_eth_bond_8023ad_setup;
 	rte_eth_bond_active_slaves_get;
 	rte_eth_bond_create;
 	rte_eth_bond_link_monitoring_set;
@@ -39,8 +37,6 @@ DPDK_16.07 {
 	rte_eth_bond_8023ad_ext_distrib;
 	rte_eth_bond_8023ad_ext_distrib_get;
 	rte_eth_bond_8023ad_ext_slowtx;
-	rte_eth_bond_8023ad_conf_get;
-	rte_eth_bond_8023ad_setup;
 
 } DPDK_16.04;
 
