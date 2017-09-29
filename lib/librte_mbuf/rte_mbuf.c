@@ -144,7 +144,7 @@ rte_pktmbuf_init(struct rte_mempool *mp,
 	/* init some constant fields */
 	m->pool = mp;
 	m->nb_segs = 1;
-	m->port = 0xff;
+	m->port = MBUF_INVALID_PORT;
 	rte_mbuf_refcnt_set(m, 1);
 	m->next = NULL;
 }

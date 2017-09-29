@@ -1087,6 +1087,8 @@ static inline void rte_pktmbuf_reset_headroom(struct rte_mbuf *m)
  * @param m
  *   The packet mbuf to be resetted.
  */
+#define MBUF_INVALID_PORT UINT16_MAX
+
 static inline void rte_pktmbuf_reset(struct rte_mbuf *m)
 {
 	m->next = NULL;
@@ -1095,7 +1097,7 @@ static inline void rte_pktmbuf_reset(struct rte_mbuf *m)
 	m->vlan_tci = 0;
 	m->vlan_tci_outer = 0;
 	m->nb_segs = 1;
-	m->port = 0xff;
+	m->port = MBUF_INVALID_PORT;
 
 	m->ol_flags = 0;
 	m->packet_type = 0;
