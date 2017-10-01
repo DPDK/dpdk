@@ -238,7 +238,8 @@ rte_mempool_calc_obj_size(uint32_t elt_size, uint32_t flags,
  * Calculate maximum amount of memory required to store given number of objects.
  */
 size_t
-rte_mempool_xmem_size(uint32_t elt_num, size_t total_elt_sz, uint32_t pg_shift)
+rte_mempool_xmem_size(uint32_t elt_num, size_t total_elt_sz, uint32_t pg_shift,
+		      __rte_unused unsigned int flags)
 {
 	size_t obj_per_page, pg_num, pg_sz;
 
@@ -264,7 +265,7 @@ rte_mempool_xmem_size(uint32_t elt_num, size_t total_elt_sz, uint32_t pg_shift)
 ssize_t
 rte_mempool_xmem_usage(__rte_unused void *vaddr, uint32_t elt_num,
 	size_t total_elt_sz, const phys_addr_t paddr[], uint32_t pg_num,
-	uint32_t pg_shift)
+	uint32_t pg_shift, __rte_unused unsigned int flags)
 {
 	uint32_t elt_cnt = 0;
 	phys_addr_t start, end;
@@ -543,7 +544,8 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 
 	total_elt_sz = mp->header_size + mp->elt_size + mp->trailer_size;
 	for (mz_id = 0, n = mp->size; n > 0; mz_id++, n -= ret) {
-		size = rte_mempool_xmem_size(n, total_elt_sz, pg_shift);
+		size = rte_mempool_xmem_size(n, total_elt_sz, pg_shift,
+						mp->flags);
 
 		ret = snprintf(mz_name, sizeof(mz_name),
 			RTE_MEMPOOL_MZ_FORMAT "_%d", mp->name, mz_id);
@@ -600,7 +602,8 @@ get_anon_size(const struct rte_mempool *mp)
 	pg_sz = getpagesize();
 	pg_shift = rte_bsf32(pg_sz);
 	total_elt_sz = mp->header_size + mp->elt_size + mp->trailer_size;
-	size = rte_mempool_xmem_size(mp->size, total_elt_sz, pg_shift);
+	size = rte_mempool_xmem_size(mp->size, total_elt_sz, pg_shift,
+					mp->flags);
 
 	return size;
 }

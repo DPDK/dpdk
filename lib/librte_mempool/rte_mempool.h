@@ -1476,11 +1476,13 @@ uint32_t rte_mempool_calc_obj_size(uint32_t elt_size, uint32_t flags,
  *   by rte_mempool_calc_obj_size().
  * @param pg_shift
  *   LOG2 of the physical pages size. If set to 0, ignore page boundaries.
+ * @param flags
+ *  The mempool flags.
  * @return
  *   Required memory size aligned at page boundary.
  */
 size_t rte_mempool_xmem_size(uint32_t elt_num, size_t total_elt_sz,
-	uint32_t pg_shift);
+	uint32_t pg_shift, unsigned int flags);
 
 /**
  * Get the size of memory required to store mempool elements.
@@ -1503,6 +1505,8 @@ size_t rte_mempool_xmem_size(uint32_t elt_num, size_t total_elt_sz,
  *   Number of elements in the paddr array.
  * @param pg_shift
  *   LOG2 of the physical pages size.
+ * @param flags
+ *  The mempool flags.
  * @return
  *   On success, the number of bytes needed to store given number of
  *   objects, aligned to the given page size. If the provided memory
@@ -1511,7 +1515,7 @@ size_t rte_mempool_xmem_size(uint32_t elt_num, size_t total_elt_sz,
  */
 ssize_t rte_mempool_xmem_usage(void *vaddr, uint32_t elt_num,
 	size_t total_elt_sz, const phys_addr_t paddr[], uint32_t pg_num,
-	uint32_t pg_shift);
+	uint32_t pg_shift, unsigned int flags);
 
 /**
  * Walk list of all memory pools

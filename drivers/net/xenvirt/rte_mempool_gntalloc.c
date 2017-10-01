@@ -79,7 +79,7 @@ _create_mempool(const char *name, unsigned elt_num, unsigned elt_size,
 		   unsigned cache_size, unsigned private_data_size,
 		   rte_mempool_ctor_t *mp_init, void *mp_init_arg,
 		   rte_mempool_obj_cb_t *obj_init, void *obj_init_arg,
-		   int socket_id, unsigned flags)
+		   int socket_id, unsigned int flags)
 {
 	struct _mempool_gntalloc_info mgi;
 	struct rte_mempool *mp = NULL;
@@ -114,7 +114,7 @@ _create_mempool(const char *name, unsigned elt_num, unsigned elt_size,
 	pg_shift = rte_bsf32(pg_sz);
 
 	rte_mempool_calc_obj_size(elt_size, flags, &objsz);
-	sz = rte_mempool_xmem_size(elt_num, objsz.total_size, pg_shift);
+	sz = rte_mempool_xmem_size(elt_num, objsz.total_size, pg_shift, flags);
 	pg_num = sz >> pg_shift;
 
 	pa_arr = calloc(pg_num, sizeof(pa_arr[0]));
@@ -162,7 +162,8 @@ _create_mempool(const char *name, unsigned elt_num, unsigned elt_size,
 	 * Check that allocated size is big enough to hold elt_num
 	 * objects and a calcualte how many bytes are actually required.
 	 */
-	usz = rte_mempool_xmem_usage(va, elt_num, objsz.total_size, pa_arr, pg_num, pg_shift);
+	usz = rte_mempool_xmem_usage(va, elt_num, objsz.total_size, pa_arr,
+				     pg_num, pg_shift, flags);
 	if (usz < 0) {
 		mp = NULL;
 		i = pg_num;

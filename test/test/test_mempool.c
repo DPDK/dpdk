@@ -474,7 +474,7 @@ test_mempool_same_name_twice_creation(void)
 }
 
 /*
- * BAsic test for mempool_xmem functions.
+ * Basic test for mempool_xmem functions.
  */
 static int
 test_mempool_xmem_misc(void)
@@ -485,10 +485,11 @@ test_mempool_xmem_misc(void)
 
 	elt_num = MAX_KEEP;
 	total_size = rte_mempool_calc_obj_size(MEMPOOL_ELT_SIZE, 0, NULL);
-	sz = rte_mempool_xmem_size(elt_num, total_size, MEMPOOL_PG_SHIFT_MAX);
+	sz = rte_mempool_xmem_size(elt_num, total_size, MEMPOOL_PG_SHIFT_MAX,
+					0);
 
 	usz = rte_mempool_xmem_usage(NULL, elt_num, total_size, 0, 1,
-		MEMPOOL_PG_SHIFT_MAX);
+		MEMPOOL_PG_SHIFT_MAX, 0);
 
 	if (sz != (size_t)usz)  {
 		printf("failure @ %s: rte_mempool_xmem_usage(%u, %u) "
