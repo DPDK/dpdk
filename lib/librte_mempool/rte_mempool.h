@@ -413,6 +413,12 @@ typedef unsigned (*rte_mempool_get_count)(const struct rte_mempool *mp);
 typedef int (*rte_mempool_get_capabilities_t)(const struct rte_mempool *mp,
 		unsigned int *flags);
 
+/**
+ * Notify new memory area to mempool.
+ */
+typedef int (*rte_mempool_ops_register_memory_area_t)
+(const struct rte_mempool *mp, char *vaddr, phys_addr_t paddr, size_t len);
+
 /** Structure defining mempool operations structure */
 struct rte_mempool_ops {
 	char name[RTE_MEMPOOL_OPS_NAMESIZE]; /**< Name of mempool ops struct. */
@@ -425,6 +431,10 @@ struct rte_mempool_ops {
 	 * Get the mempool capabilities
 	 */
 	rte_mempool_get_capabilities_t get_capabilities;
+	/**
+	 * Notify new memory area to mempool
+	 */
+	rte_mempool_ops_register_memory_area_t register_memory_area;
 } __rte_cache_aligned;
 
 #define RTE_MEMPOOL_MAX_OPS_IDX 16  /**< Max registered ops structs */
@@ -552,6 +562,26 @@ rte_mempool_ops_get_count(const struct rte_mempool *mp);
 int
 rte_mempool_ops_get_capabilities(const struct rte_mempool *mp,
 					unsigned int *flags);
+/**
+ * @internal wrapper for mempool_ops register_memory_area callback.
+ * API to notify the mempool handler when a new memory area is added to pool.
+ *
+ * @param mp
+ *   Pointer to the memory pool.
+ * @param vaddr
+ *   Pointer to the buffer virtual address.
+ * @param paddr
+ *   Pointer to the buffer physical address.
+ * @param len
+ *   Pool size.
+ * @return
+ *   - 0: Success;
+ *   - -ENOTSUP - doesn't support register_memory_area ops (valid error case).
+ *   - Otherwise, rte_mempool_populate_phys fails thus pool create fails.
+ */
+int
+rte_mempool_ops_register_memory_area(const struct rte_mempool *mp,
+				char *vaddr, phys_addr_t paddr, size_t len);
 
 /**
  * @internal wrapper for mempool_ops free callback.

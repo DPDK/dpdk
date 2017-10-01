@@ -46,5 +46,6 @@ DPDK_17.11 {
 	global:
 
 	rte_mempool_ops_get_capabilities;
+	rte_mempool_ops_register_memory_area;
 
 } DPDK_16.07;
