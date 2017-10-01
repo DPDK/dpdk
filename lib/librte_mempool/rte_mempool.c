@@ -239,9 +239,15 @@ rte_mempool_calc_obj_size(uint32_t elt_size, uint32_t flags,
  */
 size_t
 rte_mempool_xmem_size(uint32_t elt_num, size_t total_elt_sz, uint32_t pg_shift,
-		      __rte_unused unsigned int flags)
+		      unsigned int flags)
 {
 	size_t obj_per_page, pg_num, pg_sz;
+	unsigned int mask;
+
+	mask = MEMPOOL_F_CAPA_BLK_ALIGNED_OBJECTS | MEMPOOL_F_CAPA_PHYS_CONTIG;
+	if ((flags & mask) == mask)
+		/* alignment need one additional object */
+		elt_num += 1;
 
 	if (total_elt_sz == 0)
 		return 0;
@@ -265,12 +271,18 @@ rte_mempool_xmem_size(uint32_t elt_num, size_t total_elt_sz, uint32_t pg_shift,
 ssize_t
 rte_mempool_xmem_usage(__rte_unused void *vaddr, uint32_t elt_num,
 	size_t total_elt_sz, const phys_addr_t paddr[], uint32_t pg_num,
-	uint32_t pg_shift, __rte_unused unsigned int flags)
+	uint32_t pg_shift, unsigned int flags)
 {
 	uint32_t elt_cnt = 0;
 	phys_addr_t start, end;
 	uint32_t paddr_idx;
 	size_t pg_sz = (size_t)1 << pg_shift;
+	unsigned int mask;
+
+	mask = MEMPOOL_F_CAPA_BLK_ALIGNED_OBJECTS | MEMPOOL_F_CAPA_PHYS_CONTIG;
+	if ((flags & mask) == mask)
+		/* alignment need one additional object */
+		elt_num += 1;
 
 	/* if paddr is NULL, assume contiguous memory */
 	if (paddr == NULL) {
@@ -390,7 +402,10 @@ rte_mempool_populate_phys(struct rte_mempool *mp, char *vaddr,
 	memhdr->free_cb = free_cb;
 	memhdr->opaque = opaque;
 
-	if (mp->flags & MEMPOOL_F_NO_CACHE_ALIGN)
+	if (mp->flags & MEMPOOL_F_CAPA_BLK_ALIGNED_OBJECTS)
+		/* align object start address to a multiple of total_elt_sz */
+		off = total_elt_sz - ((uintptr_t)vaddr % total_elt_sz);
+	else if (mp->flags & MEMPOOL_F_NO_CACHE_ALIGN)
 		off = RTE_PTR_ALIGN_CEIL(vaddr, 8) - vaddr;
 	else
 		off = RTE_PTR_ALIGN_CEIL(vaddr, RTE_CACHE_LINE_SIZE) - vaddr;

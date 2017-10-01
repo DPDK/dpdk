@@ -271,6 +271,18 @@ struct rte_mempool {
  * Note: This flag should not be passed by application.
  */
 #define MEMPOOL_F_CAPA_PHYS_CONTIG 0x0040
+/**
+ * This capability flag is advertised by a mempool handler. Used for a case
+ * where mempool driver wants object start address(vaddr) aligned to block
+ * size(/ total element size).
+ *
+ * Note:
+ * - This flag should not be passed by application.
+ *   Flag used for mempool driver only.
+ * - Mempool driver must also set MEMPOOL_F_CAPA_PHYS_CONTIG flag along with
+ *   MEMPOOL_F_CAPA_BLK_ALIGNED_OBJECTS.
+ */
+#define MEMPOOL_F_CAPA_BLK_ALIGNED_OBJECTS 0x0080
 
 /**
  * @internal When debug is enabled, store some statistics.
