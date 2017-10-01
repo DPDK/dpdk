@@ -515,7 +515,7 @@ rte_mempool_populate_virt(struct rte_mempool *mp, char *addr,
 int
 rte_mempool_populate_default(struct rte_mempool *mp)
 {
-	int mz_flags = RTE_MEMZONE_1GB|RTE_MEMZONE_SIZE_HINT_ONLY;
+	unsigned int mz_flags = RTE_MEMZONE_1GB|RTE_MEMZONE_SIZE_HINT_ONLY;
 	char mz_name[RTE_MEMZONE_NAMESIZE];
 	const struct rte_memzone *mz;
 	size_t size, total_elt_sz, align, pg_sz, pg_shift;
@@ -742,7 +742,7 @@ rte_mempool_create_empty(const char *name, unsigned n, unsigned elt_size,
 	struct rte_tailq_entry *te = NULL;
 	const struct rte_memzone *mz = NULL;
 	size_t mempool_size;
-	int mz_flags = RTE_MEMZONE_1GB|RTE_MEMZONE_SIZE_HINT_ONLY;
+	unsigned int mz_flags = RTE_MEMZONE_1GB|RTE_MEMZONE_SIZE_HINT_ONLY;
 	struct rte_mempool_objsz objsz;
 	unsigned lcore_id;
 	int ret;

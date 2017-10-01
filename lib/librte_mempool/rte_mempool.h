@@ -226,7 +226,7 @@ struct rte_mempool {
 	};
 	void *pool_config;               /**< optional args for ops alloc. */
 	const struct rte_memzone *mz;    /**< Memzone where pool is alloc'd. */
-	int flags;                       /**< Flags of the mempool. */
+	unsigned int flags;              /**< Flags of the mempool. */
 	int socket_id;                   /**< Socket id passed at create. */
 	uint32_t size;                   /**< Max size of the mempool. */
 	uint32_t cache_size;
