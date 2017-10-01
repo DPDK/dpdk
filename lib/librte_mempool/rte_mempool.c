@@ -522,11 +522,24 @@ rte_mempool_populate_default(struct rte_mempool *mp)
 	size_t size, total_elt_sz, align, pg_sz, pg_shift;
 	phys_addr_t paddr;
 	unsigned mz_id, n;
+	unsigned int mp_flags;
 	int ret;
 
 	/* mempool must not be populated */
 	if (mp->nb_mem_chunks != 0)
 		return -EEXIST;
+
+	/* Get mempool capabilities */
+	mp_flags = 0;
+	ret = rte_mempool_ops_get_capabilities(mp, &mp_flags);
+	if (ret == -ENOTSUP)
+		RTE_LOG(DEBUG, MEMPOOL, "get_capability not supported for %s\n",
+					mp->name);
+	else if (ret < 0)
+		return ret;
+
+	/* update mempool capabilities */
+	mp->flags |= mp_flags;
 
 	if (rte_xen_dom0_supported()) {
 		pg_sz = RTE_PGSIZE_2M;

@@ -41,3 +41,10 @@ DPDK_16.07 {
 	rte_mempool_set_ops_byname;
 
 } DPDK_2.0;
+
+DPDK_17.11 {
+	global:
+
+	rte_mempool_ops_get_capabilities;
+
+} DPDK_16.07;

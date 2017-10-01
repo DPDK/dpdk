@@ -37,6 +37,7 @@
 
 #include <rte_mempool.h>
 #include <rte_errno.h>
+#include <rte_dev.h>
 
 /* indirect jump table to support external memory pools. */
 struct rte_mempool_ops_table rte_mempool_ops_table = {
@@ -85,6 +86,7 @@ rte_mempool_register_ops(const struct rte_mempool_ops *h)
 	ops->enqueue = h->enqueue;
 	ops->dequeue = h->dequeue;
 	ops->get_count = h->get_count;
+	ops->get_capabilities = h->get_capabilities;
 
 	rte_spinlock_unlock(&rte_mempool_ops_table.sl);
 
@@ -121,6 +123,19 @@ rte_mempool_ops_get_count(const struct rte_mempool *mp)
 
 	ops = rte_mempool_get_ops(mp->ops_index);
 	return ops->get_count(mp);
+}
+
+/* wrapper to get external mempool capabilities. */
+int
+rte_mempool_ops_get_capabilities(const struct rte_mempool *mp,
+					unsigned int *flags)
+{
+	struct rte_mempool_ops *ops;
+
+	ops = rte_mempool_get_ops(mp->ops_index);
+
+	RTE_FUNC_PTR_OR_ERR_RET(ops->get_capabilities, -ENOTSUP);
+	return ops->get_capabilities(mp, flags);
 }
 
 /* sets mempool ops previously registered by rte_mempool_register_ops. */

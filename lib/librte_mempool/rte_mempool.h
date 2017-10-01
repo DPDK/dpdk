@@ -389,6 +389,12 @@ typedef int (*rte_mempool_dequeue_t)(struct rte_mempool *mp,
  */
 typedef unsigned (*rte_mempool_get_count)(const struct rte_mempool *mp);
 
+/**
+ * Get the mempool capabilities.
+ */
+typedef int (*rte_mempool_get_capabilities_t)(const struct rte_mempool *mp,
+		unsigned int *flags);
+
 /** Structure defining mempool operations structure */
 struct rte_mempool_ops {
 	char name[RTE_MEMPOOL_OPS_NAMESIZE]; /**< Name of mempool ops struct. */
@@ -397,6 +403,10 @@ struct rte_mempool_ops {
 	rte_mempool_enqueue_t enqueue;   /**< Enqueue an object. */
 	rte_mempool_dequeue_t dequeue;   /**< Dequeue an object. */
 	rte_mempool_get_count get_count; /**< Get qty of available objs. */
+	/**
+	 * Get the mempool capabilities
+	 */
+	rte_mempool_get_capabilities_t get_capabilities;
 } __rte_cache_aligned;
 
 #define RTE_MEMPOOL_MAX_OPS_IDX 16  /**< Max registered ops structs */
@@ -507,6 +517,23 @@ rte_mempool_ops_enqueue_bulk(struct rte_mempool *mp, void * const *obj_table,
  */
 unsigned
 rte_mempool_ops_get_count(const struct rte_mempool *mp);
+
+/**
+ * @internal wrapper for mempool_ops get_capabilities callback.
+ *
+ * @param mp [in]
+ *   Pointer to the memory pool.
+ * @param flags [out]
+ *   Pointer to the mempool flags.
+ * @return
+ *   - 0: Success; The mempool driver has advertised his pool capabilities in
+ *   flags param.
+ *   - -ENOTSUP - doesn't support get_capabilities ops (valid case).
+ *   - Otherwise, pool create fails.
+ */
+int
+rte_mempool_ops_get_capabilities(const struct rte_mempool *mp,
+					unsigned int *flags);
 
 /**
  * @internal wrapper for mempool_ops free callback.
