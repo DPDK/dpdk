@@ -44,15 +44,6 @@ Deprecation Notices
   PKT_RX_QINQ_STRIPPED, that are better described. The old flags and
   their behavior will be kept until 17.08 and will be removed in 17.11.
 
-* mempool: The following will be modified in 17.11:
-
-  - ``rte_mempool_xmem_size`` and ``rte_mempool_xmem_usage`` need to know
-    the mempool flag status so adding new param rte_mempool in those API.
-  - Removing __rte_unused int flag param from ``rte_mempool_generic_put``
-    and ``rte_mempool_generic_get`` API.
-  - ``rte_mempool`` flags data type will changed from int to
-    unsigned int.
-
 * ethdev: Tx offloads will no longer be enabled by default in 17.11.
   Instead, the ``rte_eth_txmode`` structure will be extended with
   bit field to enable each Tx offload.

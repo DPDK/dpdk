@@ -153,6 +153,14 @@ API Changes
   * Rework start and stop APIs into ``rte_service_runstate_set``
   * Added API to set runstate of service implementation to indicate readyness
 
+* **The following changes made in mempool library**
+
+  * Moved ``flags`` datatype from int to unsigned int for ``rte_mempool``.
+  * Removed ``__rte_unused int flag`` param from ``rte_mempool_generic_put``
+    and ``rte_mempool_generic_get`` API.
+  * Added ``flags`` param in ``rte_mempool_xmem_size`` and
+    ``rte_mempool_xmem_usage``.
+
 
 ABI Changes
 -----------
