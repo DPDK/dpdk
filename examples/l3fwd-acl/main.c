@@ -1026,6 +1026,7 @@ add_rules(const char *rule_path,
 	char buff[LINE_MAX];
 	FILE *fh = fopen(rule_path, "rb");
 	unsigned int i = 0;
+	int val;
 
 	if (fh == NULL)
 		rte_exit(EXIT_FAILURE, "%s: Open %s failed\n", __func__,
@@ -1042,7 +1043,11 @@ add_rules(const char *rule_path,
 		rte_exit(EXIT_FAILURE, "Not find any route entries in %s!\n",
 				rule_path);
 
-	fseek(fh, 0, SEEK_SET);
+	val = fseek(fh, 0, SEEK_SET);
+	if (val < 0) {
+		rte_exit(EXIT_FAILURE, "%s: File seek operation failed\n",
+			__func__);
+	}
 
 	acl_rules = calloc(acl_num, rule_size);
 
