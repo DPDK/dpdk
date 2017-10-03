@@ -79,3 +79,10 @@ DPDK_17.08 {
 	rte_crypto_aead_operation_strings;
 
 } DPDK_17.05;
+
+DPDK_17.11 {
+	global:
+
+	rte_cryptodev_name_get;
+
+} DPDK_17.08;

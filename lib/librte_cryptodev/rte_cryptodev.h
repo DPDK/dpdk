@@ -463,6 +463,19 @@ extern int
 rte_cryptodev_get_dev_id(const char *name);
 
 /**
+ * Get the crypto device name given a device identifier.
+ *
+ * @param dev_id
+ *   The identifier of the device
+ *
+ * @return
+ *   - Returns crypto device name.
+ *   - Returns NULL if crypto device is not present.
+ */
+extern const char *
+rte_cryptodev_name_get(uint8_t dev_id);
+
+/**
  * Get the total number of crypto devices that have been successfully
  * initialised.
  *

@@ -1382,6 +1382,17 @@ rte_cryptodev_driver_id_get(const char *name)
 }
 
 const char *
+rte_cryptodev_name_get(uint8_t dev_id)
+{
+	struct rte_cryptodev *dev = rte_cryptodev_pmd_get_dev(dev_id);
+
+	if (dev == NULL)
+		return NULL;
+
+	return dev->data->name;
+}
+
+const char *
 rte_cryptodev_driver_name_get(uint8_t driver_id)
 {
 	struct cryptodev_driver *driver;
