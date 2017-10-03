@@ -16,3 +16,12 @@ DPDK_2.0 {
 
 	local: *;
 };
+
+DPDK_17.11 {
+	global:
+
+	rte_power_freq_disable_turbo;
+	rte_power_freq_enable_turbo;
+	rte_power_turbo_status;
+
+} DPDK_2.0;
