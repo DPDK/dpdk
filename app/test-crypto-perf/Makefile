@@ -45,5 +45,6 @@ SRCS-y += cperf_test_latency.c
 SRCS-y += cperf_test_pmd_cyclecount.c
 SRCS-y += cperf_test_verify.c
 SRCS-y += cperf_test_vector_parsing.c
+SRCS-y += cperf_test_common.c
 
 include $(RTE_SDK)/mk/rte.app.mk
