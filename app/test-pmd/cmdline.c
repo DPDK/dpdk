@@ -13427,12 +13427,20 @@ cmd_ddp_info_parsed(
 	uint32_t pkg_size;
 	int ret = -ENOTSUP;
 #ifdef RTE_LIBRTE_I40E_PMD
-	uint32_t i;
+	uint32_t i, j, n;
 	uint8_t *buff;
-	uint32_t buff_size;
+	uint32_t buff_size = 0;
 	struct rte_pmd_i40e_profile_info info;
-	uint32_t dev_num;
+	uint32_t dev_num = 0;
 	struct rte_pmd_i40e_ddp_device_id *devs;
+	uint32_t proto_num = 0;
+	struct rte_pmd_i40e_proto_info *proto;
+	uint32_t pctype_num = 0;
+	struct rte_pmd_i40e_ptype_info *pctype;
+	uint32_t ptype_num = 0;
+	struct rte_pmd_i40e_ptype_info *ptype;
+	uint8_t proto_id;
+
 #endif
 
 	pkg = open_ddp_package_file(res->filepath, &pkg_size);
@@ -13485,12 +13493,11 @@ cmd_ddp_info_parsed(
 				(uint8_t *)&dev_num, sizeof(dev_num),
 				RTE_PMD_I40E_PKG_INFO_DEVID_NUM);
 	if (!ret && dev_num) {
-		devs = (struct rte_pmd_i40e_ddp_device_id *)malloc(dev_num *
-			sizeof(struct rte_pmd_i40e_ddp_device_id));
+		buff_size = dev_num * sizeof(struct rte_pmd_i40e_ddp_device_id);
+		devs = (struct rte_pmd_i40e_ddp_device_id *)malloc(buff_size);
 		if (devs) {
 			ret = rte_pmd_i40e_get_ddp_info(pkg, pkg_size,
-						(uint8_t *)devs, dev_num *
-						sizeof(struct rte_pmd_i40e_ddp_device_id),
+						(uint8_t *)devs, buff_size,
 						RTE_PMD_I40E_PKG_INFO_DEVID_LIST);
 			if (!ret) {
 				printf("List of supported devices:\n");
@@ -13506,8 +13513,110 @@ cmd_ddp_info_parsed(
 			free(devs);
 		}
 	}
+
+	/* get information about protocols and packet types */
+	ret = rte_pmd_i40e_get_ddp_info(pkg, pkg_size,
+		(uint8_t *)&proto_num, sizeof(proto_num),
+		RTE_PMD_I40E_PKG_INFO_PROTOCOL_NUM);
+	if (ret || !proto_num)
+		goto no_print_return;
+
+	buff_size = proto_num * sizeof(struct rte_pmd_i40e_proto_info);
+	proto = (struct rte_pmd_i40e_proto_info *)malloc(buff_size);
+	if (!proto)
+		goto no_print_return;
+
+	ret = rte_pmd_i40e_get_ddp_info(pkg, pkg_size, (uint8_t *)proto,
+					buff_size,
+					RTE_PMD_I40E_PKG_INFO_PROTOCOL_LIST);
+	if (!ret) {
+		printf("List of used protocols:\n");
+		for (i = 0; i < proto_num; i++)
+			printf("  %2u: %s\n", proto[i].proto_id,
+			       proto[i].name);
+		printf("\n");
+	}
+	ret = rte_pmd_i40e_get_ddp_info(pkg, pkg_size,
+		(uint8_t *)&pctype_num, sizeof(pctype_num),
+		RTE_PMD_I40E_PKG_INFO_PCTYPE_NUM);
+	if (ret || !pctype_num)
+		goto no_print_pctypes;
+
+	buff_size = pctype_num * sizeof(struct rte_pmd_i40e_ptype_info);
+	pctype = (struct rte_pmd_i40e_ptype_info *)malloc(buff_size);
+	if (!pctype)
+		goto no_print_pctypes;
+
+	ret = rte_pmd_i40e_get_ddp_info(pkg, pkg_size, (uint8_t *)pctype,
+					buff_size,
+					RTE_PMD_I40E_PKG_INFO_PCTYPE_LIST);
+	if (ret) {
+		free(pctype);
+		goto no_print_pctypes;
+	}
+
+	printf("List of defined packet classification types:\n");
+	for (i = 0; i < pctype_num; i++) {
+		printf("  %2u:", pctype[i].ptype_id);
+		for (j = 0; j < RTE_PMD_I40E_PROTO_NUM; j++) {
+			proto_id = pctype[i].protocols[j];
+			if (proto_id != RTE_PMD_I40E_PROTO_UNUSED) {
+				for (n = 0; n < proto_num; n++) {
+					if (proto[n].proto_id == proto_id) {
+						printf(" %s", proto[n].name);
+						break;
+					}
+				}
+			}
+		}
+		printf("\n");
+	}
+	printf("\n");
+	free(pctype);
+
+no_print_pctypes:
+
+	ret = rte_pmd_i40e_get_ddp_info(pkg, pkg_size, (uint8_t *)&ptype_num,
+					sizeof(ptype_num),
+					RTE_PMD_I40E_PKG_INFO_PTYPE_NUM);
+	if (ret || !ptype_num)
+		goto no_print_return;
+
+	buff_size = ptype_num * sizeof(struct rte_pmd_i40e_ptype_info);
+	ptype = (struct rte_pmd_i40e_ptype_info *)malloc(buff_size);
+	if (!ptype)
+		goto no_print_return;
+
+	ret = rte_pmd_i40e_get_ddp_info(pkg, pkg_size, (uint8_t *)ptype,
+					buff_size,
+					RTE_PMD_I40E_PKG_INFO_PTYPE_LIST);
+	if (ret) {
+		free(ptype);
+		goto no_print_return;
+	}
+	printf("List of defined packet types:\n");
+	for (i = 0; i < ptype_num; i++) {
+		printf("  %2u:", ptype[i].ptype_id);
+		for (j = 0; j < RTE_PMD_I40E_PROTO_NUM; j++) {
+			proto_id = ptype[i].protocols[j];
+			if (proto_id != RTE_PMD_I40E_PROTO_UNUSED) {
+				for (n = 0; n < proto_num; n++) {
+					if (proto[n].proto_id == proto_id) {
+						printf(" %s", proto[n].name);
+						break;
+					}
+				}
+			}
+		}
+		printf("\n");
+	}
+	free(ptype);
+	printf("\n");
+
+	free(proto);
 	ret = 0;
 #endif
+no_print_return:
 	if (ret == -ENOTSUP)
 		printf("Function not supported in PMD driver\n");
 	close_ddp_package_file(pkg);
