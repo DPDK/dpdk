@@ -408,6 +408,14 @@ Reset VF statistics::
 
    testpmd> clear vf stats (port_id) (vf_id)
 
+show port pctype mapping
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+List all items from the pctype mapping table::
+
+   testpmd> show port (port_id) pctype mapping
+
+
 Configuration Functions
 -----------------------
 
@@ -1696,6 +1704,23 @@ Set the value of ether-type for E-tag::
 Enable/disable the E-tag support::
 
    testpmd> port config (port_id|all) l2-tunnel E-tag (enable|disable)
+
+port config pctype mapping
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Reset pctype mapping table::
+
+   testpmd> port config (port_id) pctype mapping reset
+
+Update hardware defined pctype to software defined flow type mapping table::
+
+   testpmd> port config (port_id) pctype mapping update (pctype_id_0[,pctype_id_1]*) (flow_type_id)
+
+where:
+
+* ``pctype_id_x``: hardware pctype id as index of bit in bitmask value of the pctype mapping table.
+
+* ``flow_type_id``: software flow type id as the index of the pctype mapping table.
 
 
 Link Bonding Functions

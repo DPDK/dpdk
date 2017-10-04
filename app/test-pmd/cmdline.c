@@ -230,6 +230,10 @@ static void cmd_help_long_parsed(void *parsed_result,
 
 			"clear vf stats (port_id) (vf_id)\n"
 			"    Reset a VF's statistics.\n\n"
+
+			"show port (port_id) pctype mapping\n"
+			"    Get flow ptype to pctype mapping on a port\n\n"
+
 		);
 	}
 
@@ -681,7 +685,8 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"    Set crc-strip/scatter/rx-checksum/hardware-vlan/drop_en"
 			" for ports.\n\n"
 
-			"port config all rss (all|ip|tcp|udp|sctp|ether|port|vxlan|geneve|nvgre|none)\n"
+			"port config all rss (all|ip|tcp|udp|sctp|ether|port|vxlan|"
+			"geneve|nvgre|none|<flowtype_id>)\n"
 			"    Set the RSS mode.\n\n"
 
 			"port config port-id rss reta (hash,queue)[,(hash,queue)]\n"
@@ -716,6 +721,13 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"port config (port_id|all) l2-tunnel E-tag"
 			" (enable|disable)\n"
 			"    Enable/disable the E-tag support.\n\n"
+
+			"port config (port_id) pctype mapping reset\n"
+			"    Reset flow type to pctype mapping on a port\n\n"
+
+			"port config (port_id) pctype mapping update"
+			" (pctype_id_0[,pctype_id_1]*) (flow_type_id)\n"
+			"    Update a flow type to pctype mapping item on a port\n\n"
 		);
 	}
 
@@ -878,8 +890,8 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"set_hash_input_set (port_id) (ipv4|ipv4-frag|"
 			"ipv4-tcp|ipv4-udp|ipv4-sctp|ipv4-other|ipv6|"
 			"ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp|ipv6-other|"
-			"l2_payload) (ovlan|ivlan|src-ipv4|dst-ipv4|src-ipv6|"
-			"dst-ipv6|ipv4-tos|ipv4-proto|ipv6-tc|"
+			"l2_payload|<flowtype_id>) (ovlan|ivlan|src-ipv4|dst-ipv4|"
+			"src-ipv6|dst-ipv6|ipv4-tos|ipv4-proto|ipv6-tc|"
 			"ipv6-next-header|udp-src-port|udp-dst-port|"
 			"tcp-src-port|tcp-dst-port|sctp-src-port|"
 			"sctp-dst-port|sctp-veri-tag|udp-key|gre-key|fld-1st|"
@@ -1720,6 +1732,9 @@ cmd_config_rss_parsed(void *parsed_result,
 		rss_conf.rss_hf = ETH_RSS_NVGRE;
 	else if (!strcmp(res->value, "none"))
 		rss_conf.rss_hf = 0;
+	else if (isdigit(res->value[0]) && atoi(res->value) > 0 &&
+						atoi(res->value) < 64)
+		rss_conf.rss_hf = 1ULL << atoi(res->value);
 	else {
 		printf("Unknown parameter\n");
 		return;
@@ -1743,14 +1758,13 @@ cmdline_parse_token_string_t cmd_config_rss_all =
 cmdline_parse_token_string_t cmd_config_rss_name =
 	TOKEN_STRING_INITIALIZER(struct cmd_config_rss, name, "rss");
 cmdline_parse_token_string_t cmd_config_rss_value =
-	TOKEN_STRING_INITIALIZER(struct cmd_config_rss, value,
-		"all#ip#tcp#udp#sctp#ether#port#vxlan#geneve#nvgre#none");
+	TOKEN_STRING_INITIALIZER(struct cmd_config_rss, value, NULL);
 
 cmdline_parse_inst_t cmd_config_rss = {
 	.f = cmd_config_rss_parsed,
 	.data = NULL,
 	.help_str = "port config all rss "
-		"all|ip|tcp|udp|sctp|ether|port|vxlan|geneve|nvgre|none",
+		"all|ip|tcp|udp|sctp|ether|port|vxlan|geneve|nvgre|none|<flowtype_id>",
 	.tokens = {
 		(void *)&cmd_config_rss_port,
 		(void *)&cmd_config_rss_keyword,
@@ -8991,6 +9005,10 @@ str2flowtype(char *string)
 		if (!strcmp(flowtype_str[i].str, string))
 			return flowtype_str[i].type;
 	}
+
+	if (isdigit(string[0]) && atoi(string) > 0 && atoi(string) < 64)
+		return (uint16_t)atoi(string);
+
 	return RTE_ETH_FLOW_UNKNOWN;
 }
 
@@ -10467,9 +10485,7 @@ cmdline_parse_token_num_t cmd_set_hash_input_set_port_id =
 		port_id, UINT8);
 cmdline_parse_token_string_t cmd_set_hash_input_set_flow_type =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_hash_input_set_result,
-		flow_type,
-		"ipv4-frag#ipv4-tcp#ipv4-udp#ipv4-sctp#ipv4-other#"
-		"ipv6-frag#ipv6-tcp#ipv6-udp#ipv6-sctp#ipv6-other#l2_payload");
+		flow_type, NULL);
 cmdline_parse_token_string_t cmd_set_hash_input_set_field =
 	TOKEN_STRING_INITIALIZER(struct cmd_set_hash_input_set_result,
 		inset_field,
@@ -10488,7 +10504,7 @@ cmdline_parse_inst_t cmd_set_hash_input_set = {
 	.data = NULL,
 	.help_str = "set_hash_input_set <port_id> "
 	"ipv4-frag|ipv4-tcp|ipv4-udp|ipv4-sctp|ipv4-other|"
-	"ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp|ipv6-other|l2_payload "
+	"ipv6-frag|ipv6-tcp|ipv6-udp|ipv6-sctp|ipv6-other|l2_payload|<flowtype_id> "
 	"ovlan|ivlan|src-ipv4|dst-ipv4|src-ipv6|dst-ipv6|ipv4-tos|ipv4-proto|"
 	"ipv6-tc|ipv6-next-header|udp-src-port|udp-dst-port|tcp-src-port|"
 	"tcp-dst-port|sctp-src-port|sctp-dst-port|sctp-veri-tag|udp-key|"
@@ -13919,6 +13935,304 @@ cmdline_parse_inst_t cmd_clear_vf_stats = {
 	},
 };
 
+/* port config pctype mapping reset */
+
+/* Common result structure for port config pctype mapping reset */
+struct cmd_pctype_mapping_reset_result {
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t config;
+	uint8_t port_id;
+	cmdline_fixed_string_t pctype;
+	cmdline_fixed_string_t mapping;
+	cmdline_fixed_string_t reset;
+};
+
+/* Common CLI fields for port config pctype mapping reset*/
+cmdline_parse_token_string_t cmd_pctype_mapping_reset_port =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_pctype_mapping_reset_result,
+		 port, "port");
+cmdline_parse_token_string_t cmd_pctype_mapping_reset_config =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_pctype_mapping_reset_result,
+		 config, "config");
+cmdline_parse_token_num_t cmd_pctype_mapping_reset_port_id =
+	TOKEN_NUM_INITIALIZER
+		(struct cmd_pctype_mapping_reset_result,
+		 port_id, UINT8);
+cmdline_parse_token_string_t cmd_pctype_mapping_reset_pctype =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_pctype_mapping_reset_result,
+		 pctype, "pctype");
+cmdline_parse_token_string_t cmd_pctype_mapping_reset_mapping =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_pctype_mapping_reset_result,
+		 mapping, "mapping");
+cmdline_parse_token_string_t cmd_pctype_mapping_reset_reset =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_pctype_mapping_reset_result,
+		 reset, "reset");
+
+static void
+cmd_pctype_mapping_reset_parsed(
+	void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	__attribute__((unused)) void *data)
+{
+	struct cmd_pctype_mapping_reset_result *res = parsed_result;
+	int ret = -ENOTSUP;
+
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
+		return;
+
+#ifdef RTE_LIBRTE_I40E_PMD
+	ret = rte_pmd_i40e_flow_type_mapping_reset(res->port_id);
+#endif
+
+	switch (ret) {
+	case 0:
+		break;
+	case -ENODEV:
+		printf("invalid port_id %d\n", res->port_id);
+		break;
+	case -ENOTSUP:
+		printf("function not implemented\n");
+		break;
+	default:
+		printf("programming error: (%s)\n", strerror(-ret));
+	}
+}
+
+cmdline_parse_inst_t cmd_pctype_mapping_reset = {
+	.f = cmd_pctype_mapping_reset_parsed,
+	.data = NULL,
+	.help_str = "port config <port_id> pctype mapping reset",
+	.tokens = {
+		(void *)&cmd_pctype_mapping_reset_port,
+		(void *)&cmd_pctype_mapping_reset_config,
+		(void *)&cmd_pctype_mapping_reset_port_id,
+		(void *)&cmd_pctype_mapping_reset_pctype,
+		(void *)&cmd_pctype_mapping_reset_mapping,
+		(void *)&cmd_pctype_mapping_reset_reset,
+		NULL,
+	},
+};
+
+/* show port pctype mapping */
+
+/* Common result structure for show port pctype mapping */
+struct cmd_pctype_mapping_get_result {
+	cmdline_fixed_string_t show;
+	cmdline_fixed_string_t port;
+	uint8_t port_id;
+	cmdline_fixed_string_t pctype;
+	cmdline_fixed_string_t mapping;
+};
+
+/* Common CLI fields for pctype mapping get */
+cmdline_parse_token_string_t cmd_pctype_mapping_get_show =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_pctype_mapping_get_result,
+		 show, "show");
+cmdline_parse_token_string_t cmd_pctype_mapping_get_port =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_pctype_mapping_get_result,
+		 port, "port");
+cmdline_parse_token_num_t cmd_pctype_mapping_get_port_id =
+	TOKEN_NUM_INITIALIZER
+		(struct cmd_pctype_mapping_get_result,
+		 port_id, UINT8);
+cmdline_parse_token_string_t cmd_pctype_mapping_get_pctype =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_pctype_mapping_get_result,
+		 pctype, "pctype");
+cmdline_parse_token_string_t cmd_pctype_mapping_get_mapping =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_pctype_mapping_get_result,
+		 mapping, "mapping");
+
+static void
+cmd_pctype_mapping_get_parsed(
+	void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	__attribute__((unused)) void *data)
+{
+	struct cmd_pctype_mapping_get_result *res = parsed_result;
+	int ret = -ENOTSUP;
+#ifdef RTE_LIBRTE_I40E_PMD
+	struct rte_pmd_i40e_flow_type_mapping
+				mapping[RTE_PMD_I40E_FLOW_TYPE_MAX];
+	int i, j, first_pctype;
+#endif
+
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
+		return;
+
+#ifdef RTE_LIBRTE_I40E_PMD
+	ret = rte_pmd_i40e_flow_type_mapping_get(res->port_id, mapping);
+#endif
+
+	switch (ret) {
+	case 0:
+		break;
+	case -ENODEV:
+		printf("invalid port_id %d\n", res->port_id);
+		return;
+	case -ENOTSUP:
+		printf("function not implemented\n");
+		return;
+	default:
+		printf("programming error: (%s)\n", strerror(-ret));
+		return;
+	}
+
+#ifdef RTE_LIBRTE_I40E_PMD
+	for (i = 0; i < RTE_PMD_I40E_FLOW_TYPE_MAX; i++) {
+		if (mapping[i].pctype != 0ULL) {
+			first_pctype = 1;
+
+			printf("pctype: ");
+			for (j = 0; j < RTE_PMD_I40E_PCTYPE_MAX; j++) {
+				if (mapping[i].pctype & (1ULL << j)) {
+					printf(first_pctype ?
+					       "%02d" : ",%02d", j);
+					first_pctype = 0;
+				}
+			}
+			printf("  ->  flowtype: %02d\n", mapping[i].flow_type);
+		}
+	}
+#endif
+}
+
+cmdline_parse_inst_t cmd_pctype_mapping_get = {
+	.f = cmd_pctype_mapping_get_parsed,
+	.data = NULL,
+	.help_str = "show port <port_id> pctype mapping",
+	.tokens = {
+		(void *)&cmd_pctype_mapping_get_show,
+		(void *)&cmd_pctype_mapping_get_port,
+		(void *)&cmd_pctype_mapping_get_port_id,
+		(void *)&cmd_pctype_mapping_get_pctype,
+		(void *)&cmd_pctype_mapping_get_mapping,
+		NULL,
+	},
+};
+
+/* port config pctype mapping update */
+
+/* Common result structure for port config pctype mapping update */
+struct cmd_pctype_mapping_update_result {
+	cmdline_fixed_string_t port;
+	cmdline_fixed_string_t config;
+	uint8_t port_id;
+	cmdline_fixed_string_t pctype;
+	cmdline_fixed_string_t mapping;
+	cmdline_fixed_string_t update;
+	cmdline_fixed_string_t pctype_list;
+	uint16_t flow_type;
+};
+
+/* Common CLI fields for pctype mapping update*/
+cmdline_parse_token_string_t cmd_pctype_mapping_update_port =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_pctype_mapping_update_result,
+		 port, "port");
+cmdline_parse_token_string_t cmd_pctype_mapping_update_config =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_pctype_mapping_update_result,
+		 config, "config");
+cmdline_parse_token_num_t cmd_pctype_mapping_update_port_id =
+	TOKEN_NUM_INITIALIZER
+		(struct cmd_pctype_mapping_update_result,
+		 port_id, UINT8);
+cmdline_parse_token_string_t cmd_pctype_mapping_update_pctype =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_pctype_mapping_update_result,
+		 pctype, "pctype");
+cmdline_parse_token_string_t cmd_pctype_mapping_update_mapping =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_pctype_mapping_update_result,
+		 mapping, "mapping");
+cmdline_parse_token_string_t cmd_pctype_mapping_update_update =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_pctype_mapping_update_result,
+		 update, "update");
+cmdline_parse_token_string_t cmd_pctype_mapping_update_pc_type =
+	TOKEN_STRING_INITIALIZER
+		(struct cmd_pctype_mapping_update_result,
+		 pctype_list, NULL);
+cmdline_parse_token_num_t cmd_pctype_mapping_update_flow_type =
+	TOKEN_NUM_INITIALIZER
+		(struct cmd_pctype_mapping_update_result,
+		 flow_type, UINT16);
+
+static void
+cmd_pctype_mapping_update_parsed(
+	void *parsed_result,
+	__attribute__((unused)) struct cmdline *cl,
+	__attribute__((unused)) void *data)
+{
+	struct cmd_pctype_mapping_update_result *res = parsed_result;
+	int ret = -ENOTSUP;
+#ifdef RTE_LIBRTE_I40E_PMD
+	struct rte_pmd_i40e_flow_type_mapping mapping;
+	unsigned int i;
+#endif
+	unsigned int nb_item;
+	unsigned int pctype_list[RTE_PMD_I40E_PCTYPE_MAX];
+
+	if (port_id_is_invalid(res->port_id, ENABLED_WARN))
+		return;
+
+	nb_item = parse_item_list(res->pctype_list, "pctypes",
+				  RTE_PMD_I40E_PCTYPE_MAX, pctype_list, 1);
+
+#ifdef RTE_LIBRTE_I40E_PMD
+	mapping.flow_type = res->flow_type;
+	for (i = 0, mapping.pctype = 0ULL; i < nb_item; i++)
+		mapping.pctype |= (1ULL << pctype_list[i]);
+	ret = rte_pmd_i40e_flow_type_mapping_update(res->port_id,
+						&mapping,
+						1,
+						0);
+#endif
+
+	switch (ret) {
+	case 0:
+		break;
+	case -EINVAL:
+		printf("invalid pctype or flow type\n");
+		break;
+	case -ENODEV:
+		printf("invalid port_id %d\n", res->port_id);
+		break;
+	case -ENOTSUP:
+		printf("function not implemented\n");
+		break;
+	default:
+		printf("programming error: (%s)\n", strerror(-ret));
+	}
+}
+
+cmdline_parse_inst_t cmd_pctype_mapping_update = {
+	.f = cmd_pctype_mapping_update_parsed,
+	.data = NULL,
+	.help_str = "port config <port_id> pctype mapping update"
+	" <pctype_id_0,[pctype_id_1]*> <flowtype_id>",
+	.tokens = {
+		(void *)&cmd_pctype_mapping_update_port,
+		(void *)&cmd_pctype_mapping_update_config,
+		(void *)&cmd_pctype_mapping_update_port_id,
+		(void *)&cmd_pctype_mapping_update_pctype,
+		(void *)&cmd_pctype_mapping_update_mapping,
+		(void *)&cmd_pctype_mapping_update_update,
+		(void *)&cmd_pctype_mapping_update_pc_type,
+		(void *)&cmd_pctype_mapping_update_flow_type,
+		NULL,
+	},
+};
+
 /* ptype mapping get */
 
 /* Common result structure for ptype mapping get */
@@ -14500,6 +14814,10 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_ptype_mapping_replace,
 	(cmdline_parse_inst_t *)&cmd_ptype_mapping_reset,
 	(cmdline_parse_inst_t *)&cmd_ptype_mapping_update,
+
+	(cmdline_parse_inst_t *)&cmd_pctype_mapping_get,
+	(cmdline_parse_inst_t *)&cmd_pctype_mapping_reset,
+	(cmdline_parse_inst_t *)&cmd_pctype_mapping_update,
 	NULL,
 };
 
