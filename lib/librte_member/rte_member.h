@@ -127,6 +127,7 @@ struct rte_member_parameters;
  */
 enum rte_member_setsum_type {
 	RTE_MEMBER_TYPE_HT = 0,  /**< Hash table based set summary. */
+	RTE_MEMBER_TYPE_VBF,     /**< Vector of bloom filters. */
 	RTE_MEMBER_NUM_TYPE
 };
 

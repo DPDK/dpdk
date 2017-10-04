@@ -42,6 +42,7 @@
 
 #include "rte_member.h"
 #include "rte_member_ht.h"
+#include "rte_member_vbf.h"
 
 int librte_member_logtype;
 
@@ -99,6 +100,9 @@ rte_member_free(struct rte_member_setsum *setsum)
 	switch (setsum->type) {
 	case RTE_MEMBER_TYPE_HT:
 		rte_member_free_ht(setsum);
+		break;
+	case RTE_MEMBER_TYPE_VBF:
+		rte_member_free_vbf(setsum);
 		break;
 	default:
 		break;
@@ -170,6 +174,9 @@ rte_member_create(const struct rte_member_parameters *params)
 	case RTE_MEMBER_TYPE_HT:
 		ret = rte_member_create_ht(setsum, params);
 		break;
+	case RTE_MEMBER_TYPE_VBF:
+		ret = rte_member_create_vbf(setsum, params);
+		break;
 	default:
 		goto error_unlock_exit;
 	}
@@ -200,6 +207,8 @@ rte_member_add(const struct rte_member_setsum *setsum, const void *key,
 	switch (setsum->type) {
 	case RTE_MEMBER_TYPE_HT:
 		return rte_member_add_ht(setsum, key, set_id);
+	case RTE_MEMBER_TYPE_VBF:
+		return rte_member_add_vbf(setsum, key, set_id);
 	default:
 		return -EINVAL;
 	}
@@ -215,6 +224,8 @@ rte_member_lookup(const struct rte_member_setsum *setsum, const void *key,
 	switch (setsum->type) {
 	case RTE_MEMBER_TYPE_HT:
 		return rte_member_lookup_ht(setsum, key, set_id);
+	case RTE_MEMBER_TYPE_VBF:
+		return rte_member_lookup_vbf(setsum, key, set_id);
 	default:
 		return -EINVAL;
 	}
@@ -232,6 +243,9 @@ rte_member_lookup_bulk(const struct rte_member_setsum *setsum,
 	case RTE_MEMBER_TYPE_HT:
 		return rte_member_lookup_bulk_ht(setsum, keys, num_keys,
 				set_ids);
+	case RTE_MEMBER_TYPE_VBF:
+		return rte_member_lookup_bulk_vbf(setsum, keys, num_keys,
+				set_ids);
 	default:
 		return -EINVAL;
 	}
@@ -247,6 +261,9 @@ rte_member_lookup_multi(const struct rte_member_setsum *setsum, const void *key,
 	switch (setsum->type) {
 	case RTE_MEMBER_TYPE_HT:
 		return rte_member_lookup_multi_ht(setsum, key, match_per_key,
+				set_id);
+	case RTE_MEMBER_TYPE_VBF:
+		return rte_member_lookup_multi_vbf(setsum, key, match_per_key,
 				set_id);
 	default:
 		return -EINVAL;
@@ -267,6 +284,9 @@ rte_member_lookup_multi_bulk(const struct rte_member_setsum *setsum,
 	case RTE_MEMBER_TYPE_HT:
 		return rte_member_lookup_multi_bulk_ht(setsum, keys, num_keys,
 				max_match_per_key, match_count, set_ids);
+	case RTE_MEMBER_TYPE_VBF:
+		return rte_member_lookup_multi_bulk_vbf(setsum, keys, num_keys,
+				max_match_per_key, match_count, set_ids);
 	default:
 		return -EINVAL;
 	}
@@ -282,6 +302,8 @@ rte_member_delete(const struct rte_member_setsum *setsum, const void *key,
 	switch (setsum->type) {
 	case RTE_MEMBER_TYPE_HT:
 		return rte_member_delete_ht(setsum, key, set_id);
+	/* current vBF implementation does not support delete function */
+	case RTE_MEMBER_TYPE_VBF:
 	default:
 		return -EINVAL;
 	}
@@ -295,6 +317,9 @@ rte_member_reset(const struct rte_member_setsum *setsum)
 	switch (setsum->type) {
 	case RTE_MEMBER_TYPE_HT:
 		rte_member_reset_ht(setsum);
+		return;
+	case RTE_MEMBER_TYPE_VBF:
+		rte_member_reset_vbf(setsum);
 		return;
 	default:
 		return;
