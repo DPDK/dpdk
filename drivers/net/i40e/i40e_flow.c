@@ -2776,8 +2776,9 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 		}
 	}
 
-	pctype = i40e_flowtype_to_pctype(flow_type);
-	if (pctype == 0 || pctype > I40E_FILTER_PCTYPE_L2_PAYLOAD) {
+	pctype = i40e_flowtype_to_pctype(pf->adapter, flow_type);
+	if (pctype == I40E_FILTER_PCTYPE_INVALID ||
+	    pctype > I40E_FILTER_PCTYPE_L2_PAYLOAD) {
 		rte_flow_error_set(error, EINVAL,
 				   RTE_FLOW_ERROR_TYPE_ITEM, item,
 				   "Unsupported flow type");

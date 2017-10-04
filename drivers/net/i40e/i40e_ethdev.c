@@ -1070,6 +1070,7 @@ eth_i40e_dev_init(struct rte_eth_dev *dev)
 		return 0;
 	}
 	i40e_set_default_ptype_table(dev);
+	i40e_set_default_pctype_table(dev);
 	pci_dev = RTE_ETH_DEV_TO_PCI(dev);
 	intr_handle = &pci_dev->intr_handle;
 
@@ -3020,7 +3021,7 @@ i40e_dev_info_get(struct rte_eth_dev *dev, struct rte_eth_dev_info *dev_info)
 	dev_info->hash_key_size = (I40E_PFQF_HKEY_MAX_INDEX + 1) *
 						sizeof(uint32_t);
 	dev_info->reta_size = pf->hash_lut_size;
-	dev_info->flow_type_rss_offloads = I40E_RSS_OFFLOAD_ALL;
+	dev_info->flow_type_rss_offloads = pf->adapter->flow_types_mask;
 
 	dev_info->default_rxconf = (struct rte_eth_rxconf) {
 		.rx_thresh = {
@@ -6611,104 +6612,36 @@ DONE:
 
 /* Configure hash enable flags for RSS */
 uint64_t
-i40e_config_hena(uint64_t flags, enum i40e_mac_type type)
+i40e_config_hena(const struct i40e_adapter *adapter, uint64_t flags)
 {
 	uint64_t hena = 0;
+	int i;
 
 	if (!flags)
 		return hena;
 
-	if (flags & ETH_RSS_FRAG_IPV4)
-		hena |= 1ULL << I40E_FILTER_PCTYPE_FRAG_IPV4;
-	if (flags & ETH_RSS_NONFRAG_IPV4_TCP) {
-		if (type == I40E_MAC_X722) {
-			hena |= (1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_TCP) |
-			 (1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_TCP_SYN_NO_ACK);
-		} else
-			hena |= 1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_TCP;
+	for (i = RTE_ETH_FLOW_UNKNOWN + 1; i < I40E_FLOW_TYPE_MAX; i++) {
+		if (flags & (1ULL << i))
+			hena |= adapter->pctypes_tbl[i];
 	}
-	if (flags & ETH_RSS_NONFRAG_IPV4_UDP) {
-		if (type == I40E_MAC_X722) {
-			hena |= (1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_UDP) |
-			 (1ULL << I40E_FILTER_PCTYPE_NONF_UNICAST_IPV4_UDP) |
-			 (1ULL << I40E_FILTER_PCTYPE_NONF_MULTICAST_IPV4_UDP);
-		} else
-			hena |= 1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_UDP;
-	}
-	if (flags & ETH_RSS_NONFRAG_IPV4_SCTP)
-		hena |= 1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_SCTP;
-	if (flags & ETH_RSS_NONFRAG_IPV4_OTHER)
-		hena |= 1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_OTHER;
-	if (flags & ETH_RSS_FRAG_IPV6)
-		hena |= 1ULL << I40E_FILTER_PCTYPE_FRAG_IPV6;
-	if (flags & ETH_RSS_NONFRAG_IPV6_TCP) {
-		if (type == I40E_MAC_X722) {
-			hena |= (1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_TCP) |
-			 (1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_TCP_SYN_NO_ACK);
-		} else
-			hena |= 1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_TCP;
-	}
-	if (flags & ETH_RSS_NONFRAG_IPV6_UDP) {
-		if (type == I40E_MAC_X722) {
-			hena |= (1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_UDP) |
-			 (1ULL << I40E_FILTER_PCTYPE_NONF_UNICAST_IPV6_UDP) |
-			 (1ULL << I40E_FILTER_PCTYPE_NONF_MULTICAST_IPV6_UDP);
-		} else
-			hena |= 1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_UDP;
-	}
-	if (flags & ETH_RSS_NONFRAG_IPV6_SCTP)
-		hena |= 1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_SCTP;
-	if (flags & ETH_RSS_NONFRAG_IPV6_OTHER)
-		hena |= 1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_OTHER;
-	if (flags & ETH_RSS_L2_PAYLOAD)
-		hena |= 1ULL << I40E_FILTER_PCTYPE_L2_PAYLOAD;
 
 	return hena;
 }
 
 /* Parse the hash enable flags */
 uint64_t
-i40e_parse_hena(uint64_t flags)
+i40e_parse_hena(const struct i40e_adapter *adapter, uint64_t flags)
 {
 	uint64_t rss_hf = 0;
 
 	if (!flags)
 		return rss_hf;
-	if (flags & (1ULL << I40E_FILTER_PCTYPE_FRAG_IPV4))
-		rss_hf |= ETH_RSS_FRAG_IPV4;
-	if (flags & (1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_TCP))
-		rss_hf |= ETH_RSS_NONFRAG_IPV4_TCP;
-	if (flags & (1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_TCP_SYN_NO_ACK))
-		rss_hf |= ETH_RSS_NONFRAG_IPV4_TCP;
-	if (flags & (1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_UDP))
-		rss_hf |= ETH_RSS_NONFRAG_IPV4_UDP;
-	if (flags & (1ULL << I40E_FILTER_PCTYPE_NONF_UNICAST_IPV4_UDP))
-		rss_hf |= ETH_RSS_NONFRAG_IPV4_UDP;
-	if (flags & (1ULL << I40E_FILTER_PCTYPE_NONF_MULTICAST_IPV4_UDP))
-		rss_hf |= ETH_RSS_NONFRAG_IPV4_UDP;
-	if (flags & (1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_SCTP))
-		rss_hf |= ETH_RSS_NONFRAG_IPV4_SCTP;
-	if (flags & (1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_OTHER))
-		rss_hf |= ETH_RSS_NONFRAG_IPV4_OTHER;
-	if (flags & (1ULL << I40E_FILTER_PCTYPE_FRAG_IPV6))
-		rss_hf |= ETH_RSS_FRAG_IPV6;
-	if (flags & (1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_TCP))
-		rss_hf |= ETH_RSS_NONFRAG_IPV6_TCP;
-	if (flags & (1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_TCP_SYN_NO_ACK))
-		rss_hf |= ETH_RSS_NONFRAG_IPV6_TCP;
-	if (flags & (1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_UDP))
-		rss_hf |= ETH_RSS_NONFRAG_IPV6_UDP;
-	if (flags & (1ULL << I40E_FILTER_PCTYPE_NONF_UNICAST_IPV6_UDP))
-		rss_hf |= ETH_RSS_NONFRAG_IPV6_UDP;
-	if (flags & (1ULL << I40E_FILTER_PCTYPE_NONF_MULTICAST_IPV6_UDP))
-		rss_hf |= ETH_RSS_NONFRAG_IPV6_UDP;
-	if (flags & (1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_SCTP))
-		rss_hf |= ETH_RSS_NONFRAG_IPV6_SCTP;
-	if (flags & (1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_OTHER))
-		rss_hf |= ETH_RSS_NONFRAG_IPV6_OTHER;
-	if (flags & (1ULL << I40E_FILTER_PCTYPE_L2_PAYLOAD))
-		rss_hf |= ETH_RSS_L2_PAYLOAD;
+	int i;
 
+	for (i = RTE_ETH_FLOW_UNKNOWN + 1; i < I40E_FLOW_TYPE_MAX; i++) {
+		if (flags & adapter->pctypes_tbl[i])
+			rss_hf |= (1ULL << i);
+	}
 	return rss_hf;
 }
 
@@ -6799,7 +6732,7 @@ i40e_hw_rss_hash_set(struct i40e_pf *pf, struct rte_eth_rss_conf *rss_conf)
 	if (ret)
 		return ret;
 
-	hena = i40e_config_hena(rss_conf->rss_hf, hw->mac.type);
+	hena = i40e_config_hena(pf->adapter, rss_conf->rss_hf);
 	i40e_write_rx_ctl(hw, I40E_PFQF_HENA(0), (uint32_t)hena);
 	i40e_write_rx_ctl(hw, I40E_PFQF_HENA(1), (uint32_t)(hena >> 32));
 	I40E_WRITE_FLUSH(hw);
@@ -6813,14 +6746,13 @@ i40e_dev_rss_hash_update(struct rte_eth_dev *dev,
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
-	uint64_t rss_hf = rss_conf->rss_hf & I40E_RSS_OFFLOAD_ALL;
+	uint64_t rss_hf = rss_conf->rss_hf & pf->adapter->flow_types_mask;
 	uint64_t hena;
 
 	hena = (uint64_t)i40e_read_rx_ctl(hw, I40E_PFQF_HENA(0));
 	hena |= ((uint64_t)i40e_read_rx_ctl(hw, I40E_PFQF_HENA(1))) << 32;
-	if (!(hena & ((hw->mac.type == I40E_MAC_X722)
-		 ? I40E_RSS_HENA_ALL_X722
-		 : I40E_RSS_HENA_ALL))) { /* RSS disabled */
+
+	if (!(hena & pf->adapter->pctypes_mask)) { /* RSS disabled */
 		if (rss_hf != 0) /* Enable RSS */
 			return -EINVAL;
 		return 0; /* Nothing to do */
@@ -6845,7 +6777,7 @@ i40e_dev_rss_hash_conf_get(struct rte_eth_dev *dev,
 
 	hena = (uint64_t)i40e_read_rx_ctl(hw, I40E_PFQF_HENA(0));
 	hena |= ((uint64_t)i40e_read_rx_ctl(hw, I40E_PFQF_HENA(1))) << 32;
-	rss_conf->rss_hf = i40e_parse_hena(hena);
+	rss_conf->rss_hf = i40e_parse_hena(pf->adapter, hena);
 
 	return 0;
 }
@@ -7620,7 +7552,7 @@ i40e_pf_config_rss(struct i40e_pf *pf)
 	}
 
 	rss_conf = pf->dev_data->dev_conf.rx_adv_conf.rss_conf;
-	if ((rss_conf.rss_hf & I40E_RSS_OFFLOAD_ALL) == 0) {
+	if ((rss_conf.rss_hf & pf->adapter->flow_types_mask) == 0) {
 		i40e_pf_disable_rss(pf);
 		return 0;
 	}
@@ -7841,9 +7773,9 @@ static int
 i40e_get_hash_filter_global_config(struct i40e_hw *hw,
 				   struct rte_eth_hash_global_conf *g_cfg)
 {
-	uint32_t reg, mask = I40E_FLOW_TYPES;
-	uint16_t i;
-	enum i40e_filter_pctype pctype;
+	struct i40e_adapter *adapter = (struct i40e_adapter *)hw->back;
+	uint32_t reg;
+	uint16_t i, j;
 
 	memset(g_cfg, 0, sizeof(*g_cfg));
 	reg = i40e_read_rx_ctl(hw, I40E_GLQF_CTL);
@@ -7854,29 +7786,38 @@ i40e_get_hash_filter_global_config(struct i40e_hw *hw,
 	PMD_DRV_LOG(DEBUG, "Hash function is %s",
 		(reg & I40E_GLQF_CTL_HTOEP_MASK) ? "Toeplitz" : "Simple XOR");
 
-	for (i = 0; mask && i < RTE_ETH_FLOW_MAX; i++) {
-		if (!(mask & (1UL << i)))
+	/*
+	 * We work only with lowest 32 bits which is not correct, but to work
+	 * properly the valid_bit_mask size should be increased up to 64 bits
+	 * and this will brake ABI. This modification will be done in next
+	 * release
+	 */
+	g_cfg->valid_bit_mask[0] = (uint32_t)adapter->flow_types_mask;
+
+	for (i = RTE_ETH_FLOW_UNKNOWN + 1; i < UINT32_BIT; i++) {
+		if (!adapter->pctypes_tbl[i])
 			continue;
-		mask &= ~(1UL << i);
-		/* Bit set indicats the coresponding flow type is supported */
-		g_cfg->valid_bit_mask[0] |= (1UL << i);
-		/* if flowtype is invalid, continue */
-		if (!I40E_VALID_FLOW(i))
-			continue;
-		pctype = i40e_flowtype_to_pctype(i);
-		reg = i40e_read_rx_ctl(hw, I40E_GLQF_HSYM(pctype));
-		if (reg & I40E_GLQF_HSYM_SYMH_ENA_MASK)
-			g_cfg->sym_hash_enable_mask[0] |= (1UL << i);
+		for (j = I40E_FILTER_PCTYPE_INVALID + 1;
+		     j < I40E_FILTER_PCTYPE_MAX; j++) {
+			if (adapter->pctypes_tbl[i] & (1ULL << j)) {
+				reg = i40e_read_rx_ctl(hw, I40E_GLQF_HSYM(j));
+				if (reg & I40E_GLQF_HSYM_SYMH_ENA_MASK) {
+					g_cfg->sym_hash_enable_mask[0] |=
+								(1UL << i);
+				}
+			}
+		}
 	}
 
 	return 0;
 }
 
 static int
-i40e_hash_global_config_check(struct rte_eth_hash_global_conf *g_cfg)
+i40e_hash_global_config_check(const struct i40e_adapter *adapter,
+			      const struct rte_eth_hash_global_conf *g_cfg)
 {
 	uint32_t i;
-	uint32_t mask0, i40e_mask = I40E_FLOW_TYPES;
+	uint32_t mask0, i40e_mask = adapter->flow_types_mask;
 
 	if (g_cfg->hash_func != RTE_ETH_HASH_FUNCTION_TOEPLITZ &&
 		g_cfg->hash_func != RTE_ETH_HASH_FUNCTION_SIMPLE_XOR &&
@@ -7919,64 +7860,36 @@ static int
 i40e_set_hash_filter_global_config(struct i40e_hw *hw,
 				   struct rte_eth_hash_global_conf *g_cfg)
 {
+	struct i40e_adapter *adapter = (struct i40e_adapter *)hw->back;
 	int ret;
-	uint16_t i;
+	uint16_t i, j;
 	uint32_t reg;
-	uint32_t mask0 = g_cfg->valid_bit_mask[0];
-	enum i40e_filter_pctype pctype;
+	/*
+	 * We work only with lowest 32 bits which is not correct, but to work
+	 * properly the valid_bit_mask size should be increased up to 64 bits
+	 * and this will brake ABI. This modification will be done in next
+	 * release
+	 */
+	uint32_t mask0 = g_cfg->valid_bit_mask[0] &
+					(uint32_t)adapter->flow_types_mask;
 
 	/* Check the input parameters */
-	ret = i40e_hash_global_config_check(g_cfg);
+	ret = i40e_hash_global_config_check(adapter, g_cfg);
 	if (ret < 0)
 		return ret;
 
-	for (i = 0; mask0 && i < UINT32_BIT; i++) {
-		if (!(mask0 & (1UL << i)))
-			continue;
-		mask0 &= ~(1UL << i);
-		/* if flowtype is invalid, continue */
-		if (!I40E_VALID_FLOW(i))
-			continue;
-		pctype = i40e_flowtype_to_pctype(i);
-		reg = (g_cfg->sym_hash_enable_mask[0] & (1UL << i)) ?
-				I40E_GLQF_HSYM_SYMH_ENA_MASK : 0;
-		if (hw->mac.type == I40E_MAC_X722) {
-			if (pctype == I40E_FILTER_PCTYPE_NONF_IPV4_UDP) {
-				i40e_write_rx_ctl(hw, I40E_GLQF_HSYM(
-				  I40E_FILTER_PCTYPE_NONF_IPV4_UDP), reg);
-				i40e_write_rx_ctl(hw, I40E_GLQF_HSYM(
-				  I40E_FILTER_PCTYPE_NONF_UNICAST_IPV4_UDP),
-				  reg);
-				i40e_write_rx_ctl(hw, I40E_GLQF_HSYM(
-				  I40E_FILTER_PCTYPE_NONF_MULTICAST_IPV4_UDP),
-				  reg);
-			} else if (pctype == I40E_FILTER_PCTYPE_NONF_IPV4_TCP) {
-				i40e_write_rx_ctl(hw, I40E_GLQF_HSYM(
-				  I40E_FILTER_PCTYPE_NONF_IPV4_TCP), reg);
-				i40e_write_rx_ctl(hw, I40E_GLQF_HSYM(
-				  I40E_FILTER_PCTYPE_NONF_IPV4_TCP_SYN_NO_ACK),
-				  reg);
-			} else if (pctype == I40E_FILTER_PCTYPE_NONF_IPV6_UDP) {
-				i40e_write_rx_ctl(hw, I40E_GLQF_HSYM(
-				  I40E_FILTER_PCTYPE_NONF_IPV6_UDP), reg);
-				i40e_write_rx_ctl(hw, I40E_GLQF_HSYM(
-				  I40E_FILTER_PCTYPE_NONF_UNICAST_IPV6_UDP),
-				  reg);
-				i40e_write_rx_ctl(hw, I40E_GLQF_HSYM(
-				  I40E_FILTER_PCTYPE_NONF_MULTICAST_IPV6_UDP),
-				  reg);
-			} else if (pctype == I40E_FILTER_PCTYPE_NONF_IPV6_TCP) {
-				i40e_write_rx_ctl(hw, I40E_GLQF_HSYM(
-				  I40E_FILTER_PCTYPE_NONF_IPV6_TCP), reg);
-				i40e_write_rx_ctl(hw, I40E_GLQF_HSYM(
-				  I40E_FILTER_PCTYPE_NONF_IPV6_TCP_SYN_NO_ACK),
-				  reg);
-			} else {
-				i40e_write_rx_ctl(hw, I40E_GLQF_HSYM(pctype),
-				  reg);
+	for (i = RTE_ETH_FLOW_UNKNOWN + 1; mask0 && i < UINT32_BIT; i++) {
+		if (mask0 & (1UL << i)) {
+			reg = (g_cfg->sym_hash_enable_mask[0] & (1UL << i)) ?
+					I40E_GLQF_HSYM_SYMH_ENA_MASK : 0;
+
+			for (j = I40E_FILTER_PCTYPE_INVALID + 1;
+			     j < I40E_FILTER_PCTYPE_MAX; j++) {
+				if (adapter->pctypes_tbl[i] & (1ULL << j))
+					i40e_write_rx_ctl(hw,
+							  I40E_GLQF_HSYM(j),
+							  reg);
 			}
-		} else {
-			i40e_write_rx_ctl(hw, I40E_GLQF_HSYM(pctype), reg);
 		}
 	}
 
@@ -8598,16 +8511,14 @@ i40e_filter_input_set_init(struct i40e_pf *pf)
 	uint64_t input_set, inset_reg;
 	uint32_t mask_reg[I40E_INSET_MASK_NUM_REG] = {0};
 	int num, i;
+	uint16_t flow_type;
 
 	for (pctype = I40E_FILTER_PCTYPE_NONF_IPV4_UDP;
 	     pctype <= I40E_FILTER_PCTYPE_L2_PAYLOAD; pctype++) {
-		if (hw->mac.type == I40E_MAC_X722) {
-			if (!I40E_VALID_PCTYPE_X722(pctype))
-				continue;
-		} else {
-			if (!I40E_VALID_PCTYPE(pctype))
-				continue;
-		}
+		flow_type = i40e_pctype_to_flowtype(pf->adapter, pctype);
+
+		if (flow_type == RTE_ETH_FLOW_UNKNOWN)
+			continue;
 
 		input_set = i40e_get_default_input_set(pctype);
 
@@ -8670,7 +8581,8 @@ i40e_hash_filter_inset_select(struct i40e_hw *hw,
 		return -EINVAL;
 	}
 
-	if (!I40E_VALID_FLOW(conf->flow_type)) {
+	pctype = i40e_flowtype_to_pctype(pf->adapter, conf->flow_type);
+	if (pctype == I40E_FILTER_PCTYPE_INVALID) {
 		PMD_DRV_LOG(ERR, "invalid flow_type input.");
 		return -EINVAL;
 	}
@@ -8678,10 +8590,8 @@ i40e_hash_filter_inset_select(struct i40e_hw *hw,
 	if (hw->mac.type == I40E_MAC_X722) {
 		/* get translated pctype value in fd pctype register */
 		pctype = (enum i40e_filter_pctype)i40e_read_rx_ctl(hw,
-			I40E_GLQF_FD_PCTYPES((int)i40e_flowtype_to_pctype(
-			conf->flow_type)));
-	} else
-		pctype = i40e_flowtype_to_pctype(conf->flow_type);
+			I40E_GLQF_FD_PCTYPES((int)pctype));
+	}
 
 	ret = i40e_parse_input_set(&input_set, pctype, conf->field,
 				   conf->inset_size);
@@ -8689,11 +8599,7 @@ i40e_hash_filter_inset_select(struct i40e_hw *hw,
 		PMD_DRV_LOG(ERR, "Failed to parse input set");
 		return -EINVAL;
 	}
-	if (i40e_validate_input_set(pctype, RTE_ETH_FILTER_HASH,
-				    input_set) != 0) {
-		PMD_DRV_LOG(ERR, "Invalid input set");
-		return -EINVAL;
-	}
+
 	if (conf->op == RTE_ETH_INPUT_SET_ADD) {
 		/* get inset value in register */
 		inset_reg = i40e_read_rx_ctl(hw, I40E_GLQF_HASH_INSET(1, pctype));
@@ -8747,22 +8653,17 @@ i40e_fdir_filter_inset_select(struct i40e_pf *pf,
 		return -EINVAL;
 	}
 
-	if (!I40E_VALID_FLOW(conf->flow_type)) {
+	pctype = i40e_flowtype_to_pctype(pf->adapter, conf->flow_type);
+
+	if (pctype == I40E_FILTER_PCTYPE_INVALID) {
 		PMD_DRV_LOG(ERR, "invalid flow_type input.");
 		return -EINVAL;
 	}
-
-	pctype = i40e_flowtype_to_pctype(conf->flow_type);
 
 	ret = i40e_parse_input_set(&input_set, pctype, conf->field,
 				   conf->inset_size);
 	if (ret) {
 		PMD_DRV_LOG(ERR, "Failed to parse input set");
-		return -EINVAL;
-	}
-	if (i40e_validate_input_set(pctype, RTE_ETH_FILTER_FDIR,
-				    input_set) != 0) {
-		PMD_DRV_LOG(ERR, "Invalid input set");
 		return -EINVAL;
 	}
 
@@ -9203,72 +9104,42 @@ i40e_hw_init(struct rte_eth_dev *dev)
 	i40e_set_symmetric_hash_enable_per_port(hw, 0);
 }
 
+/*
+ * For X722 it is possible to have multiple pctypes mapped to the same flowtype
+ * however this function will return only one highest pctype index,
+ * which is not quite correct. This is known problem of i40e driver
+ * and needs to be fixed later.
+ */
 enum i40e_filter_pctype
-i40e_flowtype_to_pctype(uint16_t flow_type)
+i40e_flowtype_to_pctype(const struct i40e_adapter *adapter, uint16_t flow_type)
 {
-	static const enum i40e_filter_pctype pctype_table[] = {
-		[RTE_ETH_FLOW_FRAG_IPV4] = I40E_FILTER_PCTYPE_FRAG_IPV4,
-		[RTE_ETH_FLOW_NONFRAG_IPV4_UDP] =
-			I40E_FILTER_PCTYPE_NONF_IPV4_UDP,
-		[RTE_ETH_FLOW_NONFRAG_IPV4_TCP] =
-			I40E_FILTER_PCTYPE_NONF_IPV4_TCP,
-		[RTE_ETH_FLOW_NONFRAG_IPV4_SCTP] =
-			I40E_FILTER_PCTYPE_NONF_IPV4_SCTP,
-		[RTE_ETH_FLOW_NONFRAG_IPV4_OTHER] =
-			I40E_FILTER_PCTYPE_NONF_IPV4_OTHER,
-		[RTE_ETH_FLOW_FRAG_IPV6] = I40E_FILTER_PCTYPE_FRAG_IPV6,
-		[RTE_ETH_FLOW_NONFRAG_IPV6_UDP] =
-			I40E_FILTER_PCTYPE_NONF_IPV6_UDP,
-		[RTE_ETH_FLOW_NONFRAG_IPV6_TCP] =
-			I40E_FILTER_PCTYPE_NONF_IPV6_TCP,
-		[RTE_ETH_FLOW_NONFRAG_IPV6_SCTP] =
-			I40E_FILTER_PCTYPE_NONF_IPV6_SCTP,
-		[RTE_ETH_FLOW_NONFRAG_IPV6_OTHER] =
-			I40E_FILTER_PCTYPE_NONF_IPV6_OTHER,
-		[RTE_ETH_FLOW_L2_PAYLOAD] = I40E_FILTER_PCTYPE_L2_PAYLOAD,
-	};
+	int i;
+	uint64_t pctype_mask;
 
-	return pctype_table[flow_type];
+	if (flow_type < I40E_FLOW_TYPE_MAX) {
+		pctype_mask = adapter->pctypes_tbl[flow_type];
+		for (i = I40E_FILTER_PCTYPE_MAX - 1; i > 0; i--) {
+			if (pctype_mask & (1ULL << i))
+				return (enum i40e_filter_pctype)i;
+		}
+	}
+	return I40E_FILTER_PCTYPE_INVALID;
 }
 
 uint16_t
-i40e_pctype_to_flowtype(enum i40e_filter_pctype pctype)
+i40e_pctype_to_flowtype(const struct i40e_adapter *adapter,
+			enum i40e_filter_pctype pctype)
 {
-	static const uint16_t flowtype_table[] = {
-		[I40E_FILTER_PCTYPE_FRAG_IPV4] = RTE_ETH_FLOW_FRAG_IPV4,
-		[I40E_FILTER_PCTYPE_NONF_IPV4_UDP] =
-			RTE_ETH_FLOW_NONFRAG_IPV4_UDP,
-		[I40E_FILTER_PCTYPE_NONF_UNICAST_IPV4_UDP] =
-			RTE_ETH_FLOW_NONFRAG_IPV4_UDP,
-		[I40E_FILTER_PCTYPE_NONF_MULTICAST_IPV4_UDP] =
-			RTE_ETH_FLOW_NONFRAG_IPV4_UDP,
-		[I40E_FILTER_PCTYPE_NONF_IPV4_TCP] =
-			RTE_ETH_FLOW_NONFRAG_IPV4_TCP,
-		[I40E_FILTER_PCTYPE_NONF_IPV4_TCP_SYN_NO_ACK] =
-			RTE_ETH_FLOW_NONFRAG_IPV4_TCP,
-		[I40E_FILTER_PCTYPE_NONF_IPV4_SCTP] =
-			RTE_ETH_FLOW_NONFRAG_IPV4_SCTP,
-		[I40E_FILTER_PCTYPE_NONF_IPV4_OTHER] =
-			RTE_ETH_FLOW_NONFRAG_IPV4_OTHER,
-		[I40E_FILTER_PCTYPE_FRAG_IPV6] = RTE_ETH_FLOW_FRAG_IPV6,
-		[I40E_FILTER_PCTYPE_NONF_IPV6_UDP] =
-			RTE_ETH_FLOW_NONFRAG_IPV6_UDP,
-		[I40E_FILTER_PCTYPE_NONF_UNICAST_IPV6_UDP] =
-			RTE_ETH_FLOW_NONFRAG_IPV6_UDP,
-		[I40E_FILTER_PCTYPE_NONF_MULTICAST_IPV6_UDP] =
-			RTE_ETH_FLOW_NONFRAG_IPV6_UDP,
-		[I40E_FILTER_PCTYPE_NONF_IPV6_TCP] =
-			RTE_ETH_FLOW_NONFRAG_IPV6_TCP,
-		[I40E_FILTER_PCTYPE_NONF_IPV6_TCP_SYN_NO_ACK] =
-			RTE_ETH_FLOW_NONFRAG_IPV6_TCP,
-		[I40E_FILTER_PCTYPE_NONF_IPV6_SCTP] =
-			RTE_ETH_FLOW_NONFRAG_IPV6_SCTP,
-		[I40E_FILTER_PCTYPE_NONF_IPV6_OTHER] =
-			RTE_ETH_FLOW_NONFRAG_IPV6_OTHER,
-		[I40E_FILTER_PCTYPE_L2_PAYLOAD] = RTE_ETH_FLOW_L2_PAYLOAD,
-	};
+	uint16_t flowtype;
+	uint64_t pctype_mask = 1ULL << pctype;
 
-	return flowtype_table[pctype];
+	for (flowtype = RTE_ETH_FLOW_UNKNOWN + 1; flowtype < I40E_FLOW_TYPE_MAX;
+	     flowtype++) {
+		if (adapter->pctypes_tbl[flowtype] & pctype_mask)
+			return flowtype;
+	}
+
+	return RTE_ETH_FLOW_UNKNOWN;
 }
 
 /*

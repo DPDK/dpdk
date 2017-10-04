@@ -478,8 +478,9 @@ struct i40e_fdir_flex_mask {
 	} bitmask[I40E_FDIR_BITMASK_NUM_WORD];
 };
 
-#define I40E_FILTER_PCTYPE_MAX 64
-#define I40E_MAX_FDIR_FILTER_NUM (1024 * 8)
+#define I40E_FILTER_PCTYPE_INVALID 0
+#define I40E_FILTER_PCTYPE_MAX     64
+#define I40E_MAX_FDIR_FILTER_NUM   (1024 * 8)
 
 struct i40e_fdir_filter {
 	TAILQ_ENTRY(i40e_fdir_filter) rules;
@@ -852,7 +853,8 @@ struct i40e_vf {
 	uint64_t flags;
 };
 
-#define I40E_MAX_PKT_TYPE 256
+#define I40E_MAX_PKT_TYPE  256
+#define I40E_FLOW_TYPE_MAX 64
 
 /*
  * Structure to store private data for each PF/VF instance.
@@ -881,6 +883,10 @@ struct i40e_adapter {
 
 	/* ptype mapping table */
 	uint32_t ptype_tbl[I40E_MAX_PKT_TYPE] __rte_cache_min_aligned;
+	/* flow type to pctype mapping table */
+	uint64_t pctypes_tbl[I40E_FLOW_TYPE_MAX] __rte_cache_min_aligned;
+	uint64_t flow_types_mask;
+	uint64_t pctypes_mask;
 };
 
 extern const struct rte_flow_ops i40e_flow_ops;
@@ -925,8 +931,8 @@ int i40e_vsi_vlan_pvid_set(struct i40e_vsi *vsi,
 			   struct i40e_vsi_vlan_pvid_info *info);
 int i40e_vsi_config_vlan_stripping(struct i40e_vsi *vsi, bool on);
 int i40e_vsi_config_vlan_filter(struct i40e_vsi *vsi, bool on);
-uint64_t i40e_config_hena(uint64_t flags, enum i40e_mac_type type);
-uint64_t i40e_parse_hena(uint64_t flags);
+uint64_t i40e_config_hena(const struct i40e_adapter *adapter, uint64_t flags);
+uint64_t i40e_parse_hena(const struct i40e_adapter *adapter, uint64_t flags);
 enum i40e_status_code i40e_fdir_setup_tx_resources(struct i40e_pf *pf);
 enum i40e_status_code i40e_fdir_setup_rx_resources(struct i40e_pf *pf);
 int i40e_fdir_setup(struct i40e_pf *pf);
@@ -935,8 +941,11 @@ const struct rte_memzone *i40e_memzone_reserve(const char *name,
 					int socket_id);
 int i40e_fdir_configure(struct rte_eth_dev *dev);
 void i40e_fdir_teardown(struct i40e_pf *pf);
-enum i40e_filter_pctype i40e_flowtype_to_pctype(uint16_t flow_type);
-uint16_t i40e_pctype_to_flowtype(enum i40e_filter_pctype pctype);
+enum i40e_filter_pctype
+	i40e_flowtype_to_pctype(const struct i40e_adapter *adapter,
+				uint16_t flow_type);
+uint16_t i40e_pctype_to_flowtype(const struct i40e_adapter *adapter,
+				 enum i40e_filter_pctype pctype);
 int i40e_fdir_ctrl_func(struct rte_eth_dev *dev,
 			  enum rte_filter_op filter_op,
 			  void *arg);

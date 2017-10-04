@@ -323,6 +323,7 @@ i40e_init_flx_pld(struct i40e_pf *pf)
 	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
 	uint8_t pctype;
 	int i, index;
+	uint16_t flow_type;
 
 	/*
 	 * Define the bytes stream extracted as flexible payload in
@@ -344,15 +345,10 @@ i40e_init_flx_pld(struct i40e_pf *pf)
 	/* initialize the masks */
 	for (pctype = I40E_FILTER_PCTYPE_NONF_IPV4_UDP;
 	     pctype <= I40E_FILTER_PCTYPE_L2_PAYLOAD; pctype++) {
-		if (hw->mac.type == I40E_MAC_X722) {
-			if (!I40E_VALID_PCTYPE_X722(
-				 (enum i40e_filter_pctype)pctype))
-				continue;
-		} else {
-			if (!I40E_VALID_PCTYPE(
-				 (enum i40e_filter_pctype)pctype))
-				continue;
-		}
+		flow_type = i40e_pctype_to_flowtype(pf->adapter, pctype);
+
+		if (flow_type == RTE_ETH_FLOW_UNKNOWN)
+			continue;
 		pf->fdir.flex_mask[pctype].word_mask = 0;
 		i40e_write_rx_ctl(hw, I40E_PRTQF_FD_FLXINSET(pctype), 0);
 		for (i = 0; i < I40E_FDIR_BITMASK_NUM_WORD; i++) {
@@ -449,7 +445,8 @@ i40e_check_fdir_flex_payload(const struct rte_eth_flex_payload_cfg *flex_cfg)
  * arguments are valid
  */
 static int
-i40e_check_fdir_flex_conf(const struct rte_eth_fdir_flex_conf *conf)
+i40e_check_fdir_flex_conf(const struct i40e_adapter *adapter,
+			  const struct rte_eth_fdir_flex_conf *conf)
 {
 	const struct rte_eth_flex_payload_cfg *flex_cfg;
 	const struct rte_eth_fdir_flex_mask *flex_mask;
@@ -457,6 +454,7 @@ i40e_check_fdir_flex_conf(const struct rte_eth_fdir_flex_conf *conf)
 	uint8_t nb_bitmask;
 	uint16_t i, j;
 	int ret = 0;
+	enum i40e_filter_pctype pctype;
 
 	if (conf == NULL) {
 		PMD_DRV_LOG(INFO, "NULL pointer.");
@@ -487,7 +485,8 @@ i40e_check_fdir_flex_conf(const struct rte_eth_fdir_flex_conf *conf)
 	}
 	for (i = 0; i < conf->nb_flexmasks; i++) {
 		flex_mask = &conf->flex_mask[i];
-		if (!I40E_VALID_FLOW(flex_mask->flow_type)) {
+		pctype = i40e_flowtype_to_pctype(adapter, flex_mask->flow_type);
+		if (pctype == I40E_FILTER_PCTYPE_INVALID) {
 			PMD_DRV_LOG(WARNING, "invalid flow type.");
 			return -EINVAL;
 		}
@@ -650,7 +649,7 @@ i40e_fdir_configure(struct rte_eth_dev *dev)
 	i40e_init_flx_pld(pf); /* set flex config to default value */
 
 	conf = &dev->data->dev_conf.fdir_conf.flex_conf;
-	ret = i40e_check_fdir_flex_conf(conf);
+	ret = i40e_check_fdir_flex_conf(pf->adapter, conf);
 	if (ret < 0) {
 		PMD_DRV_LOG(ERR, " invalid configuration arguments.");
 		return -EINVAL;
@@ -664,11 +663,11 @@ i40e_fdir_configure(struct rte_eth_dev *dev)
 			/* get translated pctype value in fd pctype register */
 			pctype = (enum i40e_filter_pctype)i40e_read_rx_ctl(
 				hw, I40E_GLQF_FD_PCTYPES(
-				(int)i40e_flowtype_to_pctype(
+				(int)i40e_flowtype_to_pctype(pf->adapter,
 				conf->flex_mask[i].flow_type)));
 		} else
-			pctype = i40e_flowtype_to_pctype(
-				conf->flex_mask[i].flow_type);
+			pctype = i40e_flowtype_to_pctype(pf->adapter,
+						conf->flex_mask[i].flow_type);
 
 		i40e_set_flex_mask_on_pctype(pf, pctype, &conf->flex_mask[i]);
 	}
@@ -1100,7 +1099,8 @@ i40e_add_del_fdir_filter(struct rte_eth_dev *dev,
 		return -ENOTSUP;
 	}
 
-	if (!I40E_VALID_FLOW(filter->input.flow_type)) {
+	pctype = i40e_flowtype_to_pctype(pf->adapter, filter->input.flow_type);
+	if (pctype == I40E_FILTER_PCTYPE_INVALID) {
 		PMD_DRV_LOG(ERR, "invalid flow_type input.");
 		return -EINVAL;
 	}
@@ -1141,12 +1141,8 @@ i40e_add_del_fdir_filter(struct rte_eth_dev *dev,
 	if (hw->mac.type == I40E_MAC_X722) {
 		/* get translated pctype value in fd pctype register */
 		pctype = (enum i40e_filter_pctype)i40e_read_rx_ctl(
-			hw, I40E_GLQF_FD_PCTYPES(
-			(int)i40e_flowtype_to_pctype(
-			filter->input.flow_type)));
-	} else
-		pctype = i40e_flowtype_to_pctype(filter->input.flow_type);
-
+			hw, I40E_GLQF_FD_PCTYPES((int)pctype));
+	}
 	ret = i40e_fdir_filter_programming(pf, pctype, filter, add);
 	if (ret < 0) {
 		PMD_DRV_LOG(ERR, "fdir programming fails for PCTYPE(%u).",
@@ -1384,7 +1380,6 @@ i40e_fdir_info_get_flex_mask(struct i40e_pf *pf,
 {
 	struct i40e_fdir_flex_mask *mask;
 	struct rte_eth_fdir_flex_mask *ptr = flex_mask;
-	struct i40e_hw *hw = I40E_PF_TO_HW(pf);
 	uint16_t flow_type;
 	uint8_t i, j;
 	uint16_t off_bytes, mask_tmp;
@@ -1393,14 +1388,11 @@ i40e_fdir_info_get_flex_mask(struct i40e_pf *pf,
 	     i <= I40E_FILTER_PCTYPE_L2_PAYLOAD;
 	     i++) {
 		mask =  &pf->fdir.flex_mask[i];
-		if (hw->mac.type == I40E_MAC_X722) {
-			if (!I40E_VALID_PCTYPE_X722((enum i40e_filter_pctype)i))
-				continue;
-		} else {
-			if (!I40E_VALID_PCTYPE((enum i40e_filter_pctype)i))
-				continue;
-		}
-		flow_type = i40e_pctype_to_flowtype((enum i40e_filter_pctype)i);
+		flow_type = i40e_pctype_to_flowtype(pf->adapter,
+						    (enum i40e_filter_pctype)i);
+		if (flow_type == RTE_ETH_FLOW_UNKNOWN)
+			continue;
+
 		for (j = 0; j < I40E_FDIR_MAX_FLEXWORD_NUM; j++) {
 			if (mask->word_mask & I40E_FLEX_WORD_MASK(j)) {
 				ptr->mask[j * sizeof(uint16_t)] = UINT8_MAX;

@@ -2943,6 +2943,64 @@ i40e_set_default_ptype_table(struct rte_eth_dev *dev)
 		ad->ptype_tbl[i] = i40e_get_default_pkt_type(i);
 }
 
+void __attribute__((cold))
+i40e_set_default_pctype_table(struct rte_eth_dev *dev)
+{
+	struct i40e_adapter *ad =
+			I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+	struct i40e_hw *hw = I40E_DEV_PRIVATE_TO_HW(dev->data->dev_private);
+	int i;
+
+	for (i = 0; i < I40E_FLOW_TYPE_MAX; i++)
+		ad->pctypes_tbl[i] = 0ULL;
+	ad->flow_types_mask = 0ULL;
+	ad->pctypes_mask = 0ULL;
+
+	ad->pctypes_tbl[RTE_ETH_FLOW_FRAG_IPV4] =
+				(1ULL << I40E_FILTER_PCTYPE_FRAG_IPV4);
+	ad->pctypes_tbl[RTE_ETH_FLOW_NONFRAG_IPV4_UDP] =
+				(1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_UDP);
+	ad->pctypes_tbl[RTE_ETH_FLOW_NONFRAG_IPV4_TCP] =
+				(1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_TCP);
+	ad->pctypes_tbl[RTE_ETH_FLOW_NONFRAG_IPV4_SCTP] =
+				(1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_SCTP);
+	ad->pctypes_tbl[RTE_ETH_FLOW_NONFRAG_IPV4_OTHER] =
+				(1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_OTHER);
+	ad->pctypes_tbl[RTE_ETH_FLOW_FRAG_IPV6] =
+				(1ULL << I40E_FILTER_PCTYPE_FRAG_IPV6);
+	ad->pctypes_tbl[RTE_ETH_FLOW_NONFRAG_IPV6_UDP] =
+				(1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_UDP);
+	ad->pctypes_tbl[RTE_ETH_FLOW_NONFRAG_IPV6_TCP] =
+				(1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_TCP);
+	ad->pctypes_tbl[RTE_ETH_FLOW_NONFRAG_IPV6_SCTP] =
+				(1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_SCTP);
+	ad->pctypes_tbl[RTE_ETH_FLOW_NONFRAG_IPV6_OTHER] =
+				(1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_OTHER);
+	ad->pctypes_tbl[RTE_ETH_FLOW_L2_PAYLOAD] =
+				(1ULL << I40E_FILTER_PCTYPE_L2_PAYLOAD);
+
+	if (hw->mac.type == I40E_MAC_X722) {
+		ad->pctypes_tbl[RTE_ETH_FLOW_NONFRAG_IPV4_UDP] |=
+			(1ULL << I40E_FILTER_PCTYPE_NONF_UNICAST_IPV4_UDP);
+		ad->pctypes_tbl[RTE_ETH_FLOW_NONFRAG_IPV4_UDP] |=
+			(1ULL << I40E_FILTER_PCTYPE_NONF_MULTICAST_IPV4_UDP);
+		ad->pctypes_tbl[RTE_ETH_FLOW_NONFRAG_IPV4_TCP] |=
+			(1ULL << I40E_FILTER_PCTYPE_NONF_IPV4_TCP_SYN_NO_ACK);
+		ad->pctypes_tbl[RTE_ETH_FLOW_NONFRAG_IPV6_UDP] |=
+			(1ULL << I40E_FILTER_PCTYPE_NONF_UNICAST_IPV6_UDP);
+		ad->pctypes_tbl[RTE_ETH_FLOW_NONFRAG_IPV6_UDP] |=
+			(1ULL << I40E_FILTER_PCTYPE_NONF_MULTICAST_IPV6_UDP);
+		ad->pctypes_tbl[RTE_ETH_FLOW_NONFRAG_IPV6_TCP] |=
+			(1ULL << I40E_FILTER_PCTYPE_NONF_IPV6_TCP_SYN_NO_ACK);
+	}
+
+	for (i = 0; i < I40E_FLOW_TYPE_MAX; i++) {
+		if (ad->pctypes_tbl[i])
+			ad->flow_types_mask |= (1ULL << i);
+		ad->pctypes_mask |= ad->pctypes_tbl[i];
+	}
+}
+
 /* Stubs needed for linkage when CONFIG_RTE_I40E_INC_VECTOR is set to 'n' */
 int __attribute__((weak))
 i40e_rx_vec_dev_conf_condition_check(struct rte_eth_dev __rte_unused *dev)

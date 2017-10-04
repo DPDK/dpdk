@@ -255,6 +255,7 @@ void i40e_set_tx_function_flag(struct rte_eth_dev *dev,
 			       struct i40e_tx_queue *txq);
 void i40e_set_tx_function(struct rte_eth_dev *dev);
 void i40e_set_default_ptype_table(struct rte_eth_dev *dev);
+void i40e_set_default_pctype_table(struct rte_eth_dev *dev);
 
 /* For each value it means, datasheet of hardware can tell more details
  *
