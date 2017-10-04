@@ -105,7 +105,8 @@ The public API headers are grouped by topics:
   [LPM IPv4 route]     (@ref rte_lpm.h),
   [LPM IPv6 route]     (@ref rte_lpm6.h),
   [ACL]                (@ref rte_acl.h),
-  [EFD]                (@ref rte_efd.h)
+  [EFD]                (@ref rte_efd.h),
+  [member]             (@ref rte_member.h)
 
 - **QoS**:
   [metering]           (@ref rte_meter.h),

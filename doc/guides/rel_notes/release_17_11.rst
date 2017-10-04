@@ -64,6 +64,23 @@ New Features
    * Support for Flow API
    * Support for Tx and Rx descriptor status functions
 
+* **Added Membership library (rte_member).**
+
+  Added membership library. It provides an API for DPDK applications to insert a
+  new member, delete an existing member, or query the existence of a member in a
+  given set, or a group of sets. For the case of a group of sets the library
+  will return not only whether the element has been inserted before in one of
+  the sets but also which set it belongs to.
+
+  The Membership Library is an extension and generalization of a traditional
+  filter (for example Bloom Filter) structure that has multiple usages in a wide
+  variety of workloads and applications. In general, the Membership Library is a
+  data structure that provides a “set-summary” and responds to set-membership
+  queries whether a certain member belongs to a set(s).
+
+  See the :ref:`Membership Library <Member_Library>` documentation in
+  the Programmers Guide document, for more information.
+
 
 Resolved Issues
 ---------------

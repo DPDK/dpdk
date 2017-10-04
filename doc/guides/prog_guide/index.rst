@@ -50,6 +50,7 @@ Programmer's Guide
     timer_lib
     hash_lib
     efd_lib
+    member_lib
     lpm_lib
     lpm6_lib
     packet_distrib_lib
@@ -191,6 +192,19 @@ Programmer's Guide
 
 :numref:`figure_efd11` :ref:`figure_efd11`
 
+:numref:`figure_membership1` :ref:`figure_membership1`
+
+:numref:`figure_membership2` :ref:`figure_membership2`
+
+:numref:`figure_membership3` :ref:`figure_membership3`
+
+:numref:`figure_membership4` :ref:`figure_membership4`
+
+:numref:`figure_membership5` :ref:`figure_membership5`
+
+:numref:`figure_membership6` :ref:`figure_membership6`
+
+:numref:`figure_membership7` :ref:`figure_membership7`
 
 **Tables**
 
