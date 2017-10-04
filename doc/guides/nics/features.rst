@@ -179,7 +179,7 @@ Jumbo frame
 
 Supports Rx jumbo frames.
 
-* **[uses]    user config**: ``dev_conf.rxmode.jumbo_frame``,
+* **[uses]    rte_eth_rxconf,rte_eth_rxmode**: ``offloads:DEV_RX_OFFLOAD_JUMBO_FRAME``.
   ``dev_conf.rxmode.max_rx_pkt_len``.
 * **[related] rte_eth_dev_info**: ``max_rx_pktlen``.
 * **[related] API**: ``rte_eth_dev_set_mtu()``.
@@ -192,7 +192,7 @@ Scattered Rx
 
 Supports receiving segmented mbufs.
 
-* **[uses]       user config**: ``dev_conf.rxmode.enable_scatter``.
+* **[uses]       rte_eth_rxconf,rte_eth_rxmode**: ``offloads:DEV_RX_OFFLOAD_SCATTER``.
 * **[implements] datapath**: ``Scattered Rx function``.
 * **[implements] rte_eth_dev_data**: ``scattered_rx``.
 * **[provides]   eth_dev_ops**: ``rxq_info_get:scattered_rx``.
@@ -206,11 +206,11 @@ LRO
 
 Supports Large Receive Offload.
 
-* **[uses]       user config**: ``dev_conf.rxmode.enable_lro``.
+* **[uses]       rte_eth_rxconf,rte_eth_rxmode**: ``offloads:DEV_RX_OFFLOAD_TCP_LRO``.
 * **[implements] datapath**: ``LRO functionality``.
 * **[implements] rte_eth_dev_data**: ``lro``.
 * **[provides]   mbuf**: ``mbuf.ol_flags:PKT_RX_LRO``, ``mbuf.tso_segsz``.
-* **[provides]   rte_eth_dev_info**: ``rx_offload_capa:DEV_RX_OFFLOAD_TCP_LRO``.
+* **[provides]   rte_eth_dev_info**: ``rx_offload_capa,rx_queue_offload_capa:DEV_RX_OFFLOAD_TCP_LRO``.
 
 
 .. _nic_features_tso:
@@ -363,7 +363,7 @@ VLAN filter
 
 Supports filtering of a VLAN Tag identifier.
 
-* **[uses]       user config**: ``dev_conf.rxmode.hw_vlan_filter``.
+* **[uses]       rte_eth_rxconf,rte_eth_rxmode**: ``offloads:DEV_RX_OFFLOAD_VLAN_FILTER``.
 * **[implements] eth_dev_ops**: ``vlan_filter_set``.
 * **[related]    API**: ``rte_eth_dev_vlan_filter()``.
 
@@ -499,7 +499,7 @@ CRC offload
 
 Supports CRC stripping by hardware.
 
-* **[uses] user config**: ``dev_conf.rxmode.hw_strip_crc``.
+* **[uses] rte_eth_rxconf,rte_eth_rxmode**: ``offloads:DEV_RX_OFFLOAD_CRC_STRIP``.
 
 
 .. _nic_features_vlan_offload:
@@ -509,11 +509,10 @@ VLAN offload
 
 Supports VLAN offload to hardware.
 
-* **[uses]       user config**: ``dev_conf.rxmode.hw_vlan_strip``,
-  ``dev_conf.rxmode.hw_vlan_filter``, ``dev_conf.rxmode.hw_vlan_extend``.
+* **[uses]       rte_eth_rxconf,rte_eth_rxmode**: ``offloads:DEV_RX_OFFLOAD_VLAN_STRIP,DEV_RX_OFFLOAD_VLAN_FILTER,DEV_RX_OFFLOAD_VLAN_EXTEND``.
 * **[implements] eth_dev_ops**: ``vlan_offload_set``.
 * **[provides]   mbuf**: ``mbuf.ol_flags:PKT_RX_VLAN_STRIPPED``, ``mbuf.vlan_tci``.
-* **[provides]   rte_eth_dev_info**: ``rx_offload_capa:DEV_RX_OFFLOAD_VLAN_STRIP``,
+* **[provides]   rte_eth_dev_info**: ``rx_offload_capa,rx_queue_offload_capa:DEV_RX_OFFLOAD_VLAN_STRIP``,
   ``tx_offload_capa:DEV_TX_OFFLOAD_VLAN_INSERT``.
 * **[related]    API**: ``rte_eth_dev_set_vlan_offload()``,
   ``rte_eth_dev_get_vlan_offload()``.
@@ -526,10 +525,11 @@ QinQ offload
 
 Supports QinQ (queue in queue) offload.
 
+* **[uses]     rte_eth_rxconf,rte_eth_rxmode**: ``offloads:DEV_RX_OFFLOAD_QINQ_STRIP``.
 * **[uses]     mbuf**: ``mbuf.ol_flags:PKT_TX_QINQ_PKT``.
 * **[provides] mbuf**: ``mbuf.ol_flags:PKT_RX_QINQ_STRIPPED``, ``mbuf.vlan_tci``,
    ``mbuf.vlan_tci_outer``.
-* **[provides] rte_eth_dev_info**: ``rx_offload_capa:DEV_RX_OFFLOAD_QINQ_STRIP``,
+* **[provides] rte_eth_dev_info**: ``rx_offload_capa,rx_queue_offload_capa:DEV_RX_OFFLOAD_QINQ_STRIP``,
   ``tx_offload_capa:DEV_TX_OFFLOAD_QINQ_INSERT``.
 
 
@@ -540,13 +540,13 @@ L3 checksum offload
 
 Supports L3 checksum offload.
 
-* **[uses]     user config**: ``dev_conf.rxmode.hw_ip_checksum``.
+* **[uses]     rte_eth_rxconf,rte_eth_rxmode**: ``offloads:DEV_RX_OFFLOAD_IPV4_CKSUM``.
 * **[uses]     mbuf**: ``mbuf.ol_flags:PKT_TX_IP_CKSUM``,
   ``mbuf.ol_flags:PKT_TX_IPV4`` | ``PKT_TX_IPV6``.
 * **[provides] mbuf**: ``mbuf.ol_flags:PKT_RX_IP_CKSUM_UNKNOWN`` |
   ``PKT_RX_IP_CKSUM_BAD`` | ``PKT_RX_IP_CKSUM_GOOD`` |
   ``PKT_RX_IP_CKSUM_NONE``.
-* **[provides] rte_eth_dev_info**: ``rx_offload_capa:DEV_RX_OFFLOAD_IPV4_CKSUM``,
+* **[provides] rte_eth_dev_info**: ``rx_offload_capa,rx_queue_offload_capa:DEV_RX_OFFLOAD_IPV4_CKSUM``,
   ``tx_offload_capa:DEV_TX_OFFLOAD_IPV4_CKSUM``.
 
 
@@ -557,13 +557,14 @@ L4 checksum offload
 
 Supports L4 checksum offload.
 
+* **[uses]     rte_eth_rxconf,rte_eth_rxmode**: ``offloads:DEV_RX_OFFLOAD_UDP_CKSUM,DEV_RX_OFFLOAD_TCP_CKSUM``.
 * **[uses]     mbuf**: ``mbuf.ol_flags:PKT_TX_IPV4`` | ``PKT_TX_IPV6``,
   ``mbuf.ol_flags:PKT_TX_L4_NO_CKSUM`` | ``PKT_TX_TCP_CKSUM`` |
   ``PKT_TX_SCTP_CKSUM`` | ``PKT_TX_UDP_CKSUM``.
 * **[provides] mbuf**: ``mbuf.ol_flags:PKT_RX_L4_CKSUM_UNKNOWN`` |
   ``PKT_RX_L4_CKSUM_BAD`` | ``PKT_RX_L4_CKSUM_GOOD`` |
   ``PKT_RX_L4_CKSUM_NONE``.
-* **[provides] rte_eth_dev_info**: ``rx_offload_capa:DEV_RX_OFFLOAD_UDP_CKSUM,DEV_RX_OFFLOAD_TCP_CKSUM``,
+* **[provides] rte_eth_dev_info**: ``rx_offload_capa,rx_queue_offload_capa:DEV_RX_OFFLOAD_UDP_CKSUM,DEV_RX_OFFLOAD_TCP_CKSUM``,
   ``tx_offload_capa:DEV_TX_OFFLOAD_UDP_CKSUM,DEV_TX_OFFLOAD_TCP_CKSUM,DEV_TX_OFFLOAD_SCTP_CKSUM``.
 
 
@@ -574,8 +575,9 @@ MACsec offload
 
 Supports MACsec.
 
+* **[uses]     rte_eth_rxconf,rte_eth_rxmode**: ``offloads:DEV_RX_OFFLOAD_MACSEC_STRIP``.
 * **[uses]     mbuf**: ``mbuf.ol_flags:PKT_TX_MACSEC``.
-* **[provides] rte_eth_dev_info**: ``rx_offload_capa:DEV_RX_OFFLOAD_MACSEC_STRIP``,
+* **[provides] rte_eth_dev_info**: ``rx_offload_capa,rx_queue_offload_capa:DEV_RX_OFFLOAD_MACSEC_STRIP``,
   ``tx_offload_capa:DEV_TX_OFFLOAD_MACSEC_INSERT``.
 
 
@@ -586,13 +588,14 @@ Inner L3 checksum
 
 Supports inner packet L3 checksum.
 
+* **[uses]     rte_eth_rxconf,rte_eth_rxmode**: ``offloads:DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM``.
 * **[uses]     mbuf**: ``mbuf.ol_flags:PKT_TX_IP_CKSUM``,
   ``mbuf.ol_flags:PKT_TX_IPV4`` | ``PKT_TX_IPV6``,
   ``mbuf.ol_flags:PKT_TX_OUTER_IP_CKSUM``,
   ``mbuf.ol_flags:PKT_TX_OUTER_IPV4`` | ``PKT_TX_OUTER_IPV6``.
 * **[uses]     mbuf**: ``mbuf.outer_l2_len``, ``mbuf.outer_l3_len``.
 * **[provides] mbuf**: ``mbuf.ol_flags:PKT_RX_EIP_CKSUM_BAD``.
-* **[provides] rte_eth_dev_info**: ``rx_offload_capa:DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM``,
+* **[provides] rte_eth_dev_info**: ``rx_offload_capa,rx_queue_offload_capa:DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM``,
   ``tx_offload_capa:DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM``.
 
 

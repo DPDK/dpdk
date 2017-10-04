@@ -348,7 +348,18 @@ struct rte_eth_rxmode {
 	enum rte_eth_rx_mq_mode mq_mode;
 	uint32_t max_rx_pkt_len;  /**< Only used if jumbo_frame enabled. */
 	uint16_t split_hdr_size;  /**< hdr buf size (header_split enabled).*/
+	/**
+	 * Per-port Rx offloads to be set using DEV_RX_OFFLOAD_* flags.
+	 * Only offloads set on rx_offload_capa field on rte_eth_dev_info
+	 * structure are allowed to be set.
+	 */
+	uint64_t offloads;
 	__extension__
+	/**
+	 * Below bitfield API is obsolete. Application should
+	 * enable per-port offloads using the offload field
+	 * above.
+	 */
 	uint16_t header_split : 1, /**< Header Split enable. */
 		hw_ip_checksum   : 1, /**< IP/UDP/TCP checksum offload enable. */
 		hw_vlan_filter   : 1, /**< VLAN filter enable. */
@@ -357,7 +368,17 @@ struct rte_eth_rxmode {
 		jumbo_frame      : 1, /**< Jumbo Frame Receipt enable. */
 		hw_strip_crc     : 1, /**< Enable CRC stripping by hardware. */
 		enable_scatter   : 1, /**< Enable scatter packets rx handler */
-		enable_lro       : 1; /**< Enable LRO */
+		enable_lro       : 1, /**< Enable LRO */
+		/**
+		 * When set the offload bitfield should be ignored.
+		 * Instead per-port Rx offloads should be set on offloads
+		 * field above.
+		 * Per-queue offloads shuold be set on rte_eth_rxq_conf
+		 * structure.
+		 * This bit is temporary till rxmode bitfield offloads API will
+		 * be deprecated.
+		 */
+		ignore_offload_bitfield : 1;
 };
 
 /**
@@ -691,6 +712,12 @@ struct rte_eth_rxconf {
 	uint16_t rx_free_thresh; /**< Drives the freeing of RX descriptors. */
 	uint8_t rx_drop_en; /**< Drop packets if no descriptors are available. */
 	uint8_t rx_deferred_start; /**< Do not start queue with rte_eth_dev_start(). */
+	/**
+	 * Per-queue Rx offloads to be set using DEV_RX_OFFLOAD_* flags.
+	 * Only offloads set on rx_queue_offload_capa or rx_offload_capa
+	 * fields on rte_eth_dev_info structure are allowed to be set.
+	 */
+	uint64_t offloads;
 };
 
 #define ETH_TXQ_FLAGS_NOMULTSEGS 0x0001 /**< nb_segs=1 for all mbufs */
@@ -907,6 +934,18 @@ struct rte_eth_conf {
 #define DEV_RX_OFFLOAD_QINQ_STRIP  0x00000020
 #define DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM 0x00000040
 #define DEV_RX_OFFLOAD_MACSEC_STRIP     0x00000080
+#define DEV_RX_OFFLOAD_HEADER_SPLIT	0x00000100
+#define DEV_RX_OFFLOAD_VLAN_FILTER	0x00000200
+#define DEV_RX_OFFLOAD_VLAN_EXTEND	0x00000400
+#define DEV_RX_OFFLOAD_JUMBO_FRAME	0x00000800
+#define DEV_RX_OFFLOAD_CRC_STRIP	0x00001000
+#define DEV_RX_OFFLOAD_SCATTER		0x00002000
+#define DEV_RX_OFFLOAD_CHECKSUM (DEV_RX_OFFLOAD_IPV4_CKSUM | \
+				 DEV_RX_OFFLOAD_UDP_CKSUM | \
+				 DEV_RX_OFFLOAD_TCP_CKSUM)
+#define DEV_RX_OFFLOAD_VLAN (DEV_RX_OFFLOAD_VLAN_STRIP | \
+			     DEV_RX_OFFLOAD_VLAN_FILTER | \
+			     DEV_RX_OFFLOAD_VLAN_EXTEND)
 
 /**
  * TX offload capabilities of a device.
@@ -949,8 +988,11 @@ struct rte_eth_dev_info {
 	/** Maximum number of hash MAC addresses for MTA and UTA. */
 	uint16_t max_vfs; /**< Maximum number of VFs. */
 	uint16_t max_vmdq_pools; /**< Maximum number of VMDq pools. */
-	uint32_t rx_offload_capa; /**< Device RX offload capabilities. */
+	uint64_t rx_offload_capa;
+	/**< Device per port RX offload capabilities. */
 	uint32_t tx_offload_capa; /**< Device TX offload capabilities. */
+	uint64_t rx_queue_offload_capa;
+	/**< Device per queue RX offload capabilities. */
 	uint16_t reta_size;
 	/**< Device redirection table size, the total number of entries. */
 	uint8_t hash_key_size; /**< Hash key size in bytes */
@@ -1874,6 +1916,9 @@ uint32_t rte_eth_speed_bitflag(uint32_t speed, int duplex);
  *        each statically configurable offload hardware feature provided by
  *        Ethernet devices, such as IP checksum or VLAN tag stripping for
  *        example.
+ *        The Rx offload bitfield API is obsolete and will be deprecated.
+ *        Applications should set the ignore_bitfield_offloads bit on *rxmode*
+ *        structure and use offloads field to set per-port offloads instead.
  *     - the Receive Side Scaling (RSS) configuration when using multiple RX
  *         queues per port.
  *
@@ -1927,6 +1972,8 @@ void _rte_eth_dev_reset(struct rte_eth_dev *dev);
  *   The *rx_conf* structure contains an *rx_thresh* structure with the values
  *   of the Prefetch, Host, and Write-Back threshold registers of the receive
  *   ring.
+ *   In addition it contains the hardware offloads features to activate using
+ *   the DEV_RX_OFFLOAD_* flags.
  * @param mb_pool
  *   The pointer to the memory pool from which to allocate *rte_mbuf* network
  *   memory buffers to populate each descriptor of the receive ring.

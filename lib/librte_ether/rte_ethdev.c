@@ -688,12 +688,90 @@ rte_eth_speed_bitflag(uint32_t speed, int duplex)
 	}
 }
 
+/**
+ * A conversion function from rxmode bitfield API.
+ */
+static void
+rte_eth_convert_rx_offload_bitfield(const struct rte_eth_rxmode *rxmode,
+				    uint64_t *rx_offloads)
+{
+	uint64_t offloads = 0;
+
+	if (rxmode->header_split == 1)
+		offloads |= DEV_RX_OFFLOAD_HEADER_SPLIT;
+	if (rxmode->hw_ip_checksum == 1)
+		offloads |= DEV_RX_OFFLOAD_CHECKSUM;
+	if (rxmode->hw_vlan_filter == 1)
+		offloads |= DEV_RX_OFFLOAD_VLAN_FILTER;
+	if (rxmode->hw_vlan_strip == 1)
+		offloads |= DEV_RX_OFFLOAD_VLAN_STRIP;
+	if (rxmode->hw_vlan_extend == 1)
+		offloads |= DEV_RX_OFFLOAD_VLAN_EXTEND;
+	if (rxmode->jumbo_frame == 1)
+		offloads |= DEV_RX_OFFLOAD_JUMBO_FRAME;
+	if (rxmode->hw_strip_crc == 1)
+		offloads |= DEV_RX_OFFLOAD_CRC_STRIP;
+	if (rxmode->enable_scatter == 1)
+		offloads |= DEV_RX_OFFLOAD_SCATTER;
+	if (rxmode->enable_lro == 1)
+		offloads |= DEV_RX_OFFLOAD_TCP_LRO;
+
+	*rx_offloads = offloads;
+}
+
+/**
+ * A conversion function from rxmode offloads API.
+ */
+static void
+rte_eth_convert_rx_offloads(const uint64_t rx_offloads,
+			    struct rte_eth_rxmode *rxmode)
+{
+
+	if (rx_offloads & DEV_RX_OFFLOAD_HEADER_SPLIT)
+		rxmode->header_split = 1;
+	else
+		rxmode->header_split = 0;
+	if (rx_offloads & DEV_RX_OFFLOAD_CHECKSUM)
+		rxmode->hw_ip_checksum = 1;
+	else
+		rxmode->hw_ip_checksum = 0;
+	if (rx_offloads & DEV_RX_OFFLOAD_VLAN_FILTER)
+		rxmode->hw_vlan_filter = 1;
+	else
+		rxmode->hw_vlan_filter = 0;
+	if (rx_offloads & DEV_RX_OFFLOAD_VLAN_STRIP)
+		rxmode->hw_vlan_strip = 1;
+	else
+		rxmode->hw_vlan_strip = 0;
+	if (rx_offloads & DEV_RX_OFFLOAD_VLAN_EXTEND)
+		rxmode->hw_vlan_extend = 1;
+	else
+		rxmode->hw_vlan_extend = 0;
+	if (rx_offloads & DEV_RX_OFFLOAD_JUMBO_FRAME)
+		rxmode->jumbo_frame = 1;
+	else
+		rxmode->jumbo_frame = 0;
+	if (rx_offloads & DEV_RX_OFFLOAD_CRC_STRIP)
+		rxmode->hw_strip_crc = 1;
+	else
+		rxmode->hw_strip_crc = 0;
+	if (rx_offloads & DEV_RX_OFFLOAD_SCATTER)
+		rxmode->enable_scatter = 1;
+	else
+		rxmode->enable_scatter = 0;
+	if (rx_offloads & DEV_RX_OFFLOAD_TCP_LRO)
+		rxmode->enable_lro = 1;
+	else
+		rxmode->enable_lro = 0;
+}
+
 int
 rte_eth_dev_configure(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 		      const struct rte_eth_conf *dev_conf)
 {
 	struct rte_eth_dev *dev;
 	struct rte_eth_dev_info dev_info;
+	struct rte_eth_conf local_conf = *dev_conf;
 	int diag;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
@@ -723,8 +801,20 @@ rte_eth_dev_configure(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 		return -EBUSY;
 	}
 
+	/*
+	 * Convert between the offloads API to enable PMDs to support
+	 * only one of them.
+	 */
+	if ((dev_conf->rxmode.ignore_offload_bitfield == 0)) {
+		rte_eth_convert_rx_offload_bitfield(
+				&dev_conf->rxmode, &local_conf.rxmode.offloads);
+	} else {
+		rte_eth_convert_rx_offloads(dev_conf->rxmode.offloads,
+					    &local_conf.rxmode);
+	}
+
 	/* Copy the dev_conf parameter into the dev structure */
-	memcpy(&dev->data->dev_conf, dev_conf, sizeof(dev->data->dev_conf));
+	memcpy(&dev->data->dev_conf, &local_conf, sizeof(dev->data->dev_conf));
 
 	/*
 	 * Check that the numbers of RX and TX queues are not greater
@@ -768,7 +858,7 @@ rte_eth_dev_configure(uint8_t port_id, uint16_t nb_rx_q, uint16_t nb_tx_q,
 	 * If jumbo frames are enabled, check that the maximum RX packet
 	 * length is supported by the configured device.
 	 */
-	if (dev_conf->rxmode.jumbo_frame == 1) {
+	if (local_conf.rxmode.offloads & DEV_RX_OFFLOAD_JUMBO_FRAME) {
 		if (dev_conf->rxmode.max_rx_pkt_len >
 		    dev_info.max_rx_pktlen) {
 			RTE_PMD_DEBUG_TRACE("ethdev port_id=%d max_rx_pkt_len %u"
@@ -1032,6 +1122,7 @@ rte_eth_rx_queue_setup(uint8_t port_id, uint16_t rx_queue_id,
 	uint32_t mbp_buf_size;
 	struct rte_eth_dev *dev;
 	struct rte_eth_dev_info dev_info;
+	struct rte_eth_rxconf local_conf;
 	void **rxq;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
@@ -1102,8 +1193,18 @@ rte_eth_rx_queue_setup(uint8_t port_id, uint16_t rx_queue_id,
 	if (rx_conf == NULL)
 		rx_conf = &dev_info.default_rxconf;
 
+	local_conf = *rx_conf;
+	if (dev->data->dev_conf.rxmode.ignore_offload_bitfield == 0) {
+		/**
+		 * Reflect port offloads to queue offloads in order for
+		 * offloads to not be discarded.
+		 */
+		rte_eth_convert_rx_offload_bitfield(&dev->data->dev_conf.rxmode,
+						    &local_conf.offloads);
+	}
+
 	ret = (*dev->dev_ops->rx_queue_setup)(dev, rx_queue_id, nb_rx_desc,
-					      socket_id, rx_conf, mp);
+					      socket_id, &local_conf, mp);
 	if (!ret) {
 		if (!dev->data->min_rx_buf_size ||
 		    dev->data->min_rx_buf_size > mbp_buf_size)
@@ -2007,7 +2108,8 @@ rte_eth_dev_vlan_filter(uint8_t port_id, uint16_t vlan_id, int on)
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	dev = &rte_eth_devices[port_id];
-	if (!(dev->data->dev_conf.rxmode.hw_vlan_filter)) {
+	if (!(dev->data->dev_conf.rxmode.offloads &
+	      DEV_RX_OFFLOAD_VLAN_FILTER)) {
 		RTE_PMD_DEBUG_TRACE("port %d: vlan-filtering disabled\n", port_id);
 		return -ENOSYS;
 	}
@@ -2083,23 +2185,41 @@ rte_eth_dev_set_vlan_offload(uint8_t port_id, int offload_mask)
 
 	/*check which option changed by application*/
 	cur = !!(offload_mask & ETH_VLAN_STRIP_OFFLOAD);
-	org = !!(dev->data->dev_conf.rxmode.hw_vlan_strip);
+	org = !!(dev->data->dev_conf.rxmode.offloads &
+		 DEV_RX_OFFLOAD_VLAN_STRIP);
 	if (cur != org) {
-		dev->data->dev_conf.rxmode.hw_vlan_strip = (uint8_t)cur;
+		if (cur)
+			dev->data->dev_conf.rxmode.offloads |=
+				DEV_RX_OFFLOAD_VLAN_STRIP;
+		else
+			dev->data->dev_conf.rxmode.offloads &=
+				~DEV_RX_OFFLOAD_VLAN_STRIP;
 		mask |= ETH_VLAN_STRIP_MASK;
 	}
 
 	cur = !!(offload_mask & ETH_VLAN_FILTER_OFFLOAD);
-	org = !!(dev->data->dev_conf.rxmode.hw_vlan_filter);
+	org = !!(dev->data->dev_conf.rxmode.offloads &
+		 DEV_RX_OFFLOAD_VLAN_FILTER);
 	if (cur != org) {
-		dev->data->dev_conf.rxmode.hw_vlan_filter = (uint8_t)cur;
+		if (cur)
+			dev->data->dev_conf.rxmode.offloads |=
+				DEV_RX_OFFLOAD_VLAN_FILTER;
+		else
+			dev->data->dev_conf.rxmode.offloads &=
+				~DEV_RX_OFFLOAD_VLAN_FILTER;
 		mask |= ETH_VLAN_FILTER_MASK;
 	}
 
 	cur = !!(offload_mask & ETH_VLAN_EXTEND_OFFLOAD);
-	org = !!(dev->data->dev_conf.rxmode.hw_vlan_extend);
+	org = !!(dev->data->dev_conf.rxmode.offloads &
+		 DEV_RX_OFFLOAD_VLAN_EXTEND);
 	if (cur != org) {
-		dev->data->dev_conf.rxmode.hw_vlan_extend = (uint8_t)cur;
+		if (cur)
+			dev->data->dev_conf.rxmode.offloads |=
+				DEV_RX_OFFLOAD_VLAN_EXTEND;
+		else
+			dev->data->dev_conf.rxmode.offloads &=
+				~DEV_RX_OFFLOAD_VLAN_EXTEND;
 		mask |= ETH_VLAN_EXTEND_MASK;
 	}
 
@@ -2108,6 +2228,13 @@ rte_eth_dev_set_vlan_offload(uint8_t port_id, int offload_mask)
 		return ret;
 
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->vlan_offload_set, -ENOTSUP);
+
+	/*
+	 * Convert to the offload bitfield API just in case the underlying PMD
+	 * still supporting it.
+	 */
+	rte_eth_convert_rx_offloads(dev->data->dev_conf.rxmode.offloads,
+				    &dev->data->dev_conf.rxmode);
 	(*dev->dev_ops->vlan_offload_set)(dev, mask);
 
 	return ret;
@@ -2122,13 +2249,16 @@ rte_eth_dev_get_vlan_offload(uint8_t port_id)
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
 	dev = &rte_eth_devices[port_id];
 
-	if (dev->data->dev_conf.rxmode.hw_vlan_strip)
+	if (dev->data->dev_conf.rxmode.offloads &
+	    DEV_RX_OFFLOAD_VLAN_STRIP)
 		ret |= ETH_VLAN_STRIP_OFFLOAD;
 
-	if (dev->data->dev_conf.rxmode.hw_vlan_filter)
+	if (dev->data->dev_conf.rxmode.offloads &
+	    DEV_RX_OFFLOAD_VLAN_FILTER)
 		ret |= ETH_VLAN_FILTER_OFFLOAD;
 
-	if (dev->data->dev_conf.rxmode.hw_vlan_extend)
+	if (dev->data->dev_conf.rxmode.offloads &
+	    DEV_RX_OFFLOAD_VLAN_EXTEND)
 		ret |= ETH_VLAN_EXTEND_OFFLOAD;
 
 	return ret;
