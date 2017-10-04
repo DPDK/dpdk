@@ -270,6 +270,23 @@ ABI Changes
   The size of the field ``port_id`` in the ``rte_eth_dev_data`` structure
   changed, as described in the `New Features` section.
 
+
+Removed Items
+-------------
+
+.. This section should contain removed items in this release. Sample format:
+
+   * Add a short 1-2 sentence description of the removed item in the past
+     tense.
+
+   This section is a comment. do not overwrite or remove it.
+   Also, make sure to start the actual text at the margin.
+   =========================================================
+
+* The crypto performance unit tests have been removed,
+  replaced by the dpdk-test-crypto-perf application.
+
+
 Shared Library Versions
 -----------------------
 
