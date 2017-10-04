@@ -40,6 +40,10 @@
 #include "rte_member.h"
 #include "rte_member_ht.h"
 
+#if defined(RTE_ARCH_X86)
+#include "rte_member_x86.h"
+#endif
+
 /* Search bucket for entry with tmp_sig and update set_id */
 static inline int
 update_entry_search(uint32_t bucket_id, member_sig_t tmp_sig,
@@ -136,6 +140,13 @@ rte_member_create_ht(struct rte_member_setsum *ss,
 		for (j = 0; j < RTE_MEMBER_BUCKET_ENTRIES; j++)
 			buckets[i].sets[j] = RTE_MEMBER_NO_MATCH;
 	}
+#if defined(RTE_ARCH_X86)
+	if (rte_cpu_get_flag_enabled(RTE_CPUFLAG_AVX2) &&
+			RTE_MEMBER_BUCKET_ENTRIES == 16)
+		ss->sig_cmp_fn = RTE_MEMBER_COMPARE_AVX2;
+	else
+#endif
+		ss->sig_cmp_fn = RTE_MEMBER_COMPARE_SCALAR;
 
 	RTE_MEMBER_LOG(DEBUG, "Hash table based filter created, "
 			"the table has %u entries, %u buckets\n",
@@ -193,11 +204,23 @@ rte_member_lookup_ht(const struct rte_member_setsum *ss,
 	*set_id = RTE_MEMBER_NO_MATCH;
 	get_buckets_index(ss, key, &prim_bucket, &sec_bucket, &tmp_sig);
 
-	if (search_bucket_single(prim_bucket, tmp_sig, buckets,
-			set_id) ||
-			search_bucket_single(sec_bucket, tmp_sig,
-				buckets, set_id))
-		return 1;
+	switch (ss->sig_cmp_fn) {
+#if defined(RTE_ARCH_X86) && defined(RTE_MACHINE_CPUFLAG_AVX2)
+	case RTE_MEMBER_COMPARE_AVX2:
+		if (search_bucket_single_avx(prim_bucket, tmp_sig, buckets,
+				set_id) ||
+				search_bucket_single_avx(sec_bucket, tmp_sig,
+					buckets, set_id))
+			return 1;
+		break;
+#endif
+	default:
+		if (search_bucket_single(prim_bucket, tmp_sig, buckets,
+				set_id) ||
+				search_bucket_single(sec_bucket, tmp_sig,
+					buckets, set_id))
+			return 1;
+	}
 
 	return 0;
 }
@@ -221,13 +244,27 @@ rte_member_lookup_bulk_ht(const struct rte_member_setsum *ss,
 	}
 
 	for (i = 0; i < num_keys; i++) {
-		if (search_bucket_single(prim_buckets[i], tmp_sig[i],
-				buckets, &set_id[i]) ||
-				search_bucket_single(sec_buckets[i],
-				tmp_sig[i], buckets, &set_id[i]))
-			num_matches++;
-		else
-			set_id[i] = RTE_MEMBER_NO_MATCH;
+		switch (ss->sig_cmp_fn) {
+#if defined(RTE_ARCH_X86) && defined(RTE_MACHINE_CPUFLAG_AVX2)
+		case RTE_MEMBER_COMPARE_AVX2:
+			if (search_bucket_single_avx(prim_buckets[i],
+					tmp_sig[i], buckets, &set_id[i]) ||
+				search_bucket_single_avx(sec_buckets[i],
+					tmp_sig[i], buckets, &set_id[i]))
+				num_matches++;
+			else
+				set_id[i] = RTE_MEMBER_NO_MATCH;
+			break;
+#endif
+		default:
+			if (search_bucket_single(prim_buckets[i], tmp_sig[i],
+					buckets, &set_id[i]) ||
+					search_bucket_single(sec_buckets[i],
+					tmp_sig[i], buckets, &set_id[i]))
+				num_matches++;
+			else
+				set_id[i] = RTE_MEMBER_NO_MATCH;
+		}
 	}
 	return num_matches;
 }
@@ -244,12 +281,24 @@ rte_member_lookup_multi_ht(const struct rte_member_setsum *ss,
 
 	get_buckets_index(ss, key, &prim_bucket, &sec_bucket, &tmp_sig);
 
-	search_bucket_multi(prim_bucket, tmp_sig, buckets, &num_matches,
-			 match_per_key, set_id);
-	if (num_matches < match_per_key)
-		search_bucket_multi(sec_bucket, tmp_sig,
-			buckets, &num_matches, match_per_key, set_id);
-	return num_matches;
+	switch (ss->sig_cmp_fn) {
+#if defined(RTE_ARCH_X86) && defined(RTE_MACHINE_CPUFLAG_AVX2)
+	case RTE_MEMBER_COMPARE_AVX2:
+		search_bucket_multi_avx(prim_bucket, tmp_sig, buckets,
+			&num_matches, match_per_key, set_id);
+		if (num_matches < match_per_key)
+			search_bucket_multi_avx(sec_bucket, tmp_sig,
+				buckets, &num_matches, match_per_key, set_id);
+		return num_matches;
+#endif
+	default:
+		search_bucket_multi(prim_bucket, tmp_sig, buckets, &num_matches,
+				 match_per_key, set_id);
+		if (num_matches < match_per_key)
+			search_bucket_multi(sec_bucket, tmp_sig,
+				buckets, &num_matches, match_per_key, set_id);
+		return num_matches;
+	}
 }
 
 uint32_t
@@ -275,16 +324,34 @@ rte_member_lookup_multi_bulk_ht(const struct rte_member_setsum *ss,
 	for (i = 0; i < num_keys; i++) {
 		match_cnt_tmp = 0;
 
-		search_bucket_multi(prim_buckets[i], tmp_sig[i],
-			buckets, &match_cnt_tmp, match_per_key,
-			&set_ids[i*match_per_key]);
-		if (match_cnt_tmp < match_per_key)
-			search_bucket_multi(sec_buckets[i], tmp_sig[i],
+		switch (ss->sig_cmp_fn) {
+#if defined(RTE_ARCH_X86) && defined(RTE_MACHINE_CPUFLAG_AVX2)
+		case RTE_MEMBER_COMPARE_AVX2:
+			search_bucket_multi_avx(prim_buckets[i], tmp_sig[i],
 				buckets, &match_cnt_tmp, match_per_key,
 				&set_ids[i*match_per_key]);
-		match_count[i] = match_cnt_tmp;
-		if (match_cnt_tmp != 0)
-			num_matches++;
+			if (match_cnt_tmp < match_per_key)
+				search_bucket_multi_avx(sec_buckets[i],
+					tmp_sig[i], buckets, &match_cnt_tmp,
+					match_per_key,
+					&set_ids[i*match_per_key]);
+			match_count[i] = match_cnt_tmp;
+			if (match_cnt_tmp != 0)
+				num_matches++;
+			break;
+#endif
+		default:
+			search_bucket_multi(prim_buckets[i], tmp_sig[i],
+				buckets, &match_cnt_tmp, match_per_key,
+				&set_ids[i*match_per_key]);
+			if (match_cnt_tmp < match_per_key)
+				search_bucket_multi(sec_buckets[i], tmp_sig[i],
+					buckets, &match_cnt_tmp, match_per_key,
+					&set_ids[i*match_per_key]);
+			match_count[i] = match_cnt_tmp;
+			if (match_cnt_tmp != 0)
+				num_matches++;
+		}
 	}
 	return num_matches;
 }
@@ -315,11 +382,24 @@ try_insert(struct member_ht_bucket *buckets, uint32_t prim, uint32_t sec,
 
 static inline int
 try_update(struct member_ht_bucket *buckets, uint32_t prim, uint32_t sec,
-		member_sig_t sig, member_set_t set_id)
+		member_sig_t sig, member_set_t set_id,
+		enum rte_member_sig_compare_function cmp_fn)
 {
-	if (update_entry_search(prim, sig, buckets, set_id) ||
-		update_entry_search(sec, sig, buckets, set_id))
-		return 0;
+	switch (cmp_fn) {
+#if defined(RTE_ARCH_X86) && defined(RTE_MACHINE_CPUFLAG_AVX2)
+	case RTE_MEMBER_COMPARE_AVX2:
+		if (update_entry_search_avx(prim, sig, buckets, set_id) ||
+				update_entry_search_avx(sec, sig, buckets,
+					set_id))
+			return 0;
+		break;
+#endif
+	default:
+		if (update_entry_search(prim, sig, buckets, set_id) ||
+				update_entry_search(sec, sig, buckets,
+					set_id))
+			return 0;
+	}
 	return -1;
 }
 
@@ -430,7 +510,7 @@ rte_member_add_ht(const struct rte_member_setsum *ss,
 	 */
 	if (ss->cache) {
 		ret = try_update(buckets, prim_bucket, sec_bucket, tmp_sig,
-					set_id);
+					set_id, ss->sig_cmp_fn);
 		if (ret != -1)
 			return ret;
 	}

@@ -134,6 +134,7 @@ enum rte_member_setsum_type {
 /** @internal compare function for different arch. */
 enum rte_member_sig_compare_function {
 	RTE_MEMBER_COMPARE_SCALAR = 0,
+	RTE_MEMBER_COMPARE_AVX2,
 	RTE_MEMBER_COMPARE_NUM
 };
 
