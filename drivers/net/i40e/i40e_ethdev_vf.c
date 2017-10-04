@@ -2498,7 +2498,7 @@ static int
 i40evf_hw_rss_hash_set(struct i40e_vf *vf, struct rte_eth_rss_conf *rss_conf)
 {
 	struct i40e_hw *hw = I40E_VF_TO_HW(vf);
-	uint64_t rss_hf, hena;
+	uint64_t hena;
 	int ret;
 
 	ret = i40evf_set_rss_key(&vf->vsi, rss_conf->rss_key,
@@ -2506,14 +2506,7 @@ i40evf_hw_rss_hash_set(struct i40e_vf *vf, struct rte_eth_rss_conf *rss_conf)
 	if (ret)
 		return ret;
 
-	rss_hf = rss_conf->rss_hf;
-	hena = (uint64_t)i40e_read_rx_ctl(hw, I40E_VFQF_HENA(0));
-	hena |= ((uint64_t)i40e_read_rx_ctl(hw, I40E_VFQF_HENA(1))) << 32;
-	if (hw->mac.type == I40E_MAC_X722)
-		hena &= ~I40E_RSS_HENA_ALL_X722;
-	else
-		hena &= ~I40E_RSS_HENA_ALL;
-	hena |= i40e_config_hena(rss_hf, hw->mac.type);
+	hena = i40e_config_hena(rss_conf->rss_hf, hw->mac.type);
 	i40e_write_rx_ctl(hw, I40E_VFQF_HENA(0), (uint32_t)hena);
 	i40e_write_rx_ctl(hw, I40E_VFQF_HENA(1), (uint32_t)(hena >> 32));
 	I40EVF_WRITE_FLUSH(hw);
@@ -2525,16 +2518,9 @@ static void
 i40evf_disable_rss(struct i40e_vf *vf)
 {
 	struct i40e_hw *hw = I40E_VF_TO_HW(vf);
-	uint64_t hena;
 
-	hena = (uint64_t)i40e_read_rx_ctl(hw, I40E_VFQF_HENA(0));
-	hena |= ((uint64_t)i40e_read_rx_ctl(hw, I40E_VFQF_HENA(1))) << 32;
-	if (hw->mac.type == I40E_MAC_X722)
-		hena &= ~I40E_RSS_HENA_ALL_X722;
-	else
-		hena &= ~I40E_RSS_HENA_ALL;
-	i40e_write_rx_ctl(hw, I40E_VFQF_HENA(0), (uint32_t)hena);
-	i40e_write_rx_ctl(hw, I40E_VFQF_HENA(1), (uint32_t)(hena >> 32));
+	i40e_write_rx_ctl(hw, I40E_VFQF_HENA(0), 0);
+	i40e_write_rx_ctl(hw, I40E_VFQF_HENA(1), 0);
 	I40EVF_WRITE_FLUSH(hw);
 }
 
