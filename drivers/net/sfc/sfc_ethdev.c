@@ -1354,7 +1354,7 @@ sfc_dev_rss_reta_update(struct rte_eth_dev *dev,
 	struct sfc_port *port = &sa->port;
 	unsigned int *rss_tbl_new;
 	uint16_t entry;
-	int rc;
+	int rc = 0;
 
 
 	if (port->isolated)
@@ -1399,11 +1399,16 @@ sfc_dev_rss_reta_update(struct rte_eth_dev *dev,
 		}
 	}
 
-	rc = efx_rx_scale_tbl_set(sa->nic, EFX_RSS_CONTEXT_DEFAULT,
-				  rss_tbl_new, EFX_RSS_TBL_SIZE);
-	if (rc == 0)
-		rte_memcpy(sa->rss_tbl, rss_tbl_new, sizeof(sa->rss_tbl));
+	if (sa->state == SFC_ADAPTER_STARTED) {
+		rc = efx_rx_scale_tbl_set(sa->nic, EFX_RSS_CONTEXT_DEFAULT,
+					  rss_tbl_new, EFX_RSS_TBL_SIZE);
+		if (rc != 0)
+			goto fail_scale_tbl_set;
+	}
 
+	rte_memcpy(sa->rss_tbl, rss_tbl_new, sizeof(sa->rss_tbl));
+
+fail_scale_tbl_set:
 bad_reta_entry:
 	sfc_adapter_unlock(sa);
 
