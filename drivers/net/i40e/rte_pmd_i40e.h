@@ -682,4 +682,59 @@ int rte_pmd_i40e_ptype_mapping_replace(uint8_t port,
 int rte_pmd_i40e_add_vf_mac_addr(uint8_t port, uint16_t vf_id,
 				 struct ether_addr *mac_addr);
 
+#define RTE_PMD_I40E_PCTYPE_MAX		64
+#define RTE_PMD_I40E_FLOW_TYPE_MAX	64
+
+struct rte_pmd_i40e_flow_type_mapping {
+	uint16_t flow_type; /**< software defined flow type*/
+	uint64_t pctype;    /**< hardware defined pctype */
+};
+
+/**
+ * Update hardware defined pctype to software defined flow type
+ * mapping table.
+ *
+ * @param port
+ *    pointer to port identifier of the device.
+ * @param mapping_items
+ *    the base address of the mapping items array.
+ * @param count
+ *    number of mapping items.
+ * @param exclusive
+ *    the flag indicate different pctype mapping update method.
+ *    -(0) only overwrite referred PCTYPE mapping,
+ *	keep other PCTYPEs mapping unchanged.
+ *    -(!0) overwrite referred PCTYPE mapping,
+ *	set other PCTYPEs maps to PCTYPE_INVALID.
+ */
+int rte_pmd_i40e_flow_type_mapping_update(
+			uint8_t port,
+			struct rte_pmd_i40e_flow_type_mapping *mapping_items,
+			uint16_t count,
+			uint8_t exclusive);
+
+/**
+ * Get software defined flow type to hardware defined pctype
+ * mapping items.
+ *
+ * @param port
+ *    pointer to port identifier of the device.
+ * @param mapping_items
+ *    the base address of the array to store returned items.
+ *    array should be allocated by caller with minimum size of
+ *    RTE_PMD_I40E_FLOW_TYPE_MAX items
+ */
+int rte_pmd_i40e_flow_type_mapping_get(
+			uint8_t port,
+			struct rte_pmd_i40e_flow_type_mapping *mapping_items);
+
+/**
+ * Reset hardware defined pctype to software defined flow type
+ * mapping table to default.
+ *
+ * @param port
+ *    pointer to port identifier of the device
+ */
+int rte_pmd_i40e_flow_type_mapping_reset(uint8_t port);
+
 #endif /* _PMD_I40E_H_ */

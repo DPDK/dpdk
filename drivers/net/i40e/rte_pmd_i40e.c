@@ -2332,3 +2332,97 @@ rte_pmd_i40e_add_vf_mac_addr(uint8_t port, uint16_t vf_id,
 
 	return 0;
 }
+
+int rte_pmd_i40e_flow_type_mapping_reset(uint8_t port)
+{
+	struct rte_eth_dev *dev;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+
+	if (!is_i40e_supported(dev))
+		return -ENOTSUP;
+
+	i40e_set_default_pctype_table(dev);
+
+	return 0;
+}
+
+int rte_pmd_i40e_flow_type_mapping_get(
+			uint8_t port,
+			struct rte_pmd_i40e_flow_type_mapping *mapping_items)
+{
+	struct rte_eth_dev *dev;
+	struct i40e_adapter *ad;
+	uint16_t i;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+
+	if (!is_i40e_supported(dev))
+		return -ENOTSUP;
+
+	ad = I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+
+	for (i = 0; i < I40E_FLOW_TYPE_MAX; i++) {
+		mapping_items[i].flow_type = i;
+		mapping_items[i].pctype = ad->pctypes_tbl[i];
+	}
+
+	return 0;
+}
+
+int
+rte_pmd_i40e_flow_type_mapping_update(
+			uint8_t port,
+			struct rte_pmd_i40e_flow_type_mapping *mapping_items,
+			uint16_t count,
+			uint8_t exclusive)
+{
+	struct rte_eth_dev *dev;
+	struct i40e_adapter *ad;
+	int i;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port, -ENODEV);
+
+	dev = &rte_eth_devices[port];
+
+	if (!is_i40e_supported(dev))
+		return -ENOTSUP;
+
+	if (count > I40E_FLOW_TYPE_MAX)
+		return -EINVAL;
+
+	for (i = 0; i < count; i++)
+		if (mapping_items[i].flow_type >= I40E_FLOW_TYPE_MAX ||
+		    mapping_items[i].flow_type == RTE_ETH_FLOW_UNKNOWN ||
+		    (mapping_items[i].pctype &
+		    (1ULL << I40E_FILTER_PCTYPE_INVALID)))
+			return -EINVAL;
+
+	ad = I40E_DEV_PRIVATE_TO_ADAPTER(dev->data->dev_private);
+
+	if (exclusive) {
+		for (i = 0; i < I40E_FLOW_TYPE_MAX; i++)
+			ad->pctypes_tbl[i] = 0ULL;
+		ad->flow_types_mask = 0ULL;
+	}
+
+	for (i = 0; i < count; i++) {
+		ad->pctypes_tbl[mapping_items[i].flow_type] =
+						mapping_items[i].pctype;
+		if (mapping_items[i].pctype)
+			ad->flow_types_mask |=
+					(1ULL << mapping_items[i].flow_type);
+		else
+			ad->flow_types_mask &=
+					~(1ULL << mapping_items[i].flow_type);
+	}
+
+	for (i = 0, ad->pctypes_mask = 0ULL; i < I40E_FLOW_TYPE_MAX; i++)
+		ad->pctypes_mask |= ad->pctypes_tbl[i];
+
+	return 0;
+}
