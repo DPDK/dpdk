@@ -747,6 +747,7 @@ cperf_options_default(struct cperf_options *opts)
 
 	strncpy(opts->device_type, "crypto_aesni_mb",
 			sizeof(opts->device_type));
+	opts->nb_qps = 1;
 
 	opts->op_type = CPERF_CIPHER_THEN_AUTH;
 
@@ -1044,6 +1045,7 @@ cperf_options_dump(struct cperf_options *opts)
 	printf("#\n");
 	printf("# cryptodev type: %s\n", opts->device_type);
 	printf("#\n");
+	printf("# number of queue pairs per device: %u\n", opts->nb_qps);
 	printf("# crypto operation: %s\n", cperf_op_type_strs[opts->op_type]);
 	printf("# sessionless: %s\n", opts->sessionless ? "yes" : "no");
 	printf("# out of place: %s\n", opts->out_of_place ? "yes" : "no");

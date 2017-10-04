@@ -47,4 +47,8 @@ SRCS-y += cperf_test_verify.c
 SRCS-y += cperf_test_vector_parsing.c
 SRCS-y += cperf_test_common.c
 
+ifeq ($(CONFIG_RTE_LIBRTE_PMD_CRYPTO_SCHEDULER),y)
+LDLIBS += -lrte_pmd_crypto_scheduler
+endif
+
 include $(RTE_SDK)/mk/rte.app.mk

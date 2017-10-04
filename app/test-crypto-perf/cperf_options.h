@@ -74,6 +74,7 @@ struct cperf_options {
 	uint32_t segment_sz;
 	uint32_t test_buffer_size;
 	uint32_t nb_descriptors;
+	uint16_t nb_qps;
 
 	uint32_t sessionless:1;
 	uint32_t out_of_place:1;

@@ -43,7 +43,8 @@
 int
 cperf_alloc_common_memory(const struct cperf_options *options,
 			const struct cperf_test_vector *test_vector,
-			uint8_t dev_id, size_t extra_op_priv_size,
+			uint8_t dev_id, uint16_t qp_id,
+			size_t extra_op_priv_size,
 			struct rte_mempool **pkt_mbuf_pool_in,
 			struct rte_mempool **pkt_mbuf_pool_out,
 			struct rte_mbuf ***mbufs_in,

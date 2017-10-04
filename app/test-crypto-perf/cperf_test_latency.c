@@ -124,7 +124,7 @@ cperf_latency_test_constructor(struct rte_mempool *sess_mp,
 	if (ctx->sess == NULL)
 		goto err;
 
-	if (cperf_alloc_common_memory(options, test_vector, dev_id,
+	if (cperf_alloc_common_memory(options, test_vector, dev_id, qp_id,
 			extra_op_priv_size,
 			&ctx->pkt_mbuf_pool_in, &ctx->pkt_mbuf_pool_out,
 			&ctx->mbufs_in, &ctx->mbufs_out,
@@ -416,8 +416,6 @@ cperf_latency_test_destructor(void *arg)
 
 	if (ctx == NULL)
 		return;
-
-	rte_cryptodev_stop(ctx->dev_id);
 
 	cperf_latency_test_free(ctx);
 }

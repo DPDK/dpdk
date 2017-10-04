@@ -108,7 +108,8 @@ error:
 int
 cperf_alloc_common_memory(const struct cperf_options *options,
 			const struct cperf_test_vector *test_vector,
-			uint8_t dev_id, size_t extra_op_priv_size,
+			uint8_t dev_id, uint16_t qp_id,
+			size_t extra_op_priv_size,
 			struct rte_mempool **pkt_mbuf_pool_in,
 			struct rte_mempool **pkt_mbuf_pool_out,
 			struct rte_mbuf ***mbufs_in,
@@ -118,8 +119,8 @@ cperf_alloc_common_memory(const struct cperf_options *options,
 	unsigned int mbuf_idx = 0;
 	char pool_name[32] = "";
 
-	snprintf(pool_name, sizeof(pool_name), "cperf_pool_in_cdev_%d",
-			dev_id);
+	snprintf(pool_name, sizeof(pool_name), "cperf_pool_in_cdev_%u_qp_%u",
+			dev_id, qp_id);
 
 	uint32_t max_size = options->max_buffer_size + options->digest_sz;
 	uint16_t segments_nb = (max_size % options->segment_sz) ?
@@ -153,8 +154,8 @@ cperf_alloc_common_memory(const struct cperf_options *options,
 			options->pool_sz), 0);
 
 	if (options->out_of_place == 1)	{
-		snprintf(pool_name, sizeof(pool_name), "cperf_pool_out_cdev_%d",
-				dev_id);
+		snprintf(pool_name, sizeof(pool_name), "cperf_pool_out_cdev_%u_qp_%u",
+				dev_id, qp_id);
 
 		*pkt_mbuf_pool_out = rte_pktmbuf_pool_create(
 				pool_name, options->pool_sz, 0, 0,
@@ -173,8 +174,8 @@ cperf_alloc_common_memory(const struct cperf_options *options,
 		}
 	}
 
-	snprintf(pool_name, sizeof(pool_name), "cperf_op_pool_cdev_%d",
-			dev_id);
+	snprintf(pool_name, sizeof(pool_name), "cperf_op_pool_cdev_%u_qp_%u",
+			dev_id, qp_id);
 
 	uint16_t priv_size = RTE_ALIGN_CEIL(test_vector->cipher_iv.length +
 		test_vector->auth_iv.length + test_vector->aead_iv.length +

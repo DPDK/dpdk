@@ -35,6 +35,9 @@
 
 #include <rte_eal.h>
 #include <rte_cryptodev.h>
+#ifdef RTE_LIBRTE_PMD_CRYPTO_SCHEDULER
+#include <rte_cryptodev_scheduler.h>
+#endif
 
 #include "cperf.h"
 #include "cperf_options.h"
@@ -90,7 +93,7 @@ cperf_initialize_cryptodev(struct cperf_options *opts, uint8_t *enabled_cdevs,
 			struct rte_mempool *session_pool_socket[])
 {
 	uint8_t enabled_cdev_count = 0, nb_lcores, cdev_id;
-	unsigned int i;
+	unsigned int i, j;
 	int ret;
 
 	enabled_cdev_count = rte_cryptodev_devices_get(opts->device_type,
@@ -119,20 +122,52 @@ cperf_initialize_cryptodev(struct cperf_options *opts, uint8_t *enabled_cdevs,
 			max_sess_size = sess_size;
 	}
 
+	/*
+	 * Calculate number of needed queue pairs, based on the amount
+	 * of available number of logical cores and crypto devices.
+	 * For instance, if there are 4 cores and 2 crypto devices,
+	 * 2 queue pairs will be set up per device.
+	 */
+	opts->nb_qps = (nb_lcores % enabled_cdev_count) ?
+				(nb_lcores / enabled_cdev_count) + 1 :
+				nb_lcores / enabled_cdev_count;
+
 	for (i = 0; i < enabled_cdev_count &&
 			i < RTE_CRYPTO_MAX_DEVS; i++) {
 		cdev_id = enabled_cdevs[i];
+#ifdef RTE_LIBRTE_PMD_CRYPTO_SCHEDULER
+		/*
+		 * If multi-core scheduler is used, limit the number
+		 * of queue pairs to 1, as there is no way to know
+		 * how many cores are being used by the PMD, and
+		 * how many will be available for the application.
+		 */
+		if (!strcmp((const char *)opts->device_type, "crypto_scheduler") &&
+				rte_cryptodev_scheduler_mode_get(cdev_id) ==
+				CDEV_SCHED_MODE_MULTICORE)
+			opts->nb_qps = 1;
+#endif
+
+		struct rte_cryptodev_info cdev_info;
 		uint8_t socket_id = rte_cryptodev_socket_id(cdev_id);
 
+		rte_cryptodev_info_get(cdev_id, &cdev_info);
+		if (opts->nb_qps > cdev_info.max_nb_queue_pairs) {
+			printf("Number of needed queue pairs is higher "
+				"than the maximum number of queue pairs "
+				"per device.\n");
+			printf("Lower the number of cores or increase "
+				"the number of crypto devices\n");
+			return -EINVAL;
+		}
 		struct rte_cryptodev_config conf = {
-				.nb_queue_pairs = 1,
-				.socket_id = socket_id
+			.nb_queue_pairs = opts->nb_qps,
+			.socket_id = socket_id
 		};
 
 		struct rte_cryptodev_qp_conf qp_conf = {
-			    .nb_descriptors = opts->nb_descriptors
+			.nb_descriptors = opts->nb_descriptors
 		};
-
 
 		if (session_pool_socket[socket_id] == NULL) {
 			char mp_name[RTE_MEMPOOL_NAMESIZE];
@@ -165,14 +200,16 @@ cperf_initialize_cryptodev(struct cperf_options *opts, uint8_t *enabled_cdevs,
 			return -EINVAL;
 		}
 
-		ret = rte_cryptodev_queue_pair_setup(cdev_id, 0,
+		for (j = 0; j < opts->nb_qps; j++) {
+			ret = rte_cryptodev_queue_pair_setup(cdev_id, j,
 				&qp_conf, socket_id,
 				session_pool_socket[socket_id]);
 			if (ret < 0) {
 				printf("Failed to setup queue pair %u on "
-					"cryptodev %u",	0, cdev_id);
+					"cryptodev %u",	j, cdev_id);
 				return -EINVAL;
 			}
+		}
 
 		ret = rte_cryptodev_start(cdev_id);
 		if (ret < 0) {
@@ -417,11 +454,12 @@ main(int argc, char **argv)
 		goto err;
 	}
 
+	nb_cryptodevs = cperf_initialize_cryptodev(&opts, enabled_cdevs,
+			session_pool_socket);
+
 	if (!opts.silent)
 		cperf_options_dump(&opts);
 
-	nb_cryptodevs = cperf_initialize_cryptodev(&opts, enabled_cdevs,
-			session_pool_socket);
 	if (nb_cryptodevs < 1) {
 		RTE_LOG(ERR, USER1, "Failed to initialise requested crypto "
 				"device type\n");
@@ -471,23 +509,29 @@ main(int argc, char **argv)
 	if (!opts.silent)
 		show_test_vector(t_vec);
 
+	uint16_t total_nb_qps = nb_cryptodevs * opts.nb_qps;
+
 	i = 0;
+	uint8_t qp_id = 0, cdev_index = 0;
 	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
 
-		if (i == nb_cryptodevs)
+		if (i == total_nb_qps)
 			break;
 
-		cdev_id = enabled_cdevs[i];
+		cdev_id = enabled_cdevs[cdev_index];
 
 		uint8_t socket_id = rte_cryptodev_socket_id(cdev_id);
 
-		ctx[cdev_id] = cperf_testmap[opts.test].constructor(
-				session_pool_socket[socket_id], cdev_id, 0,
+		ctx[i] = cperf_testmap[opts.test].constructor(
+				session_pool_socket[socket_id], cdev_id, qp_id,
 				&opts, t_vec, &op_fns);
-		if (ctx[cdev_id] == NULL) {
+		if (ctx[i] == NULL) {
 			RTE_LOG(ERR, USER1, "Test run constructor failed\n");
 			goto err;
 		}
+		qp_id = (qp_id + 1) % opts.nb_qps;
+		if (qp_id == 0)
+			cdev_index++;
 		i++;
 	}
 
@@ -501,19 +545,17 @@ main(int argc, char **argv)
 		i = 0;
 		RTE_LCORE_FOREACH_SLAVE(lcore_id) {
 
-			if (i == nb_cryptodevs)
+			if (i == total_nb_qps)
 				break;
 
-			cdev_id = enabled_cdevs[i];
-
 			rte_eal_remote_launch(cperf_testmap[opts.test].runner,
-				ctx[cdev_id], lcore_id);
+				ctx[i], lcore_id);
 			i++;
 		}
 		i = 0;
 		RTE_LCORE_FOREACH_SLAVE(lcore_id) {
 
-			if (i == nb_cryptodevs)
+			if (i == total_nb_qps)
 				break;
 			rte_eal_wait_lcore(lcore_id);
 			i++;
@@ -532,14 +574,16 @@ main(int argc, char **argv)
 	i = 0;
 	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
 
-		if (i == nb_cryptodevs)
+		if (i == total_nb_qps)
 			break;
 
-		cdev_id = enabled_cdevs[i];
-
-		cperf_testmap[opts.test].destructor(ctx[cdev_id]);
+		cperf_testmap[opts.test].destructor(ctx[i]);
 		i++;
 	}
+
+	for (i = 0; i < nb_cryptodevs &&
+			i < RTE_CRYPTO_MAX_DEVS; i++)
+		rte_cryptodev_stop(enabled_cdevs[i]);
 
 	free_test_vector(t_vec, &opts);
 
@@ -549,15 +593,19 @@ main(int argc, char **argv)
 err:
 	i = 0;
 	RTE_LCORE_FOREACH_SLAVE(lcore_id) {
-		if (i == nb_cryptodevs)
+		if (i == total_nb_qps)
 			break;
 
 		cdev_id = enabled_cdevs[i];
 
-		if (ctx[cdev_id] && cperf_testmap[opts.test].destructor)
-			cperf_testmap[opts.test].destructor(ctx[cdev_id]);
+		if (ctx[i] && cperf_testmap[opts.test].destructor)
+			cperf_testmap[opts.test].destructor(ctx[i]);
 		i++;
 	}
+
+	for (i = 0; i < nb_cryptodevs &&
+			i < RTE_CRYPTO_MAX_DEVS; i++)
+		rte_cryptodev_stop(enabled_cdevs[i]);
 
 	free_test_vector(t_vec, &opts);
 
