@@ -47,7 +47,7 @@ typedef struct rte_cryptodev_sym_session *(*cperf_sessions_create_t)(
 		uint16_t iv_offset);
 
 typedef int (*cperf_populate_ops_t)(struct rte_crypto_op **ops,
-		struct rte_mbuf **bufs_in, struct rte_mbuf **bufs_out,
+		uint32_t src_buf_offset, uint32_t dst_buf_offset,
 		uint16_t nb_ops, struct rte_cryptodev_sym_session *sess,
 		const struct cperf_options *options,
 		const struct cperf_test_vector *test_vector,

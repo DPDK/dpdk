@@ -50,16 +50,14 @@ struct cperf_latency_ctx {
 	uint16_t qp_id;
 	uint8_t lcore_id;
 
-	struct rte_mempool *pkt_mbuf_pool_in;
-	struct rte_mempool *pkt_mbuf_pool_out;
-	struct rte_mbuf **mbufs_in;
-	struct rte_mbuf **mbufs_out;
-
-	struct rte_mempool *crypto_op_pool;
+	struct rte_mempool *pool;
 
 	struct rte_cryptodev_sym_session *sess;
 
 	cperf_populate_ops_t populate_ops;
+
+	uint32_t src_buf_offset;
+	uint32_t dst_buf_offset;
 
 	const struct cperf_options *options;
 	const struct cperf_test_vector *test_vector;
@@ -82,11 +80,8 @@ cperf_latency_test_free(struct cperf_latency_ctx *ctx)
 			rte_cryptodev_sym_session_free(ctx->sess);
 		}
 
-		cperf_free_common_memory(ctx->options,
-				ctx->pkt_mbuf_pool_in,
-				ctx->pkt_mbuf_pool_out,
-				ctx->mbufs_in, ctx->mbufs_out,
-				ctx->crypto_op_pool);
+		if (ctx->pool)
+			rte_mempool_free(ctx->pool);
 
 		rte_free(ctx->res);
 		rte_free(ctx);
@@ -126,9 +121,8 @@ cperf_latency_test_constructor(struct rte_mempool *sess_mp,
 
 	if (cperf_alloc_common_memory(options, test_vector, dev_id, qp_id,
 			extra_op_priv_size,
-			&ctx->pkt_mbuf_pool_in, &ctx->pkt_mbuf_pool_out,
-			&ctx->mbufs_in, &ctx->mbufs_out,
-			&ctx->crypto_op_pool) < 0)
+			&ctx->src_buf_offset, &ctx->dst_buf_offset,
+			&ctx->pool) < 0)
 		goto err;
 
 	ctx->res = rte_malloc(NULL, sizeof(struct cperf_op_result) *
@@ -204,7 +198,7 @@ cperf_latency_test_runner(void *arg)
 
 	while (test_burst_size <= ctx->options->max_burst_size) {
 		uint64_t ops_enqd = 0, ops_deqd = 0;
-		uint64_t m_idx = 0, b_idx = 0;
+		uint64_t b_idx = 0;
 
 		uint64_t tsc_val, tsc_end, tsc_start;
 		uint64_t tsc_max = 0, tsc_min = ~0UL, tsc_tot = 0, tsc_idx = 0;
@@ -219,11 +213,9 @@ cperf_latency_test_runner(void *arg)
 							ctx->options->total_ops -
 							enqd_tot;
 
-			/* Allocate crypto ops from pool */
-			if (burst_size != rte_crypto_op_bulk_alloc(
-					ctx->crypto_op_pool,
-					RTE_CRYPTO_OP_TYPE_SYMMETRIC,
-					ops, burst_size)) {
+			/* Allocate objects containing crypto operations and mbufs */
+			if (rte_mempool_get_bulk(ctx->pool, (void **)ops,
+						burst_size) != 0) {
 				RTE_LOG(ERR, USER1,
 					"Failed to allocate more crypto operations "
 					"from the the crypto operation pool.\n"
@@ -233,8 +225,8 @@ cperf_latency_test_runner(void *arg)
 			}
 
 			/* Setup crypto op, attach mbuf etc */
-			(ctx->populate_ops)(ops, &ctx->mbufs_in[m_idx],
-					&ctx->mbufs_out[m_idx],
+			(ctx->populate_ops)(ops, ctx->src_buf_offset,
+					ctx->dst_buf_offset,
 					burst_size, ctx->sess, ctx->options,
 					ctx->test_vector, iv_offset);
 
@@ -263,7 +255,7 @@ cperf_latency_test_runner(void *arg)
 
 			/* Free memory for not enqueued operations */
 			if (ops_enqd != burst_size)
-				rte_mempool_put_bulk(ctx->crypto_op_pool,
+				rte_mempool_put_bulk(ctx->pool,
 						(void **)&ops[ops_enqd],
 						burst_size - ops_enqd);
 
@@ -279,16 +271,11 @@ cperf_latency_test_runner(void *arg)
 			}
 
 			if (likely(ops_deqd))  {
-				/*
-				 * free crypto ops so they can be reused. We don't free
-				 * the mbufs here as we don't want to reuse them as
-				 * the crypto operation will change the data and cause
-				 * failures.
-				 */
+				/* Free crypto ops so they can be reused. */
 				for (i = 0; i < ops_deqd; i++)
 					store_timestamp(ops_processed[i], tsc_end);
 
-				rte_mempool_put_bulk(ctx->crypto_op_pool,
+				rte_mempool_put_bulk(ctx->pool,
 						(void **)ops_processed, ops_deqd);
 
 				deqd_tot += ops_deqd;
@@ -300,9 +287,6 @@ cperf_latency_test_runner(void *arg)
 			enqd_max = max(ops_enqd, enqd_max);
 			enqd_min = min(ops_enqd, enqd_min);
 
-			m_idx += ops_enqd;
-			m_idx = m_idx + test_burst_size > ctx->options->pool_sz ?
-					0 : m_idx;
 			b_idx++;
 		}
 
@@ -321,7 +305,7 @@ cperf_latency_test_runner(void *arg)
 				for (i = 0; i < ops_deqd; i++)
 					store_timestamp(ops_processed[i], tsc_end);
 
-				rte_mempool_put_bulk(ctx->crypto_op_pool,
+				rte_mempool_put_bulk(ctx->pool,
 						(void **)ops_processed, ops_deqd);
 
 				deqd_tot += ops_deqd;

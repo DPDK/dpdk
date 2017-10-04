@@ -51,18 +51,16 @@ struct cperf_pmd_cyclecount_ctx {
 	uint16_t qp_id;
 	uint8_t lcore_id;
 
-	struct rte_mempool *pkt_mbuf_pool_in;
-	struct rte_mempool *pkt_mbuf_pool_out;
-	struct rte_mbuf **mbufs_in;
-	struct rte_mbuf **mbufs_out;
-
-	struct rte_mempool *crypto_op_pool;
+	struct rte_mempool *pool;
 	struct rte_crypto_op **ops;
 	struct rte_crypto_op **ops_processed;
 
 	struct rte_cryptodev_sym_session *sess;
 
 	cperf_populate_ops_t populate_ops;
+
+	uint32_t src_buf_offset;
+	uint32_t dst_buf_offset;
 
 	const struct cperf_options *options;
 	const struct cperf_test_vector *test_vector;
@@ -95,11 +93,9 @@ cperf_pmd_cyclecount_test_free(struct cperf_pmd_cyclecount_ctx *ctx)
 			rte_cryptodev_sym_session_free(ctx->sess);
 		}
 
-		cperf_free_common_memory(ctx->options,
-				ctx->pkt_mbuf_pool_in,
-				ctx->pkt_mbuf_pool_out,
-				ctx->mbufs_in, ctx->mbufs_out,
-				ctx->crypto_op_pool);
+		if (ctx->pool)
+			rte_mempool_free(ctx->pool);
+
 		if (ctx->ops)
 			rte_free(ctx->ops);
 
@@ -144,9 +140,8 @@ cperf_pmd_cyclecount_test_constructor(struct rte_mempool *sess_mp,
 		goto err;
 
 	if (cperf_alloc_common_memory(options, test_vector, dev_id, qp_id, 0,
-			&ctx->pkt_mbuf_pool_in, &ctx->pkt_mbuf_pool_out,
-			&ctx->mbufs_in, &ctx->mbufs_out,
-			&ctx->crypto_op_pool) < 0)
+			&ctx->src_buf_offset, &ctx->dst_buf_offset,
+			&ctx->pool) < 0)
 		goto err;
 
 	ctx->ops = rte_malloc("ops", alloc_sz, 0);
@@ -181,16 +176,22 @@ pmd_cyclecount_bench_ops(struct pmd_cyclecount_state *state, uint32_t cur_op,
 				test_burst_size);
 		struct rte_crypto_op **ops = &state->ctx->ops[cur_iter_op];
 
-		if (burst_size != rte_crypto_op_bulk_alloc(
-				state->ctx->crypto_op_pool,
-				RTE_CRYPTO_OP_TYPE_SYMMETRIC,
-				ops, burst_size))
-			return -1;
+		/* Allocate objects containing crypto operations and mbufs */
+		if (rte_mempool_get_bulk(state->ctx->pool, (void **)ops,
+					burst_size) != 0) {
+			RTE_LOG(ERR, USER1,
+					"Failed to allocate more crypto operations "
+					"from the the crypto operation pool.\n"
+					"Consider increasing the pool size "
+					"with --pool-sz\n");
+				return -1;
+		}
 
 		/* Setup crypto op, attach mbuf etc */
 		(state->ctx->populate_ops)(ops,
-				&state->ctx->mbufs_in[cur_iter_op],
-				&state->ctx->mbufs_out[cur_iter_op], burst_size,
+				state->ctx->src_buf_offset,
+				state->ctx->dst_buf_offset,
+				burst_size,
 				state->ctx->sess, state->opts,
 				state->ctx->test_vector, iv_offset);
 
@@ -204,7 +205,7 @@ pmd_cyclecount_bench_ops(struct pmd_cyclecount_state *state, uint32_t cur_op,
 			}
 		}
 #endif /* CPERF_LINEARIZATION_ENABLE */
-		rte_mempool_put_bulk(state->ctx->crypto_op_pool, (void **)ops,
+		rte_mempool_put_bulk(state->ctx->pool, (void **)ops,
 				burst_size);
 	}
 
@@ -224,16 +225,22 @@ pmd_cyclecount_build_ops(struct pmd_cyclecount_state *state,
 				iter_ops_needed - cur_iter_op, test_burst_size);
 		struct rte_crypto_op **ops = &state->ctx->ops[cur_iter_op];
 
-		if (burst_size != rte_crypto_op_bulk_alloc(
-				state->ctx->crypto_op_pool,
-				RTE_CRYPTO_OP_TYPE_SYMMETRIC,
-				ops, burst_size))
-			return -1;
+		/* Allocate objects containing crypto operations and mbufs */
+		if (rte_mempool_get_bulk(state->ctx->pool, (void **)ops,
+					burst_size) != 0) {
+			RTE_LOG(ERR, USER1,
+					"Failed to allocate more crypto operations "
+					"from the the crypto operation pool.\n"
+					"Consider increasing the pool size "
+					"with --pool-sz\n");
+				return -1;
+		}
 
 		/* Setup crypto op, attach mbuf etc */
 		(state->ctx->populate_ops)(ops,
-				&state->ctx->mbufs_in[cur_iter_op],
-				&state->ctx->mbufs_out[cur_iter_op], burst_size,
+				state->ctx->src_buf_offset,
+				state->ctx->dst_buf_offset,
+				burst_size,
 				state->ctx->sess, state->opts,
 				state->ctx->test_vector, iv_offset);
 	}
@@ -382,7 +389,7 @@ pmd_cyclecount_bench_burst_sz(
 		 * we may not have processed all ops that we allocated, so
 		 * free everything we've allocated.
 		 */
-		rte_mempool_put_bulk(state->ctx->crypto_op_pool,
+		rte_mempool_put_bulk(state->ctx->pool,
 				(void **)state->ctx->ops, iter_ops_allocd);
 	}
 
