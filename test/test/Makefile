@@ -123,6 +123,10 @@ SRCS-y += test_logs.c
 SRCS-y += test_memcpy.c
 SRCS-y += test_memcpy_perf.c
 
+
+SRCS-$(CONFIG_RTE_LIBRTE_MEMBER) += test_member.c
+SRCS-$(CONFIG_RTE_LIBRTE_MEMBER) += test_member_perf.c
+
 SRCS-$(CONFIG_RTE_LIBRTE_EFD) += test_efd.c
 SRCS-$(CONFIG_RTE_LIBRTE_EFD) += test_efd_perf.c
 
