@@ -116,6 +116,20 @@ show_test_vector(struct cperf_test_vector *test_vector)
 		printf("\n");
 	}
 
+	if (test_vector->aead_key.data) {
+		printf("\naead_key =\n");
+		for (i = 0; i < test_vector->aead_key.length; ++i) {
+			if ((i % wrap == 0) && (i != 0))
+				printf("\n");
+			if (i == (uint32_t)(test_vector->aead_key.length - 1))
+				printf("0x%02x", test_vector->aead_key.data[i]);
+			else
+				printf("0x%02x, ",
+					test_vector->aead_key.data[i]);
+		}
+		printf("\n");
+	}
+
 	if (test_vector->cipher_iv.data) {
 		printf("\ncipher_iv =\n");
 		for (i = 0; i < test_vector->cipher_iv.length; ++i) {
@@ -138,6 +152,19 @@ show_test_vector(struct cperf_test_vector *test_vector)
 				printf("0x%02x", test_vector->auth_iv.data[i]);
 			else
 				printf("0x%02x, ", test_vector->auth_iv.data[i]);
+		}
+		printf("\n");
+	}
+
+	if (test_vector->aead_iv.data) {
+		printf("\naead_iv =\n");
+		for (i = 0; i < test_vector->aead_iv.length; ++i) {
+			if ((i % wrap == 0) && (i != 0))
+				printf("\n");
+			if (i == (uint32_t)(test_vector->aead_iv.length - 1))
+				printf("0x%02x", test_vector->aead_iv.data[i]);
+			else
+				printf("0x%02x, ", test_vector->aead_iv.data[i]);
 		}
 		printf("\n");
 	}
@@ -345,6 +372,20 @@ parse_entry(char *entry, struct cperf_test_vector *vector,
 			vector->auth_key.length = opts->auth_key_sz;
 		}
 
+	} else if (strstr(key_token, "aead_key")) {
+		rte_free(vector->aead_key.data);
+		vector->aead_key.data = data;
+		if (tc_found)
+			vector->aead_key.length = data_length;
+		else {
+			if (opts->aead_key_sz > data_length) {
+				printf("Global aead_key shorter than "
+					"aead_key_sz\n");
+				return -1;
+			}
+			vector->aead_key.length = opts->aead_key_sz;
+		}
+
 	} else if (strstr(key_token, "cipher_iv")) {
 		rte_free(vector->cipher_iv.data);
 		vector->cipher_iv.data = data;
@@ -371,6 +412,20 @@ parse_entry(char *entry, struct cperf_test_vector *vector,
 				return -1;
 			}
 			vector->auth_iv.length = opts->auth_iv_sz;
+		}
+
+	} else if (strstr(key_token, "aead_iv")) {
+		rte_free(vector->aead_iv.data);
+		vector->aead_iv.data = data;
+		if (tc_found)
+			vector->aead_iv.length = data_length;
+		else {
+			if (opts->aead_iv_sz > data_length) {
+				printf("Global aead iv shorter than "
+					"aead_iv_sz\n");
+				return -1;
+			}
+			vector->aead_iv.length = opts->aead_iv_sz;
 		}
 
 	} else if (strstr(key_token, "ciphertext")) {
