@@ -692,6 +692,12 @@ struct rte_eth_vmdq_rx_conf {
  */
 struct rte_eth_txmode {
 	enum rte_eth_tx_mq_mode mq_mode; /**< TX multi-queues mode. */
+	/**
+	 * Per-port Tx offloads to be set using DEV_TX_OFFLOAD_* flags.
+	 * Only offloads set on tx_offload_capa field on rte_eth_dev_info
+	 * structure are allowed to be set.
+	 */
+	uint64_t offloads;
 
 	/* For i40e specifically */
 	uint16_t pvid;
@@ -734,6 +740,15 @@ struct rte_eth_rxconf {
 		(ETH_TXQ_FLAGS_NOXSUMSCTP | ETH_TXQ_FLAGS_NOXSUMUDP | \
 		 ETH_TXQ_FLAGS_NOXSUMTCP)
 /**
+ * When set the txq_flags should be ignored,
+ * instead per-queue Tx offloads will be set on offloads field
+ * located on rte_eth_txq_conf struct.
+ * This flag is temporary till the rte_eth_txq_conf.txq_flags
+ * API will be deprecated.
+ */
+#define ETH_TXQ_FLAGS_IGNORE	0x8000
+
+/**
  * A structure used to configure a TX ring of an Ethernet port.
  */
 struct rte_eth_txconf {
@@ -744,6 +759,12 @@ struct rte_eth_txconf {
 
 	uint32_t txq_flags; /**< Set flags for the Tx queue */
 	uint8_t tx_deferred_start; /**< Do not start queue with rte_eth_dev_start(). */
+	/**
+	 * Per-queue Tx offloads to be set  using DEV_TX_OFFLOAD_* flags.
+	 * Only offloads set on tx_queue_offload_capa or tx_offload_capa
+	 * fields on rte_eth_dev_info structure are allowed to be set.
+	 */
+	uint64_t offloads;
 };
 
 /**
@@ -968,6 +989,8 @@ struct rte_eth_conf {
 /**< Multiple threads can invoke rte_eth_tx_burst() concurrently on the same
  * tx queue without SW lock.
  */
+#define DEV_TX_OFFLOAD_MULTI_SEGS	0x00008000
+/**< Device supports multi segment send. */
 
 struct rte_pci_device;
 
@@ -990,9 +1013,12 @@ struct rte_eth_dev_info {
 	uint16_t max_vmdq_pools; /**< Maximum number of VMDq pools. */
 	uint64_t rx_offload_capa;
 	/**< Device per port RX offload capabilities. */
-	uint32_t tx_offload_capa; /**< Device TX offload capabilities. */
+	uint64_t tx_offload_capa;
+	/**< Device per port TX offload capabilities. */
 	uint64_t rx_queue_offload_capa;
 	/**< Device per queue RX offload capabilities. */
+	uint64_t tx_queue_offload_capa;
+	/**< Device per queue TX offload capabilities. */
 	uint16_t reta_size;
 	/**< Device redirection table size, the total number of entries. */
 	uint8_t hash_key_size; /**< Hash key size in bytes */
@@ -2027,6 +2053,11 @@ int rte_eth_rx_queue_setup(uint8_t port_id, uint16_t rx_queue_id,
  *   - The *txq_flags* member contains flags to pass to the TX queue setup
  *     function to configure the behavior of the TX queue. This should be set
  *     to 0 if no special configuration is required.
+ *     This API is obsolete and will be deprecated. Applications
+ *     should set it to ETH_TXQ_FLAGS_IGNORE and use
+ *     the offloads field below.
+ *   - The *offloads* member contains Tx offloads to be enabled.
+ *     Offloads which are not set cannot be used on the datapath.
  *
  *     Note that setting *tx_free_thresh* or *tx_rs_thresh* value to 0 forces
  *     the transmit function to use default values.

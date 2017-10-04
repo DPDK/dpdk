@@ -1214,6 +1214,50 @@ rte_eth_rx_queue_setup(uint8_t port_id, uint16_t rx_queue_id,
 	return ret;
 }
 
+/**
+ * A conversion function from txq_flags API.
+ */
+static void
+rte_eth_convert_txq_flags(const uint32_t txq_flags, uint64_t *tx_offloads)
+{
+	uint64_t offloads = 0;
+
+	if (!(txq_flags & ETH_TXQ_FLAGS_NOMULTSEGS))
+		offloads |= DEV_TX_OFFLOAD_MULTI_SEGS;
+	if (!(txq_flags & ETH_TXQ_FLAGS_NOVLANOFFL))
+		offloads |= DEV_TX_OFFLOAD_VLAN_INSERT;
+	if (!(txq_flags & ETH_TXQ_FLAGS_NOXSUMSCTP))
+		offloads |= DEV_TX_OFFLOAD_SCTP_CKSUM;
+	if (!(txq_flags & ETH_TXQ_FLAGS_NOXSUMUDP))
+		offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
+	if (!(txq_flags & ETH_TXQ_FLAGS_NOXSUMTCP))
+		offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
+
+	*tx_offloads = offloads;
+}
+
+/**
+ * A conversion function from offloads API.
+ */
+static void
+rte_eth_convert_txq_offloads(const uint64_t tx_offloads, uint32_t *txq_flags)
+{
+	uint32_t flags = 0;
+
+	if (!(tx_offloads & DEV_TX_OFFLOAD_MULTI_SEGS))
+		flags |= ETH_TXQ_FLAGS_NOMULTSEGS;
+	if (!(tx_offloads & DEV_TX_OFFLOAD_VLAN_INSERT))
+		flags |= ETH_TXQ_FLAGS_NOVLANOFFL;
+	if (!(tx_offloads & DEV_TX_OFFLOAD_SCTP_CKSUM))
+		flags |= ETH_TXQ_FLAGS_NOXSUMSCTP;
+	if (!(tx_offloads & DEV_TX_OFFLOAD_UDP_CKSUM))
+		flags |= ETH_TXQ_FLAGS_NOXSUMUDP;
+	if (!(tx_offloads & DEV_TX_OFFLOAD_TCP_CKSUM))
+		flags |= ETH_TXQ_FLAGS_NOXSUMTCP;
+
+	*txq_flags = flags;
+}
+
 int
 rte_eth_tx_queue_setup(uint8_t port_id, uint16_t tx_queue_id,
 		       uint16_t nb_tx_desc, unsigned int socket_id,
@@ -1221,6 +1265,7 @@ rte_eth_tx_queue_setup(uint8_t port_id, uint16_t tx_queue_id,
 {
 	struct rte_eth_dev *dev;
 	struct rte_eth_dev_info dev_info;
+	struct rte_eth_txconf local_conf;
 	void **txq;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -EINVAL);
@@ -1265,8 +1310,23 @@ rte_eth_tx_queue_setup(uint8_t port_id, uint16_t tx_queue_id,
 	if (tx_conf == NULL)
 		tx_conf = &dev_info.default_txconf;
 
+	/*
+	 * Convert between the offloads API to enable PMDs to support
+	 * only one of them.
+	 */
+	local_conf = *tx_conf;
+	if (tx_conf->txq_flags & ETH_TXQ_FLAGS_IGNORE) {
+		rte_eth_convert_txq_offloads(tx_conf->offloads,
+					     &local_conf.txq_flags);
+		/* Keep the ignore flag. */
+		local_conf.txq_flags |= ETH_TXQ_FLAGS_IGNORE;
+	} else {
+		rte_eth_convert_txq_flags(tx_conf->txq_flags,
+					  &local_conf.offloads);
+	}
+
 	return (*dev->dev_ops->tx_queue_setup)(dev, tx_queue_id, nb_tx_desc,
-					       socket_id, tx_conf);
+					       socket_id, &local_conf);
 }
 
 void

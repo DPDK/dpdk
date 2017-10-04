@@ -131,7 +131,8 @@ Lock-free Tx queue
 If a PMD advertises DEV_TX_OFFLOAD_MT_LOCKFREE capable, multiple threads can
 invoke rte_eth_tx_burst() concurrently on the same Tx queue without SW lock.
 
-* **[provides] rte_eth_dev_info**: ``tx_offload_capa:DEV_TX_OFFLOAD_MT_LOCKFREE``.
+* **[uses]    rte_eth_txconf,rte_eth_txmode**: ``offloads:DEV_TX_OFFLOAD_MT_LOCKFREE``.
+* **[provides] rte_eth_dev_info**: ``tx_offload_capa,tx_queue_offload_capa:DEV_TX_OFFLOAD_MT_LOCKFREE``.
 * **[related]  API**: ``rte_eth_tx_burst()``.
 
 
@@ -220,11 +221,12 @@ TSO
 
 Supports TCP Segmentation Offloading.
 
+* **[uses]       rte_eth_txconf,rte_eth_txmode**: ``offloads:DEV_TX_OFFLOAD_TCP_TSO``.
 * **[uses]       rte_eth_desc_lim**: ``nb_seg_max``, ``nb_mtu_seg_max``.
 * **[uses]       mbuf**: ``mbuf.ol_flags:PKT_TX_TCP_SEG``.
 * **[uses]       mbuf**: ``mbuf.tso_segsz``, ``mbuf.l2_len``, ``mbuf.l3_len``, ``mbuf.l4_len``.
 * **[implements] datapath**: ``TSO functionality``.
-* **[provides]   rte_eth_dev_info**: ``tx_offload_capa:DEV_TX_OFFLOAD_TCP_TSO,DEV_TX_OFFLOAD_UDP_TSO``.
+* **[provides]   rte_eth_dev_info**: ``tx_offload_capa,tx_queue_offload_capa:DEV_TX_OFFLOAD_TCP_TSO,DEV_TX_OFFLOAD_UDP_TSO``.
 
 
 .. _nic_features_promiscuous_mode:
@@ -510,10 +512,11 @@ VLAN offload
 Supports VLAN offload to hardware.
 
 * **[uses]       rte_eth_rxconf,rte_eth_rxmode**: ``offloads:DEV_RX_OFFLOAD_VLAN_STRIP,DEV_RX_OFFLOAD_VLAN_FILTER,DEV_RX_OFFLOAD_VLAN_EXTEND``.
+* **[uses]       rte_eth_txconf,rte_eth_txmode**: ``offloads:DEV_TX_OFFLOAD_VLAN_INSERT``.
 * **[implements] eth_dev_ops**: ``vlan_offload_set``.
 * **[provides]   mbuf**: ``mbuf.ol_flags:PKT_RX_VLAN_STRIPPED``, ``mbuf.vlan_tci``.
 * **[provides]   rte_eth_dev_info**: ``rx_offload_capa,rx_queue_offload_capa:DEV_RX_OFFLOAD_VLAN_STRIP``,
-  ``tx_offload_capa:DEV_TX_OFFLOAD_VLAN_INSERT``.
+  ``tx_offload_capa,tx_queue_offload_capa:DEV_TX_OFFLOAD_VLAN_INSERT``.
 * **[related]    API**: ``rte_eth_dev_set_vlan_offload()``,
   ``rte_eth_dev_get_vlan_offload()``.
 
@@ -526,11 +529,12 @@ QinQ offload
 Supports QinQ (queue in queue) offload.
 
 * **[uses]     rte_eth_rxconf,rte_eth_rxmode**: ``offloads:DEV_RX_OFFLOAD_QINQ_STRIP``.
+* **[uses]     rte_eth_txconf,rte_eth_txmode**: ``offloads:DEV_TX_OFFLOAD_QINQ_INSERT``.
 * **[uses]     mbuf**: ``mbuf.ol_flags:PKT_TX_QINQ_PKT``.
 * **[provides] mbuf**: ``mbuf.ol_flags:PKT_RX_QINQ_STRIPPED``, ``mbuf.vlan_tci``,
    ``mbuf.vlan_tci_outer``.
 * **[provides] rte_eth_dev_info**: ``rx_offload_capa,rx_queue_offload_capa:DEV_RX_OFFLOAD_QINQ_STRIP``,
-  ``tx_offload_capa:DEV_TX_OFFLOAD_QINQ_INSERT``.
+  ``tx_offload_capa,tx_queue_offload_capa:DEV_TX_OFFLOAD_QINQ_INSERT``.
 
 
 .. _nic_features_l3_checksum_offload:
@@ -541,13 +545,14 @@ L3 checksum offload
 Supports L3 checksum offload.
 
 * **[uses]     rte_eth_rxconf,rte_eth_rxmode**: ``offloads:DEV_RX_OFFLOAD_IPV4_CKSUM``.
+* **[uses]     rte_eth_txconf,rte_eth_txmode**: ``offloads:DEV_TX_OFFLOAD_IPV4_CKSUM``.
 * **[uses]     mbuf**: ``mbuf.ol_flags:PKT_TX_IP_CKSUM``,
   ``mbuf.ol_flags:PKT_TX_IPV4`` | ``PKT_TX_IPV6``.
 * **[provides] mbuf**: ``mbuf.ol_flags:PKT_RX_IP_CKSUM_UNKNOWN`` |
   ``PKT_RX_IP_CKSUM_BAD`` | ``PKT_RX_IP_CKSUM_GOOD`` |
   ``PKT_RX_IP_CKSUM_NONE``.
 * **[provides] rte_eth_dev_info**: ``rx_offload_capa,rx_queue_offload_capa:DEV_RX_OFFLOAD_IPV4_CKSUM``,
-  ``tx_offload_capa:DEV_TX_OFFLOAD_IPV4_CKSUM``.
+  ``tx_offload_capa,tx_queue_offload_capa:DEV_TX_OFFLOAD_IPV4_CKSUM``.
 
 
 .. _nic_features_l4_checksum_offload:
@@ -558,6 +563,7 @@ L4 checksum offload
 Supports L4 checksum offload.
 
 * **[uses]     rte_eth_rxconf,rte_eth_rxmode**: ``offloads:DEV_RX_OFFLOAD_UDP_CKSUM,DEV_RX_OFFLOAD_TCP_CKSUM``.
+* **[uses]     rte_eth_txconf,rte_eth_txmode**: ``offloads:DEV_TX_OFFLOAD_UDP_CKSUM,DEV_TX_OFFLOAD_TCP_CKSUM,DEV_TX_OFFLOAD_SCTP_CKSUM``.
 * **[uses]     mbuf**: ``mbuf.ol_flags:PKT_TX_IPV4`` | ``PKT_TX_IPV6``,
   ``mbuf.ol_flags:PKT_TX_L4_NO_CKSUM`` | ``PKT_TX_TCP_CKSUM`` |
   ``PKT_TX_SCTP_CKSUM`` | ``PKT_TX_UDP_CKSUM``.
@@ -565,7 +571,7 @@ Supports L4 checksum offload.
   ``PKT_RX_L4_CKSUM_BAD`` | ``PKT_RX_L4_CKSUM_GOOD`` |
   ``PKT_RX_L4_CKSUM_NONE``.
 * **[provides] rte_eth_dev_info**: ``rx_offload_capa,rx_queue_offload_capa:DEV_RX_OFFLOAD_UDP_CKSUM,DEV_RX_OFFLOAD_TCP_CKSUM``,
-  ``tx_offload_capa:DEV_TX_OFFLOAD_UDP_CKSUM,DEV_TX_OFFLOAD_TCP_CKSUM,DEV_TX_OFFLOAD_SCTP_CKSUM``.
+  ``tx_offload_capa,tx_queue_offload_capa:DEV_TX_OFFLOAD_UDP_CKSUM,DEV_TX_OFFLOAD_TCP_CKSUM,DEV_TX_OFFLOAD_SCTP_CKSUM``.
 
 
 .. _nic_features_macsec_offload:
@@ -576,9 +582,10 @@ MACsec offload
 Supports MACsec.
 
 * **[uses]     rte_eth_rxconf,rte_eth_rxmode**: ``offloads:DEV_RX_OFFLOAD_MACSEC_STRIP``.
+* **[uses]     rte_eth_txconf,rte_eth_txmode**: ``offloads:DEV_TX_OFFLOAD_MACSEC_INSERT``.
 * **[uses]     mbuf**: ``mbuf.ol_flags:PKT_TX_MACSEC``.
 * **[provides] rte_eth_dev_info**: ``rx_offload_capa,rx_queue_offload_capa:DEV_RX_OFFLOAD_MACSEC_STRIP``,
-  ``tx_offload_capa:DEV_TX_OFFLOAD_MACSEC_INSERT``.
+  ``tx_offload_capa,tx_queue_offload_capa:DEV_TX_OFFLOAD_MACSEC_INSERT``.
 
 
 .. _nic_features_inner_l3_checksum:
@@ -589,6 +596,7 @@ Inner L3 checksum
 Supports inner packet L3 checksum.
 
 * **[uses]     rte_eth_rxconf,rte_eth_rxmode**: ``offloads:DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM``.
+* **[uses]     rte_eth_txconf,rte_eth_txmode**: ``offloads:DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM``.
 * **[uses]     mbuf**: ``mbuf.ol_flags:PKT_TX_IP_CKSUM``,
   ``mbuf.ol_flags:PKT_TX_IPV4`` | ``PKT_TX_IPV6``,
   ``mbuf.ol_flags:PKT_TX_OUTER_IP_CKSUM``,
@@ -596,7 +604,7 @@ Supports inner packet L3 checksum.
 * **[uses]     mbuf**: ``mbuf.outer_l2_len``, ``mbuf.outer_l3_len``.
 * **[provides] mbuf**: ``mbuf.ol_flags:PKT_RX_EIP_CKSUM_BAD``.
 * **[provides] rte_eth_dev_info**: ``rx_offload_capa,rx_queue_offload_capa:DEV_RX_OFFLOAD_OUTER_IPV4_CKSUM``,
-  ``tx_offload_capa:DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM``.
+  ``tx_offload_capa,tx_queue_offload_capa:DEV_TX_OFFLOAD_OUTER_IPV4_CKSUM``.
 
 
 .. _nic_features_inner_l4_checksum:
