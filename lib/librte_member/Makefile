@@ -44,7 +44,7 @@ EXPORT_MAP := rte_member_version.map
 LIBABIVER := 1
 
 # all source are stored in SRCS-y
-SRCS-$(CONFIG_RTE_LIBRTE_MEMBER) +=  rte_member.c
+SRCS-$(CONFIG_RTE_LIBRTE_MEMBER) +=  rte_member.c rte_member_ht.c
 # install includes
 SYMLINK-$(CONFIG_RTE_LIBRTE_MEMBER)-include := rte_member.h
 

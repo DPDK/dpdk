@@ -126,6 +126,7 @@ struct rte_member_parameters;
  * Define different set summary types
  */
 enum rte_member_setsum_type {
+	RTE_MEMBER_TYPE_HT = 0,  /**< Hash table based set summary. */
 	RTE_MEMBER_NUM_TYPE
 };
 

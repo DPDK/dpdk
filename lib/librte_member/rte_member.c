@@ -41,6 +41,7 @@
 #include <rte_errno.h>
 
 #include "rte_member.h"
+#include "rte_member_ht.h"
 
 int librte_member_logtype;
 
@@ -96,6 +97,9 @@ rte_member_free(struct rte_member_setsum *setsum)
 	rte_rwlock_write_unlock(RTE_EAL_TAILQ_RWLOCK);
 
 	switch (setsum->type) {
+	case RTE_MEMBER_TYPE_HT:
+		rte_member_free_ht(setsum);
+		break;
 	default:
 		break;
 	}
@@ -163,6 +167,9 @@ rte_member_create(const struct rte_member_parameters *params)
 	setsum->sec_hash_seed = params->sec_hash_seed;
 
 	switch (setsum->type) {
+	case RTE_MEMBER_TYPE_HT:
+		ret = rte_member_create_ht(setsum, params);
+		break;
 	default:
 		goto error_unlock_exit;
 	}
@@ -190,8 +197,9 @@ rte_member_add(const struct rte_member_setsum *setsum, const void *key,
 	if (setsum == NULL || key == NULL)
 		return -EINVAL;
 
-	(void) set_id;
 	switch (setsum->type) {
+	case RTE_MEMBER_TYPE_HT:
+		return rte_member_add_ht(setsum, key, set_id);
 	default:
 		return -EINVAL;
 	}
@@ -205,6 +213,8 @@ rte_member_lookup(const struct rte_member_setsum *setsum, const void *key,
 		return -EINVAL;
 
 	switch (setsum->type) {
+	case RTE_MEMBER_TYPE_HT:
+		return rte_member_lookup_ht(setsum, key, set_id);
 	default:
 		return -EINVAL;
 	}
@@ -218,8 +228,10 @@ rte_member_lookup_bulk(const struct rte_member_setsum *setsum,
 	if (setsum == NULL || keys == NULL || set_ids == NULL)
 		return -EINVAL;
 
-	(void) num_keys;
 	switch (setsum->type) {
+	case RTE_MEMBER_TYPE_HT:
+		return rte_member_lookup_bulk_ht(setsum, keys, num_keys,
+				set_ids);
 	default:
 		return -EINVAL;
 	}
@@ -232,8 +244,10 @@ rte_member_lookup_multi(const struct rte_member_setsum *setsum, const void *key,
 	if (setsum == NULL || key == NULL || set_id == NULL)
 		return -EINVAL;
 
-	(void) match_per_key;
 	switch (setsum->type) {
+	case RTE_MEMBER_TYPE_HT:
+		return rte_member_lookup_multi_ht(setsum, key, match_per_key,
+				set_id);
 	default:
 		return -EINVAL;
 	}
@@ -249,9 +263,10 @@ rte_member_lookup_multi_bulk(const struct rte_member_setsum *setsum,
 			match_count == NULL)
 		return -EINVAL;
 
-	(void) num_keys;
-	(void) max_match_per_key;
 	switch (setsum->type) {
+	case RTE_MEMBER_TYPE_HT:
+		return rte_member_lookup_multi_bulk_ht(setsum, keys, num_keys,
+				max_match_per_key, match_count, set_ids);
 	default:
 		return -EINVAL;
 	}
@@ -264,8 +279,9 @@ rte_member_delete(const struct rte_member_setsum *setsum, const void *key,
 	if (setsum == NULL || key == NULL)
 		return -EINVAL;
 
-	(void) set_id;
 	switch (setsum->type) {
+	case RTE_MEMBER_TYPE_HT:
+		return rte_member_delete_ht(setsum, key, set_id);
 	default:
 		return -EINVAL;
 	}
@@ -277,6 +293,9 @@ rte_member_reset(const struct rte_member_setsum *setsum)
 	if (setsum == NULL)
 		return;
 	switch (setsum->type) {
+	case RTE_MEMBER_TYPE_HT:
+		rte_member_reset_ht(setsum);
+		return;
 	default:
 		return;
 	}
