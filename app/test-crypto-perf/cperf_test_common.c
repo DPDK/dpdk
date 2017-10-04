@@ -94,16 +94,6 @@ cperf_mbuf_create(struct rte_mempool *mempool,
 			goto error;
 	}
 
-	if (options->op_type == CPERF_AEAD) {
-		uint8_t *aead = (uint8_t *)rte_pktmbuf_prepend(mbuf,
-			RTE_ALIGN_CEIL(options->aead_aad_sz, 16));
-
-		if (aead == NULL)
-			goto error;
-
-		memcpy(aead, test_vector->aad.data, test_vector->aad.length);
-	}
-
 	return mbuf;
 error:
 	if (mbuf != NULL)
@@ -183,9 +173,10 @@ cperf_alloc_common_memory(const struct cperf_options *options,
 	snprintf(pool_name, sizeof(pool_name), "cperf_op_pool_cdev_%d",
 			dev_id);
 
-	uint16_t priv_size = test_vector->cipher_iv.length +
+	uint16_t priv_size = RTE_ALIGN_CEIL(test_vector->cipher_iv.length +
 		test_vector->auth_iv.length + test_vector->aead_iv.length +
-		extra_op_priv_size;
+		extra_op_priv_size, 16) +
+		RTE_ALIGN_CEIL(options->aead_aad_sz, 16);
 
 	*crypto_op_pool = rte_crypto_op_pool_create(pool_name,
 			RTE_CRYPTO_OP_TYPE_SYMMETRIC, options->pool_sz,

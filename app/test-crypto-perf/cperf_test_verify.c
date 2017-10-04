@@ -197,9 +197,9 @@ cperf_verify_op(struct rte_crypto_op *op,
 		break;
 	case CPERF_AEAD:
 		cipher = 1;
-		cipher_offset = vector->aad.length;
+		cipher_offset = 0;
 		auth = 1;
-		auth_offset = vector->aad.length + options->test_buffer_size;
+		auth_offset = options->test_buffer_size;
 		break;
 	default:
 		res = 1;

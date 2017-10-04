@@ -307,6 +307,8 @@ cperf_set_ops_aead(struct rte_crypto_op **ops,
 		uint16_t iv_offset)
 {
 	uint16_t i;
+	uint16_t aad_offset = iv_offset +
+			RTE_ALIGN_CEIL(test_vector->aead_iv.length, 16);
 
 	for (i = 0; i < nb_ops; i++) {
 		struct rte_crypto_sym_op *sym_op = ops[i]->sym;
@@ -318,11 +320,12 @@ cperf_set_ops_aead(struct rte_crypto_op **ops,
 
 		/* AEAD parameters */
 		sym_op->aead.data.length = options->test_buffer_size;
-		sym_op->aead.data.offset =
-				RTE_ALIGN_CEIL(options->aead_aad_sz, 16);
+		sym_op->aead.data.offset = 0;
 
-		sym_op->aead.aad.data = rte_pktmbuf_mtod(bufs_in[i], uint8_t *);
-		sym_op->aead.aad.phys_addr = rte_pktmbuf_mtophys(bufs_in[i]);
+		sym_op->aead.aad.data = rte_crypto_op_ctod_offset(ops[i],
+					uint8_t *, aad_offset);
+		sym_op->aead.aad.phys_addr = rte_crypto_op_ctophys_offset(ops[i],
+					aad_offset);
 
 		if (options->aead_op == RTE_CRYPTO_AEAD_OP_DECRYPT) {
 			sym_op->aead.digest.data = test_vector->digest.data;
@@ -360,6 +363,11 @@ cperf_set_ops_aead(struct rte_crypto_op **ops,
 
 			memcpy(iv_ptr, test_vector->aead_iv.data,
 					test_vector->aead_iv.length);
+
+			/* Copy AAD after the IV */
+			memcpy(ops[i]->sym->aead.aad.data,
+				test_vector->aad.data,
+				test_vector->aad.length);
 		}
 	}
 
