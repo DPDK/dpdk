@@ -604,6 +604,11 @@ CONFIG_RTE_LIBRTE_HASH_DEBUG=n
 CONFIG_RTE_LIBRTE_EFD=y
 
 #
+# Compile librte_member
+#
+CONFIG_RTE_LIBRTE_MEMBER=y
+
+#
 # Compile librte_jobstats
 #
 CONFIG_RTE_LIBRTE_JOBSTATS=y

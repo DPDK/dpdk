@@ -1,0 +1,16 @@
+DPDK_17.11 {
+	global:
+
+	rte_member_add;
+	rte_member_create;
+	rte_member_delete;
+	rte_member_find_existing;
+	rte_member_free;
+	rte_member_lookup;
+	rte_member_lookup_bulk;
+	rte_member_lookup_multi;
+	rte_member_lookup_multi_bulk;
+	rte_member_reset;
+
+	local: *;
+};

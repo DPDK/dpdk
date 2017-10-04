@@ -744,6 +744,11 @@ F: test/test/test_lpm*
 F: test/test/test_func_reentrancy.c
 F: test/test/test_xmmt_ops.h
 
+Membership - EXPERIMENTAL
+M: Yipeng Wang <yipeng1.wang@intel.com>
+M: Sameh Gobriel <sameh.gobriel@intel.com>
+F: lib/librte_member/
+
 Traffic metering
 M: Cristian Dumitrescu <cristian.dumitrescu@intel.com>
 F: lib/librte_meter/
@@ -751,7 +756,6 @@ F: doc/guides/sample_app_ug/qos_scheduler.rst
 F: test/test/test_meter.c
 F: examples/qos_meter/
 F: doc/guides/sample_app_ug/qos_metering.rst
-
 
 Other libraries
 ---------------

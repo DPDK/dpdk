@@ -86,6 +86,7 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_CFGFILE)        += -lrte_cfgfile
 _LDLIBS-y += --whole-archive
 
 _LDLIBS-$(CONFIG_RTE_LIBRTE_HASH)           += -lrte_hash
+_LDLIBS-$(CONFIG_RTE_LIBRTE_MEMBER)         += -lrte_member
 _LDLIBS-$(CONFIG_RTE_LIBRTE_VHOST)          += -lrte_vhost
 _LDLIBS-$(CONFIG_RTE_LIBRTE_KVARGS)         += -lrte_kvargs
 _LDLIBS-$(CONFIG_RTE_LIBRTE_MBUF)           += -lrte_mbuf
@@ -201,6 +202,7 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_EAL)            += -lnuma
 endif
 _LDLIBS-$(CONFIG_RTE_LIBRTE_SCHED)          += -lm
 _LDLIBS-$(CONFIG_RTE_LIBRTE_SCHED)          += -lrt
+_LDLIBS-$(CONFIG_RTE_LIBRTE_MEMBER)         += -lm
 _LDLIBS-$(CONFIG_RTE_LIBRTE_METER)          += -lm
 ifeq ($(CONFIG_RTE_LIBRTE_VHOST_NUMA),y)
 _LDLIBS-$(CONFIG_RTE_LIBRTE_VHOST)          += -lnuma
