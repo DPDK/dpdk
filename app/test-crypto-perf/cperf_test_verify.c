@@ -229,6 +229,34 @@ out:
 	return !!res;
 }
 
+static void
+cperf_mbuf_set(struct rte_mbuf *mbuf,
+		const struct cperf_options *options,
+		const struct cperf_test_vector *test_vector)
+{
+	uint32_t segment_sz = options->segment_sz;
+	uint8_t *mbuf_data;
+	uint8_t *test_data =
+			(options->cipher_op == RTE_CRYPTO_CIPHER_OP_ENCRYPT) ?
+					test_vector->plaintext.data :
+					test_vector->ciphertext.data;
+	uint32_t remaining_bytes = options->max_buffer_size;
+
+	while (remaining_bytes) {
+		mbuf_data = rte_pktmbuf_mtod(mbuf, uint8_t *);
+
+		if (remaining_bytes <= segment_sz) {
+			memcpy(mbuf_data, test_data, remaining_bytes);
+			return;
+		}
+
+		memcpy(mbuf_data, test_data, segment_sz);
+		remaining_bytes -= segment_sz;
+		test_data += segment_sz;
+		mbuf = mbuf->next;
+	}
+}
+
 int
 cperf_verify_test_runner(void *test_ctx)
 {
@@ -298,6 +326,13 @@ cperf_verify_test_runner(void *test_ctx)
 				&ctx->mbufs_out[m_idx],
 				ops_needed, ctx->sess, ctx->options,
 				ctx->test_vector, iv_offset);
+
+
+		/* Populate the mbuf with the test vector, for verification */
+		for (i = 0; i < ops_needed; i++)
+			cperf_mbuf_set(ops[i]->sym->m_src,
+					ctx->options,
+					ctx->test_vector);
 
 #ifdef CPERF_LINEARIZATION_ENABLE
 		if (linearize) {

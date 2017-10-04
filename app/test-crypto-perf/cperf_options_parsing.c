@@ -956,13 +956,6 @@ cperf_options_check(struct cperf_options *options)
 	}
 
 	if (options->test == CPERF_TEST_TYPE_VERIFY &&
-			options->total_ops > options->pool_sz) {
-		RTE_LOG(ERR, USER1, "Total number of ops must be less than or"
-				" equal to the pool size.\n");
-		return -EINVAL;
-	}
-
-	if (options->test == CPERF_TEST_TYPE_VERIFY &&
 			(options->inc_buffer_size != 0 ||
 			options->buffer_size_count > 1)) {
 		RTE_LOG(ERR, USER1, "Only one buffer size is allowed when "
