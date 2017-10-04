@@ -140,7 +140,7 @@ cperf_throughput_test_runner(void *test_ctx)
 	int linearize = 0;
 
 	/* Check if source mbufs require coalescing */
-	if (ctx->options->segments_nb > 1) {
+	if (ctx->options->segment_sz < ctx->options->max_buffer_size) {
 		rte_cryptodev_info_get(ctx->dev_id, &dev_info);
 		if ((dev_info.feature_flags &
 				RTE_CRYPTODEV_FF_MBUF_SCATTER_GATHER) == 0)

@@ -328,17 +328,17 @@ parse_buffer_sz(struct cperf_options *opts, const char *arg)
 }
 
 static int
-parse_segments_nb(struct cperf_options *opts, const char *arg)
+parse_segment_sz(struct cperf_options *opts, const char *arg)
 {
-	int ret = parse_uint32_t(&opts->segments_nb, arg);
+	int ret = parse_uint32_t(&opts->segment_sz, arg);
 
 	if (ret) {
-		RTE_LOG(ERR, USER1, "failed to parse segments number\n");
+		RTE_LOG(ERR, USER1, "failed to parse segment size\n");
 		return -1;
 	}
 
-	if ((opts->segments_nb == 0) || (opts->segments_nb > 255)) {
-		RTE_LOG(ERR, USER1, "invalid segments number specified\n");
+	if (opts->segment_sz == 0) {
+		RTE_LOG(ERR, USER1, "Segment size has to be bigger than 0\n");
 		return -1;
 	}
 
@@ -678,7 +678,7 @@ static struct option lgopts[] = {
 	{ CPERF_TOTAL_OPS, required_argument, 0, 0 },
 	{ CPERF_BURST_SIZE, required_argument, 0, 0 },
 	{ CPERF_BUFFER_SIZE, required_argument, 0, 0 },
-	{ CPERF_SEGMENTS_NB, required_argument, 0, 0 },
+	{ CPERF_SEGMENT_SIZE, required_argument, 0, 0 },
 	{ CPERF_DESC_NB, required_argument, 0, 0 },
 
 	{ CPERF_DEVTYPE, required_argument, 0, 0 },
@@ -739,7 +739,11 @@ cperf_options_default(struct cperf_options *opts)
 	opts->min_burst_size = 32;
 	opts->inc_burst_size = 0;
 
-	opts->segments_nb = 1;
+	/*
+	 * Will be parsed from command line or set to
+	 * maximum buffer size + digest, later
+	 */
+	opts->segment_sz = 0;
 
 	strncpy(opts->device_type, "crypto_aesni_mb",
 			sizeof(opts->device_type));
@@ -783,7 +787,7 @@ cperf_opts_parse_long(int opt_idx, struct cperf_options *opts)
 		{ CPERF_TOTAL_OPS,	parse_total_ops },
 		{ CPERF_BURST_SIZE,	parse_burst_sz },
 		{ CPERF_BUFFER_SIZE,	parse_buffer_sz },
-		{ CPERF_SEGMENTS_NB,	parse_segments_nb },
+		{ CPERF_SEGMENT_SIZE,	parse_segment_sz },
 		{ CPERF_DESC_NB,	parse_desc_nb },
 		{ CPERF_DEVTYPE,	parse_device_type },
 		{ CPERF_OPTYPE,		parse_op_type },
@@ -905,9 +909,21 @@ check_cipher_buffer_length(struct cperf_options *options)
 int
 cperf_options_check(struct cperf_options *options)
 {
-	if (options->segments_nb > options->min_buffer_size) {
+	if (options->op_type == CPERF_CIPHER_ONLY)
+		options->digest_sz = 0;
+
+	/*
+	 * If segment size is not set, assume only one segment,
+	 * big enough to contain the largest buffer and the digest
+	 */
+	if (options->segment_sz == 0)
+		options->segment_sz = options->max_buffer_size +
+				options->digest_sz;
+
+	if (options->segment_sz < options->digest_sz) {
 		RTE_LOG(ERR, USER1,
-				"Segments number greater than buffer size.\n");
+				"Segment size should be at least "
+				"the size of the digest\n");
 		return -EINVAL;
 	}
 
@@ -1031,7 +1047,7 @@ cperf_options_dump(struct cperf_options *opts)
 			printf("%u ", opts->burst_size_list[size_idx]);
 		printf("\n");
 	}
-	printf("\n# segments per buffer: %u\n", opts->segments_nb);
+	printf("\n# segment size: %u\n", opts->segment_sz);
 	printf("#\n");
 	printf("# cryptodev type: %s\n", opts->device_type);
 	printf("#\n");

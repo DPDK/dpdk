@@ -172,9 +172,11 @@ The following are the appication command-line options:
           * List of values, up to 32 values, separated in commas (i.e. ``--buffer-sz 32,64,128``)
 
 
-* ``--segments-nb <n>``
+* ``--segment-sz <n>``
 
-        Set the number of segments per packet.
+        Set the size of the segment to use, for Scatter Gather List testing.
+        By default, it is set to the size of the maximum buffer size, including the digest size,
+        so a single segment is created.
 
 * ``--devtype <name>``
 

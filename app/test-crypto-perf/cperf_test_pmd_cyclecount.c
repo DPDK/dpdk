@@ -421,7 +421,7 @@ cperf_pmd_cyclecount_test_runner(void *test_ctx)
 	struct rte_cryptodev_info dev_info;
 
 	/* Check if source mbufs require coalescing */
-	if (opts->segments_nb > 1) {
+	if (opts->segments_sz < ctx->options->max_buffer_size) {
 		rte_cryptodev_info_get(state.ctx->dev_id, &dev_info);
 		if ((dev_info.feature_flags &
 				    RTE_CRYPTODEV_FF_MBUF_SCATTER_GATHER) ==

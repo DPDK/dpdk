@@ -11,7 +11,7 @@
 #define CPERF_TOTAL_OPS		("total-ops")
 #define CPERF_BURST_SIZE	("burst-sz")
 #define CPERF_BUFFER_SIZE	("buffer-sz")
-#define CPERF_SEGMENTS_NB	("segments-nb")
+#define CPERF_SEGMENT_SIZE	("segment-sz")
 #define CPERF_DESC_NB		("desc-nb")
 
 #define CPERF_DEVTYPE		("devtype")
@@ -71,7 +71,7 @@ struct cperf_options {
 
 	uint32_t pool_sz;
 	uint32_t total_ops;
-	uint32_t segments_nb;
+	uint32_t segment_sz;
 	uint32_t test_buffer_size;
 	uint32_t nb_descriptors;
 

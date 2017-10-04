@@ -36,18 +36,18 @@
 
 static struct rte_mbuf *
 cperf_mbuf_create(struct rte_mempool *mempool,
+		uint32_t segment_sz,
 		uint32_t segments_nb,
 		const struct cperf_options *options,
 		const struct cperf_test_vector *test_vector)
 {
 	struct rte_mbuf *mbuf;
-	uint32_t segment_sz = options->max_buffer_size / segments_nb;
-	uint32_t last_sz = options->max_buffer_size % segments_nb;
 	uint8_t *mbuf_data;
 	uint8_t *test_data =
 			(options->cipher_op == RTE_CRYPTO_CIPHER_OP_ENCRYPT) ?
 					test_vector->plaintext.data :
 					test_vector->ciphertext.data;
+	uint32_t remaining_bytes = options->max_buffer_size;
 
 	mbuf = rte_pktmbuf_alloc(mempool);
 	if (mbuf == NULL)
@@ -57,11 +57,18 @@ cperf_mbuf_create(struct rte_mempool *mempool,
 	if (mbuf_data == NULL)
 		goto error;
 
-	memcpy(mbuf_data, test_data, segment_sz);
-	test_data += segment_sz;
+	if (options->max_buffer_size <= segment_sz) {
+		memcpy(mbuf_data, test_data, options->max_buffer_size);
+		test_data += options->max_buffer_size;
+		remaining_bytes = 0;
+	} else {
+		memcpy(mbuf_data, test_data, segment_sz);
+		test_data += segment_sz;
+		remaining_bytes -= segment_sz;
+	}
 	segments_nb--;
 
-	while (segments_nb) {
+	while (remaining_bytes) {
 		struct rte_mbuf *m;
 
 		m = rte_pktmbuf_alloc(mempool);
@@ -74,22 +81,31 @@ cperf_mbuf_create(struct rte_mempool *mempool,
 		if (mbuf_data == NULL)
 			goto error;
 
-		memcpy(mbuf_data, test_data, segment_sz);
-		test_data += segment_sz;
+		if (remaining_bytes <= segment_sz) {
+			memcpy(mbuf_data, test_data, remaining_bytes);
+			remaining_bytes = 0;
+			test_data += remaining_bytes;
+		} else {
+			memcpy(mbuf_data, test_data, segment_sz);
+			remaining_bytes -= segment_sz;
+			test_data += segment_sz;
+		}
 		segments_nb--;
 	}
 
-	if (last_sz) {
-		mbuf_data = (uint8_t *)rte_pktmbuf_append(mbuf, last_sz);
-		if (mbuf_data == NULL)
+	/*
+	 * If there was not enough room for the digest at the end
+	 * of the last segment, allocate a new one
+	 */
+	if (segments_nb != 0) {
+		struct rte_mbuf *m;
+		m = rte_pktmbuf_alloc(mempool);
+
+		if (m == NULL)
 			goto error;
 
-		memcpy(mbuf_data, test_data, last_sz);
-	}
-
-	if (options->op_type != CPERF_CIPHER_ONLY) {
-		mbuf_data = (uint8_t *)rte_pktmbuf_append(mbuf,
-				options->digest_sz);
+		rte_pktmbuf_chain(mbuf, m);
+		mbuf_data = (uint8_t *)rte_pktmbuf_append(mbuf,	segment_sz);
 		if (mbuf_data == NULL)
 			goto error;
 	}
@@ -118,13 +134,14 @@ cperf_alloc_common_memory(const struct cperf_options *options,
 	snprintf(pool_name, sizeof(pool_name), "cperf_pool_in_cdev_%d",
 			dev_id);
 
+	uint32_t max_size = options->max_buffer_size + options->digest_sz;
+	uint16_t segments_nb = (max_size % options->segment_sz) ?
+			(max_size / options->segment_sz) + 1 :
+			max_size / options->segment_sz;
+
 	*pkt_mbuf_pool_in = rte_pktmbuf_pool_create(pool_name,
-			options->pool_sz * options->segments_nb, 0, 0,
-			RTE_PKTMBUF_HEADROOM +
-			RTE_CACHE_LINE_ROUNDUP(
-				(options->max_buffer_size / options->segments_nb) +
-				(options->max_buffer_size % options->segments_nb) +
-					options->digest_sz),
+			options->pool_sz * segments_nb, 0, 0,
+			RTE_PKTMBUF_HEADROOM + options->segment_sz,
 			rte_socket_id());
 
 	if (*pkt_mbuf_pool_in == NULL)
@@ -136,7 +153,9 @@ cperf_alloc_common_memory(const struct cperf_options *options,
 
 	for (mbuf_idx = 0; mbuf_idx < options->pool_sz; mbuf_idx++) {
 		(*mbufs_in)[mbuf_idx] = cperf_mbuf_create(
-				*pkt_mbuf_pool_in, options->segments_nb,
+				*pkt_mbuf_pool_in,
+				options->segment_sz,
+				segments_nb,
 				options, test_vector);
 		if ((*mbufs_in)[mbuf_idx] == NULL)
 			return -1;
@@ -152,10 +171,7 @@ cperf_alloc_common_memory(const struct cperf_options *options,
 
 		*pkt_mbuf_pool_out = rte_pktmbuf_pool_create(
 				pool_name, options->pool_sz, 0, 0,
-				RTE_PKTMBUF_HEADROOM +
-				RTE_CACHE_LINE_ROUNDUP(
-					options->max_buffer_size +
-					options->digest_sz),
+				RTE_PKTMBUF_HEADROOM + max_size,
 				rte_socket_id());
 
 		if (*pkt_mbuf_pool_out == NULL)
@@ -163,8 +179,8 @@ cperf_alloc_common_memory(const struct cperf_options *options,
 
 		for (mbuf_idx = 0; mbuf_idx < options->pool_sz; mbuf_idx++) {
 			(*mbufs_out)[mbuf_idx] = cperf_mbuf_create(
-					*pkt_mbuf_pool_out, 1,
-					options, test_vector);
+					*pkt_mbuf_pool_out, max_size,
+					1, options, test_vector);
 			if ((*mbufs_out)[mbuf_idx] == NULL)
 				return -1;
 		}

@@ -175,6 +175,14 @@ cperf_set_ops_auth(struct rte_crypto_op **ops,
 					offset -= tbuf->data_len;
 					tbuf = tbuf->next;
 				}
+				/*
+				 * If there is not enough room in segment,
+				 * place the digest in the next segment
+				 */
+				if ((tbuf->data_len - offset) < options->digest_sz) {
+					tbuf = tbuf->next;
+					offset = 0;
+				}
 				buf = tbuf;
 			}
 
@@ -255,6 +263,14 @@ cperf_set_ops_cipher_auth(struct rte_crypto_op **ops,
 						(offset >= tbuf->data_len)) {
 					offset -= tbuf->data_len;
 					tbuf = tbuf->next;
+				}
+				/*
+				 * If there is not enough room in segment,
+				 * place the digest in the next segment
+				 */
+				if ((tbuf->data_len - offset) < options->digest_sz) {
+					tbuf = tbuf->next;
+					offset = 0;
 				}
 				buf = tbuf;
 			}
@@ -345,6 +361,14 @@ cperf_set_ops_aead(struct rte_crypto_op **ops,
 						(offset >= tbuf->data_len)) {
 					offset -= tbuf->data_len;
 					tbuf = tbuf->next;
+				}
+				/*
+				 * If there is not enough room in segment,
+				 * place the digest in the next segment
+				 */
+				if ((tbuf->data_len - offset) < options->digest_sz) {
+					tbuf = tbuf->next;
+					offset = 0;
 				}
 				buf = tbuf;
 			}
