@@ -1706,6 +1706,27 @@ rte_pmd_i40e_process_ddp_package(uint8_t port, uint8_t *buff,
 	return status;
 }
 
+/* Get number of tvl records in the section */
+static unsigned int
+i40e_get_tlv_section_size(struct i40e_profile_section_header *sec)
+{
+	unsigned int i, nb_rec, nb_tlv = 0;
+	struct i40e_profile_tlv_section_record *tlv;
+
+	if (!sec)
+		return nb_tlv;
+
+	/* get number of records in the section */
+	nb_rec = sec->section.size /
+				sizeof(struct i40e_profile_tlv_section_record);
+	for (i = 0; i < nb_rec; ) {
+		tlv = (struct i40e_profile_tlv_section_record *)&sec[1 + i];
+		i += tlv->len;
+		nb_tlv++;
+	}
+	return nb_tlv;
+}
+
 int rte_pmd_i40e_get_ddp_info(uint8_t *pkg_buff, uint32_t pkg_size,
 	uint8_t *info_buff, uint32_t info_size,
 	enum rte_pmd_i40e_package_info type)
@@ -1857,6 +1878,156 @@ int rte_pmd_i40e_get_ddp_info(uint8_t *pkg_buff, uint32_t pkg_size,
 		memcpy(info_buff,
 			((struct i40e_profile_segment *)i40e_seg_hdr)->device_table,
 			sizeof(struct rte_pmd_i40e_ddp_device_id) * dev_num);
+		return I40E_SUCCESS;
+	}
+
+	/* get number of protocols */
+	if (type == RTE_PMD_I40E_PKG_INFO_PROTOCOL_NUM) {
+		struct i40e_profile_section_header *proto;
+
+		if (info_size < sizeof(uint32_t)) {
+			PMD_DRV_LOG(ERR, "Invalid information buffer size");
+			return -EINVAL;
+		}
+		proto = i40e_find_section_in_profile(SECTION_TYPE_PROTO,
+				(struct i40e_profile_segment *)i40e_seg_hdr);
+		*(uint32_t *)info_buff = i40e_get_tlv_section_size(proto);
+		return I40E_SUCCESS;
+	}
+
+	/* get list of protocols */
+	if (type == RTE_PMD_I40E_PKG_INFO_PROTOCOL_LIST) {
+		uint32_t i, j, nb_tlv, nb_rec, nb_proto_info;
+		struct rte_pmd_i40e_proto_info *pinfo;
+		struct i40e_profile_section_header *proto;
+		struct i40e_profile_tlv_section_record *tlv;
+
+		pinfo = (struct rte_pmd_i40e_proto_info *)info_buff;
+		nb_proto_info = info_size /
+					sizeof(struct rte_pmd_i40e_proto_info);
+		for (i = 0; i < nb_proto_info; i++) {
+			pinfo[i].proto_id = RTE_PMD_I40E_PROTO_UNUSED;
+			memset(pinfo[i].name, 0, RTE_PMD_I40E_DDP_NAME_SIZE);
+		}
+		proto = i40e_find_section_in_profile(SECTION_TYPE_PROTO,
+				(struct i40e_profile_segment *)i40e_seg_hdr);
+		nb_tlv = i40e_get_tlv_section_size(proto);
+		if (nb_tlv == 0)
+			return I40E_SUCCESS;
+		if (nb_proto_info < nb_tlv) {
+			PMD_DRV_LOG(ERR, "Invalid information buffer size");
+			return -EINVAL;
+		}
+		/* get number of records in the section */
+		nb_rec = proto->section.size /
+				sizeof(struct i40e_profile_tlv_section_record);
+		tlv = (struct i40e_profile_tlv_section_record *)&proto[1];
+		for (i = j = 0; i < nb_rec; j++) {
+			pinfo[j].proto_id = tlv->data[0];
+			strncpy(pinfo[j].name, (const char *)&tlv->data[1],
+				I40E_DDP_NAME_SIZE);
+			i += tlv->len;
+			tlv = &tlv[tlv->len];
+		}
+		return I40E_SUCCESS;
+	}
+
+	/* get number of packet classification types */
+	if (type == RTE_PMD_I40E_PKG_INFO_PCTYPE_NUM) {
+		struct i40e_profile_section_header *pctype;
+
+		if (info_size < sizeof(uint32_t)) {
+			PMD_DRV_LOG(ERR, "Invalid information buffer size");
+			return -EINVAL;
+		}
+		pctype = i40e_find_section_in_profile(SECTION_TYPE_PCTYPE,
+				(struct i40e_profile_segment *)i40e_seg_hdr);
+		*(uint32_t *)info_buff = i40e_get_tlv_section_size(pctype);
+		return I40E_SUCCESS;
+	}
+
+	/* get list of packet classification types */
+	if (type == RTE_PMD_I40E_PKG_INFO_PCTYPE_LIST) {
+		uint32_t i, j, nb_tlv, nb_rec, nb_proto_info;
+		struct rte_pmd_i40e_ptype_info *pinfo;
+		struct i40e_profile_section_header *pctype;
+		struct i40e_profile_tlv_section_record *tlv;
+
+		pinfo = (struct rte_pmd_i40e_ptype_info *)info_buff;
+		nb_proto_info = info_size /
+					sizeof(struct rte_pmd_i40e_ptype_info);
+		for (i = 0; i < nb_proto_info; i++)
+			memset(&pinfo[i], RTE_PMD_I40E_PROTO_UNUSED,
+			       sizeof(struct rte_pmd_i40e_ptype_info));
+		pctype = i40e_find_section_in_profile(SECTION_TYPE_PCTYPE,
+				(struct i40e_profile_segment *)i40e_seg_hdr);
+		nb_tlv = i40e_get_tlv_section_size(pctype);
+		if (nb_tlv == 0)
+			return I40E_SUCCESS;
+		if (nb_proto_info < nb_tlv) {
+			PMD_DRV_LOG(ERR, "Invalid information buffer size");
+			return -EINVAL;
+		}
+
+		/* get number of records in the section */
+		nb_rec = pctype->section.size /
+				sizeof(struct i40e_profile_tlv_section_record);
+		tlv = (struct i40e_profile_tlv_section_record *)&pctype[1];
+		for (i = j = 0; i < nb_rec; j++) {
+			memcpy(&pinfo[j], tlv->data,
+			       sizeof(struct rte_pmd_i40e_ptype_info));
+			i += tlv->len;
+			tlv = &tlv[tlv->len];
+		}
+		return I40E_SUCCESS;
+	}
+
+	/* get number of packet types */
+	if (type == RTE_PMD_I40E_PKG_INFO_PTYPE_NUM) {
+		struct i40e_profile_section_header *ptype;
+
+		if (info_size < sizeof(uint32_t)) {
+			PMD_DRV_LOG(ERR, "Invalid information buffer size");
+			return -EINVAL;
+		}
+		ptype = i40e_find_section_in_profile(SECTION_TYPE_PTYPE,
+				(struct i40e_profile_segment *)i40e_seg_hdr);
+		*(uint32_t *)info_buff = i40e_get_tlv_section_size(ptype);
+		return I40E_SUCCESS;
+	}
+
+	/* get list of packet types */
+	if (type == RTE_PMD_I40E_PKG_INFO_PTYPE_LIST) {
+		uint32_t i, j, nb_tlv, nb_rec, nb_proto_info;
+		struct rte_pmd_i40e_ptype_info *pinfo;
+		struct i40e_profile_section_header *ptype;
+		struct i40e_profile_tlv_section_record *tlv;
+
+		pinfo = (struct rte_pmd_i40e_ptype_info *)info_buff;
+		nb_proto_info = info_size /
+					sizeof(struct rte_pmd_i40e_ptype_info);
+		for (i = 0; i < nb_proto_info; i++)
+			memset(&pinfo[i], RTE_PMD_I40E_PROTO_UNUSED,
+			       sizeof(struct rte_pmd_i40e_ptype_info));
+		ptype = i40e_find_section_in_profile(SECTION_TYPE_PTYPE,
+				(struct i40e_profile_segment *)i40e_seg_hdr);
+		nb_tlv = i40e_get_tlv_section_size(ptype);
+		if (nb_tlv == 0)
+			return I40E_SUCCESS;
+		if (nb_proto_info < nb_tlv) {
+			PMD_DRV_LOG(ERR, "Invalid information buffer size");
+			return -EINVAL;
+		}
+		/* get number of records in the section */
+		nb_rec = ptype->section.size /
+				sizeof(struct i40e_profile_tlv_section_record);
+		for (i = j = 0; i < nb_rec; j++) {
+			tlv = (struct i40e_profile_tlv_section_record *)
+								&ptype[1 + i];
+			memcpy(&pinfo[j], tlv->data,
+			       sizeof(struct rte_pmd_i40e_ptype_info));
+			i += tlv->len;
+		}
 		return I40E_SUCCESS;
 	}
 

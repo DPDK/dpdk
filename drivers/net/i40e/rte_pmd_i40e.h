@@ -88,6 +88,12 @@ enum rte_pmd_i40e_package_info {
 	RTE_PMD_I40E_PKG_INFO_HEADER,
 	RTE_PMD_I40E_PKG_INFO_DEVID_NUM,
 	RTE_PMD_I40E_PKG_INFO_DEVID_LIST,
+	RTE_PMD_I40E_PKG_INFO_PROTOCOL_NUM,
+	RTE_PMD_I40E_PKG_INFO_PROTOCOL_LIST,
+	RTE_PMD_I40E_PKG_INFO_PCTYPE_NUM,
+	RTE_PMD_I40E_PKG_INFO_PCTYPE_LIST,
+	RTE_PMD_I40E_PKG_INFO_PTYPE_NUM,
+	RTE_PMD_I40E_PKG_INFO_PTYPE_LIST,
 	RTE_PMD_I40E_PKG_INFO_MAX = 0xFFFFFFFF
 };
 
@@ -131,6 +137,25 @@ struct rte_pmd_i40e_profile_info {
 struct rte_pmd_i40e_profile_list {
 	uint32_t p_count;
 	struct rte_pmd_i40e_profile_info p_info[1];
+};
+
+#define RTE_PMD_I40E_PROTO_NUM 6
+#define RTE_PMD_I40E_PROTO_UNUSED 0xFF
+
+/**
+ * Protocols information stored in profile
+ */
+struct rte_pmd_i40e_proto_info {
+	uint8_t proto_id;
+	char name[RTE_PMD_I40E_DDP_NAME_SIZE];
+};
+
+/**
+ * Packet classification/ packet type information stored in profile
+ */
+struct rte_pmd_i40e_ptype_info {
+	uint8_t ptype_id;
+	uint8_t protocols[RTE_PMD_I40E_PROTO_NUM];
 };
 
 /**
