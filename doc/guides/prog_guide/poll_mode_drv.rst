@@ -310,6 +310,26 @@ exported by each PMD. The list of flags and their precise meaning is
 described in the mbuf API documentation and in the in :ref:`Mbuf Library
 <Mbuf_Library>`, section "Meta Information".
 
+Per-Port and Per-Queue Offloads
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+In the DPDK offload API, offloads are divided into per-port and per-queue offloads.
+The different offloads capabilities can be queried using ``rte_eth_dev_info_get()``.
+Supported offloads can be either per-port or per-queue.
+
+Offloads are enabled using the existing ``DEV_TX_OFFLOAD_*`` or ``DEV_RX_OFFLOAD_*`` flags.
+Per-port offload configuration is set using ``rte_eth_dev_configure``.
+Per-queue offload configuration is set using ``rte_eth_rx_queue_setup`` and ``rte_eth_tx_queue_setup``.
+To enable per-port offload, the offload should be set on both device configuration and queue setup.
+In case of a mixed configuration the queue setup shall return with an error.
+To enable per-queue offload, the offload can be set only on the queue setup.
+Offloads which are not enabled are disabled by default.
+
+For an application to use the Tx offloads API it should set the ``ETH_TXQ_FLAGS_IGNORE`` flag in the ``txq_flags`` field located in ``rte_eth_txconf`` struct.
+In such cases it is not required to set other flags in ``txq_flags``.
+For an application to use the Rx offloads API it should set the ``ignore_offload_bitfield`` bit in the ``rte_eth_rxmode`` struct.
+In such cases it is not required to set other bitfield offloads in the ``rxmode`` struct.
+
 Poll Mode Driver API
 --------------------
 
