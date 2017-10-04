@@ -38,15 +38,10 @@ static struct rte_mbuf *
 cperf_mbuf_create(struct rte_mempool *mempool,
 		uint32_t segment_sz,
 		uint32_t segments_nb,
-		const struct cperf_options *options,
-		const struct cperf_test_vector *test_vector)
+		const struct cperf_options *options)
 {
 	struct rte_mbuf *mbuf;
 	uint8_t *mbuf_data;
-	uint8_t *test_data =
-			(options->cipher_op == RTE_CRYPTO_CIPHER_OP_ENCRYPT) ?
-					test_vector->plaintext.data :
-					test_vector->ciphertext.data;
 	uint32_t remaining_bytes = options->max_buffer_size;
 
 	mbuf = rte_pktmbuf_alloc(mempool);
@@ -57,15 +52,11 @@ cperf_mbuf_create(struct rte_mempool *mempool,
 	if (mbuf_data == NULL)
 		goto error;
 
-	if (options->max_buffer_size <= segment_sz) {
-		memcpy(mbuf_data, test_data, options->max_buffer_size);
-		test_data += options->max_buffer_size;
+	if (options->max_buffer_size <= segment_sz)
 		remaining_bytes = 0;
-	} else {
-		memcpy(mbuf_data, test_data, segment_sz);
-		test_data += segment_sz;
+	else
 		remaining_bytes -= segment_sz;
-	}
+
 	segments_nb--;
 
 	while (remaining_bytes) {
@@ -81,15 +72,11 @@ cperf_mbuf_create(struct rte_mempool *mempool,
 		if (mbuf_data == NULL)
 			goto error;
 
-		if (remaining_bytes <= segment_sz) {
-			memcpy(mbuf_data, test_data, remaining_bytes);
+		if (remaining_bytes <= segment_sz)
 			remaining_bytes = 0;
-			test_data += remaining_bytes;
-		} else {
-			memcpy(mbuf_data, test_data, segment_sz);
+		else
 			remaining_bytes -= segment_sz;
-			test_data += segment_sz;
-		}
+
 		segments_nb--;
 	}
 
@@ -156,7 +143,7 @@ cperf_alloc_common_memory(const struct cperf_options *options,
 				*pkt_mbuf_pool_in,
 				options->segment_sz,
 				segments_nb,
-				options, test_vector);
+				options);
 		if ((*mbufs_in)[mbuf_idx] == NULL)
 			return -1;
 	}
@@ -180,7 +167,7 @@ cperf_alloc_common_memory(const struct cperf_options *options,
 		for (mbuf_idx = 0; mbuf_idx < options->pool_sz; mbuf_idx++) {
 			(*mbufs_out)[mbuf_idx] = cperf_mbuf_create(
 					*pkt_mbuf_pool_out, max_size,
-					1, options, test_vector);
+					1, options);
 			if ((*mbufs_out)[mbuf_idx] == NULL)
 				return -1;
 		}
