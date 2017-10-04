@@ -2486,16 +2486,8 @@ int
 rte_eth_dev_rss_hash_update(uint8_t port_id, struct rte_eth_rss_conf *rss_conf)
 {
 	struct rte_eth_dev *dev;
-	uint16_t rss_hash_protos;
 
 	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
-	rss_hash_protos = rss_conf->rss_hf;
-	if ((rss_hash_protos != 0) &&
-	    ((rss_hash_protos & ETH_RSS_PROTO_MASK) == 0)) {
-		RTE_PMD_DEBUG_TRACE("Invalid rss_hash_protos=0x%x\n",
-				rss_hash_protos);
-		return -EINVAL;
-	}
 	dev = &rte_eth_devices[port_id];
 	RTE_FUNC_PTR_OR_ERR_RET(*dev->dev_ops->rss_hash_update, -ENOTSUP);
 	return (*dev->dev_ops->rss_hash_update)(dev, rss_conf);
