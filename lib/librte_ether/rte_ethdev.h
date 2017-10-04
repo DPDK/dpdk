@@ -991,6 +991,11 @@ struct rte_eth_conf {
  */
 #define DEV_TX_OFFLOAD_MULTI_SEGS	0x00008000
 /**< Device supports multi segment send. */
+#define DEV_TX_OFFLOAD_MBUF_FAST_FREE	0x00010000
+/**< Device supports optimization for fast release of mbufs.
+ *   When set application must guarantee that per-queue all mbufs comes from
+ *   the same mempool and has refcnt = 1.
+ */
 
 struct rte_pci_device;
 

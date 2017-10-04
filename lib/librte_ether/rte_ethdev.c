@@ -1232,6 +1232,9 @@ rte_eth_convert_txq_flags(const uint32_t txq_flags, uint64_t *tx_offloads)
 		offloads |= DEV_TX_OFFLOAD_UDP_CKSUM;
 	if (!(txq_flags & ETH_TXQ_FLAGS_NOXSUMTCP))
 		offloads |= DEV_TX_OFFLOAD_TCP_CKSUM;
+	if ((txq_flags & ETH_TXQ_FLAGS_NOREFCOUNT) &&
+	    (txq_flags & ETH_TXQ_FLAGS_NOMULTMEMP))
+		offloads |= DEV_TX_OFFLOAD_MBUF_FAST_FREE;
 
 	*tx_offloads = offloads;
 }
@@ -1254,6 +1257,8 @@ rte_eth_convert_txq_offloads(const uint64_t tx_offloads, uint32_t *txq_flags)
 		flags |= ETH_TXQ_FLAGS_NOXSUMUDP;
 	if (!(tx_offloads & DEV_TX_OFFLOAD_TCP_CKSUM))
 		flags |= ETH_TXQ_FLAGS_NOXSUMTCP;
+	if (tx_offloads & DEV_TX_OFFLOAD_MBUF_FAST_FREE)
+		flags |= (ETH_TXQ_FLAGS_NOREFCOUNT | ETH_TXQ_FLAGS_NOMULTMEMP);
 
 	*txq_flags = flags;
 }
