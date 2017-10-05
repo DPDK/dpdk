@@ -159,12 +159,6 @@ init_vring_queue(struct virtio_net *dev, uint32_t vring_idx)
 	/* Backends are set to -1 indicating an inactive device. */
 	vq->backend = -1;
 
-	/*
-	 * always set the vq to enabled; this is to keep compatibility
-	 * with the old QEMU, whereas there is no SET_VRING_ENABLE message.
-	 */
-	vq->enabled = 1;
-
 	TAILQ_INIT(&vq->zmbuf_list);
 }
 

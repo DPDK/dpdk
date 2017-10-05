@@ -699,6 +699,15 @@ vhost_user_set_vring_kick(struct virtio_net *dev, struct VhostUserMsg *pmsg)
 		"vring kick idx:%d file:%d\n", file.index, file.fd);
 
 	vq = dev->virtqueue[file.index];
+
+	/*
+	 * When VHOST_USER_F_PROTOCOL_FEATURES is not negotiated,
+	 * the ring starts already enabled. Otherwise, it is enabled via
+	 * the SET_VRING_ENABLE message.
+	 */
+	if (!(dev->features & (1ULL << VHOST_USER_F_PROTOCOL_FEATURES)))
+		vq->enabled = 1;
+
 	if (vq->kickfd >= 0)
 		close(vq->kickfd);
 	vq->kickfd = file.fd;
