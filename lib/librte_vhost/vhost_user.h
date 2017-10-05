@@ -49,14 +49,10 @@
 #define VHOST_USER_PROTOCOL_F_REPLY_ACK	3
 #define VHOST_USER_PROTOCOL_F_NET_MTU 4
 
-/*
- * disable REPLY_ACK feature to workaround the buggy QEMU implementation.
- * Proved buggy QEMU includes v2.7 - v2.9.
- */
 #define VHOST_USER_PROTOCOL_FEATURES	((1ULL << VHOST_USER_PROTOCOL_F_MQ) | \
 					 (1ULL << VHOST_USER_PROTOCOL_F_LOG_SHMFD) |\
 					 (1ULL << VHOST_USER_PROTOCOL_F_RARP) | \
-					 (0ULL << VHOST_USER_PROTOCOL_F_REPLY_ACK) | \
+					 (1ULL << VHOST_USER_PROTOCOL_F_REPLY_ACK) | \
 					 (1ULL << VHOST_USER_PROTOCOL_F_NET_MTU))
 
 typedef enum VhostUserRequest {
