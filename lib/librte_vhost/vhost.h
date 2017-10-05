@@ -145,6 +145,37 @@ struct vhost_virtqueue {
  #define VIRTIO_NET_F_MTU 3
 #endif
 
+/* Declare IOMMU related bits for older kernels */
+#ifndef VIRTIO_F_IOMMU_PLATFORM
+
+#define VIRTIO_F_IOMMU_PLATFORM 33
+
+struct vhost_iotlb_msg {
+	__u64 iova;
+	__u64 size;
+	__u64 uaddr;
+#define VHOST_ACCESS_RO      0x1
+#define VHOST_ACCESS_WO      0x2
+#define VHOST_ACCESS_RW      0x3
+	__u8 perm;
+#define VHOST_IOTLB_MISS           1
+#define VHOST_IOTLB_UPDATE         2
+#define VHOST_IOTLB_INVALIDATE     3
+#define VHOST_IOTLB_ACCESS_FAIL    4
+	__u8 type;
+};
+
+#define VHOST_IOTLB_MSG 0x1
+
+struct vhost_msg {
+	int type;
+	union {
+		struct vhost_iotlb_msg iotlb;
+		__u8 padding[64];
+	};
+};
+#endif
+
 /*
  * Define virtio 1.0 for older kernels
  */
