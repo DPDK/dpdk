@@ -460,6 +460,25 @@ struct i40e_vmdq_info {
 #define I40E_FLEX_WORD_MASK(off) (0x80 >> (off))
 #define I40E_FDIR_IPv6_TC_OFFSET	20
 
+/* A structure used to define the input for GTP flow */
+struct i40e_gtp_flow {
+	struct rte_eth_udpv4_flow udp; /* IPv4 UDP fields to match. */
+	uint8_t msg_type;              /* Message type. */
+	uint32_t teid;                 /* TEID in big endian. */
+};
+
+/* A structure used to define the input for GTP IPV4 flow */
+struct i40e_gtp_ipv4_flow {
+	struct i40e_gtp_flow gtp;
+	struct rte_eth_ipv4_flow ip4;
+};
+
+/* A structure used to define the input for GTP IPV6 flow */
+struct i40e_gtp_ipv6_flow {
+	struct i40e_gtp_flow gtp;
+	struct rte_eth_ipv6_flow ip6;
+};
+
 /*
  * A union contains the inputs for all types of flow
  * items in flows need to be in big endian
@@ -474,6 +493,14 @@ union i40e_fdir_flow {
 	struct rte_eth_tcpv6_flow  tcp6_flow;
 	struct rte_eth_sctpv6_flow sctp6_flow;
 	struct rte_eth_ipv6_flow   ipv6_flow;
+	struct i40e_gtp_flow       gtp_flow;
+	struct i40e_gtp_ipv4_flow  gtp_ipv4_flow;
+	struct i40e_gtp_ipv6_flow  gtp_ipv6_flow;
+};
+
+enum i40e_fdir_ip_type {
+	I40E_FDIR_IPTYPE_IPV4,
+	I40E_FDIR_IPTYPE_IPV6,
 };
 
 /* A structure used to contain extend input of flow */
@@ -483,6 +510,9 @@ struct i40e_fdir_flow_ext {
 	/* It is filled by the flexible payload to match. */
 	uint8_t is_vf;   /* 1 for VF, 0 for port dev */
 	uint16_t dst_id; /* VF ID, available when is_vf is 1*/
+	bool inner_ip;   /* If there is inner ip */
+	enum i40e_fdir_ip_type iip_type; /* ip type for inner ip */
+	bool customized_pctype; /* If customized pctype is used */
 };
 
 /* A structure used to define the input for a flow director filter entry */
