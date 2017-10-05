@@ -207,6 +207,7 @@ vhost_new_device(void)
 
 	vhost_devices[i] = dev;
 	dev->vid = i;
+	dev->slave_req_fd = -1;
 
 	return i;
 }

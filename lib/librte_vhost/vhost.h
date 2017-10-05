@@ -209,6 +209,8 @@ struct virtio_net {
 	uint32_t		nr_guest_pages;
 	uint32_t		max_guest_pages;
 	struct guest_page       *guest_pages;
+
+	int			slave_req_fd;
 } __rte_cache_aligned;
 
 

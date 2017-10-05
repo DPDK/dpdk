@@ -76,6 +76,7 @@ static const char *vhost_message_str[VHOST_USER_MAX] = {
 	[VHOST_USER_SET_VRING_ENABLE]  = "VHOST_USER_SET_VRING_ENABLE",
 	[VHOST_USER_SEND_RARP]  = "VHOST_USER_SEND_RARP",
 	[VHOST_USER_NET_SET_MTU]  = "VHOST_USER_NET_SET_MTU",
+	[VHOST_USER_SET_SLAVE_REQ_FD]  = "VHOST_USER_SET_SLAVE_REQ_FD",
 };
 
 static uint64_t
@@ -121,6 +122,11 @@ vhost_backend_cleanup(struct virtio_net *dev)
 	if (dev->log_addr) {
 		munmap((void *)(uintptr_t)dev->log_addr, dev->log_size);
 		dev->log_addr = 0;
+	}
+
+	if (dev->slave_req_fd >= 0) {
+		close(dev->slave_req_fd);
+		dev->slave_req_fd = -1;
 	}
 }
 
@@ -886,6 +892,23 @@ vhost_user_net_set_mtu(struct virtio_net *dev, struct VhostUserMsg *msg)
 	return 0;
 }
 
+static int
+vhost_user_set_req_fd(struct virtio_net *dev, struct VhostUserMsg *msg)
+{
+	int fd = msg->fds[0];
+
+	if (fd < 0) {
+		RTE_LOG(ERR, VHOST_CONFIG,
+				"Invalid file descriptor for slave channel (%d)\n",
+				fd);
+		return -1;
+	}
+
+	dev->slave_req_fd = fd;
+
+	return 0;
+}
+
 /* return bytes# of read on success or negative val on failure. */
 static int
 read_vhost_message(int sockfd, struct VhostUserMsg *msg)
@@ -1111,6 +1134,10 @@ vhost_user_msg_handler(int vid, int fd)
 
 	case VHOST_USER_NET_SET_MTU:
 		ret = vhost_user_net_set_mtu(dev, &msg);
+		break;
+
+	case VHOST_USER_SET_SLAVE_REQ_FD:
+		ret = vhost_user_set_req_fd(dev, &msg);
 		break;
 
 	default:

@@ -48,12 +48,14 @@
 #define VHOST_USER_PROTOCOL_F_RARP	2
 #define VHOST_USER_PROTOCOL_F_REPLY_ACK	3
 #define VHOST_USER_PROTOCOL_F_NET_MTU 4
+#define VHOST_USER_PROTOCOL_F_SLAVE_REQ 5
 
 #define VHOST_USER_PROTOCOL_FEATURES	((1ULL << VHOST_USER_PROTOCOL_F_MQ) | \
 					 (1ULL << VHOST_USER_PROTOCOL_F_LOG_SHMFD) |\
 					 (1ULL << VHOST_USER_PROTOCOL_F_RARP) | \
 					 (1ULL << VHOST_USER_PROTOCOL_F_REPLY_ACK) | \
-					 (1ULL << VHOST_USER_PROTOCOL_F_NET_MTU))
+					 (1ULL << VHOST_USER_PROTOCOL_F_NET_MTU) | \
+					 (1ULL << VHOST_USER_PROTOCOL_F_SLAVE_REQ))
 
 typedef enum VhostUserRequest {
 	VHOST_USER_NONE = 0,
@@ -77,8 +79,14 @@ typedef enum VhostUserRequest {
 	VHOST_USER_SET_VRING_ENABLE = 18,
 	VHOST_USER_SEND_RARP = 19,
 	VHOST_USER_NET_SET_MTU = 20,
+	VHOST_USER_SET_SLAVE_REQ_FD = 21,
 	VHOST_USER_MAX
 } VhostUserRequest;
+
+typedef enum VhostUserSlaveRequest {
+	VHOST_USER_SLAVE_NONE = 0,
+	VHOST_USER_SLAVE_MAX
+} VhostUserSlaveRequest;
 
 typedef struct VhostUserMemoryRegion {
 	uint64_t guest_phys_addr;
