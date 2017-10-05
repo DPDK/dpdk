@@ -48,7 +48,94 @@ struct vhost_iotlb_entry {
 	uint8_t perm;
 };
 
-#define IOTLB_CACHE_SIZE 1024
+#define IOTLB_CACHE_SIZE 2048
+
+static void
+vhost_user_iotlb_pending_remove_all(struct vhost_virtqueue *vq)
+{
+	struct vhost_iotlb_entry *node, *temp_node;
+
+	rte_rwlock_write_lock(&vq->iotlb_pending_lock);
+
+	TAILQ_FOREACH_SAFE(node, &vq->iotlb_pending_list, next, temp_node) {
+		TAILQ_REMOVE(&vq->iotlb_pending_list, node, next);
+		rte_mempool_put(vq->iotlb_pool, node);
+	}
+
+	rte_rwlock_write_unlock(&vq->iotlb_pending_lock);
+}
+
+bool
+vhost_user_iotlb_pending_miss(struct vhost_virtqueue *vq, uint64_t iova,
+				uint8_t perm)
+{
+	struct vhost_iotlb_entry *node;
+	bool found = false;
+
+	rte_rwlock_read_lock(&vq->iotlb_pending_lock);
+
+	TAILQ_FOREACH(node, &vq->iotlb_pending_list, next) {
+		if ((node->iova == iova) && (node->perm == perm)) {
+			found = true;
+			break;
+		}
+	}
+
+	rte_rwlock_read_unlock(&vq->iotlb_pending_lock);
+
+	return found;
+}
+
+void
+vhost_user_iotlb_pending_insert(struct vhost_virtqueue *vq,
+				uint64_t iova, uint8_t perm)
+{
+	struct vhost_iotlb_entry *node;
+	int ret;
+
+	ret = rte_mempool_get(vq->iotlb_pool, (void **)&node);
+	if (ret) {
+		RTE_LOG(INFO, VHOST_CONFIG,
+				"IOTLB pool empty, clear pending misses\n");
+		vhost_user_iotlb_pending_remove_all(vq);
+		ret = rte_mempool_get(vq->iotlb_pool, (void **)&node);
+		if (ret) {
+			RTE_LOG(ERR, VHOST_CONFIG, "IOTLB pool still empty, failure\n");
+			return;
+		}
+	}
+
+	node->iova = iova;
+	node->perm = perm;
+
+	rte_rwlock_write_lock(&vq->iotlb_pending_lock);
+
+	TAILQ_INSERT_TAIL(&vq->iotlb_pending_list, node, next);
+
+	rte_rwlock_write_unlock(&vq->iotlb_pending_lock);
+}
+
+static void
+vhost_user_iotlb_pending_remove(struct vhost_virtqueue *vq,
+				uint64_t iova, uint64_t size, uint8_t perm)
+{
+	struct vhost_iotlb_entry *node, *temp_node;
+
+	rte_rwlock_write_lock(&vq->iotlb_pending_lock);
+
+	TAILQ_FOREACH_SAFE(node, &vq->iotlb_pending_list, next, temp_node) {
+		if (node->iova < iova)
+			continue;
+		if (node->iova >= iova + size)
+			continue;
+		if ((node->perm & perm) != node->perm)
+			continue;
+		TAILQ_REMOVE(&vq->iotlb_pending_list, node, next);
+		rte_mempool_put(vq->iotlb_pool, node);
+	}
+
+	rte_rwlock_write_unlock(&vq->iotlb_pending_lock);
+}
 
 static void
 vhost_user_iotlb_cache_remove_all(struct vhost_virtqueue *vq)
@@ -134,7 +221,10 @@ vhost_user_iotlb_cache_insert(struct vhost_virtqueue *vq, uint64_t iova,
 	vq->iotlb_cache_nr++;
 
 unlock:
+	vhost_user_iotlb_pending_remove(vq, iova, size, perm);
+
 	rte_rwlock_write_unlock(&vq->iotlb_lock);
+
 }
 
 void
@@ -215,9 +305,10 @@ vhost_user_iotlb_init(struct virtio_net *dev, int vq_index)
 	if (vq->iotlb_pool) {
 		/*
 		 * The cache has already been initialized,
-		 * just drop all entries
+		 * just drop all cached and pending entries.
 		 */
 		vhost_user_iotlb_cache_remove_all(vq);
+		vhost_user_iotlb_pending_remove_all(vq);
 		return 0;
 	}
 
@@ -228,8 +319,10 @@ vhost_user_iotlb_init(struct virtio_net *dev, int vq_index)
 		socket = 0;
 
 	rte_rwlock_init(&vq->iotlb_lock);
+	rte_rwlock_init(&vq->iotlb_pending_lock);
 
 	TAILQ_INIT(&vq->iotlb_list);
+	TAILQ_INIT(&vq->iotlb_pending_list);
 
 	snprintf(pool_name, sizeof(pool_name), "iotlb_cache_%d_%d",
 			dev->vid, vq_index);

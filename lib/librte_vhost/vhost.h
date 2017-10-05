@@ -130,9 +130,11 @@ struct vhost_virtqueue {
 	uint16_t		batch_copy_nb_elems;
 
 	rte_rwlock_t	iotlb_lock;
+	rte_rwlock_t	iotlb_pending_lock;
 	struct rte_mempool *iotlb_pool;
 	TAILQ_HEAD(, vhost_iotlb_entry) iotlb_list;
 	int				iotlb_cache_nr;
+	TAILQ_HEAD(, vhost_iotlb_entry) iotlb_pending_list;
 } __rte_cache_aligned;
 
 /* Old kernels have no such macros defined */
