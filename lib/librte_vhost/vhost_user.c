@@ -324,10 +324,7 @@ numa_realloc(struct virtio_net *dev, int index __rte_unused)
 }
 #endif
 
-/*
- * Converts QEMU virtual address to Vhost virtual address. This function is
- * used to convert the ring addresses to our address space.
- */
+/* Converts QEMU virtual address to Vhost virtual address. */
 static uint64_t
 qva_to_vva(struct virtio_net *dev, uint64_t qva)
 {
@@ -346,6 +343,30 @@ qva_to_vva(struct virtio_net *dev, uint64_t qva)
 	}
 
 	return 0;
+}
+
+
+/*
+ * Converts ring address to Vhost virtual address.
+ * If IOMMU is enabled, the ring address is a guest IO virtual address,
+ * else it is a QEMU virtual address.
+ */
+static uint64_t
+ring_addr_to_vva(struct virtio_net *dev, struct vhost_virtqueue *vq,
+		uint64_t ra, uint64_t size)
+{
+	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM)) {
+		uint64_t vva;
+
+		vva = vhost_user_iotlb_cache_find(vq, ra,
+					&size, VHOST_ACCESS_RW);
+		if (!vva)
+			vhost_user_iotlb_miss(dev, ra, VHOST_ACCESS_RW);
+
+		return vva;
+	}
+
+	return qva_to_vva(dev, ra);
 }
 
 /*
@@ -380,8 +401,11 @@ translate_ring_addresses(struct virtio_net *dev, int vq_index)
 	struct vhost_vring_addr *addr = &vq->ring_addrs;
 
 	/* The addresses are converted from QEMU virtual to Vhost virtual. */
-	vq->desc = (struct vring_desc *)(uintptr_t)qva_to_vva(dev,
-			addr->desc_user_addr);
+	if (vq->desc && vq->avail && vq->used)
+		return dev;
+
+	vq->desc = (struct vring_desc *)(uintptr_t)ring_addr_to_vva(dev,
+			vq, addr->desc_user_addr, sizeof(struct vring_desc));
 	if (vq->desc == 0) {
 		RTE_LOG(ERR, VHOST_CONFIG,
 			"(%d) failed to find desc ring address.\n",
@@ -392,8 +416,8 @@ translate_ring_addresses(struct virtio_net *dev, int vq_index)
 	dev = numa_realloc(dev, vq_index);
 	vq = dev->virtqueue[vq_index];
 
-	vq->avail = (struct vring_avail *)(uintptr_t)qva_to_vva(dev,
-			addr->avail_user_addr);
+	vq->avail = (struct vring_avail *)(uintptr_t)ring_addr_to_vva(dev,
+			vq, addr->avail_user_addr, sizeof(struct vring_avail));
 	if (vq->avail == 0) {
 		RTE_LOG(ERR, VHOST_CONFIG,
 			"(%d) failed to find avail ring address.\n",
@@ -401,8 +425,8 @@ translate_ring_addresses(struct virtio_net *dev, int vq_index)
 		return NULL;
 	}
 
-	vq->used = (struct vring_used *)(uintptr_t)qva_to_vva(dev,
-			addr->used_user_addr);
+	vq->used = (struct vring_used *)(uintptr_t)ring_addr_to_vva(dev,
+			vq, addr->used_user_addr, sizeof(struct vring_used));
 	if (vq->used == 0) {
 		RTE_LOG(ERR, VHOST_CONFIG,
 			"(%d) failed to find used ring address.\n",
