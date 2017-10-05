@@ -1198,6 +1198,12 @@ vhost_user_msg_handler(int vid, int fd)
 
 	}
 
+	/*
+	 * The virtio_net struct might have been reallocated on a different
+	 * NUMA node, so dev pointer might no more be valid.
+	 */
+	dev = get_device(vid);
+
 	if (msg.flags & VHOST_USER_NEED_REPLY) {
 		msg.payload.u64 = !!ret;
 		msg.size = sizeof(msg.payload.u64);
