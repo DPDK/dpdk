@@ -391,6 +391,12 @@ vhost_user_set_vring_addr(struct virtio_net *dev, VhostUserMsg *msg)
 	 */
 	memcpy(&vq->ring_addrs, addr, sizeof(*addr));
 
+	vq->desc = NULL;
+	vq->avail = NULL;
+	vq->used = NULL;
+
+	vq->access_ok = 0;
+
 	return 0;
 }
 
@@ -407,10 +413,10 @@ translate_ring_addresses(struct virtio_net *dev, int vq_index)
 	vq->desc = (struct vring_desc *)(uintptr_t)ring_addr_to_vva(dev,
 			vq, addr->desc_user_addr, sizeof(struct vring_desc));
 	if (vq->desc == 0) {
-		RTE_LOG(ERR, VHOST_CONFIG,
+		RTE_LOG(DEBUG, VHOST_CONFIG,
 			"(%d) failed to find desc ring address.\n",
 			dev->vid);
-		return NULL;
+		return dev;
 	}
 
 	dev = numa_realloc(dev, vq_index);
@@ -419,19 +425,19 @@ translate_ring_addresses(struct virtio_net *dev, int vq_index)
 	vq->avail = (struct vring_avail *)(uintptr_t)ring_addr_to_vva(dev,
 			vq, addr->avail_user_addr, sizeof(struct vring_avail));
 	if (vq->avail == 0) {
-		RTE_LOG(ERR, VHOST_CONFIG,
+		RTE_LOG(DEBUG, VHOST_CONFIG,
 			"(%d) failed to find avail ring address.\n",
 			dev->vid);
-		return NULL;
+		return dev;
 	}
 
 	vq->used = (struct vring_used *)(uintptr_t)ring_addr_to_vva(dev,
 			vq, addr->used_user_addr, sizeof(struct vring_used));
 	if (vq->used == 0) {
-		RTE_LOG(ERR, VHOST_CONFIG,
+		RTE_LOG(DEBUG, VHOST_CONFIG,
 			"(%d) failed to find used ring address.\n",
 			dev->vid);
-		return NULL;
+		return dev;
 	}
 
 	if (vq->last_used_idx != vq->used->idx) {
@@ -677,7 +683,7 @@ err_mmap:
 static int
 vq_is_ready(struct vhost_virtqueue *vq)
 {
-	return vq && vq->desc   &&
+	return vq && vq->desc && vq->avail && vq->used &&
 	       vq->kickfd != VIRTIO_UNINITIALIZED_EVENTFD &&
 	       vq->callfd != VIRTIO_UNINITIALIZED_EVENTFD;
 }
@@ -986,8 +992,29 @@ vhost_user_set_req_fd(struct virtio_net *dev, struct VhostUserMsg *msg)
 }
 
 static int
-vhost_user_iotlb_msg(struct virtio_net *dev, struct VhostUserMsg *msg)
+is_vring_iotlb_update(struct vhost_virtqueue *vq, struct vhost_iotlb_msg *imsg)
 {
+	struct vhost_vring_addr *ra;
+	uint64_t start, end;
+
+	start = imsg->iova;
+	end = start + imsg->size;
+
+	ra = &vq->ring_addrs;
+	if (ra->desc_user_addr >= start && ra->desc_user_addr < end)
+		return 1;
+	if (ra->avail_user_addr >= start && ra->avail_user_addr < end)
+		return 1;
+	if (ra->used_user_addr >= start && ra->used_user_addr < end)
+		return 1;
+
+	return 0;
+}
+
+static int
+vhost_user_iotlb_msg(struct virtio_net **pdev, struct VhostUserMsg *msg)
+{
+	struct virtio_net *dev = *pdev;
 	struct vhost_iotlb_msg *imsg = &msg->payload.iotlb;
 	uint16_t i;
 	uint64_t vva;
@@ -1003,6 +1030,9 @@ vhost_user_iotlb_msg(struct virtio_net *dev, struct VhostUserMsg *msg)
 
 			vhost_user_iotlb_cache_insert(vq, imsg->iova, vva,
 					imsg->size, imsg->perm);
+
+			if (is_vring_iotlb_update(vq, imsg))
+				*pdev = dev = translate_ring_addresses(dev, i);
 		}
 		break;
 	case VHOST_IOTLB_INVALIDATE:
@@ -1151,8 +1181,12 @@ vhost_user_msg_handler(int vid, int fd)
 	}
 
 	ret = 0;
-	RTE_LOG(INFO, VHOST_CONFIG, "read message %s\n",
-		vhost_message_str[msg.request]);
+	if (msg.request != VHOST_USER_IOTLB_MSG)
+		RTE_LOG(INFO, VHOST_CONFIG, "read message %s\n",
+			vhost_message_str[msg.request]);
+	else
+		RTE_LOG(DEBUG, VHOST_CONFIG, "read message %s\n",
+			vhost_message_str[msg.request]);
 
 	ret = vhost_user_check_and_alloc_queue_pair(dev, &msg);
 	if (ret < 0) {
@@ -1254,7 +1288,7 @@ vhost_user_msg_handler(int vid, int fd)
 		break;
 
 	case VHOST_USER_IOTLB_MSG:
-		ret = vhost_user_iotlb_msg(dev, &msg);
+		ret = vhost_user_iotlb_msg(&dev, &msg);
 		break;
 
 	default:
@@ -1262,12 +1296,6 @@ vhost_user_msg_handler(int vid, int fd)
 		break;
 
 	}
-
-	/*
-	 * The virtio_net struct might have been reallocated on a different
-	 * NUMA node, so dev pointer might no more be valid.
-	 */
-	dev = get_device(vid);
 
 	if (msg.flags & VHOST_USER_NEED_REPLY) {
 		msg.payload.u64 = !!ret;

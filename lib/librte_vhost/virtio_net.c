@@ -329,13 +329,23 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 	if (unlikely(vq->enabled == 0))
 		return 0;
 
+	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
+		vhost_user_iotlb_rd_lock(vq);
+
+	if (unlikely(vq->access_ok == 0)) {
+		if (unlikely(vring_translate(dev, vq) < 0)) {
+			count = 0;
+			goto out;
+		}
+	}
+
 	avail_idx = *((volatile uint16_t *)&vq->avail->idx);
 	start_idx = vq->last_used_idx;
 	free_entries = avail_idx - start_idx;
 	count = RTE_MIN(count, free_entries);
 	count = RTE_MIN(count, (uint32_t)MAX_PKT_BURST);
 	if (count == 0)
-		return 0;
+		goto out;
 
 	LOG_DEBUG(VHOST_DATA, "(%d) start_idx %d | end_idx %d\n",
 		dev->vid, start_idx, start_idx + count);
@@ -356,10 +366,6 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 	}
 
 	rte_prefetch0(&vq->desc[desc_indexes[0]]);
-
-	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
-		vhost_user_iotlb_rd_lock(vq);
-
 	for (i = 0; i < count; i++) {
 		uint16_t desc_idx = desc_indexes[i];
 		int err;
@@ -394,9 +400,6 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 
 	do_data_copy_enqueue(dev, vq);
 
-	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
-		vhost_user_iotlb_rd_unlock(vq);
-
 	rte_smp_wmb();
 
 	*(volatile uint16_t *)&vq->used->idx += count;
@@ -412,6 +415,10 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 	if (!(vq->avail->flags & VRING_AVAIL_F_NO_INTERRUPT)
 			&& (vq->callfd >= 0))
 		eventfd_write(vq->callfd, (eventfd_t)1);
+out:
+	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
+		vhost_user_iotlb_rd_unlock(vq);
+
 	return count;
 }
 
@@ -647,9 +654,16 @@ virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id,
 	if (unlikely(vq->enabled == 0))
 		return 0;
 
+	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
+		vhost_user_iotlb_rd_lock(vq);
+
+	if (unlikely(vq->access_ok == 0))
+		if (unlikely(vring_translate(dev, vq) < 0))
+			goto out;
+
 	count = RTE_MIN((uint32_t)MAX_PKT_BURST, count);
 	if (count == 0)
-		return 0;
+		goto out;
 
 	vq->batch_copy_nb_elems = 0;
 
@@ -657,10 +671,6 @@ virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id,
 
 	vq->shadow_used_idx = 0;
 	avail_head = *((volatile uint16_t *)&vq->avail->idx);
-
-	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
-		vhost_user_iotlb_rd_lock(vq);
-
 	for (pkt_idx = 0; pkt_idx < count; pkt_idx++) {
 		uint32_t pkt_len = pkts[pkt_idx]->pkt_len + dev->vhost_hlen;
 
@@ -689,9 +699,6 @@ virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id,
 
 	do_data_copy_enqueue(dev, vq);
 
-	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
-		vhost_user_iotlb_rd_unlock(vq);
-
 	if (likely(vq->shadow_used_idx)) {
 		flush_shadow_used_ring(dev, vq);
 
@@ -703,6 +710,10 @@ virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id,
 				&& (vq->callfd >= 0))
 			eventfd_write(vq->callfd, (eventfd_t)1);
 	}
+
+out:
+	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
+		vhost_user_iotlb_rd_unlock(vq);
 
 	return pkt_idx;
 }
@@ -1173,6 +1184,13 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 
 	vq->batch_copy_nb_elems = 0;
 
+	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
+		vhost_user_iotlb_rd_lock(vq);
+
+	if (unlikely(vq->access_ok == 0))
+		if (unlikely(vring_translate(dev, vq) < 0))
+			goto out;
+
 	if (unlikely(dev->dequeue_zero_copy)) {
 		struct zcopy_mbuf *zmbuf, *next;
 		int nr_updated = 0;
@@ -1262,10 +1280,6 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 
 	/* Prefetch descriptor index. */
 	rte_prefetch0(&vq->desc[desc_indexes[0]]);
-
-	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
-		vhost_user_iotlb_rd_lock(vq);
-
 	for (i = 0; i < count; i++) {
 		struct vring_desc *desc;
 		uint16_t sz, idx;
@@ -1329,9 +1343,6 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 			TAILQ_INSERT_TAIL(&vq->zmbuf_list, zmbuf, next);
 		}
 	}
-	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
-		vhost_user_iotlb_rd_unlock(vq);
-
 	vq->last_avail_idx += i;
 
 	if (likely(dev->dequeue_zero_copy == 0)) {
@@ -1341,6 +1352,9 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 	}
 
 out:
+	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
+		vhost_user_iotlb_rd_unlock(vq);
+
 	if (unlikely(rarp_mbuf != NULL)) {
 		/*
 		 * Inject it to the head of "pkts" array, so that switch's mac

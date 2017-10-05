@@ -136,6 +136,43 @@ free_device(struct virtio_net *dev)
 	rte_free(dev);
 }
 
+int
+vring_translate(struct virtio_net *dev, struct vhost_virtqueue *vq)
+{
+	uint64_t size;
+
+	if (!(dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM)))
+		goto out;
+
+	size = sizeof(struct vring_desc) * vq->size;
+	vq->desc = (struct vring_desc *)(uintptr_t)vhost_iova_to_vva(dev, vq,
+						vq->ring_addrs.desc_user_addr,
+						size, VHOST_ACCESS_RW);
+	if (!vq->desc)
+		return -1;
+
+	size = sizeof(struct vring_avail);
+	size += sizeof(uint16_t) * vq->size;
+	vq->avail = (struct vring_avail *)(uintptr_t)vhost_iova_to_vva(dev, vq,
+						vq->ring_addrs.avail_user_addr,
+						size, VHOST_ACCESS_RW);
+	if (!vq->avail)
+		return -1;
+
+	size = sizeof(struct vring_used);
+	size += sizeof(struct vring_used_elem) * vq->size;
+	vq->used = (struct vring_used *)(uintptr_t)vhost_iova_to_vva(dev, vq,
+						vq->ring_addrs.used_user_addr,
+						size, VHOST_ACCESS_RW);
+	if (!vq->used)
+		return -1;
+
+out:
+	vq->access_ok = 1;
+
+	return 0;
+}
+
 static void
 init_vring_queue(struct virtio_net *dev, uint32_t vring_idx)
 {
