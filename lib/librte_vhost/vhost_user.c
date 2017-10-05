@@ -919,8 +919,16 @@ read_vhost_message(int sockfd, struct VhostUserMsg *msg)
 static int
 send_vhost_message(int sockfd, struct VhostUserMsg *msg)
 {
-	int ret;
+	if (!msg)
+		return 0;
 
+	return send_fd_message(sockfd, (char *)msg,
+		VHOST_USER_HDR_SIZE + msg->size, NULL, 0);
+}
+
+static int
+send_vhost_reply(int sockfd, struct VhostUserMsg *msg)
+{
 	if (!msg)
 		return 0;
 
@@ -929,10 +937,7 @@ send_vhost_message(int sockfd, struct VhostUserMsg *msg)
 	msg->flags |= VHOST_USER_VERSION;
 	msg->flags |= VHOST_USER_REPLY_MASK;
 
-	ret = send_fd_message(sockfd, (char *)msg,
-		VHOST_USER_HDR_SIZE + msg->size, NULL, 0);
-
-	return ret;
+	return send_vhost_message(sockfd, msg);
 }
 
 /*
@@ -1024,7 +1029,7 @@ vhost_user_msg_handler(int vid, int fd)
 	case VHOST_USER_GET_FEATURES:
 		msg.payload.u64 = vhost_user_get_features(dev);
 		msg.size = sizeof(msg.payload.u64);
-		send_vhost_message(fd, &msg);
+		send_vhost_reply(fd, &msg);
 		break;
 	case VHOST_USER_SET_FEATURES:
 		vhost_user_set_features(dev, msg.payload.u64);
@@ -1033,7 +1038,7 @@ vhost_user_msg_handler(int vid, int fd)
 	case VHOST_USER_GET_PROTOCOL_FEATURES:
 		msg.payload.u64 = VHOST_USER_PROTOCOL_FEATURES;
 		msg.size = sizeof(msg.payload.u64);
-		send_vhost_message(fd, &msg);
+		send_vhost_reply(fd, &msg);
 		break;
 	case VHOST_USER_SET_PROTOCOL_FEATURES:
 		vhost_user_set_protocol_features(dev, msg.payload.u64);
@@ -1055,7 +1060,7 @@ vhost_user_msg_handler(int vid, int fd)
 
 		/* it needs a reply */
 		msg.size = sizeof(msg.payload.u64);
-		send_vhost_message(fd, &msg);
+		send_vhost_reply(fd, &msg);
 		break;
 	case VHOST_USER_SET_LOG_FD:
 		close(msg.fds[0]);
@@ -1075,7 +1080,7 @@ vhost_user_msg_handler(int vid, int fd)
 	case VHOST_USER_GET_VRING_BASE:
 		vhost_user_get_vring_base(dev, &msg);
 		msg.size = sizeof(msg.payload.state);
-		send_vhost_message(fd, &msg);
+		send_vhost_reply(fd, &msg);
 		break;
 
 	case VHOST_USER_SET_VRING_KICK:
@@ -1094,7 +1099,7 @@ vhost_user_msg_handler(int vid, int fd)
 	case VHOST_USER_GET_QUEUE_NUM:
 		msg.payload.u64 = VHOST_MAX_QUEUE_PAIRS;
 		msg.size = sizeof(msg.payload.u64);
-		send_vhost_message(fd, &msg);
+		send_vhost_reply(fd, &msg);
 		break;
 
 	case VHOST_USER_SET_VRING_ENABLE:
@@ -1117,7 +1122,7 @@ vhost_user_msg_handler(int vid, int fd)
 	if (msg.flags & VHOST_USER_NEED_REPLY) {
 		msg.payload.u64 = !!ret;
 		msg.size = sizeof(msg.payload.u64);
-		send_vhost_message(fd, &msg);
+		send_vhost_reply(fd, &msg);
 	}
 
 	if (!(dev->flags & VIRTIO_DEV_RUNNING) && virtio_is_ready(dev)) {
