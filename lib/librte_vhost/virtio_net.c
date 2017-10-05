@@ -45,6 +45,7 @@
 #include <rte_sctp.h>
 #include <rte_arp.h>
 
+#include "iotlb.h"
 #include "vhost.h"
 
 #define MAX_PKT_BURST 32
@@ -211,7 +212,8 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 	int error = 0;
 
 	desc = &descs[desc_idx];
-	desc_addr = rte_vhost_gpa_to_vva(dev->mem, desc->addr);
+	desc_addr = vhost_iova_to_vva(dev, vq, desc->addr,
+					desc->len, VHOST_ACCESS_RW);
 	/*
 	 * Checking of 'desc_addr' placed outside of 'unlikely' macro to avoid
 	 * performance issue with some versions of gcc (4.8.4 and 5.3.0) which
@@ -255,7 +257,9 @@ copy_mbuf_to_desc(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			}
 
 			desc = &descs[desc->next];
-			desc_addr = rte_vhost_gpa_to_vva(dev->mem, desc->addr);
+			desc_addr = vhost_iova_to_vva(dev, vq, desc->addr,
+							desc->len,
+							VHOST_ACCESS_RW);
 			if (unlikely(!desc_addr)) {
 				error = -1;
 				goto out;
@@ -352,14 +356,20 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 	}
 
 	rte_prefetch0(&vq->desc[desc_indexes[0]]);
+
+	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
+		vhost_user_iotlb_rd_lock(vq);
+
 	for (i = 0; i < count; i++) {
 		uint16_t desc_idx = desc_indexes[i];
 		int err;
 
 		if (vq->desc[desc_idx].flags & VRING_DESC_F_INDIRECT) {
 			descs = (struct vring_desc *)(uintptr_t)
-				rte_vhost_gpa_to_vva(dev->mem,
-					vq->desc[desc_idx].addr);
+				vhost_iova_to_vva(dev,
+						vq, vq->desc[desc_idx].addr,
+						vq->desc[desc_idx].len,
+						VHOST_ACCESS_RO);
 			if (unlikely(!descs)) {
 				count = i;
 				break;
@@ -383,6 +393,9 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 	}
 
 	do_data_copy_enqueue(dev, vq);
+
+	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
+		vhost_user_iotlb_rd_unlock(vq);
 
 	rte_smp_wmb();
 
@@ -417,7 +430,9 @@ fill_vec_buf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 
 	if (vq->desc[idx].flags & VRING_DESC_F_INDIRECT) {
 		descs = (struct vring_desc *)(uintptr_t)
-			rte_vhost_gpa_to_vva(dev->mem, vq->desc[idx].addr);
+			vhost_iova_to_vva(dev, vq, vq->desc[idx].addr,
+						vq->desc[idx].len,
+						VHOST_ACCESS_RO);
 		if (unlikely(!descs))
 			return -1;
 
@@ -512,7 +527,9 @@ copy_mbuf_to_desc_mergeable(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		goto out;
 	}
 
-	desc_addr = rte_vhost_gpa_to_vva(dev->mem, buf_vec[vec_idx].buf_addr);
+	desc_addr = vhost_iova_to_vva(dev, vq, buf_vec[vec_idx].buf_addr,
+						buf_vec[vec_idx].buf_len,
+						VHOST_ACCESS_RW);
 	if (buf_vec[vec_idx].buf_len < dev->vhost_hlen || !desc_addr) {
 		error = -1;
 		goto out;
@@ -535,8 +552,11 @@ copy_mbuf_to_desc_mergeable(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		/* done with current desc buf, get the next one */
 		if (desc_avail == 0) {
 			vec_idx++;
-			desc_addr = rte_vhost_gpa_to_vva(dev->mem,
-					buf_vec[vec_idx].buf_addr);
+			desc_addr =
+				vhost_iova_to_vva(dev, vq,
+					buf_vec[vec_idx].buf_addr,
+					buf_vec[vec_idx].buf_len,
+					VHOST_ACCESS_RW);
 			if (unlikely(!desc_addr)) {
 				error = -1;
 				goto out;
@@ -637,6 +657,10 @@ virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id,
 
 	vq->shadow_used_idx = 0;
 	avail_head = *((volatile uint16_t *)&vq->avail->idx);
+
+	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
+		vhost_user_iotlb_rd_lock(vq);
+
 	for (pkt_idx = 0; pkt_idx < count; pkt_idx++) {
 		uint32_t pkt_len = pkts[pkt_idx]->pkt_len + dev->vhost_hlen;
 
@@ -664,6 +688,9 @@ virtio_dev_merge_rx(struct virtio_net *dev, uint16_t queue_id,
 	}
 
 	do_data_copy_enqueue(dev, vq);
+
+	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
+		vhost_user_iotlb_rd_unlock(vq);
 
 	if (likely(vq->shadow_used_idx)) {
 		flush_shadow_used_ring(dev, vq);
@@ -875,7 +902,10 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 		goto out;
 	}
 
-	desc_addr = rte_vhost_gpa_to_vva(dev->mem, desc->addr);
+	desc_addr = vhost_iova_to_vva(dev,
+					vq, desc->addr,
+					desc->len,
+					VHOST_ACCESS_RO);
 	if (unlikely(!desc_addr)) {
 		error = -1;
 		goto out;
@@ -899,7 +929,10 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			goto out;
 		}
 
-		desc_addr = rte_vhost_gpa_to_vva(dev->mem, desc->addr);
+		desc_addr = vhost_iova_to_vva(dev,
+							vq, desc->addr,
+							desc->len,
+							VHOST_ACCESS_RO);
 		if (unlikely(!desc_addr)) {
 			error = -1;
 			goto out;
@@ -982,7 +1015,10 @@ copy_desc_to_mbuf(struct virtio_net *dev, struct vhost_virtqueue *vq,
 				goto out;
 			}
 
-			desc_addr = rte_vhost_gpa_to_vva(dev->mem, desc->addr);
+			desc_addr = vhost_iova_to_vva(dev,
+							vq, desc->addr,
+							desc->len,
+							VHOST_ACCESS_RO);
 			if (unlikely(!desc_addr)) {
 				error = -1;
 				goto out;
@@ -1226,6 +1262,10 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 
 	/* Prefetch descriptor index. */
 	rte_prefetch0(&vq->desc[desc_indexes[0]]);
+
+	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
+		vhost_user_iotlb_rd_lock(vq);
+
 	for (i = 0; i < count; i++) {
 		struct vring_desc *desc;
 		uint16_t sz, idx;
@@ -1236,8 +1276,10 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 
 		if (vq->desc[desc_indexes[i]].flags & VRING_DESC_F_INDIRECT) {
 			desc = (struct vring_desc *)(uintptr_t)
-				rte_vhost_gpa_to_vva(dev->mem,
-					vq->desc[desc_indexes[i]].addr);
+				vhost_iova_to_vva(dev, vq,
+						vq->desc[desc_indexes[i]].addr,
+						sizeof(*desc),
+						VHOST_ACCESS_RO);
 			if (unlikely(!desc))
 				break;
 
@@ -1287,6 +1329,9 @@ rte_vhost_dequeue_burst(int vid, uint16_t queue_id,
 			TAILQ_INSERT_TAIL(&vq->zmbuf_list, zmbuf, next);
 		}
 	}
+	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
+		vhost_user_iotlb_rd_unlock(vq);
+
 	vq->last_avail_idx += i;
 
 	if (likely(dev->dequeue_zero_copy == 0)) {
