@@ -577,7 +577,7 @@ test_blockcipher_all_tests(struct rte_mempool *mbuf_pool,
 
 	int openssl_pmd = rte_cryptodev_driver_id_get(
 			RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD));
-	int dpaa2_pmd = rte_cryptodev_driver_id_get(
+	int dpaa2_sec_pmd = rte_cryptodev_driver_id_get(
 			RTE_STR(CRYPTODEV_NAME_DPAA2_SEC_PMD));
 	int scheduler_pmd = rte_cryptodev_driver_id_get(
 			RTE_STR(CRYPTODEV_NAME_SCHEDULER_PMD));
@@ -643,7 +643,7 @@ test_blockcipher_all_tests(struct rte_mempool *mbuf_pool,
 		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_ARMV8;
 	else if (driver_id == scheduler_pmd)
 		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_SCHEDULER;
-	else if (driver_id == dpaa2_pmd)
+	else if (driver_id == dpaa2_sec_pmd)
 		target_pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_DPAA2_SEC;
 	else
 		TEST_ASSERT(0, "Unrecognized cryptodev type");

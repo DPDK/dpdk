@@ -1816,7 +1816,7 @@ test_authonly_dpaa2_sec_all(void)
 		ts_params->session_mpool,
 		ts_params->valid_devs[0],
 		rte_cryptodev_driver_id_get(
-		RTE_STR(RTE_CRYPTODEV_DPAA2_SEC_PMD)),
+		RTE_STR(CRYPTODEV_NAME_DPAA2_SEC_PMD)),
 		BLKCIPHER_AUTHONLY_TYPE);
 
 	TEST_ASSERT_EQUAL(status, 0, "Test failed");

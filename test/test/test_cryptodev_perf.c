@@ -211,7 +211,7 @@ static const char *pmd_name(uint8_t driver_id)
 {
 	uint8_t null_pmd = rte_cryptodev_driver_id_get(
 			RTE_STR(CRYPTODEV_NAME_NULL_PMD));
-	uint8_t dpaa2_pmd = rte_cryptodev_driver_id_get(
+	uint8_t dpaa2_sec_pmd = rte_cryptodev_driver_id_get(
 			RTE_STR(CRYPTODEV_NAME_DPAA2_SEC_PMD));
 	uint8_t snow3g_pmd = rte_cryptodev_driver_id_get(
 			RTE_STR(CRYPTODEV_NAME_SNOW3G_PMD));
@@ -232,7 +232,7 @@ static const char *pmd_name(uint8_t driver_id)
 		return RTE_STR(CRYPTODEV_NAME_QAT_SYM_PMD);
 	else if (driver_id == snow3g_pmd)
 		return RTE_STR(CRYPTODEV_NAME_SNOW3G_PMD);
-	else if (driver_id == dpaa2_pmd)
+	else if (driver_id == dpaa2_sec_pmd)
 		return RTE_STR(CRYPTODEV_NAME_DPAA2_SEC_PMD);
 	else
 		return "";
