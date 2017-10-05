@@ -651,12 +651,16 @@ struct i40e_ethertype_rule {
 
 #define I40E_AQC_REPLACE_CLOUD_CMD_INPUT_FV_TEID_WORD0 44
 #define I40E_AQC_REPLACE_CLOUD_CMD_INPUT_FV_TEID_WORD1 45
-#define I40E_AQC_ADD_CLOUD_TNL_TYPE_MPLSoUDP 8
-#define I40E_AQC_ADD_CLOUD_TNL_TYPE_MPLSoGRE 9
-#define I40E_AQC_ADD_CLOUD_FILTER_CUSTOM_QINQ 0x10
-#define I40E_AQC_ADD_CLOUD_FILTER_TEID_MPLSoUDP 0x11
-#define I40E_AQC_ADD_CLOUD_FILTER_TEID_MPLSoGRE 0x12
-#define I40E_AQC_ADD_L1_FILTER_TEID_MPLS 0x11
+#define I40E_AQC_ADD_CLOUD_TNL_TYPE_MPLSOUDP	8
+#define I40E_AQC_ADD_CLOUD_TNL_TYPE_MPLSOGRE	9
+#define I40E_AQC_ADD_CLOUD_FILTER_0X10		0x10
+#define I40E_AQC_ADD_CLOUD_FILTER_0X11		0x11
+#define I40E_AQC_ADD_CLOUD_FILTER_0X12		0x12
+#define I40E_AQC_ADD_L1_FILTER_0X11		0x11
+#define I40E_AQC_ADD_L1_FILTER_0X12		0x12
+#define I40E_AQC_ADD_L1_FILTER_0X13		0x13
+#define I40E_AQC_NEW_TR_21			21
+#define I40E_AQC_NEW_TR_22			22
 
 enum i40e_tunnel_iptype {
 	I40E_TUNNEL_IPTYPE_IPV4,
@@ -906,6 +910,7 @@ struct i40e_pf {
 	bool floating_veb_list[I40E_MAX_VF];
 	struct i40e_flow_list flow_list;
 	bool mpls_replace_flag;  /* 1 - MPLS filter replace is done */
+	bool gtp_replace_flag;   /* 1 - GTP-C/U filter replace is done */
 	bool qinq_replace_flag;  /* QINQ filter replace is done */
 	struct i40e_tm_conf tm_conf;
 
