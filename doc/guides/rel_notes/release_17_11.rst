@@ -64,6 +64,11 @@ New Features
    * Support for Flow API
    * Support for Tx and Rx descriptor status functions
 
+* **Added IOMMU support to libvhost-user**
+
+  Implemented device IOTLB in Vhost-user backend, and enabled Virtio's IOMMU
+  feature.
+
 * **Added Membership library (rte_member).**
 
   Added membership library. It provides an API for DPDK applications to insert a

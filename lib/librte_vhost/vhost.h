@@ -211,7 +211,8 @@ struct vhost_msg {
 				(1ULL << VIRTIO_NET_F_GUEST_TSO4) | \
 				(1ULL << VIRTIO_NET_F_GUEST_TSO6) | \
 				(1ULL << VIRTIO_RING_F_INDIRECT_DESC) | \
-				(1ULL << VIRTIO_NET_F_MTU))
+				(1ULL << VIRTIO_NET_F_MTU) | \
+				(1ULL << VIRTIO_F_IOMMU_PLATFORM))
 
 
 struct guest_page {
