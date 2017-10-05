@@ -47,11 +47,36 @@
 #include <rte_memory.h>
 #include <rte_malloc.h>
 #include <rte_vhost.h>
+#include <rte_rwlock.h>
 
 #include "iotlb.h"
 #include "vhost.h"
+#include "vhost_user.h"
 
 struct virtio_net *vhost_devices[MAX_VHOST_DEVICE];
+
+uint64_t
+__vhost_iova_to_vva(struct virtio_net *dev, struct vhost_virtqueue *vq,
+		    uint64_t iova, uint64_t size, uint8_t perm)
+{
+	uint64_t vva, tmp_size;
+
+	if (unlikely(!size))
+		return 0;
+
+	tmp_size = size;
+
+	vva = vhost_user_iotlb_cache_find(vq, iova, &tmp_size, perm);
+	if (tmp_size == size)
+		return vva;
+
+	if (!vhost_user_iotlb_pending_miss(vq, iova + tmp_size, perm)) {
+		vhost_user_iotlb_pending_insert(vq, iova + tmp_size, perm);
+		vhost_user_iotlb_miss(dev, iova + tmp_size, perm);
+	}
+
+	return 0;
+}
 
 struct virtio_net *
 get_device(int vid)
