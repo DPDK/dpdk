@@ -852,14 +852,16 @@ static const struct blockcipher_test_case des_cipheronly_test_cases[] = {
 		.test_data = &des_cbc_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_QAT |
-			BLOCKCIPHER_TEST_TARGET_PMD_MB
+			BLOCKCIPHER_TEST_TARGET_PMD_MB |
+			BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL
 	},
 	{
 		.test_descr = "DES-CBC Decryption",
 		.test_data = &des_cbc_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_DECRYPT,
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_QAT |
-			BLOCKCIPHER_TEST_TARGET_PMD_MB
+			BLOCKCIPHER_TEST_TARGET_PMD_MB |
+			BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL
 	},
 
 };

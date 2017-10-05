@@ -355,6 +355,33 @@ openssl_set_session_cipher_parameters(struct openssl_session *sess,
 				sess->cipher.key.data) != 0)
 			return -EINVAL;
 		break;
+
+	case RTE_CRYPTO_CIPHER_DES_CBC:
+		sess->cipher.algo = xform->cipher.algo;
+		sess->cipher.ctx = EVP_CIPHER_CTX_new();
+		sess->cipher.evp_algo = EVP_des_cbc();
+
+		get_cipher_key(xform->cipher.key.data, sess->cipher.key.length,
+			sess->cipher.key.data);
+		if (sess->cipher.direction == RTE_CRYPTO_CIPHER_OP_ENCRYPT) {
+			if (EVP_EncryptInit_ex(sess->cipher.ctx,
+					sess->cipher.evp_algo,
+					NULL, xform->cipher.key.data,
+					NULL) != 1) {
+				return -EINVAL;
+			}
+		} else if (sess->cipher.direction ==
+				RTE_CRYPTO_CIPHER_OP_DECRYPT) {
+			if (EVP_DecryptInit_ex(sess->cipher.ctx,
+					sess->cipher.evp_algo,
+					NULL, xform->cipher.key.data,
+					NULL) != 1) {
+				return -EINVAL;
+			}
+		}
+
+		break;
+
 	case RTE_CRYPTO_CIPHER_DES_DOCSISBPI:
 		sess->cipher.algo = xform->cipher.algo;
 		sess->chain_order = OPENSSL_CHAIN_CIPHER_BPI;

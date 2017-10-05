@@ -4672,6 +4672,25 @@ test_DES_cipheronly_qat_all(void)
 }
 
 static int
+test_DES_cipheronly_openssl_all(void)
+{
+	struct crypto_testsuite_params *ts_params = &testsuite_params;
+	int status;
+
+	status = test_blockcipher_all_tests(ts_params->mbuf_pool,
+		ts_params->op_mpool,
+		ts_params->session_mpool,
+		ts_params->valid_devs[0],
+		rte_cryptodev_driver_id_get(
+		RTE_STR(CRYPTODEV_NAME_OPENSSL_PMD)),
+		BLKCIPHER_DES_CIPHERONLY_TYPE);
+
+	TEST_ASSERT_EQUAL(status, 0, "Test failed");
+
+	return TEST_SUCCESS;
+}
+
+static int
 test_DES_docsis_openssl_all(void)
 {
 	struct crypto_testsuite_params *ts_params = &testsuite_params;
@@ -8352,6 +8371,8 @@ static struct unit_test_suite cryptodev_openssl_testsuite  = {
 				test_3DES_chain_openssl_all),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 				test_3DES_cipheronly_openssl_all),
+		TEST_CASE_ST(ut_setup, ut_teardown,
+				test_DES_cipheronly_openssl_all),
 		TEST_CASE_ST(ut_setup, ut_teardown,
 				test_DES_docsis_openssl_all),
 		TEST_CASE_ST(ut_setup, ut_teardown,

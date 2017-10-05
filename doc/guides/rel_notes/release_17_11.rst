@@ -99,6 +99,12 @@ New Features
   This requires the IPSec Multi-buffer library 0.47. For more details,
   check out the AESNI MB PMD documenation.
 
+* **Updated the OpenSSL PMD.**
+
+  The OpenSSL PMD has been updated with additional support for:
+
+  * DES CBC algorithm.
+
 * **Add new benchmarking mode to dpdk-test-crypto-perf application.**
 
   Added new "PMD cyclecount" benchmark mode to dpdk-test-crypto-perf application
