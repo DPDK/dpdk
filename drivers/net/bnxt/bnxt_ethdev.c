@@ -1851,6 +1851,230 @@ error:
 	return ret;
 }
 
+static inline int
+parse_ntuple_filter(struct bnxt *bp,
+		    struct rte_eth_ntuple_filter *nfilter,
+		    struct bnxt_filter_info *bfilter)
+{
+	uint32_t en = 0;
+
+	if (nfilter->queue >= bp->rx_nr_rings) {
+		RTE_LOG(ERR, PMD, "Invalid queue %d\n", nfilter->queue);
+		return -EINVAL;
+	}
+
+	switch (nfilter->dst_port_mask) {
+	case UINT16_MAX:
+		bfilter->dst_port_mask = -1;
+		bfilter->dst_port = nfilter->dst_port;
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_DST_PORT |
+			NTUPLE_FLTR_ALLOC_INPUT_EN_DST_PORT_MASK;
+		break;
+	default:
+		RTE_LOG(ERR, PMD, "invalid dst_port mask.");
+		return -EINVAL;
+	}
+
+	bfilter->ip_addr_type = NTUPLE_FLTR_ALLOC_INPUT_IP_ADDR_TYPE_IPV4;
+	en |= NTUPLE_FLTR_ALLOC_IN_EN_IP_PROTO;
+
+	switch (nfilter->proto_mask) {
+	case UINT8_MAX:
+		if (nfilter->proto == 17) /* IPPROTO_UDP */
+			bfilter->ip_protocol = 17;
+		else if (nfilter->proto == 6) /* IPPROTO_TCP */
+			bfilter->ip_protocol = 6;
+		else
+			return -EINVAL;
+		en |= NTUPLE_FLTR_ALLOC_IN_EN_IP_PROTO;
+		break;
+	default:
+		RTE_LOG(ERR, PMD, "invalid protocol mask.");
+		return -EINVAL;
+	}
+
+	switch (nfilter->dst_ip_mask) {
+	case UINT32_MAX:
+		bfilter->dst_ipaddr_mask[0] = -1;
+		bfilter->dst_ipaddr[0] = nfilter->dst_ip;
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_DST_IPADDR |
+			NTUPLE_FLTR_ALLOC_INPUT_EN_DST_IPADDR_MASK;
+		break;
+	default:
+		RTE_LOG(ERR, PMD, "invalid dst_ip mask.");
+		return -EINVAL;
+	}
+
+	switch (nfilter->src_ip_mask) {
+	case UINT32_MAX:
+		bfilter->src_ipaddr_mask[0] = -1;
+		bfilter->src_ipaddr[0] = nfilter->src_ip;
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_IPADDR |
+			NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_IPADDR_MASK;
+		break;
+	default:
+		RTE_LOG(ERR, PMD, "invalid src_ip mask.");
+		return -EINVAL;
+	}
+
+	switch (nfilter->src_port_mask) {
+	case UINT16_MAX:
+		bfilter->src_port_mask = -1;
+		bfilter->src_port = nfilter->src_port;
+		en |= NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_PORT |
+			NTUPLE_FLTR_ALLOC_INPUT_EN_SRC_PORT_MASK;
+		break;
+	default:
+		RTE_LOG(ERR, PMD, "invalid src_port mask.");
+		return -EINVAL;
+	}
+
+	//TODO Priority
+	//nfilter->priority = (uint8_t)filter->priority;
+
+	bfilter->enables = en;
+	return 0;
+}
+
+static struct bnxt_filter_info*
+bnxt_match_ntuple_filter(struct bnxt_vnic_info *vnic,
+			 struct bnxt_filter_info *bfilter)
+{
+	struct bnxt_filter_info *mfilter = NULL;
+
+	STAILQ_FOREACH(mfilter, &vnic->filter, next) {
+		if (bfilter->src_ipaddr[0] == mfilter->src_ipaddr[0] &&
+		    bfilter->src_ipaddr_mask[0] ==
+		    mfilter->src_ipaddr_mask[0] &&
+		    bfilter->src_port == mfilter->src_port &&
+		    bfilter->src_port_mask == mfilter->src_port_mask &&
+		    bfilter->dst_ipaddr[0] == mfilter->dst_ipaddr[0] &&
+		    bfilter->dst_ipaddr_mask[0] ==
+		    mfilter->dst_ipaddr_mask[0] &&
+		    bfilter->dst_port == mfilter->dst_port &&
+		    bfilter->dst_port_mask == mfilter->dst_port_mask &&
+		    bfilter->flags == mfilter->flags &&
+		    bfilter->enables == mfilter->enables)
+			return mfilter;
+	}
+	return NULL;
+}
+
+static int
+bnxt_cfg_ntuple_filter(struct bnxt *bp,
+		       struct rte_eth_ntuple_filter *nfilter,
+		       enum rte_filter_op filter_op)
+{
+	struct bnxt_filter_info *bfilter, *mfilter, *filter1;
+	struct bnxt_vnic_info *vnic, *vnic0;
+	int ret;
+
+	if (nfilter->flags != RTE_5TUPLE_FLAGS) {
+		RTE_LOG(ERR, PMD, "only 5tuple is supported.");
+		return -EINVAL;
+	}
+
+	if (nfilter->flags & RTE_NTUPLE_FLAGS_TCP_FLAG) {
+		RTE_LOG(ERR, PMD, "Ntuple filter: TCP flags not supported\n");
+		return -EINVAL;
+	}
+
+	bfilter = bnxt_get_unused_filter(bp);
+	if (bfilter == NULL) {
+		RTE_LOG(ERR, PMD,
+			"Not enough resources for a new filter.\n");
+		return -ENOMEM;
+	}
+	ret = parse_ntuple_filter(bp, nfilter, bfilter);
+	if (ret < 0)
+		goto free_filter;
+
+	vnic = STAILQ_FIRST(&bp->ff_pool[nfilter->queue]);
+	vnic0 = STAILQ_FIRST(&bp->ff_pool[0]);
+	filter1 = STAILQ_FIRST(&vnic0->filter);
+	if (filter1 == NULL) {
+		ret = -1;
+		goto free_filter;
+	}
+
+	bfilter->dst_id = vnic->fw_vnic_id;
+	bfilter->fw_l2_filter_id = filter1->fw_l2_filter_id;
+	bfilter->enables |=
+		HWRM_CFA_NTUPLE_FILTER_ALLOC_INPUT_ENABLES_L2_FILTER_ID;
+	bfilter->ethertype = 0x800;
+	bfilter->enables |= NTUPLE_FLTR_ALLOC_INPUT_EN_ETHERTYPE;
+
+	mfilter = bnxt_match_ntuple_filter(vnic, bfilter);
+
+	if (mfilter != NULL && filter_op == RTE_ETH_FILTER_ADD) {
+		RTE_LOG(ERR, PMD, "filter exists.");
+		ret = -EEXIST;
+		goto free_filter;
+	}
+	if (mfilter == NULL && filter_op == RTE_ETH_FILTER_DELETE) {
+		RTE_LOG(ERR, PMD, "filter doesn't exist.");
+		ret = -ENOENT;
+		goto free_filter;
+	}
+
+	if (filter_op == RTE_ETH_FILTER_ADD) {
+		bfilter->filter_type = HWRM_CFA_NTUPLE_FILTER;
+		ret = bnxt_hwrm_set_ntuple_filter(bp, bfilter->dst_id, bfilter);
+		if (ret)
+			goto free_filter;
+		STAILQ_INSERT_TAIL(&vnic->filter, bfilter, next);
+	} else {
+		ret = bnxt_hwrm_clear_ntuple_filter(bp, mfilter);
+
+		STAILQ_REMOVE(&vnic->filter, mfilter, bnxt_filter_info,
+			      next);
+		bnxt_free_filter(bp, mfilter);
+		bfilter->fw_l2_filter_id = -1;
+		bnxt_free_filter(bp, bfilter);
+	}
+
+	return 0;
+free_filter:
+	bfilter->fw_l2_filter_id = -1;
+	bnxt_free_filter(bp, bfilter);
+	return ret;
+}
+
+static int
+bnxt_ntuple_filter(struct rte_eth_dev *dev,
+			enum rte_filter_op filter_op,
+			void *arg)
+{
+	struct bnxt *bp = (struct bnxt *)dev->data->dev_private;
+	int ret;
+
+	if (filter_op == RTE_ETH_FILTER_NOP)
+		return 0;
+
+	if (arg == NULL) {
+		RTE_LOG(ERR, PMD, "arg shouldn't be NULL for operation %u.",
+			    filter_op);
+		return -EINVAL;
+	}
+
+	switch (filter_op) {
+	case RTE_ETH_FILTER_ADD:
+		ret = bnxt_cfg_ntuple_filter(bp,
+			(struct rte_eth_ntuple_filter *)arg,
+			filter_op);
+		break;
+	case RTE_ETH_FILTER_DELETE:
+		ret = bnxt_cfg_ntuple_filter(bp,
+			(struct rte_eth_ntuple_filter *)arg,
+			filter_op);
+		break;
+	default:
+		RTE_LOG(ERR, PMD, "unsupported operation %u.", filter_op);
+		ret = -EINVAL;
+		break;
+	}
+	return ret;
+}
 static int
 bnxt_filter_ctrl_op(struct rte_eth_dev *dev __rte_unused,
 		    enum rte_filter_type filter_type,
@@ -1859,12 +2083,14 @@ bnxt_filter_ctrl_op(struct rte_eth_dev *dev __rte_unused,
 	int ret = 0;
 
 	switch (filter_type) {
-	case RTE_ETH_FILTER_NTUPLE:
 	case RTE_ETH_FILTER_FDIR:
 	case RTE_ETH_FILTER_TUNNEL:
 		/* FALLTHROUGH */
 		RTE_LOG(ERR, PMD,
 			"filter type: %d: To be implemented\n", filter_type);
+		break;
+	case RTE_ETH_FILTER_NTUPLE:
+		ret = bnxt_ntuple_filter(dev, filter_op, arg);
 		break;
 	case RTE_ETH_FILTER_ETHERTYPE:
 		ret = bnxt_ethertype_filter(dev, filter_op, arg);
