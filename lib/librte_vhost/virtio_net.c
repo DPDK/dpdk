@@ -374,11 +374,8 @@ virtio_dev_rx(struct virtio_net *dev, uint16_t queue_id,
 
 		err = copy_mbuf_to_desc(dev, vq, descs, pkts[i], desc_idx, sz);
 		if (unlikely(err)) {
-			used_idx = (start_idx + i) & (vq->size - 1);
-			vq->used->ring[used_idx].len = dev->vhost_hlen;
-			vhost_log_used_vring(dev, vq,
-				offsetof(struct vring_used, ring[used_idx]),
-				sizeof(vq->used->ring[used_idx]));
+			count = i;
+			break;
 		}
 
 		if (i + 1 < count)
