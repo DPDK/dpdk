@@ -876,14 +876,26 @@ check_cipher_buffer_length(struct cperf_options *options)
 	if (options->cipher_algo == RTE_CRYPTO_CIPHER_DES_CBC ||
 			options->cipher_algo == RTE_CRYPTO_CIPHER_3DES_CBC ||
 			options->cipher_algo == RTE_CRYPTO_CIPHER_3DES_ECB) {
-		for (buffer_size = options->min_buffer_size;
-				buffer_size < options->max_buffer_size;
-				buffer_size += options->inc_buffer_size) {
+		if (options->inc_buffer_size != 0)
+			buffer_size = options->min_buffer_size;
+		else
+			buffer_size = options->buffer_size_list[0];
+
+		while (buffer_size <= options->max_buffer_size) {
 			if ((buffer_size % DES_BLOCK_SIZE) != 0) {
 				RTE_LOG(ERR, USER1, "Some of the buffer sizes are "
 					"not suitable for the algorithm selected\n");
 				return -EINVAL;
 			}
+
+			if (options->inc_buffer_size != 0)
+				buffer_size += options->inc_buffer_size;
+			else {
+				if (++buffer_size_idx == options->buffer_size_count)
+					break;
+				buffer_size = options->buffer_size_list[buffer_size_idx];
+			}
+
 		}
 	}
 
