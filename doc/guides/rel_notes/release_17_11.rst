@@ -89,6 +89,16 @@ New Features
   * Coalesce writes to HEAD CSR on response processing.
   * Coalesce writes to TAIL CSR on request processing.
 
+* **Updated the AESNI MB PMD.**
+
+  The AESNI MB PMD has been updated with additional support for:
+
+  * DES CBC algorithm.
+  * DES DOCSIS BPI algorithm.
+
+  This requires the IPSec Multi-buffer library 0.47. For more details,
+  check out the AESNI MB PMD documenation.
+
 * **Add new benchmarking mode to dpdk-test-crypto-perf application.**
 
   Added new "PMD cyclecount" benchmark mode to dpdk-test-crypto-perf application

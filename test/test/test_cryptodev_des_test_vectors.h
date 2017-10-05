@@ -851,13 +851,15 @@ static const struct blockcipher_test_case des_cipheronly_test_cases[] = {
 		.test_descr = "DES-CBC Encryption",
 		.test_data = &des_cbc_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_QAT
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_QAT |
+			BLOCKCIPHER_TEST_TARGET_PMD_MB
 	},
 	{
 		.test_descr = "DES-CBC Decryption",
 		.test_data = &des_cbc_test_vector,
 		.op_mask = BLOCKCIPHER_TEST_OP_DECRYPT,
-		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_QAT
+		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_QAT |
+			BLOCKCIPHER_TEST_TARGET_PMD_MB
 	},
 
 };
@@ -965,42 +967,48 @@ static const struct blockcipher_test_case des_docsis_test_cases[] = {
 		.test_data = &des_test_data_1,
 		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
-			BLOCKCIPHER_TEST_TARGET_PMD_QAT
+			BLOCKCIPHER_TEST_TARGET_PMD_QAT |
+			BLOCKCIPHER_TEST_TARGET_PMD_MB
 	},
 	{
 		.test_descr = "DES-DOCSIS-BPI Runt Block Encryption",
 		.test_data = &des_test_data_2,
 		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
-			BLOCKCIPHER_TEST_TARGET_PMD_QAT
+			BLOCKCIPHER_TEST_TARGET_PMD_QAT |
+			BLOCKCIPHER_TEST_TARGET_PMD_MB
 	},
 	{
 		.test_descr = "DES-DOCSIS-BPI Uneven Encryption",
 		.test_data = &des_test_data_3,
 		.op_mask = BLOCKCIPHER_TEST_OP_ENCRYPT,
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
-			BLOCKCIPHER_TEST_TARGET_PMD_QAT
+			BLOCKCIPHER_TEST_TARGET_PMD_QAT |
+			BLOCKCIPHER_TEST_TARGET_PMD_MB
 	},
 	{
 		.test_descr = "DES-DOCSIS-BPI Full Block Decryption",
 		.test_data = &des_test_data_1,
 		.op_mask = BLOCKCIPHER_TEST_OP_DECRYPT,
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
-			BLOCKCIPHER_TEST_TARGET_PMD_QAT
+			BLOCKCIPHER_TEST_TARGET_PMD_QAT |
+			BLOCKCIPHER_TEST_TARGET_PMD_MB
 	},
 	{
 		.test_descr = "DES-DOCSIS-BPI Runt Block Decryption",
 		.test_data = &des_test_data_2,
 		.op_mask = BLOCKCIPHER_TEST_OP_DECRYPT,
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
-			BLOCKCIPHER_TEST_TARGET_PMD_QAT
+			BLOCKCIPHER_TEST_TARGET_PMD_QAT |
+			BLOCKCIPHER_TEST_TARGET_PMD_MB
 	},
 	{
 		.test_descr = "DES-DOCSIS-BPI Uneven Decryption",
 		.test_data = &des_test_data_3,
 		.op_mask = BLOCKCIPHER_TEST_OP_DECRYPT,
 		.pmd_mask = BLOCKCIPHER_TEST_TARGET_PMD_OPENSSL |
-			BLOCKCIPHER_TEST_TARGET_PMD_QAT
+			BLOCKCIPHER_TEST_TARGET_PMD_QAT |
+			BLOCKCIPHER_TEST_TARGET_PMD_MB
 	},
 	{
 		.test_descr = "DES-DOCSIS-BPI OOP Full Block Encryption",

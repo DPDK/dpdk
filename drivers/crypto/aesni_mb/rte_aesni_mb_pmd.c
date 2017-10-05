@@ -30,6 +30,8 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <des.h>
+
 #include <rte_common.h>
 #include <rte_hexdump.h>
 #include <rte_cryptodev.h>
@@ -188,6 +190,7 @@ aesni_mb_set_session_cipher_parameters(const struct aesni_mb_op_fns *mb_ops,
 		struct aesni_mb_session *sess,
 		const struct rte_crypto_sym_xform *xform)
 {
+	uint8_t is_aes = 0;
 	aes_keyexp_t aes_keyexp_fn;
 
 	if (xform == NULL) {
@@ -217,45 +220,68 @@ aesni_mb_set_session_cipher_parameters(const struct aesni_mb_op_fns *mb_ops,
 	switch (xform->cipher.algo) {
 	case RTE_CRYPTO_CIPHER_AES_CBC:
 		sess->cipher.mode = CBC;
+		is_aes = 1;
 		break;
 	case RTE_CRYPTO_CIPHER_AES_CTR:
 		sess->cipher.mode = CNTR;
+		is_aes = 1;
 		break;
 	case RTE_CRYPTO_CIPHER_AES_DOCSISBPI:
 		sess->cipher.mode = DOCSIS_SEC_BPI;
+		is_aes = 1;
+		break;
+	case RTE_CRYPTO_CIPHER_DES_CBC:
+		sess->cipher.mode = DES;
+		break;
+	case RTE_CRYPTO_CIPHER_DES_DOCSISBPI:
+		sess->cipher.mode = DOCSIS_DES;
 		break;
 	default:
 		MB_LOG_ERR("Unsupported cipher mode parameter");
 		return -ENOTSUP;
 	}
 
-	/* Check key length and choose key expansion function */
-	switch (xform->cipher.key.length) {
-	case AES_128_BYTES:
-		sess->cipher.key_length_in_bytes = AES_128_BYTES;
-		aes_keyexp_fn = mb_ops->aux.keyexp.aes128;
-		break;
-	case AES_192_BYTES:
-		sess->cipher.key_length_in_bytes = AES_192_BYTES;
-		aes_keyexp_fn = mb_ops->aux.keyexp.aes192;
-		break;
-	case AES_256_BYTES:
-		sess->cipher.key_length_in_bytes = AES_256_BYTES;
-		aes_keyexp_fn = mb_ops->aux.keyexp.aes256;
-		break;
-	default:
-		MB_LOG_ERR("Invalid cipher key length");
-		return -EINVAL;
-	}
-
 	/* Set IV parameters */
 	sess->iv.offset = xform->cipher.iv.offset;
 	sess->iv.length = xform->cipher.iv.length;
 
-	/* Expanded cipher keys */
-	(*aes_keyexp_fn)(xform->cipher.key.data,
-			sess->cipher.expanded_aes_keys.encode,
-			sess->cipher.expanded_aes_keys.decode);
+	/* Check key length and choose key expansion function for AES */
+	if (is_aes) {
+		switch (xform->cipher.key.length) {
+		case AES_128_BYTES:
+			sess->cipher.key_length_in_bytes = AES_128_BYTES;
+			aes_keyexp_fn = mb_ops->aux.keyexp.aes128;
+			break;
+		case AES_192_BYTES:
+			sess->cipher.key_length_in_bytes = AES_192_BYTES;
+			aes_keyexp_fn = mb_ops->aux.keyexp.aes192;
+			break;
+		case AES_256_BYTES:
+			sess->cipher.key_length_in_bytes = AES_256_BYTES;
+			aes_keyexp_fn = mb_ops->aux.keyexp.aes256;
+			break;
+		default:
+			MB_LOG_ERR("Invalid cipher key length");
+			return -EINVAL;
+		}
+
+		/* Expanded cipher keys */
+		(*aes_keyexp_fn)(xform->cipher.key.data,
+				sess->cipher.expanded_aes_keys.encode,
+				sess->cipher.expanded_aes_keys.decode);
+
+	} else {
+		if (xform->cipher.key.length != 8) {
+			MB_LOG_ERR("Invalid cipher key length");
+			return -EINVAL;
+		}
+		sess->cipher.key_length_in_bytes = 8;
+
+		des_key_schedule((uint64_t *)sess->cipher.expanded_aes_keys.encode,
+				xform->cipher.key.data);
+		des_key_schedule((uint64_t *)sess->cipher.expanded_aes_keys.decode,
+				xform->cipher.key.data);
+	}
 
 	return 0;
 }

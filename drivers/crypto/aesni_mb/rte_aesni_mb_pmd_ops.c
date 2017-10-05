@@ -247,6 +247,48 @@ static const struct rte_cryptodev_capabilities aesni_mb_pmd_capabilities[] = {
 			}, }
 		}, }
 	},
+	{	/* DES CBC */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_CIPHER,
+			{.cipher = {
+				.algo = RTE_CRYPTO_CIPHER_DES_CBC,
+				.block_size = 8,
+				.key_size = {
+					.min = 8,
+					.max = 8,
+					.increment = 0
+				},
+				.iv_size = {
+					.min = 8,
+					.max = 8,
+					.increment = 0
+				}
+			}, }
+		}, }
+	},
+	{	/* DES DOCSIS BPI */
+		.op = RTE_CRYPTO_OP_TYPE_SYMMETRIC,
+		{.sym = {
+			.xform_type = RTE_CRYPTO_SYM_XFORM_CIPHER,
+			{.cipher = {
+				.algo = RTE_CRYPTO_CIPHER_DES_DOCSISBPI,
+				.block_size = 8,
+				.key_size = {
+					.min = 8,
+					.max = 8,
+					.increment = 0
+				},
+				.iv_size = {
+					.min = 8,
+					.max = 8,
+					.increment = 0
+				}
+			}, }
+		}, }
+	},
+
+
 
 	RTE_CRYPTODEV_END_OF_CAPABILITIES_LIST()
 };
