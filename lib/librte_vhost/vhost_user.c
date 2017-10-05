@@ -48,6 +48,7 @@
 #include <rte_malloc.h>
 #include <rte_log.h>
 
+#include "iotlb.h"
 #include "vhost.h"
 #include "vhost_user.h"
 
@@ -77,6 +78,7 @@ static const char *vhost_message_str[VHOST_USER_MAX] = {
 	[VHOST_USER_SEND_RARP]  = "VHOST_USER_SEND_RARP",
 	[VHOST_USER_NET_SET_MTU]  = "VHOST_USER_NET_SET_MTU",
 	[VHOST_USER_SET_SLAVE_REQ_FD]  = "VHOST_USER_SET_SLAVE_REQ_FD",
+	[VHOST_USER_IOTLB_MSG]  = "VHOST_USER_IOTLB_MSG",
 };
 
 static uint64_t
@@ -909,6 +911,43 @@ vhost_user_set_req_fd(struct virtio_net *dev, struct VhostUserMsg *msg)
 	return 0;
 }
 
+static int
+vhost_user_iotlb_msg(struct virtio_net *dev, struct VhostUserMsg *msg)
+{
+	struct vhost_iotlb_msg *imsg = &msg->payload.iotlb;
+	uint16_t i;
+	uint64_t vva;
+
+	switch (imsg->type) {
+	case VHOST_IOTLB_UPDATE:
+		vva = qva_to_vva(dev, imsg->uaddr);
+		if (!vva)
+			return -1;
+
+		for (i = 0; i < dev->nr_vring; i++) {
+			struct vhost_virtqueue *vq = dev->virtqueue[i];
+
+			vhost_user_iotlb_cache_insert(vq, imsg->iova, vva,
+					imsg->size, imsg->perm);
+		}
+		break;
+	case VHOST_IOTLB_INVALIDATE:
+		for (i = 0; i < dev->nr_vring; i++) {
+			struct vhost_virtqueue *vq = dev->virtqueue[i];
+
+			vhost_user_iotlb_cache_remove(vq, imsg->iova,
+					imsg->size);
+		}
+		break;
+	default:
+		RTE_LOG(ERR, VHOST_CONFIG, "Invalid IOTLB message type (%d)\n",
+				imsg->type);
+		return -1;
+	}
+
+	return 0;
+}
+
 /* return bytes# of read on success or negative val on failure. */
 static int
 read_vhost_message(int sockfd, struct VhostUserMsg *msg)
@@ -1138,6 +1177,10 @@ vhost_user_msg_handler(int vid, int fd)
 
 	case VHOST_USER_SET_SLAVE_REQ_FD:
 		ret = vhost_user_set_req_fd(dev, &msg);
+		break;
+
+	case VHOST_USER_IOTLB_MSG:
+		ret = vhost_user_iotlb_msg(dev, &msg);
 		break;
 
 	default:

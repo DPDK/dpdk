@@ -80,6 +80,7 @@ typedef enum VhostUserRequest {
 	VHOST_USER_SEND_RARP = 19,
 	VHOST_USER_NET_SET_MTU = 20,
 	VHOST_USER_SET_SLAVE_REQ_FD = 21,
+	VHOST_USER_IOTLB_MSG = 22,
 	VHOST_USER_MAX
 } VhostUserRequest;
 
