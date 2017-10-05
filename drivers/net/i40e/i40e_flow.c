@@ -125,6 +125,12 @@ static int i40e_flow_parse_mpls_filter(struct rte_eth_dev *dev,
 				       const struct rte_flow_action actions[],
 				       struct rte_flow_error *error,
 				       union i40e_filter_t *filter);
+static int i40e_flow_parse_gtp_filter(struct rte_eth_dev *dev,
+				      const struct rte_flow_attr *attr,
+				      const struct rte_flow_item pattern[],
+				      const struct rte_flow_action actions[],
+				      struct rte_flow_error *error,
+				      union i40e_filter_t *filter);
 static int i40e_flow_destroy_ethertype_filter(struct i40e_pf *pf,
 				      struct i40e_ethertype_filter *filter);
 static int i40e_flow_destroy_tunnel_filter(struct i40e_pf *pf,
@@ -1808,6 +1814,11 @@ static struct i40e_valid_pattern i40e_supported_patterns[] = {
 	{ pattern_mpls_2, i40e_flow_parse_mpls_filter },
 	{ pattern_mpls_3, i40e_flow_parse_mpls_filter },
 	{ pattern_mpls_4, i40e_flow_parse_mpls_filter },
+	/* GTP-C & GTP-U */
+	{ pattern_fdir_ipv4_gtpc, i40e_flow_parse_gtp_filter },
+	{ pattern_fdir_ipv4_gtpu, i40e_flow_parse_gtp_filter },
+	{ pattern_fdir_ipv6_gtpc, i40e_flow_parse_gtp_filter },
+	{ pattern_fdir_ipv6_gtpu, i40e_flow_parse_gtp_filter },
 	/* QINQ */
 	{ pattern_qinq_1, i40e_flow_parse_qinq_filter },
 };
@@ -3808,6 +3819,148 @@ i40e_flow_parse_mpls_filter(struct rte_eth_dev *dev,
 
 	ret = i40e_flow_parse_mpls_pattern(dev, pattern,
 					   error, tunnel_filter);
+	if (ret)
+		return ret;
+
+	ret = i40e_flow_parse_tunnel_action(dev, actions, error, tunnel_filter);
+	if (ret)
+		return ret;
+
+	ret = i40e_flow_parse_attr(attr, error);
+	if (ret)
+		return ret;
+
+	cons_filter_type = RTE_ETH_FILTER_TUNNEL;
+
+	return ret;
+}
+
+/* 1. Last in item should be NULL as range is not supported.
+ * 2. Supported filter types: GTP TEID.
+ * 3. Mask of fields which need to be matched should be
+ *    filled with 1.
+ * 4. Mask of fields which needn't to be matched should be
+ *    filled with 0.
+ * 5. GTP profile supports GTPv1 only.
+ * 6. GTP-C response message ('source_port' = 2123) is not supported.
+ */
+static int
+i40e_flow_parse_gtp_pattern(struct rte_eth_dev *dev,
+			    const struct rte_flow_item *pattern,
+			    struct rte_flow_error *error,
+			    struct i40e_tunnel_filter_conf *filter)
+{
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	const struct rte_flow_item *item = pattern;
+	const struct rte_flow_item_gtp *gtp_spec;
+	const struct rte_flow_item_gtp *gtp_mask;
+	enum rte_flow_item_type item_type;
+
+	if (!pf->gtp_support) {
+		rte_flow_error_set(error, EINVAL,
+				   RTE_FLOW_ERROR_TYPE_ITEM,
+				   item,
+				   "GTP is not supported by default.");
+		return -rte_errno;
+	}
+
+	for (; item->type != RTE_FLOW_ITEM_TYPE_END; item++) {
+		if (item->last) {
+			rte_flow_error_set(error, EINVAL,
+					   RTE_FLOW_ERROR_TYPE_ITEM,
+					   item,
+					   "Not support range");
+			return -rte_errno;
+		}
+		item_type = item->type;
+		switch (item_type) {
+		case RTE_FLOW_ITEM_TYPE_ETH:
+			if (item->spec || item->mask) {
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "Invalid ETH item");
+				return -rte_errno;
+			}
+			break;
+		case RTE_FLOW_ITEM_TYPE_IPV4:
+			filter->ip_type = I40E_TUNNEL_IPTYPE_IPV4;
+			/* IPv4 is used to describe protocol,
+			 * spec and mask should be NULL.
+			 */
+			if (item->spec || item->mask) {
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "Invalid IPv4 item");
+				return -rte_errno;
+			}
+			break;
+		case RTE_FLOW_ITEM_TYPE_UDP:
+			if (item->spec || item->mask) {
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "Invalid UDP item");
+				return -rte_errno;
+			}
+			break;
+		case RTE_FLOW_ITEM_TYPE_GTPC:
+		case RTE_FLOW_ITEM_TYPE_GTPU:
+			gtp_spec =
+				(const struct rte_flow_item_gtp *)item->spec;
+			gtp_mask =
+				(const struct rte_flow_item_gtp *)item->mask;
+
+			if (!gtp_spec || !gtp_mask) {
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "Invalid GTP item");
+				return -rte_errno;
+			}
+
+			if (gtp_mask->v_pt_rsv_flags ||
+			    gtp_mask->msg_type ||
+			    gtp_mask->msg_len ||
+			    gtp_mask->teid != UINT32_MAX) {
+				rte_flow_error_set(error, EINVAL,
+						   RTE_FLOW_ERROR_TYPE_ITEM,
+						   item,
+						   "Invalid GTP mask");
+				return -rte_errno;
+			}
+
+			if (item_type == RTE_FLOW_ITEM_TYPE_GTPC)
+				filter->tunnel_type = I40E_TUNNEL_TYPE_GTPC;
+			else if (item_type == RTE_FLOW_ITEM_TYPE_GTPU)
+				filter->tunnel_type = I40E_TUNNEL_TYPE_GTPU;
+
+			filter->tenant_id = rte_be_to_cpu_32(gtp_spec->teid);
+
+			break;
+		default:
+			break;
+		}
+	}
+
+	return 0;
+}
+
+static int
+i40e_flow_parse_gtp_filter(struct rte_eth_dev *dev,
+			   const struct rte_flow_attr *attr,
+			   const struct rte_flow_item pattern[],
+			   const struct rte_flow_action actions[],
+			   struct rte_flow_error *error,
+			   union i40e_filter_t *filter)
+{
+	struct i40e_tunnel_filter_conf *tunnel_filter =
+		&filter->consistent_tunnel_filter;
+	int ret;
+
+	ret = i40e_flow_parse_gtp_pattern(dev, pattern,
+					  error, tunnel_filter);
 	if (ret)
 		return ret;
 
