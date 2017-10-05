@@ -461,6 +461,80 @@ struct i40e_vmdq_info {
 #define I40E_FDIR_IPv6_TC_OFFSET	20
 
 /*
+ * A union contains the inputs for all types of flow
+ * items in flows need to be in big endian
+ */
+union i40e_fdir_flow {
+	struct rte_eth_l2_flow     l2_flow;
+	struct rte_eth_udpv4_flow  udp4_flow;
+	struct rte_eth_tcpv4_flow  tcp4_flow;
+	struct rte_eth_sctpv4_flow sctp4_flow;
+	struct rte_eth_ipv4_flow   ip4_flow;
+	struct rte_eth_udpv6_flow  udp6_flow;
+	struct rte_eth_tcpv6_flow  tcp6_flow;
+	struct rte_eth_sctpv6_flow sctp6_flow;
+	struct rte_eth_ipv6_flow   ipv6_flow;
+};
+
+/* A structure used to contain extend input of flow */
+struct i40e_fdir_flow_ext {
+	uint16_t vlan_tci;
+	uint8_t flexbytes[RTE_ETH_FDIR_MAX_FLEXLEN];
+	/* It is filled by the flexible payload to match. */
+	uint8_t is_vf;   /* 1 for VF, 0 for port dev */
+	uint16_t dst_id; /* VF ID, available when is_vf is 1*/
+};
+
+/* A structure used to define the input for a flow director filter entry */
+struct i40e_fdir_input {
+	enum i40e_filter_pctype pctype;
+	union i40e_fdir_flow flow;
+	/* Flow fields to match, dependent on flow_type */
+	struct i40e_fdir_flow_ext flow_ext;
+	/* Additional fields to match */
+};
+
+/* Behavior will be taken if FDIR match */
+enum i40e_fdir_behavior {
+	I40E_FDIR_ACCEPT = 0,
+	I40E_FDIR_REJECT,
+	I40E_FDIR_PASSTHRU,
+};
+
+/* Flow director report status
+ * It defines what will be reported if FDIR entry is matched.
+ */
+enum i40e_fdir_status {
+	I40E_FDIR_NO_REPORT_STATUS = 0, /* Report nothing. */
+	I40E_FDIR_REPORT_ID,            /* Only report FD ID. */
+	I40E_FDIR_REPORT_ID_FLEX_4,     /* Report FD ID and 4 flex bytes. */
+	I40E_FDIR_REPORT_FLEX_8,        /* Report 8 flex bytes. */
+};
+
+/* A structure used to define an action when match FDIR packet filter. */
+struct i40e_fdir_action {
+	uint16_t rx_queue;        /* Queue assigned to if FDIR match. */
+	enum i40e_fdir_behavior behavior;     /* Behavior will be taken */
+	enum i40e_fdir_status report_status;  /* Status report option */
+	/* If report_status is I40E_FDIR_REPORT_ID_FLEX_4 or
+	 * I40E_FDIR_REPORT_FLEX_8, flex_off specifies where the reported
+	 * flex bytes start from in flexible payload.
+	 */
+	uint8_t flex_off;
+};
+
+/* A structure used to define the flow director filter entry by filter_ctrl API
+ * It supports RTE_ETH_FILTER_FDIR with RTE_ETH_FILTER_ADD and
+ * RTE_ETH_FILTER_DELETE operations.
+ */
+struct i40e_fdir_filter_conf {
+	uint32_t soft_id;
+	/* ID, an unique value is required when deal with FDIR entry */
+	struct i40e_fdir_input input;    /* Input set */
+	struct i40e_fdir_action action;  /* Action taken when match */
+};
+
+/*
  * Structure to store flex pit for flow diretor.
  */
 struct i40e_fdir_flex_pit {
@@ -484,7 +558,7 @@ struct i40e_fdir_flex_mask {
 
 struct i40e_fdir_filter {
 	TAILQ_ENTRY(i40e_fdir_filter) rules;
-	struct rte_eth_fdir_filter fdir;
+	struct i40e_fdir_filter_conf fdir;
 };
 
 TAILQ_HEAD(i40e_fdir_filter_list, i40e_fdir_filter);
@@ -913,7 +987,7 @@ extern const struct rte_flow_ops i40e_flow_ops;
 
 union i40e_filter_t {
 	struct rte_eth_ethertype_filter ethertype_filter;
-	struct rte_eth_fdir_filter fdir_filter;
+	struct i40e_fdir_filter_conf fdir_filter;
 	struct rte_eth_tunnel_filter_conf tunnel_filter;
 	struct i40e_tunnel_filter_conf consistent_tunnel_filter;
 };
@@ -990,7 +1064,7 @@ i40e_sw_ethertype_filter_lookup(struct i40e_ethertype_rule *ethertype_rule,
 int i40e_sw_ethertype_filter_del(struct i40e_pf *pf,
 				 struct i40e_ethertype_filter_input *input);
 int i40e_sw_fdir_filter_del(struct i40e_pf *pf,
-			    struct rte_eth_fdir_input *input);
+			    struct i40e_fdir_input *input);
 struct i40e_tunnel_filter *
 i40e_sw_tunnel_filter_lookup(struct i40e_tunnel_rule *tunnel_rule,
 			     const struct i40e_tunnel_filter_input *input);
@@ -1003,6 +1077,9 @@ int i40e_ethertype_filter_set(struct i40e_pf *pf,
 int i40e_add_del_fdir_filter(struct rte_eth_dev *dev,
 			     const struct rte_eth_fdir_filter *filter,
 			     bool add);
+int i40e_flow_add_del_fdir_filter(struct rte_eth_dev *dev,
+				  const struct i40e_fdir_filter_conf *filter,
+				  bool add);
 int i40e_dev_tunnel_filter_set(struct i40e_pf *pf,
 			       struct rte_eth_tunnel_filter_conf *tunnel_filter,
 			       uint8_t add);

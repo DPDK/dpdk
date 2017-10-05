@@ -84,11 +84,11 @@ static int i40e_flow_parse_ethertype_action(struct rte_eth_dev *dev,
 static int i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 					const struct rte_flow_item *pattern,
 					struct rte_flow_error *error,
-					struct rte_eth_fdir_filter *filter);
+					struct i40e_fdir_filter_conf *filter);
 static int i40e_flow_parse_fdir_action(struct rte_eth_dev *dev,
 				       const struct rte_flow_action *actions,
 				       struct rte_flow_error *error,
-				       struct rte_eth_fdir_filter *filter);
+				       struct i40e_fdir_filter_conf *filter);
 static int i40e_flow_parse_tunnel_action(struct rte_eth_dev *dev,
 				 const struct rte_flow_action *actions,
 				 struct rte_flow_error *error,
@@ -2315,7 +2315,7 @@ static int
 i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 			     const struct rte_flow_item *pattern,
 			     struct rte_flow_error *error,
-			     struct rte_eth_fdir_filter *filter)
+			     struct i40e_fdir_filter_conf *filter)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	const struct rte_flow_item *item = pattern;
@@ -2329,8 +2329,7 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 	const struct rte_flow_item_raw *raw_spec, *raw_mask;
 	const struct rte_flow_item_vf *vf_spec;
 
-	uint32_t flow_type = RTE_ETH_FLOW_UNKNOWN;
-	enum i40e_filter_pctype pctype;
+	enum i40e_filter_pctype pctype = 0;
 	uint64_t input_set = I40E_INSET_NONE;
 	uint16_t frag_off;
 	enum rte_flow_item_type item_type;
@@ -2402,7 +2401,7 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 				}
 			}
 
-			flow_type = RTE_ETH_FLOW_L2_PAYLOAD;
+			pctype = I40E_FILTER_PCTYPE_L2_PAYLOAD;
 			layer_idx = I40E_FLXPLD_L2_IDX;
 
 			break;
@@ -2420,7 +2419,7 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 				}
 			}
 
-			flow_type = RTE_ETH_FLOW_L2_PAYLOAD;
+			pctype = I40E_FILTER_PCTYPE_L2_PAYLOAD;
 			layer_idx = I40E_FLXPLD_L2_IDX;
 
 			break;
@@ -2457,13 +2456,13 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 					input_set |= I40E_INSET_IPV4_PROTO;
 
 				/* Get filter info */
-				flow_type = RTE_ETH_FLOW_NONFRAG_IPV4_OTHER;
+				pctype = I40E_FILTER_PCTYPE_NONF_IPV4_OTHER;
 				/* Check if it is fragment. */
 				frag_off = ipv4_spec->hdr.fragment_offset;
 				frag_off = rte_be_to_cpu_16(frag_off);
 				if (frag_off & IPV4_HDR_OFFSET_MASK ||
 				    frag_off & IPV4_HDR_MF_FLAG)
-					flow_type = RTE_ETH_FLOW_FRAG_IPV4;
+					pctype = I40E_FILTER_PCTYPE_FRAG_IPV4;
 
 				/* Get the filter info */
 				filter->input.flow.ip4_flow.proto =
@@ -2535,11 +2534,10 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 				/* Check if it is fragment. */
 				if (ipv6_spec->hdr.proto ==
 				    I40E_IPV6_FRAG_HEADER)
-					flow_type =
-						RTE_ETH_FLOW_FRAG_IPV6;
+					pctype = I40E_FILTER_PCTYPE_FRAG_IPV6;
 				else
-					flow_type =
-						RTE_ETH_FLOW_NONFRAG_IPV6_OTHER;
+					pctype =
+					     I40E_FILTER_PCTYPE_NONF_IPV6_OTHER;
 			}
 
 			layer_idx = I40E_FLXPLD_L3_IDX;
@@ -2572,11 +2570,11 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 
 				/* Get filter info */
 				if (l3 == RTE_FLOW_ITEM_TYPE_IPV4)
-					flow_type =
-						RTE_ETH_FLOW_NONFRAG_IPV4_TCP;
+					pctype =
+					       I40E_FILTER_PCTYPE_NONF_IPV4_TCP;
 				else if (l3 == RTE_FLOW_ITEM_TYPE_IPV6)
-					flow_type =
-						RTE_ETH_FLOW_NONFRAG_IPV6_TCP;
+					pctype =
+					       I40E_FILTER_PCTYPE_NONF_IPV6_TCP;
 
 				if (l3 == RTE_FLOW_ITEM_TYPE_IPV4) {
 					filter->input.flow.tcp4_flow.src_port =
@@ -2616,11 +2614,11 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 
 				/* Get filter info */
 				if (l3 == RTE_FLOW_ITEM_TYPE_IPV4)
-					flow_type =
-						RTE_ETH_FLOW_NONFRAG_IPV4_UDP;
+					pctype =
+					       I40E_FILTER_PCTYPE_NONF_IPV4_UDP;
 				else if (l3 == RTE_FLOW_ITEM_TYPE_IPV6)
-					flow_type =
-						RTE_ETH_FLOW_NONFRAG_IPV6_UDP;
+					pctype =
+					       I40E_FILTER_PCTYPE_NONF_IPV6_UDP;
 
 				if (l3 == RTE_FLOW_ITEM_TYPE_IPV4) {
 					filter->input.flow.udp4_flow.src_port =
@@ -2663,11 +2661,11 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 
 				/* Get filter info */
 				if (l3 == RTE_FLOW_ITEM_TYPE_IPV4)
-					flow_type =
-						RTE_ETH_FLOW_NONFRAG_IPV4_SCTP;
+					pctype =
+					      I40E_FILTER_PCTYPE_NONF_IPV4_SCTP;
 				else if (l3 == RTE_FLOW_ITEM_TYPE_IPV6)
-					flow_type =
-						RTE_ETH_FLOW_NONFRAG_IPV6_SCTP;
+					pctype =
+					      I40E_FILTER_PCTYPE_NONF_IPV6_SCTP;
 
 				if (l3 == RTE_FLOW_ITEM_TYPE_IPV4) {
 					filter->input.flow.sctp4_flow.src_port =
@@ -2776,15 +2774,6 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 		}
 	}
 
-	pctype = i40e_flowtype_to_pctype(pf->adapter, flow_type);
-	if (pctype == I40E_FILTER_PCTYPE_INVALID ||
-	    pctype > I40E_FILTER_PCTYPE_L2_PAYLOAD) {
-		rte_flow_error_set(error, EINVAL,
-				   RTE_FLOW_ERROR_TYPE_ITEM, item,
-				   "Unsupported flow type");
-		return -rte_errno;
-	}
-
 	ret = i40e_flow_set_fdir_inset(pf, pctype, input_set);
 	if (ret == -1) {
 		rte_flow_error_set(error, EINVAL,
@@ -2798,7 +2787,7 @@ i40e_flow_parse_fdir_pattern(struct rte_eth_dev *dev,
 		return -rte_errno;
 	}
 
-	filter->input.flow_type = flow_type;
+	filter->input.pctype = pctype;
 
 	/* Store flex mask to SW */
 	ret = i40e_flow_store_flex_mask(pf, pctype, flex_mask);
@@ -2833,7 +2822,7 @@ static int
 i40e_flow_parse_fdir_action(struct rte_eth_dev *dev,
 			    const struct rte_flow_action *actions,
 			    struct rte_flow_error *error,
-			    struct rte_eth_fdir_filter *filter)
+			    struct i40e_fdir_filter_conf *filter)
 {
 	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
 	const struct rte_flow_action *act;
@@ -2856,13 +2845,13 @@ i40e_flow_parse_fdir_action(struct rte_eth_dev *dev,
 					   "Invalid queue ID for FDIR.");
 			return -rte_errno;
 		}
-		filter->action.behavior = RTE_ETH_FDIR_ACCEPT;
+		filter->action.behavior = I40E_FDIR_ACCEPT;
 		break;
 	case RTE_FLOW_ACTION_TYPE_DROP:
-		filter->action.behavior = RTE_ETH_FDIR_REJECT;
+		filter->action.behavior = I40E_FDIR_REJECT;
 		break;
 	case RTE_FLOW_ACTION_TYPE_PASSTHRU:
-		filter->action.behavior = RTE_ETH_FDIR_PASSTHRU;
+		filter->action.behavior = I40E_FDIR_PASSTHRU;
 		break;
 	default:
 		rte_flow_error_set(error, EINVAL,
@@ -2877,11 +2866,11 @@ i40e_flow_parse_fdir_action(struct rte_eth_dev *dev,
 	switch (act->type) {
 	case RTE_FLOW_ACTION_TYPE_MARK:
 		mark_spec = (const struct rte_flow_action_mark *)act->conf;
-		filter->action.report_status = RTE_ETH_FDIR_REPORT_ID;
+		filter->action.report_status = I40E_FDIR_REPORT_ID;
 		filter->soft_id = mark_spec->id;
 		break;
 	case RTE_FLOW_ACTION_TYPE_FLAG:
-		filter->action.report_status = RTE_ETH_FDIR_NO_REPORT_STATUS;
+		filter->action.report_status = I40E_FDIR_NO_REPORT_STATUS;
 		break;
 	case RTE_FLOW_ACTION_TYPE_END:
 		return 0;
@@ -2912,7 +2901,7 @@ i40e_flow_parse_fdir_filter(struct rte_eth_dev *dev,
 			    struct rte_flow_error *error,
 			    union i40e_filter_t *filter)
 {
-	struct rte_eth_fdir_filter *fdir_filter =
+	struct i40e_fdir_filter_conf *fdir_filter =
 		&filter->fdir_filter;
 	int ret;
 
@@ -3878,7 +3867,7 @@ i40e_flow_create(struct rte_eth_dev *dev,
 					i40e_ethertype_filter_list);
 		break;
 	case RTE_ETH_FILTER_FDIR:
-		ret = i40e_add_del_fdir_filter(dev,
+		ret = i40e_flow_add_del_fdir_filter(dev,
 				       &cons_filter.fdir_filter, 1);
 		if (ret)
 			goto free_flow;
@@ -3928,7 +3917,7 @@ i40e_flow_destroy(struct rte_eth_dev *dev,
 			      (struct i40e_tunnel_filter *)flow->rule);
 		break;
 	case RTE_ETH_FILTER_FDIR:
-		ret = i40e_add_del_fdir_filter(dev,
+		ret = i40e_flow_add_del_fdir_filter(dev,
 		       &((struct i40e_fdir_filter *)flow->rule)->fdir, 0);
 		break;
 	default:
