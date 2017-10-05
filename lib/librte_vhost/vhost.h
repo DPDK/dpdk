@@ -45,6 +45,7 @@
 
 #include <rte_log.h>
 #include <rte_ether.h>
+#include <rte_rwlock.h>
 
 #include "rte_vhost.h"
 
@@ -127,6 +128,11 @@ struct vhost_virtqueue {
 
 	struct batch_copy_elem	*batch_copy_elems;
 	uint16_t		batch_copy_nb_elems;
+
+	rte_rwlock_t	iotlb_lock;
+	struct rte_mempool *iotlb_pool;
+	TAILQ_HEAD(, vhost_iotlb_entry) iotlb_list;
+	int				iotlb_cache_nr;
 } __rte_cache_aligned;
 
 /* Old kernels have no such macros defined */

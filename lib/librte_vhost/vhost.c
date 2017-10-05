@@ -103,6 +103,7 @@ free_device(struct virtio_net *dev)
 
 		rte_free(vq->shadow_used_ring);
 		rte_free(vq->batch_copy_elems);
+		rte_mempool_free(vq->iotlb_pool);
 		rte_free(vq);
 	}
 
