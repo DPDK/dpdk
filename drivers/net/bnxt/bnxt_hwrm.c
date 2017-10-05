@@ -259,7 +259,7 @@ int bnxt_hwrm_cfa_l2_set_rx_mask(struct bnxt *bp,
 	 * by ethtool.
 	 */
 	if (vnic->flags & BNXT_VNIC_INFO_BCAST)
-		mask = HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_BCAST;
+		mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_BCAST;
 	if (vnic->flags & BNXT_VNIC_INFO_UNTAGGED)
 		mask |= HWRM_CFA_L2_SET_RX_MASK_INPUT_MASK_VLAN_NONVLAN;
 	if (vnic->flags & BNXT_VNIC_INFO_PROMISC)

@@ -60,6 +60,8 @@ void bnxt_free_rxq_stats(struct bnxt_rx_queue *rxq)
 int bnxt_mq_rx_configure(struct bnxt *bp)
 {
 	struct rte_eth_conf *dev_conf = &bp->eth_dev->data->dev_conf;
+	const struct rte_eth_vmdq_rx_conf *conf =
+		    &dev_conf->rx_adv_conf.vmdq_rx_conf;
 	unsigned int i, j, nb_q_per_grp = 1, ring_idx = 0;
 	int start_grp_id, end_grp_id = 1, rc = 0;
 	struct bnxt_vnic_info *vnic;
@@ -102,9 +104,6 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 	/* Multi-queue mode */
 	if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_VMDQ_DCB_RSS) {
 		/* VMDq ONLY, VMDq+RSS, VMDq+DCB, VMDq+DCB+RSS */
-		const struct rte_eth_vmdq_rx_conf *conf =
-		    &dev_conf->rx_adv_conf.vmdq_rx_conf;
-
 
 		switch (dev_conf->rxmode.mq_mode) {
 		case ETH_MQ_RX_VMDQ_RSS:
@@ -156,8 +155,13 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 			rxq = bp->eth_dev->data->rx_queues[ring_idx];
 			rxq->vnic = vnic;
 		}
-		if (i == 0)
+		if (i == 0) {
+			if (dev_conf->rxmode.mq_mode & ETH_MQ_RX_VMDQ_DCB) {
+				bp->eth_dev->data->promiscuous = 1;
+				vnic->flags |= BNXT_VNIC_INFO_PROMISC;
+			}
 			vnic->func_default = true;
+		}
 		vnic->ff_pool_idx = i;
 		vnic->start_grp_id = start_grp_id;
 		vnic->end_grp_id = end_grp_id;
@@ -171,6 +175,17 @@ int bnxt_mq_rx_configure(struct bnxt *bp)
 			RTE_LOG(ERR, PMD, "L2 filter alloc failed\n");
 			rc = -ENOMEM;
 			goto err_out;
+		}
+		for (j = 0; j < conf->nb_pool_maps; j++) {
+			if (conf->pool_map[j].pools & (1UL << i)) {
+				RTE_LOG(ERR, PMD,
+					"Add vlan %u to vmdq pool %u\n",
+					conf->pool_map[j].vlan_id, i);
+
+				filter->l2_ivlan = conf->pool_map[j].vlan_id;
+				filter->enables |=
+				HWRM_CFA_L2_FILTER_ALLOC_INPUT_ENABLES_L2_OVLAN;
+			}
 		}
 		/*
 		 * TODO: Configure & associate CFA rule for

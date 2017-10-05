@@ -416,7 +416,7 @@ static void bnxt_dev_info_get_op(struct rte_eth_dev *eth_dev,
 	dev_info->pci_dev = RTE_ETH_DEV_TO_PCI(eth_dev);
 
 	/* MAC Specifics */
-	dev_info->max_mac_addrs = MAX_NUM_MAC_ADDR;
+	dev_info->max_mac_addrs = bp->max_l2_ctx;
 	dev_info->max_hash_mac_addrs = 0;
 
 	/* PF/VF specifics */
@@ -2525,11 +2525,11 @@ skip_init:
 		goto error_free;
 	}
 	eth_dev->data->mac_addrs = rte_zmalloc("bnxt_mac_addr_tbl",
-					ETHER_ADDR_LEN * MAX_NUM_MAC_ADDR, 0);
+					ETHER_ADDR_LEN * bp->max_l2_ctx, 0);
 	if (eth_dev->data->mac_addrs == NULL) {
 		RTE_LOG(ERR, PMD,
 			"Failed to alloc %u bytes needed to store MAC addr tbl",
-			ETHER_ADDR_LEN * MAX_NUM_MAC_ADDR);
+			ETHER_ADDR_LEN * bp->max_l2_ctx);
 		rc = -ENOMEM;
 		goto error_free;
 	}
