@@ -723,6 +723,21 @@ struct i40e_tm_conf {
 	bool committed;
 };
 
+enum i40e_new_pctype {
+	I40E_CUSTOMIZED_GTPC = 0,
+	I40E_CUSTOMIZED_GTPU_IPV4,
+	I40E_CUSTOMIZED_GTPU_IPV6,
+	I40E_CUSTOMIZED_GTPU,
+	I40E_CUSTOMIZED_MAX,
+};
+
+#define I40E_FILTER_PCTYPE_INVALID     0
+struct i40e_customized_pctype {
+	enum i40e_new_pctype index;  /* Indicate which customized pctype */
+	uint8_t pctype;   /* New pctype value */
+	bool valid;   /* Check if it's valid */
+};
+
 /*
  * Structure to store private data specific for PF instance.
  */
@@ -787,6 +802,11 @@ struct i40e_pf {
 	bool mpls_replace_flag;  /* 1 - MPLS filter replace is done */
 	bool qinq_replace_flag;  /* QINQ filter replace is done */
 	struct i40e_tm_conf tm_conf;
+
+	/* Dynamic Device Personalization */
+	bool gtp_support; /* 1 - support GTP-C and GTP-U */
+	/* customer customized pctype */
+	struct i40e_customized_pctype customized_pctype[I40E_CUSTOMIZED_MAX];
 };
 
 enum pending_msg {
@@ -1012,6 +1032,10 @@ void i40e_check_write_reg(struct i40e_hw *hw, uint32_t addr, uint32_t val);
 int i40e_tm_ops_get(struct rte_eth_dev *dev, void *ops);
 void i40e_tm_conf_init(struct rte_eth_dev *dev);
 void i40e_tm_conf_uninit(struct rte_eth_dev *dev);
+struct i40e_customized_pctype*
+i40e_find_customized_pctype(struct i40e_pf *pf, uint8_t index);
+void i40e_update_customized_info(struct rte_eth_dev *dev, uint8_t *pkg,
+				 uint32_t pkg_size);
 
 #define I40E_DEV_TO_PCI(eth_dev) \
 	RTE_DEV_TO_PCI((eth_dev)->device)

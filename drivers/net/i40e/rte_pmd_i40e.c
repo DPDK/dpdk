@@ -1608,6 +1608,8 @@ rte_pmd_i40e_process_ddp_package(uint8_t port, uint8_t *buff,
 		return -EINVAL;
 	}
 
+	i40e_update_customized_info(dev, buff, size);
+
 	/* Find metadata segment */
 	metadata_seg_hdr = i40e_find_segment_in_package(SEGMENT_TYPE_METADATA,
 							pkg_hdr);
@@ -2106,7 +2108,9 @@ static int check_invalid_pkt_type(uint32_t pkt_type)
 	    tnl != RTE_PTYPE_TUNNEL_VXLAN &&
 	    tnl != RTE_PTYPE_TUNNEL_NVGRE &&
 	    tnl != RTE_PTYPE_TUNNEL_GENEVE &&
-	    tnl != RTE_PTYPE_TUNNEL_GRENAT)
+	    tnl != RTE_PTYPE_TUNNEL_GRENAT &&
+	    tnl != RTE_PTYPE_TUNNEL_GTPC &&
+	    tnl != RTE_PTYPE_TUNNEL_GTPU)
 		return -1;
 
 	if (il2 &&

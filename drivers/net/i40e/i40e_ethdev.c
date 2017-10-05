@@ -65,6 +65,7 @@
 #include "i40e_rxtx.h"
 #include "i40e_pf.h"
 #include "i40e_regs.h"
+#include "rte_pmd_i40e.h"
 
 #define ETH_I40E_FLOATING_VEB_ARG	"enable_floating_veb"
 #define ETH_I40E_FLOATING_VEB_LIST_ARG	"floating_veb_list"
@@ -1042,6 +1043,21 @@ err_fdir_hash_map_alloc:
 	return ret;
 }
 
+static void
+i40e_init_customized_info(struct i40e_pf *pf)
+{
+	int i;
+
+	/* Initialize customized pctype */
+	for (i = I40E_CUSTOMIZED_GTPC; i < I40E_CUSTOMIZED_MAX; i++) {
+		pf->customized_pctype[i].index = i;
+		pf->customized_pctype[i].pctype = I40E_FILTER_PCTYPE_INVALID;
+		pf->customized_pctype[i].valid = false;
+	}
+
+	pf->gtp_support = false;
+}
+
 static int
 eth_i40e_dev_init(struct rte_eth_dev *dev)
 {
@@ -1307,6 +1323,9 @@ eth_i40e_dev_init(struct rte_eth_dev *dev)
 
 	/* initialize Traffic Manager configuration */
 	i40e_tm_conf_init(dev);
+
+	/* Initialize customized information */
+	i40e_init_customized_info(pf);
 
 	ret = i40e_init_ethtype_filter_list(dev);
 	if (ret < 0)
@@ -10767,6 +10786,299 @@ bool
 is_i40e_supported(struct rte_eth_dev *dev)
 {
 	return is_device_supported(dev, &rte_i40e_pmd);
+}
+
+struct i40e_customized_pctype*
+i40e_find_customized_pctype(struct i40e_pf *pf, uint8_t index)
+{
+	int i;
+
+	for (i = 0; i < I40E_CUSTOMIZED_MAX; i++) {
+		if (pf->customized_pctype[i].index == index)
+			return &pf->customized_pctype[i];
+	}
+	return NULL;
+}
+
+static int
+i40e_update_customized_pctype(struct rte_eth_dev *dev, uint8_t *pkg,
+			      uint32_t pkg_size, uint32_t proto_num,
+			      struct rte_pmd_i40e_proto_info *proto)
+{
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	uint32_t pctype_num;
+	struct rte_pmd_i40e_ptype_info *pctype;
+	uint32_t buff_size;
+	struct i40e_customized_pctype *new_pctype = NULL;
+	uint8_t proto_id;
+	uint8_t pctype_value;
+	char name[64];
+	uint32_t i, j, n;
+	int ret;
+
+	ret = rte_pmd_i40e_get_ddp_info(pkg, pkg_size,
+				(uint8_t *)&pctype_num, sizeof(pctype_num),
+				RTE_PMD_I40E_PKG_INFO_PCTYPE_NUM);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Failed to get pctype number");
+		return -1;
+	}
+	if (!pctype_num) {
+		PMD_DRV_LOG(INFO, "No new pctype added");
+		return -1;
+	}
+
+	buff_size = pctype_num * sizeof(struct rte_pmd_i40e_proto_info);
+	pctype = rte_zmalloc("new_pctype", buff_size, 0);
+	if (!pctype) {
+		PMD_DRV_LOG(ERR, "Failed to allocate memory");
+		return -1;
+	}
+	/* get information about new pctype list */
+	ret = rte_pmd_i40e_get_ddp_info(pkg, pkg_size,
+					(uint8_t *)pctype, buff_size,
+					RTE_PMD_I40E_PKG_INFO_PCTYPE_LIST);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Failed to get pctype list");
+		rte_free(pctype);
+		return -1;
+	}
+
+	/* Update customized pctype. */
+	for (i = 0; i < pctype_num; i++) {
+		pctype_value = pctype[i].ptype_id;
+		memset(name, 0, sizeof(name));
+		for (j = 0; j < RTE_PMD_I40E_PROTO_NUM; j++) {
+			proto_id = pctype[i].protocols[j];
+			if (proto_id == RTE_PMD_I40E_PROTO_UNUSED)
+				continue;
+			for (n = 0; n < proto_num; n++) {
+				if (proto[n].proto_id != proto_id)
+					continue;
+				strcat(name, proto[n].name);
+				strcat(name, "_");
+				break;
+			}
+		}
+		name[strlen(name) - 1] = '\0';
+		if (!strcmp(name, "GTPC"))
+			new_pctype =
+				i40e_find_customized_pctype(pf,
+						      I40E_CUSTOMIZED_GTPC);
+		else if (!strcmp(name, "GTPU_IPV4"))
+			new_pctype =
+				i40e_find_customized_pctype(pf,
+						   I40E_CUSTOMIZED_GTPU_IPV4);
+		else if (!strcmp(name, "GTPU_IPV6"))
+			new_pctype =
+				i40e_find_customized_pctype(pf,
+						   I40E_CUSTOMIZED_GTPU_IPV6);
+		else if (!strcmp(name, "GTPU"))
+			new_pctype =
+				i40e_find_customized_pctype(pf,
+						      I40E_CUSTOMIZED_GTPU);
+		if (new_pctype) {
+			new_pctype->pctype = pctype_value;
+			new_pctype->valid = true;
+		}
+	}
+
+	rte_free(pctype);
+	return 0;
+}
+
+static int
+i40e_update_customized_ptype(struct rte_eth_dev *dev, uint8_t *pkg,
+			       uint32_t pkg_size, uint32_t proto_num,
+			       struct rte_pmd_i40e_proto_info *proto)
+{
+	struct rte_pmd_i40e_ptype_mapping *ptype_mapping;
+	uint8_t port_id = dev->data->port_id;
+	uint32_t ptype_num;
+	struct rte_pmd_i40e_ptype_info *ptype;
+	uint32_t buff_size;
+	uint8_t proto_id;
+	char name[16];
+	uint32_t i, j, n;
+	bool inner_ip;
+	int ret;
+
+	/* get information about new ptype num */
+	ret = rte_pmd_i40e_get_ddp_info(pkg, pkg_size,
+				(uint8_t *)&ptype_num, sizeof(ptype_num),
+				RTE_PMD_I40E_PKG_INFO_PTYPE_NUM);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Failed to get ptype number");
+		return ret;
+	}
+	if (!ptype_num) {
+		PMD_DRV_LOG(INFO, "No new ptype added");
+		return -1;
+	}
+
+	buff_size = ptype_num * sizeof(struct rte_pmd_i40e_ptype_info);
+	ptype = rte_zmalloc("new_ptype", buff_size, 0);
+	if (!ptype) {
+		PMD_DRV_LOG(ERR, "Failed to allocate memory");
+		return -1;
+	}
+
+	/* get information about new ptype list */
+	ret = rte_pmd_i40e_get_ddp_info(pkg, pkg_size,
+					(uint8_t *)ptype, buff_size,
+					RTE_PMD_I40E_PKG_INFO_PTYPE_LIST);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Failed to get ptype list");
+		rte_free(ptype);
+		return ret;
+	}
+
+	buff_size = ptype_num * sizeof(struct rte_pmd_i40e_ptype_mapping);
+	ptype_mapping = rte_zmalloc("ptype_mapping", buff_size, 0);
+	if (!ptype_mapping) {
+		PMD_DRV_LOG(ERR, "Failed to allocate memory");
+		rte_free(ptype);
+		return -1;
+	}
+
+	/* Update ptype mapping table. */
+	for (i = 0; i < ptype_num; i++) {
+		ptype_mapping[i].hw_ptype = ptype[i].ptype_id;
+		ptype_mapping[i].sw_ptype = 0;
+		inner_ip = false;
+		for (j = 0; j < RTE_PMD_I40E_PROTO_NUM; j++) {
+			proto_id = ptype[i].protocols[j];
+			if (proto_id == RTE_PMD_I40E_PROTO_UNUSED)
+				continue;
+			for (n = 0; n < proto_num; n++) {
+				if (proto[n].proto_id != proto_id)
+					continue;
+				memset(name, 0, sizeof(name));
+				strcpy(name, proto[n].name);
+				if (!strncmp(name, "IPV4", 4) && !inner_ip) {
+					ptype_mapping[i].sw_ptype |=
+						RTE_PTYPE_L3_IPV4_EXT_UNKNOWN;
+					inner_ip = true;
+				} else if (!strncmp(name, "IPV4", 4) &&
+					   inner_ip) {
+					ptype_mapping[i].sw_ptype |=
+					    RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN;
+				} else if (!strncmp(name, "IPV6", 4) &&
+					   !inner_ip) {
+					ptype_mapping[i].sw_ptype |=
+						RTE_PTYPE_L3_IPV6_EXT_UNKNOWN;
+					inner_ip = true;
+				} else if (!strncmp(name, "IPV6", 4) &&
+					   inner_ip) {
+					ptype_mapping[i].sw_ptype |=
+					    RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN;
+				} else if (!strncmp(name, "IPV4FRAG", 8)) {
+					ptype_mapping[i].sw_ptype |=
+					    RTE_PTYPE_INNER_L3_IPV4_EXT_UNKNOWN;
+					ptype_mapping[i].sw_ptype |=
+						RTE_PTYPE_INNER_L4_FRAG;
+				} else if (!strncmp(name, "IPV6FRAG", 8)) {
+					ptype_mapping[i].sw_ptype |=
+					    RTE_PTYPE_INNER_L3_IPV6_EXT_UNKNOWN;
+					ptype_mapping[i].sw_ptype |=
+						RTE_PTYPE_INNER_L4_FRAG;
+				} else if (!strncmp(name, "GTPC", 4))
+					ptype_mapping[i].sw_ptype |=
+						RTE_PTYPE_TUNNEL_GTPC;
+				else if (!strncmp(name, "GTPU", 4))
+					ptype_mapping[i].sw_ptype |=
+						RTE_PTYPE_TUNNEL_GTPU;
+				else if (!strncmp(name, "UDP", 3))
+					ptype_mapping[i].sw_ptype |=
+						RTE_PTYPE_INNER_L4_UDP;
+				else if (!strncmp(name, "TCP", 3))
+					ptype_mapping[i].sw_ptype |=
+						RTE_PTYPE_INNER_L4_TCP;
+				else if (!strncmp(name, "SCTP", 4))
+					ptype_mapping[i].sw_ptype |=
+						RTE_PTYPE_INNER_L4_SCTP;
+				else if (!strncmp(name, "ICMP", 4) ||
+					 !strncmp(name, "ICMPV6", 6))
+					ptype_mapping[i].sw_ptype |=
+						RTE_PTYPE_INNER_L4_ICMP;
+
+				break;
+			}
+		}
+	}
+
+	ret = rte_pmd_i40e_ptype_mapping_update(port_id, ptype_mapping,
+						ptype_num, 0);
+	if (ret)
+		PMD_DRV_LOG(ERR, "Failed to update mapping table.");
+
+	rte_free(ptype_mapping);
+	rte_free(ptype);
+	return ret;
+}
+
+void
+i40e_update_customized_info(struct rte_eth_dev *dev, uint8_t *pkg,
+			      uint32_t pkg_size)
+{
+	struct i40e_pf *pf = I40E_DEV_PRIVATE_TO_PF(dev->data->dev_private);
+	uint32_t proto_num;
+	struct rte_pmd_i40e_proto_info *proto;
+	uint32_t buff_size;
+	uint32_t i;
+	int ret;
+
+	/* get information about protocol number */
+	ret = rte_pmd_i40e_get_ddp_info(pkg, pkg_size,
+				       (uint8_t *)&proto_num, sizeof(proto_num),
+				       RTE_PMD_I40E_PKG_INFO_PROTOCOL_NUM);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Failed to get protocol number");
+		return;
+	}
+	if (!proto_num) {
+		PMD_DRV_LOG(INFO, "No new protocol added");
+		return;
+	}
+
+	buff_size = proto_num * sizeof(struct rte_pmd_i40e_proto_info);
+	proto = rte_zmalloc("new_proto", buff_size, 0);
+	if (!proto) {
+		PMD_DRV_LOG(ERR, "Failed to allocate memory");
+		return;
+	}
+
+	/* get information about protocol list */
+	ret = rte_pmd_i40e_get_ddp_info(pkg, pkg_size,
+					(uint8_t *)proto, buff_size,
+					RTE_PMD_I40E_PKG_INFO_PROTOCOL_LIST);
+	if (ret) {
+		PMD_DRV_LOG(ERR, "Failed to get protocol list");
+		rte_free(proto);
+		return;
+	}
+
+	/* Check if GTP is supported. */
+	for (i = 0; i < proto_num; i++) {
+		if (!strncmp(proto[i].name, "GTP", 3)) {
+			pf->gtp_support = true;
+			break;
+		}
+	}
+
+	/* Update customized pctype info */
+	ret = i40e_update_customized_pctype(dev, pkg, pkg_size,
+					    proto_num, proto);
+	if (ret)
+		PMD_DRV_LOG(INFO, "No pctype is updated.");
+
+	/* Update customized ptype info */
+	ret = i40e_update_customized_ptype(dev, pkg, pkg_size,
+					   proto_num, proto);
+	if (ret)
+		PMD_DRV_LOG(INFO, "No ptype is updated.");
+
+	rte_free(proto);
 }
 
 /* Create a QinQ cloud filter
