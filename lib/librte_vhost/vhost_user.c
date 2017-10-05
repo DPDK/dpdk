@@ -391,11 +391,7 @@ vhost_user_set_vring_addr(struct virtio_net *dev, VhostUserMsg *msg)
 	 */
 	memcpy(&vq->ring_addrs, addr, sizeof(*addr));
 
-	vq->desc = NULL;
-	vq->avail = NULL;
-	vq->used = NULL;
-
-	vq->access_ok = 0;
+	vring_invalidate(dev, vq);
 
 	return 0;
 }
@@ -1012,6 +1008,35 @@ is_vring_iotlb_update(struct vhost_virtqueue *vq, struct vhost_iotlb_msg *imsg)
 }
 
 static int
+is_vring_iotlb_invalidate(struct vhost_virtqueue *vq,
+				struct vhost_iotlb_msg *imsg)
+{
+	uint64_t istart, iend, vstart, vend;
+
+	istart = imsg->iova;
+	iend = istart + imsg->size - 1;
+
+	vstart = (uintptr_t)vq->desc;
+	vend = vstart + sizeof(struct vring_desc) * vq->size - 1;
+	if (vstart <= iend && istart <= vend)
+		return 1;
+
+	vstart = (uintptr_t)vq->avail;
+	vend = vstart + sizeof(struct vring_avail);
+	vend += sizeof(uint16_t) * vq->size - 1;
+	if (vstart <= iend && istart <= vend)
+		return 1;
+
+	vstart = (uintptr_t)vq->used;
+	vend = vstart + sizeof(struct vring_used);
+	vend += sizeof(struct vring_used_elem) * vq->size - 1;
+	if (vstart <= iend && istart <= vend)
+		return 1;
+
+	return 0;
+}
+
+static int
 vhost_user_iotlb_msg(struct virtio_net **pdev, struct VhostUserMsg *msg)
 {
 	struct virtio_net *dev = *pdev;
@@ -1041,6 +1066,9 @@ vhost_user_iotlb_msg(struct virtio_net **pdev, struct VhostUserMsg *msg)
 
 			vhost_user_iotlb_cache_remove(vq, imsg->iova,
 					imsg->size);
+
+			if (is_vring_iotlb_invalidate(vq, imsg))
+				vring_invalidate(dev, vq);
 		}
 		break;
 	default:

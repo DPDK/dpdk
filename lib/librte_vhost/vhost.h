@@ -380,6 +380,7 @@ void vhost_backend_cleanup(struct virtio_net *dev);
 uint64_t __vhost_iova_to_vva(struct virtio_net *dev, struct vhost_virtqueue *vq,
 			uint64_t iova, uint64_t size, uint8_t perm);
 int vring_translate(struct virtio_net *dev, struct vhost_virtqueue *vq);
+void vring_invalidate(struct virtio_net *dev, struct vhost_virtqueue *vq);
 
 static __rte_always_inline uint64_t
 vhost_iova_to_vva(struct virtio_net *dev, struct vhost_virtqueue *vq,

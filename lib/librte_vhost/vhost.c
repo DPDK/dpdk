@@ -173,6 +173,21 @@ out:
 	return 0;
 }
 
+void
+vring_invalidate(struct virtio_net *dev, struct vhost_virtqueue *vq)
+{
+	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
+		vhost_user_iotlb_wr_lock(vq);
+
+	vq->access_ok = 0;
+	vq->desc = NULL;
+	vq->avail = NULL;
+	vq->used = NULL;
+
+	if (dev->features & (1ULL << VIRTIO_F_IOMMU_PLATFORM))
+		vhost_user_iotlb_wr_unlock(vq);
+}
+
 static void
 init_vring_queue(struct virtio_net *dev, uint32_t vring_idx)
 {
