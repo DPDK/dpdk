@@ -171,6 +171,10 @@ enum index {
 	ITEM_GRE_PROTO,
 	ITEM_FUZZY,
 	ITEM_FUZZY_THRESH,
+	ITEM_GTP,
+	ITEM_GTP_TEID,
+	ITEM_GTPC,
+	ITEM_GTPU,
 
 	/* Validate/create actions. */
 	ACTIONS,
@@ -451,6 +455,9 @@ static const enum index next_item[] = {
 	ITEM_MPLS,
 	ITEM_GRE,
 	ITEM_FUZZY,
+	ITEM_GTP,
+	ITEM_GTPC,
+	ITEM_GTPU,
 	ZERO,
 };
 
@@ -584,6 +591,12 @@ static const enum index item_mpls[] = {
 
 static const enum index item_gre[] = {
 	ITEM_GRE_PROTO,
+	ITEM_NEXT,
+	ZERO,
+};
+
+static const enum index item_gtp[] = {
+	ITEM_GTP_TEID,
 	ITEM_NEXT,
 	ZERO,
 };
@@ -1420,6 +1433,33 @@ static const struct token token_list[] = {
 		.next = NEXT(item_fuzzy, NEXT_ENTRY(UNSIGNED), item_param),
 		.args = ARGS(ARGS_ENTRY(struct rte_flow_item_fuzzy,
 					thresh)),
+	},
+	[ITEM_GTP] = {
+		.name = "gtp",
+		.help = "match GTP header",
+		.priv = PRIV_ITEM(GTP, sizeof(struct rte_flow_item_gtp)),
+		.next = NEXT(item_gtp),
+		.call = parse_vc,
+	},
+	[ITEM_GTP_TEID] = {
+		.name = "teid",
+		.help = "tunnel endpoint identifier",
+		.next = NEXT(item_gtp, NEXT_ENTRY(UNSIGNED), item_param),
+		.args = ARGS(ARGS_ENTRY_HTON(struct rte_flow_item_gtp, teid)),
+	},
+	[ITEM_GTPC] = {
+		.name = "gtpc",
+		.help = "match GTP header",
+		.priv = PRIV_ITEM(GTPC, sizeof(struct rte_flow_item_gtp)),
+		.next = NEXT(item_gtp),
+		.call = parse_vc,
+	},
+	[ITEM_GTPU] = {
+		.name = "gtpu",
+		.help = "match GTP header",
+		.priv = PRIV_ITEM(GTPU, sizeof(struct rte_flow_item_gtp)),
+		.next = NEXT(item_gtp),
+		.call = parse_vc,
 	},
 
 	/* Validate/create actions. */

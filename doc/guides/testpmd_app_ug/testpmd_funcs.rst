@@ -2721,6 +2721,10 @@ This section lists supported pattern items and their attributes, if any.
 
   - ``thresh {unsigned}``: accuracy threshold.
 
+- ``gtp``, ``gtpc``, ``gtpu``: match GTPv1 header.
+
+  - ``teid {unsigned}``: tunnel endpoint identifier.
+
 Actions list
 ^^^^^^^^^^^^
 

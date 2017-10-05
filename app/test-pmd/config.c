@@ -952,6 +952,9 @@ static const struct {
 	MK_FLOW_ITEM(MPLS, sizeof(struct rte_flow_item_mpls)),
 	MK_FLOW_ITEM(GRE, sizeof(struct rte_flow_item_gre)),
 	MK_FLOW_ITEM(FUZZY, sizeof(struct rte_flow_item_fuzzy)),
+	MK_FLOW_ITEM(GTP, sizeof(struct rte_flow_item_gtp)),
+	MK_FLOW_ITEM(GTPC, sizeof(struct rte_flow_item_gtp)),
+	MK_FLOW_ITEM(GTPU, sizeof(struct rte_flow_item_gtp)),
 };
 
 /** Compute storage space needed by item specification. */

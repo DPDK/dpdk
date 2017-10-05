@@ -309,6 +309,33 @@ enum rte_flow_item_type {
 	 * See struct rte_flow_item_fuzzy.
 	 */
 	RTE_FLOW_ITEM_TYPE_FUZZY,
+
+	/**
+	 * Matches a GTP header.
+	 *
+	 * Configure flow for GTP packets.
+	 *
+	 * See struct rte_flow_item_gtp.
+	 */
+	RTE_FLOW_ITEM_TYPE_GTP,
+
+	/**
+	 * Matches a GTP header.
+	 *
+	 * Configure flow for GTP-C packets.
+	 *
+	 * See struct rte_flow_item_gtp.
+	 */
+	RTE_FLOW_ITEM_TYPE_GTPC,
+
+	/**
+	 * Matches a GTP header.
+	 *
+	 * Configure flow for GTP-U packets.
+	 *
+	 * See struct rte_flow_item_gtp.
+	 */
+	RTE_FLOW_ITEM_TYPE_GTPU,
 };
 
 /**
@@ -731,6 +758,31 @@ struct rte_flow_item_fuzzy {
 #ifndef __cplusplus
 static const struct rte_flow_item_fuzzy rte_flow_item_fuzzy_mask = {
 	.thresh = 0xffffffff,
+};
+#endif
+
+/**
+ * RTE_FLOW_ITEM_TYPE_GTP.
+ *
+ * Matches a GTPv1 header.
+ */
+struct rte_flow_item_gtp {
+	/**
+	 * Version (3b), protocol type (1b), reserved (1b),
+	 * Extension header flag (1b),
+	 * Sequence number flag (1b),
+	 * N-PDU number flag (1b).
+	 */
+	uint8_t v_pt_rsv_flags;
+	uint8_t msg_type; /**< Message type. */
+	rte_be16_t msg_len; /**< Message length. */
+	rte_be32_t teid; /**< Tunnel endpoint identifier. */
+};
+
+/** Default mask for RTE_FLOW_ITEM_TYPE_GTP. */
+#ifndef __cplusplus
+static const struct rte_flow_item_gtp rte_flow_item_gtp_mask = {
+	.teid = RTE_BE32(0xffffffff),
 };
 #endif
 

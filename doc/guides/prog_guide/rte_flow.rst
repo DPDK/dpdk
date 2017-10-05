@@ -955,6 +955,23 @@ Usage example, fuzzy match a TCPv4 packets:
    | 4     | END      |
    +-------+----------+
 
+Item: ``GTP``, ``GTPC``, ``GTPU``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Matches a GTPv1 header.
+
+Note: GTP, GTPC and GTPU use the same structure. GTPC and GTPU item
+are defined for a user-friendly API when creating GTP-C and GTP-U
+flow rules.
+
+- ``v_pt_rsv_flags``: version (3b), protocol type (1b), reserved (1b),
+  extension header flag (1b), sequence number flag (1b), N-PDU number
+  flag (1b).
+- ``msg_type``: message type.
+- ``msg_len``: message length.
+- ``teid``: tunnel endpoint identifier.
+- Default ``mask`` matches teid only.
+
 Actions
 ~~~~~~~
 
