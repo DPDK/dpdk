@@ -150,6 +150,8 @@ struct vfio_config {
 #define VFIO_NOIOMMU_GROUP_FMT "/dev/vfio/noiommu-%u"
 #define VFIO_GET_REGION_ADDR(x) ((uint64_t) x << 40ULL)
 #define VFIO_GET_REGION_IDX(x) (x >> 40)
+#define VFIO_NOIOMMU_MODE      \
+	"/sys/module/vfio/parameters/enable_unsafe_noiommu_mode"
 
 /* DMA mapping function prototype.
  * Takes VFIO container fd as a parameter.
@@ -209,6 +211,8 @@ int pci_vfio_enable(void);
 int pci_vfio_is_enabled(void);
 
 int vfio_mp_sync_setup(void);
+
+int vfio_noiommu_is_enabled(void);
 
 #define SOCKET_REQ_CONTAINER 0x100
 #define SOCKET_REQ_GROUP 0x200

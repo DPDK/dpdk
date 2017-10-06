@@ -45,6 +45,7 @@
 #include "eal_filesystem.h"
 #include "eal_private.h"
 #include "eal_pci_init.h"
+#include "eal_vfio.h"
 
 /**
  * @file
@@ -488,11 +489,97 @@ error:
 }
 
 /*
+ * Is pci device bound to any kdrv
+ */
+static inline int
+pci_one_device_is_bound(void)
+{
+	struct rte_pci_device *dev = NULL;
+	int ret = 0;
+
+	FOREACH_DEVICE_ON_PCIBUS(dev) {
+		if (dev->kdrv == RTE_KDRV_UNKNOWN ||
+		    dev->kdrv == RTE_KDRV_NONE) {
+			continue;
+		} else {
+			ret = 1;
+			break;
+		}
+	}
+	return ret;
+}
+
+/*
+ * Any one of the device bound to uio
+ */
+static inline int
+pci_one_device_bound_uio(void)
+{
+	struct rte_pci_device *dev = NULL;
+
+	FOREACH_DEVICE_ON_PCIBUS(dev) {
+		if (dev->kdrv == RTE_KDRV_IGB_UIO ||
+		   dev->kdrv == RTE_KDRV_UIO_GENERIC) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+/*
+ * Any one of the device has iova as va
+ */
+static inline int
+pci_one_device_has_iova_va(void)
+{
+	struct rte_pci_device *dev = NULL;
+	struct rte_pci_driver *drv = NULL;
+
+	FOREACH_DRIVER_ON_PCIBUS(drv) {
+		if (drv && drv->drv_flags & RTE_PCI_DRV_IOVA_AS_VA) {
+			FOREACH_DEVICE_ON_PCIBUS(dev) {
+				if (dev->kdrv == RTE_KDRV_VFIO &&
+				    rte_pci_match(drv, dev))
+					return 1;
+			}
+		}
+	}
+	return 0;
+}
+
+/*
  * Get iommu class of PCI devices on the bus.
  */
 enum rte_iova_mode
 rte_pci_get_iommu_class(void)
 {
+	bool is_bound;
+	bool is_vfio_noiommu_enabled = true;
+	bool has_iova_va;
+	bool is_bound_uio;
+
+	is_bound = pci_one_device_is_bound();
+	if (!is_bound)
+		return RTE_IOVA_DC;
+
+	has_iova_va = pci_one_device_has_iova_va();
+	is_bound_uio = pci_one_device_bound_uio();
+#ifdef VFIO_PRESENT
+	is_vfio_noiommu_enabled = vfio_noiommu_is_enabled() == true ?
+					true : false;
+#endif
+
+	if (has_iova_va && !is_bound_uio && !is_vfio_noiommu_enabled)
+		return RTE_IOVA_VA;
+
+	if (has_iova_va) {
+		RTE_LOG(WARNING, EAL, "Some devices want iova as va but pa will be used because.. ");
+		if (is_vfio_noiommu_enabled)
+			RTE_LOG(WARNING, EAL, "vfio-noiommu mode configured\n");
+		if (is_bound_uio)
+			RTE_LOG(WARNING, EAL, "few device bound to UIO\n");
+	}
+
 	return RTE_IOVA_PA;
 }
 
