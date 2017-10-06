@@ -139,6 +139,9 @@ rte_mem_virt2phy(const void *virtaddr)
 	int page_size;
 	off_t offset;
 
+	if (rte_eal_iova_mode() == RTE_IOVA_VA)
+		return (uintptr_t)virtaddr;
+
 	/* when using dom0, /proc/self/pagemap always returns 0, check in
 	 * dpdk memory by browsing the memsegs */
 	if (rte_xen_dom0_supported()) {
