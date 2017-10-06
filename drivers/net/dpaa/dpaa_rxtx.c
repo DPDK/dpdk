@@ -32,7 +32,6 @@
  */
 
 /* System headers */
-#include <stdio.h>
 #include <inttypes.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -56,7 +55,6 @@
 #include <rte_alarm.h>
 #include <rte_ether.h>
 #include <rte_ethdev.h>
-#include <rte_atomic.h>
 #include <rte_malloc.h>
 #include <rte_ring.h>
 #include <rte_ip.h>

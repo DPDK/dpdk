@@ -37,7 +37,6 @@
 #include <stdbool.h>
 #include <inttypes.h>
 #include <unistd.h>
-#include <unistd.h>
 
 #include <rte_mempool.h>
 
