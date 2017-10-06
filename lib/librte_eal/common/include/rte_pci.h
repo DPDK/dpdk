@@ -366,6 +366,21 @@ int rte_pci_scan(void);
 int
 rte_pci_probe(void);
 
+/*
+ * Match the PCI Driver and Device using the ID Table
+ *
+ * @param pci_drv
+ *      PCI driver from which ID table would be extracted
+ * @param pci_dev
+ *      PCI device to match against the driver
+ * @return
+ *      1 for successful match
+ *      0 for unsuccessful match
+ */
+int
+rte_pci_match(const struct rte_pci_driver *pci_drv,
+	      const struct rte_pci_device *pci_dev);
+
 /**
  * Map the PCI device resources in user space virtual memory address
  *

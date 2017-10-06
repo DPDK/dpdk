@@ -243,3 +243,10 @@ EXPERIMENTAL {
 	rte_service_start_with_defaults;
 
 } DPDK_17.08;
+
+DPDK_17.11 {
+	global:
+
+	rte_pci_match;
+
+} DPDK_17.08;
