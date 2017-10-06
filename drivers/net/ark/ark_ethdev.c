@@ -698,7 +698,7 @@ eth_ark_dev_stop(struct rte_eth_dev *dev)
 	ark_udm_dump_stats(ark->udm.v, "Post stop");
 	ark_udm_dump_perf(ark->udm.v, "Post stop");
 
-	for (i = 0; i < dev->data->nb_tx_queues; i++)
+	for (i = 0; i < dev->data->nb_rx_queues; i++)
 		eth_ark_rx_dump_queue(dev, i, __func__);
 
 	/* Stop the packet checker if it is running */
