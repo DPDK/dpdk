@@ -3629,3 +3629,21 @@ rte_eth_dev_adjust_nb_rx_tx_desc(uint16_t port_id,
 
 	return 0;
 }
+
+int
+rte_eth_dev_pool_ops_supported(uint8_t port_id, const char *pool)
+{
+	struct rte_eth_dev *dev;
+
+	RTE_ETH_VALID_PORTID_OR_ERR_RET(port_id, -ENODEV);
+
+	if (pool == NULL)
+		return -EINVAL;
+
+	dev = &rte_eth_devices[port_id];
+
+	if (*dev->dev_ops->pool_ops_supported == NULL)
+		return 1; /* all pools are supported */
+
+	return (*dev->dev_ops->pool_ops_supported)(dev, pool);
+}
