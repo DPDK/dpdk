@@ -92,7 +92,7 @@ Features
 - Flow director (RTE_FDIR_MODE_PERFECT, RTE_FDIR_MODE_PERFECT_MAC_VLAN and
   RTE_ETH_FDIR_REJECT).
 - Flow API.
-- Secondary process TX is supported.
+- Multiple process.
 - KVM and VMware ESX SR-IOV modes are supported.
 - RSS hash result is supported.
 - Hardware TSO.
@@ -106,7 +106,7 @@ Limitations
 - Inner RSS for VXLAN frames is not supported yet.
 - Port statistics through software counters only.
 - Hardware checksum RX offloads for VXLAN inner header are not supported yet.
-- Secondary process RX is not supported.
+- Forked secondary process not supported.
 - Flow pattern without any specific vlan will match for vlan packets as well:
 
   When VLAN spec is not specified in the pattern, the matching rule will be created with VLAN as a wild card.

@@ -91,6 +91,7 @@ struct priv {
 	struct ibv_context *ctx; /* Verbs context. */
 	struct ibv_device_attr_ex device_attr; /* Device properties. */
 	struct ibv_pd *pd; /* Protection Domain. */
+	char ibdev_path[IBV_SYSFS_PATH_MAX]; /* IB device path for secondary */
 	/*
 	 * MAC addresses array and configuration bit-field.
 	 * An extra entry that cannot be modified by the DPDK is reserved

@@ -165,7 +165,7 @@ priv_get_ifname(const struct priv *priv, char (*ifname)[IF_NAMESIZE])
 	char match[IF_NAMESIZE] = "";
 
 	{
-		MKSTR(path, "%s/device/net", priv->ctx->device->ibdev_path);
+		MKSTR(path, "%s/device/net", priv->ibdev_path);
 
 		dir = opendir(path);
 		if (dir == NULL)
@@ -183,7 +183,7 @@ priv_get_ifname(const struct priv *priv, char (*ifname)[IF_NAMESIZE])
 			continue;
 
 		MKSTR(path, "%s/device/net/%s/%s",
-		      priv->ctx->device->ibdev_path, name,
+		      priv->ibdev_path, name,
 		      (dev_type ? "dev_id" : "dev_port"));
 
 		file = fopen(path, "rb");
@@ -271,11 +271,11 @@ priv_sysfs_read(const struct priv *priv, const char *entry,
 
 	if (priv_is_ib_cntr(entry)) {
 		MKSTR(path, "%s/ports/1/hw_counters/%s",
-		      priv->ctx->device->ibdev_path, entry);
+		      priv->ibdev_path, entry);
 		file = fopen(path, "rb");
 	} else {
 		MKSTR(path, "%s/device/net/%s/%s",
-		      priv->ctx->device->ibdev_path, ifname, entry);
+		      priv->ibdev_path, ifname, entry);
 		file = fopen(path, "rb");
 	}
 	if (file == NULL)
@@ -318,8 +318,7 @@ priv_sysfs_write(const struct priv *priv, const char *entry,
 	if (priv_get_ifname(priv, &ifname))
 		return -1;
 
-	MKSTR(path, "%s/device/net/%s/%s", priv->ctx->device->ibdev_path,
-	      ifname, entry);
+	MKSTR(path, "%s/device/net/%s/%s", priv->ibdev_path, ifname, entry);
 
 	file = fopen(path, "wb");
 	if (file == NULL)

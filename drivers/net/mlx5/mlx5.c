@@ -303,6 +303,18 @@ static const struct eth_dev_ops mlx5_dev_ops = {
 	.rx_queue_intr_disable = mlx5_rx_intr_disable,
 };
 
+
+static const struct eth_dev_ops mlx5_dev_sec_ops = {
+	.stats_get = mlx5_stats_get,
+	.stats_reset = mlx5_stats_reset,
+	.xstats_get = mlx5_xstats_get,
+	.xstats_reset = mlx5_xstats_reset,
+	.xstats_get_names = mlx5_xstats_get_names,
+	.dev_infos_get = mlx5_dev_infos_get,
+	.rx_descriptor_status = mlx5_rx_descriptor_status,
+	.tx_descriptor_status = mlx5_tx_descriptor_status,
+};
+
 static struct {
 	struct rte_pci_addr pci_addr; /* associated PCI address */
 	uint32_t ports; /* physical ports bitfield. */
@@ -640,7 +652,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 				goto error;
 			}
 			eth_dev->device = &pci_dev->device;
-			eth_dev->dev_ops = NULL;
+			eth_dev->dev_ops = &mlx5_dev_sec_ops;
 			priv = eth_dev->data->dev_private;
 			/* Receive command fd from primary process */
 			err = priv_socket_connect(priv);
@@ -707,6 +719,8 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		}
 
 		priv->ctx = ctx;
+		strncpy(priv->ibdev_path, priv->ctx->device->ibdev_path,
+			sizeof(priv->ibdev_path));
 		priv->device_attr = device_attr;
 		priv->port = port;
 		priv->pd = pd;
