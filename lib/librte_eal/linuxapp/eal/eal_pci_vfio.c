@@ -88,8 +88,7 @@ pci_vfio_write_config(const struct rte_intr_handle *intr_handle,
 
 /* get PCI BAR number where MSI-X interrupts are */
 static int
-pci_vfio_get_msix_bar(int fd, int *msix_bar, uint32_t *msix_table_offset,
-		      uint32_t *msix_table_size)
+pci_vfio_get_msix_bar(int fd, struct pci_msix_table *msix_table)
 {
 	int ret;
 	uint32_t reg;
@@ -161,9 +160,10 @@ pci_vfio_get_msix_bar(int fd, int *msix_bar, uint32_t *msix_table_offset,
 				return -1;
 			}
 
-			*msix_bar = reg & RTE_PCI_MSIX_TABLE_BIR;
-			*msix_table_offset = reg & RTE_PCI_MSIX_TABLE_OFFSET;
-			*msix_table_size = 16 * (1 + (flags & RTE_PCI_MSIX_FLAGS_QSIZE));
+			msix_table->bar_index = reg & RTE_PCI_MSIX_TABLE_BIR;
+			msix_table->offset = reg & RTE_PCI_MSIX_TABLE_OFFSET;
+			msix_table->size =
+				16 * (1 + (flags & RTE_PCI_MSIX_FLAGS_QSIZE));
 
 			return 0;
 		}
@@ -300,25 +300,150 @@ pci_vfio_setup_interrupts(struct rte_pci_device *dev, int vfio_dev_fd)
 	return -1;
 }
 
-/*
- * map the PCI resources of a PCI device in virtual memory (VFIO version).
- * primary and secondary processes follow almost exactly the same path
- */
-int
-pci_vfio_map_resource(struct rte_pci_device *dev)
+static int
+pci_vfio_is_ioport_bar(int vfio_dev_fd, int bar_index)
+{
+	uint32_t ioport_bar;
+	int ret;
+
+	ret = pread64(vfio_dev_fd, &ioport_bar, sizeof(ioport_bar),
+			  VFIO_GET_REGION_ADDR(VFIO_PCI_CONFIG_REGION_INDEX)
+			  + PCI_BASE_ADDRESS_0 + bar_index*4);
+	if (ret != sizeof(ioport_bar)) {
+		RTE_LOG(ERR, EAL, "Cannot read command (%x) from config space!\n",
+			PCI_BASE_ADDRESS_0 + bar_index*4);
+		return -1;
+	}
+
+	return (ioport_bar & PCI_BASE_ADDRESS_SPACE_IO) != 0;
+}
+
+static int
+pci_vfio_setup_device(struct rte_pci_device *dev, int vfio_dev_fd)
+{
+	if (pci_vfio_setup_interrupts(dev, vfio_dev_fd) != 0) {
+		RTE_LOG(ERR, EAL, "Error setting up interrupts!\n");
+		return -1;
+	}
+
+	/* set bus mastering for the device */
+	if (pci_vfio_set_bus_master(vfio_dev_fd, true)) {
+		RTE_LOG(ERR, EAL, "Cannot set up bus mastering!\n");
+		return -1;
+	}
+
+	/* Reset the device */
+	ioctl(vfio_dev_fd, VFIO_DEVICE_RESET);
+
+	return 0;
+}
+
+static int
+pci_vfio_mmap_bar(int vfio_dev_fd, struct mapped_pci_resource *vfio_res,
+		int bar_index, int additional_flags)
+{
+	struct memreg {
+		unsigned long offset, size;
+	} memreg[2] = {};
+	void *bar_addr;
+	struct pci_msix_table *msix_table = &vfio_res->msix_table;
+	struct pci_map *bar = &vfio_res->maps[bar_index];
+
+	if (bar->size == 0)
+		/* Skip this BAR */
+		return 0;
+
+	if (msix_table->bar_index == bar_index) {
+		/*
+		 * VFIO will not let us map the MSI-X table,
+		 * but we can map around it.
+		 */
+		uint32_t table_start = msix_table->offset;
+		uint32_t table_end = table_start + msix_table->size;
+		table_end = (table_end + ~PAGE_MASK) & PAGE_MASK;
+		table_start &= PAGE_MASK;
+
+		if (table_start == 0 && table_end >= bar->size) {
+			/* Cannot map this BAR */
+			RTE_LOG(DEBUG, EAL, "Skipping BAR%d\n", bar_index);
+			bar->size = 0;
+			bar->addr = 0;
+			return 0;
+		}
+
+		memreg[0].offset = bar->offset;
+		memreg[0].size = table_start;
+		memreg[1].offset = bar->offset + table_end;
+		memreg[1].size = bar->size - table_end;
+
+		RTE_LOG(DEBUG, EAL,
+			"Trying to map BAR%d that contains the MSI-X "
+			"table. Trying offsets: "
+			"0x%04lx:0x%04lx, 0x%04lx:0x%04lx\n", bar_index,
+			memreg[0].offset, memreg[0].size,
+			memreg[1].offset, memreg[1].size);
+	} else {
+		memreg[0].offset = bar->offset;
+		memreg[0].size = bar->size;
+	}
+
+	/* reserve the address using an inaccessible mapping */
+	bar_addr = mmap(bar->addr, bar->size, 0, MAP_PRIVATE |
+			MAP_ANONYMOUS | additional_flags, -1, 0);
+	if (bar_addr != MAP_FAILED) {
+		void *map_addr = NULL;
+		if (memreg[0].size) {
+			/* actual map of first part */
+			map_addr = pci_map_resource(bar_addr, vfio_dev_fd,
+							memreg[0].offset,
+							memreg[0].size,
+							MAP_FIXED);
+		}
+
+		/* if there's a second part, try to map it */
+		if (map_addr != MAP_FAILED
+			&& memreg[1].offset && memreg[1].size) {
+			void *second_addr = RTE_PTR_ADD(bar_addr,
+							memreg[1].offset -
+							(uintptr_t)bar->offset);
+			map_addr = pci_map_resource(second_addr,
+							vfio_dev_fd,
+							memreg[1].offset,
+							memreg[1].size,
+							MAP_FIXED);
+		}
+
+		if (map_addr == MAP_FAILED || !map_addr) {
+			munmap(bar_addr, bar->size);
+			bar_addr = MAP_FAILED;
+			RTE_LOG(ERR, EAL, "Failed to map pci BAR%d\n",
+					bar_index);
+			return -1;
+		}
+	} else {
+		RTE_LOG(ERR, EAL,
+				"Failed to create inaccessible mapping for BAR%d\n",
+				bar_index);
+		return -1;
+	}
+
+	bar->addr = bar_addr;
+	return 0;
+}
+
+static int
+pci_vfio_map_resource_primary(struct rte_pci_device *dev)
 {
 	struct vfio_device_info device_info = { .argsz = sizeof(device_info) };
 	char pci_addr[PATH_MAX] = {0};
 	int vfio_dev_fd;
 	struct rte_pci_addr *loc = &dev->addr;
-	int i, ret, msix_bar;
+	int i, ret;
 	struct mapped_pci_resource *vfio_res = NULL;
-	struct mapped_pci_res_list *vfio_res_list = RTE_TAILQ_CAST(rte_vfio_tailq.head, mapped_pci_res_list);
+	struct mapped_pci_res_list *vfio_res_list =
+		RTE_TAILQ_CAST(rte_vfio_tailq.head, mapped_pci_res_list);
 
 	struct pci_map *maps;
-	uint32_t msix_table_offset = 0;
-	uint32_t msix_table_size = 0;
-	uint32_t ioport_bar;
 
 	dev->intr_handle.fd = -1;
 	dev->intr_handle.type = RTE_INTR_HANDLE_UNKNOWN;
@@ -327,91 +452,58 @@ pci_vfio_map_resource(struct rte_pci_device *dev)
 	snprintf(pci_addr, sizeof(pci_addr), PCI_PRI_FMT,
 			loc->domain, loc->bus, loc->devid, loc->function);
 
-	if ((ret = vfio_setup_device(pci_get_sysfs_path(), pci_addr,
-					&vfio_dev_fd, &device_info)))
+	ret = vfio_setup_device(pci_get_sysfs_path(), pci_addr,
+					&vfio_dev_fd, &device_info);
+	if (ret)
 		return ret;
 
-	/* get MSI-X BAR, if any (we have to know where it is because we can't
-	 * easily mmap it when using VFIO) */
-	msix_bar = -1;
-	ret = pci_vfio_get_msix_bar(vfio_dev_fd, &msix_bar,
-				    &msix_table_offset, &msix_table_size);
-	if (ret < 0) {
-		RTE_LOG(ERR, EAL, "  %s cannot get MSI-X BAR number!\n", pci_addr);
-		close(vfio_dev_fd);
-		return -1;
+	/* allocate vfio_res and get region info */
+	vfio_res = rte_zmalloc("VFIO_RES", sizeof(*vfio_res), 0);
+	if (vfio_res == NULL) {
+		RTE_LOG(ERR, EAL,
+			"%s(): cannot store uio mmap details\n", __func__);
+		goto err_vfio_dev_fd;
 	}
+	memcpy(&vfio_res->pci_addr, &dev->addr, sizeof(vfio_res->pci_addr));
 
-	/* if we're in a primary process, allocate vfio_res and get region info */
-	if (internal_config.process_type == RTE_PROC_PRIMARY) {
-		vfio_res = rte_zmalloc("VFIO_RES", sizeof(*vfio_res), 0);
-		if (vfio_res == NULL) {
-			RTE_LOG(ERR, EAL,
-				"%s(): cannot store uio mmap details\n", __func__);
-			close(vfio_dev_fd);
-			return -1;
-		}
-		memcpy(&vfio_res->pci_addr, &dev->addr, sizeof(vfio_res->pci_addr));
-
-		/* get number of registers (up to BAR5) */
-		vfio_res->nb_maps = RTE_MIN((int) device_info.num_regions,
-				VFIO_PCI_BAR5_REGION_INDEX + 1);
-	} else {
-		/* if we're in a secondary process, just find our tailq entry */
-		TAILQ_FOREACH(vfio_res, vfio_res_list, next) {
-			if (rte_eal_compare_pci_addr(&vfio_res->pci_addr,
-						     &dev->addr))
-				continue;
-			break;
-		}
-		/* if we haven't found our tailq entry, something's wrong */
-		if (vfio_res == NULL) {
-			RTE_LOG(ERR, EAL, "  %s cannot find TAILQ entry for PCI device!\n",
-					pci_addr);
-			close(vfio_dev_fd);
-			return -1;
-		}
-	}
+	/* get number of registers (up to BAR5) */
+	vfio_res->nb_maps = RTE_MIN((int) device_info.num_regions,
+			VFIO_PCI_BAR5_REGION_INDEX + 1);
 
 	/* map BARs */
 	maps = vfio_res->maps;
 
+	vfio_res->msix_table.bar_index = -1;
+	/* get MSI-X BAR, if any (we have to know where it is because we can't
+	 * easily mmap it when using VFIO)
+	 */
+	ret = pci_vfio_get_msix_bar(vfio_dev_fd, &vfio_res->msix_table);
+	if (ret < 0) {
+		RTE_LOG(ERR, EAL, "  %s cannot get MSI-X BAR number!\n",
+				pci_addr);
+		goto err_vfio_dev_fd;
+	}
+
 	for (i = 0; i < (int) vfio_res->nb_maps; i++) {
 		struct vfio_region_info reg = { .argsz = sizeof(reg) };
 		void *bar_addr;
-		struct memreg {
-			unsigned long offset, size;
-		} memreg[2] = {};
 
 		reg.index = i;
 
 		ret = ioctl(vfio_dev_fd, VFIO_DEVICE_GET_REGION_INFO, &reg);
-
 		if (ret) {
 			RTE_LOG(ERR, EAL, "  %s cannot get device region info "
 					"error %i (%s)\n", pci_addr, errno, strerror(errno));
-			close(vfio_dev_fd);
-			if (internal_config.process_type == RTE_PROC_PRIMARY)
-				rte_free(vfio_res);
-			return -1;
+			goto err_vfio_res;
 		}
 
 		/* chk for io port region */
-		ret = pread64(vfio_dev_fd, &ioport_bar, sizeof(ioport_bar),
-			      VFIO_GET_REGION_ADDR(VFIO_PCI_CONFIG_REGION_INDEX)
-			      + PCI_BASE_ADDRESS_0 + i*4);
-
-		if (ret != sizeof(ioport_bar)) {
-			RTE_LOG(ERR, EAL,
-				"Cannot read command (%x) from config space!\n",
-				PCI_BASE_ADDRESS_0 + i*4);
-			return -1;
-		}
-
-		if (ioport_bar & PCI_BASE_ADDRESS_SPACE_IO) {
-			RTE_LOG(INFO, EAL,
-				"Ignore mapping IO port bar(%d) addr: %x\n",
-				 i, ioport_bar);
+		ret = pci_vfio_is_ioport_bar(vfio_dev_fd, i);
+		if (ret < 0)
+			goto err_vfio_res;
+		else if (ret) {
+			RTE_LOG(INFO, EAL, "Ignore mapping IO port bar(%d)\n",
+					i);
 			continue;
 		}
 
@@ -419,124 +511,114 @@ pci_vfio_map_resource(struct rte_pci_device *dev)
 		if ((reg.flags & VFIO_REGION_INFO_FLAG_MMAP) == 0)
 			continue;
 
-		if (i == msix_bar) {
-			/*
-			 * VFIO will not let us map the MSI-X table,
-			 * but we can map around it.
-			 */
-			uint32_t table_start = msix_table_offset;
-			uint32_t table_end = table_start + msix_table_size;
-			table_end = (table_end + ~PAGE_MASK) & PAGE_MASK;
-			table_start &= PAGE_MASK;
+		/* try mapping somewhere close to the end of hugepages */
+		if (pci_map_addr == NULL)
+			pci_map_addr = pci_find_max_end_va();
 
-			if (table_start == 0 && table_end >= reg.size) {
-				/* Cannot map this BAR */
-				RTE_LOG(DEBUG, EAL, "Skipping BAR %d\n", i);
-				continue;
-			} else {
-				memreg[0].offset = reg.offset;
-				memreg[0].size = table_start;
-				memreg[1].offset = reg.offset + table_end;
-				memreg[1].size = reg.size - table_end;
-
-				RTE_LOG(DEBUG, EAL,
-					"Trying to map BAR %d that contains the MSI-X "
-					"table. Trying offsets: "
-					"0x%04lx:0x%04lx, 0x%04lx:0x%04lx\n", i,
-					memreg[0].offset, memreg[0].size,
-					memreg[1].offset, memreg[1].size);
-			}
-		} else {
-			memreg[0].offset = reg.offset;
-			memreg[0].size = reg.size;
-		}
-
-		/* try to figure out an address */
-		if (internal_config.process_type == RTE_PROC_PRIMARY) {
-			/* try mapping somewhere close to the end of hugepages */
-			if (pci_map_addr == NULL)
-				pci_map_addr = pci_find_max_end_va();
-
-			bar_addr = pci_map_addr;
-			pci_map_addr = RTE_PTR_ADD(bar_addr, (size_t) reg.size);
-		} else {
-			bar_addr = maps[i].addr;
-		}
-
-		/* reserve the address using an inaccessible mapping */
-		bar_addr = mmap(bar_addr, reg.size, 0, MAP_PRIVATE |
-				MAP_ANONYMOUS, -1, 0);
-		if (bar_addr != MAP_FAILED) {
-			void *map_addr = NULL;
-			if (memreg[0].size) {
-				/* actual map of first part */
-				map_addr = pci_map_resource(bar_addr, vfio_dev_fd,
-							    memreg[0].offset,
-							    memreg[0].size,
-							    MAP_FIXED);
-			}
-
-			/* if there's a second part, try to map it */
-			if (map_addr != MAP_FAILED
-			    && memreg[1].offset && memreg[1].size) {
-				void *second_addr = RTE_PTR_ADD(bar_addr,
-								memreg[1].offset -
-								(uintptr_t)reg.offset);
-				map_addr = pci_map_resource(second_addr,
-							    vfio_dev_fd, memreg[1].offset,
-							    memreg[1].size,
-							    MAP_FIXED);
-			}
-
-			if (map_addr == MAP_FAILED || !map_addr) {
-				munmap(bar_addr, reg.size);
-				bar_addr = MAP_FAILED;
-			}
-		}
-
-		if (bar_addr == MAP_FAILED ||
-				(internal_config.process_type == RTE_PROC_SECONDARY &&
-						bar_addr != maps[i].addr)) {
-			RTE_LOG(ERR, EAL, "  %s mapping BAR%i failed: %s\n", pci_addr, i,
-					strerror(errno));
-			close(vfio_dev_fd);
-			if (internal_config.process_type == RTE_PROC_PRIMARY)
-				rte_free(vfio_res);
-			return -1;
-		}
+		bar_addr = pci_map_addr;
+		pci_map_addr = RTE_PTR_ADD(bar_addr, (size_t) reg.size);
 
 		maps[i].addr = bar_addr;
 		maps[i].offset = reg.offset;
 		maps[i].size = reg.size;
 		maps[i].path = NULL; /* vfio doesn't have per-resource paths */
-		dev->mem_resource[i].addr = bar_addr;
-	}
 
-	/* if secondary process, do not set up interrupts */
-	if (internal_config.process_type == RTE_PROC_PRIMARY) {
-		if (pci_vfio_setup_interrupts(dev, vfio_dev_fd) != 0) {
-			RTE_LOG(ERR, EAL, "  %s error setting up interrupts!\n", pci_addr);
-			close(vfio_dev_fd);
-			rte_free(vfio_res);
-			return -1;
+		ret = pci_vfio_mmap_bar(vfio_dev_fd, vfio_res, i, 0);
+		if (ret < 0) {
+			RTE_LOG(ERR, EAL, "  %s mapping BAR%i failed: %s\n",
+					pci_addr, i, strerror(errno));
+			goto err_vfio_res;
 		}
 
-		/* set bus mastering for the device */
-		if (pci_vfio_set_bus_master(vfio_dev_fd, true)) {
-			RTE_LOG(ERR, EAL, "  %s cannot set up bus mastering!\n", pci_addr);
-			close(vfio_dev_fd);
-			rte_free(vfio_res);
-			return -1;
-		}
-
-		/* Reset the device */
-		ioctl(vfio_dev_fd, VFIO_DEVICE_RESET);
+		dev->mem_resource[i].addr = maps[i].addr;
 	}
 
-	if (internal_config.process_type == RTE_PROC_PRIMARY)
-		TAILQ_INSERT_TAIL(vfio_res_list, vfio_res, next);
+	if (pci_vfio_setup_device(dev, vfio_dev_fd) < 0) {
+		RTE_LOG(ERR, EAL, "  %s setup device failed\n", pci_addr);
+		goto err_vfio_res;
+	}
+
+	TAILQ_INSERT_TAIL(vfio_res_list, vfio_res, next);
 
 	return 0;
+err_vfio_res:
+	rte_free(vfio_res);
+err_vfio_dev_fd:
+	close(vfio_dev_fd);
+	return -1;
+}
+
+static int
+pci_vfio_map_resource_secondary(struct rte_pci_device *dev)
+{
+	struct vfio_device_info device_info = { .argsz = sizeof(device_info) };
+	char pci_addr[PATH_MAX] = {0};
+	int vfio_dev_fd;
+	struct rte_pci_addr *loc = &dev->addr;
+	int i, ret;
+	struct mapped_pci_resource *vfio_res = NULL;
+	struct mapped_pci_res_list *vfio_res_list =
+		RTE_TAILQ_CAST(rte_vfio_tailq.head, mapped_pci_res_list);
+
+	struct pci_map *maps;
+
+	dev->intr_handle.fd = -1;
+	dev->intr_handle.type = RTE_INTR_HANDLE_UNKNOWN;
+
+	/* store PCI address string */
+	snprintf(pci_addr, sizeof(pci_addr), PCI_PRI_FMT,
+			loc->domain, loc->bus, loc->devid, loc->function);
+
+	ret = vfio_setup_device(pci_get_sysfs_path(), pci_addr,
+					&vfio_dev_fd, &device_info);
+	if (ret)
+		return ret;
+
+	/* if we're in a secondary process, just find our tailq entry */
+	TAILQ_FOREACH(vfio_res, vfio_res_list, next) {
+		if (rte_eal_compare_pci_addr(&vfio_res->pci_addr,
+						 &dev->addr))
+			continue;
+		break;
+	}
+	/* if we haven't found our tailq entry, something's wrong */
+	if (vfio_res == NULL) {
+		RTE_LOG(ERR, EAL, "  %s cannot find TAILQ entry for PCI device!\n",
+				pci_addr);
+		goto err_vfio_dev_fd;
+	}
+
+	/* map BARs */
+	maps = vfio_res->maps;
+
+	for (i = 0; i < (int) vfio_res->nb_maps; i++) {
+		ret = pci_vfio_mmap_bar(vfio_dev_fd, vfio_res, i, MAP_FIXED);
+		if (ret < 0) {
+			RTE_LOG(ERR, EAL, "  %s mapping BAR%i failed: %s\n",
+					pci_addr, i, strerror(errno));
+			goto err_vfio_dev_fd;
+		}
+
+		dev->mem_resource[i].addr = maps[i].addr;
+	}
+
+	return 0;
+err_vfio_dev_fd:
+	close(vfio_dev_fd);
+	return -1;
+}
+
+/*
+ * map the PCI resources of a PCI device in virtual memory (VFIO version).
+ * primary and secondary processes follow almost exactly the same path
+ */
+int
+pci_vfio_map_resource(struct rte_pci_device *dev)
+{
+	if (internal_config.process_type == RTE_PROC_PRIMARY)
+		return pci_vfio_map_resource_primary(dev);
+	else
+		return pci_vfio_map_resource_secondary(dev);
 }
 
 int

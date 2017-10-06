@@ -216,6 +216,12 @@ struct pci_map {
 	uint64_t phaddr;
 };
 
+struct pci_msix_table {
+	int bar_index;
+	uint32_t offset;
+	uint32_t size;
+};
+
 /**
  * A structure describing a mapped PCI resource.
  * For multi-process we need to reproduce all PCI mappings in secondary
@@ -228,6 +234,7 @@ struct mapped_pci_resource {
 	char path[PATH_MAX];
 	int nb_maps;
 	struct pci_map maps[PCI_MAX_RESOURCE];
+	struct pci_msix_table msix_table;
 };
 
 /** mapped pci device list */
