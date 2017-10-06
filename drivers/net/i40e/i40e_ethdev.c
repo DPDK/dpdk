@@ -700,23 +700,22 @@ RTE_PMD_REGISTER_KMOD_DEP(net_i40e, "* igb_uio | uio_pci_generic | vfio-pci");
 static inline void i40e_GLQF_reg_init(struct i40e_hw *hw)
 {
 	/*
-	 * Initialize registers for flexible payload, which should be set by NVM.
-	 * This should be removed from code once it is fixed in NVM.
+	 * Force global configuration for flexible payload
+	 * to the first 16 bytes of the corresponding L2/L3/L4 paylod.
+	 * This should be removed from code once proper
+	 * configuration API is added to avoid configuration conflicts
+	 * between ports of the same device.
 	 */
-	I40E_WRITE_REG(hw, I40E_GLQF_ORT(18), 0x00000030);
-	I40E_WRITE_REG(hw, I40E_GLQF_ORT(19), 0x00000030);
-	I40E_WRITE_REG(hw, I40E_GLQF_ORT(26), 0x0000002B);
-	I40E_WRITE_REG(hw, I40E_GLQF_ORT(30), 0x0000002B);
 	I40E_WRITE_REG(hw, I40E_GLQF_ORT(33), 0x000000E0);
 	I40E_WRITE_REG(hw, I40E_GLQF_ORT(34), 0x000000E3);
 	I40E_WRITE_REG(hw, I40E_GLQF_ORT(35), 0x000000E6);
-	I40E_WRITE_REG(hw, I40E_GLQF_ORT(20), 0x00000031);
-	I40E_WRITE_REG(hw, I40E_GLQF_ORT(23), 0x00000031);
-	I40E_WRITE_REG(hw, I40E_GLQF_ORT(63), 0x0000002D);
-	I40E_WRITE_REG(hw, I40E_GLQF_PIT(16), 0x00007480);
-	I40E_WRITE_REG(hw, I40E_GLQF_PIT(17), 0x00007440);
 
-	/* Initialize registers for parsing packet type of QinQ */
+	/*
+	 * Initialize registers for parsing packet type of QinQ
+	 * This should be removed from code once proper
+	 * configuration API is added to avoid configuration conflicts
+	 * between ports of the same device.
+	 */
 	I40E_WRITE_REG(hw, I40E_GLQF_ORT(40), 0x00000029);
 	I40E_WRITE_REG(hw, I40E_GLQF_PIT(9), 0x00009420);
 }
