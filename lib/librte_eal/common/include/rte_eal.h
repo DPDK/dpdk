@@ -45,6 +45,7 @@
 
 #include <rte_per_lcore.h>
 #include <rte_config.h>
+#include <rte_bus.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -86,6 +87,9 @@ struct rte_config {
 
 	/** Primary or secondary configuration */
 	enum rte_proc_type_t process_type;
+
+	/** PA or VA mapping mode */
+	enum rte_iova_mode iova_mode;
 
 	/**
 	 * Pointer to memory configuration, which may be shared across multiple
@@ -286,6 +290,14 @@ static inline int rte_gettid(void)
 		RTE_PER_LCORE(_thread_id) = rte_sys_gettid();
 	return RTE_PER_LCORE(_thread_id);
 }
+
+/**
+ * Get the iova mode
+ *
+ * @return
+ *   enum rte_iova_mode value.
+ */
+enum rte_iova_mode rte_eal_iova_mode(void);
 
 /**
  * Run function before main() with low priority.

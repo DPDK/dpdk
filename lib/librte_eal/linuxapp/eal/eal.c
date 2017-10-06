@@ -128,6 +128,12 @@ rte_eal_get_configuration(void)
 	return &rte_config;
 }
 
+enum rte_iova_mode
+rte_eal_iova_mode(void)
+{
+	return rte_eal_get_configuration()->iova_mode;
+}
+
 /* parse a sysfs (or other) file containing one integer value */
 int
 eal_parse_sysfs_value(const char *filename, unsigned long *val)
