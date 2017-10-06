@@ -183,6 +183,20 @@ struct rte_bus_conf {
 	enum rte_bus_scan_mode scan_mode; /**< Scan policy. */
 };
 
+
+/**
+ * Get common iommu class of the all the devices on the bus. The bus may
+ * check that those devices are attached to iommu driver.
+ * If no devices are attached to the bus. The bus may return with don't care
+ * (_DC) value.
+ * Otherwise, The bus will return appropriate _pa or _va iova mode.
+ *
+ * @return
+ *      enum rte_iova_mode value.
+ */
+typedef enum rte_iova_mode (*rte_bus_get_iommu_class_t)(void);
+
+
 /**
  * A structure describing a generic bus.
  */
@@ -196,6 +210,7 @@ struct rte_bus {
 	rte_bus_unplug_t unplug;     /**< Remove single device from driver */
 	rte_bus_parse_t parse;       /**< Parse a device name */
 	struct rte_bus_conf conf;    /**< Bus configuration */
+	rte_bus_get_iommu_class_t get_iommu_class; /**< Get iommu class */
 };
 
 /**
@@ -294,6 +309,16 @@ struct rte_bus *rte_bus_find_by_device(const struct rte_device *dev);
  * Find the registered bus for a given name.
  */
 struct rte_bus *rte_bus_find_by_name(const char *busname);
+
+
+/**
+ * Get the common iommu class of devices bound on to buses available in the
+ * system. The default mode is PA.
+ *
+ * @return
+ *     enum rte_iova_mode value.
+ */
+enum rte_iova_mode rte_bus_get_iommu_class(void);
 
 /**
  * Helper for Bus registration.
