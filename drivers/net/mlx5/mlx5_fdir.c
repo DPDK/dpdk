@@ -1068,6 +1068,8 @@ mlx5_dev_filter_ctrl(struct rte_eth_dev *dev,
 	int ret = EINVAL;
 	struct priv *priv = dev->data->dev_private;
 
+	if (mlx5_is_secondary())
+		return -E_RTE_SECONDARY;
 	switch (filter_type) {
 	case RTE_ETH_FILTER_GENERIC:
 		if (filter_op != RTE_ETH_FILTER_GET)

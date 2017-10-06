@@ -1296,7 +1296,9 @@ priv_dev_interrupt_handler_install(struct priv *priv, struct rte_eth_dev *dev)
  * Change the link state (UP / DOWN).
  *
  * @param priv
- *   Pointer to Ethernet device structure.
+ *   Pointer to private data structure.
+ * @param dev
+ *   Pointer to rte_eth_dev structure.
  * @param up
  *   Nonzero for link up, otherwise link down.
  *
@@ -1304,17 +1306,16 @@ priv_dev_interrupt_handler_install(struct priv *priv, struct rte_eth_dev *dev)
  *   0 on success, errno value on failure.
  */
 static int
-priv_set_link(struct priv *priv, int up)
+priv_dev_set_link(struct priv *priv, struct rte_eth_dev *dev, int up)
 {
-	struct rte_eth_dev *dev = priv->dev;
 	int err;
 
 	if (up) {
 		err = priv_set_flags(priv, ~IFF_UP, IFF_UP);
 		if (err)
 			return err;
-		priv_select_tx_function(priv);
-		priv_select_rx_function(priv);
+		priv_dev_select_tx_function(priv, dev);
+		priv_dev_select_rx_function(priv, dev);
 	} else {
 		err = priv_set_flags(priv, ~IFF_UP, ~IFF_UP);
 		if (err)
@@ -1341,7 +1342,7 @@ mlx5_set_link_down(struct rte_eth_dev *dev)
 	int err;
 
 	priv_lock(priv);
-	err = priv_set_link(priv, 0);
+	err = priv_dev_set_link(priv, dev, 0);
 	priv_unlock(priv);
 	return err;
 }
@@ -1362,7 +1363,7 @@ mlx5_set_link_up(struct rte_eth_dev *dev)
 	int err;
 
 	priv_lock(priv);
-	err = priv_set_link(priv, 1);
+	err = priv_dev_set_link(priv, dev, 1);
 	priv_unlock(priv);
 	return err;
 }
@@ -1371,29 +1372,33 @@ mlx5_set_link_up(struct rte_eth_dev *dev)
  * Configure the TX function to use.
  *
  * @param priv
- *   Pointer to private structure.
+ *   Pointer to private data structure.
+ * @param dev
+ *   Pointer to rte_eth_dev structure.
  */
 void
-priv_select_tx_function(struct priv *priv)
+priv_dev_select_tx_function(struct priv *priv, struct rte_eth_dev *dev)
 {
-	priv->dev->tx_pkt_burst = mlx5_tx_burst;
+	assert(priv != NULL);
+	assert(dev != NULL);
+	dev->tx_pkt_burst = mlx5_tx_burst;
 	/* Select appropriate TX function. */
 	if (priv->mps == MLX5_MPW_ENHANCED) {
 		if (priv_check_vec_tx_support(priv) > 0) {
 			if (priv_check_raw_vec_tx_support(priv) > 0)
-				priv->dev->tx_pkt_burst = mlx5_tx_burst_raw_vec;
+				dev->tx_pkt_burst = mlx5_tx_burst_raw_vec;
 			else
-				priv->dev->tx_pkt_burst = mlx5_tx_burst_vec;
+				dev->tx_pkt_burst = mlx5_tx_burst_vec;
 			DEBUG("selected Enhanced MPW TX vectorized function");
 		} else {
-			priv->dev->tx_pkt_burst = mlx5_tx_burst_empw;
+			dev->tx_pkt_burst = mlx5_tx_burst_empw;
 			DEBUG("selected Enhanced MPW TX function");
 		}
 	} else if (priv->mps && priv->txq_inline) {
-		priv->dev->tx_pkt_burst = mlx5_tx_burst_mpw_inline;
+		dev->tx_pkt_burst = mlx5_tx_burst_mpw_inline;
 		DEBUG("selected MPW inline TX function");
 	} else if (priv->mps) {
-		priv->dev->tx_pkt_burst = mlx5_tx_burst_mpw;
+		dev->tx_pkt_burst = mlx5_tx_burst_mpw;
 		DEBUG("selected MPW TX function");
 	}
 }
@@ -1402,15 +1407,19 @@ priv_select_tx_function(struct priv *priv)
  * Configure the RX function to use.
  *
  * @param priv
- *   Pointer to private structure.
+ *   Pointer to private data structure.
+ * @param dev
+ *   Pointer to rte_eth_dev structure.
  */
 void
-priv_select_rx_function(struct priv *priv)
+priv_dev_select_rx_function(struct priv *priv, struct rte_eth_dev *dev)
 {
+	assert(priv != NULL);
+	assert(dev != NULL);
 	if (priv_check_vec_rx_support(priv) > 0) {
-		priv->dev->rx_pkt_burst = mlx5_rx_burst_vec;
+		dev->rx_pkt_burst = mlx5_rx_burst_vec;
 		DEBUG("selected RX vectorized function");
 	} else {
-		priv->dev->rx_pkt_burst = mlx5_rx_burst;
+		dev->rx_pkt_burst = mlx5_rx_burst;
 	}
 }

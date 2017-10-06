@@ -87,7 +87,7 @@ struct mlx5_xstats_ctrl {
 };
 
 struct priv {
-	struct rte_eth_dev *dev; /* Ethernet device. */
+	struct rte_eth_dev *dev; /* Ethernet device of master process. */
 	struct ibv_context *ctx; /* Verbs context. */
 	struct ibv_device_attr_ex device_attr; /* Device properties. */
 	struct ibv_pd *pd; /* Protection Domain. */
@@ -208,8 +208,8 @@ void priv_dev_interrupt_handler_uninstall(struct priv *, struct rte_eth_dev *);
 void priv_dev_interrupt_handler_install(struct priv *, struct rte_eth_dev *);
 int mlx5_set_link_down(struct rte_eth_dev *dev);
 int mlx5_set_link_up(struct rte_eth_dev *dev);
-void priv_select_tx_function(struct priv *);
-void priv_select_rx_function(struct priv *);
+void priv_dev_select_tx_function(struct priv *priv, struct rte_eth_dev *dev);
+void priv_dev_select_rx_function(struct priv *priv, struct rte_eth_dev *dev);
 
 /* mlx5_mac.c */
 

@@ -1250,6 +1250,7 @@ priv_rx_intr_vec_enable(struct priv *priv)
 	unsigned int count = 0;
 	struct rte_intr_handle *intr_handle = priv->dev->intr_handle;
 
+	assert(!mlx5_is_secondary());
 	if (!priv->dev->data->dev_conf.intr_conf.rxq)
 		return 0;
 	priv_rx_intr_vec_disable(priv);
