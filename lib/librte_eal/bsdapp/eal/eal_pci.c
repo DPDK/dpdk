@@ -403,6 +403,16 @@ error:
 	return -1;
 }
 
+/*
+ * Get iommu class of PCI devices on the bus.
+ */
+enum rte_iova_mode
+rte_pci_get_iommu_class(void)
+{
+	/* Supports only RTE_KDRV_NIC_UIO */
+	return RTE_IOVA_PA;
+}
+
 int
 pci_update_device(const struct rte_pci_addr *addr)
 {

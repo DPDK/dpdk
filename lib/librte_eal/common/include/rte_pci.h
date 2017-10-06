@@ -381,6 +381,17 @@ int
 rte_pci_match(const struct rte_pci_driver *pci_drv,
 	      const struct rte_pci_device *pci_dev);
 
+
+/**
+ * Get iommu class of PCI devices on the bus.
+ * And return their preferred iova mapping mode.
+ *
+ * @return
+ *   - enum rte_iova_mode.
+ */
+enum rte_iova_mode
+rte_pci_get_iommu_class(void);
+
 /**
  * Map the PCI device resources in user space virtual memory address
  *

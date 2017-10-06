@@ -487,6 +487,15 @@ error:
 	return -1;
 }
 
+/*
+ * Get iommu class of PCI devices on the bus.
+ */
+enum rte_iova_mode
+rte_pci_get_iommu_class(void)
+{
+	return RTE_IOVA_PA;
+}
+
 /* Read PCI config space. */
 int rte_pci_read_config(const struct rte_pci_device *device,
 		void *buf, size_t len, off_t offset)
