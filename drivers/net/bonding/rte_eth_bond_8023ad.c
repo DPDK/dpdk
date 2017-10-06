@@ -1022,37 +1022,30 @@ bond_mode_8023ad_activate_slave(struct rte_eth_dev *bond_dev,
 }
 
 int
-bond_mode_8023ad_deactivate_slave(struct rte_eth_dev *bond_dev,
+bond_mode_8023ad_deactivate_slave(struct rte_eth_dev *bond_dev __rte_unused,
 		uint16_t slave_id)
 {
-	struct bond_dev_private *internals = bond_dev->data->dev_private;
 	void *pkt = NULL;
-	struct port *port;
-	uint16_t i;
-
-	/* Given slave must be in active list */
-	RTE_ASSERT(find_slave_by_id(internals->active_slaves,
-	internals->active_slave_count, slave_id) < internals->active_slave_count);
-
-	/* Exclude slave from transmit policy. If this slave is an aggregator
-	 * make all aggregated slaves unselected to force selection logic
-	 * to select suitable aggregator for this port. */
-	for (i = 0; i < internals->active_slave_count; i++) {
-		port = &mode_8023ad_ports[internals->active_slaves[i]];
-		if (port->aggregator_port_id != slave_id)
-			continue;
-
-		port->selected = UNSELECTED;
-
-		/* Use default aggregator */
-		port->aggregator_port_id = internals->active_slaves[i];
-	}
+	struct port *port = NULL;
+	uint8_t old_partner_state;
 
 	port = &mode_8023ad_ports[slave_id];
-	port->selected = UNSELECTED;
-	port->actor_state &= ~(STATE_SYNCHRONIZATION | STATE_DISTRIBUTING |
-			STATE_COLLECTING);
 
+	ACTOR_STATE_CLR(port, AGGREGATION);
+	port->selected = UNSELECTED;
+
+	old_partner_state = port->partner_state;
+	record_default(port);
+
+	/* If partner timeout state changes then disable timer */
+	if (!((old_partner_state ^ port->partner_state) &
+			STATE_LACP_SHORT_TIMEOUT))
+		timer_cancel(&port->current_while_timer);
+
+	PARTNER_STATE_CLR(port, AGGREGATION);
+	ACTOR_STATE_CLR(port, EXPIRED);
+
+	/* flush rx/tx rings */
 	while (rte_ring_dequeue(port->rx_ring, &pkt) == 0)
 		rte_pktmbuf_free((struct rte_mbuf *)pkt);
 
