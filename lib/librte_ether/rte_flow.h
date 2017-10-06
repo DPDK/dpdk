@@ -1168,7 +1168,7 @@ struct rte_flow_error {
  *   state (see rte_eth_dev_rx_queue_stop() and rte_eth_dev_stop()).
  */
 int
-rte_flow_validate(uint8_t port_id,
+rte_flow_validate(uint16_t port_id,
 		  const struct rte_flow_attr *attr,
 		  const struct rte_flow_item pattern[],
 		  const struct rte_flow_action actions[],
@@ -1195,7 +1195,7 @@ rte_flow_validate(uint8_t port_id,
  *   rte_flow_validate().
  */
 struct rte_flow *
-rte_flow_create(uint8_t port_id,
+rte_flow_create(uint16_t port_id,
 		const struct rte_flow_attr *attr,
 		const struct rte_flow_item pattern[],
 		const struct rte_flow_action actions[],
@@ -1222,7 +1222,7 @@ rte_flow_create(uint8_t port_id,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-rte_flow_destroy(uint8_t port_id,
+rte_flow_destroy(uint16_t port_id,
 		 struct rte_flow *flow,
 		 struct rte_flow_error *error);
 
@@ -1243,7 +1243,7 @@ rte_flow_destroy(uint8_t port_id,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-rte_flow_flush(uint8_t port_id,
+rte_flow_flush(uint16_t port_id,
 	       struct rte_flow_error *error);
 
 /**
@@ -1271,7 +1271,7 @@ rte_flow_flush(uint8_t port_id,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-rte_flow_query(uint8_t port_id,
+rte_flow_query(uint16_t port_id,
 	       struct rte_flow *flow,
 	       enum rte_flow_action_type action,
 	       void *data,
@@ -1319,7 +1319,7 @@ rte_flow_query(uint8_t port_id,
  *   0 on success, a negative errno value otherwise and rte_errno is set.
  */
 int
-rte_flow_isolate(uint8_t port_id, int set, struct rte_flow_error *error);
+rte_flow_isolate(uint16_t port_id, int set, struct rte_flow_error *error);
 
 /**
  * Generic flow representation.

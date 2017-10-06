@@ -132,7 +132,7 @@ rte_flow_ops_get(uint16_t port_id, struct rte_flow_error *error)
 
 /* Check whether a flow rule can be created on a given port. */
 int
-rte_flow_validate(uint8_t port_id,
+rte_flow_validate(uint16_t port_id,
 		  const struct rte_flow_attr *attr,
 		  const struct rte_flow_item pattern[],
 		  const struct rte_flow_action actions[],
@@ -152,7 +152,7 @@ rte_flow_validate(uint8_t port_id,
 
 /* Create a flow rule on a given port. */
 struct rte_flow *
-rte_flow_create(uint8_t port_id,
+rte_flow_create(uint16_t port_id,
 		const struct rte_flow_attr *attr,
 		const struct rte_flow_item pattern[],
 		const struct rte_flow_action actions[],
@@ -172,7 +172,7 @@ rte_flow_create(uint8_t port_id,
 
 /* Destroy a flow rule on a given port. */
 int
-rte_flow_destroy(uint8_t port_id,
+rte_flow_destroy(uint16_t port_id,
 		 struct rte_flow *flow,
 		 struct rte_flow_error *error)
 {
@@ -190,7 +190,7 @@ rte_flow_destroy(uint8_t port_id,
 
 /* Destroy all flow rules associated with a port. */
 int
-rte_flow_flush(uint8_t port_id,
+rte_flow_flush(uint16_t port_id,
 	       struct rte_flow_error *error)
 {
 	struct rte_eth_dev *dev = &rte_eth_devices[port_id];
@@ -207,7 +207,7 @@ rte_flow_flush(uint8_t port_id,
 
 /* Query an existing flow rule. */
 int
-rte_flow_query(uint8_t port_id,
+rte_flow_query(uint16_t port_id,
 	       struct rte_flow *flow,
 	       enum rte_flow_action_type action,
 	       void *data,
@@ -227,7 +227,7 @@ rte_flow_query(uint8_t port_id,
 
 /* Restrict ingress traffic to the defined flow rules. */
 int
-rte_flow_isolate(uint8_t port_id,
+rte_flow_isolate(uint16_t port_id,
 		 int set,
 		 struct rte_flow_error *error)
 {
