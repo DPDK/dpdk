@@ -132,6 +132,52 @@ mlx5_getenv_int(const char *name)
 }
 
 /**
+ * Verbs callback to allocate a memory. This function should allocate the space
+ * according to the size provided residing inside a huge page.
+ * Please note that all allocation must respect the alignment from libmlx5
+ * (i.e. currently sysconf(_SC_PAGESIZE)).
+ *
+ * @param[in] size
+ *   The size in bytes of the memory to allocate.
+ * @param[in] data
+ *   A pointer to the callback data.
+ *
+ * @return
+ *   a pointer to the allocate space.
+ */
+static void *
+mlx5_alloc_verbs_buf(size_t size, void *data)
+{
+	struct priv *priv = data;
+	void *ret;
+	size_t alignment = sysconf(_SC_PAGESIZE);
+
+	assert(data != NULL);
+	assert(!mlx5_is_secondary());
+	ret = rte_malloc_socket(__func__, size, alignment,
+				priv->dev->device->numa_node);
+	DEBUG("Extern alloc size: %lu, align: %lu: %p", size, alignment, ret);
+	return ret;
+}
+
+/**
+ * Verbs callback to free a memory.
+ *
+ * @param[in] ptr
+ *   A pointer to the memory to free.
+ * @param[in] data
+ *   A pointer to the callback data.
+ */
+static void
+mlx5_free_verbs_buf(void *ptr, void *data __rte_unused)
+{
+	assert(data != NULL);
+	assert(!mlx5_is_secondary());
+	DEBUG("Extern free request: %p", ptr);
+	rte_free(ptr);
+}
+
+/**
  * DPDK callback to close the device.
  *
  * Destroy all queues and objects, free memory.
@@ -825,6 +871,15 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		priv->dev = eth_dev;
 		eth_dev->dev_ops = &mlx5_dev_ops;
 		TAILQ_INIT(&priv->flows);
+
+		/* Hint libmlx5 to use PMD allocator for data plane resources */
+		struct mlx5dv_ctx_allocators alctr = {
+			.alloc = &mlx5_alloc_verbs_buf,
+			.free = &mlx5_free_verbs_buf,
+			.data = priv,
+		};
+		mlx5dv_set_context_attr(ctx, MLX5DV_CTX_ATTR_BUF_ALLOCATORS,
+					(void *)((uintptr_t)&alctr));
 
 		/* Bring Ethernet device up. */
 		DEBUG("forcing Ethernet interface up");
