@@ -204,8 +204,7 @@ def check_modules():
 
         # special case for vfio_pci (module is named vfio-pci,
         # but its .ko is named vfio_pci)
-        sysfs_mods = map(lambda a:
-                         a if a != 'vfio_pci' else 'vfio-pci', sysfs_mods)
+        sysfs_mods = [a if a != 'vfio_pci' else 'vfio-pci' for a in sysfs_mods]
 
         for mod in mods:
             if mod["Name"] in sysfs_mods:
