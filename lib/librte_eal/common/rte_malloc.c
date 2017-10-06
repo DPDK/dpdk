@@ -251,10 +251,17 @@ rte_malloc_set_limit(__rte_unused const char *type,
 phys_addr_t
 rte_malloc_virt2phy(const void *addr)
 {
+	phys_addr_t paddr;
 	const struct malloc_elem *elem = malloc_elem_from_data(addr);
 	if (elem == NULL)
 		return RTE_BAD_PHYS_ADDR;
 	if (elem->ms->phys_addr == RTE_BAD_PHYS_ADDR)
 		return RTE_BAD_PHYS_ADDR;
-	return elem->ms->phys_addr + ((uintptr_t)addr - (uintptr_t)elem->ms->addr);
+
+	if (rte_eal_iova_mode() == RTE_IOVA_VA)
+		paddr = (uintptr_t)addr;
+	else
+		paddr = elem->ms->phys_addr +
+			((uintptr_t)addr - (uintptr_t)elem->ms->addr);
+	return paddr;
 }
