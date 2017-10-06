@@ -61,6 +61,8 @@ enum {
 	OPT_LOG_LEVEL_NUM,
 #define OPT_MASTER_LCORE      "master-lcore"
 	OPT_MASTER_LCORE_NUM,
+#define OPT_MBUF_POOL_OPS_NAME "mbuf-pool-ops-name"
+	OPT_MBUF_POOL_OPS_NAME_NUM,
 #define OPT_PROC_TYPE         "proc-type"
 	OPT_PROC_TYPE_NUM,
 #define OPT_NO_HPET           "no-hpet"

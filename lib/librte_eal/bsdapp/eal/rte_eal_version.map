@@ -244,6 +244,7 @@ DPDK_17.11 {
 
 	rte_bus_get_iommu_class;
 	rte_eal_iova_mode;
+	rte_eal_mbuf_default_mempool_ops;
 	rte_pci_get_iommu_class;
 	rte_pci_match;
 

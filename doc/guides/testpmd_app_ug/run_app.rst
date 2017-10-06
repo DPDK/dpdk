@@ -110,6 +110,10 @@ See the DPDK Getting Started Guides for more information on these options.
 
     Specify the directory where the hugetlbfs is mounted.
 
+*   ``mbuf-pool-ops-name``:
+
+    Pool ops name for mbuf to use.
+
 *   ``--proc-type``
 
     Set the type of the current process.

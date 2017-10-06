@@ -157,6 +157,9 @@ The EAL options are as follows:
 * ``--huge-dir``:
   The directory where hugetlbfs is mounted.
 
+* ``mbuf-pool-ops-name``:
+  Pool ops name for mbuf to use.
+
 * ``--file-prefix``:
   The prefix text used for hugepage filenames.
 

@@ -300,6 +300,15 @@ static inline int rte_gettid(void)
 enum rte_iova_mode rte_eal_iova_mode(void);
 
 /**
+ * Get default pool ops name for mbuf
+ *
+ * @return
+ *   returns default pool ops name.
+ */
+const char *
+rte_eal_mbuf_default_mempool_ops(void);
+
+/**
  * Run function before main() with low priority.
  *
  * The constructor will be run after prioritized constructors.
