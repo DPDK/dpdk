@@ -35,6 +35,7 @@ dpdk_conf.set('RTE_MACHINE', machine)
 add_project_arguments('-march=@0@'.format(machine), language: 'c')
 # some libs depend on maths lib
 add_project_link_arguments('-lm', language: 'c')
+dpdk_extra_ldflags += '-lm'
 
 # add -include rte_config to cflags
 add_project_arguments('-include', 'rte_config.h', language: 'c')
