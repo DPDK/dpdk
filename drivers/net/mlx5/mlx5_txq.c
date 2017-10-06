@@ -36,6 +36,8 @@
 #include <errno.h>
 #include <string.h>
 #include <stdint.h>
+#include <unistd.h>
+#include <sys/mman.h>
 
 /* Verbs header. */
 /* ISO C doesn't support unnamed structs/unions, disabling -pedantic. */
@@ -168,6 +170,7 @@ txq_setup(struct txq_ctrl *tmpl, struct txq_ctrl *txq_ctrl)
 	struct mlx5dv_obj obj;
 	int ret = 0;
 
+	qp.comp_mask = MLX5DV_QP_MASK_UAR_MMAP_OFFSET;
 	obj.cq.in = ibcq;
 	obj.cq.out = &cq_info;
 	obj.qp.in = tmpl->qp;
@@ -194,6 +197,13 @@ txq_setup(struct txq_ctrl *tmpl, struct txq_ctrl *txq_ctrl)
 	tmpl->txq.elts =
 		(struct rte_mbuf *(*)[1 << tmpl->txq.elts_n])
 		((uintptr_t)txq_ctrl + sizeof(*txq_ctrl));
+	if (qp.comp_mask | MLX5DV_QP_MASK_UAR_MMAP_OFFSET) {
+		tmpl->uar_mmap_offset = qp.uar_mmap_offset;
+	} else {
+		ERROR("Failed to retrieve UAR info, invalid libmlx5.so version");
+		return EINVAL;
+	}
+
 	return 0;
 }
 
@@ -556,4 +566,60 @@ mlx5_tx_queue_release(void *dpdk_txq)
 	txq_cleanup(txq_ctrl);
 	rte_free(txq_ctrl);
 	priv_unlock(priv);
+}
+
+
+/**
+ * Map locally UAR used in Tx queues for BlueFlame doorbell.
+ *
+ * @param[in] priv
+ *   Pointer to private structure.
+ * @param fd
+ *   Verbs file descriptor to map UAR pages.
+ *
+ * @return
+ *   0 on success, errno value on failure.
+ */
+int
+priv_tx_uar_remap(struct priv *priv, int fd)
+{
+	unsigned int i, j;
+	uintptr_t pages[priv->txqs_n];
+	unsigned int pages_n = 0;
+	uintptr_t uar_va;
+	void *addr;
+	struct txq *txq;
+	struct txq_ctrl *txq_ctrl;
+	int already_mapped;
+	size_t page_size = sysconf(_SC_PAGESIZE);
+
+	/*
+	 * As rdma-core, UARs are mapped in size of OS page size.
+	 * Use aligned address to avoid duplicate mmap.
+	 * Ref to libmlx5 function: mlx5_init_context()
+	 */
+	for (i = 0; i != priv->txqs_n; ++i) {
+		txq = (*priv->txqs)[i];
+		txq_ctrl = container_of(txq, struct txq_ctrl, txq);
+		uar_va = (uintptr_t)txq_ctrl->txq.bf_reg;
+		uar_va = RTE_ALIGN_FLOOR(uar_va, page_size);
+		already_mapped = 0;
+		for (j = 0; j != pages_n; ++j) {
+			if (pages[j] == uar_va) {
+				already_mapped = 1;
+				break;
+			}
+		}
+		if (already_mapped)
+			continue;
+		pages[pages_n++] = uar_va;
+		addr = mmap((void *)uar_va, page_size,
+			    PROT_WRITE, MAP_FIXED | MAP_SHARED, fd,
+			    txq_ctrl->uar_mmap_offset);
+		if (addr != (void *)uar_va) {
+			ERROR("call to mmap failed on UAR for txq %d\n", i);
+			return -1;
+		}
+	}
+	return 0;
 }

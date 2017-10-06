@@ -286,6 +286,7 @@ struct txq_ctrl {
 	struct ibv_qp *qp; /* Queue Pair. */
 	unsigned int socket; /* CPU socket ID for allocations. */
 	struct txq txq; /* Data path structure. */
+	off_t uar_mmap_offset; /* UAR mmap offset for non-primary process. */
 };
 
 /* mlx5_rxq.c */
@@ -319,6 +320,7 @@ int txq_ctrl_setup(struct rte_eth_dev *, struct txq_ctrl *, uint16_t,
 int mlx5_tx_queue_setup(struct rte_eth_dev *, uint16_t, uint16_t, unsigned int,
 			const struct rte_eth_txconf *);
 void mlx5_tx_queue_release(void *);
+int priv_tx_uar_remap(struct priv *priv, int fd);
 
 /* mlx5_rxtx.c */
 

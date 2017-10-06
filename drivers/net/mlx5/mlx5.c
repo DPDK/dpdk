@@ -209,6 +209,7 @@ mlx5_dev_close(struct rte_eth_dev *dev)
 	}
 	if (priv->reta_idx != NULL)
 		rte_free(priv->reta_idx);
+	priv_socket_uninit(priv);
 	priv_unlock(priv);
 	memset(priv, 0, sizeof(*priv));
 }
@@ -577,6 +578,40 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			.tx_vec_en = MLX5_ARG_UNSET,
 			.rx_vec_en = MLX5_ARG_UNSET,
 		};
+
+		mlx5_dev[idx].ports |= test;
+
+		if (mlx5_is_secondary()) {
+			/* from rte_ethdev.c */
+			char name[RTE_ETH_NAME_MAX_LEN];
+
+			snprintf(name, sizeof(name), "%s port %u",
+				 ibv_get_device_name(ibv_dev), port);
+			eth_dev = rte_eth_dev_attach_secondary(name);
+			if (eth_dev == NULL) {
+				ERROR("can not attach rte ethdev");
+				err = ENOMEM;
+				goto error;
+			}
+			eth_dev->device = &pci_dev->device;
+			eth_dev->dev_ops = NULL;
+			priv = eth_dev->data->dev_private;
+			/* Receive command fd from primary process */
+			err = priv_socket_connect(priv);
+			if (err < 0) {
+				err = -err;
+				goto error;
+			}
+			/* Remap UAR for Tx queues. */
+			err = priv_tx_uar_remap(priv, err);
+			if (err < 0) {
+				err = -err;
+				goto error;
+			}
+			priv_dev_select_rx_function(priv, eth_dev);
+			priv_dev_select_tx_function(priv, eth_dev);
+			continue;
+		}
 
 		DEBUG("using port %u (%08" PRIx32 ")", port, test);
 

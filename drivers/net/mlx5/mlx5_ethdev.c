@@ -31,6 +31,8 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#define _GNU_SOURCE
+
 #include <stddef.h>
 #include <assert.h>
 #include <unistd.h>
@@ -50,6 +52,7 @@
 #include <linux/version.h>
 #include <fcntl.h>
 #include <stdalign.h>
+#include <sys/un.h>
 
 #include <rte_atomic.h>
 #include <rte_ethdev.h>
@@ -1237,6 +1240,23 @@ mlx5_dev_interrupt_handler(void *cb_arg)
 }
 
 /**
+ * Handle interrupts from the socket.
+ *
+ * @param cb_arg
+ *   Callback argument.
+ */
+static void
+mlx5_dev_handler_socket(void *cb_arg)
+{
+	struct rte_eth_dev *dev = cb_arg;
+	struct priv *priv = dev->data->dev_private;
+
+	priv_lock(priv);
+	priv_socket_handle(priv);
+	priv_unlock(priv);
+}
+
+/**
  * Uninstall interrupt handler.
  *
  * @param priv
@@ -1247,17 +1267,20 @@ mlx5_dev_interrupt_handler(void *cb_arg)
 void
 priv_dev_interrupt_handler_uninstall(struct priv *priv, struct rte_eth_dev *dev)
 {
-	if (!dev->data->dev_conf.intr_conf.lsc &&
-		!dev->data->dev_conf.intr_conf.rmv)
-		return;
-	rte_intr_callback_unregister(&priv->intr_handle,
-				     mlx5_dev_interrupt_handler,
-				     dev);
+	if (dev->data->dev_conf.intr_conf.lsc ||
+	    dev->data->dev_conf.intr_conf.rmv)
+		rte_intr_callback_unregister(&priv->intr_handle,
+					     mlx5_dev_interrupt_handler, dev);
+	if (priv->primary_socket)
+		rte_intr_callback_unregister(&priv->intr_handle_socket,
+					     mlx5_dev_handler_socket, dev);
 	if (priv->pending_alarm)
 		rte_eal_alarm_cancel(mlx5_dev_link_status_handler, dev);
 	priv->pending_alarm = 0;
 	priv->intr_handle.fd = 0;
 	priv->intr_handle.type = RTE_INTR_HANDLE_UNKNOWN;
+	priv->intr_handle_socket.fd = 0;
+	priv->intr_handle_socket.type = RTE_INTR_HANDLE_UNKNOWN;
 }
 
 /**
@@ -1273,9 +1296,7 @@ priv_dev_interrupt_handler_install(struct priv *priv, struct rte_eth_dev *dev)
 {
 	int rc, flags;
 
-	if (!dev->data->dev_conf.intr_conf.lsc &&
-		!dev->data->dev_conf.intr_conf.rmv)
-		return;
+	assert(!mlx5_is_secondary());
 	assert(priv->ctx->async_fd > 0);
 	flags = fcntl(priv->ctx->async_fd, F_GETFL);
 	rc = fcntl(priv->ctx->async_fd, F_SETFL, flags | O_NONBLOCK);
@@ -1283,12 +1304,21 @@ priv_dev_interrupt_handler_install(struct priv *priv, struct rte_eth_dev *dev)
 		INFO("failed to change file descriptor async event queue");
 		dev->data->dev_conf.intr_conf.lsc = 0;
 		dev->data->dev_conf.intr_conf.rmv = 0;
-	} else {
+	}
+	if (dev->data->dev_conf.intr_conf.lsc ||
+	    dev->data->dev_conf.intr_conf.rmv) {
 		priv->intr_handle.fd = priv->ctx->async_fd;
 		priv->intr_handle.type = RTE_INTR_HANDLE_EXT;
 		rte_intr_callback_register(&priv->intr_handle,
-					   mlx5_dev_interrupt_handler,
-					   dev);
+					   mlx5_dev_interrupt_handler, dev);
+	}
+
+	rc = priv_socket_init(priv);
+	if (!rc && priv->primary_socket) {
+		priv->intr_handle_socket.fd = priv->primary_socket;
+		priv->intr_handle_socket.type = RTE_INTR_HANDLE_EXT;
+		rte_intr_callback_register(&priv->intr_handle_socket,
+					   mlx5_dev_handler_socket, dev);
 	}
 }
 

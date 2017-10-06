@@ -52,6 +52,7 @@ SRCS-$(CONFIG_RTE_LIBRTE_MLX5_PMD) += mlx5_rss.c
 SRCS-$(CONFIG_RTE_LIBRTE_MLX5_PMD) += mlx5_fdir.c
 SRCS-$(CONFIG_RTE_LIBRTE_MLX5_PMD) += mlx5_mr.c
 SRCS-$(CONFIG_RTE_LIBRTE_MLX5_PMD) += mlx5_flow.c
+SRCS-$(CONFIG_RTE_LIBRTE_MLX5_PMD) += mlx5_socket.c
 
 # Basic CFLAGS.
 CFLAGS += -O3
@@ -86,6 +87,11 @@ endif
 
 ifdef CONFIG_RTE_LIBRTE_MLX5_TX_MP_CACHE
 CFLAGS += -DMLX5_PMD_TX_MP_CACHE=$(CONFIG_RTE_LIBRTE_MLX5_TX_MP_CACHE)
+endif
+
+# Disable false positive warning
+ifeq ($(CONFIG_RTE_TOOLCHAIN_ICC),y)
+CFLAGS_mlx5_txq.o += -wd3656
 endif
 
 include $(RTE_SDK)/mk/rte.lib.mk

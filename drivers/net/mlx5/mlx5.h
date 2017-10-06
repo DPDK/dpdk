@@ -151,6 +151,8 @@ struct priv {
 	uint32_t link_speed_capa; /* Link speed capabilities. */
 	struct mlx5_xstats_ctrl xstats_ctrl; /* Extended stats control. */
 	rte_spinlock_t lock; /* Lock for control functions. */
+	int primary_socket; /* Unix socket for primary process. */
+	struct rte_intr_handle intr_handle_socket; /* Interrupt handler. */
 };
 
 /**
@@ -298,5 +300,12 @@ int mlx5_flow_isolate(struct rte_eth_dev *, int, struct rte_flow_error *);
 int priv_flow_start(struct priv *);
 void priv_flow_stop(struct priv *);
 int priv_flow_rxq_in_use(struct priv *, struct rxq *);
+
+/* mlx5_socket.c */
+
+int priv_socket_init(struct priv *priv);
+int priv_socket_uninit(struct priv *priv);
+void priv_socket_handle(struct priv *priv);
+int priv_socket_connect(struct priv *priv);
 
 #endif /* RTE_PMD_MLX5_H_ */
