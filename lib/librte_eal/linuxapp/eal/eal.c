@@ -798,6 +798,22 @@ rte_eal_init(int argc, char **argv)
 		return -1;
 	}
 
+	if (eal_option_device_parse()) {
+		rte_errno = ENODEV;
+		rte_atomic32_clear(&run_once);
+		return -1;
+	}
+
+	if (rte_bus_scan()) {
+		rte_eal_init_alert("Cannot scan the buses for devices\n");
+		rte_errno = ENODEV;
+		rte_atomic32_clear(&run_once);
+		return -1;
+	}
+
+	/* autodetect the iova mapping mode (default is iova_pa) */
+	rte_eal_get_configuration()->iova_mode = rte_bus_get_iommu_class();
+
 	if (internal_config.no_hugetlbfs == 0 &&
 			internal_config.process_type != RTE_PROC_SECONDARY &&
 			internal_config.xen_dom0_support == 0 &&
@@ -892,17 +908,6 @@ rte_eal_init(int argc, char **argv)
 
 	if (rte_eal_intr_init() < 0) {
 		rte_eal_init_alert("Cannot init interrupt-handling thread\n");
-		return -1;
-	}
-
-	if (eal_option_device_parse()) {
-		rte_errno = ENODEV;
-		return -1;
-	}
-
-	if (rte_bus_scan()) {
-		rte_eal_init_alert("Cannot scan the buses for devices\n");
-		rte_errno = ENODEV;
 		return -1;
 	}
 
