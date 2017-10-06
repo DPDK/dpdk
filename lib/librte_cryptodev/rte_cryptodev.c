@@ -583,6 +583,9 @@ rte_cryptodev_pmd_allocate(const char *name, int socket_id)
 		cryptodev->data->socket_id = socket_id;
 		cryptodev->data->dev_started = 0;
 
+		/* init user callbacks */
+		TAILQ_INIT(&(cryptodev->link_intr_cbs));
+
 		cryptodev->attached = RTE_CRYPTODEV_ATTACHED;
 
 		cryptodev_globals.nb_devs++;

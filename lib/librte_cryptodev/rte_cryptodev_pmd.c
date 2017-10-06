@@ -101,9 +101,6 @@ rte_cryptodev_vdev_pmd_init(const char *name, size_t dev_private_size,
 
 	cryptodev->device = &vdev->device;
 
-	/* initialise user call-back tail queue */
-	TAILQ_INIT(&(cryptodev->link_intr_cbs));
-
 	return cryptodev;
 }
 
@@ -187,9 +184,6 @@ rte_cryptodev_pci_generic_probe(struct rte_pci_device *pci_dev,
 	}
 
 	cryptodev->device = &pci_dev->device;
-
-	/* init user callbacks */
-	TAILQ_INIT(&(cryptodev->link_intr_cbs));
 
 	/* Invoke PMD device initialization function */
 	RTE_FUNC_PTR_OR_ERR_RET(*dev_init, -EINVAL);
