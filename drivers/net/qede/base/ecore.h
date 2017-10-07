@@ -871,6 +871,8 @@ struct ecore_dev {
 #define NUM_OF_ENG_PFS(dev)	(ECORE_IS_BB(dev) ? MAX_NUM_PFS_BB \
 						  : MAX_NUM_PFS_K2)
 
+#define CRC8_TABLE_SIZE 256
+
 /**
  * @brief ecore_concrete_to_sw_fid - get the sw function id from
  *        the concrete value.

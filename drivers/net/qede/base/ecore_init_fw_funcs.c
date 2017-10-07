@@ -1769,7 +1769,6 @@ u32 ecore_get_mstorm_eth_vf_prods_offset(struct ecore_hwfn *p_hwfn,
 
 #ifndef LINUX_REMOVE
 #define CRC8_INIT_VALUE 0xFF
-#define CRC8_TABLE_SIZE 256
 #endif
 static u8 cdu_crc8_table[CRC8_TABLE_SIZE];
 

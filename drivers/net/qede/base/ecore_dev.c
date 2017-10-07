@@ -2283,19 +2283,6 @@ static void ecore_reset_mb_shadow(struct ecore_hwfn *p_hwfn,
 		    p_hwfn->mcp_info->mfw_mb_length);
 }
 
-enum _ecore_status_t ecore_vf_start(struct ecore_hwfn *p_hwfn,
-				    struct ecore_hw_init_params *p_params)
-{
-	if (p_params->p_tunn) {
-		ecore_vf_set_vf_start_tunn_update_param(p_params->p_tunn);
-		ecore_vf_pf_tunnel_param_update(p_hwfn, p_params->p_tunn);
-	}
-
-	p_hwfn->b_int_enabled = 1;
-
-	return ECORE_SUCCESS;
-}
-
 static void ecore_pglueb_clear_err(struct ecore_hwfn *p_hwfn,
 				     struct ecore_ptt *p_ptt)
 {
@@ -2325,6 +2312,19 @@ ecore_fill_load_req_params(struct ecore_load_req_params *p_load_req,
 		p_load_req->override_force_load =
 			p_drv_load->override_force_load;
 	}
+}
+
+enum _ecore_status_t ecore_vf_start(struct ecore_hwfn *p_hwfn,
+				    struct ecore_hw_init_params *p_params)
+{
+	if (p_params->p_tunn) {
+		ecore_vf_set_vf_start_tunn_update_param(p_params->p_tunn);
+		ecore_vf_pf_tunnel_param_update(p_hwfn, p_params->p_tunn);
+	}
+
+	p_hwfn->b_int_enabled = 1;
+
+	return ECORE_SUCCESS;
 }
 
 enum _ecore_status_t ecore_hw_init(struct ecore_dev *p_dev,
@@ -4414,11 +4414,11 @@ ecore_chain_alloc_pbl(struct ecore_dev *p_dev,
 		      struct ecore_chain *p_chain,
 		      struct ecore_chain_ext_pbl *ext_pbl)
 {
-	void *p_virt = OSAL_NULL;
-	u8 *p_pbl_virt = OSAL_NULL;
-	void **pp_virt_addr_tbl = OSAL_NULL;
-	dma_addr_t p_phys = 0, p_pbl_phys = 0;
 	u32 page_cnt = p_chain->page_cnt, size, i;
+	dma_addr_t p_phys = 0, p_pbl_phys = 0;
+	void **pp_virt_addr_tbl = OSAL_NULL;
+	u8 *p_pbl_virt = OSAL_NULL;
+	void *p_virt = OSAL_NULL;
 
 	size = page_cnt * sizeof(*pp_virt_addr_tbl);
 	pp_virt_addr_tbl = (void **)OSAL_VZALLOC(p_dev, size);

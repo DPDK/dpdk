@@ -178,10 +178,10 @@ ecore_spq_fill_entry(struct ecore_hwfn *p_hwfn, struct ecore_spq_entry *p_ent)
 static void ecore_spq_hw_initialize(struct ecore_hwfn *p_hwfn,
 				    struct ecore_spq *p_spq)
 {
-	struct ecore_cxt_info cxt_info;
 	struct e4_core_conn_context *p_cxt;
-	enum _ecore_status_t rc;
+	struct ecore_cxt_info cxt_info;
 	u16 physical_q;
+	enum _ecore_status_t rc;
 
 	cxt_info.iid = p_spq->cid;
 

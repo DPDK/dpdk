@@ -2555,9 +2555,9 @@ ecore_mcp_ov_update_current_config(struct ecore_hwfn *p_hwfn,
 				   struct ecore_ptt *p_ptt,
 				   enum ecore_ov_client client)
 {
-	enum _ecore_status_t rc;
 	u32 resp = 0, param = 0;
 	u32 drv_mb_param;
+	enum _ecore_status_t rc;
 
 	switch (client) {
 	case ECORE_OV_CLIENT_DRV:
@@ -2587,9 +2587,9 @@ ecore_mcp_ov_update_driver_state(struct ecore_hwfn *p_hwfn,
 				 struct ecore_ptt *p_ptt,
 				 enum ecore_ov_driver_state drv_state)
 {
-	enum _ecore_status_t rc;
 	u32 resp = 0, param = 0;
 	u32 drv_mb_param;
+	enum _ecore_status_t rc;
 
 	switch (drv_state) {
 	case ECORE_OV_DRIVER_STATE_NOT_LOADED:

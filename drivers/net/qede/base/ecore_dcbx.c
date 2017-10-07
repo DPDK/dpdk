@@ -318,14 +318,14 @@ static enum _ecore_status_t
 ecore_dcbx_process_mib_info(struct ecore_hwfn *p_hwfn)
 {
 	struct dcbx_app_priority_feature *p_app;
-	enum _ecore_status_t rc = ECORE_SUCCESS;
-	struct ecore_dcbx_results data = { 0 };
 	struct dcbx_app_priority_entry *p_tbl;
+	struct ecore_dcbx_results data = { 0 };
 	struct dcbx_ets_feature *p_ets;
 	struct ecore_hw_info *p_info;
 	u32 pri_tc_tbl, flags;
 	u8 dcbx_version;
 	int num_entries;
+	enum _ecore_status_t rc = ECORE_SUCCESS;
 
 	flags = p_hwfn->p_dcbx_info->operational.flags;
 	dcbx_version = GET_MFW_FIELD(flags, DCBX_CONFIG_VERSION);
@@ -363,9 +363,9 @@ ecore_dcbx_copy_mib(struct ecore_hwfn *p_hwfn,
 		    struct ecore_dcbx_mib_meta_data *p_data,
 		    enum ecore_mib_read_type type)
 {
-	enum _ecore_status_t rc = ECORE_SUCCESS;
 	u32 prefix_seq_num, suffix_seq_num;
 	int read_count = 0;
+	enum _ecore_status_t rc = ECORE_SUCCESS;
 
 	/* The data is considered to be valid only if both sequence numbers are
 	 * the same.
@@ -859,7 +859,7 @@ static enum _ecore_status_t ecore_dcbx_read_mib(struct ecore_hwfn *p_hwfn,
 		DP_ERR(p_hwfn, "MIB read err, unknown mib type %d\n", type);
 	}
 
-	return rc;
+	return ECORE_SUCCESS;
 }
 
 /*
