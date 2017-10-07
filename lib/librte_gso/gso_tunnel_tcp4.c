@@ -42,11 +42,13 @@ update_tunnel_ipv4_tcp_headers(struct rte_mbuf *pkt, uint8_t ipid_delta,
 	struct tcp_hdr *tcp_hdr;
 	uint32_t sent_seq;
 	uint16_t outer_id, inner_id, tail_idx, i;
-	uint16_t outer_ipv4_offset, inner_ipv4_offset, udp_offset, tcp_offset;
+	uint16_t outer_ipv4_offset, inner_ipv4_offset;
+	uint16_t udp_gre_offset, tcp_offset;
+	uint8_t update_udp_hdr;
 
 	outer_ipv4_offset = pkt->outer_l2_len;
-	udp_offset = outer_ipv4_offset + pkt->outer_l3_len;
-	inner_ipv4_offset = udp_offset + pkt->l2_len;
+	udp_gre_offset = outer_ipv4_offset + pkt->outer_l3_len;
+	inner_ipv4_offset = udp_gre_offset + pkt->l2_len;
 	tcp_offset = inner_ipv4_offset + pkt->l3_len;
 
 	/* Outer IPv4 header. */
@@ -63,9 +65,13 @@ update_tunnel_ipv4_tcp_headers(struct rte_mbuf *pkt, uint8_t ipid_delta,
 	sent_seq = rte_be_to_cpu_32(tcp_hdr->sent_seq);
 	tail_idx = nb_segs - 1;
 
+	/* Only update UDP header for VxLAN packets. */
+	update_udp_hdr = (pkt->ol_flags & PKT_TX_TUNNEL_VXLAN) ? 1 : 0;
+
 	for (i = 0; i < nb_segs; i++) {
 		update_ipv4_header(segs[i], outer_ipv4_offset, outer_id);
-		update_udp_header(segs[i], udp_offset);
+		if (update_udp_hdr)
+			update_udp_header(segs[i], udp_gre_offset);
 		update_ipv4_header(segs[i], inner_ipv4_offset, inner_id);
 		update_tcp_header(segs[i], tcp_offset, sent_seq, i < tail_idx);
 		outer_id++;

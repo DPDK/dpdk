@@ -58,7 +58,8 @@ rte_gso_segment(struct rte_mbuf *pkt,
 			nb_pkts_out < 1 ||
 			gso_ctx->gso_size < RTE_GSO_SEG_SIZE_MIN ||
 			((gso_ctx->gso_types & (DEV_TX_OFFLOAD_TCP_TSO |
-			DEV_TX_OFFLOAD_VXLAN_TNL_TSO)) == 0))
+			DEV_TX_OFFLOAD_VXLAN_TNL_TSO |
+			DEV_TX_OFFLOAD_GRE_TNL_TSO)) == 0))
 		return -EINVAL;
 
 	if (gso_ctx->gso_size >= pkt->pkt_len) {
@@ -73,8 +74,10 @@ rte_gso_segment(struct rte_mbuf *pkt,
 	ipid_delta = (gso_ctx->flag != RTE_GSO_FLAG_IPID_FIXED);
 	ol_flags = pkt->ol_flags;
 
-	if (IS_IPV4_VXLAN_TCP4(pkt->ol_flags)
-		&& (gso_ctx->gso_types & DEV_TX_OFFLOAD_VXLAN_TNL_TSO)) {
+	if ((IS_IPV4_VXLAN_TCP4(pkt->ol_flags) &&
+			(gso_ctx->gso_types & DEV_TX_OFFLOAD_VXLAN_TNL_TSO)) ||
+			((IS_IPV4_GRE_TCP4(pkt->ol_flags) &&
+			 (gso_ctx->gso_types & DEV_TX_OFFLOAD_GRE_TNL_TSO)))) {
 		pkt->ol_flags &= (~PKT_TX_TCP_SEG);
 		ret = gso_tunnel_tcp4_segment(pkt, gso_size, ipid_delta,
 				direct_pool, indirect_pool,

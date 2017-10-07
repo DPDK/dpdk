@@ -95,6 +95,8 @@ New Features
   * TCP/IPv4 packets.
   * VxLAN packets, which must have an outer IPv4 header, and contain
     an inner TCP/IPv4 packet.
+  * GRE packets, which must contain an outer IPv4 header, and inner
+    TCP/IPv4 headers.
 
   The GSO library doesn't check if the input packets have correct
   checksums, and doesn't update checksums for output packets.

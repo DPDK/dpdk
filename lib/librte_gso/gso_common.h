@@ -55,6 +55,11 @@
 		(PKT_TX_TCP_SEG | PKT_TX_IPV4 | PKT_TX_OUTER_IPV4 | \
 		 PKT_TX_TUNNEL_VXLAN))
 
+#define IS_IPV4_GRE_TCP4(flag) (((flag) & (PKT_TX_TCP_SEG | PKT_TX_IPV4 | \
+				PKT_TX_OUTER_IPV4 | PKT_TX_TUNNEL_GRE)) == \
+		(PKT_TX_TCP_SEG | PKT_TX_IPV4 | PKT_TX_OUTER_IPV4 | \
+		 PKT_TX_TUNNEL_GRE))
+
 /**
  * Internal function which updates the UDP header of a packet, following
  * segmentation. This is required to update the header's datagram length field.
