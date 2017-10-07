@@ -441,4 +441,6 @@ u32 qede_crc32(u32 crc, u8 *ptr, u32 length);
 #define OSAL_MFW_TLV_REQ(p_hwfn) nothing
 #define OSAL_MFW_FILL_TLV_DATA(type, buf, data) (0)
 #define OSAL_PF_VALIDATE_MODIFY_TUNN_CONFIG(p_hwfn, mask, b_update, tunn) 0
+#define OSAL_LLDP_RX_TLVS(p_hwfn, tlv_buf, tlv_size) nothing
+
 #endif /* __BCM_OSAL_H */

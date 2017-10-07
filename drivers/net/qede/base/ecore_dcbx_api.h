@@ -18,7 +18,8 @@ enum ecore_mib_read_type {
 	ECORE_DCBX_REMOTE_MIB,
 	ECORE_DCBX_LOCAL_MIB,
 	ECORE_DCBX_REMOTE_LLDP_MIB,
-	ECORE_DCBX_LOCAL_LLDP_MIB
+	ECORE_DCBX_LOCAL_LLDP_MIB,
+	ECORE_DCBX_LLDP_TLVS
 };
 
 struct ecore_dcbx_app_data {
@@ -175,6 +176,31 @@ struct ecore_dcbx_app_metadata {
 	enum ecore_pci_personality personality;
 };
 
+enum ecore_lldp_agent {
+	ECORE_LLDP_NEAREST_BRIDGE = 0,
+	ECORE_LLDP_NEAREST_NON_TPMR_BRIDGE,
+	ECORE_LLDP_NEAREST_CUSTOMER_BRIDGE,
+	ECORE_LLDP_MAX_AGENTS
+};
+
+struct ecore_lldp_config_params {
+	enum ecore_lldp_agent agent;
+	u8 tx_interval;
+	u8 tx_hold;
+	u8 tx_credit;
+	bool rx_enable;
+	bool tx_enable;
+	u32 chassis_id_tlv[ECORE_LLDP_CHASSIS_ID_STAT_LEN];
+	u32 port_id_tlv[ECORE_LLDP_PORT_ID_STAT_LEN];
+};
+
+#define ECORE_LLDP_SYS_TLV_SIZE 256
+struct ecore_lldp_sys_tlvs {
+	bool discard_mandatory_tlv;
+	u8 buf[ECORE_LLDP_SYS_TLV_SIZE];
+	u16 buf_size;
+};
+
 enum _ecore_status_t ecore_dcbx_query_params(struct ecore_hwfn *,
 					     struct ecore_dcbx_get *,
 					     enum ecore_mib_read_type);
@@ -186,6 +212,23 @@ enum _ecore_status_t ecore_dcbx_config_params(struct ecore_hwfn *,
 					      struct ecore_ptt *,
 					      struct ecore_dcbx_set *,
 					      bool);
+
+enum _ecore_status_t ecore_lldp_register_tlv(struct ecore_hwfn *p_hwfn,
+					     struct ecore_ptt *p_ptt,
+					     enum ecore_lldp_agent agent,
+					     u8 tlv_type);
+
+enum _ecore_status_t
+ecore_lldp_get_params(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
+		      struct ecore_lldp_config_params *p_params);
+
+enum _ecore_status_t
+ecore_lldp_set_params(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
+		      struct ecore_lldp_config_params *p_params);
+
+enum _ecore_status_t
+ecore_lldp_set_system_tlvs(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
+			   struct ecore_lldp_sys_tlvs *p_params);
 
 static const struct ecore_dcbx_app_metadata ecore_dcbx_app_update[] = {
 	{DCBX_PROTOCOL_ISCSI, "ISCSI", ECORE_PCI_ISCSI},

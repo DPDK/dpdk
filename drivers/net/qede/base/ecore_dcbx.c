@@ -376,6 +376,12 @@ ecore_dcbx_copy_mib(struct ecore_hwfn *p_hwfn,
 					  p_data->addr, p_data->size);
 			prefix_seq_num = p_data->lldp_remote->prefix_seq_num;
 			suffix_seq_num = p_data->lldp_remote->suffix_seq_num;
+		} else if (type == ECORE_DCBX_LLDP_TLVS) {
+			ecore_memcpy_from(p_hwfn, p_ptt, p_data->lldp_tlvs,
+					  p_data->addr, p_data->size);
+			prefix_seq_num = p_data->lldp_tlvs->prefix_seq_num;
+			suffix_seq_num = p_data->lldp_tlvs->suffix_seq_num;
+
 		} else {
 			ecore_memcpy_from(p_hwfn, p_ptt, p_data->mib,
 					  p_data->addr, p_data->size);
@@ -1303,4 +1309,231 @@ enum _ecore_status_t ecore_dcbx_get_config_params(struct ecore_hwfn *p_hwfn,
 	OSAL_FREE(p_hwfn->p_dev, dcbx_info);
 
 	return ECORE_SUCCESS;
+}
+
+enum _ecore_status_t ecore_lldp_register_tlv(struct ecore_hwfn *p_hwfn,
+					     struct ecore_ptt *p_ptt,
+					     enum ecore_lldp_agent agent,
+					     u8 tlv_type)
+{
+	u32 mb_param = 0, mcp_resp = 0, mcp_param = 0, val = 0;
+	enum _ecore_status_t rc = ECORE_SUCCESS;
+
+	switch (agent) {
+	case ECORE_LLDP_NEAREST_BRIDGE:
+		val = LLDP_NEAREST_BRIDGE;
+		break;
+	case ECORE_LLDP_NEAREST_NON_TPMR_BRIDGE:
+		val = LLDP_NEAREST_NON_TPMR_BRIDGE;
+		break;
+	case ECORE_LLDP_NEAREST_CUSTOMER_BRIDGE:
+		val = LLDP_NEAREST_CUSTOMER_BRIDGE;
+		break;
+	default:
+		DP_ERR(p_hwfn, "Invalid agent type %d\n", agent);
+		return ECORE_INVAL;
+	}
+
+	SET_MFW_FIELD(mb_param, DRV_MB_PARAM_LLDP_AGENT, val);
+	SET_MFW_FIELD(mb_param, DRV_MB_PARAM_LLDP_TLV_RX_TYPE, tlv_type);
+
+	rc = ecore_mcp_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_REGISTER_LLDP_TLVS_RX,
+			   mb_param, &mcp_resp, &mcp_param);
+	if (rc != ECORE_SUCCESS)
+		DP_NOTICE(p_hwfn, false, "Failed to register TLV\n");
+
+	return rc;
+}
+
+enum _ecore_status_t
+ecore_lldp_mib_update_event(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt)
+{
+	struct ecore_dcbx_mib_meta_data data;
+	enum _ecore_status_t rc = ECORE_SUCCESS;
+	struct lldp_received_tlvs_s tlvs;
+	int i;
+
+	for (i = 0; i < LLDP_MAX_LLDP_AGENTS; i++) {
+		OSAL_MEM_ZERO(&data, sizeof(data));
+		data.addr = p_hwfn->mcp_info->port_addr +
+			    offsetof(struct public_port, lldp_received_tlvs[i]);
+		data.lldp_tlvs = &tlvs;
+		data.size = sizeof(tlvs);
+		rc = ecore_dcbx_copy_mib(p_hwfn, p_ptt, &data,
+					 ECORE_DCBX_LLDP_TLVS);
+		if (rc != ECORE_SUCCESS) {
+			DP_NOTICE(p_hwfn, false, "Failed to read lldp TLVs\n");
+			return rc;
+		}
+
+		if (!tlvs.length)
+			continue;
+
+		for (i = 0; i < MAX_TLV_BUFFER; i++)
+			tlvs.tlvs_buffer[i] =
+				OSAL_CPU_TO_BE32(tlvs.tlvs_buffer[i]);
+
+		OSAL_LLDP_RX_TLVS(p_hwfn, tlvs.tlvs_buffer, tlvs.length);
+	}
+
+	return rc;
+}
+
+enum _ecore_status_t
+ecore_lldp_get_params(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
+		      struct ecore_lldp_config_params *p_params)
+{
+	struct lldp_config_params_s lldp_params;
+	u32 addr, val;
+	int i;
+
+	switch (p_params->agent) {
+	case ECORE_LLDP_NEAREST_BRIDGE:
+		val = LLDP_NEAREST_BRIDGE;
+		break;
+	case ECORE_LLDP_NEAREST_NON_TPMR_BRIDGE:
+		val = LLDP_NEAREST_NON_TPMR_BRIDGE;
+		break;
+	case ECORE_LLDP_NEAREST_CUSTOMER_BRIDGE:
+		val = LLDP_NEAREST_CUSTOMER_BRIDGE;
+		break;
+	default:
+		DP_ERR(p_hwfn, "Invalid agent type %d\n", p_params->agent);
+		return ECORE_INVAL;
+	}
+
+	addr = p_hwfn->mcp_info->port_addr +
+			offsetof(struct public_port, lldp_config_params[val]);
+
+	ecore_memcpy_from(p_hwfn, p_ptt, &lldp_params, addr,
+			  sizeof(lldp_params));
+
+	p_params->tx_interval = GET_MFW_FIELD(lldp_params.config,
+					      LLDP_CONFIG_TX_INTERVAL);
+	p_params->tx_hold = GET_MFW_FIELD(lldp_params.config, LLDP_CONFIG_HOLD);
+	p_params->tx_credit = GET_MFW_FIELD(lldp_params.config,
+					    LLDP_CONFIG_MAX_CREDIT);
+	p_params->rx_enable = GET_MFW_FIELD(lldp_params.config,
+					    LLDP_CONFIG_ENABLE_RX);
+	p_params->tx_enable = GET_MFW_FIELD(lldp_params.config,
+					    LLDP_CONFIG_ENABLE_TX);
+
+	OSAL_MEMCPY(p_params->chassis_id_tlv, lldp_params.local_chassis_id,
+		    sizeof(p_params->chassis_id_tlv));
+	for (i = 0; i < ECORE_LLDP_CHASSIS_ID_STAT_LEN; i++)
+		p_params->chassis_id_tlv[i] =
+				OSAL_BE32_TO_CPU(p_params->chassis_id_tlv[i]);
+
+	OSAL_MEMCPY(p_params->port_id_tlv, lldp_params.local_port_id,
+		    sizeof(p_params->port_id_tlv));
+	for (i = 0; i < ECORE_LLDP_PORT_ID_STAT_LEN; i++)
+		p_params->port_id_tlv[i] =
+				OSAL_BE32_TO_CPU(p_params->port_id_tlv[i]);
+
+	return ECORE_SUCCESS;
+}
+
+enum _ecore_status_t
+ecore_lldp_set_params(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
+		      struct ecore_lldp_config_params *p_params)
+{
+	u32 mb_param = 0, mcp_resp = 0, mcp_param = 0;
+	struct lldp_config_params_s lldp_params;
+	enum _ecore_status_t rc = ECORE_SUCCESS;
+	u32 addr, val;
+	int i;
+
+	switch (p_params->agent) {
+	case ECORE_LLDP_NEAREST_BRIDGE:
+		val = LLDP_NEAREST_BRIDGE;
+		break;
+	case ECORE_LLDP_NEAREST_NON_TPMR_BRIDGE:
+		val = LLDP_NEAREST_NON_TPMR_BRIDGE;
+		break;
+	case ECORE_LLDP_NEAREST_CUSTOMER_BRIDGE:
+		val = LLDP_NEAREST_CUSTOMER_BRIDGE;
+		break;
+	default:
+		DP_ERR(p_hwfn, "Invalid agent type %d\n", p_params->agent);
+		return ECORE_INVAL;
+	}
+
+	SET_MFW_FIELD(mb_param, DRV_MB_PARAM_LLDP_AGENT, val);
+	addr = p_hwfn->mcp_info->port_addr +
+			offsetof(struct public_port, lldp_config_params[val]);
+
+	OSAL_MEMSET(&lldp_params, 0, sizeof(lldp_params));
+	SET_MFW_FIELD(lldp_params.config, LLDP_CONFIG_TX_INTERVAL,
+		      p_params->tx_interval);
+	SET_MFW_FIELD(lldp_params.config, LLDP_CONFIG_HOLD, p_params->tx_hold);
+	SET_MFW_FIELD(lldp_params.config, LLDP_CONFIG_MAX_CREDIT,
+		      p_params->tx_credit);
+	SET_MFW_FIELD(lldp_params.config, LLDP_CONFIG_ENABLE_RX,
+		      !!p_params->rx_enable);
+	SET_MFW_FIELD(lldp_params.config, LLDP_CONFIG_ENABLE_TX,
+		      !!p_params->tx_enable);
+
+	for (i = 0; i < ECORE_LLDP_CHASSIS_ID_STAT_LEN; i++)
+		p_params->chassis_id_tlv[i] =
+				OSAL_CPU_TO_BE32(p_params->chassis_id_tlv[i]);
+	OSAL_MEMCPY(lldp_params.local_chassis_id, p_params->chassis_id_tlv,
+		    sizeof(lldp_params.local_chassis_id));
+
+	for (i = 0; i < ECORE_LLDP_PORT_ID_STAT_LEN; i++)
+		p_params->port_id_tlv[i] =
+				OSAL_CPU_TO_BE32(p_params->port_id_tlv[i]);
+	OSAL_MEMCPY(lldp_params.local_port_id, p_params->port_id_tlv,
+		    sizeof(lldp_params.local_port_id));
+
+	ecore_memcpy_to(p_hwfn, p_ptt, addr, &lldp_params, sizeof(lldp_params));
+
+	rc = ecore_mcp_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_SET_LLDP,
+			   mb_param, &mcp_resp, &mcp_param);
+	if (rc != ECORE_SUCCESS)
+		DP_NOTICE(p_hwfn, false, "SET_LLDP failed, error = %d\n", rc);
+
+	return rc;
+}
+
+enum _ecore_status_t
+ecore_lldp_set_system_tlvs(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
+			   struct ecore_lldp_sys_tlvs *p_params)
+{
+	u32 mb_param = 0, mcp_resp = 0, mcp_param = 0;
+	enum _ecore_status_t rc = ECORE_SUCCESS;
+	struct lldp_system_tlvs_buffer_s lld_tlv_buf;
+	u32 addr, *p_val;
+	u8 len;
+	int i;
+
+	p_val = (u32 *)p_params->buf;
+	for (i = 0; i < ECORE_LLDP_SYS_TLV_SIZE / 4; i++)
+		p_val[i] = OSAL_CPU_TO_BE32(p_val[i]);
+
+	OSAL_MEMSET(&lld_tlv_buf, 0, sizeof(lld_tlv_buf));
+	SET_MFW_FIELD(lld_tlv_buf.flags, LLDP_SYSTEM_TLV_VALID, 1);
+	SET_MFW_FIELD(lld_tlv_buf.flags, LLDP_SYSTEM_TLV_MANDATORY,
+		      !!p_params->discard_mandatory_tlv);
+	SET_MFW_FIELD(lld_tlv_buf.flags, LLDP_SYSTEM_TLV_LENGTH,
+		      p_params->buf_size);
+	len = ECORE_LLDP_SYS_TLV_SIZE / 2;
+	OSAL_MEMCPY(lld_tlv_buf.data, p_params->buf, len);
+
+	addr = p_hwfn->mcp_info->port_addr +
+		offsetof(struct public_port, system_lldp_tlvs_buf);
+	ecore_memcpy_to(p_hwfn, p_ptt, addr, &lld_tlv_buf, sizeof(lld_tlv_buf));
+
+	if  (p_params->buf_size > len) {
+		addr = p_hwfn->mcp_info->port_addr +
+			offsetof(struct public_port, system_lldp_tlvs_buf2);
+		ecore_memcpy_to(p_hwfn, p_ptt, addr, &p_params->buf[len],
+				ECORE_LLDP_SYS_TLV_SIZE / 2);
+	}
+
+	rc = ecore_mcp_cmd(p_hwfn, p_ptt, DRV_MSG_CODE_SET_LLDP,
+			   mb_param, &mcp_resp, &mcp_param);
+	if (rc != ECORE_SUCCESS)
+		DP_NOTICE(p_hwfn, false, "SET_LLDP failed, error = %d\n", rc);
+
+	return rc;
 }

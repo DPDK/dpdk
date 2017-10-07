@@ -264,11 +264,11 @@ struct couple_mode_teaming {
 /**************************************
  *     LLDP and DCBX HSI structures
  **************************************/
-#define LLDP_CHASSIS_ID_STAT_LEN 4
-#define LLDP_PORT_ID_STAT_LEN 4
+#define LLDP_CHASSIS_ID_STAT_LEN	4
+#define LLDP_PORT_ID_STAT_LEN		4
 #define DCBX_MAX_APP_PROTOCOL		32
-#define MAX_SYSTEM_LLDP_TLV_DATA    32
-
+#define MAX_SYSTEM_LLDP_TLV_DATA	32  /* In dwords. 128 in bytes*/
+#define MAX_TLV_BUFFER			128 /* In dwords. 512 in bytes*/
 typedef enum _lldp_agent_e {
 	LLDP_NEAREST_BRIDGE = 0,
 	LLDP_NEAREST_NON_TPMR_BRIDGE,
@@ -440,6 +440,8 @@ struct dcbx_local_params {
 #define DCBX_CONFIG_VERSION_DISABLED        0
 #define DCBX_CONFIG_VERSION_IEEE            1
 #define DCBX_CONFIG_VERSION_CEE             2
+#define DCBX_CONFIG_VERSION_DYNAMIC         \
+	(DCBX_CONFIG_VERSION_IEEE | DCBX_CONFIG_VERSION_CEE)
 #define DCBX_CONFIG_VERSION_STATIC          4
 
 	u32 flags;
@@ -462,9 +464,27 @@ struct dcbx_mib {
 };
 
 struct lldp_system_tlvs_buffer_s {
-	u16 valid;
-	u16 length;
+	u32 flags;
+#define LLDP_SYSTEM_TLV_VALID_MASK		0x1
+#define LLDP_SYSTEM_TLV_VALID_OFFSET		0
+/* This bit defines if system TLVs are instead of mandatory TLVS or in
+ * addition to them. Set 1 for replacing mandatory TLVs
+ */
+#define LLDP_SYSTEM_TLV_MANDATORY_MASK		0x2
+#define LLDP_SYSTEM_TLV_MANDATORY_OFFSET	1
+#define LLDP_SYSTEM_TLV_LENGTH_MASK		0xffff0000
+#define LLDP_SYSTEM_TLV_LENGTH_OFFSET		16
 	u32 data[MAX_SYSTEM_LLDP_TLV_DATA];
+};
+
+/* Since this struct is written by MFW and read by driver need to add
+ * sequence guards (as in case of DCBX MIB)
+ */
+struct lldp_received_tlvs_s {
+	u32 prefix_seq_num;
+	u32 length;
+	u32 tlvs_buffer[MAX_TLV_BUFFER];
+	u32 suffix_seq_num;
 };
 
 struct dcb_dscp_map {
@@ -838,6 +858,9 @@ struct public_port {
 #define OEM_CFG_SCHED_TYPE_OFFSET			2
 #define OEM_CFG_SCHED_TYPE_ETS				0x1
 #define OEM_CFG_SCHED_TYPE_VNIC_BW			0x2
+
+	struct lldp_received_tlvs_s lldp_received_tlvs[LLDP_MAX_LLDP_AGENTS];
+	u32 system_lldp_tlvs_buf2[MAX_SYSTEM_LLDP_TLV_DATA];
 };
 
 /**************************************/
@@ -1219,8 +1242,8 @@ struct public_drv_mb {
 	/*        - DONT_CARE - Don't flap the link if up */
 #define DRV_MSG_CODE_LINK_RESET			0x23000000
 
-	/* Vitaly: LLDP commands */
 #define DRV_MSG_CODE_SET_LLDP                   0x24000000
+#define DRV_MSG_CODE_REGISTER_LLDP_TLVS_RX      0x24100000
 #define DRV_MSG_CODE_SET_DCBX                   0x25000000
 	/* OneView feature driver HSI*/
 #define DRV_MSG_CODE_OV_UPDATE_CURR_CFG		0x26000000
@@ -1463,10 +1486,18 @@ struct public_drv_mb {
 #define DRV_MB_PARAM_INIT_PHY_DONT_CARE		0x00000002
 
 	/* LLDP / DCBX params*/
+	/* To be used with SET_LLDP command */
 #define DRV_MB_PARAM_LLDP_SEND_MASK		0x00000001
 #define DRV_MB_PARAM_LLDP_SEND_OFFSET		0
+	/* To be used with SET_LLDP and REGISTER_LLDP_TLVS_RX commands */
 #define DRV_MB_PARAM_LLDP_AGENT_MASK		0x00000006
 #define DRV_MB_PARAM_LLDP_AGENT_OFFSET		1
+	/* To be used with REGISTER_LLDP_TLVS_RX command */
+#define DRV_MB_PARAM_LLDP_TLV_RX_VALID_MASK	0x00000001
+#define DRV_MB_PARAM_LLDP_TLV_RX_VALID_OFFSET	0
+#define DRV_MB_PARAM_LLDP_TLV_RX_TYPE_MASK	0x000007f0
+#define DRV_MB_PARAM_LLDP_TLV_RX_TYPE_OFFSET	4
+	/* To be used with SET_DCBX command */
 #define DRV_MB_PARAM_DCBX_NOTIFY_MASK		0x00000008
 #define DRV_MB_PARAM_DCBX_NOTIFY_OFFSET		3
 
@@ -1634,6 +1665,7 @@ struct public_drv_mb {
 #define FW_MSG_CODE_LINK_RESET_DONE		0x23000000
 #define FW_MSG_CODE_SET_LLDP_DONE               0x24000000
 #define FW_MSG_CODE_SET_LLDP_UNSUPPORTED_AGENT  0x24010000
+#define FW_MSG_CODE_REGISTER_LLDP_TLVS_RX_DONE  0x24100000
 #define FW_MSG_CODE_SET_DCBX_DONE               0x25000000
 #define FW_MSG_CODE_UPDATE_CURR_CFG_DONE        0x26000000
 #define FW_MSG_CODE_UPDATE_BUS_NUM_DONE         0x27000000
@@ -1815,6 +1847,7 @@ enum MFW_DRV_MSG_TYPE {
 	MFW_DRV_MSG_EEE_NEGOTIATION_COMPLETE,
 	MFW_DRV_MSG_GET_TLV_REQ,
 	MFW_DRV_MSG_OEM_CFG_UPDATE,
+	MFW_DRV_MSG_LLDP_RECEIVED_TLVS_UPDATED,
 	MFW_DRV_MSG_MAX
 };
 
