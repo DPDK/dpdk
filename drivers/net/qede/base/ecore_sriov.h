@@ -264,7 +264,7 @@ void ecore_iov_free_hw_info(struct ecore_dev *p_dev);
  * @param p_hwfn
  * @param disabled_vfs - bitmask of all VFs on path that were FLRed
  *
- * @return 1 iff one of the PF's vfs got FLRed. 0 otherwise.
+ * @return true iff one of the PF's vfs got FLRed. false otherwise.
  */
 bool ecore_iov_mark_vf_flr(struct ecore_hwfn *p_hwfn,
 			   u32 *disabled_vfs);

@@ -228,7 +228,7 @@ ecore_dcbx_get_app_protocol_type(struct ecore_hwfn *p_hwfn,
 	return true;
 }
 
-/*  Parse app TLV's to update TC information in hw_info structure for
+/* Parse app TLV's to update TC information in hw_info structure for
  * reconfiguring QM. Get protocol specific data for PF update ramrod command.
  */
 static enum _ecore_status_t

@@ -1339,7 +1339,7 @@ static void ecore_mcp_handle_link_change(struct ecore_hwfn *p_hwfn,
 	__ecore_configure_pf_max_bandwidth(p_hwfn, p_ptt,
 					   p_link, max_bw);
 
-	/* Mintz bandwidth configuration */
+	/* Min bandwidth configuration */
 	__ecore_configure_pf_min_bandwidth(p_hwfn, p_ptt,
 					   p_link, min_bw);
 	ecore_configure_vp_wfq_on_link_change(p_hwfn->p_dev, p_ptt,

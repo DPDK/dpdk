@@ -65,6 +65,14 @@ static void ecore_vf_pf_req_end(struct ecore_hwfn *p_hwfn,
 	OSAL_MUTEX_RELEASE(&p_hwfn->vf_iov_info->mutex);
 }
 
+#ifdef CONFIG_ECORE_SW_CHANNEL
+/* The SW channel implementation of Windows needs to know the 'exact'
+ * response size of any given message. That means that for future
+ * messages we'd be unable to send TLVs to PF if he'll be unable to
+ * answer them if the |response| != |default response|.
+ * We'd need to handshake in acquire capabilities for any such.
+ */
+#endif
 static enum _ecore_status_t
 ecore_send_msg2pf(struct ecore_hwfn *p_hwfn,
 		  u8 *done, u32 resp_size)
