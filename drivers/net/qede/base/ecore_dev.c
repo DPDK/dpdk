@@ -5239,13 +5239,6 @@ static enum _ecore_status_t ecore_init_wfq_param(struct ecore_hwfn *p_hwfn,
 	non_requested_count = num_vports - req_count;
 
 	/* validate possible error cases */
-	if (req_rate > min_pf_rate) {
-		DP_VERBOSE(p_hwfn, ECORE_MSG_LINK,
-			   "Vport [%d] - Requested rate[%d Mbps] is greater than configured PF min rate[%d Mbps]\n",
-			   vport_id, req_rate, min_pf_rate);
-		return ECORE_INVAL;
-	}
-
 	if (req_rate < min_pf_rate / ECORE_WFQ_UNIT) {
 		DP_VERBOSE(p_hwfn, ECORE_MSG_LINK,
 			   "Vport [%d] - Requested rate[%d Mbps] is less than one percent of configured PF min rate[%d Mbps]\n",

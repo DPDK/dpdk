@@ -2961,11 +2961,16 @@ enum _ecore_status_t ecore_mcp_phy_sfp_read(struct ecore_hwfn *p_hwfn,
 					  DRV_MSG_CODE_TRANSCEIVER_READ,
 					  nvm_offset, &resp, &param, &buf_size,
 					  (u32 *)(p_buf + offset));
-		if ((resp & FW_MSG_CODE_MASK) ==
-		    FW_MSG_CODE_TRANSCEIVER_NOT_PRESENT) {
+		if (rc != ECORE_SUCCESS) {
+			DP_NOTICE(p_hwfn, false,
+				  "Failed to send a transceiver read command to the MFW. rc = %d.\n",
+				  rc);
+			return rc;
+		}
+
+		if (resp == FW_MSG_CODE_TRANSCEIVER_NOT_PRESENT)
 			return ECORE_NODEV;
-		} else if ((resp & FW_MSG_CODE_MASK) !=
-			   FW_MSG_CODE_TRANSCEIVER_DIAG_OK)
+		else if (resp != FW_MSG_CODE_TRANSCEIVER_DIAG_OK)
 			return ECORE_UNKNOWN_ERROR;
 
 		offset += buf_size;
@@ -2999,11 +3004,16 @@ enum _ecore_status_t ecore_mcp_phy_sfp_write(struct ecore_hwfn *p_hwfn,
 					  DRV_MSG_CODE_TRANSCEIVER_WRITE,
 					  nvm_offset, &resp, &param, buf_size,
 					  (u32 *)&p_buf[buf_idx]);
-		if ((resp & FW_MSG_CODE_MASK) ==
-		    FW_MSG_CODE_TRANSCEIVER_NOT_PRESENT) {
+		if (rc != ECORE_SUCCESS) {
+			DP_NOTICE(p_hwfn, false,
+				  "Failed to send a transceiver write command to the MFW. rc = %d.\n",
+				  rc);
+			return rc;
+		}
+
+		if (resp == FW_MSG_CODE_TRANSCEIVER_NOT_PRESENT)
 			return ECORE_NODEV;
-		} else if ((resp & FW_MSG_CODE_MASK) !=
-			   FW_MSG_CODE_TRANSCEIVER_DIAG_OK)
+		else if (resp != FW_MSG_CODE_TRANSCEIVER_DIAG_OK)
 			return ECORE_UNKNOWN_ERROR;
 
 		buf_idx += buf_size;

@@ -102,7 +102,6 @@ struct ecore_dcbx_params {
 	bool	ets_willing;
 	bool	ets_enabled;
 	bool	ets_cbs;
-	bool	valid;          /* Indicate validity of params */
 	u8	ets_pri_tc_tbl[ECORE_MAX_PFC_PRIORITIES];
 	u8	ets_tc_bw_tbl[ECORE_MAX_PFC_PRIORITIES];
 	u8	ets_tc_tsa_tbl[ECORE_MAX_PFC_PRIORITIES];

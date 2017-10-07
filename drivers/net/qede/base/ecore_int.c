@@ -1926,15 +1926,6 @@ ecore_int_igu_enable(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 			  enum ecore_int_mode int_mode)
 {
 	enum _ecore_status_t rc = ECORE_SUCCESS;
-	u32 tmp;
-
-	/* @@@tmp - Starting with MFW 8.2.1.0 we've started hitting AVS stop
-	 * attentions. Since we're waiting for BRCM answer regarding this
-	 * attention, in the meanwhile we simply mask it.
-	 */
-	tmp = ecore_rd(p_hwfn, p_ptt, MISC_REG_AEU_ENABLE4_IGU_OUT_0);
-	tmp &= ~0x800;
-	ecore_wr(p_hwfn, p_ptt, MISC_REG_AEU_ENABLE4_IGU_OUT_0, tmp);
 
 	ecore_int_igu_enable_attn(p_hwfn, p_ptt);
 
