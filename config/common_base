@@ -662,6 +662,11 @@ CONFIG_RTE_LIBRTE_IP_FRAG_TBL_STAT=n
 CONFIG_RTE_LIBRTE_GRO=y
 
 #
+# Compile GSO library
+#
+CONFIG_RTE_LIBRTE_GSO=y
+
+#
 # Compile librte_meter
 #
 CONFIG_RTE_LIBRTE_METER=y

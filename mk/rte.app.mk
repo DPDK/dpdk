@@ -66,6 +66,7 @@ _LDLIBS-$(CONFIG_RTE_LIBRTE_PDUMP)          += -lrte_pdump
 _LDLIBS-$(CONFIG_RTE_LIBRTE_DISTRIBUTOR)    += -lrte_distributor
 _LDLIBS-$(CONFIG_RTE_LIBRTE_IP_FRAG)        += -lrte_ip_frag
 _LDLIBS-$(CONFIG_RTE_LIBRTE_GRO)            += -lrte_gro
+_LDLIBS-$(CONFIG_RTE_LIBRTE_GSO)            += -lrte_gso
 _LDLIBS-$(CONFIG_RTE_LIBRTE_METER)          += -lrte_meter
 _LDLIBS-$(CONFIG_RTE_LIBRTE_SCHED)          += -lrte_sched
 _LDLIBS-$(CONFIG_RTE_LIBRTE_LPM)            += -lrte_lpm
