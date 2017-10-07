@@ -779,6 +779,7 @@ struct public_port {
 
 #define ETH_TRANSCEIVER_TYPE_4x10G			0x1f
 #define ETH_TRANSCEIVER_TYPE_4x25G_CR			0x20
+#define ETH_TRANSCEIVER_TYPE_1000BASET			0x21
 #define ETH_TRANSCEIVER_TYPE_MULTI_RATE_10G_40G_SR	0x30
 #define ETH_TRANSCEIVER_TYPE_MULTI_RATE_10G_40G_CR	0x31
 #define ETH_TRANSCEIVER_TYPE_MULTI_RATE_10G_40G_LR	0x32
@@ -1441,6 +1442,9 @@ struct public_drv_mb {
 #define DRV_MSG_CODE_GET_WOL_BUFFER		0X00340000
 /* Param: [0:23] Attribute key, [24:31] Attribute sub command */
 #define DRV_MSG_CODE_ATTRIBUTE			0x00350000
+
+/* Param: Password len. Union: Plain Password */
+#define DRV_MSG_CODE_ENCRYPT_PASSWORD		0x00360000
 
 #define DRV_MSG_SEQ_NUMBER_MASK                 0x0000ffff
 
