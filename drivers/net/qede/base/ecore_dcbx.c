@@ -684,9 +684,9 @@ static void ecore_dcbx_get_local_lldp_params(struct ecore_hwfn *p_hwfn,
 
 	OSAL_MEMCPY(params->lldp_local.local_chassis_id,
 		    p_local->local_chassis_id,
-		    OSAL_ARRAY_SIZE(p_local->local_chassis_id));
+		    sizeof(params->lldp_local.local_chassis_id));
 	OSAL_MEMCPY(params->lldp_local.local_port_id, p_local->local_port_id,
-		    OSAL_ARRAY_SIZE(p_local->local_port_id));
+		    sizeof(params->lldp_local.local_port_id));
 }
 
 static void ecore_dcbx_get_remote_lldp_params(struct ecore_hwfn *p_hwfn,
@@ -698,9 +698,9 @@ static void ecore_dcbx_get_remote_lldp_params(struct ecore_hwfn *p_hwfn,
 
 	OSAL_MEMCPY(params->lldp_remote.peer_chassis_id,
 		    p_remote->peer_chassis_id,
-		    OSAL_ARRAY_SIZE(p_remote->peer_chassis_id));
+		    sizeof(params->lldp_remote.peer_chassis_id));
 	OSAL_MEMCPY(params->lldp_remote.peer_port_id, p_remote->peer_port_id,
-		    OSAL_ARRAY_SIZE(p_remote->peer_port_id));
+		    sizeof(params->lldp_remote.peer_port_id));
 }
 
 static enum _ecore_status_t
