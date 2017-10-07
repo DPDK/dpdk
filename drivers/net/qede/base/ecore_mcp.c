@@ -156,6 +156,9 @@ enum _ecore_status_t ecore_mcp_free(struct ecore_hwfn *p_hwfn)
 	if (p_hwfn->mcp_info) {
 		struct ecore_mcp_cmd_elem *p_cmd_elem = OSAL_NULL, *p_tmp;
 
+		OSAL_FREE(p_hwfn->p_dev, p_hwfn->mcp_info->mfw_mb_cur);
+		OSAL_FREE(p_hwfn->p_dev, p_hwfn->mcp_info->mfw_mb_shadow);
+
 		OSAL_SPIN_LOCK(&p_hwfn->mcp_info->cmd_lock);
 		OSAL_LIST_FOR_EACH_ENTRY_SAFE(p_cmd_elem, p_tmp,
 					      &p_hwfn->mcp_info->cmd_list, list,
@@ -164,8 +167,6 @@ enum _ecore_status_t ecore_mcp_free(struct ecore_hwfn *p_hwfn)
 		}
 		OSAL_SPIN_UNLOCK(&p_hwfn->mcp_info->cmd_lock);
 
-		OSAL_FREE(p_hwfn->p_dev, p_hwfn->mcp_info->mfw_mb_cur);
-		OSAL_FREE(p_hwfn->p_dev, p_hwfn->mcp_info->mfw_mb_shadow);
 #ifdef CONFIG_ECORE_LOCK_ALLOC
 		OSAL_SPIN_LOCK_DEALLOC(&p_hwfn->mcp_info->cmd_lock);
 		OSAL_SPIN_LOCK_DEALLOC(&p_hwfn->mcp_info->link_lock);
@@ -244,6 +245,16 @@ enum _ecore_status_t ecore_mcp_cmd_init(struct ecore_hwfn *p_hwfn,
 		goto err;
 	p_info = p_hwfn->mcp_info;
 
+	/* Initialize the MFW spinlocks */
+#ifdef CONFIG_ECORE_LOCK_ALLOC
+	OSAL_SPIN_LOCK_ALLOC(p_hwfn, &p_info->cmd_lock);
+	OSAL_SPIN_LOCK_ALLOC(p_hwfn, &p_info->link_lock);
+#endif
+	OSAL_SPIN_LOCK_INIT(&p_info->cmd_lock);
+	OSAL_SPIN_LOCK_INIT(&p_info->link_lock);
+
+	OSAL_LIST_INIT(&p_info->cmd_list);
+
 	if (ecore_load_mcp_offsets(p_hwfn, p_ptt) != ECORE_SUCCESS) {
 		DP_NOTICE(p_hwfn, false, "MCP is not initialized\n");
 		/* Do not free mcp_info here, since public_base indicate that
@@ -257,16 +268,6 @@ enum _ecore_status_t ecore_mcp_cmd_init(struct ecore_hwfn *p_hwfn,
 	p_info->mfw_mb_shadow = OSAL_ZALLOC(p_hwfn->p_dev, GFP_KERNEL, size);
 	if (!p_info->mfw_mb_shadow || !p_info->mfw_mb_addr)
 		goto err;
-
-	/* Initialize the MFW spinlocks */
-#ifdef CONFIG_ECORE_LOCK_ALLOC
-	OSAL_SPIN_LOCK_ALLOC(p_hwfn, &p_info->cmd_lock);
-	OSAL_SPIN_LOCK_ALLOC(p_hwfn, &p_info->link_lock);
-#endif
-	OSAL_SPIN_LOCK_INIT(&p_info->cmd_lock);
-	OSAL_SPIN_LOCK_INIT(&p_info->link_lock);
-
-	OSAL_LIST_INIT(&p_info->cmd_list);
 
 	return ECORE_SUCCESS;
 
