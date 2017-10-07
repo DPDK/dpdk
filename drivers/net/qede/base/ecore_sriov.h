@@ -117,6 +117,11 @@ struct ecore_vf_info {
 	struct ecore_bulletin	bulletin;
 	dma_addr_t		vf_bulletin;
 
+#ifdef CONFIG_ECORE_SW_CHANNEL
+	/* Determine whether PF communicate with VF using HW/SW channel */
+	bool	b_hw_channel;
+#endif
+
 	/* PF saves a copy of the last VF acquire message */
 	struct vfpf_acquire_tlv acquire;
 

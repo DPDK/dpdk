@@ -720,6 +720,20 @@ u16 ecore_iov_get_next_active_vf(struct ecore_hwfn *p_hwfn, u16 rel_vf_id);
 
 void ecore_iov_bulletin_set_udp_ports(struct ecore_hwfn *p_hwfn, int vfid,
 				      u16 vxlan_port, u16 geneve_port);
+
+#ifdef CONFIG_ECORE_SW_CHANNEL
+/**
+ * @brief Set whether PF should communicate with VF using SW/HW channel
+ *        Needs to be called for an enabled VF before acquire is over
+ *        [latest good point for doing that is OSAL_IOV_VF_ACQUIRE()]
+ *
+ * @param p_hwfn
+ * @param vfid - relative vf index
+ * @param b_is_hw - true iff PF is to use HW channel for communication
+ */
+void ecore_iov_set_vf_hw_channel(struct ecore_hwfn *p_hwfn, int vfid,
+				 bool b_is_hw);
+#endif
 #endif /* CONFIG_ECORE_SRIOV */
 
 #define ecore_for_each_vf(_p_hwfn, _i)					\

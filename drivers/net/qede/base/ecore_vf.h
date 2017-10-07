@@ -50,6 +50,13 @@ struct ecore_vf_iov {
 	 */
 	struct ecore_sb_info *sbs_info[PFVF_MAX_SBS_PER_VF];
 
+#ifdef CONFIG_ECORE_SW_CHANNEL
+	/* Would be set if the VF is to try communicating with it PF
+	 * using a hw channel.
+	 */
+	bool b_hw_channel;
+#endif
+
 	/* Determines whether VF utilizes doorbells via limited register
 	 * bar or via the doorbell bar.
 	 */

@@ -1381,7 +1381,7 @@ static void ecore_iov_send_response(struct ecore_hwfn *p_hwfn,
 	mbx->sw_mbx.response_size =
 	    length + sizeof(struct channel_list_end_tlv);
 
-	if (!p_hwfn->p_dev->b_hw_channel)
+	if (!p_vf->b_hw_channel)
 		return;
 #endif
 
@@ -4828,3 +4828,17 @@ ecore_iov_get_vf_min_rate(struct ecore_hwfn *p_hwfn, int vfid)
 	else
 		return 0;
 }
+
+#ifdef CONFIG_ECORE_SW_CHANNEL
+void ecore_iov_set_vf_hw_channel(struct ecore_hwfn *p_hwfn, int vfid,
+				 bool b_is_hw)
+{
+	struct ecore_vf_info *vf_info;
+
+	vf_info = ecore_iov_get_vf_info(p_hwfn, (u16)vfid, true);
+	if (!vf_info)
+		return;
+
+	vf_info->b_hw_channel = b_is_hw;
+}
+#endif

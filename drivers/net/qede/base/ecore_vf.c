@@ -1861,3 +1861,10 @@ void ecore_vf_get_fw_version(struct ecore_hwfn *p_hwfn,
 	*fw_rev = info->fw_rev;
 	*fw_eng = info->fw_eng;
 }
+
+#ifdef CONFIG_ECORE_SW_CHANNEL
+void ecore_vf_set_hw_channel(struct ecore_hwfn *p_hwfn, bool b_is_hw)
+{
+	p_hwfn->vf_iov_info->b_hw_channel = b_is_hw;
+}
+#endif
