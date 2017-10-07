@@ -39,6 +39,7 @@
 #include <rte_mbuf.h>
 #include <rte_ip.h>
 #include <rte_tcp.h>
+#include <rte_udp.h>
 
 #define IS_FRAGMENTED(frag_off) (((frag_off) & IPV4_HDR_OFFSET_MASK) != 0 \
 		|| ((frag_off) & IPV4_HDR_MF_FLAG) == IPV4_HDR_MF_FLAG)
@@ -48,6 +49,30 @@
 
 #define IS_IPV4_TCP(flag) (((flag) & (PKT_TX_TCP_SEG | PKT_TX_IPV4)) == \
 		(PKT_TX_TCP_SEG | PKT_TX_IPV4))
+
+#define IS_IPV4_VXLAN_TCP4(flag) (((flag) & (PKT_TX_TCP_SEG | PKT_TX_IPV4 | \
+				PKT_TX_OUTER_IPV4 | PKT_TX_TUNNEL_VXLAN)) == \
+		(PKT_TX_TCP_SEG | PKT_TX_IPV4 | PKT_TX_OUTER_IPV4 | \
+		 PKT_TX_TUNNEL_VXLAN))
+
+/**
+ * Internal function which updates the UDP header of a packet, following
+ * segmentation. This is required to update the header's datagram length field.
+ *
+ * @param pkt
+ *  The packet containing the UDP header.
+ * @param udp_offset
+ *  The offset of the UDP header from the start of the packet.
+ */
+static inline void
+update_udp_header(struct rte_mbuf *pkt, uint16_t udp_offset)
+{
+	struct udp_hdr *udp_hdr;
+
+	udp_hdr = (struct udp_hdr *)(rte_pktmbuf_mtod(pkt, char *) +
+			udp_offset);
+	udp_hdr->dgram_len = rte_cpu_to_be_16(pkt->pkt_len - udp_offset);
+}
 
 /**
  * Internal function which updates the TCP header of a packet, following

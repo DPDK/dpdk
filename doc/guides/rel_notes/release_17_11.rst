@@ -93,6 +93,8 @@ New Features
   ones (e.g. MTU is 1500B). Supported packet types are:
 
   * TCP/IPv4 packets.
+  * VxLAN packets, which must have an outer IPv4 header, and contain
+    an inner TCP/IPv4 packet.
 
   The GSO library doesn't check if the input packets have correct
   checksums, and doesn't update checksums for output packets.

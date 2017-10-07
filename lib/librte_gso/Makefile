@@ -44,6 +44,7 @@ LIBABIVER := 1
 SRCS-$(CONFIG_RTE_LIBRTE_GSO) += rte_gso.c
 SRCS-$(CONFIG_RTE_LIBRTE_GSO) += gso_common.c
 SRCS-$(CONFIG_RTE_LIBRTE_GSO) += gso_tcp4.c
+SRCS-$(CONFIG_RTE_LIBRTE_GSO) += gso_tunnel_tcp4.c
 
 # install this header file
 SYMLINK-$(CONFIG_RTE_LIBRTE_GSO)-include += rte_gso.h
