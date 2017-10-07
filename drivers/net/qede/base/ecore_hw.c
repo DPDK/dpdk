@@ -789,6 +789,15 @@ ecore_dmae_execute_command(struct ecore_hwfn *p_hwfn,
 		return ECORE_SUCCESS;
 	}
 
+	if (!cmd) {
+		DP_NOTICE(p_hwfn, true,
+			  "ecore_dmae_execute_sub_operation failed. Invalid state. source_addr 0x%lx, destination addr 0x%lx, size_in_dwords 0x%x\n",
+			  (unsigned long)src_addr,
+			  (unsigned long)dst_addr,
+			  length_cur);
+		return ECORE_INVAL;
+	}
+
 	ecore_dmae_opcode(p_hwfn,
 			  (src_type == ECORE_DMAE_ADDRESS_GRC),
 			  (dst_type == ECORE_DMAE_ADDRESS_GRC), p_params);
