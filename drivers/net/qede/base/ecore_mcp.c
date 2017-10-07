@@ -477,6 +477,7 @@ _ecore_mcp_cmd_and_union(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 
 		OSAL_SPIN_UNLOCK(&p_hwfn->mcp_info->cmd_lock);
 		OSAL_UDELAY(delay);
+		OSAL_MFW_CMD_PREEMPT(p_hwfn);
 	} while (++cnt < max_retries);
 
 	if (cnt >= max_retries) {
@@ -518,6 +519,7 @@ _ecore_mcp_cmd_and_union(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 			goto err;
 
 		OSAL_SPIN_UNLOCK(&p_hwfn->mcp_info->cmd_lock);
+		OSAL_MFW_CMD_PREEMPT(p_hwfn);
 	} while (++cnt < max_retries);
 
 	if (cnt >= max_retries) {
@@ -1195,6 +1197,8 @@ static void ecore_mcp_handle_transceiver_change(struct ecore_hwfn *p_hwfn,
 		DP_NOTICE(p_hwfn, false, "Transceiver is present.\n");
 	else
 		DP_NOTICE(p_hwfn, false, "Transceiver is unplugged.\n");
+
+	OSAL_TRANSCEIVER_UPDATE(p_hwfn);
 }
 
 static void ecore_mcp_read_eee_config(struct ecore_hwfn *p_hwfn,

@@ -46,6 +46,8 @@ void qed_link_update(struct ecore_hwfn *hwfn, struct ecore_ptt *ptt);
 
 #define OSAL_WARN(arg1, arg2, arg3, ...) (0)
 
+#define UNUSED(x)	(void)(x)
+
 /* Memory Types */
 typedef uint8_t u8;
 typedef uint16_t u16;
@@ -165,7 +167,12 @@ typedef pthread_mutex_t osal_mutex_t;
 #define OSAL_SPIN_LOCK_INIT(lock) rte_spinlock_init(lock)
 #define OSAL_SPIN_LOCK(lock) rte_spinlock_lock(lock)
 #define OSAL_SPIN_UNLOCK(lock) rte_spinlock_unlock(lock)
-#define OSAL_SPIN_LOCK_IRQSAVE(lock, flags) nothing
+#define OSAL_SPIN_LOCK_IRQSAVE(lock, flags)	\
+	do {					\
+		UNUSED(lock);			\
+		flags = 0;			\
+		UNUSED(flags);			\
+	} while (0)
 #define OSAL_SPIN_UNLOCK_IRQSAVE(lock, flags) nothing
 #define OSAL_SPIN_LOCK_ALLOC(hwfn, lock) nothing
 #define OSAL_SPIN_LOCK_DEALLOC(lock) nothing
@@ -332,6 +339,7 @@ u32 qede_find_first_zero_bit(unsigned long *, u32);
 #define OSAL_BITMAP_WEIGHT(bitmap, count) 0
 
 #define OSAL_LINK_UPDATE(hwfn, ptt) qed_link_update(hwfn, ptt)
+#define OSAL_TRANSCEIVER_UPDATE(hwfn) nothing
 #define OSAL_DCBX_AEN(hwfn, mib_type) nothing
 
 /* SR-IOV channel */
@@ -350,6 +358,7 @@ u32 qede_find_first_zero_bit(unsigned long *, u32);
 #define OSAL_IOV_GET_OS_TYPE() 0
 #define OSAL_IOV_VF_MSG_TYPE(hwfn, vfid, vf_msg_type) nothing
 #define OSAL_IOV_PF_RESP_TYPE(hwfn, vfid, pf_resp_type) nothing
+#define OSAL_IOV_VF_VPORT_STOP(hwfn, vf) nothing
 
 u32 qede_unzip_data(struct ecore_hwfn *p_hwfn, u32 input_len,
 		   u8 *input_buf, u32 max_size, u8 *unzip_buf);
@@ -369,7 +378,7 @@ void qede_hw_err_notify(struct ecore_hwfn *p_hwfn,
 	qede_hw_err_notify(hwfn, err_type)
 
 #define OSAL_NVM_IS_ACCESS_ENABLED(hwfn) (1)
-#define OSAL_NUM_ACTIVE_CPU()	0
+#define OSAL_NUM_CPUS()	0
 
 /* Utility functions */
 
@@ -440,7 +449,10 @@ u32 qede_crc32(u32 crc, u8 *ptr, u32 length);
 #define OSAL_CRC8(table, pdata, nbytes, crc) 0
 #define OSAL_MFW_TLV_REQ(p_hwfn) nothing
 #define OSAL_MFW_FILL_TLV_DATA(type, buf, data) (0)
+#define OSAL_MFW_CMD_PREEMPT(p_hwfn) nothing
 #define OSAL_PF_VALIDATE_MODIFY_TUNN_CONFIG(p_hwfn, mask, b_update, tunn) 0
+
+#define OSAL_DIV_S64(a, b)	((a) / (b))
 #define OSAL_LLDP_RX_TLVS(p_hwfn, tlv_buf, tlv_size) nothing
 
 #endif /* __BCM_OSAL_H */

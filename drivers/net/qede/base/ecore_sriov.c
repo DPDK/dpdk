@@ -2173,6 +2173,7 @@ static void ecore_iov_vf_mbx_stop_vport(struct ecore_hwfn *p_hwfn,
 	u8 status = PFVF_STATUS_SUCCESS;
 	enum _ecore_status_t rc;
 
+	OSAL_IOV_VF_VPORT_STOP(p_hwfn, vf);
 	vf->vport_instance--;
 	vf->spoof_chk = false;
 
