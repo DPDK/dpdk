@@ -13,7 +13,7 @@
  * Description: NVM config file - Generated file from nvm cfg excel.
  *              DO NOT MODIFY !!!
  *
- * Created:     4/10/2017
+ * Created:     5/8/2017
  *
  ****************************************************************************/
 
@@ -22,7 +22,7 @@
 
 #define NVM_CFG_version 0x83000
 
-#define NVM_CFG_new_option_seq 22
+#define NVM_CFG_new_option_seq 23
 
 #define NVM_CFG_removed_option_seq 1
 
@@ -342,9 +342,8 @@ struct nvm_cfg1_glob {
 		#define NVM_CFG1_GLOB_VENDOR_ID_MASK 0x0000FFFF
 		#define NVM_CFG1_GLOB_VENDOR_ID_OFFSET 0
 	/*  Set caution temperature */
-		#define NVM_CFG1_GLOB_CAUTION_THRESHOLD_TEMPERATURE_MASK \
-			0x00FF0000
-		#define NVM_CFG1_GLOB_CAUTION_THRESHOLD_TEMPERATURE_OFFSET 16
+		#define NVM_CFG1_GLOB_DEAD_TEMP_TH_TEMPERATURE_MASK 0x00FF0000
+		#define NVM_CFG1_GLOB_DEAD_TEMP_TH_TEMPERATURE_OFFSET 16
 	/*  Set external thermal sensor I2C address */
 		#define NVM_CFG1_GLOB_EXTERNAL_THERMAL_SENSOR_ADDRESS_MASK \
 			0xFF000000
@@ -1042,7 +1041,11 @@ struct nvm_cfg1_glob {
 		#define NVM_CFG1_GLOB_THERMAL_ALARM_GPIO_GPIO31 0x20
 	u32 preboot_debug_mode_std; /* 0x140 */
 	u32 preboot_debug_mode_ext; /* 0x144 */
-	u32 reserved[56]; /* 0x148 */
+	u32 ext_phy_cfg1; /* 0x148 */
+	/*  Ext PHY MDI pair swap value */
+		#define NVM_CFG1_GLOB_EXT_PHY_MDI_PAIR_SWAP_MASK 0x0000FFFF
+		#define NVM_CFG1_GLOB_EXT_PHY_MDI_PAIR_SWAP_OFFSET 0
+	u32 reserved[55]; /* 0x14C */
 };
 
 struct nvm_cfg1_path {
@@ -1259,6 +1262,7 @@ struct nvm_cfg1_port {
 		#define NVM_CFG1_PORT_EXTERNAL_PHY_TYPE_OFFSET 0
 		#define NVM_CFG1_PORT_EXTERNAL_PHY_TYPE_NONE 0x0
 		#define NVM_CFG1_PORT_EXTERNAL_PHY_TYPE_BCM8485X 0x1
+		#define NVM_CFG1_PORT_EXTERNAL_PHY_TYPE_BCM5422X 0x2
 		#define NVM_CFG1_PORT_EXTERNAL_PHY_ADDRESS_MASK 0x0000FF00
 		#define NVM_CFG1_PORT_EXTERNAL_PHY_ADDRESS_OFFSET 8
 	/*  EEE power saving mode */
