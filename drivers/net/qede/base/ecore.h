@@ -361,19 +361,23 @@ enum ecore_db_rec_exec {
 struct ecore_hw_info {
 	/* PCI personality */
 	enum ecore_pci_personality personality;
-#define ECORE_IS_RDMA_PERSONALITY(dev)			    \
-	((dev)->hw_info.personality == ECORE_PCI_ETH_ROCE ||  \
+#define ECORE_IS_RDMA_PERSONALITY(dev) \
+	((dev)->hw_info.personality == ECORE_PCI_ETH_ROCE || \
 	 (dev)->hw_info.personality == ECORE_PCI_ETH_IWARP || \
 	 (dev)->hw_info.personality == ECORE_PCI_ETH_RDMA)
-#define ECORE_IS_ROCE_PERSONALITY(dev)			   \
+#define ECORE_IS_ROCE_PERSONALITY(dev) \
 	((dev)->hw_info.personality == ECORE_PCI_ETH_ROCE || \
 	 (dev)->hw_info.personality == ECORE_PCI_ETH_RDMA)
-#define ECORE_IS_IWARP_PERSONALITY(dev)			    \
+#define ECORE_IS_IWARP_PERSONALITY(dev) \
 	((dev)->hw_info.personality == ECORE_PCI_ETH_IWARP || \
 	 (dev)->hw_info.personality == ECORE_PCI_ETH_RDMA)
-#define ECORE_IS_L2_PERSONALITY(dev)		      \
+#define ECORE_IS_L2_PERSONALITY(dev) \
 	((dev)->hw_info.personality == ECORE_PCI_ETH || \
 	 ECORE_IS_RDMA_PERSONALITY(dev))
+#define ECORE_IS_FCOE_PERSONALITY(dev) \
+	((dev)->hw_info.personality == ECORE_PCI_FCOE)
+#define ECORE_IS_ISCSI_PERSONALITY(dev) \
+	((dev)->hw_info.personality == ECORE_PCI_ISCSI)
 
 	/* Resource Allocation scheme results */
 	u32 resc_start[ECORE_MAX_RESC];
