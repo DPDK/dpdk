@@ -3419,12 +3419,13 @@ static void ecore_iov_vf_mbx_ucast_filter(struct ecore_hwfn *p_hwfn,
 		goto out;
 	}
 
-	/* Update shadow copy of the VF configuration */
+	/* Update shadow copy of the VF configuration. In case shadow indicates
+	 * the action should be blocked return success to VF to imitate the
+	 * firmware behaviour in such case.
+	 */
 	if (ecore_iov_vf_update_unicast_shadow(p_hwfn, vf, &params) !=
-	    ECORE_SUCCESS) {
-		status = PFVF_STATUS_FAILURE;
+	    ECORE_SUCCESS)
 		goto out;
-	}
 
 	/* Determine if the unicast filtering is acceptible by PF */
 	if ((p_bulletin->valid_bitmap & (1 << VLAN_ADDR_FORCED)) &&
