@@ -3206,8 +3206,8 @@ static void ecore_iov_vf_mbx_vport_update(struct ecore_hwfn *p_hwfn,
 				   "Upper-layer prevents said VF"
 				   " configuration\n");
 		else
-			DP_NOTICE(p_hwfn, true,
-				  "No feature tlvs found for vport update\n");
+			DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
+				   "No feature tlvs found for vport update\n");
 		status = PFVF_STATUS_NOT_SUPPORTED;
 		goto out;
 	}

@@ -1164,6 +1164,9 @@ ecore_dcbx_set_local_params(struct ecore_hwfn *p_hwfn,
 		local_admin->config = DCBX_CONFIG_VERSION_DISABLED;
 	}
 
+	DP_VERBOSE(p_hwfn, ECORE_MSG_DCB, "Dcbx version = %d\n",
+		   local_admin->config);
+
 	if (params->override_flags & ECORE_DCBX_OVERRIDE_PFC_CFG)
 		ecore_dcbx_set_pfc_data(p_hwfn, &local_admin->features.pfc,
 					&params->config.params);

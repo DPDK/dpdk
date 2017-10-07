@@ -744,10 +744,10 @@ ecore_dmae_execute_sub_operation(struct ecore_hwfn *p_hwfn,
 
 	if (ecore_status != ECORE_SUCCESS) {
 		DP_NOTICE(p_hwfn, ECORE_MSG_HW,
-			  "ecore_dmae_host2grc: Wait Failed. source_addr"
-			  " 0x%lx, grc_addr 0x%lx, size_in_dwords 0x%x\n",
+			  "Wait Failed. source_addr 0x%lx, grc_addr 0x%lx, size_in_dwords 0x%x, intermediate buffer 0x%lx.\n",
 			  (unsigned long)src_addr, (unsigned long)dst_addr,
-			  length_dw);
+			  length_dw,
+			  (unsigned long)p_hwfn->dmae_info.intermediate_buffer_phys_addr);
 		return ecore_status;
 	}
 

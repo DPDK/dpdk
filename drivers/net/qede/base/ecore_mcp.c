@@ -447,6 +447,24 @@ static void ecore_mcp_cmd_set_blocking(struct ecore_hwfn *p_hwfn,
 		block_cmd ? "Block" : "Unblock");
 }
 
+void ecore_mcp_print_cpu_info(struct ecore_hwfn *p_hwfn,
+			      struct ecore_ptt *p_ptt)
+{
+	u32 cpu_mode, cpu_state, cpu_pc_0, cpu_pc_1, cpu_pc_2;
+
+	cpu_mode = ecore_rd(p_hwfn, p_ptt, MCP_REG_CPU_MODE);
+	cpu_state = ecore_rd(p_hwfn, p_ptt, MCP_REG_CPU_STATE);
+	cpu_pc_0 = ecore_rd(p_hwfn, p_ptt, MCP_REG_CPU_PROGRAM_COUNTER);
+	OSAL_UDELAY(CHIP_MCP_RESP_ITER_US);
+	cpu_pc_1 = ecore_rd(p_hwfn, p_ptt, MCP_REG_CPU_PROGRAM_COUNTER);
+	OSAL_UDELAY(CHIP_MCP_RESP_ITER_US);
+	cpu_pc_2 = ecore_rd(p_hwfn, p_ptt, MCP_REG_CPU_PROGRAM_COUNTER);
+
+	DP_NOTICE(p_hwfn, false,
+		  "MCP CPU info: mode 0x%08x, state 0x%08x, pc {0x%08x, 0x%08x, 0x%08x}\n",
+		  cpu_mode, cpu_state, cpu_pc_0, cpu_pc_1, cpu_pc_2);
+}
+
 static enum _ecore_status_t
 _ecore_mcp_cmd_and_union(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 			 struct ecore_mcp_mb_params *p_mb_params,
@@ -526,6 +544,7 @@ _ecore_mcp_cmd_and_union(struct ecore_hwfn *p_hwfn, struct ecore_ptt *p_ptt,
 		DP_NOTICE(p_hwfn, false,
 			  "The MFW failed to respond to command 0x%08x [param 0x%08x].\n",
 			  p_mb_params->cmd, p_mb_params->param);
+		ecore_mcp_print_cpu_info(p_hwfn, p_ptt);
 
 		OSAL_SPIN_LOCK(&p_hwfn->mcp_info->cmd_lock);
 		ecore_mcp_cmd_del_elem(p_hwfn, p_cmd_elem);

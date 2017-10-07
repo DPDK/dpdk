@@ -130,14 +130,20 @@ ecore_send_msg2pf(struct ecore_hwfn *p_hwfn,
 	}
 
 	if (!*done) {
-		DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
-			   "VF <-- PF Timeout [Type %d]\n",
-			   p_req->first_tlv.tl.type);
+		DP_NOTICE(p_hwfn, true,
+			  "VF <-- PF Timeout [Type %d]\n",
+			  p_req->first_tlv.tl.type);
 		rc = ECORE_TIMEOUT;
 	} else {
-		DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
-			   "PF response: %d [Type %d]\n",
-			   *done, p_req->first_tlv.tl.type);
+		if ((*done != PFVF_STATUS_SUCCESS) &&
+		    (*done != PFVF_STATUS_NO_RESOURCE))
+			DP_NOTICE(p_hwfn, false,
+				  "PF response: %d [Type %d]\n",
+				  *done, p_req->first_tlv.tl.type);
+		else
+			DP_VERBOSE(p_hwfn, ECORE_MSG_IOV,
+				   "PF response: %d [Type %d]\n",
+				   *done, p_req->first_tlv.tl.type);
 	}
 
 	return rc;
