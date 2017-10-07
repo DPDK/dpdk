@@ -41,10 +41,7 @@
 #define TM_ELEM_SIZE	4
 
 /* ILT constants */
-/* If for some reason, HW P size is modified to be less than 32K,
- * special handling needs to be made for CDU initialization
- */
-#define ILT_DEFAULT_HW_P_SIZE	3
+#define ILT_DEFAULT_HW_P_SIZE	4
 
 #define ILT_PAGE_IN_BYTES(hw_p_size)	(1U << ((hw_p_size) + 12))
 #define ILT_CFG_REG(cli, reg)		PSWRQ2_REG_##cli##_##reg##_RT_OFFSET
@@ -1159,7 +1156,7 @@ enum _ecore_status_t ecore_cxt_mngr_alloc(struct ecore_hwfn *p_hwfn)
 	clients[ILT_CLI_TSDM].last.reg  = ILT_CFG_REG(TSDM, LAST_ILT);
 	clients[ILT_CLI_TSDM].p_size.reg = ILT_CFG_REG(TSDM, P_SIZE);
 
-	/* default ILT page size for all clients is 32K */
+	/* default ILT page size for all clients is 64K */
 	for (i = 0; i < ILT_CLI_MAX; i++)
 		p_mngr->clients[i].p_size.val = ILT_DEFAULT_HW_P_SIZE;
 
