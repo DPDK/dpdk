@@ -960,6 +960,52 @@ Please note that the large value of ``cycles`` may cause the poor TCP/IP
 stack performance. Because the GROed packets are delayed to arrive the
 stack, thus causing more duplicated ACKs and TCP retransmissions.
 
+set port - gso
+~~~~~~~~~~~~~~
+
+Toggle per-port GSO support in ``csum`` forwarding engine::
+
+   testpmd> set port <port_id> gso on|off
+
+If enabled, the csum forwarding engine will perform GSO on supported IPv4
+packets, transmitted on the given port.
+
+If disabled, packets transmitted on the given port will not undergo GSO.
+By default, GSO is disabled for all ports.
+
+.. note::
+
+   When GSO is enabled on a port, supported IPv4 packets transmitted on that
+   port undergo GSO. Afterwards, the segmented packets are represented by
+   multi-segment mbufs; however, the csum forwarding engine doesn't calculation
+   of checksums for GSO'd segments in SW. As a result, if users want correct
+   checksums in GSO segments, they should enable HW checksum calculation for
+   GSO-enabled ports.
+
+   For example, HW checksum calculation for VxLAN GSO'd packets may be enabled
+   by setting the following options in the csum forwarding engine:
+
+   testpmd> csum set outer_ip hw <port_id>
+
+   testpmd> csum set ip hw <port_id>
+
+   testpmd> csum set tcp hw <port_id>
+
+set gso segsz
+~~~~~~~~~~~~~
+
+Set the maximum GSO segment size (measured in bytes), which includes the
+packet header and the packet payload for GSO-enabled ports (global)::
+
+   testpmd> set gso segsz <length>
+
+show port - gso
+~~~~~~~~~~~~~~~
+
+Display the status of Generic Segmentation Offload for a given port::
+
+   testpmd> show port <port_id> gso
+
 mac_addr add
 ~~~~~~~~~~~~
 

@@ -2510,6 +2510,30 @@ show_gro(portid_t port_id)
 		printf("Port %u doesn't enable GRO.\n", port_id);
 }
 
+void
+setup_gso(const char *mode, portid_t port_id)
+{
+	if (!rte_eth_dev_is_valid_port(port_id)) {
+		printf("invalid port id %u\n", port_id);
+		return;
+	}
+	if (strcmp(mode, "on") == 0) {
+		if (test_done == 0) {
+			printf("before enabling GSO,"
+					" please stop forwarding first\n");
+			return;
+		}
+		gso_ports[port_id].enable = 1;
+	} else if (strcmp(mode, "off") == 0) {
+		if (test_done == 0) {
+			printf("before disabling GSO,"
+					" please stop forwarding first\n");
+			return;
+		}
+		gso_ports[port_id].enable = 0;
+	}
+}
+
 char*
 list_pkt_forwarding_modes(void)
 {

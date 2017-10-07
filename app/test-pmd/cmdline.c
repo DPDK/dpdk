@@ -438,6 +438,17 @@ static void cmd_help_long_parsed(void *parsed_result,
 			"    Set the cycle to flush GROed packets from"
 			" reassembly tables.\n\n"
 
+			"set port (port_id) gso (on|off)"
+			"    Enable or disable Generic Segmentation Offload in"
+			" csum forwarding engine.\n\n"
+
+			"set gso segsz (length)\n"
+			"    Set max packet length for output GSO segments,"
+			" including packet header and payload.\n\n"
+
+			"show port (port_id) gso\n"
+			"    Show GSO configuration.\n\n"
+
 			"set fwd (%s)\n"
 			"    Set packet forwarding mode.\n\n"
 
@@ -4010,6 +4021,172 @@ cmdline_parse_inst_t cmd_gro_flush = {
 		(void *)&cmd_gro_flush_keyword,
 		(void *)&cmd_gro_flush_flush,
 		(void *)&cmd_gro_flush_cycles,
+		NULL,
+	},
+};
+
+/* *** ENABLE/DISABLE GSO *** */
+struct cmd_gso_enable_result {
+	cmdline_fixed_string_t cmd_set;
+	cmdline_fixed_string_t cmd_port;
+	cmdline_fixed_string_t cmd_keyword;
+	cmdline_fixed_string_t cmd_mode;
+	portid_t cmd_pid;
+};
+
+static void
+cmd_gso_enable_parsed(void *parsed_result,
+		__attribute__((unused)) struct cmdline *cl,
+		__attribute__((unused)) void *data)
+{
+	struct cmd_gso_enable_result *res;
+
+	res = parsed_result;
+	if (!strcmp(res->cmd_keyword, "gso"))
+		setup_gso(res->cmd_mode, res->cmd_pid);
+}
+
+cmdline_parse_token_string_t cmd_gso_enable_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_gso_enable_result,
+			cmd_set, "set");
+cmdline_parse_token_string_t cmd_gso_enable_port =
+	TOKEN_STRING_INITIALIZER(struct cmd_gso_enable_result,
+			cmd_port, "port");
+cmdline_parse_token_string_t cmd_gso_enable_keyword =
+	TOKEN_STRING_INITIALIZER(struct cmd_gso_enable_result,
+			cmd_keyword, "gso");
+cmdline_parse_token_string_t cmd_gso_enable_mode =
+	TOKEN_STRING_INITIALIZER(struct cmd_gso_enable_result,
+			cmd_mode, "on#off");
+cmdline_parse_token_num_t cmd_gso_enable_pid =
+	TOKEN_NUM_INITIALIZER(struct cmd_gso_enable_result,
+			cmd_pid, UINT16);
+
+cmdline_parse_inst_t cmd_gso_enable = {
+	.f = cmd_gso_enable_parsed,
+	.data = NULL,
+	.help_str = "set port <port_id> gso on|off",
+	.tokens = {
+		(void *)&cmd_gso_enable_set,
+		(void *)&cmd_gso_enable_port,
+		(void *)&cmd_gso_enable_pid,
+		(void *)&cmd_gso_enable_keyword,
+		(void *)&cmd_gso_enable_mode,
+		NULL,
+	},
+};
+
+/* *** SET MAX PACKET LENGTH FOR GSO SEGMENTS *** */
+struct cmd_gso_size_result {
+	cmdline_fixed_string_t cmd_set;
+	cmdline_fixed_string_t cmd_keyword;
+	cmdline_fixed_string_t cmd_segsz;
+	uint16_t cmd_size;
+};
+
+static void
+cmd_gso_size_parsed(void *parsed_result,
+		       __attribute__((unused)) struct cmdline *cl,
+		       __attribute__((unused)) void *data)
+{
+	struct cmd_gso_size_result *res = parsed_result;
+
+	if (test_done == 0) {
+		printf("Before setting GSO segsz, please first"
+				" stop fowarding\n");
+		return;
+	}
+
+	if (!strcmp(res->cmd_keyword, "gso") &&
+			!strcmp(res->cmd_segsz, "segsz")) {
+		if (res->cmd_size < RTE_GSO_SEG_SIZE_MIN)
+			printf("gso_size should be larger than %zu."
+					" Please input a legal value\n",
+					RTE_GSO_SEG_SIZE_MIN);
+		else
+			gso_max_segment_size = res->cmd_size;
+	}
+}
+
+cmdline_parse_token_string_t cmd_gso_size_set =
+	TOKEN_STRING_INITIALIZER(struct cmd_gso_size_result,
+				cmd_set, "set");
+cmdline_parse_token_string_t cmd_gso_size_keyword =
+	TOKEN_STRING_INITIALIZER(struct cmd_gso_size_result,
+				cmd_keyword, "gso");
+cmdline_parse_token_string_t cmd_gso_size_segsz =
+	TOKEN_STRING_INITIALIZER(struct cmd_gso_size_result,
+				cmd_segsz, "segsz");
+cmdline_parse_token_num_t cmd_gso_size_size =
+	TOKEN_NUM_INITIALIZER(struct cmd_gso_size_result,
+				cmd_size, UINT16);
+
+cmdline_parse_inst_t cmd_gso_size = {
+	.f = cmd_gso_size_parsed,
+	.data = NULL,
+	.help_str = "set gso segsz <length>",
+	.tokens = {
+		(void *)&cmd_gso_size_set,
+		(void *)&cmd_gso_size_keyword,
+		(void *)&cmd_gso_size_segsz,
+		(void *)&cmd_gso_size_size,
+		NULL,
+	},
+};
+
+/* *** SHOW GSO CONFIGURATION *** */
+struct cmd_gso_show_result {
+	cmdline_fixed_string_t cmd_show;
+	cmdline_fixed_string_t cmd_port;
+	cmdline_fixed_string_t cmd_keyword;
+	portid_t cmd_pid;
+};
+
+static void
+cmd_gso_show_parsed(void *parsed_result,
+		       __attribute__((unused)) struct cmdline *cl,
+		       __attribute__((unused)) void *data)
+{
+	struct cmd_gso_show_result *res = parsed_result;
+
+	if (!rte_eth_dev_is_valid_port(res->cmd_pid)) {
+		printf("invalid port id %u\n", res->cmd_pid);
+		return;
+	}
+	if (!strcmp(res->cmd_keyword, "gso")) {
+		if (gso_ports[res->cmd_pid].enable) {
+			printf("Max GSO'd packet size: %uB\n"
+					"Supported GSO types: TCP/IPv4, "
+					"VxLAN with inner TCP/IPv4 packet, "
+					"GRE with inner TCP/IPv4  packet\n",
+					gso_max_segment_size);
+		} else
+			printf("GSO is not enabled on Port %u\n", res->cmd_pid);
+	}
+}
+
+cmdline_parse_token_string_t cmd_gso_show_show =
+TOKEN_STRING_INITIALIZER(struct cmd_gso_show_result,
+		cmd_show, "show");
+cmdline_parse_token_string_t cmd_gso_show_port =
+TOKEN_STRING_INITIALIZER(struct cmd_gso_show_result,
+		cmd_port, "port");
+cmdline_parse_token_string_t cmd_gso_show_keyword =
+	TOKEN_STRING_INITIALIZER(struct cmd_gso_show_result,
+				cmd_keyword, "gso");
+cmdline_parse_token_num_t cmd_gso_show_pid =
+	TOKEN_NUM_INITIALIZER(struct cmd_gso_show_result,
+				cmd_pid, UINT16);
+
+cmdline_parse_inst_t cmd_gso_show = {
+	.f = cmd_gso_show_parsed,
+	.data = NULL,
+	.help_str = "show port <port_id> gso",
+	.tokens = {
+		(void *)&cmd_gso_show_show,
+		(void *)&cmd_gso_show_port,
+		(void *)&cmd_gso_show_pid,
+		(void *)&cmd_gso_show_keyword,
 		NULL,
 	},
 };
@@ -14723,6 +14900,9 @@ cmdline_parse_ctx_t main_ctx[] = {
 	(cmdline_parse_inst_t *)&cmd_gro_enable,
 	(cmdline_parse_inst_t *)&cmd_gro_flush,
 	(cmdline_parse_inst_t *)&cmd_gro_show,
+	(cmdline_parse_inst_t *)&cmd_gso_enable,
+	(cmdline_parse_inst_t *)&cmd_gso_size,
+	(cmdline_parse_inst_t *)&cmd_gso_show,
 	(cmdline_parse_inst_t *)&cmd_link_flow_control_set,
 	(cmdline_parse_inst_t *)&cmd_link_flow_control_set_rx,
 	(cmdline_parse_inst_t *)&cmd_link_flow_control_set_tx,

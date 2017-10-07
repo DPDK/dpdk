@@ -70,6 +70,8 @@
 #include <rte_string_fns.h>
 #include <rte_flow.h>
 #include <rte_gro.h>
+#include <rte_gso.h>
+
 #include "testpmd.h"
 
 #define IP_DEFTTL  64   /* from RFC 1340. */
@@ -91,6 +93,7 @@
 /* structure that caches offload info for the current packet */
 struct testpmd_offload_info {
 	uint16_t ethertype;
+	uint8_t gso_enable;
 	uint16_t l2_len;
 	uint16_t l3_len;
 	uint16_t l4_len;
@@ -381,6 +384,8 @@ process_inner_cksums(void *l3_hdr, const struct testpmd_offload_info *info,
 				get_udptcp_checksum(l3_hdr, tcp_hdr,
 					info->ethertype);
 		}
+		if (info->gso_enable)
+			ol_flags |= PKT_TX_TCP_SEG;
 	} else if (info->l4_proto == IPPROTO_SCTP) {
 		sctp_hdr = (struct sctp_hdr *)((char *)l3_hdr + info->l3_len);
 		sctp_hdr->cksum = 0;
@@ -627,6 +632,9 @@ static void
 pkt_burst_checksum_forward(struct fwd_stream *fs)
 {
 	struct rte_mbuf *pkts_burst[MAX_PKT_BURST];
+	struct rte_mbuf *gso_segments[GSO_MAX_PKT_BURST];
+	struct rte_gso_ctx *gso_ctx;
+	struct rte_mbuf **tx_pkts_burst;
 	struct rte_port *txp;
 	struct rte_mbuf *m, *p;
 	struct ether_hdr *eth_hdr;
@@ -644,6 +652,8 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 	uint32_t rx_bad_ip_csum;
 	uint32_t rx_bad_l4_csum;
 	struct testpmd_offload_info info;
+	uint16_t nb_segments = 0;
+	int ret;
 
 #ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
 	uint64_t start_tsc;
@@ -673,6 +683,8 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 	memset(&info, 0, sizeof(info));
 	info.tso_segsz = txp->tso_segsz;
 	info.tunnel_tso_segsz = txp->tunnel_tso_segsz;
+	if (gso_ports[fs->tx_port].enable)
+		info.gso_enable = 1;
 
 	for (i = 0; i < nb_rx; i++) {
 		if (likely(i < nb_rx - 1))
@@ -872,13 +884,35 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 		}
 	}
 
+	if (gso_ports[fs->tx_port].enable == 0)
+		tx_pkts_burst = pkts_burst;
+	else {
+		gso_ctx = &(current_fwd_lcore()->gso_ctx);
+		gso_ctx->gso_size = gso_max_segment_size;
+		for (i = 0; i < nb_rx; i++) {
+			ret = rte_gso_segment(pkts_burst[i], gso_ctx,
+					&gso_segments[nb_segments],
+					GSO_MAX_PKT_BURST - nb_segments);
+			if (ret >= 0)
+				nb_segments += ret;
+			else {
+				RTE_LOG(DEBUG, USER1,
+						"Unable to segment packet");
+				rte_pktmbuf_free(pkts_burst[i]);
+			}
+		}
+
+		tx_pkts_burst = gso_segments;
+		nb_rx = nb_segments;
+	}
+
 	nb_prep = rte_eth_tx_prepare(fs->tx_port, fs->tx_queue,
-			pkts_burst, nb_rx);
+			tx_pkts_burst, nb_rx);
 	if (nb_prep != nb_rx)
 		printf("Preparing packet burst to transmit failed: %s\n",
 				rte_strerror(rte_errno));
 
-	nb_tx = rte_eth_tx_burst(fs->tx_port, fs->tx_queue, pkts_burst,
+	nb_tx = rte_eth_tx_burst(fs->tx_port, fs->tx_queue, tx_pkts_burst,
 			nb_prep);
 
 	/*
@@ -889,7 +923,7 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 		while (nb_tx < nb_rx && retry++ < burst_tx_retry_num) {
 			rte_delay_us(burst_tx_delay_time);
 			nb_tx += rte_eth_tx_burst(fs->tx_port, fs->tx_queue,
-					&pkts_burst[nb_tx], nb_rx - nb_tx);
+					&tx_pkts_burst[nb_tx], nb_rx - nb_tx);
 		}
 	}
 	fs->tx_packets += nb_tx;
@@ -902,9 +936,10 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 	if (unlikely(nb_tx < nb_rx)) {
 		fs->fwd_dropped += (nb_rx - nb_tx);
 		do {
-			rte_pktmbuf_free(pkts_burst[nb_tx]);
+			rte_pktmbuf_free(tx_pkts_burst[nb_tx]);
 		} while (++nb_tx < nb_rx);
 	}
+
 #ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
 	end_tsc = rte_rdtsc();
 	core_cycles = (end_tsc - start_tsc);
