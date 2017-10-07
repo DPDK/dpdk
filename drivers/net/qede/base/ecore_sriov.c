@@ -865,6 +865,11 @@ ecore_iov_enable_vf_access(struct ecore_hwfn *p_hwfn,
 	u32 igu_vf_conf = IGU_VF_CONF_FUNC_EN;
 	enum _ecore_status_t rc = ECORE_SUCCESS;
 
+	/* It's possible VF was previously considered malicious -
+	 * clear the indication even if we're only going to disable VF.
+	 */
+	vf->b_malicious = false;
+
 	if (vf->to_disable)
 		return ECORE_SUCCESS;
 
@@ -877,8 +882,6 @@ ecore_iov_enable_vf_access(struct ecore_hwfn *p_hwfn,
 
 	ecore_iov_vf_igu_reset(p_hwfn, p_ptt, vf);
 
-	/* It's possible VF was previously considered malicious */
-	vf->b_malicious = false;
 	rc = ecore_iov_enable_vf_access_msix(p_hwfn, p_ptt,
 					     vf->abs_vf_id, vf->num_sbs);
 	if (rc != ECORE_SUCCESS)
@@ -1397,13 +1400,17 @@ static void ecore_iov_send_response(struct ecore_hwfn *p_hwfn,
 			     (sizeof(union pfvf_tlvs) - sizeof(u64)) / 4,
 			     &params);
 
-	ecore_dmae_host2host(p_hwfn, p_ptt, mbx->reply_phys,
-			     mbx->req_virt->first_tlv.reply_address,
-			     sizeof(u64) / 4, &params);
-
+	/* Once PF copies the rc to the VF, the latter can continue and
+	 * and send an additional message. So we have to make sure the
+	 * channel would be re-set to ready prior to that.
+	 */
 	REG_WR(p_hwfn,
 	       GTT_BAR0_MAP_REG_USDM_RAM +
 	       USTORM_VF_PF_CHANNEL_READY_OFFSET(eng_vf_id), 1);
+
+	ecore_dmae_host2host(p_hwfn, p_ptt, mbx->reply_phys,
+			     mbx->req_virt->first_tlv.reply_address,
+			     sizeof(u64) / 4, &params);
 
 	OSAL_IOV_PF_RESP_TYPE(p_hwfn, p_vf->relative_vf_id, status);
 }
