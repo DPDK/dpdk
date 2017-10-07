@@ -57,6 +57,7 @@ Programmer's Guide
     reorder_lib
     ip_fragment_reassembly_lib
     generic_receive_offload_lib
+    generic_segmentation_offload_lib
     pdump_lib
     multi_proc_support
     kernel_nic_interface
