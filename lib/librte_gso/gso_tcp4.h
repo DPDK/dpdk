@@ -31,67 +31,44 @@
  *   OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <errno.h>
+#ifndef _GSO_TCP4_H_
+#define _GSO_TCP4_H_
 
-#include <rte_log.h>
-#include <rte_ethdev.h>
+#include <stdint.h>
+#include <rte_mbuf.h>
 
-#include "rte_gso.h"
-#include "gso_common.h"
-#include "gso_tcp4.h"
-
-int
-rte_gso_segment(struct rte_mbuf *pkt,
-		const struct rte_gso_ctx *gso_ctx,
+/**
+ * Segment an IPv4/TCP packet. This function doesn't check if the input
+ * packet has correct checksums, and doesn't update checksums for output
+ * GSO segments. Furthermore, it doesn't process IP fragment packets.
+ *
+ * @param pkt
+ *  The packet mbuf to segment.
+ * @param gso_size
+ *  The max length of a GSO segment, measured in bytes.
+ * @param ipid_delta
+ *  The increasing unit of IP ids.
+ * @param direct_pool
+ *  MBUF pool used for allocating direct buffers for output segments.
+ * @param indirect_pool
+ *  MBUF pool used for allocating indirect buffers for output segments.
+ * @param pkts_out
+ *  Pointer array used to store the MBUF addresses of output GSO
+ *  segments, when the function succeeds. If the memory space in
+ *  pkts_out is insufficient, it fails and returns -EINVAL.
+ * @param nb_pkts_out
+ *  The max number of items that 'pkts_out' can keep.
+ *
+ * @return
+ *   - The number of GSO segments filled in pkts_out on success.
+ *   - Return -ENOMEM if run out of memory in MBUF pools.
+ *   - Return -EINVAL for invalid parameters.
+ */
+int gso_tcp4_segment(struct rte_mbuf *pkt,
+		uint16_t gso_size,
+		uint8_t ip_delta,
+		struct rte_mempool *direct_pool,
+		struct rte_mempool *indirect_pool,
 		struct rte_mbuf **pkts_out,
-		uint16_t nb_pkts_out)
-{
-	struct rte_mempool *direct_pool, *indirect_pool;
-	struct rte_mbuf *pkt_seg;
-	uint64_t ol_flags;
-	uint16_t gso_size;
-	uint8_t ipid_delta;
-	int ret = 1;
-
-	if (pkt == NULL || pkts_out == NULL || gso_ctx == NULL ||
-			nb_pkts_out < 1 ||
-			gso_ctx->gso_size < RTE_GSO_SEG_SIZE_MIN ||
-			gso_ctx->gso_types != DEV_TX_OFFLOAD_TCP_TSO)
-		return -EINVAL;
-
-	if (gso_ctx->gso_size >= pkt->pkt_len) {
-		pkt->ol_flags &= (~PKT_TX_TCP_SEG);
-		pkts_out[0] = pkt;
-		return 1;
-	}
-
-	direct_pool = gso_ctx->direct_pool;
-	indirect_pool = gso_ctx->indirect_pool;
-	gso_size = gso_ctx->gso_size;
-	ipid_delta = (gso_ctx->flag != RTE_GSO_FLAG_IPID_FIXED);
-	ol_flags = pkt->ol_flags;
-
-	if (IS_IPV4_TCP(pkt->ol_flags)) {
-		pkt->ol_flags &= (~PKT_TX_TCP_SEG);
-		ret = gso_tcp4_segment(pkt, gso_size, ipid_delta,
-				direct_pool, indirect_pool,
-				pkts_out, nb_pkts_out);
-	} else {
-		pkts_out[0] = pkt;
-		RTE_LOG(DEBUG, GSO, "Unsupported packet type\n");
-		return 1;
-	}
-
-	if (ret > 1) {
-		pkt_seg = pkt;
-		while (pkt_seg) {
-			rte_mbuf_refcnt_update(pkt_seg, -1);
-			pkt_seg = pkt_seg->next;
-		}
-	} else if (ret < 0) {
-		/* Revert the ol_flags in the event of failure. */
-		pkt->ol_flags = ol_flags;
-	}
-
-	return ret;
-}
+		uint16_t nb_pkts_out);
+#endif

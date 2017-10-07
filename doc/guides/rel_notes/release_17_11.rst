@@ -86,6 +86,18 @@ New Features
   See the :ref:`Membership Library <Member_Library>` documentation in
   the Programmers Guide document, for more information.
 
+* **Added the Generic Segmentation Offload Library.**
+
+  Added the Generic Segmentation Offload (GSO) library to enable
+  applications to split large packets (e.g. MTU is 64KB) into small
+  ones (e.g. MTU is 1500B). Supported packet types are:
+
+  * TCP/IPv4 packets.
+
+  The GSO library doesn't check if the input packets have correct
+  checksums, and doesn't update checksums for output packets.
+  Additionally, the GSO library doesn't process IP fragmented packets.
+
 
 Resolved Issues
 ---------------

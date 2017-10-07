@@ -46,6 +46,10 @@ extern "C" {
 #include <stdint.h>
 #include <rte_mbuf.h>
 
+/* Minimum GSO segment size. */
+#define RTE_GSO_SEG_SIZE_MIN (sizeof(struct ether_hdr) + \
+		sizeof(struct ipv4_hdr) + sizeof(struct tcp_hdr) + 1)
+
 /* GSO flags for rte_gso_ctx. */
 #define RTE_GSO_FLAG_IPID_FIXED (1ULL << 0)
 /**< Use fixed IP ids for output GSO segments. Setting
@@ -81,7 +85,8 @@ struct rte_gso_ctx {
 	 */
 	uint16_t gso_size;
 	/**< maximum size of an output GSO segment, including packet
-	 * header and payload, measured in bytes.
+	 * header and payload, measured in bytes. Must exceed
+	 * RTE_GSO_SEG_SIZE_MIN.
 	 */
 };
 
