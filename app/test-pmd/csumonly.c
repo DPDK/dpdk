@@ -631,6 +631,9 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 	struct rte_mbuf *m, *p;
 	struct ether_hdr *eth_hdr;
 	void *l3_hdr = NULL, *outer_l3_hdr = NULL; /* can be IPv4 or IPv6 */
+	void **gro_ctx;
+	uint16_t gro_pkts_num;
+	uint8_t gro_enable;
 	uint16_t nb_rx;
 	uint16_t nb_tx;
 	uint16_t nb_prep;
@@ -657,17 +660,13 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 				 nb_pkt_per_burst);
 	if (unlikely(nb_rx == 0))
 		return;
-	if (unlikely(gro_ports[fs->rx_port].enable))
-		nb_rx = rte_gro_reassemble_burst(pkts_burst,
-				nb_rx,
-				&(gro_ports[fs->rx_port].param));
-
 #ifdef RTE_TEST_PMD_RECORD_BURST_STATS
 	fs->rx_burst_stats.pkt_burst_spread[nb_rx]++;
 #endif
 	fs->rx_packets += nb_rx;
 	rx_bad_ip_csum = 0;
 	rx_bad_l4_csum = 0;
+	gro_enable = gro_ports[fs->rx_port].enable;
 
 	txp = &ports[fs->tx_port];
 	testpmd_ol_flags = txp->tx_ol_flags;
@@ -848,6 +847,28 @@ pkt_burst_checksum_forward(struct fwd_stream *fs)
 			rte_get_tx_ol_flag_list(m->ol_flags, buf, sizeof(buf));
 			printf("tx: flags=%s", buf);
 			printf("\n");
+		}
+	}
+
+	if (unlikely(gro_enable)) {
+		if (gro_flush_cycles == GRO_DEFAULT_FLUSH_CYCLES) {
+			nb_rx = rte_gro_reassemble_burst(pkts_burst, nb_rx,
+					&(gro_ports[fs->rx_port].param));
+		} else {
+			gro_ctx = current_fwd_lcore()->gro_ctx;
+			nb_rx = rte_gro_reassemble(pkts_burst, nb_rx, gro_ctx);
+
+			if (++fs->gro_times >= gro_flush_cycles) {
+				gro_pkts_num = rte_gro_get_pkt_count(gro_ctx);
+				if (gro_pkts_num > MAX_PKT_BURST - nb_rx)
+					gro_pkts_num = MAX_PKT_BURST - nb_rx;
+
+				nb_rx += rte_gro_timeout_flush(gro_ctx, 0,
+						RTE_GRO_TCP_IPV4,
+						&pkts_burst[nb_rx],
+						gro_pkts_num);
+				fs->gro_times = 0;
+			}
 		}
 	}
 

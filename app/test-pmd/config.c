@@ -2428,7 +2428,7 @@ set_tx_pkt_segments(unsigned *seg_lengths, unsigned nb_segs)
 }
 
 void
-setup_gro(const char *mode, uint8_t port_id)
+setup_gro(const char *onoff, portid_t port_id)
 {
 	if (!rte_eth_dev_is_valid_port(port_id)) {
 		printf("invalid port id %u\n", port_id);
@@ -2439,27 +2439,75 @@ setup_gro(const char *mode, uint8_t port_id)
 				" please stop forwarding first\n");
 		return;
 	}
-	if (strcmp(mode, "on") == 0) {
-		if (gro_ports[port_id].enable) {
-			printf("port %u has enabled GRO\n", port_id);
+	if (strcmp(onoff, "on") == 0) {
+		if (gro_ports[port_id].enable != 0) {
+			printf("Port %u has enabled GRO. Please"
+					" disable GRO first\n", port_id);
 			return;
 		}
-		gro_ports[port_id].enable = 1;
-		gro_ports[port_id].param.gro_types = RTE_GRO_TCP_IPV4;
-
-		if (gro_ports[port_id].param.max_flow_num == 0)
+		if (gro_flush_cycles == GRO_DEFAULT_FLUSH_CYCLES) {
+			gro_ports[port_id].param.gro_types = RTE_GRO_TCP_IPV4;
 			gro_ports[port_id].param.max_flow_num =
 				GRO_DEFAULT_FLOW_NUM;
-		if (gro_ports[port_id].param.max_item_per_flow == 0)
 			gro_ports[port_id].param.max_item_per_flow =
 				GRO_DEFAULT_ITEM_NUM_PER_FLOW;
+		}
+		gro_ports[port_id].enable = 1;
 	} else {
 		if (gro_ports[port_id].enable == 0) {
-			printf("port %u has disabled GRO\n", port_id);
+			printf("Port %u has disabled GRO\n", port_id);
 			return;
 		}
 		gro_ports[port_id].enable = 0;
 	}
+}
+
+void
+setup_gro_flush_cycles(uint8_t cycles)
+{
+	if (test_done == 0) {
+		printf("Before change flush interval for GRO,"
+				" please stop forwarding first.\n");
+		return;
+	}
+
+	if (cycles > GRO_MAX_FLUSH_CYCLES || cycles <
+			GRO_DEFAULT_FLUSH_CYCLES) {
+		printf("The flushing cycle be in the range"
+				" of 1 to %u. Revert to the default"
+				" value %u.\n",
+				GRO_MAX_FLUSH_CYCLES,
+				GRO_DEFAULT_FLUSH_CYCLES);
+		cycles = GRO_DEFAULT_FLUSH_CYCLES;
+	}
+
+	gro_flush_cycles = cycles;
+}
+
+void
+show_gro(portid_t port_id)
+{
+	struct rte_gro_param *param;
+	uint32_t max_pkts_num;
+
+	param = &gro_ports[port_id].param;
+
+	if (!rte_eth_dev_is_valid_port(port_id)) {
+		printf("Invalid port id %u.\n", port_id);
+		return;
+	}
+	if (gro_ports[port_id].enable) {
+		printf("GRO type: TCP/IPv4\n");
+		if (gro_flush_cycles == GRO_DEFAULT_FLUSH_CYCLES) {
+			max_pkts_num = param->max_flow_num *
+				param->max_item_per_flow;
+		} else
+			max_pkts_num = MAX_PKT_BURST * GRO_MAX_FLUSH_CYCLES;
+		printf("Max number of packets to perform GRO: %u\n",
+				max_pkts_num);
+		printf("Flushing cycles: %u\n", gro_flush_cycles);
+	} else
+		printf("Port %u doesn't enable GRO.\n", port_id);
 }
 
 char*

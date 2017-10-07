@@ -88,7 +88,6 @@
 #ifdef RTE_LIBRTE_LATENCY_STATS
 #include <rte_latencystats.h>
 #endif
-#include <rte_gro.h>
 
 #include "testpmd.h"
 
@@ -384,6 +383,7 @@ uint8_t bitrate_enabled;
 #endif
 
 struct gro_status gro_ports[RTE_MAX_ETHPORTS];
+uint8_t gro_flush_cycles = GRO_DEFAULT_FLUSH_CYCLES;
 
 /* Forward function declarations */
 static void map_port_queue_stats_mapping_registers(uint8_t pi, struct rte_port *port);
@@ -556,6 +556,7 @@ init_config(void)
 	unsigned int nb_mbuf_per_pool;
 	lcoreid_t  lc_id;
 	uint8_t port_per_socket[RTE_MAX_NUMA_NODES];
+	struct rte_gro_param gro_param;
 
 	memset(port_per_socket,0,RTE_MAX_NUMA_NODES);
 
@@ -657,6 +658,20 @@ init_config(void)
 		rte_exit(EXIT_FAILURE, "FAIL from init_fwd_streams()\n");
 
 	fwd_config_setup();
+
+	/* create a gro context for each lcore */
+	gro_param.gro_types = RTE_GRO_TCP_IPV4;
+	gro_param.max_flow_num = GRO_MAX_FLUSH_CYCLES;
+	gro_param.max_item_per_flow = MAX_PKT_BURST;
+	for (lc_id = 0; lc_id < nb_lcores; lc_id++) {
+		gro_param.socket_id = rte_lcore_to_socket_id(
+				fwd_lcores_cpuids[lc_id]);
+		fwd_lcores[lc_id]->gro_ctx = rte_gro_ctx_create(&gro_param);
+		if (fwd_lcores[lc_id]->gro_ctx == NULL) {
+			rte_exit(EXIT_FAILURE,
+					"rte_gro_ctx_create() failed\n");
+		}
+	}
 }
 
 
@@ -1203,6 +1218,7 @@ stop_packet_forwarding(void)
 #ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
 	uint64_t fwd_cycles;
 #endif
+
 	static const char *acc_stats_border = "+++++++++++++++";
 
 	if (test_done) {
@@ -1293,6 +1309,7 @@ stop_packet_forwarding(void)
 
 		fwd_port_stats_display(pt_id, &stats);
 	}
+
 	printf("\n  %s Accumulated forward statistics for all ports"
 	       "%s\n",
 	       acc_stats_border, acc_stats_border);

@@ -906,12 +906,12 @@ Display the status of TCP Segmentation Offload::
 
    testpmd> tso show (port_id)
 
-gro
-~~~
+set port - gro
+~~~~~~~~~~~~~~
 
 Enable or disable GRO in ``csum`` forwarding engine::
 
-   testpmd> gro (on|off) (port_id)
+   testpmd> set port <port_id> gro on|off
 
 If enabled, the csum forwarding engine will perform GRO on the TCP/IPv4
 packets received from the given port.
@@ -922,23 +922,43 @@ GRO. By default, GRO is disabled for all ports.
 .. note::
 
    When enable GRO for a port, TCP/IPv4 packets received from the port
-   will be performed GRO. After GRO, the merged packets are multi-segments.
-   But csum forwarding engine doesn't support to calculate TCP checksum
-   for multi-segment packets in SW. So please select TCP HW checksum
-   calculation for the port which GROed packets are transmitted to.
+   will be performed GRO. After GRO, all merged packets have bad
+   checksums, since the GRO library doesn't re-calculate checksums for
+   the merged packets. Therefore, if users want the merged packets to
+   have correct checksums, please select HW IP checksum calculation and
+   HW TCP checksum calculation for the port which the merged packets are
+   transmitted to.
 
-gro set
-~~~~~~~
+show port - gro
+~~~~~~~~~~~~~~~
 
-Set max flow number and max packet number per-flow for GRO::
+Display GRO configuration for a given port::
 
-   testpmd> gro set (max_flow_num) (max_item_num_per_flow) (port_id)
+   testpmd> show port <port_id> gro
 
-The product of ``max_flow_num`` and ``max_item_num_per_flow`` is the max
-number of packets a GRO table can store.
+set gro flush
+~~~~~~~~~~~~~
 
-If current packet number is greater than or equal to the max value, GRO
-will stop processing incoming packets.
+Set the cycle to flush the GROed packets from reassembly tables::
+
+   testpmd> set gro flush <cycles>
+
+When enable GRO, the csum forwarding engine performs GRO on received
+packets, and the GROed packets are stored in reassembly tables. Users
+can use this command to determine when the GROed packets are flushed
+from the reassembly tables.
+
+The ``cycles`` is measured in GRO operation times. The csum forwarding
+engine flushes the GROed packets from the tables every ``cycles`` GRO
+operations.
+
+By default, the value of ``cycles`` is 1, which means flush GROed packets
+from the reassembly tables as soon as one GRO operation finishes. The value
+of ``cycles`` should be in the range of 1 to ``GRO_MAX_FLUSH_CYCLES``.
+
+Please note that the large value of ``cycles`` may cause the poor TCP/IP
+stack performance. Because the GROed packets are delayed to arrive the
+stack, thus causing more duplicated ACKs and TCP retransmissions.
 
 mac_addr add
 ~~~~~~~~~~~~

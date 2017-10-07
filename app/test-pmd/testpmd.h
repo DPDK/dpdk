@@ -120,6 +120,7 @@ struct fwd_stream {
 	unsigned int fwd_dropped; /**< received packets not forwarded */
 	unsigned int rx_bad_ip_csum ; /**< received packets has bad ip checksum */
 	unsigned int rx_bad_l4_csum ; /**< received packets has bad l4 checksum */
+	unsigned int gro_times;	/**< GRO operation times */
 #ifdef RTE_TEST_PMD_RECORD_CORE_CYCLES
 	uint64_t     core_cycles; /**< used for RX and TX processing */
 #endif
@@ -206,6 +207,7 @@ struct rte_port {
  */
 struct fwd_lcore {
 	struct rte_mempool *mbp; /**< The mbuf pool to use by this core */
+	void *gro_ctx;		/**< GRO context */
 	streamid_t stream_idx;   /**< index of 1st stream in "fwd_streams" */
 	streamid_t stream_nb;    /**< number of streams in "fwd_streams" */
 	lcoreid_t  cpuid_idx;    /**< index of logical core in CPU id table */
@@ -434,13 +436,19 @@ extern struct ether_addr peer_eth_addrs[RTE_MAX_ETHPORTS];
 extern uint32_t burst_tx_delay_time; /**< Burst tx delay time(us) for mac-retry. */
 extern uint32_t burst_tx_retry_num;  /**< Burst tx retry number for mac-retry. */
 
-#define GRO_DEFAULT_FLOW_NUM 4
-#define GRO_DEFAULT_ITEM_NUM_PER_FLOW DEF_PKT_BURST
+#define GRO_DEFAULT_ITEM_NUM_PER_FLOW 32
+#define GRO_DEFAULT_FLOW_NUM (RTE_GRO_MAX_BURST_ITEM_NUM / \
+		GRO_DEFAULT_ITEM_NUM_PER_FLOW)
+
+#define GRO_DEFAULT_FLUSH_CYCLES 1
+#define GRO_MAX_FLUSH_CYCLES 4
+
 struct gro_status {
 	struct rte_gro_param param;
 	uint8_t enable;
 };
 extern struct gro_status gro_ports[RTE_MAX_ETHPORTS];
+extern uint8_t gro_flush_cycles;
 
 static inline unsigned int
 lcore_num(void)
@@ -641,7 +649,9 @@ void get_2tuple_filter(uint8_t port_id, uint16_t index);
 void get_5tuple_filter(uint8_t port_id, uint16_t index);
 int rx_queue_id_is_invalid(queueid_t rxq_id);
 int tx_queue_id_is_invalid(queueid_t txq_id);
-void setup_gro(const char *mode, uint8_t port_id);
+void setup_gro(const char *onoff, portid_t port_id);
+void setup_gro_flush_cycles(uint8_t cycles);
+void show_gro(portid_t port_id);
 
 /* Functions to manage the set of filtered Multicast MAC addresses */
 void mcast_addr_add(uint8_t port_id, struct ether_addr *mc_addr);
