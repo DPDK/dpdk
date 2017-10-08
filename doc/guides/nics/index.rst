@@ -57,6 +57,7 @@ Network Interface Controller Drivers
     mlx4
     mlx5
     nfp
+    octeontx
     qede
     sfc_efx
     szedata2
