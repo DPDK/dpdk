@@ -47,6 +47,7 @@
 #include <rte_vdev.h>
 
 #include "octeontx_ethdev.h"
+#include "octeontx_rxtx.h"
 #include "octeontx_logs.h"
 
 struct octeontx_vdev_init_params {
@@ -840,6 +841,26 @@ octeontx_dev_rx_queue_release(void *rxq)
 	rte_free(rxq);
 }
 
+static const uint32_t *
+octeontx_dev_supported_ptypes_get(struct rte_eth_dev *dev)
+{
+	static const uint32_t ptypes[] = {
+		RTE_PTYPE_L3_IPV4,
+		RTE_PTYPE_L3_IPV4_EXT,
+		RTE_PTYPE_L3_IPV6,
+		RTE_PTYPE_L3_IPV6_EXT,
+		RTE_PTYPE_L4_TCP,
+		RTE_PTYPE_L4_UDP,
+		RTE_PTYPE_L4_FRAG,
+		RTE_PTYPE_UNKNOWN
+	};
+
+	if (dev->rx_pkt_burst == octeontx_recv_pkts)
+		return ptypes;
+
+	return NULL;
+}
+
 /* Initialize and register driver with DPDK Application */
 static const struct eth_dev_ops octeontx_dev_ops = {
 	.dev_configure		 = octeontx_dev_configure,
@@ -856,6 +877,7 @@ static const struct eth_dev_ops octeontx_dev_ops = {
 	.tx_queue_release	 = octeontx_dev_tx_queue_release,
 	.rx_queue_setup		 = octeontx_dev_rx_queue_setup,
 	.rx_queue_release	 = octeontx_dev_rx_queue_release,
+	.dev_supported_ptypes_get = octeontx_dev_supported_ptypes_get,
 };
 
 /* Create Ethdev interface per BGX LMAC ports */
