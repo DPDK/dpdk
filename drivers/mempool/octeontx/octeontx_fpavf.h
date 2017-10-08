@@ -58,6 +58,7 @@
 #define PCI_DEVICE_ID_OCTEONTX_FPA_VF	0xA053
 
 #define	FPA_VF_MAX			32
+#define FPA_GPOOL_MASK			(FPA_VF_MAX-1)
 
 /* FPA VF register offsets */
 #define FPA_VF_INT(x)			(0x200ULL | ((x) << 22))
@@ -88,6 +89,10 @@
 #define	FPA_VF0_APERTURE_SHIFT		22
 #define FPA_AURA_SET_SIZE		16
 
+#define FPA_MAX_OBJ_SIZE		(128 * 1024)
+#define OCTEONTX_FPAVF_BUF_OFFSET	128
+
+#define FPAVF_STATIC_ASSERTION(s) _Static_assert(s, #s)
 
 /*
  * In Cavium OcteonTX SoC, all accesses to the device registers are
@@ -126,4 +131,16 @@ do {							\
 } while (0)
 #endif
 
+uintptr_t
+octeontx_fpa_bufpool_create(unsigned int object_size, unsigned int object_count,
+				unsigned int buf_offset, char **va_start,
+				int node);
+int
+octeontx_fpa_bufpool_block_size(uintptr_t handle);
+
+static __rte_always_inline uint8_t
+octeontx_fpa_bufpool_gpool(uintptr_t handle)
+{
+	return (uint8_t)handle & FPA_GPOOL_MASK;
+}
 #endif	/* __OCTEONTX_FPAVF_H__ */

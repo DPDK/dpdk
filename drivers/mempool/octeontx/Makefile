@@ -51,6 +51,7 @@ LIBABIVER := 1
 # all source are stored in SRCS-y
 #
 SRCS-$(CONFIG_RTE_LIBRTE_OCTEONTX_MEMPOOL) += octeontx_fpavf.c
+SRCS-$(CONFIG_RTE_LIBRTE_OCTEONTX_MEMPOOL) += rte_mempool_octeontx.c
 
 # this lib depends upon:
 DEPDIRS-$(CONFIG_RTE_LIBRTE_OCTEONTX_MEMPOOL) += lib/librte_mbuf
