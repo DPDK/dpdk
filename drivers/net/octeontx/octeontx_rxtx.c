@@ -102,3 +102,41 @@ octeontx_xmit_pkts(void *tx_queue, struct rte_mbuf **tx_pkts, uint16_t nb_pkts)
 
 	return count; /* return number of pkts transmitted */
 }
+
+uint16_t __hot
+octeontx_recv_pkts(void *rx_queue, struct rte_mbuf **rx_pkts, uint16_t nb_pkts)
+{
+	struct rte_mbuf *mbuf;
+	struct octeontx_rxq *rxq;
+	struct rte_event ev;
+	octtx_wqe_t *wqe;
+	size_t count;
+	uint16_t valid_event;
+
+	rxq = rx_queue;
+	count = 0;
+	while (count < nb_pkts) {
+		valid_event = rte_event_dequeue_burst(rxq->evdev,
+							rxq->ev_ports, &ev,
+							1, 0);
+		if (!valid_event)
+			break;
+
+		wqe = (octtx_wqe_t *)(uintptr_t)ev.u64;
+		rte_prefetch_non_temporal(wqe);
+
+		/* Get mbuf from wqe */
+		mbuf = (struct rte_mbuf *)((uintptr_t)wqe -
+						OCTTX_PACKET_WQE_SKIP);
+		mbuf->data_off = RTE_PTR_DIFF(wqe->s.w3.addr, mbuf->buf_addr);
+		mbuf->pkt_len = wqe->s.w1.len;
+		mbuf->data_len = mbuf->pkt_len;
+		mbuf->nb_segs = 1;
+		mbuf->ol_flags = 0;
+		mbuf->port = rxq->port_id;
+		rte_mbuf_refcnt_set(mbuf, 1);
+		rx_pkts[count++] = mbuf;
+	}
+
+	return count; /* return number of pkts received */
+}
