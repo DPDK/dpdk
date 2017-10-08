@@ -405,6 +405,120 @@ octeontx_pko_channel_stop(int chanid)
 	return 0;
 }
 
+static inline int
+octeontx_pko_channel_query(struct octeontx_pko_vf_ctl_s *ctl, uint64_t chanid,
+			   void *out, size_t out_elem_size,
+			   size_t dq_num, octeontx_pko_dq_getter_t getter)
+{
+	octeontx_dq_t curr;
+	unsigned int dq_vf;
+	unsigned int dq;
+
+	RTE_SET_USED(out_elem_size);
+	memset(&curr, 0, sizeof(octeontx_dq_t));
+
+	dq_vf = dq_num / PKO_VF_NUM_DQ;
+	dq = dq_num % PKO_VF_NUM_DQ;
+
+	if (!ctl->pko[dq_vf].bar0)
+		return -EINVAL;
+
+	if (ctl->dq_map[dq_num].chanid != ~chanid)
+		return -EINVAL;
+
+	uint8_t *iter = (uint8_t *)out;
+	curr.lmtline_va = ctl->pko[dq_vf].bar2;
+	curr.ioreg_va = (void *)((uintptr_t)ctl->pko[dq_vf].bar0
+		+ PKO_VF_DQ_OP_SEND((dq), 0));
+	curr.fc_status_va = ctl->fc_ctl + dq;
+
+	octeontx_log_dbg("lmtline=%p ioreg_va=%p fc_status_va=%p",
+			 curr.lmtline_va, curr.ioreg_va,
+			 curr.fc_status_va);
+
+	getter(&curr, (void *)iter);
+	return 0;
+}
+
+int
+octeontx_pko_channel_query_dqs(int chanid, void *out, size_t out_elem_size,
+				size_t dq_num, octeontx_pko_dq_getter_t getter)
+{
+	struct octeontx_pko_vf_ctl_s *ctl = &pko_vf_ctl;
+	int dq_cnt;
+
+	dq_cnt = octeontx_pko_channel_query(ctl, chanid, out, out_elem_size,
+						dq_num, getter);
+	if (dq_cnt < 0)
+		return -1;
+
+	return dq_cnt;
+}
+
+int
+octeontx_pko_vf_count(void)
+{
+	int vf_cnt;
+
+	vf_cnt = 0;
+	while (pko_vf_ctl.pko[vf_cnt].bar0)
+		vf_cnt++;
+
+	return vf_cnt;
+}
+
+int
+octeontx_pko_init_fc(const size_t pko_vf_count)
+{
+	int dq_ix;
+	uint64_t reg;
+	uint8_t *vf_bar0;
+	size_t vf_idx;
+	size_t fc_mem_size;
+
+	fc_mem_size = sizeof(struct octeontx_pko_fc_ctl_s) *
+			pko_vf_count * PKO_VF_NUM_DQ;
+
+	pko_vf_ctl.fc_iomem.va = rte_malloc(NULL, fc_mem_size, 128);
+	if (unlikely(!pko_vf_ctl.fc_iomem.va)) {
+		octeontx_log_err("fc_iomem: not enough memory");
+		return -ENOMEM;
+	}
+
+	pko_vf_ctl.fc_iomem.iova = rte_malloc_virt2phy((void *)
+							pko_vf_ctl.fc_iomem.va);
+	pko_vf_ctl.fc_iomem.size = fc_mem_size;
+
+	pko_vf_ctl.fc_ctl =
+		(struct octeontx_pko_fc_ctl_s *)pko_vf_ctl.fc_iomem.va;
+
+	/* Configure Flow-Control feature for all DQs of open VFs */
+	for (vf_idx = 0; vf_idx < pko_vf_count; vf_idx++) {
+		dq_ix = vf_idx * PKO_VF_NUM_DQ;
+
+		vf_bar0 = pko_vf_ctl.pko[vf_idx].bar0;
+
+		reg = (pko_vf_ctl.fc_iomem.iova +
+			(sizeof(struct octeontx_pko_fc_ctl_s) * dq_ix)) & ~0x7F;
+		reg |=			/* BASE */
+		    (0x2 << 3) |	/* HYST_BITS */
+		    (((PKO_DQ_FC_STRIDE == PKO_DQ_FC_STRIDE_16) ? 1 : 0) << 2) |
+		    (0x1 << 0);		/* ENABLE */
+
+		octeontx_write64(reg, vf_bar0 + PKO_VF_DQ_FC_CONFIG);
+
+		octeontx_log_dbg("PKO: bar0 %p VF_idx %d DQ_FC_CFG=%" PRIx64 "",
+				 vf_bar0, (int)vf_idx, reg);
+	}
+	return 0;
+}
+
+void
+octeontx_pko_fc_free(void)
+{
+	rte_free(pko_vf_ctl.fc_iomem.va);
+}
+
 static void
 octeontx_pkovf_setup(void)
 {

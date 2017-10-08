@@ -72,9 +72,26 @@ typedef struct octeontx_dq_s {
 	void *fc_status_va;
 } octeontx_dq_t;
 
+/**
+ * Function for extracting information out of a given DQ.
+ *
+ * It is intended to be used in slow path (configuration) in
+ * octeontx_pko_channel_query().
+ *
+ * @param dq The DQ to extract information from.
+ * @param out Pointer to the user's structure he wants to fill.
+ */
+typedef void (*octeontx_pko_dq_getter_t)(octeontx_dq_t *dq, void *out);
+
+int
+octeontx_pko_channel_query_dqs(int chanid, void *out, size_t out_elem_size,
+			       size_t dq_num, octeontx_pko_dq_getter_t getter);
 int octeontx_pko_channel_open(int dq_base, int dq_num, int chanid);
 int octeontx_pko_channel_close(int chanid);
 int octeontx_pko_channel_start(int chanid);
 int octeontx_pko_channel_stop(int chanid);
+int octeontx_pko_vf_count(void);
+int octeontx_pko_init_fc(const size_t pko_vf_count);
+void octeontx_pko_fc_free(void);
 
 #endif /* __OCTEONTX_PKO_H__ */
