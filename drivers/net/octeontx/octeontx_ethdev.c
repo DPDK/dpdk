@@ -105,6 +105,50 @@ free_kvlist:
 	return ret;
 }
 
+static int
+octeontx_port_open(struct octeontx_nic *nic)
+{
+	octeontx_mbox_bgx_port_conf_t bgx_port_conf;
+	int res;
+
+	res = 0;
+
+	PMD_INIT_FUNC_TRACE();
+
+	res = octeontx_bgx_port_open(nic->port_id, &bgx_port_conf);
+	if (res < 0) {
+		octeontx_log_err("failed to open port %d", res);
+		return res;
+	}
+
+	nic->node = bgx_port_conf.node;
+	nic->port_ena = bgx_port_conf.enable;
+	nic->base_ichan = bgx_port_conf.base_chan;
+	nic->base_ochan = bgx_port_conf.base_chan;
+	nic->num_ichans = bgx_port_conf.num_chans;
+	nic->num_ochans = bgx_port_conf.num_chans;
+	nic->mtu = bgx_port_conf.mtu;
+	nic->bpen = bgx_port_conf.bpen;
+	nic->fcs_strip = bgx_port_conf.fcs_strip;
+	nic->bcast_mode = bgx_port_conf.bcast_mode;
+	nic->mcast_mode = bgx_port_conf.mcast_mode;
+	nic->speed	= bgx_port_conf.mode;
+
+	memcpy(&nic->mac_addr[0], &bgx_port_conf.macaddr[0], ETHER_ADDR_LEN);
+
+	octeontx_log_dbg("port opened %d", nic->port_id);
+	return res;
+}
+
+static void
+octeontx_port_close(struct octeontx_nic *nic)
+{
+	PMD_INIT_FUNC_TRACE();
+
+	octeontx_bgx_port_close(nic->port_id);
+	octeontx_log_dbg("port closed %d", nic->port_id);
+}
+
 static inline void
 devconf_set_default_sane_values(struct rte_event_dev_config *dev_conf,
 				struct rte_event_dev_info *info)
@@ -126,17 +170,135 @@ devconf_set_default_sane_values(struct rte_event_dev_config *dev_conf,
 			info->max_num_events;
 }
 
+/* Initialize and register driver with DPDK Application */
+static const struct eth_dev_ops octeontx_dev_ops = {
+};
+
 /* Create Ethdev interface per BGX LMAC ports */
 static int
 octeontx_create(struct rte_vdev_device *dev, int port, uint8_t evdev,
 			int socket_id)
 {
-	RTE_SET_USED(dev);
-	RTE_SET_USED(port);
-	RTE_SET_USED(evdev);
-	RTE_SET_USED(socket_id);
+	int res;
+	char octtx_name[OCTEONTX_MAX_NAME_LEN];
+	struct octeontx_nic *nic = NULL;
+	struct rte_eth_dev *eth_dev = NULL;
+	struct rte_eth_dev_data *data = NULL;
+	const char *name = rte_vdev_device_name(dev);
 
-	return -ENODEV;
+	PMD_INIT_FUNC_TRACE();
+
+	sprintf(octtx_name, "%s_%d", name, port);
+	if (rte_eal_process_type() != RTE_PROC_PRIMARY) {
+		eth_dev = rte_eth_dev_attach_secondary(octtx_name);
+		if (eth_dev == NULL)
+			return -ENODEV;
+
+		return 0;
+	}
+
+	data = rte_zmalloc_socket(octtx_name, sizeof(*data), 0, socket_id);
+	if (data == NULL) {
+		octeontx_log_err("failed to allocate devdata");
+		res = -ENOMEM;
+		goto err;
+	}
+
+	nic = rte_zmalloc_socket(octtx_name, sizeof(*nic), 0, socket_id);
+	if (nic == NULL) {
+		octeontx_log_err("failed to allocate nic structure");
+		res = -ENOMEM;
+		goto err;
+	}
+
+	nic->port_id = port;
+	nic->evdev = evdev;
+
+	res = octeontx_port_open(nic);
+	if (res < 0)
+		goto err;
+
+	/* Rx side port configuration */
+	res = octeontx_pki_port_open(port);
+	if (res != 0) {
+		octeontx_log_err("failed to open PKI port %d", port);
+		res = -ENODEV;
+		goto err;
+	}
+
+	/* Reserve an ethdev entry */
+	eth_dev = rte_eth_dev_allocate(octtx_name);
+	if (eth_dev == NULL) {
+		octeontx_log_err("failed to allocate rte_eth_dev");
+		res = -ENOMEM;
+		goto err;
+	}
+
+	eth_dev->device = &dev->device;
+	eth_dev->intr_handle = NULL;
+	eth_dev->data->kdrv = RTE_KDRV_NONE;
+	eth_dev->data->numa_node = dev->device.numa_node;
+
+	rte_memcpy(data, (eth_dev)->data, sizeof(*data));
+	data->dev_private = nic;
+
+	data->port_id = eth_dev->data->port_id;
+	snprintf(data->name, sizeof(data->name), "%s", eth_dev->data->name);
+
+	nic->ev_queues = 1;
+	nic->ev_ports = 1;
+
+	data->dev_link.link_status = ETH_LINK_DOWN;
+	data->dev_started = 0;
+	data->promiscuous = 0;
+	data->all_multicast = 0;
+	data->scattered_rx = 0;
+
+	data->mac_addrs = rte_zmalloc_socket(octtx_name, ETHER_ADDR_LEN, 0,
+							socket_id);
+	if (data->mac_addrs == NULL) {
+		octeontx_log_err("failed to allocate memory for mac_addrs");
+		res = -ENOMEM;
+		goto err;
+	}
+
+	eth_dev->data = data;
+	eth_dev->dev_ops = &octeontx_dev_ops;
+
+	/* Finally save ethdev pointer to the NIC structure */
+	nic->dev = eth_dev;
+
+	if (nic->port_id != data->port_id) {
+		octeontx_log_err("eth_dev->port_id (%d) is diff to orig (%d)",
+				data->port_id, nic->port_id);
+		res = -EINVAL;
+		goto err;
+	}
+
+	/* Update port_id mac to eth_dev */
+	memcpy(data->mac_addrs, nic->mac_addr, ETHER_ADDR_LEN);
+
+	PMD_INIT_LOG(DEBUG, "ethdev info: ");
+	PMD_INIT_LOG(DEBUG, "port %d, port_ena %d ochan %d num_ochan %d tx_q %d",
+				nic->port_id, nic->port_ena,
+				nic->base_ochan, nic->num_ochans,
+				nic->num_tx_queues);
+	PMD_INIT_LOG(DEBUG, "speed %d mtu %d", nic->speed, nic->mtu);
+
+	return data->port_id;
+
+err:
+	if (port)
+		octeontx_port_close(nic);
+
+	if (eth_dev != NULL) {
+		rte_free(eth_dev->data->mac_addrs);
+		rte_free(data);
+		rte_free(nic);
+		rte_eth_dev_release_port(eth_dev);
+	}
+
+	return res;
 }
 
 /* Un initialize octeontx device */
