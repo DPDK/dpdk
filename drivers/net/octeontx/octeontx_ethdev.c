@@ -160,6 +160,28 @@ octeontx_port_close(struct octeontx_nic *nic)
 	octeontx_log_dbg("port closed %d", nic->port_id);
 }
 
+static void
+octeontx_port_promisc_set(struct octeontx_nic *nic, int en)
+{
+	struct rte_eth_dev *dev;
+	int res;
+
+	res = 0;
+	PMD_INIT_FUNC_TRACE();
+	dev = nic->dev;
+
+	res = octeontx_bgx_port_promisc_set(nic->port_id, en);
+	if (res < 0)
+		octeontx_log_err("failed to set promiscuous mode %d",
+				nic->port_id);
+
+	/* Set proper flag for the mode */
+	dev->data->promiscuous = (en != 0) ? 1 : 0;
+
+	octeontx_log_dbg("port %d : promiscuous mode %s",
+			nic->port_id, en ? "set" : "unset");
+}
+
 static inline void
 devconf_set_default_sane_values(struct rte_event_dev_config *dev_conf,
 				struct rte_event_dev_info *info)
@@ -271,6 +293,24 @@ octeontx_dev_configure(struct rte_eth_dev *dev)
 	nic->pki.initialized = false;
 
 	return 0;
+}
+
+static void
+octeontx_dev_promisc_enable(struct rte_eth_dev *dev)
+{
+	struct octeontx_nic *nic = octeontx_pmd_priv(dev);
+
+	PMD_INIT_FUNC_TRACE();
+	octeontx_port_promisc_set(nic, 1);
+}
+
+static void
+octeontx_dev_promisc_disable(struct rte_eth_dev *dev)
+{
+	struct octeontx_nic *nic = octeontx_pmd_priv(dev);
+
+	PMD_INIT_FUNC_TRACE();
+	octeontx_port_promisc_set(nic, 0);
 }
 
 static inline int
@@ -401,6 +441,8 @@ octeontx_dev_info(struct rte_eth_dev *dev,
 static const struct eth_dev_ops octeontx_dev_ops = {
 	.dev_configure		 = octeontx_dev_configure,
 	.dev_infos_get		 = octeontx_dev_info,
+	.promiscuous_enable	 = octeontx_dev_promisc_enable,
+	.promiscuous_disable	 = octeontx_dev_promisc_disable,
 	.link_update		 = octeontx_dev_link_update,
 };
 
