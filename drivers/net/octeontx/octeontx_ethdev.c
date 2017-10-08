@@ -182,6 +182,38 @@ octeontx_port_promisc_set(struct octeontx_nic *nic, int en)
 			nic->port_id, en ? "set" : "unset");
 }
 
+static void
+octeontx_port_stats(struct octeontx_nic *nic, struct rte_eth_stats *stats)
+{
+	octeontx_mbox_bgx_port_stats_t bgx_stats;
+	int res;
+
+	PMD_INIT_FUNC_TRACE();
+
+	res = octeontx_bgx_port_stats(nic->port_id, &bgx_stats);
+	if (res < 0)
+		octeontx_log_err("failed to get port stats %d", nic->port_id);
+
+	stats->ipackets = bgx_stats.rx_packets;
+	stats->ibytes = bgx_stats.rx_bytes;
+	stats->imissed = bgx_stats.rx_dropped;
+	stats->ierrors = bgx_stats.rx_errors;
+	stats->opackets = bgx_stats.tx_packets;
+	stats->obytes = bgx_stats.tx_bytes;
+	stats->oerrors = bgx_stats.tx_errors;
+
+	octeontx_log_dbg("port%d stats inpkts=%" PRIx64 " outpkts=%" PRIx64 "",
+			nic->port_id, stats->ipackets, stats->opackets);
+}
+
+static void
+octeontx_port_stats_clr(struct octeontx_nic *nic)
+{
+	PMD_INIT_FUNC_TRACE();
+
+	octeontx_bgx_port_stats_clr(nic->port_id);
+}
+
 static inline void
 devconf_set_default_sane_values(struct rte_event_dev_config *dev_conf,
 				struct rte_event_dev_info *info)
@@ -402,6 +434,24 @@ octeontx_dev_link_update(struct rte_eth_dev *dev,
 }
 
 static void
+octeontx_dev_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
+{
+	struct octeontx_nic *nic = octeontx_pmd_priv(dev);
+
+	PMD_INIT_FUNC_TRACE();
+	octeontx_port_stats(nic, stats);
+}
+
+static void
+octeontx_dev_stats_reset(struct rte_eth_dev *dev)
+{
+	struct octeontx_nic *nic = octeontx_pmd_priv(dev);
+
+	PMD_INIT_FUNC_TRACE();
+	octeontx_port_stats_clr(nic);
+}
+
+static void
 octeontx_dev_info(struct rte_eth_dev *dev,
 		struct rte_eth_dev_info *dev_info)
 {
@@ -444,6 +494,8 @@ static const struct eth_dev_ops octeontx_dev_ops = {
 	.promiscuous_enable	 = octeontx_dev_promisc_enable,
 	.promiscuous_disable	 = octeontx_dev_promisc_disable,
 	.link_update		 = octeontx_dev_link_update,
+	.stats_get		 = octeontx_dev_stats_get,
+	.stats_reset		 = octeontx_dev_stats_reset,
 };
 
 /* Create Ethdev interface per BGX LMAC ports */
