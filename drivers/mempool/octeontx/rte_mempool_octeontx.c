@@ -159,6 +159,16 @@ octeontx_fpavf_get_count(const struct rte_mempool *mp)
 	return octeontx_fpa_bufpool_free_count(pool);
 }
 
+static int
+octeontx_fpavf_get_capabilities(const struct rte_mempool *mp,
+				unsigned int *flags)
+{
+	RTE_SET_USED(mp);
+	*flags |= (MEMPOOL_F_CAPA_PHYS_CONTIG |
+			MEMPOOL_F_CAPA_BLK_ALIGNED_OBJECTS);
+	return 0;
+}
+
 static struct rte_mempool_ops octeontx_fpavf_ops = {
 	.name = "octeontx_fpavf",
 	.alloc = octeontx_fpavf_alloc,
@@ -166,7 +176,7 @@ static struct rte_mempool_ops octeontx_fpavf_ops = {
 	.enqueue = octeontx_fpavf_enqueue,
 	.dequeue = octeontx_fpavf_dequeue,
 	.get_count = octeontx_fpavf_get_count,
-	.get_capabilities = NULL,
+	.get_capabilities = octeontx_fpavf_get_capabilities,
 	.register_memory_area = NULL,
 };
 
