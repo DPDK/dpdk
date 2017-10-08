@@ -50,10 +50,16 @@ VPATH += $(SRCDIR)/base
 #
 # all source are stored in SRCS-y
 #
+SRCS-$(CONFIG_RTE_LIBRTE_OCTEONTX_PMD) += octeontx_rxtx.c
 SRCS-$(CONFIG_RTE_LIBRTE_OCTEONTX_PMD) += octeontx_pkovf.c
 SRCS-$(CONFIG_RTE_LIBRTE_OCTEONTX_PMD) += octeontx_pkivf.c
 SRCS-$(CONFIG_RTE_LIBRTE_OCTEONTX_PMD) += octeontx_bgx.c
 SRCS-$(CONFIG_RTE_LIBRTE_OCTEONTX_PMD) += octeontx_ethdev.c
+
+ifeq ($(CONFIG_RTE_TOOLCHAIN_GCC),y)
+CFLAGS_octeontx_rxtx.o += -fno-prefetch-loop-arrays
+endif
+CFLAGS_octeontx_rxtx.o += -O3 -Ofast
 
 LDLIBS += -lrte_eventdev
 LDLIBS += -lrte_pmd_octeontx_ssovf
