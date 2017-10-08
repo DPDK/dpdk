@@ -91,6 +91,12 @@ struct octeontx_nic {
 	uint16_t ev_ports;
 } __rte_cache_aligned;
 
+struct octeontx_txq {
+	uint16_t queue_id;
+	octeontx_dq_t dq;
+	struct rte_eth_dev *eth_dev;
+} __rte_cache_aligned;
+
 struct octeontx_rxq {
 	uint16_t queue_id;
 	uint16_t port_id;

@@ -160,6 +160,14 @@ octeontx_port_close(struct octeontx_nic *nic)
 	octeontx_log_dbg("port closed %d", nic->port_id);
 }
 
+static int
+octeontx_port_stop(struct octeontx_nic *nic)
+{
+	PMD_INIT_FUNC_TRACE();
+
+	return octeontx_bgx_port_stop(nic->port_id);
+}
+
 static void
 octeontx_port_promisc_set(struct octeontx_nic *nic, int en)
 {
@@ -500,6 +508,86 @@ octeontx_dev_info(struct rte_eth_dev *dev,
 	dev_info->tx_offload_capa = DEV_TX_OFFLOAD_MT_LOCKFREE;
 }
 
+static void
+octeontx_dq_info_getter(octeontx_dq_t *dq, void *out)
+{
+	((octeontx_dq_t *)out)->lmtline_va = dq->lmtline_va;
+	((octeontx_dq_t *)out)->ioreg_va = dq->ioreg_va;
+	((octeontx_dq_t *)out)->fc_status_va = dq->fc_status_va;
+}
+
+static int
+octeontx_vf_start_tx_queue(struct rte_eth_dev *dev, struct octeontx_nic *nic,
+				uint16_t qidx)
+{
+	struct octeontx_txq *txq;
+	int res;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (dev->data->tx_queue_state[qidx] == RTE_ETH_QUEUE_STATE_STARTED)
+		return 0;
+
+	txq = dev->data->tx_queues[qidx];
+
+	res = octeontx_pko_channel_query_dqs(nic->base_ochan,
+						&txq->dq,
+						sizeof(octeontx_dq_t),
+						txq->queue_id,
+						octeontx_dq_info_getter);
+	if (res < 0) {
+		res = -EFAULT;
+		goto close_port;
+	}
+
+	dev->data->tx_queue_state[qidx] = RTE_ETH_QUEUE_STATE_STARTED;
+	return res;
+
+close_port:
+	(void)octeontx_port_stop(nic);
+	octeontx_pko_channel_stop(nic->base_ochan);
+	octeontx_pko_channel_close(nic->base_ochan);
+	dev->data->tx_queue_state[qidx] = RTE_ETH_QUEUE_STATE_STOPPED;
+	return res;
+}
+
+static int
+octeontx_dev_tx_queue_start(struct rte_eth_dev *dev, uint16_t qidx)
+{
+	struct octeontx_nic *nic = octeontx_pmd_priv(dev);
+
+	PMD_INIT_FUNC_TRACE();
+	qidx = qidx % PKO_VF_NUM_DQ;
+	return octeontx_vf_start_tx_queue(dev, nic, qidx);
+}
+
+static inline int
+octeontx_vf_stop_tx_queue(struct rte_eth_dev *dev, struct octeontx_nic *nic,
+			  uint16_t qidx)
+{
+	int ret = 0;
+
+	RTE_SET_USED(nic);
+	PMD_INIT_FUNC_TRACE();
+
+	if (dev->data->tx_queue_state[qidx] == RTE_ETH_QUEUE_STATE_STOPPED)
+		return 0;
+
+	dev->data->tx_queue_state[qidx] = RTE_ETH_QUEUE_STATE_STOPPED;
+	return ret;
+}
+
+static int
+octeontx_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t qidx)
+{
+	struct octeontx_nic *nic = octeontx_pmd_priv(dev);
+
+	PMD_INIT_FUNC_TRACE();
+	qidx = qidx % PKO_VF_NUM_DQ;
+
+	return octeontx_vf_stop_tx_queue(dev, nic, qidx);
+}
+
 static int
 octeontx_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 				uint16_t nb_desc, unsigned int socket_id,
@@ -676,6 +764,8 @@ static const struct eth_dev_ops octeontx_dev_ops = {
 	.stats_get		 = octeontx_dev_stats_get,
 	.stats_reset		 = octeontx_dev_stats_reset,
 	.mac_addr_set		 = octeontx_dev_default_mac_addr_set,
+	.tx_queue_start		 = octeontx_dev_tx_queue_start,
+	.tx_queue_stop		 = octeontx_dev_tx_queue_stop,
 	.rx_queue_setup		 = octeontx_dev_rx_queue_setup,
 	.rx_queue_release	 = octeontx_dev_rx_queue_release,
 };
