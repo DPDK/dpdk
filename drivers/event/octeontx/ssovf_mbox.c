@@ -87,6 +87,16 @@ struct mbox_ram_hdr {
 	};
 };
 
+
+static inline void
+mbox_msgcpy(uint8_t *d, const uint8_t *s, uint16_t size)
+{
+	uint16_t i;
+
+	for (i = 0; i < size; i++)
+		d[i] = s[i];
+}
+
 static inline void
 mbox_send_request(struct mbox *m, struct octeontx_mbox_hdr *hdr,
 			const void *txmsg, uint16_t txsize)
@@ -106,7 +116,7 @@ mbox_send_request(struct mbox *m, struct octeontx_mbox_hdr *hdr,
 
 	/* Copy msg body */
 	if (txmsg)
-		memcpy(ram_mbox_msg, txmsg, txsize);
+		mbox_msgcpy(ram_mbox_msg, txmsg, txsize);
 
 	/* Prepare new hdr */
 	new_hdr.chan_state = MBOX_CHAN_STATE_REQ;
@@ -166,7 +176,7 @@ mbox_wait_response(struct mbox *m, struct octeontx_mbox_hdr *hdr,
 
 	len = RTE_MIN(rx_hdr.len, rxsize);
 	if (rxmsg)
-		memcpy(rxmsg, ram_mbox_msg, len);
+		mbox_msgcpy(rxmsg, ram_mbox_msg, len);
 
 	return len;
 
