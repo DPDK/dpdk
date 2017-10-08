@@ -34,6 +34,90 @@
 #include <rte_eal.h>
 #include <rte_pci.h>
 
+#include "octeontx_pkivf.h"
+
+int
+octeontx_pki_port_open(int port)
+{
+	struct octeontx_mbox_hdr hdr;
+	int res;
+
+	hdr.coproc = OCTEONTX_PKI_COPROC;
+	hdr.msg = MBOX_PKI_PORT_OPEN;
+	hdr.vfid = port;
+
+	res = octeontx_ssovf_mbox_send(&hdr, NULL, 0, NULL, 0);
+	if (res < 0)
+		return -EACCES;
+	return res;
+}
+
+int
+octeontx_pki_port_close(int port)
+{
+	struct octeontx_mbox_hdr hdr;
+	int res;
+
+	mbox_pki_port_t ptype;
+	int len = sizeof(mbox_pki_port_t);
+	memset(&ptype, 0, len);
+	ptype.port_type = OCTTX_PORT_TYPE_NET;
+
+	hdr.coproc = OCTEONTX_PKI_COPROC;
+	hdr.msg = MBOX_PKI_PORT_CLOSE;
+	hdr.vfid = port;
+
+	res = octeontx_ssovf_mbox_send(&hdr, &ptype, len, NULL, 0);
+	if (res < 0)
+		return -EACCES;
+
+	return res;
+}
+
+int
+octeontx_pki_port_start(int port)
+{
+	struct octeontx_mbox_hdr hdr;
+	int res;
+
+	mbox_pki_port_t ptype;
+	int len = sizeof(mbox_pki_port_t);
+	memset(&ptype, 0, len);
+	ptype.port_type = OCTTX_PORT_TYPE_NET;
+
+	hdr.coproc = OCTEONTX_PKI_COPROC;
+	hdr.msg = MBOX_PKI_PORT_START;
+	hdr.vfid = port;
+
+	res = octeontx_ssovf_mbox_send(&hdr, &ptype, len, NULL, 0);
+	if (res < 0)
+		return -EACCES;
+
+	return res;
+}
+
+int
+octeontx_pki_port_stop(int port)
+{
+	struct octeontx_mbox_hdr hdr;
+	int res;
+
+	mbox_pki_port_t ptype;
+	int len = sizeof(mbox_pki_port_t);
+	memset(&ptype, 0, len);
+	ptype.port_type = OCTTX_PORT_TYPE_NET;
+
+	hdr.coproc = OCTEONTX_PKI_COPROC;
+	hdr.msg = MBOX_PKI_PORT_STOP;
+	hdr.vfid = port;
+
+	res = octeontx_ssovf_mbox_send(&hdr, &ptype, len, NULL, 0);
+	if (res < 0)
+		return -EACCES;
+
+	return res;
+}
+
 #define PCI_VENDOR_ID_CAVIUM               0x177D
 #define PCI_DEVICE_ID_OCTEONTX_PKI_VF      0xA0DD
 
