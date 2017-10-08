@@ -452,6 +452,19 @@ octeontx_dev_stats_reset(struct rte_eth_dev *dev)
 }
 
 static void
+octeontx_dev_default_mac_addr_set(struct rte_eth_dev *dev,
+					struct ether_addr *addr)
+{
+	struct octeontx_nic *nic = octeontx_pmd_priv(dev);
+	int ret;
+
+	ret = octeontx_bgx_port_mac_set(nic->port_id, addr->addr_bytes);
+	if (ret != 0)
+		octeontx_log_err("failed to set MAC address on port %d",
+				nic->port_id);
+}
+
+static void
 octeontx_dev_info(struct rte_eth_dev *dev,
 		struct rte_eth_dev_info *dev_info)
 {
@@ -496,6 +509,7 @@ static const struct eth_dev_ops octeontx_dev_ops = {
 	.link_update		 = octeontx_dev_link_update,
 	.stats_get		 = octeontx_dev_stats_get,
 	.stats_reset		 = octeontx_dev_stats_reset,
+	.mac_addr_set		 = octeontx_dev_default_mac_addr_set,
 };
 
 /* Create Ethdev interface per BGX LMAC ports */
