@@ -34,6 +34,7 @@
 #define	__OCTEONTX_FPAVF_H__
 
 #include <rte_debug.h>
+#include <rte_io.h>
 
 #ifdef RTE_LIBRTE_OCTEONTX_MEMPOOL_DEBUG
 #define fpavf_log_info(fmt, args...) \
@@ -86,5 +87,43 @@
 
 #define	FPA_VF0_APERTURE_SHIFT		22
 #define FPA_AURA_SET_SIZE		16
+
+
+/*
+ * In Cavium OcteonTX SoC, all accesses to the device registers are
+ * implicitly strongly ordered. So, the relaxed version of IO operation is
+ * safe to use with out any IO memory barriers.
+ */
+#define fpavf_read64 rte_read64_relaxed
+#define fpavf_write64 rte_write64_relaxed
+
+/* ARM64 specific functions */
+#if defined(RTE_ARCH_ARM64)
+#define fpavf_load_pair(val0, val1, addr) ({		\
+			asm volatile(			\
+			"ldp %x[x0], %x[x1], [%x[p1]]"	\
+			:[x0]"=r"(val0), [x1]"=r"(val1) \
+			:[p1]"r"(addr)			\
+			); })
+
+#define fpavf_store_pair(val0, val1, addr) ({		\
+			asm volatile(			\
+			"stp %x[x0], %x[x1], [%x[p1]]"	\
+			::[x0]"r"(val0), [x1]"r"(val1), [p1]"r"(addr) \
+			); })
+#else /* Un optimized functions for building on non arm64 arch */
+
+#define fpavf_load_pair(val0, val1, addr)		\
+do {							\
+	val0 = rte_read64(addr);			\
+	val1 = rte_read64(((uint8_t *)addr) + 8);	\
+} while (0)
+
+#define fpavf_store_pair(val0, val1, addr)		\
+do {							\
+	rte_write64(val0, addr);			\
+	rte_write64(val1, (((uint8_t *)addr) + 8));	\
+} while (0)
+#endif
 
 #endif	/* __OCTEONTX_FPAVF_H__ */
