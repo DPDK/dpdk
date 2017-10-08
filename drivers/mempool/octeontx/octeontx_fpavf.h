@@ -136,6 +136,8 @@ octeontx_fpa_bufpool_create(unsigned int object_size, unsigned int object_count,
 				unsigned int buf_offset, char **va_start,
 				int node);
 int
+octeontx_fpa_bufpool_destroy(uintptr_t handle, int node);
+int
 octeontx_fpa_bufpool_block_size(uintptr_t handle);
 
 static __rte_always_inline uint8_t

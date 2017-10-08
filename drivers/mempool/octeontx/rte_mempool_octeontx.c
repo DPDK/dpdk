@@ -74,10 +74,20 @@ _end:
 	return rc;
 }
 
+static void
+octeontx_fpavf_free(struct rte_mempool *mp)
+{
+	uintptr_t pool;
+
+	pool = (uintptr_t)mp->pool_id;
+
+	octeontx_fpa_bufpool_destroy(pool, mp->socket_id);
+}
+
 static struct rte_mempool_ops octeontx_fpavf_ops = {
 	.name = "octeontx_fpavf",
 	.alloc = octeontx_fpavf_alloc,
-	.free = NULL,
+	.free = octeontx_fpavf_free,
 	.enqueue = NULL,
 	.dequeue = NULL,
 	.get_count = NULL,
