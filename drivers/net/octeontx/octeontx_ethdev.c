@@ -53,6 +53,17 @@ struct octeontx_vdev_init_params {
 	uint8_t	nr_port;
 };
 
+enum octeontx_link_speed {
+	OCTEONTX_LINK_SPEED_SGMII,
+	OCTEONTX_LINK_SPEED_XAUI,
+	OCTEONTX_LINK_SPEED_RXAUI,
+	OCTEONTX_LINK_SPEED_10G_R,
+	OCTEONTX_LINK_SPEED_40G_R,
+	OCTEONTX_LINK_SPEED_RESERVE1,
+	OCTEONTX_LINK_SPEED_QSGMII,
+	OCTEONTX_LINK_SPEED_RESERVE2
+};
+
 /* Parse integer from integer argument */
 static int
 parse_integer_arg(const char *key __rte_unused,
@@ -262,6 +273,94 @@ octeontx_dev_configure(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static inline int
+octeontx_atomic_write_link_status(struct rte_eth_dev *dev,
+				  struct rte_eth_link *link)
+{
+	struct rte_eth_link *dst = &dev->data->dev_link;
+	struct rte_eth_link *src = link;
+
+	if (rte_atomic64_cmpset((uint64_t *)dst, *(uint64_t *)dst,
+		*(uint64_t *)src) == 0)
+		return -1;
+
+	return 0;
+}
+
+static int
+octeontx_port_link_status(struct octeontx_nic *nic)
+{
+	int res;
+
+	PMD_INIT_FUNC_TRACE();
+	res = octeontx_bgx_port_link_status(nic->port_id);
+	if (res < 0) {
+		octeontx_log_err("failed to get port %d link status",
+				nic->port_id);
+		return res;
+	}
+
+	nic->link_up = (uint8_t)res;
+	octeontx_log_dbg("port %d link status %d", nic->port_id, nic->link_up);
+
+	return res;
+}
+
+/*
+ * Return 0 means link status changed, -1 means not changed
+ */
+static int
+octeontx_dev_link_update(struct rte_eth_dev *dev,
+			 int wait_to_complete __rte_unused)
+{
+	struct octeontx_nic *nic = octeontx_pmd_priv(dev);
+	struct rte_eth_link link;
+	int res;
+
+	res = 0;
+	PMD_INIT_FUNC_TRACE();
+
+	res = octeontx_port_link_status(nic);
+	if (res < 0) {
+		octeontx_log_err("failed to request link status %d", res);
+		return res;
+	}
+
+	link.link_status = nic->link_up;
+
+	switch (nic->speed) {
+	case OCTEONTX_LINK_SPEED_SGMII:
+		link.link_speed = ETH_SPEED_NUM_1G;
+		break;
+
+	case OCTEONTX_LINK_SPEED_XAUI:
+		link.link_speed = ETH_SPEED_NUM_10G;
+		break;
+
+	case OCTEONTX_LINK_SPEED_RXAUI:
+	case OCTEONTX_LINK_SPEED_10G_R:
+		link.link_speed = ETH_SPEED_NUM_10G;
+		break;
+	case OCTEONTX_LINK_SPEED_QSGMII:
+		link.link_speed = ETH_SPEED_NUM_5G;
+		break;
+	case OCTEONTX_LINK_SPEED_40G_R:
+		link.link_speed = ETH_SPEED_NUM_40G;
+		break;
+
+	case OCTEONTX_LINK_SPEED_RESERVE1:
+	case OCTEONTX_LINK_SPEED_RESERVE2:
+	default:
+		octeontx_log_err("incorrect link speed %d", nic->speed);
+		break;
+	}
+
+	link.link_duplex = ETH_LINK_AUTONEG;
+	link.link_autoneg = ETH_LINK_SPEED_AUTONEG;
+
+	return octeontx_atomic_write_link_status(dev, &link);
+}
+
 static void
 octeontx_dev_info(struct rte_eth_dev *dev,
 		struct rte_eth_dev_info *dev_info)
@@ -302,6 +401,7 @@ octeontx_dev_info(struct rte_eth_dev *dev,
 static const struct eth_dev_ops octeontx_dev_ops = {
 	.dev_configure		 = octeontx_dev_configure,
 	.dev_infos_get		 = octeontx_dev_info,
+	.link_update		 = octeontx_dev_link_update,
 };
 
 /* Create Ethdev interface per BGX LMAC ports */
