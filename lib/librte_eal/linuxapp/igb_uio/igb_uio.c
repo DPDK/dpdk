@@ -29,6 +29,7 @@
 #include <linux/pci.h>
 #include <linux/uio_driver.h>
 #include <linux/io.h>
+#include <linux/irq.h>
 #include <linux/msi.h>
 #include <linux/version.h>
 #include <linux/slab.h>
