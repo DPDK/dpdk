@@ -53,6 +53,7 @@ VPATH += $(SRCDIR)/base
 SRCS-$(CONFIG_RTE_LIBRTE_OCTEONTX_PMD) += octeontx_pkovf.c
 SRCS-$(CONFIG_RTE_LIBRTE_OCTEONTX_PMD) += octeontx_pkivf.c
 SRCS-$(CONFIG_RTE_LIBRTE_OCTEONTX_PMD) += octeontx_bgx.c
+SRCS-$(CONFIG_RTE_LIBRTE_OCTEONTX_PMD) += octeontx_ethdev.c
 
 LDLIBS += -lrte_eventdev
 LDLIBS += -lrte_pmd_octeontx_ssovf
