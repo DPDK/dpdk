@@ -149,13 +149,23 @@ octeontx_fpavf_dequeue(struct rte_mempool *mp, void **obj_table,
 	return 0;
 }
 
+static unsigned int
+octeontx_fpavf_get_count(const struct rte_mempool *mp)
+{
+	uintptr_t pool;
+
+	pool = (uintptr_t)mp->pool_id;
+
+	return octeontx_fpa_bufpool_free_count(pool);
+}
+
 static struct rte_mempool_ops octeontx_fpavf_ops = {
 	.name = "octeontx_fpavf",
 	.alloc = octeontx_fpavf_alloc,
 	.free = octeontx_fpavf_free,
 	.enqueue = octeontx_fpavf_enqueue,
 	.dequeue = octeontx_fpavf_dequeue,
-	.get_count = NULL,
+	.get_count = octeontx_fpavf_get_count,
 	.get_capabilities = NULL,
 	.register_memory_area = NULL,
 };

@@ -483,6 +483,33 @@ octeontx_fpa_bufpool_block_size(uintptr_t handle)
 	return FPA_CACHE_LINE_2_OBJSZ(res->sz128);
 }
 
+int
+octeontx_fpa_bufpool_free_count(uintptr_t handle)
+{
+	uint64_t cnt, limit, avail;
+	uint8_t gpool;
+	uintptr_t pool_bar;
+
+	if (unlikely(!octeontx_fpa_handle_valid(handle)))
+		return -EINVAL;
+
+	/* get the gpool */
+	gpool = octeontx_fpa_bufpool_gpool(handle);
+
+	/* Get pool bar address from handle */
+	pool_bar = handle & ~(uint64_t)FPA_GPOOL_MASK;
+
+	cnt = fpavf_read64((void *)((uintptr_t)pool_bar +
+				FPA_VF_VHAURA_CNT(gpool)));
+	limit = fpavf_read64((void *)((uintptr_t)pool_bar +
+				FPA_VF_VHAURA_CNT_LIMIT(gpool)));
+
+	avail = fpavf_read64((void *)((uintptr_t)pool_bar +
+				FPA_VF_VHPOOL_AVAILABLE(gpool)));
+
+	return RTE_MIN(avail, (limit - cnt));
+}
+
 uintptr_t
 octeontx_fpa_bufpool_create(unsigned int object_size, unsigned int object_count,
 				unsigned int buf_offset, char **va_start,

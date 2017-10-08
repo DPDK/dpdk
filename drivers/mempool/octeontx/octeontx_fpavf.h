@@ -139,6 +139,8 @@ int
 octeontx_fpa_bufpool_destroy(uintptr_t handle, int node);
 int
 octeontx_fpa_bufpool_block_size(uintptr_t handle);
+int
+octeontx_fpa_bufpool_free_count(uintptr_t handle);
 
 static __rte_always_inline uint8_t
 octeontx_fpa_bufpool_gpool(uintptr_t handle)
