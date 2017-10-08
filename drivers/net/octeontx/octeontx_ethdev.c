@@ -162,6 +162,14 @@ octeontx_port_close(struct octeontx_nic *nic)
 }
 
 static int
+octeontx_port_start(struct octeontx_nic *nic)
+{
+	PMD_INIT_FUNC_TRACE();
+
+	return octeontx_bgx_port_start(nic->port_id);
+}
+
+static int
 octeontx_port_stop(struct octeontx_nic *nic)
 {
 	PMD_INIT_FUNC_TRACE();
@@ -334,6 +342,130 @@ octeontx_dev_configure(struct rte_eth_dev *dev)
 	nic->pki.initialized = false;
 
 	return 0;
+}
+
+static void
+octeontx_dev_close(struct rte_eth_dev *dev)
+{
+	struct octeontx_txq *txq = NULL;
+	struct octeontx_nic *nic = octeontx_pmd_priv(dev);
+	unsigned int i;
+	int ret;
+
+	PMD_INIT_FUNC_TRACE();
+
+	rte_event_dev_close(nic->evdev);
+
+	ret = octeontx_pko_channel_close(nic->base_ochan);
+	if (ret < 0) {
+		octeontx_log_err("failed to close channel %d VF%d %d %d",
+			     nic->base_ochan, nic->port_id, nic->num_tx_queues,
+			     ret);
+	}
+	/* Free txq resources for this port */
+	for (i = 0; i < nic->num_tx_queues; i++) {
+		txq = dev->data->tx_queues[i];
+		if (!txq)
+			continue;
+
+		rte_free(txq);
+	}
+}
+
+static int
+octeontx_dev_start(struct rte_eth_dev *dev)
+{
+	struct octeontx_nic *nic = octeontx_pmd_priv(dev);
+	int ret;
+
+	ret = 0;
+
+	PMD_INIT_FUNC_TRACE();
+	/*
+	 * Tx start
+	 */
+	dev->tx_pkt_burst = octeontx_xmit_pkts;
+	ret = octeontx_pko_channel_start(nic->base_ochan);
+	if (ret < 0) {
+		octeontx_log_err("fail to conf VF%d no. txq %d chan %d ret %d",
+			   nic->port_id, nic->num_tx_queues, nic->base_ochan,
+			   ret);
+		goto error;
+	}
+
+	/*
+	 * Rx start
+	 */
+	dev->rx_pkt_burst = octeontx_recv_pkts;
+	ret = octeontx_pki_port_start(nic->port_id);
+	if (ret < 0) {
+		octeontx_log_err("fail to start Rx on port %d", nic->port_id);
+		goto channel_stop_error;
+	}
+
+	/*
+	 * Start port
+	 */
+	ret = octeontx_port_start(nic);
+	if (ret < 0) {
+		octeontx_log_err("failed start port %d", ret);
+		goto pki_port_stop_error;
+	}
+
+	PMD_TX_LOG(DEBUG, "pko: start channel %d no.of txq %d port %d",
+			nic->base_ochan, nic->num_tx_queues, nic->port_id);
+
+	ret = rte_event_dev_start(nic->evdev);
+	if (ret < 0) {
+		octeontx_log_err("failed to start evdev: ret (%d)", ret);
+		goto pki_port_stop_error;
+	}
+
+	/* Success */
+	return ret;
+
+pki_port_stop_error:
+	octeontx_pki_port_stop(nic->port_id);
+channel_stop_error:
+	octeontx_pko_channel_stop(nic->base_ochan);
+error:
+	return ret;
+}
+
+static void
+octeontx_dev_stop(struct rte_eth_dev *dev)
+{
+	struct octeontx_nic *nic = octeontx_pmd_priv(dev);
+	int ret;
+
+	PMD_INIT_FUNC_TRACE();
+
+	rte_event_dev_stop(nic->evdev);
+
+	ret = octeontx_port_stop(nic);
+	if (ret < 0) {
+		octeontx_log_err("failed to req stop port %d res=%d",
+					nic->port_id, ret);
+		return;
+	}
+
+	ret = octeontx_pki_port_stop(nic->port_id);
+	if (ret < 0) {
+		octeontx_log_err("failed to stop pki port %d res=%d",
+					nic->port_id, ret);
+		return;
+	}
+
+	ret = octeontx_pko_channel_stop(nic->base_ochan);
+	if (ret < 0) {
+		octeontx_log_err("failed to stop channel %d VF%d %d %d",
+			     nic->base_ochan, nic->port_id, nic->num_tx_queues,
+			     ret);
+		return;
+	}
+
+	dev->tx_pkt_burst = NULL;
+	dev->rx_pkt_burst = NULL;
 }
 
 static void
@@ -865,6 +997,9 @@ octeontx_dev_supported_ptypes_get(struct rte_eth_dev *dev)
 static const struct eth_dev_ops octeontx_dev_ops = {
 	.dev_configure		 = octeontx_dev_configure,
 	.dev_infos_get		 = octeontx_dev_info,
+	.dev_close		 = octeontx_dev_close,
+	.dev_start		 = octeontx_dev_start,
+	.dev_stop		 = octeontx_dev_stop,
 	.promiscuous_enable	 = octeontx_dev_promisc_enable,
 	.promiscuous_disable	 = octeontx_dev_promisc_disable,
 	.link_update		 = octeontx_dev_link_update,
@@ -900,6 +1035,8 @@ octeontx_create(struct rte_vdev_device *dev, int port, uint8_t evdev,
 		if (eth_dev == NULL)
 			return -ENODEV;
 
+		eth_dev->tx_pkt_burst = octeontx_xmit_pkts;
+		eth_dev->rx_pkt_burst = octeontx_recv_pkts;
 		return 0;
 	}
 
