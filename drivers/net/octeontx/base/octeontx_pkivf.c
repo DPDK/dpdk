@@ -53,6 +53,65 @@ octeontx_pki_port_open(int port)
 }
 
 int
+octeontx_pki_port_hash_config(int port, pki_hash_cfg_t *hash_cfg)
+{
+	struct octeontx_mbox_hdr hdr;
+	int res;
+
+	mbox_pki_hash_cfg_t h_cfg = *(mbox_pki_hash_cfg_t *)hash_cfg;
+	int len = sizeof(mbox_pki_hash_cfg_t);
+
+	hdr.coproc = OCTEONTX_PKI_COPROC;
+	hdr.msg = MBOX_PKI_PORT_HASH_CONFIG;
+	hdr.vfid = port;
+
+	res = octeontx_ssovf_mbox_send(&hdr, &h_cfg, len, NULL, 0);
+	if (res < 0)
+		return -EACCES;
+
+	return res;
+}
+
+int
+octeontx_pki_port_pktbuf_config(int port, pki_pktbuf_cfg_t *buf_cfg)
+{
+	struct octeontx_mbox_hdr hdr;
+	int res;
+
+	mbox_pki_pktbuf_cfg_t b_cfg = *(mbox_pki_pktbuf_cfg_t *)buf_cfg;
+	int len = sizeof(mbox_pki_pktbuf_cfg_t);
+
+	hdr.coproc = OCTEONTX_PKI_COPROC;
+	hdr.msg = MBOX_PKI_PORT_PKTBUF_CONFIG;
+	hdr.vfid = port;
+
+	res = octeontx_ssovf_mbox_send(&hdr, &b_cfg, len, NULL, 0);
+	if (res < 0)
+		return -EACCES;
+	return res;
+}
+
+int
+octeontx_pki_port_create_qos(int port, pki_qos_cfg_t *qos_cfg)
+{
+	struct octeontx_mbox_hdr hdr;
+	int res;
+
+	mbox_pki_qos_cfg_t q_cfg = *(mbox_pki_qos_cfg_t *)qos_cfg;
+	int len = sizeof(mbox_pki_qos_cfg_t);
+
+	hdr.coproc = OCTEONTX_PKI_COPROC;
+	hdr.msg = MBOX_PKI_PORT_CREATE_QOS;
+	hdr.vfid = port;
+
+	res = octeontx_ssovf_mbox_send(&hdr, &q_cfg, len, NULL, 0);
+	if (res < 0)
+		return -EACCES;
+
+	return res;
+}
+
+int
 octeontx_pki_port_close(int port)
 {
 	struct octeontx_mbox_hdr hdr;
@@ -112,6 +171,27 @@ octeontx_pki_port_stop(int port)
 	hdr.vfid = port;
 
 	res = octeontx_ssovf_mbox_send(&hdr, &ptype, len, NULL, 0);
+	if (res < 0)
+		return -EACCES;
+
+	return res;
+}
+
+int
+octeontx_pki_port_errchk_config(int port, pki_errchk_cfg_t *cfg)
+{
+	struct octeontx_mbox_hdr hdr;
+	int res;
+
+	mbox_pki_errcheck_cfg_t e_cfg;
+	e_cfg = *((mbox_pki_errcheck_cfg_t *)(cfg));
+	int len = sizeof(mbox_pki_errcheck_cfg_t);
+
+	hdr.coproc = OCTEONTX_PKI_COPROC;
+	hdr.msg = MBOX_PKI_PORT_ERRCHK_CONFIG;
+	hdr.vfid = port;
+
+	res = octeontx_ssovf_mbox_send(&hdr, &e_cfg, len, NULL, 0);
 	if (res < 0)
 		return -EACCES;
 
