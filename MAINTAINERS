@@ -340,6 +340,8 @@ Cavium OcteonTX
 M: Santosh Shukla <santosh.shukla@caviumnetworks.com>
 M: Jerin Jacob <jerin.jacob@caviumnetworks.com>
 F: drivers/mempool/octeontx/
+F: drivers/net/octeontx/
+F: doc/guides/nics/features/octeontx.ini
 
 Chelsio cxgbe
 M: Rahul Lakkireddy <rahul.lakkireddy@chelsio.com>
