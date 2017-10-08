@@ -588,6 +588,92 @@ octeontx_dev_tx_queue_stop(struct rte_eth_dev *dev, uint16_t qidx)
 	return octeontx_vf_stop_tx_queue(dev, nic, qidx);
 }
 
+static void
+octeontx_dev_tx_queue_release(void *tx_queue)
+{
+	struct octeontx_txq *txq = tx_queue;
+	int res;
+
+	PMD_INIT_FUNC_TRACE();
+
+	if (txq) {
+		res = octeontx_dev_tx_queue_stop(txq->eth_dev, txq->queue_id);
+		if (res < 0)
+			octeontx_log_err("failed stop tx_queue(%d)\n",
+				   txq->queue_id);
+
+		rte_free(txq);
+	}
+}
+
+static int
+octeontx_dev_tx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
+			    uint16_t nb_desc, unsigned int socket_id,
+			    const struct rte_eth_txconf *tx_conf)
+{
+	struct octeontx_nic *nic = octeontx_pmd_priv(dev);
+	struct octeontx_txq *txq = NULL;
+	uint16_t dq_num;
+	int res = 0;
+
+	RTE_SET_USED(nb_desc);
+	RTE_SET_USED(socket_id);
+	RTE_SET_USED(tx_conf);
+
+	dq_num = (nic->port_id * PKO_VF_NUM_DQ) + qidx;
+
+	/* Socket id check */
+	if (socket_id != (unsigned int)SOCKET_ID_ANY &&
+			socket_id != (unsigned int)nic->node)
+		PMD_TX_LOG(INFO, "socket_id expected %d, configured %d",
+						socket_id, nic->node);
+
+	/* Free memory prior to re-allocation if needed. */
+	if (dev->data->tx_queues[qidx] != NULL) {
+		PMD_TX_LOG(DEBUG, "freeing memory prior to re-allocation %d",
+				qidx);
+		octeontx_dev_tx_queue_release(dev->data->tx_queues[qidx]);
+		dev->data->tx_queues[qidx] = NULL;
+	}
+
+	/* Allocating tx queue data structure */
+	txq = rte_zmalloc_socket("ethdev TX queue", sizeof(struct octeontx_txq),
+				 RTE_CACHE_LINE_SIZE, nic->node);
+	if (txq == NULL) {
+		octeontx_log_err("failed to allocate txq=%d", qidx);
+		res = -ENOMEM;
+		goto err;
+	}
+
+	txq->eth_dev = dev;
+	txq->queue_id = dq_num;
+	dev->data->tx_queues[qidx] = txq;
+	dev->data->tx_queue_state[qidx] = RTE_ETH_QUEUE_STATE_STOPPED;
+
+	res = octeontx_pko_channel_query_dqs(nic->base_ochan,
+						&txq->dq,
+						sizeof(octeontx_dq_t),
+						txq->queue_id,
+						octeontx_dq_info_getter);
+	if (res < 0) {
+		res = -EFAULT;
+		goto err;
+	}
+
+	PMD_TX_LOG(DEBUG, "[%d]:[%d] txq=%p nb_desc=%d lmtline=%p ioreg_va=%p fc_status_va=%p",
+			qidx, txq->queue_id, txq, nb_desc, txq->dq.lmtline_va,
+			txq->dq.ioreg_va,
+			txq->dq.fc_status_va);
+
+	return res;
+
+err:
+	if (txq)
+		rte_free(txq);
+
+	return res;
+}
+
 static int
 octeontx_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
 				uint16_t nb_desc, unsigned int socket_id,
@@ -766,6 +852,8 @@ static const struct eth_dev_ops octeontx_dev_ops = {
 	.mac_addr_set		 = octeontx_dev_default_mac_addr_set,
 	.tx_queue_start		 = octeontx_dev_tx_queue_start,
 	.tx_queue_stop		 = octeontx_dev_tx_queue_stop,
+	.tx_queue_setup		 = octeontx_dev_tx_queue_setup,
+	.tx_queue_release	 = octeontx_dev_tx_queue_release,
 	.rx_queue_setup		 = octeontx_dev_rx_queue_setup,
 	.rx_queue_release	 = octeontx_dev_rx_queue_release,
 };
