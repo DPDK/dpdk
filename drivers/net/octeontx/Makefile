@@ -47,6 +47,11 @@ $(foreach obj, $(OBJS_BASE_DRIVER), $(eval CFLAGS_$(obj)+=$(CFLAGS_BASE_DRIVER))
 
 VPATH += $(SRCDIR)/base
 
+#
+# all source are stored in SRCS-y
+#
+SRCS-$(CONFIG_RTE_LIBRTE_OCTEONTX_PMD) += octeontx_bgx.c
+
 LDLIBS += -lrte_eventdev
 LDLIBS += -lrte_pmd_octeontx_ssovf
 
