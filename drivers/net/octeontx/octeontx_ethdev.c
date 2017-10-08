@@ -170,8 +170,101 @@ devconf_set_default_sane_values(struct rte_event_dev_config *dev_conf,
 			info->max_num_events;
 }
 
+static int
+octeontx_dev_configure(struct rte_eth_dev *dev)
+{
+	struct rte_eth_dev_data *data = dev->data;
+	struct rte_eth_conf *conf = &data->dev_conf;
+	struct rte_eth_rxmode *rxmode = &conf->rxmode;
+	struct rte_eth_txmode *txmode = &conf->txmode;
+	struct octeontx_nic *nic = octeontx_pmd_priv(dev);
+	int ret;
+
+	PMD_INIT_FUNC_TRACE();
+	RTE_SET_USED(conf);
+
+	if (!rte_eal_has_hugepages()) {
+		octeontx_log_err("huge page is not configured");
+		return -EINVAL;
+	}
+
+	if (txmode->mq_mode) {
+		octeontx_log_err("tx mq_mode DCB or VMDq not supported");
+		return -EINVAL;
+	}
+
+	if (rxmode->mq_mode != ETH_MQ_RX_NONE &&
+		rxmode->mq_mode != ETH_MQ_RX_RSS) {
+		octeontx_log_err("unsupported rx qmode %d", rxmode->mq_mode);
+		return -EINVAL;
+	}
+
+	if (!rxmode->hw_strip_crc) {
+		PMD_INIT_LOG(NOTICE, "can't disable hw crc strip");
+		rxmode->hw_strip_crc = 1;
+	}
+
+	if (rxmode->hw_ip_checksum) {
+		PMD_INIT_LOG(NOTICE, "rxcksum not supported");
+		rxmode->hw_ip_checksum = 0;
+	}
+
+	if (rxmode->split_hdr_size) {
+		octeontx_log_err("rxmode does not support split header");
+		return -EINVAL;
+	}
+
+	if (rxmode->hw_vlan_filter) {
+		octeontx_log_err("VLAN filter not supported");
+		return -EINVAL;
+	}
+
+	if (rxmode->hw_vlan_extend) {
+		octeontx_log_err("VLAN extended not supported");
+		return -EINVAL;
+	}
+
+	if (rxmode->enable_lro) {
+		octeontx_log_err("LRO not supported");
+		return -EINVAL;
+	}
+
+	if (conf->link_speeds & ETH_LINK_SPEED_FIXED) {
+		octeontx_log_err("setting link speed/duplex not supported");
+		return -EINVAL;
+	}
+
+	if (conf->dcb_capability_en) {
+		octeontx_log_err("DCB enable not supported");
+		return -EINVAL;
+	}
+
+	if (conf->fdir_conf.mode != RTE_FDIR_MODE_NONE) {
+		octeontx_log_err("flow director not supported");
+		return -EINVAL;
+	}
+
+	nic->num_tx_queues = dev->data->nb_tx_queues;
+
+	ret = octeontx_pko_channel_open(nic->port_id * PKO_VF_NUM_DQ,
+					nic->num_tx_queues,
+					nic->base_ochan);
+	if (ret) {
+		octeontx_log_err("failed to open channel %d no-of-txq %d",
+			   nic->base_ochan, nic->num_tx_queues);
+		return -EFAULT;
+	}
+
+	nic->pki.classifier_enable = false;
+	nic->pki.hash_enable = true;
+	nic->pki.initialized = false;
+
+	return 0;
+}
+
 /* Initialize and register driver with DPDK Application */
 static const struct eth_dev_ops octeontx_dev_ops = {
+	.dev_configure		 = octeontx_dev_configure,
 };
 
 /* Create Ethdev interface per BGX LMAC ports */
