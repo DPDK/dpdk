@@ -50,6 +50,8 @@ VPATH += $(SRCDIR)/base
 #
 # all source are stored in SRCS-y
 #
+SRCS-$(CONFIG_RTE_LIBRTE_OCTEONTX_PMD) += octeontx_pkovf.c
+SRCS-$(CONFIG_RTE_LIBRTE_OCTEONTX_PMD) += octeontx_pkivf.c
 SRCS-$(CONFIG_RTE_LIBRTE_OCTEONTX_PMD) += octeontx_bgx.c
 
 LDLIBS += -lrte_eventdev
