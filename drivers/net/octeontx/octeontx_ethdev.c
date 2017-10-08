@@ -500,6 +500,172 @@ octeontx_dev_info(struct rte_eth_dev *dev,
 	dev_info->tx_offload_capa = DEV_TX_OFFLOAD_MT_LOCKFREE;
 }
 
+static int
+octeontx_dev_rx_queue_setup(struct rte_eth_dev *dev, uint16_t qidx,
+				uint16_t nb_desc, unsigned int socket_id,
+				const struct rte_eth_rxconf *rx_conf,
+				struct rte_mempool *mb_pool)
+{
+	struct octeontx_nic *nic = octeontx_pmd_priv(dev);
+	struct rte_mempool_ops *mp_ops = NULL;
+	struct octeontx_rxq *rxq = NULL;
+	pki_pktbuf_cfg_t pktbuf_conf;
+	pki_hash_cfg_t pki_hash;
+	pki_qos_cfg_t pki_qos;
+	uintptr_t pool;
+	int ret, port;
+	uint8_t gaura;
+	unsigned int ev_queues = (nic->ev_queues * nic->port_id) + qidx;
+	unsigned int ev_ports = (nic->ev_ports * nic->port_id) + qidx;
+
+	RTE_SET_USED(nb_desc);
+
+	memset(&pktbuf_conf, 0, sizeof(pktbuf_conf));
+	memset(&pki_hash, 0, sizeof(pki_hash));
+	memset(&pki_qos, 0, sizeof(pki_qos));
+
+	mp_ops = rte_mempool_get_ops(mb_pool->ops_index);
+	if (strcmp(mp_ops->name, "octeontx_fpavf")) {
+		octeontx_log_err("failed to find octeontx_fpavf mempool");
+		return -ENOTSUP;
+	}
+
+	/* Handle forbidden configurations */
+	if (nic->pki.classifier_enable) {
+		octeontx_log_err("cannot setup queue %d. "
+					"Classifier option unsupported", qidx);
+		return -EINVAL;
+	}
+
+	port = nic->port_id;
+
+	/* Rx deferred start is not supported */
+	if (rx_conf->rx_deferred_start) {
+		octeontx_log_err("rx deferred start not supported");
+		return -EINVAL;
+	}
+
+	/* Verify queue index */
+	if (qidx >= dev->data->nb_rx_queues) {
+		octeontx_log_err("QID %d not supporteded (0 - %d available)\n",
+				qidx, (dev->data->nb_rx_queues - 1));
+		return -ENOTSUP;
+	}
+
+	/* Socket id check */
+	if (socket_id != (unsigned int)SOCKET_ID_ANY &&
+			socket_id != (unsigned int)nic->node)
+		PMD_RX_LOG(INFO, "socket_id expected %d, configured %d",
+						socket_id, nic->node);
+
+	/* Allocating rx queue data structure */
+	rxq = rte_zmalloc_socket("ethdev RX queue", sizeof(struct octeontx_rxq),
+				 RTE_CACHE_LINE_SIZE, nic->node);
+	if (rxq == NULL) {
+		octeontx_log_err("failed to allocate rxq=%d", qidx);
+		return -ENOMEM;
+	}
+
+	if (!nic->pki.initialized) {
+		pktbuf_conf.port_type = 0;
+		pki_hash.port_type = 0;
+		pki_qos.port_type = 0;
+
+		pktbuf_conf.mmask.f_wqe_skip = 1;
+		pktbuf_conf.mmask.f_first_skip = 1;
+		pktbuf_conf.mmask.f_later_skip = 1;
+		pktbuf_conf.mmask.f_mbuff_size = 1;
+		pktbuf_conf.mmask.f_cache_mode = 1;
+
+		pktbuf_conf.wqe_skip = OCTTX_PACKET_WQE_SKIP;
+		pktbuf_conf.first_skip = OCTTX_PACKET_FIRST_SKIP;
+		pktbuf_conf.later_skip = OCTTX_PACKET_LATER_SKIP;
+		pktbuf_conf.mbuff_size = (mb_pool->elt_size -
+					RTE_PKTMBUF_HEADROOM -
+					sizeof(struct rte_mbuf));
+
+		pktbuf_conf.cache_mode = PKI_OPC_MODE_STF2_STT;
+
+		ret = octeontx_pki_port_pktbuf_config(port, &pktbuf_conf);
+		if (ret != 0) {
+			octeontx_log_err("fail to configure pktbuf for port %d",
+					port);
+			rte_free(rxq);
+			return ret;
+		}
+		PMD_RX_LOG(DEBUG, "Port %d Rx pktbuf configured:\n"
+				"\tmbuf_size:\t0x%0x\n"
+				"\twqe_skip:\t0x%0x\n"
+				"\tfirst_skip:\t0x%0x\n"
+				"\tlater_skip:\t0x%0x\n"
+				"\tcache_mode:\t%s\n",
+				port,
+				pktbuf_conf.mbuff_size,
+				pktbuf_conf.wqe_skip,
+				pktbuf_conf.first_skip,
+				pktbuf_conf.later_skip,
+				(pktbuf_conf.cache_mode ==
+						PKI_OPC_MODE_STT) ?
+				"STT" :
+				(pktbuf_conf.cache_mode ==
+						PKI_OPC_MODE_STF) ?
+				"STF" :
+				(pktbuf_conf.cache_mode ==
+						PKI_OPC_MODE_STF1_STT) ?
+				"STF1_STT" : "STF2_STT");
+
+		if (nic->pki.hash_enable) {
+			pki_hash.tag_dlc = 1;
+			pki_hash.tag_slc = 1;
+			pki_hash.tag_dlf = 1;
+			pki_hash.tag_slf = 1;
+			octeontx_pki_port_hash_config(port, &pki_hash);
+		}
+
+		pool = (uintptr_t)mb_pool->pool_id;
+
+		/* Get the gpool Id */
+		gaura = octeontx_fpa_bufpool_gpool(pool);
+
+		pki_qos.qpg_qos = PKI_QPG_QOS_NONE;
+		pki_qos.num_entry = 1;
+		pki_qos.drop_policy = 0;
+		pki_qos.tag_type = 2L;
+		pki_qos.qos_entry[0].port_add = 0;
+		pki_qos.qos_entry[0].gaura = gaura;
+		pki_qos.qos_entry[0].ggrp_ok = ev_queues;
+		pki_qos.qos_entry[0].ggrp_bad = ev_queues;
+		pki_qos.qos_entry[0].grptag_bad = 0;
+		pki_qos.qos_entry[0].grptag_ok = 0;
+
+		ret = octeontx_pki_port_create_qos(port, &pki_qos);
+		if (ret < 0) {
+			octeontx_log_err("failed to create QOS port=%d, q=%d",
+					port, qidx);
+			rte_free(rxq);
+			return ret;
+		}
+		nic->pki.initialized = true;
+	}
+
+	rxq->port_id = nic->port_id;
+	rxq->eth_dev = dev;
+	rxq->queue_id = qidx;
+	rxq->evdev = nic->evdev;
+	rxq->ev_queues = ev_queues;
+	rxq->ev_ports = ev_ports;
+
+	dev->data->rx_queues[qidx] = rxq;
+	dev->data->rx_queue_state[qidx] = RTE_ETH_QUEUE_STATE_STOPPED;
+	return 0;
+}
+
+static void
+octeontx_dev_rx_queue_release(void *rxq)
+{
+	rte_free(rxq);
+}
+
 /* Initialize and register driver with DPDK Application */
 static const struct eth_dev_ops octeontx_dev_ops = {
 	.dev_configure		 = octeontx_dev_configure,
@@ -510,6 +676,8 @@ static const struct eth_dev_ops octeontx_dev_ops = {
 	.stats_get		 = octeontx_dev_stats_get,
 	.stats_reset		 = octeontx_dev_stats_reset,
 	.mac_addr_set		 = octeontx_dev_default_mac_addr_set,
+	.rx_queue_setup		 = octeontx_dev_rx_queue_setup,
+	.rx_queue_release	 = octeontx_dev_rx_queue_release,
 };
 
 /* Create Ethdev interface per BGX LMAC ports */
