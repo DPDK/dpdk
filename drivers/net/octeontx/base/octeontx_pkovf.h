@@ -60,4 +60,21 @@
 #define	PKO_VF_DQ_OP_CLOSE(gdq)		(0x001200 | (gdq) << 17)
 #define	PKO_VF_DQ_OP_QUERY(gdq)		(0x001300 | (gdq) << 17)
 
+/* pko_send_hdr_s + pko_send_link */
+#define PKO_CMD_SZ			(2 << 1)
+#define PKO_SEND_GATHER_SUBDC		(0x0ull << 60)
+#define PKO_SEND_GATHER_LDTYPE(x)	((x) << 58)
+#define PKO_SEND_GATHER_GAUAR(x)	((x) << 24)
+
+typedef struct octeontx_dq_s {
+	void *lmtline_va;
+	void *ioreg_va;
+	void *fc_status_va;
+} octeontx_dq_t;
+
+int octeontx_pko_channel_open(int dq_base, int dq_num, int chanid);
+int octeontx_pko_channel_close(int chanid);
+int octeontx_pko_channel_start(int chanid);
+int octeontx_pko_channel_stop(int chanid);
+
 #endif /* __OCTEONTX_PKO_H__ */
