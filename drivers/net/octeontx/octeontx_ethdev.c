@@ -262,9 +262,46 @@ octeontx_dev_configure(struct rte_eth_dev *dev)
 	return 0;
 }
 
+static void
+octeontx_dev_info(struct rte_eth_dev *dev,
+		struct rte_eth_dev_info *dev_info)
+{
+	RTE_SET_USED(dev);
+
+	/* Autonegotiation may be disabled */
+	dev_info->speed_capa = ETH_LINK_SPEED_FIXED;
+	dev_info->speed_capa |= ETH_LINK_SPEED_10M | ETH_LINK_SPEED_100M |
+			ETH_LINK_SPEED_1G | ETH_LINK_SPEED_10G |
+			ETH_LINK_SPEED_40G;
+
+	dev_info->driver_name = RTE_STR(rte_octeontx_pmd);
+	dev_info->max_mac_addrs = 1;
+	dev_info->max_rx_pktlen = PKI_MAX_PKTLEN;
+	dev_info->max_rx_queues = 1;
+	dev_info->max_tx_queues = PKO_MAX_NUM_DQ;
+	dev_info->min_rx_bufsize = 0;
+	dev_info->pci_dev = NULL;
+
+	dev_info->default_rxconf = (struct rte_eth_rxconf) {
+		.rx_free_thresh = 0,
+		.rx_drop_en = 0,
+	};
+
+	dev_info->default_txconf = (struct rte_eth_txconf) {
+		.tx_free_thresh = 0,
+		.txq_flags =
+			ETH_TXQ_FLAGS_NOMULTSEGS |
+			ETH_TXQ_FLAGS_NOOFFLOADS |
+			ETH_TXQ_FLAGS_NOXSUMS,
+	};
+
+	dev_info->tx_offload_capa = DEV_TX_OFFLOAD_MT_LOCKFREE;
+}
+
 /* Initialize and register driver with DPDK Application */
 static const struct eth_dev_ops octeontx_dev_ops = {
 	.dev_configure		 = octeontx_dev_configure,
+	.dev_infos_get		 = octeontx_dev_info,
 };
 
 /* Create Ethdev interface per BGX LMAC ports */
