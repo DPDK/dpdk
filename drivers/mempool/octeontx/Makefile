@@ -53,6 +53,19 @@ LIBABIVER := 1
 SRCS-$(CONFIG_RTE_LIBRTE_OCTEONTX_MEMPOOL) += octeontx_fpavf.c
 SRCS-$(CONFIG_RTE_LIBRTE_OCTEONTX_MEMPOOL) += rte_mempool_octeontx.c
 
+ifeq ($(CONFIG_RTE_TOOLCHAIN_GCC),y)
+CFLAGS_rte_mempool_octeontx.o += -fno-prefetch-loop-arrays
+
+ifeq ($(shell test $(GCC_VERSION) -ge 46 && echo 1), 1)
+CFLAGS_rte_mempool_octeontx.o += -Ofast
+else
+CFLAGS_rte_mempool_octeontx.o += -O3 -ffast-math
+endif
+
+else
+CFLAGS_rte_mempool_octeontx.o += -Ofast
+endif
+
 # this lib depends upon:
 DEPDIRS-$(CONFIG_RTE_LIBRTE_OCTEONTX_MEMPOOL) += lib/librte_mbuf
 

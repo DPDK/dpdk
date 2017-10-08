@@ -84,12 +84,77 @@ octeontx_fpavf_free(struct rte_mempool *mp)
 	octeontx_fpa_bufpool_destroy(pool, mp->socket_id);
 }
 
+static __rte_always_inline void *
+octeontx_fpa_bufpool_alloc(uintptr_t handle)
+{
+	return (void *)(uintptr_t)fpavf_read64((void *)(handle +
+						FPA_VF_VHAURA_OP_ALLOC(0)));
+}
+
+static __rte_always_inline void
+octeontx_fpa_bufpool_free(uintptr_t handle, void *buf)
+{
+	uint64_t free_addr = FPA_VF_FREE_ADDRS_S(FPA_VF_VHAURA_OP_FREE(0),
+						 0 /* DWB */, 1 /* FABS */);
+
+	fpavf_write64((uintptr_t)buf, (void *)(uintptr_t)(handle + free_addr));
+}
+
+static int
+octeontx_fpavf_enqueue(struct rte_mempool *mp, void * const *obj_table,
+			unsigned int n)
+{
+	uintptr_t pool;
+	unsigned int index;
+
+	pool = (uintptr_t)mp->pool_id;
+	/* Get pool bar address from handle */
+	pool &= ~(uint64_t)FPA_GPOOL_MASK;
+	for (index = 0; index < n; index++, obj_table++)
+		octeontx_fpa_bufpool_free(pool, *obj_table);
+
+	return 0;
+}
+
+static int
+octeontx_fpavf_dequeue(struct rte_mempool *mp, void **obj_table,
+			unsigned int n)
+{
+	unsigned int index;
+	uintptr_t pool;
+	void *obj;
+
+	pool = (uintptr_t)mp->pool_id;
+	/* Get pool bar address from handle */
+	pool &= ~(uint64_t)FPA_GPOOL_MASK;
+	for (index = 0; index < n; index++, obj_table++) {
+		obj = octeontx_fpa_bufpool_alloc(pool);
+		if (obj == NULL) {
+			/*
+			 * Failed to allocate the requested number of objects
+			 * from the pool. Current pool implementation requires
+			 * completing the entire request or returning error
+			 * otherwise.
+			 * Free already allocated buffers to the pool.
+			 */
+			for (; index > 0; index--) {
+				obj_table--;
+				octeontx_fpa_bufpool_free(pool, *obj_table);
+			}
+			return -ENOMEM;
+		}
+		*obj_table = obj;
+	}
+
+	return 0;
+}
+
 static struct rte_mempool_ops octeontx_fpavf_ops = {
 	.name = "octeontx_fpavf",
 	.alloc = octeontx_fpavf_alloc,
 	.free = octeontx_fpavf_free,
-	.enqueue = NULL,
-	.dequeue = NULL,
+	.enqueue = octeontx_fpavf_enqueue,
+	.dequeue = octeontx_fpavf_dequeue,
 	.get_count = NULL,
 	.get_capabilities = NULL,
 	.register_memory_area = NULL,
