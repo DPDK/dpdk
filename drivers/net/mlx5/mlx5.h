@@ -130,7 +130,7 @@ struct priv {
 	/* RX/TX queues. */
 	unsigned int rxqs_n; /* RX queues array size. */
 	unsigned int txqs_n; /* TX queues array size. */
-	struct rxq *(*rxqs)[]; /* RX queues. */
+	struct mlx5_rxq_data *(*rxqs)[]; /* RX queues. */
 	struct txq *(*txqs)[]; /* TX queues. */
 	/* Indirection tables referencing all RX WQs. */
 	struct ibv_rwq_ind_table *(*ind_tables)[];
@@ -290,7 +290,7 @@ int mlx5_flow_flush(struct rte_eth_dev *, struct rte_flow_error *);
 int mlx5_flow_isolate(struct rte_eth_dev *, int, struct rte_flow_error *);
 int priv_flow_start(struct priv *);
 void priv_flow_stop(struct priv *);
-int priv_flow_rxq_in_use(struct priv *, struct rxq *);
+int priv_flow_rxq_in_use(struct priv *, struct mlx5_rxq_data *);
 
 /* mlx5_socket.c */
 

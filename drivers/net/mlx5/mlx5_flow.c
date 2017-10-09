@@ -99,7 +99,7 @@ struct rte_flow {
 	uint32_t mark:1; /**< Set if the flow is marked. */
 	uint32_t drop:1; /**< Drop queue. */
 	uint64_t hash_fields; /**< Fields that participate in the hash. */
-	struct rxq *rxqs[]; /**< Pointer to the queues array. */
+	struct mlx5_rxq_data *rxqs[]; /**< Pointer to the queues array. */
 };
 
 /** Static initializer for items. */
@@ -1105,10 +1105,10 @@ priv_flow_create_action_queue(struct priv *priv,
 		return NULL;
 	}
 	for (i = 0; i < flow->actions.queues_n; ++i) {
-		struct rxq_ctrl *rxq;
+		struct mlx5_rxq_ctrl *rxq;
 
 		rxq = container_of((*priv->rxqs)[flow->actions.queues[i]],
-				   struct rxq_ctrl, rxq);
+				   struct mlx5_rxq_ctrl, rxq);
 		wqs[i] = rxq->wq;
 		rte_flow->rxqs[i] = &rxq->rxq;
 		++rte_flow->rxqs_n;
@@ -1301,7 +1301,7 @@ priv_flow_destroy(struct priv *priv,
 		claim_zero(ibv_destroy_rwq_ind_table(flow->ind_table));
 	if (flow->mark) {
 		struct rte_flow *tmp;
-		struct rxq *rxq;
+		struct mlx5_rxq_data *rxq;
 		uint32_t mark_n = 0;
 		uint32_t queue_n;
 
@@ -1321,7 +1321,7 @@ priv_flow_destroy(struct priv *priv,
 				for (tqueue_n = 0;
 				     tqueue_n < tmp->rxqs_n;
 				     ++tqueue_n) {
-					struct rxq *trxq;
+					struct mlx5_rxq_data *trxq;
 
 					trxq = tmp->rxqs[tqueue_n];
 					if (rxq == trxq)
@@ -1585,7 +1585,7 @@ priv_flow_start(struct priv *priv)
  *   Nonzero if the queue is used by a flow.
  */
 int
-priv_flow_rxq_in_use(struct priv *priv, struct rxq *rxq)
+priv_flow_rxq_in_use(struct priv *priv, struct mlx5_rxq_data *rxq)
 {
 	struct rte_flow *flow;
 

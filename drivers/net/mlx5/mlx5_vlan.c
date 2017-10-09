@@ -137,8 +137,9 @@ mlx5_vlan_filter_set(struct rte_eth_dev *dev, uint16_t vlan_id, int on)
 static void
 priv_vlan_strip_queue_set(struct priv *priv, uint16_t idx, int on)
 {
-	struct rxq *rxq = (*priv->rxqs)[idx];
-	struct rxq_ctrl *rxq_ctrl = container_of(rxq, struct rxq_ctrl, rxq);
+	struct mlx5_rxq_data *rxq = (*priv->rxqs)[idx];
+	struct mlx5_rxq_ctrl *rxq_ctrl =
+		container_of(rxq, struct mlx5_rxq_ctrl, rxq);
 	struct ibv_wq_attr mod;
 	uint16_t vlan_offloads =
 		(on ? IBV_WQ_FLAGS_CVLAN_STRIPPING : 0) |

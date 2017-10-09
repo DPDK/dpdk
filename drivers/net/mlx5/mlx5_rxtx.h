@@ -90,7 +90,7 @@ struct rxq_zip {
 };
 
 /* RX queue descriptor. */
-struct rxq {
+struct mlx5_rxq_data {
 	unsigned int csum:1; /* Enable checksum offloading. */
 	unsigned int csum_l2tun:1; /* Same for L2 tunnels. */
 	unsigned int vlan_strip:1; /* Enable VLAN stripping. */
@@ -122,14 +122,14 @@ struct rxq {
 } __rte_cache_aligned;
 
 /* RX queue control descriptor. */
-struct rxq_ctrl {
+struct mlx5_rxq_ctrl {
 	struct priv *priv; /* Back pointer to private data. */
 	struct ibv_cq *cq; /* Completion Queue. */
 	struct ibv_wq *wq; /* Work Queue. */
 	struct ibv_mr *mr; /* Memory Region (for mp). */
 	struct ibv_comp_channel *channel;
 	unsigned int socket; /* CPU socket ID for allocations. */
-	struct rxq rxq; /* Data path structure. */
+	struct mlx5_rxq_data rxq; /* Data path structure. */
 };
 
 /* Hash RX queue types. */
@@ -294,7 +294,7 @@ int priv_create_hash_rxqs(struct priv *);
 void priv_destroy_hash_rxqs(struct priv *);
 int priv_allow_flow_type(struct priv *, enum hash_rxq_flow_type);
 int priv_rehash_flows(struct priv *);
-void rxq_cleanup(struct rxq_ctrl *);
+void mlx5_rxq_cleanup(struct mlx5_rxq_ctrl *);
 int mlx5_rx_queue_setup(struct rte_eth_dev *, uint16_t, uint16_t, unsigned int,
 			const struct rte_eth_rxconf *, struct rte_mempool *);
 void mlx5_rx_queue_release(void *);
@@ -331,7 +331,7 @@ int mlx5_tx_descriptor_status(void *, uint16_t);
 /* Vectorized version of mlx5_rxtx.c */
 int priv_check_raw_vec_tx_support(struct priv *);
 int priv_check_vec_tx_support(struct priv *);
-int rxq_check_vec_support(struct rxq *);
+int rxq_check_vec_support(struct mlx5_rxq_data *);
 int priv_check_vec_rx_support(struct priv *);
 uint16_t mlx5_tx_burst_raw_vec(void *, struct rte_mbuf **, uint16_t);
 uint16_t mlx5_tx_burst_vec(void *, struct rte_mbuf **, uint16_t);

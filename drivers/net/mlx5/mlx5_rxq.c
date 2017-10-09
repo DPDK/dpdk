@@ -374,10 +374,10 @@ priv_create_hash_rxqs(struct priv *priv)
 		      priv->reta_idx_n);
 	}
 	for (i = 0; (i != priv->reta_idx_n); ++i) {
-		struct rxq_ctrl *rxq_ctrl;
+		struct mlx5_rxq_ctrl *rxq_ctrl;
 
 		rxq_ctrl = container_of((*priv->rxqs)[(*priv->reta_idx)[i]],
-					struct rxq_ctrl, rxq);
+					struct mlx5_rxq_ctrl, rxq);
 		wqs[i] = rxq_ctrl->wq;
 	}
 	/* Get number of hash RX queues to configure. */
@@ -636,7 +636,7 @@ priv_rehash_flows(struct priv *priv)
  *   0 on success, errno value on failure.
  */
 static int
-rxq_alloc_elts(struct rxq_ctrl *rxq_ctrl, unsigned int elts_n)
+rxq_alloc_elts(struct mlx5_rxq_ctrl *rxq_ctrl, unsigned int elts_n)
 {
 	const unsigned int sges_n = 1 << rxq_ctrl->rxq.sges_n;
 	unsigned int i;
@@ -678,7 +678,7 @@ rxq_alloc_elts(struct rxq_ctrl *rxq_ctrl, unsigned int elts_n)
 		(*rxq_ctrl->rxq.elts)[i] = buf;
 	}
 	if (rxq_check_vec_support(&rxq_ctrl->rxq) > 0) {
-		struct rxq *rxq = &rxq_ctrl->rxq;
+		struct mlx5_rxq_data *rxq = &rxq_ctrl->rxq;
 		struct rte_mbuf *mbuf_init = &rxq->fake_mbuf;
 
 		assert(rxq->elts_n == rxq->cqe_n);
@@ -720,9 +720,9 @@ error:
  *   Pointer to RX queue structure.
  */
 static void
-rxq_free_elts(struct rxq_ctrl *rxq_ctrl)
+rxq_free_elts(struct mlx5_rxq_ctrl *rxq_ctrl)
 {
-	struct rxq *rxq = &rxq_ctrl->rxq;
+	struct mlx5_rxq_data *rxq = &rxq_ctrl->rxq;
 	const uint16_t q_n = (1 << rxq->elts_n);
 	const uint16_t q_mask = q_n - 1;
 	uint16_t used = q_n - (rxq->rq_ci - rxq->rq_pi);
@@ -756,7 +756,7 @@ rxq_free_elts(struct rxq_ctrl *rxq_ctrl)
  *   Pointer to RX queue structure.
  */
 void
-rxq_cleanup(struct rxq_ctrl *rxq_ctrl)
+mlx5_rxq_cleanup(struct mlx5_rxq_ctrl *rxq_ctrl)
 {
 	DEBUG("cleaning up %p", (void *)rxq_ctrl);
 	rxq_free_elts(rxq_ctrl);
@@ -781,7 +781,7 @@ rxq_cleanup(struct rxq_ctrl *rxq_ctrl)
  *   0 on success, errno value on failure.
  */
 static inline int
-rxq_setup(struct rxq_ctrl *tmpl)
+rxq_setup(struct mlx5_rxq_ctrl *tmpl)
 {
 	struct ibv_cq *ibcq = tmpl->cq;
 	struct mlx5dv_cq cq_info;
@@ -848,12 +848,12 @@ rxq_setup(struct rxq_ctrl *tmpl)
  *   0 on success, errno value on failure.
  */
 static int
-rxq_ctrl_setup(struct rte_eth_dev *dev, struct rxq_ctrl *rxq_ctrl,
+rxq_ctrl_setup(struct rte_eth_dev *dev, struct mlx5_rxq_ctrl *rxq_ctrl,
 	       uint16_t desc, unsigned int socket,
 	       const struct rte_eth_rxconf *conf, struct rte_mempool *mp)
 {
 	struct priv *priv = dev->data->dev_private;
-	struct rxq_ctrl tmpl = {
+	struct mlx5_rxq_ctrl tmpl = {
 		.priv = priv,
 		.socket = socket,
 		.rxq = {
@@ -1072,7 +1072,7 @@ rxq_ctrl_setup(struct rte_eth_dev *dev, struct rxq_ctrl *rxq_ctrl,
 	}
 	/* Clean up rxq in case we're reinitializing it. */
 	DEBUG("%p: cleaning-up old rxq just in case", (void *)rxq_ctrl);
-	rxq_cleanup(rxq_ctrl);
+	mlx5_rxq_cleanup(rxq_ctrl);
 	/* Move mbuf pointers to dedicated storage area in RX queue. */
 	elts = (void *)(rxq_ctrl + 1);
 	rte_memcpy(elts, tmpl.rxq.elts, sizeof(*elts));
@@ -1091,7 +1091,7 @@ rxq_ctrl_setup(struct rte_eth_dev *dev, struct rxq_ctrl *rxq_ctrl,
 	return 0;
 error:
 	elts = tmpl.rxq.elts;
-	rxq_cleanup(&tmpl);
+	mlx5_rxq_cleanup(&tmpl);
 	rte_free(elts);
 	assert(ret > 0);
 	return ret;
@@ -1122,8 +1122,9 @@ mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 		    struct rte_mempool *mp)
 {
 	struct priv *priv = dev->data->dev_private;
-	struct rxq *rxq = (*priv->rxqs)[idx];
-	struct rxq_ctrl *rxq_ctrl = container_of(rxq, struct rxq_ctrl, rxq);
+	struct mlx5_rxq_data *rxq = (*priv->rxqs)[idx];
+	struct mlx5_rxq_ctrl *rxq_ctrl =
+		container_of(rxq, struct mlx5_rxq_ctrl, rxq);
 	const uint16_t desc_n =
 		desc + priv->rx_vec_en * MLX5_VPMD_DESCS_PER_LOOP;
 	int ret;
@@ -1154,7 +1155,7 @@ mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 			return -EEXIST;
 		}
 		(*priv->rxqs)[idx] = NULL;
-		rxq_cleanup(rxq_ctrl);
+		mlx5_rxq_cleanup(rxq_ctrl);
 		/* Resize if rxq size is changed. */
 		if (rxq_ctrl->rxq.elts_n != log2above(desc)) {
 			rxq_ctrl = rte_realloc(rxq_ctrl,
@@ -1202,8 +1203,8 @@ mlx5_rx_queue_setup(struct rte_eth_dev *dev, uint16_t idx, uint16_t desc,
 void
 mlx5_rx_queue_release(void *dpdk_rxq)
 {
-	struct rxq *rxq = (struct rxq *)dpdk_rxq;
-	struct rxq_ctrl *rxq_ctrl;
+	struct mlx5_rxq_data *rxq = (struct mlx5_rxq_data *)dpdk_rxq;
+	struct mlx5_rxq_ctrl *rxq_ctrl;
 	struct priv *priv;
 	unsigned int i;
 
@@ -1212,7 +1213,7 @@ mlx5_rx_queue_release(void *dpdk_rxq)
 
 	if (rxq == NULL)
 		return;
-	rxq_ctrl = container_of(rxq, struct rxq_ctrl, rxq);
+	rxq_ctrl = container_of(rxq, struct mlx5_rxq_ctrl, rxq);
 	priv = rxq_ctrl->priv;
 	priv_lock(priv);
 	if (priv_flow_rxq_in_use(priv, rxq))
@@ -1225,7 +1226,7 @@ mlx5_rx_queue_release(void *dpdk_rxq)
 			(*priv->rxqs)[i] = NULL;
 			break;
 		}
-	rxq_cleanup(rxq_ctrl);
+	mlx5_rxq_cleanup(rxq_ctrl);
 	rte_free(rxq_ctrl);
 	priv_unlock(priv);
 }
@@ -1260,9 +1261,9 @@ priv_rx_intr_vec_enable(struct priv *priv)
 	}
 	intr_handle->type = RTE_INTR_HANDLE_EXT;
 	for (i = 0; i != n; ++i) {
-		struct rxq *rxq = (*priv->rxqs)[i];
-		struct rxq_ctrl *rxq_ctrl =
-			container_of(rxq, struct rxq_ctrl, rxq);
+		struct mlx5_rxq_data *rxq = (*priv->rxqs)[i];
+		struct mlx5_rxq_ctrl *rxq_ctrl =
+			container_of(rxq, struct mlx5_rxq_ctrl, rxq);
 		int fd;
 		int flags;
 		int rc;
@@ -1328,7 +1329,7 @@ priv_rx_intr_vec_disable(struct priv *priv)
  *     Sequence number per receive queue .
  */
 static inline void
-mlx5_arm_cq(struct rxq *rxq, int sq_n_rxq)
+mlx5_arm_cq(struct mlx5_rxq_data *rxq, int sq_n_rxq)
 {
 	int sq_n = 0;
 	uint32_t doorbell_hi;
@@ -1359,8 +1360,9 @@ int
 mlx5_rx_intr_enable(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
 	struct priv *priv = mlx5_get_priv(dev);
-	struct rxq *rxq = (*priv->rxqs)[rx_queue_id];
-	struct rxq_ctrl *rxq_ctrl = container_of(rxq, struct rxq_ctrl, rxq);
+	struct mlx5_rxq_data *rxq = (*priv->rxqs)[rx_queue_id];
+	struct mlx5_rxq_ctrl *rxq_ctrl =
+		container_of(rxq, struct mlx5_rxq_ctrl, rxq);
 	int ret = 0;
 
 	if (!rxq || !rxq_ctrl->channel) {
@@ -1388,8 +1390,9 @@ int
 mlx5_rx_intr_disable(struct rte_eth_dev *dev, uint16_t rx_queue_id)
 {
 	struct priv *priv = mlx5_get_priv(dev);
-	struct rxq *rxq = (*priv->rxqs)[rx_queue_id];
-	struct rxq_ctrl *rxq_ctrl = container_of(rxq, struct rxq_ctrl, rxq);
+	struct mlx5_rxq_data *rxq = (*priv->rxqs)[rx_queue_id];
+	struct mlx5_rxq_ctrl *rxq_ctrl =
+		container_of(rxq, struct mlx5_rxq_ctrl, rxq);
 	struct ibv_cq *ev_cq;
 	void *ev_ctx;
 	int ret;

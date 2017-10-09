@@ -65,11 +65,11 @@ static __rte_always_inline uint32_t
 rxq_cq_to_pkt_type(volatile struct mlx5_cqe *cqe);
 
 static __rte_always_inline int
-mlx5_rx_poll_len(struct rxq *rxq, volatile struct mlx5_cqe *cqe,
+mlx5_rx_poll_len(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe,
 		 uint16_t cqe_cnt, uint32_t *rss_hash);
 
 static __rte_always_inline uint32_t
-rxq_cq_to_ol_flags(struct rxq *rxq, volatile struct mlx5_cqe *cqe);
+rxq_cq_to_ol_flags(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe);
 
 uint32_t mlx5_ptype_table[] __rte_cache_aligned = {
 	[0xff] = RTE_PTYPE_ALL_MASK, /* Last entry for errored packet. */
@@ -282,7 +282,7 @@ mlx5_tx_descriptor_status(void *tx_queue, uint16_t offset)
 int
 mlx5_rx_descriptor_status(void *rx_queue, uint16_t offset)
 {
-	struct rxq *rxq = rx_queue;
+	struct mlx5_rxq_data *rxq = rx_queue;
 	struct rxq_zip *zip = &rxq->zip;
 	volatile struct mlx5_cqe *cqe;
 	const unsigned int cqe_n = (1 << rxq->cqe_n);
@@ -1647,7 +1647,7 @@ rxq_cq_to_pkt_type(volatile struct mlx5_cqe *cqe)
  *   with error.
  */
 static inline int
-mlx5_rx_poll_len(struct rxq *rxq, volatile struct mlx5_cqe *cqe,
+mlx5_rx_poll_len(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe,
 		 uint16_t cqe_cnt, uint32_t *rss_hash)
 {
 	struct rxq_zip *zip = &rxq->zip;
@@ -1758,7 +1758,7 @@ mlx5_rx_poll_len(struct rxq *rxq, volatile struct mlx5_cqe *cqe,
  *   Offload flags (ol_flags) for struct rte_mbuf.
  */
 static inline uint32_t
-rxq_cq_to_ol_flags(struct rxq *rxq, volatile struct mlx5_cqe *cqe)
+rxq_cq_to_ol_flags(struct mlx5_rxq_data *rxq, volatile struct mlx5_cqe *cqe)
 {
 	uint32_t ol_flags = 0;
 	uint16_t flags = rte_be_to_cpu_16(cqe->hdr_type_etc);
@@ -1797,7 +1797,7 @@ rxq_cq_to_ol_flags(struct rxq *rxq, volatile struct mlx5_cqe *cqe)
 uint16_t
 mlx5_rx_burst(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 {
-	struct rxq *rxq = dpdk_rxq;
+	struct mlx5_rxq_data *rxq = dpdk_rxq;
 	const unsigned int wqe_cnt = (1 << rxq->elts_n) - 1;
 	const unsigned int cqe_cnt = (1 << rxq->cqe_n) - 1;
 	const unsigned int sges_n = rxq->sges_n;
@@ -2037,7 +2037,7 @@ priv_check_vec_tx_support(struct priv *priv)
 }
 
 int __attribute__((weak))
-rxq_check_vec_support(struct rxq *rxq)
+rxq_check_vec_support(struct mlx5_rxq_data *rxq)
 {
 	(void)rxq;
 	return -ENOTSUP;

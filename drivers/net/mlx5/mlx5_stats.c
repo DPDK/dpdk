@@ -329,7 +329,7 @@ mlx5_stats_get(struct rte_eth_dev *dev, struct rte_eth_stats *stats)
 	priv_lock(priv);
 	/* Add software counters. */
 	for (i = 0; (i != priv->rxqs_n); ++i) {
-		struct rxq *rxq = (*priv->rxqs)[i];
+		struct mlx5_rxq_data *rxq = (*priv->rxqs)[i];
 
 		if (rxq == NULL)
 			continue;

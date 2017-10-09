@@ -518,7 +518,7 @@ mlx5_tx_burst_vec(void *dpdk_txq, struct rte_mbuf **pkts, uint16_t pkts_n)
  *   Number of packets to be stored.
  */
 static inline void
-rxq_copy_mbuf_v(struct rxq *rxq, struct rte_mbuf **pkts, uint16_t n)
+rxq_copy_mbuf_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t n)
 {
 	const uint16_t q_mask = (1 << rxq->elts_n) - 1;
 	struct rte_mbuf **elts = &(*rxq->elts)[rxq->rq_pi & q_mask];
@@ -544,7 +544,7 @@ rxq_copy_mbuf_v(struct rxq *rxq, struct rte_mbuf **pkts, uint16_t n)
  *   Number of buffers to be replenished.
  */
 static inline void
-rxq_replenish_bulk_mbuf(struct rxq *rxq, uint16_t n)
+rxq_replenish_bulk_mbuf(struct mlx5_rxq_data *rxq, uint16_t n)
 {
 	const uint16_t q_n = 1 << rxq->elts_n;
 	const uint16_t q_mask = q_n - 1;
@@ -583,7 +583,7 @@ rxq_replenish_bulk_mbuf(struct rxq *rxq, uint16_t n)
  *   the title completion descriptor to be copied to the rest of mbufs.
  */
 static inline void
-rxq_cq_decompress_v(struct rxq *rxq,
+rxq_cq_decompress_v(struct mlx5_rxq_data *rxq,
 		    volatile struct mlx5_cqe *cq,
 		    struct rte_mbuf **elts)
 {
@@ -749,8 +749,8 @@ rxq_cq_decompress_v(struct rxq *rxq,
  *   Pointer to array of packets to be filled.
  */
 static inline void
-rxq_cq_to_ptype_oflags_v(struct rxq *rxq, __m128i cqes[4], __m128i op_err,
-			 struct rte_mbuf **pkts)
+rxq_cq_to_ptype_oflags_v(struct mlx5_rxq_data *rxq, __m128i cqes[4],
+			 __m128i op_err, struct rte_mbuf **pkts)
 {
 	__m128i pinfo0, pinfo1;
 	__m128i pinfo, ptype;
@@ -884,7 +884,7 @@ rxq_cq_to_ptype_oflags_v(struct rxq *rxq, __m128i cqes[4], __m128i op_err,
  *   Number of packets successfully received (<= pkts_n).
  */
 static uint16_t
-rxq_handle_pending_error(struct rxq *rxq, struct rte_mbuf **pkts,
+rxq_handle_pending_error(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts,
 			 uint16_t pkts_n)
 {
 	uint16_t n = 0;
@@ -931,7 +931,7 @@ rxq_handle_pending_error(struct rxq *rxq, struct rte_mbuf **pkts,
  *   Number of packets received including errors (<= pkts_n).
  */
 static inline uint16_t
-rxq_burst_v(struct rxq *rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
+rxq_burst_v(struct mlx5_rxq_data *rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 {
 	const uint16_t q_n = 1 << rxq->cqe_n;
 	const uint16_t q_mask = q_n - 1;
@@ -1279,7 +1279,7 @@ rxq_burst_v(struct rxq *rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 uint16_t
 mlx5_rx_burst_vec(void *dpdk_rxq, struct rte_mbuf **pkts, uint16_t pkts_n)
 {
-	struct rxq *rxq = dpdk_rxq;
+	struct mlx5_rxq_data *rxq = dpdk_rxq;
 	uint16_t nb_rx;
 
 	nb_rx = rxq_burst_v(rxq, pkts, pkts_n);
@@ -1345,9 +1345,10 @@ priv_check_vec_tx_support(struct priv *priv)
  *   1 if supported, negative errno value if not.
  */
 int __attribute__((cold))
-rxq_check_vec_support(struct rxq *rxq)
+rxq_check_vec_support(struct mlx5_rxq_data *rxq)
 {
-	struct rxq_ctrl *ctrl = container_of(rxq, struct rxq_ctrl, rxq);
+	struct mlx5_rxq_ctrl *ctrl =
+		container_of(rxq, struct mlx5_rxq_ctrl, rxq);
 
 	if (!ctrl->priv->rx_vec_en || rxq->sges_n != 0)
 		return -ENOTSUP;
@@ -1372,7 +1373,7 @@ priv_check_vec_rx_support(struct priv *priv)
 		return -ENOTSUP;
 	/* All the configured queues should support. */
 	for (i = 0; i < priv->rxqs_n; ++i) {
-		struct rxq *rxq = (*priv->rxqs)[i];
+		struct mlx5_rxq_data *rxq = (*priv->rxqs)[i];
 
 		if (rxq_check_vec_support(rxq) < 0)
 			break;
