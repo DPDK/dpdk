@@ -558,7 +558,10 @@ mlx5_priv_rxq_ibv_new(struct priv *priv, uint16_t idx)
 		container_of(rxq_data, struct mlx5_rxq_ctrl, rxq);
 	struct ibv_wq_attr mod;
 	union {
-		struct ibv_cq_init_attr_ex cq;
+		struct {
+			struct ibv_cq_init_attr_ex ibv;
+			struct mlx5dv_cq_init_attr mlx5;
+		} cq;
 		struct ibv_wq_init_attr wq;
 		struct ibv_cq_ex cq_attr;
 	} attr;
@@ -597,12 +600,18 @@ mlx5_priv_rxq_ibv_new(struct priv *priv, uint16_t idx)
 			goto error;
 		}
 	}
-	attr.cq = (struct ibv_cq_init_attr_ex){
+	attr.cq.ibv = (struct ibv_cq_init_attr_ex){
+		.cqe = cqe_n,
+		.channel = tmpl->channel,
+		.comp_mask = 0,
+	};
+	attr.cq.mlx5 = (struct mlx5dv_cq_init_attr){
 		.comp_mask = 0,
 	};
 	if (priv->cqe_comp) {
-		attr.cq.comp_mask |= IBV_CQ_INIT_ATTR_MASK_FLAGS;
-		attr.cq.flags |= MLX5DV_CQ_INIT_ATTR_MASK_COMPRESSED_CQE;
+		attr.cq.mlx5.comp_mask |=
+			MLX5DV_CQ_INIT_ATTR_MASK_COMPRESSED_CQE;
+		attr.cq.mlx5.cqe_comp_res_format = MLX5DV_CQE_RES_FORMAT_HASH;
 		/*
 		 * For vectorized Rx, it must not be doubled in order to
 		 * make cq_ci and rq_ci aligned.
@@ -610,7 +619,8 @@ mlx5_priv_rxq_ibv_new(struct priv *priv, uint16_t idx)
 		if (rxq_check_vec_support(rxq_data) < 0)
 			cqe_n *= 2;
 	}
-	tmpl->cq = ibv_create_cq(priv->ctx, cqe_n, NULL, tmpl->channel, 0);
+	tmpl->cq = ibv_cq_ex_to_cq(mlx5dv_create_cq(priv->ctx, &attr.cq.ibv,
+						    &attr.cq.mlx5));
 	if (tmpl->cq == NULL) {
 		ERROR("%p: CQ creation failure", (void *)rxq_ctrl);
 		goto error;

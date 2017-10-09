@@ -101,6 +101,10 @@
 #define MLX5DV_CONTEXT_FLAGS_ENHANCED_MPW (1 << 3)
 #endif
 
+#ifndef HAVE_IBV_MLX5_MOD_CQE_128B_COMP
+#define MLX5DV_CONTEXT_FLAGS_CQE_128B_COMP (1 << 4)
+#endif
+
 struct mlx5_args {
 	int cqe_comp;
 	int txq_inline;
@@ -539,6 +543,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 	struct ibv_device_attr_ex device_attr;
 	unsigned int sriov;
 	unsigned int mps;
+	unsigned int cqe_comp;
 	unsigned int tunnel_en = 0;
 	int idx;
 	int i;
@@ -642,6 +647,11 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		INFO("MPW is disabled\n");
 		mps = MLX5_MPW_DISABLED;
 	}
+	if (RTE_CACHE_LINE_SIZE == 128 &&
+	    !(attrs_out.flags & MLX5DV_CONTEXT_FLAGS_CQE_128B_COMP))
+		cqe_comp = 0;
+	else
+		cqe_comp = 1;
 	if (ibv_query_device_ex(attr_ctx, NULL, &device_attr))
 		goto error;
 	INFO("%u port(s) detected", device_attr.orig_attr.phys_port_cnt);
@@ -758,7 +768,7 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 		priv->pd = pd;
 		priv->mtu = ETHER_MTU;
 		priv->mps = mps; /* Enable MPW by default if supported. */
-		priv->cqe_comp = 1; /* Enable compression by default. */
+		priv->cqe_comp = cqe_comp;
 		priv->tunnel_en = tunnel_en;
 		/* Enable vector by default if supported. */
 		priv->tx_vec_en = 1;
@@ -846,6 +856,10 @@ mlx5_pci_probe(struct rte_pci_driver *pci_drv, struct rte_pci_device *pci_dev)
 			if (args.txq_inline == MLX5_ARG_UNSET)
 				priv->txq_inline = MLX5_WQE_SIZE_MAX -
 						   MLX5_WQE_SIZE;
+		}
+		if (priv->cqe_comp && !cqe_comp) {
+			WARN("Rx CQE compression isn't supported");
+			priv->cqe_comp = 0;
 		}
 		/* Configure the first MAC address by default. */
 		if (priv_get_mac(priv, &mac.addr_bytes)) {

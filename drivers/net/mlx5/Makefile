@@ -124,6 +124,11 @@ mlx5_autoconf.h.new: $(RTE_SDK)/buildtools/auto-config-h.sh
 		enum MLX5DV_CONTEXT_FLAGS_MPW_ALLOWED \
 		$(AUTOCONF_OUTPUT)
 	$Q sh -- '$<' '$@' \
+		HAVE_IBV_MLX5_MOD_CQE_128B_COMP \
+		infiniband/mlx5dv.h \
+		enum MLX5DV_CONTEXT_FLAGS_CQE_128B_COMP \
+		$(AUTOCONF_OUTPUT)
+	$Q sh -- '$<' '$@' \
 		HAVE_ETHTOOL_LINK_MODE_25G \
 		/usr/include/linux/ethtool.h \
 		enum ETHTOOL_LINK_MODE_25000baseCR_Full_BIT \
